@@ -14,6 +14,8 @@ Open `index.html` in a browser (or serve the folder with any static server) and 
   mini-game: you may move in the same mini-game on consecutive turns of yours, so piece counts
   can be lopsided.
 - If a mini-game ends with no winner (full board), that square resets with a newly randomised mini-game.
+- If neither player has a legal move in a mini-game, that square resets the same way. A player who has
+  no legal move in one square simply plays another; a player with no legal move anywhere is skipped.
 - If the main board fills with no three in a row, the player with more squares wins.
 
 Each square is assigned one of these at random when the match starts (duplicates are fine):
@@ -23,16 +25,16 @@ Each square is assigned one of these at random when the match starts (duplicates
 | Tic-tac-toe | 3×3, three in a row |
 | Connect 4 | 5 columns × 6 rows, pieces drop to the lowest open cell, four in a row in any direction |
 | Battleship | 3×3, one hidden cell chosen by the computer; whoever reveals it wins, misses stay marked |
-| Nim | 10 stones, take 1 to 3 per move, whoever takes the last stone wins |
 | Wordle | One hidden 5-letter word shared by both players; a move is any 5-letter guess with green/yellow/grey feedback, no guess limit |
 | Hangman | Hidden 5–7 letter word; guess a letter. A right letter is revealed and you guess again at once; a wrong letter ends your turn. Revealing the last letter wins |
-| Tug of war | 7-position track, the knot starts in the middle; each pull moves it one step toward your end |
+| Tug of war | 7-position track, the knot starts in the middle; each pull moves it one step toward your end. If the knot lands on the same position for the third time the square resets |
 | Hex | 4×4 hex grid; X connects left to right, O connects top to bottom |
-| Chomp | 4×5 bar with a poisoned bottom-left cell; a move eats a cell plus everything above and to its right. Eating the last safe cell wins |
-| Obstruction | 4×4 grid; a mark blocks all 8 neighbours. Whoever makes the last possible move wins |
 | Higher/lower | The computer picks 1–20; each guess is answered higher or lower. Guessing it wins |
 | Dice race | Roll a die and add it to your total; first to 15 wins |
 | Memory | 3×3 face-down cards with exactly one matching pair; a move flips two cards for 2 seconds. Flipping the pair wins |
+| Mini Othello | 4×4 with the standard four-disc centre; a move must flip at least one disc. When neither player can move, most discs wins and a tie resets the square |
+| Hexapawn | 3×3, three pawns each; pawns step forward into an empty cell or capture diagonally forward. Reaching the far row or taking every enemy pawn wins; a stalemate resets the square |
+| Candy race | A winding track of 12 randomly coloured spaces; a spin of the colour wheel hops your token to the next space of that colour. No such space ahead means you reach the finish and win |
 
 Hidden information (the Wordle and Hangman words, the Higher/lower number, the Memory cards, the
 Battleship cell) is never shown on the board or in a mini-game before it is revealed.

@@ -26,9 +26,13 @@
   --stone: #d9c7a6;
   --green: #5aa65b;
   --yellow: #c9a93d;
-  --choc: #86592f;
-  --choc-2: #5c3a1d;
   --card: #f3eee4;
+  --felt: #1d4d3a;
+  --felt-2: #256247;
+  --cr: #ef476f;
+  --cy: #ffd166;
+  --cg: #06d6a0;
+  --cb: #4cc9f0;
   --hdr: 64px;
   --foot: 52px;
   --bar: 56px;
@@ -106,6 +110,7 @@ b.X { color: var(--x); } b.O { color: var(--o); }
 .sq.last-O { box-shadow: inset 0 0 0 2px var(--o); }
 .sq.own-X { background: var(--x-soft); box-shadow: inset 0 0 0 2px var(--x); }
 .sq.own-O { background: var(--o-soft); box-shadow: inset 0 0 0 2px var(--o); }
+.sq.nomove { opacity: .45; }
 .own { margin: auto; font-weight: 900; line-height: 1; font-size: 56px; font-size: 62cqw; }
 .own-X .own { color: var(--x); }
 .own-O .own { color: var(--o); }
@@ -129,11 +134,6 @@ b.X { color: var(--x); } b.O { color: var(--o); }
 .tg.g5 i.O { background: var(--o); }
 .tg.sea i { background: var(--sea); }
 .tg.sea i.miss::after { content: ''; width: 36%; height: 36%; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .55); }
-.tn { display: flex; flex-direction: column; align-items: center; gap: 4px; gap: 4cqw; }
-.tn .st { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; gap: 3cqw; width: 64px; width: 62cqw; }
-.tn .st i { aspect-ratio: 1; border-radius: 50%; background: var(--stone); }
-.tn .st i.gone { background: var(--panel-2); }
-.tn b { line-height: 1; font-size: 18px; font-size: 17cqw; }
 .tw { display: flex; flex-direction: column; align-items: center; gap: 1.5cqw; }
 .twr { display: flex; gap: 1.5cqw; }
 .twr i { width: 11cqw; height: 11cqw; border-radius: 1.5cqw; background: var(--panel-2); box-shadow: inset 0 0 0 1px var(--line); display: grid; place-items: center; font-size: 7cqw; font-weight: 800; line-height: 1; }
@@ -155,14 +155,22 @@ b.X { color: var(--x); } b.O { color: var(--o); }
 .thex .hr i { width: 10cqw; height: 10cqw; border-radius: 50%; background: var(--panel-2); }
 .thex .hr i.X { background: var(--x); }
 .thex .hr i.O { background: var(--o); }
-.tg.g5x4 { grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(4, 1fr); width: 66px; height: 53px; width: 66cqw; height: 53cqw; }
-.tg.g5x4 i { border-radius: 1.5cqw; background: var(--choc); }
-.tg.g5x4 i.eaten { background: var(--panel-2); opacity: .6; }
-.tg.g5x4 i.poison { background: #2c1d12; display: grid; place-items: center; }
-.tg.g5x4 i.poison::after { content: ''; width: 40%; height: 40%; border-radius: 50%; background: var(--stone); }
 .tg.g4 { grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(4, 1fr); width: 60px; height: 60px; width: 60cqw; height: 60cqw; }
-.tg.g4 i { display: grid; place-items: center; border-radius: 2cqw; background: var(--panel-2); font-size: 9cqw; font-weight: 900; line-height: 1; }
-.tg.g4 i.b { background: repeating-linear-gradient(45deg, var(--panel) 0 2px, var(--panel-2) 2px 4px); opacity: .55; }
+.tg.toth { background: var(--felt); padding: 1.5cqw; border-radius: 2cqw; }
+.tg.toth i { border-radius: 50%; background: var(--felt-2); }
+.tg.toth i.X { background: var(--x); }
+.tg.toth i.O { background: var(--o); }
+.tg.thp i svg { width: 72%; height: 72%; }
+.tg.thp i.X { color: var(--x); }
+.tg.thp i.O { color: var(--o); }
+.tcandy { display: flex; flex-direction: column; gap: 1.5cqw; width: 84cqw; }
+.tcandy .bar { height: 11cqw; border-radius: 2cqw; background: var(--panel-2); display: flex; align-items: center; gap: 1cqw; padding: 0 1.5cqw; }
+.tcandy .grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 1cqw; }
+.tcandy .grid i { aspect-ratio: 1; border-radius: 1.5cqw; display: flex; align-items: center; justify-content: center; }
+.tcandy i.red { background: var(--cr); } .tcandy i.yellow { background: var(--cy); } .tcandy i.green { background: var(--cg); } .tcandy i.blue { background: var(--cb); }
+.tcandy b { flex: none; width: 9cqw; height: 9cqw; border-radius: 50%; display: grid; place-items: center; font-size: 6cqw; font-weight: 900; line-height: 1; color: #fff; border: 1px solid rgba(0, 0, 0, .6); }
+.tcandy b.X { background: var(--x); } .tcandy b.O { background: var(--o); }
+.tcandy .grid b + b { margin-left: -3cqw; }
 .thilo { text-align: center; }
 .thilo b { display: block; font-size: 16cqw; line-height: 1.1; font-variant-numeric: tabular-nums; }
 .tdice { display: flex; flex-direction: column; gap: 4cqw; width: 84cqw; }
@@ -236,25 +244,6 @@ b.X { color: var(--x); } b.O { color: var(--o); }
 .c4c.win { box-shadow: inset 0 0 0 4px rgba(255, 255, 255, .85); }
 .c4c.drop { animation: drop .22s ease-out; }
 
-.g-nim { width: var(--g); height: var(--g); display: flex; flex-direction: column; gap: 12px; }
-.pile {
-  flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
-  background: var(--panel); border-radius: 16px; padding: 12px;
-}
-.stones { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; width: 78%; max-width: 300px; }
-.stones i {
-  aspect-ratio: 1; border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #f1e6d2, #b8a37f); box-shadow: 0 3px 6px rgba(0, 0, 0, .45);
-}
-.stones i.gone { background: var(--panel-2); box-shadow: none; opacity: .5; }
-.pile .n { font-size: 22px; font-weight: 800; }
-.pile .n span { color: var(--muted); font-weight: 600; font-size: 16px; }
-.lastmv { color: var(--muted); font-weight: 600; font-size: 14px; }
-.take { flex: none; height: max(64px, calc(var(--g) * .2)); display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-.take button { border: 0; border-radius: 16px; background: var(--panel-2); font-weight: 800; font-size: 18px; transition: transform .08s; }
-.take button:active:not(:disabled) { transform: scale(.95); }
-.take button:disabled { opacity: .35; }
-
 /* on-screen keyboard (Wordle, Hangman) */
 .kb { flex: none; width: 100%; display: flex; flex-direction: column; gap: 6px; }
 .krow { display: flex; justify-content: center; gap: 4px; }
@@ -326,20 +315,63 @@ b.X { color: var(--x); } b.O { color: var(--o); }
 .hexc.O { background: var(--o); }
 .hexc.win::after { content: ''; width: 30%; height: 30%; border-radius: 50%; background: rgba(255, 255, 255, .9); }
 
-.g-chomp { width: var(--g); height: calc(var(--g) * .8); display: grid; grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(4, 1fr); gap: 6px; }
-.cc {
-  border: 0; padding: 0; border-radius: 10px; display: grid; place-items: center;
-  background: linear-gradient(145deg, var(--choc), var(--choc-2)); box-shadow: inset 0 -4px 0 rgba(0, 0, 0, .25);
-}
-.cc.eaten { background: transparent; box-shadow: inset 0 0 0 1px var(--line); }
-.cc.poison { background: linear-gradient(145deg, #3a2a1d, #22160e); color: var(--stone); }
-.cc.poison svg { width: 55%; height: 55%; }
+.status { display: flex; justify-content: center; align-items: center; gap: 6px; min-height: 24px; font-weight: 700; color: var(--muted); text-align: center; }
+.banner { text-align: center; font-weight: 700; color: var(--muted); background: var(--panel); border-radius: 12px; padding: 10px 14px; }
 
-.g-obs { width: var(--g); height: var(--g); display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(4, 1fr); gap: 8px; }
-.oc { border: 0; padding: 0; border-radius: 12px; background: var(--panel-2); font-weight: 900; font-size: calc(var(--g) * .13); line-height: 1; }
-.oc.X { color: var(--x); }
-.oc.O { color: var(--o); }
-.oc.b { background: repeating-linear-gradient(45deg, var(--panel) 0 6px, var(--panel-2) 6px 12px); opacity: .55; }
+.g-oth { width: var(--g); display: flex; flex-direction: column; gap: 10px; align-items: center; }
+.oboard {
+  --ob: min(var(--gw), calc(var(--gh) - 96px));
+  width: var(--ob); height: var(--ob); display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(4, 1fr); gap: 6px;
+  padding: 6px; background: var(--felt); border-radius: 16px;
+}
+.od { border: 0; padding: 0; border-radius: 10px; background: var(--felt-2); display: grid; place-items: center; }
+.od i { width: 76%; height: 76%; border-radius: 50%; box-shadow: 0 3px 6px rgba(0, 0, 0, .35); }
+.od.X i { background: var(--x); }
+.od.O i { background: var(--o); }
+.od.can::after { content: ''; width: 22%; height: 22%; border-radius: 50%; background: rgba(255, 255, 255, .4); }
+.od.flip i { animation: flip .45s ease-out; }
+.od.win i { box-shadow: 0 0 0 3px #fff; }
+
+.g-hp { width: var(--g); display: flex; flex-direction: column; gap: 10px; align-items: center; }
+.hpboard { --hb: min(var(--gw), calc(var(--gh) - 60px)); width: var(--hb); height: var(--hb); display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); gap: 8px; }
+.hc { border: 0; padding: 0; border-radius: 14px; background: var(--panel-2); display: grid; place-items: center; }
+.hc:nth-child(even) { background: var(--panel); box-shadow: inset 0 0 0 1px var(--line); }
+.hc svg { width: 56%; height: 56%; }
+.hc.X { color: var(--x); }
+.hc.O { color: var(--o); }
+.hc.sel { box-shadow: inset 0 0 0 3px var(--text); }
+.hc.tgt::after { content: ''; width: 20%; height: 20%; border-radius: 50%; background: rgba(255, 255, 255, .45); }
+.hc.tgt.cap { box-shadow: inset 0 0 0 3px rgba(255, 255, 255, .6); }
+.hc.tgt.cap::after { display: none; }
+.hc.win { box-shadow: inset 0 0 0 3px currentColor; }
+
+.g-candy { width: var(--g); display: flex; flex-direction: column; gap: 10px; }
+.cchip { height: 30px; border-radius: 10px; background: var(--panel); display: flex; align-items: center; gap: 8px; padding: 0 12px; font-weight: 800; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.ctrack { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+.cs { aspect-ratio: 1; border-radius: 10px; position: relative; display: flex; align-items: center; justify-content: center; container-type: size; }
+.cs.red { background: var(--cr); } .cs.yellow { background: var(--cy); } .cs.green { background: var(--cg); } .cs.blue { background: var(--cb); }
+.cs span { position: absolute; top: 3px; left: 6px; font-weight: 800; font-size: 11px; color: rgba(0, 0, 0, .45); }
+.toks { display: flex; gap: 2px; }
+.tok {
+  flex: none; width: 22px; height: 22px; width: 42cqw; height: 42cqw; border-radius: 50%; display: grid; place-items: center;
+  font-weight: 900; font-size: 12px; font-size: 24cqw; line-height: 1; color: #fff; border: 2px solid rgba(0, 0, 0, .6);
+}
+.cchip .tok { width: 22px; height: 22px; font-size: 12px; }
+b.tok { color: #fff; }
+.tok.X { background: var(--x); }
+.tok.O { background: var(--o); }
+.tok.moved { animation: pop .3s 1.1s both; }
+.tok.ghost { animation: vanish .3s 1.1s both; }
+.wheelwrap { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.pointer { width: 0; height: 0; border-left: 9px solid transparent; border-right: 9px solid transparent; border-top: 14px solid var(--text); }
+.wheel {
+  width: min(120px, calc(var(--g) * .3)); aspect-ratio: 1; border-radius: 50%; border: 4px solid var(--text);
+  background: conic-gradient(var(--cr) 0 90deg, var(--cy) 90deg 180deg, var(--cg) 180deg 270deg, var(--cb) 270deg 360deg);
+  transform: rotate(var(--to, 0deg)); box-shadow: 0 6px 16px rgba(0, 0, 0, .4);
+}
+.wheel.spin { animation: spin 1.1s cubic-bezier(.15, .75, .25, 1) both; }
+.wheelwrap .dielab { margin-top: 6px; }
+.flash.late, .flash.late .card, .flash.late .toast { animation-delay: 1.1s; animation-fill-mode: both; }
 
 .g-hilo { width: var(--g); display: flex; flex-direction: column; gap: 14px; }
 .range { background: var(--panel); border-radius: 16px; padding: 14px; text-align: center; }
@@ -427,6 +459,9 @@ b.X { color: var(--x); } b.O { color: var(--o); }
 @keyframes fade { from { opacity: 0; } }
 @keyframes drop { from { transform: translateY(-130%); opacity: .4; } }
 @keyframes zoomin { from { transform: scale(.94); opacity: 0; } }
+@keyframes flip { from { transform: scaleX(-1); opacity: .3; } }
+@keyframes vanish { to { opacity: 0; transform: scale(.4); } }
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(var(--to, 0deg)); } }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 </style>
 </head>
@@ -439,29 +474,29 @@ b.X { color: var(--x); } b.O { color: var(--o); }
  * Everything about a match lives in one plain object (see newMatch); the UI
  * only ever calls playMove / endFlash and re-renders from that object.
  */
-const TYPES = ['ttt', 'c4', 'bs', 'nim', 'wordle', 'hangman', 'tug', 'hex', 'chomp', 'obstruction', 'hilo', 'dice', 'memory'];
+const TYPES = ['ttt', 'c4', 'bs', 'wordle', 'hangman', 'tug', 'hex', 'hilo', 'dice', 'memory', 'othello', 'hexapawn', 'candy'];
 const INFO = {
   ttt:         { name: 'Tic-Tac-Toe',  hint: 'Three in a row wins' },
   c4:          { name: 'Connect 4',    hint: 'Pieces drop. Four in a row wins' },
   bs:          { name: 'Battleship',   hint: 'Find the hidden ship' },
-  nim:         { name: 'Nim',          hint: 'Take 1, 2 or 3. Last stone wins' },
   wordle:      { name: 'Wordle',       hint: 'Guess the hidden 5-letter word' },
   hangman:     { name: 'Hangman',      hint: 'Right letter: go again. Last letter wins' },
-  tug:         { name: 'Tug of War',   hint: 'Pull the knot to your end' },
+  tug:         { name: 'Tug of War',   hint: 'Pull the knot to your end. A position seen 3 times resets' },
   hex:         { name: 'Hex',          hint: 'X joins left to right, O joins top to bottom' },
-  chomp:       { name: 'Chomp',        hint: 'Eat a cell and all above-right. Last safe cell wins' },
-  obstruction: { name: 'Obstruction',  hint: 'Mark a cell, block its neighbours. Last move wins' },
   hilo:        { name: 'Higher/Lower', hint: 'Guess the number from 1 to 20' },
   dice:        { name: 'Dice Race',    hint: 'Roll and add up. First to 15 wins' },
   memory:      { name: 'Memory',       hint: 'Flip two cards. Find the matching pair' },
+  othello:     { name: 'Mini Othello', hint: 'Flip at least one disc. Most discs when nobody can move' },
+  hexapawn:    { name: 'Hexapawn',     hint: 'X moves up, O moves down. Reach the far row or take every pawn' },
+  candy:       { name: 'Candy Race',   hint: 'Spin, then hop to the next space of that colour' },
 };
 const C4 = { cols: 5, rows: 6, k: 4 };
-const NIM_START = 10;
-const TUG = { len: 7, start: 3, xEnd: 0, oEnd: 6 };
+const TUG = { len: 7, start: 3, xEnd: 0, oEnd: 6, repeats: 3 };   // the knot back on a position for the 3rd time = stalemate
 const HEX_N = 4;
-const CHOMP = { rows: 4, cols: 5, poison: 15 };   // poison = bottom-left (row 3, col 0)
-const OBS_N = 4;
 const HILO = { lo: 1, hi: 20 };
+const OTH_N = 4;
+const HP_N = 3;
+const CANDY = { len: 12, colors: ['red', 'yellow', 'green', 'blue'] };
 const DICE_GOAL = 15;
 const MEMORY = { shapes: ['circle', 'square', 'triangle', 'diamond'], colors: ['green', 'yellow', 'purple', 'orange'] };
 const LINES = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6]];
@@ -557,27 +592,66 @@ function hexPath(cells, p) {
   }
   return null;
 }
-function chompLeft(eaten) {
-  let n = 0;
-  for (let i = 0; i < eaten.length; i++) if (!eaten[i] && i !== CHOMP.poison) n++;
-  return n;
+// Mini Othello: the discs that placing p at cell i would flip (none = not a legal move).
+function othFlips(cells, p, i) {
+  if (cells[i]) return [];
+  const r = Math.floor(i / OTH_N), c = i % OTH_N, o = other(p), out = [];
+  for (const [dr, dc] of [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]]) {
+    const run = [];
+    let rr = r + dr, cc = c + dc;
+    while (rr >= 0 && rr < OTH_N && cc >= 0 && cc < OTH_N && cells[rr * OTH_N + cc] === o) { run.push(rr * OTH_N + cc); rr += dr; cc += dc; }
+    if (run.length && rr >= 0 && rr < OTH_N && cc >= 0 && cc < OTH_N && cells[rr * OTH_N + cc] === p) out.push(...run);
+  }
+  return out;
 }
+function othMoves(cells, p) {
+  const out = [];
+  for (let i = 0; i < cells.length; i++) if (!cells[i] && othFlips(cells, p, i).length) out.push(i);
+  return out;
+}
+// Hexapawn: X pawns start on the bottom row and move up, O pawns start on the top row and move down.
+// Returns every legal [from, to] for p: one step forward into an empty cell, or a diagonal capture.
+function hpMoves(cells, p) {
+  const out = [], d = p === 'X' ? -1 : 1, o = other(p);
+  for (let i = 0; i < cells.length; i++) {
+    if (cells[i] !== p) continue;
+    const r = Math.floor(i / HP_N) + d, c = i % HP_N;
+    if (r < 0 || r >= HP_N) continue;
+    if (!cells[r * HP_N + c]) out.push([i, r * HP_N + c]);
+    for (const dc of [-1, 1]) {
+      const cc = c + dc;
+      if (cc >= 0 && cc < HP_N && cells[r * HP_N + cc] === o) out.push([i, r * HP_N + cc]);
+    }
+  }
+  return out;
+}
+// Does p have a legal move in this mini-game? Only Othello and Hexapawn can ever say no.
+function canMove(mini, p) {
+  if (mini.type === 'othello') return othMoves(mini.cells, p).length > 0;
+  if (mini.type === 'hexapawn') return hpMoves(mini.cells, p).length > 0;
+  return true;
+}
+function anyMove(state, p) { return state.squares.some(s => !s.owner && canMove(s.mini, p)); }
 
 function newMini(type, rng) {
   switch (type) {
     case 'ttt':         return { type, cells: new Array(9).fill(null), last: null };
     case 'c4':          return { type, cells: new Array(C4.cols * C4.rows).fill(null), last: null };
     case 'bs':          return { type, hidden: randInt(rng, 9), revealed: new Array(9).fill(null), last: null };
-    case 'nim':         return { type, stones: NIM_START, last: null };
     case 'wordle':      return { type, word: WORDS5[randInt(rng, WORDS5.length)].toUpperCase(), guesses: [] };
     case 'hangman':     return { type, word: WORDS_HANG[randInt(rng, WORDS_HANG.length)].toUpperCase(), letters: [] };
-    case 'tug':         return { type, pos: TUG.start, last: null };
+    case 'tug':         return { type, pos: TUG.start, last: null, seen: Array.from({ length: TUG.len }, (_, k) => (k === TUG.start ? 1 : 0)) };
     case 'hex':         return { type, cells: new Array(HEX_N * HEX_N).fill(null), last: null };
-    case 'chomp':       return { type, eaten: new Array(CHOMP.rows * CHOMP.cols).fill(false), last: null };
-    case 'obstruction': return { type, cells: new Array(OBS_N * OBS_N).fill(null), last: null };
     case 'hilo':        return { type, target: HILO.lo + randInt(rng, HILO.hi - HILO.lo + 1), lo: HILO.lo, hi: HILO.hi, guesses: [] };
     case 'dice':        return { type, totals: { X: 0, O: 0 }, last: null };
     case 'memory':      return { type, cards: memoryDeck(rng), flips: 0, last: null };
+    case 'othello': {
+      const cells = new Array(OTH_N * OTH_N).fill(null);
+      cells[5] = 'O'; cells[10] = 'O'; cells[6] = 'X'; cells[9] = 'X';   // the standard four-disc centre
+      return { type, cells, last: null, flipped: [] };
+    }
+    case 'hexapawn':    return { type, cells: ['O', 'O', 'O', null, null, null, 'X', 'X', 'X'], last: null };
+    case 'candy':       return { type, track: Array.from({ length: CANDY.len }, () => CANDY.colors[randInt(rng, CANDY.colors.length)]), pos: { X: -1, O: -1 }, last: null };
   }
   throw new Error('unknown mini-game: ' + type);
 }
@@ -585,7 +659,7 @@ function newSquare(rng) { return { owner: null, mini: newMini(randomType(rng), r
 function newMatch(rng) {
   rng = rng || Math.random;
   return {
-    v: 2,
+    v: 3,
     screen: 'board',          // 'board' | 'mini' | 'win'
     turn: 'X',
     squares: Array.from({ length: 9 }, () => newSquare(rng)),
@@ -655,13 +729,6 @@ function applyMove(mini, p, m, rng) {
       if (m === mini.hidden) return { ok: true, outcome: 'win', cells: [m] };
       return { ok: true, outcome: 'continue', note: 'miss' };
     }
-    case 'nim': {
-      if (!Number.isInteger(m) || m < 1 || m > 3) return { ok: false, reason: 'bad' };
-      if (m > mini.stones) return { ok: false, reason: 'too-many' };
-      mini.stones -= m; mini.last = { by: p, n: m };
-      if (mini.stones === 0) return { ok: true, outcome: 'win' };
-      return { ok: true, outcome: 'continue', note: 'took' };
-    }
     case 'wordle': {
       const g = typeof m === 'string' ? m.toUpperCase() : '';
       if (!/^[A-Z]{5}$/.test(g)) return { ok: false, reason: 'bad' };
@@ -683,6 +750,8 @@ function applyMove(mini, p, m, rng) {
     case 'tug': {
       mini.pos += p === 'X' ? -1 : 1; mini.last = p;
       if (mini.pos === TUG.xEnd || mini.pos === TUG.oEnd) return { ok: true, outcome: 'win' };
+      mini.seen[mini.pos] = (mini.seen[mini.pos] || 0) + 1;
+      if (mini.seen[mini.pos] >= TUG.repeats) return { ok: true, outcome: 'draw', note: 'repeat' };   // nobody is getting anywhere
       return { ok: true, outcome: 'continue', note: 'pull' };
     }
     case 'hex': {
@@ -692,38 +761,6 @@ function applyMove(mini, p, m, rng) {
       const path = hexPath(mini.cells, p);
       if (path) return { ok: true, outcome: 'win', cells: path };
       if (mini.cells.every(Boolean)) return { ok: true, outcome: 'draw' };   // cannot happen in Hex; kept for safety
-      return { ok: true, outcome: 'continue' };
-    }
-    case 'chomp': {
-      if (!idx(CHOMP.rows * CHOMP.cols)) return { ok: false, reason: 'bad' };
-      if (m === CHOMP.poison) return { ok: false, reason: 'poison' };
-      if (mini.eaten[m]) return { ok: false, reason: 'taken' };
-      const r = Math.floor(m / CHOMP.cols), c = m % CHOMP.cols;
-      let n = 0;
-      for (let rr = 0; rr <= r; rr++) {
-        for (let cc = c; cc < CHOMP.cols; cc++) {
-          const k = rr * CHOMP.cols + cc;
-          if (!mini.eaten[k]) { mini.eaten[k] = true; n++; }
-        }
-      }
-      mini.last = { by: p, cell: m, n };
-      if (chompLeft(mini.eaten) === 0) return { ok: true, outcome: 'win' };
-      return { ok: true, outcome: 'continue', note: 'ate' };
-    }
-    case 'obstruction': {
-      if (!idx(OBS_N * OBS_N)) return { ok: false, reason: 'bad' };
-      if (mini.cells[m]) return { ok: false, reason: 'taken' };
-      mini.cells[m] = p; mini.last = m;
-      const r = Math.floor(m / OBS_N), c = m % OBS_N;
-      for (let dr = -1; dr <= 1; dr++) {
-        for (let dc = -1; dc <= 1; dc++) {
-          const rr = r + dr, cc = c + dc;
-          if (rr < 0 || rr >= OBS_N || cc < 0 || cc >= OBS_N) continue;
-          const k = rr * OBS_N + cc;
-          if (!mini.cells[k]) mini.cells[k] = 'b';
-        }
-      }
-      if (mini.cells.every(Boolean)) return { ok: true, outcome: 'win' };
       return { ok: true, outcome: 'continue' };
     }
     case 'hilo': {
@@ -749,6 +786,42 @@ function applyMove(mini, p, m, rng) {
       if (ca.s === cb.s && ca.c === cb.c) return { ok: true, outcome: 'win', cells: [a, b] };
       return { ok: true, outcome: 'continue', note: 'nomatch' };
     }
+    case 'othello': {
+      if (!idx(OTH_N * OTH_N)) return { ok: false, reason: 'bad' };
+      if (mini.cells[m]) return { ok: false, reason: 'taken' };
+      const flips = othFlips(mini.cells, p, m);
+      if (!flips.length) return { ok: false, reason: 'noflip' };
+      mini.cells[m] = p;
+      for (const k of flips) mini.cells[k] = p;
+      mini.last = m; mini.flipped = flips;
+      if (!othMoves(mini.cells, 'X').length && !othMoves(mini.cells, 'O').length) {
+        // nobody can move: most discs takes the square, a tie resets it
+        const x = mini.cells.filter(c => c === 'X').length, o = mini.cells.filter(c => c === 'O').length;
+        if (x === o) return { ok: true, outcome: 'draw', note: 'tie', counts: { X: x, O: o } };
+        const w = x > o ? 'X' : 'O';
+        return { ok: true, outcome: 'win', winner: w, counts: { X: x, O: o }, cells: mini.cells.map((c, k) => (c === w ? k : -1)).filter(k => k >= 0) };
+      }
+      return { ok: true, outcome: 'continue', note: 'flip', n: flips.length };
+    }
+    case 'hexapawn': {
+      if (!Array.isArray(m) || m.length !== 2) return { ok: false, reason: 'bad' };
+      const [from, to] = m;
+      if (!hpMoves(mini.cells, p).some(([a, b]) => a === from && b === to)) return { ok: false, reason: 'illegal' };
+      const capture = !!mini.cells[to];
+      mini.cells[to] = p; mini.cells[from] = null; mini.last = { by: p, from, to, capture };
+      const far = p === 'X' ? 0 : HP_N - 1;
+      if (Math.floor(to / HP_N) === far || !mini.cells.includes(other(p))) return { ok: true, outcome: 'win', cells: [to] };
+      return { ok: true, outcome: 'continue', note: capture ? 'capture' : 'step' };
+    }
+    case 'candy': {
+      const color = CANDY.colors[randInt(rng || Math.random, CANDY.colors.length)];
+      const from = mini.pos[p];
+      let to = CANDY.len;                                    // the finish, unless a space of that colour is ahead
+      for (let i = from + 1; i < CANDY.len; i++) if (mini.track[i] === color) { to = i; break; }
+      mini.pos[p] = to; mini.last = { by: p, color, from, to };
+      if (to === CANDY.len) return { ok: true, outcome: 'win' };
+      return { ok: true, outcome: 'continue', note: 'spin' };
+    }
   }
   return { ok: false, reason: 'bad' };
 }
@@ -769,6 +842,8 @@ function mainResult(squares) {
 // A full turn: the player to move makes move m in square i. On success state.flash
 // describes the result; the UI shows it, then calls endFlash. The turn passes unless
 // the mini-game grants the same player another move at once (flash.kind === 'again').
+// A square where neither player has a legal move resets like a draw, and a player with
+// no legal move anywhere on the board is skipped (flash.pass) so the match never freezes.
 function playMove(state, i, m, rng) {
   rng = rng || Math.random;
   if (state.winner) return { ok: false, reason: 'over' };
@@ -781,33 +856,44 @@ function playMove(state, i, m, rng) {
   const res = applyMove(sq.mini, p, m, rng);
   if (!res.ok) return res;
   const mini = sq.mini;
+  let outcome = res.outcome, note = res.note || null;
+  if (outcome === 'continue' && !canMove(mini, 'X') && !canMove(mini, 'O')) { outcome = 'draw'; note = 'stuck'; }
   const flash = {
-    kind: res.outcome === 'win' ? 'claim' : res.outcome === 'draw' ? 'draw' : res.again ? 'again' : 'move',
-    by: p, next: res.again ? p : other(p), square: i, type: mini.type, note: res.note || null,
+    kind: outcome === 'win' ? 'claim' : outcome === 'draw' ? 'draw' : res.again ? 'again' : 'move',
+    by: p, next: res.again ? p : other(p), square: i, type: mini.type, note, pass: null,
   };
   switch (mini.type) {
-    case 'nim': flash.took = m; flash.stones = mini.stones; break;
     case 'wordle': flash.word = m.toUpperCase(); break;
     case 'hangman': flash.letter = m.toUpperCase(); break;
-    case 'chomp': flash.n = mini.last.n; break;
     case 'hilo': flash.n = m; break;
     case 'dice': flash.roll = mini.last.roll; flash.total = mini.totals[p]; break;
     case 'memory': flash.reveal = [m[0], m[1]]; break;
+    case 'othello': flash.n = res.n || 0; break;
+    case 'candy': flash.color = mini.last.color; flash.from = mini.last.from; flash.to = mini.last.to; break;
   }
-  if (res.outcome === 'win') {
-    sq.owner = p;
+  if (outcome === 'win') {
+    const w = res.winner || p;                   // Othello can hand the square to the other player on disc count
+    sq.owner = w;
     mini.winCells = res.cells || null;
+    flash.winner = w; flash.counts = res.counts || null;
     const mr = mainResult(state.squares);
     if (mr) {
       state.winner = mr.winner; state.winLine = mr.line; state.winReason = mr.reason; state.counts = mr.counts || null;
       flash.kind = 'match';
     }
-  } else if (res.outcome === 'draw') {
+  } else if (outcome === 'draw') {
     flash.drawn = mini;                          // keep the full board for the result overlay
+    flash.counts = res.counts || null;
     sq.mini = newMini(randomType(rng), rng);     // the square resets with a new random mini-game
     flash.newType = sq.mini.type;
   }
-  if (res.again) { state.lock = i; } else { state.lock = null; state.turn = other(p); }
+  if (res.again) {
+    state.lock = i;
+  } else {
+    state.lock = null; state.turn = other(p);
+    if (!state.winner && !anyMove(state, state.turn) && anyMove(state, p)) { flash.pass = state.turn; state.turn = p; }
+    flash.next = state.turn;
+  }
   state.draft = ''; state.pick = null;
   state.moves += 1; state.lastSquare = i; state.lastBy = p;
   state.flash = flash;
@@ -829,9 +915,10 @@ function endFlash(state) {
 <script id="ui">
 'use strict';
 /* ===================== UI: render everything from state ===================== */
-const KEY = 'insane-tac-toe.v2';
+const KEY = 'insane-tac-toe.v3';
 const FLASH_MS = { move: 700, again: 650, claim: 1500, draw: 1800, match: 1300 };
 const MEMORY_MS = 2000;   // the two flipped cards stay up this long
+const SPIN_MS = 1100;     // the candy wheel's spin
 const app = document.getElementById('app');
 let state = load() || newMatch();
 let flashTimer = null;
@@ -840,22 +927,23 @@ const ICONS = {
   ttt: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M8.5 3v18M15.5 3v18M3 8.5h18M3 15.5h18"/></svg>',
   c4:  '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="19" r="3"/><circle cx="12" cy="19" r="3"/><circle cx="19" cy="19" r="3"/><path d="M12 2v9M8.5 8 12 11.5 15.5 8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   bs:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="2.5"/><path d="M12 1.5v4M12 18.5v4M1.5 12h4M18.5 12h4"/></svg>',
-  nim: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="7" cy="16.5" r="4.5"/><circle cx="17" cy="16.5" r="4.5"/><circle cx="12" cy="8" r="4.5"/></svg>',
   wordle: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="7" width="6" height="6" rx="1"/><rect x="9" y="7" width="6" height="6" rx="1" opacity=".45"/><rect x="16" y="7" width="6" height="6" rx="1" opacity=".45"/><rect x="2" y="14" width="6" height="6" rx="1" opacity=".45"/><rect x="9" y="14" width="6" height="6" rx="1"/><rect x="16" y="14" width="6" height="6" rx="1" opacity=".45"/></svg>',
   hangman: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 21h8M8 21V3h9v4"/><circle cx="17" cy="10" r="2.5"/><path d="M17 12.5v5"/></svg>',
   tug: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h20M6 8l-4 4 4 4M18 8l4 4-4 4"/><circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none"/></svg>',
   hex: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"><path d="M12 2.5 20.2 7.25v9.5L12 21.5 3.8 16.75v-9.5z"/></svg>',
-  chomp: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h10a8 8 0 0 0 8 8v10H3z"/></svg>',
-  obstruction: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="9" y="9" width="6" height="6" rx="1"/><g opacity=".4"><rect x="2" y="2" width="6" height="6" rx="1"/><rect x="9" y="2" width="6" height="6" rx="1"/><rect x="16" y="2" width="6" height="6" rx="1"/><rect x="2" y="9" width="6" height="6" rx="1"/><rect x="16" y="9" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="9" y="16" width="6" height="6" rx="1"/><rect x="16" y="16" width="6" height="6" rx="1"/></g></svg>',
   hilo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m6 10 6-6 6 6M6 14l6 6 6-6"/></svg>',
   dice: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="4"/><g fill="currentColor" stroke="none"><circle cx="8" cy="8" r="1.7"/><circle cx="16" cy="8" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="8" cy="16" r="1.7"/><circle cx="16" cy="16" r="1.7"/></g></svg>',
   memory: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><rect x="3" y="6" width="11" height="15" rx="2"/><path d="M8 3h11a2 2 0 0 1 2 2v12"/></svg>',
+  othello: '<svg viewBox="0 0 24 24"><circle cx="8" cy="12" r="5.5" fill="currentColor"/><circle cx="16.5" cy="12" r="4.4" fill="none" stroke="currentColor" stroke-width="2.2"/></svg>',
+  hexapawn: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5a3.2 3.2 0 0 0-1.7 5.9A5 5 0 0 0 7.5 13h9a5 5 0 0 0-2.8-4.6A3.2 3.2 0 0 0 12 2.5zM6.5 15h11l2 5.5h-15z"/></svg>',
+  candy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17M3.5 12h17M6 6l12 12M18 6 6 18" stroke-width="1.6"/></svg>',
 };
+const PAWN = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5a3.2 3.2 0 0 0-1.7 5.9A5 5 0 0 0 7.5 13h9a5 5 0 0 0-2.8-4.6A3.2 3.2 0 0 0 12 2.5zM6.5 15h11l2 5.5h-15z"/></svg>';
+const CANDY_ORDER = [0, 1, 2, 3, 4, 5, 11, 10, 9, 8, 7, 6];   // the track snakes: left to right, then back
 const BOAT = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M2.5 14.5h19l-2.6 4.6a2 2 0 0 1-1.7 1H6.8a2 2 0 0 1-1.7-1z"/><path d="M11 3h2v10h-2z"/><path d="M13 4.5 18.5 11H13z"/><path d="M5 12.5h14v2H5z"/></svg>';
 const RESET = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 3v5h-5"/></svg>';
 const CHEV = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m14.5 6-6 6 6 6"/></svg>';
 const BKSP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 5H8l-5 7 5 7h13a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1z"/><path d="m18 9-6 6M12 9l6 6"/></svg>';
-const SKULL = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a8 8 0 0 0-8 8c0 2.9 1.5 5.4 3.8 6.8V20a2 2 0 0 0 2 2h4.4a2 2 0 0 0 2-2v-3.2A8 8 0 0 0 12 2zm-3.5 10a2 2 0 1 1 0-4 2 2 0 0 1 0 4zm7 0a2 2 0 1 1 0-4 2 2 0 0 1 0 4zM10 17v-2l2-1.5 2 1.5v2z"/></svg>';
 const CARD_COLORS = { green: '#5be37a', yellow: '#ffd54a', purple: '#c084fc', orange: '#ff9e4a' };
 const SHAPES = {
   circle: '<circle cx="12" cy="12" r="9"/>',
@@ -897,18 +985,22 @@ function renderHeader() {
 
 /* ----- main board ----- */
 function renderBoard() {
+  let dimmed = false;
   const sqs = state.squares.map((sq, i) => {
     const cls = ['sq'];
+    const dim = !sq.owner && !canMove(sq.mini, state.turn);
+    if (dim) { cls.push('nomove'); dimmed = true; }
     if (sq.owner) cls.push('own-' + sq.owner);
     else if (i === state.lastSquare && state.lastBy) cls.push('last-' + state.lastBy);
     const info = INFO[sq.mini.type];
     const body = sq.owner
       ? `<div class="own">${sq.owner}</div>`
       : `<div class="lab">${ICONS[sq.mini.type]}<span>${info.name}</span></div><div class="thumb">${thumb(sq.mini)}</div>`;
-    const label = sq.owner ? `Square ${i + 1}, claimed by ${sq.owner}` : `Square ${i + 1}: ${info.name}`;
+    const label = sq.owner ? `Square ${i + 1}, claimed by ${sq.owner}` : `Square ${i + 1}: ${info.name}${dim ? ', no legal move for ' + state.turn : ''}`;
     return `<button class="${cls.join(' ')}" data-act="zoom" data-i="${i}" aria-label="${label}"${sq.owner ? ' disabled' : ''}>${body}</button>`;
   }).join('');
-  const hint = state.moves ? 'Tap any open square to make a move' : `${state.turn} goes first. Tap a square to play`;
+  const hint = dimmed ? `Dimmed squares have no legal move for ${state.turn}`
+    : state.moves ? 'Tap any open square to make a move' : `${state.turn} goes first. Tap a square to play`;
   const confirm = state.confirm === 'new'
     ? `<div class="flash"><div class="card"><h2>Start a new match?</h2><p>The current match will be lost.</p>
         <div class="row"><button class="btn" data-act="cancel">Keep playing</button><button class="btn go" data-act="confirm-new">New match</button></div></div></div>`
@@ -922,7 +1014,6 @@ function thumb(mini) {
     case 'ttt': return `<div class="tg g3">${mini.cells.map(c => `<i class="${c || ''}">${c || ''}</i>`).join('')}</div>`;
     case 'c4':  return `<div class="tg g5">${mini.cells.map(c => `<i class="${c || ''}"></i>`).join('')}</div>`;
     case 'bs':  return `<div class="tg g3 sea">${mini.revealed.map(r => `<i class="${r ? 'miss' : ''}"></i>`).join('')}</div>`;
-    case 'nim': return `<div class="tn"><div class="st">${stones(mini.stones)}</div><b>${mini.stones}</b></div>`;
     case 'wordle': {
       const last = mini.guesses.slice(-4);
       const rows = last.length
@@ -938,18 +1029,17 @@ function thumb(mini) {
     }
     case 'tug': return `<div class="ttug">${Array.from({ length: TUG.len }, (_, k) => `<i class="${k === TUG.xEnd ? 'xend' : k === TUG.oEnd ? 'oend' : ''}">${k === mini.pos ? '<b></b>' : ''}</i>`).join('')}</div>`;
     case 'hex': return `<div class="thex">${[0, 1, 2, 3].map(r => `<div class="hr" style="--k:${r}">${[0, 1, 2, 3].map(c => `<i class="${mini.cells[r * HEX_N + c] || ''}"></i>`).join('')}</div>`).join('')}</div>`;
-    case 'chomp': return `<div class="tg g5x4">${mini.eaten.map((e, i) => `<i class="${i === CHOMP.poison ? 'poison' : e ? 'eaten' : ''}"></i>`).join('')}</div>`;
-    case 'obstruction': return `<div class="tg g4">${mini.cells.map(c => `<i class="${c === 'b' ? 'b' : c || ''}">${c && c !== 'b' ? c : ''}</i>`).join('')}</div>`;
     case 'hilo': return `<div class="thilo"><b>${mini.lo}–${mini.hi}</b><small>${mini.guesses.length} guess${mini.guesses.length === 1 ? '' : 'es'}</small></div>`;
     case 'dice': return `<div class="tdice">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><div class="bar"><i style="width:${Math.min(100, mini.totals[p] / DICE_GOAL * 100)}%"></i></div><span>${mini.totals[p]}</span></div>`).join('')}</div>`;
     case 'memory': return `<div class="tg g3 tmem">${'<i>?</i>'.repeat(9)}</div>`;
+    case 'othello': return `<div class="tg g4 toth">${mini.cells.map(c => `<i class="${c || ''}"></i>`).join('')}</div>`;
+    case 'hexapawn': return `<div class="tg g3 thp">${mini.cells.map(c => `<i class="${c || ''}">${c ? PAWN : ''}</i>`).join('')}</div>`;
+    case 'candy': {
+      const tk = i => ['X', 'O'].filter(p => mini.pos[p] === i).map(p => `<b class="${p}">${p}</b>`).join('');
+      return `<div class="tcandy"><div class="bar">${tk(-1)}</div><div class="grid">${CANDY_ORDER.map(i => `<i class="${mini.track[i]}">${tk(i)}</i>`).join('')}</div></div>`;
+    }
   }
   return '';
-}
-function stones(n) {
-  let s = '';
-  for (let k = 0; k < NIM_START; k++) s += `<i class="${k < n ? '' : 'gone'}"></i>`;
-  return s;
 }
 // QWERTY keyboard. With `extra` the keys type into the Wordle draft; without it each key is a Hangman move.
 function keyboard(cls, disabled, extra) {
@@ -988,15 +1078,6 @@ function renderMini(sq) {
         return `<button class="cell sea${cls}${anim === i ? ' pop' : ''}" data-act="move" ${mv(i)} aria-label="Cell ${i + 1}${hit ? ', hit' : r ? ', miss' : ''}"${r || locked ? ' disabled' : ''}>${hit ? BOAT : ''}</button>`;
       }).join('')}</div>`;
       break;
-    case 'nim':
-      g = `<div class="g-nim"><div class="pile">
-          <div class="stones">${stones(mini.stones)}</div>
-          <div class="n">${mini.stones} <span>stone${mini.stones === 1 ? '' : 's'} left</span></div>
-          <div class="lastmv">${mini.last ? `<b class="${mini.last.by}">${mini.last.by}</b> took ${mini.last.n}` : 'No stones taken yet'}</div>
-        </div><div class="take">${[1, 2, 3].map(n =>
-          `<button data-act="move" ${mv(n)}${n > mini.stones || locked ? ' disabled' : ''}>Take ${n}</button>`
-        ).join('')}</div></div>`;
-      break;
     case 'wordle': {
       const rows = mini.guesses.map(gs => `<div class="wrow">${gs.word.split('').map((ch, k) => `<i class="wt ${gs.marks[k]}">${ch}</i>`).join('')}</div>`).join('');
       const d = state.draft || '';
@@ -1021,7 +1102,9 @@ function renderMini(sq) {
     case 'tug': {
       const cells = Array.from({ length: TUG.len }, (_, k) =>
         `<i class="tcell${k === TUG.xEnd ? ' xend' : k === TUG.oEnd ? ' oend' : ''}">${k === mini.pos ? `<b class="knot${f ? ' pop' : ''}"></b>` : ''}</i>`).join('');
+      const visits = mini.seen ? mini.seen[mini.pos] || 0 : 0;
       g = `<div class="g-tug"><div class="track"><span class="goal" style="color:var(--x)">X</span>${cells}<span class="goal" style="color:var(--o)">O</span></div>
+        <div class="dielab">${visits >= 2 ? `The knot has been here ${visits} of ${TUG.repeats} times` : mini.last ? `<b class="${mini.last}">${mini.last}</b> pulled last` : 'The knot starts in the middle'}</div>
         <button class="big ${turn}" data-act="move" ${mv(1)}${locked ? ' disabled' : ''}>Pull toward ${turn}</button></div>`;
       break;
     }
@@ -1033,18 +1116,6 @@ function renderMini(sq) {
       g = `<div class="g-hex"><div class="hexgoal O">O</div><div class="hexmid"><div class="hexgoal X">X</div><div class="hexboard">${rows}</div><div class="hexgoal X">X</div></div><div class="hexgoal O">O</div></div>`;
       break;
     }
-    case 'chomp':
-      g = `<div class="g-chomp">${mini.eaten.map((e, i) => {
-        const poison = i === CHOMP.poison;
-        const label = poison ? 'Poisoned cell' : e ? 'Eaten' : `Row ${Math.floor(i / CHOMP.cols) + 1} column ${i % CHOMP.cols + 1}`;
-        return `<button class="cc${e ? ' eaten' : ''}${poison ? ' poison' : ''}${anim === i ? ' pop' : ''}" data-act="move" ${mv(i)} aria-label="${label}"${e || poison || locked ? ' disabled' : ''}>${poison ? SKULL : ''}</button>`;
-      }).join('')}</div>`;
-      break;
-    case 'obstruction':
-      g = `<div class="g-obs">${mini.cells.map((c, i) =>
-        `<button class="oc${c === 'b' ? ' b' : c ? ' ' + c : ''}${anim === i ? ' pop' : ''}" data-act="move" ${mv(i)} aria-label="Cell ${i + 1}${c === 'b' ? ', blocked' : c ? ', ' + c : ''}"${c || locked ? ' disabled' : ''}>${c && c !== 'b' ? c : ''}</button>`
-      ).join('')}</div>`;
-      break;
     case 'hilo': {
       const by = {};
       for (const x of mini.guesses) by[x.n] = x.by;
@@ -1075,6 +1146,53 @@ function renderMini(sq) {
       }).join('')}</div>`;
       break;
     }
+    case 'othello': {
+      const can = new Set(locked ? [] : othMoves(mini.cells, turn));
+      const x = mini.cells.filter(c => c === 'X').length, o = mini.cells.filter(c => c === 'O').length;
+      const flipped = f && mini.flipped ? mini.flipped : [];
+      g = `<div class="g-oth"><div class="status"><b class="X">X</b> ${x} <span>·</span> <b class="O">O</b> ${o}</div>
+        <div class="oboard">${mini.cells.map((c, i) =>
+          `<button class="od${c ? ' ' + c : ''}${can.has(i) ? ' can' : ''}${won(i) ? ' win' : ''}${flipped.includes(i) || anim === i ? ' flip' : ''}" data-act="move" ${mv(i)} aria-label="Cell ${i + 1}${c ? ', ' + c : can.has(i) ? ', legal move' : ''}"${can.has(i) ? '' : ' disabled'}>${c ? '<i></i>' : ''}</button>`
+        ).join('')}</div>
+        ${!locked && !can.size ? `<div class="banner"><b class="${turn}">${turn}</b> has no legal move here. Play another square.</div>` : ''}</div>`;
+      break;
+    }
+    case 'hexapawn': {
+      const moves = locked ? [] : hpMoves(mini.cells, turn);
+      const sel = state.pick, targets = new Map(), own = new Set(moves.map(mvx => mvx[0]));
+      if (sel != null) for (const [a, b] of moves) if (a === sel) targets.set(b, !!mini.cells[b]);
+      const status = locked ? '' : !moves.length ? `<b class="${turn}">${turn}</b> has no legal move here. Play another square.`
+        : sel == null ? `Tap a <b class="${turn}">${turn}</b> pawn` : 'Tap a highlighted cell';
+      g = `<div class="g-hp"><div class="status">${status}</div>
+        <div class="hpboard">${mini.cells.map((c, i) => {
+          const tgt = targets.has(i);
+          const act = `data-i="${i}" ` + (tgt ? `data-act="move" ${mv([sel, i])}` : 'data-act="pawn"');
+          const moved = f && mini.last && mini.last.to === i;
+          return `<button class="hc${c ? ' ' + c : ''}${sel === i ? ' sel' : ''}${tgt ? ' tgt' + (targets.get(i) ? ' cap' : '') : ''}${won(i) ? ' win' : ''}${moved ? ' pop' : ''}" ${act} aria-label="Cell ${i + 1}${c ? ', ' + c + ' pawn' : ''}${tgt ? ', move here' : ''}"${(tgt || own.has(i)) && !locked ? '' : ' disabled'}>${c ? PAWN : ''}</button>`;
+        }).join('')}</div></div>`;
+      break;
+    }
+    case 'candy': {
+      const at = i => {
+        let s = '';
+        for (const p of ['X', 'O']) {
+          const moving = f && f.type === 'candy' && f.by === p;
+          if (mini.pos[p] === i) s += `<b class="tok ${p}${moving ? ' moved' : ''}">${p}</b>`;
+          else if (moving && f.from === i) s += `<b class="tok ${p} ghost">${p}</b>`;
+        }
+        return s ? `<span class="toks">${s}</span>` : '';
+      };
+      const k = mini.last ? CANDY.colors.indexOf(mini.last.color) : -1;
+      const angle = k < 0 ? 0 : 360 - (k * 90 + 45);        // puts that colour under the pointer
+      const spinning = !!(f && f.type === 'candy');
+      g = `<div class="g-candy"><div class="cchip">Start ${at(-1)}</div>
+        <div class="ctrack">${CANDY_ORDER.map(i => `<div class="cs ${mini.track[i]}"><span>${i + 1}</span>${at(i)}</div>`).join('')}</div>
+        <div class="cchip">Finish ${at(CANDY.len)}</div>
+        <div class="wheelwrap"><div class="pointer"></div><div class="wheel${spinning ? ' spin' : ''}" style="--to:${(spinning ? 1080 : 0) + angle}deg" aria-hidden="true"></div>
+          <div class="dielab">${mini.last ? `<b class="${mini.last.by}">${mini.last.by}</b> spun ${mini.last.color}` : 'No spins yet'}</div></div>
+        <button class="big ${turn}" data-act="move" ${mv(1)}${locked ? ' disabled' : ''}>Spin for ${turn}</button></div>`;
+      break;
+    }
   }
   const lock = state.lock != null;
   const sub = lock ? `<b class="${turn}">${turn}</b> guessed right: go again` : info.hint;
@@ -1084,28 +1202,43 @@ function renderMini(sq) {
     <div class="gwrap">${g}</div>${f ? renderFlash(f) : ''}</main>`;
 }
 function renderFlash(f) {
-  const next = `<b class="${f.next}">${f.next}</b>'s turn`;
+  const next = f.pass
+    ? `<b class="${f.pass}">${f.pass}</b> has no move · <b class="${f.next}">${f.next}</b> again`
+    : `<b class="${f.next}">${f.next}</b>'s turn`;
   const who = `<b class="${f.by}">${f.by}</b>`;
   const name = INFO[f.type].name;
-  if (f.kind === 'match') return `<div class="flash" data-act="dismiss"><div class="card"><div class="big-g ${f.by}">${f.by}</div><h2>${f.by} wins the match!</h2><p>Tap to continue</p></div></div>`;
-  if (f.kind === 'claim') return `<div class="flash" data-act="dismiss"><div class="card"><div class="big-g ${f.by}">${f.by}</div><h2>${f.by} wins ${name}!</h2><p>Square claimed · ${next}</p></div></div>`;
-  if (f.kind === 'draw') return `<div class="flash" data-act="dismiss"><div class="card"><div class="big-g">${RESET}</div><h2>Draw!</h2><p>Square reset to ${INFO[f.newType].name} · ${next}</p></div></div>`;
+  const late = f.type === 'candy' ? ' late' : '';                  // let the wheel finish spinning first
+  if (f.kind === 'match') {
+    const w = state.winner;
+    return `<div class="flash${late}" data-act="dismiss"><div class="card"><div class="big-g ${w}">${w}</div><h2>${w} wins the match!</h2><p>Tap to continue</p></div></div>`;
+  }
+  if (f.kind === 'claim') {
+    const w = f.winner || f.by;
+    const why = f.counts ? `Most discs: ${f.counts[w]} to ${f.counts[other(w)]} · ` : '';
+    return `<div class="flash${late}" data-act="dismiss"><div class="card"><div class="big-g ${w}">${w}</div><h2>${w} wins ${name}!</h2><p>${why}Square claimed · ${next}</p></div></div>`;
+  }
+  if (f.kind === 'draw') {
+    const [head, why] = f.note === 'tie' ? ['Tie!', 'Equal discs'] : f.note === 'stuck' ? ['Stuck!', 'No legal moves for either player']
+      : f.note === 'repeat' ? ['Stalemate!', 'The knot keeps coming back'] : ['Draw!', 'Full board'];
+    return `<div class="flash" data-act="dismiss"><div class="card"><div class="big-g">${RESET}</div><h2>${head}</h2><p>${why} · Square reset to ${INFO[f.newType].name} · ${next}</p></div></div>`;
+  }
   if (f.kind === 'again') return `<div class="flash lite" data-act="dismiss"><div class="toast">${who} found ${f.letter} · guess again</div></div>`;
   let msg;
   switch (f.type) {
     case 'bs': msg = `Miss! · ${next}`; break;
-    case 'nim': msg = `${who} took ${f.took} · ${f.stones} left · ${next}`; break;
     case 'wordle': msg = `${who} tried ${f.word} · ${next}`; break;
     case 'hangman': msg = `No ${f.letter} · ${next}`; break;
     case 'tug': msg = `${who} pulled · ${next}`; break;
-    case 'chomp': msg = `${who} ate ${f.n} · ${next}`; break;
     case 'hilo': msg = `${f.n}? ${f.note === 'higher' ? 'Higher' : 'Lower'}! · ${next}`; break;
     case 'dice': msg = `${who} rolled ${f.roll} · ${f.total} total · ${next}`; break;
     case 'memory': msg = `No match · ${next}`; break;
+    case 'othello': msg = `${who} flipped ${f.n} · ${next}`; break;
+    case 'hexapawn': msg = `${who} ${f.note === 'capture' ? 'captured' : 'moved'} · ${next}`; break;
+    case 'candy': msg = `${who} spun ${f.color} · ${next}`; break;
     default: msg = `${who} placed · ${next}`;
   }
   const skip = f.type === 'memory' ? '' : ' data-act="dismiss"';   // the two cards stay up for the full 2 seconds
-  return `<div class="flash lite"${skip}><div class="toast">${msg}</div></div>`;
+  return `<div class="flash lite${late}"${skip}><div class="toast">${msg}</div></div>`;
 }
 
 /* ----- win screen ----- */
@@ -1152,6 +1285,9 @@ app.addEventListener('click', e => {
     else if (state.pick === i) state.pick = null;
     else if (!playMove(state, state.zoom, [state.pick, i]).ok) state.pick = null;
     commit();
+  } else if (act === 'pawn') {
+    const i = Number(el.dataset.i);
+    state.pick = state.pick === i ? null : i; commit();
   } else if (act === 'new') {
     if (state.winner || state.moves === 0) { state = newMatch(); commit(); }
     else { state.confirm = 'new'; commit(); }
@@ -1195,7 +1331,8 @@ function commit() { save(); render(); }
 function armFlash() {
   if (!state.flash || flashTimer) return;
   const f = state.flash;
-  const ms = f.type === 'memory' && f.kind === 'move' ? MEMORY_MS : (FLASH_MS[f.kind] || 800);
+  let ms = f.type === 'memory' && f.kind === 'move' ? MEMORY_MS : (FLASH_MS[f.kind] || 800);
+  if (f.type === 'candy') ms += SPIN_MS;           // the wheel spins first
   flashTimer = setTimeout(dismissFlash, ms);
 }
 function dismissFlash() {
@@ -1208,7 +1345,7 @@ function save() {
 function load() {
   try {
     const s = JSON.parse(localStorage.getItem(KEY));
-    if (s && s.v === 2 && Array.isArray(s.squares) && s.squares.length === 9 && (s.turn === 'X' || s.turn === 'O')) {
+    if (s && s.v === 3 && Array.isArray(s.squares) && s.squares.length === 9 && (s.turn === 'X' || s.turn === 'O')) {
       if (s.lock != null && !s.winner) { s.screen = 'mini'; s.zoom = s.lock; }
       return s;
     }
