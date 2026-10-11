@@ -24,6 +24,11 @@
   --sea: #15395f;
   --sea-2: #1f4f84;
   --stone: #d9c7a6;
+  --green: #5aa65b;
+  --yellow: #c9a93d;
+  --choc: #86592f;
+  --choc-2: #5c3a1d;
+  --card: #f3eee4;
   --hdr: 64px;
   --foot: 52px;
   --bar: 56px;
@@ -47,6 +52,7 @@ body {
 button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulation; }
 button:disabled { cursor: default; }
 svg { display: block; }
+b.X { color: var(--x); } b.O { color: var(--o); }
 #app {
   height: 100vh; height: 100dvh;
   display: flex; flex-direction: column;
@@ -72,7 +78,6 @@ svg { display: block; }
 .t-O .turn { color: var(--o); } .t-O .turn .g { background: var(--o); }
 .score { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 15px; color: var(--muted); }
 .score b { font-size: 17px; }
-b.X { color: var(--x); } b.O { color: var(--o); }
 
 /* ---------- screens ---------- */
 .scr {
@@ -107,10 +112,12 @@ b.X { color: var(--x); } b.O { color: var(--o); }
 .lab {
   display: flex; align-items: center; justify-content: center; gap: 4px;
   color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .03em; white-space: nowrap;
-  font-size: 10px; font-size: clamp(8px, 9.5cqw, 13px);
+  font-size: 10px; font-size: clamp(8px, 9cqw, 13px);
 }
 .lab svg { width: 1.25em; height: 1.25em; flex: none; }
 .thumb { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
+
+/* miniatures */
 .tg { display: grid; gap: 2px; }
 .tg.g3 { grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); width: 62px; height: 62px; width: 60cqw; height: 60cqw; }
 .tg.g3 i { display: grid; place-items: center; border-radius: 3px; background: var(--panel-2); font-weight: 900; line-height: 1; font-size: 12px; font-size: 12cqw; }
@@ -127,6 +134,46 @@ b.X { color: var(--x); } b.O { color: var(--o); }
 .tn .st i { aspect-ratio: 1; border-radius: 50%; background: var(--stone); }
 .tn .st i.gone { background: var(--panel-2); }
 .tn b { line-height: 1; font-size: 18px; font-size: 17cqw; }
+.tw { display: flex; flex-direction: column; align-items: center; gap: 1.5cqw; }
+.twr { display: flex; gap: 1.5cqw; }
+.twr i { width: 11cqw; height: 11cqw; border-radius: 1.5cqw; background: var(--panel-2); box-shadow: inset 0 0 0 1px var(--line); display: grid; place-items: center; font-size: 7cqw; font-weight: 800; line-height: 1; }
+.twr i.g { background: var(--green); box-shadow: none; color: #fff; }
+.twr i.y { background: var(--yellow); box-shadow: none; color: #1a1a1a; }
+.twr i.x { background: var(--line); box-shadow: none; color: var(--muted); }
+.tw small, .thg small, .thilo small { font-size: 8cqw; color: var(--muted); font-weight: 700; line-height: 1.2; }
+.thg { display: flex; flex-direction: column; align-items: center; gap: 3cqw; }
+.thg .hw { display: flex; gap: 1.2cqw; --tw: min(12cqw, calc(82cqw / var(--n))); }
+.thg .hw i { width: var(--tw); height: calc(var(--tw) * 1.25); border-bottom: 2px solid var(--muted); display: grid; place-items: center; font-weight: 800; font-size: calc(var(--tw) * .75); line-height: 1; }
+.thg .hw i.on { border-color: var(--text); }
+.ttug { display: flex; align-items: center; gap: 1.5cqw; width: 84cqw; }
+.ttug i { flex: 1; aspect-ratio: 1; min-width: 0; border-radius: 2cqw; background: var(--panel-2); display: grid; place-items: center; }
+.ttug i.xend { box-shadow: inset 0 0 0 1.5px var(--x); }
+.ttug i.oend { box-shadow: inset 0 0 0 1.5px var(--o); }
+.ttug i b { width: 68%; height: 68%; border-radius: 50%; background: var(--stone); }
+.thex { display: flex; flex-direction: column; gap: 1cqw; }
+.thex .hr { display: flex; gap: 1cqw; margin-left: calc(var(--k) * 5.5cqw); }
+.thex .hr i { width: 10cqw; height: 10cqw; border-radius: 50%; background: var(--panel-2); }
+.thex .hr i.X { background: var(--x); }
+.thex .hr i.O { background: var(--o); }
+.tg.g5x4 { grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(4, 1fr); width: 66px; height: 53px; width: 66cqw; height: 53cqw; }
+.tg.g5x4 i { border-radius: 1.5cqw; background: var(--choc); }
+.tg.g5x4 i.eaten { background: var(--panel-2); opacity: .6; }
+.tg.g5x4 i.poison { background: #2c1d12; display: grid; place-items: center; }
+.tg.g5x4 i.poison::after { content: ''; width: 40%; height: 40%; border-radius: 50%; background: var(--stone); }
+.tg.g4 { grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(4, 1fr); width: 60px; height: 60px; width: 60cqw; height: 60cqw; }
+.tg.g4 i { display: grid; place-items: center; border-radius: 2cqw; background: var(--panel-2); font-size: 9cqw; font-weight: 900; line-height: 1; }
+.tg.g4 i.b { background: repeating-linear-gradient(45deg, var(--panel) 0 2px, var(--panel-2) 2px 4px); opacity: .55; }
+.thilo { text-align: center; }
+.thilo b { display: block; font-size: 16cqw; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.tdice { display: flex; flex-direction: column; gap: 4cqw; width: 84cqw; }
+.tdice .tr { display: grid; grid-template-columns: 9cqw 1fr 12cqw; gap: 2cqw; align-items: center; font-weight: 800; font-size: 9cqw; line-height: 1; }
+.tdice .tr span { text-align: right; font-variant-numeric: tabular-nums; }
+.tdice .bar { height: 6cqw; border-radius: 99px; background: var(--panel-2); overflow: hidden; }
+.tdice .bar i { display: block; height: 100%; }
+.tdice .X .bar i { background: var(--x); }
+.tdice .O .bar i { background: var(--o); }
+.tg.tmem i { background: repeating-linear-gradient(45deg, #2a2f44 0 3px, #232737 3px 6px); color: var(--muted); font-size: 9cqw; }
+
 .foot {
   flex: none; height: var(--foot); width: 100%; max-width: 560px;
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
@@ -145,9 +192,10 @@ b.X { color: var(--x); } b.O { color: var(--o); }
   flex: none; height: 44px; padding: 0 14px 0 10px; border: 0; border-radius: 12px;
   background: var(--panel-2); font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 2px;
 }
+.back:disabled { opacity: .35; }
 .back svg { width: 20px; height: 20px; }
 .ttl { min-width: 0; flex: 1; }
-.ttl b { display: block; font-size: 17px; }
+.ttl > b { display: block; font-size: 17px; }
 .ttl small { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; color: var(--muted); font-size: 12px; font-weight: 600; line-height: 1.25; }
 .gwrap { flex: 1; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; }
 
@@ -165,7 +213,7 @@ b.X { color: var(--x); } b.O { color: var(--o); }
 .cell.O { color: var(--o); }
 .cell.win.X { background: var(--x-soft); box-shadow: inset 0 0 0 3px var(--x); }
 .cell.win.O { background: var(--o-soft); box-shadow: inset 0 0 0 3px var(--o); }
-.cell.pop { animation: pop .2s ease-out; }
+.pop { animation: pop .2s ease-out; }
 
 .cell.sea { background: radial-gradient(circle at 30% 30%, var(--sea-2), var(--sea)); }
 .cell.sea::after { content: ''; width: 16%; height: 16%; border-radius: 50%; background: rgba(255, 255, 255, .08); }
@@ -176,17 +224,17 @@ b.X { color: var(--x); } b.O { color: var(--o); }
 .cell.hit.X { background: var(--x-soft); box-shadow: inset 0 0 0 3px var(--x); color: var(--x); }
 .cell.hit.O { background: var(--o-soft); box-shadow: inset 0 0 0 3px var(--o); color: var(--o); }
 
-.g-c3 {
+.g-c4 {
   --cw: min(var(--gw), calc(var(--gh) * 5 / 6));
   width: var(--cw); height: calc(var(--cw) * 6 / 5);
   display: grid; grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(6, 1fr); gap: 6px;
   padding: 8px; background: var(--panel); border-radius: 16px;
 }
-.c3c { border: 0; padding: 0; border-radius: 50%; background: var(--panel-2); }
-.c3c.X { background: var(--x); }
-.c3c.O { background: var(--o); }
-.c3c.win { box-shadow: inset 0 0 0 4px rgba(255, 255, 255, .85); }
-.c3c.drop { animation: drop .22s ease-out; }
+.c4c { border: 0; padding: 0; border-radius: 50%; background: var(--panel-2); }
+.c4c.X { background: var(--x); }
+.c4c.O { background: var(--o); }
+.c4c.win { box-shadow: inset 0 0 0 4px rgba(255, 255, 255, .85); }
+.c4c.drop { animation: drop .22s ease-out; }
 
 .g-nim { width: var(--g); height: var(--g); display: flex; flex-direction: column; gap: 12px; }
 .pile {
@@ -207,6 +255,129 @@ b.X { color: var(--x); } b.O { color: var(--o); }
 .take button:active:not(:disabled) { transform: scale(.95); }
 .take button:disabled { opacity: .35; }
 
+/* on-screen keyboard (Wordle, Hangman) */
+.kb { flex: none; width: 100%; display: flex; flex-direction: column; gap: 6px; }
+.krow { display: flex; justify-content: center; gap: 4px; }
+.key {
+  flex: none; width: calc((100% - 9 * 4px) / 10); min-width: 0; height: 46px; padding: 0;
+  border: 0; border-radius: 8px; background: var(--panel-2);
+  display: grid; place-items: center; font-weight: 800; font-size: 15px;
+}
+.key.wide { width: calc((100% - 9 * 4px) / 10 * 1.5 + 2px); font-size: 12px; }
+.key svg { width: 22px; height: 22px; }
+.key.g, .key.hit { background: var(--green); color: #fff; }
+.key.y { background: var(--yellow); color: #1a1a1a; }
+.key.x, .key.miss { background: var(--line); color: var(--muted); }
+.key:disabled:not(.hit):not(.miss):not(.g):not(.y):not(.x) { opacity: .4; }
+.key:active:not(:disabled) { transform: scale(.94); }
+
+.g-wordle { width: min(var(--gw), 520px); height: var(--gh); display: flex; flex-direction: column; gap: 10px; --tile: min(52px, calc((var(--gw) - 40px) / 5)); }
+.wlist { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 5px; align-items: center; padding: 4px 0; }
+.wlist > :first-child { margin-top: auto; }
+.wrow { display: flex; gap: 5px; flex: none; }
+.wrow.cur { justify-content: center; }
+.wt {
+  width: var(--tile); height: var(--tile); display: grid; place-items: center; border-radius: 6px;
+  background: var(--panel-2); box-shadow: inset 0 0 0 2px var(--line);
+  font-weight: 800; font-size: calc(var(--tile) * .5); line-height: 1;
+}
+.wt.g { background: var(--green); box-shadow: none; color: #fff; }
+.wt.y { background: var(--yellow); box-shadow: none; color: #1a1a1a; }
+.wt.x { background: var(--line); box-shadow: none; color: var(--muted); }
+.wt.typed { box-shadow: inset 0 0 0 2px var(--muted); }
+.empty { color: var(--muted); font-weight: 600; text-align: center; padding: 10px; }
+
+.g-hang { width: min(var(--gw), 520px); height: var(--gh); display: flex; flex-direction: column; gap: 14px; --htile: min(50px, calc((var(--gw) - 48px) / 7)); }
+.hword { flex: 1; min-height: 0; display: flex; gap: 6px; justify-content: center; align-items: center; }
+.ht {
+  width: var(--htile); height: calc(var(--htile) * 1.2); display: grid; place-items: center;
+  border-bottom: 3px solid var(--muted); font-weight: 800; font-size: calc(var(--htile) * .62); line-height: 1;
+}
+.ht.on { border-color: var(--text); }
+.hmiss { text-align: center; color: var(--muted); font-weight: 700; min-height: 20px; }
+.hmiss b { color: var(--text); letter-spacing: .25em; }
+
+.g-tug { width: var(--g); display: flex; flex-direction: column; gap: 28px; }
+.track { display: flex; align-items: center; gap: 4px; }
+.goal { flex: none; width: 24px; text-align: center; font-weight: 900; font-size: 20px; }
+.tcell { flex: 1; aspect-ratio: 1; min-width: 0; border-radius: 10px; background: var(--panel-2); display: grid; place-items: center; }
+.tcell.xend { box-shadow: inset 0 0 0 3px var(--x); }
+.tcell.oend { box-shadow: inset 0 0 0 3px var(--o); }
+.knot { width: 62%; height: 62%; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #f1e6d2, #b8a37f); box-shadow: 0 3px 6px rgba(0, 0, 0, .45); }
+.big { height: 64px; border: 0; border-radius: 16px; font-weight: 800; font-size: 20px; background: var(--panel-2); transition: transform .08s; }
+.big.X { background: var(--x); color: var(--bg); }
+.big.O { background: var(--o); color: var(--bg); }
+.big:active:not(:disabled) { transform: scale(.97); }
+.big:disabled { opacity: .5; }
+
+.g-hex { width: var(--g); display: flex; flex-direction: column; align-items: center; gap: 8px; --hw: calc((var(--g) * .86 - 10px) / 5.5); --hh: calc(var(--hw) * 1.1547); }
+.hexmid { display: flex; align-items: stretch; gap: 8px; }
+.hexgoal { display: grid; place-items: center; font-weight: 900; font-size: 14px; border-radius: 999px; }
+.hexgoal.O { width: calc(var(--g) * .86); height: 22px; background: var(--o-soft); color: var(--o); }
+.hexgoal.X { width: 22px; background: var(--x-soft); color: var(--x); }
+.hexboard { display: flex; flex-direction: column; }
+.hrow { display: flex; gap: 2px; margin-left: calc(var(--r) * (var(--hw) + 2px) / 2); }
+.hrow + .hrow { margin-top: calc(var(--hh) * -.25 + 2px); }
+.hexc {
+  width: var(--hw); height: var(--hh); border: 0; padding: 0; background: var(--panel-2);
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); display: grid; place-items: center;
+}
+.hexc.X { background: var(--x); }
+.hexc.O { background: var(--o); }
+.hexc.win::after { content: ''; width: 30%; height: 30%; border-radius: 50%; background: rgba(255, 255, 255, .9); }
+
+.g-chomp { width: var(--g); height: calc(var(--g) * .8); display: grid; grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(4, 1fr); gap: 6px; }
+.cc {
+  border: 0; padding: 0; border-radius: 10px; display: grid; place-items: center;
+  background: linear-gradient(145deg, var(--choc), var(--choc-2)); box-shadow: inset 0 -4px 0 rgba(0, 0, 0, .25);
+}
+.cc.eaten { background: transparent; box-shadow: inset 0 0 0 1px var(--line); }
+.cc.poison { background: linear-gradient(145deg, #3a2a1d, #22160e); color: var(--stone); }
+.cc.poison svg { width: 55%; height: 55%; }
+
+.g-obs { width: var(--g); height: var(--g); display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(4, 1fr); gap: 8px; }
+.oc { border: 0; padding: 0; border-radius: 12px; background: var(--panel-2); font-weight: 900; font-size: calc(var(--g) * .13); line-height: 1; }
+.oc.X { color: var(--x); }
+.oc.O { color: var(--o); }
+.oc.b { background: repeating-linear-gradient(45deg, var(--panel) 0 6px, var(--panel-2) 6px 12px); opacity: .55; }
+
+.g-hilo { width: var(--g); display: flex; flex-direction: column; gap: 14px; }
+.range { background: var(--panel); border-radius: 16px; padding: 14px; text-align: center; }
+.range small { display: block; color: var(--muted); font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 4px; }
+.range b { font-size: 40px; line-height: 1; font-variant-numeric: tabular-nums; }
+.range span { color: var(--muted); font-weight: 700; margin: 0 10px; }
+.hist { color: var(--muted); font-weight: 600; font-size: 14px; text-align: center; min-height: 18px; }
+.pad { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.pad button { height: 52px; border: 0; border-radius: 12px; background: var(--panel-2); font-weight: 800; font-size: 18px; font-variant-numeric: tabular-nums; }
+.pad button:disabled { opacity: .25; }
+.pad button.X { box-shadow: inset 0 0 0 2px var(--x); opacity: .6; }
+.pad button.O { box-shadow: inset 0 0 0 2px var(--o); opacity: .6; }
+
+.g-dice { width: var(--g); display: flex; flex-direction: column; gap: 18px; }
+.racers { display: flex; flex-direction: column; gap: 12px; background: var(--panel); border-radius: 16px; padding: 14px; }
+.racer { display: grid; grid-template-columns: 30px 1fr 64px; align-items: center; gap: 10px; font-weight: 800; }
+.racer .tot { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+.racer .bar { height: 18px; border-radius: 999px; background: var(--panel-2); overflow: hidden; }
+.racer .bar i { display: block; height: 100%; border-radius: 999px; transition: width .3s; }
+.racer.X .bar i { background: var(--x); }
+.racer.O .bar i { background: var(--o); }
+.dieWrap { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.die { width: 92px; height: 92px; border-radius: 20px; background: var(--card); display: grid; place-items: center; box-shadow: 0 6px 16px rgba(0, 0, 0, .4); }
+.die svg { width: 78%; height: 78%; }
+.die .q { font-size: 40px; font-weight: 900; color: #8a8378; }
+.dielab { color: var(--muted); font-weight: 700; }
+
+.g-mem { width: var(--g); height: var(--g); display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); gap: 10px; }
+.mc { border: 0; padding: 0; border-radius: 16px; background: var(--panel-2); display: grid; place-items: center; }
+.mc.down {
+  background: repeating-linear-gradient(45deg, #2a2f44 0 8px, #232737 8px 16px); box-shadow: inset 0 0 0 2px var(--line);
+  color: var(--muted); font-weight: 900; font-size: calc(var(--g) * .1);
+}
+.mc.pick { box-shadow: inset 0 0 0 3px var(--text); }
+.mc.up { background: var(--card); }
+.mc.up svg { width: 60%; height: 60%; }
+.mc.win { box-shadow: inset 0 0 0 4px var(--green); }
+
 /* ---------- move result overlay ---------- */
 .flash {
   position: absolute; inset: 0; z-index: 5; padding: 24px;
@@ -219,10 +390,10 @@ b.X { color: var(--x); } b.O { color: var(--o); }
   background: var(--panel); border: 1px solid var(--line); border-radius: 22px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, .55); animation: pop .2s ease-out;
 }
-.big { font-size: 76px; font-weight: 900; line-height: 1; }
-.big.X { color: var(--x); }
-.big.O { color: var(--o); }
-.big svg { width: 76px; height: 76px; margin: 0 auto; color: var(--muted); }
+.big-g { font-size: 76px; font-weight: 900; line-height: 1; }
+.big-g.X { color: var(--x); }
+.big-g.O { color: var(--o); }
+.big-g svg { width: 76px; height: 76px; margin: 0 auto; color: var(--muted); }
 .card h2 { margin: 10px 0 6px; font-size: 22px; }
 .card p { margin: 0; color: var(--muted); font-weight: 600; font-size: 15px; }
 .card .row { display: flex; gap: 10px; justify-content: center; margin-top: 18px; }
@@ -268,27 +439,145 @@ b.X { color: var(--x); } b.O { color: var(--o); }
  * Everything about a match lives in one plain object (see newMatch); the UI
  * only ever calls playMove / endFlash and re-renders from that object.
  */
-const TYPES = ['ttt', 'c3', 'bs', 'nim'];
+const TYPES = ['ttt', 'c4', 'bs', 'nim', 'wordle', 'hangman', 'tug', 'hex', 'chomp', 'obstruction', 'hilo', 'dice', 'memory'];
 const INFO = {
-  ttt: { name: 'Tic-Tac-Toe', hint: 'Three in a row wins' },
-  c3:  { name: 'Connect 3',   hint: 'Pieces drop. Three in a row wins' },
-  bs:  { name: 'Battleship',  hint: 'Find the hidden ship' },
-  nim: { name: 'Nim',         hint: 'Take 1, 2 or 3. Last stone wins' },
+  ttt:         { name: 'Tic-Tac-Toe',  hint: 'Three in a row wins' },
+  c4:          { name: 'Connect 4',    hint: 'Pieces drop. Four in a row wins' },
+  bs:          { name: 'Battleship',   hint: 'Find the hidden ship' },
+  nim:         { name: 'Nim',          hint: 'Take 1, 2 or 3. Last stone wins' },
+  wordle:      { name: 'Wordle',       hint: 'Guess the hidden 5-letter word' },
+  hangman:     { name: 'Hangman',      hint: 'Right letter: go again. Last letter wins' },
+  tug:         { name: 'Tug of War',   hint: 'Pull the knot to your end' },
+  hex:         { name: 'Hex',          hint: 'X joins left to right, O joins top to bottom' },
+  chomp:       { name: 'Chomp',        hint: 'Eat a cell and all above-right. Last safe cell wins' },
+  obstruction: { name: 'Obstruction',  hint: 'Mark a cell, block its neighbours. Last move wins' },
+  hilo:        { name: 'Higher/Lower', hint: 'Guess the number from 1 to 20' },
+  dice:        { name: 'Dice Race',    hint: 'Roll and add up. First to 15 wins' },
+  memory:      { name: 'Memory',       hint: 'Flip two cards. Find the matching pair' },
 };
-const C3 = { cols: 5, rows: 6 };
+const C4 = { cols: 5, rows: 6, k: 4 };
 const NIM_START = 10;
+const TUG = { len: 7, start: 3, xEnd: 0, oEnd: 6 };
+const HEX_N = 4;
+const CHOMP = { rows: 4, cols: 5, poison: 15 };   // poison = bottom-left (row 3, col 0)
+const OBS_N = 4;
+const HILO = { lo: 1, hi: 20 };
+const DICE_GOAL = 15;
+const MEMORY = { shapes: ['circle', 'square', 'triangle', 'diamond'], colors: ['green', 'yellow', 'purple', 'orange'] };
 const LINES = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6]];
+
+const WORDS5 = `about above abuse actor acute admit adopt adult after again agent agree ahead alarm album alert alike alive allow alone along
+alter among angel anger angle angry apart apple apply arena argue arise armor array arrow aside asset avoid awake award aware badly baker basic
+basis beach beard beast begin being below bench berry birth black blade blame blank blast blaze blend bless blind block blood bloom board boast
+bonus boost booth bound brain brand brave bread break breed brick bride brief bring broad brown brush build bunch burst buyer cabin cable candy
+carry catch cause chain chair chalk charm chart chase cheap check cheek cheer chess chest chief child chill china choir chose civil claim class
+clean clear clerk click cliff climb clock close cloth cloud coach coast could count court cover crack craft crane crash crazy cream crime crisp
+cross crowd crown curve cycle daily dance dealt death debut delay dense depth diary dirty dough draft drain drama drawn dream dress drift drill
+drink drive drove dusty dying eager early earth eight elbow elder elect empty enemy enjoy enter entry equal error essay event every exact exist
+extra faint faith false fancy fatal fault favor feast fence fever field fifth fifty fight final first flame flash fleet flesh float flock flood
+floor flour fluid focus force forge forth forty forum found frame fresh front frost fruit fully funny ghost giant given glass globe glory glove
+going grace grade grain grand grant grape graph grasp grass grave great green greet grief grind gross group grove grown guard guess guest guide
+guilt habit happy harsh heart heavy hedge hello hence hobby honey honor horse hotel house human humor hurry ideal image imply index inner input
+issue ivory jeans jelly jewel joint judge juice knife knock known label labor large laser later laugh layer learn lease least leave legal lemon
+level light limit linen liver lobby local logic loose lover lower loyal lucky lunch magic major maker maple march match maybe mayor meant medal
+media mercy merit metal might minor minus mixed model money month moral motor mount mouse mouth movie music naive nasty naval nerve never newly
+night noble noise north novel nurse occur ocean offer often olive onion opera orbit order other ought outer owner paint panel panic paper party
+pasta patch pause peace pearl penny phase phone photo piano piece pilot pitch pizza place plain plane plant plate plaza point polar pound power
+press price pride prime print prior prize proof proud prove pulse punch pupil queen quick quiet quite quote radar radio raise rally ranch range
+rapid ratio reach react ready realm rebel refer relax reply ridge rifle right rigid risky river robot rocky roman rough round route royal rugby
+rural salad sauce scale scene scent scope score sense serve seven shade shake shall shape share sharp sheep sheet shelf shell shift shine shirt
+shock shoot shore short shout shown sight silly since sixth skill skirt slate sleep slice slide slope small smart smell smile smoke snake solar
+solid solve sorry sound south space spare spark speak speed spell spend spice spike spine spite split spoke sport spray squad stack staff stage
+stain stair stake stamp stand stare start state steak steam steel steep stick stiff still stock stone stood store storm story stove strap straw
+strip stuck study stuff style sugar suite sunny super sweet swing sword table taste teach teeth tempo tense thank theft their theme there thick
+thing think third those three threw throw thumb tiger tight timer tired title toast today token tooth topic total touch tough tower trace track
+trade trail train treat trend trial tribe trick tried truck truly trunk trust truth twice uncle under union unity until upper upset urban usual
+valid value video virus visit vital vivid vocal voice waste watch water weigh weird wheat wheel where which while white whole whose woman women
+world worry worse worst worth would wound write wrong wrote yield young youth`.split(/\s+/);
+
+const WORDS_HANG = `apple banana cherry orange grape lemon melon peach mango berry bread butter cheese cookie pizza salad sugar honey pasta pepper
+house garden window kitchen bridge castle tower market school office river ocean island forest desert valley meadow jungle canyon tiger zebra
+monkey rabbit turtle eagle shark whale dolphin horse sheep camel panda koala otter badger beaver falcon parrot planet rocket comet galaxy meteor
+summer winter spring autumn storm cloud thunder breeze frost guitar violin piano trumpet drums flute cello banjo doctor farmer pilot sailor artist
+writer singer dancer baker driver hammer wrench ladder bucket candle pillow blanket mirror carpet basket purple yellow silver golden violet indigo
+friend family mother father sister brother cousin circle square diamond spiral coffee dinner supper picnic feast jacket button pocket helmet gloves
+scarf boots pencil eraser marker crayon paper folder soccer tennis hockey rugby boxing racing dragon wizard knight pirate robot zombie ghost flower
+blossom petal cactus clover maple willow morning evening sunset sunrise tonight rainbow puzzle secret riddle magic camera laptop screen tablet
+remote engine wheel rubber copper marble beetle spider hornet hungry sleepy clever bright gentle brave happy quiet bottle kettle teapot saucer
+napkin spoon knife plate`.split(/\s+/);
 
 function other(p) { return p === 'X' ? 'O' : 'X'; }
 function randInt(rng, n) { return Math.floor(rng() * n); }
 function randomType(rng) { return TYPES[randInt(rng, TYPES.length)]; }
+function shuffle(arr, rng) {
+  for (let i = arr.length - 1; i > 0; i--) { const j = randInt(rng, i + 1); const t = arr[i]; arr[i] = arr[j]; arr[j] = t; }
+  return arr;
+}
+// 9 cards: one matching pair plus seven other, all-different shape/colour combinations.
+function memoryDeck(rng) {
+  const combos = [];
+  for (const s of MEMORY.shapes) for (const c of MEMORY.colors) combos.push({ s, c });
+  const pick = shuffle(combos, rng).slice(0, 8);
+  const cards = [{ s: pick[0].s, c: pick[0].c }, { s: pick[0].s, c: pick[0].c }].concat(pick.slice(1));
+  return shuffle(cards, rng);
+}
+// Standard Wordle feedback: g = right spot, y = in the word elsewhere, x = not in the word (duplicates handled).
+function wordleMarks(guess, word) {
+  const marks = new Array(5).fill('x');
+  const left = {};
+  for (let i = 0; i < 5; i++) {
+    if (guess[i] === word[i]) marks[i] = 'g';
+    else left[word[i]] = (left[word[i]] || 0) + 1;
+  }
+  for (let i = 0; i < 5; i++) {
+    if (marks[i] === 'g') continue;
+    if (left[guess[i]] > 0) { marks[i] = 'y'; left[guess[i]]--; }
+  }
+  return marks;
+}
+// Hex: rows are shifted half a cell to the right, so (r, c) touches (r-1, c+1) and (r+1, c-1) as well as the four orthogonal cells.
+function hexNeighbors(i) {
+  const r = Math.floor(i / HEX_N), c = i % HEX_N, out = [];
+  for (const [dr, dc] of [[0, -1], [0, 1], [-1, 0], [1, 0], [-1, 1], [1, -1]]) {
+    const rr = r + dr, cc = c + dc;
+    if (rr >= 0 && rr < HEX_N && cc >= 0 && cc < HEX_N) out.push(rr * HEX_N + cc);
+  }
+  return out;
+}
+// Breadth-first search from X's left edge (or O's top edge); returns the connecting path or null.
+function hexPath(cells, p) {
+  const isStart = p === 'X' ? i => i % HEX_N === 0 : i => i < HEX_N;
+  const isEnd = p === 'X' ? i => i % HEX_N === HEX_N - 1 : i => i >= HEX_N * (HEX_N - 1);
+  const parent = new Map(), queue = [];
+  for (let i = 0; i < HEX_N * HEX_N; i++) if (cells[i] === p && isStart(i)) { parent.set(i, -1); queue.push(i); }
+  while (queue.length) {
+    const i = queue.shift();
+    if (isEnd(i)) { const path = []; for (let k = i; k !== -1; k = parent.get(k)) path.push(k); return path; }
+    for (const n of hexNeighbors(i)) if (cells[n] === p && !parent.has(n)) { parent.set(n, i); queue.push(n); }
+  }
+  return null;
+}
+function chompLeft(eaten) {
+  let n = 0;
+  for (let i = 0; i < eaten.length; i++) if (!eaten[i] && i !== CHOMP.poison) n++;
+  return n;
+}
 
 function newMini(type, rng) {
   switch (type) {
-    case 'ttt': return { type, cells: new Array(9).fill(null), last: null };
-    case 'c3':  return { type, cells: new Array(C3.cols * C3.rows).fill(null), last: null };
-    case 'bs':  return { type, hidden: randInt(rng, 9), revealed: new Array(9).fill(null), last: null };
-    case 'nim': return { type, stones: NIM_START, last: null };
+    case 'ttt':         return { type, cells: new Array(9).fill(null), last: null };
+    case 'c4':          return { type, cells: new Array(C4.cols * C4.rows).fill(null), last: null };
+    case 'bs':          return { type, hidden: randInt(rng, 9), revealed: new Array(9).fill(null), last: null };
+    case 'nim':         return { type, stones: NIM_START, last: null };
+    case 'wordle':      return { type, word: WORDS5[randInt(rng, WORDS5.length)].toUpperCase(), guesses: [] };
+    case 'hangman':     return { type, word: WORDS_HANG[randInt(rng, WORDS_HANG.length)].toUpperCase(), letters: [] };
+    case 'tug':         return { type, pos: TUG.start, last: null };
+    case 'hex':         return { type, cells: new Array(HEX_N * HEX_N).fill(null), last: null };
+    case 'chomp':       return { type, eaten: new Array(CHOMP.rows * CHOMP.cols).fill(false), last: null };
+    case 'obstruction': return { type, cells: new Array(OBS_N * OBS_N).fill(null), last: null };
+    case 'hilo':        return { type, target: HILO.lo + randInt(rng, HILO.hi - HILO.lo + 1), lo: HILO.lo, hi: HILO.hi, guesses: [] };
+    case 'dice':        return { type, totals: { X: 0, O: 0 }, last: null };
+    case 'memory':      return { type, cards: memoryDeck(rng), flips: 0, last: null };
   }
   throw new Error('unknown mini-game: ' + type);
 }
@@ -296,15 +585,18 @@ function newSquare(rng) { return { owner: null, mini: newMini(randomType(rng), r
 function newMatch(rng) {
   rng = rng || Math.random;
   return {
-    v: 1,
+    v: 2,
     screen: 'board',          // 'board' | 'mini' | 'win'
     turn: 'X',
     squares: Array.from({ length: 9 }, () => newSquare(rng)),
     zoom: null,               // index of the mini-game being viewed
     flash: null,              // result of the last move, shown briefly before the turn passes
+    lock: null,               // square the current player must keep playing (Hangman bonus guess)
+    draft: '',                // letters typed so far (Wordle)
+    pick: null,               // first card chosen (Memory)
+    confirm: null,            // 'new' while the "abandon this match?" card is up
     winner: null, winLine: null, winReason: null, counts: null,
     lastSquare: null, lastBy: null, moves: 0,
-    confirm: null,            // 'new' while the "abandon this match?" card is up
   };
 }
 
@@ -329,11 +621,13 @@ function findRun(cells, W, H, K, p) {
 }
 
 // One move by player p in a mini-game. Mutates mini.
-// Returns { ok:false, reason } or { ok:true, outcome:'win'|'draw'|'continue', cells?, note? }.
-function applyMove(mini, p, m) {
+// Returns { ok:false, reason } or { ok:true, outcome:'win'|'draw'|'continue', cells?, note?, again? }.
+// again = the same player moves again at once (Hangman after a correct letter).
+function applyMove(mini, p, m, rng) {
+  const idx = (max) => Number.isInteger(m) && m >= 0 && m < max;
   switch (mini.type) {
     case 'ttt': {
-      if (!Number.isInteger(m) || m < 0 || m > 8) return { ok: false, reason: 'bad' };
+      if (!idx(9)) return { ok: false, reason: 'bad' };
       if (mini.cells[m]) return { ok: false, reason: 'taken' };
       mini.cells[m] = p; mini.last = m;
       const run = findRun(mini.cells, 3, 3, 3, p);
@@ -341,21 +635,21 @@ function applyMove(mini, p, m) {
       if (mini.cells.every(Boolean)) return { ok: true, outcome: 'draw' };
       return { ok: true, outcome: 'continue' };
     }
-    case 'c3': {
-      if (!Number.isInteger(m) || m < 0 || m >= C3.cols) return { ok: false, reason: 'bad' };
-      let idx = -1;
-      for (let r = C3.rows - 1; r >= 0; r--) {
-        if (!mini.cells[r * C3.cols + m]) { idx = r * C3.cols + m; break; }
+    case 'c4': {
+      if (!idx(C4.cols)) return { ok: false, reason: 'bad' };
+      let at = -1;
+      for (let r = C4.rows - 1; r >= 0; r--) {
+        if (!mini.cells[r * C4.cols + m]) { at = r * C4.cols + m; break; }
       }
-      if (idx < 0) return { ok: false, reason: 'full' };
-      mini.cells[idx] = p; mini.last = idx;
-      const run = findRun(mini.cells, C3.cols, C3.rows, 3, p);
+      if (at < 0) return { ok: false, reason: 'full' };
+      mini.cells[at] = p; mini.last = at;
+      const run = findRun(mini.cells, C4.cols, C4.rows, C4.k, p);
       if (run) return { ok: true, outcome: 'win', cells: run };
       if (mini.cells.every(Boolean)) return { ok: true, outcome: 'draw' };
       return { ok: true, outcome: 'continue' };
     }
     case 'bs': {
-      if (!Number.isInteger(m) || m < 0 || m > 8) return { ok: false, reason: 'bad' };
+      if (!idx(9)) return { ok: false, reason: 'bad' };
       if (mini.revealed[m]) return { ok: false, reason: 'taken' };
       mini.revealed[m] = p; mini.last = m;
       if (m === mini.hidden) return { ok: true, outcome: 'win', cells: [m] };
@@ -367,6 +661,93 @@ function applyMove(mini, p, m) {
       mini.stones -= m; mini.last = { by: p, n: m };
       if (mini.stones === 0) return { ok: true, outcome: 'win' };
       return { ok: true, outcome: 'continue', note: 'took' };
+    }
+    case 'wordle': {
+      const g = typeof m === 'string' ? m.toUpperCase() : '';
+      if (!/^[A-Z]{5}$/.test(g)) return { ok: false, reason: 'bad' };
+      mini.guesses.push({ by: p, word: g, marks: wordleMarks(g, mini.word) });
+      if (g === mini.word) return { ok: true, outcome: 'win' };
+      return { ok: true, outcome: 'continue', note: 'guess' };
+    }
+    case 'hangman': {
+      const l = typeof m === 'string' ? m.toUpperCase() : '';
+      if (!/^[A-Z]$/.test(l)) return { ok: false, reason: 'bad' };
+      if (mini.letters.some(x => x.l === l)) return { ok: false, reason: 'taken' };
+      const hit = mini.word.includes(l);
+      mini.letters.push({ l, by: p, hit });
+      if (!hit) return { ok: true, outcome: 'continue', note: 'miss' };
+      const done = mini.word.split('').every(ch => mini.letters.some(x => x.l === ch));
+      if (done) return { ok: true, outcome: 'win' };
+      return { ok: true, outcome: 'continue', note: 'hit', again: true };
+    }
+    case 'tug': {
+      mini.pos += p === 'X' ? -1 : 1; mini.last = p;
+      if (mini.pos === TUG.xEnd || mini.pos === TUG.oEnd) return { ok: true, outcome: 'win' };
+      return { ok: true, outcome: 'continue', note: 'pull' };
+    }
+    case 'hex': {
+      if (!idx(HEX_N * HEX_N)) return { ok: false, reason: 'bad' };
+      if (mini.cells[m]) return { ok: false, reason: 'taken' };
+      mini.cells[m] = p; mini.last = m;
+      const path = hexPath(mini.cells, p);
+      if (path) return { ok: true, outcome: 'win', cells: path };
+      if (mini.cells.every(Boolean)) return { ok: true, outcome: 'draw' };   // cannot happen in Hex; kept for safety
+      return { ok: true, outcome: 'continue' };
+    }
+    case 'chomp': {
+      if (!idx(CHOMP.rows * CHOMP.cols)) return { ok: false, reason: 'bad' };
+      if (m === CHOMP.poison) return { ok: false, reason: 'poison' };
+      if (mini.eaten[m]) return { ok: false, reason: 'taken' };
+      const r = Math.floor(m / CHOMP.cols), c = m % CHOMP.cols;
+      let n = 0;
+      for (let rr = 0; rr <= r; rr++) {
+        for (let cc = c; cc < CHOMP.cols; cc++) {
+          const k = rr * CHOMP.cols + cc;
+          if (!mini.eaten[k]) { mini.eaten[k] = true; n++; }
+        }
+      }
+      mini.last = { by: p, cell: m, n };
+      if (chompLeft(mini.eaten) === 0) return { ok: true, outcome: 'win' };
+      return { ok: true, outcome: 'continue', note: 'ate' };
+    }
+    case 'obstruction': {
+      if (!idx(OBS_N * OBS_N)) return { ok: false, reason: 'bad' };
+      if (mini.cells[m]) return { ok: false, reason: 'taken' };
+      mini.cells[m] = p; mini.last = m;
+      const r = Math.floor(m / OBS_N), c = m % OBS_N;
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          const rr = r + dr, cc = c + dc;
+          if (rr < 0 || rr >= OBS_N || cc < 0 || cc >= OBS_N) continue;
+          const k = rr * OBS_N + cc;
+          if (!mini.cells[k]) mini.cells[k] = 'b';
+        }
+      }
+      if (mini.cells.every(Boolean)) return { ok: true, outcome: 'win' };
+      return { ok: true, outcome: 'continue' };
+    }
+    case 'hilo': {
+      if (!Number.isInteger(m) || m < mini.lo || m > mini.hi) return { ok: false, reason: 'bad' };
+      if (m === mini.target) { mini.guesses.push({ by: p, n: m, res: 'hit' }); return { ok: true, outcome: 'win' }; }
+      const res = m < mini.target ? 'higher' : 'lower';
+      mini.guesses.push({ by: p, n: m, res });
+      if (res === 'higher') mini.lo = m + 1; else mini.hi = m - 1;
+      return { ok: true, outcome: 'continue', note: res };
+    }
+    case 'dice': {
+      const roll = 1 + randInt(rng || Math.random, 6);
+      mini.totals[p] += roll; mini.last = { by: p, roll };
+      if (mini.totals[p] >= DICE_GOAL) return { ok: true, outcome: 'win' };
+      return { ok: true, outcome: 'continue', note: 'roll' };
+    }
+    case 'memory': {
+      if (!Array.isArray(m) || m.length !== 2) return { ok: false, reason: 'bad' };
+      const [a, b] = m;
+      if (![a, b].every(k => Number.isInteger(k) && k >= 0 && k < 9) || a === b) return { ok: false, reason: 'bad' };
+      mini.flips += 1; mini.last = { by: p, a, b };
+      const ca = mini.cards[a], cb = mini.cards[b];
+      if (ca.s === cb.s && ca.c === cb.c) return { ok: true, outcome: 'win', cells: [a, b] };
+      return { ok: true, outcome: 'continue', note: 'nomatch' };
     }
   }
   return { ok: false, reason: 'bad' };
@@ -385,48 +766,62 @@ function mainResult(squares) {
   return null;
 }
 
-// A full turn: the player to move makes move m in square i. On success the turn
-// passes and state.flash describes the result; the UI shows it, then calls endFlash.
+// A full turn: the player to move makes move m in square i. On success state.flash
+// describes the result; the UI shows it, then calls endFlash. The turn passes unless
+// the mini-game grants the same player another move at once (flash.kind === 'again').
 function playMove(state, i, m, rng) {
   rng = rng || Math.random;
   if (state.winner) return { ok: false, reason: 'over' };
   if (state.flash) return { ok: false, reason: 'busy' };
+  if (state.lock != null && state.lock !== i) return { ok: false, reason: 'locked' };
   const sq = state.squares[i];
   if (!sq) return { ok: false, reason: 'bad' };
   if (sq.owner) return { ok: false, reason: 'claimed' };
   const p = state.turn;
-  const res = applyMove(sq.mini, p, m);
+  const res = applyMove(sq.mini, p, m, rng);
   if (!res.ok) return res;
+  const mini = sq.mini;
   const flash = {
-    kind: res.outcome === 'win' ? 'claim' : res.outcome, // 'move' | 'claim' | 'draw' | 'match'
-    by: p, next: other(p), square: i, type: sq.mini.type, note: res.note || null,
+    kind: res.outcome === 'win' ? 'claim' : res.outcome === 'draw' ? 'draw' : res.again ? 'again' : 'move',
+    by: p, next: res.again ? p : other(p), square: i, type: mini.type, note: res.note || null,
   };
-  if (flash.kind === 'continue') flash.kind = 'move';
-  if (sq.mini.type === 'nim') { flash.took = m; flash.stones = sq.mini.stones; }
+  switch (mini.type) {
+    case 'nim': flash.took = m; flash.stones = mini.stones; break;
+    case 'wordle': flash.word = m.toUpperCase(); break;
+    case 'hangman': flash.letter = m.toUpperCase(); break;
+    case 'chomp': flash.n = mini.last.n; break;
+    case 'hilo': flash.n = m; break;
+    case 'dice': flash.roll = mini.last.roll; flash.total = mini.totals[p]; break;
+    case 'memory': flash.reveal = [m[0], m[1]]; break;
+  }
   if (res.outcome === 'win') {
     sq.owner = p;
-    sq.mini.winCells = res.cells || null;
+    mini.winCells = res.cells || null;
     const mr = mainResult(state.squares);
     if (mr) {
       state.winner = mr.winner; state.winLine = mr.line; state.winReason = mr.reason; state.counts = mr.counts || null;
       flash.kind = 'match';
     }
   } else if (res.outcome === 'draw') {
-    flash.drawn = sq.mini;                       // keep the full board for the result overlay
+    flash.drawn = mini;                          // keep the full board for the result overlay
     sq.mini = newMini(randomType(rng), rng);     // the square resets with a new random mini-game
     flash.newType = sq.mini.type;
   }
+  if (res.again) { state.lock = i; } else { state.lock = null; state.turn = other(p); }
+  state.draft = ''; state.pick = null;
   state.moves += 1; state.lastSquare = i; state.lastBy = p;
-  state.turn = other(p);
   state.flash = flash;
   return { ok: true, flash };
 }
 
-// Clear the result overlay and go back to the board (or the win screen).
+// Clear the result overlay: back to the board, the win screen, or (bonus move) the same mini-game.
 function endFlash(state) {
   if (!state.flash) return false;
-  state.flash = null; state.zoom = null;
-  state.screen = state.winner ? 'win' : 'board';
+  const again = state.flash.kind === 'again';
+  state.flash = null;
+  if (state.winner) { state.screen = 'win'; state.zoom = null; }
+  else if (again) { state.screen = 'mini'; state.zoom = state.lock; }
+  else { state.screen = 'board'; state.zoom = null; }
   return true;
 }
 </script>
@@ -434,24 +829,52 @@ function endFlash(state) {
 <script id="ui">
 'use strict';
 /* ===================== UI: render everything from state ===================== */
-const KEY = 'insane-tac-toe.v1';
-const FLASH_MS = { move: 700, claim: 1500, draw: 1800, match: 1300 };
+const KEY = 'insane-tac-toe.v2';
+const FLASH_MS = { move: 700, again: 650, claim: 1500, draw: 1800, match: 1300 };
+const MEMORY_MS = 2000;   // the two flipped cards stay up this long
 const app = document.getElementById('app');
 let state = load() || newMatch();
 let flashTimer = null;
 
 const ICONS = {
   ttt: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M8.5 3v18M15.5 3v18M3 8.5h18M3 15.5h18"/></svg>',
-  c3:  '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="19" r="3"/><circle cx="12" cy="19" r="3"/><circle cx="19" cy="19" r="3"/><path d="M12 2v9M8.5 8 12 11.5 15.5 8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  c4:  '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="19" r="3"/><circle cx="12" cy="19" r="3"/><circle cx="19" cy="19" r="3"/><path d="M12 2v9M8.5 8 12 11.5 15.5 8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   bs:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="2.5"/><path d="M12 1.5v4M12 18.5v4M1.5 12h4M18.5 12h4"/></svg>',
   nim: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="7" cy="16.5" r="4.5"/><circle cx="17" cy="16.5" r="4.5"/><circle cx="12" cy="8" r="4.5"/></svg>',
+  wordle: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="7" width="6" height="6" rx="1"/><rect x="9" y="7" width="6" height="6" rx="1" opacity=".45"/><rect x="16" y="7" width="6" height="6" rx="1" opacity=".45"/><rect x="2" y="14" width="6" height="6" rx="1" opacity=".45"/><rect x="9" y="14" width="6" height="6" rx="1"/><rect x="16" y="14" width="6" height="6" rx="1" opacity=".45"/></svg>',
+  hangman: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 21h8M8 21V3h9v4"/><circle cx="17" cy="10" r="2.5"/><path d="M17 12.5v5"/></svg>',
+  tug: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h20M6 8l-4 4 4 4M18 8l4 4-4 4"/><circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none"/></svg>',
+  hex: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"><path d="M12 2.5 20.2 7.25v9.5L12 21.5 3.8 16.75v-9.5z"/></svg>',
+  chomp: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h10a8 8 0 0 0 8 8v10H3z"/></svg>',
+  obstruction: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="9" y="9" width="6" height="6" rx="1"/><g opacity=".4"><rect x="2" y="2" width="6" height="6" rx="1"/><rect x="9" y="2" width="6" height="6" rx="1"/><rect x="16" y="2" width="6" height="6" rx="1"/><rect x="2" y="9" width="6" height="6" rx="1"/><rect x="16" y="9" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="9" y="16" width="6" height="6" rx="1"/><rect x="16" y="16" width="6" height="6" rx="1"/></g></svg>',
+  hilo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m6 10 6-6 6 6M6 14l6 6 6-6"/></svg>',
+  dice: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="4"/><g fill="currentColor" stroke="none"><circle cx="8" cy="8" r="1.7"/><circle cx="16" cy="8" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="8" cy="16" r="1.7"/><circle cx="16" cy="16" r="1.7"/></g></svg>',
+  memory: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><rect x="3" y="6" width="11" height="15" rx="2"/><path d="M8 3h11a2 2 0 0 1 2 2v12"/></svg>',
 };
 const BOAT = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M2.5 14.5h19l-2.6 4.6a2 2 0 0 1-1.7 1H6.8a2 2 0 0 1-1.7-1z"/><path d="M11 3h2v10h-2z"/><path d="M13 4.5 18.5 11H13z"/><path d="M5 12.5h14v2H5z"/></svg>';
 const RESET = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 3v5h-5"/></svg>';
 const CHEV = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m14.5 6-6 6 6 6"/></svg>';
+const BKSP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 5H8l-5 7 5 7h13a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1z"/><path d="m18 9-6 6M12 9l6 6"/></svg>';
+const SKULL = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a8 8 0 0 0-8 8c0 2.9 1.5 5.4 3.8 6.8V20a2 2 0 0 0 2 2h4.4a2 2 0 0 0 2-2v-3.2A8 8 0 0 0 12 2zm-3.5 10a2 2 0 1 1 0-4 2 2 0 0 1 0 4zm7 0a2 2 0 1 1 0-4 2 2 0 0 1 0 4zM10 17v-2l2-1.5 2 1.5v2z"/></svg>';
+const CARD_COLORS = { green: '#5be37a', yellow: '#ffd54a', purple: '#c084fc', orange: '#ff9e4a' };
+const SHAPES = {
+  circle: '<circle cx="12" cy="12" r="9"/>',
+  square: '<rect x="3.5" y="3.5" width="17" height="17" rx="2.5"/>',
+  triangle: '<path d="M12 3 21.5 20h-19z"/>',
+  diamond: '<path d="M12 2.5 21.5 12 12 21.5 2.5 12z"/>',
+};
+function shapeSvg(card) { return `<svg viewBox="0 0 24 24" fill="${CARD_COLORS[card.c]}">${SHAPES[card.s]}</svg>`; }
+function dieFace(n) {
+  const P = { 1: [[12, 12]], 2: [[6.5, 6.5], [17.5, 17.5]], 3: [[6.5, 6.5], [12, 12], [17.5, 17.5]], 4: [[6.5, 6.5], [17.5, 6.5], [6.5, 17.5], [17.5, 17.5]],
+    5: [[6.5, 6.5], [17.5, 6.5], [12, 12], [6.5, 17.5], [17.5, 17.5]], 6: [[6.5, 6], [17.5, 6], [6.5, 12], [17.5, 12], [6.5, 18], [17.5, 18]] };
+  return `<svg viewBox="0 0 24 24" fill="#1a1a1a">${(P[n] || []).map(([x, y]) => `<circle cx="${x}" cy="${y}" r="2.6"/>`).join('')}</svg>`;
+}
+const mv = x => `data-m='${JSON.stringify(x)}'`;
 
 function render() {
   app.innerHTML = renderHeader() + renderMain();
+  const wl = document.getElementById('wlist');
+  if (wl) wl.scrollTop = wl.scrollHeight;
   armFlash();
 }
 function renderMain() {
@@ -493,12 +916,33 @@ function renderBoard() {
   return `<main class="scr board-scr"><div class="board">${sqs}</div>
     <div class="foot"><span class="hint">${hint}</span><button class="link" data-act="new">New match</button></div>${confirm}</main>`;
 }
+// Miniatures: public information only. Hidden words, numbers, cards and the ship never appear here.
 function thumb(mini) {
   switch (mini.type) {
     case 'ttt': return `<div class="tg g3">${mini.cells.map(c => `<i class="${c || ''}">${c || ''}</i>`).join('')}</div>`;
-    case 'c3':  return `<div class="tg g5">${mini.cells.map(c => `<i class="${c || ''}"></i>`).join('')}</div>`;
+    case 'c4':  return `<div class="tg g5">${mini.cells.map(c => `<i class="${c || ''}"></i>`).join('')}</div>`;
     case 'bs':  return `<div class="tg g3 sea">${mini.revealed.map(r => `<i class="${r ? 'miss' : ''}"></i>`).join('')}</div>`;
     case 'nim': return `<div class="tn"><div class="st">${stones(mini.stones)}</div><b>${mini.stones}</b></div>`;
+    case 'wordle': {
+      const last = mini.guesses.slice(-4);
+      const rows = last.length
+        ? last.map(g => `<div class="twr">${g.word.split('').map((ch, k) => `<i class="${g.marks[k]}">${ch}</i>`).join('')}</div>`).join('')
+        : `<div class="twr">${'<i></i>'.repeat(5)}</div><div class="twr">${'<i></i>'.repeat(5)}</div>`;
+      const more = mini.guesses.length - last.length;
+      return `<div class="tw">${rows}${more > 0 ? `<small>+${more} earlier</small>` : ''}</div>`;
+    }
+    case 'hangman': {
+      const got = new Set(mini.letters.filter(x => x.hit).map(x => x.l));
+      const wrong = mini.letters.length - got.size;
+      return `<div class="thg"><div class="hw" style="--n:${mini.word.length}">${mini.word.split('').map(ch => `<i class="${got.has(ch) ? 'on' : ''}">${got.has(ch) ? ch : ''}</i>`).join('')}</div><small>${wrong} wrong</small></div>`;
+    }
+    case 'tug': return `<div class="ttug">${Array.from({ length: TUG.len }, (_, k) => `<i class="${k === TUG.xEnd ? 'xend' : k === TUG.oEnd ? 'oend' : ''}">${k === mini.pos ? '<b></b>' : ''}</i>`).join('')}</div>`;
+    case 'hex': return `<div class="thex">${[0, 1, 2, 3].map(r => `<div class="hr" style="--k:${r}">${[0, 1, 2, 3].map(c => `<i class="${mini.cells[r * HEX_N + c] || ''}"></i>`).join('')}</div>`).join('')}</div>`;
+    case 'chomp': return `<div class="tg g5x4">${mini.eaten.map((e, i) => `<i class="${i === CHOMP.poison ? 'poison' : e ? 'eaten' : ''}"></i>`).join('')}</div>`;
+    case 'obstruction': return `<div class="tg g4">${mini.cells.map(c => `<i class="${c === 'b' ? 'b' : c || ''}">${c && c !== 'b' ? c : ''}</i>`).join('')}</div>`;
+    case 'hilo': return `<div class="thilo"><b>${mini.lo}–${mini.hi}</b><small>${mini.guesses.length} guess${mini.guesses.length === 1 ? '' : 'es'}</small></div>`;
+    case 'dice': return `<div class="tdice">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><div class="bar"><i style="width:${Math.min(100, mini.totals[p] / DICE_GOAL * 100)}%"></i></div><span>${mini.totals[p]}</span></div>`).join('')}</div>`;
+    case 'memory': return `<div class="tg g3 tmem">${'<i>?</i>'.repeat(9)}</div>`;
   }
   return '';
 }
@@ -507,6 +951,13 @@ function stones(n) {
   for (let k = 0; k < NIM_START; k++) s += `<i class="${k < n ? '' : 'gone'}"></i>`;
   return s;
 }
+// QWERTY keyboard. With `extra` the keys type into the Wordle draft; without it each key is a Hangman move.
+function keyboard(cls, disabled, extra) {
+  const rows = ['QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM'];
+  return `<div class="kb">${rows.map((row, ri) => `<div class="krow">${ri === 2 && extra ? `<button class="key wide" data-act="enter"${extra.enter ? ' disabled' : ''}>Enter</button>` : ''}${row.split('').map(k =>
+    `<button class="key ${cls(k)}" data-act="${extra ? 'key' : 'move'}" ${extra ? `data-k="${k}"` : mv(k)} aria-label="${k}"${disabled(k) ? ' disabled' : ''}>${k}</button>`
+  ).join('')}${ri === 2 && extra ? `<button class="key wide" data-act="bksp" aria-label="Backspace"${extra.bksp ? ' disabled' : ''}>${BKSP}</button>` : ''}</div>`).join('')}</div>`;
+}
 
 /* ----- zoomed mini-game ----- */
 function renderMini(sq) {
@@ -514,26 +965,27 @@ function renderMini(sq) {
   const mini = f && f.drawn ? f.drawn : sq.mini;   // after a draw, keep showing the full board under the overlay
   const info = INFO[mini.type];
   const locked = !!f;                               // no input while the result is showing
-  const anim = f ? mini.last : null;                // animate only the move that was just made
+  const anim = f ? (Number.isInteger(mini.last) ? mini.last : mini.last && Number.isInteger(mini.last.cell) ? mini.last.cell : null) : null;
   const won = i => !!(mini.winCells && mini.winCells.includes(i));
+  const turn = state.turn;
   let g = '';
   switch (mini.type) {
     case 'ttt':
       g = `<div class="g-ttt">${mini.cells.map((c, i) =>
-        `<button class="cell ${c || ''}${won(i) ? ' win' : ''}${anim === i ? ' pop' : ''}" data-act="move" data-m="${i}" aria-label="Cell ${i + 1}${c ? ', ' + c : ''}"${c || locked ? ' disabled' : ''}>${c || ''}</button>`
+        `<button class="cell ${c || ''}${won(i) ? ' win' : ''}${anim === i ? ' pop' : ''}" data-act="move" ${mv(i)} aria-label="Cell ${i + 1}${c ? ', ' + c : ''}"${c || locked ? ' disabled' : ''}>${c || ''}</button>`
       ).join('')}</div>`;
       break;
-    case 'c3':
-      g = `<div class="g-c3">${mini.cells.map((c, i) => {
-        const col = i % C3.cols, full = !!mini.cells[col];
-        return `<button class="c3c ${c || ''}${won(i) ? ' win' : ''}${anim === i ? ' drop' : ''}" data-act="move" data-m="${col}" aria-label="Drop in column ${col + 1}"${full || locked ? ' disabled' : ''}></button>`;
+    case 'c4':
+      g = `<div class="g-c4">${mini.cells.map((c, i) => {
+        const col = i % C4.cols, full = !!mini.cells[col];
+        return `<button class="c4c ${c || ''}${won(i) ? ' win' : ''}${anim === i ? ' drop' : ''}" data-act="move" ${mv(col)} aria-label="Drop in column ${col + 1}"${full || locked ? ' disabled' : ''}></button>`;
       }).join('')}</div>`;
       break;
     case 'bs':
       g = `<div class="g-bs">${mini.revealed.map((r, i) => {
         const hit = r && i === mini.hidden;
         const cls = hit ? ' hit ' + r : r ? ' miss' : '';
-        return `<button class="cell sea${cls}${anim === i ? ' pop' : ''}" data-act="move" data-m="${i}" aria-label="Cell ${i + 1}${hit ? ', hit' : r ? ', miss' : ''}"${r || locked ? ' disabled' : ''}>${hit ? BOAT : ''}</button>`;
+        return `<button class="cell sea${cls}${anim === i ? ' pop' : ''}" data-act="move" ${mv(i)} aria-label="Cell ${i + 1}${hit ? ', hit' : r ? ', miss' : ''}"${r || locked ? ' disabled' : ''}>${hit ? BOAT : ''}</button>`;
       }).join('')}</div>`;
       break;
     case 'nim':
@@ -542,26 +994,118 @@ function renderMini(sq) {
           <div class="n">${mini.stones} <span>stone${mini.stones === 1 ? '' : 's'} left</span></div>
           <div class="lastmv">${mini.last ? `<b class="${mini.last.by}">${mini.last.by}</b> took ${mini.last.n}` : 'No stones taken yet'}</div>
         </div><div class="take">${[1, 2, 3].map(n =>
-          `<button data-act="move" data-m="${n}"${n > mini.stones || locked ? ' disabled' : ''}>Take ${n}</button>`
+          `<button data-act="move" ${mv(n)}${n > mini.stones || locked ? ' disabled' : ''}>Take ${n}</button>`
         ).join('')}</div></div>`;
       break;
+    case 'wordle': {
+      const rows = mini.guesses.map(gs => `<div class="wrow">${gs.word.split('').map((ch, k) => `<i class="wt ${gs.marks[k]}">${ch}</i>`).join('')}</div>`).join('');
+      const d = state.draft || '';
+      const cur = Array.from({ length: 5 }, (_, k) => `<i class="wt${d[k] ? ' typed' : ''}">${d[k] || ''}</i>`).join('');
+      const rank = { x: 1, y: 2, g: 3 }, best = {};
+      for (const gs of mini.guesses) gs.word.split('').forEach((ch, k) => { if ((rank[gs.marks[k]] || 0) > (rank[best[ch]] || 0)) best[ch] = gs.marks[k]; });
+      g = `<div class="g-wordle"><div class="wlist" id="wlist">${rows || '<div class="empty">No guesses yet. Type any 5-letter word.</div>'}</div>
+        <div class="wrow cur" aria-label="Your guess">${cur}</div>
+        ${keyboard(k => best[k] || '', () => locked || d.length >= 5, { enter: locked || d.length !== 5, bksp: locked || !d.length })}</div>`;
+      break;
+    }
+    case 'hangman': {
+      const got = {};
+      for (const x of mini.letters) got[x.l] = x.hit ? 'hit' : 'miss';
+      const tiles = mini.word.split('').map(ch => `<i class="ht${got[ch] ? ' on' : ''}">${got[ch] ? ch : ''}</i>`).join('');
+      const wrong = mini.letters.filter(x => !x.hit).map(x => x.l).join(' ');
+      g = `<div class="g-hang"><div class="hword">${tiles}</div>
+        <div class="hmiss">${wrong ? `Wrong: <b>${wrong}</b>` : 'No wrong letters yet'}</div>
+        ${keyboard(k => got[k] || '', k => locked || !!got[k])}</div>`;
+      break;
+    }
+    case 'tug': {
+      const cells = Array.from({ length: TUG.len }, (_, k) =>
+        `<i class="tcell${k === TUG.xEnd ? ' xend' : k === TUG.oEnd ? ' oend' : ''}">${k === mini.pos ? `<b class="knot${f ? ' pop' : ''}"></b>` : ''}</i>`).join('');
+      g = `<div class="g-tug"><div class="track"><span class="goal" style="color:var(--x)">X</span>${cells}<span class="goal" style="color:var(--o)">O</span></div>
+        <button class="big ${turn}" data-act="move" ${mv(1)}${locked ? ' disabled' : ''}>Pull toward ${turn}</button></div>`;
+      break;
+    }
+    case 'hex': {
+      const rows = [0, 1, 2, 3].map(r => `<div class="hrow" style="--r:${r}">${[0, 1, 2, 3].map(c => {
+        const i = r * HEX_N + c, v = mini.cells[i];
+        return `<button class="hexc ${v || ''}${won(i) ? ' win' : ''}${anim === i ? ' pop' : ''}" data-act="move" ${mv(i)} aria-label="Row ${r + 1} cell ${c + 1}${v ? ', ' + v : ''}"${v || locked ? ' disabled' : ''}></button>`;
+      }).join('')}</div>`).join('');
+      g = `<div class="g-hex"><div class="hexgoal O">O</div><div class="hexmid"><div class="hexgoal X">X</div><div class="hexboard">${rows}</div><div class="hexgoal X">X</div></div><div class="hexgoal O">O</div></div>`;
+      break;
+    }
+    case 'chomp':
+      g = `<div class="g-chomp">${mini.eaten.map((e, i) => {
+        const poison = i === CHOMP.poison;
+        const label = poison ? 'Poisoned cell' : e ? 'Eaten' : `Row ${Math.floor(i / CHOMP.cols) + 1} column ${i % CHOMP.cols + 1}`;
+        return `<button class="cc${e ? ' eaten' : ''}${poison ? ' poison' : ''}${anim === i ? ' pop' : ''}" data-act="move" ${mv(i)} aria-label="${label}"${e || poison || locked ? ' disabled' : ''}>${poison ? SKULL : ''}</button>`;
+      }).join('')}</div>`;
+      break;
+    case 'obstruction':
+      g = `<div class="g-obs">${mini.cells.map((c, i) =>
+        `<button class="oc${c === 'b' ? ' b' : c ? ' ' + c : ''}${anim === i ? ' pop' : ''}" data-act="move" ${mv(i)} aria-label="Cell ${i + 1}${c === 'b' ? ', blocked' : c ? ', ' + c : ''}"${c || locked ? ' disabled' : ''}>${c && c !== 'b' ? c : ''}</button>`
+      ).join('')}</div>`;
+      break;
+    case 'hilo': {
+      const by = {};
+      for (const x of mini.guesses) by[x.n] = x.by;
+      const hist = mini.guesses.slice(-3).map(x => `<b class="${x.by}">${x.by}</b> ${x.n}: ${x.res === 'hit' ? 'yes!' : x.res}`).join(' · ');
+      const first = !mini.guesses.length;
+      g = `<div class="g-hilo"><div class="range"><small>${first ? 'A number from' : 'It is between'}</small><b>${mini.lo}</b><span>${first ? 'to' : 'and'}</span><b>${mini.hi}</b></div>
+        <div class="hist">${hist || 'No guesses yet'}</div>
+        <div class="pad">${Array.from({ length: HILO.hi }, (_, k) => k + 1).map(n =>
+          `<button class="${by[n] || ''}" data-act="move" ${mv(n)}${n < mini.lo || n > mini.hi || locked ? ' disabled' : ''}>${n}</button>`
+        ).join('')}</div></div>`;
+      break;
+    }
+    case 'dice': {
+      const racer = p => `<div class="racer ${p}"><b class="${p}">${p}</b><div class="bar"><i style="width:${Math.min(100, mini.totals[p] / DICE_GOAL * 100)}%"></i></div><span class="tot">${mini.totals[p]} / ${DICE_GOAL}</span></div>`;
+      g = `<div class="g-dice"><div class="racers">${racer('X')}${racer('O')}</div>
+        <div class="dieWrap"><div class="die${f ? ' pop' : ''}">${mini.last ? dieFace(mini.last.roll) : '<span class="q">?</span>'}</div>
+          <div class="dielab">${mini.last ? `<b class="${mini.last.by}">${mini.last.by}</b> rolled ${mini.last.roll}` : 'No rolls yet'}</div></div>
+        <button class="big ${turn}" data-act="move" ${mv(1)}${locked ? ' disabled' : ''}>Roll for ${turn}</button></div>`;
+      break;
+    }
+    case 'memory': {
+      const up = new Set();
+      if (state.pick != null && !f) up.add(state.pick);
+      if (f && f.reveal) f.reveal.forEach(k => up.add(k));
+      g = `<div class="g-mem">${mini.cards.map((card, i) => {
+        const isUp = up.has(i);
+        return `<button class="mc ${isUp ? 'up' : 'down'}${state.pick === i && !f ? ' pick' : ''}${won(i) ? ' win' : ''}${f && isUp ? ' pop' : ''}" data-act="pick" data-i="${i}" aria-label="Card ${i + 1}${isUp ? ', face up' : ''}"${locked ? ' disabled' : ''}>${isUp ? shapeSvg(card) : '?'}</button>`;
+      }).join('')}</div>`;
+      break;
+    }
   }
+  const lock = state.lock != null;
+  const sub = lock ? `<b class="${turn}">${turn}</b> guessed right: go again` : info.hint;
   return `<main class="scr mini">
-    <div class="bar"><button class="back" data-act="back" aria-label="Back to the board"${locked ? ' disabled' : ''}>${CHEV}Board</button>
-      <div class="ttl"><b>${info.name}</b><small>${info.hint}</small></div></div>
+    <div class="bar"><button class="back" data-act="back" aria-label="Back to the board"${locked || lock ? ' disabled' : ''}>${CHEV}Board</button>
+      <div class="ttl"><b>${info.name}</b><small>${sub}</small></div></div>
     <div class="gwrap">${g}</div>${f ? renderFlash(f) : ''}</main>`;
 }
 function renderFlash(f) {
   const next = `<b class="${f.next}">${f.next}</b>'s turn`;
+  const who = `<b class="${f.by}">${f.by}</b>`;
   const name = INFO[f.type].name;
-  if (f.kind === 'match') return `<div class="flash" data-act="dismiss"><div class="card"><div class="big ${f.by}">${f.by}</div><h2>${f.by} wins the match!</h2><p>Tap to continue</p></div></div>`;
-  if (f.kind === 'claim') return `<div class="flash" data-act="dismiss"><div class="card"><div class="big ${f.by}">${f.by}</div><h2>${f.by} wins ${name}!</h2><p>Square claimed · ${next}</p></div></div>`;
-  if (f.kind === 'draw') return `<div class="flash" data-act="dismiss"><div class="card"><div class="big">${RESET}</div><h2>Draw!</h2><p>Square reset to ${INFO[f.newType].name} · ${next}</p></div></div>`;
+  if (f.kind === 'match') return `<div class="flash" data-act="dismiss"><div class="card"><div class="big-g ${f.by}">${f.by}</div><h2>${f.by} wins the match!</h2><p>Tap to continue</p></div></div>`;
+  if (f.kind === 'claim') return `<div class="flash" data-act="dismiss"><div class="card"><div class="big-g ${f.by}">${f.by}</div><h2>${f.by} wins ${name}!</h2><p>Square claimed · ${next}</p></div></div>`;
+  if (f.kind === 'draw') return `<div class="flash" data-act="dismiss"><div class="card"><div class="big-g">${RESET}</div><h2>Draw!</h2><p>Square reset to ${INFO[f.newType].name} · ${next}</p></div></div>`;
+  if (f.kind === 'again') return `<div class="flash lite" data-act="dismiss"><div class="toast">${who} found ${f.letter} · guess again</div></div>`;
   let msg;
-  if (f.note === 'miss') msg = `Miss! · ${next}`;
-  else if (f.note === 'took') msg = `<b class="${f.by}">${f.by}</b> took ${f.took} · ${f.stones} left · ${next}`;
-  else msg = `<b class="${f.by}">${f.by}</b> placed · ${next}`;
-  return `<div class="flash lite" data-act="dismiss"><div class="toast">${msg}</div></div>`;
+  switch (f.type) {
+    case 'bs': msg = `Miss! · ${next}`; break;
+    case 'nim': msg = `${who} took ${f.took} · ${f.stones} left · ${next}`; break;
+    case 'wordle': msg = `${who} tried ${f.word} · ${next}`; break;
+    case 'hangman': msg = `No ${f.letter} · ${next}`; break;
+    case 'tug': msg = `${who} pulled · ${next}`; break;
+    case 'chomp': msg = `${who} ate ${f.n} · ${next}`; break;
+    case 'hilo': msg = `${f.n}? ${f.note === 'higher' ? 'Higher' : 'Lower'}! · ${next}`; break;
+    case 'dice': msg = `${who} rolled ${f.roll} · ${f.total} total · ${next}`; break;
+    case 'memory': msg = `No match · ${next}`; break;
+    default: msg = `${who} placed · ${next}`;
+  }
+  const skip = f.type === 'memory' ? '' : ' data-act="dismiss"';   // the two cards stay up for the full 2 seconds
+  return `<div class="flash lite"${skip}><div class="toast">${msg}</div></div>`;
 }
 
 /* ----- win screen ----- */
@@ -574,7 +1118,7 @@ function renderWin() {
     `<i class="${s.owner || ''}${state.winLine && state.winLine.includes(i) ? ' hl' : ''}">${s.owner || ''}</i>`
   ).join('');
   return `<main class="scr win-scr"><div class="win-card">
-    <div class="big ${w}">${w}</div><h1>${w} wins the match!</h1><p>${why}</p>
+    <div class="big-g ${w}">${w}</div><h1>${w} wins the match!</h1><p>${why}</p>
     <div class="final" aria-hidden="true">${final}</div>
     <button class="primary" data-act="new">New match</button></div></main>`;
 }
@@ -588,11 +1132,26 @@ app.addEventListener('click', e => {
   if (state.flash) return;                      // everything else waits for the result to clear
   if (act === 'zoom') {
     const i = Number(el.dataset.i);
-    if (!state.winner && state.squares[i] && !state.squares[i].owner) { state.screen = 'mini'; state.zoom = i; commit(); }
+    if (state.winner || !state.squares[i] || state.squares[i].owner) return;
+    if (state.lock != null && state.lock !== i) return;
+    state.screen = 'mini'; state.zoom = i; state.draft = ''; state.pick = null; commit();
   } else if (act === 'back') {
-    state.screen = 'board'; state.zoom = null; commit();
+    if (state.lock != null) return;             // a bonus guess has to be taken here
+    state.screen = 'board'; state.zoom = null; state.draft = ''; state.pick = null; commit();
   } else if (act === 'move') {
-    if (playMove(state, state.zoom, Number(el.dataset.m)).ok) commit();
+    if (playMove(state, state.zoom, JSON.parse(el.dataset.m)).ok) commit();
+  } else if (act === 'key') {
+    typeLetter(el.dataset.k);
+  } else if (act === 'bksp') {
+    backspace();
+  } else if (act === 'enter') {
+    submitWord();
+  } else if (act === 'pick') {
+    const i = Number(el.dataset.i);
+    if (state.pick == null) state.pick = i;
+    else if (state.pick === i) state.pick = null;
+    else if (!playMove(state, state.zoom, [state.pick, i]).ok) state.pick = null;
+    commit();
   } else if (act === 'new') {
     if (state.winner || state.moves === 0) { state = newMatch(); commit(); }
     else { state.confirm = 'new'; commit(); }
@@ -602,11 +1161,42 @@ app.addEventListener('click', e => {
     state.confirm = null; commit();
   }
 });
+function zoomedType() {
+  if (state.screen !== 'mini' || state.zoom == null || state.flash || state.winner) return null;
+  const sq = state.squares[state.zoom];
+  return sq && !sq.owner ? sq.mini.type : null;
+}
+function typeLetter(k) {
+  if (zoomedType() !== 'wordle' || (state.draft || '').length >= 5) return;
+  state.draft = (state.draft || '') + k; commit();
+}
+function backspace() {
+  if (zoomedType() !== 'wordle' || !(state.draft || '').length) return;
+  state.draft = state.draft.slice(0, -1); commit();
+}
+function submitWord() {
+  if (zoomedType() !== 'wordle' || (state.draft || '').length !== 5) return;
+  if (playMove(state, state.zoom, state.draft).ok) commit();
+}
+// Physical keyboard, for desktops: Wordle typing and Hangman letters.
+document.addEventListener('keydown', e => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const type = zoomedType();
+  if (!type) return;
+  if (/^[a-zA-Z]$/.test(e.key)) {
+    if (type === 'wordle') typeLetter(e.key.toUpperCase());
+    else if (type === 'hangman' && playMove(state, state.zoom, e.key.toUpperCase()).ok) commit();
+  } else if (e.key === 'Backspace') backspace();
+  else if (e.key === 'Enter') submitWord();
+});
 document.addEventListener('contextmenu', e => e.preventDefault());
 
 function commit() { save(); render(); }
 function armFlash() {
-  if (state.flash && !flashTimer) flashTimer = setTimeout(dismissFlash, FLASH_MS[state.flash.kind] || 800);
+  if (!state.flash || flashTimer) return;
+  const f = state.flash;
+  const ms = f.type === 'memory' && f.kind === 'move' ? MEMORY_MS : (FLASH_MS[f.kind] || 800);
+  flashTimer = setTimeout(dismissFlash, ms);
 }
 function dismissFlash() {
   clearTimeout(flashTimer); flashTimer = null;
@@ -618,7 +1208,10 @@ function save() {
 function load() {
   try {
     const s = JSON.parse(localStorage.getItem(KEY));
-    if (s && s.v === 1 && Array.isArray(s.squares) && s.squares.length === 9 && (s.turn === 'X' || s.turn === 'O')) return s;
+    if (s && s.v === 2 && Array.isArray(s.squares) && s.squares.length === 9 && (s.turn === 'X' || s.turn === 'O')) {
+      if (s.lock != null && !s.winner) { s.screen = 'mini'; s.zoom = s.lock; }
+      return s;
+    }
   } catch (e) { /* ignore corrupt saves */ }
   return null;
 }
