@@ -5,6 +5,10 @@ inline CSS and JS, no dependencies, no build step, works offline.
 
 Open `index.html` in a browser (or serve the folder with any static server) and play.
 
+A setup screen comes first: enter the two players' names (defaults X and O), tick the mini-games you
+want in the mix (all are on by default, at least one must stay on) and press Start. "New match"
+brings you back there with the names and selection kept.
+
 ## Rules
 
 - The main board is a 3×3 tic-tac-toe grid. Every square holds its own mini-game.
@@ -25,16 +29,13 @@ Each square is assigned one of these at random when the match starts (duplicates
 | Tic-tac-toe | 3×3, three in a row |
 | Connect 4 | 5 columns × 6 rows, pieces drop to the lowest open cell, four in a row in any direction |
 | Battleship | 3×3, one hidden cell chosen by the computer; whoever reveals it wins, misses stay marked |
-| Wordle | One hidden 5-letter word shared by both players; a move is any 5-letter guess with green/yellow/grey feedback, no guess limit |
+| Wordle | One hidden common 5-letter word shared by both players; a move is a guess with green/yellow/grey feedback, no guess limit. Guesses must be real words (checked against an embedded list of about 15,000); a non-word shows "Not a word" and does not use the turn |
 | Hangman | Hidden 5–7 letter word; guess a letter. A right letter is revealed and you guess again at once; a wrong letter ends your turn. Revealing the last letter wins |
-| Tug of war | 7-position track, the knot starts in the middle; each pull moves it one step toward your end. If the knot lands on the same position for the third time the square resets |
 | Hex | 4×4 hex grid; X connects left to right, O connects top to bottom |
 | Higher/lower | The computer picks 1–20; each guess is answered higher or lower. Guessing it wins |
 | Dice race | Roll a die and add it to your total; first to 15 wins |
 | Memory | 3×3 face-down cards with exactly one matching pair; a move flips two cards for 2 seconds. Flipping the pair wins |
-| Mini Othello | 4×4 with the standard four-disc centre; a move must flip at least one disc. When neither player can move, most discs wins and a tie resets the square |
-| Hexapawn | 3×3, three pawns each; pawns step forward into an empty cell or capture diagonally forward. Reaching the far row or taking every enemy pawn wins; a stalemate resets the square |
-| Candy race | A winding track of 12 randomly coloured spaces; a spin of the colour wheel hops your token to the next space of that colour. No such space ahead means you reach the finish and win |
+| Candy race | A winding track of 12 randomly coloured spaces (any three in a row are all different colours); a spin of the colour wheel hops your token to the next space of that colour. No such space ahead means you reach the finish and win |
 
 Hidden information (the Wordle and Hangman words, the Higher/lower number, the Memory cards, the
 Battleship cell) is never shown on the board or in a mini-game before it is revealed.
