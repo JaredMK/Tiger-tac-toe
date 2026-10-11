@@ -1,0 +1,614 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0e1016">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Insane-Tac-Toe</title>
+<style>
+:root {
+  --bg: #0e1016;
+  --panel: #181b26;
+  --panel-2: #232737;
+  --line: #2f3447;
+  --text: #eef0f6;
+  --muted: #9298ab;
+  --x: #ff6b6b;
+  --o: #4dabf7;
+  --x-soft: rgba(255, 107, 107, .17);
+  --o-soft: rgba(77, 171, 247, .17);
+  --sea: #15395f;
+  --sea-2: #1f4f84;
+  --stone: #d9c7a6;
+  --hdr: 64px;
+  --foot: 52px;
+  --bar: 56px;
+  --pad: 12px;
+  --r: 14px;
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; height: 100%; }
+body {
+  position: fixed; inset: 0; overflow: hidden;
+  background: var(--bg); color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  touch-action: manipulation; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+  overscroll-behavior: none;
+}
+button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulation; }
+button:disabled { cursor: default; }
+svg { display: block; }
+#app {
+  height: 100vh; height: 100dvh;
+  display: flex; flex-direction: column;
+  padding: var(--sat) var(--sar) var(--sab) var(--sal);
+}
+
+/* ---------- header: whose turn ---------- */
+.hdr {
+  flex: none; height: var(--hdr);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 16px; border-bottom: 1px solid var(--line);
+  transition: background .25s;
+}
+.hdr.t-X { background: linear-gradient(90deg, var(--x-soft), transparent 75%); }
+.hdr.t-O { background: linear-gradient(90deg, var(--o-soft), transparent 75%); }
+.turn { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 20px; }
+.turn .g {
+  width: 38px; height: 38px; border-radius: 10px;
+  display: grid; place-items: center;
+  font-size: 24px; font-weight: 900; color: var(--bg);
+}
+.t-X .turn { color: var(--x); } .t-X .turn .g { background: var(--x); }
+.t-O .turn { color: var(--o); } .t-O .turn .g { background: var(--o); }
+.score { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 15px; color: var(--muted); }
+.score b { font-size: 17px; }
+b.X { color: var(--x); } b.O { color: var(--o); }
+
+/* ---------- screens ---------- */
+.scr {
+  flex: 1; min-height: 0; position: relative;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: var(--pad);
+  --vh: 100vh;
+  --gw: calc(100vw - 2 * var(--pad) - var(--sal) - var(--sar));
+}
+@supports (height: 100dvh) { .scr { --vh: 100dvh; } }
+
+/* ---------- main board ---------- */
+.board-scr { --s: min(var(--gw), calc(var(--vh) - var(--hdr) - var(--foot) - 2 * var(--pad) - var(--sat) - var(--sab))); }
+.board {
+  width: var(--s); height: var(--s);
+  display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); gap: 8px;
+}
+.sq {
+  position: relative; border: 0; border-radius: var(--r); padding: 7px;
+  background: var(--panel); box-shadow: inset 0 0 0 1px var(--line);
+  display: flex; flex-direction: column; justify-content: space-between; gap: 4px;
+  overflow: hidden; container-type: size; transition: transform .08s;
+}
+.sq:active:not(:disabled) { transform: scale(.96); }
+.sq.last-X { box-shadow: inset 0 0 0 2px var(--x); }
+.sq.last-O { box-shadow: inset 0 0 0 2px var(--o); }
+.sq.own-X { background: var(--x-soft); box-shadow: inset 0 0 0 2px var(--x); }
+.sq.own-O { background: var(--o-soft); box-shadow: inset 0 0 0 2px var(--o); }
+.own { margin: auto; font-weight: 900; line-height: 1; font-size: 56px; font-size: 62cqw; }
+.own-X .own { color: var(--x); }
+.own-O .own { color: var(--o); }
+.lab {
+  display: flex; align-items: center; justify-content: center; gap: 4px;
+  color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .03em; white-space: nowrap;
+  font-size: 10px; font-size: clamp(8px, 9.5cqw, 13px);
+}
+.lab svg { width: 1.25em; height: 1.25em; flex: none; }
+.thumb { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
+.tg { display: grid; gap: 2px; }
+.tg.g3 { grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); width: 62px; height: 62px; width: 60cqw; height: 60cqw; }
+.tg.g3 i { display: grid; place-items: center; border-radius: 3px; background: var(--panel-2); font-weight: 900; line-height: 1; font-size: 12px; font-size: 12cqw; }
+.tg i.X { color: var(--x); }
+.tg i.O { color: var(--o); }
+.tg.g5 { grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(6, 1fr); width: 52px; height: 62px; width: 52cqw; height: 62cqw; }
+.tg.g5 i { border-radius: 50%; background: var(--panel-2); }
+.tg.g5 i.X { background: var(--x); }
+.tg.g5 i.O { background: var(--o); }
+.tg.sea i { background: var(--sea); }
+.tg.sea i.miss::after { content: ''; width: 36%; height: 36%; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .55); }
+.tn { display: flex; flex-direction: column; align-items: center; gap: 4px; gap: 4cqw; }
+.tn .st { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; gap: 3cqw; width: 64px; width: 62cqw; }
+.tn .st i { aspect-ratio: 1; border-radius: 50%; background: var(--stone); }
+.tn .st i.gone { background: var(--panel-2); }
+.tn b { line-height: 1; font-size: 18px; font-size: 17cqw; }
+.foot {
+  flex: none; height: var(--foot); width: 100%; max-width: 560px;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}
+.hint { color: var(--muted); font-size: 13px; font-weight: 600; }
+.link { border: 0; border-radius: 10px; height: 36px; padding: 0 12px; background: var(--panel-2); font-weight: 700; font-size: 13px; flex: none; }
+
+/* ---------- zoomed mini-game ---------- */
+.mini {
+  --gh: calc(var(--vh) - var(--hdr) - var(--bar) - 2 * var(--pad) - var(--sat) - var(--sab));
+  --g: min(var(--gw), var(--gh));
+  animation: zoomin .18s ease-out;
+}
+.bar { flex: none; height: var(--bar); width: 100%; display: flex; align-items: center; gap: 12px; }
+.back {
+  flex: none; height: 44px; padding: 0 14px 0 10px; border: 0; border-radius: 12px;
+  background: var(--panel-2); font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 2px;
+}
+.back svg { width: 20px; height: 20px; }
+.ttl { min-width: 0; flex: 1; }
+.ttl b { display: block; font-size: 17px; }
+.ttl small { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; color: var(--muted); font-size: 12px; font-weight: 600; line-height: 1.25; }
+.gwrap { flex: 1; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; }
+
+.g-ttt, .g-bs {
+  width: var(--g); height: var(--g);
+  display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); gap: 10px;
+}
+.cell {
+  border: 0; border-radius: 16px; padding: 0; background: var(--panel-2);
+  display: grid; place-items: center; font-weight: 900; line-height: 1;
+  font-size: calc(var(--g) * .22); transition: transform .08s;
+}
+.cell:active:not(:disabled) { transform: scale(.95); }
+.cell.X { color: var(--x); }
+.cell.O { color: var(--o); }
+.cell.win.X { background: var(--x-soft); box-shadow: inset 0 0 0 3px var(--x); }
+.cell.win.O { background: var(--o-soft); box-shadow: inset 0 0 0 3px var(--o); }
+.cell.pop { animation: pop .2s ease-out; }
+
+.cell.sea { background: radial-gradient(circle at 30% 30%, var(--sea-2), var(--sea)); }
+.cell.sea::after { content: ''; width: 16%; height: 16%; border-radius: 50%; background: rgba(255, 255, 255, .08); }
+.cell.miss { background: var(--panel-2); }
+.cell.miss::after { width: 26%; height: 26%; border: 3px solid rgba(255, 255, 255, .5); background: transparent; }
+.cell.hit::after { display: none; }
+.cell.hit svg { width: 62%; height: 62%; }
+.cell.hit.X { background: var(--x-soft); box-shadow: inset 0 0 0 3px var(--x); color: var(--x); }
+.cell.hit.O { background: var(--o-soft); box-shadow: inset 0 0 0 3px var(--o); color: var(--o); }
+
+.g-c3 {
+  --cw: min(var(--gw), calc(var(--gh) * 5 / 6));
+  width: var(--cw); height: calc(var(--cw) * 6 / 5);
+  display: grid; grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(6, 1fr); gap: 6px;
+  padding: 8px; background: var(--panel); border-radius: 16px;
+}
+.c3c { border: 0; padding: 0; border-radius: 50%; background: var(--panel-2); }
+.c3c.X { background: var(--x); }
+.c3c.O { background: var(--o); }
+.c3c.win { box-shadow: inset 0 0 0 4px rgba(255, 255, 255, .85); }
+.c3c.drop { animation: drop .22s ease-out; }
+
+.g-nim { width: var(--g); height: var(--g); display: flex; flex-direction: column; gap: 12px; }
+.pile {
+  flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+  background: var(--panel); border-radius: 16px; padding: 12px;
+}
+.stones { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; width: 78%; max-width: 300px; }
+.stones i {
+  aspect-ratio: 1; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #f1e6d2, #b8a37f); box-shadow: 0 3px 6px rgba(0, 0, 0, .45);
+}
+.stones i.gone { background: var(--panel-2); box-shadow: none; opacity: .5; }
+.pile .n { font-size: 22px; font-weight: 800; }
+.pile .n span { color: var(--muted); font-weight: 600; font-size: 16px; }
+.lastmv { color: var(--muted); font-weight: 600; font-size: 14px; }
+.take { flex: none; height: max(64px, calc(var(--g) * .2)); display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.take button { border: 0; border-radius: 16px; background: var(--panel-2); font-weight: 800; font-size: 18px; transition: transform .08s; }
+.take button:active:not(:disabled) { transform: scale(.95); }
+.take button:disabled { opacity: .35; }
+
+/* ---------- move result overlay ---------- */
+.flash {
+  position: absolute; inset: 0; z-index: 5; padding: 24px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(14, 16, 22, .6); animation: fade .15s;
+}
+.flash.lite { align-items: flex-end; background: transparent; padding-bottom: 28px; }
+.card {
+  max-width: 92%; padding: 22px 26px; text-align: center;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 22px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .55); animation: pop .2s ease-out;
+}
+.big { font-size: 76px; font-weight: 900; line-height: 1; }
+.big.X { color: var(--x); }
+.big.O { color: var(--o); }
+.big svg { width: 76px; height: 76px; margin: 0 auto; color: var(--muted); }
+.card h2 { margin: 10px 0 6px; font-size: 22px; }
+.card p { margin: 0; color: var(--muted); font-weight: 600; font-size: 15px; }
+.toast {
+  padding: 12px 20px; background: var(--panel); border: 1px solid var(--line); border-radius: 999px;
+  font-weight: 700; font-size: 15px; box-shadow: 0 10px 30px rgba(0, 0, 0, .5); animation: pop .15s ease-out;
+}
+
+/* ---------- win screen ---------- */
+.win-card { display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; animation: pop .25s ease-out; }
+.win-card h1 { margin: 0; font-size: 30px; }
+.win-card p { margin: 0; color: var(--muted); font-weight: 600; font-size: 16px; }
+.final { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; width: min(228px, 56vw); margin: 6px 0; }
+.final i {
+  aspect-ratio: 1; border-radius: 10px; background: var(--panel-2);
+  display: grid; place-items: center; font-weight: 900; font-size: 28px;
+}
+.final i.X { color: var(--x); background: var(--x-soft); }
+.final i.O { color: var(--o); background: var(--o-soft); }
+.final i.hl { box-shadow: inset 0 0 0 3px currentColor; }
+.primary {
+  height: 58px; padding: 0 30px; border: 0; border-radius: 16px;
+  background: var(--text); color: var(--bg); font-weight: 800; font-size: 18px;
+}
+.primary:active { transform: scale(.97); }
+
+@keyframes pop { from { transform: scale(.85); opacity: 0; } }
+@keyframes fade { from { opacity: 0; } }
+@keyframes drop { from { transform: translateY(-130%); opacity: .4; } }
+@keyframes zoomin { from { transform: scale(.94); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script id="logic">
+'use strict';
+/* ===================== Game logic (pure, no DOM) =====================
+ * Everything about a match lives in one plain object (see newMatch); the UI
+ * only ever calls playMove / endFlash and re-renders from that object.
+ */
+const TYPES = ['ttt', 'c3', 'bs', 'nim'];
+const INFO = {
+  ttt: { name: 'Tic-Tac-Toe', hint: 'Three in a row wins' },
+  c3:  { name: 'Connect 3',   hint: 'Pieces drop. Three in a row wins' },
+  bs:  { name: 'Battleship',  hint: 'Find the hidden ship' },
+  nim: { name: 'Nim',         hint: 'Take 1, 2 or 3. Last stone wins' },
+};
+const C3 = { cols: 5, rows: 6 };
+const NIM_START = 10;
+const LINES = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6]];
+
+function other(p) { return p === 'X' ? 'O' : 'X'; }
+function randInt(rng, n) { return Math.floor(rng() * n); }
+function randomType(rng) { return TYPES[randInt(rng, TYPES.length)]; }
+
+function newMini(type, rng) {
+  switch (type) {
+    case 'ttt': return { type, cells: new Array(9).fill(null), last: null };
+    case 'c3':  return { type, cells: new Array(C3.cols * C3.rows).fill(null), last: null };
+    case 'bs':  return { type, hidden: randInt(rng, 9), revealed: new Array(9).fill(null), last: null };
+    case 'nim': return { type, stones: NIM_START, last: null };
+  }
+  throw new Error('unknown mini-game: ' + type);
+}
+function newSquare(rng) { return { owner: null, mini: newMini(randomType(rng), rng) }; }
+function newMatch(rng) {
+  rng = rng || Math.random;
+  return {
+    v: 1,
+    screen: 'board',          // 'board' | 'mini' | 'win'
+    turn: 'X',
+    squares: Array.from({ length: 9 }, () => newSquare(rng)),
+    zoom: null,               // index of the mini-game being viewed
+    flash: null,              // result of the last move, shown briefly before the turn passes
+    winner: null, winLine: null, winReason: null, counts: null,
+    lastSquare: null, lastBy: null, moves: 0,
+  };
+}
+
+// K in a row for player p on a W x H grid: returns the winning cell indexes, or null.
+function findRun(cells, W, H, K, p) {
+  const dirs = [[1, 0], [0, 1], [1, 1], [-1, 1]]; // [dc, dr]: right, down, down-right, down-left
+  for (let r = 0; r < H; r++) {
+    for (let c = 0; c < W; c++) {
+      if (cells[r * W + c] !== p) continue;
+      for (const [dc, dr] of dirs) {
+        const run = [r * W + c];
+        for (let k = 1; k < K; k++) {
+          const rr = r + dr * k, cc = c + dc * k;
+          if (rr < 0 || rr >= H || cc < 0 || cc >= W || cells[rr * W + cc] !== p) break;
+          run.push(rr * W + cc);
+        }
+        if (run.length === K) return run;
+      }
+    }
+  }
+  return null;
+}
+
+// One move by player p in a mini-game. Mutates mini.
+// Returns { ok:false, reason } or { ok:true, outcome:'win'|'draw'|'continue', cells?, note? }.
+function applyMove(mini, p, m) {
+  switch (mini.type) {
+    case 'ttt': {
+      if (!Number.isInteger(m) || m < 0 || m > 8) return { ok: false, reason: 'bad' };
+      if (mini.cells[m]) return { ok: false, reason: 'taken' };
+      mini.cells[m] = p; mini.last = m;
+      const run = findRun(mini.cells, 3, 3, 3, p);
+      if (run) return { ok: true, outcome: 'win', cells: run };
+      if (mini.cells.every(Boolean)) return { ok: true, outcome: 'draw' };
+      return { ok: true, outcome: 'continue' };
+    }
+    case 'c3': {
+      if (!Number.isInteger(m) || m < 0 || m >= C3.cols) return { ok: false, reason: 'bad' };
+      let idx = -1;
+      for (let r = C3.rows - 1; r >= 0; r--) {
+        if (!mini.cells[r * C3.cols + m]) { idx = r * C3.cols + m; break; }
+      }
+      if (idx < 0) return { ok: false, reason: 'full' };
+      mini.cells[idx] = p; mini.last = idx;
+      const run = findRun(mini.cells, C3.cols, C3.rows, 3, p);
+      if (run) return { ok: true, outcome: 'win', cells: run };
+      if (mini.cells.every(Boolean)) return { ok: true, outcome: 'draw' };
+      return { ok: true, outcome: 'continue' };
+    }
+    case 'bs': {
+      if (!Number.isInteger(m) || m < 0 || m > 8) return { ok: false, reason: 'bad' };
+      if (mini.revealed[m]) return { ok: false, reason: 'taken' };
+      mini.revealed[m] = p; mini.last = m;
+      if (m === mini.hidden) return { ok: true, outcome: 'win', cells: [m] };
+      return { ok: true, outcome: 'continue', note: 'miss' };
+    }
+    case 'nim': {
+      if (!Number.isInteger(m) || m < 1 || m > 3) return { ok: false, reason: 'bad' };
+      if (m > mini.stones) return { ok: false, reason: 'too-many' };
+      mini.stones -= m; mini.last = { by: p, n: m };
+      if (mini.stones === 0) return { ok: true, outcome: 'win' };
+      return { ok: true, outcome: 'continue', note: 'took' };
+    }
+  }
+  return { ok: false, reason: 'bad' };
+}
+
+// Main-board result: three claimed squares in a row, else majority once all nine are claimed.
+function mainResult(squares) {
+  for (const line of LINES) {
+    const o = squares[line[0]].owner;
+    if (o && o === squares[line[1]].owner && o === squares[line[2]].owner) return { winner: o, line, reason: 'line' };
+  }
+  if (squares.every(s => s.owner)) {
+    const x = squares.filter(s => s.owner === 'X').length, o = 9 - x;
+    return { winner: x > o ? 'X' : 'O', line: null, reason: 'majority', counts: { X: x, O: o } };
+  }
+  return null;
+}
+
+// A full turn: the player to move makes move m in square i. On success the turn
+// passes and state.flash describes the result; the UI shows it, then calls endFlash.
+function playMove(state, i, m, rng) {
+  rng = rng || Math.random;
+  if (state.winner) return { ok: false, reason: 'over' };
+  if (state.flash) return { ok: false, reason: 'busy' };
+  const sq = state.squares[i];
+  if (!sq) return { ok: false, reason: 'bad' };
+  if (sq.owner) return { ok: false, reason: 'claimed' };
+  const p = state.turn;
+  const res = applyMove(sq.mini, p, m);
+  if (!res.ok) return res;
+  const flash = {
+    kind: res.outcome === 'win' ? 'claim' : res.outcome, // 'move' | 'claim' | 'draw' | 'match'
+    by: p, next: other(p), square: i, type: sq.mini.type, note: res.note || null,
+  };
+  if (flash.kind === 'continue') flash.kind = 'move';
+  if (sq.mini.type === 'nim') { flash.took = m; flash.stones = sq.mini.stones; }
+  if (res.outcome === 'win') {
+    sq.owner = p;
+    sq.mini.winCells = res.cells || null;
+    const mr = mainResult(state.squares);
+    if (mr) {
+      state.winner = mr.winner; state.winLine = mr.line; state.winReason = mr.reason; state.counts = mr.counts || null;
+      flash.kind = 'match';
+    }
+  } else if (res.outcome === 'draw') {
+    flash.drawn = sq.mini;                       // keep the full board for the result overlay
+    sq.mini = newMini(randomType(rng), rng);     // the square resets with a new random mini-game
+    flash.newType = sq.mini.type;
+  }
+  state.moves += 1; state.lastSquare = i; state.lastBy = p;
+  state.turn = other(p);
+  state.flash = flash;
+  return { ok: true, flash };
+}
+
+// Clear the result overlay and go back to the board (or the win screen).
+function endFlash(state) {
+  if (!state.flash) return false;
+  state.flash = null; state.zoom = null;
+  state.screen = state.winner ? 'win' : 'board';
+  return true;
+}
+</script>
+
+<script id="ui">
+'use strict';
+/* ===================== UI: render everything from state ===================== */
+const KEY = 'insane-tac-toe.v1';
+const FLASH_MS = { move: 700, claim: 1500, draw: 1800, match: 1300 };
+const app = document.getElementById('app');
+let state = load() || newMatch();
+let flashTimer = null;
+
+const ICONS = {
+  ttt: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M8.5 3v18M15.5 3v18M3 8.5h18M3 15.5h18"/></svg>',
+  c3:  '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="19" r="3"/><circle cx="12" cy="19" r="3"/><circle cx="19" cy="19" r="3"/><path d="M12 2v9M8.5 8 12 11.5 15.5 8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  bs:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="2.5"/><path d="M12 1.5v4M12 18.5v4M1.5 12h4M18.5 12h4"/></svg>',
+  nim: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="7" cy="16.5" r="4.5"/><circle cx="17" cy="16.5" r="4.5"/><circle cx="12" cy="8" r="4.5"/></svg>',
+};
+const BOAT = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M2.5 14.5h19l-2.6 4.6a2 2 0 0 1-1.7 1H6.8a2 2 0 0 1-1.7-1z"/><path d="M11 3h2v10h-2z"/><path d="M13 4.5 18.5 11H13z"/><path d="M5 12.5h14v2H5z"/></svg>';
+const RESET = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 3v5h-5"/></svg>';
+const CHEV = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m14.5 6-6 6 6 6"/></svg>';
+
+function render() {
+  app.innerHTML = renderHeader() + renderMain();
+  armFlash();
+}
+function renderMain() {
+  if (state.screen === 'win' && state.winner) return renderWin();
+  if (state.screen === 'mini' && state.zoom != null) {
+    const sq = state.squares[state.zoom];
+    if (sq && (!sq.owner || state.flash)) return renderMini(sq);
+  }
+  return renderBoard();
+}
+function renderHeader() {
+  const t = state.winner || state.turn;
+  const x = state.squares.filter(s => s.owner === 'X').length;
+  const o = state.squares.filter(s => s.owner === 'O').length;
+  return `<header class="hdr t-${t}">
+    <div class="turn" aria-live="polite"><span class="g">${t}</span><span>${state.winner ? t + ' wins' : t + "'s turn"}</span></div>
+    <div class="score" aria-label="Squares claimed: X ${x}, O ${o}"><b class="X">X</b><span>${x}</span><span>·</span><span>${o}</span><b class="O">O</b></div>
+  </header>`;
+}
+
+/* ----- main board ----- */
+function renderBoard() {
+  const sqs = state.squares.map((sq, i) => {
+    const cls = ['sq'];
+    if (sq.owner) cls.push('own-' + sq.owner);
+    else if (i === state.lastSquare && state.lastBy) cls.push('last-' + state.lastBy);
+    const info = INFO[sq.mini.type];
+    const body = sq.owner
+      ? `<div class="own">${sq.owner}</div>`
+      : `<div class="lab">${ICONS[sq.mini.type]}<span>${info.name}</span></div><div class="thumb">${thumb(sq.mini)}</div>`;
+    const label = sq.owner ? `Square ${i + 1}, claimed by ${sq.owner}` : `Square ${i + 1}: ${info.name}`;
+    return `<button class="${cls.join(' ')}" data-act="zoom" data-i="${i}" aria-label="${label}"${sq.owner ? ' disabled' : ''}>${body}</button>`;
+  }).join('');
+  const hint = state.moves ? 'Tap any open square to make a move' : `${state.turn} goes first. Tap a square to play`;
+  return `<main class="scr board-scr"><div class="board">${sqs}</div>
+    <div class="foot"><span class="hint">${hint}</span><button class="link" data-act="new">New match</button></div></main>`;
+}
+function thumb(mini) {
+  switch (mini.type) {
+    case 'ttt': return `<div class="tg g3">${mini.cells.map(c => `<i class="${c || ''}">${c || ''}</i>`).join('')}</div>`;
+    case 'c3':  return `<div class="tg g5">${mini.cells.map(c => `<i class="${c || ''}"></i>`).join('')}</div>`;
+    case 'bs':  return `<div class="tg g3 sea">${mini.revealed.map(r => `<i class="${r ? 'miss' : ''}"></i>`).join('')}</div>`;
+    case 'nim': return `<div class="tn"><div class="st">${stones(mini.stones)}</div><b>${mini.stones}</b></div>`;
+  }
+  return '';
+}
+function stones(n) {
+  let s = '';
+  for (let k = 0; k < NIM_START; k++) s += `<i class="${k < n ? '' : 'gone'}"></i>`;
+  return s;
+}
+
+/* ----- zoomed mini-game ----- */
+function renderMini(sq) {
+  const f = state.flash;
+  const mini = f && f.drawn ? f.drawn : sq.mini;   // after a draw, keep showing the full board under the overlay
+  const info = INFO[mini.type];
+  const locked = !!f;                               // no input while the result is showing
+  const anim = f ? mini.last : null;                // animate only the move that was just made
+  const won = i => !!(mini.winCells && mini.winCells.includes(i));
+  let g = '';
+  switch (mini.type) {
+    case 'ttt':
+      g = `<div class="g-ttt">${mini.cells.map((c, i) =>
+        `<button class="cell ${c || ''}${won(i) ? ' win' : ''}${anim === i ? ' pop' : ''}" data-act="move" data-m="${i}" aria-label="Cell ${i + 1}${c ? ', ' + c : ''}"${c || locked ? ' disabled' : ''}>${c || ''}</button>`
+      ).join('')}</div>`;
+      break;
+    case 'c3':
+      g = `<div class="g-c3">${mini.cells.map((c, i) => {
+        const col = i % C3.cols, full = !!mini.cells[col];
+        return `<button class="c3c ${c || ''}${won(i) ? ' win' : ''}${anim === i ? ' drop' : ''}" data-act="move" data-m="${col}" aria-label="Drop in column ${col + 1}"${full || locked ? ' disabled' : ''}></button>`;
+      }).join('')}</div>`;
+      break;
+    case 'bs':
+      g = `<div class="g-bs">${mini.revealed.map((r, i) => {
+        const hit = r && i === mini.hidden;
+        const cls = hit ? ' hit ' + r : r ? ' miss' : '';
+        return `<button class="cell sea${cls}${anim === i ? ' pop' : ''}" data-act="move" data-m="${i}" aria-label="Cell ${i + 1}${hit ? ', hit' : r ? ', miss' : ''}"${r || locked ? ' disabled' : ''}>${hit ? BOAT : ''}</button>`;
+      }).join('')}</div>`;
+      break;
+    case 'nim':
+      g = `<div class="g-nim"><div class="pile">
+          <div class="stones">${stones(mini.stones)}</div>
+          <div class="n">${mini.stones} <span>stone${mini.stones === 1 ? '' : 's'} left</span></div>
+          <div class="lastmv">${mini.last ? `<b class="${mini.last.by}">${mini.last.by}</b> took ${mini.last.n}` : 'No stones taken yet'}</div>
+        </div><div class="take">${[1, 2, 3].map(n =>
+          `<button data-act="move" data-m="${n}"${n > mini.stones || locked ? ' disabled' : ''}>Take ${n}</button>`
+        ).join('')}</div></div>`;
+      break;
+  }
+  return `<main class="scr mini">
+    <div class="bar"><button class="back" data-act="back" aria-label="Back to the board"${locked ? ' disabled' : ''}>${CHEV}Board</button>
+      <div class="ttl"><b>${info.name}</b><small>${info.hint}</small></div></div>
+    <div class="gwrap">${g}</div>${f ? renderFlash(f) : ''}</main>`;
+}
+function renderFlash(f) {
+  const next = `<b class="${f.next}">${f.next}</b>'s turn`;
+  const name = INFO[f.type].name;
+  if (f.kind === 'match') return `<div class="flash" data-act="dismiss"><div class="card"><div class="big ${f.by}">${f.by}</div><h2>${f.by} wins the match!</h2><p>Tap to continue</p></div></div>`;
+  if (f.kind === 'claim') return `<div class="flash" data-act="dismiss"><div class="card"><div class="big ${f.by}">${f.by}</div><h2>${f.by} wins ${name}!</h2><p>Square claimed · ${next}</p></div></div>`;
+  if (f.kind === 'draw') return `<div class="flash" data-act="dismiss"><div class="card"><div class="big">${RESET}</div><h2>Draw!</h2><p>Square reset to ${INFO[f.newType].name} · ${next}</p></div></div>`;
+  let msg;
+  if (f.note === 'miss') msg = `Miss! · ${next}`;
+  else if (f.note === 'took') msg = `<b class="${f.by}">${f.by}</b> took ${f.took} · ${f.stones} left · ${next}`;
+  else msg = `<b class="${f.by}">${f.by}</b> placed · ${next}`;
+  return `<div class="flash lite" data-act="dismiss"><div class="toast">${msg}</div></div>`;
+}
+
+/* ----- win screen ----- */
+function renderWin() {
+  const w = state.winner;
+  const why = state.winReason === 'line'
+    ? 'Three squares in a row'
+    : `Most squares: ${state.counts[w]} to ${state.counts[other(w)]}`;
+  const final = state.squares.map((s, i) =>
+    `<i class="${s.owner || ''}${state.winLine && state.winLine.includes(i) ? ' hl' : ''}">${s.owner || ''}</i>`
+  ).join('');
+  return `<main class="scr win-scr"><div class="win-card">
+    <div class="big ${w}">${w}</div><h1>${w} wins the match!</h1><p>${why}</p>
+    <div class="final" aria-hidden="true">${final}</div>
+    <button class="primary" data-act="new">New match</button></div></main>`;
+}
+
+/* ----- input ----- */
+app.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]');
+  if (!el || el.disabled) return;
+  const act = el.dataset.act;
+  if (act === 'dismiss') { dismissFlash(); return; }
+  if (state.flash) return;                      // everything else waits for the result to clear
+  if (act === 'zoom') {
+    const i = Number(el.dataset.i);
+    if (!state.winner && state.squares[i] && !state.squares[i].owner) { state.screen = 'mini'; state.zoom = i; commit(); }
+  } else if (act === 'back') {
+    state.screen = 'board'; state.zoom = null; commit();
+  } else if (act === 'move') {
+    if (playMove(state, state.zoom, Number(el.dataset.m)).ok) commit();
+  } else if (act === 'new') {
+    if (state.winner || state.moves === 0 || confirm('Abandon this match and start a new one?')) { state = newMatch(); commit(); }
+  }
+});
+document.addEventListener('contextmenu', e => e.preventDefault());
+
+function commit() { save(); render(); }
+function armFlash() {
+  if (state.flash && !flashTimer) flashTimer = setTimeout(dismissFlash, FLASH_MS[state.flash.kind] || 800);
+}
+function dismissFlash() {
+  clearTimeout(flashTimer); flashTimer = null;
+  if (endFlash(state)) commit();
+}
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* no storage: just play without resume */ }
+}
+function load() {
+  try {
+    const s = JSON.parse(localStorage.getItem(KEY));
+    if (s && s.v === 1 && Array.isArray(s.squares) && s.squares.length === 9 && (s.turn === 'X' || s.turn === 'O')) return s;
+  } catch (e) { /* ignore corrupt saves */ }
+  return null;
+}
+
+render();
+</script>
+</body>
+</html>
