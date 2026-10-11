@@ -21,6 +21,10 @@ brings you back there with the names and selection kept.
 - If neither player has a legal move in a mini-game, that square resets the same way. A player who has
   no legal move in one square simply plays another; a player with no legal move anywhere is skipped.
 - If the main board fills with no three in a row, the player with more squares wins.
+- Claimed squares stay on view: the board shows the owner's mark over the mini-game's final state, and
+  tapping one opens that final state read-only with a "Won by" banner and every secret revealed (the
+  Wordle and Hangman words, the Higher/lower number, the Battleship cell, all Memory cards). Looking
+  never costs a turn.
 
 Each square is assigned one of these at random when the match starts (duplicates are fine):
 

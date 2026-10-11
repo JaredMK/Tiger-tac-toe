@@ -108,9 +108,14 @@ b.X { color: var(--x); } b.O { color: var(--o); }
 .sq.last-O { box-shadow: inset 0 0 0 2px var(--o); }
 .sq.own-X { background: var(--x-soft); box-shadow: inset 0 0 0 2px var(--x); }
 .sq.own-O { background: var(--o-soft); box-shadow: inset 0 0 0 2px var(--o); }
-.own { margin: auto; font-weight: 900; line-height: 1; font-size: 56px; font-size: 62cqw; }
-.own-X .own { color: var(--x); }
-.own-O .own { color: var(--o); }
+.own-ov {
+  position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none;
+  font-weight: 900; line-height: 1; font-size: 56px; font-size: 64cqw; opacity: .55; text-shadow: 0 2px 14px rgba(0, 0, 0, .7);
+}
+.own-X .own-ov { color: var(--x); }
+.own-O .own-ov { color: var(--o); }
+.tg.tmem i.up { background: var(--card); }
+.tg.tmem i.up svg { width: 72%; height: 72%; }
 .lab {
   display: flex; align-items: center; justify-content: center; gap: 4px;
   color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .03em; white-space: nowrap;
@@ -180,6 +185,10 @@ b.X { color: var(--x); } b.O { color: var(--o); }
   animation: zoomin .18s ease-out;
 }
 .bar { flex: none; height: var(--bar); width: 100%; display: flex; align-items: center; gap: 12px; }
+.bar.won { border-radius: 14px; padding: 0 12px 0 6px; }
+.bar.won-X { background: var(--x-soft); }
+.bar.won-O { background: var(--o-soft); }
+.ttl small.won { color: var(--text); }
 .back {
   flex: none; height: 44px; padding: 0 14px 0 10px; border: 0; border-radius: 12px;
   background: var(--panel-2); font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 2px;
@@ -1051,7 +1060,7 @@ function renderMain() {
   if (state.screen === 'win' && state.winner) return renderWin();
   if (state.screen === 'mini' && state.zoom != null) {
     const sq = state.squares[state.zoom];
-    if (sq && (!sq.owner || state.flash)) return renderMini(sq);
+    if (sq) return renderMini(sq);
   }
   return renderBoard();
 }
@@ -1089,11 +1098,11 @@ function renderBoard() {
     if (sq.owner) cls.push('own-' + sq.owner);
     else if (i === state.lastSquare && state.lastBy) cls.push('last-' + state.lastBy);
     const info = INFO[sq.mini.type];
-    const body = sq.owner
-      ? `<div class="own">${sq.owner}</div>`
-      : `<div class="lab">${ICONS[sq.mini.type]}<span>${info.name}</span></div><div class="thumb">${thumb(sq.mini)}</div>`;
-    const label = sq.owner ? `Square ${i + 1}, claimed by ${N(sq.owner)}` : `Square ${i + 1}: ${info.name}`;
-    return `<button class="${cls.join(' ')}" data-act="zoom" data-i="${i}" aria-label="${label}"${sq.owner ? ' disabled' : ''}>${body}</button>`;
+    // a claimed square keeps its label and final state, with the owner's mark laid over them
+    const body = `<div class="lab">${ICONS[sq.mini.type]}<span>${info.name}</span></div><div class="thumb">${thumb(sq.mini, !!sq.owner)}</div>`
+      + (sq.owner ? `<div class="own-ov" aria-hidden="true">${sq.owner}</div>` : '');
+    const label = sq.owner ? `Square ${i + 1}: ${info.name}, won by ${N(sq.owner)}. Tap to view` : `Square ${i + 1}: ${info.name}`;
+    return `<button class="${cls.join(' ')}" data-act="zoom" data-i="${i}" aria-label="${label}">${body}</button>`;
   }).join('');
   const hint = state.moves ? 'Tap any open square to make a move' : `${N(state.turn)} goes first. Tap a square to play`;
   const confirm = state.confirm === 'new'
@@ -1103,8 +1112,9 @@ function renderBoard() {
   return `<main class="scr board-scr"><div class="board">${sqs}</div>
     <div class="foot"><span class="hint">${hint}</span><button class="link" data-act="new">New match</button></div>${confirm}</main>`;
 }
-// Miniatures: public information only. Hidden words, numbers, cards and the ship never appear here.
-function thumb(mini) {
+// Miniatures: public information only. Hidden words, numbers, cards and the ship never appear here,
+// except that a claimed Memory square shows the pair that won it.
+function thumb(mini, final) {
   switch (mini.type) {
     case 'ttt': return `<div class="tg g3">${mini.cells.map(c => `<i class="${c || ''}">${c || ''}</i>`).join('')}</div>`;
     case 'c4':  return `<div class="tg g5">${mini.cells.map(c => `<i class="${c || ''}"></i>`).join('')}</div>`;
@@ -1125,7 +1135,10 @@ function thumb(mini) {
     case 'hex': return `<div class="thex">${[0, 1, 2, 3].map(r => `<div class="hr" style="--k:${r}">${[0, 1, 2, 3].map(c => `<i class="${mini.cells[r * HEX_N + c] || ''}"></i>`).join('')}</div>`).join('')}</div>`;
     case 'hilo': return `<div class="thilo"><b>${mini.lo}–${mini.hi}</b><small>${mini.guesses.length} guess${mini.guesses.length === 1 ? '' : 'es'}</small></div>`;
     case 'dice': return `<div class="tdice">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><div class="bar"><i style="width:${Math.min(100, mini.totals[p] / DICE_GOAL * 100)}%"></i></div><span>${mini.totals[p]}</span></div>`).join('')}</div>`;
-    case 'memory': return `<div class="tg g3 tmem">${'<i>?</i>'.repeat(9)}</div>`;
+    case 'memory': {
+      const shown = final && mini.winCells ? mini.winCells : [];
+      return `<div class="tg g3 tmem">${mini.cards.map((card, i) => (shown.includes(i) ? `<i class="up">${shapeSvg(card)}</i>` : '<i>?</i>')).join('')}</div>`;
+    }
     case 'candy': {
       const tk = i => ['X', 'O'].filter(p => mini.pos[p] === i).map(p => `<b class="${p}">${p}</b>`).join('');
       return `<div class="tcandy"><div class="bar">${tk(-1)}</div><div class="grid">${CANDY_ORDER.map(i => `<i class="${mini.track[i]}">${tk(i)}</i>`).join('')}</div></div>`;
@@ -1146,7 +1159,8 @@ function renderMini(sq) {
   const f = state.flash;
   const mini = f && f.drawn ? f.drawn : sq.mini;   // after a draw, keep showing the full board under the overlay
   const info = INFO[mini.type];
-  const locked = !!f;                               // no input while the result is showing
+  const view = !!sq.owner && !f;                    // a claimed square: final state, read-only, secrets revealed
+  const locked = !!f || view;                       // no input while the result is showing, or when just looking
   const anim = f ? (Number.isInteger(mini.last) ? mini.last : mini.last && Number.isInteger(mini.last.cell) ? mini.last.cell : null) : null;
   const won = i => !!(mini.winCells && mini.winCells.includes(i));
   const turn = state.turn;
@@ -1165,8 +1179,8 @@ function renderMini(sq) {
       break;
     case 'bs':
       g = `<div class="g-bs">${mini.revealed.map((r, i) => {
-        const hit = r && i === mini.hidden;
-        const cls = hit ? ' hit ' + r : r ? ' miss' : '';
+        const hit = (r || view) && i === mini.hidden;
+        const cls = hit ? ' hit ' + (r || sq.owner) : r ? ' miss' : '';
         return `<button class="cell sea${cls}${anim === i ? ' pop' : ''}" data-act="move" ${mv(i)} aria-label="Cell ${i + 1}${hit ? ', hit' : r ? ', miss' : ''}"${r || locked ? ' disabled' : ''}>${hit ? BOAT : ''}</button>`;
       }).join('')}</div>`;
       break;
@@ -1178,14 +1192,14 @@ function renderMini(sq) {
       for (const gs of mini.guesses) gs.word.split('').forEach((ch, k) => { if ((rank[gs.marks[k]] || 0) > (rank[best[ch]] || 0)) best[ch] = gs.marks[k]; });
       g = `<div class="g-wordle"><div class="wlist" id="wlist">${rows || '<div class="empty">No guesses yet. Type a 5-letter word.</div>'}</div>
         ${state.notice ? `<div class="notice" role="alert">${esc(state.notice)}</div>` : ''}
-        <div class="wrow cur${state.notice ? ' shake' : ''}" aria-label="Your guess">${cur}</div>
+        ${view ? '' : `<div class="wrow cur${state.notice ? ' shake' : ''}" aria-label="Your guess">${cur}</div>`}
         ${keyboard(k => best[k] || '', () => locked || d.length >= 5, { enter: locked || d.length !== 5, bksp: locked || !d.length })}</div>`;
       break;
     }
     case 'hangman': {
       const got = {};
       for (const x of mini.letters) got[x.l] = x.hit ? 'hit' : 'miss';
-      const tiles = mini.word.split('').map(ch => `<i class="ht${got[ch] ? ' on' : ''}">${got[ch] ? ch : ''}</i>`).join('');
+      const tiles = mini.word.split('').map(ch => `<i class="ht${got[ch] || view ? ' on' : ''}">${got[ch] || view ? ch : ''}</i>`).join('');
       const wrong = mini.letters.filter(x => !x.hit).map(x => x.l).join(' ');
       g = `<div class="g-hang"><div class="hword">${tiles}</div>
         <div class="hmiss">${wrong ? `Wrong: <b>${wrong}</b>` : 'No wrong letters yet'}</div>
@@ -1224,6 +1238,7 @@ function renderMini(sq) {
       const up = new Set();
       if (state.pick != null && !f) up.add(state.pick);
       if (f && f.reveal) f.reveal.forEach(k => up.add(k));
+      if (view) mini.cards.forEach((_, k) => up.add(k));      // the whole deck, once the square is won
       g = `<div class="g-mem">${mini.cards.map((card, i) => {
         const isUp = up.has(i);
         return `<button class="mc ${isUp ? 'up' : 'down'}${state.pick === i && !f ? ' pick' : ''}${won(i) ? ' win' : ''}${f && isUp ? ' pop' : ''}" data-act="pick" data-i="${i}" aria-label="Card ${i + 1}${isUp ? ', face up' : ''}"${locked ? ' disabled' : ''}>${isUp ? shapeSvg(card) : '?'}</button>`;
@@ -1253,10 +1268,17 @@ function renderMini(sq) {
     }
   }
   const lock = state.lock != null;
-  const sub = lock ? `<b class="${turn}">${N(turn)}</b> guessed right: go again` : info.hint;
+  let sub = lock ? `<b class="${turn}">${N(turn)}</b> guessed right: go again` : info.hint;
+  if (view) {
+    const secret = mini.type === 'wordle' || mini.type === 'hangman' ? `The word was ${mini.word}`
+      : mini.type === 'hilo' ? `The number was ${mini.target}`
+      : mini.type === 'bs' ? `The ship was at row ${Math.floor(mini.hidden / 3) + 1}, column ${mini.hidden % 3 + 1}`
+      : mini.type === 'memory' ? 'Every card shown' : '';
+    sub = `<b class="${sq.owner}">Won by ${N(sq.owner)}</b>${secret ? ' · ' + secret : ''}`;
+  }
   return `<main class="scr mini">
-    <div class="bar"><button class="back" data-act="back" aria-label="Back to the board"${locked || lock ? ' disabled' : ''}>${CHEV}Board</button>
-      <div class="ttl"><b>${info.name}</b><small>${sub}</small></div></div>
+    <div class="bar${view ? ' won won-' + sq.owner : ''}" role="${view ? 'status' : 'presentation'}"><button class="back" data-act="back" aria-label="Back to the board"${f || lock ? ' disabled' : ''}>${CHEV}Board</button>
+      <div class="ttl"><b>${info.name}</b><small${view ? ' class="won"' : ''}>${sub}</small></div></div>
     <div class="gwrap">${g}</div>${f ? renderFlash(f) : ''}</main>`;
 }
 function renderFlash(f) {
@@ -1316,9 +1338,9 @@ app.addEventListener('click', e => {
   const act = el.dataset.act;
   if (act === 'dismiss') { dismissFlash(); return; }
   if (state.flash) return;                      // everything else waits for the result to clear
-  if (act === 'zoom') {
+  if (act === 'zoom') {                        // open squares to play, claimed squares to look
     const i = Number(el.dataset.i);
-    if (state.winner || !state.squares[i] || state.squares[i].owner) return;
+    if (state.winner || !state.squares[i]) return;
     if (state.lock != null && state.lock !== i) return;
     state.screen = 'mini'; state.zoom = i; state.draft = ''; state.pick = null; state.notice = null; commit();
   } else if (act === 'back') {
