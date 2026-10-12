@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Insane-Tac-Toe</title>
+<title>Tiger-Tac-Toe</title>
 <style>
 :root {
   --bg: #0e1016;
@@ -1716,7 +1716,7 @@ function leaveSquare(state) {
 <script id="ui">
 'use strict';
 /* ===================== UI: render everything from state ===================== */
-const KEY = 'insane-tac-toe.v4';
+const KEY = 'tiger-tac-toe.v4';
 // How long a result stays up once its animation has played (a toast for a plain move, a card for a
 // claim, a draw or a Pig bust/bank); then the board comes back on its own and the turn passes.
 const FLASH_MS = { move: 1000, again: 650, claim: 1500, draw: 1700, match: 1300, card: 1500 };
@@ -1935,7 +1935,7 @@ function renderHeader() {
 /* ----- main menu ----- */
 function renderMenu() {
   return `<main class="scr menu"><div class="menu-card">
-    <h1>Insane-Tac-Toe</h1>
+    <h1>Tiger-Tac-Toe</h1>
     <p class="sub">Win the mini-game inside a square to claim it. Three squares in a row wins the match.</p>
     <button class="primary" data-act="mode-go" data-mode="cpu">Play vs Computer</button>
     <button class="primary alt" data-act="mode-go" data-mode="two">2 Players</button>

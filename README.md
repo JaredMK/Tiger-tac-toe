@@ -1,4 +1,4 @@
-# Insane-Tac-Toe
+# Tiger-Tac-Toe
 
 A two-player, pass-and-play game for one phone. The whole game is `index.html`:
 inline CSS and JS, no dependencies, no build step, works offline.
@@ -83,8 +83,8 @@ would reach 20.
 
 ## Deploying
 
-The game is served by GitHub Pages from the `main` branch of the `insane-tac-toe` repository, root
-folder, at https://jaredmk.github.io/insane-tac-toe/. After a change, publish it with one command:
+The game is served by GitHub Pages from the `main` branch of the `Tiger-tac-toe` repository, root
+folder, at https://jaredmk.github.io/Tiger-tac-toe/. After a change, publish it with one command:
 
 ```sh
 ./deploy.sh "what changed"
@@ -92,13 +92,13 @@ folder, at https://jaredmk.github.io/insane-tac-toe/. After a change, publish it
 
 It commits everything, pushes `main`, and the site updates within a minute or so.
 
-First-time setup: create an empty public repository called `insane-tac-toe` on GitHub, then push
+First-time setup: create an empty public repository called `Tiger-tac-toe` on GitHub, then push
 `main` to it. The workflow in `.github/workflows/pages.yml` switches Pages on and publishes the site
 on that first push, and again after every later push to `main` (which is what `deploy.sh` does).
 
 ```sh
 git checkout -B main
-git remote add origin https://github.com/JaredMK/insane-tac-toe.git
+git remote add origin https://github.com/JaredMK/Tiger-tac-toe.git
 git push -u origin main
 ```
 
