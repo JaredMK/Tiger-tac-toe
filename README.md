@@ -92,13 +92,14 @@ folder, at https://jaredmk.github.io/insane-tac-toe/. After a change, publish it
 
 It commits everything, pushes `main`, and the site updates within a minute or so.
 
-First-time setup, with the GitHub CLI signed in (`gh auth login`):
+First-time setup: create an empty public repository called `insane-tac-toe` on GitHub, then push
+`main` to it. The workflow in `.github/workflows/pages.yml` switches Pages on and publishes the site
+on that first push, and again after every later push to `main` (which is what `deploy.sh` does).
 
 ```sh
-git checkout -B main            # the branch GitHub Pages serves
-gh repo create insane-tac-toe --public --source=. --remote=origin --push
-gh api -X POST repos/JaredMK/insane-tac-toe/pages -f source[branch]=main -f source[path]=/
-gh api repos/JaredMK/insane-tac-toe/pages --jq '.status + " " + .html_url'   # "built" once it is live
+git checkout -B main
+git remote add origin https://github.com/JaredMK/insane-tac-toe.git
+git push -u origin main
 ```
 
 ## Tests
