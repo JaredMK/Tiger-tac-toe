@@ -463,7 +463,7 @@ test('hilo: guessing inside the range always ends the game, for every target', (
 });
 
 // ================================ Dice race ================================
-test('dice: a roll of 1 to 6 comes from the rng and adds to the roller, first to 15 wins', () => {
+test('dice: a roll of 1 to 6 comes from the rng and moves the roller, reaching or passing the finish (space 16) wins', () => {
   const m = mini('dice');
   assert.deepEqual(L.applyMove(m, 'X', 1, seq(pick(3, 6))), { ok: true, outcome: 'continue', note: 'roll' });
   assert.deepEqual(m.totals, { X: 4, O: 0 });
@@ -472,8 +472,13 @@ test('dice: a roll of 1 to 6 comes from the rng and adds to the roller, first to
   assert.deepEqual(m.totals, { X: 4, O: 6 });
   L.applyMove(m, 'X', 'whatever', seq(pick(5, 6)));   // the move value is ignored, only the roll matters
   L.applyMove(m, 'X', 1, seq(pick(4, 6)));
-  assert.equal(L.applyMove(m, 'X', 1, seq(pick(0, 6))).outcome, 'win');   // 4 + 6 + 5 + 1 = 16 >= 15
+  assert.equal(m.totals.X, 15, 'on the last numbered space, not finished yet');
+  assert.equal(L.applyMove(m, 'X', 1, seq(pick(0, 6))).outcome, 'win');   // 4 + 6 + 5 + 1 = 16: the finish
   assert.deepEqual(m.totals, { X: 16, O: 6 });
+  const far = mini('dice');
+  L.applyMove(far, 'O', 1, seq(pick(5, 6))); L.applyMove(far, 'O', 1, seq(pick(5, 6)));
+  assert.equal(L.applyMove(far, 'O', 1, seq(pick(5, 6))).outcome, 'win', 'passing the finish wins too');
+  assert.equal(far.totals.O, 18);
   const seen = new Set();
   for (let k = 0; k < 500; k++) { const d = mini('dice'); L.applyMove(d, 'X', 1, Math.random); seen.add(d.last.roll); }
   assert.deepEqual([...seen].sort(), [1, 2, 3, 4, 5, 6]);
@@ -483,9 +488,9 @@ test('dice: three straight rolls by one player can win before the other ever rol
   const st = matchWith(['dice', 'ttt']);
   turn(st, 0, 1, seq(pick(5, 6))); turn(st, 1, 0);
   turn(st, 0, 1, seq(pick(5, 6))); turn(st, 1, 1);
-  const f = turn(st, 0, 1, seq(pick(2, 6)));
+  const f = turn(st, 0, 1, seq(pick(3, 6)));
   assert.equal(f.kind, 'claim');
-  assert.deepEqual(st.squares[0].mini.totals, { X: 15, O: 0 });
+  assert.deepEqual(st.squares[0].mini.totals, { X: 16, O: 0 });
 });
 
 // ================================== Memory ==================================
@@ -611,43 +616,57 @@ test('coins: six coins, three of each, in random positions', () => {
   assert.ok(orders.size > 10, 'the positions are shuffled');
 });
 
-test('coins: only 1 to 3 distinct coins showing the other side can be flipped', () => {
+test('coins: one Flip turns all of the other side\'s coins when they have three or fewer, never your own', () => {
   const m = coinsOf('X', 'O', 'X', 'O', 'X', 'O');
-  for (const bad of [[], [1, 3, 5, 1], [1, 3, 5, 7], 1, null, 'ab', [1.5], [-1], [6], [1, 1]]) {
-    assert.deepEqual(L.applyMove(m, 'X', bad), { ok: false, reason: 'bad' }, JSON.stringify(bad));
-  }
-  assert.deepEqual(L.applyMove(m, 'X', [0]), { ok: false, reason: 'own' }, 'your own coin');
-  assert.deepEqual(L.applyMove(m, 'X', [1, 2]), { ok: false, reason: 'own' }, 'one of them is yours');
-  assert.deepEqual(L.applyMove(m, 'O', [1]), { ok: false, reason: 'own' });
+  for (const bad of [[1], [1, 3, 5], 1, null, 'ab', 'bank']) assert.deepEqual(L.applyMove(m, 'X', bad), { ok: false, reason: 'bad' }, JSON.stringify(bad));
   assert.deepEqual(m.coins, ['X', 'O', 'X', 'O', 'X', 'O'], 'rejected moves change nothing');
-  assert.deepEqual(L.applyMove(m, 'X', [1, 3, 5], headsRng('X')), { ok: true, outcome: 'win', winner: 'X', cells: [0, 1, 2, 3, 4, 5] }, 'three heads in a row');
+  assert.deepEqual(L.applyMove(m, 'X', 'flip', seq(pick(0, 2), pick(1, 2), pick(0, 2))), { ok: true, outcome: 'continue', note: 'flip' });
+  assert.deepEqual(m.last, { by: 'X', flipped: [1, 3, 5], results: ['X', 'O', 'X'] }, 'all three O coins, landing as the rng says');
+  assert.deepEqual(m.coins, ['X', 'X', 'X', 'O', 'X', 'X']);
+  const o = coinsOf('X', 'X', 'X', 'X', 'X', 'O');
+  assert.deepEqual(L.applyMove(o, 'O', 'flip', headsRng('O')).outcome, 'continue');
+  assert.equal(o.last.flipped.length, 3, 'three of the five X coins');
+  assert.ok(o.last.flipped.every(k => k !== 5), 'never the flipper\'s own coin');
+  const done = coinsOf('X', 'X', 'X', 'X', 'X', 'X');
+  assert.deepEqual(L.applyMove(done, 'X', 'flip'), { ok: false, reason: 'none' }, 'nothing of the other side left to flip');
 });
 
-test('coins: each flipped coin lands on the rng result and a win is checked after every flip', () => {
-  const m = coinsOf('X', 'O', 'X', 'O', 'X', 'O');
-  assert.deepEqual(L.applyMove(m, 'X', [1, 3], seq(pick(0, 2), pick(1, 2))), { ok: true, outcome: 'continue', note: 'flip' });
-  assert.deepEqual(m.coins, ['X', 'X', 'X', 'O', 'X', 'O'], 'one landed X, one landed O');
-  assert.deepEqual(m.last, { by: 'X', flipped: [1, 3], results: ['X', 'O'] });
-  assert.equal(L.applyMove(m, 'X', [3, 5], headsRng('O')).outcome, 'continue', 'both stayed O: no win');
-  assert.equal(L.applyMove(m, 'O', [0, 1, 2], headsRng('O')).outcome, 'continue', 'O turns three; one X left');
-  assert.deepEqual(m.coins, ['O', 'O', 'O', 'O', 'X', 'O']);
-  const r = L.applyMove(m, 'O', [4], headsRng('O'));
+test('coins: with more than three of the other side\'s coins, three are picked at random', () => {
+  const picks = new Set();
+  for (let k = 0; k < 60; k++) {
+    const m = coinsOf('O', 'O', 'O', 'O', 'O', 'X');
+    const r = L.applyMove(m, 'X', 'flip', lcg(k + 1));
+    assert.equal(r.ok, true);
+    assert.equal(m.last.flipped.length, 3);
+    assert.ok(m.last.flipped.every(i => i < 5), 'only O coins');
+    assert.equal(new Set(m.last.flipped).size, 3, 'three different coins');
+    assert.equal(m.coins[5], 'X', 'X\'s own coin is untouched');
+    assert.equal(m.coins.filter((c, i) => c === 'O' && !m.last.flipped.includes(i)).length, 2, 'the two unflipped O coins stay O');
+    picks.add(m.last.flipped.join(''));
+  }
+  assert.ok(picks.size > 3, `the three are picked at random (${picks.size} different picks)`);
+});
+
+test('coins: a win is checked after every flip', () => {
+  const m = coinsOf('X', 'X', 'X', 'O', 'O', 'O');
+  assert.equal(L.applyMove(m, 'O', 'flip', headsRng('O')).outcome, 'win', 'all three X coins land O');
+  assert.deepEqual(m.coins, ['O', 'O', 'O', 'O', 'O', 'O']);
+  const n = coinsOf('X', 'X', 'X', 'O', 'O', 'O');
+  assert.equal(L.applyMove(n, 'O', 'flip', seq(pick(1, 2), pick(1, 2), pick(0, 2))).outcome, 'continue', 'one landed X: no win');
+  const r = L.applyMove(n, 'O', 'flip', headsRng('O'));
   assert.equal(r.outcome, 'win');
   assert.equal(r.winner, 'O');
-  assert.deepEqual(m.coins, ['O', 'O', 'O', 'O', 'O', 'O']);
-  assert.equal(L.applyMove(m, 'X', [0], headsRng('X')).ok, true, 'the logic itself does not know the square is over');
 });
 
 test('coins: X can keep flipping across turns and claim the square while O plays elsewhere (lopsided)', () => {
   const st = matchWith(['coins', 'ttt']);
-  st.squares[0].mini = coinsOf('O', 'O', 'O', 'X', 'X', 'X');
-  turn(st, 0, [0, 1], headsRng('X')); turn(st, 1, 0);
-  assert.deepEqual(st.squares[0].mini.coins, ['X', 'X', 'O', 'X', 'X', 'X']);
-  assert.deepEqual(st.sel, [], 'the selection is cleared after a move');
-  const f = turn(st, 0, [2], headsRng('X'));
+  st.squares[0].mini = coinsOf('O', 'O', 'O', 'O', 'X', 'X');
+  turn(st, 0, 'flip', headsRng('X')); turn(st, 1, 0);
+  assert.equal(st.squares[0].mini.coins.filter(c => c === 'X').length, 5, 'three O coins turned X');
+  const f = turn(st, 0, 'flip', headsRng('X'));
   assert.equal(f.kind, 'claim');
   assert.equal(f.winner, 'X');
-  assert.equal(f.n, 1);
+  assert.equal(f.n, 1, 'only one coin was left to flip');
   assert.equal(st.squares[0].owner, 'X');
   assert.equal(L.canMove(st.squares[0].mini, 'O'), true);
 });
@@ -803,10 +822,10 @@ test('hunt: digging every other cell never ends the game, the treasure always do
 });
 
 // ================================ Setup / match flow ================================
-test('setup: the app opens on the setup screen with default names and every game ticked', () => {
+test('setup: the app opens on the main menu with default names and every game ticked', () => {
   const st = L.newState(lcg(1));
   assert.equal(st.v, 4);
-  assert.equal(st.screen, 'setup');
+  assert.equal(st.screen, 'menu', 'the main menu comes first');
   assert.deepEqual(st.setup.names, { X: 'X', O: 'O' });
   assert.deepEqual(L.enabledGames(st.setup), L.TYPES);
   assert.equal(L.TYPES.length, 13);
@@ -1119,10 +1138,7 @@ function randomMove(m, rng, p) {
     case 'dice': case 'candy': return 1;
     case 'hilo': return m.lo + Math.floor(rng() * (m.hi - m.lo + 1));
     case 'memory': { const a = Math.floor(rng() * 9); let b = Math.floor(rng() * 8); if (b >= a) b++; return [a, b]; }
-    case 'coins': {
-      const opp = m.coins.map((c, k) => (c !== p ? k : -1)).filter(k => k >= 0).sort(() => rng() - 0.5);
-      return opp.slice(0, 1 + Math.floor(rng() * Math.min(3, opp.length)));
-    }
+    case 'coins': return 'flip';
     case 'pig': {
       if (!m.turn) return 'roll';
       if (m.turn.rolls.length >= L.PIG.maxRolls) return 'bank';
@@ -1501,9 +1517,9 @@ test('memory tactics: a known pair is flipped, otherwise only unseen cards', () 
 
 test('coin flip, higher/lower and pig tactics', () => {
   const coins = L.localBest({ type: 'coins', coins: ['X', 'O', 'O', 'O', 'O', 'X'] }, 'X', cpuRng());
-  assert.equal(coins.move.length, 3, 'flips the most allowed');
-  assert.ok(coins.move.every(k => [1, 2, 3, 4].includes(k)), "only the other side's coins");
-  assert.equal(L.localBest({ type: 'coins', coins: ['X', 'X', 'X', 'X', 'X', 'O'] }, 'X', cpuRng()).move.length, 1);
+  assert.equal(coins.move, 'flip');
+  assert.equal(coins.q, 0, 'four to turn: no chance of finishing this move');
+  assert.equal(L.localBest({ type: 'coins', coins: ['X', 'X', 'X', 'X', 'X', 'O'] }, 'X', cpuRng()).q, 0.5);
   assert.equal(L.localBest({ type: 'hilo', lo: 1, hi: 20, guesses: [] }, 'X', cpuRng()).move, 10);
   assert.equal(L.localBest({ type: 'hilo', lo: 11, hi: 20, guesses: [] }, 'X', cpuRng()).move, 15);
   assert.equal(L.localBest({ type: 'hilo', lo: 7, hi: 7, guesses: [] }, 'X', cpuRng()).q, 1);
@@ -1526,7 +1542,7 @@ test('candy race and dice race: the odds are read from the public state', () => 
   assert.equal(E[13], 0);
   const noBlue = L.localBest({ type: 'candy', track: ['red', 'green', 'yellow', 'red', 'green', 'yellow', 'red', 'green', 'yellow', 'red', 'green', 'yellow'], pos: { X: 9, O: -1 } }, 'X', cpuRng());
   assert.equal(noBlue.q, 0.5, 'blue or red from space 10 goes straight to the finish');
-  assert.equal(L.localBest({ type: 'dice', totals: { X: 12, O: 0 } }, 'X', cpuRng()).q, 4 / 6);
+  assert.equal(L.localBest({ type: 'dice', totals: { X: 12, O: 0 } }, 'X', cpuRng()).q, 3 / 6, 'four spaces short: a 4, 5 or 6 finishes');
   assert.equal(L.localBest({ type: 'dice', totals: { X: 0, O: 0 } }, 'X', cpuRng()).q, 0);
   assert.ok(L.needsOf({ type: 'dice', totals: { X: 12, O: 0 } }, 'X') < L.needsOf({ type: 'dice', totals: { X: 0, O: 0 } }, 'X'));
   assert.equal(L.winChance(0, 3), 1); assert.equal(L.winChance(3, 0), 0); assert.equal(L.winChance(2, 2), 0.5); assert.equal(L.winChance(Infinity, Infinity), 0.5);

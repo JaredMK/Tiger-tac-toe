@@ -5,10 +5,11 @@ inline CSS and JS, no dependencies, no build step, works offline.
 
 Open `index.html` in a browser (or serve the folder with any static server) and play.
 
-A setup screen comes first: choose "2 players" or "vs Computer" (and, against the computer, whether
-you play X, who goes first, or O), enter the names (defaults X and O, the computer is called
-"Computer"), tick the mini-games you want in the mix (all are on by default, at least one must stay
-on) and press Start. "New match" brings you back there with everything kept.
+A main menu comes first: "Play vs Computer" or "2 Players". The setup screen that follows takes the
+names (defaults X and O; the computer is called "Computer"), against the computer which side you play
+(X goes first), and under "Advanced" the mini-games in the mix (all on by default, at least one must
+stay on). "New match" after a game brings you back to setup with everything kept, and "Main menu" is a
+tap away from the setup and win screens.
 
 ## Rules
 
@@ -40,10 +41,10 @@ Each square is assigned one of these at random when the match starts (duplicates
 | Hangman | Hidden 5–7 letter word; guess a letter. A right letter is revealed and you guess again at once; a wrong letter ends your turn. Revealing the last letter wins |
 | Hex | 4×4 hex grid; X connects left to right, O connects top to bottom |
 | Higher/lower | The computer picks 1–20; each guess is answered higher or lower. Guessing it wins |
-| Dice race | Roll a die and add it to your total; first to 15 wins |
+| Dice race | A winding path of 15 numbered spaces and a Finish. Roll a die and your piece hops that many spaces; reaching or passing the Finish wins |
 | Memory | 3×3 face-down cards with exactly one matching pair; a move flips two cards for 2 seconds. Flipping the pair wins |
-| Candy race | A winding track of 12 randomly coloured spaces (any three in a row are all different colours); a spin of the colour wheel hops your token to the next space of that colour. No such space ahead means you reach the finish, shown in all four colours, and win |
-| Coin flip | Six coins showing X or O, three of each to start. Pick 1 to 3 of the other side's coins and flip them; each lands X or O at random. All six the same wins for that symbol's player |
+| Candy race | A winding path of 12 randomly coloured spaces (any three in a row are all different colours) from Start to a Finish shown in all four colours; a spin of the colour wheel hops your token to the next space of that colour. No such space ahead means you reach the Finish and win |
+| Coin flip | Six coins showing X or O, three of each to start. Flip turns up to 3 of the other side's coins (all of them if they have 3 or fewer, otherwise 3 picked at random); each lands X or O at random. All six the same wins for that symbol's player |
 | Pig | Each player has a banked score. A move is a whole push-your-luck turn: roll a die, and a number not yet rolled this turn joins the pot; then roll again or bank. Banking adds the pot to your score and ends the move; a repeated number busts, losing the pot (at most six rolls). First to a banked 20 wins |
 | Treasure hunt | 5×5 grid with one hidden treasure. A move digs a cell: the treasure wins, otherwise the cell shows its distance to the treasure in steps up, down, left or right, coloured hot to cold. Everything dug stays visible |
 
@@ -79,6 +80,26 @@ the words still consistent with the pattern; Memory remembers every card shown a
 pair, else unseen cards; Coin flip flips the most coins allowed; Pig keeps rolling while the bust risk
 is acceptable and banks around 8 to 10, bolder when behind and safer when ahead, always when the bank
 would reach 20.
+
+## Deploying
+
+The game is served by GitHub Pages from the `main` branch of the `insane-tac-toe` repository, root
+folder, at https://jaredmk.github.io/insane-tac-toe/. After a change, publish it with one command:
+
+```sh
+./deploy.sh "what changed"
+```
+
+It commits everything, pushes `main`, and the site updates within a minute or so.
+
+First-time setup, with the GitHub CLI signed in (`gh auth login`):
+
+```sh
+git checkout -B main            # the branch GitHub Pages serves
+gh repo create insane-tac-toe --public --source=. --remote=origin --push
+gh api -X POST repos/JaredMK/insane-tac-toe/pages -f source[branch]=main -f source[path]=/
+gh api repos/JaredMK/insane-tac-toe/pages --jq '.status + " " + .html_url'   # "built" once it is live
+```
 
 ## Tests
 
