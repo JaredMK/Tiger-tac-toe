@@ -170,6 +170,10 @@ b.X { color: var(--x); } b.O { color: var(--o); }
 .tdice .X .bar i { background: var(--x); }
 .tdice .O .bar i { background: var(--o); }
 .tg.tmem i { background: repeating-linear-gradient(45deg, #2a2f44 0 3px, #232737 3px 6px); color: var(--muted); font-size: 9cqw; }
+.tcoin { display: flex; gap: 1.5cqw; }
+.tcoin i { width: 12cqw; height: 12cqw; border-radius: 50%; display: grid; place-items: center; font-size: 8cqw; font-weight: 900; line-height: 1; color: var(--bg); }
+.tcoin i.X { background: var(--x); }
+.tcoin i.O { background: var(--o); }
 
 .foot {
   flex: none; height: var(--foot); width: 100%; max-width: 560px;
@@ -342,6 +346,19 @@ b.X { color: var(--x); } b.O { color: var(--o); }
 .notice { align-self: center; flex: none; background: var(--text); color: var(--bg); font-weight: 800; font-size: 14px; padding: 6px 14px; border-radius: 999px; animation: pop .15s; }
 .wrow.cur.shake { animation: shake .4s; }
 
+.g-coins { width: var(--g); display: flex; flex-direction: column; gap: 18px; }
+.coins { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+.coin {
+  aspect-ratio: 1; border: 0; padding: 0; border-radius: 50%; display: grid; place-items: center;
+  font-weight: 900; font-size: calc(var(--g) * .085); line-height: 1; color: var(--bg);
+  box-shadow: inset 0 -4px 0 rgba(0, 0, 0, .25), 0 3px 6px rgba(0, 0, 0, .4); transition: transform .08s;
+}
+.coin.X { background: var(--x); }
+.coin.O { background: var(--o); }
+.coin.off { opacity: .4; }
+.coin.sel { box-shadow: 0 0 0 4px var(--text), 0 3px 6px rgba(0, 0, 0, .4); transform: translateY(-4px); }
+.coin.flip { animation: coinflip .9s cubic-bezier(.3, .7, .3, 1) both; }
+.coin.flip b { animation: appear .9s step-end both; }
 .g-candy { width: var(--g); display: flex; flex-direction: column; gap: 10px; }
 .cchip { height: 30px; border-radius: 10px; background: var(--panel); display: flex; align-items: center; gap: 8px; padding: 0 12px; font-weight: 800; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
 .ctrack { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
@@ -457,6 +474,8 @@ b.tok { color: #fff; }
 @keyframes drop { from { transform: translateY(-130%); opacity: .4; } }
 @keyframes zoomin { from { transform: scale(.94); opacity: 0; } }
 @keyframes shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
+@keyframes coinflip { to { transform: rotateY(1080deg); } }
+@keyframes appear { from { opacity: 0; } to { opacity: 1; } }
 @keyframes vanish { to { opacity: 0; transform: scale(.4); } }
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(var(--to, 0deg)); } }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
@@ -471,7 +490,7 @@ b.tok { color: #fff; }
  * Everything about a match lives in one plain object (see newMatch); the UI
  * only ever calls playMove / endFlash and re-renders from that object.
  */
-const TYPES = ['ttt', 'c4', 'bs', 'wordle', 'hangman', 'hex', 'hilo', 'dice', 'memory', 'candy'];
+const TYPES = ['ttt', 'c4', 'bs', 'wordle', 'hangman', 'hex', 'hilo', 'dice', 'memory', 'candy', 'coins'];
 const INFO = {
   ttt:         { name: 'Tic-Tac-Toe',  hint: 'Three in a row wins' },
   c4:          { name: 'Connect 4',    hint: 'Pieces drop. Four in a row wins' },
@@ -483,12 +502,14 @@ const INFO = {
   dice:        { name: 'Dice Race',    hint: 'Roll and add up. First to 15 wins' },
   memory:      { name: 'Memory',       hint: 'Flip two cards. Find the matching pair' },
   candy:       { name: 'Candy Race',   hint: 'Spin, then hop to the next space of that colour' },
+  coins:       { name: 'Coin Flip',    hint: "Flip 1 to 3 of the other side's coins. All six the same wins" },
 };
 const C4 = { cols: 5, rows: 6, k: 4 };
 const HEX_N = 4;
 const HILO = { lo: 1, hi: 20 };
 const CANDY = { len: 12, colors: ['red', 'yellow', 'green', 'blue'], gap: 3 };   // same colour at least 3 spaces apart
 const NAME_MAX = 12;
+const COINS = { n: 6, max: 3 };
 const DICE_GOAL = 15;
 const MEMORY = { shapes: ['circle', 'square', 'triangle', 'diamond'], colors: ['green', 'yellow', 'purple', 'orange'] };
 const LINES = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6]];
@@ -738,6 +759,7 @@ function newMini(type, rng) {
     case 'dice':        return { type, totals: { X: 0, O: 0 }, last: null };
     case 'memory':      return { type, cards: memoryDeck(rng), flips: 0, last: null };
     case 'candy':       return { type, track: candyTrack(rng), pos: { X: -1, O: -1 }, last: null };
+    case 'coins':       return { type, coins: shuffle(['X', 'X', 'X', 'O', 'O', 'O'], rng), last: null };
   }
   throw new Error('unknown mini-game: ' + type);
 }
@@ -765,6 +787,7 @@ function newState(rng) {
     lock: null,               // square the current player must keep playing (Hangman bonus guess)
     draft: '',                // letters typed so far (Wordle)
     pick: null,               // first card chosen (Memory)
+    sel: [],                  // coins chosen so far (Coin flip)
     confirm: null,            // 'new' while the "abandon this match?" card is up
     notice: null,             // short message over the Wordle keyboard ("Not a word")
     winner: null, winLine: null, winReason: null, counts: null,
@@ -784,7 +807,7 @@ function startMatch(state, rng) {
   state.games = games;
   state.squares = Array.from({ length: 9 }, () => newSquare(games, rng));
   state.screen = 'board'; state.turn = 'X';
-  state.zoom = null; state.flash = null; state.lock = null; state.draft = ''; state.pick = null; state.confirm = null; state.notice = null;
+  state.zoom = null; state.flash = null; state.lock = null; state.draft = ''; state.pick = null; state.sel = []; state.confirm = null; state.notice = null;
   state.winner = null; state.winLine = null; state.winReason = null; state.counts = null;
   state.lastSquare = null; state.lastBy = null; state.moves = 0;
   return true;
@@ -914,6 +937,18 @@ function applyMove(mini, p, m, rng) {
       if (to === CANDY.len) return { ok: true, outcome: 'win' };
       return { ok: true, outcome: 'continue', note: 'spin' };
     }
+    case 'coins': {
+      if (!Array.isArray(m) || m.length < 1 || m.length > COINS.max) return { ok: false, reason: 'bad' };
+      if (!m.every(k => Number.isInteger(k) && k >= 0 && k < COINS.n) || new Set(m).size !== m.length) return { ok: false, reason: 'bad' };
+      if (m.some(k => mini.coins[k] !== other(p))) return { ok: false, reason: 'own' };   // only the other side's coins
+      const r = rng || Math.random;
+      const results = m.map(() => (randInt(r, 2) ? 'O' : 'X'));
+      m.forEach((k, j) => { mini.coins[k] = results[j]; });
+      mini.last = { by: p, flipped: m.slice(), results };
+      const sym = mini.coins[0];
+      if (mini.coins.every(c => c === sym)) return { ok: true, outcome: 'win', winner: sym, cells: [0, 1, 2, 3, 4, 5] };
+      return { ok: true, outcome: 'continue', note: 'flip' };
+    }
   }
   return { ok: false, reason: 'bad' };
 }
@@ -961,6 +996,7 @@ function playMove(state, i, m, rng) {
     case 'dice': flash.roll = mini.last.roll; flash.total = mini.totals[p]; break;
     case 'memory': flash.reveal = [m[0], m[1]]; break;
     case 'candy': flash.color = mini.last.color; flash.from = mini.last.from; flash.to = mini.last.to; break;
+    case 'coins': flash.n = m.length; break;
   }
   if (outcome === 'win') {
     const w = res.winner || p;                   // a mini-game may hand the square to the other player
@@ -986,7 +1022,7 @@ function playMove(state, i, m, rng) {
     if (!state.winner && !anyMove(state, state.turn) && anyMove(state, p)) { flash.pass = state.turn; state.turn = p; }
     flash.next = state.turn;
   }
-  state.draft = ''; state.pick = null;
+  state.draft = ''; state.pick = null; state.sel = [];
   state.moves += 1; state.lastSquare = i; state.lastBy = p;
   state.flash = flash;
   return { ok: true, flash };
@@ -1010,7 +1046,7 @@ function endFlash(state) {
 const KEY = 'insane-tac-toe.v4';
 const FLASH_MS = { move: 700, again: 650, claim: 1500, draw: 1800, match: 1300 };
 const MEMORY_MS = 2000;   // the two flipped cards stay up this long
-const SPIN_MS = 1100;     // the candy wheel's spin
+const SPIN_MS = { candy: 1100, coins: 900 };   // the candy wheel's spin, the coins' tumble
 const app = document.getElementById('app');
 let state = load() || newState();
 let flashTimer = null, noticeTimer = null;
@@ -1028,6 +1064,7 @@ const ICONS = {
   dice: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="4"/><g fill="currentColor" stroke="none"><circle cx="8" cy="8" r="1.7"/><circle cx="16" cy="8" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="8" cy="16" r="1.7"/><circle cx="16" cy="16" r="1.7"/></g></svg>',
   memory: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><rect x="3" y="6" width="11" height="15" rx="2"/><path d="M8 3h11a2 2 0 0 1 2 2v12"/></svg>',
   candy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17M3.5 12h17M6 6l12 12M18 6 6 18" stroke-width="1.6"/></svg>',
+  coins: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/></svg>',
 };
 const CANDY_ORDER = [0, 1, 2, 3, 4, 5, 11, 10, 9, 8, 7, 6];   // the track snakes: left to right, then back
 const BOAT = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M2.5 14.5h19l-2.6 4.6a2 2 0 0 1-1.7 1H6.8a2 2 0 0 1-1.7-1z"/><path d="M11 3h2v10h-2z"/><path d="M13 4.5 18.5 11H13z"/><path d="M5 12.5h14v2H5z"/></svg>';
@@ -1143,6 +1180,7 @@ function thumb(mini, final) {
       const tk = i => ['X', 'O'].filter(p => mini.pos[p] === i).map(p => `<b class="${p}">${p}</b>`).join('');
       return `<div class="tcandy"><div class="bar">${tk(-1)}</div><div class="grid">${CANDY_ORDER.map(i => `<i class="${mini.track[i]}">${tk(i)}</i>`).join('')}</div></div>`;
     }
+    case 'coins': return `<div class="tcoin">${mini.coins.map(c => `<i class="${c}">${c}</i>`).join('')}</div>`;
   }
   return '';
 }
@@ -1266,6 +1304,21 @@ function renderMini(sq) {
         <button class="big ${turn}" data-act="move" ${mv(1)}${locked ? ' disabled' : ''}>Spin for ${N(turn)}</button></div>`;
       break;
     }
+    case 'coins': {
+      const sel = locked ? [] : (state.sel || []);
+      const flipped = f && mini.last ? mini.last.flipped : [];
+      const full = sel.length >= COINS.max;
+      const status = view ? `All six show ${sq.owner}`
+        : sel.length ? `${sel.length} of up to ${COINS.max} chosen` : `Pick 1 to ${COINS.max} of <b class="${other(turn)}">${N(other(turn))}</b>'s coins`;
+      g = `<div class="g-coins"><div class="coins">${mini.coins.map((c, i) => {
+        const own = c === turn, on = sel.includes(i);
+        const off = !view && !f && own;
+        return `<button class="coin ${c}${on ? ' sel' : ''}${off ? ' off' : ''}${flipped.includes(i) ? ' flip' : ''}" data-act="coin" data-i="${i}" aria-label="Coin ${i + 1}, ${c}${own ? ', yours' : ''}${on ? ', chosen' : ''}"${locked || own || (full && !on) ? ' disabled' : ''}><b>${c}</b></button>`;
+      }).join('')}</div>
+        <div class="dielab">${status}</div>
+        <button class="big ${turn}" data-act="move" ${mv(sel)}${locked || !sel.length ? ' disabled' : ''}>Flip${sel.length ? ' ' + sel.length : ''}</button></div>`;
+      break;
+    }
   }
   const lock = state.lock != null;
   let sub = lock ? `<b class="${turn}">${N(turn)}</b> guessed right: go again` : info.hint;
@@ -1273,7 +1326,8 @@ function renderMini(sq) {
     const secret = mini.type === 'wordle' || mini.type === 'hangman' ? `The word was ${mini.word}`
       : mini.type === 'hilo' ? `The number was ${mini.target}`
       : mini.type === 'bs' ? `The ship was at row ${Math.floor(mini.hidden / 3) + 1}, column ${mini.hidden % 3 + 1}`
-      : mini.type === 'memory' ? 'Every card shown' : '';
+      : mini.type === 'memory' ? 'Every card shown'
+      : mini.type === 'coins' ? `All six show ${sq.owner}` : '';
     sub = `<b class="${sq.owner}">Won by ${N(sq.owner)}</b>${secret ? ' · ' + secret : ''}`;
   }
   return `<main class="scr mini">
@@ -1287,7 +1341,7 @@ function renderFlash(f) {
     : `<b class="${f.next}">${N(f.next)}</b>'s turn`;
   const who = `<b class="${f.by}">${N(f.by)}</b>`;
   const name = INFO[f.type].name;
-  const late = f.type === 'candy' ? ' late' : '';                  // let the wheel finish spinning first
+  const late = SPIN_MS[f.type] ? ' late' : '';                     // let the wheel spin or the coins land first
   if (f.kind === 'match') {
     const w = state.winner;
     return `<div class="flash${late}" data-act="dismiss"><div class="card"><div class="big-g ${w}">${w}</div><h2>${N(w)} wins the match!</h2><p>Tap to continue</p></div></div>`;
@@ -1310,6 +1364,7 @@ function renderFlash(f) {
     case 'dice': msg = `${who} rolled ${f.roll} · ${f.total} total · ${next}`; break;
     case 'memory': msg = `No match · ${next}`; break;
     case 'candy': msg = `${who} spun ${f.color} · ${next}`; break;
+    case 'coins': msg = `${who} flipped ${f.n} · ${next}`; break;
     default: msg = `${who} placed · ${next}`;
   }
   const skip = f.type === 'memory' ? '' : ' data-act="dismiss"';   // the two cards stay up for the full 2 seconds
@@ -1342,10 +1397,10 @@ app.addEventListener('click', e => {
     const i = Number(el.dataset.i);
     if (state.winner || !state.squares[i]) return;
     if (state.lock != null && state.lock !== i) return;
-    state.screen = 'mini'; state.zoom = i; state.draft = ''; state.pick = null; state.notice = null; commit();
+    state.screen = 'mini'; state.zoom = i; state.draft = ''; state.pick = null; state.sel = []; state.notice = null; commit();
   } else if (act === 'back') {
     if (state.lock != null) return;             // a bonus guess has to be taken here
-    state.screen = 'board'; state.zoom = null; state.draft = ''; state.pick = null; state.notice = null; commit();
+    state.screen = 'board'; state.zoom = null; state.draft = ''; state.pick = null; state.sel = []; state.notice = null; commit();
   } else if (act === 'move') {
     if (playMove(state, state.zoom, JSON.parse(el.dataset.m)).ok) commit();
   } else if (act === 'key') {
@@ -1359,6 +1414,10 @@ app.addEventListener('click', e => {
     if (state.pick == null) state.pick = i;
     else if (state.pick === i) state.pick = null;
     else if (!playMove(state, state.zoom, [state.pick, i]).ok) state.pick = null;
+    commit();
+  } else if (act === 'coin') {                  // choose up to three of the other side's coins
+    const i = Number(el.dataset.i), sel = state.sel || [];
+    state.sel = sel.includes(i) ? sel.filter(k => k !== i) : sel.length < COINS.max ? sel.concat(i) : sel;
     commit();
   } else if (act === 'new') {
     if (state.winner || state.moves === 0) { state.screen = 'setup'; state.confirm = null; commit(); }
@@ -1423,7 +1482,7 @@ function armFlash() {
   if (!state.flash || flashTimer) return;
   const f = state.flash;
   let ms = f.type === 'memory' && f.kind === 'move' ? MEMORY_MS : (FLASH_MS[f.kind] || 800);
-  if (f.type === 'candy') ms += SPIN_MS;           // the wheel spins first
+  if (SPIN_MS[f.type]) ms += SPIN_MS[f.type];     // the wheel spins, the coins tumble, then the result shows
   flashTimer = setTimeout(dismissFlash, ms);
 }
 function dismissFlash() {
@@ -1438,7 +1497,8 @@ function load() {
     const s = JSON.parse(localStorage.getItem(KEY));
     if (s && s.v === 4 && Array.isArray(s.squares) && s.squares.length === 9 && (s.turn === 'X' || s.turn === 'O') && s.setup) {
       if (s.lock != null && !s.winner) { s.screen = 'mini'; s.zoom = s.lock; }
-      s.notice = null;
+      s.notice = null; s.sel = [];
+      for (const t of TYPES) if (!(t in s.setup.games)) s.setup.games[t] = true;   // a game added since the save is on by default
       return s;
     }
   } catch (e) { /* ignore corrupt saves */ }

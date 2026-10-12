@@ -10,7 +10,7 @@ const vm = require('node:vm');
 const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 const src = html.match(/<script id="logic">([\s\S]*?)<\/script>/)[1];
 const L = vm.runInThisContext(
-  src + '\n;({ TYPES, INFO, C4, HEX_N, HILO, DICE_GOAL, MEMORY, CANDY, NAME_MAX, WORDS5, WORDS_HANG, VALID5, LINES, other, newMini, newState,' +
+  src + '\n;({ TYPES, INFO, C4, HEX_N, HILO, DICE_GOAL, MEMORY, CANDY, COINS, NAME_MAX, WORDS5, WORDS_HANG, VALID5, LINES, other, newMini, newState,' +
   ' startMatch, newMatch, defaultSetup, enabledGames, playerName, findRun, applyMove, mainResult, playMove, endFlash, wordleMarks, hexNeighbors,' +
   ' hexPath, memoryDeck, candyTrack, canMove, anyMove })',
   { filename: 'index.html#logic' }
@@ -587,6 +587,64 @@ test('candy: X can spin on consecutive turns and win before O ever spins (lopsid
   assert.equal(st.squares[0].mini.pos.O, -1);
 });
 
+// ================================== Coin flip ==================================
+const headsRng = sym => seq(pick(sym === 'X' ? 0 : 1, 2));   // every flip lands on sym
+const coinsOf = (...c) => Object.assign(mini('coins'), { coins: c });
+
+test('coins: six coins, three of each, in random positions', () => {
+  const rng = lcg(21);
+  const orders = new Set();
+  for (let k = 0; k < 200; k++) {
+    const m = L.newMini('coins', rng);
+    assert.equal(m.coins.length, L.COINS.n);
+    assert.equal(m.coins.filter(c => c === 'X').length, 3);
+    assert.equal(m.coins.filter(c => c === 'O').length, 3);
+    orders.add(m.coins.join(''));
+  }
+  assert.ok(orders.size > 10, 'the positions are shuffled');
+});
+
+test('coins: only 1 to 3 distinct coins showing the other side can be flipped', () => {
+  const m = coinsOf('X', 'O', 'X', 'O', 'X', 'O');
+  for (const bad of [[], [1, 3, 5, 1], [1, 3, 5, 7], 1, null, 'ab', [1.5], [-1], [6], [1, 1]]) {
+    assert.deepEqual(L.applyMove(m, 'X', bad), { ok: false, reason: 'bad' }, JSON.stringify(bad));
+  }
+  assert.deepEqual(L.applyMove(m, 'X', [0]), { ok: false, reason: 'own' }, 'your own coin');
+  assert.deepEqual(L.applyMove(m, 'X', [1, 2]), { ok: false, reason: 'own' }, 'one of them is yours');
+  assert.deepEqual(L.applyMove(m, 'O', [1]), { ok: false, reason: 'own' });
+  assert.deepEqual(m.coins, ['X', 'O', 'X', 'O', 'X', 'O'], 'rejected moves change nothing');
+  assert.deepEqual(L.applyMove(m, 'X', [1, 3, 5], headsRng('X')), { ok: true, outcome: 'win', winner: 'X', cells: [0, 1, 2, 3, 4, 5] }, 'three heads in a row');
+});
+
+test('coins: each flipped coin lands on the rng result and a win is checked after every flip', () => {
+  const m = coinsOf('X', 'O', 'X', 'O', 'X', 'O');
+  assert.deepEqual(L.applyMove(m, 'X', [1, 3], seq(pick(0, 2), pick(1, 2))), { ok: true, outcome: 'continue', note: 'flip' });
+  assert.deepEqual(m.coins, ['X', 'X', 'X', 'O', 'X', 'O'], 'one landed X, one landed O');
+  assert.deepEqual(m.last, { by: 'X', flipped: [1, 3], results: ['X', 'O'] });
+  assert.equal(L.applyMove(m, 'X', [3, 5], headsRng('O')).outcome, 'continue', 'both stayed O: no win');
+  assert.equal(L.applyMove(m, 'O', [0, 1, 2], headsRng('O')).outcome, 'continue', 'O turns three; one X left');
+  assert.deepEqual(m.coins, ['O', 'O', 'O', 'O', 'X', 'O']);
+  const r = L.applyMove(m, 'O', [4], headsRng('O'));
+  assert.equal(r.outcome, 'win');
+  assert.equal(r.winner, 'O');
+  assert.deepEqual(m.coins, ['O', 'O', 'O', 'O', 'O', 'O']);
+  assert.equal(L.applyMove(m, 'X', [0], headsRng('X')).ok, true, 'the logic itself does not know the square is over');
+});
+
+test('coins: X can keep flipping across turns and claim the square while O plays elsewhere (lopsided)', () => {
+  const st = matchWith(['coins', 'ttt']);
+  st.squares[0].mini = coinsOf('O', 'O', 'O', 'X', 'X', 'X');
+  turn(st, 0, [0, 1], headsRng('X')); turn(st, 1, 0);
+  assert.deepEqual(st.squares[0].mini.coins, ['X', 'X', 'O', 'X', 'X', 'X']);
+  assert.deepEqual(st.sel, [], 'the selection is cleared after a move');
+  const f = turn(st, 0, [2], headsRng('X'));
+  assert.equal(f.kind, 'claim');
+  assert.equal(f.winner, 'X');
+  assert.equal(f.n, 1);
+  assert.equal(st.squares[0].owner, 'X');
+  assert.equal(L.canMove(st.squares[0].mini, 'O'), true);
+});
+
 // ================================ Setup / match flow ================================
 test('setup: the app opens on the setup screen with default names and every game ticked', () => {
   const st = L.newState(lcg(1));
@@ -594,7 +652,8 @@ test('setup: the app opens on the setup screen with default names and every game
   assert.equal(st.screen, 'setup');
   assert.deepEqual(st.setup.names, { X: 'X', O: 'O' });
   assert.deepEqual(L.enabledGames(st.setup), L.TYPES);
-  assert.equal(L.TYPES.length, 10);
+  assert.equal(L.TYPES.length, 11);
+  assert.ok(st.setup.games.coins, 'Coin flip is on by default');
   for (const t of L.TYPES) assert.ok(L.INFO[t] && L.INFO[t].name && L.INFO[t].hint, `info for ${t}`);
   assert.equal(L.playerName(st, 'X'), 'X');
 });
@@ -775,7 +834,7 @@ test('after a match the setup is kept for the next one', () => {
 });
 
 // a legal random move for any mini-game
-function randomMove(m, rng) {
+function randomMove(m, rng, p) {
   const pickFrom = a => a[Math.floor(rng() * a.length)];
   const empties = (arr, ok) => arr.map((c, k) => (ok(c) ? k : -1)).filter(k => k >= 0);
   switch (m.type) {
@@ -787,6 +846,10 @@ function randomMove(m, rng) {
     case 'dice': case 'candy': return 1;
     case 'hilo': return m.lo + Math.floor(rng() * (m.hi - m.lo + 1));
     case 'memory': { const a = Math.floor(rng() * 9); let b = Math.floor(rng() * 8); if (b >= a) b++; return [a, b]; }
+    case 'coins': {
+      const opp = m.coins.map((c, k) => (c !== p ? k : -1)).filter(k => k >= 0).sort(() => rng() - 0.5);
+      return opp.slice(0, 1 + Math.floor(rng() * Math.min(3, opp.length)));
+    }
   }
   throw new Error('no move for ' + m.type);
 }
@@ -803,7 +866,7 @@ test('random play over many matches always finishes, never shows a removed game,
       const i = st.lock != null ? st.lock : cands[Math.floor(rng() * cands.length)];
       assert.ok(i != null, 'the player to move always has somewhere to play');
       const m = st.squares[i].mini;
-      const r = L.playMove(st, i, randomMove(m, rng), rng);
+      const r = L.playMove(st, i, randomMove(m, rng, st.turn), rng);
       assert.equal(r.ok, true, `${m.type}: ${r.reason}`);
       assert.deepEqual(JSON.parse(JSON.stringify(st)), st);
       if (st.flash.kind === 'again') assert.equal(st.lock, i);

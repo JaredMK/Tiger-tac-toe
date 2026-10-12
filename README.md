@@ -40,6 +40,7 @@ Each square is assigned one of these at random when the match starts (duplicates
 | Dice race | Roll a die and add it to your total; first to 15 wins |
 | Memory | 3×3 face-down cards with exactly one matching pair; a move flips two cards for 2 seconds. Flipping the pair wins |
 | Candy race | A winding track of 12 randomly coloured spaces (any three in a row are all different colours); a spin of the colour wheel hops your token to the next space of that colour. No such space ahead means you reach the finish and win |
+| Coin flip | Six coins showing X or O, three of each to start. Pick 1 to 3 of the other side's coins and flip them; each lands X or O at random. All six the same wins for that symbol's player |
 
 Hidden information (the Wordle and Hangman words, the Higher/lower number, the Memory cards, the
 Battleship cell) is never shown on the board or in a mini-game before it is revealed.
