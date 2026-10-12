@@ -427,7 +427,25 @@ b.X { color: var(--x); } b.O { color: var(--o); }
 .setup-foot .primary { width: 100%; }
 .primary:disabled { opacity: .35; }
 .warn { color: var(--x); font-weight: 700; font-size: 13px; min-height: 16px; }
-.turn .who { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 48vw; }
+.hdr { gap: 8px; padding: 0 12px 0 14px; }
+.turn { flex: 1 1 auto; min-width: 0; gap: 8px; }
+.turn .g { flex: none; }
+.turn .who { flex: 0 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: clamp(15px, 4.4vw, 20px); }
+.clock { flex: none; font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; padding: 3px 6px; border-radius: 8px; background: var(--panel-2); color: var(--text); }
+.clock.low { color: #fff; background: var(--x); animation: clockpulse .8s ease-in-out infinite; }
+.clock.held { opacity: .55; animation: none; }
+.score { flex: none; gap: 5px; }
+.turn .suf { font-style: normal; }
+@media (max-width: 359px) { .hdr.has-clock .suf { display: none; } }   /* a small phone with the clock up: the name alone */
+.menubtn { flex: none; height: 44px; min-width: 52px; padding: 0 9px; border: 0; border-radius: 10px; background: var(--panel-2); color: var(--text); font-weight: 800; font-size: 13px; }
+.sq.spot { z-index: 1; animation: spotglow 1s ease-in-out infinite; }
+.sq.spot-X { --spot: var(--x); } .sq.spot-O { --spot: var(--o); }
+.spot-lab { position: absolute; left: 4px; right: 4px; bottom: 4px; padding: 3px 6px; border-radius: 8px; background: rgba(14, 16, 22, .88); color: var(--text); font-weight: 800; font-size: 10px; font-size: clamp(9px, 9cqw, 13px); line-height: 1.15; text-align: center; max-height: 2.5em; overflow: hidden; animation: pop .25s ease-out; }
+.spot-lab.X { box-shadow: inset 0 0 0 1px var(--x); } .spot-lab.O { box-shadow: inset 0 0 0 1px var(--o); }
+.timerrow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.timerrow > span { flex: 0 0 100%; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.timeout-note { position: absolute; top: 12px; left: 16px; right: 16px; text-align: center; font-weight: 800; font-size: 14px; color: var(--x); background: var(--panel); border: 1px solid var(--x); border-radius: 12px; padding: 8px 12px; animation: pop .2s ease-out; }
+.flash.pause { z-index: 8; }
 .notice { align-self: center; flex: none; background: var(--text); color: var(--bg); font-weight: 800; font-size: 14px; padding: 6px 14px; border-radius: 999px; animation: pop .15s; }
 .wrow.cur.shake { animation: shake .4s; }
 
@@ -645,6 +663,8 @@ b.X { color: var(--x); } b.O { color: var(--o); }
 @keyframes twinkle { from { opacity: 0; transform: scale(.4) rotate(0); } to { opacity: 1; transform: scale(1.2) rotate(40deg); } }
 @keyframes stamp { 0% { transform: scale(2.6); opacity: 0; } 55% { transform: scale(.94); opacity: .95; } 100% { transform: scale(1); opacity: .55; } }
 @keyframes bang { 0% { transform: scale(2.4); opacity: 0; } 60% { transform: scale(.95); opacity: 1; } 100% { transform: scale(1); } }
+@keyframes spotglow { 0%, 100% { box-shadow: inset 0 0 0 2px var(--spot), 0 0 0 0 var(--spot); } 50% { box-shadow: inset 0 0 0 3px var(--spot), 0 0 18px 4px var(--spot); } }
+@keyframes clockpulse { 50% { transform: scale(1.08); } }
 
 @keyframes zoomin { from { transform: scale(.94); opacity: 0; } }
 @keyframes shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
@@ -954,7 +974,7 @@ const CPU_NAME = 'Computer';
 function defaultSetup() {
   const games = {};
   for (const t of TYPES) games[t] = true;
-  return { names: { X: 'X', O: 'O' }, games, mode: 'two', human: 'X' };   // mode: 'two' players or 'cpu'; human: the side a person plays against the computer
+  return { names: { X: 'X', O: 'O' }, games, mode: 'two', human: 'X', timer: 0 };   // mode: 'two' players, 'cpu' or 'online'; human: the side a person plays; timer: seconds per online turn, 0 = no limit
 }
 function cpuSide(setup) { return setup && setup.mode === 'cpu' ? other(setup.human === 'O' ? 'O' : 'X') : null; }
 // Keep the computer's default name in step with the mode and side: the computer's side is called
@@ -968,6 +988,8 @@ function syncNames(setup) {
   }
 }
 function enabledGames(setup) { return TYPES.filter(t => setup && setup.games && setup.games[t]); }
+const TIMER_OPTIONS = [0, 30, 60, 180];   // seconds per turn in online play; 0 = no limit
+function newTimer(limit) { return { limit: limit || 0, deadline: null, for: null, pausedAt: null, timeouts: { X: 0, O: 0 }, streak: { X: 0, O: 0 }, bankNext: false }; }
 function playerName(state, p) { return (state.setup && state.setup.names && state.setup.names[p]) || p; }
 // The whole app state. It opens on the setup screen; startMatch turns it into a match.
 function newState(rng) {
@@ -980,6 +1002,8 @@ function newState(rng) {
     turn: 'X',
     cpu: null,                // the side the computer plays in this match, or null for two players
     online: null,             // { role: 'host' | 'guest', code, me, name, joined } while playing over the network
+    timer: newTimer(0),       // the online turn clock: limit in seconds (0 = none), deadline, timeouts per player
+    spot: null,               // { square, by, label }: the square the other player is about to play in, shown before the zoom
     squares: Array.from({ length: 9 }, () => newSquare(TYPES, rng)),
     zoom: null,               // index of the mini-game being viewed
     flash: null,              // the move just made: its result, while the animation and toast play
@@ -1009,6 +1033,8 @@ function startMatch(state, rng) {
   }
   state.games = games;
   state.cpu = cpuSide(state.setup);
+  state.timer = newTimer(state.setup.mode === 'online' && TIMER_OPTIONS.includes(state.setup.timer) ? state.setup.timer : 0);
+  state.spot = null;
   state.squares = Array.from({ length: 9 }, () => newSquare(games, rng));
   state.screen = 'board'; state.turn = 'X';
   state.zoom = null; state.flash = null; state.done = null; state.stamp = null; state.lock = null;
@@ -1023,6 +1049,7 @@ function newMatch(rng, setup) {
   if (setup && setup.names) Object.assign(st.setup.names, setup.names);
   if (setup && setup.mode) st.setup.mode = setup.mode;
   if (setup && setup.human) st.setup.human = setup.human;
+  if (setup && setup.timer != null) st.setup.timer = setup.timer;
   if (setup && Array.isArray(setup.games)) for (const t of TYPES) st.setup.games[t] = setup.games.includes(t);
   else if (setup && setup.games) Object.assign(st.setup.games, setup.games);
   startMatch(st, rng);
@@ -1622,6 +1649,50 @@ function cpuMove(state, rng) {
   return best;
 }
 
+// A random legal move in a mini-game, for a player who ran out of time.
+let VALID5_LIST = null;
+function randomLegalMove(mini, p, rng) {
+  rng = rng || Math.random;
+  const from = a => a[randInt(rng, a.length)];
+  const empties = (arr, ok) => arr.map((c, k) => (ok(c) ? k : -1)).filter(k => k >= 0);
+  switch (mini.type) {
+    case 'ttt': case 'hex': return from(empties(mini.cells, c => !c));
+    case 'c4': return from([0, 1, 2, 3, 4].filter(c => !mini.cells[c]));
+    case 'bs': return from(empties(mini.revealed, c => !c));
+    case 'hunt': return from(empties(mini.dug, c => !c));
+    case 'hilo': return mini.lo + randInt(rng, mini.hi - mini.lo + 1);
+    case 'wordle': { if (!VALID5_LIST) VALID5_LIST = [...VALID5]; return from(VALID5_LIST); }
+    case 'hangman': return from('ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').filter(l => !mini.letters.some(x => x.l === l)));
+    case 'memory': { const a = randInt(rng, 9); let b = randInt(rng, 8); if (b >= a) b++; return [a, b]; }
+    case 'dice': case 'candy': return 1;
+    case 'coins': return 'flip';
+    case 'pig': return mini.turn && mini.turn.by === p && mini.turn.pot ? 'bank' : 'roll';
+  }
+  return null;
+}
+// The player to move ran out of time. A second timeout in a row loses the match; otherwise a random
+// legal move is made for them (Pig: one roll, then a bank if it did not bust; Hangman: one letter and
+// the turn ends even if it hits; Wordle: a random word from the dictionary).
+function timeoutMove(state, rng) {
+  rng = rng || Math.random;
+  const p = state.turn, t = state.timer;
+  if (state.winner || state.flash || state.done) return { ok: false, reason: 'busy' };
+  t.timeouts[p] += 1; t.streak[p] += 1;
+  if (t.streak[p] >= 2) {
+    state.winner = other(p); state.winLine = null; state.winReason = 'timeout'; state.counts = null;
+    state.lock = null; state.done = null; state.flash = null; state.spot = null; t.deadline = null;
+    state.screen = 'win'; state.zoom = null;
+    return { ok: true, lost: p };
+  }
+  const open = state.lock != null ? [state.lock] : state.squares.map((sq, i) => (sq.owner ? -1 : i)).filter(i => i >= 0);
+  const i = open[randInt(rng, open.length)], mini = state.squares[i].mini;
+  const m = mini.type === 'pig' ? (mini.turn && mini.turn.by === p ? 'bank' : 'roll') : randomLegalMove(mini, p, rng);
+  const r = playMove(state, i, m, rng, { forced: true, noAgain: mini.type === 'hangman' });
+  if (!r.ok) return r;
+  t.bankNext = mini.type === 'pig' && m === 'roll' && state.lock === i;   // the roll kept the turn: bank it next
+  return { ok: true, square: i, move: m };
+}
+
 // Main-board result: three claimed squares in a row, else majority once all nine are claimed.
 function mainResult(squares) {
   for (const line of LINES) {
@@ -1642,8 +1713,8 @@ function mainResult(squares) {
 // (flash.kind === 'again'). A square where neither player has a legal move resets like a draw,
 // and a player with no legal move anywhere on the board is skipped (flash.pass) so the match
 // never freezes.
-function playMove(state, i, m, rng) {
-  rng = rng || Math.random;
+function playMove(state, i, m, rng, opts) {
+  rng = rng || Math.random; opts = opts || {};
   if (state.winner) return { ok: false, reason: 'over' };
   if (state.flash) return { ok: false, reason: 'busy' };
   if (state.done) return { ok: false, reason: 'done' };          // one move per visit: head back to the board first
@@ -1658,9 +1729,10 @@ function playMove(state, i, m, rng) {
   const mini = sq.mini;
   let outcome = res.outcome, note = res.note || null;
   if (outcome === 'continue' && !canMove(mini, 'X') && !canMove(mini, 'O')) { outcome = 'draw'; note = 'stuck'; }
+  const again = !!res.again && !opts.noAgain;                   // a timed-out player's lucky letter does not earn another go
   const flash = {
-    kind: outcome === 'win' ? 'claim' : outcome === 'draw' ? 'draw' : res.again ? 'again' : 'move',
-    by: p, next: p, square: i, type: mini.type, note, pass: null,
+    kind: outcome === 'win' ? 'claim' : outcome === 'draw' ? 'draw' : again ? 'again' : 'move',
+    by: p, next: p, square: i, type: mini.type, note, pass: null, timeout: !!opts.forced,
   };
   switch (mini.type) {
     case 'wordle': flash.word = m.toUpperCase(); break;
@@ -1690,7 +1762,8 @@ function playMove(state, i, m, rng) {
     sq.mini = newMini(pickType(pool, rng), rng); // the square resets with a new random mini-game from this match's list
     flash.newType = sq.mini.type;
   }
-  if (res.again) {
+  if (!opts.forced && state.timer) state.timer.streak[p] = 0;   // a move made in time
+  if (again) {
     state.lock = i;
   } else {
     state.lock = null;
@@ -1746,7 +1819,9 @@ const KEY = 'tiger-tac-toe.v4';
 const FLASH_MS = { move: 1000, again: 650, claim: 1500, draw: 1700, match: 1300, card: 1500 };
 const MEMORY_MS = 2000;                 // the two flipped cards stay up this long
 const FLIP_MS = 500;                    // ...then turn back over before the board returns
-const CPU_MS = { think: 700, zoom: 500, pre: 450, again: 600 };   // the computer: a pause to think, a look at the square, its choice shown, the next bonus move
+const CPU_MS = { think: 700, spot: 1000, zoom: 500, pre: 450, again: 600 };   // the computer: a pause to think, its square lit up on the board, a look at the square, its choice shown, the next bonus move
+const SPOT_MS = 1000;                   // how long the other player's square glows on the board before the zoom
+const TIMER_LABEL = { 0: 'No limit', 30: '30s', 60: '1 min', 180: '3 min' };
 const SPIN_MS = 1000, HOP_MS = 130;     // Candy race: the wheel's spin, then each hop of the token (the Dice race hops the same way)
 const REDUCED = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 const WAAPI = typeof Element !== 'undefined' && typeof Element.prototype.animate === 'function';
@@ -1757,6 +1832,9 @@ let state = load() || newState();
 let flashTimer = null, noticeTimer = null, flashReady = 0;   // flashReady: when the result may be tapped away (its animation is over)
 let lastView = null, entering = false;                         // which screen (and square) was last drawn, so the zoom-in plays once
 let cpuTimer = null, cpuPlan = null, holdTimer = null;          // the computer's next step, its chosen move, and Memory's flip-back pause
+let spotTimer = null, menuOpen = false, menuStep = 'main', menuNote = '';   // the pre-zoom glow, the in-game menu, a note for the main menu
+let clockEnd = null, clockPause = null, clockTimer = null;       // the turn countdown as this phone sees it (guest: when it ends, and when the line dropped)
+let queuedMsg = null;                                            // host: the guest's next request, held while the last move is still playing here
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const N = p => esc(playerName(state, p));     // a player's display name, safe for innerHTML
 
@@ -1954,16 +2032,18 @@ function renderHeader() {
   const t = state.winner || state.turn;
   const x = state.squares.filter(s => s.owner === 'X').length;
   const o = state.squares.filter(s => s.owner === 'O').length;
-  return `<header class="hdr t-${t}">
-    <div class="turn" aria-live="polite"><span class="g">${t}</span><span class="who">${state.winner ? `${N(t)} wins` : `${N(t)}'s turn`}</span></div>
+  const clock = state.timer && state.timer.limit && !state.winner ? `<span class="clock" id="clock" aria-label="Time left this turn">${clockText()}</span>` : '';
+  return `<header class="hdr t-${t}${clock ? ' has-clock' : ''}">
+    <div class="turn" aria-live="polite"><span class="g">${t}</span><span class="who">${state.winner ? `${N(t)} wins` : `${N(t)}<i class="suf">'s turn</i>`}</span>${clock}</div>
     <div class="score" aria-label="Squares claimed: X ${x}, O ${o}"><b class="X">X</b><span>${x}</span><span>·</span><span>${o}</span><b class="O">O</b></div>
+    <button class="menubtn" data-act="pause" aria-label="Menu">Menu</button>
   </header>`;
 }
 
 /* ----- main menu ----- */
 function renderMenu() {
   return `<main class="scr menu"><div class="menu-card">
-    <h1>Tiger-Tac-Toe</h1>
+    <h1>Tiger-Tac-Toe</h1>${menuNote ? `<div class="notice" role="status">${esc(menuNote)}</div>` : ''}
     <p class="sub">Win the mini-game inside a square to claim it. Three squares in a row wins the match.</p>
     <button class="primary" data-act="mode-go" data-mode="cpu">Play vs Computer</button>
     <button class="primary alt" data-act="mode-go" data-mode="two">2 Players</button>
@@ -1982,6 +2062,7 @@ function renderSetup() {
     : `<label class="field ${p}"><span>${p} player${cpu === p ? ' · computer' : host ? ' · you' : ''}</span><input data-p="${p}" value="${esc(s.names[p] || '')}" maxlength="${NAME_MAX}" placeholder="${cpu === p ? CPU_NAME : p}" autocomplete="off" autocapitalize="words" aria-label="${p} player name"></label>`);
   const sides = mode !== 'two' ? `<div class="sides" role="group" aria-label="Your side"><span>You play</span><button class="seg X${human === 'X' ? ' on' : ''}" data-act="side" data-side="X">X · goes first</button><button class="seg O${human === 'O' ? ' on' : ''}" data-act="side" data-side="O">O</button></div>` : '';
   const chk = t => `<label class="chk${s.games[t] ? '' : ' off'}"><input type="checkbox" data-t="${t}"${s.games[t] ? ' checked' : ''}>${ICONS[t]}<span>${INFO[t].name}</span></label>`;
+  const timer = host ? `<div class="timerrow" role="group" aria-label="Time per turn"><span>Time per turn</span>${TIMER_OPTIONS.map(v => `<button class="seg${(s.timer || 0) === v ? ' on' : ''}" data-act="timer" data-v="${v}">${TIMER_LABEL[v]}</button>`).join('')}</div>` : '';
   const room = host ? `<div class="room"><small>Room code</small><b class="code">${esc(state.online.code)}</b>
       <div class="row"><button class="btn" data-act="share">Share link</button></div>
       ${state.notice ? `<div class="notice" role="status">${esc(state.notice)}</div>` : ''}
@@ -1997,6 +2078,7 @@ function renderSetup() {
     ${room}
     <div class="names">${field('X')}${field('O')}</div>
     ${sides}
+    ${timer}
     <div class="adv${advOpen ? ' open' : ''}"><button class="adv-h" data-act="adv" aria-expanded="${advOpen}"><span>Advanced</span><small>${on} of ${TYPES.length} mini-games on</small><i class="chev">${CHEV}</i></button>
       ${advOpen ? `<div class="games">${TYPES.map(chk).join('')}</div>` : ''}</div>
   </div>
@@ -2005,28 +2087,24 @@ function renderSetup() {
 
 /* ----- main board ----- */
 function renderBoard() {
+  const spot = state.spot;
   const sqs = state.squares.map((sq, i) => {
     const cls = ['sq'];
     if (sq.owner) cls.push('own-' + sq.owner);
-    else if (i === state.lastSquare && state.lastBy) cls.push('last-' + state.lastBy);
+    else if (i === state.lastSquare && state.lastBy && !(spot && spot.square === i)) cls.push('last-' + state.lastBy);
+    if (spot && spot.square === i) cls.push('spot', 'spot-' + spot.by);
     const info = INFO[sq.mini.type];
     // a claimed square keeps its label and final state, with the owner's mark laid over them
     const body = `<div class="lab">${ICONS[sq.mini.type]}<span>${info.name}</span></div><div class="thumb">${thumb(sq.mini, !!sq.owner)}</div>`
-      + (sq.owner ? `<div class="own-ov${state.stamp === i ? ' stamp' : ''}" aria-hidden="true">${sq.owner}</div>` : '');   // a fresh claim stamps in
+      + (sq.owner ? `<div class="own-ov${state.stamp === i ? ' stamp' : ''}" aria-hidden="true">${sq.owner}</div>` : '')   // a fresh claim stamps in
+      + (spot && spot.square === i ? `<div class="spot-lab ${spot.by}" role="status">${esc(spot.label)}</div>` : '');
     const label = sq.owner ? `Square ${i + 1}: ${info.name}, won by ${N(sq.owner)}. Tap to view` : `Square ${i + 1}: ${info.name}`;
     return `<button class="${cls.join(' ')}" data-act="zoom" data-i="${i}" aria-label="${label}"${cpuTurn() ? ' disabled' : ''}>${body}</button>`;
   }).join('');
-  const hint = cpuTurn() ? `${N(state.turn)} is thinking…` : remoteTurn() ? `Waiting for ${N(state.turn)}…`
+  const hint = spot ? esc(spot.label) : cpuTurn() ? `${N(state.turn)} is thinking…` : remoteTurn() ? `Waiting for ${N(state.turn)}…`
     : state.moves ? 'Tap any open square to make a move' : `${N(state.turn)} goes first. Tap a square to play`;
-  const confirm = state.confirm === 'new'
-    ? `<div class="flash"><div class="card"><h2>Start a new match?</h2><p>The current match will be lost${isHost() ? ' for both of you' : ''}.</p>
-        <div class="row"><button class="btn" data-act="cancel">Keep playing</button><button class="btn go" data-act="confirm-new">New match</button></div></div></div>`
-    : state.confirm === 'leave'
-    ? `<div class="flash"><div class="card"><h2>Leave the game?</h2><p>${isHost() ? 'The room closes for your friend too.' : 'You can rejoin with the same code while the host keeps the room open.'}</p>
-        <div class="row"><button class="btn" data-act="cancel">Keep playing</button><button class="btn go" data-act="confirm-leave">Leave</button></div></div></div>`
-    : '';
   return `<main class="scr board-scr">${netBar()}<div class="board">${sqs}</div>
-    <div class="foot"><span class="hint">${hint}</span><button class="link" data-act="${isGuest() ? 'leave' : 'new'}">${isGuest() ? 'Leave game' : 'New match'}</button></div>${confirm}</main>`;
+    <div class="foot"><span class="hint">${hint}</span></div>${pauseMenu()}</main>`;
 }
 // Miniatures: public information only. Hidden words, numbers, cards and the ship never appear here,
 // except that a claimed Memory square shows the pair that won it.
@@ -2288,7 +2366,18 @@ function renderMini(sq) {
   return `<main class="scr mini${entering ? ' enter' : ''}">${netBar()}
     <div class="bar${view ? ' won won-' + sq.owner : ''}" role="${view ? 'status' : 'presentation'}"><button class="back" data-act="back" aria-label="Back to the board"${f || d || lockMine() || cpuTurn() ? ' disabled' : ''}>${CHEV}Board</button>
       <div class="ttl"><b>${info.name}</b><small${view ? ' class="won"' : ''}>${sub}</small></div></div>
-    <div class="gwrap">${g}</div>${f ? renderFlash(f) : ''}</main>`;
+    <div class="gwrap">${g}</div>${f ? renderFlash(f) : ''}${pauseMenu()}</main>`;
+}
+// The in-game menu: a pause card with Resume and Main menu (which asks first).
+function pauseMenu() {
+  if (!menuOpen) return '';
+  if (menuStep === 'confirm') {
+    const note = state.online ? (isHost() ? ' Your friend is sent back to the main menu.' : ' Your friend is told you left.') : '';
+    return `<div class="flash pause" role="dialog" aria-label="Leave this match?"><div class="card"><h2>Leave this match?</h2><p>The match ends here.${note}</p>
+      <div class="row"><button class="btn" data-act="pause-back">No</button><button class="btn go" data-act="pause-leave">Yes</button></div></div></div>`;
+  }
+  return `<div class="flash pause" role="dialog" aria-label="Menu"><div class="card"><h2>Paused</h2><p>${state.online && state.timer.limit ? 'The turn clock keeps running.' : state.cpu ? 'The computer waits.' : 'Take your time.'}</p>
+    <div class="row"><button class="btn go" data-act="pause-resume">Resume</button><button class="btn" data-act="pause-main">Main menu</button></div></div></div>`;
 }
 // One line about a move, for the result toast and the handoff bar.
 function summary(f) {
@@ -2310,7 +2399,7 @@ function summary(f) {
 function renderFlash(f) {
   const who = `<b class="${f.by}">${N(f.by)}</b>`;
   const name = INFO[f.type].name;
-  const open = `<div class="flash late" style="--late:${animMs(f)}ms" data-act="dismiss">`;   // the result waits for the animation
+  const open = `<div class="flash late" style="--late:${animMs(f)}ms" data-act="dismiss">${f.timeout ? `<div class="timeout-note">${who} ran out of time — random move</div>` : ''}`;   // the result waits for the animation
   if (f.kind === 'match') {
     const w = state.winner;
     return `${open}<div class="card"><div class="big-g bang ${w}">${w}</div><h2>${N(w)} wins the match!</h2><p>Tap to continue</p></div></div>`;
@@ -2340,16 +2429,16 @@ function renderFlash(f) {
 /* ----- win screen ----- */
 function renderWin() {
   const w = state.winner;
-  const why = state.winReason === 'line'
-    ? 'Three squares in a row'
+  const why = state.winReason === 'line' ? 'Three squares in a row'
+    : state.winReason === 'timeout' ? `${N(other(w))} timed out twice`
     : `Most squares: ${state.counts[w]} to ${state.counts[other(w)]}`;
   const final = state.squares.map((s, i) =>
     `<i class="${s.owner || ''}${state.winLine && state.winLine.includes(i) ? ' hl' : ''}">${s.owner || ''}</i>`
   ).join('');
   return `<main class="scr win-scr">${netBar()}<div class="win-card">
-    <div class="big-g ${w}">${w}</div><h1>${N(w)} wins the match!</h1><p>${why}</p>
+    <div class="big-g ${w}">${w}</div><h1>${state.winReason === 'timeout' ? `${N(w)} wins — ${why}` : `${N(w)} wins the match!`}</h1><p>${state.winReason === 'timeout' ? 'Two turns in a row ran out of time' : why}</p>
     <div class="final" aria-hidden="true">${final}</div>
-    <div class="row"><button class="primary" data-act="new"${isGuest() && net.status !== 'connected' ? ' disabled' : ''}>New match</button><button class="btn" data-act="${state.online ? 'leave' : 'menu'}">Main menu</button></div></div></main>`;
+    <div class="row"><button class="primary" data-act="rematch"${isGuest() && net.status !== 'connected' ? ' disabled' : ''}>Rematch</button><button class="btn" data-act="${state.online ? 'leave' : 'menu'}">Main menu</button></div></div></main>`;
 }
 
 
@@ -2423,6 +2512,7 @@ async function hostRoom(code, resume) {
   if (!resume) {
     state.online = { role: 'host', code: code || roomCode(), me: state.setup.human === 'O' ? 'O' : 'X', joined: false };
     state.setup.mode = 'online'; state.screen = 'setup'; lobby = null;
+    if (!TIMER_OPTIONS.includes(state.setup.timer)) state.setup.timer = 0;
   }
   setNet('connecting', resume ? `Reopening room ${state.online.code}…` : 'Opening the room…');
   commit();
@@ -2472,6 +2562,12 @@ function acceptGuest(c) {
   c.on('close', () => { if (conn === c) { conn = null; guestGone(); } });
   c.on('error', () => { if (conn === c) { conn = null; guestGone(); } });
 }
+// The guest's request held back while a move was playing here: taken up as soon as the screen is free.
+function applyQueued() {
+  if (!queuedMsg || !isHost() || !conn || !conn.open || state.flash || state.done || state.spot) return;
+  const msg = queuedMsg; queuedMsg = null;
+  onGuestMessage(conn, msg);
+}
 function onGuestMessage(c, msg) {
   if (!isHost() || conn !== c || !msg || typeof msg !== 'object') return;
   lastHeard = Date.now();
@@ -2487,17 +2583,19 @@ function onGuestMessage(c, msg) {
       break;
     }
     case 'move': {
-      if (state.turn !== guest || state.winner || state.flash || state.done || state.screen === 'setup') return;
+      if (state.turn !== guest || state.winner || state.screen === 'setup') return;
+      if (state.flash || state.done || state.spot) { queuedMsg = msg; return; }   // the last move is still playing out on this screen: right after it
       const i = Number(msg.i);
       if (!Number.isInteger(i) || i < 0 || i > 8) return;
       const r = playMove(state, i, msg.m);
       if (!r.ok) { send(c, { t: 'reject', reason: r.reason, i }); return; }
-      showRemoteMove(i);
+      showRemoteMove(i, moveLabel(state.flash));
       commit();
       break;
     }
     case 'pick': {                                              // the guest's first Memory card
-      if (state.turn !== guest || state.winner || state.flash || state.done) return;
+      if (state.turn !== guest || state.winner) return;
+      if (state.flash || state.done || state.spot) { queuedMsg = msg; return; }
       const i = Number(msg.i), sq = state.squares[i];
       if (!sq || sq.owner || sq.mini.type !== 'memory') return;
       const card = Number.isInteger(msg.card) && msg.card >= 0 && msg.card < 9 ? msg.card : null;
@@ -2507,15 +2605,29 @@ function onGuestMessage(c, msg) {
       break;
     }
     case 'rematch': { if (state.winner) { startMatch(state); commit(); } break; }
-    case 'bye': { conn = null; state.online.joined = false; setNet('left', `${guestName()} left the game`); commit(); break; }
+    case 'bye': { const who = guestName(); conn = null; state.online.joined = false; menuNote = `${who} left the match`; leaveRoom(); break; }
   }
 }
-// a move by the other player: show it where it happened, as the computer's moves are shown
-function showRemoteMove(i) {
-  if (!(state.screen === 'mini' && state.zoom === i)) { state.screen = 'mini'; state.zoom = i; state.draft = ''; state.notice = null; }
+// A move by the other player (or a timed-out one): the board first, with the square lit up and a
+// label, then the zoom and the move's animation. The flash is already set; it only starts once the
+// mini-game shows (armFlash waits while the glow is on).
+function showRemoteMove(i, label) {
+  clearTimeout(spotTimer); spotTimer = null;
+  if (state.screen === 'mini' && state.zoom === i && !state.spot) { state.draft = ''; state.notice = null; return; }   // already looking at this square (a bonus move, or a watcher): it plays right here
+  state.spot = { square: i, by: state.flash ? state.flash.by : state.turn, label };
+  state.screen = 'board'; state.zoom = null; state.draft = ''; state.notice = null;
+  spotTimer = setTimeout(() => {
+    spotTimer = null;
+    if (!state.spot) return;
+    const sq = state.spot.square;
+    state.spot = null;
+    state.screen = 'mini'; state.zoom = sq;
+    render(); if (!isGuest()) { save(); netSync(); }
+  }, SPOT_MS);
 }
+function moveLabel(f) { return f.timeout ? `${playerName(state, f.by)} ran out of time — random move` : `${playerName(state, f.by)} plays here`; }
 // what the host sends after every change: the lobby while setting up, otherwise the public snapshot
-function lobbyMsg() { return { t: 'lobby', names: { X: state.setup.names.X, O: state.setup.names.O }, side: other(state.online.me), games: enabledGames(state.setup).length }; }
+function lobbyMsg() { return { t: 'lobby', names: { X: state.setup.names.X, O: state.setup.names.O }, side: other(state.online.me), games: enabledGames(state.setup).length, timer: state.setup.timer || 0 }; }
 function netSync() {
   if (!isHost() || !conn || !conn.open) return;
   if (state.screen === 'setup') send(conn, lobbyMsg());
@@ -2524,8 +2636,9 @@ function netSync() {
 // The state as the guest may see it: every secret of an unclaimed square is left out, not blanked.
 function publicState(st) {
   const s = JSON.parse(JSON.stringify(st));
-  for (const k of ['online', 'draft', 'notice', 'confirm', 'screen', 'zoom', 'stamp', 'sel']) delete s[k];
+  for (const k of ['online', 'draft', 'notice', 'confirm', 'screen', 'zoom', 'stamp', 'sel', 'spot']) delete s[k];
   s.squares.forEach((sq, k) => { if (!sq.owner) hideSecrets(sq.mini, k, st); });
+  s.timer = Object.assign({}, st.timer, { left: timerLeft(), deadline: null, pausedAt: null });
   return s;
 }
 function hideSecrets(m, k, st) {
@@ -2621,7 +2734,7 @@ function onHostMessage(c, msg) {
     case 'lobby': {
       state.online.joined = true; state.online.me = msg.side === 'X' ? 'X' : 'O';
       if (msg.names) state.setup.names = { X: String(msg.names.X || 'X').slice(0, NAME_MAX), O: String(msg.names.O || 'O').slice(0, NAME_MAX) };
-      lobby = { games: msg.games };
+      lobby = { games: msg.games, timer: msg.timer };
       if (['menu', 'online', 'join'].includes(state.screen)) state.screen = 'join';   // waiting for the host to start
       commit();
       break;
@@ -2633,11 +2746,12 @@ function onHostMessage(c, msg) {
       render();
       break;
     }
-    case 'bye': { setNet('left', `${playerName(state, other(state.online.me))} left the game`); conn = null; commit(); break; }
+    case 'bye': { menuNote = `${playerName(state, other(state.online.me))} left the match`; conn = null; leaveRoom(); break; }
   }
 }
 function receiveSnapshot(snap) {
   if (!snap || !Array.isArray(snap.squares) || snap.squares.length !== 9) return;
+  if (snap.timer) { clockEnd = snap.timer.left == null ? null : Date.now() + snap.timer.left; clockPause = null; }   // the host's clock, as of now
   if (state.flash || state.done) { pendingSnap = snap; return; }   // a move is still playing out here (or its cards are turning back): afterwards
   applySnapshot(snap);
 }
@@ -2652,8 +2766,8 @@ function applySnapshot(snap) {
   if (fresh) {
     shownMoves = snap.moves;
     state.flash = snap.flash; state.done = snap.done ? snap.flash : null;
-    state.screen = 'mini'; state.zoom = snap.flash.square;
-    if (snap.lastBy === me) { state.draft = ''; moveWait = null; }
+    if (snap.lastBy === me && !snap.flash.timeout) { state.screen = 'mini'; state.zoom = snap.flash.square; state.draft = ''; moveWait = null; }
+    else { if (snap.lastBy === me) moveWait = null; showRemoteMove(snap.flash.square, moveLabel(snap.flash)); }
   } else {
     if (snap.moves > shownMoves) shownMoves = snap.moves;
     if (snap.lastBy === me) moveWait = null;
@@ -2680,10 +2794,27 @@ function attemptMove(m) {
 function leaveRoom() {
   if (conn) send(conn, { t: 'bye' });
   closePeer();
-  state.online = null; lobby = null; pendingSnap = null; moveWait = null; shownMoves = -1;
+  clearTimeout(spotTimer); spotTimer = null;
+  clearTimeout(flashTimer); flashTimer = null;
+  clearTimeout(holdTimer); holdTimer = null;
+  clockEnd = null; clockPause = null;
+  state.online = null; lobby = null; pendingSnap = null; queuedMsg = null; moveWait = null; shownMoves = -1;
   setNet('idle', '');
-  state.screen = 'menu'; state.confirm = null; state.setup.mode = 'two';
-  state.winner = state.winner;                                   // the match itself is left as it was; a new one starts from the menu
+  menuOpen = false; menuStep = 'main';
+  state.screen = 'menu'; state.confirm = null; state.setup.mode = 'two'; state.spot = null; state.flash = null; state.done = null;
+  state.timer = newTimer(0);
+  commit();
+}
+// Leave whatever match is on (the in-game menu's Main menu): online that tells the other player too.
+function quitMatch() {
+  if (state.online) { leaveRoom(); return; }
+  clearTimeout(cpuTimer); cpuTimer = null; cpuPlan = null;
+  clearTimeout(spotTimer); spotTimer = null;
+  clearTimeout(flashTimer); flashTimer = null;
+  clearTimeout(holdTimer); holdTimer = null;
+  menuOpen = false; menuStep = 'main';
+  state.flash = null; state.done = null; state.spot = null; state.lock = null;
+  state.screen = 'menu'; state.zoom = null; state.confirm = null;
   commit();
 }
 async function shareRoom() {
@@ -2703,6 +2834,55 @@ function resumeOnline() {
   else if (state.online.role === 'guest') joinRoom(null, null, true);
 }
 
+/* ----- the turn clock (online): the host keeps the official time, both phones show it ----- */
+function timerLeft() {                                           // ms left on the host's clock, or null
+  const t = state.timer;
+  if (!t || !t.limit || t.deadline == null) return null;
+  return Math.max(0, t.deadline - (t.pausedAt ? t.pausedAt : Date.now()));
+}
+function clockLeft() { return isHost() ? timerLeft() : clockEnd == null ? null : Math.max(0, clockEnd - (clockPause || Date.now())); }   // ms left as this phone sees it
+function clockText() {
+  const left = clockLeft();
+  if (left == null) return state.timer && state.timer.limit ? fmtClock(state.timer.limit * 1000) : '';
+  return fmtClock(left);
+}
+function fmtClock(ms) { const sec = Math.ceil(ms / 1000); return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`; }
+// Runs four times a second: keeps the clock on screen current and, on the host, calls time.
+function tick() {
+  if (isGuest()) {                                               // the guest's copy of the clock waits out a dropped line, like the host's
+    if (net.status !== 'connected') { if (clockEnd != null && !clockPause) clockPause = Date.now(); }
+    else if (clockPause) { clockEnd += Date.now() - clockPause; clockPause = null; }
+  }
+  const el = document.getElementById('clock');
+  if (el) {
+    const leftMs = clockLeft();
+    el.textContent = clockText();
+    el.classList.toggle('low', leftMs != null && leftMs <= 10000);
+    el.classList.toggle('held', isHost() ? !!(state.timer && state.timer.pausedAt) : !!clockPause);
+  }
+  if (!isHost() || !state.timer || !state.timer.limit || state.winner) return;
+  const t = state.timer;
+  if (net.status !== 'connected') { if (t.deadline != null && !t.pausedAt) t.pausedAt = Date.now(); return; }   // reconnecting: the clock waits
+  if (t.pausedAt) { t.deadline += Date.now() - t.pausedAt; t.pausedAt = null; save(); }
+  if (state.flash || state.done || state.spot) return;
+  if (state.screen === 'setup' || state.screen === 'join') return;
+  if (t.bankNext) {                                              // the timed-out player's forced roll kept the turn: bank it
+    t.bankNext = false;
+    if (state.lock != null && state.squares[state.lock].mini.type === 'pig') { const r = playMove(state, state.lock, 'bank', undefined, { forced: true }); if (r.ok) { showRemoteMove(state.lock, moveLabel(state.flash)); commit(); return; } }
+  }
+  if (t.for !== state.turn || t.deadline == null) {              // a new turn: start its clock
+    t.for = state.turn; t.deadline = Date.now() + t.limit * 1000; save(); netSync();
+    return;
+  }
+  if (Date.now() >= t.deadline) {
+    const r = timeoutMove(state);
+    if (!r.ok) return;
+    if (r.lost) { commit(); return; }
+    showRemoteMove(r.square, moveLabel(state.flash));
+    commit();
+  }
+}
+
 /* ----- online screens ----- */
 function renderOnline() {
   return `<main class="scr menu"><div class="menu-card">
@@ -2717,7 +2897,7 @@ function renderJoin() {
   const o = online(), joined = !!(o && o.joined);
   const host = joined && o.me ? playerName(state, other(o.me)) : null;
   const status = net.status === 'error' ? `<div class="warn">${esc(net.msg)}</div>`
-    : joined && net.status === 'connected' ? `<div class="status ok">Joined <b>${esc(host || 'the host')}</b>'s game · you play <b class="${o.me}">${o.me}</b> · waiting for ${esc(host || 'the host')} to start…</div>`
+    : joined && net.status === 'connected' ? `<div class="status ok">Joined <b>${esc(host || 'the host')}</b>'s game · you play <b class="${o.me}">${o.me}</b> · time per turn: <b>${TIMER_LABEL[lobby && TIMER_OPTIONS.includes(lobby.timer) ? lobby.timer : 0]}</b> · waiting for ${esc(host || 'the host')} to start…</div>`
     : net.status === 'connected' ? '<div class="status">Connected · waiting for the host…</div>'
     : net.status === 'connecting' || net.status === 'lost' ? `<div class="status">${esc(net.msg)}</div>` : '';
   const form = o ? '' : `<label class="field"><span>Your name</span><input id="jname" value="${esc(joinName)}" maxlength="${NAME_MAX}" placeholder="Your name" autocomplete="off" autocapitalize="words"></label>
@@ -2735,9 +2915,15 @@ app.addEventListener('click', e => {
   if (!el || el.disabled) return;
   const act = el.dataset.act;
   if (act === 'dismiss') { if (Date.now() >= flashReady) dismissFlash(); return; }   // not before the animation is over
-  const free = ['new', 'confirm-new', 'cancel', 'leave', 'confirm-leave', 'menu', 'rejoin', 'host-retry', 'share'];
-  if (state.flash) return;                      // everything else waits for the result to clear
-  if (state.done) return;                       // the result is still on show
+  const free = ['pause', 'pause-resume', 'pause-main', 'pause-back', 'pause-leave', 'leave', 'menu', 'rejoin', 'host-retry', 'share', 'rematch', 'timer'];
+  if (act === 'pause') { menuOpen = true; menuStep = 'main'; render(); scheduleCpu(); return; }
+  if (act === 'pause-resume') { menuOpen = false; menuStep = 'main'; render(); scheduleCpu(); return; }
+  if (act === 'pause-main') { menuStep = 'confirm'; render(); return; }
+  if (act === 'pause-back') { menuStep = 'main'; render(); return; }
+  if (act === 'pause-leave') { quitMatch(); return; }
+  if (menuOpen) return;                         // the menu is up: nothing underneath reacts
+  if (state.flash && !free.includes(act)) return;   // everything else waits for the result to clear
+  if (state.done && !free.includes(act)) return;    // the result is still on show
   if (cpuTurn() && !free.includes(act)) return;   // the computer is playing
   state.stamp = null;                           // a claim stamps in once
   if (act === 'zoom') {                        // open squares to play, claimed squares to look
@@ -2756,7 +2942,12 @@ app.addEventListener('click', e => {
   } else if (act === 'mode-go') {              // the main menu: pick a mode, then set up
     state.setup.mode = el.dataset.mode === 'cpu' ? 'cpu' : 'two'; syncNames(state.setup); state.screen = 'setup'; advOpen = false; commit();
   } else if (act === 'menu') {
-    state.screen = 'menu'; state.confirm = null; commit();
+    state.screen = 'menu'; state.confirm = null; menuNote = ''; commit();
+  } else if (act === 'timer') {
+    if (isHost()) { state.setup.timer = TIMER_OPTIONS.includes(Number(el.dataset.v)) ? Number(el.dataset.v) : 0; commit(); }
+  } else if (act === 'rematch') {               // the same settings again
+    if (isGuest()) { if (state.winner && net.status === 'connected') send(conn, { t: 'rematch' }); return; }
+    if (startMatch(state)) { shownMoves = -1; commit(); }
   } else if (act === 'online-go') {
     state.screen = 'online'; commit();
   } else if (act === 'online-back') {
@@ -2776,9 +2967,6 @@ app.addEventListener('click', e => {
   } else if (act === 'share') {
     shareRoom();
   } else if (act === 'leave') {
-    if (state.online && !state.winner && state.moves > 0 && state.screen !== 'setup' && state.screen !== 'join' && net.status === 'connected') { state.confirm = 'leave'; commit(); }
-    else leaveRoom();
-  } else if (act === 'confirm-leave') {
     leaveRoom();
   } else if (act === 'adv') {
     advOpen = !advOpen; render();
@@ -2812,14 +3000,6 @@ app.addEventListener('click', e => {
     else if (first === i) { state.pick = null; state.pickSq = null; }
     else if (!playMove(state, state.zoom, [first, i]).ok) { state.pick = null; state.pickSq = null; }
     commit();
-  } else if (act === 'new') {
-    if (isGuest()) { if (state.winner && net.status === 'connected') send(conn, { t: 'rematch' }); return; }
-    if (isHost()) { if (state.winner || state.moves === 0) { startMatch(state); state.confirm = null; commit(); } else { state.confirm = 'new'; commit(); } return; }
-    if (state.winner || state.moves === 0) { state.screen = 'setup'; state.confirm = null; commit(); }
-    else { state.confirm = 'new'; commit(); }
-  } else if (act === 'confirm-new') {
-    if (isHost()) { startMatch(state); state.confirm = null; commit(); return; }
-    state.screen = 'setup'; state.confirm = null; commit();
   } else if (act === 'cancel') {
     state.confirm = null; commit();
   } else if (act === 'start') {
@@ -2881,6 +3061,7 @@ document.addEventListener('contextmenu', e => e.preventDefault());
 
 function commit() { save(); render(); scheduleCpu(); netSync(); }
 function boot() {
+  clockTimer = setInterval(tick, 250);
   const room = new URLSearchParams(location.search).get('room');
   try { joinName = localStorage.getItem(KEY + '.name') || ''; } catch (e) { /* no storage */ }
   if (room && validCode(room.toUpperCase()) && !state.online) { joinCode = room.toUpperCase(); state.screen = 'join'; }   // a shared link: straight to joining
@@ -2893,25 +3074,34 @@ function cpuTurn() { return !!state.cpu && state.turn === state.cpu && !state.wi
 // Runs after every render: arms the computer's next step whenever it is its turn and nothing else is going on.
 function scheduleCpu() {
   clearTimeout(cpuTimer); cpuTimer = null;
-  if (!cpuTurn() || state.flash || state.done || state.confirm) return;
-  if (state.screen === 'board') { cpuPlan = null; cpuTimer = setTimeout(cpuZoom, CPU_MS.think); return; }
+  if (!cpuTurn() || state.flash || state.done || state.confirm || menuOpen) return;
+  if (state.screen === 'board') { cpuPlan = null; cpuTimer = setTimeout(cpuSpot, CPU_MS.think); return; }
   if (state.screen !== 'mini') return;
+  if (cpuPlan && cpuPlan.square === state.zoom && state.spot) return;   // the glow is still showing; cpuZoom takes it from here
   if (!cpuPlan || cpuPlan.square !== state.zoom) {
     cpuPlan = cpuMove(state); cpuPlan.stage = 0;
     if (cpuPlan.square !== state.zoom) { state.zoom = cpuPlan.square; state.draft = ''; state.pick = null; state.sel = []; commit(); return; }   // after a reload mid-move
   }
   cpuTimer = setTimeout(cpuAct, cpuPlan.stage ? CPU_MS.pre : state.lock != null ? CPU_MS.again : CPU_MS.zoom);
 }
+function cpuSpot() {                                           // the computer has chosen: show where, then go there
+  cpuTimer = null;
+  if (!cpuTurn() || state.screen !== 'board' || state.confirm || menuOpen) return;
+  cpuPlan = cpuMove(state); cpuPlan.stage = 0;
+  state.spot = { square: cpuPlan.square, by: state.turn, label: `${playerName(state, state.turn)} plays here` };
+  render();                                                     // no commit: the glow is not for the saved state
+  cpuTimer = setTimeout(cpuZoom, CPU_MS.spot);
+}
 function cpuZoom() {
   cpuTimer = null;
-  if (!cpuTurn() || state.screen !== 'board' || state.confirm) return;
-  cpuPlan = cpuMove(state); cpuPlan.stage = 0;
+  state.spot = null;
+  if (!cpuTurn() || state.screen !== 'board' || state.confirm || menuOpen || !cpuPlan) { render(); return; }
   state.screen = 'mini'; state.zoom = cpuPlan.square; state.draft = ''; state.pick = null; state.sel = []; state.notice = null;
   commit();
 }
 function cpuAct() {
   cpuTimer = null;
-  if (!cpuTurn() || state.screen !== 'mini' || !cpuPlan || cpuPlan.square !== state.zoom) return;
+  if (!cpuTurn() || state.screen !== 'mini' || !cpuPlan || cpuPlan.square !== state.zoom || menuOpen) return;
   const plan = cpuPlan, type = state.squares[plan.square].mini.type;
   if (!plan.stage && (type === 'memory' || type === 'wordle')) {   // show the choice first, as a person would
     if (type === 'memory') state.pick = plan.move[0]; else state.draft = plan.move;
@@ -2926,7 +3116,7 @@ function cpuAct() {
   commit();
 }
 function armFlash() {
-  if (!state.flash || flashTimer) return;
+  if (!state.flash || flashTimer || state.spot) return;         // while the square glows on the board, the move has not played yet
   const f = state.flash, ms = animMs(f);
   flashReady = Date.now() + ms;                   // no tapping the result away while the move is still animating
   let hold = FLASH_MS[f.kind] || 800;
@@ -2943,8 +3133,8 @@ function dismissFlash() {
   commit();
   if (hold && state.done) {
     clearTimeout(holdTimer);
-    holdTimer = setTimeout(() => { if (state.done && !state.flash && leaveSquare(state)) commit(); applyPending(); }, FLIP_MS);
-  } else applyPending();                        // online guest: the host may have moved on meanwhile
+    holdTimer = setTimeout(() => { if (state.done && !state.flash && leaveSquare(state)) commit(); applyPending(); applyQueued(); }, FLIP_MS);
+  } else { applyPending(); applyQueued(); }     // online guest: the host may have moved on meanwhile; host: the guest may have asked for its next move
 }
 function save() {
   try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* no storage: just play without resume */ }
@@ -2955,7 +3145,10 @@ function load() {
     if (s && s.v === 4 && Array.isArray(s.squares) && s.squares.length === 9 && (s.turn === 'X' || s.turn === 'O') && s.setup) {
       if (s.lock != null && !s.winner) { s.screen = 'mini'; s.zoom = s.lock; }
       else if (s.done && !s.flash && !s.winner) leaveSquare(s);   // a result that was still on show: the board was next anyway
-      s.notice = null; s.sel = []; s.stamp = null;
+      s.notice = null; s.sel = []; s.stamp = null; s.spot = null;
+      if (!s.timer || typeof s.timer !== 'object') s.timer = newTimer(0);
+      if (s.timer.deadline != null && !s.timer.pausedAt) s.timer.pausedAt = Date.now();   // the page was away: the clock waits for the line
+      if (s.setup.timer == null) s.setup.timer = 0;
       if (!s.setup.mode) s.setup.mode = 'two';
       if (!s.setup.human) s.setup.human = 'X';
       if (s.cpu !== 'X' && s.cpu !== 'O') s.cpu = null;

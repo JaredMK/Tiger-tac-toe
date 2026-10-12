@@ -10,8 +10,10 @@ Open `index.html` in a browser (or serve the folder with any static server) and 
 A main menu comes first: "Play vs Computer", "2 Players" or "Play Online". The setup screen that follows takes the
 names (defaults X and O; the computer is called "Computer"), against the computer which side you play
 (X goes first), and under "Advanced" the mini-games in the mix (all on by default, at least one must
-stay on). "New match" after a game brings you back to setup with everything kept, and "Main menu" is a
-tap away from the setup and win screens.
+stay on). During a match a "Menu" button sits in the top corner: it pauses the game with "Resume" and
+"Main menu"; the latter asks "Leave this match?" and, on Yes, ends the match and returns to the main
+menu. Against the computer, and in 2-player mode, nothing moves while the menu is open. The win screen
+offers "Rematch" (the same settings and opponent again) and "Main menu".
 
 ## Rules
 
@@ -62,9 +64,27 @@ link. The host picks a side and the mini-games, and starts once the guest is in;
 the same board.
 
 Only the player on the move can act; the other can still open squares to look, and sees "Waiting
-for [name]…". Each player's moves play on the other phone the way computer moves do: a zoom into the
-square, the animation, a short hold, back to the board, Pig rolls one by one. "New match" on the win
-screen is a rematch in the same room with the same settings.
+for [name]…". Each player's moves play on the other phone the way computer moves do: the chosen
+square glows on the main board for about a second with a "[name] plays here" label, then a zoom into
+the square, the animation, a short hold, back to the board, Pig rolls one by one (a follow-up move in
+a square you are already looking at plays right there). "Rematch" on the win screen starts again in
+the same room with the same settings. Leaving through the menu tells the other player ("[name] left
+the match") and sends them back to the main menu too.
+
+### Time per turn
+
+The host's lobby offers a time per turn: 30s, 1 min, 3 min, or No limit (the default). The guest sees
+the setting in the lobby. With a limit on, a countdown shows in the header on both phones; it starts
+when a turn begins (once the previous move has finished playing), turns red and pulses in the last ten
+seconds, keeps running while the in-game menu is open, and waits while a dropped connection is being
+restored. The host's phone keeps the official time.
+
+When the clock runs out, a random legal move is made for that player and shown on both screens with
+"[name] ran out of time — random move": a random open square, then a random legal action in it (Pig:
+one roll, then a bank if it did not bust; Hangman: one random letter, and the turn ends even if it
+hits; Wordle: a random dictionary word). The turn then passes. Timeouts are counted per player, and
+a player's second timeout in a row loses the match at once: the win screen reads "[name] wins —
+[other] timed out twice".
 
 The two browsers talk directly through PeerJS (loaded from a CDN only when online play is chosen,
 using its free public signalling server; there is no backend). The host's browser is the single
@@ -81,9 +101,10 @@ reopens the room with the same code.
 
 ## Playing against the computer
 
-The computer takes its turn in the open: a short pause to think, then it zooms into the square it
-chose, makes its move with the usual animation (its chosen cards, coins or word are shown first), and
-the board returns.
+The computer takes its turn in the open: a short pause to think, then the square it chose lights up
+on the main board for about a second (a pulsing glow in its colour and a "Computer plays here" label),
+then it zooms into that square, makes its move with the usual animation (its chosen cards, coins or
+word are shown first), and the board returns. Opening the menu holds it wherever it is.
 
 It plays fairly. Every decision starts from a public view of each mini-game that leaves out the hidden
 word, number, ship, treasure, face-down cards and the dice or coins still to come: it knows exactly
@@ -137,7 +158,10 @@ The game logic lives in the `<script id="logic">` block of `index.html` and is c
 lopsided-move cases, the Hangman bonus guess, draw resets, the return to the board after each move,
 main-board three-in-a-row and majority wins, random full matches, and the computer player: legal
 moves only, decisions that cannot see hidden information, match-winning squares taken and defended,
-each game's tactics, and computer-versus-computer matches that finish). It uses Node's built-in test runner:
+each game's tactics, and computer-versus-computer matches that finish; and the turn clock: a legal
+random move in every mini-game on a timeout, the Pig roll-then-bank, no bonus move for a lucky
+Hangman letter, timeouts counted per player and the second in a row losing the match). It uses Node's
+built-in test runner:
 
 ```sh
 node --test
