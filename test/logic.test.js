@@ -12,7 +12,7 @@ const src = html.match(/<script id="logic">([\s\S]*?)<\/script>/)[1];
 const L = vm.runInThisContext(
   src + '\n;({ TYPES, INFO, C4, HEX_N, HILO, DICE_GOAL, MEMORY, CANDY, COINS, PIG, HUNT, NAME_MAX, WORDS5, WORDS_HANG, VALID5, LINES, other, newMini, newState, huntDist,' +
   ' startMatch, newMatch, defaultSetup, enabledGames, playerName, findRun, applyMove, mainResult, playMove, endFlash, leaveSquare, cpuMove, publicMini, squareValue, needsOf, winChance, moveGain, localBest, wordleCandidates, hangmanCandidates, huntCandidates, hexDist, candyExpected, cpuSide, syncNames, CPU_NAME, AI, wordleMarks, hexNeighbors,' +
-  ' hexPath, memoryDeck, candyTrack, canMove, anyMove, randomLegalMove, timeoutMove, TIMER_OPTIONS, newTimer })',
+  ' hexPath, memoryDeck, candyTrack, canMove, anyMove, randomLegalMove, timeoutMove, TIMER_OPTIONS, newTimer, matchRecord, fullState, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, newOnlineMatch, secretOf, hideMini, RECENT_MAX })',
   { filename: 'index.html#logic' }
 );
 
@@ -1789,4 +1789,136 @@ test('timeouts over every kind of game keep the state legal and plain', () => {
     assert.ok(st.winner, `match ${game} ends (${guard} moves)`);
   }
   assert.ok(seen.size >= 6, `timeouts were played in ${seen.size} different games`);
+});
+
+
+// ---- online match records: the public state and the secrets apart, moves applied to the pair ----
+const SECRET_KEYS = { wordle: 'word', hangman: 'word', hilo: 'target', bs: 'hidden', hunt: 'treasure', memory: 'cards' };
+test('a match record keeps every secret out of the public state and puts it back for a move', () => {
+  const rng = lcg(11);
+  for (const type of L.TYPES) {
+    const st = matchWith([type, 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt'], rng);
+    st.id = 'm1'; st.seq = 0; st.recent = [];
+    const rec = L.matchRecord(st);
+    const pub = rec.state.squares[0].mini;
+    const key = SECRET_KEYS[type];
+    if (key) {
+      assert.ok(rec.secrets[0], `${type}: a secret is kept`);
+      if (type === 'hangman') assert.match(pub.word, /^_+$/, 'hangman shows only the length');
+      else if (type === 'memory') assert.ok(pub.cards.every(c => c === null), 'no card is known');
+      else assert.ok(!(key in pub), `${type}: ${key} is not public`);
+      if (type === 'hunt') assert.equal(pub.clues.length, 25);
+    } else assert.equal(rec.secrets[0], undefined, `${type}: nothing to hide`);
+    assert.deepEqual(JSON.parse(JSON.stringify(rec)), rec, 'plain JSON');
+    const full = L.fullState(rec);
+    const mini = full.squares[0].mini;
+    if (key) assert.deepEqual(mini[key], st.squares[0].mini[key], `${type}: the secret is back`);
+    if (type === 'hunt') assert.equal(mini.clues, undefined);
+    assert.equal(full.turn, 'X'); assert.equal(full.flash, null); assert.equal(full.screen, 'board');
+  }
+});
+
+test('an online move is checked for the turn and the rules, then settled: the turn passes and the move is on record', () => {
+  const st = matchWith(['ttt', 'wordle', 'hangman', 'pig', 'memory', 'ttt', 'ttt', 'ttt', 'ttt'], lcg(3));
+  st.squares[1].mini.word = 'CRANE'; st.squares[2].mini.word = 'APPLE';
+  st.id = 'm'; st.seq = 0; st.recent = [];
+  let rec = L.matchRecord(st);
+  assert.equal(L.applyOnlineMove(rec, 'O', 0, 4, lcg(1)).reason, 'turn', 'not O\'s turn');
+  assert.equal(L.applyOnlineMove(rec, 'X', 1, 'zzzzz', lcg(1)).reason, 'notword');
+  let r = L.applyOnlineMove(rec, 'X', 0, 4, lcg(1));
+  assert.equal(r.ok, true);
+  assert.equal(r.rec.state.turn, 'O', 'the turn passed at once');
+  assert.equal(r.rec.state.seq, 1); assert.equal(r.rec.state.moves, 1);
+  assert.equal(r.entries.length, 1);
+  const e = r.entries[0];
+  assert.equal(e.seq, 1); assert.equal(e.by, 'X'); assert.equal(e.square, 0); assert.equal(e.kind, 'move'); assert.equal(e.next, 'O');
+  assert.equal(e.after.mini.cells[4], 'X', 'the square as it was after the move');
+  assert.deepEqual(r.rec.state.recent, [e]);
+  assert.equal(r.rec.state.squares[0].mini.cells[4], 'X');
+  rec = r.rec;
+  // a wordle guess: the word stays secret, the marks are public
+  r = L.applyOnlineMove(rec, 'O', 1, 'crate', lcg(2));
+  assert.equal(r.ok, true);
+  assert.equal(r.rec.state.squares[1].mini.guesses[0].marks.join(''), 'gggxg');
+  assert.ok(!('word' in r.rec.state.squares[1].mini));
+  assert.equal(r.rec.secrets[1].word, 'CRANE');
+  assert.equal(r.entries[0].word, 'CRATE');
+  rec = r.rec;
+  // a hangman hit: a bonus move, the lock stays, the turn does not pass
+  r = L.applyOnlineMove(rec, 'X', 2, 'P', lcg(2));
+  assert.equal(r.ok, true);
+  assert.equal(r.entries[0].kind, 'again'); assert.equal(r.rec.state.turn, 'X'); assert.equal(r.rec.state.lock, 2);
+  assert.equal(r.rec.state.squares[2].mini.word, '_PP__');
+  rec = r.rec;
+  assert.equal(L.applyOnlineMove(rec, 'X', 0, 0, lcg(2)).reason, 'locked', 'the bonus move is owed in that square');
+  r = L.applyOnlineMove(rec, 'X', 2, 'Z', lcg(2));
+  assert.equal(r.ok, true); assert.equal(r.rec.state.turn, 'O'); assert.equal(r.rec.state.lock, null);
+  rec = r.rec;
+  // memory: the pick shows one card to both, the move shows two
+  r = L.applyOnlinePick(rec, 'O', 4, 3);
+  assert.equal(r.ok, true); assert.equal(r.rec.state.pick, 3); assert.equal(r.rec.state.pickSq, 4);
+  assert.ok(r.rec.state.squares[4].mini.cards[3], 'the picked card is up'); assert.equal(r.rec.state.squares[4].mini.cards[0], null);
+  assert.equal(L.applyOnlinePick(rec, 'X', 4, 3).reason, 'turn');
+  r = L.applyOnlinePick(r.rec, 'O', 4, 3);
+  assert.equal(r.rec.state.pick, null, 'tapped again: turned back');
+  r = L.applyOnlineMove(rec, 'O', 4, [3, 5], lcg(4));
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.rec.state.squares[4].mini.seen.slice().sort(), [3, 5]);
+  assert.equal(r.rec.state.squares[4].mini.cards.filter(Boolean).length, 2);
+  assert.equal(r.rec.state.pick, null);
+  rec = r.rec;
+  assert.ok(rec.state.recent.length <= L.RECENT_MAX);
+  // pig: a roll keeps the turn, the bank passes it
+  r = L.applyOnlineMove(rec, 'X', 3, 'roll', seq(0.2));
+  assert.equal(r.ok, true);
+  if (r.entries[0].note !== 'bust') { assert.equal(r.rec.state.turn, 'X'); assert.equal(r.rec.state.lock, 3); r = L.applyOnlineMove(r.rec, 'X', 3, 'bank', lcg(1)); assert.equal(r.ok, true); }
+  assert.equal(r.rec.state.turn, 'O'); assert.equal(r.rec.state.lock, null);
+});
+
+test('the record keeps at most the last few moves, and a claim or a win is settled in the record', () => {
+  let st = matchWith(['ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt'], lcg(5));
+  st.id = 'm'; st.seq = 0; st.recent = [];
+  let rec = L.matchRecord(st);
+  const moves = [[0, 0], [1, 0], [0, 1], [1, 1], [0, 2]];   // X claims square 0 on the fifth move
+  let r;
+  for (const [sq, cell] of moves) { r = L.applyOnlineMove(rec, rec.state.turn, sq, cell, lcg(1)); assert.equal(r.ok, true, r.reason); rec = r.rec; }
+  assert.equal(rec.state.squares[0].owner, 'X');
+  assert.equal(r.entries[0].kind, 'claim'); assert.equal(r.entries[0].after.owner, 'X');
+  assert.equal(rec.state.turn, 'O');
+  for (let k = 0; k < 12; k++) { const t = rec.state.turn; const sq = rec.state.squares.findIndex(q => !q.owner && q.mini.cells.some(c => !c)); const cell = rec.state.squares[sq].mini.cells.findIndex(c => !c); r = L.applyOnlineMove(rec, t, sq, cell, lcg(k)); assert.equal(r.ok, true); rec = r.rec; }
+  assert.equal(rec.state.recent.length, L.RECENT_MAX);
+  assert.equal(rec.state.recent[L.RECENT_MAX - 1].seq, rec.state.seq);
+});
+
+test('an online timeout makes a random move (Pig: roll then bank) and the second in a row loses', () => {
+  let st = matchWith(['pig', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt'], lcg(8));
+  st.id = 'm'; st.seq = 0; st.recent = []; st.timer = L.newTimer(30); st.lock = 0;
+  let rec = L.matchRecord(st);
+  let r = L.applyOnlineTimeout(rec, lcg(2));
+  assert.equal(r.ok, true);
+  assert.equal(r.entries[0].timeout, true); assert.equal(r.entries[0].square, 0);
+  if (r.entries[0].note !== 'bust') { assert.equal(r.entries.length, 2, 'the roll, then the bank'); assert.equal(r.entries[1].pot, undefined === r.entries[1].pot ? r.entries[1].pot : r.entries[1].pot); }
+  assert.equal(r.rec.state.turn, 'O'); assert.equal(r.rec.state.lock, null);
+  assert.equal(r.rec.state.timer.timeouts.X, 1); assert.equal(r.rec.state.timer.streak.X, 1); assert.equal(r.rec.state.timer.bankNext, false);
+  rec = r.rec;
+  r = L.applyOnlineMove(rec, 'O', 1, 4, lcg(1)); assert.equal(r.ok, true); rec = r.rec;   // O plays in time
+  assert.deepEqual(rec.state.timer.streak, { X: 1, O: 0 });
+  r = L.applyOnlineTimeout(rec, lcg(3));
+  assert.equal(r.ok, true); assert.equal(r.lost, 'X'); assert.deepEqual(r.entries, []);
+  assert.equal(r.rec.state.winner, 'O'); assert.equal(r.rec.state.winReason, 'timeout');
+  assert.equal(L.applyOnlineTimeout(r.rec, lcg(4)).ok, false, 'nothing more once it is over');
+  assert.equal(L.applyOnlineMove(r.rec, 'O', 1, 0, lcg(4)).reason, 'over');
+});
+
+test('a new online match comes from the lobby settings and a rematch starts over with the same ones', () => {
+  const setup = { names: { X: 'Hosty', O: 'Guesty' }, games: Object.fromEntries(L.TYPES.map(t => [t, t === 'ttt' || t === 'wordle'])), timer: 60 };
+  const rec = L.newOnlineMatch(setup, lcg(9), 'abc');
+  assert.ok(rec);
+  assert.equal(rec.state.id, 'abc'); assert.equal(rec.state.seq, 0); assert.deepEqual(rec.state.recent, []);
+  assert.equal(rec.state.timer.limit, 60); assert.equal(rec.state.turn, 'X'); assert.equal(rec.state.moves, 0);
+  assert.ok(rec.state.squares.every(sq => ['ttt', 'wordle'].includes(sq.mini.type)));
+  assert.deepEqual(rec.state.games, ['ttt', 'wordle']);
+  assert.ok(!rec.state.setup, 'the names live in the room, not the record');
+  const none = L.newOnlineMatch({ games: Object.fromEntries(L.TYPES.map(t => [t, false])) }, lcg(9), 'x');
+  assert.equal(none, null, 'no games: no match');
 });

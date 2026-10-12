@@ -2,8 +2,9 @@
 
 Play it: https://jaredmk.github.io/Tiger-tac-toe/
 
-A two-player, pass-and-play game for one phone. The whole game is `index.html`:
-inline CSS and JS, no dependencies, no build step, works offline.
+A two-player, pass-and-play game for one phone, against the computer, or online. The whole game is
+`index.html`: inline CSS and JS, no build step; the local modes work offline. Online play uses a
+Firebase Realtime Database (see "Setting up Firebase").
 
 Open `index.html` in a browser (or serve the folder with any static server) and play.
 
@@ -59,25 +60,54 @@ Battleship cell) is never shown on the board or in a mini-game before it is reve
 
 "Play Online" offers "Host game" and "Join game". The host gets a five-letter room code (no look-alike
 letters) and a Share button that sends a link to the game with the code filled in; "Waiting for
-friend…" shows until the guest connects. The guest enters a name and the code, or opens the shared
-link. The host picks a side and the mini-games, and starts once the guest is in; both phones then show
-the same board.
+friend…" shows until the guest joins. The guest enters a name and the code, or opens the shared link.
+The host picks a side, the mini-games and the time per turn, and starts once the guest is in; both
+phones then show the same board.
 
 Only the player on the move can act; the other can still open squares to look, and sees "Waiting
 for [name]…". Each player's moves play on the other phone the way computer moves do: the chosen
 square glows on the main board for about a second with a "[name] plays here" label, then a zoom into
 the square, the animation, a short hold, back to the board, Pig rolls one by one (a follow-up move in
-a square you are already looking at plays right there). "Rematch" on the win screen starts again in
-the same room with the same settings. Leaving through the menu tells the other player ("[name] left
-the match") and sends them back to the main menu too.
+a square you are already looking at plays right there). "Rematch" on the win screen, from either
+player, starts again in the same room with the same settings. Leaving through the menu tells the
+other player ("[name] left the match") and sends them back to the main menu too.
+
+Leaving the app does not end a match. Lock the phone, answer a call, switch apps: the other player
+sees "[name] is away", the match waits (or the clock runs, if one is set), and when you come back,
+or open the page or the link again, you are back in your seat and every move you missed plays back
+with the usual highlight-and-animate sequence, in order.
+
+### How it works
+
+The game has no server of its own. Online play runs on a free Firebase project: a Realtime Database
+holds each room at `/rooms/CODE`, and both phones read and write it. Neither phone is in charge, so
+nothing stops when one of them is backgrounded, reloaded or switched off for a while.
+
+- Each player is signed in anonymously (no account, no prompt). The room code and seat (X or O) are
+  kept in localStorage, so reopening the page or the link rejoins the same seat.
+- A move is a database transaction: it checks that it is that player's turn and that the move is
+  legal, applies it and passes the turn, all at once. Two moves at the same moment cannot both go
+  through, and a double tap cannot move twice. The moving phone generates the randomness of its own
+  move (dice, coins, spins, resets) and the result is written into the state.
+- Hidden values (the Wordle and Hangman words, the Higher/lower number, the Memory cards, the
+  Battleship cell, the treasure) are generated when the match starts and kept in a separate node of
+  the room, `match/secrets`; the state the phones render never contains them before they are
+  revealed.
+- The record keeps the last few moves, so a phone that was away plays back what it missed. Presence
+  is tracked with `onDisconnect` and the page's visibility: "[name] is away" shows while the other
+  player is out of the app or offline.
+- The turn deadline is stored in server time and both phones use the server clock offset, so the
+  countdown is the same on both screens. When it passes, either phone applies the random timeout
+  move in a transaction, so it happens exactly once. The clock keeps running while a player is away;
+  that is the point of the clock.
+- Rooms older than 24 hours are deleted whenever a new room is created.
 
 ### Time per turn
 
 The host's lobby offers a time per turn: 30s, 1 min, 3 min, or No limit (the default). The guest sees
 the setting in the lobby. With a limit on, a countdown shows in the header on both phones; it starts
 when a turn begins (once the previous move has finished playing), turns red and pulses in the last ten
-seconds, keeps running while the in-game menu is open, and waits while a dropped connection is being
-restored. The host's phone keeps the official time.
+seconds, and keeps running while the in-game menu is open or while a player is away.
 
 When the clock runs out, a random legal move is made for that player and shown on both screens with
 "[name] ran out of time — random move": a random open square, then a random legal action in it (Pig:
@@ -86,18 +116,37 @@ hits; Wordle: a random dictionary word). The turn then passes. Timeouts are coun
 a player's second timeout in a row loses the match at once: the win screen reads "[name] wins —
 [other] timed out twice".
 
-The two browsers talk directly through PeerJS (loaded from a CDN only when online play is chosen,
-using its free public signalling server; there is no backend). The host's browser is the single
-source of truth: it holds the whole game and makes every random choice, the guest only sends move
-requests, and after each change the host sends both screens a public snapshot with every secret of an
-unclaimed square left out (hidden words, numbers, the ship, the treasure, face-down cards), so the
-guest never holds a hidden value before it is revealed.
+### Setting up Firebase
 
-If no connection comes within about ten seconds the screen says so and suggests Wi-Fi on both phones.
-If the connection drops mid-match, both phones show "Connection lost — reconnecting…" and keep
-trying; the guest can also rejoin with the same code and the host resends the current state. The
-match lives on the host's phone, whose state is saved locally, so even a reload of the host's page
-reopens the room with the same code.
+Online play needs a Firebase project. The free Spark plan is enough; nothing here needs billing or
+Cloud Functions. Once, from a computer:
+
+1. Go to https://console.firebase.google.com and sign in with a Google account. Click **Create a
+   project** (or **Add project**), name it (for example `tiger-tac-toe`), and continue. Google
+   Analytics is not needed: turn it off when asked. Wait for the project to be ready and click
+   **Continue**.
+2. In the left menu open **Build → Realtime Database** and click **Create Database**. Pick the
+   location closest to you and choose **Start in locked mode**, then **Enable**.
+3. Still in Realtime Database, open the **Rules** tab, replace everything with the contents of
+   `database.rules.json` from this repository, and click **Publish**. These rules let only signed-in
+   users read, let only the two players of a room write to it (a free seat can be taken by a joiner),
+   and let anyone delete a room older than a day.
+4. Open **Build → Authentication**, click **Get started**, then under **Sign-in method** choose
+   **Anonymous**, switch **Enable** on and **Save**.
+5. Open the project's settings (the gear next to **Project Overview** → **Project settings**). Under
+   **Your apps** click the web icon (`</>`), give the app a nickname (for example `web`), leave
+   Firebase Hosting unticked, and click **Register app**. The page shows a `firebaseConfig` object
+   with `apiKey`, `authDomain`, `databaseURL`, `projectId`, `storageBucket`, `messagingSenderId` and
+   `appId`. (If `databaseURL` is missing, it is shown on the Realtime Database page, in the form
+   `https://<project>-default-rtdb.<region>.firebasedatabase.app`.)
+6. Open `index.html`, find `const FIREBASE_CONFIG = {` near the start of the online-play section, and
+   replace the `PASTE_…` values with `apiKey`, `authDomain`, `databaseURL`, `projectId` and `appId`
+   from that object (the other two fields are not needed). Then run `./deploy.sh "Add the Firebase
+   config"`.
+
+The config is not a secret: it identifies the project, and the database rules decide what anyone can
+do with it. The Firebase SDK (about 300 KB) is fetched from Google's CDN only when online play is
+chosen; local modes stay offline-capable.
 
 ## Playing against the computer
 
@@ -154,7 +203,8 @@ git push -u origin main
 ## Tests
 
 The game logic lives in the `<script id="logic">` block of `index.html` and is covered by
-`test/logic.test.js` (every mini-game's win and draw logic including Hex path-finding and
+`test/logic.test.js` (the online match records: secrets kept apart from the public state, moves and
+timeouts applied as transactions would apply them, picks, rematches; every mini-game's win and draw logic including Hex path-finding and
 lopsided-move cases, the Hangman bonus guess, draw resets, the return to the board after each move,
 main-board three-in-a-row and majority wins, random full matches, and the computer player: legal
 moves only, decisions that cannot see hidden information, match-winning squares taken and defended,

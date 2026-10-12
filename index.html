@@ -376,7 +376,9 @@ b.X { color: var(--x); } b.O { color: var(--o); }
   font-weight: 700; font-size: 13px; box-shadow: 0 8px 24px rgba(0, 0, 0, .4); animation: pop .2s ease-out;
 }
 .netbar.lost, .netbar.connecting { border-color: var(--yellow); }
-.netbar.error, .netbar.left { border-color: var(--x); }
+.netbar.error { border-color: var(--x); }
+.netbar.away { border-color: var(--yellow); }
+.netbar.note { border-color: var(--line); color: var(--muted); }
 .netbar .btn { height: 34px; padding: 0 12px; font-size: 13px; }
 
 /* ---------- setup screen ---------- */
@@ -1808,6 +1810,131 @@ function leaveSquare(state) {
   state.screen = 'board'; state.zoom = null; state.draft = ''; state.pick = null; state.sel = []; state.notice = null;
   return true;
 }
+
+/* ===================== Online match records (what the shared database holds) =====================
+ * Over the network a match is a record { state, secrets }: `state` is what either phone may render,
+ * with the hidden values of unclaimed squares left out; `secrets` keeps those values, square by square.
+ * To make a move the two are joined again, the usual move logic runs, the result is settled at once
+ * (the turn passes here, not after an animation) and the record is split back. state.recent keeps the
+ * last few moves, so a phone that was away can play back what it missed, one move at a time.
+ */
+const RECENT_MAX = 8;
+const MATCH_FIELDS = ['id', 'seq', 'recent', 'games', 'squares', 'turn', 'lock', 'moves', 'winner', 'winLine', 'winReason', 'counts', 'lastSquare', 'lastBy', 'pick', 'pickSq', 'timer'];
+// The hidden part of a mini-game, or null when it has none.
+function secretOf(mini) {
+  switch (mini.type) {
+    case 'wordle': case 'hangman': return { word: mini.word };
+    case 'hilo': return { target: mini.target };
+    case 'bs': return { hidden: mini.hidden };
+    case 'hunt': return { treasure: mini.treasure };
+    case 'memory': return { cards: mini.cards.map(c => ({ s: c.s, c: c.c })) };
+  }
+  return null;
+}
+// Strip a mini-game's secret in place, leaving only what the board is allowed to show: the Hangman
+// word as its pattern, the Treasure hunt's clues, the Memory cards that have been seen (or picked).
+function hideMini(m, k, st) {
+  switch (m.type) {
+    case 'wordle': delete m.word; break;
+    case 'hangman': { const hits = new Set(m.letters.filter(x => x.hit).map(x => x.l)); m.word = m.word.split('').map(ch => (hits.has(ch) ? ch : '_')).join(''); break; }
+    case 'hilo': delete m.target; break;
+    case 'bs': delete m.hidden; break;
+    case 'hunt': m.clues = m.dug.map((d, i) => (d ? huntDist(m.treasure, i) : null)); delete m.treasure; break;
+    case 'memory': {
+      const show = new Set(m.seen || []);
+      if (st && st.pickSq === k && st.pick != null) show.add(st.pick);
+      m.cards = m.cards.map((c, i) => (show.has(i) ? c : null));
+      break;
+    }
+  }
+}
+// The record of a match from a full state: the public state and the secrets, kept apart.
+function matchRecord(full) {
+  const secrets = {};
+  full.squares.forEach((sq, i) => { const s = secretOf(sq.mini); if (s) secrets[i] = s; });
+  const state = {};
+  for (const k of MATCH_FIELDS) if (full[k] !== undefined) state[k] = JSON.parse(JSON.stringify(full[k]));
+  if (!Array.isArray(state.recent)) state.recent = [];
+  if (!Number.isInteger(state.seq)) state.seq = 0;
+  state.squares.forEach((sq, k) => { if (!sq.owner) hideMini(sq.mini, k, full); });
+  return { state, secrets };
+}
+// The full state again, from a record: the secrets back in their squares, the screen-only fields blank.
+function fullState(rec) {
+  const st = JSON.parse(JSON.stringify(rec.state));
+  const secrets = rec.secrets || {};
+  st.squares.forEach((sq, k) => {
+    const s = secrets[k];
+    if (s) Object.assign(sq.mini, JSON.parse(JSON.stringify(s)));
+    if (sq.mini.type === 'hunt') delete sq.mini.clues;
+  });
+  Object.assign(st, { flash: null, done: null, screen: 'board', zoom: null, draft: '', sel: [], notice: null, stamp: null, spot: null, cpu: null, online: null, confirm: null });
+  if (!st.timer) st.timer = newTimer(0);
+  if (!Array.isArray(st.recent)) st.recent = [];
+  if (!Array.isArray(st.games) || !st.games.length) st.games = TYPES.slice();
+  return st;
+}
+// The move just made is settled: its result goes on the record as an entry for the phones to play
+// back, and the turn passes at once (or the mover keeps it for a bonus move).
+function settle(full) {
+  const f = full.flash, sq = full.squares[f.square];
+  const after = JSON.parse(JSON.stringify(sq));
+  if (!after.owner) hideMini(after.mini, f.square, full);
+  full.seq = (full.seq || 0) + 1;
+  const entry = Object.assign(JSON.parse(JSON.stringify(f)), { seq: full.seq, moves: full.moves, after });
+  endFlash(full, false);
+  full.recent = (full.recent || []).concat([entry]).slice(-RECENT_MAX);
+  return entry;
+}
+// One move by `side`, applied to a record: { ok, rec, entries } or { ok: false, reason }.
+function applyOnlineMove(rec, side, i, m, rng, opts) {
+  const full = fullState(rec);
+  if (full.winner) return { ok: false, reason: 'over' };
+  if (full.turn !== side) return { ok: false, reason: 'turn' };
+  const r = playMove(full, i, m, rng, opts);
+  if (!r.ok) return r;
+  const entries = [settle(full)];
+  return { ok: true, rec: matchRecord(full), entries };
+}
+// The player on the move ran out of time: a random move for them (Pig: a roll, then the bank), or
+// the match lost on a second timeout in a row.
+function applyOnlineTimeout(rec, rng) {
+  const full = fullState(rec);
+  const r = timeoutMove(full, rng);
+  if (!r.ok) return r;
+  if (r.lost) return { ok: true, rec: matchRecord(full), entries: [], lost: r.lost };
+  const entries = [settle(full)];
+  if (full.timer.bankNext) {
+    full.timer.bankNext = false;
+    if (full.lock != null && full.squares[full.lock].mini.type === 'pig') {
+      const b = playMove(full, full.lock, 'bank', rng, { forced: true });
+      if (b.ok) entries.push(settle(full));
+    }
+  }
+  return { ok: true, rec: matchRecord(full), entries };
+}
+// Memory: the first card chosen is turned up for both phones (or turned back when tapped again).
+function applyOnlinePick(rec, side, i, card) {
+  const full = fullState(rec);
+  if (full.winner || full.turn !== side) return { ok: false, reason: 'turn' };
+  const sq = full.squares[i];
+  if (!sq || sq.owner || sq.mini.type !== 'memory') return { ok: false, reason: 'bad' };
+  if (full.lock != null && full.lock !== i) return { ok: false, reason: 'locked' };
+  if (card != null && !(Number.isInteger(card) && card >= 0 && card < 9)) return { ok: false, reason: 'bad' };
+  const same = full.pickSq === i && full.pick === card;
+  full.pick = card == null || same ? null : card;
+  full.pickSq = full.pick == null ? null : i;
+  return { ok: true, rec: matchRecord(full) };
+}
+// A fresh match for a room: the names, the mini-games and the time per turn from the lobby.
+function newOnlineMatch(setup, rng, id) {
+  const st = newState(rng);
+  st.setup = Object.assign(defaultSetup(), setup || {}, { mode: 'online' });
+  if (setup && setup.games) st.setup.games = Object.assign({}, st.setup.games, setup.games);
+  if (!startMatch(st, rng)) return null;
+  st.id = id; st.seq = 0; st.recent = [];
+  return matchRecord(st);
+}
 </script>
 
 <script id="ui">
@@ -1833,8 +1960,7 @@ let flashTimer = null, noticeTimer = null, flashReady = 0;   // flashReady: when
 let lastView = null, entering = false;                         // which screen (and square) was last drawn, so the zoom-in plays once
 let cpuTimer = null, cpuPlan = null, holdTimer = null;          // the computer's next step, its chosen move, and Memory's flip-back pause
 let spotTimer = null, menuOpen = false, menuStep = 'main', menuNote = '';   // the pre-zoom glow, the in-game menu, a note for the main menu
-let clockEnd = null, clockPause = null, clockTimer = null;       // the turn countdown as this phone sees it (guest: when it ends, and when the line dropped)
-let queuedMsg = null;                                            // host: the guest's next request, held while the last move is still playing here
+let clockTimer = null;                                           // the clock on screen is refreshed four times a second
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const N = p => esc(playerName(state, p));     // a player's display name, safe for innerHTML
 
@@ -2068,7 +2194,7 @@ function renderSetup() {
       ${state.notice ? `<div class="notice" role="status">${esc(state.notice)}</div>` : ''}
       <div class="status${net.status === 'connected' ? ' ok' : net.status === 'error' ? ' bad' : ''}">${net.status === 'connected' ? `<b>${esc(s.names[guest])}</b> joined` : esc(net.msg || 'Waiting for friend…')}</div>
       ${net.status === 'error' ? '<button class="btn" data-act="host-retry">Try again</button>' : ''}</div>` : '';
-  const ready = host ? on && state.online.joined && net.status === 'connected' : on;
+  const ready = host ? on && state.online.joined && connected : on;
   const title = mode === 'online' ? 'Host game' : mode === 'cpu' ? 'Play vs Computer' : '2 Players';
   const sub = mode === 'online' ? 'Share the code, set up, then start once your friend is in' : mode === 'cpu' ? 'You against the computer on one phone' : 'Pass and play on one phone';
   return `<main class="scr setup">
@@ -2154,9 +2280,17 @@ function keyboard(cls, disabled, extra) {
 
 // The connection banner during online play: nothing while all is well.
 function netBar() {
-  if (!state.online || net.status === 'connected' || net.status === 'idle') return '';
-  const leave = net.status === 'left' || net.status === 'error' ? ' <button class="btn" data-act="leave">Leave game</button>' : '';
-  return `<div class="netbar ${net.status}" role="status">${esc(net.msg || (net.status === 'lost' ? 'Connection lost — reconnecting…' : 'Connecting…'))}${leave}</div>`;
+  const o = state.online;
+  if (!o) return '';
+  if (net.status === 'error') return `<div class="netbar error" role="status">${esc(net.msg)} <button class="btn" data-act="leave">Leave game</button></div>`;
+  if (net.status === 'connecting') return `<div class="netbar connecting" role="status">${esc(net.msg || 'Connecting…')}</div>`;
+  if (!connected) return '<div class="netbar lost" role="status">Reconnecting…</div>';
+  if (awayNote) return `<div class="netbar note" role="status">${esc(awayNote)}</div>`;
+  if (o.me && o.joined && room && room.status === 'playing' && !state.winner && presence) {   // (presence null: not read yet)
+    const them = other(o.me), p = presence[them];
+    if (!p || !p.online || p.away) return `<div class="netbar away" role="status">${N(them)} is away</div>`;
+  }
+  return '';
 }
 /* ----- zoomed mini-game ----- */
 // Tic-tac-toe's winning line, drawn across the grid (animated when the win is fresh).
@@ -2372,7 +2506,7 @@ function renderMini(sq) {
 function pauseMenu() {
   if (!menuOpen) return '';
   if (menuStep === 'confirm') {
-    const note = state.online ? (isHost() ? ' Your friend is sent back to the main menu.' : ' Your friend is told you left.') : '';
+    const note = state.online ? ' Your friend is told you left and sent back to the main menu.' : '';
     return `<div class="flash pause" role="dialog" aria-label="Leave this match?"><div class="card"><h2>Leave this match?</h2><p>The match ends here.${note}</p>
       <div class="row"><button class="btn" data-act="pause-back">No</button><button class="btn go" data-act="pause-leave">Yes</button></div></div></div>`;
   }
@@ -2438,175 +2572,363 @@ function renderWin() {
   return `<main class="scr win-scr">${netBar()}<div class="win-card">
     <div class="big-g ${w}">${w}</div><h1>${state.winReason === 'timeout' ? `${N(w)} wins — ${why}` : `${N(w)} wins the match!`}</h1><p>${state.winReason === 'timeout' ? 'Two turns in a row ran out of time' : why}</p>
     <div class="final" aria-hidden="true">${final}</div>
-    <div class="row"><button class="primary" data-act="rematch"${isGuest() && net.status !== 'connected' ? ' disabled' : ''}>Rematch</button><button class="btn" data-act="${state.online ? 'leave' : 'menu'}">Main menu</button></div></div></main>`;
+    <div class="row"><button class="primary" data-act="rematch"${state.online && !connected ? ' disabled' : ''}>Rematch</button><button class="btn" data-act="${state.online ? 'leave' : 'menu'}">Main menu</button></div></div></main>`;
 }
 
 
-/* ===================== Online play (PeerJS, host as the single source of truth) =====================
- * The host's browser keeps the real state and makes every random choice. The guest only sends move
- * requests; the host validates and applies them, then sends both screens a public snapshot of the
- * state with every secret of an unclaimed square left out (publicState). Moves by the other player
- * play back the way computer moves do: zoom into the square, animate, hold, back to the board.
+/* ===================== Online play (Firebase Realtime Database) =====================
+ * Neither phone is the server. A room lives at /rooms/CODE in the database; both players read and
+ * write it, and the database is the source of truth. A move is a transaction: it checks that it is
+ * that player's turn and that the move is legal, applies it (the moving phone makes the random choices)
+ * and passes the turn, all at once. Each phone then plays the move back on its own screen (the square
+ * lit up on the board, the zoom, the animation), and a phone that was away plays back what it missed
+ * from the record's last few moves. Hidden values live in the room's separate `secrets` node and are
+ * never rendered before they are revealed. Presence uses onDisconnect; the turn clock is a server-time
+ * deadline that either phone may call when it passes.
  */
-const PEER_SRCS = ['https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.5/peerjs.min.js', 'https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js'];
-const ROOM_PREFIX = 'tigertactoe-';
+// ---------- your Firebase project: paste the web app config here (README: "Setting up Firebase") ----------
+const FIREBASE_CONFIG = {
+  apiKey: 'PASTE_YOUR_API_KEY',
+  authDomain: 'PASTE_YOUR_PROJECT_ID.firebaseapp.com',
+  databaseURL: 'https://PASTE_YOUR_PROJECT_ID-default-rtdb.firebaseio.com',
+  projectId: 'PASTE_YOUR_PROJECT_ID',
+  appId: 'PASTE_YOUR_APP_ID',
+};
+const FIREBASE_VERSION = '11.10.0';
+const FIREBASE_CDN = `https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/`;   // the SDK is fetched only when online play is chosen
 const ROOM_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ';   // no I or O: they look like 1 and 0
-const NET_MS = { connect: 10000, retry: 3000, move: 4000, ping: 2000, quiet: 6500 };   // a link that stays quiet this long counts as lost
-let peer = null, conn = null, net = { status: 'idle', msg: '' };
-let netTimer = null, retryTimer = null, peerLoad = null, idRetries = 0, hbTimer = null, lastHeard = 0;
-let pendingSnap = null, shownMoves = -1, moveWait = null, lobby = null, joinCode = '', joinName = '';
-const peerOpts = () => Object.assign({ debug: 0 }, window.TTT_PEER || {});   // TTT_PEER: a different signalling server (used by the tests)
+const ROOM_TTL_MS = 24 * 60 * 60 * 1000;           // rooms older than this are deleted when a new one is created
+const NET_MS = { connect: 12000, move: 8000 };
+const REPLAY_MAX = 6;                              // at most this many missed moves are played back after a time away
+let fb = null, fbLoad = null;                      // the SDK: { m: database module, db, uid }
+let net = { status: 'idle', msg: '' };             // 'idle' | 'connecting' | 'waiting' | 'connected' | 'error'
+let room = null, pendingRoom = null, roomUnsub = null, presUnsub = null;   // the room as last read; one that arrived mid-playback
+let presence = null, connected = false, serverOffset = 0;
+let presentingSeq = null;                          // the move being played back here right now
+let moveWait = null, moveTimer = null, timeoutBusy = false, joinCode = '', joinName = '', nameTimer = null, awayNote = '', awayTimer = null;
 
 function roomCode() { let c = ''; for (let i = 0; i < 5; i++) c += ROOM_ALPHABET[Math.floor(Math.random() * ROOM_ALPHABET.length)]; return c; }
 function validCode(c) { return typeof c === 'string' && /^[ABCDEFGHJKLMNPQRSTUVWXYZ]{5}$/.test(c); }   // no constants: load() calls this before they exist
+function newId() { return Math.random().toString(36).slice(2, 10) + Date.now().toString(36); }
 function online() { return state.online || null; }
-function isHost() { return !!state.online && state.online.role === 'host'; }
+function isHost() { return !!state.online && state.online.role === 'host'; }     // the host set the room up; in the match both phones are equal
 function isGuest() { return !!state.online && state.online.role === 'guest'; }
-// the side played at this phone: the host's or guest's own side online, the person's side against the computer, null when both play here
+// the side played at this phone: our own side online, the person's side against the computer, null when both play here
 function mySide() { return state.online ? state.online.me : state.cpu ? other(state.cpu) : null; }
 function remoteTurn() { return !!state.online && !state.winner && state.turn !== state.online.me; }
-// nothing to tap: the computer or the other player is on the move, a move of ours is still travelling, or the line is down
-function blocked() { return cpuTurn() || remoteTurn() || !!moveWait || (isGuest() && net.status !== 'connected'); }
+// nothing to tap: the computer or the other player is on the move, a move of ours is still being written, or the line is down
+function blocked() { return cpuTurn() || remoteTurn() || !!moveWait || (!!state.online && !connected); }
 function lockMine() { return state.lock != null && (mySide() == null || state.turn === mySide()); }
 function setNet(status, msg) { net = { status, msg: msg || '' }; }
 function roomLink() { return location.origin + location.pathname + '?room=' + state.online.code; }
+function configured() { const c = window.TTT_FIREBASE && window.TTT_FIREBASE.config || FIREBASE_CONFIG; return !!(c && c.apiKey && c.databaseURL && !/PASTE_/.test(c.apiKey + c.databaseURL)); }
+function serverNow() { return Date.now() + serverOffset; }
+function roomRef(path) { return fb.m.ref(fb.db, 'rooms/' + state.online.code + (path ? '/' + path : '')); }
+function presRef(side) { return fb.m.ref(fb.db, `presence/${state.online.code}/${side}`); }
+function parseMatch(v) {
+  if (!v || typeof v.state !== 'string') return null;
+  try { return { state: JSON.parse(v.state), secrets: v.secrets ? JSON.parse(v.secrets) : {} }; } catch (e) { return null; }
+}
+function packMatch(rec) { return { state: JSON.stringify(rec.state), secrets: JSON.stringify(rec.secrets || {}) }; }
 
-function loadPeer() {
-  if (window.Peer) return Promise.resolve();
-  if (peerLoad) return peerLoad;
-  peerLoad = new Promise((resolve, reject) => {
-    const tryAt = k => {
-      if (k >= PEER_SRCS.length) { reject(new Error('load')); return; }
-      const s = document.createElement('script');
-      s.src = PEER_SRCS[k]; s.async = true;
-      const t = setTimeout(() => { s.remove(); tryAt(k + 1); }, NET_MS.connect);
-      s.onload = () => { clearTimeout(t); if (window.Peer) resolve(); else tryAt(k + 1); };
-      s.onerror = () => { clearTimeout(t); s.remove(); tryAt(k + 1); };
-      document.head.appendChild(s);
-    };
-    tryAt(0);
-  }).catch(e => { peerLoad = null; throw e; });
-  return peerLoad;
+// ----- the SDK: fetched from Google's CDN only when online play is chosen, then an anonymous sign-in -----
+function loadFirebase() {
+  if (fb) return Promise.resolve(fb);
+  if (fbLoad) return fbLoad;
+  fbLoad = (async () => {
+    const hook = window.TTT_FIREBASE || null;              // the tests: a local emulator and a fixed user id
+    const base = (hook && hook.cdn) || FIREBASE_CDN;
+    const mods = await Promise.all([import(base + 'firebase-app.js'), import(base + 'firebase-database.js'), hook && hook.uid ? null : import(base + 'firebase-auth.js')]);
+    const [appM, m, authM] = mods;
+    const app = appM.initializeApp((hook && hook.config) || FIREBASE_CONFIG);
+    const db = m.getDatabase(app);
+    let uid;
+    if (hook && hook.emulator) m.connectDatabaseEmulator(db, hook.emulator.host, hook.emulator.port, hook.uid ? { mockUserToken: { sub: hook.uid, user_id: hook.uid } } : undefined);
+    if (hook && hook.uid) uid = hook.uid;
+    else {
+      const auth = authM.getAuth(app);
+      const cred = await authM.signInAnonymously(auth);     // the same anonymous user again on a browser that signed in before
+      uid = cred.user.uid;
+    }
+    fb = { m, db, uid };
+    m.onValue(m.ref(db, '.info/serverTimeOffset'), s => { serverOffset = s.val() || 0; });
+    m.onValue(m.ref(db, '.info/connected'), s => onConnected(!!s.val()));
+    return fb;
+  })().catch(e => { fbLoad = null; throw e; });
+  return fbLoad;
 }
-function closePeer() {
-  clearTimeout(netTimer); clearTimeout(retryTimer); clearInterval(hbTimer); netTimer = retryTimer = hbTimer = null;
-  if (conn) { try { conn.close(); } catch (e) { /* already gone */ } }
-  if (peer) { try { peer.destroy(); } catch (e) { /* already gone */ } }
-  conn = null; peer = null;
+async function connectFirebase() {
+  if (!configured()) { setNet('error', 'Online play is not set up on this copy of the game: it needs a Firebase project (see the README, "Setting up Firebase").'); commit(); return false; }
+  try {
+    await Promise.race([loadFirebase(), new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), NET_MS.connect))]);
+    return true;
+  } catch (e) {
+    setNet('error', 'Online play needs an internet connection. Check it (switching to Wi-Fi helps) and try again.'); commit(); return false;
+  }
 }
-function send(c, msg) { if (c && c.open) { try { c.send(msg); } catch (e) { /* the line just dropped; the close handler takes over */ } } }
-// Both sides ping every couple of seconds; a line that falls silent is treated as dropped long before
-// the browser would notice on its own.
-function heartbeat(c) {
-  clearInterval(hbTimer); lastHeard = Date.now();
-  hbTimer = setInterval(() => {
-    if (conn !== c || !c.open) { clearInterval(hbTimer); return; }
-    send(c, { t: 'ping' });
-    if (Date.now() - lastHeard > NET_MS.quiet) { clearInterval(hbTimer); try { c.close(); } catch (e) { /* ignore */ } if (conn === c) { conn = null; isHost() ? guestGone() : onLost('quiet'); } }
-  }, NET_MS.ping);
+function onConnected(on) {
+  connected = on;
+  if (on && state.online && state.online.me) presenceUp();
+  if (state.online) render();
 }
-function guestGone() { if (state.online && state.online.joined) { setNet('lost', `Connection lost — waiting for ${guestName()} to reconnect…`); commit(); } }
+// ----- presence: this phone's seat says whether it is online and whether the app is in front -----
+function presenceUp() {
+  const o = state.online;
+  if (!fb || !o || !o.me || !o.code) return;
+  const r = presRef(o.me);
+  fb.m.onDisconnect(r).update({ online: false, at: fb.m.serverTimestamp() }).catch(() => {});
+  fb.m.update(r, { online: true, away: document.visibilityState === 'hidden', at: fb.m.serverTimestamp() }).catch(() => {});
+}
+function presenceDown(side) {
+  if (!fb || !state.online || !side) return;
+  const r = presRef(side);
+  fb.m.onDisconnect(r).cancel().catch(() => {});
+  fb.m.remove(r).catch(() => {});
+}
+document.addEventListener('visibilitychange', () => {
+  const o = state.online;
+  if (!fb || !o || !o.me || !o.code) return;
+  fb.m.update(presRef(o.me), { online: true, away: document.visibilityState === 'hidden', at: fb.m.serverTimestamp() }).catch(() => {});
+  if (document.visibilityState === 'visible') resync();   // back in front: whatever happened meanwhile
+});
+function resync() {
+  if (!fb || !state.online) return;
+  fb.m.get(roomRef()).then(s => onRoomValue(s.val())).catch(() => {});
+}
+function listenRoom(code) {
+  stopListening();
+  roomUnsub = fb.m.onValue(fb.m.ref(fb.db, 'rooms/' + code), s => onRoomValue(s.val()), () => { setNet('error', 'Lost access to this room.'); commit(); });
+  presUnsub = fb.m.onValue(fb.m.ref(fb.db, 'presence/' + code), s => { presence = s.val(); if (state.online) render(); });
+}
+function stopListening() {
+  if (roomUnsub) roomUnsub();
+  if (presUnsub) presUnsub();
+  roomUnsub = presUnsub = null; room = pendingRoom = null; presence = null;
+}
 
-// ---------- host ----------
+// ---------- the host: opens a room, shares its code, sets the match up, starts it ----------
 async function hostRoom(code, resume) {
   if (!resume) {
-    state.online = { role: 'host', code: code || roomCode(), me: state.setup.human === 'O' ? 'O' : 'X', joined: false };
-    state.setup.mode = 'online'; state.screen = 'setup'; lobby = null;
+    state.online = { role: 'host', code: code || roomCode(), me: state.setup.human === 'O' ? 'O' : 'X', joined: false, shownSeq: null, matchId: null };
+    state.setup.mode = 'online'; state.screen = 'setup';
     if (!TIMER_OPTIONS.includes(state.setup.timer)) state.setup.timer = 0;
   }
   setNet('connecting', resume ? `Reopening room ${state.online.code}…` : 'Opening the room…');
   commit();
-  try { await loadPeer(); } catch (e) {
-    setNet('error', 'Online play needs an internet connection. Check it (Wi-Fi helps) and try again.'); commit(); return;
+  if (!(await connectFirebase()) || !isHost()) return;
+  const o = state.online, { m, db, uid } = fb;
+  if (!resume) {
+    try {
+      await cleanupRooms();
+      for (let tries = 0; tries < 5; tries++) {                   // a code already in use (rare) gets another
+        const snap = await m.get(m.ref(db, 'rooms/' + o.code));
+        if (!snap.exists()) break;
+        o.code = roomCode();
+      }
+      const name = String(state.setup.names[o.me] || '').trim().slice(0, NAME_MAX) || o.me;
+      await m.set(m.ref(db, 'rooms/' + o.code), {
+        created: m.serverTimestamp(), host: uid, status: 'lobby',
+        players: { [o.me]: { uid, name, joined: m.serverTimestamp() } },
+        setup: { games: state.setup.games, timer: state.setup.timer || 0, hostSide: o.me },
+      });
+    } catch (e) {
+      setNet('error', "Couldn't open a room. Check your internet connection (switching to Wi-Fi helps) and try again."); commit(); return;
+    }
   }
-  if (!state.online || state.online.role !== 'host') return;
-  idRetries = 0;
-  openHostPeer(resume);
+  if (!isHost()) return;
+  listenRoom(o.code);
+  presenceUp();
+  setNet('waiting', 'Waiting for friend…'); commit();
 }
-function openHostPeer(resume) {
-  closePeer();
-  const p = new Peer(ROOM_PREFIX + state.online.code, peerOpts());
-  peer = p;
-  netTimer = setTimeout(() => {
-    if (peer === p && net.status === 'connecting') { setNet('error', "Couldn't reach the connection service. Check your internet (switching to Wi-Fi helps) and try again."); closePeer(); commit(); }
-  }, NET_MS.connect);
-  p.on('open', () => {
-    if (peer !== p) return;
-    clearTimeout(netTimer);
-    setNet(state.online.joined ? 'lost' : 'waiting', state.online.joined ? `Connection lost — waiting for ${guestName()} to reconnect…` : 'Waiting for friend…');
-    commit();
-  });
-  p.on('connection', c => acceptGuest(c));
-  p.on('disconnected', () => { if (peer === p && !p.destroyed) { try { p.reconnect(); } catch (e) { /* retried below */ } } });
-  p.on('error', err => {
-    if (peer !== p) return;
-    const type = err && err.type;
-    if (type === 'unavailable-id') {                           // the code is in use: a reopened room needs a moment, a new one gets a new code
-      clearTimeout(netTimer);
-      if (resume && idRetries++ < 6) { netTimer = setTimeout(() => openHostPeer(true), 2000); return; }
-      if (!resume) { state.online.code = roomCode(); openHostPeer(false); return; }
-      setNet('error', `Room ${state.online.code} is still in use. Wait a moment and try again.`); commit();
-    } else if (type === 'network' || type === 'server-error' || type === 'socket-error' || type === 'socket-closed') {
-      if (net.status === 'connecting') { clearTimeout(netTimer); setNet('error', "Couldn't reach the connection service. Check your internet (switching to Wi-Fi helps) and try again."); closePeer(); }
-      else setNet('lost', 'Connection lost — reconnecting…');
-      commit();
-    } else if (type === 'browser-incompatible') { setNet('error', 'This browser cannot make a direct connection. Try Chrome, Safari or Firefox.'); closePeer(); commit(); }
-  });
+// Rooms nobody can still be playing in (older than a day) are removed when a new one is opened.
+async function cleanupRooms() {
+  const { m, db } = fb;
+  try {
+    const q = m.query(m.ref(db, 'rooms'), m.orderByChild('created'), m.endAt(serverNow() - ROOM_TTL_MS), m.limitToFirst(30));
+    const snap = await m.get(q);
+    const jobs = [];
+    snap.forEach(ch => { jobs.push(m.remove(m.ref(db, 'rooms/' + ch.key)).then(() => m.remove(m.ref(db, 'presence/' + ch.key))).catch(() => {})); });
+    await Promise.all(jobs);
+  } catch (e) { /* best effort: the rules only let stale rooms go */ }
 }
-function guestName() { return state.online ? playerName(state, other(state.online.me)) : ''; }
-function acceptGuest(c) {
-  if (conn && conn !== c) { const old = conn; try { old.close(); } catch (e) { /* ignore */ } }
-  conn = c;
-  if (c.open) heartbeat(c); else c.on('open', () => { if (conn === c) heartbeat(c); });
-  c.on('data', msg => onGuestMessage(c, msg));
-  c.on('close', () => { if (conn === c) { conn = null; guestGone(); } });
-  c.on('error', () => { if (conn === c) { conn = null; guestGone(); } });
+function guestName() { return state.online && state.online.me ? playerName(state, other(state.online.me)) : ''; }
+function roomSetup() {
+  const p = (room && room.players) || {}, s = (room && room.setup) || {};
+  return { names: { X: p.X ? p.X.name : 'X', O: p.O ? p.O.name : 'O' }, games: s.games || state.setup.games, timer: TIMER_OPTIONS.includes(s.timer) ? s.timer : 0 };
 }
-// The guest's request held back while a move was playing here: taken up as soon as the screen is free.
-function applyQueued() {
-  if (!queuedMsg || !isHost() || !conn || !conn.open || state.flash || state.done || state.spot) return;
-  const msg = queuedMsg; queuedMsg = null;
-  onGuestMessage(conn, msg);
+async function dbSetup(patch) {
+  if (!fb || !isHost()) return;
+  try { await fb.m.update(roomRef('setup'), patch); } catch (e) { /* the next change tries again */ }
 }
-function onGuestMessage(c, msg) {
-  if (!isHost() || conn !== c || !msg || typeof msg !== 'object') return;
-  lastHeard = Date.now();
-  const guest = other(state.online.me);
-  switch (msg.t) {
-    case 'hello': {
-      const n = String(msg.name || '').replace(/\s+/g, ' ').trim().slice(0, NAME_MAX);
-      state.setup.names[guest] = n || 'Friend';
-      state.online.joined = true;
-      setNet('connected', '');
-      send(c, lobbyMsg());                                      // which side they play, and the names
-      commit();                                                 // then the match in progress, if any
-      break;
-    }
-    case 'move': {
-      if (state.turn !== guest || state.winner || state.screen === 'setup') return;
-      if (state.flash || state.done || state.spot) { queuedMsg = msg; return; }   // the last move is still playing out on this screen: right after it
-      const i = Number(msg.i);
-      if (!Number.isInteger(i) || i < 0 || i > 8) return;
-      const r = playMove(state, i, msg.m);
-      if (!r.ok) { send(c, { t: 'reject', reason: r.reason, i }); return; }
-      showRemoteMove(i, moveLabel(state.flash));
-      commit();
-      break;
-    }
-    case 'pick': {                                              // the guest's first Memory card
-      if (state.turn !== guest || state.winner) return;
-      if (state.flash || state.done || state.spot) { queuedMsg = msg; return; }
-      const i = Number(msg.i), sq = state.squares[i];
-      if (!sq || sq.owner || sq.mini.type !== 'memory') return;
-      const card = Number.isInteger(msg.card) && msg.card >= 0 && msg.card < 9 ? msg.card : null;
-      state.pick = card == null || (state.pickSq === i && state.pick === card) ? null : card;
-      state.pickSq = i;
-      commit();
-      break;
-    }
-    case 'rematch': { if (state.winner) { startMatch(state); commit(); } break; }
-    case 'bye': { const who = guestName(); conn = null; state.online.joined = false; menuNote = `${who} left the match`; leaveRoom(); break; }
+function dbName(name) {
+  if (!fb || !state.online || !state.online.me) return;
+  clearTimeout(nameTimer);
+  nameTimer = setTimeout(() => { nameTimer = null; flushName(name); }, 300);
+}
+function flushName(name) {                                       // written to whichever seat is ours by then
+  const o = state.online;
+  if (!fb || !o || !o.me || !room || !room.players || !room.players[o.me] || room.players[o.me].uid !== fb.uid) return;
+  fb.m.update(roomRef('players/' + o.me), { name: String(name || '').trim().slice(0, NAME_MAX) || o.me }).catch(() => {});
+}
+// The host takes the other side: its seat (and its friend's, if there is one) move over.
+async function hostSide(side) {
+  const o = state.online, was = o.me;
+  if (!fb || !isHost() || side === was) return;
+  const name = String(state.setup.names[was] || '').trim().slice(0, NAME_MAX) || side;   // the name typed so far goes with the seat
+  clearTimeout(nameTimer); nameTimer = null;
+  try {
+    await fb.m.runTransaction(roomRef('players'), p => {
+      if (!p) return p;
+      if (!p[was] || p[was].uid !== fb.uid) return;             // not our seat any more
+      const next = { [side]: Object.assign({}, p[was], { name }) };
+      if (p[side] && p[side].uid) next[was] = p[side];
+      return next;
+    });
+    await fb.m.update(roomRef('setup'), { hostSide: side });
+  } catch (e) { return; }
+}
+async function startOnline() {
+  const o = state.online;
+  if (!fb || !isHost() || !room || !o.joined || !connected) return;
+  const fresh = newOnlineMatch(roomSetup(), Math.random, newId());
+  if (!fresh) return;
+  armClock(fresh.state, []);
+  try { await fb.m.update(roomRef(), { status: 'playing', match: packMatch(fresh), left: null }); }
+  catch (e) { setNet('error', "Couldn't start the match. Check your connection and try again."); commit(); }
+}
+
+// ---------- the guest: joins with the code (or the shared link) and takes the free seat ----------
+async function joinRoom(code, name, resume) {
+  if (!resume) {
+    code = String(code || '').toUpperCase().replace(/[^A-Z]/g, '');
+    if (!validCode(code)) { setNet('error', 'Enter the 5-letter room code.'); render(); return; }
+    try { localStorage.setItem(KEY + '.name', name); } catch (e) { /* no storage */ }
+    state.online = { role: 'guest', code, me: null, name, joined: false, shownSeq: null, matchId: null };
+    state.setup.mode = 'online'; state.screen = 'join';
   }
+  setNet('connecting', resume ? 'Reconnecting…' : 'Connecting…');
+  commit();
+  if (!(await connectFirebase()) || !isGuest()) return;
+  const o = state.online, { m, db, uid } = fb;
+  try {
+    const snap = await m.get(m.ref(db, 'rooms/' + o.code));
+    const r = snap.val();
+    if (!r || !r.players) { setNet('error', `No game with the code ${o.code} is open. Check the code with the host.`); commit(); return; }
+    const mine = ['X', 'O'].find(s => r.players[s] && r.players[s].uid === uid);
+    if (mine) {                                                   // our seat from before: back into it
+      o.me = mine;
+      if (!resume && o.name) await m.update(m.ref(db, `rooms/${o.code}/players/${mine}`), { name: o.name });
+    } else {
+      const free = ['X', 'O'].find(s => !r.players[s]);
+      if (!free) { setNet('error', 'That room is full: two players are in it already.'); commit(); return; }
+      if (r.status !== 'lobby') { setNet('error', 'That match has already started without you.'); commit(); return; }
+      const nm = String(o.name || (resume && r.players[free] && r.players[free].name) || '').trim().slice(0, NAME_MAX) || 'Friend';
+      await m.set(m.ref(db, `rooms/${o.code}/players/${free}`), { uid, name: nm, joined: m.serverTimestamp() });   // the rules let only an empty seat be taken
+      o.me = free;
+    }
+  } catch (e) {
+    setNet('error', e && /PERMISSION_DENIED|permission/i.test(String(e.code || e.message)) ? 'That room is full: two players are in it already.' : 'No connection. Check your internet (switching to Wi-Fi helps) and try again.');
+    commit(); return;
+  }
+  if (!isGuest()) return;
+  o.joined = true;
+  listenRoom(o.code);
+  presenceUp();
+  setNet('connected', ''); commit();
+}
+
+// ---------- the room as the database holds it: every change lands here ----------
+function onRoomValue(r) {
+  const o = state.online;
+  if (!o || !fb) return;
+  room = r;
+  if (!r || !r.players) { menuNote = 'The room was closed.'; leaveRoom(true); return; }
+  const mine = ['X', 'O'].find(s => r.players[s] && r.players[s].uid === fb.uid);
+  if (!mine) { menuNote = 'You are no longer in that room.'; leaveRoom(true); return; }
+  if (o.me !== mine) { const old = o.me; o.me = mine; if (old) presenceDown(old); presenceUp(); if (isHost()) state.setup.human = mine; }
+  if (r.left && r.left.side !== o.me) { menuNote = `${String(r.left.name || other(o.me)).slice(0, NAME_MAX)} left the match`; leaveRoom(true); return; }
+  for (const s of ['X', 'O']) state.setup.names[s] = r.players[s] ? String(r.players[s].name || s).slice(0, NAME_MAX) : s;
+  if (r.setup) {
+    if (r.setup.games) state.setup.games = Object.assign({}, state.setup.games, r.setup.games);
+    state.setup.timer = TIMER_OPTIONS.includes(r.setup.timer) ? r.setup.timer : 0;
+  }
+  o.joined = !!(r.players.X && r.players.X.uid && r.players.O && r.players.O.uid);
+  if (r.status === 'playing' && r.match) {
+    if (net.status !== 'connected') setNet('connected', '');
+    if (presenting()) { pendingRoom = r; return; }               // a move is still playing out here: afterwards
+    applyMatch(r);
+  } else {                                                        // the lobby
+    if (isHost()) setNet(o.joined ? 'connected' : 'waiting', o.joined ? '' : 'Waiting for friend…');
+    else if (net.status !== 'error') setNet('connected', '');
+    const screen = isHost() ? 'setup' : 'join';
+    if (state.screen !== screen) state.screen = screen;
+    save(); render();
+  }
+}
+function presenting() { return !!(state.flash || state.done || state.spot || presentingSeq != null); }
+// The match as the record has it: moves not yet seen here are played back first, one at a time.
+function applyMatch(r) {
+  const o = state.online, rec = parseMatch(r.match);
+  if (!rec) return;
+  const st = rec.state;
+  if (o.matchId !== st.id) { o.matchId = st.id; o.shownSeq = st.seq; presentingSeq = null; moveWait = null; }   // a new match: nothing to play back
+  if (o.shownSeq == null) o.shownSeq = st.seq;
+  let missed = (st.recent || []).filter(e => e.seq > o.shownSeq).sort((a, b) => a.seq - b.seq);
+  const skipped = Math.max(0, st.seq - o.shownSeq - Math.min(missed.length, REPLAY_MAX));
+  if (missed.length > REPLAY_MAX) missed = missed.slice(-REPLAY_MAX);
+  if (skipped > 0) { o.shownSeq = missed.length ? missed[0].seq - 1 : st.seq; sayAway(`${skipped} move${skipped === 1 ? '' : 's'} happened while you were away`); }
+  if (missed.length) { presentEntry(st, missed[0]); return; }
+  showLatest(st);
+}
+function sayAway(text) {
+  awayNote = text; render();
+  clearTimeout(awayTimer); awayTimer = setTimeout(() => { awayNote = ''; render(); }, 5000);
+}
+function takeFields(st) {
+  for (const k of MATCH_FIELDS) {
+    if (k === 'recent') continue;
+    state[k] = st[k] === undefined ? (k === 'games' ? TYPES.slice() : k === 'timer' ? newTimer(0) : null) : JSON.parse(JSON.stringify(st[k]));
+  }
+  if (!Array.isArray(state.games) || !state.games.length) state.games = TYPES.slice();
+  state.cpu = null; state.confirm = null; state.sel = [];
+}
+function showLatest(st) {
+  const o = state.online;
+  takeFields(st);
+  state.flash = null; state.done = null; state.spot = null;
+  o.shownSeq = st.seq;
+  if (state.winner) state.screen = 'win';
+  else if (!['board', 'mini'].includes(state.screen)) state.screen = 'board';
+  if (!state.winner && state.lock != null && state.turn === o.me) { state.screen = 'mini'; state.zoom = state.lock; }   // our bonus move
+  if (state.screen === 'mini' && state.zoom == null) state.screen = 'board';
+  save(); render();
+}
+// One move from the record, played back as a phone that watched it live would see it: the square as
+// it was right after the move, the mover still on the move, then the usual result and handoff.
+function presentEntry(st, e) {
+  const o = state.online;
+  takeFields(st);
+  state.squares[e.square] = JSON.parse(JSON.stringify(e.after));
+  state.turn = e.by; state.lock = e.kind === 'again' ? e.square : null;
+  state.moves = e.moves; state.lastSquare = e.square; state.lastBy = e.by;
+  const over = e.kind === 'match';
+  state.winner = over ? e.winner : null;
+  if (!over) { state.winLine = null; state.winReason = null; state.counts = null; }
+  const f = Object.assign({}, e); delete f.after; delete f.seq; delete f.moves;
+  state.flash = f;
+  state.done = !over && e.kind !== 'again' ? f : null;
+  state.spot = null; state.stamp = null;
+  presentingSeq = e.seq;
+  if (e.by === o.me && !e.timeout) { state.screen = 'mini'; state.zoom = e.square; state.draft = ''; state.notice = null; }
+  else showRemoteMove(e.square, moveLabel(e));
+  save(); render();
+}
+// After a result has played out here: the move counts as seen, and the record is looked at again.
+function applyPending() {
+  if (!state.online) return;
+  if (presentingSeq != null) { state.online.shownSeq = Math.max(state.online.shownSeq || 0, presentingSeq); presentingSeq = null; save(); }
+  const r = pendingRoom || room; pendingRoom = null;
+  if (r && !presenting()) onRoomValue(r);
 }
 // A move by the other player (or a timed-out one): the board first, with the square lit up and a
 // label, then the zoom and the move's animation. The flash is already set; it only starts once the
@@ -2622,192 +2944,94 @@ function showRemoteMove(i, label) {
     const sq = state.spot.square;
     state.spot = null;
     state.screen = 'mini'; state.zoom = sq;
-    render(); if (!isGuest()) { save(); netSync(); }
+    save(); render();
   }, SPOT_MS);
 }
 function moveLabel(f) { return f.timeout ? `${playerName(state, f.by)} ran out of time — random move` : `${playerName(state, f.by)} plays here`; }
-// what the host sends after every change: the lobby while setting up, otherwise the public snapshot
-function lobbyMsg() { return { t: 'lobby', names: { X: state.setup.names.X, O: state.setup.names.O }, side: other(state.online.me), games: enabledGames(state.setup).length, timer: state.setup.timer || 0 }; }
-function netSync() {
-  if (!isHost() || !conn || !conn.open) return;
-  if (state.screen === 'setup') send(conn, lobbyMsg());
-  else send(conn, { t: 'state', state: publicState(state) });
-}
-// The state as the guest may see it: every secret of an unclaimed square is left out, not blanked.
-function publicState(st) {
-  const s = JSON.parse(JSON.stringify(st));
-  for (const k of ['online', 'draft', 'notice', 'confirm', 'screen', 'zoom', 'stamp', 'sel', 'spot']) delete s[k];
-  s.squares.forEach((sq, k) => { if (!sq.owner) hideSecrets(sq.mini, k, st); });
-  s.timer = Object.assign({}, st.timer, { left: timerLeft(), deadline: null, pausedAt: null });
-  return s;
-}
-function hideSecrets(m, k, st) {
-  switch (m.type) {
-    case 'wordle': delete m.word; break;
-    case 'hangman': { const hits = new Set(m.letters.filter(x => x.hit).map(x => x.l)); m.word = m.word.split('').map(ch => (hits.has(ch) ? ch : '_')).join(''); break; }
-    case 'hilo': delete m.target; break;
-    case 'bs': delete m.hidden; break;
-    case 'hunt': m.clues = m.dug.map((d, i) => (d ? huntDist(m.treasure, i) : null)); delete m.treasure; break;
-    case 'memory': {
-      const show = new Set(m.seen || []);
-      if (st.pickSq === k && st.pick != null) show.add(st.pick);
-      if (st.flash && st.flash.square === k && st.flash.reveal) st.flash.reveal.forEach(i => show.add(i));
-      m.cards = m.cards.map((c, i) => (show.has(i) ? c : null));
-      break;
-    }
-  }
-}
 
-// ---------- guest ----------
-async function joinRoom(code, name, resume) {
-  if (!resume) {
-    code = String(code || '').toUpperCase().replace(/[^A-Z]/g, '');
-    if (!validCode(code)) { setNet('error', 'Enter the 5-letter room code.'); render(); return; }
-    try { localStorage.setItem(KEY + '.name', name); } catch (e) { /* no storage */ }
-    state.online = { role: 'guest', code, me: null, name, joined: false };
-    state.setup.mode = 'online'; state.screen = 'join'; lobby = null;
-  }
-  shownMoves = -1; pendingSnap = null; moveWait = null;
-  setNet('connecting', resume ? 'Reconnecting…' : 'Connecting…');
-  commit();
-  try { await loadPeer(); } catch (e) {
-    setNet('error', 'Online play needs an internet connection. Check it (Wi-Fi helps) and try again.'); commit(); return;
-  }
-  if (!isGuest()) return;
-  openGuestPeer();
-}
-function openGuestPeer() {
-  closePeer();
-  const p = new Peer(peerOpts());
-  peer = p;
-  netTimer = setTimeout(() => { if (peer === p && !conn) onLost('timeout'); }, NET_MS.connect);
-  p.on('open', () => { if (peer === p) connectToHost(); });
-  p.on('disconnected', () => { if (peer === p && !p.destroyed) { try { p.reconnect(); } catch (e) { /* retried on the next attempt */ } } });
-  p.on('error', err => {
-    if (peer !== p) return;
-    const type = err && err.type;
-    if (type === 'peer-unavailable') onLost('noroom');
-    else if (type === 'browser-incompatible') { clearTimeout(netTimer); setNet('error', 'This browser cannot make a direct connection. Try Chrome, Safari or Firefox.'); closePeer(); commit(); }
-    else if (type === 'network' || type === 'server-error' || type === 'socket-error' || type === 'socket-closed') onLost('network');
-  });
-}
-function connectToHost() {
-  if (!peer || peer.destroyed || !isGuest()) return;
-  const c = peer.connect(ROOM_PREFIX + state.online.code, { reliable: true, serialization: 'json' });
-  conn = c;
-  clearTimeout(netTimer);
-  netTimer = setTimeout(() => { if (conn === c && !c.open) { try { c.close(); } catch (e) { /* ignore */ } onLost('timeout'); } }, NET_MS.connect);
-  c.on('open', () => {
-    if (conn !== c) return;
-    clearTimeout(netTimer);
-    setNet('connected', '');
-    heartbeat(c);
-    send(c, { t: 'hello', name: state.online.name, resume: !!state.online.joined });
-    commit();
-  });
-  c.on('data', msg => onHostMessage(c, msg));
-  c.on('close', () => { if (conn === c) onLost('closed'); });
-  c.on('error', () => { if (conn === c) onLost('error'); });
-}
-function onLost(why) {
-  clearTimeout(netTimer); clearTimeout(retryTimer);
-  conn = null; moveWait = null;
-  if (!isGuest()) return;
-  if (!state.online.joined) {                                    // never got in: say so and let them try again
-    setNet('error', why === 'noroom' ? `No game with the code ${state.online.code} is open. Check the code with the host.`
-      : 'No connection. Make sure the host still has the room open, switch both phones to Wi-Fi, and try again.');
-    closePeer(); commit(); return;
-  }
-  setNet('lost', 'Connection lost — reconnecting…');             // mid-match: keep trying, the host keeps the game
-  commit();
-  retryTimer = setTimeout(() => {
-    if (!isGuest() || conn) return;
-    if (!peer || peer.destroyed) openGuestPeer();
-    else if (peer.disconnected) { try { peer.reconnect(); } catch (e) { openGuestPeer(); return; } retryTimer = setTimeout(() => { if (isGuest() && !conn) connectToHost(); }, 1000); }
-    else connectToHost();
-  }, NET_MS.retry);
-}
-function onHostMessage(c, msg) {
-  if (!isGuest() || conn !== c || !msg || typeof msg !== 'object') return;
-  lastHeard = Date.now();
-  switch (msg.t) {
-    case 'lobby': {
-      state.online.joined = true; state.online.me = msg.side === 'X' ? 'X' : 'O';
-      if (msg.names) state.setup.names = { X: String(msg.names.X || 'X').slice(0, NAME_MAX), O: String(msg.names.O || 'O').slice(0, NAME_MAX) };
-      lobby = { games: msg.games, timer: msg.timer };
-      if (['menu', 'online', 'join'].includes(state.screen)) state.screen = 'join';   // waiting for the host to start
-      commit();
-      break;
-    }
-    case 'state': { state.online.joined = true; receiveSnapshot(msg.state); break; }
-    case 'reject': {
-      moveWait = null;
-      if (msg.reason === 'notword') { state.notice = 'Not a word'; clearTimeout(noticeTimer); noticeTimer = setTimeout(() => { state.notice = null; render(); }, 1200); }
-      render();
-      break;
-    }
-    case 'bye': { menuNote = `${playerName(state, other(state.online.me))} left the match`; conn = null; leaveRoom(); break; }
-  }
-}
-function receiveSnapshot(snap) {
-  if (!snap || !Array.isArray(snap.squares) || snap.squares.length !== 9) return;
-  if (snap.timer) { clockEnd = snap.timer.left == null ? null : Date.now() + snap.timer.left; clockPause = null; }   // the host's clock, as of now
-  if (state.flash || state.done) { pendingSnap = snap; return; }   // a move is still playing out here (or its cards are turning back): afterwards
-  applySnapshot(snap);
-}
-function applyPending() { if (pendingSnap && !state.flash) { const s = pendingSnap; pendingSnap = null; applySnapshot(s); } }
-function applySnapshot(snap) {
-  const keep = { screen: state.screen, zoom: state.zoom, draft: state.draft, notice: state.notice, online: state.online, confirm: null, stamp: null, sel: [] };
-  const me = state.online.me;
-  if (snap.moves < shownMoves) shownMoves = -1;                  // a rematch
-  const fresh = !!snap.flash && snap.moves > shownMoves;         // a move whose result has not played here yet
-  Object.assign(state, snap, keep);
-  state.flash = null; state.done = null;
-  if (fresh) {
-    shownMoves = snap.moves;
-    state.flash = snap.flash; state.done = snap.done ? snap.flash : null;
-    if (snap.lastBy === me && !snap.flash.timeout) { state.screen = 'mini'; state.zoom = snap.flash.square; state.draft = ''; moveWait = null; }
-    else { if (snap.lastBy === me) moveWait = null; showRemoteMove(snap.flash.square, moveLabel(snap.flash)); }
-  } else {
-    if (snap.moves > shownMoves) shownMoves = snap.moves;
-    if (snap.lastBy === me) moveWait = null;
-    if (state.winner) state.screen = 'win';
-    else if (['join', 'setup', 'menu', 'online', 'win'].includes(state.screen)) state.screen = 'board';
-    if (!state.winner && state.lock != null && state.turn === me) { state.screen = 'mini'; state.zoom = state.lock; }   // our bonus move
-  }
-  save(); render();
-}
+// ---------- moves: a transaction on the room's match record ----------
 // a move request from this phone, or the move itself when the game is played here
 function attemptMove(m) {
-  if (isGuest()) {
-    if (blocked()) return false;
-    moveWait = Date.now();
-    send(conn, { t: 'move', i: state.zoom, m });
-    render();
-    setTimeout(() => { if (moveWait && Date.now() - moveWait >= NET_MS.move - 50) { moveWait = null; render(); } }, NET_MS.move);
-    return true;
-  }
+  if (state.online) { dbMove(state.zoom, m); return true; }
   const r = playMove(state, state.zoom, m);
   if (r.ok) commit();
   return r;
 }
-function leaveRoom() {
-  if (conn) send(conn, { t: 'bye' });
-  closePeer();
+function matchTransaction(fn) {
+  return fb.m.runTransaction(roomRef('match'), cur => {
+    const rec = parseMatch(cur);
+    if (!rec) return cur;                                         // nothing here yet (or not in the cache): a no-op, retried with the server's value
+    const out = fn(rec);
+    return out ? packMatch(out) : undefined;
+  }, { applyLocally: false });
+}
+async function dbMove(i, m) {
+  if (blocked() || !fb || !room || i == null) return false;
+  const me = state.online.me;
+  moveWait = Date.now(); render();
+  clearTimeout(moveTimer); moveTimer = setTimeout(() => { if (moveWait) { moveWait = null; render(); } }, NET_MS.move);
+  let reason = null;
+  try {
+    const res = await matchTransaction(rec => {
+      const r = applyOnlineMove(rec, me, i, m, Math.random);
+      if (!r.ok) { reason = r.reason; return null; }
+      armClock(r.rec.state, r.entries);
+      return r.rec;
+    });
+    if (!res.committed) moveRejected(reason || 'turn');
+  } catch (e) { moveRejected('network'); }
+  clearTimeout(moveTimer); moveWait = null; render();
+  return true;
+}
+function moveRejected(reason) {
+  if (reason === 'notword') state.notice = 'Not a word';
+  else if (reason === 'network') state.notice = 'No connection';
+  else return;
+  render();
+  clearTimeout(noticeTimer); noticeTimer = setTimeout(() => { state.notice = null; render(); }, 1200);
+}
+async function dbPick(i, card) {
+  if (blocked() || !fb || !room) return;
+  const me = state.online.me;
+  moveWait = Date.now(); render();
+  try { await matchTransaction(rec => { const r = applyOnlinePick(rec, me, i, card); return r.ok ? r.rec : null; }); } catch (e) { /* nothing to show */ }
+  moveWait = null; render();
+}
+async function rematchOnline() {
+  if (!fb || !room || !state.winner || !connected) return;
+  const setup = roomSetup();
+  try {
+    await matchTransaction(rec => {
+      if (!rec.state.winner) return null;                         // the other player already started it
+      const fresh = newOnlineMatch(setup, Math.random, newId());
+      if (!fresh) return null;
+      armClock(fresh.state, []);
+      return fresh;
+    });
+  } catch (e) { /* the button stays */ }
+}
+// Leaving through the menu: the other player is told and sent to the main menu too.
+function leaveRoom(silent) {
+  const o = state.online;
+  if (fb && o && o.code) {
+    if (!silent && o.me && room && !room.left) fb.m.update(roomRef(), { left: { side: o.me, name: playerName(state, o.me), at: fb.m.serverTimestamp() } }).catch(() => {});
+    if (o.me) presenceDown(o.me);
+  }
+  stopListening();
   clearTimeout(spotTimer); spotTimer = null;
   clearTimeout(flashTimer); flashTimer = null;
   clearTimeout(holdTimer); holdTimer = null;
-  clockEnd = null; clockPause = null;
-  state.online = null; lobby = null; pendingSnap = null; queuedMsg = null; moveWait = null; shownMoves = -1;
+  clearTimeout(moveTimer); moveWait = null; presentingSeq = null; awayNote = '';
+  state.online = null;
   setNet('idle', '');
   menuOpen = false; menuStep = 'main';
-  state.screen = 'menu'; state.confirm = null; state.setup.mode = 'two'; state.spot = null; state.flash = null; state.done = null;
+  state.screen = 'menu'; state.confirm = null; state.setup.mode = 'two'; state.spot = null; state.flash = null; state.done = null; state.lock = null;
   state.timer = newTimer(0);
   commit();
 }
 // Leave whatever match is on (the in-game menu's Main menu): online that tells the other player too.
 function quitMatch() {
-  if (state.online) { leaveRoom(); return; }
+  if (state.online) { leaveRoom(false); return; }
   clearTimeout(cpuTimer); cpuTimer = null; cpuPlan = null;
   clearTimeout(spotTimer); spotTimer = null;
   clearTimeout(flashTimer); flashTimer = null;
@@ -2827,60 +3051,64 @@ async function shareRoom() {
   render();
   clearTimeout(noticeTimer); noticeTimer = setTimeout(() => { state.notice = null; render(); }, 1800);
 }
-// Reopen a room after a reload: the host keeps its code, the guest reconnects to it.
+// Back after a reload or a time away: the same room and seat, from localStorage.
 function resumeOnline() {
   if (!state.online) return;
-  if (state.online.role === 'host') { if (validCode(state.online.code)) hostRoom(state.online.code, true); else state.online = null; }
-  else if (state.online.role === 'guest') joinRoom(null, null, true);
+  if (state.online.role === 'host') hostRoom(state.online.code, true);
+  else joinRoom(null, null, true);
 }
 
-/* ----- the turn clock (online): the host keeps the official time, both phones show it ----- */
-function timerLeft() {                                           // ms left on the host's clock, or null
+/* ----- the turn clock: a deadline in server time on the record, so both phones count the same; either may call it ----- */
+function clockLeft() {
   const t = state.timer;
   if (!t || !t.limit || t.deadline == null) return null;
-  return Math.max(0, t.deadline - (t.pausedAt ? t.pausedAt : Date.now()));
+  return Math.max(0, Math.min(t.limit * 1000, t.deadline - serverNow()));
 }
-function clockLeft() { return isHost() ? timerLeft() : clockEnd == null ? null : Math.max(0, clockEnd - (clockPause || Date.now())); }   // ms left as this phone sees it
 function clockText() {
   const left = clockLeft();
   if (left == null) return state.timer && state.timer.limit ? fmtClock(state.timer.limit * 1000) : '';
   return fmtClock(left);
 }
 function fmtClock(ms) { const sec = Math.ceil(ms / 1000); return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`; }
-// Runs four times a second: keeps the clock on screen current and, on the host, calls time.
+// The clock for the turn just started: the time limit, plus what the move just made takes to play
+// back, so the countdown is seen to begin once the animation is over.
+function armClock(st, entries) {
+  const t = st.timer;
+  if (!t || !t.limit) return;
+  if (st.winner) { t.deadline = null; t.for = null; return; }
+  const replay = (entries || []).reduce((ms, e) => ms + SPOT_MS + animMs(e) + (FLASH_MS[e.kind] || 800) + (e.type === 'memory' && e.kind === 'move' ? FLIP_MS : 0), 0);
+  t.for = st.turn; t.deadline = serverNow() + replay + t.limit * 1000;
+}
+// Runs four times a second: keeps the clock on screen current and, online, calls time when it is up.
 function tick() {
-  if (isGuest()) {                                               // the guest's copy of the clock waits out a dropped line, like the host's
-    if (net.status !== 'connected') { if (clockEnd != null && !clockPause) clockPause = Date.now(); }
-    else if (clockPause) { clockEnd += Date.now() - clockPause; clockPause = null; }
-  }
   const el = document.getElementById('clock');
   if (el) {
-    const leftMs = clockLeft();
+    const left = clockLeft();
     el.textContent = clockText();
-    el.classList.toggle('low', leftMs != null && leftMs <= 10000);
-    el.classList.toggle('held', isHost() ? !!(state.timer && state.timer.pausedAt) : !!clockPause);
+    el.classList.toggle('low', left != null && left <= 10000);
+    el.classList.toggle('held', !!state.online && !connected);
   }
-  if (!isHost() || !state.timer || !state.timer.limit || state.winner) return;
-  const t = state.timer;
-  if (net.status !== 'connected') { if (t.deadline != null && !t.pausedAt) t.pausedAt = Date.now(); return; }   // reconnecting: the clock waits
-  if (t.pausedAt) { t.deadline += Date.now() - t.pausedAt; t.pausedAt = null; save(); }
-  if (state.flash || state.done || state.spot) return;
-  if (state.screen === 'setup' || state.screen === 'join') return;
-  if (t.bankNext) {                                              // the timed-out player's forced roll kept the turn: bank it
-    t.bankNext = false;
-    if (state.lock != null && state.squares[state.lock].mini.type === 'pig') { const r = playMove(state, state.lock, 'bank', undefined, { forced: true }); if (r.ok) { showRemoteMove(state.lock, moveLabel(state.flash)); commit(); return; } }
-  }
-  if (t.for !== state.turn || t.deadline == null) {              // a new turn: start its clock
-    t.for = state.turn; t.deadline = Date.now() + t.limit * 1000; save(); netSync();
-    return;
-  }
-  if (Date.now() >= t.deadline) {
-    const r = timeoutMove(state);
-    if (!r.ok) return;
-    if (r.lost) { commit(); return; }
-    showRemoteMove(r.square, moveLabel(state.flash));
-    commit();
-  }
+  if (!state.online || !fb || !connected || !room || !room.match || timeoutBusy || state.online.joined === false) return;
+  const rec = parseMatch(room.match);
+  if (!rec) return;
+  const st = rec.state, t = st.timer;
+  if (!t || !t.limit || t.deadline == null || st.winner || serverNow() < t.deadline) return;
+  fireTimeout(st.seq, t.deadline);
+}
+// The deadline passed: a random move for the player on the move, written once whichever phone gets there first.
+async function fireTimeout(seq, deadline) {
+  timeoutBusy = true;
+  try {
+    await matchTransaction(rec => {
+      const st = rec.state;
+      if (st.seq !== seq || st.winner || !st.timer || st.timer.deadline !== deadline || serverNow() < st.timer.deadline) return null;   // called already, or not due
+      const r = applyOnlineTimeout(rec, Math.random);
+      if (!r.ok) return null;
+      armClock(r.rec.state, r.entries);
+      return r.rec;
+    });
+  } catch (e) { /* the next tick tries again */ }
+  timeoutBusy = false;
 }
 
 /* ----- online screens ----- */
@@ -2894,12 +3122,14 @@ function renderOnline() {
   </div></main>`;
 }
 function renderJoin() {
-  const o = online(), joined = !!(o && o.joined);
-  const host = joined && o.me ? playerName(state, other(o.me)) : null;
+  const o = online(), seated = !!(o && o.me && o.joined);
+  const hostSide = o && o.me ? other(o.me) : null;
+  const hostName = seated && room && room.players && room.players[hostSide] ? room.players[hostSide].name : null;
+  const timer = room && room.setup && TIMER_OPTIONS.includes(room.setup.timer) ? room.setup.timer : 0;
   const status = net.status === 'error' ? `<div class="warn">${esc(net.msg)}</div>`
-    : joined && net.status === 'connected' ? `<div class="status ok">Joined <b>${esc(host || 'the host')}</b>'s game · you play <b class="${o.me}">${o.me}</b> · time per turn: <b>${TIMER_LABEL[lobby && TIMER_OPTIONS.includes(lobby.timer) ? lobby.timer : 0]}</b> · waiting for ${esc(host || 'the host')} to start…</div>`
-    : net.status === 'connected' ? '<div class="status">Connected · waiting for the host…</div>'
-    : net.status === 'connecting' || net.status === 'lost' ? `<div class="status">${esc(net.msg)}</div>` : '';
+    : seated && room ? `<div class="status ok">Joined <b>${esc(hostName || 'the host')}</b>'s game · you play <b class="${o.me}">${o.me}</b> · time per turn: <b>${TIMER_LABEL[timer]}</b> · waiting for ${esc(hostName || 'the host')} to start…</div>`
+    : o && net.status === 'connecting' ? `<div class="status">${esc(net.msg)}</div>`
+    : o ? '<div class="status">Connected · waiting for the host…</div>' : '';
   const form = o ? '' : `<label class="field"><span>Your name</span><input id="jname" value="${esc(joinName)}" maxlength="${NAME_MAX}" placeholder="Your name" autocomplete="off" autocapitalize="words"></label>
     <label class="field"><span>Room code</span><input id="jcode" class="codein" value="${esc(joinCode)}" maxlength="5" placeholder="ABCDE" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="latin"></label>`;
   return `<main class="scr setup">
@@ -2931,23 +3161,23 @@ app.addEventListener('click', e => {
     if (state.winner || !state.squares[i]) return;
     if (lockMine() && state.lock !== i) return;
     state.screen = 'mini'; state.zoom = i; state.draft = ''; state.sel = []; state.notice = null;
-    if (!isGuest()) { state.pick = null; state.pickSq = null; }
+    if (!state.online) { state.pick = null; state.pickSq = null; }
     commit();
   } else if (act === 'back') {
     if (lockMine()) return;
     if (state.done) return;
     state.screen = 'board'; state.zoom = null; state.draft = ''; state.sel = []; state.notice = null; state.stamp = null;
-    if (!isGuest()) { state.pick = null; state.pickSq = null; }
+    if (!state.online) { state.pick = null; state.pickSq = null; }
     commit();
   } else if (act === 'mode-go') {              // the main menu: pick a mode, then set up
     state.setup.mode = el.dataset.mode === 'cpu' ? 'cpu' : 'two'; syncNames(state.setup); state.screen = 'setup'; advOpen = false; commit();
   } else if (act === 'menu') {
     state.screen = 'menu'; state.confirm = null; menuNote = ''; commit();
   } else if (act === 'timer') {
-    if (isHost()) { state.setup.timer = TIMER_OPTIONS.includes(Number(el.dataset.v)) ? Number(el.dataset.v) : 0; commit(); }
+    if (isHost()) { state.setup.timer = TIMER_OPTIONS.includes(Number(el.dataset.v)) ? Number(el.dataset.v) : 0; commit(); dbSetup({ timer: state.setup.timer }); }
   } else if (act === 'rematch') {               // the same settings again
-    if (isGuest()) { if (state.winner && net.status === 'connected') send(conn, { t: 'rematch' }); return; }
-    if (startMatch(state)) { shownMoves = -1; commit(); }
+    if (state.online) { rematchOnline(); return; }
+    if (startMatch(state)) commit();
   } else if (act === 'online-go') {
     state.screen = 'online'; commit();
   } else if (act === 'online-back') {
@@ -2955,7 +3185,7 @@ app.addEventListener('click', e => {
   } else if (act === 'host') {
     advOpen = false; hostRoom(null, false);
   } else if (act === 'host-retry') {
-    hostRoom(state.online.code, true);
+    hostRoom(state.online && room ? state.online.code : null, !!room);
   } else if (act === 'join-go') {
     state.screen = 'join'; state.online = null; setNet('idle', ''); render();
   } else if (act === 'join') {
@@ -2972,12 +3202,8 @@ app.addEventListener('click', e => {
     advOpen = !advOpen; render();
   } else if (act === 'side') {
     const side = el.dataset.side === 'O' ? 'O' : 'X', was = state.setup.human === 'O' ? 'O' : 'X';
+    if (isHost()) { if (side !== was) hostSide(side); return; }   // the seats move over in the room; the room's answer updates the screen
     state.setup.human = side; syncNames(state.setup);
-    if (isHost() && side !== was) {                           // the host's name goes with the host's side
-      state.online.me = side;
-      state.setup.names[side] = state.setup.names[was]; state.setup.names[was] = state.online.joined ? state.setup.names[was] : was;
-      if (!state.online.joined) state.setup.names[was] = was;
-    }
     commit();
   } else if (act === 'move') {
     attemptMove(JSON.parse(el.dataset.m));
@@ -2990,9 +3216,9 @@ app.addEventListener('click', e => {
   } else if (act === 'pick') {
     const i = Number(el.dataset.i);
     const first = state.pick != null && state.pickSq === state.zoom ? state.pick : null;
-    if (isGuest()) {                             // the host turns the card for us; two cards make the move
+    if (state.online) {                          // the first card is turned up in the room, for both to see; two cards make the move
       if (blocked()) return;
-      if (first == null || first === i) send(conn, { t: 'pick', i: state.zoom, card: first === i ? null : i });
+      if (first == null || first === i) dbPick(state.zoom, first === i ? null : i);
       else attemptMove([first, i]);
       return;
     }
@@ -3003,15 +3229,15 @@ app.addEventListener('click', e => {
   } else if (act === 'cancel') {
     state.confirm = null; commit();
   } else if (act === 'start') {
-    if (isHost() && !(state.online.joined && net.status === 'connected')) return;
-    if (startMatch(state)) { shownMoves = -1; commit(); }
+    if (state.online) { startOnline(); return; }
+    if (startMatch(state)) commit();
   }
 });
 // Setup screen: names are saved as they are typed (no re-render, so the field keeps focus);
 // ticking a game re-renders the list.
 app.addEventListener('input', e => {
   const el = e.target;
-  if (el.matches && el.matches('input[data-p]') && state.setup) { state.setup.names[el.dataset.p] = el.value; save(); netSync(); }
+  if (el.matches && el.matches('input[data-p]') && state.setup) { state.setup.names[el.dataset.p] = el.value; save(); if (state.online && state.online.me === el.dataset.p) dbName(el.value); }
   if (el.id === 'jname') joinName = el.value;
   if (el.id === 'jcode') { const v = el.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 5); if (v !== el.value) el.value = v; joinCode = v; }
 });
@@ -3020,7 +3246,7 @@ app.addEventListener('keydown', e => {
 });
 app.addEventListener('change', e => {
   const el = e.target;
-  if (el.matches && el.matches('input[data-t]') && state.setup) { state.setup.games[el.dataset.t] = el.checked; commit(); }
+  if (el.matches && el.matches('input[data-t]') && state.setup) { state.setup.games[el.dataset.t] = el.checked; commit(); dbSetup({ games: state.setup.games }); }
 });
 function zoomedType() {
   if (state.screen !== 'mini' || state.zoom == null || state.flash || state.done || state.winner || blocked()) return null;
@@ -3059,7 +3285,7 @@ document.addEventListener('keydown', e => {
 });
 document.addEventListener('contextmenu', e => e.preventDefault());
 
-function commit() { save(); render(); scheduleCpu(); netSync(); }
+function commit() { save(); render(); scheduleCpu(); }
 function boot() {
   clockTimer = setInterval(tick, 250);
   const room = new URLSearchParams(location.search).get('room');
@@ -3133,8 +3359,8 @@ function dismissFlash() {
   commit();
   if (hold && state.done) {
     clearTimeout(holdTimer);
-    holdTimer = setTimeout(() => { if (state.done && !state.flash && leaveSquare(state)) commit(); applyPending(); applyQueued(); }, FLIP_MS);
-  } else { applyPending(); applyQueued(); }     // online guest: the host may have moved on meanwhile; host: the guest may have asked for its next move
+    holdTimer = setTimeout(() => { if (state.done && !state.flash && leaveSquare(state)) commit(); applyPending(); }, FLIP_MS);
+  } else applyPending();                        // online: the room may have moved on meanwhile
 }
 function save() {
   try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* no storage: just play without resume */ }
@@ -3147,14 +3373,18 @@ function load() {
       else if (s.done && !s.flash && !s.winner) leaveSquare(s);   // a result that was still on show: the board was next anyway
       s.notice = null; s.sel = []; s.stamp = null; s.spot = null;
       if (!s.timer || typeof s.timer !== 'object') s.timer = newTimer(0);
-      if (s.timer.deadline != null && !s.timer.pausedAt) s.timer.pausedAt = Date.now();   // the page was away: the clock waits for the line
       if (s.setup.timer == null) s.setup.timer = 0;
       if (!s.setup.mode) s.setup.mode = 'two';
       if (!s.setup.human) s.setup.human = 'X';
       if (s.cpu !== 'X' && s.cpu !== 'O') s.cpu = null;
       if (!(s.online && (s.online.role === 'host' || s.online.role === 'guest') && validCode(s.online.code))) s.online = null;
-      if (s.online && s.online.role === 'guest' && s.online.me !== 'X' && s.online.me !== 'O') s.online.me = null;
-      if (s.online && !['board', 'mini', 'win', 'setup', 'join'].includes(s.screen)) s.screen = s.online.role === 'host' ? 'setup' : 'join';
+      if (s.online) {
+        if (s.online.me !== 'X' && s.online.me !== 'O') s.online.me = null;
+        if (!Number.isInteger(s.online.shownSeq)) s.online.shownSeq = null;
+        if (typeof s.online.matchId !== 'string') s.online.matchId = null;
+        s.flash = null; s.done = null; s.spot = null;              // a move cut short by the reload plays back from the room
+        if (!['board', 'mini', 'win', 'setup', 'join'].includes(s.screen)) s.screen = s.online.role === 'host' ? 'setup' : 'join';
+      }
       for (const sq of s.squares) if (sq.mini.type === 'memory' && !Array.isArray(sq.mini.seen)) sq.mini.seen = [];
       for (const t of TYPES) if (!(t in s.setup.games)) s.setup.games[t] = true;   // a game added since the save is on by default
       return s;
