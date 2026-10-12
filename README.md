@@ -14,6 +14,9 @@ brings you back there with the names and selection kept.
 - The main board is a 3×3 tic-tac-toe grid. Every square holds its own mini-game.
 - To claim a square, win the mini-game inside it. Three claimed squares in a row wins the match.
 - X and O alternate. A turn is exactly one move in one unclaimed mini-game of your choice.
+- Every move animates and its result then stays on screen in the mini-game, with input locked. The turn
+  indicator keeps the mover's name until they tap Board; that is the handoff, and only then does the other
+  player's turn begin.
 - All mini-games run in parallel and persist between turns. There is no alternation inside a
   mini-game: you may move in the same mini-game on consecutive turns of yours, so piece counts
   can be lopsided.
@@ -39,7 +42,7 @@ Each square is assigned one of these at random when the match starts (duplicates
 | Higher/lower | The computer picks 1–20; each guess is answered higher or lower. Guessing it wins |
 | Dice race | Roll a die and add it to your total; first to 15 wins |
 | Memory | 3×3 face-down cards with exactly one matching pair; a move flips two cards for 2 seconds. Flipping the pair wins |
-| Candy race | A winding track of 12 randomly coloured spaces (any three in a row are all different colours); a spin of the colour wheel hops your token to the next space of that colour. No such space ahead means you reach the finish and win |
+| Candy race | A winding track of 12 randomly coloured spaces (any three in a row are all different colours); a spin of the colour wheel hops your token to the next space of that colour. No such space ahead means you reach the finish, shown in all four colours, and win |
 | Coin flip | Six coins showing X or O, three of each to start. Pick 1 to 3 of the other side's coins and flip them; each lands X or O at random. All six the same wins for that symbol's player |
 | Pig | Each player has a banked score. A move is a whole push-your-luck turn: roll a die, and a number not yet rolled this turn joins the pot; then roll again or bank. Banking adds the pot to your score and ends the move; a repeated number busts, losing the pot (at most six rolls). First to a banked 20 wins |
 | Treasure hunt | 5×5 grid with one hidden treasure. A move digs a cell: the treasure wins, otherwise the cell shows its distance to the treasure in steps up, down, left or right, coloured hot to cold. Everything dug stays visible |
@@ -51,8 +54,8 @@ Battleship cell) is never shown on the board or in a mini-game before it is reve
 
 The game logic lives in the `<script id="logic">` block of `index.html` and is covered by
 `test/logic.test.js` (every mini-game's win and draw logic including Hex path-finding and
-lopsided-move cases, the Hangman bonus guess, draw resets, main-board three-in-a-row and majority
-wins, and random full matches). It uses Node's built-in test runner:
+lopsided-move cases, the Hangman bonus guess, draw resets, the turn handoff on the way back to the
+board, main-board three-in-a-row and majority wins, and random full matches). It uses Node's built-in test runner:
 
 ```sh
 node --test

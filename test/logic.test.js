@@ -11,7 +11,7 @@ const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 const src = html.match(/<script id="logic">([\s\S]*?)<\/script>/)[1];
 const L = vm.runInThisContext(
   src + '\n;({ TYPES, INFO, C4, HEX_N, HILO, DICE_GOAL, MEMORY, CANDY, COINS, PIG, HUNT, NAME_MAX, WORDS5, WORDS_HANG, VALID5, LINES, other, newMini, newState, huntDist,' +
-  ' startMatch, newMatch, defaultSetup, enabledGames, playerName, findRun, applyMove, mainResult, playMove, endFlash, wordleMarks, hexNeighbors,' +
+  ' startMatch, newMatch, defaultSetup, enabledGames, playerName, findRun, applyMove, mainResult, playMove, endFlash, leaveSquare, wordleMarks, hexNeighbors,' +
   ' hexPath, memoryDeck, candyTrack, canMove, anyMove })',
   { filename: 'index.html#logic' }
 );
@@ -32,12 +32,14 @@ function matchWith(types, rng = lcg(7)) {
   types.forEach((t, i) => { st.squares[i].mini = L.newMini(t, rng); });
   return st;
 }
-// make one full turn and clear the result overlay, as the UI does
+// make one full turn as the UI does: the move, the result overlay clearing, and (unless the same
+// player goes again or the match is over) the trip back to the board, which is where the turn passes
 function turn(st, i, m, rng) {
   const r = L.playMove(st, i, m, rng || lcg(99));
   assert.equal(r.ok, true, `move ${JSON.stringify(m)} in square ${i} should be accepted (${r.reason})`);
   const flash = st.flash;
   L.endFlash(st);
+  if (st.done) assert.equal(L.leaveSquare(st), true);
   return flash;
 }
 const sorted = a => a.slice().sort((x, y) => x - y);
@@ -98,7 +100,12 @@ test('ttt: a drawn square resets to a fresh random mini-game and stays unclaimed
   assert.equal(st.squares[0].owner, null);
   assert.equal(st.squares[0].mini.type, 'c4');
   assert.equal(st.squares[0].mini.cells.every(c => c === null), true, 'fresh board');
-  assert.equal(st.turn, L.other(TTT_DRAW[8]), 'turn still passes after a draw');
+  assert.equal(st.done.next, L.other(TTT_DRAW[8]), 'the turn still passes after a draw');
+  assert.equal(st.done.drawn, st.flash.drawn, 'the drawn board stays on show until the player heads back');
+  L.endFlash(st);
+  assert.equal(st.screen, 'mini');
+  L.leaveSquare(st);
+  assert.equal(st.turn, L.other(TTT_DRAW[8]));
   assert.equal(st.winner, null);
 });
 
@@ -350,10 +357,14 @@ test('hangman: the bonus guess keeps the turn and locks the player to that squar
   assert.deepEqual(L.playMove(st, 1, 0), { ok: false, reason: 'locked' }, 'cannot move elsewhere');
   assert.equal(L.playMove(st, 0, 'Z').ok, true);
   assert.equal(st.flash.kind, 'move');
-  assert.equal(st.turn, 'O');
+  assert.equal(st.turn, 'X', 'the miss ends the move, but the turn passes only on the way back to the board');
+  assert.equal(st.done.next, 'O');
   assert.equal(st.lock, null);
   L.endFlash(st);
+  assert.equal(st.screen, 'mini');
+  assert.equal(L.leaveSquare(st), true);
   assert.equal(st.screen, 'board');
+  assert.equal(st.turn, 'O');
 });
 
 test('hangman: one player can reveal the whole word in a single turn (lopsided) and claims the square', () => {
@@ -902,6 +913,9 @@ test('moves are refused while a result is showing, on claimed squares, and after
   assert.deepEqual(L.playMove(st, 1, 0), { ok: false, reason: 'busy' });
   L.endFlash(st);
   assert.equal(L.endFlash(st), false);
+  assert.deepEqual(L.playMove(st, 1, 0), { ok: false, reason: 'done' }, 'the move is made: nothing more until the player heads back');
+  assert.deepEqual(L.playMove(st, 0, 1), { ok: false, reason: 'done' });
+  L.leaveSquare(st);
   st.squares[1].owner = 'O';
   assert.deepEqual(L.playMove(st, 1, 0), { ok: false, reason: 'claimed' });
   assert.equal(L.playMove(st, 9, 0).ok, false);
@@ -983,6 +997,110 @@ test('after a match the setup is kept for the next one', () => {
   assert.ok(st.squares.every(s => !s.owner && ['ttt', 'hex'].includes(s.mini.type)));
 });
 
+// ================================ Turn handoff ================================
+test('after a move the result stays on show and the turn passes only on the way back to the board', () => {
+  const st = matchWith(['ttt', 'bs', 'ttt']);
+  assert.equal(L.playMove(st, 0, 4).ok, true);
+  assert.equal(st.turn, 'X', 'still X while the result plays');
+  assert.equal(st.done, st.flash, 'the move is on record for the handoff');
+  assert.equal(st.done.next, 'O');
+  assert.equal(L.leaveSquare(st), false, 'cannot leave while the result is playing');
+  assert.deepEqual(L.playMove(st, 0, 5), { ok: false, reason: 'busy' });
+  assert.equal(L.endFlash(st), true);
+  assert.equal(st.screen, 'mini', 'the mini-game stays on screen');
+  assert.equal(st.zoom, 0);
+  assert.equal(st.flash, null);
+  assert.equal(st.turn, 'X', 'the turn indicator keeps the mover');
+  assert.deepEqual(L.playMove(st, 0, 5), { ok: false, reason: 'done' }, 'no second move in the same square');
+  assert.deepEqual(L.playMove(st, 1, 0), { ok: false, reason: 'done' }, 'nor anywhere else');
+  assert.equal(st.moves, 1);
+  assert.equal(L.leaveSquare(st), true);
+  assert.equal(st.screen, 'board');
+  assert.equal(st.zoom, null);
+  assert.equal(st.turn, 'O', 'now the turn has passed');
+  assert.equal(st.done, null);
+  assert.equal(st.stamp, null, 'nothing was claimed');
+  assert.equal(L.playMove(st, 0, 5).ok, true, 'O can move');
+  assert.equal(st.flash.by, 'O');
+  assert.equal(st.done.next, 'X');
+  L.endFlash(st); L.leaveSquare(st);
+  assert.equal(st.turn, 'X');
+});
+
+test('just looking at a square, or at a claimed one, never passes the turn', () => {
+  const st = matchWith(['ttt', 'bs']);
+  st.squares[1].owner = 'O';
+  st.screen = 'mini'; st.zoom = 1;                  // what tapping a square does
+  assert.equal(L.leaveSquare(st), true);
+  assert.equal(st.turn, 'X');
+  assert.equal(st.screen, 'board');
+  assert.equal(st.moves, 0);
+  st.screen = 'mini'; st.zoom = 0;
+  L.leaveSquare(st);
+  assert.equal(st.turn, 'X');
+});
+
+test('a claim stays on show as the won square, then stamps in on the board', () => {
+  const st = matchWith(['bs', 'ttt']);
+  st.squares[0].mini = oneMove();
+  L.playMove(st, 0, 0);
+  assert.equal(st.flash.kind, 'claim');
+  assert.equal(st.squares[0].owner, 'X');
+  L.endFlash(st);
+  assert.equal(st.screen, 'mini', 'the won square stays on screen');
+  assert.equal(st.turn, 'X');
+  assert.equal(st.done.kind, 'claim');
+  assert.equal(L.playMove(st, 1, 0).reason, 'done');
+  L.leaveSquare(st);
+  assert.equal(st.stamp, 0, 'the mark stamps onto square 1');
+  assert.equal(st.turn, 'O');
+  st.screen = 'mini'; st.zoom = 0;                  // O looks at the claimed square
+  L.leaveSquare(st);
+  assert.equal(st.stamp, null, 'the stamp plays once');
+  assert.equal(st.turn, 'O');
+});
+
+test('a bonus move keeps the player in the square with no handoff pending, until the move ends', () => {
+  const st = matchWith(['pig', 'ttt']);
+  const die = (...faces) => seq(...faces.map(n => pick(n - 1, 6)));
+  L.playMove(st, 0, 'roll', die(3));
+  assert.equal(st.done, null, 'a roll is not the end of the move');
+  L.endFlash(st);
+  assert.equal(st.screen, 'mini');
+  assert.equal(L.leaveSquare(st), false, 'the turn in progress has to be finished');
+  assert.equal(L.playMove(st, 0, 'bank').ok, true);
+  assert.equal(st.done.next, 'O');
+  assert.equal(st.turn, 'X');
+  L.endFlash(st);
+  assert.equal(st.lock, null);
+  assert.equal(L.leaveSquare(st), true);
+  assert.equal(st.turn, 'O');
+});
+
+test('a match-winning move goes straight to the win screen: nothing to hand over', () => {
+  const st = matchWith(['bs', 'bs', 'bs', 'ttt']);
+  for (let i = 0; i < 3; i++) st.squares[i].mini = oneMove();
+  turn(st, 0, 0); turn(st, 3, 0); turn(st, 1, 0); turn(st, 3, 1);
+  assert.equal(st.turn, 'X');
+  L.playMove(st, 2, 0);
+  assert.equal(st.winner, 'X');
+  assert.equal(st.done, null);
+  L.endFlash(st);
+  assert.equal(st.screen, 'win');
+  assert.equal(L.leaveSquare(st), false);
+});
+
+test('a new match clears any pending handoff', () => {
+  const st = matchWith(['ttt']);
+  L.playMove(st, 0, 0); L.endFlash(st);
+  assert.ok(st.done);
+  st.screen = 'setup';
+  assert.equal(L.startMatch(st, lcg(4)), true);
+  assert.equal(st.done, null);
+  assert.equal(st.stamp, null);
+  assert.equal(st.turn, 'X');
+});
+
 // a legal random move for any mini-game
 function randomMove(m, rng, p) {
   const pickFrom = a => a[Math.floor(rng() * a.length)];
@@ -1028,7 +1146,15 @@ test('random play over many matches always finishes, never shows a removed game,
       if (st.flash.kind === 'again') assert.equal(st.lock, i);
       else assert.equal(st.lock, null);
       if (st.flash.newType) types.add(st.flash.newType);
+      const mover = st.turn;
       L.endFlash(st);
+      if (st.done) {
+        assert.equal(st.screen, 'mini', 'the result stays on show');
+        assert.equal(st.turn, mover, 'the turn has not passed yet');
+        assert.equal(L.playMove(st, i, randomMove(st.squares[i].mini, rng, st.turn), rng).ok, false, 'no second move before heading back');
+        assert.equal(L.leaveSquare(st), true);
+        assert.equal(st.turn, st.lock != null ? mover : L.other(mover));
+      }
     }
     assert.ok(st.winner, 'random play finishes a match');
     assert.equal(st.screen, 'win');
