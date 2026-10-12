@@ -43,6 +43,7 @@
 }
 :root { color-scheme: light; }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+*::before, *::after { box-sizing: border-box; }   /* rings drawn with ::before / ::after stay centred in their cells */
 html, body { margin: 0; height: 100%; }
 body {
   position: fixed; inset: 0; overflow: hidden;
@@ -255,7 +256,7 @@ b.X { color: var(--x); } b.O { color: var(--o); }
 .cell.flipin { animation: flipcell .5s ease-in-out both; }
 .cell.flipin::after { animation: halfshow .5s linear both; }
 .cell.flipin svg { animation: pop .4s .5s ease-out both; }
-.cell.flipin::before { content: ''; position: absolute; left: 30%; top: 30%; width: 40%; height: 40%; border-radius: 50%; pointer-events: none; }
+.cell.flipin::before { content: ''; position: absolute; inset: 30%; border-radius: 50%; pointer-events: none; }
 .cell.miss.flipin::before { border: 3px solid rgba(255, 255, 255, .7); animation: splash .55s .5s ease-out both; }
 .cell.hit.flipin::before { background: radial-gradient(circle, currentColor 0, transparent 70%); animation: burst .65s .5s ease-out both; }
 
@@ -750,7 +751,7 @@ b.O { box-shadow: inset 0 -.38em 0 var(--o-soft); }
 .own-ov { opacity: 1; text-shadow: none; z-index: 2; }
 .own-ov .pc { width: 80%; height: 80%; }
 .own-ov.stamp { animation: none; }
-.own-ov.stamp .pc { animation: squash .8s cubic-bezier(.3, 0, .4, 1) both; transform-origin: 50% 90%; }
+.own-ov.stamp .pc { animation: squash .8s cubic-bezier(.3, 0, .4, 1) both; animation-delay: calc(0ms - var(--el, 0ms)); transform-origin: 50% 90%; }
 .lab { color: var(--ink); font-size: 10px; font-size: clamp(8px, 8.6cqw, 12.5px); padding-top: 2px; letter-spacing: .03em; }
 .lab svg { color: var(--ink); }
 .foot .hint, .hint { color: var(--muted); font-size: 16px; font-weight: 400; }
@@ -775,7 +776,7 @@ b.O { box-shadow: inset 0 -.38em 0 var(--o-soft); }
 .tg.g5 i.X { background: var(--x); } .tg.g5 i.O { background: var(--o); }
 .tg.sea i { background: var(--sky); box-shadow: inset 0 0 0 1px var(--ink); border-radius: 3px; }
 .tg.sea i.miss { background: var(--paper); }
-.tg.sea i.miss::after { border-color: var(--ink); }
+.tg.sea i.miss::after { border-color: var(--ink); position: absolute; inset: 30%; width: auto; height: auto; }   /* equal insets: dead centre at any size */
 .twr i { background: #fff; box-shadow: inset 0 0 0 1.3px var(--ink); color: var(--ink); padding-top: 1px; }
 .twr i.g { background: var(--green); color: #fff; box-shadow: inset 0 0 0 1.3px var(--ink); }
 .twr i.y { background: var(--o); color: var(--ink); box-shadow: inset 0 0 0 1.3px var(--ink); }
@@ -818,7 +819,7 @@ b.O { box-shadow: inset 0 -.38em 0 var(--o-soft); }
 .cell.sea { background: var(--sky); }
 .cell.sea::after { background: rgba(255, 255, 255, .35); }
 .cell.miss { background: var(--paper); }
-.cell.miss::after { border-color: var(--ink); }
+.cell.miss::after { border-color: var(--ink); position: absolute; inset: 37%; width: auto; height: auto; }
 .cell.hit.X { background: var(--x-soft); box-shadow: 0 5px 0 var(--ink); color: var(--ink); }
 .cell.hit.O { background: var(--o-soft); box-shadow: 0 5px 0 var(--ink); color: var(--ink); }
 .cell.miss { --fb: var(--paper); --fs: 0 5px 0 var(--ink); }
@@ -979,7 +980,10 @@ button.seg.X.on { background: var(--x); color: var(--paper); } .seg.O.on { backg
 .final > i.X { background: var(--x-soft); } .final > i.O { background: var(--o-soft); }
 .final i .pc { width: 80%; height: 80%; }
 .final > i.hl { box-shadow: 0 0 0 4px var(--sky); }
-.winburst { width: min(280px, 72vw); margin-bottom: -8px; }
+.winburst { width: min(250px, 64vw); margin-bottom: -10px; }
+.win-card { gap: 10px; }
+.win-card .big-g, .win-card .big-g .pc { width: 84px; height: 84px; }
+.win-card .final { width: min(200px, 50vw); }
 .winburst svg { width: 100%; height: auto; overflow: visible; animation: wiggle 1.4s ease-in-out infinite; }
 .win-card .big-g .pc { animation: bob 1s ease-in-out infinite; transform-origin: 50% 100%; }
 
@@ -1008,6 +1012,25 @@ button.seg.X.on { background: var(--x); color: var(--paper); } .seg.O.on { backg
 .tg.thp i { display: grid; place-items: center; position: relative; background: #fff; box-shadow: inset 0 0 0 1.3px var(--ink); border-radius: 2cqw; }
 .tg.thp i.dk { background: var(--panel-2); }
 .tg.thp i .pc { width: 92%; height: 92%; }
+.pow-b .b1 { animation-delay: calc(.32s - var(--el, 0ms)) !important; }
+.pow-b .b2 { animation-delay: calc(.5s - var(--el, 0ms)) !important; }
+/* computer players */
+.cpui { display: inline-block; width: 1.15em; height: 1.15em; vertical-align: -.2em; margin-right: .22em; flex: none; overflow: visible; }
+.slots { display: flex; flex-direction: column; gap: 22px; padding-top: 14px; }
+.slot { position: relative; display: grid; grid-template-columns: 46px 1fr; gap: 10px; align-items: center; padding: 12px; background: var(--paper); border: 3.5px solid var(--ink); border-radius: 20px 14px 22px 16px / 16px 22px 14px 20px; box-shadow: 0 5px 0 var(--ink); }
+.slot.X { background: var(--x-soft); } .slot.O { background: var(--o-soft); }
+.slot .who-p { width: 46px; height: 46px; }
+.slot .who-p .pc { width: 46px; height: 46px; }
+.slot .kind { display: flex; gap: 8px; }
+.slot .kind button.seg { flex: 1; }
+.slot .field { grid-column: 1 / -1; }
+.slot-ico { position: absolute; top: -26px; right: 16px; width: 40px; height: 40px; animation: bob 1.4s ease-in-out infinite; transform-origin: 50% 100%; }
+.slot-ico .cpui { width: 40px; height: 40px; margin: 0; }
+/* the final board, to look back over */
+.review-scr .board .sq { cursor: pointer; }
+.revhead { flex: none; width: 100%; max-width: 560px; display: flex; align-items: center; gap: 12px; height: var(--bar); }
+.win-card .row { flex-wrap: wrap; justify-content: center; }
+.winburst .bursttxt { letter-spacing: 1px; }
 @keyframes squash { 0% { transform: translateY(-160%) scale(.6, 1.6); opacity: 0; } 10% { opacity: 1; } 42% { transform: translateY(0) scale(.75, 1.35); } 55% { transform: translateY(0) scale(1.45, .55); } 70% { transform: translateY(-12%) scale(.85, 1.2); } 84% { transform: translateY(0) scale(1.1, .9); } 100% { transform: translateY(0) scale(1, 1); opacity: 1; } }
 @keyframes burstin { 0% { transform: scale(0) rotate(-40deg); opacity: 0; } 100% { transform: scale(1) rotate(-10deg); opacity: 1; } }
 @keyframes burstin2 { 0% { transform: scale(0) rotate(30deg); opacity: 0; } 100% { transform: scale(1) rotate(8deg); opacity: 1; } }
@@ -1349,16 +1372,31 @@ const CPU_NAME = 'Computer';
 function defaultSetup() {
   const games = {};
   for (const t of TYPES) games[t] = true;
-  return { names: { X: 'X', O: 'O' }, games, mode: 'two', human: 'X', timer: 0 };   // mode: 'two' players, 'cpu' or 'online'; human: the side a person plays; timer: seconds per online turn, 0 = no limit
+  return { names: { X: 'X', O: 'O' }, games, mode: 'two', human: 'X', timer: 0, players: { X: 'human', O: 'human' } };   // players: who plays each side locally   // mode: 'two' players, 'cpu' or 'online'; human: the side a person plays; timer: seconds per online turn, 0 = no limit
 }
-function cpuSide(setup) { return setup && setup.mode === 'cpu' ? other(setup.human === 'O' ? 'O' : 'X') : null; }
+// The side(s) the computer plays in a local match: 'X', 'O', 'XO' (it plays both and a person watches) or null.
+function cpuSide(setup) {
+  if (!setup || setup.mode === 'online') return null;
+  if (setup.players) return ['X', 'O'].filter(p => setup.players[p] === 'cpu').join('') || null;
+  return setup.mode === 'cpu' ? other(setup.human === 'O' ? 'O' : 'X') : null;   // a setup from before the Human/Computer slots
+}
+// Older setups said "vs Computer, you play X"; now each side is a Human or Computer slot.
+function normSetup(setup) {
+  if (!setup.players || typeof setup.players !== 'object') {
+    const cpu = setup.mode === 'cpu' ? other(setup.human === 'O' ? 'O' : 'X') : null;
+    setup.players = { X: cpu === 'X' ? 'cpu' : 'human', O: cpu === 'O' ? 'cpu' : 'human' };
+  }
+  for (const p of ['X', 'O']) if (setup.players[p] !== 'cpu') setup.players[p] = 'human';
+  if (setup.mode === 'cpu') setup.mode = 'two';
+  return setup;
+}
 // Keep the computer's default name in step with the mode and side: the computer's side is called
 // "Computer" unless someone typed a name for it, and a side that stops being the computer drops it.
 function syncNames(setup) {
-  const cpu = cpuSide(setup);
+  const cpu = cpuSide(setup) || '';
   for (const p of ['X', 'O']) {
     const n = String(setup.names[p] || '').trim();
-    if (cpu === p) { if (!n || n === p) setup.names[p] = CPU_NAME; }
+    if (cpu.includes(p)) { if (!n || n === p) setup.names[p] = CPU_NAME; }
     else if (n === CPU_NAME) setup.names[p] = p;
   }
 }
@@ -1375,7 +1413,8 @@ function newState(rng) {
     setup: defaultSetup(),    // player names and the mini-games allowed; kept from match to match
     games: TYPES.slice(),     // the mini-games the current match draws from (squares and resets)
     turn: 'X',
-    cpu: null,                // the side the computer plays in this match, or null for two players
+    cpu: null,                // the side(s) the computer plays in this match: 'X', 'O', 'XO', or null for two people
+    endPick: null,            // the match-end message picked for this match (so it does not change on screen)
     online: null,             // { role: 'host' | 'guest', code, me, name, joined } while playing over the network
     timer: newTimer(0),       // the online turn clock: limit in seconds (0 = none), deadline, timeouts per player
     spot: null,               // { square, by, label }: the square the other player is about to play in, shown before the zoom
@@ -1407,7 +1446,9 @@ function startMatch(state, rng) {
     state.setup.names[p] = n || p;
   }
   state.games = games;
+  normSetup(state.setup);
   state.cpu = cpuSide(state.setup);
+  state.endPick = null;                                       // the match-end message is picked afresh
   state.timer = newTimer(state.setup.mode === 'online' && TIMER_OPTIONS.includes(state.setup.timer) ? state.setup.timer : 0);
   state.spot = null;
   state.squares = Array.from({ length: 9 }, () => newSquare(games, rng));
@@ -1424,6 +1465,9 @@ function newMatch(rng, setup) {
   if (setup && setup.names) Object.assign(st.setup.names, setup.names);
   if (setup && setup.mode) st.setup.mode = setup.mode;
   if (setup && setup.human) st.setup.human = setup.human;
+  if (setup && setup.players) st.setup.players = Object.assign({}, setup.players);
+  else if (setup && setup.mode === 'cpu') st.setup.players = null;   // the older "vs Computer" form: normSetup reads it
+  normSetup(st.setup);
   if (setup && setup.timer != null) st.setup.timer = setup.timer;
   if (setup && Array.isArray(setup.games)) for (const t of TYPES) st.setup.games[t] = setup.games.includes(t);
   else if (setup && setup.games) Object.assign(st.setup.games, setup.games);
@@ -2257,6 +2301,7 @@ function leaveSquare(state) {
   if (d) {
     state.turn = d.next;
     state.stamp = d.kind === 'claim' ? d.square : null;
+    state.stampId = d.kind === 'claim' ? Date.now() : null;  // this claim's stamp: it plays once, whatever re-renders follow
     state.done = null;
   }
   state.screen = 'board'; state.zoom = null; state.draft = ''; state.pick = null; state.sel = []; state.notice = null;
@@ -2416,7 +2461,10 @@ let spotTimer = null, menuOpen = false, menuStep = 'main', menuNote = '';   // t
 let clockTimer = null;
 let hpSel = null;                                                // Hexapawn: { sq, from } the pawn picked up on this phone                                           // the clock on screen is refreshed four times a second
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const N = p => esc(playerName(state, p));     // a player's display name, safe for innerHTML
+const N = p => (cpuPlays(p) ? CPU_ICON : '') + esc(playerName(state, p));   // a player's display name, safe for innerHTML, with the computer icon for a computer
+// A little cartoon computer, shown next to computer players.
+const CPU_ICON = '<svg class="cpui" viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="2.5" width="19" height="13.5" rx="3" fill="#58a8cf" stroke="#161210" stroke-width="2"/><ellipse cx="9" cy="8.6" rx="1.5" ry="2" fill="#161210"/><ellipse cx="15" cy="8.6" rx="1.5" ry="2" fill="#161210"/><path d="M9 12q3 2.2 6 0" fill="none" stroke="#161210" stroke-width="1.7" stroke-linecap="round"/><path d="M9.6 16.4v3.4h4.8v-3.4M6.5 20.6h11" fill="none" stroke="#161210" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+function cpuPlays(p) { return !state.online && !!state.cpu && state.cpu.includes(p); }
 
 const ICONS = {
   ttt: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M8.5 3v18M15.5 3v18M3 8.5h18M3 15.5h18"/></svg>',
@@ -2622,6 +2670,11 @@ function renderMain() {
   if (state.screen === 'join') return renderJoin();
   if (state.screen === 'setup') return renderSetup();
   if (state.screen === 'win' && state.winner) return renderWin();
+  if (state.screen === 'review' && state.winner) return renderBoard(true);
+  if (state.screen === 'review-mini' && state.winner && state.zoom != null) {
+    const sq = reviewSquares()[state.zoom];
+    if (sq) return renderMini(sq, true);
+  }
   if (state.screen === 'mini' && state.zoom != null) {
     const sq = state.squares[state.zoom];
     if (sq) return renderMini(sq);
@@ -2647,8 +2700,7 @@ function renderMenu() {
     <h1 class="title"><span class="sr">Tic Tac Chaos</span><span class="ttop wob" aria-hidden="true">${'TIC TAC'.split('').map((c, k) => c === ' ' ? '<span>&nbsp;</span>' : `<span style="animation-delay:${(k * .09).toFixed(2)}s">${c}</span>`).join('')}</span><span class="chaos wob">${burstSvg('CHAOS!', 'r', 300, 150, 54)}</span></h1>
     <div class="pals" aria-hidden="true">${toon('X')}${toon('O')}</div>${menuNote ? `<div class="notice" role="status">${esc(menuNote)}</div>` : ''}
     <p class="sub">Win the mini-game inside a square to claim it. Three squares in a row wins the match.</p>
-    <button class="primary" data-act="mode-go" data-mode="cpu">Play vs Computer</button>
-    <button class="primary alt" data-act="mode-go" data-mode="two">2 Players</button>
+    <button class="primary" data-act="mode-go" data-mode="local">Play Local</button>
     <button class="primary alt" data-act="online-go">Play Online</button>
   </div></main>`;
 }
@@ -2671,15 +2723,22 @@ function renderSetup() {
       <div class="status${net.status === 'connected' ? ' ok' : net.status === 'error' ? ' bad' : ''}">${net.status === 'connected' ? `<b>${esc(s.names[guest])}</b> joined` : esc(net.msg || 'Waiting for friend…')}</div>
       ${net.status === 'error' ? '<button class="btn" data-act="host-retry">Try again</button>' : ''}</div>` : '';
   const ready = host ? on && state.online.joined && connected : on;
-  const title = mode === 'online' ? 'Host game' : mode === 'cpu' ? 'Play vs Computer' : '2 Players';
-  const sub = mode === 'online' ? 'Share the code, set up, then start once your friend is in' : mode === 'cpu' ? 'You against the computer on one phone' : 'Pass and play on one phone';
+  const title = host ? 'Host game' : 'Play Local';
+  const sub = host ? 'Share the code, set up, then start once your friend is in' : '';
+  const slot = p => {                                            // a player slot: Human or Computer, and a name
+    const isCpu = !!(s.players && s.players[p] === 'cpu');
+    return `<div class="slot ${p}${isCpu ? ' cpu' : ''}">${isCpu ? `<div class="slot-ico" aria-hidden="true">${CPU_ICON}</div>` : ''}
+      <div class="who-p">${toonT(p)}</div>
+      <div class="kind" role="group" aria-label="${p} player"><button class="seg${isCpu ? '' : ' on'}" data-act="kind" data-side="${p}" data-kind="human" aria-pressed="${!isCpu}">Human</button><button class="seg${isCpu ? ' on' : ''}" data-act="kind" data-side="${p}" data-kind="cpu" aria-pressed="${isCpu}">Computer</button></div>
+      <label class="field ${p}"><span>${p} player name</span><input data-p="${p}" value="${esc(s.names[p] || '')}" maxlength="${NAME_MAX}" placeholder="${isCpu ? CPU_NAME : p}" autocomplete="off" autocapitalize="words" aria-label="${p} player name"></label></div>`;
+  };
   return `<main class="scr setup">
     <div class="bar"><button class="back" data-act="${host ? 'leave' : 'menu'}" aria-label="Back to the main menu">${CHEV}Menu</button>
-      <div class="ttl"><b>${title}</b><small>${sub}</small></div></div>
+      <div class="ttl"><b>${title}</b>${sub ? `<small>${sub}</small>` : ''}</div></div>
     <div class="setup-box">
     ${room}
-    <div class="names">${field('X')}${field('O')}</div>
-    ${sides}
+    ${host ? `<div class="names">${field('X')}${field('O')}</div>` : `<div class="slots">${slot('X')}${slot('O')}</div>`}
+    ${host ? sides : ''}
     ${timer}
     <div class="adv${advOpen ? ' open' : ''}"><button class="adv-h" data-act="adv" aria-expanded="${advOpen}"><span>Advanced</span><small>${on} of ${TYPES.length} mini-games on</small><i class="chev">${CHEV}</i></button>
       ${advOpen ? `<div class="games">${TYPES.map(chk).join('')}</div>` : ''}</div>
@@ -2688,8 +2747,21 @@ function renderSetup() {
 }
 
 /* ----- main board ----- */
-function renderBoard() {
-  const spot = state.spot;
+// The squares as they ended, every secret included (online, the unclaimed squares' secrets come from the room).
+function reviewSquares() {
+  if (state.online && room && room.match) { const rec = parseMatch(room.match); if (rec) return fullState(rec).squares; }
+  return state.squares;
+}
+const STAMP_MS = 1500;                    // the stamp and its bursts are over by then
+let stampKey = null, stampAt = 0;         // the claim whose stamp is playing, and when it started
+function renderBoard(review) {
+  const spot = review ? null : state.spot;
+  // A fresh claim stamps in once. Any re-render while it plays continues it from where it was (a
+  // negative delay); after that the owner's mark simply sits there. Nothing replays it.
+  const sk = !review && state.stamp != null && state.squares[state.stamp] && state.squares[state.stamp].owner ? String(state.stampId || state.moves) + ':' + state.stamp : null;
+  if (sk && sk !== stampKey) { stampKey = sk; stampAt = performance.now(); }
+  const el = sk ? Math.round(performance.now() - stampAt) : 0;
+  const stampOn = !!sk && el < STAMP_MS;
   const sqs = state.squares.map((sq, i) => {
     const cls = ['sq'];
     if (sq.owner) cls.push('own-' + sq.owner);
@@ -2698,15 +2770,19 @@ function renderBoard() {
     const info = INFO[sq.mini.type];
     // a claimed square keeps its label and final state, with the owner's mark laid over them
     const body = `<div class="lab">${ICONS[sq.mini.type]}<span>${info.name}</span></div><div class="thumb">${thumb(sq.mini, !!sq.owner)}</div>`
-      + (sq.owner ? `<div class="own-ov${state.stamp === i ? ' stamp' : ''}" aria-hidden="true">${toon(sq.owner)}<b class="sr">${sq.owner}</b></div>` : '')   // a fresh claim stamps in
-      + (spot && spot.square === i ? `<div class="spot-lab ${spot.by}" role="status">${esc(spot.label)}</div>` : '');
-    const label = sq.owner ? `Square ${i + 1}: ${info.name}, won by ${N(sq.owner)}. Tap to view` : `Square ${i + 1}: ${info.name}`;
+      + (sq.owner ? `<div class="own-ov${stampOn && state.stamp === i ? ' stamp' : ''}"${stampOn && state.stamp === i ? ` style="--el:${el}ms"` : ''} aria-hidden="true">${toon(sq.owner)}<b class="sr">${sq.owner}</b></div>` : '')   // a fresh claim stamps in
+      + (spot && spot.square === i ? `<div class="spot-lab ${spot.by}" role="status">${cpuPlays(spot.by) ? CPU_ICON : ''}${esc(spot.label)}</div>` : '');
+    const label = sq.owner ? `Square ${i + 1}: ${info.name}, won by ${esc(playerName(state, sq.owner))}. Tap to view` : `Square ${i + 1}: ${info.name}`;
+    if (review) return `<button class="${cls.join(' ')}" data-act="review-sq" data-i="${i}" aria-label="${label}. Tap to see it">${body}</button>`;
     return `<button class="${cls.join(' ')}" data-act="zoom" data-i="${i}" aria-label="${label}"${cpuTurn() ? ' disabled' : ''}>${body}</button>`;
   }).join('');
-  const hint = spot ? esc(spot.label) : cpuTurn() ? `${N(state.turn)} is thinking…` : remoteTurn() ? `Waiting for ${N(state.turn)}…`
-    : state.moves ? 'Tap any open square to make a move' : `${N(state.turn)} goes first. Tap a square to play`;
-  const st = state.stamp != null && state.squares[state.stamp] && state.squares[state.stamp].owner ? state.stamp : null;   // a fresh claim: POW! and CHAOS! around it
-  const pow = st == null ? '' : `<div class="pow-b c${st % 3}" style="grid-row:${Math.floor(st / 3) + 1};grid-column:${st % 3 + 1}" aria-hidden="true"><span class="b1">${burstSvg('POW!', 'y', 150, 110, 34)}</span><span class="b2">${burstSvg('CHAOS!', 'r', 160, 104, 28)}</span></div>`;
+  if (review) return `<main class="scr board-scr review-scr"><div class="revhead"><button class="back" data-act="results" aria-label="Back to the results">${CHEV}Results</button>
+      <div class="ttl"><b>Final board</b><small>Tap any square to see how it ended</small></div></div><div class="board">${sqs}</div>
+    <div class="foot"><span class="hint">Every hidden word, number, card and ship is shown</span></div>${pauseMenu()}</main>`;
+  const hint = spot ? (cpuPlays(spot.by) ? CPU_ICON : '') + esc(spot.label) : cpuTurn() ? `${N(state.turn)} is thinking…` : remoteTurn() ? `Waiting for ${N(state.turn)}…`
+    : state.moves ? 'Tap any open square to make a move' : `${N(state.turn)}: tap a square to start`;
+  const st = stampOn ? state.stamp : null;                                  // a fresh claim: POW! and CHAOS! around it
+  const pow = st == null ? '' : `<div class="pow-b c${st % 3}" style="grid-row:${Math.floor(st / 3) + 1};grid-column:${st % 3 + 1};--el:${el}ms" aria-hidden="true"><span class="b1">${burstSvg('POW!', 'y', 150, 110, 34)}</span><span class="b2">${burstSvg('CHAOS!', 'r', 160, 104, 28)}</span></div>`;
   return `<main class="scr board-scr">${netBar()}<div class="board">${sqs}${pow}</div>
     <div class="foot"><span class="hint">${hint}</span></div>${pauseMenu()}</main>`;
 }
@@ -2779,12 +2855,12 @@ function tttLine(run, p, animate) {
   const len = Math.hypot(x2 - x1, y2 - y1), ex = (x2 - x1) / len * 9, ey = (y2 - y1) / len * 9;   // a little past the end cells
   return `<svg class="winline${animate ? ' draw' : ''}" viewBox="0 0 100 100" aria-hidden="true"><line x1="${x1 - ex}" y1="${y1 - ey}" x2="${x2 + ex}" y2="${y2 + ey}" class="${p}"/></svg>`;
 }
-function renderMini(sq) {
+function renderMini(sq, review) {
   const f = state.flash;                            // the move just made: its animation and result are playing
   const d = state.done;                             // the move made here, on show until the player heads back to the board
   const mini = d && d.drawn ? d.drawn : sq.mini;    // after a draw, keep showing the full board that drew
   const info = INFO[mini.type];
-  const view = !!sq.owner && !f;                    // a claimed square: final state, read-only, secrets revealed
+  const view = (!!sq.owner || !!review) && !f;     // a claimed square (or any square once the match is over and being reviewed): final state, read-only, secrets revealed
   const locked = !!f || !!d || view || blocked();   // no input while the result plays, once the move is made, when just looking, or while it is not this phone's move
   const a = f && f.type === mini.type ? f : null;   // the move to animate (only while its result is fresh)
   const anim = a ? (Number.isInteger(mini.last) ? mini.last : null) : null;   // the cell just played, for grid games
@@ -2825,7 +2901,7 @@ function renderMini(sq) {
       const rank = { x: 1, y: 2, g: 3 };
       const bestOf = list => { const b = {}; for (const gs of list) gs.word.split('').forEach((ch, k) => { if ((rank[gs.marks[k]] || 0) > (rank[b[ch]] || 0)) b[ch] = gs.marks[k]; }); return b; };
       const best = bestOf(mini.guesses), before = a ? bestOf(mini.guesses.slice(0, -1)) : best;   // keys recolour once the tiles have flipped
-      g = `<div class="g-wordle"><div class="wlist" id="wlist">${rows || '<div class="empty">No guesses yet. Type a 5-letter word.</div>'}</div>
+      g = `<div class="g-wordle"><div class="wlist" id="wlist">${rows || `<div class="empty">${view ? 'No guesses were made.' : 'No guesses yet. Type a 5-letter word.'}</div>`}</div>
         ${state.notice ? `<div class="notice" role="alert">${esc(state.notice)}</div>` : ''}
         ${view ? '' : `<div class="wrow cur${state.notice ? ' shake' : ''}" aria-label="Your guess">${cur}</div>`}
         ${keyboard(k => (best[k] || '') + (best[k] && best[k] !== before[k] ? ' kc' : ''), () => locked || dr.length >= 5, { enter: locked || dr.length !== 5, bksp: locked || !dr.length })}</div>`;
@@ -2991,7 +3067,7 @@ function renderMini(sq) {
       : mini.type === 'coins' ? `All six show ${sq.owner}`
       : mini.type === 'hunt' ? `The treasure was at row ${Math.floor(mini.treasure / HUNT.n) + 1}, column ${mini.treasure % HUNT.n + 1}`
       : mini.type === 'pig' ? `${mini.bank.X} to ${mini.bank.O}` : '';
-    sub = `<b class="${sq.owner}">Won by ${N(sq.owner)}</b>${secret ? ' · ' + secret : ''}`;
+    sub = sq.owner ? `<b class="${sq.owner}">Won by ${N(sq.owner)}</b>${secret ? ' · ' + secret : ''}` : `Not won by anyone${secret ? ' · ' + secret : ''}`;
   }
   if (d && !f) {                                    // the result held a moment longer (Memory's cards turning back): the board follows by itself
     const head = d.kind === 'claim' ? `<b class="${sq.owner}">Won by ${N(sq.owner)}</b>`
@@ -3000,7 +3076,7 @@ function renderMini(sq) {
     sub = `${head} · ${next}${secret ? ' · ' + secret : ''}`;
   }
   return `<main class="scr mini${entering ? ' enter' : ''}">${netBar()}
-    <div class="bar${view ? ' won won-' + sq.owner : ''}" role="${view ? 'status' : 'presentation'}"><button class="back" data-act="back" aria-label="Back to the board"${f || d || lockMine() || cpuTurn() ? ' disabled' : ''}>${CHEV}Board</button>
+    <div class="bar${view && sq.owner ? ' won won-' + sq.owner : ''}" role="${view ? 'status' : 'presentation'}">${review ? `<button class="back" data-act="review-back" aria-label="Back to the final board">${CHEV}Board</button>` : `<button class="back" data-act="back" aria-label="Back to the board"${f || d || lockMine() || cpuTurn() ? ' disabled' : ''}>${CHEV}Board</button>`}
       <div class="ttl"><b>${info.name}</b><small${view ? ' class="won"' : ''}>${sub}</small></div></div>
     <div class="gwrap">${g}</div>${f ? renderFlash(f) : ''}${pauseMenu()}</main>`;
 }
@@ -3064,6 +3140,47 @@ function renderFlash(f) {
 }
 
 /* ----- win screen ----- */
+// The match-end message: one picked at random per match, from the winner's, the loser's or the tie list,
+// as this phone sees it; kept in the state so it does not change while the screen is up.
+const END_MSGS = {
+  win: ['WINNER!', 'CHAMPION!', 'UNSTOPPABLE!', 'VICTORY!', 'TOTAL DOMINATION!', 'MASTER OF CHAOS!'],
+  loss: ['BETTER LUCK NEXT TIME', 'SO CLOSE…', 'OUTPLAYED', 'DEFEATED', 'CHAOS WON THIS ONE', 'REMATCH?'],
+  tie: ["IT'S A TIE!", 'STALEMATE', 'DEAD EVEN', 'NOBODY WINS', 'EVENLY MATCHED', 'CALL IT A DRAW'],
+};
+function endKind() {                                         // { list, name }: whose perspective, and whether to name the winner
+  const w = state.winner;
+  if (w !== 'X' && w !== 'O') return { list: 'tie', name: null };
+  if (state.online) return { list: w === state.online.me ? 'win' : 'loss', name: null };
+  if (state.cpu && state.cpu.length === 1) return { list: state.cpu === w ? 'loss' : 'win', name: null };   // a person against the computer
+  return { list: 'win', name: playerName(state, w) };      // two people on one phone, or the computer against itself: name the winner
+}
+function endMessage() {
+  const k = endKind(), msgs = END_MSGS[k.list];
+  if (!(state.endPick && state.endPick.list === k.list && Number.isInteger(state.endPick.i) && state.endPick.i < msgs.length)) {
+    state.endPick = { list: k.list, i: Math.floor(Math.random() * msgs.length) };
+    save();
+  }
+  return { list: k.list, text: msgs[state.endPick.i], name: k.name };
+}
+// The message in a burst: a line for the name, the message wrapped to short lines, the type sized to fit.
+function endBurst(m) {
+  const words = m.text.split(' '), lines = [];
+  for (const wd of words) { const last = lines[lines.length - 1]; if (last && (last + ' ' + wd).length <= 11) lines[lines.length - 1] = last + ' ' + wd; else lines.push(wd); }
+  if (m.name) lines.unshift(m.name.toUpperCase() + ' —');
+  const W = 300, H = 150 + (lines.length - 1) * 34;
+  const longest = Math.max(...lines.map(l => l.length));
+  const size = Math.round(Math.min(50, (W * 0.6) / (longest * 0.62), (H * 0.6) / (lines.length * 1.05)));
+  let seed = m.text.length * 31 + lines.length;
+  const r = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
+  const pts = [];
+  for (let k = 0; k < 28; k++) {
+    const a = k * Math.PI / 14 - Math.PI / 2, f = k % 2 === 0 ? 0.88 + r() * 0.12 : 0.66 + r() * 0.08;
+    pts.push(`${(W / 2 + Math.cos(a) * (W / 2 - 3) * f).toFixed(1)},${(H / 2 + Math.sin(a) * (H / 2 - 3) * f).toFixed(1)}`);
+  }
+  const top = H / 2 - (lines.length - 1) * size * 0.525 + size * 0.36;
+  const cls = m.list === 'loss' ? 's' : m.list === 'tie' ? 'r' : 'y';
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(lines.join(' '))}"><polygon class="bst ${cls}" points="${pts.join(' ')}"/><text class="bursttxt" font-size="${size}" text-anchor="middle">${lines.map((l, i) => `<tspan x="${W / 2}" y="${(top + i * size * 1.05).toFixed(1)}">${esc(l)}</tspan>`).join('')}</text></svg>`;
+}
 function renderWin() {
   const w = state.winner;
   const why = state.winReason === 'line' ? 'Three squares in a row'
@@ -3073,9 +3190,9 @@ function renderWin() {
     `<i class="${s.owner || ''}${state.winLine && state.winLine.includes(i) ? ' hl' : ''}">${s.owner ? toonT(s.owner) : ''}</i>`
   ).join('');
   return `<main class="scr win-scr">${netBar()}<div class="win-card">
-    <div class="winburst">${burstSvg(state.winReason === 'timeout' ? 'WINNER!' : 'CHAOS!', 'y', 300, 150, 52)}</div><div class="big-g ${w}">${toonT(w)}</div><h1>${state.winReason === 'timeout' ? `${N(w)} wins — ${why}` : `${N(w)} wins the match!`}</h1><p>${state.winReason === 'timeout' ? 'Two turns in a row ran out of time' : why}</p>
+    <div class="winburst">${endBurst(endMessage())}</div><div class="big-g ${w}">${toonT(w)}</div><h1>${state.winReason === 'timeout' ? `${N(w)} wins — ${why}` : `${N(w)} wins the match!`}</h1><p>${state.winReason === 'timeout' ? 'Two turns in a row ran out of time' : why}</p>
     <div class="final" aria-hidden="true">${final}</div>
-    <div class="row"><button class="primary" data-act="rematch"${state.online && !connected ? ' disabled' : ''}>Rematch</button><button class="btn" data-act="${state.online ? 'leave' : 'menu'}">Main menu</button></div></div></main>`;
+    <div class="row"><button class="primary" data-act="rematch"${state.online && !connected ? ' disabled' : ''}>Rematch</button><button class="btn" data-act="review">View board</button><button class="btn" data-act="${state.online ? 'leave' : 'menu'}">Main menu</button></div></div></main>`;
 }
 
 
@@ -3117,7 +3234,7 @@ function online() { return state.online || null; }
 function isHost() { return !!state.online && state.online.role === 'host'; }     // the host set the room up; in the match both phones are equal
 function isGuest() { return !!state.online && state.online.role === 'guest'; }
 // the side played at this phone: our own side online, the person's side against the computer, null when both play here
-function mySide() { return state.online ? state.online.me : state.cpu ? other(state.cpu) : null; }
+function mySide() { return state.online ? state.online.me : state.cpu && state.cpu.length === 1 ? other(state.cpu) : null; }   // a match the computer plays both sides of has no side here
 function remoteTurn() { return !!state.online && !state.winner && state.turn !== state.online.me; }
 // nothing to tap: the computer or the other player is on the move, a move of ours is still being written, or the line is down
 function blocked() { return cpuTurn() || remoteTurn() || !!moveWait || (!!state.online && !connected); }
@@ -3374,7 +3491,7 @@ function applyMatch(r) {
   const o = state.online, rec = parseMatch(r.match);
   if (!rec) return;
   const st = rec.state;
-  if (o.matchId !== st.id) { o.matchId = st.id; o.shownSeq = st.seq; presentingSeq = null; moveWait = null; }   // a new match: nothing to play back
+  if (o.matchId !== st.id) { o.matchId = st.id; o.shownSeq = st.seq; presentingSeq = null; moveWait = null; state.endPick = null; }   // a new match: nothing to play back
   if (o.shownSeq == null) o.shownSeq = st.seq;
   let missed = (st.recent || []).filter(e => e.seq > o.shownSeq).sort((a, b) => a.seq - b.seq);
   const skipped = Math.max(0, st.seq - o.shownSeq - Math.min(missed.length, REPLAY_MAX));
@@ -3401,7 +3518,7 @@ function showLatest(st) {
   takeFields(st);
   state.flash = null; state.done = null; state.spot = null;
   o.shownSeq = st.seq;
-  if (state.winner) state.screen = 'win';
+  if (state.winner) { if (state.screen !== 'review' && state.screen !== 'review-mini') state.screen = 'win'; }   // looking back over the final board: stay there
   else if (!['board', 'mini'].includes(state.screen)) state.screen = 'board';
   if (!state.winner && state.lock != null && state.turn === o.me) { state.screen = 'mini'; state.zoom = state.lock; }   // our bonus move
   if (state.screen === 'mini' && state.zoom == null) state.screen = 'board';
@@ -3649,7 +3766,7 @@ app.addEventListener('click', e => {
   if (!el || el.disabled) return;
   const act = el.dataset.act;
   if (act === 'dismiss') { if (Date.now() >= flashReady) dismissFlash(); return; }   // not before the animation is over
-  const free = ['pause', 'pause-resume', 'pause-main', 'pause-back', 'pause-leave', 'leave', 'menu', 'rejoin', 'host-retry', 'share', 'rematch', 'timer'];
+  const free = ['pause', 'pause-resume', 'pause-main', 'pause-back', 'pause-leave', 'leave', 'menu', 'rejoin', 'host-retry', 'share', 'rematch', 'timer', 'review', 'review-sq', 'review-back', 'results'];
   if (act === 'pause') { menuOpen = true; menuStep = 'main'; render(); scheduleCpu(); return; }
   if (act === 'pause-resume') { menuOpen = false; menuStep = 'main'; render(); scheduleCpu(); return; }
   if (act === 'pause-main') { menuStep = 'confirm'; render(); return; }
@@ -3674,7 +3791,18 @@ app.addEventListener('click', e => {
     if (!state.online) { state.pick = null; state.pickSq = null; }
     commit();
   } else if (act === 'mode-go') {              // the main menu: pick a mode, then set up
-    state.setup.mode = el.dataset.mode === 'cpu' ? 'cpu' : 'two'; syncNames(state.setup); state.screen = 'setup'; advOpen = false; commit();
+    state.setup.mode = 'two'; normSetup(state.setup); syncNames(state.setup); state.screen = 'setup'; advOpen = false; commit();
+  } else if (act === 'kind') {                 // a setup slot: Human or Computer
+    const side = el.dataset.side === 'O' ? 'O' : 'X';
+    normSetup(state.setup); state.setup.players[side] = el.dataset.kind === 'cpu' ? 'cpu' : 'human'; syncNames(state.setup); commit();
+  } else if (act === 'review') {               // the results screen: look back over the final board
+    if (state.winner) { state.screen = 'review'; state.zoom = null; render(); }
+  } else if (act === 'review-sq') {
+    if (state.winner) { state.screen = 'review-mini'; state.zoom = Number(el.dataset.i); render(); }
+  } else if (act === 'review-back') {
+    if (state.winner) { state.screen = 'review'; state.zoom = null; render(); }
+  } else if (act === 'results') {
+    if (state.winner) { state.screen = 'win'; state.zoom = null; render(); }
   } else if (act === 'menu') {
     state.screen = 'menu'; state.confirm = null; menuNote = ''; commit();
   } else if (act === 'timer') {
@@ -3806,7 +3934,7 @@ function boot() {
 }
 
 /* ----- the computer's turn: a pause to think, a zoom into its square, its choice shown, then the move ----- */
-function cpuTurn() { return !!state.cpu && state.turn === state.cpu && !state.winner && state.screen !== 'setup' && state.screen !== 'menu'; }
+function cpuTurn() { return !!state.cpu && state.cpu.includes(state.turn) && !state.winner && state.screen !== 'setup' && state.screen !== 'menu'; }
 // Runs after every render: arms the computer's next step whenever it is its turn and nothing else is going on.
 function scheduleCpu() {
   clearTimeout(cpuTimer); cpuTimer = null;
@@ -3886,7 +4014,9 @@ function load() {
       if (s.setup.timer == null) s.setup.timer = 0;
       if (!s.setup.mode) s.setup.mode = 'two';
       if (!s.setup.human) s.setup.human = 'X';
-      if (s.cpu !== 'X' && s.cpu !== 'O') s.cpu = null;
+      if (!['X', 'O', 'XO'].includes(s.cpu)) s.cpu = null;
+      normSetup(s.setup);
+      if (s.screen === 'review' || s.screen === 'review-mini') s.screen = s.winner ? 'win' : 'board';
       if (!(s.online && (s.online.role === 'host' || s.online.role === 'guest') && validCode(s.online.code))) s.online = null;
       if (s.online) {
         if (s.online.me !== 'X' && s.online.me !== 'O') s.online.me = null;

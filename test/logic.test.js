@@ -12,7 +12,7 @@ const src = html.match(/<script id="logic">([\s\S]*?)<\/script>/)[1];
 const L = vm.runInThisContext(
   src + '\n;({ TYPES, INFO, C4, HEX_N, HILO, DICE_GOAL, MEMORY, CANDY, COINS, PIG, HUNT, NAME_MAX, WORDS5, WORDS_HANG, VALID5, LINES, other, newMini, newState, huntDist,' +
   ' startMatch, newMatch, defaultSetup, enabledGames, playerName, findRun, applyMove, mainResult, playMove, endFlash, leaveSquare, cpuMove, publicMini, squareValue, needsOf, winChance, moveGain, localBest, wordleCandidates, hangmanCandidates, huntCandidates, hexDist, candyExpected, cpuSide, syncNames, CPU_NAME, AI, wordleMarks, hexNeighbors,' +
-  ' hexPath, memoryDeck, candyTrack, canMove, anyMove, randomLegalMove, timeoutMove, TIMER_OPTIONS, newTimer, HP, hpMoves, hpSolve, hpNeeds, upgradeMini, matchRecord, fullState, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, newOnlineMatch, secretOf, hideMini, RECENT_MAX })',
+  ' hexPath, memoryDeck, candyTrack, canMove, anyMove, randomLegalMove, timeoutMove, TIMER_OPTIONS, newTimer, HP, hpMoves, hpSolve, hpNeeds, upgradeMini, normSetup, matchRecord, fullState, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, newOnlineMatch, secretOf, hideMini, RECENT_MAX })',
   { filename: 'index.html#logic' }
 );
 
@@ -1238,35 +1238,40 @@ function cpuMatch(me, squares, owners = []) {
 }
 const tttOf = (...cells) => Object.assign(mini('ttt'), { cells: cells.map(c => c || null) });
 
-test('setup: "vs Computer" picks the computer\'s side and names it, and a match records it', () => {
+test('setup: each side is a Human or Computer slot; a computer is called Computer; any combination plays', () => {
   const st = L.newState(lcg(1));
   assert.equal(st.setup.mode, 'two');
-  assert.equal(st.setup.human, 'X');
+  assert.deepEqual(st.setup.players, { X: 'human', O: 'human' }, 'two people by default');
   assert.equal(L.cpuSide(st.setup), null);
-  st.setup.mode = 'cpu';
+  st.setup.players.O = 'cpu';
   L.syncNames(st.setup);
   assert.equal(L.cpuSide(st.setup), 'O');
-  assert.deepEqual(st.setup.names, { X: 'X', O: L.CPU_NAME }, 'the computer is called Computer');
-  st.setup.human = 'O';
+  assert.deepEqual(st.setup.names, { X: 'X', O: L.CPU_NAME }, 'a computer slot is called Computer');
+  st.setup.players.X = 'cpu';
   L.syncNames(st.setup);
-  assert.deepEqual(st.setup.names, { X: L.CPU_NAME, O: 'O' }, 'the name follows the side');
+  assert.equal(L.cpuSide(st.setup), 'XO', 'the computer can play both sides');
+  assert.deepEqual(st.setup.names, { X: L.CPU_NAME, O: L.CPU_NAME });
   st.setup.names.X = 'HAL';
   L.syncNames(st.setup);
   assert.equal(st.setup.names.X, 'HAL', 'a typed name stays');
-  st.setup.mode = 'two';
+  st.setup.players.X = 'human';
   L.syncNames(st.setup);
   assert.equal(st.setup.names.X, 'HAL');
   st.setup.names.X = L.CPU_NAME;
   L.syncNames(st.setup);
-  assert.equal(st.setup.names.X, 'X', 'two players: the default computer name goes away');
-  st.setup.mode = 'cpu'; st.setup.human = 'X';
-  assert.equal(L.startMatch(st, lcg(2)), true);
-  assert.equal(st.cpu, 'O');
-  assert.equal(L.playerName(st, 'O'), L.CPU_NAME);
-  assert.equal(st.turn, 'X', 'the human X goes first');
-  const m = L.newMatch(lcg(3), { mode: 'cpu', human: 'O' });
-  assert.equal(m.cpu, 'X');
-  assert.equal(m.turn, 'X', 'the computer goes first as X');
+  assert.equal(st.setup.names.X, 'X', 'a human slot drops the default computer name');
+  for (const [players, cpu] of [[{ X: 'human', O: 'human' }, null], [{ X: 'human', O: 'cpu' }, 'O'], [{ X: 'cpu', O: 'human' }, 'X'], [{ X: 'cpu', O: 'cpu' }, 'XO']]) {
+    const m = L.newMatch(lcg(3), { players });
+    assert.equal(m.cpu, cpu, JSON.stringify(players));
+    assert.equal(m.turn, 'X', 'X always moves first');
+  }
+  // setups saved before the slots: "vs Computer, you play O" becomes a Computer X slot
+  const old = L.newMatch(lcg(3), { mode: 'cpu', human: 'O' });
+  assert.equal(old.cpu, 'X');
+  assert.deepEqual(old.setup.players, { X: 'cpu', O: 'human' });
+  assert.equal(old.setup.mode, 'two');
+  assert.deepEqual(L.normSetup({ mode: 'cpu', human: 'X', names: {} }).players, { X: 'human', O: 'cpu' });
+  assert.equal(L.cpuSide({ mode: 'online', players: { X: 'cpu', O: 'cpu' } }), null, 'never in online play');
   assert.equal(L.newMatch(lcg(3)).cpu, null);
 });
 

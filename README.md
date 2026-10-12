@@ -11,13 +11,27 @@ Firebase Realtime Database (see "Setting up Firebase").
 
 Open `index.html` in a browser (or serve the folder with any static server) and play.
 
-A main menu comes first: "Play vs Computer", "2 Players" or "Play Online". The setup screen that follows takes the
-names (defaults X and O; the computer is called "Computer"), against the computer which side you play
-(X goes first), and under "Advanced" the mini-games in the mix (all on by default, at least one must
-stay on). During a match a "Menu" button sits in the top corner: it pauses the game with "Resume" and
+A main menu comes first: "Play Local" or "Play Online". Play Local opens one setup screen with two
+player slots, X and O; each is Human or Computer and has a name (a human slot defaults to "X" or "O",
+a computer slot to "Computer" and shows a little computer above it). Any pairing works: two people
+passing one phone, a person against the computer on either side, or the computer against itself
+while you watch. X moves first. Under "Advanced" are the mini-games in the mix (all on by default, at
+least one must stay on). Computer players carry the computer icon next to their name in the game: in
+the turn indicator, on the square they are about to play, and in the results.
+
+During a match a "Menu" button sits in the top corner: it pauses the game with "Resume" and
 "Main menu"; the latter asks "Leave this match?" and, on Yes, ends the match and returns to the main
-menu. Against the computer, and in 2-player mode, nothing moves while the menu is open. The win screen
-offers "Rematch" (the same settings and opponent again) and "Main menu".
+menu. Nothing moves while the menu is open, the computer included (so it also pauses a computer
+against computer match). When a square is won, the owner's mark squashes in with POW! and CHAOS!
+bursts, once.
+
+The results screen shows a message picked at random for the match: a win message for a person who
+beat the computer, a loss message when the computer won, the winner's name with a win message when
+two people played on one phone or the computer played itself, and online each phone shows its own
+player's win or loss. (The tie messages are there for a drawn match, which the current rules cannot
+produce: nine squares always give someone three in a row or the majority.) "View board" shows the
+final main board; every square, claimed or not, opens read-only with everything hidden revealed, and
+a button returns to the results with "Rematch" (the same settings and opponent again) and "Main menu".
 
 ## Rules
 
