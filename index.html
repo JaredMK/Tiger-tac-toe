@@ -131,7 +131,7 @@ b.X { color: var(--x); } b.O { color: var(--o); }
 .tg.g3 i { display: grid; place-items: center; border-radius: 3px; background: var(--panel-2); font-weight: 900; line-height: 1; font-size: 12px; font-size: 12cqw; }
 .tg i.X { color: var(--x); }
 .tg i.O { color: var(--o); }
-.tg.g5 { grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(6, 1fr); width: 52px; height: 62px; width: 52cqw; height: 62cqw; }
+.tg.g5 { grid-template-columns: repeat(7, 1fr); grid-template-rows: repeat(6, 1fr); width: 70px; height: 60px; width: 70cqw; height: 60cqw; }
 .tg.g5 i { border-radius: 50%; background: var(--panel-2); }
 .tg.g5 i.X { background: var(--x); }
 .tg.g5 i.O { background: var(--o); }
@@ -260,9 +260,9 @@ b.X { color: var(--x); } b.O { color: var(--o); }
 .cell.hit.flipin::before { background: radial-gradient(circle, currentColor 0, transparent 70%); animation: burst .65s .5s ease-out both; }
 
 .g-c4 {
-  --cw: min(var(--gw), calc(var(--gh) * 5 / 6));
-  width: var(--cw); height: calc(var(--cw) * 6 / 5);
-  display: grid; grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(6, 1fr); gap: 6px;
+  --cw: min(var(--gw), calc(var(--gh) * 7 / 6));
+  width: var(--cw); height: calc(var(--cw) * 6 / 7);
+  display: grid; grid-template-columns: repeat(7, 1fr); grid-template-rows: repeat(6, 1fr); gap: 5px;
   padding: 8px; background: var(--panel); border-radius: 16px;
 }
 .c4c { border: 0; padding: 0; border-radius: 50%; background: var(--panel-2); }
@@ -983,6 +983,31 @@ button.seg.X.on { background: var(--x); color: var(--paper); } .seg.O.on { backg
 .winburst svg { width: 100%; height: auto; overflow: visible; animation: wiggle 1.4s ease-in-out infinite; }
 .win-card .big-g .pc { animation: bob 1s ease-in-out infinite; transform-origin: 50% 100%; }
 
+/* Hexapawn */
+.g-hp { --hpw: min(var(--gw), calc((var(--gh) - 118px) * 3 / 4), 420px); width: var(--hpw); display: flex; flex-direction: column; gap: 8px; }
+.hpgoal { text-align: center; font-family: 'Luckiest Guy', sans-serif; font-size: 13px; letter-spacing: .03em; border: 3px solid var(--ink); border-radius: 12px 9px 13px 8px; padding: 5px 6px 2px; }
+.hpgoal.X { background: var(--x-soft); } .hpgoal.O { background: var(--o-soft); }
+.hpb { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(4, 1fr); gap: 8px; width: 100%; aspect-ratio: 3 / 4; }
+.hpc { position: relative; padding: 0; background: #fff; border: 3px solid var(--ink); border-radius: 16px 11px 15px 12px / 12px 16px 11px 15px; box-shadow: 0 4px 0 var(--ink); overflow: visible; }
+.hpc.dk { background: var(--panel-2); }
+.hpc:disabled { cursor: default; }
+.hpc.sel { box-shadow: 0 4px 0 var(--ink), 0 0 0 5px var(--sky); }
+.hpc.tgt::after { content: ''; position: absolute; inset: 32%; border-radius: 50%; border: 4px dashed var(--sky); pointer-events: none; }
+.hpc.tgt.cap::after { inset: 3%; border-color: var(--x); z-index: 3; }
+.hpc.win { box-shadow: 0 4px 0 var(--ink), 0 0 0 5px var(--green); }
+.hpp { position: absolute; inset: 8%; display: grid; place-items: center; z-index: 2; pointer-events: none; }
+.hpp .pc { width: 100%; height: 100%; }
+.hpp.slide { animation: hpslide .42s cubic-bezier(.3, .8, .4, 1) both; }
+.hpp.ghost { z-index: 1; animation: knock .75s .34s cubic-bezier(.3, .6, .5, 1) both; }
+.hpc.win.lit .hpp:not(.ghost) { animation: c4win .55s .5s ease-out both; }
+.hpc.win.lit .hpp.slide { animation: hpslide .42s cubic-bezier(.3, .8, .4, 1) both, c4win .55s .5s ease-out both; }
+.hpnote { margin: 0; min-height: 20px; text-align: center; color: var(--muted); font-size: 16px; }
+@keyframes hpslide { from { transform: translate(calc(var(--dx, 0) * (100% / .84 + 8px)), calc(var(--dy, 0) * (100% / .84 + 8px))); } }
+@keyframes knock { 0% { transform: none; opacity: 1; } 25% { transform: translate(calc(var(--kx) * 45%), -55%) rotate(calc(var(--kx) * 70deg)); opacity: 1; } 100% { transform: translate(calc(var(--kx) * 240%), 170%) rotate(calc(var(--kx) * 340deg)); opacity: 0; } }
+.tg.thp { grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(4, 1fr); width: 48px; height: 64px; width: 48cqw; height: 64cqw; gap: 1.5cqw; }
+.tg.thp i { display: grid; place-items: center; position: relative; background: #fff; box-shadow: inset 0 0 0 1.3px var(--ink); border-radius: 2cqw; }
+.tg.thp i.dk { background: var(--panel-2); }
+.tg.thp i .pc { width: 92%; height: 92%; }
 @keyframes squash { 0% { transform: translateY(-160%) scale(.6, 1.6); opacity: 0; } 10% { opacity: 1; } 42% { transform: translateY(0) scale(.75, 1.35); } 55% { transform: translateY(0) scale(1.45, .55); } 70% { transform: translateY(-12%) scale(.85, 1.2); } 84% { transform: translateY(0) scale(1.1, .9); } 100% { transform: translateY(0) scale(1, 1); opacity: 1; } }
 @keyframes burstin { 0% { transform: scale(0) rotate(-40deg); opacity: 0; } 100% { transform: scale(1) rotate(-10deg); opacity: 1; } }
 @keyframes burstin2 { 0% { transform: scale(0) rotate(30deg); opacity: 0; } 100% { transform: scale(1) rotate(8deg); opacity: 1; } }
@@ -1005,7 +1030,7 @@ button.seg.X.on { background: var(--x); color: var(--paper); } .seg.O.on { backg
  * Everything about a match lives in one plain object (see newMatch); the UI
  * only ever calls playMove / endFlash and re-renders from that object.
  */
-const TYPES = ['ttt', 'c4', 'bs', 'wordle', 'hangman', 'hex', 'hilo', 'dice', 'memory', 'candy', 'coins', 'pig', 'hunt'];
+const TYPES = ['ttt', 'c4', 'bs', 'wordle', 'hangman', 'hex', 'hilo', 'dice', 'memory', 'candy', 'coins', 'pig', 'hunt', 'hexapawn'];
 const INFO = {
   ttt:         { name: 'Tic-Tac-Toe',  hint: 'Three in a row wins' },
   c4:          { name: 'Connect 4',    hint: 'Pieces drop. Four in a row wins' },
@@ -1020,8 +1045,10 @@ const INFO = {
   coins:       { name: 'Coin Flip',    hint: "Flip up to 3 of the other side's coins. All six the same wins" },
   pig:         { name: 'Pig',          hint: 'Roll and bank. A repeated number busts the pot. First to 20 wins' },
   hunt:        { name: 'Treasure Hunt', hint: 'Dig a cell: the number is its distance to the treasure. Dig it up to win' },
+  hexapawn:    { name: 'Hexapawn',     hint: 'Step forward, capture diagonally. Reach the far row or leave them stuck' },
 };
-const C4 = { cols: 5, rows: 6, k: 4 };
+const C4 = { cols: 7, rows: 6, k: 4 };
+const HP = { cols: 3, rows: 4 };      // Hexapawn: X starts on the bottom row and moves up, O starts on the top row and moves down
 const HEX_N = 4;
 const HILO = { lo: 1, hi: 20 };
 const CANDY = { len: 12, colors: ['red', 'yellow', 'green', 'blue'], gap: 3 };   // same colour at least 3 spaces apart
@@ -1250,9 +1277,36 @@ function hexPath(cells, p) {
   }
   return null;
 }
-// Does p have a legal move in this mini-game? Every current mini-game always offers one, so this is
-// always true; it stays so the "nobody can move" reset and the skipped turn keep a single home.
-function canMove(mini, p) { return true; }
+// Does p have a legal move in this mini-game? Only Hexapawn can leave a player stuck; every other game
+// always offers a move. A stuck player simply plays in another square.
+function canMove(mini, p) { return mini.type === 'hexapawn' ? hpMoves(mini.cells, p).length > 0 : true; }
+// Hexapawn: a pawn steps one square straight forward into an empty square, or captures an opposing pawn
+// one square diagonally forward. Cells run row by row from the top; X moves up, O moves down.
+function hpMoves(cells, p) {
+  const o = other(p), d = p === 'X' ? -1 : 1, out = [];
+  for (let k = 0; k < HP.cols * HP.rows; k++) {
+    if (cells[k] !== p) continue;
+    const r = Math.floor(k / HP.cols), c = k % HP.cols, nr = r + d;
+    if (nr < 0 || nr >= HP.rows) continue;
+    if (!cells[nr * HP.cols + c]) out.push([k, nr * HP.cols + c]);
+    for (const nc of [c - 1, c + 1]) if (nc >= 0 && nc < HP.cols && cells[nr * HP.cols + nc] === o) out.push([k, nr * HP.cols + nc]);
+  }
+  return out;
+}
+function hpGoalRow(p) { return p === 'X' ? 0 : HP.rows - 1; }     // the opponent's home row
+// Saved games and rooms from before Connect 4 grew to 7 columns: the old 5-wide board gets an empty
+// column on each side, so every piece keeps its place (and its support) in the middle five.
+function upgradeMini(mini) {
+  if (mini && mini.type === 'c4' && Array.isArray(mini.cells) && mini.cells.length === 5 * C4.rows && C4.cols === 7) {
+    const at = k => Math.floor(k / 5) * 7 + (k % 5) + 1;
+    const cells = new Array(C4.cols * C4.rows).fill(null);
+    mini.cells.forEach((c, k) => { cells[at(k)] = c; });
+    mini.cells = cells;
+    if (Number.isInteger(mini.last)) mini.last = at(mini.last);
+    if (Array.isArray(mini.winCells)) mini.winCells = mini.winCells.map(at);
+  }
+  return mini;
+}
 function anyMove(state, p) { return state.squares.some(s => !s.owner && canMove(s.mini, p)); }
 // Treasure hunt: steps up/down/left/right between two cells of the 5x5 grid.
 function huntDist(a, b) {
@@ -1285,6 +1339,7 @@ function newMini(type, rng) {
     case 'coins':       return { type, coins: shuffle(['X', 'X', 'X', 'O', 'O', 'O'], rng), last: null };
     case 'pig':         return { type, bank: { X: 0, O: 0 }, turn: null, last: null };   // turn = the push-your-luck turn in progress
     case 'hunt':        return { type, treasure: randInt(rng, HUNT.n * HUNT.n), dug: new Array(HUNT.n * HUNT.n).fill(null), last: null };
+    case 'hexapawn':    return { type, cells: ['O', 'O', 'O', null, null, null, null, null, null, 'X', 'X', 'X'], last: null };
   }
   throw new Error('unknown mini-game: ' + type);
 }
@@ -1541,6 +1596,20 @@ function applyMove(mini, p, m, rng) {
       if (m === mini.treasure) return { ok: true, outcome: 'win', cells: [m] };
       return { ok: true, outcome: 'continue', note: 'dig' };
     }
+    case 'hexapawn': {
+      if (!Array.isArray(m) || m.length !== 2 || !m.every(k => Number.isInteger(k) && k >= 0 && k < HP.cols * HP.rows)) return { ok: false, reason: 'bad' };
+      const [from, to] = m;
+      if (!hpMoves(mini.cells, p).some(([a, b]) => a === from && b === to)) return { ok: false, reason: 'illegal' };
+      const capture = mini.cells[to] === other(p);
+      mini.cells[to] = p; mini.cells[from] = null;
+      mini.last = { from, to, by: p, capture };
+      if (Math.floor(to / HP.cols) === hpGoalRow(p)) return { ok: true, outcome: 'win', cells: [to], note: 'through' };
+      if (!hpMoves(mini.cells, other(p)).length) {              // the opponent has no move left here: it is over for them
+        const mine = mini.cells.map((c, k) => (c === p ? k : -1)).filter(k => k >= 0);
+        return { ok: true, outcome: 'win', cells: mine, note: mini.cells.includes(other(p)) ? 'stuck' : 'wiped' };
+      }
+      return { ok: true, outcome: 'continue', note: capture ? 'capture' : 'step' };
+    }
   }
   return { ok: false, reason: 'bad' };
 }
@@ -1559,7 +1628,7 @@ const AI = { win: 1000, block: 600 };
 // What a player can see of a mini-game. Hidden information is left out, not blanked.
 function publicMini(mini) {
   switch (mini.type) {
-    case 'ttt': case 'c4': case 'hex': return { type: mini.type, cells: mini.cells.slice() };
+    case 'ttt': case 'c4': case 'hex': case 'hexapawn': return { type: mini.type, cells: mini.cells.slice() };
     case 'bs':      return { type: 'bs', revealed: mini.revealed.slice() };
     case 'wordle':  return { type: 'wordle', guesses: mini.guesses.map(g => ({ by: g.by, word: g.word, marks: g.marks.slice() })) };
     case 'hangman': {
@@ -1688,6 +1757,7 @@ function needsOf(pm, p) {
     case 'coins':   return COIN_NEEDS[pm.coins.filter(c => c !== p).length];
     case 'pig':     { const pot = pm.turn && pm.turn.by === p ? pm.turn.pot : 0; return Math.max(1, (PIG.goal - pm.bank[p] - pot) / 7); }
     case 'hunt':    { const n = huntCandidates(pm).length; return n <= 1 ? 1 : 1 + Math.log2(n) / 2.5; }
+    case 'hexapawn': return hpNeeds(pm.cells, p);
   }
   return Infinity;
 }
@@ -1749,10 +1819,11 @@ function c4Eval(cells, me) {   // threats: open windows weighted by how full the
     for (const k of w) { if (cells[k] === me) m++; else if (cells[k] === o) t++; }
     if (m && !t) s += [0, 1, 10, 60][m]; else if (t && !m) s -= [0, 1, 10, 60][t];
   }
-  for (let r = 0; r < C4.rows; r++) { const c = cells[r * C4.cols + 2]; if (c === me) s += 3; else if (c === o) s -= 3; }
+  const mid = Math.floor(C4.cols / 2);
+  for (let r = 0; r < C4.rows; r++) { const c = cells[r * C4.cols + mid]; if (c === me) s += 3; else if (c === o) s -= 3; }
   return s;
 }
-const C4_ORDER = [2, 1, 3, 0, 4];
+const C4_ORDER = [3, 2, 4, 1, 5, 0, 6];      // the middle columns first: alpha-beta cuts sooner
 function c4Search(cells, p, me, depth, alpha, beta) {   // negamax with alpha-beta: the value for p, p to move
   let best = -Infinity, any = false;
   for (const col of C4_ORDER) {
@@ -1772,7 +1843,7 @@ function c4Search(cells, p, me, depth, alpha, beta) {   // negamax with alpha-be
   }
   return any ? best : 0;
 }
-const C4_DEPTH = 6;
+const C4_DEPTH = 5;            // plies searched (7 columns: deeper gets slow on a phone)
 function c4Moves(cells, me) {
   const out = [];
   for (const col of C4_ORDER) {
@@ -1784,6 +1855,59 @@ function c4Moves(cells, me) {
     out.push({ i: col, v });
   }
   return out;
+}
+// Hexapawn: full minimax over the whole game (it is tiny). solve(cells, p) is the outcome with p to move
+// and both sides playing on in this square: { win: true when p wins, plies } with plies counting both sides.
+// A side with no move passes (it is stuck, not beaten), and the other moves.
+const HP_MEMO = new Map();
+function hpSolve(cells, p) {
+  const key = cells.map(c => c || '.').join('') + p;
+  if (HP_MEMO.has(key)) return HP_MEMO.get(key);
+  const o = other(p), moves = hpMoves(cells, p);
+  let res;
+  if (!moves.length && !hpMoves(cells, o).length) res = { win: false, plies: 0 };   // nobody can move (never reached in play)
+  else if (!moves.length) { const r = hpSolve(cells, o); res = { win: !r.win, plies: r.plies }; }   // stuck: the other side moves
+  else {
+    let best = null;
+    for (const [a, b] of moves) {
+      const next = cells.slice(); next[b] = p; next[a] = null;
+      let r;
+      if (Math.floor(b / HP.cols) === hpGoalRow(p) || !hpMoves(next, o).length) r = { win: true, plies: 1 };
+      else { const q = hpSolve(next, o); r = { win: !q.win, plies: q.plies + 1 }; }
+      if (!best || (r.win && !best.win) || (r.win && best.win && r.plies < best.plies) || (!r.win && !best.win && r.plies > best.plies)) best = r;
+    }
+    res = best;
+  }
+  HP_MEMO.set(key, res);
+  return res;
+}
+// Every move's value for me: a forced win soon is best, a forced loss late is the least bad.
+function hpMovesValued(cells, me) {
+  const o = other(me);
+  return hpMoves(cells, me).map(([a, b]) => {
+    const next = cells.slice(); next[b] = me; next[a] = null;
+    let v;
+    if (Math.floor(b / HP.cols) === hpGoalRow(me) || !hpMoves(next, o).length) v = 100;
+    else { const q = hpSolve(next, o); v = q.win ? -100 + q.plies : 100 - q.plies - 1; }
+    return { move: [a, b], v, after: next };
+  });
+}
+// How many of p's own moves p needs to claim the square, for weighing it on the board. Nobody has to
+// move in a square, so "whoever is to move loses" lines from the minimax do not count here: the measure
+// is the closest pawn's distance to the far row, one more when p is stuck for now, and 1 when p can
+// win at once (through, or leaving the other side with no move).
+function hpNeeds(cells, p) {
+  if (!cells.includes(p)) return Infinity;
+  if (!cells.includes(other(p))) return 0;
+  const moves = hpMoves(cells, p), o = other(p);
+  for (const [a, b] of moves) {
+    if (Math.floor(b / HP.cols) === hpGoalRow(p)) return 1;
+    const next = cells.slice(); next[b] = p; next[a] = null;
+    if (!hpMoves(next, o).length) return 1;
+  }
+  let best = Infinity;
+  cells.forEach((c, k) => { if (c === p) best = Math.min(best, Math.abs(Math.floor(k / HP.cols) - hpGoalRow(p))); });
+  return best + (moves.length ? 0 : 1);
 }
 function hexMoves(cells, me) {   // win and block detection through connection distances, looking one reply ahead
   const o = other(me), N = HEX_N * HEX_N, out = [];
@@ -1840,6 +1964,14 @@ function localBest(pm, me, rng) {
     case 'ttt': return pickValued(pm, me, tttMinimax(pm.cells, me), (cells, i) => i);
     case 'c4':  return pickValued(pm, me, c4Moves(pm.cells, me), c4Drop);
     case 'hex': return pickValued(pm, me, hexMoves(pm.cells, me), (cells, i) => i);
+    case 'hexapawn': {
+      const moves = hpMovesValued(pm.cells, me);
+      if (!moves.length) return { move: null, q: 0 };
+      const ahead = mv => mv.after.reduce((s, c, k) => s + (c === me ? (me === 'X' ? HP.rows - 1 - Math.floor(k / HP.cols) : Math.floor(k / HP.cols)) : c ? -1 : 0), 0);
+      let best = moves[0];
+      for (const mv of moves) if (mv.v > best.v || (mv.v === best.v && ahead(mv) > ahead(best))) best = mv;
+      return { move: best.move, win: best.v === 100, after: { type: 'hexapawn', cells: best.after } };
+    }
     case 'bs': {
       const open = pm.revealed.map((r, i) => (r ? -1 : i)).filter(i => i >= 0);
       return { move: open[randInt(rng, open.length)], q: 1 / open.length, shared: true };
@@ -1955,7 +2087,7 @@ function moveGain(pm, me, local) {
 function cpuMove(state, rng) {
   rng = rng || Math.random;
   const me = state.turn;
-  const open = state.lock != null ? [state.lock] : state.squares.map((s, i) => (s.owner ? -1 : i)).filter(i => i >= 0);
+  const open = state.lock != null ? [state.lock] : state.squares.map((s, i) => (s.owner || !canMove(s.mini, me) ? -1 : i)).filter(i => i >= 0);   // not a square where it is stuck
   let best = null;
   for (const i of open) {
     const pm = publicMini(state.squares[i].mini);
@@ -1977,7 +2109,8 @@ function randomLegalMove(mini, p, rng) {
   const empties = (arr, ok) => arr.map((c, k) => (ok(c) ? k : -1)).filter(k => k >= 0);
   switch (mini.type) {
     case 'ttt': case 'hex': return from(empties(mini.cells, c => !c));
-    case 'c4': return from([0, 1, 2, 3, 4].filter(c => !mini.cells[c]));
+    case 'c4': return from(Array.from({ length: C4.cols }, (_, c) => c).filter(c => !mini.cells[c]));
+    case 'hexapawn': { const ms = hpMoves(mini.cells, p); return ms.length ? from(ms) : null; }
     case 'bs': return from(empties(mini.revealed, c => !c));
     case 'hunt': return from(empties(mini.dug, c => !c));
     case 'hilo': return mini.lo + randInt(rng, mini.hi - mini.lo + 1);
@@ -2004,7 +2137,7 @@ function timeoutMove(state, rng) {
     state.screen = 'win'; state.zoom = null;
     return { ok: true, lost: p };
   }
-  const open = state.lock != null ? [state.lock] : state.squares.map((sq, i) => (sq.owner ? -1 : i)).filter(i => i >= 0);
+  const open = state.lock != null ? [state.lock] : state.squares.map((sq, i) => (sq.owner || !canMove(sq.mini, p) ? -1 : i)).filter(i => i >= 0);
   const i = open[randInt(rng, open.length)], mini = state.squares[i].mini;
   const m = mini.type === 'pig' ? (mini.turn && mini.turn.by === p ? 'bank' : 'roll') : randomLegalMove(mini, p, rng);
   const r = playMove(state, i, m, rng, { forced: true, noAgain: mini.type === 'hangman' });
@@ -2064,6 +2197,7 @@ function playMove(state, i, m, rng, opts) {
     case 'coins': flash.n = mini.last.flipped.length; break;
     case 'pig': flash.roll = mini.last.roll; flash.pot = mini.last.pot; flash.rolls = mini.last.rolls; flash.bank = mini.bank[p]; break;
     case 'hunt': flash.dist = huntDist(mini.treasure, m); break;
+    case 'hexapawn': flash.from = mini.last.from; flash.to = mini.last.to; flash.capture = mini.last.capture; break;
   }
   if (outcome === 'win') {
     const w = res.winner || p;                   // a mini-game may hand the square to the other player
@@ -2185,6 +2319,7 @@ function fullState(rec) {
     const s = secrets[k];
     if (s) Object.assign(sq.mini, JSON.parse(JSON.stringify(s)));
     if (sq.mini.type === 'hunt') delete sq.mini.clues;
+    upgradeMini(sq.mini);
   });
   Object.assign(st, { flash: null, done: null, screen: 'board', zoom: null, draft: '', sel: [], notice: null, stamp: null, spot: null, cpu: null, online: null, confirm: null });
   if (!st.timer) st.timer = newTimer(0);
@@ -2278,7 +2413,8 @@ let flashTimer = null, noticeTimer = null, flashReady = 0;   // flashReady: when
 let lastView = null, entering = false;                         // which screen (and square) was last drawn, so the zoom-in plays once
 let cpuTimer = null, cpuPlan = null, holdTimer = null;          // the computer's next step, its chosen move, and Memory's flip-back pause
 let spotTimer = null, menuOpen = false, menuStep = 'main', menuNote = '';   // the pre-zoom glow, the in-game menu, a note for the main menu
-let clockTimer = null;                                           // the clock on screen is refreshed four times a second
+let clockTimer = null;
+let hpSel = null;                                                // Hexapawn: { sq, from } the pawn picked up on this phone                                           // the clock on screen is refreshed four times a second
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const N = p => esc(playerName(state, p));     // a player's display name, safe for innerHTML
 
@@ -2296,6 +2432,7 @@ const ICONS = {
   coins: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/></svg>',
   pig: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M3 10h18v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 3v7M8.5 6.5 12 3l3.5 3.5" stroke-linecap="round"/></svg>',
   hunt: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 3h12l4 6-10 12L2 9z"/></svg>',
+  hexapawn: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="6" r="3.3"/><path d="M9.3 10.2h5.4l1.4 6.3H7.9z"/><path d="M6 17.6h12v3.2H6z"/></svg>',
 };
 const GEM = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 3h12l4 6-10 12L2 9z"/><path d="M2 9h20" stroke="rgba(0,0,0,.25)" stroke-width="1.5"/></svg>';
 const DIE_MS = 600;                     // the die's tumble before the piece sets off
@@ -2431,6 +2568,7 @@ function animMs(f) {
     case 'coins':   return 1050 + (f.n - 1) * 80;
     case 'pig':     return f.note === 'bank' ? 1000 : f.note === 'bust' ? 1350 : 1050;
     case 'hunt':    return won ? 1400 : 800;
+    case 'hexapawn': return (f.capture ? 1000 : 500) + (won ? 600 : 0);
   }
   return 500;
 }
@@ -2578,6 +2716,7 @@ function thumb(mini, final) {
   switch (mini.type) {
     case 'ttt': return `<div class="tg g3">${mini.cells.map(c => `<i class="${c || ''}">${c ? toonT(c) : ''}</i>`).join('')}</div>`;
     case 'c4':  return `<div class="tg g5">${mini.cells.map(c => `<i class="${c || ''}"></i>`).join('')}</div>`;
+    case 'hexapawn': return `<div class="tg thp">${mini.cells.map((c, i) => `<i class="${c || ''}${(Math.floor(i / HP.cols) + i) % 2 ? ' dk' : ''}">${c ? toonT(c) : ''}</i>`).join('')}</div>`;
     case 'bs':  return `<div class="tg g3 sea">${mini.revealed.map(r => `<i class="${r ? 'miss' : ''}"></i>`).join('')}</div>`;
     case 'wordle': {
       const last = mini.guesses.slice(-4);
@@ -2815,6 +2954,29 @@ function renderMini(sq) {
       }).join('')}</div><div class="heat"><span>Hot</span><i></i><span>Cold</span></div></div>`;
       break;
     }
+    case 'hexapawn': {
+      // Tap one of your pawns to see where it can go, then tap a highlighted square. The pawn just moved
+      // slides in from where it was; a captured pawn is knocked off the board.
+      if (f || d || view) hpSel = null;                          // a move is playing out: nothing stays picked up
+      const moves = view || f || d ? [] : hpMoves(mini.cells, turn);
+      const sel = hpSel && hpSel.sq === state.zoom && moves.some(([x]) => x === hpSel.from) ? hpSel.from : null;
+      const targets = sel == null ? [] : moves.filter(([x]) => x === sel).map(([, y]) => y);
+      const mine = !locked;
+      const stuck = !view && !f && !d && !locked && !moves.length;
+      const cells = mini.cells.map((c, i) => {
+        const r = Math.floor(i / HP.cols), col = i % HP.cols, tgt = targets.includes(i), movable = moves.some(([x]) => x === i);
+        const moved = a && a.to === i, lit = won(i) && fresh;
+        const style = moved ? ` style="--dx:${(a.from % HP.cols) - col};--dy:${Math.floor(a.from / HP.cols) - r}"` : '';
+        const ghost = moved && a.capture ? `<span class="hpp ghost" style="--kx:${col >= (a.from % HP.cols) ? 1 : -1}" aria-hidden="true">${toon(other(a.by))}</span>` : '';
+        const piece = c ? `<span class="hpp${moved ? ' slide' : ''}"${style}>${toonT(c)}</span>` : '';
+        const act = mine && tgt ? `data-act="move" ${mv([sel, i])}` : mine && movable ? 'data-act="hpsel"' : '';
+        const label = `Row ${r + 1} column ${col + 1}${c ? ', ' + c + ' pawn' : ''}${tgt ? (c ? ', capture here' : ', move here') : ''}`;
+        return `<button class="hpc${(r + col) % 2 ? ' dk' : ''}${tgt ? ' tgt' : ''}${tgt && c ? ' cap' : ''}${i === sel ? ' sel' : ''}${won(i) ? ' win' : ''}${lit ? ' lit' : ''}" data-i="${i}" ${act} aria-label="${label}"${act ? '' : ' disabled'}>${ghost}${piece}</button>`;
+      }).join('');
+      g = `<div class="g-hp"><div class="hpgoal X">X wins by reaching this row</div><div class="hpb">${cells}</div><div class="hpgoal O">O wins by reaching this row</div>
+        <p class="hpnote">${stuck ? `<b class="${turn}">${N(turn)}</b> has no move here: play another square` : sel != null ? 'Tap a highlighted square' : !locked ? 'Tap one of your pawns' : ''}</p></div>`;
+      break;
+    }
   }
   const lock = state.lock != null;
   let sub = lock ? (mini.type === 'pig' ? `<b class="${turn}">${N(turn)}</b>'s turn in progress: roll again or bank` : `<b class="${turn}">${N(turn)}</b> guessed right: go again`) : info.hint;
@@ -2867,6 +3029,7 @@ function summary(f) {
     case 'coins': return `${who} flipped ${f.n}`;
     case 'hunt': return `${who} dug ${f.dist} away · ${HEAT[f.dist]}`;
     case 'pig': return f.note === 'bust' ? `Bust! Pot of ${f.pot} lost` : `Banked ${f.pot}`;
+    case 'hexapawn': return f.capture ? `${who} captured a pawn` : `${who} stepped forward`;
   }
   return `${who} placed`;
 }
@@ -3230,6 +3393,7 @@ function takeFields(st) {
     state[k] = st[k] === undefined ? (k === 'games' ? TYPES.slice() : k === 'timer' ? newTimer(0) : null) : JSON.parse(JSON.stringify(st[k]));
   }
   if (!Array.isArray(state.games) || !state.games.length) state.games = TYPES.slice();
+  if (Array.isArray(state.squares)) state.squares.forEach(sq => upgradeMini(sq.mini));
   state.cpu = null; state.confirm = null; state.sel = [];
 }
 function showLatest(st) {
@@ -3500,7 +3664,7 @@ app.addEventListener('click', e => {
     const i = Number(el.dataset.i);
     if (state.winner || !state.squares[i]) return;
     if (lockMine() && state.lock !== i) return;
-    state.screen = 'mini'; state.zoom = i; state.draft = ''; state.sel = []; state.notice = null;
+    state.screen = 'mini'; state.zoom = i; state.draft = ''; state.sel = []; state.notice = null; hpSel = null;
     if (!state.online) { state.pick = null; state.pickSq = null; }
     commit();
   } else if (act === 'back') {
@@ -3545,7 +3709,13 @@ app.addEventListener('click', e => {
     if (isHost()) { if (side !== was) hostSide(side); return; }   // the seats move over in the room; the room's answer updates the screen
     state.setup.human = side; syncNames(state.setup);
     commit();
+  } else if (act === 'hpsel') {                 // Hexapawn: pick a pawn (again to put it down) to see its moves
+    if (zoomedType() !== 'hexapawn') return;
+    const i = Number(el.dataset.i);
+    hpSel = hpSel && hpSel.sq === state.zoom && hpSel.from === i ? null : { sq: state.zoom, from: i };
+    render();
   } else if (act === 'move') {
+    hpSel = null;
     attemptMove(JSON.parse(el.dataset.m));
   } else if (act === 'key') {
     typeLetter(el.dataset.k);
@@ -3669,8 +3839,8 @@ function cpuAct() {
   cpuTimer = null;
   if (!cpuTurn() || state.screen !== 'mini' || !cpuPlan || cpuPlan.square !== state.zoom || menuOpen) return;
   const plan = cpuPlan, type = state.squares[plan.square].mini.type;
-  if (!plan.stage && (type === 'memory' || type === 'wordle')) {   // show the choice first, as a person would
-    if (type === 'memory') state.pick = plan.move[0]; else state.draft = plan.move;
+  if (!plan.stage && (type === 'memory' || type === 'wordle' || type === 'hexapawn')) {   // show the choice first, as a person would
+    if (type === 'memory') state.pick = plan.move[0]; else if (type === 'hexapawn') hpSel = { sq: plan.square, from: plan.move[0] }; else state.draft = plan.move;
     plan.stage = 1; commit(); return;
   }
   cpuPlan = null;
@@ -3726,6 +3896,7 @@ function load() {
         if (!['board', 'mini', 'win', 'setup', 'join'].includes(s.screen)) s.screen = s.online.role === 'host' ? 'setup' : 'join';
       }
       for (const sq of s.squares) if (sq.mini.type === 'memory' && !Array.isArray(sq.mini.seen)) sq.mini.seen = [];
+      for (const sq of s.squares) upgradeMini(sq.mini);                     // Connect 4 grew from 5 to 7 columns
       for (const t of TYPES) if (!(t in s.setup.games)) s.setup.games[t] = true;   // a game added since the save is on by default
       return s;
     }

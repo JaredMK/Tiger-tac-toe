@@ -12,7 +12,7 @@ const src = html.match(/<script id="logic">([\s\S]*?)<\/script>/)[1];
 const L = vm.runInThisContext(
   src + '\n;({ TYPES, INFO, C4, HEX_N, HILO, DICE_GOAL, MEMORY, CANDY, COINS, PIG, HUNT, NAME_MAX, WORDS5, WORDS_HANG, VALID5, LINES, other, newMini, newState, huntDist,' +
   ' startMatch, newMatch, defaultSetup, enabledGames, playerName, findRun, applyMove, mainResult, playMove, endFlash, leaveSquare, cpuMove, publicMini, squareValue, needsOf, winChance, moveGain, localBest, wordleCandidates, hangmanCandidates, huntCandidates, hexDist, candyExpected, cpuSide, syncNames, CPU_NAME, AI, wordleMarks, hexNeighbors,' +
-  ' hexPath, memoryDeck, candyTrack, canMove, anyMove, randomLegalMove, timeoutMove, TIMER_OPTIONS, newTimer, matchRecord, fullState, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, newOnlineMatch, secretOf, hideMini, RECENT_MAX })',
+  ' hexPath, memoryDeck, candyTrack, canMove, anyMove, randomLegalMove, timeoutMove, TIMER_OPTIONS, newTimer, HP, hpMoves, hpSolve, hpNeeds, upgradeMini, matchRecord, fullState, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, newOnlineMatch, secretOf, hideMini, RECENT_MAX })',
   { filename: 'index.html#logic' }
 );
 
@@ -25,7 +25,7 @@ const typeRng = type => seq(pick(L.TYPES.indexOf(type), L.TYPES.length), 0.5);
 const lcg = seed => () => (seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296;
 const wordRng = (list, word) => seq(pick(list.indexOf(word), list.length));
 const colorRng = name => seq(pick(L.CANDY.colors.indexOf(name), L.CANDY.colors.length));
-const REMOVED = ['nim', 'chomp', 'obstruction', 'tug', 'othello', 'hexapawn'];
+const REMOVED = ['nim', 'chomp', 'obstruction', 'tug', 'othello'];   // Hexapawn came back as a 3x4 game
 
 function matchWith(types, rng = lcg(7)) {
   const st = L.newMatch(rng);
@@ -168,21 +168,64 @@ test('c4: a full column and bad columns are rejected', () => {
   const m = mini('c4');
   for (let k = 0; k < 6; k++) assert.equal(L.applyMove(m, k % 2 ? 'O' : 'X', 0).outcome, 'continue');
   assert.deepEqual(L.applyMove(m, 'X', 0), { ok: false, reason: 'full' });
-  assert.equal(L.applyMove(m, 'X', 5).ok, false);
+  assert.equal(L.applyMove(m, 'X', 7).ok, false, 'there is no eighth column');
   assert.equal(L.applyMove(m, 'X', -1).ok, false);
+  assert.equal(L.applyMove(m, 'X', 6).ok, true, 'the seventh column is there');
 });
 
-// A full 5x6 board with no three in a row (so no four either); X has 16 pieces, O has 14.
+// A full 7x6 board with no four in a row anywhere; X has 22 pieces, O has 20.
 const C4_DRAW = [
-  'X', 'O', 'X', 'O', 'X',
-  'X', 'O', 'X', 'O', 'X',
-  'O', 'X', 'O', 'X', 'O',
-  'O', 'X', 'O', 'X', 'O',
-  'X', 'O', 'X', 'O', 'X',
-  'X', 'O', 'X', 'O', 'X',
+  'X', 'O', 'X', 'O', 'X', 'O', 'X',
+  'X', 'O', 'X', 'O', 'X', 'O', 'X',
+  'O', 'X', 'O', 'X', 'O', 'X', 'O',
+  'O', 'X', 'O', 'X', 'O', 'X', 'O',
+  'X', 'O', 'X', 'O', 'X', 'O', 'X',
+  'X', 'O', 'X', 'O', 'X', 'O', 'X',
 ];
 
-test('c4: filling the board with no four in a row is a draw (lopsided 16 vs 14)', () => {
+test('c4: the board is the standard 7 columns by 6 rows, four in a row to win', () => {
+  assert.deepEqual(L.C4, { cols: 7, rows: 6, k: 4 });
+  const m = mini('c4');
+  assert.equal(m.cells.length, 42);
+  for (let col = 0; col < 7; col++) assert.equal(L.applyMove(m, 'X', col).ok, true);
+  assert.equal(m.cells.slice(35).every(c => c === 'X'), true, 'every column of the bottom row');
+});
+
+test('c4: four in a row in the outer columns and across the full width', () => {
+  let m = mini('c4');
+  for (const col of [3, 4, 5]) assert.equal(L.applyMove(m, 'O', col).outcome, 'continue');
+  let r = L.applyMove(m, 'O', 6);
+  assert.equal(r.outcome, 'win');
+  assert.deepEqual(sorted(r.cells), [c4idx(5, 3), c4idx(5, 4), c4idx(5, 5), c4idx(5, 6)]);
+  m = mini('c4');
+  for (let k = 0; k < 3; k++) L.applyMove(m, 'X', 6);
+  r = L.applyMove(m, 'X', 6);
+  assert.equal(r.outcome, 'win', 'four stacked in the last column');
+  m = mini('c4');                                   // a diagonal ending in the right-hand column
+  for (const [p, c] of [['X', 3], ['O', 4], ['X', 4], ['O', 5], ['O', 5], ['X', 5], ['O', 6], ['O', 6], ['O', 6]]) assert.equal(L.applyMove(m, p, c).outcome, 'continue');
+  r = L.applyMove(m, 'X', 6);
+  assert.equal(r.outcome, 'win');
+  assert.deepEqual(sorted(r.cells), sorted([c4idx(5, 3), c4idx(4, 4), c4idx(3, 5), c4idx(2, 6)]));
+  m = mini('c4');                                   // three with a gap is not four
+  for (const col of [0, 1, 3]) L.applyMove(m, 'X', col);
+  assert.equal(L.applyMove(m, 'X', 5).outcome, 'continue');
+  assert.equal(L.findRun(m.cells, 7, 6, 4, 'X'), null);
+});
+
+test('c4: an old 5-column board is widened with an empty column on each side', () => {
+  const old = { type: 'c4', cells: new Array(30).fill(null), last: 27, winCells: [25, 26, 27, 28] };
+  [25, 26, 27, 28].forEach(k => { old.cells[k] = 'X'; });
+  old.cells[20] = 'O';
+  L.upgradeMini(old);
+  assert.equal(old.cells.length, 42);
+  assert.deepEqual([36, 37, 38, 39].map(k => old.cells[k]), ['X', 'X', 'X', 'X']);
+  assert.equal(old.cells[35], null); assert.equal(old.cells[41], null);
+  assert.equal(old.cells[29], 'O', 'row 4, old column 0 is now column 1');
+  assert.equal(old.last, 38); assert.deepEqual(old.winCells, [36, 37, 38, 39]);
+  const fresh = mini('c4'); L.upgradeMini(fresh); assert.equal(fresh.cells.length, 42, 'a new board is left alone');
+});
+
+test('c4: filling the board with no four in a row is a draw (lopsided 22 vs 20)', () => {
   const m = mini('c4');
   let last;
   for (let col = 0; col < L.C4.cols; col++) {
@@ -193,7 +236,7 @@ test('c4: filling the board with no four in a row is a draw (lopsided 16 vs 14)'
   }
   assert.equal(last.outcome, 'draw');
   assert.deepEqual(m.cells, C4_DRAW);
-  assert.equal(m.cells.filter(c => c === 'X').length, 16);
+  assert.equal(m.cells.filter(c => c === 'X').length, 22);
 });
 
 test('c4: a drawn square resets through playMove', () => {
@@ -201,12 +244,12 @@ test('c4: a drawn square resets through playMove', () => {
   const m = st.squares[0].mini;
   for (let col = 0; col < L.C4.cols; col++) {
     for (let row = L.C4.rows - 1; row >= 0; row--) {
-      if (row === 0 && col === 4) break;
+      if (row === 0 && col === 6) break;
       L.applyMove(m, C4_DRAW[c4idx(row, col)], col);
     }
   }
-  st.turn = C4_DRAW[c4idx(0, 4)];
-  assert.equal(L.playMove(st, 0, 4, typeRng('hex')).ok, true);
+  st.turn = C4_DRAW[c4idx(0, 6)];
+  assert.equal(L.playMove(st, 0, 6, typeRng('hex')).ok, true);
   assert.equal(st.flash.kind, 'draw');
   assert.equal(st.squares[0].owner, null);
   assert.equal(st.squares[0].mini.type, 'hex');
@@ -828,7 +871,7 @@ test('setup: the app opens on the main menu with default names and every game ti
   assert.equal(st.screen, 'menu', 'the main menu comes first');
   assert.deepEqual(st.setup.names, { X: 'X', O: 'O' });
   assert.deepEqual(L.enabledGames(st.setup), L.TYPES);
-  assert.equal(L.TYPES.length, 13);
+  assert.equal(L.TYPES.length, 14);
   assert.ok(st.setup.games.coins && st.setup.games.pig && st.setup.games.hunt, 'the newest games are on by default');
   for (const t of L.TYPES) assert.ok(L.INFO[t] && L.INFO[t].name && L.INFO[t].hint, `info for ${t}`);
   assert.equal(L.playerName(st, 'X'), 'X');
@@ -1131,7 +1174,8 @@ function randomMove(m, rng, p) {
   const empties = (arr, ok) => arr.map((c, k) => (ok(c) ? k : -1)).filter(k => k >= 0);
   switch (m.type) {
     case 'ttt': case 'hex': return pickFrom(empties(m.cells, c => !c));
-    case 'c4': return pickFrom([0, 1, 2, 3, 4].filter(c => !m.cells[c]));
+    case 'c4': return pickFrom(Array.from({ length: L.C4.cols }, (_, c) => c).filter(c => !m.cells[c]));
+    case 'hexapawn': return pickFrom(L.hpMoves(m.cells, p));
     case 'bs': return pickFrom(empties(m.revealed, c => !c));
     case 'wordle': return rng() < 0.2 ? m.word : pickFrom(L.WORDS5).toUpperCase();
     case 'hangman': return pickFrom('ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').filter(l => !m.letters.some(x => x.l === l)));
@@ -1167,12 +1211,12 @@ test('random play over many matches always finishes, never shows a removed game,
       if (st.flash.kind === 'again') assert.equal(st.lock, i);
       else assert.equal(st.lock, null);
       if (st.flash.newType) types.add(st.flash.newType);
-      const mover = st.turn, again = st.flash.kind === 'again';
+      const mover = st.turn, again = st.flash.kind === 'again', pass = !!st.flash.pass;
       L.endFlash(st);
       if (!st.winner) {
         assert.equal(st.done, null);
         assert.equal(st.screen, again ? 'mini' : 'board');
-        assert.equal(st.turn, again ? mover : L.other(mover), 'the turn passes as the board comes back');
+        assert.equal(st.turn, again || pass ? mover : L.other(mover), 'the turn passes as the board comes back (unless the other side has no move anywhere)');
       }
     }
     assert.ok(st.winner, 'random play finishes a match');
@@ -1290,7 +1334,7 @@ test('the computer only ever makes legal moves, from any position and in bonus m
     const st = L.newMatch(rng);
     // some random play by both sides first, then the computer takes over each side in turn
     for (let k = 0; k < 8 && !st.winner; k++) {
-      const cands = st.squares.map((s, i) => (!s.owner ? i : -1)).filter(i => i >= 0);
+      const cands = st.squares.map((s, i) => (!s.owner && L.canMove(s.mini, st.turn) ? i : -1)).filter(i => i >= 0);
       const i = st.lock != null ? st.lock : cands[Math.floor(rng() * cands.length)];
       assert.equal(L.playMove(st, i, randomMove(st.squares[i].mini, rng, st.turn), rng).ok, true);
       L.endFlash(st);
@@ -1410,7 +1454,10 @@ test('connect 4 tactics: completes four, blocks three, and otherwise prefers the
   const vertical = mini('c4');
   for (const [p, col] of [['O', 2], ['O', 2], ['O', 2], ['X', 0]]) L.applyMove(vertical, p, col);
   assert.equal(L.localBest(L.publicMini(vertical), 'X', cpuRng()).move, 2, 'caps the column');
-  assert.equal(L.localBest(L.publicMini(mini('c4')), 'X', cpuRng()).move, 2, 'the middle column first');
+  assert.equal(L.localBest(L.publicMini(mini('c4')), 'X', cpuRng()).move, 3, 'the middle column first');
+  const edge = mini('c4');                                   // a threat along the outer columns of the wider board
+  for (const [p, col] of [['O', 4], ['O', 5], ['O', 6], ['X', 4], ['X', 5]]) L.applyMove(edge, p, col);
+  assert.equal(L.localBest(L.publicMini(edge), 'X', cpuRng()).move, 3, 'blocks the open end of three on the right');
 });
 
 test('hex tactics: connects when one cell short and blocks the opponent\'s last link', () => {
@@ -1438,7 +1485,7 @@ test('treasure hunt tactics: only cells consistent with every clue, the best spl
   assert.ok(cand.every(c => L.huntDist(c, 0) === 4 && c !== 0));
   assert.ok(cand.includes(12));
   for (let k = 0; k < 20; k++) {
-    const st = cpuMatch('X', [m, 'ttt']);
+    const st = cpuMatch('X', [m, 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt'], [null, 'X', 'O', 'O', 'X', 'X', 'X', 'O', 'O']);   // the only open square: the dig itself is under test
     const mv = L.cpuMove(st, lcg(k));
     assert.equal(mv.square, 0);
     assert.ok(cand.includes(mv.move), `dig ${mv.move} fits the clue`);
@@ -1921,4 +1968,157 @@ test('a new online match comes from the lobby settings and a rematch starts over
   assert.ok(!rec.state.setup, 'the names live in the room, not the record');
   const none = L.newOnlineMatch({ games: Object.fromEntries(L.TYPES.map(t => [t, false])) }, lcg(9), 'x');
   assert.equal(none, null, 'no games: no match');
+});
+
+
+// ================================ Hexapawn ================================
+// cells run row by row from the top: row 0 is O's home row, row 3 is X's; X moves up, O moves down
+const hp = (...pairs) => { const c = new Array(12).fill(null); for (let k = 0; k < pairs.length; k += 2) c[pairs[k]] = pairs[k + 1]; return { type: 'hexapawn', cells: c, last: null }; };
+const hpAt = (row, col) => row * 3 + col;
+
+test('hexapawn: three pawns each on the home rows, two empty rows between them', () => {
+  const m = mini('hexapawn');
+  assert.deepEqual(m.cells, ['O', 'O', 'O', null, null, null, null, null, null, 'X', 'X', 'X']);
+  assert.deepEqual(L.hpMoves(m.cells, 'X'), [[9, 6], [10, 7], [11, 8]], 'X can only step straight up');
+  assert.deepEqual(L.hpMoves(m.cells, 'O'), [[0, 3], [1, 4], [2, 5]], 'O can only step straight down');
+  assert.ok(L.TYPES.includes('hexapawn'));
+  assert.equal(L.INFO.hexapawn.name, 'Hexapawn');
+  assert.equal(L.defaultSetup().games.hexapawn, true, 'on by default in the Advanced list');
+});
+
+test('hexapawn: pawns cannot move backward, sideways, two squares, diagonally into an empty square, or capture straight ahead', () => {
+  // X on row 2 col 1 with an O pawn straight ahead; another O pawn diagonally ahead on the left
+  const m = hp(hpAt(2, 1), 'X', hpAt(1, 1), 'O', hpAt(1, 0), 'O', hpAt(0, 2), 'O');
+  const before = m.cells.slice();
+  for (const [to, why] of [[hpAt(3, 1), 'backward'], [hpAt(2, 0), 'sideways left'], [hpAt(2, 2), 'sideways right'], [hpAt(1, 1), 'capture straight ahead'],
+    [hpAt(1, 2), 'diagonally into an empty square'], [hpAt(0, 1), 'two squares'], [hpAt(3, 0), 'diagonally backward']]) {
+    assert.deepEqual(L.applyMove(m, 'X', [hpAt(2, 1), to]), { ok: false, reason: 'illegal' }, why);
+  }
+  assert.deepEqual(L.applyMove(m, 'X', [hpAt(1, 1), hpAt(0, 1)]), { ok: false, reason: 'illegal' }, "not the other side's pawn");
+  assert.deepEqual(L.applyMove(m, 'O', [hpAt(1, 1), hpAt(0, 1)]), { ok: false, reason: 'illegal' }, 'O cannot move up');
+  assert.equal(L.applyMove(m, 'X', [hpAt(2, 1)]).ok, false);
+  assert.equal(L.applyMove(m, 'X', 'up').ok, false);
+  assert.deepEqual(m.cells, before, 'nothing moved');
+  assert.deepEqual(L.hpMoves(m.cells, 'X'), [[hpAt(2, 1), hpAt(1, 0)]], 'its only move is the diagonal capture');
+  const r = L.applyMove(m, 'X', [hpAt(2, 1), hpAt(1, 0)]);
+  assert.equal(r.ok, true); assert.equal(r.outcome, 'continue'); assert.equal(r.note, 'capture');
+  assert.equal(m.cells[hpAt(1, 0)], 'X'); assert.equal(m.cells[hpAt(2, 1)], null);
+  assert.deepEqual(m.last, { from: hpAt(2, 1), to: hpAt(1, 0), by: 'X', capture: true });
+});
+
+test('hexapawn win 1: a pawn reaching the opposite home row claims the square', () => {
+  const m = hp(hpAt(1, 1), 'X', hpAt(0, 0), 'O', hpAt(0, 2), 'O');
+  const r = L.applyMove(m, 'X', [hpAt(1, 1), hpAt(0, 1)]);
+  assert.equal(r.outcome, 'win'); assert.equal(r.note, 'through'); assert.deepEqual(r.cells, [hpAt(0, 1)]);
+  const o = hp(hpAt(2, 2), 'O', hpAt(3, 1), 'X', hpAt(3, 0), 'X');   // O gets through by capturing onto X's home row
+  const r2 = L.applyMove(o, 'O', [hpAt(2, 2), hpAt(3, 1)]);
+  assert.equal(r2.outcome, 'win'); assert.equal(r2.note, 'through');
+});
+
+test('hexapawn win 2: a move after which the opponent has no legal move claims the square', () => {
+  // O's only pawn would step down to row 2; X steps into that square and O is blocked with nothing to capture
+  const m = hp(hpAt(3, 0), 'X', hpAt(1, 0), 'O');
+  assert.equal(L.canMove(m, 'O'), true);
+  const r = L.applyMove(m, 'X', [hpAt(3, 0), hpAt(2, 0)]);
+  assert.equal(r.outcome, 'win'); assert.equal(r.note, 'stuck');
+  assert.equal(L.canMove(m, 'O'), false);
+  assert.deepEqual(r.cells, [hpAt(2, 0)], 'the winner\'s pawns light up');
+  // capturing the last pawn counts the same
+  const w = hp(hpAt(2, 1), 'X', hpAt(3, 2), 'X', hpAt(1, 0), 'O');
+  const r2 = L.applyMove(w, 'X', [hpAt(2, 1), hpAt(1, 0)]);
+  assert.equal(r2.outcome, 'win'); assert.equal(r2.note, 'wiped');
+  assert.equal(w.cells.includes('O'), false);
+});
+
+test('hexapawn: a player with no move is not beaten until the opponent moves and leaves them stuck', () => {
+  // X steps forward into a blocked spot of its own accord: X is stuck, but O can still move, so nothing is decided
+  const m = hp(hpAt(3, 0), 'X', hpAt(1, 0), 'O', hpAt(0, 2), 'O', hpAt(0, 1), 'O');
+  const r = L.applyMove(m, 'X', [hpAt(3, 0), hpAt(2, 0)]);
+  assert.equal(r.outcome, 'continue');
+  assert.equal(L.canMove(m, 'X'), false, 'X is stuck');
+  assert.equal(L.canMove(m, 'O'), true);
+  // O moves a pawn next to X's diagonal: X can capture again, so still nothing decided
+  const freed = JSON.parse(JSON.stringify(m));
+  const r2 = L.applyMove(freed, 'O', [hpAt(0, 1), hpAt(1, 1)]);
+  assert.equal(r2.outcome, 'continue', 'the move freed X');
+  assert.equal(L.canMove(freed, 'X'), true);
+  // ...whereas a move that leaves X stuck wins it for O
+  const r3 = L.applyMove(m, 'O', [hpAt(0, 2), hpAt(1, 2)]);
+  assert.equal(r3.outcome, 'win'); assert.equal(r3.note, 'stuck');
+
+  // in a match: a stuck player plays elsewhere, and cannot be made to move in that square
+  const st = matchWith(['hexapawn', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt']);
+  st.squares[0].mini = hp(hpAt(2, 0), 'X', hpAt(1, 0), 'O', hpAt(0, 2), 'O');
+  st.turn = 'X';
+  assert.equal(L.anyMove(st, 'X'), true, 'X still has the other squares');
+  assert.equal(L.playMove(st, 0, [hpAt(2, 0), hpAt(1, 0)], lcg(1)).ok, false);
+  for (let k = 0; k < 6; k++) assert.notEqual(L.cpuMove(st, lcg(k)).square, 0, 'the computer plays elsewhere');
+  st.timer = L.newTimer(30);
+  for (let k = 0; k < 6; k++) {
+    const copy = JSON.parse(JSON.stringify(st));
+    const t = L.timeoutMove(copy, lcg(k));
+    assert.equal(t.ok, true); assert.notEqual(t.square, 0, 'a timed-out random move goes elsewhere too');
+  }
+  assert.equal(st.squares[0].owner, null, 'being stuck lost nothing');
+  // with no other square open, X has no move anywhere and is skipped
+  for (let i = 1; i < 9; i++) st.squares[i].owner = [null, 'X', 'O', 'O', 'X', 'X', 'X', 'O', 'O'][i];
+  assert.equal(L.anyMove(st, 'X'), false);
+  assert.equal(L.anyMove(st, 'O'), true);
+});
+
+test('hexapawn tactics: full minimax takes a win now, stops the other side getting through, and plays every legal move only', () => {
+  const win = L.localBest(L.publicMini(hp(hpAt(1, 1), 'X', hpAt(0, 0), 'O', hpAt(2, 2), 'O')), 'X', cpuRng());
+  assert.equal(win.move[0], hpAt(1, 1)); assert.equal(Math.floor(win.move[1] / 3), 0, 'onto the far row (a step or a capture)'); assert.equal(win.win, true);
+  // O threatens to reach X's home row from row 2; X must capture it
+  const block = L.localBest(L.publicMini(hp(hpAt(2, 1), 'O', hpAt(3, 0), 'X', hpAt(3, 2), 'X', hpAt(0, 0), 'O')), 'X', cpuRng());
+  assert.ok(block.move[1] === hpAt(2, 1), `X captures the runner (played ${JSON.stringify(block.move)})`);
+  // from the start, both sides' best lines are known: with full minimax the side to move loses against perfect play here
+  const start = mini('hexapawn').cells;
+  assert.equal(L.hpSolve(start, 'X').win, false);
+  assert.equal(L.hpSolve(start, 'O').win, false);
+  assert.equal(L.hpNeeds(start, 'X'), 3); assert.equal(L.hpNeeds(start, 'O'), 3, 'an even start: three rows each');
+  const close = hp(hpAt(1, 1), 'X', hpAt(3, 0), 'X', hpAt(0, 0), 'O', hpAt(0, 2), 'O').cells;   // (a second X pawn, so O capturing one does not end it)
+  assert.equal(L.hpNeeds(close, 'X'), 1, 'one step from the far row'); assert.equal(L.hpNeeds(close, 'O'), 3);
+  const blocked = hp(hpAt(2, 0), 'X', hpAt(1, 0), 'O', hpAt(0, 2), 'O').cells;
+  assert.equal(L.hpNeeds(blocked, 'X'), 3, 'a stuck player needs one more than its distance');
+  // every move the computer picks over many games is legal
+  const rng = lcg(55);
+  for (let g = 0; g < 30; g++) {
+    const m = mini('hexapawn');
+    let p = g % 2 ? 'O' : 'X', guard = 0;
+    while (guard++ < 30) {
+      if (!L.canMove(m, p)) { p = L.other(p); continue; }
+      const b = L.localBest(L.publicMini(m), p, rng);
+      const r = L.applyMove(m, p, b.move);
+      assert.equal(r.ok, true, `${p} ${JSON.stringify(b.move)} (${r.reason})`);
+      if (r.outcome === 'win') break;
+      p = L.other(p);
+    }
+    assert.ok(guard < 30, 'the game ends');
+  }
+});
+
+test('hexapawn at the board level: a square nearly won is worth more than a fresh one', () => {
+  const near = hp(hpAt(1, 1), 'X', hpAt(0, 0), 'O', hpAt(2, 2), 'O');
+  const st = cpuMatch('X', [near, 'hexapawn', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt']);
+  const m = L.cpuMove(st, cpuRng());
+  assert.equal(m.square, 0, 'it goes for the square it can win at once');
+  assert.equal(m.move[0], hpAt(1, 1)); assert.equal(Math.floor(m.move[1] / 3), 0);
+  const g = L.moveGain(L.publicMini(near), 'X', L.localBest(L.publicMini(near), 'X', cpuRng()));
+  assert.ok(g > 0.4, `claiming it is a big gain (${g.toFixed(2)})`);
+});
+
+test('hexapawn through playMove: the result carries the slide and the capture for the animation', () => {
+  const st = matchWith(['hexapawn', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt']);
+  st.squares[0].mini = hp(hpAt(2, 1), 'X', hpAt(1, 0), 'O', hpAt(0, 2), 'O', hpAt(3, 2), 'X');
+  const r = L.playMove(st, 0, [hpAt(2, 1), hpAt(1, 0)], lcg(1));
+  assert.equal(r.ok, true);
+  assert.equal(st.flash.type, 'hexapawn');
+  assert.equal(st.flash.from, hpAt(2, 1)); assert.equal(st.flash.to, hpAt(1, 0)); assert.equal(st.flash.capture, true);
+  L.endFlash(st);
+  assert.equal(st.turn, 'O');
+  // the public view and the online record carry the board as is (nothing hidden)
+  const rec = L.matchRecord(Object.assign(st, { id: 'h', seq: 0, recent: [] }));
+  assert.deepEqual(rec.state.squares[0].mini.cells, st.squares[0].mini.cells);
+  assert.equal(rec.secrets[0], undefined);
 });

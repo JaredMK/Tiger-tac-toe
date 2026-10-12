@@ -43,7 +43,7 @@ Each square is assigned one of these at random when the match starts (duplicates
 | Mini-game | How to win |
 | --- | --- |
 | Tic-tac-toe | 3×3, three in a row |
-| Connect 4 | 5 columns × 6 rows, pieces drop to the lowest open cell, four in a row in any direction |
+| Connect 4 | The standard 7 columns × 6 rows, pieces drop to the lowest open cell, four in a row in any direction |
 | Battleship | 3×3, one hidden cell chosen by the computer; whoever reveals it wins, misses stay marked |
 | Wordle | One hidden common 5-letter word shared by both players; a move is a guess with green/yellow/grey feedback, no guess limit. Guesses must be real words (checked against an embedded list of about 15,000); a non-word shows "Not a word" and does not use the turn |
 | Hangman | Hidden 5–7 letter word; guess a letter. A right letter is revealed and you guess again at once; a wrong letter ends your turn. Revealing the last letter wins |
@@ -55,6 +55,7 @@ Each square is assigned one of these at random when the match starts (duplicates
 | Coin flip | Six coins showing X or O, three of each to start. Flip turns up to 3 of the other side's coins (all of them if they have 3 or fewer, otherwise 3 picked at random); each lands X or O at random. All six the same wins for that symbol's player |
 | Pig | Each player has a banked score. A move is a whole push-your-luck turn: roll a die, and a number not yet rolled this turn joins the pot; then roll again or bank. Banking adds the pot to your score and ends the move; a repeated number busts, losing the pot (at most six rolls). First to a banked 20 wins |
 | Treasure hunt | 5×5 grid with one hidden treasure. A move digs a cell: the treasure wins, otherwise the cell shows its distance to the treasure in steps up, down, left or right, coloured hot to cold. Everything dug stays visible |
+| Hexapawn | 3 columns × 4 rows; each side has 3 pawns on its home row (X on the bottom, O on the top). A move is one pawn stepping one square straight forward into an empty square, or capturing an opposing pawn one square diagonally forward. Tap a pawn to see its moves; the pawn slides over and a captured pawn is knocked off the board. You win the square by moving a pawn onto the other side's home row, or by making a move after which the other side has no legal move there (capturing all their pawns included). A player with no move in this square just plays elsewhere: they only lose it when the other side moves and leaves them stuck |
 
 Hidden information (the Wordle and Hangman words, the Higher/lower number, the Memory cards, the
 Battleship cell) is never shown on the board or in a mini-game before it is revealed.
@@ -172,7 +173,7 @@ each side still needs there, with the odds built in for the luck games; a guess 
 (Wordle, Hangman, Higher/lower, Battleship, Treasure hunt, Memory) counts for less because the clue
 helps the other player too.
 
-Inside a square: Tic-tac-toe plays full minimax; Connect 4 searches six moves ahead with alpha-beta
+Inside a square: Tic-tac-toe and Hexapawn play full minimax; Connect 4 searches five moves ahead with alpha-beta
 and a threat count; Hex spots wins and blocks through shortest-connection distances, one reply ahead;
 Battleship takes any unrevealed cell; Treasure hunt digs only cells consistent with every clue, the
 one that best narrows the rest; Higher/lower guesses the midpoint; Wordle keeps the words consistent
@@ -180,7 +181,9 @@ with all feedback and guesses the one that splits them best; Hangman takes the l
 the words still consistent with the pattern; Memory remembers every card shown and flips a known
 pair, else unseen cards; Coin flip flips the most coins allowed; Pig keeps rolling while the bust risk
 is acceptable and banks around 8 to 10, bolder when behind and safer when ahead, always when the bank
-would reach 20.
+would reach 20. On the board, a Hexapawn square is weighed by how close each side's leading pawn is to
+the far row (one move away when a win is on), since nobody has to move in a square and minimax lines
+that rely on the other side being forced to move do not apply there.
 
 ## Deploying
 
