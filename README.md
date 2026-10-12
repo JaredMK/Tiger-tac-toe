@@ -1,5 +1,7 @@
 # Tiger-Tac-Toe
 
+Play it: https://jaredmk.github.io/Tiger-tac-toe/
+
 A two-player, pass-and-play game for one phone. The whole game is `index.html`:
 inline CSS and JS, no dependencies, no build step, works offline.
 
