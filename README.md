@@ -5,18 +5,18 @@ inline CSS and JS, no dependencies, no build step, works offline.
 
 Open `index.html` in a browser (or serve the folder with any static server) and play.
 
-A setup screen comes first: enter the two players' names (defaults X and O), tick the mini-games you
-want in the mix (all are on by default, at least one must stay on) and press Start. "New match"
-brings you back there with the names and selection kept.
+A setup screen comes first: choose "2 players" or "vs Computer" (and, against the computer, whether
+you play X, who goes first, or O), enter the names (defaults X and O, the computer is called
+"Computer"), tick the mini-games you want in the mix (all are on by default, at least one must stay
+on) and press Start. "New match" brings you back there with everything kept.
 
 ## Rules
 
 - The main board is a 3×3 tic-tac-toe grid. Every square holds its own mini-game.
 - To claim a square, win the mini-game inside it. Three claimed squares in a row wins the match.
 - X and O alternate. A turn is exactly one move in one unclaimed mini-game of your choice.
-- Every move animates and its result then stays on screen in the mini-game, with input locked. The turn
-  indicator keeps the mover's name until they tap Board; that is the handoff, and only then does the other
-  player's turn begin.
+- Every move animates and its result stays on screen for about a second, with input locked. Then the
+  board comes back on its own and the turn passes to the other player.
 - All mini-games run in parallel and persist between turns. There is no alternation inside a
   mini-game: you may move in the same mini-game on consecutive turns of yours, so piece counts
   can be lopsided.
@@ -50,12 +50,44 @@ Each square is assigned one of these at random when the match starts (duplicates
 Hidden information (the Wordle and Hangman words, the Higher/lower number, the Memory cards, the
 Battleship cell) is never shown on the board or in a mini-game before it is revealed.
 
+## Playing against the computer
+
+The computer takes its turn in the open: a short pause to think, then it zooms into the square it
+chose, makes its move with the usual animation (its chosen cards, coins or word are shown first), and
+the board returns.
+
+It plays fairly. Every decision starts from a public view of each mini-game that leaves out the hidden
+word, number, ship, treasure, face-down cards and the dice or coins still to come: it knows exactly
+what a person looking at the screen knows.
+
+Each turn it scores the best move in every open square as *the square's value on the main board*
+times *how much the move shifts the chance of claiming that square*, and plays the highest. A square
+that wins the match is taken at once; one the opponent is about to win is worth defending, by
+blocking in interactive games or racing in the luck games; squares on lines still open for the
+computer, or open for the opponent, come next; squares on no open line are worth almost nothing,
+beyond a little towards the majority rule. The chance of claiming a square comes from how many moves
+each side still needs there, with the odds built in for the luck games; a guess in a shared-clue game
+(Wordle, Hangman, Higher/lower, Battleship, Treasure hunt, Memory) counts for less because the clue
+helps the other player too.
+
+Inside a square: Tic-tac-toe plays full minimax; Connect 4 searches six moves ahead with alpha-beta
+and a threat count; Hex spots wins and blocks through shortest-connection distances, one reply ahead;
+Battleship takes any unrevealed cell; Treasure hunt digs only cells consistent with every clue, the
+one that best narrows the rest; Higher/lower guesses the midpoint; Wordle keeps the words consistent
+with all feedback and guesses the one that splits them best; Hangman takes the letter most common in
+the words still consistent with the pattern; Memory remembers every card shown and flips a known
+pair, else unseen cards; Coin flip flips the most coins allowed; Pig keeps rolling while the bust risk
+is acceptable and banks around 8 to 10, bolder when behind and safer when ahead, always when the bank
+would reach 20.
+
 ## Tests
 
 The game logic lives in the `<script id="logic">` block of `index.html` and is covered by
 `test/logic.test.js` (every mini-game's win and draw logic including Hex path-finding and
-lopsided-move cases, the Hangman bonus guess, draw resets, the turn handoff on the way back to the
-board, main-board three-in-a-row and majority wins, and random full matches). It uses Node's built-in test runner:
+lopsided-move cases, the Hangman bonus guess, draw resets, the return to the board after each move,
+main-board three-in-a-row and majority wins, random full matches, and the computer player: legal
+moves only, decisions that cannot see hidden information, match-winning squares taken and defended,
+each game's tactics, and computer-versus-computer matches that finish). It uses Node's built-in test runner:
 
 ```sh
 node --test

@@ -202,8 +202,6 @@ b.X { color: var(--x); } b.O { color: var(--o); }
   background: var(--panel-2); font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 2px;
 }
 .back:disabled { opacity: .35; }
-.back.go { color: var(--bg); animation: nudge 1.1s ease-in-out .2s 3; }   /* the move is made: this is the way to hand over */
-.back.go-X { background: var(--x); } .back.go-O { background: var(--o); }
 .back svg { width: 20px; height: 20px; }
 .ttl { min-width: 0; flex: 1; }
 .ttl > b { display: block; font-size: 17px; }
@@ -349,6 +347,11 @@ b.X { color: var(--x); } b.O { color: var(--o); }
 .setup-box { width: 100%; max-width: 520px; flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; padding: 4px 0; }
 .setup h1 { margin: 6px 0 0; font-size: 28px; line-height: 1.1; }
 .setup .sub { margin: 0; color: var(--muted); font-weight: 600; font-size: 14px; }
+.modes, .sides { display: flex; gap: 8px; align-items: center; }
+.sides > span { flex: none; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.seg { flex: 1; min-width: 0; height: 44px; padding: 0 8px; border: 0; border-radius: 12px; background: var(--panel-2); box-shadow: inset 0 0 0 1px var(--line); font-weight: 700; font-size: 14px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.seg.on { background: var(--text); color: var(--bg); box-shadow: none; }
+.seg.X.on { background: var(--x); } .seg.O.on { background: var(--o); }
 .names { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .field span { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
@@ -627,7 +630,7 @@ b.tok { color: #fff; }
 @keyframes twinkle { from { opacity: 0; transform: scale(.4) rotate(0); } to { opacity: 1; transform: scale(1.2) rotate(40deg); } }
 @keyframes stamp { 0% { transform: scale(2.6); opacity: 0; } 55% { transform: scale(.94); opacity: .95; } 100% { transform: scale(1); opacity: .55; } }
 @keyframes bang { 0% { transform: scale(2.4); opacity: 0; } 60% { transform: scale(.95); opacity: 1; } 100% { transform: scale(1); } }
-@keyframes nudge { 50% { transform: scale(1.07); box-shadow: 0 0 0 6px rgba(255, 255, 255, .15); } }
+
 @keyframes zoomin { from { transform: scale(.94); opacity: 0; } }
 @keyframes shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
 @keyframes coinflip { 0% { transform: translateY(0) rotateY(0); background: var(--c0); } 45% { transform: translateY(-45%) rotateY(540deg); } 84% { background: var(--c0); } 100% { transform: translateY(0) rotateY(1080deg); } }
@@ -922,7 +925,7 @@ function newMini(type, rng) {
     case 'hex':         return { type, cells: new Array(HEX_N * HEX_N).fill(null), last: null };
     case 'hilo':        return { type, target: HILO.lo + randInt(rng, HILO.hi - HILO.lo + 1), lo: HILO.lo, hi: HILO.hi, guesses: [] };
     case 'dice':        return { type, totals: { X: 0, O: 0 }, last: null };
-    case 'memory':      return { type, cards: memoryDeck(rng), flips: 0, last: null };
+    case 'memory':      return { type, cards: memoryDeck(rng), flips: 0, seen: [], last: null };   // seen: cards shown so far
     case 'candy':       return { type, track: candyTrack(rng), pos: { X: -1, O: -1 }, last: null };
     case 'coins':       return { type, coins: shuffle(['X', 'X', 'X', 'O', 'O', 'O'], rng), last: null };
     case 'pig':         return { type, bank: { X: 0, O: 0 }, turn: null, last: null };   // turn = the push-your-luck turn in progress
@@ -932,10 +935,22 @@ function newMini(type, rng) {
 }
 function pickType(games, rng) { return games[randInt(rng, games.length)]; }
 function newSquare(games, rng) { return { owner: null, mini: newMini(pickType(games, rng), rng) }; }
+const CPU_NAME = 'Computer';
 function defaultSetup() {
   const games = {};
   for (const t of TYPES) games[t] = true;
-  return { names: { X: 'X', O: 'O' }, games };
+  return { names: { X: 'X', O: 'O' }, games, mode: 'two', human: 'X' };   // mode: 'two' players or 'cpu'; human: the side a person plays against the computer
+}
+function cpuSide(setup) { return setup && setup.mode === 'cpu' ? other(setup.human === 'O' ? 'O' : 'X') : null; }
+// Keep the computer's default name in step with the mode and side: the computer's side is called
+// "Computer" unless someone typed a name for it, and a side that stops being the computer drops it.
+function syncNames(setup) {
+  const cpu = cpuSide(setup);
+  for (const p of ['X', 'O']) {
+    const n = String(setup.names[p] || '').trim();
+    if (cpu === p) { if (!n || n === p) setup.names[p] = CPU_NAME; }
+    else if (n === CPU_NAME) setup.names[p] = p;
+  }
 }
 function enabledGames(setup) { return TYPES.filter(t => setup && setup.games && setup.games[t]); }
 function playerName(state, p) { return (state.setup && state.setup.names && state.setup.names[p]) || p; }
@@ -948,6 +963,7 @@ function newState(rng) {
     setup: defaultSetup(),    // player names and the mini-games allowed; kept from match to match
     games: TYPES.slice(),     // the mini-games the current match draws from (squares and resets)
     turn: 'X',
+    cpu: null,                // the side the computer plays in this match, or null for two players
     squares: Array.from({ length: 9 }, () => newSquare(TYPES, rng)),
     zoom: null,               // index of the mini-game being viewed
     flash: null,              // the move just made: its result, while the animation and toast play
@@ -969,11 +985,13 @@ function startMatch(state, rng) {
   rng = rng || Math.random;
   const games = enabledGames(state.setup);
   if (!games.length) return false;
+  syncNames(state.setup);
   for (const p of ['X', 'O']) {
     const n = String(state.setup.names[p] || '').trim().slice(0, NAME_MAX);
     state.setup.names[p] = n || p;
   }
   state.games = games;
+  state.cpu = cpuSide(state.setup);
   state.squares = Array.from({ length: 9 }, () => newSquare(games, rng));
   state.screen = 'board'; state.turn = 'X';
   state.zoom = null; state.flash = null; state.done = null; state.stamp = null; state.lock = null;
@@ -986,6 +1004,8 @@ function startMatch(state, rng) {
 function newMatch(rng, setup) {
   const st = newState(rng);
   if (setup && setup.names) Object.assign(st.setup.names, setup.names);
+  if (setup && setup.mode) st.setup.mode = setup.mode;
+  if (setup && setup.human) st.setup.human = setup.human;
   if (setup && Array.isArray(setup.games)) for (const t of TYPES) st.setup.games[t] = setup.games.includes(t);
   else if (setup && setup.games) Object.assign(st.setup.games, setup.games);
   startMatch(st, rng);
@@ -1094,6 +1114,8 @@ function applyMove(mini, p, m, rng) {
       const [a, b] = m;
       if (![a, b].every(k => Number.isInteger(k) && k >= 0 && k < 9) || a === b) return { ok: false, reason: 'bad' };
       mini.flips += 1; mini.last = { by: p, a, b };
+      if (!mini.seen) mini.seen = [];
+      for (const k of [a, b]) if (!mini.seen.includes(k)) mini.seen.push(k);
       const ca = mini.cards[a], cb = mini.cards[b];
       if (ca.s === cb.s && ca.c === cb.c) return { ok: true, outcome: 'win', cells: [a, b] };
       return { ok: true, outcome: 'continue', note: 'nomatch' };
@@ -1154,6 +1176,430 @@ function applyMove(mini, p, m, rng) {
     }
   }
   return { ok: false, reason: 'bad' };
+}
+
+/* ===================== Computer player =====================
+ * The computer plays fairly: every decision starts from publicMini(), which holds only what a
+ * person looking at the screen could know. The hidden word, number, ship, treasure, face-down
+ * cards and future dice or coin results never reach the code below.
+ *
+ * Each turn it scores the best local move in every open square:
+ *   score = (value of the square on the main board) x (how much the move shifts the chance of claiming it)
+ * and plays the highest. A move that claims a match-winning square is taken at once.
+ */
+const AI = { win: 1000, block: 600 };
+
+// What a player can see of a mini-game. Hidden information is left out, not blanked.
+function publicMini(mini) {
+  switch (mini.type) {
+    case 'ttt': case 'c4': case 'hex': return { type: mini.type, cells: mini.cells.slice() };
+    case 'bs':      return { type: 'bs', revealed: mini.revealed.slice() };
+    case 'wordle':  return { type: 'wordle', guesses: mini.guesses.map(g => ({ by: g.by, word: g.word, marks: g.marks.slice() })) };
+    case 'hangman': {
+      const hits = new Set(mini.letters.filter(x => x.hit).map(x => x.l));
+      return { type: 'hangman', pattern: mini.word.split('').map(ch => (hits.has(ch) ? ch : null)), letters: mini.letters.map(x => ({ l: x.l, hit: x.hit })) };
+    }
+    case 'hilo':    return { type: 'hilo', lo: mini.lo, hi: mini.hi, guesses: mini.guesses.map(g => ({ by: g.by, n: g.n, res: g.res })) };
+    case 'dice':    return { type: 'dice', totals: { X: mini.totals.X, O: mini.totals.O } };
+    case 'memory': {
+      const seen = (mini.seen || []).slice();
+      return { type: 'memory', seen, cards: mini.cards.map((c, i) => (seen.includes(i) ? { s: c.s, c: c.c } : null)) };
+    }
+    case 'candy':   return { type: 'candy', track: mini.track.slice(), pos: { X: mini.pos.X, O: mini.pos.O } };
+    case 'coins':   return { type: 'coins', coins: mini.coins.slice() };
+    case 'pig':     return { type: 'pig', bank: { X: mini.bank.X, O: mini.bank.O }, turn: mini.turn ? { by: mini.turn.by, rolls: mini.turn.rolls.slice(), pot: mini.turn.pot } : null };
+    case 'hunt':    return { type: 'hunt', dug: mini.dug.slice(), clues: mini.dug.map((d, i) => (d ? huntDist(mini.treasure, i) : null)) };
+  }
+  throw new Error('unknown mini-game: ' + mini.type);
+}
+
+// ---- what is still possible, from public information ----
+function wordleCandidates(pm) {
+  const out = [];
+  for (const w of WORDS5) {
+    const W = w.toUpperCase();
+    if (pm.guesses.every(g => wordleMarks(g.word, W).join('') === g.marks.join(''))) out.push(W);
+  }
+  return out;
+}
+function hangmanCandidates(pm) {
+  const wrong = pm.letters.filter(x => !x.hit).map(x => x.l), hits = pm.letters.filter(x => x.hit).map(x => x.l);
+  const out = [];
+  for (const w of WORDS_HANG) {
+    const W = w.toUpperCase();
+    if (W.length !== pm.pattern.length) continue;
+    let ok = true;
+    for (let i = 0; i < W.length && ok; i++) {
+      const ch = W[i];
+      ok = pm.pattern[i] ? pm.pattern[i] === ch : !hits.includes(ch) && !wrong.includes(ch);   // a found letter shows all its copies
+    }
+    if (ok) out.push(W);
+  }
+  return out;
+}
+function huntCandidates(pm) {
+  const out = [];
+  for (let c = 0; c < HUNT.n * HUNT.n; c++) {
+    if (pm.dug[c]) continue;
+    if (pm.clues.every((k, d) => k == null || huntDist(c, d) === k)) out.push(c);
+  }
+  return out;
+}
+
+// ---- how far each side is from claiming a square: estimated moves still needed, with nobody interfering ----
+const WINDOWS = {};
+function windowsOf(W, H, K) {
+  const key = W + 'x' + H + 'x' + K;
+  if (WINDOWS[key]) return WINDOWS[key];
+  const out = [];
+  for (let r = 0; r < H; r++) for (let c = 0; c < W; c++) for (const [dc, dr] of [[1, 0], [0, 1], [1, 1], [-1, 1]]) {
+    const win = [];
+    for (let k = 0; k < K; k++) { const rr = r + dr * k, cc = c + dc * k; if (rr < 0 || rr >= H || cc < 0 || cc >= W) break; win.push(rr * W + cc); }
+    if (win.length === K) out.push(win);
+  }
+  return (WINDOWS[key] = out);
+}
+function lineNeeds(cells, W, H, K, p, playable) {
+  let best = Infinity;
+  for (const win of windowsOf(W, H, K)) {
+    let mine = 0, bad = false, empty = null;
+    for (const k of win) { const c = cells[k]; if (c === p) mine++; else if (c) { bad = true; break; } else empty = k; }
+    if (bad) continue;
+    let n = K - mine;
+    if (n === 1 && playable && !playable(empty)) n = 2;        // Connect 4: a hole still needs a piece under it
+    if (n < best) best = n;
+  }
+  return best;
+}
+function c4Playable(cells) { return k => k >= C4.cols * (C4.rows - 1) || !!cells[k + C4.cols]; }
+// Hex: the fewest empty cells p still needs to connect its two edges (0 = connected, Infinity = cut off).
+function hexDist(cells, p) {
+  const N = HEX_N * HEX_N, o = other(p), dist = new Array(N).fill(Infinity);
+  const isStart = p === 'X' ? i => i % HEX_N === 0 : i => i < HEX_N;
+  const isEnd = p === 'X' ? i => i % HEX_N === HEX_N - 1 : i => i >= HEX_N * (HEX_N - 1);
+  const cost = i => (cells[i] === p ? 0 : cells[i] === o ? Infinity : 1);
+  for (let i = 0; i < N; i++) if (isStart(i)) dist[i] = cost(i);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (let i = 0; i < N; i++) {
+      if (dist[i] === Infinity) continue;
+      for (const n of hexNeighbors(i)) { const d = dist[i] + cost(n); if (d < dist[n]) { dist[n] = d; changed = true; } }
+    }
+  }
+  let best = Infinity;
+  for (let i = 0; i < N; i++) if (isEnd(i) && dist[i] < best) best = dist[i];
+  return best;
+}
+// Candy race: expected spins to the finish from each position (index = position + 1, the start being -1).
+function candyExpected(track) {
+  const E = new Array(CANDY.len + 2).fill(0);
+  for (let pos = CANDY.len - 1; pos >= -1; pos--) {
+    let sum = 0;
+    for (const color of CANDY.colors) {
+      let to = CANDY.len;
+      for (let i = pos + 1; i < CANDY.len; i++) if (track[i] === color) { to = i; break; }
+      sum += E[to + 1];
+    }
+    E[pos + 1] = 1 + sum / CANDY.colors.length;
+  }
+  return E;
+}
+const COIN_NEEDS = [0, 2, 2.67, 3.14, 3.92, 4.55, 5.22];   // expected flips to turn n opposing coins, flipping three at a time
+function needsOf(pm, p) {
+  switch (pm.type) {
+    case 'ttt':     return lineNeeds(pm.cells, 3, 3, 3, p);
+    case 'c4':      return lineNeeds(pm.cells, C4.cols, C4.rows, C4.k, p, c4Playable(pm.cells));
+    case 'hex':     return hexDist(pm.cells, p);
+    case 'bs':      return (pm.revealed.filter(r => !r).length + 1) / 2;
+    case 'wordle':  { const n = wordleCandidates(pm).length; return n <= 1 ? 1 : Math.min((n + 1) / 2, 1 + Math.log(n) / Math.log(6)); }
+    case 'hangman': { const n = hangmanCandidates(pm).length; const missing = pm.pattern.filter(ch => !ch).length; return n <= 1 ? 1 : 1 + Math.min(missing, 1 + Math.log(n)) / 2; }
+    case 'hilo':    { const r = pm.hi - pm.lo + 1; return r <= 1 ? 1 : Math.log2(r + 1); }
+    case 'dice':    return Math.max(1, (DICE_GOAL - pm.totals[p]) / 3.5);
+    case 'candy':   return Math.max(1, candyExpected(pm.track)[pm.pos[p] + 1]);
+    case 'memory':  { const known = pm.seen.filter(i => pm.cards[i]); return memoryPair(pm, known) ? 1 : 1 + (9 - pm.seen.length) / 2; }
+    case 'coins':   return COIN_NEEDS[pm.coins.filter(c => c !== p).length];
+    case 'pig':     { const pot = pm.turn && pm.turn.by === p ? pm.turn.pot : 0; return Math.max(1, (PIG.goal - pm.bank[p] - pot) / 7); }
+    case 'hunt':    { const n = huntCandidates(pm).length; return n <= 1 ? 1 : 1 + Math.log2(n) / 2.5; }
+  }
+  return Infinity;
+}
+function memoryPair(pm, known) {
+  for (let x = 0; x < known.length; x++) for (let y = x + 1; y < known.length; y++) {
+    const a = pm.cards[known[x]], b = pm.cards[known[y]];
+    if (a.s === b.s && a.c === b.c) return [known[x], known[y]];
+  }
+  return null;
+}
+// Chance that the side needing `a` more moves claims the square before the side needing `b`.
+function winChance(a, b) {
+  if (a <= 0) return 1;
+  if (b <= 0) return 0;
+  if (a === Infinity && b === Infinity) return 0.5;        // a dead square: it will draw and reset
+  if (a === Infinity) return 0;
+  if (b === Infinity) return 1;
+  return b / (a + b);
+}
+
+// ---- tactics inside one square: the best local move, from public information ----
+// Each returns { move, win?, after?, q?, shared? }: `after` is the position after a move whose result is
+// certain (and `win` whether it claims the square); `q` is the chance a chancy move claims it at once;
+// `shared` marks games where every clue helps the other player just as much.
+function tttMinimax(cells, me) {   // every move's value for me, from full minimax (alternating play within the square)
+  const memo = new Map();
+  const search = (p, depth) => {                    // best value for p, p to move
+    const key = cells.map(c => c || '.').join('') + p;
+    if (memo.has(key)) return memo.get(key);
+    let best = -Infinity, any = false;
+    for (let i = 0; i < 9; i++) {
+      if (cells[i]) continue;
+      any = true;
+      cells[i] = p;
+      const v = findRun(cells, 3, 3, 3, p) ? 10 - depth : cells.every(Boolean) ? 0 : -search(other(p), depth + 1);
+      cells[i] = null;
+      if (v > best) best = v;
+    }
+    if (!any) best = 0;
+    memo.set(key, best);
+    return best;
+  };
+  const out = [];
+  for (let i = 0; i < 9; i++) {
+    if (cells[i]) continue;
+    cells[i] = me;
+    const v = findRun(cells, 3, 3, 3, me) ? 10 : cells.every(Boolean) ? 0 : -search(other(me), 1);
+    cells[i] = null;
+    out.push({ i, v });
+  }
+  return out;
+}
+function c4Drop(cells, col) { for (let r = C4.rows - 1; r >= 0; r--) { const k = r * C4.cols + col; if (!cells[k]) return k; } return -1; }
+function c4Eval(cells, me) {   // threats: open windows weighted by how full they are, plus the middle column
+  const o = other(me);
+  let s = 0;
+  for (const w of windowsOf(C4.cols, C4.rows, C4.k)) {
+    let m = 0, t = 0;
+    for (const k of w) { if (cells[k] === me) m++; else if (cells[k] === o) t++; }
+    if (m && !t) s += [0, 1, 10, 60][m]; else if (t && !m) s -= [0, 1, 10, 60][t];
+  }
+  for (let r = 0; r < C4.rows; r++) { const c = cells[r * C4.cols + 2]; if (c === me) s += 3; else if (c === o) s -= 3; }
+  return s;
+}
+const C4_ORDER = [2, 1, 3, 0, 4];
+function c4Search(cells, p, me, depth, alpha, beta) {   // negamax with alpha-beta: the value for p, p to move
+  let best = -Infinity, any = false;
+  for (const col of C4_ORDER) {
+    const k = c4Drop(cells, col);
+    if (k < 0) continue;
+    any = true;
+    cells[k] = p;
+    let v;
+    if (findRun(cells, C4.cols, C4.rows, C4.k, p)) v = 10000 + depth;
+    else if (cells.every(Boolean)) v = 0;
+    else if (depth === 0) v = p === me ? c4Eval(cells, me) : -c4Eval(cells, me);
+    else v = -c4Search(cells, other(p), me, depth - 1, -beta, -alpha);
+    cells[k] = null;
+    if (v > best) best = v;
+    if (best > alpha) alpha = best;
+    if (alpha >= beta) break;
+  }
+  return any ? best : 0;
+}
+const C4_DEPTH = 6;
+function c4Moves(cells, me) {
+  const out = [];
+  for (const col of C4_ORDER) {
+    const k = c4Drop(cells, col);
+    if (k < 0) continue;
+    cells[k] = me;
+    const v = findRun(cells, C4.cols, C4.rows, C4.k, me) ? 10000 + C4_DEPTH : cells.every(Boolean) ? 0 : -c4Search(cells, other(me), me, C4_DEPTH - 1, -Infinity, Infinity);
+    cells[k] = null;
+    out.push({ i: col, v });
+  }
+  return out;
+}
+function hexMoves(cells, me) {   // win and block detection through connection distances, looking one reply ahead
+  const o = other(me), N = HEX_N * HEX_N, out = [];
+  for (let i = 0; i < N; i++) {
+    if (cells[i]) continue;
+    cells[i] = me;
+    const mine = hexDist(cells, me);
+    let v;
+    if (mine === 0) v = 1000;
+    else {
+      let reply = -Infinity;
+      for (let j = 0; j < N; j++) {
+        if (cells[j]) continue;
+        cells[j] = o;
+        const od = hexDist(cells, o), r = od === 0 ? 1000 : hexDist(cells, me) - od;   // from the other side's view
+        cells[j] = null;
+        if (r > reply) reply = r;
+      }
+      v = reply === -Infinity ? hexDist(cells, o) - mine : -reply;
+    }
+    cells[i] = null;
+    out.push({ i, v });
+  }
+  return out;
+}
+// Open lines weighted by how full they are: mine count for, the other side's against.
+function threatScore(cells, W, H, K, me) {
+  const o = other(me), w8 = [0, 1, 10, 100, 1000];
+  let s = 0;
+  for (const win of windowsOf(W, H, K)) {
+    let m = 0, t = 0;
+    for (const k of win) { if (cells[k] === me) m++; else if (cells[k] === o) t++; }
+    if (m && !t) s += w8[m]; else if (t && !m) s -= w8[t];
+  }
+  return s;
+}
+// Pick among valued moves: the best value, then the position with the most open lines (or, in Hex, the biggest lead in distance).
+function pickValued(pm, me, moves, place) {
+  const o = other(me);
+  let best = null;
+  for (const mv of moves) {
+    const after = { type: pm.type, cells: pm.cells.slice() };
+    const k = place(after.cells, mv.i);
+    after.cells[k] = me;
+    const win = pm.type === 'hex' ? !!hexPath(after.cells, me) : !!findRun(after.cells, pm.type === 'ttt' ? 3 : C4.cols, pm.type === 'ttt' ? 3 : C4.rows, pm.type === 'ttt' ? 3 : C4.k, me);
+    const h = pm.type === 'hex' ? Math.min(hexDist(after.cells, o), 9) - Math.min(hexDist(after.cells, me), 9)
+      : pm.type === 'ttt' ? threatScore(after.cells, 3, 3, 3, me) : threatScore(after.cells, C4.cols, C4.rows, C4.k, me);
+    if (!best || mv.v > best.v || (mv.v === best.v && h > best.h)) best = { move: mv.i, v: mv.v, h, after, win };
+  }
+  return best;
+}
+function localBest(pm, me, rng) {
+  switch (pm.type) {
+    case 'ttt': return pickValued(pm, me, tttMinimax(pm.cells, me), (cells, i) => i);
+    case 'c4':  return pickValued(pm, me, c4Moves(pm.cells, me), c4Drop);
+    case 'hex': return pickValued(pm, me, hexMoves(pm.cells, me), (cells, i) => i);
+    case 'bs': {
+      const open = pm.revealed.map((r, i) => (r ? -1 : i)).filter(i => i >= 0);
+      return { move: open[randInt(rng, open.length)], q: 1 / open.length, shared: true };
+    }
+    case 'hunt': {
+      const cand = huntCandidates(pm);
+      if (!cand.length) { const open = pm.dug.map((d, i) => (d ? -1 : i)).filter(i => i >= 0); return { move: open[0], q: 0, shared: true }; }
+      if (cand.length === 1) return { move: cand[0], q: 1, shared: true };
+      let best = cand[0], bestSplit = Infinity;        // the dig that, if it misses, leaves the fewest candidates on average
+      for (const c of cand) {
+        const groups = new Map();
+        for (const x of cand) if (x !== c) { const k = huntDist(c, x); groups.set(k, (groups.get(k) || 0) + 1); }
+        let split = 0;
+        for (const g of groups.values()) split += g * g;
+        if (split < bestSplit) { bestSplit = split; best = c; }
+      }
+      return { move: best, q: 1 / cand.length, shared: true };
+    }
+    case 'hilo': return { move: Math.floor((pm.lo + pm.hi) / 2), q: 1 / (pm.hi - pm.lo + 1), shared: true };
+    case 'wordle': {
+      const cand = wordleCandidates(pm);
+      if (!cand.length) return { move: WORDS5[randInt(rng, WORDS5.length)].toUpperCase(), q: 0, shared: true };
+      if (cand.length === 1) return { move: cand[0], q: 1, shared: true };
+      let best = cand[0];
+      if (cand.length > 24) {                                      // many left: the guess with the most common letters
+        const freq = {};
+        for (const w of cand) for (const ch of new Set(w)) freq[ch] = (freq[ch] || 0) + 1;
+        let top = -1;
+        for (const w of cand) { let sc = 0; for (const ch of new Set(w)) sc += freq[ch]; if (sc > top) { top = sc; best = w; } }
+      } else {                                                     // few left: the guess that splits them best
+        let bestSplit = Infinity;
+        for (const g of cand) {
+          const groups = new Map();
+          for (const w of cand) if (w !== g) { const k = wordleMarks(g, w).join(''); groups.set(k, (groups.get(k) || 0) + 1); }
+          let split = 0;
+          for (const n of groups.values()) split += n * n;
+          if (split < bestSplit) { bestSplit = split; best = g; }
+        }
+      }
+      return { move: best, q: 1 / cand.length, shared: true };
+    }
+    case 'hangman': {
+      const cand = hangmanCandidates(pm), tried = new Set(pm.letters.map(x => x.l));
+      const count = {};
+      for (const w of cand) for (const ch of new Set(w)) if (!tried.has(ch)) count[ch] = (count[ch] || 0) + 1;
+      let best = null, top = 0;
+      for (const ch of 'ETAOINSRHLDCUMFPGWYBVKXJQZ') { const n = count[ch] || 0; if (n > top) { top = n; best = ch; } }
+      if (!best) for (const ch of 'ETAOINSRHLDCUMFPGWYBVKXJQZ') if (!tried.has(ch)) { best = ch; break; }
+      return { move: best, q: cand.length === 1 ? 1 : cand.length ? 1 / cand.length : 0, shared: true };
+    }
+    case 'memory': {
+      const known = pm.seen.filter(i => pm.cards[i]);
+      const pair = memoryPair(pm, known);
+      if (pair) return { move: pair, q: 1, shared: true };
+      const unseen = [];
+      for (let i = 0; i < 9; i++) if (!pm.seen.includes(i)) unseen.push(i);
+      if (unseen.length >= 2) { shuffle(unseen, rng); return { move: [unseen[0], unseen[1]], q: 2 / (unseen.length * (unseen.length - 1)), shared: true }; }
+      if (unseen.length === 1) return { move: [unseen[0], known[randInt(rng, known.length)]], q: 1 / known.length, shared: true };
+      return { move: [known[0], known[1]], q: 0, shared: true };
+    }
+    case 'coins': {
+      const theirs = pm.coins.map((c, i) => (c !== me ? i : -1)).filter(i => i >= 0);
+      return { move: theirs.slice(0, COINS.max), q: theirs.length <= COINS.max ? Math.pow(0.5, theirs.length) : 0 };
+    }
+    case 'pig': {
+      const t = pm.turn && pm.turn.by === me ? pm.turn : null;
+      if (!t) return { move: 'roll', q: 0 };
+      const bank = pm.bank[me];
+      if (bank + t.pot >= PIG.goal) return { move: 'bank', q: 1 };
+      if (t.rolls.length >= PIG.maxRolls) return { move: 'bank', q: 0 };
+      const gap = pm.bank[other(me)] - bank;                      // positive when behind
+      const target = Math.max(6, Math.min(14, 9 + Math.round(gap / 4)));   // riskier when behind, safer when ahead
+      if (t.pot >= target || t.rolls.length / 6 > 0.5) return { move: 'bank', q: 0 };
+      return { move: 'roll', q: 0 };
+    }
+    case 'dice': { const need = DICE_GOAL - pm.totals[me]; return { move: 1, q: need <= 6 ? (7 - need) / 6 : 0 }; }
+    case 'candy': {
+      let finishing = 0;
+      for (const color of CANDY.colors) if (!pm.track.some((c, i) => i > pm.pos[me] && c === color)) finishing++;
+      return { move: 1, q: finishing / CANDY.colors.length };
+    }
+  }
+  throw new Error('no tactics for ' + pm.type);
+}
+
+// ---- the match: what a square is worth, what a move changes ----
+function squareValue(squares, i, me) {
+  const o = other(me);
+  let v = 0.5, win = false, block = false;                 // every square counts a little, towards the majority
+  for (const line of LINES) {
+    if (!line.includes(i)) continue;
+    const rest = line.filter(k => k !== i).map(k => squares[k].owner);
+    const mine = rest.filter(x => x === me).length, theirs = rest.filter(x => x === o).length;
+    if (mine === 2) win = true;
+    if (theirs === 2) block = true;
+    if (!theirs) v += [1, 3, 0][mine];                       // a line still open for me, better with my square on it
+    if (!mine) v += [1, 3, 0][theirs];                       // a line still open for them, worth blocking
+  }
+  if (win) return AI.win;
+  if (block) return AI.block + v;
+  return v;
+}
+// How much the local move shifts the chance of claiming the square (negative when it hands the other side more).
+function moveGain(pm, me, local) {
+  const o = other(me);
+  const a = needsOf(pm, me), b = needsOf(pm, o), before = winChance(a, b);
+  if (local.after) return (local.win ? 1 : winChance(needsOf(local.after, me), needsOf(local.after, o))) - before;
+  const q = local.q || 0;
+  const after = winChance(Math.max(0.5, a - 1), local.shared ? Math.max(0.5, b - 1) : b);
+  return q * (1 - before) + (1 - q) * (after - before);
+}
+// The computer's move for the side to play: { square, move, score }. During a bonus move the square is fixed.
+function cpuMove(state, rng) {
+  rng = rng || Math.random;
+  const me = state.turn;
+  const open = state.lock != null ? [state.lock] : state.squares.map((s, i) => (s.owner ? -1 : i)).filter(i => i >= 0);
+  let best = null;
+  for (const i of open) {
+    const pm = publicMini(state.squares[i].mini);
+    const local = localBest(pm, me, rng);
+    const value = state.lock != null ? 1 : squareValue(state.squares, i, me);
+    if (value >= AI.win && (local.win || local.q >= 1)) return { square: i, move: local.move, score: Infinity, value, gain: 1 };
+    const gain = moveGain(pm, me, local);
+    const score = value * Math.max(gain, 0.01);
+    if (!best || score > best.score) best = { square: i, move: local.move, score, value, gain };
+  }
+  return best;
 }
 
 // Main-board result: three claimed squares in a row, else majority once all nine are claimed.
@@ -1239,20 +1685,24 @@ function playMove(state, i, m, rng) {
   return { ok: true, flash };
 }
 
-// The result overlay is over: the win screen if the match is decided, otherwise the same
-// mini-game stays on screen (locked after a move, or ready for the bonus move).
-function endFlash(state) {
+// The result overlay is over: the win screen if the match is decided; the same mini-game if the
+// mover goes again (bonus move) or if `hold` asks for the result to stay a moment longer (Memory's
+// cards turning back over); otherwise straight back to the board, where the turn passes.
+function endFlash(state, hold) {
   if (!state.flash) return false;
   const f = state.flash;
   state.flash = null;
   if (state.winner) { state.screen = 'win'; state.zoom = null; state.done = null; }
-  else { state.screen = 'mini'; state.zoom = f.kind === 'again' ? state.lock : f.square; }
+  else if (f.kind === 'again') { state.screen = 'mini'; state.zoom = state.lock; }
+  else if (hold && state.done) { state.screen = 'mini'; state.zoom = f.square; }
+  else leaveSquare(state);
   return true;
 }
 
-// Back to the board. This is where the turn passes: after a move the mover keeps the turn
-// indicator while the result is on show, and the next player takes over as the board comes back.
-// Refused while a result is still playing out, while a bonus move is owed, or once the match is over.
+// Back to the board. This is where the turn passes: the mover keeps the turn indicator while the
+// result is on show, and the next player takes over as the board comes back. Just looking at a
+// square passes nothing. Refused while a result is still playing out, while a bonus move is owed,
+// or once the match is over.
 function leaveSquare(state) {
   if (state.flash || state.lock != null || state.winner) return false;
   const d = state.done;
@@ -1271,10 +1721,12 @@ function leaveSquare(state) {
 'use strict';
 /* ===================== UI: render everything from state ===================== */
 const KEY = 'insane-tac-toe.v4';
-// How long a result stays up once its animation has played: a toast for a plain move, a card for a
-// claim, a draw or a Pig bust/bank. After that the mini-game stays on screen, locked, until Back.
-const FLASH_MS = { move: 700, again: 650, claim: 1500, draw: 1800, match: 1300, card: 1500 };
+// How long a result stays up once its animation has played (a toast for a plain move, a card for a
+// claim, a draw or a Pig bust/bank); then the board comes back on its own and the turn passes.
+const FLASH_MS = { move: 1000, again: 650, claim: 1500, draw: 1700, match: 1300, card: 1500 };
 const MEMORY_MS = 2000;                 // the two flipped cards stay up this long
+const FLIP_MS = 500;                    // ...then turn back over before the board returns
+const CPU_MS = { think: 700, zoom: 500, pre: 450, again: 600 };   // the computer: a pause to think, a look at the square, its choice shown, the next bonus move
 const SPIN_MS = 1000, HOP_MS = 120;     // Candy race: the wheel's spin, then each hop of the token
 const REDUCED = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 const WAAPI = typeof Element !== 'undefined' && typeof Element.prototype.animate === 'function';
@@ -1284,6 +1736,7 @@ const app = document.getElementById('app');
 let state = load() || newState();
 let flashTimer = null, noticeTimer = null, flashReady = 0;   // flashReady: when the result may be tapped away (its animation is over)
 let lastView = null, entering = false;                         // which screen (and square) was last drawn, so the zoom-in plays once
+let cpuTimer = null, cpuPlan = null, holdTimer = null;          // the computer's next step, its chosen move, and Memory's flip-back pause
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const N = p => esc(playerName(state, p));     // a player's display name, safe for innerHTML
 
@@ -1422,11 +1875,15 @@ function renderHeader() {
 function renderSetup() {
   const s = state.setup;
   const on = enabledGames(s).length;
-  const field = p => `<label class="field ${p}"><span>${p} player</span><input data-p="${p}" value="${esc(s.names[p] || '')}" maxlength="${NAME_MAX}" placeholder="${p}" autocomplete="off" autocapitalize="words" aria-label="${p} player name"></label>`;
+  const mode = s.mode === 'cpu' ? 'cpu' : 'two', human = s.human === 'O' ? 'O' : 'X', cpu = cpuSide(s);
+  const field = p => `<label class="field ${p}"><span>${p} player${cpu === p ? ' · computer' : ''}</span><input data-p="${p}" value="${esc(s.names[p] || '')}" maxlength="${NAME_MAX}" placeholder="${cpu === p ? CPU_NAME : p}" autocomplete="off" autocapitalize="words" aria-label="${p} player name"></label>`;
+  const modes = `<div class="modes" role="group" aria-label="Who plays"><button class="seg${mode === 'two' ? ' on' : ''}" data-act="mode" data-mode="two">2 players</button><button class="seg${mode === 'cpu' ? ' on' : ''}" data-act="mode" data-mode="cpu">vs Computer</button></div>`
+    + (mode === 'cpu' ? `<div class="sides" role="group" aria-label="Your side"><span>You play</span><button class="seg X${human === 'X' ? ' on' : ''}" data-act="side" data-side="X">X · goes first</button><button class="seg O${human === 'O' ? ' on' : ''}" data-act="side" data-side="O">O</button></div>` : '');
   const chk = t => `<label class="chk${s.games[t] ? '' : ' off'}"><input type="checkbox" data-t="${t}"${s.games[t] ? ' checked' : ''}>${ICONS[t]}<span>${INFO[t].name}</span></label>`;
   return `<main class="scr setup"><div class="setup-box">
     <h1>Insane-Tac-Toe</h1>
-    <p class="sub">Pass and play. Win the mini-game inside a square to claim it. Three squares in a row wins the match.</p>
+    <p class="sub">Pass and play, or take on the computer. Win the mini-game inside a square to claim it. Three squares in a row wins the match.</p>
+    ${modes}
     <div class="names">${field('X')}${field('O')}</div>
     <div class="games-h"><span>Mini-games</span><small>${on} of ${TYPES.length} on</small></div>
     <div class="games">${TYPES.map(chk).join('')}</div>
@@ -1445,9 +1902,9 @@ function renderBoard() {
     const body = `<div class="lab">${ICONS[sq.mini.type]}<span>${info.name}</span></div><div class="thumb">${thumb(sq.mini, !!sq.owner)}</div>`
       + (sq.owner ? `<div class="own-ov${state.stamp === i ? ' stamp' : ''}" aria-hidden="true">${sq.owner}</div>` : '');   // a fresh claim stamps in
     const label = sq.owner ? `Square ${i + 1}: ${info.name}, won by ${N(sq.owner)}. Tap to view` : `Square ${i + 1}: ${info.name}`;
-    return `<button class="${cls.join(' ')}" data-act="zoom" data-i="${i}" aria-label="${label}">${body}</button>`;
+    return `<button class="${cls.join(' ')}" data-act="zoom" data-i="${i}" aria-label="${label}"${cpuTurn() ? ' disabled' : ''}>${body}</button>`;
   }).join('');
-  const hint = state.moves ? 'Tap any open square to make a move' : `${N(state.turn)} goes first. Tap a square to play`;
+  const hint = cpuTurn() ? `${N(state.turn)} is thinking…` : state.moves ? 'Tap any open square to make a move' : `${N(state.turn)} goes first. Tap a square to play`;
   const confirm = state.confirm === 'new'
     ? `<div class="flash"><div class="card"><h2>Start a new match?</h2><p>The current match will be lost.</p>
         <div class="row"><button class="btn" data-act="cancel">Keep playing</button><button class="btn go" data-act="confirm-new">New match</button></div></div></div>`
@@ -1518,7 +1975,7 @@ function renderMini(sq) {
   const mini = d && d.drawn ? d.drawn : sq.mini;    // after a draw, keep showing the full board that drew
   const info = INFO[mini.type];
   const view = !!sq.owner && !f;                    // a claimed square: final state, read-only, secrets revealed
-  const locked = !!f || !!d || view;                // no input while the result plays, once the move is made, or when just looking
+  const locked = !!f || !!d || view || cpuTurn();   // no input while the result plays, once the move is made, when just looking, or while the computer plays
   const a = f && f.type === mini.type ? f : null;   // the move to animate (only while its result is fresh)
   const anim = a ? (Number.isInteger(mini.last) ? mini.last : null) : null;   // the cell just played, for grid games
   const won = i => !!(mini.winCells && mini.winCells.includes(i));
@@ -1658,7 +2115,7 @@ function renderMini(sq) {
       break;
     }
     case 'coins': {
-      const sel = locked ? [] : (state.sel || []);
+      const sel = f || d ? [] : (state.sel || []);
       const flipped = a && mini.last ? mini.last.flipped : [];
       const full = sel.length >= COINS.max;
       const status = view ? `All six show ${sq.owner}`
@@ -1719,17 +2176,14 @@ function renderMini(sq) {
       : mini.type === 'pig' ? `${mini.bank.X} to ${mini.bank.O}` : '';
     sub = `<b class="${sq.owner}">Won by ${N(sq.owner)}</b>${secret ? ' · ' + secret : ''}`;
   }
-  let backCls = '', backLabel = 'Back to the board';
-  if (d && !f) {                                    // the move is made: the way to hand the phone over is back through the board
+  if (d && !f) {                                    // the result held a moment longer (Memory's cards turning back): the board follows by itself
     const head = d.kind === 'claim' ? `<b class="${sq.owner}">Won by ${N(sq.owner)}</b>`
       : d.kind === 'draw' ? `${d.note === 'stuck' ? 'Stuck' : 'Draw'} · resets to ${INFO[d.newType].name}` : summary(d);
     const next = d.pass ? `<b class="${d.pass}">${N(d.pass)}</b> has no move · <b class="${d.next}">${N(d.next)}</b> again` : `<b class="${d.next}">${N(d.next)}</b> next`;
-    sub = `${head} · ${next} · tap Board${secret ? ' · ' + secret : ''}`;
-    backCls = ` go go-${d.next}`;
-    backLabel = `Back to the board, then it is ${esc(playerName(state, d.next))}'s turn`;
+    sub = `${head} · ${next}${secret ? ' · ' + secret : ''}`;
   }
   return `<main class="scr mini${entering ? ' enter' : ''}">
-    <div class="bar${view ? ' won won-' + sq.owner : ''}" role="${view ? 'status' : 'presentation'}"><button class="back${backCls}" data-act="back" aria-label="${backLabel}"${f || lock ? ' disabled' : ''}>${CHEV}Board</button>
+    <div class="bar${view ? ' won won-' + sq.owner : ''}" role="${view ? 'status' : 'presentation'}"><button class="back" data-act="back" aria-label="Back to the board"${f || d || lock || cpuTurn() ? ' disabled' : ''}>${CHEV}Board</button>
       <div class="ttl"><b>${info.name}</b><small${view ? ' class="won"' : ''}>${sub}</small></div></div>
     <div class="gwrap">${g}</div>${f ? renderFlash(f) : ''}</main>`;
 }
@@ -1802,7 +2256,8 @@ app.addEventListener('click', e => {
   const act = el.dataset.act;
   if (act === 'dismiss') { if (Date.now() >= flashReady) dismissFlash(); return; }   // not before the animation is over
   if (state.flash) return;                      // everything else waits for the result to clear
-  if (state.done && act !== 'back') return;     // the move is made: only the way back to the board is open
+  if (state.done) return;                       // the result is still on show
+  if (cpuTurn() && act !== 'new' && act !== 'confirm-new' && act !== 'cancel') return;   // the computer is playing
   state.stamp = null;                           // a claim stamps in once
   if (act === 'zoom') {                        // open squares to play, claimed squares to look
     const i = Number(el.dataset.i);
@@ -1810,7 +2265,11 @@ app.addEventListener('click', e => {
     if (state.lock != null && state.lock !== i) return;
     state.screen = 'mini'; state.zoom = i; state.draft = ''; state.pick = null; state.sel = []; state.notice = null; commit();
   } else if (act === 'back') {
-    if (leaveSquare(state)) commit();           // this is where the turn passes
+    if (leaveSquare(state)) commit();
+  } else if (act === 'mode') {
+    state.setup.mode = el.dataset.mode === 'cpu' ? 'cpu' : 'two'; syncNames(state.setup); commit();
+  } else if (act === 'side') {
+    state.setup.human = el.dataset.side === 'O' ? 'O' : 'X'; syncNames(state.setup); commit();
   } else if (act === 'move') {
     if (playMove(state, state.zoom, JSON.parse(el.dataset.m)).ok) commit();
   } else if (act === 'key') {
@@ -1851,7 +2310,7 @@ app.addEventListener('change', e => {
   if (el.matches && el.matches('input[data-t]') && state.setup) { state.setup.games[el.dataset.t] = el.checked; commit(); }
 });
 function zoomedType() {
-  if (state.screen !== 'mini' || state.zoom == null || state.flash || state.done || state.winner) return null;
+  if (state.screen !== 'mini' || state.zoom == null || state.flash || state.done || state.winner || cpuTurn()) return null;
   const sq = state.squares[state.zoom];
   return sq && !sq.owner ? sq.mini.type : null;
 }
@@ -1887,7 +2346,46 @@ document.addEventListener('keydown', e => {
 });
 document.addEventListener('contextmenu', e => e.preventDefault());
 
-function commit() { save(); render(); }
+function commit() { save(); render(); scheduleCpu(); }
+function boot() { render(); scheduleCpu(); }
+
+/* ----- the computer's turn: a pause to think, a zoom into its square, its choice shown, then the move ----- */
+function cpuTurn() { return !!state.cpu && state.turn === state.cpu && !state.winner && state.screen !== 'setup'; }
+// Runs after every render: arms the computer's next step whenever it is its turn and nothing else is going on.
+function scheduleCpu() {
+  clearTimeout(cpuTimer); cpuTimer = null;
+  if (!cpuTurn() || state.flash || state.done || state.confirm) return;
+  if (state.screen === 'board') { cpuPlan = null; cpuTimer = setTimeout(cpuZoom, CPU_MS.think); return; }
+  if (state.screen !== 'mini') return;
+  if (!cpuPlan || cpuPlan.square !== state.zoom) {
+    cpuPlan = cpuMove(state); cpuPlan.stage = 0;
+    if (cpuPlan.square !== state.zoom) { state.zoom = cpuPlan.square; state.draft = ''; state.pick = null; state.sel = []; commit(); return; }   // after a reload mid-move
+  }
+  cpuTimer = setTimeout(cpuAct, cpuPlan.stage ? CPU_MS.pre : state.lock != null ? CPU_MS.again : CPU_MS.zoom);
+}
+function cpuZoom() {
+  cpuTimer = null;
+  if (!cpuTurn() || state.screen !== 'board' || state.confirm) return;
+  cpuPlan = cpuMove(state); cpuPlan.stage = 0;
+  state.screen = 'mini'; state.zoom = cpuPlan.square; state.draft = ''; state.pick = null; state.sel = []; state.notice = null;
+  commit();
+}
+function cpuAct() {
+  cpuTimer = null;
+  if (!cpuTurn() || state.screen !== 'mini' || !cpuPlan || cpuPlan.square !== state.zoom) return;
+  const plan = cpuPlan, type = state.squares[plan.square].mini.type;
+  if (!plan.stage && (type === 'memory' || type === 'coins' || type === 'wordle')) {   // show the choice first, as a person would
+    if (type === 'memory') state.pick = plan.move[0]; else if (type === 'coins') state.sel = plan.move.slice(); else state.draft = plan.move;
+    plan.stage = 1; commit(); return;
+  }
+  cpuPlan = null;
+  const r = playMove(state, plan.square, plan.move);
+  if (!r.ok) {                                   // never expected; rather than freeze, hand the match to two players
+    console.error('The computer could not play', plan, r);
+    state.cpu = null; leaveSquare(state);
+  }
+  commit();
+}
 function armFlash() {
   if (!state.flash || flashTimer) return;
   const f = state.flash, ms = animMs(f);
@@ -1899,7 +2397,15 @@ function armFlash() {
 }
 function dismissFlash() {
   clearTimeout(flashTimer); flashTimer = null;
-  if (endFlash(state)) commit();
+  const f = state.flash;
+  if (!f) return;
+  const hold = f.type === 'memory' && f.kind === 'move' && !state.winner;   // let the two cards turn back over first
+  endFlash(state, hold);
+  commit();
+  if (hold && state.done) {
+    clearTimeout(holdTimer);
+    holdTimer = setTimeout(() => { if (state.done && !state.flash && leaveSquare(state)) commit(); }, FLIP_MS);
+  }
 }
 function save() {
   try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* no storage: just play without resume */ }
@@ -1909,8 +2415,12 @@ function load() {
     const s = JSON.parse(localStorage.getItem(KEY));
     if (s && s.v === 4 && Array.isArray(s.squares) && s.squares.length === 9 && (s.turn === 'X' || s.turn === 'O') && s.setup) {
       if (s.lock != null && !s.winner) { s.screen = 'mini'; s.zoom = s.lock; }
-      else if (s.done && !s.winner) { s.screen = 'mini'; s.zoom = s.done.square; }   // a move still waiting for its handoff
+      else if (s.done && !s.flash && !s.winner) leaveSquare(s);   // a result that was still on show: the board was next anyway
       s.notice = null; s.sel = []; s.stamp = null;
+      if (!s.setup.mode) s.setup.mode = 'two';
+      if (!s.setup.human) s.setup.human = 'X';
+      if (s.cpu !== 'X' && s.cpu !== 'O') s.cpu = null;
+      for (const sq of s.squares) if (sq.mini.type === 'memory' && !Array.isArray(sq.mini.seen)) sq.mini.seen = [];
       for (const t of TYPES) if (!(t in s.setup.games)) s.setup.games[t] = true;   // a game added since the save is on by default
       return s;
     }
@@ -1918,7 +2428,7 @@ function load() {
   return null;
 }
 
-render();
+boot();
 </script>
 </body>
 </html>

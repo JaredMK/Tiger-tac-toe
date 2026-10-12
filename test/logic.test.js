@@ -11,7 +11,7 @@ const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 const src = html.match(/<script id="logic">([\s\S]*?)<\/script>/)[1];
 const L = vm.runInThisContext(
   src + '\n;({ TYPES, INFO, C4, HEX_N, HILO, DICE_GOAL, MEMORY, CANDY, COINS, PIG, HUNT, NAME_MAX, WORDS5, WORDS_HANG, VALID5, LINES, other, newMini, newState, huntDist,' +
-  ' startMatch, newMatch, defaultSetup, enabledGames, playerName, findRun, applyMove, mainResult, playMove, endFlash, leaveSquare, wordleMarks, hexNeighbors,' +
+  ' startMatch, newMatch, defaultSetup, enabledGames, playerName, findRun, applyMove, mainResult, playMove, endFlash, leaveSquare, cpuMove, publicMini, squareValue, needsOf, winChance, moveGain, localBest, wordleCandidates, hangmanCandidates, huntCandidates, hexDist, candyExpected, cpuSide, syncNames, CPU_NAME, AI, wordleMarks, hexNeighbors,' +
   ' hexPath, memoryDeck, candyTrack, canMove, anyMove })',
   { filename: 'index.html#logic' }
 );
@@ -32,14 +32,13 @@ function matchWith(types, rng = lcg(7)) {
   types.forEach((t, i) => { st.squares[i].mini = L.newMini(t, rng); });
   return st;
 }
-// make one full turn as the UI does: the move, the result overlay clearing, and (unless the same
-// player goes again or the match is over) the trip back to the board, which is where the turn passes
+// make one full turn as the UI does: the move, then the result overlay clearing, which (unless the
+// same player goes again or the match is over) brings the board back and passes the turn
 function turn(st, i, m, rng) {
   const r = L.playMove(st, i, m, rng || lcg(99));
   assert.equal(r.ok, true, `move ${JSON.stringify(m)} in square ${i} should be accepted (${r.reason})`);
   const flash = st.flash;
   L.endFlash(st);
-  if (st.done) assert.equal(L.leaveSquare(st), true);
   return flash;
 }
 const sorted = a => a.slice().sort((x, y) => x - y);
@@ -101,10 +100,9 @@ test('ttt: a drawn square resets to a fresh random mini-game and stays unclaimed
   assert.equal(st.squares[0].mini.type, 'c4');
   assert.equal(st.squares[0].mini.cells.every(c => c === null), true, 'fresh board');
   assert.equal(st.done.next, L.other(TTT_DRAW[8]), 'the turn still passes after a draw');
-  assert.equal(st.done.drawn, st.flash.drawn, 'the drawn board stays on show until the player heads back');
+  assert.equal(st.done.drawn, st.flash.drawn, 'the drawn board is kept for the result on show');
   L.endFlash(st);
-  assert.equal(st.screen, 'mini');
-  L.leaveSquare(st);
+  assert.equal(st.screen, 'board', 'the board comes back once the result has shown');
   assert.equal(st.turn, L.other(TTT_DRAW[8]));
   assert.equal(st.winner, null);
 });
@@ -357,12 +355,10 @@ test('hangman: the bonus guess keeps the turn and locks the player to that squar
   assert.deepEqual(L.playMove(st, 1, 0), { ok: false, reason: 'locked' }, 'cannot move elsewhere');
   assert.equal(L.playMove(st, 0, 'Z').ok, true);
   assert.equal(st.flash.kind, 'move');
-  assert.equal(st.turn, 'X', 'the miss ends the move, but the turn passes only on the way back to the board');
+  assert.equal(st.turn, 'X', 'the miss ends the move; the turn passes as the board comes back');
   assert.equal(st.done.next, 'O');
   assert.equal(st.lock, null);
   L.endFlash(st);
-  assert.equal(st.screen, 'mini');
-  assert.equal(L.leaveSquare(st), true);
   assert.equal(st.screen, 'board');
   assert.equal(st.turn, 'O');
 });
@@ -911,11 +907,13 @@ test('moves are refused while a result is showing, on claimed squares, and after
   const st = matchWith(['ttt', 'ttt']);
   assert.equal(L.playMove(st, 0, 0).ok, true);
   assert.deepEqual(L.playMove(st, 1, 0), { ok: false, reason: 'busy' });
-  L.endFlash(st);
+  L.endFlash(st, true);                           // the result held a moment longer (Memory's cards turning back)
   assert.equal(L.endFlash(st), false);
-  assert.deepEqual(L.playMove(st, 1, 0), { ok: false, reason: 'done' }, 'the move is made: nothing more until the player heads back');
+  assert.equal(st.screen, 'mini');
+  assert.deepEqual(L.playMove(st, 1, 0), { ok: false, reason: 'done' }, 'the move is made: nothing more while its result is on show');
   assert.deepEqual(L.playMove(st, 0, 1), { ok: false, reason: 'done' });
   L.leaveSquare(st);
+  assert.equal(st.turn, 'O');
   st.squares[1].owner = 'O';
   assert.deepEqual(L.playMove(st, 1, 0), { ok: false, reason: 'claimed' });
   assert.equal(L.playMove(st, 9, 0).ok, false);
@@ -997,34 +995,45 @@ test('after a match the setup is kept for the next one', () => {
   assert.ok(st.squares.every(s => !s.owner && ['ttt', 'hex'].includes(s.mini.type)));
 });
 
-// ================================ Turn handoff ================================
-test('after a move the result stays on show and the turn passes only on the way back to the board', () => {
+// ================================ After a move ================================
+test('after a move the result shows, then the board comes back on its own and the turn passes', () => {
   const st = matchWith(['ttt', 'bs', 'ttt']);
   assert.equal(L.playMove(st, 0, 4).ok, true);
   assert.equal(st.turn, 'X', 'still X while the result plays');
   assert.equal(st.done, st.flash, 'the move is on record for the handoff');
   assert.equal(st.done.next, 'O');
-  assert.equal(L.leaveSquare(st), false, 'cannot leave while the result is playing');
+  assert.equal(L.leaveSquare(st), false, 'nothing leaves while the result is playing');
   assert.deepEqual(L.playMove(st, 0, 5), { ok: false, reason: 'busy' });
+  assert.deepEqual(L.playMove(st, 1, 0), { ok: false, reason: 'busy' });
   assert.equal(L.endFlash(st), true);
-  assert.equal(st.screen, 'mini', 'the mini-game stays on screen');
-  assert.equal(st.zoom, 0);
-  assert.equal(st.flash, null);
-  assert.equal(st.turn, 'X', 'the turn indicator keeps the mover');
-  assert.deepEqual(L.playMove(st, 0, 5), { ok: false, reason: 'done' }, 'no second move in the same square');
-  assert.deepEqual(L.playMove(st, 1, 0), { ok: false, reason: 'done' }, 'nor anywhere else');
-  assert.equal(st.moves, 1);
-  assert.equal(L.leaveSquare(st), true);
-  assert.equal(st.screen, 'board');
+  assert.equal(st.screen, 'board', 'the board is back');
   assert.equal(st.zoom, null);
-  assert.equal(st.turn, 'O', 'now the turn has passed');
+  assert.equal(st.flash, null);
   assert.equal(st.done, null);
+  assert.equal(st.turn, 'O', 'and the turn has passed');
   assert.equal(st.stamp, null, 'nothing was claimed');
+  assert.equal(st.moves, 1);
   assert.equal(L.playMove(st, 0, 5).ok, true, 'O can move');
   assert.equal(st.flash.by, 'O');
-  assert.equal(st.done.next, 'X');
-  L.endFlash(st); L.leaveSquare(st);
+  L.endFlash(st);
   assert.equal(st.turn, 'X');
+});
+
+test('the result can be held a moment longer: then the board follows and the turn passes', () => {
+  const st = matchWith(['memory', 'ttt']);
+  const cards = st.squares[0].mini.cards;
+  let a = 0, b = 1;
+  if (cards[a].s === cards[b].s && cards[a].c === cards[b].c) b = 2;   // avoid the pair
+  assert.equal(L.playMove(st, 0, [a, b]).ok, true);
+  L.endFlash(st, true);
+  assert.equal(st.screen, 'mini', 'the two cards turn back over first');
+  assert.equal(st.turn, 'X');
+  assert.ok(st.done);
+  assert.deepEqual(L.playMove(st, 1, 0), { ok: false, reason: 'done' });
+  assert.equal(L.leaveSquare(st), true);
+  assert.equal(st.screen, 'board');
+  assert.equal(st.turn, 'O');
+  assert.deepEqual(st.squares[0].mini.seen.slice().sort(), [a, b].sort(), 'the cards shown are remembered');
 });
 
 test('just looking at a square, or at a claimed one, never passes the turn', () => {
@@ -1040,18 +1049,14 @@ test('just looking at a square, or at a claimed one, never passes the turn', () 
   assert.equal(st.turn, 'X');
 });
 
-test('a claim stays on show as the won square, then stamps in on the board', () => {
+test('a claim stamps in on the board as it comes back', () => {
   const st = matchWith(['bs', 'ttt']);
   st.squares[0].mini = oneMove();
   L.playMove(st, 0, 0);
   assert.equal(st.flash.kind, 'claim');
   assert.equal(st.squares[0].owner, 'X');
   L.endFlash(st);
-  assert.equal(st.screen, 'mini', 'the won square stays on screen');
-  assert.equal(st.turn, 'X');
-  assert.equal(st.done.kind, 'claim');
-  assert.equal(L.playMove(st, 1, 0).reason, 'done');
-  L.leaveSquare(st);
+  assert.equal(st.screen, 'board');
   assert.equal(st.stamp, 0, 'the mark stamps onto square 1');
   assert.equal(st.turn, 'O');
   st.screen = 'mini'; st.zoom = 0;                  // O looks at the claimed square
@@ -1060,7 +1065,7 @@ test('a claim stays on show as the won square, then stamps in on the board', () 
   assert.equal(st.turn, 'O');
 });
 
-test('a bonus move keeps the player in the square with no handoff pending, until the move ends', () => {
+test('a bonus move keeps the player in the square until the move ends', () => {
   const st = matchWith(['pig', 'ttt']);
   const die = (...faces) => seq(...faces.map(n => pick(n - 1, 6)));
   L.playMove(st, 0, 'roll', die(3));
@@ -1073,11 +1078,11 @@ test('a bonus move keeps the player in the square with no handoff pending, until
   assert.equal(st.turn, 'X');
   L.endFlash(st);
   assert.equal(st.lock, null);
-  assert.equal(L.leaveSquare(st), true);
+  assert.equal(st.screen, 'board');
   assert.equal(st.turn, 'O');
 });
 
-test('a match-winning move goes straight to the win screen: nothing to hand over', () => {
+test('a match-winning move goes straight to the win screen', () => {
   const st = matchWith(['bs', 'bs', 'bs', 'ttt']);
   for (let i = 0; i < 3; i++) st.squares[i].mini = oneMove();
   turn(st, 0, 0); turn(st, 3, 0); turn(st, 1, 0); turn(st, 3, 1);
@@ -1090,9 +1095,9 @@ test('a match-winning move goes straight to the win screen: nothing to hand over
   assert.equal(L.leaveSquare(st), false);
 });
 
-test('a new match clears any pending handoff', () => {
+test('a new match clears any result still on show', () => {
   const st = matchWith(['ttt']);
-  L.playMove(st, 0, 0); L.endFlash(st);
+  L.playMove(st, 0, 0); L.endFlash(st, true);
   assert.ok(st.done);
   st.screen = 'setup';
   assert.equal(L.startMatch(st, lcg(4)), true);
@@ -1146,14 +1151,12 @@ test('random play over many matches always finishes, never shows a removed game,
       if (st.flash.kind === 'again') assert.equal(st.lock, i);
       else assert.equal(st.lock, null);
       if (st.flash.newType) types.add(st.flash.newType);
-      const mover = st.turn;
+      const mover = st.turn, again = st.flash.kind === 'again';
       L.endFlash(st);
-      if (st.done) {
-        assert.equal(st.screen, 'mini', 'the result stays on show');
-        assert.equal(st.turn, mover, 'the turn has not passed yet');
-        assert.equal(L.playMove(st, i, randomMove(st.squares[i].mini, rng, st.turn), rng).ok, false, 'no second move before heading back');
-        assert.equal(L.leaveSquare(st), true);
-        assert.equal(st.turn, st.lock != null ? mover : L.other(mover));
+      if (!st.winner) {
+        assert.equal(st.done, null);
+        assert.equal(st.screen, again ? 'mini' : 'board');
+        assert.equal(st.turn, again ? mover : L.other(mover), 'the turn passes as the board comes back');
       }
     }
     assert.ok(st.winner, 'random play finishes a match');
@@ -1161,4 +1164,416 @@ test('random play over many matches always finishes, never shows a removed game,
   }
   assert.deepEqual([...types].sort(), [...L.TYPES].sort(), 'every current game type showed up');
   for (const t of REMOVED) assert.ok(!types.has(t));
+});
+
+// ================================ Computer player ================================
+const cpuRng = () => lcg(314);
+// a match where the computer plays `me`, with the given squares (type names or ready-made minis)
+function cpuMatch(me, squares, owners = []) {
+  const st = matchWith(squares.map(s => (typeof s === 'string' ? s : s.type)));
+  squares.forEach((s, i) => { if (typeof s !== 'string') st.squares[i].mini = s; });
+  owners.forEach((o, i) => { if (o) st.squares[i].owner = o; });
+  st.cpu = me; st.turn = me;
+  return st;
+}
+const tttOf = (...cells) => Object.assign(mini('ttt'), { cells: cells.map(c => c || null) });
+
+test('setup: "vs Computer" picks the computer\'s side and names it, and a match records it', () => {
+  const st = L.newState(lcg(1));
+  assert.equal(st.setup.mode, 'two');
+  assert.equal(st.setup.human, 'X');
+  assert.equal(L.cpuSide(st.setup), null);
+  st.setup.mode = 'cpu';
+  L.syncNames(st.setup);
+  assert.equal(L.cpuSide(st.setup), 'O');
+  assert.deepEqual(st.setup.names, { X: 'X', O: L.CPU_NAME }, 'the computer is called Computer');
+  st.setup.human = 'O';
+  L.syncNames(st.setup);
+  assert.deepEqual(st.setup.names, { X: L.CPU_NAME, O: 'O' }, 'the name follows the side');
+  st.setup.names.X = 'HAL';
+  L.syncNames(st.setup);
+  assert.equal(st.setup.names.X, 'HAL', 'a typed name stays');
+  st.setup.mode = 'two';
+  L.syncNames(st.setup);
+  assert.equal(st.setup.names.X, 'HAL');
+  st.setup.names.X = L.CPU_NAME;
+  L.syncNames(st.setup);
+  assert.equal(st.setup.names.X, 'X', 'two players: the default computer name goes away');
+  st.setup.mode = 'cpu'; st.setup.human = 'X';
+  assert.equal(L.startMatch(st, lcg(2)), true);
+  assert.equal(st.cpu, 'O');
+  assert.equal(L.playerName(st, 'O'), L.CPU_NAME);
+  assert.equal(st.turn, 'X', 'the human X goes first');
+  const m = L.newMatch(lcg(3), { mode: 'cpu', human: 'O' });
+  assert.equal(m.cpu, 'X');
+  assert.equal(m.turn, 'X', 'the computer goes first as X');
+  assert.equal(L.newMatch(lcg(3)).cpu, null);
+});
+
+test('the public view of every mini-game holds nothing hidden', () => {
+  const rng = lcg(9);
+  for (const t of L.TYPES) {
+    const m = L.newMini(t, rng);
+    const pm = L.publicMini(m);
+    const text = JSON.stringify(pm);
+    assert.equal(pm.type, t);
+    if (t === 'wordle' || t === 'hangman') assert.ok(!text.includes(m.word), `${t}: the word is hidden`);
+    if (t === 'hilo') assert.ok(!('target' in pm));
+    if (t === 'bs') assert.ok(!('hidden' in pm));
+    if (t === 'hunt') assert.ok(!('treasure' in pm));
+    if (t === 'memory') assert.ok(pm.cards.every(c => c === null), 'no card is known before any is shown');
+    if (t === 'hangman') assert.ok(pm.pattern.every(ch => ch === null));
+  }
+  // what has been shown is public: a found letter, a dug cell's distance, a card once flipped
+  const h = L.newMini('hangman', wordRng(L.WORDS_HANG, 'apple'));
+  L.applyMove(h, 'X', 'P');
+  assert.deepEqual(L.publicMini(h).pattern, [null, 'P', 'P', null, null]);
+  const u = L.newMini('hunt', seq(pick(12, 25)));
+  L.applyMove(u, 'X', 0);
+  assert.equal(L.publicMini(u).clues[0], 4);
+  assert.equal(L.publicMini(u).clues[1], null);
+  const mem = mini('memory');
+  L.applyMove(mem, 'X', [3, 5]);
+  const pmem = L.publicMini(mem);
+  assert.deepEqual(pmem.seen, [3, 5]);
+  assert.deepEqual(pmem.cards[3], mem.cards[3]);
+  assert.equal(pmem.cards[0], null);
+});
+
+test('the computer cannot tell hidden information apart: same public view, same move', () => {
+  const rng = lcg(5);
+  const twins = [
+    () => [L.newMini('wordle', wordRng(L.WORDS5, 'crane')), L.newMini('wordle', wordRng(L.WORDS5, 'house'))],
+    () => [L.newMini('hangman', wordRng(L.WORDS_HANG, 'apple')), L.newMini('hangman', wordRng(L.WORDS_HANG, 'melon'))],
+    () => [L.newMini('hilo', seq(pick(2, 20))), L.newMini('hilo', seq(pick(17, 20)))],
+    () => [L.newMini('bs', seq(pick(0, 9))), L.newMini('bs', seq(pick(8, 9)))],
+    () => [L.newMini('hunt', seq(pick(0, 25))), L.newMini('hunt', seq(pick(24, 25)))],
+    () => { const a = mini('memory'), b = mini('memory', lcg(77)); return [a, b]; },
+  ];
+  for (const make of twins) {
+    const [a, b] = make();
+    assert.equal(a.type, b.type);
+    const sa = cpuMatch('X', [a, 'ttt', 'ttt']), sb = cpuMatch('X', [b, 'ttt', 'ttt']);
+    for (let k = 0; k < 3; k++) {
+      const ma = L.cpuMove(sa, lcg(k)), mb = L.cpuMove(sb, lcg(k));
+      assert.deepEqual(mb, ma, `${a.type}: the move only depends on what can be seen`);
+      // make the same move in both and compare again (hidden results may differ; only public parts may steer)
+      const r = L.playMove(sa, ma.square, ma.move, lcg(k + 50)); L.endFlash(sa);
+      L.playMove(sb, mb.square, mb.move, lcg(k + 50)); L.endFlash(sb);
+      if (!r.ok || sa.winner || sb.winner || sa.squares[ma.square].owner || sb.squares[mb.square].owner) break;
+      sa.turn = 'X'; sb.turn = 'X'; sa.lock = null; sb.lock = null;
+      if (JSON.stringify(L.publicMini(sa.squares[0].mini)) !== JSON.stringify(L.publicMini(sb.squares[0].mini))) break;   // the clues now differ
+    }
+  }
+});
+
+test('the computer only ever makes legal moves, from any position and in bonus moves', () => {
+  const rng = lcg(606);
+  let moves = 0;
+  for (let game = 0; game < 25; game++) {
+    const st = L.newMatch(rng);
+    // some random play by both sides first, then the computer takes over each side in turn
+    for (let k = 0; k < 8 && !st.winner; k++) {
+      const cands = st.squares.map((s, i) => (!s.owner ? i : -1)).filter(i => i >= 0);
+      const i = st.lock != null ? st.lock : cands[Math.floor(rng() * cands.length)];
+      assert.equal(L.playMove(st, i, randomMove(st.squares[i].mini, rng, st.turn), rng).ok, true);
+      L.endFlash(st);
+    }
+    let guard = 0;
+    while (!st.winner && guard++ < 400) {
+      const m = L.cpuMove(st, rng);
+      assert.ok(m && Number.isInteger(m.square), 'a square is chosen');
+      assert.equal(st.squares[m.square].owner, null, 'never a claimed square');
+      if (st.lock != null) assert.equal(m.square, st.lock, 'a bonus move stays in its square');
+      const r = L.playMove(st, m.square, m.move, rng);
+      assert.equal(r.ok, true, `${st.squares[m.square].mini.type}: ${JSON.stringify(m.move)} refused (${r.reason})`);
+      moves++;
+      L.endFlash(st);
+    }
+    assert.ok(st.winner, 'the match finishes');
+  }
+  assert.ok(moves > 500);
+});
+
+test('square values: a match-winning square first, then one the opponent would win, then open lines', () => {
+  const st = matchWith(['ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt']);
+  st.squares[0].owner = 'X'; st.squares[1].owner = 'X';
+  assert.equal(L.squareValue(st.squares, 2, 'X'), L.AI.win);
+  assert.ok(L.squareValue(st.squares, 2, 'O') >= L.AI.block && L.squareValue(st.squares, 2, 'O') < L.AI.win);
+  st.squares[3].owner = 'O'; st.squares[4].owner = 'O';
+  assert.equal(L.squareValue(st.squares, 5, 'O'), L.AI.win);
+  assert.ok(L.squareValue(st.squares, 5, 'X') >= L.AI.block);
+  assert.ok(L.squareValue(st.squares, 2, 'X') > L.squareValue(st.squares, 5, 'X'), 'winning beats blocking');
+  // a square on no open line for either side is worth almost nothing
+  const dead = matchWith(['ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt']);
+  ['X', 'O', 'X', 'O', null, 'X', 'O', 'X', 'O'].forEach((o, i) => { dead.squares[i].owner = o; });
+  assert.ok(L.squareValue(dead.squares, 4, 'X') < 1.5, `dead centre worth ${L.squareValue(dead.squares, 4, 'X')}`);
+  const fresh = matchWith(['ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt']);
+  assert.ok(L.squareValue(fresh.squares, 4, 'X') > L.squareValue(fresh.squares, 1, 'X'), 'the centre sits on more open lines');
+});
+
+test('the computer always takes a square that wins the match, in any game that allows it', () => {
+  // X owns 0 and 1; square 2 can be claimed at once in several games; square 5 is a tempting ttt threat
+  const wins = [
+    tttOf('X', 'X', null, 'O', null, null, null, null, null),
+    Object.assign(mini('hilo'), { lo: 7, hi: 7, target: 7, guesses: [{ by: 'O', n: 6, res: 'higher' }, { by: 'O', n: 8, res: 'lower' }] }),
+    Object.assign(mini('pig'), { bank: { X: 15, O: 0 }, turn: { by: 'X', rolls: [5], pot: 5 } }),
+    Object.assign(L.newMini('hex', lcg(1)), { cells: ['X', 'X', 'X', null, null, null, null, null, null, null, null, null, null, null, null, null] }),
+  ];
+  for (const sq2 of wins) {
+    const st = cpuMatch('X', ['ttt', 'ttt', sq2, 'ttt', 'ttt', tttOf('O', 'O', null), 'ttt', 'ttt', 'ttt'], ['X', 'X']);
+    if (sq2.type === 'pig') st.lock = 2;
+    const m = L.cpuMove(st, cpuRng());
+    assert.equal(m.square, 2, `${sq2.type}: goes for the match`);
+    const r = L.playMove(st, m.square, m.move, cpuRng());
+    assert.equal(r.ok, true);
+    assert.equal(st.winner, 'X', `${sq2.type}: and wins it`);
+  }
+  // a known Memory pair and a Wordle with one word left also win on the spot
+  const mem = mini('memory');
+  const pairIdx = (() => { const seen = new Map(); let p = null; mem.cards.forEach((c, i) => { const k = c.s + c.c; if (seen.has(k)) p = [seen.get(k), i]; else seen.set(k, i); }); return p; })();
+  mem.seen = pairIdx.slice();
+  const stm = cpuMatch('X', ['ttt', 'ttt', mem, 'ttt', 'ttt', tttOf('O', 'O', null)], ['X', 'X']);
+  const mm = L.cpuMove(stm, cpuRng());
+  assert.equal(mm.square, 2);
+  assert.deepEqual(mm.move.slice().sort(), pairIdx.slice().sort());
+  const w = L.newMini('wordle', wordRng(L.WORDS5, 'crane'));
+  for (const g of ['CRANK', 'CRATE']) L.applyMove(w, 'O', g);
+  const cands = L.wordleCandidates(L.publicMini(w));
+  if (cands.length === 1) {
+    const stw = cpuMatch('X', ['ttt', 'ttt', w, 'ttt', 'ttt', tttOf('O', 'O', null)], ['X', 'X']);
+    const mw = L.cpuMove(stw, cpuRng());
+    assert.equal(mw.square, 2);
+    assert.equal(mw.move, 'CRANE');
+  }
+});
+
+test('the computer always defends a square the opponent is one move from winning the match with', () => {
+  // O owns 3 and 4; square 5 holds the opponent's threat in a game that can be blocked
+  const threats = [
+    [tttOf('O', 'O', null, 'X', null, null, null, null, null), 2],
+    [(() => { const c = mini('c4'); for (const [p, col] of [['O', 0], ['O', 1], ['O', 2], ['X', 0], ['X', 1]]) L.applyMove(c, p, col); return c; })(), 3],
+    [Object.assign(L.newMini('hex', lcg(1)), { cells: ['O', null, null, null, 'O', null, null, null, 'O', null, null, null, null, null, null, null] }), 12],
+  ];
+  for (const [sq5, block] of threats) {
+    // elsewhere X has its own progress to tempt it away: square 0 is a ttt with two X marks
+    const st = cpuMatch('X', [tttOf('X', 'X', null, 'O', 'O', null), 'ttt', 'ttt', 'ttt', 'ttt', sq5, 'ttt', 'ttt', 'ttt'], [null, null, null, 'O', 'O']);
+    const m = L.cpuMove(st, cpuRng());
+    assert.equal(m.square, 5, `${sq5.type}: defends the threatened square`);
+    assert.equal(m.move, block, `${sq5.type}: with the blocking move`);
+    assert.equal(L.playMove(st, m.square, m.move, cpuRng()).ok, true);
+  }
+  // ...unless it can win the match itself right now
+  const st = cpuMatch('X', ['ttt', 'ttt', tttOf('X', 'X', null), 'ttt', 'ttt', tttOf('O', 'O', null), 'ttt', 'ttt', 'ttt'], ['X', 'X', null, 'O', 'O']);
+  const m = L.cpuMove(st, cpuRng());
+  assert.equal(m.square, 2, 'winning comes first');
+  assert.equal(m.move, 2);
+  L.playMove(st, m.square, m.move);
+  assert.equal(st.winner, 'X');
+});
+
+test('tic-tac-toe tactics: win now, else block, else take the best minimax move', () => {
+  const win = L.localBest({ type: 'ttt', cells: ['X', 'X', null, 'O', 'O', null, null, null, null] }, 'X', cpuRng());
+  assert.equal(win.move, 2); assert.equal(win.win, true);
+  const block = L.localBest({ type: 'ttt', cells: ['O', 'O', null, 'X', null, null, null, null, null] }, 'X', cpuRng());
+  assert.equal(block.move, 2);
+  const fork = L.localBest({ type: 'ttt', cells: ['X', null, null, null, 'O', null, null, null, 'X'] }, 'O', cpuRng());
+  assert.ok([1, 3, 5, 7].includes(fork.move), 'O must take an edge against the corner fork');
+  const empty = L.localBest({ type: 'ttt', cells: new Array(9).fill(null) }, 'X', cpuRng());
+  assert.equal(empty.move, 4, 'the centre from an empty board');
+});
+
+test('connect 4 tactics: completes four, blocks three, and otherwise prefers the middle', () => {
+  const c = mini('c4');
+  for (const [p, col] of [['X', 1], ['X', 2], ['X', 3], ['O', 0], ['O', 0]]) L.applyMove(c, p, col);
+  const win = L.localBest(L.publicMini(c), 'X', cpuRng());
+  assert.ok(win.move === 0 || win.move === 4);
+  assert.equal(win.win, true);
+  const block = L.localBest(L.publicMini(c), 'O', cpuRng());
+  assert.ok(block.move === 0 || block.move === 4, `O blocks one end (played ${block.move})`);
+  const vertical = mini('c4');
+  for (const [p, col] of [['O', 2], ['O', 2], ['O', 2], ['X', 0]]) L.applyMove(vertical, p, col);
+  assert.equal(L.localBest(L.publicMini(vertical), 'X', cpuRng()).move, 2, 'caps the column');
+  assert.equal(L.localBest(L.publicMini(mini('c4')), 'X', cpuRng()).move, 2, 'the middle column first');
+});
+
+test('hex tactics: connects when one cell short and blocks the opponent\'s last link', () => {
+  const cells = ['X', 'X', 'X', null, null, null, null, null, null, null, null, null, null, null, null, null];
+  assert.equal(L.hexDist(cells, 'X'), 1);
+  const win = L.localBest({ type: 'hex', cells }, 'X', cpuRng());
+  assert.equal(win.move, 3); assert.equal(win.win, true);
+  const block = L.localBest({ type: 'hex', cells }, 'O', cpuRng());
+  assert.equal(block.move, 3, 'O takes the last cell of the row');
+  const col = ['O', null, null, null, 'O', null, null, null, 'O', null, null, null, null, null, null, null];   // down the left edge: only cell 12 finishes it
+  assert.equal(L.hexDist(col, 'O'), 1);
+  assert.equal(L.localBest({ type: 'hex', cells: col }, 'X', cpuRng()).move, 12);
+  const fork = [null, 'O', null, null, null, 'O', null, null, null, 'O', null, null, null, null, null, null];     // two cells finish it: nothing stops O
+  assert.equal(L.hexDist(fork, 'O'), 1);
+  assert.ok(L.localBest({ type: 'hex', cells: fork }, 'X', cpuRng()).v < -500, 'X knows the square is lost');
+  assert.equal(L.hexDist(new Array(16).fill(null), 'X'), 4);
+  assert.equal(L.hexDist(['O', 'O', 'O', 'O', null, null, null, null, null, null, null, null, null, null, null, null], 'O'), 3, 'a row does not help O');
+});
+
+test('treasure hunt tactics: only cells consistent with every clue, the best splitter first', () => {
+  const m = L.newMini('hunt', seq(pick(12, 25)));          // treasure at row 3, column 3
+  L.applyMove(m, 'O', 0);                                  // distance 4
+  const pm = L.publicMini(m);
+  const cand = L.huntCandidates(pm);
+  assert.ok(cand.every(c => L.huntDist(c, 0) === 4 && c !== 0));
+  assert.ok(cand.includes(12));
+  for (let k = 0; k < 20; k++) {
+    const st = cpuMatch('X', [m, 'ttt']);
+    const mv = L.cpuMove(st, lcg(k));
+    assert.equal(mv.square, 0);
+    assert.ok(cand.includes(mv.move), `dig ${mv.move} fits the clue`);
+  }
+  L.applyMove(m, 'O', 4);                                  // row 1 column 5: distance 4 as well
+  const cand2 = L.huntCandidates(L.publicMini(m));
+  assert.ok(cand2.length < cand.length);
+  assert.ok(cand2.every(c => L.huntDist(c, 0) === 4 && L.huntDist(c, 4) === 4));
+  // one candidate left: dig it and win
+  const one = L.newMini('hunt', seq(pick(12, 25)));
+  for (const d of [0, 4, 20]) L.applyMove(one, 'O', d);
+  const c1 = L.huntCandidates(L.publicMini(one));
+  assert.deepEqual(c1, [12]);
+  const st = cpuMatch('X', [one, 'ttt']);
+  const mv = L.cpuMove(st, cpuRng());
+  assert.equal(mv.move, 12);
+  assert.equal(L.playMove(st, 0, mv.move).flash.kind, 'claim');
+});
+
+test('wordle tactics: guesses stay consistent with the feedback and the last word is taken', () => {
+  const w = L.newMini('wordle', wordRng(L.WORDS5, 'crane'));
+  L.applyMove(w, 'O', 'CRATE');
+  const cand = L.wordleCandidates(L.publicMini(w));
+  assert.ok(cand.includes('CRANE'));
+  assert.ok(cand.every(x => x.startsWith('CRA') && x.endsWith('E') && x[3] !== 'T'));
+  const st = cpuMatch('X', [w, 'ttt']);
+  const mv = L.cpuMove(st, cpuRng());
+  assert.ok(cand.includes(mv.move), `guess ${mv.move} fits`);
+  assert.equal(L.playMove(st, 0, mv.move).ok, true);
+  const fresh = L.localBest(L.publicMini(L.newMini('wordle', wordRng(L.WORDS5, 'house'))), 'X', cpuRng());
+  assert.ok(L.VALID5.has(fresh.move) && L.WORDS5.includes(fresh.move.toLowerCase()), 'the opening guess is a real common word');
+});
+
+test('hangman tactics: the letter most common among the words still possible, and a known word is finished in one move', () => {
+  const h = L.newMini('hangman', wordRng(L.WORDS_HANG, 'apple'));
+  const pm = L.publicMini(h);
+  const cand = L.hangmanCandidates(pm);
+  assert.ok(cand.includes('APPLE') && cand.every(x => x.length === 5));
+  const count = {};
+  for (const x of cand) for (const ch of new Set(x)) count[ch] = (count[ch] || 0) + 1;
+  const top = Math.max(...Object.values(count));
+  const mv = L.localBest(pm, 'X', cpuRng()).move;
+  assert.equal(count[mv], top, `${mv} is a most common letter`);
+  // narrowed to one word: every guess hits and the square is claimed in a single move
+  for (const l of ['A', 'P']) L.applyMove(h, 'O', l);
+  L.applyMove(h, 'O', 'Z');
+  const left = L.hangmanCandidates(L.publicMini(h));
+  if (left.length === 1) {
+    const st = cpuMatch('X', [h, 'ttt']);
+    let guard = 0, f;
+    do { const m = L.cpuMove(st, cpuRng()); f = L.playMove(st, m.square, m.move).flash; L.endFlash(st); } while (f.kind === 'again' && guard++ < 10);
+    assert.equal(f.kind, 'claim');
+    assert.equal(st.squares[0].owner, 'X');
+  }
+});
+
+test('memory tactics: a known pair is flipped, otherwise only unseen cards', () => {
+  const m = mini('memory');
+  const idx = new Map(); let pair = null;
+  m.cards.forEach((c, i) => { const k = c.s + c.c; if (idx.has(k)) pair = [idx.get(k), i]; else idx.set(k, i); });
+  const others = [0, 1, 2, 3, 4, 5, 6, 7, 8].filter(i => !pair.includes(i));
+  L.applyMove(m, 'O', [others[0], others[1]]);
+  let mv = L.localBest(L.publicMini(m), 'X', cpuRng());
+  assert.ok(mv.move.every(k => !m.seen.includes(k)), 'flips unseen cards');
+  assert.ok(mv.q < 0.2);
+  L.applyMove(m, 'O', [pair[0], others[2]]);
+  L.applyMove(m, 'O', [pair[1], others[3]]);
+  mv = L.localBest(L.publicMini(m), 'X', cpuRng());
+  assert.deepEqual(mv.move.slice().sort(), pair.slice().sort(), 'remembers both cards of the pair');
+  assert.equal(mv.q, 1);
+  const st = cpuMatch('X', [m, 'ttt']);
+  const cm = L.cpuMove(st, cpuRng());
+  assert.equal(cm.square, 0, 'a sure claim beats a fresh square');
+  assert.equal(L.playMove(st, 0, cm.move).flash.kind, 'claim');
+});
+
+test('coin flip, higher/lower and pig tactics', () => {
+  const coins = L.localBest({ type: 'coins', coins: ['X', 'O', 'O', 'O', 'O', 'X'] }, 'X', cpuRng());
+  assert.equal(coins.move.length, 3, 'flips the most allowed');
+  assert.ok(coins.move.every(k => [1, 2, 3, 4].includes(k)), "only the other side's coins");
+  assert.equal(L.localBest({ type: 'coins', coins: ['X', 'X', 'X', 'X', 'X', 'O'] }, 'X', cpuRng()).move.length, 1);
+  assert.equal(L.localBest({ type: 'hilo', lo: 1, hi: 20, guesses: [] }, 'X', cpuRng()).move, 10);
+  assert.equal(L.localBest({ type: 'hilo', lo: 11, hi: 20, guesses: [] }, 'X', cpuRng()).move, 15);
+  assert.equal(L.localBest({ type: 'hilo', lo: 7, hi: 7, guesses: [] }, 'X', cpuRng()).q, 1);
+  const pig = (bank, oppBank, turn) => L.localBest({ type: 'pig', bank: { X: bank, O: oppBank }, turn }, 'X', cpuRng()).move;
+  assert.equal(pig(0, 0, null), 'roll', 'a move starts with a roll');
+  assert.equal(pig(0, 0, { by: 'X', rolls: [3], pot: 3 }), 'roll', 'keeps rolling with a small pot');
+  assert.equal(pig(0, 0, { by: 'X', rolls: [6, 4], pot: 10 }), 'bank', 'banks around 8 to 10');
+  assert.equal(pig(0, 10, { by: 'X', rolls: [6, 4], pot: 10 }), 'roll', 'bolder when behind');
+  assert.equal(pig(10, 0, { by: 'X', rolls: [4, 3], pot: 7 }), 'bank', 'safer when ahead');
+  assert.equal(pig(0, 0, { by: 'X', rolls: [1, 2, 3, 4], pot: 10 }), 'bank', 'too many bust numbers');
+  assert.equal(pig(0, 0, { by: 'X', rolls: [1, 2, 3, 4, 5, 6], pot: 21 }), 'bank', 'never a seventh roll');
+  assert.equal(pig(15, 0, { by: 'X', rolls: [5], pot: 5 }), 'bank', 'always banks a win');
+  assert.equal(pig(18, 0, { by: 'X', rolls: [2], pot: 2 }), 'bank');
+});
+
+test('candy race and dice race: the odds are read from the public state', () => {
+  const E = L.candyExpected(['red', 'green', 'yellow', 'red', 'green', 'yellow', 'red', 'green', 'yellow', 'red', 'green', 'yellow']);
+  assert.ok(E[0] > 1 && E[0] < 4, `start: ${E[0]} spins expected`);
+  assert.ok(E[12] >= 1 && E[12] < E[0], 'closer to the finish, fewer spins');
+  assert.equal(E[13], 0);
+  const noBlue = L.localBest({ type: 'candy', track: ['red', 'green', 'yellow', 'red', 'green', 'yellow', 'red', 'green', 'yellow', 'red', 'green', 'yellow'], pos: { X: 9, O: -1 } }, 'X', cpuRng());
+  assert.equal(noBlue.q, 0.5, 'blue or red from space 10 goes straight to the finish');
+  assert.equal(L.localBest({ type: 'dice', totals: { X: 12, O: 0 } }, 'X', cpuRng()).q, 4 / 6);
+  assert.equal(L.localBest({ type: 'dice', totals: { X: 0, O: 0 } }, 'X', cpuRng()).q, 0);
+  assert.ok(L.needsOf({ type: 'dice', totals: { X: 12, O: 0 } }, 'X') < L.needsOf({ type: 'dice', totals: { X: 0, O: 0 } }, 'X'));
+  assert.equal(L.winChance(0, 3), 1); assert.equal(L.winChance(3, 0), 0); assert.equal(L.winChance(2, 2), 0.5); assert.equal(L.winChance(Infinity, Infinity), 0.5);
+});
+
+test('the computer prefers finishing a square it is close to over one it is far from, and ignores lost squares', () => {
+  const close = tttOf('X', 'X', null, 'O', null, null, null, null, null);      // one move from claiming
+  const far = tttOf(null, null, null, null, null, null, null, null, null);
+  const lost = tttOf('O', 'O', null, 'X', 'O', 'X', 'X', null, null);         // O finishes at 2 or 8: nothing X does saves it
+  const st = cpuMatch('X', [far, close, 'dice', lost, 'ttt', 'ttt', 'ttt', 'ttt', 'ttt']);
+  const m = L.cpuMove(st, cpuRng());
+  assert.equal(m.square, 1);
+  assert.equal(m.move, 2);
+  // with the near square gone, disrupting a square O is about to take beats an empty square
+  st.squares[1].owner = 'X';
+  st.squares[3].mini = tttOf('O', 'O', null, 'X', null, null, null, null, 'X');   // one threat, and the block builds X a line
+  const m2 = L.cpuMove(st, cpuRng());
+  assert.equal(m2.square, 3, 'disrupts the square O is about to take');
+  assert.equal(m2.move, 2);
+  // the lost square never draws a move while anything else is open
+  st.squares[3].mini = lost;
+  for (let k = 0; k < 3; k++) {
+    const mk = L.cpuMove(st, lcg(k));
+    assert.notEqual(mk.square, 3, 'no move wasted on a lost square');
+  }
+});
+
+test('computer against computer: matches finish, every move is legal, and the state stays plain JSON', () => {
+  const rng = lcg(2025);
+  const winners = { X: 0, O: 0 }, seen = new Set();
+  for (let game = 0; game < 8; game++) {
+    const st = L.newMatch(rng, { mode: 'cpu', human: game % 2 ? 'X' : 'O' });
+    assert.equal(st.cpu, game % 2 ? 'O' : 'X');
+    st.cpu = null;                                   // both sides are played by cpuMove below
+    let guard = 0;
+    while (!st.winner && guard++ < 600) {
+      const m = L.cpuMove(st, rng);
+      const r = L.playMove(st, m.square, m.move, rng);
+      assert.equal(r.ok, true, `${st.squares[m.square].mini.type}: ${JSON.stringify(m.move)} refused (${r.reason})`);
+      seen.add(st.flash.type);
+      assert.deepEqual(JSON.parse(JSON.stringify(st)), st);
+      L.endFlash(st);
+    }
+    assert.ok(st.winner, `match ${game} finishes (${guard} moves)`);
+    assert.equal(st.screen, 'win');
+    winners[st.winner]++;
+  }
+  assert.equal(winners.X + winners.O, 8);
+  assert.ok(seen.size >= 8, `the computer played ${seen.size} different games`);
 });
