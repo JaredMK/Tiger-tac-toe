@@ -7,7 +7,7 @@ inline CSS and JS, no dependencies, no build step, works offline.
 
 Open `index.html` in a browser (or serve the folder with any static server) and play.
 
-A main menu comes first: "Play vs Computer" or "2 Players". The setup screen that follows takes the
+A main menu comes first: "Play vs Computer", "2 Players" or "Play Online". The setup screen that follows takes the
 names (defaults X and O; the computer is called "Computer"), against the computer which side you play
 (X goes first), and under "Advanced" the mini-games in the mix (all on by default, at least one must
 stay on). "New match" after a game brings you back to setup with everything kept, and "Main menu" is a
@@ -52,6 +52,32 @@ Each square is assigned one of these at random when the match starts (duplicates
 
 Hidden information (the Wordle and Hangman words, the Higher/lower number, the Memory cards, the
 Battleship cell) is never shown on the board or in a mini-game before it is revealed.
+
+## Playing online
+
+"Play Online" offers "Host game" and "Join game". The host gets a five-letter room code (no look-alike
+letters) and a Share button that sends a link to the game with the code filled in; "Waiting for
+friend…" shows until the guest connects. The guest enters a name and the code, or opens the shared
+link. The host picks a side and the mini-games, and starts once the guest is in; both phones then show
+the same board.
+
+Only the player on the move can act; the other can still open squares to look, and sees "Waiting
+for [name]…". Each player's moves play on the other phone the way computer moves do: a zoom into the
+square, the animation, a short hold, back to the board, Pig rolls one by one. "New match" on the win
+screen is a rematch in the same room with the same settings.
+
+The two browsers talk directly through PeerJS (loaded from a CDN only when online play is chosen,
+using its free public signalling server; there is no backend). The host's browser is the single
+source of truth: it holds the whole game and makes every random choice, the guest only sends move
+requests, and after each change the host sends both screens a public snapshot with every secret of an
+unclaimed square left out (hidden words, numbers, the ship, the treasure, face-down cards), so the
+guest never holds a hidden value before it is revealed.
+
+If no connection comes within about ten seconds the screen says so and suggests Wi-Fi on both phones.
+If the connection drops mid-match, both phones show "Connection lost — reconnecting…" and keep
+trying; the guest can also rejoin with the same code and the host resends the current state. The
+match lives on the host's phone, whose state is saved locally, so even a reload of the host's page
+reopens the room with the same code.
 
 ## Playing against the computer
 
