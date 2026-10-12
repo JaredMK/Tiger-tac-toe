@@ -1,8 +1,11 @@
-# Tiger-Tac-Toe
+# Tic Tac Chaos
 
 Play it: https://jaredmk.github.io/Tiger-tac-toe/
 
-A two-player, pass-and-play game for one phone, against the computer, or online. The whole game is
+A two-player, pass-and-play game for one phone, against the computer, or online, drawn in a
+1930s rubber-hose cartoon style: thick wobbly ink lines, flat colours on cream paper, an X and an O
+with faces, and a squash-and-stretch stamp with POW! and CHAOS! bursts when a square is won. The
+fonts (Luckiest Guy, Patrick Hand) are embedded, so the look survives offline. The whole game is
 `index.html`: inline CSS and JS, no build step; the local modes work offline. Online play uses a
 Firebase Realtime Database (see "Setting up Firebase").
 
