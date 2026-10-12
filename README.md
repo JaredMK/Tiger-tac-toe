@@ -41,6 +41,8 @@ Each square is assigned one of these at random when the match starts (duplicates
 | Memory | 3×3 face-down cards with exactly one matching pair; a move flips two cards for 2 seconds. Flipping the pair wins |
 | Candy race | A winding track of 12 randomly coloured spaces (any three in a row are all different colours); a spin of the colour wheel hops your token to the next space of that colour. No such space ahead means you reach the finish and win |
 | Coin flip | Six coins showing X or O, three of each to start. Pick 1 to 3 of the other side's coins and flip them; each lands X or O at random. All six the same wins for that symbol's player |
+| Pig | Each player has a banked score. A move is a whole push-your-luck turn: roll a die, and a number not yet rolled this turn joins the pot; then roll again or bank. Banking adds the pot to your score and ends the move; a repeated number busts, losing the pot (at most six rolls). First to a banked 20 wins |
+| Treasure hunt | 5×5 grid with one hidden treasure. A move digs a cell: the treasure wins, otherwise the cell shows its distance to the treasure in steps up, down, left or right, coloured hot to cold. Everything dug stays visible |
 
 Hidden information (the Wordle and Hangman words, the Higher/lower number, the Memory cards, the
 Battleship cell) is never shown on the board or in a mini-game before it is revealed.

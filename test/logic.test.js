@@ -10,7 +10,7 @@ const vm = require('node:vm');
 const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 const src = html.match(/<script id="logic">([\s\S]*?)<\/script>/)[1];
 const L = vm.runInThisContext(
-  src + '\n;({ TYPES, INFO, C4, HEX_N, HILO, DICE_GOAL, MEMORY, CANDY, COINS, NAME_MAX, WORDS5, WORDS_HANG, VALID5, LINES, other, newMini, newState,' +
+  src + '\n;({ TYPES, INFO, C4, HEX_N, HILO, DICE_GOAL, MEMORY, CANDY, COINS, PIG, HUNT, NAME_MAX, WORDS5, WORDS_HANG, VALID5, LINES, other, newMini, newState, huntDist,' +
   ' startMatch, newMatch, defaultSetup, enabledGames, playerName, findRun, applyMove, mainResult, playMove, endFlash, wordleMarks, hexNeighbors,' +
   ' hexPath, memoryDeck, candyTrack, canMove, anyMove })',
   { filename: 'index.html#logic' }
@@ -645,6 +645,156 @@ test('coins: X can keep flipping across turns and claim the square while O plays
   assert.equal(L.canMove(st.squares[0].mini, 'O'), true);
 });
 
+// ==================================== Pig ====================================
+const die = (...faces) => seq(...faces.map(n => pick(n - 1, 6)));   // rolls come out in this order
+
+test('pig: a roll adds a new number to the pot and keeps the turn; the bank is untouched until Bank', () => {
+  const m = mini('pig');
+  assert.deepEqual(m.bank, { X: 0, O: 0 });
+  assert.equal(m.turn, null);
+  assert.deepEqual(L.applyMove(m, 'X', 'roll', die(4)), { ok: true, outcome: 'continue', note: 'roll', again: true });
+  assert.deepEqual(m.turn, { by: 'X', rolls: [4], pot: 4 });
+  assert.deepEqual(m.last, { by: 'X', kind: 'roll', roll: 4, rolls: [4], pot: 4 });
+  assert.equal(L.applyMove(m, 'X', 'roll', die(2)).again, true);
+  assert.deepEqual(m.turn, { by: 'X', rolls: [4, 2], pot: 6 });
+  assert.deepEqual(m.bank, { X: 0, O: 0 }, 'nothing is banked yet');
+  assert.deepEqual(L.applyMove(m, 'O', 'roll', die(1)), { ok: false, reason: 'busy' }, 'the other player cannot cut in');
+  for (const bad of ['x', 1, null, ['roll']]) assert.equal(L.applyMove(m, 'X', bad).ok, false);
+});
+
+test('pig: a repeated number always busts, loses only this turn\'s pot and ends the move', () => {
+  for (let n = 1; n <= 6; n++) {
+    const m = mini('pig');
+    m.bank.X = 7;
+    L.applyMove(m, 'X', 'roll', die(n));
+    const others = [1, 2, 3, 4, 5, 6].filter(k => k !== n);
+    L.applyMove(m, 'X', 'roll', die(others[0]));
+    const r = L.applyMove(m, 'X', 'roll', die(n));
+    assert.deepEqual(r, { ok: true, outcome: 'continue', note: 'bust' }, `rolling ${n} twice`);
+    assert.equal(m.turn, null, 'the turn is over');
+    assert.equal(m.bank.X, 7, 'the banked score survives');
+    assert.deepEqual(m.last, { by: 'X', kind: 'bust', roll: n, rolls: [n, others[0], n], pot: n + others[0] });
+  }
+});
+
+test('pig: Bank needs a pot, adds it to the banked score, ends the move, and 20 wins', () => {
+  const m = mini('pig');
+  assert.deepEqual(L.applyMove(m, 'X', 'bank'), { ok: false, reason: 'nopot' }, 'nothing to bank before rolling');
+  L.applyMove(m, 'X', 'roll', die(6)); L.applyMove(m, 'X', 'roll', die(5));
+  assert.deepEqual(L.applyMove(m, 'X', 'bank'), { ok: true, outcome: 'continue', note: 'bank' });
+  assert.deepEqual(m.bank, { X: 11, O: 0 });
+  assert.equal(m.turn, null);
+  assert.deepEqual(L.applyMove(m, 'X', 'bank'), { ok: false, reason: 'nopot' }, 'a new move starts with a roll');
+  L.applyMove(m, 'O', 'roll', die(3)); L.applyMove(m, 'O', 'bank');
+  assert.deepEqual(m.bank, { X: 11, O: 3 }, 'each player has their own bank');
+  L.applyMove(m, 'X', 'roll', die(6)); L.applyMove(m, 'X', 'roll', die(3));
+  assert.equal(L.applyMove(m, 'X', 'bank').outcome, 'win', '11 + 9 = 20');
+  assert.equal(m.bank.X, 20);
+});
+
+test('pig: six different numbers fill the pot to 21 and a seventh roll is refused', () => {
+  const m = mini('pig');
+  for (const n of [3, 1, 4, 6, 2]) assert.equal(L.applyMove(m, 'X', 'roll', die(n)).again, true);
+  assert.equal(L.applyMove(m, 'X', 'roll', die(5)).again, true);
+  assert.deepEqual(m.turn, { by: 'X', rolls: [3, 1, 4, 6, 2, 5], pot: 21 });
+  assert.deepEqual(L.applyMove(m, 'X', 'roll', die(5)), { ok: false, reason: 'maxrolls' });
+  assert.equal(L.applyMove(m, 'X', 'bank').outcome, 'win');
+  assert.equal(m.bank.X, 21);
+});
+
+test('pig: through playMove a roll locks the player to the square and only Bank or a bust passes the turn', () => {
+  const st = matchWith(['pig', 'ttt']);
+  const r = L.playMove(st, 0, 'roll', die(5));
+  assert.equal(r.ok, true);
+  assert.equal(st.flash.kind, 'again');
+  assert.equal(st.flash.roll, 5);
+  assert.equal(st.flash.pot, 5);
+  assert.equal(st.turn, 'X');
+  assert.equal(st.lock, 0);
+  L.endFlash(st);
+  assert.equal(st.screen, 'mini');
+  assert.deepEqual(L.playMove(st, 1, 0), { ok: false, reason: 'locked' }, 'must finish the turn first');
+  assert.equal(turn(st, 0, 'roll', die(2)).kind, 'again');
+  const bank = turn(st, 0, 'bank');
+  assert.equal(bank.kind, 'move');
+  assert.equal(bank.note, 'bank');
+  assert.equal(bank.pot, 7);
+  assert.equal(bank.bank, 7);
+  assert.equal(st.lock, null);
+  assert.equal(st.turn, 'O');
+  assert.equal(st.screen, 'board');
+  turn(st, 0, 'roll', die(4));
+  const bust = turn(st, 0, 'roll', die(4));
+  assert.equal(bust.kind, 'move');
+  assert.equal(bust.note, 'bust');
+  assert.equal(bust.pot, 4);
+  assert.equal(st.lock, null);
+  assert.equal(st.turn, 'X');
+  assert.deepEqual(st.squares[0].mini.bank, { X: 7, O: 0 });
+});
+
+test('pig: X can bank up to 20 over several turns while O plays elsewhere (lopsided)', () => {
+  const st = matchWith(['pig', 'ttt']);
+  turn(st, 0, 'roll', die(6)); turn(st, 0, 'roll', die(5)); turn(st, 0, 'bank'); turn(st, 1, 0);
+  turn(st, 0, 'roll', die(6)); turn(st, 0, 'roll', die(1)); turn(st, 0, 'bank'); turn(st, 1, 1);
+  assert.deepEqual(st.squares[0].mini.bank, { X: 18, O: 0 });
+  turn(st, 0, 'roll', die(2));
+  const f = turn(st, 0, 'bank');
+  assert.equal(f.kind, 'claim');
+  assert.equal(st.squares[0].owner, 'X');
+  assert.equal(st.squares[0].mini.bank.X, 20);
+});
+
+// ================================ Treasure hunt ================================
+test('hunt: the treasure comes from the rng and distances are steps up, down, left and right', () => {
+  for (let k = 0; k < 25; k++) assert.equal(L.newMini('hunt', seq(pick(k, 25))).treasure, k);
+  assert.equal(L.huntDist(12, 12), 0);
+  assert.equal(L.huntDist(12, 13), 1);
+  assert.equal(L.huntDist(12, 7), 1);
+  assert.equal(L.huntDist(12, 0), 4);
+  assert.equal(L.huntDist(12, 24), 4);
+  assert.equal(L.huntDist(0, 24), 8);
+  assert.equal(L.huntDist(4, 20), 8);
+  assert.equal(L.huntDist(6, 18), 4);
+  for (let a = 0; a < 25; a++) for (let b = 0; b < 25; b++) {
+    assert.equal(L.huntDist(a, b), L.huntDist(b, a));
+    assert.ok(L.huntDist(a, b) >= 0 && L.huntDist(a, b) <= 8);
+  }
+});
+
+test('hunt: a dig marks the cell for both players, a treasure dig wins, dug cells cannot be dug again', () => {
+  const m = L.newMini('hunt', seq(pick(12, 25)));
+  assert.deepEqual(L.applyMove(m, 'X', 0), { ok: true, outcome: 'continue', note: 'dig' });
+  assert.equal(m.dug[0], 'X');
+  assert.equal(L.applyMove(m, 'O', 0).ok, false);
+  assert.equal(L.applyMove(m, 'O', 25).ok, false);
+  assert.equal(L.applyMove(m, 'O', 7).outcome, 'continue');
+  const r = L.applyMove(m, 'O', 12);
+  assert.equal(r.outcome, 'win');
+  assert.deepEqual(r.cells, [12]);
+  assert.equal(m.dug[12], 'O');
+});
+
+test('hunt: digging every other cell never ends the game, the treasure always does (lopsided)', () => {
+  for (const t of [0, 7, 12, 24]) {
+    const st = matchWith(['hunt']);
+    st.squares[0].mini = L.newMini('hunt', seq(pick(t, 25)));
+    for (let i = 0; i < 25; i++) {
+      if (i === t) continue;
+      st.turn = 'X';
+      const f = turn(st, 0, i);
+      assert.equal(f.kind, 'move');
+      assert.equal(f.dist, L.huntDist(t, i));
+      assert.ok(f.dist >= 1);
+    }
+    st.turn = 'X';
+    const f = turn(st, 0, t);
+    assert.equal(f.kind, 'claim');
+    assert.equal(f.dist, 0);
+    assert.equal(st.squares[0].owner, 'X');
+  }
+});
+
 // ================================ Setup / match flow ================================
 test('setup: the app opens on the setup screen with default names and every game ticked', () => {
   const st = L.newState(lcg(1));
@@ -652,8 +802,8 @@ test('setup: the app opens on the setup screen with default names and every game
   assert.equal(st.screen, 'setup');
   assert.deepEqual(st.setup.names, { X: 'X', O: 'O' });
   assert.deepEqual(L.enabledGames(st.setup), L.TYPES);
-  assert.equal(L.TYPES.length, 11);
-  assert.ok(st.setup.games.coins, 'Coin flip is on by default');
+  assert.equal(L.TYPES.length, 13);
+  assert.ok(st.setup.games.coins && st.setup.games.pig && st.setup.games.hunt, 'the newest games are on by default');
   for (const t of L.TYPES) assert.ok(L.INFO[t] && L.INFO[t].name && L.INFO[t].hint, `info for ${t}`);
   assert.equal(L.playerName(st, 'X'), 'X');
 });
@@ -850,6 +1000,12 @@ function randomMove(m, rng, p) {
       const opp = m.coins.map((c, k) => (c !== p ? k : -1)).filter(k => k >= 0).sort(() => rng() - 0.5);
       return opp.slice(0, 1 + Math.floor(rng() * Math.min(3, opp.length)));
     }
+    case 'pig': {
+      if (!m.turn) return 'roll';
+      if (m.turn.rolls.length >= L.PIG.maxRolls) return 'bank';
+      return rng() < 0.5 ? 'roll' : 'bank';
+    }
+    case 'hunt': return pickFrom(empties(m.dug, c => !c));
   }
   throw new Error('no move for ' + m.type);
 }

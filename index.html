@@ -174,6 +174,9 @@ b.X { color: var(--x); } b.O { color: var(--o); }
 .tcoin i { width: 12cqw; height: 12cqw; border-radius: 50%; display: grid; place-items: center; font-size: 8cqw; font-weight: 900; line-height: 1; color: var(--bg); }
 .tcoin i.X { background: var(--x); }
 .tcoin i.O { background: var(--o); }
+.tg.g5x5 { grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(5, 1fr); width: 62px; height: 62px; width: 62cqw; height: 62cqw; gap: 1.5cqw; }
+.tg.g5x5 i { display: grid; place-items: center; border-radius: 1.5cqw; background: var(--panel-2); font-size: 7cqw; font-weight: 800; line-height: 1; }
+.tg.g5x5 i svg { width: 80%; height: 80%; }
 
 .foot {
   flex: none; height: var(--foot); width: 100%; max-width: 560px;
@@ -359,6 +362,38 @@ b.X { color: var(--x); } b.O { color: var(--o); }
 .coin.sel { box-shadow: 0 0 0 4px var(--text), 0 3px 6px rgba(0, 0, 0, .4); transform: translateY(-4px); }
 .coin.flip { animation: coinflip .9s cubic-bezier(.3, .7, .3, 1) both; }
 .coin.flip b { animation: appear .9s step-end both; }
+
+.g-pig { width: var(--g); display: flex; flex-direction: column; gap: 12px; }
+.pigscores { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pscore { background: var(--panel); border-radius: 14px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.pscore .nm { font-weight: 800; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pscore .val { font-size: 26px; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; }
+.pscore .val small { font-size: 13px; color: var(--muted); font-weight: 700; }
+.pscore .bar { height: 8px; border-radius: 999px; background: var(--panel-2); overflow: hidden; }
+.pscore .bar i { display: block; height: 100%; border-radius: 999px; }
+.pscore.X .bar i { background: var(--x); }
+.pscore.O .bar i { background: var(--o); }
+.pscore.now { box-shadow: inset 0 0 0 2px currentColor; }
+.pscore.X.now { color: var(--x); }
+.pscore.O.now { color: var(--o); }
+.pscore.now .val, .pscore.now .nm { color: var(--text); }
+.pigturn { background: var(--panel); border-radius: 14px; padding: 10px 12px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.faces { display: flex; gap: 6px; }
+.face { width: 38px; height: 38px; border-radius: 9px; background: var(--panel-2); display: grid; place-items: center; font-weight: 800; font-size: 16px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.face.hit { background: rgba(255, 107, 107, .22); color: var(--x); box-shadow: inset 0 0 0 2px var(--x); }
+.pot { font-weight: 800; font-size: 18px; }
+.pot span { color: var(--muted); font-weight: 700; font-size: 14px; }
+.pigbtns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.big.bank { background: var(--text); color: var(--bg); }
+.die.roll { animation: dieroll .6s ease-out both; }
+.die.roll svg { animation: appear .6s step-end both; }
+
+.g-hunt { --hg: min(var(--gw), calc(var(--gh) - 30px)); width: var(--hg); display: flex; flex-direction: column; gap: 10px; }
+.hgrid { width: var(--hg); height: var(--hg); display: grid; grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(5, 1fr); gap: 6px; }
+.dig { border: 0; padding: 0; border-radius: 10px; background: var(--panel-2); display: grid; place-items: center; font-weight: 900; font-size: calc(var(--g) * .07); line-height: 1; }
+.dig.found svg { width: 60%; height: 60%; }
+.heat { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: var(--muted); }
+.heat i { flex: 1; height: 8px; border-radius: 999px; background: linear-gradient(90deg, #ff4d4d, #ffb627, #7fd36b, #4aa3e0, #3b6fd6); }
 .g-candy { width: var(--g); display: flex; flex-direction: column; gap: 10px; }
 .cchip { height: 30px; border-radius: 10px; background: var(--panel); display: flex; align-items: center; gap: 8px; padding: 0 12px; font-weight: 800; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
 .ctrack { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
@@ -385,7 +420,7 @@ b.tok { color: #fff; }
 }
 .wheel.spin { animation: spin 1.1s cubic-bezier(.15, .75, .25, 1) both; }
 .wheelwrap .dielab { margin-top: 6px; }
-.flash.late, .flash.late .card, .flash.late .toast { animation-delay: 1.1s; animation-fill-mode: both; }
+.flash.late, .flash.late .card, .flash.late .toast { animation-delay: var(--late, 1.1s); animation-fill-mode: both; }
 
 .g-hilo { width: var(--g); display: flex; flex-direction: column; gap: 14px; }
 .range { background: var(--panel); border-radius: 16px; padding: 14px; text-align: center; }
@@ -440,6 +475,7 @@ b.tok { color: #fff; }
 .big-g.X { color: var(--x); }
 .big-g.O { color: var(--o); }
 .big-g svg { width: 76px; height: 76px; margin: 0 auto; color: var(--muted); }
+.card .big-g > svg[fill="#1a1a1a"] { background: var(--card); border-radius: 18px; padding: 8px; }
 .card h2 { margin: 10px 0 6px; font-size: 22px; }
 .card p { margin: 0; color: var(--muted); font-weight: 600; font-size: 15px; }
 .card .row { display: flex; gap: 10px; justify-content: center; margin-top: 18px; }
@@ -475,6 +511,7 @@ b.tok { color: #fff; }
 @keyframes zoomin { from { transform: scale(.94); opacity: 0; } }
 @keyframes shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
 @keyframes coinflip { to { transform: rotateY(1080deg); } }
+@keyframes dieroll { 0% { transform: rotate(0) scale(.6); } 50% { transform: rotate(200deg) scale(1.12); } 100% { transform: rotate(360deg) scale(1); } }
 @keyframes appear { from { opacity: 0; } to { opacity: 1; } }
 @keyframes vanish { to { opacity: 0; transform: scale(.4); } }
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(var(--to, 0deg)); } }
@@ -490,7 +527,7 @@ b.tok { color: #fff; }
  * Everything about a match lives in one plain object (see newMatch); the UI
  * only ever calls playMove / endFlash and re-renders from that object.
  */
-const TYPES = ['ttt', 'c4', 'bs', 'wordle', 'hangman', 'hex', 'hilo', 'dice', 'memory', 'candy', 'coins'];
+const TYPES = ['ttt', 'c4', 'bs', 'wordle', 'hangman', 'hex', 'hilo', 'dice', 'memory', 'candy', 'coins', 'pig', 'hunt'];
 const INFO = {
   ttt:         { name: 'Tic-Tac-Toe',  hint: 'Three in a row wins' },
   c4:          { name: 'Connect 4',    hint: 'Pieces drop. Four in a row wins' },
@@ -503,6 +540,8 @@ const INFO = {
   memory:      { name: 'Memory',       hint: 'Flip two cards. Find the matching pair' },
   candy:       { name: 'Candy Race',   hint: 'Spin, then hop to the next space of that colour' },
   coins:       { name: 'Coin Flip',    hint: "Flip 1 to 3 of the other side's coins. All six the same wins" },
+  pig:         { name: 'Pig',          hint: 'Roll and bank. A repeated number busts the pot. First to 20 wins' },
+  hunt:        { name: 'Treasure Hunt', hint: 'Dig a cell: the number is its distance to the treasure. Dig it up to win' },
 };
 const C4 = { cols: 5, rows: 6, k: 4 };
 const HEX_N = 4;
@@ -510,6 +549,8 @@ const HILO = { lo: 1, hi: 20 };
 const CANDY = { len: 12, colors: ['red', 'yellow', 'green', 'blue'], gap: 3 };   // same colour at least 3 spaces apart
 const NAME_MAX = 12;
 const COINS = { n: 6, max: 3 };
+const PIG = { goal: 20, maxRolls: 6 };
+const HUNT = { n: 5 };
 const DICE_GOAL = 15;
 const MEMORY = { shapes: ['circle', 'square', 'triangle', 'diamond'], colors: ['green', 'yellow', 'purple', 'orange'] };
 const LINES = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6]];
@@ -735,6 +776,10 @@ function hexPath(cells, p) {
 // always true; it stays so the "nobody can move" reset and the skipped turn keep a single home.
 function canMove(mini, p) { return true; }
 function anyMove(state, p) { return state.squares.some(s => !s.owner && canMove(s.mini, p)); }
+// Treasure hunt: steps up/down/left/right between two cells of the 5x5 grid.
+function huntDist(a, b) {
+  return Math.abs(Math.floor(a / HUNT.n) - Math.floor(b / HUNT.n)) + Math.abs(a % HUNT.n - b % HUNT.n);
+}
 // Candy race track: 12 random colours where any three consecutive spaces differ, so the same colour
 // is never closer than 3 spaces to itself.
 function candyTrack(rng) {
@@ -760,6 +805,8 @@ function newMini(type, rng) {
     case 'memory':      return { type, cards: memoryDeck(rng), flips: 0, last: null };
     case 'candy':       return { type, track: candyTrack(rng), pos: { X: -1, O: -1 }, last: null };
     case 'coins':       return { type, coins: shuffle(['X', 'X', 'X', 'O', 'O', 'O'], rng), last: null };
+    case 'pig':         return { type, bank: { X: 0, O: 0 }, turn: null, last: null };   // turn = the push-your-luck turn in progress
+    case 'hunt':        return { type, treasure: randInt(rng, HUNT.n * HUNT.n), dug: new Array(HUNT.n * HUNT.n).fill(null), last: null };
   }
   throw new Error('unknown mini-game: ' + type);
 }
@@ -949,6 +996,39 @@ function applyMove(mini, p, m, rng) {
       if (mini.coins.every(c => c === sym)) return { ok: true, outcome: 'win', winner: sym, cells: [0, 1, 2, 3, 4, 5] };
       return { ok: true, outcome: 'continue', note: 'flip' };
     }
+    case 'pig': {
+      // One move is a whole push-your-luck turn: every successful roll hands the same player the
+      // next choice (again), and only a bank or a bust ends the move.
+      if (m !== 'roll' && m !== 'bank') return { ok: false, reason: 'bad' };
+      const t = mini.turn;
+      if (t && t.by !== p) return { ok: false, reason: 'busy' };
+      if (m === 'bank') {
+        if (!t || !t.pot) return { ok: false, reason: 'nopot' };
+        mini.bank[p] += t.pot;
+        mini.last = { by: p, kind: 'bank', pot: t.pot, rolls: t.rolls, roll: t.rolls[t.rolls.length - 1] };
+        mini.turn = null;
+        if (mini.bank[p] >= PIG.goal) return { ok: true, outcome: 'win' };
+        return { ok: true, outcome: 'continue', note: 'bank' };
+      }
+      if (t && t.rolls.length >= PIG.maxRolls) return { ok: false, reason: 'maxrolls' };   // a seventh roll can only bust
+      const n = 1 + randInt(rng || Math.random, 6);
+      if (t && t.rolls.includes(n)) {
+        mini.last = { by: p, kind: 'bust', roll: n, rolls: t.rolls.concat(n), pot: t.pot };   // the pot is lost, the bank is not
+        mini.turn = null;
+        return { ok: true, outcome: 'continue', note: 'bust' };
+      }
+      const rolls = (t ? t.rolls : []).concat(n), pot = (t ? t.pot : 0) + n;
+      mini.turn = { by: p, rolls, pot };
+      mini.last = { by: p, kind: 'roll', roll: n, rolls, pot };
+      return { ok: true, outcome: 'continue', note: 'roll', again: true };
+    }
+    case 'hunt': {
+      if (!idx(HUNT.n * HUNT.n)) return { ok: false, reason: 'bad' };
+      if (mini.dug[m]) return { ok: false, reason: 'taken' };
+      mini.dug[m] = p; mini.last = m;
+      if (m === mini.treasure) return { ok: true, outcome: 'win', cells: [m] };
+      return { ok: true, outcome: 'continue', note: 'dig' };
+    }
   }
   return { ok: false, reason: 'bad' };
 }
@@ -997,6 +1077,8 @@ function playMove(state, i, m, rng) {
     case 'memory': flash.reveal = [m[0], m[1]]; break;
     case 'candy': flash.color = mini.last.color; flash.from = mini.last.from; flash.to = mini.last.to; break;
     case 'coins': flash.n = m.length; break;
+    case 'pig': flash.roll = mini.last.roll; flash.pot = mini.last.pot; flash.rolls = mini.last.rolls; flash.bank = mini.bank[p]; break;
+    case 'hunt': flash.dist = huntDist(mini.treasure, m); break;
   }
   if (outcome === 'win') {
     const w = res.winner || p;                   // a mini-game may hand the square to the other player
@@ -1046,7 +1128,9 @@ function endFlash(state) {
 const KEY = 'insane-tac-toe.v4';
 const FLASH_MS = { move: 700, again: 650, claim: 1500, draw: 1800, match: 1300 };
 const MEMORY_MS = 2000;   // the two flipped cards stay up this long
-const SPIN_MS = { candy: 1100, coins: 900 };   // the candy wheel's spin, the coins' tumble
+const SPIN_MS = { candy: 1100, coins: 900, pig: 600 };   // the candy wheel's spin, the coins' tumble, the pig die's roll
+const HUNT_COLORS = [['#ffd166', '#1a1a1a'], ['#ff4d4d', '#fff'], ['#ff7a33', '#fff'], ['#ffb627', '#1a1a1a'], ['#d9d94a', '#1a1a1a'], ['#7fd36b', '#1a1a1a'], ['#4cc9a0', '#1a1a1a'], ['#4aa3e0', '#fff'], ['#3b6fd6', '#fff']];
+const HEAT = ['Found!', 'Boiling', 'Hot', 'Warm', 'Cool', 'Cool', 'Cold', 'Cold', 'Freezing'];
 const app = document.getElementById('app');
 let state = load() || newState();
 let flashTimer = null, noticeTimer = null;
@@ -1065,7 +1149,10 @@ const ICONS = {
   memory: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><rect x="3" y="6" width="11" height="15" rx="2"/><path d="M8 3h11a2 2 0 0 1 2 2v12"/></svg>',
   candy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17M3.5 12h17M6 6l12 12M18 6 6 18" stroke-width="1.6"/></svg>',
   coins: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/></svg>',
+  pig: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M3 10h18v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 3v7M8.5 6.5 12 3l3.5 3.5" stroke-linecap="round"/></svg>',
+  hunt: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 3h12l4 6-10 12L2 9z"/></svg>',
 };
+const GEM = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 3h12l4 6-10 12L2 9z"/><path d="M2 9h20" stroke="rgba(0,0,0,.25)" stroke-width="1.5"/></svg>';
 const CANDY_ORDER = [0, 1, 2, 3, 4, 5, 11, 10, 9, 8, 7, 6];   // the track snakes: left to right, then back
 const BOAT = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M2.5 14.5h19l-2.6 4.6a2 2 0 0 1-1.7 1H6.8a2 2 0 0 1-1.7-1z"/><path d="M11 3h2v10h-2z"/><path d="M13 4.5 18.5 11H13z"/><path d="M5 12.5h14v2H5z"/></svg>';
 const RESET = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 3v5h-5"/></svg>';
@@ -1181,6 +1268,12 @@ function thumb(mini, final) {
       return `<div class="tcandy"><div class="bar">${tk(-1)}</div><div class="grid">${CANDY_ORDER.map(i => `<i class="${mini.track[i]}">${tk(i)}</i>`).join('')}</div></div>`;
     }
     case 'coins': return `<div class="tcoin">${mini.coins.map(c => `<i class="${c}">${c}</i>`).join('')}</div>`;
+    case 'pig': return `<div class="tdice">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><div class="bar"><i style="width:${Math.min(100, mini.bank[p] / PIG.goal * 100)}%"></i></div><span>${mini.bank[p]}</span></div>`).join('')}</div>`;
+    case 'hunt': return `<div class="tg g5x5">${mini.dug.map((d, i) => {
+      if (!d) return '<i></i>';
+      const k = huntDist(mini.treasure, i), [bg, fg] = HUNT_COLORS[k];
+      return `<i style="background:${bg};color:${fg}">${k ? k : GEM}</i>`;
+    }).join('')}</div>`;
   }
   return '';
 }
@@ -1319,15 +1412,42 @@ function renderMini(sq) {
         <button class="big ${turn}" data-act="move" ${mv(sel)}${locked || !sel.length ? ' disabled' : ''}>Flip${sel.length ? ' ' + sel.length : ''}</button></div>`;
       break;
     }
+    case 'pig': {
+      const t = mini.turn, rolls = t ? t.rolls : [], pot = t ? t.pot : 0;
+      const rolling = f && f.type === 'pig';
+      const score = p => `<div class="pscore ${p}${!view && turn === p ? ' now' : ''}"><div class="nm"><b class="${p}">${N(p)}</b></div><div class="val">${mini.bank[p]} <small>/ ${PIG.goal}</small></div><div class="bar"><i style="width:${Math.min(100, mini.bank[p] / PIG.goal * 100)}%"></i></div></div>`;
+      const faces = [1, 2, 3, 4, 5, 6].map(n => `<span class="face${rolls.includes(n) ? ' hit' : ''}">${n}</span>`).join('');
+      const note = view ? `Won by ${N(sq.owner)}` : rolls.length >= PIG.maxRolls ? 'Six different numbers: bank it!'
+        : rolls.length ? `Rolling ${rolls.slice().sort((a, b) => a - b).join(', ')} again would bust` : `${N(turn)}: roll to start your turn`;
+      const shown = mini.last ? mini.last.roll : null;
+      g = `<div class="g-pig"><div class="pigscores">${score('X')}${score('O')}</div>
+        <div class="pigturn"><div class="faces">${faces}</div><div class="pot">Pot ${pot}${rolls.length ? ` <span>· ${rolls.length} roll${rolls.length === 1 ? '' : 's'}</span>` : ''}</div><div class="dielab">${note}</div></div>
+        <div class="dieWrap"><div class="die${rolling ? ' roll' : ''}">${shown ? dieFace(shown) : '<span class="q">?</span>'}</div></div>
+        <div class="pigbtns"><button class="big ${turn}" data-act="move" ${mv('roll')}${locked || rolls.length >= PIG.maxRolls ? ' disabled' : ''}>${rolls.length ? 'Roll again' : 'Roll'}</button>
+          <button class="big bank" data-act="move" ${mv('bank')}${locked || !pot ? ' disabled' : ''}>Bank${pot ? ' ' + pot : ''}</button></div></div>`;
+      break;
+    }
+    case 'hunt': {
+      g = `<div class="g-hunt"><div class="hgrid">${mini.dug.map((d, i) => {
+        const found = (d || view) && i === mini.treasure;
+        const k = d ? huntDist(mini.treasure, i) : -1;
+        const style = d ? ` style="background:${HUNT_COLORS[k][0]};color:${HUNT_COLORS[k][1]}"` : view && found ? ` style="background:${HUNT_COLORS[0][0]};color:${HUNT_COLORS[0][1]}"` : '';
+        const r = Math.floor(i / HUNT.n) + 1, c = i % HUNT.n + 1;
+        return `<button class="dig${found ? ' found' : ''}${anim === i ? ' pop' : ''}" data-act="move" ${mv(i)}${style} aria-label="Row ${r} column ${c}${found ? ', treasure' : d ? `, ${k} away` : ''}"${d || locked ? ' disabled' : ''}>${found ? GEM : d ? k : ''}</button>`;
+      }).join('')}</div><div class="heat"><span>Hot</span><i></i><span>Cold</span></div></div>`;
+      break;
+    }
   }
   const lock = state.lock != null;
-  let sub = lock ? `<b class="${turn}">${N(turn)}</b> guessed right: go again` : info.hint;
+  let sub = lock ? (mini.type === 'pig' ? `<b class="${turn}">${N(turn)}</b>'s turn in progress: roll again or bank` : `<b class="${turn}">${N(turn)}</b> guessed right: go again`) : info.hint;
   if (view) {
     const secret = mini.type === 'wordle' || mini.type === 'hangman' ? `The word was ${mini.word}`
       : mini.type === 'hilo' ? `The number was ${mini.target}`
       : mini.type === 'bs' ? `The ship was at row ${Math.floor(mini.hidden / 3) + 1}, column ${mini.hidden % 3 + 1}`
       : mini.type === 'memory' ? 'Every card shown'
-      : mini.type === 'coins' ? `All six show ${sq.owner}` : '';
+      : mini.type === 'coins' ? `All six show ${sq.owner}`
+      : mini.type === 'hunt' ? `The treasure was at row ${Math.floor(mini.treasure / HUNT.n) + 1}, column ${mini.treasure % HUNT.n + 1}`
+      : mini.type === 'pig' ? `${mini.bank.X} to ${mini.bank.O}` : '';
     sub = `<b class="${sq.owner}">Won by ${N(sq.owner)}</b>${secret ? ' · ' + secret : ''}`;
   }
   return `<main class="scr mini">
@@ -1341,20 +1461,30 @@ function renderFlash(f) {
     : `<b class="${f.next}">${N(f.next)}</b>'s turn`;
   const who = `<b class="${f.by}">${N(f.by)}</b>`;
   const name = INFO[f.type].name;
-  const late = SPIN_MS[f.type] ? ' late' : '';                     // let the wheel spin or the coins land first
+  const late = SPIN_MS[f.type] ? ' late' : '';                     // let the wheel spin, the coins land or the die settle first
+  const lateStyle = SPIN_MS[f.type] ? ` style="--late:${SPIN_MS[f.type]}ms"` : '';
   if (f.kind === 'match') {
     const w = state.winner;
-    return `<div class="flash${late}" data-act="dismiss"><div class="card"><div class="big-g ${w}">${w}</div><h2>${N(w)} wins the match!</h2><p>Tap to continue</p></div></div>`;
+    return `<div class="flash${late}"${lateStyle} data-act="dismiss"><div class="card"><div class="big-g ${w}">${w}</div><h2>${N(w)} wins the match!</h2><p>Tap to continue</p></div></div>`;
   }
   if (f.kind === 'claim') {
     const w = f.winner || f.by;
-    return `<div class="flash${late}" data-act="dismiss"><div class="card"><div class="big-g ${w}">${w}</div><h2>${N(w)} wins ${name}!</h2><p>Square claimed · ${next}</p></div></div>`;
+    return `<div class="flash${late}"${lateStyle} data-act="dismiss"><div class="card"><div class="big-g ${w}">${w}</div><h2>${N(w)} wins ${name}!</h2><p>Square claimed · ${next}</p></div></div>`;
+  }
+  if (f.type === 'pig' && f.note === 'bust') {
+    return `<div class="flash${late}"${lateStyle} data-act="dismiss"><div class="card"><div class="big-g">${dieFace(f.roll)}</div><h2>Bust!</h2><p>${who} rolled ${f.roll} again · pot of ${f.pot} lost · ${next}</p></div></div>`;
+  }
+  if (f.type === 'pig' && f.note === 'bank') {
+    return `<div class="flash" data-act="dismiss"><div class="card"><div class="big-g ${f.by}">${f.by}</div><h2>Banked ${f.pot}</h2><p>${who} now has ${f.bank} of ${PIG.goal} · ${next}</p></div></div>`;
   }
   if (f.kind === 'draw') {
     const [head, why] = f.note === 'stuck' ? ['Stuck!', 'No legal moves for either player'] : ['Draw!', 'Full board'];
     return `<div class="flash" data-act="dismiss"><div class="card"><div class="big-g">${RESET}</div><h2>${head}</h2><p>${why} · Square reset to ${INFO[f.newType].name} · ${next}</p></div></div>`;
   }
-  if (f.kind === 'again') return `<div class="flash lite" data-act="dismiss"><div class="toast">${who} found ${f.letter} · guess again</div></div>`;
+  if (f.kind === 'again') {
+    const msg = f.type === 'pig' ? `${who} rolled ${f.roll} · pot ${f.pot} · roll again or bank` : `${who} found ${f.letter} · guess again`;
+    return `<div class="flash lite${late}"${lateStyle} data-act="dismiss"><div class="toast">${msg}</div></div>`;
+  }
   let msg;
   switch (f.type) {
     case 'bs': msg = `Miss! · ${next}`; break;
@@ -1365,10 +1495,11 @@ function renderFlash(f) {
     case 'memory': msg = `No match · ${next}`; break;
     case 'candy': msg = `${who} spun ${f.color} · ${next}`; break;
     case 'coins': msg = `${who} flipped ${f.n} · ${next}`; break;
+    case 'hunt': msg = `${who} dug ${f.dist} away · ${HEAT[f.dist]} · ${next}`; break;
     default: msg = `${who} placed · ${next}`;
   }
   const skip = f.type === 'memory' ? '' : ' data-act="dismiss"';   // the two cards stay up for the full 2 seconds
-  return `<div class="flash lite${late}"${skip}><div class="toast">${msg}</div></div>`;
+  return `<div class="flash lite${late}"${lateStyle}${skip}><div class="toast">${msg}</div></div>`;
 }
 
 /* ----- win screen ----- */
@@ -1482,7 +1613,8 @@ function armFlash() {
   if (!state.flash || flashTimer) return;
   const f = state.flash;
   let ms = f.type === 'memory' && f.kind === 'move' ? MEMORY_MS : (FLASH_MS[f.kind] || 800);
-  if (SPIN_MS[f.type]) ms += SPIN_MS[f.type];     // the wheel spins, the coins tumble, then the result shows
+  if (f.type === 'pig' && f.kind === 'move') ms = FLASH_MS.claim;   // a bust or a bank gets a proper card
+  if (SPIN_MS[f.type]) ms += SPIN_MS[f.type];     // the wheel spins, the coins tumble, the die rolls, then the result shows
   flashTimer = setTimeout(dismissFlash, ms);
 }
 function dismissFlash() {
