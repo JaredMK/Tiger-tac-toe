@@ -56,9 +56,18 @@ jobs:
         # Prints only what identifies the key (type, project, account), never the key or a token.
         run: |
           node -e '
-            let k;
-            try { k = JSON.parse(require("fs").readFileSync(process.env.GOOGLE_APPLICATION_CREDENTIALS, "utf8")); }
-            catch (e) { console.log("::error::FIREBASE_SERVICE_ACCOUNT is not valid JSON: paste the whole key file, from { to }."); process.exit(1); }
+            const fs = require("fs"), file = process.env.GOOGLE_APPLICATION_CREDENTIALS, raw = fs.readFileSync(file, "utf8").replace(/^\uFEFF/, "").trim();
+            let k = null;
+            try { k = JSON.parse(raw); } catch (e) {
+              try { k = JSON.parse(Buffer.from(raw, "base64").toString("utf8")); console.log("(the secret is base64: decoded)"); } catch (e2) { /* neither */ }
+            }
+            if (!k) {
+              const shape = { length: raw.length, lines: raw.split("\n").length, startsWithBrace: raw.startsWith("{"), endsWithBrace: raw.endsWith("}"), mentionsServiceAccount: raw.includes("service_account"), mentionsPrivateKey: raw.includes("private_key"), curlyQuotes: /[\u201c\u201d]/.test(raw) };
+              console.log("secret shape (nothing secret):", JSON.stringify(shape));
+              console.log("::error::FIREBASE_SERVICE_ACCOUNT is not a JSON key: paste the whole key file, from { to }.");
+              process.exit(1);
+            }
+            fs.writeFileSync(file, JSON.stringify(k));
             console.log("type:", k.type, "| project:", k.project_id, "| account:", k.client_email);
             if (k.type !== "service_account") { console.log("::error::FIREBASE_SERVICE_ACCOUNT is not a service-account key."); process.exit(1); }
             if (k.project_id !== "tic-tac-chaos") console.log("::warning::The key is for project " + k.project_id + ", not tic-tac-chaos.");
