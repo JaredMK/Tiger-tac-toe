@@ -96,4 +96,7 @@ jobs:
             })().catch(e => { console.log("::error::Could not switch on the Cloud Billing API: " + String(e.message).split("\n")[0]); process.exit(1); });
           '
       - name: Deploy functions and rules
-        run: firebase deploy --only functions,database --project tic-tac-chaos --non-interactive --force
+        # Once more after two minutes if it fails: Google's services can need a few minutes after first use.
+        run: |
+          deploy() { firebase deploy --only functions,database --project tic-tac-chaos --non-interactive --force; }
+          deploy || { echo "::warning::The deploy failed; trying again in two minutes."; sleep 120; deploy; }
