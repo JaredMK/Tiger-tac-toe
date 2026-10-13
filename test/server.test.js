@@ -172,6 +172,19 @@ test('matchmaking: six players at once make three games, each player in exactly 
   for (const p of ps) await p.call('resign', { game: res.get(p.uid).game }).catch(() => {});
 });
 
+test('matchmaking: a check-in landing just as the other player\'s search pairs them never puts the player back in the queue', async () => {
+  for (let k = 0; k < 8; k++) {
+    const a = await player(`Racer_a${k}`), b = await player(`Racer_b${k}`);
+    assert.equal((await a.call('findMatch', {})).status, 'searching');
+    // b's search pairs them while a's check-ins land throughout: before, during and after the game is made
+    await Promise.all([b.call('findMatch', {})].concat([0, 5, 10, 20, 35, 50, 80].map(ms => wait(ms).then(() => a.call('findMatch', {})))));
+    const g = await pairUp(a, b);
+    const q = (await get('queue/match')) || {};
+    assert.ok(!q[a.uid] && !q[b.uid], `round ${k}: nobody left waiting in the queue while in a game`);
+    await g.X.call('resign', { game: g.id }); await recorded(g.id);
+  }
+});
+
 test('matchmaking: one queue, players paired by wait time only (ratings play no part)', async () => {
   const ps = await Promise.all(['W1200', 'W2400', 'W800', 'W1600'].map(u => player(u)));
   await Promise.all(ps.map((p, i) => patch(`users/${p.uid}`, { rating: [1200, 2400, 800, 1600][i] })));

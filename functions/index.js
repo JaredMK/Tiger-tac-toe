@@ -175,16 +175,21 @@ exports.findMatch = onCall(CALL, async req => {
   const key = R.queueKey();                                     // one queue: whatever an older page asks for
   const prof = (await db.ref(`users/${uid}`).get()).val();
   if (!prof || !prof.username) throw new HttpsError('failed-precondition', 'Pick a username first.');
+  // The entry first, then the active game: a pairing that removes the entry writes the active game in the
+  // same update, so if the entry is gone by the transaction below, one of the two reads shows why.
+  const prev = (await db.ref(`queue/${key}/${uid}`).get()).val();
   const act = await activeGame(uid);
   if (act) return { status: 'matched', game: act.game, side: act.side };
   for (const other of OLD_QUEUES) await leaveQueue(other, uid);                // (from an older page)
   const conf = await adminConfig(), bc = B.botConfig(conf), ac = B.alertConfig(conf);
-  const prev = (await db.ref(`queue/${key}/${uid}`).get()).val();
   const free = bc.enabled && prev && !prev.game && prev.botAt && now() >= prev.botAt ? await freeBots() : [];   // only looked up once a bot could be due
-  let made = [], mine = null, alone = false, entry = null, botGame = null;
+  let made = [], mine = null, alone = false, entry = null, botGame = null, vanished = false;
   await db.ref(`queue/${key}`).transaction(cur => {
-    made = []; mine = null; alone = false; botGame = null;
+    made = []; mine = null; alone = false; botGame = null; vanished = false;
     const t = now(), q = cur || {};
+    // Our entry was there a moment ago and is gone: paired and the game made since (or cancelled meanwhile).
+    // Never put it back, or the player would wait in the queue while in a game.
+    if (!q[uid] && prev && (prev.game || t - prev.seen <= STALE_MS)) { vanished = true; return cur === null ? null : undefined; }
     for (const [u, e] of Object.entries(q)) if (!e || (!e.game && t - e.seen > STALE_MS)) delete q[u];
     const me = q[uid] || { since: t, botAt: t + B.waitMs(bc, Math.random) };
     if (!me.botAt) me.botAt = me.since + B.waitMs(bc, Math.random);
@@ -207,6 +212,10 @@ exports.findMatch = onCall(CALL, async req => {
     mine = q[uid].game ? { game: q[uid].game, side: q[uid].side } : null;
     return q;
   }, undefined, false);
+  if (vanished) {
+    const act2 = await activeGame(uid);
+    return act2 ? { status: 'matched', game: act2.game, side: act2.side } : { status: 'searching' };
+  }
   for (const p of made) await createGame(key, p.id).catch(e => logger.error('createGame', p.id, e));
   if (botGame) await createBotGame(key, uid, botGame.id, botGame.bot).catch(e => logger.error('createBotGame', botGame.id, e));
   if (!mine) {
