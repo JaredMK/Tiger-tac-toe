@@ -1694,12 +1694,14 @@ function fxAt(kind, key) { const e = fx[kind]; return e && e.key === key ? e.at 
 const fxAttr = at => (at == null ? '' : ` data-fx="${at}"`);   // an element whose animations (and everything inside) belong to that event
 function anchorFx() {
   if (!WAAPI || typeof app.getAnimations !== 'function') return;
-  const now = performance.now();
+  // the animations' own clock (the frame's time, same origin as performance.now()): measured on it, one
+  // already running where it should be reads the same, however late in the frame this redraw is
+  const tl = document.timeline && document.timeline.currentTime, now = typeof tl === 'number' ? tl : performance.now();
   const css = a => !(typeof CSSTransition !== 'undefined' && a instanceof CSSTransition);   // (a transition just follows its style)
   const set = (el, at) => {
     const t = Math.max(0, now - at);
     for (const a of el.getAnimations({ subtree: true })) {
-      if (!css(a) || (a.currentTime != null && Math.abs(a.currentTime - t) < 40)) continue;   // already where its event has it (one running on, untouched): left alone
+      if (!css(a) || (a.currentTime != null && Math.abs(a.currentTime - t) < 60)) continue;   // already where its event has it (one running on, untouched): left alone
       try { a.currentTime = t; } catch (e) { /* (a finished one with no effect left) */ }
     }
   };

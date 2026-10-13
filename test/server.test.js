@@ -638,7 +638,7 @@ test('a draw: once neither player can still make a line, a Find Match game ends 
   await recorded(g.id);
   const pub = await get(`games/${g.id}/pub`), st = JSON.parse(pub.state);
   assert.deepEqual([st.winner, st.winReason, pub.status], ['draw', 'blocked', 'over']);
-  assert.equal(pub.result.winner, null); assert.equal(pub.result.how, 'draw');
+  assert.equal(pub.result.winner, undefined, 'no winner (the database keeps no nulls)'); assert.equal(pub.result.how, 'draw');
   for (const p of [g.X, g.O]) {
     const h = await get(`history/${p.uid}/${g.id}`), u = await get(`users/${p.uid}`);
     assert.deepEqual([h.result, h.how], ['draw', 'draw']);
