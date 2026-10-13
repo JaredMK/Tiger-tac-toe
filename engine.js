@@ -1367,7 +1367,7 @@ const STYLE0 = { attack: 1, defend: 1, mistake: 0, rollRisk: 0 };
 function squareValue(squares, i, me, style) {
   const s = style || STYLE0;
   const o = other(me);
-  let v = 0.5, win = false, block = false;                 // every square counts a little, towards the majority
+  let v = 0.5, win = false, block = false;                 // every square counts a little
   for (const line of LINES) {
     if (!line.includes(i)) continue;
     const rest = line.filter(k => k !== i).map(k => squares[k].owner);
@@ -1461,17 +1461,28 @@ function timeoutMove(state, rng) {
   return { ok: true, square: i, move: m };
 }
 
-// Main-board result: three claimed squares in a row, else majority once all nine are claimed.
+// Main-board result: three claimed squares in a row wins. Once neither player can still make a line
+// (every line holds a square of each), the match is a draw there and then (winner 'draw', reason
+// 'blocked'): nobody has to play out squares that cannot change the result. (Matches from before this
+// rule could end on 'majority': most squares once all nine were claimed. A full board with no line is
+// now always a draw, since by then no line was open to anyone.)
+function lineOpen(squares, p) { return LINES.some(line => line.every(k => squares[k].owner !== other(p))); }
 function mainResult(squares) {
   for (const line of LINES) {
     const o = squares[line[0]].owner;
     if (o && o === squares[line[1]].owner && o === squares[line[2]].owner) return { winner: o, line, reason: 'line' };
   }
-  if (squares.every(s => s.owner)) {
-    const x = squares.filter(s => s.owner === 'X').length, o = 9 - x;
-    return { winner: x > o ? 'X' : 'O', line: null, reason: 'majority', counts: { X: x, O: o } };
+  if (!lineOpen(squares, 'X') && !lineOpen(squares, 'O')) {
+    const x = squares.filter(s => s.owner === 'X').length, o = squares.filter(s => s.owner === 'O').length;
+    return { winner: 'draw', line: null, reason: 'blocked', counts: { X: x, O: o } };
   }
   return null;
+}
+// The old rule, for checking results reported from before the change: most squares on a full board.
+function majorityResult(squares) {
+  if (!squares.every(s => s.owner) || LINES.some(l => l.every(k => squares[k].owner === squares[l[0]].owner))) return null;
+  const x = squares.filter(s => s.owner === 'X').length;
+  return { winner: x > 9 - x ? 'X' : 'O', line: null, reason: 'majority', counts: { X: x, O: 9 - x } };
 }
 
 // A full move: the player to move makes move m in square i. On success state.flash
@@ -1806,4 +1817,4 @@ function matchStats(st) {
 }
 
 // Node (the Cloud Functions and the tests): the same names as a module.
-if (typeof module !== "undefined" && module.exports) module.exports = { STYLE0, huntSize, huntBand, huntClue, normTimer, resignLocal, TYPES, OLD_TYPES, SNL, BUMP, snlRow, snlBoard, snlValid, snlExpected, coinPick, markCoins, coinMarksFor, normLocal, seatLocal, INFO, C4, HP, MM, HEX_N, HILO, CANDY, NAME_MAX, COINS, RISKY, BS, HUNT, DICE_GOAL, MEMORY, LINES, WORDS5, WORDS_HANG, VALID5, other, makeRng, needRng, randInt, randomType, shuffle, memoryDeck, wordleMarks, hexNeighbors, hexPath, canMove, hpMoves, mmFeedback, mmValid, MM_ALL, mmAll, mmCode, mmCandidates, mmBestGuess, hpGoalRow, upgradeMini, anyMove, huntDist, candyTrack, newMini, pickType, newSquare, CPU_NAME, defaultSetup, cpuSide, normSetup, syncNames, enabledGames, TIMER_OPTIONS, newTimer, playerName, newState, startMatch, newMatch, findRun, applyMove, AI, publicMini, wordleCandidates, hangmanCandidates, bsCandidates, bsPlacements, bsShip, huntCandidates, WINDOWS, windowsOf, lineNeeds, c4Playable, hexDist, candyExpected, COIN_NEEDS, needsOf, memoryPair, winChance, tttMinimax, c4Drop, c4Eval, C4_ORDER, c4Search, C4_DEPTH, c4Moves, HP_MEMO, hpSolve, hpMovesValued, hpNeeds, hexMoves, threatScore, pickValued, localBest, squareValue, moveGain, cpuMove, VALID5_LIST, randomLegalMove, timeoutMove, mainResult, playMove, endFlash, leaveSquare, RECENT_MAX, MATCH_FIELDS, secretOf, hideMini, matchRecord, fullState, settle, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, newOnlineMatch, PLAY, diceSlot, playMs, replayMs, armClock, applyOnlineResign, matchStats };
+if (typeof module !== "undefined" && module.exports) module.exports = { lineOpen, majorityResult, STYLE0, huntSize, huntBand, huntClue, normTimer, resignLocal, TYPES, OLD_TYPES, SNL, BUMP, snlRow, snlBoard, snlValid, snlExpected, coinPick, markCoins, coinMarksFor, normLocal, seatLocal, INFO, C4, HP, MM, HEX_N, HILO, CANDY, NAME_MAX, COINS, RISKY, BS, HUNT, DICE_GOAL, MEMORY, LINES, WORDS5, WORDS_HANG, VALID5, other, makeRng, needRng, randInt, randomType, shuffle, memoryDeck, wordleMarks, hexNeighbors, hexPath, canMove, hpMoves, mmFeedback, mmValid, MM_ALL, mmAll, mmCode, mmCandidates, mmBestGuess, hpGoalRow, upgradeMini, anyMove, huntDist, candyTrack, newMini, pickType, newSquare, CPU_NAME, defaultSetup, cpuSide, normSetup, syncNames, enabledGames, TIMER_OPTIONS, newTimer, playerName, newState, startMatch, newMatch, findRun, applyMove, AI, publicMini, wordleCandidates, hangmanCandidates, bsCandidates, bsPlacements, bsShip, huntCandidates, WINDOWS, windowsOf, lineNeeds, c4Playable, hexDist, candyExpected, COIN_NEEDS, needsOf, memoryPair, winChance, tttMinimax, c4Drop, c4Eval, C4_ORDER, c4Search, C4_DEPTH, c4Moves, HP_MEMO, hpSolve, hpMovesValued, hpNeeds, hexMoves, threatScore, pickValued, localBest, squareValue, moveGain, cpuMove, VALID5_LIST, randomLegalMove, timeoutMove, mainResult, playMove, endFlash, leaveSquare, RECENT_MAX, MATCH_FIELDS, secretOf, hideMini, matchRecord, fullState, settle, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, newOnlineMatch, PLAY, diceSlot, playMs, replayMs, armClock, applyOnlineResign, matchStats };

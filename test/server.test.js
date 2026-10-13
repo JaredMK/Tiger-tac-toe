@@ -625,6 +625,39 @@ test('local matches: a logged-in player\'s are recorded once, privately (record,
   assert.equal((await get(`localStats/${p.uid}`)).games, 2, 'nothing more counted');
 });
 
+test('a draw: once neither player can still make a line, a Find Match game ends there, a draw on both records; local draws are recorded too', async () => {
+  const a = await player('Dana_D'), b = await player('Drew_D');
+  const g = await pairUp(a, b);
+  await rewrite(g.id, full => {                                   // O O X / X O O / O X [X X _]: O could still win at 8, X takes it
+    tttBoard(full);
+    ['O', 'O', 'X', 'X', 'O', 'O', 'O', 'X'].forEach((o, i) => { full.squares[i].owner = o; });
+    full.squares[8].mini.cells = ['X', 'X', null, 'O', 'O', null, null, null, null];
+    full.turn = 'X'; full.lock = null; full.timer.deadline = Date.now() + 600000;
+  });
+  assert.equal((await g.X.call('move', { game: g.id, square: 8, move: 2 })).ok, true);
+  await recorded(g.id);
+  const pub = await get(`games/${g.id}/pub`), st = JSON.parse(pub.state);
+  assert.deepEqual([st.winner, st.winReason, pub.status], ['draw', 'blocked', 'over']);
+  assert.equal(pub.result.winner, null); assert.equal(pub.result.how, 'draw');
+  for (const p of [g.X, g.O]) {
+    const h = await get(`history/${p.uid}/${g.id}`), u = await get(`users/${p.uid}`);
+    assert.deepEqual([h.result, h.how], ['draw', 'draw']);
+    assert.deepEqual([u.wins, u.losses, u.draws, u.games], [0, 0, 1, 1], 'a draw on the record');
+  }
+  assert.deepEqual(await g.O.call('move', { game: g.id, square: 8, move: 0 }), { ok: false, reason: 'over' });
+  // a local match that ended the same way, and one from before the rule (most squares)
+  const lp = await player('LocalDee');
+  const sq = owners => owners.map(o => ({ owner: o, mini: E.newMini('ttt', E.makeRng('d')) }));
+  const report = (id, owners, winner, reason) => ({ id, side: 'X', opponent: { name: 'Computer', cpu: true },
+    final: { squares: sq(owners), winner, winLine: null, winReason: reason, resigned: null, counts: null, moves: 20, games: ['ttt'], names: { X: 'LocalDee', O: 'Computer' } } });
+  assert.deepEqual(await lp.call('recordLocal', report('locdraw1', [null, 'X', 'O', 'O', 'X', 'X', 'X', 'O', 'O'], 'draw', 'blocked')), { ok: true, result: 'draw' });
+  assert.deepEqual(await lp.call('recordLocal', report('locmaj01', ['O', 'O', 'X', 'X', 'O', 'O', 'O', 'X', 'X'], 'O', 'majority')), { ok: true, result: 'loss' }, 'an old "most squares" result still counts');
+  await assert.rejects(lp.call('recordLocal', report('locdraw2', [null, 'X', 'X', 'O', 'O', null, null, null, null], 'draw', 'blocked')), /Not a match/, 'a draw while a line is still open: refused');
+  const ls = await get(`localStats/${lp.uid}`);
+  assert.deepEqual([ls.wins || 0, ls.losses, ls.draws, ls.games], [0, 1, 1, 2]);
+  assert.equal((await get(`localHistory/${lp.uid}/l_locdraw1`)).how, 'draw');
+});
+
 test('friend games: leaving a match under way ends it as a loss for the one who left, recorded for both', async () => {
   const host = await player('LeaveHost'), guest = await player('LeaveGuest');
   const code = 'LEAVE';

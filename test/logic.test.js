@@ -1176,27 +1176,38 @@ test('every main-board line is detected', () => {
   assert.equal(L.mainResult(st.squares), null);
 });
 
-test('a full main board with no line goes to the player with more squares', () => {
-  // O O X / X O O / O X [X] : X claims the last square and still loses 4 to 5
+test('once neither player can still make three in a row, the match is a draw there and then', () => {
+  // O O X / X O O / O X [ ] : O could still win at 8; X claims it and no line is left for anyone
   let st = matchWith(['ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'bs']);
   ['O', 'O', 'X', 'X', 'O', 'O', 'O', 'X'].forEach((o, i) => { st.squares[i].owner = o; });
   st.squares[8].mini = oneMove();
   st.turn = 'X';
+  assert.equal(L.mainResult(st.squares), null, 'O can still make a line: play on');
   assert.equal(L.playMove(st, 8, 0).ok, true);
   assert.equal(st.flash.kind, 'match');
-  assert.equal(st.winner, 'O');
-  assert.equal(st.winReason, 'majority');
-  assert.equal(st.winLine, null);
-  assert.deepEqual(st.counts, { X: 4, O: 5 });
-
-  // mirror image: X has the majority
-  st = matchWith(['ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'bs']);
-  ['X', 'X', 'O', 'O', 'X', 'X', 'X', 'O'].forEach((o, i) => { st.squares[i].owner = o; });
-  st.squares[8].mini = oneMove();
-  st.turn = 'O';
-  L.playMove(st, 8, 0);
-  assert.equal(st.winner, 'X');
-  assert.deepEqual(st.counts, { X: 5, O: 4 });
+  assert.equal(st.winner, 'draw'); assert.equal(st.winReason, 'blocked'); assert.equal(st.winLine, null);
+  assert.deepEqual(st.counts, { X: 4, O: 5 }, 'no "most squares" any more');
+  L.endFlash(st);
+  assert.equal(st.screen, 'win');
+  assert.equal(L.playMove(st, 8, 0).reason, 'over');
+  // X O X / O X _ / O _ O : only O's bottom row is open; X takes square 7 and it is a draw with square 5 never played
+  st = matchWith(['ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'bs', 'ttt']);
+  ['X', 'O', 'X', 'O', 'X', null, 'O', null, 'O'].forEach((o, i) => { st.squares[i].owner = o; });
+  st.squares[7].mini = oneMove();
+  st.turn = 'X';
+  assert.equal(L.mainResult(st.squares), null);
+  assert.equal(L.lineOpen(st.squares, 'O'), true); assert.equal(L.lineOpen(st.squares, 'X'), false);
+  L.playMove(st, 7, 0);
+  assert.equal(st.winner, 'draw', 'a draw with a square still open');
+  assert.equal(st.squares[5].owner, null);
+  // the screenshot's board: four each, the last square cannot give anyone a line
+  const sq = owners => owners.map(o => ({ owner: o, mini: L.newMini('ttt', lcg(1)) }));
+  assert.equal(L.mainResult(sq([null, 'X', 'O', 'O', 'X', 'X', 'X', 'O', 'O'])).winner, 'draw');
+  // a line still wins, even on a board where the other side is shut out
+  assert.deepEqual(L.mainResult(sq(['X', 'X', 'X', 'O', 'O', null, null, null, null])), { winner: 'X', line: [0, 1, 2], reason: 'line' });
+  // the old rule, kept for checking results from before: most squares on a full board
+  assert.deepEqual(L.majorityResult(sq(['O', 'O', 'X', 'X', 'O', 'O', 'O', 'X', 'X'])), { winner: 'O', line: null, reason: 'majority', counts: { X: 4, O: 5 } });
+  assert.equal(L.majorityResult(sq(['O', 'O', 'X', 'X', 'O', 'O', 'O', 'X', null])), null, 'only a full board');
 });
 
 test('after a match the setup is kept for the next one', () => {
@@ -1799,7 +1810,7 @@ test('the computer prefers finishing a square it is close to over one it is far 
 
 test('computer against computer: matches finish, every move is legal, and the state stays plain JSON', () => {
   const rng = lcg(2025);
-  const winners = { X: 0, O: 0 }, seen = new Set();
+  const winners = { X: 0, O: 0, draw: 0 }, seen = new Set();
   for (let game = 0; game < 8; game++) {
     const st = L.newMatch(rng, { mode: 'cpu', human: game % 2 ? 'X' : 'O' });
     assert.equal(st.cpu, game % 2 ? 'O' : 'X');
@@ -1816,8 +1827,9 @@ test('computer against computer: matches finish, every move is legal, and the st
     assert.ok(st.winner, `match ${game} finishes (${guard} moves)`);
     assert.equal(st.screen, 'win');
     winners[st.winner]++;
+    if (st.winner === 'draw') assert.equal(st.winReason, 'blocked', 'a draw: no line left for either side');
   }
-  assert.equal(winners.X + winners.O, 8);
+  assert.equal(winners.X + winners.O + winners.draw, 8);
   assert.ok(seen.size >= 8, `the computer played ${seen.size} different games`);
 });
 
@@ -2242,7 +2254,7 @@ test('an older match with a Hexapawn square still plays it to the end: moves, th
   // the computer picks a legal Hexapawn move when that square is its best
   const cpu = L.newMatch(rng); cpu.cpu = 'O'; cpu.turn = 'O';
   cpu.squares.forEach((sq, i) => { sq.mini = i ? Object.assign(L.newMini('ttt', rng), { cells: ['X', 'O', 'X', 'X', 'O', 'O', 'O', 'X', 'X'] }) : hp(hpAt(2, 0), 'X', hpAt(1, 1), 'O'); sq.owner = i ? 'X' : null; });
-  const owners = [null, 'X', 'O', 'O', 'X', 'X', 'X', 'O', 'O'];                    // eight squares claimed, no line: only the Hexapawn square is open
+  const owners = [null, 'O', 'O', 'X', 'X', 'O', 'O', 'X', 'X'];                    // eight squares claimed, no line yet (O could still make one through it): only the Hexapawn square is open
   cpu.squares.forEach((sq, i) => { sq.owner = owners[i]; });
   assert.equal(L.mainResult(cpu.squares), null);
   const plan = L.cpuMove(cpu, rng);

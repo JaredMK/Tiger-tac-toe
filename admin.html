@@ -122,7 +122,7 @@ function periodKeys(t) {               // the same keys as the server (functions
 function lastDays(k) { const out = []; for (let i = k - 1; i >= 0; i--) out.push(periodKeys(Date.now() - i * 86400000).d); return out; }
 function modeRow(m) { return (stats.modes && stats.modes[m]) || {}; }
 function totals() {
-  const t = { started: 0, finished: 0, turns: 0, ms: 0, timed: 0, xWins: 0, oWins: 0, resigned: 0 };
+  const t = { started: 0, finished: 0, turns: 0, ms: 0, timed: 0, xWins: 0, oWins: 0, draws: 0, resigned: 0 };
   for (const [m] of MODES) for (const k of Object.keys(t)) t[k] += n(modeRow(m)[k]);
   return t;
 }
@@ -193,10 +193,10 @@ function render() {
     { name: 'New accounts', color: 'var(--o)', values: days.map(d => n(D(d).newAccounts)) },
   ], { label: 'Players per day, last 30 days' });
   const matches = barChart(days, MODES.map(([m, name]) => ({ name, color: MODE_COLORS[m], values: days.map(d => n((D(d).finished || {})[m])) })), { stack: true, label: 'Matches finished per day by mode, last 30 days' });
-  const modeTable = `<div class="tbl"><table><thead><tr><th>Mode</th><th>Started</th><th>Finished</th><th>Abandoned</th><th>Resigned</th><th>Timed out</th><th>Avg turns</th><th>Avg minutes</th><th>X (first) wins</th></tr></thead><tbody>${MODES.map(([m, name]) => {
+  const modeTable = `<div class="tbl"><table><thead><tr><th>Mode</th><th>Started</th><th>Finished</th><th>Abandoned</th><th>Resigned</th><th>Timed out</th><th>Avg turns</th><th>Avg minutes</th><th>X (first) wins</th><th>Draws</th></tr></thead><tbody>${MODES.map(([m, name]) => {
     const r = modeRow(m), st = n(r.started), fin = n(r.finished), dec = n(r.xWins) + n(r.oWins);
-    return `<tr><td>${name}</td><td>${st}</td><td>${fin}</td><td>${pct(ratio(Math.max(0, st - fin), st))}</td><td>${pct(ratio(n(r.resigned), fin))}</td><td>${pct(ratio(n(r.timeouts), fin))}</td><td>${num(ratio(n(r.turns), fin))}</td><td>${num(ratio(n(r.ms), n(r.timed)) == null ? null : ratio(n(r.ms), n(r.timed)) / 60000)}</td><td>${pct(ratio(n(r.xWins), dec))}</td></tr>`;
-  }).join('')}</tbody></table></div><p class="note">Abandoned: started but never finished (left, or the app closed). Turns count a bonus move (a Risky Rolls roll, a Hangman letter) as part of its turn.</p>`;
+    return `<tr><td>${name}</td><td>${st}</td><td>${fin}</td><td>${pct(ratio(Math.max(0, st - fin), st))}</td><td>${pct(ratio(n(r.resigned), fin))}</td><td>${pct(ratio(n(r.timeouts), fin))}</td><td>${num(ratio(n(r.turns), fin))}</td><td>${num(ratio(n(r.ms), n(r.timed)) == null ? null : ratio(n(r.ms), n(r.timed)) / 60000)}</td><td>${pct(ratio(n(r.xWins), dec))}</td><td>${pct(ratio(n(r.draws), fin))}</td></tr>`;
+  }).join('')}</tbody></table></div><p class="note">Abandoned: started but never finished (left, or the app closed). Draws: ended once neither side could still make three in a row. Turns count a bonus move (a Risky Rolls roll, a Hangman letter) as part of its turn.</p>`;
   const rows = miniRows(), dir = sortBy.dir;
   rows.sort((a, b) => { const x = a[sortBy.k], y = b[sortBy.k]; if (x == null && y == null) return a.name.localeCompare(b.name); if (x == null) return 1; if (y == null) return -1; return (typeof x === 'string' ? x.localeCompare(y) : x - y) * dir; });
   const cols = [['name', 'Mini-game'], ['played', 'Played'], ['won', 'Won'], ['draw', 'Draw-reset'], ['open', 'Unfinished'], ['avgWin', 'Avg winner moves'], ['avgLose', 'Avg loser moves'], ['avgAll', 'Avg total moves'], ['xRate', 'X wins'], ['oRate', 'O wins']];

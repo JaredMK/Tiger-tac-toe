@@ -1101,6 +1101,8 @@ button.seg.X.on { background: var(--x); color: var(--paper); } .seg.O.on { backg
 .card h2 { font-size: 26px; padding-top: 4px; }
 .card p { color: var(--muted); font-weight: 400; font-size: 17px; }
 .big-g { width: 100px; height: 100px; margin: 0 auto; display: grid; place-items: center; }
+.big-g.both { width: auto; display: flex; gap: 10px; justify-content: center; }   /* a draw: both characters */
+.big-g.both .pc { width: 76px; height: 76px; }
 .big-g .pc { width: 100px; height: 100px; }
 .big-g svg { color: var(--ink); }
 .card .big-g > svg[fill="#1a1a1a"] { background: #fff; border: 3px solid var(--ink); }
@@ -1874,13 +1876,14 @@ function renderMain() {
 function renderHeader() {
   if (['setup', 'menu', 'online', 'friend', 'join'].includes(state.screen) || NAV_SCREENS.includes(state.screen)) return '';
   const won = state.winner && !state.spot;                      // (a winning move about to be played back: not yet)
-  const t = won ? state.winner : state.turn;
+  const drawn = won && state.winner === 'draw';                  // a draw: nobody can make a line any more
+  const t = won && !drawn ? state.winner : state.turn;
   const clock = state.timer && state.timer.limit && !state.winner ? `<span class="clock" id="clock" aria-label="Time left this turn">${clockText()}</span>` : '';
   const side = p => `<div class="tside ${p}${p === t ? ' on' : ''}"><span class="tg">${toon(p)}</span><b class="nm">${N(p)}</b></div>`;
   return `<header class="hdr t-${t}${clock ? ' has-clock' : ''}">
     <div class="hdrrow"><button class="menubtn" data-act="pause" aria-label="Menu">Menu</button><span class="clockbox">${clock}</span></div>
     <div class="tbar">${side('X')}${side('O')}</div>
-    <div class="turn" aria-live="polite"><span class="g">${t}</span><span class="who">${won ? `${N(t)} wins` : `${N(t)}<i class="suf">'s turn</i>`}</span></div>
+    <div class="turn" aria-live="polite">${drawn ? '<span class="who">Draw · no line left</span>' : `<span class="g">${t}</span><span class="who">${won ? `${N(t)} wins` : `${N(t)}<i class="suf">'s turn</i>`}</span>`}</div>
   </header>`;
 }
 
@@ -1888,6 +1891,7 @@ function renderHeader() {
 const RULES_CORE = [
   'Tic-tac-toe, where every square is its own mini-game. Win the mini-game to claim the square. Get three squares in a row to win.',
   'On your turn, make one move in any square. Every game keeps going until someone wins it.',
+  'Once neither player can get three in a row any more, the match ends in a draw.',
 ];
 const EXPLAIN = {
   ttt: { name: 'Tic-tac-toe', play: 'Place your mark.', win: 'Three in a row.' },
@@ -2502,6 +2506,9 @@ function renderFlash(f) {
     return [0, 1].map(k => age >= end(k) ? '' : `<div class="powc${k ? '2' : ''}" data-bend="${Math.round((at == null ? performance.now() : at) + end(k))}">${k ? burstSvg(b.words[1], 'r', 160, 104, 28) : burstSvg(b.words[0], 'y', 150, 110, 34)}</div>`).join('');
   };
   const open = `<div class="flash late" style="--late:${animMs(f)}ms"${fxAttr(at)} data-act="dismiss">${f.timeout ? `<div class="timeout-note">${who} ran out of time — random move</div>` : ''}`;   // the result waits for the animation
+  if (f.kind === 'match' && state.winner === 'draw') {          // the square won leaves no line open to either side
+    return `${open}<div class="card"><div class="big-g bang both">${toonT('X')}${toonT('O')}</div><h2>It's a draw!</h2><p>Nobody can get three in a row now · Tap to continue</p></div></div>`;
+  }
   if (f.kind === 'match') {
     const w = state.winner;
     return `${open}<div class="card">${pow()}<div class="big-g bang ${w}">${toonT(w)}</div><h2>${N(w)} wins the match!</h2><p>Tap to continue</p></div></div>`;
@@ -2586,6 +2593,7 @@ function mmResult() {
 }
 function renderWin() {
   const w = state.winner;
+  if (w === 'draw') return renderDraw();
   const why = state.winReason === 'line' ? 'Three squares in a row'
     : state.winReason === 'timeout' ? `${N(other(w))} timed out twice`
     : state.winReason === 'resign' ? `${N(other(w))} left the match`
@@ -2599,6 +2607,15 @@ function renderWin() {
     <div class="row">${isMM() ? '<button class="primary" data-act="find-again">Find Match</button>' : `<button class="primary" data-act="rematch"${state.online && !connected ? ' disabled' : ''}>Rematch</button>`}<button class="btn" data-act="review">View board</button><button class="btn" data-act="${state.online ? 'leave' : 'menu'}">Main menu</button></div></div></main>`;
 }
 
+
+// A draw: once neither player could still make three in a row, the match ended there.
+function renderDraw() {
+  const final = state.squares.map(s => `<i class="${s.owner || ''}">${s.owner ? toonT(s.owner) : ''}</i>`).join('');
+  return `<main class="scr win-scr">${netBar()}<div class="win-card${isMM() ? ' mm' : ''}">
+    <div class="winburst">${endBurst(endMessage())}</div><div class="big-g both">${toonT('X')}${toonT('O')}</div><h1>It's a draw!</h1><p>Nobody could get three in a row any more, so the match ended there</p>${mmResult()}
+    <div class="final" aria-hidden="true">${final}</div>
+    <div class="row">${isMM() ? '<button class="primary" data-act="find-again">Find Match</button>' : `<button class="primary" data-act="rematch"${state.online && !connected ? ' disabled' : ''}>Rematch</button>`}<button class="btn" data-act="review">View board</button><button class="btn" data-act="${state.online ? 'leave' : 'menu'}">Main menu</button></div></div></main>`;
+}
 
 /* ===================== Online play (Firebase Realtime Database) =====================
  * Neither phone is the server. A room lives at /rooms/CODE in the database; both players read and
@@ -3050,7 +3067,7 @@ function presentEntry(st, e, rest) {
   state.turn = e.by; state.lock = e.kind === 'again' ? e.square : null;
   state.moves = e.moves; state.lastSquare = e.square; state.lastBy = e.by;
   const over = e.kind === 'match';
-  state.winner = over ? e.winner : null;
+  state.winner = over ? st.winner || e.winner : null;           // (the match's result: a square won can also leave a draw)
   if (!over) { state.winLine = null; state.winReason = null; state.counts = null; }
   const f = Object.assign({}, e); delete f.after; delete f.seq; delete f.moves;
   state.flash = f;
@@ -3735,7 +3752,7 @@ function renderHistory() {
   } finally { reviewCtx = REVIEW_LIVE; }
 }
 const fmtDate = t => { try { return new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }); } catch (e) { return ''; } };
-const HOW_TEXT = { line: 'three in a row', majority: 'most squares', timeout: 'timeout', resign: 'resignation', draw: 'draw' };
+const HOW_TEXT = { line: 'three in a row', majority: 'most squares', timeout: 'timeout', resign: 'resignation', draw: 'no line left' };
 const MODE_TEXT = RATINGS_ENABLED ? { ranked: 'Ranked', casual: 'Casual', match: 'Find Match', friend: 'Unrated', local: 'Local' } : { ranked: 'Find Match', casual: 'Find Match', match: 'Find Match', friend: 'Friend', local: 'Local' };
 function record(u) { u = u || {}; return `${u.wins || 0}-${u.losses || 0}-${u.draws || 0}`; }   // wins-losses-draws
 const winPct = u => { const g = (u && ((u.wins || 0) + (u.losses || 0) + (u.draws || 0))) || 0; return g ? Math.round(100 * (u.wins || 0) / g) + '%' : '–'; };   // of all games, draws included
@@ -4267,7 +4284,7 @@ function boot() {
   const play = !link && new URLSearchParams(location.search).get('play') === 'find';   // the empty-queue alert's link: straight into Find Match
   if (play) { try { history.replaceState(null, '', location.pathname); } catch (e) { /* (kept) */ } }
   if (state.flash && !state.spot) playFlash(true);           // a result still on show at the reload: its move has played, the result finishes
-  render(); scheduleCpu();
+  commit();                                                   // (a match that ended as the page loaded is reported like any other)
   if (state.online) resumeOnline();
   else if (hadAccount() || redirectPending()) {             // logged in before, or back from Google's sign-in page: the account, in the background
     acctLoading = true; render();
@@ -4388,6 +4405,10 @@ function load() {
       if (!TYPES.some(t => s.setup.games[t])) for (const t of TYPES) s.setup.games[t] = true;   // only games no longer dealt were on (Hexapawn alone): all on again
       normLocal(s.setup);                                         // Play Local's players, from an older Human/Computer-per-side setup
       if (!s.online && !s.winner && s.squares.some(sq => !sq.owner && sq.mini.type === 'coins' && !(sq.mini.marks && sq.mini.marks.by === s.turn))) markCoins(s, s.turn, RNG);   // a match from before the marks
+      if (!s.online && !s.winner && !s.flash) {                  // a local match already beyond a line for either side (from before the draw rule): a draw now
+        const mr = mainResult(s.squares);
+        if (mr && mr.winner === 'draw') Object.assign(s, { winner: 'draw', winLine: null, winReason: 'blocked', counts: mr.counts, lock: null, done: null, screen: 'win', zoom: null });
+      }
       return s;
     }
   } catch (e) { /* ignore corrupt saves */ }

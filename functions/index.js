@@ -558,7 +558,7 @@ async function finishGame(id) {
   const final = finalOf({ state: st, secrets: parse(g.sec) }, { X: pub.players.X.name, O: pub.players.O.name });
   const how = R.howEnded(st), t = pub.ended || now();
   const up = {};
-  const result = { winner: st.winner || null, how, records: {} };
+  const result = { winner: st.winner === 'X' || st.winner === 'O' ? st.winner : null, how, records: {} };   // (a draw: no winner)
   const [px, po] = await Promise.all(['X', 'O'].map(s => db.ref(`users/${pub.players[s].uid}`).get().then(v => v.val() || {})));
   for (const [s, p] of [['X', px], ['O', po]]) {                 // every Find Match game: both records and the mini-game stats
     const res = R.resultFor(st, s), d = R.recordDelta(res), r0 = recordOf(p);
@@ -591,7 +591,7 @@ async function finishGame(id) {
   if (bg) {
     Object.assign(up, { [`botGames/${id}/live`]: null, [`botGames/${id}/next`]: null, [`botGames/${id}/done`]: true, [`botGames/${id}/winner`]: st.winner || null });
     up['botStats/finished'] = ServerValue.increment(1);
-    up[`botStats/${!st.winner ? 'draws' : st.winner === bg.side ? 'botWins' : 'playerWins'}`] = ServerValue.increment(1);
+    up[`botStats/${st.winner !== 'X' && st.winner !== 'O' ? 'draws' : st.winner === bg.side ? 'botWins' : 'playerWins'}`] = ServerValue.increment(1);
   }
   await db.ref().update(up);                                   // all of it at once: both ratings, records, leaderboard, history, stats
   await markActive(['X', 'O'].filter(s => !bg || pub.players[s].uid !== bg.bot).map(s => 'u:' + pub.players[s].uid), t).catch(e => logger.error('stats', e));
@@ -622,7 +622,7 @@ function historyRecord(mode, side, them, st, final, at, rating) {
 // the match, its final board included, as in the game history.
 exports.recordLocal = onCall(CALL, async req => {
   const uid = needAccount(req);
-  const rep = R.checkLocal(req.data, E.TYPES.concat(E.OLD_TYPES), E.mainResult);
+  const rep = R.checkLocal(req.data, E.TYPES.concat(E.OLD_TYPES), E.mainResult, E.majorityResult);
   if (!rep) throw new HttpsError('invalid-argument', 'Not a match.');
   if (!(await db.ref(`users/${uid}/username`).get()).val()) throw new HttpsError('failed-precondition', 'Pick a username first.');
   const h = historyRecord('local', rep.side, { uid: null, name: rep.opponent }, rep.final, rep.final, now(), null);

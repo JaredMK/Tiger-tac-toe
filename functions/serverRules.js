@@ -118,9 +118,11 @@ function pairQueue(queue, now, byRating = RATINGS_ENABLED) {
 }
 
 // ---------- results ----------
+// A match ends with a winner, X or O, or as a draw (winner 'draw': neither side could still make a line).
 const HOW = { line: 'line', majority: 'majority', timeout: 'timeout', resign: 'resign' };
-function howEnded(state) { return state.winner ? HOW[state.winReason] || 'line' : 'draw'; }
-function resultFor(state, side) { return !state.winner ? 'draw' : state.winner === side ? 'win' : 'loss'; }
+const decided = state => state.winner === 'X' || state.winner === 'O';
+function howEnded(state) { return decided(state) ? HOW[state.winReason] || 'line' : 'draw'; }
+function resultFor(state, side) { return !decided(state) ? 'draw' : state.winner === side ? 'win' : 'loss'; }
 
 // ---------- records and per-mini-game stats ----------
 // A finished match from one side: its result for the record ({ wins, losses, draws, games }, one of the
@@ -159,11 +161,12 @@ function recountHistory(entries) {
 
 // ---------- local matches (a logged-in player's own record of games on one phone) ----------
 // A local match as the phone reports it once it is over: checked, and trimmed to what the history
-// keeps. The player is player 1, on `side`. A match that ended on the board must have the winner the
-// board shows; one that was left ("resign") must have been left by that player. types: the mini-games
-// allowed; mainResult: the engine's main-board result.
-const LOCAL_REASONS = ['line', 'majority', 'resign'];
-function checkLocal(d, types, mainResult) {
+// keeps. The player is player 1, on `side`. A match that ended on the board must have the result the
+// board shows (a line, or a draw once no line was open to either side; 'majority' from before that rule);
+// one that was left ("resign") must have been left by that player. types: the mini-games allowed;
+// mainResult: the engine's main-board result (majorityResult: the old rule).
+const LOCAL_REASONS = ['line', 'blocked', 'majority', 'resign'];
+function checkLocal(d, types, mainResult, majorityResult) {
   if (!d || typeof d !== 'object') return null;
   const id = typeof d.id === 'string' && /^[-\w]{6,48}$/.test(d.id) ? d.id : null;
   const side = d.side === 'X' || d.side === 'O' ? d.side : null, f = d.final;
@@ -172,10 +175,13 @@ function checkLocal(d, types, mainResult) {
   try { size = JSON.stringify(f).length; } catch (e) { return null; }
   if (size > 60000) return null;
   for (const sq of f.squares) if (!sq || typeof sq !== 'object' || ![undefined, null, 'X', 'O'].includes(sq.owner) || !sq.mini || !types.includes(sq.mini.type)) return null;
-  const winner = f.winner === 'X' || f.winner === 'O' ? f.winner : null, reason = LOCAL_REASONS.includes(f.winReason) ? f.winReason : null;
+  const winner = ['X', 'O', 'draw'].includes(f.winner) ? f.winner : null, reason = LOCAL_REASONS.includes(f.winReason) ? f.winReason : null;
   if (!winner || !reason) return null;
-  if (reason === 'resign') { if (f.resigned !== side || winner === side) return null; }
-  else { const mr = mainResult(f.squares); if (!mr || mr.winner !== winner || mr.reason !== reason) return null; }
+  if (reason === 'resign') { if (f.resigned !== side || winner !== (side === 'X' ? 'O' : 'X')) return null; }
+  else {
+    const mr = reason === 'majority' ? majorityResult && majorityResult(f.squares) : mainResult(f.squares);
+    if (!mr || mr.winner !== winner || mr.reason !== reason) return null;
+  }
   const o = side === 'X' ? 'O' : 'X', opp = d.opponent && typeof d.opponent === 'object' ? d.opponent : {};
   const clean = v => String(v == null ? '' : v).trim().slice(0, 12);
   const names = { [side]: clean(f.names && f.names[side]) || side, [o]: clean(opp.name) || clean(f.names && f.names[o]) || o };

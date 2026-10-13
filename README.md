@@ -61,8 +61,8 @@ and a redraw after it has finished just shows the end: nothing replays or plays 
 The results screen shows a message picked at random for the match: a win message for a person who
 beat the computer, a loss message when the computer won, the winner's name with a win message when
 two people played on one phone or the computer played itself, and online each phone shows its own
-player's win or loss. (The tie messages are there for a drawn match, which the current rules cannot
-produce: nine squares always give someone three in a row or the majority.) "View board" shows the
+player's win or loss. A drawn match shows both characters, "It's a draw!" and a message from the tie
+list. "View board" shows the
 final main board; every square, claimed or not, opens read-only with everything hidden revealed, and
 a button returns to the results with "Rematch" (the same settings and opponent again) and "Main menu".
 
@@ -80,7 +80,10 @@ a button returns to the results with "Rematch" (the same settings and opponent a
 - If neither player has a legal move in a mini-game, that square resets the same way. A player who has
   no legal move in one square simply plays another; a player with no legal move anywhere is skipped.
   (Only Hexapawn could leave a player without a move, and it is no longer dealt; see below.)
-- If the main board fills with no three in a row, the player with more squares wins.
+- As soon as neither player can still get three in a row (every line holds a square of each), the
+  match ends in a draw: nobody has to play out squares that cannot change the result. (It used to go
+  on until the board was full, then the player with more squares won; games recorded that way still
+  show "most squares".) A local match already past that point when the page loads ends as a draw then.
 - Claimed squares stay on view: the board shows the owner's mark over the mini-game's final state, and
   tapping one opens that final state read-only with a "Won by" banner and every secret revealed (the
   Wordle and Hangman words, the Higher/lower number, the Battleship ship, all Memory cards). Looking
@@ -336,7 +339,8 @@ stay in the database.
 
 **History.** Every online game and, on your own stats, every recorded local game, newest first,
 marked Find Match, Friend or Local, with the opponent, the date, the result and how it ended (three
-in a row, most squares, timeout or resignation). Tapping a game opens the read-only review board with
+in a row, no line left (a draw), timeout, resignation, or most squares for games from before the draw
+rule). Tapping a game opens the read-only review board with
 everything that was hidden revealed.
 
 **Ratings and the leaderboard are switched off for now.** One flag, `RATINGS_ENABLED = false`, in
@@ -421,7 +425,7 @@ times *how much the move shifts the chance of claiming that square*, and plays t
 that wins the match is taken at once; one the opponent is about to win is worth defending, by
 blocking in interactive games or racing in the luck games; squares on lines still open for the
 computer, or open for the opponent, come next; squares on no open line are worth almost nothing,
-beyond a little towards the majority rule. The chance of claiming a square comes from how many moves
+beyond a little. The chance of claiming a square comes from how many moves
 each side still needs there, with the odds built in for the luck games; a guess in a shared-clue game
 (Wordle, Hangman, Higher/lower, Battleship, Treasure hunt, Memory, Mastermind) counts for less because the clue
 helps the other player too.

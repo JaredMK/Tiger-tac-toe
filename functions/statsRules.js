@@ -6,7 +6,7 @@
  *   mini/{mode}/{type}     played, won, draw (reset), open (match ended first), winMoves, loseMoves,
  *                          allMoves, xWins, oWins: sums, averaged on the dashboard
  *   modes/{mode}           started, finished, resigned, timeouts, turns, ms, timed (matches with a time),
- *                          xWins, oWins
+ *                          xWins, oWins, draws (no line left for either side)
  *   days/{YYYY-MM-DD}      logins, active, newAccounts, started/{mode}, finished/{mode}
  *   weeks/{YYYY-Www}       logins, active, newAccounts
  *   months/{YYYY-MM}       logins, active, newAccounts
@@ -20,7 +20,7 @@ const MODES = ['local', 'cpu', 'cvc', 'friend', 'match', 'bot', 'casual', 'ranke
 const CLIENT_MODES = ['local', 'cpu', 'cvc'];                          // the ones a phone reports; the server records the online ones itself
 const MAX_MS = 3 * 3600 * 1000;                                        // a match "lasting" longer was left and picked up again: no time for it
 const ENDS = ['won', 'draw', 'open'];
-const REASONS = ['line', 'majority', 'resign', 'timeout'];
+const REASONS = ['line', 'blocked', 'majority', 'resign', 'timeout'];
 
 const pad = n => String(n).padStart(2, '0');
 // The day, ISO week and month of a time, in UTC.
@@ -72,6 +72,7 @@ function endUpdates(mode, sum, ms, t, withStart) {
   if (sum.reason === 'resign') add(`modes/${mode}/resigned`, 1);
   if (sum.reason === 'timeout') add(`modes/${mode}/timeouts`, 1);
   if (sum.winner) add(`modes/${mode}/${sum.winner === 'X' ? 'xWins' : 'oWins'}`, 1);
+  else if (sum.reason === 'blocked') add(`modes/${mode}/draws`, 1);   // a draw: no line left for either side
   if (Number.isFinite(ms) && ms >= 0 && ms <= MAX_MS) { add(`modes/${mode}/ms`, Math.round(ms)); add(`modes/${mode}/timed`, 1); }
   for (const e of sum.squares) {
     const b = `mini/${mode}/${e.t}/`;

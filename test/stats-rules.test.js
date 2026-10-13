@@ -33,6 +33,8 @@ test('stats: a finished match adds its mode\'s totals and every mini-game played
     'mini/cpu/ttt/played': 2, 'mini/cpu/ttt/won': 1, 'mini/cpu/ttt/allMoves': 9, 'mini/cpu/ttt/winMoves': 3, 'mini/cpu/ttt/loseMoves': 2, 'mini/cpu/ttt/oWins': 1, 'mini/cpu/ttt/draw': 1,
     'mini/cpu/bs/played': 1, 'mini/cpu/bs/open': 1, 'mini/cpu/bs/allMoves': 1,
   });
+  const drawn = S.endUpdates('cpu', S.checkEnd({ winner: 'draw', reason: 'blocked', squares: [] }, E.TYPES), 60000, t, false);   // no line left for either side
+  assert.equal(drawn['modes/cpu/draws'], 1); assert.equal(drawn['modes/cpu/xWins'], undefined); assert.equal(drawn['modes/cpu/oWins'], undefined);
   const late = S.endUpdates('local', { winner: 'X', reason: 'timeout', squares: [] }, S.MAX_MS + 1, t, true);
   assert.equal(late['modes/local/started'], 1, 'a start never reported is counted with the end');
   assert.equal(late['modes/local/timeouts'], 1);
