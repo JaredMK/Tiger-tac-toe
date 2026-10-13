@@ -15,7 +15,7 @@ test('the five bots: each its own style and pace, tunable in one place; username
   for (const b of B.BOTS) {
     assert.equal(b.username, undefined, `${b.key}: no username in the code`);
     assert.ok(B.PACES[b.pace], `${b.key}: a known pace`);
-    assert.ok(b.about && b.style && ['attack', 'defend', 'mistake', 'pigRisk'].every(k => typeof b.style[k] === 'number'));
+    assert.ok(b.about && b.style && ['attack', 'defend', 'mistake', 'rollRisk'].every(k => typeof b.style[k] === 'number'));
   }
   assert.equal(new Set(B.BOTS.map(b => JSON.stringify(b.style))).size, 5, 'five different styles');
   assert.equal(new Set(B.BOTS.map(b => b.pace)).size, 5, 'five different paces');
@@ -83,7 +83,7 @@ test('the alert limits: one per player per cooldown, a gap between alerts, a dai
   assert.deepEqual(Object.keys(st.by), ['c'], 'players past their cooldown are forgotten');
 });
 
-test('the computer\'s style knobs: the standard computer unchanged; careless moves stay legal; Pig risk', () => {
+test('the computer\'s style knobs: the standard computer unchanged; careless moves stay legal; Risky Rolls risk', () => {
   for (let k = 0; k < 20; k++) {                              // the standard style is the computer as it plays everywhere else
     const a = E.newMatch(lcg(k)), b = JSON.parse(JSON.stringify(a));
     assert.deepEqual(E.cpuMove(a, lcg(100 + k)), E.cpuMove(b, lcg(100 + k), E.STYLE0));
@@ -95,12 +95,12 @@ test('the computer\'s style knobs: the standard computer unchanged; careless mov
     assert.equal(E.playMove(JSON.parse(JSON.stringify(st)), m.square, m.move, lcg(k)).ok, true, 'a legal move');
   }
   assert.ok(!E.cpuMove(st, lcg(7), { mistake: 0 }).careless);
-  // Pig with 10 at risk and level scores: the standard computer banks, a bolder style rolls on; at 7 a warier one banks
+  // Risky Rolls with 10 at risk and level scores: the standard computer banks, a bolder style rolls on; at 7 a warier one banks
   const pig = pot => ({ type: 'pig', bank: { X: 0, O: 0 }, turn: { by: 'X', rolls: [4, 6], pot } });
   assert.equal(E.localBest(pig(10), 'X', lcg(1)).move, 'bank');
-  assert.equal(E.localBest(pig(10), 'X', lcg(1), { pigRisk: 4 }).move, 'roll');
+  assert.equal(E.localBest(pig(10), 'X', lcg(1), { rollRisk: 4 }).move, 'roll');
   assert.equal(E.localBest(pig(7), 'X', lcg(1)).move, 'roll');
-  assert.equal(E.localBest(pig(7), 'X', lcg(1), { pigRisk: -3 }).move, 'bank');
+  assert.equal(E.localBest(pig(7), 'X', lcg(1), { rollRisk: -3 }).move, 'bank');
 });
 
 test('the computer\'s style knobs: a win always first; the defensive bot weighs the other side\'s lines more, the aggressive one its own', () => {

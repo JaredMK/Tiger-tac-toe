@@ -10,7 +10,7 @@
  *   days/{YYYY-MM-DD}      logins, active, newAccounts, started/{mode}, finished/{mode}
  *   weeks/{YYYY-Www}       logins, active, newAccounts
  *   months/{YYYY-MM}       logins, active, newAccounts
- * "Moves" in a mini-game are the turns a side spent in it: a Pig roll or a Hangman letter that earns
+ * "Moves" in a mini-game are the turns a side spent in it: a Risky Rolls roll or a Hangman letter that earns
  * another go is part of the same turn. Players are counted as active by a one-way hash of their account
  * or of a random id their browser made up; nothing else about them is stored.
  */

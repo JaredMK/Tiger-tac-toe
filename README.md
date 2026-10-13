@@ -30,9 +30,9 @@ the turn indicator, on the square they are about to play, and in the results.
 
 The game screen has a slim top row with "Menu" and the turn clock in a fixed-size box of its own
 (empty without a time limit), so the clock never squeezes or overlaps anything. Under it is the turn
-bar: the X and O characters with the players' names on each side and the squares score between them;
-the current player's character bounces gently, and "[name]'s turn" shows clearly underneath. Long
-names are cut off cleanly with "…".
+bar: the X and O characters with the players' names on each side (the board itself shows who owns
+what, so there is no squares-won score); the current player's character bounces gently, and
+"[name]'s turn" shows clearly underneath. Long names are cut off cleanly with "…".
 
 "Menu" pauses the game with "Resume" and "Main menu"; the latter asks "Leave this match?" and, on Yes,
 ends the match and returns to the main menu. Leaving a match that is recorded (any online match, or a
@@ -47,7 +47,16 @@ animate, and still goes after a second).
 
 Every screen outside a match (Play Local, Play Online, Play a Friend, Find a Match, Host game, Join
 game and its waiting screen) has its back button in the top-left corner, in the same style as the Board button inside a
-mini-game, and it goes back one screen.
+mini-game, and it goes back one screen. The one exception is Find a Match while it is searching: its
+only way out is the Cancel button under the timer.
+
+Every animation is started by the event that causes it, exactly once: a move made on this phone, by
+the computer or played back from the other phone, a square's claim landing on the board (the stamp),
+the glow on a square about to be played, a Memory card turned up, a peg placed, a note popping up, a
+screen coming into view. Drawing the screen never starts one: the page is drawn from the state as it
+is, and each animation on it is then set to the point its event has reached. So a redraw in the
+middle of one (a room update, the other player's presence, the menu) carries it on from where it was,
+and a redraw after it has finished just shows the end: nothing replays or plays twice.
 
 The results screen shows a message picked at random for the match: a win message for a person who
 beat the computer, a loss message when the computer won, the winner's name with a win message when
@@ -101,7 +110,7 @@ are fine; there are no weights). A square that resets draws again from the same 
 | Bump | A race track of 9 spaces and a Finish; both pieces start at Home, before space 1. A move spins a 1-2-3 spinner (equal odds) and the piece hops that far. Landing exactly on the other piece knocks it back Home. Reaching or passing the Finish wins |
 | Candy race | A winding path of 12 randomly coloured spaces (any three in a row are all different colours) from Start to a Finish shown in all four colours; a spin of the colour wheel hops your token to the next space of that colour. No such space ahead means you reach the Finish and win |
 | Coin flip | Five coins: two X, two O and one mystery coin (?) that belongs to nobody, in random places. Flip turns up to 3 coins that aren't yours, the other side's and the mystery coin (all of them if there are 3 or fewer, otherwise 3 picked at random). The coins are picked as each turn starts and ringed in the player's colour before Flip is tapped, and exactly those flip; skipping the square and coming back a later turn may show a new set. Each lands X or O at random, the mystery coin too. All five the same wins for that symbol's player (so with no coin of your own left, a flip can hand the square to the other side) |
-| Pig | Each player has a banked score. A move is a whole push-your-luck turn: roll a die, and a number not yet rolled this turn joins the points at risk (a small +N by your score, with this turn's dice in a row); then roll again or bank. Banking moves them into your score and ends the move; a repeated number busts, losing them (at most six rolls). Once your score and the points at risk reach 21, only Bank is left. First to a banked 21 wins. A bust turns red only once the die has landed; after a winning bank the die keeps the last number rolled |
+| Risky Rolls | Each player has a banked score. A move is a whole push-your-luck turn: roll a die, and a number not yet rolled this turn joins the points at risk (a small +N by your score, with this turn's dice in a row); then roll again or bank. Banking moves them into your score and ends the move; a repeated number busts, losing them (at most six rolls). Once your score and the points at risk reach 21, only Bank is left. First to a banked 21 wins. A bust turns red only once the die has landed; after a winning bank the die keeps the last number rolled |
 | Treasure hunt | 6×6 grid with one hidden treasure. A move digs a cell: the treasure wins; otherwise the cell shows how warm it is, never the distance itself, counted in steps up, down, left or right: Hot (1 step), Warm (2–3), Cool (4–5) or Cold (6+), each with its own colour and label (a legend sits under the grid). Everything dug stays visible. A 5×5 square from a match started before keeps its size and answers in the same bands |
 | Mastermind | One hidden code shared by both players: 4 pegs from 6 colours, no colour twice, picked by the computer. A move is one guess of 4 different colours (tap a slot, then a colour; tap a filled slot to clear it). Feedback is a solid marker for each right colour in the right spot and a hollow marker for each right colour in the wrong spot, always solid first, so the order says nothing about which peg is which. Every guess and its markers stay on show, no guess limit; guessing the exact code wins. Each colour also carries a symbol (circle, square, triangle, diamond, star, plus). The hidden code sits in a compact row of small, peg-sized slots, so the guess history gets the room |
 
@@ -152,8 +161,12 @@ when Back is tapped is let go as soon as the database answers.
 Only the player on the move can act; the other can still open squares to look, and sees "Waiting
 for [name]…". Each player's moves play on the other phone the way computer moves do: the chosen
 square glows on the main board for about a second with a "[name] plays here" label, then a zoom into
-the square, the animation, a short hold, back to the board, Pig rolls one by one (a follow-up move in
-a square you are already looking at plays right there). "Rematch" on the win screen, from either
+the square, the animation, a short hold, back to the board, Risky Rolls' rolls one by one (a follow-up move in
+a square you are already looking at plays right there). The board never runs ahead of what has been
+played back: while the square glows it is shown as it was before the move (not yet filled in, not
+yet claimed), and a square the move wins is claimed on the board, with its stamp, only once the
+playback is back on the board. Each move on the record carries the square as it was before it for
+this. "Rematch" on the win screen, from either
 player, starts again in the same room with the same settings. Leaving a match under way through the
 menu ends it as a loss for the one leaving (written to the match, so the server records it for both
 players), tells the other player ("[name] left the match") and sends them back to the main menu too.
@@ -161,7 +174,8 @@ players), tells the other player ("[name] left the match") and sends them back t
 Leaving the app does not end a match. Lock the phone, answer a call, switch apps: the other player
 sees "[name] is away", the match waits (or the clock runs, if one is set), and when you come back,
 or open the page or the link again, you are back in your seat and every move you missed plays back
-with the usual highlight-and-animate sequence, in order.
+with the usual highlight-and-animate sequence, in order; a square changed by a later move shows what
+it was until that move's turn comes.
 
 ### How it works
 
@@ -197,7 +211,7 @@ when a turn begins (once the previous move has finished playing), turns red and 
 seconds, and keeps running while the in-game menu is open or while a player is away.
 
 When the clock runs out, a random legal move is made for that player and shown on both screens with
-"[name] ran out of time — random move": a random open square, then a random legal action in it (Pig:
+"[name] ran out of time — random move": a random open square, then a random legal action in it (Risky Rolls:
 one roll, then a bank if it did not bust; Hangman: one random letter, and the turn ends even if it
 hits; Wordle: a random dictionary word). The turn then passes. Timeouts are counted per player, and
 a player's second timeout in a row loses the match at once: the win screen reads "[name] wins —
@@ -268,8 +282,11 @@ quick answer.
 **Usernames already taken** are checked against the same rules once per rules version by
 `scripts/check-usernames.js` (run by the deploy workflow): it changes nothing, writes the names that
 would be refused today, with the word that caught each one, where only the admin can read them (the
-dashboard's "Usernames to review" card), and prints only a count in the public log. Playing locally, against the computer or with a friend's
-code needs no account (a friend game without one uses an anonymous session, as before).
+dashboard's "Usernames to review" card), and prints only a count in the public log. Playing locally, against the computer or joining with a friend's
+code needs no account (a guest in a friend game without one uses an anonymous session, as before).
+
+Hosting a friend game needs an account too: tapping **Host game** while logged out goes to the login
+first, then straight back to hosting once logged in (and named). Joining a friend's game does not.
 
 **Find Match** (Play Online → Find a Match; needs an account) pairs strangers in a single queue: every mini-game on and always
 1 minute a turn, with no options to pick. Tapping Find a Match goes straight into searching (after
@@ -363,7 +380,7 @@ If the player is still alone when it is up, one of five bot accounts that isn't 
 takes them on. The match is an ordinary Find Match game: the bot's account looks like any other
 (a made-up ordinary username, a profile, a record and history of its own, shown online), and it
 plays through the same server moves. Each bot has its own style (how much it builds its own lines,
-how much it blocks, how often it slips, how bold it is at Pig) and pace (thinking time drawn afresh
+how much it blocks, how often it slips, how bold it is at Risky Rolls) and pace (thinking time drawn afresh
 for every move, mostly a few seconds, sometimes 20 to 50, now and then longer, always inside the
 1-minute clock; quicker for a follow-up in the same turn), set in `functions/bots.js`. The bot's
 moves are made by the server when the player's phone checks in during the other side's turn (every
@@ -421,7 +438,7 @@ answer leaves the fewest, which cracks any code in at most 5 guesses; Hangman ta
 the words still consistent with the pattern; Memory remembers every card shown and flips a known
 pair, else unseen cards; Coin flip reads its exact chances from the marked coins (and the small
 chance of handing the square over when none of its own are left); Snakes and Ladders works out the
-expected rolls to the top with the ladders and snakes in; Bump and the races count the moves left; Pig keeps rolling while the bust risk
+expected rolls to the top with the ladders and snakes in; Bump and the races count the moves left; Risky Rolls keeps rolling while the bust risk
 is acceptable and banks around 8 to 10, bolder when behind and safer when ahead, always when the bank
 would reach 21. In an older match, a Hexapawn square still gets full minimax (the only win is the
 far row; a position where neither side can move resets the square), weighed on the board by how close
@@ -469,7 +486,7 @@ never counted).
 
 Per mini-game: times played; how each one ended (won, draw that reset the square, or left open when
 the match ended); average moves the winner made in it, the loser, and in total; X and O win rates.
-"Moves" are the turns a side spent in that square (a Pig roll or a Hangman letter that earns another go
+"Moves" are the turns a side spent in that square (a Risky Rolls roll or a Hangman letter that earns another go
 is part of the same turn). Overall: logins and active players per day, week and month (UTC; a login is
 an account signing in or coming back to the game); new accounts; matches started and finished by mode;
 average match length in turns and minutes; abandon, resign and timeout rates; how often X, who moves

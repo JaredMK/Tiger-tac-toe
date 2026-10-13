@@ -27,7 +27,7 @@ const INFO = {
   candy:       { name: 'Candy Race',   hint: 'Spin, then hop to the next space of that colour' },
   bump:        { name: 'Bump',         hint: 'Spin 1, 2 or 3. Land on your opponent to send them home' },
   coins:       { name: 'Coin Flip',    hint: "Flip up to 3 coins that aren't yours. All five the same wins" },
-  pig:         { name: 'Pig',          hint: "Roll and bank. A repeated number loses this turn's points. First to 21 wins" },
+  pig:         { name: 'Risky Rolls',  hint: "Roll and bank. A repeated number loses this turn's points. First to 21 wins" },   // ('pig': its id in saved games, records and stats, from when it was called Pig)
   hunt:        { name: 'Treasure Hunt', hint: 'Dig a cell: hot, warm, cool or cold. Dig up the treasure to win' },
   hexapawn:    { name: 'Hexapawn',     hint: 'Step forward, capture diagonally. Reach the far row to win' },
   mastermind:  { name: 'Mastermind',   hint: 'Crack the hidden 4-colour code' },
@@ -40,7 +40,7 @@ const HILO = { lo: 1, hi: 20 };
 const CANDY = { len: 12, colors: ['red', 'yellow', 'green', 'blue'], gap: 3 };   // same colour at least 3 spaces apart
 const NAME_MAX = 12;
 const COINS = { n: 5, max: 3, mystery: '?' };   // 2 X, 2 O and one mystery coin that belongs to nobody until it is flipped
-const PIG = { goal: 21, maxRolls: 6 };
+const RISKY = { goal: 21, maxRolls: 6 };
 // Battleship: one hidden ship on a 4x4 grid, 1 to 4 cells long, lying across or down. Both players fire at it.
 const BS = { n: 4, names: { 4: 'Battleship', 3: 'Submarine', 2: 'Destroyer', 1: 'Patrol Boat' } };
 // Treasure hunt: a 6x6 grid. A dug cell tells only how far the treasure is, as a band of steps up, down,
@@ -579,7 +579,7 @@ function newState(rng) {
     flash: null,              // the move just made: its result, while the animation and toast play
     done: null,               // the move just made, kept on show until the player heads back to the board (that is when the turn passes)
     stamp: null,              // square whose owner's mark stamps in on the board (just claimed)
-    lock: null,               // square the current player must keep playing (Hangman bonus guess, Pig turn)
+    lock: null,               // square the current player must keep playing (Hangman bonus guess, Risky Rolls turn)
     draft: '',                // letters typed so far (Wordle)
     pick: null,               // first card chosen (Memory)
     pickSq: null,             // ...and the square it belongs to
@@ -808,11 +808,11 @@ function applyMove(mini, p, m, rng) {
         mini.bank[p] += t.pot;
         mini.last = { by: p, kind: 'bank', pot: t.pot, rolls: t.rolls, roll: t.rolls[t.rolls.length - 1] };
         mini.turn = null;
-        if (mini.bank[p] >= PIG.goal) return { ok: true, outcome: 'win' };
+        if (mini.bank[p] >= RISKY.goal) return { ok: true, outcome: 'win', note: 'bank' };   // a winning bank is still a bank: the phones show it as one
         return { ok: true, outcome: 'continue', note: 'bank' };
       }
-      if (t && t.rolls.length >= PIG.maxRolls) return { ok: false, reason: 'maxrolls' };   // a seventh roll can only bust
-      if (t && mini.bank[p] + t.pot >= PIG.goal) return { ok: false, reason: 'enough' };   // enough to win: only Bank is left
+      if (t && t.rolls.length >= RISKY.maxRolls) return { ok: false, reason: 'maxrolls' };   // a seventh roll can only bust
+      if (t && mini.bank[p] + t.pot >= RISKY.goal) return { ok: false, reason: 'enough' };   // enough to win: only Bank is left
       const n = 1 + randInt(needRng(rng), 6);
       if (t && t.rolls.includes(n)) {
         mini.last = { by: p, kind: 'bust', roll: n, rolls: t.rolls.concat(n), pot: t.pot };   // the pot is lost, the bank is not
@@ -1023,7 +1023,7 @@ function needsOf(pm, p) {
     case 'candy':   return Math.max(1, candyExpected(pm.track)[pm.pos[p] + 1]);
     case 'memory':  { const known = pm.seen.filter(i => pm.cards[i]); return memoryPair(pm, known) ? 1 : 1 + (9 - pm.seen.length) / 2; }
     case 'coins':   return COIN_NEEDS[pm.coins.filter(c => c !== p).length];
-    case 'pig':     { const pot = pm.turn && pm.turn.by === p ? pm.turn.pot : 0; return Math.max(1, (PIG.goal - pm.bank[p] - pot) / 7); }
+    case 'pig':     { const pot = pm.turn && pm.turn.by === p ? pm.turn.pot : 0; return Math.max(1, (RISKY.goal - pm.bank[p] - pot) / 7); }
     case 'hunt':    { const n = huntCandidates(pm).length; return n <= 1 ? 1 : 1 + Math.log2(n) / 2.5; }
     case 'hexapawn': return hpNeeds(pm.cells, p);
     case 'mastermind': { const n = mmCandidates(pm).length; return n <= 1 ? 1 : Math.min((n + 1) / 2, 1 + Math.log(n) / Math.log(5)); }
@@ -1339,10 +1339,10 @@ function localBest(pm, me, rng, style) {
       const t = pm.turn && pm.turn.by === me ? pm.turn : null;
       if (!t) return { move: 'roll', q: 0 };
       const bank = pm.bank[me];
-      if (bank + t.pot >= PIG.goal) return { move: 'bank', q: 1 };
-      if (t.rolls.length >= PIG.maxRolls) return { move: 'bank', q: 0 };
+      if (bank + t.pot >= RISKY.goal) return { move: 'bank', q: 1 };
+      if (t.rolls.length >= RISKY.maxRolls) return { move: 'bank', q: 0 };
       const gap = pm.bank[other(me)] - bank;                      // positive when behind
-      const target = Math.max(4, Math.min(20, Math.max(6, Math.min(14, 9 + Math.round(gap / 4))) + ((style && style.pigRisk) || 0)));   // riskier when behind, safer when ahead (a bolder or warier style shifts it)
+      const target = Math.max(4, Math.min(20, Math.max(6, Math.min(14, 9 + Math.round(gap / 4))) + ((style && style.rollRisk) || 0)));   // riskier when behind, safer when ahead (a bolder or warier style shifts it)
       if (t.pot >= target || t.rolls.length / 6 > 0.5) return { move: 'bank', q: 0 };
       return { move: 'roll', q: 0 };
     }
@@ -1362,8 +1362,8 @@ function localBest(pm, me, rng, style) {
 // A playing style (the matchmaking bots' personalities; the computer opponent plays STYLE0): attack and
 // defend weigh the lines still open for itself and for the other side, defend also how hard it blocks a
 // line about to be completed; mistake is the chance of a careless move (any legal move in any open
-// square); pigRisk adds to the points Pig banks at (bolder above zero, warier below).
-const STYLE0 = { attack: 1, defend: 1, mistake: 0, pigRisk: 0 };
+// square); rollRisk adds to the score it banks at in Risky Rolls (bolder above zero, warier below).
+const STYLE0 = { attack: 1, defend: 1, mistake: 0, rollRisk: 0 };
 function squareValue(squares, i, me, style) {
   const s = style || STYLE0;
   const o = other(me);
@@ -1439,7 +1439,7 @@ function randomLegalMove(mini, p, rng) {
   return null;
 }
 // The player to move ran out of time. A second timeout in a row loses the match; otherwise a random
-// legal move is made for them (Pig: one roll, then a bank if it did not bust; Hangman: one letter and
+// legal move is made for them (Risky Rolls: one roll, then a bank if it did not bust; Hangman: one letter and
 // the turn ends even if it hits; Wordle: a random word from the dictionary).
 function timeoutMove(state, rng) {
   rng = needRng(rng);
@@ -1492,7 +1492,7 @@ function playMove(state, i, m, rng, opts) {
   if (sq.owner) return { ok: false, reason: 'claimed' };
   const p = state.turn;
   const range = sq.mini.type === 'hilo' ? [sq.mini.lo, sq.mini.hi] : null;   // the range before the guess, for the UI
-  const bonus = state.lock === i;                               // a bonus move within the same turn (Hangman, Pig)
+  const bonus = state.lock === i;                               // a bonus move within the same turn (Hangman, Risky Rolls)
   const res = applyMove(sq.mini, p, m, rng);
   if (!res.ok) return res;
   const mini = sq.mini;
@@ -1660,13 +1660,15 @@ function fullState(rec) {
   return st;
 }
 // The move just made is settled: its result goes on the record as an entry for the phones to play
-// back, and the turn passes at once (or the mover keeps it for a bonus move).
-function settle(full) {
+// back, and the turn passes at once (or the mover keeps it for a bonus move). The entry has the square
+// as the move left it (after) and, when known, as it was before (before, from the record as it stood):
+// a phone playing the move back shows the square as it was until the move plays there.
+function settle(full, before) {
   const f = full.flash, sq = full.squares[f.square];
   const after = JSON.parse(JSON.stringify(sq));
   if (!after.owner) hideMini(after.mini, f.square, full);
   full.seq = (full.seq || 0) + 1;
-  const entry = Object.assign(JSON.parse(JSON.stringify(f)), { seq: full.seq, moves: full.moves, after });
+  const entry = Object.assign(JSON.parse(JSON.stringify(f)), { seq: full.seq, moves: full.moves, after }, before ? { before: JSON.parse(JSON.stringify(before)) } : {});
   endFlash(full, false);
   full.recent = (full.recent || []).concat([entry]).slice(-RECENT_MAX);
   return entry;
@@ -1678,22 +1680,22 @@ function applyOnlineMove(rec, side, i, m, rng, opts) {
   if (full.turn !== side) return { ok: false, reason: 'turn' };
   const r = playMove(full, i, m, rng, opts);
   if (!r.ok) return r;
-  const entries = [settle(full)];
+  const entries = [settle(full, rec.state.squares && rec.state.squares[i])];
   return { ok: true, rec: matchRecord(full), entries };
 }
-// The player on the move ran out of time: a random move for them (Pig: a roll, then the bank), or
+// The player on the move ran out of time: a random move for them (Risky Rolls: a roll, then the bank), or
 // the match lost on a second timeout in a row.
 function applyOnlineTimeout(rec, rng) {
   const full = fullState(rec);
   const r = timeoutMove(full, rng);
   if (!r.ok) return r;
   if (r.lost) return { ok: true, rec: matchRecord(full), entries: [], lost: r.lost };
-  const entries = [settle(full)];
+  const entries = [settle(full, rec.state.squares && full.flash && rec.state.squares[full.flash.square])];
   if (full.timer.bankNext) {
     full.timer.bankNext = false;
     if (full.lock != null && full.squares[full.lock].mini.type === 'pig') {
       const b = playMove(full, full.lock, 'bank', rng, { forced: true });
-      if (b.ok) entries.push(settle(full));
+      if (b.ok) entries.push(settle(full, entries[0].after));
     }
   }
   return { ok: true, rec: matchRecord(full), entries };
@@ -1791,7 +1793,7 @@ function resignLocal(state, side) {
 
 // ---------- stats: what a finished (or abandoned) match adds to the anonymous game stats ----------
 // Every mini-game played: how it ended ('won', 'draw' when it reset, or 'open' when the match ended
-// first), who won it and the turns each side spent in it. A bonus move within a turn (a Pig roll,
+// first), who won it and the turns each side spent in it. A bonus move within a turn (a Risky Rolls roll,
 // a Hangman letter after a hit) is part of the same turn.
 function matchStats(st) {
   const squares = (Array.isArray(st.sqlog) ? st.sqlog : []).map(e => ({ t: e.t, end: e.end, w: e.w || null, X: e.X || 0, O: e.O || 0 }));
@@ -1804,4 +1806,4 @@ function matchStats(st) {
 }
 
 // Node (the Cloud Functions and the tests): the same names as a module.
-if (typeof module !== "undefined" && module.exports) module.exports = { STYLE0, huntSize, huntBand, huntClue, normTimer, resignLocal, TYPES, OLD_TYPES, SNL, BUMP, snlRow, snlBoard, snlValid, snlExpected, coinPick, markCoins, coinMarksFor, normLocal, seatLocal, INFO, C4, HP, MM, HEX_N, HILO, CANDY, NAME_MAX, COINS, PIG, BS, HUNT, DICE_GOAL, MEMORY, LINES, WORDS5, WORDS_HANG, VALID5, other, makeRng, needRng, randInt, randomType, shuffle, memoryDeck, wordleMarks, hexNeighbors, hexPath, canMove, hpMoves, mmFeedback, mmValid, MM_ALL, mmAll, mmCode, mmCandidates, mmBestGuess, hpGoalRow, upgradeMini, anyMove, huntDist, candyTrack, newMini, pickType, newSquare, CPU_NAME, defaultSetup, cpuSide, normSetup, syncNames, enabledGames, TIMER_OPTIONS, newTimer, playerName, newState, startMatch, newMatch, findRun, applyMove, AI, publicMini, wordleCandidates, hangmanCandidates, bsCandidates, bsPlacements, bsShip, huntCandidates, WINDOWS, windowsOf, lineNeeds, c4Playable, hexDist, candyExpected, COIN_NEEDS, needsOf, memoryPair, winChance, tttMinimax, c4Drop, c4Eval, C4_ORDER, c4Search, C4_DEPTH, c4Moves, HP_MEMO, hpSolve, hpMovesValued, hpNeeds, hexMoves, threatScore, pickValued, localBest, squareValue, moveGain, cpuMove, VALID5_LIST, randomLegalMove, timeoutMove, mainResult, playMove, endFlash, leaveSquare, RECENT_MAX, MATCH_FIELDS, secretOf, hideMini, matchRecord, fullState, settle, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, newOnlineMatch, PLAY, diceSlot, playMs, replayMs, armClock, applyOnlineResign, matchStats };
+if (typeof module !== "undefined" && module.exports) module.exports = { STYLE0, huntSize, huntBand, huntClue, normTimer, resignLocal, TYPES, OLD_TYPES, SNL, BUMP, snlRow, snlBoard, snlValid, snlExpected, coinPick, markCoins, coinMarksFor, normLocal, seatLocal, INFO, C4, HP, MM, HEX_N, HILO, CANDY, NAME_MAX, COINS, RISKY, BS, HUNT, DICE_GOAL, MEMORY, LINES, WORDS5, WORDS_HANG, VALID5, other, makeRng, needRng, randInt, randomType, shuffle, memoryDeck, wordleMarks, hexNeighbors, hexPath, canMove, hpMoves, mmFeedback, mmValid, MM_ALL, mmAll, mmCode, mmCandidates, mmBestGuess, hpGoalRow, upgradeMini, anyMove, huntDist, candyTrack, newMini, pickType, newSquare, CPU_NAME, defaultSetup, cpuSide, normSetup, syncNames, enabledGames, TIMER_OPTIONS, newTimer, playerName, newState, startMatch, newMatch, findRun, applyMove, AI, publicMini, wordleCandidates, hangmanCandidates, bsCandidates, bsPlacements, bsShip, huntCandidates, WINDOWS, windowsOf, lineNeeds, c4Playable, hexDist, candyExpected, COIN_NEEDS, needsOf, memoryPair, winChance, tttMinimax, c4Drop, c4Eval, C4_ORDER, c4Search, C4_DEPTH, c4Moves, HP_MEMO, hpSolve, hpMovesValued, hpNeeds, hexMoves, threatScore, pickValued, localBest, squareValue, moveGain, cpuMove, VALID5_LIST, randomLegalMove, timeoutMove, mainResult, playMove, endFlash, leaveSquare, RECENT_MAX, MATCH_FIELDS, secretOf, hideMini, matchRecord, fullState, settle, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, newOnlineMatch, PLAY, diceSlot, playMs, replayMs, armClock, applyOnlineResign, matchStats };

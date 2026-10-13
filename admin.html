@@ -96,7 +96,7 @@ const FIREBASE_CONFIG = {
 };
 const MODES = [['local', 'Two players'], ['cpu', 'vs Computer'], ['cvc', 'Computer vs Computer (old)'], ['friend', 'Friend code'], ['match', 'Find Match'], ['bot', 'Find Match vs a bot'], ['casual', 'Casual (old)'], ['ranked', 'Ranked (old)']];
 const MODE_COLORS = { local: 'var(--o)', cpu: 'var(--sky)', cvc: 'var(--stone)', friend: 'var(--plum)', match: 'var(--green)', bot: '#2f7f6f', casual: '#8fbf7a', ranked: 'var(--x)' };
-const GAMES = { ttt: 'Tic-tac-toe', c4: 'Connect 4', bs: 'Battleship', wordle: 'Wordle', hangman: 'Hangman', hex: 'Hex', hilo: 'Higher/Lower', snakes: 'Snakes and Ladders', memory: 'Memory', candy: 'Candy Race', bump: 'Bump', coins: 'Coin Flip', pig: 'Pig', hunt: 'Treasure Hunt', mastermind: 'Mastermind' };   // the games in the pool (Hexapawn and the Dice race are gone; their numbers stay in the database)
+const GAMES = { ttt: 'Tic-tac-toe', c4: 'Connect 4', bs: 'Battleship', wordle: 'Wordle', hangman: 'Hangman', hex: 'Hex', hilo: 'Higher/Lower', snakes: 'Snakes and Ladders', memory: 'Memory', candy: 'Candy Race', bump: 'Bump', coins: 'Coin Flip', pig: 'Risky Rolls', hunt: 'Treasure Hunt', mastermind: 'Mastermind' };   // the games in the pool (Hexapawn and the Dice race are gone; their numbers stay in the database)
 const app = document.getElementById('app');
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 let fb = null, user = null, stats = null, flagged = null, view = { status: 'loading', error: '' };
@@ -196,7 +196,7 @@ function render() {
   const modeTable = `<div class="tbl"><table><thead><tr><th>Mode</th><th>Started</th><th>Finished</th><th>Abandoned</th><th>Resigned</th><th>Timed out</th><th>Avg turns</th><th>Avg minutes</th><th>X (first) wins</th></tr></thead><tbody>${MODES.map(([m, name]) => {
     const r = modeRow(m), st = n(r.started), fin = n(r.finished), dec = n(r.xWins) + n(r.oWins);
     return `<tr><td>${name}</td><td>${st}</td><td>${fin}</td><td>${pct(ratio(Math.max(0, st - fin), st))}</td><td>${pct(ratio(n(r.resigned), fin))}</td><td>${pct(ratio(n(r.timeouts), fin))}</td><td>${num(ratio(n(r.turns), fin))}</td><td>${num(ratio(n(r.ms), n(r.timed)) == null ? null : ratio(n(r.ms), n(r.timed)) / 60000)}</td><td>${pct(ratio(n(r.xWins), dec))}</td></tr>`;
-  }).join('')}</tbody></table></div><p class="note">Abandoned: started but never finished (left, or the app closed). Turns count a bonus move (a Pig roll, a Hangman letter) as part of its turn.</p>`;
+  }).join('')}</tbody></table></div><p class="note">Abandoned: started but never finished (left, or the app closed). Turns count a bonus move (a Risky Rolls roll, a Hangman letter) as part of its turn.</p>`;
   const rows = miniRows(), dir = sortBy.dir;
   rows.sort((a, b) => { const x = a[sortBy.k], y = b[sortBy.k]; if (x == null && y == null) return a.name.localeCompare(b.name); if (x == null) return 1; if (y == null) return -1; return (typeof x === 'string' ? x.localeCompare(y) : x - y) * dir; });
   const cols = [['name', 'Mini-game'], ['played', 'Played'], ['won', 'Won'], ['draw', 'Draw-reset'], ['open', 'Unfinished'], ['avgWin', 'Avg winner moves'], ['avgLose', 'Avg loser moves'], ['avgAll', 'Avg total moves'], ['xRate', 'X wins'], ['oRate', 'O wins']];

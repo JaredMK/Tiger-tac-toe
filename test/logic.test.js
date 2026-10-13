@@ -840,7 +840,7 @@ test('coins: X can keep flipping across turns and claim the square while O plays
   assert.equal(L.canMove(st.squares[0].mini, 'O'), true);
 });
 
-// ==================================== Pig ====================================
+// ==================================== Risky Rolls ====================================
 const die = (...faces) => seq(...faces.map(n => pick(n - 1, 6)));   // rolls come out in this order
 
 test('pig: a roll adds a new number to the pot and keeps the turn; the bank is untouched until Bank', () => {
@@ -887,7 +887,7 @@ test('pig: Bank needs a pot, adds it to the banked score, ends the move, and 21 
   L.applyMove(m, 'X', 'roll', die(1));
   assert.equal(L.applyMove(m, 'X', 'bank').outcome, 'win', '20 + 1 = 21');
   assert.equal(m.bank.X, 21);
-  assert.equal(L.PIG.goal, 21);
+  assert.equal(L.RISKY.goal, 21);
 });
 
 test('pig: once the score and this turn\'s points reach 21, only Bank is left', () => {
@@ -1344,7 +1344,7 @@ function randomMove(m, rng, p) {
     case 'coins': return 'flip';
     case 'pig': {
       if (!m.turn) return 'roll';
-      if (m.turn.rolls.length >= L.PIG.maxRolls || m.bank[p] + m.turn.pot >= L.PIG.goal) return 'bank';
+      if (m.turn.rolls.length >= L.RISKY.maxRolls || m.bank[p] + m.turn.pot >= L.RISKY.goal) return 'bank';
       return rng() < 0.5 ? 'roll' : 'bank';
     }
     case 'hunt': return pickFrom(empties(m.dug, c => !c));
@@ -2124,7 +2124,7 @@ test('the record keeps at most the last few moves, and a claim or a win is settl
   assert.equal(rec.state.recent[L.RECENT_MAX - 1].seq, rec.state.seq);
 });
 
-test('an online timeout makes a random move (Pig: roll then bank) and the second in a row loses', () => {
+test('an online timeout makes a random move (Risky Rolls: roll then bank) and the second in a row loses', () => {
   let st = matchWith(['pig', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt'], lcg(8));
   st.id = 'm'; st.seq = 0; st.recent = []; st.timer = L.newTimer(30); st.lock = 0;
   let rec = L.matchRecord(st);
@@ -2142,6 +2142,38 @@ test('an online timeout makes a random move (Pig: roll then bank) and the second
   assert.equal(r.rec.state.winner, 'O'); assert.equal(r.rec.state.winReason, 'timeout');
   assert.equal(L.applyOnlineTimeout(r.rec, lcg(4)).ok, false, 'nothing more once it is over');
   assert.equal(L.applyOnlineMove(r.rec, 'O', 1, 0, lcg(4)).reason, 'over');
+});
+
+test('each move on the record carries its square as it was before (for the playback) and as the move left it', () => {
+  let st = matchWith(['ttt', 'pig', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt'], lcg(8));
+  st.id = 'm'; st.seq = 0; st.recent = []; st.timer = L.newTimer(30);
+  st.squares[0].mini.cells = ['X', 'X', null, 'O', 'O', null, null, null, null];
+  let rec = L.matchRecord(st);
+  const was = JSON.parse(JSON.stringify(rec.state.squares[0]));
+  let r = L.applyOnlineMove(rec, 'X', 0, 2, lcg(1));
+  assert.equal(r.ok, true);
+  const e = r.entries[0];
+  assert.equal(e.kind, 'claim');
+  assert.deepEqual(e.before, was, 'before: the square as the record had it, unclaimed');
+  assert.equal(e.before.owner, null); assert.equal(e.after.owner, 'X');
+  assert.deepEqual(r.rec.state.recent[0].before, was, 'kept on the record');
+  // a timeout: the forced roll's square before, and the bank that follows starts where the roll left it
+  rec = r.rec;
+  const st2 = L.fullState(rec); st2.lock = 1; st2.turn = 'O'; st2.timer.deadline = 1;   // O's time runs out in Risky Rolls: a roll, then the bank
+  rec = L.matchRecord(st2);
+  const was1 = JSON.parse(JSON.stringify(rec.state.squares[1]));
+  r = L.applyOnlineTimeout(rec, () => 0.9);                      // a 6 (a first roll never busts), then the bank
+  assert.equal(r.ok, true); assert.equal(r.entries.length, 2);
+  assert.deepEqual(r.entries[0].before, was1);
+  assert.deepEqual(r.entries[1].before, r.entries[0].after, 'the bank starts from the roll');
+});
+
+test('Risky Rolls: a bank that wins the square is still a bank (the phones show it as one, the die left alone)', () => {
+  const st = matchWith(['pig', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt'], lcg(8));
+  st.squares[0].mini.bank = { X: 18, O: 0 }; st.squares[0].mini.turn = { by: 'X', rolls: [1, 3], pot: 4 }; st.lock = 0;
+  const r = L.playMove(st, 0, 'bank', lcg(1));
+  assert.equal(r.ok, true); assert.equal(r.flash.kind, 'claim'); assert.equal(r.flash.note, 'bank');
+  assert.equal(st.squares[0].mini.last.roll, 3, 'the last number rolled stays the last roll');
 });
 
 test('a new online match comes from the lobby settings and a rematch starts over with the same ones', () => {
@@ -2523,7 +2555,7 @@ test('stats: each mini-game counts the turns each side spent in it, bonus moves 
   const st = matchWith(['pig', 'ttt', 'bs', 'hangman']);
   st.squares[2].mini = bsAt(4, 5);
   st.squares[3].mini = L.newMini('hangman', wordRng(L.WORDS_HANG, 'apple'));
-  turn(st, 0, 'roll', die(3)); turn(st, 0, 'roll', die(4)); turn(st, 0, 'bank');   // X: one turn of Pig, three moves
+  turn(st, 0, 'roll', die(3)); turn(st, 0, 'roll', die(4)); turn(st, 0, 'bank');   // X: one turn of Risky Rolls, three moves
   turn(st, 2, 4); turn(st, 2, 5);                                                    // O: a hit, then the bonus shot sinks it, one turn
   turn(st, 3, 'P'); turn(st, 3, 'Z');                                                // X: a hit and a bonus miss, one turn
   assert.deepEqual(st.squares[0].mv, { X: 1, O: 0 });
@@ -2546,7 +2578,7 @@ test('stats: each mini-game counts the turns each side spent in it, bonus moves 
   assert.deepEqual(back.squares[0].mv, { X: 1, O: 0 });
 });
 
-test('timeouts: Coin flip flips, Battleship fires at an open cell, Pig banks once 21 is reached', () => {
+test('timeouts: Coin flip flips, Battleship fires at an open cell, Risky Rolls banks once 21 is reached', () => {
   const st = matchWith(['coins', 'bs', 'pig']);
   st.timer = L.newTimer(30);
   for (let k = 0; k < 40; k++) {

@@ -7,27 +7,27 @@
  *   attack   how much it values lines still open for itself (1 = the standard computer)
  *   defend   how much it values lines still open for the other side, and how hard it blocks
  *   mistake  the chance, each move, of a careless move: anything legal in any open square
- *   pigRisk  points added to the score it banks Pig at (bolder above 0, warier below)
+ *   rollRisk  points added to the score it banks at in Risky Rolls (bolder above 0, warier below)
  * pace: the name of one of PACES below.
  */
 // (No usernames here: this code is public. Each bot's username is made up when its account is made,
 // from NAMES below, like any player's, and kept in the database.)
 const BOTS = [
-  { key: 'b1', about: 'Aggressive: chases its own lines, blocks late, pushes its luck at Pig, plays fast',
-    style: { attack: 1.6, defend: 0.6, mistake: 0.05, pigRisk: 4 }, pace: 'quick' },
-  { key: 'b2', about: 'Strategic and defensive: blocks first, banks Pig early',
-    style: { attack: 0.9, defend: 1.6, mistake: 0.03, pigRisk: -2 }, pace: 'steady' },
+  { key: 'b1', about: 'Aggressive: chases its own lines, blocks late, pushes its luck at Risky Rolls, plays fast',
+    style: { attack: 1.6, defend: 0.6, mistake: 0.05, rollRisk: 4 }, pace: 'quick' },
+  { key: 'b2', about: 'Strategic and defensive: blocks first, banks early at Risky Rolls',
+    style: { attack: 0.9, defend: 1.6, mistake: 0.03, rollRisk: -2 }, pace: 'steady' },
   { key: 'b3', about: 'Erratic: sharp one turn, careless the next, timing all over the place',
-    style: { attack: 1.1, defend: 0.9, mistake: 0.25, pigRisk: 2 }, pace: 'erratic' },
+    style: { attack: 1.1, defend: 0.9, mistake: 0.25, rollRisk: 2 }, pace: 'erratic' },
   { key: 'b4', about: 'Slow and careful: never careless, takes its time, plays safe',
-    style: { attack: 1, defend: 1.3, mistake: 0, pigRisk: -3 }, pace: 'slow' },
+    style: { attack: 1, defend: 1.3, mistake: 0, rollRisk: -3 }, pace: 'slow' },
   { key: 'b5', about: 'Casual: balanced, with the odd slip',
-    style: { attack: 1.1, defend: 1, mistake: 0.12, pigRisk: 0 }, pace: 'casual' },
+    style: { attack: 1.1, defend: 1, mistake: 0.12, rollRisk: 0 }, pace: 'casual' },
 ];
 
 // Thinking time, in seconds, drawn afresh for every move: a weighted mix of ranges, [weight, from, to].
 // turn: the first move of a turn. again: a follow-up in the same turn (Hangman's next letter after a
-// right one, Battleship's next shot after a hit, Pig's next roll).
+// right one, Battleship's next shot after a hit, Risky Rolls' next roll).
 const PACES = {
   quick:   { turn: [[0.6, 2, 5], [0.3, 6, 15], [0.1, 20, 40]], again: [[0.8, 1.2, 3], [0.2, 3, 6]] },
   steady:  { turn: [[0.35, 2, 5], [0.45, 6, 19], [0.17, 20, 45], [0.03, 46, 52]], again: [[0.6, 1.5, 4], [0.4, 4, 8]] },

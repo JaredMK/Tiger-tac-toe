@@ -79,8 +79,6 @@ b.X { color: var(--x); } b.O { color: var(--o); }
 }
 .t-X .turn { color: var(--x); } .t-X .turn .g { background: var(--x); }
 .t-O .turn { color: var(--o); } .t-O .turn .g { background: var(--o); }
-.score { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 15px; color: var(--muted); }
-.score b { font-size: 17px; }
 
 /* ---------- screens ---------- */
 .scr {
@@ -149,11 +147,14 @@ b.X { color: var(--x); } b.O { color: var(--o); }
 .thg .hw { display: flex; gap: 1.2cqw; --tw: min(12cqw, calc(82cqw / var(--n))); }
 .thg .hw i { width: var(--tw); height: calc(var(--tw) * 1.25); border-bottom: 2px solid var(--muted); display: grid; place-items: center; font-weight: 800; font-size: calc(var(--tw) * .75); line-height: 1; }
 .thg .hw i.on { border-color: var(--text); }
-.thex { display: flex; flex-direction: column; gap: 1cqw; }
-.thex .hr { display: flex; gap: 1cqw; margin-left: calc(var(--k) * 5.5cqw); }
-.thex .hr i { width: 10cqw; height: 10cqw; border-radius: 50%; background: var(--panel-2); }
-.thex .hr i.X { background: var(--x); }
-.thex .hr i.O { background: var(--o); }
+.thex { display: flex; flex-direction: column; --tw: 12.5cqw; --th: calc(var(--tw) * 1.1547); }   /* the Hex board in small: the same tiling as the full view */
+.thex .hr { display: flex; margin-left: calc(var(--k) * (var(--tw) - 1px) / 2); }
+.thex .hr + .hr { margin-top: calc(var(--th) * -.25 - 1px); }
+.thex .hr i + i { margin-left: -1px; }                                          /* neighbours share their outline */
+.thex .hr i { position: relative; flex: none; width: var(--tw); height: var(--th); background: var(--line); clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); }
+.thex .hr i::before { content: ''; position: absolute; inset: 1.3px; background: var(--hf, var(--panel-2)); clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); }
+.thex .hr i.X { --hf: var(--x); }
+.thex .hr i.O { --hf: var(--o); }
 .thumb .track { width: 86cqw; }
 .thilo { text-align: center; }
 .thilo b { display: block; font-size: 16cqw; line-height: 1.1; font-variant-numeric: tabular-nums; }
@@ -202,7 +203,7 @@ svg text { text-rendering: geometricPrecision; }   /* laid out at its true size,
   --gh: calc(var(--vh) - var(--hdr) - var(--bar) - 2 * var(--pad) - var(--sat) - var(--sab));
   --g: min(var(--gw), var(--gh));
 }
-.mini.enter { animation: zoomin .18s ease-out; }   /* only on the way in from the board, not on every re-render */
+.mini.enter { animation: zoomin .18s ease-out; }   /* on the way in from the board (anchored to that moment: a re-render carries it on) */
 .bar { flex: none; height: var(--bar); width: 100%; display: flex; align-items: center; gap: 12px; }
 .bar.won { border-radius: 14px; padding: 0 12px 0 6px; }
 .bar.won-X { background: var(--x-soft); }
@@ -448,7 +449,6 @@ svg text { text-rendering: geometricPrecision; }   /* laid out at its true size,
 .clock { flex: none; font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; padding: 3px 6px; border-radius: 8px; background: var(--panel-2); color: var(--text); }
 .clock.low { color: #fff; background: var(--x); animation: clockpulse .8s ease-in-out infinite; }
 .clock.held { opacity: .55; animation: none; }
-.score { flex: none; gap: 5px; }
 .turn .suf { font-style: normal; }
 .menubtn { flex: none; height: 44px; min-width: 52px; padding: 0 9px; border: 0; border-radius: 10px; background: var(--panel-2); color: var(--text); font-weight: 800; font-size: 13px; }
 .sq.spot { z-index: 1; animation: spotglow 1s ease-in-out infinite; }
@@ -474,8 +474,8 @@ svg text { text-rendering: geometricPrecision; }   /* laid out at its true size,
 .coin.flip { animation: coinflip 1s cubic-bezier(.3, .7, .3, 1) both; animation-delay: calc(var(--k, 0) * .08s); }
 .coin.flip b { animation: lateshow 1s linear both; animation-delay: calc(var(--k, 0) * .08s); }
 
-.g-pig { width: var(--g); display: flex; flex-direction: column; gap: 12px; }
-.pigscores { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.g-risky { width: var(--g); display: flex; flex-direction: column; gap: 12px; }
+.rrscores { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .pscore { background: var(--panel); border-radius: 14px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
 .pscore .nm { font-weight: 800; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pscore .val { font-size: 26px; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; }
@@ -488,19 +488,19 @@ svg text { text-rendering: geometricPrecision; }   /* laid out at its true size,
 .pscore.X.now { color: var(--x); }
 .pscore.O.now { color: var(--o); }
 .pscore.now .val, .pscore.now .nm { color: var(--text); }
-.pigturn { background: var(--panel); border-radius: 14px; padding: 10px 12px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.rrturn { background: var(--panel); border-radius: 14px; padding: 10px 12px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
 .faces { display: flex; gap: 6px; }
 .face { width: 38px; height: 38px; border-radius: 9px; background: var(--panel-2); display: grid; place-items: center; font-weight: 800; font-size: 16px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .face.hit { background: rgba(255, 107, 107, .22); color: var(--x); box-shadow: inset 0 0 0 2px var(--x); }
 .pot { font-weight: 800; font-size: 18px; }
 .pot span { color: var(--muted); font-weight: 700; font-size: 14px; }
-.pigbtns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.rrbtns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .big.bank { background: var(--text); color: var(--bg); }
 .die.roll { animation: dieroll .6s ease-out both; }
 .die.roll svg { animation: appear .6s step-end both; }
 .face.fresh { animation: facehit .3s .6s ease-out both; }
 .face.again { animation: shake .4s .6s both; }
-.pigturn.bust { animation: bustflash .7s .65s both; }
+.rrturn.bust { animation: bustflash .7s .65s both; }
 .pot.slide-X, .pot.slide-O { animation: potslide .6s .3s ease-in both; }
 .pot.slide-X { --sx: -38%; } .pot.slide-O { --sx: 38%; }
 .pscore.gain .bar i { animation: fill .5s .4s ease-out both; }
@@ -730,7 +730,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 #app { overflow-x: clip; }
 .setup-box, .online-mid, .mmlist, .hlist, [data-keep-scroll] { overflow-x: hidden; }               /* the pop-ups cover the whole screen: nothing under them takes a tap */
 #app > .vsintro { position: fixed; z-index: 35; }
-.toonf, h1, h2, .ttl > b, .primary, .btn, .big, .menubtn, .back, .seg, .key, .turn .who, .clock, .lab, .room .code, .adv-h, .pad button, .pscore .val, .range b, .toast, .score, .hexgoal, .coin, .tcoin i, .pot, .guess .n, .thilo b, .tdice .tr, .hwin, .netbar, .timeout-note, .notice, .link, .chk span, .field span, .sides > span, .timerrow > span, .namebox, .twr i, .wt, .ht, .face, .dig, .final i, .room small, .games-h { font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-weight: 400; letter-spacing: .02em; }
+.toonf, h1, h2, .ttl > b, .primary, .btn, .big, .menubtn, .back, .seg, .key, .turn .who, .clock, .lab, .room .code, .adv-h, .pad button, .pscore .val, .range b, .toast, .hexgoal, .coin, .tcoin i, .pot, .guess .n, .thilo b, .tdice .tr, .hwin, .netbar, .timeout-note, .notice, .link, .chk span, .field span, .sides > span, .timerrow > span, .namebox, .twr i, .wt, .ht, .face, .dig, .final i, .room small, .games-h { font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-weight: 400; letter-spacing: .02em; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 b.X, b.O { color: var(--ink); box-shadow: inset 0 -.38em 0 var(--x-soft); padding: 0 .1em; }
 b.O { box-shadow: inset 0 -.38em 0 var(--o-soft); }
@@ -772,19 +772,16 @@ b.O { box-shadow: inset 0 -.38em 0 var(--o-soft); }
 .turn .g, .t-X .turn .g, .t-O .turn .g { width: 44px; height: 44px; background: none; border-radius: 0; position: relative; }
 .turn .g .pc { width: 44px; height: 44px; }
 .turn .who { padding-top: 4px; font-size: clamp(15px, 4.6vw, 21px); }
-.score { color: var(--ink); font-size: 16px; padding-top: 3px; }
-.score b.X, .score b.O { box-shadow: none; font-size: 18px; text-shadow: var(--ol1); }
-.score b.X { color: var(--x); } .score b.O { color: var(--o); }
 .clock { background: var(--paper); color: var(--ink); border: 3px solid var(--ink); border-radius: 14px 10px 12px 9px; padding: 5px 7px 1px; font-size: 16px; }
 .clock.low { background: var(--x); color: var(--paper); }
 /* the game screen's top: Menu and the clock box, then the turn bar */
 :root { --hdr: 114px; }
 .hdr { height: var(--hdr); display: grid; grid-template-rows: 46px 38px 1fr; align-items: center; gap: 0; padding: 4px 12px 4px; justify-content: stretch; }
-.hrow { display: flex; align-items: center; justify-content: space-between; min-width: 0; }
-.hrow .menubtn { height: 44px; font-size: 15px; padding: 0 12px; box-shadow: 0 3px 0 var(--ink); }   /* a full 44px tap target */
+.hdrrow { display: flex; align-items: center; justify-content: space-between; min-width: 0; }   /* (not .hrow: that is a Hex board row) */
+.hdrrow .menubtn { height: 44px; font-size: 15px; padding: 0 12px; box-shadow: 0 3px 0 var(--ink); }   /* a full 44px tap target */
 .clockbox { flex: none; width: 76px; height: 34px; display: grid; place-items: center; }
 .clockbox .clock { width: 100%; text-align: center; padding: 4px 0 0; font-size: 16px; line-height: 22px; }
-.tbar { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 8px; min-width: 0; }
+.tbar { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 12px; min-width: 0; }
 .tside { display: flex; align-items: center; gap: 6px; min-width: 0; opacity: .5; transition: opacity .2s; }
 .tside.on { opacity: 1; }
 .tside.O { flex-direction: row-reverse; text-align: right; }
@@ -794,7 +791,6 @@ b.O { box-shadow: inset 0 -.38em 0 var(--o-soft); }
 @keyframes tbounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
 .tside .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-weight: 400; font-size: clamp(13px, 4vw, 17px); padding-top: 3px; color: var(--ink); }
 .tside .nm .cpui { width: 1em; height: 1em; vertical-align: -.1em; }
-.hdr .score { justify-content: center; padding-top: 3px; }
 .hdr .turn { display: block; text-align: center; min-width: 0; line-height: 1.1; }
 .hdr .turn .g { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }   /* the letter, for screen readers (and the tests) */
 .hdr .turn .who { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-top: 2px; font-size: clamp(14px, 4.2vw, 18px); }
@@ -814,7 +810,7 @@ b.O { box-shadow: inset 0 -.38em 0 var(--o-soft); }
 .own-ov { opacity: 1; text-shadow: none; z-index: 2; }
 .own-ov .pc { width: 80%; height: 80%; }
 .own-ov.stamp { animation: none; }
-.own-ov.stamp .pc { animation: squash .8s cubic-bezier(.3, 0, .4, 1) both; animation-delay: calc(0ms - var(--el, 0ms)); transform-origin: 50% 90%; }
+.own-ov.stamp .pc { animation: squash .8s cubic-bezier(.3, 0, .4, 1) both; transform-origin: 50% 90%; }
 .lab { color: var(--ink); font-size: 10px; font-size: clamp(8px, 8.6cqw, 12.5px); padding-top: 2px; letter-spacing: .03em; }
 .lab.long { font-size: clamp(7px, 7.2cqw, 11px); letter-spacing: 0; }          /* Snakes and Ladders fits its tile */
 .lab svg { color: var(--ink); }
@@ -852,8 +848,8 @@ b.O { box-shadow: inset 0 -.38em 0 var(--o-soft); }
 .thg .hmx.mid, .thg .hmx.many { gap: .8cqw 2.4cqw; font-size: 12.5cqw; }
 .thg .hmx i { font-style: normal; position: relative; padding-top: .12em; }
 .thg .hmx i::after { content: ''; position: absolute; left: -6%; right: -6%; top: 40%; height: max(1.3px, .9cqw); border-radius: 1px; background: var(--x); transform: rotate(-14deg); }
-.thex .hr i { background: var(--paper); box-shadow: inset 0 0 0 1.2px var(--ink); }
-.thex .hr i.X { background: var(--x); } .thex .hr i.O { background: var(--o); }
+.thex .hr i { background: var(--ink); --hf: var(--paper); }
+.thex .hr i.X { --hf: var(--x); } .thex .hr i.O { --hf: var(--o); }
 .tdice .bar { background: var(--paper); box-shadow: inset 0 0 0 1.3px var(--ink); }
 .tcoin i { border: 1.6px solid var(--ink); color: var(--paper); padding-top: 1px; }
 .tcoin i.O { color: var(--ink); }
@@ -995,7 +991,7 @@ b.O { box-shadow: inset 0 -.38em 0 var(--o-soft); }
 .coin.m { background: #fff; color: var(--ink); background-image: repeating-conic-gradient(from 0deg, #fff 0 15deg, #ece4d2 15deg 30deg); }
 .coin.m b { font-family: 'Luckiest Guy', sans-serif; font-weight: 400; font-size: 120%; }
 .tcoin i.m { background: #fff; color: var(--ink); }
-.pscore, .pigturn, .range { background: var(--paper); border: 3.5px solid var(--ink); box-shadow: 0 4px 0 var(--ink); border-radius: 18px 12px 20px 14px / 14px 20px 12px 18px; }
+.pscore, .rrturn, .range { background: var(--paper); border: 3.5px solid var(--ink); box-shadow: 0 4px 0 var(--ink); border-radius: 18px 12px 20px 14px / 14px 20px 12px 18px; }
 .pscore .nm { font-weight: 400; }
 .pscore .val small { color: var(--muted); }
 .pscore .bar { background: #fff; box-shadow: inset 0 0 0 2px var(--ink); height: 10px; }
@@ -1005,19 +1001,21 @@ b.O { box-shadow: inset 0 -.38em 0 var(--o-soft); }
 .face { background: #fff; border: 2.5px solid var(--ink); color: var(--muted); padding-top: 3px; }
 .pscore .val { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
 .risk { font-family: 'Luckiest Guy', sans-serif; font-weight: 400; font-size: 18px; color: var(--green); padding: 2px 7px 0; border-radius: 999px; background: #fff; border: 2.5px solid var(--ink); line-height: 1.1; align-self: center; }
-.risk.grow { animation: markpop .35s .6s ease-out both; }
+.risk.grow { animation: riskbump .35s .6s ease-out; }                  /* the +N stays up while the die tumbles, then takes the new points as it lands */
+.risk.grow.first { animation: markpop .35s .6s ease-out both; }      /* the turn's first roll: the +N appears as the die lands */
 .risk.bank { animation: riskin .55s .15s ease-in both; }
 .risk.lost { animation: lostmark 0s .65s both, riskout .55s .8s ease-in both; }   /* a bust: red and struck through only once the die has landed */
 @keyframes lostmark { from { color: var(--green); text-decoration-line: none; } to { color: var(--x); text-decoration-line: line-through; } }
-.pigrolls { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; flex-wrap: wrap; }
-.pigrolls small { color: var(--muted); font-size: 15px; margin-right: 2px; }
+.rrrolls { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; flex-wrap: wrap; }
+.rrrolls small { color: var(--muted); font-size: 15px; margin-right: 2px; }
 .sdie { width: 34px; height: 34px; border-radius: 9px 7px 9px 8px; background: #fff; border: 2.5px solid var(--ink); box-shadow: 0 2px 0 var(--ink); display: grid; place-items: center; }
 .sdie svg { width: 84%; height: 84%; }
 .sdie.fresh { animation: pop .3s .6s ease-out both; }
 .sdie.dup { background: var(--x); animation: pop .3s .65s ease-out both, shake .4s .95s both; }   /* hidden until the die has landed */
-.pigrolls.bust .sdie:not(.dup) { animation: vanish .5s 1.1s ease-in both; }
-.pigbtns.one { grid-template-columns: 1fr; }
+.rrrolls.bust .sdie:not(.dup) { animation: vanish .5s 1.1s ease-in both; }
+.rrbtns.one { grid-template-columns: 1fr; }
 @keyframes riskin { to { transform: translateX(-160%) scale(.5); opacity: 0; } }
+@keyframes riskbump { 0% { transform: scale(1); } 50% { transform: scale(1.22); } 100% { transform: scale(1); } }
 @keyframes riskout { to { transform: translateY(40%); opacity: 0; } }
 .face.hit { background: var(--x-soft); color: var(--ink); box-shadow: none; }
 @keyframes facehit { from { background: #fff; color: var(--muted); } }
@@ -1109,8 +1107,8 @@ button.seg.X.on { background: var(--x); color: var(--paper); } .seg.O.on { backg
 .big-g.bang { animation: none; }
 .big-g.bang .pc { animation: squash .8s cubic-bezier(.3, 0, .4, 1) both; animation-delay: inherit; transform-origin: 50% 90%; }
 .flash.late .big-g.bang .pc { animation-delay: var(--late, 0s); }
-.card .powc { position: absolute; width: 120px; left: -40px; top: -46px; animation: burstlife 1.1s linear both; animation-delay: calc(var(--late, 0s) + .1s - var(--bel, 0ms)); }
-.card .powc2 { position: absolute; width: 132px; right: -44px; top: 40px; animation: burstlife2 1.1s linear both; animation-delay: calc(var(--late, 0s) + .25s - var(--bel, 0ms)); }
+.card .powc { position: absolute; width: 120px; left: -40px; top: -46px; animation: burstlife 1.1s linear both; animation-delay: calc(var(--late, 0s) + .1s); }
+.card .powc2 { position: absolute; width: 132px; right: -44px; top: 40px; animation: burstlife2 1.1s linear both; animation-delay: calc(var(--late, 0s) + .25s); }
 .toast { background: var(--o); border: 3.5px solid var(--ink); box-shadow: 0 5px 0 var(--ink); border-radius: 20px 14px 22px 12px; font-weight: 400; font-size: 17px; padding-top: 14px; }
 .win-card h1 { font-size: 32px; padding-top: 4px; color: var(--ink); }
 .win-card p { color: var(--muted); font-weight: 400; font-size: 19px; }
@@ -1201,8 +1199,6 @@ button.seg.X.on { background: var(--x); color: var(--paper); } .seg.O.on { backg
 .tg.thp i { display: grid; place-items: center; position: relative; background: #fff; box-shadow: inset 0 0 0 1.3px var(--ink); border-radius: 2cqw; }
 .tg.thp i.dk { background: var(--panel-2); }
 .tg.thp i .pc { width: 92%; height: 92%; }
-.pow-b .b1 { animation-delay: calc(.32s - var(--el, 0ms)) !important; }
-.pow-b .b2 { animation-delay: calc(.5s - var(--el, 0ms)) !important; }
 /* explainers */
 .bar .qbtn { margin-left: auto; }
 .qbtn { flex: none; width: 42px; height: 42px; padding: 3px 0 0; border-radius: 50%; border: 3px solid var(--ink); background: #fff; box-shadow: 0 3px 0 var(--ink); color: var(--ink); font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-size: 22px; line-height: 1; display: grid; place-items: center; font-style: normal; }
@@ -1404,7 +1400,7 @@ const RNG = makeRng(Array.from(crypto.getRandomValues(new Uint32Array(4))).join(
 /* ===================== UI: render everything from state ===================== */
 const KEY = 'tiger-tac-toe.v4';
 // How long a result stays up once its animation has played (a toast for a plain move, a card for a
-// claim, a draw or a Pig bust/bank); then the board comes back on its own and the turn passes.
+// claim, a draw or a Risky Rolls bust/bank); then the board comes back on its own and the turn passes.
 const FLASH_MS = PLAY.flash;            // (the timings live in the engine: the turn clock counts them too)
 const MEMORY_MS = 2000;                 // the two flipped cards stay up this long
 const FLIP_MS = PLAY.flip;              // ...then turn back over before the board returns
@@ -1430,6 +1426,7 @@ const N = p => (cpuPlays(p) ? CPU_ICON : '') + esc(playerName(state, p));   // a
 // A little cartoon computer, shown next to computer players.
 const CPU_ICON = '<svg class="cpui" viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="2.5" width="19" height="13.5" rx="3" fill="#58a8cf" stroke="#161210" stroke-width="2"/><ellipse cx="9" cy="8.6" rx="1.5" ry="2" fill="#161210"/><ellipse cx="15" cy="8.6" rx="1.5" ry="2" fill="#161210"/><path d="M9 12q3 2.2 6 0" fill="none" stroke="#161210" stroke-width="1.7" stroke-linecap="round"/><path d="M9.6 16.4v3.4h4.8v-3.4M6.5 20.6h11" fill="none" stroke="#161210" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 function cpuPlays(p) { return !state.online && !!state.cpu && state.cpu.includes(p); }
+const pickKey = () => (state.pick == null ? null : `${state.pickSq}:${state.pick}`);   // Memory: the first card turned up, as an event key
 
 const ICONS = {
   ttt: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M8.5 3v18M15.5 3v18M3 8.5h18M3 15.5h18"/></svg>',
@@ -1681,9 +1678,36 @@ function refocus(f) {
   el.focus({ preventScroll: true });
   try { if (f.start != null) el.setSelectionRange(f.start, f.end); } catch (e) { /* (email fields) */ }
 }
+/* ----- animations: each one started by the event that causes it, exactly once -----
+ * An event records when its animation began (startFx): a move made here, by the computer or played back
+ * (playFlash), a claim landing on the board, the glow on a square about to be played, a Memory card
+ * turned up or the cards turning back, a Mastermind peg placed, a note popping up, the pause card, a new
+ * screen coming into view. Rendering never starts anything: it draws the state as it is, and then
+ * anchorFx sets every animation on the page to the point its event has reached. A re-render in the middle
+ * of one (a room update, someone's presence, the clock) carries on from where it was, and one after the
+ * end just draws the end state, so nothing ever plays twice or starts over. */
+const fx = {};                                   // kind -> { key, at }: the latest event of each kind, at performance.now()
+function startFx(kind, key, at) { fx[kind] = { key, at: at == null ? performance.now() : at }; }
+function fxAt(kind, key) { const e = fx[kind]; return e && e.key === key ? e.at : null; }
+const fxAttr = at => (at == null ? '' : ` data-fx="${at}"`);   // an element whose animations (and everything inside) belong to that event
+function anchorFx() {
+  if (!WAAPI || typeof app.getAnimations !== 'function') return;
+  const now = performance.now();
+  const css = a => !(typeof CSSTransition !== 'undefined' && a instanceof CSSTransition);   // (a transition just follows its style)
+  const set = (el, at) => {
+    const t = Math.max(0, now - at);
+    for (const a of el.getAnimations({ subtree: true })) {
+      if (!css(a) || (a.currentTime != null && Math.abs(a.currentTime - t) < 40)) continue;   // already where its event has it (one running on, untouched): left alone
+      try { a.currentTime = t; } catch (e) { /* (a finished one with no effect left) */ }
+    }
+  };
+  if (fx.enter) set(app, fx.enter.at);                                  // the screen's own animations count from when it came into view
+  for (const el of app.querySelectorAll('[data-fx]')) set(el, Number(el.dataset.fx));   // then each event's own (outer ones first, inner ones last)
+}
 function render() {
   const view = state.screen + ':' + state.zoom;
   entering = view !== lastView; lastView = view;
+  if (entering) startFx('enter', view);                       // a new screen: the event for its own entry (the zoom into a square)
   if (entering && explainT) closeExplain(true);                 // another screen (Back, a menu, a move): no explainer left over it
   const kept = entering ? [] : [...app.querySelectorAll('[data-keep-scroll]')].map(e => [e.dataset.keepScroll, e.scrollTop]);
   const focus = entering ? null : typingIn();
@@ -1700,7 +1724,8 @@ function render() {
   const wl = document.getElementById('wlist') || document.getElementById('mmlist');
   if (wl) wl.scrollTop = wl.scrollHeight;
   animate();
-  armFlash();
+  anchorFx();
+  if (state.flash && !state.spot && fxAt('move', state.flash) == null) { console.error('A result on show without its move event', state.flash); playFlash(true); }   // (never expected: no animation, but the result still clears)
   sweepBursts();
 }
 // Boards kept across a re-render of the same screen: their cells take the new classes and labels, but
@@ -1756,18 +1781,19 @@ function hexLen(f) { const sq = state.squares[f.square]; return sq && sq.mini.wi
 function animate() {
   if (!state.flash) return;
   for (const el of app.querySelectorAll('.cnt[data-from]')) {
-    countTo(el, Number(el.dataset.from), Number('to' in el.dataset ? el.dataset.to : el.textContent), Number(el.dataset.ms) || 400, Number(el.dataset.delay) || 0);
+    const host = el.closest('[data-fx]'), at = host ? Number(host.dataset.fx) : performance.now();   // counted from the move, wherever a redraw finds it
+    countTo(el, Number(el.dataset.from), Number('to' in el.dataset ? el.dataset.to : el.textContent), Number(el.dataset.ms) || 400, at + (Number(el.dataset.delay) || 0));
   }
   hopToken();
 }
-function countTo(el, from, to, ms, delay) {
-  if (REDUCED || from === to) { el.textContent = to; return; }
-  el.textContent = from;
-  const t0 = performance.now() + delay;
+function countTo(el, from, to, ms, t0) {
+  const ease = now => { const k = Math.min(1, Math.max(0, (now - t0) / ms)); return [k, Math.round(from + (to - from) * (1 - Math.pow(1 - k, 2)))]; };
+  if (REDUCED || from === to || ease(performance.now())[0] >= 1) { el.textContent = to; return; }
+  el.textContent = ease(performance.now())[1];
   const step = now => {
-    if (!el.isConnected) return;                                   // re-rendered meanwhile
-    const k = Math.min(1, Math.max(0, (now - t0) / ms));
-    el.textContent = Math.round(from + (to - from) * (1 - Math.pow(1 - k, 2)));
+    if (!el.isConnected) return;                                   // re-rendered meanwhile: the new one carries on
+    const [k, v] = ease(now);
+    el.textContent = v;
     if (k < 1) requestAnimationFrame(step);
   };
   requestAnimationFrame(step);
@@ -1844,19 +1870,17 @@ function renderMain() {
   return renderBoard();
 }
 // The game screen's top: a slim row with Menu and the clock in its own fixed box, then the turn bar:
-// X and O with their names on each side (the player on the move bouncing gently), the squares each has
-// claimed between them, and whose turn it is.
+// X and O with their names on each side (the player on the move bouncing gently), and whose turn it is.
 function renderHeader() {
   if (['setup', 'menu', 'online', 'friend', 'join'].includes(state.screen) || NAV_SCREENS.includes(state.screen)) return '';
-  const t = state.winner || state.turn;
-  const x = state.squares.filter(s => s.owner === 'X').length;
-  const o = state.squares.filter(s => s.owner === 'O').length;
+  const won = state.winner && !state.spot;                      // (a winning move about to be played back: not yet)
+  const t = won ? state.winner : state.turn;
   const clock = state.timer && state.timer.limit && !state.winner ? `<span class="clock" id="clock" aria-label="Time left this turn">${clockText()}</span>` : '';
   const side = p => `<div class="tside ${p}${p === t ? ' on' : ''}"><span class="tg">${toon(p)}</span><b class="nm">${N(p)}</b></div>`;
   return `<header class="hdr t-${t}${clock ? ' has-clock' : ''}">
-    <div class="hrow"><button class="menubtn" data-act="pause" aria-label="Menu">Menu</button><span class="clockbox">${clock}</span></div>
-    <div class="tbar">${side('X')}<div class="score" aria-label="Squares claimed: X ${x}, O ${o}"><b class="X">${x}</b><span>·</span><b class="O">${o}</b></div>${side('O')}</div>
-    <div class="turn" aria-live="polite"><span class="g">${t}</span><span class="who">${state.winner ? `${N(t)} wins` : `${N(t)}<i class="suf">'s turn</i>`}</span></div>
+    <div class="hdrrow"><button class="menubtn" data-act="pause" aria-label="Menu">Menu</button><span class="clockbox">${clock}</span></div>
+    <div class="tbar">${side('X')}${side('O')}</div>
+    <div class="turn" aria-live="polite"><span class="g">${t}</span><span class="who">${won ? `${N(t)} wins` : `${N(t)}<i class="suf">'s turn</i>`}</span></div>
   </header>`;
 }
 
@@ -1879,7 +1903,7 @@ const EXPLAIN = {
   candy: { name: 'Candy Race', play: 'Spin and jump to the next space of that colour.', win: 'Reach the finish first.' },
   bump: { name: 'Bump', play: 'Spin and move 1, 2 or 3 spaces. Land on your opponent to send them back home.', win: 'Reach the finish first.' },
   coins: { name: 'Coin Flip', play: "Flip up to 3 coins that aren't yours.", win: 'All 5 coins show your side.' },
-  pig: { name: 'Pig', play: 'Roll as many times as you dare, then bank your points to finish your turn. If you roll a number you already rolled this turn and your turn ends with zero points.', win: 'Bank 21 first.' },
+  pig: { name: 'Risky Rolls', play: 'Roll as many times as you dare, then bank your points. Roll a number you already rolled this turn and you lose them.', win: 'Bank 21 first.' },   // ('pig': its id from when it was called Pig)
   hunt: { name: 'Treasure Hunt', play: 'Dig a square. It tells you if the treasure is hot, warm, cool or cold.', win: 'Dig up the treasure.' },
   hexapawn: { name: 'Hexapawn', play: 'Move a pawn forward, or capture diagonally.', win: 'Get a pawn to the far side.' },
   mastermind: { name: 'Mastermind', play: 'Guess the 4-colour code. Black marker means right colour and spot; white marker means right colour, wrong spot.', win: 'Crack the code.' },
@@ -1889,7 +1913,7 @@ const qBtn = (t, cls) => `<button class="qbtn${cls ? ' ' + cls : ''}" data-act="
 function renderExplain() {
   const x = explainT && EXPLAIN[explainT];
   if (!x) return '';
-  return `<div class="explain" data-act="explain-close" role="dialog" aria-modal="true" aria-label="How to play ${x.name}"><div class="excard">
+  return `<div class="explain" data-act="explain-close" role="dialog" aria-modal="true" aria-label="How to play ${x.name}"${fxAttr(fxAt('explain', explainT))}><div class="excard">
     <h2>${ICONS[explainT]}<span>${x.name}</span></h2>
     <p class="exline play"><b>Play</b><span>${x.play}</span></p>
     <p class="exline win"><b>Win</b><span>${x.win}</span></p>
@@ -1900,6 +1924,7 @@ function openExplain(t) {
   if (!EXPLAIN[t]) return;
   closeExplain(true);
   explainT = t;
+  startFx('explain', t);
   app.insertAdjacentHTML('beforeend', renderExplain());
   scheduleCpu();
 }
@@ -1951,7 +1976,7 @@ function renderSetup() {
   const timer = host ? `<div class="timerrow" role="group" aria-label="Time per turn"><span>Time per turn</span>${TIMER_OPTIONS.map(v => `<button class="seg${(s.timer || 0) === v ? ' on' : ''}" data-act="timer" data-v="${v}">${TIMER_LABEL[v]}</button>`).join('')}</div>` : '';
   const room = host ? `<div class="room"><small>Room code</small><b class="code">${esc(state.online.code)}</b>
       <div class="row"><button class="btn" data-act="share">Share link</button></div>
-      ${state.notice ? `<div class="notice" role="status">${esc(state.notice)}</div>` : ''}
+      ${state.notice ? `<div class="notice" role="status"${fxAttr(fxAt('notice', noticeSeq))}>${esc(state.notice)}</div>` : ''}
       <div class="status${net.status === 'connected' ? ' ok' : net.status === 'error' ? ' bad' : ''}">${net.status === 'connected' ? `<b>${esc(s.names[guest])}</b> joined` : esc(net.msg || 'Waiting for friend…')}</div>
       ${net.status === 'error' ? '<button class="btn" data-act="host-retry">Try again</button>' : ''}</div>` : '';
   const ready = setupReady(s);
@@ -2018,37 +2043,36 @@ function reviewSquares() {
 }
 const STAMP_MS = 1500;                    // the stamp is over by then
 const BOARD_BURST = [320, 500];           // when the two bursts on the board pop in, in ms after the stamp starts
-let stampKey = null, stampAt = 0;         // the claim whose stamp is playing, and when it started
 function renderBoard(review) {
   const spot = review ? null : state.spot;
-  // A fresh claim stamps in once. Any re-render while it plays continues it from where it was (a
-  // negative delay); after that the owner's mark simply sits there. Nothing replays it.
-  const sk = !review && state.stamp != null && state.squares[state.stamp] && state.squares[state.stamp].owner ? String(state.stampId || state.moves) + ':' + state.stamp : null;
-  if (sk && sk !== stampKey) { stampKey = sk; stampAt = performance.now(); }
-  const el = sk ? Math.round(performance.now() - stampAt) : 0;
-  const stampOn = !!sk && el < STAMP_MS;
+  // A fresh claim stamps in once, from the moment it landed on the board (stampFx). A re-render while it
+  // plays carries it on from there; after that the owner's mark simply sits there. Nothing replays it.
+  const stampAt = !review && state.stamp != null && state.squares[state.stamp] && state.squares[state.stamp].owner ? fxAt('stamp', state.stampId) : null;
+  const el = stampAt == null ? Infinity : performance.now() - stampAt;
+  const stampOn = el < STAMP_MS;
   const sqs = state.squares.map((sq, i) => {
     const cls = ['sq'];
+    if (spot && spot.square === i && spot.before) sq = spot.before;     // a move about to be played back: the square as it was until then
     if (sq.owner) cls.push('own-' + sq.owner);
     else if (i === state.lastSquare && state.lastBy && !(spot && spot.square === i)) cls.push('last-' + state.lastBy);
     if (spot && spot.square === i) cls.push('spot', 'spot-' + spot.by);
     const info = INFO[sq.mini.type];
     // a claimed square keeps its label and final state, with the owner's mark laid over them
     const body = `<div class="lab${info.name.length > 14 ? ' long' : ''}">${ICONS[sq.mini.type]}<span>${info.name}</span></div><div class="thumb">${thumb(sq.mini, !!sq.owner)}</div>`
-      + (sq.owner ? `<div class="own-ov${stampOn && state.stamp === i ? ' stamp' : ''}"${stampOn && state.stamp === i ? ` style="--el:${el}ms"` : ''} aria-hidden="true">${toon(sq.owner)}<b class="sr">${sq.owner}</b></div>` : '')   // a fresh claim stamps in
+      + (sq.owner ? `<div class="own-ov${stampOn && state.stamp === i ? ' stamp' : ''}"${stampOn && state.stamp === i ? fxAttr(stampAt) : ''} aria-hidden="true">${toon(sq.owner)}<b class="sr">${sq.owner}</b></div>` : '')   // a fresh claim stamps in
       + (spot && spot.square === i ? `<div class="spot-lab ${spot.by}" role="status">${cpuPlays(spot.by) ? CPU_ICON : ''}${esc(spot.label)}</div>` : '');
     const label = sq.owner ? `Square ${i + 1}: ${info.name}, won by ${esc(playerName(state, sq.owner))}. Tap to view` : `Square ${i + 1}: ${info.name}`;
     if (review) return `<button class="${cls.join(' ')}" data-act="${reviewCtx.sq}" data-i="${i}" aria-label="${label}. Tap to see it">${body}</button>`;
-    return `<button class="${cls.join(' ')}" data-act="zoom" data-i="${i}" aria-label="${label}"${cpuTurn() ? ' disabled' : ''}>${body}</button>`;
+    return `<button class="${cls.join(' ')}" data-act="zoom" data-i="${i}" aria-label="${label}"${spot && spot.square === i ? fxAttr(fxAt('spot', spot)) : ''}${cpuTurn() ? ' disabled' : ''}>${body}</button>`;
   }).join('');
   if (review) return `<main class="scr board-scr review-scr"><div class="revhead"><button class="back" data-act="${reviewCtx.back}" aria-label="${reviewCtx.backAria}">${CHEV}${reviewCtx.backLabel}</button>
       <div class="ttl"><b>${reviewCtx.title}</b><small>Tap any square to see how it ended</small></div></div><div class="board">${sqs}</div>
     <div class="foot"><span class="hint">Every hidden word, number, card and ship is shown</span></div>${pauseMenu()}</main>`;
   const hint = spot ? (cpuPlays(spot.by) ? CPU_ICON : '') + esc(spot.label) : cpuTurn() ? `${N(state.turn)} is thinking…` : remoteTurn() ? `Waiting for ${N(state.turn)}…`
     : state.moves ? 'Tap any open square to make a move' : `${N(state.turn)}: tap a square to start`;
-  const st = sk && el < BOARD_BURST[1] + BURST_MS ? state.stamp : null;    // a fresh claim: two bursts around it, gone after about a second
-  const bw = st == null ? null : burstPick('board:' + sk), bend = k => Math.round(stampAt + BOARD_BURST[k] + BURST_MS);
-  const pow = st == null ? '' : `<div class="pow-b c${st % 3}" style="grid-row:${Math.floor(st / 3) + 1} / span 1;grid-column:${st % 3 + 1} / span 1;--el:${el}ms" aria-hidden="true">${el < BOARD_BURST[0] + BURST_MS ? `<span class="b1" data-bend="${bend(0)}">${burstSvg(bw.words[0], 'y', 150, 110, 34)}</span>` : ''}<span class="b2" data-bend="${bend(1)}">${burstSvg(bw.words[1], 'r', 160, 104, 28)}</span></div>`;
+  const st = el < BOARD_BURST[1] + BURST_MS ? state.stamp : null;    // a fresh claim: two bursts around it, gone after about a second
+  const bw = st == null ? null : burstPick('board:' + state.stampId), bend = k => Math.round(stampAt + BOARD_BURST[k] + BURST_MS);
+  const pow = st == null ? '' : `<div class="pow-b c${st % 3}" style="grid-row:${Math.floor(st / 3) + 1} / span 1;grid-column:${st % 3 + 1} / span 1"${fxAttr(stampAt)} aria-hidden="true">${el < BOARD_BURST[0] + BURST_MS ? `<span class="b1" data-bend="${bend(0)}">${burstSvg(bw.words[0], 'y', 150, 110, 34)}</span>` : ''}<span class="b2" data-bend="${bend(1)}">${burstSvg(bw.words[1], 'r', 160, 104, 28)}</span></div>`;
   return `<main class="scr board-scr">${netBar()}<div class="board">${sqs}${pow}</div>
     <div class="foot"><span class="hint">${hint}</span></div>${pauseMenu()}</main>`;
 }
@@ -2095,7 +2119,7 @@ function thumb(mini, final) {
     case 'snakes': return trackSvg(SNL_SPEC, { tokens: { X: mini.pos.X - 1, O: mini.pos.O - 1 }, finish: 'none', goal: true, mini: true, cls: 'snl', overlay: snlArt(SNL_SPEC, mini, true) });
     case 'bump': return trackSvg(BUMP_SPEC, { tokens: { X: mini.pos.X - 1, O: mini.pos.O - 1 }, finish: 'flag', mini: true });
     case 'coins': return `<div class="tcoin">${mini.coins.map(c => `<i class="${c === COINS.mystery ? 'm' : c}">${c}</i>`).join('')}</div>`;
-    case 'pig': return `<div class="tdice">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><div class="bar"><i style="width:${Math.min(100, mini.bank[p] / PIG.goal * 100)}%"></i></div><span>${mini.bank[p]}</span></div>`).join('')}</div>`;
+    case 'pig': return `<div class="tdice">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><div class="bar"><i style="width:${Math.min(100, mini.bank[p] / RISKY.goal * 100)}%"></i></div><span>${mini.bank[p]}</span></div>`).join('')}</div>`;
     case 'hunt': return `<div class="tg g5x5" style="--hn:${huntSize(mini)}">${mini.dug.map((d, i) => {
       if (!d) return '<i></i>';
       const k = clueAt(mini, i), b = BAND[k] || BAND[4];
@@ -2112,19 +2136,25 @@ function keyboard(cls, disabled, extra) {
   ).join('')}${ri === 2 && extra ? `<button class="key wide" data-act="bksp" aria-label="Backspace"${extra.bksp ? ' disabled' : ''}>${BKSP}</button>` : ''}</div>`).join('')}</div>`;
 }
 
-// The connection banner during online play: nothing while all is well.
-function netBar() {
+// The connection banner during online play: nothing while all is well. It pops in when what it says
+// changes (noteNet, called where the connection, the other player's presence or a note change).
+function netInfo() {
   const o = state.online;
-  if (!o) return '';
-  if (net.status === 'error') return `<div class="netbar error" role="status">${esc(net.msg)} <button class="btn" data-act="leave">Leave game</button></div>`;
-  if (net.status === 'connecting') return `<div class="netbar connecting" role="status">${esc(net.msg || 'Connecting…')}</div>`;
-  if (!connected) return '<div class="netbar lost" role="status">Reconnecting…</div>';
-  if (awayNote) return `<div class="netbar note" role="status">${esc(awayNote)}</div>`;
+  if (!o) return null;
+  if (net.status === 'error') return { cls: 'error', html: `${esc(net.msg)} <button class="btn" data-act="leave">Leave game</button>` };
+  if (net.status === 'connecting') return { cls: 'connecting', html: esc(net.msg || 'Connecting…') };
+  if (!connected) return { cls: 'lost', html: 'Reconnecting…' };
+  if (awayNote) return { cls: 'note', html: esc(awayNote) };
   if (o.me && o.joined && room && room.status === 'playing' && !state.winner && presence) {   // (presence null: not read yet)
     const them = other(o.me), p = presence[them];
-    if (!p || !p.online || p.away) return `<div class="netbar away" role="status">${N(them)} is away</div>`;
+    if (!p || !p.online || p.away) return { cls: 'away', html: `${N(them)} is away` };
   }
-  return '';
+  return null;
+}
+function noteNet() { const b = netInfo(), k = b ? b.cls + ':' + b.html : null; if (k && !(fx.net && fx.net.key === k)) startFx('net', k); }
+function netBar() {
+  const b = netInfo();
+  return b ? `<div class="netbar ${b.cls}" role="status"${fxAttr(fxAt('net', b.cls + ':' + b.html))}>${b.html}</div>` : '';
 }
 /* ----- zoomed mini-game ----- */
 // Tic-tac-toe's winning line, drawn across the grid (animated when the win is fresh).
@@ -2194,8 +2224,8 @@ function renderMini(sq, review) {
       const bestOf = list => { const b = {}; for (const gs of list) gs.word.split('').forEach((ch, k) => { if ((rank[gs.marks[k]] || 0) > (rank[b[ch]] || 0)) b[ch] = gs.marks[k]; }); return b; };
       const best = bestOf(mini.guesses), before = a ? bestOf(mini.guesses.slice(0, -1)) : best;   // keys recolour once the tiles have flipped
       g = `<div class="g-wordle"><div class="wlist" id="wlist">${rows || `<div class="empty">${view ? 'No guesses were made.' : 'No guesses yet. Type a 5-letter word.'}</div>`}</div>
-        ${state.notice ? `<div class="notice" role="alert">${esc(state.notice)}</div>` : ''}
-        ${view ? '' : `<div class="wrow cur${state.notice ? ' shake' : ''}" aria-label="Your guess">${cur}</div>`}
+        ${state.notice ? `<div class="notice" role="alert"${fxAttr(fxAt('notice', noticeSeq))}>${esc(state.notice)}</div>` : ''}
+        ${view ? '' : `<div class="wrow cur${state.notice ? ' shake' : ''}" aria-label="Your guess"${state.notice ? fxAttr(fxAt('notice', noticeSeq)) : ''}>${cur}</div>`}
         ${keyboard(k => (best[k] || '') + (best[k] && best[k] !== before[k] ? ' kc' : ''), () => locked || dr.length >= 5, { enter: locked || dr.length !== 5, bksp: locked || !dr.length })}</div>`;
       break;
     }
@@ -2283,7 +2313,7 @@ function renderMini(sq, review) {
         const isUp = up.has(i), picking = state.pick === i && state.pickSq === state.zoom && !f && !d;
         const cls = `mc ${isUp ? 'up' : 'down'}${picking ? ' pick' : ''}${won(i) ? ' win' : ''}${won(i) && fresh ? ' glow' : ''}${picking || flipped[1] === i ? ' flipup' : ''}${back.includes(i) ? ' flipdown' : ''}`;
         // a card's face is only in the page while it is (or was just) on show
-        return `<button class="${cls}" data-act="pick" data-i="${i}" aria-label="Card ${i + 1}${isUp ? ', face up' : ''}"${locked ? ' disabled' : ''}><span class="in"><span class="bk">?</span><span class="ft">${(isUp || back.includes(i)) && card ? shapeSvg(card) : ''}</span></span></button>`;
+        return `<button class="${cls}" data-act="pick" data-i="${i}" aria-label="Card ${i + 1}${isUp ? ', face up' : ''}"${picking ? fxAttr(fxAt('pick', pickKey())) : ''}${locked ? ' disabled' : ''}><span class="in"><span class="bk">?</span><span class="ft">${(isUp || back.includes(i)) && card ? shapeSvg(card) : ''}</span></span></button>`;
       }).join('')}</div>`;
       break;
     }
@@ -2299,7 +2329,11 @@ function renderMini(sq, review) {
     case 'coins': {
       // Five coins: two each and a mystery coin (?) that belongs to nobody until it is flipped.
       const flipped = a && mini.last ? mini.last.flipped : [], was = a && mini.last && mini.last.was ? mini.last.was : [];
-      const theirs = mini.coins.filter(c => c !== turn).length, n = Math.min(COINS.max, theirs);
+      // "Flip N" stays what the player on the move started with while their flip plays and its result is up;
+      // it is worked out again only when the next player comes into the square.
+      const held = (a || (d && d.square === state.zoom)) && mini.last && Array.isArray(mini.last.flipped);
+      const before = held ? mini.coins.map((c, i) => { const k = mini.last.flipped.indexOf(i); return k >= 0 && mini.last.was ? mini.last.was[k] : c; }) : mini.coins;
+      const n = Math.min(COINS.max, before.filter(c => c !== (held ? mini.last.by : turn)).length);
       const marked = !view && !a && !d && mini.marks && mini.marks.by === turn ? mini.marks.coins : [];   // the coins this turn's flip will turn, picked as the turn started
       g = `<div class="g-coins"><div class="coins">${mini.coins.map((c, i) => {
         const flip = flipped.includes(i), m = c === COINS.mystery, from = was[flipped.indexOf(i)], mk = marked.includes(i);
@@ -2311,26 +2345,30 @@ function renderMini(sq, review) {
       break;
     }
     case 'pig': {
-      // The two scores, with this turn's points at risk as a small +N by the roller's score; the dice
-      // rolled this turn in a row; the die; Roll again and Bank (only Bank once it would reach the goal).
-      // A roll tumbles the die; a bank only moves the +N into the score; a bust knocks the +N out.
-      const t = mini.turn, over = a && (a.note === 'bust' || a.note === 'bank');   // a bust or a bank: the turn is already over, show the pot it had, then watch it go
+      // Risky Rolls. The two scores, with this turn's points at risk as a small +N by the roller's score; the
+      // dice rolled this turn in a row; the die; Roll again and Bank (only Bank once it would reach the goal).
+      // A roll tumbles the die, and the +N it adds to stays up through the tumble, taking the new points as
+      // the die lands; a bank only moves the +N into the score (the die is left as it was); a bust knocks
+      // the +N out. A winning bank is a bank too (an older record says so only through mini.last).
+      const note = a ? a.note || ((a.kind === 'claim' || a.kind === 'match') && mini.last && mini.last.kind === 'bank' ? 'bank' : null) : null;
+      const t = mini.turn, over = note === 'bust' || note === 'bank';   // a bust or a bank: the turn is already over, show the pot it had, then watch it go
       const rolls = over ? a.rolls : t ? t.rolls : [], pot = over ? a.pot : t ? t.pot : 0, by = over ? a.by : t ? t.by : null;
       const score = p => {
-        const banked = mini.bank[p], gain = a && a.note === 'bank' && a.by === p;
+        const banked = mini.bank[p], gain = note === 'bank' && a.by === p;
         const prev = gain ? banked - a.pot : banked;
-        const risk = by === p && pot ? `<span class="risk${a && a.note === 'roll' ? ' grow' : a && a.note === 'bank' ? ' bank' : a && a.note === 'bust' ? ' lost' : ''}">+${a && a.note === 'roll' ? `<b class="cnt" data-from="${pot - a.roll}" data-delay="600" data-ms="400">${pot}</b>` : pot}</span>` : '';
-        return `<div class="pscore ${p}${!view && turn === p ? ' now' : ''}${gain ? ' gain' : ''}"><div class="nm"><b class="${p}">${N(p)}</b></div><div class="val"><span>${gain ? `<b class="cnt" data-from="${prev}" data-delay="350" data-ms="500">${banked}</b>` : banked} <small>/ ${PIG.goal}</small></span>${risk}</div><div class="bar"><i style="width:${Math.min(100, banked / PIG.goal * 100)}%;--pw:${Math.min(100, prev / PIG.goal * 100)}%"></i></div></div>`;
+        const was = note === 'roll' ? pot - a.roll : pot;                 // the +N before this roll
+        const risk = by === p && pot ? `<span class="risk${note === 'roll' ? (was ? ' grow' : ' grow first') : note === 'bank' ? ' bank' : note === 'bust' ? ' lost' : ''}">+${note === 'roll' && was ? `<b class="cnt" data-from="${was}" data-delay="600" data-ms="400">${pot}</b>` : pot}</span>` : '';
+        return `<div class="pscore ${p}${!view && turn === p ? ' now' : ''}${gain ? ' gain' : ''}"><div class="nm"><b class="${p}">${N(p)}</b></div><div class="val"><span>${gain ? `<b class="cnt" data-from="${prev}" data-delay="350" data-ms="500">${banked}</b>` : banked} <small>/ ${RISKY.goal}</small></span>${risk}</div><div class="bar"><i style="width:${Math.min(100, banked / RISKY.goal * 100)}%;--pw:${Math.min(100, prev / RISKY.goal * 100)}%"></i></div></div>`;
       };
-      const fresh1 = a && a.note === 'roll', bust = a && a.note === 'bust';
+      const fresh1 = note === 'roll', bust = note === 'bust';
       const dice = rolls.map((n, k) => `<span class="sdie${(fresh1 || bust) && k === rolls.length - 1 ? (bust ? ' dup' : ' fresh') : ''}" aria-label="${n}">${dieFace(n)}</span>`).join('');
-      const shown = mini.last && (mini.last.kind !== 'bank' || sq.owner) ? mini.last.roll : rolls.length ? rolls[rolls.length - 1] : null;   // a winning bank keeps its last number
-      const enough = !!(t && t.by === turn && mini.bank[turn] + t.pot >= PIG.goal);          // Bank wins it: no more rolling
-      const rollBtn = enough ? '' : `<button class="big ${turn}" data-act="move" ${mv('roll')}${locked || rolls.length >= PIG.maxRolls ? ' disabled' : ''}>${rolls.length && !over ? 'Roll again' : 'Roll'}</button>`;
-      g = `<div class="g-pig"><div class="pigscores">${score('X')}${score('O')}</div>
-        <div class="pigrolls${bust ? ' bust' : ''}" aria-label="Rolled this turn">${dice || '<small>No rolls this turn</small>'}</div>
-        <div class="dieWrap"><div class="die${a && a.note !== 'bank' ? ' roll' : ''}">${shown ? dieFace(shown) : '<span class="q">?</span>'}</div></div>
-        <div class="pigbtns${enough ? ' one' : ''}">${rollBtn}
+      const shown = mini.last ? mini.last.roll : null;                    // the last number rolled, until the next roll
+      const enough = !!(t && t.by === turn && mini.bank[turn] + t.pot >= RISKY.goal);          // Bank wins it: no more rolling
+      const rollBtn = enough ? '' : `<button class="big ${turn}" data-act="move" ${mv('roll')}${locked || rolls.length >= RISKY.maxRolls ? ' disabled' : ''}>${rolls.length && !over ? 'Roll again' : 'Roll'}</button>`;
+      g = `<div class="g-risky"><div class="rrscores">${score('X')}${score('O')}</div>
+        <div class="rrrolls${bust ? ' bust' : ''}" aria-label="Rolled this turn">${dice || '<small>No rolls this turn</small>'}</div>
+        <div class="dieWrap"><div class="die${note === 'roll' || note === 'bust' ? ' roll' : ''}">${shown ? dieFace(shown) : '<span class="q">?</span>'}</div></div>
+        <div class="rrbtns${enough ? ' one' : ''}">${rollBtn}
           <button class="big bank" data-act="move" ${mv('bank')}${locked || !pot || over ? ' disabled' : ''}>Bank${pot && !over ? ' ' + pot : ''}</button></div></div>`;
       break;
     }
@@ -2362,7 +2400,7 @@ function renderMini(sq, review) {
       if (!mmDraft || mmDraft.sq !== state.zoom || view || f || d) mmDraft = { sq: state.zoom, slots: [null, null, null, null], at: 0 };
       const dr = mmDraft.slots, full = dr.every(c => c != null);
       const pop = mmPop && mmPop.sq === state.zoom && performance.now() - mmPop.at < 300 ? mmPop.k : -1;
-      const slots = dr.map((c, k) => `<button class="mmslot${k === mmDraft.at && !locked ? ' at' : ''}" data-act="mmslot" data-k="${k}" aria-label="Slot ${k + 1}${c != null ? ', ' + MM_NAMES[c] + ' (tap to clear)' : ', empty'}"${locked ? ' disabled' : ''}>${c != null ? mmPeg(c, k === pop ? 'pop' : '') : ''}</button>`).join('');
+      const slots = dr.map((c, k) => `<button class="mmslot${k === mmDraft.at && !locked ? ' at' : ''}" data-act="mmslot" data-k="${k}" aria-label="Slot ${k + 1}${c != null ? ', ' + MM_NAMES[c] + ' (tap to clear)' : ', empty'}"${k === pop ? fxAttr(mmPop.at) : ''}${locked ? ' disabled' : ''}>${c != null ? mmPeg(c, k === pop ? 'pop' : '') : ''}</button>`).join('');
       const pal = Array.from({ length: MM.colors }, (_, c) => `<button class="mmcol c${c}" data-act="mmcol" data-c="${c}" aria-label="${MM_NAMES[c]}"${locked || dr.includes(c) ? ' disabled' : ''}>${mmPeg(c)}</button>`).join('');
       g = `<div class="g-mm"><div class="mmcode small${won ? ' cracked' : ''}" aria-label="The hidden code">${code}</div>
         <div class="mmkey"><span><i class="sd"></i>right colour, right spot</span><span><i class="hw"></i>right colour, wrong spot</span></div>
@@ -2416,10 +2454,10 @@ function renderMini(sq, review) {
     const next = d.pass ? `<b class="${d.pass}">${N(d.pass)}</b> has no move · <b class="${d.next}">${N(d.next)}</b> again` : `<b class="${d.next}">${N(d.next)}</b> next`;
     sub = `${head} · ${next}${secret ? ' · ' + secret : ''}`;
   }
-  return `<main class="scr mini${entering ? ' enter' : ''}">${netBar()}
+  return `<main class="scr mini${fx.enter && performance.now() - fx.enter.at < 400 ? ' enter' : ''}">${netBar()}
     <div class="bar${view && sq.owner ? ' won won-' + sq.owner : ''}" role="${view ? 'status' : 'presentation'}">${review ? `<button class="back" data-act="${reviewCtx.mback}" aria-label="Back to the final board">${CHEV}Board</button>` : `<button class="back" data-act="back" aria-label="Back to the board"${f || d || lockMine() || cpuTurn() ? ' disabled' : ''}>${CHEV}Board</button>`}
       <div class="ttl"><b${info.name.length > 14 ? ' class="long"' : ''}>${info.name}</b><small${view ? ' class="won"' : ''}>${sub}</small></div>${qBtn(mini.type)}</div>
-    <div class="gwrap">${g}</div>${f ? renderFlash(f) : ''}${pauseMenu()}</main>`;
+    <div class="gwrap"${fxAttr(f ? fxAt('move', f) : d && !f ? fxAt('back', d) : null)}>${g}</div>${f ? renderFlash(f) : ''}${pauseMenu()}</main>`;   // the move's animations count from the move
 }
 // The in-game menu: a pause card with Resume and Main menu (which asks first).
 function pauseMenu() {
@@ -2427,10 +2465,10 @@ function pauseMenu() {
   if (menuStep === 'confirm') {
     const note = state.online && !isMM() ? ' Your friend is told you left and sent back to the main menu.' : '';
     const text = state.winner ? 'The match is over.' : leaveLoses() ? `<b>It will count as a loss.</b>${note}` : `The match ends here.${note}`;
-    return `<div class="flash pause" role="dialog" aria-label="Leave this match?"><div class="card"><h2>Leave this match?</h2><p>${text}</p>
+    return `<div class="flash pause" role="dialog" aria-label="Leave this match?"${fxAttr(fxAt('menu', menuStep))}><div class="card"><h2>Leave this match?</h2><p>${text}</p>
       <div class="row"><button class="btn" data-act="pause-back">No</button><button class="btn go" data-act="pause-leave">Yes</button></div></div></div>`;
   }
-  return `<div class="flash pause" role="dialog" aria-label="Menu"><div class="card"><h2>Paused</h2><p>${state.online && state.timer.limit ? 'The turn clock keeps running.' : state.cpu ? 'The computer waits.' : 'Take your time.'}</p>
+  return `<div class="flash pause" role="dialog" aria-label="Menu"${fxAttr(fxAt('menu', menuStep))}><div class="card"><h2>Paused</h2><p>${state.online && state.timer.limit ? 'The turn clock keeps running.' : state.cpu ? 'The computer waits.' : 'Take your time.'}</p>
     <div class="row"><button class="btn go" data-act="pause-resume">Resume</button><button class="btn" data-act="pause-main">Main menu</button></div></div></div>`;
 }
 // One line about a move, for the result toast and the handoff bar.
@@ -2458,11 +2496,12 @@ const CARD_BURST = [100, 250];            // when the two bursts on a result car
 function renderFlash(f) {
   const who = `<b class="${f.by}">${N(f.by)}</b>`;
   const name = INFO[f.type].name;
+  const at = fxAt('move', f), age = at == null ? 0 : performance.now() - at;
   const pow = () => {                              // the square-won bursts on the result card: in after the move plays, out a second later
     const late = animMs(f), b = burstPick(`card:${state.moves}:${f.square}`), end = k => late + CARD_BURST[k] + BURST_MS;
-    return [0, 1].map(k => b.el >= end(k) ? '' : `<div class="powc${k ? '2' : ''}" style="--bel:${b.el}ms" data-bend="${Math.round(b.at + end(k))}">${k ? burstSvg(b.words[1], 'r', 160, 104, 28) : burstSvg(b.words[0], 'y', 150, 110, 34)}</div>`).join('');
+    return [0, 1].map(k => age >= end(k) ? '' : `<div class="powc${k ? '2' : ''}" data-bend="${Math.round((at == null ? performance.now() : at) + end(k))}">${k ? burstSvg(b.words[1], 'r', 160, 104, 28) : burstSvg(b.words[0], 'y', 150, 110, 34)}</div>`).join('');
   };
-  const open = `<div class="flash late" style="--late:${animMs(f)}ms" data-act="dismiss">${f.timeout ? `<div class="timeout-note">${who} ran out of time — random move</div>` : ''}`;   // the result waits for the animation
+  const open = `<div class="flash late" style="--late:${animMs(f)}ms"${fxAttr(at)} data-act="dismiss">${f.timeout ? `<div class="timeout-note">${who} ran out of time — random move</div>` : ''}`;   // the result waits for the animation
   if (f.kind === 'match') {
     const w = state.winner;
     return `${open}<div class="card">${pow()}<div class="big-g bang ${w}">${toonT(w)}</div><h2>${N(w)} wins the match!</h2><p>Tap to continue</p></div></div>`;
@@ -2604,7 +2643,7 @@ function remoteTurn() { return !!state.online && !state.winner && state.turn !==
 // nothing to tap: the computer or the other player is on the move, a move of ours is still being written, or the line is down
 function blocked() { return cpuTurn() || remoteTurn() || !!moveWait || (!!state.online && !connected); }
 function lockMine() { return state.lock != null && (mySide() == null || state.turn === mySide()); }
-function setNet(status, msg) { net = { status, msg: msg || '' }; }
+function setNet(status, msg) { net = { status, msg: msg || '' }; noteNet(); }
 function roomLink() { return location.origin + location.pathname + '?room=' + state.online.code; }
 // ----- anonymous game stats: local matches are reported to the server's `track` function (online
 // matches are counted by the server itself). Only a random id this browser made up goes with them
@@ -2731,7 +2770,7 @@ async function connectFirebase() {
   }
 }
 function onConnected(on) {
-  connected = on;
+  connected = on; noteNet();
   if (on && state.online && state.online.me) presenceUp();
   if (state.online) render();
 }
@@ -2763,7 +2802,7 @@ function resync() {
 function listenRoom(code) {
   stopListening();
   roomUnsub = fb.m.onValue(fb.m.ref(fb.db, 'rooms/' + code), s => onRoomValue(s.val()), () => { setNet('error', 'Lost access to this room.'); commit(); });
-  presUnsub = fb.m.onValue(fb.m.ref(fb.db, 'presence/' + code), s => { presence = s.val(); if (state.online) render(); });
+  presUnsub = fb.m.onValue(fb.m.ref(fb.db, 'presence/' + code), s => { presence = s.val(); noteNet(); if (state.online) render(); });
 }
 function stopListening() {
   if (roomUnsub) roomUnsub();
@@ -2950,7 +2989,10 @@ function onRoomValue(r) {
     save(); render();
   }
 }
-function presenting() { return !!(state.flash || state.done || state.spot || presentingSeq != null); }
+function presenting() { return !!(state.flash || state.done || state.spot || presentingSeq != null || stampLeft() > 0); }
+// A square's stamp still playing on the board (ms left): the next move played back waits for it.
+function stampLeft() { const at = state.stamp != null ? fxAt('stamp', state.stampId) : null; return at == null ? 0 : Math.max(0, STAMP_MS - (performance.now() - at)); }
+let pendingTimer = null;
 // The match as the record has it: moves not yet seen here are played back first, one at a time.
 function applyMatch(r) {
   const o = state.online, rec = parseMatch(r.match);
@@ -2962,12 +3004,12 @@ function applyMatch(r) {
   const skipped = Math.max(0, st.seq - o.shownSeq - Math.min(missed.length, REPLAY_MAX));
   if (missed.length > REPLAY_MAX) missed = missed.slice(-REPLAY_MAX);
   if (skipped > 0) { o.shownSeq = missed.length ? missed[0].seq - 1 : st.seq; sayAway(`${skipped} move${skipped === 1 ? '' : 's'} happened while you were away`); }
-  if (missed.length) { presentEntry(st, missed[0]); return; }
+  if (missed.length) { presentEntry(st, missed[0], missed.slice(1)); return; }
   showLatest(st);
 }
 function sayAway(text) {
-  awayNote = text; render();
-  clearTimeout(awayTimer); awayTimer = setTimeout(() => { awayNote = ''; render(); }, 5000);
+  awayNote = text; noteNet(); render();
+  clearTimeout(awayTimer); awayTimer = setTimeout(() => { awayNote = ''; noteNet(); render(); }, 5000);
 }
 function takeFields(st) {
   for (const k of MATCH_FIELDS) {
@@ -2979,8 +3021,9 @@ function takeFields(st) {
   state.cpu = null; state.confirm = null; state.sel = [];
 }
 function showLatest(st) {
-  const o = state.online;
+  const o = state.online, pick0 = pickKey();
   takeFields(st);
+  if (pickKey() != null && pickKey() !== pick0) startFx('pick', pickKey());   // a Memory card just turned up (on the other phone, or this one's own pick coming back)
   state.flash = null; state.done = null; state.spot = null;
   o.shownSeq = st.seq;
   if (state.winner) { if (!['review', 'review-mini'].concat(NAV_SCREENS).includes(state.screen)) state.screen = 'win'; }   // looking back over the final board, or at a profile: stay there
@@ -2989,12 +3032,21 @@ function showLatest(st) {
   if (state.screen === 'mini' && state.zoom == null) state.screen = 'board';
   save(); render();
 }
-// One move from the record, played back as a phone that watched it live would see it: the square as
-// it was right after the move, the mover still on the move, then the usual result and handoff.
-function presentEntry(st, e) {
-  const o = state.online;
+// One move from the record, played back as a phone that watched it live would see it, in order: the
+// square lit up on the board as it was before the move (unclaimed, not yet filled in), the zoom and the
+// move, then back to the board, where a square won stamps in. Squares that moves still to play back will
+// change show what they were until their turn comes (a phone catching up plays them one by one).
+function presentEntry(st, e, rest) {
+  const o = state.online, view = state.squares;                 // this phone's board, as it last showed it
+  const clone = x => JSON.parse(JSON.stringify(x));
   takeFields(st);
-  state.squares[e.square] = JSON.parse(JSON.stringify(e.after));
+  for (const k of new Set((rest || []).map(x => x.square))) {
+    if (k === e.square) continue;
+    const next = rest.find(x => x.square === k), was = next.before || (view && view[k]);
+    if (was) state.squares[k] = clone(was);
+  }
+  const before = e.before || (view && view[e.square]) || null;
+  state.squares[e.square] = clone(e.after);
   state.turn = e.by; state.lock = e.kind === 'again' ? e.square : null;
   state.moves = e.moves; state.lastSquare = e.square; state.lastBy = e.by;
   const over = e.kind === 'match';
@@ -3005,24 +3057,28 @@ function presentEntry(st, e) {
   state.done = !over && e.kind !== 'again' ? f : null;
   state.spot = null; state.stamp = null;
   presentingSeq = e.seq;
-  if (e.by === o.me && !e.timeout) { state.screen = 'mini'; state.zoom = e.square; state.draft = ''; state.notice = null; }
-  else showRemoteMove(e.square, moveLabel(e));
+  if (e.by === o.me && !e.timeout) { state.screen = 'mini'; state.zoom = e.square; state.draft = ''; state.notice = null; playFlash(); }
+  else showRemoteMove(e.square, moveLabel(e), before ? clone(before) : null);
   save(); render();
 }
 // After a result has played out here: the move counts as seen, and the record is looked at again.
 function applyPending() {
+  clearTimeout(pendingTimer); pendingTimer = null;
   if (!state.online) return;
-  if (presentingSeq != null) { state.online.shownSeq = Math.max(state.online.shownSeq || 0, presentingSeq); presentingSeq = null; save(); }
+  if (presentingSeq != null) { state.online.shownSeq = Math.max(state.online.shownSeq || 0, presentingSeq); presentingSeq = null; save(); }   // seen: never played back again
+  const wait = stampLeft();
+  if (wait > 0) { pendingTimer = setTimeout(applyPending, wait + 30); return; }   // a square just won stamps in first, then the next move
   const r = pendingRoom || room; pendingRoom = null;
   if (r && !presenting()) { if (r.kind === 'mm') onGameValue(r.pub); else onRoomValue(r); }
 }
 // A move by the other player (or a timed-out one): the board first, with the square lit up and a
-// label, then the zoom and the move's animation. The flash is already set; it only starts once the
-// mini-game shows (armFlash waits while the glow is on).
-function showRemoteMove(i, label) {
+// label (and drawn as it was before the move), then the zoom and the move's animation. The flash is
+// already set; it only starts as the mini-game comes into view (playFlash), not while the square glows.
+function showRemoteMove(i, label, before) {
   clearTimeout(spotTimer); spotTimer = null;
-  if (state.screen === 'mini' && state.zoom === i && !state.spot) { state.draft = ''; state.notice = null; return; }   // already looking at this square (a bonus move, or a watcher): it plays right here
-  state.spot = { square: i, by: state.flash ? state.flash.by : state.turn, label };
+  if (state.screen === 'mini' && state.zoom === i && !state.spot) { state.draft = ''; state.notice = null; playFlash(); return; }   // already looking at this square (a bonus move, or a watcher): it plays right here
+  state.spot = { square: i, by: state.flash ? state.flash.by : state.turn, label, before: before || null };
+  startFx('spot', state.spot);
   state.screen = 'board'; state.zoom = null; state.draft = ''; state.notice = null;
   spotTimer = setTimeout(() => {
     spotTimer = null;
@@ -3030,6 +3086,7 @@ function showRemoteMove(i, label) {
     const sq = state.spot.square;
     state.spot = null;
     state.screen = 'mini'; state.zoom = sq;
+    playFlash();
     save(); render();
   }, SPOT_MS);
 }
@@ -3040,7 +3097,7 @@ function moveLabel(f) { return f.timeout ? `${playerName(state, f.by)} ran out o
 function attemptMove(m) {
   if (state.online) { dbMove(state.zoom, m); return true; }
   const r = playMove(state, state.zoom, m, RNG);
-  if (r.ok) commit();
+  if (r.ok) { playFlash(); commit(); }
   return r;
 }
 function matchTransaction(fn) {
@@ -3077,11 +3134,15 @@ async function dbMove(i, m) {
   return true;
 }
 function moveRejected(reason) {
-  if (reason === 'notword') state.notice = 'Not a word';
-  else if (reason === 'network') state.notice = 'No connection';
-  else return;
+  if (reason === 'notword') showNotice('Not a word', 1200);
+  else if (reason === 'network') showNotice('No connection', 1200);
+}
+// A short note (a word that is not one, no connection, a copied link): it pops up, once, as it is shown.
+let noticeSeq = 0;
+function showNotice(text, ms) {
+  state.notice = text; noticeSeq += 1; startFx('notice', noticeSeq);
   render();
-  clearTimeout(noticeTimer); noticeTimer = setTimeout(() => { state.notice = null; render(); }, 1200);
+  clearTimeout(noticeTimer); noticeTimer = setTimeout(() => { state.notice = null; render(); }, ms);
 }
 async function dbPick(i, card) {
   if (blocked() || !fb || !room) return;
@@ -3192,10 +3253,9 @@ async function shareRoom() {
   try {
     if (navigator.share) { await navigator.share({ title: 'Tic Tac Chaos', text, url }); return; }
   } catch (e) { if (e && e.name === 'AbortError') return; }
-  try { await navigator.clipboard.writeText(url); state.notice = 'Link copied'; }
-  catch (e) { state.notice = url; }
-  render();
-  clearTimeout(noticeTimer); noticeTimer = setTimeout(() => { state.notice = null; render(); }, 1800);
+  let note = 'Link copied';
+  try { await navigator.clipboard.writeText(url); } catch (e) { note = url; }
+  showNotice(note, 1800);
 }
 // Back after a reload or a time away: the same room and seat, from localStorage.
 function resumeOnline() {
@@ -3285,7 +3345,7 @@ async function fireTimeout(seq, deadline) {
 const RATINGS_ENABLED = false;
 let acct = { user: null, profile: null, active: null, ready: false };   // the logged-in player (user null: a guest)
 let acctUnsubs = [];
-let afterLogin = null;                       // where to go once logged in and named: 'find' or 'profile'
+let afterLogin = null;                       // where to go once logged in and named: 'find', 'profile' or 'host'
 let loginMsg = null, loginBusy = false, loginMail = '', loginPass = '', unameMsg = null, unameDraft = '';
 let search = { on: false, found: false, since: 0, msg: '' }, searchTimer = null, searchBusy = false;
 let lb = null;                               // the leaderboard as last loaded: { rows, me, error }
@@ -3326,7 +3386,7 @@ function finishLogin() {
     if (msg && !(acct.user)) { loginMsg = msg; state.screen = 'login'; save(); return; }
   }
   if (!go || !acct.user) return;
-  afterLogin = go === 'find' || go === 'profile' ? go : null;
+  afterLogin = ['find', 'profile', 'host'].includes(go) ? go : null;
   loginFinishing = true;
   if (state.screen !== 'username') state.screen = 'login';   // shows "Logging you in…" until the profile is in
   afterAccount();
@@ -3367,6 +3427,7 @@ function afterAccount() {
   loginFinishing = false;
   const go = afterLogin; afterLogin = null;
   if (go === 'profile') { openProfile(acct.user.uid, 'menu'); return; }
+  if (go === 'host') { hostRoom(null, false); return; }       // logged in on the way to hosting: the room opens at once
   state.screen = go === 'find' ? 'find' : 'menu';
   save();
   if (go === 'find') startSearch();             // logged in on the way to Find Match: searching at once
@@ -3376,7 +3437,7 @@ function onActive() {
   const a = acct.active;
   if (a && a.game && (search.on || search.found)) enterGame(a.game, a.side);
 }
-// Find Match, a profile: these need an account (and a username). Otherwise the login screen.
+// Find Match, a profile, hosting a friend game: these need an account (and a username). Otherwise the login screen.
 async function needAccount(next) {
   afterLogin = next;
   if (loggedIn()) return true;
@@ -3531,7 +3592,7 @@ function enterGame(id, side) {
 function listenGame(id) {
   stopListening();
   roomUnsub = fb.m.onValue(fb.m.ref(fb.db, `games/${id}/pub`), s => onGameValue(s.val()), () => { setNet('error', 'Lost access to this match.'); commit(); });
-  presUnsub = fb.m.onValue(fb.m.ref(fb.db, `gpresence/${id}`), s => { presence = s.val(); if (state.online) render(); });
+  presUnsub = fb.m.onValue(fb.m.ref(fb.db, `gpresence/${id}`), s => { presence = s.val(); noteNet(); if (state.online) render(); });
 }
 function onGameValue(pub) {
   const o = state.online;
@@ -3717,7 +3778,8 @@ function renderUsername() {
 }
 function renderFind() {
   const p = acct.profile || {};
-  const back = `<div class="bar"><button class="back" data-act="${search.on ? 'search-cancel' : 'online-go'}" aria-label="${search.on ? 'Cancel the search' : 'Back to Play Online'}">${CHEV}${search.on ? 'Cancel' : 'Back'}</button>
+  // While searching, the way out is the Cancel under the timer: the one screen with no back button at the top left.
+  const back = `<div class="bar">${search.on ? '' : `<button class="back" data-act="online-go" aria-label="Back to Play Online">${CHEV}Back</button>`}
       <div class="ttl"><b>Find Match</b><small>${esc(p.username || '')} · ${RATINGS_ENABLED ? `rating ${p.rating || 1200}` : `record ${record(p)}`}</small></div></div>`;
   if (search.found) {
     return `<main class="scr setup acct-scr">${back}<div class="setup-box"><div class="searching found" role="status"><div class="big-g">${toon('X')}${toon('O')}</div><h2>Match found!</h2><p class="hint">${esc(net.msg || 'Loading the match…')}</p></div></div></main>`;
@@ -3885,10 +3947,10 @@ app.addEventListener('click', e => {
   if (act === 'ask-leave') { if (joinAsk) leaveAndJoin(joinAsk.code); return; }
   if (act === 'dismiss') { if (Date.now() >= flashReady) dismissFlash(); return; }   // not before the animation is over
   const free = ['pause', 'pause-resume', 'pause-main', 'pause-back', 'pause-leave', 'leave', 'lobby-back', 'menu', 'find-again', 'profile', 'prof-back', 'prof-hist', 'mystats', 'hist-open', 'hist-sq', 'hist-back', 'hist-close', 'leaderboard', 'rejoin', 'host-retry', 'share', 'rematch', 'timer', 'review', 'review-sq', 'review-back', 'results', 'pview'];
-  if (act === 'pause') { menuOpen = true; menuStep = 'main'; render(); scheduleCpu(); return; }
+  if (act === 'pause') { menuOpen = true; menuStep = 'main'; startFx('menu', menuStep); render(); scheduleCpu(); return; }
   if (act === 'pause-resume') { menuOpen = false; menuStep = 'main'; render(); scheduleCpu(); return; }
-  if (act === 'pause-main') { menuStep = 'confirm'; render(); return; }
-  if (act === 'pause-back') { menuStep = 'main'; render(); return; }
+  if (act === 'pause-main') { menuStep = 'confirm'; startFx('menu', menuStep); render(); return; }
+  if (act === 'pause-back') { menuStep = 'main'; startFx('menu', menuStep); render(); return; }
   if (act === 'pause-leave') { quitMatch(); return; }
   if (menuOpen) return;                         // the menu is up: nothing underneath reacts
   if (state.flash && !free.includes(act)) return;   // everything else waits for the result to clear
@@ -3982,8 +4044,10 @@ app.addEventListener('click', e => {
     hist = null; state.screen = 'profhist'; render();
   } else if (act === 'lobby-back') {           // the online screens go back one step; a lobby is left cleanly
     if (state.online) leaveLobby(); else { state.screen = 'friend'; setNet('idle', ''); commit(); }
-  } else if (act === 'host') {
-    advOpen = false; hostRoom(null, false);
+  } else if (act === 'host') {                  // hosting needs an account: logged out, the login first, then straight back to Host
+    advOpen = false;
+    if (!loggedIn()) { needAccount('host'); return; }
+    hostRoom(null, false);
   } else if (act === 'host-retry') {
     hostRoom(state.online && room ? state.online.code : null, !!room);
   } else if (act === 'join-go') {
@@ -4056,9 +4120,10 @@ app.addEventListener('click', e => {
       else attemptMove([first, i]);
       return;
     }
-    if (first == null) { state.pick = i; state.pickSq = state.zoom; }
+    if (first == null) { state.pick = i; state.pickSq = state.zoom; startFx('pick', pickKey()); }   // the card turns up: its own event
     else if (first === i) { state.pick = null; state.pickSq = null; }
     else if (!playMove(state, state.zoom, [first, i], RNG).ok) { state.pick = null; state.pickSq = null; }
+    else playFlash();
     commit();
   } else if (act === 'cancel') {
     state.confirm = null; commit();
@@ -4131,11 +4196,7 @@ function submitWord() {
   if (zoomedType() !== 'wordle' || (state.draft || '').length !== 5) return;
   const r = attemptMove(state.draft);
   if (r === true || r.ok) return;
-  if (r.reason === 'notword') {                 // the guess stays typed and the turn is still theirs
-    state.notice = 'Not a word'; commit();
-    clearTimeout(noticeTimer);
-    noticeTimer = setTimeout(() => { state.notice = null; commit(); }, 1200);
-  }
+  if (r.reason === 'notword') showNotice('Not a word', 1200);   // the guess stays typed and the turn is still theirs
 }
 // Physical keyboard, for desktops: Wordle typing and Hangman letters.
 document.addEventListener('keydown', e => {
@@ -4205,6 +4266,7 @@ function boot() {
   }
   const play = !link && new URLSearchParams(location.search).get('play') === 'find';   // the empty-queue alert's link: straight into Find Match
   if (play) { try { history.replaceState(null, '', location.pathname); } catch (e) { /* (kept) */ } }
+  if (state.flash && !state.spot) playFlash(true);           // a result still on show at the reload: its move has played, the result finishes
   render(); scheduleCpu();
   if (state.online) resumeOnline();
   else if (hadAccount() || redirectPending()) {             // logged in before, or back from Google's sign-in page: the account, in the background
@@ -4234,6 +4296,7 @@ function cpuSpot() {                                           // the computer h
   if (!cpuTurn() || state.screen !== 'board' || state.confirm || menuOpen) return;
   cpuPlan = cpuMove(state, RNG); cpuPlan.stage = 0;
   state.spot = { square: cpuPlan.square, by: state.turn, label: `${playerName(state, state.turn)} plays here` };
+  startFx('spot', state.spot);
   render();                                                     // no commit: the glow is not for the saved state
   cpuTimer = setTimeout(cpuZoom, CPU_MS.spot);
 }
@@ -4249,7 +4312,7 @@ function cpuAct() {
   if (!cpuTurn() || state.screen !== 'mini' || !cpuPlan || cpuPlan.square !== state.zoom || menuOpen || explainT) return;
   const plan = cpuPlan, type = state.squares[plan.square].mini.type;
   if (!plan.stage && (type === 'memory' || type === 'wordle' || type === 'hexapawn' || type === 'mastermind')) {   // show the choice first, as a person would
-    if (type === 'memory') state.pick = plan.move[0]; else if (type === 'hexapawn') hpSel = { sq: plan.square, from: plan.move[0] };
+    if (type === 'memory') { state.pick = plan.move[0]; state.pickSq = plan.square; startFx('pick', pickKey()); } else if (type === 'hexapawn') hpSel = { sq: plan.square, from: plan.move[0] };
     else if (type === 'mastermind') mmDraft = { sq: plan.square, slots: plan.move.slice(), at: 0 }; else state.draft = plan.move;
     plan.stage = 1; commit(); return;
   }
@@ -4257,29 +4320,38 @@ function cpuAct() {
   const r = playMove(state, plan.square, plan.move, RNG);
   if (!r.ok) {                                   // never expected; rather than freeze, hand the match to two players
     console.error('The computer could not play', plan, r);
-    state.cpu = null; leaveSquare(state);
-  }
+    state.cpu = null; leaveSquare(state); stampFx();
+  } else playFlash();
   commit();
 }
-function armFlash() {
-  if (!state.flash || flashTimer || state.spot) return;         // while the square glows on the board, the move has not played yet
-  const f = state.flash, ms = animMs(f);
+// The move's animation starts: the event is the move itself (made on this phone, by the computer, or
+// played back here once the square is in view). Its result is taken away once it has played and been up
+// for a moment. `played`: a result found on show (a reload): its animation is over already.
+function playFlash(played) {
+  const f = state.flash;
+  if (!f || state.spot || fxAt('move', f) != null) return;     // while the square glows on the board, the move has not played yet
+  const ms = played ? 0 : animMs(f);
+  startFx('move', f, performance.now() - (played ? animMs(f) : 0));
   flashReady = Date.now() + ms;                   // no tapping the result away while the move is still animating
   let hold = FLASH_MS[f.kind] || 800;
   if (f.type === 'memory' && f.kind === 'move') hold = MEMORY_MS;
   if (f.type === 'pig' && f.kind === 'move') hold = f.note === 'bust' ? FLASH_MS.card : FLASH_MS.move;   // a bust gets a proper card; a bank just its points moving over
-  flashTimer = setTimeout(dismissFlash, ms + hold);
+  clearTimeout(flashTimer); flashTimer = setTimeout(dismissFlash, ms + hold);
 }
+// Back on the board after a move: a square just won stamps in now, once (the event its stamp belongs to).
+function stampFx() { if (state.screen === 'board' && state.stamp != null && state.stampId != null && fxAt('stamp', state.stampId) == null) startFx('stamp', state.stampId); }
 function dismissFlash() {
   clearTimeout(flashTimer); flashTimer = null;
   const f = state.flash;
   if (!f) return;
   const hold = f.type === 'memory' && f.kind === 'move' && !state.winner;   // let the two cards turn back over first
   endFlash(state, hold);
+  if (hold && state.done) startFx('back', state.done);          // the two cards turning back over
+  stampFx();
   commit();
   if (hold && state.done) {
     clearTimeout(holdTimer);
-    holdTimer = setTimeout(() => { if (state.done && !state.flash && leaveSquare(state)) commit(); applyPending(); }, FLIP_MS);
+    holdTimer = setTimeout(() => { if (state.done && !state.flash && leaveSquare(state)) { stampFx(); commit(); } applyPending(); }, FLIP_MS);
   } else applyPending();                        // online: the room may have moved on meanwhile
 }
 function save() {

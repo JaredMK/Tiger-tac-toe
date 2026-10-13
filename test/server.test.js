@@ -338,7 +338,7 @@ test('timeouts: the server checks the deadline; with both players away the sweep
   // ...then for O, then X runs out again: two in a row for X loses the match
   await expire(); await sweep();
   st = await gameState(g.id);
-  if (st.turn === 'O') { await expire(); await sweep(); st = await gameState(g.id); }   // (a Hangman hit or a Pig roll keeps the turn)
+  if (st.turn === 'O') { await expire(); await sweep(); st = await gameState(g.id); }   // (a Hangman hit or a Risky Rolls roll keeps the turn)
   assert.equal(st.turn, 'X');
   await expire();
   assert.equal((await sweep()).timeouts, 1);
