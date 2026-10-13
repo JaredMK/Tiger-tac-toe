@@ -384,7 +384,7 @@ b.X { color: var(--x); } b.O { color: var(--o); }
 
 /* ---------- setup screen ---------- */
 .setup { justify-content: flex-start; gap: 10px; }
-.setup .bar { max-width: 520px; }
+.setup .bar { max-width: none; }   /* the back button sits in the top-left corner, as on every screen */
 .setup-box { width: 100%; max-width: 520px; flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; padding: 4px 0; }
 .adv { border-radius: 12px; }
 .adv-h { width: 100%; height: 48px; display: flex; align-items: center; gap: 10px; padding: 0 12px; border: 0; border-radius: 12px; background: var(--panel-2); box-shadow: inset 0 0 0 1px var(--line); font-weight: 800; font-size: 14px; color: var(--text); }
@@ -426,6 +426,7 @@ b.X { color: var(--x); } b.O { color: var(--o); }
   .chk { font-size: 13px; padding: 0 10px; gap: 8px; }
   .chk svg { display: none; }
 }
+.online-mid { flex: 1; min-height: 0; width: 100%; overflow-y: auto; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .setup-foot { flex: none; width: 100%; max-width: 520px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .setup-foot .primary { width: 100%; }
 .primary:disabled { opacity: .35; }
@@ -715,7 +716,7 @@ b.O { box-shadow: inset 0 -.38em 0 var(--o-soft); }
 .primary:active:not(:disabled), .btn:active:not(:disabled), .big:active:not(:disabled), .menubtn:active, .back:active:not(:disabled), .link:active { transform: translateY(4px) scale(1.06, .86); box-shadow: 0 1px 0 var(--ink); }
 .primary { background: var(--o); color: var(--ink); font-size: 22px; height: 60px; }
 .primary.alt { background: var(--x); color: var(--paper); }
-.menu-card .primary.alt:last-child { background: var(--sky); color: var(--ink); }
+.menu-card .primary.alt[data-act="online-go"] { background: var(--sky); color: var(--ink); }
 .primary:disabled { opacity: .45; }
 .btn { background: var(--paper); color: var(--ink); font-size: 16px; }
 .btn.go { background: var(--o); color: var(--ink); }
@@ -762,8 +763,8 @@ b.O { box-shadow: inset 0 -.38em 0 var(--o-soft); }
 .pow-b span svg { width: 100%; height: auto; overflow: visible; }
 .pow-b .b1 { width: 92%; left: -46%; top: -40%; }
 .pow-b.c0 .b1 { left: -8%; } .pow-b.c2 .b2 { right: auto; left: -52%; } .pow-b.c2 .b1 { left: 8%; top: -46%; }
-.pow-b .b1 { animation: burstin .45s cubic-bezier(.3, 1.8, .5, 1) .32s both; }
-.pow-b .b2 { width: 104%; right: -50%; bottom: -34%; animation: burstin2 .45s cubic-bezier(.3, 1.8, .5, 1) .5s both; }
+.pow-b .b1 { animation: burstlife 1.1s linear .32s both; }
+.pow-b .b2 { width: 104%; right: -50%; bottom: -34%; animation: burstlife2 1.1s linear .5s both; }
 .bst { stroke: var(--ink); stroke-width: 4.5; stroke-linejoin: round; }
 .bst.y { fill: var(--o); } .bst.r { fill: var(--x); } .bst.s { fill: var(--sky); }
 .bursttxt { font-family: 'Luckiest Guy', 'Arial Black', sans-serif; fill: #fff; stroke: var(--ink); stroke-width: 4; paint-order: stroke fill; }
@@ -784,6 +785,10 @@ b.O { box-shadow: inset 0 -.38em 0 var(--o-soft); }
 .tw small, .thg small, .thilo small { color: var(--muted); font-weight: 400; font-size: 9cqw; }
 .thg .hw i { border-bottom: 2.5px solid var(--muted); font-family: 'Luckiest Guy', sans-serif; font-weight: 400; }
 .thg .hw i.on { border-color: var(--ink); }
+.thg .hmx { display: flex; flex-wrap: wrap; justify-content: center; gap: 1cqw 3cqw; max-width: 92cqw; color: var(--ink); font-family: 'Luckiest Guy', sans-serif; font-size: 14cqw; line-height: 1; }
+.thg .hmx.mid, .thg .hmx.many { gap: .8cqw 2.4cqw; font-size: 12.5cqw; }
+.thg .hmx i { font-style: normal; position: relative; padding-top: .12em; }
+.thg .hmx i::after { content: ''; position: absolute; left: -6%; right: -6%; top: 40%; height: max(1.3px, .9cqw); border-radius: 1px; background: var(--x); transform: rotate(-14deg); }
 .thex .hr i { background: var(--paper); box-shadow: inset 0 0 0 1.2px var(--ink); }
 .thex .hr i.X { background: var(--x); } .thex .hr i.O { background: var(--o); }
 .tdice .bar { background: var(--paper); box-shadow: inset 0 0 0 1.3px var(--ink); }
@@ -971,8 +976,8 @@ button.seg.X.on { background: var(--x); color: var(--paper); } .seg.O.on { backg
 .big-g.bang { animation: none; }
 .big-g.bang .pc { animation: squash .8s cubic-bezier(.3, 0, .4, 1) both; animation-delay: inherit; transform-origin: 50% 90%; }
 .flash.late .big-g.bang .pc { animation-delay: var(--late, 0s); }
-.card .powc { position: absolute; width: 120px; left: -40px; top: -46px; animation: burstin .45s cubic-bezier(.3, 1.8, .5, 1) both; animation-delay: calc(var(--late, 0s) + .35s); }
-.card .powc2 { position: absolute; width: 132px; right: -44px; top: 40px; animation: burstin2 .45s cubic-bezier(.3, 1.8, .5, 1) both; animation-delay: calc(var(--late, 0s) + .55s); }
+.card .powc { position: absolute; width: 120px; left: -40px; top: -46px; animation: burstlife 1.1s linear both; animation-delay: calc(var(--late, 0s) + .1s - var(--bel, 0ms)); }
+.card .powc2 { position: absolute; width: 132px; right: -44px; top: 40px; animation: burstlife2 1.1s linear both; animation-delay: calc(var(--late, 0s) + .25s - var(--bel, 0ms)); }
 .toast { background: var(--o); border: 3.5px solid var(--ink); box-shadow: 0 5px 0 var(--ink); border-radius: 20px 14px 22px 12px; font-weight: 400; font-size: 17px; padding-top: 14px; }
 .win-card h1 { font-size: 32px; padding-top: 4px; color: var(--ink); }
 .win-card p { color: var(--muted); font-weight: 400; font-size: 19px; }
@@ -1079,8 +1084,19 @@ button.seg.X.on { background: var(--x); color: var(--paper); } .seg.O.on { backg
 .win-card .row { flex-wrap: wrap; justify-content: center; }
 .winburst .bursttxt { letter-spacing: 1px; }
 @keyframes squash { 0% { transform: translateY(-160%) scale(.6, 1.6); opacity: 0; } 10% { opacity: 1; } 42% { transform: translateY(0) scale(.75, 1.35); } 55% { transform: translateY(0) scale(1.45, .55); } 70% { transform: translateY(-12%) scale(.85, 1.2); } 84% { transform: translateY(0) scale(1.1, .9); } 100% { transform: translateY(0) scale(1, 1); opacity: 1; } }
-@keyframes burstin { 0% { transform: scale(0) rotate(-40deg); opacity: 0; } 100% { transform: scale(1) rotate(-10deg); opacity: 1; } }
-@keyframes burstin2 { 0% { transform: scale(0) rotate(30deg); opacity: 0; } 100% { transform: scale(1) rotate(8deg); opacity: 1; } }
+/* a burst pops in, sits about a second, then pops out: it always ends invisible */
+@keyframes burstlife {
+  0% { transform: scale(0) rotate(-40deg); opacity: 0; animation-timing-function: cubic-bezier(.3, 1.8, .5, 1); }
+  30% { transform: scale(1) rotate(-10deg); opacity: 1; }
+  80% { transform: scale(1) rotate(-10deg); opacity: 1; animation-timing-function: ease-in; }
+  100% { transform: scale(1.35) rotate(-4deg); opacity: 0; }
+}
+@keyframes burstlife2 {
+  0% { transform: scale(0) rotate(30deg); opacity: 0; animation-timing-function: cubic-bezier(.3, 1.8, .5, 1); }
+  30% { transform: scale(1) rotate(8deg); opacity: 1; }
+  80% { transform: scale(1) rotate(8deg); opacity: 1; animation-timing-function: ease-in; }
+  100% { transform: scale(1.35) rotate(3deg); opacity: 0; }
+}
 @keyframes blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(.1); } }
 @keyframes bob { 0%, 100% { transform: translateY(0) scale(1.06, .94); } 50% { transform: translateY(-12px) scale(.95, 1.05); } }
 @keyframes hop { 0%, 100% { transform: translateY(0) scale(1, 1); } 40% { transform: translateY(-7px) scale(.95, 1.06); } 60% { transform: translateY(0) scale(1.08, .92); } }
@@ -2700,7 +2716,36 @@ function burstSvg(word, cls, w, h, size) {
     const a = k * Math.PI / n - Math.PI / 2, f = k % 2 === 0 ? 0.88 + r() * 0.12 : 0.62 + r() * 0.08;
     pts.push(`${(w / 2 + Math.cos(a) * (w / 2 - 3) * f).toFixed(1)},${(h / 2 + Math.sin(a) * (h / 2 - 3) * f).toFixed(1)}`);
   }
-  return `<svg viewBox="0 0 ${w} ${h}" aria-hidden="true"><polygon class="bst ${cls}" points="${pts.join(' ')}"/><text class="bursttxt" x="${w / 2}" y="${h / 2 + size * .36}" font-size="${size}" text-anchor="middle">${word}</text></svg>`;
+  size = Math.min(size, w * .72 / (word.length * .62));          // a long word gets a smaller size to stay inside the burst
+  return `<svg viewBox="0 0 ${w} ${h}" aria-hidden="true"><polygon class="bst ${cls}" points="${pts.join(' ')}"/><text class="bursttxt" x="${w / 2}" y="${(h / 2 + size * .36).toFixed(1)}" font-size="${size.toFixed(1)}" text-anchor="middle">${word}</text></svg>`;
+}
+// The bursts when a square is won: two words each time, drawn at random from BURSTS, never one that
+// was on show the time before. A showing keeps its words and its timing through re-renders, pops out
+// about a second after it pops in, and is then taken off the page (so it never stays, even with
+// animations turned off).
+const BURSTS = ['POW!', 'BAM!', 'CHAOS!', 'BOOM!', 'KAPOW!', 'WHAM!', 'ZAP!', 'SMASH!', 'CRUNCH!', 'YOINK!', 'SNATCHED!', 'MINE!', 'CLAIMED!', 'GOTCHA!', 'KABLAM!', 'BOP!'];
+const BURST_MS = 1100;                    // in, about a second on show, out
+let burstShow = null, burstLast = [], burstTimer = null;
+function burstPick(key) {
+  if (!burstShow || burstShow.key !== key) {
+    const pool = BURSTS.filter(w => !burstLast.includes(w));
+    const a = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
+    const b = pool[Math.floor(Math.random() * pool.length)];
+    burstShow = { key, words: [a, b], at: performance.now() };
+    burstLast = burstShow.words;
+  }
+  return { words: burstShow.words, at: burstShow.at, el: Math.round(performance.now() - burstShow.at) };
+}
+// After each render: a burst whose time is up leaves the page.
+function sweepBursts() {
+  clearTimeout(burstTimer); burstTimer = null;
+  const now = performance.now();
+  let next = Infinity;
+  for (const e of app.querySelectorAll('[data-bend]')) {
+    const end = Number(e.dataset.bend);
+    if (end <= now) e.remove(); else next = Math.min(next, end);
+  }
+  if (next < Infinity) burstTimer = setTimeout(sweepBursts, next - now + 20);
 }
 const CHEV = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m14.5 6-6 6 6 6"/></svg>';
 const BKSP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 5H8l-5 7 5 7h13a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1z"/><path d="m18 9-6 6M12 9l6 6"/></svg>';
@@ -2729,6 +2774,7 @@ function render() {
   if (wl) wl.scrollTop = wl.scrollHeight;
   animate();
   armFlash();
+  sweepBursts();
 }
 // How long the move's animation takes. The result toast or card waits this long, and so does any tap.
 function animMs(f) {
@@ -2866,7 +2912,7 @@ function renderSetup() {
       <label class="field ${p}"><span>${p} player name</span><input data-p="${p}" value="${esc(s.names[p] || '')}" maxlength="${NAME_MAX}" placeholder="${isCpu ? CPU_NAME : p}" autocomplete="off" autocapitalize="words" aria-label="${p} player name"></label></div>`;
   };
   return `<main class="scr setup">
-    <div class="bar"><button class="back" data-act="${host ? 'leave' : 'menu'}" aria-label="Back to the main menu">${CHEV}Menu</button>
+    <div class="bar">${host ? `<button class="back" data-act="lobby-back" aria-label="Close the room and go back">${CHEV}Back</button>` : `<button class="back" data-act="menu" aria-label="Back to the main menu">${CHEV}Menu</button>`}
       <div class="ttl"><b>${title}</b>${sub ? `<small>${sub}</small>` : ''}</div></div>
     <div class="setup-box">
     ${room}
@@ -2885,7 +2931,8 @@ function reviewSquares() {
   if (state.online && room && room.match) { const rec = parseMatch(room.match); if (rec) return fullState(rec).squares; }
   return state.squares;
 }
-const STAMP_MS = 1500;                    // the stamp and its bursts are over by then
+const STAMP_MS = 1500;                    // the stamp is over by then
+const BOARD_BURST = [320, 500];           // when the two bursts on the board pop in, in ms after the stamp starts
 let stampKey = null, stampAt = 0;         // the claim whose stamp is playing, and when it started
 function renderBoard(review) {
   const spot = review ? null : state.spot;
@@ -2914,8 +2961,9 @@ function renderBoard(review) {
     <div class="foot"><span class="hint">Every hidden word, number, card and ship is shown</span></div>${pauseMenu()}</main>`;
   const hint = spot ? (cpuPlays(spot.by) ? CPU_ICON : '') + esc(spot.label) : cpuTurn() ? `${N(state.turn)} is thinking…` : remoteTurn() ? `Waiting for ${N(state.turn)}…`
     : state.moves ? 'Tap any open square to make a move' : `${N(state.turn)}: tap a square to start`;
-  const st = stampOn ? state.stamp : null;                                  // a fresh claim: POW! and CHAOS! around it
-  const pow = st == null ? '' : `<div class="pow-b c${st % 3}" style="grid-row:${Math.floor(st / 3) + 1};grid-column:${st % 3 + 1};--el:${el}ms" aria-hidden="true"><span class="b1">${burstSvg('POW!', 'y', 150, 110, 34)}</span><span class="b2">${burstSvg('CHAOS!', 'r', 160, 104, 28)}</span></div>`;
+  const st = sk && el < BOARD_BURST[1] + BURST_MS ? state.stamp : null;    // a fresh claim: two bursts around it, gone after about a second
+  const bw = st == null ? null : burstPick('board:' + sk), bend = k => Math.round(stampAt + BOARD_BURST[k] + BURST_MS);
+  const pow = st == null ? '' : `<div class="pow-b c${st % 3}" style="grid-row:${Math.floor(st / 3) + 1} / span 1;grid-column:${st % 3 + 1} / span 1;--el:${el}ms" aria-hidden="true">${el < BOARD_BURST[0] + BURST_MS ? `<span class="b1" data-bend="${bend(0)}">${burstSvg(bw.words[0], 'y', 150, 110, 34)}</span>` : ''}<span class="b2" data-bend="${bend(1)}">${burstSvg(bw.words[1], 'r', 160, 104, 28)}</span></div>`;
   return `<main class="scr board-scr">${netBar()}<div class="board">${sqs}${pow}</div>
     <div class="foot"><span class="hint">${hint}</span></div>${pauseMenu()}</main>`;
 }
@@ -2943,8 +2991,8 @@ function thumb(mini, final) {
     }
     case 'hangman': {
       const got = new Set(mini.letters.filter(x => x.hit).map(x => x.l));
-      const wrong = mini.letters.length - got.size;
-      return `<div class="thg"><div class="hw" style="--n:${mini.word.length}">${mini.word.split('').map(ch => `<i class="${got.has(ch) ? 'on' : ''}">${got.has(ch) ? ch : ''}</i>`).join('')}</div><small>${wrong} wrong</small></div>`;
+      const wrong = mini.letters.filter(x => !x.hit).map(x => x.l);   // the wrong letters themselves, crossed out as in the full view
+      return `<div class="thg"><div class="hw" style="--n:${mini.word.length}">${mini.word.split('').map(ch => `<i class="${got.has(ch) ? 'on' : ''}">${got.has(ch) ? ch : ''}</i>`).join('')}</div>${wrong.length ? `<div class="hmx${wrong.length > 16 ? ' many' : wrong.length > 10 ? ' mid' : ''}" aria-label="Wrong letters: ${wrong.join(', ')}">${wrong.map(l => `<i>${l}</i>`).join('')}</div>` : ''}</div>`;
     }
     case 'hex': return `<div class="thex">${[0, 1, 2, 3].map(r => `<div class="hr" style="--k:${r}">${[0, 1, 2, 3].map(c => `<i class="${mini.cells[r * HEX_N + c] || ''}"></i>`).join('')}</div>`).join('')}</div>`;
     case 'hilo': return `<div class="thilo"><b>${mini.lo}–${mini.hi}</b><small>${mini.guesses.length} guess${mini.guesses.length === 1 ? '' : 'es'}</small></div>`;
@@ -3274,17 +3322,22 @@ function summary(f) {
   }
   return `${who} placed`;
 }
+const CARD_BURST = [100, 250];            // when the two bursts on a result card pop in, in ms after the card
 function renderFlash(f) {
   const who = `<b class="${f.by}">${N(f.by)}</b>`;
   const name = INFO[f.type].name;
+  const pow = () => {                              // the square-won bursts on the result card: in after the move plays, out a second later
+    const late = animMs(f), b = burstPick(`card:${state.moves}:${f.square}`), end = k => late + CARD_BURST[k] + BURST_MS;
+    return [0, 1].map(k => b.el >= end(k) ? '' : `<div class="powc${k ? '2' : ''}" style="--bel:${b.el}ms" data-bend="${Math.round(b.at + end(k))}">${k ? burstSvg(b.words[1], 'r', 160, 104, 28) : burstSvg(b.words[0], 'y', 150, 110, 34)}</div>`).join('');
+  };
   const open = `<div class="flash late" style="--late:${animMs(f)}ms" data-act="dismiss">${f.timeout ? `<div class="timeout-note">${who} ran out of time — random move</div>` : ''}`;   // the result waits for the animation
   if (f.kind === 'match') {
     const w = state.winner;
-    return `${open}<div class="card"><div class="powc">${burstSvg('POW!', 'y', 150, 110, 34)}</div><div class="powc2">${burstSvg('CHAOS!', 'r', 160, 104, 28)}</div><div class="big-g bang ${w}">${toonT(w)}</div><h2>${N(w)} wins the match!</h2><p>Tap to continue</p></div></div>`;
+    return `${open}<div class="card">${pow()}<div class="big-g bang ${w}">${toonT(w)}</div><h2>${N(w)} wins the match!</h2><p>Tap to continue</p></div></div>`;
   }
   if (f.kind === 'claim') {
     const w = f.winner || f.by;
-    return `${open}<div class="card"><div class="powc">${burstSvg('POW!', 'y', 150, 110, 34)}</div><div class="powc2">${burstSvg('CHAOS!', 'r', 160, 104, 28)}</div><div class="big-g bang ${w}">${toonT(w)}</div><h2>${N(w)} wins ${name}!</h2><p>Square claimed · tap to continue</p></div></div>`;
+    return `${open}<div class="card">${pow()}<div class="big-g bang ${w}">${toonT(w)}</div><h2>${N(w)} wins ${name}!</h2><p>Square claimed · tap to continue</p></div></div>`;
   }
   if (f.type === 'pig' && f.note === 'bust') {
     return `${open}<div class="card"><div class="big-g">${dieFace(f.roll)}</div><h2>Bust!</h2><p>${who} rolled ${f.roll} again · pot of ${f.pot} lost</p></div></div>`;
@@ -3516,7 +3569,9 @@ async function hostRoom(code, resume) {
         players: { [o.me]: { uid, name, joined: m.serverTimestamp() } },
         setup: { games: state.setup.games, timer: state.setup.timer || 0, hostSide: o.me },
       });
+      if (state.online !== o) { closeSeat(o.code, o.me, true); return; }   // went back while the room was opening
     } catch (e) {
+      if (state.online !== o) return;
       setNet('error', "Couldn't open a room. Check your internet connection (switching to Wi-Fi helps) and try again."); commit(); return;
     }
   }
@@ -3598,6 +3653,7 @@ async function joinRoom(code, name, resume) {
   try {
     const snap = await m.get(m.ref(db, 'rooms/' + o.code));
     const r = snap.val();
+    if (state.online !== o) return;                               // went back meanwhile: nothing to show
     if (!r || !r.players) { setNet('error', `No game with the code ${o.code} is open. Check the code with the host.`); commit(); return; }
     const mine = ['X', 'O'].find(s => r.players[s] && r.players[s].uid === uid);
     if (mine) {                                                   // our seat from before: back into it
@@ -3610,8 +3666,10 @@ async function joinRoom(code, name, resume) {
       const nm = String(o.name || (resume && r.players[free] && r.players[free].name) || '').trim().slice(0, NAME_MAX) || 'Friend';
       await m.set(m.ref(db, `rooms/${o.code}/players/${free}`), { uid, name: nm, joined: m.serverTimestamp() });   // the rules let only an empty seat be taken
       o.me = free;
+      if (state.online !== o) { closeSeat(o.code, free, false); return; }   // went back while joining
     }
   } catch (e) {
+    if (state.online !== o) return;
     setNet('error', e && /PERMISSION_DENIED|permission/i.test(String(e.code || e.message)) ? 'That room is full: two players are in it already.' : 'No connection. Check your internet (switching to Wi-Fi helps) and try again.');
     commit(); return;
   }
@@ -3815,6 +3873,33 @@ function leaveRoom(silent) {
   state.timer = newTimer(0);
   commit();
 }
+// Back out of a lobby, before the match starts. The host closes the room: it is deleted, so the code
+// stops working and a friend already in it is told. A guest gives up the seat and the host's room
+// stays open for them to try again. Either way this phone lets go of the room and goes back one
+// screen: the host to Play Online, the guest to the join form (name and code still filled in).
+function leaveLobby() {
+  const o = state.online;
+  if (!o) return;
+  if (room && room.status === 'playing') { leaveRoom(); return; }   // a match is on: leaving it tells the other player
+  const host = o.role === 'host';
+  if (fb && o.code && o.me) closeSeat(o.code, o.me, host);
+  stopListening();
+  clearTimeout(moveTimer); moveWait = null; presentingSeq = null; awayNote = '';
+  state.online = null;
+  setNet('idle', '');
+  state.screen = host ? 'online' : 'join'; state.setup.mode = 'two'; state.notice = null; state.timer = newTimer(0);
+  commit();
+}
+// The database side of leaving a lobby: this phone's presence first (the rules want the seat still
+// ours for that), then the seat or, for the host, the whole room and both presence entries.
+function closeSeat(code, side, host) {
+  const { m, db } = fb, pres = s => m.ref(db, `presence/${code}/${s}`);
+  m.onDisconnect(pres(side)).cancel().catch(() => {});
+  m.remove(pres(side)).catch(() => {})
+    .then(() => m.remove(m.ref(db, host ? `rooms/${code}` : `rooms/${code}/players/${side}`)))
+    .then(() => host ? Promise.all(['X', 'O'].map(s => m.remove(pres(s)).catch(() => {}))) : null)
+    .catch(() => {});
+}
 // Leave whatever match is on (the in-game menu's Main menu): online that tells the other player too.
 function quitMatch() {
   if (state.online) { leaveRoom(false); return; }
@@ -3899,13 +3984,14 @@ async function fireTimeout(seq, deadline) {
 
 /* ----- online screens ----- */
 function renderOnline() {
-  return `<main class="scr menu"><div class="menu-card">
+  return `<main class="scr setup online-scr">
+    <div class="bar"><button class="back" data-act="menu" aria-label="Back to the main menu">${CHEV}Menu</button></div>
+    <div class="online-mid"><div class="menu-card">
     <h1>Play Online</h1>
     <p class="sub">One of you hosts a room and shares its code; the other joins. Both phones need an internet connection.</p>
     <button class="primary" data-act="host">Host game</button>
     <button class="primary alt" data-act="join-go">Join game</button>
-    <button class="link wide" data-act="menu">Back to menu</button>
-  </div></main>`;
+  </div></div></main>`;
 }
 function renderJoin() {
   const o = online(), seated = !!(o && o.me && o.joined);
@@ -3919,7 +4005,7 @@ function renderJoin() {
   const form = o ? '' : `<label class="field"><span>Your name</span><input id="jname" value="${esc(joinName)}" maxlength="${NAME_MAX}" placeholder="Your name" autocomplete="off" autocapitalize="words"></label>
     <label class="field"><span>Room code</span><input id="jcode" class="codein" value="${esc(joinCode)}" maxlength="5" placeholder="ABCDE" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="latin"></label>`;
   return `<main class="scr setup">
-    <div class="bar"><button class="back" data-act="online-back" aria-label="Back">${CHEV}Back</button>
+    <div class="bar"><button class="back" data-act="lobby-back" aria-label="${o ? 'Leave the room and go back' : 'Back to Play Online'}">${CHEV}Back</button>
       <div class="ttl"><b>Join game</b><small>${o ? `Room ${esc(o.code)}` : 'Enter the code the host shared'}</small></div></div>
     <div class="setup-box">${form}${status}${o && net.status === 'error' ? '<button class="primary" data-act="rejoin">Try again</button>' : ''}</div>
     ${o ? '' : `<div class="setup-foot"><button class="primary" data-act="join">Join</button></div>`}</main>`;
@@ -3931,7 +4017,7 @@ app.addEventListener('click', e => {
   if (!el || el.disabled) return;
   const act = el.dataset.act;
   if (act === 'dismiss') { if (Date.now() >= flashReady) dismissFlash(); return; }   // not before the animation is over
-  const free = ['pause', 'pause-resume', 'pause-main', 'pause-back', 'pause-leave', 'leave', 'menu', 'rejoin', 'host-retry', 'share', 'rematch', 'timer', 'review', 'review-sq', 'review-back', 'results'];
+  const free = ['pause', 'pause-resume', 'pause-main', 'pause-back', 'pause-leave', 'leave', 'lobby-back', 'menu', 'rejoin', 'host-retry', 'share', 'rematch', 'timer', 'review', 'review-sq', 'review-back', 'results'];
   if (act === 'pause') { menuOpen = true; menuStep = 'main'; render(); scheduleCpu(); return; }
   if (act === 'pause-resume') { menuOpen = false; menuStep = 'main'; render(); scheduleCpu(); return; }
   if (act === 'pause-main') { menuStep = 'confirm'; render(); return; }
@@ -3977,8 +4063,8 @@ app.addEventListener('click', e => {
     if (startMatch(state)) commit();
   } else if (act === 'online-go') {
     state.screen = 'online'; commit();
-  } else if (act === 'online-back') {
-    if (state.online) leaveRoom(); else { state.screen = 'online'; commit(); }
+  } else if (act === 'lobby-back') {           // the online screens go back one step; a lobby is left cleanly
+    if (state.online) leaveLobby(); else { state.screen = 'online'; setNet('idle', ''); commit(); }
   } else if (act === 'host') {
     advOpen = false; hostRoom(null, false);
   } else if (act === 'host-retry') {

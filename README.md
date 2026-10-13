@@ -4,7 +4,7 @@ Play it: https://jaredmk.github.io/Tiger-tac-toe/
 
 A two-player, pass-and-play game for one phone, against the computer, or online, drawn in a
 1930s rubber-hose cartoon style: thick wobbly ink lines, flat colours on cream paper, an X and an O
-with faces, and a squash-and-stretch stamp with POW! and CHAOS! bursts when a square is won. The
+with faces, and a squash-and-stretch stamp with comic-book bursts when a square is won. The
 fonts (Luckiest Guy, Patrick Hand) are embedded, so the look survives offline. The whole game is
 `index.html`: inline CSS and JS, no build step; the local modes work offline. Online play uses a
 Firebase Realtime Database (see "Setting up Firebase").
@@ -22,8 +22,16 @@ the turn indicator, on the square they are about to play, and in the results.
 During a match a "Menu" button sits in the top corner: it pauses the game with "Resume" and
 "Main menu"; the latter asks "Leave this match?" and, on Yes, ends the match and returns to the main
 menu. Nothing moves while the menu is open, the computer included (so it also pauses a computer
-against computer match). When a square is won, the owner's mark squashes in with POW! and CHAOS!
-bursts, once.
+against computer match). When a square is won, the owner's mark squashes in with two comic-book
+bursts, once: first on the result card, then around the square on the board. Each burst's word is
+picked at random from POW!, BAM!, CHAOS!, BOOM!, KAPOW!, WHAM!, ZAP!, SMASH!, CRUNCH!, YOINK!,
+SNATCHED!, MINE!, CLAIMED!, GOTCHA!, KABLAM! and BOP!, never one shown the time before. A burst pops
+in, stays about a second and pops out; it never stays on screen (with reduced motion it does not
+animate, and still goes after a second).
+
+Every screen outside a match (Play Local, Play Online, Host game, Join game and its waiting screen)
+has its back button in the top-left corner, in the same style as the Board button inside a
+mini-game, and it goes back one screen.
 
 The results screen shows a message picked at random for the match: a win message for a person who
 beat the computer, a loss message when the computer won, the winner's name with a win message when
@@ -60,7 +68,7 @@ Each square is assigned one of these at random when the match starts (duplicates
 | Connect 4 | The standard 7 columns × 6 rows, pieces drop to the lowest open cell, four in a row in any direction |
 | Battleship | 3×3, one hidden cell chosen by the computer; whoever reveals it wins, misses stay marked |
 | Wordle | One hidden common 5-letter word shared by both players; a move is a guess with green/yellow/grey feedback, no guess limit. Guesses must be real words (checked against an embedded list of about 15,000); a non-word shows "Not a word" and does not use the turn |
-| Hangman | Hidden 5–7 letter word; guess a letter. A right letter is revealed and you guess again at once; a wrong letter ends your turn. Revealing the last letter wins |
+| Hangman | Hidden 5–7 letter word; guess a letter. A right letter is revealed and you guess again at once; a wrong letter ends your turn. Revealing the last letter wins. The miniature on the board shows the wrong letters themselves, crossed out in red as in the full view, wrapping onto more lines as they add up |
 | Hex | 4×4 hex grid; X connects left to right, O connects top to bottom |
 | Higher/lower | The computer picks 1–20; each guess is answered higher or lower. Guessing it wins |
 | Dice race | A winding path of 15 numbered spaces and a Finish. Roll a die and your piece hops that many spaces; reaching or passing the Finish wins |
@@ -82,6 +90,13 @@ letters) and a Share button that sends a link to the game with the code filled i
 friend…" shows until the guest joins. The guest enters a name and the code, or opens the shared link.
 The host picks a side, the mini-games and the time per turn, and starts once the guest is in; both
 phones then show the same board.
+
+Backing out of a lobby leaves it cleanly. The host's Back closes the room: it is deleted from the
+database with its presence entries, the code stops working, a guest already in it is sent to the main
+menu with "The room was closed.", and the host returns to Play Online. The guest's Back gives up the
+seat, so the host's room stays open (it shows "Waiting for friend…" again), and returns to the join
+form with the name and code still filled in. A room still being opened, or a seat still being taken,
+when Back is tapped is let go as soon as the database answers.
 
 Only the player on the move can act; the other can still open squares to look, and sees "Waiting
 for [name]…". Each player's moves play on the other phone the way computer moves do: the chosen
