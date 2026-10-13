@@ -8,7 +8,8 @@
  * Everything about a match lives in one plain object (see newMatch); the UI
  * only ever calls playMove / endFlash and re-renders from that object.
  */
-const TYPES = ['ttt', 'c4', 'bs', 'wordle', 'hangman', 'hex', 'hilo', 'dice', 'memory', 'candy', 'coins', 'pig', 'hunt', 'hexapawn', 'mastermind'];
+const TYPES = ['ttt', 'c4', 'bs', 'wordle', 'hangman', 'hex', 'hilo', 'snakes', 'memory', 'candy', 'bump', 'coins', 'pig', 'hunt', 'hexapawn', 'mastermind'];
+const OLD_TYPES = ['dice'];   // no longer dealt (Snakes and Ladders replaced the Dice race), still played to the end in older games and shown in their history
 const INFO = {
   ttt:         { name: 'Tic-Tac-Toe',  hint: 'Three in a row wins' },
   c4:          { name: 'Connect 4',    hint: 'Pieces drop. Four in a row wins' },
@@ -17,9 +18,11 @@ const INFO = {
   hangman:     { name: 'Hangman',      hint: 'Right letter: go again. Last letter wins' },
   hex:         { name: 'Hex',          hint: 'X joins left to right, O joins top to bottom' },
   hilo:        { name: 'Higher/Lower', hint: 'Guess the number from 1 to 20' },
+  snakes:      { name: 'Snakes and Ladders', hint: 'Roll and climb. Ladders lift you, snakes slide you down' },
   dice:        { name: 'Dice Race',    hint: 'Roll and race along 15 spaces. First to the finish wins' },
   memory:      { name: 'Memory',       hint: 'Flip two cards. Find the matching pair' },
   candy:       { name: 'Candy Race',   hint: 'Spin, then hop to the next space of that colour' },
+  bump:        { name: 'Bump',         hint: 'Spin 1, 2 or 3. Land on your opponent to send them home' },
   coins:       { name: 'Coin Flip',    hint: "Flip up to 3 coins that aren't yours. All five the same wins" },
   pig:         { name: 'Pig',          hint: "Roll and bank. A repeated number loses this turn's points. First to 21 wins" },
   hunt:        { name: 'Treasure Hunt', hint: 'Dig a cell: the number is its distance to the treasure. Dig it up to win' },
@@ -39,6 +42,11 @@ const PIG = { goal: 21, maxRolls: 6 };
 const BS = { n: 4, names: { 4: 'Battleship', 3: 'Submarine', 2: 'Destroyer', 1: 'Patrol Boat' } };
 const HUNT = { n: 5 };
 const DICE_GOAL = 16;   // 15 numbered spaces, then the finish
+// Snakes and Ladders: 20 spaces in 4 rows of 5, numbered from the bottom; the pieces start before space 1
+// and space 20 is the top. Each board has 2 ladders and 2 snakes, each crossing rows and at least 3 long.
+const SNL = { n: 20, perRow: 5, ladders: 2, snakes: 2, minSpan: 3 };
+// Bump: 9 spaces between Home and the Finish (10); a spin moves 1, 2 or 3.
+const BUMP = { n: 9, max: 3 };
 const MEMORY = { shapes: ['circle', 'square', 'triangle', 'diamond'], colors: ['green', 'yellow', 'purple', 'orange'] };
 const LINES = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6]];
 
@@ -383,6 +391,59 @@ function candyTrack(rng) {
   return track;
 }
 
+// Snakes and Ladders: the row (0 at the bottom) of a space from 1 to 20.
+function snlRow(k) { return Math.floor((k - 1) / SNL.perRow); }
+// A fresh board: 2 ladders (up) and 2 snakes (down) as [start, end] pairs. Every one crosses rows and
+// spans at least 3 spaces; no two share an end (so none starts where another ends, and none chains);
+// none starts on space 1 or touches the top space, 20.
+function snlBoard(rng) {
+  for (let tries = 0; tries < 50; tries++) {
+    const used = new Set(), out = { ladders: [], snakes: [] };
+    for (let k = 0; k < SNL.ladders + SNL.snakes; k++) {
+      const up = k < SNL.ladders, opts = [];
+      for (let a = 2; a < SNL.n; a++) for (let b = 1; b < SNL.n; b++) {
+        if ((up ? b - a : a - b) < SNL.minSpan || snlRow(a) === snlRow(b) || used.has(a) || used.has(b)) continue;
+        opts.push([a, b]);
+      }
+      if (!opts.length) break;
+      const pair = opts[randInt(rng, opts.length)];
+      used.add(pair[0]); used.add(pair[1]);
+      (up ? out.ladders : out.snakes).push(pair);
+    }
+    if (out.ladders.length === SNL.ladders && out.snakes.length === SNL.snakes) return out;
+  }
+  return { ladders: [[3, 8], [9, 17]], snakes: [[14, 6], [19, 12]] };   // never needed: there is always room
+}
+// Whether a board keeps every placement rule (the tests check every board the generator makes).
+function snlValid(b) {
+  if (!b || !Array.isArray(b.ladders) || !Array.isArray(b.snakes) || b.ladders.length !== SNL.ladders || b.snakes.length !== SNL.snakes) return false;
+  const ends = [];
+  for (const [list, up] of [[b.ladders, true], [b.snakes, false]]) for (const pr of list) {
+    if (!Array.isArray(pr) || pr.length !== 2 || !pr.every(Number.isInteger)) return false;
+    const [a, c] = pr;
+    if (a <= 1 || a >= SNL.n || c < 1 || c >= SNL.n) return false;          // nothing starts on 1, nothing touches the top
+    if ((up ? c - a : a - c) < SNL.minSpan || snlRow(a) === snlRow(c)) return false;
+    ends.push(a, c);
+  }
+  return new Set(ends).size === ends.length;                             // no shared ends
+}
+// Coin flip: the coins a flip by p turns over: every coin that isn't p's when there are three or fewer,
+// otherwise three of them picked at random.
+function coinPick(mini, p, rng) {
+  const theirs = mini.coins.map((c, k) => (c !== p ? k : -1)).filter(k => k >= 0);
+  return (theirs.length > COINS.max ? shuffle(theirs, rng).slice(0, COINS.max) : theirs).sort((a, b) => a - b);
+}
+// As a player's turn starts, every open Coin flip square picks the coins their flip would turn, so they
+// can be marked before Flip is tapped; the flip then turns exactly those.
+function markCoins(state, p, rng) {
+  for (const sq of state.squares) if (!sq.owner && sq.mini.type === 'coins') sq.mini.marks = { by: p, coins: coinPick(sq.mini, p, rng) };
+}
+function coinMarksFor(mini, p) {
+  const mk = mini.marks, theirs = mini.coins.filter(c => c !== p).length;
+  if (!mk || mk.by !== p || !Array.isArray(mk.coins) || mk.coins.length !== Math.min(COINS.max, theirs)) return null;
+  return mk.coins.every(k => Number.isInteger(k) && mini.coins[k] !== undefined && mini.coins[k] !== p) && new Set(mk.coins).size === mk.coins.length ? mk.coins.slice().sort((a, b) => a - b) : null;
+}
+
 // Battleship: a ship of random length (1 to 4) placed across or down, anywhere it fits.
 function bsShip(rng) {
   const len = 1 + randInt(rng, 4), across = randInt(rng, 2) === 0, N = BS.n;
@@ -409,6 +470,8 @@ function newMini(type, rng) {
     case 'hex':         return { type, cells: new Array(HEX_N * HEX_N).fill(null), last: null };
     case 'hilo':        return { type, target: HILO.lo + randInt(rng, HILO.hi - HILO.lo + 1), lo: HILO.lo, hi: HILO.hi, guesses: [] };
     case 'dice':        return { type, totals: { X: 0, O: 0 }, last: null };
+    case 'snakes':      { const b = snlBoard(rng); return { type, ladders: b.ladders, snakes: b.snakes, pos: { X: 0, O: 0 }, last: null }; }   // pos 0: not on the board yet
+    case 'bump':        return { type, pos: { X: 0, O: 0 }, last: null };   // 0 is Home, 10 the Finish
     case 'memory':      return { type, cards: memoryDeck(rng), flips: 0, seen: [], last: null };   // seen: cards shown so far
     case 'candy':       return { type, track: candyTrack(rng), pos: { X: -1, O: -1 }, last: null };
     case 'coins':       return { type, coins: shuffle(['X', 'X', 'O', 'O', COINS.mystery], rng), last: null };
@@ -452,6 +515,35 @@ function syncNames(setup) {
     if (cpu.includes(p)) { if (!n || n === p) setup.names[p] = CPU_NAME; }
     else if (n === CPU_NAME) setup.names[p] = p;
   }
+}
+// Play Local: player 1 is always a person, who picks X, O or Random; player 2 is a person or the
+// computer and takes the other side. Kept as setup.local { pick, p2, n1, n2 }; an older setup (a
+// Human or Computer on each side) is read into it, with the computer, if any, as player 2.
+function normLocal(setup) {
+  let L = setup.local;
+  if (!L || typeof L !== 'object') {
+    const pl = setup.players || {}, nm = setup.names || {};
+    const s1 = pl.X === 'cpu' && pl.O !== 'cpu' ? 'O' : 'X', s2 = other(s1);
+    const keep = (n, p) => { n = String(n || '').trim(); return n === p || n === CPU_NAME ? '' : n.slice(0, NAME_MAX); };
+    L = { pick: s1, p2: pl[s2] === 'cpu' ? 'cpu' : 'human', n1: keep(nm[s1], s1), n2: keep(nm[s2], s2) };
+  }
+  setup.local = {
+    pick: ['X', 'O', 'random'].includes(L.pick) ? L.pick : 'X', p2: L.p2 === 'cpu' ? 'cpu' : 'human',
+    n1: String(L.n1 || '').slice(0, NAME_MAX), n2: String(L.n2 || '').slice(0, NAME_MAX),
+  };
+  return setup.local;
+}
+// Seat the two players for the next local match (Random is drawn again every time): the sides, who
+// plays them and their names (a blank name is the side's letter; the computer's is Computer).
+function seatLocal(setup, rng) {
+  const L = normLocal(setup);
+  const s1 = L.pick === 'random' ? (randInt(needRng(rng), 2) ? 'O' : 'X') : L.pick, s2 = other(s1);
+  setup.mode = 'two'; setup.human = s1;
+  setup.players = { X: 'human', O: 'human' }; setup.players[s2] = L.p2;
+  setup.names = { X: 'X', O: 'O' };
+  setup.names[s1] = L.n1.trim() || s1;
+  setup.names[s2] = L.n2.trim() || (L.p2 === 'cpu' ? CPU_NAME : s2);
+  return s1;
 }
 function enabledGames(setup) { return TYPES.filter(t => setup && setup.games && setup.games[t]); }
 const TIMER_OPTIONS = [0, 30, 60, 180];   // seconds per turn in online play; 0 = no limit
@@ -511,6 +603,7 @@ function startMatch(state, rng) {
   state.draft = ''; state.pick = null; state.pickSq = null; state.sel = []; state.confirm = null; state.notice = null;
   state.winner = null; state.winLine = null; state.winReason = null; state.counts = null;
   state.lastSquare = null; state.lastBy = null; state.moves = 0; state.sqlog = [];
+  markCoins(state, 'X', rng);
   return true;
 }
 // A started match in one call. setup may carry names and games (a map, or an array of the ticked types).
@@ -630,6 +723,29 @@ function applyMove(mini, p, m, rng) {
       if (mini.totals[p] >= DICE_GOAL) return { ok: true, outcome: 'win' };
       return { ok: true, outcome: 'continue', note: 'roll' };
     }
+    case 'snakes': {
+      // One roll: the piece hops that many spaces up, then climbs the ladder or slides down the snake
+      // whose start it landed on. Reaching or passing space 20 wins.
+      if (m !== 'roll') return { ok: false, reason: 'bad' };
+      const roll = 1 + randInt(needRng(rng), 6), from = mini.pos[p], land = Math.min(from + roll, SNL.n);
+      const ladder = mini.ladders.find(x => x[0] === land), snake = mini.snakes.find(x => x[0] === land);
+      const via = land < SNL.n && ladder ? 'ladder' : land < SNL.n && snake ? 'snake' : null;
+      const to = via === 'ladder' ? ladder[1] : via === 'snake' ? snake[1] : land;
+      mini.pos[p] = to; mini.last = { by: p, roll, from, land, to, via };
+      if (to >= SNL.n) return { ok: true, outcome: 'win' };
+      return { ok: true, outcome: 'continue', note: via || 'roll' };
+    }
+    case 'bump': {
+      // One spin of 1, 2 or 3: the piece hops that far. Landing exactly on the other piece sends it
+      // back Home. Reaching or passing the Finish wins.
+      if (m !== 'spin') return { ok: false, reason: 'bad' };
+      const spin = 1 + randInt(needRng(rng), BUMP.max), from = mini.pos[p], fin = BUMP.n + 1, to = Math.min(from + spin, fin), o = other(p);
+      const bumped = to < fin && mini.pos[o] === to;
+      if (bumped) mini.pos[o] = 0;
+      mini.pos[p] = to; mini.last = { by: p, spin, from, to, bumped };
+      if (to >= fin) return { ok: true, outcome: 'win' };
+      return { ok: true, outcome: 'continue', note: bumped ? 'bump' : 'spin' };
+    }
     case 'memory': {
       if (!Array.isArray(m) || m.length !== 2) return { ok: false, reason: 'bad' };
       const [a, b] = m;
@@ -655,11 +771,12 @@ function applyMove(mini, p, m, rng) {
       // coin (it belongs to nobody until it lands). All of them when there are three or fewer,
       // otherwise three picked at random. The player's own coins are never flipped. Five the same wins;
       // with no coin of their own a player's flip can even hand the square to the other side.
+      // The coins were picked (and marked) as the turn started; a game from before the marks picks now.
       if (m !== 'flip') return { ok: false, reason: 'bad' };
       const r = needRng(rng);
-      const theirs = mini.coins.map((c, k) => (c !== p ? k : -1)).filter(k => k >= 0);
-      if (!theirs.length) return { ok: false, reason: 'none' };
-      const picked = (theirs.length > COINS.max ? shuffle(theirs, r).slice(0, COINS.max) : theirs).sort((a, b) => a - b);
+      if (!mini.coins.some(c => c !== p)) return { ok: false, reason: 'none' };
+      const picked = coinMarksFor(mini, p) || coinPick(mini, p, r);
+      mini.marks = null;
       const was = picked.map(k => mini.coins[k]);
       const results = picked.map(() => (randInt(r, 2) ? 'O' : 'X'));
       picked.forEach((k, j) => { mini.coins[k] = results[j]; });
@@ -756,7 +873,9 @@ function publicMini(mini) {
       return { type: 'memory', seen, cards: mini.cards.map((c, i) => (seen.includes(i) ? { s: c.s, c: c.c } : null)) };
     }
     case 'candy':   return { type: 'candy', track: mini.track.slice(), pos: { X: mini.pos.X, O: mini.pos.O } };
-    case 'coins':   return { type: 'coins', coins: mini.coins.slice() };
+    case 'coins':   return { type: 'coins', coins: mini.coins.slice(), marks: mini.marks ? { by: mini.marks.by, coins: mini.marks.coins.slice() } : null };
+    case 'snakes':  return { type: 'snakes', ladders: mini.ladders.map(x => x.slice()), snakes: mini.snakes.map(x => x.slice()), pos: { X: mini.pos.X, O: mini.pos.O } };
+    case 'bump':    return { type: 'bump', pos: { X: mini.pos.X, O: mini.pos.O } };
     case 'pig':     return { type: 'pig', bank: { X: mini.bank.X, O: mini.bank.O }, turn: mini.turn ? { by: mini.turn.by, rolls: mini.turn.rolls.slice(), pot: mini.turn.pot } : null };
     case 'hunt':    return { type: 'hunt', dug: mini.dug.slice(), clues: mini.dug.map((d, i) => (d ? huntDist(mini.treasure, i) : null)) };
   }
@@ -860,6 +979,23 @@ function candyExpected(track) {
   }
   return E;
 }
+// Snakes and Ladders: expected rolls to the top from each space (0 = not on the board yet), the
+// ladders and snakes included (a snake can send a piece back, so this is solved by iterating).
+function snlExpected(pm) {
+  const n = SNL.n, E = new Array(n + 1).fill(0), jump = {};
+  for (const [a, b] of pm.ladders.concat(pm.snakes)) jump[a] = b;
+  for (let it = 0; it < 500; it++) {
+    let diff = 0;
+    for (let k = n - 1; k >= 0; k--) {
+      let sum = 0;
+      for (let r = 1; r <= 6; r++) { const l = Math.min(k + r, n); sum += E[l < n && jump[l] != null ? jump[l] : l]; }
+      const v = 1 + sum / 6;
+      diff = Math.max(diff, Math.abs(v - E[k])); E[k] = v;
+    }
+    if (diff < 1e-7) break;
+  }
+  return E;
+}
 const COIN_NEEDS = [0, 2, 2.67, 3.14, 3.92, 4.55, 5.22];   // expected flips to turn n coins that aren't yours, flipping three at a time
 function needsOf(pm, p) {
   switch (pm.type) {
@@ -871,6 +1007,8 @@ function needsOf(pm, p) {
     case 'hangman': { const n = hangmanCandidates(pm).length; const missing = pm.pattern.filter(ch => !ch).length; return n <= 1 ? 1 : 1 + Math.min(missing, 1 + Math.log(n)) / 2; }
     case 'hilo':    { const r = pm.hi - pm.lo + 1; return r <= 1 ? 1 : Math.log2(r + 1); }
     case 'dice':    return Math.max(1, (DICE_GOAL - pm.totals[p]) / 3.5);
+    case 'snakes':  return Math.max(1, snlExpected(pm)[pm.pos[p]]);
+    case 'bump':    return Math.max(1, (BUMP.n + 1 - pm.pos[p]) / 2);
     case 'candy':   return Math.max(1, candyExpected(pm.track)[pm.pos[p] + 1]);
     case 'memory':  { const known = pm.seen.filter(i => pm.cards[i]); return memoryPair(pm, known) ? 1 : 1 + (9 - pm.seen.length) / 2; }
     case 'coins':   return COIN_NEEDS[pm.coins.filter(c => c !== p).length];
@@ -1176,7 +1314,13 @@ function localBest(pm, me, rng) {
     case 'coins': {
       // Every coin that isn't mine gets flipped when there are three or fewer: each must land mine.
       // With none of my own showing, the flip could also land them all the other side's way.
+      // With the coins already marked, the chances are exact: the rest must already all show one side.
       const theirs = pm.coins.filter(c => c !== me).length, flips = Math.min(theirs, COINS.max);
+      const marked = coinMarksFor(pm, me);
+      if (marked) {
+        const rest = pm.coins.filter((c, k) => !marked.includes(k)), pw = Math.pow(0.5, marked.length);
+        return { move: 'flip', q: rest.every(c => c === me) ? pw : 0, qLose: rest.every(c => c === other(me)) ? pw : 0 };
+      }
       const q = theirs <= COINS.max ? Math.pow(0.5, theirs) : 0;
       const qLose = theirs === pm.coins.length && pm.coins.includes(COINS.mystery) ? flips / theirs * Math.pow(0.5, flips) : 0;
       return { move: 'flip', q, qLose };
@@ -1193,6 +1337,8 @@ function localBest(pm, me, rng) {
       return { move: 'roll', q: 0 };
     }
     case 'dice': { const need = DICE_GOAL - pm.totals[me]; return { move: 1, q: need <= 6 ? (7 - need) / 6 : 0 }; }
+    case 'snakes': { const need = SNL.n - pm.pos[me]; return { move: 'roll', q: need <= 6 ? (7 - need) / 6 : 0 }; }
+    case 'bump': { const need = BUMP.n + 1 - pm.pos[me]; return { move: 'spin', q: need <= BUMP.max ? (BUMP.max + 1 - need) / BUMP.max : 0 }; }
     case 'candy': {
       let finishing = 0;
       for (const color of CANDY.colors) if (!pm.track.some((c, i) => i > pm.pos[me] && c === color)) finishing++;
@@ -1264,6 +1410,8 @@ function randomLegalMove(mini, p, rng) {
     case 'hangman': return from('ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').filter(l => !mini.letters.some(x => x.l === l)));
     case 'memory': { const a = randInt(rng, 9); let b = randInt(rng, 8); if (b >= a) b++; return [a, b]; }
     case 'dice': case 'candy': return 1;
+    case 'snakes': return 'roll';
+    case 'bump': return 'spin';
     case 'coins': return 'flip';
     case 'pig': return mini.turn && mini.turn.by === p && mini.turn.pot ? 'bank' : 'roll';
   }
@@ -1342,6 +1490,8 @@ function playMove(state, i, m, rng, opts) {
     case 'hangman': flash.letter = m.toUpperCase(); break;
     case 'hilo': flash.n = m; flash.range = range; break;
     case 'dice': flash.roll = mini.last.roll; flash.total = mini.totals[p]; break;
+    case 'snakes': flash.roll = mini.last.roll; flash.from = mini.last.from; flash.land = mini.last.land; flash.to = mini.last.to; flash.via = mini.last.via; break;
+    case 'bump': flash.spin = mini.last.spin; flash.from = mini.last.from; flash.to = mini.last.to; flash.bumped = mini.last.bumped; break;
     case 'memory': flash.reveal = [m[0], m[1]]; break;
     case 'candy': flash.color = mini.last.color; flash.from = mini.last.from; flash.to = mini.last.to; break;
     case 'coins': flash.n = mini.last.flipped.length; break;
@@ -1379,6 +1529,7 @@ function playMove(state, i, m, rng, opts) {
     let next = other(p);
     if (!state.winner && !anyMove(state, next) && anyMove(state, p)) { flash.pass = next; next = p; }
     flash.next = next;                           // who takes over once the phone goes back to the board
+    if (!state.winner) markCoins(state, next, rng);   // their turn is about to start: the coins their flips would turn
     if (!state.winner) state.done = flash;       // the move is made; the turn itself passes in leaveSquare
   }
   state.draft = ''; state.pick = null; state.sel = [];
@@ -1556,6 +1707,7 @@ const PLAY = {
   flash: { move: 1000, again: 650, claim: 1500, draw: 1700, match: 1300, card: 1500 },   // the result stays up this long
   flip: 500,                                                              // Memory's cards turn back over
   die: 600, spin: 1000, hop: 130,                                          // a die's tumble, the candy wheel's spin, each hop of a token
+  spin3: 700, slide: 750, knock: 650,                                     // Bump's 1-2-3 spinner; a ladder climb or a snake slide; a piece knocked Home
 };
 const diceSlot = t => (t <= 0 ? -1 : Math.min(t, DICE_GOAL) - 1);   // a Dice race total as a track slot
 // The animation of one move. winLen: how many cells a Hex win lights up.
@@ -1572,6 +1724,8 @@ function playMs(f, winLen) {
     case 'dice':    return PLAY.die + Math.max(1, diceSlot(f.total) - diceSlot(f.total - f.roll)) * PLAY.hop + 250;
     case 'memory':  return 500;
     case 'candy':   return PLAY.spin + Math.max(1, f.to - f.from) * PLAY.hop + 250;
+    case 'snakes':  return PLAY.die + Math.max(1, f.land - f.from) * PLAY.hop + (f.via ? PLAY.slide : 0) + 250;
+    case 'bump':    return PLAY.spin3 + Math.max(1, f.to - f.from) * PLAY.hop + (f.bumped ? PLAY.knock : 0) + 250;
     case 'coins':   return 1050 + (f.n - 1) * 80;
     case 'pig':     return f.note === 'bank' ? 1000 : f.note === 'bust' ? 1350 : 1050;
     case 'hunt':    return won ? 1400 : 800;
@@ -1620,4 +1774,4 @@ function matchStats(st) {
 }
 
 // Node (the Cloud Functions and the tests): the same names as a module.
-if (typeof module !== "undefined" && module.exports) module.exports = { TYPES, INFO, C4, HP, MM, HEX_N, HILO, CANDY, NAME_MAX, COINS, PIG, BS, HUNT, DICE_GOAL, MEMORY, LINES, WORDS5, WORDS_HANG, VALID5, other, makeRng, needRng, randInt, randomType, shuffle, memoryDeck, wordleMarks, hexNeighbors, hexPath, canMove, hpMoves, mmFeedback, mmValid, MM_ALL, mmAll, mmCode, mmCandidates, mmBestGuess, hpGoalRow, upgradeMini, anyMove, huntDist, candyTrack, newMini, pickType, newSquare, CPU_NAME, defaultSetup, cpuSide, normSetup, syncNames, enabledGames, TIMER_OPTIONS, newTimer, playerName, newState, startMatch, newMatch, findRun, applyMove, AI, publicMini, wordleCandidates, hangmanCandidates, bsCandidates, bsPlacements, bsShip, huntCandidates, WINDOWS, windowsOf, lineNeeds, c4Playable, hexDist, candyExpected, COIN_NEEDS, needsOf, memoryPair, winChance, tttMinimax, c4Drop, c4Eval, C4_ORDER, c4Search, C4_DEPTH, c4Moves, HP_MEMO, hpSolve, hpMovesValued, hpNeeds, hexMoves, threatScore, pickValued, localBest, squareValue, moveGain, cpuMove, VALID5_LIST, randomLegalMove, timeoutMove, mainResult, playMove, endFlash, leaveSquare, RECENT_MAX, MATCH_FIELDS, secretOf, hideMini, matchRecord, fullState, settle, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, newOnlineMatch, PLAY, diceSlot, playMs, replayMs, armClock, applyOnlineResign, matchStats };
+if (typeof module !== "undefined" && module.exports) module.exports = { TYPES, OLD_TYPES, SNL, BUMP, snlRow, snlBoard, snlValid, snlExpected, coinPick, markCoins, coinMarksFor, normLocal, seatLocal, INFO, C4, HP, MM, HEX_N, HILO, CANDY, NAME_MAX, COINS, PIG, BS, HUNT, DICE_GOAL, MEMORY, LINES, WORDS5, WORDS_HANG, VALID5, other, makeRng, needRng, randInt, randomType, shuffle, memoryDeck, wordleMarks, hexNeighbors, hexPath, canMove, hpMoves, mmFeedback, mmValid, MM_ALL, mmAll, mmCode, mmCandidates, mmBestGuess, hpGoalRow, upgradeMini, anyMove, huntDist, candyTrack, newMini, pickType, newSquare, CPU_NAME, defaultSetup, cpuSide, normSetup, syncNames, enabledGames, TIMER_OPTIONS, newTimer, playerName, newState, startMatch, newMatch, findRun, applyMove, AI, publicMini, wordleCandidates, hangmanCandidates, bsCandidates, bsPlacements, bsShip, huntCandidates, WINDOWS, windowsOf, lineNeeds, c4Playable, hexDist, candyExpected, COIN_NEEDS, needsOf, memoryPair, winChance, tttMinimax, c4Drop, c4Eval, C4_ORDER, c4Search, C4_DEPTH, c4Moves, HP_MEMO, hpSolve, hpMovesValued, hpNeeds, hexMoves, threatScore, pickValued, localBest, squareValue, moveGain, cpuMove, VALID5_LIST, randomLegalMove, timeoutMove, mainResult, playMove, endFlash, leaveSquare, RECENT_MAX, MATCH_FIELDS, secretOf, hideMini, matchRecord, fullState, settle, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, newOnlineMatch, PLAY, diceSlot, playMs, replayMs, armClock, applyOnlineResign, matchStats };

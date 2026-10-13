@@ -516,6 +516,28 @@ b.X { color: var(--x); } b.O { color: var(--o); }
 .heat { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: var(--muted); }
 .heat i { flex: 1; height: 8px; border-radius: 999px; background: linear-gradient(90deg, #ff4d4d, #ffb627, #7fd36b, #4aa3e0, #3b6fd6); }
 .g-candy { width: var(--g); display: flex; flex-direction: column; gap: 10px; }
+.g-snakes, .g-bump { width: var(--g); display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.g-snakes .track { width: min(100%, calc((100dvh - 350px) * 1.2)); }   /* the tall board shrinks on a short phone, the die and button still in view */
+.g-snakes .die { width: 76px; height: 76px; }
+.track .space.goal { fill: var(--cy); }
+.track.snl .numc { paint-order: stroke; stroke: var(--paper); stroke-width: 1.1px; stroke-linejoin: round; fill: var(--ink); }
+.track .ladder .lo { fill: none; stroke: var(--ink); stroke-width: 1.8; stroke-linecap: round; }
+.track .ladder .lw { fill: none; stroke: #e0a45a; stroke-width: .85; stroke-linecap: round; }
+.track.small .ladder .lo { stroke-width: 2.4; } .track.small .ladder .lw { stroke-width: 1.2; }
+.track .snake .so { fill: none; stroke: var(--ink); stroke-width: 3.7; stroke-linecap: round; }
+.track .snake .sb { fill: none; stroke: #4fb35a; stroke-width: 2.3; stroke-linecap: round; }
+.track .snake .ss { fill: none; stroke: #c7f0b0; stroke-width: .8; stroke-dasharray: .9 1.9; stroke-linecap: round; }
+.track .snake .sh { fill: #4fb35a; stroke: var(--ink); stroke-width: .75; }
+.track .snake .se { fill: var(--ink); }
+.track .tok.knocked { animation: none; }
+.wheel.w3 { position: relative; background: conic-gradient(#4fb35a 0 120deg, var(--cy) 120deg 240deg, var(--cb) 240deg 360deg); }
+.wheel.w3 b { position: absolute; left: 50%; top: 50%; width: 30px; height: 30px; margin: -15px 0 0 -15px; display: grid; place-items: center; font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-weight: 400; font-size: 22px; color: var(--ink); transform: rotate(var(--a)) translateY(-118%); }
+.wheel.w3.spin { animation-duration: .7s; }
+.g-bump .wheelwrap .dielab.late { animation-delay: .7s; }
+.coin.mk { outline: 3px solid var(--mk); outline-offset: 1px; animation: mkpulse 1.1s ease-in-out infinite; }   /* two marked neighbours never overlap */
+.coin.mkX { --mk: var(--x); } .coin.mkO { --mk: var(--o); }
+@keyframes mkpulse { 50% { outline-offset: 2.5px; outline-color: color-mix(in srgb, var(--mk) 55%, transparent); } }
+.card.claimc { min-width: min(300px, 82vw); padding: 34px 20px; }   /* no words: the same size as before, the bursts on its corners */
 .wheelwrap { display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .pointer { width: 0; height: 0; border-left: 9px solid transparent; border-right: 9px solid transparent; border-top: 14px solid var(--text); }
 .wheel {
@@ -700,6 +722,8 @@ body { font-family: 'Patrick Hand', 'Comic Sans MS', cursive; font-size: 17px; c
 #app { background: var(--bg); position: relative; }
 #app::before { content: ''; position: fixed; inset: 0; background: var(--grain); background-size: 220px; opacity: .1; pointer-events: none; z-index: 0; }
 #app > * { position: relative; z-index: 1; }
+#app > .explain { position: fixed; z-index: 40; }               /* the pop-ups cover the whole screen: nothing under them takes a tap */
+#app > .vsintro { position: fixed; z-index: 35; }
 .toonf, h1, h2, .ttl > b, .primary, .btn, .big, .menubtn, .back, .seg, .key, .turn .who, .clock, .lab, .room .code, .adv-h, .pad button, .pscore .val, .range b, .toast, .score, .hexgoal, .coin, .tcoin i, .pot, .guess .n, .thilo b, .tdice .tr, .hwin, .netbar, .timeout-note, .notice, .link, .chk span, .field span, .sides > span, .timerrow > span, .namebox, .twr i, .wt, .ht, .face, .dig, .final i, .room small, .games-h { font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-weight: 400; letter-spacing: .02em; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 b.X, b.O { color: var(--ink); box-shadow: inset 0 -.38em 0 var(--x-soft); padding: 0 .1em; }
@@ -764,6 +788,7 @@ b.O { box-shadow: inset 0 -.38em 0 var(--o-soft); }
 .own-ov.stamp { animation: none; }
 .own-ov.stamp .pc { animation: squash .8s cubic-bezier(.3, 0, .4, 1) both; animation-delay: calc(0ms - var(--el, 0ms)); transform-origin: 50% 90%; }
 .lab { color: var(--ink); font-size: 10px; font-size: clamp(8px, 8.6cqw, 12.5px); padding-top: 2px; letter-spacing: .03em; }
+.lab.long { font-size: clamp(7px, 7.2cqw, 11px); letter-spacing: 0; }          /* Snakes and Ladders fits its tile */
 .lab svg { color: var(--ink); }
 .foot .hint, .hint { color: var(--muted); font-size: 16px; font-weight: 400; }
 /* the pow! and chaos! bursts when a square is won */
@@ -818,6 +843,7 @@ b.O { box-shadow: inset 0 -.38em 0 var(--o-soft); }
 
 /* the zoomed mini-game */
 .ttl > b { font-size: clamp(17px, 5.4vw, 21px); padding-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ttl > b.long { font-size: clamp(14px, 4.3vw, 19px); }                          /* Snakes and Ladders: the whole name still fits */
 .ttl small { color: var(--muted); font-size: 14px; font-weight: 400; }
 .ttl small.won { color: var(--ink); }
 .bar.won { border: 3.5px solid var(--ink); box-shadow: 0 4px 0 var(--ink); border-radius: 18px 12px 20px 14px; }
@@ -945,13 +971,14 @@ b.O { box-shadow: inset 0 -.38em 0 var(--o-soft); }
 .risk { font-family: 'Luckiest Guy', sans-serif; font-weight: 400; font-size: 18px; color: var(--green); padding: 2px 7px 0; border-radius: 999px; background: #fff; border: 2.5px solid var(--ink); line-height: 1.1; align-self: center; }
 .risk.grow { animation: markpop .35s .6s ease-out both; }
 .risk.bank { animation: riskin .55s .15s ease-in both; }
-.risk.lost { color: var(--x); text-decoration: line-through; animation: riskout .7s .7s ease-in both; }
+.risk.lost { animation: lostmark 0s .65s both, riskout .55s .8s ease-in both; }   /* a bust: red and struck through only once the die has landed */
+@keyframes lostmark { from { color: var(--green); text-decoration-line: none; } to { color: var(--x); text-decoration-line: line-through; } }
 .pigrolls { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; flex-wrap: wrap; }
 .pigrolls small { color: var(--muted); font-size: 15px; margin-right: 2px; }
 .sdie { width: 34px; height: 34px; border-radius: 9px 7px 9px 8px; background: #fff; border: 2.5px solid var(--ink); box-shadow: 0 2px 0 var(--ink); display: grid; place-items: center; }
 .sdie svg { width: 84%; height: 84%; }
 .sdie.fresh { animation: pop .3s .6s ease-out both; }
-.sdie.dup { background: var(--x); animation: pop .3s .6s ease-out both, shake .4s .9s both; }
+.sdie.dup { background: var(--x); animation: pop .3s .65s ease-out both, shake .4s .95s both; }   /* hidden until the die has landed */
 .pigrolls.bust .sdie:not(.dup) { animation: vanish .5s 1.1s ease-in both; }
 .pigbtns.one { grid-template-columns: 1fr; }
 @keyframes riskin { to { transform: translateX(-160%) scale(.5); opacity: 0; } }
@@ -1168,6 +1195,8 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .slots { display: flex; flex-direction: column; gap: 22px; padding-top: 14px; }
 .slot { position: relative; display: grid; grid-template-columns: 46px 1fr; gap: 10px; align-items: center; padding: 12px; background: var(--paper); border: 3.5px solid var(--ink); border-radius: 20px 14px 22px 16px / 16px 22px 14px 20px; box-shadow: 0 5px 0 var(--ink); }
 .slot.X { background: var(--x-soft); } .slot.O { background: var(--o-soft); }
+.slot .lside { min-width: 0; }
+.rtoon { width: 46px; height: 46px; border-radius: 50%; border: 3.5px dashed var(--ink); display: grid; place-items: center; font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-size: 26px; line-height: 1; padding-top: 4px; background: var(--paper); }
 .slot .who-p { width: 46px; height: 46px; }
 .slot .who-p .pc { width: 46px; height: 46px; }
 .slot .kind { display: flex; gap: 8px; }
@@ -1357,8 +1386,10 @@ const ICONS = {
   hex: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"><path d="M12 2.5 20.2 7.25v9.5L12 21.5 3.8 16.75v-9.5z"/></svg>',
   hilo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m6 10 6-6 6 6M6 14l6 6 6-6"/></svg>',
   dice: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="4"/><g fill="currentColor" stroke="none"><circle cx="8" cy="8" r="1.7"/><circle cx="16" cy="8" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="8" cy="16" r="1.7"/><circle cx="16" cy="16" r="1.7"/></g></svg>',
+  snakes: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V3M10 21V3M4 7.5h6M4 12h6M4 16.5h6"/><path d="M14.5 21c4.5-.6 5-3.6 2.4-5.6s-2.6-4.8.4-6.2 3.4-2.6 2.6-5.2"/><circle cx="19.6" cy="3.8" r="1.4" fill="currentColor" stroke="none"/></svg>',
   memory: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><rect x="3" y="6" width="11" height="15" rx="2"/><path d="M8 3h11a2 2 0 0 1 2 2v12"/></svg>',
   candy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17M3.5 12h17M6 6l12 12M18 6 6 18" stroke-width="1.6"/></svg>',
+  bump: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="7" cy="15" r="4.2"/><circle cx="17" cy="15" r="4.2" fill="currentColor"/><path d="M12 3.5v3.2M7.6 5.2l1.8 2.4M16.4 5.2l-1.8 2.4"/></svg>',
   coins: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/></svg>',
   pig: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M3 10h18v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 3v7M8.5 6.5 12 3l3.5 3.5" stroke-linecap="round"/></svg>',
   hunt: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 3h12l4 6-10 12L2 9z"/></svg>',
@@ -1389,56 +1420,92 @@ let advOpen = false;                    // the setup screen's Advanced section (
  * Drawn as SVG so the same picture serves full-size and as the board miniature. Slots: -1 is the
  * Start, 0 to n-1 the spaces, n the Finish. */
 const TRACK = { pitch: 13.5, size: 9.5, rowPitch: 19, x0: 7, y0: 8 };
-function trackSpec(n, perRow) {
+// up: the first row at the bottom, winding upwards (Snakes and Ladders). A Finish after a row that is not
+// full sits in the next place along that row.
+function trackSpec(n, perRow, up) {
   const rows = Math.ceil(n / perRow), lastRow = rows - 1;
   const cell = i => { const r = Math.floor(i / perRow), c = i % perRow; return { r, c: r % 2 ? perRow - c : c + 1 }; };   // odd rows run right to left
+  const Y = r => TRACK.y0 + (up ? lastRow - r : r) * TRACK.rowPitch;
   const at = i => {
-    if (i < 0) return [TRACK.x0, TRACK.y0];
-    if (i >= n) return [lastRow % 2 ? TRACK.x0 : TRACK.x0 + (perRow + 1) * TRACK.pitch, TRACK.y0 + lastRow * TRACK.rowPitch];
+    if (i < 0) return [TRACK.x0, Y(0)];
+    if (i >= n && n % perRow) { const { r, c } = cell(n); return [TRACK.x0 + c * TRACK.pitch, Y(r)]; }
+    if (i >= n) return [lastRow % 2 ? TRACK.x0 : TRACK.x0 + (perRow + 1) * TRACK.pitch, Y(lastRow)];
     const { r, c } = cell(i);
-    return [TRACK.x0 + c * TRACK.pitch, TRACK.y0 + r * TRACK.rowPitch];
+    return [TRACK.x0 + c * TRACK.pitch, Y(r)];
   };
   const right = TRACK.x0 + perRow * TRACK.pitch + (rows > 1 ? TRACK.rowPitch / 2 + 3 : TRACK.size / 2 + 2);
   const w = Math.max(right, at(n)[0] + TRACK.size / 2 + 2), h = TRACK.y0 + lastRow * TRACK.rowPitch + TRACK.size / 2 + 2;
-  return { n, perRow, rows, at, cell, w, h };
+  return { n, perRow, rows, at, cell, w, h, up: !!up };
 }
 const CANDY_SPEC = trackSpec(CANDY.len, 6), DICE_SPEC = trackSpec(DICE_GOAL - 1, 5);
+const SNL_SPEC = trackSpec(SNL.n, SNL.perRow, true), BUMP_SPEC = trackSpec(BUMP.n, 5);
+// Snakes and Ladders: a ladder (two rails and rungs) or a snake (an S-curve, head at the top) between two
+// spaces, drawn over the track. snakeCurve gives the snake's body as cubic Bezier points.
+function snakeCurve(spec, a, b) {
+  const [x0, y0] = spec.at(a - 1), [x3, y3] = spec.at(b - 1), dx = x3 - x0, dy = y3 - y0, len = Math.hypot(dx, dy);
+  const nx = -dy / len, ny = dx / len, k = Math.min(6, len * .28);
+  return [[x0, y0], [x0 + dx * .33 + nx * k, y0 + dy * .33 + ny * k], [x0 + dx * .67 - nx * k, y0 + dy * .67 - ny * k], [x3, y3]];
+}
+function bezierAt(P, t) {
+  const u = 1 - t, a = u * u * u, b = 3 * u * u * t, c = 3 * u * t * t, d = t * t * t;
+  return [a * P[0][0] + b * P[1][0] + c * P[2][0] + d * P[3][0], a * P[0][1] + b * P[1][1] + c * P[2][1] + d * P[3][1]];
+}
+function snlArt(spec, mini, small) {
+  let out = '';
+  for (const [a, b] of mini.ladders) {
+    const [x1, y1] = spec.at(a - 1), [x2, y2] = spec.at(b - 1), len = Math.hypot(x2 - x1, y2 - y1);
+    const ux = (x2 - x1) / len, uy = (y2 - y1) / len, w = small ? 2 : 1.8, nx = -uy * w, ny = ux * w;
+    const rails = `M${x1 + nx},${y1 + ny}L${x2 + nx},${y2 + ny}M${x1 - nx},${y1 - ny}L${x2 - nx},${y2 - ny}`;
+    let rungs = '';
+    const n = Math.max(2, Math.round(len / 3.4));
+    for (let k = 1; k < n; k++) { const t = k / n, cx = x1 + (x2 - x1) * t, cy = y1 + (y2 - y1) * t; rungs += `M${cx + nx},${cy + ny}L${cx - nx},${cy - ny}`; }
+    out += `<g class="ladder"><path class="lo" d="${rails}${rungs}"/><path class="lw" d="${rails}${rungs}"/></g>`;
+  }
+  for (const [a, b] of mini.snakes) {
+    const P = snakeCurve(spec, a, b), d = `M${P[0][0]},${P[0][1]}C${P[1][0]},${P[1][1]} ${P[2][0]},${P[2][1]} ${P[3][0]},${P[3][1]}`;
+    const [hx, hy] = P[0], [tx, ty] = bezierAt(P, .08), ang = Math.atan2(hy - ty, hx - tx) * 180 / Math.PI;
+    out += `<g class="snake"><path class="so" d="${d}"/><path class="sb" d="${d}"/><path class="ss" d="${d}"/>
+      <g transform="translate(${hx},${hy}) rotate(${ang})"><ellipse class="sh" rx="2.9" ry="2.3"/><circle class="se" cx=".9" cy="-1" r=".55"/><circle class="se" cx=".9" cy="1" r=".55"/></g></g>`;
+  }
+  return out;
+}
 // opts: colors (per space, or none for plain numbered spaces), tokens {X, O} as slots (null = none),
 // moved (the token hopping right now), finish 'colours' | 'flag', mini (board miniature)
 function trackSvg(spec, opts) {
   const { n, at } = spec, S = TRACK.size, half = S / 2, R = TRACK.rowPitch / 2;
   const pts = [];
-  for (let i = -1; i <= n; i++) pts.push(at(i));
+  for (let i = -1; i <= (opts.finish === 'none' ? n - 1 : n); i++) pts.push(at(i));   // 'none': the last space is the goal
   let d = `M${pts[0][0]},${pts[0][1]}`, arrows = '';
   const chevron = (x, y, ang) => `<path class="arrow" transform="translate(${x},${y}) rotate(${ang})" d="M-1.3,-1.6 L0.3,0 L-1.3,1.6"/>`;
   for (let k = 1; k < pts.length; k++) {
     const [x1, y1] = pts[k - 1], [x2, y2] = pts[k];
     if (x1 === x2 && y1 !== y2) {                                  // the turn between two rows: a half circle out past the end of the row
       const out = spec.cell(k - 2).r % 2 ? -1 : 1;                   // pts[k - 1] is space k - 2; a row running right turns round the right edge
-      d += ` A${R},${R} 0 0 ${out > 0 ? 1 : 0} ${x2},${y2}`;
+      d += ` A${R},${R} 0 0 ${(out > 0) !== spec.up ? 1 : 0} ${x2},${y2}`;   // bulging outwards, going down or (up) going up
       for (const t of [-32, 0, 32]) {                                // arrows along the curve, each pointing the way round
         const rad = t * Math.PI / 180, cy = (y1 + y2) / 2;
-        arrows += chevron(x1 + out * R * Math.cos(rad), cy + R * Math.sin(rad), 90 + out * t);
+        arrows += chevron(x1 + out * R * Math.cos(rad), cy + R * Math.sin(rad), 90 + out * t + (spec.up ? 180 : 0));
       }
     } else {
       d += ` L${x2},${y2}`;
       arrows += chevron((x1 + x2) / 2, (y1 + y2) / 2, Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI);
     }
   }
-  let spaces = '';
+  let spaces = '', nums = '';
   for (let i = 0; i < n; i++) {
     const [x, y] = at(i);
-    const color = opts.colors ? opts.colors[i] : 'plain';
+    const color = opts.colors ? opts.colors[i] : opts.goal && i === n - 1 ? 'goal' : 'plain';
     spaces += `<rect class="space ${color}" x="${x - half}" y="${y - half}" width="${S}" height="${S}" rx="2.2"/>`;
-    if (!opts.mini) spaces += opts.colors ? `<text class="num" x="${x - half + 1.2}" y="${y - half + 3.2}">${i + 1}</text>` : `<text class="numc" x="${x}" y="${y}">${i + 1}</text>`;
+    if (!opts.mini) nums += opts.colors ? `<text class="num" x="${x - half + 1.2}" y="${y - half + 3.2}">${i + 1}</text>` : `<text class="numc" x="${x}" y="${y}">${i + 1}</text>`;
   }
+  if (!opts.overlay) { spaces += nums; nums = ''; }                 // with ladders and snakes over the track, the numbers go on top of them
   const pill = (i, cls, inner) => { const [x, y] = at(i); return `<g class="${cls}" transform="translate(${x},${y})">${inner}</g>`; };
-  const start = pill(-1, 'start', `<rect class="pill" x="-5.5" y="-3.6" width="11" height="7.2" rx="2.4"/>${opts.mini ? '' : '<text class="lbl" y=".1">START</text>'}`);
+  const start = pill(-1, 'start', `<rect class="pill" x="-5.5" y="-3.6" width="11" height="7.2" rx="2.4"/>${opts.mini ? '' : `<text class="lbl" y=".1">${opts.startLabel || 'START'}</text>`}`);
   const cols = ['var(--cr)', 'var(--cy)', 'var(--cg)', 'var(--cb)'];
   const finishFace = opts.finish === 'colours'
     ? cols.map((c, k) => `<rect x="${-5.5 + k * 2.75}" y="-3.6" width="2.75" height="7.2" fill="${c}"/>`).join('')
     : [0, 1, 2, 3].map(k => [0, 1].map(j => `<rect x="${-5.5 + k * 2.75}" y="${-3.6 + j * 3.6}" width="2.75" height="3.6" fill="${(k + j) % 2 ? '#e8e8e8' : '#222'}"/>`).join('')).join('');
-  const finish = pill(n, 'finish', `<clipPath id="fin-${spec.n}-${opts.mini ? 'm' : 'f'}"><rect x="-5.5" y="-3.6" width="11" height="7.2" rx="2.4"/></clipPath><g clip-path="url(#fin-${spec.n}-${opts.mini ? 'm' : 'f'})">${finishFace}</g>${opts.mini ? '' : '<rect x="-4.7" y="-1.9" width="9.4" height="3.8" rx="1.9" fill="rgba(0,0,0,.6)"/><text class="lbl" y=".1">FINISH</text>'}`);
+  const finish = opts.finish === 'none' ? '' : pill(n, 'finish', `<clipPath id="fin-${spec.n}-${opts.mini ? 'm' : 'f'}"><rect x="-5.5" y="-3.6" width="11" height="7.2" rx="2.4"/></clipPath><g clip-path="url(#fin-${spec.n}-${opts.mini ? 'm' : 'f'})">${finishFace}</g>${opts.mini ? '' : '<rect x="-4.7" y="-1.9" width="9.4" height="3.8" rx="1.9" fill="rgba(0,0,0,.6)"/><text class="lbl" y=".1">FINISH</text>'}`);
   let tokens = '';
   const r = opts.mini ? 4.6 : 3.6;
   for (const p of ['X', 'O']) {
@@ -1446,9 +1513,9 @@ function trackSvg(spec, opts) {
     if (slot == null) continue;
     const [x, y] = at(slot);
     const shared = opts.tokens[other(p)] === slot, dx = shared ? (p === 'X' ? -2.4 : 2.4) : 0;
-    tokens += `<g class="tok ${p}${opts.moved === p ? ' moved' : ''}" data-x="${x + dx}" data-y="${y}" style="transform:translate(${x + dx}px,${y}px)"><g class="pc p${p}" transform="translate(${-r * 1.3} ${-r * 1.3}) scale(${r * 2.6 / 100})">${toonG(p)}</g></g>`;
+    tokens += `<g class="tok ${p}${opts.moved === p ? ' moved' : ''}${opts.knocked === p ? ' knocked' : ''}" data-x="${x + dx}" data-y="${y}" style="transform:translate(${x + dx}px,${y}px)"><g class="pc p${p}" transform="translate(${-r * 1.3} ${-r * 1.3}) scale(${r * 2.6 / 100})">${toonG(p)}</g></g>`;
   }
-  return `<svg class="track${opts.mini ? ' small' : ''}" viewBox="0 0 ${spec.w} ${spec.h}" aria-hidden="true"><path class="path" d="${d}"/>${arrows}${spaces}${start}${finish}${tokens}</svg>`;
+  return `<svg class="track${opts.mini ? ' small' : ''}${opts.cls ? ' ' + opts.cls : ''}" viewBox="0 0 ${spec.w} ${spec.h}" aria-hidden="true"><path class="path" d="${d}"/>${arrows}${spaces}${opts.overlay || ''}${nums}${start}${finish}${tokens}</svg>`;
 }
 const BOAT = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M2.5 14.5h19l-2.6 4.6a2 2 0 0 1-1.7 1H6.8a2 2 0 0 1-1.7-1z"/><path d="M11 3h2v10h-2z"/><path d="M13 4.5 18.5 11H13z"/><path d="M5 12.5h14v2H5z"/></svg>';
 // Battleship: the burst on a hit, a ship's part in its cell, and the card naming the ship being hunted.
@@ -1548,7 +1615,7 @@ const mv = x => `data-m='${JSON.stringify(x)}'`;
 function typingIn() {
   const el = document.activeElement;
   if (!el || el.tagName !== 'INPUT' || !app.contains(el)) return null;
-  const sel = el.id ? '#' + el.id : el.dataset.p ? `input[data-p="${el.dataset.p}"]` : null;
+  const sel = el.id ? '#' + el.id : el.dataset.p ? `input[data-p="${el.dataset.p}"]` : el.dataset.ln ? `input[data-ln="${el.dataset.ln}"]` : null;
   if (!sel) return null;
   let start = null, end = null;
   try { start = el.selectionStart; end = el.selectionEnd; } catch (e) { /* (email fields have no selection) */ }
@@ -1563,6 +1630,7 @@ function refocus(f) {
 function render() {
   const view = state.screen + ':' + state.zoom;
   entering = view !== lastView; lastView = view;
+  if (entering && explainT) closeExplain(true);                 // another screen (Back, a menu, a move): no explainer left over it
   const kept = entering ? [] : [...app.querySelectorAll('[data-keep-scroll]')].map(e => [e.dataset.keepScroll, e.scrollTop]);
   const focus = entering ? null : typingIn();
   const boards = entering ? [] : KEEP_BOARDS.map(sel => [sel, app.querySelector(sel)]).filter(([, e]) => e);
@@ -1651,27 +1719,49 @@ function countTo(el, from, to, ms, delay) {
   requestAnimationFrame(step);
 }
 // Once the wheel stops or the die lands, the piece hops space by space from where it was to where it landed.
+// Snakes and Ladders: then up the ladder or down the snake. Bump: the piece landed on is knocked back Home.
+const SLIDE_MS = PLAY.slide, KNOCK_MS = PLAY.knock, SPIN3_MS = PLAY.spin3;
 function hopToken() {
   const f = state.flash;
-  if (!f || (f.type !== 'candy' && f.type !== 'dice') || !WAAPI || REDUCED) return;
+  if (!f || !['candy', 'dice', 'snakes', 'bump'].includes(f.type) || !WAAPI || REDUCED) return;
   const tok = app.querySelector('.gwrap .track .tok.moved');
   if (!tok) return;
-  const spec = f.type === 'candy' ? CANDY_SPEC : DICE_SPEC;
-  const from = f.type === 'candy' ? f.from : diceSlot(f.total - f.roll), to = f.type === 'candy' ? f.to : diceSlot(f.total);
+  const spec = { candy: CANDY_SPEC, dice: DICE_SPEC, snakes: SNL_SPEC, bump: BUMP_SPEC }[f.type];
+  const from = f.type === 'candy' ? f.from : f.type === 'dice' ? diceSlot(f.total - f.roll) : f.from - 1;
+  const to = f.type === 'candy' ? f.to : f.type === 'dice' ? diceSlot(f.total) : f.type === 'snakes' ? f.land - 1 : f.to - 1;
+  const delay = f.type === 'candy' ? SPIN_MS : f.type === 'bump' ? SPIN3_MS : DIE_MS;
   const stops = [];
   for (let i = from; i <= to; i++) stops.push(spec.at(i));
-  stops[stops.length - 1] = [Number(tok.dataset.x), Number(tok.dataset.y)];   // land exactly where the piece now sits
-  if (stops.length < 2) return;
-  const n = stops.length - 1, frames = [];
+  const end = [Number(tok.dataset.x), Number(tok.dataset.y)];     // where the piece now sits
+  const slide = f.type === 'snakes' && f.via ? (f.via === 'snake'
+    ? [.15, .3, .45, .6, .75, .9].map(t => bezierAt(snakeCurve(spec, f.land, f.to), t))
+    : [.25, .5, .75].map(t => [stops[stops.length - 1][0] + (end[0] - stops[stops.length - 1][0]) * t, stops[stops.length - 1][1] + (end[1] - stops[stops.length - 1][1]) * t])) : null;
+  if (!slide) stops[stops.length - 1] = end;                      // land exactly where the piece now sits
+  const hops = stops.length - 1, total = hops * HOP_MS + (slide ? SLIDE_MS : 0), frames = [];
+  if (total <= 0) return;
   stops.forEach(([x, y], k) => {
-    frames.push({ transform: `translate(${x}px, ${y}px) scale(1)`, offset: k / n, easing: 'ease-in-out' });
-    if (k < n) {
+    frames.push({ transform: `translate(${x}px, ${y}px) scale(1)`, offset: k * HOP_MS / total, easing: 'ease-in-out' });
+    if (k < hops) {
       const [nx, ny] = stops[k + 1];
-      frames.push({ transform: `translate(${(x + nx) / 2}px, ${(y + ny) / 2 - 4}px) scale(1.3)`, offset: (k + .5) / n, easing: 'ease-in-out' });
+      frames.push({ transform: `translate(${(x + nx) / 2}px, ${(y + ny) / 2 - 4}px) scale(1.3)`, offset: (k + .5) * HOP_MS / total, easing: 'ease-in-out' });
     }
   });
+  if (slide) {                                                     // up the ladder or along the snake's body, a little bigger
+    slide.concat([end]).forEach(([x, y], k, all) => frames.push({ transform: `translate(${x}px, ${y}px) scale(${k === all.length - 1 ? 1 : 1.15})`, offset: (hops * HOP_MS + (k + 1) / all.length * SLIDE_MS) / total, easing: 'linear' }));
+  }
   tok.style.animation = 'none';                                    // the CSS pop is only the fallback
-  tok.animate(frames, { duration: n * HOP_MS, delay: f.type === 'candy' ? SPIN_MS : DIE_MS, fill: 'both' });
+  tok.animate(frames, { duration: total, delay, fill: 'both' });
+  const hit = f.type === 'bump' && f.bumped && app.querySelector('.gwrap .track .tok.knocked');
+  if (hit) {                                                       // knocked back Home: a jolt, then a tumbling arc
+    const [lx, ly] = spec.at(f.to - 1), hx = Number(hit.dataset.x), hy = Number(hit.dataset.y);
+    hit.style.animation = 'none';
+    hit.animate([
+      { transform: `translate(${lx}px, ${ly}px) rotate(0deg) scale(1)`, offset: 0 },
+      { transform: `translate(${lx + 2}px, ${ly - 2}px) rotate(-25deg) scale(1.25)`, offset: .18 },
+      { transform: `translate(${(lx + hx) / 2}px, ${Math.min(ly, hy) - 9}px) rotate(-200deg) scale(1.1)`, offset: .6 },
+      { transform: `translate(${hx}px, ${hy}px) rotate(-360deg) scale(1)`, offset: 1 },
+    ], { duration: KNOCK_MS, delay: delay + hops * HOP_MS, fill: 'both', easing: 'ease-out' });
+  }
 }
 function renderMain() {
   if (state.screen === 'menu') return renderMenu();
@@ -1724,9 +1814,11 @@ const EXPLAIN = {
   hangman: { name: 'Hangman', play: 'Guess a letter. Got one right? Go again.', win: 'Reveal the last letter.' },
   hex: { name: 'Hex', play: 'Claim a hex. X connects left to right, O connects top to bottom.', win: 'Complete your path.' },
   hilo: { name: 'Higher/Lower', play: "Guess a number from 1 to 20. You'll be told higher or lower.", win: 'Guess the number.' },
+  snakes: { name: 'Snakes and Ladders', play: 'Roll and move up that many spaces. Ladders lift you up, snakes slide you down.', win: 'Reach the top first.' },
   dice: { name: 'Dice Race', play: 'Roll and move that many spaces.', win: 'Reach the finish first.' },
   memory: { name: 'Memory', play: 'Flip two cards. Only one pair matches.', win: 'Find the pair.' },
   candy: { name: 'Candy Race', play: 'Spin and jump to the next space of that colour.', win: 'Reach the finish first.' },
+  bump: { name: 'Bump', play: 'Spin and move 1, 2 or 3 spaces. Land on your opponent to send them back home.', win: 'Reach the finish first.' },
   coins: { name: 'Coin Flip', play: "Flip up to 3 coins that aren't yours.", win: 'All 5 coins show your side.' },
   pig: { name: 'Pig', play: 'Roll as many times as you dare, then bank your points to finish your turn. If you roll a number you already rolled this turn and your turn ends with zero points.', win: 'Bank 21 first.' },
   hunt: { name: 'Treasure Hunt', play: 'Dig a square. It shows how many steps away the treasure is (not diagonally).', win: 'Dig up the treasure.' },
@@ -1805,19 +1897,28 @@ function renderSetup() {
   const ready = setupReady(s);
   const title = host ? 'Host game' : 'Play Local';
   const sub = host ? 'Share the code, set up, then start once your friend is in' : '';
-  const slot = p => {                                            // a player slot: Human or Computer, and a name
-    const isCpu = !!(s.players && s.players[p] === 'cpu');
-    return `<div class="slot ${p}${isCpu ? ' cpu' : ''}">
-      <div class="who-p">${toonT(p)}</div>
-      <div class="kind" role="group" aria-label="${p} player"><button class="seg${isCpu ? '' : ' on'}" data-act="kind" data-side="${p}" data-kind="human" aria-pressed="${!isCpu}">Human</button><button class="seg${isCpu ? ' on' : ''}" data-act="kind" data-side="${p}" data-kind="cpu" aria-pressed="${isCpu}">Computer</button></div>
-      <label class="field ${p}">${isCpu ? `<i class="slot-ico" aria-hidden="true">${CPU_ICON}</i>` : ''}<span>${p} player name</span><input data-p="${p}" value="${esc(s.names[p] || '')}" maxlength="${NAME_MAX}" placeholder="${isCpu ? CPU_NAME : p}" autocomplete="off" autocapitalize="words" aria-label="${p} player name"></label></div>`;
+  // Play Local: player 1 is a person who picks X, O or Random; player 2 is a person or the computer, on the other side.
+  const L = host ? null : normLocal(s), s1 = L && L.pick !== 'random' ? L.pick : null, s2 = s1 ? other(s1) : null;
+  const face = side => (side ? toonT(side) : '<span class="rtoon" aria-hidden="true">?</span>');
+  const slots = () => {
+    const isCpu = L.p2 === 'cpu';
+    const pick = v => `<button class="seg${v === 'random' ? '' : ' ' + v}${L.pick === v ? ' on' : ''}" data-act="lside" data-side="${v}" aria-pressed="${L.pick === v}">${v === 'X' ? 'X' : v === 'O' ? 'O' : 'Random'}</button>`;
+    const p2side = s2 ? `plays ${s2}` : 'plays the other side';
+    return `<div class="slot ${s1 || 'R'} p1">
+      <div class="who-p">${face(s1)}</div>
+      <div class="sides three lside" role="group" aria-label="Player 1's side">${pick('X')}${pick('O')}${pick('random')}</div>
+      <label class="field ${s1 || ''}"><span>Player 1 name${L.pick === 'random' ? ' · X or O, drawn every match' : ''}</span><input data-ln="n1" value="${esc(L.n1)}" maxlength="${NAME_MAX}" placeholder="${s1 || 'X or O'}" autocomplete="off" autocapitalize="words" aria-label="Player 1 name"></label></div>
+    <div class="slot ${s2 || 'R'} p2${isCpu ? ' cpu' : ''}">
+      <div class="who-p">${face(s2)}</div>
+      <div class="kind" role="group" aria-label="Player 2"><button class="seg${isCpu ? '' : ' on'}" data-act="kind" data-kind="human" aria-pressed="${!isCpu}">Human</button><button class="seg${isCpu ? ' on' : ''}" data-act="kind" data-kind="cpu" aria-pressed="${isCpu}">Computer</button></div>
+      <label class="field ${s2 || ''}">${isCpu ? `<i class="slot-ico" aria-hidden="true">${CPU_ICON}</i>` : ''}<span>Player 2 name · ${p2side}</span><input data-ln="n2" value="${esc(L.n2)}" maxlength="${NAME_MAX}" placeholder="${isCpu ? CPU_NAME : s2 || 'X or O'}" autocomplete="off" autocapitalize="words" aria-label="Player 2 name"></label></div>`;
   };
   return `<main class="scr setup">
     <div class="bar">${host ? `<button class="back" data-act="lobby-back" aria-label="Close the room and go back">${CHEV}Back</button>` : `<button class="back" data-act="menu" aria-label="Back to the main menu">${CHEV}Menu</button>`}
       <div class="ttl"><b>${title}</b>${sub ? `<small>${sub}</small>` : ''}</div></div>
     <div class="setup-box" data-keep-scroll="setup">
     ${room}
-    ${host ? `<div class="names">${field('X')}${field('O')}</div>` : `<div class="slots">${slot('X')}${slot('O')}</div>`}
+    ${host ? `<div class="names">${field('X')}${field('O')}</div>` : `<div class="slots">${slots()}</div>`}
     ${host ? sides : ''}
     ${timer}
     <div class="adv${advOpen ? ' open' : ''}"><button class="adv-h" data-act="adv" aria-expanded="${advOpen}"><span>Advanced</span><small>${on} of ${TYPES.length} mini-games on</small><i class="chev">${CHEV}</i></button>
@@ -1872,7 +1973,7 @@ function renderBoard(review) {
     if (spot && spot.square === i) cls.push('spot', 'spot-' + spot.by);
     const info = INFO[sq.mini.type];
     // a claimed square keeps its label and final state, with the owner's mark laid over them
-    const body = `<div class="lab">${ICONS[sq.mini.type]}<span>${info.name}</span></div><div class="thumb">${thumb(sq.mini, !!sq.owner)}</div>`
+    const body = `<div class="lab${info.name.length > 14 ? ' long' : ''}">${ICONS[sq.mini.type]}<span>${info.name}</span></div><div class="thumb">${thumb(sq.mini, !!sq.owner)}</div>`
       + (sq.owner ? `<div class="own-ov${stampOn && state.stamp === i ? ' stamp' : ''}"${stampOn && state.stamp === i ? ` style="--el:${el}ms"` : ''} aria-hidden="true">${toon(sq.owner)}<b class="sr">${sq.owner}</b></div>` : '')   // a fresh claim stamps in
       + (spot && spot.square === i ? `<div class="spot-lab ${spot.by}" role="status">${cpuPlays(spot.by) ? CPU_ICON : ''}${esc(spot.label)}</div>` : '');
     const label = sq.owner ? `Square ${i + 1}: ${info.name}, won by ${esc(playerName(state, sq.owner))}. Tap to view` : `Square ${i + 1}: ${info.name}`;
@@ -1928,6 +2029,8 @@ function thumb(mini, final) {
       return `<div class="tg g3 tmem">${mini.cards.map((card, i) => (shown.includes(i) ? `<i class="up">${shapeSvg(card)}</i>` : '<i>?</i>')).join('')}</div>`;
     }
     case 'candy': return trackSvg(CANDY_SPEC, { colors: mini.track, tokens: { X: mini.pos.X, O: mini.pos.O }, finish: 'colours', mini: true });
+    case 'snakes': return trackSvg(SNL_SPEC, { tokens: { X: mini.pos.X - 1, O: mini.pos.O - 1 }, finish: 'none', goal: true, mini: true, cls: 'snl', overlay: snlArt(SNL_SPEC, mini, true) });
+    case 'bump': return trackSvg(BUMP_SPEC, { tokens: { X: mini.pos.X - 1, O: mini.pos.O - 1 }, finish: 'flag', mini: true });
     case 'coins': return `<div class="tcoin">${mini.coins.map(c => `<i class="${c === COINS.mystery ? 'm' : c}">${c}</i>`).join('')}</div>`;
     case 'pig': return `<div class="tdice">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><div class="bar"><i style="width:${Math.min(100, mini.bank[p] / PIG.goal * 100)}%"></i></div><span>${mini.bank[p]}</span></div>`).join('')}</div>`;
     case 'hunt': return `<div class="tg g5x5">${mini.dug.map((d, i) => {
@@ -2086,6 +2189,26 @@ function renderMini(sq, review) {
         <button class="big ${turn}" data-act="move" ${mv(1)}${locked ? ' disabled' : ''}>Roll for ${N(turn)}</button></div>`;
       break;
     }
+    case 'snakes': {
+      // The board winds up from the bottom left; the die rolls, the piece hops, then climbs or slides.
+      const L = mini.last, ok = !!L;
+      const tail = L && L.via === 'ladder' ? ` · up the ladder to ${L.to}` : L && L.via === 'snake' ? ` · down the snake to ${L.to}` : L ? ` · space ${L.to}` : '';
+      g = `<div class="g-snakes">${trackSvg(SNL_SPEC, { tokens: { X: mini.pos.X - 1, O: mini.pos.O - 1 }, moved: a ? a.by : null, finish: 'none', goal: true, cls: 'snl', overlay: snlArt(SNL_SPEC, mini) })}
+        <div class="dieWrap"><div class="die${a ? ' roll' : ''}">${ok ? dieFace(L.roll) : '<span class="q">?</span>'}</div>
+          <div class="dielab${a ? ' late' : ''}">${ok ? `<b class="${L.by}">${N(L.by)}</b> rolled ${L.roll}${tail}` : 'No rolls yet'}</div></div>
+        <button class="big ${turn}" data-act="move" ${mv('roll')}${locked ? ' disabled' : ''}>Roll for ${N(turn)}</button></div>`;
+      break;
+    }
+    case 'bump': {
+      // A 1-2-3 spinner; the piece hops; landing on the other piece knocks it back Home.
+      const L = mini.last, k = L ? L.spin - 1 : -1, angle = k < 0 ? 0 : 360 - (k * 120 + 60);   // puts that number under the pointer
+      const lab = L ? `<b class="${L.by}">${N(L.by)}</b> spun ${L.spin}${L.bumped ? ` · bumped <b class="${other(L.by)}">${N(other(L.by))}</b> home!` : ''}` : 'No spins yet';
+      g = `<div class="g-bump">${trackSvg(BUMP_SPEC, { tokens: { X: mini.pos.X - 1, O: mini.pos.O - 1 }, moved: a ? a.by : null, knocked: a && a.bumped ? other(a.by) : null, finish: 'flag', startLabel: 'HOME' })}
+        <div class="wheelwrap"><div class="pointer"></div><div class="wheel w3${a ? ' spin' : ''}" style="--to:${(a ? 720 : 0) + angle}deg" aria-hidden="true"><b style="--a:60deg">1</b><b style="--a:180deg">2</b><b style="--a:300deg">3</b></div>
+          <div class="dielab${a ? ' late' : ''}">${lab}</div></div>
+        <button class="big ${turn}" data-act="move" ${mv('spin')}${locked ? ' disabled' : ''}>Spin for ${N(turn)}</button></div>`;
+      break;
+    }
     case 'memory': {
       const up = new Set();
       if (state.pick != null && state.pickSq === state.zoom && !f && !d) up.add(state.pick);
@@ -2114,14 +2237,13 @@ function renderMini(sq, review) {
       // Five coins: two each and a mystery coin (?) that belongs to nobody until it is flipped.
       const flipped = a && mini.last ? mini.last.flipped : [], was = a && mini.last && mini.last.was ? mini.last.was : [];
       const theirs = mini.coins.filter(c => c !== turn).length, n = Math.min(COINS.max, theirs);
-      const status = view ? `All five show ${sq.owner}`
-        : `Flip turns ${n} coin${n === 1 ? '' : 's'} that ${n === 1 ? "isn't" : "aren't"} <b class="${turn}">${N(turn)}</b>'s${theirs > COINS.max ? ', picked at random' : ''}`;
+      const marked = !view && !a && !d && mini.marks && mini.marks.by === turn ? mini.marks.coins : [];   // the coins this turn's flip will turn, picked as the turn started
       g = `<div class="g-coins"><div class="coins">${mini.coins.map((c, i) => {
-        const flip = flipped.includes(i), m = c === COINS.mystery, from = was[flipped.indexOf(i)];
+        const flip = flipped.includes(i), m = c === COINS.mystery, from = was[flipped.indexOf(i)], mk = marked.includes(i);
         const c0 = from === COINS.mystery ? '#fff' : `var(--${(from || other(a ? a.by : turn)).toLowerCase()})`;
-        return `<span class="coin ${m ? 'm' : c}${flip ? ' flip' : ''}"${flip ? ` style="--k:${flipped.indexOf(i)};--c0:${c0}"` : ''} aria-label="Coin ${i + 1}, ${m ? 'mystery' : c}"><b>${c}</b></span>`;
+        return `<span class="coin ${m ? 'm' : c}${flip ? ' flip' : ''}${mk ? ` mk mk${turn}` : ''}"${flip ? ` style="--k:${flipped.indexOf(i)};--c0:${c0}"` : ''} aria-label="Coin ${i + 1}, ${m ? 'mystery' : c}${mk ? ', flips next' : ''}"><b>${c}</b></span>`;
       }).join('')}</div>
-        <div class="dielab">${status}</div>
+        ${view ? `<div class="dielab">All five show ${sq.owner}</div>` : ''}
         <button class="big ${turn}" data-act="move" ${mv('flip')}${locked ? ' disabled' : ''}>Flip${view ? '' : ' ' + n}</button></div>`;
       break;
     }
@@ -2139,7 +2261,7 @@ function renderMini(sq, review) {
       };
       const fresh1 = a && a.note === 'roll', bust = a && a.note === 'bust';
       const dice = rolls.map((n, k) => `<span class="sdie${(fresh1 || bust) && k === rolls.length - 1 ? (bust ? ' dup' : ' fresh') : ''}" aria-label="${n}">${dieFace(n)}</span>`).join('');
-      const shown = mini.last && mini.last.kind !== 'bank' ? mini.last.roll : rolls.length ? rolls[rolls.length - 1] : null;
+      const shown = mini.last && (mini.last.kind !== 'bank' || sq.owner) ? mini.last.roll : rolls.length ? rolls[rolls.length - 1] : null;   // a winning bank keeps its last number
       const enough = !!(t && t.by === turn && mini.bank[turn] + t.pot >= PIG.goal);          // Bank wins it: no more rolling
       const rollBtn = enough ? '' : `<button class="big ${turn}" data-act="move" ${mv('roll')}${locked || rolls.length >= PIG.maxRolls ? ' disabled' : ''}>${rolls.length && !over ? 'Roll again' : 'Roll'}</button>`;
       g = `<div class="g-pig"><div class="pigscores">${score('X')}${score('O')}</div>
@@ -2232,7 +2354,7 @@ function renderMini(sq, review) {
   }
   return `<main class="scr mini${entering ? ' enter' : ''}">${netBar()}
     <div class="bar${view && sq.owner ? ' won won-' + sq.owner : ''}" role="${view ? 'status' : 'presentation'}">${review ? `<button class="back" data-act="${reviewCtx.mback}" aria-label="Back to the final board">${CHEV}Board</button>` : `<button class="back" data-act="back" aria-label="Back to the board"${f || d || lockMine() || cpuTurn() ? ' disabled' : ''}>${CHEV}Board</button>`}
-      <div class="ttl"><b>${info.name}</b><small${view ? ' class="won"' : ''}>${sub}</small></div>${qBtn(mini.type)}</div>
+      <div class="ttl"><b${info.name.length > 14 ? ' class="long"' : ''}>${info.name}</b><small${view ? ' class="won"' : ''}>${sub}</small></div>${qBtn(mini.type)}</div>
     <div class="gwrap">${g}</div>${f ? renderFlash(f) : ''}${pauseMenu()}</main>`;
 }
 // The in-game menu: a pause card with Resume and Main menu (which asks first).
@@ -2258,6 +2380,8 @@ function summary(f) {
     case 'dice': return `${who} rolled ${f.roll} · space ${Math.min(f.total, DICE_GOAL - 1)}`;
     case 'memory': return 'No match';
     case 'candy': return `${who} spun ${f.color}`;
+    case 'snakes': return `${who} rolled ${f.roll}${f.via === 'ladder' ? ` · up the ladder to ${f.to}` : f.via === 'snake' ? ` · down the snake to ${f.to}` : ` · space ${f.to}`}`;
+    case 'bump': return `${who} spun ${f.spin}${f.bumped ? ` · bumped <b class="${other(f.by)}">${N(other(f.by))}</b> home!` : ''}`;
     case 'coins': return `${who} flipped ${f.n}`;
     case 'hunt': return `${who} dug ${f.dist} away · ${HEAT[f.dist]}`;
     case 'pig': return f.note === 'bust' ? `Bust! ${f.pot} point${f.pot === 1 ? '' : 's'} lost` : `Banked ${f.pot}`;
@@ -2281,7 +2405,7 @@ function renderFlash(f) {
   }
   if (f.kind === 'claim') {
     const w = f.winner || f.by;
-    return `${open}<div class="card">${pow()}<div class="big-g bang ${w}">${toonT(w)}</div><h2>${N(w)} wins ${name}!</h2><p>Square claimed · tap to continue</p></div></div>`;
+    return `${open}<div class="card claimc" role="status" aria-label="${esc(playerName(state, w))} wins ${name}">${pow()}<div class="big-g bang ${w}">${toonT(w)}</div></div></div>`;   // the bursts and the character: no words
   }
   if (f.type === 'pig' && f.note === 'bust') {
     return `${open}<div class="card"><div class="big-g">${dieFace(f.roll)}</div><h2>Bust!</h2><p>${who} rolled ${f.roll} again · ${f.pot} point${f.pot === 1 ? '' : 's'} lost</p></div></div>`;
@@ -3618,10 +3742,11 @@ app.addEventListener('click', e => {
     if (!state.online) { state.pick = null; state.pickSq = null; }
     commit();
   } else if (act === 'mode-go') {              // the main menu: pick a mode, then set up
-    state.setup.mode = 'two'; normSetup(state.setup); syncNames(state.setup); state.screen = 'setup'; advOpen = false; commit();
-  } else if (act === 'kind') {                 // a setup slot: Human or Computer
-    const side = el.dataset.side === 'O' ? 'O' : 'X';
-    normSetup(state.setup); state.setup.players[side] = el.dataset.kind === 'cpu' ? 'cpu' : 'human'; syncNames(state.setup); commit();
+    state.setup.mode = 'two'; normSetup(state.setup); normLocal(state.setup); state.screen = 'setup'; advOpen = false; commit();
+  } else if (act === 'kind') {                 // Play Local: player 2 is a Human or the Computer
+    normLocal(state.setup).p2 = el.dataset.kind === 'cpu' ? 'cpu' : 'human'; commit();
+  } else if (act === 'lside') {                // Play Local: player 1's side, X, O or Random (drawn at every start)
+    normLocal(state.setup).pick = ['X', 'O', 'random'].includes(el.dataset.side) ? el.dataset.side : 'X'; commit();
   } else if (act === 'review') {               // the results screen: look back over the final board
     if (state.winner) { state.screen = 'review'; state.zoom = null; render(); }
   } else if (act === 'review-sq') {
@@ -3636,8 +3761,9 @@ app.addEventListener('click', e => {
     state.screen = 'menu'; state.confirm = null; menuNote = ''; commit();
   } else if (act === 'timer') {
     if (isHost()) { state.setup.timer = TIMER_OPTIONS.includes(Number(el.dataset.v)) ? Number(el.dataset.v) : 0; commit(); dbSetup({ timer: state.setup.timer }); }
-  } else if (act === 'rematch') {               // the same settings again
+  } else if (act === 'rematch') {               // the same settings again (a Random side drawn again)
     if (state.online) { rematchOnline(); return; }
+    seatLocal(state.setup, RNG);
     if (startMatch(state, RNG)) { trackStart(); commit(); }
   } else if (act === 'online-go') {
     state.screen = 'online'; commit();
@@ -3765,6 +3891,7 @@ app.addEventListener('click', e => {
     state.confirm = null; commit();
   } else if (act === 'start') {
     if (state.online) { startOnline(); return; }
+    seatLocal(state.setup, RNG);
     if (startMatch(state, RNG)) { trackStart(); commit(); }
   }
 });
@@ -3798,6 +3925,7 @@ app.addEventListener('click', e => {
 app.addEventListener('input', e => {
   const el = e.target;
   if (el.matches && el.matches('input[data-p]') && state.setup) { state.setup.names[el.dataset.p] = el.value; save(); if (state.online && state.online.me === el.dataset.p) dbName(el.value); }
+  if (el.matches && el.matches('input[data-ln]') && state.setup) { normLocal(state.setup)[el.dataset.ln === 'n2' ? 'n2' : 'n1'] = el.value.slice(0, NAME_MAX); save(); }
   if (el.id === 'jname') joinName = el.value;
   if (el.id === 'lemail') loginMail = el.value;
   if (el.id === 'lpass') loginPass = el.value;
@@ -3962,7 +4090,10 @@ function load() {
       }
       for (const sq of s.squares) if (sq.mini.type === 'memory' && !Array.isArray(sq.mini.seen)) sq.mini.seen = [];
       for (const sq of s.squares) upgradeMini(sq.mini);                     // Connect 4 grew from 5 to 7 columns
+      if ('dice' in s.setup.games && !('snakes' in s.setup.games)) s.setup.games.snakes = s.setup.games.dice;   // Snakes and Ladders took the Dice race's place in the list
       for (const t of TYPES) if (!(t in s.setup.games)) s.setup.games[t] = true;   // a game added since the save is on by default
+      normLocal(s.setup);                                         // Play Local's players, from an older Human/Computer-per-side setup
+      if (!s.online && !s.winner && s.squares.some(sq => !sq.owner && sq.mini.type === 'coins' && !(sq.mini.marks && sq.mini.marks.by === s.turn))) markCoins(s, s.turn, RNG);   // a match from before the marks
       return s;
     }
   } catch (e) { /* ignore corrupt saves */ }

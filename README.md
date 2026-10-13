@@ -14,10 +14,12 @@ Database, Authentication, and Cloud Functions for accounts, matchmaking, records
 Open `index.html` in a browser (or serve the folder with any static server) and play.
 
 A main menu comes first: "Play Local" or "Play Online". Play Local opens one setup screen with two
-player slots, X and O; each is Human or Computer and has a name (a human slot defaults to "X" or "O",
-a computer slot to "Computer" and shows a little computer above it). Any pairing works: two people
-passing one phone, a person against the computer on either side, or the computer against itself
-while you watch. X moves first. Under "Advanced" are the mini-games in the mix (all on by default, at
+player slots. Player 1 is always a person: a name and a side, X, O or Random. Player 2 is Human or
+Computer and gets the other side (a computer slot shows a little computer above it). A blank name is
+the side's letter, and the computer's is "Computer". So it is two people passing one phone, or a
+person against the computer on either side; the computer no longer plays itself. X moves first.
+A rematch keeps the choice: X or O stay, and Random is drawn again for every match. Under "Advanced"
+are the mini-games in the mix (all on by default, at
 least one must stay on), with a "Select all" button at the top. Ticking a game or Select all changes
 the list in place: it stays exactly where it was scrolled, Advanced stays open, and the choice is
 saved for the next match. Computer players carry the computer icon next to their name in the game: in
@@ -25,9 +27,9 @@ the turn indicator, on the square they are about to play, and in the results.
 
 During a match a "Menu" button sits in the top corner: it pauses the game with "Resume" and
 "Main menu"; the latter asks "Leave this match?" and, on Yes, ends the match and returns to the main
-menu. Nothing moves while the menu is open, the computer included (so it also pauses a computer
-against computer match). When a square is won, the owner's mark squashes in with two comic-book
-bursts, once: first on the result card, then around the square on the board. Each burst's word is
+menu. Nothing moves while the menu is open, the computer included. When a square is won, the owner's
+mark squashes in with two comic-book bursts, once: first on the result card (just the bursts and the
+winner's character, no words), then around the square on the board. Each burst's word is
 picked at random from POW!, BAM!, CHAOS!, BOOM!, KAPOW!, WHAM!, ZAP!, SMASH!, CRUNCH!, YOINK!,
 SNATCHED!, MINE!, CLAIMED!, GOTCHA!, KABLAM! and BOP!, never one shown the time before. A burst pops
 in, stays about a second and pops out; it never stays on screen (with reduced motion it does not
@@ -64,7 +66,8 @@ a button returns to the results with "Rematch" (the same settings and opponent a
   Wordle and Hangman words, the Higher/lower number, the Battleship ship, all Memory cards). Looking
   never costs a turn.
 - Every mini-game has a "?" in the top-right corner of its full view: a short card with how to play
-  and how to win. It never uses a turn, and a tap closes it. The same "?" sits on each game in the
+  and how to win. It never uses a turn, and a tap anywhere closes it; it covers the whole screen, so
+  nothing underneath takes that tap, and going to another screen closes it too. The same "?" sits on each game in the
   Advanced checklist, and "How to Play" on the main menu shows the core rules with the list of
   mini-games, each opening its card.
 
@@ -79,11 +82,12 @@ Each square is assigned one of these at random when the match starts (duplicates
 | Hangman | Hidden 5–7 letter word; guess a letter. A right letter is revealed and you guess again at once; a wrong letter ends your turn. Revealing the last letter wins. The miniature on the board shows the wrong letters themselves, crossed out in red as in the full view, wrapping onto more lines as they add up |
 | Hex | 4×4 hex grid; X connects left to right, O connects top to bottom |
 | Higher/lower | The computer picks 1–20; each guess is answered higher or lower. Guessing it wins |
-| Dice race | A winding path of 15 numbered spaces and a Finish. Roll a die and your piece hops that many spaces; reaching or passing the Finish wins |
+| Snakes and Ladders | 20 spaces in 4 rows of 5, numbered from the bottom; the path starts at the bottom left (both pieces wait on Start, before space 1) and winds upward with the race tracks' curved turns, space 20 at the top. Every board gets 2 ladders and 2 snakes placed at random: no two share an end, none starts on space 1 or touches space 20, none starts where another ends, each spans at least 3 spaces and crosses rows. A move rolls a die; the piece hops up space by space, then climbs the ladder or slides down the snake whose start it landed on. Reaching or passing space 20 wins. (It replaced the Dice race: an older match's Dice race square plays to the end, and its history and stats keep that name) |
 | Memory | 3×3 face-down cards with exactly one matching pair; a move flips two cards for 2 seconds. Flipping the pair wins |
+| Bump | A race track of 9 spaces and a Finish; both pieces start at Home, before space 1. A move spins a 1-2-3 spinner (equal odds) and the piece hops that far. Landing exactly on the other piece knocks it back Home. Reaching or passing the Finish wins |
 | Candy race | A winding path of 12 randomly coloured spaces (any three in a row are all different colours) from Start to a Finish shown in all four colours; a spin of the colour wheel hops your token to the next space of that colour. No such space ahead means you reach the Finish and win |
-| Coin flip | Five coins: two X, two O and one mystery coin (?) that belongs to nobody, in random places. Flip turns up to 3 coins that aren't yours, the other side's and the mystery coin (all of them if there are 3 or fewer, otherwise 3 picked at random); each lands X or O at random, the mystery coin too. All five the same wins for that symbol's player (so with no coin of your own left, a flip can hand the square to the other side) |
-| Pig | Each player has a banked score. A move is a whole push-your-luck turn: roll a die, and a number not yet rolled this turn joins the points at risk (a small +N by your score, with this turn's dice in a row); then roll again or bank. Banking moves them into your score and ends the move; a repeated number busts, losing them (at most six rolls). Once your score and the points at risk reach 21, only Bank is left. First to a banked 21 wins |
+| Coin flip | Five coins: two X, two O and one mystery coin (?) that belongs to nobody, in random places. Flip turns up to 3 coins that aren't yours, the other side's and the mystery coin (all of them if there are 3 or fewer, otherwise 3 picked at random). The coins are picked as each turn starts and ringed in the player's colour before Flip is tapped, and exactly those flip; skipping the square and coming back a later turn may show a new set. Each lands X or O at random, the mystery coin too. All five the same wins for that symbol's player (so with no coin of your own left, a flip can hand the square to the other side) |
+| Pig | Each player has a banked score. A move is a whole push-your-luck turn: roll a die, and a number not yet rolled this turn joins the points at risk (a small +N by your score, with this turn's dice in a row); then roll again or bank. Banking moves them into your score and ends the move; a repeated number busts, losing them (at most six rolls). Once your score and the points at risk reach 21, only Bank is left. First to a banked 21 wins. A bust turns red only once the die has landed; after a winning bank the die keeps the last number rolled |
 | Treasure hunt | 5×5 grid with one hidden treasure. A move digs a cell: the treasure wins, otherwise the cell shows its distance to the treasure in steps up, down, left or right, coloured hot to cold. Everything dug stays visible |
 | Hexapawn | 3 columns × 4 rows; each side has 3 pawns on its home row (X on the bottom, O on the top). A move is one pawn stepping one square straight forward into an empty square, or capturing an opposing pawn one square diagonally forward. Tap a pawn to see its moves; the pawn slides over and a captured pawn is knocked off the board. You win the square by moving a pawn onto the other side's home row, or by making a move after which the other side has no legal move there (capturing all their pawns included). A player with no move in this square just plays elsewhere: they only lose it when the other side moves and leaves them stuck |
 | Mastermind | One hidden code shared by both players: 4 pegs from 6 colours, no colour twice, picked by the computer. A move is one guess of 4 different colours (tap a slot, then a colour; tap a filled slot to clear it). Feedback is a solid marker for each right colour in the right spot and a hollow marker for each right colour in the wrong spot, always solid first, so the order says nothing about which peg is which. Every guess and its markers stay on show, no guess limit; guessing the exact code wins. Each colour also carries a symbol (circle, square, triangle, diamond, star, plus) |
@@ -302,8 +306,9 @@ with all feedback and guesses the one that splits them best; Mastermind keeps th
 consistent with every guess so far and plays the guess (any of the 360 codes) whose worst-case
 answer leaves the fewest, which cracks any code in at most 5 guesses; Hangman takes the letter most common in
 the words still consistent with the pattern; Memory remembers every card shown and flips a known
-pair, else unseen cards; Coin flip knows its chance of turning every coin its way, and the small
-chance of handing the square over when none of its own are left; Pig keeps rolling while the bust risk
+pair, else unseen cards; Coin flip reads its exact chances from the marked coins (and the small
+chance of handing the square over when none of its own are left); Snakes and Ladders works out the
+expected rolls to the top with the ladders and snakes in; Bump and the races count the moves left; Pig keeps rolling while the bust risk
 is acceptable and banks around 8 to 10, bolder when behind and safer when ahead, always when the bank
 would reach 21. On the board, a Hexapawn square is weighed by how close each side's leading pawn is to
 the far row (one move away when a win is on), since nobody has to move in a square and minimax lines
@@ -340,7 +345,9 @@ git push -u origin main
 ## Game stats and the admin dashboard
 
 Every match in every mode is counted, anonymously: two players on one phone, against the computer,
-computer against computer, friend code and Find Match (casual and ranked before it was one queue).
+computer against computer (before it was taken out), friend code and Find Match (casual and ranked
+before it was one queue). Snakes and Ladders and Bump are counted like every mini-game; the Dice race
+keeps its own row for the matches it was played in.
 Phones report their local matches to the
 `track` Cloud Function (a guest's with a random id the browser made up, never a name); the server
 counts online matches itself, where it runs or saves them. Nobody can write the stats directly, and

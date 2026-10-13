@@ -51,3 +51,25 @@ test('stats: the engine\'s match summary feeds the stats directly', () => {
   const up = S.endUpdates('local', sum, 1000, Date.now(), false);
   assert.equal(up['mini/local/ttt/winMoves'], 3); assert.equal(up['mini/local/ttt/loseMoves'], 2); assert.equal(up['modes/local/turns'], 5);
 });
+
+test('stats: Snakes and Ladders and Bump are counted; a Dice race from an older match still is, under its own name', () => {
+  const types = E.TYPES.concat(E.OLD_TYPES);
+  const sum = S.checkEnd({ winner: 'X', reason: 'line', squares: [{ t: 'snakes', end: 'won', w: 'X', X: 5, O: 4 }, { t: 'bump', end: 'won', w: 'O', X: 3, O: 4 }, { t: 'dice', end: 'open', X: 1, O: 1 }] }, types);
+  assert.deepEqual(sum.squares.map(e => e.t), ['snakes', 'bump', 'dice']);
+  const up = S.endUpdates('local', sum, 60000, Date.parse('2026-10-13T12:00:00Z'), false);
+  assert.equal(up['mini/local/snakes/played'], 1); assert.equal(up['mini/local/snakes/xWins'], 1);
+  assert.equal(up['mini/local/bump/oWins'], 1);
+  assert.equal(up['mini/local/dice/open'], 1, 'kept apart as the Dice race');
+  assert.equal(S.checkEnd({ squares: [{ t: 'dice', end: 'open', X: 1, O: 1 }] }, E.TYPES), null, 'only accepted where older games are allowed');
+  // a match played with the new games: what the server records from it
+  const st = E.newMatch(E.makeRng('sb'), { games: ['snakes', 'bump'] });
+  const rng = E.makeRng('sbm');
+  for (let k = 0; k < 400 && !st.winner; k++) {
+    const i = st.squares.findIndex(q => !q.owner);
+    const r = E.playMove(st, i, st.squares[i].mini.type === 'snakes' ? 'roll' : 'spin', rng);
+    assert.equal(r.ok, true); E.endFlash(st);
+  }
+  assert.ok(st.winner, 'the match ends');
+  const s2 = S.checkEnd(E.matchStats(st), E.TYPES);
+  assert.ok(s2.squares.length >= 3 && s2.squares.every(e => ['snakes', 'bump'].includes(e.t)));
+});

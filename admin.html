@@ -82,9 +82,9 @@ const FIREBASE_CONFIG = {
   databaseURL: 'https://tic-tac-chaos-default-rtdb.firebaseio.com',
   projectId: 'tic-tac-chaos',
 };
-const MODES = [['local', 'Two players'], ['cpu', 'vs Computer'], ['cvc', 'Computer vs Computer'], ['friend', 'Friend code'], ['match', 'Find Match'], ['casual', 'Casual (old)'], ['ranked', 'Ranked (old)']];
+const MODES = [['local', 'Two players'], ['cpu', 'vs Computer'], ['cvc', 'Computer vs Computer (old)'], ['friend', 'Friend code'], ['match', 'Find Match'], ['casual', 'Casual (old)'], ['ranked', 'Ranked (old)']];
 const MODE_COLORS = { local: 'var(--o)', cpu: 'var(--sky)', cvc: 'var(--stone)', friend: 'var(--plum)', match: 'var(--green)', casual: '#8fbf7a', ranked: 'var(--x)' };
-const GAMES = { ttt: 'Tic-tac-toe', c4: 'Connect 4', bs: 'Battleship', wordle: 'Wordle', hangman: 'Hangman', hex: 'Hex', hilo: 'Higher/Lower', dice: 'Dice Race', memory: 'Memory', candy: 'Candy Race', coins: 'Coin Flip', pig: 'Pig', hunt: 'Treasure Hunt', hexapawn: 'Hexapawn', mastermind: 'Mastermind' };
+const GAMES = { ttt: 'Tic-tac-toe', c4: 'Connect 4', bs: 'Battleship', wordle: 'Wordle', hangman: 'Hangman', hex: 'Hex', hilo: 'Higher/Lower', snakes: 'Snakes and Ladders', memory: 'Memory', candy: 'Candy Race', bump: 'Bump', coins: 'Coin Flip', pig: 'Pig', hunt: 'Treasure Hunt', hexapawn: 'Hexapawn', mastermind: 'Mastermind', dice: 'Dice Race (old)' };   // the Dice race's numbers from before Snakes and Ladders replaced it
 const app = document.getElementById('app');
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 let fb = null, user = null, stats = null, view = { status: 'loading', error: '' };

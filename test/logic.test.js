@@ -986,8 +986,9 @@ test('setup: the app opens on the main menu with default names and every game ti
   assert.equal(st.screen, 'menu', 'the main menu comes first');
   assert.deepEqual(st.setup.names, { X: 'X', O: 'O' });
   assert.deepEqual(L.enabledGames(st.setup), L.TYPES);
-  assert.equal(L.TYPES.length, 15);
-  assert.ok(st.setup.games.coins && st.setup.games.pig && st.setup.games.hunt, 'the newest games are on by default');
+  assert.equal(L.TYPES.length, 16);
+  assert.ok(st.setup.games.coins && st.setup.games.pig && st.setup.games.hunt && st.setup.games.snakes && st.setup.games.bump, 'the newest games are on by default');
+  assert.ok(!L.TYPES.includes('dice'), 'Snakes and Ladders took the Dice race\'s place');
   for (const t of L.TYPES) assert.ok(L.INFO[t] && L.INFO[t].name && L.INFO[t].hint, `info for ${t}`);
   assert.equal(L.playerName(st, 'X'), 'X');
 });
@@ -1014,7 +1015,7 @@ test('setup: Start needs at least one game, tidies the names and builds nine squ
 });
 
 test('setup: unticked games never appear, in fresh squares or in draw resets', () => {
-  const allowed = ['ttt', 'bs', 'dice'];
+  const allowed = ['ttt', 'bs', 'snakes'];
   const rng = lcg(77);
   const seen = new Set();
   for (let k = 0; k < 300; k++) {
@@ -1296,6 +1297,8 @@ function randomMove(m, rng, p) {
     case 'wordle': return rng() < 0.2 ? m.word : pickFrom(L.WORDS5).toUpperCase();
     case 'hangman': return pickFrom('ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').filter(l => !m.letters.some(x => x.l === l)));
     case 'dice': case 'candy': return 1;
+    case 'snakes': return 'roll';
+    case 'bump': return 'spin';
     case 'hilo': return m.lo + Math.floor(rng() * (m.hi - m.lo + 1));
     case 'memory': { const a = Math.floor(rng() * 9); let b = Math.floor(rng() * 8); if (b >= a) b++; return [a, b]; }
     case 'coins': return 'flip';
@@ -2446,4 +2449,196 @@ test('timeouts: Coin flip flips, Battleship fires at an open cell, Pig banks onc
   const r = L.timeoutMove(st, lcg(5));
   assert.equal(r.ok, true); assert.equal(r.move, 'bank');
   assert.equal(st.squares[2].owner, 'X');
+});
+
+// ============================ Snakes and Ladders ============================
+// Each rule checked on its own (not through snlValid), on many boards from many seeds.
+test('snakes: 50,000 boards, every one keeps every placement rule', () => {
+  const rows = k => Math.floor((k - 1) / 5);
+  const seen = new Set();
+  for (let k = 0; k < 50000; k++) {
+    const b = L.snlBoard(L.makeRng('snl' + k));
+    assert.equal(b.ladders.length, 2, 'two ladders'); assert.equal(b.snakes.length, 2, 'two snakes');
+    const ends = [];
+    for (const [a, c] of b.ladders) { assert.ok(c > a, `a ladder goes up (${a}->${c})`); ends.push(a, c); }
+    for (const [a, c] of b.snakes) { assert.ok(c < a, `a snake goes down (${a}->${c})`); ends.push(a, c); }
+    for (const [a, c] of b.ladders.concat(b.snakes)) {
+      assert.ok(Math.abs(c - a) >= 3, `spans at least 3 spaces (${a}->${c})`);
+      assert.notEqual(rows(a), rows(c), `crosses rows (${a}->${c})`);
+      assert.notEqual(a, 1, 'nothing starts on space 1');
+      assert.ok(a >= 1 && a <= 19 && c >= 1 && c <= 19, `nothing touches the top space (${a}->${c})`);
+    }
+    assert.equal(new Set(ends).size, 8, `no shared ends (${JSON.stringify(b)})`);
+    const starts = b.ladders.concat(b.snakes).map(x => x[0]), finishes = b.ladders.concat(b.snakes).map(x => x[1]);
+    assert.ok(starts.every(a => !finishes.includes(a)), 'nothing starts where another ends');
+    assert.equal(L.snlValid(b), true);
+    seen.add(JSON.stringify(b));
+  }
+  assert.ok(seen.size > 40000, `boards vary (${seen.size} different)`);
+  // the checker itself refuses each kind of broken board
+  const ok = { ladders: [[3, 8], [9, 17]], snakes: [[14, 6], [19, 12]] };
+  assert.equal(L.snlValid(ok), true);
+  for (const bad of [
+    { ladders: [[1, 8], [9, 17]], snakes: [[14, 6], [19, 12]] },     // starts on 1
+    { ladders: [[3, 20], [9, 17]], snakes: [[14, 6], [19, 12]] },    // touches the top
+    { ladders: [[3, 5], [9, 17]], snakes: [[14, 6], [19, 12]] },     // too short
+    { ladders: [[6, 9], [11, 17]], snakes: [[14, 4], [19, 12]] },    // one row (6 to 9)
+    { ladders: [[3, 8], [8, 17]], snakes: [[14, 6], [19, 12]] },     // starts where another ends
+    { ladders: [[3, 8], [9, 17]], snakes: [[14, 6], [19, 6]] },      // a shared end
+    { ladders: [[8, 3], [9, 17]], snakes: [[14, 6], [19, 12]] },     // a ladder going down
+  ]) assert.equal(L.snlValid(bad), false, JSON.stringify(bad));
+});
+
+test('snakes: a roll hops up from the start, then a ladder lifts and a snake drops; reaching or passing 20 wins', () => {
+  const m = Object.assign(mini('snakes'), { ladders: [[3, 8], [9, 17]], snakes: [[14, 6], [19, 12]], pos: { X: 0, O: 0 } });
+  assert.deepEqual(L.applyMove(m, 'X', 'roll', seq(pick(0, 6))), { ok: true, outcome: 'continue', note: 'roll' });
+  assert.deepEqual(m.last, { by: 'X', roll: 1, from: 0, land: 1, to: 1, via: null }, 'a 1 from the start lands on space 1');
+  assert.deepEqual(L.applyMove(m, 'X', 'roll', seq(pick(1, 6))), { ok: true, outcome: 'continue', note: 'ladder' });
+  assert.deepEqual(m.last, { by: 'X', roll: 2, from: 1, land: 3, to: 8, via: 'ladder' }, 'up the ladder from 3 to 8');
+  assert.equal(m.pos.X, 8);
+  assert.deepEqual(L.applyMove(m, 'O', 'roll', seq(pick(5, 6))).note, 'roll');
+  assert.equal(m.pos.O, 6, 'landing on a snake\'s tail does nothing');
+  L.applyMove(m, 'O', 'roll', seq(pick(1, 6)));
+  assert.equal(m.pos.O, 8, 'two pieces may share a space');
+  assert.equal(L.applyMove(m, 'X', 'roll', seq(pick(5, 6))).note, 'snake');
+  assert.deepEqual(m.last, { by: 'X', roll: 6, from: 8, land: 14, to: 6, via: 'snake' }, 'down the snake from 14 to 6');
+  m.pos.X = 17;
+  assert.deepEqual(L.applyMove(m, 'X', 'roll', seq(pick(2, 6))), { ok: true, outcome: 'win' }, '17 + 3 = 20: the top');
+  m.pos.O = 18;
+  assert.equal(L.applyMove(m, 'O', 'roll', seq(pick(5, 6))).outcome, 'win', 'passing the top wins too');
+  assert.equal(m.pos.O, 20);
+  m.pos.O = 13;
+  assert.equal(L.applyMove(m, 'O', 'roll', seq(pick(5, 6))).note, 'snake', 'the snake at 19 still bites');
+  assert.equal(m.pos.O, 12);
+  assert.equal(L.applyMove(m, 'O', 1).ok, false, 'the move is a roll');
+  const rolls = new Set();
+  for (let k = 0; k < 600; k++) { const d = mini('snakes', L.makeRng('s' + k)); L.applyMove(d, 'X', 'roll', L.makeRng('r' + k)); rolls.add(d.last.roll); }
+  assert.deepEqual([...rolls].sort(), [1, 2, 3, 4, 5, 6]);
+});
+
+test('snakes: the odds and expected rolls come from the board; random play always finishes', () => {
+  const b = { type: 'snakes', ladders: [[3, 8], [9, 17]], snakes: [[14, 6], [19, 12]], pos: { X: 0, O: 0 } };
+  const E = L.snlExpected(b), plain = L.snlExpected({ type: 'snakes', ladders: [], snakes: [], pos: { X: 0, O: 0 } });
+  assert.equal(E[20], 0);
+  assert.ok(E[0] > 1 && E[0] < plain[0] + 3, `from the start: ${E[0].toFixed(2)} rolls`);
+  assert.ok(E[17] < E[13], 'higher up, fewer rolls (17 vs 13)');
+  assert.equal(L.localBest(Object.assign({}, b, { pos: { X: 16, O: 0 } }), 'X', cpuRng()).q, 3 / 6, '4, 5 or 6 reaches the top');
+  assert.equal(L.localBest(b, 'X', cpuRng()).move, 'roll');
+  assert.equal(L.randomLegalMove(L.newMini('snakes', lcg(3)), 'O'), 'roll');
+  for (let k = 0; k < 200; k++) {
+    const m = L.newMini('snakes', L.makeRng('play' + k)), r = L.makeRng('roll' + k);
+    let n = 0, out;
+    do { out = L.applyMove(m, n % 2 ? 'O' : 'X', 'roll', r); n++; } while (out.outcome !== 'win' && n < 2000);
+    assert.equal(out.outcome, 'win');
+  }
+});
+
+// ================================== Bump ==================================
+test('bump: a spin of 1, 2 or 3 hops forward; landing on the other piece sends it home; reaching the Finish wins', () => {
+  const m = mini('bump');
+  assert.deepEqual(m.pos, { X: 0, O: 0 }, 'both start at Home');
+  assert.deepEqual(L.applyMove(m, 'X', 'spin', seq(pick(1, 3))), { ok: true, outcome: 'continue', note: 'spin' });
+  assert.deepEqual(m.last, { by: 'X', spin: 2, from: 0, to: 2, bumped: false });
+  assert.deepEqual(L.applyMove(m, 'O', 'spin', seq(pick(1, 3))), { ok: true, outcome: 'continue', note: 'bump' }, 'O lands on X');
+  assert.deepEqual(m.pos, { X: 0, O: 2 }, 'X is back at Home');
+  assert.equal(m.last.bumped, true);
+  L.applyMove(m, 'X', 'spin', seq(pick(2, 3)));
+  assert.deepEqual(m.pos, { X: 3, O: 2 }, 'hopping past a piece does not bump it');
+  L.applyMove(m, 'O', 'spin', seq(pick(2, 3)));
+  assert.deepEqual(m.pos, { X: 3, O: 5 });
+  m.pos.X = 7;
+  assert.deepEqual(L.applyMove(m, 'X', 'spin', seq(pick(2, 3))), { ok: true, outcome: 'win' }, '7 + 3 = 10: the Finish');
+  m.pos = { X: 9, O: 1 };
+  assert.equal(L.applyMove(m, 'X', 'spin', seq(pick(2, 3))).outcome, 'win', 'passing the Finish wins too');
+  assert.equal(m.pos.X, 10);
+  m.pos = { X: 8, O: 9 };
+  assert.equal(L.applyMove(m, 'O', 'spin', seq(pick(0, 3))).outcome, 'win');
+  assert.equal(m.last.bumped, false, 'the Finish bumps nobody');
+  assert.equal(L.applyMove(m, 'X', 'roll').ok, false, 'the move is a spin');
+  const spins = { 1: 0, 2: 0, 3: 0 };
+  for (let k = 0; k < 3000; k++) { const d = mini('bump'); L.applyMove(d, 'X', 'spin', L.makeRng('b' + k)); spins[d.last.spin]++; }
+  for (const v of [1, 2, 3]) assert.ok(spins[v] > 850 && spins[v] < 1150, `even odds (${JSON.stringify(spins)})`);
+  assert.equal(L.localBest({ type: 'bump', pos: { X: 8, O: 0 } }, 'X', cpuRng()).q, 2 / 3, '2 or 3 finishes from 8');
+  assert.equal(L.localBest({ type: 'bump', pos: { X: 0, O: 0 } }, 'X', cpuRng()).q, 0);
+  assert.equal(L.randomLegalMove(mini('bump'), 'X'), 'spin');
+});
+
+// ============================== Coin flip marks ==============================
+test('coins: the coins a flip will turn are picked and marked as the turn starts, and exactly those flip', () => {
+  let checked = 0;
+  for (let g = 0; g < 150; g++) {
+    const rng = L.makeRng('cm' + g);
+    const st = L.newMatch(rng, { games: ['coins', 'ttt'] });
+    const coinSq = () => st.squares.map((s, i) => (!s.owner && s.mini.type === 'coins' ? i : -1)).filter(i => i >= 0);
+    for (const i of coinSq()) assert.equal(st.squares[i].mini.marks.by, 'X', 'marked for X as the match starts');
+    for (let n = 0; n < 60 && !st.winner; n++) {
+      const p = st.turn;
+      for (const i of coinSq()) {
+        const mk = st.squares[i].mini.marks;
+        assert.equal(mk.by, p, 'marked for the player whose turn it is');
+        assert.deepEqual(mk.coins, L.coinMarksFor(st.squares[i].mini, p), 'a full, valid set');
+      }
+      const open = coinSq();
+      const i = open.length && rng() < 0.6 ? open[0] : st.squares.findIndex(s => !s.owner && s.mini.type === 'ttt');
+      if (i < 0) break;
+      const sq = st.squares[i];
+      if (sq.mini.type !== 'coins') { turn(st, i, sq.mini.cells.findIndex(x => !x), rng); continue; }
+      const marked = sq.mini.marks.coins.slice();
+      turn(st, i, 'flip', rng);
+      assert.deepEqual(sq.mini.last.flipped, marked, 'the marked coins are exactly the ones flipped');
+      checked++;
+    }
+  }
+  assert.ok(checked > 1000, `${checked} flips checked`);
+  // fresh each turn: with more than three coins to pick from, an untouched square shows new marks the next turn
+  const st = L.newMatch(lcg(5), { games: ['ttt'] });
+  st.squares[0].mini = Object.assign(mini('coins'), { coins: ['O', 'O', '?', 'O', 'X'] });
+  const sets = new Set();
+  for (let k = 0; k < 40; k++) {
+    st.turn = 'O'; turn(st, 1, 4, L.makeRng('o' + k));
+    assert.equal(st.turn, 'X');
+    sets.add(JSON.stringify(st.squares[0].mini.marks.coins));
+    st.squares[1] = { owner: null, mini: mini('ttt') };
+  }
+  assert.ok(sets.size > 1, `new marks each turn (${[...sets].join(' ')})`);
+});
+
+test('coins: marks survive the online record, and the computer reads its exact odds from them', () => {
+  const st = L.newMatch(lcg(8), { games: ['coins'] });
+  st.id = 'c'; st.seq = 0; st.recent = [];
+  const rec = L.matchRecord(st);
+  assert.deepEqual(rec.state.squares[0].mini.marks, st.squares[0].mini.marks, 'public, kept in the shared state');
+  const m = Object.assign(mini('coins'), { coins: ['X', 'X', 'O', 'O', '?'], marks: { by: 'X', coins: [2, 3, 4] } });
+  assert.deepEqual(L.localBest(L.publicMini(m), 'X'), { move: 'flip', q: 0.125, qLose: 0 });
+  const n = Object.assign(mini('coins'), { coins: ['X', 'O', 'O', 'O', '?'], marks: { by: 'X', coins: [1, 2, 3] } });
+  assert.deepEqual(L.localBest(L.publicMini(n), 'X'), { move: 'flip', q: 0, qLose: 0 }, 'the mystery coin stays: no win this flip');
+  const o = Object.assign(mini('coins'), { coins: ['O', 'O', 'O', '?', 'O'], marks: { by: 'X', coins: [0, 1, 3] } });
+  assert.deepEqual(L.localBest(L.publicMini(o), 'X'), { move: 'flip', q: 0, qLose: 0.125 }, 'all landing O hands it over');
+  const bad = Object.assign(mini('coins'), { coins: ['X', 'X', 'O', 'O', '?'], marks: { by: 'X', coins: [0, 2, 3] } });
+  assert.equal(L.coinMarksFor(bad, 'X'), null, 'marks on your own coin are not used');
+});
+
+// =============================== Local seating ===============================
+test('local setup: player 1 picks X, O or Random; player 2 (a person or the computer) gets the other side', () => {
+  const seat = (local, rng) => { const s = L.defaultSetup(); s.local = local; L.seatLocal(s, rng || lcg(1)); return s; };
+  let s = seat({ pick: 'X', p2: 'human', n1: 'Ann', n2: 'Bob' });
+  assert.deepEqual([s.names, s.players, s.human], [{ X: 'Ann', O: 'Bob' }, { X: 'human', O: 'human' }, 'X']);
+  s = seat({ pick: 'O', p2: 'cpu', n1: 'Ann', n2: '' });
+  assert.deepEqual([s.names, s.players, s.human], [{ X: 'Computer', O: 'Ann' }, { X: 'cpu', O: 'human' }, 'O']);
+  assert.equal(L.cpuSide(s), 'X', 'the computer plays X and moves first');
+  s = seat({ pick: 'X', p2: 'human', n1: '', n2: '' });
+  assert.deepEqual(s.names, { X: 'X', O: 'O' }, 'a blank name is the side\'s letter');
+  const sides = new Set(), r = lcg(9);
+  for (let k = 0; k < 40; k++) { const t = seat({ pick: 'random', p2: 'cpu', n1: 'Ann', n2: '' }, r); sides.add(t.human); assert.equal(t.names[t.human], 'Ann'); assert.equal(t.players[t.human], 'human'); assert.equal(t.players[t.human === 'X' ? 'O' : 'X'], 'cpu'); }
+  assert.deepEqual([...sides].sort(), ['O', 'X'], 'Random draws both sides');
+  // a rematch: the same choice, Random drawn again (startMatch keeps the seats it is given)
+  const st = L.newState(lcg(3));
+  st.setup.local = { pick: 'O', p2: 'human', n1: 'Ann', n2: 'Bob' };
+  for (let k = 0; k < 3; k++) { L.seatLocal(st.setup, lcg(k)); L.startMatch(st, lcg(k)); assert.deepEqual(st.setup.names, { X: 'Bob', O: 'Ann' }); assert.equal(st.cpu, null); }
+  // older setups: the computer, if any, becomes player 2; two computers can no longer happen
+  const old = (players, names) => L.normLocal({ players, names });
+  assert.deepEqual(old({ X: 'cpu', O: 'human' }, { X: 'Computer', O: 'Zed' }), { pick: 'O', p2: 'cpu', n1: 'Zed', n2: '' });
+  assert.deepEqual(old({ X: 'human', O: 'human' }, { X: 'Ann', O: 'O' }), { pick: 'X', p2: 'human', n1: 'Ann', n2: '' });
+  assert.deepEqual(old({ X: 'cpu', O: 'cpu' }, { X: 'Computer', O: 'Computer' }), { pick: 'X', p2: 'cpu', n1: '', n2: '' }, 'computer vs computer: player 1 is a person');
+  assert.deepEqual(L.normLocal({ local: { pick: 'Q', p2: 'robot', n1: 5 } }), { pick: 'X', p2: 'human', n1: '5', n2: '' }, 'junk is tidied');
 });

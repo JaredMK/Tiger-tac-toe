@@ -122,7 +122,7 @@ exports.track = onCall(CALL, async req => {
     if (!(await claimMatch(id, 's', t))) return { ok: true, seen: true };
     await db.ref().update(statsUp(S.startUpdates(d.mode, t)));
   } else if (d.ev === 'end') {
-    const sum = S.checkEnd(d, E.TYPES);
+    const sum = S.checkEnd(d, E.TYPES.concat(E.OLD_TYPES));         // a match from before may still hold a Dice race
     if (!sum) throw new HttpsError('invalid-argument', 'Not a match.');
     const c = await claimMatch(id, 'e', t);
     if (!c) return { ok: true, seen: true };
