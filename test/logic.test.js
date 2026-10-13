@@ -1,20 +1,26 @@
 'use strict';
 // Run with:  node --test
-// Exercises the pure game logic embedded in index.html (the <script id="logic"> block).
+// Exercises the game engine (engine.js), which the page and the Cloud Functions share.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
-const src = html.match(/<script id="logic">([\s\S]*?)<\/script>/)[1];
-const L = vm.runInThisContext(
-  src + '\n;({ TYPES, INFO, C4, HEX_N, HILO, DICE_GOAL, MEMORY, CANDY, COINS, PIG, HUNT, NAME_MAX, WORDS5, WORDS_HANG, VALID5, LINES, other, newMini, newState, huntDist,' +
-  ' startMatch, newMatch, defaultSetup, enabledGames, playerName, findRun, applyMove, mainResult, playMove, endFlash, leaveSquare, cpuMove, publicMini, squareValue, needsOf, winChance, moveGain, localBest, wordleCandidates, hangmanCandidates, huntCandidates, hexDist, candyExpected, cpuSide, syncNames, CPU_NAME, AI, wordleMarks, hexNeighbors,' +
-  ' hexPath, memoryDeck, candyTrack, canMove, anyMove, randomLegalMove, timeoutMove, TIMER_OPTIONS, newTimer, HP, hpMoves, hpSolve, hpNeeds, upgradeMini, normSetup, MM, mmFeedback, mmAll, mmCandidates, mmBestGuess, mmValid, matchRecord, fullState, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, newOnlineMatch, secretOf, hideMini, RECENT_MAX })',
-  { filename: 'index.html#logic' }
-);
+const E = require('../engine.js');
+// The engine takes all its randomness from the caller. Where a test does not care which random choice
+// is made, these wrappers hand it a fixed seeded generator.
+const anyRng = () => E.makeRng('any');
+const L = Object.assign({}, E, {
+  newState: rng => E.newState(rng || anyRng()),
+  startMatch: (st, rng) => E.startMatch(st, rng || anyRng()),
+  newMatch: (rng, setup) => E.newMatch(rng || anyRng(), setup),
+  playMove: (st, i, m, rng, opts) => E.playMove(st, i, m, rng || anyRng(), opts),
+  cpuMove: (st, rng) => E.cpuMove(st, rng || anyRng()),
+  timeoutMove: (st, rng) => E.timeoutMove(st, rng || anyRng()),
+  randomLegalMove: (mini, p, rng) => E.randomLegalMove(mini, p, rng || anyRng()),
+  applyMove: (mini, p, m, rng, ...rest) => E.applyMove(mini, p, m, rng || anyRng(), ...rest),
+});
 
 // ---- helpers ----
 // rng that yields a fixed sequence of values in [0, 1)
@@ -2252,4 +2258,38 @@ test('mastermind: a timed-out random move is a valid 4-colour guess', () => {
     assert.ok(L.mmValid(g), JSON.stringify(g));
     assert.equal(L.applyMove(m, 'X', g).ok, true);
   }
+});
+
+test('engine: pure and seeded: the same seed plays the same match, and nothing random happens without an rng', () => {
+  const play = seed => { const rng = E.makeRng(seed), st = E.newMatch(rng); for (let k = 0; k < 40 && !st.winner; k++) { const c = E.cpuMove(st, rng); E.playMove(st, c.square, c.move, rng); while (st.flash) E.endFlash(st, false) || E.leaveSquare(st); } return JSON.stringify(st.squares); };
+  assert.equal(play('seed-1'), play('seed-1'), 'same seed, same match');
+  assert.notEqual(play('seed-1'), play('seed-2'), 'another seed, another match');
+  const r = E.makeRng(42);
+  for (let k = 0; k < 1000; k++) { const v = r(); assert.ok(v >= 0 && v < 1); }
+  assert.throws(() => E.newState(), /needs an rng/);
+  assert.throws(() => E.playMove(E.newMatch(E.makeRng(1)), 0, 0), /needs an rng/);
+  const src = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'engine.js'), 'utf8');
+  const code = src.replace(/\/\/.*$/gm, '');                       // the code, without its comments
+  assert.ok(!/Math\.random|Date\.now|performance\.now|\bdocument\.|\bwindow\.|localStorage/.test(code), 'no clock, no Math.random, no page in the engine');
+});
+test('engine: every top-level name is exported for the server', () => {
+  const src = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'engine.js'), 'utf8');
+  const names = [...src.matchAll(/^(?:function\s+([A-Za-z_$][\w$]*)|(?:const|let)\s+([A-Za-z_$][\w$]*))/gm)].map(m => m[1] || m[2]);
+  for (const n of names) assert.ok(n in E, `${n} is not exported`);
+});
+test('engine: the turn clock allows for the playback of the moves just made', () => {
+  const st = { turn: 'O', winner: null, timer: E.newTimer(60) };
+  E.armClock(st, [], 1000);
+  assert.equal(st.timer.deadline, 61000); assert.equal(st.timer.for, 'O');
+  const e = { type: 'ttt', kind: 'move', square: 0 };
+  E.armClock(st, [e], 1000);
+  assert.equal(st.timer.deadline, 61000 + E.PLAY.spot + E.playMs(e) + E.PLAY.flash.move);
+  st.winner = 'X'; E.armClock(st, [e], 1000);
+  assert.equal(st.timer.deadline, null, 'no clock once the match is over');
+});
+test('engine: resigning hands the match to the other side', () => {
+  const rec = E.newOnlineMatch({ names: { X: 'A', O: 'B' } }, E.makeRng(5), 'g1');
+  const r = E.applyOnlineResign(rec, 'X');
+  assert.ok(r.ok); assert.equal(r.rec.state.winner, 'O'); assert.equal(r.rec.state.winReason, 'resign'); assert.equal(r.rec.state.resigned, 'X');
+  assert.equal(E.applyOnlineResign(r.rec, 'O').reason, 'over', 'only once');
 });

@@ -1,0 +1,56 @@
+# Deploys the Cloud Functions and the Realtime Database rules whenever they change on main.
+# It needs one repository secret, FIREBASE_SERVICE_ACCOUNT: a service-account key (JSON) for the
+# Firebase project (README: "Deploying"). The engine and server tests run first, on the Firebase
+# Emulator Suite; nothing is deployed unless they pass.
+name: Deploy Firebase (functions and rules)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'functions/**'
+      - 'engine.js'
+      - 'database.rules.json'
+      - 'firebase.json'
+      - '.firebaserc'
+      - 'test/server.test.js'
+      - '.github/workflows/firebase.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: firebase-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Install
+        run: |
+          npm ci
+          npm ci --prefix functions
+          npm i -g firebase-tools@14
+      - name: Engine tests
+        run: node --test test/logic.test.js test/server-rules.test.js
+      - name: Server tests on the Firebase Emulator Suite
+        run: npm run test:emulators
+      - name: Credentials
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$SA" ]; then echo "::error::The FIREBASE_SERVICE_ACCOUNT secret is missing (README: Deploying)."; exit 1; fi
+          printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/sa.json" >> "$GITHUB_ENV"
+      - name: Deploy functions and rules
+        run: firebase deploy --only functions,database --project tic-tac-chaos --non-interactive --force

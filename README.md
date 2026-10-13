@@ -5,9 +5,11 @@ Play it: https://jaredmk.github.io/Tiger-tac-toe/
 A two-player, pass-and-play game for one phone, against the computer, or online, drawn in a
 1930s rubber-hose cartoon style: thick wobbly ink lines, flat colours on cream paper, an X and an O
 with faces, and a squash-and-stretch stamp with comic-book bursts when a square is won. The
-fonts (Luckiest Guy, Patrick Hand) are embedded, so the look survives offline. The whole game is
-`index.html`: inline CSS and JS, no build step; the local modes work offline. Online play uses a
-Firebase Realtime Database (see "Setting up Firebase").
+fonts (Luckiest Guy, Patrick Hand) are embedded, so the look survives offline. The game is
+`index.html` (inline CSS and the UI) plus `engine.js` (every rule of the game, shared with the
+server); no build step, and the local modes work offline. Online play uses Firebase: the Realtime
+Database, Authentication, and Cloud Functions for accounts, matchmaking, ratings and history (see
+"Setting up Firebase").
 
 Open `index.html` in a browser (or serve the folder with any static server) and play.
 
@@ -154,35 +156,101 @@ a player's second timeout in a row loses the match at once: the win screen reads
 
 ### Setting up Firebase
 
-Online play needs a Firebase project. The free Spark plan is enough; nothing here needs billing or
-Cloud Functions. Once, from a computer:
+The project `tic-tac-chaos` already exists, with the Realtime Database and anonymous sign-in on (the
+original setup is in the git history). Accounts and matchmaking add Cloud Functions, which need the
+pay-as-you-go plan. Expected use stays inside the free quotas; the budget alert is a safety net.
+Once, from a computer:
 
-1. Go to https://console.firebase.google.com and sign in with a Google account. Click **Create a
-   project** (or **Add project**), name it (for example `tiger-tac-toe`), and continue. Google
-   Analytics is not needed: turn it off when asked. Wait for the project to be ready and click
-   **Continue**.
-2. In the left menu open **Build → Realtime Database** and click **Create Database**. Pick the
-   location closest to you and choose **Start in locked mode**, then **Enable**.
-3. Still in Realtime Database, open the **Rules** tab, replace everything with the contents of
-   `database.rules.json` from this repository, and click **Publish**. These rules let only signed-in
-   users read, let only the two players of a room write to it (a free seat can be taken by a joiner),
-   and let anyone delete a room older than a day.
-4. Open **Build → Authentication**, click **Get started**, then under **Sign-in method** choose
-   **Anonymous**, switch **Enable** on and **Save**.
-5. Open the project's settings (the gear next to **Project Overview** → **Project settings**). Under
-   **Your apps** click the web icon (`</>`), give the app a nickname (for example `web`), leave
-   Firebase Hosting unticked, and click **Register app**. The page shows a `firebaseConfig` object
-   with `apiKey`, `authDomain`, `databaseURL`, `projectId`, `storageBucket`, `messagingSenderId` and
-   `appId`. (If `databaseURL` is missing, it is shown on the Realtime Database page, in the form
-   `https://<project>-default-rtdb.<region>.firebasedatabase.app`.)
-6. Open `index.html`, find `const FIREBASE_CONFIG = {` near the start of the online-play section, and
-   replace the `PASTE_…` values with `apiKey`, `authDomain`, `databaseURL`, `projectId` and `appId`
-   from that object (the other two fields are not needed). Then run `./deploy.sh "Add the Firebase
-   config"`.
+1. **Blaze plan.** Open https://console.firebase.google.com/project/tic-tac-chaos/usage/details and
+   click **Modify plan** (or the plan name, "Spark", at the bottom of the left menu, then
+   **Upgrade**). Choose **Blaze (pay as you go)**, pick or create a Cloud Billing account (it needs a
+   card), and confirm.
+2. **Budget alert at $1/month.** If the upgrade offers a budget, set it to $1. Otherwise open
+   https://console.cloud.google.com/billing/budgets, choose the billing account, click **Create
+   budget**: name it "Tic Tac Chaos", scope it to the project `tic-tac-chaos`, set **Budget type:
+   Specified amount** to $1, keep the 50%, 90% and 100% alert thresholds, and keep **Email alerts to
+   billing admins and users** ticked. Click **Finish**. A budget sends emails; it does not stop spending.
+3. **Sign-in methods.** Open **Build → Authentication → Sign-in method**. Click **Add new provider →
+   Google**, switch **Enable** on, pick the support email and **Save**. Then **Add new provider →
+   Email/Password**, switch the first **Enable** on (leave "Email link" off) and **Save**. Password
+   reset emails need nothing more (the wording is under **Authentication → Templates**). Leave
+   **Anonymous** on: friend-code games without an account use it.
+4. **Authorised domain.** Still in Authentication, open **Settings → Authorized domains**, click
+   **Add domain**, enter `jaredmk.github.io` and click **Add**.
+5. **A deploy key for GitHub.** Open
+   https://console.cloud.google.com/iam-admin/serviceaccounts?project=tic-tac-chaos and click
+   **Create service account**. Name it `github-deploy`, click **Create and continue**, and add these
+   roles: **Editor**, **Cloud Functions Admin**, **Cloud Run Admin** and **Service Account User**.
+   Click **Done**. Open the new account, go to **Keys → Add key → Create new key → JSON**, and save
+   the file. Then in GitHub open the `Tiger-tac-toe` repository, **Settings → Secrets and variables →
+   Actions → New repository secret**, name it `FIREBASE_SERVICE_ACCOUNT`, paste the whole content of
+   the JSON file, and click **Add secret**. Delete the downloaded file.
 
-The config is not a secret: it identifies the project, and the database rules decide what anyone can
-do with it. The Firebase SDK (about 300 KB) is fetched from Google's CDN only when online play is
-chosen; local modes stay offline-capable.
+That is all: the next push deploys the functions and the rules (see "Deploying"). The first
+functions deploy also switches on the Google Cloud services they run on (Cloud Functions, Cloud
+Build, Artifact Registry, Cloud Run, Eventarc, Cloud Scheduler), which can take several minutes.
+
+For local work, the Firebase CLI installs with `npm install -g firebase-tools` (Node 22). The
+emulators need Java 11 or newer; `firebase login` is only needed to deploy from your own computer.
+
+The web config in `index.html` (`FIREBASE_CONFIG`) is not a secret: it identifies the project, and
+the security rules decide what anyone can do with it. The Firebase SDK (about 400 KB) is fetched
+from Google's CDN only when something online is used (or at start for a player who logged in
+before); local modes stay offline-capable.
+
+## Accounts, Find Match, the leaderboard and history
+
+**Logging in.** The main menu has **Log in** at the top right (with **Leaderboard** at the top left).
+A player logs in with Google or with an email and a password (**Create account** the first time,
+**Forgot password?** emails a reset link). On first login they pick a username: 3 to 16 letters,
+numbers or underscores, unique whatever the capitals, checked by a basic profanity filter, and
+permanent. The menu then shows the username and rating instead of Log in; tapping it opens the
+player's profile, which has **Log out**. Playing locally, against the computer or with a friend's
+code needs no account (a friend game without one uses an anonymous session, as before).
+
+**Find Match** (needs an account) pairs strangers. **Ranked** counts toward the rating, with every
+mini-game on and 1 minute a turn. **Casual** changes no rating; every mini-game is on and the player
+picks 30s, 1 min or 3 min a turn, meeting only players who picked the same. The screen shows
+"Searching…" with the time waited and **Cancel**. The server pairs the two closest ratings in the
+queue first; the allowed gap starts at 100 points and widens by 50 every 5 seconds of waiting, to
+anyone after a minute and a half. Sides are drawn at random. Two players who search at the same
+moment are paired once: the queue is changed in one database transaction. A player can be in only
+one matchmaking game at a time; with one in progress, Find Match reads **Back to your match**.
+
+**The server runs these games.** A move goes to a Cloud Function, which checks that it is that
+player's turn and that the move is legal with the same engine the page uses (`engine.js`), makes
+every random choice itself (dice, coins, spins, cards, words, codes, timeout moves), applies the
+move and writes the public state. The phones never write a matchmaking game; they read its public
+state and play every move back exactly as in a friend game (the square lit up on the board, the
+zoom, the animation), including the moves missed while away. Hidden values (words, numbers, codes,
+cards, the treasure, the ship) are stored where no phone can read them, and appear in the public
+state only when the game reveals them. The turn deadline is a server time. When it passes, either
+phone asks the server for the timeout move and the server checks the deadline first; a scheduled
+function does the same every minute for games nobody is watching. Two timeouts in a row lose the
+match. Leaving a ranked or casual match through the menu is a resignation, which loses it ("Leaving
+will count as a loss" in the confirmation).
+
+**Ratings.** Everyone starts at 1200. When a ranked match ends, a Cloud Function updates both
+ratings with standard Elo (K = 32, a draw scoring 0.5): both ratings, both records, the leaderboard
+and both histories are written in one atomic update, once per game. The results screen shows the
+change ("+16 Rating 1216") and the opponent's name, which opens their profile. Only ranked
+matchmaking games change ratings; casual, friend-code, local and computer games never do.
+
+**Leaderboard** (from the main menu): the top 100 by rating, with rank, username, rating and
+wins–losses–draws; equal ratings share a rank. Only players with at least five ranked games are
+listed. A logged-in player outside the top 100 sees their own rank pinned below the list. The
+server keeps the leaderboard up to date; tapping a row opens that player's profile.
+
+**Profiles and history.** A profile shows the username, rating, record, join date and the player's
+online games, newest first: ranked, casual and friend-code games (marked Unrated), each with the
+opponent, the date, the result, how it ended (three in a row, most squares, timeout or resignation)
+and, for ranked games, the rating before and after. Tapping a game opens the read-only review
+board with everything that was hidden revealed. Anyone logged in can open anyone's profile.
+
+**Security rules** (`database.rules.json`): phones may read profiles, the leaderboard and histories,
+and their own matchmaking game's public state; only Cloud Functions write ratings, records,
+usernames, the leaderboard, histories, queues and game state. A game's hidden values have no read
+rule at all.
 
 ## Playing against the computer
 
@@ -221,18 +289,25 @@ that rely on the other side being forced to move do not apply there.
 
 ## Deploying
 
-The game is served by GitHub Pages from the `main` branch of the `Tiger-tac-toe` repository, root
-folder, at https://jaredmk.github.io/Tiger-tac-toe/. After a change, publish it with one command:
+The game is served by GitHub Pages from the `main` branch of the `Tiger-tac-toe` repository, at
+https://jaredmk.github.io/Tiger-tac-toe/. After a change, publish it with one command:
 
 ```sh
 ./deploy.sh "what changed"
 ```
 
-It commits everything, pushes `main`, and the site updates within a minute or so.
+It commits everything and pushes `main`. Two GitHub Actions workflows take it from there:
+
+- `pages.yml` publishes the site (only the web files: `index.html`, `engine.js`, `styles.html`)
+  within a minute or so, on every push.
+- `firebase.yml` runs when the server changed (`functions/`, `engine.js`, `database.rules.json`,
+  `firebase.json`): it runs the engine tests and the server tests on the Firebase Emulator Suite,
+  and only if they pass deploys the Cloud Functions and the database rules with the
+  `FIREBASE_SERVICE_ACCOUNT` secret. `deploy.sh` says when it will run. To deploy those from your
+  own computer instead: `DEPLOY_FIREBASE=local ./deploy.sh "message"` (after `firebase login`).
 
 First-time setup: create an empty public repository called `Tiger-tac-toe` on GitHub, then push
-`main` to it. The workflow in `.github/workflows/pages.yml` switches Pages on and publishes the site
-on that first push, and again after every later push to `main` (which is what `deploy.sh` does).
+`main` to it. The Pages workflow switches Pages on and publishes the site on that first push.
 
 ```sh
 git checkout -B main
@@ -242,17 +317,29 @@ git push -u origin main
 
 ## Tests
 
-The game logic lives in the `<script id="logic">` block of `index.html` and is covered by
-`test/logic.test.js` (the online match records: secrets kept apart from the public state, moves and
-timeouts applied as transactions would apply them, picks, rematches; every mini-game's win and draw logic including Hex path-finding and
-lopsided-move cases, the Hangman bonus guess, draw resets, the return to the board after each move,
-main-board three-in-a-row and majority wins, random full matches, and the computer player: legal
-moves only, decisions that cannot see hidden information, match-winning squares taken and defended,
-each game's tactics, and computer-versus-computer matches that finish; and the turn clock: a legal
-random move in every mini-game on a timeout, the Pig roll-then-bank, no bonus move for a lucky
-Hangman letter, timeouts counted per player and the second in a row losing the match). It uses Node's
-built-in test runner:
+The rules of the game live in `engine.js`: pure and deterministic (no clock, no `Math.random`;
+every random choice comes from an rng passed in, `makeRng(seed)` for a seeded one), loaded by the
+page as a plain script and by the Cloud Functions with `require`. `test/logic.test.js` covers it
+(every mini-game's win and draw logic, the main board, random and timed-out moves, the computer
+player, the online match records with hidden values kept apart, resigning, the turn clock, and that
+the same seed plays the same match). `test/server-rules.test.js` covers the server's own rules
+(usernames and the profanity filter, Elo, matchmaking pairs). Both run with Node's test runner:
 
 ```sh
+npm install
 node --test
 ```
+
+`test/server.test.js` runs the server on the Firebase Emulator Suite (Auth, Realtime Database,
+Functions; it needs Java): usernames, the security rules refusing direct writes to ratings, records,
+history and games, two (and six) players searching at once each paired exactly once, rating ranges
+widening with the wait, a full ranked match with hidden values unreadable and illegal or out-of-turn
+moves refused, Memory's two-step move, timeouts with both players away played out by the sweep,
+resigning, casual games leaving ratings alone, the leaderboard entry after five ranked games, and
+friend-code games saved to the history as unrated:
+
+```sh
+npm install && npm install --prefix functions
+npm run test:emulators
+```
+

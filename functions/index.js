@@ -1,0 +1,339 @@
+'use strict';
+/* Tic Tac Chaos: the server. Cloud Functions (2nd gen) on the Realtime Database.
+ *
+ * Accounts: a username is claimed once, unique (case aside), through claimUsername; profiles,
+ * ratings, records, the leaderboard and game history are written only here.
+ *
+ * Matchmaking games (ranked and casual) are run by the server alone. A phone asks for a move with
+ * the `move` callable; the server checks that it is that player's turn and that the move is legal
+ * (with engine.js, the same rules the page runs), makes every random choice, and writes the public
+ * state. Hidden values (words, numbers, codes, cards, the treasure, the ship) stay in the game's
+ * `sec` node, which no phone can read; the public state shows them only once the game reveals them.
+ * The turn deadline is a server time; when it passes, either phone may ask for the timeout move
+ * (`timeout`), and a scheduled sweep does it every minute for games nobody is watching.
+ *
+ * Database layout (see database.rules.json):
+ *   users/{uid}            profile: username, rating, wins, losses, draws, games, joined
+ *   usernames/{lowercase}  uid
+ *   leaderboard/{uid}      username, rating, record; only players with 5+ ranked games
+ *   history/{uid}/{game}   one finished online game, from that player's side
+ *   queue/{key}/{uid}      searching players (key: ranked, casual30, casual60, casual180)
+ *   active/{uid}           the matchmaking game a player is in
+ *   games/{id}/pub         the public game: players, mode, status, state (JSON), result, final (JSON)
+ *   games/{id}/sec         the hidden values (JSON): never readable by a phone
+ *   games/{id}/dl          the turn deadline (for the sweep); 1 once over and not yet recorded
+ */
+const { onCall, onRequest, HttpsError } = require('firebase-functions/v2/https');
+const { onSchedule } = require('firebase-functions/v2/scheduler');
+const { onValueWritten } = require('firebase-functions/v2/database');
+const { setGlobalOptions } = require('firebase-functions/v2');
+const logger = require('firebase-functions/logger');
+const admin = require('firebase-admin');
+const crypto = require('node:crypto');
+const E = require('./engine.js');
+const R = require('./serverRules.js');
+
+setGlobalOptions({ region: 'us-central1', maxInstances: 10, memory: '256MiB' });
+const cfg = JSON.parse(process.env.FIREBASE_CONFIG || '{}');
+const projectId = cfg.projectId || process.env.GCLOUD_PROJECT;
+admin.initializeApp({ databaseURL: `https://${projectId}-default-rtdb.firebaseio.com` });   // the project's default database (the emulator too: same name)
+const db = admin.database();
+
+const STALE_MS = 15000;          // a searcher that has not checked in for this long has left the queue
+const MATCH_GRACE_MS = 3000;     // the first turn's clock starts a moment late, while both phones load the board
+const GAME_KEEP_MS = 24 * 3600 * 1000;   // finished games are deleted after a day (their history stays)
+const CALL = { cors: true };
+
+const now = () => Date.now();
+const seedRng = () => E.makeRng(crypto.randomBytes(16).toString('hex'));
+function needUid(req) {
+  if (!req.auth || !req.auth.uid) throw new HttpsError('unauthenticated', 'Log in first.');
+  return req.auth.uid;
+}
+function needAccount(req) {
+  const uid = needUid(req);
+  if (req.auth.token && req.auth.token.firebase && req.auth.token.firebase.sign_in_provider === 'anonymous') throw new HttpsError('unauthenticated', 'Log in first.');
+  return uid;
+}
+function gameId(v) {
+  if (typeof v !== 'string' || !/^[-\w]{8,40}$/.test(v)) throw new HttpsError('invalid-argument', 'No such game.');
+  return v;
+}
+const sideOf = (pub, uid) => (pub.players.X.uid === uid ? 'X' : pub.players.O.uid === uid ? 'O' : null);
+const parse = s => (typeof s === 'string' ? JSON.parse(s) : s || {});
+
+/* ===================== accounts ===================== */
+exports.claimUsername = onCall(CALL, async req => {
+  const uid = needAccount(req);
+  const name = String((req.data && req.data.username) || '').trim();
+  const problem = R.usernameProblem(name);
+  if (problem) return { ok: false, reason: problem };
+  const have = (await db.ref(`users/${uid}/username`).get()).val();
+  if (have) return have === name ? { ok: true, username: have } : { ok: false, reason: 'You already have a username' };
+  const lower = name.toLowerCase();
+  const claim = await db.ref(`usernames/${lower}`).transaction(cur => (cur === null || cur === uid ? uid : undefined), undefined, false);
+  if (!claim.committed) return { ok: false, reason: 'That username is taken' };
+  const made = await db.ref(`users/${uid}`).transaction(cur => {
+    if (cur && cur.username) return undefined;
+    return { username: name, rating: R.START_RATING, wins: 0, losses: 0, draws: 0, games: 0, joined: now() };
+  }, undefined, false);
+  if (!made.committed) { await db.ref(`usernames/${lower}`).remove(); return { ok: false, reason: 'You already have a username' }; }
+  return { ok: true, username: name };
+});
+
+/* ===================== matchmaking ===================== */
+// Find Match: joins the queue (or stays in it), pairs whoever can be paired, and answers with the
+// game once there is one. The phone calls it every few seconds while searching, which keeps its place
+// and lets the rating range widen; Cancel leaves the queue.
+exports.findMatch = onCall(CALL, async req => {
+  const uid = needAccount(req);
+  const key = R.queueKey(req.data && req.data.queue, Number(req.data && req.data.timer));
+  if (!key) throw new HttpsError('invalid-argument', 'Pick Ranked or Casual (and a timer).');
+  const prof = (await db.ref(`users/${uid}`).get()).val();
+  if (!prof || !prof.username) throw new HttpsError('failed-precondition', 'Pick a username first.');
+  const act = await activeGame(uid);
+  if (act) return { status: 'matched', game: act.game, side: act.side };
+  for (const other of Object.keys(R.QUEUES)) if (other !== key) await leaveQueue(other, uid);   // one queue at a time
+  let made = [], mine = null;
+  await db.ref(`queue/${key}`).transaction(cur => {
+    made = []; mine = null;
+    const t = now(), q = cur || {};
+    for (const [u, e] of Object.entries(q)) if (!e || (!e.game && t - e.seen > STALE_MS)) delete q[u];
+    const me = q[uid] || { since: t };
+    q[uid] = Object.assign(me, { rating: prof.rating, name: prof.username, seen: t });
+    for (const [a, b] of R.pairQueue(q, t)) {
+      const id = db.ref('games').push().key, xFirst = crypto.randomInt(2) === 0;
+      q[a] = Object.assign(q[a], { game: id, side: xFirst ? 'X' : 'O', vs: b, at: t });
+      q[b] = Object.assign(q[b], { game: id, side: xFirst ? 'O' : 'X', vs: a, at: t });
+      made.push({ id, a, b });
+    }
+    mine = q[uid].game ? { game: q[uid].game, side: q[uid].side } : null;
+    return q;
+  }, undefined, false);
+  for (const p of made) await createGame(key, p.id).catch(e => logger.error('createGame', p.id, e));
+  if (!mine) return { status: 'searching' };
+  await createGame(key, mine.game).catch(() => {});   // made by another call: make sure it exists (it is made once)
+  return { status: 'matched', game: mine.game, side: mine.side };
+});
+exports.cancelSearch = onCall(CALL, async req => {
+  const uid = needUid(req);
+  let game = null;
+  for (const key of Object.keys(R.QUEUES)) {
+    await db.ref(`queue/${key}/${uid}`).transaction(cur => {
+      if (cur && cur.game) { game = { game: cur.game, side: cur.side }; return undefined; }   // already paired: too late to cancel
+      return null;
+    }, undefined, false);
+  }
+  return game ? Object.assign({ status: 'matched' }, game) : { status: 'cancelled' };
+});
+async function leaveQueue(key, uid) {
+  await db.ref(`queue/${key}/${uid}`).transaction(cur => (cur && cur.game ? undefined : null), undefined, false);
+}
+// The game a player is in, if it is still being played.
+async function activeGame(uid) {
+  const a = (await db.ref(`active/${uid}`).get()).val();
+  if (!a || !a.game) return null;
+  const status = (await db.ref(`games/${a.game}/pub/status`).get()).val();
+  if (status === 'playing') return a;
+  if (status !== 'over') await db.ref(`active/${uid}`).remove();
+  return null;
+}
+// A paired game, made exactly once from the two queue entries: the random board, the sides as drawn,
+// all mini-games on, the queue's time per turn. Then both players are pointed at it.
+async function createGame(key, id) {
+  const q = (await db.ref(`queue/${key}`).get()).val() || {};
+  const pair = Object.entries(q).filter(([, e]) => e && e.game === id);
+  if (pair.length !== 2) return false;                       // made already (the entries are gone) or not a pair
+  const [[ua, ea], [ub, eb]] = pair;
+  const X = ea.side === 'X' ? { uid: ua, e: ea } : { uid: ub, e: eb }, O = X.uid === ua ? { uid: ub, e: eb } : { uid: ua, e: ea };
+  const Q = R.QUEUES[key], t = now();
+  const rng = seedRng();
+  const rec = E.newOnlineMatch({ names: { X: X.e.name, O: O.e.name }, games: Object.fromEntries(E.TYPES.map(g => [g, true])), timer: Q.timer }, rng, id);
+  E.armClock(rec.state, [], t + MATCH_GRACE_MS);
+  const players = { X: { uid: X.uid, name: X.e.name, rating: X.e.rating }, O: { uid: O.uid, name: O.e.name, rating: O.e.rating } };
+  const pub = { mode: Q.mode, queue: key, timer: Q.timer, players, status: 'playing', created: t, updated: t, state: JSON.stringify(rec.state) };
+  const made = await db.ref(`games/${id}`).transaction(cur => (cur ? undefined : { pub, sec: JSON.stringify(rec.secrets), dl: rec.state.timer.deadline }), undefined, false);
+  if (made.committed) {
+    await db.ref().update({
+      [`active/${X.uid}`]: { game: id, side: 'X', queue: key, mode: Q.mode },
+      [`active/${O.uid}`]: { game: id, side: 'O', queue: key, mode: Q.mode },
+      [`queue/${key}/${X.uid}`]: null, [`queue/${key}/${O.uid}`]: null,
+    });
+  }
+  return made.committed;
+}
+
+/* ===================== the game: moves, timeouts, resigning ===================== */
+// One change to a game, run as a transaction on games/{id} (public and hidden parts together).
+// `step(rec, side, pub)` returns the engine's answer; on success the new record is written, the turn
+// clock started and, if the match is over, the result recorded afterwards.
+async function changeGame(id, uid, step) {
+  let out = { ok: false, reason: 'missing' }, over = false;
+  const res = await db.ref(`games/${id}`).transaction(cur => {
+    if (cur === null) { out = { ok: false, reason: 'missing' }; return cur; }   // (a first guess from an empty cache: retried with the real value)
+    const pub = cur.pub;
+    if (!pub || pub.status !== 'playing') { out = { ok: false, reason: 'over' }; return undefined; }
+    const side = uid ? sideOf(pub, uid) : null;
+    if (uid && !side) { out = { ok: false, reason: 'not-player' }; return undefined; }
+    const rec = { state: parse(pub.state), secrets: parse(cur.sec) };
+    const r = step(rec, side, pub);
+    if (!r.ok) { out = { ok: false, reason: r.reason }; return undefined; }
+    const t = now();
+    if (r.entries) E.armClock(r.rec.state, r.entries, t);
+    pub.state = JSON.stringify(r.rec.state); cur.sec = JSON.stringify(r.rec.secrets || {});
+    pub.updated = t;
+    over = !!r.rec.state.winner;
+    if (over) { pub.status = 'over'; pub.ended = t; cur.dl = 1; }      // 1: over, the result still to record
+    else cur.dl = r.rec.state.timer && r.rec.state.timer.deadline || null;
+    out = { ok: true, seq: r.rec.state.seq };
+    return cur;
+  }, undefined, false);
+  if (!res.committed && out.ok) out = { ok: false, reason: 'busy' };
+  if (res.committed && over) await finishGame(id).catch(e => logger.error('finishGame', id, e));
+  return out;
+}
+// A move (or Memory's first card, kind 'pick') from the player on the move.
+exports.move = onCall(CALL, async req => {
+  const uid = needUid(req), d = req.data || {}, id = gameId(d.game);
+  const i = d.square;
+  if (!Number.isInteger(i) || i < 0 || i > 8) return { ok: false, reason: 'bad' };
+  if (d.kind === 'pick') {
+    const card = d.card == null ? null : d.card;
+    return changeGame(id, uid, (rec, side) => E.applyOnlinePick(rec, side, i, card));
+  }
+  if (d.move === undefined) return { ok: false, reason: 'bad' };
+  return changeGame(id, uid, (rec, side) => E.applyOnlineMove(rec, side, i, d.move, seedRng()));
+});
+// The turn's time is up: the random move for the player on the move (or the match, on a second
+// timeout in a row). Only once the deadline has really passed, by the server's clock.
+function timeoutStep(rec) {
+  const t = rec.state.timer;
+  if (rec.state.winner) return { ok: false, reason: 'over' };
+  if (!t || !t.limit || t.deadline == null || now() < t.deadline) return { ok: false, reason: 'early' };
+  return E.applyOnlineTimeout(rec, seedRng());
+}
+exports.timeout = onCall(CALL, async req => {
+  const uid = needUid(req), id = gameId((req.data || {}).game);
+  return changeGame(id, uid, timeoutStep);
+});
+// Leaving a matchmaking game through the menu: a resignation, which loses the match.
+exports.resign = onCall(CALL, async req => {
+  const uid = needUid(req), id = gameId((req.data || {}).game);
+  return changeGame(id, uid, (rec, side) => E.applyOnlineResign(rec, side));
+});
+
+/* ===================== the result: ratings, records, leaderboard, history ===================== */
+// Runs once per finished game (a claim on the game makes sure of it; a claim older than a minute that
+// never finished is taken over by the sweep).
+async function finishGame(id) {
+  let fresh = false;
+  await db.ref(`games/${id}/pub/recorded`).transaction(cur => {
+    if (cur && (cur.done || now() - cur.at < 60000)) { fresh = false; return undefined; }
+    fresh = true; return { at: now() };
+  }, undefined, false);
+  if (!fresh) return false;
+  const g = (await db.ref(`games/${id}`).get()).val();
+  if (!g || !g.pub || g.pub.status !== 'over') return false;
+  const pub = g.pub, st = parse(pub.state);
+  const final = finalOf({ state: st, secrets: parse(g.sec) }, { X: pub.players.X.name, O: pub.players.O.name });
+  const how = R.howEnded(st), t = pub.ended || now();
+  const up = {};
+  const result = { winner: st.winner || null, how };
+  if (pub.mode === 'ranked') {
+    const [px, po] = await Promise.all(['X', 'O'].map(s => db.ref(`users/${pub.players[s].uid}`).get().then(v => v.val())));
+    const scoreX = st.winner === 'X' ? 1 : st.winner === 'O' ? 0 : 0.5;
+    const next = R.elo(px.rating, po.rating, scoreX);
+    result.ratings = {};
+    for (const [s, p] of [['X', px], ['O', po]]) {
+      const res = R.resultFor(st, s), uid = pub.players[s].uid;
+      const rec = { rating: next[s], wins: p.wins + (res === 'win'), losses: p.losses + (res === 'loss'), draws: p.draws + (res === 'draw'), games: p.games + 1 };
+      result.ratings[s] = { before: p.rating, after: next[s], delta: next[s] - p.rating };
+      for (const [k, v] of Object.entries(rec)) up[`users/${uid}/${k}`] = v;
+      up[`leaderboard/${uid}`] = rec.games >= R.LEADERBOARD_MIN_GAMES ? Object.assign({ username: p.username }, rec) : null;
+    }
+  }
+  for (const s of ['X', 'O']) {
+    const me = pub.players[s], them = pub.players[E.other(s)];
+    up[`history/${me.uid}/${id}`] = historyRecord(pub.mode, s, them, st, final, t, result.ratings && result.ratings[s]);
+    up[`active/${me.uid}`] = null;
+  }
+  up[`games/${id}/pub/result`] = result;
+  up[`games/${id}/pub/final`] = JSON.stringify(final);
+  up[`games/${id}/pub/recorded`] = { at: now(), done: true };
+  up[`games/${id}/dl`] = null;
+  await db.ref().update(up);                                   // all of it at once: both ratings, records, leaderboard, history
+  return true;
+}
+// The final state with every hidden value revealed, for history and the review board.
+function finalOf(rec, names) {
+  const f = E.fullState(rec);
+  const keep = {};
+  for (const k of ['id', 'squares', 'winner', 'winLine', 'winReason', 'resigned', 'counts', 'moves', 'games', 'lastSquare', 'lastBy']) if (f[k] !== undefined) keep[k] = f[k];
+  keep.names = names;
+  return keep;
+}
+function historyRecord(mode, side, them, st, final, at, rating) {
+  const h = {
+    mode, side, rated: mode === 'ranked', date: at,
+    opponent: { uid: them.uid || null, name: them.name || E.other(side) },
+    result: R.resultFor(st, side), how: R.howEnded(st),
+    final: JSON.stringify(final),
+  };
+  if (rating) { h.ratingBefore = rating.before; h.ratingAfter = rating.after; }
+  return h;
+}
+
+/* ===================== friend-code games: history for logged-in players ===================== */
+// A room's match (played by the two phones, unrated) is saved to the history of each player who has
+// an account, once, when it ends.
+exports.friendGameDone = onValueWritten({ ref: '/rooms/{code}/match' }, async event => {
+  const after = event.data.after.val(), before = event.data.before.val();
+  if (!after || typeof after.state !== 'string') return;
+  const st = parse(after.state);
+  if (!st.winner) return;
+  if (before && typeof before.state === 'string') {
+    const b = parse(before.state);
+    if (b.id === st.id && b.winner) return;                    // the end was seen already
+  }
+  const room = (await db.ref(`rooms/${event.params.code}`).get()).val();
+  if (!room || !room.players) return;
+  const names = { X: room.players.X ? room.players.X.name : 'X', O: room.players.O ? room.players.O.name : 'O' };
+  const final = finalOf({ state: st, secrets: parse(after.secrets) }, names);
+  const id = 'f_' + event.params.code + '_' + (st.id || st.seq);
+  const up = {};
+  for (const s of ['X', 'O']) {
+    const p = room.players[s];
+    if (!p || !p.uid) continue;
+    const prof = (await db.ref(`users/${p.uid}/username`).get()).val();
+    if (!prof) continue;                                       // played without an account: no history
+    const o = room.players[E.other(s)] || {};
+    const ouser = o.uid ? (await db.ref(`users/${o.uid}/username`).get()).val() : null;
+    up[`history/${p.uid}/${id}`] = historyRecord('friend', s, { uid: ouser ? o.uid : null, name: o.name || E.other(s) }, st, final, now(), null);
+  }
+  if (Object.keys(up).length) await db.ref().update(up);
+});
+
+/* ===================== the sweep: every minute ===================== */
+// Timeouts for games nobody is watching, results not yet recorded, and finished games past a day.
+async function sweep() {
+  const t = now();
+  const due = (await db.ref('games').orderByChild('dl').startAt(1).endAt(t).limitToFirst(50).get()).val() || {};
+  let timeouts = 0, finished = 0;
+  for (const [id, g] of Object.entries(due)) {
+    if (g.pub && g.pub.status === 'over') { if (await finishGame(id).catch(() => false)) finished++; continue; }
+    const r = await changeGame(id, null, timeoutStep).catch(() => ({ ok: false }));
+    if (r.ok) timeouts++;
+  }
+  const old = (await db.ref('games').orderByChild('pub/ended').startAt(1).endAt(t - GAME_KEEP_MS).limitToFirst(50).get()).val() || {};
+  const up = {};
+  for (const [id, g] of Object.entries(old)) if (g.pub && g.pub.recorded && g.pub.recorded.done) { up[`games/${id}`] = null; up[`gpresence/${id}`] = null; }
+  if (Object.keys(up).length) await db.ref().update(up);
+  return { timeouts, finished, deleted: Object.keys(up).length / 2 };
+}
+exports.sweep = onSchedule({ schedule: 'every 1 minutes', timeZone: 'Etc/UTC', retryCount: 0 }, async () => {
+  const r = await sweep();
+  if (r.timeouts || r.finished || r.deleted) logger.info('sweep', r);
+});
+// The emulator cannot fire schedules: the tests run the same sweep through this hook, which exists
+// only in the emulator.
+if (process.env.FUNCTIONS_EMULATOR === 'true') exports.testSweep = onRequest(async (req, res) => { res.json(await sweep()); });

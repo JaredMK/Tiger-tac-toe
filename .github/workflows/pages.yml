@@ -27,8 +27,12 @@ jobs:
       - uses: actions/configure-pages@v5
         with:
           enablement: true
+      - name: Collect the site (only the web files; not the functions or tests)
+        run: |
+          mkdir _site
+          cp index.html engine.js styles.html .nojekyll _site/
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: _site
       - id: deployment
         uses: actions/deploy-pages@v4
