@@ -70,9 +70,10 @@ Each square is assigned one of these at random when the match starts (duplicates
 | Pig | Each player has a banked score. A move is a whole push-your-luck turn: roll a die, and a number not yet rolled this turn joins the pot; then roll again or bank. Banking adds the pot to your score and ends the move; a repeated number busts, losing the pot (at most six rolls). First to a banked 20 wins |
 | Treasure hunt | 5×5 grid with one hidden treasure. A move digs a cell: the treasure wins, otherwise the cell shows its distance to the treasure in steps up, down, left or right, coloured hot to cold. Everything dug stays visible |
 | Hexapawn | 3 columns × 4 rows; each side has 3 pawns on its home row (X on the bottom, O on the top). A move is one pawn stepping one square straight forward into an empty square, or capturing an opposing pawn one square diagonally forward. Tap a pawn to see its moves; the pawn slides over and a captured pawn is knocked off the board. You win the square by moving a pawn onto the other side's home row, or by making a move after which the other side has no legal move there (capturing all their pawns included). A player with no move in this square just plays elsewhere: they only lose it when the other side moves and leaves them stuck |
+| Mastermind | One hidden code shared by both players: 4 pegs from 6 colours, no colour twice, picked by the computer. A move is one guess of 4 different colours (tap a slot, then a colour; tap a filled slot to clear it). Feedback is a solid marker for each right colour in the right spot and a hollow marker for each right colour in the wrong spot, always solid first, so the order says nothing about which peg is which. Every guess and its markers stay on show, no guess limit; guessing the exact code wins. Each colour also carries a symbol (circle, square, triangle, diamond, star, plus) |
 
 Hidden information (the Wordle and Hangman words, the Higher/lower number, the Memory cards, the
-Battleship cell) is never shown on the board or in a mini-game before it is revealed.
+Battleship cell, the Mastermind code) is never shown on the board or in a mini-game before it is revealed.
 
 ## Playing online
 
@@ -108,7 +109,7 @@ nothing stops when one of them is backgrounded, reloaded or switched off for a w
   through, and a double tap cannot move twice. The moving phone generates the randomness of its own
   move (dice, coins, spins, resets) and the result is written into the state.
 - Hidden values (the Wordle and Hangman words, the Higher/lower number, the Memory cards, the
-  Battleship cell, the treasure) are generated when the match starts and kept in a separate node of
+  Battleship cell, the treasure, the Mastermind code) are generated when the match starts and kept in a separate node of
   the room, `match/secrets`; the state the phones render never contains them before they are
   revealed.
 - The record keeps the last few moves, so a phone that was away plays back what it missed. Presence
@@ -184,14 +185,16 @@ blocking in interactive games or racing in the luck games; squares on lines stil
 computer, or open for the opponent, come next; squares on no open line are worth almost nothing,
 beyond a little towards the majority rule. The chance of claiming a square comes from how many moves
 each side still needs there, with the odds built in for the luck games; a guess in a shared-clue game
-(Wordle, Hangman, Higher/lower, Battleship, Treasure hunt, Memory) counts for less because the clue
+(Wordle, Hangman, Higher/lower, Battleship, Treasure hunt, Memory, Mastermind) counts for less because the clue
 helps the other player too.
 
 Inside a square: Tic-tac-toe and Hexapawn play full minimax; Connect 4 searches five moves ahead with alpha-beta
 and a threat count; Hex spots wins and blocks through shortest-connection distances, one reply ahead;
 Battleship takes any unrevealed cell; Treasure hunt digs only cells consistent with every clue, the
 one that best narrows the rest; Higher/lower guesses the midpoint; Wordle keeps the words consistent
-with all feedback and guesses the one that splits them best; Hangman takes the letter most common in
+with all feedback and guesses the one that splits them best; Mastermind keeps the list of codes
+consistent with every guess so far and plays the guess (any of the 360 codes) whose worst-case
+answer leaves the fewest, which cracks any code in at most 5 guesses; Hangman takes the letter most common in
 the words still consistent with the pattern; Memory remembers every card shown and flips a known
 pair, else unseen cards; Coin flip flips the most coins allowed; Pig keeps rolling while the bust risk
 is acceptable and banks around 8 to 10, bolder when behind and safer when ahead, always when the bank

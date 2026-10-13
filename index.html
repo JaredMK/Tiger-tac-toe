@@ -987,6 +987,53 @@ button.seg.X.on { background: var(--x); color: var(--paper); } .seg.O.on { backg
 .winburst svg { width: 100%; height: auto; overflow: visible; animation: wiggle 1.4s ease-in-out infinite; }
 .win-card .big-g .pc { animation: bob 1s ease-in-out infinite; transform-origin: 50% 100%; }
 
+/* Mastermind */
+:root { --mc0: #e5432a; --mc1: #f08a24; --mc2: #f6c21b; --mc3: #4e9d3a; --mc4: #58a8cf; --mc5: #f19aa0; }
+.peg { display: inline-grid; place-items: center; width: 100%; aspect-ratio: 1; border-radius: 50%; border: 3px solid var(--ink); box-shadow: 0 3px 0 var(--ink); font-style: normal; position: relative; }
+.peg svg { width: 66%; height: 66%; fill: #fff; stroke: var(--ink); stroke-width: 1.6; overflow: visible; }
+.peg.c0 { background: var(--mc0); } .peg.c1 { background: var(--mc1); } .peg.c2 { background: var(--mc2); }
+.peg.c3 { background: var(--mc3); } .peg.c4 { background: var(--mc4); } .peg.c5 { background: var(--mc5); }
+.peg.hid { background: var(--ink); color: var(--paper); font-family: 'Luckiest Guy', sans-serif; font-size: 20px; padding-top: 4px; }
+.g-mm { --pg: min(46px, calc((var(--gw) - 120px) / 4)); width: min(var(--gw), 420px); height: var(--gh); display: flex; flex-direction: column; gap: 10px; padding-top: 6px; }
+.mmcode { flex: none; display: flex; justify-content: center; gap: 10px; padding: 8px 12px; background: var(--ink); border-radius: 16px 12px 18px 10px; align-self: center; }
+.mmcode .shell { width: var(--pg); display: block; perspective: 400px; }
+.mmcode.cracked { background: var(--green); border: 3px solid var(--ink); }
+.shell.flip .peg { animation: codeflip .5s ease-out both; animation-delay: calc(1.45s + var(--k) * .15s); }
+.mmlist { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding: 4px 2px; }
+.mmlist > :first-child { margin-top: auto; }
+.mmrow { display: grid; grid-template-columns: 28px repeat(4, var(--pg)) auto; gap: 8px; align-items: center; justify-content: center; }
+.mmby .pc { width: 28px; height: 28px; }
+.mmrow .peg.in { animation: pegpop .3s cubic-bezier(.3, 1.8, .5, 1) both; animation-delay: calc(var(--k) * .08s); }
+.mmfb { display: grid; grid-template-columns: repeat(2, 13px); gap: 3px; margin-left: 4px; }
+.mmfb i { width: 13px; height: 13px; border-radius: 50%; border: 2px dashed rgba(22, 18, 16, .35); }
+.mmfb i.sd { background: var(--ink); border: 2px solid var(--ink); }
+.mmfb i.hw { background: #fff; border: 2.5px solid var(--ink); }
+.mmkey { flex: none; display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 16px; margin-top: -4px; color: var(--muted); font-size: 14px; line-height: 1.2; }
+.mmkey span { display: inline-flex; align-items: center; gap: 6px; }
+.mmkey i { width: 13px; height: 13px; border-radius: 50%; }
+.mmkey i.sd { background: var(--ink); border: 2px solid var(--ink); }
+.mmkey i.hw { background: #fff; border: 2.5px solid var(--ink); }
+.mmfb i.rv { animation: markin .3s cubic-bezier(.3, 1.8, .5, 1) both; animation-delay: calc(.45s + var(--k) * .25s); }
+.mmcur { flex: none; display: flex; justify-content: center; gap: 10px; }
+.mmcur .mmslot { width: calc(var(--pg) + 8px); height: calc(var(--pg) + 8px); padding: 3px; border-radius: 50%; border: 3px dashed var(--ink); background: rgba(255, 255, 255, .6); }
+.mmcur .mmslot.at { border-style: solid; box-shadow: 0 0 0 4px var(--sky); }
+.mmcur .mmslot .peg.pop { animation: pegpop .3s cubic-bezier(.3, 1.8, .5, 1) both; }
+.mmpal { flex: none; display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
+.mmcol { padding: 4px; border: 0; background: none; border-radius: 50%; min-height: 44px; transition: transform .12s cubic-bezier(.3, 2, .5, 1); }
+.mmcol:active:not(:disabled) { transform: translateY(2px) scale(1.12, .86); }
+.mmcol:disabled { opacity: .3; }
+.mmgo { flex: none; background: var(--o); }
+.tmm { display: flex; flex-direction: column; align-items: center; gap: 1.6cqw; }
+.tmr { display: flex; align-items: center; gap: 1.6cqw; }
+.tmr > i { width: 11cqw; height: 11cqw; border-radius: 50%; background: #fff; box-shadow: inset 0 0 0 1.3px var(--ink); }
+.tmr > i.c0 { background: var(--mc0); } .tmr > i.c1 { background: var(--mc1); } .tmr > i.c2 { background: var(--mc2); }
+.tmr > i.c3 { background: var(--mc3); } .tmr > i.c4 { background: var(--mc4); } .tmr > i.c5 { background: var(--mc5); }
+.mmfb.tiny { grid-template-columns: repeat(2, 4.5cqw); gap: 1cqw; margin-left: 1cqw; }
+.mmfb.tiny i { width: 4.5cqw; height: 4.5cqw; border-width: 1px; }
+.tmm small { font-size: 8cqw; color: var(--muted); }
+@keyframes pegpop { 0% { transform: scale(.2); } 60% { transform: scale(1.2, .85); } 100% { transform: scale(1); } }
+@keyframes markin { 0% { transform: scale(0); } 70% { transform: scale(1.4); } 100% { transform: scale(1); } }
+@keyframes codeflip { 0% { transform: rotateY(90deg) scale(.8); } 100% { transform: rotateY(0) scale(1); } }
 /* Hexapawn */
 .g-hp { --hpw: min(var(--gw), calc((var(--gh) - 118px) * 3 / 4), 420px); width: var(--hpw); display: flex; flex-direction: column; gap: 8px; }
 .hpgoal { text-align: center; font-family: 'Luckiest Guy', sans-serif; font-size: 13px; letter-spacing: .03em; border: 3px solid var(--ink); border-radius: 12px 9px 13px 8px; padding: 5px 6px 2px; }
@@ -1053,7 +1100,7 @@ button.seg.X.on { background: var(--x); color: var(--paper); } .seg.O.on { backg
  * Everything about a match lives in one plain object (see newMatch); the UI
  * only ever calls playMove / endFlash and re-renders from that object.
  */
-const TYPES = ['ttt', 'c4', 'bs', 'wordle', 'hangman', 'hex', 'hilo', 'dice', 'memory', 'candy', 'coins', 'pig', 'hunt', 'hexapawn'];
+const TYPES = ['ttt', 'c4', 'bs', 'wordle', 'hangman', 'hex', 'hilo', 'dice', 'memory', 'candy', 'coins', 'pig', 'hunt', 'hexapawn', 'mastermind'];
 const INFO = {
   ttt:         { name: 'Tic-Tac-Toe',  hint: 'Three in a row wins' },
   c4:          { name: 'Connect 4',    hint: 'Pieces drop. Four in a row wins' },
@@ -1069,9 +1116,11 @@ const INFO = {
   pig:         { name: 'Pig',          hint: 'Roll and bank. A repeated number busts the pot. First to 20 wins' },
   hunt:        { name: 'Treasure Hunt', hint: 'Dig a cell: the number is its distance to the treasure. Dig it up to win' },
   hexapawn:    { name: 'Hexapawn',     hint: 'Step forward, capture diagonally. Reach the far row or leave them stuck' },
+  mastermind:  { name: 'Mastermind',   hint: 'Crack the hidden 4-colour code' },
 };
 const C4 = { cols: 7, rows: 6, k: 4 };
-const HP = { cols: 3, rows: 4 };      // Hexapawn: X starts on the bottom row and moves up, O starts on the top row and moves down
+const HP = { cols: 3, rows: 4 };
+const MM = { pegs: 4, colors: 6 };    // Mastermind: a code of 4 pegs from 6 colours, no colour twice      // Hexapawn: X starts on the bottom row and moves up, O starts on the top row and moves down
 const HEX_N = 4;
 const HILO = { lo: 1, hi: 20 };
 const CANDY = { len: 12, colors: ['red', 'yellow', 'green', 'blue'], gap: 3 };   // same colour at least 3 spaces apart
@@ -1316,6 +1365,52 @@ function hpMoves(cells, p) {
   }
   return out;
 }
+// Mastermind: one hidden code shared by both players, 4 pegs from 6 colours, no colour twice (in the
+// code or in a guess). Feedback: a solid marker per peg right in colour and place, a hollow one per peg
+// right in colour but in the wrong place. Everything guessed stays on show; the exact code wins.
+function mmFeedback(guess, code) {
+  let solid = 0, common = 0;
+  for (let k = 0; k < MM.pegs; k++) { if (guess[k] === code[k]) solid++; if (code.includes(guess[k])) common++; }
+  return { solid, hollow: common - solid };
+}
+function mmValid(g) { return Array.isArray(g) && g.length === MM.pegs && g.every(c => Number.isInteger(c) && c >= 0 && c < MM.colors) && new Set(g).size === MM.pegs; }
+let MM_ALL = null;                       // every possible code (6 x 5 x 4 x 3 = 360), built once
+function mmAll() {
+  if (MM_ALL) return MM_ALL;
+  MM_ALL = [];
+  const walk = (cur) => {
+    if (cur.length === MM.pegs) { MM_ALL.push(cur.slice()); return; }
+    for (let c = 0; c < MM.colors; c++) if (!cur.includes(c)) { cur.push(c); walk(cur); cur.pop(); }
+  };
+  walk([]);
+  return MM_ALL;
+}
+function mmCode(rng) { const cols = shuffle(Array.from({ length: MM.colors }, (_, c) => c), rng); return cols.slice(0, MM.pegs); }
+// The codes still consistent with every feedback so far (public information only).
+function mmCandidates(pm) {
+  return mmAll().filter(code => pm.guesses.every(g => { const f = mmFeedback(g.code, code); return f.solid === g.solid && f.hollow === g.hollow; }));
+}
+// The guess that best splits what is left: the smallest worst-case group of remaining codes (minimax),
+// a code that could itself be the answer first among equals.
+function mmBestGuess(cand) {
+  if (cand.length <= 2) return cand[0];
+  const canSet = new Set(cand.map(c => c.join('')));
+  let best = null, bestWorst = Infinity, bestIn = false;
+  for (const g of mmAll()) {
+    const groups = new Map();
+    let worst = 0;
+    for (const c of cand) {
+      const f = mmFeedback(g, c), k = f.solid * 10 + f.hollow;
+      const n = (groups.get(k) || 0) + 1;
+      groups.set(k, n);
+      if (n > worst) { worst = n; if (worst > bestWorst) break; }
+    }
+    const isIn = canSet.has(g.join(''));
+    if (worst < bestWorst || (worst === bestWorst && isIn && !bestIn)) { best = g; bestWorst = worst; bestIn = isIn; }
+  }
+  return best.slice();
+}
+
 function hpGoalRow(p) { return p === 'X' ? 0 : HP.rows - 1; }     // the opponent's home row
 // Saved games and rooms from before Connect 4 grew to 7 columns: the old 5-wide board gets an empty
 // column on each side, so every piece keeps its place (and its support) in the middle five.
@@ -1363,6 +1458,7 @@ function newMini(type, rng) {
     case 'pig':         return { type, bank: { X: 0, O: 0 }, turn: null, last: null };   // turn = the push-your-luck turn in progress
     case 'hunt':        return { type, treasure: randInt(rng, HUNT.n * HUNT.n), dug: new Array(HUNT.n * HUNT.n).fill(null), last: null };
     case 'hexapawn':    return { type, cells: ['O', 'O', 'O', null, null, null, null, null, null, 'X', 'X', 'X'], last: null };
+    case 'mastermind':  return { type, code: mmCode(rng), guesses: [] };
   }
   throw new Error('unknown mini-game: ' + type);
 }
@@ -1640,6 +1736,13 @@ function applyMove(mini, p, m, rng) {
       if (m === mini.treasure) return { ok: true, outcome: 'win', cells: [m] };
       return { ok: true, outcome: 'continue', note: 'dig' };
     }
+    case 'mastermind': {
+      if (!mmValid(m)) return { ok: false, reason: 'bad' };
+      const f = mmFeedback(m, mini.code);
+      mini.guesses.push({ by: p, code: m.slice(), solid: f.solid, hollow: f.hollow });
+      if (f.solid === MM.pegs) return { ok: true, outcome: 'win', cells: [0, 1, 2, 3] };
+      return { ok: true, outcome: 'continue', note: 'guess' };
+    }
     case 'hexapawn': {
       if (!Array.isArray(m) || m.length !== 2 || !m.every(k => Number.isInteger(k) && k >= 0 && k < HP.cols * HP.rows)) return { ok: false, reason: 'bad' };
       const [from, to] = m;
@@ -1675,6 +1778,7 @@ function publicMini(mini) {
     case 'ttt': case 'c4': case 'hex': case 'hexapawn': return { type: mini.type, cells: mini.cells.slice() };
     case 'bs':      return { type: 'bs', revealed: mini.revealed.slice() };
     case 'wordle':  return { type: 'wordle', guesses: mini.guesses.map(g => ({ by: g.by, word: g.word, marks: g.marks.slice() })) };
+    case 'mastermind': return { type: 'mastermind', guesses: mini.guesses.map(g => ({ by: g.by, code: g.code.slice(), solid: g.solid, hollow: g.hollow })) };
     case 'hangman': {
       const hits = new Set(mini.letters.filter(x => x.hit).map(x => x.l));
       return { type: 'hangman', pattern: mini.word.split('').map(ch => (hits.has(ch) ? ch : null)), letters: mini.letters.map(x => ({ l: x.l, hit: x.hit })) };
@@ -1802,6 +1906,7 @@ function needsOf(pm, p) {
     case 'pig':     { const pot = pm.turn && pm.turn.by === p ? pm.turn.pot : 0; return Math.max(1, (PIG.goal - pm.bank[p] - pot) / 7); }
     case 'hunt':    { const n = huntCandidates(pm).length; return n <= 1 ? 1 : 1 + Math.log2(n) / 2.5; }
     case 'hexapawn': return hpNeeds(pm.cells, p);
+    case 'mastermind': { const n = mmCandidates(pm).length; return n <= 1 ? 1 : Math.min((n + 1) / 2, 1 + Math.log(n) / Math.log(5)); }
   }
   return Infinity;
 }
@@ -2008,6 +2113,12 @@ function localBest(pm, me, rng) {
     case 'ttt': return pickValued(pm, me, tttMinimax(pm.cells, me), (cells, i) => i);
     case 'c4':  return pickValued(pm, me, c4Moves(pm.cells, me), c4Drop);
     case 'hex': return pickValued(pm, me, hexMoves(pm.cells, me), (cells, i) => i);
+    case 'mastermind': {
+      const cand = mmCandidates(pm);
+      if (!cand.length) return { move: mmCode(rng), q: 0, shared: true };
+      if (cand.length === 1) return { move: cand[0].slice(), q: 1, shared: true };
+      return { move: mmBestGuess(cand), q: 1 / cand.length, shared: true };
+    }
     case 'hexapawn': {
       const moves = hpMovesValued(pm.cells, me);
       if (!moves.length) return { move: null, q: 0 };
@@ -2155,6 +2266,7 @@ function randomLegalMove(mini, p, rng) {
     case 'ttt': case 'hex': return from(empties(mini.cells, c => !c));
     case 'c4': return from(Array.from({ length: C4.cols }, (_, c) => c).filter(c => !mini.cells[c]));
     case 'hexapawn': { const ms = hpMoves(mini.cells, p); return ms.length ? from(ms) : null; }
+    case 'mastermind': return mmCode(rng);
     case 'bs': return from(empties(mini.revealed, c => !c));
     case 'hunt': return from(empties(mini.dug, c => !c));
     case 'hilo': return mini.lo + randInt(rng, mini.hi - mini.lo + 1);
@@ -2242,6 +2354,7 @@ function playMove(state, i, m, rng, opts) {
     case 'pig': flash.roll = mini.last.roll; flash.pot = mini.last.pot; flash.rolls = mini.last.rolls; flash.bank = mini.bank[p]; break;
     case 'hunt': flash.dist = huntDist(mini.treasure, m); break;
     case 'hexapawn': flash.from = mini.last.from; flash.to = mini.last.to; flash.capture = mini.last.capture; break;
+    case 'mastermind': { const g = mini.guesses[mini.guesses.length - 1]; flash.code = g.code.slice(); flash.solid = g.solid; flash.hollow = g.hollow; break; }
   }
   if (outcome === 'win') {
     const w = res.winner || p;                   // a mini-game may hand the square to the other player
@@ -2325,6 +2438,7 @@ function secretOf(mini) {
     case 'bs': return { hidden: mini.hidden };
     case 'hunt': return { treasure: mini.treasure };
     case 'memory': return { cards: mini.cards.map(c => ({ s: c.s, c: c.c })) };
+    case 'mastermind': return { code: mini.code.slice() };
   }
   return null;
 }
@@ -2333,6 +2447,7 @@ function secretOf(mini) {
 function hideMini(m, k, st) {
   switch (m.type) {
     case 'wordle': delete m.word; break;
+    case 'mastermind': delete m.code; break;
     case 'hangman': { const hits = new Set(m.letters.filter(x => x.hit).map(x => x.l)); m.word = m.word.split('').map(ch => (hits.has(ch) ? ch : '_')).join(''); break; }
     case 'hilo': delete m.target; break;
     case 'bs': delete m.hidden; break;
@@ -2481,7 +2596,24 @@ const ICONS = {
   pig: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M3 10h18v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 3v7M8.5 6.5 12 3l3.5 3.5" stroke-linecap="round"/></svg>',
   hunt: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 3h12l4 6-10 12L2 9z"/></svg>',
   hexapawn: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="6" r="3.3"/><path d="M9.3 10.2h5.4l1.4 6.3H7.9z"/><path d="M6 17.6h12v3.2H6z"/></svg>',
+  mastermind: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="8" r="3"/><circle cx="12" cy="8" r="3"/><circle cx="19" cy="8" r="3"/><circle cx="8.5" cy="17" r="2.2"/><circle cx="15.5" cy="17" r="2.2" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>',
 };
+// Mastermind pegs: six colours, each with a symbol of its own (so colour is never the only cue).
+const MM_NAMES = ['Red', 'Orange', 'Yellow', 'Green', 'Blue', 'Pink'];
+const MM_SYM = [
+  '<circle cx="12" cy="12" r="5.6"/>',
+  '<rect x="6.6" y="6.6" width="10.8" height="10.8" rx="1"/>',
+  '<path d="M12 5.2 18.6 17.6H5.4z" stroke-linejoin="round"/>',
+  '<path d="M12 4.6 19.4 12 12 19.4 4.6 12z" stroke-linejoin="round"/>',
+  '<path d="m12 4.4 2.2 4.8 5.2.6-3.9 3.5 1.1 5.1L12 15.8l-4.6 2.6 1.1-5.1-3.9-3.5 5.2-.6z" stroke-linejoin="round"/>',
+  '<path d="M9.6 4.8h4.8v4.8h4.8v4.8h-4.8v4.8H9.6v-4.8H4.8V9.6h4.8z" stroke-linejoin="round"/>',
+];
+const mmPeg = (c, cls = '', style = '') => `<i class="peg c${c}${cls ? ' ' + cls : ''}"${style} role="img" aria-label="${MM_NAMES[c]}"><svg viewBox="0 0 24 24" aria-hidden="true">${MM_SYM[c]}</svg></i>`;
+// The feedback: solid markers first, then hollow ones, then empty places, always in that order.
+const mmMarks = (g, cls = '', fresh = false) => `<span class="mmfb${cls ? ' ' + cls : ''}" role="img" aria-label="${g.solid} solid, ${g.hollow} hollow">${Array.from({ length: MM.pegs }, (_, k) =>
+  `<i class="${k < g.solid ? 'sd' : k < g.solid + g.hollow ? 'hw' : ''}${fresh ? ' rv' : ''}"${fresh ? ` style="--k:${k}"` : ''}></i>`).join('')}</span>`;
+let mmDraft = null;                                              // Mastermind: { sq, slots, at } the guess being put together on this phone
+let mmPop = null;                                                // { sq, k, at }: the peg just placed pops in
 const GEM = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 3h12l4 6-10 12L2 9z"/><path d="M2 9h20" stroke="rgba(0,0,0,.25)" stroke-width="1.5"/></svg>';
 const DIE_MS = 600;                     // the die's tumble before the piece sets off
 let advOpen = false;                    // the setup screen's Advanced section (the mini-game list)
@@ -2593,7 +2725,7 @@ function render() {
   const view = state.screen + ':' + state.zoom;
   entering = view !== lastView; lastView = view;
   app.innerHTML = renderHeader() + renderMain();
-  const wl = document.getElementById('wlist');
+  const wl = document.getElementById('wlist') || document.getElementById('mmlist');
   if (wl) wl.scrollTop = wl.scrollHeight;
   animate();
   armFlash();
@@ -2617,6 +2749,7 @@ function animMs(f) {
     case 'pig':     return f.note === 'bank' ? 1000 : f.note === 'bust' ? 1350 : 1050;
     case 'hunt':    return won ? 1400 : 800;
     case 'hexapawn': return (f.capture ? 1000 : 500) + (won ? 600 : 0);
+    case 'mastermind': return 450 + MM.pegs * 250 + (won ? 900 : 0);
   }
   return 500;
 }
@@ -2792,6 +2925,12 @@ function thumb(mini, final) {
   switch (mini.type) {
     case 'ttt': return `<div class="tg g3">${mini.cells.map(c => `<i class="${c || ''}">${c ? toonT(c) : ''}</i>`).join('')}</div>`;
     case 'c4':  return `<div class="tg g5">${mini.cells.map(c => `<i class="${c || ''}"></i>`).join('')}</div>`;
+    case 'mastermind': {
+      const last = mini.guesses.slice(-4), more = mini.guesses.length - last.length;
+      const rows = last.length ? last.map(g => `<div class="tmr">${g.code.map(c => `<i class="c${c}"></i>`).join('')}${mmMarks(g, 'tiny')}</div>`).join('')
+        : `<div class="tmr">${'<i></i>'.repeat(4)}</div><div class="tmr">${'<i></i>'.repeat(4)}</div>`;
+      return `<div class="tmm">${rows}${more > 0 ? `<small>+${more} earlier</small>` : ''}</div>`;
+    }
     case 'hexapawn': return `<div class="tg thp">${mini.cells.map((c, i) => `<i class="${c || ''}${(Math.floor(i / HP.cols) + i) % 2 ? ' dk' : ''}">${c ? toonT(c) : ''}</i>`).join('')}</div>`;
     case 'bs':  return `<div class="tg g3 sea">${mini.revealed.map(r => `<i class="${r ? 'miss' : ''}"></i>`).join('')}</div>`;
     case 'wordle': {
@@ -3030,6 +3169,31 @@ function renderMini(sq, review) {
       }).join('')}</div><div class="heat"><span>Hot</span><i></i><span>Cold</span></div></div>`;
       break;
     }
+    case 'mastermind': {
+      // The hidden code under its shells (open once cracked, or when looking back), every guess with its
+      // markers, then the guess being made: tap a slot, then a colour; tap a filled slot to clear it.
+      const won = !!sq.owner || (a && (a.kind === 'claim' || a.kind === 'match'));
+      const open = view || (fresh && a);
+      const n = mini.guesses.length;
+      const code = Array.from({ length: MM.pegs }, (_, k) => open && mini.code
+        ? `<span class="shell open${fresh ? ' flip' : ''}" style="--k:${k}">${mmPeg(mini.code[k])}</span>`
+        : `<span class="shell"><i class="peg hid" aria-label="Hidden">?</i></span>`).join('');
+      const rows = mini.guesses.map((gs, r) => {
+        const last = a && r === n - 1;
+        return `<div class="mmrow${last ? ' fresh' : ''}"><span class="mmby ${gs.by}">${toon(gs.by)}</span>${gs.code.map((c, k) => mmPeg(c, last ? 'in' : '', last ? ` style="--k:${k}"` : '')).join('')}${mmMarks(gs, '', last)}</div>`;
+      }).join('');
+      if (!mmDraft || mmDraft.sq !== state.zoom || view || f || d) mmDraft = { sq: state.zoom, slots: [null, null, null, null], at: 0 };
+      const dr = mmDraft.slots, full = dr.every(c => c != null);
+      const pop = mmPop && mmPop.sq === state.zoom && performance.now() - mmPop.at < 300 ? mmPop.k : -1;
+      const slots = dr.map((c, k) => `<button class="mmslot${k === mmDraft.at && !locked ? ' at' : ''}" data-act="mmslot" data-k="${k}" aria-label="Slot ${k + 1}${c != null ? ', ' + MM_NAMES[c] + ' (tap to clear)' : ', empty'}"${locked ? ' disabled' : ''}>${c != null ? mmPeg(c, k === pop ? 'pop' : '') : ''}</button>`).join('');
+      const pal = Array.from({ length: MM.colors }, (_, c) => `<button class="mmcol c${c}" data-act="mmcol" data-c="${c}" aria-label="${MM_NAMES[c]}"${locked || dr.includes(c) ? ' disabled' : ''}>${mmPeg(c)}</button>`).join('');
+      g = `<div class="g-mm"><div class="mmcode${won ? ' cracked' : ''}" aria-label="The hidden code">${code}</div>
+        <div class="mmkey"><span><i class="sd"></i>right colour, right spot</span><span><i class="hw"></i>right colour, wrong spot</span></div>
+        <div class="mmlist" id="mmlist">${rows || `<div class="empty">${view ? 'No guesses were made.' : 'No guesses yet. Put four different colours together.'}</div>`}</div>
+        ${view ? '' : `<div class="mmcur" aria-label="Your guess">${slots}</div><div class="mmpal">${pal}</div>
+        <button class="big mmgo" data-act="move" ${mv(full ? dr : [])}${!full || locked ? ' disabled' : ''}>Submit guess</button>`}</div>`;
+      break;
+    }
     case 'hexapawn': {
       // Tap one of your pawns to see where it can go, then tap a highlighted square. The pawn just moved
       // slides in from where it was; a captured pawn is knocked off the board.
@@ -3106,6 +3270,7 @@ function summary(f) {
     case 'hunt': return `${who} dug ${f.dist} away · ${HEAT[f.dist]}`;
     case 'pig': return f.note === 'bust' ? `Bust! Pot of ${f.pot} lost` : `Banked ${f.pot}`;
     case 'hexapawn': return f.capture ? `${who} captured a pawn` : `${who} stepped forward`;
+    case 'mastermind': return `${who}: ${f.solid} solid · ${f.hollow} hollow`;
   }
   return `${who} placed`;
 }
@@ -3837,6 +4002,22 @@ app.addEventListener('click', e => {
     if (isHost()) { if (side !== was) hostSide(side); return; }   // the seats move over in the room; the room's answer updates the screen
     state.setup.human = side; syncNames(state.setup);
     commit();
+  } else if (act === 'mmslot') {                // Mastermind: pick a slot; a filled one is cleared
+    if (zoomedType() !== 'mastermind' || !mmDraft) return;
+    const k = Number(el.dataset.k);
+    if (mmDraft.slots[k] != null) mmDraft.slots[k] = null;
+    mmDraft.at = k;
+    render();
+  } else if (act === 'mmcol') {                 // ...then a colour goes into it, and the next empty slot is picked
+    if (zoomedType() !== 'mastermind' || !mmDraft) return;
+    const c = Number(el.dataset.c);
+    if (mmDraft.slots.includes(c)) return;
+    const k = mmDraft.slots[mmDraft.at] == null ? mmDraft.at : mmDraft.slots.indexOf(null);
+    if (k < 0) return;
+    mmDraft.slots[k] = c; mmPop = { sq: state.zoom, k, at: performance.now() };
+    const nxt = mmDraft.slots.findIndex((x, j) => x == null && j > k);
+    mmDraft.at = nxt >= 0 ? nxt : Math.max(0, mmDraft.slots.indexOf(null));
+    render();
   } else if (act === 'hpsel') {                 // Hexapawn: pick a pawn (again to put it down) to see its moves
     if (zoomedType() !== 'hexapawn') return;
     const i = Number(el.dataset.i);
@@ -3844,6 +4025,7 @@ app.addEventListener('click', e => {
     render();
   } else if (act === 'move') {
     hpSel = null;
+    if (el.dataset.m === '[]') return;
     attemptMove(JSON.parse(el.dataset.m));
   } else if (act === 'key') {
     typeLetter(el.dataset.k);
@@ -3967,8 +4149,9 @@ function cpuAct() {
   cpuTimer = null;
   if (!cpuTurn() || state.screen !== 'mini' || !cpuPlan || cpuPlan.square !== state.zoom || menuOpen) return;
   const plan = cpuPlan, type = state.squares[plan.square].mini.type;
-  if (!plan.stage && (type === 'memory' || type === 'wordle' || type === 'hexapawn')) {   // show the choice first, as a person would
-    if (type === 'memory') state.pick = plan.move[0]; else if (type === 'hexapawn') hpSel = { sq: plan.square, from: plan.move[0] }; else state.draft = plan.move;
+  if (!plan.stage && (type === 'memory' || type === 'wordle' || type === 'hexapawn' || type === 'mastermind')) {   // show the choice first, as a person would
+    if (type === 'memory') state.pick = plan.move[0]; else if (type === 'hexapawn') hpSel = { sq: plan.square, from: plan.move[0] };
+    else if (type === 'mastermind') mmDraft = { sq: plan.square, slots: plan.move.slice(), at: 0 }; else state.draft = plan.move;
     plan.stage = 1; commit(); return;
   }
   cpuPlan = null;

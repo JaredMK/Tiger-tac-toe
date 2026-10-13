@@ -12,7 +12,7 @@ const src = html.match(/<script id="logic">([\s\S]*?)<\/script>/)[1];
 const L = vm.runInThisContext(
   src + '\n;({ TYPES, INFO, C4, HEX_N, HILO, DICE_GOAL, MEMORY, CANDY, COINS, PIG, HUNT, NAME_MAX, WORDS5, WORDS_HANG, VALID5, LINES, other, newMini, newState, huntDist,' +
   ' startMatch, newMatch, defaultSetup, enabledGames, playerName, findRun, applyMove, mainResult, playMove, endFlash, leaveSquare, cpuMove, publicMini, squareValue, needsOf, winChance, moveGain, localBest, wordleCandidates, hangmanCandidates, huntCandidates, hexDist, candyExpected, cpuSide, syncNames, CPU_NAME, AI, wordleMarks, hexNeighbors,' +
-  ' hexPath, memoryDeck, candyTrack, canMove, anyMove, randomLegalMove, timeoutMove, TIMER_OPTIONS, newTimer, HP, hpMoves, hpSolve, hpNeeds, upgradeMini, normSetup, matchRecord, fullState, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, newOnlineMatch, secretOf, hideMini, RECENT_MAX })',
+  ' hexPath, memoryDeck, candyTrack, canMove, anyMove, randomLegalMove, timeoutMove, TIMER_OPTIONS, newTimer, HP, hpMoves, hpSolve, hpNeeds, upgradeMini, normSetup, MM, mmFeedback, mmAll, mmCandidates, mmBestGuess, mmValid, matchRecord, fullState, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, newOnlineMatch, secretOf, hideMini, RECENT_MAX })',
   { filename: 'index.html#logic' }
 );
 
@@ -871,7 +871,7 @@ test('setup: the app opens on the main menu with default names and every game ti
   assert.equal(st.screen, 'menu', 'the main menu comes first');
   assert.deepEqual(st.setup.names, { X: 'X', O: 'O' });
   assert.deepEqual(L.enabledGames(st.setup), L.TYPES);
-  assert.equal(L.TYPES.length, 14);
+  assert.equal(L.TYPES.length, 15);
   assert.ok(st.setup.games.coins && st.setup.games.pig && st.setup.games.hunt, 'the newest games are on by default');
   for (const t of L.TYPES) assert.ok(L.INFO[t] && L.INFO[t].name && L.INFO[t].hint, `info for ${t}`);
   assert.equal(L.playerName(st, 'X'), 'X');
@@ -1176,6 +1176,7 @@ function randomMove(m, rng, p) {
     case 'ttt': case 'hex': return pickFrom(empties(m.cells, c => !c));
     case 'c4': return pickFrom(Array.from({ length: L.C4.cols }, (_, c) => c).filter(c => !m.cells[c]));
     case 'hexapawn': return pickFrom(L.hpMoves(m.cells, p));
+    case 'mastermind': return pickFrom(L.mmCandidates(L.publicMini(m))).slice();   // a random code still possible: legal, and the square gets cracked
     case 'bs': return pickFrom(empties(m.revealed, c => !c));
     case 'wordle': return rng() < 0.2 ? m.word : pickFrom(L.WORDS5).toUpperCase();
     case 'hangman': return pickFrom('ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').filter(l => !m.letters.some(x => x.l === l)));
@@ -1287,6 +1288,7 @@ test('the public view of every mini-game holds nothing hidden', () => {
     if (t === 'bs') assert.ok(!('hidden' in pm));
     if (t === 'hunt') assert.ok(!('treasure' in pm));
     if (t === 'memory') assert.ok(pm.cards.every(c => c === null), 'no card is known before any is shown');
+    if (t === 'mastermind') assert.ok(!('code' in pm), 'the code is hidden');
     if (t === 'hangman') assert.ok(pm.pattern.every(ch => ch === null));
   }
   // what has been shown is public: a found letter, a dug cell's distance, a card once flipped
@@ -1825,8 +1827,13 @@ test('timeouts over every kind of game keep the state legal and plain', () => {
   for (let game = 0; game < 6; game++) {
     const st = L.newMatch(rng, { mode: 'online', timer: 30 });
     let guard = 0;
-    while (!st.winner && guard++ < 400) {
-      if (st.timer.bankNext) { st.timer.bankNext = false; assert.equal(L.playMove(st, st.lock, 'bank', rng, { forced: true }).ok, true); }
+    while (!st.winner && guard++ < 3000) {
+      const open = st.squares.map((q, i) => (q.owner ? -1 : i)).filter(i => i >= 0);
+      if (guard > 400 && st.lock == null && open.every(i => ['wordle', 'mastermind'].includes(st.squares[i].mini.type))) {
+        // only long-shot squares are left (a random word or code rarely cracks them): the forced move finds the secret
+        const m = st.squares[open[0]].mini;
+        assert.equal(L.playMove(st, open[0], m.type === 'wordle' ? m.word.toLowerCase() : m.code.slice(), rng, { forced: true }).ok, true);
+      } else if (st.timer.bankNext) { st.timer.bankNext = false; assert.equal(L.playMove(st, st.lock, 'bank', rng, { forced: true }).ok, true); }
       else {
         const r = L.timeoutMove(st, rng);
         assert.equal(r.ok, true, `timeout move failed: ${r.reason}`);
@@ -1845,7 +1852,7 @@ test('timeouts over every kind of game keep the state legal and plain', () => {
 
 
 // ---- online match records: the public state and the secrets apart, moves applied to the pair ----
-const SECRET_KEYS = { wordle: 'word', hangman: 'word', hilo: 'target', bs: 'hidden', hunt: 'treasure', memory: 'cards' };
+const SECRET_KEYS = { wordle: 'word', hangman: 'word', hilo: 'target', bs: 'hidden', hunt: 'treasure', memory: 'cards', mastermind: 'code' };
 test('a match record keeps every secret out of the public state and puts it back for a move', () => {
   const rng = lcg(11);
   for (const type of L.TYPES) {
@@ -2126,4 +2133,123 @@ test('hexapawn through playMove: the result carries the slide and the capture fo
   const rec = L.matchRecord(Object.assign(st, { id: 'h', seq: 0, recent: [] }));
   assert.deepEqual(rec.state.squares[0].mini.cells, st.squares[0].mini.cells);
   assert.equal(rec.secrets[0], undefined);
+});
+
+
+// ================================ Mastermind ================================
+const mmMini = code => ({ type: 'mastermind', code, guesses: [] });
+test('mastermind: feedback against known examples, including all the right colours in all the wrong spots', () => {
+  const code = [0, 1, 2, 3];
+  const cases = [
+    [[0, 1, 2, 3], 4, 0, 'exact'],
+    [[1, 0, 3, 2], 0, 4, 'all four colours, every one in the wrong spot'],
+    [[3, 2, 1, 0], 0, 4, 'reversed: all wrong spots'],
+    [[1, 2, 3, 0], 0, 4, 'rotated: all wrong spots'],
+    [[0, 1, 3, 2], 2, 2, 'two right, two swapped'],
+    [[0, 4, 5, 1], 1, 1, 'one right spot, one wrong spot'],
+    [[4, 5, 0, 1], 0, 2, 'two colours, both misplaced'],
+    [[4, 5, 2, 3], 2, 0, 'two right in place, two absent'],
+    [[0, 5, 4, 3], 2, 0],
+    [[5, 4, 1, 0], 0, 2],
+  ];
+  for (const [g, solid, hollow, why] of cases) assert.deepEqual(L.mmFeedback(g, code), { solid, hollow }, `${JSON.stringify(g)} ${why || ''}`);
+  // with only 6 colours and 4 pegs, at least two of any guess's colours are in the code
+  for (const g of L.mmAll()) { const f = L.mmFeedback(g, code); assert.ok(f.solid + f.hollow >= 2 && f.solid + f.hollow <= 4); }
+  // the markers are symmetric in count: guess vs code and code vs guess give the same result
+  const rng = lcg(4);
+  for (let k = 0; k < 200; k++) { const a = L.mmAll()[Math.floor(rng() * 360)], b = L.mmAll()[Math.floor(rng() * 360)]; assert.deepEqual(L.mmFeedback(a, b), L.mmFeedback(b, a)); }
+});
+
+test('mastermind: a hidden code of 4 different colours from 6; guesses must be 4 different colours too', () => {
+  assert.deepEqual(L.MM, { pegs: 4, colors: 6 });
+  assert.equal(L.mmAll().length, 360, '6 x 5 x 4 x 3 codes');
+  const rng = lcg(9);
+  for (let k = 0; k < 50; k++) {
+    const m = L.newMini('mastermind', rng);
+    assert.equal(m.code.length, 4); assert.equal(new Set(m.code).size, 4, 'no repeated colour');
+    assert.ok(m.code.every(c => c >= 0 && c < 6));
+  }
+  const m = mmMini([0, 1, 2, 3]);
+  for (const bad of [[0, 0, 1, 2], [0, 1, 2], [0, 1, 2, 3, 4], [0, 1, 2, 6], [-1, 1, 2, 3], 'RGBY', [0, 1, 2, 3.5]]) {
+    assert.deepEqual(L.applyMove(m, 'X', bad), { ok: false, reason: 'bad' }, JSON.stringify(bad));
+  }
+  assert.equal(m.guesses.length, 0, 'refused guesses leave nothing behind');
+  assert.ok(L.defaultSetup().games.mastermind, 'on by default in the Advanced list');
+  assert.ok(L.TYPES.includes('mastermind'));
+});
+
+test('mastermind: guesses and feedback stay on record; whoever guesses the exact code wins', () => {
+  const st = matchWith(['mastermind', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt']);
+  st.squares[0].mini = mmMini([5, 2, 0, 4]);
+  let r = L.playMove(st, 0, [0, 1, 2, 3], lcg(1));
+  assert.equal(r.ok, true); assert.equal(st.flash.kind, 'move');
+  assert.deepEqual([st.flash.solid, st.flash.hollow], [0, 2]);
+  assert.deepEqual(st.flash.code, [0, 1, 2, 3]);
+  L.endFlash(st);
+  assert.equal(st.turn, 'O');
+  r = L.playMove(st, 0, [5, 2, 4, 0], lcg(1));               // O: close, not exact
+  assert.equal(st.flash.kind, 'move'); assert.deepEqual([st.flash.solid, st.flash.hollow], [2, 2]);
+  L.endFlash(st);
+  r = L.playMove(st, 0, [5, 2, 0, 4], lcg(1));               // X cracks it
+  assert.equal(r.ok, true); assert.equal(st.flash.kind, 'claim'); assert.equal(st.squares[0].owner, 'X');
+  assert.deepEqual(st.squares[0].mini.guesses.map(g => [g.by, g.solid, g.hollow]), [['X', 0, 2], ['O', 2, 2], ['X', 4, 0]]);
+});
+
+test('mastermind: the code never leaves the hidden part until it is cracked', () => {
+  const st = matchWith(['mastermind', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt']);
+  st.squares[0].mini = mmMini([5, 2, 0, 4]);
+  L.playMove(st, 0, [0, 1, 2, 3], lcg(1)); L.endFlash(st);
+  const pm = L.publicMini(st.squares[0].mini);
+  assert.ok(!('code' in pm)); assert.equal(pm.guesses.length, 1);
+  st.id = 'm'; st.seq = 0; st.recent = [];
+  const rec = L.matchRecord(st);
+  assert.ok(!('code' in rec.state.squares[0].mini), 'not in the shared state online');
+  assert.ok(!JSON.stringify(rec.state).includes('[5,2,0,4]'));
+  assert.deepEqual(rec.secrets[0], { code: [5, 2, 0, 4] }, 'kept in the separate secrets node');
+  // a guess made through the online record is scored against the secret
+  let o = L.applyOnlineMove(rec, 'O', 0, [5, 2, 0, 4], lcg(2));
+  assert.equal(o.ok, true); assert.equal(o.rec.state.squares[0].owner, 'O');
+  assert.deepEqual(o.rec.state.squares[0].mini.code, [5, 2, 0, 4], 'once cracked, the code is on show');
+});
+
+test('mastermind tactics: only codes consistent with every feedback, the best minimax split, the last one taken', () => {
+  const m = mmMini([3, 1, 4, 0]);
+  L.applyMove(m, 'X', [0, 1, 2, 3]);
+  L.applyMove(m, 'O', [4, 5, 0, 1]);
+  const pm = L.publicMini(m);
+  const cand = L.mmCandidates(pm);
+  assert.ok(cand.some(c => c.join() === '3,1,4,0'), 'the real code is still possible');
+  for (const c of cand) for (const g of pm.guesses) assert.deepEqual(L.mmFeedback(g.code, c), { solid: g.solid, hollow: g.hollow });
+  // the minimax guess: no other guess leaves a smaller worst case
+  const worst = g => { const groups = new Map(); for (const c of cand) { const f = L.mmFeedback(g, c); const k = f.solid * 10 + f.hollow; groups.set(k, (groups.get(k) || 0) + 1); } return Math.max(...groups.values()); };
+  const best = L.mmBestGuess(cand);
+  assert.ok(L.mmValid(best));
+  const bw = worst(best);
+  for (const g of L.mmAll()) assert.ok(worst(g) >= bw, `${g} does not beat ${best}`);
+  const lb = L.localBest(pm, 'X', cpuRng());
+  assert.ok(L.mmValid(lb.move)); assert.equal(lb.shared, true); assert.equal(lb.q, 1 / cand.length);
+  // one code left: guess it
+  const one = mmMini([3, 1, 4, 0]);
+  for (const g of [[0, 1, 2, 3], [4, 5, 0, 1], [1, 3, 5, 0], [3, 1, 0, 4]]) L.applyMove(one, 'X', g);
+  const left = L.mmCandidates(L.publicMini(one));
+  if (left.length === 1) { const b = L.localBest(L.publicMini(one), 'O', cpuRng()); assert.deepEqual(b.move, [3, 1, 4, 0]); assert.equal(b.q, 1); }
+  // playing alone it always cracks the code, within 5 guesses
+  for (const code of L.mmAll().filter((_, k) => k % 7 === 0)) {
+    const g = mmMini(code.slice()); let n = 0, r;
+    do { n++; r = L.applyMove(g, 'X', L.localBest(L.publicMini(g), 'X', cpuRng()).move); } while (r.outcome !== 'win' && n < 10);
+    assert.ok(n <= 5, `${code} took ${n} guesses`);
+  }
+  // board level: the fewer codes left, the closer both players are (shared information)
+  const fresh = L.needsOf(L.publicMini(mmMini([0, 1, 2, 3])), 'X');
+  assert.ok(L.needsOf(pm, 'X') < fresh); assert.equal(L.needsOf(pm, 'X'), L.needsOf(pm, 'O'));
+});
+
+test('mastermind: a timed-out random move is a valid 4-colour guess', () => {
+  const rng = lcg(21);
+  for (let k = 0; k < 40; k++) {
+    const m = L.newMini('mastermind', rng);
+    const g = L.randomLegalMove(m, 'X', rng);
+    assert.ok(L.mmValid(g), JSON.stringify(g));
+    assert.equal(L.applyMove(m, 'X', g).ok, true);
+  }
 });
