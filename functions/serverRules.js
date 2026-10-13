@@ -27,6 +27,10 @@ function usernameProblem(name) {
 }
 
 // ---------- ratings: standard Elo ----------
+// Ratings and the leaderboard are switched off for now: no rating is calculated, changed or sent, and
+// matchmaking pairs by wait time alone. The Elo and leaderboard code stays, behind this flag (the page
+// has the same flag).
+const RATINGS_ENABLED = false;
 const ELO_K = 32;
 const START_RATING = 1200;
 const LEADERBOARD_MIN_GAMES = 5;
@@ -40,19 +44,25 @@ function elo(rx, ro, scoreX, k = ELO_K) {
 }
 
 // ---------- matchmaking ----------
-const QUEUES = { ranked: { key: 'ranked', mode: 'ranked', timer: 60 } };
-for (const t of [30, 60, 180]) QUEUES['casual' + t] = { key: 'casual' + t, mode: 'casual', timer: t };
-function queueKey(kind, timer) {
-  if (kind === 'ranked') return 'ranked';
-  if (kind === 'casual' && [30, 60, 180].includes(timer)) return 'casual' + timer;
-  return null;
-}
+// Find Match is one queue, with 1 minute a turn. Its games are 'match' games (rated 'ranked' ones if
+// ratings come back). Older games were 'ranked' or 'casual': all of them count as Find Match games.
+const FIND_MATCH_TIMER = 60;
+const QUEUES = { match: { key: 'match', mode: RATINGS_ENABLED ? 'ranked' : 'match', timer: FIND_MATCH_TIMER } };
+const FIND_MATCH_MODES = ['match', 'ranked', 'casual'];
+function queueKey() { return 'match'; }                        // whatever an older page asks for: the one queue
 // How far apart two ratings may be, given how long the longer-waiting of the two has been searching:
 // close at first, wider every few seconds, and anyone at all after a minute and a half.
 function ratingRange(waitMs) { return waitMs >= 90000 ? Infinity : 100 + 50 * Math.floor(Math.max(0, waitMs) / 5000); }
-// Pairs from a queue ({ uid: { rating, since, game? } }): every allowed pair, closest in rating first
-// (the longer wait breaking a tie), each player in at most one pair.
-function pairQueue(queue, now) {
+// Pairs from a queue ({ uid: { rating, since, game? } }), each player in at most one pair. With ratings
+// on: every allowed pair, closest in rating first (the longer wait breaking a tie). With ratings off: by
+// wait time alone, the longest-waiting two together, then the next two.
+function pairQueue(queue, now, byRating = RATINGS_ENABLED) {
+  if (!byRating) {
+    const waiting = Object.entries(queue || {}).filter(([, e]) => e && !e.game && Number.isFinite(e.since)).sort((a, b) => a[1].since - b[1].since || (a[0] < b[0] ? -1 : 1));
+    const pairs = [];
+    for (let k = 0; k + 1 < waiting.length; k += 2) pairs.push([waiting[k][0], waiting[k + 1][0]]);
+    return pairs;
+  }
   const waiting = Object.entries(queue || {}).filter(([, e]) => e && !e.game && Number.isFinite(e.rating));
   const cands = [];
   for (let i = 0; i < waiting.length; i++) {
@@ -77,7 +87,43 @@ const HOW = { line: 'line', majority: 'majority', timeout: 'timeout', resign: 'r
 function howEnded(state) { return state.winner ? HOW[state.winReason] || 'line' : 'draw'; }
 function resultFor(state, side) { return !state.winner ? 'draw' : state.winner === side ? 'win' : 'loss'; }
 
+// ---------- records and per-mini-game stats ----------
+// A finished match from one side: its result for the record ({ wins, losses, draws, games }, one of the
+// first three set) and the squares it won and lost, by mini-game ({ type: { won, lost } }).
+function recordDelta(result) { return { wins: result === 'win' ? 1 : 0, losses: result === 'loss' ? 1 : 0, draws: result === 'draw' ? 1 : 0, games: 1 }; }
+function squaresFor(squares, side) {
+  const out = {};
+  for (const sq of squares || []) {
+    if (!sq || !sq.owner || !sq.mini || typeof sq.mini.type !== 'string') continue;
+    const k = sq.owner === side ? 'won' : 'lost';
+    (out[sq.mini.type] = out[sq.mini.type] || { won: 0, lost: 0 })[k]++;
+  }
+  return out;
+}
+// Records and per-mini-game stats recounted from a player's game history (the back-fill): the main
+// record from Find Match games, the friends record from friend-code games, the squares from both.
+function recountHistory(entries) {
+  const main = { wins: 0, losses: 0, draws: 0, games: 0 }, friend = { wins: 0, losses: 0, draws: 0, games: 0 }, minis = {};
+  for (const h of entries) {
+    if (!h || !['win', 'loss', 'draw'].includes(h.result)) continue;
+    const rec = h.mode === 'friend' ? friend : FIND_MATCH_MODES.includes(h.mode) ? main : null;
+    if (!rec) continue;
+    const d = recordDelta(h.result);
+    for (const k of Object.keys(rec)) rec[k] += d[k];
+    let final = null;
+    try { final = typeof h.final === 'string' ? JSON.parse(h.final) : h.final; } catch (e) { final = null; }
+    if (final && (h.side === 'X' || h.side === 'O')) {
+      for (const [t, v] of Object.entries(squaresFor(final.squares, h.side))) {
+        const m = (minis[t] = minis[t] || { won: 0, lost: 0 });
+        m.won += v.won; m.lost += v.lost;
+      }
+    }
+  }
+  return { main, friend, minis };
+}
+
 module.exports = {
-  USERNAME_RE, usernameProblem, unleet, ELO_K, START_RATING, LEADERBOARD_MIN_GAMES, expected, elo,
-  QUEUES, queueKey, ratingRange, pairQueue, howEnded, resultFor,
+  USERNAME_RE, usernameProblem, unleet, RATINGS_ENABLED, ELO_K, START_RATING, LEADERBOARD_MIN_GAMES, expected, elo,
+  FIND_MATCH_TIMER, FIND_MATCH_MODES, QUEUES, queueKey, ratingRange, pairQueue, howEnded, resultFor,
+  recordDelta, squaresFor, recountHistory,
 };

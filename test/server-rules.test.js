@@ -25,27 +25,46 @@ test('Elo: K = 32, equal ratings move 16 points, upsets move more, a draw moves 
   assert.ok(Math.abs(R.expected(1200, 1600) - 1 / 11) < 1e-9);
 });
 
-test('matchmaking pairs: closest rating first, the range widening with the wait, each player once', () => {
+test('matchmaking pairs with ratings on (behind the flag): closest rating first, the range widening with the wait, each player once', () => {
   const t = 1e6;
   const q = { a: { rating: 1200, since: t }, b: { rating: 1210, since: t }, c: { rating: 1800, since: t }, d: { rating: 1790, since: t } };
-  assert.deepEqual(R.pairQueue(q, t).map(p => p.slice().sort().join('')).sort(), ['ab', 'cd']);
-  assert.deepEqual(R.pairQueue({ a: { rating: 1200, since: t }, c: { rating: 1500, since: t } }, t), [], '300 apart: not at first');
-  assert.deepEqual(R.pairQueue({ a: { rating: 1200, since: t - 30000 }, c: { rating: 1500, since: t } }, t).length, 1, 'after half a minute, yes');
-  assert.deepEqual(R.pairQueue({ a: { rating: 800, since: t - 95000 }, c: { rating: 2400, since: t } }, t).length, 1, 'anyone after a minute and a half');
-  assert.deepEqual(R.pairQueue({ a: { rating: 1200, since: t, game: 'g' }, b: { rating: 1200, since: t } }, t), [], 'a player already paired is not paired again');
+  assert.deepEqual(R.pairQueue(q, t, true).map(p => p.slice().sort().join('')).sort(), ['ab', 'cd']);
+  assert.deepEqual(R.pairQueue({ a: { rating: 1200, since: t }, c: { rating: 1500, since: t } }, t, true), [], '300 apart: not at first');
+  assert.deepEqual(R.pairQueue({ a: { rating: 1200, since: t - 30000 }, c: { rating: 1500, since: t } }, t, true).length, 1, 'after half a minute, yes');
+  assert.deepEqual(R.pairQueue({ a: { rating: 800, since: t - 95000 }, c: { rating: 2400, since: t } }, t, true).length, 1, 'anyone after a minute and a half');
+  assert.deepEqual(R.pairQueue({ a: { rating: 1200, since: t, game: 'g' }, b: { rating: 1200, since: t } }, t, true), [], 'a player already paired is not paired again');
   const many = {};
   for (let k = 0; k < 9; k++) many['p' + k] = { rating: 1200 + k * 5, since: t - k };
-  const pairs = R.pairQueue(many, t), seen = pairs.flat();
+  const pairs = R.pairQueue(many, t, true), seen = pairs.flat();
   assert.equal(pairs.length, 4); assert.equal(new Set(seen).size, 8, 'nobody twice');
   assert.equal(R.ratingRange(0), 100); assert.equal(R.ratingRange(5000), 150); assert.equal(R.ratingRange(90000), Infinity);
 });
 
-test('queues: ranked, and casual at 30s, 1 min or 3 min', () => {
-  assert.equal(R.queueKey('ranked'), 'ranked');
-  assert.equal(R.queueKey('casual', 60), 'casual60');
-  assert.equal(R.queueKey('casual', 0), null, 'no unlimited casual');
-  assert.equal(R.queueKey('casual', 45), null);
-  assert.equal(R.queueKey('other', 60), null);
-  assert.equal(R.QUEUES.ranked.timer, 60);
-  assert.deepEqual(['casual30', 'casual60', 'casual180'].map(k => R.QUEUES[k].timer), [30, 60, 180]);
+
+test('ratings are off: one Find Match queue, 1 minute a turn, pairs by wait time alone', () => {
+  assert.equal(R.RATINGS_ENABLED, false);
+  assert.deepEqual(Object.keys(R.QUEUES), ['match']);
+  assert.deepEqual(R.QUEUES.match, { key: 'match', mode: 'match', timer: 60 });
+  assert.equal(R.queueKey('casual', 30), 'match', 'an older page asking for another queue gets the one queue');
+  const t = 1e6;
+  const q = { a: { rating: 1200, since: t - 10 }, b: { rating: 2400, since: t - 30 }, c: { rating: 1210, since: t - 20 }, d: { rating: 800, since: t - 5, game: 'g' } };
+  assert.deepEqual(R.pairQueue(q, t), [['b', 'c']], 'the two who waited longest, whatever their ratings; an odd one out waits');
+  assert.deepEqual(R.pairQueue(Object.assign({}, q, { e: { since: t - 1 } }), t), [['b', 'c'], ['a', 'e']]);
+  assert.deepEqual(R.pairQueue({ a: { rating: 1200, since: t }, b: { rating: 1210, since: t }, c: { rating: 1800, since: t }, d: { rating: 1790, since: t } }, t, true).map(p => p.slice().sort().join('')).sort(), ['ab', 'cd'], 'the rating pairing is still there, behind the flag');
+});
+
+test('records: a result for the record, squares won and lost by mini-game, and a recount from history', () => {
+  assert.deepEqual(R.recordDelta('win'), { wins: 1, losses: 0, draws: 0, games: 1 });
+  assert.deepEqual(R.recordDelta('draw'), { wins: 0, losses: 0, draws: 1, games: 1 });
+  const squares = [{ owner: 'X', mini: { type: 'ttt' } }, { owner: 'O', mini: { type: 'ttt' } }, { owner: null, mini: { type: 'pig' } }, { owner: 'X', mini: { type: 'bs' } }];
+  assert.deepEqual(R.squaresFor(squares, 'X'), { ttt: { won: 1, lost: 1 }, bs: { won: 1, lost: 0 } });
+  assert.deepEqual(R.squaresFor(squares, 'O'), { ttt: { won: 1, lost: 1 }, bs: { won: 0, lost: 1 } });
+  const r = R.recountHistory([
+    { mode: 'match', side: 'O', result: 'win', final: JSON.stringify({ squares }) },
+    { mode: 'friend', side: 'X', result: 'draw', final: '{"squares":[]}' },
+    { mode: 'local', side: 'X', result: 'win' }, { mode: 'casual', result: 'nonsense' }, { mode: 'ranked', side: 'X', result: 'loss', final: 'not json' },
+  ]);
+  assert.deepEqual(r.main, { wins: 1, losses: 1, draws: 0, games: 2 });
+  assert.deepEqual(r.friend, { wins: 0, losses: 0, draws: 1, games: 1 });
+  assert.deepEqual(r.minis, { ttt: { won: 1, lost: 1 }, bs: { won: 0, lost: 1 } });
 });

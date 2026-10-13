@@ -8,7 +8,7 @@ with faces, and a squash-and-stretch stamp with comic-book bursts when a square 
 fonts (Luckiest Guy, Patrick Hand) are embedded, so the look survives offline. The game is
 `index.html` (inline CSS and the UI) plus `engine.js` (every rule of the game, shared with the
 server); no build step, and the local modes work offline. Online play uses Firebase: the Realtime
-Database, Authentication, and Cloud Functions for accounts, matchmaking, ratings and history (see
+Database, Authentication, and Cloud Functions for accounts, matchmaking, records and history (see
 "Setting up Firebase").
 
 Open `index.html` in a browser (or serve the folder with any static server) and play.
@@ -96,8 +96,11 @@ Battleship ship, the Mastermind code) is never shown on the board or in a mini-g
 "Play Online" offers "Host game" and "Join game". The host gets a five-letter room code (no look-alike
 letters) and a Share button that sends a link to the game with the code filled in; "Waiting for
 friend…" shows until the guest joins. The guest enters a name and the code, or opens the shared link.
-The host picks a side, the mini-games and the time per turn, and starts once the guest is in; both
-phones then show the same board.
+The host picks a side (X, O or Random), the mini-games and the time per turn, and starts once the
+guest is in; both phones then show the same board. A rematch keeps the same choice: X or O stay as
+picked, and with Random the sides are drawn again for every match, rematches included (the guest's
+lobby says "sides drawn at random for every match"). Who played which side is stored with the match
+itself, so the result is credited to the right players even when the next match swaps the seats.
 
 Backing out of a lobby leaves it cleanly. The host's Back closes the room: it is deleted from the
 database with its presence entries, the code stops working, a guest already in it is sent to the main
@@ -202,24 +205,25 @@ the security rules decide what anyone can do with it. The Firebase SDK (about 40
 from Google's CDN only when something online is used (or at start for a player who logged in
 before); local modes stay offline-capable.
 
-## Accounts, Find Match, the leaderboard and history
+## Accounts, Find Match, records and history
 
-**Logging in.** The main menu has **Log in** at the top right (with **Leaderboard** at the top left).
+**Logging in.** The main menu has **Log in** at the top right (with **My Stats** at the top left once
+logged in).
 A player logs in with Google or with an email and a password (**Create account** the first time,
 **Forgot password?** emails a reset link). On first login they pick a username: 3 to 16 letters,
 numbers or underscores, unique whatever the capitals, checked by a basic profanity filter, and
-permanent. The menu then shows the username and rating instead of Log in; tapping it opens the
-player's profile, which has **Log out**. Playing locally, against the computer or with a friend's
+permanent. The menu then shows the username instead of Log in; tapping it (or **My Stats**) opens
+the player's stats, which have **Log out**. Playing locally, against the computer or with a friend's
 code needs no account (a friend game without one uses an anonymous session, as before).
 
-**Find Match** (needs an account) pairs strangers. **Ranked** counts toward the rating, with every
-mini-game on and 1 minute a turn. **Casual** changes no rating; every mini-game is on and the player
-picks 30s, 1 min or 3 min a turn, meeting only players who picked the same. The screen shows
-"Searching…" with the time waited and **Cancel**. The server pairs the two closest ratings in the
-queue first; the allowed gap starts at 100 points and widens by 50 every 5 seconds of waiting, to
-anyone after a minute and a half. Sides are drawn at random. Two players who search at the same
-moment are paired once: the queue is changed in one database transaction. A player can be in only
-one matchmaking game at a time; with one in progress, Find Match reads **Back to your match**.
+**Find Match** (needs an account) pairs strangers in a single queue: every mini-game on and always
+1 minute a turn, with no options to pick. The screen shows "Searching…" (X and O hopping on one
+looping CSS animation, O half a hop behind by its delay) with the time waited and **Cancel**. The
+server pairs players by how long they have waited, longest first. Sides are drawn at random. Two
+players who search at the same moment are paired once: the queue is changed in one database
+transaction. A player can be in only one matchmaking game at a time; with one in progress, Find
+Match reads **Back to your match**. When a match starts, a vs card shows both usernames with their
+records for about 3 seconds (or until tapped); the server's turn clock allows for it.
 
 **The server runs these games.** A move goes to a Cloud Function, which checks that it is that
 player's turn and that the move is legal with the same engine the page uses (`engine.js`), makes
@@ -231,30 +235,42 @@ cards, the treasure, the ship) are stored where no phone can read them, and appe
 state only when the game reveals them. The turn deadline is a server time. When it passes, either
 phone asks the server for the timeout move and the server checks the deadline first; a scheduled
 function does the same every minute for games nobody is watching. Two timeouts in a row lose the
-match. Leaving a ranked or casual match through the menu is a resignation, which loses it ("Leaving
+match. Leaving a Find Match game through the menu is a resignation, which loses it ("Leaving
 will count as a loss" in the confirmation).
 
-**Ratings.** Everyone starts at 1200. When a ranked match ends, a Cloud Function updates both
-ratings with standard Elo (K = 32, a draw scoring 0.5): both ratings, both records, the leaderboard
-and both histories are written in one atomic update, once per game. The results screen shows the
-change ("+16 Rating 1216") and the opponent's name, which opens their profile. Only ranked
-matchmaking games change ratings; casual, friend-code, local and computer games never do.
+**Records.** A player's record is wins-losses-draws (3-5-1). The main record counts Find Match
+games only; friend-code games go on a separate "vs friends" record (for a player who is logged in).
+The server also counts, per mini-game, the squares each player won and lost in every online game
+(Find Match and friends). When a match ends, a Cloud Function writes both records, both players'
+mini-game counts and both histories in one atomic update, once per game; phones cannot write any
+of it. The record shows next to the usernames on the vs card, on the results screen ("Your record
+1-0-0", and the opponent's, whose name opens their profile) and on profiles.
 
-**Leaderboard** (from the main menu): the top 100 by rating, with rank, username, rating and
-wins–losses–draws; equal ratings share a rank. Only players with at least five ranked games are
-listed. A logged-in player outside the top 100 sees their own rank pinned below the list. The
-server keeps the leaderboard up to date; tapping a row opens that player's profile.
+**My Stats** (from the main menu, once logged in): the Find Match record, the win rate (wins over
+all games, draws included, so 3-5-1 is 33%) and the vs-friends record, then a table of every
+mini-game played online with squares won, squares lost and win rate, most won first, and a link to
+the game history. Another player's profile (tap their name) shows the same.
 
-**Profiles and history.** A profile shows the username, rating, record, join date and the player's
-online games, newest first: ranked, casual and friend-code games (marked Unrated), each with the
-opponent, the date, the result, how it ended (three in a row, most squares, timeout or resignation)
-and, for ranked games, the rating before and after. Tapping a game opens the read-only review
-board with everything that was hidden revealed. Anyone logged in can open anyone's profile.
+**History.** Every online game, newest first, marked Find Match or Friend, with the opponent, the
+date, the result and how it ended (three in a row, most squares, timeout or resignation). Tapping a
+game opens the read-only review board with everything that was hidden revealed.
 
-**Security rules** (`database.rules.json`): phones may read profiles, the leaderboard and histories,
-and their own matchmaking game's public state; only Cloud Functions write ratings, records,
-usernames, the leaderboard, histories, queues and game state. A game's hidden values have no read
-rule at all.
+**Ratings and the leaderboard are switched off for now.** One flag, `RATINGS_ENABLED = false`, in
+`index.html` and in `functions/serverRules.js`, turns them off: no rating is calculated, changed or
+shown anywhere, the leaderboard is gone from the menu, and matchmaking pairs by wait time only. The
+Elo, rating-range pairing and leaderboard code is all still there; setting both flags to `true`
+brings back ranked play with ratings (everyone starts at 1200, standard Elo with K = 32) and the
+top-100 leaderboard.
+
+**Back-fill.** Records and mini-game counts were added after people had already played, so the
+deploy workflow runs `scripts/backfill-records.js` once after deploying: it recounts every
+player's records and mini-game counts from their game history (older ranked and casual games count
+as Find Match) and leaves a marker so it never runs twice. It prints only counts.
+
+**Security rules** (`database.rules.json`): phones may read profiles, records and histories, and
+their own matchmaking game's public state; only Cloud Functions write ratings, records, mini-game
+counts, usernames, the leaderboard, histories, queues and game state. A game's hidden values have no
+read rule at all.
 
 ## Playing against the computer
 
@@ -324,7 +340,8 @@ git push -u origin main
 ## Game stats and the admin dashboard
 
 Every match in every mode is counted, anonymously: two players on one phone, against the computer,
-computer against computer, friend code, casual and ranked. Phones report their local matches to the
+computer against computer, friend code and Find Match (casual and ranked before it was one queue).
+Phones report their local matches to the
 `track` Cloud Function (a guest's with a random id the browser made up, never a name); the server
 counts online matches itself, where it runs or saves them. Nobody can write the stats directly, and
 only the admin can read them. Stats start from the first deploy with this feature (older matches were
@@ -357,7 +374,7 @@ The same workflow with **revoke** takes the flag away. Under the hood it runs `s
 which sets the `admin` custom claim on that account with the `FIREBASE_SERVICE_ACCOUNT` key; you can
 also run it yourself (`node scripts/make-admin.js <username>`, with `GOOGLE_APPLICATION_CREDENTIALS`
 pointing at a key). The username you type shows in the workflow's log, which is public for a public
-repository; usernames are public anyway (the leaderboard).
+repository; usernames are public anyway (records and profiles).
 
 ## Tests
 
@@ -367,7 +384,7 @@ page as a plain script and by the Cloud Functions with `require`. `test/logic.te
 (every mini-game's win and draw logic, the main board, random and timed-out moves, the computer
 player, the online match records with hidden values kept apart, resigning, the turn clock, and that
 the same seed plays the same match). `test/server-rules.test.js` covers the server's own rules
-(usernames and the profanity filter, Elo, matchmaking pairs). Both run with Node's test runner:
+(usernames and the profanity filter, Elo, matchmaking pairs, records recounted from history). Both run with Node's test runner:
 
 ```sh
 npm install
@@ -376,12 +393,13 @@ node --test
 
 `test/server.test.js` runs the server on the Firebase Emulator Suite (Auth, Realtime Database,
 Functions; it needs Java): usernames, the security rules refusing direct writes to ratings, records,
-history and games, two (and six) players searching at once each paired exactly once, rating ranges
-widening with the wait, a full ranked match with hidden values unreadable and illegal or out-of-turn
-moves refused, Memory's two-step move, timeouts with both players away played out by the sweep,
-resigning, casual games leaving ratings alone, the leaderboard entry after five ranked games,
-friend-code games saved to the history as unrated, and the game stats (local matches reported by a
-phone counted once and bad reports refused, logins and new accounts, ranked, casual and friend-code
+history and games, two (and six) players searching at once each paired exactly once in one queue
+by wait time, every Find Match game at 1 minute a turn, a full match with hidden values unreadable
+and illegal or out-of-turn moves refused, Memory's two-step move, timeouts with both players away
+played out by the sweep, resigning, no ratings or leaderboard entries while ratings are off, records
+and mini-game counts after Find Match and friend games (credited by the seats the match was played
+in), the back-fill from history running once, and the game stats (local matches reported by a
+phone counted once and bad reports refused, logins and new accounts, Find Match and friend-code
 matches counted by the server, and the stats readable only by the admin, with `make-admin.js` giving
 and taking back the flag). `test/stats-rules.test.js` covers what each event adds to the stats:
 

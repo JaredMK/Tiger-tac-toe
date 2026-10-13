@@ -1,6 +1,6 @@
 'use strict';
-// The server on the Firebase Emulator Suite: accounts, matchmaking, server-run matches, ratings,
-// the leaderboard and history, and the security rules. Run with:  npm run test:emulators
+// The server on the Firebase Emulator Suite: accounts, matchmaking, server-run matches, records,
+// per-mini-game stats and history, and the security rules. (Ratings and the leaderboard are switched off.) Run with:  npm run test:emulators
 // (Plain `node --test` skips this file: it needs the emulators.)
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -57,8 +57,9 @@ const denied = async (promise, what) => {
 };
 
 // ---------- matches ----------
-// Two players search the same queue until both are in the same game.
-async function pairUp(a, b, queue = 'ranked', timer = 60) {
+// Two players search until both are in the same game. (An older page's queue and timer are ignored:
+// Find Match is one queue with 1 minute a turn.)
+async function pairUp(a, b, queue = 'match', timer = 60) {
   let ra = { status: 'searching' }, rb = { status: 'searching' };
   for (let k = 0; k < 20 && (ra.status !== 'matched' || rb.status !== 'matched'); k++) {
     [ra, rb] = await Promise.all([a.call('findMatch', { queue, timer }), b.call('findMatch', { queue, timer })]);
@@ -119,7 +120,9 @@ test('rules: a phone cannot write ratings, records, profiles, usernames, the lea
   await denied(p.write('usernames/someone', p.uid), 'claiming a name directly');
   await denied(p.write(`leaderboard/${p.uid}`, { username: 'Mallory', rating: 3000 }), 'a leaderboard entry');
   await denied(p.write(`history/${p.uid}/x`, { result: 'win' }), 'history');
-  await denied(p.write(`queue/ranked/${p.uid}`, { rating: 1 }), 'the queue');
+  await denied(p.write(`queue/match/${p.uid}`, { since: 1 }), 'the queue');
+  await denied(p.write(`users/${p.uid}/minis/ttt/won`, 99), 'the mini-game stats');
+  await denied(p.write(`users/${p.uid}/friend/wins`, 99), 'the friends record');
   await denied(p.write(`active/${p.uid}`, { game: 'x' }), 'the active game');
   await denied(p.write('games/xxxxxxxxxx', { pub: { status: 'playing' } }), 'a game');
 });
@@ -127,7 +130,7 @@ test('rules: a phone cannot write ratings, records, profiles, usernames, the lea
 /* ===================================== matchmaking ===================================== */
 test('matchmaking: two players searching at the same moment are paired exactly once', async () => {
   const a = await player('Ann'), b = await player('Ben');
-  const [ra, rb] = await Promise.all([a.call('findMatch', { queue: 'ranked' }), b.call('findMatch', { queue: 'ranked' })]);
+  const [ra, rb] = await Promise.all([a.call('findMatch', {}), b.call('findMatch', {})]);
   assert.deepEqual([ra.status, rb.status].sort(), ['matched', 'searching'], 'whichever search lands second finds the first at once');
   const first = ra.status === 'matched' ? ra : rb;
   const g = await pairUp(a, b);
@@ -135,9 +138,9 @@ test('matchmaking: two players searching at the same moment are paired exactly o
   const all = (await get('games')) || {};
   const mine = Object.entries(all).filter(([, v]) => v.pub && [v.pub.players.X.uid, v.pub.players.O.uid].includes(a.uid)).map(([id]) => id);
   assert.deepEqual(mine, [g.id], 'one game for the pair');
-  assert.equal(await get(`queue/ranked/${a.uid}`), null, 'out of the queue');
-  assert.equal(await get(`queue/ranked/${b.uid}`), null);
-  assert.deepEqual(await a.read(`active/${a.uid}`), { game: g.id, side: g.X === a ? 'X' : 'O', queue: 'ranked', mode: 'ranked' });
+  assert.equal(await get(`queue/match/${a.uid}`), null, 'out of the queue');
+  assert.equal(await get(`queue/match/${b.uid}`), null);
+  assert.deepEqual(await a.read(`active/${a.uid}`), { game: g.id, side: g.X === a ? 'X' : 'O', queue: 'match', mode: 'match' });
   await denied(a.read(`active/${b.uid}`), 'reading someone else\'s active game');
   await g.X.call('resign', { game: g.id }); await recorded(g.id);
 });
@@ -146,7 +149,7 @@ test('matchmaking: six players at once make three games, each player in exactly 
   const ps = await Promise.all(['Cal', 'Dee', 'Eve', 'Fay', 'Gus', 'Hal'].map(u => player(u)));
   const res = new Map();
   for (let k = 0; k < 15 && res.size < ps.length; k++) {
-    const out = await Promise.all(ps.map(p => (res.has(p.uid) ? null : p.call('findMatch', { queue: 'casual', timer: 30 }))));
+    const out = await Promise.all(ps.map((p, i) => (res.has(p.uid) ? null : p.call('findMatch', i % 2 ? { queue: 'casual', timer: 30 } : { queue: 'ranked' }))));   // what older pages asked for
     out.forEach((r, i) => { if (r && r.status === 'matched') res.set(ps[i].uid, r); });
   }
   assert.equal(res.size, 6, 'everyone was matched');
@@ -158,60 +161,55 @@ test('matchmaking: six players at once make three games, each player in exactly 
     assert.deepEqual(two.map(x => x[1]).sort(), ['O', 'X']);
     const pub = await get(`games/${id}/pub`);
     assert.deepEqual([pub.players.X.uid, pub.players.O.uid].sort(), two.map(x => x[0]).sort());
-    assert.equal(pub.mode, 'casual'); assert.equal(pub.timer, 30);
+    assert.equal(pub.mode, 'match'); assert.equal(pub.timer, 60, 'Find Match is always 1 minute a turn');
+    assert.equal(JSON.parse(pub.state).timer.limit, 60);
   }
   for (const p of ps) await p.call('resign', { game: res.get(p.uid).game }).catch(() => {});
 });
 
-test('matchmaking: closest rating first, and the range widens with the wait', async () => {
-  const ps = await Promise.all(['R1200', 'R1210', 'R1800', 'R1790'].map(u => player(u)));
-  const rating = [1200, 1210, 1800, 1790];
-  await Promise.all(ps.map((p, i) => patch(`users/${p.uid}`, { rating: rating[i] })));
-  // the two far apart search first: no match at a 600-point gap
-  assert.equal((await ps[0].call('findMatch', { queue: 'casual', timer: 180 })).status, 'searching');
-  assert.equal((await ps[2].call('findMatch', { queue: 'casual', timer: 180 })).status, 'searching', 'too far apart to pair yet');
-  // the close ones arrive: each pairs with its nearest
-  const r1 = await ps[1].call('findMatch', { queue: 'casual', timer: 180 });
-  const r3 = await ps[3].call('findMatch', { queue: 'casual', timer: 180 });
-  const g1 = (await ps[0].call('findMatch', { queue: 'casual', timer: 180 })), g3 = (await ps[2].call('findMatch', { queue: 'casual', timer: 180 }));
-  assert.equal(r1.game, g1.game, '1210 meets 1200'); assert.equal(r3.game, g3.game, '1790 meets 1800');
-  for (const [p, r] of [[ps[0], g1], [ps[2], g3]]) await p.call('resign', { game: r.game });
-  // two far apart: not at first, then yes once they have waited
-  const lo = await player('Low'), hi = await player('High');
-  await patch(`users/${lo.uid}`, { rating: 1000 }); await patch(`users/${hi.uid}`, { rating: 1600 });
-  assert.equal((await lo.call('findMatch', { queue: 'casual', timer: 60 })).status, 'searching');
-  assert.equal((await hi.call('findMatch', { queue: 'casual', timer: 60 })).status, 'searching');
-  await patch(`queue/casual60/${lo.uid}`, { since: Date.now() - 60000 });   // as if Low had searched for a minute
-  const late = await hi.call('findMatch', { queue: 'casual', timer: 60 });
-  assert.equal(late.status, 'matched', 'a long wait widens the range');
-  await hi.call('resign', { game: late.game });
+test('matchmaking: one queue, players paired by wait time only (ratings play no part)', async () => {
+  const ps = await Promise.all(['W1200', 'W2400', 'W800', 'W1600'].map(u => player(u)));
+  await Promise.all(ps.map((p, i) => patch(`users/${p.uid}`, { rating: [1200, 2400, 800, 1600][i] })));
+  // they arrive one after another: 1200 waits longest, then 2400; far apart, they are paired all the same
+  assert.equal((await ps[0].call('findMatch', {})).status, 'searching');
+  await patch(`queue/match/${ps[0].uid}`, { since: Date.now() - 20000 });
+  const r1 = await ps[1].call('findMatch', {});
+  assert.equal(r1.status, 'matched', 'the longest-waiting player meets the next one, 1200 points apart');
+  const g1 = await ps[0].call('findMatch', {});
+  assert.equal(g1.game, r1.game);
+  assert.equal((await ps[2].call('findMatch', {})).status, 'searching');
+  const r3 = await ps[3].call('findMatch', {});
+  assert.equal(r3.status, 'matched');
+  const pub = await get(`games/${r1.game}/pub`);
+  for (const s of ['X', 'O']) assert.equal(pub.players[s].rating, undefined, 'no rating in the game');
+  assert.deepEqual(pub.players.X.record, { wins: 0, losses: 0, draws: 0 }, 'each player\'s record, for the intro');
+  for (const [p, r] of [[ps[0], g1], [ps[3], r3]]) await p.call('resign', { game: r.game });
 });
 
-test('matchmaking: Cancel leaves the queue; one queue at a time; a guest or a player without a name cannot search', async () => {
+test('matchmaking: Cancel leaves the queue; one queue whatever is asked; a guest or a player without a name cannot search', async () => {
   const p = await player('Ivy');
-  assert.equal((await p.call('findMatch', { queue: 'casual', timer: 60 })).status, 'searching');
-  assert.ok(await get(`queue/casual60/${p.uid}`));
-  assert.equal((await p.call('findMatch', { queue: 'ranked' })).status, 'searching');
-  assert.equal(await get(`queue/casual60/${p.uid}`), null, 'searching Ranked left Casual');
+  await put(`queue/casual60/${p.uid}`, { since: Date.now(), seen: Date.now(), name: 'Ivy' });   // left by an older page
+  assert.equal((await p.call('findMatch', { queue: 'casual', timer: 45 })).status, 'searching', 'no queue or timer to pick');
+  assert.ok(await get(`queue/match/${p.uid}`));
+  assert.equal(await get(`queue/casual60/${p.uid}`), null, 'out of the old queues');
   assert.deepEqual(await p.call('cancelSearch', {}), { status: 'cancelled' });
-  assert.equal(await get(`queue/ranked/${p.uid}`), null);
-  await assert.rejects(p.call('findMatch', { queue: 'casual', timer: 45 }), /timer/, 'casual timers are 30s, 1 min or 3 min');
+  assert.equal(await get(`queue/match/${p.uid}`), null);
   const anon = await player(null, { anonymous: true });
-  await assert.rejects(anon.call('findMatch', { queue: 'ranked' }), /Log in/);
+  await assert.rejects(anon.call('findMatch', {}), /Log in/);
   const noName = await player(null, { noName: true });
-  await assert.rejects(noName.call('findMatch', { queue: 'ranked' }), /username/);
+  await assert.rejects(noName.call('findMatch', {}), /username/);
 });
 
 /* ===================================== server-run matches ===================================== */
-test('a ranked match: all mini-games, one minute a turn, hidden values hidden, moves checked by the server', async () => {
+test('a Find Match game: all mini-games, one minute a turn, hidden values hidden, moves checked by the server', async () => {
   const a = await player('Joe'), b = await player('Kim');
   const g = await pairUp(a, b);
   const pub = await g.X.read(`games/${g.id}/pub`);
-  assert.equal(pub.mode, 'ranked'); assert.equal(pub.timer, 60); assert.equal(pub.status, 'playing');
+  assert.equal(pub.mode, 'match'); assert.equal(pub.timer, 60); assert.equal(pub.status, 'playing');
   const st = JSON.parse(pub.state);
   assert.deepEqual(st.games.slice().sort(), E.TYPES.slice().sort(), 'every mini-game on');
   assert.equal(st.timer.limit, 60);
-  assert.ok(st.timer.deadline > Date.now() + 55000, 'the first turn has its full minute');
+  assert.ok(st.timer.deadline > Date.now() + 60000, 'the first turn has its full minute, after the players\' intro');
   // hidden values: the phones cannot read the hidden node, and the public state has none of them
   await denied(g.X.read(`games/${g.id}/sec`), 'reading the hidden values');
   await denied(g.X.read(`games/${g.id}`), 'reading the whole game');
@@ -258,26 +256,30 @@ test('a ranked match: all mini-games, one minute a turn, hidden values hidden, m
   await recorded(g.id);
   const done = await g.X.read(`games/${g.id}/pub`);
   assert.equal(done.status, 'over'); assert.equal(done.result.winner, 'X'); assert.equal(done.result.how, 'line');
-  assert.deepEqual(done.result.ratings, { X: { before: 1200, after: 1216, delta: 16 }, O: { before: 1200, after: 1184, delta: -16 } }, 'Elo, K = 32');
+  assert.equal(done.result.ratings, undefined, 'no rating change: ratings are off');
+  assert.deepEqual(done.result.records, { X: { wins: 1, losses: 0, draws: 0 }, O: { wins: 0, losses: 1, draws: 0 } }, 'both records after the game');
   assert.deepEqual(await g.O.call('move', { game: g.id, square: 4, move: 0 }), { ok: false, reason: 'over' }, 'no moves after the end');
   const final = JSON.parse(done.final);
   assert.equal(final.winner, 'X'); assert.deepEqual(final.names, { X: g.X.name, O: g.O.name });
   for (const sq of final.squares) if (sq.mini.type === 'wordle') assert.ok(sq.mini.word, 'the final state reveals every word');
   const px = await g.X.read(`users/${g.X.uid}`), po = await g.O.read(`users/${g.O.uid}`);
-  assert.deepEqual([px.rating, px.wins, px.losses, px.games], [1216, 1, 0, 1]);
-  assert.deepEqual([po.rating, po.wins, po.losses, po.games], [1184, 0, 1, 1]);
+  assert.deepEqual([px.rating, px.wins, px.losses, px.draws, px.games], [1200, 1, 0, 0, 1], 'the record moves, the rating does not');
+  assert.deepEqual([po.rating, po.wins, po.losses, po.draws, po.games], [1200, 0, 1, 0, 1]);
+  assert.deepEqual(px.minis.ttt, { won: 3 }, 'X won three Tic-Tac-Toe squares');
+  assert.deepEqual(px.minis.wordle, { lost: 1 }, 'and lost the Wordle square');
+  assert.deepEqual(po.minis.ttt, { lost: 3 }); assert.deepEqual(po.minis.wordle, { won: 1 });
   const hx = await g.X.read(`history/${g.X.uid}/${g.id}`), ho = await g.O.read(`history/${g.O.uid}/${g.id}`);
   assert.equal(hx.result, 'win'); assert.equal(ho.result, 'loss');
-  assert.equal(hx.mode, 'ranked'); assert.equal(hx.rated, true); assert.equal(hx.how, 'line');
-  assert.deepEqual([hx.ratingBefore, hx.ratingAfter, ho.ratingBefore, ho.ratingAfter], [1200, 1216, 1200, 1184]);
+  assert.equal(hx.mode, 'match'); assert.equal(hx.rated, false); assert.equal(hx.how, 'line');
+  assert.deepEqual([hx.ratingBefore, hx.ratingAfter], [undefined, undefined], 'no rating in the history');
   assert.deepEqual(hx.opponent, { uid: g.O.uid, name: g.O.name });
   assert.equal(JSON.parse(hx.final).winner, 'X');
   assert.equal(await g.X.read(`active/${g.X.uid}`), null, 'no longer in a game');
-  assert.equal(await get(`leaderboard/${g.X.uid}`), null, 'not on the leaderboard before five ranked games');
+  assert.equal(await get(`leaderboard/${g.X.uid}`), null, 'no leaderboard while ratings are off');
   // others can see a player's history and profile
   const peek = await player('Nosy');
   assert.equal((await peek.read(`history/${g.X.uid}/${g.id}`)).result, 'win');
-  assert.equal((await peek.read(`users/${g.X.uid}`)).rating, 1216);
+  assert.equal((await peek.read(`users/${g.X.uid}`)).wins, 1, 'and their record');
 });
 
 test('Memory over the server: the first card is turned up for both, the second completes the move', async () => {
@@ -326,7 +328,7 @@ test('timeouts: the server checks the deadline; with both players away the sweep
   const pub = await get(`games/${g.id}/pub`);
   assert.equal(pub.status, 'over'); assert.equal(pub.result.winner, 'O'); assert.equal(pub.result.how, 'timeout');
   assert.equal((await get(`history/${g.X.uid}/${g.id}`)).how, 'timeout');
-  assert.equal(pub.result.ratings.X.delta, -16);
+  assert.deepEqual(pub.result.records.X, { wins: 0, losses: 1, draws: 0 }, 'a loss on the record');
   // either phone may also call it, once the deadline has passed
   const c = await player('Quin'), d = await player('Rae');
   const h = await pairUp(c, d, 'casual', 30);
@@ -337,7 +339,7 @@ test('timeouts: the server checks the deadline; with both players away the sweep
   await h.X.call('resign', { game: h.id });
 });
 
-test('resigning: the other player wins; ranked ratings change; casual ratings never do', async () => {
+test('resigning: the other player wins; a loss and a win on the records, no rating change', async () => {
   const a = await player('Sam'), b = await player('Tia');
   const g = await pairUp(a, b);
   assert.equal((await g.O.call('resign', { game: g.id })).ok, true);
@@ -347,24 +349,13 @@ test('resigning: the other player wins; ranked ratings change; casual ratings ne
   assert.equal((await get(`history/${g.O.uid}/${g.id}`)).result, 'loss');
   assert.equal((await get(`history/${g.O.uid}/${g.id}`)).how, 'resign');
   assert.deepEqual(await g.X.call('resign', { game: g.id }), { ok: false, reason: 'over' });
-  assert.equal((await get(`users/${g.O.uid}`)).rating, 1184);
-  // casual: played to the end, no rating change, no rating in the history
-  const c = await player('Uma'), d = await player('Val');
-  const h = await pairUp(c, d, 'casual', 60);
-  await nearWin(h.id, 'X');
-  assert.equal((await h.X.call('move', { game: h.id, square: 2, move: 2 })).ok, true);
-  await recorded(h.id);
-  const hp = await get(`games/${h.id}/pub`);
-  assert.equal(hp.result.winner, 'X'); assert.equal(hp.result.ratings, undefined, 'no rating change');
-  for (const p of [h.X, h.O]) {
-    const prof = await get(`users/${p.uid}`);
-    assert.deepEqual([prof.rating, prof.games, prof.wins, prof.losses], [1200, 0, 0, 0], 'casual leaves rating and ranked record alone');
-    const hist = await get(`history/${p.uid}/${h.id}`);
-    assert.equal(hist.mode, 'casual'); assert.equal(hist.rated, false); assert.equal(hist.ratingBefore, undefined);
-  }
+  const po = await get(`users/${g.O.uid}`), px = await get(`users/${g.X.uid}`);
+  assert.deepEqual([po.rating, po.wins, po.losses, po.games], [1200, 0, 1, 1]);
+  assert.deepEqual([px.rating, px.wins, px.losses, px.games], [1200, 1, 0, 1]);
+  assert.equal(po.minis, undefined, 'no square was won or lost');
 });
 
-test('the leaderboard: a player appears after five ranked games, with rating and record', async () => {
+test('ratings off: five wins in a row list nobody on the leaderboard and leave the rating alone', async () => {
   const star = await player('Star');
   const others = await Promise.all([1, 2, 3, 4, 5].map(k => player('Opp' + k)));
   for (let k = 0; k < 5; k++) {
@@ -372,20 +363,10 @@ test('the leaderboard: a player appears after five ranked games, with rating and
     if (g.X === star) { await nearWin(g.id, 'X'); assert.equal((await star.call('move', { game: g.id, square: 2, move: 2 })).ok, true); }
     else await others[k].call('resign', { game: g.id });
     await recorded(g.id);
-    const entry = await star.read(`leaderboard/${star.uid}`);
-    if (k < 4) assert.equal(entry, null, `not listed after ${k + 1} ranked games`);
-    else {
-      const prof = await get(`users/${star.uid}`);
-      assert.deepEqual(entry, { username: 'Star', rating: prof.rating, wins: 5, losses: 0, draws: 0, games: 5 }, 'listed after the fifth');
-      assert.ok(prof.rating > 1200 + 60, 'five wins raise the rating');
-    }
   }
-  // the top of the board, read the way the page reads it
-  const top = await star.read('leaderboard');
-  assert.ok(top[star.uid]);
-  const q = await D.get(D.query(D.ref(star.db, 'leaderboard'), D.orderByChild('rating'), D.limitToLast(100)));
-  const list = []; q.forEach(c => { list.push(c.val()); });
-  assert.equal(list[list.length - 1].username, 'Star', 'the best rating last in the query (first on screen)');
+  const prof = await get(`users/${star.uid}`);
+  assert.deepEqual([prof.wins, prof.losses, prof.draws, prof.games, prof.rating], [5, 0, 0, 5, 1200]);
+  assert.equal(await get(`leaderboard/${star.uid}`), null, 'not listed');
 });
 
 test('friend-code games are saved to the history of players with accounts, marked unrated', async () => {
@@ -409,7 +390,14 @@ test('friend-code games are saved to the history of players with accounts, marke
   assert.deepEqual(hh.opponent, { uid: guest.uid, name: 'Guest1' });
   const gh = await until(() => guest.read(`history/${guest.uid}/${id}`), 10000, 'the friend game in the guest\'s history');
   assert.equal(gh.result, 'loss'); assert.equal(gh.ratingBefore, undefined);
-  assert.equal((await get(`users/${host.uid}`)).rating, 1200, 'friend games never change ratings');
+  const hu = await get(`users/${host.uid}`), gu = await get(`users/${guest.uid}`);
+  assert.equal(hu.rating, 1200, 'friend games never change ratings');
+  assert.deepEqual(hu.friend, { wins: 1, games: 1 }, 'a win on the host\'s vs-friends record');
+  assert.deepEqual(gu.friend, { losses: 1, games: 1 }, 'a loss on the guest\'s');
+  assert.deepEqual([hu.wins, hu.games], [0, 0], 'the main record is Find Match games only');
+  const sq = E.fullState(end).squares.slice(0, 3).map(q => q.mini.type), counts = {};
+  for (const t of sq) counts[t] = (counts[t] || 0) + 1;
+  for (const [t, n] of Object.entries(counts)) { assert.equal(hu.minis[t].won, n, `host won ${n} ${t}`); assert.equal(gu.minis[t].lost, n); }
   assert.equal(await get(`history/${anon.uid}`), null);
 });
 
@@ -474,24 +462,24 @@ test('stats: logins count accounts only; a new account counts on its day, week a
   assert.deepEqual(Object.values(moved), [1, 1, 1, 1, 1, 1]);
 });
 
-test('stats: ranked and casual matches are counted by the server, started when paired and finished with their mini-games', async () => {
+test('stats: Find Match games are counted by the server, started when paired and finished with their mini-games', async () => {
   const d = day().d;
   let g;
-  const moved = await delta(['modes/ranked/started', 'modes/ranked/finished', 'modes/ranked/xWins', 'modes/ranked/timed', `days/${d}/started/ranked`, `days/${d}/finished/ranked`,
-    'mini/ranked/ttt/won', 'mini/ranked/ttt/winMoves', 'mini/ranked/ttt/xWins', 'modes/ranked/resigned'], async () => {
+  const moved = await delta(['modes/match/started', 'modes/match/finished', 'modes/match/xWins', 'modes/match/timed', `days/${d}/started/match`, `days/${d}/finished/match`,
+    'mini/match/ttt/won', 'mini/match/ttt/winMoves', 'mini/match/ttt/xWins', 'modes/match/resigned'], async () => {
     g = await pairUp(await player('StatA'), await player('StatB'));
     await nearWin(g.id, 'X');
     assert.equal((await g.X.call('move', { game: g.id, square: 2, move: 2 })).ok, true);
     await recorded(g.id);
   });
-  assert.deepEqual(moved, { 'modes/ranked/started': 1, 'modes/ranked/finished': 1, 'modes/ranked/xWins': 1, 'modes/ranked/timed': 1, [`days/${d}/started/ranked`]: 1, [`days/${d}/finished/ranked`]: 1,
-    'mini/ranked/ttt/won': 1, 'mini/ranked/ttt/winMoves': 1, 'mini/ranked/ttt/xWins': 1, 'modes/ranked/resigned': 0 });
-  const res = await delta(['modes/casual/started', 'modes/casual/finished', 'modes/casual/resigned', 'modes/casual/oWins'], async () => {
+  assert.deepEqual(moved, { 'modes/match/started': 1, 'modes/match/finished': 1, 'modes/match/xWins': 1, 'modes/match/timed': 1, [`days/${d}/started/match`]: 1, [`days/${d}/finished/match`]: 1,
+    'mini/match/ttt/won': 1, 'mini/match/ttt/winMoves': 1, 'mini/match/ttt/xWins': 1, 'modes/match/resigned': 0 });
+  const res = await delta(['modes/match/started', 'modes/match/finished', 'modes/match/resigned', 'modes/match/oWins'], async () => {
     const h = await pairUp(await player('StatC'), await player('StatD'), 'casual', 30);
     assert.equal((await h.X.call('resign', { game: h.id })).ok, true);
     await recorded(h.id);
   });
-  assert.deepEqual(res, { 'modes/casual/started': 1, 'modes/casual/finished': 1, 'modes/casual/resigned': 1, 'modes/casual/oWins': 1 });
+  assert.deepEqual(res, { 'modes/match/started': 1, 'modes/match/finished': 1, 'modes/match/resigned': 1, 'modes/match/oWins': 1 });
 });
 
 test('stats: friend-code matches are counted from the room, start and end once each', async () => {
@@ -553,4 +541,51 @@ test('stats: the sweep forgets counted matches after three days (the counts stay
   assert.equal(await get('statsSeen/match/l_oldone'), null, 'a match from four days ago is forgotten');
   assert.ok(await get('statsSeen/match/l_newone'), 'an hour-old one is kept');
   assert.deepEqual(await get('stats/modes'), before, 'the counts are untouched');
+});
+
+test('records: a friend match is credited by the seats it was played in (the room may have swapped them for a Random rematch)', async () => {
+  const host = await player('SeatHost'), guest = await player('SeatGuest');
+  const code = 'SEATS';
+  await host.write(`rooms/${code}`, { created: Date.now(), host: host.uid, status: 'lobby', players: { X: { uid: host.uid, name: 'SeatHost', joined: Date.now() } }, setup: { hostSide: 'X', hostPick: 'random', timer: 0 } });
+  await guest.write(`rooms/${code}/players/O`, { uid: guest.uid, name: 'SeatGuest', joined: Date.now() });
+  // the match was played with the guest as X; by the time its end is read the room says otherwise
+  const seats = { X: { uid: guest.uid, name: 'SeatGuest' }, O: { uid: host.uid, name: 'SeatHost' } };
+  const rec = E.newOnlineMatch({ names: { X: 'SeatGuest', O: 'SeatHost' } }, E.makeRng(4), 'seat1');
+  const full = E.fullState(rec);
+  full.squares[0].owner = 'X'; full.squares[4].owner = 'X'; full.squares[8].owner = 'X'; full.winner = 'X'; full.winLine = [0, 4, 8]; full.winReason = 'line';
+  const end = E.matchRecord(full);
+  await host.write(`rooms/${code}/status`, 'playing');
+  await guest.write(`rooms/${code}/match`, { state: JSON.stringify(end.state), secrets: JSON.stringify(end.secrets), seats });
+  const id = 'f_' + code + '_seat1';
+  const gh = await until(() => guest.read(`history/${guest.uid}/${id}`), 10000, 'the guest\'s history');
+  assert.equal(gh.side, 'X'); assert.equal(gh.result, 'win', 'the guest played X and won');
+  assert.equal((await host.read(`history/${host.uid}/${id}`)).result, 'loss');
+  assert.deepEqual((await get(`users/${guest.uid}`)).friend, { wins: 1, games: 1 });
+  assert.deepEqual((await get(`users/${host.uid}`)).friend, { losses: 1, games: 1 });
+});
+
+test('back-fill: records and per-mini-game stats recounted from game history, once', async () => {
+  const p = await player('Backfill');
+  const sq = (type, owner) => ({ owner, mini: { type } });
+  const final = sqs => JSON.stringify({ squares: sqs, winner: null });
+  await put(`users/${p.uid}`, { username: 'Backfill', rating: 1300, wins: 2, losses: 0, draws: 0, games: 2, joined: 1 });   // ranked games only, as before
+  await put(`history/${p.uid}`, {
+    a: { mode: 'ranked', side: 'X', result: 'win', how: 'line', date: 1, final: final([sq('ttt', 'X'), sq('ttt', 'X'), sq('pig', 'O')]) },
+    b: { mode: 'casual', side: 'O', result: 'loss', how: 'line', date: 2, final: final([sq('ttt', 'X'), sq('bs', 'O')]) },
+    c: { mode: 'casual', side: 'O', result: 'draw', how: 'draw', date: 3, final: final([]) },
+    d: { mode: 'friend', side: 'X', result: 'win', how: 'line', date: 4, final: final([sq('hex', 'X')]) },
+    e: { mode: 'ranked', side: 'X', result: 'win', how: 'resign', date: 5, final: final([]) },
+  });
+  await put('meta/backfill', null);
+  const run = (...args) => new Promise((resolve, reject) => execFile(process.execPath, [path.join(__dirname, '..', 'scripts', 'backfill-records.js'), ...args],
+    { env: Object.assign({}, process.env, { TTC_PROJECT: PROJECT, GCLOUD_PROJECT: PROJECT }) }, (e, out) => (e ? reject(new Error(out || e.message)) : resolve(out))));
+  assert.match(await run(), /Back-filled the records of \d+ players?/);
+  const u = await get(`users/${p.uid}`);
+  assert.deepEqual([u.wins, u.losses, u.draws, u.games], [2, 1, 1, 4], 'the main record: every Find Match game, ranked and casual');
+  assert.deepEqual(u.friend, { wins: 1, losses: 0, draws: 0, games: 1 }, 'the friends record apart');
+  assert.deepEqual(u.minis, { ttt: { won: 2, lost: 1 }, pig: { won: 0, lost: 1 }, bs: { won: 1, lost: 0 }, hex: { won: 1, lost: 0 } }, 'squares from all online games');
+  assert.equal(u.rating, 1300, 'the rating is left as it was');
+  await patch(`users/${p.uid}`, { wins: 7 });
+  assert.match(await run(), /already/, 'it runs once');
+  assert.equal((await get(`users/${p.uid}`)).wins, 7);
 });

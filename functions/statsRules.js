@@ -16,7 +16,7 @@
  */
 const crypto = require('node:crypto');
 
-const MODES = ['local', 'cpu', 'cvc', 'friend', 'casual', 'ranked'];   // two people on one phone, vs the computer, computer vs computer, friend code, matchmaking
+const MODES = ['local', 'cpu', 'cvc', 'friend', 'match', 'casual', 'ranked'];   // two people on one phone, vs the computer, computer vs computer, friend code, Find Match (casual and ranked: before it was one queue)
 const CLIENT_MODES = ['local', 'cpu', 'cvc'];                          // the ones a phone reports; the server records the online ones itself
 const MAX_MS = 3 * 3600 * 1000;                                        // a match "lasting" longer was left and picked up again: no time for it
 const ENDS = ['won', 'draw', 'open'];

@@ -15,6 +15,7 @@ on:
       - '.firebaserc'
       - 'test/server.test.js'
       - 'scripts/smoke-live.js'
+      - 'scripts/backfill-records.js'
       - '.github/workflows/firebase.yml'
   workflow_dispatch:
 
@@ -103,3 +104,5 @@ jobs:
           deploy || { echo "::warning::The deploy failed; trying again in two minutes."; sleep 120; deploy; }
       - name: Check the live functions and rules
         run: node scripts/smoke-live.js
+      - name: Back-fill records from game history (once)
+        run: node scripts/backfill-records.js

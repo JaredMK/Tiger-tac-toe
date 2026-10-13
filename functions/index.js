@@ -13,11 +13,14 @@
  * (`timeout`), and a scheduled sweep does it every minute for games nobody is watching.
  *
  * Database layout (see database.rules.json):
- *   users/{uid}            profile: username, rating, wins, losses, draws, games, joined
+ *   users/{uid}            profile: username, joined; the Find Match record (wins, losses, draws, games), the
+ *                          friend-code record (friend: { wins, losses, draws, games }), squares won and lost
+ *                          per mini-game in all online games (minis: { type: { won, lost } }); rating (unused
+ *                          while R.RATINGS_ENABLED is off)
  *   usernames/{lowercase}  uid
  *   leaderboard/{uid}      username, rating, record; only players with 5+ ranked games
  *   history/{uid}/{game}   one finished online game, from that player's side
- *   queue/{key}/{uid}      searching players (key: ranked, casual30, casual60, casual180)
+ *   queue/match/{uid}      searching players (Find Match is one queue, 1 minute a turn)
  *   active/{uid}           the matchmaking game a player is in
  *   games/{id}/pub         the public game: players, mode, status, state (JSON), result, final (JSON)
  *   games/{id}/sec         the hidden values (JSON): never readable by a phone
@@ -49,7 +52,8 @@ admin.initializeApp({ databaseURL: `https://${projectId}-default-rtdb.firebaseio
 const db = admin.database();
 
 const STALE_MS = 15000;          // a searcher that has not checked in for this long has left the queue
-const MATCH_GRACE_MS = 3000;     // the first turn's clock starts a moment late, while both phones load the board
+const MATCH_GRACE_MS = 6000;     // the first turn's clock starts late: both phones load the board and show the players
+const OLD_QUEUES = ['ranked', 'casual30', 'casual60', 'casual180'];   // before Find Match was one queue: left on cancel
 const GAME_KEEP_MS = 24 * 3600 * 1000;   // finished games are deleted after a day (their history stays)
 const CALL = { cors: true };
 
@@ -155,20 +159,19 @@ exports.claimUsername = onCall(CALL, async req => {
 // and lets the rating range widen; Cancel leaves the queue.
 exports.findMatch = onCall(CALL, async req => {
   const uid = needAccount(req);
-  const key = R.queueKey(req.data && req.data.queue, Number(req.data && req.data.timer));
-  if (!key) throw new HttpsError('invalid-argument', 'Pick Ranked or Casual (and a timer).');
+  const key = R.queueKey();                                     // one queue: whatever an older page asks for
   const prof = (await db.ref(`users/${uid}`).get()).val();
   if (!prof || !prof.username) throw new HttpsError('failed-precondition', 'Pick a username first.');
   const act = await activeGame(uid);
   if (act) return { status: 'matched', game: act.game, side: act.side };
-  for (const other of Object.keys(R.QUEUES)) if (other !== key) await leaveQueue(other, uid);   // one queue at a time
+  for (const other of OLD_QUEUES) await leaveQueue(other, uid);                // (from an older page)
   let made = [], mine = null;
   await db.ref(`queue/${key}`).transaction(cur => {
     made = []; mine = null;
     const t = now(), q = cur || {};
     for (const [u, e] of Object.entries(q)) if (!e || (!e.game && t - e.seen > STALE_MS)) delete q[u];
     const me = q[uid] || { since: t };
-    q[uid] = Object.assign(me, { rating: prof.rating, name: prof.username, seen: t });
+    q[uid] = Object.assign(me, { name: prof.username, seen: t, rec: recordOf(prof) }, R.RATINGS_ENABLED ? { rating: prof.rating } : {});
     for (const [a, b] of R.pairQueue(q, t)) {
       const id = db.ref('games').push().key, xFirst = crypto.randomInt(2) === 0;
       q[a] = Object.assign(q[a], { game: id, side: xFirst ? 'X' : 'O', vs: b, at: t });
@@ -186,7 +189,7 @@ exports.findMatch = onCall(CALL, async req => {
 exports.cancelSearch = onCall(CALL, async req => {
   const uid = needUid(req);
   let game = null;
-  for (const key of Object.keys(R.QUEUES)) {
+  for (const key of Object.keys(R.QUEUES).concat(OLD_QUEUES)) {
     await db.ref(`queue/${key}/${uid}`).transaction(cur => {
       if (cur && cur.game) { game = { game: cur.game, side: cur.side }; return undefined; }   // already paired: too late to cancel
       return null;
@@ -206,6 +209,18 @@ async function activeGame(uid) {
   if (status !== 'over') await db.ref(`active/${uid}`).remove();
   return null;
 }
+// A player's Find Match record, as the intro and the results show it.
+function recordOf(p) { return { wins: (p && p.wins) || 0, losses: (p && p.losses) || 0, draws: (p && p.draws) || 0 }; }
+// A finished match added to one player's records (as increments, so nothing else written to the profile
+// meanwhile is lost): the result to the Find Match or friends record, the squares to the mini-game stats.
+function recordUp(up, uid, result, squares, side, friend) {
+  const base = `users/${uid}/${friend ? 'friend/' : ''}`;
+  for (const [k, n] of Object.entries(R.recordDelta(result))) if (n) up[base + k] = ServerValue.increment(n);
+  for (const [t, v] of Object.entries(R.squaresFor(squares, side))) {
+    if (v.won) up[`users/${uid}/minis/${t}/won`] = ServerValue.increment(v.won);
+    if (v.lost) up[`users/${uid}/minis/${t}/lost`] = ServerValue.increment(v.lost);
+  }
+}
 // A paired game, made exactly once from the two queue entries: the random board, the sides as drawn,
 // all mini-games on, the queue's time per turn. Then both players are pointed at it.
 async function createGame(key, id) {
@@ -218,7 +233,8 @@ async function createGame(key, id) {
   const rng = seedRng();
   const rec = E.newOnlineMatch({ names: { X: X.e.name, O: O.e.name }, games: Object.fromEntries(E.TYPES.map(g => [g, true])), timer: Q.timer }, rng, id);
   E.armClock(rec.state, [], t + MATCH_GRACE_MS);
-  const players = { X: { uid: X.uid, name: X.e.name, rating: X.e.rating }, O: { uid: O.uid, name: O.e.name, rating: O.e.rating } };
+  const seat = p => Object.assign({ uid: p.uid, name: p.e.name, record: p.e.rec || { wins: 0, losses: 0, draws: 0 } }, R.RATINGS_ENABLED ? { rating: p.e.rating } : {});   // the record for the players' intro
+  const players = { X: seat(X), O: seat(O) };
   const pub = { mode: Q.mode, queue: key, timer: Q.timer, players, status: 'playing', created: t, updated: t, state: JSON.stringify(rec.state) };
   const made = await db.ref(`games/${id}`).transaction(cur => (cur ? undefined : { pub, sec: JSON.stringify(rec.secrets), dl: rec.state.timer.deadline }), undefined, false);
   if (made.committed) {
@@ -308,18 +324,24 @@ async function finishGame(id) {
   const final = finalOf({ state: st, secrets: parse(g.sec) }, { X: pub.players.X.name, O: pub.players.O.name });
   const how = R.howEnded(st), t = pub.ended || now();
   const up = {};
-  const result = { winner: st.winner || null, how };
-  if (pub.mode === 'ranked') {
-    const [px, po] = await Promise.all(['X', 'O'].map(s => db.ref(`users/${pub.players[s].uid}`).get().then(v => v.val())));
+  const result = { winner: st.winner || null, how, records: {} };
+  const [px, po] = await Promise.all(['X', 'O'].map(s => db.ref(`users/${pub.players[s].uid}`).get().then(v => v.val() || {})));
+  for (const [s, p] of [['X', px], ['O', po]]) {                 // every Find Match game: both records and the mini-game stats
+    const res = R.resultFor(st, s), d = R.recordDelta(res);
+    recordUp(up, pub.players[s].uid, res, final.squares, s, false);
+    const r0 = recordOf(p);
+    result.records[s] = { wins: r0.wins + d.wins, losses: r0.losses + d.losses, draws: r0.draws + d.draws };   // as the results screen shows it
+  }
+  if (R.RATINGS_ENABLED && pub.mode === 'ranked') {               // (switched off for now)
     const scoreX = st.winner === 'X' ? 1 : st.winner === 'O' ? 0 : 0.5;
-    const next = R.elo(px.rating, po.rating, scoreX);
+    const next = R.elo(px.rating || R.START_RATING, po.rating || R.START_RATING, scoreX);
     result.ratings = {};
     for (const [s, p] of [['X', px], ['O', po]]) {
-      const res = R.resultFor(st, s), uid = pub.players[s].uid;
-      const rec = { rating: next[s], wins: p.wins + (res === 'win'), losses: p.losses + (res === 'loss'), draws: p.draws + (res === 'draw'), games: p.games + 1 };
-      result.ratings[s] = { before: p.rating, after: next[s], delta: next[s] - p.rating };
-      for (const [k, v] of Object.entries(rec)) up[`users/${uid}/${k}`] = v;
-      up[`leaderboard/${uid}`] = rec.games >= R.LEADERBOARD_MIN_GAMES ? Object.assign({ username: p.username }, rec) : null;
+      const uid = pub.players[s].uid, before = p.rating || R.START_RATING;
+      result.ratings[s] = { before, after: next[s], delta: next[s] - before };
+      up[`users/${uid}/rating`] = next[s];
+      const games = (p.games || 0) + 1;
+      up[`leaderboard/${uid}`] = games >= R.LEADERBOARD_MIN_GAMES ? Object.assign({ username: p.username, rating: next[s], games }, result.records[s]) : null;
     }
   }
   for (const s of ['X', 'O']) {
@@ -374,7 +396,10 @@ exports.friendGameDone = onValueWritten({ ref: '/rooms/{code}/match' }, async ev
   }
   if (!st.winner) return;
   if (b && b.id === st.id && b.winner) return;                 // the end was seen already
-  const room = (await db.ref(`rooms/${event.params.code}`).get()).val();
+  // who played which side: as the match itself says (the seats can swap for a rematch, with Random
+  // sides, before this runs), else as the room says (a match written by an older page)
+  const seats = after.seats && after.seats.X && after.seats.O ? after.seats : null;
+  const room = seats ? { players: seats } : (await db.ref(`rooms/${event.params.code}`).get()).val();
   if (!room || !room.players) return;
   const t1 = now(), done = await claimMatch(sid, 'e', t1);
   if (done) {
@@ -393,6 +418,7 @@ exports.friendGameDone = onValueWritten({ ref: '/rooms/{code}/match' }, async ev
     const o = room.players[E.other(s)] || {};
     const ouser = o.uid ? (await db.ref(`users/${o.uid}/username`).get()).val() : null;
     up[`history/${p.uid}/${id}`] = historyRecord('friend', s, { uid: ouser ? o.uid : null, name: o.name || E.other(s) }, st, final, now(), null);
+    if (done) recordUp(up, p.uid, R.resultFor(st, s), final.squares, s, true);   // the friends record and the mini-game stats (once: the end's claim)
   }
   if (Object.keys(up).length) await db.ref().update(up);
 });
