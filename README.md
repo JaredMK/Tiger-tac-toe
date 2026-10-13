@@ -16,7 +16,9 @@ player slots, X and O; each is Human or Computer and has a name (a human slot de
 a computer slot to "Computer" and shows a little computer above it). Any pairing works: two people
 passing one phone, a person against the computer on either side, or the computer against itself
 while you watch. X moves first. Under "Advanced" are the mini-games in the mix (all on by default, at
-least one must stay on). Computer players carry the computer icon next to their name in the game: in
+least one must stay on), with a "Select all" button at the top. Ticking a game or Select all changes
+the list in place: it stays exactly where it was scrolled, Advanced stays open, and the choice is
+saved for the next match. Computer players carry the computer icon next to their name in the game: in
 the turn indicator, on the square they are about to play, and in the results.
 
 During a match a "Menu" button sits in the top corner: it pauses the game with "Resume" and

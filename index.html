@@ -393,6 +393,9 @@ b.X { color: var(--x); } b.O { color: var(--o); }
 .adv-h .chev svg { width: 20px; height: 20px; }
 .adv.open .adv-h .chev { transform: rotate(270deg); }
 .adv .games { padding-top: 10px; }
+.games-top { display: flex; justify-content: flex-end; padding-top: 10px; }
+.selall { height: 44px; padding: 0 16px; }
+.selall:disabled { opacity: .45; }
 .modes, .sides { display: flex; gap: 8px; align-items: center; }
 .sides > span { flex: none; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 .seg { flex: 1; min-width: 0; height: 44px; padding: 0 8px; border: 0; border-radius: 12px; background: var(--panel-2); box-shadow: inset 0 0 0 1px var(--line); font-weight: 700; font-size: 14px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -2769,7 +2772,9 @@ const mv = x => `data-m='${JSON.stringify(x)}'`;
 function render() {
   const view = state.screen + ':' + state.zoom;
   entering = view !== lastView; lastView = view;
+  const kept = entering ? [] : [...app.querySelectorAll('[data-keep-scroll]')].map(e => [e.dataset.keepScroll, e.scrollTop]);
   app.innerHTML = renderHeader() + renderMain();
+  for (const [k, top] of kept) { const e = app.querySelector(`[data-keep-scroll="${k}"]`); if (e) e.scrollTop = top; }   // the same screen again: lists stay where they were scrolled
   const wl = document.getElementById('wlist') || document.getElementById('mmlist');
   if (wl) wl.scrollTop = wl.scrollHeight;
   animate();
@@ -2901,7 +2906,7 @@ function renderSetup() {
       ${state.notice ? `<div class="notice" role="status">${esc(state.notice)}</div>` : ''}
       <div class="status${net.status === 'connected' ? ' ok' : net.status === 'error' ? ' bad' : ''}">${net.status === 'connected' ? `<b>${esc(s.names[guest])}</b> joined` : esc(net.msg || 'Waiting for friend…')}</div>
       ${net.status === 'error' ? '<button class="btn" data-act="host-retry">Try again</button>' : ''}</div>` : '';
-  const ready = host ? on && state.online.joined && connected : on;
+  const ready = setupReady(s);
   const title = host ? 'Host game' : 'Play Local';
   const sub = host ? 'Share the code, set up, then start once your friend is in' : '';
   const slot = p => {                                            // a player slot: Human or Computer, and a name
@@ -2914,15 +2919,36 @@ function renderSetup() {
   return `<main class="scr setup">
     <div class="bar">${host ? `<button class="back" data-act="lobby-back" aria-label="Close the room and go back">${CHEV}Back</button>` : `<button class="back" data-act="menu" aria-label="Back to the main menu">${CHEV}Menu</button>`}
       <div class="ttl"><b>${title}</b>${sub ? `<small>${sub}</small>` : ''}</div></div>
-    <div class="setup-box">
+    <div class="setup-box" data-keep-scroll="setup">
     ${room}
     ${host ? `<div class="names">${field('X')}${field('O')}</div>` : `<div class="slots">${slot('X')}${slot('O')}</div>`}
     ${host ? sides : ''}
     ${timer}
     <div class="adv${advOpen ? ' open' : ''}"><button class="adv-h" data-act="adv" aria-expanded="${advOpen}"><span>Advanced</span><small>${on} of ${TYPES.length} mini-games on</small><i class="chev">${CHEV}</i></button>
-      ${advOpen ? `<div class="games">${TYPES.map(chk).join('')}</div>` : ''}</div>
+      ${advOpen ? `<div class="games-top"><button class="btn selall" data-act="games-all"${on === TYPES.length ? ' disabled' : ''}>Select all</button></div><div class="games">${TYPES.map(chk).join('')}</div>` : ''}</div>
   </div>
-  <div class="setup-foot"><button class="primary" data-act="start"${ready ? '' : ' disabled'}>Start match</button><small class="warn">${on ? (host && !ready ? 'Start opens once your friend has joined' : '') : 'Tick at least one mini-game'}</small></div></main>`;
+  <div class="setup-foot"><button class="primary" data-act="start"${ready ? '' : ' disabled'}>Start match</button><small class="warn">${setupWarn(s)}</small></div></main>`;
+}
+// Start opens once at least one mini-game is on (online, also once the friend is in).
+function setupReady(s) { const on = enabledGames(s).length; return isHost() ? !!(on && state.online.joined && connected) : !!on; }
+function setupWarn(s) { return !enabledGames(s).length ? 'Tick at least one mini-game' : isHost() && !setupReady(s) ? 'Start opens once your friend has joined' : ''; }
+// Ticking a mini-game (or Select all) changes the screen in place, with no re-render, so the list
+// stays exactly where it was scrolled and Advanced stays open. The choice is saved for the next match.
+function setGames(change) {
+  const s = state.setup;
+  change(s.games);
+  save();
+  const on = enabledGames(s).length;
+  for (const box of app.querySelectorAll('input[data-t]')) {
+    const v = !!s.games[box.dataset.t];
+    box.checked = v;
+    box.closest('.chk').classList.toggle('off', !v);
+  }
+  const n = app.querySelector('.adv-h small'); if (n) n.textContent = `${on} of ${TYPES.length} mini-games on`;
+  const all = app.querySelector('[data-act="games-all"]'); if (all) all.disabled = on === TYPES.length;
+  const start = app.querySelector('[data-act="start"]'); if (start) start.disabled = !setupReady(s);
+  const warn = app.querySelector('.setup-foot .warn'); if (warn) warn.textContent = setupWarn(s);
+  dbSetup({ games: s.games });
 }
 
 /* ----- main board ----- */
@@ -3986,7 +4012,7 @@ async function fireTimeout(seq, deadline) {
 function renderOnline() {
   return `<main class="scr setup online-scr">
     <div class="bar"><button class="back" data-act="menu" aria-label="Back to the main menu">${CHEV}Menu</button></div>
-    <div class="online-mid"><div class="menu-card">
+    <div class="online-mid" data-keep-scroll="online"><div class="menu-card">
     <h1>Play Online</h1>
     <p class="sub">One of you hosts a room and shares its code; the other joins. Both phones need an internet connection.</p>
     <button class="primary" data-act="host">Host game</button>
@@ -4007,7 +4033,7 @@ function renderJoin() {
   return `<main class="scr setup">
     <div class="bar"><button class="back" data-act="lobby-back" aria-label="${o ? 'Leave the room and go back' : 'Back to Play Online'}">${CHEV}Back</button>
       <div class="ttl"><b>Join game</b><small>${o ? `Room ${esc(o.code)}` : 'Enter the code the host shared'}</small></div></div>
-    <div class="setup-box">${form}${status}${o && net.status === 'error' ? '<button class="primary" data-act="rejoin">Try again</button>' : ''}</div>
+    <div class="setup-box" data-keep-scroll="setup">${form}${status}${o && net.status === 'error' ? '<button class="primary" data-act="rejoin">Try again</button>' : ''}</div>
     ${o ? '' : `<div class="setup-foot"><button class="primary" data-act="join">Join</button></div>`}</main>`;
 }
 
@@ -4083,6 +4109,8 @@ app.addEventListener('click', e => {
     leaveRoom();
   } else if (act === 'adv') {
     advOpen = !advOpen; render();
+  } else if (act === 'games-all') {             // Select all: every mini-game on, in place
+    if (state.screen === 'setup') setGames(g => { for (const t of TYPES) g[t] = true; });
   } else if (act === 'side') {
     const side = el.dataset.side === 'O' ? 'O' : 'X', was = state.setup.human === 'O' ? 'O' : 'X';
     if (isHost()) { if (side !== was) hostSide(side); return; }   // the seats move over in the room; the room's answer updates the screen
@@ -4139,8 +4167,33 @@ app.addEventListener('click', e => {
     if (startMatch(state)) commit();
   }
 });
+// A tap inside a scrolling list never moves it: anything the browser does on its own (bringing a box it
+// focuses fully into view) is put back before the next frame. A drag is a scroll and fires no click.
+let tapScroll = null;
+app.addEventListener('pointerdown', e => {
+  const sc = e.target.closest && e.target.closest('[data-keep-scroll]');
+  const typing = e.target.closest && e.target.closest('input:not([type="checkbox"]), textarea, select');   // a text field may scroll up for the keyboard
+  tapScroll = sc && !typing ? { sc, top: sc.scrollTop } : null;
+}, true);
+app.addEventListener('click', () => {
+  const t = tapScroll; tapScroll = null;
+  if (!t) return;
+  const back = () => { if (t.sc.isConnected && t.sc.scrollTop !== t.top) t.sc.scrollTop = t.top; };
+  requestAnimationFrame(back);
+}, true);
+// Tapping a game's name ticks its box without the browser focusing the box (which can scroll the list
+// to bring a half-hidden box into view): the label's own click is cancelled and the box flipped here.
+app.addEventListener('click', e => {
+  const label = e.target.closest && e.target.closest('label.chk');
+  if (!label || e.target.matches('input')) return;
+  e.preventDefault();
+  const box = label.querySelector('input[data-t]');
+  if (!box || box.disabled) return;
+  box.checked = !box.checked;
+  box.dispatchEvent(new Event('change', { bubbles: true }));
+});
 // Setup screen: names are saved as they are typed (no re-render, so the field keeps focus);
-// ticking a game re-renders the list.
+// ticking a game updates the list in place.
 app.addEventListener('input', e => {
   const el = e.target;
   if (el.matches && el.matches('input[data-p]') && state.setup) { state.setup.names[el.dataset.p] = el.value; save(); if (state.online && state.online.me === el.dataset.p) dbName(el.value); }
@@ -4152,7 +4205,7 @@ app.addEventListener('keydown', e => {
 });
 app.addEventListener('change', e => {
   const el = e.target;
-  if (el.matches && el.matches('input[data-t]') && state.setup) { state.setup.games[el.dataset.t] = el.checked; commit(); dbSetup({ games: state.setup.games }); }
+  if (el.matches && el.matches('input[data-t]') && state.setup) setGames(g => { g[el.dataset.t] = el.checked; });
 });
 function zoomedType() {
   if (state.screen !== 'mini' || state.zoom == null || state.flash || state.done || state.winner || blocked()) return null;
