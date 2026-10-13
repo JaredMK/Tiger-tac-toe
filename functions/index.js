@@ -28,6 +28,9 @@
  *   stats/...              anonymous game stats (see statsRules.js): readable by the admin only
  *   statsSeen/match/{id}   a match the stats have counted (its start time, whether start and end were counted)
  *   statsSeen/{d|w|m}/{period}/{hash}  a player counted as active in that day, week or month (never readable)
+ *   localStats/{uid}       a logged-in player's local record and squares per mini-game (recordLocal; that player only)
+ *   localHistory/{uid}/l_{id}  one local match, from player 1's side (that player only)
+ *   review/flaggedNames    existing usernames the word list would refuse (scripts/check-usernames.js; admin only)
  *
  * Game stats: every match in every mode is counted. Phones report their local matches through the
  * `track` callable (which checks and trims what it is sent); online matches are counted here, where
@@ -376,6 +379,29 @@ function historyRecord(mode, side, them, st, final, at, rating) {
   if (rating) { h.ratingBefore = rating.before; h.ratingAfter = rating.after; }
   return h;
 }
+
+/* ===================== local matches: a logged-in player's own record ===================== */
+// Reported by the phone once a local match is over (won, lost, or left): kept once per match, private
+// to the player. localStats/{uid}: the record and squares won and lost per mini-game; localHistory/{uid}:
+// the match, its final board included, as in the game history.
+exports.recordLocal = onCall(CALL, async req => {
+  const uid = needAccount(req);
+  const rep = R.checkLocal(req.data, E.TYPES.concat(E.OLD_TYPES), E.mainResult);
+  if (!rep) throw new HttpsError('invalid-argument', 'Not a match.');
+  if (!(await db.ref(`users/${uid}/username`).get()).val()) throw new HttpsError('failed-precondition', 'Pick a username first.');
+  const h = historyRecord('local', rep.side, { uid: null, name: rep.opponent }, rep.final, rep.final, now(), null);
+  h.opponent.cpu = rep.cpu;
+  const tx = await db.ref(`localHistory/${uid}/l_${rep.id}`).transaction(cur => (cur ? undefined : h));
+  if (!tx.committed) return { ok: true, seen: true };          // reported already
+  const up = {};
+  for (const [k, n] of Object.entries(R.recordDelta(h.result))) if (n) up[`localStats/${uid}/${k}`] = ServerValue.increment(n);
+  for (const [t, v] of Object.entries(R.squaresFor(rep.final.squares, rep.side))) {
+    if (v.won) up[`localStats/${uid}/minis/${t}/won`] = ServerValue.increment(v.won);
+    if (v.lost) up[`localStats/${uid}/minis/${t}/lost`] = ServerValue.increment(v.lost);
+  }
+  if (Object.keys(up).length) await db.ref().update(up);
+  return { ok: true, result: h.result };
+});
 
 /* ===================== friend-code games: history for logged-in players ===================== */
 // A room's match (played by the two phones, unrated) is saved to the history of each player who has

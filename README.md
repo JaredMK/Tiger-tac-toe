@@ -13,21 +13,29 @@ Database, Authentication, and Cloud Functions for accounts, matchmaking, records
 
 Open `index.html` in a browser (or serve the folder with any static server) and play.
 
-A main menu comes first: "Play Local" or "Play Online". Play Local opens one setup screen with two
+A main menu comes first: "Play Local", "Play Online" and "How to Play". Play Online offers "Play a
+Friend" (host or join a room) and "Find a Match". Play Local opens one setup screen with two
 player slots. Player 1 is always a person: a name and a side, X, O or Random. Player 2 is Human or
 Computer and gets the other side (a computer slot shows a little computer above it). A blank name is
 the side's letter, and the computer's is "Computer". So it is two people passing one phone, or a
 person against the computer on either side; the computer no longer plays itself. X moves first.
 A rematch keeps the choice: X or O stay, and Random is drawn again for every match. Under "Advanced"
-are the mini-games in the mix (all on by default, at
-least one must stay on), with a "Select all" button at the top. Ticking a game or Select all changes
-the list in place: it stays exactly where it was scrolled, Advanced stays open, and the choice is
-saved for the next match. Computer players carry the computer icon next to their name in the game: in
+are the mini-games in the mix (all on by default), with "Deselect all" and "Select all" buttons at
+the top. With none ticked, Start stays off and a short note says "Select at least one mini-game to
+start". Ticking a game, Select all or Deselect all changes the list in place: it stays exactly where
+it was scrolled, Advanced stays open, and the choice is saved for the next match. Computer players carry the computer icon next to their name in the game: in
 the turn indicator, on the square they are about to play, and in the results.
 
-During a match a "Menu" button sits in the top corner: it pauses the game with "Resume" and
-"Main menu"; the latter asks "Leave this match?" and, on Yes, ends the match and returns to the main
-menu. Nothing moves while the menu is open, the computer included. When a square is won, the owner's
+The game screen has a slim top row with "Menu" and the turn clock in a fixed-size box of its own
+(empty without a time limit), so the clock never squeezes or overlaps anything. Under it is the turn
+bar: the X and O characters with the players' names on each side and the squares score between them;
+the current player's character bounces gently, and "[name]'s turn" shows clearly underneath. Long
+names are cut off cleanly with "…".
+
+"Menu" pauses the game with "Resume" and "Main menu"; the latter asks "Leave this match?" and, on Yes,
+ends the match and returns to the main menu. Leaving a match that is recorded (any online match, or a
+local one while logged in) counts as a loss, and the question says so: "Leave this match? It will
+count as a loss." The loss is recorded like any other result. Nothing moves while the menu is open, the computer included. When a square is won, the owner's
 mark squashes in with two comic-book bursts, once: first on the result card (just the bursts and the
 winner's character, no words), then around the square on the board. Each burst's word is
 picked at random from POW!, BAM!, CHAOS!, BOOM!, KAPOW!, WHAM!, ZAP!, SMASH!, CRUNCH!, YOINK!,
@@ -35,8 +43,8 @@ SNATCHED!, MINE!, CLAIMED!, GOTCHA!, KABLAM! and BOP!, never one shown the time 
 in, stays about a second and pops out; it never stays on screen (with reduced motion it does not
 animate, and still goes after a second).
 
-Every screen outside a match (Play Local, Play Online, Host game, Join game and its waiting screen)
-has its back button in the top-left corner, in the same style as the Board button inside a
+Every screen outside a match (Play Local, Play Online, Play a Friend, Find a Match, Host game, Join
+game and its waiting screen) has its back button in the top-left corner, in the same style as the Board button inside a
 mini-game, and it goes back one screen.
 
 The results screen shows a message picked at random for the match: a win message for a person who
@@ -67,9 +75,11 @@ a button returns to the results with "Rematch" (the same settings and opponent a
   never costs a turn.
 - Every mini-game has a "?" in the top-right corner of its full view: a short card with how to play
   and how to win. It never uses a turn, and a tap anywhere closes it; it covers the whole screen, so
-  nothing underneath takes that tap, and going to another screen closes it too. The same "?" sits on each game in the
+  nothing underneath takes that tap, and going to another screen closes it too. It opens as an overlay on
+  top of the page: nothing under it moves or changes size. The same "?" sits on each game in the
   Advanced checklist, and "How to Play" on the main menu shows the core rules with the list of
   mini-games, each opening its card.
+- Pages only ever scroll up and down: sideways scrolling is locked across the app.
 
 Each square is assigned one of these at random when the match starts (duplicates are fine):
 
@@ -77,7 +87,7 @@ Each square is assigned one of these at random when the match starts (duplicates
 | --- | --- |
 | Tic-tac-toe | 3×3, three in a row |
 | Connect 4 | The standard 7 columns × 6 rows, pieces drop to the lowest open cell, four in a row in any direction |
-| Battleship | 4×4 sea with one hidden ship shared by both players: 1 to 4 cells long (Patrol Boat, Destroyer, Submarine, Battleship), across or down, placed at random. Its name and a silhouette of its parts show under the grid. A move fires at one cell: a hit shows a burst, a miss a splash, and the ship's direction is never shown. Whoever hits its last part sinks it (the whole ship shows and goes under) and wins |
+| Battleship | 4×4 sea with one hidden ship shared by both players: 1 to 4 cells long (Patrol Boat, Destroyer, Submarine, Battleship), across or down, placed at random. Its name and a silhouette of its parts show under the grid, and under the miniature on the main board. A move fires at one cell: a hit shows a burst, a miss a splash, and the ship's direction is never shown. A hit that does not sink the ship lets the same player fire again at once, and their turn goes on until they miss or sink it (as with Hangman's right letters); a timed-out random shot fires once and ends the turn. Whoever hits its last part sinks it (the whole ship shows and goes under) and wins |
 | Wordle | One hidden common 5-letter word shared by both players; a move is a guess with green/yellow/grey feedback, no guess limit. Guesses must be real words (checked against an embedded list of about 15,000); a non-word shows "Not a word" and does not use the turn |
 | Hangman | Hidden 5–7 letter word; guess a letter. A right letter is revealed and you guess again at once; a wrong letter ends your turn. Revealing the last letter wins. The miniature on the board shows the wrong letters themselves, crossed out in red as in the full view, wrapping onto more lines as they add up |
 | Hex | 4×4 hex grid; X connects left to right, O connects top to bottom |
@@ -88,27 +98,39 @@ Each square is assigned one of these at random when the match starts (duplicates
 | Candy race | A winding path of 12 randomly coloured spaces (any three in a row are all different colours) from Start to a Finish shown in all four colours; a spin of the colour wheel hops your token to the next space of that colour. No such space ahead means you reach the Finish and win |
 | Coin flip | Five coins: two X, two O and one mystery coin (?) that belongs to nobody, in random places. Flip turns up to 3 coins that aren't yours, the other side's and the mystery coin (all of them if there are 3 or fewer, otherwise 3 picked at random). The coins are picked as each turn starts and ringed in the player's colour before Flip is tapped, and exactly those flip; skipping the square and coming back a later turn may show a new set. Each lands X or O at random, the mystery coin too. All five the same wins for that symbol's player (so with no coin of your own left, a flip can hand the square to the other side) |
 | Pig | Each player has a banked score. A move is a whole push-your-luck turn: roll a die, and a number not yet rolled this turn joins the points at risk (a small +N by your score, with this turn's dice in a row); then roll again or bank. Banking moves them into your score and ends the move; a repeated number busts, losing them (at most six rolls). Once your score and the points at risk reach 21, only Bank is left. First to a banked 21 wins. A bust turns red only once the die has landed; after a winning bank the die keeps the last number rolled |
-| Treasure hunt | 5×5 grid with one hidden treasure. A move digs a cell: the treasure wins, otherwise the cell shows its distance to the treasure in steps up, down, left or right, coloured hot to cold. Everything dug stays visible |
-| Hexapawn | 3 columns × 4 rows; each side has 3 pawns on its home row (X on the bottom, O on the top). A move is one pawn stepping one square straight forward into an empty square, or capturing an opposing pawn one square diagonally forward. Tap a pawn to see its moves; the pawn slides over and a captured pawn is knocked off the board. You win the square by moving a pawn onto the other side's home row, or by making a move after which the other side has no legal move there (capturing all their pawns included). A player with no move in this square just plays elsewhere: they only lose it when the other side moves and leaves them stuck |
-| Mastermind | One hidden code shared by both players: 4 pegs from 6 colours, no colour twice, picked by the computer. A move is one guess of 4 different colours (tap a slot, then a colour; tap a filled slot to clear it). Feedback is a solid marker for each right colour in the right spot and a hollow marker for each right colour in the wrong spot, always solid first, so the order says nothing about which peg is which. Every guess and its markers stay on show, no guess limit; guessing the exact code wins. Each colour also carries a symbol (circle, square, triangle, diamond, star, plus) |
+| Treasure hunt | 6×6 grid with one hidden treasure. A move digs a cell: the treasure wins; otherwise the cell shows how warm it is, never the distance itself, counted in steps up, down, left or right: Hot (1 step), Warm (2–3), Cool (4–5) or Cold (6+), each with its own colour and label (a legend sits under the grid). Everything dug stays visible. A 5×5 square from a match started before keeps its size and answers in the same bands |
+| Hexapawn | 3 columns × 4 rows; each side has 3 pawns on its home row (X on the bottom, O on the top). A move is one pawn stepping one square straight forward into an empty square, or capturing an opposing pawn one square diagonally forward. Tap a pawn to see its moves; the pawn slides over and a captured pawn is knocked off the board. The only way to win the square is moving a pawn onto the other side's home row (taking the last pawn does not win it). A player with no legal move in this square simply plays elsewhere; when neither player has one, the square resets with a new random mini-game, like a drawn Tic-tac-toe |
+| Mastermind | One hidden code shared by both players: 4 pegs from 6 colours, no colour twice, picked by the computer. A move is one guess of 4 different colours (tap a slot, then a colour; tap a filled slot to clear it). Feedback is a solid marker for each right colour in the right spot and a hollow marker for each right colour in the wrong spot, always solid first, so the order says nothing about which peg is which. Every guess and its markers stay on show, no guess limit; guessing the exact code wins. Each colour also carries a symbol (circle, square, triangle, diamond, star, plus). The hidden code sits in a compact row of small, peg-sized slots, so the guess history gets the room |
 
 Hidden information (the Wordle and Hangman words, the Higher/lower number, the Memory cards, the
 Battleship ship, the Mastermind code) is never shown on the board or in a mini-game before it is revealed.
 
 ## Playing online
 
-"Play Online" offers "Host game" and "Join game". The host gets a five-letter room code (no look-alike
+"Play Online" offers "Play a Friend" and "Find a Match" (below). Play a Friend offers "Host game" and
+"Join game". The host gets a five-letter room code (no look-alike
 letters) and a Share button that sends a link to the game with the code filled in; "Waiting for
 friend…" shows until the guest joins. The guest enters a name and the code, or opens the shared link.
 The host picks a side (X, O or Random), the mini-games and the time per turn, and starts once the
 guest is in; both phones then show the same board. A rematch keeps the same choice: X or O stay as
-picked, and with Random the sides are drawn again for every match, rematches included (the guest's
-lobby says "sides drawn at random for every match"). Who played which side is stored with the match
-itself, so the result is credited to the right players even when the next match swaps the seats.
+picked, and with Random the sides are drawn again for every match, rematches included. Once in, the
+guest sees the game as separate labelled lines, like the other setup screens: Host, Your side (X, O,
+or "Drawn at random every match"), Time per turn and Mini-games, then "Waiting for [host] to start…".
+Who played which side is stored with the match itself, so the result is credited to the right players
+even when the next match swaps the seats.
+
+A code is read whatever its case and with any spaces around it, and a room more than a day old is
+refused as expired ("The game CODE has expired. Ask the host for a new code."). Opening a join link
+while already in a match (online or local) no longer lands on "No game with this code found" (the
+old room was being resumed instead of the link): it asks first, "You're in a match with [name]. Leave
+it and join this one?", adding "Leaving counts as a loss." when it does, with **Leave & Join** or
+**Stay**. Leave & Join leaves the match exactly as the menu does (the loss recorded) and opens the
+join form with the link's code; Stay carries on. A link to the room you are already in just carries
+on, and a link is handled once, so a reload does not ask again.
 
 Backing out of a lobby leaves it cleanly. The host's Back closes the room: it is deleted from the
 database with its presence entries, the code stops working, a guest already in it is sent to the main
-menu with "The room was closed.", and the host returns to Play Online. The guest's Back gives up the
+menu with "The room was closed.", and the host returns to Play a Friend. The guest's Back gives up the
 seat, so the host's room stays open (it shows "Waiting for friend…" again), and returns to the join
 form with the name and code still filled in. A room still being opened, or a seat still being taken,
 when Back is tapped is let go as soon as the database answers.
@@ -118,8 +140,9 @@ for [name]…". Each player's moves play on the other phone the way computer mov
 square glows on the main board for about a second with a "[name] plays here" label, then a zoom into
 the square, the animation, a short hold, back to the board, Pig rolls one by one (a follow-up move in
 a square you are already looking at plays right there). "Rematch" on the win screen, from either
-player, starts again in the same room with the same settings. Leaving through the menu tells the
-other player ("[name] left the match") and sends them back to the main menu too.
+player, starts again in the same room with the same settings. Leaving a match under way through the
+menu ends it as a loss for the one leaving (written to the match, so the server records it for both
+players), tells the other player ("[name] left the match") and sends them back to the main menu too.
 
 Leaving the app does not end a match. Lock the phone, answer a call, switch apps: the other player
 sees "[name] is away", the match waits (or the clock runs, if one is set), and when you come back,
@@ -153,8 +176,9 @@ nothing stops when one of them is backgrounded, reloaded or switched off for a w
 
 ### Time per turn
 
-The host's lobby offers a time per turn: 30s, 1 min, 3 min, or No limit (the default). The guest sees
-the setting in the lobby. With a limit on, a countdown shows in the header on both phones; it starts
+The host's lobby offers a time per turn: No limit (the default) or 1 minute. Find Match is always
+1 minute. (A room or saved setting from before with 30 seconds or 3 minutes becomes 1 minute.) The
+guest sees the setting in the lobby. With a limit on, a countdown shows in the header on both phones; it starts
 when a turn begins (once the previous move has finished playing), turns red and pulses in the last ten
 seconds, and keeps running while the in-game menu is open or while a player is away.
 
@@ -211,16 +235,29 @@ before); local modes stay offline-capable.
 
 ## Accounts, Find Match, records and history
 
-**Logging in.** The main menu has **Log in** at the top right (with **My Stats** at the top left once
-logged in).
+**Logging in.** The main menu has **Log in** at the top right.
 A player logs in with Google or with an email and a password (**Create account** the first time,
-**Forgot password?** emails a reset link). On first login they pick a username: 3 to 16 letters,
-numbers or underscores, unique whatever the capitals, checked by a basic profanity filter, and
-permanent. The menu then shows the username instead of Log in; tapping it (or **My Stats**) opens
-the player's stats, which have **Log out**. Playing locally, against the computer or with a friend's
+**Forgot password?** emails a reset link). On first login they pick a username, permanent and unique
+whatever the capitals. The menu then shows the username instead of Log in; tapping it opens the
+player's stats, which have **Log out** (there is no separate Stats button).
+
+**Usernames** are checked on the server, whatever a page sends: 3 to 16 characters, letters, numbers
+and underscores only, and not offensive. The word list is the widely used open-source "List of Dirty,
+Naughty, Obscene, and Otherwise Bad Words" (English, CC BY 4.0, `functions/badwords.js`) plus a few
+extra spellings. Look-alike characters are undone first (0→o, 1→i, 3→e, 4→a, 5→s, 7→t, 8→b, @→a,
+$→s, and so on), then: a listed word of 4 or more letters is caught anywhere in the name; a 3-letter
+word only as a word of its own (between underscores or digits, or a CamelCase part, such as
+`Big_Ass` or `BigAss`); and ordinary words that merely contain a listed one (Classic, Scunthorpe,
+Analyst, Cockpit, Grape, Therapist…) are on an allow-list. The page runs the same check first for a
+quick answer.
+
+**Usernames already taken** are checked against the same rules once per rules version by
+`scripts/check-usernames.js` (run by the deploy workflow): it changes nothing, writes the names that
+would be refused today, with the word that caught each one, where only the admin can read them (the
+dashboard's "Usernames to review" card), and prints only a count in the public log. Playing locally, against the computer or with a friend's
 code needs no account (a friend game without one uses an anonymous session, as before).
 
-**Find Match** (needs an account) pairs strangers in a single queue: every mini-game on and always
+**Find Match** (Play Online → Find a Match; needs an account) pairs strangers in a single queue: every mini-game on and always
 1 minute a turn, with no options to pick. The screen shows "Searching…" (X and O hopping on one
 looping CSS animation, O half a hop behind by its delay) with the time waited and **Cancel**. The
 server pairs players by how long they have waited, longest first. Sides are drawn at random. Two
@@ -239,8 +276,8 @@ cards, the treasure, the ship) are stored where no phone can read them, and appe
 state only when the game reveals them. The turn deadline is a server time. When it passes, either
 phone asks the server for the timeout move and the server checks the deadline first; a scheduled
 function does the same every minute for games nobody is watching. Two timeouts in a row lose the
-match. Leaving a Find Match game through the menu is a resignation, which loses it ("Leaving
-will count as a loss" in the confirmation).
+match. Leaving a Find Match game through the menu is a resignation, which loses it ("Leave this
+match? It will count as a loss." in the confirmation).
 
 **Records.** A player's record is wins-losses-draws (3-5-1). The main record counts Find Match
 games only; friend-code games go on a separate "vs friends" record (for a player who is logged in).
@@ -250,14 +287,23 @@ mini-game counts and both histories in one atomic update, once per game; phones 
 of it. The record shows next to the usernames on the vs card, on the results screen ("Your record
 1-0-0", and the opponent's, whose name opens their profile) and on profiles.
 
-**My Stats** (from the main menu, once logged in): the Find Match record, the win rate (wins over
-all games, draws included, so 3-5-1 is 33%) and the vs-friends record, then a table of every
-mini-game played online with squares won, squares lost and win rate, most won first, and a link to
-the game history. Another player's profile (tap their name) shows the same.
+**Local games** are recorded too for a logged-in player, as Player 1, against the computer or pass
+and play, won, lost or left (a loss). The phone reports each finished match once to the `recordLocal`
+Cloud Function, which checks it and writes the player's local record, local mini-game counts and a
+history entry to `localStats/{uid}` and `localHistory/{uid}`, readable only by that player. A report
+waits on the phone while offline and goes when it can. The online records are not touched.
 
-**History.** Every online game, newest first, marked Find Match or Friend, with the opponent, the
-date, the result and how it ended (three in a row, most squares, timeout or resignation). Tapping a
-game opens the read-only review board with everything that was hidden revealed.
+**My Stats** (tap your username): a selector, **Online / Local / All**. Online covers Find Match and
+friend games together (with a "Find Match x-y-z · Friends x-y-z" line under it), Local the local
+games, All both. The record (wins-losses-draws and the win rate: wins over all games, draws
+included, so 3-5-1 is 33%) and the table of mini-games (squares won, squares lost and win rate, most
+won first) both follow the selection. Another player's profile (tap their name) shows their online
+stats only, with no selector: local games stay private.
+
+**History.** Every online game and, on your own stats, every recorded local game, newest first,
+marked Find Match, Friend or Local, with the opponent, the date, the result and how it ended (three
+in a row, most squares, timeout or resignation). Tapping a game opens the read-only review board with
+everything that was hidden revealed.
 
 **Ratings and the leaderboard are switched off for now.** One flag, `RATINGS_ENABLED = false`, in
 `index.html` and in `functions/serverRules.js`, turns them off: no rating is calculated, changed or
@@ -272,9 +318,10 @@ player's records and mini-game counts from their game history (older ranked and 
 as Find Match) and leaves a marker so it never runs twice. It prints only counts.
 
 **Security rules** (`database.rules.json`): phones may read profiles, records and histories, and
-their own matchmaking game's public state; only Cloud Functions write ratings, records, mini-game
-counts, usernames, the leaderboard, histories, queues and game state. A game's hidden values have no
-read rule at all.
+their own matchmaking game's public state; a player's local record and history only by that player;
+only Cloud Functions write ratings, records, mini-game counts, usernames, the leaderboard, histories,
+queues and game state. A game's hidden values have no read rule at all, and the username review list
+is readable by the admin only.
 
 ## Playing against the computer
 
@@ -300,8 +347,9 @@ helps the other player too.
 Inside a square: Tic-tac-toe and Hexapawn play full minimax; Connect 4 searches five moves ahead with alpha-beta
 and a threat count; Hex spots wins and blocks through shortest-connection distances, one reply ahead;
 Battleship fires where the ship can still fit given every hit and miss (around a hit once there is
-one), and between equals at the cell most likely to sink it; Treasure hunt digs only cells consistent with every clue, the
-one that best narrows the rest; Higher/lower guesses the midpoint; Wordle keeps the words consistent
+one), and between equals at the cell most likely to sink it, and after a hit keeps firing on its bonus
+shots; Treasure hunt digs only cells consistent with every band clue (hot, warm, cool, cold), the one
+that best narrows the candidates; Higher/lower guesses the midpoint; Wordle keeps the words consistent
 with all feedback and guesses the one that splits them best; Mastermind keeps the list of codes
 consistent with every guess so far and plays the guess (any of the 360 codes) whose worst-case
 answer leaves the fewest, which cracks any code in at most 5 guesses; Hangman takes the letter most common in
@@ -310,9 +358,10 @@ pair, else unseen cards; Coin flip reads its exact chances from the marked coins
 chance of handing the square over when none of its own are left); Snakes and Ladders works out the
 expected rolls to the top with the ladders and snakes in; Bump and the races count the moves left; Pig keeps rolling while the bust risk
 is acceptable and banks around 8 to 10, bolder when behind and safer when ahead, always when the bank
-would reach 21. On the board, a Hexapawn square is weighed by how close each side's leading pawn is to
-the far row (one move away when a win is on), since nobody has to move in a square and minimax lines
-that rely on the other side being forced to move do not apply there.
+would reach 21. Hexapawn's minimax knows the only win is the far row and that a position where
+neither side can move resets the square. On the board, a Hexapawn square is weighed by how close each
+side's leading pawn is to the far row (one move away when a win is on), since nobody has to move in a
+square.
 
 ## Deploying
 
@@ -364,7 +413,8 @@ first, wins.
 
 The dashboard is https://jaredmk.github.io/Tiger-tac-toe/admin.html: tables and charts, with the
 mini-game table sortable (by average winner moves to find games that are too fast or too slow) and
-filterable by mode. It opens only for the account with the admin flag; the database rules refuse the
+filterable by mode, and the "Usernames to review" card (existing names the word list would refuse
+today, with the word that caught each; nothing is changed). It opens only for the account with the admin flag; the database rules refuse the
 stats to everyone else.
 
 ### Making yourself the admin (once)
@@ -389,9 +439,11 @@ The rules of the game live in `engine.js`: pure and deterministic (no clock, no 
 every random choice comes from an rng passed in, `makeRng(seed)` for a seeded one), loaded by the
 page as a plain script and by the Cloud Functions with `require`. `test/logic.test.js` covers it
 (every mini-game's win and draw logic, the main board, random and timed-out moves, the computer
-player, the online match records with hidden values kept apart, resigning, the turn clock, and that
-the same seed plays the same match). `test/server-rules.test.js` covers the server's own rules
-(usernames and the profanity filter, Elo, matchmaking pairs, records recounted from history). Both run with Node's test runner:
+player, the online match records with hidden values kept apart, resigning, the turn clock, Battleship's
+shot again after a hit, Treasure hunt's bands, Hexapawn's far-row win and resets, and that the same
+seed plays the same match). `test/server-rules.test.js` covers the server's own rules (usernames and
+the word list with look-alikes and names hidden inside longer ones, Elo, matchmaking pairs, records
+recounted from history). Both run with Node's test runner:
 
 ```sh
 npm install
@@ -405,7 +457,9 @@ by wait time, every Find Match game at 1 minute a turn, a full match with hidden
 and illegal or out-of-turn moves refused, Memory's two-step move, timeouts with both players away
 played out by the sweep, resigning, no ratings or leaderboard entries while ratings are off, records
 and mini-game counts after Find Match and friend games (credited by the seats the match was played
-in), the back-fill from history running once, and the game stats (local matches reported by a
+in), a friend match left under way recorded as a loss for the one who left, local matches recorded
+once and privately (bad reports refused), the check of existing usernames running once and listing
+them for the admin only, the back-fill from history running once, and the game stats (local matches reported by a
 phone counted once and bad reports refused, logins and new accounts, Find Match and friend-code
 matches counted by the server, and the stats readable only by the admin, with `make-admin.js` giving
 and taking back the flag). `test/stats-rules.test.js` covers what each event adds to the stats:

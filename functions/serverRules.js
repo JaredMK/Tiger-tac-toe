@@ -4,25 +4,60 @@
 
 // ---------- usernames ----------
 const USERNAME_RE = /^[A-Za-z0-9_]{3,16}$/;
-// A basic profanity filter. Words in BANNED are refused anywhere in a name (after undoing common
-// letter swaps such as 0 for o and $ for s); words in BANNED_TOKENS only as a whole word between
-// underscores or digits, because they also hide inside ordinary words (class, peacock, grape).
-const BANNED = ['fuck', 'fuk', 'shit', 'cunt', 'nigg', 'whore', 'slut', 'bitch', 'pussy', 'penis', 'vagina', 'wank', 'twat',
-  'bastard', 'asshole', 'retard', 'porn', 'hitler', 'nazi', 'kike', 'faggot', 'dildo', 'jizz', 'boner', 'blowjob', 'handjob'];
-const BANNED_TOKENS = ['ass', 'arse', 'cock', 'dick', 'fag', 'sex', 'tit', 'tits', 'cum', 'rape', 'spic', 'chink', 'dyke', 'homo', 'piss', 'crap', 'damn', 'hoe', 'nude', 'kkk'];
-const RESERVED = ['admin', 'administrator', 'moderator', 'mod', 'computer', 'system', 'support', 'staff', 'official', 'tictacchaos', 'null', 'undefined', 'anonymous', 'guest'];
+// The profanity check. The word list is the standard English LDNOOBW list (badwords.js), plus a few
+// words the game blocked before that the list lacks. A name and every listed word are normalised the
+// same way: lower case, look-alike characters undone (0 o, 1 i, 3 e, 4 a, 5 s, 7 t, 8 b, @ a, $ s, ! i),
+// then everything but letters dropped. A word of 4 or more letters is refused anywhere in the name
+// ("xXfuckXx", "sh1tlord"), unless that spot is part of a common innocent word that contains it
+// (ALLOW: Analyst, Button, Grape, Spoon, Peacock...). A word of 3 letters ("ass", "cum", "tit", "sex")
+// hides inside far too many ordinary words (class, document, title, Essex), so it is refused only as a
+// word of its own: between underscores or digits, or as one part of a CamelCase name ("Big_Ass", "BigAss").
+const LIST = require('./badwords.js');
+const EXTRA = ['fuk', 'nigg', 'retard', 'hitler', 'nazi'];                       // refused anywhere, as before
+const EXTRA_TOKENS = ['kkk', 'chink', 'dyke', 'arse', 'piss', 'crap', 'damn', 'hoe', 'homo'];   // refused as words of their own, as before
+const ALLOW = ['advertisement', 'amusement', 'basement', 'endorsement', 'reimbursement', 'among', 'amongst', 'mongoose', 'mongolia',
+  'analog', 'analogue', 'analogy', 'analogous', 'analyse', 'analyze', 'analysis', 'analyst', 'analytic', 'canal', 'banal', 'manuscript', 'uranus', 'janus',
+  'butte', 'butter', 'buttercup', 'butterfly', 'butterflies', 'butterscotch', 'button', 'buttress', 'rebuttal',
+  'cockpit', 'cocktail', 'cockatoo', 'cockatiel', 'cockroach', 'cockney', 'peacock', 'hancock', 'hitchcock', 'woodcock', 'shuttlecock', 'gamecock',
+  'dickens', 'dickinson', 'dickson', 'cummings', 'grape', 'grapefruit', 'grapevine', 'drape', 'draper', 'scrape', 'scraper', 'skyscraper', 'trapeze',
+  'therapist', 'therapeutic', 'spice', 'spicy', 'aspic', 'hospice', 'suspicion', 'suspicious', 'auspicious', 'conspicuous',
+  'spoon', 'teaspoon', 'tablespoon', 'spoonbill', 'lampoon', 'harpoon', 'raccoon', 'racoon', 'cocoon', 'tycoon', 'spoof', 'swank',
+  'scatter', 'scathing', 'honeysuckle', 'milford', 'montenegro', 'pakistan', 'saltwater', 'socialism', 'socialist', 'socialise', 'socialize',
+  'specialise', 'specialize', 'specialist', 'scunthorpe', 'pussycat'];
 const LEET = { 0: 'o', 1: 'i', 3: 'e', 4: 'a', 5: 's', 7: 't', 8: 'b', '@': 'a', $: 's', '!': 'i' };
-const unleet = s => s.toLowerCase().replace(/[01345789@$!]/g, c => LEET[c] || c);
-// Why a username cannot be used, or null when it can.
+const unleet = s => String(s).toLowerCase().replace(/[0134578@$!]/g, c => LEET[c] || c);
+const flatten = s => unleet(s).replace(/[^a-z]/g, '');
+const BAD = [...new Set(LIST.map(flatten).filter(w => w.length >= 4).concat(EXTRA))];
+const BAD_TOKENS = new Set(LIST.map(flatten).filter(w => w.length === 3).concat(EXTRA_TOKENS));
+const OK = ALLOW.map(flatten);
+const RESERVED = ['admin', 'administrator', 'moderator', 'mod', 'computer', 'system', 'support', 'staff', 'official', 'tictacchaos', 'null', 'undefined', 'anonymous', 'guest'];
+// Every place a word appears in s that no innocent word covers.
+function badAt(s, w) {
+  for (let i = s.indexOf(w); i >= 0; i = s.indexOf(w, i + 1)) {
+    const covered = OK.some(a => { for (let j = s.indexOf(a); j >= 0 && j <= i; j = s.indexOf(a, j + 1)) if (j + a.length >= i + w.length) return true; return false; });
+    if (!covered) return true;
+  }
+  return false;
+}
+// The banned word a name contains, or null.
+function badWordIn(name) {
+  const flat = flatten(name);
+  const sub = BAD.find(w => badAt(flat, w));
+  if (sub) return sub;
+  const parts = String(name).replace(/([a-z])([A-Z])/g, '$1_$2').split(/[_0-9]+/).concat(String(name).split('_').map(unleet))
+    .concat(String(name).replace(/([a-z0-9])([A-Z])/g, '$1_$2').split('_').map(unleet));
+  const tok = parts.map(t => t.toLowerCase().replace(/[^a-z]/g, '')).find(t => BAD_TOKENS.has(t));
+  return tok || null;
+}
+// Why a username cannot be used, or null when it can. The server checks every name claimed (the page
+// shows the reason it gives back).
 function usernameProblem(name) {
   if (typeof name !== 'string' || !name) return 'Pick a username';
   if (name.length < 3 || name.length > 16) return 'Use 3 to 16 characters';
   if (!USERNAME_RE.test(name)) return 'Use only letters, numbers and underscores';
-  const low = name.toLowerCase(), flat = unleet(name).replace(/_/g, '');
+  const low = name.toLowerCase(), flat = flatten(name);
   if (RESERVED.includes(low) || RESERVED.includes(flat)) return 'That username is reserved';
-  if (BANNED.some(w => flat.includes(w) || low.replace(/_/g, '').includes(w))) return 'Please pick another username';
-  const tokens = low.split(/[_0-9]+/).filter(Boolean).concat(low.split('_').map(unleet));
-  if (tokens.some(t => BANNED_TOKENS.includes(t))) return 'Please pick another username';
+  if (badWordIn(name)) return 'Please pick another username';
   return null;
 }
 
@@ -122,8 +157,36 @@ function recountHistory(entries) {
   return { main, friend, minis };
 }
 
+// ---------- local matches (a logged-in player's own record of games on one phone) ----------
+// A local match as the phone reports it once it is over: checked, and trimmed to what the history
+// keeps. The player is player 1, on `side`. A match that ended on the board must have the winner the
+// board shows; one that was left ("resign") must have been left by that player. types: the mini-games
+// allowed; mainResult: the engine's main-board result.
+const LOCAL_REASONS = ['line', 'majority', 'resign'];
+function checkLocal(d, types, mainResult) {
+  if (!d || typeof d !== 'object') return null;
+  const id = typeof d.id === 'string' && /^[-\w]{6,48}$/.test(d.id) ? d.id : null;
+  const side = d.side === 'X' || d.side === 'O' ? d.side : null, f = d.final;
+  if (!id || !side || !f || typeof f !== 'object' || !Array.isArray(f.squares) || f.squares.length !== 9) return null;
+  let size = 0;
+  try { size = JSON.stringify(f).length; } catch (e) { return null; }
+  if (size > 60000) return null;
+  for (const sq of f.squares) if (!sq || typeof sq !== 'object' || ![undefined, null, 'X', 'O'].includes(sq.owner) || !sq.mini || !types.includes(sq.mini.type)) return null;
+  const winner = f.winner === 'X' || f.winner === 'O' ? f.winner : null, reason = LOCAL_REASONS.includes(f.winReason) ? f.winReason : null;
+  if (!winner || !reason) return null;
+  if (reason === 'resign') { if (f.resigned !== side || winner === side) return null; }
+  else { const mr = mainResult(f.squares); if (!mr || mr.winner !== winner || mr.reason !== reason) return null; }
+  const o = side === 'X' ? 'O' : 'X', opp = d.opponent && typeof d.opponent === 'object' ? d.opponent : {};
+  const clean = v => String(v == null ? '' : v).trim().slice(0, 12);
+  const names = { [side]: clean(f.names && f.names[side]) || side, [o]: clean(opp.name) || clean(f.names && f.names[o]) || o };
+  const final = { squares: f.squares, winner, winLine: Array.isArray(f.winLine) ? f.winLine : null, winReason: reason, resigned: reason === 'resign' ? side : null,
+    counts: f.counts || null, moves: Number.isInteger(f.moves) ? f.moves : 0, games: Array.isArray(f.games) ? f.games.filter(t => types.includes(t)) : null, names };
+  return { id, side, cpu: opp.cpu === true, opponent: names[o], final };
+}
+
 module.exports = {
-  USERNAME_RE, usernameProblem, unleet, RATINGS_ENABLED, ELO_K, START_RATING, LEADERBOARD_MIN_GAMES, expected, elo,
+  LOCAL_REASONS, checkLocal,
+  USERNAME_RE, usernameProblem, unleet, flatten, badWordIn, BAD, BAD_TOKENS, ALLOW, RATINGS_ENABLED, ELO_K, START_RATING, LEADERBOARD_MIN_GAMES, expected, elo,
   FIND_MATCH_TIMER, FIND_MATCH_MODES, QUEUES, queueKey, ratingRange, pairQueue, howEnded, resultFor,
   recordDelta, squaresFor, recountHistory,
 };

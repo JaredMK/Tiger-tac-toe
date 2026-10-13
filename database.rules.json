@@ -76,6 +76,22 @@
           "t0"
         ]
       }
+    },
+    "localStats": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid"
+      }
+    },
+    "localHistory": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".indexOn": [
+          "date"
+        ]
+      }
+    },
+    "review": {
+      ".read": "auth != null && auth.token.admin === true"
     }
   }
 }

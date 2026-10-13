@@ -13,7 +13,7 @@ const OLD_TYPES = ['dice'];   // no longer dealt (Snakes and Ladders replaced th
 const INFO = {
   ttt:         { name: 'Tic-Tac-Toe',  hint: 'Three in a row wins' },
   c4:          { name: 'Connect 4',    hint: 'Pieces drop. Four in a row wins' },
-  bs:          { name: 'Battleship',   hint: 'Sink the hidden ship. Its size is shown below' },
+  bs:          { name: 'Battleship',   hint: 'Sink the hidden ship. A hit fires again' },
   wordle:      { name: 'Wordle',       hint: 'Guess the hidden 5-letter word' },
   hangman:     { name: 'Hangman',      hint: 'Right letter: go again. Last letter wins' },
   hex:         { name: 'Hex',          hint: 'X joins left to right, O joins top to bottom' },
@@ -25,8 +25,8 @@ const INFO = {
   bump:        { name: 'Bump',         hint: 'Spin 1, 2 or 3. Land on your opponent to send them home' },
   coins:       { name: 'Coin Flip',    hint: "Flip up to 3 coins that aren't yours. All five the same wins" },
   pig:         { name: 'Pig',          hint: "Roll and bank. A repeated number loses this turn's points. First to 21 wins" },
-  hunt:        { name: 'Treasure Hunt', hint: 'Dig a cell: the number is its distance to the treasure. Dig it up to win' },
-  hexapawn:    { name: 'Hexapawn',     hint: 'Step forward, capture diagonally. Reach the far row or leave them stuck' },
+  hunt:        { name: 'Treasure Hunt', hint: 'Dig a cell: hot, warm, cool or cold. Dig up the treasure to win' },
+  hexapawn:    { name: 'Hexapawn',     hint: 'Step forward, capture diagonally. Reach the far row to win' },
   mastermind:  { name: 'Mastermind',   hint: 'Crack the hidden 4-colour code' },
 };
 const C4 = { cols: 7, rows: 6, k: 4 };
@@ -40,7 +40,9 @@ const COINS = { n: 5, max: 3, mystery: '?' };   // 2 X, 2 O and one mystery coin
 const PIG = { goal: 21, maxRolls: 6 };
 // Battleship: one hidden ship on a 4x4 grid, 1 to 4 cells long, lying across or down. Both players fire at it.
 const BS = { n: 4, names: { 4: 'Battleship', 3: 'Submarine', 2: 'Destroyer', 1: 'Patrol Boat' } };
-const HUNT = { n: 5 };
+// Treasure hunt: a 6x6 grid. A dug cell tells only how far the treasure is, as a band of steps up, down,
+// left or right: Hot (1), Warm (2-3), Cool (4-5), Cold (6 or more). (Older 5x5 squares play on as they are.)
+const HUNT = { n: 6, bands: [null, 'hot', 'warm', 'cool', 'cold'] };
 const DICE_GOAL = 16;   // 15 numbered spaces, then the finish
 // Snakes and Ladders: 20 spaces in 4 rows of 5, numbered from the bottom; the pieces start before space 1
 // and space 20 is the top. Each board has 2 ladders and 2 snakes, each crossing rows and at least 3 long.
@@ -376,8 +378,12 @@ function upgradeMini(mini) {
 }
 function anyMove(state, p) { return state.squares.some(s => !s.owner && canMove(s.mini, p)); }
 // Treasure hunt: steps up/down/left/right between two cells of the 5x5 grid.
-function huntDist(a, b) {
-  return Math.abs(Math.floor(a / HUNT.n) - Math.floor(b / HUNT.n)) + Math.abs(a % HUNT.n - b % HUNT.n);
+function huntSize(mini) { return mini && Array.isArray(mini.dug) ? Math.round(Math.sqrt(mini.dug.length)) : HUNT.n; }
+// The band of a distance: 0 is the treasure itself, then 1 Hot, 2 Warm, 3 Cool, 4 Cold.
+function huntBand(d) { return d <= 0 ? 0 : d === 1 ? 1 : d <= 3 ? 2 : d <= 5 ? 3 : 4; }
+function huntClue(mini, i) { return huntBand(huntDist(mini.treasure, i, huntSize(mini))); }
+function huntDist(a, b, n = HUNT.n) {
+  return Math.abs(Math.floor(a / n) - Math.floor(b / n)) + Math.abs(a % n - b % n);
 }
 // Candy race track: 12 random colours where any three consecutive spaces differ, so the same colour
 // is never closer than 3 spaces to itself.
@@ -546,7 +552,9 @@ function seatLocal(setup, rng) {
   return s1;
 }
 function enabledGames(setup) { return TYPES.filter(t => setup && setup.games && setup.games[t]); }
-const TIMER_OPTIONS = [0, 30, 60, 180];   // seconds per turn in online play; 0 = no limit
+const TIMER_OPTIONS = [0, 60];   // seconds per turn in a friend game: no limit or 1 minute (Find Match is always 1 minute)
+// A time per turn from an older room or setup (30 seconds or 3 minutes) becomes 1 minute; anything else, no limit.
+function normTimer(v) { return TIMER_OPTIONS.includes(v) ? v : [30, 180].includes(v) ? 60 : 0; }
 function newTimer(limit) { return { limit: limit || 0, deadline: null, for: null, pausedAt: null, timeouts: { X: 0, O: 0 }, streak: { X: 0, O: 0 }, bankNext: false }; }
 function playerName(state, p) { return (state.setup && state.setup.names && state.setup.names[p]) || p; }
 // The whole app state. It opens on the setup screen; startMatch turns it into a match.
@@ -595,7 +603,7 @@ function startMatch(state, rng) {
   normSetup(state.setup);
   state.cpu = cpuSide(state.setup);
   state.endPick = null;                                       // the match-end message is picked afresh
-  state.timer = newTimer(state.setup.mode === 'online' && TIMER_OPTIONS.includes(state.setup.timer) ? state.setup.timer : 0);
+  state.timer = newTimer(state.setup.mode === 'online' ? normTimer(state.setup.timer) : 0);
   state.spot = null;
   state.squares = Array.from({ length: 9 }, () => newSquare(games, rng));
   state.screen = 'board'; state.turn = 'X';
@@ -671,7 +679,8 @@ function applyMove(mini, p, m, rng) {
       return { ok: true, outcome: 'continue' };
     }
     case 'bs': {
-      // One shot at one cell. A hit or a miss is shown; the ship's direction never is. The shot that
+      // One shot at one cell. A hit or a miss is shown; the ship's direction never is. A hit that does not
+      // sink it fires again at once (the turn goes on until a miss or the sinking shot); the shot that
       // hits its last cell sinks it and claims the square.
       if (!idx(BS.n * BS.n)) return { ok: false, reason: 'bad' };
       if (mini.revealed[m]) return { ok: false, reason: 'taken' };
@@ -679,7 +688,7 @@ function applyMove(mini, p, m, rng) {
       if (!mini.ship.includes(m)) return { ok: true, outcome: 'continue', note: 'miss' };
       mini.hits.push(m);
       if (mini.ship.every(k => mini.hits.includes(k))) return { ok: true, outcome: 'win', cells: mini.ship.slice(), note: 'sunk' };
-      return { ok: true, outcome: 'continue', note: 'hit' };
+      return { ok: true, outcome: 'continue', note: 'hit', again: true };
     }
     case 'wordle': {
       const g = typeof m === 'string' ? m.toUpperCase() : '';
@@ -813,7 +822,7 @@ function applyMove(mini, p, m, rng) {
       return { ok: true, outcome: 'continue', note: 'roll', again: true };
     }
     case 'hunt': {
-      if (!idx(HUNT.n * HUNT.n)) return { ok: false, reason: 'bad' };
+      if (!idx(mini.dug.length)) return { ok: false, reason: 'bad' };
       if (mini.dug[m]) return { ok: false, reason: 'taken' };
       mini.dug[m] = p; mini.last = m;
       if (m === mini.treasure) return { ok: true, outcome: 'win', cells: [m] };
@@ -834,10 +843,8 @@ function applyMove(mini, p, m, rng) {
       mini.cells[to] = p; mini.cells[from] = null;
       mini.last = { from, to, by: p, capture };
       if (Math.floor(to / HP.cols) === hpGoalRow(p)) return { ok: true, outcome: 'win', cells: [to], note: 'through' };
-      if (!hpMoves(mini.cells, other(p)).length) {              // the opponent has no move left here: it is over for them
-        const mine = mini.cells.map((c, k) => (c === p ? k : -1)).filter(k => k >= 0);
-        return { ok: true, outcome: 'win', cells: mine, note: mini.cells.includes(other(p)) ? 'stuck' : 'wiped' };
-      }
+      // That is the only win. A player with no move here plays elsewhere; when neither can move, the
+      // square resets (playMove sees that) like a drawn Tic-tac-toe.
       return { ok: true, outcome: 'continue', note: capture ? 'capture' : 'step' };
     }
   }
@@ -877,7 +884,7 @@ function publicMini(mini) {
     case 'snakes':  return { type: 'snakes', ladders: mini.ladders.map(x => x.slice()), snakes: mini.snakes.map(x => x.slice()), pos: { X: mini.pos.X, O: mini.pos.O } };
     case 'bump':    return { type: 'bump', pos: { X: mini.pos.X, O: mini.pos.O } };
     case 'pig':     return { type: 'pig', bank: { X: mini.bank.X, O: mini.bank.O }, turn: mini.turn ? { by: mini.turn.by, rolls: mini.turn.rolls.slice(), pot: mini.turn.pot } : null };
-    case 'hunt':    return { type: 'hunt', dug: mini.dug.slice(), clues: mini.dug.map((d, i) => (d ? huntDist(mini.treasure, i) : null)) };
+    case 'hunt':    return { type: 'hunt', dug: mini.dug.slice(), clues: mini.dug.map((d, i) => (d ? huntClue(mini, i) : null)) };   // bands only, never the distance
   }
   throw new Error('unknown mini-game: ' + mini.type);
 }
@@ -913,9 +920,10 @@ function bsCandidates(pm) {
 }
 function huntCandidates(pm) {
   const out = [];
-  for (let c = 0; c < HUNT.n * HUNT.n; c++) {
+  const n = huntSize(pm);
+  for (let c = 0; c < pm.dug.length; c++) {
     if (pm.dug[c]) continue;
-    if (pm.clues.every((k, d) => k == null || huntDist(c, d) === k)) out.push(c);
+    if (pm.clues.every((k, d) => k == null || huntBand(huntDist(c, d, n)) === k)) out.push(c);
   }
   return out;
 }
@@ -1118,21 +1126,24 @@ function c4Moves(cells, me) {
 // and both sides playing on in this square: { win: true when p wins, plies } with plies counting both sides.
 // A side with no move passes (it is stuck, not beaten), and the other moves.
 const HP_MEMO = new Map();
+// p to move. v: 1 when p gets a pawn through, -1 when the other side does, 0 when the square ends with
+// nobody able to move (it resets). A side with no move here waits while the other moves on.
 function hpSolve(cells, p) {
   const key = cells.map(c => c || '.').join('') + p;
   if (HP_MEMO.has(key)) return HP_MEMO.get(key);
   const o = other(p), moves = hpMoves(cells, p);
   let res;
-  if (!moves.length && !hpMoves(cells, o).length) res = { win: false, plies: 0 };   // nobody can move (never reached in play)
-  else if (!moves.length) { const r = hpSolve(cells, o); res = { win: !r.win, plies: r.plies }; }   // stuck: the other side moves
+  if (!moves.length && !hpMoves(cells, o).length) res = { v: 0, plies: 0 };            // nobody can move: the square resets
+  else if (!moves.length) { const r = hpSolve(cells, o); res = { v: -r.v, plies: r.plies }; }   // stuck: the other side moves
   else {
     let best = null;
+    const better = (r, b) => r.v > b.v || (r.v === b.v && (r.v > 0 ? r.plies < b.plies : r.plies > b.plies));
     for (const [a, b] of moves) {
       const next = cells.slice(); next[b] = p; next[a] = null;
       let r;
-      if (Math.floor(b / HP.cols) === hpGoalRow(p) || !hpMoves(next, o).length) r = { win: true, plies: 1 };
-      else { const q = hpSolve(next, o); r = { win: !q.win, plies: q.plies + 1 }; }
-      if (!best || (r.win && !best.win) || (r.win && best.win && r.plies < best.plies) || (!r.win && !best.win && r.plies > best.plies)) best = r;
+      if (Math.floor(b / HP.cols) === hpGoalRow(p)) r = { v: 1, plies: 1 };
+      else { const q = hpSolve(next, o); r = { v: -q.v, plies: q.plies + 1 }; }
+      if (!best || better(r, best)) best = r;
     }
     res = best;
   }
@@ -1145,24 +1156,19 @@ function hpMovesValued(cells, me) {
   return hpMoves(cells, me).map(([a, b]) => {
     const next = cells.slice(); next[b] = me; next[a] = null;
     let v;
-    if (Math.floor(b / HP.cols) === hpGoalRow(me) || !hpMoves(next, o).length) v = 100;
-    else { const q = hpSolve(next, o); v = q.win ? -100 + q.plies : 100 - q.plies - 1; }
+    if (Math.floor(b / HP.cols) === hpGoalRow(me)) v = 100;
+    else { const q = hpSolve(next, o); v = q.v > 0 ? -100 + q.plies : q.v < 0 ? 100 - q.plies - 1 : 0; }
     return { move: [a, b], v, after: next };
   });
 }
 // How many of p's own moves p needs to claim the square, for weighing it on the board. Nobody has to
 // move in a square, so "whoever is to move loses" lines from the minimax do not count here: the measure
 // is the closest pawn's distance to the far row, one more when p is stuck for now, and 1 when p can
-// win at once (through, or leaving the other side with no move).
+// get a pawn through at once.
 function hpNeeds(cells, p) {
   if (!cells.includes(p)) return Infinity;
-  if (!cells.includes(other(p))) return 0;
-  const moves = hpMoves(cells, p), o = other(p);
-  for (const [a, b] of moves) {
-    if (Math.floor(b / HP.cols) === hpGoalRow(p)) return 1;
-    const next = cells.slice(); next[b] = p; next[a] = null;
-    if (!hpMoves(next, o).length) return 1;
-  }
+  const moves = hpMoves(cells, p);
+  for (const [, b] of moves) if (Math.floor(b / HP.cols) === hpGoalRow(p)) return 1;
   let best = Infinity;
   cells.forEach((c, k) => { if (c === p) best = Math.min(best, Math.abs(Math.floor(k / HP.cols) - hpGoalRow(p))); });
   return best + (moves.length ? 0 : 1);
@@ -1259,10 +1265,11 @@ function localBest(pm, me, rng) {
       const cand = huntCandidates(pm);
       if (!cand.length) { const open = pm.dug.map((d, i) => (d ? -1 : i)).filter(i => i >= 0); return { move: open[0], q: 0, shared: true }; }
       if (cand.length === 1) return { move: cand[0], q: 1, shared: true };
-      let best = cand[0], bestSplit = Infinity;        // the dig that, if it misses, leaves the fewest candidates on average
+      let best = cand[0], bestSplit = Infinity;        // the dig that, if it misses, leaves the fewest candidates on average (by the band it would show)
+      const n = huntSize(pm);
       for (const c of cand) {
         const groups = new Map();
-        for (const x of cand) if (x !== c) { const k = huntDist(c, x); groups.set(k, (groups.get(k) || 0) + 1); }
+        for (const x of cand) if (x !== c) { const k = huntBand(huntDist(c, x, n)); groups.set(k, (groups.get(k) || 0) + 1); }
         let split = 0;
         for (const g of groups.values()) split += g * g;
         if (split < bestSplit) { bestSplit = split; best = c; }
@@ -1434,7 +1441,7 @@ function timeoutMove(state, rng) {
   const open = state.lock != null ? [state.lock] : state.squares.map((sq, i) => (sq.owner || !canMove(sq.mini, p) ? -1 : i)).filter(i => i >= 0);
   const i = open[randInt(rng, open.length)], mini = state.squares[i].mini;
   const m = mini.type === 'pig' ? (mini.turn && mini.turn.by === p ? 'bank' : 'roll') : randomLegalMove(mini, p, rng);
-  const r = playMove(state, i, m, rng, { forced: true, noAgain: mini.type === 'hangman' });
+  const r = playMove(state, i, m, rng, { forced: true, noAgain: mini.type === 'hangman' || mini.type === 'bs' });   // a timed-out shot fires once
   if (!r.ok) return r;
   t.bankNext = mini.type === 'pig' && m === 'roll' && state.lock === i;   // the roll kept the turn: bank it next
   return { ok: true, square: i, move: m };
@@ -1497,7 +1504,7 @@ function playMove(state, i, m, rng, opts) {
     case 'coins': flash.n = mini.last.flipped.length; break;
     case 'bs': flash.hit = mini.hits.includes(m); flash.len = mini.len; break;
     case 'pig': flash.roll = mini.last.roll; flash.pot = mini.last.pot; flash.rolls = mini.last.rolls; flash.bank = mini.bank[p]; break;
-    case 'hunt': flash.dist = huntDist(mini.treasure, m); break;
+    case 'hunt': flash.band = huntClue(mini, m); break;
     case 'hexapawn': flash.from = mini.last.from; flash.to = mini.last.to; flash.capture = mini.last.capture; break;
     case 'mastermind': { const g = mini.guesses[mini.guesses.length - 1]; flash.code = g.code.slice(); flash.solid = g.solid; flash.hollow = g.hollow; break; }
   }
@@ -1600,7 +1607,7 @@ function hideMini(m, k, st) {
     case 'hangman': { const hits = new Set(m.letters.filter(x => x.hit).map(x => x.l)); m.word = m.word.split('').map(ch => (hits.has(ch) ? ch : '_')).join(''); break; }
     case 'hilo': delete m.target; break;
     case 'bs': delete m.ship; break;
-    case 'hunt': m.clues = m.dug.map((d, i) => (d ? huntDist(m.treasure, i) : null)); delete m.treasure; break;
+    case 'hunt': m.clues = m.dug.map((d, i) => (d ? huntClue(m, i) : null)); delete m.treasure; break;   // the bands only
     case 'memory': {
       const show = new Set(m.seen || []);
       if (st && st.pickSq === k && st.pick != null) show.add(st.pick);
@@ -1759,6 +1766,14 @@ function applyOnlineResign(rec, side) {
   return { ok: true, rec: matchRecord(full) };
 }
 
+// A local match left through the menu: it ends as a loss for the side that left.
+function resignLocal(state, side) {
+  if (state.winner || (side !== 'X' && side !== 'O')) return false;
+  state.winner = other(side); state.winLine = null; state.winReason = 'resign'; state.resigned = side; state.counts = null;
+  state.lock = null; state.flash = null; state.done = null; state.spot = null;
+  return true;
+}
+
 // ---------- stats: what a finished (or abandoned) match adds to the anonymous game stats ----------
 // Every mini-game played: how it ended ('won', 'draw' when it reset, or 'open' when the match ended
 // first), who won it and the turns each side spent in it. A bonus move within a turn (a Pig roll,
@@ -1774,4 +1789,4 @@ function matchStats(st) {
 }
 
 // Node (the Cloud Functions and the tests): the same names as a module.
-if (typeof module !== "undefined" && module.exports) module.exports = { TYPES, OLD_TYPES, SNL, BUMP, snlRow, snlBoard, snlValid, snlExpected, coinPick, markCoins, coinMarksFor, normLocal, seatLocal, INFO, C4, HP, MM, HEX_N, HILO, CANDY, NAME_MAX, COINS, PIG, BS, HUNT, DICE_GOAL, MEMORY, LINES, WORDS5, WORDS_HANG, VALID5, other, makeRng, needRng, randInt, randomType, shuffle, memoryDeck, wordleMarks, hexNeighbors, hexPath, canMove, hpMoves, mmFeedback, mmValid, MM_ALL, mmAll, mmCode, mmCandidates, mmBestGuess, hpGoalRow, upgradeMini, anyMove, huntDist, candyTrack, newMini, pickType, newSquare, CPU_NAME, defaultSetup, cpuSide, normSetup, syncNames, enabledGames, TIMER_OPTIONS, newTimer, playerName, newState, startMatch, newMatch, findRun, applyMove, AI, publicMini, wordleCandidates, hangmanCandidates, bsCandidates, bsPlacements, bsShip, huntCandidates, WINDOWS, windowsOf, lineNeeds, c4Playable, hexDist, candyExpected, COIN_NEEDS, needsOf, memoryPair, winChance, tttMinimax, c4Drop, c4Eval, C4_ORDER, c4Search, C4_DEPTH, c4Moves, HP_MEMO, hpSolve, hpMovesValued, hpNeeds, hexMoves, threatScore, pickValued, localBest, squareValue, moveGain, cpuMove, VALID5_LIST, randomLegalMove, timeoutMove, mainResult, playMove, endFlash, leaveSquare, RECENT_MAX, MATCH_FIELDS, secretOf, hideMini, matchRecord, fullState, settle, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, newOnlineMatch, PLAY, diceSlot, playMs, replayMs, armClock, applyOnlineResign, matchStats };
+if (typeof module !== "undefined" && module.exports) module.exports = { huntSize, huntBand, huntClue, normTimer, resignLocal, TYPES, OLD_TYPES, SNL, BUMP, snlRow, snlBoard, snlValid, snlExpected, coinPick, markCoins, coinMarksFor, normLocal, seatLocal, INFO, C4, HP, MM, HEX_N, HILO, CANDY, NAME_MAX, COINS, PIG, BS, HUNT, DICE_GOAL, MEMORY, LINES, WORDS5, WORDS_HANG, VALID5, other, makeRng, needRng, randInt, randomType, shuffle, memoryDeck, wordleMarks, hexNeighbors, hexPath, canMove, hpMoves, mmFeedback, mmValid, MM_ALL, mmAll, mmCode, mmCandidates, mmBestGuess, hpGoalRow, upgradeMini, anyMove, huntDist, candyTrack, newMini, pickType, newSquare, CPU_NAME, defaultSetup, cpuSide, normSetup, syncNames, enabledGames, TIMER_OPTIONS, newTimer, playerName, newState, startMatch, newMatch, findRun, applyMove, AI, publicMini, wordleCandidates, hangmanCandidates, bsCandidates, bsPlacements, bsShip, huntCandidates, WINDOWS, windowsOf, lineNeeds, c4Playable, hexDist, candyExpected, COIN_NEEDS, needsOf, memoryPair, winChance, tttMinimax, c4Drop, c4Eval, C4_ORDER, c4Search, C4_DEPTH, c4Moves, HP_MEMO, hpSolve, hpMovesValued, hpNeeds, hexMoves, threatScore, pickValued, localBest, squareValue, moveGain, cpuMove, VALID5_LIST, randomLegalMove, timeoutMove, mainResult, playMove, endFlash, leaveSquare, RECENT_MAX, MATCH_FIELDS, secretOf, hideMini, matchRecord, fullState, settle, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, newOnlineMatch, PLAY, diceSlot, playMs, replayMs, armClock, applyOnlineResign, matchStats };

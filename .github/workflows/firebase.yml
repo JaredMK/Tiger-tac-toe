@@ -16,6 +16,7 @@ on:
       - 'test/server.test.js'
       - 'scripts/smoke-live.js'
       - 'scripts/backfill-records.js'
+      - 'scripts/check-usernames.js'
       - '.github/workflows/firebase.yml'
   workflow_dispatch:
 
@@ -106,3 +107,5 @@ jobs:
         run: node scripts/smoke-live.js
       - name: Back-fill records from game history (once)
         run: node scripts/backfill-records.js
+      - name: Check existing usernames against the word list (once per rules version)
+        run: node scripts/check-usernames.js

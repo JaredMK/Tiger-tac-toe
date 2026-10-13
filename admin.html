@@ -87,7 +87,7 @@ const MODE_COLORS = { local: 'var(--o)', cpu: 'var(--sky)', cvc: 'var(--stone)',
 const GAMES = { ttt: 'Tic-tac-toe', c4: 'Connect 4', bs: 'Battleship', wordle: 'Wordle', hangman: 'Hangman', hex: 'Hex', hilo: 'Higher/Lower', snakes: 'Snakes and Ladders', memory: 'Memory', candy: 'Candy Race', bump: 'Bump', coins: 'Coin Flip', pig: 'Pig', hunt: 'Treasure Hunt', hexapawn: 'Hexapawn', mastermind: 'Mastermind', dice: 'Dice Race (old)' };   // the Dice race's numbers from before Snakes and Ladders replaced it
 const app = document.getElementById('app');
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-let fb = null, user = null, stats = null, view = { status: 'loading', error: '' };
+let fb = null, user = null, stats = null, flagged = null, view = { status: 'loading', error: '' };
 let sortBy = { k: 'avgWin', dir: 1 }, miniMode = 'all', period = 'd';
 
 // ---------- the numbers ----------
@@ -208,7 +208,18 @@ function render() {
     <div class="card"><h2>Matches by mode</h2>${modeTable}</div>
     <div class="card"><div class="row"><h2>Mini-games</h2><label>Modes <select id="mm">${[['all', 'All modes'], ['people', 'All but computer vs computer']].concat(MODES).map(([v, l]) => `<option value="${v}"${miniMode === v ? ' selected' : ''}>${l}</option>`).join('')}</select></label></div>
       ${miniTable}<h2 style="margin-top:14px">Average winner moves</h2>${hbarChart(rows, 'avgWin', 'Average winner moves by mini-game', v => num(v))}</div>
+    ${flaggedCard()}
     <div class="card"><div class="row"><h2>Players over time</h2><div class="tabs">${[['d', 'Days'], ['w', 'Weeks'], ['m', 'Months']].map(([k, l]) => `<button data-period="${k}" aria-pressed="${period === k}">${l}</button>`).join('')}</div></div>${ptable}</div>`;
+}
+
+// Existing usernames the username rules (the word list) would refuse today: listed for a look, never changed.
+function flaggedCard() {
+  const f = flagged;
+  if (!f) return '<div class="card"><h2>Usernames to review</h2><p class="note">Not checked yet: the check runs after the next deploy.</p></div>';
+  const list = Object.entries(f.names || {}).sort((a, b) => a[1].username.localeCompare(b[1].username));
+  const when = new Date(f.at).toISOString().slice(0, 16).replace('T', ' ');
+  return `<div class="card"><h2>Usernames to review</h2><p class="note">${n(f.checked)} existing usernames checked against the word list on ${when} UTC: ${list.length ? `${list.length} would be refused today. Nothing was changed.` : 'none would be refused.'}</p>${list.length ? `<div class="tbl"><table><thead><tr><th>Username</th><th>Matched</th><th>Account id</th></tr></thead><tbody>${list.map(([uid, v]) =>
+    `<tr><td>${esc(v.username)}</td><td>${esc(v.word || v.why || '')}</td><td class="dim">${esc(uid)}</td></tr>`).join('')}</tbody></table></div>` : ''}</div>`;
 }
 
 // ---------- Firebase ----------
@@ -237,8 +248,9 @@ async function onUser(u) {
 }
 async function load() {
   try {
-    const snap = await fb.dbM.get(fb.dbM.ref(fb.db, 'stats'));
+    const [snap, fl] = await Promise.all([fb.dbM.get(fb.dbM.ref(fb.db, 'stats')), fb.dbM.get(fb.dbM.ref(fb.db, 'review/flaggedNames')).catch(() => null)]);
     stats = snap.val() || {};
+    flagged = fl ? fl.val() : null;
     view = { status: 'ready', error: '' };
   } catch (e) {
     view = { status: 'denied', error: /permission/i.test(String(e && (e.code || e.message))) ? 'The database refused: the admin flag is not on this account yet.' : 'Could not load the stats.' };

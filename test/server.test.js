@@ -97,7 +97,12 @@ test('usernames: the format, the profanity filter, unique regardless of case, an
     const r = await q.call('claimUsername', { username: bad });
     assert.equal(r.ok, false, bad); assert.match(r.reason, why, bad);
   }
-  for (const fine of ['classic', 'Peacock_7', 'grapes']) {          // words that only contain a short bad word
+  for (const bad of ['sh1tlord', 'a55hole', 'xXfuckXx', 'BigAss', 'n4z1_99', 'P0rnStar']) {          // look-alikes, words inside longer names, CamelCase parts
+    const q = await player(null, { noName: true });
+    const r = await q.call('claimUsername', { username: bad });
+    assert.equal(r.ok, false, bad); assert.match(r.reason, /another/, bad);
+  }
+  for (const fine of ['classic', 'Peacock_7', 'grapes', 'Scunthorpe', 'Button', 'Analyst']) {          // ordinary words that contain a listed one
     const q = await player(null, { noName: true });
     assert.equal((await q.call('claimUsername', { username: fine })).ok, true, fine);
   }
@@ -562,6 +567,92 @@ test('records: a friend match is credited by the seats it was played in (the roo
   assert.equal((await host.read(`history/${host.uid}/${id}`)).result, 'loss');
   assert.deepEqual((await get(`users/${guest.uid}`)).friend, { wins: 1, games: 1 });
   assert.deepEqual((await get(`users/${host.uid}`)).friend, { losses: 1, games: 1 });
+});
+
+/* ===================================== local matches ===================================== */
+// A local match as a phone reports it: player 1 on `side`; won on the board (X has the top row) or left.
+function localReport(id, side, how) {
+  const st = E.newMatch(E.makeRng('loc' + id), { games: ['ttt', 'bs', 'pig'] });
+  if (how === 'resign') { E.resignLocal(st, side); st.squares[4].owner = side === 'X' ? 'O' : 'X'; }
+  else { [0, 1, 2].forEach(i => { st.squares[i].owner = 'X'; }); st.squares[4].owner = 'O'; st.winner = 'X'; st.winLine = [0, 1, 2]; st.winReason = 'line'; }
+  return { id, side, opponent: { name: 'Computer', cpu: true }, final: { squares: st.squares, winner: st.winner, winLine: st.winLine, winReason: st.winReason, resigned: st.resigned || null, counts: null, moves: 7, games: st.games, names: { X: side === 'X' ? 'LocalLou' : 'Computer', O: side === 'O' ? 'LocalLou' : 'Computer' } } };
+}
+test('local matches: a logged-in player\'s are recorded once, privately (record, mini-games, history); bad reports refused', async () => {
+  const p = await player('LocalLou'), q = await player('Snoopy');
+  const won = localReport('locwin01', 'X', 'line');
+  assert.deepEqual(await p.call('recordLocal', won), { ok: true, result: 'win' });
+  assert.deepEqual(await p.call('recordLocal', won), { ok: true, seen: true }, 'the same match counts once');
+  const lost = localReport('locres01', 'O', 'resign');                 // left through the menu, as O: a loss
+  assert.deepEqual(await p.call('recordLocal', lost), { ok: true, result: 'loss' });
+  const ls = await get(`localStats/${p.uid}`);
+  assert.deepEqual([ls.wins, ls.losses, ls.draws || 0, ls.games], [1, 1, 0, 2]);
+  assert.equal(ls.minis[won.final.squares[0].mini.type].won >= 1, true, 'squares won, by mini-game');
+  const h = await get(`localHistory/${p.uid}`);
+  assert.deepEqual(Object.keys(h).sort(), ['l_locres01', 'l_locwin01']);
+  assert.equal(h.l_locwin01.mode, 'local'); assert.equal(h.l_locwin01.opponent.cpu, true); assert.equal(h.l_locwin01.how, 'line');
+  assert.equal(h.l_locres01.result, 'loss'); assert.equal(h.l_locres01.how, 'resign');
+  assert.ok(JSON.parse(h.l_locwin01.final).squares.length === 9, 'the final board, for the review');
+  const u = await get(`users/${p.uid}`);
+  assert.deepEqual([u.wins, u.losses, u.games], [0, 0, 0], 'the online record is untouched'); assert.equal(u.minis, undefined);
+  // private: only the player reads them; nobody writes them
+  assert.ok(await p.read(`localStats/${p.uid}`)); assert.ok(await p.read(`localHistory/${p.uid}`));
+  await denied(q.read(`localStats/${p.uid}`), 'someone else\'s local record');
+  await denied(q.read(`localHistory/${p.uid}`), 'someone else\'s local history');
+  await denied(p.write(`localStats/${p.uid}/wins`, 99), 'writing your own local record');
+  await denied(p.write(`localHistory/${p.uid}/x`, { result: 'win' }), 'writing your own local history');
+  // reports that do not hold together
+  const fake = localReport('locfake1', 'X', 'line'); fake.final.squares[2].owner = null;       // no line on the board
+  const notMine = localReport('locfake2', 'X', 'resign'); notMine.final.resigned = 'O'; notMine.final.winner = 'X';   // "the other side left"
+  const odd = localReport('locfake3', 'X', 'line'); odd.final.squares[5].mini.type = 'chess';
+  for (const bad of [fake, notMine, odd, { id: 'x', side: 'X' }, Object.assign(localReport('locfake4', 'Q', 'line'))]) {
+    await assert.rejects(p.call('recordLocal', bad), /Not a match/, JSON.stringify(bad).slice(0, 50));
+  }
+  const anon = await player(null, { anonymous: true });
+  await assert.rejects(anon.call('recordLocal', localReport('locanon1', 'X', 'line')), /Log in first/);
+  assert.equal((await get(`localStats/${p.uid}`)).games, 2, 'nothing more counted');
+});
+
+test('friend games: leaving a match under way ends it as a loss for the one who left, recorded for both', async () => {
+  const host = await player('LeaveHost'), guest = await player('LeaveGuest');
+  const code = 'LEAVE';
+  await host.write(`rooms/${code}`, { created: Date.now(), host: host.uid, status: 'lobby', players: { X: { uid: host.uid, name: 'LeaveHost', joined: Date.now() } }, setup: { hostSide: 'X', timer: 0 } });
+  await guest.write(`rooms/${code}/players/O`, { uid: guest.uid, name: 'LeaveGuest', joined: Date.now() });
+  const rec = E.newOnlineMatch({ names: { X: 'LeaveHost', O: 'LeaveGuest' } }, E.makeRng(9), 'lv1');
+  await host.write(`rooms/${code}/status`, 'playing');
+  await host.write(`rooms/${code}/match`, { state: JSON.stringify(rec.state), secrets: JSON.stringify(rec.secrets) });
+  // the guest leaves through the menu: the page resigns the match first (as index.html's leaveRoom does), then says it left
+  const r = E.applyOnlineResign(rec, 'O');
+  assert.equal(r.ok, true);
+  await guest.write(`rooms/${code}/match`, { state: JSON.stringify(r.rec.state), secrets: JSON.stringify(r.rec.secrets) });
+  await guest.write(`rooms/${code}/left`, { side: 'O', name: 'LeaveGuest', at: Date.now() });
+  const id = 'f_' + code + '_lv1';
+  const gh = await until(() => guest.read(`history/${guest.uid}/${id}`), 10000, 'the leaver\'s history');
+  assert.equal(gh.result, 'loss'); assert.equal(gh.how, 'resign');
+  assert.equal((await host.read(`history/${host.uid}/${id}`)).result, 'win');
+  assert.deepEqual((await get(`users/${guest.uid}`)).friend, { losses: 1, games: 1 }, 'a loss on the leaver\'s record');
+  assert.deepEqual((await get(`users/${host.uid}`)).friend, { wins: 1, games: 1 });
+});
+
+test('usernames already taken are checked against the word list once: the ones that fail are listed for the admin, none changed', async () => {
+  const boss = await player('ReviewBoss'), other = await player('Bystander');
+  await put('users/legacy1', { username: 'Sh1tHead', joined: 1 });
+  await put('users/legacy2', { username: 'Grape_Fan', joined: 1 });
+  await put('meta/nameCheck', null);
+  const run = (file, ...args) => new Promise((resolve, reject) => execFile(process.execPath, [path.join(__dirname, '..', 'scripts', file), ...args],
+    { env: Object.assign({}, process.env, { TTC_PROJECT: PROJECT, GCLOUD_PROJECT: PROJECT }) }, (e, out) => (e ? reject(new Error(out || e.message)) : resolve(out))));
+  const out = await run('check-usernames.js');
+  assert.match(out, /Checked \d+ usernames: 1 would be refused today/);
+  assert.ok(!/Sh1tHead/i.test(out), 'the log names nobody');
+  const f = await get('review/flaggedNames');
+  assert.deepEqual(Object.keys(f.names), ['legacy1']); assert.equal(f.names.legacy1.username, 'Sh1tHead'); assert.equal(f.names.legacy1.word, 'shit');
+  assert.equal((await get('users/legacy1')).username, 'Sh1tHead', 'not changed');
+  assert.match(await run('check-usernames.js'), /already/, 'once per version of the rules');
+  await denied(other.read('review/flaggedNames'), 'a player reading the list');
+  assert.match(await run('make-admin.js', 'ReviewBoss', 'grant'), /now the admin/);
+  await boss.auth.currentUser.getIdToken(true);
+  assert.ok((await boss.read('review/flaggedNames')).names.legacy1, 'the admin reads it');
+  await run('make-admin.js', 'ReviewBoss', 'revoke');
+  await put('users/legacy1', null); await put('users/legacy2', null);
 });
 
 test('back-fill: records and per-mini-game stats recounted from game history, once', async () => {

@@ -292,8 +292,8 @@ test('bs: a shot is a hit or a miss; cells cannot be fired at twice; the shot on
   assert.equal(m.revealed[0], 'X');
   assert.equal(L.applyMove(m, 'O', 0).reason, 'taken');
   for (const bad of [-1, 16, 'a', null, 1.5]) assert.equal(L.applyMove(m, 'O', bad).reason, 'bad');
-  assert.deepEqual(L.applyMove(m, 'O', 6), { ok: true, outcome: 'continue', note: 'hit' });
-  assert.deepEqual(L.applyMove(m, 'X', 5), { ok: true, outcome: 'continue', note: 'hit' });
+  assert.deepEqual(L.applyMove(m, 'O', 6), { ok: true, outcome: 'continue', note: 'hit', again: true }, 'a hit fires again');
+  assert.deepEqual(L.applyMove(m, 'X', 5), { ok: true, outcome: 'continue', note: 'hit', again: true });
   assert.deepEqual(m.hits, [6, 5]);
   const pm = L.publicMini(m);
   assert.deepEqual(Object.keys(pm).sort(), ['hits', 'len', 'revealed', 'type'], 'the ship\'s cells stay hidden');
@@ -301,15 +301,37 @@ test('bs: a shot is a hit or a miss; cells cannot be fired at twice; the shot on
   assert.deepEqual(sink, { ok: true, outcome: 'win', cells: [5, 6, 7], note: 'sunk' });
 });
 
-test('bs: whoever hits the final segment claims the square, whoever hit the rest', () => {
+test('bs: a hit fires again until a miss or the sinking shot; whoever hits the final segment claims the square', () => {
   const st = matchWith(['bs', 'ttt']);
-  st.squares[0].mini = bsAt(1, 5);
-  assert.equal(turn(st, 0, 1).note, 'hit');
-  assert.equal(st.squares[0].owner, null);
-  const f = turn(st, 0, 5);
+  st.squares[0].mini = bsAt(1, 5, 9);
+  let f = turn(st, 0, 1);
+  assert.equal(f.note, 'hit'); assert.equal(f.kind, 'again', 'a hit keeps the turn');
+  assert.equal(st.turn, 'X'); assert.equal(st.lock, 0, 'locked into the same square'); assert.equal(st.screen, 'mini');
+  assert.equal(L.playMove(st, 1, 0).reason, 'locked', 'no playing elsewhere meanwhile');
+  f = turn(st, 0, 2);
+  assert.equal(f.note, 'miss'); assert.equal(f.kind, 'move', 'a miss ends it');
+  assert.equal(st.turn, 'O'); assert.equal(st.lock, null);
+  f = turn(st, 0, 5);
+  assert.equal(f.kind, 'again'); assert.equal(st.turn, 'O');
+  f = turn(st, 0, 9);
   assert.equal(f.kind, 'claim'); assert.equal(f.by, 'O'); assert.equal(f.hit, true);
   assert.equal(st.squares[0].owner, 'O');
-  assert.deepEqual(st.squares[0].mini.winCells, [1, 5], 'the whole ship is revealed');
+  assert.deepEqual(st.squares[0].mini.winCells, [1, 5, 9], 'the whole ship is revealed');
+  // a timed-out shot fires once: even a hit ends the turn
+  const t = matchWith(['bs', 'ttt']);
+  t.squares[0].mini = bsAt(0, 1, 2, 3); t.timer = L.newTimer(60);
+  for (let k = 1; k < 9; k++) t.squares[k].owner = k % 2 ? 'X' : 'O';
+  t.squares[3].owner = null; t.squares[3].mini = L.newMini('ttt', lcg(1)); t.squares[3].mini.cells = ['X', 'O', 'X', 'O', 'X', 'O', 'O', 'X', 'O'];
+  for (let k = 0; k < 6; k++) {
+    t.turn = 'X'; t.lock = null; t.timer.streak = { X: 0, O: 0 };
+    const before = t.squares[0].mini.hits.length;
+    const r = L.timeoutMove(t, lcg(k));
+    assert.equal(r.ok, true); assert.equal(r.square, 0);
+    L.endFlash(t);
+    if (t.squares[0].owner) break;
+    assert.equal(t.lock, null, 'no bonus shot after a timeout'); assert.equal(t.turn, 'O');
+    if (t.squares[0].mini.hits.length > before) break;
+  }
 });
 
 test('bs: firing at every cell always sinks the ship (no draw possible)', () => {
@@ -930,28 +952,43 @@ test('pig: X can bank up to 21 over several turns while O plays elsewhere (lopsi
 });
 
 // ================================ Treasure hunt ================================
-test('hunt: the treasure comes from the rng and distances are steps up, down, left and right', () => {
-  for (let k = 0; k < 25; k++) assert.equal(L.newMini('hunt', seq(pick(k, 25))).treasure, k);
-  assert.equal(L.huntDist(12, 12), 0);
-  assert.equal(L.huntDist(12, 13), 1);
-  assert.equal(L.huntDist(12, 7), 1);
-  assert.equal(L.huntDist(12, 0), 4);
-  assert.equal(L.huntDist(12, 24), 4);
-  assert.equal(L.huntDist(0, 24), 8);
-  assert.equal(L.huntDist(4, 20), 8);
-  assert.equal(L.huntDist(6, 18), 4);
-  for (let a = 0; a < 25; a++) for (let b = 0; b < 25; b++) {
+test('hunt: a 6x6 grid; the treasure comes from the rng; distances are steps up, down, left and right', () => {
+  assert.equal(L.newMini('hunt', lcg(1)).dug.length, 36);
+  for (let k = 0; k < 36; k++) assert.equal(L.newMini('hunt', seq(pick(k, 36))).treasure, k);
+  assert.equal(L.huntDist(14, 14), 0);
+  assert.equal(L.huntDist(14, 15), 1);
+  assert.equal(L.huntDist(14, 8), 1);
+  assert.equal(L.huntDist(14, 0), 4);
+  assert.equal(L.huntDist(0, 35), 10);
+  assert.equal(L.huntDist(5, 30), 10);
+  for (let a = 0; a < 36; a++) for (let b = 0; b < 36; b++) {
     assert.equal(L.huntDist(a, b), L.huntDist(b, a));
-    assert.ok(L.huntDist(a, b) >= 0 && L.huntDist(a, b) <= 8);
+    assert.ok(L.huntDist(a, b) >= 0 && L.huntDist(a, b) <= 10);
   }
+  assert.equal(L.huntDist(12, 24, 5), 4, 'an older 5x5 square measures on its own grid');
+});
+
+test('hunt: a dug cell shows only its band: Hot 1 step, Warm 2-3, Cool 4-5, Cold 6 or more', () => {
+  assert.deepEqual([0, 1, 2, 3, 4, 5, 6, 7, 10].map(L.huntBand), [0, 1, 2, 2, 3, 3, 4, 4, 4]);
+  assert.deepEqual(L.HUNT.bands, [null, 'hot', 'warm', 'cool', 'cold']);
+  const m = L.newMini('hunt', seq(pick(14, 36)));              // the treasure at row 2, column 2
+  for (const [cell, band] of [[15, 1], [8, 1], [16, 2], [21, 2], [0, 3], [5, 3], [30, 3], [35, 4]]) assert.equal(L.huntClue(m, cell), band, `cell ${cell}`);
+  L.applyMove(m, 'X', 35); L.applyMove(m, 'O', 15);
+  const pm = L.publicMini(m);
+  assert.deepEqual(pm.clues.filter(c => c != null), [1, 4], 'the public view holds bands, never distances');
+  const rec = (() => { const st = matchWith(['hunt']); st.squares[0].mini = m; st.id = 'h'; st.seq = 0; st.recent = []; return L.matchRecord(st); })();
+  assert.equal(rec.state.squares[0].mini.clues[35], 4, 'online too: Cold, not 7 steps');
+  assert.ok(!('treasure' in rec.state.squares[0].mini));
+  const old = Object.assign(L.newMini('hunt', lcg(2)), { treasure: 12, dug: new Array(25).fill(null) });   // an older 5x5 square
+  assert.equal(L.huntSize(old), 5); assert.equal(L.huntClue(old, 24), 3, 'measured on its own 5x5 grid: 4 steps, Cool');
 });
 
 test('hunt: a dig marks the cell for both players, a treasure dig wins, dug cells cannot be dug again', () => {
-  const m = L.newMini('hunt', seq(pick(12, 25)));
+  const m = L.newMini('hunt', seq(pick(12, 36)));
   assert.deepEqual(L.applyMove(m, 'X', 0), { ok: true, outcome: 'continue', note: 'dig' });
   assert.equal(m.dug[0], 'X');
   assert.equal(L.applyMove(m, 'O', 0).ok, false);
-  assert.equal(L.applyMove(m, 'O', 25).ok, false);
+  assert.equal(L.applyMove(m, 'O', 36).ok, false);
   assert.equal(L.applyMove(m, 'O', 7).outcome, 'continue');
   const r = L.applyMove(m, 'O', 12);
   assert.equal(r.outcome, 'win');
@@ -960,21 +997,22 @@ test('hunt: a dig marks the cell for both players, a treasure dig wins, dug cell
 });
 
 test('hunt: digging every other cell never ends the game, the treasure always does (lopsided)', () => {
-  for (const t of [0, 7, 12, 24]) {
+  for (const t of [0, 7, 14, 35]) {
     const st = matchWith(['hunt']);
-    st.squares[0].mini = L.newMini('hunt', seq(pick(t, 25)));
-    for (let i = 0; i < 25; i++) {
+    st.squares[0].mini = L.newMini('hunt', seq(pick(t, 36)));
+    for (let i = 0; i < 36; i++) {
       if (i === t) continue;
       st.turn = 'X';
       const f = turn(st, 0, i);
       assert.equal(f.kind, 'move');
-      assert.equal(f.dist, L.huntDist(t, i));
-      assert.ok(f.dist >= 1);
+      assert.equal(f.band, L.huntBand(L.huntDist(t, i)));
+      assert.ok(f.band >= 1 && f.band <= 4);
+      assert.ok(!('dist' in f), 'no distance on the move either');
     }
     st.turn = 'X';
     const f = turn(st, 0, t);
     assert.equal(f.kind, 'claim');
-    assert.equal(f.dist, 0);
+    assert.equal(f.band, 0);
     assert.equal(st.squares[0].owner, 'X');
   }
 });
@@ -1413,9 +1451,9 @@ test('the public view of every mini-game holds nothing hidden', () => {
   const h = L.newMini('hangman', wordRng(L.WORDS_HANG, 'apple'));
   L.applyMove(h, 'X', 'P');
   assert.deepEqual(L.publicMini(h).pattern, [null, 'P', 'P', null, null]);
-  const u = L.newMini('hunt', seq(pick(12, 25)));
+  const u = L.newMini('hunt', seq(pick(14, 36)));
   L.applyMove(u, 'X', 0);
-  assert.equal(L.publicMini(u).clues[0], 4);
+  assert.equal(L.publicMini(u).clues[0], 3, 'four steps away: Cool, the band and not the distance');
   assert.equal(L.publicMini(u).clues[1], null);
   const mem = mini('memory');
   L.applyMove(mem, 'X', [3, 5]);
@@ -1603,31 +1641,45 @@ test('hex tactics: connects when one cell short and blocks the opponent\'s last 
 });
 
 test('treasure hunt tactics: only cells consistent with every clue, the best splitter first', () => {
-  const m = L.newMini('hunt', seq(pick(12, 25)));          // treasure at row 3, column 3
-  L.applyMove(m, 'O', 0);                                  // distance 4
+  const m = L.newMini('hunt', seq(pick(14, 36)));          // treasure at row 3, column 3 of 6
+  L.applyMove(m, 'O', 0);                                  // 4 steps: Cool
   const pm = L.publicMini(m);
   const cand = L.huntCandidates(pm);
-  assert.ok(cand.every(c => L.huntDist(c, 0) === 4 && c !== 0));
-  assert.ok(cand.includes(12));
+  assert.ok(cand.every(c => L.huntBand(L.huntDist(c, 0)) === 3 && c !== 0), 'only cells 4 or 5 steps from the dig');
+  assert.ok(cand.includes(14));
   for (let k = 0; k < 20; k++) {
     const st = cpuMatch('X', [m, 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt'], [null, 'X', 'O', 'O', 'X', 'X', 'X', 'O', 'O']);   // the only open square: the dig itself is under test
     const mv = L.cpuMove(st, lcg(k));
     assert.equal(mv.square, 0);
     assert.ok(cand.includes(mv.move), `dig ${mv.move} fits the clue`);
   }
-  L.applyMove(m, 'O', 4);                                  // row 1 column 5: distance 4 as well
+  L.applyMove(m, 'O', 5);                                  // row 1 column 6: 5 steps, Cool as well
   const cand2 = L.huntCandidates(L.publicMini(m));
   assert.ok(cand2.length < cand.length);
-  assert.ok(cand2.every(c => L.huntDist(c, 0) === 4 && L.huntDist(c, 4) === 4));
-  // one candidate left: dig it and win
-  const one = L.newMini('hunt', seq(pick(12, 25)));
-  for (const d of [0, 4, 20]) L.applyMove(one, 'O', d);
+  assert.ok(cand2.every(c => L.huntBand(L.huntDist(c, 0)) === 3 && L.huntBand(L.huntDist(c, 5)) === 3));
+  // four Hot digs around it leave one cell: dig it and win
+  const one = L.newMini('hunt', seq(pick(14, 36)));
+  for (const d of [8, 13, 15, 20]) L.applyMove(one, 'O', d);
   const c1 = L.huntCandidates(L.publicMini(one));
-  assert.deepEqual(c1, [12]);
+  assert.deepEqual(c1, [14]);
   const st = cpuMatch('X', [one, 'ttt']);
   const mv = L.cpuMove(st, cpuRng());
-  assert.equal(mv.move, 12);
+  assert.equal(mv.move, 14);
   assert.equal(L.playMove(st, 0, mv.move).flash.kind, 'claim');
+  // left to itself, the computer digs only cells that fit every clue, and finds the treasure
+  let total = 0;
+  for (let g = 0; g < 60; g++) {
+    const h = L.newMini('hunt', L.makeRng('hunt' + g));
+    let n = 0;
+    for (; n < 36; n++) {
+      const c = L.huntCandidates(L.publicMini(h));
+      const b = L.localBest(L.publicMini(h), 'X', lcg(g));
+      assert.ok(c.includes(b.move), 'a dig consistent with every band');
+      if (L.applyMove(h, 'X', b.move).outcome === 'win') break;
+    }
+    assert.ok(n < 36); total += n + 1;
+  }
+  assert.ok(total / 60 < 8, `found in ${(total / 60).toFixed(1)} digs on average`);
 });
 
 test('wordle tactics: guesses stay consistent with the feedback and the last word is taken', () => {
@@ -1770,14 +1822,16 @@ test('computer against computer: matches finish, every move is legal, and the st
 
 // ---- the online turn clock: a random legal move on a timeout, a loss on the second in a row ----
 test('newTimer and the timer options', () => {
-  assert.deepEqual(L.TIMER_OPTIONS, [0, 30, 60, 180]);
+  assert.deepEqual(L.TIMER_OPTIONS, [0, 60], 'a friend game: no limit or 1 minute');
+  assert.deepEqual([0, 60, 30, 180, 45, null].map(L.normTimer), [0, 60, 60, 60, 0, 0], 'an older 30 s or 3 min room becomes 1 minute');
   const t = L.newTimer(60);
   assert.deepEqual(t, { limit: 60, deadline: null, for: null, pausedAt: null, timeouts: { X: 0, O: 0 }, streak: { X: 0, O: 0 }, bankNext: false });
   assert.equal(L.newTimer(0).limit, 0);
   assert.equal(L.newTimer().limit, 0);
-  const st = L.newMatch(lcg(1), { mode: 'online', timer: 30 });
-  assert.equal(st.timer.limit, 30, 'an online match keeps the chosen limit');
-  const two = L.newMatch(lcg(1), { mode: 'two', timer: 30 });
+  const st = L.newMatch(lcg(1), { mode: 'online', timer: 60 });
+  assert.equal(st.timer.limit, 60, 'an online match keeps the chosen limit');
+  assert.equal(L.newMatch(lcg(1), { mode: 'online', timer: 30 }).timer.limit, 60);
+  const two = L.newMatch(lcg(1), { mode: 'two', timer: 60 });
   assert.equal(two.timer.limit, 0, 'local matches have no clock');
   const bad = L.newMatch(lcg(1), { mode: 'online', timer: 45 });
   assert.equal(bad.timer.limit, 0, 'an unknown limit means no limit');
@@ -1985,7 +2039,7 @@ test('a match record keeps every secret out of the public state and puts it back
       if (type === 'hangman') assert.match(pub.word, /^_+$/, 'hangman shows only the length');
       else if (type === 'memory') assert.ok(pub.cards.every(c => c === null), 'no card is known');
       else assert.ok(!(key in pub), `${type}: ${key} is not public`);
-      if (type === 'hunt') assert.equal(pub.clues.length, 25);
+      if (type === 'hunt') assert.equal(pub.clues.length, 36);
     } else assert.equal(rec.secrets[0], undefined, `${type}: nothing to hide`);
     assert.deepEqual(JSON.parse(JSON.stringify(rec)), rec, 'plain JSON');
     const full = L.fullState(rec);
@@ -2146,22 +2200,25 @@ test('hexapawn win 1: a pawn reaching the opposite home row claims the square', 
   assert.equal(r2.outcome, 'win'); assert.equal(r2.note, 'through');
 });
 
-test('hexapawn win 2: a move after which the opponent has no legal move claims the square', () => {
-  // O's only pawn would step down to row 2; X steps into that square and O is blocked with nothing to capture
-  const m = hp(hpAt(3, 0), 'X', hpAt(1, 0), 'O');
-  assert.equal(L.canMove(m, 'O'), true);
-  const r = L.applyMove(m, 'X', [hpAt(3, 0), hpAt(2, 0)]);
-  assert.equal(r.outcome, 'win'); assert.equal(r.note, 'stuck');
-  assert.equal(L.canMove(m, 'O'), false);
-  assert.deepEqual(r.cells, [hpAt(2, 0)], 'the winner\'s pawns light up');
-  // capturing the last pawn counts the same
+test('hexapawn: leaving the other side without a move wins nothing; when neither can move the square resets', () => {
+  // X steps in front of O's only pawn: O is blocked, and so is X
+  const st = matchWith(['hexapawn', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt']);
+  st.squares[0].mini = hp(hpAt(3, 0), 'X', hpAt(1, 0), 'O');
+  const f = turn(st, 0, [hpAt(3, 0), hpAt(2, 0)], typeRng('ttt'));
+  assert.equal(f.kind, 'draw', 'nobody can move: no winner'); assert.equal(f.note, 'stuck');
+  assert.equal(st.squares[0].owner, null);
+  assert.equal(st.squares[0].mini.type, 'ttt', 'the square resets with a new mini-game');
+  assert.deepEqual(st.sqlog[0], { t: 'hexapawn', end: 'draw', w: null, X: 1, O: 0 });
+  // capturing the last pawn does not win either: the pawn still has to get through
   const w = hp(hpAt(2, 1), 'X', hpAt(3, 2), 'X', hpAt(1, 0), 'O');
-  const r2 = L.applyMove(w, 'X', [hpAt(2, 1), hpAt(1, 0)]);
-  assert.equal(r2.outcome, 'win'); assert.equal(r2.note, 'wiped');
+  assert.deepEqual(L.applyMove(w, 'X', [hpAt(2, 1), hpAt(1, 0)]), { ok: true, outcome: 'continue', note: 'capture' });
   assert.equal(w.cells.includes('O'), false);
+  assert.equal(L.canMove(w, 'O'), false); assert.equal(L.canMove(w, 'X'), true);
+  const r = L.applyMove(w, 'X', [hpAt(1, 0), hpAt(0, 0)]);
+  assert.equal(r.outcome, 'win'); assert.equal(r.note, 'through', 'the far row is the only win');
 });
 
-test('hexapawn: a player with no move is not beaten until the opponent moves and leaves them stuck', () => {
+test('hexapawn: a player with no move just plays elsewhere; being stuck never loses the square', () => {
   // X steps forward into a blocked spot of its own accord: X is stuck, but O can still move, so nothing is decided
   const m = hp(hpAt(3, 0), 'X', hpAt(1, 0), 'O', hpAt(0, 2), 'O', hpAt(0, 1), 'O');
   const r = L.applyMove(m, 'X', [hpAt(3, 0), hpAt(2, 0)]);
@@ -2173,9 +2230,9 @@ test('hexapawn: a player with no move is not beaten until the opponent moves and
   const r2 = L.applyMove(freed, 'O', [hpAt(0, 1), hpAt(1, 1)]);
   assert.equal(r2.outcome, 'continue', 'the move freed X');
   assert.equal(L.canMove(freed, 'X'), true);
-  // ...whereas a move that leaves X stuck wins it for O
+  // ...and a move that leaves X stuck does not win it for O any more
   const r3 = L.applyMove(m, 'O', [hpAt(0, 2), hpAt(1, 2)]);
-  assert.equal(r3.outcome, 'win'); assert.equal(r3.note, 'stuck');
+  assert.equal(r3.outcome, 'continue'); assert.equal(L.canMove(m, 'X'), false);
 
   // in a match: a stuck player plays elsewhere, and cannot be made to move in that square
   const st = matchWith(['hexapawn', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt']);
@@ -2203,10 +2260,13 @@ test('hexapawn tactics: full minimax takes a win now, stops the other side getti
   // O threatens to reach X's home row from row 2; X must capture it
   const block = L.localBest(L.publicMini(hp(hpAt(2, 1), 'O', hpAt(3, 0), 'X', hpAt(3, 2), 'X', hpAt(0, 0), 'O')), 'X', cpuRng());
   assert.ok(block.move[1] === hpAt(2, 1), `X captures the runner (played ${JSON.stringify(block.move)})`);
-  // from the start, both sides' best lines are known: with full minimax the side to move loses against perfect play here
+  // from the start, with only the far row winning, perfect play on both sides locks the pawns: the square resets
   const start = mini('hexapawn').cells;
-  assert.equal(L.hpSolve(start, 'X').win, false);
-  assert.equal(L.hpSolve(start, 'O').win, false);
+  assert.equal(L.hpSolve(start, 'X').v, 0);
+  assert.equal(L.hpSolve(start, 'O').v, 0);
+  // leaving the other side stuck is worth nothing by itself
+  const lock = L.hpMovesValued(hp(hpAt(3, 0), 'X', hpAt(1, 0), 'O').cells, 'X');
+  assert.deepEqual(lock.map(m => m.v), [0], 'a move that only blocks both sides: a reset');
   assert.equal(L.hpNeeds(start, 'X'), 3); assert.equal(L.hpNeeds(start, 'O'), 3, 'an even start: three rows each');
   const close = hp(hpAt(1, 1), 'X', hpAt(3, 0), 'X', hpAt(0, 0), 'O', hpAt(0, 2), 'O').cells;   // (a second X pawn, so O capturing one does not end it)
   assert.equal(L.hpNeeds(close, 'X'), 1, 'one step from the far row'); assert.equal(L.hpNeeds(close, 'O'), 3);
@@ -2218,6 +2278,7 @@ test('hexapawn tactics: full minimax takes a win now, stops the other side getti
     const m = mini('hexapawn');
     let p = g % 2 ? 'O' : 'X', guard = 0;
     while (guard++ < 30) {
+      if (!L.canMove(m, 'X') && !L.canMove(m, 'O')) break;            // locked: the square would reset
       if (!L.canMove(m, p)) { p = L.other(p); continue; }
       const b = L.localBest(L.publicMini(m), p, rng);
       const r = L.applyMove(m, p, b.move);
@@ -2413,12 +2474,11 @@ test('stats: each mini-game counts the turns each side spent in it, bonus moves 
   st.squares[2].mini = bsAt(4, 5);
   st.squares[3].mini = L.newMini('hangman', wordRng(L.WORDS_HANG, 'apple'));
   turn(st, 0, 'roll', die(3)); turn(st, 0, 'roll', die(4)); turn(st, 0, 'bank');   // X: one turn of Pig, three moves
-  turn(st, 2, 4);                                                                    // O hits
+  turn(st, 2, 4); turn(st, 2, 5);                                                    // O: a hit, then the bonus shot sinks it, one turn
   turn(st, 3, 'P'); turn(st, 3, 'Z');                                                // X: a hit and a bonus miss, one turn
-  turn(st, 2, 5);                                                                    // O sinks it
   assert.deepEqual(st.squares[0].mv, { X: 1, O: 0 });
   assert.deepEqual(st.squares[3].mv, { X: 1, O: 0 });
-  assert.deepEqual(st.sqlog, [{ t: 'bs', end: 'won', w: 'O', X: 0, O: 2 }]);
+  assert.deepEqual(st.sqlog, [{ t: 'bs', end: 'won', w: 'O', X: 0, O: 1 }]);
   // a drawn square resets: its count goes to the log and the new game starts from zero
   st.squares[1].mini = tttOf('X', 'O', 'X', 'X', 'O', 'O', 'O', 'X', null);
   st.turn = 'X';
@@ -2426,8 +2486,8 @@ test('stats: each mini-game counts the turns each side spent in it, bonus moves 
   assert.deepEqual(st.sqlog[1], { t: 'ttt', end: 'draw', w: null, X: 1, O: 0 });
   assert.deepEqual(st.squares[1].mv, { X: 0, O: 0 });
   const s = L.matchStats(st);
-  assert.deepEqual(s.squares.map(e => `${e.t}:${e.end}:${e.X}/${e.O}`), ['bs:won:0/2', 'ttt:draw:1/0', 'pig:open:1/0', 'hangman:open:1/0']);
-  assert.equal(s.turns, 5);
+  assert.deepEqual(s.squares.map(e => `${e.t}:${e.end}:${e.X}/${e.O}`), ['bs:won:0/1', 'ttt:draw:1/0', 'pig:open:1/0', 'hangman:open:1/0']);
+  assert.equal(s.turns, 4);
   assert.equal(s.winner, null);
   // the counts travel with an online record
   st.id = 'm'; st.seq = 0; st.recent = [];

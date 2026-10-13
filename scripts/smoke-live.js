@@ -9,7 +9,7 @@ const json = { 'content-type': 'application/json' };
 let failed = false;
 const check = (good, what) => { console.log(`${good ? 'ok  ' : 'FAIL'} ${what}`); if (!good) failed = true; };
 (async () => {
-  for (const f of ['claimUsername', 'findMatch', 'cancelSearch', 'move', 'timeout', 'resign']) {
+  for (const f of ['claimUsername', 'findMatch', 'cancelSearch', 'move', 'timeout', 'resign', 'recordLocal']) {
     const r = await fetch(`${FN}/${f}`, { method: 'POST', headers: json, body: '{"data":{}}' });
     const j = await r.json().catch(() => ({}));
     check(r.status === 401 && j.error && j.error.status === 'UNAUTHENTICATED', `${f} is live and asks for a login (HTTP ${r.status})`);
@@ -30,6 +30,12 @@ const check = (good, what) => { console.log(`${good ? 'ok  ' : 'FAIL'} ${what}`)
     check(st.status === 401, `only the admin can read the stats (HTTP ${st.status})`);
     const sw = await fetch(`${DB}/stats/modes/local/started.json?auth=${s.idToken}`, { method: 'PUT', body: '1' });
     check(sw.status === 401, `a phone cannot write the stats (HTTP ${sw.status})`);
+    const rv = await fetch(`${DB}/review.json?shallow=true&auth=${s.idToken}`);
+    check(rv.status === 401, `only the admin can read the username review list (HTTP ${rv.status})`);
+    const lw = await fetch(`${DB}/localStats/${s.localId}/wins.json?auth=${s.idToken}`, { method: 'PUT', body: '99' });
+    check(lw.status === 401, `a phone cannot write its own local record (HTTP ${lw.status})`);
+    const lo = await fetch(`${DB}/localHistory/someone-else.json?shallow=true&auth=${s.idToken}`);
+    check(lo.status === 401, `a phone cannot read someone else's local games (HTTP ${lo.status})`);
     const c = await fetch(`${FN}/claimUsername`, { method: 'POST', headers: Object.assign({ authorization: 'Bearer ' + s.idToken }, json), body: JSON.stringify({ data: { username: 'smoke_test' } }) });
     check(c.status === 401, `a guest cannot claim a username (HTTP ${c.status})`);
     await fetch(`${ID}:delete?key=${KEY}`, { method: 'POST', headers: json, body: JSON.stringify({ idToken: s.idToken }) }).catch(() => {});

@@ -12,6 +12,25 @@ test('usernames: 3 to 16 letters, numbers or underscores; reserved and rude name
   }
 });
 
+test('usernames: the standard word list, look-alikes undone, words caught inside longer names, innocent words left alone', () => {
+  const LIST = require('../functions/badwords.js');
+  assert.ok(LIST.length > 400 && LIST.includes('fuck') && LIST.includes('2 girls 1 cup'), 'the LDNOOBW English list, as published');
+  // look-alike characters: 0 o, 1 i, 3 e, 4 a, 5 s, 7 t, 8 b
+  for (const bad of ['sh1t', 'SH1T_happens', 'a55hole', 'b1tch_please', 'pu55y', 'd1ldo', 'fvck_fuk', 'n4z1', 'H1tl3r', 'r3tard', 'b00bs', 'c0ck_99', 'wh0re', 'Sl0t_slut'.slice(5), '3jaculation'.slice(0, 11)]) {
+    assert.match(String(R.usernameProblem(bad)), /another/, bad);
+  }
+  // inside longer names, with or without underscores and capitals
+  for (const bad of ['xXfuckXx', 'TheShitLord', 'motherfucker1', 'iLoveP0rn', 'porn_star', 'BigCockEnergy', 'a_n_a_l', 'grapeRAPE', 'shitty_shot', 'BitchPlease']) {
+    assert.match(String(R.usernameProblem(bad)), /another/, bad);
+  }
+  // three-letter words as words of their own only: between underscores or digits, or a CamelCase part
+  for (const bad of ['Big_Ass', 'BigAss', 'ass_hat', 'cum_lord', 'Sexy_99'.replace('y', ''), 'tit4tat', 'XXX_Sniper']) assert.match(String(R.usernameProblem(bad)), /another/, bad);
+  // ordinary names that contain a listed word somewhere: allowed
+  for (const ok of ['Classic', 'Cassie', 'Passion', 'Button', 'Butterfly', 'Arsenal', 'Raccoon', 'Tycoon', 'Grape', 'Skyscraper', 'Analyst', 'Canal_Boat',
+    'Peacock', 'Hancock', 'Cockpit', 'Dickens', 'Scunthorpe', 'Therapist', 'Spoon', 'Teaspoon', 'Spicy', 'Suspicious', 'Specialist', 'Socialist', 'Among_Us',
+    'Document', 'Cucumber', 'Title', 'Essex', 'Sussex', 'Mongoose', 'Pakistan', 'Scatter', 'player1', 'Alice_A', 'Bob_B']) assert.equal(R.usernameProblem(ok), null, ok);
+});
+
 test('Elo: K = 32, equal ratings move 16 points, upsets move more, a draw moves toward each other', () => {
   assert.deepEqual(R.elo(1200, 1200, 1), { X: 1216, O: 1184 });
   assert.deepEqual(R.elo(1200, 1200, 0), { X: 1184, O: 1216 });
