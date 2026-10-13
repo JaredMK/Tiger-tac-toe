@@ -1024,9 +1024,11 @@ test('setup: the app opens on the main menu with default names and every game ti
   assert.equal(st.screen, 'menu', 'the main menu comes first');
   assert.deepEqual(st.setup.names, { X: 'X', O: 'O' });
   assert.deepEqual(L.enabledGames(st.setup), L.TYPES);
-  assert.equal(L.TYPES.length, 16);
+  assert.equal(L.TYPES.length, 15);
   assert.ok(st.setup.games.coins && st.setup.games.pig && st.setup.games.hunt && st.setup.games.snakes && st.setup.games.bump, 'the newest games are on by default');
   assert.ok(!L.TYPES.includes('dice'), 'Snakes and Ladders took the Dice race\'s place');
+  assert.ok(!L.TYPES.includes('hexapawn') && !('hexapawn' in st.setup.games), 'Hexapawn is out of the pool and the Advanced list');
+  assert.deepEqual(L.OLD_TYPES, ['dice', 'hexapawn'], 'no longer dealt, still played in older matches');
   for (const t of L.TYPES) assert.ok(L.INFO[t] && L.INFO[t].name && L.INFO[t].hint, `info for ${t}`);
   assert.equal(L.playerName(st, 'X'), 'X');
 });
@@ -2166,9 +2168,57 @@ test('hexapawn: three pawns each on the home rows, two empty rows between them',
   assert.deepEqual(m.cells, ['O', 'O', 'O', null, null, null, null, null, null, 'X', 'X', 'X']);
   assert.deepEqual(L.hpMoves(m.cells, 'X'), [[9, 6], [10, 7], [11, 8]], 'X can only step straight up');
   assert.deepEqual(L.hpMoves(m.cells, 'O'), [[0, 3], [1, 4], [2, 5]], 'O can only step straight down');
-  assert.ok(L.TYPES.includes('hexapawn'));
-  assert.equal(L.INFO.hexapawn.name, 'Hexapawn');
-  assert.equal(L.defaultSetup().games.hexapawn, true, 'on by default in the Advanced list');
+  assert.ok(!L.TYPES.includes('hexapawn') && L.OLD_TYPES.includes('hexapawn'), 'no longer dealt; an older match still plays it');
+  assert.equal(L.INFO.hexapawn.name, 'Hexapawn', 'its name stays for older matches, history and stats');
+  assert.equal(L.defaultSetup().games.hexapawn, undefined, 'not in the Advanced list');
+});
+
+test('games no longer dealt (Hexapawn, the Dice race): never in a new match or Find Match, never dealt by a reset, even for an older match whose list still names them', () => {
+  const OLD = L.OLD_TYPES, rng = lcg(77);
+  for (let k = 0; k < 300; k++) for (const sq of L.newMatch(rng).squares) assert.ok(!OLD.includes(sq.mini.type), sq.mini.type);
+  const all = Object.fromEntries(L.TYPES.concat(OLD).map(t => [t, true]));            // a setup or room saved with them still ticked
+  for (let k = 0; k < 100; k++) for (const sq of L.newOnlineMatch({ games: all }, rng, 'm' + k).state.squares) assert.ok(!OLD.includes(sq.mini.type));
+  const st0 = L.newState(lcg(5)); Object.assign(st0.setup.games, { hexapawn: true, dice: true });
+  assert.ok(L.startMatch(st0, rng) && st0.squares.every(sq => !OLD.includes(sq.mini.type)) && !st0.games.some(t => OLD.includes(t)));
+  // resets in an older match: its list names Hexapawn and the Dice race; draws reset to the games still dealt
+  for (const list of [L.TYPES.concat(OLD), ['hexapawn', 'ttt'], ['hexapawn'], ['dice', 'hexapawn']]) {
+    const seen = new Set();
+    for (let k = 0; k < 120; k++) {
+      const st = matchWith(['ttt'], rng);
+      st.games = list.slice();
+      for (let i = 0; i < 8; i++) st.squares[0].mini.cells[i] = TTT_DRAW[i];
+      st.turn = TTT_DRAW[8];
+      L.playMove(st, 0, 8, rng);
+      seen.add(st.squares[0].mini.type);
+    }
+    assert.ok(![...seen].some(t => OLD.includes(t)), `${list}: reset to ${[...seen]}`);
+    if (list.length === 2 && list.includes('ttt')) assert.deepEqual([...seen], ['ttt'], 'the rest of that match\'s list');
+    if (!list.some(t => L.TYPES.includes(t))) assert.ok(seen.size > 5, 'nothing left in its list: any game still dealt');
+  }
+});
+
+test('an older match with a Hexapawn square still plays it to the end: moves, the computer, a timed-out move, the record', () => {
+  const rng = lcg(31);
+  const st = matchWith(['hexapawn', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt'], rng);
+  st.games = L.TYPES.concat(['hexapawn']);
+  assert.equal(L.playMove(st, 0, [9, 6], rng).ok, true, 'a step forward');
+  // the record for an online match (hidden values apart) and back
+  const rec = L.matchRecord(st);
+  const back = L.fullState(rec);
+  assert.equal(back.squares[0].mini.type, 'hexapawn');
+  assert.deepEqual(back.squares[0].mini.cells, st.squares[0].mini.cells);
+  // the computer picks a legal Hexapawn move when that square is its best
+  const cpu = L.newMatch(rng); cpu.cpu = 'O'; cpu.turn = 'O';
+  cpu.squares.forEach((sq, i) => { sq.mini = i ? Object.assign(L.newMini('ttt', rng), { cells: ['X', 'O', 'X', 'X', 'O', 'O', 'O', 'X', 'X'] }) : hp(hpAt(2, 0), 'X', hpAt(1, 1), 'O'); sq.owner = i ? 'X' : null; });
+  const owners = [null, 'X', 'O', 'O', 'X', 'X', 'X', 'O', 'O'];                    // eight squares claimed, no line: only the Hexapawn square is open
+  cpu.squares.forEach((sq, i) => { sq.owner = owners[i]; });
+  assert.equal(L.mainResult(cpu.squares), null);
+  const plan = L.cpuMove(cpu, rng);
+  assert.equal(plan.square, 0);
+  assert.ok(L.hpMoves(cpu.squares[0].mini.cells, 'O').some(([a, b]) => a === plan.move[0] && b === plan.move[1]), 'a legal move');
+  // a timed-out turn there makes a random legal move
+  const t = L.randomLegalMove(hp(hpAt(3, 1), 'X', hpAt(0, 1), 'O'), 'X', rng);
+  assert.ok(L.hpMoves(hp(hpAt(3, 1), 'X', hpAt(0, 1), 'O').cells, 'X').some(([a, b]) => a === t[0] && b === t[1]));
 });
 
 test('hexapawn: pawns cannot move backward, sideways, two squares, diagonally into an empty square, or capture straight ahead', () => {

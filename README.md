@@ -13,8 +13,10 @@ Database, Authentication, and Cloud Functions for accounts, matchmaking, records
 
 Open `index.html` in a browser (or serve the folder with any static server) and play.
 
-A main menu comes first: "Play Local", "Play Online" and "How to Play". Play Online offers "Play a
-Friend" (host or join a room) and "Find a Match". Play Local opens one setup screen with two
+A main menu comes first: "Play Local", "Play Online" and "How to Play", with a small "by JarHead
+Labs" credit and the studio's jar logo at the foot, linking to its X account (https://x.com/jarheadlabs,
+in a new tab). The menu card is centred in the space above it, so the two never overlap, even on the
+smallest phone. Play Online offers "Play a Friend" (host or join a room) and "Find a Match". Play Local opens one setup screen with two
 player slots. Player 1 is always a person: a name and a side, X, O or Random. Player 2 is Human or
 Computer and gets the other side (a computer slot shows a little computer above it). A blank name is
 the side's letter, and the computer's is "Computer". So it is two people passing one phone, or a
@@ -68,6 +70,7 @@ a button returns to the results with "Rematch" (the same settings and opponent a
 - If a mini-game ends with no winner (full board), that square resets with a newly randomised mini-game.
 - If neither player has a legal move in a mini-game, that square resets the same way. A player who has
   no legal move in one square simply plays another; a player with no legal move anywhere is skipped.
+  (Only Hexapawn could leave a player without a move, and it is no longer dealt; see below.)
 - If the main board fills with no three in a row, the player with more squares wins.
 - Claimed squares stay on view: the board shows the owner's mark over the mini-game's final state, and
   tapping one opens that final state read-only with a "Won by" banner and every secret revealed (the
@@ -81,7 +84,8 @@ a button returns to the results with "Rematch" (the same settings and opponent a
   mini-games, each opening its card.
 - Pages only ever scroll up and down: sideways scrolling is locked across the app.
 
-Each square is assigned one of these at random when the match starts (duplicates are fine):
+Each square is assigned one of these 15 at random when the match starts, all equally likely (duplicates
+are fine; there are no weights). A square that resets draws again from the same list:
 
 | Mini-game | How to win |
 | --- | --- |
@@ -99,8 +103,18 @@ Each square is assigned one of these at random when the match starts (duplicates
 | Coin flip | Five coins: two X, two O and one mystery coin (?) that belongs to nobody, in random places. Flip turns up to 3 coins that aren't yours, the other side's and the mystery coin (all of them if there are 3 or fewer, otherwise 3 picked at random). The coins are picked as each turn starts and ringed in the player's colour before Flip is tapped, and exactly those flip; skipping the square and coming back a later turn may show a new set. Each lands X or O at random, the mystery coin too. All five the same wins for that symbol's player (so with no coin of your own left, a flip can hand the square to the other side) |
 | Pig | Each player has a banked score. A move is a whole push-your-luck turn: roll a die, and a number not yet rolled this turn joins the points at risk (a small +N by your score, with this turn's dice in a row); then roll again or bank. Banking moves them into your score and ends the move; a repeated number busts, losing them (at most six rolls). Once your score and the points at risk reach 21, only Bank is left. First to a banked 21 wins. A bust turns red only once the die has landed; after a winning bank the die keeps the last number rolled |
 | Treasure hunt | 6×6 grid with one hidden treasure. A move digs a cell: the treasure wins; otherwise the cell shows how warm it is, never the distance itself, counted in steps up, down, left or right: Hot (1 step), Warm (2–3), Cool (4–5) or Cold (6+), each with its own colour and label (a legend sits under the grid). Everything dug stays visible. A 5×5 square from a match started before keeps its size and answers in the same bands |
-| Hexapawn | 3 columns × 4 rows; each side has 3 pawns on its home row (X on the bottom, O on the top). A move is one pawn stepping one square straight forward into an empty square, or capturing an opposing pawn one square diagonally forward. Tap a pawn to see its moves; the pawn slides over and a captured pawn is knocked off the board. The only way to win the square is moving a pawn onto the other side's home row (taking the last pawn does not win it). A player with no legal move in this square simply plays elsewhere; when neither player has one, the square resets with a new random mini-game, like a drawn Tic-tac-toe |
 | Mastermind | One hidden code shared by both players: 4 pegs from 6 colours, no colour twice, picked by the computer. A move is one guess of 4 different colours (tap a slot, then a colour; tap a filled slot to clear it). Feedback is a solid marker for each right colour in the right spot and a hollow marker for each right colour in the wrong spot, always solid first, so the order says nothing about which peg is which. Every guess and its markers stay on show, no guess limit; guessing the exact code wins. Each colour also carries a symbol (circle, square, triangle, diamond, star, plus). The hidden code sits in a compact row of small, peg-sized slots, so the guess history gets the room |
+
+No longer dealt, but still played to the end in a match started before they were taken out, and kept
+under their own names in that match's history and the stats:
+
+| Mini-game | Why it went |
+| --- | --- |
+| Dice race | Replaced by Snakes and Ladders |
+| Hexapawn | Taken out: nobody has to move in a square, so the best play was often not to move at all, and positions came up where whoever moved there next lost, so neither player would. The rules it was played by: 3 columns × 4 rows, 3 pawns each on the home rows; a pawn steps straight forward into an empty square or captures diagonally forward; reaching the far row wins; when neither side can move, the square resets |
+
+A reset in such a match deals only the games still in the list above, and a saved setup with only
+Hexapawn ticked opens with every game ticked.
 
 Hidden information (the Wordle and Hangman words, the Higher/lower number, the Memory cards, the
 Battleship ship, the Mastermind code) is never shown on the board or in a mini-game before it is revealed.
@@ -344,7 +358,7 @@ each side still needs there, with the odds built in for the luck games; a guess 
 (Wordle, Hangman, Higher/lower, Battleship, Treasure hunt, Memory, Mastermind) counts for less because the clue
 helps the other player too.
 
-Inside a square: Tic-tac-toe and Hexapawn play full minimax; Connect 4 searches five moves ahead with alpha-beta
+Inside a square: Tic-tac-toe plays full minimax; Connect 4 searches five moves ahead with alpha-beta
 and a threat count; Hex spots wins and blocks through shortest-connection distances, one reply ahead;
 Battleship fires where the ship can still fit given every hit and miss (around a hit once there is
 one), and between equals at the cell most likely to sink it, and after a hit keeps firing on its bonus
@@ -358,10 +372,9 @@ pair, else unseen cards; Coin flip reads its exact chances from the marked coins
 chance of handing the square over when none of its own are left); Snakes and Ladders works out the
 expected rolls to the top with the ladders and snakes in; Bump and the races count the moves left; Pig keeps rolling while the bust risk
 is acceptable and banks around 8 to 10, bolder when behind and safer when ahead, always when the bank
-would reach 21. Hexapawn's minimax knows the only win is the far row and that a position where
-neither side can move resets the square. On the board, a Hexapawn square is weighed by how close each
-side's leading pawn is to the far row (one move away when a win is on), since nobody has to move in a
-square.
+would reach 21. In an older match, a Hexapawn square still gets full minimax (the only win is the
+far row; a position where neither side can move resets the square), weighed on the board by how close
+each side's leading pawn is to the far row.
 
 ## Deploying
 
@@ -396,7 +409,7 @@ git push -u origin main
 Every match in every mode is counted, anonymously: two players on one phone, against the computer,
 computer against computer (before it was taken out), friend code and Find Match (casual and ranked
 before it was one queue). Snakes and Ladders and Bump are counted like every mini-game; the Dice race
-keeps its own row for the matches it was played in.
+and Hexapawn keep their own rows, marked "(old)", for the matches they were played in.
 Phones report their local matches to the
 `track` Cloud Function (a guest's with a random id the browser made up, never a name); the server
 counts online matches itself, where it runs or saves them. Nobody can write the stats directly, and
@@ -440,7 +453,8 @@ every random choice comes from an rng passed in, `makeRng(seed)` for a seeded on
 page as a plain script and by the Cloud Functions with `require`. `test/logic.test.js` covers it
 (every mini-game's win and draw logic, the main board, random and timed-out moves, the computer
 player, the online match records with hidden values kept apart, resigning, the turn clock, Battleship's
-shot again after a hit, Treasure hunt's bands, Hexapawn's far-row win and resets, and that the same
+shot again after a hit, Treasure hunt's bands, Hexapawn's far-row win and resets in older matches,
+games no longer dealt never dealt again (resets included), and that the same
 seed plays the same match). `test/server-rules.test.js` covers the server's own rules (usernames and
 the word list with look-alikes and names hidden inside longer ones, Elo, matchmaking pairs, records
 recounted from history). Both run with Node's test runner:

@@ -1283,6 +1283,12 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 
 /* ----- accounts, Find Match, the leaderboard, profiles ----- */
 .scr.menu { padding-top: calc(var(--pad) + 52px); }
+.scr.menu > .menu-card { margin: auto 0; }                     /* centred in the room above the credit */
+.credit { flex: none; display: inline-flex; align-items: center; gap: 7px; min-height: 44px; margin-top: 6px; padding: 0 12px; border-radius: 12px; color: var(--muted); font-size: 15px; line-height: 1; text-decoration: none; white-space: nowrap; -webkit-tap-highlight-color: transparent; }
+.credit .jhl { flex: none; width: auto; height: 24px; }
+.credit span { padding-top: 2px; }
+.credit:active { opacity: .7; }
+.credit:focus-visible { outline: 3px solid var(--sky); outline-offset: 2px; }
 .menu-top { position: absolute; top: var(--pad); left: var(--pad); right: var(--pad); display: flex; justify-content: space-between; align-items: center; gap: 10px; z-index: 3; }
 .menu-top .btn { height: 44px; padding: 0 14px; font-size: 15px; min-width: 44px; }
 .menu-top .chip { max-width: 58%; display: flex; align-items: center; gap: 8px; }
@@ -1916,6 +1922,9 @@ function renderHowTo() {
 }
 
 /* ----- main menu ----- */
+// The studio credit at the foot of the main menu: the JarHead Labs jar (drawn from the studio's logo) and a link to its X account.
+const JARHEAD_URL = 'https://x.com/jarheadlabs';
+const JARHEAD_LOGO = '<svg class="jhl" aria-hidden="true" focusable="false" viewBox="190 136 395 670"><defs><clipPath id="jhIn"><path d="M293 372V407C279 457 228 442 228 545V786Q228 800 242 800H529Q543 800 543 786V545C543 442 492 457 478 407V372Z"/></clipPath></defs><path fill="#243139" d="M269 301H501Q535 301 535 335V338Q535 372 508 380V404C517 424 574 444 574 535V788Q574 800 562 800H209Q197 800 197 788V535C197 444 254 424 262 404V380Q235 372 235 338V335Q235 301 269 301Z"/><path fill="#f6f3ec" d="M293 372V407C279 457 228 442 228 545V786Q228 800 242 800H529Q543 800 543 786V545C543 442 492 457 478 407V372Z"/><rect x="266" y="330" width="238" height="27" rx="5" fill="#f6f3ec"/><path clip-path="url(#jhIn)" fill="#57b2c4" d="M220 609C258 590 300 590 340 606S420 625 470 609 535 598 550 606V806H220Z"/><g fill="#243139"><ellipse cx="324.5" cy="494.5" rx="14" ry="24"/><ellipse cx="446" cy="495.5" rx="14" ry="24"/></g><path d="M340 550Q385.5 588 431 550" fill="none" stroke="#243139" stroke-width="20" stroke-linecap="round"/><g fill="#f6f3ec"><circle cx="435.5" cy="672" r="18.5"/><circle cx="379.5" cy="725.5" r="13.5"/></g><circle cx="362" cy="210" r="32" fill="#7651c2"/><circle cx="419.5" cy="274.5" r="20.5" fill="#57b2c4"/><path fill="#e8983f" d="M474 142H542Q552 142 552 152V197Q552 205 544 205H526Q518 205 518 213V233Q518 243 508 243H474Q464 243 464 233V152Q464 142 474 142Z"/></svg>';
 function renderMenu() {
   return `<main class="scr menu">${menuTop()}<div class="menu-card">
     <h1 class="title"><span class="sr">Tic Tac Chaos</span><span class="ttop wob" aria-hidden="true">${'TIC TAC'.split('').map((c, k) => c === ' ' ? '<span>&nbsp;</span>' : `<span style="animation-delay:${(k * .09).toFixed(2)}s">${c}</span>`).join('')}</span><span class="chaos wob">${burstSvg('CHAOS!', 'r', 300, 150, 54)}</span></h1>
@@ -1924,7 +1933,7 @@ function renderMenu() {
     <button class="primary" data-act="mode-go" data-mode="local">Play Local</button>
     <button class="primary alt" data-act="online-go">Play Online</button>
     <button class="btn howto" data-act="howto">How to Play</button>
-  </div></main>`;
+  </div><a class="credit" href="${JARHEAD_URL}" target="_blank" rel="noopener noreferrer" aria-label="by JarHead Labs, on X (opens in a new tab)">${JARHEAD_LOGO}<span>by JarHead Labs</span></a></main>`;
 }
 
 /* ----- setup screen ----- */
@@ -4290,6 +4299,7 @@ function load() {
       for (const sq of s.squares) upgradeMini(sq.mini);                     // Connect 4 grew from 5 to 7 columns
       if ('dice' in s.setup.games && !('snakes' in s.setup.games)) s.setup.games.snakes = s.setup.games.dice;   // Snakes and Ladders took the Dice race's place in the list
       for (const t of TYPES) if (!(t in s.setup.games)) s.setup.games[t] = true;   // a game added since the save is on by default
+      if (!TYPES.some(t => s.setup.games[t])) for (const t of TYPES) s.setup.games[t] = true;   // only games no longer dealt were on (Hexapawn alone): all on again
       normLocal(s.setup);                                         // Play Local's players, from an older Human/Computer-per-side setup
       if (!s.online && !s.winner && s.squares.some(sq => !sq.owner && sq.mini.type === 'coins' && !(sq.mini.marks && sq.mini.marks.by === s.turn))) markCoins(s, s.turn, RNG);   // a match from before the marks
       return s;

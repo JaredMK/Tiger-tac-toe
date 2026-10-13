@@ -8,8 +8,11 @@
  * Everything about a match lives in one plain object (see newMatch); the UI
  * only ever calls playMove / endFlash and re-renders from that object.
  */
-const TYPES = ['ttt', 'c4', 'bs', 'wordle', 'hangman', 'hex', 'hilo', 'snakes', 'memory', 'candy', 'bump', 'coins', 'pig', 'hunt', 'hexapawn', 'mastermind'];
-const OLD_TYPES = ['dice'];   // no longer dealt (Snakes and Ladders replaced the Dice race), still played to the end in older games and shown in their history
+const TYPES = ['ttt', 'c4', 'bs', 'wordle', 'hangman', 'hex', 'hilo', 'snakes', 'memory', 'candy', 'bump', 'coins', 'pig', 'hunt', 'mastermind'];
+// No longer dealt, still played to the end in older matches and shown in their history: the Dice race
+// (Snakes and Ladders replaced it) and Hexapawn (taken out: with nobody obliged to move in a square,
+// the best play was often not to move at all).
+const OLD_TYPES = ['dice', 'hexapawn'];
 const INFO = {
   ttt:         { name: 'Tic-Tac-Toe',  hint: 'Three in a row wins' },
   c4:          { name: 'Connect 4',    hint: 'Pieces drop. Four in a row wins' },
@@ -1522,7 +1525,8 @@ function playMove(state, i, m, rng, opts) {
   } else if (outcome === 'draw') {
     flash.drawn = mini;                          // keep the full board for the result overlay
     flash.counts = res.counts || null;
-    const pool = state.games && state.games.length ? state.games : TYPES;
+    const dealt = (state.games || []).filter(t => TYPES.includes(t));      // an older match's list may name a game no longer dealt
+    const pool = dealt.length ? dealt : TYPES;
     state.sqlog.push({ t: mini.type, end: 'draw', w: null, X: sq.mv.X, O: sq.mv.O });
     sq.mv = { X: 0, O: 0 };
     sq.mini = newMini(pickType(pool, rng), rng); // the square resets with a new random mini-game from this match's list
