@@ -80,5 +80,20 @@ jobs:
             new GoogleAuth({ scopes: ["https://www.googleapis.com/auth/cloud-platform"] }).getAccessToken()
               .then(() => console.log("Google accepted the key."), e => { console.log("::error::Google refused the key: " + String(e.message).split("\n")[0]); process.exit(1); });
           '
+      - name: Cloud Billing API on
+        # The Firebase CLI reads the project's billing status (functions need the Blaze plan), and it
+        # does not switch this API on by itself. Once on, this step does nothing.
+        run: |
+          node -e '
+            const { GoogleAuth } = require("./functions/node_modules/google-auth-library");
+            (async () => {
+              const c = await new GoogleAuth({ scopes: ["https://www.googleapis.com/auth/cloud-platform"] }).getClient();
+              const api = "https://serviceusage.googleapis.com/v1/projects/tic-tac-chaos/services/cloudbilling.googleapis.com";
+              if ((await c.request({ url: api })).data.state === "ENABLED") { console.log("The Cloud Billing API is on."); return; }
+              await c.request({ url: api + ":enable", method: "POST" });
+              console.log("Switched the Cloud Billing API on; a minute for it to take effect.");
+              await new Promise(r => setTimeout(r, 60000));
+            })().catch(e => { console.log("::error::Could not switch on the Cloud Billing API: " + String(e.message).split("\n")[0]); process.exit(1); });
+          '
       - name: Deploy functions and rules
         run: firebase deploy --only functions,database --project tic-tac-chaos --non-interactive --force
