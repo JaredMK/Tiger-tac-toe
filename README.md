@@ -272,8 +272,9 @@ dashboard's "Usernames to review" card), and prints only a count in the public l
 code needs no account (a friend game without one uses an anonymous session, as before).
 
 **Find Match** (Play Online → Find a Match; needs an account) pairs strangers in a single queue: every mini-game on and always
-1 minute a turn, with no options to pick. The screen shows "Searching…" (X and O hopping on one
-looping CSS animation, O half a hop behind by its delay) with the time waited and **Cancel**. The
+1 minute a turn, with no options to pick. Tapping Find a Match goes straight into searching (after
+logging in, if needed): "Searching…" (X and O hopping on one looping CSS animation, O half a hop
+behind by its delay) with just the time waited, and **Cancel**, which goes back to Play Online. The
 server pairs players by how long they have waited, longest first. Sides are drawn at random. Two
 players who search at the same moment are paired once: the queue is changed in one database
 transaction. A player can be in only one matchmaking game at a time; with one in progress, Find
@@ -312,7 +313,9 @@ friend games together (with a "Find Match x-y-z · Friends x-y-z" line under it)
 games, All both. The record (wins-losses-draws and the win rate: wins over all games, draws
 included, so 3-5-1 is 33%) and the table of mini-games (squares won, squares lost and win rate, most
 won first) both follow the selection. Another player's profile (tap their name) shows their online
-stats only, with no selector: local games stay private.
+stats only, with no selector: local games stay private. The mini-game table lists only the games in
+the pool: squares from Hexapawn and the Dice race (both taken out) are not shown, though the numbers
+stay in the database.
 
 **History.** Every online game and, on your own stats, every recorded local game, newest first,
 marked Find Match, Friend or Local, with the opponent, the date, the result and how it ended (three
@@ -335,7 +338,55 @@ as Find Match) and leaves a marker so it never runs twice. It prints only counts
 their own matchmaking game's public state; a player's local record and history only by that player;
 only Cloud Functions write ratings, records, mini-game counts, usernames, the leaderboard, histories,
 queues and game state. A game's hidden values have no read rule at all, and the username review list
-is readable by the admin only.
+is readable by the admin only. The admin's matchmaking settings (`admin/config`) are read and written
+by the admin only; the alert keys (`admin/secrets`) can be written by the admin and read by nobody
+but the server; the bot list, bot numbers and alert log are the admin's only; the bots' own game
+records (`botGames`) and the alert limits have no read rule at all.
+
+### Matchmaking backfill and the empty-queue alert
+
+Both are switched on and set from the admin dashboard (they start off), and both act only when
+someone is searching Find Match **alone** (no other live searcher; two people searching are always
+paired with each other first).
+
+**The empty-queue alert** comes first: once a player has searched alone for a few seconds (5 by
+default), the admin gets a text and/or an email, "[username] (record) is searching for a match and
+nobody else is", with a link (`?play=find`) that opens the game straight into Find Match. It is
+sent once per search, and limited: one per player per 30 minutes (re-queueing doesn't re-alert),
+at least 3 minutes between alerts, at most 20 a day; all adjustable. The admin's own searches never
+alert. Texts go through Twilio and email through Resend, with keys typed into the dashboard (kept in
+the database where only the server can read them); the dashboard's **Send a test alert** checks
+them, and the last alerts are listed with how each channel went.
+
+**Bots** come next: each search draws its own wait, from 40 to 70 seconds by default (adjustable).
+If the player is still alone when it is up, one of five bot accounts that isn't already in a game
+takes them on. The match is an ordinary Find Match game: the bot's account looks like any other
+(a made-up ordinary username, a profile, a record and history of its own, shown online), and it
+plays through the same server moves. Each bot has its own style (how much it builds its own lines,
+how much it blocks, how often it slips, how bold it is at Pig) and pace (thinking time drawn afresh
+for every move, mostly a few seconds, sometimes 20 to 50, now and then longer, always inside the
+1-minute clock; quicker for a follow-up in the same turn), set in `functions/bots.js`. The bot's
+moves are made by the server when the player's phone checks in during the other side's turn (every
+phone does this in every matchmaking game) or, if the player is away, by the minute's sweep; a bot
+never runs out of time. With the default wait, the alert comes about 35 seconds or more before any
+bot, which is the window to join.
+
+Bot matches are counted apart: their own row ("Find Match vs a bot") in the dashboard's stats, and
+the number run, finished and won on the bots card. Whether they count in the player's record is a
+switch on the dashboard (on by default); they never change a rating or the leaderboard.
+
+To set up the alerts (once):
+1. **Email (Resend):** sign up at https://resend.com with the address the alerts should go to. Under
+   **API Keys**, create a key (it starts with `re_`, and shows only once) and paste it into the
+   dashboard's Resend API key. Without a domain of your own, Resend sends only to the address you
+   signed up with, from `onboarding@resend.dev`; that is all an alert to yourself needs.
+2. **Text (Twilio):** sign up at https://www.twilio.com and upgrade the account (trial accounts are
+   not worth it here). Buy a toll-free number, then submit its toll-free verification (Messaging →
+   Regulatory compliance; free, it usually takes a few business days; US carriers block texts from
+   unverified toll-free numbers). Paste the Account SID, Auth Token and the number into the
+   dashboard.
+3. On the dashboard, type the phone number and the email address, tick Text and/or Email, switch
+   the alert on and press **Send a test alert**.
 
 ## Playing against the computer
 
@@ -424,7 +475,8 @@ an account signing in or coming back to the game); new accounts; matches started
 average match length in turns and minutes; abandon, resign and timeout rates; how often X, who moves
 first, wins.
 
-The dashboard is https://jaredmk.github.io/Tiger-tac-toe/admin.html: tables and charts, with the
+The dashboard is https://jaredmk.github.io/Tiger-tac-toe/admin.html: the **Bots** and **Empty-queue
+alerts** controls (see "Matchmaking backfill and the empty-queue alert"), tables and charts, with the
 mini-game table sortable (by average winner moves to find games that are too fast or too slow) and
 filterable by mode, and the "Usernames to review" card (existing names the word list would refuse
 today, with the word that caught each; nothing is changed). It opens only for the account with the admin flag; the database rules refuse the
@@ -457,7 +509,9 @@ shot again after a hit, Treasure hunt's bands, Hexapawn's far-row win and resets
 games no longer dealt never dealt again (resets included), and that the same
 seed plays the same match). `test/server-rules.test.js` covers the server's own rules (usernames and
 the word list with look-alikes and names hidden inside longer ones, Elo, matchmaking pairs, records
-recounted from history). Both run with Node's test runner:
+recounted from history). `test/bots-rules.test.js` covers the bots' make-up (styles, paces, made-up
+usernames, the wait), the computer's style knobs, and the alert's limits and phone numbers. All
+three run with Node's test runner:
 
 ```sh
 npm install
@@ -473,7 +527,10 @@ played out by the sweep, resigning, no ratings or leaderboard entries while rati
 and mini-game counts after Find Match and friend games (credited by the seats the match was played
 in), a friend match left under way recorded as a loss for the one who left, local matches recorded
 once and privately (bad reports refused), the check of existing usernames running once and listing
-them for the admin only, the back-fill from history running once, and the game stats (local matches reported by a
+them for the admin only, the bots (only for a lone searcher once their wait is over, an
+ordinary-looking online account, thinking before each move, Memory's two cards, never timing out,
+the result recorded with the records switch, counted apart), the empty-queue alert (once per search,
+the cooldown, the gap, the daily cap, never for the admin, before the bot) and its test, the back-fill from history running once, and the game stats (local matches reported by a
 phone counted once and bad reports refused, logins and new accounts, Find Match and friend-code
 matches counted by the server, and the stats readable only by the admin, with `make-admin.js` giving
 and taking back the flag). `test/stats-rules.test.js` covers what each event adds to the stats:

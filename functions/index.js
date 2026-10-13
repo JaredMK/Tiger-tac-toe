@@ -47,6 +47,7 @@ const crypto = require('node:crypto');
 const E = require('./engine.js');
 const R = require('./serverRules.js');
 const S = require('./statsRules.js');
+const B = require('./bots.js');
 
 setGlobalOptions({ region: 'us-central1', maxInstances: 10, memory: '256MiB' });
 const cfg = JSON.parse(process.env.FIREBASE_CONFIG || '{}');
@@ -67,6 +68,12 @@ function needUid(req) {
   if (!req.auth || !req.auth.uid) throw new HttpsError('unauthenticated', 'Log in first.');
   return req.auth.uid;
 }
+function needAdmin(req) {
+  if (!req.auth || !req.auth.token || req.auth.token.admin !== true) throw new HttpsError('permission-denied', 'For the admin only.');
+  return req.auth.uid;
+}
+// The admin's settings from the dashboard (admin/config): the bots and the empty-queue alert.
+async function adminConfig() { return (await db.ref('admin/config').get()).val() || {}; }
 function needAccount(req) {
   const uid = needUid(req);
   if (req.auth.token && req.auth.token.firebase && req.auth.token.firebase.sign_in_provider === 'anonymous') throw new HttpsError('unauthenticated', 'Log in first.');
@@ -160,6 +167,9 @@ exports.claimUsername = onCall(CALL, async req => {
 // Find Match: joins the queue (or stays in it), pairs whoever can be paired, and answers with the
 // game once there is one. The phone calls it every few seconds while searching, which keeps its place
 // and lets the rating range widen; Cancel leaves the queue.
+// Searching alone (no other live searcher): after a few seconds the admin is alerted (when alerts are on),
+// and once the player's own randomized wait is over (40 to 70 seconds by default), a free bot is paired
+// with them (when bots are on). Anyone else searching meanwhile is paired with them as usual first.
 exports.findMatch = onCall(CALL, async req => {
   const uid = needAccount(req);
   const key = R.queueKey();                                     // one queue: whatever an older page asks for
@@ -168,12 +178,16 @@ exports.findMatch = onCall(CALL, async req => {
   const act = await activeGame(uid);
   if (act) return { status: 'matched', game: act.game, side: act.side };
   for (const other of OLD_QUEUES) await leaveQueue(other, uid);                // (from an older page)
-  let made = [], mine = null;
+  const conf = await adminConfig(), bc = B.botConfig(conf), ac = B.alertConfig(conf);
+  const prev = (await db.ref(`queue/${key}/${uid}`).get()).val();
+  const free = bc.enabled && prev && !prev.game && prev.botAt && now() >= prev.botAt ? await freeBots() : [];   // only looked up once a bot could be due
+  let made = [], mine = null, alone = false, entry = null, botGame = null;
   await db.ref(`queue/${key}`).transaction(cur => {
-    made = []; mine = null;
+    made = []; mine = null; alone = false; botGame = null;
     const t = now(), q = cur || {};
     for (const [u, e] of Object.entries(q)) if (!e || (!e.game && t - e.seen > STALE_MS)) delete q[u];
-    const me = q[uid] || { since: t };
+    const me = q[uid] || { since: t, botAt: t + B.waitMs(bc, Math.random) };
+    if (!me.botAt) me.botAt = me.since + B.waitMs(bc, Math.random);
     q[uid] = Object.assign(me, { name: prof.username, seen: t, rec: recordOf(prof) }, R.RATINGS_ENABLED ? { rating: prof.rating } : {});
     for (const [a, b] of R.pairQueue(q, t)) {
       const id = db.ref('games').push().key, xFirst = crypto.randomInt(2) === 0;
@@ -181,11 +195,26 @@ exports.findMatch = onCall(CALL, async req => {
       q[b] = Object.assign(q[b], { game: id, side: xFirst ? 'O' : 'X', vs: a, at: t });
       made.push({ id, a, b });
     }
+    if (!q[uid].game) {
+      alone = !Object.entries(q).some(([u, e]) => u !== uid && e && !e.game);
+      if (alone && bc.enabled && t >= q[uid].botAt && free.length) {      // a bot takes the lone searcher on
+        const bot = free[crypto.randomInt(free.length)], id = db.ref('games').push().key;
+        q[uid] = Object.assign(q[uid], { game: id, side: crypto.randomInt(2) === 0 ? 'X' : 'O', vs: bot.uid, at: t });
+        botGame = { id, bot };
+      }
+    }
+    entry = Object.assign({}, q[uid]);
     mine = q[uid].game ? { game: q[uid].game, side: q[uid].side } : null;
     return q;
   }, undefined, false);
   for (const p of made) await createGame(key, p.id).catch(e => logger.error('createGame', p.id, e));
-  if (!mine) return { status: 'searching' };
+  if (botGame) await createBotGame(key, uid, botGame.id, botGame.bot).catch(e => logger.error('createBotGame', botGame.id, e));
+  if (!mine) {
+    const isAdmin = !!(req.auth.token && req.auth.token.admin === true);   // (the admin's own searches never alert the admin)
+    if (alone && ac.enabled && !isAdmin) await maybeAlert(key, uid, entry, prof, ac).catch(e => logger.error('alert', e));
+    return { status: 'searching' };
+  }
+  if (botGame && botGame.id === mine.game) return { status: 'matched', game: mine.game, side: mine.side };
   await createGame(key, mine.game).catch(() => {});   // made by another call: make sure it exists (it is made once)
   return { status: 'matched', game: mine.game, side: mine.side };
 });
@@ -232,6 +261,20 @@ async function createGame(key, id) {
   if (pair.length !== 2) return false;                       // made already (the entries are gone) or not a pair
   const [[ua, ea], [ub, eb]] = pair;
   const X = ea.side === 'X' ? { uid: ua, e: ea } : { uid: ub, e: eb }, O = X.uid === ua ? { uid: ub, e: eb } : { uid: ua, e: ea };
+  return makeGame(key, id, X, O, null);
+}
+// A lone searcher and a bot: the same game, the bot in the other seat, online (its presence says so)
+// and looked after by runBot. Nothing in the game itself says it is a bot.
+async function createBotGame(key, uid, id, bot) {
+  const e = (await db.ref(`queue/${key}/${uid}`).get()).val();
+  if (!e || e.game !== id) return false;
+  const p = (await db.ref(`users/${bot.uid}`).get()).val() || {};
+  const human = { uid, e }, me = { uid: bot.uid, e: { name: p.username || bot.username, rec: recordOf(p) } };
+  return makeGame(key, id, e.side === 'X' ? human : me, e.side === 'X' ? me : human, { bot });
+}
+// The game itself, made exactly once; then the players are pointed at it.
+async function makeGame(key, id, X, O, opts) {
+  const bot = opts && opts.bot;
   const Q = R.QUEUES[key], t = now();
   const rng = seedRng();
   const rec = E.newOnlineMatch({ names: { X: X.e.name, O: O.e.name }, games: Object.fromEntries(E.TYPES.map(g => [g, true])), timer: Q.timer }, rng, id);
@@ -241,16 +284,192 @@ async function createGame(key, id) {
   const pub = { mode: Q.mode, queue: key, timer: Q.timer, players, status: 'playing', created: t, updated: t, state: JSON.stringify(rec.state) };
   const made = await db.ref(`games/${id}`).transaction(cur => (cur ? undefined : { pub, sec: JSON.stringify(rec.secrets), dl: rec.state.timer.deadline }), undefined, false);
   if (made.committed) {
-    await db.ref().update({
+    const up = {
       [`active/${X.uid}`]: { game: id, side: 'X', queue: key, mode: Q.mode },
       [`active/${O.uid}`]: { game: id, side: 'O', queue: key, mode: Q.mode },
       [`queue/${key}/${X.uid}`]: null, [`queue/${key}/${O.uid}`]: null,
-    });
-    await db.ref().update(statsUp(S.startUpdates(Q.mode, t))).catch(e => logger.error('stats', e));
-    await markActive(['u:' + X.uid, 'u:' + O.uid], t).catch(e => logger.error('stats', e));
+    };
+    if (bot) {
+      const side = X.uid === bot.uid ? 'X' : 'O', human = side === 'X' ? O.uid : X.uid;
+      up[`botGames/${id}`] = { bot: bot.uid, key: bot.key, side, human, live: true, created: t };
+      up[`gpresence/${id}/${side}`] = { online: true, away: false, at: t };
+      up['botStats/started'] = ServerValue.increment(1);
+    }
+    await db.ref().update(up);
+    await db.ref().update(statsUp(S.startUpdates(bot ? 'bot' : Q.mode, t))).catch(e => logger.error('stats', e));
+    await markActive([X, O].filter(p => !bot || p.uid !== bot.uid).map(p => 'u:' + p.uid), t).catch(e => logger.error('stats', e));
   }
   return made.committed;
 }
+
+/* ===================== the bots ===================== */
+// The bot accounts (functions/bots.js), made the first time they are needed: an ordinary profile and
+// username each, listed for the admin in bots/{uid}.
+async function listBots() {
+  const v = (await db.ref('bots').get()).val() || {};
+  return Object.entries(v).filter(([, b]) => b && b.key).map(([uid, b]) => ({ uid, key: b.key, username: b.username, about: b.about }));
+}
+async function ensureBots() {
+  let have = await listBots();
+  const stale = {};                                          // a style described differently in bots.js since: the dashboard's description follows
+  for (const b of have) { const c = B.byKey(b.key); if (c && c.about !== b.about) stale[`bots/${b.uid}/about`] = c.about; }
+  if (Object.keys(stale).length) await db.ref().update(stale);
+  if (B.BOTS.every(c => have.some(b => b.key === c.key))) return have;
+  const lock = await db.ref('botsLock').transaction(cur => (cur && now() - cur < 60000 ? undefined : now()), undefined, false);
+  if (!lock.committed) return have;                           // another call is making them
+  try {
+    for (const c of B.BOTS) {
+      if (have.some(b => b.key === c.key)) continue;
+      const uid = B.newUid(n => crypto.randomInt(n));
+      let name = null;
+      for (let k = 0; k < 20 && !name; k++) {                  // a made-up ordinary username, free and within the rules
+        const tryName = B.randomName(n => crypto.randomInt(n));
+        if (R.usernameProblem(tryName)) continue;
+        const claim = await db.ref(`usernames/${tryName.toLowerCase()}`).transaction(cur => (cur === null ? uid : undefined), undefined, false);
+        if (claim.committed && claim.snapshot.val() === uid) name = tryName;
+      }
+      if (!name) continue;
+      const t = now(), joined = t - crypto.randomInt(6 * 3600000, 5 * 86400000);   // joined a while ago, not all at once
+      await db.ref().update({
+        [`users/${uid}`]: { username: name, rating: R.START_RATING, wins: 0, losses: 0, draws: 0, games: 0, joined },
+        [`bots/${uid}`]: { key: c.key, username: name, about: c.about, created: t },
+      });
+    }
+  } finally { await db.ref('botsLock').remove(); }
+  return listBots();
+}
+// The bots not in a game right now.
+async function freeBots() {
+  const bots = await ensureBots(), out = [];
+  for (const b of bots) if (!(await activeGame(b.uid))) out.push(b);
+  return out;
+}
+// The bot's next step, when it is the bot's turn: a plan (how long it thinks: from when its turn starts
+// on the player's phone, after the last move has played) made once per position, then the move once the
+// time is up. Memory is two steps, as a person plays it: the first card, then the second a moment later.
+// Called from the player's phone (tick, every few seconds while waiting), and by the sweep and a timeout
+// as a fallback, so a bot never runs out of time. `force`: move now if it is the bot's turn.
+const BOT_EARLY_MS = 1000;                                   // a tick lands up to a second early
+async function runBot(id, opts) {
+  const force = !!(opts && opts.force);
+  const [bgs, gs] = await Promise.all([db.ref(`botGames/${id}`).get(), db.ref(`games/${id}`).get()]);
+  const bg = bgs.val(), g = gs.val();
+  if (!bg || !bg.live || !g || !g.pub || g.pub.status !== 'playing') return false;
+  const st = parse(g.pub.state);
+  if (st.winner || st.turn !== bg.side) return false;
+  const bot = B.byKey(bg.key) || B.BOTS[0], rng = seedRng(), t = now();
+  let next = bg.next && bg.next.seq === st.seq ? bg.next : null;
+  if (!next) {
+    const limit = ((st.timer && st.timer.limit) || 60) * 1000;
+    const start = st.timer && st.timer.deadline ? st.timer.deadline - limit : t;
+    next = { seq: st.seq, due: start + B.thinkMs(bot, st.lock != null ? 'again' : 'turn', rng), step: 'move' };
+    await db.ref(`botGames/${id}/next`).set(next);
+  }
+  if (!force && t < next.due - BOT_EARLY_MS) return false;
+  if (next.step === 'second') {                              // Memory: the second card
+    const r = await changeGame(id, bg.bot, (rec, side) => (rec.state.seq !== next.seq || rec.state.pickSq !== next.square ? { ok: false, reason: 'stale' }
+      : E.applyOnlineMove(rec, side, next.square, next.move, seedRng())));
+    return r.ok;
+  }
+  const plan = E.cpuMove(E.fullState({ state: st, secrets: parse(g.sec) }), rng, bot.style);
+  if (!plan) return false;
+  if (st.squares[plan.square].mini.type === 'memory' && Array.isArray(plan.move) && !force) {
+    const r = await changeGame(id, bg.bot, (rec, side) => (rec.state.seq !== next.seq || rec.state.pickSq != null ? { ok: false, reason: 'stale' }
+      : E.applyOnlinePick(rec, side, plan.square, plan.move[0])));
+    if (r.ok) await db.ref(`botGames/${id}/next`).set({ seq: next.seq, due: now() + B.thinkMs(bot, 'second', rng), step: 'second', square: plan.square, move: plan.move });
+    return r.ok;
+  }
+  const r = await changeGame(id, bg.bot, (rec, side) => (rec.state.seq !== next.seq ? { ok: false, reason: 'stale' }
+    : E.applyOnlineMove(rec, side, plan.square, plan.move, seedRng())));
+  return r.ok;
+}
+// Every matchmaking game's phones call this every few seconds while the other side is on the move; it
+// answers the same whoever the other side is. In a game against a bot, it moves the bot when it is time.
+exports.tick = onCall(CALL, async req => {
+  const uid = needUid(req), id = gameId((req.data || {}).game);
+  const bg = (await db.ref(`botGames/${id}`).get()).val();
+  if (bg && bg.live && bg.human === uid) await runBot(id).catch(e => logger.error('bot', id, e));
+  return { ok: true };
+});
+
+/* ===================== the empty-queue alert ===================== */
+// Someone has been searching alone for a few seconds: a text and/or an email to the admin, with a link
+// straight into Find Match. Once per queue entry, and within the limits (B.alertAllowed): one per player
+// per cooldown, a gap between alerts, a daily cap. Every alert sent is logged for the dashboard.
+async function maybeAlert(key, uid, entry, prof, ac) {
+  const t = now();
+  if (!entry || entry.alerted || t - entry.since < ac.after * 1000) return null;
+  const mark = await db.ref(`queue/${key}/${uid}`).transaction(cur => {
+    if (cur === null) return null;                           // (a first guess from an empty cache: retried with the real value)
+    return cur.game || cur.alerted ? undefined : Object.assign(cur, { alerted: t });
+  }, undefined, false);
+  const marked = mark.committed && mark.snapshot.val();
+  if (!marked || marked.alerted !== t) return null;          // alerted already, paired meanwhile, or gone
+  let held = null;
+  const gate = await db.ref('alertState').transaction(cur => {
+    const d = B.alertAllowed(cur, uid, t, ac);
+    held = d.ok ? null : d.why;
+    return d.ok ? d.next : undefined;
+  }, undefined, false);
+  if (!gate.committed) { await db.ref('alertStats/held').set(ServerValue.increment(1)); return null; }
+  const rec = recordOf(prof), link = ac.site + '?play=find';
+  const res = await sendAlert(ac, {
+    subject: `${prof.username} is waiting for a match`,
+    text: `Tic Tac Chaos: ${prof.username} (${rec.wins}-${rec.losses}-${rec.draws}) is searching for a match and nobody else is. Play them: ${link}`,
+  });
+  await db.ref('alertLog').push({ at: t, uid, username: prof.username, channels: res });
+  await db.ref('alertStats/sent').set(ServerValue.increment(1));
+  return res;
+}
+// Sends the alert on the channels switched on: SMS through Twilio, email through Resend, with the keys
+// the admin saved (admin/secrets, which no phone can read). In the emulator nothing leaves: the message
+// is written to test/alertsSent instead. Answers with each channel's outcome.
+async function sendAlert(ac, msg) {
+  const out = { sms: 'off', email: 'off' };
+  const keys = (await db.ref('admin/secrets').get()).val() || {};
+  const fake = process.env.FUNCTIONS_EMULATOR === 'true';
+  const go = async (ch, fn) => { try { out[ch] = await fn(); } catch (e) { out[ch] = 'error: ' + String(e && e.message || e).slice(0, 160); } };
+  const jobs = [];
+  if (ac.sms) jobs.push(go('sms', async () => {
+    const to = B.e164(ac.phone);
+    if (!to) return 'error: no phone number';
+    if (!keys.twilioSid || !keys.twilioToken || !keys.twilioFrom) return 'error: Twilio keys not set';
+    if (fake) { await db.ref('test/alertsSent').push({ ch: 'sms', to, text: msg.text }); return 'sent'; }
+    const r = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(keys.twilioSid)}/Messages.json`, {
+      method: 'POST', signal: AbortSignal.timeout(10000),
+      headers: { Authorization: 'Basic ' + Buffer.from(`${keys.twilioSid}:${keys.twilioToken}`).toString('base64'), 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ To: to, From: keys.twilioFrom, Body: msg.text }).toString(),
+    });
+    if (r.ok) return 'sent';
+    const j = await r.json().catch(() => ({}));
+    return `error: Twilio ${r.status}${j.code ? ' ' + j.code : ''} ${j.message || ''}`.trim();
+  }));
+  if (ac.email) jobs.push(go('email', async () => {
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(ac.to)) return 'error: no email address';
+    if (!keys.resendKey) return 'error: Resend key not set';
+    const from = keys.emailFrom || 'Tic Tac Chaos <onboarding@resend.dev>';
+    if (fake) { await db.ref('test/alertsSent').push({ ch: 'email', to: ac.to, subject: msg.subject, text: msg.text }); return 'sent'; }
+    const r = await fetch('https://api.resend.com/emails', {
+      method: 'POST', signal: AbortSignal.timeout(10000),
+      headers: { Authorization: `Bearer ${keys.resendKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from, to: [ac.to], subject: msg.subject, text: msg.text }),
+    });
+    if (r.ok) return 'sent';
+    const j = await r.json().catch(() => ({}));
+    return `error: Resend ${r.status} ${j.message || j.name || ''}`.trim();
+  }));
+  await Promise.all(jobs);
+  return out;
+}
+// The dashboard's "Send a test alert": the channels as set (or as asked), whatever the limits.
+exports.testAlert = onCall(CALL, async req => {
+  needAdmin(req);
+  const ac = B.alertConfig(await adminConfig()), d = req.data || {};
+  const use = Object.assign({}, ac, d.sms !== undefined || d.email !== undefined ? { sms: !!d.sms, email: !!d.email } : {});
+  const res = await sendAlert(use, { subject: 'Tic Tac Chaos: test alert', text: `Tic Tac Chaos: a test alert. When someone searches alone, the alert comes here. ${ac.site}?play=find` });
+  await db.ref('alertLog').push({ at: now(), test: true, channels: res });
+  return res;
+});
 
 /* ===================== the game: moves, timeouts, resigning ===================== */
 // One change to a game, run as a transaction on games/{id} (public and hidden parts together).
@@ -303,6 +522,7 @@ function timeoutStep(rec) {
 }
 exports.timeout = onCall(CALL, async req => {
   const uid = needUid(req), id = gameId((req.data || {}).game);
+  if (await runBot(id, { force: true }).catch(() => false)) return { ok: true };   // a bot on the move moves instead (it never times out)
   return changeGame(id, uid, timeoutStep);
 });
 // Leaving a matchmaking game through the menu: a resignation, which loses the match.
@@ -324,18 +544,20 @@ async function finishGame(id) {
   const g = (await db.ref(`games/${id}`).get()).val();
   if (!g || !g.pub || g.pub.status !== 'over') return false;
   const pub = g.pub, st = parse(pub.state);
+  const bg = (await db.ref(`botGames/${id}`).get()).val();      // a game against a bot: its own stats; the player's record as the admin chose
+  const counted = !bg || B.botConfig(await adminConfig()).countInRecords;
   const final = finalOf({ state: st, secrets: parse(g.sec) }, { X: pub.players.X.name, O: pub.players.O.name });
   const how = R.howEnded(st), t = pub.ended || now();
   const up = {};
   const result = { winner: st.winner || null, how, records: {} };
   const [px, po] = await Promise.all(['X', 'O'].map(s => db.ref(`users/${pub.players[s].uid}`).get().then(v => v.val() || {})));
   for (const [s, p] of [['X', px], ['O', po]]) {                 // every Find Match game: both records and the mini-game stats
-    const res = R.resultFor(st, s), d = R.recordDelta(res);
+    const res = R.resultFor(st, s), d = R.recordDelta(res), r0 = recordOf(p);
+    if (!counted && pub.players[s].uid === bg.human) { result.records[s] = r0; continue; }   // left out of the record: as it was
     recordUp(up, pub.players[s].uid, res, final.squares, s, false);
-    const r0 = recordOf(p);
     result.records[s] = { wins: r0.wins + d.wins, losses: r0.losses + d.losses, draws: r0.draws + d.draws };   // as the results screen shows it
   }
-  if (R.RATINGS_ENABLED && pub.mode === 'ranked') {               // (switched off for now)
+  if (R.RATINGS_ENABLED && pub.mode === 'ranked' && !bg) {        // (switched off for now; never for a game against a bot)
     const scoreX = st.winner === 'X' ? 1 : st.winner === 'O' ? 0 : 0.5;
     const next = R.elo(px.rating || R.START_RATING, po.rating || R.START_RATING, scoreX);
     result.ratings = {};
@@ -356,9 +578,14 @@ async function finishGame(id) {
   up[`games/${id}/pub/final`] = JSON.stringify(final);
   up[`games/${id}/pub/recorded`] = { at: now(), done: true };
   up[`games/${id}/dl`] = null;
-  statsUp(S.endUpdates(pub.mode, E.matchStats(st), t - (pub.created || t), t, false), up);
+  statsUp(S.endUpdates(bg ? 'bot' : pub.mode, E.matchStats(st), t - (pub.created || t), t, false), up);
+  if (bg) {
+    Object.assign(up, { [`botGames/${id}/live`]: null, [`botGames/${id}/next`]: null, [`botGames/${id}/done`]: true, [`botGames/${id}/winner`]: st.winner || null });
+    up['botStats/finished'] = ServerValue.increment(1);
+    up[`botStats/${!st.winner ? 'draws' : st.winner === bg.side ? 'botWins' : 'playerWins'}`] = ServerValue.increment(1);
+  }
   await db.ref().update(up);                                   // all of it at once: both ratings, records, leaderboard, history, stats
-  await markActive(['u:' + pub.players.X.uid, 'u:' + pub.players.O.uid], t).catch(e => logger.error('stats', e));
+  await markActive(['X', 'O'].filter(s => !bg || pub.players[s].uid !== bg.bot).map(s => 'u:' + pub.players[s].uid), t).catch(e => logger.error('stats', e));
   return true;
 }
 // The final state with every hidden value revealed, for history and the review board.
@@ -453,20 +680,24 @@ exports.friendGameDone = onValueWritten({ ref: '/rooms/{code}/match' }, async ev
 // Timeouts for games nobody is watching, results not yet recorded, and finished games past a day.
 async function sweep() {
   const t = now();
+  const bots = (await db.ref('botGames').orderByChild('live').equalTo(true).get()).val() || {};
+  let botMoves = 0;
+  for (const id of Object.keys(bots)) if (await runBot(id).catch(() => false)) botMoves++;   // a player who is away: the bot still plays its turn
   const due = (await db.ref('games').orderByChild('dl').startAt(1).endAt(t).limitToFirst(50).get()).val() || {};
   let timeouts = 0, finished = 0;
   for (const [id, g] of Object.entries(due)) {
     if (g.pub && g.pub.status === 'over') { if (await finishGame(id).catch(() => false)) finished++; continue; }
+    if (bots[id] && await runBot(id, { force: true }).catch(() => false)) { botMoves++; continue; }   // a bot never times out
     const r = await changeGame(id, null, timeoutStep).catch(() => ({ ok: false }));
     if (r.ok) timeouts++;
   }
   const old = (await db.ref('games').orderByChild('pub/ended').startAt(1).endAt(t - GAME_KEEP_MS).limitToFirst(50).get()).val() || {};
   const up = {};
-  for (const [id, g] of Object.entries(old)) if (g.pub && g.pub.recorded && g.pub.recorded.done) { up[`games/${id}`] = null; up[`gpresence/${id}`] = null; }
-  const deleted = Object.keys(up).length / 2;
+  for (const [id, g] of Object.entries(old)) if (g.pub && g.pub.recorded && g.pub.recorded.done) { up[`games/${id}`] = null; up[`gpresence/${id}`] = null; up[`botGames/${id}`] = null; }
+  const deleted = Object.keys(up).length / 3;
   await pruneSeen(t, up).catch(e => logger.error('stats prune', e));
   if (Object.keys(up).length) await db.ref().update(up);
-  return { timeouts, finished, deleted };
+  return { timeouts, finished, deleted, botMoves };
 }
 // What the stats have seen, once it can no longer matter: matches after three days, players once their
 // day, week or month is well over (the counts stay).
@@ -481,7 +712,7 @@ async function pruneSeen(t, up) {
 }
 exports.sweep = onSchedule({ schedule: 'every 1 minutes', timeZone: 'Etc/UTC', retryCount: 0 }, async () => {
   const r = await sweep();
-  if (r.timeouts || r.finished || r.deleted) logger.info('sweep', r);
+  if (r.timeouts || r.finished || r.deleted || r.botMoves) logger.info('sweep', r);
 });
 // The emulator cannot fire schedules: the tests run the same sweep through this hook, which exists
 // only in the emulator.

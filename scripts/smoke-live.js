@@ -9,11 +9,14 @@ const json = { 'content-type': 'application/json' };
 let failed = false;
 const check = (good, what) => { console.log(`${good ? 'ok  ' : 'FAIL'} ${what}`); if (!good) failed = true; };
 (async () => {
-  for (const f of ['claimUsername', 'findMatch', 'cancelSearch', 'move', 'timeout', 'resign', 'recordLocal']) {
+  for (const f of ['claimUsername', 'findMatch', 'cancelSearch', 'move', 'timeout', 'resign', 'recordLocal', 'tick']) {
     const r = await fetch(`${FN}/${f}`, { method: 'POST', headers: json, body: '{"data":{}}' });
     const j = await r.json().catch(() => ({}));
     check(r.status === 401 && j.error && j.error.status === 'UNAUTHENTICATED', `${f} is live and asks for a login (HTTP ${r.status})`);
   }
+  const ta = await fetch(`${FN}/testAlert`, { method: 'POST', headers: json, body: '{"data":{}}' });
+  const tj0 = await ta.json().catch(() => ({}));
+  check(ta.status === 403 && tj0.error && tj0.error.status === 'PERMISSION_DENIED', `testAlert is live and for the admin only (HTTP ${ta.status})`);
   const tr = await fetch(`${FN}/track`, { method: 'POST', headers: json, body: '{"data":{}}' });
   const tj = await tr.json().catch(() => ({}));
   check(tr.status === 400 && tj.error && tj.error.status === 'INVALID_ARGUMENT', `track is live and refuses an empty event (HTTP ${tr.status})`);
@@ -32,6 +35,12 @@ const check = (good, what) => { console.log(`${good ? 'ok  ' : 'FAIL'} ${what}`)
     check(sw.status === 401, `a phone cannot write the stats (HTTP ${sw.status})`);
     const rv = await fetch(`${DB}/review.json?shallow=true&auth=${s.idToken}`);
     check(rv.status === 401, `only the admin can read the username review list (HTTP ${rv.status})`);
+    const bg = await fetch(`${DB}/botGames.json?shallow=true&auth=${s.idToken}`);
+    check(bg.status === 401, `a phone cannot list which games are against a bot (HTTP ${bg.status})`);
+    const bo = await fetch(`${DB}/bots.json?shallow=true&auth=${s.idToken}`);
+    check(bo.status === 401, `only the admin can read the bot roster (HTTP ${bo.status})`);
+    const ks = await fetch(`${DB}/admin/secrets.json?shallow=true&auth=${s.idToken}`);
+    check(ks.status === 401, `nobody can read the alert keys (HTTP ${ks.status})`);
     const lw = await fetch(`${DB}/localStats/${s.localId}/wins.json?auth=${s.idToken}`, { method: 'PUT', body: '99' });
     check(lw.status === 401, `a phone cannot write its own local record (HTTP ${lw.status})`);
     const lo = await fetch(`${DB}/localHistory/someone-else.json?shallow=true&auth=${s.idToken}`);

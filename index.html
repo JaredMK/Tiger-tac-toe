@@ -3243,8 +3243,18 @@ function tick() {
   const rec = parseMatch(room.match);
   if (!rec) return;
   const st = rec.state, t = st.timer;
+  if (isMM() && !st.winner && st.turn !== state.online.me) nudgeMM();
   if (!t || !t.limit || t.deadline == null || st.winner || serverNow() < t.deadline) return;
   fireTimeout(st.seq, t.deadline);
+}
+// A matchmaking game, the other side on the move: a word to the server every few seconds, which keeps
+// its own timings for the game going.
+let nudgeAt = 0;
+const NUDGE_MS = 2500;
+function nudgeMM() {
+  if (Date.now() - nudgeAt < NUDGE_MS) return;
+  nudgeAt = Date.now();
+  call('tick', { game: state.online.game }).catch(() => {});
 }
 // The deadline passed: a random move for the player on the move, written once whichever phone gets there first.
 async function fireTimeout(seq, deadline) {
@@ -3359,6 +3369,7 @@ function afterAccount() {
   if (go === 'profile') { openProfile(acct.user.uid, 'menu'); return; }
   state.screen = go === 'find' ? 'find' : 'menu';
   save();
+  if (go === 'find') startSearch();             // logged in on the way to Find Match: searching at once
 }
 // The server made a game for this player while searching: straight into it.
 function onActive() {
@@ -3460,6 +3471,7 @@ async function openFind() {
   if (!(await needAccount('find'))) return;
   search.msg = ''; search.found = false;
   state.screen = 'find'; commit();
+  startSearch();                                // straight into searching: nothing to choose
 }
 function startSearch() {
   if (search.on || !loggedIn()) return;
@@ -3486,7 +3498,8 @@ async function searchTick() {
 }
 async function cancelSearch() {
   if (!search.on) return;
-  stopSearch(); render();
+  stopSearch();
+  state.screen = 'online'; commit();            // back to Play Online
   try { const r = await call('cancelSearch', {}); if (r.status === 'matched') enterGame(r.game, r.side); }   // paired just before Cancel: the game is on
   catch (e) { /* a searcher who stops checking in is dropped from the queue anyway */ }
 }
@@ -3710,19 +3723,17 @@ function renderFind() {
     return `<main class="scr setup acct-scr">${back}<div class="setup-box"><div class="searching found" role="status"><div class="big-g">${toon('X')}${toon('O')}</div><h2>Match found!</h2><p class="hint">${esc(net.msg || 'Loading the match…')}</p></div></div></main>`;
   }
   if (search.on) {
-    const q = '1 minute a turn';
     return `<main class="scr setup acct-scr">${back}<div class="setup-box"><div class="searching" role="status" aria-live="polite">
       <div class="spinner" aria-hidden="true">${toon('X')}${toon('O')}</div><h2>Searching…</h2>
-      <p class="hint">${q} · <span id="mmwait">${fmtClock(Date.now() - search.since)}</span></p>
+      <p class="hint"><span id="mmwait">${fmtClock(Date.now() - search.since)}</span></p>
       ${search.msg ? `<div class="warn">${esc(search.msg)}</div>` : ''}
       <button class="btn" data-act="search-cancel">Cancel</button></div></div></main>`;
   }
-  return `<main class="scr setup acct-scr">${back}
-    <div class="setup-box" data-keep-scroll="find">
-      <p class="qdesc">All mini-games, 1 minute a turn. You play whoever has been waiting longest. The result goes on your record.</p>
+  // (not searching: only if a search could not start; Search tries again)
+  return `<main class="scr setup acct-scr">${back}<div class="setup-box"><div class="searching" role="status">
+      <div class="spinner" aria-hidden="true">${toon('X')}${toon('O')}</div>
       ${search.msg ? `<div class="warn">${esc(search.msg)}</div>` : ''}
-    </div>
-    <div class="setup-foot"><button class="primary" data-act="search-go">Search</button></div></main>`;
+      <button class="primary" data-act="search-go">Search</button></div></div></main>`;
 }
 function renderLeaderboard() {
   const rowOf = (r, me) => `<button class="lbrow${me ? ' me' : ''}" data-act="profile" data-uid="${esc(r.uid)}" aria-label="#${r.rank} ${esc(r.username)}, rating ${r.rating}, ${record(r)}"><b class="rk">#${r.rank}</b><span class="nm">${esc(r.username)}</span><b class="rt">${r.rating}</b><small class="rc">${record(r)}</small></button>`;
@@ -3768,7 +3779,7 @@ function renderProfile() {
       <div class="ppct"><small>Win rate</small><b>${winPct(rec)}</b></div>
       ${view === 'online' ? `<div class="pfr"><small>Find Match ${record(u)} · Friends ${record(u.friend)}</small></div>` : ''}
       <small class="pjoin">Joined ${fmtDate(u.joined)}</small></div>`;
-    const rows = Object.entries(minis).filter(([t]) => INFO[t]).map(([t, v]) => ({ t, won: v.won, lost: v.lost }))
+    const rows = Object.entries(minis).filter(([t]) => TYPES.includes(t)).map(([t, v]) => ({ t, won: v.won, lost: v.lost }))   // the games in the pool only (not Hexapawn or the Dice race)
       .filter(r => r.won + r.lost).sort((a, b) => b.won - a.won || a.lost - b.lost || INFO[a.t].name.localeCompare(INFO[b.t].name));
     const table = rows.length ? `<table class="ptab"><thead><tr><th>Mini-game</th><th>Won</th><th>Lost</th><th>Win rate</th></tr></thead><tbody>${rows.map(r =>
       `<tr><td><span class="pg">${ICONS[r.t]}<span>${INFO[r.t].name}</span></span></td><td>${r.won}</td><td>${r.lost}</td><td>${Math.round(100 * r.won / (r.won + r.lost))}%</td></tr>`).join('')}</tbody></table>`
@@ -4192,12 +4203,15 @@ function boot() {
       joinCode = link; state.screen = 'join'; state.setup.mode = 'two';
     }
   }
+  const play = !link && new URLSearchParams(location.search).get('play') === 'find';   // the empty-queue alert's link: straight into Find Match
+  if (play) { try { history.replaceState(null, '', location.pathname); } catch (e) { /* (kept) */ } }
   render(); scheduleCpu();
   if (state.online) resumeOnline();
   else if (hadAccount() || redirectPending()) {             // logged in before, or back from Google's sign-in page: the account, in the background
     acctLoading = true; render();
-    connectQuiet().then(() => { acctLoading = false; finishLogin(); commit(); });
+    connectQuiet().then(() => { acctLoading = false; finishLogin(); commit(); if (play && !joinAsk) openFind(); });
   }
+  else if (play) openFind();
 }
 
 /* ----- the computer's turn: a pause to think, a zoom into its square, its choice shown, then the move ----- */

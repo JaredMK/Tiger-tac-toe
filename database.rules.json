@@ -92,6 +92,42 @@
     },
     "review": {
       ".read": "auth != null && auth.token.admin === true"
+    },
+    "admin": {
+      "config": {
+        ".read": "auth != null && auth.token.admin === true",
+        ".write": "auth != null && auth.token.admin === true"
+      },
+      "secretsSet": {
+        ".read": "auth != null && auth.token.admin === true",
+        ".write": "auth != null && auth.token.admin === true"
+      },
+      "secrets": {
+        "$key": {
+          ".write": "auth != null && auth.token.admin === true",
+          ".validate": "$key.matches(/^(twilioSid|twilioToken|twilioFrom|resendKey|emailFrom)$/) && newData.isString() && newData.val().length <= 300"
+        }
+      }
+    },
+    "bots": {
+      ".read": "auth != null && auth.token.admin === true"
+    },
+    "botStats": {
+      ".read": "auth != null && auth.token.admin === true"
+    },
+    "botGames": {
+      ".indexOn": [
+        "live"
+      ]
+    },
+    "alertLog": {
+      ".read": "auth != null && auth.token.admin === true",
+      ".indexOn": [
+        "at"
+      ]
+    },
+    "alertStats": {
+      ".read": "auth != null && auth.token.admin === true"
     }
   }
 }

@@ -68,6 +68,18 @@ td.dim { color: var(--muted); }
 .tabs button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 select { border: 2.5px solid var(--ink); border-radius: 10px; padding: 4px 8px; background: #fff; font-size: 16px; }
 .note { color: var(--muted); font-size: 14px; margin: 8px 0 0; }
+.ctl .row h2 { flex: 1; }
+.sw { display: inline-flex; align-items: center; gap: 8px; font-family: 'Luckiest Guy', sans-serif; font-size: 15px; cursor: pointer; }
+.sw input { width: 22px; height: 22px; accent-color: var(--green); }
+.fields { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; margin-top: 10px; }
+.fields label { display: inline-flex; align-items: center; gap: 6px; }
+.fields input[type="number"] { width: 72px; }
+.fields input[type="text"], .fields input[type="tel"], .fields input[type="email"], .fields input[type="password"] { width: min(100%, 260px); }
+.fields input { border: 2.5px solid var(--ink); border-radius: 10px; padding: 5px 8px 3px; background: #fff; font: 17px 'Patrick Hand', sans-serif; }
+.fields input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--green); }
+.fields h3 { flex: 0 0 100%; margin: 6px 0 0; font: 400 14px 'Luckiest Guy', sans-serif; letter-spacing: .03em; color: var(--muted); }
+.set { color: var(--green); font-size: 14px; } .unset { color: var(--muted); font-size: 14px; }
+.res { font-size: 15px; } .bad { color: var(--x); } .good { color: var(--green); }
 @media (max-width: 480px) { h1 { font-size: 23px; } .kpi b { font-size: 22px; } table { font-size: 15px; } }
 </style>
 </head>
@@ -82,12 +94,16 @@ const FIREBASE_CONFIG = {
   databaseURL: 'https://tic-tac-chaos-default-rtdb.firebaseio.com',
   projectId: 'tic-tac-chaos',
 };
-const MODES = [['local', 'Two players'], ['cpu', 'vs Computer'], ['cvc', 'Computer vs Computer (old)'], ['friend', 'Friend code'], ['match', 'Find Match'], ['casual', 'Casual (old)'], ['ranked', 'Ranked (old)']];
-const MODE_COLORS = { local: 'var(--o)', cpu: 'var(--sky)', cvc: 'var(--stone)', friend: 'var(--plum)', match: 'var(--green)', casual: '#8fbf7a', ranked: 'var(--x)' };
-const GAMES = { ttt: 'Tic-tac-toe', c4: 'Connect 4', bs: 'Battleship', wordle: 'Wordle', hangman: 'Hangman', hex: 'Hex', hilo: 'Higher/Lower', snakes: 'Snakes and Ladders', memory: 'Memory', candy: 'Candy Race', bump: 'Bump', coins: 'Coin Flip', pig: 'Pig', hunt: 'Treasure Hunt', hexapawn: 'Hexapawn (old)', mastermind: 'Mastermind', dice: 'Dice Race (old)' };   // no longer dealt: the Dice race (Snakes and Ladders replaced it) and Hexapawn (taken out); their numbers from before
+const MODES = [['local', 'Two players'], ['cpu', 'vs Computer'], ['cvc', 'Computer vs Computer (old)'], ['friend', 'Friend code'], ['match', 'Find Match'], ['bot', 'Find Match vs a bot'], ['casual', 'Casual (old)'], ['ranked', 'Ranked (old)']];
+const MODE_COLORS = { local: 'var(--o)', cpu: 'var(--sky)', cvc: 'var(--stone)', friend: 'var(--plum)', match: 'var(--green)', bot: '#2f7f6f', casual: '#8fbf7a', ranked: 'var(--x)' };
+const GAMES = { ttt: 'Tic-tac-toe', c4: 'Connect 4', bs: 'Battleship', wordle: 'Wordle', hangman: 'Hangman', hex: 'Hex', hilo: 'Higher/Lower', snakes: 'Snakes and Ladders', memory: 'Memory', candy: 'Candy Race', bump: 'Bump', coins: 'Coin Flip', pig: 'Pig', hunt: 'Treasure Hunt', mastermind: 'Mastermind' };   // the games in the pool (Hexapawn and the Dice race are gone; their numbers stay in the database)
 const app = document.getElementById('app');
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 let fb = null, user = null, stats = null, flagged = null, view = { status: 'loading', error: '' };
+let ctl = { config: {}, secretsSet: {}, bots: {}, botStats: {}, alertLog: [], alertStats: {} }, testResult = null, keyMsg = '';
+// The defaults the server uses for anything not set (functions/bots.js).
+const DEF = { bots: { enabled: false, waitMin: 40, waitMax: 70, countInRecords: true }, alerts: { enabled: false, sms: false, email: true, phone: '', to: '', after: 5, cooldownMin: 30, gapMin: 3, dailyCap: 20 } };
+const cfgGet = (sec, k) => { const v = ((ctl.config || {})[sec] || {})[k]; return v === undefined || v === null || v === '' ? DEF[sec][k] : v; };
 let sortBy = { k: 'avgWin', dir: 1 }, miniMode = 'all', period = 'd';
 
 // ---------- the numbers ----------
@@ -205,11 +221,81 @@ function render() {
       ${kpi('First player (X) wins', pct(ratio(t.xWins, t.xWins + t.oWins)), `${t.xWins} of ${t.xWins + t.oWins} decided`)}
     </div>
     <div class="grid2"><div class="card"><h2>Players per day</h2>${players}</div><div class="card"><h2>Matches finished per day</h2>${matches}</div></div>
+    ${botsCard()}
+    ${alertsCard()}
     <div class="card"><h2>Matches by mode</h2>${modeTable}</div>
     <div class="card"><div class="row"><h2>Mini-games</h2><label>Modes <select id="mm">${[['all', 'All modes'], ['people', 'All but computer vs computer']].concat(MODES).map(([v, l]) => `<option value="${v}"${miniMode === v ? ' selected' : ''}>${l}</option>`).join('')}</select></label></div>
       ${miniTable}<h2 style="margin-top:14px">Average winner moves</h2>${hbarChart(rows, 'avgWin', 'Average winner moves by mini-game', v => num(v))}</div>
     ${flaggedCard()}
     <div class="card"><div class="row"><h2>Players over time</h2><div class="tabs">${[['d', 'Days'], ['w', 'Weeks'], ['m', 'Months']].map(([k, l]) => `<button data-period="${k}" aria-pressed="${period === k}">${l}</button>`).join('')}</div></div>${ptable}</div>`;
+}
+
+// ---------- matchmaking controls: the bots and the empty-queue alert (admin/config, read by the server) ----------
+const chk = (sec, k) => `<input type="checkbox" data-cfg="${sec}.${k}"${cfgGet(sec, k) ? ' checked' : ''}>`;
+const numIn = (sec, k, min, max) => `<input type="number" inputmode="numeric" data-cfg="${sec}.${k}" min="${min}" max="${max}" value="${esc(cfgGet(sec, k))}">`;
+function botsCard() {
+  const b = ctl.botStats || {}, list = Object.values(ctl.bots || {}).sort((x, y) => String(x.key).localeCompare(String(y.key)));
+  return `<div class="card ctl" id="botsCard"><div class="row"><h2>Bots</h2><label class="sw">${chk('bots', 'enabled')}<span>${cfgGet('bots', 'enabled') ? 'On' : 'Off'}</span></label></div>
+    <p class="note">When someone searches Find Match and nobody else is searching, a bot takes them on after a random wait between these two numbers. The player is not told it is a bot. Off: they keep waiting.</p>
+    <div class="fields"><label>Wait from ${numIn('bots', 'waitMin', 5, 600)} s</label><label>to ${numIn('bots', 'waitMax', 5, 600)} s</label>
+      <label>${chk('bots', 'countInRecords')} Count bot matches in players' records</label></div>
+    <div class="kpis" style="margin-top:12px">
+      <div class="kpi"><small>Bot matches run</small><b>${n(b.started)}</b><span>${n(b.finished)} finished</span></div>
+      <div class="kpi"><small>Players won</small><b>${n(b.playerWins)}</b><span>bots won ${n(b.botWins)} · draws ${n(b.draws)}</span></div></div>
+    ${list.length ? `<div class="tbl" style="margin-top:8px"><table><thead><tr><th>Bot account</th><th style="text-align:left">Plays like</th></tr></thead><tbody>${list.map(x => `<tr><td>${esc(x.username)}</td><td style="text-align:left;white-space:normal">${esc(x.about || '')}</td></tr>`).join('')}</tbody></table></div>`
+      : '<p class="note">The five bot accounts are made the first time a bot is needed. Their styles and pace are set in functions/bots.js.</p>'}</div>`;
+}
+function alertsCard() {
+  const set = k => (ctl.secretsSet && ctl.secretsSet[k] ? '<span class="set">saved</span>' : '<span class="unset">not set</span>');
+  const sec = (k, label, type = 'password') => `<label>${label} <input type="${type}" data-secret="${k}" autocomplete="off" placeholder="${ctl.secretsSet && ctl.secretsSet[k] ? 'saved: type to replace' : ''}"> ${set(k)}</label>`;
+  const log = (ctl.alertLog || []).slice(0, 8), st = ctl.alertStats || {};
+  const out = v => (!v || v === 'off' ? '<span class="dim">–</span>' : v === 'sent' ? '<span class="good">sent</span>' : `<span class="bad">${esc(v)}</span>`);
+  const tr = testResult ? `<p class="res">Test: text ${out(testResult.sms)} · email ${out(testResult.email)}</p>` : '';
+  const phoneOk = !cfgGet('alerts', 'phone') || /^\+?[\d\s().-]{10,18}$/.test(cfgGet('alerts', 'phone'));
+  return `<div class="card ctl" id="alertsCard"><div class="row"><h2>Empty-queue alerts</h2><label class="sw">${chk('alerts', 'enabled')}<span>${cfgGet('alerts', 'enabled') ? 'On' : 'Off'}</span></label></div>
+    <p class="note">When someone has searched for this many seconds and nobody else is searching, you get a text and/or an email with a link straight into Find Match. It comes before any bot (bots wait ${esc(cfgGet('bots', 'waitMin'))}–${esc(cfgGet('bots', 'waitMax'))} s), so you have until then to join. Your own searches never alert you.</p>
+    <div class="fields"><label>${chk('alerts', 'sms')} Text (SMS)</label><label>${chk('alerts', 'email')} Email</label>
+      <label>Phone <input type="tel" data-cfg="alerts.phone" value="${esc(cfgGet('alerts', 'phone'))}" placeholder="914-555-0100"></label>${phoneOk ? '' : '<span class="bad">not a phone number</span>'}
+      <label>Email <input type="email" data-cfg="alerts.to" value="${esc(cfgGet('alerts', 'to'))}" placeholder="you@example.com"></label>
+      <h3>When and how often</h3>
+      <label>Alert after ${numIn('alerts', 'after', 0, 600)} s alone</label><label>One per player every ${numIn('alerts', 'cooldownMin', 0, 1440)} min</label>
+      <label>At least ${numIn('alerts', 'gapMin', 0, 1440)} min apart</label><label>At most ${numIn('alerts', 'dailyCap', 1, 500)} a day</label>
+      <h3>Keys (kept where only the server can read them)</h3>
+      ${sec('twilioSid', 'Twilio Account SID', 'text')}${sec('twilioToken', 'Twilio Auth Token')}${sec('twilioFrom', 'Twilio number', 'tel')}
+      ${sec('resendKey', 'Resend API key')}${sec('emailFrom', 'From (optional)', 'text')}
+      <button class="btn" data-act="save-keys">Save keys</button>${keyMsg ? `<span class="res">${esc(keyMsg)}</span>` : ''}
+      <button class="btn go" data-act="test-alert">Send a test alert</button></div>${tr}
+    <p class="note">Sent ${n(st.sent)} · held back by the limits ${n(st.held)}</p>
+    ${log.length ? `<div class="tbl"><table><thead><tr><th>When (UTC)</th><th>Player</th><th>Text</th><th>Email</th></tr></thead><tbody>${log.map(a => `<tr><td>${new Date(a.at).toISOString().slice(0, 16).replace('T', ' ')}</td><td>${a.test ? '<i>test</i>' : esc(a.username || '')}</td><td>${out(a.channels && a.channels.sms)}</td><td>${out(a.channels && a.channels.email)}</td></tr>`).join('')}</tbody></table></div>` : ''}</div>`;
+}
+async function saveCfg(el) {
+  const [sec, k] = el.dataset.cfg.split('.');
+  let v = el.type === 'checkbox' ? el.checked : el.type === 'number' ? Number(el.value) : el.value.trim();
+  if (el.type === 'number' && !Number.isFinite(v)) return;
+  try {
+    await fb.dbM.set(fb.dbM.ref(fb.db, `admin/config/${sec}/${k}`), v);
+    ctl.config = ctl.config || {}; ctl.config[sec] = Object.assign({}, ctl.config[sec], { [k]: v });
+    if (el.type === 'checkbox') render();
+  } catch (e) { alert('Could not save: ' + (e && e.message)); }
+}
+async function saveKeys() {
+  const ins = [...app.querySelectorAll('input[data-secret]')].filter(i => i.value.trim());
+  if (!ins.length) { keyMsg = 'Nothing to save.'; render(); return; }
+  try {
+    for (const i of ins) {
+      await fb.dbM.set(fb.dbM.ref(fb.db, `admin/secrets/${i.dataset.secret}`), i.value.trim());
+      await fb.dbM.set(fb.dbM.ref(fb.db, `admin/secretsSet/${i.dataset.secret}`), true);
+      ctl.secretsSet[i.dataset.secret] = true;
+    }
+    keyMsg = `Saved ${ins.length}.`;
+  } catch (e) { keyMsg = 'Could not save: ' + (e && e.message); }
+  render();
+}
+async function testAlert(b) {
+  b.disabled = true; testResult = null;
+  try { testResult = await fb.fnM.httpsCallable(fb.fns, 'testAlert')({}).then(r => r.data); }
+  catch (e) { testResult = { sms: 'error: ' + (e && e.message), email: 'error: ' + (e && e.message) }; }
+  await loadCtl(); render();
 }
 
 // Existing usernames the username rules (the word list) would refuse today: listed for a look, never changed.
@@ -226,12 +312,13 @@ function flaggedCard() {
 async function boot() {
   const hook = window.TTT_FIREBASE || null;                      // the tests: the local emulators
   const base = (hook && hook.cdn) || `https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/`;
-  const [appM, authM, dbM] = await Promise.all([import(base + 'firebase-app.js'), import(base + 'firebase-auth.js'), import(base + 'firebase-database.js')]);
+  const [appM, authM, dbM, fnM] = await Promise.all([import(base + 'firebase-app.js'), import(base + 'firebase-auth.js'), import(base + 'firebase-database.js'), import(base + 'firebase-functions.js')]);
   const fapp = appM.initializeApp((hook && hook.config) || FIREBASE_CONFIG);
-  const auth = authM.getAuth(fapp), db = dbM.getDatabase(fapp);
+  const auth = authM.getAuth(fapp), db = dbM.getDatabase(fapp), fns = fnM.getFunctions(fapp, 'us-central1');
   if (hook && hook.auth) authM.connectAuthEmulator(auth, hook.auth, { disableWarnings: true });
   if (hook && hook.emulator) dbM.connectDatabaseEmulator(db, hook.emulator.host, hook.emulator.port);
-  fb = { authM, dbM, auth, db, hook };
+  if (hook && hook.functions) fnM.connectFunctionsEmulator(fns, hook.functions.host, hook.functions.port);
+  fb = { authM, dbM, fnM, auth, db, fns, hook };
   let pending = false;
   try { pending = Object.keys(sessionStorage).some(k => k.startsWith('firebase:pendingRedirect')); } catch (e) { /* no storage */ }
   if (pending) { try { await authM.getRedirectResult(auth); } catch (e) { view.error = 'Could not log in. Try again.'; } }   // back from Google's sign-in page
@@ -251,11 +338,19 @@ async function load() {
     const [snap, fl] = await Promise.all([fb.dbM.get(fb.dbM.ref(fb.db, 'stats')), fb.dbM.get(fb.dbM.ref(fb.db, 'review/flaggedNames')).catch(() => null)]);
     stats = snap.val() || {};
     flagged = fl ? fl.val() : null;
+    await loadCtl();
     view = { status: 'ready', error: '' };
   } catch (e) {
     view = { status: 'denied', error: /permission/i.test(String(e && (e.code || e.message))) ? 'The database refused: the admin flag is not on this account yet.' : 'Could not load the stats.' };
   }
   render();
+}
+async function loadCtl() {
+  const g = p => fb.dbM.get(fb.dbM.ref(fb.db, p)).then(s => s.val()).catch(() => null);
+  const [config, secretsSet, bots, botStats, alertStats, log] = await Promise.all([g('admin/config'), g('admin/secretsSet'), g('bots'), g('botStats'), g('alertStats'),
+    fb.dbM.get(fb.dbM.query(fb.dbM.ref(fb.db, 'alertLog'), fb.dbM.orderByChild('at'), fb.dbM.limitToLast(8))).then(s => s.val()).catch(() => null)]);
+  ctl = { config: config || {}, secretsSet: secretsSet || {}, bots: bots || {}, botStats: botStats || {}, alertStats: alertStats || {},
+    alertLog: Object.values(log || {}).sort((a, b) => b.at - a.at) };
 }
 async function signIn(how) {
   view.error = '';
@@ -279,8 +374,13 @@ app.addEventListener('click', e => {
   else if (b.dataset.act === 'refresh') { b.disabled = true; load(); }
   else if (b.dataset.sort) { const k = b.dataset.sort; sortBy = { k, dir: sortBy.k === k ? -sortBy.dir : k === 'name' || k === 'avgWin' || k === 'avgLose' || k === 'avgAll' ? 1 : -1 }; render(); }
   else if (b.dataset.period) { period = b.dataset.period; render(); }
+  else if (b.dataset.act === 'save-keys') saveKeys();
+  else if (b.dataset.act === 'test-alert') testAlert(b);
 });
-app.addEventListener('change', e => { if (e.target.id === 'mm') { miniMode = e.target.value; render(); } });
+app.addEventListener('change', e => {
+  if (e.target.id === 'mm') { miniMode = e.target.value; render(); }
+  else if (e.target.dataset && e.target.dataset.cfg) saveCfg(e.target);
+});
 boot().catch(() => { app.innerHTML = '<div class="card msg"><h1>Tic Tac Chaos Stats</h1><p>Could not load. Check the connection and reload.</p></div>'; });
 </script>
 </body>

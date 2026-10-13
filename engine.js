@@ -1226,7 +1226,7 @@ function pickValued(pm, me, moves, place) {
   }
   return best;
 }
-function localBest(pm, me, rng) {
+function localBest(pm, me, rng, style) {
   switch (pm.type) {
     case 'ttt': return pickValued(pm, me, tttMinimax(pm.cells, me), (cells, i) => i);
     case 'c4':  return pickValued(pm, me, c4Moves(pm.cells, me), c4Drop);
@@ -1342,7 +1342,7 @@ function localBest(pm, me, rng) {
       if (bank + t.pot >= PIG.goal) return { move: 'bank', q: 1 };
       if (t.rolls.length >= PIG.maxRolls) return { move: 'bank', q: 0 };
       const gap = pm.bank[other(me)] - bank;                      // positive when behind
-      const target = Math.max(6, Math.min(14, 9 + Math.round(gap / 4)));   // riskier when behind, safer when ahead
+      const target = Math.max(4, Math.min(20, Math.max(6, Math.min(14, 9 + Math.round(gap / 4))) + ((style && style.pigRisk) || 0)));   // riskier when behind, safer when ahead (a bolder or warier style shifts it)
       if (t.pot >= target || t.rolls.length / 6 > 0.5) return { move: 'bank', q: 0 };
       return { move: 'roll', q: 0 };
     }
@@ -1359,7 +1359,13 @@ function localBest(pm, me, rng) {
 }
 
 // ---- the match: what a square is worth, what a move changes ----
-function squareValue(squares, i, me) {
+// A playing style (the matchmaking bots' personalities; the computer opponent plays STYLE0): attack and
+// defend weigh the lines still open for itself and for the other side, defend also how hard it blocks a
+// line about to be completed; mistake is the chance of a careless move (any legal move in any open
+// square); pigRisk adds to the points Pig banks at (bolder above zero, warier below).
+const STYLE0 = { attack: 1, defend: 1, mistake: 0, pigRisk: 0 };
+function squareValue(squares, i, me, style) {
+  const s = style || STYLE0;
   const o = other(me);
   let v = 0.5, win = false, block = false;                 // every square counts a little, towards the majority
   for (const line of LINES) {
@@ -1368,11 +1374,11 @@ function squareValue(squares, i, me) {
     const mine = rest.filter(x => x === me).length, theirs = rest.filter(x => x === o).length;
     if (mine === 2) win = true;
     if (theirs === 2) block = true;
-    if (!theirs) v += [1, 3, 0][mine];                       // a line still open for me, better with my square on it
-    if (!mine) v += [1, 3, 0][theirs];                       // a line still open for them, worth blocking
+    if (!theirs) v += s.attack * [1, 3, 0][mine];            // a line still open for me, better with my square on it
+    if (!mine) v += s.defend * [1, 3, 0][theirs];            // a line still open for them, worth blocking
   }
   if (win) return AI.win;
-  if (block) return AI.block + v;
+  if (block) return AI.block * Math.min(1, s.defend) + v;
   return v;
 }
 // How much the local move shifts the chance of claiming the square (negative when it hands the other side more).
@@ -1385,15 +1391,20 @@ function moveGain(pm, me, local) {
   return q * (1 - before) - qLose * before + (1 - q - qLose) * (after - before);
 }
 // The computer's move for the side to play: { square, move, score }. During a bonus move the square is fixed.
-function cpuMove(state, rng) {
+function cpuMove(state, rng, style) {
   rng = needRng(rng);
+  const st = Object.assign({}, STYLE0, style || {});
   const me = state.turn;
   const open = state.lock != null ? [state.lock] : state.squares.map((s, i) => (s.owner || !canMove(s.mini, me) ? -1 : i)).filter(i => i >= 0);   // not a square where it is stuck
+  if (st.mistake > 0 && open.length && rng() < st.mistake) {      // a careless move: anything legal, anywhere open
+    const i = open[randInt(rng, open.length)], m = randomLegalMove(state.squares[i].mini, me, rng);
+    if (m != null) return { square: i, move: m, score: 0, value: 0, gain: 0, careless: true };
+  }
   let best = null;
   for (const i of open) {
     const pm = publicMini(state.squares[i].mini);
-    const local = localBest(pm, me, rng);
-    const value = state.lock != null ? 1 : squareValue(state.squares, i, me);
+    const local = localBest(pm, me, rng, st);
+    const value = state.lock != null ? 1 : squareValue(state.squares, i, me, st);
     if (value >= AI.win && (local.win || local.q >= 1)) return { square: i, move: local.move, score: Infinity, value, gain: 1 };
     const gain = moveGain(pm, me, local);
     const score = value * Math.max(gain, 0.01);
@@ -1793,4 +1804,4 @@ function matchStats(st) {
 }
 
 // Node (the Cloud Functions and the tests): the same names as a module.
-if (typeof module !== "undefined" && module.exports) module.exports = { huntSize, huntBand, huntClue, normTimer, resignLocal, TYPES, OLD_TYPES, SNL, BUMP, snlRow, snlBoard, snlValid, snlExpected, coinPick, markCoins, coinMarksFor, normLocal, seatLocal, INFO, C4, HP, MM, HEX_N, HILO, CANDY, NAME_MAX, COINS, PIG, BS, HUNT, DICE_GOAL, MEMORY, LINES, WORDS5, WORDS_HANG, VALID5, other, makeRng, needRng, randInt, randomType, shuffle, memoryDeck, wordleMarks, hexNeighbors, hexPath, canMove, hpMoves, mmFeedback, mmValid, MM_ALL, mmAll, mmCode, mmCandidates, mmBestGuess, hpGoalRow, upgradeMini, anyMove, huntDist, candyTrack, newMini, pickType, newSquare, CPU_NAME, defaultSetup, cpuSide, normSetup, syncNames, enabledGames, TIMER_OPTIONS, newTimer, playerName, newState, startMatch, newMatch, findRun, applyMove, AI, publicMini, wordleCandidates, hangmanCandidates, bsCandidates, bsPlacements, bsShip, huntCandidates, WINDOWS, windowsOf, lineNeeds, c4Playable, hexDist, candyExpected, COIN_NEEDS, needsOf, memoryPair, winChance, tttMinimax, c4Drop, c4Eval, C4_ORDER, c4Search, C4_DEPTH, c4Moves, HP_MEMO, hpSolve, hpMovesValued, hpNeeds, hexMoves, threatScore, pickValued, localBest, squareValue, moveGain, cpuMove, VALID5_LIST, randomLegalMove, timeoutMove, mainResult, playMove, endFlash, leaveSquare, RECENT_MAX, MATCH_FIELDS, secretOf, hideMini, matchRecord, fullState, settle, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, newOnlineMatch, PLAY, diceSlot, playMs, replayMs, armClock, applyOnlineResign, matchStats };
+if (typeof module !== "undefined" && module.exports) module.exports = { STYLE0, huntSize, huntBand, huntClue, normTimer, resignLocal, TYPES, OLD_TYPES, SNL, BUMP, snlRow, snlBoard, snlValid, snlExpected, coinPick, markCoins, coinMarksFor, normLocal, seatLocal, INFO, C4, HP, MM, HEX_N, HILO, CANDY, NAME_MAX, COINS, PIG, BS, HUNT, DICE_GOAL, MEMORY, LINES, WORDS5, WORDS_HANG, VALID5, other, makeRng, needRng, randInt, randomType, shuffle, memoryDeck, wordleMarks, hexNeighbors, hexPath, canMove, hpMoves, mmFeedback, mmValid, MM_ALL, mmAll, mmCode, mmCandidates, mmBestGuess, hpGoalRow, upgradeMini, anyMove, huntDist, candyTrack, newMini, pickType, newSquare, CPU_NAME, defaultSetup, cpuSide, normSetup, syncNames, enabledGames, TIMER_OPTIONS, newTimer, playerName, newState, startMatch, newMatch, findRun, applyMove, AI, publicMini, wordleCandidates, hangmanCandidates, bsCandidates, bsPlacements, bsShip, huntCandidates, WINDOWS, windowsOf, lineNeeds, c4Playable, hexDist, candyExpected, COIN_NEEDS, needsOf, memoryPair, winChance, tttMinimax, c4Drop, c4Eval, C4_ORDER, c4Search, C4_DEPTH, c4Moves, HP_MEMO, hpSolve, hpMovesValued, hpNeeds, hexMoves, threatScore, pickValued, localBest, squareValue, moveGain, cpuMove, VALID5_LIST, randomLegalMove, timeoutMove, mainResult, playMove, endFlash, leaveSquare, RECENT_MAX, MATCH_FIELDS, secretOf, hideMini, matchRecord, fullState, settle, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, newOnlineMatch, PLAY, diceSlot, playMs, replayMs, armClock, applyOnlineResign, matchStats };
