@@ -1,0 +1,46 @@
+# Gives the stats dashboard (admin.html) to one account, or takes it back. Run it by hand from the
+# Actions tab: "Make admin" -> Run workflow -> your username. It uses the same FIREBASE_SERVICE_ACCOUNT
+# secret as the deploy, and prints nothing secret (the username you type shows in the run's log).
+name: Make admin (stats dashboard)
+
+on:
+  workflow_dispatch:
+    inputs:
+      username:
+        description: 'The Tic Tac Chaos username to give the dashboard to'
+        required: true
+        type: string
+      action:
+        description: 'grant or revoke'
+        required: true
+        default: grant
+        type: choice
+        options: [grant, revoke]
+
+permissions:
+  contents: read
+
+jobs:
+  admin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Install
+        run: npm ci --prefix functions
+      - name: Credentials
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$SA" ]; then echo "::error::The FIREBASE_SERVICE_ACCOUNT secret is missing (README: Deploying)."; exit 1; fi
+          printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/sa.json" >> "$GITHUB_ENV"
+      - name: Check the key
+        run: node scripts/check-key.js
+      - name: Set the admin flag
+        env:
+          USERNAME: ${{ inputs.username }}
+          ACTION: ${{ inputs.action }}
+        run: node scripts/make-admin.js "$USERNAME" "$ACTION"

@@ -22,6 +22,13 @@
  *   games/{id}/pub         the public game: players, mode, status, state (JSON), result, final (JSON)
  *   games/{id}/sec         the hidden values (JSON): never readable by a phone
  *   games/{id}/dl          the turn deadline (for the sweep); 1 once over and not yet recorded
+ *   stats/...              anonymous game stats (see statsRules.js): readable by the admin only
+ *   statsSeen/match/{id}   a match the stats have counted (its start time, whether start and end were counted)
+ *   statsSeen/{d|w|m}/{period}/{hash}  a player counted as active in that day, week or month (never readable)
+ *
+ * Game stats: every match in every mode is counted. Phones report their local matches through the
+ * `track` callable (which checks and trims what it is sent); online matches are counted here, where
+ * they are run or saved. The admin is the account with the `admin` custom claim (scripts/make-admin.js).
  */
 const { onCall, onRequest, HttpsError } = require('firebase-functions/v2/https');
 const { onSchedule } = require('firebase-functions/v2/scheduler');
@@ -29,9 +36,11 @@ const { onValueWritten } = require('firebase-functions/v2/database');
 const { setGlobalOptions } = require('firebase-functions/v2');
 const logger = require('firebase-functions/logger');
 const admin = require('firebase-admin');
+const { ServerValue } = require('firebase-admin/database');   // (not admin.database.ServerValue: the emulator wraps admin.database)
 const crypto = require('node:crypto');
 const E = require('./engine.js');
 const R = require('./serverRules.js');
+const S = require('./statsRules.js');
 
 setGlobalOptions({ region: 'us-central1', maxInstances: 10, memory: '256MiB' });
 const cfg = JSON.parse(process.env.FIREBASE_CONFIG || '{}');
@@ -45,6 +54,7 @@ const GAME_KEEP_MS = 24 * 3600 * 1000;   // finished games are deleted after a d
 const CALL = { cors: true };
 
 const now = () => Date.now();
+const isAnon = req => !req.auth || !req.auth.token || !req.auth.token.firebase || req.auth.token.firebase.sign_in_provider === 'anonymous';
 const seedRng = () => E.makeRng(crypto.randomBytes(16).toString('hex'));
 function needUid(req) {
   if (!req.auth || !req.auth.uid) throw new HttpsError('unauthenticated', 'Log in first.');
@@ -62,6 +72,63 @@ function gameId(v) {
 const sideOf = (pub, uid) => (pub.players.X.uid === uid ? 'X' : pub.players.O.uid === uid ? 'O' : null);
 const parse = s => (typeof s === 'string' ? JSON.parse(s) : s || {});
 
+/* ===================== stats ===================== */
+// Counts to add, as one atomic multi-path update of increments (merged into `into` when given).
+function statsUp(counts, into) {
+  const up = into || {};
+  for (const [k, n] of Object.entries(counts)) up['stats/' + k] = ServerValue.increment(n);
+  return up;
+}
+// Players active today, this week and this month: each counted once per period (by a hash only).
+async function markActive(ids, t) {
+  const k = S.periodKeys(t), up = {};
+  for (const id of new Set(ids.filter(Boolean))) {
+    const h = S.hashId(id);
+    for (const p of ['d', 'w', 'm']) {
+      const r = await db.ref(`statsSeen/${p}/${k[p]}/${h}`).transaction(cur => (cur ? undefined : true), undefined, false);
+      if (r.committed) up[`${S.PERIOD_NODE[p]}/${k[p]}/active`] = (up[`${S.PERIOD_NODE[p]}/${k[p]}/active`] || 0) + 1;
+    }
+  }
+  if (Object.keys(up).length) await db.ref().update(statsUp(up));
+}
+// A match counted once: statsSeen/match/{id} holds its start time and whether its start and end were counted.
+async function claimMatch(id, field, t) {
+  let prev = null;
+  const r = await db.ref(`statsSeen/match/${id}`).transaction(cur => {
+    prev = cur;
+    if (cur && (cur[field] || (field === 's' && cur.e))) return undefined;   // (an end counted first counted the start with it)
+    return Object.assign({ t0: t }, cur || {}, { [field]: 1, s: 1 });
+  }, undefined, false);
+  return r.committed ? { prev } : null;
+}
+// A phone reports a local match (two people, vs the computer, computer vs computer) starting or
+// ending, or an account logging in. Clients cannot write the stats themselves.
+exports.track = onCall(CALL, async req => {
+  const d = req.data || {}, t = now();
+  const who = !isAnon(req) ? 'u:' + req.auth.uid : S.idOk(d.dev) ? 'd:' + d.dev : null;
+  if (d.ev === 'login') {
+    if (isAnon(req)) return { ok: false };
+    await db.ref().update(statsUp(S.periodUpdates('logins', t)));
+    await markActive([who], t);
+    return { ok: true };
+  }
+  if (!S.CLIENT_MODES.includes(d.mode) || !S.idOk(d.id)) throw new HttpsError('invalid-argument', 'Not a match.');
+  const id = 'l_' + d.id;
+  if (d.ev === 'start') {
+    if (!(await claimMatch(id, 's', t))) return { ok: true, seen: true };
+    await db.ref().update(statsUp(S.startUpdates(d.mode, t)));
+  } else if (d.ev === 'end') {
+    const sum = S.checkEnd(d, E.TYPES);
+    if (!sum) throw new HttpsError('invalid-argument', 'Not a match.');
+    const c = await claimMatch(id, 'e', t);
+    if (!c) return { ok: true, seen: true };
+    const started = !!(c.prev && c.prev.s), ms = started ? t - c.prev.t0 : Number(d.ms);
+    await db.ref().update(statsUp(S.endUpdates(d.mode, sum, ms, t, !started)));   // a start never reported counts now
+  } else throw new HttpsError('invalid-argument', 'Not an event.');
+  await markActive([who], t);
+  return { ok: true };
+});
+
 /* ===================== accounts ===================== */
 exports.claimUsername = onCall(CALL, async req => {
   const uid = needAccount(req);
@@ -78,6 +145,7 @@ exports.claimUsername = onCall(CALL, async req => {
     return { username: name, rating: R.START_RATING, wins: 0, losses: 0, draws: 0, games: 0, joined: now() };
   }, undefined, false);
   if (!made.committed) { await db.ref(`usernames/${lower}`).remove(); return { ok: false, reason: 'You already have a username' }; }
+  await db.ref().update(statsUp(S.periodUpdates('newAccounts', now()))).catch(e => logger.error('stats', e));
   return { ok: true, username: name };
 });
 
@@ -159,6 +227,8 @@ async function createGame(key, id) {
       [`active/${O.uid}`]: { game: id, side: 'O', queue: key, mode: Q.mode },
       [`queue/${key}/${X.uid}`]: null, [`queue/${key}/${O.uid}`]: null,
     });
+    await db.ref().update(statsUp(S.startUpdates(Q.mode, t))).catch(e => logger.error('stats', e));
+    await markActive(['u:' + X.uid, 'u:' + O.uid], t).catch(e => logger.error('stats', e));
   }
   return made.committed;
 }
@@ -261,7 +331,9 @@ async function finishGame(id) {
   up[`games/${id}/pub/final`] = JSON.stringify(final);
   up[`games/${id}/pub/recorded`] = { at: now(), done: true };
   up[`games/${id}/dl`] = null;
-  await db.ref().update(up);                                   // all of it at once: both ratings, records, leaderboard, history
+  statsUp(S.endUpdates(pub.mode, E.matchStats(st), t - (pub.created || t), t, false), up);
+  await db.ref().update(up);                                   // all of it at once: both ratings, records, leaderboard, history, stats
+  await markActive(['u:' + pub.players.X.uid, 'u:' + pub.players.O.uid], t).catch(e => logger.error('stats', e));
   return true;
 }
 // The final state with every hidden value revealed, for history and the review board.
@@ -290,13 +362,25 @@ exports.friendGameDone = onValueWritten({ ref: '/rooms/{code}/match' }, async ev
   const after = event.data.after.val(), before = event.data.before.val();
   if (!after || typeof after.state !== 'string') return;
   const st = parse(after.state);
-  if (!st.winner) return;
-  if (before && typeof before.state === 'string') {
-    const b = parse(before.state);
-    if (b.id === st.id && b.winner) return;                    // the end was seen already
+  const b = before && typeof before.state === 'string' ? parse(before.state) : null;
+  const sid = 'f_' + event.params.code + '_' + String(st.id || 'm').replace(/[^-\w]/g, '');
+  if (!b || b.id !== st.id) {                                  // a new match in the room: counted as started
+    const t = now();
+    if (await claimMatch(sid, 's', t)) {
+      await db.ref().update(statsUp(S.startUpdates('friend', t)));
+      const room0 = (await db.ref(`rooms/${event.params.code}/players`).get()).val() || {};
+      await markActive(['X', 'O'].map(s => room0[s] && room0[s].uid ? 'u:' + room0[s].uid : null), t);
+    }
   }
+  if (!st.winner) return;
+  if (b && b.id === st.id && b.winner) return;                 // the end was seen already
   const room = (await db.ref(`rooms/${event.params.code}`).get()).val();
   if (!room || !room.players) return;
+  const t1 = now(), done = await claimMatch(sid, 'e', t1);
+  if (done) {
+    const started = !!(done.prev && done.prev.s);
+    await db.ref().update(statsUp(S.endUpdates('friend', E.matchStats(st), started ? t1 - done.prev.t0 : null, t1, !started)));
+  }
   const names = { X: room.players.X ? room.players.X.name : 'X', O: room.players.O ? room.players.O.name : 'O' };
   const final = finalOf({ state: st, secrets: parse(after.secrets) }, names);
   const id = 'f_' + event.params.code + '_' + (st.id || st.seq);
@@ -327,8 +411,21 @@ async function sweep() {
   const old = (await db.ref('games').orderByChild('pub/ended').startAt(1).endAt(t - GAME_KEEP_MS).limitToFirst(50).get()).val() || {};
   const up = {};
   for (const [id, g] of Object.entries(old)) if (g.pub && g.pub.recorded && g.pub.recorded.done) { up[`games/${id}`] = null; up[`gpresence/${id}`] = null; }
+  const deleted = Object.keys(up).length / 2;
+  await pruneSeen(t, up).catch(e => logger.error('stats prune', e));
   if (Object.keys(up).length) await db.ref().update(up);
-  return { timeouts, finished, deleted: Object.keys(up).length / 2 };
+  return { timeouts, finished, deleted };
+}
+// What the stats have seen, once it can no longer matter: matches after three days, players once their
+// day, week or month is well over (the counts stay).
+async function pruneSeen(t, up) {
+  const D = 86400000;
+  const old = (await db.ref('statsSeen/match').orderByChild('t0').startAt(1).endAt(t - 3 * D).limitToFirst(200).get()).val() || {};
+  for (const id of Object.keys(old)) up[`statsSeen/match/${id}`] = null;
+  if (new Date(t).getUTCMinutes() !== 7) return;               // the periods: once an hour is plenty, and no reading needed
+  for (let k = 4; k <= 9; k++) up[`statsSeen/d/${S.periodKeys(t - k * D).d}`] = null;          // days gone by
+  for (const k of [21, 28, 35, 42]) up[`statsSeen/w/${S.periodKeys(t - k * D).w}`] = null;    // weeks
+  for (const k of [62, 93]) up[`statsSeen/m/${S.periodKeys(t - k * D).m}`] = null;            // months
 }
 exports.sweep = onSchedule({ schedule: 'every 1 minutes', timeZone: 'Etc/UTC', retryCount: 0 }, async () => {
   const r = await sweep();

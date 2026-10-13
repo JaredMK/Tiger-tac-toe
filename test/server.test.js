@@ -221,7 +221,7 @@ test('a ranked match: all mini-games, one minute a turn, hidden values hidden, m
     const m = sq.mini;
     assert.ok(!('word' in m) || m.type === 'hangman', 'no Wordle word');
     if (m.type === 'hangman') assert.match(m.word, /^_+$/, 'only the Hangman pattern');
-    for (const k of ['target', 'hidden', 'treasure', 'code']) assert.ok(!(k in m), `no ${k} in ${m.type}`);
+    for (const k of ['target', 'hidden', 'ship', 'treasure', 'code']) assert.ok(!(k in m), `no ${k} in ${m.type}`);
     if (m.type === 'memory') assert.ok(m.cards.every(c => c === null), 'no Memory card');
   }
   const sec = JSON.parse(await get(`games/${g.id}/sec`));
@@ -411,4 +411,146 @@ test('friend-code games are saved to the history of players with accounts, marke
   assert.equal(gh.result, 'loss'); assert.equal(gh.ratingBefore, undefined);
   assert.equal((await get(`users/${host.uid}`)).rating, 1200, 'friend games never change ratings');
   assert.equal(await get(`history/${anon.uid}`), null);
+});
+
+/* ===================================== game stats ===================================== */
+const S = require('../functions/statsRules.js');
+const { execFile } = require('node:child_process');
+const path = require('node:path');
+const statsNow = async () => (await get('stats')) || {};
+const at = (o, p) => p.split('/').reduce((v, k) => (v == null ? undefined : v[k]), o) || 0;
+// How much each of these counters moved while `fn` ran (the counters are shared by every test).
+async function delta(paths, fn) {
+  const s0 = await statsNow();
+  await fn();
+  const s1 = await statsNow();
+  return Object.fromEntries(paths.map(p => [p, at(s1, p) - at(s0, p)]));
+}
+const day = () => S.periodKeys(Date.now());
+
+test('stats: a phone reports its local matches (each local mode), counted once; bad reports are refused', async () => {
+  const guest = await player(null, { anonymous: true });
+  const id = 'loc' + Date.now(), dev = 'dtest' + Date.now();
+  const squares = [{ t: 'ttt', end: 'won', w: 'X', X: 3, O: 2 }, { t: 'ttt', end: 'draw', w: null, X: 4, O: 4 }, { t: 'coins', end: 'open', w: null, X: 2, O: 0 }];
+  const d = day().d;
+  const moved = await delta(['modes/cpu/started', 'modes/cpu/finished', 'modes/cpu/turns', 'modes/cpu/xWins', 'modes/cpu/timed', `days/${d}/started/cpu`, `days/${d}/finished/cpu`,
+    'mini/cpu/ttt/played', 'mini/cpu/ttt/won', 'mini/cpu/ttt/draw', 'mini/cpu/ttt/winMoves', 'mini/cpu/ttt/loseMoves', 'mini/cpu/ttt/allMoves', 'mini/cpu/ttt/xWins', 'mini/cpu/coins/open', `days/${d}/active`], async () => {
+    assert.deepEqual(await guest.call('track', { ev: 'start', mode: 'cpu', id, dev }), { ok: true });
+    assert.deepEqual(await guest.call('track', { ev: 'start', mode: 'cpu', id, dev }), { ok: true, seen: true }, 'a repeated start is not counted again');
+    assert.deepEqual(await guest.call('track', { ev: 'end', mode: 'cpu', id, dev, winner: 'X', reason: 'line', squares }), { ok: true });
+    assert.deepEqual(await guest.call('track', { ev: 'end', mode: 'cpu', id, dev, winner: 'X', reason: 'line', squares }), { ok: true, seen: true }, 'nor a repeated end');
+  });
+  assert.deepEqual(moved, { 'modes/cpu/started': 1, 'modes/cpu/finished': 1, 'modes/cpu/turns': 15, 'modes/cpu/xWins': 1, 'modes/cpu/timed': 1, [`days/${d}/started/cpu`]: 1, [`days/${d}/finished/cpu`]: 1,
+    'mini/cpu/ttt/played': 2, 'mini/cpu/ttt/won': 1, 'mini/cpu/ttt/draw': 1, 'mini/cpu/ttt/winMoves': 3, 'mini/cpu/ttt/loseMoves': 2, 'mini/cpu/ttt/allMoves': 13, 'mini/cpu/ttt/xWins': 1, 'mini/cpu/coins/open': 1, [`days/${d}/active`]: 1 });
+  // the page without the SDK (a guest playing on one phone) posts the same call with no login at all
+  const plain = async data => { const r = await fetch(`${FN}/track`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ data }) }); return { status: r.status, body: await r.json() }; };
+  for (const mode of ['local', 'cvc']) {
+    const mid = mode + Date.now();
+    const m2 = await delta([`modes/${mode}/started`, `modes/${mode}/finished`], async () => {
+      assert.equal((await plain({ ev: 'start', mode, id: mid, dev: 'dplain' + Date.now() })).status, 200);
+      assert.equal((await plain({ ev: 'end', mode, id: mid, dev: 'dplain' + Date.now(), winner: 'O', reason: 'majority', squares: [{ t: 'pig', end: 'won', w: 'O', X: 1, O: 2 }] })).status, 200);
+    });
+    assert.deepEqual(m2, { [`modes/${mode}/started`]: 1, [`modes/${mode}/finished`]: 1 }, mode);
+  }
+  // refused: online modes (the server counts those), a broken match, nonsense
+  const unchanged = await delta(['modes/ranked/finished', 'modes/local/finished'], async () => {
+    for (const bad of [{ ev: 'end', mode: 'ranked', id: 'r' + Date.now(), squares: [] }, { ev: 'end', mode: 'local', id: 'b' + Date.now(), squares: [{ t: 'chess', end: 'won', w: 'X', X: 1, O: 1 }] },
+      { ev: 'end', mode: 'local', id: 'c' + Date.now(), squares: [{ t: 'ttt', end: 'won', X: 1, O: 1 }] }, { ev: 'start', mode: 'local', id: 'x/y' }, { ev: 'boom', mode: 'local', id: 'z' + Date.now() }, {}]) {
+      const r = await plain(bad);
+      assert.equal(r.status, 400, JSON.stringify(bad)); assert.equal(r.body.error.status, 'INVALID_ARGUMENT');
+    }
+  });
+  assert.deepEqual(unchanged, { 'modes/ranked/finished': 0, 'modes/local/finished': 0 });
+});
+
+test('stats: logins count accounts only; a new account counts on its day, week and month', async () => {
+  const k = day();
+  const moved = await delta([`days/${k.d}/logins`, `weeks/${k.w}/logins`, `months/${k.m}/logins`, `days/${k.d}/newAccounts`, `weeks/${k.w}/newAccounts`, `months/${k.m}/newAccounts`], async () => {
+    const p = await player('Newbie');                               // claims a username: a new account
+    assert.deepEqual(await p.call('track', { ev: 'login' }), { ok: true });
+    const anon = await player(null, { anonymous: true });
+    assert.deepEqual(await anon.call('track', { ev: 'login' }), { ok: false }, 'a guest session is not a login');
+  });
+  assert.deepEqual(Object.values(moved), [1, 1, 1, 1, 1, 1]);
+});
+
+test('stats: ranked and casual matches are counted by the server, started when paired and finished with their mini-games', async () => {
+  const d = day().d;
+  let g;
+  const moved = await delta(['modes/ranked/started', 'modes/ranked/finished', 'modes/ranked/xWins', 'modes/ranked/timed', `days/${d}/started/ranked`, `days/${d}/finished/ranked`,
+    'mini/ranked/ttt/won', 'mini/ranked/ttt/winMoves', 'mini/ranked/ttt/xWins', 'modes/ranked/resigned'], async () => {
+    g = await pairUp(await player('StatA'), await player('StatB'));
+    await nearWin(g.id, 'X');
+    assert.equal((await g.X.call('move', { game: g.id, square: 2, move: 2 })).ok, true);
+    await recorded(g.id);
+  });
+  assert.deepEqual(moved, { 'modes/ranked/started': 1, 'modes/ranked/finished': 1, 'modes/ranked/xWins': 1, 'modes/ranked/timed': 1, [`days/${d}/started/ranked`]: 1, [`days/${d}/finished/ranked`]: 1,
+    'mini/ranked/ttt/won': 1, 'mini/ranked/ttt/winMoves': 1, 'mini/ranked/ttt/xWins': 1, 'modes/ranked/resigned': 0 });
+  const res = await delta(['modes/casual/started', 'modes/casual/finished', 'modes/casual/resigned', 'modes/casual/oWins'], async () => {
+    const h = await pairUp(await player('StatC'), await player('StatD'), 'casual', 30);
+    assert.equal((await h.X.call('resign', { game: h.id })).ok, true);
+    await recorded(h.id);
+  });
+  assert.deepEqual(res, { 'modes/casual/started': 1, 'modes/casual/finished': 1, 'modes/casual/resigned': 1, 'modes/casual/oWins': 1 });
+});
+
+test('stats: friend-code matches are counted from the room, start and end once each', async () => {
+  const host = await player(null, { anonymous: true }), guest = await player(null, { anonymous: true });
+  const code = 'STATS', d = day().d;
+  const moved = await delta(['modes/friend/started', 'modes/friend/finished', 'modes/friend/oWins', `days/${d}/finished/friend`, 'mini/friend/hilo/won'], async () => {
+    const rec = E.newOnlineMatch({ names: { X: 'H', O: 'G' }, games: Object.fromEntries(E.TYPES.map(t => [t, t === 'hilo'])) }, E.makeRng(5), 'sm1');
+    await host.write(`rooms/${code}`, { created: Date.now(), host: host.uid, status: 'lobby', players: { X: { uid: host.uid, name: 'H', joined: Date.now() } }, setup: { hostSide: 'X', timer: 0 } });
+    await guest.write(`rooms/${code}/players/O`, { uid: guest.uid, name: 'G', joined: Date.now() });
+    await host.write(`rooms/${code}/status`, 'playing');
+    await host.write(`rooms/${code}/match`, { state: JSON.stringify(rec.state), secrets: JSON.stringify(rec.secrets) });
+    await until(async () => at(await statsNow(), 'modes/friend/started'), 10000, 'the friend match counted as started');
+    // O claims three squares in a row by guessing each number
+    let r = { state: rec.state, secrets: rec.secrets };
+    for (const i of [0, 1, 2]) {
+      const target = r.secrets[i].target;
+      r.state.turn = 'O';
+      const m = E.applyOnlineMove(r, 'O', i, target, E.makeRng(i));
+      assert.equal(m.ok, true); r = m.rec;
+    }
+    assert.equal(r.state.winner, 'O');
+    await guest.write(`rooms/${code}/match`, { state: JSON.stringify(r.state), secrets: JSON.stringify(r.secrets) });
+    await until(async () => at(await statsNow(), 'mini/friend/hilo/won') >= 3, 10000, 'the friend match counted as finished');
+    await host.write(`rooms/${code}/match/seen`, 1);                 // another write to the finished match: not counted again
+    await wait(1500);
+  });
+  assert.equal(moved['modes/friend/started'], 1); assert.equal(moved['modes/friend/finished'], 1); assert.equal(moved['modes/friend/oWins'], 1);
+  assert.equal(moved[`days/${d}/finished/friend`], 1); assert.equal(moved['mini/friend/hilo/won'], 3);
+});
+
+test('stats: only the admin can read them, nobody can write them; make-admin.js gives and takes back the flag', async () => {
+  const boss = await player('BossLady'), other = await player('Plain');
+  await denied(other.read('stats'), 'a player reading the stats');
+  await denied(boss.read('stats'), 'reading the stats before the flag');
+  await denied(other.write('stats/modes/local/started', 999), 'a player writing the stats');
+  const anon = await player(null, { anonymous: true });
+  await denied(anon.read('stats/modes'), 'a guest reading the stats');
+  const statsReq = await fetch(`http://${DB_HOST}/stats.json?ns=${NS}`);
+  assert.equal(statsReq.status, 401, 'no reading without a login at all');
+  const script = (...args) => new Promise((resolve, reject) => execFile(process.execPath, [path.join(__dirname, '..', 'scripts', 'make-admin.js'), ...args],
+    { env: Object.assign({}, process.env, { TTC_PROJECT: PROJECT, GCLOUD_PROJECT: PROJECT }) }, (e, out) => (e ? reject(new Error(out || e.message)) : resolve(out))));
+  assert.match(await script('BossLady', 'grant'), /BossLady is now the admin/);
+  await boss.auth.currentUser.getIdToken(true);                      // the flag comes with a fresh token
+  const s = await boss.read('stats');
+  assert.ok(s && s.modes, 'the admin reads the stats');
+  await denied(boss.write('stats/modes/local/started', 999), 'even the admin cannot write them');
+  await denied(other.read('stats'), 'still not the others');
+  await assert.rejects(script('NoSuchPlayer', 'grant'), /No player has the username/);
+  assert.match(await script('BossLady', 'revoke'), /no longer an admin/);
+  await boss.auth.currentUser.getIdToken(true);
+  await denied(boss.read('stats'), 'reading the stats once the flag is gone');
+});
+
+test('stats: the sweep forgets counted matches after three days (the counts stay)', async () => {
+  await put('statsSeen/match/l_oldone', { t0: Date.now() - 4 * 86400000, s: 1 });
+  await put('statsSeen/match/l_newone', { t0: Date.now() - 3600000, s: 1 });
+  const before = await get('stats/modes');
+  await sweep();
+  assert.equal(await get('statsSeen/match/l_oldone'), null, 'a match from four days ago is forgotten');
+  assert.ok(await get('statsSeen/match/l_newone'), 'an hour-old one is kept');
+  assert.deepEqual(await get('stats/modes'), before, 'the counts are untouched');
 });

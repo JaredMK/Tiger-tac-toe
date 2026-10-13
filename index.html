@@ -218,7 +218,7 @@ b.X { color: var(--x); } b.O { color: var(--o); }
 .ttl small { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; color: var(--muted); font-size: 12px; font-weight: 600; line-height: 1.25; }
 .gwrap { flex: 1; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; }
 
-.g-ttt, .g-bs {
+.g-ttt {
   width: var(--g); height: var(--g);
   display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); gap: 10px;
 }
@@ -241,6 +241,8 @@ b.X { color: var(--x); } b.O { color: var(--o); }
 .winline line.X { stroke: var(--x); } .winline line.O { stroke: var(--o); }
 .winline.draw line { animation: draw .45s .4s ease-out both; }
 
+.g-bs { --bg: min(var(--gw), calc(var(--gh) - 84px), 560px); width: var(--bg); display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.bsgrid { width: var(--bg); height: var(--bg); display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(4, 1fr); gap: 8px; }
 .cell.sea { background: radial-gradient(circle at 30% 30%, var(--sea-2), var(--sea)); }
 .cell.sea::after { content: ''; width: 16%; height: 16%; border-radius: 50%; background: rgba(255, 255, 255, .08); }
 .cell.miss { background: var(--panel-2); }
@@ -270,9 +272,10 @@ b.X { color: var(--x); } b.O { color: var(--o); }
 .c4c.X { background: var(--x); }
 .c4c.O { background: var(--o); }
 .c4c.win { box-shadow: inset 0 0 0 4px rgba(255, 255, 255, .85); }
-.c4c.drop { animation: drop .55s linear both; }
+.c4c { position: relative; }
+.c4p { position: absolute; inset: 0; border-radius: 50%; display: grid; place-items: center; animation: drop .55s linear both; z-index: 1; }
+.c4p.X { background: var(--x); } .c4p.O { background: var(--o); }
 .c4c.win.lit { animation: c4win .5s ease-out both; animation-delay: calc(.55s + var(--k, 0) * .08s); }
-.c4c.drop.win.lit { animation: drop .55s linear both, c4win .5s ease-out both; animation-delay: 0s, calc(.55s + var(--k, 0) * .08s); }
 
 /* on-screen keyboard (Wordle, Hangman) */
 .kb { flex: none; width: 100%; display: flex; flex-direction: column; gap: 6px; }
@@ -337,16 +340,19 @@ b.X { color: var(--x); } b.O { color: var(--o); }
 .hexgoal.O { width: calc(var(--g) * .86); height: 22px; background: var(--o-soft); color: var(--o); }
 .hexgoal.X { width: 22px; background: var(--x-soft); color: var(--x); }
 .hexboard { display: flex; flex-direction: column; }
-.hrow { display: flex; gap: 2px; margin-left: calc(var(--r) * (var(--hw) + 2px) / 2); }
-.hrow + .hrow { margin-top: calc(var(--hh) * -.25 + 2px); }
+.hrow { display: flex; margin-left: calc(var(--r) * (var(--hw) - 1px) / 2); }
+.hrow + .hrow { margin-top: calc(var(--hh) * -.25 - 1px); }
+.hrow .hexc + .hexc { margin-left: -1px; }                                  /* neighbours share their outline */
 .hexc {
-  width: var(--hw); height: var(--hh); border: 0; padding: 0; background: var(--panel-2);
+  --hf: var(--panel-2);
+  position: relative; width: var(--hw); height: var(--hh); border: 0; padding: 0; background: var(--hline, var(--line));
   clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); display: grid; place-items: center;
 }
-.hexc.X { background: var(--x); }
-.hexc.O { background: var(--o); }
+.hexc::before { content: ''; position: absolute; inset: 2.25px; background: var(--hf); clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); }
+.hexc.X { --hf: var(--x); }
+.hexc.O { --hf: var(--o); }
 .hexc.win { filter: brightness(1.25); }
-.hexc.win::after { content: ''; width: 30%; height: 30%; border-radius: 50%; background: rgba(255, 255, 255, .9); }
+.hexc.win::after { content: ''; position: relative; z-index: 1; width: 30%; height: 30%; border-radius: 50%; background: rgba(255, 255, 255, .9); }
 .hexc.fill { animation: hexfill .4s ease-out both; }
 .hexc.win.lit { animation: hexlit .45s ease-out both; animation-delay: calc(.4s + var(--k, 0) * .09s); }
 .hexc.fill.win.lit { animation: hexfill .4s ease-out both, hexlit .45s ease-out both; animation-delay: 0s, calc(.4s + var(--k, 0) * .09s); }
@@ -457,7 +463,7 @@ b.X { color: var(--x); } b.O { color: var(--o); }
 .wrow.cur.shake { animation: shake .4s; }
 
 .g-coins { width: var(--g); display: flex; flex-direction: column; gap: 18px; }
-.coins { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+.coins { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
 .coin {
   aspect-ratio: 1; border: 0; padding: 0; border-radius: 50%; display: grid; place-items: center;
   font-weight: 900; font-size: calc(var(--g) * .085); line-height: 1; color: var(--bg);
@@ -835,6 +841,48 @@ b.O { box-shadow: inset 0 -.38em 0 var(--o-soft); }
 .cell.hit.X { --fb: var(--x-soft); --fs: 0 5px 0 var(--ink); }
 .cell.hit.O { --fb: var(--o-soft); --fs: 0 5px 0 var(--ink); }
 .cell.miss.flipin::before { border-color: var(--ink); }
+/* Battleship: a hit is a burst on the sea; once sunk, the ship's parts show in their cells */
+.cell.sea.bshit { --fb: #ffe7c2; --fs: 0 5px 0 var(--ink); background: #ffe7c2; box-shadow: 0 5px 0 var(--ink); }
+.cell.sea.bshit::after, .cell.sea.ship::after { display: none; }
+.cell .fx { position: absolute; inset: 12%; width: 76%; height: 76%; }
+.fx .f1 { fill: var(--x); stroke: var(--ink); stroke-width: 5; stroke-linejoin: round; }
+.fx .f2 { fill: var(--o); }
+.cell.bshit.flipin .fx { animation: boom .55s .45s cubic-bezier(.3, 1.6, .5, 1) both; }
+.cell.sea.ship { background: var(--sky); box-shadow: 0 5px 0 var(--ink); --fb: var(--sky); --fs: 0 5px 0 var(--ink); }
+.cell .bseg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.bseg .hull { fill: #9aa4ae; stroke: var(--ink); stroke-width: 6; stroke-linejoin: round; }
+.bseg .deck { fill: none; stroke: var(--ink); stroke-width: 4; stroke-linecap: round; }
+.bseg .port { fill: var(--paper); stroke: var(--ink); stroke-width: 4; }
+.seg .scorch { fill: var(--x); stroke: var(--ink); stroke-width: 3.5; stroke-linejoin: round; }
+.cell.ship.X .hull { fill: #f2a08f; } .cell.ship.O .hull { fill: #f8db7a; }
+.cell.ship .bseg { transform: translateY(9%); }
+.cell.ship::before { content: ''; position: absolute; left: -10%; right: -10%; bottom: -6%; height: 34%; background: var(--sky); border-top: 4px solid var(--ink); border-radius: 40% 40% 0 0 / 30% 30% 0 0; opacity: .85; }
+.cell.ship.ghost .bseg { opacity: .45; transform: none; } .cell.ship.ghost::before { display: none; }
+.cell.ship.sink .bseg { animation: shipup .45s .5s cubic-bezier(.3, 1.5, .5, 1) both, shipsink .8s 1s ease-in both; }
+.cell.ship.sink::before { animation: wavein .5s 1s ease-out both; }
+.cell.ship.sink .fx { animation: vanish .25s .5s ease-in both; }
+.cell.ship.sink.flipin .fx { animation: boom .5s .45s cubic-bezier(.3, 1.6, .5, 1) both, vanish .25s .9s ease-in both; }
+.bsship { display: flex; align-items: center; justify-content: center; gap: 12px; min-height: 52px; padding: 6px 16px 4px; background: var(--paper); border: 3.5px solid var(--ink); box-shadow: 0 4px 0 var(--ink); border-radius: 18px 12px 20px 14px / 14px 20px 12px 18px; max-width: 100%; }
+.bsship .nm { display: flex; flex-direction: column; line-height: 1; }
+.bsship .nm small { font-size: 13px; color: var(--muted); }
+.bsship .nm b { font-family: 'Luckiest Guy', sans-serif; font-weight: 400; font-size: 21px; padding-top: 3px; }
+.bsship .sil { height: 30px; width: auto; flex: none; overflow: visible; }
+.sil .hull { fill: #fff; stroke: var(--ink); stroke-width: 7; stroke-linejoin: round; }
+.sil .hull.hit { fill: var(--x); }
+.sil .deck { fill: none; stroke: var(--ink); stroke-width: 5; stroke-linecap: round; }
+.sil .port { fill: var(--paper); stroke: var(--ink); stroke-width: 5; }
+.bsship.sunk { background: var(--x-soft); }
+.bsship.sunk.O { background: var(--o-soft); }
+.bsship.sunk.fresh { animation: pop .3s 1.2s ease-out both; }
+.tg.g4 { grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(4, 1fr); width: 62px; height: 62px; width: 60cqw; height: 60cqw; gap: 1.5px; }
+.tg.g4 i { border-radius: 2px; position: relative; display: grid; place-items: center; }
+.tg.sea i.hit { background: var(--x); }
+.tg.sea i.ship { background: #9aa4ae; }
+.tg.sea i.ship.X { background: #f2a08f; } .tg.sea i.ship.O { background: #f8db7a; }
+@keyframes boom { from { transform: scale(.2) rotate(-30deg); opacity: 0; } }
+@keyframes shipup { from { transform: translateY(60%) scale(.6); opacity: 0; } }
+@keyframes shipsink { 0% { transform: translateY(9%) rotate(0); } 25% { transform: translateY(4%) rotate(-7deg); } 55% { transform: translateY(14%) rotate(5deg); } 100% { transform: translateY(9%) rotate(0); } }
+@keyframes wavein { from { transform: translateY(100%); } }
 @keyframes flipcell {
   0% { transform: rotateY(0); background: var(--sky); }
   50% { transform: rotateY(90deg); background: var(--sky); }
@@ -845,6 +893,8 @@ b.O { box-shadow: inset 0 -.38em 0 var(--o-soft); }
 .c4c { background: var(--paper); border: 3px solid var(--ink); display: grid; place-items: center; }
 .c4c.X { background: var(--x-soft); } .c4c.O { background: var(--o-soft); }
 .c4c .pc { width: 96%; height: 96%; }
+.c4p { inset: -3px; border: 3px solid var(--ink); }                   /* covers the hole's own ring exactly */
+.c4p.X { background: var(--x-soft); } .c4p.O { background: var(--o-soft); }
 .c4c.win { box-shadow: 0 0 0 3px #fff, 0 0 0 6px var(--ink); }
 @keyframes c4win { 0% { transform: scale(1); } 40% { transform: scale(1.3, .8); } 70% { transform: scale(.9, 1.15); } 100% { transform: scale(1); } }
 .key { background: #fff; border: 2.5px solid var(--ink); box-shadow: 0 3px 0 var(--ink); border-radius: 9px 7px 10px 6px; color: var(--ink); padding-top: 3px; font-size: 16px; }
@@ -873,14 +923,16 @@ b.O { box-shadow: inset 0 -.38em 0 var(--o-soft); }
 .big.O { background: var(--o); color: var(--ink); }
 .big.bank { background: var(--green); color: #fff; }
 .big:disabled { opacity: .45; }
-.hexboard { filter: drop-shadow(2px 0 0 var(--ink)) drop-shadow(-2px 0 0 var(--ink)) drop-shadow(0 2px 0 var(--ink)) drop-shadow(0 -2px 0 var(--ink)); }
-.hexc { background: var(--paper); }
+.hexc { --hline: var(--ink); --hf: var(--paper); }
 .hexc.win::after { background: #fff; box-shadow: 0 0 0 2px var(--ink); }
 .hexgoal { border: 3px solid var(--ink); padding-top: 3px; }
 .hexgoal.O { background: var(--o); color: var(--ink); }
 .hexgoal.X { background: var(--x); color: var(--paper); }
 .coin { border: 3.5px solid var(--ink); color: var(--paper); box-shadow: 0 4px 0 var(--ink); padding-top: 4px; }
 .coin.O { color: var(--ink); }
+.coin.m { background: #fff; color: var(--ink); background-image: repeating-conic-gradient(from 0deg, #fff 0 15deg, #ece4d2 15deg 30deg); }
+.coin.m b { font-family: 'Luckiest Guy', sans-serif; font-weight: 400; font-size: 120%; }
+.tcoin i.m { background: #fff; color: var(--ink); }
 .pscore, .pigturn, .range { background: var(--paper); border: 3.5px solid var(--ink); box-shadow: 0 4px 0 var(--ink); border-radius: 18px 12px 20px 14px / 14px 20px 12px 18px; }
 .pscore .nm { font-weight: 400; }
 .pscore .val small { color: var(--muted); }
@@ -889,6 +941,21 @@ b.O { box-shadow: inset 0 -.38em 0 var(--o-soft); }
 .pscore.X.now { color: var(--x); } .pscore.O.now { color: #c99a00; }
 .pscore.now .val, .pscore.now .nm { color: var(--ink); }
 .face { background: #fff; border: 2.5px solid var(--ink); color: var(--muted); padding-top: 3px; }
+.pscore .val { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.risk { font-family: 'Luckiest Guy', sans-serif; font-weight: 400; font-size: 18px; color: var(--green); padding: 2px 7px 0; border-radius: 999px; background: #fff; border: 2.5px solid var(--ink); line-height: 1.1; align-self: center; }
+.risk.grow { animation: markpop .35s .6s ease-out both; }
+.risk.bank { animation: riskin .55s .15s ease-in both; }
+.risk.lost { color: var(--x); text-decoration: line-through; animation: riskout .7s .7s ease-in both; }
+.pigrolls { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; flex-wrap: wrap; }
+.pigrolls small { color: var(--muted); font-size: 15px; margin-right: 2px; }
+.sdie { width: 34px; height: 34px; border-radius: 9px 7px 9px 8px; background: #fff; border: 2.5px solid var(--ink); box-shadow: 0 2px 0 var(--ink); display: grid; place-items: center; }
+.sdie svg { width: 84%; height: 84%; }
+.sdie.fresh { animation: pop .3s .6s ease-out both; }
+.sdie.dup { background: var(--x); animation: pop .3s .6s ease-out both, shake .4s .9s both; }
+.pigrolls.bust .sdie:not(.dup) { animation: vanish .5s 1.1s ease-in both; }
+.pigbtns.one { grid-template-columns: 1fr; }
+@keyframes riskin { to { transform: translateX(-160%) scale(.5); opacity: 0; } }
+@keyframes riskout { to { transform: translateY(40%); opacity: 0; } }
 .face.hit { background: var(--x-soft); color: var(--ink); box-shadow: none; }
 @keyframes facehit { from { background: #fff; color: var(--muted); } }
 @keyframes bustflash { 0%, 100% { background: var(--paper); } 20%, 60% { background: var(--x); } }
@@ -1070,6 +1137,32 @@ button.seg.X.on { background: var(--x); color: var(--paper); } .seg.O.on { backg
 .tg.thp i .pc { width: 92%; height: 92%; }
 .pow-b .b1 { animation-delay: calc(.32s - var(--el, 0ms)) !important; }
 .pow-b .b2 { animation-delay: calc(.5s - var(--el, 0ms)) !important; }
+/* explainers */
+.bar .qbtn { margin-left: auto; }
+.qbtn { flex: none; width: 42px; height: 42px; padding: 3px 0 0; border-radius: 50%; border: 3px solid var(--ink); background: #fff; box-shadow: 0 3px 0 var(--ink); color: var(--ink); font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-size: 22px; line-height: 1; display: grid; place-items: center; font-style: normal; }
+.qbtn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+.qbtn.sm, i.qbtn.sm { width: 26px; height: 26px; border-width: 2.5px; box-shadow: 0 2px 0 var(--ink); font-size: 15px; padding-top: 2px; }
+button.qbtn.sm { width: 40px; height: 40px; padding: 0; border: 0; background: none; box-shadow: none; }
+button.qbtn.sm i { width: 26px; height: 26px; border-radius: 50%; border: 2.5px solid var(--ink); background: #fff; box-shadow: 0 2px 0 var(--ink); display: grid; place-items: center; padding-top: 2px; font-style: normal; }
+button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: translateY(1px); box-shadow: 0 1px 0 var(--ink); }
+.chk { position: relative; }
+.chk .qbtn.sm { position: absolute; top: -16px; right: -3px; z-index: 1; }      /* a sticker on the corner: the name keeps its room */
+.btn.howto { width: 100%; }
+@media (max-height: 600px) { .menu-card { gap: 8px; } .btn.howto { height: 44px; } }
+.explain { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; padding: 20px max(16px, env(safe-area-inset-right)) 20px max(16px, env(safe-area-inset-left)); background: rgba(22, 18, 16, .5); animation: fade .15s ease-out; cursor: pointer; }
+.excard { width: min(100%, 380px); max-height: 100%; overflow-y: auto; background: var(--paper); border: 4px solid var(--ink); box-shadow: 0 7px 0 var(--ink); border-radius: 26px 18px 24px 20px / 20px 26px 18px 24px; padding: 18px 18px 12px; display: flex; flex-direction: column; gap: 12px; animation: pop .25s cubic-bezier(.3, 1.5, .5, 1) both; }
+.excard h2 { display: flex; align-items: center; gap: 10px; margin: 0; font-size: 26px; line-height: 1.1; padding-top: 3px; }
+.excard h2 svg { width: 30px; height: 30px; flex: none; color: var(--ink); }
+.exline { margin: 0; display: grid; grid-template-columns: 58px 1fr; gap: 10px; align-items: start; font-size: 19px; line-height: 1.3; }
+.exline b { font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-weight: 400; font-size: 15px; text-align: center; padding: 4px 0 1px; border: 2.5px solid var(--ink); border-radius: 999px; background: var(--sky); color: #fff; letter-spacing: .04em; }
+.exline.win b { background: var(--o); color: var(--ink); }
+.excard small { text-align: center; color: var(--muted); font-size: 14px; }
+.rulecard { background: #fff; border: 3.5px solid var(--ink); box-shadow: 0 4px 0 var(--ink); border-radius: 18px 12px 20px 14px / 14px 20px 12px 18px; padding: 12px 16px; font-size: 19px; line-height: 1.35; }
+.rulecard p { margin: 0; } .rulecard p + p { margin-top: 8px; }
+.howlist { grid-template-columns: 1fr; }
+.howlist .chk { width: 100%; border: 2.5px solid var(--ink); font: inherit; color: var(--ink); text-align: left; }
+.howlist .chk i.qbtn.sm { position: static; margin-left: auto; flex: none; }
+.howlist .chk span { font-family: 'Luckiest Guy', 'Arial Black', sans-serif; }
 /* computer players */
 .cpui { display: inline-block; width: 1.15em; height: 1.15em; vertical-align: -.2em; margin-right: .22em; flex: none; overflow: visible; }
 .slots { display: flex; flex-direction: column; gap: 22px; padding-top: 14px; }
@@ -1080,8 +1173,9 @@ button.seg.X.on { background: var(--x); color: var(--paper); } .seg.O.on { backg
 .slot .kind { display: flex; gap: 8px; }
 .slot .kind button.seg { flex: 1; }
 .slot .field { grid-column: 1 / -1; }
-.slot-ico { position: absolute; top: -26px; right: 16px; width: 40px; height: 40px; animation: bob 1.4s ease-in-out infinite; transform-origin: 50% 100%; }
-.slot-ico .cpui { width: 40px; height: 40px; margin: 0; }
+.slot.cpu .field { position: relative; padding-top: 24px; }                  /* room for the computer, bobbing inside its card */
+.slot-ico { position: absolute; top: 2px; right: 10px; width: 36px; height: 36px; animation: bobin 1.4s ease-in-out infinite; transform-origin: 50% 100%; pointer-events: none; }
+.slot-ico .cpui { width: 36px; height: 36px; margin: 0; }
 /* the final board, to look back over */
 .review-scr .board .sq { cursor: pointer; }
 .revhead { flex: none; width: 100%; max-width: 560px; display: flex; align-items: center; gap: 12px; height: var(--bar); }
@@ -1103,6 +1197,7 @@ button.seg.X.on { background: var(--x); color: var(--paper); } .seg.O.on { backg
 }
 @keyframes blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(.1); } }
 @keyframes bob { 0%, 100% { transform: translateY(0) scale(1.06, .94); } 50% { transform: translateY(-12px) scale(.95, 1.05); } }
+@keyframes bobin { 0%, 100% { transform: translateY(0) scale(1.06, .94); } 50% { transform: translateY(-8px) scale(.95, 1.05); } }
 @keyframes hop { 0%, 100% { transform: translateY(0) scale(1, 1); } 40% { transform: translateY(-7px) scale(.95, 1.06); } 60% { transform: translateY(0) scale(1.08, .92); } }
 @keyframes wiggle { 0%, 100% { transform: rotate(-3deg) scale(1); } 50% { transform: rotate(2deg) scale(1.05); } }
 @keyframes stamp { 0% { transform: scale(2.6); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
@@ -1288,10 +1383,13 @@ function trackSvg(spec, opts) {
   const chevron = (x, y, ang) => `<path class="arrow" transform="translate(${x},${y}) rotate(${ang})" d="M-1.3,-1.6 L0.3,0 L-1.3,1.6"/>`;
   for (let k = 1; k < pts.length; k++) {
     const [x1, y1] = pts[k - 1], [x2, y2] = pts[k];
-    if (x1 === x2 && y1 !== y2) {                                  // the turn between two rows: a half circle out past the end
-      const sweep = spec.cell(k - 1).r % 2 ? 0 : 1;
-      d += ` A${R},${R} 0 0 ${sweep} ${x2},${y2}`;
-      arrows += chevron(x1 + (sweep ? R : -R), (y1 + y2) / 2, 90);
+    if (x1 === x2 && y1 !== y2) {                                  // the turn between two rows: a half circle out past the end of the row
+      const out = spec.cell(k - 2).r % 2 ? -1 : 1;                   // pts[k - 1] is space k - 2; a row running right turns round the right edge
+      d += ` A${R},${R} 0 0 ${out > 0 ? 1 : 0} ${x2},${y2}`;
+      for (const t of [-32, 0, 32]) {                                // arrows along the curve, each pointing the way round
+        const rad = t * Math.PI / 180, cy = (y1 + y2) / 2;
+        arrows += chevron(x1 + out * R * Math.cos(rad), cy + R * Math.sin(rad), 90 + out * t);
+      }
     } else {
       d += ` L${x2},${y2}`;
       arrows += chevron((x1 + x2) / 2, (y1 + y2) / 2, Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI);
@@ -1323,6 +1421,31 @@ function trackSvg(spec, opts) {
   return `<svg class="track${opts.mini ? ' small' : ''}" viewBox="0 0 ${spec.w} ${spec.h}" aria-hidden="true"><path class="path" d="${d}"/>${arrows}${spaces}${start}${finish}${tokens}</svg>`;
 }
 const BOAT = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M2.5 14.5h19l-2.6 4.6a2 2 0 0 1-1.7 1H6.8a2 2 0 0 1-1.7-1z"/><path d="M11 3h2v10h-2z"/><path d="M13 4.5 18.5 11H13z"/><path d="M5 12.5h14v2H5z"/></svg>';
+// Battleship: the burst on a hit, a ship's part in its cell, and the card naming the ship being hunted.
+const HITFX = (() => {
+  const star = (n, R, r, j) => Array.from({ length: n * 2 }, (_, k) => { const a = k * Math.PI / n - Math.PI / 2, d = k % 2 ? r : R * (1 - (k % 4 === 0 ? 0 : j)); return `${(50 + Math.cos(a) * d).toFixed(1)},${(50 + Math.sin(a) * d).toFixed(1)}`; }).join(' ');
+  return `<svg class="fx" viewBox="0 0 100 100" aria-hidden="true"><polygon class="f1" points="${star(9, 46, 25, .14)}"/><polygon class="f2" points="${star(7, 24, 12, .1)}"/></svg>`;
+})();
+// One part of a ship as drawn across (stern on the left, bow pointing right), on a 100 x 100 cell.
+const SHIP_PART = {
+  one: '<path class="hull" d="M16,32 H66 L90,50 L66,68 H16 Q8,50 16,32 Z"/><circle class="port" cx="42" cy="50" r="7"/>',
+  stern: '<path class="hull" d="M106,30 H34 Q12,30 12,50 Q12,70 34,70 H106 Z"/><path class="deck" d="M40,40 H64"/><circle class="port" cx="74" cy="50" r="7"/>',
+  mid: '<path class="hull" d="M-6,30 H106 V70 H-6 Z"/><circle class="port" cx="50" cy="50" r="7"/>',
+  bow: '<path class="hull" d="M-6,30 H56 L90,50 L56,70 H-6 Z"/><circle class="port" cx="28" cy="50" r="7"/>',
+};
+const shipPart = (len, k) => (len === 1 ? 'one' : k === 0 ? 'stern' : k === len - 1 ? 'bow' : 'mid');
+function shipSeg(ship, i) {
+  const cells = ship.slice().sort((a, b) => a - b), k = cells.indexOf(i), down = cells.length > 1 && cells[1] - cells[0] === BS.n;
+  return `<svg class="bseg" viewBox="0 0 100 100" aria-hidden="true"><g${down ? ' transform="rotate(90 50 50)"' : ''}>${SHIP_PART[shipPart(cells.length, k)]}</g></svg>`;
+}
+// Under the sea: the ship being hunted, its name and its parts (as many filled in as have been hit).
+function bsShipCard(mini, sunkBy, fresh) {
+  const len = mini.len || 1, hits = (mini.hits || []).length;
+  const parts = Array.from({ length: len }, (_, k) => `<g transform="translate(${k * 100} 0)">${SHIP_PART[shipPart(len, k)].replace('class="hull"', `class="hull${k < hits ? ' hit' : ''}"`)}</g>`).join('');
+  const sil = `<svg class="sil" viewBox="0 20 ${len * 100} 60" style="height:30px" aria-hidden="true">${parts}</svg>`;
+  const what = sunkBy ? 'Sunk!' : `Hunting · ${len} part${len === 1 ? '' : 's'}${hits ? `, ${hits} hit` : ''}`;
+  return `<div class="bsship${sunkBy ? ' sunk ' + sunkBy : ''}${fresh ? ' fresh' : ''}" aria-label="${BS.names[len]}, ${len} part${len === 1 ? '' : 's'}"><div class="nm"><small>${what}</small><b>${BS.names[len]}</b></div>${sil}</div>`;
+}
 const RESET = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 3v5h-5"/></svg>';
 // The two characters: a red X and a yellow O with pie-cut eyes and a grin (drawn on a 100 x 100 grid).
 function toonG(p) {
@@ -1412,7 +1535,9 @@ function render() {
   entering = view !== lastView; lastView = view;
   const kept = entering ? [] : [...app.querySelectorAll('[data-keep-scroll]')].map(e => [e.dataset.keepScroll, e.scrollTop]);
   const focus = entering ? null : typingIn();
-  app.innerHTML = renderHeader() + renderMain();
+  const boards = entering ? [] : KEEP_BOARDS.map(sel => [sel, app.querySelector(sel)]).filter(([, e]) => e);
+  app.innerHTML = renderHeader() + renderMain() + renderExplain();
+  for (const [sel, old] of boards) keepBoard(old, app.querySelector(sel));
   for (const [k, top] of kept) { const e = app.querySelector(`[data-keep-scroll="${k}"]`); if (e) e.scrollTop = top; }   // the same screen again: lists stay where they were scrolled
   if (focus) refocus(focus);                                  // and a field being typed in keeps the focus, and the cursor
   const wl = document.getElementById('wlist') || document.getElementById('mmlist');
@@ -1420,6 +1545,26 @@ function render() {
   animate();
   armFlash();
   sweepBursts();
+}
+// Boards kept across a re-render of the same screen: their cells take the new classes and labels, but
+// the elements stay, so only a cell that changed repaints. (Rebuilding the whole Hex board on a tap made
+// phones blank part of it for a frame.)
+const KEEP_BOARDS = ['.hexboard'];
+function sameShape(a, b) {
+  if (a.tagName !== b.tagName || a.children.length !== b.children.length) return false;
+  for (let k = 0; k < a.children.length; k++) if (!sameShape(a.children[k], b.children[k])) return false;
+  return true;
+}
+function syncNode(a, b) {
+  for (const at of [...a.attributes]) if (!b.hasAttribute(at.name)) a.removeAttribute(at.name);
+  for (const at of [...b.attributes]) if (a.getAttribute(at.name) !== at.value) a.setAttribute(at.name, at.value);
+  if (!b.children.length) { if (a.textContent !== b.textContent) a.textContent = b.textContent; return; }
+  for (let k = 0; k < b.children.length; k++) syncNode(a.children[k], b.children[k]);
+}
+function keepBoard(old, now) {
+  if (!old || !now || !sameShape(old, now)) return;
+  syncNode(old, now);
+  now.replaceWith(old);
 }
 // How long the move's animation takes. The result toast or card waits this long, and so does any tap.
 function animMs(f) { return REDUCED ? 0 : playMs(f, hexLen(f)); }
@@ -1473,6 +1618,7 @@ function renderMain() {
   if (state.screen === 'join') return renderJoin();
   if (state.screen === 'setup') return renderSetup();
   if (state.screen === 'login') return renderLogin();
+  if (state.screen === 'howto') return renderHowTo();
   if (state.screen === 'username') return renderUsername();
   if (state.screen === 'find') return renderFind();
   if (state.screen === 'leaderboard') return renderLeaderboard();
@@ -1503,6 +1649,65 @@ function renderHeader() {
   </header>`;
 }
 
+/* ----- explainers: the rules in short, from the "?" in a mini-game, the game list, or How to Play ----- */
+const RULES_CORE = [
+  'Tic-tac-toe, where every square is its own mini-game. Win the mini-game to claim the square. Get three squares in a row to win.',
+  'On your turn, make one move in any square. Every game keeps going until someone wins it.',
+];
+const EXPLAIN = {
+  ttt: { name: 'Tic-tac-toe', play: 'Place your mark.', win: 'Three in a row.' },
+  c4: { name: 'Connect 4', play: 'Drop a piece into a column.', win: 'Four in a row, any direction.' },
+  bs: { name: 'Battleship', play: "Fire at a square. The ship's size is shown below.", win: 'Sink the ship by hitting its last part.' },
+  wordle: { name: 'Wordle', play: "Guess a 5-letter word. Green is correct letter placement, yellow is in the word but different position, grey isn't in it.", win: 'Guess the word.' },
+  hangman: { name: 'Hangman', play: 'Guess a letter. Got one right? Go again.', win: 'Reveal the last letter.' },
+  hex: { name: 'Hex', play: 'Claim a hex. X connects left to right, O connects top to bottom.', win: 'Complete your path.' },
+  hilo: { name: 'Higher/Lower', play: "Guess a number from 1 to 20. You'll be told higher or lower.", win: 'Guess the number.' },
+  dice: { name: 'Dice Race', play: 'Roll and move that many spaces.', win: 'Reach the finish first.' },
+  memory: { name: 'Memory', play: 'Flip two cards. Only one pair matches.', win: 'Find the pair.' },
+  candy: { name: 'Candy Race', play: 'Spin and jump to the next space of that colour.', win: 'Reach the finish first.' },
+  coins: { name: 'Coin Flip', play: "Flip up to 3 coins that aren't yours.", win: 'All 5 coins show your side.' },
+  pig: { name: 'Pig', play: 'Roll as many times as you dare, then bank your points to finish your turn. If you roll a number you already rolled this turn and your turn ends with zero points.', win: 'Bank 21 first.' },
+  hunt: { name: 'Treasure Hunt', play: 'Dig a square. It shows how many steps away the treasure is (not diagonally).', win: 'Dig up the treasure.' },
+  hexapawn: { name: 'Hexapawn', play: 'Move a pawn forward, or capture diagonally.', win: 'Reach the far side, or leave your opponent with no moves.' },
+  mastermind: { name: 'Mastermind', play: 'Guess the 4-colour code. Black marker means right colour and spot; white marker means right colour, wrong spot.', win: 'Crack the code.' },
+};
+let explainT = null;                          // the mini-game whose explainer is open
+const qBtn = (t, cls) => `<button class="qbtn${cls ? ' ' + cls : ''}" data-act="explain" data-t="${t}" aria-label="How to play ${EXPLAIN[t].name}">${cls === 'sm' ? '<i>?</i>' : '?'}</button>`;   // the small one: a 26px sticker in a 40px tap target
+function renderExplain() {
+  const x = explainT && EXPLAIN[explainT];
+  if (!x) return '';
+  return `<div class="explain" data-act="explain-close" role="dialog" aria-modal="true" aria-label="How to play ${x.name}"><div class="excard">
+    <h2>${ICONS[explainT]}<span>${x.name}</span></h2>
+    <p class="exline play"><b>Play</b><span>${x.play}</span></p>
+    <p class="exline win"><b>Win</b><span>${x.win}</span></p>
+    <small>Tap anywhere to close</small></div></div>`;
+}
+// Opened and closed in place: the screen underneath is not drawn again (no scroll jump, no move used).
+function openExplain(t) {
+  if (!EXPLAIN[t]) return;
+  closeExplain(true);
+  explainT = t;
+  app.insertAdjacentHTML('beforeend', renderExplain());
+  scheduleCpu();
+}
+function closeExplain(quiet) {
+  const el = app.querySelector('.explain');
+  if (el) el.remove();
+  if (!explainT) return;
+  explainT = null;
+  if (!quiet) scheduleCpu();
+}
+function renderHowTo() {
+  return `<main class="scr setup howto-scr">
+    <div class="bar"><button class="back" data-act="menu" aria-label="Back to the main menu">${CHEV}Menu</button>
+      <div class="ttl"><b>How to Play</b></div></div>
+    <div class="setup-box" data-keep-scroll="howto">
+      <div class="rulecard">${RULES_CORE.map(t => `<p>${t}</p>`).join('')}</div>
+      <div class="games-h"><span>Mini-games</span><small>Tap one for its rules</small></div>
+      <div class="games howlist">${TYPES.map(t => `<button class="chk how" data-act="explain" data-t="${t}" aria-label="How to play ${EXPLAIN[t].name}">${ICONS[t]}<span>${EXPLAIN[t].name}</span><i class="qbtn sm" aria-hidden="true">?</i></button>`).join('')}</div>
+    </div></main>`;
+}
+
 /* ----- main menu ----- */
 function renderMenu() {
   const back = acct.active && acct.active.game && !(isMM() && state.online.game === acct.active.game);
@@ -1513,6 +1718,7 @@ function renderMenu() {
     <button class="primary" data-act="mode-go" data-mode="local">Play Local</button>
     <button class="primary alt" data-act="online-go">Play Online</button>
     <button class="primary mm" data-act="find-go">${back ? 'Back to your match' : 'Find Match'}</button>
+    <button class="btn howto" data-act="howto">How to Play</button>
   </div></main>`;
 }
 
@@ -1526,7 +1732,7 @@ function renderSetup() {
     ? `<div class="field ${p}"><span>${p} player · friend</span><div class="namebox">${state.online.joined ? esc(s.names[p]) : '<i>not joined yet</i>'}</div></div>`
     : `<label class="field ${p}"><span>${p} player${cpu === p ? ' · computer' : host ? ' · you' : ''}</span><input data-p="${p}" value="${esc(s.names[p] || '')}" maxlength="${NAME_MAX}" placeholder="${cpu === p ? CPU_NAME : p}" autocomplete="off" autocapitalize="words" aria-label="${p} player name"></label>`);
   const sides = mode !== 'two' ? `<div class="sides" role="group" aria-label="Your side"><span>You play</span><button class="seg X${human === 'X' ? ' on' : ''}" data-act="side" data-side="X">X · goes first</button><button class="seg O${human === 'O' ? ' on' : ''}" data-act="side" data-side="O">O</button></div>` : '';
-  const chk = t => `<label class="chk${s.games[t] ? '' : ' off'}"><input type="checkbox" data-t="${t}"${s.games[t] ? ' checked' : ''}>${ICONS[t]}<span>${INFO[t].name}</span></label>`;
+  const chk = t => `<label class="chk${s.games[t] ? '' : ' off'}"><input type="checkbox" data-t="${t}"${s.games[t] ? ' checked' : ''}>${ICONS[t]}<span>${INFO[t].name}</span>${qBtn(t, 'sm')}</label>`;
   const timer = host ? `<div class="timerrow" role="group" aria-label="Time per turn"><span>Time per turn</span>${TIMER_OPTIONS.map(v => `<button class="seg${(s.timer || 0) === v ? ' on' : ''}" data-act="timer" data-v="${v}">${TIMER_LABEL[v]}</button>`).join('')}</div>` : '';
   const room = host ? `<div class="room"><small>Room code</small><b class="code">${esc(state.online.code)}</b>
       <div class="row"><button class="btn" data-act="share">Share link</button></div>
@@ -1538,10 +1744,10 @@ function renderSetup() {
   const sub = host ? 'Share the code, set up, then start once your friend is in' : '';
   const slot = p => {                                            // a player slot: Human or Computer, and a name
     const isCpu = !!(s.players && s.players[p] === 'cpu');
-    return `<div class="slot ${p}${isCpu ? ' cpu' : ''}">${isCpu ? `<div class="slot-ico" aria-hidden="true">${CPU_ICON}</div>` : ''}
+    return `<div class="slot ${p}${isCpu ? ' cpu' : ''}">
       <div class="who-p">${toonT(p)}</div>
       <div class="kind" role="group" aria-label="${p} player"><button class="seg${isCpu ? '' : ' on'}" data-act="kind" data-side="${p}" data-kind="human" aria-pressed="${!isCpu}">Human</button><button class="seg${isCpu ? ' on' : ''}" data-act="kind" data-side="${p}" data-kind="cpu" aria-pressed="${isCpu}">Computer</button></div>
-      <label class="field ${p}"><span>${p} player name</span><input data-p="${p}" value="${esc(s.names[p] || '')}" maxlength="${NAME_MAX}" placeholder="${isCpu ? CPU_NAME : p}" autocomplete="off" autocapitalize="words" aria-label="${p} player name"></label></div>`;
+      <label class="field ${p}">${isCpu ? `<i class="slot-ico" aria-hidden="true">${CPU_ICON}</i>` : ''}<span>${p} player name</span><input data-p="${p}" value="${esc(s.names[p] || '')}" maxlength="${NAME_MAX}" placeholder="${isCpu ? CPU_NAME : p}" autocomplete="off" autocapitalize="words" aria-label="${p} player name"></label></div>`;
   };
   return `<main class="scr setup">
     <div class="bar">${host ? `<button class="back" data-act="lobby-back" aria-label="Close the room and go back">${CHEV}Back</button>` : `<button class="back" data-act="menu" aria-label="Back to the main menu">${CHEV}Menu</button>`}
@@ -1634,7 +1840,10 @@ function thumb(mini, final) {
       return `<div class="tmm">${rows}${more > 0 ? `<small>+${more} earlier</small>` : ''}</div>`;
     }
     case 'hexapawn': return `<div class="tg thp">${mini.cells.map((c, i) => `<i class="${c || ''}${(Math.floor(i / HP.cols) + i) % 2 ? ' dk' : ''}">${c ? toonT(c) : ''}</i>`).join('')}</div>`;
-    case 'bs':  return `<div class="tg g3 sea">${mini.revealed.map(r => `<i class="${r ? 'miss' : ''}"></i>`).join('')}</div>`;
+    case 'bs': {
+      const sunk = mini.winCells || [], hits = mini.hits || [];
+      return `<div class="tg g4 sea">${mini.revealed.map((r, i) => `<i class="${sunk.includes(i) ? 'ship ' + (r || '') : hits.includes(i) ? 'hit' : r ? 'miss' : ''}"></i>`).join('')}</div>`;
+    }
     case 'wordle': {
       const last = mini.guesses.slice(-4);
       const rows = last.length
@@ -1656,7 +1865,7 @@ function thumb(mini, final) {
       return `<div class="tg g3 tmem">${mini.cards.map((card, i) => (shown.includes(i) ? `<i class="up">${shapeSvg(card)}</i>` : '<i>?</i>')).join('')}</div>`;
     }
     case 'candy': return trackSvg(CANDY_SPEC, { colors: mini.track, tokens: { X: mini.pos.X, O: mini.pos.O }, finish: 'colours', mini: true });
-    case 'coins': return `<div class="tcoin">${mini.coins.map(c => `<i class="${c}">${c}</i>`).join('')}</div>`;
+    case 'coins': return `<div class="tcoin">${mini.coins.map(c => `<i class="${c === COINS.mystery ? 'm' : c}">${c}</i>`).join('')}</div>`;
     case 'pig': return `<div class="tdice">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><div class="bar"><i style="width:${Math.min(100, mini.bank[p] / PIG.goal * 100)}%"></i></div><span>${mini.bank[p]}</span></div>`).join('')}</div>`;
     case 'hunt': return `<div class="tg g5x5">${mini.dug.map((d, i) => {
       if (!d) return '<i></i>';
@@ -1722,17 +1931,30 @@ function renderMini(sq, review) {
       g = `<div class="g-c4">${mini.cells.map((c, i) => {
         const col = i % C4.cols, full = !!mini.cells[col];
         const lit = won(i) && fresh;
-        const style = anim === i ? ` style="--fall:${Math.floor(i / C4.cols) + 1}${lit ? `;--k:${wk(i)}` : ''}"` : lit ? ` style="--k:${wk(i)}"` : '';
-        return `<button class="c4c ${c || ''}${won(i) ? ' win' : ''}${lit ? ' lit' : ''}${anim === i ? ' drop' : ''}"${style} data-act="move" ${mv(col)} aria-label="Drop in column ${col + 1}"${full || locked ? ' disabled' : ''}>${c ? toon(c) : ''}</button>`;
+        const style = lit ? ` style="--k:${wk(i)}"` : '';
+        const drop = anim === i && c;                     // the piece just played falls on its own layer; its hole stays drawn under it
+        const inner = drop ? `<span class="c4p ${c}" style="--fall:${Math.floor(i / C4.cols) + 1}">${toon(c)}</span>` : c ? toon(c) : '';
+        return `<button class="c4c ${drop ? 'landing' : c || ''}${won(i) ? ' win' : ''}${lit ? ' lit' : ''}"${style} data-act="move" ${mv(col)} aria-label="Drop in column ${col + 1}"${full || locked ? ' disabled' : ''}>${inner}</button>`;
       }).join('')}</div>`;
       break;
-    case 'bs':
-      g = `<div class="g-bs">${mini.revealed.map((r, i) => {
-        const hit = (r || view) && i === mini.hidden;
-        const cls = hit ? ' hit ' + (r || sq.owner) : r ? ' miss' : '';
-        return `<button class="cell sea${cls}${anim === i ? ' flipin' : ''}" data-act="move" ${mv(i)} aria-label="Cell ${i + 1}${hit ? ', hit' : r ? ', miss' : ''}"${r || locked ? ' disabled' : ''}>${hit ? BOAT : ''}</button>`;
-      }).join('')}</div>`;
+    case 'bs': {
+      // One hidden ship on a 4x4 sea. A shot shows a hit (a burst) or a miss (a splash), never which
+      // way the ship lies; the shot that sinks it reveals the whole ship, which then goes under.
+      const hits = mini.hits || [], ship = mini.ship || null, sunk = !!sq.owner && !!ship;
+      const shown = ship && (sunk || view) ? ship : [];             // the ship's cells, once it may be seen
+      const sinking = sunk && fresh;
+      g = `<div class="g-bs"><div class="bsgrid">${mini.revealed.map((r, i) => {
+        const r0 = Math.floor(i / BS.n) + 1, c0 = i % BS.n + 1;
+        if (shown.includes(i)) {
+          const cls = `cell sea ship ${sunk ? sq.owner : 'ghost'}${sinking ? ' sink' : ''}${anim === i ? ' flipin' : ''}`;
+          return `<button class="${cls}" data-act="move" ${mv(i)} aria-label="Row ${r0} column ${c0}, ship" disabled>${shipSeg(ship, i)}${sinking ? HITFX : ''}</button>`;   // while sinking: the hit bursts give way to the ship
+        }
+        const hit = hits.includes(i);
+        const cls = hit ? ' bshit' : r ? ' miss' : '';
+        return `<button class="cell sea${cls}${anim === i ? ' flipin' : ''}" data-act="move" ${mv(i)} aria-label="Row ${r0} column ${c0}${hit ? ', hit' : r ? ', miss' : ''}"${r || locked ? ' disabled' : ''}>${hit ? HITFX : ''}</button>`;
+      }).join('')}</div>${bsShipCard(mini, sunk ? sq.owner : null, sinking)}</div>`;
       break;
+    }
     case 'wordle': {
       const n = mini.guesses.length;
       const rows = mini.guesses.map((gs, r) => `<div class="wrow">${gs.word.split('').map((ch, k) =>
@@ -1826,38 +2048,42 @@ function renderMini(sq, review) {
       break;
     }
     case 'coins': {
-      const flipped = a && mini.last ? mini.last.flipped : [];
+      // Five coins: two each and a mystery coin (?) that belongs to nobody until it is flipped.
+      const flipped = a && mini.last ? mini.last.flipped : [], was = a && mini.last && mini.last.was ? mini.last.was : [];
       const theirs = mini.coins.filter(c => c !== turn).length, n = Math.min(COINS.max, theirs);
-      const status = view ? `All six show ${sq.owner}`
-        : `Flip turns ${n} of <b class="${other(turn)}">${N(other(turn))}</b>'s coins${theirs > COINS.max ? ', picked at random' : ''}`;
+      const status = view ? `All five show ${sq.owner}`
+        : `Flip turns ${n} coin${n === 1 ? '' : 's'} that ${n === 1 ? "isn't" : "aren't"} <b class="${turn}">${N(turn)}</b>'s${theirs > COINS.max ? ', picked at random' : ''}`;
       g = `<div class="g-coins"><div class="coins">${mini.coins.map((c, i) => {
-        const flip = flipped.includes(i);
-        return `<span class="coin ${c}${flip ? ' flip' : ''}"${flip ? ` style="--k:${flipped.indexOf(i)};--c0:var(--${other(a.by).toLowerCase()})"` : ''} aria-label="Coin ${i + 1}, ${c}"><b>${c}</b></span>`;
+        const flip = flipped.includes(i), m = c === COINS.mystery, from = was[flipped.indexOf(i)];
+        const c0 = from === COINS.mystery ? '#fff' : `var(--${(from || other(a ? a.by : turn)).toLowerCase()})`;
+        return `<span class="coin ${m ? 'm' : c}${flip ? ' flip' : ''}"${flip ? ` style="--k:${flipped.indexOf(i)};--c0:${c0}"` : ''} aria-label="Coin ${i + 1}, ${m ? 'mystery' : c}"><b>${c}</b></span>`;
       }).join('')}</div>
         <div class="dielab">${status}</div>
         <button class="big ${turn}" data-act="move" ${mv('flip')}${locked ? ' disabled' : ''}>Flip${view ? '' : ' ' + n}</button></div>`;
       break;
     }
     case 'pig': {
+      // The two scores, with this turn's points at risk as a small +N by the roller's score; the dice
+      // rolled this turn in a row; the die; Roll again and Bank (only Bank once it would reach the goal).
+      // A roll tumbles the die; a bank only moves the +N into the score; a bust knocks the +N out.
       const t = mini.turn, over = a && (a.note === 'bust' || a.note === 'bank');   // a bust or a bank: the turn is already over, show the pot it had, then watch it go
-      const rolls = over ? a.rolls : t ? t.rolls : [], pot = over ? a.pot : t ? t.pot : 0;
+      const rolls = over ? a.rolls : t ? t.rolls : [], pot = over ? a.pot : t ? t.pot : 0, by = over ? a.by : t ? t.by : null;
       const score = p => {
         const banked = mini.bank[p], gain = a && a.note === 'bank' && a.by === p;
         const prev = gain ? banked - a.pot : banked;
-        return `<div class="pscore ${p}${!view && turn === p ? ' now' : ''}${gain ? ' gain' : ''}"><div class="nm"><b class="${p}">${N(p)}</b></div><div class="val">${gain ? `<b class="cnt" data-from="${prev}" data-delay="350" data-ms="500">${banked}</b>` : banked} <small>/ ${PIG.goal}</small></div><div class="bar"><i style="width:${Math.min(100, banked / PIG.goal * 100)}%;--pw:${Math.min(100, prev / PIG.goal * 100)}%"></i></div></div>`;
+        const risk = by === p && pot ? `<span class="risk${a && a.note === 'roll' ? ' grow' : a && a.note === 'bank' ? ' bank' : a && a.note === 'bust' ? ' lost' : ''}">+${a && a.note === 'roll' ? `<b class="cnt" data-from="${pot - a.roll}" data-delay="600" data-ms="400">${pot}</b>` : pot}</span>` : '';
+        return `<div class="pscore ${p}${!view && turn === p ? ' now' : ''}${gain ? ' gain' : ''}"><div class="nm"><b class="${p}">${N(p)}</b></div><div class="val"><span>${gain ? `<b class="cnt" data-from="${prev}" data-delay="350" data-ms="500">${banked}</b>` : banked} <small>/ ${PIG.goal}</small></span>${risk}</div><div class="bar"><i style="width:${Math.min(100, banked / PIG.goal * 100)}%;--pw:${Math.min(100, prev / PIG.goal * 100)}%"></i></div></div>`;
       };
-      const faces = [1, 2, 3, 4, 5, 6].map(n => `<span class="face${rolls.includes(n) ? ' hit' : ''}${a && a.roll === n && a.note !== 'bank' ? (a.note === 'bust' ? ' again' : ' fresh') : ''}">${n}</span>`).join('');
-      const potN = a && a.note === 'roll' ? `<b class="cnt" data-from="${pot - a.roll}" data-delay="600" data-ms="400">${pot}</b>`
-        : a && a.note === 'bust' ? `<b class="cnt" data-from="${pot}" data-to="0" data-delay="700" data-ms="400">${pot}</b>` : pot;
-      const note = view ? `Won by ${N(sq.owner)}` : a && a.note === 'bust' ? `Bust! ${a.roll} came up again` : a && a.note === 'bank' ? `Banked ${a.pot}`
-        : d ? 'Move over' : rolls.length >= PIG.maxRolls ? 'Six different numbers: bank it!'
-        : rolls.length ? `Rolling ${rolls.slice().sort((x, y) => x - y).join(', ')} again would bust` : `${N(turn)}: roll to start your turn`;
-      const shown = mini.last ? mini.last.roll : null;
+      const fresh1 = a && a.note === 'roll', bust = a && a.note === 'bust';
+      const dice = rolls.map((n, k) => `<span class="sdie${(fresh1 || bust) && k === rolls.length - 1 ? (bust ? ' dup' : ' fresh') : ''}" aria-label="${n}">${dieFace(n)}</span>`).join('');
+      const shown = mini.last && mini.last.kind !== 'bank' ? mini.last.roll : rolls.length ? rolls[rolls.length - 1] : null;
+      const enough = !!(t && t.by === turn && mini.bank[turn] + t.pot >= PIG.goal);          // Bank wins it: no more rolling
+      const rollBtn = enough ? '' : `<button class="big ${turn}" data-act="move" ${mv('roll')}${locked || rolls.length >= PIG.maxRolls ? ' disabled' : ''}>${rolls.length && !over ? 'Roll again' : 'Roll'}</button>`;
       g = `<div class="g-pig"><div class="pigscores">${score('X')}${score('O')}</div>
-        <div class="pigturn${a && a.note === 'bust' ? ' bust' : ''}"><div class="faces">${faces}</div><div class="pot${a && a.note === 'bank' ? ' slide-' + a.by : ''}">Pot ${potN}${rolls.length ? ` <span>· ${rolls.length} roll${rolls.length === 1 ? '' : 's'}</span>` : ''}</div><div class="dielab">${note}</div></div>
+        <div class="pigrolls${bust ? ' bust' : ''}" aria-label="Rolled this turn">${dice || '<small>No rolls this turn</small>'}</div>
         <div class="dieWrap"><div class="die${a && a.note !== 'bank' ? ' roll' : ''}">${shown ? dieFace(shown) : '<span class="q">?</span>'}</div></div>
-        <div class="pigbtns"><button class="big ${turn}" data-act="move" ${mv('roll')}${locked || rolls.length >= PIG.maxRolls ? ' disabled' : ''}>${rolls.length ? 'Roll again' : 'Roll'}</button>
-          <button class="big bank" data-act="move" ${mv('bank')}${locked || !pot ? ' disabled' : ''}>Bank${pot ? ' ' + pot : ''}</button></div></div>`;
+        <div class="pigbtns${enough ? ' one' : ''}">${rollBtn}
+          <button class="big bank" data-act="move" ${mv('bank')}${locked || !pot || over ? ' disabled' : ''}>Bank${pot && !over ? ' ' + pot : ''}</button></div></div>`;
       break;
     }
     case 'hunt': {
@@ -1928,9 +2154,9 @@ function renderMini(sq, review) {
   if (view) {
     secret = mini.type === 'wordle' || mini.type === 'hangman' ? `The word was ${mini.word}`
       : mini.type === 'hilo' ? `The number was ${mini.target}`
-      : mini.type === 'bs' ? `The ship was at row ${Math.floor(mini.hidden / 3) + 1}, column ${mini.hidden % 3 + 1}`
+      : mini.type === 'bs' ? `${sq.owner ? 'Sank' : 'It was'} the ${BS.names[mini.len] || 'ship'}`
       : mini.type === 'memory' ? 'Every card shown'
-      : mini.type === 'coins' ? `All six show ${sq.owner}`
+      : mini.type === 'coins' ? `All five show ${sq.owner}`
       : mini.type === 'hunt' ? `The treasure was at row ${Math.floor(mini.treasure / HUNT.n) + 1}, column ${mini.treasure % HUNT.n + 1}`
       : mini.type === 'pig' ? `${mini.bank.X} to ${mini.bank.O}` : '';
     sub = sq.owner ? `<b class="${sq.owner}">Won by ${N(sq.owner)}</b>${secret ? ' · ' + secret : ''}` : `Not won by anyone${secret ? ' · ' + secret : ''}`;
@@ -1943,7 +2169,7 @@ function renderMini(sq, review) {
   }
   return `<main class="scr mini${entering ? ' enter' : ''}">${netBar()}
     <div class="bar${view && sq.owner ? ' won won-' + sq.owner : ''}" role="${view ? 'status' : 'presentation'}">${review ? `<button class="back" data-act="${reviewCtx.mback}" aria-label="Back to the final board">${CHEV}Board</button>` : `<button class="back" data-act="back" aria-label="Back to the board"${f || d || lockMine() || cpuTurn() ? ' disabled' : ''}>${CHEV}Board</button>`}
-      <div class="ttl"><b>${info.name}</b><small${view ? ' class="won"' : ''}>${sub}</small></div></div>
+      <div class="ttl"><b>${info.name}</b><small${view ? ' class="won"' : ''}>${sub}</small></div>${qBtn(mini.type)}</div>
     <div class="gwrap">${g}</div>${f ? renderFlash(f) : ''}${pauseMenu()}</main>`;
 }
 // The in-game menu: a pause card with Resume and Main menu (which asks first).
@@ -1962,7 +2188,7 @@ function pauseMenu() {
 function summary(f) {
   const who = `<b class="${f.by}">${N(f.by)}</b>`;
   switch (f.type) {
-    case 'bs': return 'Miss!';
+    case 'bs': return f.hit ? `${who} hit!` : 'Miss!';
     case 'wordle': return `${who} tried ${f.word}`;
     case 'hangman': return `No ${f.letter}`;
     case 'hilo': return `${f.n}? ${f.note === 'higher' ? 'Higher' : 'Lower'}!`;
@@ -1971,7 +2197,7 @@ function summary(f) {
     case 'candy': return `${who} spun ${f.color}`;
     case 'coins': return `${who} flipped ${f.n}`;
     case 'hunt': return `${who} dug ${f.dist} away · ${HEAT[f.dist]}`;
-    case 'pig': return f.note === 'bust' ? `Bust! Pot of ${f.pot} lost` : `Banked ${f.pot}`;
+    case 'pig': return f.note === 'bust' ? `Bust! ${f.pot} point${f.pot === 1 ? '' : 's'} lost` : `Banked ${f.pot}`;
     case 'hexapawn': return f.capture ? `${who} captured a pawn` : `${who} stepped forward`;
     case 'mastermind': return `${who}: ${f.solid} solid · ${f.hollow} hollow`;
   }
@@ -1995,17 +2221,17 @@ function renderFlash(f) {
     return `${open}<div class="card">${pow()}<div class="big-g bang ${w}">${toonT(w)}</div><h2>${N(w)} wins ${name}!</h2><p>Square claimed · tap to continue</p></div></div>`;
   }
   if (f.type === 'pig' && f.note === 'bust') {
-    return `${open}<div class="card"><div class="big-g">${dieFace(f.roll)}</div><h2>Bust!</h2><p>${who} rolled ${f.roll} again · pot of ${f.pot} lost</p></div></div>`;
+    return `${open}<div class="card"><div class="big-g">${dieFace(f.roll)}</div><h2>Bust!</h2><p>${who} rolled ${f.roll} again · ${f.pot} point${f.pot === 1 ? '' : 's'} lost</p></div></div>`;
   }
-  if (f.type === 'pig' && f.note === 'bank') {
-    return `${open}<div class="card"><div class="big-g ${f.by}">${toonT(f.by)}</div><h2>Banked ${f.pot}</h2><p>${who} now has ${f.bank} of ${PIG.goal}</p></div></div>`;
+  if (f.type === 'pig' && (f.note === 'bank' || f.kind === 'again')) {   // a roll or a bank speaks for itself: the +N grows, or moves into the score
+    return open.replace('"flash late"', '"flash lite late"') + '</div>';
   }
   if (f.kind === 'draw') {
     const [head, why] = f.note === 'stuck' ? ['Stuck!', 'No legal moves for either player'] : ['Draw!', 'Full board'];
     return `${open}<div class="card"><div class="big-g">${RESET}</div><h2>${head}</h2><p>${why} · Square reset to ${INFO[f.newType].name}</p></div></div>`;
   }
   if (f.kind === 'again') {
-    const msg = f.type === 'pig' ? `${who} rolled ${f.roll} · pot ${f.pot} · roll again or bank` : `${who} found ${f.letter} · guess again`;
+    const msg = `${who} found ${f.letter} · guess again`;
     return `${open.replace('"flash late"', '"flash lite late"')}<div class="toast">${msg}</div></div>`;
   }
   const lite = open.replace('"flash late"', '"flash lite late"');
@@ -2126,6 +2352,42 @@ function blocked() { return cpuTurn() || remoteTurn() || !!moveWait || (!!state.
 function lockMine() { return state.lock != null && (mySide() == null || state.turn === mySide()); }
 function setNet(status, msg) { net = { status, msg: msg || '' }; }
 function roomLink() { return location.origin + location.pathname + '?room=' + state.online.code; }
+// ----- anonymous game stats: local matches are reported to the server's `track` function (online
+// matches are counted by the server itself). Only a random id this browser made up goes with them
+// (or the account, when logged in): never a name. Fire and forget: no answer is waited for. -----
+function devId() {
+  try {
+    let id = localStorage.getItem(KEY + '.dev');
+    if (!id || !/^[-\w]{8,48}$/.test(id)) { id = 'd' + Array.from(crypto.getRandomValues(new Uint8Array(12)), b => b.toString(16).padStart(2, '0')).join(''); localStorage.setItem(KEY + '.dev', id); }
+    return id;
+  } catch (e) { return null; }
+}
+function trackUrl() {
+  const hook = window.TTT_FIREBASE, c = (hook && hook.config) || FIREBASE_CONFIG;
+  return hook && hook.functions ? `http://${hook.functions.host}:${hook.functions.port}/${c.projectId}/us-central1/track` : `https://us-central1-${c.projectId}.cloudfunctions.net/track`;
+}
+function track(data) {
+  if (!configured() || (window.TTT_FIREBASE && window.TTT_FIREBASE.uid)) return;   // (the friend-game tests run without functions)
+  data.dev = devId();
+  try {
+    if (fb && fb.fns) { call('track', data).catch(() => {}); return; }       // the SDK is here: the call carries the account, if any
+    fetch(trackUrl(), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data }), keepalive: true }).catch(() => {});
+  } catch (e) { /* stats are never worth an error */ }
+}
+const localMode = () => (state.cpu === 'XO' ? 'cvc' : state.cpu ? 'cpu' : 'local');
+function trackStart() {
+  if (state.online) return;
+  const id = Array.from(crypto.getRandomValues(new Uint8Array(10)), b => b.toString(16).padStart(2, '0')).join('');
+  state.stats = { id, mode: localMode(), sent: false };
+  track({ ev: 'start', mode: state.stats.mode, id });
+}
+function trackEnd() {
+  const s = state.stats;
+  if (!s || s.sent || !state.winner || state.online) return;
+  s.sent = true;
+  const m = matchStats(state);
+  track({ ev: 'end', mode: s.mode, id: s.id, turns: m.turns, winner: m.winner, reason: m.reason, squares: m.squares });
+}
 function configured() { const c = window.TTT_FIREBASE && window.TTT_FIREBASE.config || FIREBASE_CONFIG; return !!(c && c.apiKey && c.databaseURL && !/PASTE_/.test(c.apiKey + c.databaseURL)); }
 function serverNow() { return Date.now() + serverOffset; }
 function roomRef(path) { return fb.m.ref(fb.db, 'rooms/' + state.online.code + (path ? '/' + path : '')); }
@@ -2160,6 +2422,9 @@ function loadFirebase() {
       f.fns = fnM.getFunctions(app, 'us-central1');
       if (hook && hook.functions) fnM.connectFunctionsEmulator(f.fns, hook.functions.host, hook.functions.port);
       await f.auth.authStateReady();                        // the account from before, if this browser logged in
+      if (redirectPending()) {                              // back from Google's sign-in page: finish that sign-in first
+        try { await authM.getRedirectResult(f.auth); } catch (e) { f.redirectError = e; }
+      }
       if (!f.auth.currentUser) await authM.signInAnonymously(f.auth);   // no account: a guest, which is all a friend game needs
       f.uid = f.auth.currentUser.uid;
     }
@@ -2692,7 +2957,7 @@ let prof = null;                             // the profile on show: { uid, user
 let hist = null;                             // a past game on the review board: { entry, view, zoom }
 let timeoutTry = { key: null, at: 0 };       // a matchmaking game's last call for time (at most every 2 s)
 const ACCT_KEY = KEY + '.acct';
-const NAV_SCREENS = ['login', 'username', 'find', 'leaderboard', 'profile', 'hreview', 'hreview-mini'];
+const NAV_SCREENS = ['login', 'username', 'find', 'leaderboard', 'profile', 'hreview', 'hreview-mini', 'howto'];
 const CASUAL_TIMERS = [30, 60, 180];
 
 function loggedIn() { return !!(acct.user && acct.profile && acct.profile.username); }
@@ -2700,6 +2965,38 @@ function isMM() { return !!(state.online && state.online.kind === 'mm'); }
 function call(name, data) { return fb.fnM.httpsCallable(fb.fns, name)(data || {}).then(r => r.data); }
 function rememberAccount(on) { try { if (on) localStorage.setItem(ACCT_KEY, '1'); else localStorage.removeItem(ACCT_KEY); } catch (e) { /* no storage */ } }
 function hadAccount() { try { return localStorage.getItem(ACCT_KEY) === '1'; } catch (e) { return false; } }
+// A Google sign-in that left the page (a redirect, when the browser would not open the sign-in window):
+// where the player was heading, kept until the page is back and the sign-in is finished.
+const LOGIN_KEY = KEY + '.login';
+function loginPending(v) {
+  try {
+    if (v === undefined) return localStorage.getItem(LOGIN_KEY);
+    if (v) localStorage.setItem(LOGIN_KEY, v); else localStorage.removeItem(LOGIN_KEY);
+  } catch (e) { /* no storage */ }
+  return null;
+}
+function redirectPending() {
+  if (loginPending()) return true;
+  try { return Object.keys(sessionStorage).some(k => k.startsWith('firebase:pendingRedirect')); } catch (e) { return false; }
+}
+// The page is back from a redirect sign-in (or a sign-in finished while it was away): the menu, logged
+// in, or the username to pick first. Never the login buttons again unless the sign-in failed.
+let loginFinishing = false;
+function finishLogin() {
+  const go = loginPending();
+  loginPending(null);
+  if (fb && fb.redirectError) {
+    const msg = authError(fb.redirectError);
+    fb.redirectError = null;
+    if (msg && !(acct.user)) { loginMsg = msg; state.screen = 'login'; save(); return; }
+  }
+  if (!go || !acct.user) return;
+  afterLogin = go === 'find' || go === 'profile' ? go : null;
+  loginFinishing = true;
+  if (state.screen !== 'username') state.screen = 'login';   // shows "Logging you in…" until the profile is in
+  afterAccount();
+  save();
+}
 // The SDK and a session, without any error on screen: the account screens say what went wrong themselves.
 async function connectQuiet() {
   if (!configured()) return false;
@@ -2718,6 +3015,7 @@ function onAuthUser(u) {
   acctUnsubs = [];
   acct = { user: uid ? { uid, email: u.email || '' } : null, profile: null, active: null, ready: !uid };
   rememberAccount(!!uid);
+  if (uid) track({ ev: 'login' });                     // a login (or a returning one) for the stats
   if (!uid && (state.screen === 'login' || state.screen === 'username')) return;   // a guest session starting: nothing on these screens changes
   if (uid) {
     acctUnsubs.push(fb.m.onValue(fb.m.ref(fb.db, 'users/' + uid), s => { acct.profile = s.val(); acct.ready = true; afterAccount(); render(); }, () => {}));
@@ -2728,8 +3026,9 @@ function onAuthUser(u) {
 // Logged in: a username first if there is none yet, then wherever the player was heading.
 function afterAccount() {
   if (!acct.user || !acct.ready) return;
-  if (!acct.profile || !acct.profile.username) { if (state.screen === 'login') { state.screen = 'username'; unameMsg = null; save(); } return; }
+  if (!acct.profile || !acct.profile.username) { if (state.screen === 'login') { state.screen = 'username'; unameMsg = null; loginFinishing = false; save(); } return; }
   if (state.screen !== 'login' && state.screen !== 'username') return;
+  loginFinishing = false;
   const go = afterLogin; afterLogin = null;
   if (go === 'profile') { openProfile(acct.user.uid, 'menu'); return; }
   state.screen = go === 'find' ? 'find' : 'menu';
@@ -2779,7 +3078,17 @@ async function loginWith(how) {
     if (!(await connectQuiet())) throw { code: 'auth/network-request-failed' };
     const A = fb.authM;
     const popup = (window.TTT_FIREBASE && window.TTT_FIREBASE.popup) || A.signInWithPopup;   // (the tests: Google through the emulator, without its popup page)
-    if (how === 'google') await popup(fb.auth, new A.GoogleAuthProvider());
+    if (how === 'google') {
+      try { await popup(fb.auth, new A.GoogleAuthProvider()); }
+      catch (e) {
+        if (!/popup-blocked|operation-not-supported|web-storage-unsupported/.test(String(e && e.code))) throw e;
+        loginPending(afterLogin || 'menu');                     // no sign-in window here: the whole page goes to Google and comes back
+        save();
+        await ((window.TTT_FIREBASE && window.TTT_FIREBASE.redirect) || A.signInWithRedirect)(fb.auth, new A.GoogleAuthProvider());   // (the tests: the emulator's sign-in, then a reload)
+        return;
+      }
+      onAuthUser(fb.auth.currentUser);                          // signed in: on to the username or the menu, without waiting for the event
+    }
     else if (how === 'create') await A.createUserWithEmailAndPassword(fb.auth, loginMail, loginPass);
     else await A.signInWithEmailAndPassword(fb.auth, loginMail, loginPass);
     loginPass = '';
@@ -2814,6 +3123,7 @@ async function logout() {
   stopSearch();
   if (fb && fb.auth) await fb.authM.signOut(fb.auth).catch(() => {});
   rememberAccount(false);
+  loginFinishing = false; loginPending(null);
   acct = { user: null, profile: null, active: null, ready: true };
   prof = null; state.screen = 'menu'; commit();
 }
@@ -3003,6 +3313,12 @@ function signed(d) { return (d > 0 ? '+' : d < 0 ? '−' : '±') + Math.abs(d); 
 
 /* ----- the screens ----- */
 function renderLogin() {
+  if (acct.user || loginFinishing) {                       // signed in: the profile is on its way, then the username or the menu
+    return `<main class="scr setup acct-scr">
+    <div class="bar"><button class="back" data-act="menu" aria-label="Back to the main menu">${CHEV}Menu</button>
+      <div class="ttl"><b>Log in</b><small>Signed in</small></div></div>
+    <div class="setup-box"><div class="searching" role="status" aria-live="polite"><div class="spinner" aria-hidden="true">${toon('X')}${toon('O')}</div><h2>Logging you in…</h2></div></div></main>`;
+  }
   const msg = loginMsg ? `<div class="${loginMsg.ok ? 'status ok' : 'warn'}" role="status">${esc(loginMsg.text)}</div>` : '';
   const off = loginBusy ? ' disabled' : '';
   return `<main class="scr setup acct-scr">
@@ -3144,6 +3460,8 @@ app.addEventListener('click', e => {
   const el = e.target.closest('[data-act]');
   if (!el || el.disabled) return;
   const act = el.dataset.act;
+  if (act === 'explain') { e.preventDefault(); openExplain(el.dataset.t); return; }    // never a move: open over anything, even mid-turn
+  if (act === 'explain-close') { closeExplain(); return; }
   if (act === 'dismiss') { if (Date.now() >= flashReady) dismissFlash(); return; }   // not before the animation is over
   const free = ['pause', 'pause-resume', 'pause-main', 'pause-back', 'pause-leave', 'leave', 'lobby-back', 'menu', 'find-again', 'profile', 'prof-back', 'hist-open', 'hist-sq', 'hist-back', 'hist-close', 'leaderboard', 'rejoin', 'host-retry', 'share', 'rematch', 'timer', 'review', 'review-sq', 'review-back', 'results'];
   if (act === 'pause') { menuOpen = true; menuStep = 'main'; render(); scheduleCpu(); return; }
@@ -3182,13 +3500,15 @@ app.addEventListener('click', e => {
     if (state.winner) { state.screen = 'review'; state.zoom = null; render(); }
   } else if (act === 'results') {
     if (state.winner) { state.screen = 'win'; state.zoom = null; render(); }
+  } else if (act === 'howto') {
+    state.screen = 'howto'; commit();
   } else if (act === 'menu') {
     state.screen = 'menu'; state.confirm = null; menuNote = ''; commit();
   } else if (act === 'timer') {
     if (isHost()) { state.setup.timer = TIMER_OPTIONS.includes(Number(el.dataset.v)) ? Number(el.dataset.v) : 0; commit(); dbSetup({ timer: state.setup.timer }); }
   } else if (act === 'rematch') {               // the same settings again
     if (state.online) { rematchOnline(); return; }
-    if (startMatch(state, RNG)) commit();
+    if (startMatch(state, RNG)) { trackStart(); commit(); }
   } else if (act === 'online-go') {
     state.screen = 'online'; commit();
   } else if (act === 'find-go') {               // the main menu: Find Match (or back to the match in progress)
@@ -3306,7 +3626,7 @@ app.addEventListener('click', e => {
     state.confirm = null; commit();
   } else if (act === 'start') {
     if (state.online) { startOnline(); return; }
-    if (startMatch(state, RNG)) commit();
+    if (startMatch(state, RNG)) { trackStart(); commit(); }
   }
 });
 // A tap inside a scrolling list never moves it: anything the browser does on its own (bringing a box it
@@ -3327,7 +3647,7 @@ app.addEventListener('click', () => {
 // to bring a half-hidden box into view): the label's own click is cancelled and the box flipped here.
 app.addEventListener('click', e => {
   const label = e.target.closest && e.target.closest('label.chk');
-  if (!label || e.target.matches('input')) return;
+  if (!label || e.target.matches('input') || e.target.closest('.qbtn')) return;   // the "?" opens the game's explainer instead
   e.preventDefault();
   const box = label.querySelector('input[data-t]');
   if (!box || box.disabled) return;
@@ -3379,6 +3699,7 @@ function submitWord() {
 }
 // Physical keyboard, for desktops: Wordle typing and Hangman letters.
 document.addEventListener('keydown', e => {
+  if (explainT) { if (e.key === 'Escape' || e.key === 'Enter') closeExplain(); return; }
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   if (e.target && e.target.tagName === 'INPUT') return;   // typing a name
   const type = zoomedType();
@@ -3391,7 +3712,7 @@ document.addEventListener('keydown', e => {
 });
 document.addEventListener('contextmenu', e => e.preventDefault());
 
-function commit() { save(); render(); scheduleCpu(); }
+function commit() { trackEnd(); save(); render(); scheduleCpu(); }
 function boot() {
   clockTimer = setInterval(tick, 250);
   const room = new URLSearchParams(location.search).get('room');
@@ -3399,7 +3720,10 @@ function boot() {
   if (room && validCode(room.toUpperCase()) && !state.online) { joinCode = room.toUpperCase(); state.screen = 'join'; }   // a shared link: straight to joining
   render(); scheduleCpu();
   if (state.online) resumeOnline();
-  else if (hadAccount()) { acctLoading = true; connectQuiet().then(() => { acctLoading = false; render(); }); }   // logged in before: the account, in the background
+  else if (hadAccount() || redirectPending()) {             // logged in before, or back from Google's sign-in page: the account, in the background
+    acctLoading = true; render();
+    connectQuiet().then(() => { acctLoading = false; finishLogin(); commit(); });
+  }
 }
 
 /* ----- the computer's turn: a pause to think, a zoom into its square, its choice shown, then the move ----- */
@@ -3407,7 +3731,7 @@ function cpuTurn() { return !!state.cpu && state.cpu.includes(state.turn) && !st
 // Runs after every render: arms the computer's next step whenever it is its turn and nothing else is going on.
 function scheduleCpu() {
   clearTimeout(cpuTimer); cpuTimer = null;
-  if (!cpuTurn() || state.flash || state.done || state.confirm || menuOpen) return;
+  if (!cpuTurn() || state.flash || state.done || state.confirm || menuOpen || explainT) return;
   if (state.screen === 'board') { cpuPlan = null; cpuTimer = setTimeout(cpuSpot, CPU_MS.think); return; }
   if (state.screen !== 'mini') return;
   if (cpuPlan && cpuPlan.square === state.zoom && state.spot) return;   // the glow is still showing; cpuZoom takes it from here
@@ -3434,7 +3758,7 @@ function cpuZoom() {
 }
 function cpuAct() {
   cpuTimer = null;
-  if (!cpuTurn() || state.screen !== 'mini' || !cpuPlan || cpuPlan.square !== state.zoom || menuOpen) return;
+  if (!cpuTurn() || state.screen !== 'mini' || !cpuPlan || cpuPlan.square !== state.zoom || menuOpen || explainT) return;
   const plan = cpuPlan, type = state.squares[plan.square].mini.type;
   if (!plan.stage && (type === 'memory' || type === 'wordle' || type === 'hexapawn' || type === 'mastermind')) {   // show the choice first, as a person would
     if (type === 'memory') state.pick = plan.move[0]; else if (type === 'hexapawn') hpSel = { sq: plan.square, from: plan.move[0] };
@@ -3455,7 +3779,7 @@ function armFlash() {
   flashReady = Date.now() + ms;                   // no tapping the result away while the move is still animating
   let hold = FLASH_MS[f.kind] || 800;
   if (f.type === 'memory' && f.kind === 'move') hold = MEMORY_MS;
-  if (f.type === 'pig' && f.kind === 'move') hold = FLASH_MS.card;   // a bust or a bank gets a proper card
+  if (f.type === 'pig' && f.kind === 'move') hold = f.note === 'bust' ? FLASH_MS.card : FLASH_MS.move;   // a bust gets a proper card; a bank just its points moving over
   flashTimer = setTimeout(dismissFlash, ms + hold);
 }
 function dismissFlash() {
@@ -3489,7 +3813,7 @@ function load() {
       if (s.screen === 'review' || s.screen === 'review-mini') s.screen = s.winner ? 'win' : 'board';
       const mm = s.online && s.online.kind === 'mm' && typeof s.online.game === 'string' && /^[-\w]{8,40}$/.test(s.online.game);
       if (!mm && !(s.online && (s.online.role === 'host' || s.online.role === 'guest') && validCode(s.online.code))) s.online = null;
-      if (['login', 'username', 'find', 'leaderboard', 'profile', 'hreview', 'hreview-mini'].includes(s.screen)) s.screen = mm ? 'board' : 'menu';
+      if (['login', 'username', 'find', 'leaderboard', 'profile', 'hreview', 'hreview-mini', 'howto'].includes(s.screen)) s.screen = mm ? 'board' : 'menu';
       if (s.online) {
         if (s.online.me !== 'X' && s.online.me !== 'O') s.online.me = null;
         if (!Number.isInteger(s.online.shownSeq)) s.online.shownSeq = null;

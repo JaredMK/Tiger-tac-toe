@@ -66,6 +66,16 @@
       "$uid": {
         ".read": "auth != null && auth.uid === $uid"
       }
+    },
+    "stats": {
+      ".read": "auth != null && auth.token.admin === true"
+    },
+    "statsSeen": {
+      "match": {
+        ".indexOn": [
+          "t0"
+        ]
+      }
     }
   }
 }

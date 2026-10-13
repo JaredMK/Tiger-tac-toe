@@ -61,8 +61,12 @@ a button returns to the results with "Rematch" (the same settings and opponent a
 - If the main board fills with no three in a row, the player with more squares wins.
 - Claimed squares stay on view: the board shows the owner's mark over the mini-game's final state, and
   tapping one opens that final state read-only with a "Won by" banner and every secret revealed (the
-  Wordle and Hangman words, the Higher/lower number, the Battleship cell, all Memory cards). Looking
+  Wordle and Hangman words, the Higher/lower number, the Battleship ship, all Memory cards). Looking
   never costs a turn.
+- Every mini-game has a "?" in the top-right corner of its full view: a short card with how to play
+  and how to win. It never uses a turn, and a tap closes it. The same "?" sits on each game in the
+  Advanced checklist, and "How to Play" on the main menu shows the core rules with the list of
+  mini-games, each opening its card.
 
 Each square is assigned one of these at random when the match starts (duplicates are fine):
 
@@ -70,7 +74,7 @@ Each square is assigned one of these at random when the match starts (duplicates
 | --- | --- |
 | Tic-tac-toe | 3×3, three in a row |
 | Connect 4 | The standard 7 columns × 6 rows, pieces drop to the lowest open cell, four in a row in any direction |
-| Battleship | 3×3, one hidden cell chosen by the computer; whoever reveals it wins, misses stay marked |
+| Battleship | 4×4 sea with one hidden ship shared by both players: 1 to 4 cells long (Patrol Boat, Destroyer, Submarine, Battleship), across or down, placed at random. Its name and a silhouette of its parts show under the grid. A move fires at one cell: a hit shows a burst, a miss a splash, and the ship's direction is never shown. Whoever hits its last part sinks it (the whole ship shows and goes under) and wins |
 | Wordle | One hidden common 5-letter word shared by both players; a move is a guess with green/yellow/grey feedback, no guess limit. Guesses must be real words (checked against an embedded list of about 15,000); a non-word shows "Not a word" and does not use the turn |
 | Hangman | Hidden 5–7 letter word; guess a letter. A right letter is revealed and you guess again at once; a wrong letter ends your turn. Revealing the last letter wins. The miniature on the board shows the wrong letters themselves, crossed out in red as in the full view, wrapping onto more lines as they add up |
 | Hex | 4×4 hex grid; X connects left to right, O connects top to bottom |
@@ -78,14 +82,14 @@ Each square is assigned one of these at random when the match starts (duplicates
 | Dice race | A winding path of 15 numbered spaces and a Finish. Roll a die and your piece hops that many spaces; reaching or passing the Finish wins |
 | Memory | 3×3 face-down cards with exactly one matching pair; a move flips two cards for 2 seconds. Flipping the pair wins |
 | Candy race | A winding path of 12 randomly coloured spaces (any three in a row are all different colours) from Start to a Finish shown in all four colours; a spin of the colour wheel hops your token to the next space of that colour. No such space ahead means you reach the Finish and win |
-| Coin flip | Six coins showing X or O, three of each to start. Flip turns up to 3 of the other side's coins (all of them if they have 3 or fewer, otherwise 3 picked at random); each lands X or O at random. All six the same wins for that symbol's player |
-| Pig | Each player has a banked score. A move is a whole push-your-luck turn: roll a die, and a number not yet rolled this turn joins the pot; then roll again or bank. Banking adds the pot to your score and ends the move; a repeated number busts, losing the pot (at most six rolls). First to a banked 20 wins |
+| Coin flip | Five coins: two X, two O and one mystery coin (?) that belongs to nobody, in random places. Flip turns up to 3 coins that aren't yours, the other side's and the mystery coin (all of them if there are 3 or fewer, otherwise 3 picked at random); each lands X or O at random, the mystery coin too. All five the same wins for that symbol's player (so with no coin of your own left, a flip can hand the square to the other side) |
+| Pig | Each player has a banked score. A move is a whole push-your-luck turn: roll a die, and a number not yet rolled this turn joins the points at risk (a small +N by your score, with this turn's dice in a row); then roll again or bank. Banking moves them into your score and ends the move; a repeated number busts, losing them (at most six rolls). Once your score and the points at risk reach 21, only Bank is left. First to a banked 21 wins |
 | Treasure hunt | 5×5 grid with one hidden treasure. A move digs a cell: the treasure wins, otherwise the cell shows its distance to the treasure in steps up, down, left or right, coloured hot to cold. Everything dug stays visible |
 | Hexapawn | 3 columns × 4 rows; each side has 3 pawns on its home row (X on the bottom, O on the top). A move is one pawn stepping one square straight forward into an empty square, or capturing an opposing pawn one square diagonally forward. Tap a pawn to see its moves; the pawn slides over and a captured pawn is knocked off the board. You win the square by moving a pawn onto the other side's home row, or by making a move after which the other side has no legal move there (capturing all their pawns included). A player with no move in this square just plays elsewhere: they only lose it when the other side moves and leaves them stuck |
 | Mastermind | One hidden code shared by both players: 4 pegs from 6 colours, no colour twice, picked by the computer. A move is one guess of 4 different colours (tap a slot, then a colour; tap a filled slot to clear it). Feedback is a solid marker for each right colour in the right spot and a hollow marker for each right colour in the wrong spot, always solid first, so the order says nothing about which peg is which. Every guess and its markers stay on show, no guess limit; guessing the exact code wins. Each colour also carries a symbol (circle, square, triangle, diamond, star, plus) |
 
 Hidden information (the Wordle and Hangman words, the Higher/lower number, the Memory cards, the
-Battleship cell, the Mastermind code) is never shown on the board or in a mini-game before it is revealed.
+Battleship ship, the Mastermind code) is never shown on the board or in a mini-game before it is revealed.
 
 ## Playing online
 
@@ -275,15 +279,17 @@ helps the other player too.
 
 Inside a square: Tic-tac-toe and Hexapawn play full minimax; Connect 4 searches five moves ahead with alpha-beta
 and a threat count; Hex spots wins and blocks through shortest-connection distances, one reply ahead;
-Battleship takes any unrevealed cell; Treasure hunt digs only cells consistent with every clue, the
+Battleship fires where the ship can still fit given every hit and miss (around a hit once there is
+one), and between equals at the cell most likely to sink it; Treasure hunt digs only cells consistent with every clue, the
 one that best narrows the rest; Higher/lower guesses the midpoint; Wordle keeps the words consistent
 with all feedback and guesses the one that splits them best; Mastermind keeps the list of codes
 consistent with every guess so far and plays the guess (any of the 360 codes) whose worst-case
 answer leaves the fewest, which cracks any code in at most 5 guesses; Hangman takes the letter most common in
 the words still consistent with the pattern; Memory remembers every card shown and flips a known
-pair, else unseen cards; Coin flip flips the most coins allowed; Pig keeps rolling while the bust risk
+pair, else unseen cards; Coin flip knows its chance of turning every coin its way, and the small
+chance of handing the square over when none of its own are left; Pig keeps rolling while the bust risk
 is acceptable and banks around 8 to 10, bolder when behind and safer when ahead, always when the bank
-would reach 20. On the board, a Hexapawn square is weighed by how close each side's leading pawn is to
+would reach 21. On the board, a Hexapawn square is weighed by how close each side's leading pawn is to
 the far row (one move away when a win is on), since nobody has to move in a square and minimax lines
 that rely on the other side being forced to move do not apply there.
 
@@ -298,7 +304,7 @@ https://jaredmk.github.io/Tiger-tac-toe/. After a change, publish it with one co
 
 It commits everything and pushes `main`. Two GitHub Actions workflows take it from there:
 
-- `pages.yml` publishes the site (only the web files: `index.html`, `engine.js`, `styles.html`)
+- `pages.yml` publishes the site (only the web files: `index.html`, `admin.html`, `engine.js`, `styles.html`)
   within a minute or so, on every push.
 - `firebase.yml` runs when the server changed (`functions/`, `engine.js`, `database.rules.json`,
   `firebase.json`): it runs the engine tests and the server tests on the Firebase Emulator Suite,
@@ -314,6 +320,44 @@ git checkout -B main
 git remote add origin https://github.com/JaredMK/Tiger-tac-toe.git
 git push -u origin main
 ```
+
+## Game stats and the admin dashboard
+
+Every match in every mode is counted, anonymously: two players on one phone, against the computer,
+computer against computer, friend code, casual and ranked. Phones report their local matches to the
+`track` Cloud Function (a guest's with a random id the browser made up, never a name); the server
+counts online matches itself, where it runs or saves them. Nobody can write the stats directly, and
+only the admin can read them. Stats start from the first deploy with this feature (older matches were
+never counted).
+
+Per mini-game: times played; how each one ended (won, draw that reset the square, or left open when
+the match ended); average moves the winner made in it, the loser, and in total; X and O win rates.
+"Moves" are the turns a side spent in that square (a Pig roll or a Hangman letter that earns another go
+is part of the same turn). Overall: logins and active players per day, week and month (UTC; a login is
+an account signing in or coming back to the game); new accounts; matches started and finished by mode;
+average match length in turns and minutes; abandon, resign and timeout rates; how often X, who moves
+first, wins.
+
+The dashboard is https://jaredmk.github.io/Tiger-tac-toe/admin.html: tables and charts, with the
+mini-game table sortable (by average winner moves to find games that are too fast or too slow) and
+filterable by mode. It opens only for the account with the admin flag; the database rules refuse the
+stats to everyone else.
+
+### Making yourself the admin (once)
+
+1. Log in to the game with the account you want (Google or email) and pick its username, if you have
+   not yet.
+2. On GitHub, open the `Tiger-tac-toe` repository, then **Actions**, then **Make admin (stats
+   dashboard)** in the list on the left.
+3. Click **Run workflow**, type that username, leave the action on **grant**, and click the green
+   **Run workflow** button. It takes about a minute; a green tick means done.
+4. Open admin.html and log in with the same account.
+
+The same workflow with **revoke** takes the flag away. Under the hood it runs `scripts/make-admin.js`,
+which sets the `admin` custom claim on that account with the `FIREBASE_SERVICE_ACCOUNT` key; you can
+also run it yourself (`node scripts/make-admin.js <username>`, with `GOOGLE_APPLICATION_CREDENTIALS`
+pointing at a key). The username you type shows in the workflow's log, which is public for a public
+repository; usernames are public anyway (the leaderboard).
 
 ## Tests
 
@@ -335,8 +379,11 @@ Functions; it needs Java): usernames, the security rules refusing direct writes 
 history and games, two (and six) players searching at once each paired exactly once, rating ranges
 widening with the wait, a full ranked match with hidden values unreadable and illegal or out-of-turn
 moves refused, Memory's two-step move, timeouts with both players away played out by the sweep,
-resigning, casual games leaving ratings alone, the leaderboard entry after five ranked games, and
-friend-code games saved to the history as unrated:
+resigning, casual games leaving ratings alone, the leaderboard entry after five ranked games,
+friend-code games saved to the history as unrated, and the game stats (local matches reported by a
+phone counted once and bad reports refused, logins and new accounts, ranked, casual and friend-code
+matches counted by the server, and the stats readable only by the admin, with `make-admin.js` giving
+and taking back the flag). `test/stats-rules.test.js` covers what each event adds to the stats:
 
 ```sh
 npm install && npm install --prefix functions

@@ -12,7 +12,7 @@ const TYPES = ['ttt', 'c4', 'bs', 'wordle', 'hangman', 'hex', 'hilo', 'dice', 'm
 const INFO = {
   ttt:         { name: 'Tic-Tac-Toe',  hint: 'Three in a row wins' },
   c4:          { name: 'Connect 4',    hint: 'Pieces drop. Four in a row wins' },
-  bs:          { name: 'Battleship',   hint: 'Find the hidden ship' },
+  bs:          { name: 'Battleship',   hint: 'Sink the hidden ship. Its size is shown below' },
   wordle:      { name: 'Wordle',       hint: 'Guess the hidden 5-letter word' },
   hangman:     { name: 'Hangman',      hint: 'Right letter: go again. Last letter wins' },
   hex:         { name: 'Hex',          hint: 'X joins left to right, O joins top to bottom' },
@@ -20,8 +20,8 @@ const INFO = {
   dice:        { name: 'Dice Race',    hint: 'Roll and race along 15 spaces. First to the finish wins' },
   memory:      { name: 'Memory',       hint: 'Flip two cards. Find the matching pair' },
   candy:       { name: 'Candy Race',   hint: 'Spin, then hop to the next space of that colour' },
-  coins:       { name: 'Coin Flip',    hint: "Flip up to 3 of the other side's coins. All six the same wins" },
-  pig:         { name: 'Pig',          hint: 'Roll and bank. A repeated number busts the pot. First to 20 wins' },
+  coins:       { name: 'Coin Flip',    hint: "Flip up to 3 coins that aren't yours. All five the same wins" },
+  pig:         { name: 'Pig',          hint: "Roll and bank. A repeated number loses this turn's points. First to 21 wins" },
   hunt:        { name: 'Treasure Hunt', hint: 'Dig a cell: the number is its distance to the treasure. Dig it up to win' },
   hexapawn:    { name: 'Hexapawn',     hint: 'Step forward, capture diagonally. Reach the far row or leave them stuck' },
   mastermind:  { name: 'Mastermind',   hint: 'Crack the hidden 4-colour code' },
@@ -33,8 +33,10 @@ const HEX_N = 4;
 const HILO = { lo: 1, hi: 20 };
 const CANDY = { len: 12, colors: ['red', 'yellow', 'green', 'blue'], gap: 3 };   // same colour at least 3 spaces apart
 const NAME_MAX = 12;
-const COINS = { n: 6, max: 3 };
-const PIG = { goal: 20, maxRolls: 6 };
+const COINS = { n: 5, max: 3, mystery: '?' };   // 2 X, 2 O and one mystery coin that belongs to nobody until it is flipped
+const PIG = { goal: 21, maxRolls: 6 };
+// Battleship: one hidden ship on a 4x4 grid, 1 to 4 cells long, lying across or down. Both players fire at it.
+const BS = { n: 4, names: { 4: 'Battleship', 3: 'Submarine', 2: 'Destroyer', 1: 'Patrol Boat' } };
 const HUNT = { n: 5 };
 const DICE_GOAL = 16;   // 15 numbered spaces, then the finish
 const MEMORY = { shapes: ['circle', 'square', 'triangle', 'diamond'], colors: ['green', 'yellow', 'purple', 'orange'] };
@@ -349,6 +351,19 @@ function upgradeMini(mini) {
     if (Number.isInteger(mini.last)) mini.last = at(mini.last);
     if (Array.isArray(mini.winCells)) mini.winCells = mini.winCells.map(at);
   }
+  // ...and from before Battleship grew to 4x4 with ships of 1 to 4 cells: the old 3x3 sea sits in the
+  // top-left corner and its one-cell ship becomes a Patrol Boat.
+  if (mini && mini.type === 'bs' && Array.isArray(mini.revealed) && mini.revealed.length === 9) {
+    const at = k => Math.floor(k / 3) * BS.n + (k % 3);
+    const revealed = new Array(BS.n * BS.n).fill(null);
+    mini.revealed.forEach((c, k) => { revealed[at(k)] = c; });
+    mini.revealed = revealed; mini.len = 1;
+    if (Number.isInteger(mini.hidden)) { mini.ship = [at(mini.hidden)]; delete mini.hidden; }
+    mini.hits = mini.ship && revealed[mini.ship[0]] ? mini.ship.slice() : [];
+    if (Number.isInteger(mini.last)) mini.last = at(mini.last);
+    if (Array.isArray(mini.winCells)) mini.winCells = mini.winCells.map(at);
+  }
+  if (mini && mini.type === 'bs' && !Array.isArray(mini.hits)) mini.hits = [];   // an empty list does not survive the database
   return mini;
 }
 function anyMove(state, p) { return state.squares.some(s => !s.owner && canMove(s.mini, p)); }
@@ -368,11 +383,27 @@ function candyTrack(rng) {
   return track;
 }
 
+// Battleship: a ship of random length (1 to 4) placed across or down, anywhere it fits.
+function bsShip(rng) {
+  const len = 1 + randInt(rng, 4), across = randInt(rng, 2) === 0, N = BS.n;
+  const r = randInt(rng, across ? N : N - len + 1), c = randInt(rng, across ? N - len + 1 : N);
+  return Array.from({ length: len }, (_, k) => (across ? r * N + c + k : (r + k) * N + c));
+}
+// Every way a ship of `len` cells fits on the grid (a one-cell ship counted once).
+function bsPlacements(len) {
+  const out = [], N = BS.n;
+  for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+    if (c + len <= N) out.push(Array.from({ length: len }, (_, k) => r * N + c + k));
+    if (len > 1 && r + len <= N) out.push(Array.from({ length: len }, (_, k) => (r + k) * N + c));
+  }
+  return out;
+}
+
 function newMini(type, rng) {
   switch (type) {
     case 'ttt':         return { type, cells: new Array(9).fill(null), last: null };
     case 'c4':          return { type, cells: new Array(C4.cols * C4.rows).fill(null), last: null };
-    case 'bs':          return { type, hidden: randInt(rng, 9), revealed: new Array(9).fill(null), last: null };
+    case 'bs':          { const ship = bsShip(rng); return { type, len: ship.length, ship, revealed: new Array(BS.n * BS.n).fill(null), hits: [], last: null }; }   // revealed: who fired at each cell; hits: the cells that hit
     case 'wordle':      return { type, word: WORDS5[randInt(rng, WORDS5.length)].toUpperCase(), guesses: [] };
     case 'hangman':     return { type, word: WORDS_HANG[randInt(rng, WORDS_HANG.length)].toUpperCase(), letters: [] };
     case 'hex':         return { type, cells: new Array(HEX_N * HEX_N).fill(null), last: null };
@@ -380,7 +411,7 @@ function newMini(type, rng) {
     case 'dice':        return { type, totals: { X: 0, O: 0 }, last: null };
     case 'memory':      return { type, cards: memoryDeck(rng), flips: 0, seen: [], last: null };   // seen: cards shown so far
     case 'candy':       return { type, track: candyTrack(rng), pos: { X: -1, O: -1 }, last: null };
-    case 'coins':       return { type, coins: shuffle(['X', 'X', 'X', 'O', 'O', 'O'], rng), last: null };
+    case 'coins':       return { type, coins: shuffle(['X', 'X', 'O', 'O', COINS.mystery], rng), last: null };
     case 'pig':         return { type, bank: { X: 0, O: 0 }, turn: null, last: null };   // turn = the push-your-luck turn in progress
     case 'hunt':        return { type, treasure: randInt(rng, HUNT.n * HUNT.n), dug: new Array(HUNT.n * HUNT.n).fill(null), last: null };
     case 'hexapawn':    return { type, cells: ['O', 'O', 'O', null, null, null, null, null, null, 'X', 'X', 'X'], last: null };
@@ -454,6 +485,7 @@ function newState(rng) {
     notice: null,             // short message over the Wordle keyboard ("Not a word")
     winner: null, winLine: null, winReason: null, counts: null,
     lastSquare: null, lastBy: null, moves: 0,
+    sqlog: [],                // every mini-game that ended this match: { t: type, end: 'won' | 'draw', w: winner, X, O: turns each side spent in it }
   };
 }
 // Start a match from the setup screen: tidy the names, draw nine squares from the ticked games.
@@ -478,7 +510,7 @@ function startMatch(state, rng) {
   state.zoom = null; state.flash = null; state.done = null; state.stamp = null; state.lock = null;
   state.draft = ''; state.pick = null; state.pickSq = null; state.sel = []; state.confirm = null; state.notice = null;
   state.winner = null; state.winLine = null; state.winReason = null; state.counts = null;
-  state.lastSquare = null; state.lastBy = null; state.moves = 0;
+  state.lastSquare = null; state.lastBy = null; state.moves = 0; state.sqlog = [];
   return true;
 }
 // A started match in one call. setup may carry names and games (a map, or an array of the ticked types).
@@ -546,11 +578,15 @@ function applyMove(mini, p, m, rng) {
       return { ok: true, outcome: 'continue' };
     }
     case 'bs': {
-      if (!idx(9)) return { ok: false, reason: 'bad' };
+      // One shot at one cell. A hit or a miss is shown; the ship's direction never is. The shot that
+      // hits its last cell sinks it and claims the square.
+      if (!idx(BS.n * BS.n)) return { ok: false, reason: 'bad' };
       if (mini.revealed[m]) return { ok: false, reason: 'taken' };
       mini.revealed[m] = p; mini.last = m;
-      if (m === mini.hidden) return { ok: true, outcome: 'win', cells: [m] };
-      return { ok: true, outcome: 'continue', note: 'miss' };
+      if (!mini.ship.includes(m)) return { ok: true, outcome: 'continue', note: 'miss' };
+      mini.hits.push(m);
+      if (mini.ship.every(k => mini.hits.includes(k))) return { ok: true, outcome: 'win', cells: mini.ship.slice(), note: 'sunk' };
+      return { ok: true, outcome: 'continue', note: 'hit' };
     }
     case 'wordle': {
       const g = typeof m === 'string' ? m.toUpperCase() : '';
@@ -615,18 +651,21 @@ function applyMove(mini, p, m, rng) {
       return { ok: true, outcome: 'continue', note: 'spin' };
     }
     case 'coins': {
-      // One move flips up to three of the other side's coins: all of them when they have three or
-      // fewer, otherwise three picked at random. The player's own coins are never flipped.
+      // One move flips up to three coins that aren't the player's: the other side's and the mystery
+      // coin (it belongs to nobody until it lands). All of them when there are three or fewer,
+      // otherwise three picked at random. The player's own coins are never flipped. Five the same wins;
+      // with no coin of their own a player's flip can even hand the square to the other side.
       if (m !== 'flip') return { ok: false, reason: 'bad' };
       const r = needRng(rng);
-      const theirs = mini.coins.map((c, k) => (c === other(p) ? k : -1)).filter(k => k >= 0);
+      const theirs = mini.coins.map((c, k) => (c !== p ? k : -1)).filter(k => k >= 0);
       if (!theirs.length) return { ok: false, reason: 'none' };
       const picked = (theirs.length > COINS.max ? shuffle(theirs, r).slice(0, COINS.max) : theirs).sort((a, b) => a - b);
+      const was = picked.map(k => mini.coins[k]);
       const results = picked.map(() => (randInt(r, 2) ? 'O' : 'X'));
       picked.forEach((k, j) => { mini.coins[k] = results[j]; });
-      mini.last = { by: p, flipped: picked, results };
+      mini.last = { by: p, flipped: picked, results, was };
       const sym = mini.coins[0];
-      if (mini.coins.every(c => c === sym)) return { ok: true, outcome: 'win', winner: sym, cells: [0, 1, 2, 3, 4, 5] };
+      if (sym !== COINS.mystery && mini.coins.every(c => c === sym)) return { ok: true, outcome: 'win', winner: sym, cells: mini.coins.map((c, k) => k) };
       return { ok: true, outcome: 'continue', note: 'flip' };
     }
     case 'pig': {
@@ -644,6 +683,7 @@ function applyMove(mini, p, m, rng) {
         return { ok: true, outcome: 'continue', note: 'bank' };
       }
       if (t && t.rolls.length >= PIG.maxRolls) return { ok: false, reason: 'maxrolls' };   // a seventh roll can only bust
+      if (t && mini.bank[p] + t.pot >= PIG.goal) return { ok: false, reason: 'enough' };   // enough to win: only Bank is left
       const n = 1 + randInt(needRng(rng), 6);
       if (t && t.rolls.includes(n)) {
         mini.last = { by: p, kind: 'bust', roll: n, rolls: t.rolls.concat(n), pot: t.pot };   // the pot is lost, the bank is not
@@ -702,7 +742,7 @@ const AI = { win: 1000, block: 600 };
 function publicMini(mini) {
   switch (mini.type) {
     case 'ttt': case 'c4': case 'hex': case 'hexapawn': return { type: mini.type, cells: mini.cells.slice() };
-    case 'bs':      return { type: 'bs', revealed: mini.revealed.slice() };
+    case 'bs':      return { type: 'bs', len: mini.len, revealed: mini.revealed.slice(), hits: mini.hits.slice() };
     case 'wordle':  return { type: 'wordle', guesses: mini.guesses.map(g => ({ by: g.by, word: g.word, marks: g.marks.slice() })) };
     case 'mastermind': return { type: 'mastermind', guesses: mini.guesses.map(g => ({ by: g.by, code: g.code.slice(), solid: g.solid, hollow: g.hollow })) };
     case 'hangman': {
@@ -746,6 +786,11 @@ function hangmanCandidates(pm) {
     if (ok) out.push(W);
   }
   return out;
+}
+// Battleship: the placements of the ship that still fit every hit and every miss.
+function bsCandidates(pm) {
+  const miss = new Set(pm.revealed.map((r, k) => (r && !pm.hits.includes(k) ? k : -1)).filter(k => k >= 0));
+  return bsPlacements(pm.len).filter(cells => pm.hits.every(h => cells.includes(h)) && !cells.some(k => miss.has(k)));
 }
 function huntCandidates(pm) {
   const out = [];
@@ -815,13 +860,13 @@ function candyExpected(track) {
   }
   return E;
 }
-const COIN_NEEDS = [0, 2, 2.67, 3.14, 3.92, 4.55, 5.22];   // expected flips to turn n opposing coins, flipping three at a time
+const COIN_NEEDS = [0, 2, 2.67, 3.14, 3.92, 4.55, 5.22];   // expected flips to turn n coins that aren't yours, flipping three at a time
 function needsOf(pm, p) {
   switch (pm.type) {
     case 'ttt':     return lineNeeds(pm.cells, 3, 3, 3, p);
     case 'c4':      return lineNeeds(pm.cells, C4.cols, C4.rows, C4.k, p, c4Playable(pm.cells));
     case 'hex':     return hexDist(pm.cells, p);
-    case 'bs':      return (pm.revealed.filter(r => !r).length + 1) / 2;
+    case 'bs':      { const n = bsCandidates(pm).length; return Math.max(1, pm.len - pm.hits.length + (n <= 1 ? 0 : Math.log2(n) / 2)); }
     case 'wordle':  { const n = wordleCandidates(pm).length; return n <= 1 ? 1 : Math.min((n + 1) / 2, 1 + Math.log(n) / Math.log(6)); }
     case 'hangman': { const n = hangmanCandidates(pm).length; const missing = pm.pattern.filter(ch => !ch).length; return n <= 1 ? 1 : 1 + Math.min(missing, 1 + Math.log(n)) / 2; }
     case 'hilo':    { const r = pm.hi - pm.lo + 1; return r <= 1 ? 1 : Math.log2(r + 1); }
@@ -1054,8 +1099,23 @@ function localBest(pm, me, rng) {
       return { move: best.move, win: best.v === 100, after: { type: 'hexapawn', cells: best.after } };
     }
     case 'bs': {
-      const open = pm.revealed.map((r, i) => (r ? -1 : i)).filter(i => i >= 0);
-      return { move: open[randInt(rng, open.length)], q: 1 / open.length, shared: true };
+      // Fire where the ship most often still fits, given every hit and miss (so around a hit once there
+      // is one); between equals, the shot most likely to sink it.
+      const cand = bsCandidates(pm), open = pm.revealed.map((r, i) => (r ? -1 : i)).filter(i => i >= 0);
+      if (!cand.length) return { move: open[randInt(rng, open.length)], q: 0, shared: true };
+      const cover = new Array(BS.n * BS.n).fill(0), sinks = new Array(BS.n * BS.n).fill(0);
+      for (const cells of cand) {
+        const left = cells.filter(k => !pm.hits.includes(k));
+        for (const k of left) cover[k]++;
+        if (left.length === 1) sinks[left[0]]++;
+      }
+      let top = [];
+      for (const k of open) {
+        if (!top.length || cover[k] > cover[top[0]] || (cover[k] === cover[top[0]] && sinks[k] > sinks[top[0]])) top = [k];
+        else if (cover[k] === cover[top[0]] && sinks[k] === sinks[top[0]]) top.push(k);
+      }
+      const move = top[randInt(rng, top.length)];
+      return { move, q: sinks[move] / cand.length, shared: true };
     }
     case 'hunt': {
       const cand = huntCandidates(pm);
@@ -1114,8 +1174,12 @@ function localBest(pm, me, rng) {
       return { move: [known[0], known[1]], q: 0, shared: true };
     }
     case 'coins': {
-      const theirs = pm.coins.filter(c => c !== me).length;
-      return { move: 'flip', q: theirs <= COINS.max ? Math.pow(0.5, theirs) : 0 };
+      // Every coin that isn't mine gets flipped when there are three or fewer: each must land mine.
+      // With none of my own showing, the flip could also land them all the other side's way.
+      const theirs = pm.coins.filter(c => c !== me).length, flips = Math.min(theirs, COINS.max);
+      const q = theirs <= COINS.max ? Math.pow(0.5, theirs) : 0;
+      const qLose = theirs === pm.coins.length && pm.coins.includes(COINS.mystery) ? flips / theirs * Math.pow(0.5, flips) : 0;
+      return { move: 'flip', q, qLose };
     }
     case 'pig': {
       const t = pm.turn && pm.turn.by === me ? pm.turn : null;
@@ -1160,9 +1224,9 @@ function moveGain(pm, me, local) {
   const o = other(me);
   const a = needsOf(pm, me), b = needsOf(pm, o), before = winChance(a, b);
   if (local.after) return (local.win ? 1 : winChance(needsOf(local.after, me), needsOf(local.after, o))) - before;
-  const q = local.q || 0;
+  const q = local.q || 0, qLose = local.qLose || 0;            // qLose: the chance the move hands the square to the other side
   const after = winChance(Math.max(0.5, a - 1), local.shared ? Math.max(0.5, b - 1) : b);
-  return q * (1 - before) + (1 - q) * (after - before);
+  return q * (1 - before) - qLose * before + (1 - q - qLose) * (after - before);
 }
 // The computer's move for the side to play: { square, move, score }. During a bonus move the square is fixed.
 function cpuMove(state, rng) {
@@ -1259,9 +1323,13 @@ function playMove(state, i, m, rng, opts) {
   if (sq.owner) return { ok: false, reason: 'claimed' };
   const p = state.turn;
   const range = sq.mini.type === 'hilo' ? [sq.mini.lo, sq.mini.hi] : null;   // the range before the guess, for the UI
+  const bonus = state.lock === i;                               // a bonus move within the same turn (Hangman, Pig)
   const res = applyMove(sq.mini, p, m, rng);
   if (!res.ok) return res;
   const mini = sq.mini;
+  if (!sq.mv) sq.mv = { X: 0, O: 0 };
+  if (!bonus) sq.mv[p] += 1;                                    // turns each side has spent in this mini-game (for the stats)
+  if (!Array.isArray(state.sqlog)) state.sqlog = [];
   let outcome = res.outcome, note = res.note || null;
   if (outcome === 'continue' && !canMove(mini, 'X') && !canMove(mini, 'O')) { outcome = 'draw'; note = 'stuck'; }
   const again = !!res.again && !opts.noAgain;                   // a timed-out player's lucky letter does not earn another go
@@ -1277,6 +1345,7 @@ function playMove(state, i, m, rng, opts) {
     case 'memory': flash.reveal = [m[0], m[1]]; break;
     case 'candy': flash.color = mini.last.color; flash.from = mini.last.from; flash.to = mini.last.to; break;
     case 'coins': flash.n = mini.last.flipped.length; break;
+    case 'bs': flash.hit = mini.hits.includes(m); flash.len = mini.len; break;
     case 'pig': flash.roll = mini.last.roll; flash.pot = mini.last.pot; flash.rolls = mini.last.rolls; flash.bank = mini.bank[p]; break;
     case 'hunt': flash.dist = huntDist(mini.treasure, m); break;
     case 'hexapawn': flash.from = mini.last.from; flash.to = mini.last.to; flash.capture = mini.last.capture; break;
@@ -1285,6 +1354,7 @@ function playMove(state, i, m, rng, opts) {
   if (outcome === 'win') {
     const w = res.winner || p;                   // a mini-game may hand the square to the other player
     sq.owner = w;
+    state.sqlog.push({ t: mini.type, end: 'won', w, X: sq.mv.X, O: sq.mv.O });
     mini.winCells = res.cells || null;
     flash.winner = w; flash.counts = res.counts || null;
     const mr = mainResult(state.squares);
@@ -1296,6 +1366,8 @@ function playMove(state, i, m, rng, opts) {
     flash.drawn = mini;                          // keep the full board for the result overlay
     flash.counts = res.counts || null;
     const pool = state.games && state.games.length ? state.games : TYPES;
+    state.sqlog.push({ t: mini.type, end: 'draw', w: null, X: sq.mv.X, O: sq.mv.O });
+    sq.mv = { X: 0, O: 0 };
     sq.mini = newMini(pickType(pool, rng), rng); // the square resets with a new random mini-game from this match's list
     flash.newType = sq.mini.type;
   }
@@ -1355,13 +1427,13 @@ function leaveSquare(state) {
  * last few moves, so a phone that was away can play back what it missed, one move at a time.
  */
 const RECENT_MAX = 8;
-const MATCH_FIELDS = ['id', 'seq', 'recent', 'games', 'squares', 'turn', 'lock', 'moves', 'winner', 'winLine', 'winReason', 'resigned', 'counts', 'lastSquare', 'lastBy', 'pick', 'pickSq', 'timer'];
+const MATCH_FIELDS = ['id', 'seq', 'recent', 'games', 'squares', 'turn', 'lock', 'moves', 'winner', 'winLine', 'winReason', 'resigned', 'counts', 'lastSquare', 'lastBy', 'pick', 'pickSq', 'timer', 'sqlog'];
 // The hidden part of a mini-game, or null when it has none.
 function secretOf(mini) {
   switch (mini.type) {
     case 'wordle': case 'hangman': return { word: mini.word };
     case 'hilo': return { target: mini.target };
-    case 'bs': return { hidden: mini.hidden };
+    case 'bs': return { ship: mini.ship.slice() };
     case 'hunt': return { treasure: mini.treasure };
     case 'memory': return { cards: mini.cards.map(c => ({ s: c.s, c: c.c })) };
     case 'mastermind': return { code: mini.code.slice() };
@@ -1376,7 +1448,7 @@ function hideMini(m, k, st) {
     case 'mastermind': delete m.code; break;
     case 'hangman': { const hits = new Set(m.letters.filter(x => x.hit).map(x => x.l)); m.word = m.word.split('').map(ch => (hits.has(ch) ? ch : '_')).join(''); break; }
     case 'hilo': delete m.target; break;
-    case 'bs': delete m.hidden; break;
+    case 'bs': delete m.ship; break;
     case 'hunt': m.clues = m.dug.map((d, i) => (d ? huntDist(m.treasure, i) : null)); delete m.treasure; break;
     case 'memory': {
       const show = new Set(m.seen || []);
@@ -1410,6 +1482,7 @@ function fullState(rec) {
   Object.assign(st, { flash: null, done: null, screen: 'board', zoom: null, draft: '', sel: [], notice: null, stamp: null, spot: null, cpu: null, online: null, confirm: null });
   if (!st.timer) st.timer = newTimer(0);
   if (!Array.isArray(st.recent)) st.recent = [];
+  if (!Array.isArray(st.sqlog)) st.sqlog = [];
   if (!Array.isArray(st.games) || !st.games.length) st.games = TYPES.slice();
   return st;
 }
@@ -1491,7 +1564,7 @@ function playMs(f, winLen) {
   switch (f.type) {
     case 'ttt':     return won ? 950 : 450;
     case 'c4':      return won ? 1150 : 600;
-    case 'bs':      return won ? 1200 : 1100;
+    case 'bs':      return won ? 1700 : 1100;
     case 'wordle':  return 1200;
     case 'hangman': return 650;
     case 'hex':     return won ? 900 + (winLen || 4) * 90 : 450;
@@ -1532,5 +1605,19 @@ function applyOnlineResign(rec, side) {
   return { ok: true, rec: matchRecord(full) };
 }
 
+// ---------- stats: what a finished (or abandoned) match adds to the anonymous game stats ----------
+// Every mini-game played: how it ended ('won', 'draw' when it reset, or 'open' when the match ended
+// first), who won it and the turns each side spent in it. A bonus move within a turn (a Pig roll,
+// a Hangman letter after a hit) is part of the same turn.
+function matchStats(st) {
+  const squares = (Array.isArray(st.sqlog) ? st.sqlog : []).map(e => ({ t: e.t, end: e.end, w: e.w || null, X: e.X || 0, O: e.O || 0 }));
+  for (const sq of st.squares || []) {
+    if (sq.owner || !sq.mv || !(sq.mv.X + sq.mv.O)) continue;
+    squares.push({ t: sq.mini.type, end: 'open', w: null, X: sq.mv.X, O: sq.mv.O });
+  }
+  const turns = squares.reduce((n, e) => n + e.X + e.O, 0);
+  return { squares, turns, winner: st.winner || null, reason: st.winReason || null };
+}
+
 // Node (the Cloud Functions and the tests): the same names as a module.
-if (typeof module !== "undefined" && module.exports) module.exports = { TYPES, INFO, C4, HP, MM, HEX_N, HILO, CANDY, NAME_MAX, COINS, PIG, HUNT, DICE_GOAL, MEMORY, LINES, WORDS5, WORDS_HANG, VALID5, other, makeRng, needRng, randInt, randomType, shuffle, memoryDeck, wordleMarks, hexNeighbors, hexPath, canMove, hpMoves, mmFeedback, mmValid, MM_ALL, mmAll, mmCode, mmCandidates, mmBestGuess, hpGoalRow, upgradeMini, anyMove, huntDist, candyTrack, newMini, pickType, newSquare, CPU_NAME, defaultSetup, cpuSide, normSetup, syncNames, enabledGames, TIMER_OPTIONS, newTimer, playerName, newState, startMatch, newMatch, findRun, applyMove, AI, publicMini, wordleCandidates, hangmanCandidates, huntCandidates, WINDOWS, windowsOf, lineNeeds, c4Playable, hexDist, candyExpected, COIN_NEEDS, needsOf, memoryPair, winChance, tttMinimax, c4Drop, c4Eval, C4_ORDER, c4Search, C4_DEPTH, c4Moves, HP_MEMO, hpSolve, hpMovesValued, hpNeeds, hexMoves, threatScore, pickValued, localBest, squareValue, moveGain, cpuMove, VALID5_LIST, randomLegalMove, timeoutMove, mainResult, playMove, endFlash, leaveSquare, RECENT_MAX, MATCH_FIELDS, secretOf, hideMini, matchRecord, fullState, settle, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, newOnlineMatch, PLAY, diceSlot, playMs, replayMs, armClock, applyOnlineResign };
+if (typeof module !== "undefined" && module.exports) module.exports = { TYPES, INFO, C4, HP, MM, HEX_N, HILO, CANDY, NAME_MAX, COINS, PIG, BS, HUNT, DICE_GOAL, MEMORY, LINES, WORDS5, WORDS_HANG, VALID5, other, makeRng, needRng, randInt, randomType, shuffle, memoryDeck, wordleMarks, hexNeighbors, hexPath, canMove, hpMoves, mmFeedback, mmValid, MM_ALL, mmAll, mmCode, mmCandidates, mmBestGuess, hpGoalRow, upgradeMini, anyMove, huntDist, candyTrack, newMini, pickType, newSquare, CPU_NAME, defaultSetup, cpuSide, normSetup, syncNames, enabledGames, TIMER_OPTIONS, newTimer, playerName, newState, startMatch, newMatch, findRun, applyMove, AI, publicMini, wordleCandidates, hangmanCandidates, bsCandidates, bsPlacements, bsShip, huntCandidates, WINDOWS, windowsOf, lineNeeds, c4Playable, hexDist, candyExpected, COIN_NEEDS, needsOf, memoryPair, winChance, tttMinimax, c4Drop, c4Eval, C4_ORDER, c4Search, C4_DEPTH, c4Moves, HP_MEMO, hpSolve, hpMovesValued, hpNeeds, hexMoves, threatScore, pickValued, localBest, squareValue, moveGain, cpuMove, VALID5_LIST, randomLegalMove, timeoutMove, mainResult, playMove, endFlash, leaveSquare, RECENT_MAX, MATCH_FIELDS, secretOf, hideMini, matchRecord, fullState, settle, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, newOnlineMatch, PLAY, diceSlot, playMs, replayMs, armClock, applyOnlineResign, matchStats };

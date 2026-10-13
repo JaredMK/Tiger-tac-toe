@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="color-scheme" content="light">
+<title>Tic Tac Chaos Stats</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Patrick+Hand&display=swap" rel="stylesheet">
+<style>
+/* The admin's stats dashboard. Only the account with the admin flag can read the stats: the database
+   rules refuse everyone else, whatever this page does. */
+:root {
+  --bg: #f4e6c8; --paper: #fff8e8; --card: #fffdf6; --ink: #161210; --muted: #6b5a45; --line: #d9c7a6;
+  --x: #e5432a; --o: #f6c21b; --x-soft: #f9c7b6; --o-soft: #fbe39a; --sky: #58a8cf; --green: #4e9d3a; --plum: #8a5bb5; --stone: #a89577;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 17px/1.35 'Patrick Hand', system-ui, sans-serif; }
+h1, h2, .lg { font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-weight: 400; letter-spacing: .02em; }
+h1 { margin: 0; font-size: 28px; line-height: 1; padding-top: 4px; }
+h2 { margin: 0 0 10px; font-size: 20px; padding-top: 3px; }
+button, select { font: inherit; color: inherit; }
+.wrap { max-width: 1100px; margin: 0 auto; padding: 16px max(16px, env(safe-area-inset-right)) 40px max(16px, env(safe-area-inset-left)); display: flex; flex-direction: column; gap: 16px; }
+.top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.top .sp { flex: 1; }
+.who { color: var(--muted); font-size: 15px; }
+.btn { border: 3px solid var(--ink); background: #fff; box-shadow: 0 3px 0 var(--ink); border-radius: 14px 10px 13px 9px; padding: 8px 14px 6px; font-family: 'Luckiest Guy', sans-serif; font-size: 15px; cursor: pointer; }
+.btn.go { background: var(--o); }
+.btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+.btn:disabled { opacity: .5; cursor: default; }
+.card { background: var(--card); border: 3px solid var(--ink); box-shadow: 0 4px 0 var(--ink); border-radius: 18px 12px 20px 14px / 14px 20px 12px 18px; padding: 14px 16px; min-width: 0; }
+.msg { text-align: center; padding: 30px 16px; }
+.msg p { margin: 8px 0 16px; color: var(--muted); }
+.signin { display: flex; flex-direction: column; gap: 10px; max-width: 360px; margin: 0 auto; }
+.signin input { border: 3px solid var(--ink); border-radius: 12px; padding: 8px 10px; font: 18px 'Patrick Hand', sans-serif; background: #fff; }
+.err { color: var(--x); }
+.kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+.kpi { display: flex; flex-direction: column; gap: 2px; }
+.kpi small { color: var(--muted); font-size: 14px; }
+.kpi b { font-family: 'Luckiest Guy', sans-serif; font-weight: 400; font-size: 26px; padding-top: 3px; }
+.kpi span { color: var(--muted); font-size: 14px; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); gap: 16px; }
+.chart svg { width: 100%; height: auto; display: block; }
+.chart .ax { stroke: var(--line); stroke-width: 1; }
+.chart text { font: 11px 'Patrick Hand', sans-serif; fill: var(--muted); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 14px; color: var(--muted); margin-top: 6px; }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; border: 1.5px solid var(--ink); margin-right: 5px; vertical-align: -1px; }
+.tbl { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 16px; }
+th, td { padding: 6px 8px; text-align: right; white-space: nowrap; border-bottom: 1.5px solid var(--line); }
+th:first-child, td:first-child { text-align: left; }
+th { font-family: 'Luckiest Guy', sans-serif; font-weight: 400; font-size: 13px; letter-spacing: .03em; color: var(--muted); vertical-align: bottom; }
+th button { all: unset; cursor: pointer; }
+th button:focus-visible { outline: 2px solid var(--sky); outline-offset: 2px; }
+th[aria-sort] { color: var(--ink); }
+th[aria-sort="ascending"] button::after { content: ' ▲'; }
+th[aria-sort="descending"] button::after { content: ' ▼'; }
+td.dim { color: var(--muted); }
+.bar { display: inline-block; height: 9px; border-radius: 5px; background: var(--sky); vertical-align: middle; margin-left: 6px; }
+.row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.row h2 { margin: 0; flex: 1; }
+.tabs { display: flex; gap: 6px; }
+.tabs button { border: 2.5px solid var(--ink); background: #fff; border-radius: 999px; padding: 3px 12px 1px; font-family: 'Luckiest Guy', sans-serif; font-size: 13px; cursor: pointer; }
+.tabs button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+select { border: 2.5px solid var(--ink); border-radius: 10px; padding: 4px 8px; background: #fff; font-size: 16px; }
+.note { color: var(--muted); font-size: 14px; margin: 8px 0 0; }
+@media (max-width: 480px) { h1 { font-size: 23px; } .kpi b { font-size: 22px; } table { font-size: 15px; } }
+</style>
+</head>
+<body>
+<div class="wrap" id="app"><div class="card msg"><h1>Tic Tac Chaos Stats</h1><p>Loading…</p></div></div>
+<script>
+'use strict';
+const FIREBASE_VERSION = '11.10.0';
+const FIREBASE_CONFIG = {
+  apiKey: 'AIzaSyDnugsFX6N1chaeGHiKOfBiiUFTSYTX9SU',
+  authDomain: 'tic-tac-chaos.firebaseapp.com',
+  databaseURL: 'https://tic-tac-chaos-default-rtdb.firebaseio.com',
+  projectId: 'tic-tac-chaos',
+};
+const MODES = [['local', 'Two players'], ['cpu', 'vs Computer'], ['cvc', 'Computer vs Computer'], ['friend', 'Friend code'], ['casual', 'Casual'], ['ranked', 'Ranked']];
+const MODE_COLORS = { local: 'var(--o)', cpu: 'var(--sky)', cvc: 'var(--stone)', friend: 'var(--plum)', casual: 'var(--green)', ranked: 'var(--x)' };
+const GAMES = { ttt: 'Tic-tac-toe', c4: 'Connect 4', bs: 'Battleship', wordle: 'Wordle', hangman: 'Hangman', hex: 'Hex', hilo: 'Higher/Lower', dice: 'Dice Race', memory: 'Memory', candy: 'Candy Race', coins: 'Coin Flip', pig: 'Pig', hunt: 'Treasure Hunt', hexapawn: 'Hexapawn', mastermind: 'Mastermind' };
+const app = document.getElementById('app');
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+let fb = null, user = null, stats = null, view = { status: 'loading', error: '' };
+let sortBy = { k: 'avgWin', dir: 1 }, miniMode = 'all', period = 'd';
+
+// ---------- the numbers ----------
+const n = v => (Number.isFinite(v) ? v : 0);
+const ratio = (a, b) => (b ? a / b : null);
+const pct = v => (v == null ? '–' : `${Math.round(v * 100)}%`);
+const num = (v, d = 1) => (v == null ? '–' : (Math.round(v * 10 ** d) / 10 ** d).toLocaleString());
+const pad = x => String(x).padStart(2, '0');
+function periodKeys(t) {               // the same keys as the server (functions/statsRules.js), in UTC
+  const d = new Date(t);
+  const th = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  th.setUTCDate(th.getUTCDate() + 4 - (th.getUTCDay() || 7));
+  const week = Math.ceil(((th - new Date(Date.UTC(th.getUTCFullYear(), 0, 1))) / 86400000 + 1) / 7);
+  return { d: `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`, w: `${th.getUTCFullYear()}-W${pad(week)}`, m: `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}` };
+}
+function lastDays(k) { const out = []; for (let i = k - 1; i >= 0; i--) out.push(periodKeys(Date.now() - i * 86400000).d); return out; }
+function modeRow(m) { return (stats.modes && stats.modes[m]) || {}; }
+function totals() {
+  const t = { started: 0, finished: 0, turns: 0, ms: 0, timed: 0, xWins: 0, oWins: 0, resigned: 0 };
+  for (const [m] of MODES) for (const k of Object.keys(t)) t[k] += n(modeRow(m)[k]);
+  return t;
+}
+function miniRows() {
+  const pick = miniMode === 'all' ? MODES.map(m => m[0]) : miniMode === 'people' ? MODES.map(m => m[0]).filter(m => m !== 'cvc') : [miniMode];
+  return Object.keys(GAMES).map(t => {
+    const s = { played: 0, won: 0, draw: 0, open: 0, winMoves: 0, loseMoves: 0, allMoves: 0, xWins: 0, oWins: 0 };
+    for (const m of pick) { const r = (stats.mini && stats.mini[m] && stats.mini[m][t]) || {}; for (const k of Object.keys(s)) s[k] += n(r[k]); }
+    return { t, name: GAMES[t], played: s.played, won: s.won, draw: s.draw, open: s.open,
+      avgWin: ratio(s.winMoves, s.won), avgLose: ratio(s.loseMoves, s.won), avgAll: ratio(s.allMoves, s.played),
+      xRate: ratio(s.xWins, s.won), oRate: ratio(s.oWins, s.won), drawRate: ratio(s.draw, s.won + s.draw) };
+  });
+}
+
+// ---------- charts: plain SVG ----------
+function barChart(days, series, opts = {}) {
+  const W = 640, H = 200, L = 34, B = 22, T = 8, R = 4, iw = W - L - R, ih = H - B - T;
+  const max = Math.max(1, ...days.map((d, i) => (opts.stack ? series.reduce((s, se) => s + se.values[i], 0) : Math.max(...series.map(se => se.values[i])))));
+  const step = iw / days.length, groups = opts.stack ? 1 : series.length, bw = Math.max(2, step * .8 / groups);
+  let bars = '';
+  days.forEach((d, i) => {
+    let y0 = T + ih;
+    series.forEach((se, k) => {
+      const v = se.values[i], h = v / max * ih;
+      if (!v) return;
+      if (opts.stack) { y0 -= h; bars += `<rect x="${(L + i * step + step * .1).toFixed(1)}" y="${y0.toFixed(1)}" width="${(step * .8).toFixed(1)}" height="${h.toFixed(1)}" fill="${se.color}"><title>${d} · ${se.name}: ${v}</title></rect>`; }
+      else bars += `<rect x="${(L + i * step + step * .1 + k * bw).toFixed(1)}" y="${(T + ih - h).toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" fill="${se.color}"><title>${d} · ${se.name}: ${v}</title></rect>`;
+    });
+  });
+  const ticks = [0, .5, 1].map(f => { const v = Math.round(max * f), y = T + ih - v / max * ih; return `<line class="ax" x1="${L}" x2="${W - R}" y1="${y}" y2="${y}"/><text x="${L - 5}" y="${y + 4}" text-anchor="end">${v}</text>`; }).join('');
+  const labels = days.map((d, i) => (i % Math.ceil(days.length / 6) === 0 || i === days.length - 1 ? `<text x="${(L + i * step + step / 2).toFixed(1)}" y="${H - 6}" text-anchor="middle">${d.slice(5)}</text>` : '')).join('');
+  const legend = `<div class="legend">${series.map(se => `<span><i style="background:${se.color}"></i>${se.name}</span>`).join('')}</div>`;
+  return `<div class="chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opts.label || '')}">${ticks}${bars}${labels}</svg>${legend}</div>`;
+}
+function hbarChart(rows, key, label, fmt) {
+  const have = rows.filter(r => r[key] != null).sort((a, b) => a[key] - b[key]);
+  if (!have.length) return '<p class="note">No finished mini-games yet.</p>';
+  const max = Math.max(...have.map(r => r[key])), W = 640, rowH = 22, L = 120, H = have.length * rowH + 6;
+  const bars = have.map((r, i) => {
+    const w = Math.max(2, r[key] / max * (W - L - 50)), y = 3 + i * rowH;
+    return `<text x="${L - 8}" y="${y + 15}" text-anchor="end" style="fill:var(--ink);font-size:13px">${esc(r.name)}</text><rect x="${L}" y="${y + 3}" width="${w.toFixed(1)}" height="${rowH - 8}" rx="4" fill="var(--sky)" stroke="var(--ink)" stroke-width="1.5"><title>${esc(r.name)}: ${fmt(r[key])}</title></rect><text x="${L + w + 6}" y="${y + 15}" style="fill:var(--ink);font-size:13px">${fmt(r[key])}</text>`;
+  }).join('');
+  return `<div class="chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(label)}">${bars}</svg></div>`;
+}
+
+// ---------- the page ----------
+function render() {
+  if (view.status === 'loading') { app.innerHTML = '<div class="card msg"><h1>Tic Tac Chaos Stats</h1><p>Loading…</p></div>'; return; }
+  if (view.status === 'signin') {
+    app.innerHTML = `<div class="card msg"><h1>Tic Tac Chaos Stats</h1><p>For the game's admin only. Log in with your game account.</p>
+      <div class="signin"><button class="btn go" data-act="google">Continue with Google</button>
+      <input id="em" type="email" placeholder="Email" autocomplete="email"><input id="pw" type="password" placeholder="Password" autocomplete="current-password">
+      <button class="btn" data-act="email">Log in with email</button>${view.error ? `<div class="err" role="alert">${esc(view.error)}</div>` : ''}</div></div>`;
+    return;
+  }
+  if (view.status === 'denied') {
+    app.innerHTML = `<div class="card msg"><h1>Not for this account</h1><p>This page is for the game's admin only. ${view.error ? esc(view.error) : ''}</p><button class="btn" data-act="signout">Sign out</button></div>`;
+    return;
+  }
+  const t = totals(), now = periodKeys(Date.now()), P = (node, k) => (stats[node] && stats[node][k]) || {};
+  const today = P('days', now.d), week = P('weeks', now.w), month = P('months', now.m);
+  const accounts = Object.values(stats.months || {}).reduce((s, m) => s + n(m.newAccounts), 0);
+  const kpi = (label, big, sub) => `<div class="card kpi"><small>${label}</small><b>${big}</b>${sub ? `<span>${sub}</span>` : ''}</div>`;
+  const days = lastDays(30), D = d => P('days', d);
+  const players = barChart(days, [
+    { name: 'Active players', color: 'var(--green)', values: days.map(d => n(D(d).active)) },
+    { name: 'Logins', color: 'var(--sky)', values: days.map(d => n(D(d).logins)) },
+    { name: 'New accounts', color: 'var(--o)', values: days.map(d => n(D(d).newAccounts)) },
+  ], { label: 'Players per day, last 30 days' });
+  const matches = barChart(days, MODES.map(([m, name]) => ({ name, color: MODE_COLORS[m], values: days.map(d => n((D(d).finished || {})[m])) })), { stack: true, label: 'Matches finished per day by mode, last 30 days' });
+  const modeTable = `<div class="tbl"><table><thead><tr><th>Mode</th><th>Started</th><th>Finished</th><th>Abandoned</th><th>Resigned</th><th>Timed out</th><th>Avg turns</th><th>Avg minutes</th><th>X (first) wins</th></tr></thead><tbody>${MODES.map(([m, name]) => {
+    const r = modeRow(m), st = n(r.started), fin = n(r.finished), dec = n(r.xWins) + n(r.oWins);
+    return `<tr><td>${name}</td><td>${st}</td><td>${fin}</td><td>${pct(ratio(Math.max(0, st - fin), st))}</td><td>${pct(ratio(n(r.resigned), fin))}</td><td>${pct(ratio(n(r.timeouts), fin))}</td><td>${num(ratio(n(r.turns), fin))}</td><td>${num(ratio(n(r.ms), n(r.timed)) == null ? null : ratio(n(r.ms), n(r.timed)) / 60000)}</td><td>${pct(ratio(n(r.xWins), dec))}</td></tr>`;
+  }).join('')}</tbody></table></div><p class="note">Abandoned: started but never finished (left, or the app closed). Turns count a bonus move (a Pig roll, a Hangman letter) as part of its turn.</p>`;
+  const rows = miniRows(), dir = sortBy.dir;
+  rows.sort((a, b) => { const x = a[sortBy.k], y = b[sortBy.k]; if (x == null && y == null) return a.name.localeCompare(b.name); if (x == null) return 1; if (y == null) return -1; return (typeof x === 'string' ? x.localeCompare(y) : x - y) * dir; });
+  const cols = [['name', 'Mini-game'], ['played', 'Played'], ['won', 'Won'], ['draw', 'Draw-reset'], ['open', 'Unfinished'], ['avgWin', 'Avg winner moves'], ['avgLose', 'Avg loser moves'], ['avgAll', 'Avg total moves'], ['xRate', 'X wins'], ['oRate', 'O wins']];
+  const maxWin = Math.max(1, ...rows.map(r => r.avgWin || 0));
+  const miniTable = `<div class="tbl"><table><thead><tr>${cols.map(([k, l]) => `<th${sortBy.k === k ? ` aria-sort="${dir > 0 ? 'ascending' : 'descending'}"` : ''}><button data-sort="${k}">${l}</button></th>`).join('')}</tr></thead><tbody>${rows.map(r =>
+    `<tr><td>${esc(r.name)}</td><td>${r.played}</td><td>${r.won}</td><td>${r.draw}</td><td class="dim">${r.open}</td><td>${num(r.avgWin)}${r.avgWin != null ? `<span class="bar" style="width:${Math.round(r.avgWin / maxWin * 60)}px"></span>` : ''}</td><td>${num(r.avgLose)}</td><td>${num(r.avgAll)}</td><td>${pct(r.xRate)}</td><td>${pct(r.oRate)}</td></tr>`).join('')}</tbody></table></div>
+    <p class="note">Moves: the turns each side spent in that square (a bonus roll or letter within a turn counts once). Winner / loser moves are over the games that were won; total moves over every game played, including draws that reset and games left open when the match ended. Tap a heading to sort.</p>`;
+  const pnode = { d: 'days', w: 'weeks', m: 'months' }[period];
+  const keys = Object.keys(stats[pnode] || {}).sort().reverse().slice(0, period === 'd' ? 31 : 12);
+  const ptable = `<div class="tbl"><table><thead><tr><th>${{ d: 'Day', w: 'Week', m: 'Month' }[period]}</th><th>Active players</th><th>Logins</th><th>New accounts</th>${period === 'd' ? '<th>Matches started</th><th>Finished</th>' : ''}</tr></thead><tbody>${keys.map(k => {
+    const r = stats[pnode][k] || {}, sum = o => Object.values(o || {}).reduce((s, v) => s + n(v), 0);
+    return `<tr><td>${k}</td><td>${n(r.active)}</td><td>${n(r.logins)}</td><td>${n(r.newAccounts)}</td>${period === 'd' ? `<td>${sum(r.started)}</td><td>${sum(r.finished)}</td>` : ''}</tr>`;
+  }).join('') || '<tr><td colspan="6" class="dim">Nothing yet</td></tr>'}</tbody></table></div><p class="note">Days, weeks (ISO) and months in UTC. Active: players (accounts, or guests' browsers) who played or logged in.</p>`;
+  app.innerHTML = `<div class="top"><h1>Tic Tac Chaos Stats</h1><span class="sp"></span><span class="who">${esc(user.email || 'admin')}</span><button class="btn" data-act="refresh">Refresh</button><button class="btn" data-act="signout">Sign out</button></div>
+    <div class="kpis">
+      ${kpi('Active players', n(today.active), `this week ${n(week.active)} · this month ${n(month.active)}`)}
+      ${kpi('Logins today', n(today.logins), `this week ${n(week.logins)} · this month ${n(month.logins)}`)}
+      ${kpi('New accounts', n(today.newAccounts), `this month ${n(month.newAccounts)} · all ${accounts}`)}
+      ${kpi('Matches', `${t.finished} / ${t.started}`, 'finished / started')}
+      ${kpi('Abandon rate', pct(ratio(Math.max(0, t.started - t.finished), t.started)), `resigned ${pct(ratio(t.resigned, t.finished))} of finished`)}
+      ${kpi('Avg match', `${num(ratio(t.turns, t.finished))} turns`, `${num(ratio(t.ms, t.timed) == null ? null : ratio(t.ms, t.timed) / 60000)} minutes`)}
+      ${kpi('First player (X) wins', pct(ratio(t.xWins, t.xWins + t.oWins)), `${t.xWins} of ${t.xWins + t.oWins} decided`)}
+    </div>
+    <div class="grid2"><div class="card"><h2>Players per day</h2>${players}</div><div class="card"><h2>Matches finished per day</h2>${matches}</div></div>
+    <div class="card"><h2>Matches by mode</h2>${modeTable}</div>
+    <div class="card"><div class="row"><h2>Mini-games</h2><label>Modes <select id="mm">${[['all', 'All modes'], ['people', 'All but computer vs computer']].concat(MODES).map(([v, l]) => `<option value="${v}"${miniMode === v ? ' selected' : ''}>${l}</option>`).join('')}</select></label></div>
+      ${miniTable}<h2 style="margin-top:14px">Average winner moves</h2>${hbarChart(rows, 'avgWin', 'Average winner moves by mini-game', v => num(v))}</div>
+    <div class="card"><div class="row"><h2>Players over time</h2><div class="tabs">${[['d', 'Days'], ['w', 'Weeks'], ['m', 'Months']].map(([k, l]) => `<button data-period="${k}" aria-pressed="${period === k}">${l}</button>`).join('')}</div></div>${ptable}</div>`;
+}
+
+// ---------- Firebase ----------
+async function boot() {
+  const hook = window.TTT_FIREBASE || null;                      // the tests: the local emulators
+  const base = (hook && hook.cdn) || `https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/`;
+  const [appM, authM, dbM] = await Promise.all([import(base + 'firebase-app.js'), import(base + 'firebase-auth.js'), import(base + 'firebase-database.js')]);
+  const fapp = appM.initializeApp((hook && hook.config) || FIREBASE_CONFIG);
+  const auth = authM.getAuth(fapp), db = dbM.getDatabase(fapp);
+  if (hook && hook.auth) authM.connectAuthEmulator(auth, hook.auth, { disableWarnings: true });
+  if (hook && hook.emulator) dbM.connectDatabaseEmulator(db, hook.emulator.host, hook.emulator.port);
+  fb = { authM, dbM, auth, db, hook };
+  let pending = false;
+  try { pending = Object.keys(sessionStorage).some(k => k.startsWith('firebase:pendingRedirect')); } catch (e) { /* no storage */ }
+  if (pending) { try { await authM.getRedirectResult(auth); } catch (e) { view.error = 'Could not log in. Try again.'; } }   // back from Google's sign-in page
+  authM.onAuthStateChanged(auth, u => onUser(u));
+}
+async function onUser(u) {
+  user = u && !u.isAnonymous ? u : null;
+  stats = null;
+  if (!user) { view.status = 'signin'; render(); return; }
+  view = { status: 'loading', error: '' }; render();
+  const tok = await fb.authM.getIdTokenResult(user, true).catch(() => null);   // fresh: a flag given a moment ago counts
+  if (!tok || tok.claims.admin !== true) { view = { status: 'denied', error: '' }; render(); return; }
+  await load();
+}
+async function load() {
+  try {
+    const snap = await fb.dbM.get(fb.dbM.ref(fb.db, 'stats'));
+    stats = snap.val() || {};
+    view = { status: 'ready', error: '' };
+  } catch (e) {
+    view = { status: 'denied', error: /permission/i.test(String(e && (e.code || e.message))) ? 'The database refused: the admin flag is not on this account yet.' : 'Could not load the stats.' };
+  }
+  render();
+}
+async function signIn(how) {
+  view.error = '';
+  try {
+    const A = fb.authM;
+    if (how === 'google') {
+      const popup = (fb.hook && fb.hook.popup) || A.signInWithPopup;
+      try { await popup(fb.auth, new A.GoogleAuthProvider()); }
+      catch (e) { if (/popup-blocked|operation-not-supported/.test(String(e && e.code))) await A.signInWithRedirect(fb.auth, new A.GoogleAuthProvider()); else throw e; }
+    } else await A.signInWithEmailAndPassword(fb.auth, document.getElementById('em').value.trim(), document.getElementById('pw').value);
+  } catch (e) {
+    if (!/popup-closed|cancelled-popup/.test(String(e && e.code))) { view.error = 'Could not log in. Check the details and try again.'; render(); }
+  }
+}
+app.addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if (!b || !fb) return;
+  if (b.dataset.act === 'google') signIn('google');
+  else if (b.dataset.act === 'email') signIn('email');
+  else if (b.dataset.act === 'signout') fb.authM.signOut(fb.auth);
+  else if (b.dataset.act === 'refresh') { b.disabled = true; load(); }
+  else if (b.dataset.sort) { const k = b.dataset.sort; sortBy = { k, dir: sortBy.k === k ? -sortBy.dir : k === 'name' || k === 'avgWin' || k === 'avgLose' || k === 'avgAll' ? 1 : -1 }; render(); }
+  else if (b.dataset.period) { period = b.dataset.period; render(); }
+});
+app.addEventListener('change', e => { if (e.target.id === 'mm') { miniMode = e.target.value; render(); } });
+boot().catch(() => { app.innerHTML = '<div class="card msg"><h1>Tic Tac Chaos Stats</h1><p>Could not load. Check the connection and reload.</p></div>'; });
+</script>
+</body>
+</html>

@@ -14,6 +14,9 @@ const check = (good, what) => { console.log(`${good ? 'ok  ' : 'FAIL'} ${what}`)
     const j = await r.json().catch(() => ({}));
     check(r.status === 401 && j.error && j.error.status === 'UNAUTHENTICATED', `${f} is live and asks for a login (HTTP ${r.status})`);
   }
+  const tr = await fetch(`${FN}/track`, { method: 'POST', headers: json, body: '{"data":{}}' });
+  const tj = await tr.json().catch(() => ({}));
+  check(tr.status === 400 && tj.error && tj.error.status === 'INVALID_ARGUMENT', `track is live and refuses an empty event (HTTP ${tr.status})`);
   const s = await (await fetch(`${ID}:signUp?key=${KEY}`, { method: 'POST', headers: json, body: JSON.stringify({ returnSecureToken: true }) })).json();
   if (!s.idToken) { console.log('::warning::No guest session for the rules check:', JSON.stringify(s.error || s).slice(0, 200)); }
   else {
@@ -23,6 +26,10 @@ const check = (good, what) => { console.log(`${good ? 'ok  ' : 'FAIL'} ${what}`)
     check(w.status === 401, `a phone cannot write a rating (HTTP ${w.status})`);
     const g = await fetch(`${DB}/games.json?shallow=true&auth=${s.idToken}`);
     check(g.status === 401, `a phone cannot list the games or their hidden values (HTTP ${g.status})`);
+    const st = await fetch(`${DB}/stats.json?shallow=true&auth=${s.idToken}`);
+    check(st.status === 401, `only the admin can read the stats (HTTP ${st.status})`);
+    const sw = await fetch(`${DB}/stats/modes/local/started.json?auth=${s.idToken}`, { method: 'PUT', body: '1' });
+    check(sw.status === 401, `a phone cannot write the stats (HTTP ${sw.status})`);
     const c = await fetch(`${FN}/claimUsername`, { method: 'POST', headers: Object.assign({ authorization: 'Bearer ' + s.idToken }, json), body: JSON.stringify({ data: { username: 'smoke_test' } }) });
     check(c.status === 401, `a guest cannot claim a username (HTTP ${c.status})`);
     await fetch(`${ID}:delete?key=${KEY}`, { method: 'POST', headers: json, body: JSON.stringify({ idToken: s.idToken }) }).catch(() => {});
