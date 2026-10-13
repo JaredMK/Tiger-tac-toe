@@ -52,5 +52,21 @@ jobs:
           if [ -z "$SA" ]; then echo "::error::The FIREBASE_SERVICE_ACCOUNT secret is missing (README: Deploying)."; exit 1; fi
           printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
           echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/sa.json" >> "$GITHUB_ENV"
+      - name: Check the key
+        # Prints only what identifies the key (type, project, account), never the key or a token.
+        run: |
+          node -e '
+            let k;
+            try { k = JSON.parse(require("fs").readFileSync(process.env.GOOGLE_APPLICATION_CREDENTIALS, "utf8")); }
+            catch (e) { console.log("::error::FIREBASE_SERVICE_ACCOUNT is not valid JSON: paste the whole key file, from { to }."); process.exit(1); }
+            console.log("type:", k.type, "| project:", k.project_id, "| account:", k.client_email);
+            if (k.type !== "service_account") { console.log("::error::FIREBASE_SERVICE_ACCOUNT is not a service-account key."); process.exit(1); }
+            if (k.project_id !== "tic-tac-chaos") console.log("::warning::The key is for project " + k.project_id + ", not tic-tac-chaos.");
+          '
+          node -e '
+            const { GoogleAuth } = require("./functions/node_modules/google-auth-library");
+            new GoogleAuth({ scopes: ["https://www.googleapis.com/auth/cloud-platform"] }).getAccessToken()
+              .then(() => console.log("Google accepted the key."), e => { console.log("::error::Google refused the key: " + String(e.message).split("\n")[0]); process.exit(1); });
+          '
       - name: Deploy functions and rules
         run: firebase deploy --only functions,database --project tic-tac-chaos --non-interactive --force
