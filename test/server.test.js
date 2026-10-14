@@ -87,6 +87,7 @@ async function nearWin(id, turn = 'X') {
 }
 const recorded = id => until(async () => { const r = await get(`games/${id}/pub/recorded`); return r && r.done; }, 10000, 'the result to be recorded');
 
+test.before(() => put('features/findMatch', true));            // Find Match starts off: on for the suite (its own test switches it off)
 test.after(async () => { for (const app of apps) await deleteApp(app).catch(() => {}); });
 
 /* ===================================== accounts ===================================== */
@@ -1042,4 +1043,36 @@ test('alerts: someone searching alone alerts the admin by text and email, once, 
   await boss.write('admin/config/bots/enabled', false);
   await runScript('make-admin.js', 'AlertBoss', 'revoke');
   await put('admin/config', null); await put('admin/secrets', null); await put('test/alertsSent', null);
+});
+
+/* ===================================== Find Match on and off ===================================== */
+test('Find Match off (missing means off): searches refused and taken out of the queue, a match under way carries on; only the admin switches it', async () => {
+  await clearQueue();
+  const a = await player('OffAlice'), b = await player('OffBob'), c = await player('OffCarl');
+  const g = await pairUp(a, b);
+  assert.equal((await c.call('findMatch', {})).status, 'searching');
+  assert.ok(await get(`queue/match/${c.uid}`));
+  await put('features/findMatch', null);                          // never switched on: off
+  const off = e => e.code === 'functions/failed-precondition' && e.details && e.details.off === true && /not available at this time/i.test(e.message);
+  await assert.rejects(c.call('findMatch', {}), off, 'the search is refused');
+  assert.equal(await get(`queue/match/${c.uid}`), null, 'and the searcher is out of the queue');
+  await put('features/findMatch', false);
+  await assert.rejects(c.call('findMatch', {}), off, 'off as well');
+  assert.deepEqual(await a.call('findMatch', {}), { status: 'matched', game: g.id, side: g.X === a ? 'X' : 'O' }, 'a match under way: still there to go back to');
+  assert.equal(await get(`games/${g.id}/pub/status`), 'playing');
+  // The switch: anyone (even with no login) reads it; only the admin changes it, and only to true or false.
+  const pub = await fetch(`http://${DB_HOST}/features/findMatch.json?ns=${NS}`);
+  assert.equal(pub.status, 200); assert.equal(await pub.json(), false);
+  assert.equal(await c.read('features/findMatch'), false);
+  await denied(c.write('features/findMatch', true), 'a player switching Find Match on');
+  const boss = await player('SwitchBoss');
+  await runScript('make-admin.js', 'SwitchBoss', 'grant');
+  await boss.auth.currentUser.getIdToken(true);
+  await denied(boss.write('features/findMatch', 'yes'), 'a value that is not true or false');
+  await denied(boss.write('features/somethingElse', true), 'a switch that does not exist');
+  await boss.write('features/findMatch', true);
+  assert.equal((await c.call('findMatch', {})).status, 'searching', 'switched on: searching again');
+  await c.call('cancelSearch', {});
+  await runScript('make-admin.js', 'SwitchBoss', 'revoke');
+  await put('features/findMatch', true);
 });

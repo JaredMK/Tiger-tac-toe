@@ -221,6 +221,7 @@ function render() {
       ${kpi('First player (X) wins', pct(ratio(t.xWins, t.xWins + t.oWins)), `${t.xWins} of ${t.xWins + t.oWins} decided`)}
     </div>
     <div class="grid2"><div class="card"><h2>Players per day</h2>${players}</div><div class="card"><h2>Matches finished per day</h2>${matches}</div></div>
+    ${findCard()}
     ${botsCard()}
     ${alertsCard()}
     <div class="card"><h2>Matches by mode</h2>${modeTable}</div>
@@ -230,7 +231,21 @@ function render() {
     <div class="card"><div class="row"><h2>Players over time</h2><div class="tabs">${[['d', 'Days'], ['w', 'Weeks'], ['m', 'Months']].map(([k, l]) => `<button data-period="${k}" aria-pressed="${period === k}">${l}</button>`).join('')}</div></div>${ptable}</div>`;
 }
 
-// ---------- matchmaking controls: the bots and the empty-queue alert (admin/config, read by the server) ----------
+// ---------- matchmaking controls: Find Match on or off (features/findMatch, read by the game and the server) ----------
+function findCard() {
+  const on = !!(ctl.features && ctl.features.findMatch === true);
+  return `<div class="card ctl" id="findCard"><div class="row"><h2>Find Match</h2><label class="sw"><input type="checkbox" data-feat="findMatch"${on ? ' checked' : ''}><span>${on ? 'On' : 'Off'}</span></label></div>
+    <p class="note">Off: the Find a Match button in the game is greyed out and says "Not available at this time", nobody new joins the queue, and anyone searching is sent back to Play Online. Matches already under way carry on. Play a Friend is not affected.</p></div>`;
+}
+async function saveFeat(el) {
+  const k = el.dataset.feat;
+  try {
+    await fb.dbM.set(fb.dbM.ref(fb.db, `features/${k}`), el.checked);
+    ctl.features = Object.assign({}, ctl.features, { [k]: el.checked });
+  } catch (e) { alert('Could not save: ' + (e && e.message)); }
+  render();
+}
+// ---------- the bots and the empty-queue alert (admin/config, read by the server) ----------
 const chk = (sec, k) => `<input type="checkbox" data-cfg="${sec}.${k}"${cfgGet(sec, k) ? ' checked' : ''}>`;
 const numIn = (sec, k, min, max) => `<input type="number" inputmode="numeric" data-cfg="${sec}.${k}" min="${min}" max="${max}" value="${esc(cfgGet(sec, k))}">`;
 function botsCard() {
@@ -347,9 +362,9 @@ async function load() {
 }
 async function loadCtl() {
   const g = p => fb.dbM.get(fb.dbM.ref(fb.db, p)).then(s => s.val()).catch(() => null);
-  const [config, secretsSet, bots, botStats, alertStats, log] = await Promise.all([g('admin/config'), g('admin/secretsSet'), g('bots'), g('botStats'), g('alertStats'),
+  const [config, secretsSet, bots, botStats, alertStats, features, log] = await Promise.all([g('admin/config'), g('admin/secretsSet'), g('bots'), g('botStats'), g('alertStats'), g('features'),
     fb.dbM.get(fb.dbM.query(fb.dbM.ref(fb.db, 'alertLog'), fb.dbM.orderByChild('at'), fb.dbM.limitToLast(8))).then(s => s.val()).catch(() => null)]);
-  ctl = { config: config || {}, secretsSet: secretsSet || {}, bots: bots || {}, botStats: botStats || {}, alertStats: alertStats || {},
+  ctl = { config: config || {}, secretsSet: secretsSet || {}, bots: bots || {}, botStats: botStats || {}, alertStats: alertStats || {}, features: features || {},
     alertLog: Object.values(log || {}).sort((a, b) => b.at - a.at) };
 }
 async function signIn(how) {
@@ -380,6 +395,7 @@ app.addEventListener('click', e => {
 app.addEventListener('change', e => {
   if (e.target.id === 'mm') { miniMode = e.target.value; render(); }
   else if (e.target.dataset && e.target.dataset.cfg) saveCfg(e.target);
+  else if (e.target.dataset && e.target.dataset.feat) saveFeat(e.target);
 });
 boot().catch(() => { app.innerHTML = '<div class="card msg"><h1>Tic Tac Chaos Stats</h1><p>Could not load. Check the connection and reload.</p></div>'; });
 </script>

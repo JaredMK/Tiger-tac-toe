@@ -38,8 +38,8 @@ what, so there is no squares-won score); the current player's character bounces 
 ends the match and returns to the main menu. Leaving a match that is recorded (any online match, or a
 local one while logged in) counts as a loss, and the question says so: "Leave this match? It will
 count as a loss." The loss is recorded like any other result. Nothing moves while the menu is open, the computer included. When a square is won, the owner's
-mark squashes in with two comic-book bursts, once: first on the result card (just the bursts and the
-winner's character, no words), then around the square on the board. Each burst's word is
+mark squashes in with two comic-book bursts, once, around the square on the board (the result card
+before it shows only the winner's character: no words and no bursts). Each burst's word is
 picked at random from POW!, BAM!, CHAOS!, BOOM!, KAPOW!, WHAM!, ZAP!, SMASH!, CRUNCH!, YOINK!,
 SNATCHED!, MINE!, CLAIMED!, GOTCHA!, KABLAM! and BOP!, never one shown the time before. A burst pops
 in, stays about a second and pops out; it never stays on screen (with reduced motion it does not
@@ -339,7 +339,7 @@ Cloud Function, which checks it and writes the player's local record, local mini
 history entry to `localStats/{uid}` and `localHistory/{uid}`, readable only by that player. A report
 waits on the phone while offline and goes when it can. The online records are not touched.
 
-**My Stats** (tap your username): a selector, **Online / Local / All**. Online covers Find Match and
+**My Stats** (tap your username): the **Game history** button first, then a selector, **Online / Local / All**. Online covers Find Match and
 friend games together (with a "Find Match x-y-z · Friends x-y-z" line under it), Local the local
 games, All both. The record (wins-losses-draws and the win rate: wins over all games, draws
 included, so 3-5-1 is 33%) and the table of mini-games (squares won, squares lost and win rate, most
@@ -375,6 +375,16 @@ by the admin only; the alert keys (`admin/secrets`) can be written by the admin 
 but the server; the bot list, bot numbers and alert log are the admin's only; the bots' own game
 records (`botGames`) and the alert limits have no read rule at all.
 
+### Switching Find Match on and off
+
+Find Match is **off** until it is switched on with the **Find Match** card on the admin dashboard
+(it is stored at `features/findMatch` in the database: anyone can read it, only the admin can change
+it). While it is off, the **Find a Match** button on Play Online is greyed out with "Not available at
+this time" (as is the Find Match button on a finished Find Match game's results), the server refuses
+to queue anyone, and anyone already searching is taken out of the queue and sent back to Play Online.
+Matches already under way carry on, and "Back to your match" still works. Play a Friend is not
+affected. Switching it on takes effect at once on every open page.
+
 ### Matchmaking backfill and the empty-queue alert
 
 Both are switched on and set from the admin dashboard (they start off), and both act only when
@@ -396,11 +406,10 @@ takes them on. The match is an ordinary Find Match game: the bot's account looks
 (a made-up ordinary username, a profile, a record and history of its own, shown online), and it
 plays through the same server moves. Each bot has its own style (how much it builds its own lines,
 how much it blocks, how often it slips, how bold it is at Risky Rolls) and pace (thinking time drawn afresh
-for every move, mostly a few seconds, sometimes 20 to 50, now and then longer, always inside the
-1-minute clock; quicker for a follow-up in the same turn), set in `functions/bots.js`. The bot's
-moves are made by the server when the player's phone checks in during the other side's turn (every
-phone does this in every matchmaking game) or, if the player is away, by the minute's sweep; a bot
-never runs out of time. With the default wait, the alert comes about 35 seconds or more before any
+for every move: 1.5 to 5 seconds, 3 to 8 for a Wordle, Hangman or Mastermind guess, quicker for a
+follow-up in the same turn, never more than 8), set in `functions/bots.js`. Each bot move is queued
+on the server as a Cloud Task for the moment it is due, so it comes on time whether or not the
+player's phone is checking in (the minute's sweep is a fallback); a bot never runs out of time. With the default wait, the alert comes about 35 seconds or more before any
 bot, which is the window to join.
 
 Bot matches are counted apart: their own row ("Find Match vs a bot") in the dashboard's stats, and
@@ -515,8 +524,9 @@ an account signing in or coming back to the game); new accounts; matches started
 average match length in turns and minutes; abandon, resign and timeout rates; how often X, who moves
 first, wins.
 
-The dashboard is https://jaredmk.github.io/Tiger-tac-toe/admin.html: the **Bots** and **Empty-queue
-alerts** controls (see "Matchmaking backfill and the empty-queue alert"), tables and charts, with the
+The dashboard is https://jaredmk.github.io/Tiger-tac-toe/admin.html: the **Find Match** on/off switch
+(see "Switching Find Match on and off"), the **Bots** and **Empty-queue alerts** controls (see
+"Matchmaking backfill and the empty-queue alert"), tables and charts, with the
 mini-game table sortable (by average winner moves to find games that are too fast or too slow) and
 filterable by mode, and the "Usernames to review" card (existing names the word list would refuse
 today, with the word that caught each; nothing is changed). It opens only for the account with the admin flag; the database rules refuse the

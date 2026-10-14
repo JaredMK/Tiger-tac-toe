@@ -184,6 +184,12 @@ exports.findMatch = onCall(CALL, async req => {
   const prev = (await db.ref(`queue/${key}/${uid}`).get()).val();
   const act = await activeGame(uid);
   if (act) return { status: 'matched', game: act.game, side: act.side };
+  if (!(await findMatchOn())) {                                 // switched off on the admin page: out of the queue, nobody new is paired
+    let paired = null;
+    await db.ref(`queue/${key}/${uid}`).transaction(cur => { paired = cur && cur.game ? { game: cur.game, side: cur.side } : null; return paired ? undefined : null; }, undefined, false);
+    if (paired) { await createGame(key, paired.game).catch(() => {}); return Object.assign({ status: 'matched' }, paired); }   // paired just before the switch: that game goes on
+    throw new HttpsError('failed-precondition', 'Find Match is not available at this time.', { off: true });
+  }
   for (const other of OLD_QUEUES) await leaveQueue(other, uid);                // (from an older page)
   const conf = await adminConfig(), bc = B.botConfig(conf), ac = B.alertConfig(conf);
   const free = bc.enabled && prev && !prev.game && prev.botAt && now() >= prev.botAt ? await freeBots() : [];   // only looked up once a bot could be due
@@ -242,6 +248,8 @@ exports.cancelSearch = onCall(CALL, async req => {
   }
   return game ? Object.assign({ status: 'matched' }, game) : { status: 'cancelled' };
 });
+// Find Match is on only while the admin page has switched it on (features/findMatch true); missing means off.
+async function findMatchOn() { return (await db.ref('features/findMatch').get()).val() === true; }
 async function leaveQueue(key, uid) {
   await db.ref(`queue/${key}/${uid}`).transaction(cur => (cur && cur.game ? undefined : null), undefined, false);
 }

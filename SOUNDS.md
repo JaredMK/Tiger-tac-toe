@@ -18,7 +18,7 @@ Sounds start from the events they belong to, never from drawing the screen: a re
 
 | Sound | When it plays | How it is made |
 |---|---|---|
-| `tap` | Any button press (not a move, zoom or card) | Triangle glide 640→430 Hz with a short noise tick. *Varied.* |
+| `tap` | Any button press, including tapping a square to open it and the Board button (not a move or card) | Triangle glide 640→430 Hz with a short noise tick. *Varied.* |
 | `key` | Wordle or Hangman key, Enter, Backspace | Triangle blip 1400→1100 Hz. *Varied.* |
 | `toggle` | A switch, box or the sound switch | Two rising blips, 660 then 880 Hz |
 | `pop` | An emoji reaction is sent, or the other player's arrives. *Varied.* | Sine glide 620→980 Hz with a faint overtone at 1240 Hz |
@@ -36,12 +36,10 @@ Sounds start from the events they belong to, never from drawing the screen: a re
 
 | Sound | When it plays | How it is made |
 |---|---|---|
-| `zoomIn` | Entering a square (a tap, the computer's turn, the opponent's move coming into view) | Noise sweep up 800→2400 Hz with a low blip |
-| `zoomOut` | Going back to the board (Board button, or after a result) | Noise sweep down 2400→800 Hz |
 | `spot` | The opponent's or computer's square lights up before its move | Two soft sines that swell in |
 | `turn` | The turn passes to the other player | Boing: sine glide 260→620 Hz, then a small blip |
 | `stamp` | A square is claimed (the owner's mark stamps in) | Low thump: sine 130→55 Hz with lowpass noise |
-| `burst` | A comic burst pops (on the result card and round the square). *Varied.* | Noise plus glide 900→1800 Hz |
+| `burst` | A comic burst pops round a square just claimed on the board. *Varied.* | Noise plus glide 900→1800 Hz |
 | `reset` | A square resets after a draw | Falling tone 520→240 Hz with low noise |
 | `swish` | A line of three is drawn (tic-tac-toe, and the board's winning line) | Noise sweep up 600→3200 Hz with a blip |
 | `won` | A square is won in its mini-game | Three-note chime |
@@ -109,6 +107,8 @@ Sounds start from the events they belong to, never from drawing the screen: a re
 ## Rules the game follows
 
 - Every control plays a tap sound when pressed, whether or not the game takes the press.
+- Opening a square and going back to the board make no whoosh: only your own tap plays (opening the
+  computer's or the opponent's square, or coming back after a result, is silent apart from the move).
 - Each move's sounds start from the move itself, timed to the animation they go with, once. Opponent
   and computer moves play theirs when they are replayed on screen, in the same order.
 - Nothing plays while sound is off. The switch is on the main menu and in the in-game menu, and it is

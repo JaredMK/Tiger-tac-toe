@@ -758,6 +758,8 @@ b.O { box-shadow: inset 0 -.38em 0 var(--o-soft); }
 .menu-card .primary.alt[data-act="online-go"] { background: var(--sky); color: var(--ink); }
 .menu-card .primary.mm { background: var(--green); color: var(--paper); }
 .primary:disabled { opacity: .45; }
+.primary.off, .menu-card .primary.mm.off { background: var(--stone); color: var(--muted); opacity: 1; box-shadow: 0 5px 0 var(--muted); border-color: var(--muted) !important; line-height: 1; }
+.primary.off small { display: block; font: 400 15px 'Patrick Hand', sans-serif; margin-top: 2px; }
 .btn { background: var(--paper); color: var(--ink); font-size: 16px; }
 .btn.go { background: var(--o); color: var(--ink); }
 .link { background: var(--paper); color: var(--ink); }
@@ -1133,8 +1135,6 @@ button.seg.X.on { background: var(--x); color: var(--paper); } .seg.O.on { backg
 .big-g.bang { animation: none; }
 .big-g.bang .pc { animation: squash .8s cubic-bezier(.3, 0, .4, 1) both; animation-delay: inherit; transform-origin: 50% 90%; }
 .flash.late .big-g.bang .pc { animation-delay: var(--late, 0s); }
-.card .powc { position: absolute; width: 120px; left: -40px; top: -46px; animation: burstlife 1.1s linear both; animation-delay: calc(var(--late, 0s) + .1s); }
-.card .powc2 { position: absolute; width: 132px; right: -44px; top: 40px; animation: burstlife2 1.1s linear both; animation-delay: calc(var(--late, 0s) + .25s); }
 .toast { background: var(--o); border: 3.5px solid var(--ink); box-shadow: 0 5px 0 var(--ink); border-radius: 20px 14px 22px 12px; font-weight: 400; font-size: 17px; padding-top: 14px; }
 .win-card h1 { font-size: 32px; padding-top: 4px; color: var(--ink); }
 .win-card p { color: var(--muted); font-weight: 400; font-size: 19px; }
@@ -2033,7 +2033,6 @@ function renderSetup() {
   const slots = () => {
     const isCpu = L.p2 === 'cpu';
     const pick = v => `<button class="seg${v === 'random' ? '' : ' ' + v}${L.pick === v ? ' on' : ''}" data-act="lside" data-side="${v}" aria-pressed="${L.pick === v}">${v === 'X' ? 'X' : v === 'O' ? 'O' : 'Random'}</button>`;
-    const p2side = s2 ? `plays ${s2}` : 'plays the other side';
     return `<div class="slot ${s1 || 'R'} p1">
       <div class="who-p">${face(s1)}</div>
       <div class="sides three lside" role="group" aria-label="Player 1's side">${pick('X')}${pick('O')}${pick('random')}</div>
@@ -2041,7 +2040,7 @@ function renderSetup() {
     <div class="slot ${s2 || 'R'} p2${isCpu ? ' cpu' : ''}">
       <div class="who-p">${face(s2)}</div>
       <div class="kind" role="group" aria-label="Player 2"><button class="seg${isCpu ? '' : ' on'}" data-act="kind" data-kind="human" aria-pressed="${!isCpu}">Human</button><button class="seg${isCpu ? ' on' : ''}" data-act="kind" data-kind="cpu" aria-pressed="${isCpu}">Computer</button></div>
-      <label class="field ${s2 || ''}">${isCpu ? `<i class="slot-ico" aria-hidden="true">${CPU_ICON}</i>` : ''}<span>Player 2 name · ${p2side}</span><input data-ln="n2" value="${esc(L.n2)}" maxlength="${NAME_MAX}" placeholder="${isCpu ? CPU_NAME : s2 || 'X or O'}" autocomplete="off" autocapitalize="words" aria-label="Player 2 name"></label></div>`;
+      <label class="field ${s2 || ''}">${isCpu ? `<i class="slot-ico" aria-hidden="true">${CPU_ICON}</i>` : ''}<span>Player 2 name</span><input data-ln="n2" value="${esc(L.n2)}" maxlength="${NAME_MAX}" placeholder="${isCpu ? CPU_NAME : s2 || 'X or O'}" autocomplete="off" autocapitalize="words" aria-label="Player 2 name"></label></div>`;
   };
   return `<main class="scr setup">
     <div class="bar">${host ? `<button class="back" data-act="lobby-back" aria-label="Close the room and go back">${CHEV}Back</button>` : `<button class="back" data-act="menu" aria-label="Back to the main menu">${CHEV}Menu</button>`}
@@ -2537,26 +2536,21 @@ function summary(f) {
   }
   return `${who} placed`;
 }
-const CARD_BURST = [100, 250];            // when the two bursts on a result card pop in, in ms after the card
 function renderFlash(f) {
   const who = `<b class="${f.by}">${N(f.by)}</b>`;
   const name = INFO[f.type].name;
-  const at = fxAt('move', f), age = at == null ? 0 : performance.now() - at;
-  const pow = () => {                              // the square-won bursts on the result card: in after the move plays, out a second later
-    const late = animMs(f), b = burstPick(`card:${state.moves}:${f.square}`), end = k => late + CARD_BURST[k] + BURST_MS;
-    return [0, 1].map(k => age >= end(k) ? '' : `<div class="powc${k ? '2' : ''}" data-bend="${Math.round((at == null ? performance.now() : at) + end(k))}">${k ? burstSvg(b.words[1], 'r', 160, 104, 28) : burstSvg(b.words[0], 'y', 150, 110, 34)}</div>`).join('');
-  };
+  const at = fxAt('move', f);                      // (the comic bursts pop on the board once the square is stamped, not here)
   const open = `<div class="flash late" style="--late:${animMs(f)}ms"${fxAttr(at)} data-act="dismiss">${f.timeout ? `<div class="timeout-note">${who} ran out of time — random move</div>` : ''}`;   // the result waits for the animation
   if (f.kind === 'match' && state.winner === 'draw') {          // the square won leaves no line open to either side
     return `${open}<div class="card"><div class="big-g bang both">${toonT('X')}${toonT('O')}</div><h2>It's a draw!</h2><p>Nobody can get three in a row now · Tap to continue</p></div></div>`;
   }
   if (f.kind === 'match') {
     const w = state.winner;
-    return `${open}<div class="card">${pow()}<div class="big-g bang ${w}">${toonT(w)}</div><h2>${N(w)} wins the match!</h2><p>Tap to continue</p></div></div>`;
+    return `${open}<div class="card"><div class="big-g bang ${w}">${toonT(w)}</div><h2>${N(w)} wins the match!</h2><p>Tap to continue</p></div></div>`;
   }
   if (f.kind === 'claim') {
     const w = f.winner || f.by;
-    return `${open}<div class="card claimc" role="status" aria-label="${esc(playerName(state, w))} wins ${name}">${pow()}<div class="big-g bang ${w}">${toonT(w)}</div></div></div>`;   // the bursts and the character: no words
+    return `${open}<div class="card claimc" role="status" aria-label="${esc(playerName(state, w))} wins ${name}"><div class="big-g bang ${w}">${toonT(w)}</div></div></div>`;   // the winner's character: no words
   }
   if (f.type === 'pig' && f.note === 'bust') {
     return `${open}<div class="card"><div class="big-g">${dieFace(f.roll)}</div><h2>Bust!</h2><p>${who} rolled ${f.roll} again · ${f.pot} point${f.pot === 1 ? '' : 's'} lost</p></div></div>`;
@@ -2645,17 +2639,19 @@ function renderWin() {
   return `<main class="scr win-scr">${netBar()}<div class="win-card${isMM() ? ' mm' : ''}">
     <div class="winburst">${endBurst(endMessage())}</div><div class="big-g ${w}">${toonT(w)}</div><h1>${state.winReason === 'timeout' || state.winReason === 'resign' ? `${N(w)} wins — ${why}` : `${N(w)} wins the match!`}</h1><p>${state.winReason === 'timeout' ? 'Two turns in a row ran out of time' : state.winReason === 'resign' ? 'Leaving a match counts as a loss' : why}</p>${mmResult()}
     <div class="final" aria-hidden="true">${final}</div>
-    <div class="row">${isMM() ? '<button class="primary" data-act="find-again">Find Match</button>' : `<button class="primary" data-act="rematch"${state.online && !connected ? ' disabled' : ''}>Rematch</button>`}<button class="btn" data-act="review">View board</button><button class="btn" data-act="${state.online ? 'leave' : 'menu'}">Main menu</button></div></div></main>`;
+    <div class="row">${isMM() ? findAgainBtn() : `<button class="primary" data-act="rematch"${state.online && !connected ? ' disabled' : ''}>Rematch</button>`}<button class="btn" data-act="review">View board</button><button class="btn" data-act="${state.online ? 'leave' : 'menu'}">Main menu</button></div></div></main>`;
 }
 
 
+// A Find Match game's results: another one, or the button greyed while Find Match is switched off.
+function findAgainBtn() { return findOn ? '<button class="primary" data-act="find-again">Find Match</button>' : '<button class="primary off" disabled>Find Match<small>Not available at this time</small></button>'; }
 // A draw: once neither player could still make three in a row, the match ended there.
 function renderDraw() {
   const final = state.squares.map(s => `<i class="${s.owner || ''}">${s.owner ? toonT(s.owner) : ''}</i>`).join('');
   return `<main class="scr win-scr">${netBar()}<div class="win-card${isMM() ? ' mm' : ''}">
     <div class="winburst">${endBurst(endMessage())}</div><div class="big-g both">${toonT('X')}${toonT('O')}</div><h1>It's a draw!</h1><p>Nobody could get three in a row any more, so the match ended there</p>${mmResult()}
     <div class="final" aria-hidden="true">${final}</div>
-    <div class="row">${isMM() ? '<button class="primary" data-act="find-again">Find Match</button>' : `<button class="primary" data-act="rematch"${state.online && !connected ? ' disabled' : ''}>Rematch</button>`}<button class="btn" data-act="review">View board</button><button class="btn" data-act="${state.online ? 'leave' : 'menu'}">Main menu</button></div></div></main>`;
+    <div class="row">${isMM() ? findAgainBtn() : `<button class="primary" data-act="rematch"${state.online && !connected ? ' disabled' : ''}>Rematch</button>`}<button class="btn" data-act="review">View board</button><button class="btn" data-act="${state.online ? 'leave' : 'menu'}">Main menu</button></div></div></main>`;
 }
 
 /* ===================== Online play (Firebase Realtime Database) =====================
@@ -2813,6 +2809,7 @@ function loadFirebase() {
     fb = f;
     m.onValue(m.ref(db, '.info/serverTimeOffset'), s => { serverOffset = s.val() || 0; });
     m.onValue(m.ref(db, '.info/connected'), s => onConnected(!!s.val()));
+    m.onValue(m.ref(db, 'features/findMatch'), s => setFindOn(s.val() === true), () => {});
     if (!mock) { onAuthUser(f.auth.currentUser); authM.onAuthStateChanged(f.auth, u => onAuthUser(u)); }
     return fb;
   })().catch(e => { fbLoad = null; throw e; });
@@ -3184,7 +3181,7 @@ function presentEntry(st, e, rest) {
   state.done = !over && e.kind !== 'again' ? f : null;
   state.spot = null; state.stamp = null;
   presentingSeq = e.seq;
-  if (e.by === o.me && !e.timeout) { if (state.screen !== 'mini') SND.play('zoomIn'); state.screen = 'mini'; state.zoom = e.square; state.draft = ''; state.notice = null; playFlash(); }
+  if (e.by === o.me && !e.timeout) { state.screen = 'mini'; state.zoom = e.square; state.draft = ''; state.notice = null; playFlash(); }
   else showRemoteMove(e.square, moveLabel(e), before ? clone(before) : null);
   save(); render();
 }
@@ -3212,7 +3209,7 @@ function showRemoteMove(i, label, before) {
     if (!state.spot) return;
     const sq = state.spot.square;
     state.spot = null;
-    state.screen = 'mini'; state.zoom = sq; SND.play('zoomIn');
+    state.screen = 'mini'; state.zoom = sq;
     playFlash();
     save(); render();
   }, SPOT_MS);
@@ -3520,6 +3517,15 @@ let acctUnsubs = [];
 let afterLogin = null;                       // where to go once logged in and named: 'find', 'profile' or 'host'
 let loginMsg = null, loginBusy = false, loginMail = '', loginPass = '', unameMsg = null, unameDraft = '';
 let search = { on: false, found: false, since: 0, msg: '' }, searchTimer = null, searchBusy = false;
+// Find Match is on only while the admin page has it on (features/findMatch); off until the database says otherwise.
+let findOn = (() => { try { return localStorage.getItem(KEY + '.find') === 'on'; } catch (e) { return false; } })();
+function setFindOn(on) {
+  if (on === findOn) return;
+  findOn = on;
+  try { localStorage.setItem(KEY + '.find', on ? 'on' : 'off'); } catch (e) { /* no storage: read again next visit */ }
+  if (!on && search.on) { cancelSearch(); return; }   // switched off mid-search: out of the queue, back to Play Online
+  render();
+}
 let lb = null;                               // the leaderboard as last loaded: { rows, me, error }
 let prof = null;                             // the profile on show: { uid, user, hist, back, error }
 let hist = null;                             // a past game on the review board: { entry, view, zoom }
@@ -3701,6 +3707,7 @@ async function logout() {
 /* ----- Find Match: a queue on the server; the phone checks in every few seconds while it waits ----- */
 async function openFind() {
   if (acct.active && acct.active.game && !(isMM() && state.online.game === acct.active.game)) { enterGame(acct.active.game, acct.active.side); return; }   // back to the match in progress
+  if (!findOn) { state.screen = 'online'; commit(); return; }   // switched off: the greyed button on Play Online
   if (!(await needAccount('find'))) return;
   search.msg = ''; search.found = false;
   state.screen = 'find'; commit();
@@ -3724,6 +3731,7 @@ async function searchTick() {
       search.msg = '';
     } catch (e) {
       searchBusy = false;
+      if (e && e.details && e.details.off) { stopSearch(); setFindOn(false); state.screen = 'online'; commit(); return; }   // switched off: already out of the queue
       search.msg = e && /precondition|invalid-argument|unauthenticated/.test(String(e.code)) ? String(e.message) : 'Connection trouble: still trying…';
     }
   }
@@ -3738,6 +3746,7 @@ async function cancelSearch() {
 }
 function stopSearch() { search.on = false; clearTimeout(searchTimer); searchTimer = null; }
 function findAgain() {                          // the results screen: another game
+  if (!findOn) return;
   leaveRoom(true);
   state.screen = 'find'; commit();
   startSearch();
@@ -4022,8 +4031,8 @@ function renderProfile() {
       : `<p class="hint center">No squares won or lost ${view === 'local' ? 'in local games' : view === 'all' ? '' : 'online'} yet.</p>`;
     const nh = p.hist ? p.hist.length : null;
     const what = { online: 'online games: Find Match and friends', local: 'local games (you as player 1)', all: 'every game: online and local' }[view];
-    body = `${card}<h3 class="hh">Mini-games</h3><p class="hint">Squares won and lost in ${what}.</p>${table}
-      <button class="btn wide" data-act="prof-hist"${p.hist ? '' : ' disabled'}>Game history${nh != null ? ` (${nh})` : ''}</button>`;
+    body = `<button class="btn wide phist" data-act="prof-hist"${p.hist ? '' : ' disabled'}>Game history${nh != null ? ` (${nh})` : ''}</button>
+      ${card}<h3 class="hh">Mini-games</h3><p class="hint">Squares won and lost in ${what}.</p>${table}`;   // the game history first, then the stats
   }
   return `<main class="scr setup acct-scr prof-scr">
     <div class="bar"><button class="back" data-act="prof-back" aria-label="Back">${CHEV}${backLabel}</button>
@@ -4064,14 +4073,14 @@ function menuTop() {
 /* ----- online screens ----- */
 // Play Online: a friend (a room and its code) or Find a Match (anyone waiting).
 function renderOnline() {
-  const back = acct.active && acct.active.game && !(isMM() && state.online.game === acct.active.game);
+  const back = acct.active && acct.active.game && !(isMM() && state.online.game === acct.active.game), can = back || findOn;
   return `<main class="scr setup online-scr">
     <div class="bar"><button class="back" data-act="menu" aria-label="Back to the main menu">${CHEV}Menu</button></div>
     <div class="online-mid" data-keep-scroll="online"><div class="menu-card">
     <h1>Play Online</h1>
     <p class="sub">Play a friend with a room code, or find a match against anyone waiting. Both need an internet connection.</p>
     <button class="primary" data-act="friend-go">Play a Friend</button>
-    <button class="primary mm" data-act="find-go">${back ? 'Back to your match' : 'Find a Match'}</button>
+    <button class="primary mm${can ? '' : ' off'}" data-act="find-go"${can ? '' : ' disabled'}>${back ? 'Back to your match' : `Find a Match${can ? '' : '<small>Not available at this time</small>'}`}</button>
   </div></div></main>`;
 }
 function renderFriend() {
@@ -4141,7 +4150,7 @@ app.addEventListener('click', e => {
     const i = Number(el.dataset.i);
     if (state.winner || !state.squares[i]) { SND.play('error'); return; }
     if (lockMine() && state.lock !== i) { SND.play('error'); return; }
-    state.screen = 'mini'; state.zoom = i; state.draft = ''; state.sel = []; state.notice = null; hpSel = null; SND.play('zoomIn');
+    state.screen = 'mini'; state.zoom = i; state.draft = ''; state.sel = []; state.notice = null; hpSel = null; SND.play('tap');   // (a plain tap: no whoosh into the square)
     if (!state.online) { state.pick = null; state.pickSq = null; }
     commit();
   } else if (act === 'back') {
@@ -4176,6 +4185,7 @@ app.addEventListener('click', e => {
     if (startMatch(state, RNG)) { trackStart(); commit(); }
   } else if (act === 'online-go') {
     state.screen = 'online'; setNet('idle', ''); commit();
+    connectQuiet();                               // (whether Find Match is on: it follows the database from here)
   } else if (act === 'friend-go') {
     state.screen = 'friend'; setNet('idle', ''); commit();
   } else if (act === 'find-go') {               // the main menu: Find Match (or back to the match in progress)
@@ -4487,7 +4497,7 @@ function cpuZoom() {
   state.spot = null;
   if (!cpuTurn() || state.screen !== 'board' || state.confirm || menuOpen || !cpuPlan) { render(); return; }
   state.screen = 'mini'; state.zoom = cpuPlan.square; state.draft = ''; state.pick = null; state.sel = []; state.notice = null;
-  SND.play('zoomIn'); commit();
+  commit();
 }
 function cpuAct() {
   cpuTimer = null;
@@ -4642,8 +4652,6 @@ def('copy', 0.2, (c, d, t) => { sfxNoise(c, d, t, .02, { f: 3000, vol: .6 }); sf
 def('join', 0.36, (c, d, t) => { sfxTone(c, d, t, 523, .15, { vol: .4, type: 'triangle' }); sfxTone(c, d, t + .1, 784, .24, { vol: .45, type: 'triangle' }); }, { level: .55 });
 def('found', 0.55, (c, d, t) => [523, 659, 784, 1046].forEach((f, i) => sfxTone(c, d, t + i * .07, f, .22, { vol: .35, type: 'triangle' })), { level: .6 });
 // ---- the board
-def('zoomIn', 0.22, (c, d, t) => { sfxNoise(c, d, t, .2, { f: 800, to: 2400, q: 2, vol: .5 }); sfxTone(c, d, t, 380, .18, { to: 760, vol: .15 }); }, { level: .5 });
-def('zoomOut', 0.2, (c, d, t) => sfxNoise(c, d, t, .18, { f: 2400, to: 800, q: 2, vol: .5 }), { level: .5 });
 def('spot', 0.4, (c, d, t) => { sfxTone(c, d, t, 880, .36, { vol: .25, att: .12 }); sfxTone(c, d, t, 1320, .28, { vol: .1, att: .12 }); }, { level: .4 });
 def('turn', 0.42, (c, d, t) => { sfxTone(c, d, t, 260, .24, { to: 620, vol: .5, att: .01 }); sfxTone(c, d, t + .18, 900, .2, { vol: .2, type: 'triangle' }); }, { level: .5 });
 def('stamp', 0.42, (c, d, t) => { sfxTone(c, d, t, 130, .38, { to: 55, vol: .9, att: .002 }); sfxNoise(c, d, t, .12, { f: 500, filter: 'lowpass', vol: .6, att: .002 }); }, { level: .9 });
@@ -4753,18 +4761,17 @@ SND.setMuted = function (m) {
 try { SND.muted = localStorage.getItem(KEY + '.sound') === 'off'; } catch (e) { /* no storage: sound on */ }
 try { if (navigator.audioSession) navigator.audioSession.type = 'ambient'; } catch (e) { /* not here: the silent switch is the phone's own */ }
 ['pointerdown', 'touchend', 'click', 'keydown'].forEach(ev => document.addEventListener(ev, SND.unlock, { capture: true, passive: true }));
-// Every control plays its tap sound when pressed (whether or not the game takes the press). The moves,
-// zooms and card turns play their own sounds, from their events. A press on a disabled control is an error.
+// Every control plays its tap sound when pressed (whether or not the game takes the press). The moves
+// and card turns play their own sounds, from their events. A press on a disabled control is an error.
 const TAP_SOUND = { explain: 'open', 'explain-close': 'close', pause: 'open', 'pause-resume': 'close', zoom: null, move: null, pick: null,
   mmcol: 'peg', mmslot: 'peg', key: 'key', bksp: 'key', enter: 'key', side: 'toggle', kind: 'toggle', lside: 'toggle', timer: 'toggle', adv: 'toggle',
-  sound: 'toggle', 'games-all': 'select', 'games-none': 'deselect', share: 'copy', back: 'back' };
+  sound: 'toggle', 'games-all': 'select', 'games-none': 'deselect', share: 'copy', back: 'tap' };   // (back: the Board button in a square, a plain tap)
 document.addEventListener('click', e => {
   if (search.on) return;                                           // the searching screen is silent (even its Cancel)
   const el = e.target.closest && e.target.closest('[data-act], label.chk');
   if (!el || el.classList.contains('chk')) return;                 // (a box: its change plays the toggle)
   const act = el.dataset.act;
   let name = act && act in TAP_SOUND ? TAP_SOUND[act] : (el.classList.contains('back') ? 'back' : 'tap');
-  if (act === 'back' && state.screen === 'mini') name = 'zoomOut';
   if (name) SND.play(name);
 }, true);
 document.addEventListener('pointerdown', e => { if (e.target.closest && e.target.closest('button:disabled, input:disabled')) SND.play('error'); }, true);
@@ -4818,14 +4825,12 @@ function moveSounds(f) {
   if (won && f.kind !== 'match' && f.type !== 'ttt' && f.type !== 'wordle' && f.type !== 'hangman') add('won', Math.round(total * .5));   // the square is won: a chime
   if (f.kind === 'draw') add('reset', 420);                          // the square resets with a new mini-game
   if (f.kind === 'match') { add('swish', total - 500); add(matchEndSound(), total); }   // the line on the board, then the end of the match
-  if (won) { add('burst', total + 100); add('burst', total + 250); } // the bursts on the result card
   return out;
 }
 // The end of the match, as this phone sees it: a win fanfare, a loss sting, or the tie chord.
 function matchEndSound() { const k = endKind().list; return k === 'win' ? 'winFanfare' : k === 'loss' ? 'loss' : 'tie'; }
-// The board comes back after a move: the zoom out of the square, and the turn passed to the other player.
+// The board comes back after a move: the turn passed to the other player (no whoosh out of the square).
 function backSounds(from) {
-  if (from.mini && state.screen === 'board') SND.play('zoomOut');
   if (!state.winner && state.turn !== from.turn) SND.play('turn');
 }
 

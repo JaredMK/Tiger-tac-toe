@@ -76,6 +76,16 @@
         }
       }
     },
+    "features": {
+      ".read": true,
+      "findMatch": {
+        ".write": "auth != null && auth.token.admin === true",
+        ".validate": "newData.isBoolean()"
+      },
+      "$other": {
+        ".validate": false
+      }
+    },
     "active": {
       "$uid": {
         ".read": "auth != null && auth.uid === $uid"
