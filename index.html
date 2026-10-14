@@ -776,13 +776,13 @@ b.O { box-shadow: inset 0 -.38em 0 var(--o-soft); }
 .clock.low { background: var(--x); color: var(--paper); }
 /* the game screen's top: Menu and the clock box, then the turn bar */
 :root { --hdr: 114px; }
-.hdr { height: var(--hdr); display: grid; grid-template-rows: 46px 38px 1fr; align-items: center; gap: 0; padding: 4px 12px 4px; justify-content: stretch; }
+.hdr { position: relative; height: var(--hdr); display: grid; grid-template-rows: 46px 38px 1fr; align-items: center; gap: 0; padding: 4px 12px 4px; justify-content: stretch; }   /* (position: the reaction tray and bubbles hang off it) */
 .hdrrow { display: flex; align-items: center; justify-content: space-between; min-width: 0; }   /* (not .hrow: that is a Hex board row) */
 .hdrrow .menubtn { height: 44px; font-size: 15px; padding: 0 12px; box-shadow: 0 3px 0 var(--ink); }   /* a full 44px tap target */
 .clockbox { flex: none; width: 76px; height: 34px; display: grid; place-items: center; }
 .clockbox .clock { width: 100%; text-align: center; padding: 4px 0 0; font-size: 16px; line-height: 22px; }
 .tbar { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 12px; min-width: 0; }
-.tside { display: flex; align-items: center; gap: 6px; min-width: 0; opacity: .5; transition: opacity .2s; }
+.tside { position: relative; display: flex; align-items: center; gap: 6px; min-width: 0; opacity: .5; transition: opacity .2s; }
 .tside.on { opacity: 1; }
 .tside.O { flex-direction: row-reverse; text-align: right; }
 .tside .tg { flex: none; width: 34px; height: 34px; display: block; }
@@ -794,7 +794,27 @@ b.O { box-shadow: inset 0 -.38em 0 var(--o-soft); }
 .hdr .turn { display: block; text-align: center; min-width: 0; line-height: 1.1; }
 .hdr .turn .g { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }   /* the letter, for screen readers (and the tests) */
 .hdr .turn .who { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-top: 2px; font-size: clamp(14px, 4.2vw, 18px); }
-@media (prefers-reduced-motion: reduce) { .tside.on .tg { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .tside.on .tg { animation: none; } .rbub.on { animation: none; } }
+/* reactions: the emoji button by the Menu, its tray, and the speech bubble by the sender's character */
+.rbtn { flex: none; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 10px; background: var(--paper); color: var(--ink); font-size: 22px; line-height: 1; box-shadow: 0 3px 0 var(--ink); }
+.rbtn:disabled { opacity: .4; box-shadow: none; }                        /* greyed out for the cooldown */
+.rtray { position: absolute; left: 50%; top: calc(100% + 6px); transform: translateX(-50%); z-index: 7; display: flex; gap: 6px; padding: 8px; border: 3px solid var(--ink); border-radius: 14px; background: var(--paper); box-shadow: 0 4px 0 var(--ink); }
+.rtray button { width: 44px; height: 44px; padding: 0; border: 0; border-radius: 10px; background: var(--cream); font-size: 24px; line-height: 1; }
+.rtray button:disabled { opacity: .4; }
+#app > .hdr { z-index: 2; }                                       /* over the board, so the tray and the bubbles are not under it (#app > * is z 1) */
+.tg { position: relative; }                                     /* (the bubble hangs off the character) */
+.rbub { display: none; position: absolute; top: 50%; margin-top: -20px; left: calc(100% + 6px); z-index: 6; pointer-events: none; align-items: center; justify-content: center; min-width: 40px; height: 40px; box-sizing: border-box; padding: 0 9px; border: 3px solid var(--ink); border-radius: 16px; background: var(--paper); box-shadow: 0 3px 0 var(--ink); font-size: 24px; line-height: 1; white-space: nowrap; }
+.rbub::after { content: ''; position: absolute; left: -11px; top: 13px; border: 7px solid transparent; border-right: 8px solid var(--ink); border-left: 0; }   /* the tail, pointing back at the character */
+.tside.O .rbub { left: auto; right: calc(100% + 6px); }
+.tside.O .rbub::after { left: auto; right: -11px; border-right: 0; border-left: 8px solid var(--ink); }
+.rbub.on { display: flex; animation: rxBubble 2.5s both; }
+@keyframes rxBubble {
+  0% { opacity: 0; transform: translateY(8px) scale(.5); }
+  9% { opacity: 1; transform: translateY(-2px) scale(1.1); }
+  14% { opacity: 1; transform: none; }
+  84% { opacity: 1; transform: none; }
+  100% { opacity: 0; transform: translateY(-6px); }
+}
 @keyframes clockpulse { 50% { transform: scale(1.12, .9) rotate(-4deg); } }
 
 /* the main board: outlined blobs on paper */
@@ -1886,11 +1906,16 @@ function renderHeader() {
   const drawn = won && state.winner === 'draw';                  // a draw: nobody can make a line any more
   const t = won && !drawn ? state.winner : state.turn;
   const clock = state.timer && state.timer.limit && !state.winner ? `<span class="clock" id="clock" aria-label="Time left this turn">${clockText()}</span>` : '';
-  const side = p => `<div class="tside ${p}${p === t ? ' on' : ''}"><span class="tg">${toon(p)}</span><b class="nm">${N(p)}</b></div>`;
+  // the reaction bubble hangs by the sender's character; the bubble is always there (hidden when empty), so the bar's shape stays the same
+  const card = p => (rx.card && rx.card.side === p && !menuOpen ? rx.card : null);   // (not over the in-game menu)
+  const side = p => `<div class="tside ${p}${p === t ? ' on' : ''}"><span class="tg">${toon(p)}<span class="rbub${card(p) ? ' on' : ''}"${card(p) ? fxAttr(card(p).at) : ''} aria-live="polite">${card(p) ? card(p).e : ''}</span></span><b class="nm">${N(p)}</b></div>`;
+  const cool = reactCooling();
+  const react = reactOn() ? `<button class="rbtn" data-act="react-open" aria-label="Send a reaction" aria-expanded="${rx.tray}"${cool ? ' disabled' : ''}>💬</button>` : '';
+  const tray = reactOn() && rx.tray && !menuOpen ? `<div class="rtray" role="group" aria-label="Send a reaction">${REACTS.map(([em, nm], i) => `<button data-act="react-send" data-i="${i}" aria-label="${nm}"${cool ? ' disabled' : ''}>${em}</button>`).join('')}</div>` : '';
   return `<header class="hdr t-${t}${clock ? ' has-clock' : ''}">
-    <div class="hdrrow"><button class="menubtn" data-act="pause" aria-label="Menu">Menu</button><span class="clockbox">${clock}</span></div>
+    <div class="hdrrow"><button class="menubtn" data-act="pause" aria-label="Menu">Menu</button>${react}<span class="clockbox">${clock}</span></div>
     <div class="tbar">${side('X')}${side('O')}</div>
-    <div class="turn" aria-live="polite">${drawn ? '<span class="who">Draw · no line left</span>' : `<span class="g">${t}</span><span class="who">${won ? `${N(t)} wins` : `${N(t)}<i class="suf">'s turn</i>`}</span>`}</div>
+    <div class="turn" aria-live="polite">${drawn ? '<span class="who">Draw · no line left</span>' : `<span class="g">${t}</span><span class="who">${won ? `${N(t)} wins` : `${N(t)}<i class="suf">'s turn</i>`}</span>`}</div>${tray}
   </header>`;
 }
 
@@ -2480,7 +2505,7 @@ function pauseMenu() {
       <div class="row"><button class="btn" data-act="pause-back">No</button><button class="btn go" data-act="pause-leave">Yes</button></div></div></div>`;
   }
   return `<div class="flash pause" role="dialog" aria-label="Menu"${fxAttr(fxAt('menu', menuStep))}><div class="card"><h2>Paused</h2><p>${state.online && state.timer.limit ? 'The turn clock keeps running.' : state.cpu ? 'The computer waits.' : 'Take your time.'}</p>
-    <div class="row"><button class="btn go" data-act="pause-resume">Resume</button><button class="btn" data-act="pause-main">Main menu</button></div><button class="btn sound" data-act="sound">${soundLabel()}</button></div></div>`;
+    <div class="row"><button class="btn go" data-act="pause-resume">Resume</button><button class="btn" data-act="pause-main">Main menu</button></div>${state.online && mySide() ? `<button class="btn react-mute" data-act="react-mute" aria-pressed="${rx.mute}">Mute opponent's reactions: ${rx.mute ? 'On' : 'Off'}</button>` : ''}<button class="btn sound" data-act="sound">${soundLabel()}</button></div></div>`;
 }
 // One line about a move, for the result toast and the handoff bar.
 function summary(f) {
@@ -2827,11 +2852,73 @@ function listenRoom(code) {
   stopListening();
   roomUnsub = fb.m.onValue(fb.m.ref(fb.db, 'rooms/' + code), s => onRoomValue(s.val()), () => { setNet('error', 'Lost access to this room.'); commit(); });
   presUnsub = fb.m.onValue(fb.m.ref(fb.db, 'presence/' + code), s => { presence = s.val(); noteNet(); if (state.online) render(); });
+  listenReacts(code);
 }
 function stopListening() {
   if (roomUnsub) roomUnsub();
   if (presUnsub) presUnsub();
+  stopReacts();
   roomUnsub = presUnsub = null; room = pendingRoom = null; presence = null;
+}
+
+/* ----- reactions: six fixed emoji between the two players of an online match, never a move. Each side
+ * writes only its own node (reacts/{room code or game id}/{side}, see database.rules.json), which the rules
+ * accept only as { e: 0 to 5, t: server time }, one every 2 seconds. A new one shows as a bubble by the
+ * sender's character, for 2.5 seconds, and pops; it is never saved, and local games have none. ----- */
+const REACTS = [['👋', 'Wave'], ['😂', 'Laugh'], ['😮', 'Wow'], ['😤', 'Huff'], ['👏', 'Clap'], ['🔥', 'Fire']];
+const RX_COOL_MS = 2000, RX_SHOW_MS = 2500;
+let reactUnsub = null, rx = freshRx();
+function freshRx() { return { tray: false, card: null, seen: null, ready: false, pending: false, until: 0, mute: false, hide: null, cool: null }; }
+const reactOn = () => !!state.online && !!mySide() && ['board', 'mini'].includes(state.screen);
+const reactKey = () => (isMM() ? state.online.game : state.online.code);
+const reactCooling = () => rx.pending || Date.now() < rx.until;
+function listenReacts(key) {
+  stopReacts();
+  reactUnsub = fb.m.onValue(fb.m.ref(fb.db, 'reacts/' + key), s => onReacts(s.val()), () => {});
+}
+function stopReacts() {
+  if (reactUnsub) reactUnsub();
+  reactUnsub = null; clearTimeout(rx.hide); clearTimeout(rx.cool);
+  rx = freshRx();                                    // (the mute lasts this match only)
+}
+// The other player's latest emoji. Each send carries its own server time, so a new one is known from the
+// last; the first reading only notes what is there, so an old one does not pop up again on a reload.
+function onReacts(v) {
+  const me = mySide();
+  if (!me) return;
+  const opp = other(me), r = v && v[opp], t = r && r.t ? r.t : null;
+  const first = !rx.ready, prev = rx.seen;
+  rx.ready = true; rx.seen = t;
+  if (first || !t || t === prev || rx.mute || !REACTS[r.e]) return;
+  showReact(opp, Number(r.e));
+  SND.play('pop');
+}
+// One bubble at a time: a new reaction replaces the one on show. It is hidden after RX_SHOW_MS.
+function showReact(side, e) {
+  clearTimeout(rx.hide);
+  const at = performance.now();
+  rx.card = { side, e: REACTS[e][0], at };
+  rx.hide = setTimeout(() => { if (rx.card && rx.card.at === at) { rx.card = null; render(); } }, RX_SHOW_MS);
+  render();
+}
+// Our own: shown at once (the pop is ours to play), then written. The button stays greyed until the write is
+// in and the cooldown is over, so the rules never see two inside the two seconds.
+function sendReact(i) {
+  const me = mySide(), key = reactKey(), mine = rx;
+  if (!reactOn() || !REACTS[i] || reactCooling()) return;
+  mine.tray = false; mine.pending = true;
+  showReact(me, i);
+  SND.play('pop');
+  fb.m.set(fb.m.ref(fb.db, `reacts/${key}/${me}`), { e: i, t: fb.m.serverTimestamp() }).then(
+    () => { mine.until = Date.now() + RX_COOL_MS; },
+    () => { if (mine.card && mine.card.side === me) { mine.card = null; clearTimeout(mine.hide); } mine.until = 0; }   // refused or lost: not shown as sent
+  ).finally(() => {
+    mine.pending = false;
+    if (rx !== mine) return;                          // the match changed meanwhile
+    clearTimeout(mine.cool);
+    mine.cool = setTimeout(() => { if (state.online) render(); }, Math.max(0, mine.until - Date.now()) + 30);
+    render();
+  });
 }
 
 // ---------- the host: opens a room, shares its code, sets the match up, starts it ----------
@@ -2879,7 +2966,7 @@ async function cleanupRooms() {
     const q = m.query(m.ref(db, 'rooms'), m.orderByChild('created'), m.endAt(serverNow() - ROOM_TTL_MS), m.limitToFirst(30));
     const snap = await m.get(q);
     const jobs = [];
-    snap.forEach(ch => { jobs.push(m.remove(m.ref(db, 'rooms/' + ch.key)).then(() => m.remove(m.ref(db, 'presence/' + ch.key))).catch(() => {})); });
+    snap.forEach(ch => { jobs.push(m.remove(m.ref(db, 'rooms/' + ch.key)).then(() => Promise.all([m.remove(m.ref(db, 'presence/' + ch.key)), m.remove(m.ref(db, 'reacts/' + ch.key))])).catch(() => {})); });
     await Promise.all(jobs);
   } catch (e) { /* best effort: the rules only let stale rooms go */ }
 }
@@ -3627,6 +3714,7 @@ function listenGame(id) {
   stopListening();
   roomUnsub = fb.m.onValue(fb.m.ref(fb.db, `games/${id}/pub`), s => onGameValue(s.val()), () => { setNet('error', 'Lost access to this match.'); commit(); });
   presUnsub = fb.m.onValue(fb.m.ref(fb.db, `gpresence/${id}`), s => { presence = s.val(); noteNet(); if (state.online) render(); });
+  listenReacts(id);
 }
 function onGameValue(pub) {
   const o = state.online;
@@ -3972,6 +4060,7 @@ function renderJoin() {
 
 /* ----- input ----- */
 app.addEventListener('click', e => {
+  if (rx.tray && !e.target.closest('.rtray, [data-act="react-open"]')) { rx.tray = false; render(); }   // a tap elsewhere closes the reaction tray
   const el = e.target.closest('[data-act]');
   if (!el || el.disabled) return;
   const act = el.dataset.act;
@@ -3981,8 +4070,9 @@ app.addEventListener('click', e => {
   if (act === 'ask-stay') { joinAsk = null; render(); scheduleCpu(); return; }
   if (act === 'ask-leave') { if (joinAsk) leaveAndJoin(joinAsk.code); return; }
   if (act === 'dismiss') { if (Date.now() >= flashReady) dismissFlash(); return; }   // not before the animation is over
-  const free = ['pause', 'pause-resume', 'pause-main', 'pause-back', 'pause-leave', 'leave', 'lobby-back', 'menu', 'find-again', 'profile', 'prof-back', 'prof-hist', 'mystats', 'hist-open', 'hist-sq', 'hist-back', 'hist-close', 'leaderboard', 'rejoin', 'host-retry', 'share', 'rematch', 'timer', 'review', 'review-sq', 'review-back', 'results', 'pview'];
+  const free = ['pause', 'pause-resume', 'pause-main', 'pause-back', 'pause-leave', 'leave', 'lobby-back', 'menu', 'find-again', 'profile', 'prof-back', 'prof-hist', 'mystats', 'hist-open', 'hist-sq', 'hist-back', 'hist-close', 'leaderboard', 'rejoin', 'host-retry', 'share', 'rematch', 'timer', 'review', 'review-sq', 'review-back', 'results', 'pview', 'react-open', 'react-send'];
   if (act === 'sound') { SND.setMuted(!SND.muted); if (!SND.muted) SND.play('toggle'); render(); return; }   // (the press's own sound came with the press when it was still on)
+  if (act === 'react-mute') { rx.mute = !rx.mute; if (rx.mute && rx.card && rx.card.side !== mySide()) { clearTimeout(rx.hide); rx.card = null; } render(); return; }   // this match only: the opponent's emoji stop showing and sounding
   if (act === 'pause') { menuOpen = true; menuStep = 'main'; startFx('menu', menuStep); render(); scheduleCpu(); return; }
   if (act === 'pause-resume') { menuOpen = false; menuStep = 'main'; render(); scheduleCpu(); return; }
   if (act === 'pause-main') { menuStep = 'confirm'; startFx('menu', menuStep); render(); return; }
@@ -3992,6 +4082,8 @@ app.addEventListener('click', e => {
   if (state.flash && !free.includes(act)) return;   // everything else waits for the result to clear
   if (state.done && !free.includes(act)) return;    // the result is still on show
   if (cpuTurn() && !free.includes(act)) return;   // the computer is playing
+  if (act === 'react-open') { if (!reactCooling()) { rx.tray = !rx.tray; render(); } return; }   // (before the stamp: a reaction never clears a claim's stamp)
+  if (act === 'react-send') { sendReact(Number(el.dataset.i)); return; }
   state.stamp = null;                           // a claim stamps in once
   if (act === 'zoom') {                        // open squares to play, claimed squares to look
     const i = Number(el.dataset.i);
@@ -4485,6 +4577,7 @@ const def = (name, dur, make, o = {}) => { SFX[name] = { dur, level: o.level == 
 def('tap', 0.09, (c, d, t) => { sfxTone(c, d, t, 640, .07, { to: 430, vol: .5, type: 'triangle' }); sfxNoise(c, d, t, .02, { f: 2600, vol: .25 }); }, { level: .4, vary: true });
 def('key', 0.06, (c, d, t) => sfxTone(c, d, t, 1400, .04, { to: 1100, vol: .5, type: 'triangle' }), { level: .3, vary: true });
 def('toggle', 0.16, (c, d, t) => { sfxTone(c, d, t, 660, .07, { vol: .5, type: 'triangle' }); sfxTone(c, d, t + .06, 880, .09, { vol: .5, type: 'triangle' }); }, { level: .45 });
+def('pop', 0.14, (c, d, t) => { sfxTone(c, d, t, 620, .13, { to: 980, vol: .4, att: .006 }); sfxTone(c, d, t + .03, 1240, .06, { vol: .12 }); }, { level: .4, vary: true });   // a reaction, sent or received
 def('select', 0.26, (c, d, t) => [523, 659, 784].forEach((f, i) => sfxTone(c, d, t + i * .06, f, .14, { vol: .4, type: 'triangle' })), { level: .45 });
 def('deselect', 0.26, (c, d, t) => [784, 659, 523].forEach((f, i) => sfxTone(c, d, t + i * .06, f, .14, { vol: .4, type: 'triangle' })), { level: .45 });
 def('back', 0.22, (c, d, t) => { sfxTone(c, d, t, 620, .18, { to: 330, vol: .4 }); sfxNoise(c, d, t, .16, { f: 900, to: 500, filter: 'lowpass', vol: .2 }); }, { level: .45 });

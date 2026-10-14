@@ -62,6 +62,20 @@
         }
       }
     },
+    "reacts": {
+      "$key": {
+        ".validate": "$key.matches(/^[-\\w]{5,40}$/)",
+        ".read": "auth != null && (root.child('rooms').child($key).child('players/X/uid').val() === auth.uid || root.child('rooms').child($key).child('players/O/uid').val() === auth.uid || root.child('games').child($key).child('pub/players/X/uid').val() === auth.uid || root.child('games').child($key).child('pub/players/O/uid').val() === auth.uid)",
+        ".write": "auth != null && !newData.exists() && !root.child('rooms').child($key).exists() && !root.child('games').child($key).exists()",
+        "$side": {
+          ".write": "auth != null && $side.matches(/^[XO]$/) && (root.child('rooms').child($key).child('players').child($side).child('uid').val() === auth.uid || root.child('games').child($key).child('pub/players').child($side).child('uid').val() === auth.uid) && (!data.exists() || data.child('t').val() <= now - 2000)",
+          ".validate": "newData.hasChildren(['e', 't'])",
+          "e": { ".validate": "newData.isNumber() && (newData.val() == 0 || newData.val() == 1 || newData.val() == 2 || newData.val() == 3 || newData.val() == 4 || newData.val() == 5)" },
+          "t": { ".validate": "newData.val() == now" },
+          "$other": { ".validate": false }
+        }
+      }
+    },
     "active": {
       "$uid": {
         ".read": "auth != null && auth.uid === $uid"

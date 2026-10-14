@@ -21,6 +21,7 @@ Sounds start from the events they belong to, never from drawing the screen: a re
 | `tap` | Any button press (not a move, zoom or card) | Triangle glide 640→430 Hz with a short noise tick. *Varied.* |
 | `key` | Wordle or Hangman key, Enter, Backspace | Triangle blip 1400→1100 Hz. *Varied.* |
 | `toggle` | A switch, box or the sound switch | Two rising blips, 660 then 880 Hz |
+| `pop` | An emoji reaction is sent, or the other player's arrives. *Varied.* | Sine glide 620→980 Hz with a faint overtone at 1240 Hz |
 | `select` | Select all (Advanced checklist) | Rising three-note arpeggio, triangle |
 | `deselect` | Deselect all | Falling three-note arpeggio, triangle |
 | `back` | A Back button outside a game | Falling tone 620→330 Hz with low noise |

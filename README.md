@@ -264,6 +264,17 @@ the security rules decide what anyone can do with it. The Firebase SDK (about 40
 from Google's CDN only when something online is used (or at start for a player who logged in
 before); local modes stay offline-capable.
 
+## Reactions
+
+In an online match (a friend code or Find Match) the 💬 button by the Menu opens a tray of six fixed
+emoji: 👋 😂 😮 😤 👏 🔥. A reaction shows as a bubble by the sender's character for about 2.5 seconds
+(a new one replaces it), with a pop on both phones. Sending never uses a move and works on either
+player's turn. One every 2 seconds per player: the button greys out meanwhile. The in-game menu has
+"Mute opponent's reactions" for this match. There is no text: a reaction is one of the six numbers
+0 to 5, stored under `reacts/{room or game}/{side}` as `{ e, t }`, and the database rules refuse anything
+else (text, another number, another seat, a faster write, a made-up time). Reactions are not kept in
+the history, and local games have none.
+
 ## Accounts, Find Match, records and history
 
 **Logging in.** The main menu has **Log in** at the top right.

@@ -25,6 +25,8 @@
  *   games/{id}/pub         the public game: players, mode, status, state (JSON), result, final (JSON)
  *   games/{id}/sec         the hidden values (JSON): never readable by a phone
  *   games/{id}/dl          the turn deadline (for the sweep); 1 once over and not yet recorded
+ *   reacts/{room or game}/{side}  the emoji a player last sent: { e: 0 to 5, t: server time }. Only that side writes it,
+ *                          one every 2 seconds (database.rules.json); removed with its game (sweep) or room (cleanup)
  *   stats/...              anonymous game stats (see statsRules.js): readable by the admin only
  *   statsSeen/match/{id}   a match the stats have counted (its start time, whether start and end were counted)
  *   statsSeen/{d|w|m}/{period}/{hash}  a player counted as active in that day, week or month (never readable)
@@ -702,8 +704,8 @@ async function sweep() {
   }
   const old = (await db.ref('games').orderByChild('pub/ended').startAt(1).endAt(t - GAME_KEEP_MS).limitToFirst(50).get()).val() || {};
   const up = {};
-  for (const [id, g] of Object.entries(old)) if (g.pub && g.pub.recorded && g.pub.recorded.done) { up[`games/${id}`] = null; up[`gpresence/${id}`] = null; up[`botGames/${id}`] = null; }
-  const deleted = Object.keys(up).length / 3;
+  let deleted = 0;
+  for (const [id, g] of Object.entries(old)) if (g.pub && g.pub.recorded && g.pub.recorded.done) { up[`games/${id}`] = null; up[`gpresence/${id}`] = null; up[`botGames/${id}`] = null; up[`reacts/${id}`] = null; deleted++; }
   await pruneSeen(t, up).catch(e => logger.error('stats prune', e));
   if (Object.keys(up).length) await db.ref().update(up);
   return { timeouts, finished, deleted, botMoves };
