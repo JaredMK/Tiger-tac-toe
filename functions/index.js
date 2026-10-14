@@ -41,10 +41,12 @@
 const { onCall, onRequest, HttpsError } = require('firebase-functions/v2/https');
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { onValueWritten } = require('firebase-functions/v2/database');
+const { onTaskDispatched } = require('firebase-functions/v2/tasks');
 const { setGlobalOptions } = require('firebase-functions/v2');
 const logger = require('firebase-functions/logger');
 const admin = require('firebase-admin');
-const { ServerValue } = require('firebase-admin/database');   // (not admin.database.ServerValue: the emulator wraps admin.database)
+const { ServerValue } = require('firebase-admin/database');
+const { getFunctions } = require('firebase-admin/functions');   // (not admin.database.ServerValue: the emulator wraps admin.database)
 const crypto = require('node:crypto');
 const E = require('./engine.js');
 const R = require('./serverRules.js');
@@ -295,6 +297,7 @@ async function makeGame(key, id, X, O, opts) {
   const pub = { mode: Q.mode, queue: key, timer: Q.timer, players, status: 'playing', created: t, updated: t, state: JSON.stringify(rec.state) };
   const made = await db.ref(`games/${id}`).transaction(cur => (cur ? undefined : { pub, sec: JSON.stringify(rec.secrets), dl: rec.state.timer.deadline }), undefined, false);
   if (made.committed) {
+    let bgNew = null;
     const up = {
       [`active/${X.uid}`]: { game: id, side: 'X', queue: key, mode: Q.mode },
       [`active/${O.uid}`]: { game: id, side: 'O', queue: key, mode: Q.mode },
@@ -302,13 +305,15 @@ async function makeGame(key, id, X, O, opts) {
     };
     if (bot) {
       const side = X.uid === bot.uid ? 'X' : 'O', human = side === 'X' ? O.uid : X.uid;
-      up[`botGames/${id}`] = { bot: bot.uid, key: bot.key, side, human, live: true, created: t };
+      bgNew = { bot: bot.uid, key: bot.key, side, human, live: true, created: t };
+      up[`botGames/${id}`] = bgNew;
       up[`gpresence/${id}/${side}`] = { online: true, away: false, at: t };
       up['botStats/started'] = ServerValue.increment(1);
     }
     await db.ref().update(up);
     await db.ref().update(statsUp(S.startUpdates(bot ? 'bot' : Q.mode, t))).catch(e => logger.error('stats', e));
     await markActive([X, O].filter(p => !bot || p.uid !== bot.uid).map(p => 'u:' + p.uid), t).catch(e => logger.error('stats', e));
+    if (bgNew) await planBot(id, rec.state, rec.secrets, bgNew, t + MATCH_GRACE_MS, false).catch(e => logger.error('bot plan', id, e));
   }
   return made.committed;
 }
@@ -355,45 +360,80 @@ async function freeBots() {
   for (const b of bots) if (!(await activeGame(b.uid))) out.push(b);
   return out;
 }
-// The bot's next step, when it is the bot's turn: a plan (how long it thinks: from when its turn starts
-// on the player's phone, after the last move has played) made once per position, then the move once the
-// time is up. Memory is two steps, as a person plays it: the first card, then the second a moment later.
-// Called from the player's phone (tick, every few seconds while waiting), and by the sweep and a timeout
-// as a fallback, so a bot never runs out of time. `force`: move now if it is the bot's turn.
+// A bot's move is planned as its turn starts: the move itself, and when it is due (once the last move has
+// played on the phones, plus a think time). It is queued as a Cloud Task for that moment, so the bot moves on
+// time without waiting for a phone or the sweep. If the task cannot be queued, the phones' ticks and the sweep
+// still move the bot once it is due. Memory is two steps: the first card, then the second a moment later.
 const BOT_EARLY_MS = 1000;                                   // a tick lands up to a second early
+async function queueBot(id, seq, step, due) {
+  try {
+    await getFunctions().taskQueue('botMove').enqueue({ game: id, seq, step }, { scheduleTime: new Date(Math.max(due, now())), id: `${id}-${seq}-${step}` });
+  } catch (e) { logger.warn('bot move not queued: the phones and the sweep move it when due', id, e.message); }
+}
+// start: when the turn starts on the phones. again: a follow-up within the bot's own turn.
+async function planBot(id, st, sec, bg, start, again) {
+  if (!bg || !bg.live || st.winner || st.turn !== bg.side) return null;
+  if (bg.next && bg.next.seq === st.seq && bg.next.step === 'move') return bg.next;   // planned already: one think per move
+  const bot = B.byKey(bg.key) || B.BOTS[0], rng = seedRng();
+  const plan = E.cpuMove(E.fullState({ state: st, secrets: sec }), rng, bot.style);
+  if (!plan) return null;
+  const due = Math.max(start, now()) + B.thinkMs(bot, again ? 'again' : 'turn', rng, st.squares[plan.square].mini.type);
+  const next = { seq: st.seq, step: 'move', due, square: plan.square, move: plan.move };
+  await db.ref(`botGames/${id}/next`).set(next);
+  await queueBot(id, st.seq, 'move', due);
+  return next;
+}
+// When the turn started on the phones: the turn's clock is set to begin it (its deadline less the limit).
+const turnStart = st => (st.timer && st.timer.deadline && st.timer.limit ? st.timer.deadline - st.timer.limit * 1000 : now());
+// After a move in a bot game: the bot's next move, when it is on the move now.
+async function afterBotChange(id, info) {
+  const [bgs, gs] = await Promise.all([db.ref(`botGames/${id}`).get(), db.ref(`games/${id}`).get()]);
+  const bg = bgs.val(), g = gs.val();
+  if (!bg || !bg.live || !g || !g.pub || g.pub.status !== 'playing') return;
+  await planBot(id, parse(g.pub.state), parse(g.sec), bg, now() + E.replayMs(info.entries), info.sameTurn);
+}
+// Runs the bot's planned move once it is due. when: 'task' (its Cloud Task: due by then), 'tick' (a phone
+// waiting for it: once due), 'sweep' (the same, from the sweep), 'force' (a timeout on the bot's turn: now).
 async function runBot(id, opts) {
-  const force = !!(opts && opts.force);
+  const o = opts || {}, when = o.when || 'tick';
   const [bgs, gs] = await Promise.all([db.ref(`botGames/${id}`).get(), db.ref(`games/${id}`).get()]);
   const bg = bgs.val(), g = gs.val();
   if (!bg || !bg.live || !g || !g.pub || g.pub.status !== 'playing') return false;
   const st = parse(g.pub.state);
   if (st.winner || st.turn !== bg.side) return false;
-  const bot = B.byKey(bg.key) || B.BOTS[0], rng = seedRng(), t = now();
+  if (o.seq != null && o.seq !== st.seq) return false;       // a task for a move already made
   let next = bg.next && bg.next.seq === st.seq ? bg.next : null;
-  if (!next) {
-    const limit = ((st.timer && st.timer.limit) || 60) * 1000;
-    const start = st.timer && st.timer.deadline ? st.timer.deadline - limit : t;
-    next = { seq: st.seq, due: start + B.thinkMs(bot, st.lock != null ? 'again' : 'turn', rng), step: 'move' };
-    await db.ref(`botGames/${id}/next`).set(next);
-  }
-  if (!force && t < next.due - BOT_EARLY_MS) return false;
+  if (!next) { next = await planBot(id, st, parse(g.sec), bg, turnStart(st), false); if (!next || when === 'task') return false; }
+  if (o.step && o.step !== next.step) return false;
+  if (when !== 'task' && when !== 'force' && now() < next.due - BOT_EARLY_MS) return false;
   if (next.step === 'second') {                              // Memory: the second card
+    if (st.pickSq !== next.square) return false;
     const r = await changeGame(id, bg.bot, (rec, side) => (rec.state.seq !== next.seq || rec.state.pickSq !== next.square ? { ok: false, reason: 'stale' }
       : E.applyOnlineMove(rec, side, next.square, next.move, seedRng())));
     return r.ok;
   }
-  const plan = E.cpuMove(E.fullState({ state: st, secrets: parse(g.sec) }), rng, bot.style);
-  if (!plan) return false;
-  if (st.squares[plan.square].mini.type === 'memory' && Array.isArray(plan.move) && !force) {
+  const mini = st.squares[next.square] && st.squares[next.square].mini;
+  if (mini && mini.type === 'memory' && Array.isArray(next.move) && when !== 'force') {   // Memory: the first card now
     const r = await changeGame(id, bg.bot, (rec, side) => (rec.state.seq !== next.seq || rec.state.pickSq != null ? { ok: false, reason: 'stale' }
-      : E.applyOnlinePick(rec, side, plan.square, plan.move[0])));
-    if (r.ok) await db.ref(`botGames/${id}/next`).set({ seq: next.seq, due: now() + B.thinkMs(bot, 'second', rng), step: 'second', square: plan.square, move: plan.move });
+      : E.applyOnlinePick(rec, side, next.square, next.move[0])));
+    if (r.ok) {
+      const bot = B.byKey(bg.key) || B.BOTS[0], due = now() + B.thinkMs(bot, 'second', seedRng());
+      await db.ref(`botGames/${id}/next`).set({ seq: next.seq, step: 'second', due, square: next.square, move: next.move });
+      await queueBot(id, next.seq, 'second', due);
+    }
     return r.ok;
   }
   const r = await changeGame(id, bg.bot, (rec, side) => (rec.state.seq !== next.seq ? { ok: false, reason: 'stale' }
-    : E.applyOnlineMove(rec, side, plan.square, plan.move, seedRng())));
+    : E.applyOnlineMove(rec, side, next.square, next.move, seedRng())));
   return r.ok;
 }
+// The bot's move, run by its Cloud Task at the time it is due (see planBot).
+exports.botMove = onTaskDispatched({ retryConfig: { maxAttempts: 3, minBackoffSeconds: 2 }, rateLimits: { maxConcurrentDispatches: 20 } }, async req => {
+  const d = req.data || {};
+  if (typeof d.game !== 'string') return;
+  await runBot(d.game, { when: 'task', seq: d.seq, step: d.step }).catch(e => logger.error('bot move', d.game, e));
+});
+
 // Every matchmaking game's phones call this every few seconds while the other side is on the move; it
 // answers the same whoever the other side is. In a game against a bot, it moves the bot when it is time.
 exports.tick = onCall(CALL, async req => {
@@ -487,28 +527,32 @@ exports.testAlert = onCall(CALL, async req => {
 // `step(rec, side, pub)` returns the engine's answer; on success the new record is written, the turn
 // clock started and, if the match is over, the result recorded afterwards.
 async function changeGame(id, uid, step) {
-  let out = { ok: false, reason: 'missing' }, over = false;
+  let out = { ok: false, reason: 'missing' }, over = false, info = null;
   const res = await db.ref(`games/${id}`).transaction(cur => {
     if (cur === null) { out = { ok: false, reason: 'missing' }; return cur; }   // (a first guess from an empty cache: retried with the real value)
     const pub = cur.pub;
     if (!pub || pub.status !== 'playing') { out = { ok: false, reason: 'over' }; return undefined; }
     const side = uid ? sideOf(pub, uid) : null;
     if (uid && !side) { out = { ok: false, reason: 'not-player' }; return undefined; }
-    const rec = { state: parse(pub.state), secrets: parse(cur.sec) };
+    const rec = { state: parse(pub.state), secrets: parse(cur.sec) }, turn0 = rec.state.turn;
     const r = step(rec, side, pub);
     if (!r.ok) { out = { ok: false, reason: r.reason }; return undefined; }
     const t = now();
-    if (r.entries) E.armClock(r.rec.state, r.entries, t);
+    // The turn's clock is set once, when the turn passes on: an action within the turn (a Risky Rolls roll,
+    // a Battleship or Hangman follow-up, Memory's first card) keeps the deadline the turn started with.
+    if (r.entries && (r.rec.state.turn !== turn0 || r.rec.state.winner)) E.armClock(r.rec.state, r.entries, t);
     pub.state = JSON.stringify(r.rec.state); cur.sec = JSON.stringify(r.rec.secrets || {});
     pub.updated = t;
     over = !!r.rec.state.winner;
     if (over) { pub.status = 'over'; pub.ended = t; cur.dl = 1; }      // 1: over, the result still to record
     else cur.dl = r.rec.state.timer && r.rec.state.timer.deadline || null;
     out = { ok: true, seq: r.rec.state.seq };
+    info = { entries: r.entries || null, sameTurn: r.rec.state.turn === turn0 };
     return cur;
   }, undefined, false);
   if (!res.committed && out.ok) out = { ok: false, reason: 'busy' };
   if (res.committed && over) await finishGame(id).catch(e => logger.error('finishGame', id, e));
+  if (res.committed && out.ok && info && info.entries && !over) await afterBotChange(id, info).catch(e => logger.error('bot plan', id, e));   // (a game against a bot: its next move)
   return out;
 }
 // A move (or Memory's first card, kind 'pick') from the player on the move.
@@ -533,7 +577,7 @@ function timeoutStep(rec) {
 }
 exports.timeout = onCall(CALL, async req => {
   const uid = needUid(req), id = gameId((req.data || {}).game);
-  if (await runBot(id, { force: true }).catch(() => false)) return { ok: true };   // a bot on the move moves instead (it never times out)
+  if (await runBot(id, { when: 'force' }).catch(() => false)) return { ok: true };   // a bot on the move moves instead (it never times out)
   return changeGame(id, uid, timeoutStep);
 });
 // Leaving a matchmaking game through the menu: a resignation, which loses the match.

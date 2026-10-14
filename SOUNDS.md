@@ -31,7 +31,6 @@ Sounds start from the events they belong to, never from drawing the screen: a re
 | `copy` | Share or copy the room link | Camera-like noise click, then two bright blips |
 | `join` | A player joins the lobby | Two rising notes |
 | `found` | A Find Match game is found | Rising four-note arpeggio |
-| `searchTick` | While searching, every 0.8 s (stops on Cancel or match found). *Varied.* | 1800 Hz sine, very short |
 
 ## The board
 

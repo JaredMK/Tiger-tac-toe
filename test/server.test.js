@@ -807,9 +807,10 @@ test('bots: the match is an ordinary one against an ordinary-looking, online acc
   // its turn: a tick from the player makes the plan (from when the turn starts on the phone), not the move
   await rewrite(id, full => { tttBoard(full); full.turn = botSide; full.lock = null; full.timer.deadline = Date.now() + 60000; full.timer.for = botSide; });
   const seq0 = (await gameState(id)).seq;
+  const tTick = Date.now();
   await h.call('tick', { game: id });
-  const plan = (await get(`botGames/${id}`)).next, start = (await gameState(id)).timer.deadline - 60000;
-  assert.ok(plan && plan.seq === seq0 && plan.due - start >= 1000 && plan.due - start <= B.MAX_THINK_MS, `it thinks a while first (${plan && plan.due - start} ms)`);
+  const plan = (await get(`botGames/${id}`)).next, start = Math.max((await gameState(id)).timer.deadline - 60000, tTick);
+  assert.ok(plan && plan.seq === seq0 && plan.due - start >= 1000 && plan.due - start <= B.MAX_THINK_MS + 2500, `it thinks a while first (the planning reads take a moment on the emulator) (${plan && plan.due - start} ms)`);
   assert.equal((await gameState(id)).seq, seq0, 'no move yet');
   assert.deepEqual(await other.call('tick', { game: id }), { ok: true }, 'someone else\'s tick: the same answer, nothing done');
   await h.call('tick', { game: id });
@@ -819,12 +820,15 @@ test('bots: the match is an ordinary one against an ordinary-looking, online acc
   const s1 = await gameState(id);
   assert.equal(s1.seq, seq0 + 1, 'then it moves');
   assert.equal(s1.turn, r.side, 'and the turn passes');
-  // the player away and the bot's clock run out: the sweep makes its move instead of a timeout
-  await rewrite(id, full => { full.turn = botSide; full.lock = null; full.timer.deadline = Date.now() - 1000; full.timer.for = botSide; });
+  // the player away: the sweep plans the bot's move and makes it once due, before the clock runs out
+  await rewrite(id, full => { full.turn = botSide; full.lock = null; full.timer.deadline = Date.now() + 60000; full.timer.for = botSide; });
   await patch(`botGames/${id}`, { next: null });
-  const before = await gameState(id), sw = await sweep();
-  const after = await gameState(id);
-  assert.ok(sw.botMoves >= 1 && after.seq === before.seq + 1, 'the bot moved');
+  const before = await gameState(id);
+  await sweep();
+  assert.equal((await gameState(id)).seq, before.seq, 'the sweep plans the bot\'s move: it does not move before it is due');
+  await patch(`botGames/${id}/next`, { due: Date.now() - 10 });
+  const sw = await sweep(), after = await gameState(id);
+  assert.ok(sw.botMoves >= 1 && after.seq === before.seq + 1, 'the bot moved once due');
   assert.equal(after.timer.timeouts[botSide], 0, 'no timeout counted against it');
   // the player's phone calls time on the bot: it moves instead
   await rewrite(id, full => { full.turn = botSide; full.lock = null; full.timer.deadline = Date.now() - 1000; full.timer.for = botSide; });
@@ -855,6 +859,36 @@ test('bots: the match is an ordinary one against an ordinary-looking, online acc
   assert.equal(m2.squares[0].mini.flips + 0 >= 0, true);
   await h.call('resign', { game: id }); await recorded(id);
   await put('admin/config', null);
+});
+
+test('bots: after a player\'s move, the bot\'s move is planned inside its own window in every mini-game (3 to 8 s for the word games and Mastermind)', async () => {
+  await clearQueue(); await botsOn();
+  const h = await player('Window_Who');
+  const r = await soloUntilBot(h);
+  const id = r.game, botSide = r.side === 'X' ? 'O' : 'X';
+  const bg0 = await get(`botGames/${id}`), bot = B.byKey(bg0.key) || B.BOTS[0];
+  const WORD = ['wordle', 'hangman', 'mastermind'];
+  const [pa, pb] = B.PACES[bot.pace].turn;
+  const planned = {};
+  for (const type of E.TYPES) {
+    await rewrite(id, full => {
+      full.squares.forEach((sq, i) => { sq.owner = null; sq.mini = E.newMini(type, E.makeRng(type + i)); });
+      full.turn = botSide; full.lock = null; full.winner = null; full.timer.deadline = Date.now() + 60000; full.timer.for = botSide;
+    });
+    await patch(`botGames/${id}`, { next: null, live: true });
+    const t0 = Date.now();
+    await h.call('tick', { game: id });
+    const next = (await get(`botGames/${id}`)).next;
+    await patch(`botGames/${id}`, { live: false });           // the planned task (queued for later) finds the game off, and does nothing
+    if (!next) { planned[type] = null; continue; }
+    const [lo, hi] = WORD.includes(type) ? [3, 8] : [pa, pb];
+    const d = (next.due - t0) / 1000;
+    assert.ok(d >= lo - 0.1 && d <= hi + 2.5, `${type}: the bot's move is due ${d.toFixed(2)} s after its turn starts (window ${lo}-${hi} s)`);
+    planned[type] = Math.round(d * 10) / 10;
+  }
+  const made = Object.values(planned).filter(x => x != null).length;
+  assert.ok(made >= E.TYPES.length - 2, `a plan for nearly every mini-game (${made} of ${E.TYPES.length})`);
+  await patch(`botGames/${id}`, { live: true });
 });
 
 test('bots: the result is recorded for both; the player\'s record as the admin chose; bot matches counted apart in the stats', async () => {

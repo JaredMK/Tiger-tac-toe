@@ -123,11 +123,11 @@ function lastDays(k) { const out = []; for (let i = k - 1; i >= 0; i--) out.push
 function modeRow(m) { return (stats.modes && stats.modes[m]) || {}; }
 function totals() {
   const t = { started: 0, finished: 0, turns: 0, ms: 0, timed: 0, xWins: 0, oWins: 0, draws: 0, resigned: 0 };
-  for (const [m] of MODES) for (const k of Object.keys(t)) t[k] += n(modeRow(m)[k]);
+  for (const [m] of MODES) if (m !== 'bot') for (const k of Object.keys(t)) t[k] += n(modeRow(m)[k]);   // (matches against a bot: their own row, not the people's totals)
   return t;
 }
 function miniRows() {
-  const pick = miniMode === 'all' ? MODES.map(m => m[0]) : miniMode === 'people' ? MODES.map(m => m[0]).filter(m => m !== 'cvc') : [miniMode];
+  const pick = miniMode === 'all' ? MODES.map(m => m[0]).filter(m => m !== 'bot') : miniMode === 'people' ? MODES.map(m => m[0]).filter(m => m !== 'cvc' && m !== 'bot') : [miniMode];   // (the bot's matches only when chosen)
   return Object.keys(GAMES).map(t => {
     const s = { played: 0, won: 0, draw: 0, open: 0, winMoves: 0, loseMoves: 0, allMoves: 0, xWins: 0, oWins: 0 };
     for (const m of pick) { const r = (stats.mini && stats.mini[m] && stats.mini[m][t]) || {}; for (const k of Object.keys(s)) s[k] += n(r[k]); }

@@ -425,7 +425,7 @@ To set up the alerts (once):
 Every tap and every move makes a sound. All of them are synthesised in the page with the Web Audio API,
 so there are no audio files to download or license; [SOUNDS.md](SOUNDS.md) lists each sound, when it
 plays and how it is made. Sound is on by default, and the switch on the main menu and in the in-game
-menu turns it off (remembered between visits). The first tap unlocks audio, as iPhone requires; on
+menu turns it off (remembered between visits). The searching screen of Find a Match is silent (its one sound is the match being found). The first tap unlocks audio, as iPhone requires; on
 iPhone the audio session is *ambient*, so the silent switch mutes the game and the player's music carries on.
 
 ## Playing against the computer

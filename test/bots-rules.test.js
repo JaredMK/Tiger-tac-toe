@@ -28,22 +28,25 @@ test('the five bots: each its own style and pace, tunable in one place; username
   assert.ok(names.some(n => /\d/.test(n)) && names.some(n => /_/.test(n)) && names.some(n => /^[A-Z]/.test(n)) && names.some(n => !/[\d_]/.test(n)), 'the usual variety: digits, underscores, capitals, plain');
 });
 
-test('bot pacing: drawn afresh every move, mostly quick, sometimes 20-50 s, now and then longer, never past the turn clock', () => {
-  const rng = lcg(5);
+test('bot pacing: ordinary moves 1.5 to 5 s, each bot in its own window; word games 3 to 8 s; follow-ups 1 to 2.5 s; never past 8 s', () => {
+  const rng = lcg(5), mean = a => a.reduce((s, x) => s + x, 0) / a.length;
   for (const b of B.BOTS) {
-    const xs = Array.from({ length: 3000 }, () => B.thinkMs(b, 'turn', rng));
-    assert.ok(xs.every(x => x >= 1000 && x <= B.MAX_THINK_MS), `${b.pace}: within 1 and ${B.MAX_THINK_MS / 1000} s`);
-    assert.ok(xs.filter(x => x <= 5000).length > 300, `${b.pace}: often 2-5 s`);
-    assert.ok(xs.filter(x => x >= 20000).length > 150, `${b.pace}: sometimes 20 s or more`);
-    assert.ok(new Set(xs.map(x => Math.round(x / 1000))).size > 20, `${b.pace}: varied, not a fixed delay`);
-    const again = Array.from({ length: 2000 }, () => B.thinkMs(b, 'again', rng)), mean = a => a.reduce((s, x) => s + x, 0) / a.length;
-    assert.ok(mean(again) < mean(xs), `${b.pace}: a follow-up in the same turn comes quicker`);
+    const xs = Array.from({ length: 3000 }, () => B.thinkMs(b, 'turn', rng, 'ttt'));
+    assert.ok(xs.every(x => x >= 1500 && x <= 5000), `${b.pace}: an ordinary move 1.5 to 5 s`);
+    assert.ok(new Set(xs.map(x => Math.round(x / 100))).size > 15, `${b.pace}: varied, not a fixed delay`);
+    for (const type of ['wordle', 'hangman', 'mastermind']) {
+      const ws = Array.from({ length: 1500 }, () => B.thinkMs(b, 'turn', rng, type));
+      assert.ok(ws.every(x => x >= 3000 && x <= 8000), `${b.pace}: ${type} 3 to 8 s`);
+    }
+    const again = Array.from({ length: 1500 }, () => B.thinkMs(b, 'again', rng, 'risky'));
+    assert.ok(again.every(x => x >= 1000 && x <= 2500), `${b.pace}: a follow-up in the same turn 1 to 2.5 s`);
+    assert.ok(mean(again) < mean(xs), `${b.pace}: a follow-up comes quicker than a move`);
   }
   const slow = B.byKey('b4'), quick = B.byKey('b1');
-  const avg = bot => { const r = lcg(9); let s = 0; for (let k = 0; k < 4000; k++) s += B.thinkMs(bot, 'turn', r); return s / 4000; };
-  assert.ok(avg(slow) > avg(quick) * 2, 'the slow, careful one takes much longer than the quick one');
-  assert.ok(B.PACES.steady.turn.some(([, , to]) => to > 50) || B.PACES.slow.turn.some(([, , to]) => to > 50), 'occasionally longer than 50 s');
-  const second = Array.from({ length: 500 }, () => B.thinkMs(quick, 'second', rng));
+  const avg = bot => { const r = lcg(9); let s = 0; for (let k = 0; k < 4000; k++) s += B.thinkMs(bot, 'turn', r, 'ttt'); return s / 4000; };
+  assert.ok(avg(slow) > avg(quick), 'the slow, careful one takes longer than the quick one');
+  assert.equal(B.MAX_THINK_MS, 8000, 'never past 8 s');
+  const second = Array.from({ length: 500 }, () => B.thinkMs(quick, 'second', rng, 'memory'));
   assert.ok(second.every(x => x >= 1000 && x <= 2600), 'Memory\'s second card a moment after the first');
 });
 

@@ -775,23 +775,26 @@ b.O { box-shadow: inset 0 -.38em 0 var(--o-soft); }
 .clock { background: var(--paper); color: var(--ink); border: 3px solid var(--ink); border-radius: 14px 10px 12px 9px; padding: 5px 7px 1px; font-size: 16px; }
 .clock.low { background: var(--x); color: var(--paper); }
 /* the game screen's top: Menu and the clock box, then the turn bar */
-:root { --hdr: 114px; }
-.hdr { position: relative; height: var(--hdr); display: grid; grid-template-rows: 46px 38px 1fr; align-items: center; gap: 0; padding: 4px 12px 4px; justify-content: stretch; }   /* (position: the reaction tray and bubbles hang off it) */
-.hdrrow { display: flex; align-items: center; justify-content: space-between; min-width: 0; }   /* (not .hrow: that is a Hex board row) */
-.hdrrow .menubtn { height: 44px; font-size: 15px; padding: 0 12px; box-shadow: 0 3px 0 var(--ink); }   /* a full 44px tap target */
-.clockbox { flex: none; width: 76px; height: 34px; display: grid; place-items: center; }
-.clockbox .clock { width: 100%; text-align: center; padding: 4px 0 0; font-size: 16px; line-height: 22px; }
-.tbar { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 12px; min-width: 0; }
+:root { --hdr: 84px; }
+/* two rows: Menu, the X and O names and the reaction button; then the turn line and the clock */
+.hdr { position: relative; height: var(--hdr); display: flex; flex-direction: column; justify-content: center; align-items: stretch; gap: 0; padding: 4px 10px 4px 12px; }   /* (position: the reaction tray and bubbles hang off it) */
+.hdrrow { display: flex; align-items: center; gap: 8px; height: 46px; min-width: 0; }   /* (not .hrow: that is a Hex board row) */
+.hdrrow .menubtn { flex: none; height: 44px; min-width: 52px; font-size: 15px; padding: 0 10px; box-shadow: 0 3px 0 var(--ink); }   /* a full 44px tap target */
+.hdrrow > .rbtn { flex: none; }
+.hdrrow2 { display: flex; align-items: center; gap: 8px; height: 28px; min-width: 0; }
+.clockbox { flex: none; width: 76px; height: 28px; display: grid; place-items: center; }
+.clockbox .clock { width: 100%; text-align: center; padding: 0; font-size: 16px; line-height: 28px; }
+.tbar { flex: 1 1 auto; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 8px; }
 .tside { position: relative; display: flex; align-items: center; gap: 6px; min-width: 0; opacity: .5; transition: opacity .2s; }
 .tside.on { opacity: 1; }
 .tside.O { flex-direction: row-reverse; text-align: right; }
-.tside .tg { flex: none; width: 34px; height: 34px; display: block; }
-.tside .tg .pc { width: 34px; height: 34px; display: block; }
+.tside .tg { flex: none; width: 30px; height: 30px; display: block; }
+.tside .tg .pc { width: 30px; height: 30px; display: block; }
 .tside.on .tg { animation: tbounce 1.2s ease-in-out infinite; }
 @keyframes tbounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
 .tside .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-weight: 400; font-size: clamp(13px, 4vw, 17px); padding-top: 3px; color: var(--ink); }
 .tside .nm .cpui { width: 1em; height: 1em; vertical-align: -.1em; }
-.hdr .turn { display: block; text-align: center; min-width: 0; line-height: 1.1; }
+.hdr .turn { flex: 1 1 auto; display: block; text-align: center; min-width: 0; line-height: 1.1; }
 .hdr .turn .g { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }   /* the letter, for screen readers (and the tests) */
 .hdr .turn .who { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-top: 2px; font-size: clamp(14px, 4.2vw, 18px); }
 @media (prefers-reduced-motion: reduce) { .tside.on .tg { animation: none; } .rbub.on { animation: none; } }
@@ -801,6 +804,7 @@ b.O { box-shadow: inset 0 -.38em 0 var(--o-soft); }
 .rtray { position: absolute; left: 50%; top: calc(100% + 6px); transform: translateX(-50%); z-index: 7; display: flex; gap: 6px; padding: 8px; border: 3px solid var(--ink); border-radius: 14px; background: var(--paper); box-shadow: 0 4px 0 var(--ink); }
 .rtray button { width: 44px; height: 44px; padding: 0; border: 0; border-radius: 10px; background: var(--cream); font-size: 24px; line-height: 1; }
 .rtray button:disabled { opacity: .4; }
+#app > .refused { position: fixed; z-index: 9; top: calc(var(--hdr) + 10px); left: 50%; transform: translateX(-50%); padding: 8px 14px; border: 3px solid var(--ink); border-radius: 14px; background: var(--paper); box-shadow: 0 4px 0 var(--ink); font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-size: 16px; white-space: nowrap; pointer-events: none; }
 #app > .hdr { z-index: 2; }                                       /* over the board, so the tray and the bubbles are not under it (#app > * is z 1) */
 .tg { position: relative; }                                     /* (the bubble hangs off the character) */
 .rbub { display: none; position: absolute; top: 50%; margin-top: -20px; left: calc(100% + 6px); z-index: 6; pointer-events: none; align-items: center; justify-content: center; min-width: 40px; height: 40px; box-sizing: border-box; padding: 0 9px; border: 3px solid var(--ink); border-radius: 16px; background: var(--paper); box-shadow: 0 3px 0 var(--ink); font-size: 24px; line-height: 1; white-space: nowrap; }
@@ -1309,7 +1313,13 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .credit:focus-visible { outline: 3px solid var(--sky); outline-offset: 2px; }
 .menu-top { position: absolute; top: var(--pad); left: var(--pad); right: var(--pad); display: flex; justify-content: space-between; align-items: center; gap: 10px; z-index: 3; }
 .menu-left { display: flex; gap: 8px; min-width: 0; }
-.menu-top .sound { white-space: nowrap; }
+.btn.snd { flex: none; width: 44px; height: 44px; min-width: 44px; padding: 0; display: grid; place-items: center; border-radius: 12px; }   /* the speaker: the same square at every size */
+.snd-ico { width: 24px; height: 24px; display: block; }
+.pause-snd { display: flex; justify-content: center; }
+/* an online move on its way: the control pressed shows it at once, and keeps pulsing until the server answers */
+.pend { animation: pendpulse .6s ease-in-out infinite; }
+@keyframes pendpulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(.93); } }
+@media (prefers-reduced-motion: reduce) { .pend { animation: none; opacity: .7; } }
 .menu-top .btn { height: 44px; padding: 0 14px; font-size: 15px; min-width: 44px; }
 .menu-top .chip { max-width: 58%; display: flex; align-items: center; gap: 8px; }
 .menu-top .chip span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1741,7 +1751,7 @@ function render() {
   const kept = entering ? [] : [...app.querySelectorAll('[data-keep-scroll]')].map(e => [e.dataset.keepScroll, e.scrollTop]);
   const focus = entering ? null : typingIn();
   const boards = entering ? [] : KEEP_BOARDS.map(sel => [sel, app.querySelector(sel)]).filter(([, e]) => e);
-  const html = renderHeader() + renderMain() + renderExplain() + renderIntro() + renderJoinAsk();
+  const html = renderHeader() + renderMain() + renderExplain() + renderIntro() + renderJoinAsk() + (refusedNote && state.online ? `<div class="refused" role="status">${esc(refusedNote)}</div>` : '');
   if (!boards.length) app.innerHTML = html;
   else {
     const fresh = document.createElement('div');
@@ -1901,7 +1911,7 @@ function renderMain() {
 // The game screen's top: a slim row with Menu and the clock in its own fixed box, then the turn bar:
 // X and O with their names on each side (the player on the move bouncing gently), and whose turn it is.
 function renderHeader() {
-  if (['setup', 'menu', 'online', 'friend', 'join'].includes(state.screen) || NAV_SCREENS.includes(state.screen)) return '';
+  if (['setup', 'menu', 'online', 'friend', 'join', 'win'].includes(state.screen) || NAV_SCREENS.includes(state.screen)) return '';   // (the match-end screen: its one menu button is at the bottom)
   const won = state.winner && !state.spot;                      // (a winning move about to be played back: not yet)
   const drawn = won && state.winner === 'draw';                  // a draw: nobody can make a line any more
   const t = won && !drawn ? state.winner : state.turn;
@@ -1913,9 +1923,8 @@ function renderHeader() {
   const react = reactOn() ? `<button class="rbtn" data-act="react-open" aria-label="Send a reaction" aria-expanded="${rx.tray}"${cool ? ' disabled' : ''}>💬</button>` : '';
   const tray = reactOn() && rx.tray && !menuOpen ? `<div class="rtray" role="group" aria-label="Send a reaction">${REACTS.map(([em, nm], i) => `<button data-act="react-send" data-i="${i}" aria-label="${nm}"${cool ? ' disabled' : ''}>${em}</button>`).join('')}</div>` : '';
   return `<header class="hdr t-${t}${clock ? ' has-clock' : ''}">
-    <div class="hdrrow"><button class="menubtn" data-act="pause" aria-label="Menu">Menu</button>${react}<span class="clockbox">${clock}</span></div>
-    <div class="tbar">${side('X')}${side('O')}</div>
-    <div class="turn" aria-live="polite">${drawn ? '<span class="who">Draw · no line left</span>' : `<span class="g">${t}</span><span class="who">${won ? `${N(t)} wins` : `${N(t)}<i class="suf">'s turn</i>`}</span>`}</div>${tray}
+    <div class="hdrrow"><button class="menubtn" data-act="pause" aria-label="Menu">Menu</button><div class="tbar">${side('X')}${side('O')}</div>${react}</div>
+    <div class="hdrrow2"><div class="turn" aria-live="polite">${drawn ? '<span class="who">Draw · no line left</span>' : `<span class="g">${t}</span><span class="who">${won ? `${N(t)} wins` : `${N(t)}<i class="suf">'s turn</i>`}</span>`}</div><span class="clockbox">${clock}</span></div>${tray}
   </header>`;
 }
 
@@ -2505,7 +2514,7 @@ function pauseMenu() {
       <div class="row"><button class="btn" data-act="pause-back">No</button><button class="btn go" data-act="pause-leave">Yes</button></div></div></div>`;
   }
   return `<div class="flash pause" role="dialog" aria-label="Menu"${fxAttr(fxAt('menu', menuStep))}><div class="card"><h2>Paused</h2><p>${state.online && state.timer.limit ? 'The turn clock keeps running.' : state.cpu ? 'The computer waits.' : 'Take your time.'}</p>
-    <div class="row"><button class="btn go" data-act="pause-resume">Resume</button><button class="btn" data-act="pause-main">Main menu</button></div>${state.online && mySide() ? `<button class="btn react-mute" data-act="react-mute" aria-pressed="${rx.mute}">Mute opponent's reactions: ${rx.mute ? 'On' : 'Off'}</button>` : ''}<button class="btn sound" data-act="sound">${soundLabel()}</button></div></div>`;
+    <div class="row"><button class="btn go" data-act="pause-resume">Resume</button><button class="btn" data-act="pause-main">Main menu</button></div>${state.online && mySide() ? `<button class="btn react-mute" data-act="react-mute" aria-pressed="${rx.mute}">Mute opponent's reactions: ${rx.mute ? 'On' : 'Off'}</button>` : ''}${soundBtn('pause')}</div></div>`;
 }
 // One line about a move, for the result toast and the handoff bar.
 function summary(f) {
@@ -3111,6 +3120,10 @@ function applyMatch(r) {
   const o = state.online, rec = parseMatch(r.match);
   if (!rec) return;
   const st = rec.state;
+  if (predicted && st.seq >= predicted.seq) {     // the server has the move that was shown here: confirmed (shown already) or corrected
+    if (JSON.stringify(st.squares) === predicted.squares) o.shownSeq = Math.max(o.shownSeq || 0, predicted.seq);
+    predicted = null;
+  }
   if (o.matchId !== st.id) { o.matchId = st.id; o.shownSeq = st.seq; presentingSeq = null; moveWait = null; state.endPick = null; }   // a new match: nothing to play back
   if (o.shownSeq == null) o.shownSeq = st.seq;
   let missed = (st.recent || []).filter(e => e.seq > o.shownSeq).sort((a, b) => a.seq - b.seq);
@@ -3222,24 +3235,58 @@ function matchTransaction(fn) {
     return out ? Object.assign(packMatch(out), cur.seats ? { seats: cur.seats } : {}) : undefined;   // the seats stay with the match
   }, { applyLocally: false });
 }
+// ---- instant moves (Find Match): your own move shows at once, and the server still decides ----
+// A move the phone can work out from what it can see (tic-tac-toe, Connect 4, Hex, Hexapawn) is checked by the
+// same rules the server runs, and shown straight away; the server's record then confirms it, or corrects it. A
+// move the server refuses is taken back, with a note. The mini-games whose result is hidden or random are sent
+// as before, and show their result when the server has it.
+const PREDICT = ['ttt', 'c4', 'hex', 'hexapawn'];
+let predicted = null;                            // { seq, entry, squares }: the move shown here, not yet confirmed
+function predictMove(i, m) {
+  const sq = state.squares && state.squares[i];
+  if (!sq || !PREDICT.includes(sq.mini.type) || !state.online) return null;
+  const rec = parseMatch(room && room.match);
+  if (!rec) return null;
+  const r = applyOnlineMove(Object.assign({ secrets: {} }, rec), state.online.me, i, m, RNG);
+  if (!r.ok) return { ok: false, reason: r.reason };
+  return { ok: true, seq: r.rec.state.seq, entry: r.entries[0], squares: JSON.stringify(r.rec.state.squares), rec: r.rec };
+}
+// The server refused the move, or could not be reached: the board goes back to what the server last showed.
+function rollbackMove(reason) {
+  const shown = !!predicted;
+  predicted = null;
+  moveRejected(reason);
+  if (shown && room && room.match) {
+    clearTimeout(flashTimer); flashTimer = null; clearTimeout(holdTimer); holdTimer = null; presentingSeq = null;
+    const last = parseMatch(room.match);
+    if (last) showLatest(last.state);   // (the state the server last confirmed)
+  }
+}
+let tapEl = null;                                // the control just tapped (set by the tap, read by dbMove)
 async function dbMove(i, m) {
+  const pressed = tapEl; tapEl = null;
   if (blocked() || !fb || !room || i == null) return false;
   const me = state.online.me;
-  moveWait = Date.now(); render();
+  moveWait = Date.now();
+  if (isMM() && pressed) pressed.classList.add('pend'); else render();   // online: the press shows on the control at once (no redraw until the server answers)
   clearTimeout(moveTimer); moveTimer = setTimeout(() => { if (moveWait) { moveWait = null; render(); } }, NET_MS.move);
   let reason = null;
   if (isMM()) {                                                  // the server checks and makes the move
+    const pr = predictMove(i, m);
+    if (pr && !pr.ok) { moveWait = null; moveRejected(pr.reason); render(); return true; }   // refused by the rules here: nothing is sent
+    if (pr) { predicted = { seq: pr.seq, entry: pr.entry, squares: pr.squares }; presentEntry(pr.rec.state, pr.entry, []); }   // shown now
     clearTimeout(moveTimer); moveTimer = setTimeout(() => { if (moveWait) { moveWait = null; render(); } }, NET_MS.call);
-    try { const r = await call('move', { game: state.online.game, square: i, move: m }); if (!r.ok) moveRejected(r.reason); }
-    catch (e) { moveRejected('network'); }
+    try { const r = await call('move', { game: state.online.game, square: i, move: m }); if (!r.ok) rollbackMove(r.reason); }
+    catch (e) { rollbackMove('network'); }
     clearTimeout(moveTimer); moveWait = null; render();
     return true;
   }
   try {
     const res = await matchTransaction(rec => {
+      const turn0 = rec.state.turn;
       const r = applyOnlineMove(rec, me, i, m, RNG);
       if (!r.ok) { reason = r.reason; return null; }
-      armClock(r.rec.state, r.entries, serverNow());
+      if (r.rec.state.turn !== turn0 || r.rec.state.winner) armClock(r.rec.state, r.entries, serverNow());   // one clock per turn: set when the turn passes on
       return r.rec;
     });
     if (!res.committed) moveRejected(reason || 'turn');
@@ -3251,6 +3298,13 @@ function moveRejected(reason) {
   SND.play('error');
   if (reason === 'notword') showNotice('Not a word', 1200);
   else if (reason === 'network') showNotice('No connection', 1200);
+  else showRefused("Move didn't go through");
+}
+// A move the server refused, on any game screen: a short note under the top bar, and it goes.
+let refusedNote = null, refusedTimer = null;
+function showRefused(text) {
+  refusedNote = text; render();
+  clearTimeout(refusedTimer); refusedTimer = setTimeout(() => { refusedNote = null; render(); }, 1600);
 }
 // A short note (a word that is not one, no connection, a copied link): it pops up, once, as it is shown.
 let noticeSeq = 0;
@@ -3652,11 +3706,9 @@ async function openFind() {
   state.screen = 'find'; commit();
   startSearch();                                // straight into searching: nothing to choose
 }
-let searchSnd = null;
 function startSearch() {
   if (search.on || !loggedIn()) return;
-  search.on = true; search.found = false; search.since = Date.now(); search.msg = '';
-  clearInterval(searchSnd); searchSnd = setInterval(() => SND.play('searchTick'), 800);   // a soft tick with the searcher's hop
+  search.on = true; search.found = false; search.since = Date.now(); search.msg = '';   // (the searching screen is silent: only "found" sounds, when the match starts)
   render();
   searchTick();
 }
@@ -3684,7 +3736,7 @@ async function cancelSearch() {
   try { const r = await call('cancelSearch', {}); if (r.status === 'matched') enterGame(r.game, r.side); }   // paired just before Cancel: the game is on
   catch (e) { /* a searcher who stops checking in is dropped from the queue anyway */ }
 }
-function stopSearch() { search.on = false; clearTimeout(searchTimer); searchTimer = null; clearInterval(searchSnd); searchSnd = null; }
+function stopSearch() { search.on = false; clearTimeout(searchTimer); searchTimer = null; }
 function findAgain() {                          // the results screen: another game
   leaveRoom(true);
   state.screen = 'find'; commit();
@@ -4005,7 +4057,7 @@ function menuTop() {
     : acct.user || acctLoading ? '<button class="btn chip" disabled aria-label="Loading your account">…</button>'
     : '<button class="btn chip" data-act="login">Log in</button>';
   const left = RATINGS_ENABLED ? '<button class="btn" data-act="leaderboard">Leaderboard</button>' : '';   // your stats: tap your username
-  const sound = `<button class="btn chip sound" data-act="sound" aria-pressed="${!SND.muted}">${soundLabel()}</button>`;   // the sound switch, beside the top-left corner
+  const sound = soundBtn('menu');   // the sound switch, beside the top-left corner
   return `<div class="menu-top"><div class="menu-left">${left}${sound}</div>${chip}</div>`;
 }
 
@@ -4232,7 +4284,9 @@ app.addEventListener('click', e => {
   } else if (act === 'move') {
     hpSel = null;
     if (el.dataset.m === '[]') return;
+    tapEl = el;                                  // the control pressed: it shows the press at once, online (see dbMove)
     attemptMove(JSON.parse(el.dataset.m));
+    tapEl = null;
   } else if (act === 'key') {
     typeLetter(el.dataset.k);
   } else if (act === 'bksp') {
@@ -4587,7 +4641,6 @@ def('error', 0.3, (c, d, t) => { sfxTone(c, d, t, 150, .26, { type: 'square', to
 def('copy', 0.2, (c, d, t) => { sfxNoise(c, d, t, .02, { f: 3000, vol: .6 }); sfxTone(c, d, t + .01, 1500, .07, { vol: .4, type: 'triangle' }); sfxTone(c, d, t + .08, 1900, .08, { vol: .4, type: 'triangle' }); }, { level: .5 });
 def('join', 0.36, (c, d, t) => { sfxTone(c, d, t, 523, .15, { vol: .4, type: 'triangle' }); sfxTone(c, d, t + .1, 784, .24, { vol: .45, type: 'triangle' }); }, { level: .55 });
 def('found', 0.55, (c, d, t) => [523, 659, 784, 1046].forEach((f, i) => sfxTone(c, d, t + i * .07, f, .22, { vol: .35, type: 'triangle' })), { level: .6 });
-def('searchTick', 0.06, (c, d, t) => sfxTone(c, d, t, 1800, .03, { vol: .4 }), { level: .22, vary: true });
 // ---- the board
 def('zoomIn', 0.22, (c, d, t) => { sfxNoise(c, d, t, .2, { f: 800, to: 2400, q: 2, vol: .5 }); sfxTone(c, d, t, 380, .18, { to: 760, vol: .15 }); }, { level: .5 });
 def('zoomOut', 0.2, (c, d, t) => sfxNoise(c, d, t, .18, { f: 2400, to: 800, q: 2, vol: .5 }), { level: .5 });
@@ -4706,6 +4759,7 @@ const TAP_SOUND = { explain: 'open', 'explain-close': 'close', pause: 'open', 'p
   mmcol: 'peg', mmslot: 'peg', key: 'key', bksp: 'key', enter: 'key', side: 'toggle', kind: 'toggle', lside: 'toggle', timer: 'toggle', adv: 'toggle',
   sound: 'toggle', 'games-all': 'select', 'games-none': 'deselect', share: 'copy', back: 'back' };
 document.addEventListener('click', e => {
+  if (search.on) return;                                           // the searching screen is silent (even its Cancel)
   const el = e.target.closest && e.target.closest('[data-act], label.chk');
   if (!el || el.classList.contains('chk')) return;                 // (a box: its change plays the toggle)
   const act = el.dataset.act;
@@ -4715,7 +4769,10 @@ document.addEventListener('click', e => {
 }, true);
 document.addEventListener('pointerdown', e => { if (e.target.closest && e.target.closest('button:disabled, input:disabled')) SND.play('error'); }, true);
 document.addEventListener('change', e => { if (e.target.type === 'checkbox') SND.play('toggle'); }, true);
-const soundLabel = () => (SND.muted ? 'Sound: Off' : 'Sound: On');
+// The sound switch: a speaker with waves when sound is on, crossed out when it is off. Its label says which.
+const soundLabel = () => (SND.muted ? 'Sound off' : 'Sound on');
+const soundIcon = () => `<svg class="snd-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 9.5h3.6L12 5.5v13l-4.9-4H3.5z" fill="currentColor"/>${SND.muted ? '<path d="M16 9.5l5 5M21 9.5l-5 5"/>' : '<path d="M15.5 9a4.2 4.2 0 0 1 0 6"/><path d="M18.3 6.4a8 8 0 0 1 0 11.2"/>'}</svg>`;
+const soundBtn = (cls) => `<button class="btn snd ${cls}" data-act="sound" aria-label="${soundLabel()}" title="${soundLabel()}" aria-pressed="${!SND.muted}">${soundIcon()}</button>`;
 // The sounds of one move, from its result: [name, ms after the move starts, playback rate], in order.
 // Each is timed to the animation it stands for (the same timings the animation uses).
 function moveSounds(f) {

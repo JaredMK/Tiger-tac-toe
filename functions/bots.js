@@ -25,18 +25,21 @@ const BOTS = [
     style: { attack: 1.1, defend: 1, mistake: 0.12, rollRisk: 0 }, pace: 'casual' },
 ];
 
-// Thinking time, in seconds, drawn afresh for every move: a weighted mix of ranges, [weight, from, to].
-// turn: the first move of a turn. again: a follow-up in the same turn (Hangman's next letter after a
-// right one, Battleship's next shot after a hit, Risky Rolls' next roll).
+// Thinking time, in seconds, drawn afresh for every move (thinkMs). A bot's ordinary moves are drawn from its own
+// window inside 1.5 to 5 seconds; Wordle, Hangman and Mastermind take 3 to 8 seconds a guess; a follow-up within
+// the same turn (the next Risky Rolls roll, the next Battleship shot) is a short pause of 1 to 2.5 seconds.
 const PACES = {
-  quick:   { turn: [[0.6, 2, 5], [0.3, 6, 15], [0.1, 20, 40]], again: [[0.8, 1.2, 3], [0.2, 3, 6]] },
-  steady:  { turn: [[0.35, 2, 5], [0.45, 6, 19], [0.17, 20, 45], [0.03, 46, 52]], again: [[0.6, 1.5, 4], [0.4, 4, 8]] },
-  erratic: { turn: [[0.4, 2, 5], [0.2, 6, 19], [0.3, 20, 50], [0.1, 46, 52]], again: [[0.5, 1, 3], [0.5, 3, 12]] },
-  slow:    { turn: [[0.15, 2, 5], [0.35, 8, 19], [0.4, 20, 50], [0.1, 46, 52]], again: [[0.4, 2, 5], [0.6, 5, 12]] },
-  casual:  { turn: [[0.45, 2, 5], [0.35, 6, 19], [0.15, 20, 50], [0.05, 46, 52]], again: [[0.7, 1.5, 4], [0.3, 4, 9]] },
+  quick:   { turn: [1.5, 3] },
+  steady:  { turn: [2, 4] },
+  erratic: { turn: [1.5, 5] },
+  slow:    { turn: [3, 5] },
+  casual:  { turn: [2, 4.5] },
 };
+const WORD_TYPES = ['wordle', 'hangman', 'mastermind'];
+const WORD_THINK = [3, 8];        // seconds a guess
+const AGAIN_THINK = [1, 2.5];     // seconds between two actions in one turn
 const MEMORY_SECOND = [1, 2.6];   // seconds between Memory's two cards
-const MAX_THINK_MS = 52000;       // always well inside the 1-minute turn: a bot never runs out of time
+const MAX_THINK_MS = 8000;        // the longest any bot waits: the ranges above, always inside the turn clock
 
 // The admin's settings (admin/config), with the defaults for anything not set. Both start switched off.
 const DEFAULTS = {
@@ -61,20 +64,12 @@ function alertConfig(conf) {
   };
 }
 
-// A number from a weighted mix of ranges, in milliseconds.
-function fromMix(mix, rng) {
-  const total = mix.reduce((s, m) => s + m[0], 0);
-  let r = rng() * total;
-  for (const [w, a, b] of mix) { if ((r -= w) <= 0) return Math.round((a + rng() * (b - a)) * 1000); }
-  const [, a, b] = mix[mix.length - 1];
-  return Math.round((a + rng() * (b - a)) * 1000);
-}
-// How long a bot thinks before its next move: 'turn' (a new turn), 'again' (a follow-up in the same
-// turn) or 'second' (Memory's second card).
-function thinkMs(bot, kind, rng) {
-  if (kind === 'second') return Math.round((MEMORY_SECOND[0] + rng() * (MEMORY_SECOND[1] - MEMORY_SECOND[0])) * 1000);
-  const pace = PACES[bot && bot.pace] || PACES.casual;
-  return Math.min(MAX_THINK_MS, fromMix(kind === 'again' ? pace.again : pace.turn, rng));
+// How long a bot thinks before its next move: 'turn' (the first move of a turn), 'again' (a follow-up in the
+// same turn), 'second' (Memory's second card). `type` is the mini-game of the move.
+function thinkMs(bot, kind, rng, type) {
+  const range = kind === 'second' ? MEMORY_SECOND : WORD_TYPES.includes(type) ? WORD_THINK
+    : kind === 'again' ? AGAIN_THINK : (PACES[bot && bot.pace] || PACES.casual).turn;
+  return Math.min(MAX_THINK_MS, Math.round((range[0] + rng() * (range[1] - range[0])) * 1000));
 }
 // The wait before a lone searcher is given a bot, drawn when they join the queue.
 function waitMs(cfg, rng) { return Math.round((cfg.waitMin + rng() * (cfg.waitMax - cfg.waitMin)) * 1000); }
@@ -123,4 +118,4 @@ function alertAllowed(state, uid, t, cfg) {
   return { ok: true, next: { last: t, by: keep, day, count: count + 1 } };
 }
 
-module.exports = { BOTS, NAMES, randomName, PACES, MEMORY_SECOND, MAX_THINK_MS, DEFAULTS, botConfig, alertConfig, fromMix, thinkMs, waitMs, byKey, newUid, e164, alertAllowed };
+module.exports = { BOTS, NAMES, randomName, PACES, MEMORY_SECOND, MAX_THINK_MS, DEFAULTS, botConfig, alertConfig, thinkMs, waitMs, byKey, newUid, e164, alertAllowed };
