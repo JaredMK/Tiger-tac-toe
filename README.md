@@ -409,6 +409,14 @@ To set up the alerts (once):
 3. On the dashboard, type the phone number and the email address, tick Text and/or Email, switch
    the alert on and press **Send a test alert**.
 
+## Sound
+
+Every tap and every move makes a sound. All of them are synthesised in the page with the Web Audio API,
+so there are no audio files to download or license; [SOUNDS.md](SOUNDS.md) lists each sound, when it
+plays and how it is made. Sound is on by default, and the switch on the main menu and in the in-game
+menu turns it off (remembered between visits). The first tap unlocks audio, as iPhone requires; on
+iPhone the audio session is *ambient*, so the silent switch mutes the game and the player's music carries on.
+
 ## Playing against the computer
 
 The computer takes its turn in the open: a short pause to think, then the square it chose lights up

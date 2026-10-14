@@ -1288,6 +1288,8 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .credit:active { opacity: .7; }
 .credit:focus-visible { outline: 3px solid var(--sky); outline-offset: 2px; }
 .menu-top { position: absolute; top: var(--pad); left: var(--pad); right: var(--pad); display: flex; justify-content: space-between; align-items: center; gap: 10px; z-index: 3; }
+.menu-left { display: flex; gap: 8px; min-width: 0; }
+.menu-top .sound { white-space: nowrap; }
 .menu-top .btn { height: 44px; padding: 0 14px; font-size: 15px; min-width: 44px; }
 .menu-top .chip { max-width: 58%; display: flex; align-items: center; gap: 8px; }
 .menu-top .chip span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1709,6 +1711,9 @@ function anchorFx() {
   for (const el of app.querySelectorAll('[data-fx]')) set(el, Number(el.dataset.fx));   // then each event's own (outer ones first, inner ones last)
 }
 function render() {
+  // The in-game menu belongs to a live game: it closes when the match ends or the screen leaves the game
+  // (the results screen has no menu card to close it, so a menu left open would refuse every tap there).
+  if (menuOpen && (state.winner || !['board', 'mini', 'review', 'review-mini'].includes(state.screen))) menuOpen = false;
   const view = state.screen + ':' + state.zoom;
   entering = view !== lastView; lastView = view;
   if (entering) startFx('enter', view);                       // a new screen: the event for its own entry (the zoom into a square)
@@ -2475,7 +2480,7 @@ function pauseMenu() {
       <div class="row"><button class="btn" data-act="pause-back">No</button><button class="btn go" data-act="pause-leave">Yes</button></div></div></div>`;
   }
   return `<div class="flash pause" role="dialog" aria-label="Menu"${fxAttr(fxAt('menu', menuStep))}><div class="card"><h2>Paused</h2><p>${state.online && state.timer.limit ? 'The turn clock keeps running.' : state.cpu ? 'The computer waits.' : 'Take your time.'}</p>
-    <div class="row"><button class="btn go" data-act="pause-resume">Resume</button><button class="btn" data-act="pause-main">Main menu</button></div></div></div>`;
+    <div class="row"><button class="btn go" data-act="pause-resume">Resume</button><button class="btn" data-act="pause-main">Main menu</button></div><button class="btn sound" data-act="sound">${soundLabel()}</button></div></div>`;
 }
 // One line about a move, for the result toast and the handoff bar.
 function summary(f) {
@@ -2995,7 +3000,9 @@ function onRoomValue(r) {
     if (r.setup.games) state.setup.games = Object.assign({}, state.setup.games, r.setup.games);
     state.setup.timer = normTimer(r.setup.timer);
   }
+  const wasJoined = o.joined;
   o.joined = !!(r.players.X && r.players.X.uid && r.players.O && r.players.O.uid);
+  if (wasJoined === false && o.joined) SND.play('join');
   if (r.status === 'playing' && r.match) {
     if (net.status !== 'connected') setNet('connected', '');
     if (presenting()) { pendingRoom = r; return; }               // a move is still playing out here: afterwards
@@ -3040,9 +3047,10 @@ function takeFields(st) {
   state.cpu = null; state.confirm = null; state.sel = [];
 }
 function showLatest(st) {
-  const o = state.online, pick0 = pickKey();
+  const o = state.online, pick0 = pickKey(), live = ['board', 'mini'].includes(state.screen);
   takeFields(st);
-  if (pickKey() != null && pickKey() !== pick0) startFx('pick', pickKey());   // a Memory card just turned up (on the other phone, or this one's own pick coming back)
+  if (pickKey() != null && pickKey() !== pick0) { startFx('pick', pickKey()); SND.play('flipUp'); }   // a Memory card just turned up (on the other phone, or this one's own pick coming back)
+  if (live && state.winner && !state.flash) SND.play(matchEndSound());   // the match ended while this phone was on the board (not on a reload)
   state.flash = null; state.done = null; state.spot = null;
   o.shownSeq = st.seq;
   if (state.winner) { if (!['review', 'review-mini'].concat(NAV_SCREENS).includes(state.screen)) state.screen = 'win'; }   // looking back over the final board, or at a profile: stay there
@@ -3076,7 +3084,7 @@ function presentEntry(st, e, rest) {
   state.done = !over && e.kind !== 'again' ? f : null;
   state.spot = null; state.stamp = null;
   presentingSeq = e.seq;
-  if (e.by === o.me && !e.timeout) { state.screen = 'mini'; state.zoom = e.square; state.draft = ''; state.notice = null; playFlash(); }
+  if (e.by === o.me && !e.timeout) { if (state.screen !== 'mini') SND.play('zoomIn'); state.screen = 'mini'; state.zoom = e.square; state.draft = ''; state.notice = null; playFlash(); }
   else showRemoteMove(e.square, moveLabel(e), before ? clone(before) : null);
   save(); render();
 }
@@ -3097,14 +3105,14 @@ function showRemoteMove(i, label, before) {
   clearTimeout(spotTimer); spotTimer = null;
   if (state.screen === 'mini' && state.zoom === i && !state.spot) { state.draft = ''; state.notice = null; playFlash(); return; }   // already looking at this square (a bonus move, or a watcher): it plays right here
   state.spot = { square: i, by: state.flash ? state.flash.by : state.turn, label, before: before || null };
-  startFx('spot', state.spot);
+  startFx('spot', state.spot); SND.play('spot');
   state.screen = 'board'; state.zoom = null; state.draft = ''; state.notice = null;
   spotTimer = setTimeout(() => {
     spotTimer = null;
     if (!state.spot) return;
     const sq = state.spot.square;
     state.spot = null;
-    state.screen = 'mini'; state.zoom = sq;
+    state.screen = 'mini'; state.zoom = sq; SND.play('zoomIn');
     playFlash();
     save(); render();
   }, SPOT_MS);
@@ -3116,7 +3124,7 @@ function moveLabel(f) { return f.timeout ? `${playerName(state, f.by)} ran out o
 function attemptMove(m) {
   if (state.online) { dbMove(state.zoom, m); return true; }
   const r = playMove(state, state.zoom, m, RNG);
-  if (r.ok) { playFlash(); commit(); }
+  if (r.ok) { playFlash(); commit(); } else SND.play('error');
   return r;
 }
 function matchTransaction(fn) {
@@ -3153,6 +3161,7 @@ async function dbMove(i, m) {
   return true;
 }
 function moveRejected(reason) {
+  SND.play('error');
   if (reason === 'notword') showNotice('Not a word', 1200);
   else if (reason === 'network') showNotice('No connection', 1200);
 }
@@ -3308,6 +3317,7 @@ function fmtClock(ms) { const sec = Math.ceil(ms / 1000); return `${Math.floor(s
 // The clock for the turn just started: the time limit, plus what the move just made takes to play
 // back, so the countdown is seen to begin once the animation is over.
 // Runs four times a second: keeps the clock on screen current and, online, calls time when it is up.
+let tickSec = null;
 function tick() {
   const w = search.on && document.getElementById('mmwait');
   if (w) w.textContent = fmtClock(Date.now() - search.since);
@@ -3317,6 +3327,8 @@ function tick() {
     el.textContent = clockText();
     el.classList.toggle('low', left != null && left <= 10000);
     el.classList.toggle('held', !!state.online && !connected);
+    if (left != null && left <= 10000 && left > 0) { const sec = Math.ceil(left / 1000); if (sec !== tickSec) { tickSec = sec; SND.play(sec <= 3 ? 'tickLoud' : 'tickSoft'); } }
+    else tickSec = null;
   }
   if (!state.online || !fb || !connected || !room || !room.match || timeoutBusy || state.online.joined === false) return;
   const rec = parseMatch(room.match);
@@ -3553,9 +3565,11 @@ async function openFind() {
   state.screen = 'find'; commit();
   startSearch();                                // straight into searching: nothing to choose
 }
+let searchSnd = null;
 function startSearch() {
   if (search.on || !loggedIn()) return;
   search.on = true; search.found = false; search.since = Date.now(); search.msg = '';
+  clearInterval(searchSnd); searchSnd = setInterval(() => SND.play('searchTick'), 800);   // a soft tick with the searcher's hop
   render();
   searchTick();
 }
@@ -3583,7 +3597,7 @@ async function cancelSearch() {
   try { const r = await call('cancelSearch', {}); if (r.status === 'matched') enterGame(r.game, r.side); }   // paired just before Cancel: the game is on
   catch (e) { /* a searcher who stops checking in is dropped from the queue anyway */ }
 }
-function stopSearch() { search.on = false; clearTimeout(searchTimer); searchTimer = null; }
+function stopSearch() { search.on = false; clearTimeout(searchTimer); searchTimer = null; clearInterval(searchSnd); searchSnd = null; }
 function findAgain() {                          // the results screen: another game
   leaveRoom(true);
   state.screen = 'find'; commit();
@@ -3592,6 +3606,7 @@ function findAgain() {                          // the results screen: another g
 
 /* ----- a matchmaking game: the public game read live, moves sent to the server ----- */
 function enterGame(id, side) {
+  if (search.on || search.found) SND.play('found');
   stopSearch();
   if (isMM() && state.online.game === id) return;
   if (state.online) stopListening();
@@ -3901,8 +3916,9 @@ function menuTop() {
     : acct.user && acct.ready ? '<button class="btn chip" data-act="login">Pick a username</button>'
     : acct.user || acctLoading ? '<button class="btn chip" disabled aria-label="Loading your account">…</button>'
     : '<button class="btn chip" data-act="login">Log in</button>';
-  const left = RATINGS_ENABLED ? '<button class="btn" data-act="leaderboard">Leaderboard</button>' : '<span></span>';   // your stats: tap your username
-  return `<div class="menu-top">${left}${chip}</div>`;
+  const left = RATINGS_ENABLED ? '<button class="btn" data-act="leaderboard">Leaderboard</button>' : '';   // your stats: tap your username
+  const sound = `<button class="btn chip sound" data-act="sound" aria-pressed="${!SND.muted}">${soundLabel()}</button>`;   // the sound switch, beside the top-left corner
+  return `<div class="menu-top"><div class="menu-left">${left}${sound}</div>${chip}</div>`;
 }
 
 /* ----- online screens ----- */
@@ -3966,6 +3982,7 @@ app.addEventListener('click', e => {
   if (act === 'ask-leave') { if (joinAsk) leaveAndJoin(joinAsk.code); return; }
   if (act === 'dismiss') { if (Date.now() >= flashReady) dismissFlash(); return; }   // not before the animation is over
   const free = ['pause', 'pause-resume', 'pause-main', 'pause-back', 'pause-leave', 'leave', 'lobby-back', 'menu', 'find-again', 'profile', 'prof-back', 'prof-hist', 'mystats', 'hist-open', 'hist-sq', 'hist-back', 'hist-close', 'leaderboard', 'rejoin', 'host-retry', 'share', 'rematch', 'timer', 'review', 'review-sq', 'review-back', 'results', 'pview'];
+  if (act === 'sound') { SND.setMuted(!SND.muted); if (!SND.muted) SND.play('toggle'); render(); return; }   // (the press's own sound came with the press when it was still on)
   if (act === 'pause') { menuOpen = true; menuStep = 'main'; startFx('menu', menuStep); render(); scheduleCpu(); return; }
   if (act === 'pause-resume') { menuOpen = false; menuStep = 'main'; render(); scheduleCpu(); return; }
   if (act === 'pause-main') { menuStep = 'confirm'; startFx('menu', menuStep); render(); return; }
@@ -3978,9 +3995,9 @@ app.addEventListener('click', e => {
   state.stamp = null;                           // a claim stamps in once
   if (act === 'zoom') {                        // open squares to play, claimed squares to look
     const i = Number(el.dataset.i);
-    if (state.winner || !state.squares[i]) return;
-    if (lockMine() && state.lock !== i) return;
-    state.screen = 'mini'; state.zoom = i; state.draft = ''; state.sel = []; state.notice = null; hpSel = null;
+    if (state.winner || !state.squares[i]) { SND.play('error'); return; }
+    if (lockMine() && state.lock !== i) { SND.play('error'); return; }
+    state.screen = 'mini'; state.zoom = i; state.draft = ''; state.sel = []; state.notice = null; hpSel = null; SND.play('zoomIn');
     if (!state.online) { state.pick = null; state.pickSq = null; }
     commit();
   } else if (act === 'back') {
@@ -4139,7 +4156,7 @@ app.addEventListener('click', e => {
       else attemptMove([first, i]);
       return;
     }
-    if (first == null) { state.pick = i; state.pickSq = state.zoom; startFx('pick', pickKey()); }   // the card turns up: its own event
+    if (first == null) { state.pick = i; state.pickSq = state.zoom; startFx('pick', pickKey()); SND.play('flipUp'); }   // the card turns up: its own event
     else if (first === i) { state.pick = null; state.pickSq = null; }
     else if (!playMove(state, state.zoom, [first, i], RNG).ok) { state.pick = null; state.pickSq = null; }
     else playFlash();
@@ -4315,7 +4332,7 @@ function cpuSpot() {                                           // the computer h
   if (!cpuTurn() || state.screen !== 'board' || state.confirm || menuOpen) return;
   cpuPlan = cpuMove(state, RNG); cpuPlan.stage = 0;
   state.spot = { square: cpuPlan.square, by: state.turn, label: `${playerName(state, state.turn)} plays here` };
-  startFx('spot', state.spot);
+  startFx('spot', state.spot); SND.play('spot');
   render();                                                     // no commit: the glow is not for the saved state
   cpuTimer = setTimeout(cpuZoom, CPU_MS.spot);
 }
@@ -4324,14 +4341,14 @@ function cpuZoom() {
   state.spot = null;
   if (!cpuTurn() || state.screen !== 'board' || state.confirm || menuOpen || !cpuPlan) { render(); return; }
   state.screen = 'mini'; state.zoom = cpuPlan.square; state.draft = ''; state.pick = null; state.sel = []; state.notice = null;
-  commit();
+  SND.play('zoomIn'); commit();
 }
 function cpuAct() {
   cpuTimer = null;
   if (!cpuTurn() || state.screen !== 'mini' || !cpuPlan || cpuPlan.square !== state.zoom || menuOpen || explainT) return;
   const plan = cpuPlan, type = state.squares[plan.square].mini.type;
   if (!plan.stage && (type === 'memory' || type === 'wordle' || type === 'hexapawn' || type === 'mastermind')) {   // show the choice first, as a person would
-    if (type === 'memory') { state.pick = plan.move[0]; state.pickSq = plan.square; startFx('pick', pickKey()); } else if (type === 'hexapawn') hpSel = { sq: plan.square, from: plan.move[0] };
+    if (type === 'memory') { state.pick = plan.move[0]; state.pickSq = plan.square; startFx('pick', pickKey()); SND.play('flipUp'); } else if (type === 'hexapawn') hpSel = { sq: plan.square, from: plan.move[0] };
     else if (type === 'mastermind') mmDraft = { sq: plan.square, slots: plan.move.slice(), at: 0 }; else state.draft = plan.move;
     plan.stage = 1; commit(); return;
   }
@@ -4351,6 +4368,8 @@ function playFlash(played) {
   if (!f || state.spot || fxAt('move', f) != null) return;     // while the square glows on the board, the move has not played yet
   const ms = played ? 0 : animMs(f);
   startFx('move', f, performance.now() - (played ? animMs(f) : 0));
+  if (played || SND.muted || !SND.loaded || !SND.ctx || SND.ctx.state !== 'running') fx.move.quiet = true;   // (a result already heard at a reload, or played before audio was ready: it finishes quietly too)
+  if (!played) for (const [n, at, rate] of moveSounds(f)) SND.play(n, { at: at / 1000, rate });
   flashReady = Date.now() + ms;                   // no tapping the result away while the move is still animating
   let hold = FLASH_MS[f.kind] || 800;
   if (f.type === 'memory' && f.kind === 'move') hold = MEMORY_MS;
@@ -4358,19 +4377,25 @@ function playFlash(played) {
   clearTimeout(flashTimer); flashTimer = setTimeout(dismissFlash, ms + hold);
 }
 // Back on the board after a move: a square just won stamps in now, once (the event its stamp belongs to).
-function stampFx() { if (state.screen === 'board' && state.stamp != null && state.stampId != null && fxAt('stamp', state.stampId) == null) startFx('stamp', state.stampId); }
+function stampFx() {
+  if (state.screen !== 'board' || state.stamp == null || state.stampId == null || fxAt('stamp', state.stampId) != null) return;
+  startFx('stamp', state.stampId);
+  SND.play('stamp'); SND.play('burst', { at: BOARD_BURST[0] / 1000 }); SND.play('burst', { at: BOARD_BURST[1] / 1000 });
+}
 function dismissFlash() {
   clearTimeout(flashTimer); flashTimer = null;
   const f = state.flash;
   if (!f) return;
   const hold = f.type === 'memory' && f.kind === 'move' && !state.winner;   // let the two cards turn back over first
+  const from = { turn: state.turn, mini: state.screen === 'mini' }, quiet = !!(fx.move && fx.move.key === f && fx.move.quiet);
   endFlash(state, hold);
-  if (hold && state.done) startFx('back', state.done);          // the two cards turning back over
+  if (hold && state.done) { startFx('back', state.done); if (!quiet) SND.play('flipDown'); }   // the two cards turning back over
+  else if (!quiet) backSounds(from);
   stampFx();
   commit();
   if (hold && state.done) {
     clearTimeout(holdTimer);
-    holdTimer = setTimeout(() => { if (state.done && !state.flash && leaveSquare(state)) { stampFx(); commit(); } applyPending(); }, FLIP_MS);
+    holdTimer = setTimeout(() => { if (state.done && !state.flash && leaveSquare(state)) { if (!quiet) backSounds(from); stampFx(); commit(); } applyPending(); }, FLIP_MS);
   } else applyPending();                        // online: the room may have moved on meanwhile
 }
 function save() {
@@ -4416,6 +4441,245 @@ function load() {
   } catch (e) { /* ignore corrupt saves */ }
   return null;
 }
+
+/* ===================== sound =====================
+ * One sound manager for every effect. Nothing is an audio file: each sound is synthesised here with the
+ * Web Audio API (oscillators and filtered noise), so no audio is downloaded and no licence is involved
+ * (SOUNDS.md lists them all). Each sound is rendered once when the page loads, so a play starts at once.
+ * The first tap unlocks audio (iPhone needs a gesture). On iPhone the audio session is 'ambient': the
+ * silent switch mutes the game, and music the player already has playing carries on.
+ * Sounds start from the events they belong to (playFlash, stampFx, backSounds, showRemoteMove, ...),
+ * never from drawing the screen, and each event starts its sounds once.
+ */
+const SFX = {};                                             // name -> { dur, level, vary, make(c, out, t) }
+const SND = { ctx: null, out: null, bufs: {}, muted: false, loaded: false, log: [] };
+// One tone: a sine, triangle or square, optionally gliding from f to o.to over its length.
+function sfxTone(c, d, t, f, dur, o = {}) {
+  const n = c.createOscillator(), g = c.createGain(), v = o.vol == null ? 0.5 : o.vol;
+  n.type = o.type || 'sine';
+  n.frequency.setValueAtTime(f, t);
+  if (o.to) n.frequency.exponentialRampToValueAtTime(o.to, t + dur);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(v, t + (o.att || 0.005));
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  n.connect(g); g.connect(d); n.start(t); n.stop(t + dur + 0.05);
+}
+// Filtered noise (the same noise every time: seeded): whooshes, clacks, splashes, thuds.
+function sfxNoise(c, d, t, dur, o = {}) {
+  const len = Math.max(1, Math.ceil(c.sampleRate * dur)), b = c.createBuffer(1, len, c.sampleRate), x = b.getChannelData(0);
+  let s = 12345;
+  for (let i = 0; i < len; i++) { s = (s * 16807) % 2147483647; x[i] = s / 1073741823 - 1; }
+  const src = c.createBufferSource(), flt = c.createBiquadFilter(), g = c.createGain(), v = o.vol == null ? 0.5 : o.vol;
+  src.buffer = b; flt.type = o.filter || 'bandpass'; flt.Q.value = o.q == null ? 1 : o.q;
+  flt.frequency.setValueAtTime(o.f || 1500, t);
+  if (o.to) flt.frequency.exponentialRampToValueAtTime(o.to, t + dur);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(v, t + (o.att || 0.003));
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  src.connect(flt); flt.connect(g); g.connect(d); src.start(t); src.stop(t + dur + 0.05);
+}
+// name, length in seconds, loudness (the peak it is normalised to), and whether its pitch varies a little
+// each time (for the sounds that repeat: taps, hops, ticks), so they do not feel mechanical.
+const def = (name, dur, make, o = {}) => { SFX[name] = { dur, level: o.level == null ? 0.6 : o.level, vary: !!o.vary, make }; };
+// ---- interface
+def('tap', 0.09, (c, d, t) => { sfxTone(c, d, t, 640, .07, { to: 430, vol: .5, type: 'triangle' }); sfxNoise(c, d, t, .02, { f: 2600, vol: .25 }); }, { level: .4, vary: true });
+def('key', 0.06, (c, d, t) => sfxTone(c, d, t, 1400, .04, { to: 1100, vol: .5, type: 'triangle' }), { level: .3, vary: true });
+def('toggle', 0.16, (c, d, t) => { sfxTone(c, d, t, 660, .07, { vol: .5, type: 'triangle' }); sfxTone(c, d, t + .06, 880, .09, { vol: .5, type: 'triangle' }); }, { level: .45 });
+def('select', 0.26, (c, d, t) => [523, 659, 784].forEach((f, i) => sfxTone(c, d, t + i * .06, f, .14, { vol: .4, type: 'triangle' })), { level: .45 });
+def('deselect', 0.26, (c, d, t) => [784, 659, 523].forEach((f, i) => sfxTone(c, d, t + i * .06, f, .14, { vol: .4, type: 'triangle' })), { level: .45 });
+def('back', 0.22, (c, d, t) => { sfxTone(c, d, t, 620, .18, { to: 330, vol: .4 }); sfxNoise(c, d, t, .16, { f: 900, to: 500, filter: 'lowpass', vol: .2 }); }, { level: .45 });
+def('open', 0.22, (c, d, t) => sfxTone(c, d, t, 330, .18, { to: 660, vol: .4 }), { level: .45 });
+def('close', 0.2, (c, d, t) => sfxTone(c, d, t, 660, .16, { to: 330, vol: .4 }), { level: .45 });
+def('error', 0.3, (c, d, t) => { sfxTone(c, d, t, 150, .26, { type: 'square', to: 120, vol: .3 }); sfxTone(c, d, t, 156, .26, { type: 'square', to: 124, vol: .25 }); }, { level: .45 });
+def('copy', 0.2, (c, d, t) => { sfxNoise(c, d, t, .02, { f: 3000, vol: .6 }); sfxTone(c, d, t + .01, 1500, .07, { vol: .4, type: 'triangle' }); sfxTone(c, d, t + .08, 1900, .08, { vol: .4, type: 'triangle' }); }, { level: .5 });
+def('join', 0.36, (c, d, t) => { sfxTone(c, d, t, 523, .15, { vol: .4, type: 'triangle' }); sfxTone(c, d, t + .1, 784, .24, { vol: .45, type: 'triangle' }); }, { level: .55 });
+def('found', 0.55, (c, d, t) => [523, 659, 784, 1046].forEach((f, i) => sfxTone(c, d, t + i * .07, f, .22, { vol: .35, type: 'triangle' })), { level: .6 });
+def('searchTick', 0.06, (c, d, t) => sfxTone(c, d, t, 1800, .03, { vol: .4 }), { level: .22, vary: true });
+// ---- the board
+def('zoomIn', 0.22, (c, d, t) => { sfxNoise(c, d, t, .2, { f: 800, to: 2400, q: 2, vol: .5 }); sfxTone(c, d, t, 380, .18, { to: 760, vol: .15 }); }, { level: .5 });
+def('zoomOut', 0.2, (c, d, t) => sfxNoise(c, d, t, .18, { f: 2400, to: 800, q: 2, vol: .5 }), { level: .5 });
+def('spot', 0.4, (c, d, t) => { sfxTone(c, d, t, 880, .36, { vol: .25, att: .12 }); sfxTone(c, d, t, 1320, .28, { vol: .1, att: .12 }); }, { level: .4 });
+def('turn', 0.42, (c, d, t) => { sfxTone(c, d, t, 260, .24, { to: 620, vol: .5, att: .01 }); sfxTone(c, d, t + .18, 900, .2, { vol: .2, type: 'triangle' }); }, { level: .5 });
+def('stamp', 0.42, (c, d, t) => { sfxTone(c, d, t, 130, .38, { to: 55, vol: .9, att: .002 }); sfxNoise(c, d, t, .12, { f: 500, filter: 'lowpass', vol: .6, att: .002 }); }, { level: .9 });
+def('burst', 0.1, (c, d, t) => { sfxNoise(c, d, t, .07, { f: 1600, q: .7, vol: .5 }); sfxTone(c, d, t, 900, .1, { to: 1800, vol: .35, type: 'triangle' }); }, { level: .5, vary: true });
+def('reset', 0.6, (c, d, t) => { sfxTone(c, d, t, 520, .42, { to: 240, vol: .5, type: 'triangle' }); sfxNoise(c, d, t + .1, .2, { f: 600, to: 300, filter: 'lowpass', vol: .2 }); }, { level: .5 });
+def('swish', 0.42, (c, d, t) => { sfxNoise(c, d, t, .35, { f: 600, to: 3200, q: 1.5, vol: .5 }); sfxTone(c, d, t + .1, 700, .2, { to: 1400, vol: .15, type: 'triangle' }); }, { level: .55 });
+def('won', 0.5, (c, d, t) => [659, 784, 988].forEach((f, i) => sfxTone(c, d, t + i * .08, f, .25, { vol: .35, type: 'triangle' })), { level: .6 });
+def('winFanfare', 1.3, (c, d, t) => { [523, 659, 784, 1046].forEach((f, i) => sfxTone(c, d, t + i * .12, f, .25, { vol: .4, type: 'triangle' })); [523, 659, 784].forEach(f => sfxTone(c, d, t + .5, f, .75, { vol: .22 })); }, { level: .65 });
+def('loss', 0.85, (c, d, t) => { sfxTone(c, d, t, 392, .3, { to: 294, vol: .4, type: 'triangle' }); sfxTone(c, d, t + .25, 330, .55, { to: 247, vol: .4, type: 'triangle' }); }, { level: .55 });
+def('tie', 0.9, (c, d, t) => [392, 494, 587].forEach(f => sfxTone(c, d, t, f, .8, { vol: .2, att: .02 })), { level: .5 });
+// ---- the clock
+def('tickSoft', 0.06, (c, d, t) => sfxTone(c, d, t, 1000, .03, { vol: .4 }), { level: .3, vary: true });
+def('tickLoud', 0.08, (c, d, t) => sfxTone(c, d, t, 1400, .05, { vol: .6 }), { level: .55, vary: true });
+def('buzz', 0.5, (c, d, t) => { sfxTone(c, d, t, 220, .42, { type: 'sawtooth', to: 170, vol: .3 }); sfxNoise(c, d, t, .3, { f: 800, filter: 'lowpass', vol: .2 }); }, { level: .6 });
+def('randomMove', 0.36, (c, d, t) => [0, .1, .2].forEach(o => sfxTone(c, d, t + o, 900, .05, { vol: .4, type: 'triangle' })), { level: .45 });
+// ---- the mini-games
+def('mark', 0.14, (c, d, t) => { sfxNoise(c, d, t, .12, { f: 2600, q: 3, vol: .55 }); sfxTone(c, d, t, 320, .1, { to: 260, vol: .2, type: 'triangle' }); }, { level: .5, vary: true });
+def('whoosh', 0.34, (c, d, t) => sfxNoise(c, d, t, .3, { f: 3000, to: 500, q: .8, vol: .4 }), { level: .45 });
+def('clack', 0.1, (c, d, t) => { sfxNoise(c, d, t, .05, { f: 1800, q: 5, vol: .7, att: .001 }); sfxTone(c, d, t, 800, .05, { vol: .4, type: 'triangle' }); }, { level: .6 });
+def('fire', 0.2, (c, d, t) => { sfxTone(c, d, t, 900, .16, { to: 300, vol: .4, type: 'triangle' }); sfxNoise(c, d, t, .16, { f: 2000, to: 600, vol: .25 }); }, { level: .5 });
+def('splash', 0.6, (c, d, t) => { sfxNoise(c, d, t, .4, { f: 1800, to: 400, q: .6, filter: 'lowpass', vol: .6 }); sfxTone(c, d, t + .15, 700, .06, { to: 1200, vol: .2 }); sfxTone(c, d, t + .25, 900, .05, { to: 1500, vol: .15 }); }, { level: .55 });
+def('boom', 0.5, (c, d, t) => { sfxNoise(c, d, t, .4, { f: 1000, to: 200, q: .7, filter: 'lowpass', vol: .8 }); sfxTone(c, d, t, 160, .4, { to: 50, vol: .7 }); }, { level: .8 });
+def('sink', 1.2, (c, d, t) => { sfxNoise(c, d, t, 1.1, { f: 300, to: 80, q: .5, filter: 'lowpass', vol: .8, att: .05 }); sfxTone(c, d, t, 110, 1, { to: 40, vol: .4 }); }, { level: .7 });
+def('tileG', 0.18, (c, d, t) => { sfxTone(c, d, t, 660, .14, { vol: .5, type: 'triangle' }); sfxTone(c, d, t, 990, .1, { vol: .2, type: 'triangle' }); }, { level: .5 });
+def('tileY', 0.16, (c, d, t) => sfxTone(c, d, t, 520, .14, { vol: .5, type: 'triangle' }), { level: .5 });
+def('tileX', 0.12, (c, d, t) => sfxTone(c, d, t, 330, .1, { to: 280, vol: .4, type: 'triangle' }), { level: .45 });
+def('solve', 0.6, (c, d, t) => [784, 988, 1175].forEach((f, i) => sfxTone(c, d, t + i * .09, f, .3, { vol: .35, type: 'triangle' })), { level: .6 });
+def('ding', 0.5, (c, d, t) => { sfxTone(c, d, t, 1046, .5, { vol: .4 }); sfxTone(c, d, t, 1568, .35, { vol: .15 }); }, { level: .55 });
+def('thud', 0.22, (c, d, t) => { sfxTone(c, d, t, 120, .2, { to: 70, vol: .6 }); sfxNoise(c, d, t, .1, { f: 400, filter: 'lowpass', vol: .4 }); }, { level: .55 });
+def('hexPlace', 0.08, (c, d, t) => { sfxTone(c, d, t, 500, .06, { vol: .5, type: 'triangle' }); sfxNoise(c, d, t, .05, { f: 1200, q: 4, vol: .4 }); }, { level: .5, vary: true });
+def('pathNote', 0.3, (c, d, t) => sfxTone(c, d, t, 523, .25, { vol: .4, type: 'triangle' }), { level: .5 });
+def('hiloBlip', 0.1, (c, d, t) => sfxTone(c, d, t, 880, .08, { vol: .4 }), { level: .4, vary: true });
+def('higher', 0.34, (c, d, t) => sfxTone(c, d, t, 500, .3, { to: 900, vol: .4, type: 'triangle' }), { level: .5 });
+def('lower', 0.34, (c, d, t) => sfxTone(c, d, t, 900, .3, { to: 500, vol: .4, type: 'triangle' }), { level: .5 });
+def('rattle', 0.5, (c, d, t) => { for (let k = 0; k < 9; k++) sfxNoise(c, d, t + k * .05, .04, { f: 2500, q: 2, vol: .5 }); }, { level: .5 });
+def('thunk', 0.2, (c, d, t) => { sfxTone(c, d, t, 220, .15, { to: 110, vol: .6, type: 'triangle' }); sfxNoise(c, d, t, .06, { f: 700, filter: 'lowpass', vol: .5 }); }, { level: .6 });
+def('hop', 0.1, (c, d, t) => sfxTone(c, d, t, 520, .07, { to: 760, vol: .35, type: 'triangle' }), { level: .35, vary: true });
+def('climb', 0.8, (c, d, t) => [0, 1, 2, 3, 4].forEach(i => sfxTone(c, d, t + i * .13, 420 + i * 110, .14, { vol: .3, type: 'triangle' })), { level: .5 });
+def('slide', 0.8, (c, d, t) => { sfxTone(c, d, t, 1000, .72, { to: 260, vol: .4 }); sfxNoise(c, d, t, .7, { f: 2200, to: 700, vol: .12 }); }, { level: .5 });
+def('flipUp', 0.16, (c, d, t) => { sfxNoise(c, d, t, .12, { f: 1200, to: 2400, q: 1.2, vol: .4 }); sfxTone(c, d, t + .1, 1400, .04, { vol: .2 }); }, { level: .45 });
+def('flipDown', 0.16, (c, d, t) => sfxNoise(c, d, t, .12, { f: 2400, to: 1000, q: 1.2, vol: .35 }), { level: .45 });
+def('pair', 0.55, (c, d, t) => [880, 1175, 1568].forEach((f, i) => sfxTone(c, d, t + i * .07, f, .3, { vol: .35, type: 'triangle' })), { level: .6 });
+def('nopair', 0.36, (c, d, t) => { sfxTone(c, d, t, 260, .2, { to: 200, vol: .3, type: 'triangle' }); sfxTone(c, d, t + .12, 220, .2, { vol: .3, type: 'triangle' }); }, { level: .45 });
+def('wheelTick', 0.04, (c, d, t) => sfxTone(c, d, t, 2200, .025, { vol: .4 }), { level: .3, vary: true });
+def('spin', 0.8, (c, d, t) => sfxNoise(c, d, t, .7, { f: 2500, to: 1200, q: 2, vol: .25 }), { level: .45 });
+def('clink', 0.24, (c, d, t) => { sfxTone(c, d, t, 2400, .2, { vol: .4 }); sfxTone(c, d, t, 3600, .12, { vol: .2 }); }, { level: .45, vary: true });
+def('coinSpin', 1.0, (c, d, t) => { sfxTone(c, d, t, 1200, .9, { to: 2000, vol: .25 }); sfxTone(c, d, t, 2400, .8, { to: 3200, vol: .1 }); }, { level: .45 });
+def('point', 0.14, (c, d, t) => sfxTone(c, d, t, 700, .08, { to: 1000, vol: .35, type: 'triangle' }), { level: .4, vary: true });
+def('bank', 0.45, (c, d, t) => [1500, 1900, 2400, 1900].forEach((f, i) => sfxTone(c, d, t + i * .06, f, .1, { vol: .3, type: 'triangle' })), { level: .55 });
+def('bust', 0.75, (c, d, t) => { sfxNoise(c, d, t, .3, { f: 1500, to: 200, q: .5, filter: 'lowpass', vol: .9 }); sfxTone(c, d, t, 400, .6, { to: 60, vol: .5, type: 'sawtooth' }); }, { level: .7 });
+def('dig', 0.32, (c, d, t) => { sfxNoise(c, d, t, .25, { f: 900, to: 300, q: .8, filter: 'lowpass', vol: .6 }); sfxTone(c, d, t + .2, 120, .1, { to: 80, vol: .4 }); }, { level: .55 });
+def('band', 0.28, (c, d, t) => sfxTone(c, d, t, 880, .25, { vol: .35, type: 'triangle' }), { level: .5 });
+def('sparkle', 0.55, (c, d, t) => [1319, 1760, 2093, 2637].forEach((f, i) => sfxTone(c, d, t + i * .07, f, .25, { vol: .25 })), { level: .55 });
+def('pieceSlide', 0.24, (c, d, t) => sfxNoise(c, d, t, .2, { f: 1200, to: 600, q: .8, filter: 'lowpass', vol: .35 }), { level: .45 });
+def('knock', 0.32, (c, d, t) => { sfxTone(c, d, t, 260, .12, { to: 220, vol: .6, type: 'triangle' }); sfxTone(c, d, t + .12, 240, .12, { vol: .5, type: 'triangle' }); }, { level: .6 });
+def('peg', 0.07, (c, d, t) => sfxTone(c, d, t, 900, .05, { vol: .5, type: 'triangle' }), { level: .4, vary: true });
+def('marker', 0.06, (c, d, t) => sfxTone(c, d, t, 1500, .04, { vol: .4 }), { level: .3, vary: true });
+def('reveal', 0.65, (c, d, t) => { sfxTone(c, d, t, 300, .5, { to: 900, vol: .4, type: 'triangle' }); [1046, 1318].forEach((f, i) => sfxTone(c, d, t + .45 + i * .08, f, .25, { vol: .35 })); }, { level: .6 });
+def('boing', 0.6, (c, d, t) => { sfxTone(c, d, t, 200, .5, { to: 700, vol: .5 }); sfxTone(c, d, t, 700, .4, { to: 350, vol: .2 }); }, { level: .6 });
+
+// Renders every sound into a buffer, one after another (quick, and gentle on a phone). Runs at page load.
+SND.load = function () {
+  const OC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+  if (!OC) return Promise.resolve();
+  return Object.keys(SFX).reduce((p, name) => p.then(() => new Promise(done => {
+    const s = SFX[name], oc = new OC(1, Math.ceil(s.dur * 44100), 44100);
+    oc.oncomplete = e => {
+      const buf = e.renderedBuffer, x = buf.getChannelData(0);
+      let peak = 0; for (let i = 0; i < x.length; i++) peak = Math.max(peak, Math.abs(x[i]));
+      if (peak > 0) for (let i = 0; i < x.length; i++) x[i] *= s.level / peak;   // balanced: each sound peaks at its own level
+      SND.bufs[name] = buf; done();
+    };
+    s.make(oc, oc.destination, 0);
+    oc.startRendering();
+  })), Promise.resolve()).then(() => { SND.loaded = true; });
+};
+// The first tap (or key) unlocks audio: the context starts inside the gesture, as iPhone requires.
+SND.unlock = function () {
+  if (!SND.ctx) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    try { SND.ctx = new AC(); } catch (e) { return; }
+    SND.out = SND.ctx.createGain(); SND.out.gain.value = 0.9; SND.out.connect(SND.ctx.destination);
+  }
+  if (SND.ctx.state !== 'running') {
+    SND.ctx.resume().catch(() => {});
+    const b = SND.ctx.createBuffer(1, 1, 22050), s = SND.ctx.createBufferSource();   // a silent sound inside the gesture: the rest of iPhone's unlock
+    s.buffer = b; s.connect(SND.ctx.destination); s.start(0);
+  }
+};
+// Starts a sound now (or `o.at` seconds later). Nothing plays while muted, or before audio is unlocked.
+SND.play = function (name, o = {}) {
+  const b = SND.bufs[name];
+  if (!b || SND.muted || !SND.ctx || SND.ctx.state !== 'running') return;
+  const src = SND.ctx.createBufferSource(), g = SND.ctx.createGain();
+  src.buffer = b;
+  src.playbackRate.value = o.rate || (SFX[name].vary ? 0.94 + Math.random() * 0.12 : 1);
+  g.gain.value = o.vol == null ? 1 : o.vol;
+  src.connect(g); g.connect(SND.out);
+  src.start(SND.ctx.currentTime + (o.at || 0));
+  SND.log.push(name); if (SND.log.length > 400) SND.log.splice(0, 200);   // (what has played, for the tests)
+};
+SND.setMuted = function (m) {
+  SND.muted = !!m;
+  try { localStorage.setItem(KEY + '.sound', SND.muted ? 'off' : 'on'); } catch (e) { /* no storage: the choice lasts this visit */ }
+};
+try { SND.muted = localStorage.getItem(KEY + '.sound') === 'off'; } catch (e) { /* no storage: sound on */ }
+try { if (navigator.audioSession) navigator.audioSession.type = 'ambient'; } catch (e) { /* not here: the silent switch is the phone's own */ }
+['pointerdown', 'touchend', 'click', 'keydown'].forEach(ev => document.addEventListener(ev, SND.unlock, { capture: true, passive: true }));
+// Every control plays its tap sound when pressed (whether or not the game takes the press). The moves,
+// zooms and card turns play their own sounds, from their events. A press on a disabled control is an error.
+const TAP_SOUND = { explain: 'open', 'explain-close': 'close', pause: 'open', 'pause-resume': 'close', zoom: null, move: null, pick: null,
+  mmcol: 'peg', mmslot: 'peg', key: 'key', bksp: 'key', enter: 'key', side: 'toggle', kind: 'toggle', lside: 'toggle', timer: 'toggle', adv: 'toggle',
+  sound: 'toggle', 'games-all': 'select', 'games-none': 'deselect', share: 'copy', back: 'back' };
+document.addEventListener('click', e => {
+  const el = e.target.closest && e.target.closest('[data-act], label.chk');
+  if (!el || el.classList.contains('chk')) return;                 // (a box: its change plays the toggle)
+  const act = el.dataset.act;
+  let name = act && act in TAP_SOUND ? TAP_SOUND[act] : (el.classList.contains('back') ? 'back' : 'tap');
+  if (act === 'back' && state.screen === 'mini') name = 'zoomOut';
+  if (name) SND.play(name);
+}, true);
+document.addEventListener('pointerdown', e => { if (e.target.closest && e.target.closest('button:disabled, input:disabled')) SND.play('error'); }, true);
+document.addEventListener('change', e => { if (e.target.type === 'checkbox') SND.play('toggle'); }, true);
+const soundLabel = () => (SND.muted ? 'Sound: Off' : 'Sound: On');
+// The sounds of one move, from its result: [name, ms after the move starts, playback rate], in order.
+// Each is timed to the animation it stands for (the same timings the animation uses).
+function moveSounds(f) {
+  const out = [], add = (n, ms, rate) => out.push([n, ms, rate]);
+  const won = f.kind === 'claim' || f.kind === 'match', total = playMs(f, hexLen(f));
+  const sq = state.squares[f.square], mini = sq ? sq.mini : {}, last = mini.guesses ? mini.guesses[mini.guesses.length - 1] : null;
+  if (f.timeout) { add('buzz', 0); add('randomMove', 380); }
+  switch (f.type) {
+    case 'ttt': add('mark', 0); if (won) add('swish', 380); break;
+    case 'c4': add('whoosh', 0); add('clack', 330); break;
+    case 'bs': add('fire', 0); if (f.hit) { add('boom', 430); if (won) add('sink', 700); } else add('splash', 450); break;
+    case 'wordle': if (last) last.marks.forEach((m, k) => add(m === 'g' ? 'tileG' : m === 'y' ? 'tileY' : 'tileX', 200 + k * 180)); if (won) add('solve', 1100); break;
+    case 'hangman': add(f.kind === 'again' ? 'ding' : 'thud', 260); if (won) add('solve', 600); break;
+    case 'hex': add('hexPlace', 0); if (won) { const n = mini.winCells ? mini.winCells.length : 4; for (let k = 0; k < n; k++) add('pathNote', 400 + k * 90, Math.pow(2, k / 12)); } break;
+    case 'hilo': add('hiloBlip', 0); if (last) { if (last.res === 'hit') add('ding', 260); else add(last.res === 'higher' ? 'higher' : 'lower', 260); } break;
+    case 'snakes': case 'dice': {
+      add('rattle', 0); add('thunk', DIE_MS);
+      const steps = f.type === 'snakes' ? Math.max(1, f.land - f.from) : Math.max(1, diceSlot(f.total) - diceSlot(f.total - f.roll));
+      for (let k = 0; k < steps; k++) add('hop', DIE_MS + k * HOP_MS);
+      if (f.via === 'ladder') add('climb', DIE_MS + steps * HOP_MS);
+      if (f.via === 'snake') add('slide', DIE_MS + steps * HOP_MS);
+      break;
+    }
+    case 'memory': add('flipUp', 0); add(won ? 'pair' : 'nopair', 380); break;
+    case 'candy': {
+      const N = 12;                                                  // the wheel ticks, slower and slower as it stops
+      for (let k = 1; k <= N; k++) add('wheelTick', SPIN_MS * (1 - Math.pow(1 - k / N, 2)));
+      const steps = Math.max(1, f.to - f.from);
+      for (let k = 0; k < steps; k++) add('hop', SPIN_MS + k * HOP_MS);
+      break;
+    }
+    case 'coins': { add('coinSpin', 0); for (let k = 0; k < (f.n || 0); k++) add('clink', 1000 + k * 80); break; }
+    case 'pig':
+      if (f.note === 'bust') { add('rattle', 0); add('thunk', 600); add('bust', 650); }
+      else if (f.note === 'bank') add('bank', 350);
+      else { add('rattle', 0); add('thunk', 600); add('point', 650); }
+      break;
+    case 'hunt': add('dig', 0); if (f.band === 0 || won) add('sparkle', 800); else add('band', 380, [0, 1100, 880, 660, 440][f.band] / 880); break;
+    case 'hexapawn': add('pieceSlide', 0); if (f.capture) add('knock', 340); break;
+    case 'mastermind': { const n = (f.solid || 0) + (f.hollow || 0); for (let k = 0; k < n; k++) add('marker', 450 + k * 250); if (won) add('reveal', 1450); break; }
+    case 'bump': { add('spin', 0); const steps = Math.max(1, f.to - f.from); for (let k = 0; k < steps; k++) add('hop', SPIN3_MS + k * HOP_MS); if (f.bumped) add('boing', SPIN3_MS + steps * HOP_MS); break; }
+  }
+  if (won && f.kind !== 'match' && f.type !== 'ttt' && f.type !== 'wordle' && f.type !== 'hangman') add('won', Math.round(total * .5));   // the square is won: a chime
+  if (f.kind === 'draw') add('reset', 420);                          // the square resets with a new mini-game
+  if (f.kind === 'match') { add('swish', total - 500); add(matchEndSound(), total); }   // the line on the board, then the end of the match
+  if (won) { add('burst', total + 100); add('burst', total + 250); } // the bursts on the result card
+  return out;
+}
+// The end of the match, as this phone sees it: a win fanfare, a loss sting, or the tie chord.
+function matchEndSound() { const k = endKind().list; return k === 'win' ? 'winFanfare' : k === 'loss' ? 'loss' : 'tie'; }
+// The board comes back after a move: the zoom out of the square, and the turn passed to the other player.
+function backSounds(from) {
+  if (from.mini && state.screen === 'board') SND.play('zoomOut');
+  if (!state.winner && state.turn !== from.turn) SND.play('turn');
+}
+
+SND.load();                                                // renders the sounds now, in the background
 
 boot();
 </script>
