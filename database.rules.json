@@ -102,6 +102,7 @@
       }
     },
     "localStats": {
+      ".read": "auth != null && auth.token.admin === true",
       "$uid": {
         ".read": "auth != null && auth.uid === $uid"
       }
@@ -151,6 +152,15 @@
       ]
     },
     "alertStats": {
+      ".read": "auth != null && auth.token.admin === true"
+    },
+    "lastSeen": {
+      ".read": "auth != null && auth.token.admin === true"
+    },
+    "devices": {
+      ".read": "auth != null && auth.token.admin === true"
+    },
+    "devlog": {
       ".read": "auth != null && auth.token.admin === true"
     }
   }

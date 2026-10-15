@@ -159,6 +159,22 @@ function recountHistory(entries) {
   return { main, friend, minis };
 }
 
+// Games played as X and as O, recounted from a player's history (the back-fill): { main, friend, local },
+// each { X: record, O: record } as recordDelta adds them up. skip(h): an entry left out (a match against a
+// bot, when those are kept out of the records).
+function recountSides(entries, skip) {
+  const blank = () => ({ X: { wins: 0, losses: 0, draws: 0, games: 0 }, O: { wins: 0, losses: 0, draws: 0, games: 0 } });
+  const out = { main: blank(), friend: blank(), local: blank() };
+  for (const h of entries) {
+    if (!h || !['win', 'loss', 'draw'].includes(h.result) || (h.side !== 'X' && h.side !== 'O')) continue;
+    const k = h.mode === 'friend' ? 'friend' : h.mode === 'local' ? 'local' : FIND_MATCH_MODES.includes(h.mode) ? 'main' : null;
+    if (!k || (skip && skip(h))) continue;
+    const d = recordDelta(h.result), r = out[k][h.side];
+    for (const f of Object.keys(r)) r[f] += d[f];
+  }
+  return out;
+}
+
 // ---------- local matches (a logged-in player's own record of games on one phone) ----------
 // A local match as the phone reports it once it is over: checked, and trimmed to what the history
 // keeps. The player is player 1, on `side`. A match that ended on the board must have the result the
@@ -194,5 +210,5 @@ module.exports = {
   LOCAL_REASONS, checkLocal,
   USERNAME_RE, usernameProblem, unleet, flatten, badWordIn, BAD, BAD_TOKENS, ALLOW, RATINGS_ENABLED, ELO_K, START_RATING, LEADERBOARD_MIN_GAMES, expected, elo,
   FIND_MATCH_TIMER, FIND_MATCH_MODES, QUEUES, queueKey, ratingRange, pairQueue, howEnded, resultFor,
-  recordDelta, squaresFor, recountHistory,
+  recordDelta, squaresFor, recountHistory, recountSides,
 };

@@ -55,10 +55,18 @@ test('blackjack: Deal, Hit and Stand; a win adds 1, a push, a loss or a bust not
   assert.deepEqual(E.applyMove(m, 'X', 'stand', lcg(1)), { ok: true, outcome: 'continue', note: 'lose' });
   assert.deepEqual(m.last.dealer, ['9C', '7D', '4H']);
   assert.deepEqual([m.wins.X, m.hand, m.hole, m.deck], [0, null, null, null], 'nothing added, and the hand is over');
-  // 19 against the dealer's 10 + 9: a push
-  m = inHand('O', ['TS', '9H'], 'KC', '9D', ['2S']);
-  assert.equal(E.applyMove(m, 'O', 'stand').note, 'push');
-  assert.equal(m.wins.O, 0);
+  // 19 against the dealer's 10 + 9: a push, and the same player is dealt a new hand at once
+  for (let seed = 1; ; seed++) {
+    m = inHand('O', ['TS', '9H'], 'KC', '9D', ['2S']);
+    const r = E.applyMove(m, 'O', 'stand', lcg(seed));
+    if (!r.again) continue;                                         // (the new hand was a natural: settled)
+    assert.deepEqual(r, { ok: true, outcome: 'continue', note: 'push', again: true });
+    assert.equal(m.wins.O, 0);
+    assert.deepEqual(m.pushed.map(h => [h.cards, h.res]), [[['TS', '9H'], 'push']], 'the pushed hand is kept to show');
+    assert.equal(m.hand.by, 'O'); assert.equal(m.hand.cards.length, 2);
+    assert.equal(m.deck.length, 48, 'from a reshuffled 52-card deck');
+    break;
+  }
   // 20 against 10 + 6 + 8 (the dealer busts): a win
   m = inHand('X', ['KS', 'QH'], 'TC', '6D', ['8S']);
   m.wins.X = 1;
@@ -107,11 +115,18 @@ test('blackjack: a natural wins 1 at once, a push against a dealer natural; a de
   let found = 0, both = 0;
   for (let seed = 1; seed < 6000 && (found < 3 || !both); seed++) {
     const m = bj(), r = E.applyMove(m, 'X', 'deal', lcg(seed));
-    if (!E.bjNatural(m.last ? m.last.cards : m.hand.cards)) continue;
+    const first = m.pushed ? m.pushed[0] : m.last || m.hand;
+    if (!E.bjNatural(first.cards)) continue;
+    if (m.pushed) {                                                 // both sides dealt a natural: a push, and a new hand
+      both++;
+      assert.deepEqual([first.res, first.dealer.length], ['push', 2]);
+      assert.ok(E.bjNatural(first.dealer));
+      assert.ok(r.again ? m.hand && m.hand.by === 'X' : r.note !== 'push', 'the turn goes on with a new hand');
+      continue;
+    }
     assert.equal(r.again, undefined, 'a natural is settled on the deal');
     assert.equal(m.hand, null);
-    if (E.bjNatural(m.last.dealer)) { both++; assert.deepEqual([r.note, m.wins.X], ['push', 0]); }
-    else { found++; assert.deepEqual([r.note, m.wins.X, m.last.dealer.length], ['bj', 1, 2], 'the dealer shows its two cards and draws nothing'); }
+    found++; assert.deepEqual([r.note, m.wins.X, m.last.dealer.length], ['bj', 1, 2], 'the dealer shows its two cards and draws nothing');
   }
   assert.ok(found >= 3 && both >= 1, `naturals dealt (${found}, both ${both})`);
 });
@@ -177,16 +192,78 @@ test('blackjack: a timeout stands (dealing first when no hand is in play); the t
   st.squares[0].mini = inHand('X', ['TS', '2H'], '9C', '8D', ['KS', '5H']);
   st.turn = 'X'; st.lock = 0;
   const r = E.timeoutMove(st, lcg(4));
-  assert.deepEqual([r.ok, r.square, r.move], [true, 0, 'stand']);
+  assert.deepEqual([r.ok, r.square, r.move], [true, 0, 'auto']);
   assert.deepEqual([st.squares[0].mini.hand, st.squares[0].mini.last.cards], [null, ['TS', '2H']], 'stood on 12');
   assert.equal(st.lock, null);
   const st2 = E.newMatch(lcg(5), { games: ['bj'], mode: 'online', timer: 60 });
   st2.turn = 'O';
   const r2 = E.timeoutMove(st2, lcg(6)), m2 = st2.squares[r2.square].mini;
-  assert.equal(r2.move, 'stand');
+  assert.equal(r2.move, 'auto');
   assert.equal(m2.hand, null, 'dealt and stood at once');
   assert.ok(m2.last && m2.last.cards.length === 2 && m2.last.by === 'O');
+  assert.notEqual(m2.last.res, 'push', 'a push never ends the turn');
   assert.equal(st2.lock, null, 'the turn ends');
+});
+
+test('blackjack: pushes in a row stay in one turn: each one deals a new hand, until a hand is won or lost', () => {
+  // a player stands into a push twice, then wins: one turn throughout, a fresh hand each time
+  const st = E.newMatch(lcg(11), { games: ['bj'], mode: 'local' });
+  st.turn = 'X';
+  const sq = st.squares[0];
+  const rig = (cards, up, hole, deck) => Object.assign(sq.mini, { hand: { by: 'X', cards, up, doubled: false }, hole, deck });
+  rig(['TS', '9H'], 'KC', '9D', ['2S']);
+  st.lock = 0;
+  let seed = 100;
+  for (let k = 1; k <= 2; k++) {
+    let r;
+    do { const keep = JSON.parse(JSON.stringify(st)); r = E.playMove(st, 0, 'stand', lcg(seed++)); if (st.lock !== 0) { Object.assign(st, keep); rig(['TS', '9H'], 'KC', '9D', ['2S']); } } while (st.lock !== 0);
+    assert.equal(r.ok, true);
+    assert.equal(sq.mini.pushed.length, 1, `push ${k}: shown before the new hand`);
+    assert.ok(sq.mini.hand && sq.mini.hand.by === 'X' && sq.mini.deck.length === 48, `push ${k}: a new hand from a reshuffled deck`);
+    assert.deepEqual(sq.mini.wins, { X: 0, O: 0 });
+    E.endFlash(st);
+    assert.deepEqual([st.turn, st.lock], ['X', 0], `push ${k}: still X's turn, held on this square`);
+    assert.equal(E.applyMove(sq.mini, 'O', 'hit').reason, 'busy', 'O cannot touch the hand');
+    rig(k === 1 ? ['KS', '8H'] : ['KS', 'QH'], 'TC', k === 1 ? '8D' : '7D', ['2S']);   // 18 v 18 (a push again), then 20 v 17
+  }
+  const w = E.playMove(st, 0, 'stand', lcg(seed));
+  assert.equal(w.ok, true);
+  assert.equal(sq.mini.last.res, 'win');
+  assert.equal(sq.mini.pushed, null);
+  assert.equal(st.lock, null, 'the win ends the turn');
+  E.endFlash(st);
+  assert.deepEqual([st.turn, sq.mini.wins.X], ['O', 1]);
+  // timeouts: every new hand a push brings is stood on, until one is won or lost
+  let autos = 0;
+  for (let seed = 1; seed < 6000 && autos < 3; seed++) {
+    const st = E.newMatch(lcg(seed), { games: ['bj'], mode: 'online', timer: 60 });
+    st.turn = 'O';
+    const t = E.timeoutMove(st, lcg(seed + 7)), tm = st.squares[t.square].mini;
+    if (!tm.pushed) continue;
+    if (tm.pushed.length >= 2) autos++;
+    assert.ok(tm.pushed.every(h => h.res === 'push' && h.by === 'O'));
+    assert.notEqual(tm.last.res, 'push');
+    assert.equal(tm.hand, null, 'a timeout plays every new hand out (standing)');
+    assert.equal(st.lock, null, 'and the turn ends on the win or the loss');
+    E.endFlash(st);
+    assert.equal(st.turn, 'X');
+  }
+  assert.ok(autos >= 3, `timeouts through two pushes or more (${autos})`);
+  // the computer, through a push: it plays the new hand in the same turn
+  for (let seed = 1; seed < 400; seed++) {
+    const st = E.newMatch(lcg(seed), { games: ['bj'], mode: 'cpu' });
+    st.squares[0].mini = inHand('X', ['TS', '9H'], 'KC', '9D', ['2S']);
+    st.turn = 'X'; st.lock = 0;
+    const p = E.playMove(st, 0, 'stand', lcg(seed));
+    if (!(p.ok && st.lock === 0)) continue;                         // (the new hand was a natural)
+    E.endFlash(st);
+    assert.equal(st.turn, 'X', 'still X to play');
+    const c = E.cpuMove(st, lcg(seed));
+    assert.equal(c.square, 0, 'the computer plays its new hand');
+    assert.ok(['hit', 'stand', 'double'].includes(c.move));
+    return;
+  }
+  assert.fail('no push dealt a new hand');
 });
 
 /* ===================================== Ride the Bus ===================================== */

@@ -94,4 +94,33 @@ function periodUpdates(what, t) {
   return up;
 }
 
-module.exports = { MODES, CLIENT_MODES, MAX_MS, periodKeys, PERIOD_NODE, hashId, idOk, checkEnd, startUpdates, endUpdates, periodUpdates };
+// ---------- playtest activity (no account needed) ----------
+// devices/{h}      first, last (times), n (events), tag (the tester tag of the first link that had one)
+// devlog/{h}/{k}   t, ev ('open', 'live', 'start', 'finish', 'leave'), m (the mode), g (the match)
+// h: a one-way hash of the random id the browser made up (kept in its own storage); nothing about the
+// person is sent or kept. k: one per app open and per 'live' (sent every 10 minutes while a match is
+// under way on screen, so a long match stays one session), and one start and one end per match, so an
+// event sent twice (a retry, a reload) is kept once.
+const DEV_EVENTS = ['open', 'live', 'start', 'finish', 'leave'];
+const DEV_MODES = ['local', 'cpu', 'cvc', 'friend', 'match'];
+const TAG_RE = /^[a-z0-9][a-z0-9_-]{0,23}$/;
+const tagOk = v => typeof v === 'string' && TAG_RE.test(v);
+function devHash(dev) { return crypto.createHash('sha256').update('ttc-dev:' + dev).digest('hex').slice(0, 20); }
+function checkDev(d, t) {
+  if (!d || typeof d !== 'object' || !idOk(d.dev) || !DEV_EVENTS.includes(d.ev)) return null;
+  const ev = { t, ev: d.ev };
+  let k;
+  if (d.ev === 'open') {
+    if (!idOk(d.o)) return null;
+    k = 'o' + d.o;
+  } else {
+    if (!DEV_MODES.includes(d.mode) || typeof d.g !== 'string' || !/^[-\w]{4,60}$/.test(d.g)) return null;
+    ev.m = d.mode; ev.g = d.g;
+    if (d.ev === 'live') { if (!idOk(d.o)) return null; k = 'p' + d.o; }
+    else k = (d.ev === 'start' ? 's' : 'e') + d.g;                        // one start and one end (finished or left) per match
+  }
+  return { h: devHash(d.dev), k, ev, tag: tagOk(d.tag) ? d.tag : null };
+}
+
+module.exports = { MODES, CLIENT_MODES, MAX_MS, periodKeys, PERIOD_NODE, hashId, idOk, checkEnd, startUpdates, endUpdates, periodUpdates,
+  DEV_EVENTS, DEV_MODES, TAG_RE, tagOk, devHash, checkDev };

@@ -106,10 +106,10 @@ Sounds start from the events they belong to, never from drawing the screen: a re
 | Blackjack, Ride the Bus | `cardSlide` | A card is dealt or drawn (the dealer's too). *Varied.* | Bandpass noise sweep down 2600→1100 Hz |
 | Blackjack, Ride the Bus | `cardFlip` | A card turns face up (the dealer's hole card too). *Varied.* | Short bright noise snap with a faint triangle tick |
 | Blackjack | `chips` | A hand is won (twice for a won double) | Three bright clinks with noise |
-| Blackjack | `push` | A push | Two level triangle notes, 523 Hz |
+| Blackjack | `push` | A push (then the new hand's cards slide in, in the same turn) | Two level triangle notes, 523 Hz |
 | Blackjack | `bust` | The player goes over 21 (the Risky Rolls crash) | Crash: lowpass noise with a falling sawtooth |
 | Blackjack | `nopair` | The dealer wins the hand (Memory's no-match) | Two falling notes |
-| Ride the Bus | `ding` | A right guess (the Hangman bell) | Bell: 1046 Hz with a 1568 Hz partial |
+| Ride the Bus | `ding` | A right guess (the Hangman bell), once the card's face shows; a second `cardSlide` as the card moves into its slot. For the computer or the other player, the sounds start after their choice has lit up (0.8 s) | Bell: 1046 Hz with a 1568 Hz partial |
 | Ride the Bus | `thud` | A wrong guess (the Hangman thump) | Low thump with lowpass noise |
 | Roulette | `peg` | A number, a group or green 0 is picked for the bet (Mastermind's peg). *Varied.* | Triangle click |
 | Roulette | `rlSpin` | The wheel starts spinning (it fades as the wheel slows; the ball's clicks carry on) | Lowpass noise falling 1100→300 Hz over 1.25 s, with a low hum |

@@ -1399,6 +1399,8 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .ptab tr:last-child td { border-bottom: 0; }
 .ptab .pg { display: inline-flex; align-items: center; gap: 8px; }
 .ptab .pg svg { width: 18px; height: 18px; flex: none; }
+.ptab tr.pall td { font-weight: 700; background: var(--panel); border-bottom: 3px solid var(--ink); }   /* every mini-game together, above the rest */
+.ptab.psides { margin-top: 2px; }
 .btn.wide { width: 100%; }
 .sides.three .seg { padding: 0 8px; line-height: 1.05; }
 .sides.three .seg small { display: block; font-size: 10px; opacity: .75; }
@@ -1424,20 +1426,20 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 /* Playing cards: cream paper, an ink outline, the rank in the corner and a big suit. A card slides in from
    the shoe (.slide, at --d) and turns face up (.flip, at --f): two animations, on the card and on its inner
    face, each from its own moment in the move. Face down: the back, sky-blue stripes. */
-.pcard { --cw: 52px; position: relative; display: inline-block; flex: none; width: var(--cw); height: calc(var(--cw) * 1.4); perspective: 500px; vertical-align: middle; }
+.plc { --cw: 52px; position: relative; display: inline-block; flex: none; width: var(--cw); height: calc(var(--cw) * 1.4); perspective: 500px; vertical-align: middle; }
 .pcin { position: absolute; inset: 0; transform-style: preserve-3d; }
-.pcard.down .pcin { transform: rotateY(180deg); }
+.plc.down .pcin { transform: rotateY(180deg); }
 .pcf { position: absolute; inset: 0; border-radius: calc(var(--cw) * .14); border: 2.5px solid var(--ink); box-shadow: 0 3px 0 var(--ink); backface-visibility: hidden; -webkit-backface-visibility: hidden; }
 .pcf.fc { background: var(--paper); color: var(--ink); }
-.pcard.red .pcf.fc { color: #d6301e; }
+.plc.red .pcf.fc { color: #d6301e; }
 .pcf.rev { transform: rotateY(180deg); background: repeating-linear-gradient(45deg, var(--sky) 0 calc(var(--cw) * .09), #8cc7e3 calc(var(--cw) * .09) calc(var(--cw) * .18)); box-shadow: 0 3px 0 var(--ink), inset 0 0 0 calc(var(--cw) * .06) var(--paper); }
 .pcf .rk { position: absolute; left: 7%; top: 4%; font: 400 calc(var(--cw) * .42)/1 'Luckiest Guy', sans-serif; letter-spacing: -.03em; }
 .pcf .suit { position: absolute; fill: currentColor; }
 .pcf .suit.sm { left: 8%; top: 38%; width: 26%; }
 .pcf .suit.lg { right: 7%; bottom: 7%; width: 52%; }
-.pcard.ghost { opacity: .25; }
-.pcard.slide { animation: pcslide .26s var(--d, 0ms) cubic-bezier(.25, .8, .35, 1) both; }
-.pcard.flip .pcin { animation: pcflip .3s var(--f, 0ms) ease-in-out both; }
+.plc.ghost { opacity: .25; }
+.plc.slide { animation: pcslide .26s var(--d, 0ms) cubic-bezier(.25, .8, .35, 1) both; }
+.plc.flip .pcin { animation: pcflip .3s var(--f, 0ms) ease-in-out both; }
 @keyframes pcslide { from { opacity: 0; transform: translate(var(--sx, 110px), var(--sy, -90px)) rotate(-16deg); } 35% { opacity: 1; } to { opacity: 1; transform: none; } }
 @keyframes pcflip { from { transform: rotateY(180deg); } to { transform: rotateY(0); } }
 .suit.inl { display: inline-block; width: .95em; height: .95em; vertical-align: -.1em; fill: currentColor; margin-left: 1px; }
@@ -1471,15 +1473,18 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .g-bj { width: min(var(--gw), 440px); height: var(--gh); display: flex; flex-direction: column; gap: 10px; padding-top: 4px; }
 .felt { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: space-around; gap: 6px; padding: 10px 12px; background: radial-gradient(ellipse at 50% 40%, #3f8a4b, #2c6a37); border: 3.5px solid var(--ink); border-radius: 22px 16px 24px 14px; box-shadow: 0 5px 0 var(--ink), inset 0 0 0 4px rgba(255, 248, 232, .15); }
 .bjrow { display: flex; flex-direction: column; align-items: center; gap: 6px; --cw: clamp(40px, calc(var(--gh) / 7), 74px); }
-.bjrow .pcard { --cw: inherit; }
+.bjrow .plc { --cw: inherit; }
 .bjrow.dealer { --sx: 90px; --sy: -40px; }
 .bjrow.player { --sx: 90px; --sy: -160px; }
 .bjlab { color: var(--paper); font-weight: 800; font-size: 14px; display: flex; gap: 8px; align-items: baseline; text-shadow: 0 1px 0 rgba(0, 0, 0, .35); }
 .bjlab b.X, .bjlab b.O { background: var(--paper); border-radius: 8px; padding: 0 6px; text-shadow: none; }
 .bjtot { background: var(--ink); color: var(--paper); border-radius: 999px; padding: 1px 9px 0; font-size: 13px; text-shadow: none; }
 .bjtot:empty { display: none; }
-.bjcards { display: flex; align-items: center; min-height: calc(var(--cw) * 1.4 + 3px); }
-.bjcards .pcard + .pcard { margin-left: calc(var(--cw) * -.28); }
+.bjcards { display: flex; align-items: center; justify-content: center; min-height: calc(var(--cw) * 1.4 + 3px); }
+.bjstack { display: grid; }
+.bjstack > .bjset { grid-area: 1 / 1; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.bjmid > .bjset { justify-content: center; }
+.bjcards .plc + .plc { margin-left: calc(var(--cw) * -.28); }
 .bjres { align-self: center; display: flex; align-items: center; gap: 8px; min-height: 34px; padding: 3px 14px 1px; border: 3px solid var(--ink); border-radius: 999px; background: var(--paper); font: 400 17px 'Luckiest Guy', sans-serif; text-align: center; }
 .bjres .pc { width: 26px; height: 26px; }
 .bjres.none { font: 700 14px 'Patrick Hand', sans-serif; background: rgba(255, 248, 232, .85); border-color: transparent; }
@@ -1496,28 +1501,44 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .busnm b { align-self: flex-start; max-width: 100%; font-weight: 800; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .busnm small { color: var(--muted); font-size: 12px; font-weight: 700; }
 .busslots { display: flex; gap: 5px; }
-.busslot { width: var(--cw); height: calc(var(--cw) * 1.4); border-radius: calc(var(--cw) * .14); border: 2.5px dashed rgba(22, 18, 16, .3); display: grid; place-items: center; color: var(--muted); }
-.busslot svg { width: 64%; height: 64%; }
-.busslot.next { border: 2.5px solid var(--ink); background: #fff3c4; color: var(--ink); }
-.busslot.got { border: 0; }
-.busslot .pcard { --cw: inherit; }
-.busslot .pcard.arrive { animation: arrive .35s var(--t, 0ms) cubic-bezier(.3, 1.6, .5, 1) both; }
-@keyframes arrive { from { opacity: 0; transform: translateY(20px) scale(.5); } to { opacity: 1; transform: none; } }
+.busslot { position: relative; width: var(--cw); height: calc(var(--cw) * 1.4); flex: none; }
+.bsl { position: absolute; inset: 0; border-radius: calc(var(--cw) * .14); border: 2.5px dashed rgba(22, 18, 16, .3); display: grid; place-items: center; color: var(--muted); }
+.bsl-ico { display: grid; place-items: center; width: 64%; height: 64%; }
+.bsl-ico svg { width: 100%; height: 100%; }
+.bsl.next { border: 2.5px solid var(--ink); background: #fff3c4; color: var(--ink); }
+.bsl.got { border: 0; }
+.bsl .plc { --cw: inherit; }
+.bsl.got.tf .plc { animation: arrive .3s var(--f, 0ms) cubic-bezier(.3, 1.6, .5, 1) both; }
+@keyframes arrive { from { opacity: 0; transform: scale(.7); } to { opacity: 1; transform: none; } }
+/* timed swaps, from the move: .tu shows until --u, .tf from --f (nothing in the progress rows changes early) */
+.tu { animation: tuntil 1ms var(--u, 0ms) both; }
+.tf { animation: tfrom 1ms var(--f, 0ms) both; }
+@keyframes tuntil { to { visibility: hidden; opacity: 0; } }
+@keyframes tfrom { from { visibility: hidden; opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .tu { display: none; } }
+.bswap { display: grid; } .bswap > span { grid-area: 1 / 1; }
 .busstage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; gap: 22px; --cw: clamp(48px, calc(var(--gh) / 6.4), 74px); }
-.busstage .pcard { --cw: inherit; }
+.busstage .plc { --cw: inherit; }
 .busdeck { position: relative; width: var(--cw); height: calc(var(--cw) * 1.4); }
-.busdeck .pcard { position: absolute; left: 0; top: 0; }
-.busdeck .pcard + .pcard { left: 4px; top: -4px; }
-.busdrawn { position: relative; width: var(--cw); height: calc(var(--cw) * 1.4); --sx: calc(-1 * var(--cw) - 26px); --sy: 0px; }
-.busdrawn .pcard.busno { filter: saturate(.6); }
-.busdrawn .pcard.busno.slide { animation: pcslide .26s var(--d, 0ms) cubic-bezier(.25, .8, .35, 1) both, cardshake .4s var(--t, 0ms) both; }
+.busdeck .plc { position: absolute; left: 0; top: 0; }
+.busdeck .plc + .plc { left: 4px; top: -4px; }
+.busspot { position: relative; width: var(--cw); height: calc(var(--cw) * 1.4); }
+.busdrawn { position: absolute; inset: 0; --sx: calc(-1 * var(--cw) - 26px); --sy: 0px; }
+.busdrawn.wrong .plc { animation: pcslide .26s var(--d, 0ms) cubic-bezier(.25, .8, .35, 1) both, cardshake .4s var(--t, 0ms) both; }
 @keyframes cardshake { 0%, 100% { translate: 0; } 20% { translate: -7px; } 40% { translate: 6px; } 60% { translate: -4px; } 80% { translate: 3px; } }
+.busdrawn.right { animation: busfly .48s var(--fl, 0ms) cubic-bezier(.4, 0, .3, 1) both, tuntil 1ms var(--ld, 0ms) both; }
+@keyframes busfly { from { transform: none; } to { transform: translate(var(--fx, 0px), var(--fy, 0px)) scale(var(--fs, .6)); } }
+.busdrawn.right .busmark { animation: appearin .3s var(--t, 0ms) ease-out both, tuntil 1ms var(--fl, 0ms) both; }
 .busmark { position: absolute; right: -14px; top: -14px; width: 34px; height: 34px; border-radius: 50%; border: 3px solid var(--ink); display: grid; place-items: center; color: #fff; }
 .busmark svg { width: 20px; height: 20px; }
 .busmark.ok { background: var(--green); }
 .busmark.no { background: var(--x); }
-.busnote { margin: 0; text-align: center; font-size: 14px; font-weight: 700; color: var(--muted); flex: none; }
-.busnote b { color: var(--ink); }
+.big.chosen { animation: chosen .8s ease-out both; }
+.big.chosen.X { background: var(--x); color: var(--paper); box-shadow: 0 0 0 4px var(--x), 0 5px 0 var(--ink); opacity: 1; }
+.big.chosen.O { background: var(--o); color: var(--ink); box-shadow: 0 0 0 4px var(--o), 0 5px 0 var(--ink); opacity: 1; }
+.big.chosen svg { fill: currentColor; }
+@keyframes chosen { 0% { transform: scale(.94); } 30% { transform: scale(1.06); } 100% { transform: none; } }
+.busask.playing .big:not(.chosen) { opacity: .35; }
 .busask { display: flex; flex-direction: column; gap: 8px; flex: none; }
 .busask p { margin: 0; text-align: center; font-size: 16px; font-weight: 800; }
 .big.bus-red { background: #d6301e; color: var(--paper); }
@@ -1531,7 +1552,11 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .g-rl { width: min(var(--gw), 440px); height: var(--gh); display: flex; flex-direction: column; gap: 8px; padding-top: 4px; }
 .rltop { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; }
 /* the wheel: as big as the room left by the board below it allows, never wider than about two thirds of the width */
-.rlwrap { width: clamp(96px, min(calc(var(--gh) - 248px), calc(var(--gw) * .62)), 270px); aspect-ratio: 200 / 208; }
+.rlwrap { position: relative; width: clamp(96px, min(calc(var(--gh) - 230px), calc(var(--gw) * .62)), 270px); aspect-ratio: 200 / 208; }
+.rlbig { position: absolute; left: 50%; top: 52%; translate: -50% -50%; padding: 6px 14px 2px; border: 3.5px solid var(--ink); border-radius: 16px 12px 18px 10px; box-shadow: 0 4px 0 var(--ink); font: 400 clamp(20px, 7vw, 30px)/1.1 'Luckiest Guy', sans-serif; white-space: nowrap; }
+.rlbig.hit { background: var(--o); color: var(--ink); }
+.rlbig.zero { background: #2f8a3c; color: #fff; }
+.rlbig.miss { background: var(--paper); color: var(--muted); }
 .rlwheel { width: 100%; height: 100%; overflow: visible; }
 .rlwheel .rim { fill: #7a4a2a; stroke: var(--ink); stroke-width: 3; }
 .rlwheel path.r { fill: #d6301e; } .rlwheel path.b { fill: var(--ink); } .rlwheel path.g { fill: #2f8a3c; }
@@ -1563,7 +1588,8 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .rlg { background: var(--paper); color: var(--ink); font-size: 13px; }
 .rlg.on, .rlz.on { box-shadow: 0 0 0 3px var(--o); }
 .rlg.on { background: var(--o); }
-.rlz { background: #2f8a3c; height: 30px; }
+.rlz { background: #2f8a3c; }
+.rlrow.top .rlsay { grid-column: 2 / -1; align-self: center; text-align: left; padding-left: 6px; }
 .rln:disabled, .rlg:disabled, .rlz:disabled { opacity: 1; filter: saturate(.75); }
 .rlsay { margin: 0; text-align: center; font-size: 13px; font-weight: 700; color: var(--muted); flex: none; }
 
@@ -1576,7 +1602,7 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .tpip .bus i { border-radius: 3cqw; width: 12cqw; height: 16cqw; }
 .tpip .last { align-self: center; font: 400 11cqw 'Luckiest Guy', sans-serif; color: #fff; min-width: 20cqw; height: 20cqw; border-radius: 50%; display: grid; place-items: center; border: 1.6cqw solid var(--ink); padding-top: 1cqw; }
 .tpip .last.r { background: #d6301e; } .tpip .last.b { background: var(--ink); } .tpip .last.g { background: #2f8a3c; }
-@media (max-height: 640px) { .rln, .rlg { height: 28px; font-size: 13px; } .rlz { height: 26px; } .bjres { min-height: 28px; font-size: 15px; } }
+@media (max-height: 640px) { .rln, .rlg, .rlz { height: 28px; font-size: 13px; } .bjres { min-height: 28px; font-size: 15px; } }
 </style>
 </head>
 <body>
@@ -1924,9 +1950,11 @@ function render() {
   const wl = document.getElementById('wlist') || document.getElementById('mmlist');
   if (wl) wl.scrollTop = wl.scrollHeight;
   animate();
+  busFly();
   anchorFx();
   if (state.flash && !state.spot && fxAt('move', state.flash) == null) { console.error('A result on show without its move event', state.flash); playFlash(true); }   // (never expected: no animation, but the result still clears)
   sweepBursts();
+  devWatch();                                                 // a match starting or ending here: the playtest log
 }
 // Boards kept across a re-render of the same screen: their cells take the new classes and labels, but
 // the elements stay, so only a cell that changed repaints (rebuilding the whole Hex board on a tap made
@@ -1975,7 +2003,7 @@ function graft(oldP, newP, pairs) {
   }
 }
 // How long the move's animation takes. The result toast or card waits this long, and so does any tap.
-function animMs(f) { return REDUCED ? 0 : playMs(f, hexLen(f)); }
+function animMs(f) { return REDUCED ? 0 : playMs(f, hexLen(f)) - (f.type === 'bus' ? BUST.pre - busPre(f) : 0); }   // (your own Ride the Bus guess skips the moment it is shown)
 function hexLen(f) { const sq = state.squares[f.square]; return sq && sq.mini.winCells ? sq.mini.winCells.length : 4; }
 // The JS-driven bits of the animations: numbers that count up or down, and the candy token's hops.
 function animate() {
@@ -2113,7 +2141,7 @@ const EXPLAIN = {
   hunt: { name: 'Treasure Hunt', play: 'Dig a square. It tells you if the treasure is hot, warm, cool or cold.', win: 'Dig up the treasure.' },
   hexapawn: { name: 'Hexapawn', play: 'Move a pawn forward, or capture diagonally.', win: 'Get a pawn to the far side.' },
   mastermind: { name: 'Mastermind', play: 'Guess the 4-colour code. Black marker means right colour and spot; white marker means right colour, wrong spot.', win: 'Crack the code.' },
-  bj: { name: 'Blackjack', play: 'Hit, stand, or double (one more card, counts double if you win). Beat the dealer without going over 21.', win: 'First to 3 wins.' },
+  bj: { name: 'Blackjack', play: 'Hit, stand, or double (one more card, counts double if you win). Beat the dealer without going over 21. Tie? Play another hand.', win: 'First to 3 wins.' },
   bus: { name: 'Ride the Bus', play: 'Guess red or black, then higher or lower, then inside or outside, then the suit. Miss and your turn ends, but you keep your progress.', win: 'Get through all four.' },
   rl: { name: 'Roulette', play: 'Bet on 8 numbers, a group of 8, or green 0, then spin.', win: 'Two hits, or hit green 0 for an instant win.' },
 };
@@ -2394,7 +2422,7 @@ const rankText = c => (c[0] === 'T' ? '10' : c[0]);
 const rankName = c => RANK_NAME[c[0]] || c[0];
 function pcard(c, o = {}) {
   const down = o.down || !c;
-  const cls = `pcard${down ? ' down' : ''}${c && cardRed(c) ? ' red' : ''}${o.slide != null ? ' slide' : ''}${o.flip != null ? ' flip' : ''}${o.cls ? ' ' + o.cls : ''}`;
+  const cls = `plc${down ? ' down' : ''}${c && cardRed(c) ? ' red' : ''}${o.slide != null ? ' slide' : ''}${o.flip != null ? ' flip' : ''}${o.cls ? ' ' + o.cls : ''}`;
   const style = [o.slide != null ? `--d:${o.slide}ms` : '', o.flip != null ? `--f:${o.flip}ms` : '', o.style || ''].filter(Boolean).join(';');
   const face = c ? `<span class="pcf fc"><b class="rk">${rankText(c)}</b>${suitSvg(c[1], 'sm')}${suitSvg(c[1], 'lg')}</span>` : '';
   return `<span class="${cls}"${style ? ` style="${style}"` : ''} role="img" aria-label="${down ? 'Face-down card' : cardName(c)}"><span class="pcin">${face}<span class="pcf rev"></span></span></span>`;
@@ -2406,24 +2434,7 @@ const cardShort = c => `<span class="cshort${cardRed(c) ? ' red' : ''}">${rankTe
 const TICK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12.5l5 5L19.5 6.5" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const CROSS = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round"/></svg>';
 
-// Blackjack. When each card of the move just made comes in: the deal (player, dealer, player, then the
-// dealer's card face down), a card drawn, then at the end of a hand the hole card turned over and the
-// dealer's draws, and the result. Matches bjMs in the engine, which the turn clock and the sounds use.
-function bjPlan(b) {
-  const T = BJT, P = [], D = [];
-  let t = 0;
-  if (!b.from) {
-    P[0] = { slideAt: 0, flipAt: T.card }; D[0] = { slideAt: T.card, flipAt: 2 * T.card };
-    P[1] = { slideAt: 2 * T.card, flipAt: 3 * T.card }; D[1] = { slideAt: 3 * T.card, flipAt: null };
-    t = 4 * T.card + T.flip;
-  } else for (let k = b.from; k < b.cards.length; k++) { P[k] = { slideAt: t, flipAt: t + T.card }; t += T.card + T.flip; }
-  const pEnd = t;
-  if (b.res) {
-    D[1] = Object.assign({}, D[1], { flipAt: t }); t += T.reveal;
-    for (let k = 2; k < b.dealer.length; k++) { D[k] = { slideAt: t, flipAt: t + T.card }; t += T.draw; }
-  }
-  return { P, D, pEnd, end: t };
-}
+// Blackjack: when each card comes in is bjPlan in the engine (the turn clock and the sounds use it too).
 const BJ_RES = { bj: 'Blackjack! +1', push: 'Push', bust: 'Bust', lose: 'Dealer wins' };
 const bjResText = r => (r.res === 'win' ? (r.doubled ? 'Wins the double: +2' : 'Wins +1') : r.res === 'lose' && r.dealerBj ? 'Dealer blackjack' : BJ_RES[r.res]);
 function bjTotalText(cards) {
@@ -2432,29 +2443,48 @@ function bjTotalText(cards) {
 }
 function bjTable(mini, a, o) {
   const b = a && a.bj ? a.bj : null, h = mini.hand, l = mini.last, turn = o.turn;
-  const by = h ? h.by : l ? l.by : null;
-  const pc = h ? h.cards : l ? l.cards : [], dc = h ? [h.up] : l ? l.dealer : [];
-  const plan = b ? bjPlan(b) : null, P = k => (plan && plan.P[k]) || {}, D = k => (plan && plan.D[k]) || {};
-  const pCards = pc.map((c, k) => pcard(c, { slide: P(k).slideAt, flip: P(k).flipAt })).join('');
-  const dCards = dc.map((c, k) => pcard(c, { slide: D(k).slideAt, flip: D(k).flipAt })).join('') + (h ? pcard(null, { down: true, slide: D(1).slideAt }) : '');
-  const res = !h && l ? l : null;
-  const dEnd = plan ? plan.end : null;
-  const dTxt = h ? `shows ${bjTotal([h.up]).total}` : res ? bjTotalText(res.dealer) : '';
+  const plan = b ? bjPlan(b) : null;
+  // The hands on the table: during a move, the one it played (and after a push, the new hand dealt at
+  // `swap`, when the pushed one clears); otherwise the hand in play, or the last one played.
+  const hands = [];
+  if (b) {
+    hands.push({ hand: b, P: plan.P, D: plan.D, pEnd: plan.pEnd, end: plan.end, until: plan.swap, pushed: !!b.next });
+    if (b.next) hands.push({ hand: b.next, P: plan.NP, D: plan.ND, pEnd: plan.nPEnd, end: plan.nEnd, from: plan.swap });
+  } else if (h) hands.push({ hand: { cards: h.cards, dealer: [h.up], hole: true, doubled: h.doubled } });
+  else if (l) hands.push({ hand: l });
+  const by = b ? a.by : h ? h.by : l ? l.by : null, anim = !!b;
+  const layer = (H, inner, cls) => `<div class="bjset ${cls || ''}${H.until != null ? ' tu' : ''}${H.from != null ? ' tf' : ''}"${H.until != null || H.from != null ? ` style="${H.until != null ? `--u:${H.until}ms;` : ''}${H.from != null ? `--f:${H.from}ms` : ''}"` : ''}>${inner}</div>`;
+  const at = (arr, k) => (arr && arr[k]) || {};
+  const dealerSet = H => {
+    const x = H.hand, cards = x.dealer.map((c, k) => pcard(c, { slide: at(H.D, k).slideAt, flip: at(H.D, k).flipAt })).join('') + (x.hole ? pcard(null, { down: true, slide: at(H.D, 1).slideAt }) : '');
+    const txt = x.hole ? `shows ${bjTotal([x.dealer[0]]).total}` : bjTotalText(x.dealer);
+    return layer(H, `<span class="bjlab">Dealer <b ${lateAt('bjtot', anim && !x.hole ? H.end : anim ? H.pEnd : null)}>${txt}</b></span><div class="bjcards">${cards}</div>`);
+  };
+  const playerSet = H => {
+    const x = H.hand, cards = x.cards.map((c, k) => pcard(c, { slide: at(H.P, k).slideAt, flip: at(H.P, k).flipAt })).join('');
+    return layer(H, `<span class="bjlab"><b class="${by}">${N(by)}</b> <b ${lateAt('bjtot', anim ? H.pEnd : null)}>${bjTotalText(x.cards)}</b></span><div class="bjcards">${cards}</div>`);
+  };
+  const bannerSet = H => {
+    const x = H.hand;
+    const inner = x.res ? `<div ${lateAt('bjres ' + x.res, anim ? H.end : null)} role="status">${toon(by)}<span>${H.pushed ? 'Push: a new hand' : bjResText(x)}</span></div>` : `<div class="bjres none">Dealer stands on 17</div>`;
+    return layer(H, inner);
+  };
+  const ghost = `<div class="bjset"><span class="bjlab">&nbsp;</span><div class="bjcards">${pcard(null, { down: true, cls: 'ghost' })}</div></div>`;
+  // the tallies: a pip fills when its hand is won, as its result shows
+  const won = b ? (b.next ? b.next : b) : null, wonAt = b ? (b.next ? plan.nEnd : plan.end) : null;
   const tally = p => {
-    const w = Math.min(BJ.goal, mini.wins[p]), fresh = b && b.res && b.gain && a.by === p ? b.gain : 0;
-    const pips = Array.from({ length: BJ.goal }, (_, k) => `<i ${lateAt(k < w ? 'on' : '', k < w && k >= w - fresh ? dEnd : null, 'fillin')}></i>`).join('');
+    const w = Math.min(BJ.goal, mini.wins[p]), fresh = won && won.res && won.gain && a.by === p ? won.gain : 0;
+    const pips = Array.from({ length: BJ.goal }, (_, k) => `<i ${lateAt(k < w ? 'on' : '', k < w && k >= w - fresh ? wonAt : null, 'fillin')}></i>`).join('');
     return `<div class="ctal ${p}${!o.view && turn === p ? ' now' : ''}"><b class="${p}">${N(p)}</b><span class="pips" aria-label="${mini.wins[p]} of ${BJ.goal} wins">${pips}</span></div>`;
   };
   const mine = !!h && h.by === turn;
   const btns = o.view ? '' : !h
     ? `<div class="cbtns one"><button class="big ${turn}" data-act="move" ${mv('deal')}${o.locked ? ' disabled' : ''}>Deal</button></div>`
     : `<div class="cbtns three"><button class="big ${turn}" data-act="move" ${mv('hit')}${o.locked || !mine ? ' disabled' : ''}>Hit</button><button class="big bank" data-act="move" ${mv('stand')}${o.locked || !mine ? ' disabled' : ''}>Stand</button><button class="big dbl" data-act="move" ${mv('double')}${o.locked || !mine || h.cards.length !== 2 ? ' disabled' : ''}>Double</button></div>`;
-  const banner = res ? `<div ${lateAt('bjres ' + res.res, dEnd)} role="status">${toon(res.by)}<span>${bjResText(res)}</span></div>`
-    : `<div class="bjres none">${h ? 'Dealer stands on 17' : 'Deal a hand to play'}</div>`;
+  const dealer = hands.length ? hands.map(dealerSet).join('') : ghost, player = hands.length ? hands.map(playerSet).join('') : ghost;
+  const mid = hands.length ? hands.map(bannerSet).join('') : '<div class="bjset"><div class="bjres none">Deal a hand to play</div></div>';
   return `<div class="g-bj"><div class="ctals">${tally('X')}${tally('O')}</div>
-    <div class="felt"><div class="bjrow dealer"><span class="bjlab">Dealer <b ${lateAt('bjtot', res ? dEnd : null)}>${dTxt}</b></span><div class="bjcards">${dCards || pcard(null, { down: true, cls: 'ghost' })}</div></div>
-      ${banner}
-      <div class="bjrow player"><span class="bjlab">${by ? `<b class="${by}">${N(by)}</b>` : 'Player'} <b ${lateAt('bjtot', plan ? plan.pEnd : null)}>${pc.length ? bjTotalText(pc) : ''}</b></span><div class="bjcards">${pCards || pcard(null, { down: true, cls: 'ghost' })}</div></div></div>
+    <div class="felt"><div class="bjrow dealer bjstack">${dealer}</div><div class="bjstack bjmid">${mid}</div><div class="bjrow player bjstack">${player}</div></div>
     ${btns}</div>`;
 }
 
@@ -2477,34 +2507,70 @@ function busQuestion(kept) {
     default: return 'Which suit?';
   }
 }
+// Someone else's guess (the computer's, the other phone's, or a timed-out one) shows first: the chosen
+// answer lights up in their colour for a moment (BUST.pre), then the card turns. Your own goes straight on.
+function busPre(f) { return f && f.type === 'bus' && (f.timeout || (state.online ? f.by !== state.online.me : cpuPlays(f.by))) ? BUST.pre : 0; }
+// The moments of a guess, ms into the move: the card leaves the deck, turns over (face up at `face`), the
+// tick or cross shows (`mark`), and only then, if right, the card flies to its slot (`fly`), landing at `land`.
+function busTimes(f) {
+  const T = BUST, pre = busPre(f), face = pre + T.draw + T.flip;
+  return { pre, flip: pre + T.draw, face, mark: face, fly: face + T.mark, land: face + T.mark + T.fly };
+}
 function busTable(mini, a, o) {
-  const b = a && a.bus ? a.bus : null, l = mini.last, turn = o.turn, T = BUST;
-  const tMark = T.draw + T.flip, tSlot = tMark + 160;
+  const b = a && a.bus ? a.bus : null, turn = o.turn, tm = b ? busTimes(a) : null;
+  const icon = k => `<span class="bsl-ico" aria-hidden="true">${BUS_ICON[k]}</span>`;
+  // Each player's row. While a guess plays out, nothing here changes until the card has turned and the
+  // result shows: a right card lands in its slot at `land`, and only then does the next round light up.
   const row = p => {
-    const kept = mini.prog[p], newK = b && a.by === p && b.right ? kept.length - 1 : -1;
-    const slots = Array.from({ length: BUS.rounds }, (_, k) => (k < kept.length
-      ? `<span class="busslot got">${pcard(kept[k], { cls: k === newK ? 'arrive' : '', style: k === newK ? `--t:${tSlot}ms` : '' })}</span>`
-      : `<span class="busslot${k === kept.length && p === turn && !o.view ? ' next' : ''}" aria-label="${BUS_ROUND[k]}">${BUS_ICON[k]}</span>`)).join('');
-    return `<div class="busrow ${p}${!o.view && turn === p ? ' now' : ''}"><span class="busnm"><b class="${p}">${N(p)}</b><small>${kept.length >= BUS.rounds ? 'All four!' : `Round ${kept.length + 1} of 4`}</small></span><div class="busslots">${slots}</div></div>`;
+    const kept = mini.prog[p], gained = !!b && a.by === p && b.right, before = gained ? kept.slice(0, -1) : kept, k0 = before.length;
+    const live = !o.view && p === turn;                            // the row of the player on the move
+    const slots = Array.from({ length: BUS.rounds }, (_, k) => {
+      if (k < k0) return `<span class="busslot"><span class="bsl got">${pcard(before[k])}</span></span>`;
+      const plain = `<span class="bsl">${icon(k)}</span>`, lit = `<span class="bsl next">${icon(k)}</span>`;
+      if (gained && k === k0) return `<span class="busslot" data-slot="${p}${k}"><span class="bsl next tu" style="--u:${tm.land}ms">${icon(k)}</span><span class="bsl got tf" style="--f:${tm.land}ms">${pcard(kept[k])}</span></span>`;
+      if (gained && k === k0 + 1 && live && k0 + 1 < BUS.rounds) return `<span class="busslot"><span class="bsl tu" style="--u:${tm.land}ms">${icon(k)}</span><span class="bsl next tf" style="--f:${tm.land}ms">${icon(k)}</span></span>`;
+      return `<span class="busslot" data-slot="${p}${k}">${live && k === k0 ? lit : plain}</span>`;
+    }).join('');
+    const label = n => (n >= BUS.rounds ? 'All four!' : `Round ${n + 1} of 4`);
+    const sub = gained ? `<span class="tu" style="--u:${tm.land}ms">${label(k0)}</span><span class="tf" style="--f:${tm.land}ms">${label(kept.length)}</span>` : label(kept.length);
+    return `<div class="busrow ${p}${live ? ' now' : ''}"><span class="busnm"><b class="${p}">${N(p)}</b><small class="bswap">${sub}</small></span><div class="busslots">${slots}</div></div>`;
   };
-  const card = b ? b.card : l ? l.card : null, right = b ? b.right : l ? l.right : null, by = b ? a.by : l ? l.by : null, guess = b ? b.guess : l ? l.guess : null;
-  const drawn = card ? pcard(card, b ? { slide: 0, flip: T.draw, cls: right ? 'busok' : 'busno', style: `--t:${tMark}ms` } : { cls: right ? 'busok' : 'busno' })
-    + `<b ${lateAt('busmark ' + (right ? 'ok' : 'no'), b ? tMark : null)}>${right ? TICK : CROSS}</b>` : '';
-  const note = card ? `<p ${lateAt('busnote', b ? tMark : null)}><b class="${by}">${N(by)}</b> said ${BUS_SAY[guess]}: ${cardShort(card)} ${right ? 'Right!' : 'Wrong'}</p>` : '<p class="busnote">Each player rides their own bus, with their own deck</p>';
+  // The stage: the deck, and only while a guess plays out, the card drawn for it. Afterwards only the kept
+  // cards show: a wrong card has gone back into its player's deck.
+  let drawn = '';
+  if (b) {
+    const fly = b.right ? ` data-fly="${a.by}${b.round}"` : '';
+    drawn = `<span class="busdrawn${b.right ? ' right' : ' wrong'}" style="--t:${tm.mark}ms;--fl:${tm.fly}ms;--ld:${tm.land}ms"${fly}>${pcard(b.card, { slide: tm.pre, flip: tm.flip })}<b ${lateAt('busmark ' + (b.right ? 'ok' : 'no'), tm.mark)}>${b.right ? TICK : CROSS}</b></span>`;
+  }
+  // The question and its answers: the guess being played out (its answer lit in the guesser's colour),
+  // or the question for the player on the move.
   let ask = '';
-  if (!o.view) {
-    const kept = mini.prog[turn], r = kept.length, dis = o.locked ? ' disabled' : '';
-    const opt = (g, label, cls) => `<button class="big bus-${cls || g}" data-act="move" ${mv(g)}${dis} aria-label="${BUS_SAY[g]}">${label}</button>`;
+  const who = b ? a.by : turn, kept = b ? (b.right ? mini.prog[who].slice(0, -1) : mini.prog[who]) : mini.prog[turn], r = b ? b.round : kept.length;
+  if ((b || !o.view) && r < BUS.rounds) {
+    const dis = o.locked || b ? ' disabled' : '';
+    const opt = (g, label, cls) => `<button class="big bus-${cls || g}${b && b.guess === g ? ` chosen ${who}` : ''}" data-act="move" ${mv(g)}${dis} aria-label="${BUS_SAY[g]}${b && b.guess === g ? ' (chosen)' : ''}">${label}</button>`;
     const btns = r === 0 ? opt('red', 'Red', 'red') + opt('black', 'Black', 'black')
       : r === 1 ? opt('higher', 'Higher ▲', 'up') + opt('lower', 'Lower ▼', 'down')
       : r === 2 ? opt('inside', 'Inside', 'in') + opt('outside', 'Outside', 'out')
       : CARD.suits.split('').map(s => opt(s, suitSvg(s), 'suit' + (cardRed('A' + s) ? ' red' : ''))).join('');
-    if (r < BUS.rounds) ask = `<div class="busask"><p><b class="${turn}">${N(turn)}</b>: ${busQuestion(kept)}</p><div class="cbtns ${r === 3 ? 'four' : 'two'}">${btns}</div></div>`;
+    ask = `<div class="busask${b ? ' playing' : ''}"><p><b class="${who}">${N(who)}</b>: ${busQuestion(kept)}</p><div class="cbtns ${r === 3 ? 'four' : 'two'}">${btns}</div></div>`;
   }
   return `<div class="g-bus"><div class="busrows">${row('X')}${row('O')}</div>
-    <div class="busstage"><span class="busdeck">${pcard(null, { down: true })}${pcard(null, { down: true })}</span><span class="busdrawn">${drawn}</span></div>${note}${ask}</div>`;
+    <div class="busstage"><span class="busdeck">${pcard(null, { down: true })}${pcard(null, { down: true })}</span><span class="busspot">${drawn}</span></div>${ask}</div>`;
 }
-
+// A right card flies from the stage to its slot: where that is depends on the screen, so it is measured
+// once the screen is drawn (the animation itself still counts from the move).
+function busFly() {
+  const el = app.querySelector('.busdrawn[data-fly]');
+  if (!el) return;
+  const to = app.querySelector(`.busslot[data-slot="${el.dataset.fly}"]`), card = el.querySelector('.plc');
+  if (!to || !card) return;
+  const a = card.getBoundingClientRect(), z = to.getBoundingClientRect();
+  if (!a.width || !z.width) return;
+  el.style.setProperty('--fx', `${Math.round(z.left + z.width / 2 - (a.left + a.width / 2))}px`);
+  el.style.setProperty('--fy', `${Math.round(z.top + z.height / 2 - (a.top + a.height / 2))}px`);
+  el.style.setProperty('--fs', (z.width / a.width).toFixed(3));
+}
 // Roulette: the wheel (the pocket that came up turns to the top, under the pointer, and the ball rests in
 // it), each player's hits, and the betting board: 8 numbers, a row of 8, or green 0, then Spin.
 const RL_STEP = 360 / RL.wheel.length;
@@ -2544,9 +2610,11 @@ function rlTable(mini, a, o) {
   const say = dr.bet === 'zero' ? 'Green 0 on its own: if it comes up, the square is yours'
     : dr.bet ? `Betting the group ${rlBetText(dr.bet)}` : dr.nums.length === RL.pick ? 'Betting your 8 numbers'
     : dr.nums.length ? `${RL.pick - dr.nums.length} more number${RL.pick - dr.nums.length === 1 ? '' : 's'} to pick` : 'Pick 8 numbers, a group, or green 0';
-  const board = o.view ? '' : `<div class="rlboard"><button class="rlz${dr.bet === 'zero' ? ' on' : ''}" data-act="rlzero" aria-pressed="${dr.bet === 'zero'}" aria-label="Green 0"${dis}>0</button>${grid}</div>
-    <p class="rlsay">${say}</p><div class="cbtns one"><button class="big ${turn} rlspin" data-act="move" ${mv(bet || [])}${!bet || o.locked ? ' disabled' : ''}>Spin</button></div>`;
-  return `<div class="g-rl"><div class="rltop"><div class="ctals col">${hits('X')}${hits('O')}${res}</div><div class="rlwrap">${rlWheel(n, !!b)}</div></div>${board}</div>`;
+  const board = o.view ? '' : `<div class="rlboard"><div class="rlrow top"><button class="rlz${dr.bet === 'zero' ? ' on' : ''}" data-act="rlzero" aria-pressed="${dr.bet === 'zero'}" aria-label="Green 0"${dis}>0</button><p class="rlsay">${say}</p></div>${grid}</div>
+    <div class="cbtns one"><button class="big ${turn} rlspin" data-act="move" ${mv(bet || [])}${!bet || o.locked ? ' disabled' : ''}>Spin</button></div>`;
+  // Once the ball lands: HIT!, MISS or GREEN 0!, big on the wheel, held a second before the game moves on.
+  const big = b ? `<b ${lateAt('rlbig ' + (b.hit ? (b.bet === 'zero' ? 'zero' : 'hit') : 'miss'), tEnd)} role="status">${b.hit ? (b.bet === 'zero' ? 'Green 0!' : 'Hit!') : 'Miss'}</b>` : '';
+  return `<div class="g-rl"><div class="rltop"><div class="ctals col">${hits('X')}${hits('O')}${res}</div><div class="rlwrap">${rlWheel(n, !!b)}${big}</div></div>${board}</div>`;
 }
 function renderMini(sq, review) {
   const f = state.flash;                            // the move just made: its animation and result are playing
@@ -2823,7 +2891,7 @@ function renderMini(sq, review) {
   const lock = state.lock != null;
   let sub = lock ? (mini.type === 'pig' ? `<b class="${turn}">${N(turn)}</b>'s turn in progress: roll again or bank`
     : mini.type === 'bj' ? `<b class="${turn}">${N(turn)}</b>'s hand: hit, stand${mini.hand && mini.hand.cards.length === 2 ? ' or double' : ''}`
-    : mini.type === 'bus' ? `<b class="${turn}">${N(turn)}</b> was right: on to the next round` : mini.type === 'bs' ? `<b class="${turn}">${N(turn)}</b> hit: fire again` : `<b class="${turn}">${N(turn)}</b> guessed right: go again`) : info.hint;
+    : mini.type === 'bus' ? (a ? info.hint : `<b class="${turn}">${N(turn)}</b>'s run: make the next guess`) : mini.type === 'bs' ? `<b class="${turn}">${N(turn)}</b> hit: fire again` : `<b class="${turn}">${N(turn)}</b> guessed right: go again`) : info.hint;
   if (!view && !f && !d && remoteTurn()) sub = `Waiting for <b class="${turn}">${N(turn)}</b>…`;
   else if (!view && !f && !d && moveWait) sub = 'Sending your move…';
   let secret = '';
@@ -2881,7 +2949,7 @@ function summary(f) {
     case 'pig': return f.note === 'bust' ? `Bust! ${f.pot} point${f.pot === 1 ? '' : 's'} lost` : `Banked ${f.pot}`;
     case 'hexapawn': return f.capture ? `${who} captured a pawn` : `${who} stepped forward`;
     case 'mastermind': return `${who}: ${f.solid} solid · ${f.hollow} hollow`;
-    case 'bj': return f.bj && f.bj.res ? `${who}: ${bjResText(f.bj)}` : f.bj && f.bj.act === 'hit' ? `${who} hits` : `${who} is dealt a hand`;
+    case 'bj': return f.bj && f.bj.next ? `${who}: push, a new hand` : f.bj && f.bj.res ? `${who}: ${bjResText(f.bj)}` : f.bj && f.bj.act === 'hit' ? `${who} hits` : `${who} is dealt a hand`;
     case 'bus': return f.bus ? `${who} said ${BUS_SAY[f.bus.guess]}: ${f.bus.right ? 'right' : 'wrong'}` : `${who} guessed`;
     case 'rl': return f.rl ? `${f.rl.n}${f.rl.n === 0 ? ' green' : rlRed(f.rl.n) ? ' red' : ' black'} · ${f.rl.hit ? 'a hit' : 'a miss'}` : `${who} spun`;
   }
@@ -3063,10 +3131,11 @@ function devId() {
     return id;
   } catch (e) { return null; }
 }
-function trackUrl() {
+function fnUrl(name) {
   const hook = window.TTT_FIREBASE, c = (hook && hook.config) || FIREBASE_CONFIG;
-  return hook && hook.functions ? `http://${hook.functions.host}:${hook.functions.port}/${c.projectId}/us-central1/track` : `https://us-central1-${c.projectId}.cloudfunctions.net/track`;
+  return hook && hook.functions ? `http://${hook.functions.host}:${hook.functions.port}/${c.projectId}/us-central1/${name}` : `https://us-central1-${c.projectId}.cloudfunctions.net/${name}`;
 }
+const trackUrl = () => fnUrl('track');
 function track(data) {
   if (!configured() || (window.TTT_FIREBASE && window.TTT_FIREBASE.uid)) return;   // (the friend-game tests run without functions)
   data.dev = devId();
@@ -3088,6 +3157,74 @@ function trackEnd() {
   s.sent = true;
   const m = matchStats(state);
   track({ ev: 'end', mode: s.mode, id: s.id, turns: m.turns, winner: m.winner, reason: m.reason, squares: m.squares });
+}
+// ----- playtest activity, no account needed: this device's app opens and its matches (started, then
+// finished or left), for the admin's playtest page. The device is the random id above, kept in this
+// browser's storage (one for the visit when there is none); a tester tag from the link (?t=sam) is kept
+// with it, the first one only. Nothing personal goes with them. Fire and forget, like the stats. -----
+const TAG_KEY = KEY + '.tag', TAG_RE = /^[a-z0-9][a-z0-9_-]{0,23}$/;
+let devTemp = null, devTagNow = null, devLast = 0;
+const randHex = k => Array.from(crypto.getRandomValues(new Uint8Array(k)), b => b.toString(16).padStart(2, '0')).join('');
+function devIdAny() { return devId() || devTemp || (devTemp = 'd' + randHex(12)); }
+function testerTag() {
+  let t = null;
+  try { t = localStorage.getItem(TAG_KEY); } catch (e) { /* no storage */ }
+  return t && TAG_RE.test(t) ? t : devTagNow;
+}
+function takeTag() {                                   // the link's ?t=: kept the first time (never replaced), then taken out of the address
+  let v = null;
+  try { v = new URLSearchParams(location.search).get('t'); } catch (e) { return; }
+  if (v == null) return;
+  const tag = String(v).trim().toLowerCase();
+  if (TAG_RE.test(tag)) {
+    devTagNow = tag;
+    try { if (!TAG_RE.test(localStorage.getItem(TAG_KEY) || '')) localStorage.setItem(TAG_KEY, tag); } catch (e) { /* no storage: for this visit only */ }
+  }
+  try { const u = new URL(location.href); u.searchParams.delete('t'); history.replaceState(history.state, '', u.pathname + u.search + u.hash); } catch (e) { /* (kept) */ }
+}
+function devEvent(data) {
+  if (!configured() || (window.TTT_FIREBASE && window.TTT_FIREBASE.uid)) return;   // (the friend-game tests run without functions)
+  data.dev = devIdAny();
+  const tag = testerTag();
+  if (tag) data.tag = tag;
+  devLast = Date.now();
+  try {
+    if (fb && fb.fns) { call('devlog', data).catch(() => {}); return; }      // the SDK is here: the call carries the account (its last activity)
+    fetch(fnUrl('devlog'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data }), keepalive: true }).catch(() => {});
+  } catch (e) { /* never worth an error */ }
+}
+const devOpen = () => devEvent({ ev: 'open', o: 'o' + randHex(8) });
+// The match on show here, by a key that stays the same across reloads (the server keeps each start and
+// end once): a Find Match game, a friend match, or a local one.
+function devMatch() {
+  if (!Array.isArray(state.squares) || state.squares.length !== 9) return null;
+  const o = state.online;
+  if (o) {
+    if (isMM()) return o.game ? { g: 'm' + o.game, mode: 'match' } : null;
+    return o.matchId && o.code ? { g: 'f' + o.code + '_' + o.matchId, mode: 'friend' } : null;
+  }
+  if (!['board', 'mini', 'win', 'review', 'review-mini'].includes(state.screen)) return null;
+  return state.stats && state.stats.id ? { g: 'l' + state.stats.id, mode: state.stats.mode } : null;
+}
+const devSent = new Set();
+function devWatch() {
+  const m = devMatch();
+  if (!m || !/^[-\w]{4,60}$/.test(m.g)) return;
+  const k = (state.winner ? 'e' : 's') + m.g;
+  if (devSent.has(k)) return;
+  devSent.add(k);
+  if (!state.winner) { devEvent({ ev: 'start', mode: m.mode, g: m.g }); return; }
+  const quit = !!state.resigned && (state.online ? state.resigned === state.online.me : true);   // this phone left it (a local match is only ever left by player 1)
+  devEvent({ ev: quit ? 'leave' : 'finish', mode: m.mode, g: m.g });
+}
+document.addEventListener('visibilitychange', () => {   // back after half an hour away: a new visit
+  if (document.visibilityState === 'visible' && devLast && Date.now() - devLast > 30 * 60000) devOpen();
+});
+// Still playing: every 10 minutes while a match is under way on screen, so a long match stays one session.
+function devPulse() {
+  if (document.visibilityState !== 'visible' || !devLast || Date.now() - devLast < 10 * 60000) return;
+  const m = devMatch();
+  if (m && !state.winner && /^[-\w]{4,60}$/.test(m.g)) devEvent({ ev: 'live', mode: m.mode, g: m.g, o: 'p' + randHex(8) });
 }
 // ----- a logged-in player's local matches (they are player 1): reported once each is over, won, lost or
 // left, and kept on this phone until the server has it (offline, or the page closed in between) -----
@@ -4371,6 +4508,9 @@ function renderProfile() {
     const online = sum(u, u.friend), local = sum(loc), all = sum(online, local);
     const rec = view === 'local' ? local : view === 'all' ? all : online;
     const minis = view === 'local' ? addMinis(loc.minis) : view === 'all' ? addMinis(u.minis, loc.minis) : addMinis(u.minis);
+    const addSides = (...ss) => ({ X: sum(...ss.map(x => x && x.X)), O: sum(...ss.map(x => x && x.O)) });   // games played as X and as O
+    const fsides = u.friend && u.friend.sides;
+    const sides = view === 'local' ? addSides(loc.sides) : view === 'all' ? addSides(u.sides, fsides, loc.sides) : addSides(u.sides, fsides);
     const games = rec.wins + rec.losses + rec.draws;
     const tabs = own ? `<div class="ptabs" role="tablist" aria-label="Which games">${[['online', 'Online'], ['local', 'Local'], ['all', 'All']].map(([v, l]) => `<button class="seg${view === v ? ' on' : ''}" role="tab" aria-selected="${view === v}" data-act="pview" data-v="${v}">${l}</button>`).join('')}</div>` : '';
     const label = { online: 'Online record', local: 'Local record', all: 'All games' }[view];
@@ -4379,15 +4519,21 @@ function renderProfile() {
       <div class="ppct"><small>Win rate</small><b>${winPct(rec)}</b></div>
       ${view === 'online' ? `<div class="pfr"><small>Find Match ${record(u)} · Friends ${record(u.friend)}</small></div>` : ''}
       <small class="pjoin">Joined ${fmtDate(u.joined)}</small></div>`;
+    const sideRow = p => { const r = sides[p], g = r.wins + r.losses + r.draws; return `<tr><td><span class="pg">${toon(p)}<span>As ${p}</span></span></td><td>${g}</td><td>${record(r)}</td><td>${winPct(r)}</td></tr>`; };
+    const sideTable = `<table class="ptab psides" aria-label="Games played as X and as O"><thead><tr><th>Played as</th><th>Games</th><th>W-L-D</th><th>Win rate</th></tr></thead><tbody>${sideRow('X')}${sideRow('O')}</tbody></table>`;
+    // Squares count once they end claimed by X or O (a square still open when the match ended, or a board
+    // reset after a draw, is not a mini-game won or lost).
     const rows = Object.entries(minis).filter(([t]) => TYPES.includes(t)).map(([t, v]) => ({ t, won: v.won, lost: v.lost }))   // the games in the pool only (not Hexapawn or the Dice race)
       .filter(r => r.won + r.lost).sort((a, b) => b.won - a.won || a.lost - b.lost || INFO[a.t].name.localeCompare(INFO[b.t].name));
-    const table = rows.length ? `<table class="ptab"><thead><tr><th>Mini-game</th><th>Won</th><th>Lost</th><th>Win rate</th></tr></thead><tbody>${rows.map(r =>
-      `<tr><td><span class="pg">${ICONS[r.t]}<span>${INFO[r.t].name}</span></span></td><td>${r.won}</td><td>${r.lost}</td><td>${Math.round(100 * r.won / (r.won + r.lost))}%</td></tr>`).join('')}</tbody></table>`
+    const allWon = rows.reduce((t, r) => t + r.won, 0), allLost = rows.reduce((t, r) => t + r.lost, 0);
+    const rate = (w, l) => `${Math.round(100 * w / (w + l))}%`;
+    const table = rows.length ? `<table class="ptab pmini"><thead><tr><th>Mini-game</th><th>Won</th><th>Lost</th><th>Win rate</th></tr></thead><tbody><tr class="pall"><td><span class="pg"><span>All mini-games</span></span></td><td>${allWon}</td><td>${allLost}</td><td>${rate(allWon, allLost)}</td></tr>${rows.map(r =>
+      `<tr><td><span class="pg">${ICONS[r.t]}<span>${INFO[r.t].name}</span></span></td><td>${r.won}</td><td>${r.lost}</td><td>${rate(r.won, r.lost)}</td></tr>`).join('')}</tbody></table>`
       : `<p class="hint center">No squares won or lost ${view === 'local' ? 'in local games' : view === 'all' ? '' : 'online'} yet.</p>`;
     const nh = p.hist ? p.hist.length : null;
     const what = { online: 'online games: Find Match and friends', local: 'local games (you as player 1)', all: 'every game: online and local' }[view];
     body = `<button class="btn wide phist" data-act="prof-hist"${p.hist ? '' : ' disabled'}>Game history${nh != null ? ` (${nh})` : ''}</button>
-      ${card}<h3 class="hh">Mini-games</h3><p class="hint">Squares won and lost in ${what}.</p>${table}`;   // the game history first, then the stats
+      ${card}${sideTable}<h3 class="hh">Mini-games</h3><p class="hint">Squares won and lost in ${what}. Only squares that ended claimed count.</p>${table}`;   // the game history first, then the stats
   }
   return `<main class="scr setup acct-scr prof-scr">
     <div class="bar"><button class="back" data-act="prof-back" aria-label="Back">${CHEV}${backLabel}</button>
@@ -4814,6 +4960,9 @@ async function leaveAndJoin(code) {
 }
 function boot() {
   clockTimer = setInterval(tick, 250);
+  takeTag();                                                  // a playtester's link (?t=sam): before the address is tidied below
+  devOpen();
+  setInterval(devPulse, 60000);
   const link = linkCode();
   try { joinName = localStorage.getItem(KEY + '.name') || ''; } catch (e) { /* no storage */ }
   if (link) {
@@ -5194,14 +5343,18 @@ function moveSounds(f) {
       const b = f.bj;
       if (!b) break;
       const pl = bjPlan(b);
-      for (const c of pl.P.concat(pl.D)) { if (!c) continue; if (c.slideAt != null) add('cardSlide', c.slideAt); if (c.flipAt != null) add('cardFlip', c.flipAt); }
-      if (b.res === 'win' || b.res === 'bj') { add('chips', pl.end); if (b.gain > 1) add('chips', pl.end + 170); }
-      else if (b.res === 'push') add('push', pl.end);
-      else if (b.res === 'bust') add('bust', pl.pEnd);
-      else if (b.res === 'lose') add('nopair', pl.end);
+      for (const c of pl.P.concat(pl.D, pl.NP || [], pl.ND || [])) { if (!c) continue; if (c.slideAt != null) add('cardSlide', c.slideAt); if (c.flipAt != null) add('cardFlip', c.flipAt); }
+      const result = (x, end, pEnd) => {
+        if (x.res === 'win' || x.res === 'bj') { add('chips', end); if (x.gain > 1) add('chips', end + 170); }
+        else if (x.res === 'push') add('push', end);
+        else if (x.res === 'bust') add('bust', pEnd);
+        else if (x.res === 'lose') add('nopair', end);
+      };
+      result(b, pl.end, pl.pEnd);
+      if (b.next) result(b.next, pl.nEnd, pl.nPEnd);              // after a push, the new hand (when a natural settles it at once)
       break;
     }
-    case 'bus': if (f.bus) { add('cardSlide', 0); add('cardFlip', BUST.draw); add(f.bus.right ? 'ding' : 'thud', BUST.draw + BUST.flip); } break;
+    case 'bus': if (f.bus) { const tm = busTimes(f); add('cardSlide', tm.pre); add('cardFlip', tm.flip); add(f.bus.right ? 'ding' : 'thud', tm.mark); if (f.bus.right) add('cardSlide', tm.fly); } break;
     case 'rl': {
       const N = 14;                                                  // the ball clicks over the pockets, slower and slower
       add('rlSpin', 0);

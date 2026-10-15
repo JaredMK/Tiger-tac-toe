@@ -371,6 +371,8 @@ test('resigning: the other player wins; a loss and a win on the records, no rati
   const po = await get(`users/${g.O.uid}`), px = await get(`users/${g.X.uid}`);
   assert.deepEqual([po.rating, po.wins, po.losses, po.games], [1200, 0, 1, 1]);
   assert.deepEqual([px.rating, px.wins, px.losses, px.games], [1200, 1, 0, 1]);
+  assert.deepEqual([px.sides, po.sides], [{ X: { wins: 1, games: 1 } }, { O: { losses: 1, games: 1 } }], 'by side: a win as X, a loss as O');
+  for (const p of [g.X, g.O]) assert.ok(Math.abs((await get(`lastSeen/${p.uid}`)) - Date.now()) < 60000, 'both players\' last activity: the match');
   assert.equal(po.minis, undefined, 'no square was won or lost');
 });
 
@@ -411,8 +413,9 @@ test('friend-code games are saved to the history of players with accounts, marke
   assert.equal(gh.result, 'loss'); assert.equal(gh.ratingBefore, undefined);
   const hu = await get(`users/${host.uid}`), gu = await get(`users/${guest.uid}`);
   assert.equal(hu.rating, 1200, 'friend games never change ratings');
-  assert.deepEqual(hu.friend, { wins: 1, games: 1 }, 'a win on the host\'s vs-friends record');
-  assert.deepEqual(gu.friend, { losses: 1, games: 1 }, 'a loss on the guest\'s');
+  assert.deepEqual(hu.friend, { wins: 1, games: 1, sides: { X: { wins: 1, games: 1 } } }, 'a win on the host\'s vs-friends record, played as X');
+  assert.deepEqual(gu.friend, { losses: 1, games: 1, sides: { O: { losses: 1, games: 1 } } }, 'a loss on the guest\'s, as O');
+  assert.equal(hu.sides, undefined, 'the Find Match sides untouched');
   assert.deepEqual([hu.wins, hu.games], [0, 0], 'the main record is Find Match games only');
   const sq = E.fullState(end).squares.slice(0, 3).map(q => q.mini.type), counts = {};
   for (const t of sq) counts[t] = (counts[t] || 0) + 1;
@@ -579,8 +582,8 @@ test('records: a friend match is credited by the seats it was played in (the roo
   const gh = await until(() => guest.read(`history/${guest.uid}/${id}`), 10000, 'the guest\'s history');
   assert.equal(gh.side, 'X'); assert.equal(gh.result, 'win', 'the guest played X and won');
   assert.equal((await host.read(`history/${host.uid}/${id}`)).result, 'loss');
-  assert.deepEqual((await get(`users/${guest.uid}`)).friend, { wins: 1, games: 1 });
-  assert.deepEqual((await get(`users/${host.uid}`)).friend, { losses: 1, games: 1 });
+  assert.deepEqual((await get(`users/${guest.uid}`)).friend, { wins: 1, games: 1, sides: { X: { wins: 1, games: 1 } } }, 'the side as played');
+  assert.deepEqual((await get(`users/${host.uid}`)).friend, { losses: 1, games: 1, sides: { O: { losses: 1, games: 1 } } });
 });
 
 /* ===================================== local matches ===================================== */
@@ -600,6 +603,7 @@ test('local matches: a logged-in player\'s are recorded once, privately (record,
   assert.deepEqual(await p.call('recordLocal', lost), { ok: true, result: 'loss' });
   const ls = await get(`localStats/${p.uid}`);
   assert.deepEqual([ls.wins, ls.losses, ls.draws || 0, ls.games], [1, 1, 0, 2]);
+  assert.deepEqual(ls.sides, { X: { wins: 1, games: 1 }, O: { losses: 1, games: 1 } }, 'won as X, left as O');
   assert.equal(ls.minis[won.final.squares[0].mini.type].won >= 1, true, 'squares won, by mini-game');
   const h = await get(`localHistory/${p.uid}`);
   assert.deepEqual(Object.keys(h).sort(), ['l_locres01', 'l_locwin01']);
@@ -644,6 +648,7 @@ test('a draw: once neither player can still make a line, a Find Match game ends 
     const h = await get(`history/${p.uid}/${g.id}`), u = await get(`users/${p.uid}`);
     assert.deepEqual([h.result, h.how], ['draw', 'draw']);
     assert.deepEqual([u.wins, u.losses, u.draws, u.games], [0, 0, 1, 1], 'a draw on the record');
+    assert.deepEqual(u.sides, { [p === g.X ? 'X' : 'O']: { draws: 1, games: 1 } }, 'and on the side played');
   }
   assert.deepEqual(await g.O.call('move', { game: g.id, square: 8, move: 0 }), { ok: false, reason: 'over' });
   // a local match that ended the same way, and one from before the rule (most squares)
@@ -656,6 +661,7 @@ test('a draw: once neither player can still make a line, a Find Match game ends 
   await assert.rejects(lp.call('recordLocal', report('locdraw2', [null, 'X', 'X', 'O', 'O', null, null, null, null], 'draw', 'blocked')), /Not a match/, 'a draw while a line is still open: refused');
   const ls = await get(`localStats/${lp.uid}`);
   assert.deepEqual([ls.wins || 0, ls.losses, ls.draws, ls.games], [0, 1, 1, 2]);
+  assert.deepEqual(ls.sides, { X: { losses: 1, draws: 1, games: 2 } });
   assert.equal((await get(`localHistory/${lp.uid}/l_locdraw1`)).how, 'draw');
 });
 
@@ -676,8 +682,8 @@ test('friend games: leaving a match under way ends it as a loss for the one who 
   const gh = await until(() => guest.read(`history/${guest.uid}/${id}`), 10000, 'the leaver\'s history');
   assert.equal(gh.result, 'loss'); assert.equal(gh.how, 'resign');
   assert.equal((await host.read(`history/${host.uid}/${id}`)).result, 'win');
-  assert.deepEqual((await get(`users/${guest.uid}`)).friend, { losses: 1, games: 1 }, 'a loss on the leaver\'s record');
-  assert.deepEqual((await get(`users/${host.uid}`)).friend, { wins: 1, games: 1 });
+  assert.deepEqual((await get(`users/${guest.uid}`)).friend, { losses: 1, games: 1, sides: { O: { losses: 1, games: 1 } } }, 'a loss on the leaver\'s record');
+  assert.deepEqual((await get(`users/${host.uid}`)).friend, { wins: 1, games: 1, sides: { X: { wins: 1, games: 1 } } });
 });
 
 test('usernames already taken are checked against the word list once: the ones that fail are listed for the admin, none changed', async () => {
@@ -751,6 +757,100 @@ async function soloUntilBot(p) {
   assert.equal(r.status, 'matched', 'a bot once the wait is over');
   return r;
 }
+
+test('back-fill: games played as X and as O recounted from the history (Find Match, friends, local), once; bot matches as the admin chose', async () => {
+  const p = await player('SideFill'), botUid = 'botSideFill';
+  await put(`bots/${botUid}`, { key: 'test', username: 'BotSide', created: 1 });
+  await put(`users/${botUid}`, { username: 'BotSide', joined: 1 });
+  await put('admin/config/bots', { enabled: false, countInRecords: false });
+  await patch(`users/${p.uid}`, { friend: { wins: 1, losses: 1, draws: 0, games: 2 } });
+  const h = (mode, side, result, opp) => ({ mode, side, result, how: result === 'draw' ? 'draw' : 'line', date: 1, opponent: { uid: opp || null, name: 'Someone' }, final: '{"squares":[]}' });
+  await put(`history/${p.uid}`, {
+    a: Object.assign(h('ranked', 'X', 'win'), { date: Date.now() + 5000 }), b: h('casual', 'O', 'loss'), c: h('match', 'O', 'draw'),
+    d: h('friend', 'X', 'win'), e: h('friend', 'O', 'loss'),
+    f: h('match', 'X', 'win', botUid),                                  // against a bot: left out (the switch is off)
+  });
+  await put(`history/${botUid}`, { f: h('match', 'O', 'loss', p.uid) });
+  await put(`localHistory/${p.uid}`, { l_1: h('local', 'X', 'win'), l_2: h('local', 'O', 'draw'), l_3: h('local', 'X', 'loss') });
+  await put('meta/backfill/accounts1', null); await put(`lastSeen/${p.uid}`, null);
+  assert.match(await runScript('backfill-accounts.js'), /Back-filled the games by side and last activity of \d+ players?/);
+  const rec = (wins, losses, draws) => ({ wins, losses, draws, games: wins + losses + draws });
+  const u = await get(`users/${p.uid}`);
+  assert.deepEqual(u.sides, { X: rec(1, 0, 0), O: rec(0, 1, 1) }, 'Find Match: a win as X; a loss and a draw as O; not the bot match');
+  assert.deepEqual(u.friend.sides, { X: rec(1, 0, 0), O: rec(0, 1, 0) }, 'friends apart');
+  assert.deepEqual([u.friend.wins, u.friend.losses, u.friend.games], [1, 1, 2], 'the friends record itself untouched');
+  assert.deepEqual((await get(`localStats/${p.uid}`)).sides, { X: rec(1, 1, 0), O: rec(0, 0, 1) }, 'local games: player 1\'s side');
+  assert.deepEqual((await get(`users/${botUid}`)).sides, { X: rec(0, 0, 0), O: rec(0, 1, 0) }, 'the bot\'s own record counts every game');
+  for (const s of ['X', 'O']) assert.equal(u.sides[s].games + u.friend.sides[s].games + (await get(`localStats/${p.uid}`)).sides[s].games, { X: 4, O: 4 }[s], `every counted game as ${s}`);
+  const a = await get(`history/${p.uid}/a`);
+  assert.equal(await get(`lastSeen/${p.uid}`), a.date, 'last active: the latest game in the history');
+  assert.equal(await get(`lastSeen/${botUid}`), null, 'not for the bots');
+  await patch(`users/${p.uid}/sides/X`, { wins: 9 });
+  assert.match(await runScript('backfill-accounts.js'), /already/, 'it runs once');
+  assert.equal((await get(`users/${p.uid}`)).sides.X.wins, 9);
+  await put('admin/config', null); await put(`bots/${botUid}`, null); await put(`users/${botUid}`, null); await put(`history/${botUid}`, null);
+  await put(`history/${p.uid}`, null); await put(`localHistory/${p.uid}`, null);
+});
+
+/* ===================================== playtest activity and accounts ===================================== */
+test('playtest: a device\'s opens and matches are logged under a hash of its random id, each once; the tester tag is kept from its first link; nothing personal', async () => {
+  const guest = await player(null, { anonymous: true }), acct = await player('Tester_Tam');
+  const dev = 'd' + Date.now().toString(16) + 'aa11', h = S.devHash(dev);
+  assert.notEqual(h, dev); assert.ok(!h.includes(dev));
+  assert.deepEqual(await guest.call('devlog', { dev, ev: 'open', o: 'open0001', tag: 'sam' }), { ok: true });
+  assert.deepEqual(await guest.call('devlog', { dev, ev: 'open', o: 'open0001', tag: 'sam' }), { ok: true, seen: true }, 'the same open, sent again: kept once');
+  assert.deepEqual(await guest.call('devlog', { dev, ev: 'start', mode: 'cpu', g: 'lgame0001' }), { ok: true });
+  assert.deepEqual(await guest.call('devlog', { dev, ev: 'start', mode: 'cpu', g: 'lgame0001' }), { ok: true, seen: true }, 'a reload: the same start once');
+  assert.deepEqual(await acct.call('devlog', { dev, ev: 'finish', mode: 'cpu', g: 'lgame0001', tag: 'bob' }), { ok: true });
+  assert.deepEqual(await guest.call('devlog', { dev, ev: 'leave', mode: 'cpu', g: 'lgame0001' }), { ok: true, seen: true }, 'one end per match');
+  assert.deepEqual(await guest.call('devlog', { dev, ev: 'live', mode: 'match', g: 'mgame0001', o: 'live0001' }), { ok: true }, 'still playing a long match');
+  assert.deepEqual(await guest.call('devlog', { dev, ev: 'live', mode: 'match', g: 'mgame0001', o: 'live0001' }), { ok: true, seen: true });
+  const d = await get(`devices/${h}`), log = await get(`devlog/${h}`);
+  assert.equal(d.tag, 'sam', 'the first tag stays');
+  assert.equal(d.n, 4); assert.ok(d.first <= d.last);
+  assert.deepEqual(Object.keys(d).sort(), ['first', 'last', 'n', 'tag'], 'only times, a count and the tag');
+  assert.deepEqual(Object.keys(log).sort(), ['elgame0001', 'oopen0001', 'plive0001', 'slgame0001'], 'an open, a start, an end and a live');
+  for (const e of Object.values(log)) assert.ok(Object.keys(e).every(k => ['t', 'ev', 'm', 'g'].includes(k)), 'an event: its time, kind, mode and match only');
+  assert.deepEqual([log.slgame0001.ev, log.slgame0001.m, log.slgame0001.g, log.elgame0001.ev], ['start', 'cpu', 'lgame0001', 'finish']);
+  assert.ok(!JSON.stringify([d, log]).includes(acct.uid) && !JSON.stringify([d, log]).includes(dev), 'no account and no raw id with the device');
+  assert.ok(Math.abs((await get(`lastSeen/${acct.uid}`)) - Date.now()) < 60000, 'the logged-in player\'s last activity moved on');
+  assert.equal(await get(`lastSeen/${guest.uid}`), null, 'not for a guest');
+  // a tag that is not one is ignored; a later good one is kept, once
+  const dev2 = 'd' + Date.now().toString(16) + 'bb22', h2 = S.devHash(dev2);
+  await guest.call('devlog', { dev: dev2, ev: 'open', o: 'open0002', tag: 'Sam Smith <x>' });
+  assert.equal((await get(`devices/${h2}`)).tag, undefined);
+  await guest.call('devlog', { dev: dev2, ev: 'open', o: 'open0003', tag: 'tester-2' });
+  await guest.call('devlog', { dev: dev2, ev: 'open', o: 'open0004', tag: 'tester-3' });
+  assert.equal((await get(`devices/${h2}`)).tag, 'tester-2');
+  // refused: no device, an unknown event, a match without its mode or key
+  for (const bad of [{ ev: 'open', o: 'open0005' }, { dev, ev: 'login', o: 'open0006' }, { dev, ev: 'start', g: 'lgame0002' }, { dev, ev: 'start', mode: 'cpu' }, { dev, ev: 'start', mode: 'chess', g: 'lgame0003' }, { dev: 'x', ev: 'open', o: 'open0007' }, { dev, ev: 'live', mode: 'match', g: 'mgame0002' }]) {
+    await assert.rejects(guest.call('devlog', bad), /Not an event/, JSON.stringify(bad));
+  }
+  // only the admin reads them; nobody writes them
+  await denied(acct.read(`devices/${h}`), 'a player reading the devices');
+  await denied(acct.read(`devlog/${h}`), 'a player reading the activity');
+  await denied(acct.read(`lastSeen/${acct.uid}`), 'reading even your own last activity');
+  await denied(guest.write(`devices/${h}/tag`, 'eve'), 'writing a tag');
+  await denied(guest.write(`devlog/${h}/x`, { t: 1, ev: 'open' }), 'writing an event');
+  assert.match(await runScript('make-admin.js', 'Tester_Tam', 'grant'), /now the admin/);
+  await acct.auth.currentUser.getIdToken(true);
+  assert.equal((await acct.read(`devices/${h}`)).tag, 'sam');
+  assert.ok(await acct.read('devlog'));
+  assert.ok(await acct.read('lastSeen'));
+  assert.ok((await acct.read('localStats')) !== undefined, 'and every player\'s local record, for the Accounts table');
+  await runScript('make-admin.js', 'Tester_Tam', 'revoke');
+});
+
+test('accounts: last activity moves on with a login or a local match (online matches: in the resign and bot tests)', async () => {
+  const p = await player('Seen_Sal');
+  assert.equal(await get(`lastSeen/${p.uid}`), null);
+  await p.call('track', { ev: 'login', dev: 'dseen0001' });
+  const t1 = await get(`lastSeen/${p.uid}`);
+  assert.ok(Math.abs(t1 - Date.now()) < 60000, 'a login');
+  await wait(20);
+  await p.call('track', { ev: 'start', mode: 'cpu', id: 'seen' + Date.now(), dev: 'dseen0001' });
+  assert.ok((await get(`lastSeen/${p.uid}`)) > t1, 'a local match');
+});
 
 test('bots: off by default; on, a lone searcher gets one only after their own randomized 40-70 s wait, and two people play each other', async () => {
   await clearQueue(); await put('admin/config', null);
@@ -921,11 +1021,14 @@ test('bots: the result is recorded for both; the player\'s record as the admin c
   const bg = await get(`botGames/${g1.id}`);
   assert.deepEqual([bg.live, bg.done, bg.winner], [undefined, true, g1.me]);
   assert.equal(await get(`active/${botUid}`), null, 'the bot is free again');
+  assert.equal(await get(`lastSeen/${botUid}`), null, 'a bot has no last activity (it is not in the Accounts table)');
   // the switch: left out of the player's record
   await botsOn({ countInRecords: false });
   const g2 = await finishWin();
   const u2 = await get(`users/${h.uid}`), pub2 = await get(`games/${g2.id}/pub`);
   assert.deepEqual([u2.wins, u2.games, u2.minis], [u1.wins, u1.games, u1.minis], 'not counted: the record and mini-game stats as they were');
+  assert.deepEqual(u2.sides, u1.sides, 'nor the games by side');
+  assert.equal(u1.sides[g1.me].wins, 1, 'the counted one is on the side played');
   assert.deepEqual(pub2.result.records[g2.me], { wins: u1.wins, losses: u1.losses || 0, draws: u1.draws || 0 }, 'the results screen shows the record unchanged');
   assert.ok(await get(`history/${h.uid}/${g2.id}`), 'still in the history');
   // the stats: a mode of their own; the bot matches counted for the dashboard

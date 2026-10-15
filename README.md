@@ -116,9 +116,9 @@ are fine; there are no weights). A square that resets draws again from the same 
 | Risky Rolls | Each player has a banked score. A move is a whole push-your-luck turn: roll a die, and a number not yet rolled this turn joins the points at risk (a small +N by your score, with this turn's dice in a row); then roll again or bank. Banking moves them into your score and ends the move; a repeated number busts, losing them (at most six rolls). Once your score and the points at risk reach 21, only Bank is left. First to a banked 21 wins. A bust turns red only once the die has landed; after a winning bank the die keeps the last number rolled |
 | Treasure hunt | 6×6 grid with one hidden treasure. A move digs a cell: the treasure wins; otherwise the cell shows how warm it is, never the distance itself, counted in steps up, down, left or right: Hot (1 step), Warm (2–3), Cool (4–5) or Cold (6+), each with its own colour and label (a legend sits under the grid). Everything dug stays visible. A 5×5 square from a match started before keeps its size and answers in the same bands |
 | Mastermind | One hidden code shared by both players: 4 pegs from 6 colours, no colour twice, picked by the computer. A move is one guess of 4 different colours (tap a slot, then a colour; tap a filled slot to clear it). Feedback is a solid marker for each right colour in the right spot and a hollow marker for each right colour in the wrong spot, always solid first, so the order says nothing about which peg is which. Every guess and its markers stay on show, no guess limit; guessing the exact code wins. Each colour also carries a symbol (circle, square, triangle, diamond, star, plus). The hidden code sits in a compact row of small, peg-sized slots, so the guess history gets the room |
-| Blackjack | Each player plays their own hands against the dealer and has their own win tally (shown for both, as pips). A move is one whole hand, under one turn clock: **Deal** gives the player two cards face up and the dealer one face up and one face down, every hand from a freshly shuffled 52-card deck; then **Hit**, **Stand** or **Double** (on the first two cards only: exactly one more card, then the hand stands, and a win counts double). Aces count 1 or 11, face cards 10; reaching 21 stands by itself. The dealer then turns the hole card over, hits on 16 or less and stands on every 17 (soft ones too). Beating the dealer without going over 21, or the dealer busting, adds 1 to the tally (2 for a won double); a natural blackjack (21 on the first two cards) adds 1 at once, unless the dealer has one too (a push). A push, a loss or a bust adds nothing, and the tally never goes down; a dealer blackjack beats any other 21. First to 3 takes the square |
-| Ride the Bus | Each player has their own four rounds and their own deck, and both players' progress shows: (1) red or black, (2) higher or lower than card 1, (3) inside or outside cards 1 and 2, (4) the exact suit, one guess. The ace is high (2 lowest); a tie is wrong (an equal value in round 2, a value equal to either card in round 3). A right guess keeps the card and goes straight on to the next round in the same turn; a wrong one discards the card and ends the turn, with the cards already kept still kept, and next time the player tries the round they failed again with a newly drawn card. Every card comes from a freshly shuffled deck without the player's kept cards. Passing round 4 takes the square |
-| Roulette | A small wheel of 25 pockets: 1 to 24 (odd red, even black, alternating round the wheel) and a green 0. A move is one spin with one bet: any 8 numbers, a group (1–8, 9–16 or 17–24), or green 0 on its own. The ball landing on a number or group bet on is a hit, and two hits take the square; green 0 coming up on a bet on 0 takes it at once (0 on any other bet is a miss). Each player's hits show, and the last number |
+| Blackjack | Each player plays their own hands against the dealer and has their own win tally (shown for both, as pips). A move is one whole hand, under one turn clock: **Deal** gives the player two cards face up and the dealer one face up and one face down, every hand from a freshly shuffled 52-card deck; then **Hit**, **Stand** or **Double** (on the first two cards only: exactly one more card, then the hand stands, and a win counts double). Aces count 1 or 11, face cards 10; reaching 21 stands by itself. The dealer then turns the hole card over, hits on 16 or less and stands on every 17 (soft ones too). Beating the dealer without going over 21, or the dealer busting, adds 1 to the tally (2 for a won double); a natural blackjack (21 on the first two cards) adds 1 at once, unless the dealer has one too (a push). A loss or a bust adds nothing, and the tally never goes down; a dealer blackjack beats any other 21. **A push does not end the turn**: the tied hand is shown ("Push: a new hand"), then the same player is dealt a new hand at once, from a reshuffled deck, and plays on, push after push, until a hand is won or lost; the turn clock covers the whole turn, and the computer and timeouts follow the same rule. First to 3 takes the square |
+| Ride the Bus | Each player has their own four rounds and their own deck, and both players' progress shows: (1) red or black, (2) higher or lower than card 1, (3) inside or outside cards 1 and 2, (4) the exact suit, one guess. The ace is high (2 lowest); a tie is wrong (an equal value in round 2, a value equal to either card in round 3). A right guess keeps the card and goes straight on to the next round in the same turn; a wrong one discards the card and ends the turn, with the cards already kept still kept, and next time the player tries the round they failed again with a newly drawn card. Every card comes from a freshly shuffled deck without the player's kept cards; a failed card goes back into that player's deck. Opening the square shows only kept cards, never the last failed one. A move plays out in order: for the computer or the other player, the chosen button lights up in their colour for about 0.8 s first; then the card flips and its face shows; then the tick or cross; then, only if right, the card moves into its progress slot (nothing in the progress area changes before the flip ends). Passing round 4 takes the square |
+| Roulette | A small wheel of 25 pockets: 1 to 24 (odd red, even black, alternating round the wheel) and a green 0. A move is one spin with one bet: any 8 numbers, a group (1–8, 9–16 or 17–24), or green 0 on its own. The ball landing on a number or group bet on is a hit, and two hits take the square; green 0 coming up on a bet on 0 takes it at once (0 on any other bet is a miss). Each player's hits show, and the last number. The green 0 button is the same size as the number buttons; after the ball lands, the result (Hit!, Miss or Green 0!) holds for an extra second before play moves on |
 
 No longer dealt, but still played to the end in a match started before they were taken out, and kept
 under their own names in that match's history and the stats:
@@ -222,7 +222,7 @@ seconds, and keeps running while the in-game menu is open or while a player is a
 When the clock runs out, a random legal move is made for that player and shown on both screens with
 "[name] ran out of time — random move": a random open square, then a random legal action in it (Risky Rolls:
 one roll, then a bank if it did not bust; Hangman: one random letter, and the turn ends even if it
-hits; Wordle: a random dictionary word; Blackjack: stand, dealt first if no hand is in play; Ride the
+hits; Wordle: a random dictionary word; Blackjack: stand, dealt first if no hand is in play, and on every new hand a push brings; Ride the
 Bus: one random guess, and the turn ends even if it is right; Roulette: a random group). The turn then passes. Timeouts are counted per player, and
 a player's second timeout in a row loses the match at once: the win screen reads "[name] wins —
 [other] timed out twice".
@@ -338,7 +338,9 @@ The server also counts, per mini-game, the squares each player won and lost in e
 (Find Match and friends). When a match ends, a Cloud Function writes both records, both players'
 mini-game counts and both histories in one atomic update, once per game; phones cannot write any
 of it. The record shows next to the usernames on the vs card, on the results screen ("Your record
-1-0-0", and the opponent's, whose name opens their profile) and on profiles.
+1-0-0", and the opponent's, whose name opens their profile) and on profiles. Each record is also kept
+by the side played (`sides/X` and `sides/O` under the Find Match record, the friends record and the
+local record), for the games played as X and as O.
 
 **Local games** are recorded too for a logged-in player, as Player 1, against the computer or pass
 and play, won, lost or left (a loss). The phone reports each finished match once to the `recordLocal`
@@ -350,7 +352,10 @@ waits on the phone while offline and goes when it can. The online records are no
 friend games together (with a "Find Match x-y-z · Friends x-y-z" line under it), Local the local
 games, All both. The record (wins-losses-draws and the win rate: wins over all games, draws
 included, so 3-5-1 is 33%) and the table of mini-games (squares won, squares lost and win rate, most
-won first) both follow the selection. Another player's profile (tap their name) shows their online
+won first) both follow the selection, and so does the **Played as** table: games played as X and as O,
+the record and the win rate of each. The mini-game table counts a square only once it ended claimed by
+X or O (a square still open when the match ended, by any route, or a board reset after a draw is not
+counted), with an **All mini-games** row on top that adds up every completed square. Another player's profile (tap their name) shows their online
 stats only, with no selector: local games stay private. The mini-game table lists only the games in
 the pool: squares from Hexapawn and the Dice race (both taken out) are not shown, though the numbers
 stay in the database.
@@ -371,7 +376,10 @@ top-100 leaderboard.
 **Back-fill.** Records and mini-game counts were added after people had already played, so the
 deploy workflow runs `scripts/backfill-records.js` once after deploying: it recounts every
 player's records and mini-game counts from their game history (older ranked and casual games count
-as Find Match) and leaves a marker so it never runs twice. It prints only counts.
+as Find Match) and leaves a marker so it never runs twice. It prints only counts. In the same way
+`scripts/backfill-accounts.js` recounted the games played as X and as O from every player's game
+history (Find Match, friends and local; a match against a bot left out of the player's count when
+bot matches are kept out of the records) and set each account's last activity from its latest game.
 
 **Security rules** (`database.rules.json`): phones may read profiles, records and histories, and
 their own matchmaking game's public state; a player's local record and history only by that player;
@@ -379,7 +387,9 @@ only Cloud Functions write ratings, records, mini-game counts, usernames, the le
 queues and game state. A game's hidden values have no read rule at all, and the username review list
 is readable by the admin only. The admin's matchmaking settings (`admin/config`) are read and written
 by the admin only; the alert keys (`admin/secrets`) can be written by the admin and read by nobody
-but the server; the bot list, bot numbers and alert log are the admin's only; the bots' own game
+but the server; the bot list, bot numbers and alert log are the admin's only, and so are every
+player's local record (for the Accounts table), the accounts' last activity (`lastSeen`) and the
+playtest logs (`devices`, `devlog`); the bots' own game
 records (`botGames`) and the alert limits have no read rule at all.
 
 ### Switching Find Match on and off
@@ -499,7 +509,7 @@ https://jaredmk.github.io/Tiger-tac-toe/. After a change, publish it with one co
 
 It commits everything and pushes `main`. Two GitHub Actions workflows take it from there:
 
-- `pages.yml` publishes the site (only the web files: `index.html`, `admin.html`, `engine.js`, `styles.html`)
+- `pages.yml` publishes the site (only the web files: `index.html`, `admin.html`, `engine.js`, `playtest.js`, `styles.html`)
   within a minute or so, on every push.
 - `firebase.yml` runs when the server changed (`functions/`, `engine.js`, `database.rules.json`,
   `firebase.json`): it runs the engine tests and the server tests on the Firebase Emulator Suite,
@@ -528,8 +538,12 @@ counts online matches itself, where it runs or saves them. Nobody can write the 
 only the admin can read them. Stats start from the first deploy with this feature (older matches were
 never counted).
 
-Per mini-game: times played; how each one ended (won, draw that reset the square, or left open when
-the match ended); average moves the winner made in it, the loser, and in total; X and O win rates.
+Per mini-game, counting only completed squares (those that ended claimed by X or O; a square still
+open when the match ended, by any route, and a board reset after a draw are left out, and the note
+under the table says how many): completed, average moves the winner made in it, the loser, and in
+total (the two together); X and O win rates. An **All mini-games** row on top combines every completed
+square. The stored counters keep claimed squares apart from draws and open ones, so the table is
+worked out from them for past matches too.
 "Moves" are the turns a side spent in that square (a Risky Rolls roll or a Hangman letter that earns another go
 is part of the same turn). Overall: logins and active players per day, week and month (UTC; a login is
 an account signing in or coming back to the game); new accounts; matches started and finished by mode;
@@ -540,9 +554,40 @@ The dashboard is https://jaredmk.github.io/Tiger-tac-toe/admin.html: the **Find 
 (see "Switching Find Match on and off"), the **Bots** and **Empty-queue alerts** controls (see
 "Matchmaking backfill and the empty-queue alert"), tables and charts, with the
 mini-game table sortable (by average winner moves to find games that are too fast or too slow) and
-filterable by mode, and the "Usernames to review" card (existing names the word list would refuse
+filterable by mode, the **Accounts** and **Playtest activity** cards (below), and the "Usernames to review" card (existing names the word list would refuse
 today, with the word that caught each; nothing is changed). It opens only for the account with the admin flag; the database rules refuse the
 stats to everyone else.
+
+### Accounts
+
+Every account with a username (not the bots): username, sign-up date, last active, games played and
+record (W-L-D, with the win rate), Find Match, friends and local games together (hover a record for
+the split). Sortable by any column; newest sign-ups first. Last active is the last time the account
+played, logged in or opened the game (`lastSeen/{uid}`, written by the server). Dates and times are
+New York time.
+
+### Playtest activity (no account needed)
+
+Every device gets a random anonymous id, made up by its browser and kept in its own storage
+(`localStorage`, read and written inside try/catch; with no storage, an id for that visit only).
+Nothing personal is ever collected: the server keeps a one-way hash of the id, the times of the
+device's app opens and matches (started, then finished or left, with the mode), and an optional
+**tester tag**. To tell playtesters apart, send each one their own link with `?t=` and a name, for
+example `https://jaredmk.github.io/Tiger-tac-toe/?t=sam` (letters, numbers, `-` and `_`, up to 24,
+lower case). The tag is saved with that device the first time it is seen and never replaced (a later
+link with another tag keeps the first), and taken out of the address bar. The phone sends each event
+to the `devlog` Cloud Function; a retry or a reload never counts twice.
+
+The card (with a filter by tester) shows, in New York time (America/New_York, summer time included):
+**activity by hour** for the last 7 days (games started, games finished, active devices); the
+**funnel** opened the app → started a game → finished a game → started another; **retention**, the
+share of devices first seen before today that came back the next day and within 7 days; a
+**devices** table (shortened anonymous id, tester tag, first and last seen, sessions, games, average
+games per session, came back on a later day), where tapping a device opens its timeline of sessions
+and games; and **sessions** (a new one starts after 30 minutes with nothing): games played, the most
+finished in a row, length, modes, and whether it ended mid-match (left, or unfinished). Finished
+means played to a result; left means this device quit (resigned or left the match). The numbers are
+worked out in `playtest.js`, which the dashboard loads.
 
 ### Making yourself the admin (once)
 
@@ -571,7 +616,10 @@ shot again after a hit, Treasure hunt's bands, Hexapawn's far-row win and resets
 games no longer dealt never dealt again (resets included), and that the same
 seed plays the same match). `test/server-rules.test.js` covers the server's own rules (usernames and
 the word list with look-alikes and names hidden inside longer ones, Elo, matchmaking pairs, records
-recounted from history). `test/bots-rules.test.js` covers the bots' make-up (styles, paces, made-up
+recounted from history). `test/playtest.test.js` covers the playtest numbers (New York days and
+hours across both clock changes, 30-minute sessions, games finished in a row and ending mid-match,
+devices, retention, the funnel and the hourly chart). `test/cards.test.js` covers Blackjack (pushes
+in a row within one turn included), Ride the Bus and Roulette. `test/bots-rules.test.js` covers the bots' make-up (styles, paces, made-up
 usernames, the wait), the computer's style knobs, and the alert's limits and phone numbers. All
 three run with Node's test runner:
 
@@ -592,7 +640,7 @@ once and privately (bad reports refused), the check of existing usernames runnin
 them for the admin only, the bots (only for a lone searcher once their wait is over, an
 ordinary-looking online account, thinking before each move, Memory's two cards, never timing out,
 the result recorded with the records switch, counted apart), the empty-queue alert (once per search,
-the cooldown, the gap, the daily cap, never for the admin, before the bot) and its test, the back-fill from history running once, and the game stats (local matches reported by a
+the cooldown, the gap, the daily cap, never for the admin, before the bot) and its test, the back-fills from history running once (records; games by side and last activity), games by side after every kind of match, the playtest log (each event once, the first tester tag kept, nothing personal, the admin only), last activity, and the game stats (local matches reported by a
 phone counted once and bad reports refused, logins and new accounts, Find Match and friend-code
 matches counted by the server, and the stats readable only by the admin, with `make-admin.js` giving
 and taking back the flag). `test/stats-rules.test.js` covers what each event adds to the stats:

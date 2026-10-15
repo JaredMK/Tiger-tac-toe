@@ -24,7 +24,7 @@ const MARK = 'meta/backfill/records1';
     const entries = Object.values(history[uid] || {});
     const r = R.recountHistory(entries);
     for (const k of ['wins', 'losses', 'draws', 'games']) up[`users/${uid}/${k}`] = r.main[k];
-    up[`users/${uid}/friend`] = r.friend;
+    for (const k of ['wins', 'losses', 'draws', 'games']) up[`users/${uid}/friend/${k}`] = r.friend[k];   // (by key: the games by side stay)
     up[`users/${uid}/minis`] = Object.keys(r.minis).length ? r.minis : null;
     players++; games += entries.length;
     if (Object.keys(up).length > 400) await flush();

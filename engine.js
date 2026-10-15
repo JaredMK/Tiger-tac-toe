@@ -958,40 +958,53 @@ function applyMove(mini, p, m, rng) {
       return { ok: true, outcome: 'continue', note: 'guess' };
     }
     case 'bj': {
-      // One move is a whole hand: Deal (or Stand, which deals and stands at once: a timed-out turn), then
-      // Hit (again), Stand or Double. Only the hand's own player can act in it until it is over.
-      if (!['deal', 'hit', 'stand', 'double'].includes(m)) return { ok: false, reason: 'bad' };
+      // A turn is played hand by hand: Deal (or Stand, which deals first), then Hit (again), Stand or Double.
+      // A win or a loss ends the turn. A push does not: a new hand is dealt at once, from a reshuffled
+      // deck, and the same player plays on. 'auto' (a timed-out turn) stands, dealing first if need be, and
+      // stands again on every new hand a push brings, until a hand is won or lost. Only the hand's own
+      // player can act in it until the turn is over.
+      if (!['deal', 'hit', 'stand', 'double', 'auto'].includes(m)) return { ok: false, reason: 'bad' };
       let h = mini.hand;
       if (h && h.by !== p) return { ok: false, reason: 'busy' };
       if (m === 'deal' && h) return { ok: false, reason: 'dealt' };
       if ((m === 'hit' || m === 'double') && !h) return { ok: false, reason: 'nohand' };
       if (m === 'double' && h.cards.length !== 2) return { ok: false, reason: 'double' };
-      const finish = (natural) => {
-        const hole = mini.hole, deck = mini.deck || [], hand = mini.hand;
-        const bust = bjTotal(hand.cards).total > 21;
-        const dealer = natural || bust ? [hand.up, hole] : bjDealerPlay([hand.up, hole], deck);
-        const o = bjOutcome(hand.cards, dealer, hand.doubled, natural);
-        mini.wins[p] += o.gain;
-        mini.last = { by: p, cards: hand.cards.slice(), dealer, doubled: !!hand.doubled, res: o.res, gain: o.gain, dealerBj: !!o.dealerBj, natural: !!natural };
-        mini.hand = null; mini.hole = null; mini.deck = null;
-        if (mini.wins[p] >= BJ.goal) return { ok: true, outcome: 'win', note: o.res };
-        return { ok: true, outcome: 'continue', note: o.res };
-      };
-      if (!h) {                                          // the deal: player, dealer up, player, dealer face down
+      mini.pushed = null;                                // the hands this move ended in a push (shown before the new deal)
+      const deal = () => {                               // player, dealer up, player, dealer face down; true for a natural
         const deck = shuffle(cardDeck(), needRng(rng));
         const c1 = deck.pop(), up = deck.pop(), c2 = deck.pop(), hole = deck.pop();
         h = mini.hand = { by: p, cards: [c1, c2], up, doubled: false };
         mini.hole = hole; mini.deck = deck;
-        if (bjNatural(h.cards)) return finish(true);      // a natural: settled at once (a push if the dealer has one too)
-        if (m === 'deal') return { ok: true, outcome: 'continue', note: 'deal', again: true };
-      }
-      if (m === 'hit' || m === 'double') {
+        return bjNatural(h.cards);
+      };
+      const settle = (natural) => {                      // the hand is over: the hole card turns, the dealer plays
+        const hole = mini.hole, deck = mini.deck || [], hand = mini.hand;
+        const bust = bjTotal(hand.cards).total > 21;
+        const dealer = natural || bust ? [hand.up, hole] : bjDealerPlay([hand.up, hole], deck);
+        const o = bjOutcome(hand.cards, dealer, hand.doubled, natural);
+        mini.last = { by: p, cards: hand.cards.slice(), dealer, doubled: !!hand.doubled, res: o.res, gain: o.gain, dealerBj: !!o.dealerBj, natural: !!natural };
+        mini.hand = null; mini.hole = null; mini.deck = null;
+        if (o.res === 'push') mini.pushed = (mini.pushed || []).concat([mini.last]);
+        else mini.wins[p] += o.gain;
+        return o.res;
+      };
+      let res = null;
+      if (!h) {
+        if (deal()) res = settle(true);                  // a natural: settled at once
+        else if (m === 'deal') return { ok: true, outcome: 'continue', note: 'deal', again: true };
+      } else if (m === 'hit' || m === 'double') {
         h.cards.push(mini.deck.pop());
         if (m === 'double') h.doubled = true;
-        const t = bjTotal(h.cards).total;
-        if (m === 'hit' && t < 21) return { ok: true, outcome: 'continue', note: 'hit', again: true };
+        if (m === 'hit' && bjTotal(h.cards).total < 21) return { ok: true, outcome: 'continue', note: 'hit', again: true };
       }
-      return finish(false);                              // stand, a double's one card, 21, or a bust
+      if (!res) res = settle(false);                     // stand, a double's one card, 21, or a bust
+      for (let guard = 0; res === 'push' && guard < 60; guard++) {   // a push: deal again, the turn goes on
+        if (deal()) { res = settle(true); continue; }
+        if (m !== 'auto') return { ok: true, outcome: 'continue', note: 'push', again: true };
+        res = settle(false);
+      }
+      if (mini.wins[p] >= BJ.goal) return { ok: true, outcome: 'win', note: res };
+      return { ok: true, outcome: 'continue', note: res };
     }
     case 'bus': {
       const kept = mini.prog[p], r = kept.length;
@@ -1659,7 +1672,8 @@ function randomLegalMove(mini, p, rng) {
 // The player to move ran out of time. A second timeout in a row loses the match; otherwise a random
 // legal move is made for them (Risky Rolls: one roll, then a bank if it did not bust; Hangman: one letter and
 // the turn ends even if it hits; Wordle: a random word from the dictionary; Blackjack: stand, dealing first
-// if no hand is in play; Ride the Bus: one random guess, and the turn ends; Roulette: a random group).
+// if no hand is in play, and again on any new hand a push brings; Ride the Bus: one random guess, and the
+// turn ends; Roulette: a random group).
 function timeoutMove(state, rng) {
   rng = needRng(rng);
   const p = state.turn, t = state.timer;
@@ -1673,7 +1687,7 @@ function timeoutMove(state, rng) {
   }
   const open = state.lock != null ? [state.lock] : state.squares.map((sq, i) => (sq.owner || !canMove(sq.mini, p) ? -1 : i)).filter(i => i >= 0);
   const i = open[randInt(rng, open.length)], mini = state.squares[i].mini;
-  const m = mini.type === 'pig' ? (mini.turn && mini.turn.by === p ? 'bank' : 'roll') : mini.type === 'bj' ? 'stand' : randomLegalMove(mini, p, rng);   // Blackjack: stand (dealt first if need be); Roulette: a random group
+  const m = mini.type === 'pig' ? (mini.turn && mini.turn.by === p ? 'bank' : 'roll') : mini.type === 'bj' ? 'auto' : randomLegalMove(mini, p, rng);   // Blackjack: stand (dealt first if need be) on every hand until one is won or lost; Roulette: a random group
   const r = playMove(state, i, m, rng, { forced: true, noAgain: mini.type === 'hangman' || mini.type === 'bs' || mini.type === 'bus' });   // a timed-out shot fires once; a timed-out guess ends the turn
   if (!r.ok) return r;
   t.bankNext = mini.type === 'pig' && m === 'roll' && state.lock === i;   // the roll kept the turn: bank it next
@@ -1755,10 +1769,14 @@ function playMove(state, i, m, rng, opts) {
     case 'hunt': flash.band = huntClue(mini, m); break;
     case 'hexapawn': flash.from = mini.last.from; flash.to = mini.last.to; flash.capture = mini.last.capture; break;
     case 'mastermind': { const g = mini.guesses[mini.guesses.length - 1]; flash.code = g.code.slice(); flash.solid = g.solid; flash.hollow = g.hollow; break; }
-    case 'bj': {                                 // what the table shows after the move: never the hole card while the hand goes on
+    case 'bj': {                                 // what the table shows after the move: never the hole card while a hand goes on
       const h = mini.hand, l = mini.last, wins = { X: mini.wins.X, O: mini.wins.O };
-      flash.bj = h ? { act: m, from: bjFrom, cards: h.cards.slice(), dealer: [h.up], hole: true, doubled: !!h.doubled, wins }
-        : { act: m, from: bjFrom, cards: l.cards.slice(), dealer: l.dealer.slice(), hole: false, doubled: l.doubled, res: l.res, gain: l.gain, natural: l.natural, dealerBj: l.dealerBj, wins };
+      const inPlay = () => ({ cards: h.cards.slice(), dealer: [h.up], hole: true, doubled: !!h.doubled });
+      const over = r => ({ cards: r.cards.slice(), dealer: r.dealer.slice(), hole: false, doubled: !!r.doubled, res: r.res, gain: r.gain, natural: !!r.natural, dealerBj: !!r.dealerBj });
+      const pushed = mini.pushed || [];
+      if (pushed.length) {                        // the hand played pushed: it shows, then the new hand is dealt (in play, or a natural settled)
+        flash.bj = Object.assign({ act: m, from: bjFrom, wins, pushes: pushed.length }, over(pushed[0]), { next: h ? inPlay() : over(l) });
+      } else flash.bj = Object.assign({ act: m, from: bjFrom, wins }, h ? inPlay() : over(l));
       break;
     }
     case 'bus': { const l = mini.last; flash.bus = { round: l.round, guess: l.guess, card: l.card, right: l.right, kept: mini.prog[p].slice() }; break; }
@@ -2000,22 +2018,55 @@ function playMs(f, winLen) {
     case 'hexapawn': return (f.capture ? 1000 : 500) + (won ? 600 : 0);
     case 'mastermind': return 450 + MM.pegs * 250 + (won ? 900 : 0);
     case 'bj':      return bjMs(f.bj) + (won ? 600 : 0);
-    case 'bus':     return BUST.draw + BUST.flip + BUST.settle + (won ? 600 : 0);
-    case 'rl':      return RLT.spin + RLT.settle + (won ? 600 : 0);
+    case 'bus':     return BUST.pre + BUST.draw + BUST.flip + BUST.mark + (f.bus && f.bus.right ? BUST.fly : 0) + (won ? 600 : 0);
+    case 'rl':      return RLT.spin + RLT.settle + RLT.hold + (won ? 600 : 0);
   }
   return 500;
 }
 // Blackjack: each card dealt slides in and turns over; at the end of a hand the hole card turns, the dealer
-// draws card by card, and the result shows. Ride the Bus: the card slides off the deck, turns, and goes to
-// its slot (or away). Roulette: the wheel spins and the ball settles in its pocket.
-const BJT = { card: 260, flip: 300, reveal: 520, draw: 520, result: 500 };
-const BUST = { draw: 380, flip: 380, settle: 520 };
-const RLT = { spin: 2700, settle: 450 };
+// draws card by card, and the result shows. Ride the Bus: the guess shows (the chosen answer lights up,
+// when it is someone else's: the computer's, the other phone's, or a timed-out one), the card slides off
+// the deck and turns over, the tick or cross shows, and only then, if right, the card moves into its slot.
+// (The phone that made the guess skips the first part: BUST.pre is counted here for the turn clock.)
+// Roulette: the wheel spins, the ball settles in its pocket, and the hit or miss holds a second more.
+const BJT = { card: 260, flip: 300, reveal: 520, draw: 520, result: 500, pushHold: 700 };
+const BUST = { pre: 800, draw: 380, flip: 380, mark: 450, fly: 480 };
+const RLT = { spin: 2700, settle: 450, hold: 1000 };
+// When each card of a Blackjack move comes in (ms into the move): the deal (player, dealer, player, then
+// the dealer's card face down), a card drawn, then at the end of a hand the hole card turning over and the
+// dealer's draws; the result shows at `end`. After a push (b.next): the push shows, the cards clear at
+// `swap`, and the new hand is dealt (NP, ND), settled at once if it is a natural (`nEnd`).
+function bjPlan(b) {
+  const T = BJT, P = [], D = [];
+  let t = 0;
+  const dealAt = (P, D, t0) => {
+    P[0] = { slideAt: t0, flipAt: t0 + T.card }; D[0] = { slideAt: t0 + T.card, flipAt: t0 + 2 * T.card };
+    P[1] = { slideAt: t0 + 2 * T.card, flipAt: t0 + 3 * T.card }; D[1] = { slideAt: t0 + 3 * T.card, flipAt: null };
+    return t0 + 4 * T.card + T.flip;
+  };
+  const dealerPlays = (hand, D, t0) => {
+    D[1] = Object.assign({}, D[1], { flipAt: t0 }); t0 += T.reveal;
+    for (let k = 2; k < hand.dealer.length; k++) { D[k] = { slideAt: t0, flipAt: t0 + T.card }; t0 += T.draw; }
+    return t0;
+  };
+  if (!b.from) t = dealAt(P, D, 0);
+  else for (let k = b.from; k < b.cards.length; k++) { P[k] = { slideAt: t, flipAt: t + T.card }; t += T.card + T.flip; }
+  const plan = { P, D, pEnd: t, end: t };
+  if (b.res) plan.end = t = dealerPlays(b, D, t);
+  if (b.next) {
+    t += T.result + T.pushHold;
+    plan.swap = t;
+    plan.NP = []; plan.ND = [];
+    plan.nPEnd = plan.nEnd = t = dealAt(plan.NP, plan.ND, t);
+    if (b.next.res) plan.nEnd = dealerPlays(b.next, plan.ND, t);
+  }
+  return plan;
+}
 function bjMs(b) {
   if (!b) return 800;
-  let ms = b.from ? (b.cards.length - b.from) * (BJT.card + BJT.flip) : 4 * BJT.card + BJT.flip;   // the deal: four cards, then the faces turn
-  if (b.res) ms += BJT.reveal + Math.max(0, b.dealer.length - 2) * BJT.draw + BJT.result;
-  return ms;
+  const pl = bjPlan(b);
+  if (b.next) return pl.nEnd + (b.next.res ? BJT.result : 0);
+  return pl.end + (b.res ? BJT.result : 0);
 }
 // The whole playback of settled moves on the other phone: the glow, the move, its result.
 function replayMs(entries) {
@@ -2065,4 +2116,4 @@ function matchStats(st) {
 }
 
 // Node (the Cloud Functions and the tests): the same names as a module.
-if (typeof module !== "undefined" && module.exports) module.exports = { CARD, BJ, BUS, RL, BJT, BUST, RLT, BUS_AVG, cardDeck, isCard, cardRank, cardRed, cardName, bjValue, bjTotal, bjNatural, bjDealerPlay, bjOutcome, bjStrategy, bjMs, busRight, busDeck, busOdds, rlRed, rlBet, rlCovers, tttOpen, lineOpen, majorityResult, STYLE0, huntSize, huntBand, huntClue, normTimer, resignLocal, TYPES, OLD_TYPES, SNL, BUMP, snlRow, snlBoard, snlValid, snlExpected, coinPick, markCoins, coinMarksFor, normLocal, seatLocal, INFO, C4, HP, MM, HEX_N, HILO, CANDY, NAME_MAX, COINS, RISKY, BS, HUNT, DICE_GOAL, MEMORY, LINES, WORDS5, WORDS_HANG, VALID5, other, makeRng, needRng, randInt, randomType, shuffle, memoryDeck, wordleMarks, hexNeighbors, hexPath, canMove, hpMoves, mmFeedback, mmValid, MM_ALL, mmAll, mmCode, mmCandidates, mmBestGuess, hpGoalRow, upgradeMini, anyMove, huntDist, candyTrack, newMini, pickType, newSquare, CPU_NAME, defaultSetup, cpuSide, normSetup, syncNames, enabledGames, TIMER_OPTIONS, newTimer, playerName, newState, startMatch, newMatch, findRun, applyMove, AI, publicMini, wordleCandidates, hangmanCandidates, bsCandidates, bsPlacements, bsShip, huntCandidates, WINDOWS, windowsOf, lineNeeds, c4Playable, hexDist, candyExpected, COIN_NEEDS, needsOf, memoryPair, winChance, tttMinimax, c4Drop, c4Eval, C4_ORDER, c4Search, C4_DEPTH, c4Moves, HP_MEMO, hpSolve, hpMovesValued, hpNeeds, hexMoves, threatScore, pickValued, localBest, squareValue, moveGain, cpuMove, VALID5_LIST, randomLegalMove, timeoutMove, mainResult, playMove, endFlash, leaveSquare, RECENT_MAX, MATCH_FIELDS, secretOf, hideMini, matchRecord, fullState, settle, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, newOnlineMatch, PLAY, diceSlot, playMs, replayMs, armClock, applyOnlineResign, matchStats };
+if (typeof module !== "undefined" && module.exports) module.exports = { CARD, BJ, BUS, RL, BJT, BUST, RLT, BUS_AVG, cardDeck, isCard, cardRank, cardRed, cardName, bjValue, bjTotal, bjNatural, bjDealerPlay, bjOutcome, bjStrategy, bjPlan, bjMs, busRight, busDeck, busOdds, rlRed, rlBet, rlCovers, tttOpen, lineOpen, majorityResult, STYLE0, huntSize, huntBand, huntClue, normTimer, resignLocal, TYPES, OLD_TYPES, SNL, BUMP, snlRow, snlBoard, snlValid, snlExpected, coinPick, markCoins, coinMarksFor, normLocal, seatLocal, INFO, C4, HP, MM, HEX_N, HILO, CANDY, NAME_MAX, COINS, RISKY, BS, HUNT, DICE_GOAL, MEMORY, LINES, WORDS5, WORDS_HANG, VALID5, other, makeRng, needRng, randInt, randomType, shuffle, memoryDeck, wordleMarks, hexNeighbors, hexPath, canMove, hpMoves, mmFeedback, mmValid, MM_ALL, mmAll, mmCode, mmCandidates, mmBestGuess, hpGoalRow, upgradeMini, anyMove, huntDist, candyTrack, newMini, pickType, newSquare, CPU_NAME, defaultSetup, cpuSide, normSetup, syncNames, enabledGames, TIMER_OPTIONS, newTimer, playerName, newState, startMatch, newMatch, findRun, applyMove, AI, publicMini, wordleCandidates, hangmanCandidates, bsCandidates, bsPlacements, bsShip, huntCandidates, WINDOWS, windowsOf, lineNeeds, c4Playable, hexDist, candyExpected, COIN_NEEDS, needsOf, memoryPair, winChance, tttMinimax, c4Drop, c4Eval, C4_ORDER, c4Search, C4_DEPTH, c4Moves, HP_MEMO, hpSolve, hpMovesValued, hpNeeds, hexMoves, threatScore, pickValued, localBest, squareValue, moveGain, cpuMove, VALID5_LIST, randomLegalMove, timeoutMove, mainResult, playMove, endFlash, leaveSquare, RECENT_MAX, MATCH_FIELDS, secretOf, hideMini, matchRecord, fullState, settle, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, newOnlineMatch, PLAY, diceSlot, playMs, replayMs, armClock, applyOnlineResign, matchStats };

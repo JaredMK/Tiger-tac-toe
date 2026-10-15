@@ -97,9 +97,12 @@ function statsUp(counts, into) {
   for (const [k, n] of Object.entries(counts)) up['stats/' + k] = ServerValue.increment(n);
   return up;
 }
-// Players active today, this week and this month: each counted once per period (by a hash only).
+// Players active today, this week and this month: each counted once per period (by a hash only). An
+// account's own last activity (lastSeen/{uid}, for the admin's Accounts table) moves on too.
 async function markActive(ids, t) {
-  const k = S.periodKeys(t), up = {};
+  const k = S.periodKeys(t), up = {}, seen = {};
+  for (const id of new Set(ids.filter(x => typeof x === 'string' && x.startsWith('u:')))) seen[`lastSeen/${id.slice(2)}`] = t;
+  if (Object.keys(seen).length) await db.ref().update(seen);
   for (const id of new Set(ids.filter(Boolean))) {
     const h = S.hashId(id);
     for (const p of ['d', 'w', 'm']) {
@@ -144,6 +147,28 @@ exports.track = onCall(CALL, async req => {
     await db.ref().update(statsUp(S.endUpdates(d.mode, sum, ms, t, !started)));   // a start never reported counts now
   } else throw new HttpsError('invalid-argument', 'Not an event.');
   await markActive([who], t);
+  return { ok: true };
+});
+
+// Playtest activity, with or without an account: a device's app opens and matches (statsRules.js:
+// checkDev). The device is its browser's random id, hashed; the tester tag comes from the link it was
+// first opened with (?t=sam) and is kept from the first event that carries one. A logged-in player's
+// event also moves their account's last activity on (lastSeen), which stays apart from the device.
+const DEV_CAP = 20000;                                         // events kept per device: enough for any playtest
+exports.devlog = onCall(CALL, async req => {
+  const t = now(), c = S.checkDev(req.data, t);
+  if (!c) throw new HttpsError('invalid-argument', 'Not an event.');
+  const seen = (await db.ref(`devices/${c.h}/n`).get()).val() || 0;
+  if (seen >= DEV_CAP) return { ok: false };
+  const tx = await db.ref(`devlog/${c.h}/${c.k}`).transaction(cur => (cur ? undefined : c.ev), undefined, false);
+  if (!tx.committed) return { ok: true, seen: true };          // sent before (a retry or a reload)
+  await db.ref(`devices/${c.h}`).transaction(cur => {
+    const d = cur || {};
+    d.first = Math.min(d.first || t, t); d.last = Math.max(d.last || 0, t); d.n = (d.n || 0) + 1;
+    if (!d.tag && c.tag) d.tag = c.tag;
+    return d;
+  }, undefined, false);
+  if (!isAnon(req)) await db.ref(`lastSeen/${req.auth.uid}`).set(t);
   return { ok: true };
 });
 
@@ -265,10 +290,11 @@ async function activeGame(uid) {
 // A player's Find Match record, as the intro and the results show it.
 function recordOf(p) { return { wins: (p && p.wins) || 0, losses: (p && p.losses) || 0, draws: (p && p.draws) || 0 }; }
 // A finished match added to one player's records (as increments, so nothing else written to the profile
-// meanwhile is lost): the result to the Find Match or friends record, the squares to the mini-game stats.
+// meanwhile is lost): the result to the Find Match or friends record and to that record's side (sides/X
+// or sides/O: the games played as X and as O), the squares to the mini-game stats.
 function recordUp(up, uid, result, squares, side, friend) {
   const base = `users/${uid}/${friend ? 'friend/' : ''}`;
-  for (const [k, n] of Object.entries(R.recordDelta(result))) if (n) up[base + k] = ServerValue.increment(n);
+  for (const [k, n] of Object.entries(R.recordDelta(result))) if (n) { up[base + k] = ServerValue.increment(n); up[`${base}sides/${side}/${k}`] = ServerValue.increment(n); }
   for (const [t, v] of Object.entries(R.squaresFor(squares, side))) {
     if (v.won) up[`users/${uid}/minis/${t}/won`] = ServerValue.increment(v.won);
     if (v.lost) up[`users/${uid}/minis/${t}/lost`] = ServerValue.increment(v.lost);
@@ -672,7 +698,7 @@ function historyRecord(mode, side, them, st, final, at, rating) {
 
 /* ===================== local matches: a logged-in player's own record ===================== */
 // Reported by the phone once a local match is over (won, lost, or left): kept once per match, private
-// to the player. localStats/{uid}: the record and squares won and lost per mini-game; localHistory/{uid}:
+// to the player. localStats/{uid}: the record (and by side: sides/X, sides/O) and squares won and lost per mini-game; localHistory/{uid}:
 // the match, its final board included, as in the game history.
 exports.recordLocal = onCall(CALL, async req => {
   const uid = needAccount(req);
@@ -684,7 +710,7 @@ exports.recordLocal = onCall(CALL, async req => {
   const tx = await db.ref(`localHistory/${uid}/l_${rep.id}`).transaction(cur => (cur ? undefined : h));
   if (!tx.committed) return { ok: true, seen: true };          // reported already
   const up = {};
-  for (const [k, n] of Object.entries(R.recordDelta(h.result))) if (n) up[`localStats/${uid}/${k}`] = ServerValue.increment(n);
+  for (const [k, n] of Object.entries(R.recordDelta(h.result))) if (n) { up[`localStats/${uid}/${k}`] = ServerValue.increment(n); up[`localStats/${uid}/sides/${rep.side}/${k}`] = ServerValue.increment(n); }
   for (const [t, v] of Object.entries(R.squaresFor(rep.final.squares, rep.side))) {
     if (v.won) up[`localStats/${uid}/minis/${t}/won`] = ServerValue.increment(v.won);
     if (v.lost) up[`localStats/${uid}/minis/${t}/lost`] = ServerValue.increment(v.lost);

@@ -60,6 +60,7 @@ th[aria-sort] { color: var(--ink); }
 th[aria-sort="ascending"] button::after { content: ' ▲'; }
 th[aria-sort="descending"] button::after { content: ' ▼'; }
 td.dim { color: var(--muted); }
+tr.sum td { background: var(--paper); border-bottom: 3px solid var(--ink); font-weight: 700; }
 .bar { display: inline-block; height: 9px; border-radius: 5px; background: var(--sky); vertical-align: middle; margin-left: 6px; }
 .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
 .row h2 { margin: 0; flex: 1; }
@@ -80,11 +81,29 @@ select { border: 2.5px solid var(--ink); border-radius: 10px; padding: 4px 8px; 
 .fields h3 { flex: 0 0 100%; margin: 6px 0 0; font: 400 14px 'Luckiest Guy', sans-serif; letter-spacing: .03em; color: var(--muted); }
 .set { color: var(--green); font-size: 14px; } .unset { color: var(--muted); font-size: 14px; }
 .res { font-size: 15px; } .bad { color: var(--x); } .good { color: var(--green); }
+.wide-chart { overflow-x: auto; } .wide-chart svg { min-width: 640px; }
+.chart .day { stroke: var(--ink); stroke-opacity: .25; stroke-width: 1; }
+.chart .hit { fill: transparent; } .chart .hit:hover { fill: rgba(22, 18, 16, .07); }
+.lnk { all: unset; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; font-family: ui-monospace, Menlo, monospace; font-size: 14px; }
+.lnk:focus-visible { outline: 2px solid var(--sky); outline-offset: 2px; }
+tr.dev { cursor: pointer; } tr.dev:hover td, tr.dev.open td { background: var(--paper); }
+.tlpanel { margin-top: 10px; border: 2.5px solid var(--ink); border-radius: 14px; background: var(--paper); padding: 10px 12px 12px; }
+.tlpanel .row { margin-bottom: 8px; } .tlpanel .row h3 { flex: 1; margin: 0; font: 400 16px 'Luckiest Guy', sans-serif; letter-spacing: .02em; }
+#playCard .kpis { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+.tlist { display: flex; flex-direction: column; gap: 10px; }
+.tses h3 { margin: 0 0 4px; font: 400 14px 'Luckiest Guy', sans-serif; letter-spacing: .03em; }
+.tses p { margin: 0; color: var(--muted); font-size: 15px; }
+.tses ul { margin: 4px 0 0; padding-left: 18px; } .tses li { font-size: 15px; }
+.tag { display: inline-block; border: 2px solid var(--ink); border-radius: 999px; padding: 0 8px; font-size: 14px; background: var(--o-soft); }
+.funnel { display: grid; grid-template-columns: max-content 1fr max-content; gap: 6px 10px; align-items: center; font-size: 16px; margin-top: 6px; }
+.funnel .fb { height: 14px; border-radius: 7px; background: var(--sky); border: 1.5px solid var(--ink); min-width: 2px; }
+.mid-left { color: var(--x); } .mid-open { color: var(--plum); }
 @media (max-width: 480px) { h1 { font-size: 23px; } .kpi b { font-size: 22px; } table { font-size: 15px; } }
 </style>
 </head>
 <body>
 <div class="wrap" id="app"><div class="card msg"><h1>Tic Tac Chaos Stats</h1><p>Loading…</p></div></div>
+<script src="playtest.js"></script>
 <script>
 'use strict';
 const FIREBASE_VERSION = '11.10.0';
@@ -105,6 +124,9 @@ let ctl = { config: {}, secretsSet: {}, bots: {}, botStats: {}, alertLog: [], al
 const DEF = { bots: { enabled: false, waitMin: 40, waitMax: 70, countInRecords: true }, alerts: { enabled: false, sms: false, email: true, phone: '', to: '', after: 5, cooldownMin: 30, gapMin: 3, dailyCap: 20 } };
 const cfgGet = (sec, k) => { const v = ((ctl.config || {})[sec] || {})[k]; return v === undefined || v === null || v === '' ? DEF[sec][k] : v; };
 let sortBy = { k: 'avgWin', dir: 1 }, miniMode = 'all', period = 'd';
+let accts = null, acctSort = { k: 'joined', dir: -1 };                       // the Accounts table: newest first
+let play = null, devSort = { k: 'last', dir: -1 }, devOpen = null, tagPick = '', allSessions = false;   // the playtest section
+const PT = window.Playtest;
 
 // ---------- the numbers ----------
 const n = v => (Number.isFinite(v) ? v : 0);
@@ -126,15 +148,25 @@ function totals() {
   for (const [m] of MODES) if (m !== 'bot') for (const k of Object.keys(t)) t[k] += n(modeRow(m)[k]);   // (matches against a bot: their own row, not the people's totals)
   return t;
 }
-function miniRows() {
-  const pick = miniMode === 'all' ? MODES.map(m => m[0]).filter(m => m !== 'bot') : miniMode === 'people' ? MODES.map(m => m[0]).filter(m => m !== 'cvc' && m !== 'bot') : [miniMode];   // (the bot's matches only when chosen)
-  return Object.keys(GAMES).map(t => {
-    const s = { played: 0, won: 0, draw: 0, open: 0, winMoves: 0, loseMoves: 0, allMoves: 0, xWins: 0, oWins: 0 };
-    for (const m of pick) { const r = (stats.mini && stats.mini[m] && stats.mini[m][t]) || {}; for (const k of Object.keys(s)) s[k] += n(r[k]); }
-    return { t, name: GAMES[t], played: s.played, won: s.won, draw: s.draw, open: s.open,
-      avgWin: ratio(s.winMoves, s.won), avgLose: ratio(s.loseMoves, s.won), avgAll: ratio(s.allMoves, s.played),
-      xRate: ratio(s.xWins, s.won), oRate: ratio(s.oWins, s.won), drawRate: ratio(s.draw, s.won + s.draw) };
-  });
+// A mini-game counts only once its square ended claimed by X or O: a square still open when the match
+// ended (won, drawn, left or resigned) and a board reset after a draw are left out. The stored counters
+// keep those apart (won / draw / open, and the winner's and loser's moves over claimed squares only), so
+// the table is worked out from the claimed ones alone, past matches included.
+function miniSums(t, pick) {
+  const s = { won: 0, draw: 0, open: 0, winMoves: 0, loseMoves: 0, xWins: 0, oWins: 0 };
+  for (const m of pick) { const r = (stats.mini && stats.mini[m] && stats.mini[m][t]) || {}; for (const k of Object.keys(s)) s[k] += n(r[k]); }
+  return s;
+}
+function miniRow(t, name, s) {
+  return { t, name, played: s.won, avgWin: ratio(s.winMoves, s.won), avgLose: ratio(s.loseMoves, s.won), avgAll: ratio(s.winMoves + s.loseMoves, s.won),
+    xRate: ratio(s.xWins, s.won), oRate: ratio(s.oWins, s.won), left: s.draw + s.open };
+}
+function miniPick() { return miniMode === 'all' ? MODES.map(m => m[0]).filter(m => m !== 'bot') : miniMode === 'people' ? MODES.map(m => m[0]).filter(m => m !== 'cvc' && m !== 'bot') : [miniMode]; }   // (the bot's matches only when chosen)
+function miniRows() { const pick = miniPick(); return Object.keys(GAMES).map(t => miniRow(t, GAMES[t], miniSums(t, pick))); }
+function miniAll() {                   // every completed square together: the sums of the rows' own counters
+  const pick = miniPick(), s = { won: 0, draw: 0, open: 0, winMoves: 0, loseMoves: 0, xWins: 0, oWins: 0 };
+  for (const t of Object.keys(GAMES)) { const r = miniSums(t, pick); for (const k of Object.keys(s)) s[k] += r[k]; }
+  return Object.assign(miniRow('all', 'All mini-games', s), { draws: s.draw, open: s.open });
 }
 
 // ---------- charts: plain SVG ----------
@@ -199,11 +231,11 @@ function render() {
   }).join('')}</tbody></table></div><p class="note">Abandoned: started but never finished (left, or the app closed). Draws: ended once neither side could still make three in a row. Turns count a bonus move (a Risky Rolls roll, a Hangman letter) as part of its turn.</p>`;
   const rows = miniRows(), dir = sortBy.dir;
   rows.sort((a, b) => { const x = a[sortBy.k], y = b[sortBy.k]; if (x == null && y == null) return a.name.localeCompare(b.name); if (x == null) return 1; if (y == null) return -1; return (typeof x === 'string' ? x.localeCompare(y) : x - y) * dir; });
-  const cols = [['name', 'Mini-game'], ['played', 'Played'], ['won', 'Won'], ['draw', 'Draw-reset'], ['open', 'Unfinished'], ['avgWin', 'Avg winner moves'], ['avgLose', 'Avg loser moves'], ['avgAll', 'Avg total moves'], ['xRate', 'X wins'], ['oRate', 'O wins']];
-  const maxWin = Math.max(1, ...rows.map(r => r.avgWin || 0));
-  const miniTable = `<div class="tbl"><table><thead><tr>${cols.map(([k, l]) => `<th${sortBy.k === k ? ` aria-sort="${dir > 0 ? 'ascending' : 'descending'}"` : ''}><button data-sort="${k}">${l}</button></th>`).join('')}</tr></thead><tbody>${rows.map(r =>
-    `<tr><td>${esc(r.name)}</td><td>${r.played}</td><td>${r.won}</td><td>${r.draw}</td><td class="dim">${r.open}</td><td>${num(r.avgWin)}${r.avgWin != null ? `<span class="bar" style="width:${Math.round(r.avgWin / maxWin * 60)}px"></span>` : ''}</td><td>${num(r.avgLose)}</td><td>${num(r.avgAll)}</td><td>${pct(r.xRate)}</td><td>${pct(r.oRate)}</td></tr>`).join('')}</tbody></table></div>
-    <p class="note">Moves: the turns each side spent in that square (a bonus roll or letter within a turn counts once). Winner / loser moves are over the games that were won; total moves over every game played, including draws that reset and games left open when the match ended. Tap a heading to sort.</p>`;
+  const cols = [['name', 'Mini-game'], ['played', 'Completed'], ['avgWin', 'Avg winner moves'], ['avgLose', 'Avg loser moves'], ['avgAll', 'Avg total moves'], ['xRate', 'X wins'], ['oRate', 'O wins']];
+  const maxWin = Math.max(1, ...rows.map(r => r.avgWin || 0)), all = miniAll();
+  const miniTr = (r, cls) => `<tr${cls ? ` class="${cls}"` : ''}><td>${esc(r.name)}</td><td>${r.played}</td><td>${num(r.avgWin)}${r.avgWin != null && !cls ? `<span class="bar" style="width:${Math.round(r.avgWin / maxWin * 60)}px"></span>` : ''}</td><td>${num(r.avgLose)}</td><td>${num(r.avgAll)}</td><td>${pct(r.xRate)}</td><td>${pct(r.oRate)}</td></tr>`;
+  const miniTable = `<div class="tbl"><table><thead><tr>${cols.map(([k, l]) => `<th${sortBy.k === k ? ` aria-sort="${dir > 0 ? 'ascending' : 'descending'}"` : ''}><button data-sort="${k}">${l}</button></th>`).join('')}</tr></thead><tbody>${miniTr(all, 'sum')}${rows.map(r => miniTr(r)).join('')}</tbody></table></div>
+    <p class="note">Only completed squares count: those that ended claimed by X or O. Left out: ${all.open} square${all.open === 1 ? '' : 's'} still open when the match ended (won, drawn, left or resigned) and ${all.draws} board${all.draws === 1 ? '' : 's'} reset after a draw. Moves: the turns each side spent in that square (a bonus roll or letter within a turn counts once); total moves are the winner's and the loser's together. Tap a heading to sort; the All row stays on top.</p>`;
   const pnode = { d: 'days', w: 'weeks', m: 'months' }[period];
   const keys = Object.keys(stats[pnode] || {}).sort().reverse().slice(0, period === 'd' ? 31 : 12);
   const ptable = `<div class="tbl"><table><thead><tr><th>${{ d: 'Day', w: 'Week', m: 'Month' }[period]}</th><th>Active players</th><th>Logins</th><th>New accounts</th>${period === 'd' ? '<th>Matches started</th><th>Finished</th>' : ''}</tr></thead><tbody>${keys.map(k => {
@@ -221,6 +253,8 @@ function render() {
       ${kpi('First player (X) wins', pct(ratio(t.xWins, t.xWins + t.oWins)), `${t.xWins} of ${t.xWins + t.oWins} decided`)}
     </div>
     <div class="grid2"><div class="card"><h2>Players per day</h2>${players}</div><div class="card"><h2>Matches finished per day</h2>${matches}</div></div>
+    ${playCard()}
+    ${accountsCard()}
     ${findCard()}
     ${botsCard()}
     ${alertsCard()}
@@ -229,6 +263,109 @@ function render() {
       ${miniTable}<h2 style="margin-top:14px">Average winner moves</h2>${hbarChart(rows, 'avgWin', 'Average winner moves by mini-game', v => num(v))}</div>
     ${flaggedCard()}
     <div class="card"><div class="row"><h2>Players over time</h2><div class="tabs">${[['d', 'Days'], ['w', 'Weeks'], ['m', 'Months']].map(([k, l]) => `<button data-period="${k}" aria-pressed="${period === k}">${l}</button>`).join('')}</div></div>${ptable}</div>`;
+}
+
+// ---------- sorting a table: a heading's button flips its order ----------
+function sortRows(rows, by) {
+  return rows.sort((a, b) => {
+    const x = a[by.k], y = b[by.k];
+    if (x == null && y == null) return 0; if (x == null) return 1; if (y == null) return -1;
+    return (typeof x === 'string' ? x.localeCompare(y) : x - y) * by.dir;
+  });
+}
+const sortHead = (cols, by, attr) => `<thead><tr>${cols.map(([k, l]) => `<th${by.k === k ? ` aria-sort="${by.dir > 0 ? 'ascending' : 'descending'}"` : ''}><button data-${attr}="${k}">${l}</button></th>`).join('')}</tr></thead>`;
+const flip = (by, k, down) => ({ k, dir: by.k === k ? -by.dir : down.includes(k) ? -1 : 1 });
+
+// ---------- accounts: every player with a username (not the bots), from users/, localStats/ and lastSeen/ ----------
+function accountRows() {
+  const a = accts || {}, bots = ctl.bots || {};
+  return Object.entries(a.users || {}).filter(([uid, u]) => u && u.username && !bots[uid]).map(([uid, u]) => {
+    const parts = [u, u.friend || {}, (a.local || {})[uid] || {}];
+    const t = k => parts.reduce((s, r) => s + n(r[k]), 0);
+    const wins = t('wins'), losses = t('losses'), draws = t('draws');
+    return { uid, name: u.username, joined: n(u.joined) || null, last: n((a.seen || {})[uid]) || null, games: wins + losses + draws, wins, losses, draws,
+      rate: ratio(wins, wins + losses + draws), split: `Find Match ${n(u.wins)}-${n(u.losses)}-${n(u.draws)} · Friends ${n(parts[1].wins)}-${n(parts[1].losses)}-${n(parts[1].draws)} · Local ${n(parts[2].wins)}-${n(parts[2].losses)}-${n(parts[2].draws)}` };
+  });
+}
+function accountsCard() {
+  if (!accts) return '<div class="card"><h2>Accounts</h2><p class="note">Not loaded.</p></div>';
+  const rows = sortRows(accountRows(), acctSort);
+  const cols = [['name', 'Username'], ['joined', 'Signed up'], ['last', 'Last active'], ['games', 'Games'], ['wins', 'Record (W-L-D)'], ['rate', 'Win rate']];
+  return `<div class="card" id="accountsCard"><div class="row"><h2>Accounts</h2><span class="note" style="margin:0">${rows.length} account${rows.length === 1 ? '' : 's'}</span></div>
+    <div class="tbl"><table>${sortHead(cols, acctSort, 'asort')}<tbody>${rows.map(r => `<tr><td>${esc(r.name)}</td><td>${PT.nyDate(r.joined)}</td><td>${r.last ? PT.nyWhen(r.last) : '<span class="dim">–</span>'}</td><td>${r.games}</td><td title="${esc(r.split)}">${r.wins}-${r.losses}-${r.draws}</td><td>${pct(r.rate)}</td></tr>`).join('') || '<tr><td colspan="6" class="dim">No accounts yet</td></tr>'}</tbody></table></div>
+    <p class="note">Games and record: every game played with the account, Find Match, friends and local together (hover a record for the split). Last active: the last time the account played, logged in or opened the game. New York time. Bot accounts are left out.</p></div>`;
+}
+
+// ---------- playtest activity (no account needed): devices/ and devlog/, worked out by playtest.js ----------
+function playRows() {
+  const rows = PT.deviceRows((play || {}).devices, (play || {}).logs);
+  return tagPick === '' ? rows : tagPick === '-' ? rows.filter(r => !r.tag) : rows.filter(r => r.tag === tagPick);
+}
+function hourChart(hours) {
+  const W = 840, H = 230, L = 30, B = 34, T = 10, R = 6, iw = W - L - R, ih = H - B - T;
+  const max = Math.max(1, ...hours.map(h => Math.max(h.started, h.finished, h.devices)));
+  const step = iw / hours.length, y = v => T + ih - v / max * ih;
+  let bars = '', hits = '', days = '', pts = [];
+  hours.forEach((h, i) => {
+    const x = L + i * step;
+    if (h.started) bars += `<rect x="${(x + step * .08).toFixed(1)}" y="${y(h.started).toFixed(1)}" width="${(step * .84).toFixed(1)}" height="${(h.started / max * ih).toFixed(1)}" fill="var(--sky)"/>`;
+    if (h.finished) bars += `<rect x="${(x + step * .3).toFixed(1)}" y="${y(h.finished).toFixed(1)}" width="${(step * .4).toFixed(1)}" height="${(h.finished / max * ih).toFixed(1)}" fill="var(--green)"/>`;
+    pts.push(`${(x + step / 2).toFixed(1)},${y(h.devices).toFixed(1)}`);
+    hits += `<rect class="hit" x="${x.toFixed(1)}" y="${T}" width="${step.toFixed(2)}" height="${ih}"><title>${esc(PT.nyWhen(h.t))}: ${h.started} started, ${h.finished} finished, ${h.devices} device${h.devices === 1 ? '' : 's'} active</title></rect>`;
+    if (h.label.endsWith(' 00:00') || i === 0) {
+      const d = h.label.slice(0, 10), [yy, mm, dd] = d.split('-').map(Number), wd = new Date(Date.UTC(yy, mm - 1, dd)).getUTCDay();
+      days += `${i ? `<line class="day" x1="${x.toFixed(1)}" x2="${x.toFixed(1)}" y1="${T}" y2="${T + ih + 4}"/>` : ''}<text x="${(x + 3).toFixed(1)}" y="${H - 18}">${'SunMonTueWedThuFriSat'.slice(wd * 3, wd * 3 + 3)} ${mm}/${dd}</text>`;
+    }
+  });
+  const ticks = [0, .5, 1].map(f => { const v = Math.round(max * f), yy = y(v); return `<line class="ax" x1="${L}" x2="${W - R}" y1="${yy}" y2="${yy}"/><text x="${L - 5}" y="${yy + 4}" text-anchor="end">${v}</text>`; }).join('');
+  const hrs = hours.map((h, i) => (i % 6 === 0 ? `<text x="${(L + i * step + step / 2).toFixed(1)}" y="${H - 4}" text-anchor="middle" style="font-size:9px">${+h.label.slice(11, 13)}</text>` : '')).join('');
+  const line = `<polyline points="${pts.join(' ')}" fill="none" stroke="var(--plum)" stroke-width="1.6" stroke-linejoin="round"/>`;
+  const legend = '<div class="legend"><span><i style="background:var(--sky)"></i>Games started</span><span><i style="background:var(--green)"></i>Games finished</span><span><i style="background:var(--plum)"></i>Active devices (line)</span></div>';
+  return `<div class="chart wide-chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Activity by hour, last 7 days, New York time">${ticks}${days}${bars}${line}${hrs}${hits}</svg></div>${legend}`;
+}
+const modeList = ms => ms.map(m => PT.MODE_NAMES[m] || m).join(', ') || '–';
+const midText = m => (m === 'left' ? '<span class="mid-left">Yes, left</span>' : m === 'open' ? '<span class="mid-open">Yes, unfinished</span>' : 'No');
+function timeline(r) {
+  const ses = r.sessions.slice().reverse();
+  return `<div class="tlist">${ses.map(s => {
+    const opens = s.events.filter(e => e.ev === 'open').length;
+    const games = s.games.map(g => `<li>${PT.nyWhen(g.start).replace(/^\w+ \d+, /, '')} · ${esc(PT.MODE_NAMES[g.mode] || g.mode || '?')} · ${g.how === 'finish' ? `finished after ${PT.dur(g.end - g.start)}` : g.how === 'leave' ? `<span class="mid-left">left after ${PT.dur(g.end - g.start)}</span>` : '<span class="mid-open">not finished</span>'}</li>`).join('');
+    return `<div class="tses"><h3>${PT.nyWhen(s.start)} · ${PT.dur(s.ms)}</h3><p>${s.played} game${s.played === 1 ? '' : 's'} · ${s.streak} finished in a row · ${modeList(s.modes)} · ended mid-match: ${midText(s.mid)}${opens ? ` · opened the app${opens > 1 ? ` ${opens} times` : ''}` : ''}</p>${games ? `<ul>${games}</ul>` : ''}</div>`;
+  }).join('') || '<p class="note">No events.</p>'}</div>`;
+}
+// A device's timeline, under the devices table: its sessions, newest first, each with its games.
+function tlPanel(r) {
+  if (!r) return '';
+  return `<div class="tlpanel" id="devTimeline" role="region" aria-label="Device ${esc(r.short)}: sessions and games"><div class="row"><h3>Device ${esc(r.short)}${r.tag ? ` · ${esc(r.tag)}` : ''}</h3><button class="btn" data-dev="${esc(r.h)}">Close</button></div>
+    <p class="note" style="margin:0 0 8px">First seen ${PT.nyWhen(r.first)} · last seen ${PT.nyWhen(r.last)} · ${r.nSessions} session${r.nSessions === 1 ? '' : 's'} · ${r.games} game${r.games === 1 ? '' : 's'}</p>${timeline(r)}</div>`;
+}
+function playCard() {
+  if (!play) return '<div class="card"><h2>Playtest activity</h2><p class="note">Not loaded.</p></div>';
+  const all = PT.deviceRows(play.devices, play.logs), rows = playRows(), now = Date.now();
+  const tags = [...new Set(all.map(r => r.tag).filter(Boolean))].sort();
+  const pick = `<label>Devices <select id="tagPick"><option value=""${tagPick === '' ? ' selected' : ''}>All (${all.length})</option>${tags.map(t => `<option value="${esc(t)}"${tagPick === t ? ' selected' : ''}>Tester: ${esc(t)}</option>`).join('')}<option value="-"${tagPick === '-' ? ' selected' : ''}>No tester tag</option></select></label>`;
+  const hours = PT.hourly(rows, now), sum = k => hours.reduce((t, h) => t + h[k], 0);
+  const week = new Set(rows.filter(r => r.evs.some(e => e.t > now - 7 * 86400000)).map(r => r.h)).size;
+  const ret = PT.retention(rows, now), f = PT.funnel(rows);
+  const fRow = (label, v) => `<span>${label}</span><div class="fb" style="width:${f.opened ? Math.max(1, Math.round(v / f.opened * 100)) : 0}%"></div><b>${v}${f.opened ? ` · ${pct(v / f.opened)}` : ''}</b>`;
+  const kpis = `<div class="kpis">
+      <div class="kpi"><small>Devices seen</small><b>${rows.length}</b><span>${week} active in the last 7 days</span></div>
+      <div class="kpi"><small>Came back the next day</small><b>${ret.eligible ? pct(ret.nextDay / ret.eligible) : '–'}</b><span>${ret.nextDay} of ${ret.eligible} first seen before today</span></div>
+      <div class="kpi"><small>Came back within 7 days</small><b>${ret.eligible ? pct(ret.week / ret.eligible) : '–'}</b><span>${ret.week} of ${ret.eligible} (newer devices still have time)</span></div>
+      <div class="kpi"><small>Last 7 days</small><b>${sum('started')} / ${sum('finished')}</b><span>games started / finished</span></div></div>`;
+  const funnel = `<h2 style="margin-top:14px">Funnel</h2><div class="funnel">${fRow('Opened the app', f.opened)}${fRow('Started a game', f.started)}${fRow('Finished a game', f.finished)}${fRow('Started another', f.another)}</div>`;
+  // devices: newest first by default; a tap opens the device's sessions and games
+  const drows = sortRows(rows.slice(), devSort);
+  const dcols = [['short', 'Device'], ['tag', 'Tester'], ['first', 'First seen'], ['last', 'Last seen'], ['nSessions', 'Sessions'], ['games', 'Games'], ['perSession', 'Games / session'], ['back', 'Came back']];
+  const devTable = `<h2 style="margin-top:14px">Devices</h2><div class="tbl"><table>${sortHead(dcols, devSort, 'dsort')}<tbody>${drows.map(r => `<tr class="dev${devOpen === r.h ? ' open' : ''}" data-dev="${esc(r.h)}"><td><button class="lnk" data-dev="${esc(r.h)}" aria-expanded="${devOpen === r.h}" aria-label="Device ${esc(r.short)}: show its sessions and games">${esc(r.short)}</button></td><td>${r.tag ? `<span class="tag">${esc(r.tag)}</span>` : '<span class="dim">–</span>'}</td><td>${PT.nyWhen(r.first)}</td><td>${PT.nyWhen(r.last)}</td><td>${r.nSessions}</td><td>${r.games}</td><td>${num(r.perSession)}</td><td>${r.back ? 'Yes' : 'No'}</td></tr>`).join('') || '<tr><td colspan="8" class="dim">No devices yet</td></tr>'}</tbody></table></div>${tlPanel(rows.find(r => r.h === devOpen))}`;
+  // sessions, newest first
+  const ses = rows.flatMap(r => r.sessions.map(s => Object.assign({ dev: r }, s))).sort((a, b) => b.start - a.start);
+  const shown = allSessions ? ses : ses.slice(0, 30);
+  const sesTable = `<h2 style="margin-top:14px">Sessions</h2><div class="tbl"><table><thead><tr><th>Started</th><th>Device</th><th>Tester</th><th>Length</th><th>Games</th><th>Finished in a row</th><th style="text-align:left">Modes</th><th>Ended mid-match</th></tr></thead><tbody>${shown.map(s => `<tr><td>${PT.nyWhen(s.start)}</td><td><button class="lnk" data-dev="${esc(s.dev.h)}">${esc(s.dev.short)}</button></td><td>${s.dev.tag ? esc(s.dev.tag) : '<span class="dim">–</span>'}</td><td>${PT.dur(s.ms)}</td><td>${s.played}</td><td>${s.streak}</td><td style="text-align:left">${esc(modeList(s.modes))}</td><td>${midText(s.mid)}</td></tr>`).join('') || '<tr><td colspan="8" class="dim">No sessions yet</td></tr>'}</tbody></table></div>${ses.length > 30 ? `<button class="btn" data-act="all-sessions" style="margin-top:8px">${allSessions ? 'Show the latest 30' : `Show all ${ses.length}`}</button>` : ''}`;
+  return `<div class="card" id="playCard"><div class="row"><h2>Playtest activity</h2>${pick}</div>${kpis}
+    <h2 style="margin-top:14px">Activity by hour</h2><p class="note" style="margin:0 0 6px">Last 7 days, New York time. Hover an hour for its numbers.</p>${hourChart(hours)}
+    ${funnel}${devTable}${sesTable}
+    <p class="note">Every device gets a random anonymous id, kept in its browser; nothing personal is collected. A tester tag comes from the link (add ?t=name to the game's address, e.g. ?t=sam) and stays with the device from the first time it is seen. A session ends after 30 minutes with nothing. Games: every match started on the device, any mode. Finished: played to a result; left: quit (resigned or left the match); unfinished: still under way when the session ended. Came back: seen again on a later day (New York days).</p></div>`;
 }
 
 // ---------- matchmaking controls: Find Match on or off (features/findMatch, read by the game and the server) ----------
@@ -353,12 +490,20 @@ async function load() {
     const [snap, fl] = await Promise.all([fb.dbM.get(fb.dbM.ref(fb.db, 'stats')), fb.dbM.get(fb.dbM.ref(fb.db, 'review/flaggedNames')).catch(() => null)]);
     stats = snap.val() || {};
     flagged = fl ? fl.val() : null;
-    await loadCtl();
+    await Promise.all([loadCtl(), loadPeople()]);
     view = { status: 'ready', error: '' };
   } catch (e) {
     view = { status: 'denied', error: /permission/i.test(String(e && (e.code || e.message))) ? 'The database refused: the admin flag is not on this account yet.' : 'Could not load the stats.' };
   }
   render();
+}
+// The accounts (users/ is readable when logged in; localStats/ and lastSeen/ by the admin only) and the
+// playtest logs (devices/, devlog/: the admin only). Each part on its own: one refused leaves the rest.
+async function loadPeople() {
+  const g = p => fb.dbM.get(fb.dbM.ref(fb.db, p)).then(s => s.val() || {}).catch(() => null);
+  const [users, local, seen, devices, logs] = await Promise.all([g('users'), g('localStats'), g('lastSeen'), g('devices'), g('devlog')]);
+  accts = users ? { users, local: local || {}, seen: seen || {} } : null;
+  play = devices || logs ? { devices: devices || {}, logs: logs || {} } : null;
 }
 async function loadCtl() {
   const g = p => fb.dbM.get(fb.dbM.ref(fb.db, p)).then(s => s.val()).catch(() => null);
@@ -381,7 +526,8 @@ async function signIn(how) {
   }
 }
 app.addEventListener('click', e => {
-  const b = e.target.closest('button');
+  let b = e.target.closest('button');
+  if (!b) { const tr = e.target.closest('tr.dev'); if (tr) b = tr.querySelector('button[data-dev]'); }   // a tap anywhere on a device's row
   if (!b || !fb) return;
   if (b.dataset.act === 'google') signIn('google');
   else if (b.dataset.act === 'email') signIn('email');
@@ -389,11 +535,16 @@ app.addEventListener('click', e => {
   else if (b.dataset.act === 'refresh') { b.disabled = true; load(); }
   else if (b.dataset.sort) { const k = b.dataset.sort; sortBy = { k, dir: sortBy.k === k ? -sortBy.dir : k === 'name' || k === 'avgWin' || k === 'avgLose' || k === 'avgAll' ? 1 : -1 }; render(); }
   else if (b.dataset.period) { period = b.dataset.period; render(); }
+  else if (b.dataset.asort) { acctSort = flip(acctSort, b.dataset.asort, ['joined', 'last', 'games', 'wins', 'rate']); render(); }
+  else if (b.dataset.dsort) { devSort = flip(devSort, b.dataset.dsort, ['first', 'last', 'nSessions', 'games', 'perSession', 'back']); render(); }
+  else if (b.dataset.dev) { devOpen = devOpen === b.dataset.dev ? null : b.dataset.dev; render(); const el = devOpen && document.getElementById('devTimeline'); if (el) el.scrollIntoView({ block: 'nearest' }); }
+  else if (b.dataset.act === 'all-sessions') { allSessions = !allSessions; render(); }
   else if (b.dataset.act === 'save-keys') saveKeys();
   else if (b.dataset.act === 'test-alert') testAlert(b);
 });
 app.addEventListener('change', e => {
   if (e.target.id === 'mm') { miniMode = e.target.value; render(); }
+  else if (e.target.id === 'tagPick') { tagPick = e.target.value; devOpen = null; render(); }
   else if (e.target.dataset && e.target.dataset.cfg) saveCfg(e.target);
   else if (e.target.dataset && e.target.dataset.feat) saveFeat(e.target);
 });
