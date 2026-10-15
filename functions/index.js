@@ -144,7 +144,7 @@ exports.track = onCall(CALL, async req => {
     const c = await claimMatch(id, 'e', t);
     if (!c) return { ok: true, seen: true };
     const started = !!(c.prev && c.prev.s), ms = started ? t - c.prev.t0 : Number(d.ms);
-    await db.ref().update(statsUp(S.endUpdates(d.mode, sum, ms, t, !started)));   // a start never reported counts now
+    await db.ref().update(statsUp(S.endUpdates(d.mode, sum, ms, t, !started, testTypesOf(await releasesNow()))));   // a start never reported counts now
   } else throw new HttpsError('invalid-argument', 'Not an event.');
   await markActive([who], t);
   return { ok: true };
@@ -275,6 +275,14 @@ exports.cancelSearch = onCall(CALL, async req => {
 });
 // Find Match is on only while the admin page has switched it on (features/findMatch true); missing means off.
 async function findMatchOn() { return (await db.ref('features/findMatch').get()).val() === true; }
+// Release control (engine.js: isReleased): the dashboard's switches, releases/{type}; a game not there is
+// as the code has it. testTypes: the games admin only right now (their stats are kept apart).
+async function releasesNow() { return (await db.ref('releases').get()).val() || {}; }
+const testTypesOf = rel => E.TYPES.filter(t => !E.isReleased(t, rel));
+async function isAdminUser(uid) {
+  if (!uid) return false;
+  try { const u = await admin.auth().getUser(uid); return !!(u.customClaims && u.customClaims.admin === true); } catch (e) { return false; }
+}
 async function leaveQueue(key, uid) {
   await db.ref(`queue/${key}/${uid}`).transaction(cur => (cur && cur.game ? undefined : null), undefined, false);
 }
@@ -324,7 +332,7 @@ async function makeGame(key, id, X, O, opts) {
   const bot = opts && opts.bot;
   const Q = R.QUEUES[key], t = now();
   const rng = seedRng();
-  const rec = E.newOnlineMatch({ names: { X: X.e.name, O: O.e.name }, games: Object.fromEntries(E.TYPES.map(g => [g, true])), timer: Q.timer }, rng, id);
+  const rec = E.newOnlineMatch({ names: { X: X.e.name, O: O.e.name }, games: Object.fromEntries(E.releasedTypes(await releasesNow()).map(g => [g, true])), timer: Q.timer }, rng, id);   // released games only, whoever is playing
   E.armClock(rec.state, [], t + MATCH_GRACE_MS);
   const seat = p => Object.assign({ uid: p.uid, name: p.e.name, record: p.e.rec || { wins: 0, losses: 0, draws: 0 } }, R.RATINGS_ENABLED ? { rating: p.e.rating } : {});   // the record for the players' intro
   const players = { X: seat(X), O: seat(O) };
@@ -667,7 +675,7 @@ async function finishGame(id) {
   up[`games/${id}/pub/final`] = JSON.stringify(final);
   up[`games/${id}/pub/recorded`] = { at: now(), done: true };
   up[`games/${id}/dl`] = null;
-  statsUp(S.endUpdates(bg ? 'bot' : pub.mode, E.matchStats(st), t - (pub.created || t), t, false), up);
+  statsUp(S.endUpdates(bg ? 'bot' : pub.mode, E.matchStats(st), t - (pub.created || t), t, false, testTypesOf(await releasesNow())), up);
   if (bg) {
     Object.assign(up, { [`botGames/${id}/live`]: null, [`botGames/${id}/next`]: null, [`botGames/${id}/done`]: true, [`botGames/${id}/winner`]: st.winner || null });
     up['botStats/finished'] = ServerValue.increment(1);
@@ -730,6 +738,19 @@ exports.friendGameDone = onValueWritten({ ref: '/rooms/{code}/match' }, async ev
   const sid = 'f_' + event.params.code + '_' + String(st.id || 'm').replace(/[^-\w]/g, '');
   if (!b || b.id !== st.id) {                                  // a new match in the room: counted as started
     const t = now();
+    // The match may only hold games its players may see: the released ones, or any game when the
+    // host is the admin (a guest plays them in that match only). A match that does not (a tampered
+    // page) is taken out of the room, which goes back to its lobby. Matches already under way are
+    // not touched when a game's release changes.
+    const roomNow = (await db.ref(`rooms/${event.params.code}`).get()).val() || {};
+    const allowed = E.allowedTypes(await releasesNow(), await isAdminUser(roomNow.host));
+    const held = (Array.isArray(st.games) ? st.games : []).concat((st.squares || []).map(sq => sq && sq.mini && sq.mini.type));
+    const bad = held.filter(g => g && !allowed.includes(g) && !E.OLD_TYPES.includes(g));
+    if (bad.length) {
+      logger.warn('room match refused: admin-only games', event.params.code, bad);
+      await db.ref(`rooms/${event.params.code}`).update({ match: null, status: 'lobby', refused: { at: t, games: [...new Set(bad)] } });
+      return;
+    }
     if (await claimMatch(sid, 's', t)) {
       await db.ref().update(statsUp(S.startUpdates('friend', t)));
       const room0 = (await db.ref(`rooms/${event.params.code}/players`).get()).val() || {};
@@ -746,7 +767,7 @@ exports.friendGameDone = onValueWritten({ ref: '/rooms/{code}/match' }, async ev
   const t1 = now(), done = await claimMatch(sid, 'e', t1);
   if (done) {
     const started = !!(done.prev && done.prev.s);
-    await db.ref().update(statsUp(S.endUpdates('friend', E.matchStats(st), started ? t1 - done.prev.t0 : null, t1, !started)));
+    await db.ref().update(statsUp(S.endUpdates('friend', E.matchStats(st), started ? t1 - done.prev.t0 : null, t1, !started, testTypesOf(await releasesNow()))));
   }
   const names = { X: room.players.X ? room.players.X.name : 'X', O: room.players.O ? room.players.O.name : 'O' };
   const final = finalOf({ state: st, secrets: parse(after.secrets) }, names);

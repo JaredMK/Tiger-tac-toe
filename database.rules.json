@@ -12,7 +12,21 @@
           "$side": {
             ".write": "auth != null && $side.matches(/^[XO]$/) && !data.exists() && newData.child('uid').val() == auth.uid && root.child('rooms').child($code).child('status').val() == 'lobby'"
           }
+        },
+        "setup": {
+          "games": {
+            "$type": {
+              ".validate": "newData.isBoolean() && (newData.val() == false || auth.token.admin === true || (root.child('releases').child($type).exists() ? root.child('releases').child($type).val() === true : $type.matches(/^(ttt|c4|bs|wordle|hangman|hex|hilo|snakes|memory|candy|bump|coins|pig|hunt|mastermind|bj|bus|rl|dice|hexapawn)$/)))"
+            }
+          }
         }
+      }
+    },
+    "releases": {
+      ".read": true,
+      "$type": {
+        ".write": "auth != null && auth.token.admin === true",
+        ".validate": "$type.matches(/^[a-z0-9]{2,16}$/) && newData.isBoolean()"
       }
     },
     "presence": {

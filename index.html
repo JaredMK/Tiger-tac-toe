@@ -433,6 +433,7 @@ svg text { text-rendering: geometricPrecision; }   /* laid out at its true size,
 .chk svg { width: 18px; height: 18px; flex: none; color: var(--muted); }
 .chk span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .chk.off { opacity: .55; }
+.chk .tst { position: absolute; top: -9px; left: 10px; font-size: 9px; line-height: 1; letter-spacing: .05em; text-transform: uppercase; padding: 3px 6px 2px; border: 2px solid var(--ink); border-radius: 999px; background: var(--o-soft); color: var(--ink); pointer-events: none; }   /* an admin-only game, on test: a sticker on the corner, no room taken from the name */
 @media (max-width: 359px) {
   .chk { font-size: 13px; padding: 0 10px; gap: 8px; }
   .chk svg { display: none; }
@@ -2179,7 +2180,7 @@ function renderHowTo() {
     <div class="setup-box" data-keep-scroll="howto">
       <div class="rulecard">${RULES_CORE.map(t => `<p>${t}</p>`).join('')}</div>
       <div class="games-h"><span>Mini-games</span><small>Tap one for its rules</small></div>
-      <div class="games howlist">${TYPES.map(t => `<button class="chk how" data-act="explain" data-t="${t}" aria-label="How to play ${EXPLAIN[t].name}">${ICONS[t]}<span>${EXPLAIN[t].name}</span><i class="qbtn sm" aria-hidden="true">?</i></button>`).join('')}</div>
+      <div class="games howlist">${visibleTypes().map(t => `<button class="chk how" data-act="explain" data-t="${t}" aria-label="How to play ${EXPLAIN[t].name}">${ICONS[t]}<span>${EXPLAIN[t].name}</span>${testBadge(t)}<i class="qbtn sm" aria-hidden="true">?</i></button>`).join('')}</div>
     </div></main>`;
 }
 
@@ -2201,7 +2202,7 @@ function renderMenu() {
 /* ----- setup screen ----- */
 function renderSetup() {
   const s = state.setup;
-  const on = enabledGames(s).length;
+  const VT = visibleTypes(), on = enabledGames(s).filter(t => VT.includes(t)).length;   // (an admin-only game does not exist here for anyone but the admin)
   const host = isHost(), mode = host ? 'online' : s.mode === 'cpu' ? 'cpu' : 'two', human = s.human === 'O' ? 'O' : 'X', cpu = cpuSide(s);
   const guest = host ? other(state.online.me) : null;
   const field = p => (p === guest
@@ -2209,7 +2210,7 @@ function renderSetup() {
     : `<label class="field ${p}"><span>${p} player${cpu === p ? ' · computer' : host ? ' · you' : ''}</span><input data-p="${p}" value="${esc(s.names[p] || '')}" maxlength="${NAME_MAX}" placeholder="${cpu === p ? CPU_NAME : p}" autocomplete="off" autocapitalize="words" aria-label="${p} player name"></label>`);
   const pick = host && s.hostPick === 'random' ? 'random' : human;   // the host: X, O, or drawn at random for every match
   const sides = mode !== 'two' ? `<div class="sides${host ? ' three' : ''}" role="group" aria-label="Your side"><span>You play</span><button class="seg X${pick === 'X' ? ' on' : ''}" data-act="side" data-side="X" aria-pressed="${pick === 'X'}">${host ? 'X<small>goes first</small>' : 'X · goes first'}</button><button class="seg O${pick === 'O' ? ' on' : ''}" data-act="side" data-side="O" aria-pressed="${pick === 'O'}">O</button>${host ? `<button class="seg${pick === 'random' ? ' on' : ''}" data-act="side" data-side="random" aria-pressed="${pick === 'random'}">Random</button>` : ''}</div>` : '';
-  const chk = t => `<label class="chk${s.games[t] ? '' : ' off'}"><input type="checkbox" data-t="${t}"${s.games[t] ? ' checked' : ''}>${ICONS[t]}<span>${INFO[t].name}</span>${qBtn(t, 'sm')}</label>`;
+  const chk = t => `<label class="chk${s.games[t] ? '' : ' off'}"><input type="checkbox" data-t="${t}"${s.games[t] ? ' checked' : ''}>${ICONS[t]}<span>${INFO[t].name}</span>${testBadge(t)}${qBtn(t, 'sm')}</label>`;
   const timer = host ? `<div class="timerrow" role="group" aria-label="Time per turn"><span>Time per turn</span>${TIMER_OPTIONS.map(v => `<button class="seg${(s.timer || 0) === v ? ' on' : ''}" data-act="timer" data-v="${v}">${TIMER_LABEL[v]}</button>`).join('')}</div>` : '';
   const room = host ? `<div class="room"><small>Room code</small><b class="code">${esc(state.online.code)}</b>
       <div class="row"><button class="btn" data-act="share">Share link</button></div>
@@ -2242,32 +2243,33 @@ function renderSetup() {
     ${host ? `<div class="names">${field('X')}${field('O')}</div>` : `<div class="slots">${slots()}</div>`}
     ${host ? sides : ''}
     ${timer}
-    <div class="adv${advOpen ? ' open' : ''}"><button class="adv-h" data-act="adv" aria-expanded="${advOpen}"><span>Advanced</span><small>${on} of ${TYPES.length} mini-games on</small><i class="chev">${CHEV}</i></button>
-      ${advOpen ? `<div class="games-top"><button class="btn selall" data-act="games-none"${on === 0 ? ' disabled' : ''}>Deselect all</button><button class="btn selall" data-act="games-all"${on === TYPES.length ? ' disabled' : ''}>Select all</button></div><div class="games">${TYPES.map(chk).join('')}</div>` : ''}</div>
+    <div class="adv${advOpen ? ' open' : ''}"><button class="adv-h" data-act="adv" aria-expanded="${advOpen}"><span>Advanced</span><small>${on} of ${VT.length} mini-games on</small><i class="chev">${CHEV}</i></button>
+      ${advOpen ? `<div class="games-top"><button class="btn selall" data-act="games-none"${on === 0 ? ' disabled' : ''}>Deselect all</button><button class="btn selall" data-act="games-all"${on === VT.length ? ' disabled' : ''}>Select all</button></div><div class="games">${VT.map(chk).join('')}</div>` : ''}</div>
   </div>
   <div class="setup-foot"><button class="primary" data-act="start"${ready ? '' : ' disabled'}>Start match</button><small class="warn">${setupWarn(s)}</small></div></main>`;
 }
 // Start opens once at least one mini-game is on (online, also once the friend is in).
-function setupReady(s) { const on = enabledGames(s).length; return isHost() ? !!(on && state.online.joined && connected) : !!on; }
-function setupWarn(s) { return !enabledGames(s).length ? 'Select at least one mini-game to start' : isHost() && !setupReady(s) ? 'Start opens once your friend has joined' : ''; }
+const onGames = s => enabledGames(s).filter(t => visibleTypes().includes(t));   // the games on, among those this player may see
+function setupReady(s) { const on = onGames(s).length; return isHost() ? !!(on && state.online.joined && connected) : !!on; }
+function setupWarn(s) { return !onGames(s).length ? 'Select at least one mini-game to start' : isHost() && !setupReady(s) ? 'Start opens once your friend has joined' : ''; }
 // Ticking a mini-game (or Select all) changes the screen in place, with no re-render, so the list
 // stays exactly where it was scrolled and Advanced stays open. The choice is saved for the next match.
 function setGames(change) {
   const s = state.setup;
   change(s.games);
   save();
-  const on = enabledGames(s).length;
+  const VT = visibleTypes(), on = onGames(s).length;
   for (const box of app.querySelectorAll('input[data-t]')) {
     const v = !!s.games[box.dataset.t];
     box.checked = v;
     box.closest('.chk').classList.toggle('off', !v);
   }
-  const n = app.querySelector('.adv-h small'); if (n) n.textContent = `${on} of ${TYPES.length} mini-games on`;
-  const all = app.querySelector('[data-act="games-all"]'); if (all) all.disabled = on === TYPES.length;
+  const n = app.querySelector('.adv-h small'); if (n) n.textContent = `${on} of ${VT.length} mini-games on`;
+  const all = app.querySelector('[data-act="games-all"]'); if (all) all.disabled = on === VT.length;
   const none = app.querySelector('[data-act="games-none"]'); if (none) none.disabled = on === 0;
   const start = app.querySelector('[data-act="start"]'); if (start) start.disabled = !setupReady(s);
   const warn = app.querySelector('.setup-foot .warn'); if (warn) warn.textContent = setupWarn(s);
-  dbSetup({ games: s.games });
+  dbSetup({ games: restrictGames(Object.assign({}, s.games), VT) });   // (the room never holds a game its host may not deal)
 }
 
 /* ----- main board ----- */
@@ -3301,6 +3303,7 @@ function loadFirebase() {
     m.onValue(m.ref(db, '.info/serverTimeOffset'), s => { serverOffset = s.val() || 0; });
     m.onValue(m.ref(db, '.info/connected'), s => onConnected(!!s.val()));
     m.onValue(m.ref(db, 'features/findMatch'), s => setFindOn(s.val() === true), () => {});
+    m.onValue(m.ref(db, 'releases'), s => setReleases(s.val() || {}), () => {});
     if (!mock) { onAuthUser(f.auth.currentUser); authM.onAuthStateChanged(f.auth, u => onAuthUser(u)); }
     return fb;
   })().catch(e => { fbLoad = null; throw e; });
@@ -3443,7 +3446,7 @@ async function hostRoom(code, resume) {
       await m.set(m.ref(db, 'rooms/' + o.code), {
         created: m.serverTimestamp(), host: uid, status: 'lobby',
         players: { [o.me]: { uid, name, joined: m.serverTimestamp() } },
-        setup: { games: state.setup.games, timer: state.setup.timer || 0, hostSide: o.me, hostPick: state.setup.hostPick === 'random' ? 'random' : o.me },
+        setup: { games: restrictGames(Object.assign({}, state.setup.games), visibleTypes()), timer: state.setup.timer || 0, hostSide: o.me, hostPick: state.setup.hostPick === 'random' ? 'random' : o.me },
       });
       if (state.online !== o) { closeSeat(o.code, o.me, true); return; }   // went back while the room was opening
     } catch (e) {
@@ -3470,7 +3473,7 @@ async function cleanupRooms() {
 function guestName() { return state.online && state.online.me ? playerName(state, other(state.online.me)) : ''; }
 function roomSetup(players, setup) {
   const p = players || (room && room.players) || {}, s = setup || (room && room.setup) || {};
-  return { names: { X: p.X ? p.X.name : 'X', O: p.O ? p.O.name : 'O' }, games: s.games || state.setup.games, timer: normTimer(s.timer) };
+  return { names: { X: p.X ? p.X.name : 'X', O: p.O ? p.O.name : 'O' }, games: restrictGames(Object.assign({}, s.games || state.setup.games), visibleTypes()), timer: normTimer(s.timer) };
 }
 // Who plays which side in a match, kept with the match itself (the room's seats can swap for the next one).
 function seatsOf(players) { const seat = q => ({ uid: (q && q.uid) || null, name: String((q && q.name) || '').slice(0, NAME_MAX) }); return { X: seat(players.X), O: seat(players.O) }; }
@@ -4009,6 +4012,27 @@ let acctUnsubs = [];
 let afterLogin = null;                       // where to go once logged in and named: 'find', 'profile' or 'host'
 let loginMsg = null, loginBusy = false, loginMail = '', loginPass = '', unameMsg = null, unameDraft = '';
 let search = { on: false, found: false, since: 0, msg: '' }, searchTimer = null, searchBusy = false;
+// Release control (engine.js: isReleased): which mini-games are released, as the database last said
+// (releases/{type}, read at every start and followed live once online; kept for the next visit). An
+// admin-only game exists only for the admin: in their local matches and the friend games they host.
+const REL_KEY = KEY + '.releases';
+let releases = (() => { try { const v = JSON.parse(localStorage.getItem(REL_KEY) || '{}'); return v && typeof v === 'object' ? v : {}; } catch (e) { return {}; } })();
+function setReleases(v) {
+  const next = v && typeof v === 'object' ? v : {};
+  if (JSON.stringify(next) === JSON.stringify(releases)) return;
+  releases = next;
+  try { localStorage.setItem(REL_KEY, JSON.stringify(releases)); } catch (e) { /* no storage: read again next visit */ }
+  if (['setup', 'howto', 'join'].includes(state.screen)) render();
+}
+function fetchReleases() {                                     // a plain read of the public node, SDK or no SDK
+  if (!configured()) return;
+  const hook = window.TTT_FIREBASE, c = (hook && hook.config) || FIREBASE_CONFIG;
+  const url = hook && hook.emulator ? `http://${hook.emulator.host}:${hook.emulator.port}/releases.json?ns=${c.projectId}-default-rtdb` : `${c.databaseURL}/releases.json`;
+  try { fetch(url).then(r => (r.ok ? r.json() : null)).then(v => { if (v !== null) setReleases(v || {}); }).catch(() => {}); } catch (e) { /* offline: as last known */ }
+}
+const isAdmin = () => !!(acct && acct.admin);
+const visibleTypes = () => allowedTypes(releases, isAdmin());     // the games this player may see and play
+const testBadge = t => (isReleased(t, releases) ? '' : '<i class="tst">Testing</i>');   // (only the admin ever sees one)
 // Find Match is on only while the admin page has it on (features/findMatch); off until the database says otherwise.
 let findOn = (() => { try { return localStorage.getItem(KEY + '.find') === 'on'; } catch (e) { return false; } })();
 function setFindOn(on) {
@@ -4078,8 +4102,9 @@ function onAuthUser(u) {
   if ((acct.user ? acct.user.uid : null) === uid && (acct.ready || uid)) return;
   for (const off of acctUnsubs) off();
   acctUnsubs = [];
-  acct = { user: uid ? { uid, email: u.email || '' } : null, profile: null, active: null, ready: !uid };
+  acct = { user: uid ? { uid, email: u.email || '' } : null, profile: null, active: null, ready: !uid, admin: false };
   rememberAccount(!!uid);
+  if (uid) { const me = acct; u.getIdTokenResult(true).then(r => { if (acct === me && r && r.claims && r.claims.admin === true) { me.admin = true; render(); } }).catch(() => {}); }   // the admin flag: admin-only games show
   if (uid) track({ ev: 'login' });                     // a login (or a returning one) for the stats
   if (!uid && (state.screen === 'login' || state.screen === 'username')) return;   // a guest session starting: nothing on these screens changes
   if (uid) {
@@ -4600,12 +4625,13 @@ function renderJoin() {
   const hostName = seated && room && room.players && room.players[hostSide] ? room.players[hostSide].name : null;
   const timer = room && room.setup ? normTimer(room.setup.timer) : 0;
   // Seated: the game as separate labelled lines, like the other setup screens.
-  const games = room && room.setup && room.setup.games ? TYPES.filter(t => room.setup.games[t] !== false) : TYPES;
+  const pool = TYPES.filter(t => visibleTypes().includes(t) || (room && room.setup && room.setup.games && room.setup.games[t]));   // the games this guest knows of, and the host's (an admin host may deal games on test)
+  const games = room && room.setup && room.setup.games ? pool.filter(t => room.setup.games[t] !== false) : pool;
   const info = seated && room ? `<div class="jinfo">
       <div class="field"><span>Host</span><div class="namebox">${esc(hostName || 'the host')}</div></div>
       <div class="field"><span>Your side</span><div class="namebox">${room.setup && room.setup.hostPick === 'random' ? 'Drawn at random every match' : `<b class="side ${o.me}">${o.me}</b>`}</div></div>
       <div class="field"><span>Time per turn</span><div class="namebox">${TIMER_LABEL[timer]}</div></div>
-      <div class="field"><span>Mini-games</span><div class="namebox${games.length === TYPES.length ? '' : ' gl'}">${games.length === TYPES.length ? `All ${TYPES.length}` : `<span>${games.length} of ${TYPES.length}</span><span class="gicons" aria-label="${esc(games.map(t => INFO[t].name).join(', '))}">${games.map(t => ICONS[t]).join('')}</span>`}</div></div>
+      <div class="field"><span>Mini-games</span><div class="namebox${games.length === pool.length ? '' : ' gl'}">${games.length === pool.length ? `All ${pool.length}` : `<span>${games.length} of ${pool.length}</span><span class="gicons" aria-label="${esc(games.map(t => INFO[t].name).join(', '))}">${games.map(t => ICONS[t]).join('')}</span>`}</div></div>
     </div>` : '';
   const status = net.status === 'error' ? `<div class="warn">${esc(net.msg)}</div>`
     : seated && room ? `${info}<div class="status ok">Waiting for <b>${esc(hostName || 'the host')}</b> to start…</div>`
@@ -4758,7 +4784,7 @@ app.addEventListener('click', e => {
   } else if (act === 'games-none') {            // Deselect all: every mini-game off, in place (Start waits for one)
     if (state.screen === 'setup') setGames(g => { for (const t of TYPES) g[t] = false; });
   } else if (act === 'games-all') {             // Select all: every mini-game on, in place
-    if (state.screen === 'setup') setGames(g => { for (const t of TYPES) g[t] = true; });
+    if (state.screen === 'setup') setGames(g => { for (const t of visibleTypes()) g[t] = true; });
   } else if (act === 'side') {
     if (isHost()) {                             // X or O: the seats move over in the room (its answer updates the screen); Random: drawn at each start
       const pick = el.dataset.side === 'random' ? 'random' : el.dataset.side === 'O' ? 'O' : 'X';
@@ -4837,6 +4863,7 @@ app.addEventListener('click', e => {
   } else if (act === 'start') {
     if (state.online) { startOnline(); return; }
     seatLocal(state.setup, RNG);
+    restrictGames(state.setup.games, visibleTypes());           // never a game this player may not see
     if (startMatch(state, RNG)) { trackStart(); commit(); }
   }
 });
@@ -4960,6 +4987,7 @@ async function leaveAndJoin(code) {
 }
 function boot() {
   clockTimer = setInterval(tick, 250);
+  fetchReleases();                                            // which mini-games are released, before any match is set up
   takeTag();                                                  // a playtester's link (?t=sam): before the address is tidied below
   devOpen();
   setInterval(devPulse, 60000);

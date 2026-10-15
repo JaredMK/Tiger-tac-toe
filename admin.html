@@ -235,7 +235,7 @@ function render() {
   const maxWin = Math.max(1, ...rows.map(r => r.avgWin || 0)), all = miniAll();
   const miniTr = (r, cls) => `<tr${cls ? ` class="${cls}"` : ''}><td>${esc(r.name)}</td><td>${r.played}</td><td>${num(r.avgWin)}${r.avgWin != null && !cls ? `<span class="bar" style="width:${Math.round(r.avgWin / maxWin * 60)}px"></span>` : ''}</td><td>${num(r.avgLose)}</td><td>${num(r.avgAll)}</td><td>${pct(r.xRate)}</td><td>${pct(r.oRate)}</td></tr>`;
   const miniTable = `<div class="tbl"><table><thead><tr>${cols.map(([k, l]) => `<th${sortBy.k === k ? ` aria-sort="${dir > 0 ? 'ascending' : 'descending'}"` : ''}><button data-sort="${k}">${l}</button></th>`).join('')}</tr></thead><tbody>${miniTr(all, 'sum')}${rows.map(r => miniTr(r)).join('')}</tbody></table></div>
-    <p class="note">Only completed squares count: those that ended claimed by X or O. Left out: ${all.open} square${all.open === 1 ? '' : 's'} still open when the match ended (won, drawn, left or resigned) and ${all.draws} board${all.draws === 1 ? '' : 's'} reset after a draw. Moves: the turns each side spent in that square (a bonus roll or letter within a turn counts once); total moves are the winner's and the loser's together. Tap a heading to sort; the All row stays on top.</p>`;
+    <p class="note">${miniMode === 'testing' ? 'Squares of games played while they were admin only, in every mode, kept apart from the released games\' numbers. ' : ''}Only completed squares count: those that ended claimed by X or O. Left out: ${all.open} square${all.open === 1 ? '' : 's'} still open when the match ended (won, drawn, left or resigned) and ${all.draws} board${all.draws === 1 ? '' : 's'} reset after a draw. Moves: the turns each side spent in that square (a bonus roll or letter within a turn counts once); total moves are the winner's and the loser's together. Tap a heading to sort; the All row stays on top.</p>`;
   const pnode = { d: 'days', w: 'weeks', m: 'months' }[period];
   const keys = Object.keys(stats[pnode] || {}).sort().reverse().slice(0, period === 'd' ? 31 : 12);
   const ptable = `<div class="tbl"><table><thead><tr><th>${{ d: 'Day', w: 'Week', m: 'Month' }[period]}</th><th>Active players</th><th>Logins</th><th>New accounts</th>${period === 'd' ? '<th>Matches started</th><th>Finished</th>' : ''}</tr></thead><tbody>${keys.map(k => {
@@ -256,10 +256,11 @@ function render() {
     ${playCard()}
     ${accountsCard()}
     ${findCard()}
+    ${releasesCard()}
     ${botsCard()}
     ${alertsCard()}
     <div class="card"><h2>Matches by mode</h2>${modeTable}</div>
-    <div class="card"><div class="row"><h2>Mini-games</h2><label>Modes <select id="mm">${[['all', 'All modes'], ['people', 'All but computer vs computer']].concat(MODES).map(([v, l]) => `<option value="${v}"${miniMode === v ? ' selected' : ''}>${l}</option>`).join('')}</select></label></div>
+    <div class="card"><div class="row"><h2>Mini-games</h2><label>Modes <select id="mm">${[['all', 'All modes'], ['people', 'All but computer vs computer']].concat(MODES, [['testing', 'Admin-only games (testing)']]).map(([v, l]) => `<option value="${v}"${miniMode === v ? ' selected' : ''}>${l}</option>`).join('')}</select></label></div>
       ${miniTable}<h2 style="margin-top:14px">Average winner moves</h2>${hbarChart(rows, 'avgWin', 'Average winner moves by mini-game', v => num(v))}</div>
     ${flaggedCard()}
     <div class="card"><div class="row"><h2>Players over time</h2><div class="tabs">${[['d', 'Days'], ['w', 'Weeks'], ['m', 'Months']].map(([k, l]) => `<button data-period="${k}" aria-pressed="${period === k}">${l}</button>`).join('')}</div></div>${ptable}</div>`;
@@ -368,6 +369,25 @@ function playCard() {
     <p class="note">Every device gets a random anonymous id, kept in its browser; nothing personal is collected. A tester tag comes from the link (add ?t=name to the game's address, e.g. ?t=sam) and stays with the device from the first time it is seen. A session ends after 30 minutes with nothing. Games: every match started on the device, any mode. Finished: played to a result; left: quit (resigned or left the match); unfinished: still under way when the session ended. Came back: seen again on a later day (New York days).</p></div>`;
 }
 
+// ---------- game releases: Released or Admin only, per mini-game (releases/{type}, read by the game and the server) ----------
+// A game not in the database is as the code has it (TEST_TYPES in engine.js: admin only until released here).
+const TEST_TYPES = ['bullseye', 'echo', 'plinko', 'golf', 'pool', 'pong', 'bowling', 'trivia', 'oddone'];   // (as engine.js has them; the switches cover every game the stats know)
+const isReleased = t => (ctl.releases && typeof ctl.releases[t] === 'boolean' ? ctl.releases[t] : !TEST_TYPES.includes(t));
+function releasesCard() {
+  const rows = Object.entries(GAMES).map(([t, name]) => { const on = isReleased(t); return `<tr><td>${esc(name)}</td><td><label class="sw"><input type="checkbox" data-rel="${t}"${on ? ' checked' : ''}><span class="${on ? 'good' : ''}">${on ? 'Released' : 'Admin only'}</span></label></td></tr>`; }).join('');
+  return `<div class="card ctl" id="relCard"><h2>Game releases</h2>
+    <p class="note">Admin only: the game exists for nobody but you (not in the Advanced checklist, How to Play, random draws, Find Match or anyone else's rooms). You can play it in local matches and in friend games you host; your guest plays it in that match only. Find Match deals released games only, even for you. A change applies to new matches at once; matches under way are not affected. Squares of admin-only games are counted under "Admin-only games (testing)" in the mini-game stats.</p>
+    <div class="tbl"><table><thead><tr><th>Mini-game</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+}
+async function saveRelease(el) {
+  const t = el.dataset.rel, on = el.checked;
+  if (on && !confirm(`Release ${GAMES[t] || t} to everyone?\n\nIt will appear in the Advanced checklist, How to Play, random draws and Find Match for every player, in new matches from now on.`)) { el.checked = false; return; }
+  try {
+    await fb.dbM.set(fb.dbM.ref(fb.db, `releases/${t}`), on);
+    ctl.releases = Object.assign({}, ctl.releases, { [t]: on });
+  } catch (e) { alert('Could not save: ' + (e && e.message)); }
+  render();
+}
 // ---------- matchmaking controls: Find Match on or off (features/findMatch, read by the game and the server) ----------
 function findCard() {
   const on = !!(ctl.features && ctl.features.findMatch === true);
@@ -507,9 +527,9 @@ async function loadPeople() {
 }
 async function loadCtl() {
   const g = p => fb.dbM.get(fb.dbM.ref(fb.db, p)).then(s => s.val()).catch(() => null);
-  const [config, secretsSet, bots, botStats, alertStats, features, log] = await Promise.all([g('admin/config'), g('admin/secretsSet'), g('bots'), g('botStats'), g('alertStats'), g('features'),
-    fb.dbM.get(fb.dbM.query(fb.dbM.ref(fb.db, 'alertLog'), fb.dbM.orderByChild('at'), fb.dbM.limitToLast(8))).then(s => s.val()).catch(() => null)]);
-  ctl = { config: config || {}, secretsSet: secretsSet || {}, bots: bots || {}, botStats: botStats || {}, alertStats: alertStats || {}, features: features || {},
+  const [config, secretsSet, bots, botStats, alertStats, features, log, releases] = await Promise.all([g('admin/config'), g('admin/secretsSet'), g('bots'), g('botStats'), g('alertStats'), g('features'),
+    fb.dbM.get(fb.dbM.query(fb.dbM.ref(fb.db, 'alertLog'), fb.dbM.orderByChild('at'), fb.dbM.limitToLast(8))).then(s => s.val()).catch(() => null), g('releases')]);
+  ctl = { config: config || {}, secretsSet: secretsSet || {}, bots: bots || {}, botStats: botStats || {}, alertStats: alertStats || {}, features: features || {}, releases: releases || {},
     alertLog: Object.values(log || {}).sort((a, b) => b.at - a.at) };
 }
 async function signIn(how) {
@@ -547,6 +567,7 @@ app.addEventListener('change', e => {
   else if (e.target.id === 'tagPick') { tagPick = e.target.value; devOpen = null; render(); }
   else if (e.target.dataset && e.target.dataset.cfg) saveCfg(e.target);
   else if (e.target.dataset && e.target.dataset.feat) saveFeat(e.target);
+  else if (e.target.dataset && e.target.dataset.rel) saveRelease(e.target);
 });
 boot().catch(() => { app.innerHTML = '<div class="card msg"><h1>Tic Tac Chaos Stats</h1><p>Could not load. Check the connection and reload.</p></div>'; });
 </script>

@@ -4,7 +4,8 @@
  *
  * stats/ (readable by the admin only, written only by the server)
  *   mini/{mode}/{type}     played, won, draw (reset), open (match ended first), winMoves, loseMoves,
- *                          allMoves, xWins, oWins: sums, averaged on the dashboard
+ *                          allMoves, xWins, oWins: sums, averaged on the dashboard (mode 'testing': the
+ *                          squares of games that were admin only when the match ended, kept apart)
  *   modes/{mode}           started, finished, resigned, timeouts, turns, ms, timed (matches with a time),
  *                          xWins, oWins, draws (no line left for either side)
  *   days/{YYYY-MM-DD}      logins, active, newAccounts, started/{mode}, finished/{mode}
@@ -61,8 +62,9 @@ function startUpdates(mode, t) {
   return { [`modes/${mode}/started`]: 1, [`days/${k.d}/started/${mode}`]: 1 };
 }
 // What a finished match adds: the mode's totals and every mini-game played in it. `ms` is null when
-// the match has no usable time.
-function endUpdates(mode, sum, ms, t, withStart) {
+// the match has no usable time. testTypes: the mini-games that are admin only at the time (their
+// squares count under mini/testing, apart from the released games' numbers).
+function endUpdates(mode, sum, ms, t, withStart, testTypes) {
   const k = periodKeys(t), up = withStart ? startUpdates(mode, t) : {};
   const add = (p, n) => { if (n) up[p] = (up[p] || 0) + n; };
   const turns = sum.squares.reduce((n, e) => n + e.X + e.O, 0);
@@ -75,7 +77,7 @@ function endUpdates(mode, sum, ms, t, withStart) {
   else if (sum.reason === 'blocked') add(`modes/${mode}/draws`, 1);   // a draw: no line left for either side
   if (Number.isFinite(ms) && ms >= 0 && ms <= MAX_MS) { add(`modes/${mode}/ms`, Math.round(ms)); add(`modes/${mode}/timed`, 1); }
   for (const e of sum.squares) {
-    const b = `mini/${mode}/${e.t}/`;
+    const b = `mini/${testTypes && testTypes.includes(e.t) ? 'testing' : mode}/${e.t}/`;
     add(b + 'played', 1);
     add(b + e.end, 1);
     add(b + 'allMoves', e.X + e.O);

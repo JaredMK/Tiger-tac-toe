@@ -402,6 +402,30 @@ to queue anyone, and anyone already searching is taken out of the queue and sent
 Matches already under way carry on, and "Back to your match" still works. Play a Friend is not
 affected. Switching it on takes effect at once on every open page.
 
+### Game releases
+
+Every mini-game is **Released** or **Admin only**. The **Game releases** card on the admin dashboard
+has a switch per game (stored at `releases/{type}`: anyone can read it, only the admin can change it;
+a game not there is as the code has it, `TEST_TYPES` in `engine.js`, which lists the games that start
+admin only). Releasing a game asks for a confirmation; the change applies to new matches at once, and
+matches already under way are not affected.
+
+An admin-only game exists for nobody but the admin: it is not in the Advanced checklist, How to Play
+or the explainer list, never dealt or drawn for a reset, never in Find Match, and never in a room
+anyone else hosts, logged in or not. The game page reads the releases at every start (a plain read of
+the public node, SDK or no SDK, kept for the next visit) and follows them live once online; the
+engine cuts every setup down to the games its player may see before a match starts. The admin
+(the account with the admin flag, read from its sign-in token) sees every game, admin-only ones with
+a small **Testing** badge, and can play them in local matches and in friend games they host; their
+guest plays them in that match only. Find Match deals released games only, even for the admin.
+
+Enforcement is on the server too: the database rules refuse a room setup that names an admin-only
+game unless the host is the admin, and the server checks every new friend match against the releases
+(with the host's admin flag); a match that holds a game its players may not see (a tampered page) is
+taken out of the room, which goes back to its lobby. The stats keep testing data apart: squares of
+games played while admin only are counted under "Admin-only games (testing)" in the mini-game table,
+whatever the mode, not with the released games' numbers.
+
 ### Matchmaking backfill and the empty-queue alert
 
 Both are switched on and set from the admin dashboard (they start off), and both act only when

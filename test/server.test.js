@@ -1181,3 +1181,77 @@ test('Find Match off (missing means off): searches refused and taken out of the 
   await runScript('make-admin.js', 'SwitchBoss', 'revoke');
   await put('features/findMatch', true);
 });
+
+/* ===================================== game releases ===================================== */
+test('release control: an admin-only game exists for nobody but the admin: not in Find Match, not in a room\'s setup, not in a match; only the admin switches it; its stats kept apart', async () => {
+  const boss = await player('Rel_Boss'), a = await player('Rel_A'), b = await player('Rel_B'), guest = await player('Rel_G');
+  const only = (...ts) => Object.fromEntries(E.TYPES.map(t => [t, ts.includes(t)]));
+  await put('releases', null);
+  await denied(a.write('releases/ttt', false), 'a player switching a game to admin only');
+  await denied(a.write('releases/ttt', true), 'a player releasing a game');
+  await runScript('make-admin.js', 'Rel_Boss', 'grant');
+  await boss.auth.currentUser.getIdToken(true);
+  await boss.write('releases/ttt', false);                       // Tic-tac-toe is admin only now
+  await denied(boss.write('releases/c4', 'yes'), 'a release that is not a boolean');
+  await denied(boss.write('releases/Bad Type', true), 'a release of a name that is not a game\'s');
+  assert.equal(await a.read('releases/ttt'), false, 'everyone can read the releases (the game reads them at every start)');
+  assert.equal(await guest.read('releases/ttt'), false);
+  // Find Match: released games only, even with the admin playing
+  const g = await pairUp(boss, a);
+  const st = await gameState(g.id);
+  assert.ok(!st.games.includes('ttt') && st.squares.every(sq => sq.mini.type !== 'ttt'), 'no Tic-tac-toe in a Find Match game');
+  assert.equal(st.games.length, E.TYPES.length - 1, 'every other game is dealt');
+  assert.equal((await a.call('resign', { game: g.id })).ok, true);
+  await recorded(g.id);
+  // a room: a non-admin host cannot deal it (the rules refuse the setup); off is fine; the admin's room may
+  const code = 'RELNA';
+  await a.write(`rooms/${code}`, { created: Date.now(), host: a.uid, status: 'lobby', players: { X: { uid: a.uid, name: 'Rel_A', joined: Date.now() } }, setup: { games: only('c4', 'hilo'), timer: 0, hostSide: 'X' } });
+  await denied(a.write(`rooms/${code}/setup/games/ttt`, true), 'a non-admin host putting an admin-only game in the room');
+  await denied(a.write(`rooms/${code}/setup/games`, only('ttt', 'c4')), 'nor in the whole list');
+  await a.write(`rooms/${code}/setup/games/ttt`, false);
+  await a.write(`rooms/${code}/setup/games/hex`, true);
+  // the match itself, tampered to hold it: the server takes it out of the room, which goes back to its lobby
+  await guest.write(`rooms/${code}/players/O`, { uid: guest.uid, name: 'Rel_G', joined: Date.now() });
+  const tampered = E.newOnlineMatch({ names: { X: 'Rel_A', O: 'Rel_G' }, games: only('ttt', 'c4') }, E.makeRng(21), 'rel1');
+  assert.ok(tampered.state.squares.some(sq => sq.mini.type === 'ttt'), '(the tampered match holds Tic-tac-toe squares)');
+  await a.write(`rooms/${code}/status`, 'playing');
+  await a.write(`rooms/${code}/match`, { state: JSON.stringify(tampered.state), secrets: JSON.stringify(tampered.secrets) });
+  const refused = await until(async () => { const r = await get(`rooms/${code}`); return r && !r.match && r.status === 'lobby' && r.refused ? r : null; }, 10000, 'the tampered match taken out of the room');
+  assert.deepEqual(refused.refused.games, ['ttt']);
+  assert.equal(await get(`history/${a.uid}/f_${code}_rel1`), null, 'nothing of it recorded');
+  // the admin's room: the game may be dealt, the guest plays it in that match, and its squares are counted apart
+  const ac = 'RELAD';
+  await boss.write(`rooms/${ac}`, { created: Date.now(), host: boss.uid, status: 'lobby', players: { X: { uid: boss.uid, name: 'Rel_Boss', joined: Date.now() } }, setup: { games: only('ttt', 'c4'), timer: 0, hostSide: 'X' } });
+  await b.write(`rooms/${ac}/players/O`, { uid: b.uid, name: 'Rel_B', joined: Date.now() });
+  const rec = E.newOnlineMatch({ names: { X: 'Rel_Boss', O: 'Rel_B' }, games: only('ttt', 'c4') }, E.makeRng(22), 'rel2');
+  await boss.write(`rooms/${ac}/status`, 'playing');
+  await boss.write(`rooms/${ac}/match`, { state: JSON.stringify(rec.state), secrets: JSON.stringify(rec.secrets) });
+  await wait(1500);
+  const kept = await get(`rooms/${ac}`);
+  assert.ok(kept.match && kept.status === 'playing' && !kept.refused, 'the admin\'s match stays');
+  const full = E.fullState(rec);
+  full.squares.forEach((sq, i) => { sq.mini = E.newMini(i < 3 ? 'ttt' : 'c4', E.makeRng('r' + i)); sq.mv = { X: 2, O: 1 }; });
+  full.squares[0].owner = 'X'; full.squares[1].owner = 'X'; full.squares[2].owner = 'X'; full.squares[4].owner = 'O';
+  full.winner = 'X'; full.winLine = [0, 1, 2]; full.winReason = 'line';
+  full.sqlog = [{ t: 'ttt', end: 'won', w: 'X', X: 2, O: 1 }, { t: 'ttt', end: 'won', w: 'X', X: 2, O: 1 }, { t: 'ttt', end: 'won', w: 'X', X: 2, O: 1 }, { t: 'c4', end: 'won', w: 'O', X: 1, O: 2 }];
+  const end = E.matchRecord(full);
+  const d = await delta(['mini/testing/ttt/won', 'mini/friend/ttt/won', 'mini/friend/c4/won', 'mini/testing/c4/won'], async () => {
+    await b.write(`rooms/${ac}/match`, { state: JSON.stringify(end.state), secrets: JSON.stringify(end.secrets) });
+    await until(() => b.read(`history/${b.uid}/f_${ac}_rel2`), 10000, 'the admin\'s friend match recorded');
+  });
+  assert.deepEqual(d, { 'mini/testing/ttt/won': 3, 'mini/friend/ttt/won': 0, 'mini/friend/c4/won': 1, 'mini/testing/c4/won': 0 }, 'the admin-only game\'s squares under testing, the released one\'s under the mode');
+  assert.deepEqual((await get(`users/${b.uid}`)).minis.ttt, { lost: 3 }, 'the players\' own records count them like any square');
+  // a local match reported by a phone: the same split
+  const dl = await delta(['mini/testing/ttt/won', 'mini/cpu/ttt/won', 'mini/cpu/hilo/won'], async () => {
+    await guest.call('track', { ev: 'end', mode: 'cpu', id: 'relloc' + Date.now(), dev: 'drel1', winner: 'X', reason: 'line', squares: [{ t: 'ttt', end: 'won', w: 'X', X: 3, O: 2 }, { t: 'hilo', end: 'won', w: 'O', X: 1, O: 2 }] });
+  });
+  assert.deepEqual(dl, { 'mini/testing/ttt/won': 1, 'mini/cpu/ttt/won': 0, 'mini/cpu/hilo/won': 1 });
+  // released again: back in Find Match at once (new matches only)
+  await boss.write('releases/ttt', true);
+  const g2 = await pairUp(a, b);
+  assert.ok((await gameState(g2.id)).games.includes('ttt'), 'released: dealt again');
+  assert.equal((await a.call('resign', { game: g2.id })).ok, true);
+  await recorded(g2.id);
+  await runScript('make-admin.js', 'Rel_Boss', 'revoke');
+  await put('releases', null);
+});
