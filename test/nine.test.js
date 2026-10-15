@@ -38,7 +38,7 @@ test('craps: the come-out roll wins on 7 or 11, loses on 2, 3 or 12; anything el
   assert.equal(r([4, 2], [1, 1], [6, 5], [3, 3]).result, 'win', 'point 6: 2 and 11 mean nothing after the come-out');
 });
 
-test('craps: about 49% of rounds win (244 in 495); first to 2 round wins; a loss takes nothing away; a move is the whole round', () => {
+test('craps: about 49% of rounds win (244 in 495); first to 3 round wins; a loss takes nothing away; a move is the whole round', () => {
   const rng = lcg(5); let w = 0, rolls = 0; const N = 100000;
   for (let k = 0; k < N; k++) { const x = E.crapsRound(rng); if (x.result === 'win') w++; rolls += x.rolls.length; }
   assert.ok(Math.abs(w / N - 244 / 495) < 0.006, `win odds ${(w / N).toFixed(4)} (wanted 0.4929)`);
@@ -49,7 +49,8 @@ test('craps: about 49% of rounds win (244 in 495); first to 2 round wins; a loss
   assert.deepEqual([m.wins.X, m.rounds.X], [0, 1], 'a loss: nothing taken away');
   assert.equal(E.applyMove(m, 'X', 'roll', dice([3, 4])).note, 'won'); assert.equal(m.wins.X, 1);
   assert.deepEqual(E.applyMove(m, 'O', 'auto', dice([2, 2], [2, 2])), { ok: true, outcome: 'continue', note: 'won' }, 'a timeout rolls the round to its end');
-  assert.deepEqual(E.applyMove(m, 'X', 'roll', dice([5, 6])), { ok: true, outcome: 'win', note: 'won' }, 'two rounds: the square');
+  assert.deepEqual(E.applyMove(m, 'X', 'roll', dice([5, 6])), { ok: true, outcome: 'continue', note: 'won' }, 'two rounds: not yet');
+  assert.deepEqual(E.applyMove(m, 'X', 'roll', dice([6, 1])), { ok: true, outcome: 'win', note: 'won' }, 'three rounds: the square');
   for (const bad of ['stand', 3, null]) assert.equal(E.applyMove(E.newMini('craps', lcg(2)), 'X', bad).ok, false);
   // the flash carries every roll and the point; the playback takes each roll in turn
   const st = E.newMatch(lcg(3), { games: ['craps'] });

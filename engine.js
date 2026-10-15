@@ -61,7 +61,7 @@ const INFO = {
   golf:        { name: 'Mini Golf',    hint: 'Drag back to aim and set power. First ball in the cup wins' },
   pool:        { name: 'Pool',         hint: 'Sink your two balls. The black ball loses' },
   bowling:     { name: 'Bowling',      hint: 'Roll at a fresh rack each turn. First to 25 pins' },
-  craps:       { name: 'Craps',        hint: '7 or 11 wins, 2, 3 or 12 loses. Win 2 rounds' },
+  craps:       { name: 'Craps',        hint: '7 or 11 wins, 2, 3 or 12 loses. Win 3 rounds' },
   takeover:    { name: 'Takeover',     hint: 'Take a square and the ones around it. Most squares wins' },
   flood:       { name: 'Flood',        hint: 'Pick a colour. What the blob grabs is yours. First to 18' },
   seating:     { name: 'Seating',      hint: 'Take seats. Both seats of a table make it yours' },
@@ -1081,12 +1081,12 @@ function runStep(sim, dt) {
 const runResult = (sim, out) => ({ dist: r2(Math.min(sim.cfg.target, sim.d)), ms: Math.round(sim.t * 1000), out: !!out && !sim.done });
 
 // ---------- Craps, Takeover and Flood ----------
-// Craps: each player has their own count of rounds won; first to 2 takes the square. A move is a whole
+// Craps: each player has their own count of rounds won; first to 3 takes the square. A move is a whole
 // pass-line round, rolled out at once where the move is made (the server online: the dice are never
 // known before): the come-out roll wins on 7 or 11, loses on 2, 3 or 12, and anything else is the
 // point; then the point again wins and a 7 loses. A loss takes nothing away. The page plays the rolls
 // back one by one (CRAPS.roll ms each, quicker after the fourth), with the puck going on at the point.
-const CRAPS = { goal: 2, roll: 900, quick: 560, quickAfter: 4, puck: 420, hold: 900, winOdds: 244 / 495 };
+const CRAPS = { goal: 3, roll: 900, quick: 560, quickAfter: 4, puck: 420, hold: 900, winOdds: 244 / 495 };
 function crapsRound(rng) {
   const rolls = [];
   let point = null, result = null;
