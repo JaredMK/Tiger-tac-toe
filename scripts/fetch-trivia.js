@@ -39,7 +39,9 @@ function decode(s) {
 const TIME_SENSITIVE = [
   /\b(current(ly)?|as of|latest|most recent(ly)?|newest|recently|present(ly)?|incumbent|reigning|right now|to date|so far|this year|last year|today|nowadays|at the moment)\b/i,
   /\b(record|records|record-holder|holds? the (title|record)|oldest living|youngest ever|longest-running|longest running|still (alive|running|active|in office))\b/i,
-  /\b(tallest|largest|biggest|highest|longest|smallest|richest|wealthiest|fastest|most (popular|expensive|followed|subscribed|watched|played|sold|valuable|visited|populous|spoken|common)|best[- ]selling|highest[- ]grossing|top[- ]selling|number one|#1)\b/i,
+  // a superlative is fine as a settled fact (the largest ocean); not as a standing record (the tallest building in the world)
+  /\b(tallest|largest|biggest|highest|longest|smallest|richest|wealthiest|fastest|oldest|youngest|most [a-z-]+|best[- ]selling|highest[- ]grossing|top[- ]selling)\b[^?]*\b(in the world|on earth|ever|of all time|alive|living|in history|to date|currently|today|right now|record)\b/i,
+  /\b(most (popular|expensive|followed|subscribed|watched|streamed|played|sold|valuable|visited|populous|spoken|common|successful)|number one|#1)\b/i,
   /\b(population|how many (people|users|subscribers|members|countries|states|players|teams|episodes|seasons|films|movies|albums|songs|species))\b/i,
   /\b(price|prices|costs?|worth|net worth|salary|market (cap|value)|gdp|valued at|\$\s?\d)/i,
   /\b(is|are) (the )?(current |present )?(president|prime minister|ceo|chairman|leader|king|queen|monarch|chancellor|mayor|governor|pope|secretary[- ]general|head of state|champion|holder|owner|host|manager|coach|captain)\b/i,
