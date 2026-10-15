@@ -1084,7 +1084,7 @@ test('setup: the app opens on the main menu with default names and every game ti
   assert.equal(st.screen, 'menu', 'the main menu comes first');
   assert.deepEqual(st.setup.names, { X: 'X', O: 'O' });
   assert.deepEqual(L.enabledGames(st.setup), L.TYPES);
-  assert.equal(L.TYPES.length, 24);
+  assert.equal(L.TYPES.length, 26);
   assert.ok(st.setup.games.coins && st.setup.games.pig && st.setup.games.hunt && st.setup.games.snakes && st.setup.games.bump, 'the newer games are on by default');
   assert.ok(st.setup.games.bj && st.setup.games.bus && st.setup.games.rl, 'and the card games and the wheel too');
   assert.ok(L.TEST_TYPES.every(t => st.setup.games[t] && L.TYPES.includes(t)), 'the games on test are in the pool and on by default (for the admin, who alone sees them)');
@@ -1443,6 +1443,7 @@ function randomMove(m, rng, p) {
     case 'pong': return { aim: rng() * 2 - 1, power: rng() };
     case 'trivia': return m.ask[p] ? Math.floor(rng() * 4) : 'auto';
     case 'oddone': return Math.floor(rng() * m.grid[p].n * m.grid[p].n);
+    case 'dash': case 'lane': return rng() < 0.3 ? 'auto' : L.runAuto(m, p, rng);   // a timed-out run, or a short run as the engine itself makes one
   }
   throw new Error('no move for ' + m.type);
 }
@@ -1485,6 +1486,7 @@ const cpuRng = () => lcg(314);
 // a match where the computer plays `me`, with the given squares (type names or ready-made minis)
 function cpuMatch(me, squares, owners = []) {
   const st = matchWith(squares.map(s => (typeof s === 'string' ? s : s.type)));
+  for (let i = squares.length; i < 9; i++) st.squares[i].mini = L.newMini('ttt', lcg(900 + i));   // the rest: fresh, plain squares (what the pool happens to deal must not decide a tactics test)
   squares.forEach((s, i) => { if (typeof s !== 'string') st.squares[i].mini = s; });
   owners.forEach((o, i) => { if (o) st.squares[i].owner = o; });
   st.cpu = me; st.turn = me;
