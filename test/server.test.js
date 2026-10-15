@@ -907,6 +907,7 @@ test('bots: the match is an ordinary one against an ordinary-looking, online acc
   assert.deepEqual([pres[botSide].online, pres[botSide].away], [true, false], 'the bot shows as online, never away');
   // its turn: a tick from the player makes the plan (from when the turn starts on the phone), not the move
   await rewrite(id, full => { tttBoard(full); full.turn = botSide; full.lock = null; full.timer.deadline = Date.now() + 60000; full.timer.for = botSide; });
+  await patch(`botGames/${id}`, { next: null });               // (a bot playing X planned its first move on the board as it was dealt: not this one)
   const seq0 = (await gameState(id)).seq;
   const tTick = Date.now();
   await h.call('tick', { game: id });
@@ -975,6 +976,7 @@ test('bots: after a player\'s move, the bot\'s move is planned inside its own wi
     await rewrite(id, full => {
       full.squares.forEach((sq, i) => { sq.owner = null; sq.mini = E.newMini(type, E.makeRng(type + i)); });
       full.turn = botSide; full.lock = null; full.winner = null; full.timer.deadline = Date.now() + 60000; full.timer.for = botSide;
+      full.seq = (full.seq || 0) + 100;                        // a move number of its own: a bot task queued for an earlier board finds it stale
     });
     await patch(`botGames/${id}`, { next: null, live: true });
     const t0 = Date.now();
