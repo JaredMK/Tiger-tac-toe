@@ -25,25 +25,89 @@ function cpuMatch(games, seed, guard = 900) {
 test.before(() => E.setTriviaBank(bank(40)));
 
 /* ===================================== Bullseye ===================================== */
-test('bullseye: a stop inside the middle 20% is a hit; each player has their own speed, a quarter faster per hit of their own; three hits take the square', () => {
+test('bullseye: a small board on a field, a bullseye in its middle; a throw is where two lines stopped; bullseye 3, board 1, off 0; first to 5; the board moves after every throw', () => {
+  const m = E.newMini('bullseye', lcg(1)), c = m.cfg, B = E.BULLS;
+  assert.deepEqual(c, E.BULL_DEFAULTS, 'dealt with the config of the day (here the defaults)');
+  assert.ok(c.bull < c.board && c.board <= 12, `a small board (${c.board} of ${B.w} across) with a smaller bullseye (${c.bull})`);
+  const inside = pos => pos[0] - c.board >= 0 && pos[0] + c.board <= B.w && pos[1] - c.board >= 0 && pos[1] + c.board <= B.h;
+  assert.ok(inside(m.pos), 'the whole board on the field');
+  const aim = (pos, dx, dy) => ({ x: (pos[0] + dx) / B.w, y: (pos[1] + dy) / B.h });
+  // a bullseye: 3, and X's lines get faster; O's untouched
+  let pos = m.pos.slice();
+  assert.deepEqual(E.applyMove(m, 'X', aim(pos, 0.5, -0.5), lcg(2)), { ok: true, outcome: 'continue', note: 'bull' });
+  assert.deepEqual([m.pts.X, m.speed.X, m.speed.O], [3, c.ramp, 1]);
+  assert.deepEqual(m.last.pos, pos, 'the throw was scored where the board was');
+  assert.ok(Math.hypot(m.pos[0] - pos[0], m.pos[1] - pos[1]) >= Math.min(B.minMove, 30) && inside(m.pos), `then the board moves on (${pos} -> ${m.pos})`);
+  // the board (outside the bullseye): 1
+  pos = m.pos.slice();
+  assert.equal(E.applyMove(m, 'O', aim(pos, c.bull + 1, 0), lcg(3)).note, 'board'); assert.deepEqual([m.pts.O, m.speed.O], [1, c.ramp]);
+  // off the board: 0, and nothing gets faster
+  pos = m.pos.slice();
+  assert.equal(E.applyMove(m, 'O', aim(pos, 0, c.board + 0.5), lcg(4)).note, 'miss'); assert.deepEqual([m.pts.O, m.speed.O], [1, c.ramp]);
+  // the edges: on the bullseye's rim is the bullseye; on the board's rim is the board
+  pos = m.pos.slice();
+  assert.equal(E.bullsScore(c, pos, (pos[0] + c.bull) / B.w, pos[1] / B.h).pts, 3);
+  assert.equal(E.bullsScore(c, pos, (pos[0] + c.board) / B.w, pos[1] / B.h).pts, 1);
+  assert.equal(E.bullsScore(c, pos, (pos[0] + c.board + 0.01) / B.w, pos[1] / B.h).pts, 0);
+  // X: 3 + 1 + 1 = 5 takes the square
+  pos = m.pos.slice(); E.applyMove(m, 'X', aim(pos, 0, c.bull + 1), lcg(5));
+  pos = m.pos.slice(); const w = E.applyMove(m, 'X', aim(pos, -(c.bull + 1), 0), lcg(6));
+  assert.deepEqual([w.outcome, m.pts.X], ['win', 5]);
+  for (const bad of [0.5, { x: -0.1, y: 0.5 }, { x: 0.5, y: 1.2 }, { x: 'a', y: 0.5 }, { x: 0.5 }, null, 'x']) assert.equal(E.applyMove(E.newMini('bullseye', lcg(9)), 'O', bad).ok, false, `refused: ${JSON.stringify(bad)}`);
+  // the lines: cfg.sweep ms across at the start, cfg.ramp times faster per scoring throw
+  assert.equal(E.bullsPeriod(c, 1), c.sweep); assert.equal(E.bullsPeriod(c, 2), c.sweep / 2);
+  assert.ok(c.sweep < 2200, 'faster than the old marker (2.2 s across)');
+  // the board's spots: always whole on the field, a fair way from the last, and spread round it
+  const r = lcg(7); let p0 = E.bullsSpot(c, null, r), sumX = 0;
+  for (let k = 0; k < 500; k++) { const p1 = E.bullsSpot(c, p0, r); assert.ok(inside(p1)); assert.ok(Math.hypot(p1[0] - p0[0], p1[1] - p0[1]) >= B.minMove - 1e-9); sumX += p1[0]; p0 = p1; }
+  assert.ok(Math.abs(sumX / 500 - B.w / 2) < 6, 'left and right alike');
+});
+
+test('bullseye: the config (board, bullseye, sweep, ramp) is checked value by value and copied into each square as dealt; older squares carry on', () => {
+  E.setBullsConfig({ board: 12, bull: 3, sweep: 1000, ramp: 1.2 });
   const m = E.newMini('bullseye', lcg(1));
-  assert.deepEqual([E.bullsHit(0.5), E.bullsHit(0.4), E.bullsHit(0.6), E.bullsHit(0.399), E.bullsHit(0.61), E.bullsHit(0)], [true, true, true, false, false, false]);
-  assert.deepEqual(E.applyMove(m, 'X', 0.45), { ok: true, outcome: 'continue', note: 'hit' });
-  assert.deepEqual([m.hits.X, m.speed.X, m.speed.O], [1, 1.25, 1], 'X faster, O untouched');
-  assert.deepEqual(E.applyMove(m, 'O', 0.2), { ok: true, outcome: 'continue', note: 'miss' });
-  assert.deepEqual([m.hits.O, m.speed.O], [0, 1], 'a miss changes nothing');
-  assert.equal(E.applyMove(m, 'X', 0.58).note, 'hit');
-  assert.equal(m.speed.X, 1.563, 'a quarter faster again');
-  assert.deepEqual(E.applyMove(m, 'X', 0.5), { ok: true, outcome: 'win', note: 'hit' });
-  assert.equal(E.bullsPeriod(1), E.BULLS.base); assert.equal(E.bullsPeriod(2), E.BULLS.base / 2, 'the marker crosses the bar in base / speed ms');
-  for (const bad of [-0.1, 1.2, 'x', null, undefined, NaN]) assert.equal(E.applyMove(m, 'O', bad).ok, false, `refused: ${bad}`);
-  // the computer: a hit about 70%, then 55%, then 40% of the time, and its stop is where it says
-  const rng = lcg(5);
-  for (const [speed, want] of [[1, 0.7], [1.25, 0.55], [1.563, 0.4]]) {
-    let hits = 0;
-    for (let k = 0; k < 2000; k++) { const r = E.localBest({ type: 'bullseye', hits: { X: 0, O: 0 }, speed: { X: speed, O: 1 } }, 'X', rng); if (E.bullsHit(r.move)) hits++; }
-    assert.ok(Math.abs(hits / 2000 - want) < 0.04, `speed ${speed}: ${hits / 2000} hits (wanted ~${want})`);
+  assert.deepEqual(m.cfg, { board: 12, bull: 3, sweep: 1000, ramp: 1.2 });
+  E.setBullsConfig({ board: 99, bull: 'x', sweep: 100, ramp: 1.1 });
+  assert.deepEqual(E.bullsConfig(), Object.assign({}, E.BULL_DEFAULTS, { ramp: 1.1 }), 'anything off its range is the default');
+  E.setBullsConfig({ board: 6, bull: 8 });
+  assert.ok(E.bullsConfig().bull < E.bullsConfig().board, 'the bullseye never as big as the board');
+  E.setBullsConfig(null);
+  assert.deepEqual(m.cfg, { board: 12, bull: 3, sweep: 1000, ramp: 1.2 }, 'a square keeps the values it was dealt with');
+  assert.deepEqual(E.newMini('bullseye', lcg(2)).cfg, E.BULL_DEFAULTS);
+  // a square from before (the bar and its hits) plays on as a board in the middle, its hits as points
+  const old = { type: 'bullseye', hits: { X: 2, O: 1 }, speed: { X: 1.5, O: 1 }, last: { by: 'X', at: 0.5, hit: true } };
+  E.upgradeMini(old);
+  assert.deepEqual([old.pts, old.pos, old.hits, old.cfg], [{ X: 2, O: 1 }, [50, 60], undefined, E.BULL_DEFAULTS]);
+  assert.equal(E.applyMove(old, 'X', { x: 0.5, y: 0.5 }, lcg(3)).note, 'bull');
+});
+
+test('bullseye: the computer lands a bullseye about 15%, the board 45% and misses 40% at the start, slipping as its lines speed up; a timeout stops both lines at random', () => {
+  const rng = lcg(5), count = speed => {
+    const c = { 3: 0, 1: 0, 0: 0 };
+    for (let k = 0; k < 4000; k++) { const m = E.newMini('bullseye', rng); m.speed.X = speed; const r = E.localBest(E.publicMini(m), 'X', rng); c[E.bullsScore(m.cfg, m.pos, r.move.x, r.move.y).pts]++; }
+    return { bull: c[3] / 4000, board: c[1] / 4000, miss: c[0] / 4000 };
+  };
+  const start = count(1);
+  assert.ok(Math.abs(start.bull - 0.15) < 0.025 && Math.abs(start.board - 0.45) < 0.03 && Math.abs(start.miss - 0.4) < 0.03, JSON.stringify(start));
+  const fast = count(2);
+  assert.ok(fast.miss > start.miss + 0.1, `worse when faster (${JSON.stringify(fast)})`);
+  // throws to 5, alone on a square: about 5-7
+  const throws = [];
+  for (let g = 0; g < 1500; g++) {
+    const r = lcg(1000 + g), m = E.newMini('bullseye', r);
+    let n = 0;
+    while (m.pts.X < 5 && n < 60) { assert.equal(E.applyMove(m, 'X', E.localBest(E.publicMini(m), 'X', r).move, r).ok, true); n++; }
+    throws.push(n);
   }
+  const mean = throws.reduce((a, b) => a + b, 0) / throws.length;
+  assert.ok(mean > 5 && mean < 7.5, `the computer takes ${mean.toFixed(2)} throws to 5`);
+  const st = E.newMatch(lcg(8), { games: ['bullseye'], mode: 'online', timer: 30 });
+  const before = JSON.stringify(st.squares.map(q => q.mini.pts));
+  const t = E.timeoutMove(st, lcg(9));
+  assert.equal(t.ok, true); assert.ok(st.flash.timeout && st.flash.bull, 'the timed-out throw is a throw');
+  assert.notEqual(JSON.stringify(st.squares.map(q => q.mini.pts)), before === '' ? null : undefined);
+  const mv = E.randomLegalMove(E.newMini('bullseye', lcg(1)), 'X', lcg(2));
+  assert.ok(mv.x >= 0 && mv.x <= 1 && mv.y >= 0 && mv.y <= 1, 'both lines somewhere on the field');
 });
 
 /* ===================================== Echo ===================================== */
@@ -144,37 +208,60 @@ test('cup pong: an aim and a power; the ball lands with a little scatter; a good
 });
 
 /* ===================================== Trivia ===================================== */
-test('trivia: a question each from the bank, never one asked before in the match; the answers shuffled; a tap is judged, a timeout is wrong; three right wins', () => {
+test('trivia: one question a square, shared; a wrong pick is crossed out for both and the question stays, the right answer never shown; the next turn there carries on; right scores and a new question comes; three right wins', () => {
   const st = E.newMatch(lcg(21), { games: ['trivia'] });
   const asks = [];
-  for (const sq of st.squares) { assert.equal(sq.mini.type, 'trivia'); for (const p of ['X', 'O']) { const a = sq.mini.ask[p]; assert.ok(a && a.id && a.q && a.opts.length === 4, 'a question dealt'); asks.push(a.id); assert.equal(a.opts[sq.mini.answers[p]], 'Right ' + a.id.slice(1), 'the right answer is where answers says'); } }
-  assert.equal(new Set(asks).size, 18, 'eighteen different questions across the nine squares');
-  const sq = st.squares[0], m = sq.mini, right = m.answers.X, wrong = (right + 1) % 4;
-  let r = E.playMove(st, 0, wrong, lcg(1));
-  assert.equal(r.ok, true); assert.equal(r.flash.trivia.correct, false); assert.equal(r.flash.trivia.right, right);
-  assert.equal(m.right.X, 0);
-  assert.ok(m.ask.X && !asks.includes(m.ask.X.id), 'a new question for X, not one asked anywhere in the match');
-  assert.ok(m.asked.length === 1, 'the one answered is remembered');
+  for (const sq of st.squares) { const a = sq.mini.ask; assert.equal(sq.mini.type, 'trivia'); assert.ok(a && a.id && a.q && a.opts.length === 4, 'a question dealt'); asks.push(a.id); assert.equal(a.opts[sq.mini.answer], 'Right ' + a.id.slice(1), 'the right answer is where answer says'); assert.deepEqual(sq.mini.crossed, []); }
+  assert.equal(new Set(asks).size, 9, 'nine different questions across the nine squares');
+  const sq = st.squares[0], m = sq.mini, q0 = m.ask.id, right = m.answer, wrongs = [0, 1, 2, 3].filter(k => k !== right);
+  // X picks wrong: crossed out, no point, the same question, and nothing in the result says which is right
+  let r = E.playMove(st, 0, wrongs[0], lcg(1));
+  assert.equal(r.ok, true); assert.equal(r.flash.trivia.correct, false);
+  assert.equal(r.flash.trivia.right, undefined, 'a wrong pick never reveals the right answer'); assert.equal(m.last.right, undefined);
+  assert.deepEqual(r.flash.trivia.crossed, [], 'what was crossed out before this pick'); assert.equal(r.flash.trivia.picked, wrongs[0]);
+  assert.equal(m.right.X, 0); assert.equal(m.ask.id, q0, 'the question stays'); assert.deepEqual(m.crossed, [wrongs[0]]);
   E.endFlash(st); E.leaveSquare(st);
   assert.equal(st.turn, 'O');
-  r = E.playMove(st, 0, m.answers.O, lcg(2));
-  assert.equal(r.flash.trivia.correct, true); assert.equal(m.right.O, 1);
+  // O carries on with the same question; the crossed-out option cannot be picked again
+  assert.equal(E.applyMove(JSON.parse(JSON.stringify(m)), 'O', wrongs[0]).reason, 'crossed');
+  r = E.playMove(st, 0, wrongs[1], lcg(2));
+  assert.equal(r.ok, true); assert.deepEqual(r.flash.trivia.crossed, [wrongs[0]]); assert.deepEqual(m.crossed, [wrongs[0], wrongs[1]]); assert.equal(m.ask.id, q0);
   E.endFlash(st); E.leaveSquare(st);
-  assert.equal(E.playMove(st, 0, 'auto', lcg(3)).flash.trivia.picked, -1, 'a timeout: no answer, wrong');
+  // X's timeout: one wrong pick, the last wrong option crossed out (never the right one)
+  r = E.playMove(st, 0, 'auto', lcg(3));
+  assert.equal(r.ok, true); assert.equal(r.flash.trivia.picked, wrongs[2]); assert.ok(r.flash.trivia.auto); assert.equal(r.flash.trivia.right, undefined);
+  assert.deepEqual(m.crossed.slice().sort(), wrongs.slice().sort()); assert.equal(m.ask.id, q0);
+  E.endFlash(st); E.leaveSquare(st);
+  // only the right one left: a timeout now crosses nothing
+  const only1 = JSON.parse(JSON.stringify(m)); const ra = E.applyMove(only1, 'O', 'auto', lcg(4));
+  assert.equal(ra.note, 'wrong'); assert.equal(only1.last.picked, -1); assert.deepEqual(only1.crossed, m.crossed); assert.equal(only1.right.O, 0);
+  // O takes the right one: a point, the answer shown with it, and a new question dealt (crossed cleared)
+  r = E.playMove(st, 0, right, lcg(5));
+  assert.equal(r.flash.trivia.correct, true); assert.equal(r.flash.trivia.right, right); assert.equal(m.right.O, 1);
+  assert.ok(m.ask && m.ask.id !== q0 && !asks.includes(m.ask.id), 'a new question, not one asked anywhere in the match');
+  assert.deepEqual(m.crossed, []); assert.deepEqual(m.asked, [q0]);
   E.endFlash(st); E.leaveSquare(st);
   for (const bad of [4, -1, 'x', 1.5]) assert.equal(E.applyMove(m, 'O', bad).ok, false);
   let n = 0;
-  while (!sq.owner && n++ < 20) { if (st.turn === 'O') E.playMove(st, 0, m.answers.O, lcg(n)); else E.playMove(st, 0, 'auto', lcg(n)); E.endFlash(st); E.leaveSquare(st); }
+  while (!sq.owner && n++ < 30) { if (st.turn === 'O') E.playMove(st, 0, m.answer, lcg(n)); else E.playMove(st, 0, 'auto', lcg(n)); E.endFlash(st); E.leaveSquare(st); }
   assert.equal(sq.owner, 'O', 'three right: O takes the square');
-  // the computer: right about 65% of the time
+  // the computer: right about 65% of the time with four options, more as they are crossed out, never a crossed one
   const rng = lcg(31);
-  let ok = 0;
-  for (let k = 0; k < 2000; k++) { const g = E.newMatch(lcg(k), { games: ['trivia'] }); const b = E.localBest(E.publicMini(g.squares[0].mini), 'X', rng); if (b.move === g.squares[0].mini.answers.X) ok++; }
-  assert.ok(Math.abs(ok / 2000 - 0.65) < 0.04, `the computer is right ${ok / 2000} of the time`);
+  for (const [cross, want] of [[0, 0.65], [1, 0.69], [2, 0.77]]) {
+    let ok = 0;
+    for (let k = 0; k < 3000; k++) {
+      const g = E.newMatch(lcg(k), { games: ['trivia'] }), gm = g.squares[0].mini;
+      gm.crossed = [0, 1, 2, 3].filter(i => i !== gm.answer).slice(0, cross);
+      const b = E.localBest(E.publicMini(gm), 'X', rng);
+      assert.ok(!gm.crossed.includes(b.move), 'never a crossed-out option');
+      if (b.move === gm.answer) ok++;
+    }
+    assert.ok(Math.abs(ok / 3000 - want) < 0.035, `${cross} crossed: right ${ok / 3000} (wanted ~${want})`);
+  }
   // the whole bank asked: questions come round again rather than the game stalling
   E.setTriviaBank(bank(3));
   const small = E.newMatch(lcg(41), { games: ['trivia'] });
-  assert.ok(small.squares.every(q => q.mini.ask.X && q.mini.ask.O), 'every square still has questions');
+  assert.ok(small.squares.every(q => q.mini.ask && q.mini.ask.q), 'every square still has its question');
   E.setTriviaBank(bank(40));
   // no bank: no question, and a Trivia square is one nobody can move in (it resets like a dead square)
   E.setTriviaBank(null);
@@ -182,25 +269,33 @@ test('trivia: a question each from the bank, never one asked before in the match
   assert.equal(E.canMove(none, 'X'), false);
   assert.equal(E.applyMove(none, 'X', 0).reason, 'noquestion');
   E.setTriviaBank(bank(40));
+  // a square from when each player had their own question: it keeps one of them and plays on
+  const old = { type: 'trivia', right: { X: 1, O: 0 }, ask: { X: { id: 'q5', q: 'Question 5?', cat: 'Science', opts: ['a', 'b', 'c', 'd'] }, O: null }, answers: { X: 2, O: null }, asked: ['q1'], last: null };
+  E.upgradeMini(old);
+  assert.deepEqual([old.ask.id, old.answer, old.crossed, old.answers], ['q5', 2, [], undefined]);
+  assert.equal(E.applyMove(old, 'O', 2).note, 'right');
 });
 
-test('trivia: online, the right answers stay on the server until a guess is made', () => {
+test('trivia: online, the right answer stays on the server until someone picks it; a wrong pick tells nobody which is right', () => {
   const rec = E.newOnlineMatch({ names: { X: 'A', O: 'B' }, games: only('trivia'), timer: 60 }, lcg(51), 'tq1');
   const pub = rec.state.squares[0].mini;
-  assert.equal(pub.answers, undefined, 'nothing in the public state says which answer is right');
-  assert.ok(pub.ask.X.opts.length === 4 && pub.ask.X.q, 'the question and its options are there');
-  assert.ok(Number.isInteger(rec.secrets[0].answers.X), 'the answer is in the secrets');
+  assert.equal(pub.answer, undefined, 'nothing in the public state says which answer is right');
+  assert.ok(pub.ask.opts.length === 4 && pub.ask.q, 'the question and its options are there');
+  assert.ok(Number.isInteger(rec.secrets[0].answer), 'the answer is in the secrets');
   assert.equal(E.applyMove(JSON.parse(JSON.stringify(pub)), 'X', 0).reason, 'secret', 'a phone cannot judge a guess by itself');
-  const right = rec.secrets[0].answers.X;
-  const r = E.applyOnlineMove(rec, 'X', 0, right, lcg(52));
-  assert.equal(r.ok, true);
-  assert.equal(r.entries[0].trivia.correct, true, 'the server judges and tells both phones');
-  assert.equal(r.entries[0].trivia.right, right, 'the right answer is revealed with the result');
+  const right = rec.secrets[0].answer, wrong = (right + 1) % 4;
+  let r = E.applyOnlineMove(rec, 'X', 0, wrong, lcg(52));
+  assert.equal(r.ok, true); assert.equal(r.entries[0].trivia.correct, false);
+  const leak = JSON.stringify(r.entries[0]) + JSON.stringify(r.rec.state);
+  assert.equal(r.entries[0].trivia.right, undefined, 'the result of a wrong pick: no right answer in it');
+  assert.ok(!/"right":\d/.test(leak) && !/"answer":\d/.test(leak), 'nor anywhere in what the phones get');
+  assert.deepEqual(r.rec.state.squares[0].mini.crossed, [wrong], 'crossed out, for both phones'); assert.equal(r.rec.state.squares[0].mini.ask.id, pub.ask.id);
+  r = E.applyOnlineMove(r.rec, 'O', 0, right, lcg(53));
+  assert.equal(r.ok, true); assert.equal(r.entries[0].trivia.correct, true, 'the server judges and tells both phones');
+  assert.equal(r.entries[0].trivia.right, right, 'the right answer shows with the right pick');
   const after = r.rec.state.squares[0].mini;
-  assert.equal(after.answers, undefined, 'the next question\'s answer is hidden again');
-  assert.ok(after.ask.X.id !== pub.ask.X.id, 'a new question for X');
-  assert.ok(Number.isInteger(r.rec.secrets[0].answers.X));
-  assert.ok(!JSON.stringify(r.rec.state).includes('"answers"'));
+  assert.equal(after.answer, undefined, 'the next question\'s answer is hidden again'); assert.notEqual(after.ask.id, pub.ask.id);
+  assert.ok(Number.isInteger(r.rec.secrets[0].answer));
 });
 
 /* ===================================== Odd One Out ===================================== */

@@ -269,6 +269,7 @@ function render() {
     ${findCard()}
     ${releasesCard()}
     ${runnersCard()}
+    ${bullsCard()}
     ${botsCard()}
     ${alertsCard()}
     <div class="card"><h2>Matches by mode</h2>${modeTable}</div>
@@ -405,7 +406,7 @@ async function saveRelease(el) {
 // under way keeps the values it was dealt with). The tracker shows what the squares played so far say:
 // how many runs a finish takes, how far a run goes, and where the crashes cluster.
 const RUN_TYPES = ['dash', 'lane'];
-const RUN_DEFAULTS = { dash: { target: 1000, v0: 8, ramp: 1.5, gapMin: 26, gapMax: 48, mix: { rock: 30, crate: 20, spike: 20, flyer: 20, pair: 10 } }, lane: { target: 1000, v0: 9, ramp: 1.8, gapMin: 24, gapMax: 44, mix: { one: 55, two: 45 } } };   // (as engine.js has them)
+const RUN_DEFAULTS = { dash: { target: 1000, v0: 8, ramp: 1.5, gapMin: 26, gapMax: 48, mix: { rock: 30, crate: 20, spike: 20, flyer: 20, pair: 10 } }, lane: { target: 1000, v0: 18, ramp: 1.8, gapMin: 18.8, gapMax: 34.4, mix: { one: 55, two: 45 } } };   // (as engine.js has them)
 const RUN_FIELDS = [['target', 'Target distance (m)', 200, 5000], ['v0', 'Starting speed (m/s)', 3, 30], ['ramp', 'Speed ramp (m/s more per 100 m)', 0, 10], ['gapMin', 'Obstacle spacing, min (m)', 8, 200], ['gapMax', 'Obstacle spacing, max (m)', 10, 400]];
 const RUN_MIX = { dash: [['rock', 'Rocks'], ['crate', 'Crates'], ['spike', 'Spikes'], ['flyer', 'Low flyers'], ['pair', 'Pairs']], lane: [['one', 'Rows with one car'], ['two', 'Rows with two cars']] };
 const RUN_BIN = 50;
@@ -455,6 +456,35 @@ async function saveRunCfg(t, btn) {
   try {
     await fb.dbM.set(fb.dbM.ref(fb.db, `config/run/${t}`), out);
     ctl.runCfg = Object.assign({}, ctl.runCfg, { [t]: out });
+  } catch (e) { alert('Could not save: ' + (e && e.message)); }
+  render();
+}
+// ---------- Bullseye's tuning (config/bulls, read by the game and the server) ----------
+// The board's size and the bullseye's (in field units: the field is 100 across, 120 down), how long a line
+// takes to sweep across at the start, and how much faster a player's lines get with each throw of theirs
+// that scores. A change applies to squares dealt from then on.
+const BULL_DEFAULTS = { board: 9, bull: 2.5, sweep: 1300, ramp: 1.12 };   // (as engine.js has them)
+const BULL_FIELDS = [['board', 'Board radius (field is 100 across)', 4, 30, 'any'], ['bull', 'Bullseye radius', 0.5, 12, 'any'], ['sweep', 'Sweep across at the start (ms)', 400, 5000, '10'], ['ramp', 'Speed-up per scoring throw (x)', 1, 2, 'any']];
+function bullsCard() {
+  const raw = ctl.bullsCfg || {}, c = {};
+  for (const [k] of BULL_FIELDS) c[k] = Number.isFinite(Number(raw[k])) && raw[k] !== null && raw[k] !== '' ? Number(raw[k]) : BULL_DEFAULTS[k];
+  const fields = BULL_FIELDS.map(([k, l, lo, hi, st]) => `<label class="rf"><span>${l}</span><input type="number" step="${st}" min="${lo}" max="${hi}" data-bullcfg="${k}" value="${c[k]}"></label>`).join('');
+  return `<div class="card ctl" id="bullsCard"><h2>Bullseye tuning</h2>
+    <p class="note">Bullseye: a small board moves round a field 100 units across and 120 down; a throw stops a sideways line, then an up-down line, and the dart lands where they cross. Bullseye 3 points, the board 1, first to 5. Everything here goes to the game and the server at once and applies to squares dealt from then on. Aim: about 5-6 throws to win at the start. A bigger board or bullseye, or a slower sweep, makes it easier; the speed-up makes each scoring throw harder than the last.</p>
+    <div class="rform">${fields}<button class="btn" data-bullsave="1">Save Bullseye</button></div></div>`;
+}
+async function saveBullsCfg(btn) {
+  const out = {};
+  for (const el of app.querySelectorAll('input[data-bullcfg]')) {
+    const k = el.dataset.bullcfg, v = Number(el.value);
+    if (!Number.isFinite(v) || v < Number(el.min) || v > Number(el.max)) { alert(`${k}: a number from ${el.min} to ${el.max}`); return; }
+    out[k] = v;
+  }
+  if (out.bull >= out.board) { alert('The bullseye must be smaller than the board.'); return; }
+  btn.disabled = true;
+  try {
+    await fb.dbM.set(fb.dbM.ref(fb.db, 'config/bulls'), out);
+    ctl.bullsCfg = out;
   } catch (e) { alert('Could not save: ' + (e && e.message)); }
   render();
 }
@@ -597,9 +627,9 @@ async function loadPeople() {
 }
 async function loadCtl() {
   const g = p => fb.dbM.get(fb.dbM.ref(fb.db, p)).then(s => s.val()).catch(() => null);
-  const [config, secretsSet, bots, botStats, alertStats, features, log, releases, runCfg] = await Promise.all([g('admin/config'), g('admin/secretsSet'), g('bots'), g('botStats'), g('alertStats'), g('features'),
-    fb.dbM.get(fb.dbM.query(fb.dbM.ref(fb.db, 'alertLog'), fb.dbM.orderByChild('at'), fb.dbM.limitToLast(8))).then(s => s.val()).catch(() => null), g('releases'), g('config/run')]);
-  ctl = { config: config || {}, secretsSet: secretsSet || {}, bots: bots || {}, botStats: botStats || {}, alertStats: alertStats || {}, features: features || {}, releases: releases || {}, runCfg: runCfg || {},
+  const [config, secretsSet, bots, botStats, alertStats, features, log, releases, runCfg, bullsCfg] = await Promise.all([g('admin/config'), g('admin/secretsSet'), g('bots'), g('botStats'), g('alertStats'), g('features'),
+    fb.dbM.get(fb.dbM.query(fb.dbM.ref(fb.db, 'alertLog'), fb.dbM.orderByChild('at'), fb.dbM.limitToLast(8))).then(s => s.val()).catch(() => null), g('releases'), g('config/run'), g('config/bulls')]);
+  ctl = { config: config || {}, secretsSet: secretsSet || {}, bots: bots || {}, botStats: botStats || {}, alertStats: alertStats || {}, features: features || {}, releases: releases || {}, runCfg: runCfg || {}, bullsCfg: bullsCfg || {},
     alertLog: Object.values(log || {}).sort((a, b) => b.at - a.at) };
 }
 async function signIn(how) {
@@ -631,6 +661,7 @@ app.addEventListener('click', e => {
   else if (b.dataset.act === 'all-sessions') { allSessions = !allSessions; render(); }
   else if (b.dataset.act === 'save-keys') saveKeys();
   else if (b.dataset.runsave) saveRunCfg(b.dataset.runsave, b);
+  else if (b.dataset.bullsave) saveBullsCfg(b);
   else if (b.dataset.act === 'test-alert') testAlert(b);
 });
 app.addEventListener('change', e => {

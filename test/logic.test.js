@@ -1438,11 +1438,11 @@ function randomMove(m, rng, p) {
       while (nums.length < 8) { const n = 1 + Math.floor(rng() * 24); if (!nums.includes(n)) nums.push(n); }
       return nums;
     }
-    case 'bullseye': return Math.round(rng() * 1000) / 1000;
+    case 'bullseye': return { x: Math.round(rng() * 1000) / 1000, y: Math.round(rng() * 1000) / 1000 };
     case 'echo': { const seq = m.seqs[p][Math.min(m.level[p], 3)]; return rng() < 0.5 ? seq.slice() : seq.slice(0, Math.floor(rng() * seq.length)).concat(Math.floor(rng() * 4)); }
     case 'plinko': return Math.floor(rng() * 7);
     case 'pong': return { aim: rng() * 2 - 1, power: rng() };
-    case 'trivia': return m.ask[p] ? Math.floor(rng() * 4) : 'auto';
+    case 'trivia': { if (!m.ask) return 'auto'; const left = [0, 1, 2, 3].filter(k => !(m.crossed || []).includes(k)); return left.length ? left[Math.floor(rng() * left.length)] : 'auto'; }
     case 'oddone': return Math.floor(rng() * m.grid[p].n * m.grid[p].n);
     case 'dash': case 'lane': return rng() < 0.3 ? 'auto' : L.runAuto(m, p, rng);   // a timed-out run, or a short run as the engine itself makes one
     case 'golf': case 'pool': case 'bowling': return L.physRandom(m, p, rng);        // a random gentle shot
@@ -2127,7 +2127,7 @@ test('timeouts over every kind of game keep the state legal and plain', () => {
 
 
 // ---- online match records: the public state and the secrets apart, moves applied to the pair ----
-const SECRET_KEYS = { wordle: 'word', hangman: 'word', hilo: 'target', bs: 'ship', hunt: 'treasure', memory: 'cards', mastermind: 'code' , trivia: 'answers', oddone: 'pos' };
+const SECRET_KEYS = { wordle: 'word', hangman: 'word', hilo: 'target', bs: 'ship', hunt: 'treasure', memory: 'cards', mastermind: 'code' , trivia: 'answer', oddone: 'pos' };
 test('a match record keeps every secret out of the public state and puts it back for a move', () => {
   const rng = lcg(11);
   for (const type of L.TYPES) {

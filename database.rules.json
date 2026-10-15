@@ -185,6 +185,24 @@
     },
     "config": {
       ".read": true,
+      "bulls": {
+        ".write": "auth != null && auth.token.admin === true",
+        "board": {
+          ".validate": "newData.isNumber() && newData.val() >= 4 && newData.val() <= 30"
+        },
+        "bull": {
+          ".validate": "newData.isNumber() && newData.val() >= 0.5 && newData.val() <= 12 && newData.val() < newData.parent().child('board').val()"
+        },
+        "sweep": {
+          ".validate": "newData.isNumber() && newData.val() >= 400 && newData.val() <= 5000"
+        },
+        "ramp": {
+          ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 2"
+        },
+        "$other": {
+          ".validate": false
+        }
+      },
       "run": {
         "dash": {
           ".write": "auth != null && auth.token.admin === true",

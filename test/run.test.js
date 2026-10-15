@@ -35,7 +35,7 @@ test('runners: one difficulty config per game, checked value by value, copied in
   E.setRunConfig({ dash: { target: 600, v0: 12, ramp: 2, gapMin: 30, gapMax: 20, mix: { rock: 50, crate: 0, spike: 0, flyer: 50, pair: 0 } }, lane: { target: 'x', v0: 99, ramp: -1, gapMin: 40, mix: { one: 100, two: 0 } } });
   const d = E.runConfig('dash'), l = E.runConfig('lane');
   assert.deepEqual(d, { target: 600, v0: 12, ramp: 2, gapMin: 30, gapMax: 32, mix: { rock: 50, crate: 0, spike: 0, flyer: 50, pair: 0 } }, 'the values as given; a gap range that is backwards is opened up');
-  assert.deepEqual(l, { target: 1000, v0: 9, ramp: 1.8, gapMin: 40, gapMax: 44, mix: { one: 100, two: 0 } }, 'a value off its range, or missing, is the default');
+  assert.deepEqual(l, { target: 1000, v0: 18, ramp: 1.8, gapMin: 40, gapMax: 42, mix: { one: 100, two: 0 } }, 'a value off its range, or missing, is the default (and a default spacing below the minimum given is opened up)');
   const b = mini('dash', 'cfg-b');
   assert.equal(b.cfg.target, 600, 'a new square plays by the new config');
   assert.equal(a.cfg.target, 1000, 'the square dealt earlier keeps its own');
@@ -147,6 +147,39 @@ test('dash: a pair needs a well-timed long jump (or two quick ones); a single ta
   assert.ok(!go(0.2, true).crash, 'a well-timed hold clears both');
   assert.ok(go(0.05, true).crash && go(0.5, true).crash, 'too late or too early, it does not');
   assert.ok(E.runCourse(m, 'O').some(o => o.pair), 'pairs are part of the course');
+});
+
+test('lane rush, harder: twice the first starting speed and a quarter more cars, through the config; a driver seeing only the screen, a quarter-second late, still gets through', () => {
+  E.setRunConfig(null);
+  const cfg = E.runConfig('lane');
+  assert.deepEqual([cfg.v0, cfg.ramp], [18, 1.8], 'the starting speed doubled (9 to 18 m/s); the ramp as it was');
+  const count = c => { let cars = 0; for (let k = 0; k < 300; k++) { const m = mini('lane', 'traffic' + k); m.cfg = c; for (const o of E.runCourse(m, 'X')) cars += o.cars.filter(Boolean).length; } return cars / 300; };
+  const ratio = count(cfg) / count(Object.assign({}, cfg, { v0: 9, gapMin: 24, gapMax: 44 }));
+  assert.ok(ratio > 1.2 && ratio < 1.3, `a quarter more cars a course (x${ratio.toFixed(2)})`);
+  // the driver: sees what the page shows (34 m of road, the car 82% down: 27.9 m ahead), acts 0.25 s late
+  const VIEW = 0.82 * 34, react = 0.25;
+  const drive = m => {
+    const sim = E.runStart(m, 'X'), rows = sim.course, hist = [];
+    while (!sim.crash && !sim.done) {
+      hist.push([sim.t, sim.d]);
+      let seen = -Infinity; for (const [t, d] of hist) { if (t <= sim.t - react) seen = d; else break; }
+      const known = rows.filter(o => o.at <= seen + VIEW && o.at > sim.d - E.LANE.box), cur = Math.round(sim.lane);
+      if (known.length && sim.laneT >= 1 && !rows.some(o => Math.abs(o.at - sim.d) < E.LANE.box + 0.6)) {
+        const open = r => [0, 1, 2].filter(l => !r.cars[l]), a = open(known[0]), b = known[1] ? open(known[1]) : null;
+        const cost = l => Math.abs(l - cur) * 10 + (b ? Math.min(...b.map(q => Math.abs(q - l))) : 0);
+        const want = a.slice().sort((x, y) => cost(x) - cost(y))[0];
+        if (want !== cur) E.runLane(sim, want > cur ? 1 : -1);
+      }
+      E.runStep(sim, 1 / 60);
+    }
+    return sim;
+  };
+  let fin = 0;
+  for (let k = 0; k < 40; k++) { const s = drive(mini('lane', 'react' + k)); if (s.done) fin++; }
+  assert.equal(fin, 40, `every course driven to the finish (${fin}/40)`);
+  // at the finish line's speed a row is still on screen well over a reaction and a lane change before the car reaches it
+  const vEnd = E.runSpeed(cfg, cfg.target);
+  assert.ok(VIEW / vEnd > react + 2 * E.LANE.switchSecs, `${(VIEW / vEnd).toFixed(2)} s of warning at ${vEnd} m/s`);
 });
 
 test('lane rush: the car drives on; a car ahead in its lane is a crash; a change into a car is a crash; a change away in time passes', () => {

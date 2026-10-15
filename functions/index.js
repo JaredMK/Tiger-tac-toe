@@ -283,12 +283,15 @@ async function findMatchOn() { return (await db.ref('features/findMatch').get())
 // Release control (engine.js: isReleased): the dashboard's switches, releases/{type}; a game not there is
 // as the code has it. testTypes: the games admin only right now (their stats are kept apart).
 async function releasesNow() { return (await db.ref('releases').get()).val() || {}; }
-// The runners' difficulty (config/run, the admin's dashboard): set in the engine before a square can be
-// dealt (a new match, a draw's reset), so new squares play by the current values; read afresh after 20 s.
+// The difficulty configs (config/run for the runners, config/bulls for Bullseye, from the admin's
+// dashboard): set in the engine before a square can be dealt (a new match, a draw's reset), so new
+// squares play by the current values; read afresh after 20 s.
 let runCfgAt = 0;
 async function runConfigNow() {
   if (now() - runCfgAt < 20000) return;
-  E.setRunConfig((await db.ref('config/run').get()).val() || null);
+  const [run, bulls] = await Promise.all([db.ref('config/run').get(), db.ref('config/bulls').get()]);
+  E.setRunConfig(run.val() || null);
+  E.setBullsConfig(bulls.val() || null);
   runCfgAt = now();
 }
 
