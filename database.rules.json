@@ -84,9 +84,15 @@
         "$side": {
           ".write": "auth != null && $side.matches(/^[XO]$/) && (root.child('rooms').child($key).child('players').child($side).child('uid').val() === auth.uid || root.child('games').child($key).child('pub/players').child($side).child('uid').val() === auth.uid) && (!data.exists() || data.child('t').val() <= now - 2000)",
           ".validate": "newData.hasChildren(['e', 't'])",
-          "e": { ".validate": "newData.isNumber() && (newData.val() == 0 || newData.val() == 1 || newData.val() == 2 || newData.val() == 3 || newData.val() == 4 || newData.val() == 5)" },
-          "t": { ".validate": "newData.val() == now" },
-          "$other": { ".validate": false }
+          "e": {
+            ".validate": "newData.isNumber() && (newData.val() == 0 || newData.val() == 1 || newData.val() == 2 || newData.val() == 3 || newData.val() == 4 || newData.val() == 5)"
+          },
+          "t": {
+            ".validate": "newData.val() == now"
+          },
+          "$other": {
+            ".validate": false
+          }
         }
       }
     },
@@ -176,6 +182,66 @@
     },
     "devlog": {
       ".read": "auth != null && auth.token.admin === true"
+    },
+    "config": {
+      ".read": true,
+      "run": {
+        "dash": {
+          ".write": "auth != null && auth.token.admin === true",
+          "target": {
+            ".validate": "newData.isNumber() && newData.val() >= 200 && newData.val() <= 5000"
+          },
+          "v0": {
+            ".validate": "newData.isNumber() && newData.val() >= 3 && newData.val() <= 30"
+          },
+          "ramp": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10"
+          },
+          "gapMin": {
+            ".validate": "newData.isNumber() && newData.val() >= 8 && newData.val() <= 200"
+          },
+          "gapMax": {
+            ".validate": "newData.isNumber() && newData.val() >= 10 && newData.val() <= 400"
+          },
+          "mix": {
+            "$kind": {
+              ".validate": "$kind.matches(/^[a-z]{2,10}$/) && newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000"
+            }
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
+        "lane": {
+          ".write": "auth != null && auth.token.admin === true",
+          "target": {
+            ".validate": "newData.isNumber() && newData.val() >= 200 && newData.val() <= 5000"
+          },
+          "v0": {
+            ".validate": "newData.isNumber() && newData.val() >= 3 && newData.val() <= 30"
+          },
+          "ramp": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10"
+          },
+          "gapMin": {
+            ".validate": "newData.isNumber() && newData.val() >= 8 && newData.val() <= 200"
+          },
+          "gapMax": {
+            ".validate": "newData.isNumber() && newData.val() >= 10 && newData.val() <= 400"
+          },
+          "mix": {
+            "$kind": {
+              ".validate": "$kind.matches(/^[a-z]{2,10}$/) && newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000"
+            }
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      },
+      "$other": {
+        ".validate": false
+      }
     }
   }
 }

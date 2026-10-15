@@ -734,7 +734,7 @@ const RUN_LIMITS = { target: [200, 5000], v0: [3, 30], ramp: [0, 10], gapMin: [8
 const RUN = { grace: 2, countdown: 3, aiRuns: 4.5, aiSlow: 0.3, aiSpread: 0.45, tolerance: 0.85, slackMs: 200, hit: { dash: [1.5, 2.2], lane: [3.6, 3.6] }, crashBin: 50, maxCrashes: 40 };
 const RUNT = { bar: 900, hold: 700 };                          // the result: the bar fills, then holds
 const RUN_CFG = { dash: null, lane: null };
-const r2 = x => Math.round(x * 100) / 100;
+const r2 = x => Math.round(x * 100) / 100 + 0;                   // (+ 0: never a -0, which is not plain JSON)
 // A config checked value by value: anything off, or missing, is the default.
 function runNorm(type, raw) {
   const d = RUN_DEFAULTS[type], out = {};
@@ -1420,7 +1420,7 @@ function applyMove(mini, p, m, rng) {
       else return { ok: false, reason: 'bad' };
       const t = pongThrow(mini.cups[p], aim, power, needRng(rng));
       if (t.sunk) mini.cups[p][t.cup] = false;
-      mini.last = { by: p, aim, power, x: Math.round(t.x * 1000) / 1000, y: Math.round(t.y * 1000) / 1000, cup: t.cup, rim: t.rim, sunk: t.sunk };
+      mini.last = { by: p, aim, power, x: Math.round(t.x * 1000) / 1000 + 0, y: Math.round(t.y * 1000) / 1000 + 0, cup: t.cup, rim: t.rim, sunk: t.sunk };   // (+ 0: never a -0, which is not plain JSON)
       if (mini.cups[p].every(c => !c)) return { ok: true, outcome: 'win', note: 'sunk' };
       return { ok: true, outcome: 'continue', note: t.sunk ? 'sunk' : t.rim ? 'rim' : 'miss' };
     }

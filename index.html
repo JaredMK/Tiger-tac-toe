@@ -1593,6 +1593,32 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .paim { position: absolute; left: 50%; bottom: 10%; width: 4px; height: 0; margin-left: -2px; background: rgba(255, 255, 255, .7); border-radius: 2px; transform-origin: 50% 100%; pointer-events: none; }
 .pcups { display: inline-flex; gap: 3px; } .pcups i { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--ink); background: var(--paper); }
 .ctal.X .pcups i.on { background: var(--x); } .ctal.O .pcups i.on { background: var(--o); }
+/* Dash and Lane Rush: the two progress bars, the run on a canvas, the countdown over it */
+.runner { flex: 1; display: flex; flex-direction: column; min-height: 0; gap: 8px; }
+.rprogs { display: grid; gap: 6px; }
+.rprog { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; font-weight: 800; font-size: 14px; }
+.rprog > b { min-width: 0; max-width: 96px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rprog.now > b { text-decoration: underline; text-decoration-thickness: 3px; text-underline-offset: 3px; }
+.rbar { position: relative; height: 16px; border: 3px solid var(--ink); border-radius: 10px; background: var(--paper); overflow: hidden; }
+.rbar i { position: absolute; left: 0; top: 0; bottom: 0; width: var(--w0, 0%); border-radius: 6px; }
+.rprog.X .rbar i { background: var(--x); } .rprog.O .rbar i { background: var(--o); }
+.rbar i.grow { animation: rgrow var(--d, 900ms) var(--t, 0ms) cubic-bezier(.2, .7, .3, 1) both; }   /* the run's result: the bar grows to the new distance, from the move */
+@keyframes rgrow { from { width: var(--w0, 0%); } to { width: var(--w1, 0%); } }
+.rprog small { color: var(--muted); font-size: 12px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.rscene { position: relative; margin: 0 auto; width: 100%; border: 3px solid var(--ink); border-radius: 14px; overflow: hidden; background: #cfe9f7; touch-action: none; user-select: none; -webkit-user-select: none; min-height: 150px; }
+.rscene.dash { flex: 0 1 auto; aspect-ratio: 16 / 11; max-height: 100%; }
+.rscene.lane { flex: 1; min-height: 220px; }
+.rscene canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.rhud { position: absolute; left: 10px; top: 6px; font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-size: 18px; color: var(--ink); text-shadow: 0 2px 0 #fff; pointer-events: none; font-variant-numeric: tabular-nums; }
+.rcount { position: absolute; inset: 0; display: grid; place-items: center; font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-size: 76px; color: var(--paper); -webkit-text-stroke: 3px var(--ink); text-shadow: 0 4px 0 var(--ink); pointer-events: none; }
+.rhint { position: absolute; left: 0; right: 0; bottom: 8px; text-align: center; color: var(--ink); font-weight: 800; font-size: 13px; pointer-events: none; opacity: .85; }
+.trun { display: grid; gap: 5px; width: 100%; padding: 0 6px; }
+.trun .tr { display: grid; grid-template-columns: 12px 1fr; align-items: center; gap: 4px; }
+.trun .tr b { font-size: 11px; }
+.trun .tr i { display: block; height: 9px; border: 2px solid var(--ink); border-radius: 5px; background: var(--paper); overflow: hidden; position: relative; }
+.trun .tr i::after { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: var(--w, 0%); }
+.trun .tr.X i::after { background: var(--x); } .trun .tr.O i::after { background: var(--o); }
+@media (prefers-reduced-motion: reduce) { .rbar i.grow { animation: none; width: var(--w1, 0%); } }
 /* Trivia: the question and its four answers */
 .trivia { flex: 1; display: flex; flex-direction: column; min-height: 0; gap: 8px; justify-content: center; }
 .tqcard { background: var(--paper); border: 3px solid var(--ink); border-radius: 16px 12px 15px 11px; box-shadow: 0 4px 0 var(--ink); padding: 10px 12px; }
@@ -1781,6 +1807,8 @@ const ICONS = {
   pong: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M4 3h7l-1 10H5z"/><path d="M13 3h7l-1 10h-5z"/><path d="M8.5 13h7l-1 8h-5z"/><circle cx="12" cy="20.5" r="1.4" fill="currentColor" stroke="none"/></svg>',
   trivia: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M8.5 9a3.5 3.5 0 1 1 5 3.2c-1 .5-1.5 1.3-1.5 2.3"/><circle cx="12" cy="18.5" r="1.1" fill="currentColor" stroke="none"/><rect x="2.5" y="2.5" width="19" height="19" rx="4"/></svg>',
   oddone: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="5" height="5" rx="1"/><rect x="9.5" y="3" width="5" height="5" rx="1"/><rect x="16" y="3" width="5" height="5" rx="1"/><rect x="3" y="9.5" width="5" height="5" rx="1"/><rect x="9.5" y="9.5" width="5" height="5" rx="1" opacity=".45"/><rect x="16" y="9.5" width="5" height="5" rx="1"/><rect x="3" y="16" width="5" height="5" rx="1"/><rect x="9.5" y="16" width="5" height="5" rx="1"/><rect x="16" y="16" width="5" height="5" rx="1"/></svg>',
+  dash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="15.5" cy="4.5" r="2"/><path d="M8.5 20.5l2.5-5.5L7.5 12l3.5-4 3 2.5 3.5-1"/><path d="M11 15l3.5 2.5 1 3"/><path d="M2.5 20.5h4"/></svg>',
+  lane: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6.5 3L3.5 21M17.5 3l3 18"/><path d="M12 3v3M12 9.5v3M12 16v3"/><rect x="13" y="12" width="5.5" height="8" rx="2" fill="currentColor" stroke="none"/></svg>',
   rl: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9.2"/><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v5.9M12 15.3v5.9M2.8 12h5.9M15.3 12h5.9" stroke-width="1.8"/><circle cx="17.6" cy="6.4" r="1.6" fill="currentColor" stroke="none"/></svg>',
 };
 // Mastermind pegs: six colours, each with a symbol of its own (so colour is never the only cue).
@@ -2069,6 +2097,7 @@ function render() {
   animate();
   busFly();
   anchorFx();
+  runPaint();
   if (state.flash && !state.spot && fxAt('move', state.flash) == null) { console.error('A result on show without its move event', state.flash); playFlash(true); }   // (never expected: no animation, but the result still clears)
   sweepBursts();
   devWatch();                                                 // a match starting or ending here: the playtest log
@@ -2267,6 +2296,8 @@ const EXPLAIN = {
   pong: { name: 'Cup Pong', play: 'Swipe up to throw. Aim with direction, distance with speed.', win: 'Sink all 3 of your cups.' },
   trivia: { name: 'Trivia', play: 'Answer a question.', win: 'Get 3 right.' },
   oddone: { name: 'Odd One Out', play: "Tap the tile that's a different shade. It gets harder each time.", win: 'Find 3.' },
+  dash: { name: 'Dash', play: 'Tap to jump, hold to jump higher. Duck low flyers by staying down. It gets faster as you go, and you keep your distance when you crash.', win: 'Reach 1,000 m first.' },
+  lane: { name: 'Lane Rush', play: 'Swipe to change lanes and dodge traffic. It gets faster as you go, and you keep your distance when you crash.', win: 'Reach 1,000 m first.' },
 };
 let explainT = null;                          // the mini-game whose explainer is open
 const qBtn = (t, cls) => `<button class="qbtn${cls ? ' ' + cls : ''}" data-act="explain" data-t="${t}" aria-label="How to play ${EXPLAIN[t].name}">${cls === 'sm' ? '<i>?</i>' : '?'}</button>`;   // the small one: a 26px sticker in a 40px tap target
@@ -2492,6 +2523,7 @@ function thumb(mini, final) {
     case 'pong': return `<div class="tpip">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${mini.cups[p].map(up => `<i class="${up ? 'on' : ''}"></i>`).join('')}</div>`).join('')}</div>`;
     case 'trivia': return `<div class="tpip">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${Array.from({ length: TRIVIA.goal }, (_, k) => `<i class="${k < mini.right[p] ? 'on' : ''}"></i>`).join('')}</div>`).join('')}</div>`;
     case 'oddone': return `<div class="tpip">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${Array.from({ length: ODD.goal }, (_, k) => `<i class="${k < mini.finds[p] ? 'on' : ''}"></i>`).join('')}</div>`).join('')}</div>`;
+    case 'dash': case 'lane': return `<div class="trun" aria-label="X at ${Math.round(mini.dist.X)} m, O at ${Math.round(mini.dist.O)} m of ${mini.cfg.target}">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><i style="--w:${(100 * Math.min(1, mini.dist[p] / mini.cfg.target)).toFixed(1)}%"></i></div>`).join('')}</div>`;   // both players' progress to the target
     case 'pig': return `<div class="tdice">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><div class="bar"><i style="width:${Math.min(100, mini.bank[p] / RISKY.goal * 100)}%"></i></div><span>${mini.bank[p]}</span></div>`).join('')}</div>`;
     case 'hunt': return `<div class="tg g5x5" style="--hn:${huntSize(mini)}">${mini.dug.map((d, i) => {
       if (!d) return '<i></i>';
@@ -2892,6 +2924,255 @@ function oddTable(mini, a, o) {
   const res = d ? `<p ${lateAt('arcres ' + (d.correct ? 'ok' : 'no'), 250)} role="status">${d.correct ? 'Found it!' : d.picked < 0 ? 'No tap' : 'Not that one'}</p>` : shown ? `<p class="arcres ${shown.correct ? 'ok' : 'no'}"><b class="${who}">${N(who)}</b> ${shown.correct ? 'found it' : 'missed it'}</p>` : `<p class="arcnote">${o.view ? '' : `<b class="${who}">${N(who)}</b>: ${level}`}</p>`;
   return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="odd"><div class="ogrid" style="grid-template-columns:repeat(${n}, 1fr)">${tiles}</div>${res}</div></div>`;
 }
+// Dash and Lane Rush: the run is played here, in real time, on a canvas. The engine's runStep is the
+// physics (the same the tests step), this is the loop, the drawing and the inputs. A run: the Run
+// button, a 3-2-1 count, the grace stretch, then the course until a crash, the finish, or the turn's
+// time running out; the result goes in as one move ({ dist, ms }). The other phone sees the result
+// (the bar growing to the new distance), never a replay. The difficulty comes from config/run in the
+// database (the admin's dashboard), fetched at every start and kept for the next visit.
+const RUN_KEY = KEY + '.runcfg';
+function fetchRunConfig() {
+  try { const v = JSON.parse(localStorage.getItem(RUN_KEY) || 'null'); if (v && typeof v === 'object') setRunConfig(v); } catch (e) { /* none kept */ }
+  if (!configured()) return;
+  const hook = window.TTT_FIREBASE, c = (hook && hook.config) || FIREBASE_CONFIG;
+  const url = hook && hook.emulator ? `http://${hook.emulator.host}:${hook.emulator.port}/config/run.json?ns=${c.projectId}-default-rtdb` : `${c.databaseURL}/config/run.json`;
+  try {
+    fetch(url).then(r => (r.ok ? r.json() : null)).then(v => {
+      if (!v || typeof v !== 'object') return;
+      setRunConfig(v);
+      try { localStorage.setItem(RUN_KEY, JSON.stringify(v)); } catch (e) { /* no storage: read again next visit */ }
+    }).catch(() => {});
+  } catch (e) { /* offline: as last known */ }
+}
+const fmtM = n => Math.round(n).toLocaleString('en-US');
+// The run under way on this phone: the square, the player, the engine's sim, and the phase: 'count'
+// (3-2-1), 'run', 'crash' (the tumble or spin-out playing), 'finish' (the flourish). at: when the phase
+// began; last: the last frame's time.
+let runDraft = null;
+function runTable(mini, a, o) {
+  const r = a && a.run ? a.run : null, l = mini.last, turn = o.turn, T = mini.cfg.target, type = mini.type;
+  if (runDraft && (runDraft.sq !== o.zoom || r || o.view || o.locked)) runStop();   // another square, or the result on show: no run under way here
+  const live = runDraft && runDraft.sq === o.zoom ? runDraft : null;
+  const mine = !o.view && !r && !o.locked;
+  const bar = p => {
+    const fresh = r && a.by === p, w0 = 100 * Math.min(1, (fresh ? r.from : mini.dist[p]) / T), w1 = fresh ? 100 * Math.min(1, r.to / T) : w0;
+    return `<div class="rprog ${p}${!o.view && turn === p ? ' now' : ''}"><b class="${p}">${N(p)}</b><div class="rbar" role="progressbar" aria-valuenow="${Math.round(fresh ? r.to : mini.dist[p])}" aria-valuemax="${T}"><i class="${fresh ? 'grow' : ''}" style="--w0:${w0.toFixed(1)}%;--w1:${w1.toFixed(1)}%;--d:${RUNT.bar}ms"></i></div><small>${fmtM(fresh ? r.to : mini.dist[p])} / ${fmtM(T)} m</small></div>`;
+  };
+  const who = r ? a.by : turn;
+  const res = r ? `<p ${lateAt('arcres ' + (r.done ? 'ok' : 'no'), 0)} role="status">${r.done ? `<b class="${a.by}">${N(a.by)}</b> reached ${fmtM(T)} m!` : `<b class="${a.by}">${N(a.by)}</b> ran ${fmtM(r.to - r.from)} m — now at ${fmtM(r.to)}/${fmtM(T)}`}</p>`
+    : o.view ? `<p class="arcnote">${l ? `<b class="${l.by}">${N(l.by)}</b> ${l.done ? 'reached the finish' : `ran ${fmtM(l.to - l.from)} m`}` : ''}</p>`
+    : live ? '<p class="arcnote"></p>'
+    : mine ? `<p class="arcnote">${type === 'dash' ? 'Tap to jump, hold to jump higher. Stay down for the flyers.' : 'Swipe left or right to change lanes, or tap a side.'}</p>`
+    : `<p class="arcnote">Waiting for <b class="${turn}">${N(turn)}</b>…</p>`;
+  const hint = live && live.phase === 'run' && live.sim.t < 1.6 ? `<div class="rhint">${type === 'dash' ? 'Tap to jump · hold for higher' : 'Swipe to change lanes'}</div>` : '';
+  const count = live && live.phase === 'count' ? `<div class="rcount" aria-live="assertive">${live.count > 0 ? live.count : 'GO!'}</div>` : '';
+  const hud = `<div class="rhud" data-run="hud">${fmtM(live ? live.sim.d : r ? r.to : mini.dist[who])} m</div>`;
+  const scene = `<div class="rscene ${type}" data-run="scene" aria-label="${type === 'dash' ? 'The course, from the side' : 'The road, from above'}"><canvas data-run="cv"></canvas>${hud}${count}${hint}</div>`;
+  const btn = mine && !live ? `<div class="cbtns one"><button class="big ${turn}" data-act="run-go">${mini.dist[turn] > 0 ? `Run on from ${fmtM(mini.dist[turn])} m` : 'Run'}</button></div>` : '';
+  return `<div class="g-arc"><div class="runner"><div class="rprogs">${bar('X')}${bar('O')}</div>${scene}${res}</div>${btn}</div>`;
+}
+// Run: the count starts; the run itself starts when it ends.
+function runGo() {
+  const sq = state.squares && state.squares[state.zoom];
+  if (!sq || !RUN_TYPES.includes(sq.mini.type) || sq.owner || state.flash || state.done || blocked() || runDraft) return;
+  const p = state.turn, sim = Object.assign(runStart(sq.mini, p), { p });
+  runDraft = { sq: state.zoom, p, sim, phase: 'count', at: performance.now(), last: performance.now(), count: RUN.countdown, swiped: false, pointer: null, x0: 0, scene: null, hintGone: false, frames: 0, raf: 0 };
+  SND.play('beep');
+  render();
+  runDraft.raf = requestAnimationFrame(runFrame);
+}
+function runStop() { if (!runDraft) return; cancelAnimationFrame(runDraft.raf); runDraft = null; }
+function runFrame(now) {
+  const rd = runDraft;
+  if (!rd) return;
+  if (state.screen !== 'mini' || state.zoom !== rd.sq || state.flash || state.done || state.winner) { runStop(); return; }
+  const dt = Math.min(0.1, Math.max(0, (now - rd.last) / 1000));
+  rd.last = now; rd.frames++;
+  if (rd.phase === 'count') {
+    const left = RUN.countdown - (now - rd.at) / 1000, n = Math.ceil(left);
+    if (left <= 0) { rd.phase = 'run'; rd.at = now; rd.count = 0; SND.play('go'); render(); }
+    else if (n !== rd.count) { rd.count = n; SND.play('beep'); render(); }       // the next digit, with its beep
+  } else if (rd.phase === 'run') {
+    runStep(rd.sim, dt);
+    const hud = app.querySelector('[data-run="hud"]');
+    if (hud) hud.textContent = fmtM(rd.sim.d) + ' m';
+    if (rd.sim.t >= 1.6 && !rd.hintGone) { rd.hintGone = true; const h = app.querySelector('.rhint'); if (h) h.remove(); }
+    const left = clockLeft();
+    if (rd.sim.crash) { rd.phase = 'crash'; rd.at = now; SND.play('crash'); }
+    else if (rd.sim.done) { rd.phase = 'finish'; rd.at = now; SND.play('sparkle'); }
+    else if (left != null && left <= 0) { runEnd(true); return; }                 // the turn's time ran out mid-run: it ends here, the distance saved
+  } else if (now - rd.at >= (rd.phase === 'crash' ? 700 : 500)) { runEnd(false); return; }   // the tumble, the spin-out or the flourish has played
+  const cv = app.querySelector('canvas[data-run="cv"]');
+  if (cv) runFrameDraw(cv, rd.sim, rd, now);
+  rd.raf = requestAnimationFrame(runFrame);
+}
+// The run is over: its end and its time go in as the move (online, the server checks them against the course).
+function runEnd(out) {
+  const rd = runDraft;
+  if (!rd) return;
+  cancelAnimationFrame(rd.raf); runDraft = null;
+  attemptMove(runResult(rd.sim, out));
+}
+// After every render: the canvas of a runner square shows the run under way, or the runner standing at
+// the saved distance (after a move: where it ended) with the course ahead.
+function runPaint() {
+  const cv = app.querySelector('canvas[data-run="cv"]');
+  if (!cv || state.screen !== 'mini') return;
+  const sq = state.squares && state.squares[state.zoom];
+  if (!sq || !RUN_TYPES.includes(sq.mini.type)) return;
+  if (runDraft && runDraft.sq === state.zoom) { runFrameDraw(cv, runDraft.sim, runDraft, performance.now()); return; }
+  const f = state.flash, r = f && f.run ? f.run : null, p = r ? f.by : sq.owner || state.turn;
+  const sim = Object.assign(runStart(sq.mini, p), { p, d: r ? r.to : sq.mini.dist[p] });
+  sim.course = runCourse(sq.mini, p);                         // the whole course ahead (the grace stretch is a run's own)
+  if (r && !r.done) sim.crash = { at: r.to, ob: null };       // just crashed: down on the ground
+  if ((r && r.done) || sim.d >= sq.mini.cfg.target) sim.done = true;
+  runFrameDraw(cv, sim, null, performance.now());
+}
+// ---- the inputs: on the scene, from pointerdown (no waiting for a click) ----
+app.addEventListener('pointerdown', e => {
+  const scene = e.target.closest && e.target.closest('[data-run="scene"]');
+  const rd = runDraft;
+  if (!scene || !rd || rd.phase !== 'run') return;
+  e.preventDefault();
+  rd.pointer = e.pointerId; rd.x0 = e.clientX; rd.swiped = false; rd.scene = scene;
+  if (rd.sim.type === 'dash' && runJump(rd.sim)) SND.play('jump');
+  try { scene.setPointerCapture(e.pointerId); } catch (err) { /* no capture: the move and up still reach the page */ }
+});
+app.addEventListener('pointermove', e => {
+  const rd = runDraft;
+  if (!rd || rd.pointer !== e.pointerId || rd.sim.type !== 'lane' || rd.swiped || rd.phase !== 'run') return;
+  const dx = e.clientX - rd.x0;
+  if (Math.abs(dx) >= 18) { rd.swiped = true; if (runLane(rd.sim, dx < 0 ? -1 : 1)) SND.play('skid'); }   // a swipe counts as soon as it is one
+});
+function runPointerUp(e) {
+  const rd = runDraft;
+  if (!rd || rd.pointer !== e.pointerId) return;
+  rd.pointer = null;
+  if (rd.sim.type === 'dash') { runRelease(rd.sim); return; }
+  if (rd.phase !== 'run' || rd.swiped || !rd.scene) return;
+  const box = rd.scene.getBoundingClientRect();                 // a tap: the side of the road it is on
+  if (runLane(rd.sim, e.clientX < box.left + box.width / 2 ? -1 : 1)) SND.play('skid');
+}
+app.addEventListener('pointerup', runPointerUp);
+app.addEventListener('pointercancel', e => { const rd = runDraft; if (rd && rd.pointer === e.pointerId) { rd.pointer = null; if (rd.sim.type === 'dash') runRelease(rd.sim); } });
+document.addEventListener('keydown', e => {                      // a keyboard: space or up jumps, the arrows change lanes
+  const rd = runDraft;
+  if (!rd || rd.phase !== 'run' || e.repeat) return;
+  if (rd.sim.type === 'dash' && (e.key === ' ' || e.key === 'ArrowUp')) { e.preventDefault(); if (runJump(rd.sim)) SND.play('jump'); }
+  if (rd.sim.type === 'lane' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) { e.preventDefault(); if (runLane(rd.sim, e.key === 'ArrowLeft' ? -1 : 1)) SND.play('skid'); }
+});
+document.addEventListener('keyup', e => { const rd = runDraft; if (rd && rd.sim.type === 'dash' && (e.key === ' ' || e.key === 'ArrowUp')) runRelease(rd.sim); });
+
+// ---- the drawing: the game's own look (bold ink outlines, flat paper colours), nothing borrowed ----
+let runPal = null;
+function runColours() {
+  if (runPal) return runPal;
+  const cs = getComputedStyle(document.documentElement), v = (n, d) => (cs.getPropertyValue(n) || '').trim() || d;
+  runPal = { ink: v('--ink', '#161210'), paper: v('--paper', '#fff8e8'), X: v('--x', '#e5432a'), O: v('--o', '#f6c21b'), green: v('--green', '#4e9d3a'), sky: v('--sky', '#58a8cf') };
+  return runPal;
+}
+function runCanvas(cv) {                                           // the canvas at its box's size, in device pixels
+  const r = cv.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1);
+  const w = Math.max(1, Math.round(r.width * dpr)), h = Math.max(1, Math.round(r.height * dpr));
+  if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+  const c = cv.getContext('2d');
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { c, W: r.width, H: r.height };
+}
+function runFrameDraw(cv, sim, rd, now) {
+  const { c, W, H } = runCanvas(cv);
+  if (W < 2 || H < 2) return;
+  if (sim.type === 'dash') drawDash(c, W, H, sim, rd, now); else drawLane(c, W, H, sim, rd, now);
+}
+const rr = (c, x, y, w, h, r) => { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); };
+const outlined = (c, fill, ink, w) => { c.fillStyle = fill; c.fill(); c.lineWidth = w || 2.5; c.strokeStyle = ink; c.stroke(); };
+function drawDash(c, W, H, sim, rd, now) {
+  const P = runColours(), S = H / 4.6, gy = H * 0.8, rx = W * 0.26, toX = m => rx + (m - sim.d) * S;
+  c.fillStyle = '#cfe9f7'; c.fillRect(0, 0, W, H);
+  // clouds and hills drift by at a fraction of the speed; the ground at full speed
+  c.fillStyle = '#ffffff';
+  for (let k = 0; k < 4; k++) { const x = ((k * 173 - sim.d * S * 0.08) % (W + 120) + W + 120) % (W + 120) - 60, y = H * (0.12 + (k % 2) * 0.1); c.beginPath(); c.ellipse(x, y, 34, 13, 0, 0, Math.PI * 2); c.ellipse(x + 22, y - 6, 22, 12, 0, 0, Math.PI * 2); c.fill(); }
+  const hills = (speed, amp, base, col) => { c.fillStyle = col; c.beginPath(); c.moveTo(0, gy); for (let x = 0; x <= W; x += 8) c.lineTo(x, gy - base - amp * (0.5 + 0.5 * Math.sin((x + sim.d * S * speed) / 70)) - amp * 0.4 * Math.sin((x + sim.d * S * speed) / 23)); c.lineTo(W, gy); c.closePath(); c.fill(); };
+  hills(0.18, 26, 46, '#b7dfbd'); hills(0.4, 18, 14, '#95cf9e');
+  c.fillStyle = '#e6c58a'; c.fillRect(0, gy, W, H - gy);
+  c.strokeStyle = P.ink; c.lineWidth = 3; c.beginPath(); c.moveTo(0, gy); c.lineTo(W, gy); c.stroke();
+  for (let m = Math.floor(sim.d / 5) * 5 - 10; m < sim.d + W / S; m += 5) {   // a tick every 5 m, a post every 100
+    const x = toX(m);
+    if (m > 0 && m % 100 === 0) { c.fillStyle = '#8a6a3a'; c.fillRect(x - 2, gy - S * 1.3, 4, S * 1.3); rr(c, x - 16, gy - S * 1.5, 32, 16, 4); outlined(c, P.paper, P.ink, 2); c.fillStyle = P.ink; c.font = `bold ${Math.max(9, S * 0.26)}px sans-serif`; c.textAlign = 'center'; c.fillText(String(m), x, gy - S * 1.5 + 12); }
+    else { c.fillStyle = '#c9a66b'; c.fillRect(x, gy + 6, 3, 9); }
+  }
+  for (const o of sim.course) { const x = toX(o.at); if (x > -80 && x < W + 80) drawHazard(c, x, gy, S, o, now, P); }
+  const fx = toX(sim.cfg.target);
+  if (fx < W + 40) { for (let k = 0; k < 8; k++) { c.fillStyle = k % 2 ? P.ink : P.paper; c.fillRect(fx - 4, gy - S * 2.4 + k * S * 0.3, 8, S * 0.3); } c.fillStyle = P.X; rr(c, fx + 4, gy - S * 2.4, S * 0.9, S * 0.5, 3); outlined(c, P.X, P.ink, 2); }
+  drawRunner(c, rx, gy, S, sim, rd, now, P);
+}
+function drawHazard(c, x, gy, S, o, now, P) {
+  const ob = DASH_OBS[o.k], w = ob.w * S, h = ob.h * S;
+  if (o.k === 'rock') { c.beginPath(); c.moveTo(x, gy); c.quadraticCurveTo(x + w * 0.1, gy - h * 1.1, x + w * 0.55, gy - h); c.quadraticCurveTo(x + w * 1.05, gy - h * 0.8, x + w, gy); c.closePath(); outlined(c, '#9a9aa6', P.ink, 2.5); c.fillStyle = '#c4c4cf'; c.beginPath(); c.ellipse(x + w * 0.45, gy - h * 0.6, w * 0.18, h * 0.14, -0.4, 0, Math.PI * 2); c.fill(); }
+  else if (o.k === 'crate') { rr(c, x, gy - h, w, h, 3); outlined(c, '#c98b4b', P.ink, 2.5); c.strokeStyle = P.ink; c.lineWidth = 2; c.beginPath(); c.moveTo(x + 4, gy - h + 4); c.lineTo(x + w - 4, gy - 4); c.moveTo(x + w - 4, gy - h + 4); c.lineTo(x + 4, gy - 4); c.stroke(); }
+  else if (o.k === 'spike') { for (let k = 0; k < 3; k++) { const sx = x + (k * w) / 3; c.beginPath(); c.moveTo(sx, gy); c.lineTo(sx + w / 6, gy - h); c.lineTo(sx + w / 3, gy); c.closePath(); outlined(c, '#6fa86a', P.ink, 2); } }
+  else {                                                         // a flyer: three birds, one above the other, wings flapping
+    for (let k = 0; k < 3; k++) {
+      const cy = gy - (ob.y + 0.3 + k * 0.7) * S, cx = x + w / 2, flap = Math.sin(now / 90 + k) * S * 0.18;
+      c.beginPath(); c.ellipse(cx, cy, w * 0.26, S * 0.17, 0, 0, Math.PI * 2); outlined(c, '#5a4a9a', P.ink, 2);
+      c.strokeStyle = P.ink; c.lineWidth = 2.5; c.beginPath(); c.moveTo(cx - w * 0.2, cy); c.quadraticCurveTo(cx - w * 0.45, cy - S * 0.3 + flap, cx - w * 0.62, cy - S * 0.05 + flap); c.moveTo(cx + w * 0.2, cy); c.quadraticCurveTo(cx + w * 0.45, cy - S * 0.3 + flap, cx + w * 0.62, cy - S * 0.05 + flap); c.stroke();
+      c.fillStyle = P.O; c.beginPath(); c.moveTo(cx + w * 0.26, cy); c.lineTo(cx + w * 0.38, cy + S * 0.04); c.lineTo(cx + w * 0.26, cy + S * 0.08); c.closePath(); c.fill();
+    }
+  }
+}
+// The Dasher: a round runner with a scarf, stubby legs pumping with the distance; tucked in a jump; a
+// tumble when it crashes; a leap of joy at the finish.
+function drawRunner(c, rx, gy, S, sim, rd, now, P) {
+  const R = S * 0.42, y = gy - sim.y * S - R - S * 0.12;
+  c.save();
+  let ang = 0, drop = 0;
+  if (sim.crash) { const k = rd ? Math.min(1, (now - rd.at) / 700) : 1; ang = k * 2.6; drop = k * R * 0.5;
+    if (rd) for (let i = 0; i < 4; i++) { c.fillStyle = 'rgba(120, 90, 50, ' + (0.5 * (1 - k)) + ')'; c.beginPath(); c.arc(rx - R * 0.6 - i * R * 0.5 * k, gy - 4 - i * 3 * k, R * (0.25 + 0.15 * k), 0, Math.PI * 2); c.fill(); } }
+  const hop = sim.done && rd ? -Math.abs(Math.sin((now - rd.at) / 160)) * S * 0.6 : 0;
+  c.translate(rx, y + drop + hop); c.rotate(ang);
+  const phase = sim.d * 2.4, onGround = !sim.air && !sim.crash, legA = onGround ? Math.sin(phase) : 0.5, legB = onGround ? Math.sin(phase + Math.PI) : 0.5;
+  c.strokeStyle = P.ink; c.lineWidth = 3.5; c.lineCap = 'round';
+  c.beginPath(); c.moveTo(-R * 0.3, R * 0.6); c.lineTo(-R * 0.3 + legA * R * 0.5, R * 1.15 - Math.max(0, legA) * R * 0.2); c.moveTo(R * 0.3, R * 0.6); c.lineTo(R * 0.3 + legB * R * 0.5, R * 1.15 - Math.max(0, legB) * R * 0.2); c.stroke();
+  c.strokeStyle = P.X; c.lineWidth = Math.max(3, S * 0.12);          // the scarf streams behind
+  c.beginPath(); c.moveTo(-R * 0.6, -R * 0.1); c.quadraticCurveTo(-R * 1.3, -R * 0.1 + Math.sin(now / 70) * R * 0.3, -R * 1.9, Math.sin(now / 55) * R * 0.25); c.stroke();
+  c.beginPath(); c.arc(0, 0, R, 0, Math.PI * 2); outlined(c, '#f39a3b', P.ink, 3);
+  c.fillStyle = '#ffd39a'; c.beginPath(); c.arc(R * 0.15, R * 0.15, R * 0.6, 0, Math.PI * 2); c.fill();
+  c.fillStyle = P.ink; c.beginPath(); c.arc(R * 0.3, -R * 0.15, R * 0.11, 0, Math.PI * 2); c.arc(R * 0.65, -R * 0.15, R * 0.11, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = P.ink; c.lineWidth = 2; c.beginPath(); c.arc(R * 0.5, R * 0.15, R * 0.22, 0.2, Math.PI - 0.2); c.stroke();
+  c.beginPath(); c.moveTo(-R * 0.1, -R * 0.95); c.quadraticCurveTo(-R * 0.4, -R * 1.5, R * 0.1, -R * 1.35); c.lineWidth = 3; c.stroke();   // a tuft
+  c.restore();
+}
+const TRAFFIC = ['#7fc8f0', '#f2d16b', '#f7f3e6', '#9ad88a', '#d8a0e8'];
+function drawLane(c, W, H, sim, rd, now) {
+  const P = runColours(), road = { x: W * 0.1, w: W * 0.8 }, laneW = road.w / 3, S = H / 34, cy = H * 0.82, toY = m => cy - (m - sim.d) * S;
+  c.fillStyle = '#95cf9e'; c.fillRect(0, 0, W, H);
+  c.fillStyle = '#6d8a5a';                                                     // trees along the verges, going by
+  for (let k = -1; k < 12; k++) { const yy = ((k * H) / 9 + sim.d * S) % (H + 40) - 20; for (const tx of [W * 0.04, W * 0.96]) { c.beginPath(); c.arc(tx, yy, W * 0.035, 0, Math.PI * 2); c.fill(); } }
+  c.fillStyle = '#5b5b66'; c.fillRect(road.x, 0, road.w, H);
+  c.fillStyle = P.O; for (let k = -1; k < 20; k++) { const yy = ((k * S * 4 + sim.d * S) % (H + S * 4)) - S * 2; if (k % 2) continue; c.fillRect(road.x - 7, yy, 7, S * 4); c.fillRect(road.x + road.w, yy, 7, S * 4); }
+  c.fillStyle = P.X; for (let k = -1; k < 20; k++) { const yy = ((k * S * 4 + sim.d * S) % (H + S * 4)) - S * 2; if (!(k % 2)) continue; c.fillRect(road.x - 7, yy, 7, S * 4); c.fillRect(road.x + road.w, yy, 7, S * 4); }
+  c.strokeStyle = '#f7f3e6'; c.lineWidth = 3; c.setLineDash([S * 2, S * 2]); c.lineDashOffset = -((sim.d * S) % (S * 4));
+  for (let l = 1; l < 3; l++) { c.beginPath(); c.moveTo(road.x + l * laneW, 0); c.lineTo(road.x + l * laneW, H); c.stroke(); }
+  c.setLineDash([]);
+  const fy = toY(sim.cfg.target);
+  if (fy > -S * 2) for (let k = 0; k < 12; k++) for (let j = 0; j < 2; j++) { c.fillStyle = (k + j) % 2 ? P.ink : P.paper; c.fillRect(road.x + (k * road.w) / 12, fy - S * 1.2 + j * S * 0.6, road.w / 12, S * 0.6); }
+  for (const o of sim.course) { const y = toY(o.at); if (y < -S * 3 || y > H + S * 3) continue; o.cars.forEach((car, l) => { if (car) drawCar(c, road.x + (l + 0.5) * laneW, y, laneW, S, TRAFFIC[Math.floor(o.at * 7 + l) % TRAFFIC.length], 0, P); }); }
+  const x = road.x + (runLaneX(sim) + 0.5) * laneW, spin = sim.crash ? (rd ? Math.min(1, (now - rd.at) / 700) : 1) * Math.PI * 1.75 : 0;
+  if (sim.crash && rd) { c.strokeStyle = 'rgba(30, 30, 30, .55)'; c.lineWidth = 4; for (const dx of [-laneW * 0.2, laneW * 0.2]) { c.beginPath(); c.moveTo(x + dx, cy + S * 1.2); c.lineTo(x + dx - spin * 6, cy + S * 1.2 + spin * S * 3); c.stroke(); } }
+  drawCar(c, x, cy, laneW, S, sim.p === 'O' ? P.O : P.X, spin, P);
+  if (sim.done) { c.fillStyle = P.paper; c.strokeStyle = P.ink; c.lineWidth = 2.5; c.font = `bold ${Math.round(S * 1.6)}px sans-serif`; c.textAlign = 'center'; c.strokeText('FINISH!', W / 2, H * 0.3); c.fillText('FINISH!', W / 2, H * 0.3); }
+}
+function drawCar(c, x, y, laneW, S, col, ang, P) {
+  const w = laneW * 0.56, h = LANE.art * S;
+  c.save(); c.translate(x, y); c.rotate(ang);
+  c.fillStyle = P.ink; for (const [dx, dy] of [[-1, -0.3], [1, -0.3], [-1, 0.32], [1, 0.32]]) rr(c, dx * w * 0.5 - 4, dy * h - h * 0.1, 8, h * 0.2, 2), c.fill();
+  rr(c, -w / 2, -h / 2, w, h, w * 0.25); outlined(c, col, P.ink, 2.5);
+  rr(c, -w * 0.34, -h * 0.28, w * 0.68, h * 0.22, 4); outlined(c, '#cfe9f7', P.ink, 2);
+  rr(c, -w * 0.34, h * 0.08, w * 0.68, h * 0.16, 4); outlined(c, '#cfe9f7', P.ink, 2);
+  c.fillStyle = '#fff3b0'; c.beginPath(); c.arc(-w * 0.3, -h / 2 + 3, 3.5, 0, Math.PI * 2); c.arc(w * 0.3, -h / 2 + 3, 3.5, 0, Math.PI * 2); c.fill();
+  c.restore();
+}
+
 function renderMini(sq, review) {
   const f = state.flash;                            // the move just made: its animation and result are playing
   const d = state.done;                             // the move made here, on show until the player heads back to the board
@@ -3146,6 +3427,7 @@ function renderMini(sq, review) {
     case 'pong': g = pongTable(mini, a, { view, locked, turn, zoom: state.zoom }); break;
     case 'trivia': g = triviaTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d }); break;
     case 'oddone': g = oddTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d }); break;
+    case 'dash': case 'lane': g = runTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d }); break;
     case 'hexapawn': {
       // Tap one of your pawns to see where it can go, then tap a highlighted square. The pawn just moved
       // slides in from where it was; a captured pawn is knocked off the board.
@@ -3234,6 +3516,7 @@ function summary(f) {
     case 'bj': return f.bj && f.bj.next ? `${who}: push, a new hand` : f.bj && f.bj.res ? `${who}: ${bjResText(f.bj)}` : f.bj && f.bj.act === 'hit' ? `${who} hits` : `${who} is dealt a hand`;
     case 'bus': return f.bus ? `${who} said ${BUS_SAY[f.bus.guess]}: ${f.bus.right ? 'right' : 'wrong'}` : `${who} guessed`;
     case 'rl': return f.rl ? `${f.rl.n}${f.rl.n === 0 ? ' green' : rlRed(f.rl.n) ? ' red' : ' black'} · ${f.rl.hit ? 'a hit' : 'a miss'}` : `${who} spun`;
+    case 'dash': case 'lane': return f.run ? (f.run.done ? `${who} reached ${fmtM(f.run.target)} m!` : `${who} ran ${fmtM(f.run.to - f.run.from)} m — now at ${fmtM(f.run.to)}/${fmtM(f.run.target)}`) : `${who} ran`;
     case 'bullseye': return f.bull ? `${who} threw: ${f.bull.hit ? 'a hit' : 'a miss'}` : `${who} threw`;
     case 'echo': return f.echo ? (f.echo.pass ? `${who} beat pattern ${f.echo.level + 1}` : `${who} slipped at step ${f.echo.failAt + 1}`) : `${who} tried`;
     case 'plinko': return f.plinko ? `${who} dropped from slot ${f.plinko.slot + 1} · bin ${f.plinko.bin + 1}${f.plinko.win ? ': WIN' : ''}` : `${who} dropped`;
@@ -3262,7 +3545,7 @@ function renderFlash(f) {
   if (f.type === 'pig' && f.note === 'bust') {
     return `${open}<div class="card"><div class="big-g">${dieFace(f.roll)}</div><h2>Bust!</h2><p>${who} rolled ${f.roll} again · ${f.pot} point${f.pot === 1 ? '' : 's'} lost</p></div></div>`;
   }
-  if ((['bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone'].includes(f.type)) && (f.kind === 'again' || f.kind === 'move')) {   // the table shows it all: the cards, the tick or cross, the number and the hits
+  if ((['bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane'].includes(f.type)) && (f.kind === 'again' || f.kind === 'move')) {   // the table shows it all: the cards, the tick or cross, the number and the hits
     return open.replace('"flash late"', '"flash lite late"') + '</div>';
   }
   if (f.type === 'pig' && (f.note === 'bank' || f.kind === 'again')) {   // a roll or a bank speaks for itself: the +N grows, or moves into the score
@@ -4249,6 +4532,7 @@ function tick() {
     if (left != null && left <= 10000 && left > 0) { const sec = Math.ceil(left / 1000); if (sec !== tickSec) { tickSec = sec; SND.play(sec <= 3 ? 'tickLoud' : 'tickSoft'); } }
     else tickSec = null;
   }
+  if (runDraft && runDraft.phase === 'run' && clockLeft() != null && clockLeft() <= 0) runEnd(true);   // a run under way when the turn's time is up: it ends there, the distance saved
   if (!state.online || !fb || !connected || !room || !room.match || timeoutBusy || state.online.joined === false) return;
   const rec = parseMatch(room.match);
   if (!rec) return;
@@ -5116,6 +5400,8 @@ app.addEventListener('click', e => {
     const nxt = mmDraft.slots.findIndex((x, j) => x == null && j > k);
     mmDraft.at = nxt >= 0 ? nxt : Math.max(0, mmDraft.slots.indexOf(null));
     render();
+  } else if (act === 'run-go') {                // Dash, Lane Rush: the count, then the run
+    runGo();
   } else if (act === 'bulls') {                 // Bullseye: the throw stops the marker where its sweep has it this instant
     const mark = app.querySelector('.bmark.sweep');
     const anim = mark && typeof mark.getAnimations === 'function' ? mark.getAnimations()[0] : null;
@@ -5338,6 +5624,7 @@ async function leaveAndJoin(code) {
 function boot() {
   clockTimer = setInterval(tick, 250);
   fetchReleases();                                            // which mini-games are released, before any match is set up
+  fetchRunConfig();                                           // the runners' difficulty, for the squares to come
   loadTrivia();                                               // the Trivia questions, for the match to come
   takeTag();                                                  // a playtester's link (?t=sam): before the address is tidied below
   devOpen();
@@ -5620,6 +5907,11 @@ def('ballTick', 0.04, (c, d, t) => sfxTone(c, d, t, 3100, .025, { vol: .35, type
 def('tone', 0.3, (c, d, t) => sfxTone(c, d, t, 392, .28, { vol: .45, type: 'triangle', att: .01 }), { level: .5 });   // an Echo pad (its rate sets the pad's note: G, C, E, G)
 def('dartHit', 0.22, (c, d, t) => { sfxNoise(c, d, t, .05, { f: 900, q: 1.2, vol: .5 }); sfxTone(c, d, t, 180, .18, { to: 120, vol: .5, type: 'triangle' }); }, { level: .6 });   // a dart in the board: a thunk
 def('dartMiss', 0.3, (c, d, t) => { sfxTone(c, d, t, 1500, .22, { to: 900, vol: .3, type: 'square', att: .003 }); sfxNoise(c, d, t, .04, { f: 3200, q: 2, vol: .3 }); }, { level: .45 });   // off the board: a clank
+def('beep', 0.12, (c, d, t) => sfxTone(c, d, t, 880, .1, { vol: .35, type: 'square', att: .003 }), { level: .45 });   // the runners' countdown: 3, 2, 1
+def('go', 0.3, (c, d, t) => { sfxTone(c, d, t, 1320, .12, { vol: .4, type: 'square', att: .003 }); sfxTone(c, d, t + .1, 1760, .18, { vol: .4, type: 'square', att: .003 }); }, { level: .5 });   // ...go!
+def('jump', 0.16, (c, d, t) => sfxTone(c, d, t, 420, .14, { to: 900, vol: .4, type: 'triangle' }), { level: .4 });   // Dash: a spring up
+def('crash', 0.5, (c, d, t) => { sfxNoise(c, d, t, .3, { f: 900, to: 150, q: 1, vol: .6 }); sfxTone(c, d, t, 160, .35, { to: 50, vol: .6 }); }, { level: .6 });   // a tumble or a spin-out
+def('skid', 0.3, (c, d, t) => sfxNoise(c, d, t, .28, { f: 2200, to: 900, q: 2, vol: .45 }), { level: .4 });   // Lane Rush: tyres on a lane change
 def('plop', 0.16, (c, d, t) => sfxTone(c, d, t, 520, .14, { to: 260, vol: .5, type: 'sine' }), { level: .5 });   // the chip drops into its bin
 def('ballDrop', 0.3, (c, d, t) => { sfxTone(c, d, t, 1900, .05, { vol: .45, type: 'triangle' }); sfxTone(c, d, t + .1, 1650, .05, { vol: .3, type: 'triangle' }); sfxNoise(c, d, t + .18, .07, { f: 2600, q: 1.5, vol: .35 }); }, { level: .5 });
 
@@ -5753,6 +6045,7 @@ function moveSounds(f) {
     case 'pong': { add('whoosh', 0); if (f.pong) { if (f.pong.rim) add('clink', PONG.fly); add(f.pong.sunk ? 'splash' : 'thud', PONG.fly + (f.pong.rim ? 400 : 0)); } break; }
     case 'trivia': if (f.trivia) add(f.trivia.correct ? 'ding' : 'thud', 250); break;
     case 'oddone': if (f.odd) add(f.odd.correct ? 'ding' : 'thud', 250); break;
+    case 'dash': case 'lane': if (f.run) { add(f.run.done ? 'sparkle' : 'thud', 0); add('ding', RUNT.bar); } break;   // the crash (or the finish) as the result shows, the bar landing at its new distance
     case 'pig':
       if (f.note === 'bust') { add('rattle', 0); add('thunk', 600); add('bust', 650); }
       else if (f.note === 'bank') add('bank', 350);
@@ -5763,7 +6056,7 @@ function moveSounds(f) {
     case 'mastermind': { const n = (f.solid || 0) + (f.hollow || 0); for (let k = 0; k < n; k++) add('marker', 450 + k * 250); if (won) add('reveal', 1450); break; }
     case 'bump': { add('spin', 0); const steps = Math.max(1, f.to - f.from); for (let k = 0; k < steps; k++) add('hop', SPIN3_MS + k * HOP_MS); if (f.bumped) add('boing', SPIN3_MS + steps * HOP_MS); break; }
   }
-  const CASINO = ['bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone'];
+  const CASINO = ['bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane'];
   if (won && f.kind !== 'match' && CASINO.includes(f.type)) add('won', total - 600);   // the card games and the wheel: the chime once the result shows
   else if (won && f.kind !== 'match' && f.type !== 'ttt' && f.type !== 'wordle' && f.type !== 'hangman') add('won', Math.round(total * .5));   // the square is won: a chime
   if (f.kind === 'draw') add('reset', 420);                          // the square resets with a new mini-game

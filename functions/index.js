@@ -63,6 +63,7 @@ admin.initializeApp({ databaseURL: `https://${projectId}-default-rtdb.firebaseio
 const db = admin.database();
 
 const STALE_MS = 15000;          // a searcher that has not checked in for this long has left the queue
+const RUN_SLACK_MS = 2500;      // a run may claim this much more time than the turn has lasted (the phone's clock, the call's way here)
 const MATCH_GRACE_MS = 6000;     // the first turn's clock starts late: both phones load the board and show the players
 const OLD_QUEUES = ['ranked', 'casual30', 'casual60', 'casual180'];   // before Find Match was one queue: left on cancel
 const GAME_KEEP_MS = 24 * 3600 * 1000;   // finished games are deleted after a day (their history stays)
@@ -281,6 +282,15 @@ async function findMatchOn() { return (await db.ref('features/findMatch').get())
 // Release control (engine.js: isReleased): the dashboard's switches, releases/{type}; a game not there is
 // as the code has it. testTypes: the games admin only right now (their stats are kept apart).
 async function releasesNow() { return (await db.ref('releases').get()).val() || {}; }
+// The runners' difficulty (config/run, the admin's dashboard): set in the engine before a square can be
+// dealt (a new match, a draw's reset), so new squares play by the current values; read afresh after 20 s.
+let runCfgAt = 0;
+async function runConfigNow() {
+  if (now() - runCfgAt < 20000) return;
+  E.setRunConfig((await db.ref('config/run').get()).val() || null);
+  runCfgAt = now();
+}
+
 const testTypesOf = rel => E.TYPES.filter(t => !E.isReleased(t, rel));
 async function isAdminUser(uid) {
   if (!uid) return false;
@@ -335,6 +345,7 @@ async function makeGame(key, id, X, O, opts) {
   const bot = opts && opts.bot;
   const Q = R.QUEUES[key], t = now();
   const rng = seedRng();
+  await runConfigNow();
   const rec = E.newOnlineMatch({ names: { X: X.e.name, O: O.e.name }, games: Object.fromEntries(E.releasedTypes(await releasesNow()).map(g => [g, true])), timer: Q.timer }, rng, id);   // released games only, whoever is playing
   E.armClock(rec.state, [], t + MATCH_GRACE_MS);
   const seat = p => Object.assign({ uid: p.uid, name: p.e.name, record: p.e.rec || { wins: 0, losses: 0, draws: 0 } }, R.RATINGS_ENABLED ? { rating: p.e.rating } : {});   // the record for the players' intro
@@ -440,6 +451,7 @@ async function afterBotChange(id, info) {
 // Runs the bot's planned move once it is due. when: 'task' (its Cloud Task: due by then), 'tick' (a phone
 // waiting for it: once due), 'sweep' (the same, from the sweep), 'force' (a timeout on the bot's turn: now).
 async function runBot(id, opts) {
+  await runConfigNow();
   const o = opts || {}, when = o.when || 'tick';
   const [bgs, gs] = await Promise.all([db.ref(`botGames/${id}`).get(), db.ref(`games/${id}`).get()]);
   const bg = bgs.val(), g = gs.val();
@@ -610,7 +622,19 @@ exports.move = onCall(CALL, async req => {
     return changeGame(id, uid, (rec, side) => E.applyOnlinePick(rec, side, i, card));
   }
   if (d.move === undefined) return { ok: false, reason: 'bad' };
-  return changeGame(id, uid, (rec, side) => E.applyOnlineMove(rec, side, i, d.move, seedRng()));
+  await runConfigNow();
+  return changeGame(id, uid, (rec, side) => {
+    // A runner's run (Dash, Lane Rush): the engine checks it against the course; here, against the clock
+    // too: no run may be longer than the turn has lasted (the turn's deadline, less its limit, is when
+    // the turn began, after the last move's playback), so no more distance than that time allows.
+    const sq = rec.state.squares && rec.state.squares[i];
+    if (sq && E.RUN_TYPES.includes(sq.mini.type)) {
+      if (!d.move || typeof d.move !== 'object') return { ok: false, reason: 'bad' };   // (a timed-out run is the server's to make, from the sweep: never a phone's to claim)
+      const t = rec.state.timer;
+      if (t && t.limit && t.deadline != null && Number(d.move.ms) > now() - (t.deadline - t.limit * 1000) + RUN_SLACK_MS) return { ok: false, reason: 'fast' };
+    }
+    return E.applyOnlineMove(rec, side, i, d.move, seedRng());
+  });
 });
 // The turn's time is up: the random move for the player on the move (or the match, on a second
 // timeout in a row). Only once the deadline has really passed, by the server's clock.
@@ -622,6 +646,7 @@ function timeoutStep(rec) {
 }
 exports.timeout = onCall(CALL, async req => {
   const uid = needUid(req), id = gameId((req.data || {}).game);
+  await runConfigNow();
   if (await runBot(id, { when: 'force' }).catch(() => false)) return { ok: true };   // a bot on the move moves instead (it never times out)
   return changeGame(id, uid, timeoutStep);
 });
@@ -745,6 +770,7 @@ exports.friendGameDone = onValueWritten({ ref: '/rooms/{code}/match' }, async ev
     // host is the admin (a guest plays them in that match only). A match that does not (a tampered
     // page) is taken out of the room, which goes back to its lobby. Matches already under way are
     // not touched when a game's release changes.
+    await runConfigNow();
     const roomNow = (await db.ref(`rooms/${event.params.code}`).get()).val() || {};
     const allowed = E.allowedTypes(await releasesNow(), await isAdminUser(roomNow.host));
     const held = (Array.isArray(st.games) ? st.games : []).concat((st.squares || []).map(sq => sq && sq.mini && sq.mini.type));

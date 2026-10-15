@@ -99,6 +99,17 @@ tr.dev { cursor: pointer; } tr.dev:hover td, tr.dev.open td { background: var(--
 .funnel .fb { height: 14px; border-radius: 7px; background: var(--sky); border: 1.5px solid var(--ink); min-width: 2px; }
 .mid-left { color: var(--x); } .mid-open { color: var(--plum); }
 @media (max-width: 480px) { h1 { font-size: 23px; } .kpi b { font-size: 22px; } table { font-size: 15px; } }
+    /* the runners' tuning card */
+    .runner h3 { margin: 6px 0 8px; }
+    .rkpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 8px; }
+    .rbins { display: flex; align-items: flex-end; gap: 2px; height: 90px; padding: 0 2px 16px; border-bottom: 1px solid #ddd; position: relative; }
+    .rbin { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; position: relative; min-width: 4px; }
+    .rbin i { display: block; background: #e5432a; border-radius: 2px 2px 0 0; min-height: 1px; }
+    .rbin small { position: absolute; top: 100%; left: 0; font-size: 10px; color: #777; }
+    .rform { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; margin-top: 12px; align-items: end; }
+    .rform .rf { display: grid; gap: 2px; font-size: 12px; color: #555; }
+    .rform .rf input { width: 100%; padding: 4px 6px; font: inherit; border: 1px solid #bbb; border-radius: 6px; }
+    .rform .btn { grid-column: 1 / -1; justify-self: start; margin-top: 4px; }
 </style>
 </head>
 <body>
@@ -115,7 +126,7 @@ const FIREBASE_CONFIG = {
 };
 const MODES = [['local', 'Two players'], ['cpu', 'vs Computer'], ['cvc', 'Computer vs Computer (old)'], ['friend', 'Friend code'], ['match', 'Find Match'], ['bot', 'Find Match vs a bot'], ['casual', 'Casual (old)'], ['ranked', 'Ranked (old)']];
 const MODE_COLORS = { local: 'var(--o)', cpu: 'var(--sky)', cvc: 'var(--stone)', friend: 'var(--plum)', match: 'var(--green)', bot: '#2f7f6f', casual: '#8fbf7a', ranked: 'var(--x)' };
-const GAMES = { ttt: 'Tic-tac-toe', c4: 'Connect 4', bs: 'Battleship', wordle: 'Wordle', hangman: 'Hangman', hex: 'Hex', hilo: 'Higher/Lower', snakes: 'Snakes and Ladders', memory: 'Memory', candy: 'Candy Race', bump: 'Bump', coins: 'Coin Flip', pig: 'Risky Rolls', hunt: 'Treasure Hunt', mastermind: 'Mastermind', bj: 'Blackjack', bus: 'Ride the Bus', rl: 'Roulette', bullseye: 'Bullseye', echo: 'Echo', plinko: 'Plinko', pong: 'Cup Pong', trivia: 'Trivia', oddone: 'Odd One Out' };   // the games in the pool (Hexapawn and the Dice race are gone; their numbers stay in the database)
+const GAMES = { ttt: 'Tic-tac-toe', c4: 'Connect 4', bs: 'Battleship', wordle: 'Wordle', hangman: 'Hangman', hex: 'Hex', hilo: 'Higher/Lower', snakes: 'Snakes and Ladders', memory: 'Memory', candy: 'Candy Race', bump: 'Bump', coins: 'Coin Flip', pig: 'Risky Rolls', hunt: 'Treasure Hunt', mastermind: 'Mastermind', bj: 'Blackjack', bus: 'Ride the Bus', rl: 'Roulette', bullseye: 'Bullseye', echo: 'Echo', plinko: 'Plinko', pong: 'Cup Pong', trivia: 'Trivia', oddone: 'Odd One Out', dash: 'Dash', lane: 'Lane Rush' };   // the games in the pool (Hexapawn and the Dice race are gone; their numbers stay in the database)
 const app = document.getElementById('app');
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 let fb = null, user = null, stats = null, flagged = null, view = { status: 'loading', error: '' };
@@ -257,6 +268,7 @@ function render() {
     ${accountsCard()}
     ${findCard()}
     ${releasesCard()}
+    ${runnersCard()}
     ${botsCard()}
     ${alertsCard()}
     <div class="card"><h2>Matches by mode</h2>${modeTable}</div>
@@ -371,7 +383,7 @@ function playCard() {
 
 // ---------- game releases: Released or Admin only, per mini-game (releases/{type}, read by the game and the server) ----------
 // A game not in the database is as the code has it (TEST_TYPES in engine.js: admin only until released here).
-const TEST_TYPES = ['bullseye', 'echo', 'plinko', 'golf', 'pool', 'pong', 'bowling', 'trivia', 'oddone'];   // (as engine.js has them; the switches cover every game the stats know)
+const TEST_TYPES = ['bullseye', 'echo', 'plinko', 'golf', 'pool', 'pong', 'bowling', 'trivia', 'oddone', 'dash', 'lane'];   // (as engine.js has them; the switches cover every game the stats know)
 const isReleased = t => (ctl.releases && typeof ctl.releases[t] === 'boolean' ? ctl.releases[t] : !TEST_TYPES.includes(t));
 function releasesCard() {
   const rows = Object.entries(GAMES).map(([t, name]) => { const on = isReleased(t); return `<tr><td>${esc(name)}</td><td><label class="sw"><input type="checkbox" data-rel="${t}"${on ? ' checked' : ''}><span class="${on ? 'good' : ''}">${on ? 'Released' : 'Admin only'}</span></label></td></tr>`; }).join('');
@@ -385,6 +397,63 @@ async function saveRelease(el) {
   try {
     await fb.dbM.set(fb.dbM.ref(fb.db, `releases/${t}`), on);
     ctl.releases = Object.assign({}, ctl.releases, { [t]: on });
+  } catch (e) { alert('Could not save: ' + (e && e.message)); }
+  render();
+}
+// ---------- the runners' tuning: Dash and Lane Rush (config/run, read by the game and the server) ----------
+// The difficulty of each runner lives here; a change applies to squares dealt from then on (a square
+// under way keeps the values it was dealt with). The tracker shows what the squares played so far say:
+// how many runs a finish takes, how far a run goes, and where the crashes cluster.
+const RUN_TYPES = ['dash', 'lane'];
+const RUN_DEFAULTS = { dash: { target: 1000, v0: 8, ramp: 1.5, gapMin: 26, gapMax: 48, mix: { rock: 30, crate: 20, spike: 20, flyer: 20, pair: 10 } }, lane: { target: 1000, v0: 9, ramp: 1.8, gapMin: 24, gapMax: 44, mix: { one: 55, two: 45 } } };   // (as engine.js has them)
+const RUN_FIELDS = [['target', 'Target distance (m)', 200, 5000], ['v0', 'Starting speed (m/s)', 3, 30], ['ramp', 'Speed ramp (m/s more per 100 m)', 0, 10], ['gapMin', 'Obstacle spacing, min (m)', 8, 200], ['gapMax', 'Obstacle spacing, max (m)', 10, 400]];
+const RUN_MIX = { dash: [['rock', 'Rocks'], ['crate', 'Crates'], ['spike', 'Spikes'], ['flyer', 'Low flyers'], ['pair', 'Pairs']], lane: [['one', 'Rows with one car'], ['two', 'Rows with two cars']] };
+const RUN_BIN = 50;
+function runCfg(t) {
+  const raw = (ctl.runCfg && ctl.runCfg[t]) || {}, d = RUN_DEFAULTS[t], out = { mix: {} };
+  for (const [k] of RUN_FIELDS) out[k] = Number.isFinite(Number(raw[k])) && raw[k] !== null && raw[k] !== '' ? Number(raw[k]) : d[k];
+  for (const [k] of RUN_MIX[t]) out.mix[k] = raw.mix && Number.isFinite(Number(raw.mix[k])) ? Number(raw.mix[k]) : d.mix[k];
+  return out;
+}
+function runSums(t) {                                        // every mode together, the admin-only (testing) bucket included
+  const s = { runs: 0, distSum: 0, finishes: 0, finishRuns: 0, crash: {} };
+  for (const m of Object.keys(stats.mini || {})) {
+    const r = (stats.mini[m] && stats.mini[m][t]) || {};
+    s.runs += n(r.runs); s.distSum += n(r.distSum); s.finishes += n(r.finishes); s.finishRuns += n(r.finishRuns);
+    for (const [b, c] of Object.entries(r.crash || {})) s.crash[b] = (s.crash[b] || 0) + n(c);
+  }
+  return s;
+}
+function runnersCard() {
+  const one = t => {
+    const c = runCfg(t), s = runSums(t), name = GAMES[t];
+    const fields = RUN_FIELDS.map(([k, l, lo, hi]) => `<label class="rf"><span>${l}</span><input type="number" step="any" min="${lo}" max="${hi}" data-runcfg="${t}:${k}" value="${c[k]}"></label>`).join('');
+    const mix = RUN_MIX[t].map(([k, l]) => `<label class="rf"><span>${l}</span><input type="number" step="1" min="0" max="1000" data-runcfg="${t}:mix.${k}" value="${c.mix[k]}"></label>`).join('');
+    const bins = []; for (let b = 0; b < c.target; b += RUN_BIN) bins.push([b, n(s.crash[b])]);
+    const max = Math.max(1, ...bins.map(x => x[1])), crashes = bins.reduce((a, x) => a + x[1], 0);
+    const chart = crashes ? `<div class="rbins" aria-label="Crashes per ${RUN_BIN} m">${bins.map(([b, k]) => `<div class="rbin" title="${b}-${b + RUN_BIN} m: ${k} crash${k === 1 ? '' : 'es'}"><i style="height:${Math.round(100 * k / max)}%"></i>${b % 200 === 0 ? `<small>${b}</small>` : ''}</div>`).join('')}</div>` : '<p class="dim">No crashes recorded yet.</p>';
+    return `<div class="runner"><h3>${esc(name)}</h3>
+      <div class="rkpis">${kpi('Runs to finish', num(ratio(s.finishRuns, s.finishes)), `${s.finishes} square${s.finishes === 1 ? '' : 's'} finished`)}${kpi('Avg distance per run', s.runs ? Math.round(s.distSum / s.runs) + ' m' : '—', `${s.runs} run${s.runs === 1 ? '' : 's'}`)}${kpi('Crashes', crashes, 'where they cluster, below')}</div>
+      ${chart}
+      <div class="rform">${fields}${mix}<button class="btn" data-runsave="${t}">Save ${esc(name)}</button></div></div>`;
+  };
+  return `<div class="card ctl" id="runCard"><h2>Runner tuning</h2>
+    <p class="note">Dash and Lane Rush: a race to the target distance, one run a move. Everything here goes to the game and the server at once and applies to squares dealt from then on (a square under way keeps its values). The mix numbers are weights (any scale). Aim: an average player finishes in 3-6 runs, most runs lasting 10-25 seconds; the crash chart (every ${RUN_BIN} m, every mode together) shows where the course bites.</p>
+    <div class="grid2">${one('dash')}${one('lane')}</div></div>`;
+}
+async function saveRunCfg(t, btn) {
+  const out = { mix: {} };
+  for (const el of app.querySelectorAll(`input[data-runcfg^="${t}:"]`)) {
+    const k = el.dataset.runcfg.split(':')[1], v = Number(el.value);
+    if (!Number.isFinite(v) || v < Number(el.min) || v > Number(el.max)) { alert(`${k}: a number from ${el.min} to ${el.max}`); return; }
+    if (k.startsWith('mix.')) out.mix[k.slice(4)] = Math.round(v); else out[k] = v;
+  }
+  if (out.gapMax < out.gapMin) { alert('The maximum spacing must be at least the minimum.'); return; }
+  if (!Object.values(out.mix).some(v => v > 0)) { alert('Give at least one obstacle kind a weight.'); return; }
+  btn.disabled = true;
+  try {
+    await fb.dbM.set(fb.dbM.ref(fb.db, `config/run/${t}`), out);
+    ctl.runCfg = Object.assign({}, ctl.runCfg, { [t]: out });
   } catch (e) { alert('Could not save: ' + (e && e.message)); }
   render();
 }
@@ -527,9 +596,9 @@ async function loadPeople() {
 }
 async function loadCtl() {
   const g = p => fb.dbM.get(fb.dbM.ref(fb.db, p)).then(s => s.val()).catch(() => null);
-  const [config, secretsSet, bots, botStats, alertStats, features, log, releases] = await Promise.all([g('admin/config'), g('admin/secretsSet'), g('bots'), g('botStats'), g('alertStats'), g('features'),
-    fb.dbM.get(fb.dbM.query(fb.dbM.ref(fb.db, 'alertLog'), fb.dbM.orderByChild('at'), fb.dbM.limitToLast(8))).then(s => s.val()).catch(() => null), g('releases')]);
-  ctl = { config: config || {}, secretsSet: secretsSet || {}, bots: bots || {}, botStats: botStats || {}, alertStats: alertStats || {}, features: features || {}, releases: releases || {},
+  const [config, secretsSet, bots, botStats, alertStats, features, log, releases, runCfg] = await Promise.all([g('admin/config'), g('admin/secretsSet'), g('bots'), g('botStats'), g('alertStats'), g('features'),
+    fb.dbM.get(fb.dbM.query(fb.dbM.ref(fb.db, 'alertLog'), fb.dbM.orderByChild('at'), fb.dbM.limitToLast(8))).then(s => s.val()).catch(() => null), g('releases'), g('config/run')]);
+  ctl = { config: config || {}, secretsSet: secretsSet || {}, bots: bots || {}, botStats: botStats || {}, alertStats: alertStats || {}, features: features || {}, releases: releases || {}, runCfg: runCfg || {},
     alertLog: Object.values(log || {}).sort((a, b) => b.at - a.at) };
 }
 async function signIn(how) {
@@ -560,6 +629,7 @@ app.addEventListener('click', e => {
   else if (b.dataset.dev) { devOpen = devOpen === b.dataset.dev ? null : b.dataset.dev; render(); const el = devOpen && document.getElementById('devTimeline'); if (el) el.scrollIntoView({ block: 'nearest' }); }
   else if (b.dataset.act === 'all-sessions') { allSessions = !allSessions; render(); }
   else if (b.dataset.act === 'save-keys') saveKeys();
+  else if (b.dataset.runsave) saveRunCfg(b.dataset.runsave, b);
   else if (b.dataset.act === 'test-alert') testAlert(b);
 });
 app.addEventListener('change', e => {

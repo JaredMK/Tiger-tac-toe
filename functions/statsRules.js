@@ -5,7 +5,9 @@
  * stats/ (readable by the admin only, written only by the server)
  *   mini/{mode}/{type}     played, won, draw (reset), open (match ended first), winMoves, loseMoves,
  *                          allMoves, xWins, oWins: sums, averaged on the dashboard (mode 'testing': the
- *                          squares of games that were admin only when the match ended, kept apart)
+ *                          squares of games that were admin only when the match ended, kept apart);
+ *                          the runners (Dash, Lane Rush) add runs, distSum (metres, over all runs),
+ *                          finishes, finishRuns (the winners' runs) and crash/{bin} (crashes per 50 m)
  *   modes/{mode}           started, finished, resigned, timeouts, turns, ms, timed (matches with a time),
  *                          xWins, oWins, draws (no line left for either side)
  *   days/{YYYY-MM-DD}      logins, active, newAccounts, started/{mode}, finished/{mode}
@@ -50,12 +52,27 @@ function checkEnd(d, types) {
     if (X === null || O === null) return null;
     const w = e.end === 'won' ? (e.w === 'X' || e.w === 'O' ? e.w : null) : null;
     if (e.end === 'won' && !w) return null;
-    squares.push({ t: e.t, end: e.end, w, X, O });
+    const run = checkRun(e.run);
+    if (e.run !== undefined && !run) return null;
+    squares.push(Object.assign({ t: e.t, end: e.end, w, X, O }, run ? { run } : {}));
   }
   const winner = d.winner === 'X' || d.winner === 'O' ? d.winner : null;
   return { squares, winner, reason: REASONS.includes(d.reason) ? d.reason : null };
 }
 
+// A runner square's run data as a phone reports it: runs and distances per side, the crash points.
+const RUN_BIN = 50, RUN_MAX_M = 5000, RUN_MAX_CRASHES = 40;
+function checkRun(r) {
+  if (!r || typeof r !== 'object' || !r.runs || !r.dist || !r.crashes) return null;
+  const out = { runs: {}, dist: {}, crashes: {} };
+  for (const p of ['X', 'O']) {
+    const n = count(r.runs[p], 999), d = Number(r.dist[p]);
+    if (n === null || !Number.isFinite(d) || d < 0 || d > RUN_MAX_M || !Array.isArray(r.crashes[p]) || r.crashes[p].length > RUN_MAX_CRASHES) return null;
+    if (!r.crashes[p].every(c => Number.isFinite(c) && c >= 0 && c <= RUN_MAX_M)) return null;
+    out.runs[p] = n; out.dist[p] = Math.round(d); out.crashes[p] = r.crashes[p].map(c => Math.round(c));
+  }
+  return out;
+}
 // What a match starting adds.
 function startUpdates(mode, t) {
   const k = periodKeys(t);
@@ -85,6 +102,12 @@ function endUpdates(mode, sum, ms, t, withStart, testTypes) {
       add(b + 'winMoves', e[e.w]);
       add(b + 'loseMoves', e[e.w === 'X' ? 'O' : 'X']);
       add(b + (e.w === 'X' ? 'xWins' : 'oWins'), 1);
+    }
+    if (e.run) {                                                        // a runner: every run and crash counts, finished square or not
+      add(b + 'runs', e.run.runs.X + e.run.runs.O);
+      add(b + 'distSum', e.run.dist.X + e.run.dist.O);
+      for (const p of ['X', 'O']) for (const c of e.run.crashes[p]) add(`${b}crash/${Math.floor(c / RUN_BIN) * RUN_BIN}`, 1);
+      if (e.end === 'won') { add(b + 'finishes', 1); add(b + 'finishRuns', e.run.runs[e.w]); }
     }
   }
   return up;
@@ -124,5 +147,5 @@ function checkDev(d, t) {
   return { h: devHash(d.dev), k, ev, tag: tagOk(d.tag) ? d.tag : null };
 }
 
-module.exports = { MODES, CLIENT_MODES, MAX_MS, periodKeys, PERIOD_NODE, hashId, idOk, checkEnd, startUpdates, endUpdates, periodUpdates,
+module.exports = { MODES, CLIENT_MODES, MAX_MS, periodKeys, PERIOD_NODE, hashId, idOk, checkEnd, checkRun, RUN_BIN, startUpdates, endUpdates, periodUpdates,
   DEV_EVENTS, DEV_MODES, TAG_RE, tagOk, devHash, checkDev };

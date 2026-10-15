@@ -123,6 +123,7 @@ Sounds start from the events they belong to, never from drawing the screen: a re
 | Plinko | `peg` / `plop` / `sparkle` / `thud` | The chip clicks on every peg (Mastermind's peg, a little higher each row), drops into its bin, then WIN sparkles or a miss thuds | Plop: a sine falling 520→260 Hz |
 | Cup Pong | `whoosh` / `clink` / `splash` / `thud` | The throw; a rim bounce clinks; a sunk cup splashes, a miss thuds | As above |
 | Trivia | `ding` / `thud` | Right / wrong, as the right answer is revealed | As above |
+| Dash, Lane Rush | `beep` / `go` / `jump` / `skid` / `crash` / `sparkle` / `thud` / `ding` | The 3-2-1 count and go; a jump (Dash) or a lane change's tyres (Lane Rush) from the tap or swipe; the tumble or spin-out; then the result, for both phones: a thud (a crash) or a sparkle (the finish) as it shows, and a ding as the bar lands at the new distance | Beep: a short 880 Hz square; go: two rising squares; jump: a triangle sweeping up 420→900 Hz; skid: a band of noise falling 2200→900 Hz; crash: a noise burst over a low falling sine |
 | Odd One Out | `ding` / `thud` | Found / not that one | As above |
 
 ## Rules the game follows

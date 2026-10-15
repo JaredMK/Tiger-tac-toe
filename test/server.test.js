@@ -1255,3 +1255,66 @@ test('release control: an admin-only game exists for nobody but the admin: not i
   await runScript('make-admin.js', 'Rel_Boss', 'revoke');
   await put('releases', null);
 });
+
+test('runners (Dash, Lane Rush): the difficulty config is public, the admin alone sets it, within bounds; a run the course or the clock would not allow is refused; runs and crashes reach the stats', async () => {
+  const boss = await player('RunBoss'), a = await player('Runner_A'), b = await player('Runner_B');
+  const script = (...args) => new Promise((resolve, reject) => execFile(process.execPath, [path.join(__dirname, '..', 'scripts', 'make-admin.js'), ...args],
+    { env: Object.assign({}, process.env, { TTC_PROJECT: PROJECT, GCLOUD_PROJECT: PROJECT }) }, (e, out) => (e ? reject(new Error(out || e.message)) : resolve(out))));
+  assert.match(await script('RunBoss', 'grant'), /RunBoss is now the admin/);
+  await boss.auth.currentUser.getIdToken(true);
+  // the config: readable by everyone (the game reads it at every start), written by the admin alone, checked
+  const cfg = { target: 600, v0: 10, ramp: 2, gapMin: 30, gapMax: 50, mix: { rock: 40, crate: 20, spike: 20, flyer: 10, pair: 10 } };
+  await denied(a.write('config/run/dash', cfg), 'a player setting the difficulty');
+  await boss.write('config/run/dash', cfg);
+  assert.deepEqual(await a.read('config/run/dash'), cfg, 'everyone can read it');
+  assert.equal((await fetch(`http://${DB_HOST}/config/run/dash/target.json?ns=${NS}`)).status, 200, 'without a login too');
+  await denied(boss.write('config/run/dash/target', 9999), 'a target off its range');
+  await denied(boss.write('config/run/dash/v0', 'fast'), 'a speed that is not a number');
+  await denied(boss.write('config/run/dash/mix/Rock Monster', 5), 'a kind with a name that is not one');
+  await denied(boss.write('config/run/dash/other', 1), 'anything else');
+  await denied(boss.write('config/bowling', { x: 1 }), 'any other config');
+  await boss.write('config/run/dash', null);
+  // a Find Match game turned into a Dash board: the server checks every run against the course and the clock
+  const g = await pairUp(a, b);
+  const seeds = {};
+  await rewrite(g.id, full => {
+    full.squares.forEach((sq, i) => { sq.owner = null; sq.mini = E.newMini('dash', E.makeRng('srv' + i)); });
+    full.turn = 'X'; full.lock = null; full.winner = null; full.timer.deadline = Date.now() + 60000; full.timer.for = 'X';
+    seeds.mini = JSON.parse(JSON.stringify(full.squares[4].mini));
+  });
+  const st = await gameState(g.id);
+  assert.ok(Number.isInteger(st.squares[4].mini.seed.X), 'the course seed is in the public state: the server sends it');
+  const m = seeds.mini, course = E.runCourse(m, 'X'), okMs = (x, y) => Math.round(E.runSecs(m.cfg, x, y) * 1000);
+  const move = mv => g.X.call('move', { game: g.id, square: 4, move: mv });
+  assert.deepEqual(await move({ dist: 700, ms: 1000 }), { ok: false, reason: 'fast' }, 'more distance than the time allows at the course speeds');
+  const far = course[course.length - 1];
+  assert.deepEqual(await move({ dist: far.at, ms: okMs(0, far.at) + 100 }), { ok: false, reason: 'fast' }, 'more time than the turn has lasted');
+  assert.deepEqual(await move({ dist: (course[2].at + course[3].at) / 2, ms: 60000 }), { ok: false, reason: 'course' }, 'a crash where there is nothing to crash into');
+  assert.deepEqual(await move({ dist: 1001, ms: 60000 }), { ok: false, reason: 'bad' });
+  assert.deepEqual(await move('auto'), { ok: false, reason: 'bad' }, 'a timed-out run is the server\'s to make, not a phone\'s to claim');
+  const first = course.find(o => o.at >= E.runGrace(m.cfg, 0));
+  const r = await move({ dist: first.at + 0.2, ms: okMs(0, first.at + 0.2) + 150 });
+  assert.equal(r.ok, true, `a crash at the first hazard in the time it takes (${JSON.stringify(r)})`);
+  const after = await gameState(g.id);
+  assert.equal(after.squares[4].mini.dist.X, Math.round((first.at + 0.2) * 100) / 100); assert.equal(after.squares[4].mini.runs.X, 1); assert.equal(after.turn, 'O');
+  // the clock runs out on O: the server's own run for them, short and at an obstacle
+  await patch(`games/${g.id}`, { dl: Date.now() - 1000 });
+  await rewrite(g.id, full => { full.timer.deadline = Date.now() - 1000; });
+  assert.equal((await g.O.call('timeout', { game: g.id })).ok, true);
+  const to = await gameState(g.id);
+  assert.equal(to.squares[4].mini.runs.O + to.squares.filter((sq, i) => i !== 4 && sq.mini.runs.O).length, 1, 'one run for O, somewhere');
+  const oSq = to.squares.find(sq => sq.mini.runs.O);
+  assert.ok(oSq.mini.dist.O > 0 && oSq.mini.dist.O < 150, `a short run (${oSq.mini.dist.O})`);
+  // the end: resigned by O; the runs and the crashes are counted (admin-only games: under testing)
+  const before = (await get('stats/mini/testing/dash')) || {};
+  assert.equal((await g.O.call('resign', { game: g.id })).ok, true);
+  await recorded(g.id);
+  const s = await get('stats/mini/testing/dash');
+  const n = k => (s[k] || 0) - (before[k] || 0);
+  assert.equal(n('runs'), 2, 'two runs: X\'s and the clock\'s for O');
+  assert.equal(n('distSum'), Math.round(first.at + 0.2) + Math.round(oSq.mini.dist.O), 'the metres covered');
+  assert.equal(n('open'), 1 + (oSq === to.squares[4] ? 0 : 1), 'the squares still open at the end count as open');
+  const bin = Math.floor((first.at + 0.2) / 50) * 50;
+  assert.equal((s.crash && s.crash[bin] || 0) - (before.crash && before.crash[bin] || 0), oSq === to.squares[4] && Math.floor(oSq.mini.dist.O / 50) * 50 === bin ? 2 : 1, `X's crash in the ${bin} m bin`);
+  assert.match(await script('RunBoss', 'revoke'), /no longer an admin/);
+});
