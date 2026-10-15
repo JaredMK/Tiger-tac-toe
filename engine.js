@@ -8,13 +8,13 @@
  * Everything about a match lives in one plain object (see newMatch); the UI
  * only ever calls playMove / endFlash and re-renders from that object.
  */
-const TYPES = ['ttt', 'c4', 'bs', 'wordle', 'hangman', 'hex', 'hilo', 'snakes', 'memory', 'candy', 'bump', 'coins', 'pig', 'hunt', 'mastermind', 'bj', 'bus', 'rl'];
+const TYPES = ['ttt', 'c4', 'bs', 'wordle', 'hangman', 'hex', 'hilo', 'snakes', 'memory', 'candy', 'bump', 'coins', 'pig', 'hunt', 'mastermind', 'bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone'];
 // Release control: every mini-game is Released or Admin only. A game in TEST_TYPES is admin only until the
 // admin's dashboard releases it (releases/{type} true in the database; false puts one back to admin only);
 // everything else is released unless the database says otherwise. Admin-only games exist only for the
 // admin: in their local matches and in friend games they host (their guest plays them in that match
 // only); never in Find Match, nor anywhere for anyone else.
-const TEST_TYPES = [];
+const TEST_TYPES = ['bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone'];
 function isReleased(t, releases) { return releases && typeof releases[t] === 'boolean' ? releases[t] : !TEST_TYPES.includes(t); }
 function releasedTypes(releases) { return TYPES.filter(t => isReleased(t, releases)); }
 // The games a setup may deal (admin: every game; anyone else: the released ones), and the setup's
@@ -50,6 +50,12 @@ const INFO = {
   bj:          { name: 'Blackjack',    hint: 'Beat the dealer without going over 21. First to 3 wins' },
   bus:         { name: 'Ride the Bus', hint: 'Colour, higher or lower, inside or outside, then the suit' },
   rl:          { name: 'Roulette',     hint: 'Bet 8 numbers, a group or green 0. Two hits wins' },
+  bullseye:    { name: 'Bullseye',     hint: 'Stop the marker in the middle. Three hits wins' },
+  echo:        { name: 'Echo',         hint: 'Watch the pattern, then tap it back. Beat all four' },
+  plinko:      { name: 'Plinko',       hint: 'Drop the chip. Land in the WIN bin' },
+  pong:        { name: 'Cup Pong',     hint: 'Swipe up to throw. Sink all three cups' },
+  trivia:      { name: 'Trivia',       hint: 'Answer the question. Three right wins' },
+  oddone:      { name: 'Odd One Out',  hint: 'Tap the tile of a different shade. Three finds wins' },
 };
 const C4 = { cols: 7, rows: 6, k: 4 };
 const HP = { cols: 3, rows: 4 };
@@ -311,7 +317,7 @@ function hexPath(cells, p) {
 }
 // Does p have a legal move in this mini-game? Only Hexapawn can leave a player stuck; every other game
 // always offers a move. A stuck player simply plays in another square.
-function canMove(mini, p) { return mini.type === 'hexapawn' ? hpMoves(mini.cells, p).length > 0 : true; }
+function canMove(mini, p) { return mini.type === 'hexapawn' ? hpMoves(mini.cells, p).length > 0 : mini.type === 'trivia' ? !!(mini.ask && mini.ask[p]) : true; }   // (Trivia: only with a question dealt)
 // Hexapawn: a pawn steps one square straight forward into an empty square, or captures an opposing pawn
 // one square diagonally forward. Cells run row by row from the top; X moves up, O moves down.
 function hpMoves(cells, p) {
@@ -600,6 +606,108 @@ function bsPlacements(len) {
   return out;
 }
 
+// ---------- the arcade games: Bullseye, Echo, Plinko, Cup Pong, Trivia, Odd One Out ----------
+// Bullseye: a marker sweeps across a bar, back and forth; a throw stops it. The zone is the middle
+// 20% of the bar. A player's marker crosses the bar in base / speed ms, and every hit of theirs makes
+// it a quarter faster. A move is where the marker stopped, 0 to 1 along the bar.
+const BULLS = { goal: 3, zone: 0.2, base: 2200, faster: 1.25, aiHit: [0.7, 0.55, 0.4] };
+const bullsHit = at => Math.abs(at - 0.5) <= BULLS.zone / 2;
+const bullsPeriod = speed => BULLS.base / speed;
+// Echo: four pads; each player has their own four patterns, of 4, 8, 11 and 14 steps, drawn when the
+// square is dealt and never redrawn (a pattern failed plays again next attempt). A move is one attempt:
+// the pads tapped back, in order; 'auto' (a timeout) is a failed attempt.
+const ECHO = { pads: 4, lengths: [4, 8, 11, 14], step: 450, aiPass: [0.95, 0.75, 0.5, 0.3] };
+const echoSeqs = rng => ECHO.lengths.map(n => Array.from({ length: n }, () => randInt(rng, ECHO.pads)));
+// Plinko: 7 drop slots, 6 rows of pegs, 7 bins; one bin, drawn when the square is dealt, is the WIN
+// bin. The chip's position runs in half-slots (0 to 12, a slot at an even one); at every peg it goes
+// left or right, 50/50, except against a wall, where it can only go inward.
+const PLINKO = { slots: 7, rows: 6, step: 230, land: 420 };
+function plinkoPath(slot, rng) {
+  let x = slot * 2;
+  const path = [];
+  for (let r = 0; r < PLINKO.rows; r++) {
+    const right = x <= 0 ? true : x >= (PLINKO.slots - 1) * 2 ? false : rng() < 0.5;
+    x += right ? 1 : -1; path.push(right);
+  }
+  return { path, bin: x / 2 };
+}
+// The chance of each bin from a slot (every path counted, the walls included): for the tests and the computer.
+function plinkoOdds(slot) {
+  const out = new Array(PLINKO.slots).fill(0);
+  for (let k = 0; k < 1 << PLINKO.rows; k++) {
+    let x = slot * 2;
+    for (let r = 0; r < PLINKO.rows; r++) { const right = x <= 0 ? true : x >= (PLINKO.slots - 1) * 2 ? false : !!(k & (1 << r)); x += right ? 1 : -1; }
+    out[x / 2] += 1 / (1 << PLINKO.rows);
+  }
+  return out;
+}
+// Cup Pong: the table is one unit long (the thrower at y 0, the far end at y 1) and one wide (x from
+// -0.5 to 0.5). Each player's rack is three cups in a triangle at the far end. A throw is an aim
+// (-1 to 1, the angle) and a power (0 to 1, the distance); the ball lands where the throw sends it,
+// plus a little scatter either way. Inside a cup it sinks; within the rim it bounces, and drops in a
+// quarter of the time; otherwise it misses.
+const PONG = { cups: [[0, 0.84], [-0.1, 0.93], [0.1, 0.93]], r: 0.055, rim: 0.03, rimIn: 0.25, spread: 0.068, angle: 0.35, near: 0.5, far: 1.1, goal: 3, fly: 900, hold: 500, aiErr: [0.012, 0.018] };
+const pongDist = power => PONG.near + (PONG.far - PONG.near) * power;
+function pongThrow(cups, aim, power, rng) {
+  const g = () => { const u = Math.max(1e-9, rng()), v = rng(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };   // (Box-Muller)
+  const th = aim * PONG.angle, d = pongDist(power);
+  const x = Math.sin(th) * d + g() * PONG.spread, y = Math.cos(th) * d + g() * PONG.spread;
+  let cup = null, best = Infinity;
+  cups.forEach((up, k) => { if (!up) return; const dd = Math.hypot(x - PONG.cups[k][0], y - PONG.cups[k][1]); if (dd < best) { best = dd; cup = k; } });
+  if (cup == null || best > PONG.r + PONG.rim) return { x, y, cup: null, rim: false, sunk: false };
+  if (best <= PONG.r) return { x, y, cup, rim: false, sunk: true };
+  return { x, y, cup, rim: true, sunk: rng() < PONG.rimIn };
+}
+// The throw that lands on a cup's centre with no scatter: the computer's aim, before its own error.
+function pongAimAt(k) { const [cx, cy] = PONG.cups[k]; return { aim: Math.atan2(cx, cy) / PONG.angle, power: (Math.hypot(cx, cy) - PONG.near) / (PONG.far - PONG.near) }; }
+// Trivia: the questions come from the bank the host sets (trivia.json, from the Open Trivia Database;
+// setTriviaBank). Each player has their own question in a square, dealt from the questions not yet
+// asked of anyone in this match; the right answer's place is kept apart from the public state online.
+const TRIVIA = { goal: 3, options: 4, aiRight: 0.65, reveal: 900, bank: null };   // bank: the questions, as the host sets them
+function setTriviaBank(bank) { TRIVIA.bank = bank && Array.isArray(bank.questions) && bank.questions.length ? bank : null; }
+function triviaReady() { return !!TRIVIA.bank; }
+function triviaUsed(state) {
+  const used = new Set();
+  for (const sq of (state && state.squares) || []) {
+    const m = sq && sq.mini;
+    if (!m || m.type !== 'trivia') continue;
+    for (const id of m.asked || []) used.add(id);
+    for (const p of ['X', 'O']) if (m.ask && m.ask[p]) used.add(m.ask[p].id);
+  }
+  return used;
+}
+// A question for each player without one, never one asked before in this match (every question of
+// the bank asked: any again). The answers' order is shuffled; the right one's place goes in answers.
+function triviaDeal(state, sq, rng) {
+  const m = sq.mini;
+  if (!m || m.type !== 'trivia' || !TRIVIA.bank) return;
+  const used = triviaUsed(state);
+  for (const p of ['X', 'O']) {
+    if (m.ask[p]) continue;
+    let pool = TRIVIA.bank.questions.filter(q => !used.has(q.id));
+    if (!pool.length) pool = TRIVIA.bank.questions;
+    const q = pool[randInt(rng, pool.length)];
+    const opts = shuffle([q.a].concat(q.wrong.slice(0, TRIVIA.options - 1)), rng);
+    m.ask[p] = { id: q.id, q: q.q, cat: q.cat || '', opts };
+    m.answers[p] = opts.indexOf(q.a);
+    used.add(q.id);
+  }
+}
+// Odd One Out: a grid of tiles of one colour, one of them a different shade (a little lighter or
+// darker, and a touch off in hue, so it is fair with colours hard to tell apart). A player's grid grows
+// with their finds: 3x3 with a clear difference, then 4x4, then 5x5 with a subtle one. The odd tile's
+// place is kept apart from the public state online; the tiles' colours are what the page draws.
+const ODD = { goal: 3, sizes: [3, 4, 5], diff: [16, 10, 6], hue: [6, 4, 3], aiFind: [0.9, 0.7, 0.5], reveal: 700 };
+function oddGrid(level, rng) {
+  const k = Math.min(level, ODD.sizes.length - 1), n = ODD.sizes[k];
+  const h = randInt(rng, 360), sat = 50 + randInt(rng, 25), l = 42 + randInt(rng, 20);
+  const up = l < 52 ? 1 : -1;                                   // the odd tile leans toward the middle lightness: always visible
+  const dl = ODD.diff[k] * up, dh = (rng() < 0.5 ? -1 : 1) * ODD.hue[k];
+  const base = `hsl(${h} ${sat}% ${l}%)`, odd = `hsl(${(h + dh + 360) % 360} ${sat}% ${l + dl}%)`;
+  const pos = randInt(rng, n * n);
+  return { grid: { n, base, odd, tiles: Array.from({ length: n * n }, (_, i) => (i === pos ? odd : base)) }, pos };
+}
+
 function newMini(type, rng) {
   switch (type) {
     case 'ttt':         return { type, cells: new Array(9).fill(null), last: null };
@@ -622,6 +730,15 @@ function newMini(type, rng) {
     case 'bj':          return { type, wins: { X: 0, O: 0 }, hand: null, hole: null, deck: null, last: null };   // hand: the hand being played; hole and deck: hidden
     case 'bus':         return { type, prog: { X: [], O: [] }, last: null };   // prog: each player's kept cards, one per round passed
     case 'rl':          return { type, hits: { X: 0, O: 0 }, spins: [], last: null };
+    case 'bullseye':    return { type, hits: { X: 0, O: 0 }, speed: { X: 1, O: 1 }, last: null };
+    case 'echo':        return { type, level: { X: 0, O: 0 }, seqs: { X: echoSeqs(needRng(rng)), O: echoSeqs(needRng(rng)) }, last: null };
+    case 'plinko':      return { type, win: randInt(needRng(rng), PLINKO.slots), last: null };
+    case 'pong':        return { type, cups: { X: [true, true, true], O: [true, true, true] }, last: null };
+    case 'trivia':      return { type, right: { X: 0, O: 0 }, ask: { X: null, O: null }, answers: { X: null, O: null }, asked: [], last: null };   // ask: each player's question; answers: the right option's place (hidden online); asked: the ids used here
+    case 'oddone': {
+      const gx = oddGrid(0, needRng(rng)), go = oddGrid(0, rng);
+      return { type, finds: { X: 0, O: 0 }, grid: { X: gx.grid, O: go.grid }, pos: { X: gx.pos, O: go.pos }, last: null };   // pos: the odd tile's place (hidden online)
+    }
   }
   throw new Error('unknown mini-game: ' + type);
 }
@@ -727,9 +844,12 @@ function newState(rng) {
 }
 // Start a match from the setup screen: tidy the names, draw nine squares from the ticked games.
 // Returns false (and changes nothing) when no mini-game is ticked.
+// A game that can be dealt right now: Trivia only once its questions are in (trivia.json: the page
+// fetches it, the server has it as a file); without them a Trivia square could never be played.
+const dealable = t => t !== 'trivia' || triviaReady();
 function startMatch(state, rng) {
   rng = needRng(rng);
-  const games = enabledGames(state.setup);
+  const games = enabledGames(state.setup).filter(dealable);
   if (!games.length) return false;
   syncNames(state.setup);
   for (const p of ['X', 'O']) {
@@ -743,6 +863,7 @@ function startMatch(state, rng) {
   state.timer = newTimer(state.setup.mode === 'online' ? normTimer(state.setup.timer) : 0);
   state.spot = null;
   state.squares = Array.from({ length: 9 }, () => newSquare(games, rng));
+  for (const sq of state.squares) if (sq.mini.type === 'trivia') triviaDeal(state, sq, rng);   // a question each, no two squares alike
   state.screen = 'board'; state.turn = 'X';
   state.zoom = null; state.flash = null; state.done = null; state.stamp = null; state.lock = null;
   state.draft = ''; state.pick = null; state.pickSq = null; state.sel = []; state.confirm = null; state.notice = null;
@@ -1045,6 +1166,81 @@ function applyMove(mini, p, m, rng) {
       if (hit && mini.hits[p] >= RL.goal) return { ok: true, outcome: 'win', note: 'hit' };
       return { ok: true, outcome: 'continue', note: hit ? 'hit' : 'miss' };
     }
+    case 'bullseye': {
+      if (typeof m !== 'number' || !Number.isFinite(m) || m < 0 || m > 1) return { ok: false, reason: 'bad' };
+      const hit = bullsHit(m);
+      if (hit) { mini.hits[p] += 1; mini.speed[p] = Math.round(mini.speed[p] * BULLS.faster * 1000) / 1000; }
+      mini.last = { by: p, at: m, hit };
+      if (mini.hits[p] >= BULLS.goal) return { ok: true, outcome: 'win', note: 'hit' };
+      return { ok: true, outcome: 'continue', note: hit ? 'hit' : 'miss' };
+    }
+    case 'echo': {
+      const lvl = mini.level[p];
+      if (lvl >= ECHO.lengths.length) return { ok: false, reason: 'done' };
+      const seq = mini.seqs[p][lvl];
+      let taps;
+      if (m === 'auto') taps = [];
+      else if (Array.isArray(m) && m.length <= seq.length && m.every(k => Number.isInteger(k) && k >= 0 && k < ECHO.pads)) taps = m.slice();
+      else return { ok: false, reason: 'bad' };
+      let failAt = -1;
+      for (let k = 0; k < seq.length; k++) if (taps[k] !== seq[k]) { failAt = k; break; }
+      const pass = failAt < 0;
+      if (pass) mini.level[p] += 1;
+      mini.last = { by: p, level: lvl, taps, pass, failAt, len: seq.length };
+      if (mini.level[p] >= ECHO.lengths.length) return { ok: true, outcome: 'win', note: 'pass' };
+      return { ok: true, outcome: 'continue', note: pass ? 'pass' : 'fail' };
+    }
+    case 'plinko': {
+      if (!idx(PLINKO.slots)) return { ok: false, reason: 'bad' };
+      const { path, bin } = plinkoPath(m, needRng(rng));
+      const won = bin === mini.win;
+      mini.last = { by: p, slot: m, path, bin, win: won };
+      if (won) return { ok: true, outcome: 'win', note: 'win' };
+      return { ok: true, outcome: 'continue', note: 'miss' };
+    }
+    case 'pong': {
+      let aim, power;
+      if (m === 'auto') { aim = rng() * 2 - 1; power = rng(); }
+      else if (m && typeof m === 'object' && Number.isFinite(m.aim) && Number.isFinite(m.power)) { aim = Math.max(-1, Math.min(1, m.aim)); power = Math.max(0, Math.min(1, m.power)); }
+      else return { ok: false, reason: 'bad' };
+      const t = pongThrow(mini.cups[p], aim, power, needRng(rng));
+      if (t.sunk) mini.cups[p][t.cup] = false;
+      mini.last = { by: p, aim, power, x: Math.round(t.x * 1000) / 1000, y: Math.round(t.y * 1000) / 1000, cup: t.cup, rim: t.rim, sunk: t.sunk };
+      if (mini.cups[p].every(c => !c)) return { ok: true, outcome: 'win', note: 'sunk' };
+      return { ok: true, outcome: 'continue', note: t.sunk ? 'sunk' : t.rim ? 'rim' : 'miss' };
+    }
+    case 'trivia': {
+      const ask = mini.ask && mini.ask[p];
+      if (!ask) return { ok: false, reason: 'noquestion' };
+      const right = mini.answers ? mini.answers[p] : null;
+      if (!Number.isInteger(right)) return { ok: false, reason: 'secret' };   // (a phone without the answer: the server judges)
+      let picked;
+      if (m === 'auto') picked = -1;
+      else if (Number.isInteger(m) && m >= 0 && m < ask.opts.length) picked = m;
+      else return { ok: false, reason: 'bad' };
+      const correct = picked === right;
+      if (correct) mini.right[p] += 1;
+      mini.last = { by: p, id: ask.id, q: ask.q, cat: ask.cat, opts: ask.opts.slice(), right, picked, correct };
+      mini.asked = (mini.asked || []).concat(ask.id);
+      mini.ask[p] = null; mini.answers[p] = null;                 // the next question is dealt by playMove, from the whole match's unasked ones
+      if (mini.right[p] >= TRIVIA.goal) return { ok: true, outcome: 'win', note: 'right' };
+      return { ok: true, outcome: 'continue', note: correct ? 'right' : 'wrong' };
+    }
+    case 'oddone': {
+      const grid = mini.grid[p], pos = mini.pos ? mini.pos[p] : null;
+      if (!Number.isInteger(pos)) return { ok: false, reason: 'secret' };
+      let picked;
+      if (m === 'auto') picked = -1;
+      else if (Number.isInteger(m) && m >= 0 && m < grid.n * grid.n) picked = m;
+      else return { ok: false, reason: 'bad' };
+      const correct = picked === pos;
+      if (correct) mini.finds[p] += 1;
+      mini.last = { by: p, n: grid.n, tiles: grid.tiles.slice(), pos, picked, correct };
+      const next = oddGrid(mini.finds[p], needRng(rng));          // a new grid every move, at the player's level
+      mini.grid[p] = next.grid; mini.pos[p] = next.pos;
+      if (mini.finds[p] >= ODD.goal) return { ok: true, outcome: 'win', note: 'found' };
+      return { ok: true, outcome: 'continue', note: correct ? 'found' : 'wrong' };
+    }
     case 'hexapawn': {
       if (!Array.isArray(m) || m.length !== 2 || !m.every(k => Number.isInteger(k) && k >= 0 && k < HP.cols * HP.rows)) return { ok: false, reason: 'bad' };
       const [from, to] = m;
@@ -1076,6 +1272,15 @@ const AI = { win: 1000, block: 600 };
 function publicMini(mini) {
   switch (mini.type) {
     case 'ttt': case 'c4': case 'hex': case 'hexapawn': return { type: mini.type, cells: mini.cells.slice() };
+    case 'bullseye': return { type: 'bullseye', hits: { X: mini.hits.X, O: mini.hits.O }, speed: { X: mini.speed.X, O: mini.speed.O } };
+    case 'echo':    return { type: 'echo', level: { X: mini.level.X, O: mini.level.O } };
+    case 'plinko':  return { type: 'plinko', win: mini.win };
+    case 'pong':    return { type: 'pong', cups: { X: mini.cups.X.slice(), O: mini.cups.O.slice() } };
+    // Trivia and Odd One Out: the computer plays to a success rate (right 65% of the time; a find 90%,
+    // 70%, then 50%), so it is told the answer here and makes up its mind from there. Online, a phone
+    // never gets these (hideMini): only the server, which plays the bots, does.
+    case 'trivia':  return { type: 'trivia', right: { X: mini.right.X, O: mini.right.O }, answers: mini.answers ? { X: mini.answers.X, O: mini.answers.O } : { X: null, O: null }, ask: { X: mini.ask.X ? { opts: mini.ask.X.opts.length } : null, O: mini.ask.O ? { opts: mini.ask.O.opts.length } : null } };
+    case 'oddone':  return { type: 'oddone', finds: { X: mini.finds.X, O: mini.finds.O }, n: { X: mini.grid.X.n, O: mini.grid.O.n }, pos: mini.pos ? { X: mini.pos.X, O: mini.pos.O } : { X: null, O: null } };
     case 'bs':      return { type: 'bs', len: mini.len, revealed: mini.revealed.slice(), hits: mini.hits.slice() };
     case 'wordle':  return { type: 'wordle', guesses: mini.guesses.map(g => ({ by: g.by, word: g.word, marks: g.marks.slice() })) };
     case 'mastermind': return { type: 'mastermind', guesses: mini.guesses.map(g => ({ by: g.by, code: g.code.slice(), solid: g.solid, hollow: g.hollow })) };
@@ -1220,6 +1425,12 @@ function snlExpected(pm) {
 const COIN_NEEDS = [0, 2, 2.67, 3.14, 3.92, 4.55, 5.22];   // expected flips to turn n coins that aren't yours, flipping three at a time
 function needsOf(pm, p) {
   switch (pm.type) {
+    case 'bullseye': { let n = 0, s = pm.speed[p]; for (let h = pm.hits[p]; h < BULLS.goal; h++) { n += 1 / bullsChance(s); s *= BULLS.faster; } return Math.max(1, n); }
+    case 'echo':    { let n = 0; for (let l = pm.level[p]; l < ECHO.lengths.length; l++) n += 1 / ECHO.aiPass[l]; return Math.max(1, n); }
+    case 'plinko':  return 1 / Math.max(...plinkoOdds(pm.win));            // dropped above the WIN bin, every time
+    case 'pong':    return Math.max(1, pm.cups[p].filter(Boolean).length / 0.45);
+    case 'trivia':  return Math.max(1, (TRIVIA.goal - pm.right[p]) / TRIVIA.aiRight);
+    case 'oddone':  { let n = 0; for (let f = pm.finds[p]; f < ODD.goal; f++) n += 1 / ODD.aiFind[Math.min(f, ODD.aiFind.length - 1)]; return Math.max(1, n); }
     case 'ttt':     return lineNeeds(pm.cells, 3, 3, 3, p);
     case 'c4':      return lineNeeds(pm.cells, C4.cols, C4.rows, C4.k, p, c4Playable(pm.cells));
     case 'hex':     return hexDist(pm.cells, p);
@@ -1249,6 +1460,8 @@ function needsOf(pm, p) {
   return Infinity;
 }
 const BUS_AVG = [0.5, 0.72, 0.6, 0.26];   // Ride the Bus: the usual chance of the best guess in each round
+// Bullseye: the computer's chance of a hit at a speed: 70% at the start, 55% after one hit, 40% after two, and on down.
+function bullsChance(speed) { const k = Math.round(Math.log(speed) / Math.log(BULLS.faster)); return k < BULLS.aiHit.length ? BULLS.aiHit[k] : BULLS.aiHit[BULLS.aiHit.length - 1] * Math.pow(0.75, k - BULLS.aiHit.length + 1); }
 function memoryPair(pm, known) {
   for (let x = 0; x < known.length; x++) for (let y = x + 1; y < known.length; y++) {
     const a = pm.cards[known[x]], b = pm.cards[known[y]];
@@ -1447,6 +1660,36 @@ function pickValued(pm, me, moves, place) {
 }
 function localBest(pm, me, rng, style, ctx) {
   switch (pm.type) {
+    case 'bullseye': {                                           // a hit as often as its speed allows: stopped inside the zone, or just outside
+      const q = bullsChance(pm.speed[me]), hit = rng() < q;
+      const at = hit ? 0.5 + (rng() - 0.5) * BULLS.zone * 0.9 : (rng() < 0.5 ? 0.5 - BULLS.zone / 2 - 0.03 - rng() * 0.3 : 0.5 + BULLS.zone / 2 + 0.03 + rng() * 0.3);
+      return { move: Math.round(Math.max(0, Math.min(1, at)) * 1000) / 1000, q };
+    }
+    case 'echo': {                                               // it beats a pattern as often as its length allows (its taps come from the pattern itself: see cpuEcho)
+      const q = ECHO.aiPass[Math.min(pm.level[me], ECHO.aiPass.length - 1)];
+      return { move: { echo: rng() < q ? 'pass' : 'fail', at: rng() }, q };
+    }
+    case 'plinko': return { move: pm.win, q: plinkoOdds(pm.win)[pm.win] };   // dropped above the WIN bin
+    case 'pong': {                                               // at a cup still standing, a little off
+      const g = () => { const u = Math.max(1e-9, rng()), v = rng(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+      const up = pm.cups[me].map((c, k) => (c ? k : -1)).filter(k => k >= 0);
+      const k = up.length ? up[randInt(rng, up.length)] : 0, a = pongAimAt(k);
+      return { move: { aim: Math.max(-1, Math.min(1, a.aim + g() * PONG.aiErr[0])), power: Math.max(0, Math.min(1, a.power + g() * PONG.aiErr[1])) }, q: 0.45 };
+    }
+    case 'trivia': {                                             // right about two times in three
+      const right = pm.answers[me], n = pm.ask[me] ? pm.ask[me].opts : TRIVIA.options;
+      if (!Number.isInteger(right)) return { move: 'auto', q: 0 };
+      if (rng() < TRIVIA.aiRight) return { move: right, q: TRIVIA.aiRight };
+      let w = randInt(rng, n - 1); if (w >= right) w++;
+      return { move: w, q: TRIVIA.aiRight };
+    }
+    case 'oddone': {                                             // a find 90%, 70%, then 50% of the time
+      const q = ODD.aiFind[Math.min(pm.finds[me], ODD.aiFind.length - 1)], pos = pm.pos[me], n = pm.n[me] * pm.n[me];
+      if (!Number.isInteger(pos)) return { move: 'auto', q: 0 };
+      if (rng() < q) return { move: pos, q };
+      let w = randInt(rng, n - 1); if (w >= pos) w++;
+      return { move: w, q };
+    }
     case 'bj': {
       // Deal, then basic strategy; with a tally of 1 a won double takes the square, so it doubles more readily.
       const h = pm.hand && pm.hand.by === me ? pm.hand : null, need = BJ.goal - pm.wins[me];
@@ -1632,6 +1875,14 @@ function moveGain(pm, me, local) {
   const after = winChance(Math.max(0.5, a - 1), local.shared ? Math.max(0.5, b - 1) : b);
   return q * (1 - before) - qLose * before + (1 - q - qLose) * (after - before);
 }
+// Echo: the computer's attempt as taps, from its decision to pass or to slip (at a random step).
+function cpuEcho(mini, me, plan, rng) {
+  const seq = mini.seqs[me][Math.min(mini.level[me], ECHO.lengths.length - 1)];
+  if (plan.echo === 'pass') return seq.slice();
+  const at = Math.min(seq.length - 1, Math.floor(plan.at * seq.length));
+  let wrong = randInt(needRng(rng), ECHO.pads - 1); if (wrong >= seq[at]) wrong++;
+  return seq.slice(0, at).concat(wrong);
+}
 // The computer's move for the side to play: { square, move, score }. During a bonus move the square is fixed.
 function cpuMove(state, rng, style) {
   rng = needRng(rng);
@@ -1649,6 +1900,7 @@ function cpuMove(state, rng, style) {
     const real = squareValue(state.squares, i, me, st);
     const local = localBest(pm, me, rng, st, { value: real, behind });
     const value = state.lock != null ? 1 : real;
+    if (pm.type === 'echo' && local.move && local.move.echo) local.move = cpuEcho(state.squares[i].mini, me, local.move, rng);
     if (value >= AI.win && (local.win || local.q >= 1)) return { square: i, move: local.move, score: Infinity, value, gain: 1 };
     const gain = moveGain(pm, me, local);
     const score = value * Math.max(gain, 0.01);
@@ -1665,6 +1917,12 @@ function randomLegalMove(mini, p, rng) {
   const empties = (arr, ok) => arr.map((c, k) => (ok(c) ? k : -1)).filter(k => k >= 0);
   switch (mini.type) {
     case 'ttt': case 'hex': return from(empties(mini.cells, c => !c));
+    case 'bullseye': return Math.round(rng() * 1000) / 1000;          // a throw at a random point
+    case 'echo': return 'auto';                                        // a failed attempt
+    case 'plinko': return randInt(rng, PLINKO.slots);                  // a random slot
+    case 'pong': return 'auto';                                        // a random throw
+    case 'trivia': return 'auto';                                      // counts as wrong
+    case 'oddone': return 'auto';                                      // counts as wrong
     case 'c4': return from(Array.from({ length: C4.cols }, (_, c) => c).filter(c => !mini.cells[c]));
     case 'hexapawn': { const ms = hpMoves(mini.cells, p); return ms.length ? from(ms) : null; }
     case 'mastermind': return mmCode(rng);
@@ -1703,7 +1961,7 @@ function timeoutMove(state, rng) {
   }
   const open = state.lock != null ? [state.lock] : state.squares.map((sq, i) => (sq.owner || !canMove(sq.mini, p) ? -1 : i)).filter(i => i >= 0);
   const i = open[randInt(rng, open.length)], mini = state.squares[i].mini;
-  const m = mini.type === 'pig' ? (mini.turn && mini.turn.by === p ? 'bank' : 'roll') : mini.type === 'bj' ? 'auto' : randomLegalMove(mini, p, rng);   // Blackjack: stand (dealt first if need be) on every hand until one is won or lost; Roulette: a random group
+  const m = mini.type === 'pig' ? (mini.turn && mini.turn.by === p ? 'bank' : 'roll') : mini.type === 'bj' ? 'auto' : randomLegalMove(mini, p, rng);   // Blackjack: stand (dealt first if need be) on every hand until one is won or lost; Roulette: a random group; Echo, Trivia, Odd One Out: a failed attempt or a wrong answer; Cup Pong: a random throw
   const r = playMove(state, i, m, rng, { forced: true, noAgain: mini.type === 'hangman' || mini.type === 'bs' || mini.type === 'bus' });   // a timed-out shot fires once; a timed-out guess ends the turn
   if (!r.ok) return r;
   t.bankNext = mini.type === 'pig' && m === 'roll' && state.lock === i;   // the roll kept the turn: bank it next
@@ -1797,7 +2055,14 @@ function playMove(state, i, m, rng, opts) {
     }
     case 'bus': { const l = mini.last; flash.bus = { round: l.round, guess: l.guess, card: l.card, right: l.right, kept: mini.prog[p].slice() }; break; }
     case 'rl': { const l = mini.last; flash.rl = { bet: Array.isArray(l.bet) ? l.bet.slice() : l.bet, n: l.n, hit: l.hit, hits: { X: mini.hits.X, O: mini.hits.O } }; break; }
+    case 'bullseye': { const l = mini.last; flash.bull = { at: l.at, hit: l.hit, hits: { X: mini.hits.X, O: mini.hits.O }, speed: mini.speed[p] }; break; }
+    case 'echo': { const l = mini.last; flash.echo = { level: l.level, len: l.len, pass: l.pass, failAt: l.failAt, taps: l.taps.slice(), levels: { X: mini.level.X, O: mini.level.O } }; break; }
+    case 'plinko': { const l = mini.last; flash.plinko = { slot: l.slot, path: l.path.slice(), bin: l.bin, win: l.win, winBin: mini.win }; break; }
+    case 'pong': { const l = mini.last; flash.pong = { aim: l.aim, power: l.power, x: l.x, y: l.y, cup: l.cup, rim: l.rim, sunk: l.sunk, cups: { X: mini.cups.X.slice(), O: mini.cups.O.slice() } }; break; }
+    case 'trivia': { const l = mini.last; flash.trivia = { q: l.q, cat: l.cat, opts: l.opts.slice(), right: l.right, picked: l.picked, correct: l.correct, counts: { X: mini.right.X, O: mini.right.O } }; break; }
+    case 'oddone': { const l = mini.last; flash.odd = { n: l.n, tiles: l.tiles.slice(), pos: l.pos, picked: l.picked, correct: l.correct, finds: { X: mini.finds.X, O: mini.finds.O } }; break; }
   }
+  if (mini.type === 'trivia') triviaDeal(state, sq, rng);         // the mover's next question, from the match's unasked ones
   if (outcome === 'win') {
     const w = res.winner || p;                   // a mini-game may hand the square to the other player
     sq.owner = w;
@@ -1812,11 +2077,12 @@ function playMove(state, i, m, rng, opts) {
   } else if (outcome === 'draw') {
     flash.drawn = mini;                          // keep the full board for the result overlay
     flash.counts = res.counts || null;
-    const dealt = (state.games || []).filter(t => TYPES.includes(t));      // an older match's list may name a game no longer dealt
-    const pool = dealt.length ? dealt : TYPES;
+    const dealt = (state.games || []).filter(t => TYPES.includes(t) && dealable(t));      // an older match's list may name a game no longer dealt
+    const pool = dealt.length ? dealt : TYPES.filter(dealable);
     state.sqlog.push({ t: mini.type, end: 'draw', w: null, X: sq.mv.X, O: sq.mv.O });
     sq.mv = { X: 0, O: 0 };
     sq.mini = newMini(pickType(pool, rng), rng); // the square resets with a new random mini-game from this match's list
+    if (sq.mini.type === 'trivia') triviaDeal(state, sq, rng);
     flash.newType = sq.mini.type;
   }
   if (!opts.forced && state.timer) state.timer.streak[p] = 0;   // a move made in time
@@ -1887,6 +2153,8 @@ function secretOf(mini) {
     case 'memory': return { cards: mini.cards.map(c => ({ s: c.s, c: c.c })) };
     case 'mastermind': return { code: mini.code.slice() };
     case 'bj': return mini.hand && mini.hole ? { hole: mini.hole, deck: (mini.deck || []).slice() } : null;   // only while a hand is being played
+    case 'trivia': return { answers: { X: mini.answers ? mini.answers.X : null, O: mini.answers ? mini.answers.O : null } };   // the right answers' places
+    case 'oddone': return { pos: { X: mini.pos ? mini.pos.X : null, O: mini.pos ? mini.pos.O : null } };   // the odd tiles' places
   }
   return null;
 }
@@ -1897,6 +2165,8 @@ function hideMini(m, k, st) {
     case 'wordle': delete m.word; break;
     case 'mastermind': delete m.code; break;
     case 'bj': delete m.hole; delete m.deck; break;
+    case 'trivia': delete m.answers; break;
+    case 'oddone': delete m.pos; break;
     case 'hangman': { const hits = new Set(m.letters.filter(x => x.hit).map(x => x.l)); m.word = m.word.split('').map(ch => (hits.has(ch) ? ch : '_')).join(''); break; }
     case 'hilo': delete m.target; break;
     case 'bs': delete m.ship; break;
@@ -2036,9 +2306,19 @@ function playMs(f, winLen) {
     case 'bj':      return bjMs(f.bj) + (won ? 600 : 0);
     case 'bus':     return BUST.pre + BUST.draw + BUST.flip + BUST.mark + (f.bus && f.bus.right ? BUST.fly : 0) + (won ? 600 : 0);
     case 'rl':      return RLT.spin + RLT.settle + RLT.hold + (won ? 600 : 0);
+    case 'bullseye': return BULLT.fly + BULLT.hold + (won ? 600 : 0);
+    case 'echo':    return ECHO.result + (won ? 600 : 0);
+    case 'plinko':  return PLINKO.rows * PLINKO.step + PLINKO.land + (won ? 600 : 0);
+    case 'pong':    return PONG.fly + PONG.hold + (won ? 600 : 0);
+    case 'trivia':  return TRIVIA.reveal + (won ? 600 : 0);
+    case 'oddone':  return ODD.reveal + (won ? 600 : 0);
   }
   return 500;
 }
+// Bullseye: the dart flies in and lands where the marker stopped, then the hit or miss holds a moment.
+// Echo: the attempt's result shows (the pattern itself plays before the move, when the square opens).
+const BULLT = { fly: 320, hold: 500 };
+ECHO.result = 650;
 // Blackjack: each card dealt slides in and turns over; at the end of a hand the hole card turns, the dealer
 // draws card by card, and the result shows. Ride the Bus: the guess shows (the chosen answer lights up,
 // when it is someone else's: the computer's, the other phone's, or a timed-out one), the card slides off
@@ -2132,4 +2412,4 @@ function matchStats(st) {
 }
 
 // Node (the Cloud Functions and the tests): the same names as a module.
-if (typeof module !== "undefined" && module.exports) module.exports = { TEST_TYPES, isReleased, releasedTypes, allowedTypes, restrictGames, CARD, BJ, BUS, RL, BJT, BUST, RLT, BUS_AVG, cardDeck, isCard, cardRank, cardRed, cardName, bjValue, bjTotal, bjNatural, bjDealerPlay, bjOutcome, bjStrategy, bjPlan, bjMs, busRight, busDeck, busOdds, rlRed, rlBet, rlCovers, tttOpen, lineOpen, majorityResult, STYLE0, huntSize, huntBand, huntClue, normTimer, resignLocal, TYPES, OLD_TYPES, SNL, BUMP, snlRow, snlBoard, snlValid, snlExpected, coinPick, markCoins, coinMarksFor, normLocal, seatLocal, INFO, C4, HP, MM, HEX_N, HILO, CANDY, NAME_MAX, COINS, RISKY, BS, HUNT, DICE_GOAL, MEMORY, LINES, WORDS5, WORDS_HANG, VALID5, other, makeRng, needRng, randInt, randomType, shuffle, memoryDeck, wordleMarks, hexNeighbors, hexPath, canMove, hpMoves, mmFeedback, mmValid, MM_ALL, mmAll, mmCode, mmCandidates, mmBestGuess, hpGoalRow, upgradeMini, anyMove, huntDist, candyTrack, newMini, pickType, newSquare, CPU_NAME, defaultSetup, cpuSide, normSetup, syncNames, enabledGames, TIMER_OPTIONS, newTimer, playerName, newState, startMatch, newMatch, findRun, applyMove, AI, publicMini, wordleCandidates, hangmanCandidates, bsCandidates, bsPlacements, bsShip, huntCandidates, WINDOWS, windowsOf, lineNeeds, c4Playable, hexDist, candyExpected, COIN_NEEDS, needsOf, memoryPair, winChance, tttMinimax, c4Drop, c4Eval, C4_ORDER, c4Search, C4_DEPTH, c4Moves, HP_MEMO, hpSolve, hpMovesValued, hpNeeds, hexMoves, threatScore, pickValued, localBest, squareValue, moveGain, cpuMove, VALID5_LIST, randomLegalMove, timeoutMove, mainResult, playMove, endFlash, leaveSquare, RECENT_MAX, MATCH_FIELDS, secretOf, hideMini, matchRecord, fullState, settle, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, newOnlineMatch, PLAY, diceSlot, playMs, replayMs, armClock, applyOnlineResign, matchStats };
+if (typeof module !== "undefined" && module.exports) module.exports = { TEST_TYPES, isReleased, releasedTypes, allowedTypes, restrictGames, dealable, BULLS, BULLT, ECHO, PLINKO, PONG, TRIVIA, ODD, bullsHit, bullsPeriod, bullsChance, echoSeqs, plinkoPath, plinkoOdds, pongThrow, pongAimAt, pongDist, setTriviaBank, triviaReady, triviaDeal, triviaUsed, oddGrid, cpuEcho, CARD, BJ, BUS, RL, BJT, BUST, RLT, BUS_AVG, cardDeck, isCard, cardRank, cardRed, cardName, bjValue, bjTotal, bjNatural, bjDealerPlay, bjOutcome, bjStrategy, bjPlan, bjMs, busRight, busDeck, busOdds, rlRed, rlBet, rlCovers, tttOpen, lineOpen, majorityResult, STYLE0, huntSize, huntBand, huntClue, normTimer, resignLocal, TYPES, OLD_TYPES, SNL, BUMP, snlRow, snlBoard, snlValid, snlExpected, coinPick, markCoins, coinMarksFor, normLocal, seatLocal, INFO, C4, HP, MM, HEX_N, HILO, CANDY, NAME_MAX, COINS, RISKY, BS, HUNT, DICE_GOAL, MEMORY, LINES, WORDS5, WORDS_HANG, VALID5, other, makeRng, needRng, randInt, randomType, shuffle, memoryDeck, wordleMarks, hexNeighbors, hexPath, canMove, hpMoves, mmFeedback, mmValid, MM_ALL, mmAll, mmCode, mmCandidates, mmBestGuess, hpGoalRow, upgradeMini, anyMove, huntDist, candyTrack, newMini, pickType, newSquare, CPU_NAME, defaultSetup, cpuSide, normSetup, syncNames, enabledGames, TIMER_OPTIONS, newTimer, playerName, newState, startMatch, newMatch, findRun, applyMove, AI, publicMini, wordleCandidates, hangmanCandidates, bsCandidates, bsPlacements, bsShip, huntCandidates, WINDOWS, windowsOf, lineNeeds, c4Playable, hexDist, candyExpected, COIN_NEEDS, needsOf, memoryPair, winChance, tttMinimax, c4Drop, c4Eval, C4_ORDER, c4Search, C4_DEPTH, c4Moves, HP_MEMO, hpSolve, hpMovesValued, hpNeeds, hexMoves, threatScore, pickValued, localBest, squareValue, moveGain, cpuMove, VALID5_LIST, randomLegalMove, timeoutMove, mainResult, playMove, endFlash, leaveSquare, RECENT_MAX, MATCH_FIELDS, secretOf, hideMini, matchRecord, fullState, settle, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, newOnlineMatch, PLAY, diceSlot, playMs, replayMs, armClock, applyOnlineResign, matchStats };

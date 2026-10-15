@@ -117,6 +117,13 @@ Sounds start from the events they belong to, never from drawing the screen: a re
 | Roulette | `ballDrop` | The ball drops into its pocket | Two falling clicks and a short rattle |
 | Roulette | `ding` / `thud` | A hit / a miss | As above |
 | Roulette | `sparkle` | Green 0 comes up on a bet on 0: the square at once | Rising sparkles |
+| Bullseye | `whoosh` / `dartHit` / `dartMiss` | The dart flies (the Connect 4 whoosh); it lands in the board with a thunk, or off it with a clank | Thunk: a short noise burst with a low falling triangle; clank: a falling square wave with a bright click |
+| Echo | `tone` | Each step of the pattern as it plays (timed from the square opening), and each pad tapped back. *The rate sets the pad's note: G, C, E, G.* | A soft triangle note, 392 Hz |
+| Echo | `ding` / `thud` | The attempt passed / slipped | As above |
+| Plinko | `peg` / `plop` / `sparkle` / `thud` | The chip clicks on every peg (Mastermind's peg, a little higher each row), drops into its bin, then WIN sparkles or a miss thuds | Plop: a sine falling 520→260 Hz |
+| Cup Pong | `whoosh` / `clink` / `splash` / `thud` | The throw; a rim bounce clinks; a sunk cup splashes, a miss thuds | As above |
+| Trivia | `ding` / `thud` | Right / wrong, as the right answer is revealed | As above |
+| Odd One Out | `ding` / `thud` | Found / not that one | As above |
 
 ## Rules the game follows
 

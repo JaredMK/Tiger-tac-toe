@@ -49,6 +49,9 @@ const { ServerValue } = require('firebase-admin/database');
 const { getFunctions } = require('firebase-admin/functions');   // (not admin.database.ServerValue: the emulator wraps admin.database)
 const crypto = require('node:crypto');
 const E = require('./engine.js');
+// The Trivia questions (trivia.json, copied here beside engine.js at deploy; from the Open Trivia
+// Database, CC BY-SA 4.0). Without the file Trivia is simply never dealt (engine.js: dealable).
+try { E.setTriviaBank(require('./trivia.json')); } catch (e) { logger.warn('trivia.json missing: Trivia is not dealt'); }
 const R = require('./serverRules.js');
 const S = require('./statsRules.js');
 const B = require('./bots.js');

@@ -8,6 +8,8 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 const E = require('../engine.js');
+// Trivia needs its questions (the page fetches trivia.json; the server has it as a file): a small made-up bank here.
+E.setTriviaBank({ questions: Array.from({ length: 30 }, (_, i) => ({ id: 'q' + i, cat: 'Test', q: `Question ${i}?`, a: 'Right ' + i, wrong: ['Wrong a' + i, 'Wrong b' + i, 'Wrong c' + i] })) });
 // The engine takes all its randomness from the caller. Where a test does not care which random choice
 // is made, these wrappers hand it a fixed seeded generator.
 const anyRng = () => E.makeRng('any');
@@ -1082,9 +1084,16 @@ test('setup: the app opens on the main menu with default names and every game ti
   assert.equal(st.screen, 'menu', 'the main menu comes first');
   assert.deepEqual(st.setup.names, { X: 'X', O: 'O' });
   assert.deepEqual(L.enabledGames(st.setup), L.TYPES);
-  assert.equal(L.TYPES.length, 18);
+  assert.equal(L.TYPES.length, 24);
   assert.ok(st.setup.games.coins && st.setup.games.pig && st.setup.games.hunt && st.setup.games.snakes && st.setup.games.bump, 'the newer games are on by default');
   assert.ok(st.setup.games.bj && st.setup.games.bus && st.setup.games.rl, 'and the card games and the wheel too');
+  assert.ok(L.TEST_TYPES.every(t => st.setup.games[t] && L.TYPES.includes(t)), 'the games on test are in the pool and on by default (for the admin, who alone sees them)');
+  assert.deepEqual(L.releasedTypes({}), L.TYPES.filter(t => !L.TEST_TYPES.includes(t)), 'released: everything but the games on test');
+  assert.deepEqual(L.releasedTypes({ trivia: true, ttt: false }), L.TYPES.filter(t => (t === 'trivia' || !L.TEST_TYPES.includes(t)) && t !== 'ttt'), 'the database overrides the code either way');
+  assert.deepEqual(L.allowedTypes({}, true), L.TYPES, 'the admin: every game');
+  const g = Object.fromEntries(L.TYPES.map(t => [t, true]));
+  L.restrictGames(g, L.releasedTypes({}));
+  assert.ok(L.TEST_TYPES.every(t => g[t] === false) && g.ttt === true, 'a setup cut down to the released games');
   assert.ok(!L.TYPES.includes('dice'), 'Snakes and Ladders took the Dice race\'s place');
   assert.ok(!L.TYPES.includes('hexapawn') && !('hexapawn' in st.setup.games), 'Hexapawn is out of the pool and the Advanced list');
   assert.deepEqual(L.OLD_TYPES, ['dice', 'hexapawn'], 'no longer dealt, still played in older matches');
@@ -1428,6 +1437,12 @@ function randomMove(m, rng, p) {
       while (nums.length < 8) { const n = 1 + Math.floor(rng() * 24); if (!nums.includes(n)) nums.push(n); }
       return nums;
     }
+    case 'bullseye': return Math.round(rng() * 1000) / 1000;
+    case 'echo': { const seq = m.seqs[p][Math.min(m.level[p], 3)]; return rng() < 0.5 ? seq.slice() : seq.slice(0, Math.floor(rng() * seq.length)).concat(Math.floor(rng() * 4)); }
+    case 'plinko': return Math.floor(rng() * 7);
+    case 'pong': return { aim: rng() * 2 - 1, power: rng() };
+    case 'trivia': return m.ask[p] ? Math.floor(rng() * 4) : 'auto';
+    case 'oddone': return Math.floor(rng() * m.grid[p].n * m.grid[p].n);
   }
   throw new Error('no move for ' + m.type);
 }
@@ -2081,7 +2096,7 @@ test('timeouts over every kind of game keep the state legal and plain', () => {
   const rng = lcg(31337);
   const seen = new Set();
   for (let game = 0; game < 6; game++) {
-    const st = L.newMatch(rng, { mode: 'online', timer: 30 });
+    const st = L.newMatch(rng, { mode: 'online', timer: 30, games: L.TYPES.filter(t => !['echo', 'trivia', 'oddone'].includes(t)) });   // (a timed-out attempt at those three is always a failed one: a square of theirs never falls to timeouts)
     let guard = 0;
     while (!st.winner && guard++ < 3000) {
       const open = st.squares.map((q, i) => (q.owner ? -1 : i)).filter(i => i >= 0);
@@ -2108,7 +2123,7 @@ test('timeouts over every kind of game keep the state legal and plain', () => {
 
 
 // ---- online match records: the public state and the secrets apart, moves applied to the pair ----
-const SECRET_KEYS = { wordle: 'word', hangman: 'word', hilo: 'target', bs: 'ship', hunt: 'treasure', memory: 'cards', mastermind: 'code' };
+const SECRET_KEYS = { wordle: 'word', hangman: 'word', hilo: 'target', bs: 'ship', hunt: 'treasure', memory: 'cards', mastermind: 'code' , trivia: 'answers', oddone: 'pos' };
 test('a match record keeps every secret out of the public state and puts it back for a move', () => {
   const rng = lcg(11);
   for (const type of L.TYPES) {

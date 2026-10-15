@@ -30,7 +30,7 @@ jobs:
       - name: Collect the site (only the web files; not the functions or tests)
         run: |
           mkdir _site
-          cp index.html admin.html engine.js playtest.js styles.html .nojekyll _site/
+          cp index.html admin.html engine.js playtest.js trivia.json styles.html .nojekyll _site/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site

@@ -4,7 +4,7 @@
   "description": "Tic Tac Chaos: a 3x3 board where every square is a mini-game",
   "scripts": {
     "test": "node --test",
-    "test:emulators": "cp engine.js functions/engine.js && firebase emulators:exec --only auth,database,functions --project demo-tic-tac-chaos \"node --test --test-concurrency=1 --test-force-exit test/server.test.js\""
+    "test:emulators": "cp engine.js functions/engine.js && cp trivia.json functions/trivia.json && firebase emulators:exec --only auth,database,functions --project demo-tic-tac-chaos \"node --test --test-concurrency=1 --test-force-exit test/server.test.js\""
   },
   "devDependencies": {
     "firebase": "11.10.0"

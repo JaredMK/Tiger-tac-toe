@@ -23,6 +23,7 @@ echo "Pushed to $remote/$branch. GitHub Pages rebuilds in about a minute."
 if [ -n "$server" ]; then
   if [ "$DEPLOY_FIREBASE" = "local" ]; then
     cp engine.js functions/engine.js
+    cp trivia.json functions/trivia.json
     firebase deploy --only functions,database --project tic-tac-chaos
   else
     echo "Functions or rules changed: the \"Deploy Firebase\" workflow tests and deploys them (a few minutes)."
