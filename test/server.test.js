@@ -1279,7 +1279,7 @@ test('runners (Dash, Lane Rush): the difficulty config is public, the admin alon
   const seeds = {};
   await rewrite(g.id, full => {
     full.squares.forEach((sq, i) => { sq.owner = null; sq.mini = E.newMini('dash', E.makeRng('srv' + i)); });
-    full.turn = 'X'; full.lock = null; full.winner = null; full.timer.deadline = Date.now() + 60000; full.timer.for = 'X';
+    full.turn = 'X'; full.lock = null; full.winner = null; full.timer.deadline = Date.now() + 45000; full.timer.for = 'X';   // (the turn began 15 s ago: a run of up to that long fits the clock)
     seeds.mini = JSON.parse(JSON.stringify(full.squares[4].mini));
   });
   const st = await gameState(g.id);
@@ -1289,8 +1289,9 @@ test('runners (Dash, Lane Rush): the difficulty config is public, the admin alon
   assert.deepEqual(await move({ dist: 700, ms: 1000 }), { ok: false, reason: 'fast' }, 'more distance than the time allows at the course speeds');
   const far = course[course.length - 1];
   assert.deepEqual(await move({ dist: far.at, ms: okMs(0, far.at) + 100 }), { ok: false, reason: 'fast' }, 'more time than the turn has lasted');
-  assert.deepEqual(await move({ dist: (course[2].at + course[3].at) / 2, ms: 60000 }), { ok: false, reason: 'course' }, 'a crash where there is nothing to crash into');
-  assert.deepEqual(await move({ dist: 1001, ms: 60000 }), { ok: false, reason: 'bad' });
+  const mid = (course[0].at + course[1].at) / 2;
+  assert.deepEqual(await move({ dist: mid, ms: okMs(0, mid) + 100 }), { ok: false, reason: 'course' }, 'a crash where there is nothing to crash into');
+  assert.deepEqual(await move({ dist: 1001, ms: 1000 }), { ok: false, reason: 'bad' }, 'past the target');
   assert.deepEqual(await move('auto'), { ok: false, reason: 'bad' }, 'a timed-out run is the server\'s to make, not a phone\'s to claim');
   const first = course.find(o => o.at >= E.runGrace(m.cfg, 0));
   const r = await move({ dist: first.at + 0.2, ms: okMs(0, first.at + 0.2) + 150 });
