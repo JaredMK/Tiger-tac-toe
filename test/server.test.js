@@ -226,7 +226,7 @@ test('a Find Match game: all mini-games, one minute a turn, hidden values hidden
   const pub = await g.X.read(`games/${g.id}/pub`);
   assert.equal(pub.mode, 'match'); assert.equal(pub.timer, 60); assert.equal(pub.status, 'playing');
   const st = JSON.parse(pub.state);
-  assert.deepEqual(st.games.slice().sort(), E.TYPES.slice().sort(), 'every mini-game on');
+  assert.deepEqual(st.games.slice().sort(), E.releasedTypes((await get('releases')) || {}).sort(), 'every released mini-game on (the admin-only ones are not dealt by Find Match)');
   assert.equal(st.timer.limit, 60);
   assert.ok(st.timer.deadline > Date.now() + 60000, 'the first turn has its full minute, after the players\' intro');
   // hidden values: the phones cannot read the hidden node, and the public state has none of them
@@ -572,7 +572,7 @@ test('records: a friend match is credited by the seats it was played in (the roo
   await guest.write(`rooms/${code}/players/O`, { uid: guest.uid, name: 'SeatGuest', joined: Date.now() });
   // the match was played with the guest as X; by the time its end is read the room says otherwise
   const seats = { X: { uid: guest.uid, name: 'SeatGuest' }, O: { uid: host.uid, name: 'SeatHost' } };
-  const rec = E.newOnlineMatch({ names: { X: 'SeatGuest', O: 'SeatHost' } }, E.makeRng(4), 'seat1');
+  const rec = E.newOnlineMatch({ names: { X: 'SeatGuest', O: 'SeatHost' }, games: Object.fromEntries(E.TYPES.map(t => [t, !E.TEST_TYPES.includes(t)])) }, E.makeRng(4), 'seat1');   // (released games only: the host is no admin)
   const full = E.fullState(rec);
   full.squares[0].owner = 'X'; full.squares[4].owner = 'X'; full.squares[8].owner = 'X'; full.winner = 'X'; full.winLine = [0, 4, 8]; full.winReason = 'line';
   const end = E.matchRecord(full);
@@ -1200,7 +1200,7 @@ test('release control: an admin-only game exists for nobody but the admin: not i
   const g = await pairUp(boss, a);
   const st = await gameState(g.id);
   assert.ok(!st.games.includes('ttt') && st.squares.every(sq => sq.mini.type !== 'ttt'), 'no Tic-tac-toe in a Find Match game');
-  assert.equal(st.games.length, E.TYPES.length - 1, 'every other game is dealt');
+  assert.equal(st.games.length, E.releasedTypes({ ttt: false }).length, 'every other released game is dealt');
   assert.equal((await a.call('resign', { game: g.id })).ok, true);
   await recorded(g.id);
   // a room: a non-admin host cannot deal it (the rules refuse the setup); off is fine; the admin's room may
