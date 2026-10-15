@@ -1317,7 +1317,7 @@ test('runners (Dash, Lane Rush): the difficulty config is public, the admin alon
   assert.equal(n('distSum'), Math.round(first.at + 0.2) + Math.round(oSq.mini.dist.O), 'the metres covered');
   assert.equal(n('open'), 1 + (oSq === to.squares[4] ? 0 : 1), 'the squares still open at the end count as open');
   const bin = Math.floor((first.at + 0.2) / 50) * 50;
-  assert.equal((s.crash && s.crash[bin] || 0) - (before.crash && before.crash[bin] || 0), oSq === to.squares[4] && Math.floor(oSq.mini.dist.O / 50) * 50 === bin ? 2 : 1, `X's crash in the ${bin} m bin`);
+  assert.equal((s.crash && s.crash[bin] || 0) - (before.crash && before.crash[bin] || 0), Math.floor(oSq.mini.dist.O / 50) * 50 === bin ? 2 : 1, `X's crash in the ${bin} m bin (and O's, on whichever square the clock ran it, if it fell in the same bin)`);
   assert.match(await script('RunBoss', 'revoke'), /no longer an admin/);
 });
 
