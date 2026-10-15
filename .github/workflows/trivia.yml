@@ -1,9 +1,12 @@
 # Downloads the Trivia questions from the Open Trivia Database (scripts/fetch-trivia.js: one request
-# every 5 seconds, filtered) and commits trivia.json to the branch named below (made or replaced), for
-# a look and a merge. Run it by hand from the Actions tab; the game itself never calls the API.
+# every 5 seconds, filtered) and commits trivia.json to the data branch (made or replaced), for a look
+# and a merge. Run it by hand from the Actions tab, or by pushing any commit to a branch called
+# trivia-fetch; the game itself never calls the API.
 name: Fetch trivia questions
 
 on:
+  push:
+    branches: [trivia-fetch]
   workflow_dispatch:
     inputs:
       branch:
@@ -27,12 +30,12 @@ jobs:
         with:
           node-version: 22
       - name: Download and filter the questions
-        run: node scripts/fetch-trivia.js --per "${{ github.event.inputs.per }}"
+        run: node scripts/fetch-trivia.js --per "${{ github.event.inputs.per || '60' }}"
       - name: Commit trivia.json to the data branch
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout -B "${{ github.event.inputs.branch }}"
+          git checkout -B "${{ github.event.inputs.branch || 'trivia-data' }}"
           git add trivia.json
           git commit -m "Trivia questions from the Open Trivia Database (CC BY-SA 4.0)" || echo "Nothing new."
-          git push --force origin "${{ github.event.inputs.branch }}"
+          git push --force origin "${{ github.event.inputs.branch || 'trivia-data' }}"
