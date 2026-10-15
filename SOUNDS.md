@@ -112,7 +112,7 @@ Sounds start from the events they belong to, never from drawing the screen: a re
 | Ride the Bus | `ding` | A right guess (the Hangman bell) | Bell: 1046 Hz with a 1568 Hz partial |
 | Ride the Bus | `thud` | A wrong guess (the Hangman thump) | Low thump with lowpass noise |
 | Roulette | `peg` | A number, a group or green 0 is picked for the bet (Mastermind's peg). *Varied.* | Triangle click |
-| Roulette | `rlSpin` | The wheel spins | Lowpass noise falling 1100→260 Hz over 2.6 s, with a low hum |
+| Roulette | `rlSpin` | The wheel starts spinning (it fades as the wheel slows; the ball's clicks carry on) | Lowpass noise falling 1100→300 Hz over 1.25 s, with a low hum |
 | Roulette | `ballTick` | The ball clicks over the pockets, slower and slower. *Varied.* | 3100 Hz triangle, very short |
 | Roulette | `ballDrop` | The ball drops into its pocket | Two falling clicks and a short rattle |
 | Roulette | `ding` / `thud` | A hit / a miss | As above |
