@@ -24,13 +24,19 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
       - uses: actions/configure-pages@v5
         with:
           enablement: true
       - name: Collect the site (only the web files; not the functions or tests)
+        # Matter.js (for Mini Golf, Pool and Bowling) loads from cdnjs; the copy from npm sits beside the page as the fallback.
         run: |
+          npm ci
           mkdir _site
-          cp index.html admin.html engine.js playtest.js trivia.json styles.html .nojekyll _site/
+          cp index.html admin.html engine.js physics.js playtest.js trivia.json styles.html .nojekyll _site/
+          cp node_modules/matter-js/build/matter.min.js _site/matter.min.js
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site

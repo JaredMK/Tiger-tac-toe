@@ -17,12 +17,13 @@ else
   git commit -m "$msg"
 fi
 git fetch -q "$remote" "$branch" 2>/dev/null || true
-server=$(git diff --name-only "$remote/$branch" HEAD -- functions engine.js database.rules.json firebase.json .firebaserc 2>/dev/null || echo "unknown")
+server=$(git diff --name-only "$remote/$branch" HEAD -- functions engine.js physics.js database.rules.json firebase.json .firebaserc 2>/dev/null || echo "unknown")
 git push "$remote" "HEAD:$branch"
 echo "Pushed to $remote/$branch. GitHub Pages rebuilds in about a minute."
 if [ -n "$server" ]; then
   if [ "$DEPLOY_FIREBASE" = "local" ]; then
     cp engine.js functions/engine.js
+    cp physics.js functions/physics.js
     cp trivia.json functions/trivia.json
     firebase deploy --only functions,database --project tic-tac-chaos
   else

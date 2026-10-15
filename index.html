@@ -1618,6 +1618,25 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .trun .tr i { display: block; height: 9px; border: 2px solid var(--ink); border-radius: 5px; background: var(--paper); overflow: hidden; position: relative; }
 .trun .tr i::after { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: var(--w, 0%); }
 .trun .tr.X i::after { background: var(--x); } .trun .tr.O i::after { background: var(--o); }
+/* Mini Golf, Pool and Bowling: the table on a canvas, letterboxed in its box */
+.phys { flex: 1; display: flex; flex-direction: column; min-height: 0; gap: 8px; }
+.phys .arcres, .phys .arcnote { margin: 0; min-height: 26px; line-height: 26px; flex: none; }   /* the line under the table keeps its height, so the table never jumps */
+.pscene { position: relative; flex: 1; min-height: 160px; margin: 0 auto; width: 100%; border: 3px solid var(--ink); border-radius: 14px; overflow: hidden; background: #2f7a3a; touch-action: none; user-select: none; -webkit-user-select: none; }
+.pscene.pool { background: #7a4a22; } .pscene.bowling { background: #6b6f78; }
+.pscene.wait { display: grid; place-items: center; background: var(--panel-2); }
+.pscene canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.pstrike { position: absolute; inset: 0; display: grid; place-items: center; font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-size: 58px; color: var(--o); -webkit-text-stroke: 3px var(--ink); text-shadow: 0 5px 0 var(--ink); pointer-events: none; animation: strikein .7s var(--t, 0ms) cubic-bezier(.3, 1.6, .5, 1) both; transform: rotate(-8deg); }
+@keyframes strikein { from { opacity: 0; transform: rotate(-8deg) scale(.3); } 60% { opacity: 1; transform: rotate(-8deg) scale(1.15); } to { opacity: 1; transform: rotate(-8deg) scale(1); } }
+.ctal small i.pins { font-style: normal; display: inline-grid; } .ctal small i.pins b { grid-area: 1 / 1; } .ctal small i.pins .was { animation: fadeout .2s var(--t, 0ms) both; } .ctal small i.pins .now { animation: appearin .4s var(--t, 0ms) ease-out both; }
+@keyframes fadeout { from { opacity: 1; } to { opacity: 0; } }
+.tphys { display: block; height: 100%; width: auto; max-width: 100%; }
+.tphys.wait { display: grid; place-items: center; width: 100%; color: var(--muted); } .tphys.wait svg { width: 40cqw; height: 40cqw; }
+.tphys .grass { fill: #5fbf5a; stroke: var(--ink); stroke-width: 3; } .tphys .wall { fill: #c58a4a; stroke: var(--ink); stroke-width: 2.5; } .tphys .bump { fill: #f3f0e6; stroke: var(--ink); stroke-width: 2.5; }
+.tphys .cup { fill: #17331c; stroke: var(--ink); stroke-width: 2; } .tphys .rail { fill: #7a4a22; } .tphys .cloth { fill: #2d8a4e; } .tphys .pocket { fill: #0d0d0d; }
+.tphys circle.X { fill: var(--x); stroke: var(--ink); stroke-width: 1.5; } .tphys circle.O { fill: var(--o); stroke: var(--ink); stroke-width: 1.5; } .tphys circle.cue { fill: #fdfaf0; stroke: var(--ink); stroke-width: 1.5; } .tphys circle.black { fill: #1b1b1b; stroke: var(--ink); stroke-width: 1.5; }
+.tphys text { fill: var(--ink); font-weight: 800; text-anchor: middle; font-family: Nunito, Arial, sans-serif; }
+.tbowl { display: grid; gap: 4cqw; width: 84cqw; } .tbowl svg { display: block; width: 100%; height: 46cqw; } .tbowl .pin { fill: #fff; stroke: var(--ink); stroke-width: 1.5; } .tbowl .pin.down { fill: var(--panel-2); stroke: var(--muted); }
+.tbowl .trun { padding: 0; }
 @media (prefers-reduced-motion: reduce) { .rbar i.grow { animation: none; width: var(--w1, 0%); } }
 /* Trivia: the question and its four answers */
 .trivia { flex: 1; display: flex; flex-direction: column; min-height: 0; gap: 8px; justify-content: center; }
@@ -1809,6 +1828,9 @@ const ICONS = {
   oddone: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="5" height="5" rx="1"/><rect x="9.5" y="3" width="5" height="5" rx="1"/><rect x="16" y="3" width="5" height="5" rx="1"/><rect x="3" y="9.5" width="5" height="5" rx="1"/><rect x="9.5" y="9.5" width="5" height="5" rx="1" opacity=".45"/><rect x="16" y="9.5" width="5" height="5" rx="1"/><rect x="3" y="16" width="5" height="5" rx="1"/><rect x="9.5" y="16" width="5" height="5" rx="1"/><rect x="16" y="16" width="5" height="5" rx="1"/></svg>',
   dash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="15.5" cy="4.5" r="2"/><path d="M8.5 20.5l2.5-5.5L7.5 12l3.5-4 3 2.5 3.5-1"/><path d="M11 15l3.5 2.5 1 3"/><path d="M2.5 20.5h4"/></svg>',
   lane: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6.5 3L3.5 21M17.5 3l3 18"/><path d="M12 3v3M12 9.5v3M12 16v3"/><rect x="13" y="12" width="5.5" height="8" rx="2" fill="currentColor" stroke="none"/></svg>',
+  golf: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v14"/><path d="M12 3l7 3-7 3"/><ellipse cx="12" cy="18.5" rx="7" ry="2.5"/><circle cx="6" cy="14" r="1.8" fill="currentColor" stroke="none"/></svg>',
+  pool: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="9" cy="15" r="4"/><circle cx="16.5" cy="8" r="3.5"/><path d="M3 21l3.5-3.5"/><circle cx="9" cy="15" r="1" fill="currentColor" stroke="none"/></svg>',
+  bowling: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.5c-2.5 0-2 3-1 5.5-3 3-3 8-1.5 13h5c1.5-5 1.5-10-1.5-13 1-2.5 1.5-5.5-1-5.5z"/><circle cx="17" cy="16" r="4.5"/><circle cx="16" cy="15" r=".6" fill="currentColor"/><circle cx="18.2" cy="15" r=".6" fill="currentColor"/><circle cx="17.1" cy="17.2" r=".6" fill="currentColor"/></svg>',
   rl: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9.2"/><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v5.9M12 15.3v5.9M2.8 12h5.9M15.3 12h5.9" stroke-width="1.8"/><circle cx="17.6" cy="6.4" r="1.6" fill="currentColor" stroke="none"/></svg>',
 };
 // Mastermind pegs: six colours, each with a symbol of its own (so colour is never the only cue).
@@ -2098,6 +2120,7 @@ function render() {
   busFly();
   anchorFx();
   runPaint();
+  physPaint();
   if (state.flash && !state.spot && fxAt('move', state.flash) == null) { console.error('A result on show without its move event', state.flash); playFlash(true); }   // (never expected: no animation, but the result still clears)
   sweepBursts();
   devWatch();                                                 // a match starting or ending here: the playtest log
@@ -2298,6 +2321,9 @@ const EXPLAIN = {
   oddone: { name: 'Odd One Out', play: "Tap the tile that's a different shade. It gets harder each time.", win: 'Find 3.' },
   dash: { name: 'Dash', play: 'Tap to jump, hold to jump higher. Duck low flyers by staying down. It gets faster as you go, and you keep your distance when you crash.', win: 'Reach 1,000 m first.' },
   lane: { name: 'Lane Rush', play: 'Swipe to change lanes and dodge traffic. It gets faster as you go, and you keep your distance when you crash.', win: 'Reach 1,000 m first.' },
+  golf: { name: 'Mini Golf', play: 'Drag back to aim and set power, then let go. Balls can knock each other.', win: 'Sink your ball first.' },
+  pool: { name: 'Pool', play: 'Drag back from the white ball to aim and shoot. Sink your own ball to go again.', win: 'Sink both your balls. Sink the black ball and you lose.' },
+  bowling: { name: 'Bowling', play: 'Drag back to aim and set power, then let go. Every pin you knock down counts.', win: '25 pins total.' },
 };
 let explainT = null;                          // the mini-game whose explainer is open
 const qBtn = (t, cls) => `<button class="qbtn${cls ? ' ' + cls : ''}" data-act="explain" data-t="${t}" aria-label="How to play ${EXPLAIN[t].name}">${cls === 'sm' ? '<i>?</i>' : '?'}</button>`;   // the small one: a 26px sticker in a 40px tap target
@@ -2334,7 +2360,7 @@ function renderHowTo() {
       <div class="rulecard">${RULES_CORE.map(t => `<p>${t}</p>`).join('')}</div>
       <div class="games-h"><span>Mini-games</span><small>Tap one for its rules</small></div>
       <div class="games howlist">${visibleTypes().map(t => `<button class="chk how" data-act="explain" data-t="${t}" aria-label="How to play ${EXPLAIN[t].name}">${ICONS[t]}<span>${EXPLAIN[t].name}</span>${testBadge(t)}<i class="qbtn sm" aria-hidden="true">?</i></button>`).join('')}</div>
-      ${visibleTypes().includes('trivia') ? `<div class="games-h"><span>Credits</span></div><div class="rulecard credits"><p>Trivia questions from the <a href="https://opentdb.com" target="_blank" rel="noopener noreferrer">Open Trivia Database</a>, opentdb.com, <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a>.</p></div>` : ''}
+      ${visibleTypes().includes('trivia') || visibleTypes().some(t => PHYS_TYPES.includes(t)) ? `<div class="games-h"><span>Credits</span></div><div class="rulecard credits">${visibleTypes().includes('trivia') ? '<p>Trivia questions from the <a href="https://opentdb.com" target="_blank" rel="noopener noreferrer">Open Trivia Database</a>, opentdb.com, <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a>.</p>' : ''}${visibleTypes().some(t => PHYS_TYPES.includes(t)) ? '<p>Mini Golf, Pool and Bowling run on <a href="https://brm.io/matter-js" target="_blank" rel="noopener noreferrer">Matter.js</a> (MIT licence).</p>' : ''}</div>` : ''}
     </div></main>`;
 }
 
@@ -2364,7 +2390,7 @@ function renderSetup() {
     : `<label class="field ${p}"><span>${p} player${cpu === p ? ' · computer' : host ? ' · you' : ''}</span><input data-p="${p}" value="${esc(s.names[p] || '')}" maxlength="${NAME_MAX}" placeholder="${cpu === p ? CPU_NAME : p}" autocomplete="off" autocapitalize="words" aria-label="${p} player name"></label>`);
   const pick = host && s.hostPick === 'random' ? 'random' : human;   // the host: X, O, or drawn at random for every match
   const sides = mode !== 'two' ? `<div class="sides${host ? ' three' : ''}" role="group" aria-label="Your side"><span>You play</span><button class="seg X${pick === 'X' ? ' on' : ''}" data-act="side" data-side="X" aria-pressed="${pick === 'X'}">${host ? 'X<small>goes first</small>' : 'X · goes first'}</button><button class="seg O${pick === 'O' ? ' on' : ''}" data-act="side" data-side="O" aria-pressed="${pick === 'O'}">O</button>${host ? `<button class="seg${pick === 'random' ? ' on' : ''}" data-act="side" data-side="random" aria-pressed="${pick === 'random'}">Random</button>` : ''}</div>` : '';
-  const chk = t => `<label class="chk${s.games[t] ? '' : ' off'}${dealable(t) ? '' : ' wait'}" title="${dealable(t) ? '' : 'Loading its questions… (needs a connection the first time)'}"><input type="checkbox" data-t="${t}"${s.games[t] ? ' checked' : ''}>${ICONS[t]}<span>${INFO[t].name}</span>${testBadge(t)}${dealable(t) ? '' : '<i class="tst wait">Loading</i>'}${qBtn(t, 'sm')}</label>`;
+  const chk = t => `<label class="chk${s.games[t] ? '' : ' off'}${dealable(t) ? '' : ' wait'}" title="${dealable(t) ? '' : `Loading its ${t === 'trivia' ? 'questions' : 'physics'}… (needs a connection the first time)`}"><input type="checkbox" data-t="${t}"${s.games[t] ? ' checked' : ''}>${ICONS[t]}<span>${INFO[t].name}</span>${testBadge(t)}${dealable(t) ? '' : '<i class="tst wait">Loading</i>'}${qBtn(t, 'sm')}</label>`;
   const timer = host ? `<div class="timerrow" role="group" aria-label="Time per turn"><span>Time per turn</span>${TIMER_OPTIONS.map(v => `<button class="seg${(s.timer || 0) === v ? ' on' : ''}" data-act="timer" data-v="${v}">${TIMER_LABEL[v]}</button>`).join('')}</div>` : '';
   const room = host ? `<div class="room"><small>Room code</small><b class="code">${esc(state.online.code)}</b>
       <div class="row"><button class="btn" data-act="share">Share link</button></div>
@@ -2523,6 +2549,7 @@ function thumb(mini, final) {
     case 'pong': return `<div class="tpip">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${mini.cups[p].map(up => `<i class="${up ? 'on' : ''}"></i>`).join('')}</div>`).join('')}</div>`;
     case 'trivia': return `<div class="tpip">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${Array.from({ length: TRIVIA.goal }, (_, k) => `<i class="${k < mini.right[p] ? 'on' : ''}"></i>`).join('')}</div>`).join('')}</div>`;
     case 'oddone': return `<div class="tpip">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${Array.from({ length: ODD.goal }, (_, k) => `<i class="${k < mini.finds[p] ? 'on' : ''}"></i>`).join('')}</div>`).join('')}</div>`;
+    case 'golf': case 'pool': case 'bowling': return physThumb(mini);
     case 'dash': case 'lane': return `<div class="trun" aria-label="X at ${Math.round(mini.dist.X)} m, O at ${Math.round(mini.dist.O)} m of ${mini.cfg.target}">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><i style="--w:${(100 * Math.min(1, mini.dist[p] / mini.cfg.target)).toFixed(1)}%"></i></div>`).join('')}</div>`;   // both players' progress to the target
     case 'pig': return `<div class="tdice">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><div class="bar"><i style="width:${Math.min(100, mini.bank[p] / RISKY.goal * 100)}%"></i></div><span>${mini.bank[p]}</span></div>`).join('')}</div>`;
     case 'hunt': return `<div class="tg g5x5" style="--hn:${huntSize(mini)}">${mini.dug.map((d, i) => {
@@ -2923,6 +2950,276 @@ function oddTable(mini, a, o) {
   const level = ['3×3 · a clear difference', '4×4 · a subtler one', '5×5 · a subtle one'][Math.min(mini.finds[who], 2)];
   const res = d ? `<p ${lateAt('arcres ' + (d.correct ? 'ok' : 'no'), 250)} role="status">${d.correct ? 'Found it!' : d.picked < 0 ? 'No tap' : 'Not that one'}</p>` : shown ? `<p class="arcres ${shown.correct ? 'ok' : 'no'}"><b class="${who}">${N(who)}</b> ${shown.correct ? 'found it' : 'missed it'}</p>` : `<p class="arcnote">${o.view ? '' : `<b class="${who}">${N(who)}</b>: ${level}`}</p>`;
   return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="odd"><div class="ogrid" style="grid-template-columns:repeat(${n}, 1fr)">${tiles}</div>${res}</div></div>`;
+}
+// Mini Golf, Pool and Bowling: the physics games. The table is drawn on a canvas. A shot is a drag back
+// from anywhere on the table (a slingshot: pull away from where the ball should go, further for more
+// power; the aim line and the power meter show it), let go to shoot. The shot plays out in physics.js
+// (Matter.js) wherever the move is made (this phone in a local match, the server in Find Match); the
+// recording (every ball, 30 times a second) comes with the result, and this phone replays it from the
+// move's event (fxAt), so both phones see the same shot. Matter.js comes from cdnjs as the page starts
+// (a copy beside the page as the fallback); until it and physics.js are in, the three are not dealt
+// (engine.js: dealable) and the checklist says so.
+const MATTER_URLS = ['https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.20.0/matter.min.js', 'matter.min.js'];
+let physLoading = false;
+function loadPhysics() {
+  if (physicsReady() || physLoading) return;
+  physLoading = true;
+  const load = src => new Promise((ok, no) => { const s = document.createElement('script'); s.src = src; s.async = true; s.onload = () => ok(); s.onerror = () => { s.remove(); no(new Error(src)); }; document.head.appendChild(s); });
+  const matter = window.Matter ? Promise.resolve() : load(MATTER_URLS[0]).catch(() => load(MATTER_URLS[1]));
+  matter.then(() => (window.PHYS ? Promise.resolve() : load('physics.js'))).then(() => {
+    setPhysics(window.PHYS);
+    physLoading = false;
+    render();                                                  // the checklist's Loading badge goes; a table waiting for its physics draws
+  }).catch(() => { physLoading = false; });                    // offline with no copy kept: the three are not dealt this visit
+}
+const PHYS_S = t => PHYSICS.lib[t === 'golf' ? 'GOLF' : t === 'pool' ? 'POOL' : 'BOWL'];
+const PHYS_PULL = 0.42;                                        // a full-power pull: this much of the table's height on the screen
+// The drag under way on this phone: the square, the player, the pointer, where it went down and where it is.
+let physDraft = null, physRaf = 0;
+// What a shot did, in words, for the result line (and the board's label for a move seen from the other side).
+function physResult(f, long) {
+  const ph = f.phys, by = f.by, o = other(by), who = `<b class="${by}">${N(by)}</b>`, them = `<b class="${o}">${N(o)}</b>`;
+  if (!ph) return { text: long ? `${who} shot` : 'Shot', ok: false };
+  if (f.type === 'golf') {
+    if (ph.first === by) return { text: long ? `${who} sank it!` : 'In the cup!', ok: true };
+    if (ph.first) return { text: long ? `${who} knocked ${them}'s ball in!` : `Knocked in — ${them} takes it`, ok: false };
+    if (ph.lip) return { text: long ? `${who} lipped out` : 'Lipped out!', ok: false };
+    return { text: long ? `${who} putted` : 'Not yet', ok: false };
+  }
+  if (f.type === 'pool') {
+    if (ph.black) return { text: long ? `${who} sank the black!` : `The black! ${them} takes it`, ok: false };
+    if (ph.pocketedNow && ph.pocketedNow[by] >= POOLG.goal) return { text: long ? `${who} cleared the table!` : 'Both down!', ok: true };
+    if (ph.pocketedNow && ph.pocketedNow[o] >= POOLG.goal) return { text: long ? `${who} sank ${them}'s last ball` : `${them}'s last ball — ${them} takes it`, ok: false };
+    if (ph.scratch) return { text: long ? `${who} scratched` : 'Scratch! The white comes back', ok: false };
+    if (ph.own && !ph.theirs) return { text: long ? `${who} sank a ball — and shoots again` : 'Sank one — shoot again!', ok: true };
+    if (ph.own) return { text: long ? `${who} sank a ball, and ${them}'s` : `Sank one, and ${them}'s`, ok: false };
+    if (ph.theirs) return { text: long ? `${who} sank ${them}'s ball` : `Sank ${them}'s ball`, ok: false };
+    return { text: long ? `${who} shot` : 'Nothing down', ok: false };
+  }
+  if (ph.strike) return { text: long ? `${who} bowled a strike!` : 'STRIKE!', ok: true };
+  if (ph.gutter) return { text: long ? `${who} rolled a gutter ball` : 'Gutter ball', ok: false };
+  return { text: long ? `${who} knocked ${ph.knocked} pin${ph.knocked === 1 ? '' : 's'}` : `${ph.knocked} pin${ph.knocked === 1 ? '' : 's'}`, ok: ph.knocked >= 6 };
+}
+function physTable(mini, a, o) {
+  const type = mini.type, turn = o.turn;
+  if (!physicsReady()) return `<div class="g-arc"><div class="phys"><div class="pscene ${type} wait"><p class="arcnote">Loading the table… (needs a connection the first time)</p></div></div></div>`;
+  const ph = a && a.phys ? a.phys : null, l = mini.last, mover = ph ? a.by : turn;
+  const fresh = p => !!(ph && a.by === p);
+  const tal = type === 'golf' ? p => arcTally(p, o, `<small>${mini.holed[p] ? 'in the cup' : `${mini.shots[p]} shot${mini.shots[p] === 1 ? '' : 's'}`}</small>`)
+    : type === 'pool' ? p => arcTally(p, o, pips(p, Math.min(POOLG.goal, mini.pocketed[p]), POOLG.goal, fresh(p) && ph.own > 0, ph ? ph.ms : 0))
+    : p => arcTally(p, o, `<small>${fresh(p) && ph.knocked ? `<i class="pins" style="--t:${ph.rec && !REDUCED ? ph.ms : 0}ms"><b class="was">${mini.pins[p] - ph.knocked}</b><b class="now">${mini.pins[p]}</b></i>` : mini.pins[p]} / ${BOWLG.goal} pins</small>`);   // the total before the roll, then the new one as the pins settle
+  const mine = !o.view && !ph && !o.locked;
+  const t = ph ? (ph.rec && !REDUCED ? ph.ms : 0) : null;
+  const res = ph ? (r => `<p ${lateAt('arcres ' + (r.ok ? 'ok' : 'no'), t)} role="status">${r.text}</p>`)(physResult(a))
+    : o.view ? `<p class="arcnote">${l ? physResult({ type, by: l.by, phys: l }, true).text : ''}</p>`
+    : mine ? `<p class="arcnote">${type === 'golf' ? 'Drag back to aim and set power, then let go.' : type === 'pool' ? 'Drag back from the white ball to aim and shoot.' : 'Drag back to aim and set power, then let go.'}</p>`
+    : `<p class="arcnote">Waiting for <b class="${turn}">${N(turn)}</b>…</p>`;
+  const strike = ph && type === 'bowling' && ph.strike ? `<div ${lateAt('pstrike', t)} aria-hidden="true">STRIKE!</div>` : '';
+  const label = type === 'golf' ? `Mini golf hole: ${PHYSICS.lib.HOLES[mini.hole].name}` : type === 'pool' ? 'The pool table' : 'The bowling lane';
+  const scene = `<div class="pscene ${type}" data-phys="scene"${mine ? ' data-live="1"' : ''} aria-label="${label}"><canvas data-phys="cv"></canvas>${strike}</div>`;
+  return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="phys">${scene}${res}</div></div>`;
+}
+// The move's recording at this moment: every body's place, and whether the recording has ended.
+function physFrame(ph, now, at) {
+  const rec = ph && ph.rec;
+  if (!rec || !rec.frames || !rec.frames.length) return null;
+  const k = REDUCED ? rec.frames.length - 1 : Math.max(0, Math.min(rec.frames.length - 1, Math.floor((now - at) / 1000 * rec.fps)));
+  const fr = rec.frames[k], pos = {};
+  rec.ids.forEach((id, i) => { pos[id] = fr[2 * i] == null ? null : [fr[2 * i], fr[2 * i + 1]]; });
+  return { pos, done: k >= rec.frames.length - 1 };
+}
+// Where everything is when nothing is playing: the square as it stands (a bowling square shows the last
+// roll's rack while its result is on show, else a fresh rack).
+function physStill(mini, showLast) {
+  const L = PHYSICS.lib, out = {};
+  if (mini.type === 'golf') for (const p of ['X', 'O']) out[p] = mini.holed[p] ? null : mini.balls[p];
+  else if (mini.type === 'pool') for (const id of POOLG.order) out[id] = mini.down[id] ? null : mini.balls[id];
+  else {
+    const l = showLast && mini.last ? mini.last : null;
+    out.ball = l ? null : L.BOWL.start;
+    L.BOWL.pins.forEach((pt, k) => { out['p' + k] = l && l.down[k] ? null : pt; });
+  }
+  return out;
+}
+// After every render (and every frame while a shot plays or a drag is on): the table as it is now.
+function physPaint() {
+  if (physRaf) { cancelAnimationFrame(physRaf); physRaf = 0; }
+  const cv = app.querySelector('canvas[data-phys="cv"]');
+  if (!cv) { physDraft = null; return; }
+  if (physDrawNow(cv, performance.now())) physRaf = requestAnimationFrame(physLoop);
+}
+function physLoop(now) {
+  physRaf = 0;
+  const cv = app.querySelector('canvas[data-phys="cv"]');
+  if (cv && physDrawNow(cv, now)) physRaf = requestAnimationFrame(physLoop);
+}
+// One drawing of the zoomed square's table; true when another frame is wanted (a replay or a drag under way).
+function physDrawNow(cv, now) {
+  const sq = state.squares && state.squares[state.zoom];
+  if (!sq || !PHYS_TYPES.includes(sq.mini.type) || !physicsReady()) return false;
+  const mini = sq.mini, f = state.flash, d = state.done;
+  const ph = f && f.square === state.zoom && f.phys ? f.phys : null;
+  const at = ph ? fxAt('move', f) : null;
+  const fr = ph && at != null ? physFrame(ph, now, at) : null;
+  const pos = fr ? fr.pos : physStill(mini, !!(ph || d || sq.owner || state.winner));
+  const dr = physDraft && physDraft.sq === state.zoom && !ph ? physDraft : null;
+  const { c, W, H } = runCanvas(cv);
+  if (W < 2 || H < 2) return false;
+  const S = PHYS_S(mini.type), k = Math.min(W / S.w, H / S.h), ox = (W - S.w * k) / 2, oy = (H - S.h * k) / 2;
+  const g = { c, W, H, k, X: x => ox + x * k, Y: y => oy + y * k };
+  if (mini.type === 'golf') drawGolf(g, mini, pos); else if (mini.type === 'pool') drawPool(g, mini, pos); else drawBowl(g, mini, pos);
+  if (dr) drawAim(g, mini, pos, dr);
+  return !!(dr || (fr && !fr.done));
+}
+// ---- the drawing: bold ink outlines and flat colours, like the rest of the game ----
+function physBall(g, x, y, r, fill, label, ink) {
+  const c = g.c, X = g.X(x), Y = g.Y(y), R = r * g.k;
+  c.beginPath(); c.arc(X, Y, R, 0, Math.PI * 2); c.fillStyle = fill; c.fill(); c.lineWidth = Math.max(1.5, R * 0.2); c.strokeStyle = ink; c.stroke();
+  c.beginPath(); c.arc(X - R * 0.36, Y - R * 0.36, R * 0.22, 0, Math.PI * 2); c.fillStyle = 'rgba(255,255,255,.6)'; c.fill();
+  if (label) { c.fillStyle = ink; c.font = `800 ${Math.max(7, Math.round(R * 1.15))}px Nunito, Arial, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(label, X, Y + R * 0.1); }
+}
+function physSkull(g, x, y, r) {                                 // the black ball's mark: a little skull
+  const c = g.c, X = g.X(x), Y = g.Y(y), R = r * g.k;
+  c.fillStyle = '#fff'; c.beginPath(); c.arc(X, Y - R * 0.12, R * 0.42, 0, Math.PI * 2); c.fill();
+  c.fillRect(X - R * 0.26, Y + R * 0.1, R * 0.52, R * 0.3);
+  c.fillStyle = '#111'; c.beginPath(); c.arc(X - R * 0.16, Y - R * 0.16, R * 0.11, 0, Math.PI * 2); c.arc(X + R * 0.16, Y - R * 0.16, R * 0.11, 0, Math.PI * 2); c.fill();
+}
+function drawGolf(g, mini, pos) {
+  const c = g.c, P = runColours(), L = PHYSICS.lib, S = L.GOLF, hole = L.HOLES[mini.hole];
+  c.fillStyle = '#2f7a3a'; c.fillRect(0, 0, g.W, g.H);                                   // the surround
+  c.fillStyle = '#5fbf5a'; c.fillRect(g.X(0), g.Y(0), S.w * g.k, S.h * g.k);           // the green
+  c.strokeStyle = 'rgba(255,255,255,.14)'; c.lineWidth = 1;                             // mown stripes
+  for (let y = 0; y < S.h; y += 10) { c.fillStyle = (y / 10) % 2 ? 'rgba(255,255,255,.07)' : 'rgba(0,0,0,.03)'; c.fillRect(g.X(0), g.Y(y), S.w * g.k, 10 * g.k); }
+  const tee = hole.tee;                                                                   // the tee mat
+  c.fillStyle = 'rgba(0,0,0,.14)'; rr(c, g.X(tee[0] - 9), g.Y(tee[1] - 4), 18 * g.k, 8 * g.k, 3 * g.k); c.fill();
+  for (const [x, y, w, h, a] of hole.walls) {                                             // the walls
+    c.save(); c.translate(g.X(x), g.Y(y)); c.rotate(a || 0);
+    rr(c, -w / 2 * g.k, -h / 2 * g.k, w * g.k, h * g.k, 2 * g.k); outlined(c, '#c58a4a', P.ink, 2.5);
+    c.restore();
+  }
+  for (const [x, y, r] of hole.bumpers) {                                                 // the bumpers
+    c.beginPath(); c.arc(g.X(x), g.Y(y), r * g.k, 0, Math.PI * 2); outlined(c, '#f3f0e6', P.ink, 2.5);
+    c.beginPath(); c.arc(g.X(x), g.Y(y), r * g.k * 0.5, 0, Math.PI * 2); c.fillStyle = P.X; c.fill();
+  }
+  const cup = hole.cup;                                                                   // the cup, with its flag
+  c.beginPath(); c.arc(g.X(cup[0]), g.Y(cup[1]), S.cupR * g.k, 0, Math.PI * 2); c.fillStyle = '#17331c'; c.fill(); c.lineWidth = 2; c.strokeStyle = P.ink; c.stroke();
+  c.beginPath(); c.moveTo(g.X(cup[0]), g.Y(cup[1])); c.lineTo(g.X(cup[0] + 7), g.Y(cup[1] - 13)); c.lineWidth = 2.5; c.strokeStyle = '#f3f0e6'; c.stroke();
+  c.beginPath(); c.moveTo(g.X(cup[0] + 7), g.Y(cup[1] - 13)); c.lineTo(g.X(cup[0] + 14), g.Y(cup[1] - 10)); c.lineTo(g.X(cup[0] + 7), g.Y(cup[1] - 7)); c.closePath(); outlined(c, P.X, P.ink, 2);
+  for (const p of ['X', 'O']) if (pos[p]) physBall(g, pos[p][0], pos[p][1], S.ballR, p === 'X' ? P.X : P.O, p, P.ink);
+}
+function drawPool(g, mini, pos) {
+  const c = g.c, P = runColours(), L = PHYSICS.lib, S = L.POOL;
+  c.fillStyle = '#7a4a22'; c.fillRect(0, 0, g.W, g.H);                                   // the rail
+  c.fillStyle = '#2d8a4e'; c.fillRect(g.X(0), g.Y(0), S.w * g.k, S.h * g.k);           // the cloth
+  c.strokeStyle = 'rgba(0,0,0,.25)'; c.lineWidth = 2; c.strokeRect(g.X(0), g.Y(0), S.w * g.k, S.h * g.k);
+  c.fillStyle = 'rgba(255,255,255,.35)';                                                  // the spots
+  for (const [x, y] of [S.start.cue, S.start.black]) { c.beginPath(); c.arc(g.X(x), g.Y(y), 1.1 * g.k, 0, Math.PI * 2); c.fill(); }
+  for (const [x, y, r] of S.pockets) { c.beginPath(); c.arc(g.X(x), g.Y(y), r * g.k, 0, Math.PI * 2); c.fillStyle = '#0d0d0d'; c.fill(); c.lineWidth = 2; c.strokeStyle = '#3b2412'; c.stroke(); }
+  for (const id of POOLG.order) {
+    if (!pos[id]) continue;
+    const [x, y] = pos[id];
+    if (id === 'cue') physBall(g, x, y, S.ballR, '#fdfaf0', '', P.ink);
+    else if (id === 'black') { physBall(g, x, y, S.ballR, '#1b1b1b', '', P.ink); physSkull(g, x, y, S.ballR); }
+    else physBall(g, x, y, S.ballR, id[0] === 'x' ? P.X : P.O, id[0].toUpperCase(), P.ink);
+  }
+}
+function drawBowl(g, mini, pos) {
+  const c = g.c, P = runColours(), L = PHYSICS.lib, S = L.BOWL;
+  c.fillStyle = '#6b6f78'; c.fillRect(0, 0, g.W, g.H);                                   // the gutters and beyond
+  c.fillStyle = '#e8c58c'; c.fillRect(g.X(S.gutter), g.Y(0), (S.w - 2 * S.gutter) * g.k, S.h * g.k);   // the lane
+  c.strokeStyle = 'rgba(120,70,20,.22)'; c.lineWidth = 1;                                // the boards
+  for (let x = S.gutter + 4; x < S.w - S.gutter; x += 4) { c.beginPath(); c.moveTo(g.X(x), g.Y(0)); c.lineTo(g.X(x), g.Y(S.h)); c.stroke(); }
+  c.fillStyle = '#3b3f47'; c.fillRect(g.X(0), g.Y(0), S.gutter * g.k, S.h * g.k); c.fillRect(g.X(S.w - S.gutter), g.Y(0), S.gutter * g.k, S.h * g.k);   // the gutters
+  c.fillStyle = '#1e1e1e'; c.fillRect(g.X(0), g.Y(0), S.w * g.k, 6 * g.k);              // the pit at the back
+  c.strokeStyle = 'rgba(0,0,0,.45)'; c.lineWidth = 2; c.beginPath(); c.moveTo(g.X(S.gutter), g.Y(S.start[1] + 14)); c.lineTo(g.X(S.w - S.gutter), g.Y(S.start[1] + 14)); c.stroke();   // the foul line
+  c.fillStyle = 'rgba(0,0,0,.35)';                                                        // the arrows
+  for (let i = 0; i < 7; i++) { const x = 35 + i * 5, y = 150 - Math.abs(i - 3) * 5; c.beginPath(); c.moveTo(g.X(x), g.Y(y - 4)); c.lineTo(g.X(x + 1.6), g.Y(y)); c.lineTo(g.X(x - 1.6), g.Y(y)); c.closePath(); c.fill(); }
+  for (const [x, y] of S.pins) { c.beginPath(); c.arc(g.X(x), g.Y(y), 0.9 * g.k, 0, Math.PI * 2); c.fill(); }   // the pin spots
+  S.pins.forEach((pt, k) => {                                                            // the pins standing, from above: white with the red bands
+    const p = pos['p' + k]; if (!p) return;
+    const X = g.X(p[0]), Y = g.Y(p[1]), R = S.pinR * g.k;
+    c.beginPath(); c.arc(X, Y, R, 0, Math.PI * 2); outlined(c, '#fff', P.ink, 2);
+    c.beginPath(); c.arc(X, Y, R * 0.62, 0, Math.PI * 2); c.lineWidth = Math.max(1.5, R * 0.22); c.strokeStyle = P.X; c.stroke();
+    c.beginPath(); c.arc(X, Y, R * 0.22, 0, Math.PI * 2); c.fillStyle = P.ink; c.fill();
+  });
+  if (pos.ball) {                                                                         // the ball: dark, three finger holes
+    const [x, y] = pos.ball, X = g.X(x), Y = g.Y(y), R = S.ballR * g.k;
+    physBall(g, x, y, S.ballR, '#4a2a8a', '', P.ink);
+    c.fillStyle = 'rgba(0,0,0,.6)';
+    for (const [dx, dy] of [[-0.3, -0.1], [0.3, -0.1], [0, 0.35]]) { c.beginPath(); c.arc(X + dx * R, Y + dy * R, R * 0.14, 0, Math.PI * 2); c.fill(); }
+  }
+}
+// The shot being lined up: the pull (a band from the ball to the finger), the aim line the other way,
+// longer with the power, and the power meter up the side.
+function drawAim(g, mini, pos, dr) {
+  const c = g.c, P = runColours(), S = PHYS_S(mini.type), from = physFrom(mini, dr.p, pos);
+  if (!from) return;
+  const shot = physPull(dr);
+  const X = g.X(from[0]), Y = g.Y(from[1]), len = (0.12 + 0.3 * shot.power) * S.h * g.k;
+  c.save();
+  c.setLineDash([6, 6]); c.lineWidth = 3; c.strokeStyle = 'rgba(255,255,255,.9)';
+  c.beginPath(); c.moveTo(X, Y); c.lineTo(X + Math.sin(shot.aim) * len, Y - Math.cos(shot.aim) * len); c.stroke();
+  c.setLineDash([]);
+  c.beginPath(); c.moveTo(X, Y); c.lineTo(X - Math.sin(shot.aim) * shot.px, Y + Math.cos(shot.aim) * shot.px); c.lineWidth = 2; c.strokeStyle = 'rgba(0,0,0,.35)'; c.stroke();   // the band
+  const hx = X + Math.sin(shot.aim) * len, hy = Y - Math.cos(shot.aim) * len;             // the arrow head
+  c.beginPath(); c.moveTo(hx, hy); c.lineTo(hx - Math.sin(shot.aim + 2.6) * 10, hy + Math.cos(shot.aim + 2.6) * 10); c.lineTo(hx - Math.sin(shot.aim - 2.6) * 10, hy + Math.cos(shot.aim - 2.6) * 10); c.closePath(); c.fillStyle = '#fff'; c.fill();
+  const mw = 12, mh = Math.min(g.H * 0.5, 160), mx = g.W - mw - 10, my = (g.H - mh) / 2;   // the meter
+  rr(c, mx, my, mw, mh, 6); outlined(c, 'rgba(255,255,255,.5)', P.ink, 2);
+  const fill = mh * shot.power, hue = 120 - 120 * shot.power;
+  if (fill > 2) { rr(c, mx + 2, my + mh - fill + 1, mw - 4, fill - 2, 4); c.fillStyle = `hsl(${hue} 80% 48%)`; c.fill(); }
+  c.restore();
+}
+function physFrom(mini, p, pos) { return mini.type === 'golf' ? pos[p] : mini.type === 'pool' ? pos.cue : pos.ball || PHYSICS.lib.BOWL.start; }
+// The pull as a shot: the aim away from the finger (0 straight up the table), the power from the length.
+function physPull(dr) {
+  const dx = dr.x0 - dr.x, dy = dr.y0 - dr.y, px = Math.hypot(dx, dy), box = dr.scene.getBoundingClientRect();
+  return { aim: px < 1 ? 0 : Math.atan2(dx, -dy), power: Math.min(1, px / (PHYS_PULL * box.height)), px };
+}
+app.addEventListener('pointerdown', e => {
+  const scene = e.target.closest && e.target.closest('[data-phys="scene"]');
+  if (!scene || !scene.dataset.live || physDraft || blocked() || state.flash || state.done) return;
+  e.preventDefault();
+  physDraft = { sq: state.zoom, p: state.turn, pointer: e.pointerId, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, scene };
+  try { scene.setPointerCapture(e.pointerId); } catch (err) { /* no capture: the move and up still reach the page */ }
+  physPaint();
+});
+app.addEventListener('pointermove', e => { const dr = physDraft; if (dr && dr.pointer === e.pointerId) { dr.x = e.clientX; dr.y = e.clientY; } });
+app.addEventListener('pointerup', e => {
+  const dr = physDraft;
+  if (!dr || dr.pointer !== e.pointerId) return;
+  dr.x = e.clientX; dr.y = e.clientY;
+  const shot = physPull(dr);
+  physDraft = null;
+  if (shot.power < 0.05 || dr.sq !== state.zoom) { physPaint(); return; }           // a tap, or a pull too short to count: nothing
+  attemptMove(physShot({ aim: shot.aim, power: shot.power }));
+});
+app.addEventListener('pointercancel', e => { if (physDraft && physDraft.pointer === e.pointerId) { physDraft = null; physPaint(); } });
+// The miniature: the table as it stands (both balls and the cup; the balls left and the pockets; the
+// rack, with each player's pins so far as a bar).
+function physThumb(mini) {
+  const L = PHYSICS.lib;
+  if (!L) return `<div class="tphys wait" aria-label="${INFO[mini.type].name}">${ICONS[mini.type]}</div>`;
+  const ball = (x, y, r, cls, label) => `<circle cx="${x}" cy="${y}" r="${r}" class="${cls}"/>${label ? `<text x="${x}" y="${y + r * 0.45}" font-size="${r * 1.3}" class="${cls}">${label}</text>` : ''}`;
+  if (mini.type === 'golf') {
+    const S = L.GOLF, h = L.HOLES[mini.hole];
+    return `<svg class="tphys" viewBox="0 0 ${S.w} ${S.h}" aria-label="Mini golf: ${h.name}${['X', 'O'].map(p => mini.holed[p] ? `, ${p} in the cup` : '').join('')}">
+      <rect x="0" y="0" width="${S.w}" height="${S.h}" class="grass"/>
+      ${h.walls.map(([x, y, w, hh, a]) => `<rect x="${x - w / 2}" y="${y - hh / 2}" width="${w}" height="${hh}" rx="2" transform="rotate(${((a || 0) * 180 / Math.PI).toFixed(1)} ${x} ${y})" class="wall"/>`).join('')}
+      ${h.bumpers.map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" class="bump"/>`).join('')}
+      <circle cx="${h.cup[0]}" cy="${h.cup[1]}" r="${S.cupR}" class="cup"/>
+      ${['X', 'O'].map(p => (mini.holed[p] ? '' : ball(mini.balls[p][0], mini.balls[p][1], S.ballR * 1.5, p, p))).join('')}</svg>`;
+  }
+  if (mini.type === 'pool') {
+    const S = L.POOL;
+    return `<svg class="tphys" viewBox="-4 -4 ${S.w + 8} ${S.h + 8}" aria-label="Pool: X has ${mini.pocketed.X} down, O has ${mini.pocketed.O} down">
+      <rect x="-4" y="-4" width="${S.w + 8}" height="${S.h + 8}" rx="4" class="rail"/><rect x="0" y="0" width="${S.w}" height="${S.h}" class="cloth"/>
+      ${S.pockets.map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" class="pocket"/>`).join('')}
+      ${POOLG.order.map(id => (mini.down[id] ? '' : ball(mini.balls[id][0], mini.balls[id][1], S.ballR * 1.5, id === 'cue' ? 'cue' : id === 'black' ? 'black' : id[0].toUpperCase(), id === 'cue' || id === 'black' ? '' : id[0].toUpperCase()))).join('')}</svg>`;
+  }
+  const S = L.BOWL, l = mini.last;
+  return `<div class="tbowl" aria-label="Bowling: X has ${mini.pins.X} pins, O has ${mini.pins.O} of ${BOWLG.goal}"><svg viewBox="30 6 40 52">
+    ${S.pins.map(([x, y], k) => `<circle cx="${x}" cy="${y}" r="${S.pinR * 1.6}" class="pin${l && l.down[k] ? ' down' : ''}"/>`).join('')}</svg>
+    <div class="trun">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><i style="--w:${(100 * Math.min(1, mini.pins[p] / BOWLG.goal)).toFixed(1)}%"></i></div>`).join('')}</div></div>`;
 }
 // Dash and Lane Rush: the run is played here, in real time, on a canvas. The engine's runStep is the
 // physics (the same the tests step), this is the loop, the drawing and the inputs. A run: the Run
@@ -3428,6 +3725,7 @@ function renderMini(sq, review) {
     case 'trivia': g = triviaTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d }); break;
     case 'oddone': g = oddTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d }); break;
     case 'dash': case 'lane': g = runTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d }); break;
+    case 'golf': case 'pool': case 'bowling': g = physTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d }); break;
     case 'hexapawn': {
       // Tap one of your pawns to see where it can go, then tap a highlighted square. The pawn just moved
       // slides in from where it was; a captured pawn is knocked off the board.
@@ -3517,6 +3815,7 @@ function summary(f) {
     case 'bus': return f.bus ? `${who} said ${BUS_SAY[f.bus.guess]}: ${f.bus.right ? 'right' : 'wrong'}` : `${who} guessed`;
     case 'rl': return f.rl ? `${f.rl.n}${f.rl.n === 0 ? ' green' : rlRed(f.rl.n) ? ' red' : ' black'} · ${f.rl.hit ? 'a hit' : 'a miss'}` : `${who} spun`;
     case 'dash': case 'lane': return f.run ? (f.run.done ? `${who} reached ${fmtM(f.run.target)} m!` : `${who} ran ${fmtM(f.run.to - f.run.from)} m — now at ${fmtM(f.run.to)}/${fmtM(f.run.target)}`) : `${who} ran`;
+    case 'golf': case 'pool': case 'bowling': return physResult(f, true).text;
     case 'bullseye': return f.bull ? `${who} threw: ${f.bull.hit ? 'a hit' : 'a miss'}` : `${who} threw`;
     case 'echo': return f.echo ? (f.echo.pass ? `${who} beat pattern ${f.echo.level + 1}` : `${who} slipped at step ${f.echo.failAt + 1}`) : `${who} tried`;
     case 'plinko': return f.plinko ? `${who} dropped from slot ${f.plinko.slot + 1} · bin ${f.plinko.bin + 1}${f.plinko.win ? ': WIN' : ''}` : `${who} dropped`;
@@ -3545,7 +3844,7 @@ function renderFlash(f) {
   if (f.type === 'pig' && f.note === 'bust') {
     return `${open}<div class="card"><div class="big-g">${dieFace(f.roll)}</div><h2>Bust!</h2><p>${who} rolled ${f.roll} again · ${f.pot} point${f.pot === 1 ? '' : 's'} lost</p></div></div>`;
   }
-  if ((['bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane'].includes(f.type)) && (f.kind === 'again' || f.kind === 'move')) {   // the table shows it all: the cards, the tick or cross, the number and the hits
+  if ((['bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling'].includes(f.type)) && (f.kind === 'again' || f.kind === 'move')) {   // the table shows it all: the cards, the tick or cross, the number and the hits
     return open.replace('"flash late"', '"flash lite late"') + '</div>';
   }
   if (f.type === 'pig' && (f.note === 'bank' || f.kind === 'again')) {   // a roll or a bank speaks for itself: the +N grows, or moves into the score
@@ -5626,6 +5925,7 @@ function boot() {
   fetchReleases();                                            // which mini-games are released, before any match is set up
   fetchRunConfig();                                           // the runners' difficulty, for the squares to come
   loadTrivia();                                               // the Trivia questions, for the match to come
+  loadPhysics();                                              // Matter.js and physics.js, for Mini Golf, Pool and Bowling
   takeTag();                                                  // a playtester's link (?t=sam): before the address is tidied below
   devOpen();
   setInterval(devPulse, 60000);
@@ -5866,6 +6166,9 @@ def('tileX', 0.12, (c, d, t) => sfxTone(c, d, t, 330, .1, { to: 280, vol: .4, ty
 def('solve', 0.6, (c, d, t) => [784, 988, 1175].forEach((f, i) => sfxTone(c, d, t + i * .09, f, .3, { vol: .35, type: 'triangle' })), { level: .6 });
 def('ding', 0.5, (c, d, t) => { sfxTone(c, d, t, 1046, .5, { vol: .4 }); sfxTone(c, d, t, 1568, .35, { vol: .15 }); }, { level: .55 });
 def('thud', 0.22, (c, d, t) => { sfxTone(c, d, t, 120, .2, { to: 70, vol: .6 }); sfxNoise(c, d, t, .1, { f: 400, filter: 'lowpass', vol: .4 }); }, { level: .55 });
+def('cushion', 0.16, (c, d, t) => { sfxTone(c, d, t, 220, .12, { to: 140, vol: .5, type: 'triangle' }); sfxNoise(c, d, t, .08, { f: 700, filter: 'lowpass', vol: .3 }); }, { level: .45, vary: true });
+def('pinHit', 0.14, (c, d, t) => { sfxNoise(c, d, t, .09, { f: 1500, q: 2.5, vol: .6, att: .001 }); sfxTone(c, d, t, 520, .08, { to: 380, vol: .35, type: 'triangle' }); }, { level: .5, vary: true });
+def('strike', 0.9, (c, d, t) => { [659, 784, 988, 1319].forEach((f, i) => sfxTone(c, d, t + i * .09, f, .3, { vol: .35, type: 'triangle' })); sfxNoise(c, d, t, .5, { f: 2500, to: 600, q: .8, vol: .25 }); }, { level: .65 });
 def('hexPlace', 0.08, (c, d, t) => { sfxTone(c, d, t, 500, .06, { vol: .5, type: 'triangle' }); sfxNoise(c, d, t, .05, { f: 1200, q: 4, vol: .4 }); }, { level: .5, vary: true });
 def('pathNote', 0.3, (c, d, t) => sfxTone(c, d, t, 523, .25, { vol: .4, type: 'triangle' }), { level: .5 });
 def('hiloBlip', 0.1, (c, d, t) => sfxTone(c, d, t, 880, .08, { vol: .4 }), { level: .4, vary: true });
@@ -6046,6 +6349,15 @@ function moveSounds(f) {
     case 'trivia': if (f.trivia) add(f.trivia.correct ? 'ding' : 'thud', 250); break;
     case 'oddone': if (f.odd) add(f.odd.correct ? 'ding' : 'thud', 250); break;
     case 'dash': case 'lane': if (f.run) { add(f.run.done ? 'sparkle' : 'thud', 0); add('ding', RUNT.bar); } break;   // the crash (or the finish) as the result shows, the bar landing at its new distance
+    case 'golf': case 'pool': case 'bowling': {                   // the recording's events, as they come round in the replay; then the result
+      const ph = f.phys; if (!ph) break;
+      const live = ph.rec && !REDUCED, end = live ? ph.ms : 0;
+      if (live) for (const e of ph.events || []) { const t = e.t * 1000; if (e.k === 'balls') add('clack', t); else if (e.k === 'wall') add('cushion', t); else if (e.k === 'pin') add('pinHit', t); else if (e.k === 'hole') add('plop', t); else if (e.k === 'pocket') add(e.id === 'cue' ? 'thud' : 'plop', t); else if (e.k === 'lip') add('clink', t); else if (e.k === 'gutter') add('thud', t); }
+      if (f.type === 'bowling') add(ph.strike ? 'strike' : ph.gutter ? 'thud' : 'ding', end);
+      else if (f.type === 'pool') add(ph.black ? 'buzz' : ph.scratch ? 'thud' : ph.own && !ph.theirs ? 'ding' : 'thud', end);
+      else if (!ph.first) add(ph.lip ? 'thud' : 'ding', end);
+      break;
+    }
     case 'pig':
       if (f.note === 'bust') { add('rattle', 0); add('thunk', 600); add('bust', 650); }
       else if (f.note === 'bank') add('bank', 350);
@@ -6056,7 +6368,7 @@ function moveSounds(f) {
     case 'mastermind': { const n = (f.solid || 0) + (f.hollow || 0); for (let k = 0; k < n; k++) add('marker', 450 + k * 250); if (won) add('reveal', 1450); break; }
     case 'bump': { add('spin', 0); const steps = Math.max(1, f.to - f.from); for (let k = 0; k < steps; k++) add('hop', SPIN3_MS + k * HOP_MS); if (f.bumped) add('boing', SPIN3_MS + steps * HOP_MS); break; }
   }
-  const CASINO = ['bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane'];
+  const CASINO = ['bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling'];
   if (won && f.kind !== 'match' && CASINO.includes(f.type)) add('won', total - 600);   // the card games and the wheel: the chime once the result shows
   else if (won && f.kind !== 'match' && f.type !== 'ttt' && f.type !== 'wordle' && f.type !== 'hangman') add('won', Math.round(total * .5));   // the square is won: a chime
   if (f.kind === 'draw') add('reset', 420);                          // the square resets with a new mini-game

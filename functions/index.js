@@ -52,6 +52,7 @@ const E = require('./engine.js');
 // The Trivia questions (trivia.json, copied here beside engine.js at deploy; from the Open Trivia
 // Database, CC BY-SA 4.0). Without the file Trivia is simply never dealt (engine.js: dealable).
 try { E.setTriviaBank(require('./trivia.json')); } catch (e) { logger.warn('trivia.json missing: Trivia is not dealt'); }
+try { E.setPhysics(require('./physics.js')); } catch (e) { logger.warn('physics.js missing: Mini Golf, Pool and Bowling are not dealt'); }   // (a copy of the repo's physics.js, like engine.js)
 const R = require('./serverRules.js');
 const S = require('./statsRules.js');
 const B = require('./bots.js');

@@ -4,6 +4,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const E = require('../engine.js');
+E.setPhysics(require('../physics.js'));   // Mini Golf, Pool and Bowling are dealt only with their physics
 
 const lcg = seed => () => (seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296;
 const only = t => Object.fromEntries(E.TYPES.map(g => [g, g === t]));

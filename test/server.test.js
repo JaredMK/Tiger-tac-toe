@@ -9,6 +9,7 @@ const EMU = !!process.env.FIREBASE_AUTH_EMULATOR_HOST && !!process.env.FIREBASE_
 if (!EMU) { test('server tests (need the emulators: npm run test:emulators)', { skip: true }, () => {}); return; }
 
 const E = require('../engine.js');
+E.setPhysics(require('../physics.js'));   // Mini Golf, Pool and Bowling: the same physics the server runs
 const { initializeApp, deleteApp } = require('firebase/app');
 const A = require('firebase/auth');
 const D = require('firebase/database');
@@ -1318,4 +1319,44 @@ test('runners (Dash, Lane Rush): the difficulty config is public, the admin alon
   const bin = Math.floor((first.at + 0.2) / 50) * 50;
   assert.equal((s.crash && s.crash[bin] || 0) - (before.crash && before.crash[bin] || 0), oSq === to.squares[4] && Math.floor(oSq.mini.dist.O / 50) * 50 === bin ? 2 : 1, `X's crash in the ${bin} m bin`);
   assert.match(await script('RunBoss', 'revoke'), /no longer an admin/);
+});
+
+test('physics (Mini Golf, Pool, Bowling): a shot is played out on the server and its recording rides the move to both phones; the same shot run here gives the same recording; the square itself carries no recording; a bad shot is refused', async () => {
+  const a = await player('Golf_A'), b = await player('Golf_B');
+  const g = await pairUp(a, b);
+  let dealt;
+  await rewrite(g.id, full => {
+    full.squares.forEach((sq, i) => { sq.owner = null; sq.mini = E.newMini(['golf', 'pool', 'bowling'][i % 3], E.makeRng('phys' + i)); });
+    full.turn = 'X'; full.lock = null; full.winner = null;
+    dealt = JSON.parse(JSON.stringify(full.squares.map(sq => sq.mini)));
+  });
+  const move = (side, sq, mv) => g[side].call('move', { game: g.id, square: sq, move: mv });
+  for (const bad of [{ aim: 9, power: 0.5 }, { aim: 0, power: 1.5 }, { aim: 0, power: -0.1 }, 'up', { aim: 'a', power: 0.5 }, null]) assert.deepEqual(await move('X', 0, bad), { ok: false, reason: 'bad' }, `refused: ${JSON.stringify(bad)}`);
+  const same = (i, p, shot) => { const m = JSON.parse(JSON.stringify(dealt[i])); const r = E.applyMove(m, p, shot, E.makeRng('x')); return { m, r }; };
+  // golf: X's shot from the tee
+  const golf = { aim: 0.02, power: 0.8 };
+  assert.equal((await move('X', 0, golf)).ok, true);
+  let st = await gameState(g.id), sq = st.squares[0], entry = st.recent[st.recent.length - 1], mine = same(0, 'X', golf);
+  assert.equal(sq.mini.last.by, 'X'); assert.equal(sq.mini.shots.X, 1); assert.equal(sq.mini.last.rec, undefined, 'the square carries no recording (publicMini)');
+  assert.ok(entry.phys && entry.phys.rec && entry.phys.rec.frames.length > 10, 'the recording rides the entry');
+  assert.deepEqual(entry.phys.rec, mine.m.last.rec, 'the same shot: the same recording here and on the server');
+  assert.deepEqual(sq.mini.balls, mine.m.balls); assert.deepEqual(entry.phys.events, mine.m.last.events);
+  assert.equal(st.turn, mine.r.outcome === 'win' ? st.turn : 'O');
+  // bowling: O rolls; the pins go on O's total, the rack is fresh next time
+  const roll = { aim: -0.01, power: 0.9 };
+  assert.equal((await move('O', 2, roll)).ok, true);
+  st = await gameState(g.id); sq = st.squares[2]; entry = st.recent[st.recent.length - 1]; mine = same(2, 'O', roll);
+  assert.equal(sq.mini.pins.O, mine.m.pins.O); assert.ok(sq.mini.pins.O > 0, `pins down (${sq.mini.pins.O})`); assert.equal(sq.mini.rolls.O, 1);
+  assert.deepEqual(entry.phys.rec, mine.m.last.rec); assert.equal(entry.phys.knocked, mine.m.last.knocked); assert.deepEqual(entry.phys.down, mine.m.last.down);
+  assert.equal(st.recent[st.recent.length - 2].phys.rec, null, 'the entry before it has let its recording go (the record stays small)');
+  // pool: X shoots; whatever went down, the rules here and there agree
+  const shot = { aim: -0.12, power: 0.55 };
+  assert.equal((await move('X', 1, shot)).ok, true);
+  st = await gameState(g.id); sq = st.squares[1]; entry = st.recent[st.recent.length - 1]; mine = same(1, 'X', shot);
+  assert.deepEqual(sq.mini.balls, mine.m.balls); assert.deepEqual(sq.mini.down, mine.m.down); assert.deepEqual(sq.mini.pocketed, mine.m.pocketed);
+  assert.deepEqual(entry.phys.rec, mine.m.last.rec);
+  assert.equal(st.lock, mine.r.again ? 1 : null, 'an own ball down: X shoots again, on the same square');
+  assert.ok(JSON.stringify(st).length < 120000, `the record stays small (${JSON.stringify(st).length} bytes)`);
+  assert.equal((await g.O.call('resign', { game: g.id })).ok, true);
+  await recorded(g.id);
 });

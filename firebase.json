@@ -15,6 +15,7 @@
       ],
       "predeploy": [
         "cp \"$PROJECT_DIR/engine.js\" \"$RESOURCE_DIR/engine.js\"",
+        "cp \"$PROJECT_DIR/physics.js\" \"$RESOURCE_DIR/physics.js\"",
         "cp \"$PROJECT_DIR/trivia.json\" \"$RESOURCE_DIR/trivia.json\""
       ]
     }

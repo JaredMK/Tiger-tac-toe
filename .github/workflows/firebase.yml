@@ -10,6 +10,7 @@ on:
     paths:
       - 'functions/**'
       - 'engine.js'
+      - 'physics.js'
       - 'trivia.json'
       - 'database.rules.json'
       - 'firebase.json'
@@ -48,7 +49,7 @@ jobs:
           npm ci --prefix functions
           npm i -g firebase-tools@14
       - name: Engine tests
-        run: node --test test/logic.test.js test/server-rules.test.js test/bots-rules.test.js
+        run: node --test test/logic.test.js test/phys.test.js test/server-rules.test.js test/bots-rules.test.js
       - name: Server tests on the Firebase Emulator Suite
         run: npm run test:emulators
       - name: Credentials

@@ -8,13 +8,13 @@
  * Everything about a match lives in one plain object (see newMatch); the UI
  * only ever calls playMove / endFlash and re-renders from that object.
  */
-const TYPES = ['ttt', 'c4', 'bs', 'wordle', 'hangman', 'hex', 'hilo', 'snakes', 'memory', 'candy', 'bump', 'coins', 'pig', 'hunt', 'mastermind', 'bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane'];
+const TYPES = ['ttt', 'c4', 'bs', 'wordle', 'hangman', 'hex', 'hilo', 'snakes', 'memory', 'candy', 'bump', 'coins', 'pig', 'hunt', 'mastermind', 'bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling'];
 // Release control: every mini-game is Released or Admin only. A game in TEST_TYPES is admin only until the
 // admin's dashboard releases it (releases/{type} true in the database; false puts one back to admin only);
 // everything else is released unless the database says otherwise. Admin-only games exist only for the
 // admin: in their local matches and in friend games they host (their guest plays them in that match
 // only); never in Find Match, nor anywhere for anyone else.
-const TEST_TYPES = ['bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane'];
+const TEST_TYPES = ['bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling'];
 function isReleased(t, releases) { return releases && typeof releases[t] === 'boolean' ? releases[t] : !TEST_TYPES.includes(t); }
 function releasedTypes(releases) { return TYPES.filter(t => isReleased(t, releases)); }
 // The games a setup may deal (admin: every game; anyone else: the released ones), and the setup's
@@ -58,6 +58,9 @@ const INFO = {
   oddone:      { name: 'Odd One Out',  hint: 'Tap the tile of a different shade. Three finds wins' },
   dash:        { name: 'Dash',         hint: 'Jump the hazards, duck the flyers. First to 1,000 m' },
   lane:        { name: 'Lane Rush',    hint: 'Swipe between lanes, dodge the traffic. First to 1,000 m' },
+  golf:        { name: 'Mini Golf',    hint: 'Drag back to aim and set power. First ball in the cup wins' },
+  pool:        { name: 'Pool',         hint: 'Sink your two balls. The black ball loses' },
+  bowling:     { name: 'Bowling',      hint: 'Roll at a fresh rack each turn. First to 25 pins' },
 };
 const C4 = { cols: 7, rows: 6, k: 4 };
 const HP = { cols: 3, rows: 4 };
@@ -319,7 +322,7 @@ function hexPath(cells, p) {
 }
 // Does p have a legal move in this mini-game? Only Hexapawn can leave a player stuck; every other game
 // always offers a move. A stuck player simply plays in another square.
-function canMove(mini, p) { return mini.type === 'hexapawn' ? hpMoves(mini.cells, p).length > 0 : mini.type === 'trivia' ? !!(mini.ask && mini.ask[p]) : true; }   // (Trivia: only with a question dealt)
+function canMove(mini, p) { return mini.type === 'hexapawn' ? hpMoves(mini.cells, p).length > 0 : mini.type === 'trivia' ? !!(mini.ask && mini.ask[p]) : mini.type === 'golf' ? !mini.holed[p] : true; }   // (Trivia: only with a question dealt)
 // Hexapawn: a pawn steps one square straight forward into an empty square, or captures an opposing pawn
 // one square diagonally forward. Cells run row by row from the top; X moves up, O moves down.
 function hpMoves(cells, p) {
@@ -911,6 +914,152 @@ function runStep(sim, dt) {
 // The move a run makes: its end (the crash, the finish, or where the time ran out) and its time.
 const runResult = (sim, out) => ({ dist: r2(Math.min(sim.cfg.target, sim.d)), ms: Math.round(sim.t * 1000), out: !!out && !sim.done });
 
+// ---------- Mini Golf, Pool and Bowling: the physics games (Matter.js, through physics.js) ----------
+// The tables, the shots and the recordings live in physics.js (setPhysics registers it: the page once
+// Matter.js has loaded from cdnjs, the server and the tests from the module). Without it these three
+// are not dealt (dealable), as Trivia is not without its questions. A move is a shot { aim, power }:
+// the aim in radians (0 straight up the table), the power 0..1. The shot is played out where the move
+// is made (the shooter's phone in a local or friend match, the server in Find Match) and the recording
+// goes into the square (last.rec): the other phone replays it, so both see the same thing.
+const PHYS_TYPES = ['golf', 'pool', 'bowling'];
+const PHYSICS = { lib: null };
+function setPhysics(lib) { PHYSICS.lib = lib && typeof lib.run === 'function' ? lib : null; }
+const physicsReady = () => !!PHYSICS.lib;
+const GOLF = { goal: 1, aiErr: [0.035, 0.04], hold: 700 };
+const POOLG = { goal: 2, aiErr: [0.02, 0.05], hold: 700, order: ['cue', 'x1', 'x2', 'o1', 'o2', 'black'] };
+const BOWLG = { goal: 25, rack: 10, aiErr: [0.025, 0.04], hold: 800 };
+const poolMine = p => (p === 'X' ? ['x1', 'x2'] : ['o1', 'o2']);
+// A shot as a move: both numbers, the power within 0..1, the aim within a half turn either way (to
+// three decimals, so a shot checked twice is the same shot twice).
+function physShot(m) {
+  if (!m || typeof m !== 'object') return null;
+  const aim = Number(m.aim), power = Number(m.power);
+  if (!Number.isFinite(aim) || !Number.isFinite(power) || Math.abs(aim) > 3.143 || power < 0 || power > 1) return null;
+  return { aim: Math.round(aim * 1000) / 1000 + 0, power: Math.round(power * 1000) / 1000 + 0 };
+}
+// An angle brought round into the half turn either way (what a shot's aim must be).
+function wrapAim(a) { a = ((a + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI; return Math.max(-3.141, Math.min(3.141, a)); }
+// The aim from a point to a target: 0 is straight up the table (y decreasing), positive is to the right.
+const aimTo = (from, to) => Math.atan2(to[0] - from[0], from[1] - to[1]);
+// The pool cue ball's spot, or the nearest free spot below it when a ball sits there.
+function poolSpot(mini) {
+  const L = PHYSICS.lib, start = L.POOL.start.cue, R = L.POOL.ballR;
+  for (let k = 0; k < 20; k++) {
+    const y = start[1] + k * R * 2.2;
+    if (!POOLG.order.some(id => id !== 'cue' && !mini.down[id] && Math.hypot(mini.balls[id][0] - start[0], mini.balls[id][1] - y) < R * 2.1)) return [start[0], Math.min(y, L.POOL.h - R - 1)];
+  }
+  return start.slice();
+}
+function physRun(mini, p, shot) { return PHYSICS.lib ? PHYSICS.lib.run(mini.type, mini, p, shot) : null; }
+// A hole's path (the way round its walls, ending at the cup): the next point to make for from a place,
+// and how far there is still to go along it.
+function golfClear(hole, a, b) {                              // a straight roll from a to b: clear of the hole's walls and bumpers?
+  const R = PHYSICS.lib.GOLF.ballR + 0.6, n = 24;
+  for (let i = 1; i < n; i++) {
+    const x = a[0] + (b[0] - a[0]) * i / n, y = a[1] + (b[1] - a[1]) * i / n;
+    for (const [cx, cy, w, h, ang] of hole.walls) {
+      const c = Math.cos(ang || 0), s = Math.sin(ang || 0), dx = x - cx, dy = y - cy;
+      if (Math.abs(dx * c + dy * s) < w / 2 + R && Math.abs(dy * c - dx * s) < h / 2 + R) return false;
+    }
+    for (const [cx, cy, r] of hole.bumpers) if (Math.hypot(x - cx, y - cy) < r + R) return false;
+  }
+  return true;
+}
+function golfNext(hole, pos) {                                 // the path point in sight with the least way still to go (any point, if none is)
+  let best = -1, bd = Infinity;
+  const pick = (pt, i) => { const d = Math.hypot(pt[0] - pos[0], pt[1] - pos[1]) + golfAhead(hole, i); if (d < bd) { bd = d; best = i; } };
+  hole.path.forEach((pt, i) => { if (golfClear(hole, pos, pt)) pick(pt, i); });
+  if (best < 0) hole.path.forEach(pick);
+  return best;
+}
+function golfAhead(hole, i) { let s = 0; for (let k = i; k < hole.path.length - 1; k++) s += Math.hypot(hole.path[k + 1][0] - hole.path[k][0], hole.path[k + 1][1] - hole.path[k][1]); return s; }
+function golfLeft(hole, pos) { const i = golfNext(hole, pos); return Math.hypot(hole.path[i][0] - pos[0], hole.path[i][1] - pos[1]) + golfAhead(hole, i); }
+const physLast = (p, shot, r, extra) => Object.assign({ by: p, aim: shot.aim, power: shot.power, ms: r.ms, events: r.events, rec: r.rec }, extra);
+// What a shot would do, for the computer: the same simulation, scored.
+function physScore(mini, p, r) {
+  const L = PHYSICS.lib, o = other(p);
+  if (mini.type === 'golf') {
+    if (r.result.first === p) return 1000;
+    if (r.result.first === o) return -1000;
+    return -golfLeft(L.HOLES[mini.hole], r.final[p] || mini.balls[p]);
+  }
+  if (mini.type === 'pool') {
+    const pk = r.result.pocketed, own = pk.filter(id => poolMine(p).includes(id)).length, theirs = pk.filter(id => poolMine(o).includes(id)).length;
+    if (pk.includes('black')) return -1000;
+    let s = own * 100 - theirs * 80 - (pk.includes('cue') ? 150 : 0);
+    if (own && mini.pocketed[p] + own >= POOLG.goal) s += 500;
+    if (theirs && mini.pocketed[o] + theirs >= POOLG.goal) s -= 500;
+    for (const id of poolMine(p)) if (r.final[id]) s -= Math.min(...L.POOL.pockets.map(([x, y]) => Math.hypot(r.final[id][0] - x, r.final[id][1] - y))) / 10;   // own balls left near pockets
+    return s;
+  }
+  return r.result.knocked * 10 - (r.result.gutter ? 1 : 0);
+}
+function physCandidates(mini, p, rng) {
+  const L = PHYSICS.lib, out = [];
+  if (mini.type === 'golf') {                                 // at the next points of the hole's path, and at the cup, with powers to suit the distance
+    const hole = L.HOLES[mini.hole], from = mini.balls[p], k = golfNext(hole, from);
+    const targets = [hole.path[k], hole.path[Math.min(k + 1, hole.path.length - 1)], hole.cup];
+    for (const t of targets) {
+      const a = aimTo(from, t), d = Math.hypot(t[0] - from[0], t[1] - from[1]), base = Math.max(0.15, Math.min(0.95, 0.08 + d / 120));
+      for (const dp of [0, 0.12, -0.08, 0.25]) out.push({ aim: a, power: base + dp });
+      out.push({ aim: a + 0.12, power: base }, { aim: a - 0.12, power: base });
+    }
+    for (let k2 = 0; k2 < 3; k2++) out.push({ aim: (rng() - 0.5) * Math.PI * 1.6, power: 0.4 + rng() * 0.55 });   // the odd bank shot
+  } else if (mini.type === 'pool') {
+    const cue = mini.balls.cue, R = L.POOL.ballR;
+    for (const id of poolMine(p)) {
+      if (mini.down[id]) continue;
+      const b = mini.balls[id];
+      const pockets = L.POOL.pockets.slice().sort((u, v) => Math.hypot(b[0] - u[0], b[1] - u[1]) - Math.hypot(b[0] - v[0], b[1] - v[1])).slice(0, 2);
+      for (const pk of pockets) {
+        const dx = b[0] - pk[0], dy = b[1] - pk[1], n = Math.hypot(dx, dy) || 1;
+        const ghost = [b[0] + (dx / n) * R * 2, b[1] + (dy / n) * R * 2];    // where the cue ball must be to send it pocketwards
+        const a = aimTo(cue, ghost);
+        for (const pw of [0.3, 0.45, 0.65]) out.push({ aim: a, power: pw });
+        out.push({ aim: a + 0.03, power: 0.5 }, { aim: a - 0.03, power: 0.5 });
+      }
+    }
+    for (let k = 0; k < 3; k++) out.push({ aim: (rng() - 0.5) * 2.4, power: 0.25 + rng() * 0.3 });   // a soft safety
+  } else {
+    const from = L.BOWL.start, head = L.BOWL.pins[0], a = aimTo(from, head);
+    for (const da of [-0.07, -0.045, -0.025, 0, 0.025, 0.045, 0.07]) out.push({ aim: a + da, power: 0.9 });
+    out.push({ aim: a + 0.01, power: 0.75 }, { aim: a - 0.01, power: 0.75 });
+  }
+  return out.map(s => ({ aim: wrapAim(s.aim), power: Math.max(0.05, Math.min(1, s.power)) }));
+}
+// The computer's shot: the best of its candidates, then a little error so it is not perfect.
+function physAi(mini, p, rng) {
+  const err = mini.type === 'golf' ? GOLF.aiErr : mini.type === 'pool' ? POOLG.aiErr : BOWLG.aiErr;
+  let best = null;
+  for (const c of physCandidates(mini, p, rng)) {
+    const r = physRun(mini, p, c);
+    if (!r) continue;
+    const s = physScore(mini, p, r);
+    if (!best || s > best.s) best = { c, s, r };
+  }
+  if (!best) return { move: randomLegalMove(mini, p, rng), q: 0 };
+  const g = () => gaussOf(rng);
+  const move = { aim: wrapAim(best.c.aim + g() * err[0]), power: Math.max(0.05, Math.min(1, best.c.power + g() * err[1])) };
+  const q = mini.type === 'golf' ? (best.s >= 1000 ? 0.75 : 0.03) : mini.type === 'pool' ? (best.s >= 500 ? 0.55 : best.s >= 100 ? 0.35 : 0.02) : Math.min(0.9, best.s / 100);
+  return { move: physShot(move), q };
+}
+// A random gentle shot: for a player who ran out of time.
+function physRandom(mini, p, rng) {
+  const L = PHYSICS.lib;
+  if (mini.type === 'golf') {                                 // roughly towards the next point of the hole's path, at a power to suit the distance
+    const hole = L.HOLES[mini.hole], from = mini.balls[p], to = hole.path[golfNext(hole, from)], d = Math.hypot(to[0] - from[0], to[1] - from[1]);
+    return physShot({ aim: wrapAim(aimTo(from, to) + (rng() - 0.5) * 0.7), power: Math.max(0.2, Math.min(0.6, (0.08 + d / 120) * (0.7 + rng() * 0.5))) });
+  }
+  if (mini.type === 'pool') { const ids = poolMine(p).filter(id => !mini.down[id]); const to = ids.length ? mini.balls[ids[randInt(rng, ids.length)]] : L.POOL.start.black; return physShot({ aim: wrapAim(aimTo(mini.balls.cue, to) + (rng() - 0.5) * 0.6), power: 0.25 + rng() * 0.25 }); }
+  return physShot({ aim: (rng() - 0.5) * 0.2, power: 0.5 + rng() * 0.25 });
+}
+// How many moves the computer reckons it needs in a physics square (for its choice of square).
+function physNeeds(mini, p) {
+  if (mini.type === 'golf') { if (mini.holed[p]) return 0; return Math.max(1, 1 + golfLeft(PHYSICS.lib.HOLES[mini.hole], mini.balls[p]) / 60); }
+  if (mini.type === 'pool') return Math.max(1, (POOLG.goal - mini.pocketed[p]) * 2);
+  return Math.max(1, (BOWLG.goal - mini.pins[p]) / 6.5);
+}
+
 function newMini(type, rng) {
   switch (type) {
     case 'ttt':         return { type, cells: new Array(9).fill(null), last: null };
@@ -938,6 +1087,15 @@ function newMini(type, rng) {
     case 'plinko':      return { type, win: randInt(needRng(rng), PLINKO.slots), last: null };
     case 'pong':        return { type, cups: { X: [true, true, true], O: [true, true, true] }, last: null };
     case 'trivia':      return { type, right: { X: 0, O: 0 }, ask: { X: null, O: null }, answers: { X: null, O: null }, asked: [], last: null };   // ask: each player's question; answers: the right option's place (hidden online); asked: the ids used here
+    case 'golf': {                                            // a hole from the six; both balls side by side on the tee
+      const L = PHYSICS.lib, hole = randInt(needRng(rng), L ? L.HOLES.length : 6), tee = L ? L.HOLES[hole].tee : [50, 140];
+      return { type, hole, balls: { X: [tee[0] - 3, tee[1]], O: [tee[0] + 3, tee[1]] }, holed: { X: false, O: false }, shots: { X: 0, O: 0 }, last: null };
+    }
+    case 'pool': {                                            // the fixed layout: the cue ball, two of each colour, the black
+      const L = PHYSICS.lib, st = L ? L.POOL.start : { cue: [50, 140], black: [50, 52], x1: [40, 66], x2: [60, 80], o1: [60, 66], o2: [40, 80] };
+      return { type, balls: Object.fromEntries(POOLG.order.map(id => [id, st[id].slice()])), down: {}, pocketed: { X: 0, O: 0 }, last: null };
+    }
+    case 'bowling':     return { type, pins: { X: 0, O: 0 }, rolls: { X: 0, O: 0 }, last: null };   // a fresh rack every roll; the totals are what count
     case 'dash': case 'lane': return { type, cfg: runConfig(type), seed: { X: randInt(needRng(rng), 1e9), O: randInt(rng, 1e9) }, dist: { X: 0, O: 0 }, runs: { X: 0, O: 0 }, crashes: { X: [], O: [] }, last: null };   // cfg: the difficulty this square was dealt with; seed: each player's course
     case 'oddone': {
       const gx = oddGrid(0, needRng(rng)), go = oddGrid(0, rng);
@@ -1050,7 +1208,7 @@ function newState(rng) {
 // Returns false (and changes nothing) when no mini-game is ticked.
 // A game that can be dealt right now: Trivia only once its questions are in (trivia.json: the page
 // fetches it, the server has it as a file); without them a Trivia square could never be played.
-const dealable = t => t !== 'trivia' || triviaReady();
+const dealable = t => (t === 'trivia' ? triviaReady() : PHYS_TYPES.includes(t) ? physicsReady() : true);
 function startMatch(state, rng) {
   rng = needRng(rng);
   const games = enabledGames(state.setup).filter(dealable);
@@ -1370,6 +1528,46 @@ function applyMove(mini, p, m, rng) {
       if (hit && mini.hits[p] >= RL.goal) return { ok: true, outcome: 'win', note: 'hit' };
       return { ok: true, outcome: 'continue', note: hit ? 'hit' : 'miss' };
     }
+    case 'golf': {                                            // a shot: the balls play out; the first in the cup takes the square (even knocked in by the other)
+      const shot = physShot(m);
+      if (!shot) return { ok: false, reason: 'bad' };
+      if (mini.holed[p]) return { ok: false, reason: 'done' };
+      const r = physRun(mini, p, shot);
+      if (!r) return { ok: false, reason: 'nophys' };
+      mini.shots[p] += 1;
+      for (const q of ['X', 'O']) if (r.final[q] !== undefined) { if (r.final[q] === null) mini.holed[q] = true; else mini.balls[q] = r.final[q]; }
+      mini.last = physLast(p, shot, r, { holed: r.result.holed, first: r.result.first, lip: r.events.some(e => e.k === 'lip') });
+      if (r.result.first) return { ok: true, outcome: 'win', note: r.result.first === p ? 'holed' : 'knockedIn', winner: r.result.first };
+      return { ok: true, outcome: 'continue', note: mini.last.lip ? 'lip' : 'shot' };
+    }
+    case 'pool': {                                            // a shot from the cue ball: own ball down, shoot again; theirs counts for them; the black loses; a scratch returns the cue
+      const shot = physShot(m);
+      if (!shot) return { ok: false, reason: 'bad' };
+      const r = physRun(mini, p, shot);
+      if (!r) return { ok: false, reason: 'nophys' };
+      const o = other(p), pk = r.result.pocketed;
+      for (const id of Object.keys(r.final)) { if (r.final[id] === null) mini.down[id] = true; else mini.balls[id] = r.final[id]; }
+      const black = pk.includes('black'), scratch = pk.includes('cue'), own = pk.filter(id => poolMine(p).includes(id)).length, theirs = pk.filter(id => poolMine(o).includes(id)).length;
+      mini.pocketed[p] += own; mini.pocketed[o] += theirs;
+      if (scratch) { delete mini.down.cue; mini.balls.cue = poolSpot(mini); }
+      mini.last = physLast(p, shot, r, { pocketed: pk.slice(), black, scratch, own, theirs, cue: mini.balls.cue.slice() });
+      if (black) return { ok: true, outcome: 'win', note: 'black', winner: o };
+      if (mini.pocketed[p] >= POOLG.goal) return { ok: true, outcome: 'win', note: 'cleared' };
+      if (mini.pocketed[o] >= POOLG.goal) return { ok: true, outcome: 'win', note: 'gift', winner: o };
+      const again = own > 0 && !theirs && !scratch;
+      return Object.assign({ ok: true, outcome: 'continue', note: again ? 'again' : scratch ? 'scratch' : theirs ? 'theirs' : own ? 'own' : 'shot' }, again ? { again: true } : {});
+    }
+    case 'bowling': {                                         // a roll at a fresh rack: the pins down go on the total; 25 takes the square
+      const shot = physShot(m);
+      if (!shot) return { ok: false, reason: 'bad' };
+      const r = physRun(mini, p, shot);
+      if (!r) return { ok: false, reason: 'nophys' };
+      const n = r.result.knocked;
+      mini.pins[p] += n; mini.rolls[p] += 1;
+      mini.last = physLast(p, shot, r, { knocked: n, down: r.result.down.slice(), gutter: r.result.gutter, strike: n === BOWLG.rack });
+      if (mini.pins[p] >= BOWLG.goal) return { ok: true, outcome: 'win', note: 'pins' };
+      return { ok: true, outcome: 'continue', note: n === BOWLG.rack ? 'strike' : r.result.gutter ? 'gutter' : 'roll' };
+    }
     case 'dash': case 'lane': {                               // a run: its end and its time, checked against the course
       const mv = m === 'auto' ? runAuto(mini, p, needRng(rng)) : m;
       const why = runCheck(mini, p, mv);
@@ -1487,6 +1685,7 @@ const AI = { win: 1000, block: 600 };
 function publicMini(mini) {
   switch (mini.type) {
     case 'ttt': case 'c4': case 'hex': case 'hexapawn': return { type: mini.type, cells: mini.cells.slice() };
+    case 'golf': case 'pool': case 'bowling': { const c = JSON.parse(JSON.stringify(mini)); if (c.last) delete c.last.rec; return c; }   // (everything is in the open; the recording is not needed to choose)
     case 'dash': case 'lane': return { type: mini.type, cfg: mini.cfg, seed: { X: mini.seed.X, O: mini.seed.O }, dist: { X: mini.dist.X, O: mini.dist.O }, runs: { X: mini.runs.X, O: mini.runs.O } };
     case 'bullseye': return { type: 'bullseye', hits: { X: mini.hits.X, O: mini.hits.O }, speed: { X: mini.speed.X, O: mini.speed.O } };
     case 'echo':    return { type: 'echo', level: { X: mini.level.X, O: mini.level.O } };
@@ -1642,6 +1841,7 @@ const COIN_NEEDS = [0, 2, 2.67, 3.14, 3.92, 4.55, 5.22];   // expected flips to 
 function needsOf(pm, p) {
   switch (pm.type) {
     case 'dash': case 'lane': return runNeeds(pm.cfg, pm.dist[p]);
+    case 'golf': case 'pool': case 'bowling': return physNeeds(pm, p);
     case 'bullseye': { let n = 0, s = pm.speed[p]; for (let h = pm.hits[p]; h < BULLS.goal; h++) { n += 1 / bullsChance(s); s *= BULLS.faster; } return Math.max(1, n); }
     case 'echo':    { let n = 0; for (let l = pm.level[p]; l < ECHO.lengths.length; l++) n += 1 / ECHO.aiPass[l]; return Math.max(1, n); }
     case 'plinko':  return 1 / Math.max(...plinkoOdds(pm.win));            // dropped above the WIN bin, every time
@@ -1878,6 +2078,7 @@ function pickValued(pm, me, moves, place) {
 function localBest(pm, me, rng, style, ctx) {
   switch (pm.type) {
     case 'dash': case 'lane': return runAi(pm, me, rng);       // a run drawn to finish in about 4-5 of them
+    case 'golf': case 'pool': case 'bowling': return physAi(pm, me, rng);   // the best of its candidate shots, with a little error
     case 'bullseye': {                                           // a hit as often as its speed allows: stopped inside the zone, or just outside
       const q = bullsChance(pm.speed[me]), hit = rng() < q;
       const at = hit ? 0.5 + (rng() - 0.5) * BULLS.zone * 0.9 : (rng() < 0.5 ? 0.5 - BULLS.zone / 2 - 0.03 - rng() * 0.3 : 0.5 + BULLS.zone / 2 + 0.03 + rng() * 0.3);
@@ -2136,6 +2337,7 @@ function randomLegalMove(mini, p, rng) {
   switch (mini.type) {
     case 'ttt': case 'hex': return from(empties(mini.cells, c => !c));
     case 'dash': case 'lane': return 'auto';                           // a run that crashes after a short random distance
+    case 'golf': case 'pool': case 'bowling': return physRandom(mini, p, rng);   // a random gentle shot
     case 'bullseye': return Math.round(rng() * 1000) / 1000;          // a throw at a random point
     case 'echo': return 'auto';                                        // a failed attempt
     case 'plinko': return randInt(rng, PLINKO.slots);                  // a random slot
@@ -2274,6 +2476,7 @@ function playMove(state, i, m, rng, opts) {
     }
     case 'bus': { const l = mini.last; flash.bus = { round: l.round, guess: l.guess, card: l.card, right: l.right, kept: mini.prog[p].slice() }; break; }
     case 'rl': { const l = mini.last; flash.rl = { bet: Array.isArray(l.bet) ? l.bet.slice() : l.bet, n: l.n, hit: l.hit, hits: { X: mini.hits.X, O: mini.hits.O } }; break; }
+    case 'golf': case 'pool': case 'bowling': { const l = mini.last; flash.phys = Object.assign(JSON.parse(JSON.stringify(l)), mini.type === 'golf' ? { balls: JSON.parse(JSON.stringify(mini.balls)), hole: mini.hole, holedNow: JSON.parse(JSON.stringify(mini.holed)) } : mini.type === 'pool' ? { pocketedNow: { X: mini.pocketed.X, O: mini.pocketed.O }, down: Object.assign({}, mini.down) } : { pins: { X: mini.pins.X, O: mini.pins.O } }); break; }
     case 'dash': case 'lane': { const l = mini.last; flash.run = { from: l.from, to: l.to, ms: l.ms, out: l.out, done: l.done, dist: { X: mini.dist.X, O: mini.dist.O }, runs: { X: mini.runs.X, O: mini.runs.O }, target: mini.cfg.target }; break; }
     case 'bullseye': { const l = mini.last; flash.bull = { at: l.at, hit: l.hit, hits: { X: mini.hits.X, O: mini.hits.O }, speed: mini.speed[p] }; break; }
     case 'echo': { const l = mini.last; flash.echo = { level: l.level, len: l.len, pass: l.pass, failAt: l.failAt, taps: l.taps.slice(), levels: { X: mini.level.X, O: mini.level.O } }; break; }
@@ -2381,6 +2584,7 @@ function secretOf(mini) {
 // Strip a mini-game's secret in place, leaving only what the board is allowed to show: the Hangman
 // word as its pattern, the Treasure hunt's clues, the Memory cards that have been seen (or picked).
 function hideMini(m, k, st) {
+  if (PHYS_TYPES.includes(m.type)) { if (m.last) delete m.last.rec; return; }   // nothing hidden; the recording rides the move's entry, not the square
   switch (m.type) {
     case 'wordle': delete m.word; break;
     case 'mastermind': delete m.code; break;
@@ -2407,7 +2611,7 @@ function matchRecord(full) {
   for (const k of MATCH_FIELDS) if (full[k] !== undefined) state[k] = JSON.parse(JSON.stringify(full[k]));
   if (!Array.isArray(state.recent)) state.recent = [];
   if (!Number.isInteger(state.seq)) state.seq = 0;
-  state.squares.forEach((sq, k) => { if (!sq.owner) hideMini(sq.mini, k, full); });
+  state.squares.forEach((sq, k) => { if (!sq.owner || PHYS_TYPES.includes(sq.mini.type)) hideMini(sq.mini, k, full); });
   return { state, secrets };
 }
 // The full state again, from a record: the secrets back in their squares, the screen-only fields blank.
@@ -2434,11 +2638,11 @@ function fullState(rec) {
 function settle(full, before) {
   const f = full.flash, sq = full.squares[f.square];
   const after = JSON.parse(JSON.stringify(sq));
-  if (!after.owner) hideMini(after.mini, f.square, full);
+  if (!after.owner || PHYS_TYPES.includes(after.mini.type)) hideMini(after.mini, f.square, full);
   full.seq = (full.seq || 0) + 1;
   const entry = Object.assign(JSON.parse(JSON.stringify(f)), { seq: full.seq, moves: full.moves, after }, before ? { before: JSON.parse(JSON.stringify(before)) } : {});
   endFlash(full, false);
-  full.recent = (full.recent || []).concat([entry]).slice(-RECENT_MAX);
+  full.recent = (full.recent || []).map(e => (e.phys && e.phys.rec ? Object.assign({}, e, { phys: Object.assign({}, e.phys, { rec: null }) }) : e)).concat([entry]).slice(-RECENT_MAX);   // (a physics recording rides only the latest entry: the record stays small)
   return entry;
 }
 // One move by `side`, applied to a record: { ok, rec, entries } or { ok: false, reason }.
@@ -2527,6 +2731,9 @@ function playMs(f, winLen) {
     case 'bus':     return BUST.pre + BUST.draw + BUST.flip + BUST.mark + (f.bus && f.bus.right ? BUST.fly : 0) + (won ? 600 : 0);
     case 'rl':      return RLT.spin + RLT.settle + RLT.hold + (won ? 600 : 0);
     case 'dash': case 'lane': return RUNT.bar + RUNT.hold + (won ? 600 : 0);
+    case 'golf':    return (f.phys ? f.phys.ms : 3000) + GOLF.hold + (won ? 600 : 0);
+    case 'pool':    return (f.phys ? f.phys.ms : 3000) + POOLG.hold + (won ? 600 : 0);
+    case 'bowling': return (f.phys ? f.phys.ms : 3000) + BOWLG.hold + (won ? 600 : 0) + (f.phys && f.phys.strike ? 500 : 0);
     case 'bullseye': return BULLT.fly + BULLT.hold + (won ? 600 : 0);
     case 'echo':    return ECHO.result + (won ? 600 : 0);
     case 'plinko':  return PLINKO.rows * PLINKO.step + PLINKO.land + (won ? 600 : 0);
@@ -2633,4 +2840,4 @@ function matchStats(st) {
 }
 
 // Node (the Cloud Functions and the tests): the same names as a module.
-if (typeof module !== "undefined" && module.exports) module.exports = { RUN_TYPES, RUN_DEFAULTS, RUN_LIMITS, RUN, RUNT, RUN_CFG, r2, runNorm, setRunConfig, runConfig, runSpeed, runSecs, runAfter, runGrace, DASH_OBS, DASH, LANE, weightedPick, laneRow, runCourse, runCheck, runAuto, gaussOf, normCdf, runAiMean, runAi, runNeeds, runLog, runStart, runJump, runRelease, runLane, runLaneX, overlap, runHit, runStep, runResult, TEST_TYPES, isReleased, releasedTypes, allowedTypes, restrictGames, dealable, BULLS, BULLT, ECHO, PLINKO, PONG, TRIVIA, ODD, bullsHit, bullsPeriod, bullsChance, echoSeqs, plinkoPath, plinkoOdds, pongThrow, pongAimAt, pongDist, setTriviaBank, triviaReady, triviaDeal, triviaUsed, oddGrid, cpuEcho, CARD, BJ, BUS, RL, BJT, BUST, RLT, BUS_AVG, cardDeck, isCard, cardRank, cardRed, cardName, bjValue, bjTotal, bjNatural, bjDealerPlay, bjOutcome, bjStrategy, bjPlan, bjMs, busRight, busDeck, busOdds, rlRed, rlBet, rlCovers, tttOpen, lineOpen, majorityResult, STYLE0, huntSize, huntBand, huntClue, normTimer, resignLocal, TYPES, OLD_TYPES, SNL, BUMP, snlRow, snlBoard, snlValid, snlExpected, coinPick, markCoins, coinMarksFor, normLocal, seatLocal, INFO, C4, HP, MM, HEX_N, HILO, CANDY, NAME_MAX, COINS, RISKY, BS, HUNT, DICE_GOAL, MEMORY, LINES, WORDS5, WORDS_HANG, VALID5, other, makeRng, needRng, randInt, randomType, shuffle, memoryDeck, wordleMarks, hexNeighbors, hexPath, canMove, hpMoves, mmFeedback, mmValid, MM_ALL, mmAll, mmCode, mmCandidates, mmBestGuess, hpGoalRow, upgradeMini, anyMove, huntDist, candyTrack, newMini, pickType, newSquare, CPU_NAME, defaultSetup, cpuSide, normSetup, syncNames, enabledGames, TIMER_OPTIONS, newTimer, playerName, newState, startMatch, newMatch, findRun, applyMove, AI, publicMini, wordleCandidates, hangmanCandidates, bsCandidates, bsPlacements, bsShip, huntCandidates, WINDOWS, windowsOf, lineNeeds, c4Playable, hexDist, candyExpected, COIN_NEEDS, needsOf, memoryPair, winChance, tttMinimax, c4Drop, c4Eval, C4_ORDER, c4Search, C4_DEPTH, c4Moves, HP_MEMO, hpSolve, hpMovesValued, hpNeeds, hexMoves, threatScore, pickValued, localBest, squareValue, moveGain, cpuMove, VALID5_LIST, randomLegalMove, timeoutMove, mainResult, playMove, endFlash, leaveSquare, RECENT_MAX, MATCH_FIELDS, secretOf, hideMini, matchRecord, fullState, settle, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, newOnlineMatch, PLAY, diceSlot, playMs, replayMs, armClock, applyOnlineResign, matchStats };
+if (typeof module !== "undefined" && module.exports) module.exports = { PHYS_TYPES, PHYSICS, setPhysics, physicsReady, GOLF, POOLG, BOWLG, poolMine, physShot, wrapAim, aimTo, poolSpot, physRun, golfClear, golfNext, golfAhead, golfLeft, physLast, physScore, physCandidates, physAi, physRandom, physNeeds, RUN_TYPES, RUN_DEFAULTS, RUN_LIMITS, RUN, RUNT, RUN_CFG, r2, runNorm, setRunConfig, runConfig, runSpeed, runSecs, runAfter, runGrace, DASH_OBS, DASH, LANE, weightedPick, laneRow, runCourse, runCheck, runAuto, gaussOf, normCdf, runAiMean, runAi, runNeeds, runLog, runStart, runJump, runRelease, runLane, runLaneX, overlap, runHit, runStep, runResult, TEST_TYPES, isReleased, releasedTypes, allowedTypes, restrictGames, dealable, BULLS, BULLT, ECHO, PLINKO, PONG, TRIVIA, ODD, bullsHit, bullsPeriod, bullsChance, echoSeqs, plinkoPath, plinkoOdds, pongThrow, pongAimAt, pongDist, setTriviaBank, triviaReady, triviaDeal, triviaUsed, oddGrid, cpuEcho, CARD, BJ, BUS, RL, BJT, BUST, RLT, BUS_AVG, cardDeck, isCard, cardRank, cardRed, cardName, bjValue, bjTotal, bjNatural, bjDealerPlay, bjOutcome, bjStrategy, bjPlan, bjMs, busRight, busDeck, busOdds, rlRed, rlBet, rlCovers, tttOpen, lineOpen, majorityResult, STYLE0, huntSize, huntBand, huntClue, normTimer, resignLocal, TYPES, OLD_TYPES, SNL, BUMP, snlRow, snlBoard, snlValid, snlExpected, coinPick, markCoins, coinMarksFor, normLocal, seatLocal, INFO, C4, HP, MM, HEX_N, HILO, CANDY, NAME_MAX, COINS, RISKY, BS, HUNT, DICE_GOAL, MEMORY, LINES, WORDS5, WORDS_HANG, VALID5, other, makeRng, needRng, randInt, randomType, shuffle, memoryDeck, wordleMarks, hexNeighbors, hexPath, canMove, hpMoves, mmFeedback, mmValid, MM_ALL, mmAll, mmCode, mmCandidates, mmBestGuess, hpGoalRow, upgradeMini, anyMove, huntDist, candyTrack, newMini, pickType, newSquare, CPU_NAME, defaultSetup, cpuSide, normSetup, syncNames, enabledGames, TIMER_OPTIONS, newTimer, playerName, newState, startMatch, newMatch, findRun, applyMove, AI, publicMini, wordleCandidates, hangmanCandidates, bsCandidates, bsPlacements, bsShip, huntCandidates, WINDOWS, windowsOf, lineNeeds, c4Playable, hexDist, candyExpected, COIN_NEEDS, needsOf, memoryPair, winChance, tttMinimax, c4Drop, c4Eval, C4_ORDER, c4Search, C4_DEPTH, c4Moves, HP_MEMO, hpSolve, hpMovesValued, hpNeeds, hexMoves, threatScore, pickValued, localBest, squareValue, moveGain, cpuMove, VALID5_LIST, randomLegalMove, timeoutMove, mainResult, playMove, endFlash, leaveSquare, RECENT_MAX, MATCH_FIELDS, secretOf, hideMini, matchRecord, fullState, settle, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, newOnlineMatch, PLAY, diceSlot, playMs, replayMs, armClock, applyOnlineResign, matchStats };
