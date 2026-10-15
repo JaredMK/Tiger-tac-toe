@@ -115,6 +115,64 @@ test('ttt: a drawn square resets to a fresh random mini-game and stays unclaimed
   assert.equal(st.winner, null);
 });
 
+// X O X / O O X / _ X O : one cell left, but every line holds an X and an O
+const TTT_BLOCKED = ['X', 'O', 'X', 'O', 'O', 'X', null, 'X', 'O'];
+
+test('ttt: once neither player can make three in a row it is a draw at once, empty cells and all', () => {
+  const m = mini('ttt');
+  m.cells = TTT_BLOCKED.slice(); m.cells[8] = null;          // before O's mark at 8, X can still fill 2-5-8
+  assert.equal(L.tttOpen(m.cells, 'X'), true);
+  const r = L.applyMove(m, 'O', 8);
+  assert.deepEqual([r.ok, r.outcome, r.note], [true, 'draw', 'blocked']);
+  assert.equal(m.cells.filter(c => !c).length, 1, 'a cell still empty');
+  assert.equal(L.tttOpen(m.cells, 'X') || L.tttOpen(m.cells, 'O'), false);
+});
+
+test('ttt: only one player blocked is not a draw: the other can still win', () => {
+  const m = mini('ttt');
+  m.cells = ['X', 'O', 'X', 'O', null, 'X', null, 'X', null];
+  const r = L.applyMove(m, 'O', 4);                          // O has no line left; X still has 2-5-8
+  assert.equal(r.outcome, 'continue');
+  assert.deepEqual([L.tttOpen(m.cells, 'O'), L.tttOpen(m.cells, 'X')], [false, true]);
+  assert.equal(L.applyMove(m, 'X', 8).outcome, 'win', 'and X does');
+});
+
+test('ttt: a blocked square resets like a full one: unclaimed, a new mini-game, the blocked board kept for the result', () => {
+  const st = matchWith(['ttt']);
+  st.squares[0].mini.cells = TTT_BLOCKED.slice(); st.squares[0].mini.cells[8] = null;
+  st.turn = 'O';
+  const r = L.playMove(st, 0, 8, typeRng('c4'));
+  assert.equal(r.ok, true);
+  assert.deepEqual([st.flash.kind, st.flash.note, st.flash.newType], ['draw', 'blocked', 'c4']);
+  assert.deepEqual(st.flash.drawn.cells, TTT_BLOCKED, 'the board that blocked, empty cell and all');
+  assert.equal(st.squares[0].owner, null);
+  assert.equal(st.squares[0].mini.type, 'c4');
+  assert.equal(st.sqlog[st.sqlog.length - 1].end, 'draw', 'counted as a draw-reset in the stats');
+  L.endFlash(st);
+  assert.equal(st.turn, 'X', 'the turn passes as after any draw');
+});
+
+test('ttt: in random play a square goes on only while someone can still make three in a row', () => {
+  const rng = lcg(7);
+  let blocked = 0;
+  for (let g = 0; g < 2000; g++) {
+    const m = mini('ttt');
+    for (;;) {
+      const free = m.cells.map((c, i) => (c ? -1 : i)).filter(i => i >= 0);
+      const p = rng() < .5 ? 'X' : 'O';                        // moves in a square need not alternate
+      const r = L.applyMove(m, p, free[Math.floor(rng() * free.length)]);
+      if (r.outcome === 'continue') { assert.ok(L.tttOpen(m.cells, 'X') || L.tttOpen(m.cells, 'O')); continue; }
+      if (r.outcome === 'draw') {
+        assert.equal(L.tttOpen(m.cells, 'X') || L.tttOpen(m.cells, 'O'), false);
+        assert.equal(r.note === 'blocked', m.cells.some(c => !c), 'blocked exactly when cells are left');
+        if (r.note === 'blocked') blocked++;
+      }
+      break;
+    }
+  }
+  assert.ok(blocked > 10, `blocked draws come up (${blocked})`);
+});
+
 test('ttt: a draw can reset to any game in the full list, including the same type', () => {
   for (const type of L.TYPES) {
     const st = matchWith(['ttt']);

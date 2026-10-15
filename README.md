@@ -101,7 +101,7 @@ are fine; there are no weights). A square that resets draws again from the same 
 
 | Mini-game | How to win |
 | --- | --- |
-| Tic-tac-toe | 3×3, three in a row |
+| Tic-tac-toe | 3×3, three in a row. As soon as neither player can still make three in a row (every line holds an X and an O), it is a draw and the square resets with a new mini-game, as if the board were full |
 | Connect 4 | The standard 7 columns × 6 rows, pieces drop to the lowest open cell, four in a row in any direction |
 | Battleship | 4×4 sea with one hidden ship shared by both players: 1 to 4 cells long (Patrol Boat, Destroyer, Submarine, Battleship), across or down, placed at random. Its name and a silhouette of its parts show under the grid, and under the miniature on the main board. A move fires at one cell: a hit shows a burst, a miss a splash, and the ship's direction is never shown. A hit that does not sink the ship lets the same player fire again at once, and their turn goes on until they miss or sink it (as with Hangman's right letters); a timed-out random shot fires once and ends the turn. Whoever hits its last part sinks it (the whole ship shows and goes under) and wins |
 | Wordle | One hidden common 5-letter word shared by both players; a move is a guess with green/yellow/grey feedback, no guess limit. Guesses must be real words (checked against an embedded list of about 15,000); a non-word shows "Not a word" and does not use the turn |

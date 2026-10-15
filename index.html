@@ -1935,7 +1935,7 @@ const RULES_CORE = [
   'Once neither player can get three in a row any more, the match ends in a draw.',
 ];
 const EXPLAIN = {
-  ttt: { name: 'Tic-tac-toe', play: 'Place your mark.', win: 'Three in a row.' },
+  ttt: { name: 'Tic-tac-toe', play: 'Place your mark.', win: 'Three in a row. Once nobody can get three in a row, the square resets.' },
   c4: { name: 'Connect 4', play: 'Drop a piece into a column.', win: 'Four in a row, any direction.' },
   bs: { name: 'Battleship', play: "Fire at a square. Hit? Fire again. The ship's size is shown below.", win: 'Sink the ship.' },
   wordle: { name: 'Wordle', play: "Guess a 5-letter word. Green is correct letter placement, yellow is in the word but different position, grey isn't in it.", win: 'Guess the word.' },
@@ -2559,7 +2559,7 @@ function renderFlash(f) {
     return open.replace('"flash late"', '"flash lite late"') + '</div>';
   }
   if (f.kind === 'draw') {
-    const [head, why] = f.note === 'stuck' ? ['Stuck!', 'No legal moves for either player'] : ['Draw!', 'Full board'];
+    const [head, why] = f.note === 'stuck' ? ['Stuck!', 'No legal moves for either player'] : f.note === 'blocked' ? ['Draw!', 'Nobody can get three in a row'] : ['Draw!', 'Full board'];
     return `${open}<div class="card"><div class="big-g">${RESET}</div><h2>${head}</h2><p>${why} · Square reset to ${INFO[f.newType].name}</p></div></div>`;
   }
   if (f.kind === 'again') {
@@ -3246,6 +3246,7 @@ function predictMove(i, m) {
   if (!rec) return null;
   const r = applyOnlineMove(Object.assign({ secrets: {} }, rec), state.online.me, i, m, RNG);
   if (!r.ok) return { ok: false, reason: r.reason };
+  if (r.entries[0] && r.entries[0].kind === 'draw') return null;   // a draw deals the square a random new game: the server's draw is the one shown
   return { ok: true, seq: r.rec.state.seq, entry: r.entries[0], squares: JSON.stringify(r.rec.state.squares), rec: r.rec };
 }
 // The server refused the move, or could not be reached: the board goes back to what the server last showed.
