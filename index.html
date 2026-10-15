@@ -1706,6 +1706,94 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .fsw:disabled { box-shadow: none; opacity: .45; } .fsw i { font-style: normal; font-size: 11px; font-weight: 800; color: #fff; text-shadow: 0 1px 0 var(--ink); }
 .tg.gfl { grid-template-columns: repeat(6, 1fr); grid-template-rows: repeat(6, 1fr); width: 62cqw; height: 62cqw; gap: 1px; }
 .tg.gfl i { border-radius: 1.5px; } .tg.gfl i.own.X { box-shadow: inset 0 0 0 1.6cqw var(--x); } .tg.gfl i.own.O { box-shadow: inset 0 0 0 1.6cqw var(--o); }
+/* Seating: ten tables, two coloured seats each; the customer walks in from the door */
+.seating { flex: 1; display: flex; flex-direction: column; gap: 8px; justify-content: center; min-height: 0; }
+.sdoor { display: flex; justify-content: center; flex: none; }
+.snext { display: inline-flex; align-items: center; gap: 6px; font-weight: 800; font-size: 14px; background: var(--paper); border: 3px solid var(--ink); border-radius: 12px; padding: 4px 10px; }
+.sgwrap { display: inline-grid; } .sgwrap > span { grid-area: 1 / 1; }
+.snext span { display: inline-flex; align-items: center; gap: 5px; }
+.sgdot { width: 16px; height: 16px; border-radius: 50%; border: 2.5px solid var(--ink); flex: none; }
+.sgo { animation: sgo .25s var(--t, 0ms) ease-in forwards; }
+@keyframes sgo { to { opacity: 0; transform: translateY(8px); } }
+.stbls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; width: min(100%, 360px); margin: 0 auto; }
+.stbl { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; gap: 4px; }
+.sts { width: 44px; height: 44px; border: 3px solid var(--ink); border-radius: 50% 50% 38% 38%; background: var(--sc); box-shadow: 0 3px 0 var(--ink); padding: 0; display: grid; place-items: center; }
+.sts:disabled { box-shadow: none; }
+.sts b { width: 30px; height: 30px; border-radius: 50%; border: 2.5px solid var(--ink); display: grid; place-items: center; font: 400 17px 'Luckiest Guy', sans-serif; padding-top: 3px; }
+.sts.X b { background: var(--x); color: #fff; } .sts.O b { background: var(--o); color: var(--ink); }
+.sguest { width: 30px; height: 30px; border-radius: 50%; background: #8d8d8d; border: 2.5px solid var(--ink); display: grid; place-items: center; overflow: hidden; }
+.sguest svg { width: 80%; height: 80%; fill: #f4f4f4; margin-top: 3px; }
+.sts.pop b { animation: markpop .35s ease-out both; }
+.sts.walk .sguest { animation: swalk .9s var(--t, 0ms) cubic-bezier(.3, .7, .4, 1) both; }
+@keyframes swalk { 0% { opacity: 0; transform: translateY(-70px) scale(.6); } 15% { opacity: 1; transform: translateY(-58px) rotate(-10deg); } 35% { transform: translateY(-38px) rotate(10deg); } 55% { transform: translateY(-18px) rotate(-8deg); } 80% { transform: translateY(3px) scale(1.06); } 100% { transform: none; } }
+.stop { height: 32px; border: 3px solid var(--ink); border-radius: 10px; background: #e7cfa6; display: grid; place-items: center; font-weight: 800; font-size: 12px; color: var(--muted); min-width: 0; }
+.stbl.own.X .stop { background: var(--x); color: #fff; } .stbl.own.O .stop { background: var(--o); color: var(--ink); }
+.stop b { font: 400 18px 'Luckiest Guy', sans-serif; font-weight: 400; padding-top: 3px; }
+.stbl.got .stop { animation: stgot .6s var(--t, 0ms) both; }
+@keyframes stgot { from { background: #e7cfa6; transform: scale(.85); } 50% { transform: scale(1.14); } to { transform: none; } }
+.tseat { display: grid; grid-template-columns: 1fr 1fr; gap: 2cqw 5cqw; width: 66cqw; }
+.tseat span { display: flex; gap: 1.2cqw; padding: .8cqw; border-radius: 2cqw; border: .9cqw solid transparent; }
+.tseat span.own.X { border-color: var(--x); } .tseat span.own.O { border-color: var(--o); }
+.tseat i { flex: 1; height: 7cqw; border-radius: 2cqw; background: var(--sc); opacity: .5; }
+.tseat i.X { background: var(--x); opacity: 1; } .tseat i.O { background: var(--o); opacity: 1; } .tseat i.Z { background: #8d8d8d; opacity: 1; }
+/* Districts: the map, each region in its leader's shade; spots on borders count for both sides */
+.districts { flex: 1; display: flex; flex-direction: column; gap: 8px; justify-content: center; min-height: 0; }
+.dmap { display: block; width: min(100%, 320px, calc((100dvh - 300px) * .84)); margin: 0 auto; }
+.dreg { fill: var(--paper); stroke: var(--ink); stroke-width: 1.2; stroke-linejoin: round; }
+.dreg.X { fill: var(--x-soft); } .dreg.O { fill: var(--o-soft); }
+.dreg.shift { animation: dshift .45s var(--t, 0ms) both; }
+.dreg.shift.fromnone { --f0: var(--paper); } .dreg.shift.fromX { --f0: var(--x-soft); } .dreg.shift.fromO { --f0: var(--o-soft); }
+@keyframes dshift { from { fill: var(--f0); } }
+.dspot .dhit { fill: transparent; }
+.dspot .dpc { fill: #fff; stroke: var(--ink); stroke-width: 1.3; }
+.dspot.edge .dpc { stroke-width: 1.7; }
+.dspot.open { cursor: pointer; } .dspot.open:hover .dpc { fill: var(--panel-2); }
+.dspot.X .dpc { fill: var(--x); } .dspot.O .dpc { fill: var(--o); }
+.dspot text { font: 400 5.4px 'Luckiest Guy', sans-serif; text-anchor: middle; fill: #fff; pointer-events: none; } .dspot.O text { fill: var(--ink); }
+.dspot .pp { transform-box: fill-box; transform-origin: center; }
+.dspot.pop .pp { animation: markpop .35s ease-out both; }
+.tdist { width: 52cqw; height: 62cqw; }
+.tdist .dreg { stroke-width: 2; }
+.tdist circle { fill: #fff; stroke: var(--ink); stroke-width: 1.6; } .tdist circle.X { fill: var(--x); } .tdist circle.O { fill: var(--o); }
+/* Shelves: six shelves of three; the grey mark drops in after each move */
+.shelves { flex: 1; display: flex; flex-direction: column; gap: 8px; justify-content: center; min-height: 0; }
+.shcase { width: min(100%, 330px); margin: 0 auto; border: 3px solid var(--ink); border-radius: 12px; background: #8a5a35; padding: 6px 8px 4px; display: grid; gap: 4px; box-shadow: 0 4px 0 var(--ink); }
+.shrow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: end; padding-bottom: 4px; border-bottom: 6px solid #d9a46b; }
+.shspots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.shs { height: 38px; border: 3px dashed rgba(255, 255, 255, .55); border-radius: 8px 8px 3px 3px; background: rgba(255, 255, 255, .12); padding: 0; display: grid; place-items: center; }
+.shs.X, .shs.O, .shs.G { border: 3px solid var(--ink); }
+.shs.X { background: var(--x); color: #fff; } .shs.O { background: var(--o); color: var(--ink); } .shs.G { background: #9d9d9d; }
+.shs b { font: 400 20px 'Luckiest Guy', sans-serif; padding-top: 3px; }
+.shs.pop { animation: markpop .35s ease-out both; }
+.shs.drop { animation: shdrop .5s var(--t, 0ms) both; }
+@keyframes shdrop { 0% { transform: translateY(-36px); opacity: 0; } 35% { opacity: 1; } 65% { transform: translateY(0); } 80% { transform: translateY(-6px); } 100% { transform: none; } }
+.shon { display: flex; gap: 3px; padding-bottom: 6px; }
+.shon i { width: 22px; height: 22px; border-radius: 50%; border: 2.5px solid rgba(0, 0, 0, .3); font: 400 12px 'Luckiest Guy', sans-serif; font-style: normal; display: grid; place-items: center; color: rgba(255, 255, 255, .3); padding-top: 2px; }
+.shon i.on { border-color: var(--ink); } .shon i.on.X { background: var(--x); color: #fff; } .shon i.on.O { background: var(--o); color: var(--ink); }
+.shon i.fillin { animation: pipfill .4s cubic-bezier(.3, 1.6, .5, 1) both; }
+.tshelf { display: grid; gap: 1.4cqw; width: 52cqw; padding: 2cqw; background: #8a5a35; border-radius: 2.5cqw; }
+.tshelf span { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.4cqw; padding-bottom: .8cqw; border-bottom: 1.4cqw solid #d9a46b; }
+.tshelf i { height: 5.2cqw; border-radius: 1cqw; background: rgba(255, 255, 255, .2); } .tshelf i.X { background: var(--x); } .tshelf i.O { background: var(--o); } .tshelf i.G { background: #a3a3a3; }
+/* Roads: dots and lines; a claimed line draws in, a blocked one is crossed; the longest roads glow */
+.roads { flex: 1; display: flex; flex-direction: column; gap: 8px; justify-content: center; min-height: 0; }
+.rmap { display: block; width: min(100%, 320px, calc(100dvh - 320px)); margin: 0 auto; background: var(--paper); border: 3px solid var(--ink); border-radius: 16px; }
+.rseg, .rcase, .rglow { stroke-linecap: round; fill: none; }
+.rseg.open { stroke: #b9ad94; stroke-width: 1.3; stroke-dasharray: 2.4 2.4; }
+.rcase { stroke: var(--ink); stroke-width: 6; }
+.rseg.X, .rseg.O { stroke-width: 3.8; } .rseg.X { stroke: var(--x); } .rseg.O { stroke: var(--o); }
+.rseg.B { stroke: #9a9a9a; stroke-width: 2.4; }
+.rx { stroke: #4d4d4d; stroke-width: 1.6; stroke-linecap: round; fill: none; }
+.rseg.draw, .rcase.draw { stroke-dasharray: 1; animation: rdraw .35s ease-out both; }
+@keyframes rdraw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+.rblk.drop { animation: appear .3s var(--t, 0ms) both; }
+.rglow { stroke-width: 11; opacity: .4; } .rglow.X { stroke: var(--x); } .rglow.O { stroke: var(--o); }
+.rglow[style] { animation: appear .35s var(--t, 0ms) both; }
+.rdot { fill: var(--ink); }
+.rhit { stroke: transparent; stroke-width: 12; cursor: pointer; }
+.rhit:hover { stroke: rgba(22, 18, 16, .07); }
+.troad { width: 62cqw; height: 62cqw; }
+.troad line { stroke: #b3a68b; stroke-width: 2.6; stroke-linecap: round; } .troad line.X { stroke: var(--x); stroke-width: 8; } .troad line.O { stroke: var(--o); stroke-width: 8; } .troad line.B { stroke: #8d8d8d; stroke-width: 4; stroke-dasharray: 3 4; }
+@media (prefers-reduced-motion: reduce) { .sgo { display: none; } }
 @media (prefers-reduced-motion: reduce) { .rbar i.grow { animation: none; width: var(--w1, 0%); } }
 /* Trivia: the question and its four answers */
 .trivia { flex: 1; display: flex; flex-direction: column; min-height: 0; gap: 8px; justify-content: center; }
@@ -1919,6 +2007,10 @@ const ICONS = {
   craps: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round"><rect x="2.5" y="8" width="10.5" height="10.5" rx="2.2" transform="rotate(-12 7.7 13.2)"/><rect x="11.5" y="4.5" width="10" height="10" rx="2.2" transform="rotate(10 16.5 9.5)"/><circle cx="5.6" cy="11.2" r="1.1" fill="currentColor" stroke="none"/><circle cx="9.6" cy="15.6" r="1.1" fill="currentColor" stroke="none"/><circle cx="16.5" cy="9.5" r="1.1" fill="currentColor" stroke="none"/></svg>',
   takeover: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="9" y="2.5" width="6" height="6" rx="1.2"/><rect x="2.5" y="9" width="6" height="6" rx="1.2"/><rect x="9" y="9" width="6" height="6" rx="1.2"/><rect x="15.5" y="9" width="6" height="6" rx="1.2"/><rect x="9" y="15.5" width="6" height="6" rx="1.2"/></svg>',
   flood: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round"><path d="M3 3h9v5h5v6h4v7H3z" fill="currentColor" fill-opacity=".35"/><path d="M3 3h18v18H3z"/></svg>',
+  seating: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="6" width="8" height="12" rx="2" fill="currentColor" fill-opacity=".35"/><path d="M3.5 7.5v9M3.5 13h2.5v3.5M20.5 7.5v9M20.5 13H18v3.5"/></svg>',
+  districts: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round"><path d="M3 3h18v18H3z"/><path d="M3 11l7-1.5L12 3M10 9.5l3 6.5-10 2M13 16l8-3M10 9.5l11-1"/><circle cx="10" cy="9.5" r="2.2" fill="currentColor" stroke="none"/></svg>',
+  shelves: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><path d="M3 2.5v19M21 2.5v19M3 8h18M3 14h18M3 20h18"/><rect x="5.5" y="3.5" width="3.5" height="4" fill="currentColor" stroke="none"/><rect x="14" y="9.5" width="3.5" height="4" fill="currentColor" stroke="none"/><rect x="9.5" y="15.5" width="3.5" height="4" fill="currentColor" fill-opacity=".45" stroke="none"/></svg>',
+  roads: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V12h8V4h8"/><g fill="currentColor" stroke="none"><circle cx="4" cy="4" r="1.6"/><circle cx="20" cy="20" r="1.6"/><circle cx="12" cy="20" r="1.6"/><circle cx="20" cy="12" r="1.6"/></g></svg>',
   bowling: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.5c-2.5 0-2 3-1 5.5-3 3-3 8-1.5 13h5c1.5-5 1.5-10-1.5-13 1-2.5 1.5-5.5-1-5.5z"/><circle cx="17" cy="16" r="4.5"/><circle cx="16" cy="15" r=".6" fill="currentColor"/><circle cx="18.2" cy="15" r=".6" fill="currentColor"/><circle cx="17.1" cy="17.2" r=".6" fill="currentColor"/></svg>',
   rl: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9.2"/><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v5.9M12 15.3v5.9M2.8 12h5.9M15.3 12h5.9" stroke-width="1.8"/><circle cx="17.6" cy="6.4" r="1.6" fill="currentColor" stroke="none"/></svg>',
 };
@@ -2416,6 +2508,10 @@ const EXPLAIN = {
   craps: { name: 'Craps', play: 'Roll. 7 or 11 wins, 2, 3 or 12 loses. Anything else is your point: hit it again before a 7.', win: 'Win 2 rounds.' },
   takeover: { name: 'Takeover', play: 'Tap an empty square to take it and the squares around it, even your opponent\'s.', win: 'Own the most when the board is full.' },
   flood: { name: 'Flood', play: 'Pick a colour. The blob grows into it, and every square it grabs is yours.', win: 'Get 18 squares first.' },
+  seating: { name: 'Seating', play: 'Seat yourself at any table. After each move a customer takes a seat of their colour (you\'ll see who\'s next).', win: 'Fill the most tables with your own pair.' },
+  districts: { name: 'Districts', play: 'Place a piece. It counts for every region it touches.', win: 'Lead in the most regions when the map is full.' },
+  shelves: { name: 'Shelves', play: 'Put a mark on a shelf. A grey mark lands somewhere after each move.', win: 'Be on the most shelves.' },
+  roads: { name: 'Roads', play: 'Claim a line. A random line gets blocked after each move.', win: 'Have the longest unbroken road.' },
 };
 let explainT = null;                          // the mini-game whose explainer is open
 const qBtn = (t, cls) => `<button class="qbtn${cls ? ' ' + cls : ''}" data-act="explain" data-t="${t}" aria-label="How to play ${EXPLAIN[t].name}">${cls === 'sm' ? '<i>?</i>' : '?'}</button>`;   // the small one: a 26px sticker in a 40px tap target
@@ -2645,6 +2741,10 @@ function thumb(mini, final) {
     case 'golf': case 'pool': case 'bowling': return physThumb(mini);
     case 'craps': { const d = mini.last ? mini.last.rolls[mini.last.rolls.length - 1] : null; return `<div class="tpip">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${Array.from({ length: CRAPS.goal }, (_, k) => `<i class="${k < mini.wins[p] ? 'on' : ''}"></i>`).join('')}</div>`).join('')}${d ? `<div class="tcdice ${mini.last.result === 'win' ? 'w' : 'l'}"><span>${dieFace(d[0])}</span><span>${dieFace(d[1])}</span></div>` : ''}</div>`; }
     case 'takeover': return `<div class="tg gtk">${mini.cells.map(c => `<i class="${c || ''}"></i>`).join('')}</div>`;
+    case 'seating': return `<div class="tseat">${Array.from({ length: SEAT.tables }, (_, t) => { const l = mini.who[2 * t], r = mini.who[2 * t + 1], own = l && l === r && l !== 'Z' ? ' own ' + l : ''; return `<span class="${own}">${[2 * t, 2 * t + 1].map(i => `<i class="${mini.who[i] || ''}" style="--sc:${SEAT_COL[mini.color[i]]}"></i>`).join('')}</span>`; }).join('')}</div>`;
+    case 'districts': { const t = distTally(mini.map, mini.who); return `<svg class="tdist" viewBox="-2 -2 104 124" aria-hidden="true">${mini.map.regions.map((poly, r) => `<path class="dreg${t.lead[r] ? ' ' + t.lead[r] : ''}" d="${distPath(poly)}"/>`).join('')}${mini.map.spots.map((sp, k) => `<circle class="${mini.who[k] || ''}" cx="${sp.x}" cy="${sp.y}" r="4.6"/>`).join('')}</svg>`; }
+    case 'shelves': return `<div class="tshelf">${Array.from({ length: SHELF.n }, (_, r) => `<span>${mini.cells.slice(r * SHELF.per, r * SHELF.per + SHELF.per).map(w => `<i class="${w || ''}"></i>`).join('')}</span>`).join('')}</div>`;
+    case 'roads': return `<svg class="troad" viewBox="0 0 100 100" aria-hidden="true">${mini.segs.map((w, k) => { const [p, q] = ROAD_SEGS[k].map(ROAD_PT); return `<line class="${w || ''}" x1="${p[0]}" y1="${p[1]}" x2="${q[0]}" y2="${q[1]}"/>`; }).join('')}</svg>`;
     case 'flood': return `<div class="tg gfl">${mini.colors.map((c, i) => `<i class="${mini.owner[i] === 'X' || mini.owner[i] === 'O' ? 'own ' + mini.owner[i] : ''}" style="background:${FLOOD_COL[c]}"></i>`).join('')}</div>`;
     case 'dash': case 'lane': return `<div class="trun" aria-label="X at ${Math.round(mini.dist.X)} m, O at ${Math.round(mini.dist.O)} m of ${mini.cfg.target}">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><i style="--w:${(100 * Math.min(1, mini.dist[p] / mini.cfg.target)).toFixed(1)}%"></i></div>`).join('')}</div>`;   // both players' progress to the target
     case 'pig': return `<div class="tdice">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><div class="bar"><i style="width:${Math.min(100, mini.bank[p] / RISKY.goal * 100)}%"></i></div><span>${mini.bank[p]}</span></div>`).join('')}</div>`;
@@ -3516,6 +3616,106 @@ function floodTable(mini, a, o) {
     : `<p class="arcnote">${o.view ? '' : o.locked ? `Waiting for <b class="${turn}">${N(turn)}</b>…` : 'Pick a colour for the blob'}</p>`;
   return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="flood"><div class="flgrid">${cells}</div>${res}</div>${btns}</div>`;
 }
+// Seating: ten tables of two seats, each seat a colour. A tap on an empty seat is the move: the mover sits
+// (a pop), then the customer walks in to a seat of their colour (any seat when none is left); the next
+// customer waits at the door, their colour always on show. Both seats of a table make it yours.
+const SEAT_COL = ['#3d7fe0', '#86c440', '#8d5bd8', '#f06aa8'];
+const SEAT_NAMES = ['blue', 'green', 'purple', 'pink'];
+const SEAT_GUEST = '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="6.4" r="3.6"/><path d="M3.4 18.2c0-4.4 2.9-7 6.6-7s6.6 2.6 6.6 7z"/></svg>';
+function seatingTable(mini, a, o) {
+  const s = a && a.seat ? a.seat : null, turn = o.turn, who = mini.who;
+  const tAt = PLACE_MS.mark, zAt = PLACE_MS.mark, zEnd = PLACE_MS.mark + PLACE_MS.walk;
+  const tal = p => arcTally(p, o, pips(p, Math.min(SEAT.goal, seatTables(who, p)), SEAT.goal, !!(s && s.table != null && a.by === p), tAt));
+  const seat = i => {
+    const w = who[i], col = SEAT_COL[mini.color[i]], side = i % 2 ? 'right' : 'left';
+    let cls = 'sts' + (w ? ' ' + w : ''), st = `--sc:${col}`;
+    if (s && i === s.seat) cls += ' pop';
+    else if (s && i === s.z) { cls += ' walk'; st += `;--t:${zAt}ms`; }
+    const label = `Table ${seatTable(i) + 1}, ${side} seat, ${SEAT_NAMES[mini.color[i]]}${w === 'Z' ? ', a customer' : w ? ', ' + w : ''}`;
+    const inner = w === 'Z' ? `<span class="sguest">${SEAT_GUEST}</span>` : w ? `<b>${w}</b>` : '';
+    return `<button class="${cls}" style="${st}" data-act="move" ${mv(i)} aria-label="${label}"${w || o.locked ? ' disabled' : ''}>${inner}</button>`;
+  };
+  const tables = Array.from({ length: SEAT.tables }, (_, t) => {
+    const l = who[2 * t], r = who[2 * t + 1], own = l && l === r && l !== 'Z' ? l : '';
+    const fresh = s && s.table === t;
+    return `<div class="stbl${own ? ' own ' + own : ''}${fresh ? ' got' : ''}"${fresh ? ` style="--t:${tAt}ms"` : ''}>${seat(2 * t)}<span class="stop">${own ? `<b>${own}</b>` : t + 1}</span>${seat(2 * t + 1)}</div>`;
+  }).join('');
+  const full = !who.includes(null);
+  const door = c => `<i class="sgdot" style="background:${SEAT_COL[c]}"></i><b>${SEAT_NAMES[c]}</b>`;
+  // the door: the customer who just sat leaves it as the move is made, the next one arrives once they are seated
+  const next = full ? '<span class="snext">The room is full</span>'
+    : s && s.z != null ? `<span class="snext">Next customer: <span class="sgwrap"><span class="sgo" style="--t:${zAt}ms">${door(s.zColor)}</span><span ${lateAt('snew', zEnd)}>${door(mini.next)}</span></span></span>`
+    : `<span class="snext">Next customer: <span>${door(mini.next)}</span></span>`;
+  const res = s ? `<p ${lateAt('arcres ' + (s.table != null ? 'ok' : ''), s.table != null ? tAt : zEnd)} role="status">${s.table != null ? `Table ${s.table + 1} is ${N(a.by)}'s!` : s.z != null ? `A ${SEAT_NAMES[s.zColor]} customer sat down` : 'Seated'}</p>`
+    : `<p class="arcnote">${o.view ? '' : o.locked ? `Waiting for <b class="${turn}">${N(turn)}</b>…` : 'Tap an empty seat'}</p>`;
+  return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="seating"><div class="sdoor">${next}</div><div class="stbls">${tables}</div>${res}</div></div>`;
+}
+// Districts: the map's five regions, each shaded in its leader's colour, and its spots; a spot on a
+// border counts for every region it touches. A tap on an empty spot is the move: the piece pops in, then
+// any region whose lead changed takes its new shade.
+const distPath = poly => 'M' + poly.map(p => p.join(' ')).join('L') + 'Z';
+function distTable(mini, a, o) {
+  const ds = a && a.dist ? a.dist : null, map = mini.map, turn = o.turn, t = distTally(map, mini.who);
+  const led = p => t.lead.filter(l => l === p).length;
+  const tal = p => arcTally(p, o, `<small>${led(p)} of ${map.regions.length} regions</small>`);
+  let before = null;
+  if (ds) { const w = mini.who.slice(); w[ds.spot] = null; before = distTally(map, w).lead; }
+  const regs = map.regions.map((poly, r) => {
+    const l = t.lead[r], was = before ? before[r] : l, moved = before && was !== l;
+    return `<path class="dreg${l ? ' ' + l : ''}${moved ? ' shift' + (was ? ' from' + was : ' fromnone') : ''}"${moved ? ` style="--t:${PLACE_MS.mark}ms"` : ''} d="${distPath(poly)}"/>`;
+  }).join('');
+  const spots = map.spots.map((s, k) => {
+    const w = mini.who[k], open = !w && !o.locked, pop = ds && ds.spot === k;
+    const label = `Spot ${k + 1}, region${s.r.length > 1 ? 's' : ''} ${s.r.map(r => r + 1).join(' and ')}${w ? ', ' + w : ''}`;
+    return `<g class="dspot${w ? ' ' + w : ''}${s.r.length > 1 ? ' edge' : ''}${pop ? ' pop' : ''}${open ? ' open' : ''}" ${open ? `data-act="move" ${mv(k)} role="button" tabindex="0"` : ''} aria-label="${label}" transform="translate(${s.x} ${s.y})"><g class="pp"><circle class="dhit" r="5.5"/><circle class="dpc" r="4.3"/>${w ? `<text y="1.75">${w}</text>` : ''}</g></g>`;
+  }).join('');
+  const res = ds ? `<p ${lateAt('arcres ok', PLACE_MS.mark)} role="status">${N(a.by)} leads ${led(a.by)} of ${map.regions.length}</p>`
+    : `<p class="arcnote">${o.view ? '' : o.locked ? `Waiting for <b class="${turn}">${N(turn)}</b>…` : 'Tap an empty spot'}</p>`;
+  return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="districts"><svg class="dmap" viewBox="-2 -2 104 124" role="group" aria-label="The map">${regs}${spots}</svg>${res}</div></div>`;
+}
+// Shelves: six shelves of three spots. A tap on an open spot is the move: the mark pops in, then a grey
+// mark drops onto a random open spot. At each shelf's end, who is on it.
+function shelfTable(mini, a, o) {
+  const sh = a && a.shelf ? a.shelf : null, turn = o.turn, c = mini.cells;
+  const tal = p => arcTally(p, o, `<small>on ${shelfOn(c, p)} of ${SHELF.n}</small>`);
+  const rows = Array.from({ length: SHELF.n }, (_, s) => {
+    const ids = Array.from({ length: SHELF.per }, (_, k) => s * SHELF.per + k), on = p => ids.some(i => c[i] === p);
+    const spots = ids.map(i => {
+      const w = c[i];
+      let cls = 'shs' + (w ? ' ' + w : ''), st = '';
+      if (sh && i === sh.at) cls += ' pop';
+      else if (sh && i === sh.grey) { cls += ' drop'; st = ` style="--t:${PLACE_MS.mark}ms"`; }
+      return `<button class="${cls}"${st} data-act="move" ${mv(i)} aria-label="Shelf ${s + 1}, spot ${i % SHELF.per + 1}${w === 'G' ? ', grey' : w ? ', ' + w : ''}"${w || o.locked ? ' disabled' : ''}>${w === 'G' ? '' : w ? `<b>${w}</b>` : ''}</button>`;
+    }).join('');
+    const fresh = p => sh && a.by === p && ids.includes(sh.at) && ids.filter(i => c[i] === p).length === 1;
+    const tag = ['X', 'O'].map(p => `<i class="${on(p) ? 'on ' + p : ''}${fresh(p) ? ' fillin' : ''}">${p}</i>`).join('');
+    return `<div class="shrow"><div class="shspots">${spots}</div><div class="shon" aria-label="On shelf ${s + 1}: ${['X', 'O'].filter(on).join(' and ') || 'nobody'}">${tag}</div></div>`;
+  }).join('');
+  const res = sh ? `<p ${lateAt('arcres ok', PLACE_MS.mark)} role="status">${N(a.by)} is on ${shelfOn(c, a.by)} shel${shelfOn(c, a.by) === 1 ? 'f' : 'ves'}</p>`
+    : `<p class="arcnote">${o.view ? '' : o.locked ? `Waiting for <b class="${turn}">${N(turn)}</b>…` : 'Tap an open spot'}</p>`;
+  return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="shelves"><div class="shcase">${rows}</div>${res}</div></div>`;
+}
+// Roads: 4x4 dots and the 24 lines between them. A tap on an open line is the move: it draws in, then a
+// random open line is blocked. Each player's longest road glows.
+const ROAD_PT = v => [10 + (v % 4) * 80 / 3, 10 + Math.floor(v / 4) * 80 / 3].map(n => +n.toFixed(2));
+function roadTable(mini, a, o) {
+  const rd = a && a.road ? a.road : null, turn = o.turn, segs = mini.segs;
+  const best = { X: roadLongest(segs, 'X'), O: roadLongest(segs, 'O') };
+  const tal = p => arcTally(p, o, `<small>road ${best[p].len}</small>`);
+  const line = (k, cls, extra = '') => { const [p, q] = ROAD_SEGS[k].map(ROAD_PT); return `<line class="${cls}" x1="${p[0]}" y1="${p[1]}" x2="${q[0]}" y2="${q[1]}"${extra}/>`; };
+  const glow = ['X', 'O'].map(p => best[p].segs.map(k => line(k, 'rglow ' + p, rd ? ` style="--t:${PLACE_MS.mark}ms"` : '')).join('')).join('');
+  const lines = segs.map((w, k) => {
+    if (!w) return line(k, 'rseg open');
+    if (w === 'B') { const [p, q] = ROAD_SEGS[k].map(ROAD_PT), mx = (p[0] + q[0]) / 2, my = (p[1] + q[1]) / 2, drop = rd && rd.block === k; return `<g class="rblk${drop ? ' drop' : ''}"${drop ? ` style="--t:${PLACE_MS.mark}ms"` : ''}>${line(k, 'rseg B')}<g transform="translate(${mx} ${my})"><path class="rx" d="M-3 -3L3 3M3 -3L-3 3"/></g></g>`; }
+    const dr = rd && rd.seg === k;
+    return line(k, `rcase${dr ? ' draw' : ''}`, dr ? ' pathLength="1"' : '') + line(k, `rseg ${w}${dr ? ' draw' : ''}`, dr ? ' pathLength="1"' : '');
+  }).join('');
+  const hits = o.locked ? '' : segs.map((w, k) => (w ? '' : line(k, 'rhit', ` data-act="move" ${mv(k)} role="button" tabindex="0" aria-label="Line ${k + 1}"`))).join('');
+  const dots = Array.from({ length: 16 }, (_, v) => { const [x, y] = ROAD_PT(v); return `<circle class="rdot" cx="${x}" cy="${y}" r="2.6"/>`; }).join('');
+  const res = rd ? `<p ${lateAt('arcres ok', PLACE_MS.mark)} role="status">${N(a.by)}'s road: ${best[a.by].len}</p>`
+    : `<p class="arcnote">${o.view ? '' : o.locked ? `Waiting for <b class="${turn}">${N(turn)}</b>…` : 'Tap an open line'}</p>`;
+  return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="roads"><svg class="rmap" viewBox="0 0 100 100" role="group" aria-label="The roads">${glow}${lines}${dots}${hits}</svg>${res}</div></div>`;
+}
 // Dash and Lane Rush: the run is played here, in real time, on a canvas. The engine's runStep is the
 // physics (the same the tests step), this is the loop, the drawing and the inputs. A run: the Run
 // button, a 3-2-1 count, the grace stretch, then the course until a crash, the finish, or the turn's
@@ -4039,6 +4239,10 @@ function renderMini(sq, review) {
     case 'craps': g = crapsTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d }); break;
     case 'takeover': g = takeTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d }); break;
     case 'flood': g = floodTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d }); break;
+    case 'seating': g = seatingTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d }); break;
+    case 'districts': g = distTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d }); break;
+    case 'shelves': g = shelfTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d }); break;
+    case 'roads': g = roadTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d }); break;
     case 'hexapawn': {
       // Tap one of your pawns to see where it can go, then tap a highlighted square. The pawn just moved
       // slides in from where it was; a captured pawn is knocked off the board.
@@ -4085,7 +4289,7 @@ function renderMini(sq, review) {
   }
   if (d && !f) {                                    // the result held a moment longer (Memory's cards turning back): the board follows by itself
     const head = d.kind === 'claim' ? `<b class="${sq.owner}">Won by ${N(sq.owner)}</b>`
-      : d.kind === 'draw' ? `${d.note === 'stuck' ? 'Stuck' : 'Draw'} · resets to ${INFO[d.newType].name}` : summary(d);
+      : d.kind === 'draw' ? `${d.note === 'stuck' ? 'Stuck' : d.note === 'tie' ? 'Tie' : 'Draw'} · resets to ${INFO[d.newType].name}` : summary(d);
     const next = d.pass ? `<b class="${d.pass}">${N(d.pass)}</b> has no move · <b class="${d.next}">${N(d.next)}</b> again` : `<b class="${d.next}">${N(d.next)}</b> next`;
     sub = `${head} · ${next}${secret ? ' · ' + secret : ''}`;
   }
@@ -4132,6 +4336,10 @@ function summary(f) {
     case 'craps': return f.craps ? `${who} ${f.craps.result === 'win' ? 'won' : 'lost'} the round${f.craps.point != null ? ` (point ${f.craps.point})` : ''}` : `${who} rolled`;
     case 'takeover': return f.take ? `${who} took ${f.take.took.length + f.take.flipped.length}${f.take.flipped.length ? `, ${f.take.flipped.length} of them turned over` : ''}` : `${who} took a square`;
     case 'flood': return f.flood ? `${who} went ${FLOOD_NAMES[f.flood.color]} · +${f.flood.gain}` : `${who} picked a colour`;
+    case 'seating': return f.seat && f.seat.table != null ? `${who} took table ${f.seat.table + 1}` : `${who} took a seat`;
+    case 'districts': return `${who} placed a piece`;
+    case 'shelves': return `${who} marked a shelf`;
+    case 'roads': return `${who} claimed a line`;
     case 'bullseye': return f.bull ? `${who} threw: ${f.bull.pts === BULLS.bullPts ? 'a bullseye, +3' : f.bull.pts ? 'on the board, +1' : 'off the board'}` : `${who} threw`;
     case 'echo': return f.echo ? (f.echo.pass ? `${who} beat pattern ${f.echo.level + 1}` : `${who} slipped at step ${f.echo.failAt + 1}`) : `${who} tried`;
     case 'plinko': return f.plinko ? `${who} dropped from slot ${f.plinko.slot + 1} · bin ${f.plinko.bin + 1}${f.plinko.win ? ': WIN' : ''}` : `${who} dropped`;
@@ -4160,14 +4368,15 @@ function renderFlash(f) {
   if (f.type === 'pig' && f.note === 'bust') {
     return `${open}<div class="card"><div class="big-g">${dieFace(f.roll)}</div><h2>Bust!</h2><p>${who} rolled ${f.roll} again · ${f.pot} point${f.pot === 1 ? '' : 's'} lost</p></div></div>`;
   }
-  if ((['bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood'].includes(f.type)) && (f.kind === 'again' || f.kind === 'move')) {   // the table shows it all: the cards, the tick or cross, the number and the hits
+  if ((['bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads'].includes(f.type)) && (f.kind === 'again' || f.kind === 'move')) {   // the table shows it all: the cards, the tick or cross, the number and the hits
     return open.replace('"flash late"', '"flash lite late"') + '</div>';
   }
   if (f.type === 'pig' && (f.note === 'bank' || f.kind === 'again')) {   // a roll or a bank speaks for itself: the +N grows, or moves into the score
     return open.replace('"flash late"', '"flash lite late"') + '</div>';
   }
   if (f.kind === 'draw') {
-    const [head, why] = f.note === 'stuck' ? ['Stuck!', 'No legal moves for either player'] : f.note === 'blocked' ? ['Draw!', 'Nobody can get three in a row'] : ['Draw!', 'Full board'];
+    const TIE = { seating: 'The same number of tables each', shelves: 'On as many shelves each', roads: 'Roads the same length' };
+    const [head, why] = f.note === 'stuck' ? ['Stuck!', 'No legal moves for either player'] : f.note === 'blocked' ? ['Draw!', 'Nobody can get three in a row'] : f.note === 'tie' ? ['Tie!', TIE[f.type] || 'Level at the end'] : ['Draw!', 'Full board'];
     return `${open}<div class="card"><div class="big-g">${RESET}</div><h2>${head}</h2><p>${why} · Square reset to ${INFO[f.newType].name}</p></div></div>`;
   }
   if (f.kind === 'again') {
@@ -6670,6 +6879,10 @@ function moveSounds(f) {
       break;
     }
     case 'takeover': if (f.take) { add('mark', 0); [...f.take.took, ...f.take.flipped].filter(k => k !== f.take.at).slice(0, 4).forEach((k, n) => add(f.take.flipped.includes(k) ? 'flipUp' : 'pop', TAKEOVER_MS.place + n * 70)); } break;
+    case 'seating': if (f.seat) { add('mark', 0); if (f.seat.table != null) add('ding', PLACE_MS.mark); if (f.seat.z != null) { add('hop', PLACE_MS.mark + 150); add('cushion', PLACE_MS.mark + PLACE_MS.walk - 120); } } break;
+    case 'districts': if (f.dist) { add('marker', 0); add('flipUp', PLACE_MS.mark); } break;
+    case 'shelves': if (f.shelf) { add('mark', 0); if (f.shelf.grey != null) add('thud', PLACE_MS.mark + PLACE_MS.drop - 150); } break;
+    case 'roads': if (f.road) { add('pieceSlide', 0); if (f.road.block != null) add('knock', PLACE_MS.mark + PLACE_MS.drop - 150); } break;
     case 'flood': if (f.flood) { add('splash', 0); if (!f.flood.gain) add('thud', FLOOD_MS.base); f.flood.waves.slice(0, 6).forEach((w, k) => add('pop', Math.round(FLOOD_MS.base * 0.55 + k * FLOOD_MS.wave), 1 + k * 0.06)); } break;
     case 'golf': case 'pool': case 'bowling': {                   // the recording's events, as they come round in the replay; then the result
       const ph = f.phys; if (!ph) break;
@@ -6690,7 +6903,7 @@ function moveSounds(f) {
     case 'mastermind': { const n = (f.solid || 0) + (f.hollow || 0); for (let k = 0; k < n; k++) add('marker', 450 + k * 250); if (won) add('reveal', 1450); break; }
     case 'bump': { add('spin', 0); const steps = Math.max(1, f.to - f.from); for (let k = 0; k < steps; k++) add('hop', SPIN3_MS + k * HOP_MS); if (f.bumped) add('boing', SPIN3_MS + steps * HOP_MS); break; }
   }
-  const CASINO = ['bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood'];
+  const CASINO = ['bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads'];
   if (won && f.kind !== 'match' && CASINO.includes(f.type)) add('won', total - 600);   // the card games and the wheel: the chime once the result shows
   else if (won && f.kind !== 'match' && f.type !== 'ttt' && f.type !== 'wordle' && f.type !== 'hangman') add('won', Math.round(total * .5));   // the square is won: a chime
   if (f.kind === 'draw') add('reset', 420);                          // the square resets with a new mini-game

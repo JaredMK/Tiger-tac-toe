@@ -8,13 +8,13 @@
  * Everything about a match lives in one plain object (see newMatch); the UI
  * only ever calls playMove / endFlash and re-renders from that object.
  */
-const TYPES = ['ttt', 'c4', 'bs', 'wordle', 'hangman', 'hex', 'hilo', 'snakes', 'memory', 'candy', 'bump', 'coins', 'pig', 'hunt', 'mastermind', 'bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood'];
+const TYPES = ['ttt', 'c4', 'bs', 'wordle', 'hangman', 'hex', 'hilo', 'snakes', 'memory', 'candy', 'bump', 'coins', 'pig', 'hunt', 'mastermind', 'bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads'];
 // Release control: every mini-game is Released or Admin only. A game in TEST_TYPES is admin only until the
 // admin's dashboard releases it (releases/{type} true in the database; false puts one back to admin only);
 // everything else is released unless the database says otherwise. Admin-only games exist only for the
 // admin: in their local matches and in friend games they host (their guest plays them in that match
 // only); never in Find Match, nor anywhere for anyone else.
-const TEST_TYPES = ['bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood'];
+const TEST_TYPES = ['bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads'];
 function isReleased(t, releases) { return releases && typeof releases[t] === 'boolean' ? releases[t] : !TEST_TYPES.includes(t); }
 function releasedTypes(releases) { return TYPES.filter(t => isReleased(t, releases)); }
 // The games a setup may deal (admin: every game; anyone else: the released ones), and the setup's
@@ -64,6 +64,10 @@ const INFO = {
   craps:       { name: 'Craps',        hint: '7 or 11 wins, 2, 3 or 12 loses. Win 2 rounds' },
   takeover:    { name: 'Takeover',     hint: 'Take a square and the ones around it. Most squares wins' },
   flood:       { name: 'Flood',        hint: 'Pick a colour. What the blob grabs is yours. First to 18' },
+  seating:     { name: 'Seating',      hint: 'Take seats. Both seats of a table make it yours' },
+  districts:   { name: 'Districts',    hint: 'Place pieces. Lead the most regions when the map is full' },
+  shelves:     { name: 'Shelves',      hint: 'Mark shelves. Be on the most when they are full' },
+  roads:       { name: 'Roads',        hint: 'Claim lines. The longest unbroken road wins' },
 };
 const C4 = { cols: 7, rows: 6, k: 4 };
 const HP = { cols: 3, rows: 4 };
@@ -1072,6 +1076,203 @@ function raceNeeds(lead, remain, scale) {
   return Math.max(0.3, 2 * Math.max(0.5, remain) * (1 - w));
 }
 
+// ---------- Seating, Districts, Shelves and Roads ----------
+// Seating: a restaurant of 10 tables for two; every seat has a colour (one of four). A move seats you in
+// any empty seat; then a customer Z walks in and sits in a random empty seat of their colour (any empty
+// seat if none of theirs is left). The next customer's colour is always shown; where they sit, and the
+// colour of the one after, are drawn only as the move is made (by the server online). A table is yours
+// with both its seats. Five tables wins at once; else, once every seat is taken, most tables wins and a
+// tie resets the square.
+const SEAT = { tables: 10, colors: 4, goal: 5 };
+const seatTable = i => Math.floor(i / 2), seatMate = i => (i % 2 ? i - 1 : i + 1);
+const seatTables = (who, p) => { let n = 0; for (let t = 0; t < SEAT.tables; t++) if (who[2 * t] === p && who[2 * t + 1] === p) n++; return n; };
+function seatZ(mini, rng) {                                       // the customer sits; returns the seat (or null when the room is full)
+  const empty = mini.who.map((w, i) => (w ? -1 : i)).filter(i => i >= 0);
+  if (!empty.length) return null;
+  const theirs = empty.filter(i => mini.color[i] === mini.next);
+  const pool = theirs.length ? theirs : empty, z = pool[randInt(rng, pool.length)];
+  mini.who[z] = 'Z';
+  return z;
+}
+// The computer: its own half-table first, then the other player's, then a fresh table whose other seat is
+// not the next customer's colour; else any seat.
+function seatPick(pm, me, rng) {
+  const o = other(me), who = pm.who, empty = who.map((w, i) => (w ? -1 : i)).filter(i => i >= 0);
+  const half = p => empty.filter(i => who[seatMate(i)] === p);
+  const mine = half(me); if (mine.length) return { move: mine[randInt(rng, mine.length)], why: 'complete' };
+  const theirs = half(o); if (theirs.length) return { move: theirs[randInt(rng, theirs.length)], why: 'block' };
+  const fresh = empty.filter(i => !who[seatMate(i)]), safe = fresh.filter(i => pm.color[seatMate(i)] !== pm.next);
+  if (safe.length) return { move: safe[randInt(rng, safe.length)], why: 'start' };
+  if (fresh.length) return { move: fresh[randInt(rng, fresh.length)], why: 'start' };
+  return { move: empty[randInt(rng, empty.length)], why: 'any' };
+}
+// Districts: a map of 5 regions with 11 to 15 spots, each inside a region or on a border (counting for
+// every region it touches). Every region is touched by an odd number of spots, at least 3, so once the map
+// is full every region has a leader; most regions wins (5: no tie). Drawn as a Voronoi map from 5 seeds on
+// a field 100 by 120; spots in the regions, on the borders between two and where three meet.
+const DIST = { w: 100, h: 120, regions: 5, minSpots: 11, maxSpots: 15, gap: 11 };
+const r1d = x => Math.round(x * 10) / 10 + 0;
+function distClip(poly, a, b) {                                   // keep the part of poly closer to a than to b
+  const mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2, nx = b[0] - a[0], ny = b[1] - a[1];
+  const side = p => (p[0] - mx) * nx + (p[1] - my) * ny, out = [];
+  for (let k = 0; k < poly.length; k++) {
+    const p = poly[k], q = poly[(k + 1) % poly.length], sp = side(p), sq = side(q);
+    if (sp <= 0) out.push(p);
+    if ((sp < 0 && sq > 0) || (sp > 0 && sq < 0)) { const t = sp / (sp - sq); out.push([p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]); }
+  }
+  return out;
+}
+function distMap(src) {
+  const rng = makeRng('map ' + src());   // one draw seeds the map's own generator: a map is always found, however plain the source
+  for (let tries = 0; tries < 400; tries++) {
+    const seeds = [];
+    for (let k = 0; k < 400 && seeds.length < DIST.regions; k++) {
+      const p = [12 + rng() * (DIST.w - 24), 12 + rng() * (DIST.h - 24)];
+      if (seeds.every(q => Math.hypot(p[0] - q[0], p[1] - q[1]) > 34)) seeds.push(p);
+    }
+    if (seeds.length < DIST.regions) continue;
+    const polys = seeds.map((s, i) => seeds.reduce((poly, t, j) => (i === j ? poly : distClip(poly, s, t)), [[0, 0], [DIST.w, 0], [DIST.w, DIST.h], [0, DIST.h]]));
+    const near = (p, i) => Math.hypot(p[0] - seeds[i][0], p[1] - seeds[i][1]);
+    const touching = p => { const d = seeds.map((_, i) => near(p, i)), m = Math.min(...d); return d.map((x, i) => (x - m < 0.01 ? i : -1)).filter(i => i >= 0); };
+    const cand = [];
+    // inside each region: its centroid and points part way to its corners
+    polys.forEach((poly, i) => {
+      const c = poly.reduce((s, p) => [s[0] + p[0] / poly.length, s[1] + p[1] / poly.length], [0, 0]);
+      cand.push({ p: c, r: [i], kind: 'in' });
+      for (const v of poly) { const q = [c[0] + (v[0] - c[0]) * 0.55, c[1] + (v[1] - c[1]) * 0.55]; if (touching(q).length === 1) cand.push({ p: q, r: [i], kind: 'in' }); }
+    });
+    // on a border between two: the middle of each long enough shared edge; where three meet: the corner
+    for (let i = 0; i < polys.length; i++) for (let k = 0; k < polys[i].length; k++) {
+      const p = polys[i][k], q = polys[i][(k + 1) % polys[i].length], mid = [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
+      const t = touching(mid);
+      if (t.length === 2 && t[0] === i && Math.hypot(q[0] - p[0], q[1] - p[1]) >= 14) cand.push({ p: mid, r: t, kind: 'border' });
+      const tv = touching(p);
+      if (tv.length === 3 && tv[0] === i && p[0] > 3 && p[0] < DIST.w - 3 && p[1] > 3 && p[1] < DIST.h - 3) cand.push({ p, r: tv, kind: 'corner' });
+    }
+    // a random choice of them, kept apart, with every region touched an odd number of times (3 or more)
+    for (let pick = 0; pick < 60; pick++) {
+      const order = shuffle(cand.map((_, k) => k), rng).sort((a, b) => cand[b].r.length - cand[a].r.length), chosen = [];   // border and corner spots first: they count for more regions, so fewer spots do
+      const far = c => chosen.every(k => Math.hypot(cand[k].p[0] - c.p[0], cand[k].p[1] - c.p[1]) >= DIST.gap);
+      const want = DIST.minSpots + randInt(rng, 3);   // (the mending below may add one or two)
+      for (const k of order) { if (chosen.length >= want) break; if (far(cand[k])) chosen.push(k); }
+      const count = () => { const n = new Array(DIST.regions).fill(0); for (const k of chosen) for (const r of cand[k].r) n[r]++; return n; };
+      // mend the counts: an inside spot changes one region's count by one
+      for (let fix = 0; fix < 20; fix++) {
+        const n = count(), bad = n.findIndex(x => x < 3 || x % 2 === 0);
+        if (bad < 0) break;
+        const add = order.find(k => !chosen.includes(k) && cand[k].kind === 'in' && cand[k].r[0] === bad && far(cand[k]));
+        const drop = chosen.find(k => cand[k].kind === 'in' && cand[k].r[0] === bad);
+        if (n[bad] < 3 || add != null && (n[bad] % 2 === 0) && (chosen.length < DIST.maxSpots || drop == null)) { if (add == null) break; chosen.push(add); }
+        else if (drop != null && n[bad] > 3) chosen.splice(chosen.indexOf(drop), 1);
+        else if (add != null) chosen.push(add);
+        else break;
+      }
+      const n = count();
+      if (chosen.length >= DIST.minSpots && chosen.length <= DIST.maxSpots && chosen.length % 2 === 0 && n.every(x => x >= 3 && x % 2 === 1)) {   // (an even number of spots: both players place as many pieces)
+        const spots = chosen.map(k => ({ x: r1d(cand[k].p[0]), y: r1d(cand[k].p[1]), r: cand[k].r.slice().sort((a, b) => a - b) })).sort((a, b) => a.y - b.y || a.x - b.x);
+        return { regions: polys.map(poly => poly.map(p => [r1d(p[0]), r1d(p[1])])), spots };
+      }
+    }
+  }
+  throw new Error('no map');
+}
+// The regions' counts and leaders: { X: [...], O: [...], empty: [...], lead: ['X'|'O'|null] }.
+function distTally(map, who) {
+  const R = map.regions.length, out = { X: new Array(R).fill(0), O: new Array(R).fill(0), empty: new Array(R).fill(0), lead: new Array(R).fill(null) };
+  map.spots.forEach((s, k) => { for (const r of s.r) { if (who[k] === 'X') out.X[r]++; else if (who[k] === 'O') out.O[r]++; else out.empty[r]++; } });
+  for (let r = 0; r < R; r++) out.lead[r] = out.X[r] > out.O[r] ? 'X' : out.O[r] > out.X[r] ? 'O' : null;
+  return out;
+}
+// The computer's view of a position: a region locked counts whole, an open one by its lead against the spots left.
+function distEval(map, who, me) {
+  const t = distTally(map, who), o = other(me);
+  let v = 0;
+  for (let r = 0; r < map.regions.length; r++) {
+    const m = t[me][r], th = t[o][r], e = t.empty[r];
+    v += m > th + e ? 1 : th > m + e ? -1 : 0.6 * (m - th) / (e + 1);
+  }
+  return v;
+}
+function distSearch(pm, me, rng) {                               // two moves deep, on the swing regions
+  const o = other(me), who = pm.who, empty = who.map((w, k) => (w ? -1 : k)).filter(k => k >= 0);
+  let best = null;
+  for (const k of empty) {
+    const a = who.slice(); a[k] = me;
+    let worst = Infinity;
+    const rest = a.map((w, j) => (w ? -1 : j)).filter(j => j >= 0);
+    if (!rest.length) worst = distEval(pm.map, a, me) * 10;
+    for (const j of rest) { const b = a.slice(); b[j] = o; const v = b.includes(null) ? distEval(pm.map, b, me) : distEval(pm.map, b, me) * 10; if (v < worst) worst = v; }
+    const v = worst + (rng ? rng() * 0.001 : 0);
+    if (!best || v > best.v) best = { k, v, after: a };
+  }
+  return best;
+}
+// Shelves: 6 shelves of 3 spots. A move puts your mark on an open spot; then a grey mark lands on a random
+// open spot (drawn as the move is made). Once every spot is filled, each player scores the shelves they
+// are on (up to 6); higher wins, and a tie resets the square.
+const SHELF = { n: 6, per: 3 };
+const shelfOn = (cells, p) => { let n = 0; for (let s = 0; s < SHELF.n; s++) if (cells.slice(s * SHELF.per, s * SHELF.per + SHELF.per).includes(p)) n++; return n; };
+// The computer: a shelf it is not on yet, more so one the other player is missing too, and one nearly full.
+function shelfPick(pm, me, rng) {
+  const o = other(me), c = pm.cells;
+  let best = null;
+  for (let i = 0; i < c.length; i++) {
+    if (c[i]) continue;
+    const s = Math.floor(i / SHELF.per), row = c.slice(s * SHELF.per, s * SHELF.per + SHELF.per);
+    const mineOn = row.includes(me), theirsOn = row.includes(o), filled = row.filter(Boolean).length;
+    let v = mineOn ? 0 : 10 + (theirsOn ? 0 : 5) + 3 * filled;
+    if (mineOn && !theirsOn && filled === SHELF.per - 1) v += 6;   // the last spot on a shelf they are missing: theirs no more
+    v += rng ? rng() * 0.5 : 0;
+    if (!best || v > best.v) best = { i, v };
+  }
+  return best;
+}
+// Roads: a grid of 4x4 dots, 24 lines between them (12 across, then 12 down). A move claims an open line;
+// then a random open line is blocked (drawn as the move is made). Once none is open, each player's score is
+// their longest road: a trail through their own lines using each line at most once (a corner may be passed
+// more than once). Longer road wins; a tie resets the square.
+const ROAD = { n: 4 };
+const ROAD_SEGS = (() => { const out = []; for (let r = 0; r < 4; r++) for (let c = 0; c < 3; c++) out.push([r * 4 + c, r * 4 + c + 1]); for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) out.push([r * 4 + c, (r + 1) * 4 + c]); return out; })();
+// The longest trail through p's lines: { len, segs } (the lines in order along it).
+function roadLongest(segs, p) {
+  const mine = ROAD_SEGS.map((e, k) => (segs[k] === p ? k : -1)).filter(k => k >= 0);
+  if (!mine.length) return { len: 0, segs: [] };
+  const at = {};
+  for (const k of mine) for (const v of ROAD_SEGS[k]) (at[v] = at[v] || []).push(k);
+  const used = {};
+  let best = [];
+  const walk = (v, path) => {
+    if (path.length > best.length) best = path.slice();
+    for (const k of at[v] || []) {
+      if (used[k]) continue;
+      used[k] = true; path.push(k);
+      const [a, b] = ROAD_SEGS[k];
+      walk(a === v ? b : a, path);
+      path.pop(); used[k] = false;
+      if (best.length === mine.length) return;
+    }
+  };
+  for (const v of Object.keys(at)) { walk(Number(v), []); if (best.length === mine.length) break; }
+  return { len: best.length, segs: best };
+}
+// The computer: lengthen its own longest road, and take the line that would lengthen the other player's most.
+function roadPick(pm, me, rng) {
+  const o = other(me), segs = pm.segs, mine0 = roadLongest(segs, me).len, theirs0 = roadLongest(segs, o).len;
+  let best = null;
+  for (let k = 0; k < segs.length; k++) {
+    if (segs[k]) continue;
+    const a = segs.slice(); a[k] = me;
+    const b = segs.slice(); b[k] = o;
+    const gain = roadLongest(a, me).len - mine0, deny = roadLongest(b, o).len - theirs0;
+    const touch = ROAD_SEGS[k].some(v => ROAD_SEGS.some((e, j) => segs[j] === me && e.includes(v))) ? 0.3 : 0;
+    const v = 2 * gain + 1.2 * deny + touch + (rng ? rng() * 0.05 : 0);
+    if (!best || v > best.v) best = { k, v, after: a };
+  }
+  return best;
+}
+// Seating, Shelves and Roads: after the move, a random empty place for the customer, the grey mark or the block.
+const randomEmpty = (arr, rng) => { const e = arr.map((x, i) => (x ? -1 : i)).filter(i => i >= 0); return e.length ? e[randInt(rng, e.length)] : null; };
+
 // ---------- Mini Golf, Pool and Bowling: the physics games (Matter.js, through physics.js) ----------
 // The tables, the shots and the recordings live in physics.js (setPhysics registers it: the page once
 // Matter.js has loaded from cdnjs, the server and the tests from the module). Without it these three
@@ -1256,6 +1457,10 @@ function newMini(type, rng) {
     case 'bowling':     return { type, pins: { X: 0, O: 0 }, rolls: { X: 0, O: 0 }, last: null };
     case 'craps':       return { type, wins: { X: 0, O: 0 }, rounds: { X: 0, O: 0 }, last: null };
     case 'takeover':    return { type, cells: new Array(TAKE.n * TAKE.n).fill(null), last: null };
+    case 'seating': { const r = needRng(rng); return { type, color: Array.from({ length: SEAT.tables * 2 }, () => randInt(r, SEAT.colors)), who: new Array(SEAT.tables * 2).fill(null), next: randInt(r, SEAT.colors), last: null }; }   // next: the next customer's colour, shown
+    case 'districts': { const map = distMap(needRng(rng)); return { type, map, who: new Array(map.spots.length).fill(null), last: null }; }
+    case 'shelves':     return { type, cells: new Array(SHELF.n * SHELF.per).fill(null), last: null };
+    case 'roads':       return { type, segs: new Array(ROAD_SEGS.length).fill(null), last: null };
     case 'flood': {                                           // five colours at random; the start cell's neighbours never its colour (the blob starts as one cell)
       const r = needRng(rng), N = FLOOD.n * FLOOD.n, colors = Array.from({ length: N }, () => randInt(r, FLOOD.colors));
       for (const k of floodNear(0)) while (colors[k] === colors[0]) colors[k] = randInt(r, FLOOD.colors);
@@ -1732,6 +1937,50 @@ function applyMove(mini, p, m, rng) {
       if (mini.wins[p] >= CRAPS.goal) return { ok: true, outcome: 'win', note: 'won' };
       return { ok: true, outcome: 'continue', note: r.result === 'win' ? 'won' : 'lost' };
     }
+    case 'seating': {                                         // a seat; then the customer sits; five tables, or most once the room is full
+      if (!Number.isInteger(m) || m < 0 || m >= mini.who.length || mini.who[m]) return { ok: false, reason: 'bad' };
+      const r = needRng(rng), o = other(p), zColor = mini.next;
+      mini.who[m] = p;
+      const z = seatZ(mini, r);
+      if (mini.who.includes(null)) mini.next = randInt(r, SEAT.colors);
+      const done = mini.who[seatMate(m)] === p ? seatTable(m) : null;
+      mini.last = { by: p, seat: m, z, zColor, table: done, next: mini.next };
+      const mt = seatTables(mini.who, p), ot = seatTables(mini.who, o);
+      if (mt >= SEAT.goal) return { ok: true, outcome: 'win', note: 'tables', counts: { [p]: mt, [o]: ot } };
+      if (mini.who.includes(null)) return { ok: true, outcome: 'continue', note: done != null ? 'table' : 'seat' };
+      if (mt === ot) return { ok: true, outcome: 'draw', note: 'tie' };
+      return { ok: true, outcome: 'win', note: 'full', winner: mt > ot ? p : o, counts: { [p]: mt, [o]: ot } };
+    }
+    case 'districts': {                                       // a spot; once the map is full, most regions led
+      if (!Number.isInteger(m) || m < 0 || m >= mini.who.length || mini.who[m]) return { ok: false, reason: 'bad' };
+      mini.who[m] = p;
+      mini.last = { by: p, spot: m };
+      if (mini.who.includes(null)) return { ok: true, outcome: 'continue', note: 'place' };
+      const t = distTally(mini.map, mini.who), x = t.lead.filter(w => w === 'X').length, y = t.lead.filter(w => w === 'O').length;
+      return { ok: true, outcome: 'win', note: 'full', winner: x > y ? 'X' : 'O', counts: { X: x, O: y } };
+    }
+    case 'shelves': {                                         // a spot; then a grey mark on a random open one; once full, most shelves
+      if (!Number.isInteger(m) || m < 0 || m >= mini.cells.length || mini.cells[m]) return { ok: false, reason: 'bad' };
+      mini.cells[m] = p;
+      const g = randomEmpty(mini.cells, needRng(rng));
+      if (g != null) mini.cells[g] = 'G';
+      mini.last = { by: p, at: m, grey: g };
+      if (mini.cells.includes(null)) return { ok: true, outcome: 'continue', note: 'mark' };
+      const x = shelfOn(mini.cells, 'X'), y = shelfOn(mini.cells, 'O');
+      if (x === y) return { ok: true, outcome: 'draw', note: 'tie' };
+      return { ok: true, outcome: 'win', note: 'full', winner: x > y ? 'X' : 'O', counts: { X: x, O: y } };
+    }
+    case 'roads': {                                           // a line; then a random open line is blocked; once none is open, the longest road
+      if (!Number.isInteger(m) || m < 0 || m >= mini.segs.length || mini.segs[m]) return { ok: false, reason: 'bad' };
+      mini.segs[m] = p;
+      const b = randomEmpty(mini.segs, needRng(rng));
+      if (b != null) mini.segs[b] = 'B';
+      mini.last = { by: p, seg: m, block: b };
+      if (mini.segs.includes(null)) return { ok: true, outcome: 'continue', note: 'road' };
+      const x = roadLongest(mini.segs, 'X').len, y = roadLongest(mini.segs, 'O').len;
+      if (x === y) return { ok: true, outcome: 'draw', note: 'tie' };
+      return { ok: true, outcome: 'win', note: 'full', winner: x > y ? 'X' : 'O', counts: { X: x, O: y } };
+    }
     case 'takeover': {                                        // an empty cell, and the cells around it, the other player's too
       if (!Number.isInteger(m) || m < 0 || m >= mini.cells.length || mini.cells[m]) return { ok: false, reason: 'bad' };
       const o = other(p), took = [], flipped = [];
@@ -1891,6 +2140,10 @@ function publicMini(mini) {
     case 'dash': case 'lane': return { type: mini.type, cfg: mini.cfg, seed: { X: mini.seed.X, O: mini.seed.O }, dist: { X: mini.dist.X, O: mini.dist.O }, runs: { X: mini.runs.X, O: mini.runs.O } };
     case 'craps':   return { type: 'craps', wins: { X: mini.wins.X, O: mini.wins.O } };
     case 'takeover': return { type: 'takeover', cells: mini.cells.slice() };
+    case 'seating': return { type: 'seating', color: mini.color.slice(), who: mini.who.slice(), next: mini.next };
+    case 'districts': return { type: 'districts', map: mini.map, who: mini.who.slice() };
+    case 'shelves': return { type: 'shelves', cells: mini.cells.slice() };
+    case 'roads':   return { type: 'roads', segs: mini.segs.slice() };
     case 'flood':   return { type: 'flood', colors: mini.colors.slice(), owner: mini.owner.slice(), score: { X: mini.score.X, O: mini.score.O } };
     case 'bullseye': return { type: 'bullseye', cfg: Object.assign({}, mini.cfg), pts: { X: mini.pts.X, O: mini.pts.O }, speed: { X: mini.speed.X, O: mini.speed.O }, pos: mini.pos.slice() };
     case 'echo':    return { type: 'echo', level: { X: mini.level.X, O: mini.level.O } };
@@ -2052,6 +2305,10 @@ function needsOf(pm, p) {
     case 'craps':   return Math.max(1, (CRAPS.goal - pm.wins[p]) / CRAPS.winOdds);
     case 'takeover': { const e = pm.cells.filter(c => !c).length; return e ? raceNeeds(takeCount(pm.cells, p) - takeCount(pm.cells, other(p)), e / 5, 3) : Infinity; }
     case 'flood':   return Math.max(0.5, (FLOOD.goal - pm.score[p]) / 3.2);
+    case 'seating': { const o = other(p), e = pm.who.filter(w => !w).length, half = q => pm.who.filter((w, i) => w === q && !pm.who[seatMate(i)]).length; return e ? raceNeeds(seatTables(pm.who, p) - seatTables(pm.who, o) + 0.4 * (half(p) - half(o)), e / 4, 1) : Infinity; }
+    case 'districts': { const e = pm.who.filter(w => !w).length; return e ? raceNeeds(distEval(pm.map, pm.who, p), e / 2, 1.2) : Infinity; }
+    case 'shelves': { const e = pm.cells.filter(c => !c).length; return e ? raceNeeds(shelfOn(pm.cells, p) - shelfOn(pm.cells, other(p)), e / 4, 1) : Infinity; }
+    case 'roads':   { const e = pm.segs.filter(c => !c).length; return e ? raceNeeds(roadLongest(pm.segs, p).len - roadLongest(pm.segs, other(p)).len, e / 4, 1.2) : Infinity; }
     case 'echo':    { let n = 0; for (let l = pm.level[p]; l < ECHO.lengths.length; l++) n += 1 / ECHO.aiPass[l]; return Math.max(1, n); }
     case 'plinko':  return 1 / Math.max(...plinkoOdds(pm.win));            // dropped above the WIN bin, every time
     case 'pong':    return Math.max(1, pm.cups[p].filter(Boolean).length / 0.45);
@@ -2355,6 +2612,10 @@ function localBest(pm, me, rng, style, ctx) {
       return { move: b.i, after: { type: 'takeover', cells: b.after }, win: full && takeCount(b.after, me) > takeCount(b.after, other(me)) };
     }
     case 'flood': { const b = floodSearch(pm, me, rng); return { move: b.c, after: b.after, win: b.win }; }
+    case 'seating': { const b = seatPick(pm, me, rng), a = Object.assign({}, pm, { who: pm.who.slice() }); a.who[b.move] = me; return { move: b.move, after: a, win: seatTables(a.who, me) >= SEAT.goal }; }
+    case 'districts': { const b = distSearch(pm, me, rng); return { move: b.k, after: { type: 'districts', map: pm.map, who: b.after } }; }
+    case 'shelves': { const b = shelfPick(pm, me, rng), a = pm.cells.slice(); a[b.i] = me; return { move: b.i, after: { type: 'shelves', cells: a } }; }
+    case 'roads':   { const b = roadPick(pm, me, rng); return { move: b.k, after: { type: 'roads', segs: b.after } }; }
     case 'ttt': return pickValued(pm, me, tttMinimax(pm.cells, me), (cells, i) => i);
     case 'c4':  return pickValued(pm, me, c4Moves(pm.cells, me), c4Drop);
     case 'hex': return pickValued(pm, me, hexMoves(pm.cells, me), (cells, i) => i);
@@ -2586,6 +2847,9 @@ function randomLegalMove(mini, p, rng) {
     case 'rl': return from(['g1', 'g2', 'g3']);
     case 'craps': return 'roll';                                       // the round, rolled to its end
     case 'takeover': return from(empties(mini.cells, c => !c));
+    case 'seating': case 'districts': return from(empties(mini.who, c => !c));
+    case 'shelves': return from(empties(mini.cells, c => !c));
+    case 'roads': return from(empties(mini.segs, c => !c));
     case 'flood': return from(Array.from({ length: FLOOD.colors }, (_, c) => c).filter(c => c !== mini.colors[0]));
   }
   return null;
@@ -2703,6 +2967,10 @@ function playMove(state, i, m, rng, opts) {
     }
     case 'bus': { const l = mini.last; flash.bus = { round: l.round, guess: l.guess, card: l.card, right: l.right, kept: mini.prog[p].slice() }; break; }
     case 'craps': { const l = mini.last; flash.craps = { rolls: l.rolls.map(d => d.slice()), point: l.point, result: l.result, wins: { X: mini.wins.X, O: mini.wins.O } }; break; }
+    case 'seating': { const l = mini.last; flash.seat = { seat: l.seat, z: l.z, zColor: l.zColor, table: l.table, next: l.next, tables: { X: seatTables(mini.who, 'X'), O: seatTables(mini.who, 'O') } }; break; }
+    case 'districts': { const l = mini.last; flash.dist = { spot: l.spot, lead: distTally(mini.map, mini.who).lead }; break; }
+    case 'shelves': { const l = mini.last; flash.shelf = { at: l.at, grey: l.grey, on: { X: shelfOn(mini.cells, 'X'), O: shelfOn(mini.cells, 'O') } }; break; }
+    case 'roads': { const l = mini.last; flash.road = { seg: l.seg, block: l.block, len: { X: roadLongest(mini.segs, 'X').len, O: roadLongest(mini.segs, 'O').len } }; break; }
     case 'takeover': { const l = mini.last; flash.take = { at: l.at, took: l.took.slice(), flipped: l.flipped.slice(), counts: { X: takeCount(mini.cells, 'X'), O: takeCount(mini.cells, 'O') } }; break; }
     case 'flood': { const l = mini.last; flash.flood = { color: l.color, from: l.from, waves: l.waves.map(w => w.slice()), gain: l.gain, score: { X: mini.score.X, O: mini.score.O } }; break; }
     case 'rl': { const l = mini.last; flash.rl = { bet: Array.isArray(l.bet) ? l.bet.slice() : l.bet, n: l.n, hit: l.hit, hits: { X: mini.hits.X, O: mini.hits.O } }; break; }
@@ -2961,6 +3229,10 @@ function playMs(f, winLen) {
     case 'rl':      return RLT.spin + RLT.settle + RLT.hold + (won ? 600 : 0);
     case 'craps':   return (f.craps ? crapsTimes(f.craps.rolls, f.craps.point).end : CRAPS.roll) + CRAPS.hold + (won ? 600 : 0);
     case 'takeover': return TAKEOVER_MS.place + TAKEOVER_MS.flip + (won ? 900 : 0);
+    case 'seating': return PLACE_MS.mark + (f.seat && f.seat.z != null ? PLACE_MS.walk : 0) + PLACE_MS.hold + (won ? 600 : 0);
+    case 'districts': return PLACE_MS.mark + PLACE_MS.hold + (won ? 900 : 0);
+    case 'shelves': return PLACE_MS.mark + (f.shelf && f.shelf.grey != null ? PLACE_MS.drop : 0) + PLACE_MS.hold + (won ? 600 : 0);
+    case 'roads':   return PLACE_MS.mark + (f.road && f.road.block != null ? PLACE_MS.drop : 0) + PLACE_MS.hold + (won ? 600 : 0);
     case 'flood':   return FLOOD_MS.base + (f.flood ? f.flood.waves.length : 0) * FLOOD_MS.wave + (won ? 600 : 0);
     case 'dash': case 'lane': return RUNT.bar + RUNT.hold + (won ? 600 : 0);
     case 'golf':    return (f.phys ? f.phys.ms : 3000) + GOLF.hold + (won ? 600 : 0);
@@ -2981,7 +3253,10 @@ const BULLT = { fly: 380, hold: 800, slide: 450 };
 // Takeover: the cell pops in, then its neighbours turn over; Flood: the blob changes colour, then the cells
 // it grabs fill in wave by wave out from it.
 const TAKEOVER_MS = { place: 280, flip: 520 };
-const FLOOD_MS = { base: 650, wave: 120 };   // slide: the board gliding to its next spot, as the next throw is lined up
+const FLOOD_MS = { base: 650, wave: 120 };
+// Seating, Districts, Shelves and Roads: the mark goes down; then the customer walks to their seat, or the
+// grey mark or the block drops in; a moment's hold.
+const PLACE_MS = { mark: 350, walk: 900, drop: 500, hold: 400 };   // slide: the board gliding to its next spot, as the next throw is lined up
 ECHO.result = 650;
 // Blackjack: each card dealt slides in and turns over; at the end of a hand the hole card turns, the dealer
 // draws card by card, and the result shows. Ride the Bus: the guess shows (the chosen answer lights up,
@@ -3076,4 +3351,4 @@ function matchStats(st) {
 }
 
 // Node (the Cloud Functions and the tests): the same names as a module.
-if (typeof module !== "undefined" && module.exports) module.exports = { PHYS_TYPES, PHYSICS, setPhysics, physicsReady, GOLF, POOLG, BOWLG, poolMine, physShot, wrapAim, aimTo, poolSpot, physRun, golfClear, golfNext, golfAhead, golfLeft, physLast, physScore, physCandidates, physAi, physRandom, physNeeds, RUN_TYPES, RUN_DEFAULTS, RUN_LIMITS, RUN, RUNT, RUN_CFG, r2, runNorm, setRunConfig, runConfig, runSpeed, runSecs, runAfter, runGrace, DASH_OBS, DASH, LANE, weightedPick, laneRow, runCourse, runCheck, runAuto, gaussOf, normCdf, runAiMean, runAi, runNeeds, runLog, runStart, runJump, runRelease, runLane, runLaneX, overlap, runHit, runStep, runResult, TEST_TYPES, isReleased, releasedTypes, allowedTypes, restrictGames, dealable, CRAPS, crapsRound, crapsTimes, TAKE, takeNear, takeCount, takeApply, takeSearch, FLOOD, floodNear, floodWaves, floodGain, floodApply, floodSearch, raceNeeds, TAKEOVER_MS, FLOOD_MS, BULLS, BULLT, BULL_DEFAULTS, BULL_LIMITS, BULL_CFG, bullsNorm, setBullsConfig, bullsConfig, bullsSpot, bullsScore, bullsRates, r3, ECHO, PLINKO, PONG, TRIVIA, ODD, bullsPeriod, echoSeqs, plinkoPath, plinkoOdds, pongThrow, pongAimAt, pongDist, setTriviaBank, triviaReady, triviaDeal, triviaUsed, oddGrid, cpuEcho, CARD, BJ, BUS, RL, BJT, BUST, RLT, BUS_AVG, cardDeck, isCard, cardRank, cardRed, cardName, bjValue, bjTotal, bjNatural, bjDealerPlay, bjOutcome, bjStrategy, bjPlan, bjMs, busRight, busDeck, busOdds, rlRed, rlBet, rlCovers, tttOpen, lineOpen, majorityResult, STYLE0, huntSize, huntBand, huntClue, normTimer, resignLocal, TYPES, OLD_TYPES, SNL, BUMP, snlRow, snlBoard, snlValid, snlExpected, coinPick, markCoins, coinMarksFor, normLocal, seatLocal, INFO, C4, HP, MM, HEX_N, HILO, CANDY, NAME_MAX, COINS, RISKY, BS, HUNT, DICE_GOAL, MEMORY, LINES, WORDS5, WORDS_HANG, VALID5, other, makeRng, needRng, randInt, randomType, shuffle, memoryDeck, wordleMarks, hexNeighbors, hexPath, canMove, hpMoves, mmFeedback, mmValid, MM_ALL, mmAll, mmCode, mmCandidates, mmBestGuess, hpGoalRow, upgradeMini, anyMove, huntDist, candyTrack, newMini, pickType, newSquare, CPU_NAME, defaultSetup, cpuSide, normSetup, syncNames, enabledGames, TIMER_OPTIONS, newTimer, playerName, newState, startMatch, newMatch, findRun, applyMove, AI, publicMini, wordleCandidates, hangmanCandidates, bsCandidates, bsPlacements, bsShip, huntCandidates, WINDOWS, windowsOf, lineNeeds, c4Playable, hexDist, candyExpected, COIN_NEEDS, needsOf, memoryPair, winChance, tttMinimax, c4Drop, c4Eval, C4_ORDER, c4Search, C4_DEPTH, c4Moves, HP_MEMO, hpSolve, hpMovesValued, hpNeeds, hexMoves, threatScore, pickValued, localBest, squareValue, moveGain, cpuMove, VALID5_LIST, randomLegalMove, timeoutMove, mainResult, playMove, endFlash, leaveSquare, RECENT_MAX, MATCH_FIELDS, secretOf, hideMini, matchRecord, fullState, settle, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, newOnlineMatch, PLAY, diceSlot, playMs, replayMs, armClock, applyOnlineResign, matchStats };
+if (typeof module !== "undefined" && module.exports) module.exports = { PHYS_TYPES, PHYSICS, setPhysics, physicsReady, GOLF, POOLG, BOWLG, poolMine, physShot, wrapAim, aimTo, poolSpot, physRun, golfClear, golfNext, golfAhead, golfLeft, physLast, physScore, physCandidates, physAi, physRandom, physNeeds, RUN_TYPES, RUN_DEFAULTS, RUN_LIMITS, RUN, RUNT, RUN_CFG, r2, runNorm, setRunConfig, runConfig, runSpeed, runSecs, runAfter, runGrace, DASH_OBS, DASH, LANE, weightedPick, laneRow, runCourse, runCheck, runAuto, gaussOf, normCdf, runAiMean, runAi, runNeeds, runLog, runStart, runJump, runRelease, runLane, runLaneX, overlap, runHit, runStep, runResult, TEST_TYPES, isReleased, releasedTypes, allowedTypes, restrictGames, dealable, CRAPS, crapsRound, crapsTimes, TAKE, takeNear, takeCount, takeApply, takeSearch, FLOOD, floodNear, floodWaves, floodGain, floodApply, floodSearch, raceNeeds, TAKEOVER_MS, FLOOD_MS, PLACE_MS, SEAT, seatTable, seatMate, seatTables, seatZ, seatPick, DIST, r1d, distClip, distMap, distTally, distEval, distSearch, SHELF, shelfOn, shelfPick, ROAD, ROAD_SEGS, roadLongest, roadPick, randomEmpty, BULLS, BULLT, BULL_DEFAULTS, BULL_LIMITS, BULL_CFG, bullsNorm, setBullsConfig, bullsConfig, bullsSpot, bullsScore, bullsRates, r3, ECHO, PLINKO, PONG, TRIVIA, ODD, bullsPeriod, echoSeqs, plinkoPath, plinkoOdds, pongThrow, pongAimAt, pongDist, setTriviaBank, triviaReady, triviaDeal, triviaUsed, oddGrid, cpuEcho, CARD, BJ, BUS, RL, BJT, BUST, RLT, BUS_AVG, cardDeck, isCard, cardRank, cardRed, cardName, bjValue, bjTotal, bjNatural, bjDealerPlay, bjOutcome, bjStrategy, bjPlan, bjMs, busRight, busDeck, busOdds, rlRed, rlBet, rlCovers, tttOpen, lineOpen, majorityResult, STYLE0, huntSize, huntBand, huntClue, normTimer, resignLocal, TYPES, OLD_TYPES, SNL, BUMP, snlRow, snlBoard, snlValid, snlExpected, coinPick, markCoins, coinMarksFor, normLocal, seatLocal, INFO, C4, HP, MM, HEX_N, HILO, CANDY, NAME_MAX, COINS, RISKY, BS, HUNT, DICE_GOAL, MEMORY, LINES, WORDS5, WORDS_HANG, VALID5, other, makeRng, needRng, randInt, randomType, shuffle, memoryDeck, wordleMarks, hexNeighbors, hexPath, canMove, hpMoves, mmFeedback, mmValid, MM_ALL, mmAll, mmCode, mmCandidates, mmBestGuess, hpGoalRow, upgradeMini, anyMove, huntDist, candyTrack, newMini, pickType, newSquare, CPU_NAME, defaultSetup, cpuSide, normSetup, syncNames, enabledGames, TIMER_OPTIONS, newTimer, playerName, newState, startMatch, newMatch, findRun, applyMove, AI, publicMini, wordleCandidates, hangmanCandidates, bsCandidates, bsPlacements, bsShip, huntCandidates, WINDOWS, windowsOf, lineNeeds, c4Playable, hexDist, candyExpected, COIN_NEEDS, needsOf, memoryPair, winChance, tttMinimax, c4Drop, c4Eval, C4_ORDER, c4Search, C4_DEPTH, c4Moves, HP_MEMO, hpSolve, hpMovesValued, hpNeeds, hexMoves, threatScore, pickValued, localBest, squareValue, moveGain, cpuMove, VALID5_LIST, randomLegalMove, timeoutMove, mainResult, playMove, endFlash, leaveSquare, RECENT_MAX, MATCH_FIELDS, secretOf, hideMini, matchRecord, fullState, settle, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, newOnlineMatch, PLAY, diceSlot, playMs, replayMs, armClock, applyOnlineResign, matchStats };

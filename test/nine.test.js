@@ -152,3 +152,205 @@ test('the new games: admin only to begin with, in the full list, dealt and playe
   while (!st.winner && n++ < 600) { const m = E.cpuMove(st, rng); assert.equal(E.playMove(st, m.square, m.move, rng).ok, true); E.endFlash(st); }
   assert.ok(st.winner, `a match finishes (${n} moves)`);
 });
+
+/* ===================================== Seating ===================================== */
+test('seating: ten tables for two, seats in four colours; a seat, then the customer sits in a seat of their colour (any seat if none is left); the next colour is always shown', () => {
+  const m = E.newMini('seating', lcg(1));
+  assert.equal(m.color.length, 20); assert.ok(m.color.every(c => c >= 0 && c < 4)); assert.ok(m.next >= 0 && m.next < 4, 'the next customer\'s colour, shown');
+  for (let k = 0; k < 200; k++) {
+    const s = E.newMini('seating', lcg(k)), want = s.next, rng = lcg(k + 1);
+    E.applyMove(s, 'X', 0, rng);
+    const z = s.last.z, empty = s.who.map((w, i) => (w ? -1 : i)).filter(i => i >= 0).concat(z);
+    const theirs = empty.filter(i => s.color[i] === want && i !== 0);
+    assert.equal(s.who[z], 'Z');
+    if (theirs.length) assert.equal(s.color[z], want, 'the customer takes a seat of their colour');
+    assert.equal(s.last.zColor, want);
+  }
+  const all = E.newMini('seating', lcg(3)); all.color = new Array(20).fill(0); all.next = 2;
+  E.applyMove(all, 'X', 0, lcg(4));
+  assert.ok(all.last.z != null && all.who[all.last.z] === 'Z', 'none of their colour: any empty seat');
+  for (const bad of [-1, 20, 'a', 0.5]) assert.equal(E.applyMove(E.newMini('seating', lcg(5)), 'X', bad).ok, false);
+  const taken = E.newMini('seating', lcg(6)); E.applyMove(taken, 'X', 3, lcg(7));
+  assert.equal(E.applyMove(taken, 'O', 3).ok, false, 'a taken seat');
+});
+
+test('seating: both seats of a table make it yours; five tables wins at once; a full room goes to most tables, and a tie resets the square', () => {
+  const m = E.newMini('seating', lcg(1));
+  m.who = ['X', null, 'X', 'X', 'X', 'X', 'X', 'X', 'Z', 'Z', 'O', 'O', null, null, null, null, null, null, null, null];
+  assert.equal(E.seatTables(m.who, 'X'), 3); assert.equal(E.seatTables(m.who, 'O'), 1);
+  const r = E.applyMove(m, 'X', 1, lcg(2));
+  assert.deepEqual([r.outcome, E.seatTables(m.who, 'X'), m.last.table], ['continue', 4, 0]);
+  m.who[12] = 'X'; m.who[13] = null; m.next = m.color[14] = 1; m.color.fill(1);
+  assert.equal(E.applyMove(m, 'X', 13, lcg(3)).outcome, 'win', 'five tables: the square');
+  const full = E.newMini('seating', lcg(4));
+  full.who = ['X', 'X', 'O', 'O', 'X', 'X', 'Z', 'O', 'Z', 'X', 'O', 'Z', 'X', 'Z', 'O', 'Z', 'X', 'Z', 'X', null];
+  const f = E.applyMove(full, 'O', 19, lcg(5));
+  assert.deepEqual([f.outcome, f.winner, f.counts.X, f.counts.O], ['win', 'X', 2, 1], 'the last seat: most tables');
+  assert.equal(full.last.z, null, 'no customer when the room is full');
+  const tie = E.newMini('seating', lcg(6));
+  tie.who = ['X', 'X', 'O', 'O', 'X', 'X', 'Z', 'O', 'Z', 'X', 'O', 'Z', 'X', 'Z', 'O', 'Z', 'X', 'Z', 'O', null];
+  assert.deepEqual(E.applyMove(tie, 'O', 19, lcg(7)), { ok: true, outcome: 'draw', note: 'tie' }, 'a tie resets the square');
+  const st = E.newMatch(lcg(8), { games: ['seating', 'ttt'] });
+  const i = st.squares.findIndex(q => q.mini.type === 'seating');
+  st.squares[i].mini = tie; tie.who[19] = null; st.turn = 'O';
+  E.playMove(st, i, 19, lcg(9));
+  assert.equal(st.flash.kind, 'draw'); assert.equal(st.flash.note, 'tie'); assert.ok(st.squares[i].mini.type, 'a new game in the square');
+});
+
+test('seating: the computer completes its own half-table, then blocks the other player\'s, then starts a table whose other seat is not the next customer\'s colour', () => {
+  const pm = { type: 'seating', color: new Array(20).fill(0), who: new Array(20).fill(null), next: 0 };
+  pm.who[4] = 'O'; pm.who[8] = 'X';
+  assert.equal(E.seatPick(pm, 'X', lcg(1)).move, 9, 'its own half-table first');
+  pm.who[8] = null;
+  assert.equal(E.seatPick(pm, 'X', lcg(1)).move, 5, 'then blocks the other player\'s');
+  pm.who[4] = null; pm.color = new Array(20).fill(0); pm.color[15] = 3; pm.next = 0;
+  assert.equal(E.seatPick(pm, 'X', lcg(1)).move, 14, 'a fresh table whose other seat the next customer will not take');
+});
+
+/* ===================================== Districts ===================================== */
+test('districts: every map has 5 regions and 11 to 15 spots, every region touched by an odd number (3 or more); spots on borders count for every region they touch', () => {
+  const sizes = {};
+  for (let k = 0; k < 3000; k++) {
+    const map = E.distMap(lcg(k + 1));
+    assert.equal(map.regions.length, 5);
+    assert.ok(map.spots.length >= 11 && map.spots.length <= 15, `${map.spots.length} spots`);
+    const n = [0, 0, 0, 0, 0];
+    for (const s of map.spots) { assert.ok(s.r.length >= 1 && s.r.length <= 3); for (const r of s.r) n[r]++; assert.ok(s.x >= 0 && s.x <= 100 && s.y >= 0 && s.y <= 120); }
+    assert.ok(n.every(x => x >= 3 && x % 2 === 1), `map ${k}: touches ${n}`);
+    for (let a = 0; a < map.spots.length; a++) for (let b = a + 1; b < map.spots.length; b++) assert.ok(Math.hypot(map.spots[a].x - map.spots[b].x, map.spots[a].y - map.spots[b].y) >= E.DIST.gap - 0.2, 'spots kept apart');
+    sizes[map.spots.length] = (sizes[map.spots.length] || 0) + 1;
+  }
+  assert.ok(Object.keys(sizes).length >= 2, `map sizes vary (${JSON.stringify(sizes)})`);
+});
+
+test('districts: each region goes to whoever has more pieces touching it; most regions wins; the leaders show as play goes on', () => {
+  const m = E.newMini('districts', lcg(2)), map = m.map, n = map.spots.length;
+  const t0 = E.distTally(map, m.who); assert.ok(t0.lead.every(l => l === null), 'nobody leads an empty map');
+  // fill all but one: X on the even spots, O on the odd ones; then the last
+  for (let k = 0; k < n - 1; k++) m.who[k] = k % 2 ? 'O' : 'X';
+  const p = (n - 1) % 2 ? 'O' : 'X', r = E.applyMove(m, p, n - 1);
+  const t = E.distTally(map, m.who), x = t.lead.filter(l => l === 'X').length, o = t.lead.filter(l => l === 'O').length;
+  assert.equal(x + o, 5, 'every region has a leader once full (odd counts)');
+  assert.deepEqual([r.outcome, r.winner, r.counts], ['win', x > o ? 'X' : 'O', { X: x, O: o }]);
+  for (let reg = 0; reg < 5; reg++) {
+    const xs = map.spots.filter((s, k) => s.r.includes(reg) && m.who[k] === 'X').length, os = map.spots.filter((s, k) => s.r.includes(reg) && m.who[k] === 'O').length;
+    assert.equal(t.lead[reg], xs > os ? 'X' : 'O', `region ${reg}: ${xs} to ${os}`);
+  }
+  // a border spot counts for both regions it touches
+  const b = E.newMini('districts', lcg(3)), k = b.map.spots.findIndex(s => s.r.length >= 2);
+  if (k >= 0) { E.applyMove(b, 'X', k); const tb = E.distTally(b.map, b.who); for (const reg of b.map.spots[k].r) assert.equal(tb.lead[reg], 'X'); }
+  assert.equal(E.applyMove(b, 'O', k).ok, false, 'a taken spot');
+});
+
+test('districts: the computer looks two moves ahead on the regions still in play', () => {
+  const m = E.newMini('districts', lcg(4)), pm = E.publicMini(m);
+  const b = E.distSearch(pm, 'X', null);
+  assert.ok(Number.isInteger(b.k) && !m.who[b.k]);
+  const { n, owner } = cpuSquare('districts', 31);
+  assert.ok(owner && n === m.map.spots.length || owner, `decided (${n} moves)`);
+});
+
+/* ===================================== Shelves ===================================== */
+test('shelves: six shelves of three; a mark, then a grey mark on a random open spot; once full, the shelves you are on; a tie resets', () => {
+  const m = E.newMini('shelves', lcg(1));
+  assert.equal(m.cells.length, 18);
+  E.applyMove(m, 'X', 4, lcg(2));
+  assert.equal(m.cells[4], 'X'); assert.ok(m.last.grey != null && m.cells[m.last.grey] === 'G' && m.last.grey !== 4);
+  assert.equal(E.applyMove(m, 'O', 4).ok, false);
+  assert.deepEqual([E.shelfOn(['X', null, null, 'X', 'X', null, null, null, null, 'O', 'X', 'O', null, null, null, null, null, null], 'X'), E.shelfOn(['X', null, null, 'X', 'X', null, null, null, null, 'O', 'X', 'O'], 'O')], [3, 1]);
+  const end = E.newMini('shelves', lcg(3));
+  end.cells = ['O', 'G', 'G', 'O', 'G', 'G', 'X', 'O', 'G', 'X', 'G', 'G', 'G', 'O', 'G', 'X', 'G', null];
+  const r = E.applyMove(end, 'O', 17, lcg(4));
+  assert.deepEqual(r, { ok: true, outcome: 'win', note: 'full', winner: 'O', counts: { X: 3, O: 5 } }, 'the last spot: O on five shelves, X on three');
+  assert.equal(end.last.grey, null, 'no grey mark once full');
+  const t = E.newMini('shelves', lcg(5));
+  t.cells = ['X', 'G', 'G', 'O', 'G', 'G', 'X', 'O', 'G', 'X', 'G', 'G', 'G', 'O', 'G', 'X', 'G', null];
+  const tr = E.applyMove(t, 'O', 17, lcg(6));
+  assert.deepEqual([tr.outcome, tr.note], ['draw', 'tie'], `4 shelves each: a tie (${JSON.stringify(tr)})`);
+  const x = E.newMini('shelves', lcg(7));
+  x.cells = ['X', 'G', 'G', 'X', 'G', 'G', 'X', 'O', 'G', 'X', 'G', 'G', 'O', 'O', 'G', 'X', 'G', null];
+  assert.deepEqual(E.applyMove(x, 'O', 17, lcg(8)), { ok: true, outcome: 'win', note: 'full', winner: 'X', counts: { X: 5, O: 3 } });
+});
+
+test('shelves: the computer goes for shelves it is not on, more so ones the other player is missing too and that are nearly full', () => {
+  const pm = { type: 'shelves', cells: new Array(18).fill(null) };
+  pm.cells[0] = 'X'; pm.cells[1] = 'G';                              // shelf 0: X on it, one spot left
+  pm.cells[3] = 'O'; pm.cells[4] = 'G';                              // shelf 1: O on it, one left
+  pm.cells[6] = 'G'; pm.cells[7] = 'G';                              // shelf 2: nobody, one left
+  const b = E.shelfPick(pm, 'X', null);
+  assert.equal(b.i, 8, 'the nearly full shelf neither player is on');
+  pm.cells[8] = 'G';
+  assert.equal(E.shelfPick(pm, 'X', null).i, 5, 'then the nearly full one only the other player is on');
+});
+
+/* ===================================== Roads ===================================== */
+const H = (r, c) => r * 3 + c, V = (r, c) => 12 + r * 4 + c;      // a line across from dot (r,c); a line down from it
+const segsOf = (p, ks) => { const s = new Array(24).fill(null); for (const k of ks) s[k] = p; return s; };
+test('roads: the longest trail, against cases checked by hand', () => {
+  assert.equal(E.ROAD_SEGS.length, 24);
+  const L = ks => E.roadLongest(segsOf('X', ks), 'X').len;
+  assert.equal(L([]), 0);
+  assert.equal(L([H(0, 0), H(0, 1), H(0, 2)]), 3, 'a straight row of three');
+  assert.equal(L([H(1, 0), H(1, 1), V(1, 1)]), 2, 'a T: three lines at one dot, only two in one trail');
+  assert.equal(L([H(0, 0), H(1, 0), V(0, 0), V(0, 1)]), 4, 'a square: all the way round');
+  assert.equal(L([H(0, 0), H(1, 0), V(0, 0), V(0, 1), H(1, 1), H(2, 1), V(1, 1), V(1, 2)]), 8, 'two squares meeting at a corner: through the corner twice');
+  assert.equal(L([H(1, 0), H(1, 1), V(0, 1), V(1, 1)]), 2, 'a plus: two arms');
+  assert.equal(L([H(0, 0), H(0, 1), V(1, 0), V(2, 0), H(3, 0), V(2, 1)]), 4, 'apart: the longer piece (a U of four)');
+  assert.equal(L([H(0, 0), H(0, 1), H(3, 0), H(3, 1), V(2, 0), V(2, 1)]), 3, 'a fork at the bottom: one branch only');
+  assert.equal(L([H(0, 0), H(1, 0), V(0, 0), V(0, 1), H(0, 1)]), 5, 'a square with a tail: round it and off');
+  assert.equal(L([H(0, 0), H(0, 1), H(0, 2), V(0, 3), V(1, 3), V(2, 3), H(3, 2), H(3, 1), H(3, 0), V(2, 0), V(1, 0), V(0, 0)]), 12, 'the whole rim');
+  // the lines of the trail, in order, each one joined to the next
+  const t = E.roadLongest(segsOf('X', [H(0, 0), H(1, 0), V(0, 0), V(0, 1), H(0, 1)]), 'X');
+  for (let k = 1; k < t.segs.length; k++) { const a = E.ROAD_SEGS[t.segs[k - 1]], b = E.ROAD_SEGS[t.segs[k]]; assert.ok(a.some(v => b.includes(v)), 'a joined trail'); }
+  // against a brute force over every order of the lines, on random sets
+  const brute = ks => { let best = 0; const used = new Set(); const go = (v, n) => { best = Math.max(best, n); for (const k of ks) { if (used.has(k)) continue; const [a, b] = E.ROAD_SEGS[k]; if (v != null && a !== v && b !== v) continue; used.add(k); if (v == null) { go(a, n + 1); go(b, n + 1); } else go(a === v ? b : a, n + 1); used.delete(k); } }; go(null, 0); return best; };
+  const rng = lcg(9);
+  for (let k = 0; k < 300; k++) {
+    const ks = Array.from({ length: 24 }, (_, i) => i).filter(() => rng() < 0.3).slice(0, 8);
+    assert.equal(L(ks), brute(ks), `lines ${ks}`);
+  }
+});
+
+test('roads: a line, then a random open line blocked; once none is open, the longer road wins and a tie resets', () => {
+  const m = E.newMini('roads', lcg(1));
+  E.applyMove(m, 'X', 0, lcg(2));
+  assert.equal(m.segs[0], 'X'); assert.ok(m.last.block != null && m.segs[m.last.block] === 'B' && m.last.block !== 0);
+  assert.equal(E.applyMove(m, 'O', 0).ok, false); assert.equal(E.applyMove(m, 'O', m.last.block).ok, false, 'a blocked line is not a move');
+  const end = E.newMini('roads', lcg(3));
+  end.segs = new Array(24).fill('B'); for (const k of [H(0, 0), H(0, 1), H(0, 2)]) end.segs[k] = 'X'; for (const k of [H(3, 0), H(3, 1)]) end.segs[k] = 'O'; end.segs[V(2, 0)] = null;
+  assert.deepEqual(E.applyMove(end, 'O', V(2, 0), lcg(4)), { ok: true, outcome: 'draw', note: 'tie' }, '3 and 3: a tie');
+  const win = E.newMini('roads', lcg(5));
+  win.segs = new Array(24).fill('B'); for (const k of [H(0, 0), H(0, 1), H(0, 2)]) win.segs[k] = 'X'; win.segs[H(3, 0)] = 'O'; win.segs[V(2, 3)] = null;
+  assert.deepEqual(E.applyMove(win, 'O', V(2, 3), lcg(6)), { ok: true, outcome: 'win', note: 'full', winner: 'X', counts: { X: 3, O: 1 } });
+});
+
+test('roads: the computer lengthens its own road and takes the line the other player wants most', () => {
+  const s = new Array(24).fill(null); s[H(0, 0)] = 'X'; s[H(0, 1)] = 'X';
+  const ext = E.roadPick({ type: 'roads', segs: s }, 'X', null);
+  assert.ok([H(0, 2), V(0, 0), V(0, 1), V(0, 2)].includes(ext.k) && E.roadLongest(ext.after, 'X').len === 3, 'it lengthens its road');
+  const t = new Array(24).fill('B'); t[H(1, 0)] = 'O'; t[H(1, 1)] = 'O'; t[H(1, 2)] = null; t[H(3, 2)] = null;
+  assert.equal(E.roadPick({ type: 'roads', segs: t }, 'X', null).k, H(1, 2), 'it cuts off the other player\'s best extension');
+});
+
+test('the second four: admin only, dealt and played to the end by the computer (ties reset); random and timed-out moves are legal; nothing to come is kept in the square', () => {
+  for (const t of ['seating', 'districts', 'shelves', 'roads']) {
+    assert.ok(E.TYPES.includes(t) && E.TEST_TYPES.includes(t) && E.INFO[t], `${t}: listed, admin only`);
+    for (let k = 0; k < 20; k++) {
+      const st = E.newMatch(lcg(k), { games: [t] }), mv = E.randomLegalMove(st.squares[0].mini, 'X', lcg(k + 1));
+      assert.equal(E.playMove(st, 0, mv, lcg(k + 2)).ok, true, `${t}: a random move (${JSON.stringify(mv)})`);
+      assert.ok(E.playMs(st.flash) >= 500 && E.playMs(st.flash) < 5000);
+    }
+    const st = E.newMatch(lcg(7), { games: [t], mode: 'online', timer: 60 });
+    assert.equal(E.timeoutMove(st, lcg(8)).ok, true, `${t}: a timeout`);
+    const sq = E.newMini(t, lcg(3));
+    assert.equal(E.secretOf(sq), null, `${t}: no secret kept; what comes next is drawn as the move is made`);
+    const keys = Object.keys(sq).join(',');
+    assert.ok(!/queue|future|order/.test(keys), `${t}: nothing to come in the square (${keys})`);
+    const { kind } = cpuSquare(t, 41);
+    assert.ok(['claim', 'match', 'draw'].includes(kind), `${t}: decided or tied (${kind})`);
+  }
+  const rng = lcg(51), st = E.newMatch(rng, { games: ['seating', 'districts', 'shelves', 'roads', 'ttt'] });
+  let n = 0;
+  while (!st.winner && n++ < 800) { const m = E.cpuMove(st, rng); assert.equal(E.playMove(st, m.square, m.move, rng).ok, true); E.endFlash(st); }
+  assert.ok(st.winner, `a match of them finishes (${n} moves)`);
+});
