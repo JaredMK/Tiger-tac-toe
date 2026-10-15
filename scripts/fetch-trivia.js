@@ -95,8 +95,9 @@ const id = q => crypto.createHash('sha1').update(q.question + '|' + q.correct_an
         if (res.response_code === 5) { lastCall = Date.now() + 5000; continue; }   // too soon
         if (res.response_code !== 0) throw new Error(`category ${cat.name} ${diff}: response_code ${res.response_code}`);
         for (const raw of res.results) {
-          const q = { type: raw.type, difficulty: raw.difficulty, category: Buffer.from(raw.category, 'base64').toString('utf8'), question: decode(Buffer.from(raw.question, 'base64').toString('utf8')),
-            correct_answer: decode(Buffer.from(raw.correct_answer, 'base64').toString('utf8')), incorrect_answers: raw.incorrect_answers.map(a => decode(Buffer.from(a, 'base64').toString('utf8'))) };
+          const b64 = v => Buffer.from(String(v), 'base64').toString('utf8');   // (every field comes base64-encoded: the type and difficulty too)
+          const q = { type: b64(raw.type), difficulty: b64(raw.difficulty), category: b64(raw.category), question: decode(b64(raw.question)),
+            correct_answer: decode(b64(raw.correct_answer)), incorrect_answers: raw.incorrect_answers.map(a => decode(b64(a))) };
           const why = keep(q);
           if (why) { note(why); continue; }
           const k = id(q);
