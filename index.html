@@ -1649,6 +1649,63 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .tphys text { fill: var(--ink); font-weight: 800; text-anchor: middle; font-family: Nunito, Arial, sans-serif; }
 .tbowl { display: grid; gap: 4cqw; width: 84cqw; } .tbowl svg { display: block; width: 100%; height: 46cqw; } .tbowl .pin { fill: #fff; stroke: var(--ink); stroke-width: 1.5; } .tbowl .pin.down { fill: var(--panel-2); stroke: var(--muted); }
 .tbowl .trun { padding: 0; }
+/* Craps: the point strip with its puck, the felt where the dice tumble, the rolls so far */
+.craps { flex: 1; display: flex; flex-direction: column; gap: 10px; min-height: 0; justify-content: center; }
+.cpts { position: relative; display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; width: min(100%, 360px); margin: 0 auto; }
+.cpts > i { font-style: normal; height: 40px; display: grid; place-items: center; border: 3px solid var(--ink); border-radius: 10px; background: #2f7a3a; color: #fff; font-family: 'Luckiest Guy', sans-serif; font-size: 18px; padding-top: 3px; }
+.cpts > i.off { background: transparent; border-style: dashed; border-color: var(--muted); }
+.cpuck { position: absolute; top: 50%; width: 34px; height: 34px; margin: -17px 0 0 -17px; border-radius: 50%; border: 3px solid var(--ink); background: #1b1b1b; color: #fff; display: grid; place-items: center; font: 800 10px Nunito, sans-serif; box-shadow: 0 3px 0 var(--ink); z-index: 1; }
+.cpuck.on { background: #fff; color: var(--ink); }
+.cpuck.move { animation: puckon .42s var(--t, 0ms) cubic-bezier(.3, 1.4, .5, 1) both; }
+@keyframes puckon { from { left: var(--from); background: #1b1b1b; color: #fff; } 60% { background: #1b1b1b; color: #fff; } to { left: var(--to); background: #fff; color: var(--ink); } }
+.cfelt { position: relative; height: 150px; width: min(100%, 360px); margin: 0 auto; border: 3px solid var(--ink); border-radius: 18px; background: radial-gradient(circle at 50% 45%, #3b9a4b, #2a7238); overflow: hidden; display: grid; place-items: center; }
+.cpair { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 18px; }
+.cpair .cdie { width: 64px; height: 64px; border-radius: 16px; border-width: 3px; box-shadow: 0 5px 0 var(--ink); }
+.cpair.tumble { animation: cpairin .55s var(--t, 0ms) both; }
+.cpair.tumble .cdie { animation: cdietumble .55s var(--t, 0ms) cubic-bezier(.25, .8, .4, 1) both; } .cpair.tumble .cdie.b { animation-name: cdietumble2; }
+.cpair.gone { animation: cpairin .55s var(--t, 0ms) both, cpairout 1ms var(--t2, 0ms) forwards; }
+@keyframes cpairin { from { opacity: 0; } 1% { opacity: 1; } to { opacity: 1; } }
+@keyframes cpairout { to { opacity: 0; } }
+@keyframes cdietumble { from { transform: translate(-90px, -70px) rotate(-260deg) scale(.7); } 60% { transform: translate(6px, 6px) rotate(20deg); } 80% { transform: translate(-2px, -6px) rotate(-6deg); } to { transform: none; } }
+@keyframes cdietumble2 { from { transform: translate(90px, -80px) rotate(300deg) scale(.7); } 60% { transform: translate(-6px, 4px) rotate(-18deg); } 80% { transform: translate(2px, -5px) rotate(5deg); } to { transform: none; } }
+.crolls { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; min-height: 26px; }
+.crolls span { min-width: 26px; height: 26px; padding: 0 6px; border-radius: 13px; background: var(--panel-2); border: 2px solid var(--ink); display: grid; place-items: center; font-weight: 800; font-size: 13px; }
+.tcdice { display: flex; gap: 2cqw; justify-content: center; } .tcdice span { width: 15cqw; height: 15cqw; border: 1.2cqw solid var(--ink); border-radius: 3cqw; background: #fff; display: grid; place-items: center; } .tcdice span svg { width: 100%; height: 100%; }
+.tcdice.w span { box-shadow: 0 0 0 1.2cqw var(--green); }
+/* Takeover: the 5x5 board; the tapped square pops, the ones round it turn over */
+.takeover { flex: 1; display: flex; flex-direction: column; gap: 10px; justify-content: center; min-height: 0; }
+.tkgrid { display: grid; grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(5, 1fr); gap: 6px; width: min(100%, 340px, calc(100dvh - 330px)); aspect-ratio: 1; margin: 0 auto; }
+.tkc { min-width: 0; min-height: 0; border: 3px solid var(--ink); border-radius: 10px; background: var(--paper); padding: 0; display: grid; place-items: center; font-family: 'Luckiest Guy', sans-serif; font-size: 20px; box-shadow: 0 3px 0 var(--ink); color: var(--ink); perspective: 300px; }
+.tkc:disabled { box-shadow: none; }
+.tkc.X { background: var(--x); color: #fff; } .tkc.O { background: var(--o); color: var(--ink); }
+.tkc b { font-weight: 400; padding-top: 3px; }
+.tkc.pop { animation: markpop .35s ease-out both; }
+.tkc.turn { animation: tkturn .45s var(--t, 0ms) ease-in-out both; }
+.tkc.turn.X.fromO, .tkc.turn.O.fromX, .tkc.turn.fromnone { --c0: var(--paper); }
+.tkc.turn.X.fromO { --c0: var(--o); } .tkc.turn.O.fromX { --c0: var(--x); }
+.tkc.turn.X { --c1: var(--x); } .tkc.turn.O { --c1: var(--o); }
+@keyframes tkturn { 0% { transform: rotateY(0); background: var(--c0); color: transparent; } 49% { transform: rotateY(90deg); background: var(--c0); color: transparent; } 51% { transform: rotateY(90deg); background: var(--c1); } 100% { transform: none; background: var(--c1); } }
+.tg.gtk { grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(5, 1fr); width: 62cqw; height: 62cqw; }
+.tg.gtk i { border-radius: 2px; background: var(--panel-2); } .tg.gtk i.X { background: var(--x); } .tg.gtk i.O { background: var(--o); }
+/* Flood: the 6x6 grid; the blob's cells and each player's in their colour */
+.flood { flex: 1; display: flex; flex-direction: column; gap: 10px; justify-content: center; min-height: 0; }
+.flgrid { display: grid; grid-template-columns: repeat(6, 1fr); grid-template-rows: repeat(6, 1fr); gap: 3px; width: min(100%, 330px, calc(100dvh - 380px)); aspect-ratio: 1; margin: 0 auto; padding: 4px; border: 3px solid var(--ink); border-radius: 14px; background: var(--ink); }
+.flc { position: relative; min-width: 0; min-height: 0; border-radius: 5px; display: grid; place-items: center; }
+.flc.own::after { content: ''; position: absolute; inset: 0; border-radius: 5px; box-shadow: inset 0 0 0 4px var(--pc); }
+.flc.own.X { --pc: var(--x); } .flc.own.O { --pc: var(--o); }
+.flc b { font: 400 13px 'Luckiest Guy', sans-serif; color: var(--pc); background: #fff; border-radius: 50%; width: 18px; height: 18px; display: grid; place-items: center; padding-top: 2px; border: 2px solid var(--ink); }
+.flc.start::before { content: '★'; position: absolute; color: #fff; font-size: 16px; text-shadow: 0 1px 0 var(--ink); }
+.flc.grab { animation: flgrab .35s var(--t, 0ms) cubic-bezier(.3, 1.5, .5, 1) both; }
+.flc.grab::after, .flc.grab b { animation: appear .2s var(--t, 0ms) both; }
+@keyframes flgrab { from { transform: scale(.5); filter: brightness(1.6); } to { transform: none; filter: none; } }
+.flc.recolor { animation: flrecolor .45s var(--t, 0ms) both; }
+@keyframes flrecolor { from { background: var(--c0); } to { background: var(--c1); } }
+.fsc { font-style: normal; display: inline-block; animation: appearin .4s var(--t, 0ms) ease-out both; }
+.fbtns { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; width: min(100%, 360px); margin: 0 auto; flex: none; }
+.fsw { height: 48px; border: 3px solid var(--ink); border-radius: 12px; box-shadow: 0 3px 0 var(--ink); padding: 0; display: grid; place-items: center; }
+.fsw:disabled { box-shadow: none; opacity: .45; } .fsw i { font-style: normal; font-size: 11px; font-weight: 800; color: #fff; text-shadow: 0 1px 0 var(--ink); }
+.tg.gfl { grid-template-columns: repeat(6, 1fr); grid-template-rows: repeat(6, 1fr); width: 62cqw; height: 62cqw; gap: 1px; }
+.tg.gfl i { border-radius: 1.5px; } .tg.gfl i.own.X { box-shadow: inset 0 0 0 1.6cqw var(--x); } .tg.gfl i.own.O { box-shadow: inset 0 0 0 1.6cqw var(--o); }
 @media (prefers-reduced-motion: reduce) { .rbar i.grow { animation: none; width: var(--w1, 0%); } }
 /* Trivia: the question and its four answers */
 .trivia { flex: 1; display: flex; flex-direction: column; min-height: 0; gap: 8px; justify-content: center; }
@@ -1859,6 +1916,9 @@ const ICONS = {
   lane: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6.5 3L3.5 21M17.5 3l3 18"/><path d="M12 3v3M12 9.5v3M12 16v3"/><rect x="13" y="12" width="5.5" height="8" rx="2" fill="currentColor" stroke="none"/></svg>',
   golf: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v14"/><path d="M12 3l7 3-7 3"/><ellipse cx="12" cy="18.5" rx="7" ry="2.5"/><circle cx="6" cy="14" r="1.8" fill="currentColor" stroke="none"/></svg>',
   pool: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="9" cy="15" r="4"/><circle cx="16.5" cy="8" r="3.5"/><path d="M3 21l3.5-3.5"/><circle cx="9" cy="15" r="1" fill="currentColor" stroke="none"/></svg>',
+  craps: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round"><rect x="2.5" y="8" width="10.5" height="10.5" rx="2.2" transform="rotate(-12 7.7 13.2)"/><rect x="11.5" y="4.5" width="10" height="10" rx="2.2" transform="rotate(10 16.5 9.5)"/><circle cx="5.6" cy="11.2" r="1.1" fill="currentColor" stroke="none"/><circle cx="9.6" cy="15.6" r="1.1" fill="currentColor" stroke="none"/><circle cx="16.5" cy="9.5" r="1.1" fill="currentColor" stroke="none"/></svg>',
+  takeover: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="9" y="2.5" width="6" height="6" rx="1.2"/><rect x="2.5" y="9" width="6" height="6" rx="1.2"/><rect x="9" y="9" width="6" height="6" rx="1.2"/><rect x="15.5" y="9" width="6" height="6" rx="1.2"/><rect x="9" y="15.5" width="6" height="6" rx="1.2"/></svg>',
+  flood: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round"><path d="M3 3h9v5h5v6h4v7H3z" fill="currentColor" fill-opacity=".35"/><path d="M3 3h18v18H3z"/></svg>',
   bowling: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.5c-2.5 0-2 3-1 5.5-3 3-3 8-1.5 13h5c1.5-5 1.5-10-1.5-13 1-2.5 1.5-5.5-1-5.5z"/><circle cx="17" cy="16" r="4.5"/><circle cx="16" cy="15" r=".6" fill="currentColor"/><circle cx="18.2" cy="15" r=".6" fill="currentColor"/><circle cx="17.1" cy="17.2" r=".6" fill="currentColor"/></svg>',
   rl: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9.2"/><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v5.9M12 15.3v5.9M2.8 12h5.9M15.3 12h5.9" stroke-width="1.8"/><circle cx="17.6" cy="6.4" r="1.6" fill="currentColor" stroke="none"/></svg>',
 };
@@ -2353,6 +2413,9 @@ const EXPLAIN = {
   golf: { name: 'Mini Golf', play: 'Drag back to aim and set power, then let go. Balls can knock each other.', win: 'Sink your ball first.' },
   pool: { name: 'Pool', play: 'Drag back from the white ball to aim and shoot. Sink your own ball to go again.', win: 'Sink both your balls. Sink the black ball and you lose.' },
   bowling: { name: 'Bowling', play: 'Drag back to aim and set power, then let go. Every pin you knock down counts.', win: '25 pins total.' },
+  craps: { name: 'Craps', play: 'Roll. 7 or 11 wins, 2, 3 or 12 loses. Anything else is your point: hit it again before a 7.', win: 'Win 2 rounds.' },
+  takeover: { name: 'Takeover', play: 'Tap an empty square to take it and the squares around it, even your opponent\'s.', win: 'Own the most when the board is full.' },
+  flood: { name: 'Flood', play: 'Pick a colour. The blob grows into it, and every square it grabs is yours.', win: 'Get 18 squares first.' },
 };
 let explainT = null;                          // the mini-game whose explainer is open
 const qBtn = (t, cls) => `<button class="qbtn${cls ? ' ' + cls : ''}" data-act="explain" data-t="${t}" aria-label="How to play ${EXPLAIN[t].name}">${cls === 'sm' ? '<i>?</i>' : '?'}</button>`;   // the small one: a 26px sticker in a 40px tap target
@@ -2580,6 +2643,9 @@ function thumb(mini, final) {
     case 'trivia': return `<div class="tpip">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${Array.from({ length: TRIVIA.goal }, (_, k) => `<i class="${k < mini.right[p] ? 'on' : ''}"></i>`).join('')}</div>`).join('')}</div>`;
     case 'oddone': return `<div class="tpip">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${Array.from({ length: ODD.goal }, (_, k) => `<i class="${k < mini.finds[p] ? 'on' : ''}"></i>`).join('')}</div>`).join('')}</div>`;
     case 'golf': case 'pool': case 'bowling': return physThumb(mini);
+    case 'craps': { const d = mini.last ? mini.last.rolls[mini.last.rolls.length - 1] : null; return `<div class="tpip">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${Array.from({ length: CRAPS.goal }, (_, k) => `<i class="${k < mini.wins[p] ? 'on' : ''}"></i>`).join('')}</div>`).join('')}${d ? `<div class="tcdice ${mini.last.result === 'win' ? 'w' : 'l'}"><span>${dieFace(d[0])}</span><span>${dieFace(d[1])}</span></div>` : ''}</div>`; }
+    case 'takeover': return `<div class="tg gtk">${mini.cells.map(c => `<i class="${c || ''}"></i>`).join('')}</div>`;
+    case 'flood': return `<div class="tg gfl">${mini.colors.map((c, i) => `<i class="${mini.owner[i] === 'X' || mini.owner[i] === 'O' ? 'own ' + mini.owner[i] : ''}" style="background:${FLOOD_COL[c]}"></i>`).join('')}</div>`;
     case 'dash': case 'lane': return `<div class="trun" aria-label="X at ${Math.round(mini.dist.X)} m, O at ${Math.round(mini.dist.O)} m of ${mini.cfg.target}">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><i style="--w:${(100 * Math.min(1, mini.dist[p] / mini.cfg.target)).toFixed(1)}%"></i></div>`).join('')}</div>`;   // both players' progress to the target
     case 'pig': return `<div class="tdice">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><div class="bar"><i style="width:${Math.min(100, mini.bank[p] / RISKY.goal * 100)}%"></i></div><span>${mini.bank[p]}</span></div>`).join('')}</div>`;
     case 'hunt': return `<div class="tg g5x5" style="--hn:${huntSize(mini)}">${mini.dug.map((d, i) => {
@@ -3367,6 +3433,89 @@ function physThumb(mini) {
     ${S.pins.map(([x, y], k) => `<circle cx="${x}" cy="${y}" r="${S.pinR * 1.6}" class="pin${l && l.down[k] ? ' down' : ''}"/>`).join('')}</svg>
     <div class="trun">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><i style="--w:${(100 * Math.min(1, mini.pins[p] / BOWLG.goal)).toFixed(1)}%"></i></div>`).join('')}</div></div>`;
 }
+// Craps: the round is rolled out where the move is made (the server online); the page plays it back roll
+// by roll from the move: each pair of dice tumbles in at its time and gives way to the next; the puck goes
+// on the point after the come-out; the round's result shows at the end.
+const CRAPS_POINTS = [4, 5, 6, 8, 9, 10];
+function crapsSay(r) {
+  if (!r) return '';
+  const s = d => d[0] + d[1], first = s(r.rolls[0]), lastS = s(r.rolls[r.rolls.length - 1]);
+  if (r.point == null) return r.result === 'win' ? `${first} on the come-out: a winner!` : `${first}: craps!`;
+  return r.result === 'win' ? `Point ${r.point} made!` : 'Seven out';
+}
+function crapsTable(mini, a, o) {
+  const c = a && a.craps ? a.craps : null, l = mini.last, turn = o.turn;
+  const shown = c || (l ? { rolls: l.rolls, point: l.point, result: l.result } : null);
+  const tim = c ? crapsTimes(c.rolls, c.point) : null, tEnd = c ? (REDUCED ? 0 : tim.end) : 0;
+  const tal = p => arcTally(p, o, pips(p, Math.min(CRAPS.goal, mini.wins[p]), CRAPS.goal, !!(c && c.result === 'win' && a.by === p), tEnd));
+  // the puck: OFF to begin with; on the point once the come-out sets one
+  const slot = n => (n == null ? 0 : CRAPS_POINTS.indexOf(n) + 1), pct = k => ((k + 0.5) / 7 * 100).toFixed(2);
+  const pk = shown && shown.point != null ? slot(shown.point) : 0;
+  const puckAt = c && c.point != null && !REDUCED ? tim.at[0] + 560 : null;
+  const puck = `<div class="cpuck${pk ? ' on' : ''}${puckAt != null ? ' move' : ''}" style="left:${pct(pk)}%;--from:${pct(0)}%;--to:${pct(pk)}%${puckAt != null ? `;--t:${puckAt}ms` : ''}">${pk ? 'ON' : 'OFF'}</div>`;
+  const strip = `<div class="cpts">${['', ...CRAPS_POINTS].map((n, k) => `<i class="${k === 0 ? 'off' : ''}${shown && shown.point === n ? ' pt' : ''}">${n}</i>`).join('')}${puck}</div>`;
+  // the dice: each roll's pair in its turn (the last one stays)
+  let dice = '';
+  if (shown) {
+    const n = shown.rolls.length;
+    dice = shown.rolls.map((d, k) => {
+      if (!c && k < n - 1) return '';
+      const t0 = c && !REDUCED ? tim.at[k] : null, t1 = c && !REDUCED && k < n - 1 ? tim.at[k + 1] : null;
+      return `<div class="cpair${t0 != null ? ' tumble' : ''}${t1 != null ? ' gone' : ''}" style="${t0 != null ? `--t:${t0}ms;` : ''}${t1 != null ? `--t2:${t1}ms` : ''}" aria-hidden="${k < n - 1}"><span class="die cdie">${dieFace(d[0])}</span><span class="die cdie b">${dieFace(d[1])}</span></div>`;
+    }).join('');
+  }
+  const log = shown ? `<div class="crolls" aria-label="The rolls">${shown.rolls.map((d, k) => `<span ${c && !REDUCED ? lateAt('', tim.at[k] + 500) : ''}>${d[0] + d[1]}</span>`).join('')}</div>` : '<div class="crolls"></div>';
+  const res = c ? `<p ${lateAt('arcres ' + (c.result === 'win' ? 'ok' : 'no'), tEnd)} role="status">${crapsSay(c)}</p>`
+    : l && (o.done || o.view) ? `<p class="arcres ${l.result === 'win' ? 'ok' : 'no'}"><b class="${l.by}">${N(l.by)}</b>: ${crapsSay(l)}</p>`
+    : `<p class="arcnote">${o.view ? '' : `<b class="${turn}">${N(turn)}</b>: roll until the round is won or lost`}</p>`;
+  const btn = o.view ? '' : `<div class="cbtns one"><button class="big ${turn}" data-act="move" ${mv('roll')}${o.locked ? ' disabled' : ''}>Roll</button></div>`;
+  return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="craps">${strip}<div class="cfelt">${dice || '<p class="arcnote">Roll the dice</p>'}</div>${log}${res}</div>${btn}</div>`;
+}
+// Takeover: the 5x5 board; a tap on an empty cell is the move. The cell pops in, then the cells around it
+// turn over to the mover's colour, one after the other.
+function takeTable(mini, a, o) {
+  const tk = a && a.take ? a.take : null, turn = o.turn;
+  const tal = p => arcTally(p, o, `<small>${takeCount(mini.cells, p)} square${takeCount(mini.cells, p) === 1 ? '' : 's'}</small>`);
+  const order = tk ? takeNear(tk.at).filter(k => k !== tk.at) : [];
+  const cells = mini.cells.map((c, i) => {
+    let cls = 'tkc' + (c ? ' ' + c : ''), st = '';
+    if (tk && i === tk.at) cls += ' pop';
+    else if (tk && (tk.took.includes(i) || tk.flipped.includes(i))) {
+      const k = order.indexOf(i), from = tk.flipped.includes(i) ? other(a.by) : null;
+      cls += ' turn' + (from ? ' from' + from : ' fromnone');
+      st = ` style="--t:${TAKEOVER_MS.place + k * 70}ms"`;
+    }
+    return `<button class="${cls}"${st} data-act="move" ${mv(i)} aria-label="Square ${i + 1}${c ? ', ' + c : ''}"${c || o.locked ? ' disabled' : ''}>${c ? `<b>${c}</b>` : ''}</button>`;
+  }).join('');
+  const l = mini.last;
+  const res = tk ? `<p ${lateAt('arcres ok', TAKEOVER_MS.place)} role="status">+${tk.took.length + tk.flipped.length}${tk.flipped.length ? ` · ${tk.flipped.length} turned over` : ''}</p>`
+    : o.view ? `<p class="arcnote">${l ? `${takeCount(mini.cells, 'X')} to ${takeCount(mini.cells, 'O')}` : ''}</p>`
+    : `<p class="arcnote">${o.locked ? `Waiting for <b class="${turn}">${N(turn)}</b>…` : 'Tap an empty square'}</p>`;
+  return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="takeover"><div class="tkgrid">${cells}</div>${res}</div></div>`;
+}
+// Flood: the 6x6 grid in its colours, the blob's cells and the cells each player has grabbed marked in
+// their colour; the colour buttons below (not the blob's own). A move: the blob turns the colour, then the
+// cells it grabs fill in, wave by wave out from it.
+const FLOOD_COL = ['#3d7fe0', '#21b2a6', '#8d5bd8', '#86c440', '#f06aa8'];
+const FLOOD_NAMES = ['blue', 'teal', 'purple', 'green', 'pink'];
+function floodTable(mini, a, o) {
+  const fl = a && a.flood ? a.flood : null, turn = o.turn, blob = mini.colors[0];
+  const tal = p => arcTally(p, o, `<small>${fl && a.by === p && fl.gain ? `<i class="fsc" style="--t:${FLOOD_MS.base}ms">${mini.score[p]}</i>` : mini.score[p]} / ${FLOOD.goal}</small>`);
+  const waveOf = {};
+  if (fl) fl.waves.forEach((w, k) => w.forEach(i => { waveOf[i] = k; }));
+  const cells = mini.colors.map((c, i) => {
+    const own = mini.owner[i], fresh = waveOf[i] != null;
+    let cls = 'flc' + (own === 'X' || own === 'O' ? ' own ' + own : '') + (i === 0 ? ' start' : '');
+    let st = `background:${FLOOD_COL[c]}`;
+    if (fresh) { cls += ' grab'; st += `;--t:${Math.round(FLOOD_MS.base * 0.55 + waveOf[i] * FLOOD_MS.wave)}ms`; }
+    else if (fl && own != null) { cls += ' recolor'; st += `;--c0:${FLOOD_COL[fl.from == null ? c : fl.from]};--c1:${FLOOD_COL[c]};--t:0ms`; }
+    return `<i class="${cls}" style="${st}">${own === 'X' || own === 'O' ? `<b>${own}</b>` : ''}</i>`;
+  }).join('');
+  const btns = o.view ? '' : `<div class="fbtns">${FLOOD_COL.map((col, c) => `<button class="fsw" style="background:${col}" data-act="move" ${mv(c)} aria-label="${FLOOD_NAMES[c]}"${c === blob || o.locked ? ' disabled' : ''}>${c === blob ? '<i>blob</i>' : ''}</button>`).join('')}</div>`;
+  const res = fl ? `<p ${lateAt('arcres ' + (fl.gain ? 'ok' : 'no'), FLOOD_MS.base)} role="status">${fl.gain ? `+${fl.gain}` : 'Nothing grabbed'}</p>`
+    : `<p class="arcnote">${o.view ? '' : o.locked ? `Waiting for <b class="${turn}">${N(turn)}</b>…` : 'Pick a colour for the blob'}</p>`;
+  return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="flood"><div class="flgrid">${cells}</div>${res}</div>${btns}</div>`;
+}
 // Dash and Lane Rush: the run is played here, in real time, on a canvas. The engine's runStep is the
 // physics (the same the tests step), this is the loop, the drawing and the inputs. A run: the Run
 // button, a 3-2-1 count, the grace stretch, then the course until a crash, the finish, or the turn's
@@ -3887,6 +4036,9 @@ function renderMini(sq, review) {
     case 'oddone': g = oddTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d }); break;
     case 'dash': case 'lane': g = runTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d }); break;
     case 'golf': case 'pool': case 'bowling': g = physTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d }); break;
+    case 'craps': g = crapsTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d }); break;
+    case 'takeover': g = takeTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d }); break;
+    case 'flood': g = floodTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d }); break;
     case 'hexapawn': {
       // Tap one of your pawns to see where it can go, then tap a highlighted square. The pawn just moved
       // slides in from where it was; a captured pawn is knocked off the board.
@@ -3977,6 +4129,9 @@ function summary(f) {
     case 'rl': return f.rl ? `${f.rl.n}${f.rl.n === 0 ? ' green' : rlRed(f.rl.n) ? ' red' : ' black'} · ${f.rl.hit ? 'a hit' : 'a miss'}` : `${who} spun`;
     case 'dash': case 'lane': return f.run ? (f.run.done ? `${who} reached ${fmtM(f.run.target)} m!` : `${who} ran ${fmtM(f.run.to - f.run.from)} m — now at ${fmtM(f.run.to)}/${fmtM(f.run.target)}`) : `${who} ran`;
     case 'golf': case 'pool': case 'bowling': return physResult(f, true).text;
+    case 'craps': return f.craps ? `${who} ${f.craps.result === 'win' ? 'won' : 'lost'} the round${f.craps.point != null ? ` (point ${f.craps.point})` : ''}` : `${who} rolled`;
+    case 'takeover': return f.take ? `${who} took ${f.take.took.length + f.take.flipped.length}${f.take.flipped.length ? `, ${f.take.flipped.length} of them turned over` : ''}` : `${who} took a square`;
+    case 'flood': return f.flood ? `${who} went ${FLOOD_NAMES[f.flood.color]} · +${f.flood.gain}` : `${who} picked a colour`;
     case 'bullseye': return f.bull ? `${who} threw: ${f.bull.pts === BULLS.bullPts ? 'a bullseye, +3' : f.bull.pts ? 'on the board, +1' : 'off the board'}` : `${who} threw`;
     case 'echo': return f.echo ? (f.echo.pass ? `${who} beat pattern ${f.echo.level + 1}` : `${who} slipped at step ${f.echo.failAt + 1}`) : `${who} tried`;
     case 'plinko': return f.plinko ? `${who} dropped from slot ${f.plinko.slot + 1} · bin ${f.plinko.bin + 1}${f.plinko.win ? ': WIN' : ''}` : `${who} dropped`;
@@ -4005,7 +4160,7 @@ function renderFlash(f) {
   if (f.type === 'pig' && f.note === 'bust') {
     return `${open}<div class="card"><div class="big-g">${dieFace(f.roll)}</div><h2>Bust!</h2><p>${who} rolled ${f.roll} again · ${f.pot} point${f.pot === 1 ? '' : 's'} lost</p></div></div>`;
   }
-  if ((['bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling'].includes(f.type)) && (f.kind === 'again' || f.kind === 'move')) {   // the table shows it all: the cards, the tick or cross, the number and the hits
+  if ((['bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood'].includes(f.type)) && (f.kind === 'again' || f.kind === 'move')) {   // the table shows it all: the cards, the tick or cross, the number and the hits
     return open.replace('"flash late"', '"flash lite late"') + '</div>';
   }
   if (f.type === 'pig' && (f.note === 'bank' || f.kind === 'again')) {   // a roll or a bank speaks for itself: the +N grows, or moves into the score
@@ -6506,6 +6661,16 @@ function moveSounds(f) {
     case 'trivia': if (f.trivia) add(f.trivia.correct ? 'ding' : 'thud', 250); break;
     case 'oddone': if (f.odd) add(f.odd.correct ? 'ding' : 'thud', 250); break;
     case 'dash': case 'lane': if (f.run) { add(f.run.done ? 'sparkle' : 'thud', 0); add('ding', RUNT.bar); } break;   // the crash (or the finish) as the result shows, the bar landing at its new distance
+    case 'craps': {                                                   // every roll: the rattle, then the dice landing; the puck going on; the round's result
+      if (!f.craps) break;
+      const tm = crapsTimes(f.craps.rolls, f.craps.point);
+      tm.at.forEach((t, k) => { add('rattle', t); add('thunk', t + 500); });
+      if (f.craps.point != null) add('clack', tm.at[0] + 600);
+      add(f.craps.result === 'win' ? 'ding' : 'thud', tm.end);
+      break;
+    }
+    case 'takeover': if (f.take) { add('mark', 0); [...f.take.took, ...f.take.flipped].filter(k => k !== f.take.at).slice(0, 4).forEach((k, n) => add(f.take.flipped.includes(k) ? 'flipUp' : 'pop', TAKEOVER_MS.place + n * 70)); } break;
+    case 'flood': if (f.flood) { add('splash', 0); if (!f.flood.gain) add('thud', FLOOD_MS.base); f.flood.waves.slice(0, 6).forEach((w, k) => add('pop', Math.round(FLOOD_MS.base * 0.55 + k * FLOOD_MS.wave), 1 + k * 0.06)); } break;
     case 'golf': case 'pool': case 'bowling': {                   // the recording's events, as they come round in the replay; then the result
       const ph = f.phys; if (!ph) break;
       const live = ph.rec && !REDUCED, end = live ? ph.ms : 0;
@@ -6525,7 +6690,7 @@ function moveSounds(f) {
     case 'mastermind': { const n = (f.solid || 0) + (f.hollow || 0); for (let k = 0; k < n; k++) add('marker', 450 + k * 250); if (won) add('reveal', 1450); break; }
     case 'bump': { add('spin', 0); const steps = Math.max(1, f.to - f.from); for (let k = 0; k < steps; k++) add('hop', SPIN3_MS + k * HOP_MS); if (f.bumped) add('boing', SPIN3_MS + steps * HOP_MS); break; }
   }
-  const CASINO = ['bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling'];
+  const CASINO = ['bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood'];
   if (won && f.kind !== 'match' && CASINO.includes(f.type)) add('won', total - 600);   // the card games and the wheel: the chime once the result shows
   else if (won && f.kind !== 'match' && f.type !== 'ttt' && f.type !== 'wordle' && f.type !== 'hangman') add('won', Math.round(total * .5));   // the square is won: a chime
   if (f.kind === 'draw') add('reset', 420);                          // the square resets with a new mini-game

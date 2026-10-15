@@ -8,13 +8,13 @@
  * Everything about a match lives in one plain object (see newMatch); the UI
  * only ever calls playMove / endFlash and re-renders from that object.
  */
-const TYPES = ['ttt', 'c4', 'bs', 'wordle', 'hangman', 'hex', 'hilo', 'snakes', 'memory', 'candy', 'bump', 'coins', 'pig', 'hunt', 'mastermind', 'bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling'];
+const TYPES = ['ttt', 'c4', 'bs', 'wordle', 'hangman', 'hex', 'hilo', 'snakes', 'memory', 'candy', 'bump', 'coins', 'pig', 'hunt', 'mastermind', 'bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood'];
 // Release control: every mini-game is Released or Admin only. A game in TEST_TYPES is admin only until the
 // admin's dashboard releases it (releases/{type} true in the database; false puts one back to admin only);
 // everything else is released unless the database says otherwise. Admin-only games exist only for the
 // admin: in their local matches and in friend games they host (their guest plays them in that match
 // only); never in Find Match, nor anywhere for anyone else.
-const TEST_TYPES = ['bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling'];
+const TEST_TYPES = ['bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood'];
 function isReleased(t, releases) { return releases && typeof releases[t] === 'boolean' ? releases[t] : !TEST_TYPES.includes(t); }
 function releasedTypes(releases) { return TYPES.filter(t => isReleased(t, releases)); }
 // The games a setup may deal (admin: every game; anyone else: the released ones), and the setup's
@@ -61,6 +61,9 @@ const INFO = {
   golf:        { name: 'Mini Golf',    hint: 'Drag back to aim and set power. First ball in the cup wins' },
   pool:        { name: 'Pool',         hint: 'Sink your two balls. The black ball loses' },
   bowling:     { name: 'Bowling',      hint: 'Roll at a fresh rack each turn. First to 25 pins' },
+  craps:       { name: 'Craps',        hint: '7 or 11 wins, 2, 3 or 12 loses. Win 2 rounds' },
+  takeover:    { name: 'Takeover',     hint: 'Take a square and the ones around it. Most squares wins' },
+  flood:       { name: 'Flood',        hint: 'Pick a colour. What the blob grabs is yours. First to 18' },
 };
 const C4 = { cols: 7, rows: 6, k: 4 };
 const HP = { cols: 3, rows: 4 };
@@ -971,6 +974,104 @@ function runStep(sim, dt) {
 // The move a run makes: its end (the crash, the finish, or where the time ran out) and its time.
 const runResult = (sim, out) => ({ dist: r2(Math.min(sim.cfg.target, sim.d)), ms: Math.round(sim.t * 1000), out: !!out && !sim.done });
 
+// ---------- Craps, Takeover and Flood ----------
+// Craps: each player has their own count of rounds won; first to 2 takes the square. A move is a whole
+// pass-line round, rolled out at once where the move is made (the server online: the dice are never
+// known before): the come-out roll wins on 7 or 11, loses on 2, 3 or 12, and anything else is the
+// point; then the point again wins and a 7 loses. A loss takes nothing away. The page plays the rolls
+// back one by one (CRAPS.roll ms each, quicker after the fourth), with the puck going on at the point.
+const CRAPS = { goal: 2, roll: 900, quick: 560, quickAfter: 4, puck: 420, hold: 900, winOdds: 244 / 495 };
+function crapsRound(rng) {
+  const rolls = [];
+  let point = null, result = null;
+  while (!result) {
+    const d = [1 + randInt(rng, 6), 1 + randInt(rng, 6)], s = d[0] + d[1];
+    rolls.push(d);
+    if (point == null) {
+      if (s === 7 || s === 11) result = 'win';
+      else if (s === 2 || s === 3 || s === 12) result = 'lose';
+      else point = s;
+    } else if (s === point) result = 'win';
+    else if (s === 7) result = 'lose';
+  }
+  return { rolls, point, result };
+}
+// When each roll of a round lands (ms into the move), and when the round's result shows.
+function crapsTimes(rolls, point) {
+  const at = [];
+  let t = 0;
+  for (let k = 0; k < rolls.length; k++) { at.push(t); t += k < CRAPS.quickAfter ? CRAPS.roll : CRAPS.quick; if (k === 0 && point != null) t += CRAPS.puck; }
+  return { at, end: t };
+}
+// Takeover: a 5x5 board, empty to begin with. A move takes an empty cell and the cells above, below,
+// left and right of it, the other player's included. Once no cell is empty, most cells wins (25: no tie).
+const TAKE = { n: 5 };
+const takeNear = i => { const n = TAKE.n, r = Math.floor(i / n), c = i % n, out = [i]; if (r > 0) out.push(i - n); if (r < n - 1) out.push(i + n); if (c > 0) out.push(i - 1); if (c < n - 1) out.push(i + 1); return out; };
+const takeCount = (cells, p) => cells.filter(c => c === p).length;
+function takeApply(cells, i, p) { const out = cells.slice(); for (const k of takeNear(i)) out[k] = p; return out; }
+// The computer, two moves deep: the cell that leaves it furthest ahead after the other player's best reply.
+function takeSearch(cells, me, rng) {
+  const o = other(me), net = c => takeCount(c, me) - takeCount(c, o);
+  let best = null;
+  for (let i = 0; i < cells.length; i++) {
+    if (cells[i]) continue;
+    const a = takeApply(cells, i, me);
+    let worst = Infinity;
+    if (!a.includes(null)) worst = net(a) > 0 ? 100 + net(a) : -100 + net(a);   // the board full: won or lost
+    else for (let j = 0; j < a.length; j++) { if (a[j]) continue; const b = takeApply(a, j, o); const v = b.includes(null) ? net(b) : net(b) > 0 ? 100 + net(b) : -100 + net(b); if (v < worst) worst = v; }
+    const v = worst + (rng ? rng() * 0.01 : 0);                  // (a hair of chance between equals)
+    if (!best || v > best.v) best = { i, v, after: a };
+  }
+  return best;
+}
+// Flood: a 6x6 grid of five colours. The top-left cell starts the blob, shared by both players and not
+// scored. A move picks a colour other than the blob's: the whole blob takes it, and every cell of that
+// colour joined to the blob is absorbed and scored to the mover (shown in their colour). First to 18 of
+// the 35 cells wins (with 35 there is no tie).
+const FLOOD = { n: 6, colors: 5, goal: 18 };
+const floodNear = i => { const n = FLOOD.n, r = Math.floor(i / n), c = i % n, out = []; if (r > 0) out.push(i - n); if (r < n - 1) out.push(i + n); if (c > 0) out.push(i - 1); if (c < n - 1) out.push(i + 1); return out; };
+// The cells a colour would absorb, in waves out from the blob (each wave one step further): [[...], [...]].
+function floodWaves(colors, owner, c) {
+  const inBlob = owner.map(x => x != null), seen = inBlob.slice(), waves = [];
+  let front = [];
+  owner.forEach((x, i) => { if (x != null) for (const k of floodNear(i)) if (!seen[k] && colors[k] === c) { seen[k] = true; front.push(k); } });
+  while (front.length) {
+    waves.push(front);
+    const next = [];
+    for (const i of front) for (const k of floodNear(i)) if (!seen[k] && colors[k] === c) { seen[k] = true; next.push(k); }
+    front = next;
+  }
+  return waves;
+}
+const floodGain = (pm, c) => floodWaves(pm.colors, pm.owner, c).reduce((s, w) => s + w.length, 0);
+function floodApply(pm, c, p) {
+  const colors = pm.colors.slice(), owner = pm.owner.slice(), score = { X: pm.score.X, O: pm.score.O };
+  const waves = floodWaves(colors, owner, c);
+  owner.forEach((x, i) => { if (x != null) colors[i] = c; });
+  for (const w of waves) for (const i of w) { owner[i] = p; colors[i] = c; score[p] += 1; }
+  return { colors, owner, score, waves };
+}
+// The computer, two moves deep: the colour with the most cells for it less the other player's best answer.
+function floodSearch(pm, me, rng) {
+  const o = other(me), blob = pm.colors[0];
+  let best = null;
+  for (let c = 0; c < FLOOD.colors; c++) {
+    if (c === blob) continue;
+    const a = floodApply(pm, c, me), gain = a.score[me] - pm.score[me];
+    let reply = 0;
+    if (a.score[me] < FLOOD.goal) for (let d = 0; d < FLOOD.colors; d++) { if (d === c) continue; const g = floodGain({ colors: a.colors, owner: a.owner }, d); if (g > reply) reply = g; }
+    const v = (a.score[me] >= FLOOD.goal ? 1000 : 0) + (gain > 0 ? 100 : 0) + gain - 0.6 * reply + (rng ? rng() * 0.01 : 0);   // a colour that grabs nothing only when none grabs anything (else both sides could stall)
+    if (!best || v > best.v) best = { c, v, gain, after: { type: 'flood', colors: a.colors, owner: a.owner, score: a.score }, win: a.score[me] >= FLOOD.goal };
+  }
+  return best;
+}
+// A score race's moves still needed, for the computer's choice of square: from the lead and the moves left,
+// set so that the chance either side takes the square (winChance) is about the logistic of the lead.
+function raceNeeds(lead, remain, scale) {
+  const w = 1 / (1 + Math.exp(-lead / scale));
+  return Math.max(0.3, 2 * Math.max(0.5, remain) * (1 - w));
+}
+
 // ---------- Mini Golf, Pool and Bowling: the physics games (Matter.js, through physics.js) ----------
 // The tables, the shots and the recordings live in physics.js (setPhysics registers it: the page once
 // Matter.js has loaded from cdnjs, the server and the tests from the module). Without it these three
@@ -1152,7 +1253,15 @@ function newMini(type, rng) {
       const L = PHYSICS.lib, st = L ? L.POOL.start : { cue: [50, 140], black: [50, 52], x1: [40, 66], x2: [60, 80], o1: [60, 66], o2: [40, 80] };
       return { type, balls: Object.fromEntries(POOLG.order.map(id => [id, st[id].slice()])), down: {}, pocketed: { X: 0, O: 0 }, last: null };
     }
-    case 'bowling':     return { type, pins: { X: 0, O: 0 }, rolls: { X: 0, O: 0 }, last: null };   // a fresh rack every roll; the totals are what count
+    case 'bowling':     return { type, pins: { X: 0, O: 0 }, rolls: { X: 0, O: 0 }, last: null };
+    case 'craps':       return { type, wins: { X: 0, O: 0 }, rounds: { X: 0, O: 0 }, last: null };
+    case 'takeover':    return { type, cells: new Array(TAKE.n * TAKE.n).fill(null), last: null };
+    case 'flood': {                                           // five colours at random; the start cell's neighbours never its colour (the blob starts as one cell)
+      const r = needRng(rng), N = FLOOD.n * FLOOD.n, colors = Array.from({ length: N }, () => randInt(r, FLOOD.colors));
+      for (const k of floodNear(0)) while (colors[k] === colors[0]) colors[k] = randInt(r, FLOOD.colors);
+      const owner = new Array(N).fill(null); owner[0] = '-';      // '-': the blob's start, nobody's
+      return { type, colors, owner, score: { X: 0, O: 0 }, last: null };
+    }   // a fresh rack every roll; the totals are what count
     case 'dash': case 'lane': return { type, cfg: runConfig(type), seed: { X: randInt(needRng(rng), 1e9), O: randInt(rng, 1e9) }, dist: { X: 0, O: 0 }, runs: { X: 0, O: 0 }, crashes: { X: [], O: [] }, last: null };   // cfg: the difficulty this square was dealt with; seed: each player's course
     case 'oddone': {
       const gx = oddGrid(0, needRng(rng)), go = oddGrid(0, rng);
@@ -1614,6 +1723,32 @@ function applyMove(mini, p, m, rng) {
       const again = own > 0 && !theirs && !scratch;
       return Object.assign({ ok: true, outcome: 'continue', note: again ? 'again' : scratch ? 'scratch' : theirs ? 'theirs' : own ? 'own' : 'shot' }, again ? { again: true } : {});
     }
+    case 'craps': {                                           // a whole pass-line round: rolled until it is won or lost
+      if (m !== 'roll' && m !== 'auto') return { ok: false, reason: 'bad' };
+      const r = crapsRound(needRng(rng));
+      mini.rounds[p] += 1;
+      if (r.result === 'win') mini.wins[p] += 1;
+      mini.last = { by: p, rolls: r.rolls, point: r.point, result: r.result };
+      if (mini.wins[p] >= CRAPS.goal) return { ok: true, outcome: 'win', note: 'won' };
+      return { ok: true, outcome: 'continue', note: r.result === 'win' ? 'won' : 'lost' };
+    }
+    case 'takeover': {                                        // an empty cell, and the cells around it, the other player's too
+      if (!Number.isInteger(m) || m < 0 || m >= mini.cells.length || mini.cells[m]) return { ok: false, reason: 'bad' };
+      const o = other(p), took = [], flipped = [];
+      for (const k of takeNear(m)) { if (mini.cells[k] === o) flipped.push(k); else if (!mini.cells[k]) took.push(k); mini.cells[k] = p; }
+      mini.last = { by: p, at: m, took, flipped };
+      if (mini.cells.includes(null)) return { ok: true, outcome: 'continue', note: flipped.length ? 'flip' : 'take' };
+      const x = takeCount(mini.cells, 'X'), y = takeCount(mini.cells, 'O');
+      return { ok: true, outcome: 'win', note: 'full', winner: x > y ? 'X' : 'O', counts: { X: x, O: y } };
+    }
+    case 'flood': {                                           // a colour other than the blob's: the blob takes it and grows
+      if (!Number.isInteger(m) || m < 0 || m >= FLOOD.colors || m === mini.colors[0]) return { ok: false, reason: 'bad' };
+      const before = mini.colors[0], a = floodApply(mini, m, p);
+      mini.colors = a.colors; mini.owner = a.owner; mini.score = a.score;
+      mini.last = { by: p, color: m, from: before, waves: a.waves, gain: a.waves.reduce((t, w) => t + w.length, 0) };
+      if (mini.score[p] >= FLOOD.goal) return { ok: true, outcome: 'win', note: 'flood' };
+      return { ok: true, outcome: 'continue', note: mini.last.gain ? 'grow' : 'none' };
+    }
     case 'bowling': {                                         // a roll at a fresh rack: the pins down go on the total; 25 takes the square
       const shot = physShot(m);
       if (!shot) return { ok: false, reason: 'bad' };
@@ -1754,6 +1889,9 @@ function publicMini(mini) {
     case 'ttt': case 'c4': case 'hex': case 'hexapawn': return { type: mini.type, cells: mini.cells.slice() };
     case 'golf': case 'pool': case 'bowling': { const c = JSON.parse(JSON.stringify(mini)); if (c.last) delete c.last.rec; return c; }   // (everything is in the open; the recording is not needed to choose)
     case 'dash': case 'lane': return { type: mini.type, cfg: mini.cfg, seed: { X: mini.seed.X, O: mini.seed.O }, dist: { X: mini.dist.X, O: mini.dist.O }, runs: { X: mini.runs.X, O: mini.runs.O } };
+    case 'craps':   return { type: 'craps', wins: { X: mini.wins.X, O: mini.wins.O } };
+    case 'takeover': return { type: 'takeover', cells: mini.cells.slice() };
+    case 'flood':   return { type: 'flood', colors: mini.colors.slice(), owner: mini.owner.slice(), score: { X: mini.score.X, O: mini.score.O } };
     case 'bullseye': return { type: 'bullseye', cfg: Object.assign({}, mini.cfg), pts: { X: mini.pts.X, O: mini.pts.O }, speed: { X: mini.speed.X, O: mini.speed.O }, pos: mini.pos.slice() };
     case 'echo':    return { type: 'echo', level: { X: mini.level.X, O: mini.level.O } };
     case 'plinko':  return { type: 'plinko', win: mini.win };
@@ -1911,6 +2049,9 @@ function needsOf(pm, p) {
     case 'dash': case 'lane': return runNeeds(pm.cfg, pm.dist[p]);
     case 'golf': case 'pool': case 'bowling': return physNeeds(pm, p);
     case 'bullseye': { let n = 0, pts = pm.pts[p], s = pm.speed[p]; while (pts < BULLS.goal && n < 60) { const r = bullsRates(s), e = r.bull * BULLS.bullPts + r.board * BULLS.boardPts; pts += e; s *= 1 + (pm.cfg.ramp - 1) * (r.bull + r.board); n++; } return Math.max(1, n); }   // throws to 5 at its expected points, slipping as it speeds up
+    case 'craps':   return Math.max(1, (CRAPS.goal - pm.wins[p]) / CRAPS.winOdds);
+    case 'takeover': { const e = pm.cells.filter(c => !c).length; return e ? raceNeeds(takeCount(pm.cells, p) - takeCount(pm.cells, other(p)), e / 5, 3) : Infinity; }
+    case 'flood':   return Math.max(0.5, (FLOOD.goal - pm.score[p]) / 3.2);
     case 'echo':    { let n = 0; for (let l = pm.level[p]; l < ECHO.lengths.length; l++) n += 1 / ECHO.aiPass[l]; return Math.max(1, n); }
     case 'plinko':  return 1 / Math.max(...plinkoOdds(pm.win));            // dropped above the WIN bin, every time
     case 'pong':    return Math.max(1, pm.cups[p].filter(Boolean).length / 0.45);
@@ -2207,6 +2348,13 @@ function localBest(pm, me, rng, style, ctx) {
       if (pz && rng() < pz) return { move: 'zero', q: 1 / RL.wheel.length };
       return { move: ['g1', 'g2', 'g3'][randInt(rng, 3)], q: mine >= RL.goal - 1 ? RL.pick / RL.wheel.length : 0 };
     }
+    case 'craps': return { move: 'roll', q: pm.wins[me] >= CRAPS.goal - 1 ? CRAPS.winOdds : 0 };   // no choices: it rolls
+    case 'takeover': {
+      const b = takeSearch(pm.cells, me, rng);
+      const full = !b.after.includes(null);
+      return { move: b.i, after: { type: 'takeover', cells: b.after }, win: full && takeCount(b.after, me) > takeCount(b.after, other(me)) };
+    }
+    case 'flood': { const b = floodSearch(pm, me, rng); return { move: b.c, after: b.after, win: b.win }; }
     case 'ttt': return pickValued(pm, me, tttMinimax(pm.cells, me), (cells, i) => i);
     case 'c4':  return pickValued(pm, me, c4Moves(pm.cells, me), c4Drop);
     case 'hex': return pickValued(pm, me, hexMoves(pm.cells, me), (cells, i) => i);
@@ -2436,6 +2584,9 @@ function randomLegalMove(mini, p, rng) {
     case 'bj': return !mini.hand ? 'deal' : from(mini.hand.cards.length === 2 ? ['hit', 'stand', 'double'] : ['hit', 'stand']);
     case 'bus': return from(BUS.guesses[Math.min(mini.prog[p].length, BUS.rounds - 1)]);
     case 'rl': return from(['g1', 'g2', 'g3']);
+    case 'craps': return 'roll';                                       // the round, rolled to its end
+    case 'takeover': return from(empties(mini.cells, c => !c));
+    case 'flood': return from(Array.from({ length: FLOOD.colors }, (_, c) => c).filter(c => c !== mini.colors[0]));
   }
   return null;
 }
@@ -2551,6 +2702,9 @@ function playMove(state, i, m, rng, opts) {
       break;
     }
     case 'bus': { const l = mini.last; flash.bus = { round: l.round, guess: l.guess, card: l.card, right: l.right, kept: mini.prog[p].slice() }; break; }
+    case 'craps': { const l = mini.last; flash.craps = { rolls: l.rolls.map(d => d.slice()), point: l.point, result: l.result, wins: { X: mini.wins.X, O: mini.wins.O } }; break; }
+    case 'takeover': { const l = mini.last; flash.take = { at: l.at, took: l.took.slice(), flipped: l.flipped.slice(), counts: { X: takeCount(mini.cells, 'X'), O: takeCount(mini.cells, 'O') } }; break; }
+    case 'flood': { const l = mini.last; flash.flood = { color: l.color, from: l.from, waves: l.waves.map(w => w.slice()), gain: l.gain, score: { X: mini.score.X, O: mini.score.O } }; break; }
     case 'rl': { const l = mini.last; flash.rl = { bet: Array.isArray(l.bet) ? l.bet.slice() : l.bet, n: l.n, hit: l.hit, hits: { X: mini.hits.X, O: mini.hits.O } }; break; }
     case 'golf': case 'pool': case 'bowling': { const l = mini.last; flash.phys = Object.assign(JSON.parse(JSON.stringify(l)), mini.type === 'golf' ? { balls: JSON.parse(JSON.stringify(mini.balls)), hole: mini.hole, holedNow: JSON.parse(JSON.stringify(mini.holed)) } : mini.type === 'pool' ? { pocketedNow: { X: mini.pocketed.X, O: mini.pocketed.O }, down: Object.assign({}, mini.down) } : { pins: { X: mini.pins.X, O: mini.pins.O } }); break; }
     case 'dash': case 'lane': { const l = mini.last; flash.run = { from: l.from, to: l.to, ms: l.ms, out: l.out, done: l.done, dist: { X: mini.dist.X, O: mini.dist.O }, runs: { X: mini.runs.X, O: mini.runs.O }, target: mini.cfg.target }; break; }
@@ -2805,6 +2959,9 @@ function playMs(f, winLen) {
     case 'bj':      return bjMs(f.bj) + (won ? 600 : 0);
     case 'bus':     return BUST.pre + BUST.draw + BUST.flip + BUST.mark + (f.bus && f.bus.right ? BUST.fly : 0) + (won ? 600 : 0);
     case 'rl':      return RLT.spin + RLT.settle + RLT.hold + (won ? 600 : 0);
+    case 'craps':   return (f.craps ? crapsTimes(f.craps.rolls, f.craps.point).end : CRAPS.roll) + CRAPS.hold + (won ? 600 : 0);
+    case 'takeover': return TAKEOVER_MS.place + TAKEOVER_MS.flip + (won ? 900 : 0);
+    case 'flood':   return FLOOD_MS.base + (f.flood ? f.flood.waves.length : 0) * FLOOD_MS.wave + (won ? 600 : 0);
     case 'dash': case 'lane': return RUNT.bar + RUNT.hold + (won ? 600 : 0);
     case 'golf':    return (f.phys ? f.phys.ms : 3000) + GOLF.hold + (won ? 600 : 0);
     case 'pool':    return (f.phys ? f.phys.ms : 3000) + POOLG.hold + (won ? 600 : 0);
@@ -2820,7 +2977,11 @@ function playMs(f, winLen) {
 }
 // Bullseye: the dart flies in and lands where the lines crossed, then the points hold a moment.
 // Echo: the attempt's result shows (the pattern itself plays before the move, when the square opens).
-const BULLT = { fly: 380, hold: 800, slide: 450 };   // slide: the board gliding to its next spot, as the next throw is lined up
+const BULLT = { fly: 380, hold: 800, slide: 450 };
+// Takeover: the cell pops in, then its neighbours turn over; Flood: the blob changes colour, then the cells
+// it grabs fill in wave by wave out from it.
+const TAKEOVER_MS = { place: 280, flip: 520 };
+const FLOOD_MS = { base: 650, wave: 120 };   // slide: the board gliding to its next spot, as the next throw is lined up
 ECHO.result = 650;
 // Blackjack: each card dealt slides in and turns over; at the end of a hand the hole card turns, the dealer
 // draws card by card, and the result shows. Ride the Bus: the guess shows (the chosen answer lights up,
@@ -2915,4 +3076,4 @@ function matchStats(st) {
 }
 
 // Node (the Cloud Functions and the tests): the same names as a module.
-if (typeof module !== "undefined" && module.exports) module.exports = { PHYS_TYPES, PHYSICS, setPhysics, physicsReady, GOLF, POOLG, BOWLG, poolMine, physShot, wrapAim, aimTo, poolSpot, physRun, golfClear, golfNext, golfAhead, golfLeft, physLast, physScore, physCandidates, physAi, physRandom, physNeeds, RUN_TYPES, RUN_DEFAULTS, RUN_LIMITS, RUN, RUNT, RUN_CFG, r2, runNorm, setRunConfig, runConfig, runSpeed, runSecs, runAfter, runGrace, DASH_OBS, DASH, LANE, weightedPick, laneRow, runCourse, runCheck, runAuto, gaussOf, normCdf, runAiMean, runAi, runNeeds, runLog, runStart, runJump, runRelease, runLane, runLaneX, overlap, runHit, runStep, runResult, TEST_TYPES, isReleased, releasedTypes, allowedTypes, restrictGames, dealable, BULLS, BULLT, BULL_DEFAULTS, BULL_LIMITS, BULL_CFG, bullsNorm, setBullsConfig, bullsConfig, bullsSpot, bullsScore, bullsRates, r3, ECHO, PLINKO, PONG, TRIVIA, ODD, bullsPeriod, echoSeqs, plinkoPath, plinkoOdds, pongThrow, pongAimAt, pongDist, setTriviaBank, triviaReady, triviaDeal, triviaUsed, oddGrid, cpuEcho, CARD, BJ, BUS, RL, BJT, BUST, RLT, BUS_AVG, cardDeck, isCard, cardRank, cardRed, cardName, bjValue, bjTotal, bjNatural, bjDealerPlay, bjOutcome, bjStrategy, bjPlan, bjMs, busRight, busDeck, busOdds, rlRed, rlBet, rlCovers, tttOpen, lineOpen, majorityResult, STYLE0, huntSize, huntBand, huntClue, normTimer, resignLocal, TYPES, OLD_TYPES, SNL, BUMP, snlRow, snlBoard, snlValid, snlExpected, coinPick, markCoins, coinMarksFor, normLocal, seatLocal, INFO, C4, HP, MM, HEX_N, HILO, CANDY, NAME_MAX, COINS, RISKY, BS, HUNT, DICE_GOAL, MEMORY, LINES, WORDS5, WORDS_HANG, VALID5, other, makeRng, needRng, randInt, randomType, shuffle, memoryDeck, wordleMarks, hexNeighbors, hexPath, canMove, hpMoves, mmFeedback, mmValid, MM_ALL, mmAll, mmCode, mmCandidates, mmBestGuess, hpGoalRow, upgradeMini, anyMove, huntDist, candyTrack, newMini, pickType, newSquare, CPU_NAME, defaultSetup, cpuSide, normSetup, syncNames, enabledGames, TIMER_OPTIONS, newTimer, playerName, newState, startMatch, newMatch, findRun, applyMove, AI, publicMini, wordleCandidates, hangmanCandidates, bsCandidates, bsPlacements, bsShip, huntCandidates, WINDOWS, windowsOf, lineNeeds, c4Playable, hexDist, candyExpected, COIN_NEEDS, needsOf, memoryPair, winChance, tttMinimax, c4Drop, c4Eval, C4_ORDER, c4Search, C4_DEPTH, c4Moves, HP_MEMO, hpSolve, hpMovesValued, hpNeeds, hexMoves, threatScore, pickValued, localBest, squareValue, moveGain, cpuMove, VALID5_LIST, randomLegalMove, timeoutMove, mainResult, playMove, endFlash, leaveSquare, RECENT_MAX, MATCH_FIELDS, secretOf, hideMini, matchRecord, fullState, settle, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, newOnlineMatch, PLAY, diceSlot, playMs, replayMs, armClock, applyOnlineResign, matchStats };
+if (typeof module !== "undefined" && module.exports) module.exports = { PHYS_TYPES, PHYSICS, setPhysics, physicsReady, GOLF, POOLG, BOWLG, poolMine, physShot, wrapAim, aimTo, poolSpot, physRun, golfClear, golfNext, golfAhead, golfLeft, physLast, physScore, physCandidates, physAi, physRandom, physNeeds, RUN_TYPES, RUN_DEFAULTS, RUN_LIMITS, RUN, RUNT, RUN_CFG, r2, runNorm, setRunConfig, runConfig, runSpeed, runSecs, runAfter, runGrace, DASH_OBS, DASH, LANE, weightedPick, laneRow, runCourse, runCheck, runAuto, gaussOf, normCdf, runAiMean, runAi, runNeeds, runLog, runStart, runJump, runRelease, runLane, runLaneX, overlap, runHit, runStep, runResult, TEST_TYPES, isReleased, releasedTypes, allowedTypes, restrictGames, dealable, CRAPS, crapsRound, crapsTimes, TAKE, takeNear, takeCount, takeApply, takeSearch, FLOOD, floodNear, floodWaves, floodGain, floodApply, floodSearch, raceNeeds, TAKEOVER_MS, FLOOD_MS, BULLS, BULLT, BULL_DEFAULTS, BULL_LIMITS, BULL_CFG, bullsNorm, setBullsConfig, bullsConfig, bullsSpot, bullsScore, bullsRates, r3, ECHO, PLINKO, PONG, TRIVIA, ODD, bullsPeriod, echoSeqs, plinkoPath, plinkoOdds, pongThrow, pongAimAt, pongDist, setTriviaBank, triviaReady, triviaDeal, triviaUsed, oddGrid, cpuEcho, CARD, BJ, BUS, RL, BJT, BUST, RLT, BUS_AVG, cardDeck, isCard, cardRank, cardRed, cardName, bjValue, bjTotal, bjNatural, bjDealerPlay, bjOutcome, bjStrategy, bjPlan, bjMs, busRight, busDeck, busOdds, rlRed, rlBet, rlCovers, tttOpen, lineOpen, majorityResult, STYLE0, huntSize, huntBand, huntClue, normTimer, resignLocal, TYPES, OLD_TYPES, SNL, BUMP, snlRow, snlBoard, snlValid, snlExpected, coinPick, markCoins, coinMarksFor, normLocal, seatLocal, INFO, C4, HP, MM, HEX_N, HILO, CANDY, NAME_MAX, COINS, RISKY, BS, HUNT, DICE_GOAL, MEMORY, LINES, WORDS5, WORDS_HANG, VALID5, other, makeRng, needRng, randInt, randomType, shuffle, memoryDeck, wordleMarks, hexNeighbors, hexPath, canMove, hpMoves, mmFeedback, mmValid, MM_ALL, mmAll, mmCode, mmCandidates, mmBestGuess, hpGoalRow, upgradeMini, anyMove, huntDist, candyTrack, newMini, pickType, newSquare, CPU_NAME, defaultSetup, cpuSide, normSetup, syncNames, enabledGames, TIMER_OPTIONS, newTimer, playerName, newState, startMatch, newMatch, findRun, applyMove, AI, publicMini, wordleCandidates, hangmanCandidates, bsCandidates, bsPlacements, bsShip, huntCandidates, WINDOWS, windowsOf, lineNeeds, c4Playable, hexDist, candyExpected, COIN_NEEDS, needsOf, memoryPair, winChance, tttMinimax, c4Drop, c4Eval, C4_ORDER, c4Search, C4_DEPTH, c4Moves, HP_MEMO, hpSolve, hpMovesValued, hpNeeds, hexMoves, threatScore, pickValued, localBest, squareValue, moveGain, cpuMove, VALID5_LIST, randomLegalMove, timeoutMove, mainResult, playMove, endFlash, leaveSquare, RECENT_MAX, MATCH_FIELDS, secretOf, hideMini, matchRecord, fullState, settle, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, newOnlineMatch, PLAY, diceSlot, playMs, replayMs, armClock, applyOnlineResign, matchStats };
