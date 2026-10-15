@@ -96,7 +96,7 @@ a button returns to the results with "Rematch" (the same settings and opponent a
   mini-games, each opening its card.
 - Pages only ever scroll up and down: sideways scrolling is locked across the app.
 
-Each square is assigned one of these 15 at random when the match starts, all equally likely (duplicates
+Each square is assigned one of these 18 at random when the match starts, all equally likely (duplicates
 are fine; there are no weights). A square that resets draws again from the same list:
 
 | Mini-game | How to win |
@@ -116,6 +116,9 @@ are fine; there are no weights). A square that resets draws again from the same 
 | Risky Rolls | Each player has a banked score. A move is a whole push-your-luck turn: roll a die, and a number not yet rolled this turn joins the points at risk (a small +N by your score, with this turn's dice in a row); then roll again or bank. Banking moves them into your score and ends the move; a repeated number busts, losing them (at most six rolls). Once your score and the points at risk reach 21, only Bank is left. First to a banked 21 wins. A bust turns red only once the die has landed; after a winning bank the die keeps the last number rolled |
 | Treasure hunt | 6×6 grid with one hidden treasure. A move digs a cell: the treasure wins; otherwise the cell shows how warm it is, never the distance itself, counted in steps up, down, left or right: Hot (1 step), Warm (2–3), Cool (4–5) or Cold (6+), each with its own colour and label (a legend sits under the grid). Everything dug stays visible. A 5×5 square from a match started before keeps its size and answers in the same bands |
 | Mastermind | One hidden code shared by both players: 4 pegs from 6 colours, no colour twice, picked by the computer. A move is one guess of 4 different colours (tap a slot, then a colour; tap a filled slot to clear it). Feedback is a solid marker for each right colour in the right spot and a hollow marker for each right colour in the wrong spot, always solid first, so the order says nothing about which peg is which. Every guess and its markers stay on show, no guess limit; guessing the exact code wins. Each colour also carries a symbol (circle, square, triangle, diamond, star, plus). The hidden code sits in a compact row of small, peg-sized slots, so the guess history gets the room |
+| Blackjack | Each player plays their own hands against the dealer and has their own win tally (shown for both, as pips). A move is one whole hand, under one turn clock: **Deal** gives the player two cards face up and the dealer one face up and one face down, every hand from a freshly shuffled 52-card deck; then **Hit**, **Stand** or **Double** (on the first two cards only: exactly one more card, then the hand stands, and a win counts double). Aces count 1 or 11, face cards 10; reaching 21 stands by itself. The dealer then turns the hole card over, hits on 16 or less and stands on every 17 (soft ones too). Beating the dealer without going over 21, or the dealer busting, adds 1 to the tally (2 for a won double); a natural blackjack (21 on the first two cards) adds 1 at once, unless the dealer has one too (a push). A push, a loss or a bust adds nothing, and the tally never goes down; a dealer blackjack beats any other 21. First to 3 takes the square |
+| Ride the Bus | Each player has their own four rounds and their own deck, and both players' progress shows: (1) red or black, (2) higher or lower than card 1, (3) inside or outside cards 1 and 2, (4) the exact suit, one guess. The ace is high (2 lowest); a tie is wrong (an equal value in round 2, a value equal to either card in round 3). A right guess keeps the card and goes straight on to the next round in the same turn; a wrong one discards the card and ends the turn, with the cards already kept still kept, and next time the player tries the round they failed again with a newly drawn card. Every card comes from a freshly shuffled deck without the player's kept cards. Passing round 4 takes the square |
+| Roulette | A small wheel of 25 pockets: 1 to 24 (odd red, even black, alternating round the wheel) and a green 0. A move is one spin with one bet: any 8 numbers, a group (1–8, 9–16 or 17–24), or green 0 on its own. The ball landing on a number or group bet on is a hit, and two hits take the square; green 0 coming up on a bet on 0 takes it at once (0 on any other bet is a miss). Each player's hits show, and the last number |
 
 No longer dealt, but still played to the end in a match started before they were taken out, and kept
 under their own names in that match's history and the stats:
@@ -129,7 +132,8 @@ A reset in such a match deals only the games still in the list above, and a save
 Hexapawn ticked opens with every game ticked.
 
 Hidden information (the Wordle and Hangman words, the Higher/lower number, the Memory cards, the
-Battleship ship, the Mastermind code) is never shown on the board or in a mini-game before it is revealed.
+Battleship ship, the Mastermind code, the Blackjack dealer's hole card and the rest of the deck) is never
+shown on the board or in a mini-game before it is revealed.
 
 ## Playing online
 
@@ -195,7 +199,9 @@ nothing stops when one of them is backgrounded, reloaded or switched off for a w
 - Hidden values (the Wordle and Hangman words, the Higher/lower number, the Memory cards, the
   Battleship cell, the treasure, the Mastermind code) are generated when the match starts and kept in a separate node of
   the room, `match/secrets`; the state the phones render never contains them before they are
-  revealed.
+  revealed. A Blackjack hand's hole card and deck are dealt when the hand starts and kept there the
+  same way until the dealer plays (Ride the Bus cards and the Roulette ball are drawn and spun as the
+  move is made, so there is nothing to keep).
 - The record keeps the last few moves, so a phone that was away plays back what it missed. Presence
   is tracked with `onDisconnect` and the page's visibility: "[name] is away" shows while the other
   player is out of the app or offline.
@@ -216,7 +222,8 @@ seconds, and keeps running while the in-game menu is open or while a player is a
 When the clock runs out, a random legal move is made for that player and shown on both screens with
 "[name] ran out of time — random move": a random open square, then a random legal action in it (Risky Rolls:
 one roll, then a bank if it did not bust; Hangman: one random letter, and the turn ends even if it
-hits; Wordle: a random dictionary word). The turn then passes. Timeouts are counted per player, and
+hits; Wordle: a random dictionary word; Blackjack: stand, dealt first if no hand is in play; Ride the
+Bus: one random guess, and the turn ends even if it is right; Roulette: a random group). The turn then passes. Timeouts are counted per player, and
 a player's second timeout in a row loses the match at once: the win screen reads "[name] wins —
 [other] timed out twice".
 
@@ -470,7 +477,12 @@ answer leaves the fewest, which cracks any code in at most 5 guesses; Hangman ta
 the words still consistent with the pattern; Memory remembers every card shown and flips a known
 pair, else unseen cards; Coin flip reads its exact chances from the marked coins (and the small
 chance of handing the square over when none of its own are left); Snakes and Ladders works out the
-expected rolls to the top with the ladders and snakes in; Bump and the races count the moves left; Risky Rolls keeps rolling while the bust risk
+expected rolls to the top with the ladders and snakes in; Bump and the races count the moves left;
+Blackjack plays standard basic strategy for hit, stand and double (a dealer who stands on soft 17, no
+splits), and with a tally of 1, where a won double takes the square, doubles in the closer spots too;
+Ride the Bus picks the guess most likely right given its kept cards and the cards left in its deck;
+Roulette bets a group, now and then green 0 instead: when the opponent is one hit from a square that
+matters (one that would win them the match or block a line of its own), or when well behind; Risky Rolls keeps rolling while the bust risk
 is acceptable and banks around 8 to 10, bolder when behind and safer when ahead, always when the bank
 would reach 21. In an older match, a Hexapawn square still gets full minimax (the only win is the
 far row; a position where neither side can move resets the square), weighed on the board by how close

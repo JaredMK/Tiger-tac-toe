@@ -1082,8 +1082,9 @@ test('setup: the app opens on the main menu with default names and every game ti
   assert.equal(st.screen, 'menu', 'the main menu comes first');
   assert.deepEqual(st.setup.names, { X: 'X', O: 'O' });
   assert.deepEqual(L.enabledGames(st.setup), L.TYPES);
-  assert.equal(L.TYPES.length, 15);
-  assert.ok(st.setup.games.coins && st.setup.games.pig && st.setup.games.hunt && st.setup.games.snakes && st.setup.games.bump, 'the newest games are on by default');
+  assert.equal(L.TYPES.length, 18);
+  assert.ok(st.setup.games.coins && st.setup.games.pig && st.setup.games.hunt && st.setup.games.snakes && st.setup.games.bump, 'the newer games are on by default');
+  assert.ok(st.setup.games.bj && st.setup.games.bus && st.setup.games.rl, 'and the card games and the wheel too');
   assert.ok(!L.TYPES.includes('dice'), 'Snakes and Ladders took the Dice race\'s place');
   assert.ok(!L.TYPES.includes('hexapawn') && !('hexapawn' in st.setup.games), 'Hexapawn is out of the pool and the Advanced list');
   assert.deepEqual(L.OLD_TYPES, ['dice', 'hexapawn'], 'no longer dealt, still played in older matches');
@@ -1417,6 +1418,16 @@ function randomMove(m, rng, p) {
       return rng() < 0.5 ? 'roll' : 'bank';
     }
     case 'hunt': return pickFrom(empties(m.dug, c => !c));
+    case 'bj': return !m.hand ? 'deal' : pickFrom(m.hand.cards.length === 2 ? ['hit', 'stand', 'double'] : ['hit', 'stand']);
+    case 'bus': return pickFrom(L.BUS.guesses[m.prog[p].length]);
+    case 'rl': {
+      const r = rng();
+      if (r < 0.1) return 'zero';
+      if (r < 0.55) return pickFrom(['g1', 'g2', 'g3']);
+      const nums = [];
+      while (nums.length < 8) { const n = 1 + Math.floor(rng() * 24); if (!nums.includes(n)) nums.push(n); }
+      return nums;
+    }
   }
   throw new Error('no move for ' + m.type);
 }

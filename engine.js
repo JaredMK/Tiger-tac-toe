@@ -8,7 +8,7 @@
  * Everything about a match lives in one plain object (see newMatch); the UI
  * only ever calls playMove / endFlash and re-renders from that object.
  */
-const TYPES = ['ttt', 'c4', 'bs', 'wordle', 'hangman', 'hex', 'hilo', 'snakes', 'memory', 'candy', 'bump', 'coins', 'pig', 'hunt', 'mastermind'];
+const TYPES = ['ttt', 'c4', 'bs', 'wordle', 'hangman', 'hex', 'hilo', 'snakes', 'memory', 'candy', 'bump', 'coins', 'pig', 'hunt', 'mastermind', 'bj', 'bus', 'rl'];
 // No longer dealt, still played to the end in older matches and shown in their history: the Dice race
 // (Snakes and Ladders replaced it) and Hexapawn (taken out: with nobody obliged to move in a square,
 // the best play was often not to move at all).
@@ -31,6 +31,9 @@ const INFO = {
   hunt:        { name: 'Treasure Hunt', hint: 'Dig a cell: hot, warm, cool or cold. Dig up the treasure to win' },
   hexapawn:    { name: 'Hexapawn',     hint: 'Step forward, capture diagonally. Reach the far row to win' },
   mastermind:  { name: 'Mastermind',   hint: 'Crack the hidden 4-colour code' },
+  bj:          { name: 'Blackjack',    hint: 'Beat the dealer without going over 21. First to 3 wins' },
+  bus:         { name: 'Ride the Bus', hint: 'Colour, higher or lower, inside or outside, then the suit' },
+  rl:          { name: 'Roulette',     hint: 'Bet 8 numbers, a group or green 0. Two hits wins' },
 };
 const C4 = { cols: 7, rows: 6, k: 4 };
 const HP = { cols: 3, rows: 4 };
@@ -306,6 +309,118 @@ function hpMoves(cells, p) {
   }
   return out;
 }
+// ---------- playing cards (Blackjack and Ride the Bus) ----------
+// A card is two characters: the rank (2-9, T for 10, J, Q, K, A) and the suit (S spades, H hearts,
+// D diamonds, C clubs). Hearts and diamonds are red.
+const CARD = { ranks: '23456789TJQKA', suits: 'SHDC', names: { S: 'spades', H: 'hearts', D: 'diamonds', C: 'clubs' } };
+function cardDeck() { const d = []; for (const s of CARD.suits) for (const r of CARD.ranks) d.push(r + s); return d; }
+function isCard(c) { return typeof c === 'string' && c.length === 2 && CARD.ranks.includes(c[0]) && CARD.suits.includes(c[1]); }
+function cardRank(c) { return CARD.ranks.indexOf(c[0]) + 2; }          // 2 lowest ... 14 the ace (Ride the Bus: ace high)
+function cardRed(c) { return c[1] === 'H' || c[1] === 'D'; }
+function cardName(c) { const r = c[0]; return `${{ T: '10', J: 'Jack', Q: 'Queen', K: 'King', A: 'Ace' }[r] || r} of ${CARD.names[c[1]]}`; }
+
+// Blackjack: each player plays their own hands against the dealer; a win adds 1 to their tally (2 for a
+// won double, 1 for a natural blackjack), and the first to 3 takes the square. Every hand is dealt from
+// a freshly shuffled 52-card deck; the dealer's hole card and the deck stay hidden (online, with the
+// server) until the dealer plays. The dealer hits on 16 or less and stands on every 17, soft ones too.
+const BJ = { goal: 3, dealerStand: 17 };
+function bjValue(c) { return c[0] === 'A' ? 1 : 'TJQK'.includes(c[0]) ? 10 : Number(c[0]); }
+// A hand's best total: aces count 11 where that does not go over 21 (soft), otherwise 1.
+function bjTotal(cards) {
+  let t = 0, aces = 0;
+  for (const c of cards) { t += bjValue(c); if (c[0] === 'A') aces++; }
+  const soft = aces > 0 && t + 10 <= 21;
+  return { total: soft ? t + 10 : t, soft };
+}
+const bjNatural = cards => cards.length === 2 && bjTotal(cards).total === 21;
+// The dealer turns the hole card over and draws to 17 or more.
+function bjDealerPlay(dealer, deck) {
+  const out = dealer.slice();
+  while (bjTotal(out).total < BJ.dealerStand && deck.length) out.push(deck.pop());
+  return out;
+}
+// How a finished hand ends: 'bj' (a natural), 'win', 'push', 'lose' or 'bust', and what it adds to the tally.
+function bjOutcome(player, dealer, doubled, natural) {
+  const p = bjTotal(player).total, d = bjTotal(dealer).total, dn = bjNatural(dealer);
+  if (natural) return dn ? { res: 'push', gain: 0 } : { res: 'bj', gain: 1 };
+  if (p > 21) return { res: 'bust', gain: 0 };
+  if (dn) return { res: 'lose', gain: 0, dealerBj: true };          // a dealer blackjack beats any other 21
+  if (d > 21 || p > d) return { res: 'win', gain: doubled ? 2 : 1 };
+  return p === d ? { res: 'push', gain: 0 } : { res: 'lose', gain: 0 };
+}
+// Basic strategy for a hand of `cards` against the dealer's up card, for a dealer who stands on soft 17,
+// with no splitting and doubling on any first two cards: 'hit', 'stand' or 'double'. `eager` (the tally
+// is 1, so a won double takes the square) doubles in the closer spots too.
+function bjStrategy(cards, up, eager) {
+  const { total, soft } = bjTotal(cards), u = bjValue(up) === 1 ? 11 : bjValue(up), two = cards.length === 2;
+  const dbl = (ok, otherwise) => (ok && two ? 'double' : otherwise);
+  if (soft) {
+    if (total >= 20) return 'stand';
+    if (total === 19) return eager && u >= 4 && u <= 6 ? dbl(true, 'stand') : 'stand';
+    if (total === 18) return u >= 3 && u <= 6 ? dbl(true, 'stand') : u <= 8 ? 'stand' : 'hit';
+    if (total === 17) return dbl(u >= 3 && u <= 6, 'hit');
+    if (total >= 15) return dbl(u >= (eager ? 3 : 4) && u <= 6, 'hit');
+    return dbl(u >= (eager ? 4 : 5) && u <= 6, 'hit');
+  }
+  if (total >= 17) return 'stand';
+  if (total >= 13) return u <= 6 ? 'stand' : 'hit';
+  if (total === 12) return u >= 4 && u <= 6 ? 'stand' : 'hit';
+  if (total === 11) return dbl(true, 'hit');
+  if (total === 10) return dbl(u <= (eager ? 10 : 9), 'hit');
+  if (total === 9) return dbl(u >= (eager ? 2 : 3) && u <= (eager ? 7 : 6), 'hit');
+  if (total === 8) return dbl(eager && u >= 4 && u <= 6, 'hit');
+  return 'hit';
+}
+
+// Ride the Bus: four rounds, each player on their own, each with their own deck. Round 1 red or black,
+// round 2 higher or lower than card 1, round 3 inside or outside cards 1 and 2, round 4 the suit. A right
+// guess keeps the card and goes straight on to the next round in the same turn; a wrong one discards it
+// and ends the turn, with the cards already kept still kept. Every card is drawn from a freshly shuffled
+// deck without the player's kept cards. The ace is high; a tie is wrong (an equal value in round 2, a
+// value equal to either card in round 3). Passing round 4 takes the square.
+const BUS = { rounds: 4, guesses: [['red', 'black'], ['higher', 'lower'], ['inside', 'outside'], ['S', 'H', 'D', 'C']] };
+function busRight(kept, guess, card) {
+  const r = cardRank(card);
+  switch (kept.length) {
+    case 0: return (guess === 'red') === cardRed(card);
+    case 1: { const a = cardRank(kept[0]); return guess === 'higher' ? r > a : r < a; }
+    case 2: {
+      const a = cardRank(kept[0]), b = cardRank(kept[1]), lo = Math.min(a, b), hi = Math.max(a, b);
+      return guess === 'inside' ? r > lo && r < hi : r < lo || r > hi;
+    }
+    default: return card[1] === guess;
+  }
+}
+// The cards still in a player's deck (everything but what they have kept).
+function busDeck(kept) { return cardDeck().filter(c => !kept.includes(c)); }
+// The chance each guess for the next round is right, from the cards left in the deck.
+function busOdds(kept) {
+  const deck = busDeck(kept), r = Math.min(kept.length, BUS.rounds - 1);
+  return BUS.guesses[r].map(g => ({ guess: g, p: deck.filter(c => busRight(kept, g, c)).length / deck.length }));
+}
+
+// Roulette: a small wheel of 25 pockets, 1 to 24 (odd red, even black, alternating round the wheel) and a
+// green 0. A spin carries one bet: 8 numbers, one of the groups 1-8, 9-16 or 17-24, or green 0 on its own.
+// A number or group that comes up is a hit, and two hits take the square; green 0 coming up on a bet on 0
+// takes it at once. (0 on any other bet is a miss.)
+const RL = {
+  n: 24, pick: 8, goal: 2,
+  wheel: [0, 17, 4, 21, 10, 13, 6, 19, 2, 23, 8, 15, 12, 1, 20, 5, 14, 9, 22, 3, 16, 11, 24, 7, 18],   // the pockets in order round the wheel
+  groups: { g1: [1, 8], g2: [9, 16], g3: [17, 24] },
+};
+const rlRed = n => n > 0 && n % 2 === 1;
+// A bet as sent: 'zero', 'g1', 'g2', 'g3', or an array of 8 different numbers from 1 to 24. Returns the
+// bet in a standard form (numbers sorted) or null.
+function rlBet(m) {
+  if (m === 'zero' || RL.groups[m]) return m;
+  if (!Array.isArray(m) || m.length !== RL.pick || !m.every(k => Number.isInteger(k) && k >= 1 && k <= RL.n) || new Set(m).size !== RL.pick) return null;
+  return m.slice().sort((a, b) => a - b);
+}
+function rlCovers(bet, n) {
+  if (bet === 'zero') return n === 0;
+  if (RL.groups[bet]) return n >= RL.groups[bet][0] && n <= RL.groups[bet][1];
+  return bet.includes(n);
+}
 // Mastermind: one hidden code shared by both players, 4 pegs from 6 colours, no colour twice (in the
 // code or in a guess). Feedback: a solid marker per peg right in colour and place, a hollow one per peg
 // right in colour but in the wrong place. Everything guessed stays on show; the exact code wins.
@@ -488,6 +603,9 @@ function newMini(type, rng) {
     case 'hunt':        return { type, treasure: randInt(rng, HUNT.n * HUNT.n), dug: new Array(HUNT.n * HUNT.n).fill(null), last: null };
     case 'hexapawn':    return { type, cells: ['O', 'O', 'O', null, null, null, null, null, null, 'X', 'X', 'X'], last: null };
     case 'mastermind':  return { type, code: mmCode(rng), guesses: [] };
+    case 'bj':          return { type, wins: { X: 0, O: 0 }, hand: null, hole: null, deck: null, last: null };   // hand: the hand being played; hole and deck: hidden
+    case 'bus':         return { type, prog: { X: [], O: [] }, last: null };   // prog: each player's kept cards, one per round passed
+    case 'rl':          return { type, hits: { X: 0, O: 0 }, spins: [], last: null };
   }
   throw new Error('unknown mini-game: ' + type);
 }
@@ -839,6 +957,65 @@ function applyMove(mini, p, m, rng) {
       if (f.solid === MM.pegs) return { ok: true, outcome: 'win', cells: [0, 1, 2, 3] };
       return { ok: true, outcome: 'continue', note: 'guess' };
     }
+    case 'bj': {
+      // One move is a whole hand: Deal (or Stand, which deals and stands at once: a timed-out turn), then
+      // Hit (again), Stand or Double. Only the hand's own player can act in it until it is over.
+      if (!['deal', 'hit', 'stand', 'double'].includes(m)) return { ok: false, reason: 'bad' };
+      let h = mini.hand;
+      if (h && h.by !== p) return { ok: false, reason: 'busy' };
+      if (m === 'deal' && h) return { ok: false, reason: 'dealt' };
+      if ((m === 'hit' || m === 'double') && !h) return { ok: false, reason: 'nohand' };
+      if (m === 'double' && h.cards.length !== 2) return { ok: false, reason: 'double' };
+      const finish = (natural) => {
+        const hole = mini.hole, deck = mini.deck || [], hand = mini.hand;
+        const bust = bjTotal(hand.cards).total > 21;
+        const dealer = natural || bust ? [hand.up, hole] : bjDealerPlay([hand.up, hole], deck);
+        const o = bjOutcome(hand.cards, dealer, hand.doubled, natural);
+        mini.wins[p] += o.gain;
+        mini.last = { by: p, cards: hand.cards.slice(), dealer, doubled: !!hand.doubled, res: o.res, gain: o.gain, dealerBj: !!o.dealerBj, natural: !!natural };
+        mini.hand = null; mini.hole = null; mini.deck = null;
+        if (mini.wins[p] >= BJ.goal) return { ok: true, outcome: 'win', note: o.res };
+        return { ok: true, outcome: 'continue', note: o.res };
+      };
+      if (!h) {                                          // the deal: player, dealer up, player, dealer face down
+        const deck = shuffle(cardDeck(), needRng(rng));
+        const c1 = deck.pop(), up = deck.pop(), c2 = deck.pop(), hole = deck.pop();
+        h = mini.hand = { by: p, cards: [c1, c2], up, doubled: false };
+        mini.hole = hole; mini.deck = deck;
+        if (bjNatural(h.cards)) return finish(true);      // a natural: settled at once (a push if the dealer has one too)
+        if (m === 'deal') return { ok: true, outcome: 'continue', note: 'deal', again: true };
+      }
+      if (m === 'hit' || m === 'double') {
+        h.cards.push(mini.deck.pop());
+        if (m === 'double') h.doubled = true;
+        const t = bjTotal(h.cards).total;
+        if (m === 'hit' && t < 21) return { ok: true, outcome: 'continue', note: 'hit', again: true };
+      }
+      return finish(false);                              // stand, a double's one card, 21, or a bust
+    }
+    case 'bus': {
+      const kept = mini.prog[p], r = kept.length;
+      if (r >= BUS.rounds || !BUS.guesses[r].includes(m)) return { ok: false, reason: 'bad' };
+      const deck = busDeck(kept), card = deck[randInt(needRng(rng), deck.length)];
+      const right = busRight(kept, m, card);
+      mini.last = { by: p, round: r, guess: m, card, right };
+      if (!right) return { ok: true, outcome: 'continue', note: 'wrong' };   // the card is discarded; the turn ends
+      kept.push(card);
+      if (kept.length >= BUS.rounds) return { ok: true, outcome: 'win', note: 'right' };
+      return { ok: true, outcome: 'continue', note: 'right', again: true };
+    }
+    case 'rl': {
+      const bet = rlBet(m);
+      if (!bet) return { ok: false, reason: 'bad' };
+      const n = RL.wheel[randInt(needRng(rng), RL.wheel.length)];
+      const hit = rlCovers(bet, n);
+      if (hit && bet !== 'zero') mini.hits[p] += 1;
+      mini.last = { by: p, bet, n, hit };
+      mini.spins = (mini.spins || []).concat(n).slice(-6);
+      if (hit && bet === 'zero') return { ok: true, outcome: 'win', note: 'zero' };
+      if (hit && mini.hits[p] >= RL.goal) return { ok: true, outcome: 'win', note: 'hit' };
+      return { ok: true, outcome: 'continue', note: hit ? 'hit' : 'miss' };
+    }
     case 'hexapawn': {
       if (!Array.isArray(m) || m.length !== 2 || !m.every(k => Number.isInteger(k) && k >= 0 && k < HP.cols * HP.rows)) return { ok: false, reason: 'bad' };
       const [from, to] = m;
@@ -889,6 +1066,9 @@ function publicMini(mini) {
     case 'bump':    return { type: 'bump', pos: { X: mini.pos.X, O: mini.pos.O } };
     case 'pig':     return { type: 'pig', bank: { X: mini.bank.X, O: mini.bank.O }, turn: mini.turn ? { by: mini.turn.by, rolls: mini.turn.rolls.slice(), pot: mini.turn.pot } : null };
     case 'hunt':    return { type: 'hunt', dug: mini.dug.slice(), clues: mini.dug.map((d, i) => (d ? huntClue(mini, i) : null)) };   // bands only, never the distance
+    case 'bj':      return { type: 'bj', wins: { X: mini.wins.X, O: mini.wins.O }, hand: mini.hand ? { by: mini.hand.by, cards: mini.hand.cards.slice(), up: mini.hand.up, doubled: !!mini.hand.doubled } : null };   // never the hole card or the deck
+    case 'bus':     return { type: 'bus', prog: { X: mini.prog.X.slice(), O: mini.prog.O.slice() } };
+    case 'rl':      return { type: 'rl', hits: { X: mini.hits.X, O: mini.hits.O } };
   }
   throw new Error('unknown mini-game: ' + mini.type);
 }
@@ -1028,9 +1208,18 @@ function needsOf(pm, p) {
     case 'hunt':    { const n = huntCandidates(pm).length; return n <= 1 ? 1 : 1 + Math.log2(n) / 2.5; }
     case 'hexapawn': return hpNeeds(pm.cells, p);
     case 'mastermind': { const n = mmCandidates(pm).length; return n <= 1 ? 1 : Math.min((n + 1) / 2, 1 + Math.log(n) / Math.log(5)); }
+    case 'bj':      return Math.max(1, (BJ.goal - pm.wins[p]) / 0.45);      // about 0.45 a hand, doubles and naturals included
+    case 'bus': {                                                            // turns: one, plus one for every miss on the way
+      const kept = pm.prog[p];
+      let n = 1;
+      for (let r = kept.length; r < BUS.rounds; r++) { const q = r === kept.length ? Math.max(...busOdds(kept).map(o => o.p)) : BUS_AVG[r]; n += (1 - q) / q; }
+      return n;
+    }
+    case 'rl':      return Math.max(1, (RL.goal - pm.hits[p]) * RL.wheel.length / RL.pick);
   }
   return Infinity;
 }
+const BUS_AVG = [0.5, 0.72, 0.6, 0.26];   // Ride the Bus: the usual chance of the best guess in each round
 function memoryPair(pm, known) {
   for (let x = 0; x < known.length; x++) for (let y = x + 1; y < known.length; y++) {
     const a = pm.cards[known[x]], b = pm.cards[known[y]];
@@ -1227,8 +1416,31 @@ function pickValued(pm, me, moves, place) {
   }
   return best;
 }
-function localBest(pm, me, rng, style) {
+function localBest(pm, me, rng, style, ctx) {
   switch (pm.type) {
+    case 'bj': {
+      // Deal, then basic strategy; with a tally of 1 a won double takes the square, so it doubles more readily.
+      const h = pm.hand && pm.hand.by === me ? pm.hand : null, need = BJ.goal - pm.wins[me];
+      if (!h) return { move: 'deal', q: need <= 1 ? 0.43 : need === 2 ? 0.05 : 0 };
+      return { move: bjStrategy(h.cards, h.up, need === 2), q: 0 };
+    }
+    case 'bus': {
+      // The guess most likely right, from the cards left in its own deck (a tie: either).
+      const kept = pm.prog[me], odds = busOdds(kept), top = Math.max(...odds.map(o => o.p));
+      const best = odds.filter(o => o.p >= top - 1e-9), g = best[randInt(rng, best.length)];
+      let q = g.p;
+      for (let r = kept.length + 1; r < BUS.rounds; r++) q *= BUS_AVG[r];   // right all the way to the end, this turn
+      return { move: g.guess, q };
+    }
+    case 'rl': {
+      // A group, as a rule; now and then green 0: when the other side is one hit from a square that
+      // matters (it would give them the match, or block a line of its own), or when well behind.
+      const o = other(me), mine = pm.hits[me], theirs = pm.hits[o];
+      const crit = !!ctx && ctx.value >= AI.block, behind = !!ctx && ctx.behind >= 2 && theirs > mine;
+      const pz = theirs >= RL.goal - 1 && crit ? 0.4 : behind ? 0.25 : 0;
+      if (pz && rng() < pz) return { move: 'zero', q: 1 / RL.wheel.length };
+      return { move: ['g1', 'g2', 'g3'][randInt(rng, 3)], q: mine >= RL.goal - 1 ? RL.pick / RL.wheel.length : 0 };
+    }
     case 'ttt': return pickValued(pm, me, tttMinimax(pm.cells, me), (cells, i) => i);
     case 'c4':  return pickValued(pm, me, c4Moves(pm.cells, me), c4Drop);
     case 'hex': return pickValued(pm, me, hexMoves(pm.cells, me), (cells, i) => i);
@@ -1402,10 +1614,12 @@ function cpuMove(state, rng, style) {
     if (m != null) return { square: i, move: m, score: 0, value: 0, gain: 0, careless: true };
   }
   let best = null;
+  const owned = p => state.squares.filter(s => s.owner === p).length, behind = owned(other(me)) - owned(me);
   for (const i of open) {
     const pm = publicMini(state.squares[i].mini);
-    const local = localBest(pm, me, rng, st);
-    const value = state.lock != null ? 1 : squareValue(state.squares, i, me, st);
+    const real = squareValue(state.squares, i, me, st);
+    const local = localBest(pm, me, rng, st, { value: real, behind });
+    const value = state.lock != null ? 1 : real;
     if (value >= AI.win && (local.win || local.q >= 1)) return { square: i, move: local.move, score: Infinity, value, gain: 1 };
     const gain = moveGain(pm, me, local);
     const score = value * Math.max(gain, 0.01);
@@ -1436,12 +1650,16 @@ function randomLegalMove(mini, p, rng) {
     case 'bump': return 'spin';
     case 'coins': return 'flip';
     case 'pig': return mini.turn && mini.turn.by === p && mini.turn.pot ? 'bank' : 'roll';
+    case 'bj': return !mini.hand ? 'deal' : from(mini.hand.cards.length === 2 ? ['hit', 'stand', 'double'] : ['hit', 'stand']);
+    case 'bus': return from(BUS.guesses[Math.min(mini.prog[p].length, BUS.rounds - 1)]);
+    case 'rl': return from(['g1', 'g2', 'g3']);
   }
   return null;
 }
 // The player to move ran out of time. A second timeout in a row loses the match; otherwise a random
 // legal move is made for them (Risky Rolls: one roll, then a bank if it did not bust; Hangman: one letter and
-// the turn ends even if it hits; Wordle: a random word from the dictionary).
+// the turn ends even if it hits; Wordle: a random word from the dictionary; Blackjack: stand, dealing first
+// if no hand is in play; Ride the Bus: one random guess, and the turn ends; Roulette: a random group).
 function timeoutMove(state, rng) {
   rng = needRng(rng);
   const p = state.turn, t = state.timer;
@@ -1455,8 +1673,8 @@ function timeoutMove(state, rng) {
   }
   const open = state.lock != null ? [state.lock] : state.squares.map((sq, i) => (sq.owner || !canMove(sq.mini, p) ? -1 : i)).filter(i => i >= 0);
   const i = open[randInt(rng, open.length)], mini = state.squares[i].mini;
-  const m = mini.type === 'pig' ? (mini.turn && mini.turn.by === p ? 'bank' : 'roll') : randomLegalMove(mini, p, rng);
-  const r = playMove(state, i, m, rng, { forced: true, noAgain: mini.type === 'hangman' || mini.type === 'bs' });   // a timed-out shot fires once
+  const m = mini.type === 'pig' ? (mini.turn && mini.turn.by === p ? 'bank' : 'roll') : mini.type === 'bj' ? 'stand' : randomLegalMove(mini, p, rng);   // Blackjack: stand (dealt first if need be); Roulette: a random group
+  const r = playMove(state, i, m, rng, { forced: true, noAgain: mini.type === 'hangman' || mini.type === 'bs' || mini.type === 'bus' });   // a timed-out shot fires once; a timed-out guess ends the turn
   if (!r.ok) return r;
   t.bankNext = mini.type === 'pig' && m === 'roll' && state.lock === i;   // the roll kept the turn: bank it next
   return { ok: true, square: i, move: m };
@@ -1507,6 +1725,7 @@ function playMove(state, i, m, rng, opts) {
   if (sq.owner) return { ok: false, reason: 'claimed' };
   const p = state.turn;
   const range = sq.mini.type === 'hilo' ? [sq.mini.lo, sq.mini.hi] : null;   // the range before the guess, for the UI
+  const bjFrom = sq.mini.type === 'bj' && sq.mini.hand ? sq.mini.hand.cards.length : 0;   // Blackjack: the player's cards before (0: this move deals)
   const bonus = state.lock === i;                               // a bonus move within the same turn (Hangman, Risky Rolls)
   const res = applyMove(sq.mini, p, m, rng);
   if (!res.ok) return res;
@@ -1536,6 +1755,14 @@ function playMove(state, i, m, rng, opts) {
     case 'hunt': flash.band = huntClue(mini, m); break;
     case 'hexapawn': flash.from = mini.last.from; flash.to = mini.last.to; flash.capture = mini.last.capture; break;
     case 'mastermind': { const g = mini.guesses[mini.guesses.length - 1]; flash.code = g.code.slice(); flash.solid = g.solid; flash.hollow = g.hollow; break; }
+    case 'bj': {                                 // what the table shows after the move: never the hole card while the hand goes on
+      const h = mini.hand, l = mini.last, wins = { X: mini.wins.X, O: mini.wins.O };
+      flash.bj = h ? { act: m, from: bjFrom, cards: h.cards.slice(), dealer: [h.up], hole: true, doubled: !!h.doubled, wins }
+        : { act: m, from: bjFrom, cards: l.cards.slice(), dealer: l.dealer.slice(), hole: false, doubled: l.doubled, res: l.res, gain: l.gain, natural: l.natural, dealerBj: l.dealerBj, wins };
+      break;
+    }
+    case 'bus': { const l = mini.last; flash.bus = { round: l.round, guess: l.guess, card: l.card, right: l.right, kept: mini.prog[p].slice() }; break; }
+    case 'rl': { const l = mini.last; flash.rl = { bet: Array.isArray(l.bet) ? l.bet.slice() : l.bet, n: l.n, hit: l.hit, hits: { X: mini.hits.X, O: mini.hits.O } }; break; }
   }
   if (outcome === 'win') {
     const w = res.winner || p;                   // a mini-game may hand the square to the other player
@@ -1625,6 +1852,7 @@ function secretOf(mini) {
     case 'hunt': return { treasure: mini.treasure };
     case 'memory': return { cards: mini.cards.map(c => ({ s: c.s, c: c.c })) };
     case 'mastermind': return { code: mini.code.slice() };
+    case 'bj': return mini.hand && mini.hole ? { hole: mini.hole, deck: (mini.deck || []).slice() } : null;   // only while a hand is being played
   }
   return null;
 }
@@ -1634,6 +1862,7 @@ function hideMini(m, k, st) {
   switch (m.type) {
     case 'wordle': delete m.word; break;
     case 'mastermind': delete m.code; break;
+    case 'bj': delete m.hole; delete m.deck; break;
     case 'hangman': { const hits = new Set(m.letters.filter(x => x.hit).map(x => x.l)); m.word = m.word.split('').map(ch => (hits.has(ch) ? ch : '_')).join(''); break; }
     case 'hilo': delete m.target; break;
     case 'bs': delete m.ship; break;
@@ -1770,8 +1999,23 @@ function playMs(f, winLen) {
     case 'hunt':    return won ? 1400 : 800;
     case 'hexapawn': return (f.capture ? 1000 : 500) + (won ? 600 : 0);
     case 'mastermind': return 450 + MM.pegs * 250 + (won ? 900 : 0);
+    case 'bj':      return bjMs(f.bj) + (won ? 600 : 0);
+    case 'bus':     return BUST.draw + BUST.flip + BUST.settle + (won ? 600 : 0);
+    case 'rl':      return RLT.spin + RLT.settle + (won ? 600 : 0);
   }
   return 500;
+}
+// Blackjack: each card dealt slides in and turns over; at the end of a hand the hole card turns, the dealer
+// draws card by card, and the result shows. Ride the Bus: the card slides off the deck, turns, and goes to
+// its slot (or away). Roulette: the wheel spins and the ball settles in its pocket.
+const BJT = { card: 260, flip: 300, reveal: 520, draw: 520, result: 500 };
+const BUST = { draw: 380, flip: 380, settle: 520 };
+const RLT = { spin: 2700, settle: 450 };
+function bjMs(b) {
+  if (!b) return 800;
+  let ms = b.from ? (b.cards.length - b.from) * (BJT.card + BJT.flip) : 4 * BJT.card + BJT.flip;   // the deal: four cards, then the faces turn
+  if (b.res) ms += BJT.reveal + Math.max(0, b.dealer.length - 2) * BJT.draw + BJT.result;
+  return ms;
 }
 // The whole playback of settled moves on the other phone: the glow, the move, its result.
 function replayMs(entries) {
@@ -1821,4 +2065,4 @@ function matchStats(st) {
 }
 
 // Node (the Cloud Functions and the tests): the same names as a module.
-if (typeof module !== "undefined" && module.exports) module.exports = { tttOpen, lineOpen, majorityResult, STYLE0, huntSize, huntBand, huntClue, normTimer, resignLocal, TYPES, OLD_TYPES, SNL, BUMP, snlRow, snlBoard, snlValid, snlExpected, coinPick, markCoins, coinMarksFor, normLocal, seatLocal, INFO, C4, HP, MM, HEX_N, HILO, CANDY, NAME_MAX, COINS, RISKY, BS, HUNT, DICE_GOAL, MEMORY, LINES, WORDS5, WORDS_HANG, VALID5, other, makeRng, needRng, randInt, randomType, shuffle, memoryDeck, wordleMarks, hexNeighbors, hexPath, canMove, hpMoves, mmFeedback, mmValid, MM_ALL, mmAll, mmCode, mmCandidates, mmBestGuess, hpGoalRow, upgradeMini, anyMove, huntDist, candyTrack, newMini, pickType, newSquare, CPU_NAME, defaultSetup, cpuSide, normSetup, syncNames, enabledGames, TIMER_OPTIONS, newTimer, playerName, newState, startMatch, newMatch, findRun, applyMove, AI, publicMini, wordleCandidates, hangmanCandidates, bsCandidates, bsPlacements, bsShip, huntCandidates, WINDOWS, windowsOf, lineNeeds, c4Playable, hexDist, candyExpected, COIN_NEEDS, needsOf, memoryPair, winChance, tttMinimax, c4Drop, c4Eval, C4_ORDER, c4Search, C4_DEPTH, c4Moves, HP_MEMO, hpSolve, hpMovesValued, hpNeeds, hexMoves, threatScore, pickValued, localBest, squareValue, moveGain, cpuMove, VALID5_LIST, randomLegalMove, timeoutMove, mainResult, playMove, endFlash, leaveSquare, RECENT_MAX, MATCH_FIELDS, secretOf, hideMini, matchRecord, fullState, settle, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, newOnlineMatch, PLAY, diceSlot, playMs, replayMs, armClock, applyOnlineResign, matchStats };
+if (typeof module !== "undefined" && module.exports) module.exports = { CARD, BJ, BUS, RL, BJT, BUST, RLT, BUS_AVG, cardDeck, isCard, cardRank, cardRed, cardName, bjValue, bjTotal, bjNatural, bjDealerPlay, bjOutcome, bjStrategy, bjMs, busRight, busDeck, busOdds, rlRed, rlBet, rlCovers, tttOpen, lineOpen, majorityResult, STYLE0, huntSize, huntBand, huntClue, normTimer, resignLocal, TYPES, OLD_TYPES, SNL, BUMP, snlRow, snlBoard, snlValid, snlExpected, coinPick, markCoins, coinMarksFor, normLocal, seatLocal, INFO, C4, HP, MM, HEX_N, HILO, CANDY, NAME_MAX, COINS, RISKY, BS, HUNT, DICE_GOAL, MEMORY, LINES, WORDS5, WORDS_HANG, VALID5, other, makeRng, needRng, randInt, randomType, shuffle, memoryDeck, wordleMarks, hexNeighbors, hexPath, canMove, hpMoves, mmFeedback, mmValid, MM_ALL, mmAll, mmCode, mmCandidates, mmBestGuess, hpGoalRow, upgradeMini, anyMove, huntDist, candyTrack, newMini, pickType, newSquare, CPU_NAME, defaultSetup, cpuSide, normSetup, syncNames, enabledGames, TIMER_OPTIONS, newTimer, playerName, newState, startMatch, newMatch, findRun, applyMove, AI, publicMini, wordleCandidates, hangmanCandidates, bsCandidates, bsPlacements, bsShip, huntCandidates, WINDOWS, windowsOf, lineNeeds, c4Playable, hexDist, candyExpected, COIN_NEEDS, needsOf, memoryPair, winChance, tttMinimax, c4Drop, c4Eval, C4_ORDER, c4Search, C4_DEPTH, c4Moves, HP_MEMO, hpSolve, hpMovesValued, hpNeeds, hexMoves, threatScore, pickValued, localBest, squareValue, moveGain, cpuMove, VALID5_LIST, randomLegalMove, timeoutMove, mainResult, playMove, endFlash, leaveSquare, RECENT_MAX, MATCH_FIELDS, secretOf, hideMini, matchRecord, fullState, settle, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, newOnlineMatch, PLAY, diceSlot, playMs, replayMs, armClock, applyOnlineResign, matchStats };

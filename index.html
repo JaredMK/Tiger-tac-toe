@@ -1420,6 +1420,163 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
   .rchg { font-size: 16px; } .rchg b { font-size: 20px; }
 }
 .link.opp { display: inline; height: auto; min-height: 44px; padding: 0 8px; font-size: 17px; text-decoration: underline; }
+/* ---------- the card games and the wheel: Blackjack, Ride the Bus, Roulette ---------- */
+/* Playing cards: cream paper, an ink outline, the rank in the corner and a big suit. A card slides in from
+   the shoe (.slide, at --d) and turns face up (.flip, at --f): two animations, on the card and on its inner
+   face, each from its own moment in the move. Face down: the back, sky-blue stripes. */
+.pcard { --cw: 52px; position: relative; display: inline-block; flex: none; width: var(--cw); height: calc(var(--cw) * 1.4); perspective: 500px; vertical-align: middle; }
+.pcin { position: absolute; inset: 0; transform-style: preserve-3d; }
+.pcard.down .pcin { transform: rotateY(180deg); }
+.pcf { position: absolute; inset: 0; border-radius: calc(var(--cw) * .14); border: 2.5px solid var(--ink); box-shadow: 0 3px 0 var(--ink); backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.pcf.fc { background: var(--paper); color: var(--ink); }
+.pcard.red .pcf.fc { color: #d6301e; }
+.pcf.rev { transform: rotateY(180deg); background: repeating-linear-gradient(45deg, var(--sky) 0 calc(var(--cw) * .09), #8cc7e3 calc(var(--cw) * .09) calc(var(--cw) * .18)); box-shadow: 0 3px 0 var(--ink), inset 0 0 0 calc(var(--cw) * .06) var(--paper); }
+.pcf .rk { position: absolute; left: 7%; top: 4%; font: 400 calc(var(--cw) * .42)/1 'Luckiest Guy', sans-serif; letter-spacing: -.03em; }
+.pcf .suit { position: absolute; fill: currentColor; }
+.pcf .suit.sm { left: 8%; top: 38%; width: 26%; }
+.pcf .suit.lg { right: 7%; bottom: 7%; width: 52%; }
+.pcard.ghost { opacity: .25; }
+.pcard.slide { animation: pcslide .26s var(--d, 0ms) cubic-bezier(.25, .8, .35, 1) both; }
+.pcard.flip .pcin { animation: pcflip .3s var(--f, 0ms) ease-in-out both; }
+@keyframes pcslide { from { opacity: 0; transform: translate(var(--sx, 110px), var(--sy, -90px)) rotate(-16deg); } 35% { opacity: 1; } to { opacity: 1; transform: none; } }
+@keyframes pcflip { from { transform: rotateY(180deg); } to { transform: rotateY(0); } }
+.suit.inl { display: inline-block; width: .95em; height: .95em; vertical-align: -.1em; fill: currentColor; margin-left: 1px; }
+.cshort { font-weight: 800; white-space: nowrap; }
+.cshort.red { color: #d6301e; }
+.appear { animation: appearin .3s var(--t, 0ms) ease-out both; }
+@keyframes appearin { from { opacity: 0; transform: scale(.6); } 60% { opacity: 1; transform: scale(1.12); } to { opacity: 1; transform: none; } }
+
+/* the two players' tallies (Blackjack wins, Roulette hits): pips, filled for each one won */
+.ctals { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; flex: none; }
+.ctals.col { grid-template-columns: 1fr; align-content: center; }
+.ctal { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--paper); border: 3px solid var(--ink); border-radius: 14px 10px 16px 9px; padding: 5px 10px 3px; min-width: 0; }
+.ctal > b { font-weight: 800; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.ctal.now { box-shadow: 0 0 0 3px var(--o); }
+.ctal.X.now { box-shadow: 0 0 0 3px var(--x); }
+.ctal .pips { display: flex; gap: 4px; flex: none; }
+.ctal .pips i { width: 15px; height: 15px; border-radius: 50%; border: 2.5px solid var(--ink); background: var(--paper); }
+.ctal.X .pips i.on { background: var(--x); }
+.ctal.O .pips i.on { background: var(--o); }
+.ctal .pips i.fillin { animation: pipfill .4s var(--t, 0ms) cubic-bezier(.3, 1.6, .5, 1) both; }
+@keyframes pipfill { from { background: var(--paper); transform: none; } 1% { transform: scale(.6); } to { transform: none; } }
+.cbtns { display: grid; gap: 8px; flex: none; }
+.cbtns.one { grid-template-columns: 1fr; }
+.cbtns.two { grid-template-columns: 1fr 1fr; }
+.cbtns.three { grid-template-columns: 1fr 1fr 1fr; }
+.cbtns.four { grid-template-columns: repeat(4, 1fr); }
+.cbtns .big { min-width: 0; padding: 4px 6px 0; }
+.big.dbl { background: var(--sky); color: var(--ink); }
+
+/* Blackjack: the felt, with the dealer above and the hand in play below */
+.g-bj { width: min(var(--gw), 440px); height: var(--gh); display: flex; flex-direction: column; gap: 10px; padding-top: 4px; }
+.felt { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: space-around; gap: 6px; padding: 10px 12px; background: radial-gradient(ellipse at 50% 40%, #3f8a4b, #2c6a37); border: 3.5px solid var(--ink); border-radius: 22px 16px 24px 14px; box-shadow: 0 5px 0 var(--ink), inset 0 0 0 4px rgba(255, 248, 232, .15); }
+.bjrow { display: flex; flex-direction: column; align-items: center; gap: 6px; --cw: clamp(40px, calc(var(--gh) / 7), 74px); }
+.bjrow .pcard { --cw: inherit; }
+.bjrow.dealer { --sx: 90px; --sy: -40px; }
+.bjrow.player { --sx: 90px; --sy: -160px; }
+.bjlab { color: var(--paper); font-weight: 800; font-size: 14px; display: flex; gap: 8px; align-items: baseline; text-shadow: 0 1px 0 rgba(0, 0, 0, .35); }
+.bjlab b.X, .bjlab b.O { background: var(--paper); border-radius: 8px; padding: 0 6px; text-shadow: none; }
+.bjtot { background: var(--ink); color: var(--paper); border-radius: 999px; padding: 1px 9px 0; font-size: 13px; text-shadow: none; }
+.bjtot:empty { display: none; }
+.bjcards { display: flex; align-items: center; min-height: calc(var(--cw) * 1.4 + 3px); }
+.bjcards .pcard + .pcard { margin-left: calc(var(--cw) * -.28); }
+.bjres { align-self: center; display: flex; align-items: center; gap: 8px; min-height: 34px; padding: 3px 14px 1px; border: 3px solid var(--ink); border-radius: 999px; background: var(--paper); font: 400 17px 'Luckiest Guy', sans-serif; text-align: center; }
+.bjres .pc { width: 26px; height: 26px; }
+.bjres.none { font: 700 14px 'Patrick Hand', sans-serif; background: rgba(255, 248, 232, .85); border-color: transparent; }
+.bjres.bj, .bjres.win { background: var(--o); }
+.bjres.bust, .bjres.lose { background: #f1c8bf; }
+
+/* Ride the Bus: each player's four slots, the deck and the card drawn, the question */
+.g-bus { width: min(var(--gw), 440px); height: var(--gh); display: flex; flex-direction: column; gap: 10px; padding-top: 4px; }
+.busrows { display: flex; flex-direction: column; gap: 6px; flex: none; }
+.busrow { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; background: var(--paper); border: 3px solid var(--ink); border-radius: 14px 10px 16px 9px; padding: 5px 8px; --cw: clamp(30px, calc(var(--gh) / 14), 40px); }
+.busrow.now { box-shadow: 0 0 0 3px var(--o); }
+.busrow.X.now { box-shadow: 0 0 0 3px var(--x); }
+.busnm { display: flex; flex-direction: column; min-width: 0; }
+.busnm b { align-self: flex-start; max-width: 100%; font-weight: 800; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.busnm small { color: var(--muted); font-size: 12px; font-weight: 700; }
+.busslots { display: flex; gap: 5px; }
+.busslot { width: var(--cw); height: calc(var(--cw) * 1.4); border-radius: calc(var(--cw) * .14); border: 2.5px dashed rgba(22, 18, 16, .3); display: grid; place-items: center; color: var(--muted); }
+.busslot svg { width: 64%; height: 64%; }
+.busslot.next { border: 2.5px solid var(--ink); background: #fff3c4; color: var(--ink); }
+.busslot.got { border: 0; }
+.busslot .pcard { --cw: inherit; }
+.busslot .pcard.arrive { animation: arrive .35s var(--t, 0ms) cubic-bezier(.3, 1.6, .5, 1) both; }
+@keyframes arrive { from { opacity: 0; transform: translateY(20px) scale(.5); } to { opacity: 1; transform: none; } }
+.busstage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; gap: 22px; --cw: clamp(48px, calc(var(--gh) / 6.4), 74px); }
+.busstage .pcard { --cw: inherit; }
+.busdeck { position: relative; width: var(--cw); height: calc(var(--cw) * 1.4); }
+.busdeck .pcard { position: absolute; left: 0; top: 0; }
+.busdeck .pcard + .pcard { left: 4px; top: -4px; }
+.busdrawn { position: relative; width: var(--cw); height: calc(var(--cw) * 1.4); --sx: calc(-1 * var(--cw) - 26px); --sy: 0px; }
+.busdrawn .pcard.busno { filter: saturate(.6); }
+.busdrawn .pcard.busno.slide { animation: pcslide .26s var(--d, 0ms) cubic-bezier(.25, .8, .35, 1) both, cardshake .4s var(--t, 0ms) both; }
+@keyframes cardshake { 0%, 100% { translate: 0; } 20% { translate: -7px; } 40% { translate: 6px; } 60% { translate: -4px; } 80% { translate: 3px; } }
+.busmark { position: absolute; right: -14px; top: -14px; width: 34px; height: 34px; border-radius: 50%; border: 3px solid var(--ink); display: grid; place-items: center; color: #fff; }
+.busmark svg { width: 20px; height: 20px; }
+.busmark.ok { background: var(--green); }
+.busmark.no { background: var(--x); }
+.busnote { margin: 0; text-align: center; font-size: 14px; font-weight: 700; color: var(--muted); flex: none; }
+.busnote b { color: var(--ink); }
+.busask { display: flex; flex-direction: column; gap: 8px; flex: none; }
+.busask p { margin: 0; text-align: center; font-size: 16px; font-weight: 800; }
+.big.bus-red { background: #d6301e; color: var(--paper); }
+.big.bus-black { background: var(--ink); color: var(--paper); }
+.big.bus-up, .big.bus-in { background: var(--sky); color: var(--ink); }
+.big.bus-down, .big.bus-out { background: var(--o); color: var(--ink); }
+.big[class*="bus-suit"] svg { width: 30px; height: 30px; fill: var(--ink); }
+.big[class*="bus-suit"].red svg { fill: #d6301e; }
+
+/* Roulette: the wheel (25 pockets), the hits, the betting board */
+.g-rl { width: min(var(--gw), 440px); height: var(--gh); display: flex; flex-direction: column; gap: 8px; padding-top: 4px; }
+.rltop { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; }
+/* the wheel: as big as the room left by the board below it allows, never wider than about two thirds of the width */
+.rlwrap { width: clamp(96px, min(calc(var(--gh) - 248px), calc(var(--gw) * .62)), 270px); aspect-ratio: 200 / 208; }
+.rlwheel { width: 100%; height: 100%; overflow: visible; }
+.rlwheel .rim { fill: #7a4a2a; stroke: var(--ink); stroke-width: 3; }
+.rlwheel path.r { fill: #d6301e; } .rlwheel path.b { fill: var(--ink); } .rlwheel path.g { fill: #2f8a3c; }
+.rlwheel path.r, .rlwheel path.b, .rlwheel path.g { stroke: #e9d7b0; stroke-width: 1; }
+.rlwheel text { fill: #fff; font: 400 11px 'Luckiest Guy', sans-serif; text-anchor: middle; dominant-baseline: central; }
+.rlwheel .hub { fill: #a8703f; stroke: var(--ink); stroke-width: 2.5; }
+.rlwheel .spoke { stroke: #e9d7b0; stroke-width: 5; stroke-linecap: round; }
+.rlwheel .cap { fill: var(--o); stroke: var(--ink); stroke-width: 2.5; }
+.rlwheel .ball { fill: #fff; stroke: var(--ink); stroke-width: 2; }
+.rlwheel .ptr { fill: var(--o); stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; }
+.rlw, .rlb { transform-box: fill-box; transform-origin: center; }
+.rlw { transform: rotate(var(--w)); }
+.rlwheel.spin .rlw { animation: rlwheel 2.7s cubic-bezier(.2, .62, .3, 1) both; }
+.rlwheel.spin .rlb { animation: rlball 2.7s cubic-bezier(.15, .55, .25, 1) both; }
+.rlwheel.spin .ball { animation: rldrop 3.15s linear both; }
+@keyframes rlwheel { from { transform: rotate(calc(var(--w) - 540deg)); } to { transform: rotate(var(--w)); } }
+@keyframes rlball { from { transform: rotate(1080deg); } to { transform: rotate(0); } }
+@keyframes rldrop { 0%, 76% { transform: translateY(-21px); } 86% { transform: translateY(-3px); } 92% { transform: translateY(-9px); } 100% { transform: none; } }
+.rlres { margin: 0; display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--muted); }
+.rlres b { color: var(--ink); }
+.rlnum { flex: none; min-width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; color: #fff; font: 400 16px 'Luckiest Guy', sans-serif; padding-top: 3px; border: 3px solid var(--ink); }
+.rlnum.r { background: #d6301e; } .rlnum.b { background: var(--ink); } .rlnum.g { background: #2f8a3c; }
+.rlboard { flex: none; display: flex; flex-direction: column; gap: 4px; }
+.rlrow { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)) 1.7fr; gap: 3px; }
+.rln, .rlg, .rlz { height: 32px; border: 2.5px solid var(--ink); border-radius: 8px; font: 400 15px 'Luckiest Guy', sans-serif; padding: 3px 0 0; color: #fff; min-width: 0; }
+.rln.r { background: #d6301e; } .rln.b { background: var(--ink); }
+.rln.on { box-shadow: inset 0 0 0 3px var(--o), 0 0 0 2px var(--o); }
+.rln.last { outline: 3px dashed var(--sky); outline-offset: -1px; }
+.rlg { background: var(--paper); color: var(--ink); font-size: 13px; }
+.rlg.on, .rlz.on { box-shadow: 0 0 0 3px var(--o); }
+.rlg.on { background: var(--o); }
+.rlz { background: #2f8a3c; height: 30px; }
+.rln:disabled, .rlg:disabled, .rlz:disabled { opacity: 1; filter: saturate(.75); }
+.rlsay { margin: 0; text-align: center; font-size: 13px; font-weight: 700; color: var(--muted); flex: none; }
+
+/* miniatures: both tallies as pips (Blackjack, Roulette with its last number), the Ride the Bus tracks */
+.tpip { display: flex; flex-direction: column; gap: 5cqw; width: 84cqw; }
+.tpip .tr { display: flex; align-items: center; gap: 4cqw; font-weight: 800; font-size: 10cqw; line-height: 1; }
+.tpip .tr b { width: 10cqw; }
+.tpip i { width: 13cqw; height: 13cqw; border-radius: 50%; border: 1.6cqw solid var(--ink); background: var(--paper); }
+.tpip .X i.on { background: var(--x); } .tpip .O i.on { background: var(--o); }
+.tpip .bus i { border-radius: 3cqw; width: 12cqw; height: 16cqw; }
+.tpip .last { align-self: center; font: 400 11cqw 'Luckiest Guy', sans-serif; color: #fff; min-width: 20cqw; height: 20cqw; border-radius: 50%; display: grid; place-items: center; border: 1.6cqw solid var(--ink); padding-top: 1cqw; }
+.tpip .last.r { background: #d6301e; } .tpip .last.b { background: var(--ink); } .tpip .last.g { background: #2f8a3c; }
+@media (max-height: 640px) { .rln, .rlg { height: 28px; font-size: 13px; } .rlz { height: 26px; } .bjres { min-height: 28px; font-size: 15px; } }
 </style>
 </head>
 <body>
@@ -1480,6 +1637,9 @@ const ICONS = {
   hunt: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 3h12l4 6-10 12L2 9z"/></svg>',
   hexapawn: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="6" r="3.3"/><path d="M9.3 10.2h5.4l1.4 6.3H7.9z"/><path d="M6 17.6h12v3.2H6z"/></svg>',
   mastermind: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="8" r="3"/><circle cx="12" cy="8" r="3"/><circle cx="19" cy="8" r="3"/><circle cx="8.5" cy="17" r="2.2"/><circle cx="15.5" cy="17" r="2.2" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>',
+  bj: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><rect x="4" y="2.5" width="16" height="19" rx="2.5"/><path d="M12 6.8c-1.3 1.8-3.9 3.2-3.9 5.4 0 1.3.9 2 1.9 2 .7 0 1.3-.3 1.6-.8-.1 1-.5 1.6-1.3 2.1h3.4c-.8-.5-1.2-1.1-1.3-2.1.3.5.9.8 1.6.8 1 0 1.9-.7 1.9-2 0-2.2-2.6-3.6-3.9-5.4z" fill="currentColor" stroke="none"/></svg>',
+  bus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><rect x="2.5" y="4" width="19" height="13" rx="2.5"/><path d="M2.5 10.5h19M8.5 4v6.5M15 4v6.5"/><circle cx="7" cy="18.5" r="2" fill="currentColor"/><circle cx="17" cy="18.5" r="2" fill="currentColor"/></svg>',
+  rl: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9.2"/><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v5.9M12 15.3v5.9M2.8 12h5.9M15.3 12h5.9" stroke-width="1.8"/><circle cx="17.6" cy="6.4" r="1.6" fill="currentColor" stroke="none"/></svg>',
 };
 // Mastermind pegs: six colours, each with a symbol of its own (so colour is never the only cue).
 const MM_NAMES = ['Red', 'Orange', 'Yellow', 'Green', 'Blue', 'Pink'];
@@ -1496,7 +1656,8 @@ const mmPeg = (c, cls = '', style = '') => `<i class="peg c${c}${cls ? ' ' + cls
 const mmMarks = (g, cls = '', fresh = false) => `<span class="mmfb${cls ? ' ' + cls : ''}" role="img" aria-label="${g.solid} solid, ${g.hollow} hollow">${Array.from({ length: MM.pegs }, (_, k) =>
   `<i class="${k < g.solid ? 'sd' : k < g.solid + g.hollow ? 'hw' : ''}${fresh ? ' rv' : ''}"${fresh ? ` style="--k:${k}"` : ''}></i>`).join('')}</span>`;
 let mmDraft = null;                                              // Mastermind: { sq, slots, at } the guess being put together on this phone
-let mmPop = null;                                                // { sq, k, at }: the peg just placed pops in
+let mmPop = null;
+let rlDraft = null;                                              // Roulette: { sq, nums, bet } the bet being put together on this phone                                                // { sq, k, at }: the peg just placed pops in
 const GEM = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 3h12l4 6-10 12L2 9z"/><path d="M2 9h20" stroke="rgba(0,0,0,.25)" stroke-width="1.5"/></svg>';
 const DIE_MS = PLAY.die;                // the die's tumble before the piece sets off
 let advOpen = false;                    // the setup screen's Advanced section (the mini-game list)
@@ -1952,6 +2113,9 @@ const EXPLAIN = {
   hunt: { name: 'Treasure Hunt', play: 'Dig a square. It tells you if the treasure is hot, warm, cool or cold.', win: 'Dig up the treasure.' },
   hexapawn: { name: 'Hexapawn', play: 'Move a pawn forward, or capture diagonally.', win: 'Get a pawn to the far side.' },
   mastermind: { name: 'Mastermind', play: 'Guess the 4-colour code. Black marker means right colour and spot; white marker means right colour, wrong spot.', win: 'Crack the code.' },
+  bj: { name: 'Blackjack', play: 'Hit, stand, or double (one more card, counts double if you win). Beat the dealer without going over 21.', win: 'First to 3 wins.' },
+  bus: { name: 'Ride the Bus', play: 'Guess red or black, then higher or lower, then inside or outside, then the suit. Miss and your turn ends, but you keep your progress.', win: 'Get through all four.' },
+  rl: { name: 'Roulette', play: 'Bet on 8 numbers, a group of 8, or green 0, then spin.', win: 'Two hits, or hit green 0 for an instant win.' },
 };
 let explainT = null;                          // the mini-game whose explainer is open
 const qBtn = (t, cls) => `<button class="qbtn${cls ? ' ' + cls : ''}" data-act="explain" data-t="${t}" aria-label="How to play ${EXPLAIN[t].name}">${cls === 'sm' ? '<i>?</i>' : '?'}</button>`;   // the small one: a 26px sticker in a 40px tap target
@@ -2163,6 +2327,12 @@ function thumb(mini, final) {
     case 'snakes': return trackSvg(SNL_SPEC, { tokens: { X: mini.pos.X - 1, O: mini.pos.O - 1 }, finish: 'none', goal: true, mini: true, cls: 'snl', overlay: snlArt(SNL_SPEC, mini, true) });
     case 'bump': return trackSvg(BUMP_SPEC, { tokens: { X: mini.pos.X - 1, O: mini.pos.O - 1 }, finish: 'flag', mini: true });
     case 'coins': return `<div class="tcoin">${mini.coins.map(c => `<i class="${c === COINS.mystery ? 'm' : c}">${c}</i>`).join('')}</div>`;
+    case 'bj': return `<div class="tpip">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${Array.from({ length: BJ.goal }, (_, k) => `<i class="${k < mini.wins[p] ? 'on' : ''}"></i>`).join('')}</div>`).join('')}</div>`;
+    case 'bus': return `<div class="tpip">${['X', 'O'].map(p => `<div class="tr bus ${p}"><b class="${p}">${p}</b>${Array.from({ length: BUS.rounds }, (_, k) => `<i class="${k < mini.prog[p].length ? 'on' : ''}"></i>`).join('')}</div>`).join('')}</div>`;
+    case 'rl': {
+      const n = mini.last ? mini.last.n : null;
+      return `<div class="tpip">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${Array.from({ length: RL.goal }, (_, k) => `<i class="${k < mini.hits[p] ? 'on' : ''}"></i>`).join('')}</div>`).join('')}${n == null ? '' : `<span class="last ${n === 0 ? 'g' : rlRed(n) ? 'r' : 'b'}">${n}</span>`}</div>`;
+    }
     case 'pig': return `<div class="tdice">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><div class="bar"><i style="width:${Math.min(100, mini.bank[p] / RISKY.goal * 100)}%"></i></div><span>${mini.bank[p]}</span></div>`).join('')}</div>`;
     case 'hunt': return `<div class="tg g5x5" style="--hn:${huntSize(mini)}">${mini.dug.map((d, i) => {
       if (!d) return '<i></i>';
@@ -2207,6 +2377,176 @@ function tttLine(run, p, animate) {
   const [x1, y1] = c(run[0]), [x2, y2] = c(run[run.length - 1]);
   const len = Math.hypot(x2 - x1, y2 - y1), ex = (x2 - x1) / len * 9, ey = (y2 - y1) / len * 9;   // a little past the end cells
   return `<svg class="winline${animate ? ' draw' : ''}" viewBox="0 0 100 100" aria-hidden="true"><line x1="${x1 - ex}" y1="${y1 - ey}" x2="${x2 + ex}" y2="${y2 + ey}" class="${p}"/></svg>`;
+}
+/* ----- the card games and the wheel: Blackjack, Ride the Bus, Roulette ----- */
+// Playing cards: each suit drawn as a shape (the same on every phone), the rank big in the corner so it
+// reads at phone size. A card in play slides in (.slide, at --d) and turns face up (.flip, at --f), each
+// from its own moment in the move (ms after it); a face-down card shows its back.
+const SUIT_PATH = {
+  S: 'M12 2.2C9.4 5.9 3.2 9 3.2 13.7c0 2.9 2.2 4.5 4.4 4.5 1.5 0 2.8-.7 3.6-1.8-.3 2.2-1.3 3.7-2.9 4.8h7.4c-1.6-1.1-2.6-2.6-2.9-4.8.8 1.1 2.1 1.8 3.6 1.8 2.2 0 4.4-1.6 4.4-4.5C20.8 9 14.6 5.9 12 2.2z',
+  H: 'M12 21.2S2.6 15.4 2.6 9.1C2.6 6.1 4.9 3.8 7.7 3.8c1.9 0 3.4 1 4.3 2.6.9-1.6 2.4-2.6 4.3-2.6 2.8 0 5.1 2.3 5.1 5.3 0 6.3-9.4 12.1-9.4 12.1z',
+  D: 'M12 1.8 20.4 12 12 22.2 3.6 12z',
+  C: 'M12 2.4a4.3 4.3 0 0 0-4.1 5.7 4.3 4.3 0 1 0 2.7 7.7c-.3 2.1-1.3 3.6-2.8 4.8h8.4c-1.5-1.2-2.5-2.7-2.8-4.8a4.3 4.3 0 1 0 2.7-7.7A4.3 4.3 0 0 0 12 2.4z',
+};
+const suitSvg = (s, cls) => `<svg class="suit${cls ? ' ' + cls : ''}" viewBox="0 0 24 24" aria-hidden="true"><path d="${SUIT_PATH[s]}"/></svg>`;
+const RANK_NAME = { T: '10', J: 'Jack', Q: 'Queen', K: 'King', A: 'Ace' };
+const rankText = c => (c[0] === 'T' ? '10' : c[0]);
+const rankName = c => RANK_NAME[c[0]] || c[0];
+function pcard(c, o = {}) {
+  const down = o.down || !c;
+  const cls = `pcard${down ? ' down' : ''}${c && cardRed(c) ? ' red' : ''}${o.slide != null ? ' slide' : ''}${o.flip != null ? ' flip' : ''}${o.cls ? ' ' + o.cls : ''}`;
+  const style = [o.slide != null ? `--d:${o.slide}ms` : '', o.flip != null ? `--f:${o.flip}ms` : '', o.style || ''].filter(Boolean).join(';');
+  const face = c ? `<span class="pcf fc"><b class="rk">${rankText(c)}</b>${suitSvg(c[1], 'sm')}${suitSvg(c[1], 'lg')}</span>` : '';
+  return `<span class="${cls}"${style ? ` style="${style}"` : ''} role="img" aria-label="${down ? 'Face-down card' : cardName(c)}"><span class="pcin">${face}<span class="pcf rev"></span></span></span>`;
+}
+// A class attribute (and the moment it shows up, t ms into the move, when there is one): the result of
+// a move only appears once its cards or its spin have played out.
+const lateAt = (cls, t, how = 'appear') => `class="${cls}${t != null ? ' ' + how : ''}"${t != null ? ` style="--t:${Math.round(t)}ms"` : ''}`;
+const cardShort = c => `<span class="cshort${cardRed(c) ? ' red' : ''}">${rankText(c)}${suitSvg(c[1], 'inl')}</span>`;
+const TICK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12.5l5 5L19.5 6.5" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const CROSS = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round"/></svg>';
+
+// Blackjack. When each card of the move just made comes in: the deal (player, dealer, player, then the
+// dealer's card face down), a card drawn, then at the end of a hand the hole card turned over and the
+// dealer's draws, and the result. Matches bjMs in the engine, which the turn clock and the sounds use.
+function bjPlan(b) {
+  const T = BJT, P = [], D = [];
+  let t = 0;
+  if (!b.from) {
+    P[0] = { slideAt: 0, flipAt: T.card }; D[0] = { slideAt: T.card, flipAt: 2 * T.card };
+    P[1] = { slideAt: 2 * T.card, flipAt: 3 * T.card }; D[1] = { slideAt: 3 * T.card, flipAt: null };
+    t = 4 * T.card + T.flip;
+  } else for (let k = b.from; k < b.cards.length; k++) { P[k] = { slideAt: t, flipAt: t + T.card }; t += T.card + T.flip; }
+  const pEnd = t;
+  if (b.res) {
+    D[1] = Object.assign({}, D[1], { flipAt: t }); t += T.reveal;
+    for (let k = 2; k < b.dealer.length; k++) { D[k] = { slideAt: t, flipAt: t + T.card }; t += T.draw; }
+  }
+  return { P, D, pEnd, end: t };
+}
+const BJ_RES = { bj: 'Blackjack! +1', push: 'Push', bust: 'Bust', lose: 'Dealer wins' };
+const bjResText = r => (r.res === 'win' ? (r.doubled ? 'Wins the double: +2' : 'Wins +1') : r.res === 'lose' && r.dealerBj ? 'Dealer blackjack' : BJ_RES[r.res]);
+function bjTotalText(cards) {
+  const t = bjTotal(cards);
+  return t.total > 21 ? `Bust · ${t.total}` : bjNatural(cards) ? 'Blackjack' : `${t.soft && t.total < 21 ? 'Soft ' : ''}${t.total}`;
+}
+function bjTable(mini, a, o) {
+  const b = a && a.bj ? a.bj : null, h = mini.hand, l = mini.last, turn = o.turn;
+  const by = h ? h.by : l ? l.by : null;
+  const pc = h ? h.cards : l ? l.cards : [], dc = h ? [h.up] : l ? l.dealer : [];
+  const plan = b ? bjPlan(b) : null, P = k => (plan && plan.P[k]) || {}, D = k => (plan && plan.D[k]) || {};
+  const pCards = pc.map((c, k) => pcard(c, { slide: P(k).slideAt, flip: P(k).flipAt })).join('');
+  const dCards = dc.map((c, k) => pcard(c, { slide: D(k).slideAt, flip: D(k).flipAt })).join('') + (h ? pcard(null, { down: true, slide: D(1).slideAt }) : '');
+  const res = !h && l ? l : null;
+  const dEnd = plan ? plan.end : null;
+  const dTxt = h ? `shows ${bjTotal([h.up]).total}` : res ? bjTotalText(res.dealer) : '';
+  const tally = p => {
+    const w = Math.min(BJ.goal, mini.wins[p]), fresh = b && b.res && b.gain && a.by === p ? b.gain : 0;
+    const pips = Array.from({ length: BJ.goal }, (_, k) => `<i ${lateAt(k < w ? 'on' : '', k < w && k >= w - fresh ? dEnd : null, 'fillin')}></i>`).join('');
+    return `<div class="ctal ${p}${!o.view && turn === p ? ' now' : ''}"><b class="${p}">${N(p)}</b><span class="pips" aria-label="${mini.wins[p]} of ${BJ.goal} wins">${pips}</span></div>`;
+  };
+  const mine = !!h && h.by === turn;
+  const btns = o.view ? '' : !h
+    ? `<div class="cbtns one"><button class="big ${turn}" data-act="move" ${mv('deal')}${o.locked ? ' disabled' : ''}>Deal</button></div>`
+    : `<div class="cbtns three"><button class="big ${turn}" data-act="move" ${mv('hit')}${o.locked || !mine ? ' disabled' : ''}>Hit</button><button class="big bank" data-act="move" ${mv('stand')}${o.locked || !mine ? ' disabled' : ''}>Stand</button><button class="big dbl" data-act="move" ${mv('double')}${o.locked || !mine || h.cards.length !== 2 ? ' disabled' : ''}>Double</button></div>`;
+  const banner = res ? `<div ${lateAt('bjres ' + res.res, dEnd)} role="status">${toon(res.by)}<span>${bjResText(res)}</span></div>`
+    : `<div class="bjres none">${h ? 'Dealer stands on 17' : 'Deal a hand to play'}</div>`;
+  return `<div class="g-bj"><div class="ctals">${tally('X')}${tally('O')}</div>
+    <div class="felt"><div class="bjrow dealer"><span class="bjlab">Dealer <b ${lateAt('bjtot', res ? dEnd : null)}>${dTxt}</b></span><div class="bjcards">${dCards || pcard(null, { down: true, cls: 'ghost' })}</div></div>
+      ${banner}
+      <div class="bjrow player"><span class="bjlab">${by ? `<b class="${by}">${N(by)}</b>` : 'Player'} <b ${lateAt('bjtot', plan ? plan.pEnd : null)}>${pc.length ? bjTotalText(pc) : ''}</b></span><div class="bjcards">${pCards || pcard(null, { down: true, cls: 'ghost' })}</div></div></div>
+    ${btns}</div>`;
+}
+
+// Ride the Bus: both players' four slots (the cards kept, or the round still to pass), the deck and the
+// card just drawn (it slides off the deck, turns, and goes to its slot or is crossed out), the question
+// for the player on the move and its answers.
+const BUS_ICON = [
+  '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="12" r="5" fill="#e5432a"/><circle cx="16" cy="12" r="5" fill="#161210"/></svg>',
+  '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6-6 6 6M6 15l6 6 6-6"/></svg>',
+  '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5v14M20 5v14M9 12h6"/></svg>',
+  `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${SUIT_PATH.S}" transform="translate(1 1) scale(.45)"/><path d="${SUIT_PATH.H}" fill="#e5432a" transform="translate(12 1) scale(.45)"/><path d="${SUIT_PATH.D}" fill="#e5432a" transform="translate(1 12) scale(.45)"/><path d="${SUIT_PATH.C}" transform="translate(12 12) scale(.45)"/></svg>`,
+];
+const BUS_ROUND = ['Red or black', 'Higher or lower', 'Inside or outside', 'The suit'];
+const BUS_SAY = { red: 'Red', black: 'Black', higher: 'Higher', lower: 'Lower', inside: 'Inside', outside: 'Outside', S: 'Spades', H: 'Hearts', D: 'Diamonds', C: 'Clubs' };
+function busQuestion(kept) {
+  switch (kept.length) {
+    case 0: return 'Red or black?';
+    case 1: return `Higher or lower than ${cardShort(kept[0])}?`;
+    case 2: return `Inside or outside ${cardShort(kept[0])} and ${cardShort(kept[1])}?`;
+    default: return 'Which suit?';
+  }
+}
+function busTable(mini, a, o) {
+  const b = a && a.bus ? a.bus : null, l = mini.last, turn = o.turn, T = BUST;
+  const tMark = T.draw + T.flip, tSlot = tMark + 160;
+  const row = p => {
+    const kept = mini.prog[p], newK = b && a.by === p && b.right ? kept.length - 1 : -1;
+    const slots = Array.from({ length: BUS.rounds }, (_, k) => (k < kept.length
+      ? `<span class="busslot got">${pcard(kept[k], { cls: k === newK ? 'arrive' : '', style: k === newK ? `--t:${tSlot}ms` : '' })}</span>`
+      : `<span class="busslot${k === kept.length && p === turn && !o.view ? ' next' : ''}" aria-label="${BUS_ROUND[k]}">${BUS_ICON[k]}</span>`)).join('');
+    return `<div class="busrow ${p}${!o.view && turn === p ? ' now' : ''}"><span class="busnm"><b class="${p}">${N(p)}</b><small>${kept.length >= BUS.rounds ? 'All four!' : `Round ${kept.length + 1} of 4`}</small></span><div class="busslots">${slots}</div></div>`;
+  };
+  const card = b ? b.card : l ? l.card : null, right = b ? b.right : l ? l.right : null, by = b ? a.by : l ? l.by : null, guess = b ? b.guess : l ? l.guess : null;
+  const drawn = card ? pcard(card, b ? { slide: 0, flip: T.draw, cls: right ? 'busok' : 'busno', style: `--t:${tMark}ms` } : { cls: right ? 'busok' : 'busno' })
+    + `<b ${lateAt('busmark ' + (right ? 'ok' : 'no'), b ? tMark : null)}>${right ? TICK : CROSS}</b>` : '';
+  const note = card ? `<p ${lateAt('busnote', b ? tMark : null)}><b class="${by}">${N(by)}</b> said ${BUS_SAY[guess]}: ${cardShort(card)} ${right ? 'Right!' : 'Wrong'}</p>` : '<p class="busnote">Each player rides their own bus, with their own deck</p>';
+  let ask = '';
+  if (!o.view) {
+    const kept = mini.prog[turn], r = kept.length, dis = o.locked ? ' disabled' : '';
+    const opt = (g, label, cls) => `<button class="big bus-${cls || g}" data-act="move" ${mv(g)}${dis} aria-label="${BUS_SAY[g]}">${label}</button>`;
+    const btns = r === 0 ? opt('red', 'Red', 'red') + opt('black', 'Black', 'black')
+      : r === 1 ? opt('higher', 'Higher ▲', 'up') + opt('lower', 'Lower ▼', 'down')
+      : r === 2 ? opt('inside', 'Inside', 'in') + opt('outside', 'Outside', 'out')
+      : CARD.suits.split('').map(s => opt(s, suitSvg(s), 'suit' + (cardRed('A' + s) ? ' red' : ''))).join('');
+    if (r < BUS.rounds) ask = `<div class="busask"><p><b class="${turn}">${N(turn)}</b>: ${busQuestion(kept)}</p><div class="cbtns ${r === 3 ? 'four' : 'two'}">${btns}</div></div>`;
+  }
+  return `<div class="g-bus"><div class="busrows">${row('X')}${row('O')}</div>
+    <div class="busstage"><span class="busdeck">${pcard(null, { down: true })}${pcard(null, { down: true })}</span><span class="busdrawn">${drawn}</span></div>${note}${ask}</div>`;
+}
+
+// Roulette: the wheel (the pocket that came up turns to the top, under the pointer, and the ball rests in
+// it), each player's hits, and the betting board: 8 numbers, a row of 8, or green 0, then Spin.
+const RL_STEP = 360 / RL.wheel.length;
+const rlPt = (r, deg) => { const t = (deg - 90) * Math.PI / 180; return `${(r * Math.cos(t)).toFixed(2)} ${(r * Math.sin(t)).toFixed(2)}`; };
+const RL_FACE = RL.wheel.map((n, i) => {
+  const a0 = i * RL_STEP - RL_STEP / 2, a1 = a0 + RL_STEP, cls = n === 0 ? 'g' : rlRed(n) ? 'r' : 'b';
+  return `<path class="${cls}" d="M${rlPt(58, a0)}L${rlPt(92, a0)}A92 92 0 0 1 ${rlPt(92, a1)}L${rlPt(58, a1)}A58 58 0 0 0 ${rlPt(58, a0)}Z"/><text transform="rotate(${(i * RL_STEP).toFixed(1)}) translate(0 -81)">${n}</text>`;
+}).join('');
+function rlWheel(n, anim, t0) {
+  const k = n == null ? 0 : RL.wheel.indexOf(n), w = -k * RL_STEP;
+  return `<svg class="rlwheel${anim ? ' spin' : ''}" viewBox="-100 -104 200 208" role="img" aria-label="${n == null ? 'The wheel' : `The wheel: ${n}${n === 0 ? ', green' : rlRed(n) ? ', red' : ', black'}`}">
+    <circle class="rim" r="99"/><g class="rlw" style="--w:${w.toFixed(1)}deg">${RL_FACE}<circle class="hub" r="56"/><path class="spoke" d="M0 -40V40M-40 0H40"/><circle class="cap" r="12"/></g>
+    ${n == null ? '' : `<g class="rlb"><circle r="99" fill="none"/><circle class="ball" cy="-67" r="6"/></g>`}<path class="ptr" d="M-8 -104H8L0 -92Z"/></svg>`;
+}
+const rlBetText = bet => (bet === 'zero' ? 'green 0' : RL.groups[bet] ? `${RL.groups[bet][0]}–${RL.groups[bet][1]}` : '8 numbers');
+function rlTable(mini, a, o) {
+  const b = a && a.rl ? a.rl : null, l = mini.last, turn = o.turn, tEnd = RLT.spin + RLT.settle;
+  const n = b ? b.n : l ? l.n : null;
+  const hits = p => {
+    const h = Math.min(RL.goal, mini.hits[p]), fresh = b && b.hit && a.by === p && b.bet !== 'zero';
+    const pips = Array.from({ length: RL.goal }, (_, k) => `<i ${lateAt(k < h ? 'on' : '', fresh && k === h - 1 ? tEnd : null, 'fillin')}></i>`).join('');
+    return `<div class="ctal ${p}${!o.view && turn === p ? ' now' : ''}"><b class="${p}">${N(p)}</b><span class="pips" aria-label="${mini.hits[p]} of ${RL.goal} hits">${pips}</span></div>`;
+  };
+  const shown = b || l;
+  const res = shown ? `<p ${lateAt('rlres', b ? tEnd : null)}><span class="rlnum ${n === 0 ? 'g' : rlRed(n) ? 'r' : 'b'}">${n}</span><span><b class="${b ? a.by : l.by}">${N(b ? a.by : l.by)}</b> bet ${rlBetText(shown.bet)} · ${shown.hit ? (shown.bet === 'zero' ? 'green 0!' : 'hit!') : 'miss'}</span></p>` : '<p class="rlres">Place a bet, then spin</p>';
+  // The bet on the board: the move playing out, else the one being put together on this phone.
+  if (!rlDraft || rlDraft.sq !== o.zoom || o.moved) rlDraft = { sq: o.zoom, nums: [], bet: null };   // a fresh bet after every spin
+  const dr = b ? { nums: Array.isArray(b.bet) ? b.bet : [], bet: Array.isArray(b.bet) ? null : b.bet } : o.view ? { nums: [], bet: null } : rlDraft;
+  const on = k => dr.nums.includes(k) || (dr.bet && dr.bet !== 'zero' && rlCovers(dr.bet, k));
+  const dis = o.locked ? ' disabled' : '';
+  const grid = ['g1', 'g2', 'g3'].map(g => {
+    const [lo, hi] = RL.groups[g], cells = [];
+    for (let k = lo; k <= hi; k++) cells.push(`<button class="rln ${rlRed(k) ? 'r' : 'b'}${on(k) ? ' on' : ''}${n === k && !b ? ' last' : ''}" data-act="rlnum" data-n="${k}" aria-pressed="${on(k)}" aria-label="${k}, ${rlRed(k) ? 'red' : 'black'}"${dis}>${k}</button>`);
+    return `<div class="rlrow">${cells.join('')}<button class="rlg${dr.bet === g ? ' on' : ''}" data-act="rlgrp" data-g="${g}" aria-pressed="${dr.bet === g}" aria-label="Group ${lo} to ${hi}"${dis}>${lo}–${hi}</button></div>`;
+  }).join('');
+  const bet = dr.bet || (dr.nums.length === RL.pick ? dr.nums : null);
+  const say = dr.bet === 'zero' ? 'Green 0 on its own: if it comes up, the square is yours'
+    : dr.bet ? `Betting the group ${rlBetText(dr.bet)}` : dr.nums.length === RL.pick ? 'Betting your 8 numbers'
+    : dr.nums.length ? `${RL.pick - dr.nums.length} more number${RL.pick - dr.nums.length === 1 ? '' : 's'} to pick` : 'Pick 8 numbers, a group, or green 0';
+  const board = o.view ? '' : `<div class="rlboard"><button class="rlz${dr.bet === 'zero' ? ' on' : ''}" data-act="rlzero" aria-pressed="${dr.bet === 'zero'}" aria-label="Green 0"${dis}>0</button>${grid}</div>
+    <p class="rlsay">${say}</p><div class="cbtns one"><button class="big ${turn} rlspin" data-act="move" ${mv(bet || [])}${!bet || o.locked ? ' disabled' : ''}>Spin</button></div>`;
+  return `<div class="g-rl"><div class="rltop"><div class="ctals col">${hits('X')}${hits('O')}${res}</div><div class="rlwrap">${rlWheel(n, !!b)}</div></div>${board}</div>`;
 }
 function renderMini(sq, review) {
   const f = state.flash;                            // the move just made: its animation and result are playing
@@ -2453,6 +2793,9 @@ function renderMini(sq, review) {
         <button class="big mmgo" data-act="move" ${mv(full ? dr : [])}${!full || locked ? ' disabled' : ''}>Submit guess</button>`}</div>`;
       break;
     }
+    case 'bj': g = bjTable(mini, a, { view, locked, turn }); break;
+    case 'bus': g = busTable(mini, a, { view, locked, turn }); break;
+    case 'rl': g = rlTable(mini, a, { view, locked, turn, zoom: state.zoom, moved: !!(f || d) }); break;
     case 'hexapawn': {
       // Tap one of your pawns to see where it can go, then tap a highlighted square. The pawn just moved
       // slides in from where it was; a captured pawn is knocked off the board.
@@ -2478,7 +2821,9 @@ function renderMini(sq, review) {
     }
   }
   const lock = state.lock != null;
-  let sub = lock ? (mini.type === 'pig' ? `<b class="${turn}">${N(turn)}</b>'s turn in progress: roll again or bank` : mini.type === 'bs' ? `<b class="${turn}">${N(turn)}</b> hit: fire again` : `<b class="${turn}">${N(turn)}</b> guessed right: go again`) : info.hint;
+  let sub = lock ? (mini.type === 'pig' ? `<b class="${turn}">${N(turn)}</b>'s turn in progress: roll again or bank`
+    : mini.type === 'bj' ? `<b class="${turn}">${N(turn)}</b>'s hand: hit, stand${mini.hand && mini.hand.cards.length === 2 ? ' or double' : ''}`
+    : mini.type === 'bus' ? `<b class="${turn}">${N(turn)}</b> was right: on to the next round` : mini.type === 'bs' ? `<b class="${turn}">${N(turn)}</b> hit: fire again` : `<b class="${turn}">${N(turn)}</b> guessed right: go again`) : info.hint;
   if (!view && !f && !d && remoteTurn()) sub = `Waiting for <b class="${turn}">${N(turn)}</b>…`;
   else if (!view && !f && !d && moveWait) sub = 'Sending your move…';
   let secret = '';
@@ -2489,7 +2834,10 @@ function renderMini(sq, review) {
       : mini.type === 'memory' ? 'Every card shown'
       : mini.type === 'coins' ? `All five show ${sq.owner}`
       : mini.type === 'hunt' ? `The treasure was at row ${Math.floor(mini.treasure / huntSize(mini)) + 1}, column ${mini.treasure % huntSize(mini) + 1}`
-      : mini.type === 'pig' ? `${mini.bank.X} to ${mini.bank.O}` : '';
+      : mini.type === 'pig' ? `${mini.bank.X} to ${mini.bank.O}`
+      : mini.type === 'bj' ? `${mini.wins.X} to ${mini.wins.O}`
+      : mini.type === 'bus' ? `X ${mini.prog.X.length} of 4 · O ${mini.prog.O.length} of 4`
+      : mini.type === 'rl' ? `${mini.hits.X} hit${mini.hits.X === 1 ? '' : 's'} to ${mini.hits.O}` : '';
     sub = sq.owner ? `<b class="${sq.owner}">Won by ${N(sq.owner)}</b>${secret ? ' · ' + secret : ''}` : `Not won by anyone${secret ? ' · ' + secret : ''}`;
   }
   if (d && !f) {                                    // the result held a moment longer (Memory's cards turning back): the board follows by itself
@@ -2533,6 +2881,9 @@ function summary(f) {
     case 'pig': return f.note === 'bust' ? `Bust! ${f.pot} point${f.pot === 1 ? '' : 's'} lost` : `Banked ${f.pot}`;
     case 'hexapawn': return f.capture ? `${who} captured a pawn` : `${who} stepped forward`;
     case 'mastermind': return `${who}: ${f.solid} solid · ${f.hollow} hollow`;
+    case 'bj': return f.bj && f.bj.res ? `${who}: ${bjResText(f.bj)}` : f.bj && f.bj.act === 'hit' ? `${who} hits` : `${who} is dealt a hand`;
+    case 'bus': return f.bus ? `${who} said ${BUS_SAY[f.bus.guess]}: ${f.bus.right ? 'right' : 'wrong'}` : `${who} guessed`;
+    case 'rl': return f.rl ? `${f.rl.n}${f.rl.n === 0 ? ' green' : rlRed(f.rl.n) ? ' red' : ' black'} · ${f.rl.hit ? 'a hit' : 'a miss'}` : `${who} spun`;
   }
   return `${who} placed`;
 }
@@ -2554,6 +2905,9 @@ function renderFlash(f) {
   }
   if (f.type === 'pig' && f.note === 'bust') {
     return `${open}<div class="card"><div class="big-g">${dieFace(f.roll)}</div><h2>Bust!</h2><p>${who} rolled ${f.roll} again · ${f.pot} point${f.pot === 1 ? '' : 's'} lost</p></div></div>`;
+  }
+  if ((f.type === 'bj' || f.type === 'bus' || f.type === 'rl') && (f.kind === 'again' || f.kind === 'move')) {   // the table shows it all: the cards, the tick or cross, the number and the hits
+    return open.replace('"flash late"', '"flash lite late"') + '</div>';
   }
   if (f.type === 'pig' && (f.note === 'bank' || f.kind === 'again')) {   // a roll or a bank speaks for itself: the +N grows, or moves into the score
     return open.replace('"flash late"', '"flash lite late"') + '</div>';
@@ -4287,6 +4641,20 @@ app.addEventListener('click', e => {
     const nxt = mmDraft.slots.findIndex((x, j) => x == null && j > k);
     mmDraft.at = nxt >= 0 ? nxt : Math.max(0, mmDraft.slots.indexOf(null));
     render();
+  } else if (act === 'rlnum' || act === 'rlgrp' || act === 'rlzero') {   // Roulette: put the bet together (numbers, a group, or green 0 alone)
+    if (zoomedType() !== 'rl') return;
+    if (!rlDraft || rlDraft.sq !== state.zoom) rlDraft = { sq: state.zoom, nums: [], bet: null };
+    const dr = rlDraft;
+    if (act === 'rlnum') {
+      const n = Number(el.dataset.n);
+      if (dr.bet) { dr.bet = null; dr.nums = []; }               // a group or 0 gives way to numbers
+      if (dr.nums.includes(n)) dr.nums = dr.nums.filter(k => k !== n);
+      else { if (dr.nums.length >= RL.pick) dr.nums.shift(); dr.nums.push(n); }   // a ninth number takes the place of the first
+    } else {
+      const bet = act === 'rlzero' ? 'zero' : el.dataset.g;
+      dr.bet = dr.bet === bet ? null : bet; dr.nums = [];
+    }
+    render();
   } else if (act === 'hpsel') {                 // Hexapawn: pick a pawn (again to put it down) to see its moves
     if (zoomedType() !== 'hexapawn') return;
     const i = Number(el.dataset.i);
@@ -4504,8 +4872,9 @@ function cpuAct() {
   cpuTimer = null;
   if (!cpuTurn() || state.screen !== 'mini' || !cpuPlan || cpuPlan.square !== state.zoom || menuOpen || explainT) return;
   const plan = cpuPlan, type = state.squares[plan.square].mini.type;
-  if (!plan.stage && (type === 'memory' || type === 'wordle' || type === 'hexapawn' || type === 'mastermind')) {   // show the choice first, as a person would
-    if (type === 'memory') { state.pick = plan.move[0]; state.pickSq = plan.square; startFx('pick', pickKey()); SND.play('flipUp'); } else if (type === 'hexapawn') hpSel = { sq: plan.square, from: plan.move[0] };
+  if (!plan.stage && (type === 'memory' || type === 'wordle' || type === 'hexapawn' || type === 'mastermind' || type === 'rl')) {   // show the choice first, as a person would
+    if (type === 'rl') rlDraft = { sq: plan.square, nums: Array.isArray(plan.move) ? plan.move.slice() : [], bet: Array.isArray(plan.move) ? null : plan.move };   // the bet on the board, then the spin
+    else if (type === 'memory') { state.pick = plan.move[0]; state.pickSq = plan.square; startFx('pick', pickKey()); SND.play('flipUp'); } else if (type === 'hexapawn') hpSel = { sq: plan.square, from: plan.move[0] };
     else if (type === 'mastermind') mmDraft = { sq: plan.square, slots: plan.move.slice(), at: 0 }; else state.draft = plan.move;
     plan.stage = 1; commit(); return;
   }
@@ -4712,6 +5081,14 @@ def('peg', 0.07, (c, d, t) => sfxTone(c, d, t, 900, .05, { vol: .5, type: 'trian
 def('marker', 0.06, (c, d, t) => sfxTone(c, d, t, 1500, .04, { vol: .4 }), { level: .3, vary: true });
 def('reveal', 0.65, (c, d, t) => { sfxTone(c, d, t, 300, .5, { to: 900, vol: .4, type: 'triangle' }); [1046, 1318].forEach((f, i) => sfxTone(c, d, t + .45 + i * .08, f, .25, { vol: .35 })); }, { level: .6 });
 def('boing', 0.6, (c, d, t) => { sfxTone(c, d, t, 200, .5, { to: 700, vol: .5 }); sfxTone(c, d, t, 700, .4, { to: 350, vol: .2 }); }, { level: .6 });
+// ---- the card games and the wheel
+def('cardSlide', 0.14, (c, d, t) => sfxNoise(c, d, t, .12, { f: 2600, to: 1100, q: .9, vol: .4 }), { level: .4, vary: true });
+def('cardFlip', 0.07, (c, d, t) => { sfxNoise(c, d, t, .035, { f: 3400, q: 1.6, vol: .6, att: .001 }); sfxTone(c, d, t, 1700, .03, { vol: .15, type: 'triangle' }); }, { level: .4, vary: true });
+def('chips', 0.42, (c, d, t) => [0, .07, .16].forEach((dt, i) => { sfxTone(c, d, t + dt, 2500 + i * 320, .12, { vol: .3 }); sfxNoise(c, d, t + dt, .03, { f: 5200, q: 2, vol: .3, att: .001 }); }), { level: .5 });
+def('push', 0.32, (c, d, t) => { sfxTone(c, d, t, 523, .12, { vol: .3, type: 'triangle' }); sfxTone(c, d, t + .13, 523, .15, { vol: .3, type: 'triangle' }); }, { level: .4 });
+def('rlSpin', 2.7, (c, d, t) => { sfxNoise(c, d, t, 2.65, { f: 1100, to: 260, q: .6, filter: 'lowpass', vol: .3, att: .15 }); sfxTone(c, d, t, 90, 2.4, { to: 50, vol: .12, att: .2 }); }, { level: .35 });
+def('ballTick', 0.04, (c, d, t) => sfxTone(c, d, t, 3100, .025, { vol: .35, type: 'triangle' }), { level: .28, vary: true });
+def('ballDrop', 0.3, (c, d, t) => { sfxTone(c, d, t, 1900, .05, { vol: .45, type: 'triangle' }); sfxTone(c, d, t + .1, 1650, .05, { vol: .3, type: 'triangle' }); sfxNoise(c, d, t + .18, .07, { f: 2600, q: 1.5, vol: .35 }); }, { level: .5 });
 
 // Renders every sound into a buffer, one after another (quick, and gentle on a phone). Runs at page load.
 SND.load = function () {
@@ -4765,7 +5142,7 @@ try { if (navigator.audioSession) navigator.audioSession.type = 'ambient'; } cat
 // Every control plays its tap sound when pressed (whether or not the game takes the press). The moves
 // and card turns play their own sounds, from their events. A press on a disabled control is an error.
 const TAP_SOUND = { explain: 'open', 'explain-close': 'close', pause: 'open', 'pause-resume': 'close', zoom: null, move: null, pick: null,
-  mmcol: 'peg', mmslot: 'peg', key: 'key', bksp: 'key', enter: 'key', side: 'toggle', kind: 'toggle', lside: 'toggle', timer: 'toggle', adv: 'toggle',
+  mmcol: 'peg', mmslot: 'peg', rlnum: 'peg', rlgrp: 'peg', rlzero: 'peg', key: 'key', bksp: 'key', enter: 'key', side: 'toggle', kind: 'toggle', lside: 'toggle', timer: 'toggle', adv: 'toggle',
   sound: 'toggle', 'games-all': 'select', 'games-none': 'deselect', share: 'copy', back: 'tap' };   // (back: the Board button in a square, a plain tap)
 document.addEventListener('click', e => {
   if (search.on) return;                                           // the searching screen is silent (even its Cancel)
@@ -4813,6 +5190,26 @@ function moveSounds(f) {
       break;
     }
     case 'coins': { add('coinSpin', 0); for (let k = 0; k < (f.n || 0); k++) add('clink', 1000 + k * 80); break; }
+    case 'bj': {                                                    // every card slides and turns, as bjPlan has it; then the result
+      const b = f.bj;
+      if (!b) break;
+      const pl = bjPlan(b);
+      for (const c of pl.P.concat(pl.D)) { if (!c) continue; if (c.slideAt != null) add('cardSlide', c.slideAt); if (c.flipAt != null) add('cardFlip', c.flipAt); }
+      if (b.res === 'win' || b.res === 'bj') { add('chips', pl.end); if (b.gain > 1) add('chips', pl.end + 170); }
+      else if (b.res === 'push') add('push', pl.end);
+      else if (b.res === 'bust') add('bust', pl.pEnd);
+      else if (b.res === 'lose') add('nopair', pl.end);
+      break;
+    }
+    case 'bus': if (f.bus) { add('cardSlide', 0); add('cardFlip', BUST.draw); add(f.bus.right ? 'ding' : 'thud', BUST.draw + BUST.flip); } break;
+    case 'rl': {
+      const N = 14;                                                  // the ball clicks over the pockets, slower and slower
+      add('rlSpin', 0);
+      for (let k = 1; k <= N; k++) add('ballTick', Math.round(RLT.spin * Math.pow(k / N, 0.6)));
+      add('ballDrop', RLT.spin);
+      if (f.rl) add(f.rl.hit ? (f.rl.bet === 'zero' ? 'sparkle' : 'ding') : 'thud', RLT.spin + RLT.settle);
+      break;
+    }
     case 'pig':
       if (f.note === 'bust') { add('rattle', 0); add('thunk', 600); add('bust', 650); }
       else if (f.note === 'bank') add('bank', 350);
@@ -4823,7 +5220,9 @@ function moveSounds(f) {
     case 'mastermind': { const n = (f.solid || 0) + (f.hollow || 0); for (let k = 0; k < n; k++) add('marker', 450 + k * 250); if (won) add('reveal', 1450); break; }
     case 'bump': { add('spin', 0); const steps = Math.max(1, f.to - f.from); for (let k = 0; k < steps; k++) add('hop', SPIN3_MS + k * HOP_MS); if (f.bumped) add('boing', SPIN3_MS + steps * HOP_MS); break; }
   }
-  if (won && f.kind !== 'match' && f.type !== 'ttt' && f.type !== 'wordle' && f.type !== 'hangman') add('won', Math.round(total * .5));   // the square is won: a chime
+  const CASINO = ['bj', 'bus', 'rl'];
+  if (won && f.kind !== 'match' && CASINO.includes(f.type)) add('won', total - 600);   // the card games and the wheel: the chime once the result shows
+  else if (won && f.kind !== 'match' && f.type !== 'ttt' && f.type !== 'wordle' && f.type !== 'hangman') add('won', Math.round(total * .5));   // the square is won: a chime
   if (f.kind === 'draw') add('reset', 420);                          // the square resets with a new mini-game
   if (f.kind === 'match') { add('swish', total - 500); add(matchEndSound(), total); }   // the line on the board, then the end of the match
   return out;

@@ -103,6 +103,20 @@ Sounds start from the events they belong to, never from drawing the screen: a re
 | Mastermind | `peg` | A peg is placed. *Varied.* | Triangle click |
 | Mastermind | `marker` | A feedback marker appears. *Varied.* | Short tick |
 | Mastermind | `reveal` | The code is cracked | Rising tone with two chimes |
+| Blackjack, Ride the Bus | `cardSlide` | A card is dealt or drawn (the dealer's too). *Varied.* | Bandpass noise sweep down 2600→1100 Hz |
+| Blackjack, Ride the Bus | `cardFlip` | A card turns face up (the dealer's hole card too). *Varied.* | Short bright noise snap with a faint triangle tick |
+| Blackjack | `chips` | A hand is won (twice for a won double) | Three bright clinks with noise |
+| Blackjack | `push` | A push | Two level triangle notes, 523 Hz |
+| Blackjack | `bust` | The player goes over 21 (the Risky Rolls crash) | Crash: lowpass noise with a falling sawtooth |
+| Blackjack | `nopair` | The dealer wins the hand (Memory's no-match) | Two falling notes |
+| Ride the Bus | `ding` | A right guess (the Hangman bell) | Bell: 1046 Hz with a 1568 Hz partial |
+| Ride the Bus | `thud` | A wrong guess (the Hangman thump) | Low thump with lowpass noise |
+| Roulette | `peg` | A number, a group or green 0 is picked for the bet (Mastermind's peg). *Varied.* | Triangle click |
+| Roulette | `rlSpin` | The wheel spins | Lowpass noise falling 1100→260 Hz over 2.6 s, with a low hum |
+| Roulette | `ballTick` | The ball clicks over the pockets, slower and slower. *Varied.* | 3100 Hz triangle, very short |
+| Roulette | `ballDrop` | The ball drops into its pocket | Two falling clicks and a short rattle |
+| Roulette | `ding` / `thud` | A hit / a miss | As above |
+| Roulette | `sparkle` | Green 0 comes up on a bet on 0: the square at once | Rising sparkles |
 
 ## Rules the game follows
 
