@@ -3112,7 +3112,10 @@ function loadPhysics() {
   matter.then(() => (window.PHYS ? Promise.resolve() : load('physics.js'))).then(() => {
     setPhysics(window.PHYS);
     physLoading = false;
-    if (!state.flash && !state.spot && state.stamp == null && presentingSeq == null) render();   // the checklist's Loading badge goes, a table waiting for its physics draws (never mid-animation: the next render will do)
+    // Redraw only what waited on it (the checklist's Loading badge, a table or a miniature of one of the
+    // three), and never while a result plays or a square stamps in: the next render will do.
+    const shown = state.screen === 'setup' || (['board', 'mini', 'review', 'review-mini'].includes(state.screen) && (state.squares || []).some(sq => sq && sq.mini && PHYS_TYPES.includes(sq.mini.type)));
+    if (shown && !state.flash && !state.spot && state.stamp == null && presentingSeq == null) render();
   }).catch(() => { physLoading = false; });                    // offline with no copy kept: the three are not dealt this visit
 }
 const PHYS_S = t => PHYSICS.lib[t === 'golf' ? 'GOLF' : t === 'pool' ? 'POOL' : 'BOWL'];
