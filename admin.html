@@ -425,6 +425,7 @@ function runSums(t) {                                        // every mode toget
   return s;
 }
 function runnersCard() {
+  const kpi = (label, big, sub) => `<div class="card kpi"><small>${label}</small><b>${big}</b>${sub ? `<span>${sub}</span>` : ''}</div>`;   // (as the dashboard's own, which lives inside render)
   const one = t => {
     const c = runCfg(t), s = runSums(t), name = GAMES[t];
     const fields = RUN_FIELDS.map(([k, l, lo, hi]) => `<label class="rf"><span>${l}</span><input type="number" step="any" min="${lo}" max="${hi}" data-runcfg="${t}:${k}" value="${c[k]}"></label>`).join('');
