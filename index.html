@@ -2272,7 +2272,7 @@ function anchorFx() {
   const set = (el, at) => {
     const t = Math.max(0, now - at);
     for (const a of el.getAnimations({ subtree: true })) {
-      if (!css(a) || (a.currentTime != null && Math.abs(a.currentTime - t) < 60)) continue;   // already where its event has it (one running on, untouched): left alone
+      if (!css(a) || (a.currentTime != null && a.currentTime > 0 && Math.abs(a.currentTime - t) < 60)) continue;   // already where its event has it (one running on, untouched): left alone; one just made (at 0) is always set, or a redraw early in its event would start it over
       try { a.currentTime = t; } catch (e) { /* (a finished one with no effect left) */ }
     }
   };
