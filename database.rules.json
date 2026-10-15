@@ -255,6 +255,58 @@
           "$other": {
             ".validate": false
           }
+        },
+        "flap": {
+          ".write": "auth != null && auth.token.admin === true",
+          "target": {
+            ".validate": "newData.isNumber() && newData.val() >= 200 && newData.val() <= 5000"
+          },
+          "v0": {
+            ".validate": "newData.isNumber() && newData.val() >= 3 && newData.val() <= 30"
+          },
+          "ramp": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10"
+          },
+          "gapMin": {
+            ".validate": "newData.isNumber() && newData.val() >= 8 && newData.val() <= 200"
+          },
+          "gapMax": {
+            ".validate": "newData.isNumber() && newData.val() >= 10 && newData.val() <= 400"
+          },
+          "mix": {
+            "$kind": {
+              ".validate": "$kind.matches(/^[a-z]{2,10}$/) && newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000"
+            }
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
+        "chopper": {
+          ".write": "auth != null && auth.token.admin === true",
+          "target": {
+            ".validate": "newData.isNumber() && newData.val() >= 200 && newData.val() <= 5000"
+          },
+          "v0": {
+            ".validate": "newData.isNumber() && newData.val() >= 3 && newData.val() <= 30"
+          },
+          "ramp": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10"
+          },
+          "gapMin": {
+            ".validate": "newData.isNumber() && newData.val() >= 8 && newData.val() <= 200"
+          },
+          "gapMax": {
+            ".validate": "newData.isNumber() && newData.val() >= 10 && newData.val() <= 400"
+          },
+          "mix": {
+            "$kind": {
+              ".validate": "$kind.matches(/^[a-z]{2,10}$/) && newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000"
+            }
+          },
+          "$other": {
+            ".validate": false
+          }
         }
       },
       "$other": {

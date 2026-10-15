@@ -126,7 +126,7 @@ const FIREBASE_CONFIG = {
 };
 const MODES = [['local', 'Two players'], ['cpu', 'vs Computer'], ['cvc', 'Computer vs Computer (old)'], ['friend', 'Friend code'], ['match', 'Find Match'], ['bot', 'Find Match vs a bot'], ['casual', 'Casual (old)'], ['ranked', 'Ranked (old)']];
 const MODE_COLORS = { local: 'var(--o)', cpu: 'var(--sky)', cvc: 'var(--stone)', friend: 'var(--plum)', match: 'var(--green)', bot: '#2f7f6f', casual: '#8fbf7a', ranked: 'var(--x)' };
-const GAMES = { ttt: 'Tic-tac-toe', c4: 'Connect 4', bs: 'Battleship', wordle: 'Wordle', hangman: 'Hangman', hex: 'Hex', hilo: 'Higher/Lower', snakes: 'Snakes and Ladders', memory: 'Memory', candy: 'Candy Race', bump: 'Bump', coins: 'Coin Flip', pig: 'Risky Rolls', hunt: 'Treasure Hunt', mastermind: 'Mastermind', bj: 'Blackjack', bus: 'Ride the Bus', rl: 'Roulette', bullseye: 'Bullseye', echo: 'Echo', plinko: 'Plinko', pong: 'Cup Pong', trivia: 'Trivia', oddone: 'Odd One Out', dash: 'Dash', lane: 'Lane Rush', golf: 'Mini Golf', pool: 'Pool', bowling: 'Bowling', craps: 'Craps', takeover: 'Takeover', flood: 'Flood', seating: 'Seating', districts: 'Districts', shelves: 'Shelves', roads: 'Roads' };   // the games in the pool (Hexapawn and the Dice race are gone; their numbers stay in the database)
+const GAMES = { ttt: 'Tic-tac-toe', c4: 'Connect 4', bs: 'Battleship', wordle: 'Wordle', hangman: 'Hangman', hex: 'Hex', hilo: 'Higher/Lower', snakes: 'Snakes and Ladders', memory: 'Memory', candy: 'Candy Race', bump: 'Bump', coins: 'Coin Flip', pig: 'Risky Rolls', hunt: 'Treasure Hunt', mastermind: 'Mastermind', bj: 'Blackjack', bus: 'Ride the Bus', rl: 'Roulette', bullseye: 'Bullseye', echo: 'Echo', plinko: 'Plinko', pong: 'Cup Pong', trivia: 'Trivia', oddone: 'Odd One Out', dash: 'Dash', lane: 'Lane Rush', golf: 'Mini Golf', pool: 'Pool', bowling: 'Bowling', craps: 'Craps', takeover: 'Takeover', flood: 'Flood', seating: 'Seating', districts: 'Districts', shelves: 'Shelves', roads: 'Roads', flap: 'Flap', chopper: 'Chopper' };   // the games in the pool (Hexapawn and the Dice race are gone; their numbers stay in the database)
 const app = document.getElementById('app');
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 let fb = null, user = null, stats = null, flagged = null, view = { status: 'loading', error: '' };
@@ -384,7 +384,7 @@ function playCard() {
 
 // ---------- game releases: Released or Admin only, per mini-game (releases/{type}, read by the game and the server) ----------
 // A game not in the database is as the code has it (TEST_TYPES in engine.js: admin only until released here).
-const TEST_TYPES = ['bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads'];   // (as engine.js has them; the switches cover every game the stats know)
+const TEST_TYPES = ['bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads', 'flap', 'chopper'];   // (as engine.js has them; the switches cover every game the stats know)
 const isReleased = t => (ctl.releases && typeof ctl.releases[t] === 'boolean' ? ctl.releases[t] : !TEST_TYPES.includes(t));
 function releasesCard() {
   const rows = Object.entries(GAMES).map(([t, name]) => { const on = isReleased(t); return `<tr><td>${esc(name)}</td><td><label class="sw"><input type="checkbox" data-rel="${t}"${on ? ' checked' : ''}><span class="${on ? 'good' : ''}">${on ? 'Released' : 'Admin only'}</span></label></td></tr>`; }).join('');
@@ -405,10 +405,10 @@ async function saveRelease(el) {
 // The difficulty of each runner lives here; a change applies to squares dealt from then on (a square
 // under way keeps the values it was dealt with). The tracker shows what the squares played so far say:
 // how many runs a finish takes, how far a run goes, and where the crashes cluster.
-const RUN_TYPES = ['dash', 'lane'];
-const RUN_DEFAULTS = { dash: { target: 1000, v0: 8, ramp: 1.5, gapMin: 26, gapMax: 48, mix: { rock: 30, crate: 20, spike: 20, flyer: 20, pair: 10 } }, lane: { target: 1000, v0: 18, ramp: 1.8, gapMin: 18.8, gapMax: 34.4, mix: { one: 55, two: 45 } } };   // (as engine.js has them)
+const RUN_TYPES = ['dash', 'lane', 'flap', 'chopper'];
+const RUN_DEFAULTS = { dash: { target: 1000, v0: 8, ramp: 1.5, gapMin: 26, gapMax: 48, mix: { rock: 30, crate: 20, spike: 20, flyer: 20, pair: 10 } }, lane: { target: 1000, v0: 18, ramp: 1.8, gapMin: 18.8, gapMax: 34.4, mix: { one: 55, two: 45 } }, flap: { target: 1000, v0: 6, ramp: 0.6, gapMin: 9, gapMax: 13, mix: { wide: 35, mid: 45, narrow: 20 } }, chopper: { target: 1000, v0: 9, ramp: 0.9, gapMin: 22, gapMax: 40, mix: { none: 30, small: 45, big: 25 } } };   // (as engine.js has them)
 const RUN_FIELDS = [['target', 'Target distance (m)', 200, 5000], ['v0', 'Starting speed (m/s)', 3, 30], ['ramp', 'Speed ramp (m/s more per 100 m)', 0, 10], ['gapMin', 'Obstacle spacing, min (m)', 8, 200], ['gapMax', 'Obstacle spacing, max (m)', 10, 400]];
-const RUN_MIX = { dash: [['rock', 'Rocks'], ['crate', 'Crates'], ['spike', 'Spikes'], ['flyer', 'Low flyers'], ['pair', 'Pairs']], lane: [['one', 'Rows with one car'], ['two', 'Rows with two cars']] };
+const RUN_MIX = { dash: [['rock', 'Rocks'], ['crate', 'Crates'], ['spike', 'Spikes'], ['flyer', 'Low flyers'], ['pair', 'Pairs']], lane: [['one', 'Rows with one car'], ['two', 'Rows with two cars']], flap: [['wide', 'Wide gaps'], ['mid', 'Middle gaps'], ['narrow', 'Narrow gaps']], chopper: [['none', 'No block'], ['small', 'Small blocks'], ['big', 'Big blocks']] };
 const RUN_BIN = 50;
 function runCfg(t) {
   const raw = (ctl.runCfg && ctl.runCfg[t]) || {}, d = RUN_DEFAULTS[t], out = { mix: {} };
@@ -440,8 +440,8 @@ function runnersCard() {
       <div class="rform">${fields}${mix}<button class="btn" data-runsave="${t}">Save ${esc(name)}</button></div></div>`;
   };
   return `<div class="card ctl" id="runCard"><h2>Runner tuning</h2>
-    <p class="note">Dash and Lane Rush: a race to the target distance, one run a move. Everything here goes to the game and the server at once and applies to squares dealt from then on (a square under way keeps its values). The mix numbers are weights (any scale). Aim: an average player finishes in 3-6 runs, most runs lasting 10-25 seconds; the crash chart (every ${RUN_BIN} m, every mode together) shows where the course bites.</p>
-    <div class="grid2">${one('dash')}${one('lane')}</div></div>`;
+    <p class="note">Dash, Lane Rush, Flap and Chopper: a race to the target distance, one run a move. Obstacle spacing is the posts' spacing in Flap and the blocks' in Chopper (the mix decides each one's gap, or the block's size, or none). Everything here goes to the game and the server at once and applies to squares dealt from then on (a square under way keeps its values). The mix numbers are weights (any scale). Aim: an average player finishes in 3-6 runs, most runs lasting 10-25 seconds; the crash chart (every ${RUN_BIN} m, every mode together) shows where the course bites.</p>
+    <div class="grid2">${one('dash')}${one('lane')}${one('flap')}${one('chopper')}</div></div>`;
 }
 async function saveRunCfg(t, btn) {
   const out = { mix: {} };

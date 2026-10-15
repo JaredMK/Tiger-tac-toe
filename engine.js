@@ -8,13 +8,13 @@
  * Everything about a match lives in one plain object (see newMatch); the UI
  * only ever calls playMove / endFlash and re-renders from that object.
  */
-const TYPES = ['ttt', 'c4', 'bs', 'wordle', 'hangman', 'hex', 'hilo', 'snakes', 'memory', 'candy', 'bump', 'coins', 'pig', 'hunt', 'mastermind', 'bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads'];
+const TYPES = ['ttt', 'c4', 'bs', 'wordle', 'hangman', 'hex', 'hilo', 'snakes', 'memory', 'candy', 'bump', 'coins', 'pig', 'hunt', 'mastermind', 'bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads', 'flap', 'chopper'];
 // Release control: every mini-game is Released or Admin only. A game in TEST_TYPES is admin only until the
 // admin's dashboard releases it (releases/{type} true in the database; false puts one back to admin only);
 // everything else is released unless the database says otherwise. Admin-only games exist only for the
 // admin: in their local matches and in friend games they host (their guest plays them in that match
 // only); never in Find Match, nor anywhere for anyone else.
-const TEST_TYPES = ['bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads'];
+const TEST_TYPES = ['bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads', 'flap', 'chopper'];
 function isReleased(t, releases) { return releases && typeof releases[t] === 'boolean' ? releases[t] : !TEST_TYPES.includes(t); }
 function releasedTypes(releases) { return TYPES.filter(t => isReleased(t, releases)); }
 // The games a setup may deal (admin: every game; anyone else: the released ones), and the setup's
@@ -68,6 +68,8 @@ const INFO = {
   districts:   { name: 'Districts',    hint: 'Place pieces. Lead the most regions when the map is full' },
   shelves:     { name: 'Shelves',      hint: 'Mark shelves. Be on the most when they are full' },
   roads:       { name: 'Roads',        hint: 'Claim lines. The longest unbroken road wins' },
+  flap:        { name: 'Flap',         hint: 'Tap to flap through the gaps. First to 1,000 m' },
+  chopper:     { name: 'Chopper',      hint: 'Hold to rise, let go to drop. First to 1,000 m' },
 };
 const C4 = { cols: 7, rows: 6, k: 4 };
 const HP = { cols: 3, rows: 4 };
@@ -787,10 +789,12 @@ function oddGrid(level, rng) {
 // grace stretch (or the finish), in no less time than the course allows. The difficulty is one config
 // per game (RUN_CFG: the admin's values from the database, set with setRunConfig), copied into each
 // square when it is dealt, so a change applies to new squares and a square under way keeps its own.
-const RUN_TYPES = ['dash', 'lane'];
+const RUN_TYPES = ['dash', 'lane', 'flap', 'chopper'];
 const RUN_DEFAULTS = {
   dash: { target: 1000, v0: 8, ramp: 1.5, gapMin: 26, gapMax: 48, mix: { rock: 30, crate: 20, spike: 20, flyer: 20, pair: 10 } },   // mix: the obstacles' weights
   lane: { target: 1000, v0: 18, ramp: 1.8, gapMin: 18.8, gapMax: 34.4, mix: { one: 55, two: 45 } },                                      // rows with one car or two (twice the first starting speed; rows closer: a quarter more cars a course)
+  flap: { target: 1000, v0: 6, ramp: 0.6, gapMin: 9, gapMax: 13, mix: { wide: 35, mid: 45, narrow: 20 } },                                // posts every 9-13 m; the size of each one's gap
+  chopper: { target: 1000, v0: 9, ramp: 0.9, gapMin: 22, gapMax: 40, mix: { none: 30, small: 45, big: 25 } },                           // a block in the cave every 22-40 m (or none there); its size
 };
 const RUN_LIMITS = { target: [200, 5000], v0: [3, 30], ramp: [0, 10], gapMin: [8, 200], gapMax: [10, 400] };
 // grace: seconds with no obstacles at the start of a run; countdown: the 3-2-1 before it; aiRuns: how many
@@ -798,9 +802,9 @@ const RUN_LIMITS = { target: [200, 5000], v0: [3, 30], ramp: [0, 10], gapMin: [8
 // the spread of its run lengths (log-normal); tolerance and slackMs: how much faster than the course's
 // own time a reported run may be (frame rounding); hit: how far from an obstacle's place a crash may be
 // reported (before, after); crashBin: the metres per bin in the crash stats.
-const RUN = { grace: 2, countdown: 3, aiRuns: 4.5, aiSlow: 0.3, aiSpread: 0.45, tolerance: 0.85, slackMs: 200, hit: { dash: [1.5, 2.2], lane: [3.6, 3.6] }, crashBin: 50, maxCrashes: 40 };
+const RUN = { grace: 2, countdown: 3, aiRuns: 4.5, aiSlow: 0.3, aiSpread: 0.45, tolerance: 0.85, slackMs: 200, hit: { dash: [1.5, 2.2], lane: [3.6, 3.6], flap: [1.0, 1.8] }, crashBin: 50, maxCrashes: 40 };
 const RUNT = { bar: 900, hold: 700 };                          // the result: the bar fills, then holds
-const RUN_CFG = { dash: null, lane: null };
+const RUN_CFG = { dash: null, lane: null, flap: null, chopper: null };
 const r2 = x => Math.round(x * 100) / 100 + 0;                   // (+ 0: never a -0, which is not plain JSON)
 // A config checked value by value: anything off, or missing, is the default.
 function runNorm(type, raw) {
@@ -838,6 +842,19 @@ const DASH = { g: 26, gHold: 10, vy: 8, holdMax: 0.25, box: { w: 0.6, h: 0.9 }, 
 // Lane Rush: three lanes; a lane change takes switchSecs; the cars (the player's and the traffic's) are
 // art metres long with a box that much shorter; two cars collide when their lanes are within laneHit.
 const LANE = { lanes: 3, switchSecs: 0.22, art: 2.2, box: 2.0, laneHit: 0.72, step: 1 / 240 };
+// Flap: a sky h metres high. A tap sets the bird climbing at vy; gravity g pulls it down; the ceiling
+// stops it, the ground (past the grace stretch) is a crash. Posts post metres wide, each with a gap of
+// the mix's size (gaps: metres), its middle at most shift metres from the last one's and never nearer
+// than margin to the ground or the sky. Before the first tap, in the grace stretch, the bird holds its
+// height. The box is a touch smaller than the art.
+const FLAP = { h: 10, g: 30, vy: 8.6, box: { w: 0.7, h: 0.56 }, art: 0.95, post: 1.3, gaps: { wide: 4.0, mid: 3.4, narrow: 2.9 }, shift: 2.6, margin: 1.0, step: 1 / 240 };
+// Chopper: a cave in a sky h metres high. Held, the chopper climbs (up m/s² the other way to gravity),
+// let go it drops (down), never faster than vmax either way. The cave's middle wanders (a point every
+// seg metres, wander apart at most, smoothly joined); it is cave0 metres high at the start and narrows
+// to cave1 at the target; each wall waves a little (wave metres). Blocks float in it (blocks: their
+// heights, bw wide), always leaving at least room to fly past above or below. In the grace stretch the
+// walls close in from the edges of the sky and touch nothing; before the first press, the chopper hovers.
+const CHOP = { h: 10, up: 16, down: 15, vmax: 6.5, box: { w: 1.1, h: 0.6 }, art: 1.3, seg: 14, wander: 2.2, cave0: 7.6, cave1: 4.4, wave: 0.28, blocks: { small: 1.5, big: 2.4 }, bw: 1.3, room: 1.9, step: 1 / 240 };
 function weightedPick(mix, rng) {
   const ks = Object.keys(mix), tot = ks.reduce((s, k) => s + mix[k], 0);
   let r = rng() * tot;
@@ -860,9 +877,27 @@ function laneRow(k, prev, rng) {
 function runCourse(mini, p) {
   const cfg = mini.cfg, rng = makeRng(`run:${mini.type}:${mini.seed[p]}`), out = [];
   let d = Math.max(cfg.gapMin, runGrace(cfg, 0) + 6);
+  const cave = mini.type === 'chopper' ? runCave(mini, p) : null;
+  let gy = FLAP.h / 2;
   while (d < cfg.target - 4) {
     const k = weightedPick(cfg.mix, rng);
-    if (mini.type === 'dash') {
+    if (mini.type === 'flap') {                                       // a post: the gap's middle within reach of the last one
+      const gh = FLAP.gaps[k], lo = FLAP.margin + gh / 2, hi = FLAP.h - FLAP.margin - gh / 2;
+      gy = Math.max(lo, Math.min(hi, gy + (rng() * 2 - 1) * FLAP.shift));
+      out.push({ at: r2(d), k, gy: r2(gy), gh });
+    } else if (mini.type === 'chopper') {                             // a block, or none here; room to pass on one side at least
+      if (k !== 'none') {
+        let floor = -Infinity, ceil = Infinity;                       // the walls over the way in and past it: the room is there all along
+        for (let x = d - 4; x <= d + CHOP.bw + 1.5; x += 0.5) { const [f, c] = caveWalls(cave, cfg, x); floor = Math.max(floor, f); ceil = Math.min(ceil, c); }
+        const space = ceil - floor;
+        const bh = Math.min(CHOP.blocks[k], space - CHOP.room - 0.3);
+        if (bh >= 0.6) {
+          const free = space - bh, side = rng() < 0.5;               // the room above, or below
+          const under = side ? CHOP.room + rng() * (free - CHOP.room) : rng() * (free - CHOP.room);
+          out.push({ at: r2(d), k, y: r2(floor + under), bh: r2(bh) });
+        }
+      }
+    } else if (mini.type === 'dash') {
       if (k === 'pair') {                                            // two hazards: one long jump clears both, or two quick ones
         const gap = 1.0 + 0.15 * runSpeed(cfg, d), kinds = ['rock', 'spike'];
         out.push({ at: r2(d), k: kinds[randInt(rng, 2)], pair: 1 });
@@ -874,6 +909,24 @@ function runCourse(mini, p) {
   }
   return out;
 }
+// Chopper's cave: the middle every CHOP.seg metres, from its own seed (the blocks are placed in it).
+function runCave(mini, p) {
+  const cfg = mini.cfg, rng = makeRng(`cave:${mini.seed[p]}`), pts = [];
+  let c = CHOP.h / 2;
+  for (let d = 0; d <= cfg.target + CHOP.seg * 2; d += CHOP.seg) {
+    const half = caveHeight(cfg, d) / 2 + CHOP.wave + 0.3;
+    pts.push(r2(c));
+    c = Math.max(half, Math.min(CHOP.h - half, c + (rng() * 2 - 1) * CHOP.wander));
+  }
+  return pts;
+}
+const caveHeight = (cfg, d) => CHOP.cave0 + (CHOP.cave1 - CHOP.cave0) * Math.max(0, Math.min(1, d / cfg.target));
+// The cave's floor and ceiling at d: the middle eased from point to point, the height, and the waves.
+function caveWalls(cave, cfg, d) {
+  const u = Math.max(0, d) / CHOP.seg, k = Math.min(cave.length - 2, Math.floor(u)), t = Math.min(1, u - k), e = (1 - Math.cos(Math.PI * t)) / 2;
+  const mid = cave[k] + (cave[k + 1] - cave[k]) * e, half = caveHeight(cfg, d) / 2;
+  return [mid - half + CHOP.wave * Math.sin(d / 2.3), mid + half + CHOP.wave * Math.sin(d / 1.9 + 1.7)];
+}
 // What a run's result must be: from the saved distance to a crash at an obstacle past the grace stretch
 // (or to the finish), in no less time than the course allows. `out`: the turn's time ran out mid-run
 // (the run ends wherever it was: no obstacle needed; the time must still allow the distance).
@@ -883,6 +936,7 @@ function runCheck(mini, p, m) {
   if (!Number.isFinite(dist) || !Number.isFinite(ms) || ms < 0 || dist < from || dist > cfg.target + 0.01) return 'bad';
   if (ms < runSecs(cfg, from, dist) * 1000 * RUN.tolerance - RUN.slackMs) return 'fast';   // more distance than the time allows at the course's speeds
   if (dist >= cfg.target || m.out) return null;
+  if (mini.type === 'chopper' || mini.type === 'flap') return dist >= from + runGrace(cfg, from) - 0.5 ? null : 'course';   // the walls (or the ground) are everywhere past the grace stretch
   const g = from + runGrace(cfg, from), [before, after] = RUN.hit[mini.type];
   return runCourse(mini, p).some(o => o.at >= g - 0.5 && dist >= o.at - before && dist <= o.at + after) ? null : 'course';   // a crash where there is nothing to crash into
 }
@@ -890,6 +944,7 @@ function runCheck(mini, p, m) {
 // obstacle past the grace stretch and a few metres more; past the last obstacle, it finishes).
 function runAuto(mini, p, rng) {
   const cfg = mini.cfg, from = mini.dist[p], want = from + runGrace(cfg, from) + 4 + rng() * 70;
+  if (mini.type === 'chopper') { const dist = Math.min(cfg.target, r2(want)); return { dist, ms: Math.round(runSecs(cfg, from, dist) * 1000) + 60 }; }   // into a wall
   const ob = runCourse(mini, p).find(o => o.at >= want);
   const dist = ob ? Math.min(cfg.target, r2(ob.at + 0.2)) : cfg.target;
   return { dist, ms: Math.round(runSecs(cfg, from, dist) * 1000) + 60 };
@@ -903,8 +958,8 @@ function runAiMean(cfg, from) { return (cfg.target / RUN.aiRuns) * Math.pow(cfg.
 function runAi(mini, p, rng) {
   const cfg = mini.cfg, from = mini.dist[p], g = runGrace(cfg, from), mean = runAiMean(cfg, from), s = RUN.aiSpread;
   const len = Math.max(6, mean * Math.exp(s * gaussOf(rng) - s * s / 2));
-  const ob = runCourse(mini, p).find(o => o.at >= from + g + len);
-  const dist = ob ? Math.min(cfg.target, r2(ob.at + 0.2)) : cfg.target;
+  const ob = mini.type === 'chopper' ? null : runCourse(mini, p).find(o => o.at >= from + g + len);
+  const dist = mini.type === 'chopper' ? Math.min(cfg.target, r2(from + g + len)) : ob ? Math.min(cfg.target, r2(ob.at + 0.2)) : cfg.target;
   const need = cfg.target - from - g;                            // the chance this run finishes
   const q = need <= 0 ? 1 : 1 - normCdf((Math.log(need / mean) + s * s / 2) / s);
   return { move: { dist, ms: Math.round(runSecs(cfg, from, dist) * 1000) + 80 }, q };
@@ -918,10 +973,18 @@ const runLog = mini => ({ run: { runs: { X: mini.runs.X, O: mini.runs.O }, dist:
 // ground (Dash) or in the middle lane (Lane Rush).
 function runStart(mini, p) {
   const cfg = mini.cfg, from = mini.dist[p], g = runGrace(cfg, from);
-  return { type: mini.type, cfg, from, d: from, t: 0, grace: g, course: runCourse(mini, p).filter(o => o.at >= from + g), i: 0,
-    y: 0, vy: 0, air: false, held: false, holdT: 0, lane: 1, laneFrom: 1, laneT: 1, crash: null, done: false };
+  const cave = mini.type === 'chopper' ? runCave(mini, p) : null;
+  const y = mini.type === 'flap' ? FLAP.h / 2 : cave ? r2(caveWalls(cave, cfg, from + g).reduce((a, b) => a + b) / 2) : 0;   // the bird mid-sky; the chopper at the middle of the cave where the grace stretch ends
+  return { type: mini.type, cfg, from, d: from, t: 0, grace: g, course: runCourse(mini, p).filter(o => o.at >= from + g), i: 0, cave,
+    y, vy: 0, air: false, held: false, holdT: 0, flown: false, lane: 1, laneFrom: 1, laneT: 1, crash: null, done: false };
 }
-function runJump(sim) { if (sim.type !== 'dash' || sim.air || sim.crash || sim.done) return false; sim.air = true; sim.vy = DASH.vy; sim.held = true; sim.holdT = 0; return true; }
+function runJump(sim) {                                          // Dash: a jump; Flap: a flap; Chopper: the press (it climbs while held)
+  if (sim.crash || sim.done) return false;
+  if (sim.type === 'flap') { sim.vy = FLAP.vy; sim.flown = true; return true; }
+  if (sim.type === 'chopper') { sim.held = true; sim.flown = true; return true; }
+  if (sim.type !== 'dash' || sim.air) return false;
+  sim.air = true; sim.vy = DASH.vy; sim.held = true; sim.holdT = 0; return true;
+}
 function runRelease(sim) { sim.held = false; }
 function runLane(sim, dir) {
   if (sim.type !== 'lane' || sim.crash || sim.done) return false;
@@ -932,6 +995,11 @@ function runLane(sim, dir) {
 }
 const runLaneX = sim => (sim.laneT >= 1 ? sim.lane : sim.laneFrom + (sim.lane - sim.laneFrom) * sim.laneT);   // the car's lane, as a number, mid-change
 const overlap = (a0, a1, b0, b1) => a0 < b1 && b0 < a1;
+// Chopper: the walls at d on this run: in the grace stretch they close in from the edges of the sky.
+function runWalls(sim, d) {
+  const [f, c] = caveWalls(sim.cave, sim.cfg, d), k = sim.grace > 0 ? Math.max(0, Math.min(1, (d - sim.from) / sim.grace)) : 1, e = k * k * (3 - 2 * k);
+  return [f * e, CHOP.h + (c - CHOP.h) * e];
+}
 function runHit(sim) {                                            // the obstacle the runner is touching, if any
   const d = sim.d;
   if (sim.type === 'dash') {
@@ -942,6 +1010,24 @@ function runHit(sim) {                                            // the obstacl
       if (o.at + ob.w < d - 4) { if (k === sim.i) sim.i++; continue; }
       const oy = ob.y || 0;
       if (overlap(x0, x1, o.at + s, o.at + ob.w - s) && overlap(y0, y1, oy + s, oy + ob.h - s)) return o;
+    }
+  } else if (sim.type === 'flap') {
+    const x0 = d - FLAP.box.w / 2, x1 = d + FLAP.box.w / 2, y0 = sim.y - FLAP.box.h / 2, y1 = sim.y + FLAP.box.h / 2;
+    for (let k = sim.i; k < sim.course.length; k++) {
+      const o = sim.course[k];
+      if (o.at > d + 3) break;
+      if (o.at + FLAP.post < d - 3) { if (k === sim.i) sim.i++; continue; }
+      if (overlap(x0, x1, o.at, o.at + FLAP.post) && (y0 < o.gy - o.gh / 2 || y1 > o.gy + o.gh / 2)) return o;
+    }
+  } else if (sim.type === 'chopper') {
+    if (d < sim.from + sim.grace) return null;                     // the grace stretch: nothing to touch
+    const hw = CHOP.box.w / 2, y0 = sim.y - CHOP.box.h / 2, y1 = sim.y + CHOP.box.h / 2;
+    for (const x of [d - hw, d, d + hw]) { const [f, c] = runWalls(sim, x); if (y0 < f) return { k: 'floor' }; if (y1 > c) return { k: 'roof' }; }
+    for (let k = sim.i; k < sim.course.length; k++) {
+      const o = sim.course[k];
+      if (o.at > d + 3) break;
+      if (o.at + CHOP.bw < d - 3) { if (k === sim.i) sim.i++; continue; }
+      if (overlap(d - hw, d + hw, o.at, o.at + CHOP.bw) && overlap(y0, y1, o.y, o.y + o.bh)) return o;
     }
   } else {
     const x = runLaneX(sim);
@@ -958,7 +1044,7 @@ function runHit(sim) {                                            // the obstacl
 // lane change plays out, a touch is a crash (the run ends there), the target is the finish.
 function runStep(sim, dt) {
   if (sim.crash || sim.done) return sim;
-  const step = sim.type === 'dash' ? DASH.step : LANE.step;
+  const step = sim.type === 'dash' ? DASH.step : sim.type === 'flap' ? FLAP.step : sim.type === 'chopper' ? CHOP.step : LANE.step;
   let left = Math.max(0, Math.min(0.1, dt));
   while (left > 1e-9 && !sim.crash && !sim.done) {
     const h = Math.min(step, left); left -= h;
@@ -969,6 +1055,22 @@ function runStep(sim, dt) {
       if (sim.y <= 0) { sim.y = 0; sim.vy = 0; sim.air = false; sim.held = false; }
     }
     if (sim.type === 'lane' && sim.laneT < 1) sim.laneT = Math.min(1, sim.laneT + h / LANE.switchSecs);
+    const past = sim.d >= sim.from + sim.grace;
+    if (sim.type === 'flap') {
+      const hh = FLAP.box.h / 2;
+      if (sim.flown || past) { sim.vy -= FLAP.g * h; sim.y += sim.vy * h; }
+      if (sim.y > FLAP.h - hh) { sim.y = FLAP.h - hh; if (sim.vy > 0) sim.vy = 0; }   // the sky stops it
+      if (sim.y < hh) {
+        if (past) { sim.y = hh; sim.crash = { at: r2(sim.d), ob: { k: 'ground' } }; break; }
+        sim.y = hh; sim.vy = 0;                                       // the grace stretch: it lands, unhurt
+      }
+    }
+    if (sim.type === 'chopper') {
+      const hh = CHOP.box.h / 2;
+      if (sim.flown || past) { sim.vy = Math.max(-CHOP.vmax, Math.min(CHOP.vmax, sim.vy + (sim.held ? CHOP.up : -CHOP.down) * h)); sim.y += sim.vy * h; }
+      if (sim.y > CHOP.h - hh) { sim.y = CHOP.h - hh; sim.vy = Math.min(0, sim.vy); }
+      if (sim.y < hh) { sim.y = hh; sim.vy = Math.max(0, sim.vy); }
+    }
     if (sim.d >= sim.cfg.target) { sim.d = sim.cfg.target; sim.done = true; break; }
     const hit = runHit(sim);
     if (hit) { sim.crash = { at: r2(sim.d), ob: hit }; break; }
@@ -1467,7 +1569,7 @@ function newMini(type, rng) {
       const owner = new Array(N).fill(null); owner[0] = '-';      // '-': the blob's start, nobody's
       return { type, colors, owner, score: { X: 0, O: 0 }, last: null };
     }   // a fresh rack every roll; the totals are what count
-    case 'dash': case 'lane': return { type, cfg: runConfig(type), seed: { X: randInt(needRng(rng), 1e9), O: randInt(rng, 1e9) }, dist: { X: 0, O: 0 }, runs: { X: 0, O: 0 }, crashes: { X: [], O: [] }, last: null };   // cfg: the difficulty this square was dealt with; seed: each player's course
+    case 'dash': case 'lane': case 'flap': case 'chopper': return { type, cfg: runConfig(type), seed: { X: randInt(needRng(rng), 1e9), O: randInt(rng, 1e9) }, dist: { X: 0, O: 0 }, runs: { X: 0, O: 0 }, crashes: { X: [], O: [] }, last: null };   // cfg: the difficulty this square was dealt with; seed: each player's course
     case 'oddone': {
       const gx = oddGrid(0, needRng(rng)), go = oddGrid(0, rng);
       return { type, finds: { X: 0, O: 0 }, grid: { X: gx.grid, O: go.grid }, pos: { X: gx.pos, O: go.pos }, last: null };   // pos: the odd tile's place (hidden online)
@@ -2009,7 +2111,7 @@ function applyMove(mini, p, m, rng) {
       if (mini.pins[p] >= BOWLG.goal) return { ok: true, outcome: 'win', note: 'pins' };
       return { ok: true, outcome: 'continue', note: n === BOWLG.rack ? 'strike' : r.result.gutter ? 'gutter' : 'roll' };
     }
-    case 'dash': case 'lane': {                               // a run: its end and its time, checked against the course
+    case 'dash': case 'lane': case 'flap': case 'chopper': {                               // a run: its end and its time, checked against the course
       const mv = m === 'auto' ? runAuto(mini, p, needRng(rng)) : m;
       const why = runCheck(mini, p, mv);
       if (why) return { ok: false, reason: why };
@@ -2137,7 +2239,7 @@ function publicMini(mini) {
   switch (mini.type) {
     case 'ttt': case 'c4': case 'hex': case 'hexapawn': return { type: mini.type, cells: mini.cells.slice() };
     case 'golf': case 'pool': case 'bowling': { const c = JSON.parse(JSON.stringify(mini)); if (c.last) delete c.last.rec; return c; }   // (everything is in the open; the recording is not needed to choose)
-    case 'dash': case 'lane': return { type: mini.type, cfg: mini.cfg, seed: { X: mini.seed.X, O: mini.seed.O }, dist: { X: mini.dist.X, O: mini.dist.O }, runs: { X: mini.runs.X, O: mini.runs.O } };
+    case 'dash': case 'lane': case 'flap': case 'chopper': return { type: mini.type, cfg: mini.cfg, seed: { X: mini.seed.X, O: mini.seed.O }, dist: { X: mini.dist.X, O: mini.dist.O }, runs: { X: mini.runs.X, O: mini.runs.O } };
     case 'craps':   return { type: 'craps', wins: { X: mini.wins.X, O: mini.wins.O } };
     case 'takeover': return { type: 'takeover', cells: mini.cells.slice() };
     case 'seating': return { type: 'seating', color: mini.color.slice(), who: mini.who.slice(), next: mini.next };
@@ -2299,7 +2401,7 @@ function snlExpected(pm) {
 const COIN_NEEDS = [0, 2, 2.67, 3.14, 3.92, 4.55, 5.22];   // expected flips to turn n coins that aren't yours, flipping three at a time
 function needsOf(pm, p) {
   switch (pm.type) {
-    case 'dash': case 'lane': return runNeeds(pm.cfg, pm.dist[p]);
+    case 'dash': case 'lane': case 'flap': case 'chopper': return runNeeds(pm.cfg, pm.dist[p]);
     case 'golf': case 'pool': case 'bowling': return physNeeds(pm, p);
     case 'bullseye': { let n = 0, pts = pm.pts[p], s = pm.speed[p]; while (pts < BULLS.goal && n < 60) { const r = bullsRates(s), e = r.bull * BULLS.bullPts + r.board * BULLS.boardPts; pts += e; s *= 1 + (pm.cfg.ramp - 1) * (r.bull + r.board); n++; } return Math.max(1, n); }   // throws to 5 at its expected points, slipping as it speeds up
     case 'craps':   return Math.max(1, (CRAPS.goal - pm.wins[p]) / CRAPS.winOdds);
@@ -2541,7 +2643,7 @@ function pickValued(pm, me, moves, place) {
 }
 function localBest(pm, me, rng, style, ctx) {
   switch (pm.type) {
-    case 'dash': case 'lane': return runAi(pm, me, rng);       // a run drawn to finish in about 4-5 of them
+    case 'dash': case 'lane': case 'flap': case 'chopper': return runAi(pm, me, rng);       // a run drawn to finish in about 4-5 of them
     case 'golf': case 'pool': case 'bowling': return physAi(pm, me, rng);   // the best of its candidate shots, with a little error
     case 'bullseye': {                                           // the bullseye, the board or a miss at its rates (15%, 45%, 40% at the start), and a spot to match
       const r = bullsRates(pm.speed[me]), u = rng(), cfg = pm.cfg, [cx, cy] = pm.pos;
@@ -2820,7 +2922,7 @@ function randomLegalMove(mini, p, rng) {
   const empties = (arr, ok) => arr.map((c, k) => (ok(c) ? k : -1)).filter(k => k >= 0);
   switch (mini.type) {
     case 'ttt': case 'hex': return from(empties(mini.cells, c => !c));
-    case 'dash': case 'lane': return 'auto';                           // a run that crashes after a short random distance
+    case 'dash': case 'lane': case 'flap': case 'chopper': return 'auto';                           // a run that crashes after a short random distance
     case 'golf': case 'pool': case 'bowling': return physRandom(mini, p, rng);   // a random gentle shot
     case 'bullseye': return { x: r3(rng()), y: r3(rng()) };          // both lines stopped at random points
     case 'echo': return 'auto';                                        // a failed attempt
@@ -2975,7 +3077,7 @@ function playMove(state, i, m, rng, opts) {
     case 'flood': { const l = mini.last; flash.flood = { color: l.color, from: l.from, waves: l.waves.map(w => w.slice()), gain: l.gain, score: { X: mini.score.X, O: mini.score.O } }; break; }
     case 'rl': { const l = mini.last; flash.rl = { bet: Array.isArray(l.bet) ? l.bet.slice() : l.bet, n: l.n, hit: l.hit, hits: { X: mini.hits.X, O: mini.hits.O } }; break; }
     case 'golf': case 'pool': case 'bowling': { const l = mini.last; flash.phys = Object.assign(JSON.parse(JSON.stringify(l)), mini.type === 'golf' ? { balls: JSON.parse(JSON.stringify(mini.balls)), hole: mini.hole, holedNow: JSON.parse(JSON.stringify(mini.holed)) } : mini.type === 'pool' ? { pocketedNow: { X: mini.pocketed.X, O: mini.pocketed.O }, down: Object.assign({}, mini.down) } : { pins: { X: mini.pins.X, O: mini.pins.O } }); break; }
-    case 'dash': case 'lane': { const l = mini.last; flash.run = { from: l.from, to: l.to, ms: l.ms, out: l.out, done: l.done, dist: { X: mini.dist.X, O: mini.dist.O }, runs: { X: mini.runs.X, O: mini.runs.O }, target: mini.cfg.target }; break; }
+    case 'dash': case 'lane': case 'flap': case 'chopper': { const l = mini.last; flash.run = { from: l.from, to: l.to, ms: l.ms, out: l.out, done: l.done, dist: { X: mini.dist.X, O: mini.dist.O }, runs: { X: mini.runs.X, O: mini.runs.O }, target: mini.cfg.target }; break; }
     case 'bullseye': { const l = mini.last; flash.bull = { x: l.x, y: l.y, at: l.at.slice(), d: l.d, pts: l.pts, pos: l.pos.slice(), next: mini.pos.slice(), total: { X: mini.pts.X, O: mini.pts.O }, speed: mini.speed[p] }; break; }
     case 'echo': { const l = mini.last; flash.echo = { level: l.level, len: l.len, pass: l.pass, failAt: l.failAt, taps: l.taps.slice(), levels: { X: mini.level.X, O: mini.level.O } }; break; }
     case 'plinko': { const l = mini.last; flash.plinko = { slot: l.slot, path: l.path.slice(), bin: l.bin, win: l.win, winBin: mini.win }; break; }
@@ -3234,7 +3336,7 @@ function playMs(f, winLen) {
     case 'shelves': return PLACE_MS.mark + (f.shelf && f.shelf.grey != null ? PLACE_MS.drop : 0) + PLACE_MS.hold + (won ? 600 : 0);
     case 'roads':   return PLACE_MS.mark + (f.road && f.road.block != null ? PLACE_MS.drop : 0) + PLACE_MS.hold + (won ? 600 : 0);
     case 'flood':   return FLOOD_MS.base + (f.flood ? f.flood.waves.length : 0) * FLOOD_MS.wave + (won ? 600 : 0);
-    case 'dash': case 'lane': return RUNT.bar + RUNT.hold + (won ? 600 : 0);
+    case 'dash': case 'lane': case 'flap': case 'chopper': return RUNT.bar + RUNT.hold + (won ? 600 : 0);
     case 'golf':    return (f.phys ? f.phys.ms : 3000) + GOLF.hold + (won ? 600 : 0);
     case 'pool':    return (f.phys ? f.phys.ms : 3000) + POOLG.hold + (won ? 600 : 0);
     case 'bowling': return (f.phys ? f.phys.ms : 3000) + BOWLG.hold + (won ? 600 : 0) + (f.phys && f.phys.strike ? 500 : 0);
@@ -3351,4 +3453,4 @@ function matchStats(st) {
 }
 
 // Node (the Cloud Functions and the tests): the same names as a module.
-if (typeof module !== "undefined" && module.exports) module.exports = { PHYS_TYPES, PHYSICS, setPhysics, physicsReady, GOLF, POOLG, BOWLG, poolMine, physShot, wrapAim, aimTo, poolSpot, physRun, golfClear, golfNext, golfAhead, golfLeft, physLast, physScore, physCandidates, physAi, physRandom, physNeeds, RUN_TYPES, RUN_DEFAULTS, RUN_LIMITS, RUN, RUNT, RUN_CFG, r2, runNorm, setRunConfig, runConfig, runSpeed, runSecs, runAfter, runGrace, DASH_OBS, DASH, LANE, weightedPick, laneRow, runCourse, runCheck, runAuto, gaussOf, normCdf, runAiMean, runAi, runNeeds, runLog, runStart, runJump, runRelease, runLane, runLaneX, overlap, runHit, runStep, runResult, TEST_TYPES, isReleased, releasedTypes, allowedTypes, restrictGames, dealable, CRAPS, crapsRound, crapsTimes, TAKE, takeNear, takeCount, takeApply, takeSearch, FLOOD, floodNear, floodWaves, floodGain, floodApply, floodSearch, raceNeeds, TAKEOVER_MS, FLOOD_MS, PLACE_MS, SEAT, seatTable, seatMate, seatTables, seatZ, seatPick, DIST, r1d, distClip, distMap, distTally, distEval, distSearch, SHELF, shelfOn, shelfPick, ROAD, ROAD_SEGS, roadLongest, roadPick, randomEmpty, BULLS, BULLT, BULL_DEFAULTS, BULL_LIMITS, BULL_CFG, bullsNorm, setBullsConfig, bullsConfig, bullsSpot, bullsScore, bullsRates, r3, ECHO, PLINKO, PONG, TRIVIA, ODD, bullsPeriod, echoSeqs, plinkoPath, plinkoOdds, pongThrow, pongAimAt, pongDist, setTriviaBank, triviaReady, triviaDeal, triviaUsed, oddGrid, cpuEcho, CARD, BJ, BUS, RL, BJT, BUST, RLT, BUS_AVG, cardDeck, isCard, cardRank, cardRed, cardName, bjValue, bjTotal, bjNatural, bjDealerPlay, bjOutcome, bjStrategy, bjPlan, bjMs, busRight, busDeck, busOdds, rlRed, rlBet, rlCovers, tttOpen, lineOpen, majorityResult, STYLE0, huntSize, huntBand, huntClue, normTimer, resignLocal, TYPES, OLD_TYPES, SNL, BUMP, snlRow, snlBoard, snlValid, snlExpected, coinPick, markCoins, coinMarksFor, normLocal, seatLocal, INFO, C4, HP, MM, HEX_N, HILO, CANDY, NAME_MAX, COINS, RISKY, BS, HUNT, DICE_GOAL, MEMORY, LINES, WORDS5, WORDS_HANG, VALID5, other, makeRng, needRng, randInt, randomType, shuffle, memoryDeck, wordleMarks, hexNeighbors, hexPath, canMove, hpMoves, mmFeedback, mmValid, MM_ALL, mmAll, mmCode, mmCandidates, mmBestGuess, hpGoalRow, upgradeMini, anyMove, huntDist, candyTrack, newMini, pickType, newSquare, CPU_NAME, defaultSetup, cpuSide, normSetup, syncNames, enabledGames, TIMER_OPTIONS, newTimer, playerName, newState, startMatch, newMatch, findRun, applyMove, AI, publicMini, wordleCandidates, hangmanCandidates, bsCandidates, bsPlacements, bsShip, huntCandidates, WINDOWS, windowsOf, lineNeeds, c4Playable, hexDist, candyExpected, COIN_NEEDS, needsOf, memoryPair, winChance, tttMinimax, c4Drop, c4Eval, C4_ORDER, c4Search, C4_DEPTH, c4Moves, HP_MEMO, hpSolve, hpMovesValued, hpNeeds, hexMoves, threatScore, pickValued, localBest, squareValue, moveGain, cpuMove, VALID5_LIST, randomLegalMove, timeoutMove, mainResult, playMove, endFlash, leaveSquare, RECENT_MAX, MATCH_FIELDS, secretOf, hideMini, matchRecord, fullState, settle, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, newOnlineMatch, PLAY, diceSlot, playMs, replayMs, armClock, applyOnlineResign, matchStats };
+if (typeof module !== "undefined" && module.exports) module.exports = { PHYS_TYPES, PHYSICS, setPhysics, physicsReady, GOLF, POOLG, BOWLG, poolMine, physShot, wrapAim, aimTo, poolSpot, physRun, golfClear, golfNext, golfAhead, golfLeft, physLast, physScore, physCandidates, physAi, physRandom, physNeeds, RUN_TYPES, RUN_DEFAULTS, RUN_LIMITS, RUN, RUNT, RUN_CFG, r2, runNorm, setRunConfig, runConfig, runSpeed, runSecs, runAfter, runGrace, DASH_OBS, DASH, LANE, FLAP, CHOP, runCave, caveHeight, caveWalls, runWalls, weightedPick, laneRow, runCourse, runCheck, runAuto, gaussOf, normCdf, runAiMean, runAi, runNeeds, runLog, runStart, runJump, runRelease, runLane, runLaneX, overlap, runHit, runStep, runResult, TEST_TYPES, isReleased, releasedTypes, allowedTypes, restrictGames, dealable, CRAPS, crapsRound, crapsTimes, TAKE, takeNear, takeCount, takeApply, takeSearch, FLOOD, floodNear, floodWaves, floodGain, floodApply, floodSearch, raceNeeds, TAKEOVER_MS, FLOOD_MS, PLACE_MS, SEAT, seatTable, seatMate, seatTables, seatZ, seatPick, DIST, r1d, distClip, distMap, distTally, distEval, distSearch, SHELF, shelfOn, shelfPick, ROAD, ROAD_SEGS, roadLongest, roadPick, randomEmpty, BULLS, BULLT, BULL_DEFAULTS, BULL_LIMITS, BULL_CFG, bullsNorm, setBullsConfig, bullsConfig, bullsSpot, bullsScore, bullsRates, r3, ECHO, PLINKO, PONG, TRIVIA, ODD, bullsPeriod, echoSeqs, plinkoPath, plinkoOdds, pongThrow, pongAimAt, pongDist, setTriviaBank, triviaReady, triviaDeal, triviaUsed, oddGrid, cpuEcho, CARD, BJ, BUS, RL, BJT, BUST, RLT, BUS_AVG, cardDeck, isCard, cardRank, cardRed, cardName, bjValue, bjTotal, bjNatural, bjDealerPlay, bjOutcome, bjStrategy, bjPlan, bjMs, busRight, busDeck, busOdds, rlRed, rlBet, rlCovers, tttOpen, lineOpen, majorityResult, STYLE0, huntSize, huntBand, huntClue, normTimer, resignLocal, TYPES, OLD_TYPES, SNL, BUMP, snlRow, snlBoard, snlValid, snlExpected, coinPick, markCoins, coinMarksFor, normLocal, seatLocal, INFO, C4, HP, MM, HEX_N, HILO, CANDY, NAME_MAX, COINS, RISKY, BS, HUNT, DICE_GOAL, MEMORY, LINES, WORDS5, WORDS_HANG, VALID5, other, makeRng, needRng, randInt, randomType, shuffle, memoryDeck, wordleMarks, hexNeighbors, hexPath, canMove, hpMoves, mmFeedback, mmValid, MM_ALL, mmAll, mmCode, mmCandidates, mmBestGuess, hpGoalRow, upgradeMini, anyMove, huntDist, candyTrack, newMini, pickType, newSquare, CPU_NAME, defaultSetup, cpuSide, normSetup, syncNames, enabledGames, TIMER_OPTIONS, newTimer, playerName, newState, startMatch, newMatch, findRun, applyMove, AI, publicMini, wordleCandidates, hangmanCandidates, bsCandidates, bsPlacements, bsShip, huntCandidates, WINDOWS, windowsOf, lineNeeds, c4Playable, hexDist, candyExpected, COIN_NEEDS, needsOf, memoryPair, winChance, tttMinimax, c4Drop, c4Eval, C4_ORDER, c4Search, C4_DEPTH, c4Moves, HP_MEMO, hpSolve, hpMovesValued, hpNeeds, hexMoves, threatScore, pickValued, localBest, squareValue, moveGain, cpuMove, VALID5_LIST, randomLegalMove, timeoutMove, mainResult, playMove, endFlash, leaveSquare, RECENT_MAX, MATCH_FIELDS, secretOf, hideMini, matchRecord, fullState, settle, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, newOnlineMatch, PLAY, diceSlot, playMs, replayMs, armClock, applyOnlineResign, matchStats };
