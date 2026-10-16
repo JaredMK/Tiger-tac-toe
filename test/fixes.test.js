@@ -23,12 +23,12 @@ test('districts: 2,000 maps; every spot counts for exactly the regions it is dra
     }
   }
 });
-test('districts: every region is touched by an odd number of spots (3 or more), the spots are even, and a full map never ties a region', () => {
+test('districts: every region is touched by an odd number of spots (3 or more), the spots a multiple of 4, and a map full of pieces never ties a region', () => {
   for (let g = 0; g < 2000; g++) {
     const m = E.newMini('districts', E.makeRng('dodd' + g)), map = m.map, n = new Array(map.regions.length).fill(0);
     for (const s of map.spots) for (const r of s.r) n[r]++;
     assert.ok(n.every(x => x >= 3 && x % 2 === 1), `map ${g}: region totals ${n}`);
-    assert.equal(map.spots.length % 2, 0, 'as many pieces each');
+    assert.equal(map.spots.length % 4, 0, 'a piece and a grey each move: as many pieces each');
     const rng = E.makeRng('dfill' + g), who = E.shuffle(map.spots.map((_, k) => (k % 2 ? 'O' : 'X')), rng);
     const t = E.distTally(map, who);
     for (let r = 0; r < map.regions.length; r++) {

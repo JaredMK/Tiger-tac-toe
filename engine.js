@@ -1637,11 +1637,13 @@ function seatPick(pm, me, rng) {
   if (fresh.length) return { move: fresh[randInt(rng, fresh.length)], why: 'start' };
   return { move: empty[randInt(rng, empty.length)], why: 'any' };
 }
-// Districts: a map of 5 regions with 11 to 15 spots, each inside a region or on a border (counting for
-// every region it touches). Every region is touched by an odd number of spots, at least 3, so once the map
-// is full every region has a leader; most regions wins (5: no tie). Drawn as a Voronoi map from 5 seeds on
-// a field 100 by 120; spots in the regions, on the borders between two and where three meet.
-const DIST = { w: 100, h: 120, regions: 5, minSpots: 11, maxSpots: 15, gap: 11, clear: 6.5 };   // clear: how far a spot keeps from every region it does not count for (more than its drawn size)
+// Districts: a map of 5 regions with 16 spots, each inside a region or on a border (counting for every
+// region it touches); every region is touched by an odd number of spots, at least 3. A move places a piece;
+// then a grey piece lands on a random empty spot (it counts for nobody), so each player places 4. Once the
+// map is full, a region goes to whoever has more pieces touching it (level: nobody's); most regions wins, and
+// a tie goes to the player who moved second here. Drawn as a Voronoi map from 5 seeds on a field 100 by 120;
+// spots in the regions, on the borders between two and where three meet.
+const DIST = { w: 100, h: 120, regions: 5, minSpots: 15, maxSpots: 17, per: 4, gap: 11, clear: 6.5 };   // per: the spot count a multiple of it (a piece and a grey each move: as many pieces each); clear: how far a spot keeps from every region it does not count for (more than its drawn size)
 const r1d = x => Math.round(x * 10) / 10 + 0;
 function distClip(poly, a, b) {                                   // keep the part of poly closer to a than to b
   const mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2, nx = b[0] - a[0], ny = b[1] - a[1];
@@ -1703,7 +1705,7 @@ function distMap(src) {
         else break;
       }
       const n = count();
-      if (chosen.length >= DIST.minSpots && chosen.length <= DIST.maxSpots && chosen.length % 2 === 0 && n.every(x => x >= 3 && x % 2 === 1)) {   // (an even number of spots: both players place as many pieces)
+      if (chosen.length >= DIST.minSpots && chosen.length <= DIST.maxSpots && chosen.length % DIST.per === 0 && n.every(x => x >= 3 && x % 2 === 1)) {   // (with the greys: both players place as many pieces)
         const spots = chosen.map(k => ({ x: r1d(cand[k].p[0]), y: r1d(cand[k].p[1]), r: cand[k].r.slice().sort((a, b) => a - b) })).sort((a, b) => a.y - b.y || a.x - b.x);
         return { regions: polys.map(poly => poly.map(p => [r1d(p[0]), r1d(p[1])])), spots };
       }
@@ -1725,7 +1727,7 @@ function distTo(p, poly) {
 }
 function distTally(map, who) {
   const R = map.regions.length, out = { X: new Array(R).fill(0), O: new Array(R).fill(0), empty: new Array(R).fill(0), lead: new Array(R).fill(null) };
-  map.spots.forEach((s, k) => { for (const r of s.r) { if (who[k] === 'X') out.X[r]++; else if (who[k] === 'O') out.O[r]++; else out.empty[r]++; } });
+  map.spots.forEach((s, k) => { for (const r of s.r) { if (who[k] === 'X') out.X[r]++; else if (who[k] === 'O') out.O[r]++; else if (!who[k]) out.empty[r]++; } });   // (a grey counts for nobody)
   for (let r = 0; r < R; r++) out.lead[r] = out.X[r] > out.O[r] ? 'X' : out.O[r] > out.X[r] ? 'O' : null;
   return out;
 }
@@ -2018,7 +2020,7 @@ function newMini(type, rng) {
     case 'craps':       return { type, wins: { X: 0, O: 0 }, rounds: { X: 0, O: 0 }, point: null, live: null, rolls: [], last: null };   // point: the round's point, on; live: the player mid-turn here (just rolled, the point standing); rolls: the round's so far
     case 'takeover':    return { type, cells: new Array(TAKE.n * TAKE.n).fill(null), last: null };
     case 'seating': { const r = needRng(rng), color = Array.from({ length: SEAT.tables * 2 }, () => randInt(r, SEAT.colors)); return { type, color, who: new Array(SEAT.tables * 2).fill(null), next: color[randInt(r, color.length)], last: null }; }   // next: the next customer's colour, shown (one with a seat)
-    case 'districts': { const map = distMap(needRng(rng)); return { type, map, who: new Array(map.spots.length).fill(null), last: null }; }
+    case 'districts': { const map = distMap(needRng(rng)); return { type, map, who: new Array(map.spots.length).fill(null), grey: true, last: null }; }
     case 'shelves':     return { type, cells: new Array(SHELF.n * SHELF.per).fill(null), last: null };
     case 'roads':       return { type, segs: new Array(ROAD_SEGS.length).fill(null), last: null };
     case 'patterns': { const r = needRng(rng); let g = null; while (!g) g = patPuzzle(r); return { type, right: { X: 0, O: 0 }, puz: g.puz, answer: g.answer, rule: g.rule, crossed: [], last: null }; }   // answer, rule: the server's (hidden online)
@@ -2540,9 +2542,13 @@ function applyMove(mini, p, m, rng) {
     case 'districts': {                                       // a spot; once the map is full, most regions led
       if (!Number.isInteger(m) || m < 0 || m >= mini.who.length || mini.who[m]) return { ok: false, reason: 'bad' };
       mini.who[m] = p;
-      mini.last = { by: p, spot: m };
+      if (!mini.first) mini.first = p;                        // who opened the square: a tie goes to the other player
+      const g = mini.grey ? randomEmpty(mini.who, needRng(rng)) : null;   // (a square from before the grey pieces: none)
+      if (g != null) mini.who[g] = 'G';
+      mini.last = { by: p, spot: m, grey: g };
       if (mini.who.includes(null)) return { ok: true, outcome: 'continue', note: 'place' };
       const t = distTally(mini.map, mini.who), x = t.lead.filter(w => w === 'X').length, y = t.lead.filter(w => w === 'O').length;
+      if (x === y) return { ok: true, outcome: 'win', note: 'tiebreak', winner: other(mini.first), counts: { X: x, O: y } };
       return { ok: true, outcome: 'win', note: 'full', winner: x > y ? 'X' : 'O', counts: { X: x, O: y } };
     }
     case 'shelves': {                                         // a spot; then a grey mark on a random open one; once full, most shelves
@@ -3630,7 +3636,7 @@ function playMove(state, i, m, rng, opts) {
     case 'bus': { const l = mini.last; flash.bus = { round: l.round, guess: l.guess, card: l.card, right: l.right, kept: mini.prog[p].slice() }; break; }
     case 'craps': { const l = mini.last; flash.craps = Object.assign({ kind: l.kind, rolls: l.rolls.map(d => d.slice()), point: l.point, wins: { X: mini.wins.X, O: mini.wins.O } }, l.kind === 'roll' ? { roll: l.roll.slice(), sum: l.sum, was: l.was, result: l.result, inherited: l.inherited } : {}); break; }
     case 'seating': { const l = mini.last; flash.seat = { seat: l.seat, z: l.z, zColor: l.zColor, table: l.table, next: l.next, left: !!l.left, tables: { X: seatTables(mini.who, 'X'), O: seatTables(mini.who, 'O') } }; break; }
-    case 'districts': { const l = mini.last; flash.dist = { spot: l.spot, lead: distTally(mini.map, mini.who).lead }; break; }
+    case 'districts': { const l = mini.last; flash.dist = { spot: l.spot, grey: l.grey == null ? null : l.grey, lead: distTally(mini.map, mini.who).lead }; break; }
     case 'shelves': { const l = mini.last; flash.shelf = { at: l.at, grey: l.grey, on: { X: shelfOn(mini.cells, 'X'), O: shelfOn(mini.cells, 'O') } }; break; }
     case 'patterns': { const l = mini.last; flash.pat = Object.assign({ fam: l.fam, seq: l.seq, opts: l.opts, crossed: (l.crossed || []).slice(), picked: l.picked, correct: l.correct, counts: { X: mini.right.X, O: mini.right.O } }, l.correct ? { right: l.right } : {}, l.auto ? { auto: true } : {}); break; }   // (a wrong pick: no answer in it)
     case 'wheels': { const l = mini.last; flash.wheel = { w: l.w, v: l.v, seg: l.seg, at: l.at, from: l.from || 0, pts: { X: mini.pts.X, O: mini.pts.O }, target: mini.target }; break; }
@@ -3900,7 +3906,7 @@ function playMs(f, winLen) {
     case 'craps':   return !f.craps ? CRAPS.roll + CRAPS.hold : f.craps.kind === 'stop' ? CRAPS.stop : !f.craps.roll ? crapsTimes(f.craps.rolls, f.craps.point).end + CRAPS.hold + (won ? 600 : 0) : CRAPS.roll + (f.craps.result === 'point' ? CRAPS.puck : 0) + CRAPS.hold + (won ? 600 : 0);   // (a flash from before: the whole round)
     case 'takeover': return TAKEOVER_MS.place + TAKEOVER_MS.flip + (won ? 900 : 0);
     case 'seating': return PLACE_MS.mark + (f.seat && (f.seat.z != null || f.seat.left) ? PLACE_MS.walk : 0) + PLACE_MS.hold + (won ? 600 : 0);
-    case 'districts': return PLACE_MS.mark + PLACE_MS.hold + (won ? 900 : 0);
+    case 'districts': return PLACE_MS.mark + (f.dist && f.dist.grey != null ? PLACE_MS.drop : 0) + PLACE_MS.hold + (won ? 900 : 0);
     case 'shelves': return PLACE_MS.mark + (f.shelf && f.shelf.grey != null ? PLACE_MS.drop : 0) + PLACE_MS.hold + (won ? 600 : 0);
     case 'patterns': return PATTERNS.reveal + (won ? 600 : 0);
     case 'wheels':  return WHEELT.spin + WHEELT.hold + (won ? 600 : 0);

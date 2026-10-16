@@ -1796,7 +1796,7 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .tseat i.X { background: var(--x); opacity: 1; } .tseat i.O { background: var(--o); opacity: 1; } .tseat i.Z { background: #8d8d8d; opacity: 1; }
 /* Districts: the map, each region in its leader's shade; spots on borders count for both sides */
 .districts { flex: 1; display: flex; flex-direction: column; gap: 8px; justify-content: center; min-height: 0; }
-.dmap { display: block; width: min(100%, 320px, calc((100dvh - 300px) * .84)); margin: 0 auto; }
+.dmap { display: block; width: min(100%, 320px, calc((100dvh - 328px) * .84)); margin: 0 auto; }   /* (328: the bars, the tallies, the ties line and the status line) */
 .dreg { fill: var(--paper); stroke: var(--ink); stroke-width: 1.2; stroke-linejoin: round; }
 .dreg.X { fill: var(--x-soft); } .dreg.O { fill: var(--o-soft); }
 .dreg.shift { animation: dshift .45s var(--t, 0ms) both; }
@@ -1806,13 +1806,17 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .dspot .dpc { fill: #fff; stroke: var(--ink); stroke-width: 1.3; }
 .dspot.edge .dpc { stroke-width: 1.7; }
 .dspot.open { cursor: pointer; } .dspot.open:hover .dpc { fill: var(--panel-2); }
-.dspot.X .dpc { fill: var(--x); } .dspot.O .dpc { fill: var(--o); }
+.dspot.X .dpc { fill: var(--x); } .dspot.O .dpc { fill: var(--o); } .dspot.G .dpc { fill: #9d9d9d; }
+.dspot.drop .pp { animation: ddrop .5s var(--t, 0ms) both; }
+@keyframes ddrop { 0% { transform: translateY(-12px); opacity: 0; } 35% { opacity: 1; } 65% { transform: translateY(0); } 80% { transform: translateY(-2px); } 100% { transform: none; } }
+.dties { margin: 0; flex: none; height: 20px; line-height: 20px; text-align: center; font-size: 14px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }   /* always this tall: the map never moves */
+.dties b { font-weight: 800; }
 .dspot text { font: 400 5.4px 'Luckiest Guy', sans-serif; text-anchor: middle; fill: #fff; pointer-events: none; } .dspot.O text { fill: var(--ink); }
 .dspot .pp { transform-box: fill-box; transform-origin: center; }
 .dspot.pop .pp { animation: markpop .35s ease-out both; }
 .tdist { width: 52cqw; height: 62cqw; }
 .tdist .dreg { stroke-width: 2; }
-.tdist circle { fill: #fff; stroke: var(--ink); stroke-width: 1.6; } .tdist circle.X { fill: var(--x); } .tdist circle.O { fill: var(--o); }
+.tdist circle { fill: #fff; stroke: var(--ink); stroke-width: 1.6; } .tdist circle.X { fill: var(--x); } .tdist circle.O { fill: var(--o); } .tdist circle.G { fill: #a3a3a3; }
 /* Shelves: six shelves of three; the grey mark drops in after each move */
 .shelves { flex: 1; display: flex; flex-direction: column; gap: 8px; justify-content: center; min-height: 0; }
 .shcase { width: min(100%, 330px); margin: 0 auto; border: 3px solid var(--ink); border-radius: 12px; background: #8a5a35; padding: 6px 8px 4px; display: grid; gap: 4px; box-shadow: 0 4px 0 var(--ink); }
@@ -2672,7 +2676,7 @@ const EXPLAIN = {
   takeover: { name: 'Takeover', play: 'Tap an empty square to take it and the squares around it, even your opponent\'s.', win: 'Own the most when the board is full.' },
   flood: { name: 'Flood', play: 'Pick a colour. The blob grows into it, and every square it grabs is yours.', win: 'Get 18 squares first.' },
   seating: { name: 'Seating', play: 'Seat yourself at any table. After each move a customer takes a seat of their colour (you\'ll see who\'s next). If none of their colour is free, they walk out.', win: 'Fill the most tables with your own pair.' },
-  districts: { name: 'Districts', play: 'Place a piece. It counts for every region it touches.', win: 'Lead in the most regions when the map is full.' },
+  districts: { name: 'Districts', play: 'Place a piece. It counts for every region it touches. A grey piece lands somewhere after each move.', win: 'Lead in the most regions when the map is full. Ties go to the player who moved second.' },
   shelves: { name: 'Shelves', play: 'Put a mark on a shelf. A grey mark lands somewhere after each move.', win: 'Be on the most shelves.' },
   roads: { name: 'Roads', play: 'Claim a line. A random line gets blocked after each move.', win: 'Have the longest unbroken road.' },
   flap: { name: 'Flap', play: 'Tap to flap through the gaps. It gets faster, and you keep your distance when you crash.', win: 'Reach 1,000 m first.' },
@@ -3996,26 +4000,29 @@ function seatingTable(mini, a, o) {
 }
 // Districts: the map's five regions, each shaded in its leader's colour, and its spots; a spot on a
 // border counts for every region it touches. A tap on an empty spot is the move: the piece pops in, then
-// any region whose lead changed takes its new shade.
+// any region whose lead changed takes its new shade, and a grey piece drops onto a random empty spot. Above
+// the map, who a tie goes to: the player who moved second here (before the first move, whoever is not on turn).
 const distPath = poly => 'M' + poly.map(p => p.join(' ')).join('L') + 'Z';
 function distTable(mini, a, o) {
   const ds = a && a.dist ? a.dist : null, map = mini.map, turn = o.turn, t = distTally(map, mini.who);
   const led = p => t.lead.filter(l => l === p).length;
   const tal = p => arcTally(p, o, `<small>${led(p)} of ${map.regions.length} regions</small>`);
+  const second = other(mini.first || turn), tie = a && a.note === 'tiebreak';
   let before = null;
-  if (ds) { const w = mini.who.slice(); w[ds.spot] = null; before = distTally(map, w).lead; }
+  if (ds) { const w = mini.who.slice(); w[ds.spot] = null; if (ds.grey != null) w[ds.grey] = null; before = distTally(map, w).lead; }
   const regs = map.regions.map((poly, r) => {
     const l = t.lead[r], was = before ? before[r] : l, moved = before && was !== l;
     return `<path class="dreg${l ? ' ' + l : ''}${moved ? ' shift' + (was ? ' from' + was : ' fromnone') : ''}"${moved ? ` style="--t:${PLACE_MS.mark}ms"` : ''} d="${distPath(poly)}"/>`;
   }).join('');
   const spots = map.spots.map((s, k) => {
-    const w = mini.who[k], open = !w && !o.locked, pop = ds && ds.spot === k;
-    const label = `Spot ${k + 1}, region${s.r.length > 1 ? 's' : ''} ${s.r.map(r => r + 1).join(' and ')}${w ? ', ' + w : ''}`;
-    return `<g class="dspot${w ? ' ' + w : ''}${s.r.length > 1 ? ' edge' : ''}${pop ? ' pop' : ''}${open ? ' open' : ''}" ${open ? `data-act="move" ${mv(k)} role="button" tabindex="0"` : ''} aria-label="${label}" transform="translate(${s.x} ${s.y})"><g class="pp"><circle class="dhit" r="5.5"/><circle class="dpc" r="4.3"/>${w ? `<text y="1.75">${w}</text>` : ''}</g></g>`;
+    const w = mini.who[k], open = !w && !o.locked, pop = ds && ds.spot === k, drop = ds && ds.grey === k;
+    const label = `Spot ${k + 1}, region${s.r.length > 1 ? 's' : ''} ${s.r.map(r => r + 1).join(' and ')}${w === 'G' ? ', grey' : w ? ', ' + w : ''}`;
+    return `<g class="dspot${w ? ' ' + w : ''}${s.r.length > 1 ? ' edge' : ''}${pop ? ' pop' : ''}${drop ? ' drop' : ''}${open ? ' open' : ''}" ${open ? `data-act="move" ${mv(k)} role="button" tabindex="0"` : ''} aria-label="${label}" transform="translate(${s.x} ${s.y})"><g class="pp"${drop ? ` style="--t:${PLACE_MS.mark}ms"` : ''}><circle class="dhit" r="5.5"/><circle class="dpc" r="4.3"/>${w && w !== 'G' ? `<text y="1.75">${w}</text>` : ''}</g></g>`;
   }).join('');
-  const res = ds ? `<p ${lateAt('arcres ok', PLACE_MS.mark)} role="status">${N(a.by)} leads ${led(a.by)} of ${map.regions.length}</p>`
+  const res = ds ? `<p ${lateAt('arcres ok', PLACE_MS.mark)} role="status">${tie ? `${led('X')} each · the tie goes to ${N(a.winner)}` : `${N(a.by)} leads ${led(a.by)} of ${map.regions.length}`}</p>`
     : `<p class="arcnote">${o.view ? '' : o.locked ? `Waiting for <b class="${turn}">${N(turn)}</b>…` : 'Tap an empty spot'}</p>`;
-  return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="districts"><svg class="dmap" viewBox="-2 -2 104 124" role="group" aria-label="The map">${regs}${spots}</svg>${res}</div></div>`;
+  const ties = mini.grey ? `<p class="dties">Ties go to <b class="${second}">${N(second)}</b></p>` : '';   // (a square from before the grey pieces has no ties)
+  return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="districts">${ties}<svg class="dmap" viewBox="-2 -2 104 124" role="group" aria-label="The map">${regs}${spots}</svg>${res}</div></div>`;
 }
 // Shelves: six shelves of three spots. A tap on an open spot is the move: the mark pops in, then a grey
 // mark drops onto a random open spot. At each shelf's end, who is on it.
@@ -7519,7 +7526,7 @@ function moveSounds(f) {
     }
     case 'takeover': if (f.take) { add('mark', 0); [...f.take.took, ...f.take.flipped].filter(k => k !== f.take.at).slice(0, 4).forEach((k, n) => add(f.take.flipped.includes(k) ? 'flipUp' : 'pop', TAKEOVER_MS.place + n * 70)); } break;
     case 'seating': if (f.seat) { add('mark', 0); if (f.seat.table != null) add('ding', PLACE_MS.mark); if (f.seat.z != null) { add('hop', PLACE_MS.mark + 150); add('cushion', PLACE_MS.mark + PLACE_MS.walk - 120); } else if (f.seat.left) { add('hop', PLACE_MS.mark + 150); add('whoosh', PLACE_MS.mark + PLACE_MS.walk - 300); } } break;   // a customer with no seat: in, and off out the side
-    case 'districts': if (f.dist) { add('marker', 0); add('flipUp', PLACE_MS.mark); } break;
+    case 'districts': if (f.dist) { add('marker', 0); add('flipUp', PLACE_MS.mark); if (f.dist.grey != null) add('thud', PLACE_MS.mark + PLACE_MS.drop - 150); } break;
     case 'shelves': if (f.shelf) { add('mark', 0); if (f.shelf.grey != null) add('thud', PLACE_MS.mark + PLACE_MS.drop - 150); } break;
     case 'patterns': if (f.pat) add(f.pat.correct ? 'ding' : 'thud', 250); break;   // the pick glows (and drops into the gap) or is struck through
     case 'wheels': {                                               // the wheel turns, ticking slower and slower; it stops: the points, or nothing
