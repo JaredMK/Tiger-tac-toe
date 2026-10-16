@@ -203,6 +203,21 @@
           ".validate": false
         }
       },
+      "oddone": {
+        ".write": "auth != null && auth.token.admin === true",
+        "d1": {
+          ".validate": "newData.isNumber() && newData.val() >= 0.5 && newData.val() <= 25"
+        },
+        "d2": {
+          ".validate": "newData.isNumber() && newData.val() >= 0.5 && newData.val() <= 25"
+        },
+        "d3": {
+          ".validate": "newData.isNumber() && newData.val() >= 0.5 && newData.val() <= 25"
+        },
+        "$other": {
+          ".validate": false
+        }
+      },
       "plinko": {
         ".write": "auth != null && auth.token.admin === true",
         "target": {

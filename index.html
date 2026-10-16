@@ -773,6 +773,7 @@ b.O { box-shadow: inset 0 -.38em 0 var(--o-soft); }
 .link { background: var(--paper); color: var(--ink); }
 .back { background: var(--paper); color: var(--ink); font-size: 16px; box-shadow: 0 4px 0 var(--ink); }
 .back:disabled { opacity: .4; }
+.back.gone { visibility: hidden; }   /* held to the square (a Trivia question turned up): no way back until the answer goes in */
 .menubtn { background: var(--paper); color: var(--ink); font-size: 15px; box-shadow: 0 4px 0 var(--ink); height: 44px; }
 
 /* header: whose turn, on a flat colour band */
@@ -1569,7 +1570,7 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .epad.idle { opacity: .35; }                           /* waiting for Play pattern */
 .epad.play { animation: var(--lit); }                  /* the pattern playing: each step a flash, timed from the Play tap (or the move); nothing held after, so a tap lights it */
 @keyframes padon { from, to { opacity: 1; } }
-@keyframes padlit { 0% { opacity: .55; } 15%, 75% { opacity: 1; transform: scale(1.04); } 100% { opacity: .55; } }
+@keyframes padlit { 0% { opacity: .55; } 12%, 80% { opacity: 1; transform: scale(1.04); } 100% { opacity: .55; } }
 @keyframes padpass { 0%, 100% { opacity: .55; } 30%, 70% { opacity: 1; } }
 @keyframes padhint { 0%, 100% { opacity: .55; } 40%, 80% { opacity: 1; box-shadow: 0 0 0 4px var(--green), 0 4px 0 var(--ink); } }
 .elock { position: absolute; inset: -6px; border-radius: 22px; background: transparent; }   /* over the pads while the pattern plays: no tapping yet */
@@ -1612,6 +1613,7 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .pchip.drop { animation: var(--path) var(--d, 1800ms) linear both; }
 /* Cup Pong: the table, the rack, the ball thrown with a swipe */
 .pong { flex: 1; display: flex; flex-direction: column; min-height: 0; gap: 6px; }
+.pong.live { touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; }   /* the whole game area takes the flick */
 .ptable { position: relative; margin: 0 auto; width: min(100%, 300px, calc(var(--gh) * .62)); aspect-ratio: 5 / 7; border: 4px solid #6b4a2b; border-radius: 12px; background: #c88a4a; box-shadow: inset 0 0 0 6px #d9a467; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; }
 .pcup { position: absolute; width: 17%; aspect-ratio: 1; margin: -8.5% 0 0 -8.5%; border-radius: 50%; border: 3px solid var(--ink); background: radial-gradient(circle at 50% 45%, #fff 0 30%, var(--x) 32%); }
 .pcup.O { background: radial-gradient(circle at 50% 45%, #fff 0 30%, var(--sky) 32%); }
@@ -1631,8 +1633,6 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 @keyframes prim { 25% { translate: -22% 0; } 75% { translate: 22% 0; } }
 .pball.launch { animation: plaunch .25s ease-out both; }   /* let go, online: the ball answers at once while the server works out the throw */
 @keyframes plaunch { 50% { transform: scale(1.18); } to { transform: scale(1.08); } }
-.ptarget { position: absolute; width: 13%; aspect-ratio: 1; margin: -6.5% 0 0 -6.5%; border-radius: 50%; border: 3px dashed rgba(255, 255, 255, .95); box-shadow: 0 0 0 2px rgba(22, 18, 16, .35); pointer-events: none; display: none; }   /* where the throw is heading as the finger moves */
-.ptarget.on { display: block; }
 .pball.fly { animation: var(--arc) var(--d, 900ms) cubic-bezier(.3, .2, .6, 1) both; }
 .pball.rim { animation: var(--arc) var(--d, 900ms) cubic-bezier(.3, .2, .6, 1) both, rimwobble .4s var(--t, 900ms) both; }
 @keyframes rimwobble { 0%, 100% { margin-left: -4.5%; } 25% { margin-left: -6.5%; } 75% { margin-left: -2.5%; } }
@@ -1640,7 +1640,6 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 @keyframes ballin { to { transform: scale(.2); opacity: 0; } }
 .pball.off { animation: var(--arc) var(--d, 900ms) cubic-bezier(.3, .2, .6, 1) both, balloff .5s var(--f, 900ms) both; }
 @keyframes balloff { to { opacity: 0; } }
-.paim { position: absolute; left: 50%; bottom: 8%; width: 4px; height: 0; margin-left: -2px; background: rgba(255, 255, 255, .85); border-radius: 2px; transform-origin: 50% 100%; pointer-events: none; }
 .pcups { display: inline-flex; gap: 3px; } .pcups i { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--ink); background: var(--paper); }
 .ctal.X .pcups i.on { background: var(--x); } .ctal.O .pcups i.on { background: var(--o); }
 /* Dash and Lane Rush: the two progress bars, the run on a canvas, the countdown over it */
@@ -1946,6 +1945,17 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .tqcard { background: var(--paper); border: 3px solid var(--ink); border-radius: 16px 12px 15px 11px; box-shadow: 0 4px 0 var(--ink); padding: 10px 12px; }
 .tqcard small { display: block; color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; }
 .tqcard p { margin: 4px 0 0; font-size: 17px; line-height: 1.3; font-weight: 700; }
+.tqback { min-height: 132px; display: grid; place-items: center; align-content: center; gap: 2px; background: repeating-linear-gradient(45deg, var(--o) 0 12px, #f8d562 12px 24px); }   /* face down: a patterned back, a big ? */
+.tqback span { font: 400 54px/1 'Luckiest Guy', 'Arial Black', sans-serif; color: var(--ink); text-shadow: 0 3px 0 rgba(255, 255, 255, .6); }
+.tqback small { color: var(--ink); }
+.tqstack { display: grid; } .tqstack > span { grid-area: 1 / 1; display: block; }
+.tqturn { animation: tqturn .35s var(--t, 0ms) ease-out both; transform-origin: 50% 50%; }   /* turned up: it swings round into view */
+@keyframes tqturn { from { transform: perspective(600px) rotateX(80deg); opacity: .2; } to { transform: none; opacity: 1; } }
+/* someone else's pick, replayed: plain until their pick comes, then glowing or struck */
+.topt.late.right { background: #fff; border-color: var(--ink); animation: optglow .6s var(--t, 0ms) both, lateright 1ms var(--t, 0ms) forwards; }
+.topt.late.wrong.out.fresh { background: #fff; color: var(--ink); border-color: var(--ink); animation: cardshake .45s var(--t, 0ms) both, latewrong 1ms var(--t, 0ms) forwards; }
+@keyframes lateright { to { background: #d7f0c9; border-color: var(--green); } }
+@keyframes latewrong { to { background: #f9c7b6; border-color: var(--muted); } }
 .topts { display: grid; gap: 8px; }
 .topt { min-height: 48px; border: 3px solid var(--ink); border-radius: 12px; background: #fff; box-shadow: 0 3px 0 var(--ink); font-size: 16px; font-weight: 700; padding: 6px 10px 6px 8px; text-align: left; display: flex; align-items: center; gap: 8px; white-space: normal; line-height: 1.2; }
 .topt b { flex: none; width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--ink); display: grid; place-items: center; font-size: 12px; }
@@ -1975,7 +1985,8 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .obar { display: block; width: min(70%, 240px); height: 10px; border: 2.5px solid var(--ink); border-radius: 999px; overflow: hidden; background: var(--paper); }
 .obar i { display: block; height: 100%; width: 100%; background: var(--x); transform-origin: 0 50%; animation: obar var(--d, 5000ms) linear both; }
 @keyframes obar { from { transform: scaleX(1); } to { transform: scaleX(0); } }
-@media (prefers-reduced-motion: reduce) { .bvline.sweep { animation: none; left: 50%; } .bhline.sweep { animation: none; top: 50%; } .bdboard.slide { animation: none; } .epad.play, .pchip.drop, .pball.fly, .pball.rim, .pball.in, .pball.off { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .epad.play { animation: var(--lit) !important; } @keyframes padlit { 0% { opacity: .55; } 12%, 80% { opacity: 1; } 100% { opacity: .55; } } }   /* Echo's flashes are the pattern itself: kept with reduced motion (a change of brightness, without the swell) */
+@media (prefers-reduced-motion: reduce) { .bvline.sweep { animation: none; left: 50%; } .bhline.sweep { animation: none; top: 50%; } .bdboard.slide { animation: none; } .pchip.drop, .pball.fly, .pball.rim, .pball.in, .pball.off { animation: none; } }
 .tu { animation: tuntil 1ms var(--u, 0ms) both; }
 .tf { animation: tfrom 1ms var(--f, 0ms) both; }
 @keyframes tuntil { to { visibility: hidden; opacity: 0; } }
@@ -2430,15 +2441,19 @@ function anchorFx() {
   // already running where it should be reads the same, however late in the frame this redraw is
   const tl = document.timeline && document.timeline.currentTime, now = typeof tl === 'number' ? tl : performance.now();
   const css = a => !(typeof CSSTransition !== 'undefined' && a instanceof CSSTransition);   // (a transition just follows its style)
-  const set = (el, at) => {
+  // Each animation is set once, by the event of its nearest [data-fx] element (or, with none, the screen's
+  // entry). (Setting everything by the entry first and then each event's own finished, and so lost, any
+  // animation the entry's clock had already run past: Echo's first flashes, after the square had been open
+  // a while, never showed.)
+  for (const a of app.getAnimations({ subtree: true })) {
+    if (!css(a)) continue;
+    const el = a.effect && a.effect.target, host = el && el.closest ? el.closest('[data-fx]') : null;
+    const at = host ? Number(host.dataset.fx) : fx.enter ? fx.enter.at : null;
+    if (at == null) continue;
     const t = Math.max(0, now - at);
-    for (const a of el.getAnimations({ subtree: true })) {
-      if (!css(a) || (a.currentTime != null && a.currentTime > 0 && Math.abs(a.currentTime - t) < 60)) continue;   // already where its event has it (one running on, untouched): left alone; one just made (at 0) is always set, or a redraw early in its event would start it over
-      try { a.currentTime = t; } catch (e) { /* (a finished one with no effect left) */ }
-    }
-  };
-  if (fx.enter) set(app, fx.enter.at);                                  // the screen's own animations count from when it came into view
-  for (const el of app.querySelectorAll('[data-fx]')) set(el, Number(el.dataset.fx));   // then each event's own (outer ones first, inner ones last)
+    if (a.currentTime != null && a.currentTime > 0 && Math.abs(a.currentTime - t) < 60) continue;   // already where its event has it (one running on, untouched): left alone; one just made (at 0) is always set, or a redraw early in its event would start it over
+    try { a.currentTime = t; } catch (e) { /* (a finished one with no effect left) */ }
+  }
 }
 function render() {
   // The in-game menu belongs to a live game: it closes when the match ends or the screen leaves the game
@@ -2518,7 +2533,7 @@ function graft(oldP, newP, pairs) {
   }
 }
 // How long the move's animation takes. The result toast or card waits this long, and so does any tap.
-function animMs(f) { return REDUCED ? 0 : playMs(f, hexLen(f)) + lanePre(f) - (f.type === 'bus' ? BUST.pre - busPre(f) : 0) - (f.type === 'bullseye' && f.bull ? bullsAim(f.bull).fly - bullsPre(f) : 0) - (f.type === 'echo' && f.echo && !f.timeout ? echoAim(f.echo).end - echoPre(f) : 0) - (f.type === 'oddone' && f.odd && !f.timeout ? ODD.show + ODD.pause - oddPre(f) : 0); }   // (your own Ride the Bus guess skips the moment it is shown)
+function animMs(f) { return REDUCED ? 0 : playMs(f, hexLen(f)) + lanePre(f) - (f.type === 'bus' ? BUST.pre - busPre(f) : 0) - (f.type === 'bullseye' && f.bull ? bullsAim(f.bull).fly - bullsPre(f) : 0) - (f.type === 'echo' && f.echo && !f.timeout ? echoAim(f.echo).end - echoPre(f) : 0) - (f.type === 'oddone' && f.odd && !f.timeout ? ODD.show + ODD.pause - oddPre(f) : 0) - (f.type === 'trivia' && f.trivia ? (f.trivia.fresh ? TRIVIA.flip : 0) + TRIVIA.pause - triviaPre(f) : 0); }   // (your own Ride the Bus guess skips the moment it is shown)
 function hexLen(f) { const sq = state.squares[f.square]; return sq && sq.mini.winCells ? sq.mini.winCells.length : 4; }
 // The JS-driven bits of the animations: numbers that count up or down, and the candy token's hops.
 function animate() {
@@ -2663,7 +2678,7 @@ const EXPLAIN = {
   echo: { name: 'Echo', play: 'Tap Play pattern to watch it once, then tap it back. One pattern per square, the same for both players: 4 steps, then 6, 8 and 10.', win: 'Beat all four patterns.' },
   plinko: { name: 'Plinko', play: 'Drop the chip from an open slot. The bins are worth 5, 3, 3, 2, 2, 1 and 1 points, and the gold bonus peg adds 2 (a new one appears once it is hit). A slot used by either player stays locked until all seven are used.', win: 'First to the target score (12 unless the admin changed it).' },
   pong: { name: 'Cup Pong', play: 'Swipe up to throw. Aim with direction, distance with speed.', win: 'Sink all 3 of your cups.' },
-  trivia: { name: 'Trivia', play: 'Answer the question. Wrong answers get crossed out and the question stays until someone gets it.', win: 'Get 3 right.' },
+  trivia: { name: 'Trivia', play: 'A new question starts face down. Tap Reveal to see it, then you must answer it this turn. Wrong answers get crossed out and the question stays up, for both players, until someone gets it.', win: 'Get 3 right.' },
   oddone: { name: 'Odd One Out', play: "Tap Reveal to show the grid, then tap the tile that's a different shade within 5 seconds. No tap in time counts as a miss. It gets harder each time.", win: 'Find 3.' },
   dash: { name: 'Dash', play: 'Tap to jump, hold to jump higher. Duck low flyers by staying down. It gets faster as you go, and you keep your distance when you crash.', win: 'Reach 1,000 m first.' },
   lane: { name: 'Lane Rush', play: 'Swipe to change lanes and dodge traffic. It gets faster as you go, and you keep your distance when you crash.', win: 'Reach 1,000 m first.' },
@@ -3305,6 +3320,21 @@ function fetchPlinkoConfig() {
     }).catch(() => {});
   } catch (e) { /* offline: as last known */ }
 }
+// Odd One Out's shade differences (config/oddone, the admin's dashboard): likewise.
+const ODD_CFG_KEY = KEY + '.oddcfg';
+function fetchOddConfig() {
+  try { const v = JSON.parse(localStorage.getItem(ODD_CFG_KEY) || 'null'); if (v && typeof v === 'object') setOddConfig(v); } catch (e) { /* none kept */ }
+  if (!configured()) return;
+  const hook = window.TTT_FIREBASE, c = (hook && hook.config) || FIREBASE_CONFIG;
+  const url = hook && hook.emulator ? `http://${hook.emulator.host}:${hook.emulator.port}/config/oddone.json?ns=${c.projectId}-default-rtdb` : `${c.databaseURL}/config/oddone.json`;
+  try {
+    fetch(url).then(r => (r.ok ? r.json() : null)).then(v => {
+      if (!v || typeof v !== 'object') return;
+      setOddConfig(v);
+      try { localStorage.setItem(ODD_CFG_KEY, JSON.stringify(v)); } catch (e) { /* no storage: read again next visit */ }
+    }).catch(() => {});
+  } catch (e) { /* offline: as last known */ }
+}
 // Risk Wheels' points, odds and target (config/wheels, the admin's dashboard): likewise.
 const WHEELS_KEY = KEY + '.wheelscfg';
 function fetchWheelsConfig() {
@@ -3350,7 +3380,7 @@ function echoTable(mini, a, o) {
   const pre = e ? echoPre(a) : 0, A = pre ? echoAim(e) : null;
   const anims = k => {                                           // each pad's flashes, timed from the Play tap (or from the move)
     const out = [];
-    if (fresh || pre) seq.forEach((x, i) => { if (x === k) out.push(`padlit .4s ${i * ECHO.step}ms`); });
+    if (fresh || pre) seq.forEach((x, i) => { if (x === k) out.push(`padlit ${ECHO.flash}ms ${i * ECHO.step}ms`); });   // (shorter than a step: the same pad twice in a row flashes twice, dark between)
     if (pre) e.taps.forEach((x, i) => { if (x === k) out.push(`padlit .3s ${A.tap(i)}ms`); });
     if (e && e.pass) out.push(`padpass .65s ${pre}ms`);   // (no fill: an animation held early would cover the flashes listed before it)
     if (e && !e.pass && e.failAt >= 0) {
@@ -3496,38 +3526,58 @@ function pongTable(mini, a, o) {
     const lx = Math.max(-0.48, Math.min(0.48, g.x)), ly = Math.max(0.05, Math.min(1.08, g.y));
     ball = `<div class="pfly" style="--tx:${(lx * 100).toFixed(2)}%;--ty:${((0.08 - ly) * 100).toFixed(2)}%;--d:${T}ms"><div class="parc"><div class="pball ${g.sunk ? 'in' : g.rim ? 'rim off' : 'off'}" style="--t:${T}ms;--f:${g.rim ? T + 400 : T}ms"></div></div></div>`;
   } else if (!o.view) ball = `<div class="pball${mine ? ' ready' : ''}" style="left:50%;top:92%" data-pong="ball"></div>`;
-  const table = `<div class="ptable" data-pong="table" aria-label="The table">${style}${cupEls}${ball}<div class="paim" data-pong="aim"></div><div class="ptarget" data-pong="target"></div></div>`;
-  const res = g ? `<p ${lateAt('arcres ' + (g.sunk ? 'ok' : 'no'), T + (g.rim ? 400 : 0))} role="status">${g.sunk ? (g.rim ? 'Off the rim and in!' : 'Sunk!') : g.rim ? 'Rimmed out' : 'Miss'}</p>` : l && !mine ? `<p class="arcres ${l.sunk ? 'ok' : 'no'}"><b class="${l.by}">${N(l.by)}</b> ${l.sunk ? 'sank a cup' : l.rim ? 'rimmed out' : 'missed'}</p>` : `<p class="arcnote">${mine ? 'Swipe up from the ball: direction aims, speed sets the distance' : o.view ? '' : `Waiting for <b class="${turn}">${N(turn)}</b>…`}</p>`;
-  return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="pong">${table}${res}</div></div>`;
+  const table = `<div class="ptable" data-pong="table" aria-label="The table">${style}${cupEls}${ball}</div>`;   // (no aim guides: the ball and the cups, nothing else)
+  const res = g ? `<p ${lateAt('arcres ' + (g.sunk ? 'ok' : 'no'), T + (g.rim ? 400 : 0))} role="status">${g.sunk ? (g.rim ? 'Off the rim and in!' : 'Sunk!') : g.rim ? 'Rimmed out' : 'Miss'}</p>` : l && !mine ? `<p class="arcres ${l.sunk ? 'ok' : 'no'}"><b class="${l.by}">${N(l.by)}</b> ${l.sunk ? 'sank a cup' : l.rim ? 'rimmed out' : 'missed'}</p>` : `<p class="arcnote">${mine ? 'Flick up anywhere: the direction aims, the speed sets the distance' : o.view ? '' : `Waiting for <b class="${turn}">${N(turn)}</b>…`}</p>`;
+  return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="pong${mine ? ' live' : ''}" data-pong="area">${table}${res}</div></div>`;
 }
 // Trivia: the player's question and four answers. After a tap the right one glows (and a wrong pick
 // shakes); the next question waits for the square to be opened again.
 // Trivia: the square's one question, shared. An option picked wrong is crossed out (for both players)
 // and stays crossed out; the right answer is never shown until someone picks it. A turn there, either
 // player's, carries on with what is left. Right: a point, and the next turn gets a new question.
+// Trivia: a new question waits face down, with a Reveal button (and Board to leave without acting). Reveal
+// turns it up for both phones and holds the player to the square (no Board button) until they answer,
+// timer and all; once up it stays up whenever the square is opened, until it is answered right and a new
+// one comes, face down again. Someone else's pick (the computer's, the other phone's) plays as their
+// screen did: the card turned up (if it was turned up in that turn), a pause, their pick.
+let triviaFlip = null;                                          // { sq, at }: this phone's reveal, for the card's turn
+function triviaPre(f) { return f && f.type === 'trivia' && f.trivia && !REDUCED && (state.online ? f.by !== state.online.me : cpuPlays(f.by)) ? (f.trivia.fresh ? TRIVIA.flip : 0) + TRIVIA.pause : 0; }   // someone else's pick: the reveal and the pause first
+const triviaUp = mini => !!(mini.shown && mini.ask && mini.ask.q);
+const TQBACK = `<div class="tqcard tqback" aria-label="The question, face down"><span aria-hidden="true">?</span><small>Trivia</small></div>`;
 function triviaTable(mini, a, o) {
-  const t = a && a.trivia ? a.trivia : null, l = mini.last, turn = o.turn;
-  const tal = p => arcTally(p, o, pips(p, Math.min(TRIVIA.goal, mini.right[p]), TRIVIA.goal, t && t.correct && a.by === p, 250));
-  const ask = mini.ask && mini.ask.q ? mini.ask : null;
+  const t = a && a.trivia ? a.trivia : null, l = mini.last, turn = o.turn, pre = t ? triviaPre(a) : 0, flipT = t && t.fresh && pre ? TRIVIA.flip : 0;
+  const tal = p => arcTally(p, o, pips(p, Math.min(TRIVIA.goal, mini.right[p]), TRIVIA.goal, t && t.correct && a.by === p, pre + 250));
+  const ask = triviaUp(mini) ? mini.ask : null, down = !!(mini.ask && !mini.shown);
   // what shows: the pick just made (fresh), else the one on show until heading back or when looking back, else the open question
   const pick = t || ((o.done || o.view) && l ? l : null);
   const shown = pick || ask;
+  const W = p => `<b class="${p}">${N(p)}</b>`;
+  if (!shown && down) {                                        // face down: Reveal (the player to move), or waiting
+    const mine = !o.view && !o.locked;
+    const note = mine ? `<p class="arcnote">Reveal the question, then answer it this turn</p>` : `<p class="arcnote">${o.view ? '' : `${W(turn)}'s turn · the question is face down`}</p>`;
+    const btn = o.view ? '' : `<div class="cbtns one${mine ? '' : ' hold'}"><button class="big" data-act="trivia-reveal"${mine ? '' : ' disabled tabindex="-1" aria-hidden="true"'}>Reveal</button></div>`;
+    return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="trivia">${TQBACK}${note}</div>${btn}</div>`;
+  }
   if (!shown) return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="trivia"><p class="arcnote">No question here: the questions are still loading.</p></div></div>`;
   const crossed = new Set(pick ? (pick.crossed || []) : (mini.crossed || []));
-  const letters = 'ABCD';
+  const letters = 'ABCD', late = pre ? ' late' : '';
   const opts = shown.opts.map((text, k) => {
     let cls = 'topt';
     if (crossed.has(k)) cls += ' out';                                    // crossed out before: struck through, not to be picked again
-    else if (pick && k === pick.picked) cls += pick.correct ? ' right' : ' wrong out fresh';   // the pick: right glows; wrong shakes and is struck through
-    const st = pick && t && k === pick.picked ? ' style="--t:250ms"' : '';
+    else if (pick && k === pick.picked) cls += (pick.correct ? ' right' : ' wrong out fresh') + (t ? late : '');   // the pick: right glows; wrong shakes and is struck through (someone else's: when their pick comes)
+    const st = pick && t && k === pick.picked ? ` style="--t:${pre + 250}ms"` : '';
     const dis = !!pick || o.locked || crossed.has(k);
     return `<button class="${cls}"${st} data-act="move" ${mv(k)}${dis ? ' disabled' : ''} aria-label="${letters[k]}: ${esc(text)}${crossed.has(k) || (pick && !pick.correct && k === pick.picked) ? ' (crossed out)' : ''}"><b>${letters[k]}</b><span>${esc(text)}</span></button>`;
   }).join('');
   const who = pick ? pick.by || (t && a.by) : turn, left = shown.opts.length - crossed.size;
-  const res = t ? `<p ${lateAt('arcres ' + (t.correct ? 'ok' : 'no'), 250)} role="status">${t.correct ? 'Right!' : t.picked < 0 ? 'Time\'s up' : t.auto ? 'Time\'s up: one crossed out' : 'Wrong: crossed out'}</p>`
-    : pick ? `<p class="arcres ${pick.correct ? 'ok' : 'no'}"><b class="${who}">${N(who)}</b> ${pick.correct ? 'got it right' : 'got it wrong'}</p>`
-    : `<p class="arcnote">${o.view ? '' : `<b class="${turn}">${N(turn)}</b>'s turn · ${left} option${left === 1 ? '' : 's'} left`}</p>`;
-  return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="trivia"><div class="tqcard"><small>${esc(shown.cat || 'Trivia')}</small><p>${esc(shown.q)}</p></div><div class="topts">${opts}</div>${res}</div></div>`;
+  const res = t ? `<p ${lateAt('arcres ' + (t.correct ? 'ok' : 'no'), pre + 250)} role="status">${pre ? `${W(a.by)} ${t.correct ? 'got it right' : t.picked < 0 || t.auto ? 'ran out of time' : 'got it wrong'}` : t.correct ? 'Right!' : t.picked < 0 ? 'Time\'s up' : t.auto ? 'Time\'s up: one crossed out' : 'Wrong: crossed out'}</p>`
+    : pick ? `<p class="arcres ${pick.correct ? 'ok' : 'no'}">${W(who)} ${pick.correct ? 'got it right' : 'got it wrong'}</p>`
+    : `<p class="arcnote">${o.view ? '' : `${W(turn)}'s turn · ${left} option${left === 1 ? '' : 's'} left`}</p>`;
+  const fl = !t && triviaFlip && triviaFlip.sq === o.zoom && performance.now() - triviaFlip.at < TRIVIA.flip + 200 ? triviaFlip.at : null;   // this phone's own reveal: the card turns up
+  const front = `<div class="tqcard${fl != null || flipT ? ' tqturn' : ''}"${flipT ? ` style="--t:${flipT - 350}ms"` : ''}${fl != null ? fxAttr(fl) : ''}><small>${esc(shown.cat || 'Trivia')}</small><p>${esc(shown.q)}</p></div>`;
+  const card = flipT ? `<div class="tqstack"><span class="tu" style="--u:${flipT - 350}ms">${TQBACK}</span><span class="tf" style="--f:${flipT - 350}ms">${front}</span></div>` : front;   // someone else's reveal: face down, then turned up
+  const optsBox = flipT ? `<div class="topts tf" style="--f:${flipT}ms">${opts}</div>` : `<div class="topts">${opts}</div>`;
+  return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="trivia">${card}${optsBox}${res}</div></div>`;
 }
 // Odd One Out: the grid waits greyed, with a Reveal button. Reveal shows the shades and starts the
 // 5 seconds (a bar runs down): a tap is the move, and no tap in time counts as wrong. From Reveal the
@@ -5005,7 +5055,7 @@ function renderMini(sq, review) {
     sub = `${head} · ${next}${secret ? ' · ' + secret : ''}`;
   }
   return `<main class="scr mini${fx.enter && performance.now() - fx.enter.at < 400 ? ' enter' : ''}">${netBar()}
-    <div class="bar${view && sq.owner ? ' won won-' + sq.owner : ''}" role="${view ? 'status' : 'presentation'}">${review ? `<button class="back" data-act="${reviewCtx.mback}" aria-label="Back to the final board">${CHEV}Board</button>` : `<button class="back" data-act="back" aria-label="Back to the board"${f || d || lockMine() || cpuTurn() || pinned() ? ' disabled' : ''}>${CHEV}Board</button>`}
+    <div class="bar${view && sq.owner ? ' won won-' + sq.owner : ''}" role="${view ? 'status' : 'presentation'}">${review ? `<button class="back" data-act="${reviewCtx.mback}" aria-label="Back to the final board">${CHEV}Board</button>` : `<button class="back${!f && !d && mini.type === 'trivia' && lockMine() ? ' gone' : ''}" data-act="back" aria-label="Back to the board"${f || d || lockMine() || cpuTurn() || pinned() ? ' disabled' : ''}>${CHEV}Board</button>`}
       <div class="ttl"><b${info.name.length > 14 ? ' class="long"' : ''}>${info.name}</b><small${view ? ' class="won"' : ''}>${sub}</small></div>${qBtn(mini.type)}</div>
     <div class="gwrap"${fxAttr(f ? fxAt('move', f) : d && !f ? fxAt('back', d) : null)}>${g}</div>${f ? renderFlash(f) : ''}${pauseMenu()}</main>`;   // the move's animations count from the move
 }
@@ -5912,6 +5962,18 @@ function showNotice(text, ms) {
   state.notice = text; noticeSeq += 1; startFx('notice', noticeSeq);
   render();
   clearTimeout(noticeTimer); noticeTimer = setTimeout(() => { state.notice = null; render(); }, ms);
+}
+// Trivia online: the question turned up in the room (the server, or the room's own record), for both phones.
+async function dbReveal(i) {
+  if (blocked() || !fb || !room) return;
+  const me = state.online.me;
+  moveWait = Date.now(); render();
+  let ok = false;
+  if (isMM()) { try { const r = await call('move', { game: state.online.game, square: i, kind: 'reveal' }); ok = !!(r && (r.data || r).ok); } catch (e) { /* nothing to show */ } }
+  else try { await matchTransaction(rec => { const r = applyOnlineReveal(rec, me, i); return r.ok ? r.rec : null; }); ok = true; } catch (e) { /* nothing to show */ }
+  moveWait = null;
+  if (ok) { triviaFlip = { sq: i, at: performance.now() }; SND.play('reveal'); }
+  render();
 }
 async function dbPick(i, card) {
   if (blocked() || !fb || !room) return;
@@ -6951,6 +7013,13 @@ app.addEventListener('click', e => {
     oddDraft = { id, sq: state.zoom, at };
     try { localStorage.setItem(ODD_KEY, JSON.stringify({ id, at })); } catch (err) { /* no storage */ }
     oddArm(); SND.play('reveal'); render();
+  } else if (act === 'trivia-reveal') {         // Trivia: the question turned up for both; from now the player answers it this turn
+    const i = state.zoom, sq = state.squares[i];
+    if (!sq || sq.mini.type !== 'trivia' || sq.owner || sq.mini.shown || state.flash || state.done || blocked()) return;
+    if (state.online) { dbReveal(i); return; }
+    if (!triviaReveal(state, i, state.turn).ok) return;
+    triviaFlip = { sq: i, at: performance.now() }; SND.play('reveal');
+    commit();
   } else if (act === 'echo-play') {             // Echo: the pattern plays, once; from now the player stays in the square until the attempt goes in
     if (!echoDraft || echoDraft.at != null || echoDraft.sq !== state.zoom || state.flash || state.done || blocked()) return;
     const seq = echoSeq(state.squares[state.zoom].mini, state.turn, echoDraft.level), at = performance.now();
@@ -7015,14 +7084,15 @@ app.addEventListener('click', e => {
 // A tap inside a scrolling list never moves it: anything the browser does on its own (bringing a box it
 // focuses fully into view) is put back before the next frame. A drag is a scroll and fires no click.
 let tapScroll = null;
-// Cup Pong: a swipe up from the ball. The direction aims, the speed sets the distance; an aim line
-// grows under the finger. Letting go throws (a short or sideways swipe is nothing).
+// Cup Pong: a flick up from anywhere on the game area (the table and the line under it), not only the
+// ball. The swipe's direction aims, its speed sets the distance; nothing is drawn while it is under way
+// (no aim line, no target). Letting go throws at once (a short or sideways swipe is nothing).
 app.addEventListener('pointerdown', e => {
-  const ball = e.target.closest && e.target.closest('.pball.ready');
-  if (!ball || state.screen !== 'mini' || state.flash || state.done || blocked()) return;
-  const table = ball.closest('.ptable');
+  const area = e.target.closest && e.target.closest('.pong.live[data-pong="area"]');
+  if (!area || pongDrag || state.screen !== 'mini' || state.flash || state.done || blocked() || !area.querySelector('.pball.ready')) return;
+  const table = area.querySelector('.ptable');
   pongDrag = { id: e.pointerId, x0: e.clientX, y0: e.clientY, t0: performance.now(), x: e.clientX, y: e.clientY, table, pts: [[performance.now(), e.clientX, e.clientY]] };
-  try { table.setPointerCapture(e.pointerId); } catch (err) { /* no capture: the move and up still reach the page */ }
+  try { area.setPointerCapture(e.pointerId); } catch (err) { /* no capture: the move and up still reach the page */ }
   e.preventDefault();
 });
 // The throw a swipe makes: its direction from the start, its power from the finger's speed over its last
@@ -7033,37 +7103,21 @@ function pongRead(d, x, y, now) {
   const dx = x - d.x0, dy = d.y0 - y;
   return { dx, dy, aim: Math.max(-1, Math.min(1, Math.atan2(dx, Math.max(1, dy)) / PONG.angle)), power: Math.max(0, Math.min(1, (v - 0.25) / 1.75)) };
 }
-function pongPreview() {                                          // every frame while the finger is down: a finger held still loses its speed, and the ring shows it
-  const d = pongDrag;
-  if (!d) return;
-  const now = performance.now(), r = pongRead(d, d.x, d.y, now), aim = d.table.querySelector('.paim'), tg = d.table.querySelector('.ptarget');
-  const ok = r.dy >= 24 && Math.abs(r.dx) <= r.dy * 1.6;
-  if (aim) { aim.style.height = (ok ? 30 + 90 * r.power : Math.max(0, Math.min(60, r.dy))) + 'px'; aim.style.transform = `rotate(${(r.aim * PONG.angle * 180 / Math.PI).toFixed(1)}deg)`; }
-  if (tg) {
-    const th = r.aim * PONG.angle, dist = pongDist(r.power), tx = Math.sin(th) * dist, ty = Math.cos(th) * dist;
-    tg.classList.toggle('on', ok); tg.style.left = ((Math.max(-0.48, Math.min(0.48, tx)) + 0.5) * 100).toFixed(1) + '%'; tg.style.top = ((1 - Math.max(0.05, Math.min(1.08, ty))) * 100).toFixed(1) + '%';
-  }
-  d.raf = requestAnimationFrame(pongPreview);
-}
 app.addEventListener('pointermove', e => {
   if (!pongDrag || e.pointerId !== pongDrag.id) return;
   const d = pongDrag;
   d.x = e.clientX; d.y = e.clientY; d.pts.push([performance.now(), e.clientX, e.clientY]);
-  if (!d.raf) pongPreview();
 });
 function pongRelease(e) {
   if (!pongDrag || e.pointerId !== pongDrag.id) return;
   const d = pongDrag; pongDrag = null;
-  if (d.raf) cancelAnimationFrame(d.raf);
   const r = pongRead(d, e.clientX, e.clientY, performance.now());
-  const aimEl = d.table.querySelector('.paim'), tg = d.table.querySelector('.ptarget');
-  if (aimEl) aimEl.style.height = '0';
-  if (r.dy < 24 || Math.abs(r.dx) > r.dy * 1.6) { if (tg) tg.classList.remove('on'); return; }   // too short, or sideways: not a throw
-  const ball = d.table.querySelector('.pball.ready'); if (ball) ball.classList.add('launch');   // at once, on this phone, while the move goes in
+  if (r.dy < 24 || Math.abs(r.dx) > r.dy * 1.6) return;   // too short, or sideways: not a throw
+  const ball = app.querySelector('.pong .pball.ready'); if (ball) ball.classList.add('launch');   // at once, on this phone, while the move goes in
   attemptMove({ aim: Math.round(r.aim * 1000) / 1000, power: Math.round(r.power * 1000) / 1000 });
 }
 app.addEventListener('pointerup', pongRelease);
-app.addEventListener('pointercancel', e => { if (pongDrag && e.pointerId === pongDrag.id) { if (pongDrag.raf) cancelAnimationFrame(pongDrag.raf); pongDrag = null; } });
+app.addEventListener('pointercancel', e => { if (pongDrag && e.pointerId === pongDrag.id) pongDrag = null; });
 app.addEventListener('pointerdown', e => {
   const sc = e.target.closest && e.target.closest('[data-keep-scroll]');
   const typing = e.target.closest && e.target.closest('input:not([type="checkbox"]), textarea, select');   // a text field may scroll up for the keyboard
@@ -7186,6 +7240,7 @@ function boot() {
   fetchBullsConfig();                                         // Bullseye's board, bullseye and sweep speeds, likewise
   fetchWheelsConfig();                                        // Risk Wheels' points, odds and target, likewise
   fetchPlinkoConfig();                                        // Plinko's target, likewise
+  fetchOddConfig();                                           // Odd One Out's shade differences, likewise
   loadTrivia();                                               // the Trivia questions, for the match to come
   loadPhysics();                                              // Matter.js and physics.js, for Mini Golf, Pool and Bowling
   takeTag();                                                  // a playtester's link (?t=sam): before the address is tidied below
@@ -7620,7 +7675,7 @@ function moveSounds(f) {
     case 'echo': { const pre = echoPre(f); if (pre) { const A = echoAim(f.echo); f.echo.seq.forEach((k, i) => add('tone', i * ECHO.step, ECHO_RATES[k])); f.echo.taps.forEach((k, i) => add('tone', A.tap(i), ECHO_RATES[k])); } if (f.echo) add(f.echo.pass ? 'ding' : 'thud', pre); break; }   // someone else's attempt: the pattern and their taps, then the result
     case 'plinko': { for (let k = 1; k <= PLINKO.rows; k++) add('peg', k * PLINKO.step, 1 + (k % 3) * 0.08); add('plop', PLINKO.rows * PLINKO.step + 120); if (f.plinko) { if (f.plinko.hit) add('ding', f.plinko.bonus.r * PLINKO.step); add('point', PLINKO.rows * PLINKO.step + 160); if (won) add('sparkle', PLINKO.rows * PLINKO.step + PLINKO.land); } break; }   // the bonus peg's ding as the chip touches it; the points as it lands
     case 'pong': { add('whoosh', 0); if (f.pong) { if (f.pong.rim) add('clink', PONG.fly); add(f.pong.sunk ? 'splash' : 'thud', PONG.fly + (f.pong.rim ? 400 : 0)); } break; }
-    case 'trivia': if (f.trivia) add(f.trivia.correct ? 'ding' : 'thud', 250); break;
+    case 'trivia': { const pre = triviaPre(f); if (pre && f.trivia && f.trivia.fresh) add('reveal', TRIVIA.flip - 350); if (pre && f.trivia && f.trivia.picked >= 0 && !f.trivia.auto) add('tap', pre); if (f.trivia) add(f.trivia.correct ? 'ding' : 'thud', pre + 250); break; }   // someone else's pick: the card turned up, then their tap
     case 'oddone': { const pre = oddPre(f); if (pre) { add('reveal', ODD.show); if (f.odd.picked >= 0) add('tap', pre); } if (f.odd) add(f.odd.correct ? 'ding' : 'thud', pre + 250); break; }   // someone else's pick: the reveal, then their tap
     case 'dash': case 'lane': case 'flap': case 'chopper': if (f.run) {
       const rep = laneRep(f);                                     // the computer's Lane Rush run: its skids and crash first

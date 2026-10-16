@@ -334,7 +334,7 @@ function hexPath(cells, p) {
 }
 // Does p have a legal move in this mini-game? Only Hexapawn can leave a player stuck; every other game
 // always offers a move. A stuck player simply plays in another square.
-function canMove(mini, p) { return mini.type === 'hexapawn' ? hpMoves(mini.cells, p).length > 0 : mini.type === 'trivia' ? !!(mini.ask && mini.ask.q) : mini.type === 'patterns' ? !!mini.puz : mini.type === 'golf' ? !mini.holed[p] : true; }   // (Trivia: only with its question dealt)
+function canMove(mini, p) { return mini.type === 'hexapawn' ? hpMoves(mini.cells, p).length > 0 : mini.type === 'trivia' ? !!(mini.ask && (mini.ask.q || mini.ask.down)) : mini.type === 'patterns' ? !!mini.puz : mini.type === 'golf' ? !mini.holed[p] : true; }   // (Trivia: only with its question dealt)
 // Hexapawn: a pawn steps one square straight forward into an empty square, or captures an opposing pawn
 // one square diagonally forward. Cells run row by row from the top; X moves up, O moves down.
 function hpMoves(cells, p) {
@@ -535,6 +535,7 @@ function upgradeMini(mini) {
     delete mini.answers;
   }
   if (mini && mini.type === 'trivia' && !Array.isArray(mini.crossed)) mini.crossed = [];
+  if (mini && mini.type === 'trivia' && typeof mini.shown !== 'boolean') mini.shown = !!mini.ask;   // (a square from before the reveal: its question was always on show)
   // Bullseye from the bar and its three hits: the hits become points, on a board in the middle of the field.
   if (mini && mini.type === 'bullseye' && !mini.pts) {
     mini.pts = { X: (mini.hits && mini.hits.X) || 0, O: (mini.hits && mini.hits.O) || 0 };
@@ -707,7 +708,7 @@ function bullsRates(speed) { const f = Math.pow(1 / Math.max(1, speed), BULLS.ai
 // the pads tapped back, in order; 'auto' (a timeout) is a failed attempt.
 // One 10-step pattern per square, the same for both players: each level is its first 4, 6, 8 or 10 steps.
 // (A square dealt before that keeps a pattern of its own for each player: seqs.)
-const ECHO = { pads: 4, lengths: [4, 6, 8, 10], step: 450, gap: 500, tap: 360, aiPass: [0.95, 0.85, 0.7, 0.55] };
+const ECHO = { pads: 4, lengths: [4, 6, 8, 10], step: 450, flash: 300, gap: 500, tap: 360, aiPass: [0.95, 0.85, 0.7, 0.55] };   // a step every 450 ms, its pad lit 300 ms of it (a repeat flashes twice)
 const echoSeqs = rng => ECHO.lengths.map(n => Array.from({ length: n }, () => randInt(rng, ECHO.pads)));
 const echoBase = rng => Array.from({ length: ECHO.lengths[ECHO.lengths.length - 1] }, () => randInt(rng, ECHO.pads));
 function echoSeq(mini, p, lvl) {
@@ -796,7 +797,12 @@ function pongAimAt(k) { const [cx, cy] = PONG.cups[k]; return { aim: Math.atan2(
 // the right answer never shown; the next turn there, either player's, goes on with what is left. The
 // right answer scores and a new question is dealt. The right answer's place is kept apart from the
 // public state online (answer); crossed holds the places picked wrong so far.
-const TRIVIA = { goal: 3, options: 4, aiRight: 0.65, aiKnow: 0.53, reveal: 900, bank: null };   // aiKnow: the computer knows it this often, else guesses among what is left (65% right with four left); bank: the questions, as the host sets them
+// A new question is dealt face down (shown false; online the question itself stays with the secrets).
+// The player to move turns it up (triviaReveal: not a move, but from then they are held to the square
+// until they answer, timer and all); once up it stays up for both until it is answered right. A pick
+// on a question still face down turns it up too (the computer, a timeout); last.fresh marks a question
+// turned up in the mover's own turn, so the other phone shows the reveal, a pause, then the pick.
+const TRIVIA = { goal: 3, options: 4, aiRight: 0.65, aiKnow: 0.53, reveal: 900, flip: 600, pause: 900, bank: null };   // aiKnow: the computer knows it this often, else guesses among what is left (65% right with four left); bank: the questions, as the host sets them
 function setTriviaBank(bank) { TRIVIA.bank = bank && Array.isArray(bank.questions) && bank.questions.length ? bank : null; }
 function triviaReady() { return !!TRIVIA.bank; }
 function triviaUsed(state) {
@@ -823,20 +829,78 @@ function triviaDeal(state, sq, rng) {
   m.ask = { id: q.id, q: q.q, cat: q.cat || '', opts };
   m.answer = opts.indexOf(q.a);
   m.crossed = [];
+  m.shown = false; delete m.fresh;
+}
+// The square's question turned face up by the player to move: they are then held to the square (lock)
+// until they answer. Not a move: the turn and its clock go on. A question already up needs no reveal.
+function triviaReveal(state, i, p) {
+  const sq = state.squares && state.squares[i];
+  if (state.winner || state.turn !== p) return { ok: false, reason: 'turn' };
+  if (!sq || sq.owner || sq.mini.type !== 'trivia' || !sq.mini.ask) return { ok: false, reason: 'bad' };
+  if (state.lock != null && state.lock !== i) return { ok: false, reason: 'locked' };
+  if (sq.mini.shown) return { ok: false, reason: 'shown' };
+  sq.mini.shown = true; sq.mini.fresh = p; state.lock = i;
+  return { ok: true };
 }
 // Odd One Out: a grid of tiles of one colour, one of them a different shade (a little lighter or
 // darker, and a touch off in hue, so it is fair with colours hard to tell apart). A player's grid grows
-// with their finds: 3x3 with a clear difference, then 4x4, then 5x5 with a subtle one. The odd tile's
-// place is kept apart from the public state online; the tiles' colours are what the page draws. The grid
-// waits greyed until the player taps Reveal; then they have secs seconds to pick ('auto': no pick, wrong).
-// Someone else's pick replays as their screen showed it: the grey grid, the shades (show), a pause, the pick.
-const ODD = { goal: 3, sizes: [3, 4, 5], diff: [16, 10, 6], hue: [6, 4, 3], aiFind: [0.9, 0.7, 0.5], reveal: 700, secs: 5, show: 350, pause: 1000 };
-function oddGrid(level, rng) {
-  const k = Math.min(level, ODD.sizes.length - 1), n = ODD.sizes[k];
+// with their finds: 3x3, then 4x4, then 5x5, the difference smaller each time. The difference is set in
+// perceptual units (CIEDE2000, ΔE: about 1 is the smallest difference most people can see side by side),
+// the same on every base colour (a step of lightness looks bigger on some hues than others): the admin's
+// values (config/oddone), level by level. The odd tile's place is kept apart from the public state
+// online; the tiles' colours are what the page draws. The grid waits greyed until the player taps
+// Reveal; then they have secs seconds to pick ('auto': no pick, wrong). Someone else's pick replays as
+// their screen showed it: the grey grid, the shades (show), a pause, the pick.
+const ODD = { goal: 3, sizes: [3, 4, 5], hueRatio: 0.375, aiFind: [0.75, 0.6, 0.45], reveal: 700, secs: 5, show: 350, pause: 1000 };   // aiFind: the computer finds it as often as a typical player is meant to (misses about 25%, 40%, 55%)
+const ODD_DEFAULTS = { d1: 4, d2: 2.8, d3: 2 };                   // the difference at each level (ΔE 2000): noticeable, subtle, very subtle
+const ODD_LIMITS = { d1: [0.5, 25], d2: [0.5, 25], d3: [0.5, 25] };
+const ODD_CFG = { cfg: null };
+function oddNorm(raw) {
+  const out = {};
+  for (const k of Object.keys(ODD_DEFAULTS)) { const [lo, hi] = ODD_LIMITS[k], x = raw && raw[k] != null ? Number(raw[k]) : NaN; out[k] = Number.isFinite(x) && x >= lo && x <= hi ? Math.round(x * 10) / 10 : ODD_DEFAULTS[k]; }
+  return out;
+}
+function setOddConfig(raw) { ODD_CFG.cfg = raw && typeof raw === 'object' ? oddNorm(raw) : null; }
+const oddConfig = () => Object.assign({}, ODD_CFG.cfg || ODD_DEFAULTS);
+// Colour arithmetic: HSL to sRGB (0-255, as a screen shows it), to CIELAB (D65), and the CIEDE2000 difference.
+function hslRgb(h, s, l) {
+  s /= 100; l /= 100;
+  const k = n => (n + h / 30) % 12, a = s * Math.min(l, 1 - l), f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+  return [f(0), f(8), f(4)].map(v => Math.round(v * 255));
+}
+function rgbLab(rgb) {
+  const [r, g, b] = rgb.map(v => { v /= 255; return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
+  const x = (r * 0.4124564 + g * 0.3575761 + b * 0.1804375) / 0.95047, y = r * 0.2126729 + g * 0.7151522 + b * 0.072175, z = (r * 0.0193339 + g * 0.119192 + b * 0.9503041) / 1.08883;
+  const f = t => (t > 216 / 24389 ? Math.cbrt(t) : (24389 / 27 * t + 16) / 116);
+  return [116 * f(y) - 16, 500 * (f(x) - f(y)), 200 * (f(y) - f(z))];
+}
+function deltaE00(l1, l2) {
+  const [L1, a1, b1] = l1, [L2, a2, b2] = l2, rad = Math.PI / 180;
+  const C1 = Math.hypot(a1, b1), C2 = Math.hypot(a2, b2), Cm = (C1 + C2) / 2, G = 0.5 * (1 - Math.sqrt(Math.pow(Cm, 7) / (Math.pow(Cm, 7) + Math.pow(25, 7))));
+  const a1p = a1 * (1 + G), a2p = a2 * (1 + G), C1p = Math.hypot(a1p, b1), C2p = Math.hypot(a2p, b2);
+  const hp = (b, a) => { if (!a && !b) return 0; const h = Math.atan2(b, a) / rad; return h < 0 ? h + 360 : h; };
+  const h1p = hp(b1, a1p), h2p = hp(b2, a2p), dLp = L2 - L1, dCp = C2p - C1p;
+  let dhp = 0; if (C1p * C2p) { dhp = h2p - h1p; if (dhp > 180) dhp -= 360; else if (dhp < -180) dhp += 360; }
+  const dHp = 2 * Math.sqrt(C1p * C2p) * Math.sin(dhp * rad / 2), Lm = (L1 + L2) / 2, Cmp = (C1p + C2p) / 2;
+  let hm = h1p + h2p; if (C1p * C2p) { if (Math.abs(h1p - h2p) > 180) hm += h1p + h2p < 360 ? 360 : -360; hm /= 2; }
+  const T = 1 - 0.17 * Math.cos((hm - 30) * rad) + 0.24 * Math.cos(2 * hm * rad) + 0.32 * Math.cos((3 * hm + 6) * rad) - 0.2 * Math.cos((4 * hm - 63) * rad);
+  const dTh = 30 * Math.exp(-Math.pow((hm - 275) / 25, 2)), RC = 2 * Math.sqrt(Math.pow(Cmp, 7) / (Math.pow(Cmp, 7) + Math.pow(25, 7)));
+  const SL = 1 + 0.015 * Math.pow(Lm - 50, 2) / Math.sqrt(20 + Math.pow(Lm - 50, 2)), SC = 1 + 0.045 * Cmp, SH = 1 + 0.015 * Cmp * T, RT = -Math.sin(2 * dTh * rad) * RC;
+  return Math.sqrt(Math.pow(dLp / SL, 2) + Math.pow(dCp / SC, 2) + Math.pow(dHp / SH, 2) + RT * (dCp / SC) * (dHp / SH));
+}
+const oddDelta = (base, odd) => deltaE00(rgbLab(hslRgb(...base)), rgbLab(hslRgb(...odd)));
+function oddGrid(level, rng, cfg) {
+  cfg = cfg || oddConfig();
+  const k = Math.min(level, ODD.sizes.length - 1), n = ODD.sizes[k], want = cfg['d' + (k + 1)];
   const h = randInt(rng, 360), sat = 50 + randInt(rng, 25), l = 42 + randInt(rng, 20);
-  const up = l < 52 ? 1 : -1;                                   // the odd tile leans toward the middle lightness: always visible
-  const dl = ODD.diff[k] * up, dh = (rng() < 0.5 ? -1 : 1) * ODD.hue[k];
-  const base = `hsl(${h} ${sat}% ${l}%)`, odd = `hsl(${(h + dh + 360) % 360} ${sat}% ${l + dl}%)`;
+  const up = l < 52 ? 1 : -1, hd = rng() < 0.5 ? -1 : 1;           // the odd tile leans toward the middle lightness (always visible), its hue a touch either way
+  const at = dl => [(h + hd * dl * ODD.hueRatio + 360) % 360, sat, l + up * dl];
+  let lo = 0, hi = 30;                                             // the lightness step that makes the difference wanted (bisection: the difference grows with the step)
+  for (let it = 0; it < 40; it++) { const mid = (lo + hi) / 2; if (oddDelta([h, sat, l], at(mid)) < want) lo = mid; else hi = mid; }
+  const r1 = x => Math.round(x * 10) / 10;
+  let o = null, err = Infinity;                                    // as drawn (to a tenth, then to the screen's 0-255): the nearest step to the difference wanted
+  for (let dl = Math.max(0.1, hi - 1.5); dl <= hi + 1.5; dl += 0.1) { const c = at(dl).map(r1), e = Math.abs(oddDelta([h, sat, l], c) - want); if (e < err) { err = e; o = c; } }
+  const base = `hsl(${h} ${sat}% ${l}%)`, odd = `hsl(${o[0]} ${sat}% ${o[2]}%)`;
   const pos = randInt(rng, n * n);
   return { grid: { n, base, odd, tiles: Array.from({ length: n * n }, (_, i) => (i === pos ? odd : base)) }, pos };
 }
@@ -1875,7 +1939,9 @@ const PHYSICS = { lib: null };
 function setPhysics(lib) { PHYSICS.lib = lib && typeof lib.run === 'function' ? lib : null; }
 const physicsReady = () => !!PHYSICS.lib;
 const GOLF = { goal: 1, aiErr: [0.035, 0.04], hold: 700 };
-const POOLG = { goal: 2, aiErr: [0.02, 0.05], hold: 700, order: ['cue', 'x1', 'x2', 'o1', 'o2', 'black'] };
+const POOLG = { goal: 2, aiErr: [0.02, 0.025], hold: 700, order: ['cue', 'x1', 'x2', 'o1', 'o2', 'black'] };
+// Pool's power for a speed (units a second): the meter's level goes with the square root of the speed (physics.js: POOL.curve).
+const poolPow = speed => Math.min(1, Math.pow(Math.max(0, speed) / PHYSICS.lib.POOL.vMax, 1 / (PHYSICS.lib.POOL.curve || 1)));
 const BOWLG = { goal: 25, rack: 10, aiErr: [0.025, 0.04], hold: 800 };
 // Pool's balls by id: the cue, each side's (x1, x2 ... and o1, o2 ...: a scratch adds one to the other
 // side's), the black; in that order everywhere (the recording, the drawing).
@@ -1978,11 +2044,11 @@ function physCandidates(mini, p, rng) {
         const dx = b[0] - pk[0], dy = b[1] - pk[1], n = Math.hypot(dx, dy) || 1;
         const ghost = [b[0] + (dx / n) * R * 2, b[1] + (dy / n) * R * 2];    // where the cue ball must be to send it pocketwards
         const a = aimTo(cue, ghost);
-        for (const pw of [0.3, 0.45, 0.65]) out.push({ aim: a, power: pw });
-        out.push({ aim: a + 0.03, power: 0.5 }, { aim: a - 0.03, power: 0.5 });
+        for (const sp of [36, 54, 78]) out.push({ aim: a, power: poolPow(sp) });
+        out.push({ aim: a + 0.03, power: poolPow(60) }, { aim: a - 0.03, power: poolPow(60) });
       }
     }
-    for (let k = 0; k < 3; k++) out.push({ aim: (rng() - 0.5) * 2.4, power: 0.25 + rng() * 0.3 });   // a soft safety
+    for (let k = 0; k < 3; k++) out.push({ aim: (rng() - 0.5) * 2.4, power: poolPow(30 + rng() * 36) });   // a soft safety
   } else {
     const from = L.BOWL.start, head = L.BOWL.pins[0], a = aimTo(from, head);
     for (const da of [-0.07, -0.045, -0.025, 0, 0.025, 0.045, 0.07]) out.push({ aim: a + da, power: 0.9 });
@@ -2013,7 +2079,7 @@ function physRandom(mini, p, rng) {
     const hole = L.HOLES[mini.hole], from = mini.balls[p], to = hole.path[golfNext(hole, from)], d = Math.hypot(to[0] - from[0], to[1] - from[1]);
     return physShot({ aim: wrapAim(aimTo(from, to) + (rng() - 0.5) * 0.7), power: Math.max(0.2, Math.min(0.75, Math.pow(d / (L.GOLF.reach || 174), 0.57) * (0.7 + rng() * 0.5))) });
   }
-  if (mini.type === 'pool') { const ids = poolMine(p, mini).filter(id => !mini.down[id]); const to = ids.length ? mini.balls[ids[randInt(rng, ids.length)]] : L.POOL.start.black; return physShot({ aim: wrapAim(aimTo(mini.balls.cue, to) + (rng() - 0.5) * 0.6), power: 0.25 + rng() * 0.25 }); }
+  if (mini.type === 'pool') { const ids = poolMine(p, mini).filter(id => !mini.down[id]); const to = ids.length ? mini.balls[ids[randInt(rng, ids.length)]] : L.POOL.start.black; return physShot({ aim: wrapAim(aimTo(mini.balls.cue, to) + (rng() - 0.5) * 0.6), power: poolPow(30 + rng() * 30) }); }
   return physShot({ aim: (rng() - 0.5) * 0.2, power: 0.5 + rng() * 0.25 });
 }
 // How many moves the computer reckons it needs in a physics square (for its choice of square).
@@ -2049,7 +2115,7 @@ function newMini(type, rng) {
     case 'echo':        return { type, level: { X: 0, O: 0 }, base: echoBase(needRng(rng)), last: null };
     case 'plinko':      { const r = needRng(rng); return { type, vals: shuffle(PLINKO.vals.slice(), r), pts: { X: 0, O: 0 }, used: new Array(PLINKO.slots).fill(false), bonus: plinkoBonus(r), target: plinkoConfig().target, last: null }; }
     case 'pong':        return { type, cups: { X: [true, true, true], O: [true, true, true] }, last: null };
-    case 'trivia':      return { type, right: { X: 0, O: 0 }, ask: null, answer: null, crossed: [], asked: [], last: null };   // ask: the square's question; answer: the right option's place (hidden online); crossed: the places picked wrong; asked: the ids answered here
+    case 'trivia':      return { type, right: { X: 0, O: 0 }, ask: null, answer: null, crossed: [], asked: [], shown: false, last: null };   // ask: the square's question; answer: the right option's place (hidden online); crossed: the places picked wrong; asked: the ids answered here
     case 'golf': {                                            // a hole from the six; both balls side by side on the tee
       const L = PHYSICS.lib, hole = randInt(needRng(rng), L ? L.HOLES.length : 6), tee = L ? L.HOLES[hole].tee : [50, 140];
       return { type, hole, balls: { X: [tee[0] - 3, tee[1]], O: [tee[0] + 3, tee[1]] }, holed: { X: false, O: false }, shots: { X: 0, O: 0 }, last: null };
@@ -2761,8 +2827,9 @@ function applyMove(mini, p, m, rng) {
         picked = wrong.length ? wrong[randInt(needRng(rng), wrong.length)] : -1; auto = true;
       } else if (Number.isInteger(m) && m >= 0 && m < ask.opts.length && !crossed.includes(m)) picked = m;
       else return { ok: false, reason: Number.isInteger(m) && crossed.includes(m) ? 'crossed' : 'bad' };
-      const correct = picked === right;
-      mini.last = Object.assign({ by: p, id: ask.id, q: ask.q, cat: ask.cat, opts: ask.opts.slice(), crossed, picked, correct }, correct ? { right } : {}, auto ? { auto: true } : {});   // (a wrong pick never carries the right answer)
+      const correct = picked === right, fresh = !mini.shown || mini.fresh === p;   // turned up in this turn (now, or by the reveal before the pick)
+      mini.shown = true; delete mini.fresh;
+      mini.last = Object.assign({ by: p, id: ask.id, q: ask.q, cat: ask.cat, opts: ask.opts.slice(), crossed, picked, correct }, correct ? { right } : {}, auto ? { auto: true } : {}, fresh ? { fresh: true } : {});   // (a wrong pick never carries the right answer)
       if (!correct) {
         if (picked >= 0) mini.crossed = crossed.concat(picked);
         return { ok: true, outcome: 'continue', note: 'wrong' };
@@ -2836,10 +2903,10 @@ function publicMini(mini) {
     case 'plinko':  return { type: 'plinko', vals: mini.vals.slice(), pts: { X: mini.pts.X, O: mini.pts.O }, used: mini.used.slice(), bonus: mini.bonus ? { x: mini.bonus.x, r: mini.bonus.r } : null, target: mini.target };
     case 'pong':    return { type: 'pong', cups: { X: mini.cups.X.slice(), O: mini.cups.O.slice() } };
     // Trivia and Odd One Out: the computer plays to a success rate (it knows the answer about half the
-    // time, else guesses among the options still standing; a find 90%, 70%, then 50%), so it is told the
+    // time, else guesses among the options still standing; a find 75%, 60%, then 45%), so it is told the
     // answer here and makes up its mind from there. Online, a phone
     // never gets these (hideMini): only the server, which plays the bots, does.
-    case 'trivia':  return { type: 'trivia', right: { X: mini.right.X, O: mini.right.O }, answer: Number.isInteger(mini.answer) ? mini.answer : null, crossed: (mini.crossed || []).slice(), ask: mini.ask && mini.ask.q ? { opts: mini.ask.opts.length } : null };
+    case 'trivia':  return { type: 'trivia', right: { X: mini.right.X, O: mini.right.O }, answer: Number.isInteger(mini.answer) ? mini.answer : null, crossed: (mini.crossed || []).slice(), ask: mini.ask && (mini.ask.q || mini.ask.down) ? { opts: mini.ask.opts ? mini.ask.opts.length : mini.ask.n || TRIVIA.options } : null };
     case 'oddone':  return { type: 'oddone', finds: { X: mini.finds.X, O: mini.finds.O }, n: { X: mini.grid.X.n, O: mini.grid.O.n }, pos: mini.pos ? { X: mini.pos.X, O: mini.pos.O } : { X: null, O: null } };
     case 'bs':      return { type: 'bs', len: mini.len, revealed: mini.revealed.slice(), hits: mini.hits.slice() };
     case 'wordle':  return { type: 'wordle', guesses: mini.guesses.map(g => ({ by: g.by, word: g.word, marks: g.marks.slice() })) };
@@ -3269,7 +3336,7 @@ function localBest(pm, me, rng, style, ctx) {
       if (left.length <= 1 || rng() < TRIVIA.aiKnow) return { move: right, q };
       return { move: left[randInt(rng, left.length)], q };
     }
-    case 'oddone': {                                             // a find 90%, 70%, then 50% of the time
+    case 'oddone': {                                             // a find 75%, 60%, then 45% of the time (ODD.aiFind)
       const q = ODD.aiFind[Math.min(pm.finds[me], ODD.aiFind.length - 1)], pos = pm.pos[me], n = pm.n[me] * pm.n[me];
       if (!Number.isInteger(pos)) return { move: 'auto', q: 0 };
       if (rng() < q) return { move: pos, q };
@@ -3693,7 +3760,7 @@ function playMove(state, i, m, rng, opts) {
     case 'echo': { const l = mini.last; flash.echo = { level: l.level, len: l.len, pass: l.pass, failAt: l.failAt, taps: l.taps.slice(), seq: (l.seq || []).slice(), levels: { X: mini.level.X, O: mini.level.O } }; break; }
     case 'plinko': { const l = mini.last; flash.plinko = { slot: l.slot, path: l.path.slice(), bin: l.bin, pts: l.pts, hit: l.hit, bonus: l.bonus, next: mini.bonus, reset: l.reset, total: mini.pts[l.by] }; break; }
     case 'pong': { const l = mini.last; flash.pong = { aim: l.aim, power: l.power, x: l.x, y: l.y, cup: l.cup, rim: l.rim, sunk: l.sunk, cups: { X: mini.cups.X.slice(), O: mini.cups.O.slice() } }; break; }
-    case 'trivia': { const l = mini.last; flash.trivia = Object.assign({ q: l.q, cat: l.cat, opts: l.opts.slice(), crossed: (l.crossed || []).slice(), picked: l.picked, correct: l.correct, counts: { X: mini.right.X, O: mini.right.O } }, l.correct ? { right: l.right } : {}, l.auto ? { auto: true } : {}); break; }   // (a wrong pick: no right answer in it)
+    case 'trivia': { const l = mini.last; flash.trivia = Object.assign({ q: l.q, cat: l.cat, opts: l.opts.slice(), crossed: (l.crossed || []).slice(), picked: l.picked, correct: l.correct, counts: { X: mini.right.X, O: mini.right.O } }, l.correct ? { right: l.right } : {}, l.auto ? { auto: true } : {}, l.fresh ? { fresh: true } : {}); break; }   // (a wrong pick: no right answer in it)
     case 'oddone': { const l = mini.last; flash.odd = { n: l.n, tiles: l.tiles.slice(), pos: l.pos, picked: l.picked, correct: l.correct, finds: { X: mini.finds.X, O: mini.finds.O } }; break; }
   }
   if (outcome === 'win') {
@@ -3786,7 +3853,7 @@ function secretOf(mini) {
     case 'memory': return { cards: mini.cards.map(c => ({ s: c.s, c: c.c })) };
     case 'mastermind': return { code: mini.code.slice() };
     case 'bj': return mini.hand && mini.hole ? { hole: mini.hole, deck: (mini.deck || []).slice() } : null;   // only while a hand is being played
-    case 'trivia': return { answer: Number.isInteger(mini.answer) ? mini.answer : null };   // the right answer's place
+    case 'trivia': { const s = { answer: Number.isInteger(mini.answer) ? mini.answer : null }; if (mini.ask && !mini.shown) s.ask = mini.ask; return s; }   // the right answer's place, and a question still face down
     case 'patterns': return { answer: Number.isInteger(mini.answer) ? mini.answer : null, rule: mini.rule || null };   // the right option's place, and the rule it came from
     case 'sniff': return { treasure: mini.treasure };
     case 'oddone': return { pos: { X: mini.pos ? mini.pos.X : null, O: mini.pos ? mini.pos.O : null } };   // the odd tiles' places
@@ -3801,7 +3868,7 @@ function hideMini(m, k, st) {
     case 'wordle': delete m.word; break;
     case 'mastermind': delete m.code; break;
     case 'bj': delete m.hole; delete m.deck; break;
-    case 'trivia': delete m.answer; delete m.answers; break;
+    case 'trivia': delete m.answer; delete m.answers; if (m.ask && !m.shown) m.ask = { down: true, n: m.ask.opts ? m.ask.opts.length : TRIVIA.options }; break;   // face down: only that there is one
     case 'patterns': delete m.answer; delete m.rule; break;
     case 'sniff': delete m.treasure; break;
     case 'oddone': delete m.pos; break;
@@ -3887,6 +3954,12 @@ function applyOnlineTimeout(rec, rng) {
   }
   return { ok: true, rec: matchRecord(full), entries };
 }
+// Trivia: the square's question turned up by the player to move, for both phones.
+function applyOnlineReveal(rec, side, i) {
+  const full = fullState(rec);
+  const r = triviaReveal(full, i, side);
+  return r.ok ? { ok: true, rec: matchRecord(full) } : r;
+}
 // Memory: the first card chosen is turned up for both phones (or turned back when tapped again).
 function applyOnlinePick(rec, side, i, card) {
   const full = fullState(rec);
@@ -3963,7 +4036,7 @@ function playMs(f, winLen) {
     case 'echo':    return (f.echo && !f.timeout ? echoAim(f.echo).end : 0) + ECHO.result + (won ? 600 : 0);   // (the phone that tapped skips the replay: it has just played it)
     case 'plinko':  return PLINKO.rows * PLINKO.step + PLINKO.land + (won ? 600 : 0);
     case 'pong':    return PONG.fly + PONG.hold + (won ? 600 : 0);
-    case 'trivia':  return TRIVIA.reveal + (won ? 600 : 0);
+    case 'trivia':  return (f.trivia && f.trivia.fresh ? TRIVIA.flip : 0) + TRIVIA.pause + TRIVIA.reveal + (won ? 600 : 0);   // (another phone: the card turned up, a pause, then the pick)
     case 'oddone':  return (f.odd && !f.timeout ? ODD.show + ODD.pause : 0) + ODD.reveal + (won ? 600 : 0);   // (the phone that picked skips the replay)
   }
   return 500;
@@ -4087,4 +4160,4 @@ function matchStats(st) {
 }
 
 // Node (the Cloud Functions and the tests): the same names as a module.
-if (typeof module !== "undefined" && module.exports) module.exports = { PHYS_TYPES, PHYSICS, setPhysics, physicsReady, GOLF, POOLG, BOWLG, poolMine, poolRank, poolIds, poolOwns, poolFree, physShot, wrapAim, aimTo, poolSpot, physRun, golfClear, golfNext, golfAhead, golfLeft, physLast, physScore, physCandidates, physAi, physRandom, physNeeds, RUN_TYPES, RUN_DEFAULTS, RUN_LIMITS, RUN_EXTRA, RUN, RUNT, RUN_CFG, LANE_TIGHT, LANE_NEAR, r2, runNorm, setRunConfig, runConfig, runSpeed, runSecs, runAfter, runGrace, DASH_OBS, DASH, LANE, FLAP, CHOP, PATTERNS, patKey, patRot, patFits, patSolve3, patFeature, patFitting, patNumTemplate, patNumMisses, patNumPuzzle, patDotsTemplate, patShapePuzzle, patPuzzle, patNum, patDots, patShape, patPick, patRange, WHEELS, WHEEL_SEGS, WHEELS_SAFE, WHEEL_DEFAULTS, WHEEL_LIMITS, WHEELT, WHEEL_CFG, wheelsNorm, setWheelsConfig, wheelsConfig, wheelAvg, wheelsCheck, wheelsDeal, WHEEL_MEMO, wheelsTable, wheelSpin, SNIFF, SNIFF_DIRS, sniffDist, sniffStep, sniffDirs, sniffCands, sniffPick, runCave, caveHeight, caveWalls, runWalls, weightedPick, laneRow, laneNeed, laneDrive, runCourse, runCheck, runAuto, gaussOf, normCdf, runAiMean, runAi, runNeeds, runLog, runStart, runJump, runRelease, runLane, runLaneX, overlap, runHit, runStep, runResult, TEST_TYPES, isReleased, releasedTypes, allowedTypes, restrictGames, dealable, CRAPS, CRAPS_MAKE, crapsRound, crapsTimes, TAKE, takeNear, takeCount, takeApply, takeSearch, FLOOD, floodNear, floodWaves, floodGain, floodApply, floodSearch, raceNeeds, TAKEOVER_MS, FLOOD_MS, PLACE_MS, SEAT, seatTable, seatMate, seatTables, seatZ, seatNext, seatPick, DIST, r1d, distClip, distMap, distTo, distTally, distEval, distSearch, SHELF, shelfOn, shelfPick, ROAD, ROAD_SEGS, roadLongest, roadPick, randomEmpty, BULLS, BULLT, bullsLeg, bullsAim, BULL_DEFAULTS, BULL_LIMITS, BULL_CFG, bullsNorm, setBullsConfig, bullsConfig, bullsSpot, bullsScore, bullsRates, r3, ECHO, PLINKO, PONG, TRIVIA, ODD, bullsPeriod, echoSeqs, echoBase, echoSeq, echoAim, plinkoPath, plinkoOdds, PLINKO_DEFAULTS, PLINKO_LIMITS, PLINKO_CFG, plinkoNorm, setPlinkoConfig, plinkoConfig, plinkoPegs, plinkoBonus, plinkoTouches, plinkoWays, plinkoDist, plinkoExp, plinkoOpen, pongThrow, pongAimAt, pongDist, setTriviaBank, triviaReady, triviaDeal, triviaUsed, oddGrid, cpuEcho, CARD, BJ, BUS, RL, BJT, BUST, RLT, BUS_AVG, cardDeck, isCard, cardRank, cardRed, cardName, bjValue, bjTotal, bjNatural, bjDealerPlay, bjOutcome, bjStrategy, bjPlan, bjMs, busRight, busDeck, busOdds, rlRed, rlBet, rlCovers, tttOpen, lineOpen, majorityResult, STYLE0, huntSize, huntBand, huntClue, normTimer, resignLocal, TYPES, OLD_TYPES, SNL, BUMP, snlRow, snlBoard, snlValid, snlExpected, coinPick, markCoins, coinMarksFor, normLocal, seatLocal, INFO, C4, HP, MM, HEX_N, HILO, CANDY, NAME_MAX, COINS, RISKY, BS, HUNT, DICE_GOAL, MEMORY, LINES, WORDS5, WORDS_HANG, VALID5, other, makeRng, needRng, randInt, randomType, shuffle, memoryDeck, wordleMarks, hexNeighbors, hexPath, canMove, hpMoves, mmFeedback, mmValid, MM_ALL, mmAll, mmCode, mmCandidates, mmBestGuess, hpGoalRow, upgradeMini, anyMove, huntDist, candyTrack, newMini, pickType, newSquare, CPU_NAME, defaultSetup, cpuSide, normSetup, syncNames, enabledGames, TIMER_OPTIONS, newTimer, playerName, newState, startMatch, newMatch, findRun, applyMove, AI, publicMini, wordleCandidates, hangmanCandidates, bsCandidates, bsPlacements, bsShip, huntCandidates, WINDOWS, windowsOf, lineNeeds, c4Playable, hexDist, candyExpected, COIN_NEEDS, needsOf, memoryPair, winChance, tttMinimax, c4Drop, c4Eval, C4_ORDER, c4Search, C4_DEPTH, c4Moves, HP_MEMO, hpSolve, hpMovesValued, hpNeeds, hexMoves, threatScore, pickValued, localBest, squareValue, moveGain, cpuMove, VALID5_LIST, randomLegalMove, timeoutMove, mainResult, playMove, endFlash, leaveSquare, RECENT_MAX, MATCH_FIELDS, secretOf, hideMini, matchRecord, fullState, settle, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, newOnlineMatch, PLAY, diceSlot, playMs, replayMs, armClock, applyOnlineResign, matchStats };
+if (typeof module !== "undefined" && module.exports) module.exports = { PHYS_TYPES, PHYSICS, setPhysics, physicsReady, GOLF, POOLG, poolPow, BOWLG, poolMine, poolRank, poolIds, poolOwns, poolFree, physShot, wrapAim, aimTo, poolSpot, physRun, golfClear, golfNext, golfAhead, golfLeft, physLast, physScore, physCandidates, physAi, physRandom, physNeeds, RUN_TYPES, RUN_DEFAULTS, RUN_LIMITS, RUN_EXTRA, RUN, RUNT, RUN_CFG, LANE_TIGHT, LANE_NEAR, r2, runNorm, setRunConfig, runConfig, runSpeed, runSecs, runAfter, runGrace, DASH_OBS, DASH, LANE, FLAP, CHOP, PATTERNS, patKey, patRot, patFits, patSolve3, patFeature, patFitting, patNumTemplate, patNumMisses, patNumPuzzle, patDotsTemplate, patShapePuzzle, patPuzzle, patNum, patDots, patShape, patPick, patRange, WHEELS, WHEEL_SEGS, WHEELS_SAFE, WHEEL_DEFAULTS, WHEEL_LIMITS, WHEELT, WHEEL_CFG, wheelsNorm, setWheelsConfig, wheelsConfig, wheelAvg, wheelsCheck, wheelsDeal, WHEEL_MEMO, wheelsTable, wheelSpin, SNIFF, SNIFF_DIRS, sniffDist, sniffStep, sniffDirs, sniffCands, sniffPick, runCave, caveHeight, caveWalls, runWalls, weightedPick, laneRow, laneNeed, laneDrive, runCourse, runCheck, runAuto, gaussOf, normCdf, runAiMean, runAi, runNeeds, runLog, runStart, runJump, runRelease, runLane, runLaneX, overlap, runHit, runStep, runResult, TEST_TYPES, isReleased, releasedTypes, allowedTypes, restrictGames, dealable, CRAPS, CRAPS_MAKE, crapsRound, crapsTimes, TAKE, takeNear, takeCount, takeApply, takeSearch, FLOOD, floodNear, floodWaves, floodGain, floodApply, floodSearch, raceNeeds, TAKEOVER_MS, FLOOD_MS, PLACE_MS, SEAT, seatTable, seatMate, seatTables, seatZ, seatNext, seatPick, DIST, r1d, distClip, distMap, distTo, distTally, distEval, distSearch, SHELF, shelfOn, shelfPick, ROAD, ROAD_SEGS, roadLongest, roadPick, randomEmpty, BULLS, BULLT, bullsLeg, bullsAim, BULL_DEFAULTS, BULL_LIMITS, BULL_CFG, bullsNorm, setBullsConfig, bullsConfig, bullsSpot, bullsScore, bullsRates, r3, ECHO, PLINKO, PONG, TRIVIA, ODD, ODD_DEFAULTS, ODD_LIMITS, ODD_CFG, oddNorm, setOddConfig, oddConfig, hslRgb, rgbLab, deltaE00, oddDelta, bullsPeriod, echoSeqs, echoBase, echoSeq, echoAim, plinkoPath, plinkoOdds, PLINKO_DEFAULTS, PLINKO_LIMITS, PLINKO_CFG, plinkoNorm, setPlinkoConfig, plinkoConfig, plinkoPegs, plinkoBonus, plinkoTouches, plinkoWays, plinkoDist, plinkoExp, plinkoOpen, pongThrow, pongAimAt, pongDist, setTriviaBank, triviaReady, triviaDeal, triviaReveal, triviaUsed, oddGrid, cpuEcho, CARD, BJ, BUS, RL, BJT, BUST, RLT, BUS_AVG, cardDeck, isCard, cardRank, cardRed, cardName, bjValue, bjTotal, bjNatural, bjDealerPlay, bjOutcome, bjStrategy, bjPlan, bjMs, busRight, busDeck, busOdds, rlRed, rlBet, rlCovers, tttOpen, lineOpen, majorityResult, STYLE0, huntSize, huntBand, huntClue, normTimer, resignLocal, TYPES, OLD_TYPES, SNL, BUMP, snlRow, snlBoard, snlValid, snlExpected, coinPick, markCoins, coinMarksFor, normLocal, seatLocal, INFO, C4, HP, MM, HEX_N, HILO, CANDY, NAME_MAX, COINS, RISKY, BS, HUNT, DICE_GOAL, MEMORY, LINES, WORDS5, WORDS_HANG, VALID5, other, makeRng, needRng, randInt, randomType, shuffle, memoryDeck, wordleMarks, hexNeighbors, hexPath, canMove, hpMoves, mmFeedback, mmValid, MM_ALL, mmAll, mmCode, mmCandidates, mmBestGuess, hpGoalRow, upgradeMini, anyMove, huntDist, candyTrack, newMini, pickType, newSquare, CPU_NAME, defaultSetup, cpuSide, normSetup, syncNames, enabledGames, TIMER_OPTIONS, newTimer, playerName, newState, startMatch, newMatch, findRun, applyMove, AI, publicMini, wordleCandidates, hangmanCandidates, bsCandidates, bsPlacements, bsShip, huntCandidates, WINDOWS, windowsOf, lineNeeds, c4Playable, hexDist, candyExpected, COIN_NEEDS, needsOf, memoryPair, winChance, tttMinimax, c4Drop, c4Eval, C4_ORDER, c4Search, C4_DEPTH, c4Moves, HP_MEMO, hpSolve, hpMovesValued, hpNeeds, hexMoves, threatScore, pickValued, localBest, squareValue, moveGain, cpuMove, VALID5_LIST, randomLegalMove, timeoutMove, mainResult, playMove, endFlash, leaveSquare, RECENT_MAX, MATCH_FIELDS, secretOf, hideMini, matchRecord, fullState, settle, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, applyOnlineReveal, newOnlineMatch, PLAY, diceSlot, playMs, replayMs, armClock, applyOnlineResign, matchStats };

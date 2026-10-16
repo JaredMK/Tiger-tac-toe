@@ -178,6 +178,45 @@ test('pool: the fixed layout; a pocketed ball is gone; own ball down means anoth
   assert.ok(taken.balls.cue[1] > P.POOL.start.cue[1] && Math.hypot(taken.balls.cue[0] - taken.balls.x1[0], taken.balls.cue[1] - taken.balls.x1[1]) >= P.POOL.ballR * 2, 'not on top of the ball there');
 });
 
+test('pool, more power: a full-power shot runs the table 3 times and more (off the far rails twice or more); the meter is squared, so a light pull is still light', () => {
+  const lone = (aim, power) => {
+    const r = P.run('pool', { balls: { cue: P.POOL.start.cue.slice() }, down: {} }, 'X', { aim, power }), i = r.rec.ids.indexOf('cue');
+    const pts = r.rec.frames.map(f => [f[2 * i], f[2 * i + 1]]).filter(q => q[0] != null);
+    let len = 0, turns = 0, dir = 0;
+    for (let k = 1; k < pts.length; k++) { const dy = pts[k][1] - pts[k - 1][1]; len += Math.hypot(pts[k][0] - pts[k - 1][0], dy); const d = Math.sign(dy); if (d && dir && d !== dir) turns++; if (d) dir = d; }
+    return { len, turns, ms: r.ms };
+  };
+  for (const aim of [0, 0.25, -0.4]) {
+    const f = lone(aim, 1);
+    console.log(`Pool: full power at aim ${aim}: ${f.len.toFixed(0)} units (${(f.len / P.POOL.h).toFixed(2)} table lengths), ${f.turns} far-rail bounces, ${f.ms} ms`);
+    assert.ok(f.len >= 3 * P.POOL.h && f.turns >= 2, `full power runs the table 3 times (${(f.len / P.POOL.h).toFixed(2)}), off the far rails twice or more (${f.turns})`);
+  }
+  const light = lone(0, 0.2);
+  assert.ok(light.len > 2 && light.len < 25, `a light pull (a fifth of the meter) is a gentle tap (${light.len.toFixed(1)} units)`);
+  assert.ok(lone(0, 0.5).len < lone(0, 1).len / 3, 'the meter is squared: half the meter is well under a third of the run');
+});
+
+test('pool, no tunnelling at full power: balls never pass through a rail or each other, at any frame', () => {
+  const rng = lcg(23), R = P.POOL.ballR;
+  for (let k = 0; k < 60; k++) {
+    const m = mini('pool', 'tun' + k), r = P.run('pool', m, 'X', { aim: (rng() - 0.5) * 2 * Math.PI, power: 0.85 + rng() * 0.15 });
+    const n = r.rec.ids.length;
+    for (const fr of r.rec.frames) {
+      const at = r.rec.ids.map((id, i) => (fr[2 * i] == null ? null : [fr[2 * i], fr[2 * i + 1]]));
+      at.forEach((q, i) => { if (q) assert.ok(q[0] >= R - 0.6 && q[0] <= P.POOL.w - R + 0.6 && q[1] >= R - 0.6 && q[1] <= P.POOL.h - R + 0.6, `shot ${k}: ${r.rec.ids[i]} inside the rails (${q})`); });
+      for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) if (at[i] && at[j]) assert.ok(Math.hypot(at[i][0] - at[j][0], at[i][1] - at[j][1]) >= 2 * R * 0.75, `shot ${k}: ${r.rec.ids[i]} and ${r.rec.ids[j]} never pass into each other`);
+    }
+  }
+  // head on at full power: the ball in the way is struck (not passed through), from close and from far
+  for (const gap of [6, 20, 60, 110]) {
+    const pos = { balls: { cue: [50, 160], x1: [50, 160 - gap] }, down: {} }, r = P.run('pool', pos, 'X', { aim: 0, power: 1 });
+    assert.ok(r.events.some(e => e.k === 'balls'), `${gap} apart: the balls meet`);
+    const i = r.rec.ids.indexOf('x1'), first = r.rec.frames.findIndex(f => f[2 * i + 1] != null && f[2 * i + 1] < 160 - gap - 1);
+    const j = r.rec.ids.indexOf('cue');
+    assert.ok(first >= 0 && r.rec.frames.slice(0, first + 1).every(f => f[2 * j + 1] == null || f[2 * j + 1] > (f[2 * i + 1] == null ? -1 : f[2 * i + 1]) - 0.5), `${gap} apart: the white stays behind the ball it strikes`);
+  }
+});
+
 test('pool: balls never leave the table nor end overlapping; pockets take what rolls into them', () => {
   const rng = lcg(11);
   let pocketed = 0;

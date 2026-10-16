@@ -283,17 +283,18 @@ async function findMatchOn() { return (await db.ref('features/findMatch').get())
 // Release control (engine.js: isReleased): the dashboard's switches, releases/{type}; a game not there is
 // as the code has it. testTypes: the games admin only right now (their stats are kept apart).
 async function releasesNow() { return (await db.ref('releases').get()).val() || {}; }
-// The difficulty configs (config/run for the runners, config/bulls for Bullseye, config/wheels for Risk Wheels, config/plinko for Plinko, from the admin's
+// The difficulty configs (config/run for the runners, config/bulls for Bullseye, config/wheels for Risk Wheels, config/plinko for Plinko, config/oddone for Odd One Out, from the admin's
 // dashboard): set in the engine before a square can be dealt (a new match, a draw's reset), so new
 // squares play by the current values; read afresh after 20 s.
 let runCfgAt = 0;
 async function runConfigNow() {
   if (now() - runCfgAt < 20000) return;
-  const [run, bulls, wheels, plinko] = await Promise.all([db.ref('config/run').get(), db.ref('config/bulls').get(), db.ref('config/wheels').get(), db.ref('config/plinko').get()]);
+  const [run, bulls, wheels, plinko, odd] = await Promise.all([db.ref('config/run').get(), db.ref('config/bulls').get(), db.ref('config/wheels').get(), db.ref('config/plinko').get(), db.ref('config/oddone').get()]);
   E.setRunConfig(run.val() || null);
   E.setBullsConfig(bulls.val() || null);
   E.setWheelsConfig(wheels.val() || null);
   E.setPlinkoConfig(plinko.val() || null);
+  E.setOddConfig(odd.val() || null);
   runCfgAt = now();
 }
 
@@ -618,7 +619,7 @@ async function changeGame(id, uid, step) {
   if (res.committed && out.ok && info && info.entries && !over) await afterBotChange(id, info).catch(e => logger.error('bot plan', id, e));   // (a game against a bot: its next move)
   return out;
 }
-// A move (or Memory's first card, kind 'pick') from the player on the move.
+// A move (or Memory's first card, kind 'pick'; or Trivia's question turned up, kind 'reveal') from the player on the move.
 exports.move = onCall(CALL, async req => {
   const uid = needUid(req), d = req.data || {}, id = gameId(d.game);
   const i = d.square;
@@ -627,6 +628,7 @@ exports.move = onCall(CALL, async req => {
     const card = d.card == null ? null : d.card;
     return changeGame(id, uid, (rec, side) => E.applyOnlinePick(rec, side, i, card));
   }
+  if (d.kind === 'reveal') return changeGame(id, uid, (rec, side) => E.applyOnlineReveal(rec, side, i));   // Trivia: the question turned up (the turn goes on)
   if (d.move === undefined) return { ok: false, reason: 'bad' };
   await runConfigNow();
   return changeGame(id, uid, (rec, side) => {

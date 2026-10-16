@@ -22,7 +22,10 @@
 
   // ---------- the tables ----------
   const GOLF = { w: 100, h: 160, ballR: 2.4, cupR: 3.6, holeSpeed: 32, lipKick: 0.5, vMax: 95, reach: 174, maxT: 9, air: 0.004, roll: 12 };   // full power: a full putt rolls about reach on open ground (more than the course is long); reach is for the computer's aim, not a cap
-  const POOL = { w: 100, h: 180, ballR: 2.6, vMax: 120, maxT: 10, air: 0.004, roll: 9,
+  // Pool: a full-power shot runs the table's length 3 times and more (off the far rails twice or more); the
+  // power is the meter's level and the speed goes with its square (curve), so a light tap is still light.
+  // At that speed each step is cut in four (sub), so no ball passes through a rail or another ball.
+  const POOL = { w: 100, h: 180, ballR: 2.6, vMax: 300, curve: 2, sub: 4, maxT: 12, air: 0.004, roll: 9,
     pockets: [[0, 0, 4.2], [100, 0, 4.2], [0, 90, 4.2], [100, 90, 4.2], [0, 180, 4.2], [100, 180, 4.2]],   // x, y, the reach of the pocket (and its size as drawn): about 1.6 times the ball across
     start: { cue: [50, 140], black: [50, 52], x1: [40, 66], x2: [60, 80], o1: [60, 66], o2: [40, 80] } };
   const BOWL = { w: 100, h: 240, ballR: 3.5, pinR: 2.0, vMax: 150, maxT: 7, air: 0.002, roll: 4, pinAir: 0.004, pinRoll: 6, pinBounce: 0.9, still: 4, gutter: 7, knocked: 2.2,
@@ -77,8 +80,8 @@
     const byId = Object.fromEntries(tracked);
     const mover = byId[type === 'golf' ? shooter : type === 'pool' ? 'cue' : 'ball'];
     if (!mover) return null;
-    const power = Math.max(0, Math.min(1, Number(shot.power) || 0)), aim = Number(shot.aim) || 0;
-    Body.setVelocity(mover, { x: Math.sin(aim) * power * S.vMax / 60, y: -Math.cos(aim) * power * S.vMax / 60 });   // (Matter's velocity is per step at 60 Hz)
+    const power = Math.max(0, Math.min(1, Number(shot.power) || 0)), aim = Number(shot.aim) || 0, v0 = Math.pow(power, S.curve || 1) * S.vMax;
+    Body.setVelocity(mover, { x: Math.sin(aim) * v0 / 60, y: -Math.cos(aim) * v0 / 60 });   // (Matter's velocity is per step at 60 Hz, whatever the step's length)
     const events = [], gone = {}, flags = {};
     let t = 0, hitPin = false;
     const ev = (k, extra) => { if (events.length < 60) events.push(Object.assign({ t: r2(t), k }, extra || {})); };
@@ -98,12 +101,13 @@
     const remove = (id, k, extra) => { gone[id] = true; Composite.remove(engine.world, byId[id]); ev(k, Object.assign({ id }, extra || {})); };
     frame();
     let still = 0, step = 0;
-    const maxSteps = Math.round(S.maxT * 1000 / STEP);
+    const maxSteps = Math.round(S.maxT * 1000 / STEP), sub = S.sub || 1, dt = STEP / sub;   // (sub-steps: Pool's fast balls move less than a sixth of their width each one)
     while (step < maxSteps) {
-      Engine.update(engine, STEP); step++; t = step * STEP / 1000;
+     for (let q = 0; q < sub; q++) {
+      Engine.update(engine, dt); t = (step + (q + 1) / sub) * STEP / 1000;
       for (const [id, b] of tracked) {                            // rolling resistance: a steady slowing, so balls stop instead of trickling on
         if (gone[id]) continue;
-        const v = speed(b), dv = (id[0] === 'p' ? S.pinRoll : S.roll) * STEP / 1000 / 60;
+        const v = speed(b), dv = (id[0] === 'p' ? S.pinRoll : S.roll) * dt / 1000 / 60;
         if (v > 0) { const f = Math.max(0, v - dv) / v; Body.setVelocity(b, { x: b.velocity.x * f, y: b.velocity.y * f }); }
       }
       // the table's own rules, checked every step
@@ -136,6 +140,8 @@
           else if (off) remove(id, 'off');
         }
       }
+     }
+      step++; t = step * STEP / 1000;
       if (step % SUB === 0) frame();
       const moving = tracked.some(([id, b]) => !gone[id] && speed(b) * 60 > (S.still || 0.9));   // (a pin still wobbling along slowly is as good as down)
       still = moving ? 0 : still + 1;

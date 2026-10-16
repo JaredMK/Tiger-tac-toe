@@ -35,4 +35,5 @@ test('admin page: Risk Wheels\' and Plinko\'s default tuning are the engine\'s',
   assert.deepEqual(fields.map(([k]) => k).sort(), Object.keys(E.WHEEL_DEFAULTS).sort(), 'a field for each setting');
   for (const [k, , lo, hi] of fields) assert.deepEqual([lo, hi], E.WHEEL_LIMITS[k], `${k}: the engine's range`);
   assert.deepEqual(literal('PLINKO_DEFAULTS'), E.PLINKO_DEFAULTS);
+  assert.deepEqual(literal('ODD_DEFAULTS'), E.ODD_DEFAULTS);
 });

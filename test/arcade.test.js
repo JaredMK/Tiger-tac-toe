@@ -352,30 +352,66 @@ test('trivia: one question a square, shared; a wrong pick is crossed out for bot
   assert.equal(E.applyMove(old, 'O', 2).note, 'right');
 });
 
-test('trivia: online, the right answer stays on the server until someone picks it; a wrong pick tells nobody which is right', () => {
+test('trivia: online, a new question stays face down on the server until revealed; the right answer stays there until someone picks it; a wrong pick tells nobody which is right', () => {
   const rec = E.newOnlineMatch({ names: { X: 'A', O: 'B' }, games: only('trivia'), timer: 60 }, lcg(51), 'tq1');
-  const pub = rec.state.squares[0].mini;
+  const pub = rec.state.squares[0].mini, sec = rec.secrets[0];
   assert.equal(pub.answer, undefined, 'nothing in the public state says which answer is right');
-  assert.ok(pub.ask.opts.length === 4 && pub.ask.q, 'the question and its options are there');
-  assert.ok(Number.isInteger(rec.secrets[0].answer), 'the answer is in the secrets');
-  assert.equal(E.applyMove(JSON.parse(JSON.stringify(pub)), 'X', 0).reason, 'secret', 'a phone cannot judge a guess by itself');
-  const right = rec.secrets[0].answer, wrong = (right + 1) % 4;
-  let r = E.applyOnlineMove(rec, 'X', 0, wrong, lcg(52));
-  assert.equal(r.ok, true); assert.equal(r.entries[0].trivia.correct, false);
+  assert.deepEqual([pub.shown, pub.ask], [false, { down: true, n: 4 }], 'face down: the phones know only that there is a question');
+  assert.ok(sec.ask.q && sec.ask.opts.length === 4 && Number.isInteger(sec.answer), 'the question, its options and the answer are in the secrets');
+  assert.equal(E.canMove(pub, 'X'), true, 'a face-down question is still a square to play');
+  // the reveal: not a move; the turn and its clock go on; the player is held to the square
+  assert.equal(E.applyOnlineReveal(rec, 'O', 0).reason, 'turn', 'only the player to move turns it up');
+  let r = E.applyOnlineReveal(rec, 'X', 0);
+  assert.equal(r.ok, true); assert.equal(r.entries, undefined, 'no move made');
+  const up = r.rec.state.squares[0].mini;
+  assert.equal(up.shown, true); assert.deepEqual(up.ask, sec.ask, 'turned up: the question for both phones'); assert.equal(up.answer, undefined, 'the answer still hidden');
+  assert.equal(r.rec.state.lock, 0); assert.equal(r.rec.state.turn, 'X'); assert.equal(r.rec.state.seq, rec.state.seq, 'the same turn');
+  assert.equal(E.applyOnlineReveal(r.rec, 'X', 0).reason, 'shown', 'once up, it is up');
+  assert.equal(E.applyMove(JSON.parse(JSON.stringify(up)), 'X', 0).reason, 'secret', 'a phone cannot judge a guess by itself');
+  const right = sec.answer, wrong = (right + 1) % 4;
+  r = E.applyOnlineMove(r.rec, 'X', 0, wrong, lcg(52));
+  assert.equal(r.ok, true); assert.equal(r.entries[0].trivia.correct, false); assert.equal(r.entries[0].trivia.fresh, true, 'turned up in this turn: the other phone shows the reveal first');
   const leak = JSON.stringify(r.entries[0]) + JSON.stringify(r.rec.state);
   assert.equal(r.entries[0].trivia.right, undefined, 'the result of a wrong pick: no right answer in it');
   assert.ok(!/"right":\d/.test(leak) && !/"answer":\d/.test(leak), 'nor anywhere in what the phones get');
-  assert.deepEqual(r.rec.state.squares[0].mini.crossed, [wrong], 'crossed out, for both phones'); assert.equal(r.rec.state.squares[0].mini.ask.id, pub.ask.id);
+  const m1 = r.rec.state.squares[0].mini;
+  assert.deepEqual(m1.crossed, [wrong], 'crossed out, for both phones'); assert.equal(m1.ask.id, sec.ask.id); assert.equal(m1.shown, true, 'still up for the next player');
+  assert.equal(r.rec.state.lock, null, 'the turn over: nobody held');
   r = E.applyOnlineMove(r.rec, 'O', 0, right, lcg(53));
   assert.equal(r.ok, true); assert.equal(r.entries[0].trivia.correct, true, 'the server judges and tells both phones');
+  assert.equal(r.entries[0].trivia.fresh, undefined, 'O found it already up: no reveal to show');
   assert.equal(r.entries[0].trivia.right, right, 'the right answer shows with the right pick');
   const after = r.rec.state.squares[0].mini;
-  assert.equal(after.answer, undefined, 'the next question\'s answer is hidden again'); assert.notEqual(after.ask.id, pub.ask.id);
-  assert.ok(Number.isInteger(r.rec.secrets[0].answer));
+  assert.equal(after.answer, undefined, 'the next question\'s answer is hidden again');
+  assert.deepEqual([after.shown, after.ask], [false, { down: true, n: 4 }], 'the next question starts face down');
+  assert.notEqual(r.rec.secrets[0].ask.id, sec.ask.id); assert.ok(Number.isInteger(r.rec.secrets[0].answer));
+});
+
+test('trivia: the reveal holds the player to the square: no other square this turn; out of time, an option is crossed out; a pick on a face-down question turns it up', () => {
+  const st = E.newMatch(lcg(54), { games: ['trivia'] });
+  const i = st.squares.findIndex(q => q.mini.type === 'trivia'), j = st.squares.findIndex((q, k) => k !== i && q.mini.type === 'trivia');
+  assert.equal(st.squares[i].mini.shown, false, 'dealt face down');
+  assert.equal(E.triviaReveal(st, i, 'X').ok, true);
+  assert.equal(st.lock, i);
+  assert.equal(E.playMove(st, j, 0, lcg(55)).reason, 'locked', 'another square: refused');
+  assert.equal(E.triviaReveal(st, j, 'X').reason, 'locked');
+  st.timer = E.newTimer(60);
+  const t = E.timeoutMove(st, lcg(56));
+  assert.equal(t.ok, true); assert.equal(t.square, i, 'out of time: the move is made in the square revealed');
+  assert.equal(st.squares[i].mini.crossed.length, 1, 'one option crossed out'); assert.equal(st.squares[i].mini.shown, true);
+  assert.equal(st.flash.trivia.fresh, true);
+  E.endFlash(st);
+  assert.equal(st.lock, null); assert.equal(st.turn, 'O');
+  // the computer (or a timeout) on a question still face down: turned up with the pick
+  const k = st.squares.findIndex((q, n) => n !== i && q.mini.type === 'trivia' && !q.mini.shown);
+  const r = E.playMove(st, k, st.squares[k].mini.answer, lcg(57));
+  assert.equal(r.ok, true); assert.equal(st.flash.trivia.fresh, true); assert.equal(st.flash.trivia.correct, true);
+  assert.equal(E.playMs(st.flash), E.TRIVIA.flip + E.TRIVIA.pause + E.TRIVIA.reveal, 'the playback: the reveal, the pause, the pick');
+  assert.equal(st.squares[k].mini.shown, false, 'answered right: a new question, face down');
 });
 
 /* ===================================== Odd One Out ===================================== */
-test('odd one out: exactly one tile differs, in lightness (and a touch in hue); 3x3 clear, then 4x4, then 5x5 subtle; a wrong tap shows the odd one; three finds win', () => {
+test('odd one out: exactly one tile differs, in lightness (and a touch in hue), by the admin\'s difference for its level (ΔE 2000, the same on every colour); 3x3, then 4x4, then 5x5, smaller each time; a wrong tap shows the odd one; three finds win', () => {
   const m = E.newMini('oddone', lcg(61));
   for (const p of ['X', 'O']) {
     const g = m.grid[p];
@@ -384,17 +420,26 @@ test('odd one out: exactly one tile differs, in lightness (and a touch in hue); 
     assert.equal(g.tiles[m.pos[p]], g.odd, 'at pos');
     assert.notEqual(g.base, g.odd);
   }
-  const L = c => Number(c.match(/ (\d+)%\)$/)[1]), H = c => Number(c.match(/^hsl\((\d+) /)[1]);
-  const lv = (level) => { const gs = []; for (let k = 0; k < 40; k++) gs.push(E.oddGrid(level, lcg(k * 3 + level))); return gs; };
-  for (const [level, n, dl] of [[0, 3, 16], [1, 4, 10], [2, 5, 6], [5, 5, 6]]) {
+  const hsl = c => c.match(/hsl\(([\d.]+) ([\d.]+)% ([\d.]+)%\)/).slice(1).map(Number), L = c => hsl(c)[2], H = c => hsl(c)[0];
+  assert.deepEqual(E.ODD_DEFAULTS, { d1: 4, d2: 2.8, d3: 2 });
+  assert.ok(Math.abs(E.deltaE00([50, 2.6772, -79.7751], [50, 0, -82.7485]) - 2.0425) < 1e-3, 'CIEDE2000 as published (Sharma, Wu and Dalal, pair 1)');
+  const lv = (level) => { const gs = []; for (let k = 0; k < 300; k++) gs.push(E.oddGrid(level, lcg(k * 3 + level))); return gs; };
+  for (const [level, n, want] of [[0, 3, 4], [1, 4, 2.8], [2, 5, 2], [5, 5, 2]]) {
+    const ds = [];
     for (const g of lv(level)) {
       assert.equal(g.grid.n, n);
-      assert.equal(Math.abs(L(g.grid.odd) - L(g.grid.base)), dl, `level ${level}: the lightness step is ${dl}`);
-      assert.ok(Math.abs(H(g.grid.odd) - H(g.grid.base)) % 360 <= 6, 'hue a touch off');
+      const d = E.oddDelta(hsl(g.grid.base), hsl(g.grid.odd)); ds.push(d);
+      assert.ok(Math.abs(d - want) < 0.25, `level ${level}: the difference ${d.toFixed(2)}, wanted ${want}`);
+      { const dh = Math.abs(H(g.grid.odd) - H(g.grid.base)) % 360; assert.ok(Math.min(dh, 360 - dh) <= 6, `hue a touch off (${dh})`); }
       assert.ok(L(g.grid.odd) >= 30 && L(g.grid.odd) <= 80 && L(g.grid.base) >= 42 && L(g.grid.base) <= 62, 'never near black or white');
       assert.equal(g.grid.tiles.filter(c => c === g.grid.odd).length, 1);
     }
   }
+  // the admin's values: a new grid by them; off their range, the default
+  E.setOddConfig({ d1: 9, d2: 'x', d3: 99 });
+  assert.deepEqual(E.oddConfig(), { d1: 9, d2: 2.8, d3: 2 });
+  { const g = E.oddGrid(0, lcg(7)).grid; assert.ok(Math.abs(E.oddDelta(hsl(g.base), hsl(g.odd)) - 9) < 0.25, 'level 1 at the admin\'s 9'); }
+  E.setOddConfig(null);
   const pos = m.pos.X, wrong = (pos + 1) % 9;
   let r = E.applyMove(m, 'X', wrong, lcg(1));
   assert.deepEqual([r.note, m.last.correct, m.last.pos, m.finds.X], ['wrong', false, pos, 0], 'a wrong tap: no progress, the odd tile told');
@@ -407,9 +452,9 @@ test('odd one out: exactly one tile differs, in lightness (and a touch in hue); 
   assert.deepEqual(E.applyMove(m, 'X', m.pos.X, lcg(5)), { ok: true, outcome: 'win', note: 'found' });
   assert.equal(m.grid.O.n, 3, 'O still at the start');
   for (const bad of [25, -1, 'x']) assert.equal(E.applyMove(m, 'O', bad).ok, false);
-  // the computer: a find 90%, 70%, then 50% of the time
+  // the computer: a find 75%, 60%, then 45% of the time (a typical player is meant to miss about 25%, 40%, 55%)
   const rng = lcg(71);
-  for (const [finds, want] of [[0, 0.9], [1, 0.7], [2, 0.5]]) {
+  for (const [finds, want] of [[0, 0.75], [1, 0.6], [2, 0.45]]) {
     let ok = 0;
     for (let k = 0; k < 1500; k++) { const g = E.newMini('oddone', lcg(k)); g.finds.X = finds; const n = E.oddGrid(finds, lcg(k + 9)); g.grid.X = n.grid; g.pos.X = n.pos; if (E.localBest(E.publicMini(g), 'X', rng).move === n.pos) ok++; }
     assert.ok(Math.abs(ok / 1500 - want) < 0.04, `${finds} finds: ${ok / 1500} (wanted ~${want})`);

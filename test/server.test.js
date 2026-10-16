@@ -1402,6 +1402,52 @@ test('Risk Wheels tuning (config/wheels): public to read, the admin alone sets i
   assert.equal((await g.O.call('resign', { game: g.id })).ok, true);
   assert.match(await script('WheelBoss', 'revoke'), /no longer an admin/);
 });
+test('Odd One Out tuning (config/oddone): public to read, the admin alone sets it, within bounds; the server draws new grids by it', async () => {
+  const boss = await player('OddBoss'), a = await player('Odd_A'), b = await player('Odd_B');
+  assert.match(await runScript('make-admin.js', 'OddBoss', 'grant'), /OddBoss is now the admin/);
+  await boss.auth.currentUser.getIdToken(true);
+  const cfg = { d1: 7, d2: 3, d3: 1.5 };
+  await denied(a.write('config/oddone', cfg), 'a player setting the difficulty');
+  await boss.write('config/oddone', cfg);
+  assert.deepEqual(await a.read('config/oddone'), cfg, 'everyone can read it');
+  assert.equal((await fetch(`http://${DB_HOST}/config/oddone/d1.json?ns=${NS}`)).status, 200, 'without a login too');
+  await denied(boss.write('config/oddone', Object.assign({}, cfg, { d1: 40 })), 'a difference off its range');
+  await denied(boss.write('config/oddone', Object.assign({}, cfg, { d2: 'small' })), 'not a number');
+  await denied(boss.write('config/oddone/other', 1), 'anything else');
+  await new Promise(r => setTimeout(r, 21000));                 // (the server keeps the config 20 s)
+  const g = await pairUp(a, b);
+  await rewrite(g.id, full => { full.squares[4].owner = null; full.squares[4].mini = E.newMini('oddone', E.makeRng('srv-odd')); full.turn = 'X'; full.lock = null; });
+  const sec = JSON.parse(await get(`games/${g.id}/sec`)), wrong = (sec[4].pos.X + 1) % 9;
+  assert.equal((await g.X.call('move', { game: g.id, square: 4, move: wrong })).ok, true);
+  const grid = (await gameState(g.id)).squares[4].mini.grid.X, hsl = c => c.match(/hsl\(([\d.]+) ([\d.]+)% ([\d.]+)%\)/).slice(1).map(Number);
+  const d = E.oddDelta(hsl(grid.base), hsl(grid.odd));
+  assert.ok(Math.abs(d - 7) < 0.25, `the next grid (level 1, by the server) at the admin's difference: ${d.toFixed(2)}`);
+  await boss.write('config/oddone', null);
+  assert.equal((await g.O.call('resign', { game: g.id })).ok, true);
+  assert.match(await runScript('make-admin.js', 'OddBoss', 'revoke'), /no longer an admin/);
+});
+
+test('Trivia over the server: a new question is face down (the question itself only in the hidden node); the player to move turns it up, and is then held to the square; the pick made', async () => {
+  const a = await player('Triv_A'), b = await player('Triv_B'), g = await pairUp(a, b);
+  E.setTriviaBank(require('../trivia.json'));
+  await rewrite(g.id, full => { full.squares[4].owner = null; full.squares[4].mini = E.newMini('trivia', E.makeRng('srv-t')); E.triviaDeal(full, full.squares[4], E.makeRng('srv-tq')); full.squares[2].owner = null; full.squares[2].mini = E.newMini('ttt', E.makeRng('t')); full.turn = 'X'; full.lock = null; });
+  let st = await gameState(g.id), sec = JSON.parse(await get(`games/${g.id}/sec`));
+  assert.deepEqual(st.squares[4].mini.ask, { down: true, n: 4 }, 'face down for the phones');
+  assert.ok(sec[4].ask.q && !JSON.stringify(st).includes(sec[4].ask.q), 'the question kept apart');
+  assert.equal((await g.O.call('move', { game: g.id, square: 4, kind: 'reveal' })).reason, 'turn', 'only the player to move');
+  const seq0 = st.seq;
+  assert.equal((await g.X.call('move', { game: g.id, square: 4, kind: 'reveal' })).ok, true);
+  st = await gameState(g.id);
+  assert.deepEqual([st.squares[4].mini.shown, st.squares[4].mini.ask.q, st.lock, st.turn, st.seq], [true, sec[4].ask.q, 4, 'X', seq0], 'up for both, X held to it, the same turn');
+  assert.equal((await g.X.call('move', { game: g.id, square: 2, move: 0 })).reason, 'locked', 'no other square this turn');
+  const wrong = (sec[4].answer + 1) % 4;
+  assert.equal((await g.X.call('move', { game: g.id, square: 4, move: wrong })).ok, true);
+  st = await gameState(g.id);
+  assert.deepEqual([st.squares[4].mini.crossed, st.squares[4].mini.shown, st.squares[4].mini.last.fresh, st.lock, st.turn], [[wrong], true, true, null, 'O'], 'crossed out, still up, the turn passed');
+  assert.equal((await g.O.call('move', { game: g.id, square: 4, kind: 'reveal' })).reason, 'shown', 'up already: nothing to reveal');
+  assert.equal((await g.O.call('resign', { game: g.id })).ok, true);
+});
+
 test('Bullseye tuning (config/bulls): public to read, the admin alone sets it, within bounds; the server deals new Bullseye squares by it', async () => {
   const boss = await player('BullBoss'), a = await player('Bull_A'), b = await player('Bull_B');
   const script = (...args) => new Promise((resolve, reject) => execFile(process.execPath, [path.join(__dirname, '..', 'scripts', 'make-admin.js'), ...args],
