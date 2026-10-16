@@ -3913,8 +3913,8 @@ function takeTable(mini, a, o) {
   const tal = p => arcTally(p, o, '');
   const order = tk ? takeNear(tk.at).filter(k => k !== tk.at) : [];
   // the bar chart under the board: X's cells, the empty ones, O's, in their colours (before the move, then after it)
-  const now = { X: takeCount(mini.cells, 'X'), O: takeCount(mini.cells, 'O') }, N = mini.cells.length, was = tk ? { [a.by]: now[a.by] - tk.took.length - tk.flipped.length, [other(a.by)]: now[other(a.by)] + tk.flipped.length } : now;
-  const bar = sbar([{ cls: 'X', n: now.X, n0: was.X, label: 'X' }, { cls: 'E', n: N - now.X - now.O, n0: N - was.X - was.O, label: 'Empty' }, { cls: 'O', n: now.O, n0: was.O, label: 'O' }], N, tk ? TAKEOVER_MS.place : null);
+  const now = { X: takeCount(mini.cells, 'X'), O: takeCount(mini.cells, 'O') }, total = mini.cells.length, was = tk ? { [a.by]: now[a.by] - tk.took.length - tk.flipped.length, [other(a.by)]: now[other(a.by)] + tk.flipped.length } : now;
+  const bar = sbar([{ cls: 'X', n: now.X, n0: was.X, label: 'X' }, { cls: 'E', n: total - now.X - now.O, n0: total - was.X - was.O, label: 'Empty' }, { cls: 'O', n: now.O, n0: was.O, label: 'O' }], total, tk ? TAKEOVER_MS.place : null);   // (total, not N: N is the players' names)
   const cells = mini.cells.map((c, i) => {
     let cls = 'tkc' + (c ? ' ' + c : ''), st = '';
     if (tk && i === tk.at) cls += ' pop';
@@ -7471,8 +7471,8 @@ function moveSounds(f) {
     }
     case 'memory': add('flipUp', 0); add(won ? 'pair' : 'nopair', 380); break;
     case 'candy': {
-      const N = 12;                                                  // the wheel ticks, slower and slower as it stops
-      for (let k = 1; k <= N; k++) add('wheelTick', SPIN_MS * (1 - Math.pow(1 - k / N, 2)));
+      const ticks = 12;                                              // the wheel ticks, slower and slower as it stops
+      for (let k = 1; k <= ticks; k++) add('wheelTick', SPIN_MS * (1 - Math.pow(1 - k / ticks, 2)));
       const steps = Math.max(1, f.to - f.from);
       for (let k = 0; k < steps; k++) add('hop', SPIN_MS + k * HOP_MS);
       break;
@@ -7495,9 +7495,9 @@ function moveSounds(f) {
     }
     case 'bus': if (f.bus) { const tm = busTimes(f); add('cardSlide', tm.pre); add('cardFlip', tm.flip); add(f.bus.right ? 'ding' : 'thud', tm.mark); if (f.bus.right) add('cardSlide', tm.fly); } break;
     case 'rl': {
-      const N = 14;                                                  // the ball clicks over the pockets, slower and slower
+      const ticks = 14;                                              // the ball clicks over the pockets, slower and slower
       add('rlSpin', 0);
-      for (let k = 1; k <= N; k++) add('ballTick', Math.round(RLT.spin * Math.pow(k / N, 0.6)));
+      for (let k = 1; k <= ticks; k++) add('ballTick', Math.round(RLT.spin * Math.pow(k / ticks, 0.6)));
       add('ballDrop', RLT.spin);
       if (f.rl) add(f.rl.hit ? (f.rl.bet === 'zero' ? 'sparkle' : 'ding') : 'thud', RLT.spin + RLT.settle);
       break;
@@ -7524,8 +7524,8 @@ function moveSounds(f) {
     case 'patterns': if (f.pat) add(f.pat.correct ? 'ding' : 'thud', 250); break;   // the pick glows (and drops into the gap) or is struck through
     case 'wheels': {                                               // the wheel turns, ticking slower and slower; it stops: the points, or nothing
       add('rlSpin', 0);
-      const N = 16;
-      for (let k = 1; k <= N; k++) add('wheelTick', Math.round(WHEELT.spin * (1 - Math.pow(1 - k / N, 2.2))));
+      const ticks = 16;
+      for (let k = 1; k <= ticks; k++) add('wheelTick', Math.round(WHEELT.spin * (1 - Math.pow(1 - k / ticks, 2.2))));
       if (f.wheel) { add(f.wheel.v ? 'ding' : 'thud', WHEELT.spin); if (f.wheel.w === 'high' && f.wheel.v) add('sparkle', WHEELT.spin + 120); }
       break;
     }
