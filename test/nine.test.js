@@ -92,6 +92,26 @@ test('craps: Stop is never the better choice (value iteration over the square, b
   assert.ok(Math.abs(roll(0, 0, 6) - 0.556) < 0.002 && Math.abs(stop(0, 0, 6) - 0.444) < 0.002, 'at 0-0 on a 6: 55.6% rolling on, 44.4% stopping');
 });
 
+test('craps: online, a timed-out roll that sets a point ends the turn there and then (a Stop), the point left on for whoever plays here next', () => {
+  const st = E.newMatch(lcg(5), { games: ['craps'], mode: 'online', timer: 60 }), i = 4;
+  for (let k = 0; k < 9; k++) if (k !== i) st.squares[k].mini = E.newMini('ttt', lcg(k));
+  st.lock = i; st.turn = 'X'; st.timer.for = 'X'; st.timer.deadline = 1;
+  let rec = E.matchRecord(st);
+  const r = E.applyOnlineTimeout(rec, dice([3, 1]));               // a 4: the point
+  assert.equal(r.ok, true); assert.equal(r.entries.length, 2, 'the roll, then the Stop');
+  const full = E.fullState(r.rec), m = full.squares[i].mini;
+  assert.equal(m.point, 4, 'the point stays on'); assert.equal(m.live, null, 'nobody mid-turn');
+  assert.equal(full.lock, null, 'no bonus move after a timeout'); assert.equal(full.turn, 'O', 'the turn passes');
+  assert.equal(r.entries[1].kind, 'move'); assert.equal(full.squares[i].mini.last.kind, 'stop');
+  // a come-out roll that settles the round needs no Stop
+  const st2 = E.newMatch(lcg(6), { games: ['craps'], mode: 'online', timer: 60 });
+  for (let k = 0; k < 9; k++) if (k !== i) st2.squares[k].mini = E.newMini('ttt', lcg(k));
+  st2.lock = i; st2.turn = 'X'; st2.timer.for = 'X'; st2.timer.deadline = 1;
+  const r2 = E.applyOnlineTimeout(E.matchRecord(st2), dice([4, 3]));   // a 7: the round won
+  assert.equal(r2.ok, true); assert.equal(r2.entries.length, 1);
+  assert.equal(E.fullState(r2.rec).turn, 'O');
+});
+
 /* ===================================== Takeover ===================================== */
 test('takeover: an empty cell and the cells around it, the other player\'s too; the full board goes to whoever has most', () => {
   const m = E.newMini('takeover', lcg(1)), o = 'O';

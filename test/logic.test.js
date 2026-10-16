@@ -2110,7 +2110,7 @@ test('timeouts over every kind of game keep the state legal and plain', () => {
         // only long-shot squares are left (a random word or code rarely cracks them): the forced move finds the secret
         const m = st.squares[open[0]].mini;
         assert.equal(L.playMove(st, open[0], m.type === 'wordle' ? m.word.toLowerCase() : m.code.slice(), rng, { forced: true }).ok, true);
-      } else if (st.timer.bankNext) { st.timer.bankNext = false; assert.equal(L.playMove(st, st.lock, 'bank', rng, { forced: true }).ok, true); }
+      } else if (st.timer.bankNext) { st.timer.bankNext = false; assert.equal(L.playMove(st, st.lock, st.squares[st.lock].mini.type === 'craps' ? 'stop' : 'bank', rng, { forced: true }).ok, true); }   // (as the server: Risky Rolls banks, Craps stops)
       else {
         const r = L.timeoutMove(st, rng);
         assert.equal(r.ok, true, `timeout move failed: ${r.reason}`);
