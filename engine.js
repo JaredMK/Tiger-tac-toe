@@ -51,15 +51,15 @@ const INFO = {
   bus:         { name: 'Ride the Bus', hint: 'Colour, higher or lower, inside or outside, then the suit' },
   rl:          { name: 'Roulette',     hint: 'Bet 8 numbers, a group or green 0. Two hits wins' },
   bullseye:    { name: 'Bullseye',     hint: 'Stop both lines on the board. Bullseye 3, board 1. First to 5' },
-  echo:        { name: 'Echo',         hint: 'Watch the pattern, then tap it back. Beat all four' },
-  plinko:      { name: 'Plinko',       hint: 'Drop the chip. Land in the WIN bin' },
+  echo:        { name: 'Echo',         hint: 'Play the pattern once, then tap it back. Beat all four' },
+  plinko:      { name: 'Plinko',       hint: 'Drop from an open slot. Race to the target' },
   pong:        { name: 'Cup Pong',     hint: 'Swipe up to throw. Sink all three cups' },
   trivia:      { name: 'Trivia',       hint: 'Wrong answers get crossed out. Three right wins' },
-  oddone:      { name: 'Odd One Out',  hint: 'Tap the tile of a different shade. Three finds wins' },
+  oddone:      { name: 'Odd One Out',  hint: 'Reveal, then tap the odd shade in 5 s. Three finds wins' },
   dash:        { name: 'Dash',         hint: 'Jump the hazards, duck the flyers. First to 1,000 m' },
   lane:        { name: 'Lane Rush',    hint: 'Swipe between lanes, dodge the traffic. First to 1,000 m' },
   golf:        { name: 'Mini Golf',    hint: 'Drag back to aim and set power. First ball in the cup wins' },
-  pool:        { name: 'Pool',         hint: 'Sink your two balls. The black ball loses' },
+  pool:        { name: 'Pool',         hint: 'Sink two of your balls. The black ball loses' },
   bowling:     { name: 'Bowling',      hint: 'Roll at a fresh rack each turn. First to 25 pins' },
   craps:       { name: 'Craps',        hint: '7 or 11 wins, 2, 3 or 12 loses. Win 3 rounds' },
   takeover:    { name: 'Takeover',     hint: 'Take a square and the ones around it. Most squares wins' },
@@ -510,6 +510,22 @@ function hpGoalRow(p) { return p === 'X' ? 0 : HP.rows - 1; }     // the opponen
 // Saved games and rooms from before Connect 4 grew to 7 columns: the old 5-wide board gets an empty
 // column on each side, so every piece keeps its place (and its support) in the middle five.
 function upgradeMini(mini) {
+  // Risk Wheels from when each wheel had two segments sized to their chances: ten equal segments, the first value on its share (to the nearest tenth).
+  if (mini && mini.type === 'wheels' && !mini.wheels && mini.cfg) {
+    const c = mini.cfg; mini.target = c.target || WHEEL_DEFAULTS.target; mini.wheels = {};
+    for (const w of WHEELS) { const x = c[w] || { a: 0, pa: 50, b: 0 }, n = Math.max(1, Math.min(9, Math.round(x.pa / 10))); mini.wheels[w] = Array.from({ length: WHEEL_SEGS }, (_, k) => (k < n ? x.a : x.b)); }
+    delete mini.cfg;
+  }
+  // Craps from when a move was a whole round: no round under way.
+  if (mini && mini.type === 'craps') { if (mini.point === undefined) mini.point = null; if (mini.live === undefined) mini.live = null; if (!Array.isArray(mini.rolls)) mini.rolls = []; }
+  // Plinko from when one bin was the WIN bin: that bin is worth 5, the rest 3, 3, 2, 2, 1, 1 in order; points from 0.
+  if (mini && mini.type === 'plinko' && !Array.isArray(mini.vals)) {
+    const w = Number.isInteger(mini.win) ? mini.win : 3, rest = [3, 3, 2, 2, 1, 1];
+    mini.vals = Array.from({ length: PLINKO.slots }, (_, b) => (b === w ? 5 : rest.shift()));
+    mini.pts = { X: 0, O: 0 }; mini.used = new Array(PLINKO.slots).fill(false); mini.bonus = { x: Math.min(11, w * 2 + 1), r: 4 }; mini.target = PLINKO_DEFAULTS.target; mini.last = null;
+    delete mini.win;
+  }
+  if (mini && mini.type === 'plinko') { if (!Array.isArray(mini.used)) mini.used = Array.from({ length: PLINKO.slots }, (_, k) => !!(mini.used && mini.used[k])); if (!mini.pts) mini.pts = { X: 0, O: 0 }; mini.pts.X = mini.pts.X || 0; mini.pts.O = mini.pts.O || 0; }
   // Trivia from when each player had their own question: the square keeps one of them (X's, else O's).
   if (mini && mini.type === 'trivia' && mini.ask && typeof mini.ask === 'object' && !('q' in mini.ask) && ('X' in mini.ask || 'O' in mini.ask)) {
     const p = mini.ask.X ? 'X' : mini.ask.O ? 'O' : null, ans = mini.answers || {};
@@ -689,12 +705,53 @@ function bullsRates(speed) { const f = Math.pow(1 / Math.max(1, speed), BULLS.ai
 // Echo: four pads; each player has their own four patterns, of 4, 8, 11 and 14 steps, drawn when the
 // square is dealt and never redrawn (a pattern failed plays again next attempt). A move is one attempt:
 // the pads tapped back, in order; 'auto' (a timeout) is a failed attempt.
-const ECHO = { pads: 4, lengths: [4, 8, 11, 14], step: 450, aiPass: [0.95, 0.75, 0.5, 0.3] };
+// One 10-step pattern per square, the same for both players: each level is its first 4, 6, 8 or 10 steps.
+// (A square dealt before that keeps a pattern of its own for each player: seqs.)
+const ECHO = { pads: 4, lengths: [4, 6, 8, 10], step: 450, gap: 500, tap: 360, aiPass: [0.95, 0.85, 0.7, 0.55] };
 const echoSeqs = rng => ECHO.lengths.map(n => Array.from({ length: n }, () => randInt(rng, ECHO.pads)));
-// Plinko: 7 drop slots, 6 rows of pegs, 7 bins; one bin, drawn when the square is dealt, is the WIN
-// bin. The chip's position runs in half-slots (0 to 12, a slot at an even one); at every peg it goes
-// left or right, 50/50, except against a wall, where it can only go inward.
-const PLINKO = { slots: 7, rows: 6, step: 230, land: 420 };
+const echoBase = rng => Array.from({ length: ECHO.lengths[ECHO.lengths.length - 1] }, () => randInt(rng, ECHO.pads));
+function echoSeq(mini, p, lvl) {
+  const l = Math.min(lvl, ECHO.lengths.length - 1);
+  return mini.base ? mini.base.slice(0, ECHO.lengths[l]) : ((mini.seqs && mini.seqs[p] && mini.seqs[p][l]) || []).slice();
+}
+// Plinko: 7 drop slots, 6 rows of pegs, 7 bins worth 5, 3, 3, 2, 2, 1 and 1 points, in an order drawn
+// for each square. Each player has their own points; the first to the target (12: the admin's
+// config/plinko, copied into each square as dealt) wins. A slot dropped from, by either player, is locked
+// until all seven have been used; then they all open again. One peg (drawn at random, never in the top
+// row, where a slot would hit it every time) is the bonus peg: +2 when the chip touches it; once hit,
+// another peg is drawn, there from the next turn until it is hit in turn. The chip's position runs in
+// half-slots (0 to 12, a slot at an even one); at every peg it goes left or right, 50/50, except against
+// a wall, where it can only go inward.
+const PLINKO = { slots: 7, rows: 6, step: 230, land: 420, vals: [5, 3, 3, 2, 2, 1, 1], bonus: 2 };
+const PLINKO_DEFAULTS = { target: 12 };
+const PLINKO_LIMITS = { target: [4, 40] };
+const PLINKO_CFG = { cfg: null };
+function plinkoNorm(raw) { const x = raw && raw.target != null ? Number(raw.target) : NaN; return { target: Number.isFinite(x) && x >= PLINKO_LIMITS.target[0] && x <= PLINKO_LIMITS.target[1] ? Math.round(x) : PLINKO_DEFAULTS.target }; }
+function setPlinkoConfig(raw) { PLINKO_CFG.cfg = raw && typeof raw === 'object' ? plinkoNorm(raw) : null; }
+const plinkoConfig = () => Object.assign({}, PLINKO_CFG.cfg || PLINKO_DEFAULTS);
+// the pegs: row r (1 to 6) has them at the half-slots of r's parity (the top row over the slots)
+function plinkoPegs() { const out = []; for (let r = 1; r <= PLINKO.rows; r++) for (let x = (r - 1) % 2; x <= (PLINKO.slots - 1) * 2; x += 2) out.push({ x, r }); return out; }
+function plinkoBonus(rng, not) { const pegs = plinkoPegs().filter(q => q.r >= 2 && !(not && q.x === not.x && q.r === not.r)); return pegs[randInt(rng, pegs.length)]; }
+// where the chip touches a peg in each row on its way down (the half-slot, row 1 first)
+function plinkoTouches(slot, path) { let x = slot * 2; return path.map(right => { const at = x; x += right ? 1 : -1; return at; }); }
+// every way down from a slot (the walls included), each with its chance: [{ path, bin, p }]
+function plinkoWays(slot) {
+  const out = [];
+  for (let k = 0; k < 1 << PLINKO.rows; k++) {
+    let x = slot * 2; const path = [];
+    for (let r = 0; r < PLINKO.rows; r++) { const right = x <= 0 ? true : x >= (PLINKO.slots - 1) * 2 ? false : !!(k & (1 << r)); x += right ? 1 : -1; path.push(right); }
+    out.push({ path, bin: x / 2, p: 1 / (1 << PLINKO.rows) });
+  }
+  return out;
+}
+// A drop's points from a slot on this square, as chances: { points: chance } (the bin and the bonus peg)
+function plinkoDist(mini, slot) {
+  const out = {}, b = mini.bonus;
+  for (const w of plinkoWays(slot)) { const v = mini.vals[w.bin] + (b && plinkoTouches(slot, w.path)[b.r - 1] === b.x ? PLINKO.bonus : 0); out[v] = (out[v] || 0) + w.p; }
+  return out;
+}
+function plinkoExp(mini, slot) { let e = 0; for (const [v, p] of Object.entries(plinkoDist(mini, slot))) e += Number(v) * p; return e; }
+const plinkoOpen = mini => Array.from({ length: PLINKO.slots }, (_, k) => k).filter(k => !(mini.used && mini.used[k]));
 function plinkoPath(slot, rng) {
   let x = slot * 2;
   const path = [];
@@ -770,8 +827,10 @@ function triviaDeal(state, sq, rng) {
 // Odd One Out: a grid of tiles of one colour, one of them a different shade (a little lighter or
 // darker, and a touch off in hue, so it is fair with colours hard to tell apart). A player's grid grows
 // with their finds: 3x3 with a clear difference, then 4x4, then 5x5 with a subtle one. The odd tile's
-// place is kept apart from the public state online; the tiles' colours are what the page draws.
-const ODD = { goal: 3, sizes: [3, 4, 5], diff: [16, 10, 6], hue: [6, 4, 3], aiFind: [0.9, 0.7, 0.5], reveal: 700 };
+// place is kept apart from the public state online; the tiles' colours are what the page draws. The grid
+// waits greyed until the player taps Reveal; then they have secs seconds to pick ('auto': no pick, wrong).
+// Someone else's pick replays as their screen showed it: the grey grid, the shades (show), a pause, the pick.
+const ODD = { goal: 3, sizes: [3, 4, 5], diff: [16, 10, 6], hue: [6, 4, 3], aiFind: [0.9, 0.7, 0.5], reveal: 700, secs: 5, show: 350, pause: 1000 };
 function oddGrid(level, rng) {
   const k = Math.min(level, ODD.sizes.length - 1), n = ODD.sizes[k];
   const h = randInt(rng, 360), sat = 50 + randInt(rng, 25), l = 42 + randInt(rng, 20);
@@ -795,9 +854,9 @@ function oddGrid(level, rng) {
 const RUN_TYPES = ['dash', 'lane', 'flap', 'chopper'];
 const RUN_DEFAULTS = {
   dash: { target: 1000, v0: 8, ramp: 1.5, gapMin: 26, gapMax: 48, mix: { rock: 30, crate: 20, spike: 20, flyer: 20, pair: 10 } },   // mix: the obstacles' weights
-  lane: { target: 1000, v0: 18, ramp: 1.8, gapMin: 18.8, gapMax: 34.4, mix: { one: 55, two: 45 } },                                      // rows with one car or two (twice the first starting speed; rows closer: a quarter more cars a course)
-  flap: { target: 1000, v0: 6, ramp: 0.6, gapMin: 9, gapMax: 13, mix: { wide: 35, mid: 45, narrow: 20 } },                                // posts every 9-13 m; the size of each one's gap
-  chopper: { target: 1000, v0: 9, ramp: 0.9, gapMin: 22, gapMax: 40, mix: { none: 30, small: 45, big: 25 } },                           // a block in the cave every 22-40 m (or none there); its size
+  lane: { target: 1000, v0: 27, ramp: 2.7, gapMin: 10, gapMax: 18, mix: { one: 20, two: 80 } },                                          // rows with one car or two (half as fast again; rows closer and most of them two cars: about a third more cars a course; laneRow keeps a way through)
+  flap: { target: 600, v0: 6, ramp: 1.0, gapMin: 9, gapMax: 13, mix: { wide: 20, mid: 45, narrow: 35 } },                                // posts every 9-13 m; the size of each one's gap (tighter, more of them narrow, the speed climbing faster; a shorter course: some 50 posts)
+  chopper: { target: 1000, v0: 14.4, ramp: 0.9, gapMin: 35.2, gapMax: 64, mix: { none: 30, small: 45, big: 25 } },                       // a block in the cave every 35-64 m (or none there); its size (in Chopper's metres: CHOP.k)
 };
 const RUN_LIMITS = { target: [200, 5000], v0: [3, 30], ramp: [0, 10], gapMin: [8, 200], gapMax: [10, 400] };
 // grace: seconds with no obstacles at the start of a run; countdown: the 3-2-1 before it; aiRuns: how many
@@ -850,30 +909,41 @@ const LANE = { lanes: 3, switchSecs: 0.22, art: 2.2, box: 2.0, laneHit: 0.72, st
 // the mix's size (gaps: metres), its middle at most shift metres from the last one's and never nearer
 // than margin to the ground or the sky. Before the first tap, in the grace stretch, the bird holds its
 // height. The box is a touch smaller than the art.
-const FLAP = { h: 10, g: 30, vy: 8.6, box: { w: 0.7, h: 0.56 }, art: 0.95, post: 1.3, gaps: { wide: 4.0, mid: 3.4, narrow: 2.9 }, shift: 2.6, margin: 1.0, step: 1 / 240 };
+const FLAP = { h: 10, g: 30, vy: 8.6, box: { w: 0.7, h: 0.56 }, art: 0.95, post: 1.3, gaps: { wide: 3.7, mid: 3.2, narrow: 2.8 }, shift: 2.6, margin: 1.0, step: 1 / 240 };
 // Chopper: a cave in a sky h metres high. Held, the chopper climbs (up m/s² the other way to gravity),
 // let go it drops (down), never faster than vmax either way. The cave's middle wanders (a point every
 // seg metres, wander apart at most, smoothly joined); it is cave0 metres high at the start and narrows
 // to cave1 at the target; each wall waves a little (wave metres). Blocks float in it (blocks: their
 // heights, bw wide), always leaving at least room to fly past above or below. In the grace stretch the
 // walls close in from the edges of the sky and touch nothing; before the first press, the chopper hovers.
-const CHOP = { h: 10, up: 16, down: 15, vmax: 6.5, box: { w: 1.1, h: 0.6 }, art: 1.3, seg: 14, wander: 2.2, cave0: 7.6, cave1: 4.4, wave: 0.28, blocks: { small: 1.5, big: 2.4 }, bw: 1.3, room: 1.9, step: 1 / 240 };
+// Along the cave Chopper counts k of its metres to every metre on the screen (the distance counter runs
+// k times as fast, so a run gets k times as far, at the same speed and spacing to the eye): everything
+// along the way (seg, bw, the chopper's box, the waves, the config's speed and gaps) is in those metres;
+// across it (h, the heights) in plain ones.
+const CHOP = { k: 1.6, h: 10, up: 16, down: 15, vmax: 6.5, box: { w: 1.76, h: 0.6 }, art: 1.3, seg: 22.4, wander: 2.2, cave0: 7.6, cave1: 4.4, wave: 0.28, blocks: { small: 1.5, big: 2.4 }, bw: 2.08, room: 1.9, step: 1 / 240 };
 function weightedPick(mix, rng) {
   const ks = Object.keys(mix), tot = ks.reduce((s, k) => s + mix[k], 0);
   let r = rng() * tot;
   for (const k of ks) { r -= mix[k]; if (r < 0) return k; }
   return ks[ks.length - 1];
 }
-// A row of traffic: one or two cars, always leaving a lane open that the row before could reach (an
-// open lane next to, or the same as, one of its own).
-function laneRow(k, prev, rng) {
-  const n = k === 'two' ? 2 : 1, prevOpen = prev ? [0, 1, 2].filter(l => !prev[l]) : null;
-  for (;;) {
-    const cars = [false, false, false];
-    shuffle([0, 1, 2], rng).slice(0, n).forEach(l => { cars[l] = true; });
-    const open = [0, 1, 2].filter(l => !cars[l]);
-    if (!prevOpen || open.some(o => prevOpen.some(q => Math.abs(o - q) <= 1))) return cars;
+// A row of traffic: one or two cars, always a lane open, and one the car can get to from wherever it
+// passed the row before, in the time there is (secs after it): plenty of time, some open lane next to or
+// the same as one of the row before's; less (LANE_NEAR), from every open lane of the row before, an open
+// one at most a lane away; very little (LANE_TIGHT), every lane open before still open (no change needed).
+// Two cars that cannot be placed so: one.
+const LANE_TIGHT = 0.6, LANE_NEAR = 1.1;                         // seconds between two rows
+function laneRow(k, prev, rng, secs) {
+  const prevOpen = prev ? [0, 1, 2].filter(l => !prev[l]) : null, t = secs == null ? Infinity : secs;
+  const fits = open => !prevOpen || (t < LANE_TIGHT ? prevOpen.every(q => open.includes(q)) : t < LANE_NEAR ? prevOpen.every(q => open.some(o => Math.abs(o - q) <= 1)) : open.some(o => prevOpen.some(q => Math.abs(o - q) <= 1)));
+  for (let n = k === 'two' ? 2 : 1; n >= 1; n--) {
+    for (let tries = 0; tries < 40; tries++) {
+      const cars = [false, false, false];
+      shuffle([0, 1, 2], rng).slice(0, n).forEach(l => { cars[l] = true; });
+      if (fits([0, 1, 2].filter(l => !cars[l]))) return cars;
+    }
   }
+  const cars = [false, false, false]; cars[[0, 1, 2].find(l => !prevOpen || !prevOpen.includes(l))] = true; return cars;   // (one car where the row before had one: every open lane stays open)
 }
 // A player's course: the obstacles in order, from the seed. Dash: { at, k } (a pair: two ground
 // hazards a jump's length apart); Lane Rush: { at, cars: [lane 0, 1, 2] }.
@@ -891,7 +961,7 @@ function runCourse(mini, p) {
     } else if (mini.type === 'chopper') {                             // a block, or none here; room to pass on one side at least
       if (k !== 'none') {
         let floor = -Infinity, ceil = Infinity;                       // the walls over the way in and past it: the room is there all along
-        for (let x = d - 4; x <= d + CHOP.bw + 1.5; x += 0.5) { const [f, c] = caveWalls(cave, cfg, x); floor = Math.max(floor, f); ceil = Math.min(ceil, c); }
+        for (let x = d - 4 * CHOP.k; x <= d + CHOP.bw + 1.5 * CHOP.k; x += 0.5 * CHOP.k) { const [f, c] = caveWalls(cave, cfg, x); floor = Math.max(floor, f); ceil = Math.min(ceil, c); }
         const space = ceil - floor;
         const bh = Math.min(CHOP.blocks[k], space - CHOP.room - 0.3);
         if (bh >= 0.6) {
@@ -907,7 +977,7 @@ function runCourse(mini, p) {
         out.push({ at: r2(d + DASH_OBS.rock.w + gap), k: kinds[randInt(rng, 2)], pair: 2 });
         d += DASH_OBS.rock.w + gap;
       } else out.push({ at: r2(d), k });
-    } else out.push({ at: r2(d), cars: laneRow(k, out.length ? out[out.length - 1].cars : null, rng) });
+    } else { const last = out.length ? out[out.length - 1] : null; out.push({ at: r2(d), cars: laneRow(k, last ? last.cars : null, rng, last ? runSecs(cfg, last.at, d) : null) }); }
     d += cfg.gapMin + rng() * (cfg.gapMax - cfg.gapMin);
   }
   return out;
@@ -928,7 +998,7 @@ const caveHeight = (cfg, d) => CHOP.cave0 + (CHOP.cave1 - CHOP.cave0) * Math.max
 function caveWalls(cave, cfg, d) {
   const u = Math.max(0, d) / CHOP.seg, k = Math.min(cave.length - 2, Math.floor(u)), t = Math.min(1, u - k), e = (1 - Math.cos(Math.PI * t)) / 2;
   const mid = cave[k] + (cave[k + 1] - cave[k]) * e, half = caveHeight(cfg, d) / 2;
-  return [mid - half + CHOP.wave * Math.sin(d / 2.3), mid + half + CHOP.wave * Math.sin(d / 1.9 + 1.7)];
+  return [mid - half + CHOP.wave * Math.sin(d / (2.3 * CHOP.k)), mid + half + CHOP.wave * Math.sin(d / (1.9 * CHOP.k) + 1.7)];
 }
 // What a run's result must be: from the saved distance to a crash at an obstacle past the grace stretch
 // (or to the finish), in no less time than the course allows. `out`: the turn's time ran out mid-run
@@ -978,7 +1048,7 @@ function runStart(mini, p) {
   const cfg = mini.cfg, from = mini.dist[p], g = runGrace(cfg, from);
   const cave = mini.type === 'chopper' ? runCave(mini, p) : null;
   const y = mini.type === 'flap' ? FLAP.h / 2 : cave ? r2(caveWalls(cave, cfg, from + g).reduce((a, b) => a + b) / 2) : 0;   // the bird mid-sky; the chopper at the middle of the cave where the grace stretch ends
-  return { type: mini.type, cfg, from, d: from, t: 0, grace: g, course: runCourse(mini, p).filter(o => o.at >= from + g), i: 0, cave,
+  return { type: mini.type, cfg, from, d: from, t: 0, grace: g, course: runCourse(mini, p).filter(o => o.at >= from + g + (mini.type === 'flap' ? FLAP.box.w / 2 : 0)), i: 0, cave,   // (Flap: a post the bird would touch before the grace stretch ends is left out too)
     y, vy: 0, air: false, held: false, holdT: 0, flown: false, lane: 1, laneFrom: 1, laneT: 1, crash: null, done: false };
 }
 function runJump(sim) {                                          // Dash: a jump; Flap: a flap; Chopper: the press (it climbs while held)
@@ -1029,7 +1099,7 @@ function runHit(sim) {                                            // the obstacl
     for (let k = sim.i; k < sim.course.length; k++) {
       const o = sim.course[k];
       if (o.at > d + 3) break;
-      if (o.at + CHOP.bw < d - 3) { if (k === sim.i) sim.i++; continue; }
+      if (o.at + CHOP.bw < d - 3 * CHOP.k) { if (k === sim.i) sim.i++; continue; }
       if (overlap(d - hw, d + hw, o.at, o.at + CHOP.bw) && overlap(y0, y1, o.y, o.y + o.bh)) return o;
     }
   } else {
@@ -1297,66 +1367,107 @@ function patPuzzle(rng, avoid) {
 }
 
 // ---------- Risk Wheels ----------
-// Each player has their own points; first to the target wins. A move: one of three wheels, spun once
-// (by the server online): each wheel has two segments, a points with pa% of the wheel, b points with the
-// rest. The wheels and the target are the admin's (config/wheels), copied into each square as dealt.
+// Each player has their own points; first to the target wins. Each square deals three wheels of 10 equal
+// segments, drawn afresh (and drawn again until every rule holds):
+//   high: one or two 10s; the rest 0s, but for at most two small values (1-2); the lowest average;
+//   mid:  no 10s; a top value above the low wheel's top; its average between the other two;
+//   low:  every value 1-4, at least two different; the highest average;
+// and the three averages at least 0.4 apart. A move: one wheel spun once (by the server online), its
+// segment's points added. The target and the generation's ranges are the admin's (config/wheels); the
+// wheels and the target are copied into each square as dealt.
 const WHEELS = ['high', 'mid', 'low'];
-const WHEEL_DEFAULTS = { target: 18, high: { a: 10, pa: 45, b: 0 }, mid: { a: 7, pa: 50, b: 1 }, low: { a: 3, pa: 60, b: 4 } };
-const WHEEL_LIMITS = { target: [6, 60], a: [0, 30], b: [0, 30], pa: [1, 99] };
+const WHEEL_SEGS = 10;
+const WHEEL_DEFAULTS = { target: 18, tensMin: 1, tensMax: 2, smallMax: 2, smallTop: 2, midLo: 0, midHi: 8, lowLo: 1, lowHi: 4, gap: 0.4 };
+const WHEEL_LIMITS = { target: [6, 60], tensMin: [1, 3], tensMax: [1, 3], smallMax: [0, 4], smallTop: [1, 3], midLo: [0, 3], midHi: [5, 9], lowLo: [1, 3], lowHi: [2, 6], gap: [0.1, 1.5] };
 const WHEELT = { spin: 1900, hold: 700 };                            // the spin, then the result held
 const WHEEL_CFG = { cfg: null };
 function wheelsNorm(raw) {
-  const num = (v, [lo, hi], d) => { const x = v != null ? Number(v) : NaN; return Number.isFinite(x) && x >= lo && x <= hi ? Math.round(x) : d; };
-  const out = { target: num(raw && raw.target, WHEEL_LIMITS.target, WHEEL_DEFAULTS.target) };
-  for (const w of WHEELS) {
-    const r = raw && raw[w] && typeof raw[w] === 'object' ? raw[w] : {}, d = WHEEL_DEFAULTS[w];
-    out[w] = { a: num(r.a, WHEEL_LIMITS.a, d.a), pa: num(r.pa, WHEEL_LIMITS.pa, d.pa), b: num(r.b, WHEEL_LIMITS.b, d.b) };
+  const out = {};
+  for (const k of Object.keys(WHEEL_DEFAULTS)) {
+    const [lo, hi] = WHEEL_LIMITS[k], x = raw && raw[k] != null ? Number(raw[k]) : NaN;
+    out[k] = Number.isFinite(x) && x >= lo && x <= hi ? (k === 'gap' ? Math.round(x * 100) / 100 : Math.round(x)) : WHEEL_DEFAULTS[k];
   }
+  if (out.tensMax < out.tensMin) out.tensMax = out.tensMin;
+  if (out.lowHi <= out.lowLo) out.lowHi = out.lowLo + 1;
   return out;
 }
 function setWheelsConfig(raw) { WHEEL_CFG.cfg = raw && typeof raw === 'object' ? wheelsNorm(raw) : null; }
-const wheelsConfig = () => JSON.parse(JSON.stringify(WHEEL_CFG.cfg || WHEEL_DEFAULTS));
-// The chance the player to move wins, with a points to the other's b, both choosing their best wheel
-// every spin (moves taking turns): worked out once per config (value iteration: a spin of 0 comes back
-// round to the same place), and the best wheel at each.
+const wheelsConfig = () => Object.assign({}, WHEEL_CFG.cfg || WHEEL_DEFAULTS);
+const wheelAvg = v => v.reduce((t, x) => t + x, 0) / v.length;
+// Every rule a wheel set must keep (for the generator, and the tests): the reasons it fails, none if it holds.
+function wheelsCheck(w, g) {
+  g = g || WHEEL_DEFAULTS;
+  const bad = [], { high, mid, low } = w, ok = v => Array.isArray(v) && v.length === WHEEL_SEGS && v.every(x => Number.isInteger(x) && x >= 0 && x <= 10);
+  if (!ok(high) || !ok(mid) || !ok(low)) return ['shape'];
+  const tens = high.filter(x => x === 10).length, small = high.filter(x => x !== 0 && x !== 10);
+  if (tens < g.tensMin || tens > g.tensMax) bad.push('high: its 10s');
+  if (small.length > g.smallMax || small.some(x => x > g.smallTop)) bad.push('high: the small values');
+  if (mid.includes(10)) bad.push('mid: a 10');
+  if (Math.max(...mid) <= Math.max(...low)) bad.push('mid: its top not above low\'s');
+  if (low.some(x => x < g.lowLo || x > g.lowHi) || new Set(low).size < 2) bad.push('low: its values');
+  if (mid.some(x => x < g.midLo || x > g.midHi)) bad.push('mid: its values');
+  const h = wheelAvg(high), m = wheelAvg(mid), l = wheelAvg(low);
+  if (!(m - h >= g.gap - 1e-9 && l - m >= g.gap - 1e-9)) bad.push('the averages: high < mid < low, ' + g.gap + ' apart');
+  return bad;
+}
+// A square's wheels, drawn until every rule holds (a known-good set if the admin's ranges allow none).
+function wheelsDeal(rng, g) {
+  g = g || wheelsConfig();
+  const pick = (lo, hi) => lo + randInt(rng, hi - lo + 1), place = (n, vals) => { const out = new Array(WHEEL_SEGS).fill(n.fill); const slots = shuffle(Array.from({ length: WHEEL_SEGS }, (_, k) => k), rng); vals.forEach((v, k) => { out[slots[k]] = v; }); return out; };
+  for (let tries = 0; tries < 4000; tries++) {
+    const tens = pick(g.tensMin, g.tensMax), nSmall = pick(0, g.smallMax);
+    const high = place({ fill: 0 }, Array(tens).fill(10).concat(Array.from({ length: nSmall }, () => pick(1, g.smallTop))));
+    const low = Array.from({ length: WHEEL_SEGS }, () => pick(g.lowLo, g.lowHi));
+    const top = Math.max(...low);
+    if (top + 1 > g.midHi) continue;
+    const nBig = pick(1, 2), rest = Array.from({ length: WHEEL_SEGS - nBig }, () => pick(g.midLo, Math.min(3, g.midHi)));
+    const mid = place({ fill: 0 }, Array.from({ length: nBig }, () => pick(top + 1, g.midHi)).concat(rest));
+    const w = { high, mid, low };
+    if (!wheelsCheck(w, g).length) return w;
+  }
+  return { high: [10, 0, 0, 1, 0, 0, 0, 0, 0, 0], mid: [6, 0, 1, 2, 0, 3, 1, 0, 2, 3], low: [3, 2, 3, 2, 3, 3, 2, 3, 3, 2] };   // (the admin's ranges allow no set: this one keeps the default rules)
+}
+// The chance the player to move wins, with a points to the other's b, both choosing their best wheel every
+// spin (moves taking turns): worked out once per square's wheels (value iteration: a spin of 0 comes back
+// round to the same place), and the best wheel at each; and alone, the fewest spins expected to the target.
 const WHEEL_MEMO = {};
 const WHEELS_SAFE = ['low', 'mid', 'high'];
-function wheelsTable(cfg) {
-  const key = JSON.stringify(cfg);
+function wheelsTable(target, wheels) {
+  const key = target + ':' + JSON.stringify(wheels);
   if (WHEEL_MEMO[key]) return WHEEL_MEMO[key];
-  const T = cfg.target, V = Array.from({ length: T }, () => new Array(T).fill(0.5)), best = Array.from({ length: T }, () => new Array(T).fill('low'));
+  const T = target, V = Array.from({ length: T }, () => new Array(T).fill(0.5)), best = Array.from({ length: T }, () => new Array(T).fill('low'));
+  const dist = {}; for (const w of WHEELS) { const d = {}; for (const v of wheels[w]) d[v] = (d[v] || 0) + 1 / wheels[w].length; dist[w] = Object.entries(d).map(([v, p]) => [Number(v), p]); }
   const after = (a, b, v) => (a + v >= T ? 1 : 1 - V[b][a + v]);
-  for (let it = 0; it < 400; it++) {
+  for (let it = 0; it < 600; it++) {
     let moved = 0;
     for (let a = T - 1; a >= 0; a--) for (let b = T - 1; b >= 0; b--) {
       let top = -1, pick = 'low';
-      for (const w of a < b ? WHEELS : WHEELS_SAFE) { const c = cfg[w], p = c.pa / 100, x = p * after(a, b, c.a) + (1 - p) * after(a, b, c.b); if (x > top + 1e-9) { top = x; pick = w; } }   // (a tie: behind, the riskier wheel; level or ahead, the safer)
-      if (top < 1e-9) pick = 'high';                          // (no hope unless the other misses: the long shot)
+      for (const w of a < b ? WHEELS : WHEELS_SAFE) { let x = 0; for (const [v, p] of dist[w]) x += p * after(a, b, v); if (x > top + 1e-9) { top = x; pick = w; } }   // (a tie: behind, the riskier wheel; level or ahead, the safer)
       moved = Math.max(moved, Math.abs(top - V[a][b])); V[a][b] = top; best[a][b] = pick;
     }
     if (moved < 1e-10) break;
   }
-  // and alone: the fewest spins expected to reach the target from a points (each spin the best wheel for it)
-  const E = new Array(T + 31).fill(0);
+  const E = new Array(T + 11).fill(0);
   for (let a = T - 1; a >= 0; a--) {
     let lo = Infinity;
-    for (const w of WHEELS) { const c = cfg[w], p = c.pa / 100, stay = (c.a === 0 ? p : 0) + (c.b === 0 ? 1 - p : 0); if (stay >= 1) continue; const e = (1 + (c.a ? p * E[Math.min(T, a + c.a)] : 0) + (c.b ? (1 - p) * E[Math.min(T, a + c.b)] : 0)) / (1 - stay); lo = Math.min(lo, e); }
+    for (const w of WHEELS) { let stay = 0, e = 1; for (const [v, p] of dist[w]) { if (v === 0) stay += p; else e += p * E[Math.min(T, a + v)]; } if (stay < 1) lo = Math.min(lo, e / (1 - stay)); }
     E[a] = lo;
   }
   return (WHEEL_MEMO[key] = { V, best, E });
 }
-// The spin: the points, and where on the wheel it stopped (0-1 round from the top of segment a), so both
-// phones show the same landing.
-function wheelSpin(cfg, w, rng) { const c = cfg[w], p = c.pa / 100, hitA = rng() < p, f = 0.08 + 0.84 * rng(), at = hitA ? f * p : p + f * (1 - p); return { v: hitA ? c.a : c.b, hitA, at: r3(at) }; }   // at: where the pointer stops, 0-1 round the wheel from the top (well inside its segment, never on a line)
+// The spin: a segment at random (all ten the same size), its points, and where in it the pointer stops
+// (0-1 round the wheel from the top of segment 0, well inside the segment), so both phones show the same landing.
+function wheelSpin(vals, rng) { const k = randInt(rng, vals.length), at = (k + 0.15 + 0.7 * rng()) / vals.length; return { v: vals[k], seg: k, at: r3(at) }; }
 
 // ---------- Sniff ----------
 // A 5x5 field with one buried treasure and one dog, shared. The dog starts at least 3 steps (along the
 // grid) from the treasure. A move walks it one step north, south, east or west: "Hotter" when that step
 // brought it closer to the treasure, "Colder" when further (a step along the grid always changes the
-// distance by one, so it is always one or the other). The trail keeps every step, who made it and
-// which it was. Whoever walks the dog onto the treasure wins the square. Online the server keeps the
-// treasure; the phones see the dog and the trail.
-const SNIFF = { n: 5, minStart: 3, step: 420, hold: 650 };
+// distance by one, so it is always one or the other). Nothing of the past stays on the board: the step's
+// paw prints and its "Hotter" or "Colder" show while it plays, then they are gone. The square keeps only
+// the last 3 steps (who made each, and which it was), for the computer, which remembers that much.
+// Whoever walks the dog onto the treasure wins the square. Online the server keeps the treasure.
+const SNIFF = { n: 5, minStart: 3, step: 420, hold: 1900, memory: 3 };
 const SNIFF_DIRS = { N: [-1, 0], S: [1, 0], W: [0, -1], E: [0, 1] };
 const sniffDist = (a, b) => Math.abs(Math.floor(a / SNIFF.n) - Math.floor(b / SNIFF.n)) + Math.abs((a % SNIFF.n) - (b % SNIFF.n));
 function sniffStep(cell, dir) {
@@ -1365,9 +1476,10 @@ function sniffStep(cell, dir) {
   return r < 0 || c < 0 || r >= SNIFF.n || c >= SNIFF.n ? null : r * SNIFF.n + c;
 }
 const sniffDirs = cell => Object.keys(SNIFF_DIRS).filter(d => sniffStep(cell, d) != null);
-// Where the treasure may still be: never where the dog has stood, and every step's hotter or colder true of it.
+// Where the treasure may still be, from what is remembered (the last few steps): never where the dog has
+// stood in them, nor where it stands, and every one of those steps' hotter or colder true of it.
 function sniffCands(pm) {
-  const been = new Set([pm.start].concat((pm.trail || []).map(s => s.t)));
+  const been = new Set([pm.dog].concat(...(pm.trail || []).map(s => [s.f, s.t])));
   const out = [];
   for (let c = 0; c < SNIFF.n * SNIFF.n; c++) {
     if (been.has(c)) continue;
@@ -1390,12 +1502,16 @@ function sniffPick(pm, rng) {
 }
 
 // ---------- Craps, Takeover and Flood ----------
-// Craps: each player has their own count of rounds won; first to 3 takes the square. A move is a whole
-// pass-line round, rolled out at once where the move is made (the server online: the dice are never
-// known before): the come-out roll wins on 7 or 11, loses on 2, 3 or 12, and anything else is the
-// point; then the point again wins and a 7 loses. A loss takes nothing away. The page plays the rolls
-// back one by one (CRAPS.roll ms each, quicker after the fourth), with the puck going on at the point.
-const CRAPS = { goal: 3, roll: 900, quick: 560, quickAfter: 4, puck: 420, hold: 900, winOdds: 244 / 495 };
+// Craps: each player has their own count of rounds won; first to 3 takes the square. A move is one roll
+// of the two dice, rolled where the move is made (the server online: the dice are never known before).
+// The come-out roll wins the round on 7 or 11 and loses it on 2, 3 or 12 (craps); anything else is the
+// point, and the player chooses: Roll again or Stop. Rolling on, the point wins the round and a 7 loses
+// it; anything else, the same choice again. Stop ends the turn with the point still on: whoever next
+// plays this square carries on that round (the point wins it for them, a 7 loses it, and they may stop in
+// turn). A lost round takes nothing away; after a round the next roll here is a fresh come-out. Stopping
+// only hands the point to the other player, never the better choice: the computer always rolls on.
+const CRAPS = { goal: 3, roll: 900, quick: 560, quickAfter: 4, puck: 420, hold: 800, stop: 600, winOdds: 244 / 495 };
+const CRAPS_MAKE = { 4: 1 / 3, 5: 0.4, 6: 5 / 11, 8: 5 / 11, 9: 0.4, 10: 1 / 3 };   // the chance a point is rolled before a 7
 function crapsRound(rng) {
   const rolls = [];
   let point = null, result = null;
@@ -1489,22 +1605,26 @@ function raceNeeds(lead, remain, scale) {
 
 // ---------- Seating, Districts, Shelves and Roads ----------
 // Seating: a restaurant of 10 tables for two; every seat has a colour (one of four). A move seats you in
-// any empty seat; then a customer Z walks in and sits in a random empty seat of their colour (any empty
-// seat if none of theirs is left). The next customer's colour is always shown; where they sit, and the
-// colour of the one after, are drawn only as the move is made (by the server online). A table is yours
+// any empty seat; then a customer Z walks in and sits in a random empty seat of their colour; with none of
+// their colour left (the move took the last one) they walk through and leave. The next customer's colour
+// is always shown, and only ever one with an empty seat; where they sit, and the colour of the one after,
+// are drawn only as the move is made (by the server online). A table is yours
 // with both its seats. Five tables wins at once; else, once every seat is taken, most tables wins and a
 // tie resets the square.
 const SEAT = { tables: 10, colors: 4, goal: 5 };
 const seatTable = i => Math.floor(i / 2), seatMate = i => (i % 2 ? i - 1 : i + 1);
 const seatTables = (who, p) => { let n = 0; for (let t = 0; t < SEAT.tables; t++) if (who[2 * t] === p && who[2 * t + 1] === p) n++; return n; };
-function seatZ(mini, rng) {                                       // the customer sits; returns the seat (or null when the room is full)
+function seatZ(mini, rng) {                                       // the customer sits; returns the seat (null when the room is full, -1 when none of their colour is free: they leave)
   const empty = mini.who.map((w, i) => (w ? -1 : i)).filter(i => i >= 0);
   if (!empty.length) return null;
   const theirs = empty.filter(i => mini.color[i] === mini.next);
-  const pool = theirs.length ? theirs : empty, z = pool[randInt(rng, pool.length)];
+  if (!theirs.length) return -1;
+  const z = theirs[randInt(rng, theirs.length)];
   mini.who[z] = 'Z';
   return z;
 }
+// The next customer's colour: one of the colours with an empty seat (in colour order, drawn at random).
+function seatNext(mini, rng) { const open = [...new Set(mini.who.map((w, i) => (w ? -1 : mini.color[i])).filter(c => c >= 0))].sort((a, b) => a - b); return open.length ? open[randInt(rng, open.length)] : mini.next; }
 // The computer: its own half-table first, then the other player's, then a fresh table whose other seat is
 // not the next customer's colour; else any seat.
 function seatPick(pm, me, rng) {
@@ -1713,7 +1833,21 @@ const physicsReady = () => !!PHYSICS.lib;
 const GOLF = { goal: 1, aiErr: [0.035, 0.04], hold: 700 };
 const POOLG = { goal: 2, aiErr: [0.02, 0.05], hold: 700, order: ['cue', 'x1', 'x2', 'o1', 'o2', 'black'] };
 const BOWLG = { goal: 25, rack: 10, aiErr: [0.025, 0.04], hold: 800 };
-const poolMine = p => (p === 'X' ? ['x1', 'x2'] : ['o1', 'o2']);
+// Pool's balls by id: the cue, each side's (x1, x2 ... and o1, o2 ...: a scratch adds one to the other
+// side's), the black; in that order everywhere (the recording, the drawing).
+const poolRank = id => (id === 'cue' ? 0 : id === 'black' ? 3 : id[0] === 'x' ? 1 : 2);
+const poolIds = mini => Object.keys(mini.balls).sort((a, b) => poolRank(a) - poolRank(b) || a.localeCompare(b, 'en', { numeric: true }));
+const poolOwns = (p, id) => id[0] === (p === 'X' ? 'x' : 'o') && id !== 'cue';
+const poolMine = (p, mini) => (mini ? poolIds(mini).filter(id => poolOwns(p, id)) : p === 'X' ? ['x1', 'x2'] : ['o1', 'o2']);
+// A free spot for a new ball: the nearest point of a grid to the black's spot that is clear of every ball
+// on the table (and of the cue ball's spot), and well away from the pockets.
+function poolFree(mini) {
+  const L = PHYSICS.lib, S = L.POOL, R = S.ballR, pts = [];
+  for (let x = 14; x <= S.w - 14; x += 6) for (let y = 14; y <= S.h - 14; y += 6) pts.push([x, y]);
+  pts.sort((u, v) => Math.hypot(u[0] - S.start.black[0], u[1] - S.start.black[1]) - Math.hypot(v[0] - S.start.black[0], v[1] - S.start.black[1]) || u[0] - v[0] || u[1] - v[1]);
+  const taken = poolIds(mini).filter(id => !mini.down[id]).map(id => mini.balls[id]).concat([S.start.cue]);
+  return (pts.find(q => taken.every(b => Math.hypot(b[0] - q[0], b[1] - q[1]) > R * 2.6) && S.pockets.every(([x, y, r]) => Math.hypot(x - q[0], y - q[1]) > r + R * 3)) || [S.w / 2, S.h / 2]).slice();
+}
 // A shot as a move: both numbers, the power within 0..1, the aim within a half turn either way (to
 // three decimals, so a shot checked twice is the same shot twice).
 function physShot(m) {
@@ -1731,7 +1865,7 @@ function poolSpot(mini) {
   const L = PHYSICS.lib, start = L.POOL.start.cue, R = L.POOL.ballR;
   for (let k = 0; k < 20; k++) {
     const y = start[1] + k * R * 2.2;
-    if (!POOLG.order.some(id => id !== 'cue' && !mini.down[id] && Math.hypot(mini.balls[id][0] - start[0], mini.balls[id][1] - y) < R * 2.1)) return [start[0], Math.min(y, L.POOL.h - R - 1)];
+    if (!poolIds(mini).some(id => id !== 'cue' && !mini.down[id] && Math.hypot(mini.balls[id][0] - start[0], mini.balls[id][1] - y) < R * 2.1)) return [start[0], Math.min(y, L.POOL.h - R - 1)];
   }
   return start.slice();
 }
@@ -1769,12 +1903,12 @@ function physScore(mini, p, r) {
     return -golfLeft(L.HOLES[mini.hole], r.final[p] || mini.balls[p]);
   }
   if (mini.type === 'pool') {
-    const pk = r.result.pocketed, own = pk.filter(id => poolMine(p).includes(id)).length, theirs = pk.filter(id => poolMine(o).includes(id)).length;
+    const pk = r.result.pocketed, own = pk.filter(id => poolOwns(p, id)).length, theirs = pk.filter(id => poolOwns(o, id)).length;
     if (pk.includes('black')) return -1000;
-    let s = own * 100 - theirs * 80 - (pk.includes('cue') ? 150 : 0);
+    let s = own * 100 - theirs * 80 - (pk.includes('cue') ? 250 : 0);   // (a scratch: the white back, and a ball more for the other side)
     if (own && mini.pocketed[p] + own >= POOLG.goal) s += 500;
     if (theirs && mini.pocketed[o] + theirs >= POOLG.goal) s -= 500;
-    for (const id of poolMine(p)) if (r.final[id]) s -= Math.min(...L.POOL.pockets.map(([x, y]) => Math.hypot(r.final[id][0] - x, r.final[id][1] - y))) / 10;   // own balls left near pockets
+    for (const id of poolMine(p, mini)) if (r.final[id]) s -= Math.min(...L.POOL.pockets.map(([x, y]) => Math.hypot(r.final[id][0] - x, r.final[id][1] - y))) / 10;   // own balls left near pockets
     return s;
   }
   return r.result.knocked * 10 - (r.result.gutter ? 1 : 0);
@@ -1785,14 +1919,14 @@ function physCandidates(mini, p, rng) {
     const hole = L.HOLES[mini.hole], from = mini.balls[p], k = golfNext(hole, from);
     const targets = [hole.path[k], hole.path[Math.min(k + 1, hole.path.length - 1)], hole.cup];
     for (const t of targets) {
-      const a = aimTo(from, t), d = Math.hypot(t[0] - from[0], t[1] - from[1]), base = Math.max(0.15, Math.min(0.95, 0.08 + d / 120));
+      const a = aimTo(from, t), d = Math.hypot(t[0] - from[0], t[1] - from[1]), base = Math.max(0.15, Math.min(1, Math.pow(d * 1.08 / (L.GOLF.reach || 75), 0.57)));   // (a putt rolls about reach x power^1.75)
       for (const dp of [0, 0.12, -0.08, 0.25]) out.push({ aim: a, power: base + dp });
       out.push({ aim: a + 0.12, power: base }, { aim: a - 0.12, power: base });
     }
     for (let k2 = 0; k2 < 3; k2++) out.push({ aim: (rng() - 0.5) * Math.PI * 1.6, power: 0.4 + rng() * 0.55 });   // the odd bank shot
   } else if (mini.type === 'pool') {
     const cue = mini.balls.cue, R = L.POOL.ballR;
-    for (const id of poolMine(p)) {
+    for (const id of poolMine(p, mini)) {
       if (mini.down[id]) continue;
       const b = mini.balls[id];
       const pockets = L.POOL.pockets.slice().sort((u, v) => Math.hypot(b[0] - u[0], b[1] - u[1]) - Math.hypot(b[0] - v[0], b[1] - v[1])).slice(0, 2);
@@ -1833,9 +1967,9 @@ function physRandom(mini, p, rng) {
   const L = PHYSICS.lib;
   if (mini.type === 'golf') {                                 // roughly towards the next point of the hole's path, at a power to suit the distance
     const hole = L.HOLES[mini.hole], from = mini.balls[p], to = hole.path[golfNext(hole, from)], d = Math.hypot(to[0] - from[0], to[1] - from[1]);
-    return physShot({ aim: wrapAim(aimTo(from, to) + (rng() - 0.5) * 0.7), power: Math.max(0.2, Math.min(0.6, (0.08 + d / 120) * (0.7 + rng() * 0.5))) });
+    return physShot({ aim: wrapAim(aimTo(from, to) + (rng() - 0.5) * 0.7), power: Math.max(0.2, Math.min(0.75, Math.pow(d / (L.GOLF.reach || 75), 0.57) * (0.7 + rng() * 0.5))) });
   }
-  if (mini.type === 'pool') { const ids = poolMine(p).filter(id => !mini.down[id]); const to = ids.length ? mini.balls[ids[randInt(rng, ids.length)]] : L.POOL.start.black; return physShot({ aim: wrapAim(aimTo(mini.balls.cue, to) + (rng() - 0.5) * 0.6), power: 0.25 + rng() * 0.25 }); }
+  if (mini.type === 'pool') { const ids = poolMine(p, mini).filter(id => !mini.down[id]); const to = ids.length ? mini.balls[ids[randInt(rng, ids.length)]] : L.POOL.start.black; return physShot({ aim: wrapAim(aimTo(mini.balls.cue, to) + (rng() - 0.5) * 0.6), power: 0.25 + rng() * 0.25 }); }
   return physShot({ aim: (rng() - 0.5) * 0.2, power: 0.5 + rng() * 0.25 });
 }
 // How many moves the computer reckons it needs in a physics square (for its choice of square).
@@ -1868,8 +2002,8 @@ function newMini(type, rng) {
     case 'bus':         return { type, prog: { X: [], O: [] }, last: null };   // prog: each player's kept cards, one per round passed
     case 'rl':          return { type, hits: { X: 0, O: 0 }, spins: [], last: null };
     case 'bullseye':    { const cfg = bullsConfig(); return { type, cfg, pts: { X: 0, O: 0 }, speed: { X: 1, O: 1 }, pos: bullsSpot(cfg, null, needRng(rng)), last: null }; }   // cfg: as dealt; pos: the board's middle
-    case 'echo':        return { type, level: { X: 0, O: 0 }, seqs: { X: echoSeqs(needRng(rng)), O: echoSeqs(needRng(rng)) }, last: null };
-    case 'plinko':      return { type, win: randInt(needRng(rng), PLINKO.slots), last: null };
+    case 'echo':        return { type, level: { X: 0, O: 0 }, base: echoBase(needRng(rng)), last: null };
+    case 'plinko':      { const r = needRng(rng); return { type, vals: shuffle(PLINKO.vals.slice(), r), pts: { X: 0, O: 0 }, used: new Array(PLINKO.slots).fill(false), bonus: plinkoBonus(r), target: plinkoConfig().target, last: null }; }
     case 'pong':        return { type, cups: { X: [true, true, true], O: [true, true, true] }, last: null };
     case 'trivia':      return { type, right: { X: 0, O: 0 }, ask: null, answer: null, crossed: [], asked: [], last: null };   // ask: the square's question; answer: the right option's place (hidden online); crossed: the places picked wrong; asked: the ids answered here
     case 'golf': {                                            // a hole from the six; both balls side by side on the tee
@@ -1881,14 +2015,14 @@ function newMini(type, rng) {
       return { type, balls: Object.fromEntries(POOLG.order.map(id => [id, st[id].slice()])), down: {}, pocketed: { X: 0, O: 0 }, last: null };
     }
     case 'bowling':     return { type, pins: { X: 0, O: 0 }, rolls: { X: 0, O: 0 }, last: null };
-    case 'craps':       return { type, wins: { X: 0, O: 0 }, rounds: { X: 0, O: 0 }, last: null };
+    case 'craps':       return { type, wins: { X: 0, O: 0 }, rounds: { X: 0, O: 0 }, point: null, live: null, rolls: [], last: null };   // point: the round's point, on; live: the player mid-turn here (just rolled, the point standing); rolls: the round's so far
     case 'takeover':    return { type, cells: new Array(TAKE.n * TAKE.n).fill(null), last: null };
-    case 'seating': { const r = needRng(rng); return { type, color: Array.from({ length: SEAT.tables * 2 }, () => randInt(r, SEAT.colors)), who: new Array(SEAT.tables * 2).fill(null), next: randInt(r, SEAT.colors), last: null }; }   // next: the next customer's colour, shown
+    case 'seating': { const r = needRng(rng), color = Array.from({ length: SEAT.tables * 2 }, () => randInt(r, SEAT.colors)); return { type, color, who: new Array(SEAT.tables * 2).fill(null), next: color[randInt(r, color.length)], last: null }; }   // next: the next customer's colour, shown (one with a seat)
     case 'districts': { const map = distMap(needRng(rng)); return { type, map, who: new Array(map.spots.length).fill(null), last: null }; }
     case 'shelves':     return { type, cells: new Array(SHELF.n * SHELF.per).fill(null), last: null };
     case 'roads':       return { type, segs: new Array(ROAD_SEGS.length).fill(null), last: null };
     case 'patterns': { const r = needRng(rng); let g = null; while (!g) g = patPuzzle(r); return { type, right: { X: 0, O: 0 }, puz: g.puz, answer: g.answer, rule: g.rule, crossed: [], last: null }; }   // answer, rule: the server's (hidden online)
-    case 'wheels':      return { type, cfg: wheelsConfig(), pts: { X: 0, O: 0 }, spins: { X: 0, O: 0 }, rest: { high: 0, mid: 0, low: 0 }, last: null };   // rest: where each wheel last stopped
+    case 'wheels':      { const g = wheelsConfig(); return { type, target: g.target, wheels: wheelsDeal(needRng(rng), g), pts: { X: 0, O: 0 }, spins: { X: 0, O: 0 }, rest: { high: 0, mid: 0, low: 0 }, last: null }; }   // the square's own three wheels; rest: where each wheel last stopped
     case 'sniff': {                                           // the treasure (hidden online), and the dog at least 3 steps from it
       const r = needRng(rng), treasure = randInt(r, SNIFF.n * SNIFF.n), far = Array.from({ length: SNIFF.n * SNIFF.n }, (_, c) => c).filter(c => sniffDist(c, treasure) >= SNIFF.minStart);
       const dog = far[randInt(r, far.length)];
@@ -2344,40 +2478,59 @@ function applyMove(mini, p, m, rng) {
       if (r.result.first) return { ok: true, outcome: 'win', note: r.result.first === p ? 'holed' : 'knockedIn', winner: r.result.first };
       return { ok: true, outcome: 'continue', note: mini.last.lip ? 'lip' : 'shot' };
     }
-    case 'pool': {                                            // a shot from the cue ball: own ball down, shoot again; theirs counts for them; the black loses; a scratch returns the cue
+    case 'pool': {                                            // a shot from the cue ball: own ball down, shoot again; theirs counts for them; the black loses; a scratch returns the cue and gives the other side a ball more
       const shot = physShot(m);
       if (!shot) return { ok: false, reason: 'bad' };
       const r = physRun(mini, p, shot);
       if (!r) return { ok: false, reason: 'nophys' };
       const o = other(p), pk = r.result.pocketed;
       for (const id of Object.keys(r.final)) { if (r.final[id] === null) mini.down[id] = true; else mini.balls[id] = r.final[id]; }
-      const black = pk.includes('black'), scratch = pk.includes('cue'), own = pk.filter(id => poolMine(p).includes(id)).length, theirs = pk.filter(id => poolMine(o).includes(id)).length;
+      const black = pk.includes('black'), scratch = pk.includes('cue'), own = pk.filter(id => poolOwns(p, id)).length, theirs = pk.filter(id => poolOwns(o, id)).length;
       mini.pocketed[p] += own; mini.pocketed[o] += theirs;
-      if (scratch) { delete mini.down.cue; mini.balls.cue = poolSpot(mini); }
-      mini.last = physLast(p, shot, r, { pocketed: pk.slice(), black, scratch, own, theirs, cue: mini.balls.cue.slice() });
+      let added = null;
+      if (scratch) {                                          // the white back on its spot, and a ball more of the other side's colour on the table
+        delete mini.down.cue; mini.balls.cue = poolSpot(mini);
+        const pre = o === 'X' ? 'x' : 'o', n = Math.max(0, ...Object.keys(mini.balls).filter(id => id[0] === pre && id !== 'cue').map(id => Number(id.slice(1)) || 0)) + 1;
+        added = pre + n; mini.balls[added] = poolFree(mini);
+      }
+      mini.last = physLast(p, shot, r, Object.assign({ pocketed: pk.slice(), black, scratch, own, theirs, cue: mini.balls.cue.slice() }, added ? { added, at: mini.balls[added].slice() } : {}));
       if (black) return { ok: true, outcome: 'win', note: 'black', winner: o };
       if (mini.pocketed[p] >= POOLG.goal) return { ok: true, outcome: 'win', note: 'cleared' };
       if (mini.pocketed[o] >= POOLG.goal) return { ok: true, outcome: 'win', note: 'gift', winner: o };
       const again = own > 0 && !theirs && !scratch;
       return Object.assign({ ok: true, outcome: 'continue', note: again ? 'again' : scratch ? 'scratch' : theirs ? 'theirs' : own ? 'own' : 'shot' }, again ? { again: true } : {});
     }
-    case 'craps': {                                           // a whole pass-line round: rolled until it is won or lost
+    case 'craps': {                                           // one roll; a point standing: Roll again or Stop
+      if (m === 'stop') {                                     // the turn ends; the point stays on for whoever plays here next
+        if (mini.live !== p || mini.point == null) return { ok: false, reason: 'nostop' };
+        mini.live = null;
+        mini.last = { by: p, kind: 'stop', point: mini.point, rolls: mini.rolls.map(d => d.slice()) };
+        return { ok: true, outcome: 'continue', note: 'stop' };
+      }
       if (m !== 'roll' && m !== 'auto') return { ok: false, reason: 'bad' };
-      const r = crapsRound(needRng(rng));
-      mini.rounds[p] += 1;
-      if (r.result === 'win') mini.wins[p] += 1;
-      mini.last = { by: p, rolls: r.rolls, point: r.point, result: r.result };
-      if (mini.wins[p] >= CRAPS.goal) return { ok: true, outcome: 'win', note: 'won' };
-      return { ok: true, outcome: 'continue', note: r.result === 'win' ? 'won' : 'lost' };
+      if (mini.live && mini.live !== p) return { ok: false, reason: 'busy' };
+      const r = needRng(rng), d = [1 + randInt(r, 6), 1 + randInt(r, 6)], sum = d[0] + d[1], was = mini.point, inherited = was != null && mini.live !== p;
+      const result = was == null ? (sum === 7 || sum === 11 ? 'win' : sum === 2 || sum === 3 || sum === 12 ? 'lose' : 'point') : sum === was ? 'win' : sum === 7 ? 'lose' : 'stay';
+      mini.rolls = (was == null ? [] : mini.rolls).concat([d]);
+      if (result === 'point') mini.point = sum;
+      mini.last = { by: p, kind: 'roll', roll: d, sum, was, point: mini.point, result, inherited, rolls: mini.rolls.map(x => x.slice()) };
+      if (result === 'win' || result === 'lose') {             // the round is over: the next roll here is a come-out
+        mini.rounds[p] += 1; if (result === 'win') mini.wins[p] += 1;
+        mini.point = null; mini.live = null; mini.rolls = [];
+        if (mini.wins[p] >= CRAPS.goal) return { ok: true, outcome: 'win', note: 'won' };
+        return { ok: true, outcome: 'continue', note: result === 'win' ? 'won' : 'lost' };
+      }
+      mini.live = p;
+      return { ok: true, outcome: 'continue', note: result, again: true };
     }
     case 'seating': {                                         // a seat; then the customer sits; five tables, or most once the room is full
       if (!Number.isInteger(m) || m < 0 || m >= mini.who.length || mini.who[m]) return { ok: false, reason: 'bad' };
       const r = needRng(rng), o = other(p), zColor = mini.next;
       mini.who[m] = p;
-      const z = seatZ(mini, r);
-      if (mini.who.includes(null)) mini.next = randInt(r, SEAT.colors);
+      const zs = seatZ(mini, r), left = zs === -1, z = left ? null : zs;
+      if (mini.who.includes(null)) mini.next = seatNext(mini, r);
       const done = mini.who[seatMate(m)] === p ? seatTable(m) : null;
-      mini.last = { by: p, seat: m, z, zColor, table: done, next: mini.next };
+      mini.last = { by: p, seat: m, z, zColor, table: done, next: mini.next, left };
       const mt = seatTables(mini.who, p), ot = seatTables(mini.who, o);
       if (mt >= SEAT.goal) return { ok: true, outcome: 'win', note: 'tables', counts: { [p]: mt, [o]: ot } };
       if (mini.who.includes(null)) return { ok: true, outcome: 'continue', note: done != null ? 'table' : 'seat' };
@@ -2429,11 +2582,11 @@ function applyMove(mini, p, m, rng) {
     }
     case 'wheels': {                                          // a wheel spun once: its points added; the target wins
       if (!WHEELS.includes(m)) return { ok: false, reason: 'bad' };
-      const s2 = wheelSpin(mini.cfg, m, needRng(rng));
+      const s2 = wheelSpin(mini.wheels[m], needRng(rng));
       const from = (mini.rest && mini.rest[m]) || 0;
       mini.pts[p] += s2.v; mini.spins[p] += 1; mini.rest = Object.assign({ high: 0, mid: 0, low: 0 }, mini.rest, { [m]: s2.at });
-      mini.last = { by: p, w: m, v: s2.v, hitA: s2.hitA, at: s2.at, from };
-      if (mini.pts[p] >= mini.cfg.target) return { ok: true, outcome: 'win', note: 'target' };
+      mini.last = { by: p, w: m, v: s2.v, seg: s2.seg, at: s2.at, from };
+      if (mini.pts[p] >= mini.target) return { ok: true, outcome: 'win', note: 'target' };
       return { ok: true, outcome: 'continue', note: s2.v ? 'points' : 'nothing' };
     }
     case 'sniff': {                                           // the dog one step: hotter or colder; onto the treasure: found
@@ -2441,7 +2594,7 @@ function applyMove(mini, p, m, rng) {
       if (to == null) return { ok: false, reason: 'bad' };
       if (!Number.isInteger(mini.treasure)) return { ok: false, reason: 'secret' };
       const from = mini.dog, hot = sniffDist(to, mini.treasure) < sniffDist(from, mini.treasure), found = to === mini.treasure;
-      mini.dog = to; mini.trail = mini.trail.concat({ f: from, t: to, by: p, hot: hot ? 1 : 0 });
+      mini.dog = to; mini.trail = (mini.trail || []).concat({ f: from, t: to, by: p, hot: hot ? 1 : 0 }).slice(-SNIFF.memory);   // (the last few steps only: the computer's memory)
       mini.last = { by: p, f: from, t: to, hot, found };
       if (found) return { ok: true, outcome: 'win', note: 'found' };
       return { ok: true, outcome: 'continue', note: hot ? 'hot' : 'cold' };
@@ -2510,7 +2663,7 @@ function applyMove(mini, p, m, rng) {
     case 'echo': {
       const lvl = mini.level[p];
       if (lvl >= ECHO.lengths.length) return { ok: false, reason: 'done' };
-      const seq = mini.seqs[p][lvl];
+      const seq = echoSeq(mini, p, lvl);
       let taps;
       if (m === 'auto') taps = [];
       else if (Array.isArray(m) && m.length <= seq.length && m.every(k => Number.isInteger(k) && k >= 0 && k < ECHO.pads)) taps = m.slice();
@@ -2519,17 +2672,23 @@ function applyMove(mini, p, m, rng) {
       for (let k = 0; k < seq.length; k++) if (taps[k] !== seq[k]) { failAt = k; break; }
       const pass = failAt < 0;
       if (pass) mini.level[p] += 1;
-      mini.last = { by: p, level: lvl, taps, pass, failAt, len: seq.length };
+      mini.last = { by: p, level: lvl, taps, pass, failAt, len: seq.length, seq };
       if (mini.level[p] >= ECHO.lengths.length) return { ok: true, outcome: 'win', note: 'pass' };
       return { ok: true, outcome: 'continue', note: pass ? 'pass' : 'fail' };
     }
     case 'plinko': {
       if (!idx(PLINKO.slots)) return { ok: false, reason: 'bad' };
+      if (mini.used[m]) return { ok: false, reason: 'used' };
       const { path, bin } = plinkoPath(m, needRng(rng));
-      const won = bin === mini.win;
-      mini.last = { by: p, slot: m, path, bin, win: won };
-      if (won) return { ok: true, outcome: 'win', note: 'win' };
-      return { ok: true, outcome: 'continue', note: 'miss' };
+      const was = mini.bonus, hit = !!was && plinkoTouches(m, path)[was.r - 1] === was.x, pts = mini.vals[bin] + (hit ? PLINKO.bonus : 0);
+      mini.pts[p] += pts;
+      mini.used[m] = true;
+      const reset = mini.used.every(Boolean);
+      if (reset) mini.used = new Array(PLINKO.slots).fill(false);        // all seven used: they all open again
+      if (hit) mini.bonus = plinkoBonus(needRng(rng), was);            // a new bonus peg, there from the next turn
+      mini.last = { by: p, slot: m, path, bin, pts, hit, bonus: { x: was.x, r: was.r }, reset };
+      if (mini.pts[p] >= mini.target) return { ok: true, outcome: 'win', note: hit ? 'bonus' : 'drop' };
+      return { ok: true, outcome: 'continue', note: hit ? 'bonus' : 'drop' };
     }
     case 'pong': {
       let aim, power;
@@ -2614,19 +2773,19 @@ function publicMini(mini) {
     case 'ttt': case 'c4': case 'hex': case 'hexapawn': return { type: mini.type, cells: mini.cells.slice() };
     case 'golf': case 'pool': case 'bowling': { const c = JSON.parse(JSON.stringify(mini)); if (c.last) delete c.last.rec; return c; }   // (everything is in the open; the recording is not needed to choose)
     case 'dash': case 'lane': case 'flap': case 'chopper': return { type: mini.type, cfg: mini.cfg, seed: { X: mini.seed.X, O: mini.seed.O }, dist: { X: mini.dist.X, O: mini.dist.O }, runs: { X: mini.runs.X, O: mini.runs.O } };
-    case 'craps':   return { type: 'craps', wins: { X: mini.wins.X, O: mini.wins.O } };
+    case 'craps':   return { type: 'craps', wins: { X: mini.wins.X, O: mini.wins.O }, point: mini.point == null ? null : mini.point, live: mini.live || null };
     case 'takeover': return { type: 'takeover', cells: mini.cells.slice() };
     case 'seating': return { type: 'seating', color: mini.color.slice(), who: mini.who.slice(), next: mini.next };
     case 'districts': return { type: 'districts', map: mini.map, who: mini.who.slice() };
     case 'shelves': return { type: 'shelves', cells: mini.cells.slice() };
     case 'roads':   return { type: 'roads', segs: mini.segs.slice() };
     case 'patterns': return { type: 'patterns', right: { X: mini.right.X, O: mini.right.O }, puz: mini.puz, answer: Number.isInteger(mini.answer) ? mini.answer : null, crossed: (mini.crossed || []).slice() };   // (the computer's own: it knows the answer, and gets it about 60% of the time)
-    case 'wheels':  return { type: 'wheels', cfg: mini.cfg, pts: { X: mini.pts.X, O: mini.pts.O }, spins: { X: mini.spins.X, O: mini.spins.O } };
-    case 'sniff':   return { type: 'sniff', dog: mini.dog, start: mini.start, trail: mini.trail.map(t => Object.assign({}, t)) };   // never the treasure
+    case 'wheels':  return { type: 'wheels', target: mini.target, wheels: mini.wheels, pts: { X: mini.pts.X, O: mini.pts.O }, spins: { X: mini.spins.X, O: mini.spins.O } };
+    case 'sniff':   return { type: 'sniff', dog: mini.dog, start: mini.start, trail: (mini.trail || []).slice(-SNIFF.memory).map(t => Object.assign({}, t)) };   // never the treasure; the last few steps
     case 'flood':   return { type: 'flood', colors: mini.colors.slice(), owner: mini.owner.slice(), score: { X: mini.score.X, O: mini.score.O } };
     case 'bullseye': return { type: 'bullseye', cfg: Object.assign({}, mini.cfg), pts: { X: mini.pts.X, O: mini.pts.O }, speed: { X: mini.speed.X, O: mini.speed.O }, pos: mini.pos.slice() };
     case 'echo':    return { type: 'echo', level: { X: mini.level.X, O: mini.level.O } };
-    case 'plinko':  return { type: 'plinko', win: mini.win };
+    case 'plinko':  return { type: 'plinko', vals: mini.vals.slice(), pts: { X: mini.pts.X, O: mini.pts.O }, used: mini.used.slice(), bonus: mini.bonus ? { x: mini.bonus.x, r: mini.bonus.r } : null, target: mini.target };
     case 'pong':    return { type: 'pong', cups: { X: mini.cups.X.slice(), O: mini.cups.O.slice() } };
     // Trivia and Odd One Out: the computer plays to a success rate (it knows the answer about half the
     // time, else guesses among the options still standing; a find 90%, 70%, then 50%), so it is told the
@@ -2789,10 +2948,10 @@ function needsOf(pm, p) {
     case 'shelves': { const e = pm.cells.filter(c => !c).length; return e ? raceNeeds(shelfOn(pm.cells, p) - shelfOn(pm.cells, other(p)), e / 4, 1) : Infinity; }
     case 'roads':   { const e = pm.segs.filter(c => !c).length; return e ? raceNeeds(roadLongest(pm.segs, p).len - roadLongest(pm.segs, other(p)).len, e / 4, 1.2) : Infinity; }
     case 'patterns': return Math.max(1, (PATTERNS.goal - pm.right[p]) / PATTERNS.aiRight);
-    case 'wheels':  return Math.max(0.5, wheelsTable(pm.cfg).E[Math.min(pm.cfg.target, pm.pts[p])]);
+    case 'wheels':  return Math.max(0.5, wheelsTable(pm.target, pm.wheels).E[Math.min(pm.target, pm.pts[p])]);
     case 'sniff':   { const c = sniffCands(pm), d = c.length ? Math.min(...c.map(x => sniffDist(pm.dog, x))) : 1; return Math.max(1, d + Math.log2(Math.max(1, c.length)) * 0.8); }   // (the dog is shared: as near for both)
     case 'echo':    { let n = 0; for (let l = pm.level[p]; l < ECHO.lengths.length; l++) n += 1 / ECHO.aiPass[l]; return Math.max(1, n); }
-    case 'plinko':  return 1 / Math.max(...plinkoOdds(pm.win));            // dropped above the WIN bin, every time
+    case 'plinko':  { const e = Array.from({ length: PLINKO.slots }, (_, k) => plinkoExp(pm, k)), best = Math.max(...plinkoOpen(pm).map(k => e[k])), mean = e.reduce((x, y) => x + y, 0) / e.length; return Math.max(1, (pm.target - pm.pts[p]) / ((best + mean) / 2)); }   // (the slots lock in turn: about halfway between the best one and the average)
     case 'pong':    return Math.max(1, pm.cups[p].filter(Boolean).length / 0.45);
     case 'trivia':  return Math.max(1, (TRIVIA.goal - pm.right[p]) / TRIVIA.aiRight);
     case 'oddone':  { let n = 0; for (let f = pm.finds[p]; f < ODD.goal; f++) n += 1 / ODD.aiFind[Math.min(f, ODD.aiFind.length - 1)]; return Math.max(1, n); }
@@ -3042,7 +3201,12 @@ function localBest(pm, me, rng, style, ctx) {
       const q = ECHO.aiPass[Math.min(pm.level[me], ECHO.aiPass.length - 1)];
       return { move: { echo: rng() < q ? 'pass' : 'fail', at: rng() }, q };
     }
-    case 'plinko': return { move: pm.win, q: plinkoOdds(pm.win)[pm.win] };   // dropped above the WIN bin
+    case 'plinko': {                                                 // the open slot with the most points to expect (the bonus peg counted); level, the likelier to finish
+      const need = pm.target - pm.pts[me], q = k => Object.entries(plinkoDist(pm, k)).reduce((t, [v, c]) => t + (Number(v) >= need ? c : 0), 0);
+      let move = -1, top = -1, tq = -1;
+      for (const k of plinkoOpen(pm)) { const e = plinkoExp(pm, k), qk = q(k); if (e > top + 1e-9 || (Math.abs(e - top) < 1e-9 && qk > tq)) { move = k; top = e; tq = qk; } }
+      return { move, q: tq, exp: top };
+    }
     case 'pong': {                                               // at a cup still standing, a little off
       const g = () => { const u = Math.max(1e-9, rng()), v = rng(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
       const up = pm.cups[me].map((c, k) => (c ? k : -1)).filter(k => k >= 0);
@@ -3087,7 +3251,7 @@ function localBest(pm, me, rng, style, ctx) {
       if (pz && rng() < pz) return { move: 'zero', q: 1 / RL.wheel.length };
       return { move: ['g1', 'g2', 'g3'][randInt(rng, 3)], q: mine >= RL.goal - 1 ? RL.pick / RL.wheel.length : 0 };
     }
-    case 'craps': return { move: 'roll', q: pm.wins[me] >= CRAPS.goal - 1 ? CRAPS.winOdds : 0 };   // no choices: it rolls
+    case 'craps': return { move: 'roll', q: pm.wins[me] >= CRAPS.goal - 1 ? (pm.point != null ? CRAPS_MAKE[pm.point] : CRAPS.winOdds) : 0 };   // it always rolls on: a Stop only hands the point over
     case 'takeover': {
       const b = takeSearch(pm.cells, me, rng);
       const full = !b.after.includes(null);
@@ -3106,9 +3270,9 @@ function localBest(pm, me, rng, style, ctx) {
       if (!wrong.length || rng() < PATTERNS.aiRight) return { move: right, q };
       return { move: wrong[randInt(rng, wrong.length)], q };
     }
-    case 'wheels': {                                             // the wheel with the best chance to win from here, both players playing their best
-      const T = pm.cfg.target, a = Math.min(T - 1, pm.pts[me]), b = Math.min(T - 1, pm.pts[other(me)]), w = wheelsTable(pm.cfg).best[a][b], c = pm.cfg[w];
-      return { move: w, q: (a + c.a >= T ? c.pa / 100 : 0) + (a + c.b >= T ? 1 - c.pa / 100 : 0) };
+    case 'wheels': {                                             // the wheel with the best chance to reach the target first from here, both players playing their best (behind, that is the riskier one)
+      const T = pm.target, a = Math.min(T - 1, pm.pts[me]), b = Math.min(T - 1, pm.pts[other(me)]), w = wheelsTable(T, pm.wheels).best[a][b];
+      return { move: w, q: pm.wheels[w].filter(v => a + v >= T).length / pm.wheels[w].length };
     }
     case 'sniff': { const b = sniffPick(pm, rng); return { move: b.move, q: b.q, shared: true }; }   // (the dog is shared: a step helps both)
     case 'ttt': return pickValued(pm, me, tttMinimax(pm.cells, me), (cells, i) => i);
@@ -3275,7 +3439,7 @@ function moveGain(pm, me, local) {
 }
 // Echo: the computer's attempt as taps, from its decision to pass or to slip (at a random step).
 function cpuEcho(mini, me, plan, rng) {
-  const seq = mini.seqs[me][Math.min(mini.level[me], ECHO.lengths.length - 1)];
+  const seq = echoSeq(mini, me, mini.level[me]);
   if (plan.echo === 'pass') return seq.slice();
   const at = Math.min(seq.length - 1, Math.floor(plan.at * seq.length));
   let wrong = randInt(needRng(rng), ECHO.pads - 1); if (wrong >= seq[at]) wrong++;
@@ -3319,7 +3483,7 @@ function randomLegalMove(mini, p, rng) {
     case 'golf': case 'pool': case 'bowling': return physRandom(mini, p, rng);   // a random gentle shot
     case 'bullseye': return { x: r3(rng()), y: r3(rng()) };          // both lines stopped at random points
     case 'echo': return 'auto';                                        // a failed attempt
-    case 'plinko': return randInt(rng, PLINKO.slots);                  // a random slot
+    case 'plinko': return from(plinkoOpen(mini));                      // a random open slot
     case 'pong': return 'auto';                                        // a random throw
     case 'trivia': return 'auto';                                      // one wrong pick: an option still standing is crossed out
     case 'oddone': return 'auto';                                      // counts as wrong
@@ -3340,7 +3504,7 @@ function randomLegalMove(mini, p, rng) {
     case 'bj': return !mini.hand ? 'deal' : from(mini.hand.cards.length === 2 ? ['hit', 'stand', 'double'] : ['hit', 'stand']);
     case 'bus': return from(BUS.guesses[Math.min(mini.prog[p].length, BUS.rounds - 1)]);
     case 'rl': return from(['g1', 'g2', 'g3']);
-    case 'craps': return 'roll';                                       // the round, rolled to its end
+    case 'craps': return mini.live === p ? 'stop' : 'roll';             // mid-turn: the turn ends (Stop); else a roll
     case 'takeover': return from(empties(mini.cells, c => !c));
     case 'seating': case 'districts': return from(empties(mini.who, c => !c));
     case 'shelves': return from(empties(mini.cells, c => !c));
@@ -3464,12 +3628,12 @@ function playMove(state, i, m, rng, opts) {
       break;
     }
     case 'bus': { const l = mini.last; flash.bus = { round: l.round, guess: l.guess, card: l.card, right: l.right, kept: mini.prog[p].slice() }; break; }
-    case 'craps': { const l = mini.last; flash.craps = { rolls: l.rolls.map(d => d.slice()), point: l.point, result: l.result, wins: { X: mini.wins.X, O: mini.wins.O } }; break; }
-    case 'seating': { const l = mini.last; flash.seat = { seat: l.seat, z: l.z, zColor: l.zColor, table: l.table, next: l.next, tables: { X: seatTables(mini.who, 'X'), O: seatTables(mini.who, 'O') } }; break; }
+    case 'craps': { const l = mini.last; flash.craps = Object.assign({ kind: l.kind, rolls: l.rolls.map(d => d.slice()), point: l.point, wins: { X: mini.wins.X, O: mini.wins.O } }, l.kind === 'roll' ? { roll: l.roll.slice(), sum: l.sum, was: l.was, result: l.result, inherited: l.inherited } : {}); break; }
+    case 'seating': { const l = mini.last; flash.seat = { seat: l.seat, z: l.z, zColor: l.zColor, table: l.table, next: l.next, left: !!l.left, tables: { X: seatTables(mini.who, 'X'), O: seatTables(mini.who, 'O') } }; break; }
     case 'districts': { const l = mini.last; flash.dist = { spot: l.spot, lead: distTally(mini.map, mini.who).lead }; break; }
     case 'shelves': { const l = mini.last; flash.shelf = { at: l.at, grey: l.grey, on: { X: shelfOn(mini.cells, 'X'), O: shelfOn(mini.cells, 'O') } }; break; }
     case 'patterns': { const l = mini.last; flash.pat = Object.assign({ fam: l.fam, seq: l.seq, opts: l.opts, crossed: (l.crossed || []).slice(), picked: l.picked, correct: l.correct, counts: { X: mini.right.X, O: mini.right.O } }, l.correct ? { right: l.right } : {}, l.auto ? { auto: true } : {}); break; }   // (a wrong pick: no answer in it)
-    case 'wheels': { const l = mini.last; flash.wheel = { w: l.w, v: l.v, hitA: l.hitA, at: l.at, from: l.from || 0, pts: { X: mini.pts.X, O: mini.pts.O }, target: mini.cfg.target }; break; }
+    case 'wheels': { const l = mini.last; flash.wheel = { w: l.w, v: l.v, seg: l.seg, at: l.at, from: l.from || 0, pts: { X: mini.pts.X, O: mini.pts.O }, target: mini.target }; break; }
     case 'sniff': { const l = mini.last; flash.sniff = { f: l.f, t: l.t, hot: l.hot, found: l.found }; break; }
     case 'roads': { const l = mini.last; flash.road = { seg: l.seg, block: l.block, len: { X: roadLongest(mini.segs, 'X').len, O: roadLongest(mini.segs, 'O').len } }; break; }
     case 'takeover': { const l = mini.last; flash.take = { at: l.at, took: l.took.slice(), flipped: l.flipped.slice(), counts: { X: takeCount(mini.cells, 'X'), O: takeCount(mini.cells, 'O') } }; break; }
@@ -3478,8 +3642,8 @@ function playMove(state, i, m, rng, opts) {
     case 'golf': case 'pool': case 'bowling': { const l = mini.last; flash.phys = Object.assign(JSON.parse(JSON.stringify(l)), mini.type === 'golf' ? { balls: JSON.parse(JSON.stringify(mini.balls)), hole: mini.hole, holedNow: JSON.parse(JSON.stringify(mini.holed)) } : mini.type === 'pool' ? { pocketedNow: { X: mini.pocketed.X, O: mini.pocketed.O }, down: Object.assign({}, mini.down) } : { pins: { X: mini.pins.X, O: mini.pins.O } }); break; }
     case 'dash': case 'lane': case 'flap': case 'chopper': { const l = mini.last; flash.run = { from: l.from, to: l.to, ms: l.ms, out: l.out, done: l.done, dist: { X: mini.dist.X, O: mini.dist.O }, runs: { X: mini.runs.X, O: mini.runs.O }, target: mini.cfg.target }; break; }
     case 'bullseye': { const l = mini.last; flash.bull = { x: l.x, y: l.y, at: l.at.slice(), d: l.d, pts: l.pts, pos: l.pos.slice(), next: mini.pos.slice(), total: { X: mini.pts.X, O: mini.pts.O }, speed: mini.speed[p], per: l.per || Math.round(bullsPeriod(mini.cfg || BULL_DEFAULTS, 1)) }; break; }
-    case 'echo': { const l = mini.last; flash.echo = { level: l.level, len: l.len, pass: l.pass, failAt: l.failAt, taps: l.taps.slice(), levels: { X: mini.level.X, O: mini.level.O } }; break; }
-    case 'plinko': { const l = mini.last; flash.plinko = { slot: l.slot, path: l.path.slice(), bin: l.bin, win: l.win, winBin: mini.win }; break; }
+    case 'echo': { const l = mini.last; flash.echo = { level: l.level, len: l.len, pass: l.pass, failAt: l.failAt, taps: l.taps.slice(), seq: (l.seq || []).slice(), levels: { X: mini.level.X, O: mini.level.O } }; break; }
+    case 'plinko': { const l = mini.last; flash.plinko = { slot: l.slot, path: l.path.slice(), bin: l.bin, pts: l.pts, hit: l.hit, bonus: l.bonus, next: mini.bonus, reset: l.reset, total: mini.pts[l.by] }; break; }
     case 'pong': { const l = mini.last; flash.pong = { aim: l.aim, power: l.power, x: l.x, y: l.y, cup: l.cup, rim: l.rim, sunk: l.sunk, cups: { X: mini.cups.X.slice(), O: mini.cups.O.slice() } }; break; }
     case 'trivia': { const l = mini.last; flash.trivia = Object.assign({ q: l.q, cat: l.cat, opts: l.opts.slice(), crossed: (l.crossed || []).slice(), picked: l.picked, correct: l.correct, counts: { X: mini.right.X, O: mini.right.O } }, l.correct ? { right: l.right } : {}, l.auto ? { auto: true } : {}); break; }   // (a wrong pick: no right answer in it)
     case 'oddone': { const l = mini.last; flash.odd = { n: l.n, tiles: l.tiles.slice(), pos: l.pos, picked: l.picked, correct: l.correct, finds: { X: mini.finds.X, O: mini.finds.O } }; break; }
@@ -3732,9 +3896,9 @@ function playMs(f, winLen) {
     case 'bj':      return bjMs(f.bj) + (won ? 600 : 0);
     case 'bus':     return BUST.pre + BUST.draw + BUST.flip + BUST.mark + (f.bus && f.bus.right ? BUST.fly : 0) + (won ? 600 : 0);
     case 'rl':      return RLT.spin + RLT.settle + RLT.hold + (won ? 600 : 0);
-    case 'craps':   return (f.craps ? crapsTimes(f.craps.rolls, f.craps.point).end : CRAPS.roll) + CRAPS.hold + (won ? 600 : 0);
+    case 'craps':   return !f.craps ? CRAPS.roll + CRAPS.hold : f.craps.kind === 'stop' ? CRAPS.stop : !f.craps.roll ? crapsTimes(f.craps.rolls, f.craps.point).end + CRAPS.hold + (won ? 600 : 0) : CRAPS.roll + (f.craps.result === 'point' ? CRAPS.puck : 0) + CRAPS.hold + (won ? 600 : 0);   // (a flash from before: the whole round)
     case 'takeover': return TAKEOVER_MS.place + TAKEOVER_MS.flip + (won ? 900 : 0);
-    case 'seating': return PLACE_MS.mark + (f.seat && f.seat.z != null ? PLACE_MS.walk : 0) + PLACE_MS.hold + (won ? 600 : 0);
+    case 'seating': return PLACE_MS.mark + (f.seat && (f.seat.z != null || f.seat.left) ? PLACE_MS.walk : 0) + PLACE_MS.hold + (won ? 600 : 0);
     case 'districts': return PLACE_MS.mark + PLACE_MS.hold + (won ? 900 : 0);
     case 'shelves': return PLACE_MS.mark + (f.shelf && f.shelf.grey != null ? PLACE_MS.drop : 0) + PLACE_MS.hold + (won ? 600 : 0);
     case 'patterns': return PATTERNS.reveal + (won ? 600 : 0);
@@ -3747,16 +3911,15 @@ function playMs(f, winLen) {
     case 'pool':    return (f.phys ? f.phys.ms : 3000) + POOLG.hold + (won ? 600 : 0);
     case 'bowling': return (f.phys ? f.phys.ms : 3000) + BOWLG.hold + (won ? 600 : 0) + (f.phys && f.phys.strike ? 500 : 0);
     case 'bullseye': return (f.bull ? bullsAim(f.bull).fly : 0) + BULLT.fly + BULLT.hold + (won ? 600 : 0);   // (the phone that threw skips the aim: it has just watched its own lines)
-    case 'echo':    return ECHO.result + (won ? 600 : 0);
+    case 'echo':    return (f.echo && !f.timeout ? echoAim(f.echo).end : 0) + ECHO.result + (won ? 600 : 0);   // (the phone that tapped skips the replay: it has just played it)
     case 'plinko':  return PLINKO.rows * PLINKO.step + PLINKO.land + (won ? 600 : 0);
     case 'pong':    return PONG.fly + PONG.hold + (won ? 600 : 0);
     case 'trivia':  return TRIVIA.reveal + (won ? 600 : 0);
-    case 'oddone':  return ODD.reveal + (won ? 600 : 0);
+    case 'oddone':  return (f.odd && !f.timeout ? ODD.show + ODD.pause : 0) + ODD.reveal + (won ? 600 : 0);   // (the phone that picked skips the replay)
   }
   return 500;
 }
 // Bullseye: the dart flies in and lands where the lines crossed, then the points hold a moment.
-// Echo: the attempt's result shows (the pattern itself plays before the move, when the square opens).
 const BULLT = { fly: 380, hold: 800, slide: 450, gap: 280 };
 // Someone else's throw, as their screen looked: the sideways line sweeps from the left edge and stops where
 // they stopped it (straight there when that is past 40% across, else across and back), a beat, then the
@@ -3776,6 +3939,12 @@ const FLOOD_MS = { base: 650, wave: 120 };
 // grey mark or the block drops in; a moment's hold.
 const PLACE_MS = { mark: 350, walk: 900, drop: 500, hold: 400 };   // slide: the board gliding to its next spot, as the next throw is lined up
 ECHO.result = 650;
+// Echo: someone else's attempt, as their screen showed it: the pattern step by step, a beat, then their taps
+// one by one (up to the slip); then the result. ms from the move: tap(k) when tap k lands, end when the result shows.
+function echoAim(e) {
+  const n = (e.seq || []).length, t0 = n * ECHO.step + ECHO.gap, k = (e.taps || []).length;
+  return { play: n * ECHO.step, t0, tap: i => t0 + i * ECHO.tap, end: k ? t0 + (k - 1) * ECHO.tap + ECHO.gap : n ? n * ECHO.step : 0 };
+}
 // Blackjack: each card dealt slides in and turns over; at the end of a hand the hole card turns, the dealer
 // draws card by card, and the result shows. Ride the Bus: the guess shows (the chosen answer lights up,
 // when it is someone else's: the computer's, the other phone's, or a timed-out one), the card slides off
@@ -3869,4 +4038,4 @@ function matchStats(st) {
 }
 
 // Node (the Cloud Functions and the tests): the same names as a module.
-if (typeof module !== "undefined" && module.exports) module.exports = { PHYS_TYPES, PHYSICS, setPhysics, physicsReady, GOLF, POOLG, BOWLG, poolMine, physShot, wrapAim, aimTo, poolSpot, physRun, golfClear, golfNext, golfAhead, golfLeft, physLast, physScore, physCandidates, physAi, physRandom, physNeeds, RUN_TYPES, RUN_DEFAULTS, RUN_LIMITS, RUN, RUNT, RUN_CFG, r2, runNorm, setRunConfig, runConfig, runSpeed, runSecs, runAfter, runGrace, DASH_OBS, DASH, LANE, FLAP, CHOP, PATTERNS, patKey, patRot, patFits, patSolve3, patFeature, patFitting, patNumTemplate, patNumMisses, patNumPuzzle, patDotsTemplate, patShapePuzzle, patPuzzle, patNum, patDots, patShape, patPick, patRange, WHEELS, WHEELS_SAFE, WHEEL_DEFAULTS, WHEEL_LIMITS, WHEELT, WHEEL_CFG, wheelsNorm, setWheelsConfig, wheelsConfig, WHEEL_MEMO, wheelsTable, wheelSpin, SNIFF, SNIFF_DIRS, sniffDist, sniffStep, sniffDirs, sniffCands, sniffPick, runCave, caveHeight, caveWalls, runWalls, weightedPick, laneRow, runCourse, runCheck, runAuto, gaussOf, normCdf, runAiMean, runAi, runNeeds, runLog, runStart, runJump, runRelease, runLane, runLaneX, overlap, runHit, runStep, runResult, TEST_TYPES, isReleased, releasedTypes, allowedTypes, restrictGames, dealable, CRAPS, crapsRound, crapsTimes, TAKE, takeNear, takeCount, takeApply, takeSearch, FLOOD, floodNear, floodWaves, floodGain, floodApply, floodSearch, raceNeeds, TAKEOVER_MS, FLOOD_MS, PLACE_MS, SEAT, seatTable, seatMate, seatTables, seatZ, seatPick, DIST, r1d, distClip, distMap, distTo, distTally, distEval, distSearch, SHELF, shelfOn, shelfPick, ROAD, ROAD_SEGS, roadLongest, roadPick, randomEmpty, BULLS, BULLT, bullsLeg, bullsAim, BULL_DEFAULTS, BULL_LIMITS, BULL_CFG, bullsNorm, setBullsConfig, bullsConfig, bullsSpot, bullsScore, bullsRates, r3, ECHO, PLINKO, PONG, TRIVIA, ODD, bullsPeriod, echoSeqs, plinkoPath, plinkoOdds, pongThrow, pongAimAt, pongDist, setTriviaBank, triviaReady, triviaDeal, triviaUsed, oddGrid, cpuEcho, CARD, BJ, BUS, RL, BJT, BUST, RLT, BUS_AVG, cardDeck, isCard, cardRank, cardRed, cardName, bjValue, bjTotal, bjNatural, bjDealerPlay, bjOutcome, bjStrategy, bjPlan, bjMs, busRight, busDeck, busOdds, rlRed, rlBet, rlCovers, tttOpen, lineOpen, majorityResult, STYLE0, huntSize, huntBand, huntClue, normTimer, resignLocal, TYPES, OLD_TYPES, SNL, BUMP, snlRow, snlBoard, snlValid, snlExpected, coinPick, markCoins, coinMarksFor, normLocal, seatLocal, INFO, C4, HP, MM, HEX_N, HILO, CANDY, NAME_MAX, COINS, RISKY, BS, HUNT, DICE_GOAL, MEMORY, LINES, WORDS5, WORDS_HANG, VALID5, other, makeRng, needRng, randInt, randomType, shuffle, memoryDeck, wordleMarks, hexNeighbors, hexPath, canMove, hpMoves, mmFeedback, mmValid, MM_ALL, mmAll, mmCode, mmCandidates, mmBestGuess, hpGoalRow, upgradeMini, anyMove, huntDist, candyTrack, newMini, pickType, newSquare, CPU_NAME, defaultSetup, cpuSide, normSetup, syncNames, enabledGames, TIMER_OPTIONS, newTimer, playerName, newState, startMatch, newMatch, findRun, applyMove, AI, publicMini, wordleCandidates, hangmanCandidates, bsCandidates, bsPlacements, bsShip, huntCandidates, WINDOWS, windowsOf, lineNeeds, c4Playable, hexDist, candyExpected, COIN_NEEDS, needsOf, memoryPair, winChance, tttMinimax, c4Drop, c4Eval, C4_ORDER, c4Search, C4_DEPTH, c4Moves, HP_MEMO, hpSolve, hpMovesValued, hpNeeds, hexMoves, threatScore, pickValued, localBest, squareValue, moveGain, cpuMove, VALID5_LIST, randomLegalMove, timeoutMove, mainResult, playMove, endFlash, leaveSquare, RECENT_MAX, MATCH_FIELDS, secretOf, hideMini, matchRecord, fullState, settle, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, newOnlineMatch, PLAY, diceSlot, playMs, replayMs, armClock, applyOnlineResign, matchStats };
+if (typeof module !== "undefined" && module.exports) module.exports = { PHYS_TYPES, PHYSICS, setPhysics, physicsReady, GOLF, POOLG, BOWLG, poolMine, poolRank, poolIds, poolOwns, poolFree, physShot, wrapAim, aimTo, poolSpot, physRun, golfClear, golfNext, golfAhead, golfLeft, physLast, physScore, physCandidates, physAi, physRandom, physNeeds, RUN_TYPES, RUN_DEFAULTS, RUN_LIMITS, RUN, RUNT, RUN_CFG, LANE_TIGHT, LANE_NEAR, r2, runNorm, setRunConfig, runConfig, runSpeed, runSecs, runAfter, runGrace, DASH_OBS, DASH, LANE, FLAP, CHOP, PATTERNS, patKey, patRot, patFits, patSolve3, patFeature, patFitting, patNumTemplate, patNumMisses, patNumPuzzle, patDotsTemplate, patShapePuzzle, patPuzzle, patNum, patDots, patShape, patPick, patRange, WHEELS, WHEEL_SEGS, WHEELS_SAFE, WHEEL_DEFAULTS, WHEEL_LIMITS, WHEELT, WHEEL_CFG, wheelsNorm, setWheelsConfig, wheelsConfig, wheelAvg, wheelsCheck, wheelsDeal, WHEEL_MEMO, wheelsTable, wheelSpin, SNIFF, SNIFF_DIRS, sniffDist, sniffStep, sniffDirs, sniffCands, sniffPick, runCave, caveHeight, caveWalls, runWalls, weightedPick, laneRow, runCourse, runCheck, runAuto, gaussOf, normCdf, runAiMean, runAi, runNeeds, runLog, runStart, runJump, runRelease, runLane, runLaneX, overlap, runHit, runStep, runResult, TEST_TYPES, isReleased, releasedTypes, allowedTypes, restrictGames, dealable, CRAPS, CRAPS_MAKE, crapsRound, crapsTimes, TAKE, takeNear, takeCount, takeApply, takeSearch, FLOOD, floodNear, floodWaves, floodGain, floodApply, floodSearch, raceNeeds, TAKEOVER_MS, FLOOD_MS, PLACE_MS, SEAT, seatTable, seatMate, seatTables, seatZ, seatNext, seatPick, DIST, r1d, distClip, distMap, distTo, distTally, distEval, distSearch, SHELF, shelfOn, shelfPick, ROAD, ROAD_SEGS, roadLongest, roadPick, randomEmpty, BULLS, BULLT, bullsLeg, bullsAim, BULL_DEFAULTS, BULL_LIMITS, BULL_CFG, bullsNorm, setBullsConfig, bullsConfig, bullsSpot, bullsScore, bullsRates, r3, ECHO, PLINKO, PONG, TRIVIA, ODD, bullsPeriod, echoSeqs, echoBase, echoSeq, echoAim, plinkoPath, plinkoOdds, PLINKO_DEFAULTS, PLINKO_LIMITS, PLINKO_CFG, plinkoNorm, setPlinkoConfig, plinkoConfig, plinkoPegs, plinkoBonus, plinkoTouches, plinkoWays, plinkoDist, plinkoExp, plinkoOpen, pongThrow, pongAimAt, pongDist, setTriviaBank, triviaReady, triviaDeal, triviaUsed, oddGrid, cpuEcho, CARD, BJ, BUS, RL, BJT, BUST, RLT, BUS_AVG, cardDeck, isCard, cardRank, cardRed, cardName, bjValue, bjTotal, bjNatural, bjDealerPlay, bjOutcome, bjStrategy, bjPlan, bjMs, busRight, busDeck, busOdds, rlRed, rlBet, rlCovers, tttOpen, lineOpen, majorityResult, STYLE0, huntSize, huntBand, huntClue, normTimer, resignLocal, TYPES, OLD_TYPES, SNL, BUMP, snlRow, snlBoard, snlValid, snlExpected, coinPick, markCoins, coinMarksFor, normLocal, seatLocal, INFO, C4, HP, MM, HEX_N, HILO, CANDY, NAME_MAX, COINS, RISKY, BS, HUNT, DICE_GOAL, MEMORY, LINES, WORDS5, WORDS_HANG, VALID5, other, makeRng, needRng, randInt, randomType, shuffle, memoryDeck, wordleMarks, hexNeighbors, hexPath, canMove, hpMoves, mmFeedback, mmValid, MM_ALL, mmAll, mmCode, mmCandidates, mmBestGuess, hpGoalRow, upgradeMini, anyMove, huntDist, candyTrack, newMini, pickType, newSquare, CPU_NAME, defaultSetup, cpuSide, normSetup, syncNames, enabledGames, TIMER_OPTIONS, newTimer, playerName, newState, startMatch, newMatch, findRun, applyMove, AI, publicMini, wordleCandidates, hangmanCandidates, bsCandidates, bsPlacements, bsShip, huntCandidates, WINDOWS, windowsOf, lineNeeds, c4Playable, hexDist, candyExpected, COIN_NEEDS, needsOf, memoryPair, winChance, tttMinimax, c4Drop, c4Eval, C4_ORDER, c4Search, C4_DEPTH, c4Moves, HP_MEMO, hpSolve, hpMovesValued, hpNeeds, hexMoves, threatScore, pickValued, localBest, squareValue, moveGain, cpuMove, VALID5_LIST, randomLegalMove, timeoutMove, mainResult, playMove, endFlash, leaveSquare, RECENT_MAX, MATCH_FIELDS, secretOf, hideMini, matchRecord, fullState, settle, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, newOnlineMatch, PLAY, diceSlot, playMs, replayMs, armClock, applyOnlineResign, matchStats };

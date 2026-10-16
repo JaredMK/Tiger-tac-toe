@@ -50,7 +50,7 @@ function flyChopper(mini, lag) {
 test('flap: posts every 9-13 m, each gap of the mix\'s size, its middle within reach of the last one\'s and clear of the ground and sky', () => {
   for (let s = 1; s <= 60; s++) {
     const mini = square('flap', s * 101), course = E.runCourse(mini, 'X');
-    assert.ok(course.length > 60, `${course.length} posts`);
+    assert.ok(course.length > 40 && course.length < 70, `${course.length} posts (600 m)`);
     course.forEach((o, k) => {
       assert.ok(Object.values(E.FLAP.gaps).includes(o.gh));
       assert.ok(o.gy - o.gh / 2 >= E.FLAP.margin - 1e-6 && o.gy + o.gh / 2 <= E.FLAP.h - E.FLAP.margin + 1e-6, 'clear of the ground and the sky');
@@ -92,8 +92,8 @@ test('flap and chopper: a tap flaps (about 1.2 m up), the sky stops the bird, th
 });
 
 test('flap and chopper: the grace stretch is safe with no input, from the start or a saved distance; the crash after it is one the check accepts', () => {
-  for (const type of ['flap', 'chopper']) for (let s = 1; s <= 15; s++) for (const from of [0, 137.5, 480, 905]) {
-    const mini = square(type, s * 31, from), sim = E.runStart(mini, 'X');
+  for (const type of ['flap', 'chopper']) for (let s = 1; s <= 15; s++) for (const f of [0, 0.1375, 0.48, 0.905]) {
+    const from = Math.round(f * E.runConfig(type).target * 10) / 10, mini = square(type, s * 31, from), sim = E.runStart(mini, 'X');
     while (!sim.crash && !sim.done && sim.d < from + sim.grace - 0.01) E.runStep(sim, 1 / 60);
     assert.equal(sim.crash, null, `${type} ${s} from ${from}: no crash in the grace stretch`);
     while (!sim.crash && !sim.done) E.runStep(sim, 1 / 60);

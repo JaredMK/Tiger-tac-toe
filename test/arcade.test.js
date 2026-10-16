@@ -111,29 +111,34 @@ test('bullseye: the computer lands a bullseye about 15%, the board 45% and misse
 });
 
 /* ===================================== Echo ===================================== */
-test('echo: four patterns of 4, 8, 11 and 14 per player, drawn once; an attempt is judged in order; a failed pattern plays again unchanged; beating all four wins', () => {
+test('echo: one 10-step pattern per square, shared by both players; the levels are its first 4, 6, 8 and 10 steps; an attempt is judged in order; a failed level plays again unchanged; beating all four wins', () => {
   const m = E.newMini('echo', lcg(2));
-  assert.deepEqual(m.seqs.X.map(s => s.length), [4, 8, 11, 14]); assert.deepEqual(m.seqs.O.map(s => s.length), [4, 8, 11, 14]);
-  assert.notDeepEqual(m.seqs.X, m.seqs.O, 'each player their own');
-  assert.ok(m.seqs.X.flat().every(k => k >= 0 && k < 4));
-  const s0 = m.seqs.X[0].slice();
+  assert.equal(m.base.length, 10); assert.equal(m.seqs, undefined, 'no pattern of each player\'s own');
+  assert.ok(m.base.every(k => k >= 0 && k < 4));
+  assert.deepEqual([0, 1, 2, 3].map(l => E.echoSeq(m, 'X', l)), [4, 6, 8, 10].map(n => m.base.slice(0, n)));
+  assert.deepEqual(E.echoSeq(m, 'O', 2), E.echoSeq(m, 'X', 2), 'the same for both players');
+  const s0 = E.echoSeq(m, 'X', 0);
   const wrong = s0.slice(0, 2).concat((s0[2] + 1) % 4);
   assert.deepEqual(E.applyMove(m, 'X', wrong), { ok: true, outcome: 'continue', note: 'fail' });
   assert.deepEqual([m.last.failAt, m.last.pass, m.level.X], [2, false, 0], 'wrong at the third step: no progress');
-  assert.deepEqual(m.seqs.X[0], s0, 'the same pattern waits for the next attempt');
+  assert.deepEqual(m.last.seq, s0, 'the attempt keeps the pattern it was at (for the replay)');
+  assert.deepEqual(E.echoSeq(m, 'X', 0), s0, 'the same pattern waits for the next attempt');
   assert.equal(E.applyMove(m, 'X', s0.slice(0, 3)).note, 'fail', 'short of the end: a fail');
   assert.equal(m.last.failAt, 3);
   assert.deepEqual(E.applyMove(m, 'X', s0), { ok: true, outcome: 'continue', note: 'pass' });
-  assert.equal(m.level.X, 1, 'on to the 8-step pattern');
+  assert.equal(m.level.X, 1, 'on to the 6-step pattern');
   assert.equal(E.applyMove(m, 'X', 'auto').note, 'fail', 'a timeout: a failed attempt');
-  assert.equal(m.last.len, 8);
-  for (const bad of [[0, 1, 2, 3, 4], [0, 0, 0, 0, 0, 0, 0, 0, 0], 'pass', 7, [-1]]) assert.equal(E.applyMove(m, 'X', bad).ok, false, `refused: ${JSON.stringify(bad)}`);
-  for (let l = 1; l < 4; l++) { const r = E.applyMove(m, 'X', m.seqs.X[l]); assert.equal(r.note, 'pass'); assert.equal(r.outcome, l < 3 ? 'continue' : 'win', `pattern ${l + 1}`); }
+  assert.equal(m.last.len, 6);
+  for (const bad of [[0, 1, 2, 3, 0, 1, 2], 'pass', 7, [-1], [4]]) assert.equal(E.applyMove(m, 'X', bad).ok, false, `refused: ${JSON.stringify(bad)}`);
+  for (let l = 1; l < 4; l++) { const r = E.applyMove(m, 'X', m.base.slice(0, [4, 6, 8, 10][l])); assert.equal(r.note, 'pass'); assert.equal(r.outcome, l < 3 ? 'continue' : 'win', `pattern ${l + 1}`); }
   assert.equal(m.level.X, 4); assert.equal(m.level.O, 0);
   assert.equal(E.applyMove(m, 'X', [0]).reason, 'done');
+  // a square dealt before the change keeps each player's own patterns
+  const old = { type: 'echo', level: { X: 0, O: 1 }, seqs: { X: E.echoSeqs(lcg(5)), O: E.echoSeqs(lcg(6)) }, last: null };
+  assert.equal(E.applyMove(old, 'O', old.seqs.O[1]).note, 'pass');
   // the computer's attempts: right as often as the length allows, and its taps come from the pattern
   const rng = lcg(9);
-  for (const [level, want] of [[0, 0.95], [1, 0.75], [2, 0.5], [3, 0.3]]) {
+  for (const [level, want] of [[0, 0.95], [1, 0.85], [2, 0.7], [3, 0.55]]) {
     let pass = 0;
     for (let k = 0; k < 1500; k++) {
       const mm = E.newMini('echo', lcg(k + 1)); mm.level.O = level;
@@ -145,17 +150,25 @@ test('echo: four patterns of 4, 8, 11 and 14 per player, drawn once; an attempt 
     assert.ok(Math.abs(pass / 1500 - want) < 0.05, `level ${level}: ${pass / 1500} passed (wanted ~${want})`);
   }
 });
+test('echo: someone else\'s attempt replays as it looked (the pattern, a beat, their taps), and the move\'s time includes it', () => {
+  const A = E.echoAim({ seq: [0, 1, 2, 3, 0, 1], taps: [0, 1, 3] });
+  assert.equal(A.play, 6 * E.ECHO.step); assert.equal(A.t0, A.play + E.ECHO.gap);
+  assert.deepEqual([0, 1, 2].map(A.tap), [A.t0, A.t0 + E.ECHO.tap, A.t0 + 2 * E.ECHO.tap]);
+  assert.equal(A.end, A.tap(2) + E.ECHO.gap, 'the result a beat after the last tap');
+  const st = E.newMatch(lcg(4), { games: Object.fromEntries(E.TYPES.map(t => [t, t === 'echo'])) });
+  E.playMove(st, 4, E.echoSeq(st.squares[4].mini, st.turn, 0), lcg(5));
+  assert.equal(st.flash.echo.seq.length, 4);
+  assert.equal(E.playMs(st.flash), E.echoAim(st.flash.echo).end + E.ECHO.result + (st.flash.kind === 'claim' ? 600 : 0));
+});
 
 /* ===================================== Plinko ===================================== */
 test('plinko: seven slots, six rows, seven bins; the path is drawn at the drop; the walls turn the chip inward; the odds from every slot', () => {
   const m = E.newMini('plinko', lcg(3));
-  assert.ok(m.win >= 0 && m.win < 7);
   const r = E.applyMove(m, 'X', 3, lcg(4));
   assert.equal(r.ok, true);
   assert.equal(m.last.path.length, 6);
   const x = 6 + m.last.path.reduce((t, right) => t + (right ? 1 : -1), 0);
   assert.equal(m.last.bin, x / 2, 'the bin is where the path leads');
-  assert.equal(r.outcome, m.last.bin === m.win ? 'win' : 'continue');
   for (let k = 0; k < 300; k++) { const mm = E.newMini('plinko', lcg(k)); E.applyMove(mm, 'O', k % 7, lcg(k * 7 + 1)); assert.ok(mm.last.bin >= 0 && mm.last.bin <= 6 && Number.isInteger(mm.last.bin), 'always a bin'); }
   for (const bad of [-1, 7, 2.5, 'x']) assert.equal(E.applyMove(m, 'X', bad).ok, false);
   // the odds: every row sums to one, the middle is the most likely from the middle, the walls pile up beside them
@@ -169,8 +182,71 @@ test('plinko: seven slots, six rows, seven bins; the path is drawn at the drop; 
   const rng = lcg(11), hit = new Array(7).fill(0), N = 20000;
   for (let k = 0; k < N; k++) hit[E.plinkoPath(3, rng).bin]++;
   hit.forEach((h, b) => assert.ok(Math.abs(h / N - E.plinkoOdds(3)[b]) < 0.02, `bin ${b}: ${h / N} (table ${E.plinkoOdds(3)[b]})`));
-  // the computer drops above the WIN bin
-  for (let w = 0; w < 7; w++) assert.equal(E.localBest({ type: 'plinko', win: w }, 'X', rng).move, w);
+});
+test('plinko: bins worth 5, 3, 3, 2, 2, 1, 1 in a random order per square; each player\'s own points, first to 12; the target from the config', () => {
+  const orders = new Set();
+  for (let k = 0; k < 200; k++) {
+    const m = E.newMini('plinko', lcg(k + 100));
+    assert.deepEqual(m.vals.slice().sort((a, b) => b - a), [5, 3, 3, 2, 2, 1, 1]);
+    orders.add(m.vals.join(''));
+    assert.deepEqual(m.pts, { X: 0, O: 0 }); assert.equal(m.target, 12);
+    assert.deepEqual(m.used, [false, false, false, false, false, false, false]);
+    assert.ok(m.bonus.r >= 2 && m.bonus.r <= 6 && m.bonus.x % 2 === (m.bonus.r - 1) % 2 && m.bonus.x >= 0 && m.bonus.x <= 12, 'the bonus peg is a peg, below the top row');
+  }
+  assert.ok(orders.size > 50, `the order is drawn per square (${orders.size} orders in 200)`);
+  E.setPlinkoConfig({ target: 20 }); assert.equal(E.newMini('plinko', lcg(1)).target, 20, 'the admin\'s target, copied into the square');
+  E.setPlinkoConfig({ target: 999 }); assert.equal(E.newMini('plinko', lcg(1)).target, 12, 'out of range: the default');
+  E.setPlinkoConfig(null); assert.equal(E.newMini('plinko', lcg(1)).target, 12);
+  // points add up per player: the bin's value, +2 when the chip touched the bonus peg
+  const m = E.newMini('plinko', lcg(7)), rng = lcg(8);
+  let X = 0, O = 0, turn = 'X';
+  for (let k = 0; k < 40 && !(X >= 12 || O >= 12); k++) {
+    const slot = E.plinkoOpen(m)[0], b = { ...m.bonus }, r = E.applyMove(m, turn, slot, rng);
+    assert.equal(r.ok, true);
+    const touched = E.plinkoTouches(slot, m.last.path)[b.r - 1] === b.x;
+    assert.equal(m.last.hit, touched); assert.equal(m.last.pts, m.vals[m.last.bin] + (touched ? 2 : 0));
+    if (turn === 'X') X += m.last.pts; else O += m.last.pts;
+    assert.deepEqual(m.pts, { X, O });
+    assert.equal(r.outcome, m.pts[turn] >= 12 ? 'win' : 'continue');
+    if (touched) assert.notDeepEqual(m.bonus, b, 'a new bonus peg once hit'); else assert.deepEqual(m.bonus, b, 'the bonus peg stays until hit');
+    turn = turn === 'X' ? 'O' : 'X';
+  }
+  assert.ok(X >= 12 || O >= 12, 'someone reached 12');
+});
+test('plinko: a slot used by either player is locked until all seven have been used, then they all reopen', () => {
+  const m = E.newMini('plinko', lcg(21)), rng = lcg(22);
+  m.target = 999;
+  for (const [k, slot] of [3, 0, 6, 1, 5, 2].entries()) {
+    assert.equal(E.applyMove(m, k % 2 ? 'O' : 'X', slot, rng).ok, true);
+    assert.equal(E.applyMove(m, k % 2 ? 'X' : 'O', slot, rng).reason, 'used', `slot ${slot}: locked for the other player too`);
+    assert.equal(m.last.reset, false);
+  }
+  assert.deepEqual(E.plinkoOpen(m), [4], 'one left');
+  assert.equal(E.applyMove(m, 'X', 4, rng).ok, true);
+  assert.equal(m.last.reset, true); assert.deepEqual(E.plinkoOpen(m), [0, 1, 2, 3, 4, 5, 6], 'all seven used: all open again');
+  for (let k = 0; k < 50; k++) { const mm = E.newMini('plinko', lcg(k)); mm.used = [true, true, false, true, true, false, true]; assert.ok([2, 5].includes(E.randomLegalMove(mm, 'X', lcg(k))), 'a random move (a timeout) only from an open slot'); }
+});
+test('plinko: the computer drops from the open slot with the most points to expect, the bonus peg counted', () => {
+  for (let k = 0; k < 300; k++) {
+    const m = E.newMini('plinko', lcg(k + 500));
+    m.used = Array.from({ length: 7 }, (_, s) => (k % 3 === 0 ? false : (s * 7 + k) % 4 === 0));
+    if (m.used.every(Boolean)) m.used[0] = false;
+    const open = E.plinkoOpen(m), plan = E.localBest(E.publicMini(m), 'X', lcg(k));
+    assert.ok(open.includes(plan.move), 'an open slot');
+    // the expectation by hand, every path counted
+    const exp = s => E.plinkoWays(s).reduce((t, w) => t + w.p * (m.vals[w.bin] + (E.plinkoTouches(s, w.path)[m.bonus.r - 1] === m.bonus.x ? 2 : 0)), 0);
+    assert.ok(Math.abs(exp(plan.move) - Math.max(...open.map(exp))) < 1e-9, `the best open slot (${plan.move}: ${exp(plan.move).toFixed(3)})`);
+  }
+  // the bonus peg counts: a peg straight below a slot two rows down is worth +1 on average from it
+  const m = E.newMini('plinko', lcg(9)); m.vals = [1, 1, 1, 1, 1, 1, 1]; m.bonus = { x: 6, r: 3 };
+  assert.ok(Math.abs(E.plinkoExp(m, 3) - 2) < 1e-9, 'half the paths from the middle touch it: 1 + 2 x 0.5');
+  assert.equal(E.localBest(E.publicMini(m), 'O', lcg(1)).move, 3);
+});
+test('plinko: a square from before (a WIN bin) becomes a points square', () => {
+  const old = { type: 'plinko', win: 2, last: { by: 'X', slot: 1, path: [true, true, true, true, true, true], bin: 2, win: true } };
+  E.upgradeMini(old);
+  assert.deepEqual(old.vals, [3, 3, 5, 2, 2, 1, 1]); assert.deepEqual(old.pts, { X: 0, O: 0 }); assert.equal(old.target, 12); assert.equal(old.win, undefined);
+  assert.equal(E.applyMove(old, 'X', 2, lcg(1)).ok, true);
 });
 
 /* ===================================== Cup Pong ===================================== */
@@ -376,6 +452,6 @@ test('the arcade games: random moves are legal, timeouts work, and matches of th
     const st2 = E.newMatch(lcg(5), { games: [t] });
     const r = E.playMove(st2, 0, E.randomLegalMove(st2.squares[0].mini, 'X', rng), rng);
     const ms = E.playMs(r.flash);
-    assert.ok(ms >= 500 && ms <= 3500, `${t}: plays in ${ms} ms`);
+    assert.ok(ms >= 500 && ms <= ({ bullseye: 6500, echo: 10500 }[t] || 3500), `${t}: plays in ${ms} ms`);   // (Bullseye and Echo include someone else's aim or attempt, replayed)
   }
 });

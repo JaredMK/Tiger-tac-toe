@@ -35,7 +35,7 @@ test('runners: one difficulty config per game, checked value by value, copied in
   E.setRunConfig({ dash: { target: 600, v0: 12, ramp: 2, gapMin: 30, gapMax: 20, mix: { rock: 50, crate: 0, spike: 0, flyer: 50, pair: 0 } }, lane: { target: 'x', v0: 99, ramp: -1, gapMin: 40, mix: { one: 100, two: 0 } } });
   const d = E.runConfig('dash'), l = E.runConfig('lane');
   assert.deepEqual(d, { target: 600, v0: 12, ramp: 2, gapMin: 30, gapMax: 32, mix: { rock: 50, crate: 0, spike: 0, flyer: 50, pair: 0 } }, 'the values as given; a gap range that is backwards is opened up');
-  assert.deepEqual(l, { target: 1000, v0: 18, ramp: 1.8, gapMin: 40, gapMax: 42, mix: { one: 100, two: 0 } }, 'a value off its range, or missing, is the default (and a default spacing below the minimum given is opened up)');
+  assert.deepEqual(l, { target: 1000, v0: 27, ramp: 2.7, gapMin: 40, gapMax: 42, mix: { one: 100, two: 0 } }, 'a value off its range, or missing, is the default (and a default spacing below the minimum given is opened up)');
   const b = mini('dash', 'cfg-b');
   assert.equal(b.cfg.target, 600, 'a new square plays by the new config');
   assert.equal(a.cfg.target, 1000, 'the square dealt earlier keeps its own');
@@ -149,13 +149,24 @@ test('dash: a pair needs a well-timed long jump (or two quick ones); a single ta
   assert.ok(E.runCourse(m, 'O').some(o => o.pair), 'pairs are part of the course');
 });
 
-test('lane rush, harder: twice the first starting speed and a quarter more cars, through the config; a driver seeing only the screen, a quarter-second late, still gets through', () => {
+test('lane rush, harder again: half as fast again and about a third more cars, through the config, a lane always open; a driver seeing only the screen, a quarter-second late, still gets through', () => {
   E.setRunConfig(null);
   const cfg = E.runConfig('lane');
-  assert.deepEqual([cfg.v0, cfg.ramp], [18, 1.8], 'the starting speed doubled (9 to 18 m/s); the ramp as it was');
+  assert.deepEqual([cfg.v0, cfg.ramp], [27, 2.7], 'half as fast again (18 to 27 m/s, the ramp likewise)');
   const count = c => { let cars = 0; for (let k = 0; k < 300; k++) { const m = mini('lane', 'traffic' + k); m.cfg = c; for (const o of E.runCourse(m, 'X')) cars += o.cars.filter(Boolean).length; } return cars / 300; };
-  const ratio = count(cfg) / count(Object.assign({}, cfg, { v0: 9, gapMin: 24, gapMax: 44 }));
-  assert.ok(ratio > 1.2 && ratio < 1.3, `a quarter more cars a course (x${ratio.toFixed(2)})`);
+  const ratio = count(cfg) / count({ target: 1000, v0: 18, ramp: 1.8, gapMin: 18.8, gapMax: 34.4, mix: { one: 55, two: 45 } });
+  assert.ok(ratio > 1.25 && ratio < 1.5, `about a third more cars a course (x${ratio.toFixed(2)})`);
+  // every row leaves a lane open, one the car can reach from wherever it passed the row before in the time there is
+  for (let k = 0; k < 200; k++) {
+    const m = mini('lane', 'reach' + k), rows = E.runCourse(m, 'X');
+    rows.forEach((r, i) => {
+      const open = [0, 1, 2].filter(l => !r.cars[l]); assert.ok(open.length >= 1, 'a lane open');
+      if (!i) return;
+      const was = [0, 1, 2].filter(l => !rows[i - 1].cars[l]), t = E.runSecs(m.cfg, rows[i - 1].at, r.at);
+      if (t < E.LANE_TIGHT) assert.ok(was.every(q => open.includes(q)), `rows ${t.toFixed(2)} s apart: no change needed`);
+      else if (t < E.LANE_NEAR) assert.ok(was.every(q => open.some(o => Math.abs(o - q) <= 1)), `rows ${t.toFixed(2)} s apart: one change at most from anywhere`);
+    });
+  }
   // the driver: sees what the page shows (34 m of road, the car 82% down: 27.9 m ahead), acts 0.25 s late
   const VIEW = 0.82 * 34, react = 0.25;
   const drive = m => {
@@ -177,9 +188,9 @@ test('lane rush, harder: twice the first starting speed and a quarter more cars,
   let fin = 0;
   for (let k = 0; k < 40; k++) { const s = drive(mini('lane', 'react' + k)); if (s.done) fin++; }
   assert.equal(fin, 40, `every course driven to the finish (${fin}/40)`);
-  // at the finish line's speed a row is still on screen well over a reaction and a lane change before the car reaches it
+  // at the finish line's speed a row is still on screen over a reaction and a lane change before the car reaches it
   const vEnd = E.runSpeed(cfg, cfg.target);
-  assert.ok(VIEW / vEnd > react + 2 * E.LANE.switchSecs, `${(VIEW / vEnd).toFixed(2)} s of warning at ${vEnd} m/s`);
+  assert.ok(VIEW / vEnd > react + E.LANE.switchSecs, `${(VIEW / vEnd).toFixed(2)} s of warning at ${vEnd} m/s`);
 });
 
 test('lane rush: the car drives on; a car ahead in its lane is a crash; a change into a car is a crash; a change away in time passes', () => {

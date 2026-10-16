@@ -24,7 +24,10 @@ test('admin page: the runners and their default tuning are the engine\'s', () =>
   const mix = literal('RUN_MIX');
   for (const t of E.RUN_TYPES) assert.deepEqual(mix[t].map(([k]) => k).sort(), Object.keys(E.RUN_DEFAULTS[t].mix).sort(), `${t}: a field for each kind`);
 });
-test('admin page: Risk Wheels\' default tuning is the engine\'s', () => {
+test('admin page: Risk Wheels\' and Plinko\'s default tuning are the engine\'s', () => {
   assert.deepEqual(literal('WHEEL_DEFAULTS'), E.WHEEL_DEFAULTS);
-  assert.deepEqual(literal('WHEEL_NAMES').map(([w]) => w), E.WHEELS);
+  const fields = literal('WHEEL_FIELDS');
+  assert.deepEqual(fields.map(([k]) => k).sort(), Object.keys(E.WHEEL_DEFAULTS).sort(), 'a field for each setting');
+  for (const [k, , lo, hi] of fields) assert.deepEqual([lo, hi], E.WHEEL_LIMITS[k], `${k}: the engine's range`);
+  assert.deepEqual(literal('PLINKO_DEFAULTS'), E.PLINKO_DEFAULTS);
 });

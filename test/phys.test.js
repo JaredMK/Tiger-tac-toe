@@ -61,22 +61,22 @@ test('golf: the ball drops in the cup only when slow enough, else it lips out; t
   const m = mini('golf', 'cup'); m.hole = 0;
   const cup = P.HOLES[0].cup;
   m.balls.X = [cup[0], cup[1] + 36]; m.balls.O = [90, 150];
-  const soft = E.applyMove(JSON.parse(JSON.stringify(m)), 'X', { aim: 0, power: 0.45 });
+  const soft = E.applyMove(JSON.parse(JSON.stringify(m)), 'X', { aim: 0, power: 0.7 });
   assert.deepEqual([soft.outcome, soft.note, soft.winner], ['win', 'holed', 'X'], 'a soft putt drops');
-  const hard = JSON.parse(JSON.stringify(m)), hr = E.applyMove(hard, 'X', { aim: 0, power: 0.9 });
+  const hard = JSON.parse(JSON.stringify(m)), hr = E.applyMove(hard, 'X', { aim: 0, power: 1 });
   assert.equal(hr.outcome, 'continue'); assert.equal(hr.note, 'lip', 'a hard one lips out');
   assert.ok(hard.last.events.some(e => e.k === 'lip') && !hard.holed.X && hard.balls.X[1] !== m.balls.X[1]);
   assert.equal(hard.shots.X, 1);
   // the other ball, sitting by the cup, knocked in: the square goes to its owner
   const knock = mini('golf', 'knock'); knock.hole = 0;
   knock.balls.O = [cup[0], cup[1] + 7]; knock.balls.X = [cup[0], cup[1] + 30];
-  const kr = E.applyMove(knock, 'X', { aim: 0, power: 0.32 });
+  const kr = E.applyMove(knock, 'X', { aim: 0, power: 0.55 });
   assert.equal(kr.outcome, 'win'); assert.equal(kr.winner, 'O', `O's ball went in first (${kr.note})`);
   assert.ok(knock.holed.O);
   for (const bad of [null, 'x', { aim: 'a', power: 0.5 }, { aim: 0, power: 1.5 }, { aim: 4, power: 0.5 }]) assert.equal(E.applyMove(mini('golf', 'b'), 'X', bad).ok, false);
 });
 
-test('golf: every hole is solved by the computer in 2-4 shots (its best candidate, no error)', () => {
+test('golf: every hole is solved by the computer in 2-5 shots (its best candidate, no error); a putt rolls at most about GOLF.reach', () => {
   for (let h = 0; h < P.HOLES.length; h++) {
     const m = mini('golf', 'solve' + h); m.hole = h; const tee = P.HOLES[h].tee; m.balls = { X: [tee[0] - 3, tee[1]], O: [tee[0] + 3, tee[1]] };
     let shots = 0, won = false;
@@ -88,9 +88,15 @@ test('golf: every hole is solved by the computer in 2-4 shots (its best candidat
       shots++;
       if (r.outcome === 'win') won = r.winner === 'X';
     }
-    assert.ok(won && shots >= 1 && shots <= 4, `${P.HOLES[h].name}: holed in ${shots} shots`);
+    assert.ok(won && shots >= 2 && shots <= 5, `${P.HOLES[h].name}: holed in ${shots} shots`);
     console.log(`${P.HOLES[h].name}: ${shots} shot${shots === 1 ? '' : 's'}`);
+    assert.ok(P.HOLES[h].walls.length + P.HOLES[h].bumpers.length >= 2 && P.HOLES[h].path.length >= 3, `${P.HOLES[h].name}: things in the way, and turns`);
   }
+  // the cap: the hardest putt across open ground rolls about GOLF.reach, under half the course
+  const open = mini('golf', 'cap'); open.hole = 0; open.balls = { X: [5, 155], O: [95, 158] };
+  const far = P.run('golf', Object.assign({}, open, { hole: 0 }), 'X', { aim: 0.02, power: 1 });
+  const rolled = 155 - (far.final.X ? far.final.X[1] : 0);
+  assert.ok(rolled < P.GOLF.h / 2 && rolled <= P.GOLF.reach + 6, `a full putt rolls ${rolled.toFixed(1)}`);
 });
 
 test('pool: the fixed layout; a pocketed ball is gone; own ball down means another shot; theirs counts for them; the black loses; a scratch returns the cue ball', () => {
@@ -116,6 +122,22 @@ test('pool: the fixed layout; a pocketed ball is gone; own ball down means anoth
   const r4 = E.applyMove(scratch, 'X', { aim: -Math.PI / 2, power: 0.5 });
   assert.deepEqual([r4.outcome, r4.note], ['continue', 'scratch']); assert.deepEqual(scratch.balls.cue, P.POOL.start.cue); assert.ok(!scratch.down.cue);
   assert.ok(scratch.last.scratch);
+  // ...and the other side gets a ball more, in their colour, on a free spot
+  assert.equal(scratch.last.added, 'o3'); assert.deepEqual(E.poolIds(scratch), ['cue', 'x1', 'x2', 'o1', 'o2', 'o3', 'black']);
+  const at = scratch.balls.o3, R = P.POOL.ballR;
+  for (const id of E.poolIds(scratch)) if (id !== 'o3' && !scratch.down[id]) assert.ok(Math.hypot(scratch.balls[id][0] - at[0], scratch.balls[id][1] - at[1]) > R * 2.5, `clear of ${id}`);
+  for (const [x, y, r] of P.POOL.pockets) assert.ok(Math.hypot(x - at[0], y - at[1]) > r + R * 2, 'away from the pockets');
+  assert.deepEqual(E.poolMine('O', scratch), ['o1', 'o2', 'o3']);
+  // it plays like the others: in the physics, and it counts for O when it goes down
+  const r4b = E.applyMove(scratch, 'O', { aim: 0, power: 0.2 });
+  assert.equal(r4b.ok, true); assert.ok(scratch.last.rec.ids.includes('o3'), 'the extra ball is in the shot');
+  const o3 = JSON.parse(JSON.stringify(scratch)); o3.balls.o3 = [12, 90]; o3.balls.cue = [50, 90]; o3.balls.x1 = [50, 30];
+  const r4c = E.applyMove(o3, 'X', { aim: -Math.PI / 2, power: 0.35 });
+  assert.deepEqual([r4c.note, o3.pocketed.O, o3.down.o3], ['theirs', 1, true], 'sunk by X: it counts for O');
+  // a second scratch by O: X gets x3
+  const s2 = JSON.parse(JSON.stringify(scratch)); s2.balls.cue = [8, 90];
+  E.applyMove(s2, 'O', { aim: -Math.PI / 2, power: 0.5 });
+  assert.equal(s2.last.added, 'x3'); assert.deepEqual(E.poolMine('X', s2), ['x1', 'x2', 'x3']);
   // the last own ball: the square
   const last = JSON.parse(JSON.stringify(m)); last.pocketed.X = 1; last.down.x2 = true; last.balls.x1 = [12, 90]; last.balls.cue = [50, 90];
   const r5 = E.applyMove(last, 'X', { aim: -Math.PI / 2, power: 0.35 });
@@ -142,7 +164,14 @@ test('pool: balls never leave the table nor end overlapping; pockets take what r
     pocketed += r.result.pocketed.length;
     for (const id of r.result.pocketed) assert.equal(r.final[id], null, 'a pocketed ball is gone');
   }
-  assert.ok(pocketed > 3, `hard shots pocket something now and then (${pocketed})`);
+  // the pockets are about 1.6 times the ball across: aimed shots (the computer's) still find them
+  for (const [, , r] of P.POOL.pockets) assert.ok(Math.abs(2 * r / (2 * P.POOL.ballR) - 1.6) < 0.05, `a pocket ${2 * r} across, the ball ${2 * P.POOL.ballR}`);
+  let aimed = 0;
+  for (let g = 0; g < 4; g++) {                                // the computer's shots through a few racks
+    const m = mini('pool', 'aim' + g); let turn = 'X';
+    for (let k = 0; k < 12; k++) { const ai = E.physAi(m, turn, rng), r = E.applyMove(m, turn, ai.move, rng); aimed += m.last.own + m.last.theirs; if (r.outcome === 'win') break; if (!r.again) turn = turn === 'X' ? 'O' : 'X'; }
+  }
+  assert.ok(aimed + pocketed > 3, `aimed shots pocket something now and then (${aimed} in up to 48, and ${pocketed} from 40 random)`);
 });
 
 test('bowling: a fresh rack of ten every roll; the pins down go on the roller\'s total; a strike is ten; a wide roll is a gutter ball; 25 takes the square', () => {

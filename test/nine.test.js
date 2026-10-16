@@ -38,29 +38,58 @@ test('craps: the come-out roll wins on 7 or 11, loses on 2, 3 or 12; anything el
   assert.equal(r([4, 2], [1, 1], [6, 5], [3, 3]).result, 'win', 'point 6: 2 and 11 mean nothing after the come-out');
 });
 
-test('craps: about 49% of rounds win (244 in 495); first to 3 round wins; a loss takes nothing away; a move is the whole round', () => {
+test('craps: about 49% of rounds win (244 in 495) rolled to the end; first to 3 round wins; a loss takes nothing away; a move is one roll', () => {
   const rng = lcg(5); let w = 0, rolls = 0; const N = 100000;
   for (let k = 0; k < N; k++) { const x = E.crapsRound(rng); if (x.result === 'win') w++; rolls += x.rolls.length; }
   assert.ok(Math.abs(w / N - 244 / 495) < 0.006, `win odds ${(w / N).toFixed(4)} (wanted 0.4929)`);
   assert.ok(Math.abs(rolls / N - 3.376) < 0.05, `about 3.4 rolls a round (${(rolls / N).toFixed(2)})`);
   const m = E.newMini('craps', lcg(1));
-  assert.deepEqual(m.wins, { X: 0, O: 0 });
-  assert.deepEqual(E.applyMove(m, 'X', 'roll', dice([1, 1])), { ok: true, outcome: 'continue', note: 'lost' });
+  assert.deepEqual(m.wins, { X: 0, O: 0 }); assert.equal(m.point, null);
+  assert.deepEqual(E.applyMove(m, 'X', 'roll', dice([1, 1])), { ok: true, outcome: 'continue', note: 'lost' }, 'craps on the come-out');
   assert.deepEqual([m.wins.X, m.rounds.X], [0, 1], 'a loss: nothing taken away');
   assert.equal(E.applyMove(m, 'X', 'roll', dice([3, 4])).note, 'won'); assert.equal(m.wins.X, 1);
-  assert.deepEqual(E.applyMove(m, 'O', 'auto', dice([2, 2], [2, 2])), { ok: true, outcome: 'continue', note: 'won' }, 'a timeout rolls the round to its end');
-  assert.deepEqual(E.applyMove(m, 'X', 'roll', dice([5, 6])), { ok: true, outcome: 'continue', note: 'won' }, 'two rounds: not yet');
+  assert.equal(E.applyMove(m, 'X', 'stop').ok, false, 'no Stop without a point');
+  // a point: the roller chooses; a roll that is neither the point nor a 7: the choice again
+  assert.deepEqual(E.applyMove(m, 'O', 'roll', dice([2, 2])), { ok: true, outcome: 'continue', note: 'point', again: true });
+  assert.deepEqual([m.point, m.live], [4, 'O']);
+  assert.equal(E.applyMove(m, 'X', 'roll', dice([2, 2])).reason, 'busy', 'the other player waits while O chooses');
+  assert.deepEqual(E.applyMove(m, 'O', 'roll', dice([5, 4])), { ok: true, outcome: 'continue', note: 'stay', again: true });
+  assert.deepEqual(m.rolls, [[2, 2], [5, 4]]);
+  // Stop: the turn ends with the point on; X carries on the round: the point wins it for X
+  assert.deepEqual(E.applyMove(m, 'O', 'stop'), { ok: true, outcome: 'continue', note: 'stop' });
+  assert.deepEqual([m.point, m.live, m.last.kind], [4, null, 'stop']);
+  assert.deepEqual(E.applyMove(m, 'X', 'roll', dice([1, 3])), { ok: true, outcome: 'continue', note: 'won' }, 'X rolls O\'s point: X wins the round');
+  assert.equal(m.last.inherited, true); assert.deepEqual([m.wins.X, m.wins.O, m.point], [2, 0, null]);
+  // an inherited point and a 7: sevens out, nobody scores; the next roll is a come-out again
+  E.applyMove(m, 'O', 'roll', dice([4, 4])); E.applyMove(m, 'O', 'stop');
+  assert.deepEqual(E.applyMove(m, 'X', 'roll', dice([3, 4])), { ok: true, outcome: 'continue', note: 'lost' }, 'a 7 on the inherited point: seven out');
+  assert.deepEqual([m.wins.X, m.wins.O, m.point], [2, 0, null]);
+  assert.deepEqual(E.applyMove(m, 'O', 'roll', dice([5, 6])), { ok: true, outcome: 'continue', note: 'won' }, 'the come-out again: 11 wins');
   assert.deepEqual(E.applyMove(m, 'X', 'roll', dice([6, 1])), { ok: true, outcome: 'win', note: 'won' }, 'three rounds: the square');
   for (const bad of ['stand', 3, null]) assert.equal(E.applyMove(E.newMini('craps', lcg(2)), 'X', bad).ok, false);
-  // the flash carries every roll and the point; the playback takes each roll in turn
-  const st = E.newMatch(lcg(3), { games: ['craps'] });
-  E.playMove(st, 0, 'roll', dice([3, 3], [1, 2], [6, 6], [2, 4]));
-  assert.deepEqual(st.flash.craps.rolls, [[3, 3], [1, 2], [6, 6], [2, 4]]); assert.equal(st.flash.craps.point, 6); assert.equal(st.flash.craps.result, 'win');
-  const t = E.crapsTimes(st.flash.craps.rolls, 6);
-  assert.deepEqual(t.at, [0, E.CRAPS.roll + E.CRAPS.puck, 2 * E.CRAPS.roll + E.CRAPS.puck, 3 * E.CRAPS.roll + E.CRAPS.puck], 'one roll after another, the puck after the come-out');
-  assert.equal(E.playMs(st.flash), t.end + E.CRAPS.hold);
+  // in a match: a point keeps the roller in the square (again); Stop passes the turn
+  const st = E.newMatch(lcg(3), { games: ['craps'] }), p0 = st.turn;
+  E.playMove(st, 0, 'roll', dice([3, 3]));
+  assert.deepEqual([st.flash.kind, st.flash.craps.result, st.flash.craps.point, st.flash.craps.sum], ['again', 'point', 6, 6]);
+  assert.equal(E.playMs(st.flash), E.CRAPS.roll + E.CRAPS.puck + E.CRAPS.hold);
+  E.endFlash(st); assert.equal(st.lock, 0, 'held in the square'); assert.equal(st.turn, p0);
+  assert.equal(E.localBest(E.publicMini(st.squares[0].mini), p0, lcg(1)).move, 'roll', 'the computer rolls on');
+  assert.equal(E.randomLegalMove(st.squares[0].mini, p0, lcg(1)), 'stop', 'a timeout mid-turn: Stop');
+  E.playMove(st, 0, 'stop', lcg(9)); assert.equal(st.flash.craps.kind, 'stop'); assert.equal(E.playMs(st.flash), E.CRAPS.stop);
+  E.endFlash(st); assert.equal(st.lock, null); assert.notEqual(st.turn, p0, 'the turn passes');
   assert.equal(E.randomLegalMove(st.squares[1].mini, 'X', lcg(1)), 'roll');
   assert.equal(E.secretOf(st.squares[1].mini), null, 'nothing hidden: the dice are rolled as the move is made');
+});
+test('craps: Stop is never the better choice (value iteration over the square, both players playing it every turn)', () => {
+  const G = 3, P = {}; for (let s = 2; s <= 12; s++) P[s] = (6 - Math.abs(s - 7)) / 36;
+  const PTS = [null, 4, 5, 6, 8, 9, 10], V = {}, key = (a, b, pt, ph) => `${a},${b},${pt},${ph}`;
+  for (let a = 0; a < G; a++) for (let b = 0; b < G; b++) for (const pt of PTS) for (const ph of ['start', 'choose']) V[key(a, b, pt, ph)] = 0.5;
+  const after = (a, b) => (a >= G ? 1 : b >= G ? 0 : 1 - V[key(b, a, null, 'start')]);
+  const roll = (a, b, pt) => { let v = 0; for (let s = 2; s <= 12; s++) { const q = P[s]; if (pt == null) v += q * (s === 7 || s === 11 ? after(a + 1, b) : [2, 3, 12].includes(s) ? after(a, b) : V[key(a, b, s, 'choose')]); else v += q * (s === pt ? after(a + 1, b) : s === 7 ? after(a, b) : V[key(a, b, pt, 'choose')]); } return v; };
+  const stop = (a, b, pt) => 1 - V[key(b, a, pt, 'start')];
+  for (let it = 0; it < 3000; it++) for (let a = 0; a < G; a++) for (let b = 0; b < G; b++) for (const pt of PTS) { V[key(a, b, pt, 'start')] = roll(a, b, pt); if (pt != null) V[key(a, b, pt, 'choose')] = Math.max(roll(a, b, pt), stop(a, b, pt)); }
+  for (let a = 0; a < G; a++) for (let b = 0; b < G; b++) for (const pt of PTS.slice(1)) assert.ok(roll(a, b, pt) > stop(a, b, pt), `${a}-${b}, point ${pt}: rolling on ${roll(a, b, pt).toFixed(3)}, stopping ${stop(a, b, pt).toFixed(3)}`);
+  assert.ok(Math.abs(roll(0, 0, 6) - 0.556) < 0.002 && Math.abs(stop(0, 0, 6) - 0.444) < 0.002, 'at 0-0 on a 6: 55.6% rolling on, 44.4% stopping');
 });
 
 /* ===================================== Takeover ===================================== */
@@ -155,24 +184,36 @@ test('the new games: admin only to begin with, in the full list, dealt and playe
 });
 
 /* ===================================== Seating ===================================== */
-test('seating: ten tables for two, seats in four colours; a seat, then the customer sits in a seat of their colour (any seat if none is left); the next colour is always shown', () => {
+test('seating: ten tables for two, seats in four colours; a seat, then the customer sits in a seat of their colour, or leaves when none is free; the next colour is always one with a free seat', () => {
   const m = E.newMini('seating', lcg(1));
-  assert.equal(m.color.length, 20); assert.ok(m.color.every(c => c >= 0 && c < 4)); assert.ok(m.next >= 0 && m.next < 4, 'the next customer\'s colour, shown');
-  for (let k = 0; k < 200; k++) {
+  assert.equal(m.color.length, 20); assert.ok(m.color.every(c => c >= 0 && c < 4)); assert.ok(m.color.includes(m.next), 'the next customer\'s colour, shown: one with a seat');
+  let left = 0;
+  for (let k = 0; k < 400; k++) {
     const s = E.newMini('seating', lcg(k)), want = s.next, rng = lcg(k + 1);
-    E.applyMove(s, 'X', 0, rng);
-    const z = s.last.z, empty = s.who.map((w, i) => (w ? -1 : i)).filter(i => i >= 0).concat(z);
-    const theirs = empty.filter(i => s.color[i] === want && i !== 0);
-    assert.equal(s.who[z], 'Z');
-    if (theirs.length) assert.equal(s.color[z], want, 'the customer takes a seat of their colour');
-    assert.equal(s.last.zColor, want);
+    // play a few seats in, then check one move
+    for (let j = 0; j < k % 7 && s.who.includes(null); j++) E.applyMove(s, j % 2 ? 'O' : 'X', s.who.indexOf(null), rng);
+    if (!s.who.includes(null)) continue;
+    const before = s.next, seat = s.who.indexOf(null), freeOfColour = s.who.filter((w, i) => !w && i !== seat && s.color[i] === before).length;
+    E.applyMove(s, 'X', seat, rng);
+    assert.equal(s.last.zColor, before);
+    if (freeOfColour) { assert.equal(s.who[s.last.z], 'Z'); assert.equal(s.color[s.last.z], before, 'the customer takes a seat of their colour'); assert.equal(s.last.left, false); }
+    else { assert.equal(s.last.z, null); assert.equal(s.last.left, true, 'none of their colour: they leave'); left++; }
+    if (s.who.includes(null)) assert.ok(s.who.some((w, i) => !w && s.color[i] === s.next), 'the next colour has a free seat');
+    void want;
   }
-  const all = E.newMini('seating', lcg(3)); all.color = new Array(20).fill(0); all.next = 2;
-  E.applyMove(all, 'X', 0, lcg(4));
-  assert.ok(all.last.z != null && all.who[all.last.z] === 'Z', 'none of their colour: any empty seat');
+  // the move takes the last seat of the next customer's colour: they walk out, nobody sits
+  const deny = E.newMini('seating', lcg(3)); deny.color = new Array(20).fill(0); deny.color[5] = 2; deny.next = 2;
+  const empties = deny.who.filter(w => !w).length;
+  E.applyMove(deny, 'X', 5, lcg(4));
+  assert.deepEqual([deny.last.left, deny.last.z, deny.who.filter(w => !w).length, deny.who.includes('Z')], [true, null, empties - 1, false]);
+  assert.equal(deny.next, 0, 'the next customer: a colour with a seat (only 0 is left)');
   for (const bad of [-1, 20, 'a', 0.5]) assert.equal(E.applyMove(E.newMini('seating', lcg(5)), 'X', bad).ok, false);
   const taken = E.newMini('seating', lcg(6)); E.applyMove(taken, 'X', 3, lcg(7));
   assert.equal(E.applyMove(taken, 'O', 3).ok, false, 'a taken seat');
+  // the flash carries it and the move's time includes the walk
+  const st = E.newMatch(lcg(8), { games: ['seating'] }); const sm = st.squares[0].mini; sm.color = new Array(20).fill(1); sm.color[7] = 3; sm.next = 3;
+  E.playMove(st, 0, 7, lcg(9));
+  assert.equal(st.flash.seat.left, true); assert.equal(E.playMs(st.flash), E.PLACE_MS.mark + E.PLACE_MS.walk + E.PLACE_MS.hold);
 });
 
 test('seating: both seats of a table make it yours; five tables wins at once; a full room goes to most tables, and a tie resets the square', () => {

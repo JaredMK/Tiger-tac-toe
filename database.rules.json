@@ -203,52 +203,46 @@
           ".validate": false
         }
       },
+      "plinko": {
+        ".write": "auth != null && auth.token.admin === true",
+        "target": {
+          ".validate": "newData.isNumber() && newData.val() >= 4 && newData.val() <= 40"
+        },
+        "$other": {
+          ".validate": false
+        }
+      },
       "wheels": {
         ".write": "auth != null && auth.token.admin === true",
         "target": {
           ".validate": "newData.isNumber() && newData.val() >= 6 && newData.val() <= 60"
         },
-        "high": {
-          "a": {
-            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 30"
-          },
-          "pa": {
-            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99"
-          },
-          "b": {
-            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 30 && (newData.val() > 0 || newData.parent().child('a').val() > 0)"
-          },
-          "$other": {
-            ".validate": false
-          }
+        "tensMin": {
+          ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 3"
         },
-        "mid": {
-          "a": {
-            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 30"
-          },
-          "pa": {
-            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99"
-          },
-          "b": {
-            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 30 && (newData.val() > 0 || newData.parent().child('a').val() > 0)"
-          },
-          "$other": {
-            ".validate": false
-          }
+        "tensMax": {
+          ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 3"
         },
-        "low": {
-          "a": {
-            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 30"
-          },
-          "pa": {
-            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99"
-          },
-          "b": {
-            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 30 && (newData.val() > 0 || newData.parent().child('a').val() > 0)"
-          },
-          "$other": {
-            ".validate": false
-          }
+        "smallMax": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 4"
+        },
+        "smallTop": {
+          ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 3"
+        },
+        "midLo": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3"
+        },
+        "midHi": {
+          ".validate": "newData.isNumber() && newData.val() >= 5 && newData.val() <= 9"
+        },
+        "lowLo": {
+          ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 3"
+        },
+        "lowHi": {
+          ".validate": "newData.isNumber() && newData.val() >= 2 && newData.val() <= 6"
+        },
+        "gap": {
+          ".validate": "newData.isNumber() && newData.val() >= 0.1 && newData.val() <= 1.5"
         },
         "$other": {
           ".validate": false

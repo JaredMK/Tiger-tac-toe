@@ -90,67 +90,90 @@ test('patterns: the computer is right about 60% of the time and never picks a cr
 });
 
 /* ===================================== Risk Wheels ===================================== */
-test('wheels: each player\'s own points; one wheel spun a move; first to 18; the admin\'s values in the square', () => {
-  assert.deepEqual(E.WHEEL_DEFAULTS, { target: 18, high: { a: 10, pa: 45, b: 0 }, mid: { a: 7, pa: 50, b: 1 }, low: { a: 3, pa: 60, b: 4 } });
+test('wheels: each square deals three wheels of ten; each player\'s own points; one wheel spun a move; first to 18; the admin\'s values in the square', () => {
+  assert.deepEqual(E.WHEEL_DEFAULTS, { target: 18, tensMin: 1, tensMax: 2, smallMax: 2, smallTop: 2, midLo: 0, midHi: 8, lowLo: 1, lowHi: 4, gap: 0.4 });
   const rng = E.makeRng('wh-rules'), m = E.newMini('wheels', rng);
-  assert.deepEqual(m.cfg, E.WHEEL_DEFAULTS); assert.deepEqual(m.pts, { X: 0, O: 0 });
+  assert.equal(m.target, 18); assert.deepEqual(m.pts, { X: 0, O: 0 });
+  for (const w of E.WHEELS) assert.equal(m.wheels[w].length, 10);
+  assert.deepEqual(E.wheelsCheck(m.wheels), []);
   for (const bad of ['huge', 0, null, ['high']]) assert.equal(E.applyMove(m, 'X', bad, rng).ok, false);
   let r;
-  for (let k = 0; k < 200 && (!r || r.outcome !== 'win'); k++) {
+  for (let k = 0; k < 300 && (!r || r.outcome !== 'win'); k++) {
     const p = k % 2 ? 'O' : 'X', before = m.pts[p], w = E.WHEELS[k % 3];
     r = E.applyMove(m, p, w, rng);
-    const c = m.cfg[w];
-    assert.equal(m.pts[p] - before, m.last.hitA ? c.a : c.b);
-    assert.ok(m.last.hitA ? m.last.at < c.pa / 100 : m.last.at > c.pa / 100, 'the stop is in its segment');
+    assert.equal(m.pts[p] - before, m.wheels[w][m.last.seg], 'the segment\'s points');
+    assert.ok(m.last.at > m.last.seg / 10 && m.last.at < (m.last.seg + 1) / 10, 'the stop is inside its segment');
     assert.equal(r.outcome === 'win', m.pts[p] >= 18);
   }
   assert.equal(r.outcome, 'win');
-  E.setWheelsConfig({ target: 30, high: { a: 12, pa: 40, b: 0 }, mid: { a: 99, pa: 50, b: 1 }, low: 'x' });
+  const other = E.newMini('wheels', E.makeRng('wh-other'));
+  assert.notDeepEqual(other.wheels, m.wheels, 'each square its own wheels');
+  E.setWheelsConfig({ target: 30, lowHi: 3, midHi: 99, gap: 'x' });
   const m2 = E.newMini('wheels', rng);
-  assert.equal(m2.cfg.target, 30); assert.deepEqual(m2.cfg.high, { a: 12, pa: 40, b: 0 });
-  assert.equal(m2.cfg.mid.a, 7, 'off its range: the default'); assert.deepEqual(m2.cfg.low, E.WHEEL_DEFAULTS.low);
+  assert.equal(m2.target, 30); assert.ok(m2.wheels.low.every(v => v <= 3), 'the admin\'s range for the low wheel');
+  assert.deepEqual(E.wheelsCheck(m2.wheels, E.wheelsConfig()), []);
+  assert.equal(E.wheelsConfig().midHi, 8, 'off its range: the default');
   E.setWheelsConfig(null);
-  assert.deepEqual(E.newMini('wheels', rng).cfg, E.WHEEL_DEFAULTS);
+  assert.equal(E.newMini('wheels', rng).target, 18);
+  // a square from before (two segments sized to their chances): ten segments, the first value on its share
+  const old = { type: 'wheels', cfg: { target: 18, high: { a: 10, pa: 45, b: 0 }, mid: { a: 7, pa: 50, b: 1 }, low: { a: 3, pa: 60, b: 4 } }, pts: { X: 3, O: 0 }, spins: { X: 1, O: 0 }, last: null };
+  E.upgradeMini(old);
+  assert.deepEqual(old.wheels.mid, [7, 7, 7, 7, 7, 1, 1, 1, 1, 1]); assert.equal(old.target, 18); assert.equal(E.applyMove(old, 'O', 'low', rng).ok, true);
 });
-test('wheels: the spins land at the odds; a timeout spins the low-risk wheel', () => {
-  const rng = E.makeRng('wh-odds'), cfg = E.wheelsConfig();
-  for (const w of E.WHEELS) {
-    let hits = 0; const N = 20000;
-    for (let k = 0; k < N; k++) { const s = E.wheelSpin(cfg, w, rng); if (s.hitA) hits++; assert.ok(s.at >= 0 && s.at < 1); }
-    assert.ok(Math.abs(hits / N - cfg[w].pa / 100) < 0.012, `${w}: ${(100 * hits / N).toFixed(1)}% vs ${cfg[w].pa}%`);
+test('wheels: 1,000 dealt sets keep every rule; the spins land evenly; a timeout spins the low-risk wheel', () => {
+  const tens = { 1: 0, 2: 0 }, avg = { high: 0, mid: 0, low: 0 };
+  for (let k = 0; k < 1000; k++) {
+    const w = E.wheelsDeal(E.makeRng('set' + k), E.WHEEL_DEFAULTS), h = E.wheelAvg(w.high), md = E.wheelAvg(w.mid), l = E.wheelAvg(w.low);
+    assert.deepEqual(E.wheelsCheck(w), [], `set ${k}: ${JSON.stringify(w)}`);
+    // the rules, spelled out once more
+    const nt = w.high.filter(v => v === 10).length, small = w.high.filter(v => v && v !== 10);
+    assert.ok(nt >= 1 && nt <= 2 && small.length <= 2 && small.every(v => v <= 2), 'high: one or two 10s, the rest 0s but at most two small values');
+    assert.ok(!w.mid.includes(10) && Math.max(...w.mid) > Math.max(...w.low), 'mid: no 10s, its top above low\'s');
+    assert.ok(w.low.every(v => v >= 1 && v <= 4) && new Set(w.low).size >= 2, 'low: 1-4, at least two values');
+    assert.ok(h < md && md < l && md - h >= 0.4 - 1e-9 && l - md >= 0.4 - 1e-9, 'the averages in order, 0.4 apart');
+    tens[nt]++; avg.high += h / 1000; avg.mid += md / 1000; avg.low += l / 1000;
   }
+  console.log(`Risk Wheels: 1,000 sets, all rules kept; one 10 in ${tens[1]}, two in ${tens[2]}; average of the averages: high ${avg.high.toFixed(2)}, medium ${avg.mid.toFixed(2)}, low ${avg.low.toFixed(2)}`);
+  const rng = E.makeRng('wh-odds'), vals = [0, 1, 2, 3, 4, 5, 6, 7, 8, 10], hit = new Array(10).fill(0), N = 30000;
+  for (let k = 0; k < N; k++) { const s = E.wheelSpin(vals, rng); hit[s.seg]++; assert.equal(s.v, vals[s.seg]); }
+  hit.forEach((h, k) => assert.ok(Math.abs(h / N - 0.1) < 0.008, `segment ${k}: ${(100 * h / N).toFixed(1)}%`));
   assert.equal(E.randomLegalMove(E.newMini('wheels', rng), 'X', rng), 'low');
 });
-test('wheels: the computer plays safe ahead, takes the risk behind or when the other is close, and reaches for 18 when near', () => {
-  const rng = E.makeRng('wh-ai'), pick = (a, b) => E.localBest({ type: 'wheels', cfg: E.wheelsConfig(), pts: { X: a, O: b }, spins: { X: 0, O: 0 } }, 'X', rng).move;
-  assert.equal(pick(15, 3), 'low', '15 needs 3: the low wheel always gets there');
+test('wheels: the computer works out each wheel\'s chance of reaching the target first and takes more risk when behind', () => {
+  const wheels = { high: [10, 0, 0, 0, 1, 0, 0, 0, 0, 0], mid: [6, 0, 2, 1, 0, 3, 0, 2, 1, 5], low: [3, 2, 3, 3, 2, 4, 3, 2, 3, 3] };
+  assert.deepEqual(E.wheelsCheck(wheels), []);
+  const rng = E.makeRng('wh-ai'), pick = (a, b) => E.localBest({ type: 'wheels', target: 18, wheels, pts: { X: a, O: b }, spins: { X: 0, O: 0 } }, 'X', rng).move;
+  assert.equal(pick(16, 3), 'low', 'needs 2: the low wheel always gets there');
   assert.equal(pick(12, 2), 'low', 'well ahead: safe');
-  assert.equal(pick(13, 9), 'mid', 'needs 5 with the other coming: the best single chance of 18');
-  assert.equal(pick(9, 12), 'high', 'needs 9: only the high wheel reaches it at once');
-  assert.equal(pick(0, 14), 'high', 'far behind with the other near the end: the risk');
-  assert.equal(pick(6, 16), 'high', 'the other wins next turn: the long shot');
-  // the q it gives is this spin's chance of reaching the target
-  const b = E.localBest({ type: 'wheels', cfg: E.wheelsConfig(), pts: { X: 8, O: 12 }, spins: { X: 0, O: 0 } }, 'X', rng);
-  assert.equal(b.move, 'high'); assert.equal(b.q, 0.45);
+  assert.equal(pick(0, 15), 'high', 'far behind with the other near the end: the risk');
+  assert.equal(pick(8, 17), 'high', 'the other wins next turn: the long shot');
+  // more risk the further behind: over every score, the risky wheels' share grows with the gap
+  const T = E.wheelsTable(18, wheels), risky = gap => { let n = 0, r = 0; for (let a = 0; a < 18; a++) for (let b = 0; b < 18; b++) if (b - a === gap) { n++; if (T.best[a][b] !== 'low') r++; } return n ? r / n : 0; };
+  assert.ok(risky(8) > risky(0) && risky(0) >= risky(-8), `behind 8: ${risky(8).toFixed(2)}, level: ${risky(0).toFixed(2)}, ahead 8: ${risky(-8).toFixed(2)}`);
+  // its q: this spin's chance of reaching the target
+  const b = E.localBest({ type: 'wheels', target: 18, wheels, pts: { X: 8, O: 17 }, spins: { X: 0, O: 0 } }, 'X', rng);
+  assert.equal(b.move, 'high'); assert.equal(b.q, 0.1);
 });
-test('wheels: simulated strategies (always high, medium, low, the computer\'s, random): spins to 18 alone and head to head', () => {
-  const cfg = E.wheelsConfig(), rng = E.makeRng('wh-sim'), T = cfg.target;
-  const strat = { high: () => 'high', mid: () => 'mid', low: () => 'low', random: () => E.WHEELS[Math.floor(rng() * 3)], ai: (a, b) => E.wheelsTable(cfg).best[a][b] };
+test('wheels: simulated strategies over 1,000 dealt sets (always high, medium, low, the computer\'s, random): spins to 18 alone and head to head', () => {
+  const rng = E.makeRng('wh-sim'), sets = Array.from({ length: 1000 }, (_, k) => E.wheelsDeal(E.makeRng('sim' + k), E.WHEEL_DEFAULTS)), T = 18;
+  const strat = { high: () => 'high', mid: () => 'mid', low: () => 'low', random: () => E.WHEELS[Math.floor(rng() * 3)], ai: (w, a, b) => E.wheelsTable(T, w).best[a][b] };
   const solo = {};
   for (const [k, f] of Object.entries(strat)) {
-    let sum = 0; const N = 4000;
-    for (let g = 0; g < N; g++) { let a = 0, n = 0; while (a < T) { const s = E.wheelSpin(cfg, f(a, 0), rng); a += s.v; n++; } sum += n; }
-    solo[k] = sum / N;
+    let sum = 0, n = 0;
+    for (const w of sets) for (let g = 0; g < 3; g++) { let a = 0, spins = 0; while (a < T && spins < 400) { a += E.wheelSpin(w[f(w, a, 0)], rng).v; spins++; } sum += spins; n++; }
+    solo[k] = sum / n;
   }
-  // alone: the low wheel (3 or 4) needs 5 spins, often 6; the high one two 10s at 45% (about 4.4); the computer, which
-  // plays for the duel, in between
-  assert.ok(solo.low > 5.5 && solo.low < 5.85 && solo.high > 4.2 && solo.high < 4.7 && solo.mid > 5 && solo.mid < 5.6 && solo.ai < solo.mid, JSON.stringify(solo));
-  const duel = (fx, fo) => { let a = 0, b = 0; for (let k = 0; ; k++) { if (k % 2 === 0) { a += E.wheelSpin(cfg, fx(Math.min(a, T - 1), Math.min(b, T - 1)), rng).v; if (a >= T) return 'X'; } else { b += E.wheelSpin(cfg, fo(Math.min(b, T - 1), Math.min(a, T - 1)), rng).v; if (b >= T) return 'O'; } } };
+  console.log('Risk Wheels: average spins to 18 alone over 1,000 sets: ' + Object.entries(solo).map(([k, v]) => `${k} ${v.toFixed(1)}`).join(', '));
+  assert.ok(solo.low < solo.mid && solo.mid < solo.high, 'alone, the steadier the sooner (the averages in order)');
+  const duel = (w, fx, fo) => { let a = 0, b = 0; for (let k = 0; k < 2000; k++) { if (k % 2 === 0) { a += E.wheelSpin(w[fx(w, Math.min(a, T - 1), Math.min(b, T - 1))], rng).v; if (a >= T) return 'X'; } else { b += E.wheelSpin(w[fo(w, Math.min(b, T - 1), Math.min(a, T - 1))], rng).v; if (b >= T) return 'O'; } } return null; };
+  const rates = {};
   for (const k of ['high', 'mid', 'low', 'random']) {
-    let ai = 0; const N = 3000;
-    for (let g = 0; g < N; g++) { if (duel(strat.ai, strat[k]) === 'X') ai++; if (duel(strat[k], strat.ai) === 'O') ai++; }
-    assert.ok(ai / (2 * N) > 0.5, `the computer beats "always ${k}" (${(100 * ai / (2 * N)).toFixed(1)}%)`);
+    let ai = 0, n = 0;
+    for (const w of sets.slice(0, 400)) for (let g = 0; g < 2; g++) { if (duel(w, strat.ai, strat[k]) === 'X') ai++; if (duel(w, strat[k], strat.ai) === 'O') ai++; n += 2; }
+    rates[k] = ai / n;
+    assert.ok(ai / n > 0.5, `the computer beats "always ${k}" (${(100 * ai / n).toFixed(1)}%)`);
   }
+  console.log('Risk Wheels: the computer\'s wins head to head: ' + Object.entries(rates).map(([k, v]) => `vs ${k} ${(100 * v).toFixed(1)}%`).join(', '));
 });
 
 /* ===================================== Sniff ===================================== */
@@ -179,6 +202,22 @@ test('sniff: a 5x5 field, the dog at least 3 steps from the treasure; a step is 
   const corner = Object.assign(E.newMini('sniff', rng), { dog: 0, start: 0, treasure: 24 });
   assert.equal(E.applyMove(corner, 'X', 'N', rng).ok, false); assert.equal(E.applyMove(corner, 'X', 'W', rng).ok, false);
   assert.deepEqual(E.sniffDirs(0).sort(), ['E', 'S']);
+});
+test('sniff: no memory on the board: the square keeps only the last 3 steps (the computer\'s memory); the word shows about 2 s', () => {
+  const rng = E.makeRng('sn-mem'), m = Object.assign(E.newMini('sniff', rng), { dog: 0, start: 0, treasure: 24 });
+  for (const d of ['E', 'E', 'S', 'S', 'W']) E.applyMove(m, 'X', d, rng);
+  assert.equal(m.trail.length, 3, 'only the last 3 steps');
+  assert.deepEqual(m.trail.map(t => [t.f, t.t]), [[2, 7], [7, 12], [12, 11]]);
+  const pm = E.publicMini(m);
+  assert.equal(pm.trail.length, 3);
+  // the cells the computer still suspects: what the 3 steps say, not the earlier ones (cell 0, where it started, is forgotten)
+  const c = E.sniffCands(pm);
+  assert.ok(!c.includes(11) && !c.includes(12) && !c.includes(7) && !c.includes(2), 'not where it stood in those steps');
+  assert.ok(c.includes(0) || c.every(x => x !== 0), 'the start is no longer known');
+  const st = E.newMatch(rng, { games: ['sniff'] }), sq = st.squares[0].mini, d = E.sniffDirs(sq.dog)[0];
+  E.playMove(st, 0, d, rng);
+  assert.equal(E.playMs(st.flash), E.SNIFF.step + E.SNIFF.hold + (st.flash.kind === 'claim' ? 900 : 0));
+  assert.ok(E.SNIFF.hold >= 1800 && E.SNIFF.hold <= 2200, 'the word: about 2 seconds');
 });
 test('sniff: online the treasure stays on the server; the computer\'s view has the trail, never the treasure', () => {
   const rng = E.makeRng('sn-secret'), m = E.newMini('sniff', rng);

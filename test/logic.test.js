@@ -1439,8 +1439,8 @@ function randomMove(m, rng, p) {
       return nums;
     }
     case 'bullseye': return { x: Math.round(rng() * 1000) / 1000, y: Math.round(rng() * 1000) / 1000 };
-    case 'echo': { const seq = m.seqs[p][Math.min(m.level[p], 3)]; return rng() < 0.5 ? seq.slice() : seq.slice(0, Math.floor(rng() * seq.length)).concat(Math.floor(rng() * 4)); }
-    case 'plinko': return Math.floor(rng() * 7);
+    case 'echo': { const seq = L.echoSeq(m, p, m.level[p]); return rng() < 0.5 ? seq.slice() : seq.slice(0, Math.floor(rng() * seq.length)).concat(Math.floor(rng() * 4)); }
+    case 'plinko': { const open = L.plinkoOpen(m); return open[Math.floor(rng() * open.length)]; }
     case 'pong': return { aim: rng() * 2 - 1, power: rng() };
     case 'trivia': { if (!m.ask) return 'auto'; const left = [0, 1, 2, 3].filter(k => !(m.crossed || []).includes(k)); return left.length ? left[Math.floor(rng() * left.length)] : 'auto'; }
     case 'patterns': { const left = [0, 1, 2, 3].filter(k => !(m.crossed || []).includes(k)); return left[Math.floor(rng() * left.length)]; }   // (a real pick: a timeout's is always wrong)
@@ -2102,7 +2102,7 @@ test('timeouts over every kind of game keep the state legal and plain', () => {
   const rng = lcg(31337);
   const seen = new Set();
   for (let game = 0; game < 6; game++) {
-    const st = L.newMatch(rng, { mode: 'online', timer: 30, games: L.TYPES.filter(t => !['echo', 'trivia', 'oddone'].includes(t)) });   // (a timed-out attempt at those three is always a failed one: a square of theirs never falls to timeouts)
+    const st = L.newMatch(rng, { mode: 'online', timer: 30, games: L.TYPES.filter(t => !['echo', 'trivia', 'oddone', 'patterns'].includes(t)) });   // (a timed-out attempt at those four is always a failed one: a square of theirs never falls to timeouts)
     let guard = 0;
     while (!st.winner && guard++ < 3000) {
       const open = st.squares.map((q, i) => (q.owner ? -1 : i)).filter(i => i >= 0);

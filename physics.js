@@ -21,22 +21,22 @@
   const r2 = x => Math.round(x * 100) / 100 + 0;
 
   // ---------- the tables ----------
-  const GOLF = { w: 100, h: 160, ballR: 2.4, cupR: 3.6, holeSpeed: 32, lipKick: 0.5, vMax: 95, maxT: 9, air: 0.004, roll: 12 };
+  const GOLF = { w: 100, h: 160, ballR: 2.4, cupR: 3.6, holeSpeed: 32, lipKick: 0.5, vMax: 55, reach: 75, maxT: 9, air: 0.004, roll: 12 };   // vMax: the hardest putt rolls about reach (under half the course)
   const POOL = { w: 100, h: 180, ballR: 2.6, vMax: 120, maxT: 10, air: 0.004, roll: 9,
-    pockets: [[0, 0, 7.5], [100, 0, 7.5], [0, 90, 6.5], [100, 90, 6.5], [0, 180, 7.5], [100, 180, 7.5]],   // x, y, the reach of the pocket
+    pockets: [[0, 0, 4.2], [100, 0, 4.2], [0, 90, 4.2], [100, 90, 4.2], [0, 180, 4.2], [100, 180, 4.2]],   // x, y, the reach of the pocket (and its size as drawn): about 1.6 times the ball across
     start: { cue: [50, 140], black: [50, 52], x1: [40, 66], x2: [60, 80], o1: [60, 66], o2: [40, 80] } };
   const BOWL = { w: 100, h: 240, ballR: 3.5, pinR: 2.0, vMax: 150, maxT: 7, air: 0.002, roll: 4, pinAir: 0.004, pinRoll: 6, pinBounce: 0.9, still: 4, gutter: 7, knocked: 2.2,
     start: [50, 214], pins: [[50, 50], [45, 38], [55, 38], [40, 26], [50, 26], [60, 26], [35, 14], [45, 14], [55, 14], [65, 14]] };
   // Mini Golf's holes: walls as [cx, cy, w, h, angle], bumpers as [cx, cy, r], the tee and the cup, and a
-  // path (the way round, for the computer's aim). Both balls start side by side on the tee. Each hole
-  // takes a good player 2-4 shots.
+  // path (the way round, for the computer's aim). Both balls start side by side on the tee. Every hole has
+  // turns and things in the way, and a putt rolls at most about GOLF.reach: each takes 3 to 5 putts.
   const HOLES = [
-    { name: 'Straight on', tee: [50, 140], cup: [50, 24], walls: [], bumpers: [[50, 82, 7]], path: [[34, 86], [50, 24]] },
-    { name: 'Dogleg', tee: [22, 140], cup: [22, 24], walls: [[32, 82, 64, 6, 0]], bumpers: [], path: [[82, 112], [82, 58], [22, 24]] },
-    { name: 'The horseshoe', tee: [50, 140], cup: [50, 30], walls: [[50, 16, 56, 6, 0], [24, 32, 6, 38, 0], [76, 32, 6, 38, 0]], bumpers: [[50, 96, 6]], path: [[36, 102], [50, 66], [50, 30]] },
-    { name: 'The funnel', tee: [50, 140], cup: [50, 26], walls: [[19, 92.5, 56, 6, -0.544], [81, 92.5, 56, 6, 0.544]], bumpers: [], path: [[50, 80], [50, 26]] },   // two walls from the sides meeting in a 14-wide neck
-    { name: 'Round the bar', tee: [50, 140], cup: [50, 26], walls: [[50, 70, 64, 6, 0]], bumpers: [[50, 112, 5]], path: [[12, 108], [12, 56], [50, 26]] },
-    { name: 'Pinball', tee: [50, 140], cup: [50, 22], walls: [], bumpers: [[30, 58, 6], [70, 58, 6], [50, 94, 6]], path: [[34, 112], [50, 74], [50, 22]] },
+    { name: 'Zigzag', tee: [50, 148], cup: [50, 18], walls: [[33, 112, 66, 6, 0], [67, 62, 66, 6, 0]], bumpers: [[52, 76, 5], [72, 30, 5]], path: [[83, 124], [83, 98], [17, 80], [17, 50], [50, 18]] },
+    { name: 'Dogleg', tee: [20, 146], cup: [24, 22], walls: [[34, 92, 68, 6, 0], [46, 44, 44, 5, 0.45]], bumpers: [[84, 60, 5]], path: [[84, 122], [84, 78], [66, 58], [64, 26], [24, 22]] },
+    { name: 'The horseshoe', tee: [50, 148], cup: [50, 30], walls: [[50, 12, 60, 6, 0], [23, 35, 6, 52, 0], [77, 35, 6, 52, 0], [10, 58, 20, 6, 0], [90, 58, 20, 6, 0], [50, 100, 44, 6, 0]], bumpers: [[12, 100, 5], [88, 100, 5]], path: [[22, 122], [24, 82], [50, 68], [50, 30]] },
+    { name: 'The funnel', tee: [50, 148], cup: [50, 22], walls: [[19, 94, 56, 6, -0.544], [81, 94, 56, 6, 0.544], [50, 54, 34, 5, 0]], bumpers: [[50, 124, 4]], path: [[38, 132], [50, 84], [24, 64], [24, 40], [50, 22]] },
+    { name: 'Round the bar', tee: [50, 148], cup: [50, 24], walls: [[50, 74, 70, 6, 0], [86, 112, 28, 5, 0.6]], bumpers: [[50, 112, 5], [30, 40, 4], [70, 40, 4]], path: [[22, 118], [10, 90], [10, 56], [50, 24]] },
+    { name: 'Pinball', tee: [50, 148], cup: [50, 20], walls: [[18, 62, 30, 5, 0.5], [82, 62, 30, 5, -0.5]], bumpers: [[30, 104, 6], [70, 104, 6], [50, 80, 6], [50, 44, 5]], path: [[50, 126], [32, 84], [34, 44], [50, 20]] },
   ];
   const SIZES = { golf: GOLF, pool: POOL, bowling: BOWL };
 
@@ -57,7 +57,8 @@
       for (const p of ['X', 'O']) if (!pos.holed[p]) { const b = ball(pos.balls[p][0], pos.balls[p][1], S.ballR, 'ball:' + p, { frictionAir: S.air }); bodies.push(b); tracked.push([p, b]); }
     } else if (type === 'pool') {
       bodies.push(...edges(S.w, S.h, 8));
-      for (const id of ['cue', 'x1', 'x2', 'o1', 'o2', 'black']) if (!pos.down[id]) { const b = ball(pos.balls[id][0], pos.balls[id][1], S.ballR, 'ball:' + id, { frictionAir: S.air }); bodies.push(b); tracked.push([id, b]); }
+      const rank = id => (id === 'cue' ? 0 : id === 'black' ? 3 : id[0] === 'x' ? 1 : 2);   // (the order engine.js keeps: poolIds)
+      for (const id of Object.keys(pos.balls).sort((a, b) => rank(a) - rank(b) || a.localeCompare(b, 'en', { numeric: true }))) if (!pos.down[id]) { const b = ball(pos.balls[id][0], pos.balls[id][1], S.ballR, 'ball:' + id, { frictionAir: S.air }); bodies.push(b); tracked.push([id, b]); }
     } else {
       bodies.push(wall(S.w / 2, -4, S.w + 40, 8, 0, 'end'));      // the back of the lane; the sides are gutters (nothing to bounce off)
       const b = ball(S.start[0], S.start[1], S.ballR, 'ball:ball', { frictionAir: S.air, density: 0.03 });

@@ -1565,20 +1565,22 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .epad.k0 { background: #e5432a; } .epad.k1 { background: #4e9d3a; } .epad.k2 { background: #3b87c7; } .epad.k3 { background: #f6c21b; color: rgba(60, 40, 0, .7); }
 .epad:disabled { cursor: default; }
 .epad.live { opacity: .55; } .epad.live:active { opacity: 1; transform: translateY(2px); box-shadow: 0 2px 0 var(--ink); }
-.epad.on { opacity: 1; }                               /* the pad just tapped, lit (the page lights it for a moment) */
-.epad.play { animation: var(--lit); }                  /* the pattern playing: each step a flash, timed from when the square opened */
+.epad.on { opacity: 1; filter: brightness(1.18); transform: scale(.96); transition: none; }   /* the pad just tapped, lit (the page lights it for a moment) */
+.epad.idle { opacity: .35; }                           /* waiting for Play pattern */
+.epad.play { animation: var(--lit); }                  /* the pattern playing: each step a flash, timed from the Play tap (or the move); nothing held after, so a tap lights it */
+@keyframes padon { from, to { opacity: 1; } }
 @keyframes padlit { 0% { opacity: .55; } 15%, 75% { opacity: 1; transform: scale(1.04); } 100% { opacity: .55; } }
-.epad.pass { animation: padpass .65s var(--t, 0ms) both; }
 @keyframes padpass { 0%, 100% { opacity: .55; } 30%, 70% { opacity: 1; } }
-.epad.wrong { animation: cardshake .45s var(--t, 0ms) both; opacity: 1; }
-.epad.hint { animation: padhint .6s var(--t, 0ms) both; }
 @keyframes padhint { 0%, 100% { opacity: .55; } 40%, 80% { opacity: 1; box-shadow: 0 0 0 4px var(--green), 0 4px 0 var(--ink); } }
 .elock { position: absolute; inset: -6px; border-radius: 22px; background: transparent; }   /* over the pads while the pattern plays: no tapping yet */
 .esteps { display: flex; justify-content: center; gap: 5px; flex-wrap: wrap; min-height: 12px; }
 .esteps i { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--ink); background: var(--paper); }
 .esteps i.on { background: var(--green); }
+.esteps i.tapin { animation: tapin 1ms var(--t, 0ms) forwards; }   /* someone else's taps, filling in as they land */
+@keyframes tapin { from, to { background: var(--green); } }
 .elev { display: inline-flex; gap: 3px; } .elev i { width: 12px; height: 12px; border-radius: 3px; border: 2px solid var(--ink); background: var(--paper); }
 .ctal.X .elev i.on { background: var(--x); } .ctal.O .elev i.on { background: var(--o); }
+.elev i.fillin { animation: pipfill .4s var(--t, 0ms) cubic-bezier(.3, 1.6, .5, 1) both; }   /* a pattern beaten: its square fills in when the result shows */
 /* Plinko: the slots, the pegs, the bins, the chip */
 .plinko { flex: 1; display: flex; flex-direction: column; min-height: 0; gap: 6px; }
 .pslots { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; width: min(100%, 380px); margin: 0 auto; }
@@ -1589,13 +1591,23 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .pboard svg { position: absolute; inset: 0; width: 100%; height: 100%; }
 .pboard .peg { fill: var(--ink); }
 .pboard .bin { fill: var(--panel-2); stroke: var(--ink); stroke-width: 2.5; }
-.pboard .bin.win { fill: var(--o); }
+.pboard .bin.top { fill: #f6c21b; }
 .pboard .bin.lit { animation: binlit .5s var(--t, 0ms) both; }
 @keyframes binlit { 0%, 100% { filter: none; } 50% { filter: brightness(1.4); } }
 .pboard text { font: 700 11px 'Luckiest Guy', sans-serif; fill: var(--ink); text-anchor: middle; }
-.pchip { position: absolute; width: 8%; aspect-ratio: 1; margin-left: -4%; border-radius: 50%; border: 3px solid var(--ink); box-shadow: 0 2px 0 var(--ink); transform: translate(0, -50%); transform-origin: 50% 100%; }   /* left/top: the middle of its bottom edge */
-.pstar { position: absolute; top: 87%; height: 10%; width: 10%; margin-left: -5%; display: grid; place-items: center; pointer-events: none; }   /* inside the win bin (86-98% down, 13% across) */
-.pstar svg { width: 100%; height: 100%; display: block; fill: #fff; stroke: var(--ink); stroke-width: 1.6; stroke-linejoin: round; }
+.pchip { position: absolute; width: 8%; aspect-ratio: 1; margin-left: -4%; border-radius: 50%; border: 3px solid var(--ink); box-shadow: 0 2px 0 var(--ink); transform: translate(0, -100%); transform-origin: 50% 100%; }   /* left/top: the middle of its bottom edge */
+.pvals { position: absolute; left: 0; right: 0; top: 86%; height: 12%; pointer-events: none; }
+.pval { position: absolute; top: 0; height: 100%; width: 10%; margin-left: -5%; display: grid; place-items: center; font: 400 clamp(12px, 4.2vw, 18px)/1 'Luckiest Guy', sans-serif; padding-top: 2px; color: var(--ink); }
+.pbonus { position: absolute; width: 7%; aspect-ratio: 1; margin: -3.5% 0 0 -3.5%; border-radius: 50%; background: #f6c21b; border: 2.5px solid var(--ink); box-shadow: 0 0 0 3px rgba(246, 194, 27, .45); display: grid; place-items: center; z-index: 1; pointer-events: none; }
+.pbonus b { position: absolute; bottom: 105%; left: 50%; transform: translateX(-50%); font: 400 clamp(10px, 3.2vw, 13px)/1 'Luckiest Guy', sans-serif; color: #b07d00; white-space: nowrap; text-shadow: 0 0 2px var(--paper), 0 0 2px var(--paper); }
+.pbonus.hit { animation: tuntil 1ms var(--u, 0ms) both, bonushit .5s var(--t, 0ms) both; }
+@keyframes bonushit { 0% { filter: none; } 30% { filter: brightness(1.6); transform: scale(1.5); } 100% { filter: brightness(1.2); transform: none; } }
+.pplus { position: absolute; transform: translate(-50%, -50%); font: 400 clamp(14px, 4.6vw, 20px)/1 'Luckiest Guy', sans-serif; color: #b07d00; text-shadow: 0 0 3px var(--paper), 0 0 3px var(--paper); pointer-events: none; z-index: 2; animation: plusup .9s var(--t, 0ms) ease-out both; }
+.pplus.pbig { color: var(--green); font-size: clamp(18px, 6vw, 26px); }
+@keyframes plusup { from { opacity: 0; translate: 0 6px; } 15% { opacity: 1; } 70% { opacity: 1; } to { opacity: 0; translate: 0 -22px; } }
+.pslots button.used { background: var(--panel-2); color: var(--muted); }
+.plkpts { font: 400 20px/1 'Luckiest Guy', sans-serif; display: inline-flex; align-items: baseline; gap: 2px; font-variant-numeric: tabular-nums; } .g-arc .ctal .plkpts small { font-size: 12px; }
+.ppts { display: inline-grid; text-align: right; min-width: 2ch; } .ppts > span { grid-area: 1 / 1; }
 .pchip.X { background: var(--x); } .pchip.O { background: var(--o); }
 .pchip.drop { animation: var(--path) var(--d, 1800ms) linear both; }
 /* Cup Pong: the table, the rack, the ball thrown with a swipe */
@@ -1685,6 +1697,8 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .cpuck { position: absolute; top: 50%; width: 34px; height: 34px; margin: -17px 0 0 -17px; border-radius: 50%; border: 3px solid var(--ink); background: #1b1b1b; color: #fff; display: grid; place-items: center; font: 800 10px Nunito, sans-serif; box-shadow: 0 3px 0 var(--ink); z-index: 1; }
 .cpuck.on { background: #fff; color: var(--ink); }
 .cpuck.move { animation: puckon .42s var(--t, 0ms) cubic-bezier(.3, 1.4, .5, 1) both; }
+.cpuck.moveoff { animation: puckoff .42s var(--t, 0ms) cubic-bezier(.3, 1.4, .5, 1) both; }
+@keyframes puckoff { from { left: var(--from); background: #fff; color: var(--ink); } 60% { background: #fff; color: var(--ink); } to { left: var(--to); background: #1b1b1b; color: #fff; } }
 @keyframes puckon { from { left: var(--from); background: #1b1b1b; color: #fff; } 60% { background: #1b1b1b; color: #fff; } to { left: var(--to); background: #fff; color: var(--ink); } }
 .cfelt { position: relative; height: 150px; width: min(100%, 360px); margin: 0 auto; border: 3px solid var(--ink); border-radius: 18px; background: radial-gradient(circle at 50% 45%, #3b9a4b, #2a7238); overflow: hidden; display: grid; place-items: center; }
 .cpair { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 18px; }
@@ -1696,13 +1710,13 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 @keyframes cpairout { to { opacity: 0; } }
 @keyframes cdietumble { from { transform: translate(-90px, -70px) rotate(-260deg) scale(.7); } 60% { transform: translate(6px, 6px) rotate(20deg); } 80% { transform: translate(-2px, -6px) rotate(-6deg); } to { transform: none; } }
 @keyframes cdietumble2 { from { transform: translate(90px, -80px) rotate(300deg) scale(.7); } 60% { transform: translate(-6px, 4px) rotate(-18deg); } 80% { transform: translate(2px, -5px) rotate(5deg); } to { transform: none; } }
-.crolls { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; min-height: 26px; }
+.crolls { display: flex; flex-wrap: nowrap; gap: 6px; justify-content: center; height: 26px; overflow: hidden; }   /* one row, always this tall: the round's last eight rolls */
 .crolls span { min-width: 26px; height: 26px; padding: 0 6px; border-radius: 13px; background: var(--panel-2); border: 2px solid var(--ink); display: grid; place-items: center; font-weight: 800; font-size: 13px; }
 .tcdice { display: flex; gap: 2cqw; justify-content: center; } .tcdice span { width: 15cqw; height: 15cqw; border: 1.2cqw solid var(--ink); border-radius: 3cqw; background: #fff; display: grid; place-items: center; } .tcdice span svg { width: 100%; height: 100%; }
 .tcdice.w span { box-shadow: 0 0 0 1.2cqw var(--green); }
 /* Takeover: the 5x5 board; the tapped square pops, the ones round it turn over */
 .takeover { flex: 1; display: flex; flex-direction: column; gap: 10px; justify-content: center; min-height: 0; }
-.tkgrid { display: grid; grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(5, 1fr); gap: 6px; width: min(100%, 340px, calc(100dvh - 330px)); aspect-ratio: 1; margin: 0 auto; }
+.tkgrid { display: grid; grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(5, 1fr); gap: 6px; width: min(100%, 340px, calc(100dvh - 370px)); aspect-ratio: 1; margin: 0 auto; }
 .tkc { min-width: 0; min-height: 0; border: 3px solid var(--ink); border-radius: 10px; background: var(--paper); padding: 0; display: grid; place-items: center; font-family: 'Luckiest Guy', sans-serif; font-size: 20px; box-shadow: 0 3px 0 var(--ink); color: var(--ink); perspective: 300px; }
 .tkc:disabled { box-shadow: none; }
 .tkc.X { background: var(--x); color: #fff; } .tkc.O { background: var(--o); color: var(--ink); }
@@ -1717,18 +1731,31 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .tg.gtk i { border-radius: 2px; background: var(--panel-2); } .tg.gtk i.X { background: var(--x); } .tg.gtk i.O { background: var(--o); }
 /* Flood: the 6x6 grid; the blob's cells and each player's in their colour */
 .flood { flex: 1; display: flex; flex-direction: column; gap: 10px; justify-content: center; min-height: 0; }
-.flgrid { display: grid; grid-template-columns: repeat(6, 1fr); grid-template-rows: repeat(6, 1fr); gap: 3px; width: min(100%, 330px, calc(100dvh - 380px)); aspect-ratio: 1; margin: 0 auto; padding: 4px; border: 3px solid var(--ink); border-radius: 14px; background: var(--ink); }
-.flc { position: relative; min-width: 0; min-height: 0; border-radius: 5px; display: grid; place-items: center; }
-.flc.own::after { content: ''; position: absolute; inset: 0; border-radius: 5px; box-shadow: inset 0 0 0 4px var(--pc); }
+.flgrid { display: grid; grid-template-columns: repeat(6, 1fr); grid-template-rows: repeat(6, 1fr); gap: 0; width: min(100%, 330px, calc(100dvh - 430px)); aspect-ratio: 1; margin: 0 auto; padding: 2px; border: 3px solid var(--ink); border-radius: 14px; background: var(--ink); overflow: hidden; }
+.flc { position: relative; min-width: 0; min-height: 0; border: 1.5px solid var(--ink); border-radius: 5px; display: grid; place-items: center; }
+.flc.blob { border-radius: 0; }                                   /* the blob: one shape, no lines inside it */
+.flc.jt { border-top-color: transparent; } .flc.jr { border-right-color: transparent; } .flc.jb { border-bottom-color: transparent; } .flc.jl { border-left-color: transparent; }
 .flc.own.X { --pc: var(--x); } .flc.own.O { --pc: var(--o); }
-.flc b { font: 400 13px 'Luckiest Guy', sans-serif; color: var(--pc); background: #fff; border-radius: 50%; width: 18px; height: 18px; display: grid; place-items: center; padding-top: 2px; border: 2px solid var(--ink); }
+.flc b { font: 400 12px/1 'Luckiest Guy', sans-serif; color: var(--pc); -webkit-text-stroke: .6px var(--ink); padding-top: 2px; }   /* whose cell: a small X or O, nothing more */
 .flc.start::before { content: '★'; position: absolute; color: #fff; font-size: 16px; text-shadow: 0 1px 0 var(--ink); }
 .flc.grab { animation: flgrab .35s var(--t, 0ms) cubic-bezier(.3, 1.5, .5, 1) both; }
-.flc.grab::after, .flc.grab b { animation: appear .2s var(--t, 0ms) both; }
+.flc.grab b { animation: appear .2s var(--t, 0ms) both; }
 @keyframes flgrab { from { transform: scale(.5); filter: brightness(1.6); } to { transform: none; filter: none; } }
 .flc.recolor { animation: flrecolor .45s var(--t, 0ms) both; }
 @keyframes flrecolor { from { background: var(--c0); } to { background: var(--c1); } }
 .fsc { font-style: normal; display: inline-block; animation: appearin .4s var(--t, 0ms) ease-out both; }
+/* the bar charts under Takeover's and Flood's boards (sbar): one height, the segments' widths and numbers move with the move */
+.sbar { display: flex; height: 24px; border: 2.5px solid var(--ink); border-radius: 8px; overflow: hidden; background: var(--paper); flex: 1; min-width: 0; }
+.sbar i { display: flex; align-items: center; justify-content: center; width: calc(var(--w) * 1%); min-width: 0; overflow: hidden; font: 400 13px/1 'Luckiest Guy', sans-serif; font-style: normal; padding-top: 2px; white-space: nowrap; }
+.sbar i + i { box-shadow: inset 2px 0 0 var(--ink); }
+.sbar i.X { background: var(--x); color: #fff; } .sbar i.O { background: var(--o); color: var(--ink); } .sbar i.E { background: var(--paper); color: var(--muted); }
+.sbar i.grow { animation: sbarw .45s var(--t, 0ms) ease-out both; }
+@keyframes sbarw { from { width: calc(var(--w0) * 1%); } to { width: calc(var(--w) * 1%); } }
+.sbn { display: inline-grid; } .sbn > span { grid-area: 1 / 1; }
+.takeover > .sbar { flex: none; width: min(100%, 340px, calc(100dvh - 370px)); margin: 0 auto; }
+.fbars { display: grid; gap: 6px; width: min(100%, 330px); margin: 0 auto; flex: none; }
+.fbr { display: flex; align-items: center; gap: 8px; } .fbr > b { font: 400 16px 'Luckiest Guy', sans-serif; width: 14px; padding-top: 2px; } .fbr .sbar { height: 18px; }
+.fbr > small { font: 400 15px 'Luckiest Guy', sans-serif; min-width: 3.4em; text-align: right; padding-top: 2px; font-variant-numeric: tabular-nums; } .fbr > small span { color: var(--muted); font-size: 12px; }
 .fbtns { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; width: min(100%, 360px); margin: 0 auto; flex: none; }
 .fsw { height: 48px; border: 3px solid var(--ink); border-radius: 12px; box-shadow: 0 3px 0 var(--ink); padding: 0; display: grid; place-items: center; }
 .fsw:disabled { box-shadow: none; opacity: .45; } .fsw i { font-style: normal; font-size: 11px; font-weight: 800; color: #fff; text-shadow: 0 1px 0 var(--ink); }
@@ -1743,7 +1770,10 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .sgdot { width: 16px; height: 16px; border-radius: 50%; border: 2.5px solid var(--ink); flex: none; }
 .sgo { animation: sgo .25s var(--t, 0ms) ease-in forwards; }
 @keyframes sgo { to { opacity: 0; transform: translateY(8px); } }
-.stbls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; width: min(100%, 360px); margin: 0 auto; }
+.stbls { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; width: min(100%, 360px); margin: 0 auto; }
+.sleave { position: absolute; left: 50%; top: 0; margin-left: -17px; z-index: 2; pointer-events: none; animation: sleave .9s var(--t, 0ms) ease-in-out both; }   /* a customer with no seat of their colour: walks through and out */
+.sleave .sguest { width: 34px; height: 34px; box-shadow: 0 0 0 3px var(--sc); }
+@keyframes sleave { 0% { opacity: 0; transform: translate(0, -40px) scale(.6); } 15% { opacity: 1; transform: translate(0, -20px) rotate(-8deg); } 40% { transform: translate(-30px, 60px) rotate(8deg); } 65% { opacity: 1; transform: translate(30px, 140px) rotate(-8deg); } 100% { opacity: 0; transform: translate(150px, 200px) scale(.7); } }
 .stbl { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; gap: 4px; }
 .sts { width: 44px; height: 44px; border: 3px solid var(--ink); border-radius: 50% 50% 38% 38%; background: var(--sc); box-shadow: 0 3px 0 var(--ink); padding: 0; display: grid; place-items: center; }
 .sts:disabled { box-shadow: none; }
@@ -1872,8 +1902,10 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 @keyframes wspin { from { transform: rotate(var(--from, 0deg)); } to { transform: rotate(var(--end, 0deg)); } }
 .wrim { fill: none; stroke: var(--ink); stroke-width: 3; }
 .whub { fill: var(--ink); }
-.wv { text-anchor: middle; font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-size: 15px; fill: var(--ink); }
-.wv.dk { fill: #fff; }
+.wv { text-anchor: middle; font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-size: 12px; fill: var(--ink); }
+.wv.dk { fill: #fff; } .wv.ten { font-size: 13px; }
+.wseg { stroke: var(--ink); stroke-width: .8; }
+.rwheel > small.wavg { font-size: 12px; font-weight: 800; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .wp { text-anchor: middle; font-size: 8px; font-weight: 800; fill: var(--ink); opacity: .8; }
 .wp.dk { fill: #fff; opacity: .95; }
 .wtal { display: flex; align-items: center; gap: 6px; flex: 1; justify-content: flex-end; min-width: 0; }
@@ -1882,11 +1914,10 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .ctal.X .wbar i { background: var(--x); } .ctal.O .wbar i { background: var(--o); }
 .wbar i.grow { animation: wgrow .5s var(--t, 0ms) cubic-bezier(.2, .7, .3, 1) both; }
 @keyframes wgrow { from { width: var(--w0, 0%); } to { width: var(--w1, 0%); } }
-/* Sniff: the field, the trail of paw prints (warm hotter, cool colder, ringed in the walker's colour), the dog */
+/* Sniff: the field and the dog; a move's paw prints (warm hotter, cool colder, ringed in the walker's colour) while it plays */
 .sniff { flex: 1; display: flex; flex-direction: column; gap: 8px; justify-content: center; min-height: 0; }
 .sfield { display: block; width: min(100%, 320px, calc(100dvh - 320px)); margin: 0 auto; background: #e8dcbf; border: 3px solid var(--ink); border-radius: 16px; overflow: hidden; }
 .scell { fill: #d9c9a2; } .scell.alt { fill: #e3d5b2; }
-.scell.start { fill: #cdbb91; }
 .spaw .sring { stroke-width: 1.5; stroke-linejoin: round; } .spaw.X .sring { stroke: var(--x); fill: var(--x); } .spaw.O .sring { stroke: var(--o); fill: var(--o); }   /* the walker's colour round each print */
 .spaw .sfill { stroke: var(--ink); stroke-width: .3; }
 .spaw.fresh { animation: appear .18s var(--t, 0ms) both; }
@@ -1930,11 +1961,18 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 /* Odd One Out: the grid of tiles */
 .odd { flex: 1; display: flex; flex-direction: column; min-height: 0; gap: 8px; justify-content: center; }
 .ogrid { display: grid; gap: 6px; width: min(100%, 320px, calc(var(--gh) - 160px)); aspect-ratio: 1; margin: 0 auto; }
-.otile { border: 3px solid var(--ink); border-radius: 10px; padding: 0; touch-action: manipulation; }
+.otile { position: relative; border: 3px solid var(--ink); border-radius: 10px; padding: 0; touch-action: manipulation; overflow: hidden; }
 .otile:disabled { cursor: default; }
-.otile.odd { animation: tilering .6s var(--t, 0ms) both; }
-@keyframes tilering { 0% { box-shadow: 0 0 0 0 var(--paper); } 40%, 100% { box-shadow: 0 0 0 5px var(--ink); } }
-.otile.wrong { animation: cardshake .45s var(--t, 0ms) both; }
+.otile.odd { animation: tilering .6s var(--t, 0ms) both; overflow: visible; }
+@keyframes tilering { 0% { box-shadow: 0 0 0 0 var(--paper); } 40%, 100% { box-shadow: 0 0 0 5px var(--ink); } }   /* a ring outside the tile: nothing moves */
+.otile .ocv { position: absolute; inset: 0; background: #b9b2a6; border-radius: 7px; }   /* the grid greyed until Reveal (or, replayed, until their reveal) */
+.otile .ox { position: absolute; inset: 14%; color: var(--ink); opacity: 0; animation: appear .2s var(--t, 0ms) both; } .otile .ox svg { width: 100%; height: 100%; display: block; }   /* a wrong pick: crossed, still */
+.otile.picked { animation: oddpick .3s var(--p, 0ms) both; }
+@keyframes oddpick { from { filter: none; } to { filter: brightness(.82); } }
+.onote { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
+.obar { display: block; width: min(70%, 240px); height: 10px; border: 2.5px solid var(--ink); border-radius: 999px; overflow: hidden; background: var(--paper); }
+.obar i { display: block; height: 100%; width: 100%; background: var(--x); transform-origin: 0 50%; animation: obar var(--d, 5000ms) linear both; }
+@keyframes obar { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 @media (prefers-reduced-motion: reduce) { .bvline.sweep { animation: none; left: 50%; } .bhline.sweep { animation: none; top: 50%; } .bdboard.slide { animation: none; } .epad.play, .pchip.drop, .pball.fly, .pball.rim, .pball.in, .pball.off { animation: none; } }
 .tu { animation: tuntil 1ms var(--u, 0ms) both; }
 .tf { animation: tfrom 1ms var(--f, 0ms) both; }
@@ -2032,8 +2070,9 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .tpip i.sq { border-radius: 3cqw; width: 11cqw; height: 11cqw; }
 .tplk { display: flex; flex-direction: column; align-items: center; gap: 4cqw; width: 86cqw; }
 .tplk .tbins { display: flex; gap: 2cqw; width: 100%; }
-.tplk .tbins i { flex: 1; height: 16cqw; border: 1.6cqw solid var(--ink); border-radius: 2cqw; background: var(--paper); }
-.tplk .tbins i.win { background: var(--o); } .tplk .tbins i.X { box-shadow: inset 0 0 0 3cqw var(--x); } .tplk .tbins i.O { box-shadow: inset 0 0 0 3cqw var(--o); }
+.tplk .tbins i { flex: 1; height: 16cqw; border: 1.6cqw solid var(--ink); border-radius: 2cqw; background: var(--paper); font: 400 9cqw/1 'Luckiest Guy', sans-serif; font-style: normal; display: grid; place-items: center; padding-top: 1cqw; }
+.tplk .tbins i.top { background: var(--o); } .tplk .tbins i.X { box-shadow: inset 0 0 0 2cqw var(--x); } .tplk .tbins i.O { box-shadow: inset 0 0 0 2cqw var(--o); }
+.tplk .tbpts { display: flex; gap: 10cqw; justify-content: center; flex: none; }
 .tplk small { font-size: 9cqw; font-weight: 800; color: var(--muted); }
 .tpip .X i.on { background: var(--x); } .tpip .O i.on { background: var(--o); }
 .tpip .bus i { border-radius: 3cqw; width: 12cqw; height: 16cqw; }
@@ -2154,7 +2193,7 @@ const mmMarks = (g, cls = '', fresh = false) => `<span class="mmfb${cls ? ' ' + 
   `<i class="${k < g.solid ? 'sd' : k < g.solid + g.hollow ? 'hw' : ''}${fresh ? ' rv' : ''}"${fresh ? ` style="--k:${k}"` : ''}></i>`).join('')}</span>`;
 let mmDraft = null;                                              // Mastermind: { sq, slots, at } the guess being put together on this phone
 let mmPop = null;
-let echoDraft = null, echoReplay = 0, pongDrag = null;             // Echo: { sq, level, taps } the taps so far (and how often the pattern was watched again); Cup Pong: the swipe under way
+let echoDraft = null, pongDrag = null;                           // Echo: { id, sq, level, taps, at } the attempt (at: when Play pattern was tapped); Cup Pong: the swipe under way
 let rlDraft = null;                                              // Roulette: { sq, nums, bet } the bet being put together on this phone                                                // { sq, k, at }: the peg just placed pops in
 const GEM = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 3h12l4 6-10 12L2 9z"/><path d="M2 9h20" stroke="rgba(0,0,0,.25)" stroke-width="1.5"/></svg>';
 const DIE_MS = PLAY.die;                // the die's tumble before the piece sets off
@@ -2477,7 +2516,7 @@ function graft(oldP, newP, pairs) {
   }
 }
 // How long the move's animation takes. The result toast or card waits this long, and so does any tap.
-function animMs(f) { return REDUCED ? 0 : playMs(f, hexLen(f)) - (f.type === 'bus' ? BUST.pre - busPre(f) : 0) - (f.type === 'bullseye' && f.bull ? bullsAim(f.bull).fly - bullsPre(f) : 0); }   // (your own Ride the Bus guess skips the moment it is shown)
+function animMs(f) { return REDUCED ? 0 : playMs(f, hexLen(f)) - (f.type === 'bus' ? BUST.pre - busPre(f) : 0) - (f.type === 'bullseye' && f.bull ? bullsAim(f.bull).fly - bullsPre(f) : 0) - (f.type === 'echo' && f.echo && !f.timeout ? echoAim(f.echo).end - echoPre(f) : 0) - (f.type === 'oddone' && f.odd && !f.timeout ? ODD.show + ODD.pause - oddPre(f) : 0); }   // (your own Ride the Bus guess skips the moment it is shown)
 function hexLen(f) { const sq = state.squares[f.square]; return sq && sq.mini.winCells ? sq.mini.winCells.length : 4; }
 // The JS-driven bits of the animations: numbers that count up or down, and the candy token's hops.
 function animate() {
@@ -2619,28 +2658,28 @@ const EXPLAIN = {
   bus: { name: 'Ride the Bus', play: 'Guess red or black, then higher or lower, then inside or outside, then the suit. Miss and your turn ends, but you keep your progress.', win: 'Get through all four.' },
   rl: { name: 'Roulette', play: 'Bet on 8 numbers, a group of 8, or green 0, then spin.', win: 'Two hits, or hit green 0 for an instant win.' },
   bullseye: { name: 'Bullseye', play: 'Stop the sideways line, then the up-down line. The dart lands where they cross. Bullseye is 3, the board is 1.', win: 'First to 5.' },
-  echo: { name: 'Echo', play: 'Watch the pattern, then tap it back. Each one gets longer.', win: 'Beat all four patterns.' },
-  plinko: { name: 'Plinko', play: 'Pick where to drop. The chip bounces down the pegs.', win: 'Land in the WIN bin.' },
+  echo: { name: 'Echo', play: 'Tap Play pattern to watch it once, then tap it back. One pattern per square, the same for both players: 4 steps, then 6, 8 and 10.', win: 'Beat all four patterns.' },
+  plinko: { name: 'Plinko', play: 'Drop the chip from an open slot. The bins are worth 5, 3, 3, 2, 2, 1 and 1 points, and the gold bonus peg adds 2 (a new one appears once it is hit). A slot used by either player stays locked until all seven are used.', win: 'First to the target score (12 unless the admin changed it).' },
   pong: { name: 'Cup Pong', play: 'Swipe up to throw. Aim with direction, distance with speed.', win: 'Sink all 3 of your cups.' },
   trivia: { name: 'Trivia', play: 'Answer the question. Wrong answers get crossed out and the question stays until someone gets it.', win: 'Get 3 right.' },
-  oddone: { name: 'Odd One Out', play: "Tap the tile that's a different shade. It gets harder each time.", win: 'Find 3.' },
+  oddone: { name: 'Odd One Out', play: "Tap Reveal to show the grid, then tap the tile that's a different shade within 5 seconds. No tap in time counts as a miss. It gets harder each time.", win: 'Find 3.' },
   dash: { name: 'Dash', play: 'Tap to jump, hold to jump higher. Duck low flyers by staying down. It gets faster as you go, and you keep your distance when you crash.', win: 'Reach 1,000 m first.' },
   lane: { name: 'Lane Rush', play: 'Swipe to change lanes and dodge traffic. It gets faster as you go, and you keep your distance when you crash.', win: 'Reach 1,000 m first.' },
   golf: { name: 'Mini Golf', play: 'Drag back to aim and set power, then let go. Balls can knock each other.', win: 'Sink your ball first.' },
-  pool: { name: 'Pool', play: 'Drag back from the white ball to aim and shoot. Sink your own ball to go again.', win: 'Sink both your balls. Sink the black ball and you lose.' },
+  pool: { name: 'Pool', play: 'Drag back from the white ball to aim and shoot. Sink your own ball to go again. Sink the white (a scratch) and it goes back on its spot, and the other player gets an extra ball of their colour on the table.', win: 'Sink two of your balls first. Sink the black ball and you lose.' },
   bowling: { name: 'Bowling', play: 'Drag back to aim and set power, then let go. Every pin you knock down counts.', win: '25 pins total.' },
-  craps: { name: 'Craps', play: 'Roll. 7 or 11 wins, 2, 3 or 12 loses. Anything else is your point: hit it again before a 7.', win: 'Win 3 rounds.' },
+  craps: { name: 'Craps', play: 'Roll. On the first roll of a round, 7 or 11 wins it and 2, 3 or 12 loses it. Anything else is the point: then choose Roll again (the point wins, a 7 loses) or Stop. Stop ends your turn with the point still on, and whoever rolls here next carries on that round: the point wins it for them, a 7 loses it.', win: 'Win 3 rounds.' },
   takeover: { name: 'Takeover', play: 'Tap an empty square to take it and the squares around it, even your opponent\'s.', win: 'Own the most when the board is full.' },
   flood: { name: 'Flood', play: 'Pick a colour. The blob grows into it, and every square it grabs is yours.', win: 'Get 18 squares first.' },
-  seating: { name: 'Seating', play: 'Seat yourself at any table. After each move a customer takes a seat of their colour (you\'ll see who\'s next).', win: 'Fill the most tables with your own pair.' },
+  seating: { name: 'Seating', play: 'Seat yourself at any table. After each move a customer takes a seat of their colour (you\'ll see who\'s next). If none of their colour is free, they walk out.', win: 'Fill the most tables with your own pair.' },
   districts: { name: 'Districts', play: 'Place a piece. It counts for every region it touches.', win: 'Lead in the most regions when the map is full.' },
   shelves: { name: 'Shelves', play: 'Put a mark on a shelf. A grey mark lands somewhere after each move.', win: 'Be on the most shelves.' },
   roads: { name: 'Roads', play: 'Claim a line. A random line gets blocked after each move.', win: 'Have the longest unbroken road.' },
   flap: { name: 'Flap', play: 'Tap to flap through the gaps. It gets faster, and you keep your distance when you crash.', win: 'Reach 1,000 m first.' },
   chopper: { name: 'Chopper', play: 'Hold to rise, let go to drop. It gets faster, and you keep your distance when you crash.', win: 'Reach 1,000 m first.' },
   patterns: { name: 'Patterns', play: 'Pick what comes next, or what\'s missing. Wrong answers get crossed out and the puzzle stays until someone gets it.', win: 'Get 3 right.' },
-  wheels: { name: 'Risk Wheels', play: 'Pick a wheel and spin. Big risk, big points, or play it safe.', get win() { return `Reach ${wheelsConfig().target} first.`; } },   // (the target is the admin's)
-  sniff: { name: 'Sniff', play: 'Move the dog one step. You\'ll hear if it\'s getting hotter or colder.', win: 'Be the one who finds the treasure.' },
+  wheels: { name: 'Risk Wheels', play: 'Pick a wheel and spin. Each square deals three new wheels of ten equal segments: High risk has a 10 (or two) and mostly zeros, Low risk always pays a little, Medium sits between. Each wheel\'s average is under it.', get win() { return `Reach ${wheelsConfig().target} first.`; } },   // (the target is the admin's)
+  sniff: { name: 'Sniff', play: 'Move the dog one step. You\'ll see if it\'s getting hotter or colder, for a moment only: nothing stays on the board, so remember it.', win: 'Be the one who finds the treasure.' },
 };
 let explainT = null;                          // the mini-game whose explainer is open
 const qBtn = (t, cls) => `<button class="qbtn${cls ? ' ' + cls : ''}" data-act="explain" data-t="${t}" aria-label="How to play ${EXPLAIN[t].name}">${cls === 'sm' ? '<i>?</i>' : '?'}</button>`;   // the small one: a 26px sticker in a 40px tap target
@@ -2863,20 +2902,20 @@ function thumb(mini, final) {
     }
     case 'bullseye': return bullsThumb(mini);
     case 'echo': return `<div class="tpip">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${ECHO.lengths.map((_, k) => `<i class="sq${k < mini.level[p] ? ' on' : ''}"></i>`).join('')}</div>`).join('')}</div>`;
-    case 'plinko': return `<div class="tplk"><div class="tbins">${Array.from({ length: PLINKO.slots }, (_, b) => `<i class="${b === mini.win ? 'win' : ''}${mini.last && mini.last.bin === b ? ' ' + mini.last.by : ''}"></i>`).join('')}</div><small>WIN: bin ${mini.win + 1}</small></div>`;
+    case 'plinko': { const pts = mini.pts || { X: 0, O: 0 }, tg = mini.target || PLINKO_DEFAULTS.target; return `<div class="tplk" aria-label="Plinko: X ${pts.X}, O ${pts.O} of ${tg} points"><div class="tbins">${(mini.vals || []).map((v, b) => `<i class="${v === 5 ? 'top' : ''}${mini.last && mini.last.bin === b ? ' ' + mini.last.by : ''}">${v}</i>`).join('')}</div><div class="tbpts">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><span>${Math.min(tg, pts[p])}</span><small>/${tg}</small></div>`).join('')}</div></div>`; }
     case 'pong': return `<div class="tpip">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${mini.cups[p].map(up => `<i class="${up ? 'on' : ''}"></i>`).join('')}</div>`).join('')}</div>`;
     case 'trivia': return `<div class="tpip">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${Array.from({ length: TRIVIA.goal }, (_, k) => `<i class="${k < mini.right[p] ? 'on' : ''}"></i>`).join('')}</div>`).join('')}</div>`;
     case 'oddone': return `<div class="tpip">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${Array.from({ length: ODD.goal }, (_, k) => `<i class="${k < mini.finds[p] ? 'on' : ''}"></i>`).join('')}</div>`).join('')}</div>`;
     case 'golf': case 'pool': case 'bowling': return physThumb(mini);
-    case 'craps': { const d = mini.last ? mini.last.rolls[mini.last.rolls.length - 1] : null; return `<div class="tpip">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${Array.from({ length: CRAPS.goal }, (_, k) => `<i class="${k < mini.wins[p] ? 'on' : ''}"></i>`).join('')}</div>`).join('')}${d ? `<div class="tcdice ${mini.last.result === 'win' ? 'w' : 'l'}"><span>${dieFace(d[0])}</span><span>${dieFace(d[1])}</span></div>` : ''}</div>`; }
+    case 'craps': { const d = mini.last ? mini.last.roll || (mini.last.rolls || [])[(mini.last.rolls || []).length - 1] : null; return `<div class="tpip">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${Array.from({ length: CRAPS.goal }, (_, k) => `<i class="${k < mini.wins[p] ? 'on' : ''}"></i>`).join('')}</div>`).join('')}${d ? `<div class="tcdice ${mini.last.result === 'win' ? 'w' : mini.last.result === 'lose' ? 'l' : ''}"><span>${dieFace(d[0])}</span><span>${dieFace(d[1])}</span></div>` : ''}</div>`; }
     case 'takeover': return `<div class="tg gtk">${mini.cells.map(c => `<i class="${c || ''}"></i>`).join('')}</div>`;
     case 'seating': return `<div class="tseat">${Array.from({ length: SEAT.tables }, (_, t) => { const l = mini.who[2 * t], r = mini.who[2 * t + 1], own = l && l === r && l !== 'Z' ? ' own ' + l : ''; return `<span class="${own}">${[2 * t, 2 * t + 1].map(i => `<i class="${mini.who[i] || ''}" style="--sc:${SEAT_COL[mini.color[i]]}"></i>`).join('')}</span>`; }).join('')}</div>`;
     case 'districts': { const t = distTally(mini.map, mini.who); return `<svg class="tdist" viewBox="-2 -2 104 124" aria-hidden="true">${mini.map.regions.map((poly, r) => `<path class="dreg${t.lead[r] ? ' ' + t.lead[r] : ''}" d="${distPath(poly)}"/>`).join('')}${mini.map.spots.map((sp, k) => `<circle class="${mini.who[k] || ''}" cx="${sp.x}" cy="${sp.y}" r="4.6"/>`).join('')}</svg>`; }
     case 'shelves': return `<div class="tshelf">${Array.from({ length: SHELF.n }, (_, r) => `<span>${mini.cells.slice(r * SHELF.per, r * SHELF.per + SHELF.per).map(w => `<i class="${w || ''}"></i>`).join('')}</span>`).join('')}</div>`;
     case 'roads': return `<svg class="troad" viewBox="0 0 100 100" aria-hidden="true">${mini.segs.map((w, k) => { const [p, q] = ROAD_SEGS[k].map(ROAD_PT); return `<line class="${w || ''}" x1="${p[0]}" y1="${p[1]}" x2="${q[0]}" y2="${q[1]}"/>`; }).join('')}</svg>`;
     case 'patterns': { const pz = mini.puz || (mini.last ? { seq: mini.last.seq } : null); return `<div class="tpat">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${Array.from({ length: PATTERNS.goal }, (_, k) => `<i class="${k < mini.right[p] ? 'on' : ''}"></i>`).join('')}</div>`).join('')}${pz ? `<div class="tseq">${pz.seq.map(it => (it ? `<span>${patSvg(it)}</span>` : '<span class="q">?</span>')).join('')}</div>` : ''}</div>`; }   // the right answers so far, and the puzzle open now
-    case 'wheels': return `<div class="trun" aria-label="X has ${mini.pts.X}, O has ${mini.pts.O} of ${mini.cfg.target}">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><i style="--w:${(100 * Math.min(1, mini.pts[p] / mini.cfg.target)).toFixed(1)}%"></i></div>`).join('')}</div>`;   // both players' points to the target
-    case 'sniff': { const [x, y] = sniffXY(mini.dog); return `<svg class="tsniff" viewBox="0 0 100 100" aria-hidden="true">${Array.from({ length: SNIFF.n * SNIFF.n }, (_, c) => { const [cx, cy] = sniffXY(c); return `<rect x="${cx - 9}" y="${cy - 9}" width="18" height="18" rx="3"/>`; }).join('')}${(mini.trail || []).map(st => { const [x0, y0] = sniffXY(st.f), [x1, y1] = sniffXY(st.t); return `<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}" stroke="${st.hot ? SNIFF_HOT : SNIFF_COLD}"/>`; }).join('')}<circle class="tdog" cx="${x}" cy="${y}" r="7"/></svg>`; }   // the field, the trail (warm or cool) and the dog
+    case 'wheels': return `<div class="trun" aria-label="X has ${mini.pts.X}, O has ${mini.pts.O} of ${mini.target}">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><i style="--w:${(100 * Math.min(1, mini.pts[p] / mini.target)).toFixed(1)}%"></i></div>`).join('')}</div>`;   // both players' points to the target
+    case 'sniff': { const [x, y] = sniffXY(mini.dog); return `<svg class="tsniff" viewBox="0 0 100 100" aria-hidden="true">${Array.from({ length: SNIFF.n * SNIFF.n }, (_, c) => { const [cx, cy] = sniffXY(c); return `<rect x="${cx - 9}" y="${cy - 9}" width="18" height="18" rx="3"/>`; }).join('')}<circle class="tdog" cx="${x}" cy="${y}" r="7"/></svg>`; }   // the field and the dog: nothing of the past
     case 'flood': return `<div class="tg gfl">${mini.colors.map((c, i) => `<i class="${mini.owner[i] === 'X' || mini.owner[i] === 'O' ? 'own ' + mini.owner[i] : ''}" style="background:${FLOOD_COL[c]}"></i>`).join('')}</div>`;
     case 'dash': case 'lane': case 'flap': case 'chopper': return `<div class="trun" aria-label="X at ${Math.round(mini.dist.X)} m, O at ${Math.round(mini.dist.O)} m of ${mini.cfg.target}">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><i style="--w:${(100 * Math.min(1, mini.dist[p] / mini.cfg.target)).toFixed(1)}%"></i></div>`).join('')}</div>`;   // both players' progress to the target
     case 'pig': return `<div class="tdice">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><div class="bar"><i style="width:${Math.min(100, mini.bank[p] / RISKY.goal * 100)}%"></i></div><span>${mini.bank[p]}</span></div>`).join('')}</div>`;
@@ -3249,6 +3288,21 @@ function fetchBullsConfig() {
     }).catch(() => {});
   } catch (e) { /* offline: as last known */ }
 }
+// Plinko's target (config/plinko, the admin's dashboard): likewise.
+const PLINKO_KEY = KEY + '.plinkocfg';
+function fetchPlinkoConfig() {
+  try { const v = JSON.parse(localStorage.getItem(PLINKO_KEY) || 'null'); if (v && typeof v === 'object') setPlinkoConfig(v); } catch (e) { /* none kept */ }
+  if (!configured()) return;
+  const hook = window.TTT_FIREBASE, c = (hook && hook.config) || FIREBASE_CONFIG;
+  const url = hook && hook.emulator ? `http://${hook.emulator.host}:${hook.emulator.port}/config/plinko.json?ns=${c.projectId}-default-rtdb` : `${c.databaseURL}/config/plinko.json`;
+  try {
+    fetch(url).then(r => (r.ok ? r.json() : null)).then(v => {
+      if (!v || typeof v !== 'object') return;
+      setPlinkoConfig(v);
+      try { localStorage.setItem(PLINKO_KEY, JSON.stringify(v)); } catch (e) { /* no storage: read again next visit */ }
+    }).catch(() => {});
+  } catch (e) { /* offline: as last known */ }
+}
 // Risk Wheels' points, odds and target (config/wheels, the admin's dashboard): likewise.
 const WHEELS_KEY = KEY + '.wheelscfg';
 function fetchWheelsConfig() {
@@ -3264,43 +3318,91 @@ function fetchWheelsConfig() {
     }).catch(() => {});
   } catch (e) { /* offline: as last known */ }
 }
-// Echo: the player's pattern plays as the square opens (each step a flash and a tone, from that
-// moment), then the pads come alive and the taps are collected here; the attempt goes in as one move
-// when it is complete or goes wrong. The other phone sees only the attempt's result.
+// Echo: one 10-step pattern per square, the same for both players (each level its first 4, 6, 8 or 10
+// steps). The square opens on a Play pattern button: nothing plays until it is tapped, and from then the
+// player stays in the square (no Board button) until the attempt goes in. The pattern plays once (each step a
+// flash and a tone, from the tap); then the pads come alive, and each tap lights its pad and sounds. The taps
+// go in as one move when complete or at the first slip. Someone else's attempt (the computer's, the other
+// phone's) plays as their screen did: the pattern, a beat, their taps, then the result.
 const ECHO_PADS = ['◆', '●', '▲', '■'], ECHO_RATES = [1, 1.26, 1.5, 2];
+const ECHO_KEY = 'ttt-echo-played';                             // the attempt whose pattern has played: a reload does not play it again
+const echoId = (sq, p, lvl) => `${state.online ? state.online.matchId || state.online.code || 'on' : 'local'}:${state.moves}:${sq}:${p}:${lvl}:${(state.squares[sq].mini.base || []).join('')}`;
+function echoPre(f) { return f && f.type === 'echo' && f.echo && !f.timeout && !REDUCED && (state.online ? f.by !== state.online.me : cpuPlays(f.by)) ? echoAim(f.echo).end : 0; }   // someone else's attempt: it plays first
+const echoPinned = () => !!(echoDraft && echoDraft.at != null && state.screen === 'mini' && state.zoom === echoDraft.sq && !state.flash);
 function echoTable(mini, a, o) {
   const e = a && a.echo ? a.echo : null, l = mini.last, turn = o.turn, mover = e ? a.by : turn;
-  const levels = p => `<span class="elev" aria-label="${mini.level[p]} of 4 patterns">${ECHO.lengths.map((n, k) => `<i ${lateAt(k < mini.level[p] ? 'on' : '', e && e.pass && a.by === p && k === mini.level[p] - 1 ? 0 : null, 'fillin')} title="${n} steps"></i>`).join('')}</span>`;
+  const levels = p => `<span class="elev" aria-label="${mini.level[p]} of 4 patterns">${ECHO.lengths.map((n, k) => `<i ${lateAt(k < mini.level[p] ? 'on' : '', e && e.pass && a.by === p && k === mini.level[p] - 1 ? echoPre(a) : null, 'fillin')} title="${n} steps"></i>`).join('')}</span>`;
   const tal = p => arcTally(p, o, levels(p));
-  const lvl = Math.min(mini.level[mover], ECHO.lengths.length - 1), seq = (mini.seqs && mini.seqs[mover] && mini.seqs[mover][lvl]) || [];
-  const mine = !o.view && !e && !o.locked;                      // this phone's attempt: the pattern plays, then the pads
-  const key = `${o.zoom}:${mover}:${lvl}:${echoReplay}`;
-  if (mine && fxAt('echo', key) == null) {                       // the square just opened for this attempt: the pattern plays once, from now
-    startFx('echo', key);
-    seq.forEach((k, i) => SND.play('tone', { at: i * ECHO.step / 1000, rate: ECHO_RATES[k] }));
-    echoDraft = { sq: o.zoom, level: lvl, taps: [] };
+  const lvl = e ? e.level : Math.min(mini.level[mover], ECHO.lengths.length - 1);
+  const seq = e && e.seq && e.seq.length ? e.seq : echoSeq(mini, mover, lvl);
+  const mine = !o.view && !e && !o.locked;                      // this phone's attempt
+  if (!mine) echoDraft = null;
+  else {
+    const id = echoId(o.zoom, mover, lvl);
+    if (!echoDraft || echoDraft.id !== id) {                     // a fresh attempt: waiting for Play pattern (or, after a reload mid-attempt, straight to the pads)
+      let played = false; try { played = localStorage.getItem(ECHO_KEY) === id; } catch (err) { /* no storage */ }
+      echoDraft = { id, sq: o.zoom, level: lvl, taps: [], at: played ? -1 : null };
+    }
   }
-  if (!echoDraft || echoDraft.sq !== o.zoom || echoDraft.level !== lvl || !mine) echoDraft = mine ? { sq: o.zoom, level: lvl, taps: [] } : null;
-  const playEnd = seq.length * ECHO.step;
-  const litFor = k => seq.map((x, i) => (x === k ? `padlit .4s ${i * ECHO.step}ms both` : null)).filter(Boolean).join(', ');
-  const taps = echoDraft ? echoDraft.taps : [];
-  const pad = k => {
-    let cls = 'epad k' + k, st = '';
-    if (mine) { const lit = litFor(k); if (lit) { cls += ' play'; st = ` style="--lit:${lit}"`; } cls += ' live'; }
-    if (e && e.pass) cls += ' pass';
-    if (e && !e.pass && e.failAt >= 0) { if (e.taps[e.failAt] === k) cls += ' wrong'; else if (seqOf(e, mover)[e.failAt] === k) cls += ' hint'; }
-    return `<button class="${cls}"${st} data-act="echo-tap" data-k="${k}" aria-label="Pad ${k + 1}"${mine ? '' : ' disabled'}>${ECHO_PADS[k]}</button>`;
+  const started = mine && echoDraft.at != null, fresh = started && echoDraft.at >= 0, playEnd = seq.length * ECHO.step;
+  const pre = e ? echoPre(a) : 0, A = pre ? echoAim(e) : null;
+  const anims = k => {                                           // each pad's flashes, timed from the Play tap (or from the move)
+    const out = [];
+    if (fresh || pre) seq.forEach((x, i) => { if (x === k) out.push(`padlit .4s ${i * ECHO.step}ms`); });
+    if (pre) e.taps.forEach((x, i) => { if (x === k) out.push(`padlit .3s ${A.tap(i)}ms`); });
+    if (e && e.pass) out.push(`padpass .65s ${pre}ms`);   // (no fill: an animation held early would cover the flashes listed before it)
+    if (e && !e.pass && e.failAt >= 0) {
+      if (e.taps[e.failAt] === k) out.push(`cardshake .45s ${pre ? A.tap(e.failAt) : 0}ms`, `padon 1ms ${pre ? A.tap(e.failAt) : 0}ms forwards`);
+      else if (seq[e.failAt] === k) out.push(`padhint .6s ${pre}ms`);
+    }
+    return out.join(', ');
   };
-  const seqOf = (ev, p) => (mini.seqs && mini.seqs[p] && mini.seqs[p][ev.level]) || [];
-  const lock = mine ? `<div class="elock tu" style="--u:${playEnd}ms" aria-hidden="true"></div>` : '';
-  const pads = `<div class="epads"${fxAttr(mine ? fxAt('echo', key) : null)}>${[0, 1, 2, 3].map(pad).join('')}${lock}</div>`;
-  const steps = mine ? `<div class="esteps" aria-label="${taps.length} of ${seq.length} tapped">${seq.map((_, i) => `<i class="${i < taps.length ? 'on' : ''}"></i>`).join('')}</div>` : '<div class="esteps"></div>';
-  const note = mine ? `<p class="arcnote"><span class="tu" style="--u:${playEnd}ms">Watch the pattern… (${seq.length} steps)</span><span class="tf" style="--f:${playEnd}ms">Your turn: tap it back</span></p>`
-    : e ? '<p class="arcnote"></p>' : o.view ? `<p class="arcnote">Patterns beaten: X ${mini.level.X}, O ${mini.level.O}</p>` : `<p class="arcnote"><b class="${turn}">${N(turn)}</b> is on pattern ${lvl + 1} (${ECHO.lengths[lvl]} steps)</p>`;
-  const res = e ? `<p ${lateAt('arcres ' + (e.pass ? 'ok' : 'no'), 0)} role="status">${e.pass ? `Pattern ${e.level + 1} beaten!` : `Slipped at step ${e.failAt + 1} of ${e.len}`}</p>` : l && !mine ? `<p class="arcres ${l.pass ? 'ok' : 'no'}">${l.pass ? `<b class="${l.by}">${N(l.by)}</b> beat pattern ${l.level + 1}` : `<b class="${l.by}">${N(l.by)}</b> slipped at step ${l.failAt + 1}`}</p>` : '<p class="arcres"></p>';
-  const again = o.view ? '' : `<div class="cbtns one${mine ? '' : ' hold'}"><button class="big" data-act="echo-again"${mine ? '' : ' disabled tabindex="-1" aria-hidden="true"'}>Watch again</button></div>`;   // the row stays (hidden) so the pads never move
-  return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="echo">${note}${pads}${steps}${res}</div>${again}</div>`;
+  const live = started;
+  const pad = k => {
+    const an = anims(k);
+    let cls = 'epad k' + k + (an ? ' play' : '') + (live ? ' live' : '') + (mine && !started ? ' idle' : '');
+    return `<button class="${cls}"${an ? ` style="--lit:${an}"` : ''} data-act="echo-tap" data-k="${k}" aria-label="Pad ${k + 1}"${live ? '' : ' disabled'}>${ECHO_PADS[k]}</button>`;
+  };
+  const lock = fresh ? `<div class="elock tu" style="--u:${playEnd}ms" aria-hidden="true"></div>` : '';
+  const pads = `<div class="epads"${fxAttr(fresh ? echoDraft.at : null)}>${[0, 1, 2, 3].map(pad).join('')}${lock}</div>`;
+  const taps = started ? echoDraft.taps : [];
+  const steps = mine ? `<div class="esteps" aria-label="${taps.length} of ${seq.length} tapped">${seq.map((_, i) => `<i class="${i < taps.length ? 'on' : ''}"></i>`).join('')}</div>`
+    : pre ? `<div class="esteps">${seq.map((_, i) => `<i ${lateAt('', i < e.taps.length && (e.pass || i < e.failAt) ? A.tap(i) : null, 'tapin')}></i>`).join('')}</div>` : '<div class="esteps"></div>';
+  const who = p => `<b class="${p}">${N(p)}</b>`;
+  const note = !mine ? (pre ? `<p class="arcnote"><span class="tu" style="--u:${A.t0}ms">${who(mover)}: pattern ${lvl + 1}, ${seq.length} steps</span><span class="tf" style="--f:${A.t0}ms">${who(mover)} taps it back</span></p>`
+      : e ? '<p class="arcnote"></p>' : o.view ? `<p class="arcnote">Patterns beaten: X ${mini.level.X}, O ${mini.level.O}</p>` : `<p class="arcnote">${who(turn)} is on pattern ${lvl + 1} (${ECHO.lengths[lvl]} steps)</p>`)
+    : !started ? `<p class="arcnote">Pattern ${lvl + 1}: ${seq.length} steps. It plays once.</p>`
+    : fresh ? `<p class="arcnote"><span class="tu" style="--u:${playEnd}ms">Watch the pattern…</span><span class="tf" style="--f:${playEnd}ms">Your turn: tap it back</span></p>`
+    : '<p class="arcnote">Your turn: tap it back</p>';
+  const res = e ? `<p ${lateAt('arcres ' + (e.pass ? 'ok' : 'no'), pre)} role="status">${e.pass ? (pre ? `${who(mover)} beat pattern ${e.level + 1}` : `Pattern ${e.level + 1} beaten!`) : `${pre ? who(mover) + ' slipped' : 'Slipped'} at step ${e.failAt + 1} of ${e.len}`}</p>`
+    : l && !mine ? `<p class="arcres ${l.pass ? 'ok' : 'no'}">${l.pass ? `${who(l.by)} beat pattern ${l.level + 1}` : `${who(l.by)} slipped at step ${l.failAt + 1}`}</p>` : '<p class="arcres"></p>';
+  const go = mine && !started;
+  const play = o.view ? '' : `<div class="cbtns one${go ? '' : ' hold'}"><button class="big" data-act="echo-play"${go ? '' : ' disabled tabindex="-1" aria-hidden="true"'}>Play pattern</button></div>`;   // the row stays (hidden) so the pads never move
+  return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="echo">${note}${pads}${steps}${res}</div>${play}</div>`;
 }
+// Echo: a pad tapped back (from the press itself: no waiting for the click). It lights and sounds; the
+// attempt goes in when it is complete, or at the first slip.
+function echoTap(el) {
+  if (!echoDraft || echoDraft.at == null || echoDraft.sq !== state.zoom || state.flash || state.done || blocked()) return;
+  const k = Number(el.dataset.k), seq = echoSeq(state.squares[state.zoom].mini, state.turn, echoDraft.level);
+  SND.play('tone', { rate: ECHO_RATES[k] });
+  el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
+  clearTimeout(el.offTimer); el.offTimer = setTimeout(() => el.classList.remove('on'), 220);
+  echoDraft.taps.push(k);
+  const n = echoDraft.taps.length;
+  if (seq[n - 1] !== k || n === seq.length) {
+    const taps = echoDraft.taps.slice(); echoDraft = null;
+    try { localStorage.removeItem(ECHO_KEY); } catch (err) { /* no storage */ }
+    attemptMove(taps); return;
+  }
+  const dots = app.querySelectorAll('.esteps i'); if (dots[n - 1]) dots[n - 1].classList.add('on');   // (in place: the pads keep their place and their animations)
+}
+app.addEventListener('pointerdown', e => {
+  const pad = e.target.closest && e.target.closest('.epad.live:not(:disabled)');
+  if (!pad || state.screen !== 'mini') return;
+  e.preventDefault();
+  echoTap(pad);
+});
 // Plinko: the slots to drop from, the pegs, the bins (WIN marked); the chip bounces peg to peg along the
 // path the move was given, then the bin lights.
 // The chip's way down as keyframes. From the slot it drops onto the first peg; at each peg it squashes
@@ -3310,7 +3412,7 @@ function echoTable(mini, a, o) {
 // server's path: only the motion between pegs is drawn here, its heights from a generator seeded by the
 // drop itself, so every redraw draws the same arcs. Positions are the chip's bottom (the chip sits on
 // the point: translate -50%), so it rests on a peg's top and in the bin.
-const PLK_BIN_Y = 96;                                           // the chip's bottom in its bin (percent of the board)
+const PLK_BIN_Y = 96.6;                                         // the chip's bottom in its bin, on the bin's floor (percent of the board)
 function plinkoFrames(pl, seedKey) {
   const T = PLINKO.rows * PLINKO.step, dur = T + PLINKO.land, rng = makeRng('plk:' + seedKey), out = [];
   const key = (ms, x, y, sx = 1, sy = 1) => out.push({ p: Math.max(0, Math.min(100, ms / dur * 100)), x, y, sx, sy });
@@ -3330,28 +3432,48 @@ function plinkoFrames(pl, seedKey) {
   key(tb + 90, ex, PLK_BIN_Y - 3); key(tb + 180, ex, PLK_BIN_Y, 1.08, 0.92); key(tb + 260, ex, PLK_BIN_Y); key(dur, ex, PLK_BIN_Y);
   return out;
 }
-const PLK_STAR = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.8l3.05 6.6 7.2.8-5.35 4.9 1.5 7.1L12 17.6l-6.4 3.6 1.5-7.1L1.75 9.2l7.2-.8z"/></svg>';
 const PK = { pad: 6, top: 10, rows: PLINKO.rows, bottom: 86 };    // the board in percent: the chip starts at the top and the bins sit at the bottom
 function plinkoXY(x, r) { return [PK.pad + (x / 12) * (100 - 2 * PK.pad), r <= 0 ? PK.top : r > PLINKO.rows ? PK.bottom + 4 : PK.top + (r / (PLINKO.rows + 1)) * (PK.bottom - PK.top)]; }
+// Plinko: each bin's points under it (the 5 in gold); the bonus peg, gold and marked +2; the slots dropped
+// from greyed until all seven are used. The chip bounces down along the server's path; touching the bonus
+// peg, a +2 pops there (and the next bonus peg shows when the chip lands); in its bin, the points pop and
+// the player's total counts up.
 function plinkoTable(mini, a, o) {
-  const pl = a && a.plinko ? a.plinko : null, l = mini.last, turn = o.turn, mover = pl ? a.by : l ? l.by : turn;
-  const T = PLINKO.rows * PLINKO.step, land = T + PLINKO.land;
+  const pl = a && a.plinko ? a.plinko : null, l = mini.last, turn = o.turn, tg = mini.target || PLINKO_DEFAULTS.target;
+  const T = PLINKO.rows * PLINKO.step, land = T + PLINKO.land, inBin = T + 120;
+  const score = p => {
+    const now = mini.pts[p];
+    return pl && a.by === p ? `<span class="ppts"><span class="tu" style="--u:${inBin}ms">${now - pl.pts}</span><span class="tf" style="--f:${inBin}ms">${now}</span></span>` : `<span class="ppts"><span>${now}</span></span>`;
+  };
+  const tal = p => arcTally(p, o, `<span class="plkpts">${score(p)}<small>/${tg}</small></span>`);
   const pegs = [];
   for (let r = 1; r <= PLINKO.rows; r++) for (let x = (r - 1) % 2; x <= 12; x += 2) { const [px, py] = plinkoXY(x, r); pegs.push(`<circle class="peg" cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="1.6"/>`); }
-  const bins = Array.from({ length: PLINKO.slots }, (_, b) => { const [bx] = plinkoXY(b * 2, 0), w = (100 - 2 * PK.pad) / 6.6; const win = b === mini.win; const lit = pl && pl.bin === b;
-    return `<rect ${lateAt('bin' + (win ? ' win' : ''), lit ? T : null, 'lit')} x="${(bx - w / 2).toFixed(1)}" y="${PK.bottom}" width="${w.toFixed(1)}" height="12" rx="2"/>`; }).join('');
-  const [sx] = plinkoXY(mini.win * 2, 0), star = `<div class="pstar" style="left:${sx.toFixed(1)}%" aria-label="The win bin">${PLK_STAR}</div>`;   // the win bin's star, sized to fit inside it
-  let chip = '', style = '';
+  const w = (100 - 2 * PK.pad) / 6.6;
+  const bins = Array.from({ length: PLINKO.slots }, (_, b) => { const [bx] = plinkoXY(b * 2, 0), lit = pl && pl.bin === b;
+    return `<rect ${lateAt('bin' + (mini.vals[b] === 5 ? ' top' : ''), lit ? inBin : null, 'lit')} x="${(bx - w / 2).toFixed(1)}" y="${PK.bottom}" width="${w.toFixed(1)}" height="12" rx="2"/>`; }).join('');
+  const vals = mini.vals.map((v, b) => `<span class="pval${v === 5 ? ' top' : ''}" style="left:${plinkoXY(b * 2, 0)[0].toFixed(1)}%">${v}</span>`).join('');
+  const peg = (q, cls, extra = '') => { const [x, y] = plinkoXY(q.x, q.r); return `<div ${cls} style="left:${x.toFixed(1)}%;top:${y.toFixed(1)}%${extra}" aria-label="Bonus peg: +${PLINKO.bonus}"><b>+${PLINKO.bonus}</b></div>`; };
+  let bonus = '';
+  if (pl && pl.hit) {                                              // the bonus peg touched: it lights and pops +2 then; the next one shows as the chip lands
+    const th = pl.bonus.r * PLINKO.step, [hx, hy] = plinkoXY(pl.bonus.x, pl.bonus.r);
+    bonus = peg(pl.bonus, 'class="pbonus hit"', `;--u:${inBin}ms;--t:${th}ms`) + `<div class="pplus" style="left:${hx.toFixed(1)}%;top:${hy.toFixed(1)}%;--t:${th}ms">+${PLINKO.bonus}</div>` + (mini.bonus ? peg(mini.bonus, 'class="pbonus appear"', `;--t:${inBin}ms`) : '');
+  } else if (mini.bonus) bonus = peg(mini.bonus, 'class="pbonus"');
+  let chip = '', style = '', pop = '';
   if (pl) {                                                      // the drop: bounces peg to peg along the server's path, timed from the move
     const name = `pk${String(a.at || a.square)}${pl.slot}${pl.path.map(r => (r ? 1 : 0)).join('')}`.replace(/[^a-z0-9]/gi, '');
-    const frames = plinkoFrames(pl, name).map(f => `${f.p.toFixed(2)}% { left: ${f.x.toFixed(2)}%; top: ${f.y.toFixed(2)}%; transform: translate(0, -50%) scale(${f.sx}, ${f.sy}); }`).join(' ');
+    const frames = plinkoFrames(pl, name).map(f => `${f.p.toFixed(2)}% { left: ${f.x.toFixed(2)}%; top: ${f.y.toFixed(2)}%; transform: translate(0, -100%) scale(${f.sx}, ${f.sy}); }`).join(' ');
     style = `<style>@keyframes ${name} { ${frames} }</style>`;
     const [ex] = plinkoXY(pl.bin * 2, PLINKO.rows + 1);
     chip = `<div class="pchip ${a.by} drop" style="--path:${name};--d:${land}ms;left:${ex.toFixed(1)}%;top:${PLK_BIN_Y}%"></div>`;   // (where it ends, without the motion)
+    pop = `<div class="pplus pbig" style="left:${ex.toFixed(1)}%;top:80%;--t:${inBin}ms">+${mini.vals[pl.bin]}</div>`;
   } else if (l) { const [cx] = plinkoXY(l.bin * 2, PLINKO.rows + 1); chip = `<div class="pchip ${l.by}" style="left:${cx.toFixed(1)}%;top:${PLK_BIN_Y}%"></div>`; }
-  const slots = o.view ? '' : `<div class="pslots" role="group" aria-label="Drop slots">${Array.from({ length: PLINKO.slots }, (_, k) => `<button class="${turn}" data-act="move" ${mv(k)}${o.locked ? ' disabled' : ''} aria-label="Drop from slot ${k + 1}">${k + 1}</button>`).join('')}</div>`;
-  const res = pl ? `<p ${lateAt('arcres ' + (pl.win ? 'ok' : 'no'), land)} role="status">${pl.win ? 'WIN!' : `Bin ${pl.bin + 1}: not this time`}</p>` : l ? `<p class="arcres ${l.win ? 'ok' : 'no'}"><b class="${l.by}">${N(l.by)}</b> landed in bin ${l.bin + 1}</p>` : `<p class="arcnote">Pick a slot to drop from. The WIN bin is bin ${mini.win + 1}.</p>`;
-  return `<div class="g-arc"><div class="plinko">${slots}<div class="pboard">${style}<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${pegs.join('')}${bins}</svg>${star}${chip}</div>${res}</div></div>`;
+  const slots = o.view ? '' : `<div class="pslots" role="group" aria-label="Drop slots">${Array.from({ length: PLINKO.slots }, (_, k) => { const used = mini.used[k];
+    return `<button class="${turn}${used ? ' used' : ''}" data-act="move" ${mv(k)}${o.locked || used ? ' disabled' : ''} aria-label="${used ? `Slot ${k + 1}: used` : `Drop from slot ${k + 1}`}">${k + 1}</button>`; }).join('')}</div>`;
+  const won = pl && a.kind === 'claim', open = PLINKO.slots - mini.used.filter(Boolean).length;
+  const res = pl ? `<p ${lateAt('arcres ' + (pl.pts >= 3 ? 'ok' : 'no'), inBin)} role="status">${won ? `${pl.total} points: WIN!` : `+${pl.pts}${pl.hit ? ` (bonus +${PLINKO.bonus})` : ''}: ${pl.total} of ${tg}`}${pl.reset ? '<br><small>All seven used: every slot opens again</small>' : ''}</p>`
+    : l && o.view ? `<p class="arcres"><b class="${l.by}">${N(l.by)}</b> reached ${mini.pts[l.by]}</p>`
+    : `<p class="arcnote">Drop from an open slot (${open} left). First to ${tg} wins.</p>`;
+  return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="plinko">${slots}<div class="pboard">${style}<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${pegs.join('')}${bins}</svg><div class="pvals">${vals}</div>${bonus}${chip}${pop}</div>${res}</div></div>`;
 }
 // Cup Pong: the table from above, the thrower's rack of cups at the far end, the ball at this end. A
 // swipe up from the ball throws it: the direction aims, the speed sets the distance. The ball flies
@@ -3403,23 +3525,57 @@ function triviaTable(mini, a, o) {
     : `<p class="arcnote">${o.view ? '' : `<b class="${turn}">${N(turn)}</b>'s turn · ${left} option${left === 1 ? '' : 's'} left`}</p>`;
   return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="trivia"><div class="tqcard"><small>${esc(shown.cat || 'Trivia')}</small><p>${esc(shown.q)}</p></div><div class="topts">${opts}</div>${res}</div></div>`;
 }
-// Odd One Out: the player's grid; a tap is the move. After it the odd tile is ringed (and a wrong
-// pick shakes); a new grid waits for the next opening.
+// Odd One Out: the grid waits greyed, with a Reveal button. Reveal shows the shades and starts the
+// 5 seconds (a bar runs down): a tap is the move, and no tap in time counts as wrong. From Reveal the
+// player stays in the square (no Board button) until the pick goes in; a reload carries on the same
+// countdown. Someone else's pick (the computer's, the other phone's) plays as their screen did: the grey
+// grid, the shades, a short pause, their pick. After a pick the odd tile is ringed and a wrong one
+// crossed, and nothing on the board moves.
+const ODD_KEY = 'ttt-odd-revealed';
+let oddDraft = null;                                           // { id, sq, at, timer }: the reveal under way (at: Date.now(), so a reload carries on the countdown)
+const oddId = (sq, p) => `${state.online ? state.online.matchId || state.online.code || 'on' : 'local'}:${state.moves}:${sq}:${p}:${state.squares[sq].mini.finds[p]}:${state.squares[sq].mini.grid[p].base}`;
+function oddPre(f) { return f && f.type === 'oddone' && f.odd && !f.timeout && !REDUCED && (state.online ? f.by !== state.online.me : cpuPlays(f.by)) ? ODD.show + ODD.pause : 0; }   // someone else's pick: the reveal and the pause play first
+const oddPinned = () => !!(oddDraft && state.screen === 'mini' && state.zoom === oddDraft.sq && !state.flash);
+function oddArm() {                                            // the countdown's end: no pick in time is a wrong one
+  if (!oddDraft) return;
+  clearTimeout(oddDraft.timer);
+  const id = oddDraft.id;
+  oddDraft.timer = setTimeout(function out() {
+    if (!oddDraft || oddDraft.id !== id || state.flash || state.done) return;
+    if (blocked()) { oddDraft.timer = setTimeout(out, 400); return; }
+    clearTimeout(oddDraft.timer); oddDraft = null; attemptMove('auto');
+  }, Math.max(0, oddDraft.at + ODD.secs * 1000 - Date.now()));
+}
 function oddTable(mini, a, o) {
-  const d = a && a.odd ? a.odd : null, l = mini.last, turn = o.turn;
-  const tal = p => arcTally(p, o, pips(p, Math.min(ODD.goal, mini.finds[p]), ODD.goal, d && d.correct && a.by === p, 250));
+  const d = a && a.odd ? a.odd : null, l = mini.last, turn = o.turn, pre = d ? oddPre(a) : 0;
+  const tal = p => arcTally(p, o, pips(p, Math.min(ODD.goal, mini.finds[p]), ODD.goal, d && d.correct && a.by === p, pre + 250));
   const shown = d || (o.done || o.view ? l : null);
-  const grid = shown ? { n: shown.n, tiles: shown.tiles } : mini.grid[turn];
-  const n = grid.n;
+  const mine = !o.view && !shown && !o.locked;                  // this phone's pick to make
+  if (!mine) { if (oddDraft) clearTimeout(oddDraft.timer); oddDraft = null; }
+  else {
+    const id = oddId(o.zoom, turn);
+    if (oddDraft && oddDraft.id !== id) { clearTimeout(oddDraft.timer); oddDraft = null; }
+    if (!oddDraft) { let v = null; try { v = JSON.parse(localStorage.getItem(ODD_KEY) || 'null'); } catch (e) { /* none kept */ } if (v && v.id === id && Number.isFinite(v.at)) { oddDraft = { id, sq: o.zoom, at: v.at }; oddArm(); } }
+  }
+  const open = mine && !!oddDraft;
+  const grid = shown ? { n: shown.n, tiles: shown.tiles } : mini.grid[turn], n = grid.n;
   const tiles = grid.tiles.map((c, k) => {
-    let cls = 'otile';
-    if (shown) { if (k === shown.pos) cls += ' odd'; else if (k === shown.picked) cls += ' wrong'; }
-    return `<button class="${cls}" style="background:${c}${d ? ';--t:250ms' : ''}" data-act="move" ${mv(k)} aria-label="Tile ${k + 1}"${shown || o.locked ? ' disabled' : ''}></button>`;
+    let cls = 'otile', mark = '';
+    if (shown) { if (k === shown.pos) cls += ' odd'; else if (k === shown.picked) { cls += ' wrong'; mark = `<i class="ox">${CROSS}</i>`; } }
+    if (pre && k === shown.picked) cls += ' picked';
+    const cover = !shown && !open ? '<i class="ocv"></i>' : pre ? `<i class="ocv tu" style="--u:${ODD.show}ms"></i>` : '';
+    return `<button class="${cls}" style="background:${c}${shown ? `;--t:${pre + 250}ms;--p:${pre}ms` : ''}" data-act="move" ${mv(k)} aria-label="Tile ${k + 1}"${open && !o.locked ? '' : ' disabled'}>${cover}${mark}</button>`;
   }).join('');
-  const who = d ? a.by : shown ? l.by : turn;
-  const level = ['3×3 · a clear difference', '4×4 · a subtler one', '5×5 · a subtle one'][Math.min(mini.finds[who], 2)];
-  const res = d ? `<p ${lateAt('arcres ' + (d.correct ? 'ok' : 'no'), 250)} role="status">${d.correct ? 'Found it!' : d.picked < 0 ? 'No tap' : 'Not that one'}</p>` : shown ? `<p class="arcres ${shown.correct ? 'ok' : 'no'}"><b class="${who}">${N(who)}</b> ${shown.correct ? 'found it' : 'missed it'}</p>` : `<p class="arcnote">${o.view ? '' : `<b class="${who}">${N(who)}</b>: ${level}`}</p>`;
-  return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="odd"><div class="ogrid" style="grid-template-columns:repeat(${n}, 1fr)">${tiles}</div>${res}</div></div>`;
+  const who = d ? a.by : shown ? l.by : turn, W = p => `<b class="${p}">${N(p)}</b>`;
+  const startPerf = open ? performance.now() - (Date.now() - oddDraft.at) : null;
+  const res = d ? `<p ${lateAt('arcres ' + (d.correct ? 'ok' : 'no'), pre + 250)} role="status">${pre ? `${W(who)} ${d.correct ? 'found it' : d.picked < 0 ? 'ran out of time' : 'missed it'}` : d.correct ? 'Found it!' : d.picked < 0 ? 'Out of time' : 'Not that one'}</p>`
+    : shown ? `<p class="arcres ${shown.correct ? 'ok' : 'no'}">${W(who)} ${shown.correct ? 'found it' : 'missed it'}</p>`
+    : open ? `<p class="arcnote onote"${fxAttr(startPerf)}><span>Find the odd one</span><span class="obar"><i style="--d:${ODD.secs * 1000}ms"></i></span></p>`
+    : mine ? `<p class="arcnote">Tap Reveal, then you have ${ODD.secs} seconds</p>`
+    : `<p class="arcnote">${o.view ? '' : `${W(who)}'s turn`}</p>`;
+  const go = mine && !open;
+  const btn = o.view ? '' : `<div class="cbtns one${go ? '' : ' hold'}"><button class="big" data-act="odd-reveal"${go ? '' : ' disabled tabindex="-1" aria-hidden="true"'}>Reveal</button></div>`;   // the row stays (hidden) so the grid never moves
+  return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="odd"><div class="ogrid${!shown && !open ? ' wait' : ''}" style="grid-template-columns:repeat(${n}, 1fr)">${tiles}</div>${res}</div>${btn}</div>`;
 }
 // Mini Golf, Pool and Bowling: the physics games. The table is drawn on a canvas. A shot is a drag back
 // from anywhere on the table (a slingshot: pull away from where the ball should go, further for more
@@ -3462,9 +3618,9 @@ function physResult(f, long) {
   }
   if (f.type === 'pool') {
     if (ph.black) return { text: long ? `${who} sank the black!` : `The black! ${them} takes it`, ok: false };
-    if (ph.pocketedNow && ph.pocketedNow[by] >= POOLG.goal) return { text: long ? `${who} cleared the table!` : 'Both down!', ok: true };
+    if (ph.pocketedNow && ph.pocketedNow[by] >= POOLG.goal) return { text: long ? `${who} sank two!` : 'Two down!', ok: true };
     if (ph.pocketedNow && ph.pocketedNow[o] >= POOLG.goal) return { text: long ? `${who} sank ${them}'s last ball` : `${them}'s last ball — ${them} takes it`, ok: false };
-    if (ph.scratch) return { text: long ? `${who} scratched` : 'Scratch! The white comes back', ok: false };
+    if (ph.scratch) return { text: long ? `${who} scratched: ${them} gets a ball more` : `Scratch! ${them} gets a ball more`, ok: false };
     if (ph.own && !ph.theirs) return { text: long ? `${who} sank a ball — and shoots again` : 'Sank one — shoot again!', ok: true };
     if (ph.own) return { text: long ? `${who} sank a ball, and ${them}'s` : `Sank one, and ${them}'s`, ok: false };
     if (ph.theirs) return { text: long ? `${who} sank ${them}'s ball` : `Sank ${them}'s ball`, ok: false };
@@ -3507,7 +3663,7 @@ function physFrame(ph, now, at) {
 function physStill(mini, showLast) {
   const L = PHYSICS.lib, out = {};
   if (mini.type === 'golf') for (const p of ['X', 'O']) out[p] = mini.holed[p] ? null : mini.balls[p];
-  else if (mini.type === 'pool') for (const id of POOLG.order) out[id] = mini.down[id] ? null : mini.balls[id];
+  else if (mini.type === 'pool') for (const id of poolIds(mini)) out[id] = mini.down[id] ? null : mini.balls[id];
   else {
     const l = showLast && mini.last ? mini.last : null;
     out.ball = l ? null : L.BOWL.start;
@@ -3593,7 +3749,7 @@ function drawPool(g, mini, pos) {
   c.fillStyle = 'rgba(255,255,255,.35)';                                                  // the spots
   for (const [x, y] of [S.start.cue, S.start.black]) { c.beginPath(); c.arc(g.X(x), g.Y(y), 1.1 * g.k, 0, Math.PI * 2); c.fill(); }
   for (const [x, y, r] of S.pockets) { c.beginPath(); c.arc(g.X(x), g.Y(y), r * g.k, 0, Math.PI * 2); c.fillStyle = '#0d0d0d'; c.fill(); c.lineWidth = 2; c.strokeStyle = '#3b2412'; c.stroke(); }
-  for (const id of POOLG.order) {
+  for (const id of Object.keys(pos).sort((a, b) => poolRank(a) - poolRank(b))) {
     if (!pos[id]) continue;
     const [x, y] = pos[id];
     if (id === 'cue') physBall(g, x, y, S.ballR, '#fdfaf0', '', P.ink);
@@ -3692,57 +3848,73 @@ function physThumb(mini) {
     return `<svg class="tphys" viewBox="-4 -4 ${S.w + 8} ${S.h + 8}" aria-label="Pool: X has ${mini.pocketed.X} down, O has ${mini.pocketed.O} down">
       <rect x="-4" y="-4" width="${S.w + 8}" height="${S.h + 8}" rx="4" class="rail"/><rect x="0" y="0" width="${S.w}" height="${S.h}" class="cloth"/>
       ${S.pockets.map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" class="pocket"/>`).join('')}
-      ${POOLG.order.map(id => (mini.down[id] ? '' : ball(mini.balls[id][0], mini.balls[id][1], S.ballR * 1.5, id === 'cue' ? 'cue' : id === 'black' ? 'black' : id[0].toUpperCase(), id === 'cue' || id === 'black' ? '' : id[0].toUpperCase()))).join('')}</svg>`;
+      ${poolIds(mini).map(id => (mini.down[id] ? '' : ball(mini.balls[id][0], mini.balls[id][1], S.ballR * 1.5, id === 'cue' ? 'cue' : id === 'black' ? 'black' : id[0].toUpperCase(), id === 'cue' || id === 'black' ? '' : id[0].toUpperCase()))).join('')}</svg>`;
   }
   const S = L.BOWL, l = mini.last;
   return `<div class="tbowl" aria-label="Bowling: X has ${mini.pins.X} pins, O has ${mini.pins.O} of ${BOWLG.goal}"><svg viewBox="30 6 40 52">
     ${S.pins.map(([x, y], k) => `<circle cx="${x}" cy="${y}" r="${S.pinR * 1.6}" class="pin${l && l.down[k] ? ' down' : ''}"/>`).join('')}</svg>
     <div class="trun">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><i style="--w:${(100 * Math.min(1, mini.pins[p] / BOWLG.goal)).toFixed(1)}%"></i></div>`).join('')}</div></div>`;
 }
-// Craps: the round is rolled out where the move is made (the server online); the page plays it back roll
-// by roll from the move: each pair of dice tumbles in at its time and gives way to the next; the puck goes
-// on the point after the come-out; the round's result shows at the end.
+// Craps: one roll a move, rolled where the move is made (the server online). The dice tumble in from the
+// move; the puck goes on at a new point (and off when a round ends); the round's rolls so far sit in a row
+// under the felt (a fixed height: the last eight). With a point standing it is the roller's choice, Roll
+// again or Stop: both buttons are always there (Stop greyed until it can be used), so nothing moves.
 const CRAPS_POINTS = [4, 5, 6, 8, 9, 10];
-function crapsSay(r) {
+function crapsSay(r, who) {                                     // the line under the felt for a roll (or a stop)
   if (!r) return '';
-  const s = d => d[0] + d[1], first = s(r.rolls[0]), lastS = s(r.rolls[r.rolls.length - 1]);
-  if (r.point == null) return r.result === 'win' ? `${first} on the come-out: a winner!` : `${first}: craps!`;
-  return r.result === 'win' ? `Point ${r.point} made!` : 'Seven out';
+  if (r.kind === 'stop') return `${who ? who + ' stopped' : 'Stopped'}: point ${r.point} stays on for the next roll here`;
+  if (!r.roll) return r.result === 'win' ? 'Round won' : 'Round lost';   // (a round from before)
+  const n = r.sum;
+  if (r.was == null) return r.result === 'win' ? `${n} on the come-out: a winner!` : r.result === 'lose' ? `${n}: craps!` : `Point ${n}: roll again or stop`;
+  return r.result === 'win' ? `Point ${r.was} made!` : r.result === 'lose' ? 'Seven out' : `${n}: the point is still ${r.was}`;
 }
 function crapsTable(mini, a, o) {
   const c = a && a.craps ? a.craps : null, l = mini.last, turn = o.turn;
-  const shown = c || (l ? { rolls: l.rolls, point: l.point, result: l.result } : null);
-  const tim = c ? crapsTimes(c.rolls, c.point) : null, tEnd = c ? (REDUCED ? 0 : tim.end) : 0;
-  const tal = p => arcTally(p, o, pips(p, Math.min(CRAPS.goal, mini.wins[p]), CRAPS.goal, !!(c && c.result === 'win' && a.by === p), tEnd));
-  // the puck: OFF to begin with; on the point once the come-out sets one
+  const roll = c && c.kind === 'roll' && c.roll ? c : null, land = roll && !REDUCED ? 560 : 0;
+  const tal = p => arcTally(p, o, pips(p, Math.min(CRAPS.goal, mini.wins[p]), CRAPS.goal, !!(roll && roll.result === 'win' && a.by === p), land));
+  // the puck: on the point while a round has one, OFF otherwise; it moves when a roll sets or ends a point
   const slot = n => (n == null ? 0 : CRAPS_POINTS.indexOf(n) + 1), pct = k => ((k + 0.5) / 7 * 100).toFixed(2);
-  const pk = shown && shown.point != null ? slot(shown.point) : 0;
-  const puckAt = c && c.point != null && !REDUCED ? tim.at[0] + 560 : null;
-  const puck = `<div class="cpuck${pk ? ' on' : ''}${puckAt != null ? ' move' : ''}" style="left:${pct(pk)}%;--from:${pct(0)}%;--to:${pct(pk)}%${puckAt != null ? `;--t:${puckAt}ms` : ''}">${pk ? 'ON' : 'OFF'}</div>`;
-  const strip = `<div class="cpts">${['', ...CRAPS_POINTS].map((n, k) => `<i class="${k === 0 ? 'off' : ''}${shown && shown.point === n ? ' pt' : ''}">${n}</i>`).join('')}${puck}</div>`;
-  // the dice: each roll's pair in its turn (the last one stays)
-  let dice = '';
-  if (shown) {
-    const n = shown.rolls.length;
-    dice = shown.rolls.map((d, k) => {
-      if (!c && k < n - 1) return '';
-      const t0 = c && !REDUCED ? tim.at[k] : null, t1 = c && !REDUCED && k < n - 1 ? tim.at[k + 1] : null;
-      return `<div class="cpair${t0 != null ? ' tumble' : ''}${t1 != null ? ' gone' : ''}" style="${t0 != null ? `--t:${t0}ms;` : ''}${t1 != null ? `--t2:${t1}ms` : ''}" aria-hidden="${k < n - 1}"><span class="die cdie">${dieFace(d[0])}</span><span class="die cdie b">${dieFace(d[1])}</span></div>`;
-    }).join('');
-  }
-  const log = shown ? `<div class="crolls" aria-label="The rolls">${shown.rolls.map((d, k) => `<span ${c && !REDUCED ? lateAt('', tim.at[k] + 500) : ''}>${d[0] + d[1]}</span>`).join('')}</div>` : '<div class="crolls"></div>';
-  const res = c ? `<p ${lateAt('arcres ' + (c.result === 'win' ? 'ok' : 'no'), tEnd)} role="status">${crapsSay(c)}</p>`
-    : l && (o.done || o.view) ? `<p class="arcres ${l.result === 'win' ? 'ok' : 'no'}"><b class="${l.by}">${N(l.by)}</b>: ${crapsSay(l)}</p>`
-    : `<p class="arcnote">${o.view ? '' : `<b class="${turn}">${N(turn)}</b>: roll until the round is won or lost`}</p>`;
-  const btn = o.view ? '' : `<div class="cbtns one"><button class="big ${turn}" data-act="move" ${mv('roll')}${o.locked ? ' disabled' : ''}>Roll</button></div>`;
+  const before = roll ? roll.was : null, after = mini.point == null ? null : mini.point;
+  const moving = roll && !REDUCED && slot(before) !== slot(after);
+  const pk = slot(after);
+  const puck = `<div class="cpuck${pk ? ' on' : ''}${moving ? (pk ? ' move' : ' moveoff') : ''}" style="left:${pct(pk)}%;--from:${pct(slot(before))}%;--to:${pct(pk)}%${moving ? `;--t:${land}ms` : ''}">${pk ? 'ON' : 'OFF'}</div>`;
+  const strip = `<div class="cpts">${['', ...CRAPS_POINTS].map((n, k) => `<i class="${k === 0 ? 'off' : ''}${after != null && after === n ? ' pt' : ''}">${n}</i>`).join('')}${puck}</div>`;
+  // the dice: the roll just made tumbling in, else the last roll at rest
+  const d = roll ? roll.roll : l && l.roll ? l.roll : l && l.rolls && l.rolls.length ? l.rolls[l.rolls.length - 1] : null;
+  const dice = d ? `<div class="cpair${roll && !REDUCED ? ' tumble' : ''}"><span class="die cdie">${dieFace(d[0])}</span><span class="die cdie b">${dieFace(d[1])}</span></div>` : '';
+  // the round's rolls so far (the one just made appearing as it lands); a round just over keeps its rolls on show
+  const rolls = (roll ? roll.rolls : mini.rolls && mini.rolls.length ? mini.rolls : l && l.rolls ? l.rolls : []).slice(-8);
+  const log = `<div class="crolls" aria-label="This round's rolls">${rolls.map((x, k) => `<span ${roll && k === rolls.length - 1 && !REDUCED ? lateAt('', land) : ''}>${x[0] + x[1]}</span>`).join('')}</div>`;
+  const live = !o.view && mini.live === turn && mini.point != null;     // a point standing, the roller's choice
+  const W = p => `<b class="${p}">${N(p)}</b>`;
+  const res = c ? `<p ${lateAt('arcres ' + (roll ? (roll.result === 'win' ? 'ok' : roll.result === 'lose' ? 'no' : '') : ''), land)} role="status">${crapsSay(c)}</p>`
+    : l && (o.done || o.view) ? `<p class="arcres ${l.result === 'win' ? 'ok' : l.result === 'lose' ? 'no' : ''}">${W(l.by)}: ${crapsSay(l)}</p>`
+    : o.view ? '<p class="arcnote"></p>'
+    : live ? `<p class="arcnote">Point ${mini.point}: roll it again to win, a 7 loses. Or stop, and the next roll here carries on</p>`
+    : mini.point != null ? `<p class="arcnote">${W(turn)}: point ${mini.point} is on. Roll it to win the round, a 7 loses it</p>`
+    : `<p class="arcnote">${W(turn)}: 7 or 11 wins, 2, 3 or 12 loses</p>`;
+  const btn = o.view ? '' : `<div class="cbtns two"><button class="big ${turn}" data-act="move" ${mv('roll')}${o.locked ? ' disabled' : ''}>${live ? 'Roll again' : 'Roll'}</button><button class="big" data-act="move" ${mv('stop')}${o.locked || !live ? ' disabled' : ''}>Stop</button></div>`;
   return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="craps">${strip}<div class="cfelt">${dice || '<p class="arcnote">Roll the dice</p>'}</div>${log}${res}</div>${btn}</div>`;
 }
 // Takeover: the 5x5 board; a tap on an empty cell is the move. The cell pops in, then the cells around it
 // turn over to the mover's colour, one after the other.
+// A bar chart: segments [{ cls, n, n0, label }] across a whole of `total`. With a move (t: ms into it) each
+// segment grows or shrinks from n0 to n, and its number turns over, at t. Always one height: nothing moves.
+function sbar(segs, total, t, bare) {                         // bare: no numbers in the segments
+  const pct = n => (100 * n / total).toFixed(2);
+  return `<div class="sbar">${segs.map(g => {
+    const moved = t != null && g.n0 != null && g.n0 !== g.n;
+    const num = moved ? `<span class="sbn"><span class="tu" style="--u:${t}ms">${g.n0}</span><span class="tf" style="--f:${t}ms">${g.n}</span></span>` : `<span class="sbn"><span>${g.n}</span></span>`;
+    return `<i class="${g.cls}${moved ? ' grow' : ''}" style="--w:${pct(g.n)};--w0:${pct(moved ? g.n0 : g.n)}${moved ? `;--t:${t}ms` : ''}" aria-label="${g.label}: ${g.n}">${bare ? '' : num}</i>`;
+  }).join('')}</div>`;
+}
 function takeTable(mini, a, o) {
   const tk = a && a.take ? a.take : null, turn = o.turn;
-  const tal = p => arcTally(p, o, `<small>${takeCount(mini.cells, p)} square${takeCount(mini.cells, p) === 1 ? '' : 's'}</small>`);
+  const tal = p => arcTally(p, o, '');
   const order = tk ? takeNear(tk.at).filter(k => k !== tk.at) : [];
+  // the bar chart under the board: X's cells, the empty ones, O's, in their colours (before the move, then after it)
+  const now = { X: takeCount(mini.cells, 'X'), O: takeCount(mini.cells, 'O') }, N = mini.cells.length, was = tk ? { [a.by]: now[a.by] - tk.took.length - tk.flipped.length, [other(a.by)]: now[other(a.by)] + tk.flipped.length } : now;
+  const bar = sbar([{ cls: 'X', n: now.X, n0: was.X, label: 'X' }, { cls: 'E', n: N - now.X - now.O, n0: N - was.X - was.O, label: 'Empty' }, { cls: 'O', n: now.O, n0: was.O, label: 'O' }], N, tk ? TAKEOVER_MS.place : null);
   const cells = mini.cells.map((c, i) => {
     let cls = 'tkc' + (c ? ' ' + c : ''), st = '';
     if (tk && i === tk.at) cls += ' pop';
@@ -3757,7 +3929,7 @@ function takeTable(mini, a, o) {
   const res = tk ? `<p ${lateAt('arcres ok', TAKEOVER_MS.place)} role="status">+${tk.took.length + tk.flipped.length}${tk.flipped.length ? ` · ${tk.flipped.length} turned over` : ''}</p>`
     : o.view ? `<p class="arcnote">${l ? `${takeCount(mini.cells, 'X')} to ${takeCount(mini.cells, 'O')}` : ''}</p>`
     : `<p class="arcnote">${o.locked ? `Waiting for <b class="${turn}">${N(turn)}</b>…` : 'Tap an empty square'}</p>`;
-  return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="takeover"><div class="tkgrid">${cells}</div>${res}</div></div>`;
+  return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="takeover"><div class="tkgrid">${cells}</div>${bar}${res}</div></div>`;
 }
 // Flood: the 6x6 grid in its colours, the blob's cells and the cells each player has grabbed marked in
 // their colour; the colour buttons below (not the blob's own). A move: the blob turns the colour, then the
@@ -3766,12 +3938,17 @@ const FLOOD_COL = ['#3d7fe0', '#21b2a6', '#8d5bd8', '#86c440', '#f06aa8'];
 const FLOOD_NAMES = ['blue', 'teal', 'purple', 'green', 'pink'];
 function floodTable(mini, a, o) {
   const fl = a && a.flood ? a.flood : null, turn = o.turn, blob = mini.colors[0];
-  const tal = p => arcTally(p, o, `<small>${fl && a.by === p && fl.gain ? `<i class="fsc" style="--t:${FLOOD_MS.base}ms">${mini.score[p]}</i>` : mini.score[p]} / ${FLOOD.goal}</small>`);
+  const tal = p => arcTally(p, o, '');
+  // the bar chart: each player's cells against the target
+  const fbar = p => { const n = Math.min(FLOOD.goal, mini.score[p]), n0 = fl && a.by === p ? Math.min(FLOOD.goal, mini.score[p] - fl.gain) : n;
+    return `<div class="fbr ${p}"><b class="${p}">${p}</b>${sbar([{ cls: p, n, n0, label: p }, { cls: 'E', n: FLOOD.goal - n, n0: FLOOD.goal - n0, label: 'To go' }], FLOOD.goal, fl && a.by === p ? FLOOD_MS.base : null, true)}<small>${fl && a.by === p && n !== n0 ? `<span class="sbn"><span class="tu" style="--u:${FLOOD_MS.base}ms">${n0}</span><span class="tf" style="--f:${FLOOD_MS.base}ms">${n}</span></span>` : n}<span>/${FLOOD.goal}</span></small></div>`; };
   const waveOf = {};
   if (fl) fl.waves.forEach((w, k) => w.forEach(i => { waveOf[i] = k; }));
   const cells = mini.colors.map((c, i) => {
     const own = mini.owner[i], fresh = waveOf[i] != null;
-    let cls = 'flc' + (own === 'X' || own === 'O' ? ' own ' + own : '') + (i === 0 ? ' start' : '');
+    const n = FLOOD.n, r = Math.floor(i / n), k = i % n, inBlob = j => mini.owner[j] != null;
+    let cls = 'flc' + (own === 'X' || own === 'O' ? ' own ' + own : '') + (i === 0 ? ' start' : '') + (own != null ? ' blob' : '');
+    if (own != null) { if (r > 0 && inBlob(i - n)) cls += ' jt'; if (k < n - 1 && inBlob(i + 1)) cls += ' jr'; if (r < n - 1 && inBlob(i + n)) cls += ' jb'; if (k > 0 && inBlob(i - 1)) cls += ' jl'; }   // the blob's cells run together: no line between two of them
     let st = `background:${FLOOD_COL[c]}`;
     if (fresh) { cls += ' grab'; st += `;--t:${Math.round(FLOOD_MS.base * 0.55 + waveOf[i] * FLOOD_MS.wave)}ms`; }
     else if (fl && own != null) { cls += ' recolor'; st += `;--c0:${FLOOD_COL[fl.from == null ? c : fl.from]};--c1:${FLOOD_COL[c]};--t:0ms`; }
@@ -3780,7 +3957,7 @@ function floodTable(mini, a, o) {
   const btns = o.view ? '' : `<div class="fbtns">${FLOOD_COL.map((col, c) => `<button class="fsw" style="background:${col}" data-act="move" ${mv(c)} aria-label="${FLOOD_NAMES[c]}"${c === blob || o.locked ? ' disabled' : ''}>${c === blob ? '<i>blob</i>' : ''}</button>`).join('')}</div>`;
   const res = fl ? `<p ${lateAt('arcres ' + (fl.gain ? 'ok' : 'no'), FLOOD_MS.base)} role="status">${fl.gain ? `+${fl.gain}` : 'Nothing grabbed'}</p>`
     : `<p class="arcnote">${o.view ? '' : o.locked ? `Waiting for <b class="${turn}">${N(turn)}</b>…` : 'Pick a colour for the blob'}</p>`;
-  return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="flood"><div class="flgrid">${cells}</div>${res}</div>${btns}</div>`;
+  return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="flood"><div class="flgrid">${cells}</div><div class="fbars">${fbar('X')}${fbar('O')}</div>${res}</div>${btns}</div>`;
 }
 // Seating: ten tables of two seats, each seat a colour. A tap on an empty seat is the move: the mover sits
 // (a pop), then the customer walks in to a seat of their colour (any seat when none is left); the next
@@ -3810,11 +3987,12 @@ function seatingTable(mini, a, o) {
   const door = c => `<i class="sgdot" style="background:${SEAT_COL[c]}"></i><b>${SEAT_NAMES[c]}</b>`;
   // the door: the customer who just sat leaves it as the move is made, the next one arrives once they are seated
   const next = full ? '<span class="snext">The room is full</span>'
-    : s && s.z != null ? `<span class="snext">Next customer: <span class="sgwrap"><span class="sgo" style="--t:${zAt}ms">${door(s.zColor)}</span><span ${lateAt('snew', zEnd)}>${door(mini.next)}</span></span></span>`
+    : s && (s.z != null || s.left) ? `<span class="snext">Next customer: <span class="sgwrap"><span class="sgo" style="--t:${zAt}ms">${door(s.zColor)}</span><span ${lateAt('snew', zEnd)}>${door(mini.next)}</span></span></span>`
     : `<span class="snext">Next customer: <span>${door(mini.next)}</span></span>`;
-  const res = s ? `<p ${lateAt('arcres ' + (s.table != null ? 'ok' : ''), s.table != null ? tAt : zEnd)} role="status">${s.table != null ? `Table ${s.table + 1} is ${N(a.by)}'s!` : s.z != null ? `A ${SEAT_NAMES[s.zColor]} customer sat down` : 'Seated'}</p>`
+  const res = s ? `<p ${lateAt('arcres ' + (s.table != null ? 'ok' : ''), s.table != null ? tAt : zEnd)} role="status">${s.table != null ? `Table ${s.table + 1} is ${N(a.by)}'s!` : s.z != null ? `A ${SEAT_NAMES[s.zColor]} customer sat down` : s.left ? `No ${SEAT_NAMES[s.zColor]} seat: the customer left` : 'Seated'}</p>`
     : `<p class="arcnote">${o.view ? '' : o.locked ? `Waiting for <b class="${turn}">${N(turn)}</b>…` : 'Tap an empty seat'}</p>`;
-  return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="seating"><div class="sdoor">${next}</div><div class="stbls">${tables}</div>${res}</div></div>`;
+  const leave = s && s.left && !REDUCED ? `<span class="sleave" style="--t:${zAt}ms;--sc:${SEAT_COL[s.zColor]}"><span class="sguest">${SEAT_GUEST}</span></span>` : '';   // no seat of their colour: in at the door, across the room and out
+  return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="seating"><div class="sdoor">${next}</div><div class="stbls">${tables}${leave}</div>${res}</div></div>`;
 }
 // Districts: the map's five regions, each shaded in its leader's colour, and its spots; a spot on a
 // border counts for every region it touches. A tap on an empty spot is the move: the piece pops in, then
@@ -3941,20 +4119,20 @@ function patternsTable(mini, a, o) {
     : `<p class="arcnote">${o.view ? '' : `<b class="${turn}">${N(turn)}</b>'s turn · ${left} option${left === 1 ? '' : 's'} left`}</p>`;
   return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="patterns"><div class="patcard"><small>${ask}</small><div class="pseq" style="--n:${shown.seq.length}" aria-label="The sequence: ${esc(shown.seq.map(patSay).join(', '))}">${seq}</div></div><div class="popts">${opts}</div>${res}</div></div>`;
 }
-// Risk Wheels: the three wheels side by side, each segment the size of its chance, its points on it. A tap
-// on a wheel spins it: a few turns, slowing, stopping with the pointer on the segment the server's spin
-// landed in; the points pop up and go onto the spinner's tally. Between spins each wheel rests where it
-// last stopped.
+// Risk Wheels: the square's three wheels side by side, ten equal segments each with its points on it (the
+// 10s in gold), each wheel's average under it. A tap on a wheel spins it: a few turns, slowing, stopping
+// with the pointer on the segment the server's spin landed in; the points pop up and go onto the spinner's
+// tally. Between spins each wheel rests where it last stopped.
 const WHEEL_LOOK = { high: { name: 'High risk', a: '#8d5bd8', b: '#ddd0f2' }, mid: { name: 'Medium', a: '#3d7fe0', b: '#cfe0f8' }, low: { name: 'Low risk', a: '#21b2a6', b: '#c6ece8' } };
-function wheelSvg(cfg, w) {
-  const c = cfg[w], L = WHEEL_LOOK[w], pa = c.pa / 100, R = 46;
-  const pt = f => { const t = (f * 360 - 90) * Math.PI / 180; return [(50 + R * Math.cos(t)).toFixed(2), (50 + R * Math.sin(t)).toFixed(2)]; };
-  const seg = (f0, f1, col) => { const [x0, y0] = pt(f0), [x1, y1] = pt(f1); return `<path d="M50 50 L${x0} ${y0} A${R} ${R} 0 ${f1 - f0 > 0.5 ? 1 : 0} 1 ${x1} ${y1} Z" fill="${col}"/>`; };
-  const lab = (f, v, pct, dark) => { const t = (f * 360 - 90) * Math.PI / 180, x = 50 + 27 * Math.cos(t), y = 50 + 27 * Math.sin(t); return `<text x="${x.toFixed(1)}" y="${(y + 4).toFixed(1)}" class="wv${dark ? ' dk' : ''}">${v}</text><text x="${x.toFixed(1)}" y="${(y + 14).toFixed(1)}" class="wp${dark ? ' dk' : ''}">${pct}%</text>`; };
-  return seg(0, pa, L.a) + seg(pa, 1, L.b) + `<circle cx="50" cy="50" r="${R}" class="wrim"/>` + lab(pa / 2, c.a, c.pa, true) + lab(pa + (1 - pa) / 2, c.b, 100 - c.pa, false) + '<circle cx="50" cy="50" r="5" class="whub"/>';
+function wheelSvg(vals, w) {
+  const L = WHEEL_LOOK[w], R = 46, n = vals.length;
+  const pt = (f, r) => { const t = (f * 360 - 90) * Math.PI / 180; return [(50 + r * Math.cos(t)).toFixed(2), (50 + r * Math.sin(t)).toFixed(2)]; };
+  const seg = (k, col) => { const [x0, y0] = pt(k / n, R), [x1, y1] = pt((k + 1) / n, R); return `<path d="M50 50 L${x0} ${y0} A${R} ${R} 0 0 1 ${x1} ${y1} Z" fill="${col}" class="wseg"/>`; };
+  const lab = (k, v, dark) => { const [x, y] = pt((k + 0.5) / n, 33); return `<text x="${x}" y="${(Number(y) + 4.5).toFixed(2)}" class="wv${dark ? ' dk' : ''}${v === 10 ? ' ten' : ''}">${v}</text>`; };
+  return vals.map((v, k) => seg(k, v === 10 ? '#f6c21b' : k % 2 ? L.b : L.a)).join('') + `<circle cx="50" cy="50" r="${R}" class="wrim"/>` + vals.map((v, k) => lab(k, v, v !== 10 && k % 2 === 0)).join('') + '<circle cx="50" cy="50" r="5" class="whub"/>';
 }
 function wheelTable(mini, a, o) {
-  const s = a && a.wheel ? a.wheel : null, l = mini.last, turn = o.turn, cfg = mini.cfg, T = cfg.target, rest = mini.rest || {};
+  const s = a && a.wheel ? a.wheel : null, l = mini.last, turn = o.turn, wh = mini.wheels, T = mini.target, rest = mini.rest || {};
   const pct = v => (100 * Math.min(1, v / T)).toFixed(1) + '%';
   const tal = p => {                                          // the bar and the points; the spinner's grow as the wheel stops
     const now = mini.pts[p], fresh = !!(s && a.by === p && s.v), was = fresh ? now - s.v : now;
@@ -3963,18 +4141,18 @@ function wheelTable(mini, a, o) {
   const wheels = WHEELS.map(w => {
     const spun = s && s.w === w, at = spun ? s.at : rest[w] || 0, end = (spun ? 1800 : 0) - at * 360, from = spun ? -(s.from || 0) * 360 : end;
     const dis = o.locked || !!s;
-    return `<button class="rwheel ${w}${spun ? ' spun' : ''}" data-act="move" ${mv(w)}${dis ? ' disabled' : ''} aria-label="${WHEEL_LOOK[w].name}: ${cfg[w].a} points (${cfg[w].pa}%) or ${cfg[w].b} (${100 - cfg[w].pa}%)">
-      <span class="wbox"><i class="wptr" aria-hidden="true"></i><svg viewBox="0 0 100 100" aria-hidden="true"><g class="wspin${spun ? ' go' : ''}" style="transform:rotate(${end.toFixed(1)}deg)${spun ? `;--from:${from.toFixed(1)}deg;--end:${end.toFixed(1)}deg;--d:${WHEELT.spin}ms` : ''}">${wheelSvg(cfg, w)}</g></svg></span><b>${WHEEL_LOOK[w].name}</b></button>`;
+    return `<button class="rwheel ${w}${spun ? ' spun' : ''}" data-act="move" ${mv(w)}${dis ? ' disabled' : ''} aria-label="${WHEEL_LOOK[w].name}: ${wh[w].join(', ')} (average ${wheelAvg(wh[w]).toFixed(1)})">
+      <span class="wbox"><i class="wptr" aria-hidden="true"></i><svg viewBox="0 0 100 100" aria-hidden="true"><g class="wspin${spun ? ' go' : ''}" style="transform:rotate(${end.toFixed(1)}deg)${spun ? `;--from:${from.toFixed(1)}deg;--end:${end.toFixed(1)}deg;--d:${WHEELT.spin}ms` : ''}">${wheelSvg(wh[w], w)}</g></svg></span><b>${WHEEL_LOOK[w].name}</b><small class="wavg">average ${wheelAvg(wh[w]).toFixed(1)}</small></button>`;
   }).join('');
   const res = s ? `<p ${lateAt('arcres ' + (s.v ? 'ok' : 'no'), WHEELT.spin)} role="status">${s.v ? `+${s.v}!` : 'Nothing this time'}</p>`
     : (o.view || o.done) && l ? `<p class="arcres ${l.v ? 'ok' : 'no'}"><b class="${l.by}">${N(l.by)}</b> spun ${WHEEL_LOOK[l.w].name.toLowerCase()}: ${l.v ? '+' + l.v : 'nothing'}</p>`
     : `<p class="arcnote">${o.view ? '' : o.locked ? `Waiting for <b class="${turn}">${N(turn)}</b>…` : `Pick a wheel and spin · first to ${T}`}</p>`;
   return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="wheels"><div class="rwrow">${wheels}</div>${res}</div></div>`;
 }
-// Sniff: the 5x5 field. Every step the dog has taken shows as two paw prints along it, warm for hotter,
-// cool for colder, ringed in the colour of whoever walked it. The dog's four neighbours (inside the
-// field) are the moves: a tap walks it there; it trots over, the new prints come, then "Hotter!" or
-// "Colder!". Onto the treasure: it digs, the chest pops up.
+// Sniff: the 5x5 field and the dog, nothing else: no trail. The dog's four neighbours (inside the field)
+// are the moves: a tap walks it there; it trots over leaving two paw prints behind it (warm for hotter,
+// cool for colder, ringed in the walker's colour), then "Hotter!" or "Colder!" for a moment; once the move
+// is over the prints and the word are gone. Onto the treasure: it digs, the chest pops up.
 const SNIFF_HOT = '#f2763a', SNIFF_COLD = '#5aa6e8';
 const sniffXY = c => [Math.floor(c % SNIFF.n) * 20 + 10, Math.floor(c / SNIFF.n) * 20 + 10];   // a cell's middle, in a 100 x 100 field
 const SNIFF_PAW = '<ellipse cx="0" cy="1.3" rx="2" ry="1.7"/><circle cx="-1.9" cy="-1.5" r=".75"/><circle cx="-.65" cy="-2.5" r=".75"/><circle cx=".65" cy="-2.5" r=".75"/><circle cx="1.9" cy="-1.5" r=".75"/>';
@@ -3984,16 +4162,16 @@ function sniffPaws(trail, fresh) {
     const [x0, y0] = sniffXY(s.f), [x1, y1] = sniffXY(s.t), dx = (x1 - x0) / 20, dy = (y1 - y0) / 20, ang = Math.atan2(dy, dx) * 180 / Math.PI + 90;
     const edge = Math.min(s.f, s.t) + ':' + Math.max(s.f, s.t), n = seen[edge] = (seen[edge] || 0) + 1, off = ((n - 1) % 3 - 1) * 2.4;   // the same way again: a little to one side
     const px = -dy, py = dx, isNew = fresh && k === trail.length - 1;
-    return [0.36, 0.66].map((f, j) => { const side = (j ? 2 : -2) + off, x = x0 + (x1 - x0) * f + px * side, y = y0 + (y1 - y0) * f + py * side;
-      return `<g class="spaw ${s.by}${isNew ? ' fresh' : ''}" style="--t:${isNew ? SNIFF.step * (0.35 + 0.3 * j) : 0}ms" transform="translate(${x.toFixed(2)} ${y.toFixed(2)}) rotate(${ang.toFixed(0)}) scale(1.35)"><g class="sring">${SNIFF_PAW}</g><g class="sfill" fill="${s.hot ? SNIFF_HOT : SNIFF_COLD}">${SNIFF_PAW}</g></g>`; }).join('');
+    return [0.12, 0.42].map((f, j) => { const side = (j ? 2.6 : -2.6) + off, x = x0 + (x1 - x0) * f + px * side, y = y0 + (y1 - y0) * f + py * side;   // behind the dog as it arrives, one either side: never under it
+      return `<g class="spaw ${s.by}${isNew ? ' fresh' : ''}" style="--t:${isNew ? SNIFF.step * (0.25 + 0.3 * j) : 0}ms" transform="translate(${x.toFixed(2)} ${y.toFixed(2)}) rotate(${ang.toFixed(0)}) scale(1.15)"><g class="sring">${SNIFF_PAW}</g><g class="sfill" fill="${s.hot ? SNIFF_HOT : SNIFF_COLD}">${SNIFF_PAW}</g></g>`; }).join('');
   }).join('');
 }
 const SNIFF_DOG = '<g class="sdogart"><ellipse cx="-6.2" cy="-1.4" rx="2.6" ry="4.6" transform="rotate(18 -6.2 -1.4)" class="sear"/><ellipse cx="6.2" cy="-1.4" rx="2.6" ry="4.6" transform="rotate(-18 6.2 -1.4)" class="sear"/><circle r="6.6" class="shead"/><ellipse cx="0" cy="2.6" rx="3.6" ry="2.7" class="smuz"/><circle cx="-2.4" cy="-1.6" r=".95" class="seye"/><circle cx="2.4" cy="-1.6" r=".95" class="seye"/><ellipse cx="0" cy="1.6" rx="1.4" ry="1" class="snose"/></g>';
 function sniffTable(mini, a, o) {
-  const s = a && a.sniff ? a.sniff : null, turn = o.turn, trail = mini.trail || [];
-  const steps = p => trail.filter(t => t.by === p).length;
-  const tal = p => arcTally(p, o, `<small>${steps(p)} step${steps(p) === 1 ? '' : 's'}</small>`);
-  const cells = Array.from({ length: SNIFF.n * SNIFF.n }, (_, c) => { const [x, y] = sniffXY(c); return `<rect x="${x - 10}" y="${y - 10}" width="20" height="20" class="scell${(Math.floor(c / SNIFF.n) + c % SNIFF.n) % 2 ? ' alt' : ''}${c === mini.start ? ' start' : ''}"/>`; }).join('');
+  const s = a && a.sniff ? a.sniff : null, turn = o.turn;
+  const tal = p => arcTally(p, o, '');
+  const cells = Array.from({ length: SNIFF.n * SNIFF.n }, (_, c) => { const [x, y] = sniffXY(c); return `<rect x="${x - 10}" y="${y - 10}" width="20" height="20" class="scell${(Math.floor(c / SNIFF.n) + c % SNIFF.n) % 2 ? ' alt' : ''}"/>`; }).join('');
+  const paws = s ? sniffPaws([{ f: s.f, t: s.t, by: a.by, hot: s.hot }], true) : '';   // this move's prints only, while it plays
   const [dx, dy] = sniffXY(mini.dog), [fx, fy] = s ? sniffXY(s.f) : [dx, dy];
   const moves = o.locked || s ? '' : sniffDirs(mini.dog).map(d => { const to = sniffStep(mini.dog, d), [x, y] = sniffXY(to), ar = { N: 0, E: 90, S: 180, W: 270 }[d];
     return `<g class="smove" data-act="move" ${mv(d)} role="button" tabindex="0" aria-label="Walk ${{ N: 'up', S: 'down', E: 'right', W: 'left' }[d]}"><rect x="${x - 10}" y="${y - 10}" width="20" height="20" class="shit"/><path class="sarrow" transform="translate(${x} ${y}) rotate(${ar})" d="M0 -4.5 L4 0.5 L1.4 0.5 L1.4 4.5 L-1.4 4.5 L-1.4 0.5 L-4 0.5 Z"/></g>`; }).join('');
@@ -4002,9 +4180,9 @@ function sniffTable(mini, a, o) {
   const dog = `<g class="sdog${s ? ' walk' : ''}" style="--dx:${((fx - dx) / 0.85).toFixed(1)}px;--dy:${((fy - dy) / 0.85).toFixed(1)}px;--d:${SNIFF.step}ms" transform="translate(${dx} ${dy}) scale(.85)"><g class="sdogin">${SNIFF_DOG}</g></g>`;
   const word = s ? (s.found ? 'Found it!' : s.hot ? 'Hotter!' : 'Colder!') : null;
   const res = s ? `<p ${lateAt('arcres ' + (s.found || s.hot ? 'hot' : 'cold'), SNIFF.step)} role="status">${word}</p>`
-    : o.view ? `<p class="arcnote">${trail.length} step${trail.length === 1 ? '' : 's'}</p>`
+    : o.view ? '<p class="arcnote"></p>'
     : `<p class="arcnote">${o.locked ? `Waiting for <b class="${turn}">${N(turn)}</b>…` : 'Tap a square next to the dog to walk it there'}</p>`;
-  return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="sniff"><svg class="sfield" viewBox="0 0 100 100" role="group" aria-label="The field: the dog and its trail">${cells}${sniffPaws(trail, !!s)}${dog}${chest}${moves}</svg>${res}</div></div>`;
+  return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="sniff"><svg class="sfield" viewBox="0 0 100 100" role="group" aria-label="The field and the dog">${cells}${paws}${dog}${chest}${moves}</svg>${res}</div></div>`;
 }
 // Dash and Lane Rush: the run is played here, in real time, on a canvas. The engine's runStep is the
 // physics (the same the tests step), this is the loop, the drawing and the inputs. A run: the Run
@@ -4319,25 +4497,25 @@ function drawBird(c, x, y, S, sim, rd, now, P) {
 // stretch), the blocks, a sign every 100 m, and the chopper (in the player's colour): rotor turning,
 // tilted with the climb; a spin and smoke when it crashes.
 function drawCave(c, W, H, sim, rd, now) {
-  const P = runColours(), S = Math.min(W / 20, H / CHOP.h), oy = (H - CHOP.h * S) / 2;
-  const bx = W * 0.25, toX = m => bx + (m - sim.d) * S, toY = y => oy + (CHOP.h - y) * S;
+  const P = runColours(), S = Math.min(W / 20, H / CHOP.h), Sx = S / CHOP.k, oy = (H - CHOP.h * S) / 2;   // (along the cave, Chopper's metres: CHOP.k to a metre on the screen)
+  const bx = W * 0.25, toX = m => bx + (m - sim.d) * Sx, toY = y => oy + (CHOP.h - y) * S;
   c.fillStyle = '#f1e3c6'; c.fillRect(0, 0, W, H);
   c.fillStyle = 'rgba(138, 102, 72, .16)';                                    // far pillars drift by
-  for (let k = 0; k < 6; k++) { const x = ((k * 97 - sim.d * S * 0.3) % (W + 80) + W + 80) % (W + 80) - 40; c.fillRect(x, 0, 16 + (k % 3) * 9, H); }
+  for (let k = 0; k < 6; k++) { const x = ((k * 97 - sim.d * Sx * 0.3) % (W + 80) + W + 80) % (W + 80) - 40; c.fillRect(x, 0, 16 + (k % 3) * 9, H); }
   const step = 4, roof = [], floor = [];
-  for (let x = -step; x <= W + step; x += step) { const [f, cl] = runWalls(sim, sim.d + (x - bx) / S); roof.push([x, toY(cl)]); floor.push([x, toY(f)]); }
+  for (let x = -step; x <= W + step; x += step) { const [f, cl] = runWalls(sim, sim.d + (x - bx) / Sx); roof.push([x, toY(cl)]); floor.push([x, toY(f)]); }
   for (const [edge, out] of [[roof, -6], [floor, H + 6]]) {
     c.beginPath(); c.moveTo(-step, out); edge.forEach(([x, y]) => c.lineTo(x, y)); c.lineTo(W + step, out); c.closePath(); outlined(c, '#8a6648', P.ink, 3);
   }
   c.fillStyle = 'rgba(255, 240, 210, .22)';                                   // specks in the rock, going by with it
-  for (let m = Math.floor(sim.d / 3) * 3 - 9; m < sim.d + W / S; m += 3) { const x = toX(m), j = Math.abs(Math.sin(m * 12.9898)) ; c.fillRect(x, toY(CHOP.h - 0.3 - j * 0.6), 4, 3); c.fillRect(x + 7, toY(0.3 + j * 0.6), 4, 3); }
+  for (let m = Math.floor(sim.d / (3 * CHOP.k)) * 3 * CHOP.k - 9 * CHOP.k; m < sim.d + W / Sx; m += 3 * CHOP.k) { const x = toX(m), j = Math.abs(Math.sin(m * 12.9898)) ; c.fillRect(x, toY(CHOP.h - 0.3 - j * 0.6), 4, 3); c.fillRect(x + 7, toY(0.3 + j * 0.6), 4, 3); }
   for (const o of sim.course) {
-    const x = toX(o.at); if (x > W + 40 || x + CHOP.bw * S < -40) continue;
-    rr(c, x, toY(o.y + o.bh), CHOP.bw * S, o.bh * S, 5); outlined(c, '#9a9aa6', P.ink, 2.5);
-    c.fillStyle = '#c4c4cf'; c.fillRect(x + 4, toY(o.y + o.bh) + 4, CHOP.bw * S * 0.3, o.bh * S * 0.25);
+    const x = toX(o.at); if (x > W + 40 || x + CHOP.bw * Sx < -40) continue;
+    rr(c, x, toY(o.y + o.bh), CHOP.bw * Sx, o.bh * S, 5); outlined(c, '#9a9aa6', P.ink, 2.5);
+    c.fillStyle = '#c4c4cf'; c.fillRect(x + 4, toY(o.y + o.bh) + 4, CHOP.bw * Sx * 0.3, o.bh * S * 0.25);
   }
   c.textAlign = 'center'; c.font = `bold ${Math.round(Math.max(9, S * 0.55))}px sans-serif`;
-  for (let m = Math.ceil(Math.max(1, sim.d - 10) / 100) * 100; m < sim.d + W / S; m += 100) {   // a sign on the floor every 100 m
+  for (let m = Math.ceil(Math.max(1, sim.d - 10 * CHOP.k) / 100) * 100; m < sim.d + W / Sx; m += 100) {   // a sign on the floor every 100 m
     const x = toX(m), y = toY(runWalls(sim, m)[0]);
     rr(c, x - 15, y - 17, 30, 14, 3); outlined(c, P.paper, P.ink, 1.5); c.fillStyle = P.ink; c.fillText(String(m), x, y - 6);
   }
@@ -4689,7 +4867,7 @@ function renderMini(sq, review) {
   const lock = state.lock != null;
   let sub = lock ? (mini.type === 'pig' ? `<b class="${turn}">${N(turn)}</b>'s turn in progress: roll again or bank`
     : mini.type === 'bj' ? `<b class="${turn}">${N(turn)}</b>'s hand: hit, stand${mini.hand && mini.hand.cards.length === 2 ? ' or double' : ''}`
-    : mini.type === 'bus' ? (a ? info.hint : `<b class="${turn}">${N(turn)}</b>'s run: make the next guess`) : mini.type === 'bs' ? `<b class="${turn}">${N(turn)}</b> hit: fire again` : `<b class="${turn}">${N(turn)}</b> guessed right: go again`) : info.hint;
+    : mini.type === 'bus' ? (a ? info.hint : `<b class="${turn}">${N(turn)}</b>'s run: make the next guess`) : mini.type === 'bs' ? `<b class="${turn}">${N(turn)}</b> hit: fire again` : mini.type === 'craps' ? `<b class="${turn}">${N(turn)}</b> on point ${mini.point}: roll again or stop` : mini.type === 'pool' ? `<b class="${turn}">${N(turn)}</b> sank one: shoot again` : `<b class="${turn}">${N(turn)}</b> guessed right: go again`) : info.hint;
   if (!view && !f && !d && remoteTurn()) sub = `Waiting for <b class="${turn}">${N(turn)}</b>…`;
   else if (!view && !f && !d && moveWait) sub = 'Sending your move…';
   let secret = '';
@@ -4713,7 +4891,7 @@ function renderMini(sq, review) {
     sub = `${head} · ${next}${secret ? ' · ' + secret : ''}`;
   }
   return `<main class="scr mini${fx.enter && performance.now() - fx.enter.at < 400 ? ' enter' : ''}">${netBar()}
-    <div class="bar${view && sq.owner ? ' won won-' + sq.owner : ''}" role="${view ? 'status' : 'presentation'}">${review ? `<button class="back" data-act="${reviewCtx.mback}" aria-label="Back to the final board">${CHEV}Board</button>` : `<button class="back" data-act="back" aria-label="Back to the board"${f || d || lockMine() || cpuTurn() ? ' disabled' : ''}>${CHEV}Board</button>`}
+    <div class="bar${view && sq.owner ? ' won won-' + sq.owner : ''}" role="${view ? 'status' : 'presentation'}">${review ? `<button class="back" data-act="${reviewCtx.mback}" aria-label="Back to the final board">${CHEV}Board</button>` : `<button class="back" data-act="back" aria-label="Back to the board"${f || d || lockMine() || cpuTurn() || pinned() ? ' disabled' : ''}>${CHEV}Board</button>`}
       <div class="ttl"><b${info.name.length > 14 ? ' class="long"' : ''}>${info.name}</b><small${view ? ' class="won"' : ''}>${sub}</small></div>${qBtn(mini.type)}</div>
     <div class="gwrap"${fxAttr(f ? fxAt('move', f) : d && !f ? fxAt('back', d) : null)}>${g}</div>${f ? renderFlash(f) : ''}${pauseMenu()}</main>`;   // the move's animations count from the move
 }
@@ -4752,10 +4930,10 @@ function summary(f) {
     case 'rl': return f.rl ? `${f.rl.n}${f.rl.n === 0 ? ' green' : rlRed(f.rl.n) ? ' red' : ' black'} · ${f.rl.hit ? 'a hit' : 'a miss'}` : `${who} spun`;
     case 'dash': case 'lane': case 'flap': case 'chopper': return f.run ? (f.run.done ? `${who} reached ${fmtM(f.run.target)} m!` : `${who} ${RUN_TEXT[f.type].verb} ${fmtM(f.run.to - f.run.from)} m — now at ${fmtM(f.run.to)}/${fmtM(f.run.target)}`) : `${who} ${RUN_TEXT[f.type].verb}`;
     case 'golf': case 'pool': case 'bowling': return physResult(f, true).text;
-    case 'craps': return f.craps ? `${who} ${f.craps.result === 'win' ? 'won' : 'lost'} the round${f.craps.point != null ? ` (point ${f.craps.point})` : ''}` : `${who} rolled`;
+    case 'craps': return !f.craps ? `${who} rolled` : f.craps.kind === 'stop' ? `${who} stopped on point ${f.craps.point}` : f.craps.result === 'win' ? `${who} won the round` : f.craps.result === 'lose' ? `${who} lost the round` : `${who} rolled ${f.craps.sum}`;
     case 'takeover': return f.take ? `${who} took ${f.take.took.length + f.take.flipped.length}${f.take.flipped.length ? `, ${f.take.flipped.length} of them turned over` : ''}` : `${who} took a square`;
     case 'flood': return f.flood ? `${who} went ${FLOOD_NAMES[f.flood.color]} · +${f.flood.gain}` : `${who} picked a colour`;
-    case 'seating': return f.seat && f.seat.table != null ? `${who} took table ${f.seat.table + 1}` : `${who} took a seat`;
+    case 'seating': return f.seat && f.seat.table != null ? `${who} took table ${f.seat.table + 1}` : f.seat && f.seat.left ? `${who} took the last ${SEAT_NAMES[f.seat.zColor]} seat: the customer left` : `${who} took a seat`;
     case 'districts': return `${who} placed a piece`;
     case 'shelves': return `${who} marked a shelf`;
     case 'roads': return `${who} claimed a line`;
@@ -4764,7 +4942,7 @@ function summary(f) {
     case 'sniff': return f.sniff ? `${who} walked the dog: ${f.sniff.found ? 'found it!' : f.sniff.hot ? 'hotter' : 'colder'}` : `${who} walked the dog`;
     case 'bullseye': return f.bull ? `${who} threw: ${f.bull.pts === BULLS.bullPts ? 'a bullseye, +3' : f.bull.pts ? 'on the board, +1' : 'off the board'}` : `${who} threw`;
     case 'echo': return f.echo ? (f.echo.pass ? `${who} beat pattern ${f.echo.level + 1}` : `${who} slipped at step ${f.echo.failAt + 1}`) : `${who} tried`;
-    case 'plinko': return f.plinko ? `${who} dropped from slot ${f.plinko.slot + 1} · bin ${f.plinko.bin + 1}${f.plinko.win ? ': WIN' : ''}` : `${who} dropped`;
+    case 'plinko': return f.plinko ? `${who} dropped from slot ${f.plinko.slot + 1}: +${f.plinko.pts}${f.plinko.hit ? ' with the bonus' : ''}` : `${who} dropped`;
     case 'pong': return f.pong ? `${who} ${f.pong.sunk ? 'sank a cup' : f.pong.rim ? 'rimmed out' : 'missed'}` : `${who} threw`;
     case 'trivia': return f.trivia ? (f.trivia.correct ? `${who} answered right` : `${who} answered wrong · crossed out`) : `${who} answered`;
     case 'oddone': return f.odd ? `${who} ${f.odd.correct ? 'found the odd one' : 'missed it'}` : `${who} tapped`;
@@ -4935,6 +5113,7 @@ function mySide() { return state.online ? state.online.me : state.cpu && state.c
 function remoteTurn() { return !!state.online && !state.winner && state.turn !== state.online.me; }
 // nothing to tap: the computer or the other player is on the move, a move of ours is still being written, or the line is down
 function blocked() { return cpuTurn() || remoteTurn() || !!moveWait || (!!state.online && !connected); }
+function pinned() { return echoPinned() || oddPinned(); }   // an attempt under way that the player has started (Echo's pattern played, Odd One Out's grid revealed): they stay in the square until it goes in
 function lockMine() { return state.lock != null && (mySide() == null || state.turn === mySide()); }
 function setNet(status, msg) { net = { status, msg: msg || '' }; noteNet(); }
 function roomLink() { return location.origin + location.pathname + '?room=' + state.online.code; }
@@ -6514,7 +6693,7 @@ app.addEventListener('click', e => {
     if (!state.online) { state.pick = null; state.pickSq = null; }
     commit();
   } else if (act === 'back') {
-    if (lockMine()) return;
+    if (lockMine() || pinned()) return;
     if (state.done) return;
     state.screen = 'board'; state.zoom = null; state.draft = ''; state.sel = []; state.notice = null; state.stamp = null;
     if (!state.online) { state.pick = null; state.pickSq = null; }
@@ -6650,17 +6829,21 @@ app.addEventListener('click', e => {
     runGo();
   } else if (act === 'bulls') {                 // Bullseye: the taps come from the press itself (pointerdown, bullsTap); the click after it does nothing
     return;
-  } else if (act === 'echo-tap') {              // Echo: a pad tapped back; the attempt goes in when complete, or at the first slip
-    if (!echoDraft || echoDraft.sq !== state.zoom || state.flash || state.done || blocked()) return;
-    const k = Number(el.dataset.k), mini = state.squares[state.zoom].mini, seq = mini.seqs[state.turn][echoDraft.level];
-    SND.play('tone', { rate: ECHO_RATES[k] });
-    el.classList.add('on'); setTimeout(() => el.classList.remove('on'), 180);
-    echoDraft.taps.push(k);
-    const n = echoDraft.taps.length;
-    if (seq[n - 1] !== k || n === seq.length) { const taps = echoDraft.taps.slice(); echoDraft = null; attemptMove(taps); return; }
-    const dots = app.querySelectorAll('.esteps i'); if (dots[n - 1]) dots[n - 1].classList.add('on');   // (in place: the pads keep their place and their animations)
-  } else if (act === 'echo-again') {            // the pattern plays once more (a fresh attempt: the taps so far are dropped)
-    echoReplay += 1; echoDraft = null; render();
+  } else if (act === 'echo-tap') {              // Echo: the taps come from the press itself (pointerdown, echoTap); the click after it does nothing
+    return;
+  } else if (act === 'odd-reveal') {           // Odd One Out: the shades show and the 5 seconds start; from now the player stays in the square until the pick goes in
+    if (zoomedType() !== 'oddone' || oddDraft || state.flash || state.done || blocked()) return;
+    const id = oddId(state.zoom, state.turn), at = Date.now();
+    oddDraft = { id, sq: state.zoom, at };
+    try { localStorage.setItem(ODD_KEY, JSON.stringify({ id, at })); } catch (err) { /* no storage */ }
+    oddArm(); SND.play('reveal'); render();
+  } else if (act === 'echo-play') {             // Echo: the pattern plays, once; from now the player stays in the square until the attempt goes in
+    if (!echoDraft || echoDraft.at != null || echoDraft.sq !== state.zoom || state.flash || state.done || blocked()) return;
+    const seq = echoSeq(state.squares[state.zoom].mini, state.turn, echoDraft.level), at = performance.now();
+    echoDraft.at = at; startFx('echo', echoDraft.id, at);
+    seq.forEach((k, i) => SND.play('tone', { at: i * ECHO.step / 1000, rate: ECHO_RATES[k] }));
+    try { localStorage.setItem(ECHO_KEY, echoDraft.id); } catch (err) { /* no storage */ }
+    render();
   } else if (act === 'rlnum' || act === 'rlgrp' || act === 'rlzero') {   // Roulette: put the bet together (numbers, a group, or green 0 alone)
     if (zoomedType() !== 'rl') return;
     if (!rlDraft || rlDraft.sq !== state.zoom) rlDraft = { sq: state.zoom, nums: [], bet: null };
@@ -6888,6 +7071,7 @@ function boot() {
   fetchRunConfig();                                           // the runners' difficulty, for the squares to come
   fetchBullsConfig();                                         // Bullseye's board, bullseye and sweep speeds, likewise
   fetchWheelsConfig();                                        // Risk Wheels' points, odds and target, likewise
+  fetchPlinkoConfig();                                        // Plinko's target, likewise
   loadTrivia();                                               // the Trivia questions, for the match to come
   loadPhysics();                                              // Matter.js and physics.js, for Mini Golf, Pool and Bowling
   takeTag();                                                  // a playtester's link (?t=sam): before the address is tidied below
@@ -7319,22 +7503,22 @@ function moveSounds(f) {
       break;
     }
     case 'bullseye': { const pre = bullsPre(f); if (pre) { const A = bullsAim(f.bull); add('mark', A.t1); add('mark', A.t2); } add('whoosh', pre); add(f.bull && f.bull.pts ? 'dartHit' : 'dartMiss', pre + BULLT.fly); if (f.bull && f.bull.pts === BULLS.bullPts) add('sparkle', pre + BULLT.fly + 120); break; }   // someone else's throw: the two lines stopping (as the taps would), then the dart
-    case 'echo': if (f.echo) add(f.echo.pass ? 'ding' : 'thud', 0); break;
-    case 'plinko': { for (let k = 1; k <= PLINKO.rows; k++) add('peg', k * PLINKO.step, 1 + (k % 3) * 0.08); add('plop', PLINKO.rows * PLINKO.step + 120); if (f.plinko) add(f.plinko.win ? 'sparkle' : 'thud', PLINKO.rows * PLINKO.step + PLINKO.land); break; }
+    case 'echo': { const pre = echoPre(f); if (pre) { const A = echoAim(f.echo); f.echo.seq.forEach((k, i) => add('tone', i * ECHO.step, ECHO_RATES[k])); f.echo.taps.forEach((k, i) => add('tone', A.tap(i), ECHO_RATES[k])); } if (f.echo) add(f.echo.pass ? 'ding' : 'thud', pre); break; }   // someone else's attempt: the pattern and their taps, then the result
+    case 'plinko': { for (let k = 1; k <= PLINKO.rows; k++) add('peg', k * PLINKO.step, 1 + (k % 3) * 0.08); add('plop', PLINKO.rows * PLINKO.step + 120); if (f.plinko) { if (f.plinko.hit) add('ding', f.plinko.bonus.r * PLINKO.step); add('point', PLINKO.rows * PLINKO.step + 160); if (won) add('sparkle', PLINKO.rows * PLINKO.step + PLINKO.land); } break; }   // the bonus peg's ding as the chip touches it; the points as it lands
     case 'pong': { add('whoosh', 0); if (f.pong) { if (f.pong.rim) add('clink', PONG.fly); add(f.pong.sunk ? 'splash' : 'thud', PONG.fly + (f.pong.rim ? 400 : 0)); } break; }
     case 'trivia': if (f.trivia) add(f.trivia.correct ? 'ding' : 'thud', 250); break;
-    case 'oddone': if (f.odd) add(f.odd.correct ? 'ding' : 'thud', 250); break;
+    case 'oddone': { const pre = oddPre(f); if (pre) { add('reveal', ODD.show); if (f.odd.picked >= 0) add('tap', pre); } if (f.odd) add(f.odd.correct ? 'ding' : 'thud', pre + 250); break; }   // someone else's pick: the reveal, then their tap
     case 'dash': case 'lane': case 'flap': case 'chopper': if (f.run) { add(f.run.done ? 'sparkle' : 'thud', 0); add('ding', RUNT.bar); } break;   // the crash (or the finish) as the result shows, the bar landing at its new distance
-    case 'craps': {                                                   // every roll: the rattle, then the dice landing; the puck going on; the round's result
+    case 'craps': {                                                   // the roll: the rattle, the dice landing; the puck going on or off; a round's result
       if (!f.craps) break;
-      const tm = crapsTimes(f.craps.rolls, f.craps.point);
-      tm.at.forEach((t, k) => { add('rattle', t); add('thunk', t + 500); });
-      if (f.craps.point != null) add('clack', tm.at[0] + 600);
-      add(f.craps.result === 'win' ? 'ding' : 'thud', tm.end);
+      if (f.craps.kind === 'stop') { add('toggle', 0); break; }
+      add('rattle', 0); add('thunk', 500);
+      if (f.craps.result === 'point' || (f.craps.was != null && f.craps.result !== 'stay')) add('clack', 600);
+      if (f.craps.result === 'win') add('ding', 700); else if (f.craps.result === 'lose') add('thud', 700);
       break;
     }
     case 'takeover': if (f.take) { add('mark', 0); [...f.take.took, ...f.take.flipped].filter(k => k !== f.take.at).slice(0, 4).forEach((k, n) => add(f.take.flipped.includes(k) ? 'flipUp' : 'pop', TAKEOVER_MS.place + n * 70)); } break;
-    case 'seating': if (f.seat) { add('mark', 0); if (f.seat.table != null) add('ding', PLACE_MS.mark); if (f.seat.z != null) { add('hop', PLACE_MS.mark + 150); add('cushion', PLACE_MS.mark + PLACE_MS.walk - 120); } } break;
+    case 'seating': if (f.seat) { add('mark', 0); if (f.seat.table != null) add('ding', PLACE_MS.mark); if (f.seat.z != null) { add('hop', PLACE_MS.mark + 150); add('cushion', PLACE_MS.mark + PLACE_MS.walk - 120); } else if (f.seat.left) { add('hop', PLACE_MS.mark + 150); add('whoosh', PLACE_MS.mark + PLACE_MS.walk - 300); } } break;   // a customer with no seat: in, and off out the side
     case 'districts': if (f.dist) { add('marker', 0); add('flipUp', PLACE_MS.mark); } break;
     case 'shelves': if (f.shelf) { add('mark', 0); if (f.shelf.grey != null) add('thud', PLACE_MS.mark + PLACE_MS.drop - 150); } break;
     case 'patterns': if (f.pat) add(f.pat.correct ? 'ding' : 'thud', 250); break;   // the pick glows (and drops into the gap) or is struck through
