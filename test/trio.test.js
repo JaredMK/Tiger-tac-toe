@@ -23,7 +23,7 @@ const only = t => Object.fromEntries(E.TYPES.map(g => [g, g === t]));
 
 /* ===================================== Patterns ===================================== */
 test('patterns: 1,000 puzzles, every one with exactly one option that fits its rule and no two options alike', () => {
-  const rng = E.makeRng('pat-1000'), fams = {}, rules = [];
+  const rng = E.makeRng('pat-1000'), kinds = {}, fams = {};
   let last = null, middle = 0;
   for (let k = 0; k < 1000; k++) {
     const g = E.patPuzzle(rng, last);
@@ -32,35 +32,14 @@ test('patterns: 1,000 puzzles, every one with exactly one option that fits its r
     const { puz, answer } = g;
     assert.equal(puz.opts.length, 4, 'four options');
     assert.equal(puz.seq.filter(x => x == null).length, 1, 'one gap');
-    if (puz.fam === 'matrix') assert.equal(puz.seq.length, 9, 'a matrix: 3 by 3'); else assert.ok(puz.seq.length >= 5 && puz.seq.length <= 7);
     assert.equal(new Set(puz.opts.map(E.patKey)).size, 4, `no duplicate options: ${g.rule}`);
     assert.deepEqual(E.patFitting(puz, puz.opts), [answer], `exactly one fits: ${g.rule} ${JSON.stringify(puz)}`);
     if (puz.seq.indexOf(null) !== puz.seq.length - 1) middle++;
-    rules.push(g.rule); fams[puz.fam] = (fams[puz.fam] || 0) + 1;
+    kinds[g.rule.replace(' (gap)', '')] = 1; fams[puz.fam] = (fams[puz.fam] || 0) + 1;
   }
-  const all = rules.join('|');
-  for (const k of ['add the same', 'subtract the same', 'the step grows', 'times 2 each time', 'then add', 'in turn', 'primes in a row', 'triangle numbers', 'squares', 'cubes', 'each the sum of the two before', 'the step doubles', 'two sequences taking turns',
-    'forward', 'back', 'the gap grows by one', 'two series woven together', 'shape: ', 'colour: ', 'count: ', 'fill: ', 'latin', 'sum', 'turns 90', 'turns 45', 'flips over each time', 'and flips over', 'two markers', 'one die', 'two dice', 'dots: ']) assert.ok(all.includes(k), `the "${k}" kind comes up`);
-  for (const f of ['num', 'letter', 'matrix', 'turn', 'dice']) assert.ok(fams[f] > 100, `every family often: ${JSON.stringify(fams)}`);
-  assert.ok(middle > 120 && middle < 330, `missing-middle puzzles about a fifth of the time (${middle})`);
-});
-test('patterns: the wrong options are near misses: a matrix option differs from the answer in one feature; a figure is the same figure turned or flipped; a letter sits near the answer', () => {
-  const rng = E.makeRng('pat-near'), seen = { matrix: 0, turn: 0, letter: 0 };
-  for (let k = 0; k < 600; k++) {
-    const { puz, answer } = E.patPuzzle(rng), ans = puz.opts[answer], wrong = puz.opts.filter((_, i) => i !== answer);
-    if (puz.fam === 'matrix') { seen.matrix++; for (const o of wrong) assert.equal(['g', 'k', 'c', 'f'].filter(f => o[f] !== ans[f]).length, 1, `one feature off: ${JSON.stringify([ans, o])}`); }
-    if (puz.fam === 'turn' && 'h' in ans) { seen.turn++; for (const o of wrong) assert.deepEqual([o.h, o.c], [ans.h, ans.c], 'the same figure, the same colour'); }
-    if (puz.fam === 'turn' && 'q' in ans) for (const o of wrong) assert.ok(o.q.some((v, j) => v === ans.q[j]) || (o.q[0] === ans.q[1] && o.q[1] === ans.q[0]) || o.q.every((v, j) => Math.min((v - ans.q[j] + 8) % 8, (ans.q[j] - v + 8) % 8) <= 3), 'a marker right, the two swapped, or both a few spots off');
-    if (puz.fam === 'letter') { seen.letter++; for (const o of wrong) assert.ok(Math.abs(o.l - ans.l) <= 6 || puz.seq.some(it => it && Math.abs(it.l - o.l) <= 3), `a letter near the answer, or near one shown (the other woven series' next): ${o.l} for ${ans.l}`); }
-  }
-  assert.ok(seen.matrix > 60 && seen.turn > 30 && seen.letter > 50, JSON.stringify(seen));
-});
-test('patterns: a puzzle dealt before the new families (shapes, dots) is still judged the same way', () => {
-  const shape = (g, r, z, c, f) => E.patShape(g, r, z, c, f);
-  const old = { fam: 'shape', seq: [shape(1, 0, 3, 2, 1), shape(1, 90, 3, 2, 1), shape(1, 180, 3, 2, 1), shape(1, 270, 3, 2, 1), null], opts: [shape(1, 90, 3, 2, 1), shape(1, 0, 3, 2, 1), shape(1, 180, 3, 2, 1), shape(1, 0, 3, 4, 1)] };
-  assert.deepEqual(E.patFitting(old, old.opts), [1], 'an arrow turning 90° each time: back to the top');
-  const dots = { fam: 'dots', seq: [E.patDots(1, 0), E.patDots(3, 0), E.patDots(5, 0), E.patDots(7, 0), null], opts: [E.patDots(9, 0), E.patDots(9, 1), E.patDots(8, 0), E.patDots(11, 0)] };
-  assert.deepEqual(E.patFitting(dots, dots.opts), [0]);
+  for (const k of ['add', 'subtract', 'multiply', 'alternate', 'squares', 'fibonacci', 'two sequences', 'turn', 'sides', 'size', 'colour', 'fill', 'dots add', 'dots double', 'dots triangle', 'dots +2 -1']) assert.ok(kinds[k], `the ${k} kind comes up`);
+  assert.ok(fams.num > 300 && fams.shape > 300 && fams.dots > 120, `every family often: ${JSON.stringify(fams)}`);
+  assert.ok(middle > 150 && middle < 350, `missing-middle puzzles about a quarter of the time (${middle})`);
 });
 test('patterns: a wrong pick is crossed out for both and the puzzle stays; the right one scores and a new puzzle comes; 3 right wins', () => {
   const rng = E.makeRng('pat-rules'), m = E.newMini('patterns', rng), first = JSON.stringify(m.puz);

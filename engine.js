@@ -1153,61 +1153,38 @@ function runStep(sim, dt) {
 // The move a run makes: its end (the crash, the finish, or where the time ran out) and its time.
 const runResult = (sim, out) => ({ dist: r2(Math.min(sim.cfg.target, sim.d)), ms: Math.round(sim.t * 1000), out: !!out && !sim.done });
 
-// ---------- Patterns: puzzles made by rules ----------
-// Nothing is written by hand: each puzzle comes from a rule of a kind found in classic reasoning tests (a
-// number series, a letter series, a 3x3 figure matrix with one cell missing, a figure turning or flipping
-// step by step, dice and dot counts); the sequence is built from it and the answer is the rule's own value
-// at the gap. The wrong options are near misses, each a mistake a solver could plausibly make: a step too
-// far or too short, an operation forgotten or done twice, the next prime instead of the right one, the
-// letter next door, the mirror image, the turn the wrong way, a matrix cell with one feature taken from its
-// row or column. Every puzzle is then checked against a set of simple rules (any that fits what is shown,
-// and is borne out by it, gives an answer): exactly one option may be such an answer, and no two options
-// look alike. A puzzle that fails is thrown away and another made. One puzzle per square, shared, as
-// Trivia's question: a wrong pick is crossed out for both, the right one scores and a new puzzle comes;
-// first to 3.
-// Items: a number { n }; a letter { l } (1-26: A-Z); dots { d, c }; dice { e: [faces] }; a matrix cell
-// { g, k, c, f } (k copies of shape g: 0 a circle, 3-6 a polygon of that many sides; colour c 0-5; f 1 solid,
-// 0 outline); a figure { h, r, m, c } (h: 0 an arrow, 1 an L, 2 a flag; r its turn in degrees, clockwise;
-// m 1 mirrored, before the turn); two markers on the 8 spots round a frame { q: [a, b] } (0 the top left
-// corner, on clockwise); and, in puzzles made before these, a shape { g, r, z, c, f }. A matrix puzzle has
-// grid: 3 (its 9 cells, row by row).
+// ---------- Patterns: sequence puzzles, made by rules ----------
+// Nothing is written by hand: each template is a rule (a number sequence, a shape changing step by step,
+// dots counted by a rule), the sequence is built from it and the answer is the rule's own value at the
+// gap. The wrong options are near misses of it: a step too far or too short, the wrong operation, the
+// wrong turn, the colours in the wrong order, a shape or fill that should not have changed. Every puzzle
+// is then checked against a set of simple rules (any that fits what is shown, and is borne out by it,
+// gives an answer): exactly one option may be such an answer, and no two options look alike. A puzzle
+// that fails is thrown away and another made. One puzzle per square, shared, as Trivia's question: a
+// wrong pick is crossed out for both, the right one scores and a new puzzle comes; first to 3.
+// Items: a number { n }, a shape { g, r, z, c, f } (g: 0 a circle, 1 an arrow, 3-8 a polygon of that many
+// sides; r its turn in degrees; z its size 1-5; c its colour 0-5; f 1 solid, 0 outline), dots { d, c }.
 const PATTERNS = { goal: 3, aiRight: 0.6, options: 4, colours: 6, maxN: 999, maxDots: 16, reveal: 1200,
-  mix: [['num', 30], ['letter', 15], ['matrix', 25], ['turn', 15], ['dice', 15]], middle: 0.2 };
-const PAT_PRIMES = (() => { const p = []; for (let n = 2; n <= 1000; n++) if (p.every(q => q * q > n || n % q)) p.push(n); return p; })();
-const mod360 = r => ((r % 360) + 360) % 360;
+  mix: [['num', 40], ['shape', 38], ['dots', 22]], middle: 0.25 };
+const patKey = it => (it == null ? '?' : 'n' in it ? `n${it.n}` : 'd' in it ? `d${it.d}c${it.c}` : `g${it.g}r${patRot(it)}z${it.z}c${it.c}f${it.f}`);
 // a turn that cannot be seen is no turn: a circle has none, a polygon repeats itself every 360/sides degrees
-const patRot = it => ('h' in it || it.g === 1 ? mod360(it.r) : it.g === 0 ? 0 : ((it.r % (360 / it.g)) + 360 / it.g) % (360 / it.g));
-const patKey = it => (it == null ? '?' : 'n' in it ? `n${it.n}` : 'l' in it ? `l${it.l}` : 'd' in it ? `d${it.d}c${it.c}` : 'e' in it ? `e${it.e.join('.')}`
-  : 'k' in it ? `k${it.k}g${it.g}c${it.c}f${it.f}` : 'h' in it ? `h${it.h}r${patRot(it)}m${it.h ? it.m : 0}c${it.c}` : 'q' in it ? `q${it.q.join('.')}`
-  : `g${it.g}r${patRot(it)}z${it.z}c${it.c}f${it.f}`);
-const patNum = n => ({ n }), patDots = (d, c) => ({ d, c }), patShape = (g, r, z, c, f) => ({ g, r: mod360(r), z, c, f });
-const patLetter = l => ({ l }), patDice = e => ({ e: e.slice() }), patCell = (g, k, c, f) => ({ g, k, c, f });
-const patFig = (h, r, m, c) => ({ h, r: mod360(r), m: h ? m : 0, c }), patRing = (a, b) => ({ q: [((a % 8) + 8) % 8, ((b % 8) + 8) % 8] });
+const patRot = it => (it.g === 0 ? 0 : it.g === 1 ? ((it.r % 360) + 360) % 360 : ((it.r % (360 / it.g)) + 360 / it.g) % (360 / it.g));
+const patNum = n => ({ n }), patDots = (d, c) => ({ d, c }), patShape = (g, r, z, c, f) => ({ g, r: ((r % 360) + 360) % 360, z, c, f });
 const patPick = (rng, list) => list[randInt(rng, list.length)];
 const patRange = (rng, lo, hi) => lo + randInt(rng, hi - lo + 1);
 
 // The number rules a player might see in a sequence, each fitted to the values shown (null: the gap):
-// the value it gives at the gap, or nothing when it does not fit, or is not borne out (no more shown values
+// the value it gives at the gap, or null when it does not fit, or is not borne out (no more shown values
 // than it has numbers of its own to fix).
 function patFits(vals, gap) {
   const known = vals.map((v, i) => [i, v]).filter(([i, v]) => v != null && i !== gap), out = [];
-  const isInt = x => x != null && Number.isFinite(x) && Math.abs(x - Math.round(x)) < 1e-9;
-  const check = (f, params) => { if (known.length <= params) return; for (const [i, v] of known) { const y = f(i); if (!isInt(y) || Math.round(y) !== v) return; } const y = f(gap); if (isInt(y)) out.push(Math.round(y)); };
-  // a rule that makes each value from the one before (step(x, i): the value after x at i; back: the value before)
-  const walk = (step, back) => { const [i0, v0] = known[0]; return i => { let x = v0; if (i >= i0) { for (let j = i0; j < i; j++) { x = step(x, j); if (!isInt(x)) return null; } } else for (let j = i0 - 1; j >= i; j--) { x = back(x, j); if (!isInt(x)) return null; } return x; }; };
-  const pairs = known.filter(([i]) => known.some(([j]) => j === i + 1)).map(([i, v]) => [i, v, known.find(([j]) => j === i + 1)[1]]);   // shown side by side: [i, x(i), x(i+1)]
+  const isInt = x => Math.abs(x - Math.round(x)) < 1e-9;
+  const check = (f, params) => { if (known.length <= params) return; for (const [i, v] of known) { const y = f(i); if (y == null || !isInt(y) || Math.round(y) !== v) return; } const y = f(gap); if (y != null && isInt(y)) out.push(Math.round(y)); };
   const [[i0, v0], [i1, v1]] = known;
   // add a step each time
   { const d = (v1 - v0) / (i1 - i0); check(i => v0 + d * (i - i0), 2); }
   // multiply each time (by 2 to 5)
   for (let r = 2; r <= 5; r++) if (v0 !== 0) check(i => v0 * Math.pow(r, i - i0), 2);
-  // the same two operations each time: multiply by a, then add b
-  if (pairs.length) for (const a of [-2, -1, 2, 3, 4]) { const [, x, y] = pairs[0], b = y - a * x; check(walk(x2 => a * x2 + b, x2 => (x2 - b) / a), 2); }
-  // two operations taking turns (each adding or multiplying): one from an even place, the other from an odd one
-  { const ev = pairs.find(([i]) => i % 2 === 0), od = pairs.find(([i]) => i % 2 === 1);
-    const ops = p => (p ? [['+', p[2] - p[1]]].concat(p[1] !== 0 && isInt(p[2] / p[1]) && p[2] / p[1] >= 2 && p[2] / p[1] <= 5 ? [['*', p[2] / p[1]]] : []) : []);
-    const fwd = ([o, c], x) => (o === '+' ? x + c : x * c), bwd = ([o, c], x) => (o === '+' ? x - c : x / c);
-    for (const a of ops(ev)) for (const b of ops(od)) check(walk((x, j) => fwd(j % 2 ? b : a, x), (x, j) => bwd(j % 2 ? b : a, x)), 3); }
   // two steps taking turns (+a, +b, +a, ...): x_i = x0 + ceil(i/2) a + floor(i/2) b
   { const rows = known.map(([i, v]) => [1, Math.ceil(i / 2), Math.floor(i / 2), v]);
     for (let a = 0; a < rows.length; a++) for (let b = a + 1; b < rows.length; b++) for (let c = b + 1; c < rows.length; c++) {
@@ -1224,12 +1201,6 @@ function patFits(vals, gap) {
       const s = patSolve3([rows[a], rows[b], rows[c]]);
       if (s) { check(i => s[0] + s[1] * i + s[2] * i * i, 3); a = b = c = rows.length; }
     } }
-  // a step that doubles (or triples) each time: x_i = A + B r^i
-  for (const r of [2, 3]) { const B = (v1 - v0) / (Math.pow(r, i1) - Math.pow(r, i0)), A = v0 - B * Math.pow(r, i0); check(i => A + B * Math.pow(r, i), 2); }
-  // cubes in a row
-  { const s = Math.round(Math.cbrt(v0)) - i0; check(i => Math.pow(i + s, 3), 1); }
-  // primes in a row
-  { const k = PAT_PRIMES.indexOf(v0); if (k >= 0) check(i => (k + i - i0 >= 0 ? PAT_PRIMES[k + i - i0] : null), 1); }
   // each the sum of the two before (Fibonacci-style): filled out from what is shown, both ways
   { const x = vals.map((v, i) => (i === gap ? null : v));
     for (let pass = 0; pass < 4; pass++) for (let i = 0; i < x.length; i++) {
@@ -1249,12 +1220,12 @@ function patSolve3(m) {
   const col = k => m.map(r => r.map((x, j) => (j === k ? r[3] : x)));
   return [0, 1, 2].map(k => { const c = col(k); return det(c[0][0], c[0][1], c[0][2], c[1][0], c[1][1], c[1][2], c[2][0], c[2][1], c[2][2]) / D; });
 }
-// One feature of a figure (or dots' colour) across the sequence: the values it may take at the gap, from
-// the rules it might follow (the same all along, adding a step (turns: round the circle, either way), or a
+// One feature of a shape (or dots' colour) across the sequence: the values it may take at the gap,
+// from the rules it might follow (the same all along, adding a step (turns: round the circle), or a
 // repeating cycle of 2 or 3), each one that fits and is borne out.
 function patFeature(vals, gap, kind) {
   const known = vals.map((v, i) => [i, v]).filter(([i, v]) => v != null && i !== gap), out = new Set();
-  const norm = v => (kind === 'turn' ? mod360(v) : v);
+  const norm = v => (kind === 'turn' ? ((v % 360) + 360) % 360 : v);
   if (known.every(([, v]) => norm(v) === norm(known[0][1]))) out.add(norm(known[0][1]));
   if (kind !== 'cat' && known.length >= 3) {
     const [[i0, v0], [i1, v1]] = known, d = (v1 - v0) / (i1 - i0);
@@ -1268,248 +1239,118 @@ function patFeature(vals, gap, kind) {
   }
   return out;
 }
-// One feature of a 3x3 matrix (its 9 values row by row, null at the gap): the values it may take at the gap,
-// from the rules it might follow: the same everywhere; the same along each row, or down each column; each
-// row (or column) holding the same three values in some order; and, for counts, each row (or column)
-// counting up or down evenly, or its third the sum (or difference) of the other two. A rule is borne out
-// by the two full rows (or columns).
-function patGridFeature(vals, gap, num) {
-  const out = new Set(), at = (r, c) => vals[r * 3 + c], gr = Math.floor(gap / 3), gc = gap % 3;
-  const lines = by => [0, 1, 2].map(a => [0, 1, 2].map(b => (by === 'row' ? at(a, b) : at(b, a))));
-  const one = a => { const k = a.filter(v => v != null); return k.every(v => v === k[0]) ? k[0] : undefined; };
-  { const v = one(vals); if (v !== undefined) out.add(v); }
-  for (const by of ['row', 'col']) {
-    const L = lines(by), g = by === 'row' ? gr : gc, p = by === 'row' ? gc : gr, full = L.filter((_, k) => k !== g), mine = L[g];
-    // the same all along each line
-    if (full.every(l => one(l) !== undefined)) { const v = one(mine); if (v !== undefined) out.add(v); }
-    // each line the same three values in some order
-    { const set = full.map(l => l.slice().sort().join()); const vals3 = full[0];
-      if (new Set(vals3).size === 3 && set[0] === set[1]) { const rest = vals3.filter(v => !mine.includes(v)); if (rest.length === 1) out.add(rest[0]); } }
-    if (!num) continue;
-    // each line counting evenly (a, a + d, a + 2d)
-    if (full.every(l => l[1] - l[0] === l[2] - l[1])) { const k = mine.map((v, i) => [i, v]).filter(([i]) => i !== p), d = (k[1][1] - k[0][1]) / (k[1][0] - k[0][0]); const v = k[0][1] + d * (p - k[0][0]); if (Number.isInteger(v)) out.add(v); }
-    // its third the sum of the other two, or its first the sum of the other two
-    if (full.every(l => l[2] === l[0] + l[1])) out.add(p === 2 ? mine[0] + mine[1] : mine[2] - mine[1 - p]);
-    if (full.every(l => l[0] === l[1] + l[2])) out.add(p === 0 ? mine[1] + mine[2] : mine[0] - mine[3 - p]);
-  }
-  return out;
-}
-// The markers on the ring: each moving round it the same number of spots each time (or not at all).
-function patRingFeature(vals, gap) {
-  const known = vals.map((v, i) => [i, v]).filter(([i, v]) => v != null && i !== gap), out = new Set();
-  if (known.length < 3) return out;
-  for (let s = 0; s < 8; s++) if (known.every(([i, v]) => (known[0][1] + s * (i - known[0][0]) + 800) % 8 === v)) out.add((known[0][1] + s * (gap - known[0][0]) + 800) % 8);
-  return out;
-}
 // Which options fit the sequence by some rule (at most one should).
 function patFitting(puz, opts) {
-  const gap = puz.seq.indexOf(null), seq = puz.seq, col = f => seq.map(it => (it ? f(it) : null));
-  const fitAll = (sets, val) => opts.map((o, k) => (sets.every(([f, s]) => s.has(val(o, f))) ? k : -1)).filter(k => k >= 0);
-  if (puz.fam === 'num' || puz.fam === 'letter' || (puz.fam === 'dots') || (puz.fam === 'dice' && seq.some(it => it && 'd' in it))) {
-    const key = puz.fam === 'num' ? 'n' : puz.fam === 'letter' ? 'l' : 'd', fits = new Set(patFits(col(it => it[key]), gap));
-    const colours = key === 'd' ? patFeature(col(it => it.c), gap, 'cat') : null;
+  const gap = puz.seq.indexOf(null), seq = puz.seq;
+  if (puz.fam === 'num' || puz.fam === 'dots') {
+    const key = puz.fam === 'num' ? 'n' : 'd', fits = new Set(patFits(seq.map(it => (it ? it[key] : null)), gap));
+    const colours = puz.fam === 'dots' ? patFeature(seq.map(it => (it ? it.c : null)), gap, 'cat') : null;
     return opts.map((o, k) => (fits.has(o[key]) && (!colours || colours.has(o.c)) ? k : -1)).filter(k => k >= 0);
   }
-  if (puz.fam === 'dice') {                                    // each die by its own number rule
-    const n = seq.find(Boolean).e.length, sets = Array.from({ length: n }, (_, j) => [j, new Set(patFits(col(it => it.e[j]), gap))]);
-    return fitAll(sets, (o, j) => o.e[j]);
-  }
-  if (puz.fam === 'matrix') return fitAll(['g', 'k', 'c', 'f'].map(f => [f, patGridFeature(col(it => it[f]), gap, f === 'k')]), (o, f) => o[f]);
-  if (puz.fam === 'turn' && seq.find(Boolean).q) return fitAll([0, 1].map(j => [j, patRingFeature(col(it => it.q[j]), gap)]), (o, j) => o.q[j]);
-  if (puz.fam === 'turn') {
-    const sets = [['h', patFeature(col(it => it.h), gap, 'cat')], ['r', patFeature(col(it => it.r), gap, 'turn')], ['m', patFeature(col(it => it.m), gap, 'cat')], ['c', patFeature(col(it => it.c), gap, 'cat')]];
-    return fitAll(sets, (o, f) => (f === 'r' ? patRot(o) : o[f]));
-  }
-  // (a puzzle from before: shapes changing step by step)
   const feats = { g: 'cat', r: 'turn', z: 'num', c: 'cat', f: 'cat' }, sets = {};
   for (const [f, kind] of Object.entries(feats)) sets[f] = patFeature(seq.map(it => (it ? (f === 'r' ? patRot(it) : it[f]) : null)), gap, kind);
+  // the sides of a polygon may also be counting up or down
   const sides = seq.map(it => (it ? it.g : null)), sideFit = new Set(patFits(sides, gap));
   for (const s of sideFit) if (s >= 3 && s <= 8) sets.g.add(s);
   return opts.map((o, k) => (Object.keys(feats).every(f => sets[f].has(f === 'r' ? patRot(o) : o[f])) ? k : -1)).filter(k => k >= 0);
 }
 
-// ----- the families: a rule, the sequence from it, the answer at the gap, and its near misses -----
-// The gap: the last place, or (some of the time) one in the middle.
-const patGap = (rng, len) => (rng() < PATTERNS.middle ? patRange(rng, 1, len - 2) : len - 1);
-// Number series of the kinds in classic reasoning tests. x: the values; near(gap): the plausible wrong
-// answers, the likeliest first.
-function patNumRule(rng) {
-  const kind = patPick(rng, ['add', 'grow', 'mul', 'twostep', 'altops', 'altsteps', 'prime', 'triangle', 'square', 'cube', 'fib', 'two', 'doubling']);
-  const X = (len, f) => Array.from({ length: len }, (_, i) => f(i));
+// ----- the templates: a rule, the sequence from it, the answer at the gap, and its near misses -----
+// A number template: { rule, len, at(i) } and its near misses (values around the answer).
+function patNumTemplate(rng) {
+  const kind = patPick(rng, ['add', 'add', 'mul', 'alt', 'square', 'fib', 'two']);
   if (kind === 'add') {
-    const down = rng() < 0.35, d = patRange(rng, 3, 13) * (down ? -1 : 1), a = down ? patRange(rng, 60, 120) : patRange(rng, 1, 30), x = X(5, i => a + d * i);
-    return { rule: down ? 'subtract the same each time' : 'add the same each time', x, near: g => [x[g] + d, x[g] - d, x[g] + 1, x[g] - 1, x[g] + 2 * d] };
+    const down = rng() < 0.3, d = patRange(rng, 2, 9) * (down ? -1 : 1), a = down ? patRange(rng, 40, 80) : patRange(rng, 1, 20);
+    return { rule: down ? 'subtract' : 'add', len: 5, at: i => a + d * i, steps: [d] };
   }
-  if (kind === 'grow') {                                    // the step grows by s each time: +2, +3, +4, ...
-    const s = patPick(rng, [1, 1, 2, 3]), d0 = patRange(rng, 1, 4), a = patRange(rng, 1, 12), x = [a];
-    for (let i = 1; i < 6; i++) x.push(x[i - 1] + d0 + s * (i - 1));
-    return { rule: `the step grows by ${s}`, x, near: g => [g >= 2 ? x[g - 1] + (x[g - 1] - x[g - 2]) : x[g] + 1, x[g] + s, x[g] - s, x[g] - 1, x[g] + 2 * s] };
+  if (kind === 'mul') { const r = patPick(rng, [2, 2, 3]), a = patPick(rng, r === 3 ? [1, 2, 3, 4] : [1, 2, 3, 5, 6]); return { rule: 'multiply', len: 5, at: i => a * Math.pow(r, i), steps: [r], mul: r }; }
+  if (kind === 'alt') {
+    const d1 = patRange(rng, 2, 7); let d2 = patPick(rng, [-3, -2, -1, 1, 3, 4, 5, 6, 8, 9]); if (d2 === d1) d2 += 1;
+    const a = patRange(rng, 2, 15);
+    return { rule: 'alternate', len: 6, at: i => a + Math.ceil(i / 2) * d1 + Math.floor(i / 2) * d2, steps: [d1, d2] };
   }
-  if (kind === 'mul') {
-    const r = patPick(rng, [2, 2, 3]), a = patPick(rng, r === 3 ? [1, 2, 3, 4] : [1, 3, 5, 6, 7]), x = X(5, i => a * Math.pow(r, i));
-    return { rule: `times ${r} each time`, x, near: g => [g >= 2 ? x[g - 1] + (x[g - 1] - x[g - 2]) : x[g] + 1, g ? x[g - 1] * (r + 1) : x[g] * 2, x[g] + x[g] / r, x[g] - r, x[g] + r] };
-  }
-  if (kind === 'twostep') {                                 // the same two operations each time: times a, then add b
-    const a = patPick(rng, [2, 2, 3]), b = patPick(rng, [-1, 1, 1, 2, 3, -2]), x = [patRange(rng, 1, 5)];
-    for (let i = 1; i < 5; i++) x.push(a * x[i - 1] + b);
-    return { rule: `times ${a}, then ${b > 0 ? 'add ' + b : 'take ' + -b}`, x, near: g => (g ? [a * x[g - 1], a * x[g - 1] + 2 * b, a * x[g - 1] - b, (a + 1) * x[g - 1] + b] : []).concat([x[g] + 1, x[g] - 1]) };
-  }
-  if (kind === 'altops') {                                  // two operations taking turns: times m, add c, times m, ...
-    const m = patPick(rng, [2, 2, 3]), c = patPick(rng, [1, 2, 3, 4, 5, -1, -2]), mulFirst = rng() < 0.5, x = [patRange(rng, 1, 6)];
-    const op = j => ((j % 2 === 0) === mulFirst ? v => v * m : v => v + c), other = j => ((j % 2 === 0) === mulFirst ? v => v + c : v => v * m);
-    for (let i = 1; i < 6; i++) x.push(op(i - 1)(x[i - 1]));
-    return { rule: mulFirst ? `times ${m}, then ${c > 0 ? 'add ' + c : 'take ' + -c}, in turn` : `${c > 0 ? 'add ' + c : 'take ' + -c}, then times ${m}, in turn`, x,
-      near: g => (g ? [other(g - 1)(x[g - 1]), x[g - 1] * m + c, x[g - 1] * m] : []).concat([x[g] + 1, x[g] - 1, x[g] + c]) };
-  }
-  if (kind === 'altsteps') {                                // two steps taking turns: +a, -b, +a, ...
-    const a = patRange(rng, 3, 9); let b = patPick(rng, [-1, -2, -3, -4, -5, 1, 2]); if (b === a) b = -b;
-    const x = [patRange(rng, 10, 30)]; for (let i = 1; i < 6; i++) x.push(x[i - 1] + (i % 2 ? a : b));
-    return { rule: `${a > 0 ? '+' : ''}${a}, then ${b > 0 ? '+' : ''}${b}, in turn`, x, near: g => (g ? [x[g - 1] + (g % 2 ? b : a), x[g - 1] + a + b] : []).concat([x[g] + 1, x[g] - 1, x[g] + a]) };
-  }
-  if (kind === 'prime') {                                   // primes in a row
-    const k = patRange(rng, 0, 12), x = PAT_PRIMES.slice(k, k + 5), next = PAT_PRIMES[k + 5];
-    return { rule: 'primes in a row', x, near: g => [x[g] + 2, x[g] - 2, g < 4 ? x[g + 1] : next, x[g] + 1, x[g] - 1, x[g] + 4].filter(v => v !== x[g]) };
-  }
-  if (kind === 'triangle') {                                // 1, 3, 6, 10, 15, ...
-    const s = patRange(rng, 0, 4), x = X(6, i => (i + s + 1) * (i + s + 2) / 2);
-    return { rule: 'triangle numbers (+2, +3, +4, ...)', x, near: g => [g >= 2 ? x[g - 1] + (x[g - 1] - x[g - 2]) : x[g] - 1, x[g] + 1, x[g] - 1, x[g] + g + s + 2] };
-  }
-  if (kind === 'square') {                                  // squares, or one more or one less than squares
-    const s = patRange(rng, 1, 6), c = patPick(rng, [0, 0, 1, -1, 2]), x = X(5, i => (i + s) * (i + s) + c);
-    return { rule: c ? `squares ${c > 0 ? 'plus ' + c : 'minus ' + -c}` : 'squares', x, near: g => [x[g] + 1, x[g] - 1, g >= 2 ? x[g - 1] + (x[g - 1] - x[g - 2]) : x[g] + 2, (g + s) * (g + s + 1) + c, x[g] + 2] };
-  }
-  if (kind === 'cube') {
-    const s = patRange(rng, 1, 3), x = X(5, i => Math.pow(i + s, 3));
-    return { rule: 'cubes', x, near: g => [x[g] + 1, x[g] - 1, (g + s) * (g + s), g >= 2 ? x[g - 1] + (x[g - 1] - x[g - 2]) : x[g] + 2, x[g] * 2] };
-  }
+  if (kind === 'square') { const s = patRange(rng, 1, 6); return { rule: 'squares', len: 5, at: i => (i + s) * (i + s), steps: [] }; }
   if (kind === 'fib') {
-    const a = patRange(rng, 1, 4), b = patRange(rng, 1, 6), x = [a, b];
-    for (let i = 2; i < 7; i++) x.push(x[i - 1] + x[i - 2]);
-    return { rule: 'each the sum of the two before', x, near: g => [g >= 2 ? x[g - 1] * 2 : x[g] + 1, x[g] + 1, x[g] - 1, g >= 3 ? x[g - 1] + x[g - 3] : x[g] + 2] };
+    const a = patRange(rng, 1, 4), b = patRange(rng, 1, 5), x = [a, b];
+    for (let i = 2; i < 8; i++) x.push(x[i - 1] + x[i - 2]);
+    return { rule: 'fibonacci', len: 6, at: i => x[i], steps: [] };
   }
-  if (kind === 'doubling') {                                // the step doubles: +1, +2, +4, +8, ...
-    const a = patRange(rng, 1, 15), d = patPick(rng, [1, 1, 2, 3]), x = X(6, i => a + d * (Math.pow(2, i) - 1));
-    return { rule: 'the step doubles', x, near: g => [g ? x[g - 1] * 2 : x[g] + 1, g >= 2 ? x[g - 1] + (x[g - 1] - x[g - 2]) : x[g] - 1, x[g] + 1, x[g] - 1] };
-  }
-  // two sequences taking turns, each with its own step
-  const a = patRange(rng, 1, 9), b = patRange(rng, 15, 40); let d = patRange(rng, 2, 6), e = patPick(rng, [-3, -2, -1, 2, 3, 4]); if (e === d) e = -e;
-  const x = X(7, i => (i % 2 ? b + e * ((i - 1) / 2) : a + d * (i / 2)));
-  return { rule: 'two sequences taking turns', x, near: g => [g ? x[g - 1] + (g % 2 ? e : d) : x[g] + 1, x[g] + (g % 2 ? e : d), x[g] - (g % 2 ? e : d), x[g] + 1, x[g] - 1] };
+  const a = patRange(rng, 1, 9), b = patRange(rng, 10, 30); let d = patRange(rng, 2, 6), e = patPick(rng, [-3, -2, -1, 1, 2, 3, 4, 5]); if (e === d) e = -e;
+  return { rule: 'two sequences', len: 7, at: i => (i % 2 ? b + e * ((i - 1) / 2) : a + d * (i / 2)), steps: [d, e] };
 }
-function patNumPuzzle(rng) {
-  const t = patNumRule(rng), gap = patGap(rng, t.x.length), ans = t.x[gap];
-  if (t.x.some(v => v < 0 || v > PATTERNS.maxN)) return null;
-  const misses = t.near(gap).concat([ans + 2, ans - 2, ans + 10, ans - 10]).filter(v => Number.isInteger(v) && v >= 0 && v <= PATTERNS.maxN && v !== ans).map(patNum);
-  return { fam: 'num', rule: t.rule, seq: t.x.map((v, i) => (i === gap ? null : patNum(v))), ans: patNum(ans), misses };
+function patNumMisses(t, gap, ans, vals, rng) {
+  const near = [], far = [], prev = vals[gap - 1], prev2 = vals[gap - 2], next = vals[gap + 1];
+  near.push(t.at(gap + 1));                                            // a step too far
+  if (prev != null && prev2 != null) near.push(prev + (prev - prev2), prev * 2, prev + prev2);   // the wrong operation: the last step again, doubling, the sum of the two before
+  if (t.mul) near.push(ans + t.mul, prev != null ? prev * (t.mul + 1) : ans * 2);
+  for (const st of t.steps) near.push(ans + st, ans - st);             // the step added once too often, or once too few
+  near.push(ans + 1, ans - 1);
+  far.push(t.at(gap - 1), ans + 2, ans - 2, ans + 10, ans - 10);
+  if (next != null && prev != null) far.push(Math.round((prev + next) / 2));   // (a gap in the middle: halfway between its neighbours)
+  return shuffle(near, rng).concat(shuffle(far, rng));
 }
-// Letter series: the letters' places in the alphabet follow a rule (skipping the same each time, the gap
-// growing, two steps taking turns, two series woven together, forwards or backwards).
-function patLetterPuzzle(rng) {
-  const kind = patPick(rng, ['skip', 'skip', 'grow', 'alt', 'two']);
-  let x, near, rule;
-  if (kind === 'skip') { const d = patPick(rng, [2, 3, 4, 5, -2, -3, -4]), len = 5, a = d > 0 ? patRange(rng, 1, 26 - d * (len - 1)) : patRange(rng, 1 - d * (len - 1), 26); x = Array.from({ length: len }, (_, i) => a + d * i); rule = `${d > 0 ? 'forward' : 'back'} ${Math.abs(d)} each time`; near = g => [x[g] + 1, x[g] - 1, x[g] + d, x[g] - d]; }
-  else if (kind === 'grow') { const a = patRange(rng, 1, 6); x = [a]; for (let i = 1; i < 6; i++) x.push(x[i - 1] + i); rule = 'the gap grows by one'; near = g => [x[g] + 1, x[g] - 1, g ? x[g - 1] + (g - 1 || 1) : x[g] + 2, x[g] + g + 1]; }
-  else if (kind === 'alt') { const a = patPick(rng, [1, 2, 3]), b = patPick(rng, [1, 2, 3, -1]); if (a === b) return null; x = [patRange(rng, 1, 8)]; for (let i = 1; i < 6; i++) x.push(x[i - 1] + (i % 2 ? a : b)); rule = `forward ${a}, then ${b > 0 ? 'forward ' + b : 'back ' + -b}, in turn`; near = g => (g ? [x[g - 1] + (g % 2 ? b : a)] : []).concat([x[g] + 1, x[g] - 1]); }
-  else { const a = patRange(rng, 1, 5), b = patRange(rng, 22, 26), d = patPick(rng, [1, 2]), e = -patPick(rng, [1, 2]); x = Array.from({ length: 7 }, (_, i) => (i % 2 ? b + e * ((i - 1) / 2) : a + d * (i / 2))); rule = 'two series woven together'; near = g => [x[g] + 1, x[g] - 1, g ? x[g - 1] + (g % 2 ? d : e) : x[g] + 2, x[g] + (g % 2 ? e : d)]; }
-  if (x.some(v => v < 1 || v > 26)) return null;
-  const gap = patGap(rng, x.length), ans = x[gap];
-  const misses = near(gap).concat([ans + 2, ans - 2]).filter(v => Number.isInteger(v) && v >= 1 && v <= 26 && v !== ans).map(patLetter);
-  return { fam: 'letter', rule: kind === 'skip' ? rule : rule, seq: x.map((v, i) => (i === gap ? null : patLetter(v))), ans: patLetter(ans), misses };
+function patNumPuzzle(rng, fam) {
+  const t = fam === 'dots' ? patDotsTemplate(rng) : patNumTemplate(rng), mid = rng() < PATTERNS.middle;
+  const len = t.len, gap = mid ? patRange(rng, 1, len - 2) : len - 1;
+  const vals = Array.from({ length: len }, (_, i) => t.at(i)), ans = vals[gap];
+  const max = fam === 'dots' ? PATTERNS.maxDots : PATTERNS.maxN, min = fam === 'dots' ? 1 : 0;
+  if (vals.some(v => v < min || v > max)) return null;
+  const colour = patRange(rng, 0, PATTERNS.colours - 1);
+  const make = v => (fam === 'dots' ? patDots(v, colour) : patNum(v));
+  const misses = patNumMisses(t, gap, ans, vals.map((v, i) => (i === gap ? null : v)), rng).filter(v => Number.isInteger(v) && v >= min && v <= max && v !== ans).map(make);
+  if (fam === 'dots' && rng() < 0.5) misses.splice(2, 0, patDots(ans, (colour + 1 + randInt(rng, PATTERNS.colours - 1)) % PATTERNS.colours));   // sometimes: the right count, the wrong colour
+  return { fam, rule: t.rule + (mid ? ' (gap)' : ''), seq: vals.map((v, i) => (i === gap ? null : make(v))), ans: make(ans), misses, ordered: true };
 }
-// A 3x3 figure matrix with one cell missing: each cell some copies of a shape, of a colour, solid or outline.
-// Two or three of those features follow a rule (the same along each row, or down each column; each row
-// holding the same three in turn; the count going up along the rows, or the third the sum of the other two);
-// the rest stay the same throughout. The wrong options are the answer with one feature changed: to the one
-// in the cell beside it or above it, or to one that should not have changed at all.
-function patMatrixPuzzle(rng) {
-  const shapes = shuffle([0, 3, 4, 5, 6], rng).slice(0, 3), cols = shuffle([0, 1, 2, 3, 4, 5], rng).slice(0, 3), fills = shuffle([0, 1], rng);
-  const feats = shuffle(['g', 'c', 'k', 'f'], rng), vary = feats.slice(0, rng() < 0.55 ? 2 : 3);
-  if (vary.includes('f') && vary.length === 2 && rng() < 0.5) return null;   // (fill alone with one more: plain; less often)
-  const rules = {}, used = new Set();
-  for (const f of vary) {
-    const opts = f === 'k' ? ['row', 'col', 'col', 'sum', 'latin'] : f === 'f' ? ['row', 'col'] : ['row', 'col', 'latin', 'latin2'];   // (counts: going up (or down) along each row the likeliest)
-    const free = opts.filter(o => !used.has(o.replace(/2$/, '')));
-    if (!free.length) return null;
-    rules[f] = patPick(rng, free); used.add(rules[f].replace(/2$/, ''));
-  }
-  const base = { g: shapes[0], k: patRange(rng, 1, 2), c: cols[0], f: patPick(rng, [1, 1, 0]) };
-  const pal = { g: shapes, c: cols, f: fills, k: rng() < 0.75 ? [1, 2, 3] : [3, 2, 1] }, ksum = shuffle([[1, 1, 2], [1, 2, 3], [2, 1, 3], [1, 3, 4], [2, 2, 4]], rng), cells = [];
-  for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) {
-    const it = Object.assign({}, base);
-    for (const f of vary) {
-      const v = pal[f], rule = rules[f];
-      it[f] = rule === 'row' ? v[r] : rule === 'col' ? v[c] : rule === 'latin' ? v[(r + c) % 3] : rule === 'latin2' ? v[(r + 2 * c) % 3] : ksum[r][c];
-      if (f === 'f' && (rule === 'row' || rule === 'col')) it.f = (rule === 'row' ? r : c) % 2 ? fills[1] : fills[0];
-    }
-    cells.push(patCell(it.g, it.k, it.c, it.f));
-  }
-  if (vary.includes('f') && rules.f && new Set(cells.map(c => c.f)).size < 2) return null;
-  const gap = rng() < 0.75 ? 8 : patRange(rng, 0, 7), ans = cells[gap], gr = Math.floor(gap / 3), gc = gap % 3;
-  const beside = cells[gr * 3 + (gc ? gc - 1 : 1)], above = cells[(gr ? gr - 1 : 1) * 3 + gc];
-  const w = (f, v) => Object.assign({}, ans, { [f]: v });
-  const near = [], far = [];
-  for (const f of shuffle(vary.slice(), rng)) { near.push(w(f, beside[f]), w(f, above[f])); }
-  for (const f of vary) if (f === 'k') near.push(w('k', ans.k + 1), w('k', ans.k - 1)); else for (const v of pal[f]) near.push(w(f, v));
-  for (const f of ['g', 'c', 'f', 'k'].filter(f => !vary.includes(f))) far.push(f === 'k' ? w('k', ans.k === 1 ? 2 : ans.k - 1) : f === 'f' ? w('f', 1 - ans.f) : w(f, pal[f][1]));
-  const ok = o => o.k >= 1 && o.k <= 4;
-  const misses = shuffle(near.filter(ok), rng).slice(0, 2).concat(shuffle(far.filter(ok), rng).slice(0, 1), shuffle(near.filter(ok), rng), far.filter(ok)).map(o => patCell(o.g, o.k, o.c, o.f));
-  return { fam: 'matrix', rule: vary.map(f => `${{ g: 'shape', c: 'colour', k: 'count', f: 'fill' }[f]}: ${rules[f]}`).join(', '), seq: cells.map((c, i) => (i === gap ? null : c)), ans, misses, grid: 3 };
+function patDotsTemplate(rng) {
+  const kind = patPick(rng, ['add', 'add', 'double', 'triangle', 'alt']);
+  if (kind === 'add') { const d = patRange(rng, 1, 3), a = patRange(rng, 1, 3); return { rule: 'dots add', len: 5, at: i => a + d * i, steps: [d] }; }
+  if (kind === 'double') return { rule: 'dots double', len: 5, at: i => Math.pow(2, i), steps: [], mul: 2 };
+  if (kind === 'alt') { const a = patRange(rng, 1, 3); return { rule: 'dots +2 -1', len: 6, at: i => a + Math.ceil(i / 2) * 2 - Math.floor(i / 2), steps: [2, -1] }; }
+  return { rule: 'dots triangle', len: 5, at: i => (i + 1) * (i + 2) / 2, steps: [] };
 }
-// Turning and flipping: a figure (an arrow, an L, a flag) turning the same amount each time, flipped over
-// every other time, or both; or two markers moving round a frame, each at its own pace. The wrong options:
-// the turn one step too far or too short, the turn the other way, the mirror image, a marker one spot off.
-function patTurnPuzzle(rng) {
-  const kind = patPick(rng, ['turn', 'turn', 'flip', 'turnflip', 'ring', 'ring']), c = randInt(rng, PATTERNS.colours);
-  if (kind === 'ring') {
-    const sa = patPick(rng, [1, 2, 3, -1]), sb = patPick(rng, [-1, -2, 1, 2, -3]), a0 = randInt(rng, 8), b0 = randInt(rng, 8);
-    if (sa === sb) return null;
-    const x = Array.from({ length: 5 }, (_, i) => patRing(a0 + sa * i, b0 + sb * i)), gap = patGap(rng, 5), ans = x[gap];
-    const [a, b] = ans.q, misses = [patRing(a + sa, b), patRing(a, b + sb), patRing(a - sa, b), patRing(a, b - sb), patRing(a + 1, b), patRing(a, b + 1), patRing(b, a), patRing(a + sa, b + sb), patRing(a - 1, b - 1)];
-    return { fam: 'turn', rule: `two markers: ${sa > 0 ? '+' : ''}${sa} and ${sb > 0 ? '+' : ''}${sb} spots round the frame`, seq: x.map((v, i) => (i === gap ? null : v)), ans, misses };
-  }
-  const h = kind === 'turn' ? patPick(rng, [0, 1, 2]) : patPick(rng, [1, 2]), step = kind === 'flip' ? 0 : patPick(rng, [45, 90, 90, 135, -45, -90, -90]);
-  const r0 = patPick(rng, [0, 45, 90, 180, 270]), flips = kind !== 'turn', len = kind === 'turn' ? 5 : 6;
-  const x = Array.from({ length: len }, (_, i) => patFig(h, r0 + step * i, flips ? i % 2 : 0, c)), gap = patGap(rng, len), ans = x[gap];
-  const w = (r, m) => patFig(h, r, m, c), st = step || 90, misses = [];
-  if (step) misses.push(w(ans.r + step, ans.m), w(ans.r - step, ans.m), w(r0 - step * gap, ans.m));          // a step too far, too short, the other way round
-  if (h) misses.push(w(ans.r, 1 - ans.m));                                                                // the mirror image
-  misses.push(w(ans.r + 180, ans.m), w(ans.r + st, 1 - ans.m), w(ans.r - st, 1 - ans.m), w(ans.r + 90, ans.m));
-  return { fam: 'turn', rule: kind === 'turn' ? `turns ${Math.abs(step)}° ${step > 0 ? 'clockwise' : 'anticlockwise'} each time` : kind === 'flip' ? 'flips over each time' : `turns ${Math.abs(step)}° ${step > 0 ? 'clockwise' : 'anticlockwise'} and flips over each time`,
-    seq: x.map((v, i) => (i === gap ? null : v)), ans, misses: misses.slice(0, h ? 4 : 3).concat(shuffle(misses.slice(h ? 4 : 3), rng)) };
+// A shape template: the features that change (and how), the rest fixed.
+function patShapePuzzle(rng) {
+  const kind = patPick(rng, ['turn', 'sides', 'size', 'colour', 'fill', 'sides+fill', 'turn+colour']);
+  const c0 = randInt(rng, PATTERNS.colours), base = { g: patPick(rng, [0, 3, 4, 5, 6]), r: 0, z: 3, c: c0, f: 1 };
+  let len = 5, at, rule = kind;
+  const cycle = shuffle([0, 1, 2, 3, 4, 5], rng).slice(0, 3), turnStep = patPick(rng, [45, 90, -45, -90]), r0 = patPick(rng, [0, 45, 90, 180, 270]);
+  const grow = rng() < 0.6, s0 = patPick(rng, [3, 4]), fill0 = randInt(rng, 2);
+  if (kind === 'turn') at = i => ({ ...base, g: 1, r: r0 + turnStep * i });
+  else if (kind === 'sides') at = i => ({ ...base, g: grow ? s0 + i : 8 - i });
+  else if (kind === 'size') at = i => ({ ...base, z: grow ? 1 + i : 5 - i });
+  else if (kind === 'colour') { len = 6; at = i => ({ ...base, c: cycle[i % 3] }); }
+  else if (kind === 'fill') at = i => ({ ...base, f: (fill0 + i) % 2 });
+  else if (kind === 'sides+fill') at = i => ({ ...base, g: s0 + i, f: (fill0 + i) % 2 });
+  else { len = 6; at = i => ({ ...base, g: 1, r: r0 + turnStep * i, c: cycle[i % 3] }); }
+  const mid = rng() < PATTERNS.middle, gap = mid ? patRange(rng, 1, len - 2) : len - 1;
+  const items = Array.from({ length: len }, (_, i) => { const s = at(i); return patShape(s.g, s.r, s.z, s.c, s.f); }), ans = items[gap];
+  const v = (o, ch) => patShape(ch.g != null ? ch.g : o.g, ch.r != null ? ch.r : o.r, ch.z != null ? ch.z : o.z, ch.c != null ? ch.c : o.c, ch.f != null ? ch.f : o.f);
+  const after = at(gap + 1), before = at(gap - 1), turns = kind.startsWith('turn');
+  const own = [], other = [];                                          // near misses along the rule's own change first, then a feature that should not have changed
+  if (turns) own.push(v(ans, { r: after.r }), v(ans, { r: before.r }), v(ans, { r: ans.r + 180 }), v(ans, { r: ans.r + (Math.abs(turnStep) === 90 ? 45 : 90) }));   // the wrong turn
+  if (kind.includes('sides')) own.push(v(ans, { g: after.g }), v(ans, { g: before.g }));              // a side too many, or too few
+  if (kind === 'size') own.push(v(ans, { z: after.z }), v(ans, { z: before.z }), v(ans, { z: ans.z + (grow ? -2 : 2) }));   // a size too far, or too short
+  if (kind.includes('colour')) own.push(v(ans, { c: cycle[(cycle.indexOf(ans.c) + 1) % 3] }), v(ans, { c: cycle[(cycle.indexOf(ans.c) + 2) % 3] }));   // the colours in the wrong order
+  if (kind.includes('fill')) own.push(v(ans, { f: 1 - ans.f }));                                     // the wrong fill
+  if (!kind.includes('fill')) other.push(v(ans, { f: 1 - ans.f }));
+  if (!kind.includes('colour')) other.push(v(ans, { c: (ans.c + 3) % PATTERNS.colours }), v(ans, { c: (ans.c + 1) % PATTERNS.colours }));
+  if (!kind.includes('sides') && !turns) other.push(v(ans, { g: ans.g === 0 ? 4 : ans.g === 8 ? 7 : ans.g + 1 }));
+  if (kind !== 'size') other.push(v(ans, { z: ans.z === 3 ? 2 : 3 }));
+  const ok = o => o.z >= 1 && o.z <= 5 && (o.g === 0 || o.g === 1 || (o.g >= 3 && o.g <= 8));
+  const misses = shuffle(own.filter(ok), rng).slice(0, 2).concat(shuffle(other.filter(ok), rng), own.filter(ok));
+  if (items.some(o => o.z < 1 || o.z > 5 || (o.g !== 0 && o.g !== 1 && (o.g < 3 || o.g > 8)))) return null;
+  return { fam: 'shape', rule: kind + (mid ? ' (gap)' : ''), seq: items.map((it, i) => (i === gap ? null : it)), ans, misses, ordered: true };
 }
-// Dice and dot counts: a die (or two) changing by a rule, each die its own; or dots counted by a number rule.
-function patDicePuzzle(rng) {
-  const kind = patPick(rng, ['one', 'woven', 'two', 'two', 'dots', 'dots']);
-  if (kind === 'dots') {
-    const k = patPick(rng, ['add', 'triangle', 'grow', 'double', 'fib']), c = randInt(rng, PATTERNS.colours);
-    const a = patRange(rng, 1, 3), d = patRange(rng, 2, 3);
-    const x = k === 'add' ? [0, 1, 2, 3, 4].map(i => a + d * i) : k === 'triangle' ? [0, 1, 2, 3, 4].map(i => (i + 1) * (i + 2) / 2) : k === 'grow' ? [1, 2, 4, 7, 11, 16] : k === 'double' ? [0, 1, 2, 3, 4].map(i => Math.pow(2, i)) : [1, 2, 3, 5, 8, 13];
-    if (x.some(v => v > PATTERNS.maxDots)) return null;
-    const gap = patGap(rng, x.length), ans = x[gap];
-    const near = [ans + 1, ans - 1, gap >= 2 ? x[gap - 1] + (x[gap - 1] - x[gap - 2]) : ans + 2, ans + 2].filter(v => v >= 1 && v <= PATTERNS.maxDots && v !== ans).map(v => patDots(v, c));
-    near.splice(1, 0, patDots(ans, (c + 1 + randInt(rng, PATTERNS.colours - 1)) % PATTERNS.colours));   // the right count, the wrong colour
-    return { fam: 'dice', rule: `dots: ${k}`, seq: x.map((v, i) => (i === gap ? null : patDots(v, c))), ans: patDots(ans, c), misses: near };
-  }
-  let x, rule;
-  if (kind === 'one') { const up = rng() < 0.5, a = up ? patRange(rng, 1, 2) : patRange(rng, 5, 6); x = Array.from({ length: 5 }, (_, i) => [a + (up ? 1 : -1) * i]); rule = `one die: ${up ? 'up' : 'down'} one each time`; }
-  else if (kind === 'woven') { const a = patRange(rng, 1, 2), b = patRange(rng, 5, 6); x = Array.from({ length: 6 }, (_, i) => [i % 2 ? b - (i - 1) / 2 : a + i / 2]); rule = 'one die: two counts woven together'; }
-  else { const da = patPick(rng, [1, -1, 0, 1]), db = patPick(rng, [-1, 1, 2, -2]); if (da === db) return null; const a = da > 0 ? 1 : da < 0 ? 6 : patRange(rng, 1, 6), b = db > 0 ? patRange(rng, 1, 2) : patRange(rng, 5, 6); x = Array.from({ length: 5 }, (_, i) => [a + da * i, b + db * i]); rule = `two dice: ${da > 0 ? '+' : ''}${da} and ${db > 0 ? '+' : ''}${db}`; }
-  if (x.some(e => e.some(v => v < 1 || v > 6))) return null;
-  const gap = patGap(rng, x.length), ans = x[gap], misses = [];
-  if (ans.length === 2) { const [p, q] = ans, prev = x[gap - 1] || x[gap + 1]; misses.push([q, p], [p, prev[1]], [prev[0], q], [p + 1, q], [p, q + 1], [p - 1, q], [p, q - 1]); }
-  else { const v = ans[0], step = x[1][0] - x[0][0]; misses.push([v + 1], [v - 1], [v + step], [v - step], [7 - v], [v + 2], [v - 2]); }
-  return { fam: 'dice', rule, seq: x.map((v, i) => (i === gap ? null : patDice(v))), ans: patDice(ans), misses: misses.filter(e => e.every(v => v >= 1 && v <= 6)).map(patDice) };
-}
-// A puzzle: { fam, seq (null at the gap), opts, grid? }, the right option's place (answer) and the rule,
+// A puzzle: { fam, seq (null at the gap), opts }, the right option's place (answer) and the rule's name,
 // checked: the right option the only one any fitting rule gives, the four options all different to look at.
 function patPuzzle(rng, avoid) {
-  for (let tries = 0; tries < 400; tries++) {
+  for (let tries = 0; tries < 200; tries++) {
     let fam = PATTERNS.mix[0][0]; { let r = rng() * PATTERNS.mix.reduce((s, x) => s + x[1], 0); for (const [f, w] of PATTERNS.mix) { r -= w; if (r < 0) { fam = f; break; } } }
     if (fam === avoid && tries < 20) continue;                        // (not the same kind twice running, if it can be helped)
-    const p = fam === 'num' ? patNumPuzzle(rng) : fam === 'letter' ? patLetterPuzzle(rng) : fam === 'matrix' ? patMatrixPuzzle(rng) : fam === 'turn' ? patTurnPuzzle(rng) : patDicePuzzle(rng);
+    const p = fam === 'shape' ? patShapePuzzle(rng) : patNumPuzzle(rng, fam);
     if (!p) continue;
     const seen = new Set([patKey(p.ans)]), wrong = [];
-    for (const m of p.misses) {                                       // near misses first (each family orders its own), each looking unlike the rest
+    for (const m of p.misses) {                                       // near misses first (each template orders its own), each looking unlike the rest
       const k = patKey(m);
       if (seen.has(k)) continue;
       seen.add(k); wrong.push(m);
@@ -1517,7 +1358,7 @@ function patPuzzle(rng, avoid) {
     }
     if (wrong.length < PATTERNS.options - 1) continue;
     const opts = shuffle([p.ans].concat(wrong), rng), answer = opts.indexOf(p.ans);
-    const puz = Object.assign({ fam: p.fam, seq: p.seq, opts }, p.grid ? { grid: p.grid } : {});
+    const puz = { fam: p.fam, seq: p.seq, opts };
     const fit = patFitting(puz, opts);
     if (fit.length !== 1 || fit[0] !== answer) continue;               // more than one option could be right (or the right one could not): another
     return { puz, answer, rule: p.rule };
@@ -2733,7 +2574,7 @@ function applyMove(mini, p, m, rng) {
       } else if (Number.isInteger(m) && m >= 0 && m < puz.opts.length && !crossed.includes(m)) picked = m;
       else return { ok: false, reason: Number.isInteger(m) && crossed.includes(m) ? 'crossed' : 'bad' };
       const correct = picked === right;
-      mini.last = Object.assign({ by: p, fam: puz.fam, seq: puz.seq, opts: puz.opts, crossed, picked, correct }, puz.grid ? { grid: puz.grid } : {}, correct ? { right } : {}, auto ? { auto: true } : {});   // (a wrong pick never carries the answer)
+      mini.last = Object.assign({ by: p, fam: puz.fam, seq: puz.seq, opts: puz.opts, crossed, picked, correct }, correct ? { right } : {}, auto ? { auto: true } : {});   // (a wrong pick never carries the answer)
       if (!correct) {
         if (picked >= 0) mini.crossed = crossed.concat(picked);
         return { ok: true, outcome: 'continue', note: 'wrong' };
@@ -3797,7 +3638,7 @@ function playMove(state, i, m, rng, opts) {
     case 'seating': { const l = mini.last; flash.seat = { seat: l.seat, z: l.z, zColor: l.zColor, table: l.table, next: l.next, left: !!l.left, tables: { X: seatTables(mini.who, 'X'), O: seatTables(mini.who, 'O') } }; break; }
     case 'districts': { const l = mini.last; flash.dist = { spot: l.spot, grey: l.grey == null ? null : l.grey, lead: distTally(mini.map, mini.who).lead }; break; }
     case 'shelves': { const l = mini.last; flash.shelf = { at: l.at, grey: l.grey, on: { X: shelfOn(mini.cells, 'X'), O: shelfOn(mini.cells, 'O') } }; break; }
-    case 'patterns': { const l = mini.last; flash.pat = Object.assign({ fam: l.fam, seq: l.seq, opts: l.opts, crossed: (l.crossed || []).slice(), picked: l.picked, correct: l.correct, counts: { X: mini.right.X, O: mini.right.O } }, l.grid ? { grid: l.grid } : {}, l.correct ? { right: l.right } : {}, l.auto ? { auto: true } : {}); break; }   // (a wrong pick: no answer in it)
+    case 'patterns': { const l = mini.last; flash.pat = Object.assign({ fam: l.fam, seq: l.seq, opts: l.opts, crossed: (l.crossed || []).slice(), picked: l.picked, correct: l.correct, counts: { X: mini.right.X, O: mini.right.O } }, l.correct ? { right: l.right } : {}, l.auto ? { auto: true } : {}); break; }   // (a wrong pick: no answer in it)
     case 'wheels': { const l = mini.last; flash.wheel = { w: l.w, v: l.v, seg: l.seg, at: l.at, from: l.from || 0, pts: { X: mini.pts.X, O: mini.pts.O }, target: mini.target }; break; }
     case 'sniff': { const l = mini.last; flash.sniff = { f: l.f, t: l.t, hot: l.hot, found: l.found }; break; }
     case 'roads': { const l = mini.last; flash.road = { seg: l.seg, block: l.block, len: { X: roadLongest(mini.segs, 'X').len, O: roadLongest(mini.segs, 'O').len } }; break; }
@@ -4204,4 +4045,4 @@ function matchStats(st) {
 }
 
 // Node (the Cloud Functions and the tests): the same names as a module.
-if (typeof module !== "undefined" && module.exports) module.exports = { PHYS_TYPES, PHYSICS, setPhysics, physicsReady, GOLF, POOLG, BOWLG, poolMine, poolRank, poolIds, poolOwns, poolFree, physShot, wrapAim, aimTo, poolSpot, physRun, golfClear, golfNext, golfAhead, golfLeft, physLast, physScore, physCandidates, physAi, physRandom, physNeeds, RUN_TYPES, RUN_DEFAULTS, RUN_LIMITS, RUN, RUNT, RUN_CFG, LANE_TIGHT, LANE_NEAR, r2, runNorm, setRunConfig, runConfig, runSpeed, runSecs, runAfter, runGrace, DASH_OBS, DASH, LANE, FLAP, CHOP, PATTERNS, PAT_PRIMES, mod360, patKey, patRot, patFits, patSolve3, patFeature, patGridFeature, patRingFeature, patFitting, patGap, patNumRule, patNumPuzzle, patLetterPuzzle, patMatrixPuzzle, patTurnPuzzle, patDicePuzzle, patPuzzle, patNum, patDots, patShape, patLetter, patDice, patCell, patFig, patRing, patPick, patRange, WHEELS, WHEEL_SEGS, WHEELS_SAFE, WHEEL_DEFAULTS, WHEEL_LIMITS, WHEELT, WHEEL_CFG, wheelsNorm, setWheelsConfig, wheelsConfig, wheelAvg, wheelsCheck, wheelsDeal, WHEEL_MEMO, wheelsTable, wheelSpin, SNIFF, SNIFF_DIRS, sniffDist, sniffStep, sniffDirs, sniffCands, sniffPick, runCave, caveHeight, caveWalls, runWalls, weightedPick, laneRow, runCourse, runCheck, runAuto, gaussOf, normCdf, runAiMean, runAi, runNeeds, runLog, runStart, runJump, runRelease, runLane, runLaneX, overlap, runHit, runStep, runResult, TEST_TYPES, isReleased, releasedTypes, allowedTypes, restrictGames, dealable, CRAPS, CRAPS_MAKE, crapsRound, crapsTimes, TAKE, takeNear, takeCount, takeApply, takeSearch, FLOOD, floodNear, floodWaves, floodGain, floodApply, floodSearch, raceNeeds, TAKEOVER_MS, FLOOD_MS, PLACE_MS, SEAT, seatTable, seatMate, seatTables, seatZ, seatNext, seatPick, DIST, r1d, distClip, distMap, distTo, distTally, distEval, distSearch, SHELF, shelfOn, shelfPick, ROAD, ROAD_SEGS, roadLongest, roadPick, randomEmpty, BULLS, BULLT, bullsLeg, bullsAim, BULL_DEFAULTS, BULL_LIMITS, BULL_CFG, bullsNorm, setBullsConfig, bullsConfig, bullsSpot, bullsScore, bullsRates, r3, ECHO, PLINKO, PONG, TRIVIA, ODD, bullsPeriod, echoSeqs, echoBase, echoSeq, echoAim, plinkoPath, plinkoOdds, PLINKO_DEFAULTS, PLINKO_LIMITS, PLINKO_CFG, plinkoNorm, setPlinkoConfig, plinkoConfig, plinkoPegs, plinkoBonus, plinkoTouches, plinkoWays, plinkoDist, plinkoExp, plinkoOpen, pongThrow, pongAimAt, pongDist, setTriviaBank, triviaReady, triviaDeal, triviaUsed, oddGrid, cpuEcho, CARD, BJ, BUS, RL, BJT, BUST, RLT, BUS_AVG, cardDeck, isCard, cardRank, cardRed, cardName, bjValue, bjTotal, bjNatural, bjDealerPlay, bjOutcome, bjStrategy, bjPlan, bjMs, busRight, busDeck, busOdds, rlRed, rlBet, rlCovers, tttOpen, lineOpen, majorityResult, STYLE0, huntSize, huntBand, huntClue, normTimer, resignLocal, TYPES, OLD_TYPES, SNL, BUMP, snlRow, snlBoard, snlValid, snlExpected, coinPick, markCoins, coinMarksFor, normLocal, seatLocal, INFO, C4, HP, MM, HEX_N, HILO, CANDY, NAME_MAX, COINS, RISKY, BS, HUNT, DICE_GOAL, MEMORY, LINES, WORDS5, WORDS_HANG, VALID5, other, makeRng, needRng, randInt, randomType, shuffle, memoryDeck, wordleMarks, hexNeighbors, hexPath, canMove, hpMoves, mmFeedback, mmValid, MM_ALL, mmAll, mmCode, mmCandidates, mmBestGuess, hpGoalRow, upgradeMini, anyMove, huntDist, candyTrack, newMini, pickType, newSquare, CPU_NAME, defaultSetup, cpuSide, normSetup, syncNames, enabledGames, TIMER_OPTIONS, newTimer, playerName, newState, startMatch, newMatch, findRun, applyMove, AI, publicMini, wordleCandidates, hangmanCandidates, bsCandidates, bsPlacements, bsShip, huntCandidates, WINDOWS, windowsOf, lineNeeds, c4Playable, hexDist, candyExpected, COIN_NEEDS, needsOf, memoryPair, winChance, tttMinimax, c4Drop, c4Eval, C4_ORDER, c4Search, C4_DEPTH, c4Moves, HP_MEMO, hpSolve, hpMovesValued, hpNeeds, hexMoves, threatScore, pickValued, localBest, squareValue, moveGain, cpuMove, VALID5_LIST, randomLegalMove, timeoutMove, mainResult, playMove, endFlash, leaveSquare, RECENT_MAX, MATCH_FIELDS, secretOf, hideMini, matchRecord, fullState, settle, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, newOnlineMatch, PLAY, diceSlot, playMs, replayMs, armClock, applyOnlineResign, matchStats };
+if (typeof module !== "undefined" && module.exports) module.exports = { PHYS_TYPES, PHYSICS, setPhysics, physicsReady, GOLF, POOLG, BOWLG, poolMine, poolRank, poolIds, poolOwns, poolFree, physShot, wrapAim, aimTo, poolSpot, physRun, golfClear, golfNext, golfAhead, golfLeft, physLast, physScore, physCandidates, physAi, physRandom, physNeeds, RUN_TYPES, RUN_DEFAULTS, RUN_LIMITS, RUN, RUNT, RUN_CFG, LANE_TIGHT, LANE_NEAR, r2, runNorm, setRunConfig, runConfig, runSpeed, runSecs, runAfter, runGrace, DASH_OBS, DASH, LANE, FLAP, CHOP, PATTERNS, patKey, patRot, patFits, patSolve3, patFeature, patFitting, patNumTemplate, patNumMisses, patNumPuzzle, patDotsTemplate, patShapePuzzle, patPuzzle, patNum, patDots, patShape, patPick, patRange, WHEELS, WHEEL_SEGS, WHEELS_SAFE, WHEEL_DEFAULTS, WHEEL_LIMITS, WHEELT, WHEEL_CFG, wheelsNorm, setWheelsConfig, wheelsConfig, wheelAvg, wheelsCheck, wheelsDeal, WHEEL_MEMO, wheelsTable, wheelSpin, SNIFF, SNIFF_DIRS, sniffDist, sniffStep, sniffDirs, sniffCands, sniffPick, runCave, caveHeight, caveWalls, runWalls, weightedPick, laneRow, runCourse, runCheck, runAuto, gaussOf, normCdf, runAiMean, runAi, runNeeds, runLog, runStart, runJump, runRelease, runLane, runLaneX, overlap, runHit, runStep, runResult, TEST_TYPES, isReleased, releasedTypes, allowedTypes, restrictGames, dealable, CRAPS, CRAPS_MAKE, crapsRound, crapsTimes, TAKE, takeNear, takeCount, takeApply, takeSearch, FLOOD, floodNear, floodWaves, floodGain, floodApply, floodSearch, raceNeeds, TAKEOVER_MS, FLOOD_MS, PLACE_MS, SEAT, seatTable, seatMate, seatTables, seatZ, seatNext, seatPick, DIST, r1d, distClip, distMap, distTo, distTally, distEval, distSearch, SHELF, shelfOn, shelfPick, ROAD, ROAD_SEGS, roadLongest, roadPick, randomEmpty, BULLS, BULLT, bullsLeg, bullsAim, BULL_DEFAULTS, BULL_LIMITS, BULL_CFG, bullsNorm, setBullsConfig, bullsConfig, bullsSpot, bullsScore, bullsRates, r3, ECHO, PLINKO, PONG, TRIVIA, ODD, bullsPeriod, echoSeqs, echoBase, echoSeq, echoAim, plinkoPath, plinkoOdds, PLINKO_DEFAULTS, PLINKO_LIMITS, PLINKO_CFG, plinkoNorm, setPlinkoConfig, plinkoConfig, plinkoPegs, plinkoBonus, plinkoTouches, plinkoWays, plinkoDist, plinkoExp, plinkoOpen, pongThrow, pongAimAt, pongDist, setTriviaBank, triviaReady, triviaDeal, triviaUsed, oddGrid, cpuEcho, CARD, BJ, BUS, RL, BJT, BUST, RLT, BUS_AVG, cardDeck, isCard, cardRank, cardRed, cardName, bjValue, bjTotal, bjNatural, bjDealerPlay, bjOutcome, bjStrategy, bjPlan, bjMs, busRight, busDeck, busOdds, rlRed, rlBet, rlCovers, tttOpen, lineOpen, majorityResult, STYLE0, huntSize, huntBand, huntClue, normTimer, resignLocal, TYPES, OLD_TYPES, SNL, BUMP, snlRow, snlBoard, snlValid, snlExpected, coinPick, markCoins, coinMarksFor, normLocal, seatLocal, INFO, C4, HP, MM, HEX_N, HILO, CANDY, NAME_MAX, COINS, RISKY, BS, HUNT, DICE_GOAL, MEMORY, LINES, WORDS5, WORDS_HANG, VALID5, other, makeRng, needRng, randInt, randomType, shuffle, memoryDeck, wordleMarks, hexNeighbors, hexPath, canMove, hpMoves, mmFeedback, mmValid, MM_ALL, mmAll, mmCode, mmCandidates, mmBestGuess, hpGoalRow, upgradeMini, anyMove, huntDist, candyTrack, newMini, pickType, newSquare, CPU_NAME, defaultSetup, cpuSide, normSetup, syncNames, enabledGames, TIMER_OPTIONS, newTimer, playerName, newState, startMatch, newMatch, findRun, applyMove, AI, publicMini, wordleCandidates, hangmanCandidates, bsCandidates, bsPlacements, bsShip, huntCandidates, WINDOWS, windowsOf, lineNeeds, c4Playable, hexDist, candyExpected, COIN_NEEDS, needsOf, memoryPair, winChance, tttMinimax, c4Drop, c4Eval, C4_ORDER, c4Search, C4_DEPTH, c4Moves, HP_MEMO, hpSolve, hpMovesValued, hpNeeds, hexMoves, threatScore, pickValued, localBest, squareValue, moveGain, cpuMove, VALID5_LIST, randomLegalMove, timeoutMove, mainResult, playMove, endFlash, leaveSquare, RECENT_MAX, MATCH_FIELDS, secretOf, hideMini, matchRecord, fullState, settle, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, newOnlineMatch, PLAY, diceSlot, playMs, replayMs, armClock, applyOnlineResign, matchStats };
