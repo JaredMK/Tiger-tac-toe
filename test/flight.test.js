@@ -60,12 +60,15 @@ test('flap: posts every 9-13 m, each gap of the mix\'s size, its middle within r
   }
 });
 
-test('chopper: the cave narrows from 7.6 m to 4.4 m and stays in the sky; every block leaves room to pass, all the way in', () => {
+test('chopper: the cave narrows from 5.6 m to 3.4 m (the config\'s heights) and stays in the sky; every block leaves room to pass, all the way in', () => {
   const cfg = E.runConfig('chopper');
-  assert.equal(E.caveHeight(cfg, 0), E.CHOP.cave0); assert.equal(E.caveHeight(cfg, cfg.target), E.CHOP.cave1);
+  assert.deepEqual([cfg.cave0, cfg.cave1], [5.6, 3.4]);
+  assert.equal(E.caveHeight(cfg, 0), cfg.cave0); assert.equal(E.caveHeight(cfg, cfg.target), cfg.cave1);
+  const old = { target: 1000 };                                     // a square dealt before the cave was in the config: CHOP's heights
+  assert.equal(E.caveHeight(old, 0), E.CHOP.cave0); assert.equal(E.caveHeight(old, 1000), E.CHOP.cave1);
   for (let s = 1; s <= 40; s++) {
     const mini = square('chopper', s * 977), cave = E.runCave(mini, 'X'), course = E.runCourse(mini, 'X');
-    for (let d = 0; d <= cfg.target; d += 2.5) { const [f, c] = E.caveWalls(cave, cfg, d); assert.ok(f >= -0.01 && c <= E.CHOP.h + 0.01 && c - f >= E.CHOP.cave1 - 2 * E.CHOP.wave - 0.01, `walls at ${d}: ${f} ${c}`); }
+    for (let d = 0; d <= cfg.target; d += 2.5) { const [f, c] = E.caveWalls(cave, cfg, d); assert.ok(f >= -0.01 && c <= E.CHOP.h + 0.01 && c - f >= cfg.cave1 - 2 * E.CHOP.wave - 0.01, `walls at ${d}: ${f} ${c}`); }
     for (const o of course) {
       let f = -Infinity, c = Infinity;
       for (let x = o.at - 4; x <= o.at + E.CHOP.bw + 1.5; x += 0.25) { const w = E.caveWalls(cave, cfg, x); f = Math.max(f, w[0]); c = Math.min(c, w[1]); }
@@ -119,11 +122,67 @@ test('flap: a pilot that reacts 0.12 s late finishes every course', () => {
   for (let s = 1; s <= 25; s++) { const sim = flyFlap(square('flap', s * 7919), 0.12); assert.ok(sim.done, `course ${s}: crashed at ${Math.round(sim.d)} m (${sim.crash && sim.crash.ob.k})`); }
 });
 
-test('chopper: a pilot that reacts 0.1 s late finishes nearly every course (the rest late on, where it is narrow and fast)', () => {
-  let fin = 0; const late = [];
-  for (let s = 1; s <= 25; s++) { const sim = flyChopper(square('chopper', s * 7919), 0.1); if (sim.done) fin++; else late.push(Math.round(sim.d)); }
-  assert.ok(fin >= 23, `${fin}/25 finished (crashes at ${late})`);
-  assert.ok(late.every(d => d > 600), `crashes only late on (${late})`);
+// A planning Chopper pilot: every 1/30 s it tries hold-then-let-go and let-go-then-hold over the next second, keeps
+// the one that stays furthest from the walls and blocks, and acts on it `react` s late (it knows its own lag), misjudging
+// its height by up to `noise` m each time.
+function planPilot(mini, react, noise, rng) {
+  const C = E.CHOP, H = 1.0, dtp = 1 / 30;
+  const room = (sim, x, y) => {
+    const [f, c] = E.runWalls(sim, x), hh = C.box.h / 2;
+    let m = Math.min(y - hh - f, c - (y + hh));
+    for (const o of sim.course) {
+      if (o.at > x + C.box.w) break;
+      if (o.at + C.bw < x - C.box.w) continue;
+      if (x + C.box.w / 2 > o.at && x - C.box.w / 2 < o.at + C.bw) m = Math.min(m, Math.max(o.y - (y + hh), (y - hh) - (o.y + o.bh)));
+    }
+    return m;
+  };
+  const fly = (y, vy, held, secs, out) => { for (let j = 0; j < Math.round(secs / (dtp / 4)); j++) { vy = Math.max(-C.vmax, Math.min(C.vmax, vy + (held ? C.up : -C.down) * dtp / 4)); y += vy * dtp / 4; } out.y = y; out.vy = vy; };
+  const plan = (sim, y, vy, d, v) => {
+    let best = null;
+    for (const first of [true, false]) for (let k = 0; k <= 30; k += 2) {
+      const p = { y, vy }; let m = Infinity;
+      for (let s = 0; s < H / dtp && m >= -0.05; s++) { fly(p.y, p.vy, s < k ? first : !first, dtp, p); m = Math.min(m, room(sim, d + v * (s + 1) * dtp, p.y)); }
+      if (!best || m > best.m) best = { m, hold: k > 0 ? first : !first };
+    }
+    return best.hold;
+  };
+  const sim = E.runStart(mini, 'X'), queue = [];
+  E.runJump(sim); E.runRelease(sim);
+  while (!sim.crash && !sim.done && sim.t < 400) {
+    const v = E.runSpeed(sim.cfg, sim.d), p = { y: sim.y + (noise ? (rng() - 0.5) * 2 * noise : 0), vy: sim.vy };
+    let held = sim.held, t = sim.t;
+    for (const [at, h] of queue.concat([[sim.t + react, null]])) { fly(p.y, p.vy, held, Math.max(0, at - t), p); t = Math.max(t, at); if (h != null) held = h; }
+    queue.push([sim.t + react, plan(sim, p.y, p.vy, sim.d + v * react, v)]);
+    while (queue.length && queue[0][0] <= sim.t + 1e-9) { const [, h] = queue.shift(); if (h && !sim.held) E.runJump(sim); else if (!h && sim.held) E.runRelease(sim); }
+    E.runStep(sim, dtp);
+  }
+  return sim;
+}
+// runs to the finish on each of `courses` squares (each run starts where the last crash was, as in the game)
+function runsToFinish(over, react, noise, courses) {
+  const out = [];
+  for (let k = 0; k < courses; k++) {
+    const mini = E.newMini('chopper', E.makeRng('pilot' + k)), rng = E.makeRng('noise' + k);
+    mini.cfg = Object.assign({}, mini.cfg, over);
+    let n = 0;
+    while (mini.dist.X < mini.cfg.target && n < 40) { const sim = planPilot(mini, react, noise, rng); n++; mini.dist.X = Math.min(mini.cfg.target, sim.d); }
+    out.push(n);
+  }
+  return out;
+}
+
+test('chopper: every course can be flown: a pilot with no lag finishes each in one run', () => {
+  const runs = runsToFinish({}, 0, 0, 20);
+  assert.ok(runs.every(n => n === 1), `runs per course: ${runs}`);
+});
+
+test('chopper, harder through the config: a typical pilot (0.25 s late, a little unsteady) takes 3 to 6 runs; on the old settings it took about 2', () => {
+  const mean = a => a.reduce((x, y) => x + y, 0) / a.length;
+  const now = mean(runsToFinish({}, 0.25, 0.6, 30));
+  assert.ok(now >= 3 && now <= 6, `${now.toFixed(2)} runs on average`);
+  const before = mean(runsToFinish({ ramp: 0.9, gapMin: 35.2, gapMax: 64, mix: { none: 30, small: 45, big: 25 }, cave0: 7.6, cave1: 4.4 }, 0.25, 0.6, 30));
+  assert.ok(before < 2.6, `old settings: ${before.toFixed(2)} runs`);
 });
 
 test('flap and chopper: the computer finishes in about 4-5 flights (3 to 6)', () => {

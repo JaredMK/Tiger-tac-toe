@@ -23,6 +23,11 @@ test('admin page: the runners and their default tuning are the engine\'s', () =>
   assert.deepEqual(literal('RUN_DEFAULTS'), E.RUN_DEFAULTS);
   const mix = literal('RUN_MIX');
   for (const t of E.RUN_TYPES) assert.deepEqual(mix[t].map(([k]) => k).sort(), Object.keys(E.RUN_DEFAULTS[t].mix).sort(), `${t}: a field for each kind`);
+  const extra = literal('RUN_EXTRA');
+  for (const t of E.RUN_TYPES) for (const [k, [lo, hi]] of Object.entries(E.RUN_EXTRA[t] || {})) {
+    const f = (extra[t] || []).find(([x]) => x === k);
+    assert.ok(f, `${t}: a field for ${k}`); assert.deepEqual([f[2], f[3]], [lo, hi], `${t}.${k}: the engine's range`);
+  }
 });
 test('admin page: Risk Wheels\' and Plinko\'s default tuning are the engine\'s', () => {
   assert.deepEqual(literal('WHEEL_DEFAULTS'), E.WHEEL_DEFAULTS);

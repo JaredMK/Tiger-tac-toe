@@ -21,22 +21,23 @@
   const r2 = x => Math.round(x * 100) / 100 + 0;
 
   // ---------- the tables ----------
-  const GOLF = { w: 100, h: 160, ballR: 2.4, cupR: 3.6, holeSpeed: 32, lipKick: 0.5, vMax: 55, reach: 75, maxT: 9, air: 0.004, roll: 12 };   // vMax: the hardest putt rolls about reach (under half the course)
+  const GOLF = { w: 100, h: 160, ballR: 2.4, cupR: 3.6, holeSpeed: 32, lipKick: 0.5, vMax: 95, reach: 174, maxT: 9, air: 0.004, roll: 12 };   // full power: a full putt rolls about reach on open ground (more than the course is long); reach is for the computer's aim, not a cap
   const POOL = { w: 100, h: 180, ballR: 2.6, vMax: 120, maxT: 10, air: 0.004, roll: 9,
     pockets: [[0, 0, 4.2], [100, 0, 4.2], [0, 90, 4.2], [100, 90, 4.2], [0, 180, 4.2], [100, 180, 4.2]],   // x, y, the reach of the pocket (and its size as drawn): about 1.6 times the ball across
     start: { cue: [50, 140], black: [50, 52], x1: [40, 66], x2: [60, 80], o1: [60, 66], o2: [40, 80] } };
   const BOWL = { w: 100, h: 240, ballR: 3.5, pinR: 2.0, vMax: 150, maxT: 7, air: 0.002, roll: 4, pinAir: 0.004, pinRoll: 6, pinBounce: 0.9, still: 4, gutter: 7, knocked: 2.2,
     start: [50, 214], pins: [[50, 50], [45, 38], [55, 38], [40, 26], [50, 26], [60, 26], [35, 14], [45, 14], [55, 14], [65, 14]] };
   // Mini Golf's holes: walls as [cx, cy, w, h, angle], bumpers as [cx, cy, r], the tee and the cup, and a
-  // path (the way round, for the computer's aim). Both balls start side by side on the tee. Every hole has
-  // turns and things in the way, and a putt rolls at most about GOLF.reach: each takes 3 to 5 putts.
+  // path (the way round, for the computer's aim). Both balls start side by side on the tee. A full putt
+  // crosses the whole course; the difficulty is the course: every hole has turns, angled walls and bumpers
+  // in the way, and takes the computer 3 to 5 putts on average.
   const HOLES = [
-    { name: 'Zigzag', tee: [50, 148], cup: [50, 18], walls: [[33, 112, 66, 6, 0], [67, 62, 66, 6, 0]], bumpers: [[52, 76, 5], [72, 30, 5]], path: [[83, 124], [83, 98], [17, 80], [17, 50], [50, 18]] },
-    { name: 'Dogleg', tee: [20, 146], cup: [24, 22], walls: [[34, 92, 68, 6, 0], [46, 44, 44, 5, 0.45]], bumpers: [[84, 60, 5]], path: [[84, 122], [84, 78], [66, 58], [64, 26], [24, 22]] },
-    { name: 'The horseshoe', tee: [50, 148], cup: [50, 30], walls: [[50, 12, 60, 6, 0], [23, 35, 6, 52, 0], [77, 35, 6, 52, 0], [10, 58, 20, 6, 0], [90, 58, 20, 6, 0], [50, 100, 44, 6, 0]], bumpers: [[12, 100, 5], [88, 100, 5]], path: [[22, 122], [24, 82], [50, 68], [50, 30]] },
-    { name: 'The funnel', tee: [50, 148], cup: [50, 22], walls: [[19, 94, 56, 6, -0.544], [81, 94, 56, 6, 0.544], [50, 54, 34, 5, 0]], bumpers: [[50, 124, 4]], path: [[38, 132], [50, 84], [24, 64], [24, 40], [50, 22]] },
-    { name: 'Round the bar', tee: [50, 148], cup: [50, 24], walls: [[50, 74, 70, 6, 0], [86, 112, 28, 5, 0.6]], bumpers: [[50, 112, 5], [30, 40, 4], [70, 40, 4]], path: [[22, 118], [10, 90], [10, 56], [50, 24]] },
-    { name: 'Pinball', tee: [50, 148], cup: [50, 20], walls: [[18, 62, 30, 5, 0.5], [82, 62, 30, 5, -0.5]], bumpers: [[30, 104, 6], [70, 104, 6], [50, 80, 6], [50, 44, 5]], path: [[50, 126], [32, 84], [34, 44], [50, 20]] },
+    { name: 'Zigzag', tee: [50, 148], cup: [30, 18], walls: [[35, 116, 70, 6, 0], [65, 70, 70, 6, 0], [50, 36, 5, 30, 0]], bumpers: [[50, 92, 4.5], [76, 24, 4], [24, 50, 3.5]], path: [[84, 128], [84, 100], [16, 88], [16, 54], [30, 18]] },
+    { name: 'Dogleg', tee: [18, 146], cup: [22, 20], walls: [[34, 98, 68, 6, 0], [44, 50, 48, 5, 0.42], [12, 70, 24, 5, 0]], bumpers: [[88, 84, 5], [62, 76, 4], [70, 24, 4.5], [60, 124, 4]], path: [[50, 136], [84, 112], [80, 94], [72, 62], [60, 30], [22, 20]] },
+    { name: 'The horseshoe', tee: [50, 148], cup: [50, 30], walls: [[50, 12, 60, 6, 0], [23, 35, 6, 52, 0], [77, 35, 6, 52, 0], [10, 58, 20, 6, 0], [90, 58, 20, 6, 0], [50, 102, 50, 6, 0], [50, 76, 24, 5, 0]], bumpers: [[12, 104, 5], [88, 104, 5], [36, 126, 4], [64, 126, 4]], path: [[50, 132], [16, 120], [14, 86], [30, 70], [50, 62], [50, 30]] },
+    { name: 'The funnel', tee: [50, 148], cup: [50, 20], walls: [[19, 96, 56, 6, -0.544], [81, 96, 56, 6, 0.544], [50, 56, 34, 5, 0], [86, 34, 28, 5, -0.5]], bumpers: [[50, 126, 4], [30, 72, 3.5]], path: [[38, 132], [50, 84], [24, 64], [24, 44], [50, 20]] },
+    { name: 'Round the bar', tee: [50, 148], cup: [50, 22], walls: [[56, 76, 88, 6, 0], [86, 114, 28, 5, 0.6], [50, 40, 30, 5, 0], [16, 34, 22, 5, 0.6]], bumpers: [[50, 112, 5], [74, 50, 4], [26, 58, 3.5]], path: [[30, 130], [6, 96], [6, 62], [30, 46], [50, 22]] },
+    { name: 'Pinball', tee: [50, 148], cup: [50, 18], walls: [[18, 66, 30, 5, 0.5], [82, 66, 30, 5, -0.5], [36, 30, 5, 22, 0], [64, 30, 5, 22, 0], [50, 8, 34, 5, 0]], bumpers: [[30, 108, 6], [70, 108, 6], [50, 86, 6], [50, 50, 5], [16, 40, 4], [84, 40, 4], [50, 126, 3.5]], path: [[36, 128], [34, 88], [32, 54], [50, 42], [50, 18]] },
   ];
   const SIZES = { golf: GOLF, pool: POOL, bowling: BOWL };
 

@@ -120,7 +120,7 @@ test('wheels: each square deals three wheels of ten; each player\'s own points; 
   E.upgradeMini(old);
   assert.deepEqual(old.wheels.mid, [7, 7, 7, 7, 7, 1, 1, 1, 1, 1]); assert.equal(old.target, 18); assert.equal(E.applyMove(old, 'O', 'low', rng).ok, true);
 });
-test('wheels: 1,000 dealt sets keep every rule; the spins land evenly; a timeout spins the low-risk wheel', () => {
+test('wheels: 1,000 dealt sets keep every rule (the medium wheel with two 5s or more); the spins land evenly; a timeout spins the low-risk wheel', () => {
   const tens = { 1: 0, 2: 0 }, avg = { high: 0, mid: 0, low: 0 };
   for (let k = 0; k < 1000; k++) {
     const w = E.wheelsDeal(E.makeRng('set' + k), E.WHEEL_DEFAULTS), h = E.wheelAvg(w.high), md = E.wheelAvg(w.mid), l = E.wheelAvg(w.low);
@@ -129,6 +129,7 @@ test('wheels: 1,000 dealt sets keep every rule; the spins land evenly; a timeout
     const nt = w.high.filter(v => v === 10).length, small = w.high.filter(v => v && v !== 10);
     assert.ok(nt >= 1 && nt <= 2 && small.length <= 2 && small.every(v => v <= 2), 'high: one or two 10s, the rest 0s but at most two small values');
     assert.ok(!w.mid.includes(10) && Math.max(...w.mid) > Math.max(...w.low), 'mid: no 10s, its top above low\'s');
+    assert.ok(w.mid.filter(v => v === 5).length >= 2, 'mid: at least two 5s');
     assert.ok(w.low.every(v => v >= 1 && v <= 4) && new Set(w.low).size >= 2, 'low: 1-4, at least two values');
     assert.ok(h < md && md < l && md - h >= 0.4 - 1e-9 && l - md >= 0.4 - 1e-9, 'the averages in order, 0.4 apart');
     tens[nt]++; avg.high += h / 1000; avg.mid += md / 1000; avg.low += l / 1000;
@@ -140,7 +141,7 @@ test('wheels: 1,000 dealt sets keep every rule; the spins land evenly; a timeout
   assert.equal(E.randomLegalMove(E.newMini('wheels', rng), 'X', rng), 'low');
 });
 test('wheels: the computer works out each wheel\'s chance of reaching the target first and takes more risk when behind', () => {
-  const wheels = { high: [10, 0, 0, 0, 1, 0, 0, 0, 0, 0], mid: [6, 0, 2, 1, 0, 3, 0, 2, 1, 5], low: [3, 2, 3, 3, 2, 4, 3, 2, 3, 3] };
+  const wheels = { high: [10, 0, 0, 0, 1, 0, 0, 0, 0, 0], mid: [5, 0, 2, 1, 0, 3, 0, 2, 0, 5], low: [3, 2, 3, 3, 2, 4, 3, 2, 3, 3] };
   assert.deepEqual(E.wheelsCheck(wheels), []);
   const rng = E.makeRng('wh-ai'), pick = (a, b) => E.localBest({ type: 'wheels', target: 18, wheels, pts: { X: a, O: b }, spins: { X: 0, O: 0 } }, 'X', rng).move;
   assert.equal(pick(16, 3), 'low', 'needs 2: the low wheel always gets there');

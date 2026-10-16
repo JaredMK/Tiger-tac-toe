@@ -58,25 +58,25 @@ test('golf: six holes, each with its tee, cup and walls; nothing ever leaves the
 });
 
 test('golf: the ball drops in the cup only when slow enough, else it lips out; the first ball in takes the square, even knocked in by the other', () => {
-  const m = mini('golf', 'cup'); m.hole = 0;
-  const cup = P.HOLES[0].cup;
+  const m = mini('golf', 'cup'); m.hole = 2;                     // (the horseshoe: a clear run up to the cup from below)
+  const cup = P.HOLES[2].cup;
   m.balls.X = [cup[0], cup[1] + 36]; m.balls.O = [90, 150];
-  const soft = E.applyMove(JSON.parse(JSON.stringify(m)), 'X', { aim: 0, power: 0.7 });
+  const soft = E.applyMove(JSON.parse(JSON.stringify(m)), 'X', { aim: 0, power: 0.45 });
   assert.deepEqual([soft.outcome, soft.note, soft.winner], ['win', 'holed', 'X'], 'a soft putt drops');
   const hard = JSON.parse(JSON.stringify(m)), hr = E.applyMove(hard, 'X', { aim: 0, power: 1 });
   assert.equal(hr.outcome, 'continue'); assert.equal(hr.note, 'lip', 'a hard one lips out');
   assert.ok(hard.last.events.some(e => e.k === 'lip') && !hard.holed.X && hard.balls.X[1] !== m.balls.X[1]);
   assert.equal(hard.shots.X, 1);
   // the other ball, sitting by the cup, knocked in: the square goes to its owner
-  const knock = mini('golf', 'knock'); knock.hole = 0;
+  const knock = mini('golf', 'knock'); knock.hole = 2;
   knock.balls.O = [cup[0], cup[1] + 7]; knock.balls.X = [cup[0], cup[1] + 30];
-  const kr = E.applyMove(knock, 'X', { aim: 0, power: 0.55 });
+  const kr = E.applyMove(knock, 'X', { aim: 0, power: 0.35 });
   assert.equal(kr.outcome, 'win'); assert.equal(kr.winner, 'O', `O's ball went in first (${kr.note})`);
   assert.ok(knock.holed.O);
   for (const bad of [null, 'x', { aim: 'a', power: 0.5 }, { aim: 0, power: 1.5 }, { aim: 4, power: 0.5 }]) assert.equal(E.applyMove(mini('golf', 'b'), 'X', bad).ok, false);
 });
 
-test('golf: every hole is solved by the computer in 2-5 shots (its best candidate, no error); a putt rolls at most about GOLF.reach', () => {
+test('golf: every hole is solved by the computer in 2-5 shots (its best candidate, no error); full putt power: a full putt crosses the whole course', () => {
   for (let h = 0; h < P.HOLES.length; h++) {
     const m = mini('golf', 'solve' + h); m.hole = h; const tee = P.HOLES[h].tee; m.balls = { X: [tee[0] - 3, tee[1]], O: [tee[0] + 3, tee[1]] };
     let shots = 0, won = false;
@@ -92,11 +92,37 @@ test('golf: every hole is solved by the computer in 2-5 shots (its best candidat
     console.log(`${P.HOLES[h].name}: ${shots} shot${shots === 1 ? '' : 's'}`);
     assert.ok(P.HOLES[h].walls.length + P.HOLES[h].bumpers.length >= 2 && P.HOLES[h].path.length >= 3, `${P.HOLES[h].name}: things in the way, and turns`);
   }
-  // the cap: the hardest putt across open ground rolls about GOLF.reach, under half the course
-  const open = mini('golf', 'cap'); open.hole = 0; open.balls = { X: [5, 155], O: [95, 158] };
-  const far = P.run('golf', Object.assign({}, open, { hole: 0 }), 'X', { aim: 0.02, power: 1 });
-  const rolled = 155 - (far.final.X ? far.final.X[1] : 0);
-  assert.ok(rolled < P.GOLF.h / 2 && rolled <= P.GOLF.reach + 6, `a full putt rolls ${rolled.toFixed(1)}`);
+  // no cap: on an empty course a full putt from the bottom reaches the far end (and comes off it)
+  P.HOLES.push({ name: 'open', tee: [50, 150], cup: [96, 150], walls: [], bumpers: [], path: [[96, 150]] });
+  try {
+    const open = mini('golf', 'open'); open.hole = P.HOLES.length - 1; open.balls = { X: [50, 150], O: [8, 152] };
+    const far = P.run('golf', open, 'X', { aim: 0, power: 1 }), ys = far.rec.frames.map(f => f[far.rec.ids.indexOf('X') * 2 + 1]);
+    assert.ok(Math.min(...ys) < P.GOLF.ballR + 2, `a full putt reaches the far end (${Math.min(...ys)})`);
+    const half = P.run('golf', open, 'X', { aim: 0, power: 0.5 });
+    assert.ok(150 - half.final.X[1] > 40 && 150 - half.final.X[1] < 80, `half power rolls ${(150 - half.final.X[1]).toFixed(1)}`);
+  } finally { P.HOLES.pop(); }
+});
+
+test('golf: the courses make it hard: the computer, with its usual error, takes 3 to 5 putts on average on every hole', () => {
+  const avg = [];
+  for (let h = 0; h < P.HOLES.length; h++) {
+    const hole = P.HOLES[h];
+    assert.ok(hole.walls.length + hole.bumpers.length >= 5 && hole.path.length >= 4, `${hole.name}: walls and bumpers in the way, and turns`);
+    let sum = 0;
+    const N = 16;
+    for (let g = 0; g < N; g++) {
+      const rng = E.makeRng('golf' + h + ':' + g), m = E.newMini('golf', rng); m.hole = h; m.balls = { X: hole.tee.slice(), O: [hole.tee[0] + 6, hole.tee[1]] }; m.holed = { X: false, O: false };
+      let putts = 0;
+      while (putts < 25) { const ai = E.physAi(m, 'X', rng), r = P.run('golf', m, 'X', ai.move); putts++; if (r.final.X === null) break; m.balls.X = r.final.X; if (r.final.O) m.balls.O = r.final.O; }
+      sum += putts;
+    }
+    avg.push(sum / N);
+  }
+  console.log('Mini Golf: the computer\'s putts per hole: ' + P.HOLES.map((hh, k) => `${hh.name} ${avg[k].toFixed(2)}`).join(', '));
+  assert.ok(avg.every(a => a >= 3 && a <= 5.5), `each hole 3 to 5 or so (${avg.map(a => a.toFixed(2))})`);
+  const all = avg.reduce((a, b) => a + b, 0) / avg.length;
+  assert.ok(all >= 3 && all <= 5, `3 to 5 on average (${all.toFixed(2)})`);
+  assert.ok(P.HOLES.filter(hh => hh.walls.some(w => w[4])).length >= 4, 'angled walls on most holes');
 });
 
 test('pool: the fixed layout; a pocketed ball is gone; own ball down means another shot; theirs counts for them; the black loses; a scratch returns the cue ball', () => {

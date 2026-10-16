@@ -409,13 +409,14 @@ async function saveRelease(el) {
 // under way keeps the values it was dealt with). The tracker shows what the squares played so far say:
 // how many runs a finish takes, how far a run goes, and where the crashes cluster.
 const RUN_TYPES = ['dash', 'lane', 'flap', 'chopper'];
-const RUN_DEFAULTS = { dash: { target: 1000, v0: 8, ramp: 1.5, gapMin: 26, gapMax: 48, mix: { rock: 30, crate: 20, spike: 20, flyer: 20, pair: 10 } }, lane: { target: 1000, v0: 27, ramp: 2.7, gapMin: 10, gapMax: 18, mix: { one: 20, two: 80 } }, flap: { target: 600, v0: 6, ramp: 1.0, gapMin: 9, gapMax: 13, mix: { wide: 20, mid: 45, narrow: 35 } }, chopper: { target: 1000, v0: 14.4, ramp: 0.9, gapMin: 35.2, gapMax: 64, mix: { none: 30, small: 45, big: 25 } } };   // (as engine.js has them)
+const RUN_DEFAULTS = { dash: { target: 1000, v0: 8, ramp: 1.5, gapMin: 26, gapMax: 48, mix: { rock: 30, crate: 20, spike: 20, flyer: 20, pair: 10 } }, lane: { target: 1000, v0: 27, ramp: 2.7, gapMin: 10, gapMax: 18, mix: { one: 50, two: 50 } }, flap: { target: 600, v0: 6, ramp: 1.0, gapMin: 9, gapMax: 13, mix: { wide: 20, mid: 45, narrow: 35 } }, chopper: { target: 1000, v0: 14.4, ramp: 1.6, gapMin: 22, gapMax: 40, mix: { none: 10, small: 50, big: 40 }, cave0: 5.6, cave1: 3.4 } };   // (as engine.js has them)
 const RUN_FIELDS = [['target', 'Target distance (m)', 200, 5000], ['v0', 'Starting speed (m/s)', 3, 30], ['ramp', 'Speed ramp (m/s more per 100 m)', 0, 10], ['gapMin', 'Obstacle spacing, min (m)', 8, 200], ['gapMax', 'Obstacle spacing, max (m)', 10, 400]];
 const RUN_MIX = { dash: [['rock', 'Rocks'], ['crate', 'Crates'], ['spike', 'Spikes'], ['flyer', 'Low flyers'], ['pair', 'Pairs']], lane: [['one', 'Rows with one car'], ['two', 'Rows with two cars']], flap: [['wide', 'Wide gaps'], ['mid', 'Middle gaps'], ['narrow', 'Narrow gaps']], chopper: [['none', 'No block'], ['small', 'Small blocks'], ['big', 'Big blocks']] };
+const RUN_EXTRA = { chopper: [['cave0', 'Cave height at the start (sky is 10)', 3, 9.5], ['cave1', 'Cave height at the finish (sky is 10)', 2.5, 9.5]] };   // a runner's own settings
 const RUN_BIN = 50;
 function runCfg(t) {
   const raw = (ctl.runCfg && ctl.runCfg[t]) || {}, d = RUN_DEFAULTS[t], out = { mix: {} };
-  for (const [k] of RUN_FIELDS) out[k] = Number.isFinite(Number(raw[k])) && raw[k] !== null && raw[k] !== '' ? Number(raw[k]) : d[k];
+  for (const [k] of RUN_FIELDS.concat(RUN_EXTRA[t] || [])) out[k] = Number.isFinite(Number(raw[k])) && raw[k] !== null && raw[k] !== '' ? Number(raw[k]) : d[k];
   for (const [k] of RUN_MIX[t]) out.mix[k] = raw.mix && Number.isFinite(Number(raw.mix[k])) ? Number(raw.mix[k]) : d.mix[k];
   return out;
 }
@@ -432,7 +433,7 @@ function runnersCard() {
   const kpi = (label, big, sub) => `<div class="card kpi"><small>${label}</small><b>${big}</b>${sub ? `<span>${sub}</span>` : ''}</div>`;   // (as the dashboard's own, which lives inside render)
   const one = t => {
     const c = runCfg(t), s = runSums(t), name = GAMES[t];
-    const fields = RUN_FIELDS.map(([k, l, lo, hi]) => `<label class="rf"><span>${l}</span><input type="number" step="any" min="${lo}" max="${hi}" data-runcfg="${t}:${k}" value="${c[k]}"></label>`).join('');
+    const fields = RUN_FIELDS.concat(RUN_EXTRA[t] || []).map(([k, l, lo, hi]) => `<label class="rf"><span>${l}</span><input type="number" step="any" min="${lo}" max="${hi}" data-runcfg="${t}:${k}" value="${c[k]}"></label>`).join('');
     const mix = RUN_MIX[t].map(([k, l]) => `<label class="rf"><span>${l}</span><input type="number" step="1" min="0" max="1000" data-runcfg="${t}:mix.${k}" value="${c.mix[k]}"></label>`).join('');
     const bins = []; for (let b = 0; b < c.target; b += RUN_BIN) bins.push([b, n(s.crash[b])]);
     const max = Math.max(1, ...bins.map(x => x[1])), crashes = bins.reduce((a, x) => a + x[1], 0);
@@ -514,7 +515,7 @@ const WHEEL_FIELDS = [['target', 'Target (points to win)', 6, 60, 1], ['tensMin'
 function wheelsCard() {
   const raw = ctl.wheelsCfg || {}, num = (v, d) => (v != null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : d);
   return `<div class="card ctl" id="wheelsCard"><h2>Risk Wheels tuning</h2>
-    <p class="note">Risk Wheels: each square deals three wheels of ten equal segments, drawn again until every rule holds. High risk: 10s (fewest to most) and 0s, with at most a few small values; the lowest average. Medium: no 10s, a top value above Low's, its average between. Low: every value in its range, at least two different; the highest average. Defaults: first to 18; High one or two 10s and at most two small values of 1-2; Medium 0-8; Low 1-4; averages 0.4 apart. Applies to squares dealt from then on.</p>
+    <p class="note">Risk Wheels: each square deals three wheels of ten equal segments, drawn again until every rule holds. High risk: 10s (fewest to most) and 0s, with at most a few small values; the lowest average. Medium: no 10s, at least two 5s, a top value above Low's, its average between. Low: every value in its range, at least two different; the highest average. Defaults: first to 18; High one or two 10s and at most two small values of 1-2; Medium two 5s, the rest 0-8; Low 1-4; averages 0.4 apart. Applies to squares dealt from then on.</p>
     <div class="rform">${WHEEL_FIELDS.map(([k, label, lo, hi, step]) => `<label class="rf"><span>${label}</span><input type="number" step="${step}" min="${lo}" max="${hi}" data-wheelcfg="${k}" value="${num(raw[k], WHEEL_DEFAULTS[k])}"></label>`).join('')}</div>
     <div class="rform"><button class="btn" data-wheelsave="1">Save Risk Wheels</button></div></div>`;
 }

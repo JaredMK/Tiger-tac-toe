@@ -349,6 +349,12 @@
               ".validate": "$kind.matches(/^[a-z]{2,10}$/) && newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000"
             }
           },
+          "cave0": {
+            ".validate": "newData.isNumber() && newData.val() >= 3 && newData.val() <= 9.5"
+          },
+          "cave1": {
+            ".validate": "newData.isNumber() && newData.val() >= 2.5 && newData.val() <= 9.5"
+          },
           "$other": {
             ".validate": false
           }

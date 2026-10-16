@@ -80,20 +80,20 @@ test('dash: a fixed, seeded course per player per square: ground hazards, low fl
   for (const o of cx) assert.ok(E.DASH_OBS[o.k], `a known hazard: ${o.k}`);
 });
 
-test('lane rush: rows of one or two cars, never a row fully blocked, and the open lane always within reach of the row before', () => {
+test('lane rush: rows of one or two cars, never a row fully blocked, and an open lane always within reach of the row before', () => {
   E.setRunConfig(null);
   for (let s = 0; s < 60; s++) {
     const m = mini('lane', 'lane' + s);
     for (const p of ['X', 'O']) {
       const rows = E.runCourse(m, p);
       assert.ok(rows.length > 15, 'a course of rows');
-      let prevOpen = null;
+      let prev = null;
       for (const r of rows) {
         assert.equal(r.cars.length, 3);
         const open = [0, 1, 2].filter(l => !r.cars[l]);
         assert.ok(open.length >= 1 && open.length <= 2, 'one or two cars: at least one lane open');
-        if (prevOpen) assert.ok(open.some(o => prevOpen.some(q => Math.abs(o - q) <= 1)), `row at ${r.at}: an open lane next to one of the row before`);
-        prevOpen = open;
+        if (prev) assert.ok(E.runSecs(m.cfg, prev.at, r.at) >= E.laneNeed(prev.cars, r.cars), `row at ${r.at}: an open lane within reach of the row before in the time there is`);
+        prev = r;
       }
       for (let k = 1; k < rows.length; k++) assert.ok(rows[k].at - rows[k - 1].at >= m.cfg.gapMin - 0.01, 'rows at least the minimum gap apart');
     }
@@ -163,10 +163,17 @@ test('lane rush, harder again: half as fast again and about a third more cars, t
       const open = [0, 1, 2].filter(l => !r.cars[l]); assert.ok(open.length >= 1, 'a lane open');
       if (!i) return;
       const was = [0, 1, 2].filter(l => !rows[i - 1].cars[l]), t = E.runSecs(m.cfg, rows[i - 1].at, r.at);
-      if (t < E.LANE_TIGHT) assert.ok(was.every(q => open.includes(q)), `rows ${t.toFixed(2)} s apart: no change needed`);
-      else if (t < E.LANE_NEAR) assert.ok(was.every(q => open.some(o => Math.abs(o - q) <= 1)), `rows ${t.toFixed(2)} s apart: one change at most from anywhere`);
+      const far = Math.max(...was.map(q => Math.min(...open.map(o => Math.abs(o - q)))));
+      if (far === 1) assert.ok(t >= E.LANE_TIGHT, `one lane over: ${t.toFixed(2)} s at least ${E.LANE_TIGHT}`);
+      if (far === 2) assert.ok(t >= E.LANE_NEAR, `two lanes over: ${t.toFixed(2)} s at least ${E.LANE_NEAR}`);
     });
   }
+  // traffic in every lane: about a third of the cars each, and the open lane moving about (it once locked into one lane)
+  { const per = [0, 0, 0]; let changes = 0, rows = 0;
+    for (let k = 0; k < 200; k++) { const c = E.runCourse(mini('lane', 'spread' + k), 'X'); c.forEach((r, i) => { r.cars.forEach((v, l) => { if (v) per[l]++; }); rows++; if (i && r.cars.join() !== c[i - 1].cars.join()) changes++; }); }
+    const tot = per[0] + per[1] + per[2];
+    for (const n of per) assert.ok(n / tot > 0.22, `cars in every lane: ${per}`);
+    assert.ok(changes / rows > 0.5, `the rows change lanes (${changes} of ${rows})`); }
   // the driver: sees what the page shows (34 m of road, the car 82% down: 27.9 m ahead), acts 0.25 s late
   const VIEW = 0.82 * 34, react = 0.25;
   const drive = m => {

@@ -776,7 +776,7 @@ function plinkoOdds(slot) {
 // (-1 to 1, the angle) and a power (0 to 1, the distance); the ball lands where the throw sends it,
 // plus a little scatter either way. Inside a cup it sinks; within the rim it bounces, and drops in a
 // quarter of the time; otherwise it misses.
-const PONG = { cups: [[0, 0.84], [-0.1, 0.93], [0.1, 0.93]], r: 0.055, rim: 0.03, rimIn: 0.25, spread: 0.068, angle: 0.35, near: 0.5, far: 1.1, goal: 3, fly: 900, hold: 500, aiErr: [0.012, 0.018] };
+const PONG = { cups: [[0, 0.825], [-0.085, 0.93], [0.085, 0.93]], r: 0.055, rim: 0.03, rimIn: 0.25, spread: 0.068, angle: 0.35, near: 0.5, far: 1.1, goal: 3, fly: 900, hold: 500, aiErr: [0.012, 0.018] };
 const pongDist = power => PONG.near + (PONG.far - PONG.near) * power;
 function pongThrow(cups, aim, power, rng) {
   const g = () => { const u = Math.max(1e-9, rng()), v = rng(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };   // (Box-Muller)
@@ -854,11 +854,12 @@ function oddGrid(level, rng) {
 const RUN_TYPES = ['dash', 'lane', 'flap', 'chopper'];
 const RUN_DEFAULTS = {
   dash: { target: 1000, v0: 8, ramp: 1.5, gapMin: 26, gapMax: 48, mix: { rock: 30, crate: 20, spike: 20, flyer: 20, pair: 10 } },   // mix: the obstacles' weights
-  lane: { target: 1000, v0: 27, ramp: 2.7, gapMin: 10, gapMax: 18, mix: { one: 20, two: 80 } },                                          // rows with one car or two (half as fast again; rows closer and most of them two cars: about a third more cars a course; laneRow keeps a way through)
+  lane: { target: 1000, v0: 27, ramp: 2.7, gapMin: 10, gapMax: 18, mix: { one: 50, two: 50 } },                                          // rows with one car or two (half as fast again; rows closer: about a third more cars a course than at first; laneRow keeps a way through, a lane over at most)
   flap: { target: 600, v0: 6, ramp: 1.0, gapMin: 9, gapMax: 13, mix: { wide: 20, mid: 45, narrow: 35 } },                                // posts every 9-13 m; the size of each one's gap (tighter, more of them narrow, the speed climbing faster; a shorter course: some 50 posts)
-  chopper: { target: 1000, v0: 14.4, ramp: 0.9, gapMin: 35.2, gapMax: 64, mix: { none: 30, small: 45, big: 25 } },                       // a block in the cave every 35-64 m (or none there); its size (in Chopper's metres: CHOP.k)
+  chopper: { target: 1000, v0: 14.4, ramp: 1.6, gapMin: 22, gapMax: 40, mix: { none: 10, small: 50, big: 40 }, cave0: 5.6, cave1: 3.4 },                       // a block in the cave every 22-40 m (or none there); its size (in Chopper's metres: CHOP.k); the cave's height at the start and the finish
 };
 const RUN_LIMITS = { target: [200, 5000], v0: [3, 30], ramp: [0, 10], gapMin: [8, 200], gapMax: [10, 400] };
+const RUN_EXTRA = { chopper: { cave0: [3, 9.5], cave1: [2.5, 9.5] } };   // a runner's own settings: Chopper's cave height at the start and at the finish (the sky is 10)
 // grace: seconds with no obstacles at the start of a run; countdown: the 3-2-1 before it; aiRuns: how many
 // runs the computer takes to finish, about; aiSlow: how much shorter its runs get with speed; aiSpread:
 // the spread of its run lengths (log-normal); tolerance and slackMs: how much faster than the course's
@@ -876,6 +877,7 @@ function runNorm(type, raw) {
     out[k] = Number.isFinite(v) && v >= lo && v <= hi ? r2(v) : d[k];
   }
   if (out.gapMax < out.gapMin + 2) out.gapMax = out.gapMin + 2;
+  for (const [k, [lo, hi]] of Object.entries(RUN_EXTRA[type] || {})) { const v = raw && raw[k] != null ? Number(raw[k]) : NaN; out[k] = Number.isFinite(v) && v >= lo && v <= hi ? r2(v) : d[k]; }
   out.mix = {};
   let tot = 0;
   for (const k of Object.keys(d.mix)) {
@@ -927,23 +929,27 @@ function weightedPick(mix, rng) {
   for (const k of ks) { r -= mix[k]; if (r < 0) return k; }
   return ks[ks.length - 1];
 }
-// A row of traffic: one or two cars, always a lane open, and one the car can get to from wherever it
-// passed the row before, in the time there is (secs after it): plenty of time, some open lane next to or
-// the same as one of the row before's; less (LANE_NEAR), from every open lane of the row before, an open
-// one at most a lane away; very little (LANE_TIGHT), every lane open before still open (no change needed).
-// Two cars that cannot be placed so: one.
-const LANE_TIGHT = 0.6, LANE_NEAR = 1.1;                         // seconds between two rows
-function laneRow(k, prev, rng, secs) {
-  const prevOpen = prev ? [0, 1, 2].filter(l => !prev[l]) : null, t = secs == null ? Infinity : secs;
-  const fits = open => !prevOpen || (t < LANE_TIGHT ? prevOpen.every(q => open.includes(q)) : t < LANE_NEAR ? prevOpen.every(q => open.some(o => Math.abs(o - q) <= 1)) : open.some(o => prevOpen.some(q => Math.abs(o - q) <= 1)));
-  for (let n = k === 'two' ? 2 : 1; n >= 1; n--) {
-    for (let tries = 0; tries < 40; tries++) {
-      const cars = [false, false, false];
-      shuffle([0, 1, 2], rng).slice(0, n).forEach(l => { cars[l] = true; });
-      if (fits([0, 1, 2].filter(l => !cars[l]))) return cars;
-    }
+// A row of traffic: one or two cars (the mix), in lanes drawn at random, so traffic comes in every lane;
+// always a lane open, and never more than a lane over from any lane open in the row before (at speed a row
+// comes on screen too late for two changes). When the car has to move over, the row is placed far enough
+// down the road for it (laneNeed: LANE_TIGHT seconds at least); when it need not, any gap will do. (The
+// rows were once kept passable by choosing the lanes alone: with rows closer than a lane change, every
+// lane open before had to stay open, and the traffic locked into one lane.)
+const LANE_TIGHT = 0.6, LANE_NEAR = 1.1;                         // seconds between two rows: a change of one lane, of two
+function laneRow(k, prev, rng) {
+  for (let tries = 0; tries < 40; tries++) {
+    const cars = [false, false, false];
+    shuffle([0, 1, 2], rng).slice(0, k === 'two' ? 2 : 1).forEach(l => { cars[l] = true; });
+    if (!prev || laneNeed(prev, cars) <= LANE_TIGHT) return cars;
   }
-  const cars = [false, false, false]; cars[[0, 1, 2].find(l => !prevOpen || !prevOpen.includes(l))] = true; return cars;   // (one car where the row before had one: every open lane stays open)
+  return prev.map(c => c);                                        // (the same row again: nothing to change)
+}
+// The time a row needs after the one before: from any lane open there, the nearest open one in this row.
+function laneNeed(prev, cars) {
+  const open = [0, 1, 2].filter(l => !cars[l]);
+  let m = 0;
+  for (const q of [0, 1, 2].filter(l => !prev[l])) m = Math.max(m, Math.min(...open.map(o => Math.abs(o - q))));
+  return m === 0 ? 0 : m === 1 ? LANE_TIGHT : LANE_NEAR;
 }
 // A player's course: the obstacles in order, from the seed. Dash: { at, k } (a pair: two ground
 // hazards a jump's length apart); Lane Rush: { at, cars: [lane 0, 1, 2] }.
@@ -977,7 +983,11 @@ function runCourse(mini, p) {
         out.push({ at: r2(d + DASH_OBS.rock.w + gap), k: kinds[randInt(rng, 2)], pair: 2 });
         d += DASH_OBS.rock.w + gap;
       } else out.push({ at: r2(d), k });
-    } else { const last = out.length ? out[out.length - 1] : null; out.push({ at: r2(d), cars: laneRow(k, last ? last.cars : null, rng, last ? runSecs(cfg, last.at, d) : null) }); }
+    } else {                                                         // a row of cars; moved on if the car needs longer to reach an open lane
+      const last = out.length ? out[out.length - 1] : null, cars = laneRow(k, last && last.cars, rng), need = last ? laneNeed(last.cars, cars) : 0;
+      if (need && runSecs(cfg, last.at, d) < need) d = runAfter(cfg, last.at, need) + 0.01;   // (+1 cm: the position is kept to the centimetre)
+      out.push({ at: r2(d), cars });
+    }
     d += cfg.gapMin + rng() * (cfg.gapMax - cfg.gapMin);
   }
   return out;
@@ -993,7 +1003,7 @@ function runCave(mini, p) {
   }
   return pts;
 }
-const caveHeight = (cfg, d) => CHOP.cave0 + (CHOP.cave1 - CHOP.cave0) * Math.max(0, Math.min(1, d / cfg.target));
+const caveHeight = (cfg, d) => { const c0 = cfg.cave0 || CHOP.cave0, c1 = cfg.cave1 || CHOP.cave1; return c0 + (c1 - c0) * Math.max(0, Math.min(1, d / cfg.target)); };   // (the config's cave; a square dealt before it: CHOP's)
 // The cave's floor and ceiling at d: the middle eased from point to point, the height, and the waves.
 function caveWalls(cave, cfg, d) {
   const u = Math.max(0, d) / CHOP.seg, k = Math.min(cave.length - 2, Math.floor(u)), t = Math.min(1, u - k), e = (1 - Math.cos(Math.PI * t)) / 2;
@@ -1036,6 +1046,37 @@ function runAi(mini, p, rng) {
   const need = cfg.target - from - g;                            // the chance this run finishes
   const q = need <= 0 ? 1 : 1 - normCdf((Math.log(need / mean) + s * s / 2) / s);
   return { move: { dist, ms: Math.round(runSecs(cfg, from, dist) * 1000) + 80 }, q };
+}
+// The computer's Lane Rush run as a screen shows it. It has no recording (its move is only where the run
+// ended), so a driver who sees the whole road takes an open lane at every row before the one the run ended
+// at, then stays in, or moves into, a lane blocked there; a finished run drives to the line. When that row
+// cannot be reached in a blocked lane (the row before blocks the same lane, or two lanes over in a blink),
+// the crash is at a row up to 30 m before it (under a second). Stepped at a fixed LANE.step, so a page
+// replaying the lane changes at their times drives exactly this. Returns the changes ([{ t, dir }], seconds
+// into the run), the run's length in seconds and the row crashed into; null when no such drive is found.
+function laneDrive(mini, p, from, to, done) {
+  const m = Object.assign({}, mini, { dist: Object.assign({}, mini.dist, { [p]: from }) });
+  const rows = runCourse(m, p), last = done ? null : rows.find(o => Math.abs(o.at + 0.2 - to) < 0.02);
+  if (!done && !last) return null;
+  const tries = done ? [null] : rows.filter(o => o.at <= last.at && o.at >= last.at - 30).reverse();
+  for (const end of tries) {
+    const sim = runStart(m, p), steps = [], open = r => [0, 1, 2].filter(l => !r.cars[l]);
+    while (!sim.crash && !sim.done && sim.t < 180) {
+      const cur = Math.round(sim.lane), ahead = rows.filter(o => o.at > sim.d), r0 = ahead[0], r1 = ahead[1];
+      if (sim.laneT >= 1 && !rows.some(o => o !== end && Math.abs(o.at - sim.d) < LANE.box + 0.6)) {   // (no change beside a row; into the last row's car, however close)
+        let want = cur;
+        if (r0 && r0 === end) want = r0.cars[cur] ? cur : [0, 1, 2].filter(l => r0.cars[l]).sort((x, y) => Math.abs(x - cur) - Math.abs(y - cur))[0];
+        else if (r0) {
+          const nx = !r1 ? null : r1 === end ? [0, 1, 2].filter(l => r1.cars[l]) : open(r1), cost = l => Math.abs(l - cur) * 10 + (nx ? Math.min(...nx.map(q => Math.abs(q - l))) : 0);   // (before the last row: lined up with one of its cars)
+          want = open(r0).sort((x, y) => cost(x) - cost(y))[0];
+        }
+        if (want !== cur && runLane(sim, want > cur ? 1 : -1)) steps.push({ t: sim.t, dir: want > cur ? 1 : -1 });
+      }
+      runStep(sim, LANE.step);
+    }
+    if (done ? sim.done : sim.crash && sim.crash.ob && sim.crash.ob.at === end.at) return { steps, secs: sim.t, row: end && end.at };   // (into that row's car, from behind or the side)
+  }
+  return null;
 }
 const runNeeds = (cfg, from) => Math.max(1, (cfg.target - from) / (runAiMean(cfg, from) + runGrace(cfg, from)));
 // The run data a square carries to the stats (the admin's tuning): runs, distances and the crashes.
@@ -1370,7 +1411,7 @@ function patPuzzle(rng, avoid) {
 // Each player has their own points; first to the target wins. Each square deals three wheels of 10 equal
 // segments, drawn afresh (and drawn again until every rule holds):
 //   high: one or two 10s; the rest 0s, but for at most two small values (1-2); the lowest average;
-//   mid:  no 10s; a top value above the low wheel's top; its average between the other two;
+//   mid:  no 10s; at least two 5s; a top value above the low wheel's top; its average between the other two;
 //   low:  every value 1-4, at least two different; the highest average;
 // and the three averages at least 0.4 apart. A move: one wheel spun once (by the server online), its
 // segment's points added. The target and the generation's ranges are the admin's (config/wheels); the
@@ -1403,6 +1444,7 @@ function wheelsCheck(w, g) {
   if (tens < g.tensMin || tens > g.tensMax) bad.push('high: its 10s');
   if (small.length > g.smallMax || small.some(x => x > g.smallTop)) bad.push('high: the small values');
   if (mid.includes(10)) bad.push('mid: a 10');
+  if (mid.filter(x => x === 5).length < 2) bad.push('mid: two 5s');
   if (Math.max(...mid) <= Math.max(...low)) bad.push('mid: its top not above low\'s');
   if (low.some(x => x < g.lowLo || x > g.lowHi) || new Set(low).size < 2) bad.push('low: its values');
   if (mid.some(x => x < g.midLo || x > g.midHi)) bad.push('mid: its values');
@@ -1420,12 +1462,12 @@ function wheelsDeal(rng, g) {
     const low = Array.from({ length: WHEEL_SEGS }, () => pick(g.lowLo, g.lowHi));
     const top = Math.max(...low);
     if (top + 1 > g.midHi) continue;
-    const nBig = pick(1, 2), rest = Array.from({ length: WHEEL_SEGS - nBig }, () => pick(g.midLo, Math.min(3, g.midHi)));
-    const mid = place({ fill: 0 }, Array.from({ length: nBig }, () => pick(top + 1, g.midHi)).concat(rest));
+    const nBig = top >= 5 ? 1 : pick(0, 1), rest = Array.from({ length: WHEEL_SEGS - 2 - nBig }, () => pick(g.midLo, Math.min(3, g.midHi)));   // two 5s, and perhaps one more big value (always, if 5 is not above low's top)
+    const mid = place({ fill: 0 }, [5, 5].concat(Array.from({ length: nBig }, () => pick(Math.max(5, top + 1), g.midHi)), rest));
     const w = { high, mid, low };
     if (!wheelsCheck(w, g).length) return w;
   }
-  return { high: [10, 0, 0, 1, 0, 0, 0, 0, 0, 0], mid: [6, 0, 1, 2, 0, 3, 1, 0, 2, 3], low: [3, 2, 3, 2, 3, 3, 2, 3, 3, 2] };   // (the admin's ranges allow no set: this one keeps the default rules)
+  return { high: [10, 0, 0, 1, 0, 0, 0, 0, 0, 0], mid: [5, 0, 1, 0, 5, 2, 0, 1, 0, 3], low: [3, 2, 3, 2, 3, 3, 2, 3, 3, 2] };   // (the admin's ranges allow no set: this one keeps the default rules)
 }
 // The chance the player to move wins, with a points to the other's b, both choosing their best wheel every
 // spin (moves taking turns): worked out once per square's wheels (value iteration: a spin of 0 comes back
@@ -1921,7 +1963,7 @@ function physCandidates(mini, p, rng) {
     const hole = L.HOLES[mini.hole], from = mini.balls[p], k = golfNext(hole, from);
     const targets = [hole.path[k], hole.path[Math.min(k + 1, hole.path.length - 1)], hole.cup];
     for (const t of targets) {
-      const a = aimTo(from, t), d = Math.hypot(t[0] - from[0], t[1] - from[1]), base = Math.max(0.15, Math.min(1, Math.pow(d * 1.08 / (L.GOLF.reach || 75), 0.57)));   // (a putt rolls about reach x power^1.75)
+      const a = aimTo(from, t), d = Math.hypot(t[0] - from[0], t[1] - from[1]), base = Math.max(0.15, Math.min(1, Math.pow(d * 1.08 / (L.GOLF.reach || 174), 0.57)));   // (a putt rolls about reach x power^1.7; aimed a little long)
       for (const dp of [0, 0.12, -0.08, 0.25]) out.push({ aim: a, power: base + dp });
       out.push({ aim: a + 0.12, power: base }, { aim: a - 0.12, power: base });
     }
@@ -1969,7 +2011,7 @@ function physRandom(mini, p, rng) {
   const L = PHYSICS.lib;
   if (mini.type === 'golf') {                                 // roughly towards the next point of the hole's path, at a power to suit the distance
     const hole = L.HOLES[mini.hole], from = mini.balls[p], to = hole.path[golfNext(hole, from)], d = Math.hypot(to[0] - from[0], to[1] - from[1]);
-    return physShot({ aim: wrapAim(aimTo(from, to) + (rng() - 0.5) * 0.7), power: Math.max(0.2, Math.min(0.75, Math.pow(d / (L.GOLF.reach || 75), 0.57) * (0.7 + rng() * 0.5))) });
+    return physShot({ aim: wrapAim(aimTo(from, to) + (rng() - 0.5) * 0.7), power: Math.max(0.2, Math.min(0.75, Math.pow(d / (L.GOLF.reach || 174), 0.57) * (0.7 + rng() * 0.5))) });
   }
   if (mini.type === 'pool') { const ids = poolMine(p, mini).filter(id => !mini.down[id]); const to = ids.length ? mini.balls[ids[randInt(rng, ids.length)]] : L.POOL.start.black; return physShot({ aim: wrapAim(aimTo(mini.balls.cue, to) + (rng() - 0.5) * 0.6), power: 0.25 + rng() * 0.25 }); }
   return physShot({ aim: (rng() - 0.5) * 0.2, power: 0.5 + rng() * 0.25 });
@@ -4045,4 +4087,4 @@ function matchStats(st) {
 }
 
 // Node (the Cloud Functions and the tests): the same names as a module.
-if (typeof module !== "undefined" && module.exports) module.exports = { PHYS_TYPES, PHYSICS, setPhysics, physicsReady, GOLF, POOLG, BOWLG, poolMine, poolRank, poolIds, poolOwns, poolFree, physShot, wrapAim, aimTo, poolSpot, physRun, golfClear, golfNext, golfAhead, golfLeft, physLast, physScore, physCandidates, physAi, physRandom, physNeeds, RUN_TYPES, RUN_DEFAULTS, RUN_LIMITS, RUN, RUNT, RUN_CFG, LANE_TIGHT, LANE_NEAR, r2, runNorm, setRunConfig, runConfig, runSpeed, runSecs, runAfter, runGrace, DASH_OBS, DASH, LANE, FLAP, CHOP, PATTERNS, patKey, patRot, patFits, patSolve3, patFeature, patFitting, patNumTemplate, patNumMisses, patNumPuzzle, patDotsTemplate, patShapePuzzle, patPuzzle, patNum, patDots, patShape, patPick, patRange, WHEELS, WHEEL_SEGS, WHEELS_SAFE, WHEEL_DEFAULTS, WHEEL_LIMITS, WHEELT, WHEEL_CFG, wheelsNorm, setWheelsConfig, wheelsConfig, wheelAvg, wheelsCheck, wheelsDeal, WHEEL_MEMO, wheelsTable, wheelSpin, SNIFF, SNIFF_DIRS, sniffDist, sniffStep, sniffDirs, sniffCands, sniffPick, runCave, caveHeight, caveWalls, runWalls, weightedPick, laneRow, runCourse, runCheck, runAuto, gaussOf, normCdf, runAiMean, runAi, runNeeds, runLog, runStart, runJump, runRelease, runLane, runLaneX, overlap, runHit, runStep, runResult, TEST_TYPES, isReleased, releasedTypes, allowedTypes, restrictGames, dealable, CRAPS, CRAPS_MAKE, crapsRound, crapsTimes, TAKE, takeNear, takeCount, takeApply, takeSearch, FLOOD, floodNear, floodWaves, floodGain, floodApply, floodSearch, raceNeeds, TAKEOVER_MS, FLOOD_MS, PLACE_MS, SEAT, seatTable, seatMate, seatTables, seatZ, seatNext, seatPick, DIST, r1d, distClip, distMap, distTo, distTally, distEval, distSearch, SHELF, shelfOn, shelfPick, ROAD, ROAD_SEGS, roadLongest, roadPick, randomEmpty, BULLS, BULLT, bullsLeg, bullsAim, BULL_DEFAULTS, BULL_LIMITS, BULL_CFG, bullsNorm, setBullsConfig, bullsConfig, bullsSpot, bullsScore, bullsRates, r3, ECHO, PLINKO, PONG, TRIVIA, ODD, bullsPeriod, echoSeqs, echoBase, echoSeq, echoAim, plinkoPath, plinkoOdds, PLINKO_DEFAULTS, PLINKO_LIMITS, PLINKO_CFG, plinkoNorm, setPlinkoConfig, plinkoConfig, plinkoPegs, plinkoBonus, plinkoTouches, plinkoWays, plinkoDist, plinkoExp, plinkoOpen, pongThrow, pongAimAt, pongDist, setTriviaBank, triviaReady, triviaDeal, triviaUsed, oddGrid, cpuEcho, CARD, BJ, BUS, RL, BJT, BUST, RLT, BUS_AVG, cardDeck, isCard, cardRank, cardRed, cardName, bjValue, bjTotal, bjNatural, bjDealerPlay, bjOutcome, bjStrategy, bjPlan, bjMs, busRight, busDeck, busOdds, rlRed, rlBet, rlCovers, tttOpen, lineOpen, majorityResult, STYLE0, huntSize, huntBand, huntClue, normTimer, resignLocal, TYPES, OLD_TYPES, SNL, BUMP, snlRow, snlBoard, snlValid, snlExpected, coinPick, markCoins, coinMarksFor, normLocal, seatLocal, INFO, C4, HP, MM, HEX_N, HILO, CANDY, NAME_MAX, COINS, RISKY, BS, HUNT, DICE_GOAL, MEMORY, LINES, WORDS5, WORDS_HANG, VALID5, other, makeRng, needRng, randInt, randomType, shuffle, memoryDeck, wordleMarks, hexNeighbors, hexPath, canMove, hpMoves, mmFeedback, mmValid, MM_ALL, mmAll, mmCode, mmCandidates, mmBestGuess, hpGoalRow, upgradeMini, anyMove, huntDist, candyTrack, newMini, pickType, newSquare, CPU_NAME, defaultSetup, cpuSide, normSetup, syncNames, enabledGames, TIMER_OPTIONS, newTimer, playerName, newState, startMatch, newMatch, findRun, applyMove, AI, publicMini, wordleCandidates, hangmanCandidates, bsCandidates, bsPlacements, bsShip, huntCandidates, WINDOWS, windowsOf, lineNeeds, c4Playable, hexDist, candyExpected, COIN_NEEDS, needsOf, memoryPair, winChance, tttMinimax, c4Drop, c4Eval, C4_ORDER, c4Search, C4_DEPTH, c4Moves, HP_MEMO, hpSolve, hpMovesValued, hpNeeds, hexMoves, threatScore, pickValued, localBest, squareValue, moveGain, cpuMove, VALID5_LIST, randomLegalMove, timeoutMove, mainResult, playMove, endFlash, leaveSquare, RECENT_MAX, MATCH_FIELDS, secretOf, hideMini, matchRecord, fullState, settle, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, newOnlineMatch, PLAY, diceSlot, playMs, replayMs, armClock, applyOnlineResign, matchStats };
+if (typeof module !== "undefined" && module.exports) module.exports = { PHYS_TYPES, PHYSICS, setPhysics, physicsReady, GOLF, POOLG, BOWLG, poolMine, poolRank, poolIds, poolOwns, poolFree, physShot, wrapAim, aimTo, poolSpot, physRun, golfClear, golfNext, golfAhead, golfLeft, physLast, physScore, physCandidates, physAi, physRandom, physNeeds, RUN_TYPES, RUN_DEFAULTS, RUN_LIMITS, RUN_EXTRA, RUN, RUNT, RUN_CFG, LANE_TIGHT, LANE_NEAR, r2, runNorm, setRunConfig, runConfig, runSpeed, runSecs, runAfter, runGrace, DASH_OBS, DASH, LANE, FLAP, CHOP, PATTERNS, patKey, patRot, patFits, patSolve3, patFeature, patFitting, patNumTemplate, patNumMisses, patNumPuzzle, patDotsTemplate, patShapePuzzle, patPuzzle, patNum, patDots, patShape, patPick, patRange, WHEELS, WHEEL_SEGS, WHEELS_SAFE, WHEEL_DEFAULTS, WHEEL_LIMITS, WHEELT, WHEEL_CFG, wheelsNorm, setWheelsConfig, wheelsConfig, wheelAvg, wheelsCheck, wheelsDeal, WHEEL_MEMO, wheelsTable, wheelSpin, SNIFF, SNIFF_DIRS, sniffDist, sniffStep, sniffDirs, sniffCands, sniffPick, runCave, caveHeight, caveWalls, runWalls, weightedPick, laneRow, laneNeed, laneDrive, runCourse, runCheck, runAuto, gaussOf, normCdf, runAiMean, runAi, runNeeds, runLog, runStart, runJump, runRelease, runLane, runLaneX, overlap, runHit, runStep, runResult, TEST_TYPES, isReleased, releasedTypes, allowedTypes, restrictGames, dealable, CRAPS, CRAPS_MAKE, crapsRound, crapsTimes, TAKE, takeNear, takeCount, takeApply, takeSearch, FLOOD, floodNear, floodWaves, floodGain, floodApply, floodSearch, raceNeeds, TAKEOVER_MS, FLOOD_MS, PLACE_MS, SEAT, seatTable, seatMate, seatTables, seatZ, seatNext, seatPick, DIST, r1d, distClip, distMap, distTo, distTally, distEval, distSearch, SHELF, shelfOn, shelfPick, ROAD, ROAD_SEGS, roadLongest, roadPick, randomEmpty, BULLS, BULLT, bullsLeg, bullsAim, BULL_DEFAULTS, BULL_LIMITS, BULL_CFG, bullsNorm, setBullsConfig, bullsConfig, bullsSpot, bullsScore, bullsRates, r3, ECHO, PLINKO, PONG, TRIVIA, ODD, bullsPeriod, echoSeqs, echoBase, echoSeq, echoAim, plinkoPath, plinkoOdds, PLINKO_DEFAULTS, PLINKO_LIMITS, PLINKO_CFG, plinkoNorm, setPlinkoConfig, plinkoConfig, plinkoPegs, plinkoBonus, plinkoTouches, plinkoWays, plinkoDist, plinkoExp, plinkoOpen, pongThrow, pongAimAt, pongDist, setTriviaBank, triviaReady, triviaDeal, triviaUsed, oddGrid, cpuEcho, CARD, BJ, BUS, RL, BJT, BUST, RLT, BUS_AVG, cardDeck, isCard, cardRank, cardRed, cardName, bjValue, bjTotal, bjNatural, bjDealerPlay, bjOutcome, bjStrategy, bjPlan, bjMs, busRight, busDeck, busOdds, rlRed, rlBet, rlCovers, tttOpen, lineOpen, majorityResult, STYLE0, huntSize, huntBand, huntClue, normTimer, resignLocal, TYPES, OLD_TYPES, SNL, BUMP, snlRow, snlBoard, snlValid, snlExpected, coinPick, markCoins, coinMarksFor, normLocal, seatLocal, INFO, C4, HP, MM, HEX_N, HILO, CANDY, NAME_MAX, COINS, RISKY, BS, HUNT, DICE_GOAL, MEMORY, LINES, WORDS5, WORDS_HANG, VALID5, other, makeRng, needRng, randInt, randomType, shuffle, memoryDeck, wordleMarks, hexNeighbors, hexPath, canMove, hpMoves, mmFeedback, mmValid, MM_ALL, mmAll, mmCode, mmCandidates, mmBestGuess, hpGoalRow, upgradeMini, anyMove, huntDist, candyTrack, newMini, pickType, newSquare, CPU_NAME, defaultSetup, cpuSide, normSetup, syncNames, enabledGames, TIMER_OPTIONS, newTimer, playerName, newState, startMatch, newMatch, findRun, applyMove, AI, publicMini, wordleCandidates, hangmanCandidates, bsCandidates, bsPlacements, bsShip, huntCandidates, WINDOWS, windowsOf, lineNeeds, c4Playable, hexDist, candyExpected, COIN_NEEDS, needsOf, memoryPair, winChance, tttMinimax, c4Drop, c4Eval, C4_ORDER, c4Search, C4_DEPTH, c4Moves, HP_MEMO, hpSolve, hpMovesValued, hpNeeds, hexMoves, threatScore, pickValued, localBest, squareValue, moveGain, cpuMove, VALID5_LIST, randomLegalMove, timeoutMove, mainResult, playMove, endFlash, leaveSquare, RECENT_MAX, MATCH_FIELDS, secretOf, hideMini, matchRecord, fullState, settle, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, newOnlineMatch, PLAY, diceSlot, playMs, replayMs, armClock, applyOnlineResign, matchStats };

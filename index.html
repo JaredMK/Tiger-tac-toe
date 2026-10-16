@@ -1895,7 +1895,6 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .wheels { flex: 1; display: flex; flex-direction: column; gap: 10px; justify-content: center; min-height: 0; }
 .rwrow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .rwheel { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px 6px; border: 3px solid var(--ink); border-radius: 14px; background: #fff; box-shadow: 0 3px 0 var(--ink); min-width: 0; }
-.rwheel > b { font-size: 13px; font-weight: 800; white-space: nowrap; }
 .rwheel:disabled { box-shadow: none; }
 .rwheel.spun { background: var(--paper); box-shadow: 0 0 0 3px var(--ink); }
 .wbox { position: relative; width: 100%; aspect-ratio: 1; display: block; }
@@ -1909,7 +1908,6 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .wv { text-anchor: middle; font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-size: 12px; fill: var(--ink); }
 .wv.dk { fill: #fff; } .wv.ten { font-size: 13px; }
 .wseg { stroke: var(--ink); stroke-width: .8; }
-.rwheel > small.wavg { font-size: 12px; font-weight: 800; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .wp { text-anchor: middle; font-size: 8px; font-weight: 800; fill: var(--ink); opacity: .8; }
 .wp.dk { fill: #fff; opacity: .95; }
 .wtal { display: flex; align-items: center; gap: 6px; flex: 1; justify-content: flex-end; min-width: 0; }
@@ -2520,7 +2518,7 @@ function graft(oldP, newP, pairs) {
   }
 }
 // How long the move's animation takes. The result toast or card waits this long, and so does any tap.
-function animMs(f) { return REDUCED ? 0 : playMs(f, hexLen(f)) - (f.type === 'bus' ? BUST.pre - busPre(f) : 0) - (f.type === 'bullseye' && f.bull ? bullsAim(f.bull).fly - bullsPre(f) : 0) - (f.type === 'echo' && f.echo && !f.timeout ? echoAim(f.echo).end - echoPre(f) : 0) - (f.type === 'oddone' && f.odd && !f.timeout ? ODD.show + ODD.pause - oddPre(f) : 0); }   // (your own Ride the Bus guess skips the moment it is shown)
+function animMs(f) { return REDUCED ? 0 : playMs(f, hexLen(f)) + lanePre(f) - (f.type === 'bus' ? BUST.pre - busPre(f) : 0) - (f.type === 'bullseye' && f.bull ? bullsAim(f.bull).fly - bullsPre(f) : 0) - (f.type === 'echo' && f.echo && !f.timeout ? echoAim(f.echo).end - echoPre(f) : 0) - (f.type === 'oddone' && f.odd && !f.timeout ? ODD.show + ODD.pause - oddPre(f) : 0); }   // (your own Ride the Bus guess skips the moment it is shown)
 function hexLen(f) { const sq = state.squares[f.square]; return sq && sq.mini.winCells ? sq.mini.winCells.length : 4; }
 // The JS-driven bits of the animations: numbers that count up or down, and the candy token's hops.
 function animate() {
@@ -2671,7 +2669,7 @@ const EXPLAIN = {
   lane: { name: 'Lane Rush', play: 'Swipe to change lanes and dodge traffic. It gets faster as you go, and you keep your distance when you crash.', win: 'Reach 1,000 m first.' },
   golf: { name: 'Mini Golf', play: 'Drag back to aim and set power, then let go. Balls can knock each other.', win: 'Sink your ball first.' },
   pool: { name: 'Pool', play: 'Drag back from the white ball to aim and shoot. Sink your own ball to go again. Sink the white (a scratch) and it goes back on its spot, and the other player gets an extra ball of their colour on the table.', win: 'Sink two of your balls first. Sink the black ball and you lose.' },
-  bowling: { name: 'Bowling', play: 'Drag back to aim and set power, then let go. Every pin you knock down counts.', win: '25 pins total.' },
+  bowling: { name: 'Bowling', play: 'Two taps, as in Darts: an arrow sweeps across the lane, tap to lock your aim; then the power meter rises and falls, tap to lock the power. The ball rolls with exactly those. Every pin you knock down counts.', win: '25 pins total.' },
   craps: { name: 'Craps', play: 'Roll. On the first roll of a round, 7 or 11 wins it and 2, 3 or 12 loses it. Anything else is the point: then choose Roll again (the point wins, a 7 loses) or Stop. Stop ends your turn with the point still on, and whoever rolls here next carries on that round: the point wins it for them, a 7 loses it.', win: 'Win 3 rounds.' },
   takeover: { name: 'Takeover', play: 'Tap an empty square to take it and the squares around it, even your opponent\'s.', win: 'Own the most when the board is full.' },
   flood: { name: 'Flood', play: 'Pick a colour. The blob grows into it, and every square it grabs is yours.', win: 'Get 18 squares first.' },
@@ -2682,7 +2680,7 @@ const EXPLAIN = {
   flap: { name: 'Flap', play: 'Tap to flap through the gaps. It gets faster, and you keep your distance when you crash.', win: 'Reach 1,000 m first.' },
   chopper: { name: 'Chopper', play: 'Hold to rise, let go to drop. It gets faster, and you keep your distance when you crash.', win: 'Reach 1,000 m first.' },
   patterns: { name: 'Patterns', play: 'Pick what comes next, or what\'s missing. Wrong answers get crossed out and the puzzle stays until someone gets it.', win: 'Get 3 right.' },
-  wheels: { name: 'Risk Wheels', play: 'Pick a wheel and spin. Each square deals three new wheels of ten equal segments: High risk has a 10 (or two) and mostly zeros, Low risk always pays a little, Medium sits between. Each wheel\'s average is under it.', get win() { return `Reach ${wheelsConfig().target} first.`; } },   // (the target is the admin's)
+  wheels: { name: 'Risk Wheels', play: 'Pick a wheel and spin. Each square deals three new wheels of ten equal segments: purple has a 10 (or two) and mostly zeros, green always pays a little, blue sits between. The darker a segment, the more it pays.', get win() { return `Reach ${wheelsConfig().target} first.`; } },   // (the target is the admin's)
   sniff: { name: 'Sniff', play: 'Move the dog one step. You\'ll see if it\'s getting hotter or colder, for a moment only: nothing stays on the board, so remember it.', win: 'Be the one who finds the treasure.' },
 };
 let explainT = null;                          // the mini-game whose explainer is open
@@ -3479,11 +3477,13 @@ function plinkoTable(mini, a, o) {
     : `<p class="arcnote">Drop from an open slot (${open} left). First to ${tg} wins.</p>`;
   return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="plinko">${slots}<div class="pboard">${style}<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${pegs.join('')}${bins}</svg><div class="pvals">${vals}</div>${bonus}${chip}${pop}</div>${res}</div></div>`;
 }
-// Cup Pong: the table from above, the thrower's rack of cups at the far end, the ball at this end. A
-// swipe up from the ball throws it: the direction aims, the speed sets the distance. The ball flies
-// (and grows, then shrinks) to where the throw landed, timed from the move; then it sinks, rims or misses.
+// Cup Pong: the table from above, the thrower's rack of cups at the far end (three cups touching in a tight
+// triangle), the ball at this end. Opened, the rack is the player to move's own (during a throw, the
+// thrower's; a decided square, the last thrower's). A swipe up from the ball throws it: the direction aims,
+// the speed sets the distance. The ball flies (and grows, then shrinks) to where the throw landed, timed
+// from the move; then it sinks, rims or misses.
 function pongTable(mini, a, o) {
-  const g = a && a.pong ? a.pong : null, l = mini.last, turn = o.turn, mover = g ? a.by : l && !o.view ? l.by : turn;
+  const g = a && a.pong ? a.pong : null, l = mini.last, turn = o.turn, mover = g ? a.by : o.view && l ? l.by : turn;
   const T = PONG.fly;
   const cups = p => `<span class="pcups" aria-label="${mini.cups[p].filter(Boolean).length} cups left">${mini.cups[p].map((up, k) => `<i ${lateAt(up ? 'on' : '', g && g.sunk && a.by === p && g.cup === k ? T : null, 'fillin')}></i>`).join('')}</span>`;
   const tal = p => arcTally(p, o, cups(p));
@@ -3581,9 +3581,11 @@ function oddTable(mini, a, o) {
   const btn = o.view ? '' : `<div class="cbtns one${go ? '' : ' hold'}"><button class="big" data-act="odd-reveal"${go ? '' : ' disabled tabindex="-1" aria-hidden="true"'}>Reveal</button></div>`;   // the row stays (hidden) so the grid never moves
   return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="odd"><div class="ogrid${!shown && !open ? ' wait' : ''}" style="grid-template-columns:repeat(${n}, 1fr)">${tiles}</div>${res}</div>${btn}</div>`;
 }
-// Mini Golf, Pool and Bowling: the physics games. The table is drawn on a canvas. A shot is a drag back
-// from anywhere on the table (a slingshot: pull away from where the ball should go, further for more
-// power; the aim line and the power meter show it), let go to shoot. The shot plays out in physics.js
+// Mini Golf, Pool and Bowling: the physics games. The table is drawn on a canvas. In Golf and Pool a shot
+// is a drag back from anywhere on the table (a slingshot: pull away from where the ball should go, further
+// for more power; the aim line and the power meter show it), let go to shoot. In Bowling it is two taps,
+// as in Darts: the aim arrow sweeps across the lane (a tap locks it), then the power meter rises and
+// falls (a tap locks it and rolls). The shot plays out in physics.js
 // (Matter.js) wherever the move is made (this phone in a local match, the server in Find Match); the
 // recording (every ball, 30 times a second) comes with the result, and this phone replays it from the
 // move's event (fxAt), so both phones see the same shot. Matter.js comes from cdnjs as the page starts
@@ -3643,15 +3645,78 @@ function physTable(mini, a, o) {
     : type === 'pool' ? p => arcTally(p, o, pips(p, Math.min(POOLG.goal, mini.pocketed[p]), POOLG.goal, fresh(p) && ph.own > 0, ph ? ph.ms : 0))
     : p => arcTally(p, o, `<small>${fresh(p) && ph.knocked ? `<i class="pins" style="--t:${ph.rec && !REDUCED ? ph.ms : 0}ms"><b class="was">${mini.pins[p] - ph.knocked}</b><b class="now">${mini.pins[p]}</b></i>` : mini.pins[p]} / ${BOWLG.goal} pins</small>`);   // the total before the roll, then the new one as the pins settle
   const mine = !o.view && !ph && !o.locked;
+  const bowl = type === 'bowling' ? bowlKeep(o, mine) : null;   // Bowling's two taps: 1 the arrow sweeps, 2 the meter, 3 both locked (the roll on its way)
   const t = ph ? (ph.rec && !REDUCED ? ph.ms : 0) : null;
   const res = ph ? (r => `<p ${lateAt('arcres ' + (r.ok ? 'ok' : 'no'), t)} role="status">${r.text}</p>`)(physResult(a))
     : o.view ? `<p class="arcnote">${l ? physResult({ type, by: l.by, phys: l }, true).text : ''}</p>`
-    : mine ? `<p class="arcnote">${type === 'golf' ? 'Drag back to aim and set power, then let go.' : type === 'pool' ? 'Drag back from the white ball to aim and shoot.' : 'Drag back to aim and set power, then let go.'}</p>`
+    : bowl && bowl.step === 3 ? `<p class="arcnote">Rolling…</p>`
+    : mine ? `<p class="arcnote">${type === 'golf' ? 'Drag back to aim and set power, then let go.' : type === 'pool' ? 'Drag back from the white ball to aim and shoot.' : bowl && bowl.step === 2 ? 'Now tap to stop the power meter' : 'Tap to stop the arrow and aim'}</p>`
     : `<p class="arcnote">Waiting for <b class="${turn}">${N(turn)}</b>…</p>`;
   const strike = ph && type === 'bowling' && ph.strike ? `<div ${lateAt('pstrike', t)} aria-hidden="true">STRIKE!</div>` : '';
   const label = type === 'golf' ? `Mini golf hole: ${PHYSICS.lib.HOLES[mini.hole].name}` : type === 'pool' ? 'The pool table' : 'The bowling lane';
   const scene = `<div class="pscene ${type}" data-phys="scene"${mine ? ' data-live="1"' : ''} aria-label="${label}"><canvas data-phys="cv"></canvas>${strike}</div>`;
-  return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="phys">${scene}${res}</div></div>`;
+  const btn = type !== 'bowling' || o.view ? '' : `<div class="cbtns one"><button class="big ${ph ? a.by : turn}" data-act="bowl"${mine && bowl && bowl.step < 3 ? '' : ' disabled'}>${bowl && bowl.step >= 2 ? 'Roll!' : 'Stop'}</button></div>`;
+  return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="phys">${scene}${res}</div>${btn}</div>`;
+}
+// Bowling's aim, in two taps (as in Darts). Step 1: an arrow from the ball sweeps left and right across the
+// lane, a tap locks its direction; step 2: the power meter beside the lane rises and falls, a tap locks the
+// power and the ball rolls with exactly those two (the move: { aim, power }, the same as any shot). Both
+// sweeps are drawn on the canvas from the moment their step began, back and forth at a steady speed; a tap
+// takes what the last frame showed. The arrow covers the lane to the gutters (beyond about 0.1 either way
+// the ball misses the pins); the meter runs from nothing to full (below about 0.35 the ball stops short).
+const BOWL_AIM = { max: 0.2, per: 1100, perP: 900 };         // the arrow: ±0.2 rad, one side to the other in 1.1 s; the meter: empty to full in 0.9 s
+let bowlDraft = null;                                          // { sq, p, step, t0, aim, power, shown: { aim, power, at } }
+const bowlWave = (t, per) => { const k = Math.floor(t / per), f = (t % per) / per; return k % 2 ? 1 - f : f; };
+function bowlNow(dr, now) {
+  const t = Math.max(0, now - dr.t0);
+  if (dr.step === 1) return { aim: r3((bowlWave(t, BOWL_AIM.per) * 2 - 1) * BOWL_AIM.max), power: null };
+  if (dr.step === 2) return { aim: dr.aim, power: r3(bowlWave(t, BOWL_AIM.perP)) };
+  return { aim: dr.aim, power: dr.power };
+}
+// At each render of the lane: the draft kept, begun (the player to move, a fresh arrow), or dropped.
+function bowlKeep(o, mine) {
+  const dr = bowlDraft, same = dr && dr.sq === o.zoom && dr.p === o.turn;
+  if (mine) { if (!same || dr.step === 3) bowlDraft = { sq: o.zoom, p: o.turn, step: 1, t0: performance.now(), aim: 0, power: 0, shown: null }; }   // (a roll refused comes back to a fresh aim)
+  else if (!(same && dr.step === 3 && !o.view)) bowlDraft = null;   // the roll on its way: both stay locked until it plays
+  return bowlDraft;
+}
+function bowlTap() {
+  const sq = state.squares && state.squares[state.zoom], dr = bowlDraft;
+  if (!sq || sq.mini.type !== 'bowling' || sq.owner || state.flash || state.done || blocked() || !physicsReady()) return false;
+  if (!dr || dr.sq !== state.zoom || dr.p !== state.turn || dr.step === 3) return false;
+  const now = performance.now(), v = dr.shown && now - dr.shown.at < 120 ? dr.shown : bowlNow(dr, now);
+  if (dr.step === 1) { dr.aim = v.aim; dr.step = 2; dr.t0 = now; dr.shown = null; SND.play('mark'); render(); return true; }
+  dr.power = v.power; dr.step = 3; dr.shown = null;
+  attemptMove(physShot({ aim: dr.aim, power: dr.power }));
+  if (state.zoom === dr.sq && bowlDraft === dr && !state.flash) render();   // (online: the roll waits on the server, both locked)
+  return true;
+}
+app.addEventListener('pointerdown', e => {
+  const t = e.target.closest && e.target.closest('.pscene.bowling[data-live], button[data-act="bowl"]:not(:disabled)');
+  if (!t || state.screen !== 'mini') return;
+  e.preventDefault();
+  bowlTap();
+});
+// The arrow from the ball (sweeping, or locked) and, from step 2, the meter up the side, filling to the power.
+function drawBowlAim(g, pos, dr, now) {
+  const c = g.c, P = runColours(), S = PHYSICS.lib.BOWL, from = pos.ball || S.start, v = bowlNow(dr, now);
+  if (dr.step < 3) dr.shown = { aim: v.aim, power: v.power, at: now };
+  const X = g.X(from[0]), Y = g.Y(from[1]), len = 0.36 * S.h * g.k, ux = Math.sin(v.aim), uy = -Math.cos(v.aim);
+  c.save();
+  c.lineCap = 'round';
+  c.beginPath(); c.moveTo(X + ux * S.ballR * 1.6 * g.k, Y + uy * S.ballR * 1.6 * g.k); c.lineTo(X + ux * len, Y + uy * len);
+  c.lineWidth = 7; c.strokeStyle = P.ink; c.stroke(); c.lineWidth = 3.5; c.strokeStyle = dr.step === 1 ? '#fff' : P[dr.p]; c.stroke();
+  const hx = X + ux * (len + 8), hy = Y + uy * (len + 8), a = v.aim;                     // the head
+  c.beginPath(); c.moveTo(hx, hy); c.lineTo(hx - Math.sin(a + 2.6) * 14, hy + Math.cos(a + 2.6) * 14); c.lineTo(hx - Math.sin(a - 2.6) * 14, hy + Math.cos(a - 2.6) * 14); c.closePath();
+  outlined(c, dr.step === 1 ? '#fff' : P[dr.p], P.ink, 2);
+  if (dr.step >= 2) {
+    const mw = 16, mh = Math.min(g.H * 0.6, 220), right = g.X(S.w), mx = right + 10 + mw <= g.W ? right + (g.W - right - mw) / 2 : g.W - mw - 8, my = (g.H - mh) / 2;
+    rr(c, mx, my, mw, mh, 7); outlined(c, 'rgba(255,255,255,.55)', P.ink, 2.5);
+    const fill = mh * v.power;
+    if (fill > 3) { rr(c, mx + 3, my + mh - fill + 1.5, mw - 6, fill - 3, 4); c.fillStyle = `hsl(${120 - 120 * v.power} 80% 48%)`; c.fill(); }
+    c.beginPath(); c.moveTo(mx - 5, my + mh - fill); c.lineTo(mx + mw + 5, my + mh - fill); c.lineWidth = 3; c.strokeStyle = P.ink; c.stroke();   // the level, plain to read
+  }
+  c.restore();
 }
 // The move's recording at this moment: every body's place, and whether the recording has ended.
 function physFrame(ph, now, at) {
@@ -3703,7 +3768,9 @@ function physDrawNow(cv, now) {
   const g = { c, W, H, k, M, X: x => ox + x * k, Y: y => oy + y * k };
   if (mini.type === 'golf') drawGolf(g, mini, pos); else if (mini.type === 'pool') drawPool(g, mini, pos); else drawBowl(g, mini, pos);
   if (dr) drawAim(g, mini, pos, dr);
-  return !!(dr || (fr && !fr.done));
+  const bd = mini.type === 'bowling' && !ph && bowlDraft && bowlDraft.sq === state.zoom ? bowlDraft : null;
+  if (bd) drawBowlAim(g, pos, bd, now);
+  return !!(dr || (bd && bd.step < 3) || (fr && !fr.done));
 }
 // ---- the drawing: bold ink outlines and flat colours, like the rest of the game ----
 function physBall(g, x, y, r, fill, label, ink) {
@@ -3815,7 +3882,7 @@ function physPull(dr) {
 }
 app.addEventListener('pointerdown', e => {
   const scene = e.target.closest && e.target.closest('[data-phys="scene"]');
-  if (!scene || !scene.dataset.live || physDraft || blocked() || state.flash || state.done) return;
+  if (!scene || !scene.dataset.live || scene.classList.contains('bowling') || physDraft || blocked() || state.flash || state.done) return;
   e.preventDefault();
   physDraft = { sq: state.zoom, p: state.turn, pointer: e.pointerId, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, scene };
   try { scene.setPointerCapture(e.pointerId); } catch (err) { /* no capture: the move and up still reach the page */ }
@@ -4126,17 +4193,20 @@ function patternsTable(mini, a, o) {
     : `<p class="arcnote">${o.view ? '' : `<b class="${turn}">${N(turn)}</b>'s turn · ${left} option${left === 1 ? '' : 's'} left`}</p>`;
   return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="patterns"><div class="patcard"><small>${ask}</small><div class="pseq" style="--n:${shown.seq.length}" aria-label="The sequence: ${esc(shown.seq.map(patSay).join(', '))}">${seq}</div></div><div class="popts">${opts}</div>${res}</div></div>`;
 }
-// Risk Wheels: the square's three wheels side by side, ten equal segments each with its points on it (the
-// 10s in gold), each wheel's average under it. A tap on a wheel spins it: a few turns, slowing, stopping
-// with the pointer on the segment the server's spin landed in; the points pop up and go onto the spinner's
-// tally. Between spins each wheel rests where it last stopped.
-const WHEEL_LOOK = { high: { name: 'High risk', a: '#8d5bd8', b: '#ddd0f2' }, mid: { name: 'Medium', a: '#3d7fe0', b: '#cfe0f8' }, low: { name: 'Low risk', a: '#21b2a6', b: '#c6ece8' } };
+// Risk Wheels: the square's three wheels side by side and nothing else (no names, no averages): ten equal
+// segments each with its points on it, each wheel in its own colour, a segment's shade set by its points
+// (the same on every wheel: 0 palest, 10 darkest), so the risk reads at a glance. A tap on a wheel spins it:
+// a few turns, slowing, stopping with the pointer on the segment the server's spin landed in; the points
+// pop up and go onto the spinner's tally. Between spins each wheel rests where it last stopped.
+const WHEEL_LOOK = { high: { say: 'purple', hue: 268, sat: 58 }, mid: { say: 'blue', hue: 212, sat: 72 }, low: { say: 'green', hue: 140, sat: 52 } };
+const wheelLight = v => 93 - 6.6 * v;                         // a segment's lightness (%) by its points: 93 for 0 down to 27 for 10
+const wheelShade = (w, v) => `hsl(${WHEEL_LOOK[w].hue} ${WHEEL_LOOK[w].sat}% ${wheelLight(v).toFixed(1)}%)`;
 function wheelSvg(vals, w) {
-  const L = WHEEL_LOOK[w], R = 46, n = vals.length;
+  const R = 46, n = vals.length;
   const pt = (f, r) => { const t = (f * 360 - 90) * Math.PI / 180; return [(50 + r * Math.cos(t)).toFixed(2), (50 + r * Math.sin(t)).toFixed(2)]; };
   const seg = (k, col) => { const [x0, y0] = pt(k / n, R), [x1, y1] = pt((k + 1) / n, R); return `<path d="M50 50 L${x0} ${y0} A${R} ${R} 0 0 1 ${x1} ${y1} Z" fill="${col}" class="wseg"/>`; };
   const lab = (k, v, dark) => { const [x, y] = pt((k + 0.5) / n, 33); return `<text x="${x}" y="${(Number(y) + 4.5).toFixed(2)}" class="wv${dark ? ' dk' : ''}${v === 10 ? ' ten' : ''}">${v}</text>`; };
-  return vals.map((v, k) => seg(k, v === 10 ? '#f6c21b' : k % 2 ? L.b : L.a)).join('') + `<circle cx="50" cy="50" r="${R}" class="wrim"/>` + vals.map((v, k) => lab(k, v, v !== 10 && k % 2 === 0)).join('') + '<circle cx="50" cy="50" r="5" class="whub"/>';
+  return vals.map((v, k) => seg(k, wheelShade(w, v))).join('') + `<circle cx="50" cy="50" r="${R}" class="wrim"/>` + vals.map((v, k) => lab(k, v, wheelLight(v) < 50)).join('') + '<circle cx="50" cy="50" r="5" class="whub"/>';
 }
 function wheelTable(mini, a, o) {
   const s = a && a.wheel ? a.wheel : null, l = mini.last, turn = o.turn, wh = mini.wheels, T = mini.target, rest = mini.rest || {};
@@ -4148,11 +4218,11 @@ function wheelTable(mini, a, o) {
   const wheels = WHEELS.map(w => {
     const spun = s && s.w === w, at = spun ? s.at : rest[w] || 0, end = (spun ? 1800 : 0) - at * 360, from = spun ? -(s.from || 0) * 360 : end;
     const dis = o.locked || !!s;
-    return `<button class="rwheel ${w}${spun ? ' spun' : ''}" data-act="move" ${mv(w)}${dis ? ' disabled' : ''} aria-label="${WHEEL_LOOK[w].name}: ${wh[w].join(', ')} (average ${wheelAvg(wh[w]).toFixed(1)})">
-      <span class="wbox"><i class="wptr" aria-hidden="true"></i><svg viewBox="0 0 100 100" aria-hidden="true"><g class="wspin${spun ? ' go' : ''}" style="transform:rotate(${end.toFixed(1)}deg)${spun ? `;--from:${from.toFixed(1)}deg;--end:${end.toFixed(1)}deg;--d:${WHEELT.spin}ms` : ''}">${wheelSvg(wh[w], w)}</g></svg></span><b>${WHEEL_LOOK[w].name}</b><small class="wavg">average ${wheelAvg(wh[w]).toFixed(1)}</small></button>`;
+    return `<button class="rwheel ${w}${spun ? ' spun' : ''}" data-act="move" ${mv(w)}${dis ? ' disabled' : ''} aria-label="The ${WHEEL_LOOK[w].say} wheel: ${wh[w].join(', ')}">
+      <span class="wbox"><i class="wptr" aria-hidden="true"></i><svg viewBox="0 0 100 100" aria-hidden="true"><g class="wspin${spun ? ' go' : ''}" style="transform:rotate(${end.toFixed(1)}deg)${spun ? `;--from:${from.toFixed(1)}deg;--end:${end.toFixed(1)}deg;--d:${WHEELT.spin}ms` : ''}">${wheelSvg(wh[w], w)}</g></svg></span></button>`;
   }).join('');
   const res = s ? `<p ${lateAt('arcres ' + (s.v ? 'ok' : 'no'), WHEELT.spin)} role="status">${s.v ? `+${s.v}!` : 'Nothing this time'}</p>`
-    : (o.view || o.done) && l ? `<p class="arcres ${l.v ? 'ok' : 'no'}"><b class="${l.by}">${N(l.by)}</b> spun ${WHEEL_LOOK[l.w].name.toLowerCase()}: ${l.v ? '+' + l.v : 'nothing'}</p>`
+    : (o.view || o.done) && l ? `<p class="arcres ${l.v ? 'ok' : 'no'}"><b class="${l.by}">${N(l.by)}</b> spun the ${WHEEL_LOOK[l.w].say} wheel: ${l.v ? '+' + l.v : 'nothing'}</p>`
     : `<p class="arcnote">${o.view ? '' : o.locked ? `Waiting for <b class="${turn}">${N(turn)}</b>…` : `Pick a wheel and spin · first to ${T}`}</p>`;
   return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="wheels"><div class="rwrow">${wheels}</div>${res}</div></div>`;
 }
@@ -4228,7 +4298,7 @@ const RUN_TEXT = {
 };
 const RUN_PRESS = { dash: 'jump', flap: 'flap', chopper: 'rotor' };   // the press's sound (Lane Rush: a swipe, its skid)
 function runTable(mini, a, o) {
-  const r = a && a.run ? a.run : null, l = mini.last, turn = o.turn, T = mini.cfg.target, type = mini.type;
+  const r = a && a.run ? a.run : null, l = mini.last, turn = o.turn, T = mini.cfg.target, type = mini.type, pre = r && a === state.flash ? lanePre(a) : 0;   // (the computer's Lane Rush run plays first)
   const ranHere = p => runLive && runLive.sq === o.zoom && runLive.p === p && performance.now() - runLive.at < 20000 ? runLive : null;
   if (runDraft && (runDraft.sq !== o.zoom || r || o.view || o.locked)) runStop();   // another square, or the result on show: no run under way here
   const live = runDraft && runDraft.sq === o.zoom ? runDraft : null;
@@ -4237,11 +4307,11 @@ function runTable(mini, a, o) {
     const fresh = r && a.by === p, mine = ranHere(p), at = fresh ? r.to : mine && !r && mine.to > mini.dist[p] ? mine.to : mini.dist[p];
     const seen = fresh && mine && Math.abs(mine.to - r.to) < 1;   // this phone watched the bar fill during the run
     const w1 = 100 * Math.min(1, at / T), w0 = fresh && !seen ? 100 * Math.min(1, r.from / T) : w1;
-    return `<div class="rprog ${p}${!o.view && turn === p ? ' now' : ''}"><b class="${p}">${N(p)}</b><div class="rbar" role="progressbar" aria-valuenow="${Math.round(at)}" aria-valuemax="${T}"><i class="${fresh && !seen ? 'grow' : ''}" style="--w0:${w0.toFixed(1)}%;--w1:${w1.toFixed(1)}%;--d:${RUNT.bar}ms"></i></div><small>${fmtM(at)} / ${fmtM(T)} m</small></div>`;
+    return `<div class="rprog ${p}${!o.view && turn === p ? ' now' : ''}"><b class="${p}">${N(p)}</b><div class="rbar" role="progressbar" aria-valuenow="${Math.round(at)}" aria-valuemax="${T}"><i class="${fresh && !seen ? 'grow' : ''}" style="--w0:${w0.toFixed(1)}%;--w1:${w1.toFixed(1)}%;--d:${RUNT.bar}ms${fresh && pre ? `;--t:${pre}ms` : ''}"></i></div><small>${fresh && pre ? `<span class="sbn"><span class="tu" style="--u:${pre}ms">${fmtM(r.from)}</span><span class="tf" style="--f:${pre}ms">${fmtM(at)}</span></span>` : fmtM(at)} / ${fmtM(T)} m</small></div>`;   // (after a replay, the new distance as the bar grows)
   };
   const who = r ? a.by : turn;
   const TX = RUN_TEXT[type];
-  const res = r ? `<p ${lateAt('arcres ' + (r.done ? 'ok' : 'no'), 0)} role="status">${r.done ? `<b class="${a.by}">${N(a.by)}</b> reached ${fmtM(T)} m!` : `<b class="${a.by}">${N(a.by)}</b> ${TX.verb} ${fmtM(r.to - r.from)} m — now at ${fmtM(r.to)}/${fmtM(T)}`}</p>`
+  const res = r ? `<p ${lateAt('arcres ' + (r.done ? 'ok' : 'no'), pre)} role="status">${r.done ? `<b class="${a.by}">${N(a.by)}</b> reached ${fmtM(T)} m!` : `<b class="${a.by}">${N(a.by)}</b> ${TX.verb} ${fmtM(r.to - r.from)} m — now at ${fmtM(r.to)}/${fmtM(T)}`}</p>`
     : o.view ? `<p class="arcnote">${l ? `<b class="${l.by}">${N(l.by)}</b> ${l.done ? 'reached the finish' : `${TX.verb} ${fmtM(l.to - l.from)} m`}` : ''}</p>`
     : live ? '<p class="arcnote"></p>'
     : mine ? `<p class="arcnote">${TX.note}</p>`
@@ -4303,6 +4373,37 @@ function runEnd(out) {
   runLive = { sq: rd.sq, p: rd.p, to: res.dist, at: performance.now() };
   attemptMove(res);
 }
+// Lane Rush: the computer's run is driven on the road before its result shows (the engine's laneDrive: a
+// drive that ends where the run did; it has no recording). A long run plays faster, so the replay takes
+// LANE_REPLAY_MAX at most. Only here, for the computer: another phone's run shows its result, as before.
+const LANE_REPLAY_MAX = 9000, laneReps = new WeakMap();
+let laneShow = null;                                             // the replay on screen: { f, sim, i, crashAt, raf }
+function laneRep(f) {
+  if (!f || f.type !== 'lane' || !f.run || f.timeout || REDUCED || state.online || !cpuPlays(f.by)) return null;
+  if (laneReps.has(f)) return laneReps.get(f);
+  const sq = state.squares && state.squares[f.square], plan = sq ? laneDrive(sq.mini, f.by, f.run.from, f.run.to, !!f.run.done) : null;
+  let rep = null;
+  if (plan) { const speed = Math.max(1, (plan.secs * 1000) / (LANE_REPLAY_MAX - 700)); rep = { plan, speed, drive: Math.round((plan.secs * 1000) / speed), ms: Math.round((plan.secs * 1000) / speed) + (f.run.done ? 500 : 700) }; }
+  laneReps.set(f, rep);
+  return rep;
+}
+const lanePre = f => { const r = laneRep(f); return r ? r.ms : 0; };
+function laneShowFrame(now) {
+  const ls = laneShow, f = state.flash;
+  if (!ls || ls.f !== f || state.screen !== 'mini' || state.zoom !== f.square) { if (ls) cancelAnimationFrame(ls.raf); laneShow = null; return; }
+  const rep = laneRep(f), start = fxAt('move', f);
+  if (!rep || start == null || now - start >= rep.ms) { cancelAnimationFrame(ls.raf); laneShow = null; runPaint(); return; }
+  const T = Math.max(0, (now - start) * rep.speed / 1000), steps = rep.plan.steps;
+  while (!ls.sim.crash && !ls.sim.done && ls.sim.t + LANE.step <= T + 1e-9) {
+    while (ls.i < steps.length && steps[ls.i].t <= ls.sim.t + 1e-9) runLane(ls.sim, steps[ls.i++].dir);
+    runStep(ls.sim, LANE.step);
+  }
+  if ((ls.sim.crash || ls.sim.done) && ls.crashAt == null) ls.crashAt = now;
+  const cv = app.querySelector('canvas[data-run="cv"]'), hud = app.querySelector('[data-run="hud"]');
+  if (cv) { const { c, W, H } = runCanvas(cv); if (W > 1 && H > 1) drawLane(c, W, H, ls.sim, ls.sim.crash ? { at: ls.crashAt } : null, now); }
+  if (hud) hud.textContent = fmtM(Math.min(ls.sim.d, f.run.to)) + ' m';
+  ls.raf = requestAnimationFrame(laneShowFrame);
+}
 // After every render: the canvas of a runner square shows the run under way, or the runner standing at
 // the saved distance (after a move: where it ended) with the course ahead.
 function runPaint() {
@@ -4312,6 +4413,12 @@ function runPaint() {
   if (!sq || !RUN_TYPES.includes(sq.mini.type)) return;
   if (runDraft && runDraft.sq === state.zoom) { runFrameDraw(cv, runDraft.sim, runDraft, performance.now()); return; }
   const f = state.flash, r = f && f.run ? f.run : null, p = r ? f.by : sq.owner || state.turn;
+  const rep = r ? laneRep(f) : null, start = rep ? fxAt('move', f) : null;
+  if (rep && start != null && performance.now() - start < rep.ms) {   // the computer's run, driven on the road first
+    if (!laneShow || laneShow.f !== f) { const m = Object.assign({}, sq.mini, { dist: Object.assign({}, sq.mini.dist, { [p]: r.from }) }); laneShow = { f, sim: Object.assign(runStart(m, p), { p }), i: 0, crashAt: null, raf: 0 }; }
+    cancelAnimationFrame(laneShow.raf); laneShowFrame(performance.now());
+    return;
+  }
   const sim = Object.assign(runStart(sq.mini, p), { p, d: r ? r.to : sq.mini.dist[p] });   // at rest: the course as Start would show it (the stretch ahead clear), no crash
   if (r && !r.done) { sim.course = runCourse(sq.mini, p); sim.crash = { at: r.to, ob: null }; sim.grace = 0; if (sim.type === 'flap') sim.y = FLAP.box.h / 2; }   // the crash just made, while its result shows: down on the ground (the course as it was)
   if ((r && r.done) || sim.d >= sq.mini.cfg.target) sim.done = true;
@@ -4550,7 +4657,7 @@ function drawChopper(c, x, y, S, sim, rd, now, P) {
   const sw = Math.cos(now / (sim.held ? 18 : 30)); c.lineWidth = 3; c.beginPath(); c.moveTo(-L * 0.72 * sw, -L * 0.42); c.lineTo(L * 0.72 * sw, -L * 0.42); c.stroke();   // the main rotor, quicker while climbing
   c.restore();
 }
-const TRAFFIC = ['#7fc8f0', '#f2d16b', '#f7f3e6', '#9ad88a', '#d8a0e8'];
+const TRAFFIC = ['#7fc8f0', '#a9b4c4', '#f7f3e6', '#9ad88a', '#d8a0e8'];   // (no yellow or red: those are the players' cars)
 function drawLane(c, W, H, sim, rd, now) {
   const P = runColours(), road = { x: W * 0.1, w: W * 0.8 }, laneW = road.w / 3, S = H / 34, cy = H * 0.82, toY = m => cy - (m - sim.d) * S;
   c.fillStyle = '#95cf9e'; c.fillRect(0, 0, W, H);
@@ -4945,7 +5052,7 @@ function summary(f) {
     case 'shelves': return `${who} marked a shelf`;
     case 'roads': return `${who} claimed a line`;
     case 'patterns': return f.pat ? (f.pat.correct ? `${who} got the pattern` : `${who} picked wrong · crossed out`) : `${who} picked`;
-    case 'wheels': return f.wheel ? `${who} spun ${WHEEL_LOOK[f.wheel.w].name.toLowerCase()}: ${f.wheel.v ? '+' + f.wheel.v : 'nothing'}` : `${who} spun`;
+    case 'wheels': return f.wheel ? `${who} spun the ${WHEEL_LOOK[f.wheel.w].say} wheel: ${f.wheel.v ? '+' + f.wheel.v : 'nothing'}` : `${who} spun`;
     case 'sniff': return f.sniff ? `${who} walked the dog: ${f.sniff.found ? 'found it!' : f.sniff.hot ? 'hotter' : 'colder'}` : `${who} walked the dog`;
     case 'bullseye': return f.bull ? `${who} threw: ${f.bull.pts === BULLS.bullPts ? 'a bullseye, +3' : f.bull.pts ? 'on the board, +1' : 'off the board'}` : `${who} threw`;
     case 'echo': return f.echo ? (f.echo.pass ? `${who} beat pattern ${f.echo.level + 1}` : `${who} slipped at step ${f.echo.failAt + 1}`) : `${who} tried`;
@@ -7515,7 +7622,11 @@ function moveSounds(f) {
     case 'pong': { add('whoosh', 0); if (f.pong) { if (f.pong.rim) add('clink', PONG.fly); add(f.pong.sunk ? 'splash' : 'thud', PONG.fly + (f.pong.rim ? 400 : 0)); } break; }
     case 'trivia': if (f.trivia) add(f.trivia.correct ? 'ding' : 'thud', 250); break;
     case 'oddone': { const pre = oddPre(f); if (pre) { add('reveal', ODD.show); if (f.odd.picked >= 0) add('tap', pre); } if (f.odd) add(f.odd.correct ? 'ding' : 'thud', pre + 250); break; }   // someone else's pick: the reveal, then their tap
-    case 'dash': case 'lane': case 'flap': case 'chopper': if (f.run) { add(f.run.done ? 'sparkle' : 'thud', 0); add('ding', RUNT.bar); } break;   // the crash (or the finish) as the result shows, the bar landing at its new distance
+    case 'dash': case 'lane': case 'flap': case 'chopper': if (f.run) {
+      const rep = laneRep(f);                                     // the computer's Lane Rush run: its skids and crash first
+      if (rep) { for (const st of rep.plan.steps) add('skid', Math.round((st.t * 1000) / rep.speed)); add(f.run.done ? 'sparkle' : 'crash', rep.drive); add('ding', rep.ms + RUNT.bar); }
+      else { add(f.run.done ? 'sparkle' : 'thud', 0); add('ding', RUNT.bar); }
+    } break;   // the crash (or the finish) as the result shows, the bar landing at its new distance
     case 'craps': {                                                   // the roll: the rattle, the dice landing; the puck going on or off; a round's result
       if (!f.craps) break;
       if (f.craps.kind === 'stop') { add('toggle', 0); break; }
