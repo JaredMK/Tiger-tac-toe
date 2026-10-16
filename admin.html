@@ -465,7 +465,7 @@ async function saveRunCfg(t, btn) {
 // The board's size and the bullseye's (in field units: the field is 100 across, 120 down), how long a line
 // takes to sweep across at the start, and how much faster a player's lines get with each throw of theirs
 // that scores. A change applies to squares dealt from then on.
-const BULL_DEFAULTS = { board: 9, bull: 2.5, sweep: 1300, ramp: 1.12 };   // (as engine.js has them)
+const BULL_DEFAULTS = { board: 9, bull: 2.5, sweep: 1040, ramp: 1.12 };   // (as engine.js has them)
 const BULL_FIELDS = [['board', 'Board radius (field is 100 across)', 4, 30, 'any'], ['bull', 'Bullseye radius', 0.5, 12, 'any'], ['sweep', 'Sweep across at the start (ms)', 400, 5000, '10'], ['ramp', 'Speed-up per scoring throw (x)', 1, 2, 'any']];
 function bullsCard() {
   const raw = ctl.bullsCfg || {}, c = {};

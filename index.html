@@ -219,6 +219,9 @@ svg text { text-rendering: geometricPrecision; }   /* laid out at its true size,
 .ttl > b { display: block; font-size: 17px; }
 .ttl small { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; color: var(--muted); font-size: 12px; font-weight: 600; line-height: 1.25; }
 .gwrap { flex: 1; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; }
+body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }   /* a game: a long press selects nothing and opens no callout or magnifier */
+input, textarea, [contenteditable] { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
+main.scr.mini:has(.runner), main.scr.mini:has(.runner) * { touch-action: none; }   /* a runner: the whole screen is the controller */
 
 .g-ttt {
   width: var(--g); height: var(--g);
@@ -301,7 +304,6 @@ svg text { text-rendering: geometricPrecision; }   /* laid out at its true size,
 
 .g-wordle { width: min(var(--gw), 520px); height: var(--gh); display: flex; flex-direction: column; gap: 10px; --tile: min(52px, calc((var(--gw) - 40px) / 5)); }
 .wlist { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 5px; align-items: center; padding: 4px 0; }
-.wlist > :first-child { margin-top: auto; }
 .wrow { display: flex; gap: 5px; flex: none; }
 .wrow.cur { justify-content: center; }
 .wt {
@@ -325,7 +327,7 @@ svg text { text-rendering: geometricPrecision; }   /* laid out at its true size,
 }
 .ht.on { border-color: var(--text); }
 .ht.flipin { animation: tflip .45s ease-out both; animation-delay: calc(var(--k, 0) * .1s); }
-.hmiss { text-align: center; color: var(--muted); font-weight: 700; min-height: 20px; }
+.hmiss { text-align: left; color: var(--muted); font-weight: 700; height: 2.6em; line-height: 1.3; flex: none; }   /* new wrong letters go on the end; the ones before stay where they are */
 .hmiss b { color: var(--text); letter-spacing: .25em; }
 .hmiss i { font-style: normal; text-decoration: line-through; text-decoration-color: var(--x); text-decoration-thickness: 2px; }
 .hmiss i.new { display: inline-block; animation: shake .4s, pop .3s both; }
@@ -566,6 +568,7 @@ svg text { text-rendering: geometricPrecision; }   /* laid out at its true size,
 .rbar .seg { position: absolute; top: 0; bottom: 0; left: var(--l); width: var(--w); border-radius: 999px; background: var(--text); }
 .rbar .seg.shrink { animation: shrink .6s .45s ease-out both; }
 .hist { color: var(--muted); font-weight: 600; font-size: 14px; text-align: center; min-height: 18px; }
+.hist, .guess { height: 44px; flex: none; align-content: center; }   /* the history or the fresh guess: the same height, so the pad never moves */
 .guess { display: flex; justify-content: center; align-items: center; gap: 6px; min-height: 18px; color: var(--muted); font-weight: 700; font-size: 15px; }
 .guess .n { color: var(--text); font-size: 20px; }
 .guess.fresh { animation: pop .3s ease-out both; }
@@ -587,6 +590,8 @@ svg text { text-rendering: geometricPrecision; }   /* laid out at its true size,
 .die svg { width: 78%; height: 78%; }
 .die .q { font-size: 40px; font-weight: 900; color: #8a8378; }
 .dielab { color: var(--muted); font-weight: 700; }
+.dieWrap, .wheelwrap, .dieWrap .dielab, .wheelwrap .dielab { align-self: stretch; }
+.dielab { height: 2.6em; line-height: 1.3; text-align: center; align-content: center; flex: none; }   /* up to two lines, always that tall */
 
 .g-mem { width: var(--g); height: var(--g); display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); gap: 10px; }
 .mc { position: relative; border: 0; padding: 0; border-radius: 16px; background: transparent; perspective: 700px; }
@@ -1019,6 +1024,7 @@ b.O { box-shadow: inset 0 -.38em 0 var(--o-soft); }
 .coin.O { color: var(--ink); }
 .coin.m { background: #fff; color: var(--ink); background-image: repeating-conic-gradient(from 0deg, #fff 0 15deg, #ece4d2 15deg 30deg); }
 .coin.m b { font-family: 'Luckiest Guy', sans-serif; font-weight: 400; font-size: 120%; }
+.coin b { line-height: 1; height: 1em; display: grid; place-items: center; }
 .tcoin i.m { background: #fff; color: var(--ink); }
 .pscore, .rrturn, .range { background: var(--paper); border: 3.5px solid var(--ink); box-shadow: 0 4px 0 var(--ink); border-radius: 18px 12px 20px 14px / 14px 20px 12px 18px; }
 .pscore .nm { font-weight: 400; }
@@ -1029,6 +1035,7 @@ b.O { box-shadow: inset 0 -.38em 0 var(--o-soft); }
 .pscore.now .val, .pscore.now .nm { color: var(--ink); }
 .face { background: #fff; border: 2.5px solid var(--ink); color: var(--muted); padding-top: 3px; }
 .pscore .val { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.pscore .val .vnum { display: inline-block; min-width: 1.25em; text-align: right; font-variant-numeric: tabular-nums; }   /* room for two digits: '/ 21' and the points at risk stay put */
 .risk { font-family: 'Luckiest Guy', sans-serif; font-weight: 400; font-size: 18px; color: var(--green); padding: 2px 7px 0; border-radius: 999px; background: #fff; border: 2.5px solid var(--ink); line-height: 1.1; align-self: center; }
 .risk.grow { animation: riskbump .35s .6s ease-out; }                  /* the +N stays up while the die tumbles, then takes the new points as it lands */
 .risk.grow.first { animation: markpop .35s .6s ease-out both; }      /* the turn's first roll: the +N appears as the die lands */
@@ -1169,7 +1176,6 @@ button.seg.X.on { background: var(--x); color: var(--paper); } .seg.O.on { backg
 .mmcode.small .peg.hid { font-size: 13px; padding-top: 3px; background: #2c2622; box-shadow: none; border-color: #5a524b; }
 .shell.flip .peg { animation: codeflip .5s ease-out both; animation-delay: calc(1.45s + var(--k) * .15s); }
 .mmlist { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding: 4px 2px; }
-.mmlist > :first-child { margin-top: auto; }
 .mmrow { display: grid; grid-template-columns: 28px repeat(4, var(--pg)) auto; gap: 8px; align-items: center; justify-content: center; }
 .mmby .pc { width: 28px; height: 28px; }
 .mmrow .peg.in { animation: pegpop .3s cubic-bezier(.3, 1.8, .5, 1) both; animation-delay: calc(var(--k) * .08s); }
@@ -1465,6 +1471,7 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .ctal .pips i.fillin { animation: pipfill .4s var(--t, 0ms) cubic-bezier(.3, 1.6, .5, 1) both; }
 @keyframes pipfill { from { background: var(--paper); transform: none; } 1% { transform: scale(.6); } to { transform: none; } }
 .cbtns { display: grid; gap: 8px; flex: none; }
+.cbtns.hold { visibility: hidden; }   /* kept for its room: the button comes and goes without moving anything */
 .cbtns.one { grid-template-columns: 1fr; }
 .cbtns.two { grid-template-columns: 1fr 1fr; }
 .cbtns.three { grid-template-columns: 1fr 1fr 1fr; }
@@ -1483,7 +1490,7 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .bjlab b.X, .bjlab b.O { background: var(--paper); border-radius: 8px; padding: 0 6px; text-shadow: none; }
 .bjtot { background: var(--ink); color: var(--paper); border-radius: 999px; padding: 1px 9px 0; font-size: 13px; text-shadow: none; }
 .bjtot:empty { display: none; }
-.bjcards { display: flex; align-items: center; justify-content: center; min-height: calc(var(--cw) * 1.4 + 3px); }
+.bjcards { display: flex; align-items: center; justify-content: flex-start; min-height: calc(var(--cw) * 1.4 + 3px); width: calc(var(--cw) * 3.9); }
 .bjstack { display: grid; }
 .bjstack > .bjset { grid-area: 1 / 1; display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .bjmid > .bjset { justify-content: center; }
@@ -1517,9 +1524,12 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 /* ---- the arcade games: Bullseye, Echo, Plinko, Cup Pong, Trivia, Odd One Out ---- */
 .g-arc { width: min(var(--gw), 440px); height: var(--gh); display: flex; flex-direction: column; gap: 8px; padding-top: 4px; }
 .g-arc .ctal small { font-size: 12px; color: var(--muted); font-weight: 700; white-space: nowrap; }
-.arcres { text-align: center; font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-size: 20px; letter-spacing: .02em; min-height: 26px; }
+.ctal small, .ctal .pips { font-variant-numeric: tabular-nums; }
+.g-arc .ctal > small { min-width: 6.2em; text-align: right; } .wtal small { min-width: 3.6em; text-align: right; }   /* a tally's text is a set width: as its number grows, nothing beside it moves */
+.arcres { text-align: center; font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-size: 20px; letter-spacing: .02em; line-height: 1.05; }
 .arcres.ok { color: var(--green); } .arcres.no { color: var(--x); }
-.arcnote { text-align: center; color: var(--muted); font-size: 14px; margin: 0; min-height: 18px; }
+.arcnote { text-align: center; color: var(--muted); font-size: 14px; line-height: 1.3; }
+.arcres, .arcnote { margin: 0; flex: none; height: 40px; align-content: center; }   /* the status or result line under a table: always this tall (up to two lines), so swapping one for the other never moves the board */
 /* Bullseye: the bar, its middle zone, the sweeping marker (a dart) */
 .bulls { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 12px; min-height: 0; }
 .bfield { position: relative; margin: 0 auto; width: min(100%, 330px, calc((100dvh - 330px) * 100 / 120)); min-width: 200px; aspect-ratio: 100 / 120; border: 3px solid var(--ink); border-radius: 14px; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none;
@@ -1539,9 +1549,12 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .bvline.sweep { animation: bsweepx var(--p, 1300ms) var(--dl, 0ms) linear infinite alternate both; background: var(--x); box-shadow: 0 0 0 1px var(--ink); }
 .bhline.sweep { animation: bsweepy var(--p, 1560ms) var(--dl, 0ms) linear infinite alternate both; background: var(--x); box-shadow: 0 0 0 1px var(--ink); }
 .bvline.set, .bhline.set { background: var(--ink); opacity: .55; }
+.blayer { position: absolute; inset: 0; pointer-events: none; }
+.bvline.rep { animation: bsweepx var(--p, 1040ms) var(--t, 0ms) linear var(--it, 1) alternate both; background: var(--x); box-shadow: 0 0 0 1px var(--ink); }
+.bhline.rep { animation: bsweepy var(--p, 1250ms) var(--t, 0ms) linear var(--it, 1) alternate both; background: var(--x); box-shadow: 0 0 0 1px var(--ink); }
 @keyframes bsweepx { from { left: 0%; } to { left: 100%; } }
 @keyframes bsweepy { from { top: 0%; } to { top: 100%; } }
-.bdart { position: absolute; width: 18px; height: 46px; margin-left: -9px; margin-top: -44px; pointer-events: none; }
+.bdart { position: absolute; width: 18px; height: calc(18px * 66 / 26); margin-left: -9px; margin-top: calc(18px * -62 / 26); pointer-events: none; }   /* the drawing's own shape (26 x 66), its tip (13, 62) exactly on the spot */
 .bdart svg { width: 100%; height: 100%; display: block; }
 .bdart.fly svg { animation: dartfly .38s var(--t, 0ms) cubic-bezier(.3, .6, .4, 1) both; transform-origin: 50% 100%; }
 @keyframes dartfly { from { transform: translateY(140px) scale(2.2); opacity: 0; } 20% { opacity: 1; } to { transform: none; opacity: 1; } }
@@ -1595,6 +1608,19 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 @keyframes cupsink { to { transform: scale(.3); opacity: 0; } }
 .pball { position: absolute; width: 9%; aspect-ratio: 1; margin: -4.5% 0 0 -4.5%; border-radius: 50%; background: #fff; border: 2.5px solid var(--ink); box-shadow: 0 2px 0 var(--ink); }
 .pball.ready { cursor: grab; }
+.pfly { position: absolute; inset: 0; pointer-events: none; animation: pflight var(--d, 900ms) cubic-bezier(.3, .2, .6, 1) both; will-change: transform; }
+@keyframes pflight { from { transform: none; } to { transform: translate(var(--tx, 0%), var(--ty, 0%)); } }
+.parc { position: absolute; left: 50%; top: 92%; width: 9%; aspect-ratio: 1; margin: -4.5% 0 0 -4.5%; animation: parc var(--d, 900ms) ease-in-out both; will-change: transform; }
+@keyframes parc { 0%, 100% { transform: none; } 50% { transform: scale(1.7); } }
+.parc .pball { position: absolute; inset: 0; width: auto; margin: 0; animation: none; }
+.parc .pball.in { animation: ballin .35s var(--f, 900ms) both; }
+.parc .pball.off { animation: balloff .5s var(--f, 900ms) both; }
+.parc .pball.rim.off { animation: prim .4s var(--t, 900ms) both, balloff .5s var(--f, 900ms) both; }
+@keyframes prim { 25% { translate: -22% 0; } 75% { translate: 22% 0; } }
+.pball.launch { animation: plaunch .25s ease-out both; }   /* let go, online: the ball answers at once while the server works out the throw */
+@keyframes plaunch { 50% { transform: scale(1.18); } to { transform: scale(1.08); } }
+.ptarget { position: absolute; width: 13%; aspect-ratio: 1; margin: -6.5% 0 0 -6.5%; border-radius: 50%; border: 3px dashed rgba(255, 255, 255, .95); box-shadow: 0 0 0 2px rgba(22, 18, 16, .35); pointer-events: none; display: none; }   /* where the throw is heading as the finger moves */
+.ptarget.on { display: block; }
 .pball.fly { animation: var(--arc) var(--d, 900ms) cubic-bezier(.3, .2, .6, 1) both; }
 .pball.rim { animation: var(--arc) var(--d, 900ms) cubic-bezier(.3, .2, .6, 1) both, rimwobble .4s var(--t, 900ms) both; }
 @keyframes rimwobble { 0%, 100% { margin-left: -4.5%; } 25% { margin-left: -6.5%; } 75% { margin-left: -2.5%; } }
@@ -1602,7 +1628,7 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 @keyframes ballin { to { transform: scale(.2); opacity: 0; } }
 .pball.off { animation: var(--arc) var(--d, 900ms) cubic-bezier(.3, .2, .6, 1) both, balloff .5s var(--f, 900ms) both; }
 @keyframes balloff { to { opacity: 0; } }
-.paim { position: absolute; left: 50%; bottom: 10%; width: 4px; height: 0; margin-left: -2px; background: rgba(255, 255, 255, .7); border-radius: 2px; transform-origin: 50% 100%; pointer-events: none; }
+.paim { position: absolute; left: 50%; bottom: 8%; width: 4px; height: 0; margin-left: -2px; background: rgba(255, 255, 255, .85); border-radius: 2px; transform-origin: 50% 100%; pointer-events: none; }
 .pcups { display: inline-flex; gap: 3px; } .pcups i { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--ink); background: var(--paper); }
 .ctal.X .pcups i.on { background: var(--x); } .ctal.O .pcups i.on { background: var(--o); }
 /* Dash and Lane Rush: the two progress bars, the run on a canvas, the countdown over it */
@@ -1634,7 +1660,7 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .trun .tr.X i::after { background: var(--x); } .trun .tr.O i::after { background: var(--o); }
 /* Mini Golf, Pool and Bowling: the table on a canvas, letterboxed in its box */
 .phys { flex: 1; display: flex; flex-direction: column; min-height: 0; gap: 8px; }
-.phys .arcres, .phys .arcnote { margin: 0; min-height: 26px; line-height: 26px; flex: none; }   /* the line under the table keeps its height, so the table never jumps */
+.phys .arcres, .phys .arcnote { margin: 0; height: 26px; line-height: 26px; flex: none; }   /* the line under the table keeps its height, so the table never jumps */
 .pscene { position: relative; flex: 1; min-height: 160px; margin: 0 auto; width: 100%; border: 3px solid var(--ink); border-radius: 14px; overflow: hidden; background: #2f7a3a; touch-action: none; user-select: none; -webkit-user-select: none; }
 .pscene.pool { background: #7a4a22; } .pscene.bowling { background: #6b6f78; }
 .pscene.wait { display: grid; place-items: center; background: var(--panel-2); }
@@ -1711,8 +1737,8 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 /* Seating: ten tables, two coloured seats each; the customer walks in from the door */
 .seating { flex: 1; display: flex; flex-direction: column; gap: 8px; justify-content: center; min-height: 0; }
 .sdoor { display: flex; justify-content: center; flex: none; }
-.snext { display: inline-flex; align-items: center; gap: 6px; font-weight: 800; font-size: 14px; background: var(--paper); border: 3px solid var(--ink); border-radius: 12px; padding: 4px 10px; }
-.sgwrap { display: inline-grid; } .sgwrap > span { grid-area: 1 / 1; }
+.snext { display: inline-flex; align-items: center; gap: 6px; font-weight: 800; font-size: 14px; background: var(--paper); border: 3px solid var(--ink); border-radius: 12px; padding: 4px 10px; min-width: 15em; justify-content: flex-start; }
+.sgwrap, .snext .sgwrap { display: inline-grid; } .sgwrap > span { grid-area: 1 / 1; }
 .snext span { display: inline-flex; align-items: center; gap: 5px; }
 .sgdot { width: 16px; height: 16px; border-radius: 50%; border: 2.5px solid var(--ink); flex: none; }
 .sgo { animation: sgo .25s var(--t, 0ms) ease-in forwards; }
@@ -1939,7 +1965,7 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 @keyframes chosen { 0% { transform: scale(.94); } 30% { transform: scale(1.06); } 100% { transform: none; } }
 .busask.playing .big:not(.chosen) { opacity: .35; }
 .busask { display: flex; flex-direction: column; gap: 8px; flex: none; }
-.busask p { margin: 0; text-align: center; font-size: 16px; font-weight: 800; }
+.busask p { margin: 0; text-align: center; font-size: 20px; font-weight: 800; line-height: 1.15; height: 2.3em; align-content: center; }   /* near the buttons' size; always two lines' room, so a longer question moves nothing */
 .big.bus-red { background: #d6301e; color: var(--paper); }
 .big.bus-black { background: var(--ink); color: var(--paper); }
 .big.bus-up, .big.bus-in { background: var(--sky); color: var(--ink); }
@@ -1951,7 +1977,13 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .g-rl { width: min(var(--gw), 440px); height: var(--gh); display: flex; flex-direction: column; gap: 8px; padding-top: 4px; }
 .rltop { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; }
 /* the wheel: as big as the room left by the board below it allows, never wider than about two thirds of the width */
-.rlwrap { position: relative; width: clamp(96px, min(calc(var(--gh) - 230px), calc(var(--gw) * .62)), 270px); aspect-ratio: 200 / 208; }
+.rlwrap { position: relative; width: clamp(96px, min(calc(var(--gh) - 262px), calc(var(--gw) * .62)), 250px); aspect-ratio: 200 / 208; }
+.rlside { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.rlspins { display: grid; height: 26px; width: 100%; justify-items: center; } .rlspins > span { grid-area: 1 / 1; display: flex; gap: 4px; align-items: center; }   /* the last spins, under the wheel: the row before a spin and the one after it, in one place */
+.rlspins small { color: var(--muted); font-size: 12px; font-weight: 700; }
+.rlspins i.sp { flex: none; width: 24px; height: 24px; border-radius: 50%; border: 2.5px solid var(--ink); display: grid; place-items: center; font: 400 12px 'Luckiest Guy', sans-serif; font-style: normal; padding-top: 2px; background: var(--paper); }
+.rlspins i.sp.r { color: #d6301e; } .rlspins i.sp.b { color: var(--ink); } .rlspins i.sp.g { color: #2f8a3c; }
+.rlspins i.sp.hit.X { background: var(--x); color: #fff; box-shadow: 0 0 6px 2px var(--x); } .rlspins i.sp.hit.O { background: var(--o); color: var(--ink); box-shadow: 0 0 6px 2px var(--o); }
 .rlbig { position: absolute; left: 50%; top: 52%; translate: -50% -50%; padding: 6px 14px 2px; border: 3.5px solid var(--ink); border-radius: 16px 12px 18px 10px; box-shadow: 0 4px 0 var(--ink); font: 400 clamp(20px, 7vw, 30px)/1.1 'Luckiest Guy', sans-serif; white-space: nowrap; }
 .rlbig.hit { background: var(--o); color: var(--ink); }
 .rlbig.zero { background: #2f8a3c; color: #fff; }
@@ -1974,7 +2006,7 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 @keyframes rlwheel { from { transform: rotate(calc(var(--w) - 540deg)); } to { transform: rotate(var(--w)); } }
 @keyframes rlball { from { transform: rotate(1080deg); } to { transform: rotate(0); } }
 @keyframes rldrop { 0%, 76% { transform: translateY(-21px); } 86% { transform: translateY(-3px); } 92% { transform: translateY(-9px); } 100% { transform: none; } }
-.rlres { margin: 0; display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--muted); }
+.rlres { margin: 0; display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--muted); height: 36px; flex: none; }
 .rlres b { color: var(--ink); }
 .rlnum { flex: none; min-width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; color: #fff; font: 400 16px 'Luckiest Guy', sans-serif; padding-top: 3px; border: 3px solid var(--ink); }
 .rlnum.r { background: #d6301e; } .rlnum.b { background: var(--ink); } .rlnum.g { background: #2f8a3c; }
@@ -2445,7 +2477,7 @@ function graft(oldP, newP, pairs) {
   }
 }
 // How long the move's animation takes. The result toast or card waits this long, and so does any tap.
-function animMs(f) { return REDUCED ? 0 : playMs(f, hexLen(f)) - (f.type === 'bus' ? BUST.pre - busPre(f) : 0); }   // (your own Ride the Bus guess skips the moment it is shown)
+function animMs(f) { return REDUCED ? 0 : playMs(f, hexLen(f)) - (f.type === 'bus' ? BUST.pre - busPre(f) : 0) - (f.type === 'bullseye' && f.bull ? bullsAim(f.bull).fly - bullsPre(f) : 0); }   // (your own Ride the Bus guess skips the moment it is shown)
 function hexLen(f) { const sq = state.squares[f.square]; return sq && sq.mini.winCells ? sq.mini.winCells.length : 4; }
 // The JS-driven bits of the animations: numbers that count up or down, and the candy token's hops.
 function animate() {
@@ -2995,6 +3027,7 @@ function busQuestion(kept) {
 }
 // Someone else's guess (the computer's, the other phone's, or a timed-out one) shows first: the chosen
 // answer lights up in their colour for a moment (BUST.pre), then the card turns. Your own goes straight on.
+function bullsPre(f) { return f && f.type === 'bullseye' && f.bull && !REDUCED && (f.timeout || (state.online ? f.by !== state.online.me : cpuPlays(f.by))) ? bullsAim(f.bull).fly : 0; }   // someone else's throw: their aim plays first
 function busPre(f) { return f && f.type === 'bus' && (f.timeout || (state.online ? f.by !== state.online.me : cpuPlays(f.by))) ? BUST.pre : 0; }
 // The moments of a guess, ms into the move: the card leaves the deck, turns over (face up at `face`), the
 // tick or cross shows (`mark`), and only then, if right, the card flies to its slot (`fly`), landing at `land`.
@@ -3049,9 +3082,9 @@ function busTable(mini, a, o) {
 function busFly() {
   const el = app.querySelector('.busdrawn[data-fly]');
   if (!el) return;
-  const to = app.querySelector(`.busslot[data-slot="${el.dataset.fly}"]`), card = el.querySelector('.plc');
-  if (!to || !card) return;
-  const a = card.getBoundingClientRect(), z = to.getBoundingClientRect();
+  const to = app.querySelector(`.busslot[data-slot="${el.dataset.fly}"]`), spot = el.parentElement;
+  if (!to || !spot) return;
+  const a = spot.getBoundingClientRect(), z = to.getBoundingClientRect();   // from where the card rests (its spot, which never moves), not the card itself: mid-slide or mid-flight it would be somewhere else
   if (!a.width || !z.width) return;
   el.style.setProperty('--fx', `${Math.round(z.left + z.width / 2 - (a.left + a.width / 2))}px`);
   el.style.setProperty('--fy', `${Math.round(z.top + z.height / 2 - (a.top + a.height / 2))}px`);
@@ -3100,7 +3133,13 @@ function rlTable(mini, a, o) {
     <div class="cbtns one"><button class="big ${turn} rlspin" data-act="move" ${mv(bet || [])}${!bet || o.locked ? ' disabled' : ''}>Spin</button></div>`;
   // Once the ball lands: HIT!, MISS or GREEN 0!, big on the wheel, held a second before the game moves on.
   const big = b ? `<b ${lateAt('rlbig ' + (b.hit ? (b.bet === 'zero' ? 'zero' : 'hit') : 'miss'), tEnd)} role="status">${b.hit ? (b.bet === 'zero' ? 'Green 0!' : 'Hit!') : 'Miss'}</b>` : '';
-  return `<div class="g-rl"><div class="rltop"><div class="ctals col">${hits('X')}${hits('O')}${res}</div><div class="rlwrap">${rlWheel(n, !!b)}${big}</div></div>${board}</div>`;
+  // Under the wheel: the recent spins, as on the miniature (a hit in the spinner's colour, a miss plain). While
+  // a spin plays, the row before it stays; the new one takes its place as the ball lands.
+  const chips = list => (list.length ? list.map(x => `<i class="sp ${x.n === 0 ? 'g' : rlRed(x.n) ? 'r' : 'b'}${x.hit ? ' hit ' + (x.by || '') : ''}" title="${x.n}${x.hit ? ': a hit' : ''}">${x.n}</i>`).join('') : '<small>No spins yet</small>');
+  const all = (mini.spins || []).map(x => (typeof x === 'number' ? { n: x, hit: false } : x)).filter(x => x && Number.isInteger(x.n));
+  const spins = b && !REDUCED ? `<span class="tu" style="--u:${tEnd}ms">${chips(all.slice(0, -1))}</span><span class="tf" style="--f:${tEnd}ms">${chips(all)}</span>` : `<span>${chips(all)}</span>`;
+  const hist = `<div class="rlspins" aria-label="Recent spins: ${all.map(x => x.n + (x.hit ? ' (hit)' : '')).join(', ') || 'none'}">${spins}</div>`;
+  return `<div class="g-rl"><div class="rltop"><div class="ctals col">${hits('X')}${hits('O')}${res}</div><div class="rlside"><div class="rlwrap">${rlWheel(n, !!b)}${big}</div>${hist}</div></div>${board}</div>`;
 }
 // ---------- the arcade games ----------
 const DART = '<svg viewBox="0 0 26 66" aria-hidden="true"><path d="M13 2v40" stroke="var(--ink)" stroke-width="4" stroke-linecap="round"/><path d="M13 62l-5-14h10z" fill="var(--ink)"/><path d="M6 4h14l-7 14z" fill="var(--x)" stroke="var(--ink)" stroke-width="2"/></svg>';
@@ -3116,7 +3155,8 @@ let bullDraft = null;                                          // { sq, p, x, at
 const BOARD_SVG = (bull, board) => `<svg viewBox="-50 -50 100 100" aria-hidden="true"><circle r="48" class="bring"/>${Array.from({ length: 12 }, (_, k) => { const a0 = (k / 12) * Math.PI * 2, a1 = ((k + 1) / 12) * Math.PI * 2, r = 44; return `<path d="M0 0L${(Math.cos(a0) * r).toFixed(2)} ${(Math.sin(a0) * r).toFixed(2)}A${r} ${r} 0 0 1 ${(Math.cos(a1) * r).toFixed(2)} ${(Math.sin(a1) * r).toFixed(2)}Z" class="${k % 2 ? 'bsa' : 'bsb'}"/>`; }).join('')}<circle r="${(48 * Math.max(0.08, bull / board) + 3).toFixed(2)}" class="bbulo"/><circle r="${(48 * Math.max(0.08, bull / board)).toFixed(2)}" class="bbul"/></svg>`;
 function bullsTable(mini, a, o) {
   const b = a && a.bull ? a.bull : null, l = mini.last, turn = o.turn, cfg = mini.cfg || BULL_DEFAULTS, B = BULLS;
-  const tEnd = REDUCED ? 0 : BULLT.fly;
+  const pre = b ? bullsPre(a) : 0, A = pre ? bullsAim(b) : null;   // someone else's throw: their two lines sweep and stop first, as their screen showed it
+  const tEnd = REDUCED ? 0 : pre + BULLT.fly;
   const tal = p => arcTally(p, o, pips(p, Math.min(B.goal, mini.pts[p]), B.goal, !!(b && b.pts && a.by === p), tEnd));   // the points as five pips
   const shown = b || (o.done && l ? l : null);                 // a throw on show: the board where it was, the lines and the dart where they stopped
   const live = !o.view && !b && !o.locked;
@@ -3127,7 +3167,14 @@ function bullsTable(mini, a, o) {
   const board = `<div class="bdboard${slide ? ' slide' : ''}${b && b.pts ? ' hit' + b.pts : ''}" style="left:${(pos[0] / B.w * 100).toFixed(2)}%;top:${(pos[1] / B.h * 100).toFixed(2)}%;width:${dia.toFixed(2)}%${slide};--t:${tEnd}ms"${slide ? fxAttr(fx.enter.at) : ''}>${BOARD_SVG(cfg.bull, cfg.board)}</div>`;
   const per = Math.round(bullsPeriod(cfg, mini.speed[turn] || 1)), perY = Math.round(per * B.h / B.w), delay = slide ? BULLT.slide : 0;
   let lines = '';
-  if (shown) {
+  if (shown && A) {                                              // the aim replayed: each line sweeps from its edge and stops at its spot, then the dart
+    const X = (shown.x * 100).toFixed(2) + '%', Y = (shown.y * 100).toFixed(2) + '%';
+    lines = `<span class="blayer tu" style="--u:${A.t1}ms"><i class="bvline rep" style="--p:${A.per}ms;--it:${A.vx.it};--t:0ms"></i></span>`
+      + `<span class="blayer tf" style="--f:${A.t1}ms"><i class="bvline set" style="left:${X}"></i></span>`
+      + `<span class="blayer tf" style="--f:${A.h0}ms"><span class="blayer tu" style="--u:${A.t2}ms"><i class="bhline rep" style="--p:${A.perY}ms;--it:${A.vy.it};--t:${A.h0}ms"></i></span></span>`
+      + `<span class="blayer tf" style="--f:${A.t2}ms"><i class="bhline set" style="top:${Y}"></i></span>`
+      + `<div class="bdart fly" style="left:${X};top:${Y};--t:${A.fly}ms">${DART}</div>`;
+  } else if (shown) {
     lines = `<i class="bvline set" style="left:${(shown.x * 100).toFixed(2)}%"></i><i class="bhline set" style="top:${(shown.y * 100).toFixed(2)}%"></i>`
       + `<div class="bdart${b ? ' fly' : ''}" style="left:${(shown.x * 100).toFixed(2)}%;top:${(shown.y * 100).toFixed(2)}%;--t:0ms">${DART}</div>`;
   } else if (live) {
@@ -3143,7 +3190,8 @@ function bullsTable(mini, a, o) {
     : o.view ? `<p class="arcnote">${l ? `<b class="${l.by}">${N(l.by)}</b>'s last throw: ${say(l.pts)}` : ''}</p>`
     : live ? `<p class="arcnote">${step === 1 ? 'Tap to stop the sideways line' : 'Now tap to stop the up-down line'}</p>`
     : `<p class="arcnote">Waiting for <b class="${turn}">${N(turn)}</b>…</p>`;
-  const btn = o.view ? '' : `<div class="cbtns one"><button class="big ${turn}" data-act="bulls"${o.locked || !live ? ' disabled' : ''}>${step === 2 ? 'Throw!' : 'Stop'}</button></div>`;
+  const label = A ? `<span class="bswap"><span class="tu" style="--u:${A.t1}ms">Stop</span><span class="tf" style="--f:${A.t1}ms">Throw!</span></span>` : step === 2 ? 'Throw!' : 'Stop';   // someone else's throw: the button as theirs read
+  const btn = o.view ? '' : `<div class="cbtns one"><button class="big ${b ? b && a.by : turn}" data-act="bulls"${o.locked || !live ? ' disabled' : ''}>${label}</button></div>`;
   return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="bulls">${field}${res}</div>${btn}</div>`;
 }
 // Where a sweeping line is this instant, 0 to 1: its animation's time (from its event, past the delay),
@@ -3250,7 +3298,7 @@ function echoTable(mini, a, o) {
   const note = mine ? `<p class="arcnote"><span class="tu" style="--u:${playEnd}ms">Watch the pattern… (${seq.length} steps)</span><span class="tf" style="--f:${playEnd}ms">Your turn: tap it back</span></p>`
     : e ? '<p class="arcnote"></p>' : o.view ? `<p class="arcnote">Patterns beaten: X ${mini.level.X}, O ${mini.level.O}</p>` : `<p class="arcnote"><b class="${turn}">${N(turn)}</b> is on pattern ${lvl + 1} (${ECHO.lengths[lvl]} steps)</p>`;
   const res = e ? `<p ${lateAt('arcres ' + (e.pass ? 'ok' : 'no'), 0)} role="status">${e.pass ? `Pattern ${e.level + 1} beaten!` : `Slipped at step ${e.failAt + 1} of ${e.len}`}</p>` : l && !mine ? `<p class="arcres ${l.pass ? 'ok' : 'no'}">${l.pass ? `<b class="${l.by}">${N(l.by)}</b> beat pattern ${l.level + 1}` : `<b class="${l.by}">${N(l.by)}</b> slipped at step ${l.failAt + 1}`}</p>` : '<p class="arcres"></p>';
-  const again = mine ? `<div class="cbtns one"><button class="big" data-act="echo-again">Watch again</button></div>` : '';
+  const again = o.view ? '' : `<div class="cbtns one${mine ? '' : ' hold'}"><button class="big" data-act="echo-again"${mine ? '' : ' disabled tabindex="-1" aria-hidden="true"'}>Watch again</button></div>`;   // the row stays (hidden) so the pads never move
   return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="echo">${note}${pads}${steps}${res}</div>${again}</div>`;
 }
 // Plinko: the slots to drop from, the pegs, the bins (WIN marked); the chip bounces peg to peg along the
@@ -3318,13 +3366,11 @@ function pongTable(mini, a, o) {
   const cupEls = PONG.cups.map(([cx, cy], k) => `<div class="pcup ${rack}${up[k] ? '' : ' gone'}${g && g.sunk && g.cup === k ? ' sink' : ''}" style="left:${px(cx)}%;top:${py(cy)}%;--t:${T}ms"></div>`).join('');
   let ball = '', style = '';
   const mine = !o.view && !g && !o.locked;
-  if (g) {
-    const name = `pg${String(a.at || a.square)}${Math.round(g.x * 1000)}${Math.round(g.y * 1000)}`;
+  if (g) {                                                      // the flight: transforms only (smooth at 60 fps): a layer the size of the table moves the ball across it, the ball swells and shrinks for the arc
     const lx = Math.max(-0.48, Math.min(0.48, g.x)), ly = Math.max(0.05, Math.min(1.08, g.y));
-    style = `<style>@keyframes ${name} { 0% { left: 50%; top: 92%; transform: scale(1); } 50% { transform: scale(1.7); } 100% { left: ${px(lx)}%; top: ${py(ly)}%; transform: scale(1); } }</style>`;
-    ball = `<div class="pball ${g.sunk ? 'in' : g.rim ? 'rim off' : 'off'}" style="--arc:${name};--d:${T}ms;--t:${T}ms;--f:${g.rim ? T + 400 : T}ms"></div>`;
+    ball = `<div class="pfly" style="--tx:${(lx * 100).toFixed(2)}%;--ty:${((0.08 - ly) * 100).toFixed(2)}%;--d:${T}ms"><div class="parc"><div class="pball ${g.sunk ? 'in' : g.rim ? 'rim off' : 'off'}" style="--t:${T}ms;--f:${g.rim ? T + 400 : T}ms"></div></div></div>`;
   } else if (!o.view) ball = `<div class="pball${mine ? ' ready' : ''}" style="left:50%;top:92%" data-pong="ball"></div>`;
-  const table = `<div class="ptable" data-pong="table" aria-label="The table">${style}${cupEls}${ball}<div class="paim" data-pong="aim"></div></div>`;
+  const table = `<div class="ptable" data-pong="table" aria-label="The table">${style}${cupEls}${ball}<div class="paim" data-pong="aim"></div><div class="ptarget" data-pong="target"></div></div>`;
   const res = g ? `<p ${lateAt('arcres ' + (g.sunk ? 'ok' : 'no'), T + (g.rim ? 400 : 0))} role="status">${g.sunk ? (g.rim ? 'Off the rim and in!' : 'Sunk!') : g.rim ? 'Rimmed out' : 'Miss'}</p>` : l && !mine ? `<p class="arcres ${l.sunk ? 'ok' : 'no'}"><b class="${l.by}">${N(l.by)}</b> ${l.sunk ? 'sank a cup' : l.rim ? 'rimmed out' : 'missed'}</p>` : `<p class="arcnote">${mine ? 'Swipe up from the ball: direction aims, speed sets the distance' : o.view ? '' : `Waiting for <b class="${turn}">${N(turn)}</b>…`}</p>`;
   return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="pong">${table}${res}</div></div>`;
 }
@@ -3399,6 +3445,7 @@ function loadPhysics() {
     if (shown && !state.flash && !state.spot && state.stamp == null && presentingSeq == null) render();
   }).catch(() => { physLoading = false; });                    // offline with no copy kept: the three are not dealt this visit
 }
+const POOL_RAIL = 6;                                             // the pool table's rail, in table units, the same on all four sides
 const PHYS_S = t => PHYSICS.lib[t === 'golf' ? 'GOLF' : t === 'pool' ? 'POOL' : 'BOWL'];
 const PHYS_PULL = 0.42;                                        // a full-power pull: this much of the table's height on the screen
 // The drag under way on this phone: the square, the player, the pointer, where it went down and where it is.
@@ -3492,8 +3539,8 @@ function physDrawNow(cv, now) {
   const dr = physDraft && physDraft.sq === state.zoom && !ph ? physDraft : null;
   const { c, W, H } = runCanvas(cv);
   if (W < 2 || H < 2) return false;
-  const S = PHYS_S(mini.type), k = Math.min(W / S.w, H / S.h), ox = (W - S.w * k) / 2, oy = (H - S.h * k) / 2;
-  const g = { c, W, H, k, X: x => ox + x * k, Y: y => oy + y * k };
+  const S = PHYS_S(mini.type), M = mini.type === 'pool' ? POOL_RAIL : 0, k = Math.min(W / (S.w + 2 * M), H / (S.h + 2 * M)), ox = (W - S.w * k) / 2, oy = (H - S.h * k) / 2;   // the pool table keeps a rail of one width all round
+  const g = { c, W, H, k, M, X: x => ox + x * k, Y: y => oy + y * k };
   if (mini.type === 'golf') drawGolf(g, mini, pos); else if (mini.type === 'pool') drawPool(g, mini, pos); else drawBowl(g, mini, pos);
   if (dr) drawAim(g, mini, pos, dr);
   return !!(dr || (fr && !fr.done));
@@ -3530,13 +3577,17 @@ function drawGolf(g, mini, pos) {
   }
   const cup = hole.cup;                                                                   // the cup, with its flag
   c.beginPath(); c.arc(g.X(cup[0]), g.Y(cup[1]), S.cupR * g.k, 0, Math.PI * 2); c.fillStyle = '#17331c'; c.fill(); c.lineWidth = 2; c.strokeStyle = P.ink; c.stroke();
-  c.beginPath(); c.moveTo(g.X(cup[0]), g.Y(cup[1])); c.lineTo(g.X(cup[0] + 7), g.Y(cup[1] - 13)); c.lineWidth = 2.5; c.strokeStyle = '#f3f0e6'; c.stroke();
-  c.beginPath(); c.moveTo(g.X(cup[0] + 7), g.Y(cup[1] - 13)); c.lineTo(g.X(cup[0] + 14), g.Y(cup[1] - 10)); c.lineTo(g.X(cup[0] + 7), g.Y(cup[1] - 7)); c.closePath(); outlined(c, P.X, P.ink, 2);
+  const fx = g.X(cup[0]), fy = g.Y(cup[1]), ph = 15 * g.k;                              // the flag: a straight pole up from the cup, the flag on its top
+  c.lineCap = 'round'; c.beginPath(); c.moveTo(fx, fy); c.lineTo(fx, fy - ph); c.lineWidth = 4.5; c.strokeStyle = P.ink; c.stroke();
+  c.lineWidth = 2; c.strokeStyle = '#f3f0e6'; c.stroke();
+  c.beginPath(); c.moveTo(fx + 1, fy - ph); c.lineTo(fx + 9 * g.k, fy - ph + 3.2 * g.k); c.lineTo(fx + 1, fy - ph + 6.4 * g.k); c.closePath(); outlined(c, P.X, P.ink, 2);
   for (const p of ['X', 'O']) if (pos[p]) physBall(g, pos[p][0], pos[p][1], S.ballR, p === 'X' ? P.X : P.O, p, P.ink);
 }
 function drawPool(g, mini, pos) {
   const c = g.c, P = runColours(), L = PHYSICS.lib, S = L.POOL;
-  c.fillStyle = '#7a4a22'; c.fillRect(0, 0, g.W, g.H);                                   // the rail
+  c.fillStyle = '#4a2b12'; c.fillRect(0, 0, g.W, g.H);                                   // round the table
+  const M = g.M || 0;                                                                     // the rail: one width on every side, outlined like the rest of the game
+  rr(c, g.X(-M), g.Y(-M), (S.w + 2 * M) * g.k, (S.h + 2 * M) * g.k, M * g.k * 0.9); outlined(c, '#7a4a22', P.ink, 2.5);
   c.fillStyle = '#2d8a4e'; c.fillRect(g.X(0), g.Y(0), S.w * g.k, S.h * g.k);           // the cloth
   c.strokeStyle = 'rgba(0,0,0,.25)'; c.lineWidth = 2; c.strokeRect(g.X(0), g.Y(0), S.w * g.k, S.h * g.k);
   c.fillStyle = 'rgba(255,255,255,.35)';                                                  // the spots
@@ -3819,12 +3870,16 @@ function roadTable(mini, a, o) {
   const tal = p => arcTally(p, o, `<small>road ${best[p].len}</small>`);
   const line = (k, cls, extra = '') => { const [p, q] = ROAD_SEGS[k].map(ROAD_PT); return `<line class="${cls}" x1="${p[0]}" y1="${p[1]}" x2="${q[0]}" y2="${q[1]}"${extra}/>`; };
   const glow = ['X', 'O'].map(p => best[p].segs.map(k => line(k, 'rglow ' + p, rd ? ` style="--t:${PLACE_MS.mark}ms"` : '')).join('')).join('');
-  const lines = segs.map((w, k) => {
-    if (!w) return line(k, 'rseg open');
-    if (w === 'B') { const [p, q] = ROAD_SEGS[k].map(ROAD_PT), mx = (p[0] + q[0]) / 2, my = (p[1] + q[1]) / 2, drop = rd && rd.block === k; return `<g class="rblk${drop ? ' drop' : ''}"${drop ? ` style="--t:${PLACE_MS.mark}ms"` : ''}>${line(k, 'rseg B')}<g transform="translate(${mx} ${my})"><path class="rx" d="M-3 -3L3 3M3 -3L-3 3"/></g></g>`; }
+  // In layers, whatever the order of the lines: open ones at the bottom, then the blocked (grey) ones, then the
+  // roads' outlines, then the roads themselves, so grey never covers red or yellow, even where they meet.
+  const open = [], blocked = [], cases = [], roads = [];
+  segs.forEach((w, k) => {
+    if (!w) { open.push(line(k, 'rseg open')); return; }
+    if (w === 'B') { const [p, q] = ROAD_SEGS[k].map(ROAD_PT), mx = (p[0] + q[0]) / 2, my = (p[1] + q[1]) / 2, drop = rd && rd.block === k; blocked.push(`<g class="rblk${drop ? ' drop' : ''}"${drop ? ` style="--t:${PLACE_MS.mark}ms"` : ''}>${line(k, 'rseg B')}<g transform="translate(${mx} ${my})"><path class="rx" d="M-3 -3L3 3M3 -3L-3 3"/></g></g>`); return; }
     const dr = rd && rd.seg === k;
-    return line(k, `rcase${dr ? ' draw' : ''}`, dr ? ' pathLength="1"' : '') + line(k, `rseg ${w}${dr ? ' draw' : ''}`, dr ? ' pathLength="1"' : '');
-  }).join('');
+    cases.push(line(k, `rcase${dr ? ' draw' : ''}`, dr ? ' pathLength="1"' : '')); roads.push(line(k, `rseg ${w}${dr ? ' draw' : ''}`, dr ? ' pathLength="1"' : ''));
+  });
+  const lines = open.join('') + blocked.join('') + cases.join('') + roads.join('');
   const hits = o.locked ? '' : segs.map((w, k) => (w ? '' : line(k, 'rhit', ` data-act="move" ${mv(k)} role="button" tabindex="0" aria-label="Line ${k + 1}"`))).join('');
   const dots = Array.from({ length: 16 }, (_, v) => { const [x, y] = ROAD_PT(v); return `<circle class="rdot" cx="${x}" cy="${y}" r="2.6"/>`; }).join('');
   const res = rd ? `<p ${lateAt('arcres ok', PLACE_MS.mark)} role="status">${N(a.by)}'s road: ${best[a.by].len}</p>`
@@ -4010,7 +4065,7 @@ function runTable(mini, a, o) {
   const count = live && live.phase === 'count' ? `<div class="rcount" aria-live="assertive">${live.count > 0 ? live.count : 'GO!'}</div>` : '';
   const hud = `<div class="rhud" data-run="hud">${fmtM(live ? live.sim.d : r ? r.to : mini.dist[who])} m</div>`;
   const scene = `<div class="rscene ${type}" data-run="scene" aria-label="${TX.scene}"><canvas data-run="cv"></canvas>${hud}${count}${hint}</div>`;
-  const btn = mine && !live ? `<div class="cbtns one"><button class="big ${turn}" data-act="run-go">${TX.go}${mini.dist[turn] > 0 ? ` on from ${fmtM(mini.dist[turn])} m` : ''}</button></div>` : '';
+  const btn = o.view ? '' : `<div class="cbtns one${mine && !live ? '' : ' hold'}"><button class="big ${turn}" data-act="run-go"${mine && !live ? '' : ' disabled tabindex="-1" aria-hidden="true"'}>${TX.go}${mini.dist[turn] > 0 ? ` on from ${fmtM(mini.dist[turn])} m` : ''}</button></div>`;   // always there (hidden while it can't be used), so the course never moves
   return `<div class="g-arc"><div class="runner"><div class="rprogs">${bar('X')}${bar('O')}</div>${scene}${res}</div>${btn}</div>`;
 }
 // Run: the count starts; the run itself starts when it ends.
@@ -4023,7 +4078,7 @@ function runGo() {
   render();
   runDraft.raf = requestAnimationFrame(runFrame);
 }
-function runStop() { if (!runDraft) return; cancelAnimationFrame(runDraft.raf); runDraft = null; }
+function runStop() { if (!runDraft) return; runRotor(false); cancelAnimationFrame(runDraft.raf); runDraft = null; }
 function runFrame(now) {
   const rd = runDraft;
   if (!rd) return;
@@ -4046,7 +4101,7 @@ function runFrame(now) {
     }
     if (rd.sim.t >= 1.6 && !rd.hintGone) { rd.hintGone = true; const h = app.querySelector('.rhint'); if (h) h.remove(); }
     const left = clockLeft();
-    if (rd.sim.crash) { rd.phase = 'crash'; rd.at = now; SND.play('crash'); }
+    if (rd.sim.crash) { rd.phase = 'crash'; rd.at = now; runRotor(false); SND.play('crash'); }
     else if (rd.sim.done) { rd.phase = 'finish'; rd.at = now; SND.play('sparkle'); }
     else if (left != null && left <= 0) { runEnd(true); return; }                 // the turn's time ran out mid-run: it ends here, the distance saved
   } else if (now - rd.at >= (rd.phase === 'crash' ? 700 : 500)) { runEnd(false); return; }   // the tumble, the spin-out or the flourish has played
@@ -4058,7 +4113,7 @@ function runFrame(now) {
 function runEnd(out) {
   const rd = runDraft;
   if (!rd) return;
-  cancelAnimationFrame(rd.raf); runDraft = null;
+  runRotor(false); cancelAnimationFrame(rd.raf); runDraft = null;
   const res = runResult(rd.sim, out);
   runLive = { sq: rd.sq, p: rd.p, to: res.dist, at: performance.now() };
   attemptMove(res);
@@ -4072,22 +4127,31 @@ function runPaint() {
   if (!sq || !RUN_TYPES.includes(sq.mini.type)) return;
   if (runDraft && runDraft.sq === state.zoom) { runFrameDraw(cv, runDraft.sim, runDraft, performance.now()); return; }
   const f = state.flash, r = f && f.run ? f.run : null, p = r ? f.by : sq.owner || state.turn;
-  const sim = Object.assign(runStart(sq.mini, p), { p, d: r ? r.to : sq.mini.dist[p] });
-  sim.course = runCourse(sq.mini, p);                         // the whole course ahead (the grace stretch is a run's own)
-  if (r && !r.done) { sim.crash = { at: r.to, ob: null }; sim.grace = 0; if (sim.type === 'flap') sim.y = FLAP.box.h / 2; }   // just crashed: down on the ground (the cave as it was)
+  const sim = Object.assign(runStart(sq.mini, p), { p, d: r ? r.to : sq.mini.dist[p] });   // at rest: the course as Start would show it (the stretch ahead clear), no crash
+  if (r && !r.done) { sim.course = runCourse(sq.mini, p); sim.crash = { at: r.to, ob: null }; sim.grace = 0; if (sim.type === 'flap') sim.y = FLAP.box.h / 2; }   // the crash just made, while its result shows: down on the ground (the course as it was)
   if ((r && r.done) || sim.d >= sq.mini.cfg.target) sim.done = true;
   runFrameDraw(cv, sim, null, performance.now());
 }
 // ---- the inputs: on the scene, from pointerdown (no waiting for a click) ----
+// Anywhere on the mini-game screen counts (above, on or below the course), except the header's buttons.
+const runInputAt = t => !!(t && t.closest && t.closest('main.scr.mini') && !t.closest('.bar, .flash.pause'));
 app.addEventListener('pointerdown', e => {
-  const scene = e.target.closest && e.target.closest('[data-run="scene"]');
   const rd = runDraft;
-  if (!scene || !rd || rd.phase !== 'run') return;
+  if (!rd || rd.phase !== 'run' || !runInputAt(e.target)) return;
+  const scene = app.querySelector('[data-run="scene"]');
   e.preventDefault();
   rd.pointer = e.pointerId; rd.x0 = e.clientX; rd.swiped = false; rd.scene = scene;
-  if (rd.sim.type !== 'lane' && runJump(rd.sim)) SND.play(RUN_PRESS[rd.sim.type]);   // a jump, a flap, the chopper climbing
-  try { scene.setPointerCapture(e.pointerId); } catch (err) { /* no capture: the move and up still reach the page */ }
+  if (rd.sim.type !== 'lane' && runJump(rd.sim)) { if (rd.sim.type === 'chopper') runRotor(true); else SND.play(RUN_PRESS[rd.sim.type]); }   // a jump, a flap; the chopper's rotor runs while held
+  try { (e.target.closest('main.scr.mini') || scene).setPointerCapture(e.pointerId); } catch (err) { /* no capture: the move and up still reach the page */ }
 });
+// While a run is on (and its count), touches on the screen do nothing else: no selection, magnifier or callout.
+['touchstart', 'touchmove', 'touchend'].forEach(ev => app.addEventListener(ev, e => { if (runDraft && runInputAt(e.target) && e.cancelable) e.preventDefault(); }, { passive: false }));
+// The chopper's rotor: one sound looping for as long as the press is held.
+function runRotor(on) {
+  const rd = runDraft;
+  if (on) { if (rd && !rd.rotor) rd.rotor = SND.loop('rotor'); return; }
+  if (rd && rd.rotor) { rd.rotor.stop(); rd.rotor = null; }
+}
 app.addEventListener('pointermove', e => {
   const rd = runDraft;
   if (!rd || rd.pointer !== e.pointerId || rd.sim.type !== 'lane' || rd.swiped || rd.phase !== 'run') return;
@@ -4098,20 +4162,20 @@ function runPointerUp(e) {
   const rd = runDraft;
   if (!rd || rd.pointer !== e.pointerId) return;
   rd.pointer = null;
-  if (rd.sim.type !== 'lane') { runRelease(rd.sim); return; }
+  if (rd.sim.type !== 'lane') { runRelease(rd.sim); runRotor(false); return; }
   if (rd.phase !== 'run' || rd.swiped || !rd.scene) return;
   const box = rd.scene.getBoundingClientRect();                 // a tap: the side of the road it is on
   if (runLane(rd.sim, e.clientX < box.left + box.width / 2 ? -1 : 1)) SND.play('skid');
 }
 app.addEventListener('pointerup', runPointerUp);
-app.addEventListener('pointercancel', e => { const rd = runDraft; if (rd && rd.pointer === e.pointerId) { rd.pointer = null; if (rd.sim.type !== 'lane') runRelease(rd.sim); } });
+app.addEventListener('pointercancel', e => { const rd = runDraft; if (rd && rd.pointer === e.pointerId) { rd.pointer = null; if (rd.sim.type !== 'lane') { runRelease(rd.sim); runRotor(false); } } });
 document.addEventListener('keydown', e => {                      // a keyboard: space or up jumps, the arrows change lanes
   const rd = runDraft;
   if (!rd || rd.phase !== 'run' || e.repeat) return;
-  if (rd.sim.type !== 'lane' && (e.key === ' ' || e.key === 'ArrowUp')) { e.preventDefault(); if (runJump(rd.sim)) SND.play(RUN_PRESS[rd.sim.type]); }
+  if (rd.sim.type !== 'lane' && (e.key === ' ' || e.key === 'ArrowUp')) { e.preventDefault(); if (runJump(rd.sim)) { if (rd.sim.type === 'chopper') runRotor(true); else SND.play(RUN_PRESS[rd.sim.type]); } }
   if (rd.sim.type === 'lane' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) { e.preventDefault(); if (runLane(rd.sim, e.key === 'ArrowLeft' ? -1 : 1)) SND.play('skid'); }
 });
-document.addEventListener('keyup', e => { const rd = runDraft; if (rd && rd.sim.type !== 'lane' && (e.key === ' ' || e.key === 'ArrowUp')) runRelease(rd.sim); });
+document.addEventListener('keyup', e => { const rd = runDraft; if (rd && rd.sim.type !== 'lane' && (e.key === ' ' || e.key === 'ArrowUp')) { runRelease(rd.sim); runRotor(false); } });
 
 // ---- the drawing: the game's own look (bold ink outlines, flat paper colours), nothing borrowed ----
 let runPal = null;
@@ -4137,7 +4201,7 @@ function runFrameDraw(cv, sim, rd, now) {
 const rr = (c, x, y, w, h, r) => { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); };
 const outlined = (c, fill, ink, w) => { c.fillStyle = fill; c.fill(); c.lineWidth = w || 2.5; c.strokeStyle = ink; c.stroke(); };
 function drawDash(c, W, H, sim, rd, now) {
-  const P = runColours(), S = H / 4.6, gy = H * 0.8, rx = W * 0.26, toX = m => rx + (m - sim.d) * S;
+  const P = runColours(), S = H / 7.5, gy = H * 0.8, rx = W * 0.18, toX = m => rx + (m - sim.d) * S;   // zoomed out: more of the course ahead in view
   c.fillStyle = '#cfe9f7'; c.fillRect(0, 0, W, H);
   // clouds and hills drift by at a fraction of the speed; the ground at full speed
   c.fillStyle = '#ffffff';
@@ -4183,8 +4247,10 @@ function drawRunner(c, rx, gy, S, sim, rd, now, P) {
   const phase = sim.d * 2.4, onGround = !sim.air && !sim.crash, legA = onGround ? Math.sin(phase) : 0.5, legB = onGround ? Math.sin(phase + Math.PI) : 0.5;
   c.strokeStyle = P.ink; c.lineWidth = 3.5; c.lineCap = 'round';
   c.beginPath(); c.moveTo(-R * 0.3, R * 0.6); c.lineTo(-R * 0.3 + legA * R * 0.5, R * 1.15 - Math.max(0, legA) * R * 0.2); c.moveTo(R * 0.3, R * 0.6); c.lineTo(R * 0.3 + legB * R * 0.5, R * 1.15 - Math.max(0, legB) * R * 0.2); c.stroke();
-  c.strokeStyle = P.X; c.lineWidth = Math.max(3, S * 0.12);          // the scarf streams behind
-  c.beginPath(); c.moveTo(-R * 0.6, -R * 0.1); c.quadraticCurveTo(-R * 1.3, -R * 0.1 + Math.sin(now / 70) * R * 0.3, -R * 1.9, Math.sin(now / 55) * R * 0.25); c.stroke();
+  const cape = sim.p === 'O' ? P.O : P.X, wave = Math.sin(now / 70) * R * 0.25, flick = Math.sin(now / 55) * R * 0.3;   // the cape, in the runner's colour (X red, O yellow), streams behind
+  c.beginPath(); c.moveTo(-R * 0.2, -R * 0.75); c.quadraticCurveTo(-R * 1.4, -R * 0.9 + wave, -R * 2.3, -R * 0.35 + flick);
+  c.lineTo(-R * 2.1, R * 0.1 + flick * 0.6); c.lineTo(-R * 2.35, R * 0.45 + wave); c.quadraticCurveTo(-R * 1.3, R * 0.55 + wave * 0.5, -R * 0.35, R * 0.2); c.closePath();
+  outlined(c, cape, P.ink, 2.5);
   c.beginPath(); c.arc(0, 0, R, 0, Math.PI * 2); outlined(c, '#f39a3b', P.ink, 3);
   c.fillStyle = '#ffd39a'; c.beginPath(); c.arc(R * 0.15, R * 0.15, R * 0.6, 0, Math.PI * 2); c.fill();
   c.fillStyle = P.ink; c.beginPath(); c.arc(R * 0.3, -R * 0.15, R * 0.11, 0, Math.PI * 2); c.arc(R * 0.65, -R * 0.15, R * 0.11, 0, Math.PI * 2); c.fill();
@@ -4524,7 +4590,7 @@ function renderMini(sq, review) {
         const prev = gain ? banked - a.pot : banked;
         const was = note === 'roll' ? pot - a.roll : pot;                 // the +N before this roll
         const risk = by === p && pot ? `<span class="risk${note === 'roll' ? (was ? ' grow' : ' grow first') : note === 'bank' ? ' bank' : note === 'bust' ? ' lost' : ''}">+${note === 'roll' && was ? `<b class="cnt" data-from="${was}" data-delay="600" data-ms="400">${pot}</b>` : pot}</span>` : '';
-        return `<div class="pscore ${p}${!view && turn === p ? ' now' : ''}${gain ? ' gain' : ''}"><div class="nm"><b class="${p}">${N(p)}</b></div><div class="val"><span>${gain ? `<b class="cnt" data-from="${prev}" data-delay="350" data-ms="500">${banked}</b>` : banked} <small>/ ${RISKY.goal}</small></span>${risk}</div><div class="bar"><i style="width:${Math.min(100, banked / RISKY.goal * 100)}%;--pw:${Math.min(100, prev / RISKY.goal * 100)}%"></i></div></div>`;
+        return `<div class="pscore ${p}${!view && turn === p ? ' now' : ''}${gain ? ' gain' : ''}"><div class="nm"><b class="${p}">${N(p)}</b></div><div class="val"><span><b class="vnum">${gain ? `<b class="cnt" data-from="${prev}" data-delay="350" data-ms="500">${banked}</b>` : banked}</b> <small>/ ${RISKY.goal}</small></span>${risk}</div><div class="bar"><i style="width:${Math.min(100, banked / RISKY.goal * 100)}%;--pw:${Math.min(100, prev / RISKY.goal * 100)}%"></i></div></div>`;
       };
       const fresh1 = note === 'roll', bust = note === 'bust';
       const dice = rolls.map((n, k) => `<span class="sdie${(fresh1 || bust) && k === rolls.length - 1 ? (bust ? ' dup' : ' fresh') : ''}" aria-label="${n}">${dieFace(n)}</span>`).join('');
@@ -6658,29 +6724,49 @@ app.addEventListener('pointerdown', e => {
   const ball = e.target.closest && e.target.closest('.pball.ready');
   if (!ball || state.screen !== 'mini' || state.flash || state.done || blocked()) return;
   const table = ball.closest('.ptable');
-  pongDrag = { id: e.pointerId, x0: e.clientX, y0: e.clientY, t0: performance.now(), x: e.clientX, y: e.clientY, table };
+  pongDrag = { id: e.pointerId, x0: e.clientX, y0: e.clientY, t0: performance.now(), x: e.clientX, y: e.clientY, table, pts: [[performance.now(), e.clientX, e.clientY]] };
   try { table.setPointerCapture(e.pointerId); } catch (err) { /* no capture: the move and up still reach the page */ }
   e.preventDefault();
 });
+// The throw a swipe makes: its direction from the start, its power from the finger's speed over its last
+// tenth of a second (a flick, not the whole drag). The same reading for the preview and for the throw.
+function pongRead(d, x, y, now) {
+  while (d.pts.length > 1 && now - d.pts[1][0] > 110) d.pts.shift();   // the oldest sample kept is the last one at least 110 ms back
+  const [t0, x0, y0] = d.pts[0], dt = Math.max(16, now - t0), v = Math.hypot(x - x0, y - y0) / dt;   // px per ms: a flick is about 2, a slow push about 0.4; held still, it falls away
+  const dx = x - d.x0, dy = d.y0 - y;
+  return { dx, dy, aim: Math.max(-1, Math.min(1, Math.atan2(dx, Math.max(1, dy)) / PONG.angle)), power: Math.max(0, Math.min(1, (v - 0.25) / 1.75)) };
+}
+function pongPreview() {                                          // every frame while the finger is down: a finger held still loses its speed, and the ring shows it
+  const d = pongDrag;
+  if (!d) return;
+  const now = performance.now(), r = pongRead(d, d.x, d.y, now), aim = d.table.querySelector('.paim'), tg = d.table.querySelector('.ptarget');
+  const ok = r.dy >= 24 && Math.abs(r.dx) <= r.dy * 1.6;
+  if (aim) { aim.style.height = (ok ? 30 + 90 * r.power : Math.max(0, Math.min(60, r.dy))) + 'px'; aim.style.transform = `rotate(${(r.aim * PONG.angle * 180 / Math.PI).toFixed(1)}deg)`; }
+  if (tg) {
+    const th = r.aim * PONG.angle, dist = pongDist(r.power), tx = Math.sin(th) * dist, ty = Math.cos(th) * dist;
+    tg.classList.toggle('on', ok); tg.style.left = ((Math.max(-0.48, Math.min(0.48, tx)) + 0.5) * 100).toFixed(1) + '%'; tg.style.top = ((1 - Math.max(0.05, Math.min(1.08, ty))) * 100).toFixed(1) + '%';
+  }
+  d.raf = requestAnimationFrame(pongPreview);
+}
 app.addEventListener('pointermove', e => {
   if (!pongDrag || e.pointerId !== pongDrag.id) return;
-  pongDrag.x = e.clientX; pongDrag.y = e.clientY;
-  const dx = e.clientX - pongDrag.x0, dy = pongDrag.y0 - e.clientY, aim = pongDrag.table.querySelector('.paim');
-  if (aim) { const len = Math.max(0, Math.min(160, Math.hypot(dx, dy))); aim.style.height = len + 'px'; aim.style.transform = `rotate(${(Math.atan2(dx, Math.max(1, dy)) * 180 / Math.PI).toFixed(1)}deg)`; }
+  const d = pongDrag;
+  d.x = e.clientX; d.y = e.clientY; d.pts.push([performance.now(), e.clientX, e.clientY]);
+  if (!d.raf) pongPreview();
 });
 function pongRelease(e) {
   if (!pongDrag || e.pointerId !== pongDrag.id) return;
   const d = pongDrag; pongDrag = null;
-  const aimEl = d.table.querySelector('.paim'); if (aimEl) { aimEl.style.height = '0'; }
-  const dx = e.clientX - d.x0, dy = d.y0 - e.clientY, dt = Math.max(16, performance.now() - d.t0);
-  if (dy < 24 || Math.abs(dx) > dy * 1.6) return;                 // too short, or sideways: not a throw
-  const aim = Math.max(-1, Math.min(1, Math.atan2(dx, dy) / PONG.angle));
-  const v = Math.hypot(dx, dy) / dt;                              // px per ms: a flick is about 2, a slow push about 0.4
-  const power = Math.max(0, Math.min(1, (v - 0.25) / 1.75));
-  attemptMove({ aim: Math.round(aim * 1000) / 1000, power: Math.round(power * 1000) / 1000 });
+  if (d.raf) cancelAnimationFrame(d.raf);
+  const r = pongRead(d, e.clientX, e.clientY, performance.now());
+  const aimEl = d.table.querySelector('.paim'), tg = d.table.querySelector('.ptarget');
+  if (aimEl) aimEl.style.height = '0';
+  if (r.dy < 24 || Math.abs(r.dx) > r.dy * 1.6) { if (tg) tg.classList.remove('on'); return; }   // too short, or sideways: not a throw
+  const ball = d.table.querySelector('.pball.ready'); if (ball) ball.classList.add('launch');   // at once, on this phone, while the move goes in
+  attemptMove({ aim: Math.round(r.aim * 1000) / 1000, power: Math.round(r.power * 1000) / 1000 });
 }
 app.addEventListener('pointerup', pongRelease);
-app.addEventListener('pointercancel', e => { if (pongDrag && e.pointerId === pongDrag.id) pongDrag = null; });
+app.addEventListener('pointercancel', e => { if (pongDrag && e.pointerId === pongDrag.id) { if (pongDrag.raf) cancelAnimationFrame(pongDrag.raf); pongDrag = null; } });
 app.addEventListener('pointerdown', e => {
   const sc = e.target.closest && e.target.closest('[data-keep-scroll]');
   const typing = e.target.closest && e.target.closest('input:not([type="checkbox"]), textarea, select');   // a text field may scroll up for the keyboard
@@ -7128,6 +7214,16 @@ SND.unlock = function () {
     s.buffer = b; s.connect(SND.ctx.destination); s.start(0);
   }
 };
+// A sound played over and over until stopped (the chopper's rotor while the press is held): { stop() }.
+SND.loop = function (name) {
+  const b = SND.bufs[name], none = { stop() {} };
+  SND.log.push(name);
+  if (!b || SND.muted || !SND.ctx || SND.ctx.state !== 'running') return none;
+  const src = SND.ctx.createBufferSource(), g = SND.ctx.createGain();
+  src.buffer = b; src.loop = true; g.gain.value = 1;
+  src.connect(g); g.connect(SND.out); src.start();
+  return { stop() { try { const t = SND.ctx.currentTime; g.gain.setTargetAtTime(0, t, 0.02); src.stop(t + 0.1); } catch (e) { /* already stopped */ } } };   // a short fade, no click
+};
 // Starts a sound now (or `o.at` seconds later). Nothing plays while muted, or before audio is unlocked.
 SND.play = function (name, o = {}) {
   const b = SND.bufs[name];
@@ -7222,7 +7318,7 @@ function moveSounds(f) {
       if (f.rl) add(f.rl.hit ? (f.rl.bet === 'zero' ? 'sparkle' : 'ding') : 'thud', RLT.spin + RLT.settle);
       break;
     }
-    case 'bullseye': add('whoosh', 0); add(f.bull && f.bull.pts ? 'dartHit' : 'dartMiss', BULLT.fly); if (f.bull && f.bull.pts === BULLS.bullPts) add('sparkle', BULLT.fly + 120); break;
+    case 'bullseye': { const pre = bullsPre(f); if (pre) { const A = bullsAim(f.bull); add('mark', A.t1); add('mark', A.t2); } add('whoosh', pre); add(f.bull && f.bull.pts ? 'dartHit' : 'dartMiss', pre + BULLT.fly); if (f.bull && f.bull.pts === BULLS.bullPts) add('sparkle', pre + BULLT.fly + 120); break; }   // someone else's throw: the two lines stopping (as the taps would), then the dart
     case 'echo': if (f.echo) add(f.echo.pass ? 'ding' : 'thud', 0); break;
     case 'plinko': { for (let k = 1; k <= PLINKO.rows; k++) add('peg', k * PLINKO.step, 1 + (k % 3) * 0.08); add('plop', PLINKO.rows * PLINKO.step + 120); if (f.plinko) add(f.plinko.win ? 'sparkle' : 'thud', PLINKO.rows * PLINKO.step + PLINKO.land); break; }
     case 'pong': { add('whoosh', 0); if (f.pong) { if (f.pong.rim) add('clink', PONG.fly); add(f.pong.sunk ? 'splash' : 'thud', PONG.fly + (f.pong.rim ? 400 : 0)); } break; }

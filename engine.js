@@ -651,7 +651,7 @@ function bsPlacements(len) {
 // fractions of the field's width and height; the score is worked out where the move is made (the
 // server online), as is the board's next spot.
 const BULLS = { goal: 5, w: 100, h: 120, bullPts: 3, boardPts: 1, edge: 4, minMove: 24, ai: { bull: 0.15, board: 0.45, worse: 0.4 } };
-const BULL_DEFAULTS = { board: 9, bull: 2.5, sweep: 1300, ramp: 1.12 };   // the board's radius and the bullseye's (field units), ms per sweep across, the speed-up per scoring throw
+const BULL_DEFAULTS = { board: 9, bull: 2.5, sweep: 1040, ramp: 1.12 };   // the board's radius and the bullseye's (field units), ms per sweep across, the speed-up per scoring throw
 const BULL_LIMITS = { board: [4, 30], bull: [0.5, 12], sweep: [400, 5000], ramp: [1, 2] };
 const BULL_CFG = { cfg: null };
 function bullsNorm(raw) {
@@ -1521,7 +1521,7 @@ function seatPick(pm, me, rng) {
 // every region it touches). Every region is touched by an odd number of spots, at least 3, so once the map
 // is full every region has a leader; most regions wins (5: no tie). Drawn as a Voronoi map from 5 seeds on
 // a field 100 by 120; spots in the regions, on the borders between two and where three meet.
-const DIST = { w: 100, h: 120, regions: 5, minSpots: 11, maxSpots: 15, gap: 11 };
+const DIST = { w: 100, h: 120, regions: 5, minSpots: 11, maxSpots: 15, gap: 11, clear: 6.5 };   // clear: how far a spot keeps from every region it does not count for (more than its drawn size)
 const r1d = x => Math.round(x * 10) / 10 + 0;
 function distClip(poly, a, b) {                                   // keep the part of poly closer to a than to b
   const mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2, nx = b[0] - a[0], ny = b[1] - a[1];
@@ -1560,6 +1560,10 @@ function distMap(src) {
       const tv = touching(p);
       if (tv.length === 3 && tv[0] === i && p[0] > 3 && p[0] < DIST.w - 3 && p[1] > 3 && p[1] < DIST.h - 3) cand.push({ p, r: tv, kind: 'corner' });
     }
+    // only spots that plainly sit in (or on the edge of) the regions they count for: none where a fourth region
+    // nearly meets a corner, and none whose drawn circle would reach into a region it does not count for
+    const clear = c => polys.every((poly, i) => c.r.includes(i) || distTo(c.p, poly) >= DIST.clear);
+    for (let k = cand.length - 1; k >= 0; k--) if (!clear(cand[k])) cand.splice(k, 1);
     // a random choice of them, kept apart, with every region touched an odd number of times (3 or more)
     for (let pick = 0; pick < 60; pick++) {
       const order = shuffle(cand.map((_, k) => k), rng).sort((a, b) => cand[b].r.length - cand[a].r.length), chosen = [];   // border and corner spots first: they count for more regions, so fewer spots do
@@ -1588,6 +1592,17 @@ function distMap(src) {
   throw new Error('no map');
 }
 // The regions' counts and leaders: { X: [...], O: [...], empty: [...], lead: ['X'|'O'|null] }.
+// How far a point is from a region (0 inside it).
+function distTo(p, poly) {
+  let inside = false, d = Infinity;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const a = poly[j], b = poly[i];
+    if ((b[1] > p[1]) !== (a[1] > p[1]) && p[0] < (a[0] - b[0]) * (p[1] - b[1]) / (a[1] - b[1]) + b[0]) inside = !inside;
+    const dx = b[0] - a[0], dy = b[1] - a[1], L = dx * dx + dy * dy, t = L ? Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / L)) : 0;
+    d = Math.min(d, Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy));
+  }
+  return inside ? 0 : d;
+}
 function distTally(map, who) {
   const R = map.regions.length, out = { X: new Array(R).fill(0), O: new Array(R).fill(0), empty: new Array(R).fill(0), lead: new Array(R).fill(null) };
   map.spots.forEach((s, k) => { for (const r of s.r) { if (who[k] === 'X') out.X[r]++; else if (who[k] === 'O') out.O[r]++; else out.empty[r]++; } });
@@ -2484,10 +2499,10 @@ function applyMove(mini, p, m, rng) {
     case 'bullseye': {                                        // where the two lines stopped: scored against the board where it is; then the board moves on
       const x = m && typeof m === 'object' ? Number(m.x) : NaN, y = m && typeof m === 'object' ? Number(m.y) : NaN;
       if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || x > 1 || y < 0 || y > 1) return { ok: false, reason: 'bad' };
-      const cfg = mini.cfg, pos = mini.pos, sc = bullsScore(cfg, pos, x, y);
+      const cfg = mini.cfg, pos = mini.pos, sc = bullsScore(cfg, pos, x, y), per = Math.round(bullsPeriod(cfg, mini.speed[p] || 1));   // per: the sweep these lines ran at
       mini.pts[p] += sc.pts;
       if (sc.pts) mini.speed[p] = r3(mini.speed[p] * cfg.ramp);
-      mini.last = { by: p, x: r3(x), y: r3(y), at: sc.at, d: sc.d, pts: sc.pts, pos: pos.slice() };
+      mini.last = { by: p, x: r3(x), y: r3(y), at: sc.at, d: sc.d, pts: sc.pts, pos: pos.slice(), per };
       mini.pos = bullsSpot(cfg, pos, needRng(rng));
       if (mini.pts[p] >= BULLS.goal) return { ok: true, outcome: 'win', note: sc.pts === BULLS.bullPts ? 'bull' : 'board' };
       return { ok: true, outcome: 'continue', note: sc.pts === BULLS.bullPts ? 'bull' : sc.pts ? 'board' : 'miss' };
@@ -3462,7 +3477,7 @@ function playMove(state, i, m, rng, opts) {
     case 'rl': { const l = mini.last; flash.rl = { bet: Array.isArray(l.bet) ? l.bet.slice() : l.bet, n: l.n, hit: l.hit, hits: { X: mini.hits.X, O: mini.hits.O } }; break; }
     case 'golf': case 'pool': case 'bowling': { const l = mini.last; flash.phys = Object.assign(JSON.parse(JSON.stringify(l)), mini.type === 'golf' ? { balls: JSON.parse(JSON.stringify(mini.balls)), hole: mini.hole, holedNow: JSON.parse(JSON.stringify(mini.holed)) } : mini.type === 'pool' ? { pocketedNow: { X: mini.pocketed.X, O: mini.pocketed.O }, down: Object.assign({}, mini.down) } : { pins: { X: mini.pins.X, O: mini.pins.O } }); break; }
     case 'dash': case 'lane': case 'flap': case 'chopper': { const l = mini.last; flash.run = { from: l.from, to: l.to, ms: l.ms, out: l.out, done: l.done, dist: { X: mini.dist.X, O: mini.dist.O }, runs: { X: mini.runs.X, O: mini.runs.O }, target: mini.cfg.target }; break; }
-    case 'bullseye': { const l = mini.last; flash.bull = { x: l.x, y: l.y, at: l.at.slice(), d: l.d, pts: l.pts, pos: l.pos.slice(), next: mini.pos.slice(), total: { X: mini.pts.X, O: mini.pts.O }, speed: mini.speed[p] }; break; }
+    case 'bullseye': { const l = mini.last; flash.bull = { x: l.x, y: l.y, at: l.at.slice(), d: l.d, pts: l.pts, pos: l.pos.slice(), next: mini.pos.slice(), total: { X: mini.pts.X, O: mini.pts.O }, speed: mini.speed[p], per: l.per || Math.round(bullsPeriod(mini.cfg || BULL_DEFAULTS, 1)) }; break; }
     case 'echo': { const l = mini.last; flash.echo = { level: l.level, len: l.len, pass: l.pass, failAt: l.failAt, taps: l.taps.slice(), levels: { X: mini.level.X, O: mini.level.O } }; break; }
     case 'plinko': { const l = mini.last; flash.plinko = { slot: l.slot, path: l.path.slice(), bin: l.bin, win: l.win, winBin: mini.win }; break; }
     case 'pong': { const l = mini.last; flash.pong = { aim: l.aim, power: l.power, x: l.x, y: l.y, cup: l.cup, rim: l.rim, sunk: l.sunk, cups: { X: mini.cups.X.slice(), O: mini.cups.O.slice() } }; break; }
@@ -3731,7 +3746,7 @@ function playMs(f, winLen) {
     case 'golf':    return (f.phys ? f.phys.ms : 3000) + GOLF.hold + (won ? 600 : 0);
     case 'pool':    return (f.phys ? f.phys.ms : 3000) + POOLG.hold + (won ? 600 : 0);
     case 'bowling': return (f.phys ? f.phys.ms : 3000) + BOWLG.hold + (won ? 600 : 0) + (f.phys && f.phys.strike ? 500 : 0);
-    case 'bullseye': return BULLT.fly + BULLT.hold + (won ? 600 : 0);
+    case 'bullseye': return (f.bull ? bullsAim(f.bull).fly : 0) + BULLT.fly + BULLT.hold + (won ? 600 : 0);   // (the phone that threw skips the aim: it has just watched its own lines)
     case 'echo':    return ECHO.result + (won ? 600 : 0);
     case 'plinko':  return PLINKO.rows * PLINKO.step + PLINKO.land + (won ? 600 : 0);
     case 'pong':    return PONG.fly + PONG.hold + (won ? 600 : 0);
@@ -3742,7 +3757,17 @@ function playMs(f, winLen) {
 }
 // Bullseye: the dart flies in and lands where the lines crossed, then the points hold a moment.
 // Echo: the attempt's result shows (the pattern itself plays before the move, when the square opens).
-const BULLT = { fly: 380, hold: 800, slide: 450 };
+const BULLT = { fly: 380, hold: 800, slide: 450, gap: 280 };
+// Someone else's throw, as their screen looked: the sideways line sweeps from the left edge and stops where
+// they stopped it (straight there when that is past 40% across, else across and back), a beat, then the
+// up-down line likewise from the top, a beat, then the dart. ms from the move: t1 and t2 where each stops, fly
+// where the dart leaves.
+function bullsLeg(per, f) { const it = f >= 0.4 ? f : 2 - f; return { it: r3(Math.max(0.05, it)), ms: Math.round(per * Math.max(0.05, it)) }; }
+function bullsAim(b) {
+  const per = b.per || BULL_DEFAULTS.sweep, perY = Math.round(per * BULLS.h / BULLS.w), vx = bullsLeg(per, b.x), vy = bullsLeg(perY, b.y);
+  const t1 = vx.ms, h0 = t1 + BULLT.gap, t2 = h0 + vy.ms;
+  return { per, perY, vx, vy, t1, h0, t2, fly: t2 + BULLT.gap };
+}
 // Takeover: the cell pops in, then its neighbours turn over; Flood: the blob changes colour, then the cells
 // it grabs fill in wave by wave out from it.
 const TAKEOVER_MS = { place: 280, flip: 520 };
@@ -3844,4 +3869,4 @@ function matchStats(st) {
 }
 
 // Node (the Cloud Functions and the tests): the same names as a module.
-if (typeof module !== "undefined" && module.exports) module.exports = { PHYS_TYPES, PHYSICS, setPhysics, physicsReady, GOLF, POOLG, BOWLG, poolMine, physShot, wrapAim, aimTo, poolSpot, physRun, golfClear, golfNext, golfAhead, golfLeft, physLast, physScore, physCandidates, physAi, physRandom, physNeeds, RUN_TYPES, RUN_DEFAULTS, RUN_LIMITS, RUN, RUNT, RUN_CFG, r2, runNorm, setRunConfig, runConfig, runSpeed, runSecs, runAfter, runGrace, DASH_OBS, DASH, LANE, FLAP, CHOP, PATTERNS, patKey, patRot, patFits, patSolve3, patFeature, patFitting, patNumTemplate, patNumMisses, patNumPuzzle, patDotsTemplate, patShapePuzzle, patPuzzle, patNum, patDots, patShape, patPick, patRange, WHEELS, WHEELS_SAFE, WHEEL_DEFAULTS, WHEEL_LIMITS, WHEELT, WHEEL_CFG, wheelsNorm, setWheelsConfig, wheelsConfig, WHEEL_MEMO, wheelsTable, wheelSpin, SNIFF, SNIFF_DIRS, sniffDist, sniffStep, sniffDirs, sniffCands, sniffPick, runCave, caveHeight, caveWalls, runWalls, weightedPick, laneRow, runCourse, runCheck, runAuto, gaussOf, normCdf, runAiMean, runAi, runNeeds, runLog, runStart, runJump, runRelease, runLane, runLaneX, overlap, runHit, runStep, runResult, TEST_TYPES, isReleased, releasedTypes, allowedTypes, restrictGames, dealable, CRAPS, crapsRound, crapsTimes, TAKE, takeNear, takeCount, takeApply, takeSearch, FLOOD, floodNear, floodWaves, floodGain, floodApply, floodSearch, raceNeeds, TAKEOVER_MS, FLOOD_MS, PLACE_MS, SEAT, seatTable, seatMate, seatTables, seatZ, seatPick, DIST, r1d, distClip, distMap, distTally, distEval, distSearch, SHELF, shelfOn, shelfPick, ROAD, ROAD_SEGS, roadLongest, roadPick, randomEmpty, BULLS, BULLT, BULL_DEFAULTS, BULL_LIMITS, BULL_CFG, bullsNorm, setBullsConfig, bullsConfig, bullsSpot, bullsScore, bullsRates, r3, ECHO, PLINKO, PONG, TRIVIA, ODD, bullsPeriod, echoSeqs, plinkoPath, plinkoOdds, pongThrow, pongAimAt, pongDist, setTriviaBank, triviaReady, triviaDeal, triviaUsed, oddGrid, cpuEcho, CARD, BJ, BUS, RL, BJT, BUST, RLT, BUS_AVG, cardDeck, isCard, cardRank, cardRed, cardName, bjValue, bjTotal, bjNatural, bjDealerPlay, bjOutcome, bjStrategy, bjPlan, bjMs, busRight, busDeck, busOdds, rlRed, rlBet, rlCovers, tttOpen, lineOpen, majorityResult, STYLE0, huntSize, huntBand, huntClue, normTimer, resignLocal, TYPES, OLD_TYPES, SNL, BUMP, snlRow, snlBoard, snlValid, snlExpected, coinPick, markCoins, coinMarksFor, normLocal, seatLocal, INFO, C4, HP, MM, HEX_N, HILO, CANDY, NAME_MAX, COINS, RISKY, BS, HUNT, DICE_GOAL, MEMORY, LINES, WORDS5, WORDS_HANG, VALID5, other, makeRng, needRng, randInt, randomType, shuffle, memoryDeck, wordleMarks, hexNeighbors, hexPath, canMove, hpMoves, mmFeedback, mmValid, MM_ALL, mmAll, mmCode, mmCandidates, mmBestGuess, hpGoalRow, upgradeMini, anyMove, huntDist, candyTrack, newMini, pickType, newSquare, CPU_NAME, defaultSetup, cpuSide, normSetup, syncNames, enabledGames, TIMER_OPTIONS, newTimer, playerName, newState, startMatch, newMatch, findRun, applyMove, AI, publicMini, wordleCandidates, hangmanCandidates, bsCandidates, bsPlacements, bsShip, huntCandidates, WINDOWS, windowsOf, lineNeeds, c4Playable, hexDist, candyExpected, COIN_NEEDS, needsOf, memoryPair, winChance, tttMinimax, c4Drop, c4Eval, C4_ORDER, c4Search, C4_DEPTH, c4Moves, HP_MEMO, hpSolve, hpMovesValued, hpNeeds, hexMoves, threatScore, pickValued, localBest, squareValue, moveGain, cpuMove, VALID5_LIST, randomLegalMove, timeoutMove, mainResult, playMove, endFlash, leaveSquare, RECENT_MAX, MATCH_FIELDS, secretOf, hideMini, matchRecord, fullState, settle, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, newOnlineMatch, PLAY, diceSlot, playMs, replayMs, armClock, applyOnlineResign, matchStats };
+if (typeof module !== "undefined" && module.exports) module.exports = { PHYS_TYPES, PHYSICS, setPhysics, physicsReady, GOLF, POOLG, BOWLG, poolMine, physShot, wrapAim, aimTo, poolSpot, physRun, golfClear, golfNext, golfAhead, golfLeft, physLast, physScore, physCandidates, physAi, physRandom, physNeeds, RUN_TYPES, RUN_DEFAULTS, RUN_LIMITS, RUN, RUNT, RUN_CFG, r2, runNorm, setRunConfig, runConfig, runSpeed, runSecs, runAfter, runGrace, DASH_OBS, DASH, LANE, FLAP, CHOP, PATTERNS, patKey, patRot, patFits, patSolve3, patFeature, patFitting, patNumTemplate, patNumMisses, patNumPuzzle, patDotsTemplate, patShapePuzzle, patPuzzle, patNum, patDots, patShape, patPick, patRange, WHEELS, WHEELS_SAFE, WHEEL_DEFAULTS, WHEEL_LIMITS, WHEELT, WHEEL_CFG, wheelsNorm, setWheelsConfig, wheelsConfig, WHEEL_MEMO, wheelsTable, wheelSpin, SNIFF, SNIFF_DIRS, sniffDist, sniffStep, sniffDirs, sniffCands, sniffPick, runCave, caveHeight, caveWalls, runWalls, weightedPick, laneRow, runCourse, runCheck, runAuto, gaussOf, normCdf, runAiMean, runAi, runNeeds, runLog, runStart, runJump, runRelease, runLane, runLaneX, overlap, runHit, runStep, runResult, TEST_TYPES, isReleased, releasedTypes, allowedTypes, restrictGames, dealable, CRAPS, crapsRound, crapsTimes, TAKE, takeNear, takeCount, takeApply, takeSearch, FLOOD, floodNear, floodWaves, floodGain, floodApply, floodSearch, raceNeeds, TAKEOVER_MS, FLOOD_MS, PLACE_MS, SEAT, seatTable, seatMate, seatTables, seatZ, seatPick, DIST, r1d, distClip, distMap, distTo, distTally, distEval, distSearch, SHELF, shelfOn, shelfPick, ROAD, ROAD_SEGS, roadLongest, roadPick, randomEmpty, BULLS, BULLT, bullsLeg, bullsAim, BULL_DEFAULTS, BULL_LIMITS, BULL_CFG, bullsNorm, setBullsConfig, bullsConfig, bullsSpot, bullsScore, bullsRates, r3, ECHO, PLINKO, PONG, TRIVIA, ODD, bullsPeriod, echoSeqs, plinkoPath, plinkoOdds, pongThrow, pongAimAt, pongDist, setTriviaBank, triviaReady, triviaDeal, triviaUsed, oddGrid, cpuEcho, CARD, BJ, BUS, RL, BJT, BUST, RLT, BUS_AVG, cardDeck, isCard, cardRank, cardRed, cardName, bjValue, bjTotal, bjNatural, bjDealerPlay, bjOutcome, bjStrategy, bjPlan, bjMs, busRight, busDeck, busOdds, rlRed, rlBet, rlCovers, tttOpen, lineOpen, majorityResult, STYLE0, huntSize, huntBand, huntClue, normTimer, resignLocal, TYPES, OLD_TYPES, SNL, BUMP, snlRow, snlBoard, snlValid, snlExpected, coinPick, markCoins, coinMarksFor, normLocal, seatLocal, INFO, C4, HP, MM, HEX_N, HILO, CANDY, NAME_MAX, COINS, RISKY, BS, HUNT, DICE_GOAL, MEMORY, LINES, WORDS5, WORDS_HANG, VALID5, other, makeRng, needRng, randInt, randomType, shuffle, memoryDeck, wordleMarks, hexNeighbors, hexPath, canMove, hpMoves, mmFeedback, mmValid, MM_ALL, mmAll, mmCode, mmCandidates, mmBestGuess, hpGoalRow, upgradeMini, anyMove, huntDist, candyTrack, newMini, pickType, newSquare, CPU_NAME, defaultSetup, cpuSide, normSetup, syncNames, enabledGames, TIMER_OPTIONS, newTimer, playerName, newState, startMatch, newMatch, findRun, applyMove, AI, publicMini, wordleCandidates, hangmanCandidates, bsCandidates, bsPlacements, bsShip, huntCandidates, WINDOWS, windowsOf, lineNeeds, c4Playable, hexDist, candyExpected, COIN_NEEDS, needsOf, memoryPair, winChance, tttMinimax, c4Drop, c4Eval, C4_ORDER, c4Search, C4_DEPTH, c4Moves, HP_MEMO, hpSolve, hpMovesValued, hpNeeds, hexMoves, threatScore, pickValued, localBest, squareValue, moveGain, cpuMove, VALID5_LIST, randomLegalMove, timeoutMove, mainResult, playMove, endFlash, leaveSquare, RECENT_MAX, MATCH_FIELDS, secretOf, hideMini, matchRecord, fullState, settle, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, newOnlineMatch, PLAY, diceSlot, playMs, replayMs, armClock, applyOnlineResign, matchStats };
