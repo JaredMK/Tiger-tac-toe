@@ -1864,6 +1864,9 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .pseq { display: grid; grid-template-columns: repeat(var(--n, 5), minmax(0, 1fr)); gap: 6px; }
 .patit { aspect-ratio: 1; border: 2.5px solid var(--ink); border-radius: 10px; background: #fff; display: grid; place-items: center; min-width: 0; }
 .patit svg, .popt svg { width: 100%; height: 100%; display: block; }
+.pseq.grid { width: min(100%, 250px, calc(var(--gh) - 170px - min(320px, var(--gh) - 250px) / 1.5)); margin: 0 auto; gap: 5px; }   /* a figure matrix: 3 by 3, as big as the room left under the options allows (their width is the .popts rule's) */
+.pseq.grid .patit { border-radius: 8px; overflow: hidden; } .pseq.grid .patit.gap b { font-size: 20px; line-height: 1; }
+.pdie { fill: #fff; stroke: var(--ink); stroke-width: 3.5; } .ppip { fill: var(--ink); }
 .patit.gap { border-style: dashed; background: var(--panel-2); }
 .patit.gap b { font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-size: 26px; color: var(--muted); }
 .patit.gap.filled { border-style: solid; border-color: var(--green); background: #d7f0c9; }
@@ -1872,6 +1875,8 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .popt { position: relative; aspect-ratio: 1.5; border: 3px solid var(--ink); border-radius: 12px; background: #fff; box-shadow: 0 3px 0 var(--ink); padding: 4px 10px; display: grid; place-items: center; }
 .popt svg { width: auto; height: 100%; max-height: 100%; aspect-ratio: 1; }
 .popt b { position: absolute; left: 6px; top: 6px; width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--ink); display: grid; place-items: center; font-size: 11px; background: var(--paper); }
+.popts { container-type: inline-size; }
+@container (max-width: 250px) { .popt b { left: -7px; top: -7px; width: 20px; height: 20px; font-size: 10px; } }   /* small option boxes: the letter sits on the corner, clear of the drawing */
 .popt:disabled { box-shadow: none; }
 .popt.right { animation: optglow .6s var(--t, 0ms) both; background: #d7f0c9; border-color: var(--green); }
 .popt.wrong { animation: cardshake .45s var(--t, 0ms) both; }
@@ -2917,7 +2922,7 @@ function thumb(mini, final) {
     case 'districts': { const t = distTally(mini.map, mini.who); return `<svg class="tdist" viewBox="-2 -2 104 124" aria-hidden="true">${mini.map.regions.map((poly, r) => `<path class="dreg${t.lead[r] ? ' ' + t.lead[r] : ''}" d="${distPath(poly)}"/>`).join('')}${mini.map.spots.map((sp, k) => `<circle class="${mini.who[k] || ''}" cx="${sp.x}" cy="${sp.y}" r="4.6"/>`).join('')}</svg>`; }
     case 'shelves': return `<div class="tshelf">${Array.from({ length: SHELF.n }, (_, r) => `<span>${mini.cells.slice(r * SHELF.per, r * SHELF.per + SHELF.per).map(w => `<i class="${w || ''}"></i>`).join('')}</span>`).join('')}</div>`;
     case 'roads': return `<svg class="troad" viewBox="0 0 100 100" aria-hidden="true">${mini.segs.map((w, k) => { const [p, q] = ROAD_SEGS[k].map(ROAD_PT); return `<line class="${w || ''}" x1="${p[0]}" y1="${p[1]}" x2="${q[0]}" y2="${q[1]}"/>`; }).join('')}</svg>`;
-    case 'patterns': { const pz = mini.puz || (mini.last ? { seq: mini.last.seq } : null); return `<div class="tpat">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${Array.from({ length: PATTERNS.goal }, (_, k) => `<i class="${k < mini.right[p] ? 'on' : ''}"></i>`).join('')}</div>`).join('')}${pz ? `<div class="tseq">${pz.seq.map(it => (it ? `<span>${patSvg(it)}</span>` : '<span class="q">?</span>')).join('')}</div>` : ''}</div>`; }   // the right answers so far, and the puzzle open now
+    case 'patterns': { const pz = mini.puz || (mini.last ? mini.last : null), gr = pz && pz.grid ? Math.floor(Math.max(0, pz.seq.indexOf(null)) / 3) : 0, row = pz ? (pz.grid ? pz.seq.slice(gr * 3, gr * 3 + 3) : pz.seq) : []; return `<div class="tpat">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${Array.from({ length: PATTERNS.goal }, (_, k) => `<i class="${k < mini.right[p] ? 'on' : ''}"></i>`).join('')}</div>`).join('')}${pz ? `<div class="tseq">${row.map(it => (it ? `<span>${patSvg(it)}</span>` : '<span class="q">?</span>')).join('')}</div>` : ''}</div>`; }   // the right answers so far, and the puzzle open now (a matrix: the row with the gap)
     case 'wheels': return `<div class="trun" aria-label="X has ${mini.pts.X}, O has ${mini.pts.O} of ${mini.target}">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><i style="--w:${(100 * Math.min(1, mini.pts[p] / mini.target)).toFixed(1)}%"></i></div>`).join('')}</div>`;   // both players' points to the target
     case 'sniff': { const [x, y] = sniffXY(mini.dog); return `<svg class="tsniff" viewBox="0 0 100 100" aria-hidden="true">${Array.from({ length: SNIFF.n * SNIFF.n }, (_, c) => { const [cx, cy] = sniffXY(c); return `<rect x="${cx - 9}" y="${cy - 9}" width="18" height="18" rx="3"/>`; }).join('')}<circle class="tdog" cx="${x}" cy="${y}" r="7"/></svg>`; }   // the field and the dog: nothing of the past
     case 'flood': return `<div class="tg gfl">${mini.colors.map((c, i) => `<i class="${mini.owner[i] === 'X' || mini.owner[i] === 'O' ? 'own ' + mini.owner[i] : ''}" style="background:${FLOOD_COL[c]}"></i>`).join('')}</div>`;
@@ -4077,17 +4082,44 @@ function roadTable(mini, a, o) {
 const PAT_COL = ['#3d7fe0', '#4caf50', '#8d5bd8', '#f06aa8', '#21b2a6', '#f39a3b'];
 const PAT_COLN = ['blue', 'green', 'purple', 'pink', 'teal', 'orange'];
 const PAT_SIDES = { 3: 'triangle', 4: 'square', 5: 'pentagon', 6: 'hexagon', 7: 'heptagon', 8: 'octagon' };
+const PAT_DIRS = ['up', 'up-right', 'right', 'down-right', 'down', 'down-left', 'left', 'up-left'];
+const PAT_FIG = ['arrow', 'L', 'flag'], PAT_SPOT = ['top left', 'top', 'top right', 'right', 'bottom right', 'bottom', 'bottom left', 'left'];
+const patChar = n => String.fromCharCode(64 + n);
 // An item in words (for the options' labels and the screen reader).
 function patSay(it) {
   if (it == null) return 'the gap';
   if ('n' in it) return String(it.n);
+  if ('l' in it) return `letter ${patChar(it.l)}`;
   if ('d' in it) return `${it.d} ${PAT_COLN[it.c]} dot${it.d === 1 ? '' : 's'}`;
+  if ('e' in it) return it.e.length === 1 ? `a die showing ${it.e[0]}` : `dice showing ${it.e.join(' and ')}`;
+  if ('k' in it) return `${it.k} ${it.f ? 'solid' : 'outline'} ${PAT_COLN[it.c]} ${it.g === 0 ? 'circle' : PAT_SIDES[it.g]}${it.k > 1 ? 's' : ''}`;
+  if ('h' in it) return `${PAT_COLN[it.c]} ${PAT_FIG[it.h]}${it.h ? `, turned ${patRot(it)}°${it.m ? ', flipped over' : ''}` : `, pointing ${PAT_DIRS[Math.round(patRot(it) / 45) % 8]}`}`;
+  if ('q' in it) return `circle at the ${PAT_SPOT[it.q[0]]}, square at the ${PAT_SPOT[it.q[1]]}`;
   const name = it.g === 0 ? 'circle' : it.g === 1 ? 'arrow' : PAT_SIDES[it.g];
-  return `${it.f ? 'solid' : 'outline'} ${PAT_COLN[it.c]} ${name}, size ${it.z}${it.g === 1 ? `, pointing ${['up', 'up-right', 'right', 'down-right', 'down', 'down-left', 'left', 'up-left'][Math.round(patRot(it) / 45) % 8]}` : ''}`;
+  return `${it.f ? 'solid' : 'outline'} ${PAT_COLN[it.c]} ${name}, size ${it.z}${it.g === 1 ? `, pointing ${PAT_DIRS[Math.round(patRot(it) / 45) % 8]}` : ''}`;
 }
-// An item drawn in a 100 x 100 box: a number, a shape (ink-outlined, the game's style), or dots.
+// A circle or a polygon of g sides, radius R, centred at x, y (turned r degrees).
+const patPoly = (g, R, x, y, r = 0) => (g === 0 ? `<circle cx="${x}" cy="${y}" r="${R}"/>` : `<polygon points="${Array.from({ length: g }, (_, k) => { const t = (-90 + (g % 2 ? 0 : 180 / g) + (360 / g) * k + r) * Math.PI / 180; return `${(x + R * Math.cos(t)).toFixed(1)},${(y + R * Math.sin(t)).toFixed(1)}`; }).join(' ')}"/>`);
+// A die's face: its pips, in a box at x, y of side S.
+const PAT_PIPS = { 1: [[.5, .5]], 2: [[.27, .27], [.73, .73]], 3: [[.27, .27], [.5, .5], [.73, .73]], 4: [[.27, .27], [.73, .27], [.27, .73], [.73, .73]], 5: [[.27, .27], [.73, .27], [.5, .5], [.27, .73], [.73, .73]], 6: [[.27, .25], [.73, .25], [.27, .5], [.73, .5], [.27, .75], [.73, .75]] };
+const patDie = (v, x, y, S) => `<rect class="pdie" x="${x}" y="${y}" width="${S}" height="${S}" rx="${S * 0.18}"/>${PAT_PIPS[v].map(([a, b]) => `<circle class="ppip" cx="${(x + a * S).toFixed(1)}" cy="${(y + b * S).toFixed(1)}" r="${(S * 0.095).toFixed(1)}"/>`).join('')}`;
+// The figures that turn and flip: an arrow, an L and a flag, drawn pointing up, centred on 0, 0.
+const PAT_FIG_D = ['M0 -40 L30 -6 L12 -6 L12 38 L-12 38 L-12 -6 L-30 -6 Z', 'M-24 -38 L-4 -38 L-4 18 L26 18 L26 38 L-24 38 Z', 'M-20 -40 L30 -21 L-9 -3 L-9 40 L-20 40 Z'];
+const PAT_RING = [[16, 16], [50, 16], [84, 16], [84, 50], [84, 84], [50, 84], [16, 84], [16, 50]];
+// An item drawn in a 100 x 100 box: a number or a letter, a shape (ink-outlined, the game's style), dots,
+// dice, a matrix cell (one to four shapes), a figure turned (and flipped), or two markers on a frame.
 function patSvg(it) {
-  if ('n' in it) { const t = String(it.n); return `<svg viewBox="0 0 100 100" aria-hidden="true"><text x="50" y="${t.length > 3 ? 62 : 66}" class="pnum" font-size="${t.length > 3 ? 30 : t.length > 2 ? 38 : 48}">${t}</text></svg>`; }
+  if ('n' in it || 'l' in it) { const t = 'n' in it ? String(it.n) : patChar(it.l); return `<svg viewBox="0 0 100 100" aria-hidden="true"><text x="50" y="${t.length > 3 ? 62 : 66}" class="pnum" font-size="${t.length > 3 ? 30 : t.length > 2 ? 38 : 48}">${t}</text></svg>`; }
+  if ('e' in it) return `<svg viewBox="0 0 100 100" aria-hidden="true">${it.e.length === 1 ? patDie(it.e[0], 18, 18, 64) : it.e.map((v, k) => patDie(v, 5 + k * 48, 29, 42)).join('')}</svg>`;
+  if ('k' in it) {
+    const col = PAT_COL[it.c], at = { 1: [[50, 50, 30]], 2: [[28, 50, 19], [72, 50, 19]], 3: [[50, 27, 17], [27, 70, 17], [73, 70, 17]], 4: [[29, 29, 16], [71, 29, 16], [29, 71, 16], [71, 71, 16]] }[it.k];
+    return `<svg viewBox="0 0 100 100" aria-hidden="true"><g fill="${it.f ? col : '#fff'}" stroke="${it.f ? 'var(--ink)' : col}" stroke-width="${it.f ? 3.5 : 6}" stroke-linejoin="round">${at.map(([x, y, R]) => patPoly(it.g, R, x, y)).join('')}</g></svg>`;
+  }
+  if ('h' in it) { const s = 0.92; return `<svg viewBox="0 0 100 100" aria-hidden="true"><path transform="rotate(${it.r} 50 50) translate(50 50) scale(${it.m ? -s : s} ${s})" d="${PAT_FIG_D[it.h]}" fill="${PAT_COL[it.c]}" stroke="var(--ink)" stroke-width="${(4 / s).toFixed(1)}" stroke-linejoin="round"/></svg>`; }
+  if ('q' in it) {
+    const [a, b] = it.q.map(k => PAT_RING[k]);
+    return `<svg viewBox="0 0 100 100" aria-hidden="true"><rect x="16" y="16" width="68" height="68" rx="4" fill="none" stroke="var(--ink)" stroke-width="3"/>${PAT_RING.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="3.5" fill="#c9c3b6"/>`).join('')}<circle cx="${a[0]}" cy="${a[1]}" r="12" fill="${PAT_COL[0]}" stroke="var(--ink)" stroke-width="3"/><rect x="${b[0] - 8}" y="${b[1] - 8}" width="16" height="16" rx="2" fill="${PAT_COL[5]}" stroke="var(--ink)" stroke-width="3"/></svg>`;
+  }
   if ('d' in it) {
     const n = it.d, cols = n <= 3 ? n : n <= 4 ? 2 : n <= 9 ? 3 : 4, rows = Math.ceil(n / cols), gap = cols <= 3 && rows <= 3 ? 26 : 21, r = gap * 0.36;
     const dots = Array.from({ length: n }, (_, k) => { const row = Math.floor(k / cols), inRow = row === rows - 1 ? n - row * cols : cols, col = k % cols; return `<circle cx="${(50 + (col - (inRow - 1) / 2) * gap).toFixed(1)}" cy="${(50 + (row - (rows - 1) / 2) * gap).toFixed(1)}" r="${r.toFixed(1)}"/>`; }).join('');
@@ -4095,9 +4127,8 @@ function patSvg(it) {
   }
   const R = 11 + it.z * 6.4, col = PAT_COL[it.c], fill = it.f ? col : '#fff', stroke = it.f ? 'var(--ink)' : col, sw = it.f ? 4 : 7;
   let body;
-  if (it.g === 0) body = `<circle cx="50" cy="50" r="${R}"/>`;
-  else if (it.g === 1) { const s = R / 40; body = `<path transform="rotate(${it.r} 50 50) translate(50 50) scale(${s.toFixed(3)})" d="M0 -40 L30 -6 L12 -6 L12 38 L-12 38 L-12 -6 L-30 -6 Z" stroke-width="${(sw / s).toFixed(1)}"/>`; }
-  else body = `<polygon points="${Array.from({ length: it.g }, (_, k) => { const t = (-90 + (it.g % 2 ? 0 : 180 / it.g) + (360 / it.g) * k + it.r) * Math.PI / 180; return `${(50 + R * Math.cos(t)).toFixed(1)},${(50 + R * Math.sin(t)).toFixed(1)}`; }).join(' ')}"/>`;
+  if (it.g === 1) { const s = R / 40; body = `<path transform="rotate(${it.r} 50 50) translate(50 50) scale(${s.toFixed(3)})" d="${PAT_FIG_D[0]}" stroke-width="${(sw / s).toFixed(1)}"/>`; }
+  else body = patPoly(it.g, R, 50, 50, it.r);
   return `<svg viewBox="0 0 100 100" aria-hidden="true"><g fill="${fill}" stroke="${stroke}" stroke-width="${sw}" stroke-linejoin="round">${body}</g></svg>`;
 }
 function patternsTable(mini, a, o) {
@@ -4120,11 +4151,11 @@ function patternsTable(mini, a, o) {
     return `<button class="${cls}"${st} data-act="move" ${mv(k)}${dis ? ' disabled' : ''} aria-label="${letters[k]}: ${esc(patSay(it))}${crossed.has(k) || (pick && !pick.correct && k === pick.picked) ? ' (crossed out)' : ''}"><b>${letters[k]}</b>${patSvg(it)}</button>`;
   }).join('');
   const who = pick ? pick.by || (t && a.by) : turn, left = shown.opts.length - crossed.size;
-  const ask = shown.seq.indexOf(null) === shown.seq.length - 1 ? 'What comes next?' : 'What is missing?';
+  const ask = !shown.grid && shown.seq.indexOf(null) === shown.seq.length - 1 ? 'What comes next?' : 'What is missing?';
   const res = t ? `<p ${lateAt('arcres ' + (t.correct ? 'ok' : 'no'), 250)} role="status">${t.correct ? 'Right!' : t.picked < 0 ? 'Time\'s up' : t.auto ? 'Time\'s up: one crossed out' : 'Wrong: crossed out'}</p>`
     : pick ? `<p class="arcres ${pick.correct ? 'ok' : 'no'}"><b class="${who}">${N(who)}</b> ${pick.correct ? 'got it right' : 'got it wrong'}</p>`
     : `<p class="arcnote">${o.view ? '' : `<b class="${turn}">${N(turn)}</b>'s turn · ${left} option${left === 1 ? '' : 's'} left`}</p>`;
-  return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="patterns"><div class="patcard"><small>${ask}</small><div class="pseq" style="--n:${shown.seq.length}" aria-label="The sequence: ${esc(shown.seq.map(patSay).join(', '))}">${seq}</div></div><div class="popts">${opts}</div>${res}</div></div>`;
+  return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="patterns"><div class="patcard"><small>${ask}</small><div class="pseq${shown.grid ? ' grid' : ''}" style="--n:${shown.grid || shown.seq.length}" aria-label="${shown.grid ? 'The grid, row by row' : 'The sequence'}: ${esc(shown.seq.map(patSay).join(', '))}">${seq}</div></div><div class="popts">${opts}</div>${res}</div></div>`;
 }
 // Risk Wheels: the square's three wheels side by side, ten equal segments each with its points on it (the
 // 10s in gold), each wheel's average under it. A tap on a wheel spins it: a few turns, slowing, stopping
