@@ -1085,7 +1085,7 @@ test('setup: the app opens on the main menu with default names and every game ti
   assert.equal(st.screen, 'menu', 'the main menu comes first');
   assert.deepEqual(st.setup.names, { X: 'X', O: 'O' });
   assert.deepEqual(L.enabledGames(st.setup), L.TYPES);
-  assert.equal(L.TYPES.length, 38);
+  assert.equal(L.TYPES.length, 41);
   assert.ok(st.setup.games.coins && st.setup.games.pig && st.setup.games.hunt && st.setup.games.snakes && st.setup.games.bump, 'the newer games are on by default');
   assert.ok(st.setup.games.bj && st.setup.games.bus && st.setup.games.rl, 'and the card games and the wheel too');
   assert.ok(L.TEST_TYPES.every(t => st.setup.games[t] && L.TYPES.includes(t)), 'the games on test are in the pool and on by default (for the admin, who alone sees them)');
@@ -1443,6 +1443,7 @@ function randomMove(m, rng, p) {
     case 'plinko': return Math.floor(rng() * 7);
     case 'pong': return { aim: rng() * 2 - 1, power: rng() };
     case 'trivia': { if (!m.ask) return 'auto'; const left = [0, 1, 2, 3].filter(k => !(m.crossed || []).includes(k)); return left.length ? left[Math.floor(rng() * left.length)] : 'auto'; }
+    case 'patterns': { const left = [0, 1, 2, 3].filter(k => !(m.crossed || []).includes(k)); return left[Math.floor(rng() * left.length)]; }   // (a real pick: a timeout's is always wrong)
     case 'oddone': return Math.floor(rng() * m.grid[p].n * m.grid[p].n);
     case 'dash': case 'lane': return rng() < 0.3 ? 'auto' : L.runAuto(m, p, rng);   // a timed-out run, or a short run as the engine itself makes one
     case 'golf': case 'pool': case 'bowling': return L.physRandom(m, p, rng);        // a random gentle shot
@@ -2128,7 +2129,7 @@ test('timeouts over every kind of game keep the state legal and plain', () => {
 
 
 // ---- online match records: the public state and the secrets apart, moves applied to the pair ----
-const SECRET_KEYS = { wordle: 'word', hangman: 'word', hilo: 'target', bs: 'ship', hunt: 'treasure', memory: 'cards', mastermind: 'code' , trivia: 'answer', oddone: 'pos' };
+const SECRET_KEYS = { wordle: 'word', hangman: 'word', hilo: 'target', bs: 'ship', hunt: 'treasure', memory: 'cards', mastermind: 'code' , trivia: 'answer', oddone: 'pos', patterns: 'answer', sniff: 'treasure' };
 test('a match record keeps every secret out of the public state and puts it back for a move', () => {
   const rng = lcg(11);
   for (const type of L.TYPES) {

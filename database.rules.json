@@ -203,6 +203,57 @@
           ".validate": false
         }
       },
+      "wheels": {
+        ".write": "auth != null && auth.token.admin === true",
+        "target": {
+          ".validate": "newData.isNumber() && newData.val() >= 6 && newData.val() <= 60"
+        },
+        "high": {
+          "a": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 30"
+          },
+          "pa": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99"
+          },
+          "b": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 30 && (newData.val() > 0 || newData.parent().child('a').val() > 0)"
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
+        "mid": {
+          "a": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 30"
+          },
+          "pa": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99"
+          },
+          "b": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 30 && (newData.val() > 0 || newData.parent().child('a').val() > 0)"
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
+        "low": {
+          "a": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 30"
+          },
+          "pa": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99"
+          },
+          "b": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 30 && (newData.val() > 0 || newData.parent().child('a').val() > 0)"
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
+        "$other": {
+          ".validate": false
+        }
+      },
       "run": {
         "dash": {
           ".write": "auth != null && auth.token.admin === true",

@@ -1797,6 +1797,91 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .troad line { stroke: #b3a68b; stroke-width: 2.6; stroke-linecap: round; } .troad line.X { stroke: var(--x); stroke-width: 8; } .troad line.O { stroke: var(--o); stroke-width: 8; } .troad line.B { stroke: #8d8d8d; stroke-width: 4; stroke-dasharray: 3 4; }
 @media (prefers-reduced-motion: reduce) { .sgo { display: none; } }
 @media (prefers-reduced-motion: reduce) { .rbar i.grow { animation: none; width: var(--w1, 0%); } }
+/* Patterns: the sequence with its gap, then four options; a wrong one struck through (as Trivia), the right one drops into the gap */
+.patterns { flex: 1; display: flex; flex-direction: column; min-height: 0; gap: 8px; justify-content: center; }
+.patcard { background: var(--paper); border: 3px solid var(--ink); border-radius: 16px 12px 15px 11px; box-shadow: 0 4px 0 var(--ink); padding: 8px 10px 10px; }
+.patcard small { display: block; color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; margin-bottom: 6px; }
+.pseq { display: grid; grid-template-columns: repeat(var(--n, 5), minmax(0, 1fr)); gap: 6px; }
+.patit { aspect-ratio: 1; border: 2.5px solid var(--ink); border-radius: 10px; background: #fff; display: grid; place-items: center; min-width: 0; }
+.patit svg, .popt svg { width: 100%; height: 100%; display: block; }
+.patit.gap { border-style: dashed; background: var(--panel-2); }
+.patit.gap b { font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-size: 26px; color: var(--muted); }
+.patit.gap.filled { border-style: solid; border-color: var(--green); background: #d7f0c9; }
+.pnum { text-anchor: middle; font-family: 'Luckiest Guy', 'Arial Black', sans-serif; fill: var(--ink); }
+.popts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: min(100%, 320px, calc(var(--gh) - 250px)); margin: 0 auto; }
+.popt { position: relative; aspect-ratio: 1.5; border: 3px solid var(--ink); border-radius: 12px; background: #fff; box-shadow: 0 3px 0 var(--ink); padding: 4px 10px; display: grid; place-items: center; }
+.popt svg { width: auto; height: 100%; max-height: 100%; aspect-ratio: 1; }
+.popt b { position: absolute; left: 6px; top: 6px; width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--ink); display: grid; place-items: center; font-size: 11px; background: var(--paper); }
+.popt:disabled { box-shadow: none; }
+.popt.right { animation: optglow .6s var(--t, 0ms) both; background: #d7f0c9; border-color: var(--green); }
+.popt.wrong { animation: cardshake .45s var(--t, 0ms) both; }
+.popt.out { background: var(--panel-2); border-color: var(--muted); box-shadow: none; }
+.popt.out svg { opacity: .35; }
+.popt.out b { border-color: var(--muted); color: var(--muted); }
+.popt.out::after { content: ''; position: absolute; left: 8%; right: 8%; top: 50%; height: 4px; margin-top: -2px; border-radius: 2px; background: var(--x); transform: rotate(-24deg); }   /* crossed out: not to be picked again */
+.popt.out.fresh { background: #f9c7b6; }
+.popt.out.fresh::after { transform-origin: left center; animation: pstrike .35s calc(var(--t, 0ms) + 250ms) ease-out both; }
+@keyframes pstrike { from { transform: rotate(-24deg) scaleX(0); } to { transform: rotate(-24deg) scaleX(1); } }
+.tpat { display: flex; flex-direction: column; gap: 4cqw; width: 86cqw; }
+.tpat .tr { display: flex; align-items: center; gap: 4cqw; font-weight: 800; font-size: 10cqw; line-height: 1; }
+.tpat .tr b { width: 10cqw; }
+.tpat .tr i { width: 12cqw; height: 12cqw; border-radius: 50%; border: 1.6cqw solid var(--ink); background: var(--paper); }
+.tpat .tr.X i.on { background: var(--x); } .tpat .tr.O i.on { background: var(--o); }
+.tseq { display: flex; gap: 1.5cqw; }
+.tseq span { flex: 1; aspect-ratio: 1; background: #fff; border: 1cqw solid var(--ink); border-radius: 2.5cqw; display: grid; place-items: center; min-width: 0; }
+.tseq span svg { width: 100%; height: 100%; }
+.tseq span.q { border-style: dashed; font-weight: 900; font-size: 9cqw; color: var(--muted); }
+/* Risk Wheels: three wheels, each segment the size of its chance; the pointer on top */
+.wheels { flex: 1; display: flex; flex-direction: column; gap: 10px; justify-content: center; min-height: 0; }
+.rwrow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.rwheel { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px 6px; border: 3px solid var(--ink); border-radius: 14px; background: #fff; box-shadow: 0 3px 0 var(--ink); min-width: 0; }
+.rwheel > b { font-size: 13px; font-weight: 800; white-space: nowrap; }
+.rwheel:disabled { box-shadow: none; }
+.rwheel.spun { background: var(--paper); box-shadow: 0 0 0 3px var(--ink); }
+.wbox { position: relative; width: 100%; aspect-ratio: 1; display: block; }
+.wbox svg { width: 100%; height: 100%; display: block; }
+.wptr { position: absolute; left: 50%; top: -6px; width: 16px; height: 14px; margin-left: -8px; background: var(--ink); clip-path: polygon(0 0, 100% 0, 50% 100%); z-index: 1; }
+.wspin { transform-origin: 50px 50px; }
+.wspin.go { animation: wspin var(--d, 1900ms) cubic-bezier(.12, .62, .22, 1) both; }
+@keyframes wspin { from { transform: rotate(var(--from, 0deg)); } to { transform: rotate(var(--end, 0deg)); } }
+.wrim { fill: none; stroke: var(--ink); stroke-width: 3; }
+.whub { fill: var(--ink); }
+.wv { text-anchor: middle; font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-size: 15px; fill: var(--ink); }
+.wv.dk { fill: #fff; }
+.wp { text-anchor: middle; font-size: 8px; font-weight: 800; fill: var(--ink); opacity: .8; }
+.wp.dk { fill: #fff; opacity: .95; }
+.wtal { display: flex; align-items: center; gap: 6px; flex: 1; justify-content: flex-end; min-width: 0; }
+.wbar { position: relative; flex: 1; max-width: 70px; min-width: 24px; height: 12px; border: 2.5px solid var(--ink); border-radius: 8px; background: var(--paper); overflow: hidden; }
+.wbar i { position: absolute; left: 0; top: 0; bottom: 0; width: var(--w1, 0%); }
+.ctal.X .wbar i { background: var(--x); } .ctal.O .wbar i { background: var(--o); }
+.wbar i.grow { animation: wgrow .5s var(--t, 0ms) cubic-bezier(.2, .7, .3, 1) both; }
+@keyframes wgrow { from { width: var(--w0, 0%); } to { width: var(--w1, 0%); } }
+/* Sniff: the field, the trail of paw prints (warm hotter, cool colder, ringed in the walker's colour), the dog */
+.sniff { flex: 1; display: flex; flex-direction: column; gap: 8px; justify-content: center; min-height: 0; }
+.sfield { display: block; width: min(100%, 320px, calc(100dvh - 320px)); margin: 0 auto; background: #e8dcbf; border: 3px solid var(--ink); border-radius: 16px; overflow: hidden; }
+.scell { fill: #d9c9a2; } .scell.alt { fill: #e3d5b2; }
+.scell.start { fill: #cdbb91; }
+.spaw .sring { stroke-width: 1.5; stroke-linejoin: round; } .spaw.X .sring { stroke: var(--x); fill: var(--x); } .spaw.O .sring { stroke: var(--o); fill: var(--o); }   /* the walker's colour round each print */
+.spaw .sfill { stroke: var(--ink); stroke-width: .3; }
+.spaw.fresh { animation: appear .18s var(--t, 0ms) both; }
+.sdog .sear { fill: #8a5a35; stroke: var(--ink); stroke-width: .8; }
+.sdog .shead { fill: #c98f55; stroke: var(--ink); stroke-width: .9; }
+.sdog .smuz { fill: #f3e2c6; } .sdog .seye { fill: var(--ink); } .sdog .snose { fill: var(--ink); }
+.sdog.walk .sdogin { animation: sdwalk var(--d, 420ms) ease-in-out both; }
+@keyframes sdwalk { from { transform: translate(var(--dx, 0px), var(--dy, 0px)); } to { transform: none; } }
+.smove { cursor: pointer; }
+.shit { fill: rgba(255, 255, 255, .28); stroke: var(--ink); stroke-width: .8; stroke-dasharray: 2 1.6; }
+.smove:hover .shit, .smove:focus-visible .shit { fill: rgba(255, 255, 255, .6); }
+.smove:focus { outline: none; }
+.sarrow { fill: var(--ink); opacity: .55; }
+.schest { transform-box: fill-box; transform-origin: center; }
+.schest .sbox { fill: #b87333; stroke: var(--ink); stroke-width: .9; } .schest .slid { fill: #d18b43; stroke: var(--ink); stroke-width: .9; } .schest .slock { fill: #ffd34d; }
+.arcres.hot { color: #e0601f; } .arcres.cold { color: #3b86c9; }
+.tsniff { width: 62cqw; height: 62cqw; }
+.tsniff rect { fill: #e3d5b2; }
+.tsniff line { stroke-width: 6; stroke-linecap: round; }
+.tsniff .tdog { fill: #c98f55; stroke: var(--ink); stroke-width: 3; }
+@media (prefers-reduced-motion: reduce) { .wbar i.grow { animation: none; } .sdog.walk .sdogin { animation: none; } }
 /* Trivia: the question and its four answers */
 .trivia { flex: 1; display: flex; flex-direction: column; min-height: 0; gap: 8px; justify-content: center; }
 .tqcard { background: var(--paper); border: 3px solid var(--ink); border-radius: 16px 12px 15px 11px; box-shadow: 0 4px 0 var(--ink); padding: 10px 12px; }
@@ -2014,6 +2099,9 @@ const ICONS = {
   shelves: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><path d="M3 2.5v19M21 2.5v19M3 8h18M3 14h18M3 20h18"/><rect x="5.5" y="3.5" width="3.5" height="4" fill="currentColor" stroke="none"/><rect x="14" y="9.5" width="3.5" height="4" fill="currentColor" stroke="none"/><rect x="9.5" y="15.5" width="3.5" height="4" fill="currentColor" fill-opacity=".45" stroke="none"/></svg>',
   flap: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round"><ellipse cx="10.5" cy="13" rx="7" ry="5.6" fill="currentColor" fill-opacity=".35"/><path d="M17.3 11.6l4.2 1.6-4.2 1.6"/><path d="M6.5 12.5c1.2-4 4-6.2 6.5-6.4-.8 2.2-2 4.6-3.6 6.4z" fill="currentColor"/><circle cx="13.6" cy="11" r="1.1" fill="currentColor" stroke="none"/></svg>',
   chopper: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5h16M12 4.5V8"/><ellipse cx="13" cy="12" rx="6" ry="4" fill="currentColor" fill-opacity=".35"/><path d="M7 11.5H2.5l-1-2.5M8.5 19h10M11 16v3M16 16v3"/></svg>',
+  patterns: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="3.8" cy="14" r="1.7" fill="currentColor" stroke="none"/><circle cx="9.4" cy="14" r="2.8" fill="currentColor" stroke="none"/><rect x="14.5" y="7.5" width="8" height="12" rx="2" stroke-dasharray="2.4 1.9"/><path d="M17 11.6a1.6 1.6 0 1 1 2.3 1.4c-.6.3-.8.7-.8 1.2"/><circle cx="18.5" cy="16.7" r=".5" fill="currentColor"/></svg>',
+  wheels: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13.5" r="8.5"/><path d="M12 13.5V5M12 13.5l7.4 4.3M12 13.5l-7.4 4.3"/><path d="M12 13.5V5a8.5 8.5 0 0 1 7.4 12.8z" fill="currentColor" fill-opacity=".35"/><path d="M9.8 1.2h4.4L12 4.4z" fill="currentColor"/></svg>',
+  sniff: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><ellipse cx="12" cy="16" rx="4.8" ry="4"/><ellipse cx="5.4" cy="10.2" rx="2" ry="2.4"/><ellipse cx="9.4" cy="6.2" rx="2" ry="2.5"/><ellipse cx="14.6" cy="6.2" rx="2" ry="2.5"/><ellipse cx="18.6" cy="10.2" rx="2" ry="2.4"/></svg>',
   roads: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V12h8V4h8"/><g fill="currentColor" stroke="none"><circle cx="4" cy="4" r="1.6"/><circle cx="20" cy="20" r="1.6"/><circle cx="12" cy="20" r="1.6"/><circle cx="20" cy="12" r="1.6"/></g></svg>',
   bowling: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.5c-2.5 0-2 3-1 5.5-3 3-3 8-1.5 13h5c1.5-5 1.5-10-1.5-13 1-2.5 1.5-5.5-1-5.5z"/><circle cx="17" cy="16" r="4.5"/><circle cx="16" cy="15" r=".6" fill="currentColor"/><circle cx="18.2" cy="15" r=".6" fill="currentColor"/><circle cx="17.1" cy="17.2" r=".6" fill="currentColor"/></svg>',
   rl: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9.2"/><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v5.9M12 15.3v5.9M2.8 12h5.9M15.3 12h5.9" stroke-width="1.8"/><circle cx="17.6" cy="6.4" r="1.6" fill="currentColor" stroke="none"/></svg>',
@@ -2518,6 +2606,9 @@ const EXPLAIN = {
   roads: { name: 'Roads', play: 'Claim a line. A random line gets blocked after each move.', win: 'Have the longest unbroken road.' },
   flap: { name: 'Flap', play: 'Tap to flap through the gaps. It gets faster, and you keep your distance when you crash.', win: 'Reach 1,000 m first.' },
   chopper: { name: 'Chopper', play: 'Hold to rise, let go to drop. It gets faster, and you keep your distance when you crash.', win: 'Reach 1,000 m first.' },
+  patterns: { name: 'Patterns', play: 'Pick what comes next, or what\'s missing. Wrong answers get crossed out and the puzzle stays until someone gets it.', win: 'Get 3 right.' },
+  wheels: { name: 'Risk Wheels', play: 'Pick a wheel and spin. Big risk, big points, or play it safe.', get win() { return `Reach ${wheelsConfig().target} first.`; } },   // (the target is the admin's)
+  sniff: { name: 'Sniff', play: 'Move the dog one step. You\'ll hear if it\'s getting hotter or colder.', win: 'Be the one who finds the treasure.' },
 };
 let explainT = null;                          // the mini-game whose explainer is open
 const qBtn = (t, cls) => `<button class="qbtn${cls ? ' ' + cls : ''}" data-act="explain" data-t="${t}" aria-label="How to play ${EXPLAIN[t].name}">${cls === 'sm' ? '<i>?</i>' : '?'}</button>`;   // the small one: a 26px sticker in a 40px tap target
@@ -2751,6 +2842,9 @@ function thumb(mini, final) {
     case 'districts': { const t = distTally(mini.map, mini.who); return `<svg class="tdist" viewBox="-2 -2 104 124" aria-hidden="true">${mini.map.regions.map((poly, r) => `<path class="dreg${t.lead[r] ? ' ' + t.lead[r] : ''}" d="${distPath(poly)}"/>`).join('')}${mini.map.spots.map((sp, k) => `<circle class="${mini.who[k] || ''}" cx="${sp.x}" cy="${sp.y}" r="4.6"/>`).join('')}</svg>`; }
     case 'shelves': return `<div class="tshelf">${Array.from({ length: SHELF.n }, (_, r) => `<span>${mini.cells.slice(r * SHELF.per, r * SHELF.per + SHELF.per).map(w => `<i class="${w || ''}"></i>`).join('')}</span>`).join('')}</div>`;
     case 'roads': return `<svg class="troad" viewBox="0 0 100 100" aria-hidden="true">${mini.segs.map((w, k) => { const [p, q] = ROAD_SEGS[k].map(ROAD_PT); return `<line class="${w || ''}" x1="${p[0]}" y1="${p[1]}" x2="${q[0]}" y2="${q[1]}"/>`; }).join('')}</svg>`;
+    case 'patterns': { const pz = mini.puz || (mini.last ? { seq: mini.last.seq } : null); return `<div class="tpat">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${Array.from({ length: PATTERNS.goal }, (_, k) => `<i class="${k < mini.right[p] ? 'on' : ''}"></i>`).join('')}</div>`).join('')}${pz ? `<div class="tseq">${pz.seq.map(it => (it ? `<span>${patSvg(it)}</span>` : '<span class="q">?</span>')).join('')}</div>` : ''}</div>`; }   // the right answers so far, and the puzzle open now
+    case 'wheels': return `<div class="trun" aria-label="X has ${mini.pts.X}, O has ${mini.pts.O} of ${mini.cfg.target}">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><i style="--w:${(100 * Math.min(1, mini.pts[p] / mini.cfg.target)).toFixed(1)}%"></i></div>`).join('')}</div>`;   // both players' points to the target
+    case 'sniff': { const [x, y] = sniffXY(mini.dog); return `<svg class="tsniff" viewBox="0 0 100 100" aria-hidden="true">${Array.from({ length: SNIFF.n * SNIFF.n }, (_, c) => { const [cx, cy] = sniffXY(c); return `<rect x="${cx - 9}" y="${cy - 9}" width="18" height="18" rx="3"/>`; }).join('')}${(mini.trail || []).map(st => { const [x0, y0] = sniffXY(st.f), [x1, y1] = sniffXY(st.t); return `<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}" stroke="${st.hot ? SNIFF_HOT : SNIFF_COLD}"/>`; }).join('')}<circle class="tdog" cx="${x}" cy="${y}" r="7"/></svg>`; }   // the field, the trail (warm or cool) and the dog
     case 'flood': return `<div class="tg gfl">${mini.colors.map((c, i) => `<i class="${mini.owner[i] === 'X' || mini.owner[i] === 'O' ? 'own ' + mini.owner[i] : ''}" style="background:${FLOOD_COL[c]}"></i>`).join('')}</div>`;
     case 'dash': case 'lane': case 'flap': case 'chopper': return `<div class="trun" aria-label="X at ${Math.round(mini.dist.X)} m, O at ${Math.round(mini.dist.O)} m of ${mini.cfg.target}">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><i style="--w:${(100 * Math.min(1, mini.dist[p] / mini.cfg.target)).toFixed(1)}%"></i></div>`).join('')}</div>`;   // both players' progress to the target
     case 'pig': return `<div class="tdice">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><div class="bar"><i style="width:${Math.min(100, mini.bank[p] / RISKY.goal * 100)}%"></i></div><span>${mini.bank[p]}</span></div>`).join('')}</div>`;
@@ -3104,6 +3198,21 @@ function fetchBullsConfig() {
       if (!v || typeof v !== 'object') return;
       setBullsConfig(v);
       try { localStorage.setItem(BULLS_KEY, JSON.stringify(v)); } catch (e) { /* no storage: read again next visit */ }
+    }).catch(() => {});
+  } catch (e) { /* offline: as last known */ }
+}
+// Risk Wheels' points, odds and target (config/wheels, the admin's dashboard): likewise.
+const WHEELS_KEY = KEY + '.wheelscfg';
+function fetchWheelsConfig() {
+  try { const v = JSON.parse(localStorage.getItem(WHEELS_KEY) || 'null'); if (v && typeof v === 'object') setWheelsConfig(v); } catch (e) { /* none kept */ }
+  if (!configured()) return;
+  const hook = window.TTT_FIREBASE, c = (hook && hook.config) || FIREBASE_CONFIG;
+  const url = hook && hook.emulator ? `http://${hook.emulator.host}:${hook.emulator.port}/config/wheels.json?ns=${c.projectId}-default-rtdb` : `${c.databaseURL}/config/wheels.json`;
+  try {
+    fetch(url).then(r => (r.ok ? r.json() : null)).then(v => {
+      if (!v || typeof v !== 'object') return;
+      setWheelsConfig(v);
+      try { localStorage.setItem(WHEELS_KEY, JSON.stringify(v)); } catch (e) { /* no storage: read again next visit */ }
     }).catch(() => {});
   } catch (e) { /* offline: as last known */ }
 }
@@ -3721,6 +3830,126 @@ function roadTable(mini, a, o) {
   const res = rd ? `<p ${lateAt('arcres ok', PLACE_MS.mark)} role="status">${N(a.by)}'s road: ${best[a.by].len}</p>`
     : `<p class="arcnote">${o.view ? '' : o.locked ? `Waiting for <b class="${turn}">${N(turn)}</b>…` : 'Tap an open line'}</p>`;
   return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="roads"><svg class="rmap" viewBox="0 0 100 100" role="group" aria-label="The roads">${glow}${lines}${dots}${hits}</svg>${res}</div></div>`;
+}
+// Patterns: the sequence with its gap, and four options (two by two). As Trivia: a wrong pick is crossed
+// out for both players and the puzzle stays; nothing ever shows the answer after a wrong pick. The right
+// one glows and drops into the gap; the next puzzle waits for the next turn.
+const PAT_COL = ['#3d7fe0', '#4caf50', '#8d5bd8', '#f06aa8', '#21b2a6', '#f39a3b'];
+const PAT_COLN = ['blue', 'green', 'purple', 'pink', 'teal', 'orange'];
+const PAT_SIDES = { 3: 'triangle', 4: 'square', 5: 'pentagon', 6: 'hexagon', 7: 'heptagon', 8: 'octagon' };
+// An item in words (for the options' labels and the screen reader).
+function patSay(it) {
+  if (it == null) return 'the gap';
+  if ('n' in it) return String(it.n);
+  if ('d' in it) return `${it.d} ${PAT_COLN[it.c]} dot${it.d === 1 ? '' : 's'}`;
+  const name = it.g === 0 ? 'circle' : it.g === 1 ? 'arrow' : PAT_SIDES[it.g];
+  return `${it.f ? 'solid' : 'outline'} ${PAT_COLN[it.c]} ${name}, size ${it.z}${it.g === 1 ? `, pointing ${['up', 'up-right', 'right', 'down-right', 'down', 'down-left', 'left', 'up-left'][Math.round(patRot(it) / 45) % 8]}` : ''}`;
+}
+// An item drawn in a 100 x 100 box: a number, a shape (ink-outlined, the game's style), or dots.
+function patSvg(it) {
+  if ('n' in it) { const t = String(it.n); return `<svg viewBox="0 0 100 100" aria-hidden="true"><text x="50" y="${t.length > 3 ? 62 : 66}" class="pnum" font-size="${t.length > 3 ? 30 : t.length > 2 ? 38 : 48}">${t}</text></svg>`; }
+  if ('d' in it) {
+    const n = it.d, cols = n <= 3 ? n : n <= 4 ? 2 : n <= 9 ? 3 : 4, rows = Math.ceil(n / cols), gap = cols <= 3 && rows <= 3 ? 26 : 21, r = gap * 0.36;
+    const dots = Array.from({ length: n }, (_, k) => { const row = Math.floor(k / cols), inRow = row === rows - 1 ? n - row * cols : cols, col = k % cols; return `<circle cx="${(50 + (col - (inRow - 1) / 2) * gap).toFixed(1)}" cy="${(50 + (row - (rows - 1) / 2) * gap).toFixed(1)}" r="${r.toFixed(1)}"/>`; }).join('');
+    return `<svg viewBox="0 0 100 100" aria-hidden="true"><g class="pdots" fill="${PAT_COL[it.c]}">${dots}</g></svg>`;
+  }
+  const R = 11 + it.z * 6.4, col = PAT_COL[it.c], fill = it.f ? col : '#fff', stroke = it.f ? 'var(--ink)' : col, sw = it.f ? 4 : 7;
+  let body;
+  if (it.g === 0) body = `<circle cx="50" cy="50" r="${R}"/>`;
+  else if (it.g === 1) { const s = R / 40; body = `<path transform="rotate(${it.r} 50 50) translate(50 50) scale(${s.toFixed(3)})" d="M0 -40 L30 -6 L12 -6 L12 38 L-12 38 L-12 -6 L-30 -6 Z" stroke-width="${(sw / s).toFixed(1)}"/>`; }
+  else body = `<polygon points="${Array.from({ length: it.g }, (_, k) => { const t = (-90 + (it.g % 2 ? 0 : 180 / it.g) + (360 / it.g) * k + it.r) * Math.PI / 180; return `${(50 + R * Math.cos(t)).toFixed(1)},${(50 + R * Math.sin(t)).toFixed(1)}`; }).join(' ')}"/>`;
+  return `<svg viewBox="0 0 100 100" aria-hidden="true"><g fill="${fill}" stroke="${stroke}" stroke-width="${sw}" stroke-linejoin="round">${body}</g></svg>`;
+}
+function patternsTable(mini, a, o) {
+  const t = a && a.pat ? a.pat : null, l = mini.last, turn = o.turn;
+  const tal = p => arcTally(p, o, pips(p, Math.min(PATTERNS.goal, mini.right[p]), PATTERNS.goal, !!(t && t.correct && a.by === p), 250));
+  const pick = t || ((o.done || o.view) && l ? l : null);   // the pick just made (fresh), the one on show until heading back or when looking back, else the open puzzle
+  const shown = pick || mini.puz;
+  if (!shown) return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><p class="arcnote">No puzzle here.</p></div>`;
+  const crossed = new Set(pick ? (pick.crossed || []) : (mini.crossed || []));
+  const solved = pick && pick.correct ? shown.opts[pick.right] : null;
+  const seq = shown.seq.map(it => (it ? `<span class="patit">${patSvg(it)}</span>`
+    : solved ? `<span ${lateAt('patit gap filled', t ? 250 : null)}>${patSvg(solved)}</span>` : '<span class="patit gap"><b>?</b></span>')).join('');
+  const letters = 'ABCD';
+  const opts = shown.opts.map((it, k) => {
+    let cls = 'popt';
+    if (crossed.has(k)) cls += ' out';
+    else if (pick && k === pick.picked) cls += pick.correct ? ' right' : ' wrong out fresh';
+    const st = pick && t && k === pick.picked ? ' style="--t:250ms"' : '';
+    const dis = !!pick || o.locked || crossed.has(k);
+    return `<button class="${cls}"${st} data-act="move" ${mv(k)}${dis ? ' disabled' : ''} aria-label="${letters[k]}: ${esc(patSay(it))}${crossed.has(k) || (pick && !pick.correct && k === pick.picked) ? ' (crossed out)' : ''}"><b>${letters[k]}</b>${patSvg(it)}</button>`;
+  }).join('');
+  const who = pick ? pick.by || (t && a.by) : turn, left = shown.opts.length - crossed.size;
+  const ask = shown.seq.indexOf(null) === shown.seq.length - 1 ? 'What comes next?' : 'What is missing?';
+  const res = t ? `<p ${lateAt('arcres ' + (t.correct ? 'ok' : 'no'), 250)} role="status">${t.correct ? 'Right!' : t.picked < 0 ? 'Time\'s up' : t.auto ? 'Time\'s up: one crossed out' : 'Wrong: crossed out'}</p>`
+    : pick ? `<p class="arcres ${pick.correct ? 'ok' : 'no'}"><b class="${who}">${N(who)}</b> ${pick.correct ? 'got it right' : 'got it wrong'}</p>`
+    : `<p class="arcnote">${o.view ? '' : `<b class="${turn}">${N(turn)}</b>'s turn · ${left} option${left === 1 ? '' : 's'} left`}</p>`;
+  return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="patterns"><div class="patcard"><small>${ask}</small><div class="pseq" style="--n:${shown.seq.length}" aria-label="The sequence: ${esc(shown.seq.map(patSay).join(', '))}">${seq}</div></div><div class="popts">${opts}</div>${res}</div></div>`;
+}
+// Risk Wheels: the three wheels side by side, each segment the size of its chance, its points on it. A tap
+// on a wheel spins it: a few turns, slowing, stopping with the pointer on the segment the server's spin
+// landed in; the points pop up and go onto the spinner's tally. Between spins each wheel rests where it
+// last stopped.
+const WHEEL_LOOK = { high: { name: 'High risk', a: '#8d5bd8', b: '#ddd0f2' }, mid: { name: 'Medium', a: '#3d7fe0', b: '#cfe0f8' }, low: { name: 'Low risk', a: '#21b2a6', b: '#c6ece8' } };
+function wheelSvg(cfg, w) {
+  const c = cfg[w], L = WHEEL_LOOK[w], pa = c.pa / 100, R = 46;
+  const pt = f => { const t = (f * 360 - 90) * Math.PI / 180; return [(50 + R * Math.cos(t)).toFixed(2), (50 + R * Math.sin(t)).toFixed(2)]; };
+  const seg = (f0, f1, col) => { const [x0, y0] = pt(f0), [x1, y1] = pt(f1); return `<path d="M50 50 L${x0} ${y0} A${R} ${R} 0 ${f1 - f0 > 0.5 ? 1 : 0} 1 ${x1} ${y1} Z" fill="${col}"/>`; };
+  const lab = (f, v, pct, dark) => { const t = (f * 360 - 90) * Math.PI / 180, x = 50 + 27 * Math.cos(t), y = 50 + 27 * Math.sin(t); return `<text x="${x.toFixed(1)}" y="${(y + 4).toFixed(1)}" class="wv${dark ? ' dk' : ''}">${v}</text><text x="${x.toFixed(1)}" y="${(y + 14).toFixed(1)}" class="wp${dark ? ' dk' : ''}">${pct}%</text>`; };
+  return seg(0, pa, L.a) + seg(pa, 1, L.b) + `<circle cx="50" cy="50" r="${R}" class="wrim"/>` + lab(pa / 2, c.a, c.pa, true) + lab(pa + (1 - pa) / 2, c.b, 100 - c.pa, false) + '<circle cx="50" cy="50" r="5" class="whub"/>';
+}
+function wheelTable(mini, a, o) {
+  const s = a && a.wheel ? a.wheel : null, l = mini.last, turn = o.turn, cfg = mini.cfg, T = cfg.target, rest = mini.rest || {};
+  const pct = v => (100 * Math.min(1, v / T)).toFixed(1) + '%';
+  const tal = p => {                                          // the bar and the points; the spinner's grow as the wheel stops
+    const now = mini.pts[p], fresh = !!(s && a.by === p && s.v), was = fresh ? now - s.v : now;
+    return arcTally(p, o, `<span class="wtal"><span class="wbar" aria-hidden="true"><i${fresh ? ' class="grow"' : ''} style="--w0:${pct(was)};--w1:${pct(now)};--t:${WHEELT.spin}ms"></i></span><small aria-label="${now} of ${T}">${fresh ? `<i class="pins" style="--t:${WHEELT.spin}ms"><b class="was">${was}</b><b class="now">${now}</b></i>` : now}/${T}</small></span>`);
+  };
+  const wheels = WHEELS.map(w => {
+    const spun = s && s.w === w, at = spun ? s.at : rest[w] || 0, end = (spun ? 1800 : 0) - at * 360, from = spun ? -(s.from || 0) * 360 : end;
+    const dis = o.locked || !!s;
+    return `<button class="rwheel ${w}${spun ? ' spun' : ''}" data-act="move" ${mv(w)}${dis ? ' disabled' : ''} aria-label="${WHEEL_LOOK[w].name}: ${cfg[w].a} points (${cfg[w].pa}%) or ${cfg[w].b} (${100 - cfg[w].pa}%)">
+      <span class="wbox"><i class="wptr" aria-hidden="true"></i><svg viewBox="0 0 100 100" aria-hidden="true"><g class="wspin${spun ? ' go' : ''}" style="transform:rotate(${end.toFixed(1)}deg)${spun ? `;--from:${from.toFixed(1)}deg;--end:${end.toFixed(1)}deg;--d:${WHEELT.spin}ms` : ''}">${wheelSvg(cfg, w)}</g></svg></span><b>${WHEEL_LOOK[w].name}</b></button>`;
+  }).join('');
+  const res = s ? `<p ${lateAt('arcres ' + (s.v ? 'ok' : 'no'), WHEELT.spin)} role="status">${s.v ? `+${s.v}!` : 'Nothing this time'}</p>`
+    : (o.view || o.done) && l ? `<p class="arcres ${l.v ? 'ok' : 'no'}"><b class="${l.by}">${N(l.by)}</b> spun ${WHEEL_LOOK[l.w].name.toLowerCase()}: ${l.v ? '+' + l.v : 'nothing'}</p>`
+    : `<p class="arcnote">${o.view ? '' : o.locked ? `Waiting for <b class="${turn}">${N(turn)}</b>…` : `Pick a wheel and spin · first to ${T}`}</p>`;
+  return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="wheels"><div class="rwrow">${wheels}</div>${res}</div></div>`;
+}
+// Sniff: the 5x5 field. Every step the dog has taken shows as two paw prints along it, warm for hotter,
+// cool for colder, ringed in the colour of whoever walked it. The dog's four neighbours (inside the
+// field) are the moves: a tap walks it there; it trots over, the new prints come, then "Hotter!" or
+// "Colder!". Onto the treasure: it digs, the chest pops up.
+const SNIFF_HOT = '#f2763a', SNIFF_COLD = '#5aa6e8';
+const sniffXY = c => [Math.floor(c % SNIFF.n) * 20 + 10, Math.floor(c / SNIFF.n) * 20 + 10];   // a cell's middle, in a 100 x 100 field
+const SNIFF_PAW = '<ellipse cx="0" cy="1.3" rx="2" ry="1.7"/><circle cx="-1.9" cy="-1.5" r=".75"/><circle cx="-.65" cy="-2.5" r=".75"/><circle cx=".65" cy="-2.5" r=".75"/><circle cx="1.9" cy="-1.5" r=".75"/>';
+function sniffPaws(trail, fresh) {
+  const seen = {};
+  return trail.map((s, k) => {
+    const [x0, y0] = sniffXY(s.f), [x1, y1] = sniffXY(s.t), dx = (x1 - x0) / 20, dy = (y1 - y0) / 20, ang = Math.atan2(dy, dx) * 180 / Math.PI + 90;
+    const edge = Math.min(s.f, s.t) + ':' + Math.max(s.f, s.t), n = seen[edge] = (seen[edge] || 0) + 1, off = ((n - 1) % 3 - 1) * 2.4;   // the same way again: a little to one side
+    const px = -dy, py = dx, isNew = fresh && k === trail.length - 1;
+    return [0.36, 0.66].map((f, j) => { const side = (j ? 2 : -2) + off, x = x0 + (x1 - x0) * f + px * side, y = y0 + (y1 - y0) * f + py * side;
+      return `<g class="spaw ${s.by}${isNew ? ' fresh' : ''}" style="--t:${isNew ? SNIFF.step * (0.35 + 0.3 * j) : 0}ms" transform="translate(${x.toFixed(2)} ${y.toFixed(2)}) rotate(${ang.toFixed(0)}) scale(1.35)"><g class="sring">${SNIFF_PAW}</g><g class="sfill" fill="${s.hot ? SNIFF_HOT : SNIFF_COLD}">${SNIFF_PAW}</g></g>`; }).join('');
+  }).join('');
+}
+const SNIFF_DOG = '<g class="sdogart"><ellipse cx="-6.2" cy="-1.4" rx="2.6" ry="4.6" transform="rotate(18 -6.2 -1.4)" class="sear"/><ellipse cx="6.2" cy="-1.4" rx="2.6" ry="4.6" transform="rotate(-18 6.2 -1.4)" class="sear"/><circle r="6.6" class="shead"/><ellipse cx="0" cy="2.6" rx="3.6" ry="2.7" class="smuz"/><circle cx="-2.4" cy="-1.6" r=".95" class="seye"/><circle cx="2.4" cy="-1.6" r=".95" class="seye"/><ellipse cx="0" cy="1.6" rx="1.4" ry="1" class="snose"/></g>';
+function sniffTable(mini, a, o) {
+  const s = a && a.sniff ? a.sniff : null, turn = o.turn, trail = mini.trail || [];
+  const steps = p => trail.filter(t => t.by === p).length;
+  const tal = p => arcTally(p, o, `<small>${steps(p)} step${steps(p) === 1 ? '' : 's'}</small>`);
+  const cells = Array.from({ length: SNIFF.n * SNIFF.n }, (_, c) => { const [x, y] = sniffXY(c); return `<rect x="${x - 10}" y="${y - 10}" width="20" height="20" class="scell${(Math.floor(c / SNIFF.n) + c % SNIFF.n) % 2 ? ' alt' : ''}${c === mini.start ? ' start' : ''}"/>`; }).join('');
+  const [dx, dy] = sniffXY(mini.dog), [fx, fy] = s ? sniffXY(s.f) : [dx, dy];
+  const moves = o.locked || s ? '' : sniffDirs(mini.dog).map(d => { const to = sniffStep(mini.dog, d), [x, y] = sniffXY(to), ar = { N: 0, E: 90, S: 180, W: 270 }[d];
+    return `<g class="smove" data-act="move" ${mv(d)} role="button" tabindex="0" aria-label="Walk ${{ N: 'up', S: 'down', E: 'right', W: 'left' }[d]}"><rect x="${x - 10}" y="${y - 10}" width="20" height="20" class="shit"/><path class="sarrow" transform="translate(${x} ${y}) rotate(${ar})" d="M0 -4.5 L4 0.5 L1.4 0.5 L1.4 4.5 L-1.4 4.5 L-1.4 0.5 L-4 0.5 Z"/></g>`; }).join('');
+  const found = s ? s.found : !!(mini.last && mini.last.found);
+  const chest = found ? `<g transform="translate(${dx + 4} ${dy - 4}) scale(.8)"><g ${lateAt('schest', s ? SNIFF.step : null)}><rect x="-6" y="-3" width="12" height="8" rx="1.5" class="sbox"/><path d="M-6 -3 Q0 -9 6 -3 Z" class="slid"/><rect x="-1.3" y="-1.5" width="2.6" height="3" class="slock"/></g></g>` : '';
+  const dog = `<g class="sdog${s ? ' walk' : ''}" style="--dx:${((fx - dx) / 0.85).toFixed(1)}px;--dy:${((fy - dy) / 0.85).toFixed(1)}px;--d:${SNIFF.step}ms" transform="translate(${dx} ${dy}) scale(.85)"><g class="sdogin">${SNIFF_DOG}</g></g>`;
+  const word = s ? (s.found ? 'Found it!' : s.hot ? 'Hotter!' : 'Colder!') : null;
+  const res = s ? `<p ${lateAt('arcres ' + (s.found || s.hot ? 'hot' : 'cold'), SNIFF.step)} role="status">${word}</p>`
+    : o.view ? `<p class="arcnote">${trail.length} step${trail.length === 1 ? '' : 's'}</p>`
+    : `<p class="arcnote">${o.locked ? `Waiting for <b class="${turn}">${N(turn)}</b>…` : 'Tap a square next to the dog to walk it there'}</p>`;
+  return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="sniff"><svg class="sfield" viewBox="0 0 100 100" role="group" aria-label="The field: the dog and its trail">${cells}${sniffPaws(trail, !!s)}${dog}${chest}${moves}</svg>${res}</div></div>`;
 }
 // Dash and Lane Rush: the run is played here, in real time, on a canvas. The engine's runStep is the
 // physics (the same the tests step), this is the loop, the drawing and the inputs. A run: the Run
@@ -4364,6 +4593,9 @@ function renderMini(sq, review) {
     case 'districts': g = distTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d }); break;
     case 'shelves': g = shelfTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d }); break;
     case 'roads': g = roadTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d }); break;
+    case 'patterns': g = patternsTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d }); break;
+    case 'wheels': g = wheelTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d }); break;
+    case 'sniff': g = sniffTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d }); break;
     case 'hexapawn': {
       // Tap one of your pawns to see where it can go, then tap a highlighted square. The pawn just moved
       // slides in from where it was; a captured pawn is knocked off the board.
@@ -4461,6 +4693,9 @@ function summary(f) {
     case 'districts': return `${who} placed a piece`;
     case 'shelves': return `${who} marked a shelf`;
     case 'roads': return `${who} claimed a line`;
+    case 'patterns': return f.pat ? (f.pat.correct ? `${who} got the pattern` : `${who} picked wrong · crossed out`) : `${who} picked`;
+    case 'wheels': return f.wheel ? `${who} spun ${WHEEL_LOOK[f.wheel.w].name.toLowerCase()}: ${f.wheel.v ? '+' + f.wheel.v : 'nothing'}` : `${who} spun`;
+    case 'sniff': return f.sniff ? `${who} walked the dog: ${f.sniff.found ? 'found it!' : f.sniff.hot ? 'hotter' : 'colder'}` : `${who} walked the dog`;
     case 'bullseye': return f.bull ? `${who} threw: ${f.bull.pts === BULLS.bullPts ? 'a bullseye, +3' : f.bull.pts ? 'on the board, +1' : 'off the board'}` : `${who} threw`;
     case 'echo': return f.echo ? (f.echo.pass ? `${who} beat pattern ${f.echo.level + 1}` : `${who} slipped at step ${f.echo.failAt + 1}`) : `${who} tried`;
     case 'plinko': return f.plinko ? `${who} dropped from slot ${f.plinko.slot + 1} · bin ${f.plinko.bin + 1}${f.plinko.win ? ': WIN' : ''}` : `${who} dropped`;
@@ -4489,7 +4724,7 @@ function renderFlash(f) {
   if (f.type === 'pig' && f.note === 'bust') {
     return `${open}<div class="card"><div class="big-g">${dieFace(f.roll)}</div><h2>Bust!</h2><p>${who} rolled ${f.roll} again · ${f.pot} point${f.pot === 1 ? '' : 's'} lost</p></div></div>`;
   }
-  if ((['bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads', 'flap', 'chopper'].includes(f.type)) && (f.kind === 'again' || f.kind === 'move')) {   // the table shows it all: the cards, the tick or cross, the number and the hits
+  if ((['bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads', 'flap', 'chopper', 'patterns', 'wheels', 'sniff'].includes(f.type)) && (f.kind === 'again' || f.kind === 'move')) {   // the table shows it all: the cards, the tick or cross, the number and the hits
     return open.replace('"flash late"', '"flash lite late"') + '</div>';
   }
   if (f.type === 'pig' && (f.note === 'bank' || f.kind === 'again')) {   // a roll or a bank speaks for itself: the +N grows, or moves into the score
@@ -6566,6 +6801,7 @@ function boot() {
   fetchReleases();                                            // which mini-games are released, before any match is set up
   fetchRunConfig();                                           // the runners' difficulty, for the squares to come
   fetchBullsConfig();                                         // Bullseye's board, bullseye and sweep speeds, likewise
+  fetchWheelsConfig();                                        // Risk Wheels' points, odds and target, likewise
   loadTrivia();                                               // the Trivia questions, for the match to come
   loadPhysics();                                              // Matter.js and physics.js, for Mini Golf, Pool and Bowling
   takeTag();                                                  // a playtester's link (?t=sam): before the address is tidied below
@@ -7005,6 +7241,15 @@ function moveSounds(f) {
     case 'seating': if (f.seat) { add('mark', 0); if (f.seat.table != null) add('ding', PLACE_MS.mark); if (f.seat.z != null) { add('hop', PLACE_MS.mark + 150); add('cushion', PLACE_MS.mark + PLACE_MS.walk - 120); } } break;
     case 'districts': if (f.dist) { add('marker', 0); add('flipUp', PLACE_MS.mark); } break;
     case 'shelves': if (f.shelf) { add('mark', 0); if (f.shelf.grey != null) add('thud', PLACE_MS.mark + PLACE_MS.drop - 150); } break;
+    case 'patterns': if (f.pat) add(f.pat.correct ? 'ding' : 'thud', 250); break;   // the pick glows (and drops into the gap) or is struck through
+    case 'wheels': {                                               // the wheel turns, ticking slower and slower; it stops: the points, or nothing
+      add('rlSpin', 0);
+      const N = 16;
+      for (let k = 1; k <= N; k++) add('wheelTick', Math.round(WHEELT.spin * (1 - Math.pow(1 - k / N, 2.2))));
+      if (f.wheel) { add(f.wheel.v ? 'ding' : 'thud', WHEELT.spin); if (f.wheel.w === 'high' && f.wheel.v) add('sparkle', WHEELT.spin + 120); }
+      break;
+    }
+    case 'sniff': if (f.sniff) { add('hop', 0); add('hop', Math.round(SNIFF.step * 0.5)); if (f.sniff.found) { add('dig', SNIFF.step); add('sparkle', SNIFF.step + 250); } else add(f.sniff.hot ? 'higher' : 'lower', SNIFF.step); } break;   // the dog trots (its paws), then hotter or colder, or it digs up the chest
     case 'roads': if (f.road) { add('pieceSlide', 0); if (f.road.block != null) add('knock', PLACE_MS.mark + PLACE_MS.drop - 150); } break;
     case 'flood': if (f.flood) { add('splash', 0); if (!f.flood.gain) add('thud', FLOOD_MS.base); f.flood.waves.slice(0, 6).forEach((w, k) => add('pop', Math.round(FLOOD_MS.base * 0.55 + k * FLOOD_MS.wave), 1 + k * 0.06)); } break;
     case 'golf': case 'pool': case 'bowling': {                   // the recording's events, as they come round in the replay; then the result
@@ -7026,7 +7271,7 @@ function moveSounds(f) {
     case 'mastermind': { const n = (f.solid || 0) + (f.hollow || 0); for (let k = 0; k < n; k++) add('marker', 450 + k * 250); if (won) add('reveal', 1450); break; }
     case 'bump': { add('spin', 0); const steps = Math.max(1, f.to - f.from); for (let k = 0; k < steps; k++) add('hop', SPIN3_MS + k * HOP_MS); if (f.bumped) add('boing', SPIN3_MS + steps * HOP_MS); break; }
   }
-  const CASINO = ['bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads', 'flap', 'chopper'];
+  const CASINO = ['bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads', 'flap', 'chopper', 'patterns', 'wheels', 'sniff'];
   if (won && f.kind !== 'match' && CASINO.includes(f.type)) add('won', total - 600);   // the card games and the wheel: the chime once the result shows
   else if (won && f.kind !== 'match' && f.type !== 'ttt' && f.type !== 'wordle' && f.type !== 'hangman') add('won', Math.round(total * .5));   // the square is won: a chime
   if (f.kind === 'draw') add('reset', 420);                          // the square resets with a new mini-game

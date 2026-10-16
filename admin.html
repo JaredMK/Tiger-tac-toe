@@ -110,6 +110,7 @@ tr.dev { cursor: pointer; } tr.dev:hover td, tr.dev.open td { background: var(--
     .rform .rf { display: grid; gap: 2px; font-size: 12px; color: #555; }
     .rform .rf input { width: 100%; padding: 4px 6px; font: inherit; border: 1px solid #bbb; border-radius: 6px; }
     .rform .btn { grid-column: 1 / -1; justify-self: start; margin-top: 4px; }
+    .wgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; } .wgrid .rform { grid-template-columns: 1fr; margin-top: 0; }   /* Risk Wheels' three wheels */
 </style>
 </head>
 <body>
@@ -126,7 +127,7 @@ const FIREBASE_CONFIG = {
 };
 const MODES = [['local', 'Two players'], ['cpu', 'vs Computer'], ['cvc', 'Computer vs Computer (old)'], ['friend', 'Friend code'], ['match', 'Find Match'], ['bot', 'Find Match vs a bot'], ['casual', 'Casual (old)'], ['ranked', 'Ranked (old)']];
 const MODE_COLORS = { local: 'var(--o)', cpu: 'var(--sky)', cvc: 'var(--stone)', friend: 'var(--plum)', match: 'var(--green)', bot: '#2f7f6f', casual: '#8fbf7a', ranked: 'var(--x)' };
-const GAMES = { ttt: 'Tic-tac-toe', c4: 'Connect 4', bs: 'Battleship', wordle: 'Wordle', hangman: 'Hangman', hex: 'Hex', hilo: 'Higher/Lower', snakes: 'Snakes and Ladders', memory: 'Memory', candy: 'Candy Race', bump: 'Bump', coins: 'Coin Flip', pig: 'Risky Rolls', hunt: 'Treasure Hunt', mastermind: 'Mastermind', bj: 'Blackjack', bus: 'Ride the Bus', rl: 'Roulette', bullseye: 'Bullseye', echo: 'Echo', plinko: 'Plinko', pong: 'Cup Pong', trivia: 'Trivia', oddone: 'Odd One Out', dash: 'Dash', lane: 'Lane Rush', golf: 'Mini Golf', pool: 'Pool', bowling: 'Bowling', craps: 'Craps', takeover: 'Takeover', flood: 'Flood', seating: 'Seating', districts: 'Districts', shelves: 'Shelves', roads: 'Roads', flap: 'Flap', chopper: 'Chopper' };   // the games in the pool (Hexapawn and the Dice race are gone; their numbers stay in the database)
+const GAMES = { ttt: 'Tic-tac-toe', c4: 'Connect 4', bs: 'Battleship', wordle: 'Wordle', hangman: 'Hangman', hex: 'Hex', hilo: 'Higher/Lower', snakes: 'Snakes and Ladders', memory: 'Memory', candy: 'Candy Race', bump: 'Bump', coins: 'Coin Flip', pig: 'Risky Rolls', hunt: 'Treasure Hunt', mastermind: 'Mastermind', bj: 'Blackjack', bus: 'Ride the Bus', rl: 'Roulette', bullseye: 'Bullseye', echo: 'Echo', plinko: 'Plinko', pong: 'Cup Pong', trivia: 'Trivia', oddone: 'Odd One Out', dash: 'Dash', lane: 'Lane Rush', golf: 'Mini Golf', pool: 'Pool', bowling: 'Bowling', craps: 'Craps', takeover: 'Takeover', flood: 'Flood', seating: 'Seating', districts: 'Districts', shelves: 'Shelves', roads: 'Roads', flap: 'Flap', chopper: 'Chopper', patterns: 'Patterns', wheels: 'Risk Wheels', sniff: 'Sniff' };   // the games in the pool (Hexapawn and the Dice race are gone; their numbers stay in the database)
 const app = document.getElementById('app');
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 let fb = null, user = null, stats = null, flagged = null, view = { status: 'loading', error: '' };
@@ -270,6 +271,7 @@ function render() {
     ${releasesCard()}
     ${runnersCard()}
     ${bullsCard()}
+    ${wheelsCard()}
     ${botsCard()}
     ${alertsCard()}
     <div class="card"><h2>Matches by mode</h2>${modeTable}</div>
@@ -384,7 +386,7 @@ function playCard() {
 
 // ---------- game releases: Released or Admin only, per mini-game (releases/{type}, read by the game and the server) ----------
 // A game not in the database is as the code has it (TEST_TYPES in engine.js: admin only until released here).
-const TEST_TYPES = ['bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads', 'flap', 'chopper'];   // (as engine.js has them; the switches cover every game the stats know)
+const TEST_TYPES = ['bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads', 'flap', 'chopper', 'patterns', 'wheels', 'sniff'];   // (as engine.js has them; the switches cover every game the stats know)
 const isReleased = t => (ctl.releases && typeof ctl.releases[t] === 'boolean' ? ctl.releases[t] : !TEST_TYPES.includes(t));
 function releasesCard() {
   const rows = Object.entries(GAMES).map(([t, name]) => { const on = isReleased(t); return `<tr><td>${esc(name)}</td><td><label class="sw"><input type="checkbox" data-rel="${t}"${on ? ' checked' : ''}><span class="${on ? 'good' : ''}">${on ? 'Released' : 'Admin only'}</span></label></td></tr>`; }).join('');
@@ -485,6 +487,36 @@ async function saveBullsCfg(btn) {
   try {
     await fb.dbM.set(fb.dbM.ref(fb.db, 'config/bulls'), out);
     ctl.bullsCfg = out;
+  } catch (e) { alert('Could not save: ' + (e && e.message)); }
+  render();
+}
+// ---------- Risk Wheels' tuning (config/wheels, read by the game and the server) ----------
+// Each wheel's two segments: the points on each and the chance of the first (the second has the rest), and
+// the target. A change applies to squares dealt from then on.
+const WHEEL_DEFAULTS = { target: 18, high: { a: 10, pa: 45, b: 0 }, mid: { a: 7, pa: 50, b: 1 }, low: { a: 3, pa: 60, b: 4 } };   // (as engine.js has them)
+const WHEEL_NAMES = [['high', 'High risk'], ['mid', 'Medium'], ['low', 'Low risk']];
+function wheelsCard() {
+  const raw = ctl.wheelsCfg || {}, num = (v, d) => (v != null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : d);
+  const one = ([w, name]) => { const r = raw[w] || {}, d = WHEEL_DEFAULTS[w], a = num(r.a, d.a), pa = num(r.pa, d.pa), b = num(r.b, d.b);
+    return `<div class="runner"><h3>${name}</h3><div class="rform"><label class="rf"><span>Points (segment 1)</span><input type="number" step="1" min="0" max="30" data-wheelcfg="${w}.a" value="${a}"></label><label class="rf"><span>Chance of segment 1 (%)</span><input type="number" step="1" min="1" max="99" data-wheelcfg="${w}.pa" value="${pa}"></label><label class="rf"><span>Points (segment 2, the rest)</span><input type="number" step="1" min="0" max="30" data-wheelcfg="${w}.b" value="${b}"></label></div></div>`; };
+  return `<div class="card ctl" id="wheelsCard"><h2>Risk Wheels tuning</h2>
+    <p class="note">Risk Wheels: a move is one spin of one of three wheels, each with two segments sized to their chances; the points add up, and the first to the target wins. Defaults: high risk 10 (45%) or 0, medium 7 (50%) or 1, low risk 3 (60%) or 4, first to 18. Everything here goes to the game and the server at once and applies to squares dealt from then on. Every wheel needs points on at least one segment.</p>
+    <div class="rform"><label class="rf"><span>Target (points to win)</span><input type="number" step="1" min="6" max="60" data-wheelcfg="target" value="${num(raw.target, WHEEL_DEFAULTS.target)}"></label></div>
+    <div class="wgrid">${WHEEL_NAMES.map(one).join('')}</div>
+    <div class="rform"><button class="btn" data-wheelsave="1">Save Risk Wheels</button></div></div>`;
+}
+async function saveWheelsCfg(btn) {
+  const out = { high: {}, mid: {}, low: {} };
+  for (const el of app.querySelectorAll('input[data-wheelcfg]')) {
+    const [w, k] = el.dataset.wheelcfg.split('.'), v = Number(el.value);
+    if (!Number.isInteger(v) || v < Number(el.min) || v > Number(el.max)) { alert(`${el.dataset.wheelcfg}: a whole number from ${el.min} to ${el.max}`); return; }
+    if (k) out[w][k] = v; else out[w] = v;
+  }
+  for (const [w, name] of WHEEL_NAMES) if (!out[w].a && !out[w].b) { alert(`${name}: put points on at least one segment.`); return; }
+  btn.disabled = true;
+  try {
+    await fb.dbM.set(fb.dbM.ref(fb.db, 'config/wheels'), out);
+    ctl.wheelsCfg = out;
   } catch (e) { alert('Could not save: ' + (e && e.message)); }
   render();
 }
@@ -627,9 +659,9 @@ async function loadPeople() {
 }
 async function loadCtl() {
   const g = p => fb.dbM.get(fb.dbM.ref(fb.db, p)).then(s => s.val()).catch(() => null);
-  const [config, secretsSet, bots, botStats, alertStats, features, log, releases, runCfg, bullsCfg] = await Promise.all([g('admin/config'), g('admin/secretsSet'), g('bots'), g('botStats'), g('alertStats'), g('features'),
-    fb.dbM.get(fb.dbM.query(fb.dbM.ref(fb.db, 'alertLog'), fb.dbM.orderByChild('at'), fb.dbM.limitToLast(8))).then(s => s.val()).catch(() => null), g('releases'), g('config/run'), g('config/bulls')]);
-  ctl = { config: config || {}, secretsSet: secretsSet || {}, bots: bots || {}, botStats: botStats || {}, alertStats: alertStats || {}, features: features || {}, releases: releases || {}, runCfg: runCfg || {}, bullsCfg: bullsCfg || {},
+  const [config, secretsSet, bots, botStats, alertStats, features, log, releases, runCfg, bullsCfg, wheelsCfg] = await Promise.all([g('admin/config'), g('admin/secretsSet'), g('bots'), g('botStats'), g('alertStats'), g('features'),
+    fb.dbM.get(fb.dbM.query(fb.dbM.ref(fb.db, 'alertLog'), fb.dbM.orderByChild('at'), fb.dbM.limitToLast(8))).then(s => s.val()).catch(() => null), g('releases'), g('config/run'), g('config/bulls'), g('config/wheels')]);
+  ctl = { config: config || {}, secretsSet: secretsSet || {}, bots: bots || {}, botStats: botStats || {}, alertStats: alertStats || {}, features: features || {}, releases: releases || {}, runCfg: runCfg || {}, bullsCfg: bullsCfg || {}, wheelsCfg: wheelsCfg || {},
     alertLog: Object.values(log || {}).sort((a, b) => b.at - a.at) };
 }
 async function signIn(how) {
@@ -662,6 +694,7 @@ app.addEventListener('click', e => {
   else if (b.dataset.act === 'save-keys') saveKeys();
   else if (b.dataset.runsave) saveRunCfg(b.dataset.runsave, b);
   else if (b.dataset.bullsave) saveBullsCfg(b);
+  else if (b.dataset.wheelsave) saveWheelsCfg(b);
   else if (b.dataset.act === 'test-alert') testAlert(b);
 });
 app.addEventListener('change', e => {
