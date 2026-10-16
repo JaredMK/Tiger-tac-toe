@@ -140,6 +140,9 @@ Sounds start from the events they belong to, never from drawing the screen: a re
 | Mini Golf, Pool, Bowling | `ding` / `thud` / `strike` / `buzz` / `won` | The result as the replay ends: a ding for a good one (a ball sunk and another shot in Pool, six or more pins), a thud for a poor one (a lip-out, a scratch, a gutter ball); a strike's fanfare; the buzz when the black goes down; the square's chime when it is won | Strike: four rising triangle notes (E5 G5 B5 E6) over a band of noise sweeping down |
 | Dash, Lane Rush | `beep` / `go` / `jump` / `skid` / `crash` / `sparkle` / `thud` / `ding` | The 3-2-1 count and go; a jump (Dash) or a lane change's tyres (Lane Rush) from the tap or swipe; the tumble or spin-out; then the result, for both phones: a thud (a crash) or a sparkle (the finish) as it shows, and a ding as the bar lands at the new distance | Beep: a short 880 Hz square; go: two rising squares; jump: a triangle sweeping up 420→900 Hz; skid: a band of noise falling 2200→900 Hz; crash: a noise burst over a low falling sine |
 | Odd One Out | `reveal` / `tap` / `ding` / `thud` | Reveal (Mastermind's reveal); for someone else's pick: their reveal, then their tap; found (ding) / not that one or out of time (thud) | As above |
+| Headcount, Flash | `go` / `tickSoft` / `reveal` / `key` | Start (the runners' go); in Flash a soft tick with each item; the question (Mastermind's reveal); the number pad's keys (Wordle's) | As above |
+| Snapshot | `reveal` / `tickSoft` / `flipDown` / `mark` / `deselect` | The pattern shows (reveal), a soft tick each second of the countdown, the grid empties (Memory's cards turning back); a cell picked (Tic-tac-toe's mark) or unpicked | As above |
+| Headcount, Flash, Snapshot | `tap` / `ding` / `thud` | For someone else's round: its own sounds as it plays, then their answer (tap); right (ding) / wrong or out of time (thud) | As above |
 
 ## Rules the game follows
 

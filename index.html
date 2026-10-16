@@ -1984,6 +1984,62 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .onote { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
 .obar { display: block; width: min(70%, 240px); height: 10px; border: 2.5px solid var(--ink); border-radius: 999px; overflow: hidden; background: var(--paper); }
 .obar i { display: block; height: 100%; width: 100%; background: var(--x); transform-origin: 0 50%; animation: obar var(--d, 5000ms) linear both; }
+/* Headcount, Flash and Snapshot: the play area on top (its size fixed from Start to the result), two
+   lines of words, the answer area (also fixed), then the button row */
+.att { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; min-height: 0; justify-content: center; }
+.atstage { width: 100%; display: flex; justify-content: center; }
+.att > * { flex: none; }
+.atwords { margin: 0; height: 44px; min-height: 44px; max-height: 44px; width: 100%; display: grid; place-items: center; text-align: center; font-weight: 700; font-size: 15px; line-height: 1.25; overflow: hidden; }
+.atwords > span { grid-area: 1 / 1; }
+.atstack { display: grid; place-items: center; } .atstack > span { grid-area: 1 / 1; }
+.atwords .arcres { margin: 0; padding: 0; height: auto; min-height: 0; font-size: 15px; line-height: 1.25; }
+.tu2 { animation: tfrom 1ms var(--f, 0ms) both, tuntil 1ms var(--u, 0ms) both; }
+.hcfield { position: relative; width: min(100%, 320px, calc(var(--gh) * .48)); aspect-ratio: 1; border: 3px solid var(--ink); border-radius: 14px; overflow: hidden;
+  background: radial-gradient(circle at 20% 30%, rgba(255,255,255,.18) 0 8%, transparent 9%), radial-gradient(circle at 75% 70%, rgba(0,0,0,.06) 0 10%, transparent 11%), #a9d47c; }
+.hcfield.fall { background: linear-gradient(#bfe3f2, #e9f3d4); }
+.hcr { position: absolute; left: 0; top: var(--p); width: 11%; aspect-ratio: 1; animation: hcr var(--d) linear var(--t) both; }
+.hcr.l { animation-name: hcl; } .hcr.l svg { transform: scaleX(-1); }
+.hcr.v { left: var(--p); top: 0; animation-name: hcv; } .hcr.v.k-acorn svg, .hcr.v.k-leaf svg { transform: none; }
+.hcr svg { width: 100%; height: 100%; display: block; animation: hcwob .28s ease-in-out infinite alternate; }
+@keyframes hcr { from { transform: translateX(-100%); } to { transform: translateX(909.1%); } }
+@keyframes hcl { from { transform: translateX(909.1%); } to { transform: translateX(-100%); } }
+@keyframes hcv { from { transform: translateY(-100%); } to { transform: translateY(909.1%); } }
+@keyframes hcwob { from { translate: 0 -4%; rotate: -4deg; } to { translate: 0 4%; rotate: 4deg; } }
+.hcpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; width: min(100%, 300px); }
+.hcpad.dim { opacity: .4; }
+.hcdisp { grid-column: 1 / -1; height: 36px; display: grid; place-items: center; border: 3px solid var(--ink); border-radius: 10px; background: var(--paper); font: 400 24px/1 'Luckiest Guy', 'Arial Black', sans-serif; }
+.hcdisp i { font-style: normal; color: var(--muted); }
+.hcdisp.ok { background: #d7f0c9; } .hcdisp.no { background: #f9c7b6; }
+.hckey { height: 36px; border: 3px solid var(--ink); border-radius: 10px; background: #fff; box-shadow: 0 3px 0 var(--ink); font-size: 18px; font-weight: 800; padding: 0; }
+.hckey.ok { background: var(--green, #4e9d3a); color: #fff; }
+.hckey:disabled { box-shadow: none; }
+.flbox { position: relative; width: min(100%, 260px, calc(var(--gh) * .4)); aspect-ratio: 1; border: 3px solid var(--ink); border-radius: 16px; background: #fffaf0; display: grid; place-items: center; }
+.fit { position: absolute; inset: 14%; opacity: 0; animation: fon var(--on) linear var(--t); }
+.fit svg { width: 100%; height: 100%; display: block; }
+@keyframes fon { from, to { opacity: 1; } }
+.flwait { color: var(--muted); font-size: 15px; }
+.flopts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: min(100%, 320px); }
+.flopts.dim { opacity: .4; }
+.flopts.lay { display: grid; grid-template-columns: 1fr; } .flopts.lay > div { grid-area: 1 / 1; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.flopt { height: 58px; border: 3px solid var(--ink); border-radius: 12px; background: #fff; box-shadow: 0 3px 0 var(--ink); padding: 4px; display: grid; place-items: center; }
+.flopt b { font: 400 26px/1 'Luckiest Guy', 'Arial Black', sans-serif; }
+.flopt svg { height: 44px; width: 44px; display: block; }
+.flopt:disabled { box-shadow: none; }
+.flopt.right { background: #d7f0c9; border-color: var(--green, #4e9d3a); animation: optglow .6s both; }
+.flopt.wrong { background: #f9c7b6; } .flopt.picked { background: var(--panel-2); }
+.snstack { display: grid; width: 100%; justify-items: center; } .snstack > div { grid-area: 1 / 1; width: 100%; display: flex; justify-content: center; }
+.sngrid { display: grid; gap: 5px; width: min(100%, 300px, calc(var(--gh) * .5)); }
+.snc { aspect-ratio: 1; border: 3px solid var(--ink); border-radius: 8px; background: #fff; padding: 0; position: relative; touch-action: manipulation; }
+.snc:disabled { cursor: default; }
+.snc.on { background: #3b87c7; } .snc.sel { background: #8d5bd8; }
+.snc.hit { background: #4e9d3a; } .snc.miss { background: #fff; border-style: dashed; border-color: #3b87c7; box-shadow: inset 0 0 0 4px #9fc5e8; } .snc.extra { background: #f9c7b6; }
+.snc.extra::after { content: '×'; position: absolute; inset: 0; display: grid; place-items: center; font-weight: 900; color: var(--x); font-size: 22px; }
+.snin { height: 44px; width: 100%; display: grid; place-items: center; }
+.sncount { display: flex; align-items: center; gap: 10px; } .sncount .obar { width: 160px; }
+.sndig { display: grid; } .sndig b { grid-area: 1 / 1; font: 400 26px/1 'Luckiest Guy', 'Arial Black', sans-serif; }
+.sndig .tf.tu { animation: tfrom 1ms var(--f, 0ms) both, tuntil 1ms var(--u, 0ms) both; }
+@media (prefers-reduced-motion: reduce) { .hcr { animation: var(--hcanim, hcr) var(--d) linear var(--t) both !important; } .hcr.l { animation-name: hcl !important; } .hcr.v { animation-name: hcv !important; } .fit { animation: fon var(--on) linear var(--t) !important; } .tu2, .sndig .tf.tu { animation: tfrom 1ms var(--f, 0ms) both, tuntil 1ms var(--u, 0ms) both !important; } .snstack > .tu { display: flex !important; animation: tuntil 1ms var(--u, 0ms) both !important; } }   /* the rounds are the game: they play with reduced motion too (no wobble) */
+
 @keyframes obar { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 @media (prefers-reduced-motion: reduce) { .epad.play { animation: var(--lit) !important; } @keyframes padlit { 0% { opacity: .55; } 12%, 80% { opacity: 1; } 100% { opacity: .55; } } }   /* Echo's flashes are the pattern itself: kept with reduced motion (a change of brightness, without the swell) */
 @media (prefers-reduced-motion: reduce) { .bvline.sweep { animation: none; left: 50%; } .bhline.sweep { animation: none; top: 50%; } .bdboard.slide { animation: none; } .pchip.drop, .pball.fly, .pball.rim, .pball.in, .pball.off { animation: none; } }
@@ -2185,6 +2241,9 @@ const ICONS = {
   chopper: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5h16M12 4.5V8"/><ellipse cx="13" cy="12" rx="6" ry="4" fill="currentColor" fill-opacity=".35"/><path d="M7 11.5H2.5l-1-2.5M8.5 19h10M11 16v3M16 16v3"/></svg>',
   patterns: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="3.8" cy="14" r="1.7" fill="currentColor" stroke="none"/><circle cx="9.4" cy="14" r="2.8" fill="currentColor" stroke="none"/><rect x="14.5" y="7.5" width="8" height="12" rx="2" stroke-dasharray="2.4 1.9"/><path d="M17 11.6a1.6 1.6 0 1 1 2.3 1.4c-.6.3-.8.7-.8 1.2"/><circle cx="18.5" cy="16.7" r=".5" fill="currentColor"/></svg>',
   wheels: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13.5" r="8.5"/><path d="M12 13.5V5M12 13.5l7.4 4.3M12 13.5l-7.4 4.3"/><path d="M12 13.5V5a8.5 8.5 0 0 1 7.4 12.8z" fill="currentColor" fill-opacity=".35"/><path d="M9.8 1.2h4.4L12 4.4z" fill="currentColor"/></svg>',
+  headcount: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><ellipse cx="9" cy="13" rx="5" ry="4" fill="currentColor" fill-opacity=".35"/><circle cx="15.5" cy="13" r="2.3" fill="currentColor"/><path d="M6 9.5L4 7.5M9 9V7M12 9.5l1.5-2M6 16.5L4 18.5M9 17v2M12 16.5l1.5 2"/><path d="M19 5h3M20.5 3.5v3" stroke-width="1.8"/></svg>',
+  flash: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M13.5 2L5 13.5h6L9.5 22 19 9.5h-6z"/></svg>',
+  snapshot: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2.5"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/><rect x="9" y="3" width="6" height="6" fill="currentColor"/><rect x="3" y="15" width="6" height="6" fill="currentColor"/><rect x="15" y="9" width="6" height="6" fill="currentColor"/></svg>',
   sniff: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><ellipse cx="12" cy="16" rx="4.8" ry="4"/><ellipse cx="5.4" cy="10.2" rx="2" ry="2.4"/><ellipse cx="9.4" cy="6.2" rx="2" ry="2.5"/><ellipse cx="14.6" cy="6.2" rx="2" ry="2.5"/><ellipse cx="18.6" cy="10.2" rx="2" ry="2.4"/></svg>',
   roads: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V12h8V4h8"/><g fill="currentColor" stroke="none"><circle cx="4" cy="4" r="1.6"/><circle cx="20" cy="20" r="1.6"/><circle cx="12" cy="20" r="1.6"/><circle cx="20" cy="12" r="1.6"/></g></svg>',
   bowling: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.5c-2.5 0-2 3-1 5.5-3 3-3 8-1.5 13h5c1.5-5 1.5-10-1.5-13 1-2.5 1.5-5.5-1-5.5z"/><circle cx="17" cy="16" r="4.5"/><circle cx="16" cy="15" r=".6" fill="currentColor"/><circle cx="18.2" cy="15" r=".6" fill="currentColor"/><circle cx="17.1" cy="17.2" r=".6" fill="currentColor"/></svg>',
@@ -2533,7 +2592,7 @@ function graft(oldP, newP, pairs) {
   }
 }
 // How long the move's animation takes. The result toast or card waits this long, and so does any tap.
-function animMs(f) { return REDUCED ? 0 : playMs(f, hexLen(f)) + lanePre(f) - (f.type === 'bus' ? BUST.pre - busPre(f) : 0) - (f.type === 'bullseye' && f.bull ? bullsAim(f.bull).fly - bullsPre(f) : 0) - (f.type === 'echo' && f.echo && !f.timeout ? echoAim(f.echo).end - echoPre(f) : 0) - (f.type === 'oddone' && f.odd && !f.timeout ? ODD.show + ODD.pause - oddPre(f) : 0) - (f.type === 'trivia' && f.trivia ? (f.trivia.fresh ? TRIVIA.flip : 0) + TRIVIA.pause - triviaPre(f) : 0); }   // (your own Ride the Bus guess skips the moment it is shown)
+function animMs(f) { return REDUCED ? 0 : playMs(f, hexLen(f)) + lanePre(f) - (f.type === 'bus' ? BUST.pre - busPre(f) : 0) - (f.type === 'bullseye' && f.bull ? bullsAim(f.bull).fly - bullsPre(f) : 0) - (f.type === 'echo' && f.echo && !f.timeout ? echoAim(f.echo).end - echoPre(f) : 0) - (f.type === 'oddone' && f.odd && !f.timeout ? ODD.show + ODD.pause - oddPre(f) : 0) - (ATT_TYPES.includes(f.type) && f.att && !f.timeout ? attMs(f.type, f.att.round) + ATT.pause - attPre(f) : 0) - (f.type === 'trivia' && f.trivia ? (f.trivia.fresh ? TRIVIA.flip : 0) + TRIVIA.pause - triviaPre(f) : 0); }   // (your own Ride the Bus guess skips the moment it is shown)
 function hexLen(f) { const sq = state.squares[f.square]; return sq && sq.mini.winCells ? sq.mini.winCells.length : 4; }
 // The JS-driven bits of the animations: numbers that count up or down, and the candy token's hops.
 function animate() {
@@ -2696,6 +2755,9 @@ const EXPLAIN = {
   chopper: { name: 'Chopper', play: 'Hold to rise, let go to drop. It gets faster, and you keep your distance when you crash.', win: 'Reach 1,000 m first.' },
   patterns: { name: 'Patterns', play: 'Pick what comes next, or what\'s missing. Wrong answers get crossed out and the puzzle stays until someone gets it.', win: 'Get 3 right.' },
   wheels: { name: 'Risk Wheels', play: 'Pick a wheel and spin. Each square deals three new wheels of ten equal segments: purple has a 10 (or two) and mostly zeros, green always pays a little, blue sits between. The darker a segment, the more it pays.', get win() { return `Reach ${wheelsConfig().target} first.`; } },   // (the target is the admin's)
+  headcount: { name: 'Headcount', play: "Count the critters as they cross. Watch out for the ones you're not counting.", win: 'Get 3 right. It gets harder each time.' },
+  flash: { name: 'Flash', play: 'Watch 8 items flash by, then answer a question about them.', win: 'Get 3 right. It gets harder each time.' },
+  snapshot: { name: 'Snapshot', play: 'Memorise the pattern in 5 seconds, then tap it back in.', win: 'Get 3 right. The grid gets bigger each time.' },
   sniff: { name: 'Sniff', play: 'Move the dog one step. You\'ll see if it\'s getting hotter or colder, for a moment only: nothing stays on the board, so remember it.', win: 'Be the one who finds the treasure.' },
 };
 let explainT = null;                          // the mini-game whose explainer is open
@@ -2922,6 +2984,7 @@ function thumb(mini, final) {
     case 'plinko': { const pts = mini.pts || { X: 0, O: 0 }, tg = mini.target || PLINKO_DEFAULTS.target; return `<div class="tplk" aria-label="Plinko: X ${pts.X}, O ${pts.O} of ${tg} points"><div class="tbins">${(mini.vals || []).map((v, b) => `<i class="${v === 5 ? 'top' : ''}${mini.last && mini.last.bin === b ? ' ' + mini.last.by : ''}">${v}</i>`).join('')}</div><div class="tbpts">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><span>${Math.min(tg, pts[p])}</span><small>/${tg}</small></div>`).join('')}</div></div>`; }
     case 'pong': return `<div class="tpip">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${mini.cups[p].map(up => `<i class="${up ? 'on' : ''}"></i>`).join('')}</div>`).join('')}</div>`;
     case 'trivia': return `<div class="tpip">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${Array.from({ length: TRIVIA.goal }, (_, k) => `<i class="${k < mini.right[p] ? 'on' : ''}"></i>`).join('')}</div>`).join('')}</div>`;
+    case 'headcount': case 'flash': case 'snapshot': return `<div class="tpip">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${Array.from({ length: ATT.goal }, (_, k) => `<i class="${k < mini.right[p] ? 'on' : ''}"></i>`).join('')}</div>`).join('')}</div>`;   // both players' progress: ●●○
     case 'oddone': return `<div class="tpip">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${Array.from({ length: ODD.goal }, (_, k) => `<i class="${k < mini.finds[p] ? 'on' : ''}"></i>`).join('')}</div>`).join('')}</div>`;
     case 'golf': case 'pool': case 'bowling': return physThumb(mini);
     case 'craps': { const d = mini.last ? mini.last.roll || (mini.last.rolls || [])[(mini.last.rolls || []).length - 1] : null; return `<div class="tpip">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${Array.from({ length: CRAPS.goal }, (_, k) => `<i class="${k < mini.wins[p] ? 'on' : ''}"></i>`).join('')}</div>`).join('')}${d ? `<div class="tcdice ${mini.last.result === 'win' ? 'w' : mini.last.result === 'lose' ? 'l' : ''}"><span>${dieFace(d[0])}</span><span>${dieFace(d[1])}</span></div>` : ''}</div>`; }
@@ -3335,6 +3398,21 @@ function fetchOddConfig() {
     }).catch(() => {});
   } catch (e) { /* offline: as last known */ }
 }
+// Headcount's, Flash's and Snapshot's difficulty (config/headcount, config/flash, config/snapshot): likewise.
+function fetchAttConfig(name, set) {
+  const k = KEY + '.' + name + 'cfg';
+  try { const v = JSON.parse(localStorage.getItem(k) || 'null'); if (v && typeof v === 'object') set(v); } catch (e) { /* none kept */ }
+  if (!configured()) return;
+  const hook = window.TTT_FIREBASE, c = (hook && hook.config) || FIREBASE_CONFIG;
+  const url = hook && hook.emulator ? `http://${hook.emulator.host}:${hook.emulator.port}/config/${name}.json?ns=${c.projectId}-default-rtdb` : `${c.databaseURL}/config/${name}.json`;
+  try {
+    fetch(url).then(r => (r.ok ? r.json() : null)).then(v => {
+      if (!v || typeof v !== 'object') return;
+      set(v);
+      try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* no storage: read again next visit */ }
+    }).catch(() => {});
+  } catch (e) { /* offline: as last known */ }
+}
 // Risk Wheels' points, odds and target (config/wheels, the admin's dashboard): likewise.
 const WHEELS_KEY = KEY + '.wheelscfg';
 function fetchWheelsConfig() {
@@ -3630,6 +3708,111 @@ function oddTable(mini, a, o) {
   const go = mine && !open;
   const btn = o.view ? '' : `<div class="cbtns one${go ? '' : ' hold'}"><button class="big" data-act="odd-reveal"${go ? '' : ' disabled tabindex="-1" aria-hidden="true"'}>Reveal</button></div>`;   // the row stays (hidden) so the grid never moves
   return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="odd"><div class="ogrid${!shown && !open ? ' wait' : ''}" style="grid-template-columns:repeat(${n}, 1fr)">${tiles}</div>${res}</div>${btn}</div>`;
+}
+// ---------- Headcount, Flash and Snapshot: the attention games ----------
+// A square opens on a Start button (and Board to leave). Start plays the player's round, timed from the
+// tap (a reload carries on from there, never from the top), and holds them to the square until the
+// answer goes in: Headcount's creatures cross the field, then a number pad; Flash's items flash in the
+// middle, then a question with four options; Snapshot's pattern shows for a few seconds with a countdown,
+// then the grid empties and they tap it back in and Submit. The result shows the right answer for a
+// moment. Someone else's round (the computer's, the other phone's) plays first at its own speed, then
+// their answer, then the result. Nothing around the play area moves as the words change: each area keeps
+// its size from Start to the result.
+const ATT_KEY = 'ttt-att-started';
+let attDraft = null;                                            // { id, sq, at, entry, timer }: this phone's round under way (at: Date.now() of Start); entry: the digits typed, or the cells picked
+const attId = (sq, p) => { const m = state.squares[sq].mini; return `${state.online ? state.online.matchId || state.online.code || 'on' : 'local'}:${state.moves}:${sq}:${p}:${m.type}:${m.right[p]}`; };
+function attPre(f) { return f && ATT_TYPES.includes(f.type) && f.att && !f.timeout && !REDUCED && (state.online ? f.by !== state.online.me : cpuPlays(f.by)) ? attMs(f.type, f.att.round) + ATT.pause : 0; }   // someone else's round plays first, then their answer
+const attPinned = () => !!(attDraft && state.screen === 'mini' && state.zoom === attDraft.sq && !state.flash);
+function attSave() { try { localStorage.setItem(ATT_KEY, JSON.stringify({ id: attDraft.id, at: attDraft.at, entry: attDraft.entry })); } catch (e) { /* no storage: a reload starts the answer over */ } }
+// The creatures, drawn facing right (bold ink outlines, flat colours).
+const HC_ART = {
+  beetle: c => `<ellipse cx="19" cy="20" rx="11" ry="9" fill="${c || '#4e9d3a'}"/><path d="M19 11v18" stroke="#161210" stroke-width="2"/><circle cx="32" cy="20" r="5" fill="#161210"/><path d="M10 12l-4-4M18 11l-1-5M26 12l3-5M10 28l-4 4M18 29l-1 5M26 28l3 5" stroke="#161210" stroke-width="2.4" stroke-linecap="round"/>`,
+  ladybird: () => `<path d="M8 20a11 10 0 0 1 22 0a11 10 0 0 1-22 0z" fill="#e5432a"/><circle cx="32" cy="20" r="5" fill="#161210"/><path d="M19 10v20" stroke="#161210" stroke-width="2"/><circle cx="14" cy="15" r="2.3" fill="#161210"/><circle cx="24" cy="15" r="2.3" fill="#161210"/><circle cx="14" cy="25" r="2.3" fill="#161210"/><circle cx="24" cy="25" r="2.3" fill="#161210"/>`,
+  mouse: () => `<path d="M7 24q-6 3-4 9" fill="none" stroke="#161210" stroke-width="2" stroke-linecap="round"/><ellipse cx="18" cy="23" rx="12" ry="8" fill="#a3a1ad"/><circle cx="27" cy="15" r="4.5" fill="#d7c2c8" stroke="#161210" stroke-width="2"/><path d="M28 18q8 2 9 6q-5 2-9 0z" fill="#a3a1ad"/><circle cx="31" cy="20" r="1.5" fill="#161210"/><circle cx="37" cy="24" r="1.6" fill="#161210"/>`,
+  acorn: () => `<path d="M11 18h18q0 14-9 17q-9-3-9-17z" fill="#d6a35c"/><path d="M9 18q11-10 22 0z" fill="#7a4a22"/><path d="M20 9v-4" stroke="#161210" stroke-width="2.4" stroke-linecap="round"/>`,
+  leaf: () => `<path d="M20 4q14 10 0 32q-14-22 0-32z" fill="#e08a2c"/><path d="M20 8v28" stroke="#161210" stroke-width="1.8"/>`,
+};
+const hcArt = k => { const a = k === 'gbeetle' ? HC_ART.beetle('#4e9d3a') : k === 'bbeetle' ? HC_ART.beetle('#3b87c7') : HC_ART[k](); return `<svg viewBox="0 0 40 40" aria-hidden="true"><g stroke="#161210" stroke-width="2.4" stroke-linejoin="round">${a}</g></svg>`; };
+// Flash's items: a shape in a colour.
+const FL_COL = { blue: '#3b87c7', green: '#3f9b4f', purple: '#8d5bd8' };
+const FL_SHAPE = { star: 'M20 3l5.2 10.6 11.7 1.7-8.5 8.2 2 11.6L20 29.6 9.6 35.1l2-11.6-8.5-8.2 11.7-1.7z', heart: 'M20 35S4 25 4 14a8 8 0 0 1 16-2.5A8 8 0 0 1 36 14c0 11-16 21-16 21z', bolt: 'M23 3L8 22h10l-3 15 17-21H21z' };
+const flArt = (s, c) => `<svg viewBox="0 0 40 40" aria-hidden="true"><path d="${FL_SHAPE[s]}" fill="${FL_COL[c]}" stroke="#161210" stroke-width="2.6" stroke-linejoin="round"/></svg>`;
+const flSay = o => (Array.isArray(o) ? `${o[1]} ${o[0]}` : String(o));
+// A redraw when the round has played: the answer's turn.
+function attArm(type, round) {
+  clearTimeout(attDraft.timer);
+  const left = attDraft.at + attMs(type, round) - Date.now();
+  if (left > 0) { const id = attDraft.id; attDraft.timer = setTimeout(() => { if (attDraft && attDraft.id === id) render(); }, left + 30); }
+}
+// The play area of each game: { stage, input, watch (during the round), ask (the question), say (an answer in words) }.
+function headView(c) {
+  const r = c.round, anim = c.playing || c.pre;               // the crossing: this phone's (from Start), or someone else's (from the move)
+  const crit = anim ? r.items.map(it => `<i class="hcr ${r.axis === 'v' ? 'v' : it.dir > 0 ? 'r' : 'l'} k-${it.k}" style="--t:${it.t}ms;--d:${it.d}ms;--p:${10 + it.lane * 20 - 5.5}%">${hcArt(it.k)}</i>`).join('') : '';
+  const stage = `<div class="hcfield${r.axis === 'v' ? ' fall' : ''}"${c.started ? fxAttr(c.startPerf) : ''} aria-label="The field">${crit}</div>`;
+  const entry = c.started && attDraft ? attDraft.entry : '', live = c.answering && c.live;
+  const shownAns = c.shown ? (c.shown.answer == null ? '–' : String(c.shown.answer)) : entry || '';
+  const disp = c.shown ? (c.pre ? `<span class="tf" style="--f:${attMs('headcount', r)}ms">${shownAns}</span>` : shownAns) : (shownAns || '<i>?</i>');
+  const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'del', '0', 'ok'].map(k => `<button class="hckey${k === 'ok' ? ' ok' : ''}" data-act="hc-key" data-k="${k}" aria-label="${k === 'del' ? 'Delete' : k === 'ok' ? 'Done' : k}"${live && (k !== 'ok' || entry) ? '' : ' disabled'}>${k === 'del' ? '⌫' : k === 'ok' ? 'OK' : k}</button>`).join('');
+  const input = `<div class="hcpad${live ? '' : ' dim'}"><div class="hcdisp${c.shown ? (c.shown.correct ? ' ok' : ' no') : ''}" aria-label="Your answer">${disp}</div>${keys}</div>`;
+  return { stage, input, watch: headWatch(r), ask: headAsk(r), say: n => `${n} ${HEAD_KINDS[r.t][n === 1 ? 0 : 1]}` };
+}
+function flashView(c) {
+  const r = c.round, anim = c.playing || c.pre;
+  const items = anim ? r.items.map(([s, col], i) => `<span class="fit" style="--t:${i * r.ms}ms;--on:${Math.round(r.ms * FLASH.on)}ms">${flArt(s, col)}</span>`).join('') : '';
+  const stage = `<div class="flbox"${c.started ? fxAttr(c.startPerf) : ''} aria-label="The flashes">${items}${!anim && !c.shown && !c.answering ? `<b class="flwait">${r.items.length} items</b>` : ''}</div>`;
+  const opt = (o, k, cls) => `<button class="flopt${cls || ''}" data-act="move" ${mv(k)} aria-label="${esc(flSay(o))}"${c.answering && c.live && !cls ? '' : ' disabled'}>${Array.isArray(o) ? flArt(o[0], o[1]) : `<b>${o}</b>`}</button>`;
+  const plain = c.answering ? r.opts.map((o, k) => opt(o, k)).join('') : r.opts.map(() => '<button class="flopt" disabled tabindex="-1" aria-hidden="true"></button>').join('');   // (the options only once the question is asked: nothing to go on before)
+  const marked = c.shown ? r.opts.map((o, k) => opt(o, k, k === r.ans ? ' right' : k === c.shown.answer ? ' wrong' : '')).join('') : '';
+  const input = c.shown ? (c.pre ? `<div class="flopts lay"><div class="tf" style="--f:${attMs('flash', r)}ms">${r.opts.map((o, k) => opt(o, k, k === c.shown.answer ? ' picked' : '')).join('')}</div><div class="tf" style="--f:${c.pre}ms">${marked}</div></div>` : `<div class="flopts">${marked}</div>`)
+    : `<div class="flopts${c.answering ? '' : ' dim'}">${plain}</div>`;
+  return { stage, input, watch: `Watch the ${r.items.length} items`, ask: r.q.text, say: () => flSay(r.opts[r.ans]) };
+}
+function snapView(c) {
+  const r = c.round, cellsN = r.c * r.r, orig = new Set(r.cells);
+  const grid = (cls, act) => `<div class="sngrid" style="grid-template-columns:repeat(${r.c}, 1fr)">${Array.from({ length: cellsN }, (_, i) => `<button class="snc${cls(i)}"${act ? ` data-act="snap-cell" data-i="${i}" aria-label="Cell ${i + 1}${cls(i).includes(' sel') ? ', picked' : ''}"` : ' tabindex="-1" aria-hidden="true"'}${act && c.answering && c.live ? '' : ' disabled'}></button>`).join('')}</div>`;
+  const pick = c.shown ? new Set(c.shown.answer || []) : new Set(c.started && attDraft ? attDraft.entry : []);
+  const res = i => (orig.has(i) && pick.has(i) ? ' hit' : orig.has(i) ? ' miss' : pick.has(i) ? ' extra' : '');
+  const show = r.show, secs = Math.ceil(show / 1000);
+  let stage, count = '';
+  if (c.shown && c.pre) stage = `<div class="snstack"><div class="tu" style="--u:${show}ms">${grid(i => (orig.has(i) ? ' on' : ''))}</div><div class="tf tu2" style="--f:${show}ms;--u:${c.pre}ms">${grid(i => (pick.has(i) ? ' sel' : ''))}</div><div class="tf" style="--f:${c.pre}ms">${grid(res)}</div></div>`;
+  else if (c.shown) stage = grid(res);
+  else if (c.playing) stage = `<div class="snstack"${fxAttr(c.startPerf)}><div class="tu" style="--u:${show}ms">${grid(i => (orig.has(i) ? ' on' : ''))}</div></div>`;
+  else stage = grid(i => (c.answering && pick.has(i) ? ' sel' : ''), true);
+  if (c.playing || (c.shown && c.pre)) count = `<div class="sncount"${c.playing ? fxAttr(c.startPerf) : ''}><span class="sndig">${Array.from({ length: secs }, (_, k) => `<b class="tf tu" style="--f:${k * 1000}ms;--u:${(k + 1) * 1000}ms">${secs - k}</b>`).join('')}</span><span class="obar"><i style="--d:${show}ms"></i></span></div>`;
+  const input = `<div class="snin">${count}</div>`;
+  return { stage, input, watch: `Remember the pattern: ${secs} seconds`, ask: `Tap the ${r.cells.length} cells back in, then Submit`, say: () => `${r.cells.length} cells` };
+}
+function attTable(mini, a, o) {
+  const type = mini.type, f = a && a.att ? a.att : null, l = mini.last, turn = o.turn, pre = f ? attPre(a) : 0;
+  const tal = p => arcTally(p, o, pips(p, Math.min(ATT.goal, mini.right[p]), ATT.goal, !!(f && f.correct && a.by === p), pre + 250));
+  const shown = f || ((o.done || o.view) && l ? l : null);
+  const mine = !o.view && !shown && !cpuTurn() && !remoteTurn();   // this phone's round to play (kept through a dropped connection or an answer on its way: still held to the square)
+  const live = mine && !o.locked;                               // the controls answer only while this phone can send the move
+  if (!mine) { if (attDraft) clearTimeout(attDraft.timer); attDraft = null; }
+  else {
+    const id = attId(o.zoom, turn);
+    if (attDraft && attDraft.id !== id) { clearTimeout(attDraft.timer); attDraft = null; }
+    if (!attDraft) { let v = null; try { v = JSON.parse(localStorage.getItem(ATT_KEY) || 'null'); } catch (e) { /* none kept */ } if (v && v.id === id && Number.isFinite(v.at)) attDraft = { id, sq: o.zoom, at: v.at, entry: v.entry != null ? v.entry : type === 'snapshot' ? [] : '' }; }
+  }
+  const started = mine && !!attDraft, round = shown ? shown.round : mini.round[turn];
+  if (!round) return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><p class="arcnote">No round here.</p></div>`;
+  if (started) attArm(type, round);
+  const len = attMs(type, round), since = started ? Date.now() - attDraft.at : 0, playing = started && since < len, answering = started && !playing;
+  const c = { o, f, shown, pre, started, playing, answering, live, round, len, startPerf: started ? performance.now() - since : null };
+  const v = type === 'headcount' ? headView(c) : type === 'flash' ? flashView(c) : snapView(c);
+  const who = shown ? shown.by || (f && a.by) : turn, W = p => `<b class="${p}">${N(p)}</b>`;
+  const truth = shown ? v.say(shown.truth) : '';
+  const result = shown ? (shown.correct ? `${pre || o.view || o.done ? W(who) + ' got it right' : 'Right!'}${type === 'headcount' ? ': ' + truth : ''}`
+    : `${pre || o.view || o.done ? W(who) + (shown.answer == null ? ' ran out of time' : ' got it wrong') : shown.answer == null ? 'Out of time' : 'Not quite'} · it was ${truth}`) : '';
+  // the words: one box, two lines tall, whatever it says (so nothing below it moves)
+  const words = shown ? (pre ? `<span class="tu" style="--u:${len}ms">${esc(v.watch)}</span><span class="tf tu2" style="--f:${len}ms;--u:${pre}ms">${esc(v.ask)}</span><span ${lateAt('arcres ' + (shown.correct ? 'ok' : 'no'), pre)} role="status">${result}</span>` : `<span class="arcres ${shown.correct ? 'ok' : 'no'}" role="status">${result}</span>`)
+    : playing ? `<span class="atstack"${fxAttr(c.startPerf)}><span class="tu" style="--u:${len - since}ms">${esc(v.watch)}</span><span class="tf" style="--f:${len - since}ms">${esc(v.ask)}</span></span>`
+    : answering ? esc(v.ask)
+    : mine ? `Level ${round.level + 1} of 3 · ${esc(type === 'headcount' ? headWatch(round) : type === 'flash' ? `${round.items.length} items will flash by` : `Remember the pattern in ${Math.ceil(round.show / 1000)} seconds`)}`
+    : o.view ? '' : `${W(turn)}'s turn`;
+  const go = mine && !started, sub = type === 'snapshot' && answering;
+  const btn = o.view ? '' : `<div class="cbtns one${go || sub ? '' : ' hold'}">${go ? `<button class="big" data-act="att-start"${live ? '' : ' disabled'}>Start</button>` : sub ? `<button class="big" data-act="snap-submit"${live ? '' : ' disabled'}>Submit</button>` : '<button class="big" disabled tabindex="-1" aria-hidden="true">Start</button>'}</div>`;   // the row stays (hidden) so nothing moves
+  return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="att att-${type}"><div class="atstage">${v.stage}</div><p class="atwords">${words}</p>${v.input}</div>${btn}</div>`;
 }
 // Mini Golf, Pool and Bowling: the physics games. The table is drawn on a canvas. In Golf and Pool a shot
 // is a drag back from anywhere on the table (a slingshot: pull away from where the ball should go, further
@@ -4992,6 +5175,7 @@ function renderMini(sq, review) {
     case 'pong': g = pongTable(mini, a, { view, locked, turn, zoom: state.zoom }); break;
     case 'trivia': g = triviaTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d }); break;
     case 'oddone': g = oddTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d }); break;
+    case 'headcount': case 'flash': case 'snapshot': g = attTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d }); break;
     case 'dash': case 'lane': case 'flap': case 'chopper': g = runTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d }); break;
     case 'golf': case 'pool': case 'bowling': g = physTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d }); break;
     case 'craps': g = crapsTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d }); break;
@@ -5028,7 +5212,7 @@ function renderMini(sq, review) {
       break;
     }
   }
-  const lock = state.lock != null;
+  const lock = state.lock != null && mini.type !== 'trivia' && !ATT_TYPES.includes(mini.type);   // a bonus move (a Trivia reveal or an attention game's Start holds the player too: not a bonus)
   let sub = lock ? (mini.type === 'pig' ? `<b class="${turn}">${N(turn)}</b>'s turn in progress: roll again or bank`
     : mini.type === 'bj' ? `<b class="${turn}">${N(turn)}</b>'s hand: hit, stand${mini.hand && mini.hand.cards.length === 2 ? ' or double' : ''}`
     : mini.type === 'bus' ? (a ? info.hint : `<b class="${turn}">${N(turn)}</b>'s run: make the next guess`) : mini.type === 'bs' ? `<b class="${turn}">${N(turn)}</b> hit: fire again` : mini.type === 'craps' ? `<b class="${turn}">${N(turn)}</b> on point ${mini.point}: roll again or stop` : mini.type === 'pool' ? `<b class="${turn}">${N(turn)}</b> sank one: shoot again` : `<b class="${turn}">${N(turn)}</b> guessed right: go again`) : info.hint;
@@ -5055,7 +5239,7 @@ function renderMini(sq, review) {
     sub = `${head} · ${next}${secret ? ' · ' + secret : ''}`;
   }
   return `<main class="scr mini${fx.enter && performance.now() - fx.enter.at < 400 ? ' enter' : ''}">${netBar()}
-    <div class="bar${view && sq.owner ? ' won won-' + sq.owner : ''}" role="${view ? 'status' : 'presentation'}">${review ? `<button class="back" data-act="${reviewCtx.mback}" aria-label="Back to the final board">${CHEV}Board</button>` : `<button class="back${!f && !d && mini.type === 'trivia' && lockMine() ? ' gone' : ''}" data-act="back" aria-label="Back to the board"${f || d || lockMine() || cpuTurn() || pinned() ? ' disabled' : ''}>${CHEV}Board</button>`}
+    <div class="bar${view && sq.owner ? ' won won-' + sq.owner : ''}" role="${view ? 'status' : 'presentation'}">${review ? `<button class="back" data-act="${reviewCtx.mback}" aria-label="Back to the final board">${CHEV}Board</button>` : `<button class="back${!f && !d && ((mini.type === 'trivia' && lockMine()) || attPinned()) ? ' gone' : ''}" data-act="back" aria-label="Back to the board"${f || d || lockMine() || cpuTurn() || pinned() ? ' disabled' : ''}>${CHEV}Board</button>`}
       <div class="ttl"><b${info.name.length > 14 ? ' class="long"' : ''}>${info.name}</b><small${view ? ' class="won"' : ''}>${sub}</small></div>${qBtn(mini.type)}</div>
     <div class="gwrap"${fxAttr(f ? fxAt('move', f) : d && !f ? fxAt('back', d) : null)}>${g}</div>${f ? renderFlash(f) : ''}${pauseMenu()}</main>`;   // the move's animations count from the move
 }
@@ -5110,6 +5294,7 @@ function summary(f) {
     case 'pong': return f.pong ? `${who} ${f.pong.sunk ? 'sank a cup' : f.pong.rim ? 'rimmed out' : 'missed'}` : `${who} threw`;
     case 'trivia': return f.trivia ? (f.trivia.correct ? `${who} answered right` : `${who} answered wrong · crossed out`) : `${who} answered`;
     case 'oddone': return f.odd ? `${who} ${f.odd.correct ? 'found the odd one' : 'missed it'}` : `${who} tapped`;
+    case 'headcount': case 'flash': case 'snapshot': return f.att ? `${who} ${f.att.correct ? 'got it right' : f.att.answer == null ? 'ran out of time' : 'got it wrong'}` : `${who} played a round`;
   }
   return `${who} placed`;
 }
@@ -5132,7 +5317,7 @@ function renderFlash(f) {
   if (f.type === 'pig' && f.note === 'bust') {
     return `${open}<div class="card"><div class="big-g">${dieFace(f.roll)}</div><h2>Bust!</h2><p>${who} rolled ${f.roll} again · ${f.pot} point${f.pot === 1 ? '' : 's'} lost</p></div></div>`;
   }
-  if ((['bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads', 'flap', 'chopper', 'patterns', 'wheels', 'sniff'].includes(f.type)) && (f.kind === 'again' || f.kind === 'move')) {   // the table shows it all: the cards, the tick or cross, the number and the hits
+  if ((['bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads', 'flap', 'chopper', 'patterns', 'wheels', 'sniff', 'headcount', 'flash', 'snapshot'].includes(f.type)) && (f.kind === 'again' || f.kind === 'move')) {   // the table shows it all: the cards, the tick or cross, the number and the hits
     return open.replace('"flash late"', '"flash lite late"') + '</div>';
   }
   if (f.type === 'pig' && (f.note === 'bank' || f.kind === 'again')) {   // a roll or a bank speaks for itself: the +N grows, or moves into the score
@@ -5277,7 +5462,7 @@ function mySide() { return state.online ? state.online.me : state.cpu && state.c
 function remoteTurn() { return !!state.online && !state.winner && state.turn !== state.online.me; }
 // nothing to tap: the computer or the other player is on the move, a move of ours is still being written, or the line is down
 function blocked() { return cpuTurn() || remoteTurn() || !!moveWait || (!!state.online && !connected); }
-function pinned() { return echoPinned() || oddPinned(); }   // an attempt under way that the player has started (Echo's pattern played, Odd One Out's grid revealed): they stay in the square until it goes in
+function pinned() { return echoPinned() || oddPinned() || attPinned(); }   // an attempt under way that the player has started (Echo's pattern played, Odd One Out's grid revealed): they stay in the square until it goes in
 function lockMine() { return state.lock != null && (mySide() == null || state.turn === mySide()); }
 function setNet(status, msg) { net = { status, msg: msg || '' }; noteNet(); }
 function roomLink() { return location.origin + location.pathname + '?room=' + state.online.code; }
@@ -5974,6 +6159,12 @@ async function dbReveal(i) {
   moveWait = null;
   if (ok) { triviaFlip = { sq: i, at: performance.now() }; SND.play('reveal'); }
   render();
+}
+async function dbStart(i) {                                     // Headcount, Flash, Snapshot: Start, for the server (the round itself plays here from the tap, without waiting)
+  if (!fb || !room) return;
+  const me = state.online.me;
+  if (isMM()) { try { await call('move', { game: state.online.game, square: i, kind: 'start' }); } catch (e) { /* the round goes on here */ } }
+  else try { await matchTransaction(rec => { const r = applyOnlineStart(rec, me, i); return r.ok ? r.rec : null; }); } catch (e) { /* the round goes on here */ }
 }
 async function dbPick(i, card) {
   if (blocked() || !fb || !room) return;
@@ -7007,6 +7198,35 @@ app.addEventListener('click', e => {
     return;
   } else if (act === 'echo-tap') {              // Echo: the taps come from the press itself (pointerdown, echoTap); the click after it does nothing
     return;
+  } else if (act === 'att-start') {            // Headcount, Flash, Snapshot: the round plays, timed from now; from here the player stays in the square until the answer goes in
+    const type = zoomedType();
+    if (!ATT_TYPES.includes(type) || attDraft || state.flash || state.done || blocked()) return;
+    const sq = state.squares[state.zoom], r = sq.mini.round[state.turn];
+    attDraft = { id: attId(state.zoom, state.turn), sq: state.zoom, at: Date.now(), entry: type === 'snapshot' ? [] : '' };
+    attSave();
+    attStart(state, state.zoom, state.turn);                    // held to the square: here, and on the server (where a timeout then answers this round, wrong)
+    if (state.online) dbStart(state.zoom); else save();
+    const len = attMs(type, r) / 1000;
+    if (type === 'headcount') { SND.play('go'); SND.play('reveal', { at: len }); }
+    else if (type === 'flash') { SND.play('go'); r.items.forEach((_, i) => SND.play('tickSoft', { at: (i * r.ms) / 1000 })); SND.play('reveal', { at: len }); }
+    else { SND.play('reveal'); for (let k = 1; k < Math.ceil(r.show / 1000); k++) SND.play('tickSoft', { at: k }); SND.play('flipDown', { at: len }); }
+    render();
+  } else if (act === 'hc-key') {               // Headcount: the number pad (up to two digits); OK answers
+    if (zoomedType() !== 'headcount' || !attDraft || state.flash || state.done || blocked()) return;
+    const k = el.dataset.k;
+    if (k === 'ok') { if (!attDraft.entry) return; const n = Number(attDraft.entry); clearTimeout(attDraft.timer); try { localStorage.removeItem(ATT_KEY); } catch (err) { /* no storage */ } attemptMove(n); return; }
+    attDraft.entry = k === 'del' ? attDraft.entry.slice(0, -1) : (attDraft.entry + k).replace(/^0(?=\d)/, '').slice(0, 2);
+    SND.play('key'); attSave(); render();
+  } else if (act === 'snap-cell') {            // Snapshot: a cell picked or unpicked
+    if (zoomedType() !== 'snapshot' || !attDraft || state.flash || state.done || blocked()) return;
+    const i = Number(el.dataset.i), at = attDraft.entry.indexOf(i);
+    if (at >= 0) attDraft.entry.splice(at, 1); else attDraft.entry.push(i);
+    SND.play(at >= 0 ? 'deselect' : 'mark'); attSave(); render();
+  } else if (act === 'snap-submit') {          // Snapshot: the picked cells go in
+    if (zoomedType() !== 'snapshot' || !attDraft || state.flash || state.done || blocked()) return;
+    const cells = attDraft.entry.slice().sort((x, y) => x - y); clearTimeout(attDraft.timer);
+    try { localStorage.removeItem(ATT_KEY); } catch (err) { /* no storage */ }
+    attemptMove(cells);
   } else if (act === 'odd-reveal') {           // Odd One Out: the shades show and the 5 seconds start; from now the player stays in the square until the pick goes in
     if (zoomedType() !== 'oddone' || oddDraft || state.flash || state.done || blocked()) return;
     const id = oddId(state.zoom, state.turn), at = Date.now();
@@ -7241,6 +7461,7 @@ function boot() {
   fetchWheelsConfig();                                        // Risk Wheels' points, odds and target, likewise
   fetchPlinkoConfig();                                        // Plinko's target, likewise
   fetchOddConfig();                                           // Odd One Out's shade differences, likewise
+  fetchAttConfig('headcount', setHeadConfig); fetchAttConfig('flash', setFlashConfig); fetchAttConfig('snapshot', setSnapConfig);   // the attention games' difficulty, likewise
   loadTrivia();                                               // the Trivia questions, for the match to come
   loadPhysics();                                              // Matter.js and physics.js, for Mini Golf, Pool and Bowling
   takeTag();                                                  // a playtester's link (?t=sam): before the address is tidied below
@@ -7676,6 +7897,17 @@ function moveSounds(f) {
     case 'plinko': { for (let k = 1; k <= PLINKO.rows; k++) add('peg', k * PLINKO.step, 1 + (k % 3) * 0.08); add('plop', PLINKO.rows * PLINKO.step + 120); if (f.plinko) { if (f.plinko.hit) add('ding', f.plinko.bonus.r * PLINKO.step); add('point', PLINKO.rows * PLINKO.step + 160); if (won) add('sparkle', PLINKO.rows * PLINKO.step + PLINKO.land); } break; }   // the bonus peg's ding as the chip touches it; the points as it lands
     case 'pong': { add('whoosh', 0); if (f.pong) { if (f.pong.rim) add('clink', PONG.fly); add(f.pong.sunk ? 'splash' : 'thud', PONG.fly + (f.pong.rim ? 400 : 0)); } break; }
     case 'trivia': { const pre = triviaPre(f); if (pre && f.trivia && f.trivia.fresh) add('reveal', TRIVIA.flip - 350); if (pre && f.trivia && f.trivia.picked >= 0 && !f.trivia.auto) add('tap', pre); if (f.trivia) add(f.trivia.correct ? 'ding' : 'thud', pre + 250); break; }   // someone else's pick: the card turned up, then their tap
+    case 'headcount': case 'flash': case 'snapshot': {               // someone else's round: as it played (Start, the round's own sounds), their answer, then the result
+      const pre = attPre(f), r = f.att && f.att.round;
+      if (pre && r) {
+        if (f.type === 'flash') { add('go', 0); r.items.forEach((_, i) => add('tickSoft', i * r.ms)); }
+        else if (f.type === 'headcount') add('go', 0);
+        else { add('reveal', 0); for (let k = 1; k < Math.ceil(r.show / 1000); k++) add('tickSoft', k * 1000); add('flipDown', r.show); }
+        add('tap', attMs(f.type, r));
+      }
+      if (f.att) add(f.att.correct ? 'ding' : 'thud', pre + 250);
+      break;
+    }
     case 'oddone': { const pre = oddPre(f); if (pre) { add('reveal', ODD.show); if (f.odd.picked >= 0) add('tap', pre); } if (f.odd) add(f.odd.correct ? 'ding' : 'thud', pre + 250); break; }   // someone else's pick: the reveal, then their tap
     case 'dash': case 'lane': case 'flap': case 'chopper': if (f.run) {
       const rep = laneRep(f);                                     // the computer's Lane Rush run: its skids and crash first
@@ -7724,7 +7956,7 @@ function moveSounds(f) {
     case 'mastermind': { const n = (f.solid || 0) + (f.hollow || 0); for (let k = 0; k < n; k++) add('marker', 450 + k * 250); if (won) add('reveal', 1450); break; }
     case 'bump': { add('spin', 0); const steps = Math.max(1, f.to - f.from); for (let k = 0; k < steps; k++) add('hop', SPIN3_MS + k * HOP_MS); if (f.bumped) add('boing', SPIN3_MS + steps * HOP_MS); break; }
   }
-  const CASINO = ['bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads', 'flap', 'chopper', 'patterns', 'wheels', 'sniff'];
+  const CASINO = ['bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads', 'flap', 'chopper', 'patterns', 'wheels', 'sniff', 'headcount', 'flash', 'snapshot'];
   if (won && f.kind !== 'match' && CASINO.includes(f.type)) add('won', total - 600);   // the card games and the wheel: the chime once the result shows
   else if (won && f.kind !== 'match' && f.type !== 'ttt' && f.type !== 'wordle' && f.type !== 'hangman') add('won', Math.round(total * .5));   // the square is won: a chime
   if (f.kind === 'draw') add('reset', 420);                          // the square resets with a new mini-game

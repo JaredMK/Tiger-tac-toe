@@ -399,6 +399,7 @@ test('trivia: the reveal holds the player to the square: no other square this tu
   const t = E.timeoutMove(st, lcg(56));
   assert.equal(t.ok, true); assert.equal(t.square, i, 'out of time: the move is made in the square revealed');
   assert.equal(st.squares[i].mini.crossed.length, 1, 'one option crossed out'); assert.equal(st.squares[i].mini.shown, true);
+  assert.deepEqual(st.squares[i].mv, { X: 1, O: 0 }, 'the pick after a reveal counts as the turn\'s move (stats)');
   assert.equal(st.flash.trivia.fresh, true);
   E.endFlash(st);
   assert.equal(st.lock, null); assert.equal(st.turn, 'O');

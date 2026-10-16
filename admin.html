@@ -111,6 +111,7 @@ tr.dev { cursor: pointer; } tr.dev:hover td, tr.dev.open td { background: var(--
     .rform .rf input { width: 100%; padding: 4px 6px; font: inherit; border: 1px solid #bbb; border-radius: 6px; }
     .rform .btn { grid-column: 1 / -1; justify-self: start; margin-top: 4px; }
     .wgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; } .wgrid .rform { grid-template-columns: 1fr; margin-top: 0; }   /* Risk Wheels' three wheels */
+.atttab { border-collapse: collapse; margin: 6px 0 10px; } .atttab th, .atttab td { padding: 3px 6px; text-align: left; font-size: 13px; } .atttab input { width: 76px; }
 </style>
 </head>
 <body>
@@ -127,7 +128,7 @@ const FIREBASE_CONFIG = {
 };
 const MODES = [['local', 'Two players'], ['cpu', 'vs Computer'], ['cvc', 'Computer vs Computer (old)'], ['friend', 'Friend code'], ['match', 'Find Match'], ['bot', 'Find Match vs a bot'], ['casual', 'Casual (old)'], ['ranked', 'Ranked (old)']];
 const MODE_COLORS = { local: 'var(--o)', cpu: 'var(--sky)', cvc: 'var(--stone)', friend: 'var(--plum)', match: 'var(--green)', bot: '#2f7f6f', casual: '#8fbf7a', ranked: 'var(--x)' };
-const GAMES = { ttt: 'Tic-tac-toe', c4: 'Connect 4', bs: 'Battleship', wordle: 'Wordle', hangman: 'Hangman', hex: 'Hex', hilo: 'Higher/Lower', snakes: 'Snakes and Ladders', memory: 'Memory', candy: 'Candy Race', bump: 'Bump', coins: 'Coin Flip', pig: 'Risky Rolls', hunt: 'Treasure Hunt', mastermind: 'Mastermind', bj: 'Blackjack', bus: 'Ride the Bus', rl: 'Roulette', bullseye: 'Bullseye', echo: 'Echo', plinko: 'Plinko', pong: 'Cup Pong', trivia: 'Trivia', oddone: 'Odd One Out', dash: 'Dash', lane: 'Lane Rush', golf: 'Mini Golf', pool: 'Pool', bowling: 'Bowling', craps: 'Craps', takeover: 'Takeover', flood: 'Flood', seating: 'Seating', districts: 'Districts', shelves: 'Shelves', roads: 'Roads', flap: 'Flap', chopper: 'Chopper', patterns: 'Patterns', wheels: 'Risk Wheels', sniff: 'Sniff' };   // the games in the pool (Hexapawn and the Dice race are gone; their numbers stay in the database)
+const GAMES = { ttt: 'Tic-tac-toe', c4: 'Connect 4', bs: 'Battleship', wordle: 'Wordle', hangman: 'Hangman', hex: 'Hex', hilo: 'Higher/Lower', snakes: 'Snakes and Ladders', memory: 'Memory', candy: 'Candy Race', bump: 'Bump', coins: 'Coin Flip', pig: 'Risky Rolls', hunt: 'Treasure Hunt', mastermind: 'Mastermind', bj: 'Blackjack', bus: 'Ride the Bus', rl: 'Roulette', bullseye: 'Bullseye', echo: 'Echo', plinko: 'Plinko', pong: 'Cup Pong', trivia: 'Trivia', oddone: 'Odd One Out', dash: 'Dash', lane: 'Lane Rush', golf: 'Mini Golf', pool: 'Pool', bowling: 'Bowling', craps: 'Craps', takeover: 'Takeover', flood: 'Flood', seating: 'Seating', districts: 'Districts', shelves: 'Shelves', roads: 'Roads', flap: 'Flap', chopper: 'Chopper', patterns: 'Patterns', wheels: 'Risk Wheels', sniff: 'Sniff', headcount: 'Headcount', flash: 'Flash', snapshot: 'Snapshot' };   // the games in the pool (Hexapawn and the Dice race are gone; their numbers stay in the database)
 const app = document.getElementById('app');
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 let fb = null, user = null, stats = null, flagged = null, view = { status: 'loading', error: '' };
@@ -273,6 +274,7 @@ function render() {
     ${bullsCard()}
     ${plinkoCard()}
     ${oddCard()}
+    ${ATT_CARDS.map(attCard).join('')}
     ${wheelsCard()}
     ${botsCard()}
     ${alertsCard()}
@@ -388,7 +390,7 @@ function playCard() {
 
 // ---------- game releases: Released or Admin only, per mini-game (releases/{type}, read by the game and the server) ----------
 // A game not in the database is as the code has it (TEST_TYPES in engine.js: admin only until released here).
-const TEST_TYPES = ['bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads', 'flap', 'chopper', 'patterns', 'wheels', 'sniff'];   // (as engine.js has them; the switches cover every game the stats know)
+const TEST_TYPES = ['bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads', 'flap', 'chopper', 'patterns', 'wheels', 'sniff', 'headcount', 'flash', 'snapshot'];   // (as engine.js has them; the switches cover every game the stats know)
 const isReleased = t => (ctl.releases && typeof ctl.releases[t] === 'boolean' ? ctl.releases[t] : !TEST_TYPES.includes(t));
 function releasesCard() {
   const rows = Object.entries(GAMES).map(([t, name]) => { const on = isReleased(t); return `<tr><td>${esc(name)}</td><td><label class="sw"><input type="checkbox" data-rel="${t}"${on ? ' checked' : ''}><span class="${on ? 'good' : ''}">${on ? 'Released' : 'Admin only'}</span></label></td></tr>`; }).join('');
@@ -506,6 +508,38 @@ async function savePlinkoCfg(btn) {
   if (!Number.isInteger(v) || v < 4 || v > 40) { alert('Target: a whole number from 4 to 40'); return; }
   btn.disabled = true;
   try { await fb.dbM.set(fb.dbM.ref(fb.db, 'config/plinko'), { target: v }); ctl.plinkoCfg = { target: v }; } catch (e) { alert('Could not save: ' + (e && e.message)); }
+  render();
+}
+// ---------- the attention games' difficulty (config/headcount, config/flash, config/snapshot, read by the game and the server) ----------
+const HEAD_DEFAULTS = { n1lo: 6, n1hi: 10, d1lo: 0, d1hi: 0, cross1: 3200, gap1: 950, n2lo: 10, n2hi: 15, d2lo: 3, d2hi: 6, cross2: 2300, gap2: 560, n3lo: 14, n3hi: 20, d3lo: 4, d3hi: 7, cross3: 1800, gap3: 430 };   // (as engine.js has them)
+const FLASH_DEFAULTS = { n: 8, ms1: 900, ms2: 600, ms3: 450 };
+const SNAP_DEFAULTS = { c1: 4, r1: 4, k1: 6, c2: 4, r2: 5, k2: 8, c3: 5, r3: 5, k3: 10, show: 5000 };
+const ATT_CARDS = [
+  { id: 'headcount', title: 'Headcount tuning', defaults: HEAD_DEFAULTS, rows: [['n{L}lo', 'Creatures to count: fewest', 1, 30, 1], ['n{L}hi', 'Creatures to count: most', 1, 30, 1], ['d{L}lo', 'Decoys: fewest (level 1 has none)', 0, 15, 1], ['d{L}hi', 'Decoys: most', 0, 15, 1], ['cross{L}', 'Time to cross the field (ms)', 600, 8000, 10], ['gap{L}', 'Time between starts, about (ms)', 120, 3000, 10]], extra: [],
+    note: 'Creatures cross the field and the player counts the ones asked for. Level 1: one kind, one direction, steady. Level 2: decoys that do not count, faster, a little uneven. Level 3: both directions, uneven with bunches, faster still.' },
+  { id: 'flash', title: 'Flash tuning', defaults: FLASH_DEFAULTS, rows: [['ms{L}', 'Time per item (ms)', 150, 3000, 10]], extra: [['n', 'Items in a round', 4, 12, 1]],
+    note: 'Items flash one at a time, then one question with four options. Level 1: one attribute; level 2: a combination; level 3: order and position.' },
+  { id: 'snapshot', title: 'Snapshot tuning', defaults: SNAP_DEFAULTS, rows: [['c{L}', 'Columns', 3, 7, 1], ['r{L}', 'Rows', 3, 7, 1], ['k{L}', 'Filled cells', 2, 30, 1]], extra: [['show', 'Time the pattern shows (ms)', 1000, 15000, 100]],
+    note: 'A pattern shows for a few seconds, then the player taps it back in. Never a full row or column, a solid block, a straight run of 4 or a symmetric shape.' },
+];
+function attCard(c) {
+  const raw = (ctl.attCfg || {})[c.id] || {}, num = (v, d) => (v != null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : d);
+  const inp = (k, lo, hi, step) => `<input type="number" step="${step}" min="${lo}" max="${hi}" data-attcfg="${c.id}" data-k="${k}" value="${num(raw[k], c.defaults[k])}">`;
+  const rows = c.rows.map(([k, label, lo, hi, step]) => `<tr><th>${label}</th>${[1, 2, 3].map(L => `<td>${inp(k.replace('{L}', L), lo, hi, step)}</td>`).join('')}</tr>`).join('');
+  return `<div class="card ctl" id="${c.id}Card"><h2>${c.title}</h2>
+    <p class="note">${c.note} Aimed at a typical player getting about 85% of rounds right at level 1, 65% at level 2 and 45% at level 3 (the computer gets them right that often). Applies to rounds dealt from then on.</p>
+    <table class="atttab"><tr><th></th><th>Level 1</th><th>Level 2</th><th>Level 3</th></tr>${rows}</table>
+    <div class="rform">${c.extra.map(([k, label, lo, hi, step]) => `<label class="rf"><span>${label}</span>${inp(k, lo, hi, step)}</label>`).join('')}<button class="btn" data-attsave="${c.id}">Save ${c.title.replace(' tuning', '')}</button></div></div>`;
+}
+async function saveAttCfg(btn) {
+  const c = ATT_CARDS.find(x => x.id === btn.dataset.attsave), out = {};
+  for (const el of app.querySelectorAll(`input[data-attcfg="${c.id}"]`)) {
+    const v = Number(el.value), lo = Number(el.min), hi = Number(el.max);
+    if (!Number.isFinite(v) || v < lo || v > hi) { alert(`${c.title.replace(' tuning', '')}: ${el.dataset.k} must be from ${lo} to ${hi}`); return; }
+    out[el.dataset.k] = v;
+  }
+  btn.disabled = true;
+  try { await fb.dbM.set(fb.dbM.ref(fb.db, 'config/' + c.id), out); ctl.attCfg = Object.assign({}, ctl.attCfg, { [c.id]: out }); } catch (e) { alert('Could not save: ' + (e && e.message)); }
   render();
 }
 // ---------- Odd One Out's shade differences (config/oddone, read by the game and the server) ----------
@@ -692,9 +726,9 @@ async function loadPeople() {
 }
 async function loadCtl() {
   const g = p => fb.dbM.get(fb.dbM.ref(fb.db, p)).then(s => s.val()).catch(() => null);
-  const [config, secretsSet, bots, botStats, alertStats, features, log, releases, runCfg, bullsCfg, wheelsCfg, plinkoCfg, oddCfg] = await Promise.all([g('admin/config'), g('admin/secretsSet'), g('bots'), g('botStats'), g('alertStats'), g('features'),
-    fb.dbM.get(fb.dbM.query(fb.dbM.ref(fb.db, 'alertLog'), fb.dbM.orderByChild('at'), fb.dbM.limitToLast(8))).then(s => s.val()).catch(() => null), g('releases'), g('config/run'), g('config/bulls'), g('config/wheels'), g('config/plinko'), g('config/oddone')]);
-  ctl = { config: config || {}, secretsSet: secretsSet || {}, bots: bots || {}, botStats: botStats || {}, alertStats: alertStats || {}, features: features || {}, releases: releases || {}, runCfg: runCfg || {}, bullsCfg: bullsCfg || {}, wheelsCfg: wheelsCfg || {}, plinkoCfg: plinkoCfg || {}, oddCfg: oddCfg || {},
+  const [config, secretsSet, bots, botStats, alertStats, features, log, releases, runCfg, bullsCfg, wheelsCfg, plinkoCfg, oddCfg, headCfg, flashCfg, snapCfg] = await Promise.all([g('admin/config'), g('admin/secretsSet'), g('bots'), g('botStats'), g('alertStats'), g('features'),
+    fb.dbM.get(fb.dbM.query(fb.dbM.ref(fb.db, 'alertLog'), fb.dbM.orderByChild('at'), fb.dbM.limitToLast(8))).then(s => s.val()).catch(() => null), g('releases'), g('config/run'), g('config/bulls'), g('config/wheels'), g('config/plinko'), g('config/oddone'), g('config/headcount'), g('config/flash'), g('config/snapshot')]);
+  ctl = { config: config || {}, secretsSet: secretsSet || {}, bots: bots || {}, botStats: botStats || {}, alertStats: alertStats || {}, features: features || {}, releases: releases || {}, runCfg: runCfg || {}, bullsCfg: bullsCfg || {}, wheelsCfg: wheelsCfg || {}, plinkoCfg: plinkoCfg || {}, oddCfg: oddCfg || {}, attCfg: { headcount: headCfg || {}, flash: flashCfg || {}, snapshot: snapCfg || {} },
     alertLog: Object.values(log || {}).sort((a, b) => b.at - a.at) };
 }
 async function signIn(how) {
@@ -730,6 +764,7 @@ app.addEventListener('click', e => {
   else if (b.dataset.wheelsave) saveWheelsCfg(b);
   else if (b.dataset.plinkosave) savePlinkoCfg(b);
   else if (b.dataset.oddsave) saveOddCfg(b);
+  else if (b.dataset.attsave) saveAttCfg(b);
   else if (b.dataset.act === 'test-alert') testAlert(b);
 });
 app.addEventListener('change', e => {

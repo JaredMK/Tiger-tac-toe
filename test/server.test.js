@@ -1427,6 +1427,52 @@ test('Odd One Out tuning (config/oddone): public to read, the admin alone sets i
   assert.match(await runScript('make-admin.js', 'OddBoss', 'revoke'), /no longer an admin/);
 });
 
+test('Headcount, Flash and Snapshot tuning (config/headcount, config/flash, config/snapshot): public to read, the admin alone sets them, within bounds; the server judges each answer and draws the next round by them', async () => {
+  const boss = await player('AttBoss'), a = await player('Att_A'), b = await player('Att_B');
+  assert.match(await runScript('make-admin.js', 'AttBoss', 'grant'), /AttBoss is now the admin/);
+  await boss.auth.currentUser.getIdToken(true);
+  const head = Object.assign({}, E.HEAD_DEFAULTS, { n1lo: 4, n1hi: 4, cross1: 2500 }), flash = { n: 6, ms1: 1200, ms2: 600, ms3: 450 }, snap = Object.assign({}, E.SNAP_DEFAULTS, { c1: 3, r1: 4, k1: 5, show: 4000 });
+  for (const [k, cfg] of [['headcount', head], ['flash', flash], ['snapshot', snap]]) {
+    await denied(a.write(`config/${k}`, cfg), `${k}: a player setting the difficulty`);
+    await boss.write(`config/${k}`, cfg);
+    assert.deepEqual(await a.read(`config/${k}`), cfg, `${k}: everyone can read it`);
+    await denied(boss.write(`config/${k}/other`, 1), `${k}: anything else`);
+  }
+  assert.equal((await fetch(`http://${DB_HOST}/config/flash/n.json?ns=${NS}`)).status, 200, 'without a login too');
+  await denied(boss.write('config/headcount', Object.assign({}, head, { cross1: 99999 })), 'a crossing time off its range');
+  await denied(boss.write('config/flash', Object.assign({}, flash, { ms2: 'fast' })), 'not a number');
+  await denied(boss.write('config/snapshot', Object.assign({}, snap, { show: 0 })), 'no time on show');
+  await new Promise(r => setTimeout(r, 21000));                 // (the server keeps the config 20 s)
+  const g = await pairUp(a, b);
+  for (const [type, wrongOf, check] of [
+    ['headcount', r => E.attTruth('headcount', r) + 1, r => { assert.equal(r.items.length, 4, 'Headcount: the admin\'s count'); assert.ok(r.items.every(it => it.d === Math.round(2500 * (it.k === 'mouse' ? 0.85 : 1))), 'and crossing time (mice a little quicker)'); }],
+    ['flash', r => (r.ans + 1) % 4, r => { assert.equal(r.items.length, 6, 'Flash: the admin\'s number of items'); assert.equal(r.ms, 1200, 'and time per item'); }],
+    ['snapshot', r => E.attWrong('snapshot', r, E.makeRng('w')), r => { assert.deepEqual([r.c, r.r, r.cells.length, r.show], [3, 4, 5, 4000], 'Snapshot: the admin\'s grid, cells and time on show'); }],
+  ]) {
+    await rewrite(g.id, full => { full.squares[4].owner = null; full.squares[4].mini = E.newMini(type, E.makeRng('srv-' + type)); full.turn = 'X'; full.lock = null; });
+    const r0 = (await gameState(g.id)).squares[4].mini.round.X;
+    assert.equal((await g.X.call('move', { game: g.id, square: 4, move: type === 'flash' ? 7 : type === 'headcount' ? -1 : [99] })).ok, false, `${type}: an answer that cannot be is refused`);
+    assert.equal((await g.O.call('move', { game: g.id, square: 4, kind: 'start' })).ok, false, 'Start: only the player to move');
+    assert.equal((await g.X.call('move', { game: g.id, square: 4, kind: 'start' })).ok, true);
+    assert.equal((await gameState(g.id)).lock, 4, `${type}: Start holds the player to the square on the server`);
+    assert.equal((await g.X.call('move', { game: g.id, square: 2, kind: 'start' })).ok, false, 'no second round elsewhere');
+    assert.equal((await g.X.call('move', { game: g.id, square: 4, move: wrongOf(r0) })).ok, true);
+    assert.equal((await gameState(g.id)).lock, null, 'answered: the hold is over');
+    let m = (await gameState(g.id)).squares[4].mini;
+    assert.deepEqual([m.right.X, m.last.correct, m.last.by], [0, false, 'X'], `${type}: wrong, no step`);
+    assert.deepEqual(m.last.truth, E.attTruth(type, r0), 'the right answer, for the result');
+    check(m.round.X);
+    const r1 = m.round.X;
+    assert.equal((await g.O.call('move', { game: g.id, square: 4, move: E.attTruth(type, m.round.O) })).ok, true);
+    m = (await gameState(g.id)).squares[4].mini;
+    assert.deepEqual([m.right.O, m.last.correct, m.round.O.level], [1, true, 1], `${type}: right, a step up and the next level`);
+    assert.deepEqual(m.round.X, r1, 'the other player\'s round untouched');
+  }
+  for (const k of ['headcount', 'flash', 'snapshot']) await boss.write(`config/${k}`, null);
+  assert.equal((await g.O.call('resign', { game: g.id })).ok, true);
+  assert.match(await runScript('make-admin.js', 'AttBoss', 'revoke'), /no longer an admin/);
+});
+
 test('Trivia over the server: a new question is face down (the question itself only in the hidden node); the player to move turns it up, and is then held to the square; the pick made', async () => {
   const a = await player('Triv_A'), b = await player('Triv_B'), g = await pairUp(a, b);
   E.setTriviaBank(require('../trivia.json'));
