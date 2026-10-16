@@ -520,7 +520,7 @@ const ATT_CARDS = [
   { id: 'flash', title: 'Flash tuning', defaults: FLASH_DEFAULTS, rows: [['ms{L}', 'Time per item (ms)', 150, 3000, 10]], extra: [['n', 'Items in a round', 4, 12, 1]],
     note: 'Items flash one at a time, then one question with four options. Level 1: one attribute; level 2: a combination; level 3: order and position.' },
   { id: 'snapshot', title: 'Snapshot tuning', defaults: SNAP_DEFAULTS, rows: [['c{L}', 'Columns', 3, 7, 1], ['r{L}', 'Rows', 3, 7, 1], ['k{L}', 'Filled cells', 2, 30, 1]], extra: [['show', 'Time the pattern shows (ms)', 1000, 15000, 100]],
-    note: 'A pattern shows for a few seconds, then the player taps it back in. Never a full row or column, a solid block, a straight run of 4 or a symmetric shape.' },
+    note: 'A pattern shows for a few seconds, then the player taps it back in. Never a full row or column, a straight run of 4, one solid rectangle or a symmetric shape.' },
 ];
 function attCard(c) {
   const raw = (ctl.attCfg || {})[c.id] || {}, num = (v, d) => (v != null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : d);

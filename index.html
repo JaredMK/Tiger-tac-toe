@@ -1994,7 +1994,8 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .atstack { display: grid; place-items: center; } .atstack > span { grid-area: 1 / 1; }
 .atwords .arcres { margin: 0; padding: 0; height: auto; min-height: 0; font-size: 15px; line-height: 1.25; }
 .tu2 { animation: tfrom 1ms var(--f, 0ms) both, tuntil 1ms var(--u, 0ms) both; }
-.hcfield { position: relative; width: min(100%, 320px, calc(var(--gh) * .48)); aspect-ratio: 1; border: 3px solid var(--ink); border-radius: 14px; overflow: hidden;
+.hcbox { display: grid; width: min(100%, 320px, max(150px, calc(var(--gh) - 170px))); aspect-ratio: 1; } .hcbox > .hcl { grid-area: 1 / 1; display: grid; min-width: 0; min-height: 0; }   /* the field, then the pad in its place: the question takes no room of its own */
+.hcfield { position: relative; width: 100%; height: 100%; border: 3px solid var(--ink); border-radius: 14px; overflow: hidden;
   background: radial-gradient(circle at 20% 30%, rgba(255,255,255,.18) 0 8%, transparent 9%), radial-gradient(circle at 75% 70%, rgba(0,0,0,.06) 0 10%, transparent 11%), #a9d47c; }
 .hcfield.fall { background: linear-gradient(#bfe3f2, #e9f3d4); }
 .hcr { position: absolute; left: 0; top: var(--p); width: 11%; aspect-ratio: 1; animation: hcr var(--d) linear var(--t) both; }
@@ -2005,15 +2006,17 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 @keyframes hcl { from { transform: translateX(909.1%); } to { transform: translateX(-100%); } }
 @keyframes hcv { from { transform: translateY(-100%); } to { transform: translateY(909.1%); } }
 @keyframes hcwob { from { translate: 0 -4%; rotate: -4deg; } to { translate: 0 4%; rotate: 4deg; } }
-.hcpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; width: min(100%, 300px); }
+.hcpad { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: 1.1fr repeat(4, 1fr); gap: 6px; width: 100%; height: 100%; min-height: 0; }
+.hcdst { grid-column: 1 / -1; display: grid; min-height: 0; } .hcdst > div { grid-area: 1 / 1; display: grid; }
 .hcpad.dim { opacity: .4; }
-.hcdisp { grid-column: 1 / -1; height: 36px; display: grid; place-items: center; border: 3px solid var(--ink); border-radius: 10px; background: var(--paper); font: 400 24px/1 'Luckiest Guy', 'Arial Black', sans-serif; }
+.hcdisp { grid-column: 1 / -1; min-height: 0; display: grid; place-items: center; border: 3px solid var(--ink); border-radius: 10px; background: var(--paper); font: 400 24px/1 'Luckiest Guy', 'Arial Black', sans-serif; }
 .hcdisp i { font-style: normal; color: var(--muted); }
 .hcdisp.ok { background: #d7f0c9; } .hcdisp.no { background: #f9c7b6; }
-.hckey { height: 36px; border: 3px solid var(--ink); border-radius: 10px; background: #fff; box-shadow: 0 3px 0 var(--ink); font-size: 18px; font-weight: 800; padding: 0; }
+.hckey { min-height: 0; border: 3px solid var(--ink); border-radius: 10px; background: #fff; box-shadow: 0 3px 0 var(--ink); font-size: clamp(16px, 5vw, 22px); font-weight: 800; padding: 0; }
 .hckey.ok { background: var(--green, #4e9d3a); color: #fff; }
 .hckey:disabled { box-shadow: none; }
-.flbox { position: relative; width: min(100%, 260px, calc(var(--gh) * .4)); aspect-ratio: 1; border: 3px solid var(--ink); border-radius: 16px; background: #fffaf0; display: grid; place-items: center; }
+.att-flash { --oh: clamp(44px, calc(var(--gh) * .09), 58px); }   /* the options' height: smaller on a short screen */
+.flbox { position: relative; width: min(100%, 260px, max(96px, calc(var(--gh) - 186px - 2 * var(--oh)))); aspect-ratio: 1; border: 3px solid var(--ink); border-radius: 16px; background: #fffaf0; display: grid; place-items: center; }
 .fit { position: absolute; inset: 14%; opacity: 0; animation: fon var(--on) linear var(--t); }
 .fit svg { width: 100%; height: 100%; display: block; }
 @keyframes fon { from, to { opacity: 1; } }
@@ -2021,14 +2024,14 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .flopts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: min(100%, 320px); }
 .flopts.dim { opacity: .4; }
 .flopts.lay { display: grid; grid-template-columns: 1fr; } .flopts.lay > div { grid-area: 1 / 1; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.flopt { height: 58px; border: 3px solid var(--ink); border-radius: 12px; background: #fff; box-shadow: 0 3px 0 var(--ink); padding: 4px; display: grid; place-items: center; }
+.flopt { height: var(--oh, 58px); border: 3px solid var(--ink); border-radius: 12px; background: #fff; box-shadow: 0 3px 0 var(--ink); padding: 4px; display: grid; place-items: center; }
 .flopt b { font: 400 26px/1 'Luckiest Guy', 'Arial Black', sans-serif; }
-.flopt svg { height: 44px; width: 44px; display: block; }
+.flopt svg { height: calc(var(--oh, 58px) - 16px); width: auto; aspect-ratio: 1; display: block; }
 .flopt:disabled { box-shadow: none; }
 .flopt.right { background: #d7f0c9; border-color: var(--green, #4e9d3a); animation: optglow .6s both; }
 .flopt.wrong { background: #f9c7b6; } .flopt.picked { background: var(--panel-2); }
 .snstack { display: grid; width: 100%; justify-items: center; } .snstack > div { grid-area: 1 / 1; width: 100%; display: flex; justify-content: center; }
-.sngrid { display: grid; gap: 5px; width: min(100%, 300px, calc(var(--gh) * .5)); }
+.sngrid { display: grid; gap: 5px; width: min(100%, 300px, max(120px, calc((var(--gh) - 222px) * var(--c) / var(--r)))); }   /* as wide as the room for its rows allows */
 .snc { aspect-ratio: 1; border: 3px solid var(--ink); border-radius: 8px; background: #fff; padding: 0; position: relative; touch-action: manipulation; }
 .snc:disabled { cursor: default; }
 .snc.on { background: #3b87c7; } .snc.sel { background: #8d5bd8; }
@@ -3746,15 +3749,19 @@ function attArm(type, round) {
 }
 // The play area of each game: { stage, input, watch (during the round), ask (the question), say (an answer in words) }.
 function headView(c) {
-  const r = c.round, anim = c.playing || c.pre;               // the crossing: this phone's (from Start), or someone else's (from the move)
+  const r = c.round, anim = c.playing || c.pre, len = attMs('headcount', r);   // the crossing: this phone's (from Start), or someone else's (from the move)
   const crit = anim ? r.items.map(it => `<i class="hcr ${r.axis === 'v' ? 'v' : it.dir > 0 ? 'r' : 'l'} k-${it.k}" style="--t:${it.t}ms;--d:${it.d}ms;--p:${10 + it.lane * 20 - 5.5}%">${hcArt(it.k)}</i>`).join('') : '';
-  const stage = `<div class="hcfield${r.axis === 'v' ? ' fall' : ''}"${c.started ? fxAttr(c.startPerf) : ''} aria-label="The field">${crit}</div>`;
+  const field = `<div class="hcfield${r.axis === 'v' ? ' fall' : ''}"${c.started ? fxAttr(c.startPerf) : ''} aria-label="The field">${crit}</div>`;
   const entry = c.started && attDraft ? attDraft.entry : '', live = c.answering && c.live;
   const shownAns = c.shown ? (c.shown.answer == null ? '–' : String(c.shown.answer)) : entry || '';
-  const disp = c.shown ? (c.pre ? `<span class="tf" style="--f:${attMs('headcount', r)}ms">${shownAns}</span>` : shownAns) : (shownAns || '<i>?</i>');
+  const disp = cls => `<div class="hcdisp${cls}" aria-label="Your answer">${c.shown ? shownAns : shownAns || '<i>?</i>'}</div>`;
+  const mark = c.shown ? (c.shown.correct ? ' ok' : ' no') : '';
   const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'del', '0', 'ok'].map(k => `<button class="hckey${k === 'ok' ? ' ok' : ''}" data-act="hc-key" data-k="${k}" aria-label="${k === 'del' ? 'Delete' : k === 'ok' ? 'Done' : k}"${live && (k !== 'ok' || entry) ? '' : ' disabled'}>${k === 'del' ? '⌫' : k === 'ok' ? 'OK' : k}</button>`).join('');
-  const input = `<div class="hcpad${live ? '' : ' dim'}"><div class="hcdisp${c.shown ? (c.shown.correct ? ' ok' : ' no') : ''}" aria-label="Your answer">${disp}</div>${keys}</div>`;
-  return { stage, input, watch: headWatch(r), ask: headAsk(r), say: n => `${n} ${HEAD_KINDS[r.t][n === 1 ? 0 : 1]}` };
+  const pad = `<div class="hcpad${live || c.shown ? '' : ' dim'}">${c.shown && c.pre ? `<div class="hcdst"><div class="tu" style="--u:${c.pre}ms">${disp('')}</div><div class="tf" style="--f:${c.pre}ms">${disp(mark)}</div></div>` : disp(mark)}${keys}</div>`;
+  // one square box: the field while the creatures cross, then the number pad in its place (the question, the answer, the result)
+  const stage = c.shown && c.pre ? `<div class="hcbox"><div class="hcl tu" style="--u:${len}ms">${field}</div><div class="hcl tf" style="--f:${len}ms">${pad}</div></div>`
+    : `<div class="hcbox"><div class="hcl">${c.answering || c.shown ? pad : field}</div></div>`;
+  return { stage, input: '', watch: headWatch(r), ask: headAsk(r), say: n => `${n} ${HEAD_KINDS[r.t][n === 1 ? 0 : 1]}` };
 }
 function flashView(c) {
   const r = c.round, anim = c.playing || c.pre;
@@ -3769,7 +3776,7 @@ function flashView(c) {
 }
 function snapView(c) {
   const r = c.round, cellsN = r.c * r.r, orig = new Set(r.cells);
-  const grid = (cls, act) => `<div class="sngrid" style="grid-template-columns:repeat(${r.c}, 1fr)">${Array.from({ length: cellsN }, (_, i) => `<button class="snc${cls(i)}"${act ? ` data-act="snap-cell" data-i="${i}" aria-label="Cell ${i + 1}${cls(i).includes(' sel') ? ', picked' : ''}"` : ' tabindex="-1" aria-hidden="true"'}${act && c.answering && c.live ? '' : ' disabled'}></button>`).join('')}</div>`;
+  const grid = (cls, act) => `<div class="sngrid" style="grid-template-columns:repeat(${r.c}, 1fr);--c:${r.c};--r:${r.r}">${Array.from({ length: cellsN }, (_, i) => `<button class="snc${cls(i)}"${act ? ` data-act="snap-cell" data-i="${i}" aria-label="Cell ${i + 1}${cls(i).includes(' sel') ? ', picked' : ''}"` : ' tabindex="-1" aria-hidden="true"'}${act && c.answering && c.live ? '' : ' disabled'}></button>`).join('')}</div>`;
   const pick = c.shown ? new Set(c.shown.answer || []) : new Set(c.started && attDraft ? attDraft.entry : []);
   const res = i => (orig.has(i) && pick.has(i) ? ' hit' : orig.has(i) ? ' miss' : pick.has(i) ? ' extra' : '');
   const show = r.show, secs = Math.ceil(show / 1000);
