@@ -8,13 +8,13 @@
  * Everything about a match lives in one plain object (see newMatch); the UI
  * only ever calls playMove / endFlash and re-renders from that object.
  */
-const TYPES = ['ttt', 'c4', 'bs', 'wordle', 'hangman', 'hex', 'hilo', 'snakes', 'memory', 'candy', 'bump', 'coins', 'pig', 'hunt', 'mastermind', 'bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads', 'flap', 'chopper', 'patterns', 'wheels', 'sniff', 'headcount', 'flash', 'snapshot'];
+const TYPES = ['ttt', 'c4', 'bs', 'wordle', 'hangman', 'hex', 'hilo', 'snakes', 'memory', 'candy', 'bump', 'coins', 'pig', 'hunt', 'mastermind', 'bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads', 'flap', 'chopper', 'patterns', 'wheels', 'sniff', 'headcount', 'flash', 'snapshot', 'skyhop', 'scoop', 'pinball'];
 // Release control: every mini-game is Released or Admin only. A game in TEST_TYPES is admin only until the
 // admin's dashboard releases it (releases/{type} true in the database; false puts one back to admin only);
 // everything else is released unless the database says otherwise. Admin-only games exist only for the
 // admin: in their local matches and in friend games they host (their guest plays them in that match
 // only); never in Find Match, nor anywhere for anyone else.
-const TEST_TYPES = ['bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads', 'flap', 'chopper', 'patterns', 'wheels', 'sniff', 'headcount', 'flash', 'snapshot'];
+const TEST_TYPES = ['bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads', 'flap', 'chopper', 'patterns', 'wheels', 'sniff', 'headcount', 'flash', 'snapshot', 'skyhop', 'scoop', 'pinball'];
 function isReleased(t, releases) { return releases && typeof releases[t] === 'boolean' ? releases[t] : !TEST_TYPES.includes(t); }
 function releasedTypes(releases) { return TYPES.filter(t => isReleased(t, releases)); }
 // The games a setup may deal (admin: every game; anyone else: the released ones), and the setup's
@@ -76,6 +76,9 @@ const INFO = {
   headcount:   { name: 'Headcount',    hint: 'Count the critters as they cross. Three right wins' },
   flash:       { name: 'Flash',        hint: 'Watch 8 items flash by, answer one question. Three right wins' },
   snapshot:    { name: 'Snapshot',     hint: 'Memorise the pattern, tap it back. Three right wins' },
+  skyhop:      { name: 'Sky Hop',      hint: 'Drag to steer as you bounce up. Reach the top first' },
+  scoop:       { name: 'Scoop Stack',  hint: 'Drag the cone to catch scoops. Stack to the target first' },
+  pinball:     { name: 'Pinball',      hint: 'Tap left or right to flip. Light every target first' },
 };
 const C4 = { cols: 7, rows: 6, k: 4 };
 const HP = { cols: 3, rows: 4 };
@@ -1085,7 +1088,7 @@ function attJudge(type, r, m) {
 function attStart(state, i, p) {
   const sq = state.squares && state.squares[i];
   if (state.winner || state.turn !== p) return { ok: false, reason: 'turn' };
-  if (!sq || sq.owner || !ATT_TYPES.includes(sq.mini.type)) return { ok: false, reason: 'bad' };
+  if (!sq || sq.owner || !(ATT_TYPES.includes(sq.mini.type) || FINGER_TYPES.includes(sq.mini.type))) return { ok: false, reason: 'bad' };
   if (state.lock != null && state.lock !== i) return { ok: false, reason: 'locked' };
   state.lock = i;
   return { ok: true };
@@ -1098,6 +1101,395 @@ function attWrong(type, r, rng) {
   const out = r.cells.slice(); out.splice(randInt(rng, out.length), 1, off[randInt(rng, off.length)]);   // one cell misplaced
   return out.sort((a, b) => a - b);
 }
+
+// ---------- Sky Hop, Scoop Stack and Pinball: the finger games ----------
+// A move is one attempt, played on the player's phone in real time with a finger (a drag left and right
+// steers Sky Hop's hopper and Scoop Stack's cone; Pinball's flippers are held down). Each player keeps
+// their own progress from attempt to attempt: Sky Hop's height, Scoop Stack's stack, Pinball's lit
+// targets. Sky Hop and Scoop Stack are worked out here, in fixed steps of plain arithmetic, so the same
+// inputs give the same attempt everywhere: the phone sends its inputs (where the finger steered, step by
+// step) with the result, and the server plays them through again and takes the result only when it is
+// the same, in no more time than the turn has lasted. The computer plays through the same steps with a
+// hand of its own (it reacts a little late and aims a little off), and every phone replays any attempt it
+// did not play from those inputs, at full speed. Pinball runs on Matter.js (physics.js).
+const FINGER_TYPES = ['skyhop', 'scoop', 'pinball'];
+// grace: seconds of safety at the start of an attempt; step: the simulation step; every: the finger is
+// read every 2 steps (60 times a second); slackMs: how much longer than the turn an attempt may be (the
+// clock check); maxSecs: the longest attempt the server will play through.
+const FING = { grace: 2, step: 1 / 120, every: 2, slackMs: 2500, maxSecs: 300, q: 50, replayMax: 30000 };   // q: the finger's place is kept to 1/50 of a unit; replayMax: a longer attempt replays faster, in this long
+// The inputs: [step, value] pairs (the finger's place changed at that step), written as base-36 step gaps and values.
+function fingLog(pairs) { let s = 0; return pairs.map(([k, v]) => { const d = k - s; s = k; return d.toString(36) + ':' + v.toString(36); }).join(','); }
+function fingUnlog(str, maxSteps, maxV) {
+  if (typeof str !== 'string' || str.length > 400000) return null;
+  if (!str) return [];
+  const out = [];
+  let s = 0;
+  for (const part of str.split(',')) {
+    const m = /^([0-9a-z]{1,6}):([0-9a-z]{1,4})$/.exec(part);
+    if (!m) return null;
+    s += parseInt(m[1], 36); const v = parseInt(m[2], 36);
+    if (s > maxSteps || v > maxV || (out.length && s <= out[out.length - 1][0])) return null;
+    out.push([s, v]);
+  }
+  return out;
+}
+const clamp01 = x => (x < 0 ? 0 : x > 1 ? 1 : x);
+const fwrap = (x, w) => ((x % w) + w) % w;
+const fdiff = (a, b, w) => { const d = fwrap(a - b, w); return d > w / 2 ? d - w : d; };   // a - b the short way round
+
+// Sky Hop: the hopper bounces off every platform it falls onto (each bounce the same height up); a drag
+// steers it (it moves towards the finger's place at up to vx, round the edges: the sky wraps). The course
+// goes up to the target height, made per player per square from a seed (a section that beat you is still
+// there next time): a chain of platforms each within a bounce of the last (sure to be reachable: never
+// more than gapK of a bounce up, never further across than the time in the air allows), with more
+// platforms between; higher up the gaps grow, the platforms narrow, some move, some break after one
+// bounce, and now and then a hazard floats beside the way up (never across it). Falling below the screen
+// ends the attempt; the highest point reached is kept. An attempt starts on a full-width platform at the
+// saved height that holds for the grace seconds, with nothing hazardous in the first bounce's reach.
+// Heights in metres; the sky is w wide; the screen's bottom edge is fall metres below the highest point
+// reached (falling out past it ends the attempt); view: how far the course is kept in reach.
+const HOP = { w: 9, view: 17, fall: 6, g: 44, vx: 11, foot: 0.3, below: 0.6, body: 0.36, bodyY: 0.45, haz: 0.48, gapK: 0.86, reachK: 0.8, clear: 1.9 };
+const HOP_DEFAULTS = { target: 500, bounce: 22, gap0: 1.8, gap1: 4.5, wide0: 2.6, wide1: 1.4, moveAt: 60, move: 55, moveV: 1.8, breakAt: 120, brk: 45, hazAt: 90, hazGap: 45, fill0: 1.2, fill1: 0.4 };
+const HOP_LIMITS = { target: [100, 3000, 10], bounce: [12, 30, 0.1], gap0: [0.6, 6, 0.05], gap1: [0.6, 6, 0.05], wide0: [0.8, 6, 0.05], wide1: [0.8, 6, 0.05], moveAt: [0, 3000, 1], move: [0, 90, 1], moveV: [0.2, 4, 0.05], breakAt: [0, 3000, 1], brk: [0, 90, 1], hazAt: [0, 3000, 1], hazGap: [5, 500, 1], fill0: [0, 4, 0.05], fill1: [0, 4, 0.05] };
+const HOP_KIT = cfgKit(HOP_DEFAULTS, HOP_LIMITS);
+const setHopConfig = HOP_KIT.set, hopConfig = HOP_KIT.get;
+const hopPeak = cfg => (cfg.bounce * cfg.bounce) / (2 * HOP.g);   // how high one bounce goes
+const HOP_MEMO = new Map();
+function hopCourse(cfg, seed) {
+  const key = seed + ':' + JSON.stringify(cfg);
+  if (HOP_MEMO.has(key)) return HOP_MEMO.get(key);
+  const rng = makeRng('hop:' + seed), W = HOP.w, gmax = HOP.gapK * hopPeak(cfg), top = cfg.target + HOP.view, plats = [], haz = [];
+  const share = (y, at, pct) => (y < at ? 0 : (pct / 100) * clamp01((y - at) / Math.max(1, cfg.target - at)));
+  let y = 0, x = W / 2;
+  while (y < top) {
+    const f = clamp01(y / cfg.target), gap = Math.min(gmax, Math.max(0.5, (cfg.gap0 + (cfg.gap1 - cfg.gap0) * f) * (0.7 + 0.6 * rng())));
+    const y1 = y + gap, w = cfg.wide0 + (cfg.wide1 - cfg.wide0) * f;
+    const air = (cfg.bounce + Math.sqrt(Math.max(0, cfg.bounce * cfg.bounce - 2 * HOP.g * gap))) / HOP.g;   // a bounce's time until it falls back through y1
+    const moving = rng() < share(y1, cfg.moveAt, cfg.move), breaks = !moving && rng() < share(y1, cfg.breakAt, cfg.brk);
+    const amp = moving ? r2(0.5 + 1.1 * rng()) : 0, reach = Math.max(0, Math.min(W / 2, HOP.vx * air * HOP.reachK - amp));
+    const x1 = fwrap(x + (rng() * 2 - 1) * reach, W);
+    plats.push({ y: r2(y1), x: r2(x1), w: r2(w), k: moving ? 'm' : breaks ? 'b' : 'n', amp, sp: moving ? r2(cfg.moveV * (0.7 + 0.6 * rng())) : 0, ph: moving ? r2(rng()) : 0, c: 1 });
+    const fill = cfg.fill0 + (cfg.fill1 - cfg.fill0) * f;                   // more platforms between, fewer higher up (more of them break)
+    for (let n = Math.floor(fill + rng()); n > 0; n--) {
+      const fy = y + gap * (0.2 + 0.6 * rng()), fx = rng() * W, fm = rng() < share(fy, cfg.moveAt, cfg.move), fb = !fm && rng() < 0.25 + 0.45 * f && fy >= cfg.breakAt;   // (none break below breakAt)
+      if (Math.abs(fdiff(fx, x, W)) < w && Math.abs(fy - y) < 0.6) continue;   // (not right on top of the last one)
+      plats.push({ y: r2(fy), x: r2(fx), w: r2(w * 0.9), k: fm ? 'm' : fb ? 'b' : 'n', amp: fm ? r2(0.5 + 1.1 * rng()) : 0, sp: fm ? r2(cfg.moveV * (0.7 + 0.6 * rng())) : 0, ph: fm ? r2(rng()) : 0, c: 0 });
+    }
+    if (y1 > cfg.hazAt && y > 3 && rng() < gap / cfg.hazGap) {              // a hazard beside the way from this platform to the next, clear of it
+      const lo = Math.min(0, fdiff(x1, x, W)), hi = Math.max(0, fdiff(x1, x, W)), room = W - (hi - lo) - 2 * HOP.clear;
+      if (room > 0) {
+        const hx = fwrap(x + hi + HOP.clear + rng() * room, W), hy = y + gap * (0.3 + 0.4 * rng());
+        haz.push({ y: r2(hy), x: r2(hx) });
+      }
+    }
+    x = x1; y = y1;
+  }
+  const peak = hopPeak(cfg), under = (p, h) => p.y > h.y - peak - 0.6 && p.y < h.y + 1.2 && Math.abs(fdiff(p.x, h.x, W)) < p.w / 2 + p.amp + 1.2;   // a bounce off p could rise into h
+  for (let k = haz.length - 1; k >= 0; k--) if (plats.some(p => p.c && under(p, haz[k]))) haz.splice(k, 1);   // never over the way up
+  for (const h of haz) for (let k = plats.length - 1; k >= 0; k--) if (!plats[k].c && under(plats[k], h)) plats.splice(k, 1);   // nor anything else to bounce into it from
+  plats.sort((a, b) => a.y - b.y); haz.sort((a, b) => a.y - b.y);
+  const out = { plats, haz };
+  if (HOP_MEMO.size > 40) HOP_MEMO.clear();
+  HOP_MEMO.set(key, out);
+  return out;
+}
+// A moving platform's middle t seconds into the attempt: to and fro amp either way at sp (a triangle wave).
+function hopPx(p, t) {
+  if (p.k !== 'm' || !p.amp) return p.x;
+  const u = p.ph + (t * p.sp) / (4 * p.amp), fr = u - Math.floor(u);
+  return fwrap(p.x + p.amp * (4 * Math.abs(fr - 0.5) - 1), HOP.w);
+}
+// An attempt from the saved height: the course from there up, the start platform, the hopper on it, bouncing.
+function hopStart(mini, p) {
+  const cfg = mini.cfg, c = hopCourse(cfg, mini.seed[p]), h0 = mini.height[p], safe = h0 + hopPeak(cfg) + 0.5;
+  const plats = c.plats.filter(q => q.y > h0 - HOP.view && Math.abs(q.y - h0) > 0.25);
+  const haz = c.haz.filter(q => q.y > h0 - HOP.view && q.y > safe);
+  return { type: 'skyhop', cfg, h0, plats, haz, gone: {}, x: HOP.w / 2, tx: HOP.w / 2, y: h0, vy: cfg.bounce, top: h0, t: 0, n: 0, lo: 0, end: null, bounces: 0, last: null };
+}
+const hopCam = sim => Math.max(sim.h0 - 2, sim.top - HOP.fall);   // the screen's bottom edge, in metres: fall metres below the highest point (below it, the attempt is over)
+// One step: steer towards the finger's place, fall, bounce off a platform fallen onto, touch a hazard, fall off the bottom.
+function hopStep(sim, tx) {
+  if (sim.end) return sim;
+  const h = FING.step, W = HOP.w, cfg = sim.cfg;
+  if (tx != null) sim.tx = fwrap(tx, W);
+  const d = fdiff(sim.tx, sim.x, W), m = HOP.vx * h;
+  sim.x = fwrap(sim.x + (d > m ? m : d < -m ? -m : d), W);
+  const y0 = sim.y;
+  sim.vy -= HOP.g * h; sim.y += sim.vy * h; sim.t = ++sim.n * h;
+  sim.last = null;
+  if (sim.vy < 0) {
+    if (sim.t <= FING.grace && y0 >= sim.h0 && sim.y <= sim.h0) { sim.y = sim.h0; sim.vy = cfg.bounce; sim.bounces++; sim.last = 'base'; }
+    else {
+      while (sim.lo < sim.plats.length && sim.plats[sim.lo].y < sim.y - HOP.view) sim.lo++;
+      let hit = -1;
+      for (let k = sim.lo; k < sim.plats.length; k++) {               // the highest platform passed through in this step, under the hopper
+        const q = sim.plats[k];
+        if (q.y > y0) break;
+        if (q.y < sim.y || sim.gone[k]) continue;
+        if (Math.abs(fdiff(sim.x, hopPx(q, sim.t), W)) <= q.w / 2 + HOP.foot) hit = k;
+      }
+      if (hit >= 0) {
+        const q = sim.plats[hit];
+        sim.y = q.y; sim.vy = cfg.bounce; sim.bounces++; sim.last = q.k === 'b' ? 'break' : 'bounce'; sim.on = hit;
+        if (q.k === 'b') sim.gone[hit] = 1;
+      }
+    }
+  }
+  if (sim.y > sim.top) sim.top = sim.y;
+  const cy = sim.y + HOP.bodyY;
+  for (const q of sim.haz) {
+    if (q.y > cy + 1) break;
+    if (q.y < cy - 1) continue;
+    const dx = fdiff(sim.x, q.x, W), dy = cy - q.y;
+    if (dx * dx + dy * dy < (HOP.body + HOP.haz) * (HOP.body + HOP.haz)) { sim.end = 'hazard'; return sim; }
+  }
+  if (sim.top >= cfg.target) { sim.end = 'top'; return sim; }
+  if (sim.y < hopCam(sim) - HOP.below) sim.end = 'fall';
+  else if (sim.t >= FING.maxSecs - 1e-9) sim.end = 'out';           // (an attempt can't last for ever: bouncing on one platform, say)
+  return sim;
+}
+const hopResult = sim => ({ h: r2(Math.min(sim.cfg.target, sim.top)), end: sim.end || 'out', steps: sim.n });
+
+// Scoop Stack: the cone at the bottom moves towards the finger's place (up to cone units a second); scoops
+// and hazards (pebbles, burnt scoops) fall at the top of the stack. A scoop stacks when it lands within
+// slide of the stack's top; further off but still touching, it slides off; that, or no touch, is a miss.
+// A hazard touching the top ends the attempt, as do three misses. The stack's top sways a little behind
+// fast moves (more as it grows). Everything falls towards the stack's top (the screen follows it), at a
+// speed and a rate that rise with the stack (counted as if every scoop so far had been caught, so an
+// attempt is worked out before it starts), with a hazard now and then, more of them higher up. Before
+// any item is placed, the attempt is checked to be catchable: a cone that moves at most fair of its speed
+// can catch every scoop and keep clear of every hazard. Nothing falls for the grace seconds. Units: the
+// screen is w across; the stack's top is 0 and items fall from spawn above it.
+const SCOOP = { w: 10, r: 0.5, piece: 0.56, spawn: 11, edge: 0.7, slide: 0.5, touch: 0.98, hit: 0.85, misses: 3, fair: 0.72, pad: 0.35, swayK: 55, swayC: 8, swayA: 0.12, swayMax: 0.6, kinds: 5 };
+const SCOOP_DEFAULTS = { target: 25, v0: 5, v1: 8.5, gap0: 0.9, gap1: 0.6, haz0: 18, haz1: 38, sway: 1, cone: 12 };
+const SCOOP_LIMITS = { target: [5, 200, 1], v0: [1, 15, 0.1], v1: [1, 15, 0.1], gap0: [0.3, 4, 0.05], gap1: [0.3, 4, 0.05], haz0: [0, 70, 1], haz1: [0, 70, 1], sway: [0, 3, 0.05], cone: [5, 40, 0.5] };
+const SCOOP_KIT = cfgKit(SCOOP_DEFAULTS, SCOOP_LIMITS);
+const setScoopConfig = SCOOP_KIT.set, scoopConfig = SCOOP_KIT.get;
+// The items of one attempt (seeded by the player's square seed and the attempt's number): [{ T (seconds:
+// when it reaches the top), x, k: 'scoop' | 'pebble' | 'burnt', f (a scoop's flavour), v (its speed) }].
+function scoopItems(cfg, seed, tries, n0) {
+  const rng = makeRng(`scoop:${seed}:${tries}`), W = SCOOP.w, lo = SCOOP.edge, hi = W - SCOOP.edge, vfair = cfg.cone * SCOOP.fair, out = [];
+  let R = [[W / 2, W / 2]], tPrev = 0, T = FING.grace + 0.4, n = n0;   // R: where a perfect cone could be (the catchable set)
+  const grow = dt => { const e = vfair * dt; R = R.map(([a, b]) => [Math.max(lo, a - e), Math.min(hi, b + e)]); const m = []; for (const iv of R) { if (m.length && iv[0] <= m[m.length - 1][1]) m[m.length - 1][1] = Math.max(m[m.length - 1][1], iv[1]); else m.push(iv.slice()); } R = m; };
+  const total = cfg.target - n0 + 12;
+  for (let i = 0; i < 400 && (out.filter(o => o.k === 'scoop').length < total) && T < FING.maxSecs - 5; i++) {
+    const f = clamp01(n / cfg.target), v = r2(cfg.v0 + (cfg.v1 - cfg.v0) * f), hz = (cfg.haz0 + (cfg.haz1 - cfg.haz0) * f) / 100;
+    grow(T - tPrev); tPrev = T;
+    if (rng() < hz && i > 0) {                                          // a hazard: anywhere that leaves the cone a way round it
+      const bad = rng() < 0.5 ? 'pebble' : 'burnt';
+      for (let k = 0; k < 8; k++) {
+        const x = lo + rng() * (hi - lo), cut = [x - SCOOP.hit - SCOOP.pad, x + SCOOP.hit + SCOOP.pad];
+        const left = []; for (const [a, b] of R) { if (b <= cut[0] || a >= cut[1]) left.push([a, b]); else { if (a < cut[0]) left.push([a, cut[0]]); if (b > cut[1]) left.push([cut[1], b]); } }
+        if (left.length) { R = left; out.push({ T: r2(T), x: r2(x), k: bad, v }); break; }
+      }
+    } else {                                                            // a scoop: somewhere a perfect cone can be by then
+      const tot = R.reduce((s, [a, b]) => s + (b - a), 0);
+      let u = rng() * tot, x = R[0][0];
+      for (const [a, b] of R) { if (u <= b - a) { x = a + u; break; } u -= b - a; }
+      out.push({ T: r2(T), x: r2(x), k: 'scoop', f: randInt(rng, SCOOP.kinds), v });
+      R = [[x - 0.2, x + 0.2]]; n++;
+    }
+    T += (cfg.gap0 + (cfg.gap1 - cfg.gap0) * clamp01(n / cfg.target)) * (0.7 + 0.6 * rng());
+  }
+  return out;
+}
+function scoopStart(mini, p) {
+  const cfg = mini.cfg, n0 = mini.stack[p].length;
+  return { type: 'scoop', cfg, n0, items: scoopItems(cfg, mini.seed[p], mini.tries[p], n0), i: 0, x: SCOOP.w / 2, tx: SCOOP.w / 2, vx: 0, s: 0, sv: 0, n: 0, t: 0, got: [], miss: 0, end: null, last: null };
+}
+const scoopTop = sim => sim.x + sim.s;                            // where the stack's top is (the cone, plus the sway)
+const scoopSize = sim => sim.n0 + sim.got.length;
+// One step: the cone moves, the stack sways, any item reaching the top lands, slides off, misses or hits.
+function scoopStep(sim, tx) {
+  if (sim.end) return sim;
+  const h = FING.step, cfg = sim.cfg;
+  if (tx != null) sim.tx = Math.max(SCOOP.edge, Math.min(SCOOP.w - SCOOP.edge, tx));
+  const d = sim.tx - sim.x, m = cfg.cone * h, dx = d > m ? m : d < -m ? -m : d, vx = dx / h, ax = (vx - sim.vx) / h;
+  sim.x += dx; sim.vx = vx;
+  const tall = Math.min(1, scoopSize(sim) / 12) * cfg.sway;
+  sim.sv += (-SCOOP.swayK * sim.s - SCOOP.swayC * sim.sv - ax * SCOOP.swayA * tall) * h;
+  sim.s += sim.sv * h;
+  if (sim.s > SCOOP.swayMax) { sim.s = SCOOP.swayMax; sim.sv = 0; } else if (sim.s < -SCOOP.swayMax) { sim.s = -SCOOP.swayMax; sim.sv = 0; }
+  sim.t = ++sim.n * h;
+  sim.last = null;
+  while (sim.i < sim.items.length && sim.items[sim.i].T <= sim.t) {
+    const it = sim.items[sim.i++], off = Math.abs(it.x - scoopTop(sim));
+    if (it.k === 'scoop') {
+      if (off <= SCOOP.slide) { sim.got.push(it.f); sim.last = 'catch'; }
+      else { sim.miss++; sim.last = off <= SCOOP.touch ? 'slide' : 'miss'; }
+      if (scoopSize(sim) >= cfg.target) { sim.end = 'top'; return sim; }
+      if (sim.miss >= SCOOP.misses) { sim.end = 'miss'; return sim; }
+    } else if (off <= SCOOP.hit) { sim.end = 'hazard'; sim.last = 'hit'; return sim; }
+  }
+  if (sim.i >= sim.items.length || sim.t >= FING.maxSecs - 1e-9) sim.end = 'out';
+  return sim;
+}
+const scoopResult = sim => ({ n: scoopSize(sim), end: sim.end || 'out', steps: sim.n });
+// Where an item is t seconds in: its height above the stack's top (it falls at its own speed), or null before it falls.
+const scoopY = (it, t) => { const y = (it.T - t) * it.v; return y > SCOOP.spawn ? null : y; };
+
+// An attempt played through from its inputs (the phone's, the computer's): the same steps the phone took.
+function fingReplay(type, mini, p, log, steps) {
+  const sim = type === 'skyhop' ? hopStart(mini, p) : scoopStart(mini, p), step = type === 'skyhop' ? hopStep : scoopStep;
+  let k = 0;
+  while (sim.n < steps && !sim.end) {
+    let tx = null;
+    if (k < log.length && log[k][0] === sim.n) tx = log[k++][1] / FING.q;
+    step(sim, tx);
+  }
+  return sim;
+}
+// Records a hand's inputs as the attempt is played (the value the step used, when it changed).
+function fingRecorder() {
+  const pairs = [];
+  let last = null;
+  return { pairs, at(n, tx) { const v = Math.round(tx * FING.q); if (v !== last) { pairs.push([n, v]); last = v; } return v / FING.q; } };
+}
+// The computer's hand (an average player's): it sees what happens react seconds late, aims off by a
+// little (aim: the spread, in units), and now and then misses a hazard (lapse) or misjudges a platform.
+const FHAND = { skyhop: { react: [0.22, 0.32], aim: 0.65, lapse: 0.15, misjudge: 0.5 }, scoop: { react: [0.26, 0.36], aim: 0.46, lapse: 0.2 } };
+// Sky Hop: all the way it looks for the highest platform it can still come down on (the hopper's flight is
+// known: up at the bounce speed, gravity bringing it back), steering for where that platform will be when
+// it gets there, a little off; what it decides takes react seconds to reach the finger. It shies from a
+// breaking platform and one by a hazard unless it doesn't notice (lapse), and sometimes takes a moving one
+// to stay where it is (misjudge).
+function hopPlan(sim, hand, rng, memo) {
+  const b = sim.vy, G = HOP.g, W = HOP.w, apex = sim.y + (b > 0 ? (b * b) / (2 * G) : 0);
+  let best = null;
+  for (let k = sim.lo; k < sim.plats.length; k++) {
+    const q = sim.plats[k];
+    if (q.y > apex - 0.05) break;
+    if (sim.gone[k] || q.y < sim.y - 6) continue;
+    const disc = b * b - 2 * G * (q.y - sim.y);
+    if (disc < 0) continue;
+    const tq = (b + Math.sqrt(disc)) / G;                              // when it comes down through q's height
+    if (tq < 0.02) continue;
+    if (!memo.has(q)) memo.set(q, { stale: q.k === 'm' && rng() < hand.misjudge, off: gaussOf(rng) * hand.aim, blind: rng() < hand.lapse });   // (judged afresh at every bounce)
+    const m = memo.get(q), x = m.stale ? hopPx(q, sim.t) : hopPx(q, sim.t + tq);
+    if (Math.abs(fdiff(x, sim.x, W)) > HOP.vx * tq * 0.92) continue;
+    const d = fdiff(x, sim.x, W), lo = Math.min(0, d) - 1.1, hi = Math.max(0, d) + 1.1, ylo = Math.min(sim.y, q.y) - 1.2;
+    const risky = !m.blind && sim.haz.some(h => h.y > ylo && h.y < apex + 1.2 && fdiff(h.x, sim.x, W) > lo && fdiff(h.x, sim.x, W) < hi);   // a hazard across the way there
+    const up = q.y > sim.y + 0.3, bored = sim.on != null && (memo.stuck.get(sim.on) || 0) >= 2;
+    const score = (up ? 100 : 0) + q.y - (risky ? (bored ? 3 : 60) : 0) - (q.k === 'b' && !m.blind && !bored ? 1.5 : 0);
+    if (!best || score > best.score) best = { q, x: fwrap(x + m.off, W), score };
+  }
+  return best;
+}
+function hopAi(mini, p, rng, hand) {
+  hand = hand || FHAND.skyhop;
+  const sim = hopStart(mini, p), rec = fingRecorder(), memo = Object.assign(new Map(), { stuck: new Map() }), lag = Math.round((hand.react[0] + (hand.react[1] - hand.react[0]) * rng()) / FING.step), queue = [];
+  let aim = sim.x;
+  while (!sim.end && sim.t < FING.maxSecs - 1) {
+    if (sim.last) { memo.clear(); if (sim.on != null && sim.last !== 'base') memo.stuck.set(sim.on, (memo.stuck.get(sim.on) || 0) + 1); }   // a bounce: everything judged again
+    if (sim.n % FING.every === 0) { const plan = hopPlan(sim, hand, rng, memo); if (plan) queue.push([sim.n + lag, plan.x]); }
+    while (queue.length && queue[0][0] <= sim.n) aim = queue.shift()[1];
+    hopStep(sim, rec.at(sim.n, aim));
+  }
+  const r = hopResult(sim);
+  return { move: { log: fingLog(rec.pairs), steps: r.steps, h: r.h, end: r.end }, sim };
+}
+// Scoop Stack: it goes for the next scoop it has seen falling (aiming a little off), keeping clear of the
+// hazards it has noticed that land first.
+function scoopAi(mini, p, rng, hand) {
+  hand = hand || FHAND.scoop;
+  const sim = scoopStart(mini, p), rec = fingRecorder();
+  const react = hand.react[0] + (hand.react[1] - hand.react[0]) * rng(), err = new Map(), seen = new Map();
+  let aim = sim.x;
+  while (!sim.end && sim.t < FING.maxSecs - 1) {
+    if (sim.n % FING.every === 0) {
+      const t = sim.t, vis = [];
+      for (let k = sim.i; k < sim.items.length && vis.length < 6; k++) { const it = sim.items[k]; if (scoopY(it, t - react) == null) break; vis.push(it); }
+      const next = vis.find(it => it.k === 'scoop');
+      if (next) {
+        if (!err.has(next)) err.set(next, gaussOf(rng) * hand.aim);
+        let want = next.x + err.get(next);
+        for (const hz of vis) {
+          if (hz.k === 'scoop' || hz.T > next.T + 0.05) continue;
+          if (!seen.has(hz)) seen.set(hz, rng() > hand.lapse);
+          if (!seen.get(hz)) continue;
+          const dt = Math.max(0, hz.T - t), at = sim.x + Math.max(-sim.cfg.cone * dt, Math.min(sim.cfg.cone * dt, want - sim.x));   // where it would be when the hazard lands
+          if (Math.abs(at - hz.x) < SCOOP.hit + 0.35) want = hz.x + (want >= hz.x ? 1 : -1) * (SCOOP.hit + 0.6);
+        }
+        aim = Math.max(SCOOP.edge, Math.min(SCOOP.w - SCOOP.edge, want));
+      }
+    }
+    scoopStep(sim, rec.at(sim.n, aim));
+  }
+  return { move: { log: fingLog(rec.pairs), steps: sim.n, n: scoopResult(sim).n, end: scoopResult(sim).end }, sim };
+}
+
+// Pinball: the table is physics.js's (PIN); here are its settings (the admin's, config/pinball), the
+// check a phone's ball must pass online, and the ball the computer plays. A move is one ball: { hits:
+// [[target, seconds]...] (the targets lit, when), ms (the ball's time), rec (the recording), end }. The
+// server cannot play a ball through again (Matter.js on another phone need not land on the same
+// fraction), so it checks the recording instead: no longer than the time allows, the ball never moving
+// faster than the table lets it (or anywhere but back to the plunger), and the ball at each target it
+// claims, at that moment.
+const PINB = { hold: 900 };
+const PINB_DEFAULTS = { size: 1.7, save: 3, maxBall: 120, g: 1, bump: 1, spin: 1 };
+const PINB_LIMITS = { size: [0.6, 2, 0.05], save: [0, 10, 0.5], maxBall: [20, 300, 5], g: [0.5, 2, 0.05], bump: [0.5, 2, 0.05], spin: [0, 3, 0.05] };
+const PINB_KIT = cfgKit(PINB_DEFAULTS, PINB_LIMITS);
+const setPinConfig = PINB_KIT.set, pinConfig = PINB_KIT.get;
+const pinCount = () => (PHYSICS.lib && PHYSICS.lib.PIN ? PHYSICS.lib.PIN.targets.length : 7);
+function pinCheck(mini, p, m) {
+  const L = PHYSICS.lib;
+  if (!L || !L.PIN) return 'physics';
+  if (!m || typeof m !== 'object' || !Array.isArray(m.hits)) return 'bad';
+  const T = L.PIN, ms = Number(m.ms), fps = T.fps;
+  if (!Number.isFinite(ms) || ms < 0 || ms > (mini.cfg.maxBall + 90) * 1000) return 'bad';
+  const fr = L.pinUnpack(m.rec);
+  if (!fr) return 'bad';
+  if (Math.abs(fr.length - (ms / 1000) * fps) > 3 + fr.length * 0.03) return 'time';
+  const jump = (T.vmax / fps) * 1.3 + 2, [sx, sy] = T.lane.serve;
+  for (let k = 0; k < fr.length; k++) {
+    const [x, y] = fr[k];
+    if (x < 0 || x > T.w || y < 0 || y > T.h + 10) return 'table';
+    if (k && Math.hypot(x - fr[k - 1][0], y - fr[k - 1][1]) > jump && !(x >= T.lane.x0 && Math.abs(x - sx) < 3 && y >= sy - jump)) return 'jump';   // (faster than any ball moves, unless back at the plunger: served again, perhaps launched already)
+  }
+  const seen = {};
+  for (const h of m.hits) {
+    if (!Array.isArray(h) || h.length !== 2) return 'bad';
+    const id = h[0], t = Number(h[1]), tg = T.targets[id];
+    if (!Number.isInteger(id) || !tg || seen[id] || mini.lit[p][id] || !Number.isFinite(t) || t < 0 || t > ms / 1000 + 0.05) return 'hit';
+    seen[id] = 1;
+    const [tx, ty] = tg.spin ? L.pinSpinAt(t, mini.cfg) : [tg.x, tg.y], reach = tg.r * mini.cfg.size + T.ballR + (T.vmax / fps) + 1.5, f = Math.round(t * fps);
+    let near = false;
+    for (let k = Math.max(0, f - 1); k <= Math.min(fr.length - 1, f + 1); k++) if (Math.hypot(fr[k][0] - tx, fr[k][1] - ty) <= reach) near = true;
+    if (!near) return 'hit';
+  }
+  return null;
+}
+// The finger games' moves: checked (Sky Hop and Scoop Stack played through again from their inputs),
+// then the attempt's result. Returns { why } or { to, sim } (to: the progress after it).
+function fingCheck(mini, p, m) {
+  if (mini.type === 'pinball') return { why: pinCheck(mini, p, m) };
+  if (!m || typeof m !== 'object') return { why: 'bad' };
+  const steps = Number(m.steps), maxV = Math.ceil((mini.type === 'skyhop' ? HOP.w : SCOOP.w) * FING.q);
+  if (!Number.isInteger(steps) || steps < 1 || steps > FING.maxSecs / FING.step) return { why: 'bad' };
+  const log = fingUnlog(m.log, steps, maxV);
+  if (!log) return { why: 'bad' };
+  const sim = fingReplay(mini.type, mini, p, log, steps), end = sim.end || 'out';
+  if (sim.n !== steps || String(m.end) !== end) return { why: 'replay' };   // (ended sooner, or not as said)
+  if (mini.type === 'skyhop' ? Number(m.h) !== hopResult(sim).h : Number(m.n) !== scoopResult(sim).n) return { why: 'replay' };
+  return { why: null, sim };
+}
+// The computer's attempt (an average player's hand): the move, played through.
+function fingAi(mini, p, rng) {
+  if (mini.type === 'skyhop') return hopAi(mini, p, rng).move;
+  if (mini.type === 'scoop') return scoopAi(mini, p, rng).move;
+  const r = PHYSICS.lib.pinAi(mini.cfg, mini.lit[p], rng).result;
+  return { hits: r.hits, ms: r.ms, rec: r.rec, end: r.end };
+}
+// Progress: Sky Hop's height, Scoop Stack's stack, Pinball's lit targets; and how far to go.
+const fingAt = (mini, p) => (mini.type === 'skyhop' ? mini.height[p] : mini.type === 'scoop' ? mini.stack[p].length : mini.lit[p].filter(Boolean).length);
+const fingGoal = mini => (mini.type === 'pinball' ? mini.lit.X.length : mini.cfg.target);
+// The computer's attempts still needed, about (what it gets in one, from its hand: see the tuning in the tests).
+const FING_GAIN = { skyhop: 113, scoop: 5.6, pinball: 1.45 };
+const fingNeeds = (mini, p) => Math.max(1, (fingGoal(mini) - fingAt(mini, p)) / FING_GAIN[mini.type]);
+// How long an attempt lasted (fingRaw), and how long it takes to play through on another phone (the
+// replay: as it was, or faster for an attempt longer than replayMax), in ms.
+const fingRaw = f => (!f || f.auto ? 0 : f.type === 'pinball' ? Number(f.ms) || 0 : Math.round(f.steps * FING.step * 1000));
+const fingMs = f => Math.min(fingRaw(f), FING.replayMax);
 
 // ---------- Dash and Lane Rush: runs along a seeded course to 1,000 m ----------
 // A move is one run: from the player's saved distance until they crash (or finish), at the speed of
@@ -2339,6 +2731,9 @@ function newMini(type, rng) {
       return { type, colors, owner, score: { X: 0, O: 0 }, last: null };
     }   // a fresh rack every roll; the totals are what count
     case 'dash': case 'lane': case 'flap': case 'chopper': return { type, cfg: runConfig(type), seed: { X: randInt(needRng(rng), 1e9), O: randInt(rng, 1e9) }, dist: { X: 0, O: 0 }, runs: { X: 0, O: 0 }, crashes: { X: [], O: [] }, last: null };   // cfg: the difficulty this square was dealt with; seed: each player's course
+    case 'skyhop': return { type, cfg: hopConfig(), seed: { X: randInt(needRng(rng), 1e9), O: randInt(rng, 1e9) }, height: { X: 0, O: 0 }, tries: { X: 0, O: 0 }, last: null };   // cfg: as dealt; seed: each player's course
+    case 'scoop':  return { type, cfg: scoopConfig(), seed: { X: randInt(needRng(rng), 1e9), O: randInt(rng, 1e9) }, stack: { X: [], O: [] }, tries: { X: 0, O: 0 }, last: null };   // stack: each player's scoops (their flavours)
+    case 'pinball': return { type, cfg: pinConfig(), lit: { X: new Array(pinCount()).fill(0), O: new Array(pinCount()).fill(0) }, balls: { X: 0, O: 0 }, last: null };
     case 'headcount': case 'flash': case 'snapshot': return { type, right: { X: 0, O: 0 }, round: { X: attRound(type, 0, needRng(rng)), O: attRound(type, 0, needRng(rng)) }, last: null };   // each player's own round, at their own level
     case 'oddone': {
       const gx = oddGrid(0, needRng(rng)), go = oddGrid(0, rng);
@@ -2451,7 +2846,7 @@ function newState(rng) {
 // Returns false (and changes nothing) when no mini-game is ticked.
 // A game that can be dealt right now: Trivia only once its questions are in (trivia.json: the page
 // fetches it, the server has it as a file); without them a Trivia square could never be played.
-const dealable = t => (t === 'trivia' ? triviaReady() : PHYS_TYPES.includes(t) ? physicsReady() : true);
+const dealable = t => (t === 'trivia' ? triviaReady() : PHYS_TYPES.includes(t) || t === 'pinball' ? physicsReady() && !!PHYSICS.lib.PIN : true);
 function startMatch(state, rng) {
   rng = needRng(rng);
   const games = enabledGames(state.setup).filter(dealable);
@@ -3035,6 +3430,22 @@ function applyMove(mini, p, m, rng) {
       if (mini.right[p] >= TRIVIA.goal) return { ok: true, outcome: 'win', note: 'right' };
       return { ok: true, outcome: 'continue', note: 'right' };
     }
+    case 'skyhop': case 'scoop': case 'pinball': {           // one attempt: checked (played through again, or its recording), then kept; a timed-out one ('auto') changes nothing
+      const from = fingAt(mini, p);
+      let to = from, last;
+      if (m === 'auto') last = { by: p, auto: true, from, to };
+      else {
+        const c = fingCheck(mini, p, m);
+        if (c.why) return { ok: false, reason: c.why };
+        if (mini.type === 'skyhop') { to = Math.max(from, hopResult(c.sim).h); mini.height[p] = to; last = { by: p, from, to, log: m.log, steps: m.steps, end: m.end, try: mini.tries[p] }; }
+        else if (mini.type === 'scoop') { mini.stack[p] = mini.stack[p].concat(c.sim.got).slice(0, mini.cfg.target); to = mini.stack[p].length; last = { by: p, from, to, log: m.log, steps: m.steps, end: m.end, try: mini.tries[p], got: c.sim.got.slice() }; }
+        else { for (const [id] of m.hits) mini.lit[p][id] = 1; to = fingAt(mini, p); last = { by: p, from, to, hits: m.hits.map(h => [h[0], Math.round(Number(h[1]) * 1000) / 1000]), ms: Math.round(Number(m.ms)), rec: m.rec, end: String(m.end || 'drain') }; }
+      }
+      if (mini.type === 'pinball') mini.balls[p] += 1; else mini.tries[p] += 1;
+      mini.last = last;
+      if (to >= fingGoal(mini)) return { ok: true, outcome: 'win', note: 'top' };
+      return { ok: true, outcome: 'continue', note: last.auto ? 'out' : to > from ? 'up' : 'none' };
+    }
     case 'headcount': case 'flash': case 'snapshot': {          // one round: right, a step on; wrong (or no answer in time), none; a fresh round either way
       const type = mini.type, round = mini.round && mini.round[p];
       if (!round) return { ok: false, reason: 'bad' };
@@ -3116,6 +3527,7 @@ function publicMini(mini) {
     // answer here and makes up its mind from there. Online, a phone
     // never gets these (hideMini): only the server, which plays the bots, does.
     case 'trivia':  return { type: 'trivia', right: { X: mini.right.X, O: mini.right.O }, answer: Number.isInteger(mini.answer) ? mini.answer : null, crossed: (mini.crossed || []).slice(), ask: mini.ask && (mini.ask.q || mini.ask.down) ? { opts: mini.ask.opts ? mini.ask.opts.length : mini.ask.n || TRIVIA.options } : null };
+    case 'skyhop': case 'scoop': case 'pinball': { const c = JSON.parse(JSON.stringify(mini)); if (c.last) { delete c.last.rec; delete c.last.log; } return c; }
     case 'headcount': case 'flash': case 'snapshot': return { type: mini.type, right: { X: mini.right.X, O: mini.right.O }, round: JSON.parse(JSON.stringify(mini.round)) };
     case 'oddone':  return { type: 'oddone', finds: { X: mini.finds.X, O: mini.finds.O }, n: { X: mini.grid.X.n, O: mini.grid.O.n }, pos: mini.pos ? { X: mini.pos.X, O: mini.pos.O } : { X: null, O: null } };
     case 'bs':      return { type: 'bs', len: mini.len, revealed: mini.revealed.slice(), hits: mini.hits.slice() };
@@ -3279,6 +3691,7 @@ function needsOf(pm, p) {
     case 'plinko':  { const e = Array.from({ length: PLINKO.slots }, (_, k) => plinkoExp(pm, k)), best = Math.max(...plinkoOpen(pm).map(k => e[k])), mean = e.reduce((x, y) => x + y, 0) / e.length; return Math.max(1, (pm.target - pm.pts[p]) / ((best + mean) / 2)); }   // (the slots lock in turn: about halfway between the best one and the average)
     case 'pong':    return Math.max(1, pm.cups[p].filter(Boolean).length / 0.45);
     case 'trivia':  return Math.max(1, (TRIVIA.goal - pm.right[p]) / TRIVIA.aiRight);
+    case 'skyhop': case 'scoop': case 'pinball': return fingNeeds(pm, p);
     case 'headcount': case 'flash': case 'snapshot': { let n = 0; for (let f = pm.right[p]; f < ATT.goal; f++) n += 1 / ATT.aiOk[Math.min(f, ATT.aiOk.length - 1)]; return Math.max(1, n); }
     case 'oddone':  { let n = 0; for (let f = pm.finds[p]; f < ODD.goal; f++) n += 1 / ODD.aiFind[Math.min(f, ODD.aiFind.length - 1)]; return Math.max(1, n); }
     case 'ttt':     return lineNeeds(pm.cells, 3, 3, 3, p);
@@ -3547,6 +3960,7 @@ function localBest(pm, me, rng, style, ctx) {
       if (left.length <= 1 || rng() < TRIVIA.aiKnow) return { move: right, q };
       return { move: left[randInt(rng, left.length)], q };
     }
+    case 'skyhop': case 'scoop': case 'pinball': { const n = fingNeeds(pm, me); return { move: { fing: true }, q: n <= 1 ? 0.6 : 0.35 / n }; }   // the attempt itself is played (cpuMove) only for the square chosen
     case 'headcount': case 'flash': case 'snapshot': {          // right about 85%, 65%, then 45% of the time; else a near miss (one off, a wrong option, a cell out of place)
       const r = pm.round && pm.round[me], q = ATT.aiOk[Math.min(pm.right[me], ATT.aiOk.length - 1)];
       if (!r) return { move: 'auto', q: 0 };
@@ -3794,14 +4208,16 @@ function cpuMove(state, rng, style) {
     const local = localBest(pm, me, rng, st, { value: real, behind });
     const value = state.lock != null ? 1 : real;
     if (pm.type === 'echo' && local.move && local.move.echo) local.move = cpuEcho(state.squares[i].mini, me, local.move, rng);
-    if (value >= AI.win && (local.win || local.q >= 1)) return { square: i, move: local.move, score: Infinity, value, gain: 1 };
+    if (value >= AI.win && (local.win || local.q >= 1)) return fingPlay(state, { square: i, move: local.move, score: Infinity, value, gain: 1 }, me, rng);
     const gain = moveGain(pm, me, local);
     const score = value * Math.max(gain, 0.01);
     if (!best || score > best.score) best = { square: i, move: local.move, score, value, gain };
   }
-  return best;
+  return fingPlay(state, best, me, rng);
 }
 
+// The finger games: the computer's attempt is played only for the square it chose.
+function fingPlay(state, best, me, rng) { if (best && best.move && best.move.fing) best.move = fingAi(state.squares[best.square].mini, me, rng); return best; }
 // A random legal move in a mini-game, for a player who ran out of time.
 let VALID5_LIST = null;
 function randomLegalMove(mini, p, rng) {
@@ -3818,6 +4234,7 @@ function randomLegalMove(mini, p, rng) {
     case 'pong': return 'auto';                                        // a random throw
     case 'trivia': return 'auto';                                      // one wrong pick: an option still standing is crossed out
     case 'headcount': case 'flash': case 'snapshot': return 'auto';   // counts as wrong
+    case 'skyhop': case 'scoop': case 'pinball': return 'auto';       // the attempt ends where it stands: no progress from it
     case 'oddone': return 'auto';                                      // counts as wrong
     case 'c4': return from(Array.from({ length: C4.cols }, (_, c) => c).filter(c => !mini.cells[c]));
     case 'hexapawn': { const ms = hpMoves(mini.cells, p); return ms.length ? from(ms) : null; }
@@ -3919,7 +4336,7 @@ function playMove(state, i, m, rng, opts) {
   const p = state.turn;
   const range = sq.mini.type === 'hilo' ? [sq.mini.lo, sq.mini.hi] : null;   // the range before the guess, for the UI
   const bjFrom = sq.mini.type === 'bj' && sq.mini.hand ? sq.mini.hand.cards.length : 0;   // Blackjack: the player's cards before (0: this move deals)
-  const bonus = state.lock === i && !(sq.mini.type === 'trivia' && sq.mini.fresh === p) && !ATT_TYPES.includes(sq.mini.type);   // a bonus move within the same turn (Hangman, Risky Rolls); the hold of a Trivia reveal or an attention game's Start is not one
+  const bonus = state.lock === i && !(sq.mini.type === 'trivia' && sq.mini.fresh === p) && !ATT_TYPES.includes(sq.mini.type) && !FINGER_TYPES.includes(sq.mini.type);   // a bonus move within the same turn (Hangman, Risky Rolls); the hold of a Trivia reveal or an attention game's Start is not one
   const res = applyMove(sq.mini, p, m, rng);
   if (!res.ok) return res;
   const mini = sq.mini;
@@ -3978,6 +4395,7 @@ function playMove(state, i, m, rng, opts) {
     case 'plinko': { const l = mini.last; flash.plinko = { slot: l.slot, path: l.path.slice(), bin: l.bin, pts: l.pts, hit: l.hit, bonus: l.bonus, next: mini.bonus, reset: l.reset, total: mini.pts[l.by] }; break; }
     case 'pong': { const l = mini.last; flash.pong = { aim: l.aim, power: l.power, x: l.x, y: l.y, cup: l.cup, rim: l.rim, sunk: l.sunk, cups: { X: mini.cups.X.slice(), O: mini.cups.O.slice() } }; break; }
     case 'trivia': { const l = mini.last; flash.trivia = Object.assign({ q: l.q, cat: l.cat, opts: l.opts.slice(), crossed: (l.crossed || []).slice(), picked: l.picked, correct: l.correct, counts: { X: mini.right.X, O: mini.right.O } }, l.correct ? { right: l.right } : {}, l.auto ? { auto: true } : {}, l.fresh ? { fresh: true } : {}); break; }   // (a wrong pick: no right answer in it)
+    case 'skyhop': case 'scoop': case 'pinball': { const l = mini.last; flash.fing = Object.assign({ type: mini.type, goal: fingGoal(mini), at: { X: fingAt(mini, 'X'), O: fingAt(mini, 'O') } }, JSON.parse(JSON.stringify(l))); break; }   // (the attempt's inputs or recording: another phone replays it)
     case 'headcount': case 'flash': case 'snapshot': { const l = mini.last; flash.att = { level: l.level, round: l.round, answer: l.answer, truth: l.truth, correct: l.correct, right: { X: mini.right.X, O: mini.right.O } }; break; }
     case 'oddone': { const l = mini.last; flash.odd = { n: l.n, tiles: l.tiles.slice(), pos: l.pos, picked: l.picked, correct: l.correct, finds: { X: mini.finds.X, O: mini.finds.O } }; break; }
   }
@@ -4262,6 +4680,7 @@ function playMs(f, winLen) {
     case 'plinko':  return PLINKO.rows * PLINKO.step + PLINKO.land + (won ? 600 : 0);
     case 'pong':    return PONG.fly + PONG.hold + (won ? 600 : 0);
     case 'trivia':  return (f.trivia && f.trivia.fresh ? TRIVIA.flip : 0) + TRIVIA.pause + TRIVIA.reveal + (won ? 600 : 0);   // (another phone: the card turned up, a pause, then the pick)
+    case 'skyhop': case 'scoop': case 'pinball': return (f.fing && !f.timeout ? fingMs(f.fing) : 0) + PINB.hold + (won ? 600 : 0);   // someone else's attempt plays through first, then the result (the phone that played it skips that)
     case 'headcount': case 'flash': case 'snapshot': return (f.att && !f.timeout ? attMs(f.type, f.att.round) + ATT.pause : 0) + ATT.show + (won ? 600 : 0);   // someone else's round plays first, then their answer (the phone that played it skips that)
     case 'oddone':  return (f.odd && !f.timeout ? ODD.show + ODD.pause : 0) + ODD.reveal + (won ? 600 : 0);   // (the phone that picked skips the replay)
   }
@@ -4386,4 +4805,4 @@ function matchStats(st) {
 }
 
 // Node (the Cloud Functions and the tests): the same names as a module.
-if (typeof module !== "undefined" && module.exports) module.exports = { PHYS_TYPES, PHYSICS, setPhysics, physicsReady, GOLF, POOLG, poolPow, BOWLG, poolMine, poolRank, poolIds, poolOwns, poolFree, physShot, wrapAim, aimTo, poolSpot, physRun, golfClear, golfNext, golfAhead, golfLeft, physLast, physScore, physCandidates, physAi, physRandom, physNeeds, RUN_TYPES, RUN_DEFAULTS, RUN_LIMITS, RUN_EXTRA, RUN, RUNT, RUN_CFG, LANE_TIGHT, LANE_NEAR, r2, runNorm, setRunConfig, runConfig, runSpeed, runSecs, runAfter, runGrace, DASH_OBS, DASH, LANE, FLAP, CHOP, PATTERNS, patKey, patRot, patFits, patSolve3, patFeature, patFitting, patNumTemplate, patNumMisses, patNumPuzzle, patDotsTemplate, patShapePuzzle, patPuzzle, patNum, patDots, patShape, patPick, patRange, WHEELS, WHEEL_SEGS, WHEELS_SAFE, WHEEL_DEFAULTS, WHEEL_LIMITS, WHEELT, WHEEL_CFG, wheelsNorm, setWheelsConfig, wheelsConfig, wheelAvg, wheelsCheck, wheelsDeal, WHEEL_MEMO, wheelsTable, wheelSpin, SNIFF, SNIFF_DIRS, sniffDist, sniffStep, sniffDirs, sniffCands, sniffPick, runCave, caveHeight, caveWalls, runWalls, weightedPick, laneRow, laneNeed, laneDrive, runCourse, runCheck, runAuto, gaussOf, normCdf, runAiMean, runAi, runNeeds, runLog, runStart, runJump, runRelease, runLane, runLaneX, overlap, runHit, runStep, runResult, TEST_TYPES, isReleased, releasedTypes, allowedTypes, restrictGames, dealable, CRAPS, CRAPS_MAKE, crapsRound, crapsTimes, TAKE, takeNear, takeCount, takeApply, takeSearch, FLOOD, floodNear, floodWaves, floodGain, floodApply, floodSearch, raceNeeds, TAKEOVER_MS, FLOOD_MS, PLACE_MS, SEAT, seatTable, seatMate, seatTables, seatZ, seatNext, seatPick, DIST, r1d, distClip, distMap, distTo, distTally, distEval, distSearch, SHELF, shelfOn, shelfPick, ROAD, ROAD_SEGS, roadLongest, roadPick, randomEmpty, BULLS, BULLT, bullsLeg, bullsAim, BULL_DEFAULTS, BULL_LIMITS, BULL_CFG, bullsNorm, setBullsConfig, bullsConfig, bullsSpot, bullsScore, bullsRates, r3, ECHO, PLINKO, PONG, TRIVIA, ODD, ATT_TYPES, ATT, cfgKit, lohi, plural, HEAD, HEAD_KINDS, HEAD_THEMES, HEAD_DEFAULTS, HEAD_LIMITS, HEAD_KIT, setHeadConfig, headConfig, headAt, headRound, headAsk, headWatch, FLASH, FLASH_DEFAULTS, FLASH_LIMITS, FLASH_KIT, setFlashConfig, flashConfig, flashAnswer, flashRound, ORD, SNAP_DEFAULTS, SNAP_LIMITS, SNAP_KIT, setSnapConfig, snapConfig, snapTrivial, snapRound, attRound, attTruth, attValid, attJudge, attStart, attMs, attWrong, ODD_DEFAULTS, ODD_LIMITS, ODD_CFG, oddNorm, setOddConfig, oddConfig, hslRgb, rgbLab, deltaE00, oddDelta, bullsPeriod, echoSeqs, echoBase, echoSeq, echoAim, plinkoPath, plinkoOdds, PLINKO_DEFAULTS, PLINKO_LIMITS, PLINKO_CFG, plinkoNorm, setPlinkoConfig, plinkoConfig, plinkoPegs, plinkoBonus, plinkoTouches, plinkoWays, plinkoDist, plinkoExp, plinkoOpen, pongThrow, pongAimAt, pongDist, setTriviaBank, triviaReady, triviaDeal, triviaReveal, triviaUsed, oddGrid, cpuEcho, CARD, BJ, BUS, RL, BJT, BUST, RLT, BUS_AVG, cardDeck, isCard, cardRank, cardRed, cardName, bjValue, bjTotal, bjNatural, bjDealerPlay, bjOutcome, bjStrategy, bjPlan, bjMs, busRight, busDeck, busOdds, rlRed, rlBet, rlCovers, tttOpen, lineOpen, majorityResult, STYLE0, huntSize, huntBand, huntClue, normTimer, resignLocal, TYPES, OLD_TYPES, SNL, BUMP, snlRow, snlBoard, snlValid, snlExpected, coinPick, markCoins, coinMarksFor, normLocal, seatLocal, INFO, C4, HP, MM, HEX_N, HILO, CANDY, NAME_MAX, COINS, RISKY, BS, HUNT, DICE_GOAL, MEMORY, LINES, WORDS5, WORDS_HANG, VALID5, other, makeRng, needRng, randInt, randomType, shuffle, memoryDeck, wordleMarks, hexNeighbors, hexPath, canMove, hpMoves, mmFeedback, mmValid, MM_ALL, mmAll, mmCode, mmCandidates, mmBestGuess, hpGoalRow, upgradeMini, anyMove, huntDist, candyTrack, newMini, pickType, newSquare, CPU_NAME, defaultSetup, cpuSide, normSetup, syncNames, enabledGames, TIMER_OPTIONS, newTimer, playerName, newState, startMatch, newMatch, findRun, applyMove, AI, publicMini, wordleCandidates, hangmanCandidates, bsCandidates, bsPlacements, bsShip, huntCandidates, WINDOWS, windowsOf, lineNeeds, c4Playable, hexDist, candyExpected, COIN_NEEDS, needsOf, memoryPair, winChance, tttMinimax, c4Drop, c4Eval, C4_ORDER, c4Search, C4_DEPTH, c4Moves, HP_MEMO, hpSolve, hpMovesValued, hpNeeds, hexMoves, threatScore, pickValued, localBest, squareValue, moveGain, cpuMove, VALID5_LIST, randomLegalMove, timeoutMove, mainResult, playMove, endFlash, leaveSquare, RECENT_MAX, MATCH_FIELDS, secretOf, hideMini, matchRecord, fullState, settle, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, applyOnlineReveal, applyOnlineStart, newOnlineMatch, PLAY, diceSlot, playMs, replayMs, armClock, applyOnlineResign, matchStats };
+if (typeof module !== "undefined" && module.exports) module.exports = { PINB, PINB_DEFAULTS, PINB_LIMITS, PINB_KIT, setPinConfig, pinConfig, pinCount, pinCheck, fingCheck, fingAi, fingAt, fingGoal, FING_GAIN, fingNeeds, fingRaw, fingMs, fingPlay, FINGER_TYPES, FING, fingLog, fingUnlog, clamp01, fwrap, fdiff, HOP, HOP_DEFAULTS, HOP_LIMITS, HOP_KIT, setHopConfig, hopConfig, hopPeak, HOP_MEMO, hopCourse, hopPx, hopStart, hopCam, hopStep, hopResult, SCOOP, SCOOP_DEFAULTS, SCOOP_LIMITS, SCOOP_KIT, setScoopConfig, scoopConfig, scoopItems, scoopStart, scoopTop, scoopSize, scoopStep, scoopResult, scoopY, fingReplay, fingRecorder, FHAND, hopPlan, hopAi, scoopAi, PHYS_TYPES, PHYSICS, setPhysics, physicsReady, GOLF, POOLG, poolPow, BOWLG, poolMine, poolRank, poolIds, poolOwns, poolFree, physShot, wrapAim, aimTo, poolSpot, physRun, golfClear, golfNext, golfAhead, golfLeft, physLast, physScore, physCandidates, physAi, physRandom, physNeeds, RUN_TYPES, RUN_DEFAULTS, RUN_LIMITS, RUN_EXTRA, RUN, RUNT, RUN_CFG, LANE_TIGHT, LANE_NEAR, r2, runNorm, setRunConfig, runConfig, runSpeed, runSecs, runAfter, runGrace, DASH_OBS, DASH, LANE, FLAP, CHOP, PATTERNS, patKey, patRot, patFits, patSolve3, patFeature, patFitting, patNumTemplate, patNumMisses, patNumPuzzle, patDotsTemplate, patShapePuzzle, patPuzzle, patNum, patDots, patShape, patPick, patRange, WHEELS, WHEEL_SEGS, WHEELS_SAFE, WHEEL_DEFAULTS, WHEEL_LIMITS, WHEELT, WHEEL_CFG, wheelsNorm, setWheelsConfig, wheelsConfig, wheelAvg, wheelsCheck, wheelsDeal, WHEEL_MEMO, wheelsTable, wheelSpin, SNIFF, SNIFF_DIRS, sniffDist, sniffStep, sniffDirs, sniffCands, sniffPick, runCave, caveHeight, caveWalls, runWalls, weightedPick, laneRow, laneNeed, laneDrive, runCourse, runCheck, runAuto, gaussOf, normCdf, runAiMean, runAi, runNeeds, runLog, runStart, runJump, runRelease, runLane, runLaneX, overlap, runHit, runStep, runResult, TEST_TYPES, isReleased, releasedTypes, allowedTypes, restrictGames, dealable, CRAPS, CRAPS_MAKE, crapsRound, crapsTimes, TAKE, takeNear, takeCount, takeApply, takeSearch, FLOOD, floodNear, floodWaves, floodGain, floodApply, floodSearch, raceNeeds, TAKEOVER_MS, FLOOD_MS, PLACE_MS, SEAT, seatTable, seatMate, seatTables, seatZ, seatNext, seatPick, DIST, r1d, distClip, distMap, distTo, distTally, distEval, distSearch, SHELF, shelfOn, shelfPick, ROAD, ROAD_SEGS, roadLongest, roadPick, randomEmpty, BULLS, BULLT, bullsLeg, bullsAim, BULL_DEFAULTS, BULL_LIMITS, BULL_CFG, bullsNorm, setBullsConfig, bullsConfig, bullsSpot, bullsScore, bullsRates, r3, ECHO, PLINKO, PONG, TRIVIA, ODD, ATT_TYPES, ATT, cfgKit, lohi, plural, HEAD, HEAD_KINDS, HEAD_THEMES, HEAD_DEFAULTS, HEAD_LIMITS, HEAD_KIT, setHeadConfig, headConfig, headAt, headRound, headAsk, headWatch, FLASH, FLASH_DEFAULTS, FLASH_LIMITS, FLASH_KIT, setFlashConfig, flashConfig, flashAnswer, flashRound, ORD, SNAP_DEFAULTS, SNAP_LIMITS, SNAP_KIT, setSnapConfig, snapConfig, snapTrivial, snapRound, attRound, attTruth, attValid, attJudge, attStart, attMs, attWrong, ODD_DEFAULTS, ODD_LIMITS, ODD_CFG, oddNorm, setOddConfig, oddConfig, hslRgb, rgbLab, deltaE00, oddDelta, bullsPeriod, echoSeqs, echoBase, echoSeq, echoAim, plinkoPath, plinkoOdds, PLINKO_DEFAULTS, PLINKO_LIMITS, PLINKO_CFG, plinkoNorm, setPlinkoConfig, plinkoConfig, plinkoPegs, plinkoBonus, plinkoTouches, plinkoWays, plinkoDist, plinkoExp, plinkoOpen, pongThrow, pongAimAt, pongDist, setTriviaBank, triviaReady, triviaDeal, triviaReveal, triviaUsed, oddGrid, cpuEcho, CARD, BJ, BUS, RL, BJT, BUST, RLT, BUS_AVG, cardDeck, isCard, cardRank, cardRed, cardName, bjValue, bjTotal, bjNatural, bjDealerPlay, bjOutcome, bjStrategy, bjPlan, bjMs, busRight, busDeck, busOdds, rlRed, rlBet, rlCovers, tttOpen, lineOpen, majorityResult, STYLE0, huntSize, huntBand, huntClue, normTimer, resignLocal, TYPES, OLD_TYPES, SNL, BUMP, snlRow, snlBoard, snlValid, snlExpected, coinPick, markCoins, coinMarksFor, normLocal, seatLocal, INFO, C4, HP, MM, HEX_N, HILO, CANDY, NAME_MAX, COINS, RISKY, BS, HUNT, DICE_GOAL, MEMORY, LINES, WORDS5, WORDS_HANG, VALID5, other, makeRng, needRng, randInt, randomType, shuffle, memoryDeck, wordleMarks, hexNeighbors, hexPath, canMove, hpMoves, mmFeedback, mmValid, MM_ALL, mmAll, mmCode, mmCandidates, mmBestGuess, hpGoalRow, upgradeMini, anyMove, huntDist, candyTrack, newMini, pickType, newSquare, CPU_NAME, defaultSetup, cpuSide, normSetup, syncNames, enabledGames, TIMER_OPTIONS, newTimer, playerName, newState, startMatch, newMatch, findRun, applyMove, AI, publicMini, wordleCandidates, hangmanCandidates, bsCandidates, bsPlacements, bsShip, huntCandidates, WINDOWS, windowsOf, lineNeeds, c4Playable, hexDist, candyExpected, COIN_NEEDS, needsOf, memoryPair, winChance, tttMinimax, c4Drop, c4Eval, C4_ORDER, c4Search, C4_DEPTH, c4Moves, HP_MEMO, hpSolve, hpMovesValued, hpNeeds, hexMoves, threatScore, pickValued, localBest, squareValue, moveGain, cpuMove, VALID5_LIST, randomLegalMove, timeoutMove, mainResult, playMove, endFlash, leaveSquare, RECENT_MAX, MATCH_FIELDS, secretOf, hideMini, matchRecord, fullState, settle, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, applyOnlineReveal, applyOnlineStart, newOnlineMatch, PLAY, diceSlot, playMs, replayMs, armClock, applyOnlineResign, matchStats };

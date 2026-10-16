@@ -162,5 +162,201 @@
     return { final, events, rec: { fps: FPS, ids, frames }, result, ms: Math.round(frames.length / FPS * 1000) };
   }
 
-  return { GOLF, POOL, BOWL, HOLES, SIZES, FPS, run };
+  // ---------- Pinball: a portrait table, played live on the phone (or by the computer's hand) ----------
+  // Units as the other tables: 100 across, 180 tall, y down. The walls, the bumpers, the slingshots and
+  // the targets are Matter bodies; the two flippers are swept capsules worked out here each step (a
+  // flipper's surface speed goes into the bounce, and at these step lengths nothing moves more than a
+  // third of the ball's width in a step, so the ball never passes through a flipper or a wall). The ball
+  // starts in the plunger lane on the right; a launch sends it up the lane and round the top. The targets
+  // are the same for both players; each player lights their own. A ball that drains in the first save
+  // seconds after its launch is served again (the same move goes on).
+  const PIN = {
+    w: 100, h: 180, ballR: 2.6, g: 300, hz: 480, fps: 30, vmax: 420, drain: 176, wall: 0.5,
+    flip: { len: 21, thick: 3.8, rest: 0.48, up: -0.48, speed: 17, e: 0.4, L: [22, 149], R: [68, 149] },
+    lane: { x0: 89.7, x1: 98, top: 44, serve: [93.9, 168] },
+    bump: { r: 5, kick: 165, at: [[30, 54], [60, 54], [45, 72]] },
+    sling: { kick: 150 },
+    spin: { cx: 45, cy: 104, r: 10, w: 1.7 },
+    // the targets: id, place, size, and how they are reached (for the drawing and the tuning)
+    targets: [
+      { id: 0, x: 3.4, y: 98, r: 2.8, name: 'Left post' },
+      { id: 1, x: 83.9, y: 98, r: 2.8, name: 'Right post' },
+      { id: 2, x: 45, y: 34, r: 2.6, name: 'Top centre' },
+      { id: 3, x: 15, y: 23, r: 2.4, name: 'Left lane' },
+      { id: 4, x: 74, y: 67, r: 2.4, name: 'Behind the rail' },
+      { id: 5, x: 45, y: 104, r: 2.6, name: 'Spinner', spin: true },
+      { id: 6, x: 22, y: 72, r: 2.4, name: 'Left loop' },
+    ],
+  };
+  // The walls as thick segments [x1, y1, x2, y2, thickness]: the outside (the top arched), the lane, the
+  // inlanes and outlanes, the rails. The playfield is 2 to 88 across, the plunger lane beside it.
+  const PIN_WALLS = [
+    [1, 180, 1, 34, 2], [1, 34, 7, 15, 2.4], [7, 15, 20, 5, 2.4], [20, 5, 50, 1.5, 2.4], [50, 1.5, 80, 5, 2.4], [80, 5, 93, 11, 2.4], [93, 11, 99, 25, 2.4], [99, 25, 99, 180, 2],   // the outside
+    [88.5, 180, 88.5, PIN.lane.top, 2.4],                                                                 // the plunger lane's inner wall
+    [10.5, 30, 10.5, 40, 2.4], [19.5, 30, 19.5, 40, 2.4],                                                  // the left lane's posts (the target at its top)
+    [9.5, 112, 9.5, 126, 2.4], [9.5, 126, 19, 139, 2.6], [80, 112, 80, 126, 2.4], [80, 126, 71, 139, 2.6],   // the inlane guides (the outlanes outside them)
+    [59, 72, 77, 56, 2.6], [77, 56, 77, 48, 2.4],                                                         // the rail with a target behind it
+    [16, 62, 16, 80, 2.4], [16, 80, 23, 86, 2.4],                                                         // the left loop's wall (its target inside)
+  ];
+  // The slingshots: the triangle's corners; the inner face kicks.
+  const PIN_SLINGS = [[[14, 114], [14, 130], [24, 137]], [[76, 114], [76, 130], [66, 137]]];
+  function pinSeg(x1, y1, x2, y2, t, label) {
+    const len = Math.hypot(x2 - x1, y2 - y1);
+    return Bodies.rectangle((x1 + x2) / 2, (y1 + y2) / 2, len + t, t, { isStatic: true, angle: Math.atan2(y2 - y1, x2 - x1), restitution: PIN.wall, friction: 0, label: label || 'wall' });
+  }
+  // A table for one ball: its targets as they stand for the player (lit: an array of 0/1), the ball in the lane.
+  function pinNew(cfg, lit) {
+    cfg = cfg || {};
+    const engine = Engine.create({ gravity: { x: 0, y: 0 }, positionIterations: 6, velocityIterations: 6 }), bodies = [];
+    for (const w of PIN_WALLS) bodies.push(pinSeg(...w));
+    for (const [x, y] of PIN.bump.at) bodies.push(Bodies.circle(x, y, PIN.bump.r, { isStatic: true, restitution: 0.6, friction: 0, label: 'bumper' }));
+    PIN_SLINGS.forEach((tri, k) => bodies.push(Bodies.fromVertices((tri[0][0] + tri[1][0] + tri[2][0]) / 3, (tri[0][1] + tri[1][1] + tri[2][1]) / 3, [tri.map(([x, y]) => ({ x, y }))], { isStatic: true, restitution: 0.6, friction: 0, label: 'sling:' + k })));
+    for (const t of PIN.targets) if (!t.spin) bodies.push(Bodies.circle(t.x, t.y, t.r * (cfg.size || 1), { isStatic: true, restitution: 0.55, friction: 0, label: 'target:' + t.id }));
+    const ball = Bodies.circle(PIN.lane.serve[0], PIN.lane.serve[1], PIN.ballR, { restitution: 0.4, friction: 0, frictionAir: 0, frictionStatic: 0, density: 0.02, label: 'ball' });
+    bodies.push(ball);
+    Composite.add(engine.world, bodies);
+    const w = { cfg, engine, ball, t: 0, inPlay: false, launchedAt: null, lit: (lit || []).slice(), hits: [], events: [], frames: [], flip: { L: { a: PIN.flip.rest, w: 0, on: false }, R: { a: PIN.flip.rest, w: 0, on: false } }, over: false, saves: 0, n: 0, frameAt: 0, still: { x: 0, y: 0, t: 0 }, nudges: 0 };
+    Events.on(engine, 'collisionStart', e => { for (const pr of e.pairs) pinTouch(w, pr.bodyA === ball ? pr.bodyB : pr.bodyB === ball ? pr.bodyA : null); });
+    pinFrame(w);
+    return w;
+  }
+  const pinV = w => ({ x: w.ball.velocity.x * 60, y: w.ball.velocity.y * 60 });          // the ball's speed, units a second
+  const pinSetV = (w, vx, vy) => { const s = Math.hypot(vx, vy), k = s > PIN.vmax ? PIN.vmax / s : 1; Body.setVelocity(w.ball, { x: (vx * k) / 60, y: (vy * k) / 60 }); };
+  const pinEv = (w, k, extra) => { if (w.events.length < 400) w.events.push(Object.assign({ t: Math.round(w.t * 1000) / 1000, k }, extra || {})); };
+  // The spinner's target, t seconds in (it goes round its centre).
+  const pinSpinAt = (t, cfg) => { const s = PIN.spin, a = t * s.w * ((cfg && cfg.spin) || 1); return [s.cx + s.r * Math.cos(a), s.cy + s.r * Math.sin(a)]; };
+  function pinLight(w, id) {
+    if (w.lit[id]) return;
+    w.lit[id] = 1; w.hits.push({ id, t: Math.round(w.t * 1000) / 1000 }); pinEv(w, 'hit', { id });
+  }
+  function pinTouch(w, body) {
+    if (!body || !w.inPlay) return;
+    const L = body.label, b = w.ball.position;
+    if (L.startsWith('target:')) pinLight(w, Number(L.slice(7)));
+    else if (L === 'bumper') {                                       // a pop bumper: the ball is kicked straight off it
+      const n = { x: b.x - body.position.x, y: b.y - body.position.y }, d = Math.hypot(n.x, n.y) || 1, k = PIN.bump.kick * ((w.cfg && w.cfg.bump) || 1);
+      pinSetV(w, (n.x / d) * k, (n.y / d) * k); pinEv(w, 'bump');
+    } else if (L.startsWith('sling:')) {                             // a slingshot: its inner face kicks the ball across and up
+      const k = Number(L.slice(6)), dir = k === 0 ? 1 : -1, v = pinV(w);
+      if ((dir > 0 && b.x > body.position.x) || (dir < 0 && b.x < body.position.x)) { pinSetV(w, dir * PIN.sling.kick * 0.8 + v.x * 0.2, -PIN.sling.kick * 0.6); pinEv(w, 'sling'); }
+    }
+  }
+  // The ball back in the plunger lane, waiting for a launch.
+  function pinServe(w) { Body.setPosition(w.ball, { x: PIN.lane.serve[0], y: PIN.lane.serve[1] }); Body.setVelocity(w.ball, { x: 0, y: 0 }); w.inPlay = false; w.launchedAt = null; }
+  // A launch: power 0..1 (a tap: the default).
+  function pinLaunch(w, power) {
+    if (w.inPlay || w.over) return false;
+    const p = power == null ? 0.82 : Math.max(0, Math.min(1, power)), lo = 240, hi = 400;
+    w.inPlay = true; w.launchedAt = w.t; pinSetV(w, 0, -(lo + (hi - lo) * p)); pinEv(w, 'launch', { p: Math.round(p * 100) / 100 });
+    return true;
+  }
+  // A flipper's line (pivot to tip) at its angle.
+  function pinFlipLine(side, a) { const [px, py] = PIN.flip[side], s = side === 'L' ? 1 : -1; return [px, py, px + s * PIN.flip.len * Math.cos(a), py + PIN.flip.len * Math.sin(a)]; }
+  // The flippers' sweep and the ball against them: a capsule each, its surface moving with the flipper.
+  function pinFlippers(w, dt) {
+    const F = PIN.flip, ball = w.ball;
+    for (const side of ['L', 'R']) {
+      const f = w.flip[side], to = f.on ? F.up : F.rest, max = F.speed * dt, da = Math.max(-max, Math.min(max, to - f.a));
+      f.a += da; f.w = da / dt;
+      const [x1, y1, x2, y2] = pinFlipLine(side, f.a), bx = ball.position.x, by = ball.position.y;
+      const dx = x2 - x1, dy = y2 - y1, u = Math.max(0, Math.min(1, ((bx - x1) * dx + (by - y1) * dy) / (dx * dx + dy * dy)));
+      const cx = x1 + u * dx, cy = y1 + u * dy, ex = bx - cx, ey = by - cy, d = Math.hypot(ex, ey), rs = PIN.ballR + F.thick / 2 * (1 - 0.35 * u);
+      if (d >= rs) continue;
+      const nx = d > 1e-6 ? ex / d : 0, ny = d > 1e-6 ? ey / d : -1;
+      Body.setPosition(ball, { x: cx + nx * rs, y: cy + ny * rs });
+      const om = (side === 'L' ? 1 : -1) * f.w, rx = cx - x1, ry = cy - y1;   // the flipper's surface speed at the touch (it turns about the pivot)
+      const sx = side === 'L' ? -om * ry : om * ry, sy = side === 'L' ? om * rx : -om * rx;
+      const v = pinV(w), relx = v.x - sx, rely = v.y - sy, vn = relx * nx + rely * ny;
+      if (vn < 0) pinSetV(w, v.x - (1 + F.e) * vn * nx, v.y - (1 + F.e) * vn * ny);
+    }
+  }
+  // One frame's worth of steps (ms of time) with the flippers held as given; returns the events of the frame.
+  function pinRun(w, ms, input) {
+    if (w.over) return [];
+    const from = w.events.length, dt = 1 / PIN.hz, g = PIN.g * ((w.cfg && w.cfg.g) || 1);
+    if (input) { w.flip.L.on = !!input.L; w.flip.R.on = !!input.R; }
+    let left = Math.min(100, ms) / 1000;
+    while (left > 1e-9 && !w.over) {
+      const h = Math.min(dt, left); left -= h;
+      if (w.inPlay) { const v = pinV(w); pinSetV(w, v.x, v.y + g * h); }
+      Engine.update(w.engine, h * 1000);
+      pinFlippers(w, h);
+      w.t += h; w.n++;
+      const b = w.ball.position;
+      if (!w.inPlay) { Body.setPosition(w.ball, { x: PIN.lane.serve[0], y: PIN.lane.serve[1] }); Body.setVelocity(w.ball, { x: 0, y: 0 }); }
+      else {
+        if (b.x < PIN.ballR || b.x > PIN.w - PIN.ballR || b.y < PIN.ballR) {   // (never past the outside, whatever happened)
+          const v = pinV(w); Body.setPosition(w.ball, { x: Math.max(PIN.ballR + 2, Math.min(PIN.w - PIN.ballR - 2, b.x)), y: Math.max(PIN.ballR + 2, b.y) }); pinSetV(w, b.x < PIN.ballR || b.x > PIN.w - PIN.ballR ? -v.x * 0.5 : v.x, b.y < PIN.ballR ? Math.abs(v.y) * 0.5 : v.y); pinEv(w, 'guard');
+        }
+        const [sx, sy] = pinSpinAt(w.t, w.cfg), st = PIN.targets[5];
+        if (Math.hypot(b.x - sx, b.y - sy) < st.r * ((w.cfg && w.cfg.size) || 1) + PIN.ballR) pinLight(w, 5);
+        for (const t of PIN.targets) if (!t.spin && !w.lit[t.id] && Math.hypot(b.x - t.x, b.y - t.y) < t.r * ((w.cfg && w.cfg.size) || 1) + PIN.ballR) pinLight(w, t.id);   // (and by distance: a touch is never missed; never through a wall, as no target reaches past one at any size the settings allow)
+        const back = b.x > PIN.lane.x0 + 0.6 && b.y > PIN.lane.top + 4 && w.t - w.launchedAt > 0.6;
+        if (b.y > PIN.drain || back) {
+          const saved = back || w.t - w.launchedAt < ((w.cfg && w.cfg.save) != null ? w.cfg.save : 3);
+          if (saved) { pinEv(w, back ? 'lane' : 'save'); w.saves++; pinServe(w); }
+          else { pinEv(w, 'drain'); w.over = true; }
+        }
+        if (w.lit.length && w.lit.every(Boolean)) { w.over = true; pinEv(w, 'all'); }
+        if (Math.hypot(b.x - w.still.x, b.y - w.still.y) > 1.5) w.still = { x: b.x, y: b.y, t: w.t };
+        else if (w.inPlay && w.t - w.still.t > 2 && b.y < PIN.flip.L[1] - 6) { const s = w.nudges++ % 2 ? 1 : -1; pinSetV(w, s * 90, -130); w.still.t = w.t; pinEv(w, 'nudge'); }   // a ball resting off the flippers: a nudge sets it going again
+        if (w.inPlay && w.t - w.launchedAt > ((w.cfg && w.cfg.maxBall) || 120)) { pinEv(w, 'time'); w.over = true; }   // (a ball can't last for ever)
+      }
+      if (w.t >= w.frames.length / PIN.fps - 1e-9) pinFrame(w);   // (frame k at k/30 s exactly, so the recording keeps time with the ball however the steps fall)
+    }
+    return w.events.slice(from);
+  }
+  // The recording: the ball and the flippers 30 times a second (and the events with their times).
+  // (a frame: the ball's place to a tenth, and which flippers were held)
+  function pinFrame(w) {
+    w.frameAt = w.t;
+    const b = w.ball.position;
+    if (w.frames.length < PIN.fps * 400) w.frames.push([Math.round(b.x * 10) / 10, Math.round(b.y * 10) / 10, (w.flip.L.on ? 1 : 0) + (w.flip.R.on ? 2 : 0)]);
+  }
+  // The recording as a string: per frame the ball's x and y in tenths (base 36) and the flippers held.
+  const pinPack = frames => frames.map(([x, y, f]) => Math.round(x * 10).toString(36) + '.' + Math.round(y * 10).toString(36) + (f ? '.' + f : '')).join(',');
+  function pinUnpack(str) {
+    if (typeof str !== 'string' || str.length > 1e6) return null;
+    if (!str) return [];
+    const out = [];
+    for (const part of str.split(',')) {
+      const m = /^([0-9a-z]{1,4})\.([0-9a-z]{1,4})(?:\.([0-3]))?$/.exec(part);
+      if (!m) return null;
+      out.push([parseInt(m[1], 36) / 10, parseInt(m[2], 36) / 10, m[3] ? Number(m[3]) : 0]);
+    }
+    return out;
+  }
+  // A flipper's angle along a recording: it swings towards up or rest at its speed, as in play.
+  function pinFlipAngles(frames) {
+    const a = { L: PIN.flip.rest, R: PIN.flip.rest }, out = [], max = PIN.flip.speed / PIN.fps;
+    for (const f of frames) { for (const [s, bit] of [['L', 1], ['R', 2]]) { const to = f[2] & bit ? PIN.flip.up : PIN.flip.rest; a[s] += Math.max(-max, Math.min(max, to - a[s])); } out.push([a.L, a.R]); }
+    return out;
+  }
+  const pinResult = w => ({ hits: w.hits.map(h => [h.id, h.t]), ms: Math.round(w.t * 1000), rec: pinPack(w.frames), events: w.events.filter(e => e.k !== 'guard').slice(0, 300), saves: w.saves, end: w.over ? (w.lit.every(Boolean) ? 'all' : w.events.some(e => e.k === 'time') ? 'time' : 'drain') : 'out' });
+  // The computer's hand: it sees the ball react seconds late; when the ball comes down over a flipper it
+  // flips (a little early or late: jitter) and holds for a moment. A launch: a tap at a random power.
+  function pinAi(cfg, lit, rng, hand) {
+    hand = hand || { react: [0.05, 0.09], jitter: 0.05, hold: [0.12, 0.28], launch: [0.4, 1] };
+    const w = pinNew(cfg, lit), seen = [], react = hand.react[0] + (hand.react[1] - hand.react[0]) * rng(), plan = { L: null, R: null };
+    const F = PIN.flip, frame = 1000 / 60;
+    let wait = 0.6 + rng() * 0.6;
+    for (let k = 0; k < 60 * 180 && !w.over; k++) {
+      if (!w.inPlay) { wait -= frame / 1000; if (wait <= 0) { pinLaunch(w, hand.launch[0] + (hand.launch[1] - hand.launch[0]) * rng()); wait = 0.5 + rng() * 0.6; } }
+      const v = pinV(w);
+      seen.push({ t: w.t, x: w.ball.position.x, y: w.ball.position.y, vy: v.y });
+      while (seen.length > 1 && seen[1].t <= w.t - react) seen.shift();
+      const s = seen[0];
+      for (const side of ['L', 'R']) {
+        const [px, py] = F[side], near = Math.hypot(s.x - px, s.y - py) < F.len + 4 && s.y < py + 12 && s.y > py - 14 && (side === 'L' ? s.x < 50 : s.x > 50);
+        if (!plan[side] && near && s.vy > -30 && w.inPlay) plan[side] = { at: w.t + (rng() * 2 - 1) * hand.jitter, until: null };
+        const p = plan[side];
+        if (p && p.until == null && w.t >= p.at) p.until = w.t + hand.hold[0] + (hand.hold[1] - hand.hold[0]) * rng();
+        if (p && p.until != null && w.t > p.until) plan[side] = near ? { at: w.t + 0.35 + rng() * 0.2, until: null } : null;   // (not again at once)
+      }
+      pinRun(w, frame, { L: !!(plan.L && plan.L.until != null && w.t <= plan.L.until), R: !!(plan.R && plan.R.until != null && w.t <= plan.R.until) });
+    }
+    return { w, result: pinResult(w) };
+  }
+
+  return { GOLF, POOL, BOWL, HOLES, SIZES, FPS, run, PIN, PIN_WALLS, PIN_SLINGS, pinNew, pinServe, pinLaunch, pinRun, pinFlipLine, pinSpinAt, pinResult, pinAi, pinV, pinPack, pinUnpack, pinFlipAngles };
 });

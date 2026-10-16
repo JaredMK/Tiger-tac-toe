@@ -1473,6 +1473,55 @@ test('Headcount, Flash and Snapshot tuning (config/headcount, config/flash, conf
   assert.match(await runScript('make-admin.js', 'AttBoss', 'revoke'), /no longer an admin/);
 });
 
+test('Sky Hop, Scoop Stack and Pinball over the server: the tuning is public, the admin alone sets it, within bounds; Start holds the player; an attempt is played through again (or its recording checked) and against the clock; a faked or too-long one is refused', async () => {
+  const boss = await player('FingBoss'), a = await player('Fing_A'), b = await player('Fing_B');
+  assert.match(await runScript('make-admin.js', 'FingBoss', 'grant'), /FingBoss is now the admin/);
+  await boss.auth.currentUser.getIdToken(true);
+  const cfgs = { skyhop: Object.assign({}, E.HOP_DEFAULTS, { target: 300 }), scoop: Object.assign({}, E.SCOOP_DEFAULTS, { target: 20 }), pinball: Object.assign({}, E.PINB_DEFAULTS, { size: 1.5 }) };
+  for (const [k, cfg] of Object.entries(cfgs)) {
+    await denied(a.write(`config/${k}`, cfg), `${k}: a player setting the difficulty`);
+    await boss.write(`config/${k}`, cfg);
+    assert.deepEqual(await a.read(`config/${k}`), cfg, `${k}: everyone can read it`);
+    await denied(boss.write(`config/${k}/other`, 1), `${k}: anything else`);
+  }
+  assert.equal((await fetch(`http://${DB_HOST}/config/skyhop/target.json?ns=${NS}`)).status, 200, 'without a login too');
+  await denied(boss.write('config/skyhop', Object.assign({}, cfgs.skyhop, { target: 99999 })), 'a height off its range');
+  await denied(boss.write('config/scoop', Object.assign({}, cfgs.scoop, { cone: 'fast' })), 'not a number');
+  for (const k of Object.keys(cfgs)) await boss.write(`config/${k}`, null);
+  const g = await pairUp(a, b);
+  const at = (type, mini, p) => (type === 'skyhop' ? mini.height[p] : type === 'scoop' ? mini.stack[p].length : mini.lit[p].filter(Boolean).length);
+  for (const type of ['skyhop', 'scoop', 'pinball']) {
+    // the turn began long ago (so a real attempt is within the time it has lasted)
+    await rewrite(g.id, full => { full.squares[4].owner = null; full.squares[4].mini = E.newMini(type, E.makeRng('srv-' + type)); full.turn = 'X'; full.lock = null; full.timer.deadline = Date.now() + 5000; });
+    let mini = (await gameState(g.id)).squares[4].mini;
+    const real = E.fingAi(mini, 'X', E.makeRng('srv-ai-' + type));
+    assert.equal((await g.X.call('move', { game: g.id, square: 4, move: { fing: true } })).reason, 'bad', `${type}: the computer's placeholder is no attempt`);
+    assert.equal((await g.X.call('move', { game: g.id, square: 4, move: 'auto' })).reason, 'bad', `${type}: a timed-out attempt is the server's to make`);
+    assert.equal((await g.O.call('move', { game: g.id, square: 4, kind: 'start' })).ok, false, 'Start: only the player to move');
+    assert.equal((await g.X.call('move', { game: g.id, square: 4, kind: 'start' })).ok, true);
+    assert.equal((await gameState(g.id)).lock, 4, `${type}: Start holds the player to the square on the server`);
+    assert.equal((await g.X.call('move', { game: g.id, square: 2, kind: 'start' })).ok, false, 'no second attempt elsewhere');
+    const fake = type !== 'pinball' ? Object.assign({}, real, { steps: real.steps + 240 }) : Object.assign({}, real, { hits: real.hits.concat(E.PHYSICS.lib.PIN.targets.filter(t => !real.hits.some(h => h[0] === t.id)).slice(0, 1).map(t => [t.id, 0.2])) });
+    assert.equal((await g.X.call('move', { game: g.id, square: 4, move: fake })).ok, false, `${type}: more than the attempt did is refused`);
+    assert.equal((await g.X.call('move', { game: g.id, square: 4, move: real })).ok, true, `${type}: the real attempt goes in`);
+    let st = await gameState(g.id);
+    mini = st.squares[4].mini;
+    assert.equal(st.lock, null, 'the hold is over');
+    assert.ok(at(type, mini, 'X') > 0 || real.end !== 'top', `${type}: progress kept (${at(type, mini, 'X')})`);
+    assert.equal(mini.last.by, 'X');
+    assert.ok(type === 'pinball' ? mini.last.rec === real.rec : mini.last.log === real.log, 'the inputs or the recording ride the move, for the other phone\'s replay');
+    // O's turn, just begun: an attempt longer than the turn has lasted is refused
+    if (st.turn === 'O' && !st.squares[4].owner) {
+      await rewrite(g.id, full => { full.timer.deadline = Date.now() + full.timer.limit * 1000; });
+      const long = E.fingAi(mini, 'O', E.makeRng('srv-long-' + type)), ms = type === 'pinball' ? long.ms : long.steps * E.FING.step * 1000;
+      if (ms > E.FING.slackMs + 3000) assert.equal((await g.O.call('move', { game: g.id, square: 4, move: long })).reason, 'fast', `${type}: ${Math.round(ms)} ms of attempt in a turn of a second or two`);
+      await rewrite(g.id, full => { full.turn = 'X'; full.lock = null; });
+    }
+  }
+  assert.equal((await g.O.call('resign', { game: g.id })).ok, true);
+  assert.match(await runScript('make-admin.js', 'FingBoss', 'revoke'), /no longer an admin/);
+});
+
 test('Trivia over the server: a new question is face down (the question itself only in the hidden node); the player to move turns it up, and is then held to the square; the pick made', async () => {
   const a = await player('Triv_A'), b = await player('Triv_B'), g = await pairUp(a, b);
   E.setTriviaBank(require('../trivia.json'));

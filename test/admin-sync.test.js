@@ -38,3 +38,15 @@ test('admin page: Risk Wheels\' and Plinko\'s default tuning are the engine\'s',
   assert.deepEqual(literal('ODD_DEFAULTS'), E.ODD_DEFAULTS);
   assert.deepEqual(literal('HEAD_DEFAULTS'), E.HEAD_DEFAULTS); assert.deepEqual(literal('FLASH_DEFAULTS'), E.FLASH_DEFAULTS); assert.deepEqual(literal('SNAP_DEFAULTS'), E.SNAP_DEFAULTS);
 });
+test('admin page: the finger games\' tuning cards are the engine\'s settings and ranges', () => {
+  assert.deepEqual(literal('HOP_DEFAULTS'), E.HOP_DEFAULTS); assert.deepEqual(literal('SCOOP_DEFAULTS'), E.SCOOP_DEFAULTS); assert.deepEqual(literal('PINB_DEFAULTS'), E.PINB_DEFAULTS);
+  const at = admin.indexOf('const FING_CARDS = ['), end = admin.indexOf('];\nfunction fingCard');
+  assert.ok(at > 0 && end > at, 'admin.html has FING_CARDS');
+  const cards = new Function('HOP_DEFAULTS', 'SCOOP_DEFAULTS', 'PINB_DEFAULTS', `return ${admin.slice(at + 'const FING_CARDS = '.length, end + 1)};`)(E.HOP_DEFAULTS, E.SCOOP_DEFAULTS, E.PINB_DEFAULTS);
+  const LIMITS = { skyhop: E.HOP_LIMITS, scoop: E.SCOOP_LIMITS, pinball: E.PINB_LIMITS };
+  assert.deepEqual(cards.map(c => c.id), E.FINGER_TYPES);
+  for (const c of cards) {
+    assert.deepEqual(c.fields.map(([k]) => k).sort(), Object.keys(LIMITS[c.id]).sort(), `${c.id}: a field for each setting`);
+    for (const [k, , lo, hi, step] of c.fields) assert.deepEqual([lo, hi, step], LIMITS[c.id][k], `${c.id}.${k}: the engine's range`);
+  }
+});

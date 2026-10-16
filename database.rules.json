@@ -221,6 +221,24 @@
           ".validate": "$k.matches(/^([crk][123]|show)$/) && newData.isNumber() && newData.val() >= 1 && newData.val() <= 15000"
         }
       },
+      "skyhop": {
+        ".write": "auth != null && auth.token.admin === true",
+        "$k": {
+          ".validate": "$k.matches(/^(target|bounce|gap[01]|wide[01]|moveAt|move|moveV|breakAt|brk|hazAt|hazGap|fill[01])$/) && newData.isNumber() && newData.val() >= 0 && newData.val() <= 3000"
+        }
+      },
+      "scoop": {
+        ".write": "auth != null && auth.token.admin === true",
+        "$k": {
+          ".validate": "$k.matches(/^(target|v[01]|gap[01]|haz[01]|sway|cone)$/) && newData.isNumber() && newData.val() >= 0 && newData.val() <= 200"
+        }
+      },
+      "pinball": {
+        ".write": "auth != null && auth.token.admin === true",
+        "$k": {
+          ".validate": "$k.matches(/^(size|save|maxBall|g|bump|spin)$/) && newData.isNumber() && newData.val() >= 0 && newData.val() <= 300"
+        }
+      },
       "oddone": {
         ".write": "auth != null && auth.token.admin === true",
         "d1": {

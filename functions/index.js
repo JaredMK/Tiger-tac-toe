@@ -283,19 +283,20 @@ async function findMatchOn() { return (await db.ref('features/findMatch').get())
 // Release control (engine.js: isReleased): the dashboard's switches, releases/{type}; a game not there is
 // as the code has it. testTypes: the games admin only right now (their stats are kept apart).
 async function releasesNow() { return (await db.ref('releases').get()).val() || {}; }
-// The difficulty configs (config/run for the runners, config/bulls for Bullseye, config/wheels for Risk Wheels, config/plinko for Plinko, config/oddone for Odd One Out, config/headcount, config/flash and config/snapshot for the attention games, from the admin's
+// The difficulty configs (config/run for the runners, config/bulls for Bullseye, config/wheels for Risk Wheels, config/plinko for Plinko, config/oddone for Odd One Out, config/headcount, config/flash and config/snapshot for the attention games, config/skyhop, config/scoop and config/pinball for the finger games, from the admin's
 // dashboard): set in the engine before a square can be dealt (a new match, a draw's reset), so new
 // squares play by the current values; read afresh after 20 s.
 let runCfgAt = 0;
 async function runConfigNow() {
   if (now() - runCfgAt < 20000) return;
-  const [run, bulls, wheels, plinko, odd, head, flash, snap] = await Promise.all(['run', 'bulls', 'wheels', 'plinko', 'oddone', 'headcount', 'flash', 'snapshot'].map(k => db.ref('config/' + k).get()));
+  const [run, bulls, wheels, plinko, odd, head, flash, snap, hop, scoop, pin] = await Promise.all(['run', 'bulls', 'wheels', 'plinko', 'oddone', 'headcount', 'flash', 'snapshot', 'skyhop', 'scoop', 'pinball'].map(k => db.ref('config/' + k).get()));
   E.setRunConfig(run.val() || null);
   E.setBullsConfig(bulls.val() || null);
   E.setWheelsConfig(wheels.val() || null);
   E.setPlinkoConfig(plinko.val() || null);
   E.setOddConfig(odd.val() || null);
   E.setHeadConfig(head.val() || null); E.setFlashConfig(flash.val() || null); E.setSnapConfig(snap.val() || null);
+  E.setHopConfig(hop.val() || null); E.setScoopConfig(scoop.val() || null); E.setPinConfig(pin.val() || null);
   runCfgAt = now();
 }
 
@@ -642,6 +643,13 @@ exports.move = onCall(CALL, async req => {
       if (!d.move || typeof d.move !== 'object') return { ok: false, reason: 'bad' };   // (a timed-out run is the server's to make, from the sweep: never a phone's to claim)
       const t = rec.state.timer;
       if (t && t.limit && t.deadline != null && Number(d.move.ms) > now() - (t.deadline - t.limit * 1000) + RUN_SLACK_MS) return { ok: false, reason: 'fast' };
+    }
+    // The finger games (Sky Hop, Scoop Stack, Pinball): the engine plays the attempt through again (or checks
+    // its recording); here, against the clock: no attempt longer than the turn has lasted.
+    if (sq && E.FINGER_TYPES.includes(sq.mini.type)) {
+      if (!d.move || typeof d.move !== 'object' || d.move.fing) return { ok: false, reason: 'bad' };   // (a timed-out attempt is the server's to make)
+      const t = rec.state.timer, ms = sq.mini.type === 'pinball' ? Number(d.move.ms) : Number(d.move.steps) * E.FING.step * 1000;
+      if (t && t.limit && t.deadline != null && !(ms <= now() - (t.deadline - t.limit * 1000) + E.FING.slackMs)) return { ok: false, reason: 'fast' };
     }
     return E.applyOnlineMove(rec, side, i, d.move, seedRng());
   });

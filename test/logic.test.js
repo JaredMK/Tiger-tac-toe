@@ -1085,7 +1085,7 @@ test('setup: the app opens on the main menu with default names and every game ti
   assert.equal(st.screen, 'menu', 'the main menu comes first');
   assert.deepEqual(st.setup.names, { X: 'X', O: 'O' });
   assert.deepEqual(L.enabledGames(st.setup), L.TYPES);
-  assert.equal(L.TYPES.length, 44);
+  assert.equal(L.TYPES.length, 47);
   assert.ok(st.setup.games.coins && st.setup.games.pig && st.setup.games.hunt && st.setup.games.snakes && st.setup.games.bump, 'the newer games are on by default');
   assert.ok(st.setup.games.bj && st.setup.games.bus && st.setup.games.rl, 'and the card games and the wheel too');
   assert.ok(L.TEST_TYPES.every(t => st.setup.games[t] && L.TYPES.includes(t)), 'the games on test are in the pool and on by default (for the admin, who alone sees them)');
@@ -1447,7 +1447,8 @@ function randomMove(m, rng, p) {
     case 'oddone': return Math.floor(rng() * m.grid[p].n * m.grid[p].n);
     case 'headcount': case 'flash': case 'snapshot': return rng() < 0.6 ? L.attTruth(m.type, m.round[p]) : L.attWrong(m.type, m.round[p], rng);   // (a real answer, right or near: a timeout's is always wrong)
     case 'dash': case 'lane': return rng() < 0.3 ? 'auto' : L.runAuto(m, p, rng);   // a timed-out run, or a short run as the engine itself makes one
-    case 'golf': case 'pool': case 'bowling': return L.physRandom(m, p, rng);        // a random gentle shot
+    case 'golf': case 'pool': case 'bowling': return rng() < 0.7 ? L.physRandom(m, p, rng) : L.physAi(m, p, rng).move;   // a random gentle shot, or now and then an aimed one (gentle shots alone can take for ever to sink a hole)
+    case 'skyhop': case 'scoop': case 'pinball': return rng() < 0.2 ? 'auto' : L.fingAi(m, p, rng);   // an attempt as the computer plays one (or none, timed out)
     default: return L.randomLegalMove(m, p, rng);                                       // the newer games: the engine's own random move
   }
   throw new Error('no move for ' + m.type);
@@ -1479,7 +1480,7 @@ test('random play over many matches always finishes, never shows a removed game,
         assert.equal(st.turn, again || pass ? mover : L.other(mover), 'the turn passes as the board comes back (unless the other side has no move anywhere)');
       }
     }
-    assert.ok(st.winner, 'random play finishes a match');
+    assert.ok(st.winner, `random play finishes a match (left: ${st.squares.map(q => q.owner || q.mini.type).join(' ')})`);
     assert.equal(st.screen, 'win');
   }
   assert.deepEqual([...types].sort(), [...L.TYPES].sort(), 'every current game type showed up');
@@ -2103,7 +2104,7 @@ test('timeouts over every kind of game keep the state legal and plain', () => {
   const rng = lcg(31337);
   const seen = new Set();
   for (let game = 0; game < 6; game++) {
-    const st = L.newMatch(rng, { mode: 'online', timer: 30, games: L.TYPES.filter(t => !['echo', 'trivia', 'oddone', 'patterns'].includes(t)) });   // (a timed-out attempt at those four is always a failed one: a square of theirs never falls to timeouts)
+    const st = L.newMatch(rng, { mode: 'online', timer: 30, games: L.TYPES.filter(t => !['echo', 'trivia', 'oddone', 'patterns', 'skyhop', 'scoop', 'pinball'].includes(t)) });   // (a timed-out attempt at those is always a failed one, or none: a square of theirs never falls to timeouts)
     let guard = 0;
     while (!st.winner && guard++ < 3000) {
       const open = st.squares.map((q, i) => (q.owner ? -1 : i)).filter(i => i >= 0);
