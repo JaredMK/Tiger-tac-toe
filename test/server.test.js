@@ -1367,17 +1367,17 @@ test('Risk Wheels tuning (config/wheels): public to read, the admin alone sets i
     { env: Object.assign({}, process.env, { TTC_PROJECT: PROJECT, GCLOUD_PROJECT: PROJECT }) }, (e, out) => (e ? reject(new Error(out || e.message)) : resolve(out))));
   assert.match(await script('WheelBoss', 'grant'), /WheelBoss is now the admin/);
   await boss.auth.currentUser.getIdToken(true);
-  const cfg = { target: 24, high: { a: 12, pa: 40, b: 0 }, mid: { a: 8, pa: 50, b: 2 }, low: { a: 3, pa: 70, b: 5 } };
+  const cfg = { target: 24, tensMin: 2, tensMax: 2, smallMax: 0, smallTop: 1, midLo: 1, midHi: 6, lowLo: 2, lowHi: 3, gap: 0.4 };   // (high: two 10s, the rest 0s)
   await denied(a.write('config/wheels', cfg), 'a player setting the difficulty');
   await boss.write('config/wheels', cfg);
   assert.deepEqual(await a.read('config/wheels'), cfg, 'everyone can read it');
   assert.equal((await fetch(`http://${DB_HOST}/config/wheels/target.json?ns=${NS}`)).status, 200, 'without a login too');
   await denied(boss.write('config/wheels', Object.assign({}, cfg, { target: 100 })), 'a target off its range');
-  await denied(boss.write('config/wheels', Object.assign({}, cfg, { high: { a: 12, pa: 0, b: 0 } })), 'a chance of 0%');
-  await denied(boss.write('config/wheels', Object.assign({}, cfg, { mid: { a: 40, pa: 50, b: 1 } })), 'points off their range');
-  await denied(boss.write('config/wheels', Object.assign({}, cfg, { low: { a: 0, pa: 50, b: 0 } })), 'a wheel with no points at all');
-  await denied(boss.write('config/wheels', Object.assign({}, cfg, { huge: { a: 1, pa: 50, b: 1 } })), 'a fourth wheel');
-  await denied(boss.write('config/wheels/high/c', 1), 'anything else');
+  await denied(boss.write('config/wheels', Object.assign({}, cfg, { tensMin: 5 })), 'more 10s than a wheel allows');
+  await denied(boss.write('config/wheels', Object.assign({}, cfg, { midHi: 20 })), 'a medium value off its range');
+  await denied(boss.write('config/wheels', Object.assign({}, cfg, { gap: 0 })), 'no gap between the wheels\' averages');
+  await denied(boss.write('config/wheels', Object.assign({}, cfg, { high: { a: 12, pa: 40, b: 0 } })), 'the old fixed wheels');
+  await denied(boss.write('config/wheels/huge', 1), 'anything else');
   // a match dealt with only Risk Wheels released: every square carries the config (read before dealing; kept 20 s)
   await Promise.all(E.TYPES.map(t => boss.write(`releases/${t}`, t === 'wheels')));
   let g;
@@ -1387,13 +1387,17 @@ test('Risk Wheels tuning (config/wheels): public to read, the admin alone sets i
   } finally { await Promise.all(E.TYPES.map(t => boss.write(`releases/${t}`, null))); }
   const st = await gameState(g.id);
   assert.ok(st.squares.every(q => q.mini.type === 'wheels'), 'only the released game');
-  for (const q of st.squares) assert.deepEqual(q.mini.cfg, cfg, 'dealt with the admin\'s values');
+  for (const q of st.squares) {
+    assert.equal(q.mini.target, 24, 'dealt with the admin\'s target');
+    assert.deepEqual(E.wheelsCheck(q.mini.wheels, cfg), [], 'and wheels within the admin\'s settings');
+    assert.deepEqual(q.mini.wheels.high.slice().sort((x, y) => x - y), [0, 0, 0, 0, 0, 0, 0, 0, 10, 10], 'two 10s, no small values');
+  }
   // a spin over the server: the server's spin, from the square's wheels
   const turn = st.turn;
   assert.deepEqual(await g[turn].call('move', { game: g.id, square: 4, move: 'spin' }), { ok: false, reason: 'bad' }, 'not a wheel');
   assert.equal((await g[turn].call('move', { game: g.id, square: 4, move: 'high' })).ok, true);
   const after = (await gameState(g.id)).squares[4].mini;
-  assert.ok([12, 0].includes(after.last.v) && after.pts[turn] === after.last.v, `the high wheel's points (${JSON.stringify(after.last)})`);
+  assert.ok([10, 0].includes(after.last.v) && after.pts[turn] === after.last.v && after.wheels.high[after.last.seg] === after.last.v, `the high wheel's points, from the segment it stopped on (${JSON.stringify(after.last)})`);
   await boss.write('config/wheels', null);
   assert.equal((await g.O.call('resign', { game: g.id })).ok, true);
   assert.match(await script('WheelBoss', 'revoke'), /no longer an admin/);
