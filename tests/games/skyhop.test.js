@@ -30,15 +30,16 @@ test('sky hop: every course is a chain of platforms each within one bounce of th
       const gap = q.y - y;
       assert.ok(gap > 0 && gap <= E.HOP.gapK * peak + 1e-9, `a gap of ${gap.toFixed(2)} m is within a bounce (${peak.toFixed(2)})`);
       const air = (cfg.bounce + Math.sqrt(cfg.bounce * cfg.bounce - 2 * E.HOP.g * gap)) / E.HOP.g;
-      assert.ok(Math.abs(E.fdiff(q.x, x, E.HOP.w)) <= E.HOP.vx * air + 1e-6, 'and within reach across, in the time in the air');
+      assert.ok(Math.abs(q.x - x) <= E.HOP.vx * air + 1e-6, 'and within reach across, in the time in the air');
+      assert.ok(q.x - q.w / 2 - q.amp >= -1e-9 && q.x + q.w / 2 + q.amp <= E.HOP.w + 1e-9, 'wholly inside the walls, its swing too');
       y = q.y; x = q.x;
     }
-    for (const h of c.haz) for (const q of chain) assert.ok(!(q.y > h.y - peak - 0.6 && q.y < h.y + 1.2 && Math.abs(E.fdiff(q.x, h.x, E.HOP.w)) < q.w / 2 + q.amp + 1.2), 'no hazard over a platform on the way up');
+    for (const h of c.haz) for (const q of chain) assert.ok(!(q.y > h.y - peak - 0.6 && q.y < h.y + 1.2 && Math.abs(q.x - h.x) < q.w / 2 + q.amp + 1.2), 'no hazard over a platform on the way up');
   }
 });
 test('sky hop: an attempt resumes at the saved height on a safe start (2 seconds of grace, nothing hazardous in reach), and keeps the best height', () => {
   const cfg = E.hopConfig(), peak = E.hopPeak(cfg);
-  for (const h0 of [0, 55.5, 133, 299.9, 471]) {
+  for (const h0 of [0, 31.5, 77, 160.9, 262]) {
     const mini = hopMini(77, h0), sim = E.hopStart(mini, 'X');
     assert.equal(sim.y, h0); assert.equal(sim.top, h0);
     assert.ok(sim.haz.every(h => h.y > h0 + peak + 0.5), 'no hazard within the first bounce');
@@ -55,7 +56,7 @@ test('sky hop: an attempt resumes at the saved height on a safe start (2 seconds
 });
 test('sky hop: difficulty rises with height (wider gaps, narrower, moving and breaking platforms, hazards higher up)', () => {
   const cfg = E.hopConfig(), lo = [], hi = [];
-  for (let s = 0; s < 20; s++) for (const q of E.hopCourse(cfg, 'd' + s).plats) (q.y < 100 ? lo : q.y > 400 ? hi : []).push(q);
+  for (let s = 0; s < 20; s++) for (const q of E.hopCourse(cfg, 'd' + s).plats) (q.y < 60 ? lo : q.y > 220 ? hi : []).push(q);
   const share = (a, k) => a.filter(q => q.k === k).length / a.length;
   assert.ok(avg(hi.map(q => q.w)) < avg(lo.map(q => q.w)), 'narrower higher up');
   assert.ok(share(hi, 'm') > share(lo, 'm') && share(hi, 'b') > share(lo, 'b'), 'more moving and breaking platforms higher up');
@@ -65,8 +66,8 @@ test('sky hop: difficulty rises with height (wider gaps, narrower, moving and br
 });
 test('sky hop: a breaking platform takes one bounce; a burr ends the attempt; falling off the bottom ends it; the top ends it', () => {
   const ends = {};
-  for (let s = 0; s < 40; s++) { const r = E.hopAi(hopMini(300 + s, 150 + (s % 5) * 60), 'X', E.makeRng('e' + s)); ends[r.move.end] = (ends[r.move.end] || 0) + 1; if (r.move.end === 'top') assert.equal(r.move.h, E.hopConfig().target); }
+  for (let s = 0; s < 40; s++) { const r = E.hopAi(hopMini(300 + s, 80 + (s % 5) * 35), 'X', E.makeRng('e' + s)); ends[r.move.end] = (ends[r.move.end] || 0) + 1; if (r.move.end === 'top') assert.equal(r.move.h, E.hopConfig().target); }
   assert.ok(ends.fall > 0 && ends.hazard > 0, `falls and hazards both happen (${JSON.stringify(ends)})`);
-  const sim = E.hopStart(hopMini(9, 200), 'X');
+  const sim = E.hopStart(hopMini(9, 110), 'X');
   for (let n = 0; n < 60 / E.FING.step && !sim.end; n++) { E.hopStep(sim, null); if (sim.last === 'break') assert.equal(sim.gone[sim.on], 1, 'a broken platform is gone'); }
 });

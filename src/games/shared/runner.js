@@ -21,7 +21,7 @@ export const RUN_TYPES = ['dash', 'lane', 'flap', 'chopper'];
 export const RUN_DEFAULTS = {
   dash: { target: 1000, v0: 8, ramp: 1.5, gapMin: 26, gapMax: 48, mix: { rock: 30, crate: 20, spike: 20, flyer: 20, pair: 10 } },   // mix: the obstacles' weights
   lane: { target: 1000, v0: 27, ramp: 2.7, gapMin: 10, gapMax: 18, mix: { one: 50, two: 50 } },                                          // rows with one car or two (half as fast again; rows closer: about a third more cars a course than at first; laneRow keeps a way through, a lane over at most)
-  flap: { target: 600, v0: 6, ramp: 1.0, gapMin: 9, gapMax: 13, mix: { wide: 20, mid: 45, narrow: 35 } },                                // posts every 9-13 m; the size of each one's gap (tighter, more of them narrow, the speed climbing faster; a shorter course: some 50 posts)
+  flap: { target: 450, v0: 6, ramp: 1.5, gapMin: 9, gapMax: 12, mix: { wide: 10, mid: 40, narrow: 50 } },                                // posts every 9-12 m; the size of each one's gap (half of them narrow; the speed climbing fast: 6 to about 13 m/s, a course of some 50 s and 40 posts)
   chopper: { target: 1000, v0: 14.4, ramp: 1.6, gapMin: 22, gapMax: 40, mix: { none: 10, small: 50, big: 40 }, cave0: 5.6, cave1: 3.4 },                       // a block in the cave every 22-40 m (or none there); its size (in Chopper's metres: CHOP.k); the cave's height at the start and the finish
 };
 export const RUN_LIMITS = { target: [200, 5000], v0: [3, 30], ramp: [0, 10], gapMin: [8, 200], gapMax: [10, 400] };

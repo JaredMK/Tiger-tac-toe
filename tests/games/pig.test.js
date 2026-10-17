@@ -45,6 +45,9 @@ function turn(st, i, m, rng) {
 const mini = (type, rng) => L.newMini(type, rng || lcg(11));
 
 // ==================================== Risky Rolls ====================================
+// The die and the target are settings (config/pig): most tests below play the original d6 to 21; the
+// defaults (a d8 to 51) have tests of their own at the end.
+E.setPigConfig({ sides: 6, target: 21 });
 const die = (...faces) => seq(...faces.map(n => pick(n - 1, 6)));   // rolls come out in this order
 
 test('pig: a roll adds a new number to the pot and keeps the turn; the bank is untouched until Bank', () => {
@@ -208,4 +211,63 @@ test('Risky Rolls: a bank that wins the square is still a bank (the phones show 
   const r = L.playMove(st, 0, 'bank', lcg(1));
   assert.equal(r.ok, true); assert.equal(r.flash.kind, 'claim'); assert.equal(r.flash.note, 'bank');
   assert.equal(st.squares[0].mini.last.roll, 3, 'the last number rolled stays the last roll');
+});
+
+test('Risky Rolls by default: an 8-sided die and 51 to win, copied into the square as dealt', () => {
+  E.setPigConfig(null);
+  try {
+    const m = mini('pig');
+    assert.equal(m.sides, 8); assert.equal(m.target, 51);
+    assert.deepEqual([E.PIG_DEFAULTS.sides, E.PIG_DEFAULTS.target], [8, 51]);
+    assert.equal(E.publicMini(m).sides, 8); assert.equal(E.publicMini(m).target, 51);
+    const d8 = (...faces) => seq(...faces.map(n => pick(n - 1, 8)));
+    assert.equal(L.applyMove(m, 'X', 'roll', d8(8)).again, true);
+    assert.deepEqual(m.turn.rolls, [8], 'an 8 comes up on a d8');
+    for (const n of [7, 1, 2, 3, 4, 5]) assert.equal(L.applyMove(m, 'X', 'roll', d8(n)).again, true);
+    assert.equal(m.turn.rolls.length, 7);
+    assert.equal(L.applyMove(m, 'X', 'roll', d8(6)).again, true, 'all eight numbers once: 8 rolls');
+    assert.equal(L.applyMove(m, 'X', 'roll', d8(6)).reason, 'maxrolls', 'a ninth roll could only bust');
+    assert.equal(L.applyMove(m, 'X', 'bank').outcome, 'continue', '36 banked');
+    assert.equal(L.applyMove(m, 'X', 'roll', d8(3)).again, true);
+    assert.equal(L.applyMove(m, 'X', 'roll', d8(3)).note, 'bust', 'a repeat still busts');
+    m.bank.O = 45;
+    L.applyMove(m, 'O', 'roll', d8(6));
+    assert.equal(L.applyMove(m, 'O', 'bank').outcome, 'win', '45 + 6 = 51 wins');
+    // an older square (no die, no target recorded) plays on as it was: a d6 to 21
+    const old = { type: 'pig', bank: { X: 20, O: 0 }, turn: null, last: null };
+    assert.equal(E.pigSides(old), 6); assert.equal(E.pigGoal(old), 21);
+    L.applyMove(old, 'X', 'roll', die(1));
+    assert.equal(L.applyMove(old, 'X', 'bank').outcome, 'win');
+    // the settings, checked
+    E.setPigConfig({ sides: 6, target: 30 }); assert.deepEqual([mini('pig').sides, mini('pig').target], [6, 30]);
+    E.setPigConfig({ sides: 7, target: 5 }); assert.deepEqual([mini('pig').sides, mini('pig').target], [8, 51], 'out of range: the defaults');
+  } finally { E.setPigConfig({ sides: 6, target: 21 }); }
+});
+
+test('Risky Rolls with a d8: the computer banks around 12 (its best pot) and needs about 6 turns to 51', () => {
+  E.setPigConfig(null);
+  try {
+    const rng = lcg(5);
+    let turns = 0, games = 0;
+    for (let g = 0; g < 200; g++) {
+      const m = mini('pig', rng);
+      let n = 0;
+      while (m.bank.X < 51 && n < 60) {
+        n++;
+        for (let k = 0; k < 12; k++) {
+          const b = E.localBest(E.publicMini(m), 'X', rng, E.STYLE0, {});
+          const r = L.applyMove(m, 'X', b.move, rng);
+          assert.equal(r.ok, true);
+          if (!r.again) break;
+        }
+      }
+      turns += n; games++;
+    }
+    const avg = turns / games;
+    assert.ok(avg > 5 && avg < 7.5, 'turns to 51: ' + avg.toFixed(2));
+    const pm = { type: 'pig', bank: { X: 0, O: 0 }, turn: { by: 'X', rolls: [5, 7], pot: 12 }, sides: 8, target: 51 };
+    assert.equal(E.localBest(pm, 'X', rng, E.STYLE0, {}).move, 'bank', 'a pot of 12 is banked');
+    pm.turn = { by: 'X', rolls: [2, 3], pot: 5 };
+    assert.equal(E.localBest(pm, 'X', rng, E.STYLE0, {}).move, 'roll');
+  } finally { E.setPigConfig({ sides: 6, target: 21 }); }
 });

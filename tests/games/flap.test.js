@@ -17,14 +17,14 @@ function flyFlap(mini, lag) {
   return sim;
 }
 
-test('flap: posts every 9-13 m, each gap of the mix\'s size, its middle within reach of the last one\'s and clear of the ground and sky', () => {
+test('flap: posts every 9-12 m, each gap of the mix\'s size, its middle within reach of the last one\'s and clear of the ground and sky', () => {
   for (let s = 1; s <= 60; s++) {
     const mini = square('flap', s * 101), course = E.runCourse(mini, 'X');
-    assert.ok(course.length > 40 && course.length < 70, `${course.length} posts (600 m)`);
+    assert.ok(course.length > 30 && course.length < 55, `${course.length} posts (450 m)`);
     course.forEach((o, k) => {
       assert.ok(Object.values(E.FLAP.gaps).includes(o.gh));
       assert.ok(o.gy - o.gh / 2 >= E.FLAP.margin - 1e-6 && o.gy + o.gh / 2 <= E.FLAP.h - E.FLAP.margin + 1e-6, 'clear of the ground and the sky');
-      if (k) { assert.ok(o.at - course[k - 1].at >= 9 - 0.01 && o.at - course[k - 1].at <= 13 + 0.01, 'spacing'); assert.ok(Math.abs(o.gy - course[k - 1].gy) <= E.FLAP.shift + 0.01, 'within reach'); }
+      if (k) { assert.ok(o.at - course[k - 1].at >= 9 - 0.01 && o.at - course[k - 1].at <= 12 + 0.01, 'spacing'); assert.ok(Math.abs(o.gy - course[k - 1].gy) <= E.FLAP.shift + 0.01, 'within reach'); }
     });
     assert.deepEqual(E.runCourse(mini, 'X'), course, 'the same course every time (seeded)');
   }

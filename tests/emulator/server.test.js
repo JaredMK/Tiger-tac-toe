@@ -239,7 +239,7 @@ test('a Find Match game: all mini-games, one minute a turn, hidden values hidden
     const m = sq.mini;
     assert.ok(!('word' in m) || m.type === 'hangman', 'no Wordle word');
     if (m.type === 'hangman') assert.match(m.word, /^_+$/, 'only the Hangman pattern');
-    for (const k of ['target', 'hidden', 'ship', 'treasure', 'code']) assert.ok(!(k in m), `no ${k} in ${m.type}`);
+    for (const k of ['target', 'hidden', 'ship', 'treasure', 'code']) assert.ok(!(k in m) || (k === 'target' && m.type === 'pig'), `no ${k} in ${m.type}`);   // (Risky Rolls' target is the score to bank: public)
     if (m.type === 'memory') assert.ok(m.cards.every(c => c === null), 'no Memory card');
   }
   const sec = JSON.parse(await get(`games/${g.id}/sec`));

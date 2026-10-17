@@ -1,6 +1,6 @@
 // Sky Hop: the screen, the miniature, the move's words and sounds, and the inputs.
 import { clamp01 } from '../../core/util.js';
-import { FING, HOP, fdiff } from '../shared/finger.js';
+import { FING, HOP } from '../shared/finger.js';
 import { hopCam, hopPx } from './rules.js';
 import { state } from '../../ui/app.js';
 import { hash01 } from '../../ui/art.js';
@@ -45,7 +45,7 @@ export function drawHop(c, W, H, v, now) {
     c.font = `400 ${Math.max(14, Math.round(k * 0.55))}px 'Luckiest Guy', 'Arial Black', sans-serif`; c.textAlign = 'center'; c.fillStyle = P.paper; c.strokeStyle = P.ink; c.lineWidth = 3;
     c.strokeText('TOP', W / 2, ty - k * 0.45); c.fillText('TOP', W / 2, ty - k * 0.45);
   }
-  const each = (x, fn) => { for (const dx of [-Wm, 0, Wm]) { const X = ox + (x + dx) * k; if (X > -2.5 * k && X < W + 2.5 * k) fn(X); } };   // the sky wraps: a copy either side
+  const each = (x, fn) => fn(ox + x * k);                         // (the sides are walls: one of everything)
   if (sim.t <= FING.grace) {                                       // the start ledge: across the whole sky, gone once the grace is up
     const y = Y(sim.h0), a = v.still ? 1 : Math.min(1, (FING.grace - sim.t) / 0.5);
     c.save(); c.globalAlpha = a;
@@ -66,7 +66,15 @@ export function drawHop(c, W, H, v, now) {
   const hy = Y(sim.y + HOP.bodyY), R = Math.max(9, HOP.body * k * 1.2);
   each(sim.x, X => hopHopper(c, X, hy, R, sim, v, now, P));
   if (v.end === 'top' && v.endAt) { const u = Math.min(1, (now - v.endAt) / 600); c.strokeStyle = P.O; c.lineWidth = 3; for (let r = 0; r < 10; r++) { const a = r * Math.PI / 5; c.beginPath(); c.moveTo(ox + sim.x * k + Math.cos(a) * R * (1.2 + u), hy + Math.sin(a) * R * (1.2 + u)); c.lineTo(ox + sim.x * k + Math.cos(a) * R * (1.6 + 2 * u), hy + Math.sin(a) * R * (1.6 + 2 * u)); c.stroke(); } }
-  if (ox > 1) { c.fillStyle = 'rgba(255,255,255,.42)'; c.fillRect(0, 0, ox, H); c.fillRect(W - ox, 0, ox, H); }   // beyond the sky's edges: where it wraps round
+  const wall = Math.max(5, k * 0.2), wl = ox, wr = ox + Wm * k;      // the walls: a stone edge just inside either side of the sky, anything beyond shaded
+  c.fillStyle = 'rgba(40,52,70,.30)'; if (wl > 0) c.fillRect(0, 0, wl, H); if (wr < W) c.fillRect(wr, 0, W - wr, H);
+  const off = ((cam * k) % (k * 1.2) + k * 1.2) % (k * 1.2);
+  for (const [x0, s] of [[wl, 1], [wr - wall, -1]]) {
+    c.fillStyle = '#9aa3ad'; c.fillRect(x0, 0, wall, H);
+    c.fillStyle = P.ink; c.fillRect(s > 0 ? x0 + wall - 1 : x0 - 1, 0, 2, H);   // its face, towards the sky
+    c.fillStyle = 'rgba(22,18,16,.28)';
+    for (let y = H + off; y > -k; y -= k * 1.2) c.fillRect(x0, y, wall, 2);   // the stones' joints, climbing with the camera
+  }
 }
 function hopPlat(c, X, y, w, th, q, gone, P) {
   c.save();
@@ -100,7 +108,7 @@ function hopBurr(c, X, y, r, now, P) {                           // a burr: a sp
 function hopHopper(c, X, y, R, sim, v, now, P) {
   const col = v.p === 'O' ? P.O : P.X, hit = v.end === 'hazard';
   const s = Math.min(0.2, (Math.abs(sim.vy) / sim.cfg.bounce) * 0.16), sy = 1 + s, sx = 1 - s * 0.6;
-  const look = v.tx != null ? Math.max(-1, Math.min(1, fdiff(v.tx, sim.x, HOP.w) / 1.5)) : 0;
+  const look = v.tx != null ? Math.max(-1, Math.min(1, (v.tx - sim.x) / 1.5)) : 0;
   c.save(); c.translate(X, y);
   if (hit && v.endAt) { const u = Math.min(1, (now - v.endAt) / 700); c.translate(0, u * u * R * 4); c.rotate(u * 5); }
   c.scale(sx, sy);

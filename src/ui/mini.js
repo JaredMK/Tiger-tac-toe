@@ -3,6 +3,7 @@ import { playerName } from '../core/match.js';
 import { ATT_TYPES } from '../games/shared/attention.js';
 import { FINGER_TYPES } from '../games/shared/finger.js';
 import { BS } from '../games/bs/rules.js';
+import { pigFace } from '../games/pig/view.js';
 import { huntSize } from '../games/hunt/rules.js';
 import { INFO, viewOf } from '../games/index.js';
 import { soundBtn } from '../audio/sound.js';
@@ -104,7 +105,7 @@ function renderFlash(f) {
     return `${open}<div class="card claimc" role="status" aria-label="${esc(playerName(state, w))} wins ${name}"><div class="big-g bang ${w}">${toonT(w)}</div></div></div>`;   // the winner's character: no words
   }
   if (f.type === 'pig' && f.note === 'bust') {
-    return `${open}<div class="card"><div class="big-g">${dieFace(f.roll)}</div><h2>Bust!</h2><p>${who} rolled ${f.roll} again · ${f.pot} point${f.pot === 1 ? '' : 's'} lost</p></div></div>`;
+    return `${open}<div class="card"><div class="big-g">${f.sides === 8 ? pigFace(f.roll, 8) : dieFace(f.roll)}</div><h2>Bust!</h2><p>${who} rolled ${f.roll} again · ${f.pot} point${f.pot === 1 ? '' : 's'} lost</p></div></div>`;
   }
   if ((['bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads', 'flap', 'chopper', 'patterns', 'wheels', 'sniff', 'headcount', 'flash', 'snapshot', 'skyhop', 'scoop', 'pinball'].includes(f.type)) && (f.kind === 'again' || f.kind === 'move')) {   // the table shows it all: the cards, the tick or cross, the number and the hits
     return open.replace('"flash late"', '"flash lite late"') + '</div>';

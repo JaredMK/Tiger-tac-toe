@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="robots" content="noindex, nofollow">
 <meta name="color-scheme" content="light">
 <title>Tic Tac Chaos Stats</title>
@@ -18,7 +18,8 @@
   color-scheme: light;
 }
 * { box-sizing: border-box; }
-html, body { margin: 0; }
+html, body { margin: 0; touch-action: manipulation; }   /* no zooming: no double-tap zoom here either */
+input, select, textarea { font-size: max(16px, 1em) !important; }   /* (iPhone zooms into a field under 16px when it is focused: this wins over the forms' own smaller type) */
 body { background: var(--bg); color: var(--ink); font: 17px/1.35 'Patrick Hand', system-ui, sans-serif; }
 h1, h2, .lg { font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-weight: 400; letter-spacing: .02em; }
 h1 { margin: 0; font-size: 28px; line-height: 1; padding-top: 4px; }
@@ -111,7 +112,7 @@ tr.dev { cursor: pointer; } tr.dev:hover td, tr.dev.open td { background: var(--
     .rform .rf input { width: 100%; padding: 4px 6px; font: inherit; border: 1px solid #bbb; border-radius: 6px; }
     .rform .btn { grid-column: 1 / -1; justify-self: start; margin-top: 4px; }
     .wgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; } .wgrid .rform { grid-template-columns: 1fr; margin-top: 0; }   /* Risk Wheels' three wheels */
-.atttab { border-collapse: collapse; margin: 6px 0 10px; } .atttab th, .atttab td { padding: 3px 6px; text-align: left; font-size: 13px; } .atttab input { width: 76px; }
+.atttab { border-collapse: collapse; margin: 6px 0 10px; } .atttab th, .atttab td { padding: 3px 6px; text-align: left; font-size: 13px; } .atttab input { width: 68px; }
 </style>
 </head>
 <body>
@@ -273,6 +274,8 @@ function render() {
     ${runnersCard()}
     ${bullsCard()}
     ${plinkoCard()}
+    ${pigCard()}
+    ${roadsCard()}
     ${oddCard()}
     ${ATT_CARDS.map(attCard).join('')}
     ${FING_CARDS.map(fingCard).join('')}
@@ -416,7 +419,7 @@ async function saveRelease(el) {
 // under way keeps the values it was dealt with). The tracker shows what the squares played so far say:
 // how many runs a finish takes, how far a run goes, and where the crashes cluster.
 const RUN_TYPES = ['dash', 'lane', 'flap', 'chopper'];
-const RUN_DEFAULTS = { dash: { target: 1000, v0: 8, ramp: 1.5, gapMin: 26, gapMax: 48, mix: { rock: 30, crate: 20, spike: 20, flyer: 20, pair: 10 } }, lane: { target: 1000, v0: 27, ramp: 2.7, gapMin: 10, gapMax: 18, mix: { one: 50, two: 50 } }, flap: { target: 600, v0: 6, ramp: 1.0, gapMin: 9, gapMax: 13, mix: { wide: 20, mid: 45, narrow: 35 } }, chopper: { target: 1000, v0: 14.4, ramp: 1.6, gapMin: 22, gapMax: 40, mix: { none: 10, small: 50, big: 40 }, cave0: 5.6, cave1: 3.4 } };   // (as the game's meta.js has them)
+const RUN_DEFAULTS = { dash: { target: 1000, v0: 8, ramp: 1.5, gapMin: 26, gapMax: 48, mix: { rock: 30, crate: 20, spike: 20, flyer: 20, pair: 10 } }, lane: { target: 1000, v0: 27, ramp: 2.7, gapMin: 10, gapMax: 18, mix: { one: 50, two: 50 } }, flap: { target: 450, v0: 6, ramp: 1.5, gapMin: 9, gapMax: 12, mix: { wide: 10, mid: 40, narrow: 50 } }, chopper: { target: 1000, v0: 14.4, ramp: 1.6, gapMin: 22, gapMax: 40, mix: { none: 10, small: 50, big: 40 }, cave0: 5.6, cave1: 3.4 } };   // (as the game's meta.js has them)
 const RUN_FIELDS = [['target', 'Target distance (m)', 200, 5000], ['v0', 'Starting speed (m/s)', 3, 30], ['ramp', 'Speed ramp (m/s more per 100 m)', 0, 10], ['gapMin', 'Obstacle spacing, min (m)', 8, 200], ['gapMax', 'Obstacle spacing, max (m)', 10, 400]];
 const RUN_MIX = { dash: [['rock', 'Rocks'], ['crate', 'Crates'], ['spike', 'Spikes'], ['flyer', 'Low flyers'], ['pair', 'Pairs']], lane: [['one', 'Rows with one car'], ['two', 'Rows with two cars']], flap: [['wide', 'Wide gaps'], ['mid', 'Middle gaps'], ['narrow', 'Narrow gaps']], chopper: [['none', 'No block'], ['small', 'Small blocks'], ['big', 'Big blocks']] };
 const RUN_EXTRA = { chopper: [['cave0', 'Cave height at the start (sky is 10)', 3, 9.5], ['cave1', 'Cave height at the finish (sky is 10)', 2.5, 9.5]] };   // a runner's own settings
@@ -514,6 +517,37 @@ async function savePlinkoCfg(btn) {
   try { await fb.dbM.set(fb.dbM.ref(fb.db, 'config/plinko'), { target: v }); ctl.plinkoCfg = { target: v }; } catch (e) { alert('Could not save: ' + (e && e.message)); }
   render();
 }
+// ---------- Risky Rolls' die and target (config/pig, read by the game and the server) ----------
+const PIG_DEFAULTS = { sides: 8, target: 51 };   // (as the game's meta.js has them)
+function pigCard() {
+  const raw = ctl.pigCfg || {}, sides = raw.sides === 6 || raw.sides === 8 ? raw.sides : PIG_DEFAULTS.sides, t = raw.target != null && Number.isFinite(Number(raw.target)) ? Number(raw.target) : PIG_DEFAULTS.target;
+  return `<div class="card ctl" id="pigCard"><h2>Risky Rolls tuning</h2>
+    <p class="note">Risky Rolls: roll as often as you dare, then bank; a number already rolled this turn loses the turn's points. The die (6 or 8 sides) and the score to bank to win. Default: 8 sides, 51. Applies to squares dealt from then on.</p>
+    <div class="rform"><label class="rf"><span>Die</span><select data-pigcfg="sides">${[6, 8].map(n => `<option value="${n}"${n === sides ? ' selected' : ''}>${n} sides</option>`).join('')}</select></label><label class="rf"><span>Target (points to win)</span><input type="number" step="1" min="10" max="200" data-pigcfg="target" value="${t}"></label><button class="btn" data-pigsave="1">Save Risky Rolls</button></div></div>`;
+}
+async function savePigCfg(btn) {
+  const sides = Number(app.querySelector('[data-pigcfg="sides"]').value), t = Number(app.querySelector('[data-pigcfg="target"]').value);
+  if (sides !== 6 && sides !== 8) { alert('Die: 6 or 8 sides'); return; }
+  if (!Number.isInteger(t) || t < 10 || t > 200) { alert('Target: a whole number from 10 to 200'); return; }
+  btn.disabled = true;
+  try { await fb.dbM.set(fb.dbM.ref(fb.db, 'config/pig'), { sides, target: t }); ctl.pigCfg = { sides, target: t }; } catch (e) { alert('Could not save: ' + (e && e.message)); }
+  render();
+}
+// ---------- Roads' honeycomb (config/roads, read by the game and the server) ----------
+const ROADS_DEFAULTS = { layout: 'hex7' };   // (as the game's meta.js has it)
+function roadsCard() {
+  const raw = ctl.roadsCfg || {}, lay = raw.layout === 'hex4' || raw.layout === 'hex7' ? raw.layout : ROADS_DEFAULTS.layout;
+  return `<div class="card ctl" id="roadsCard"><h2>Roads tuning</h2>
+    <p class="note">Roads: claim an edge, then a random edge is blocked; the longest road wins. Every move uses two edges, so the honeycomb sets the length: 7 hexagons (30 edges) is about 7 to 8 moves each; the smaller 4 (19 edges) about 5 each. Default 7. Applies to squares dealt from then on.</p>
+    <div class="rform"><label class="rf"><span>Honeycomb</span><select data-roadscfg="layout">${[['hex7', '7 hexagons (30 edges)'], ['hex4', '4 hexagons (19 edges)']].map(([v, l]) => `<option value="${v}"${v === lay ? ' selected' : ''}>${l}</option>`).join('')}</select></label><button class="btn" data-roadssave="1">Save Roads</button></div></div>`;
+}
+async function saveRoadsCfg(btn) {
+  const layout = app.querySelector('[data-roadscfg="layout"]').value;
+  if (layout !== 'hex7' && layout !== 'hex4') { alert('Honeycomb: 7 or 4 hexagons'); return; }
+  btn.disabled = true;
+  try { await fb.dbM.set(fb.dbM.ref(fb.db, 'config/roads'), { layout }); ctl.roadsCfg = { layout }; } catch (e) { alert('Could not save: ' + (e && e.message)); }
+  render();
+}
 // ---------- the attention games' difficulty (config/headcount, config/flash, config/snapshot, read by the game and the server) ----------
 const HEAD_DEFAULTS = { n1lo: 14, n1hi: 20, d1lo: 4, d1hi: 7, cross1: 1800, gap1: 430, n2lo: 18, n2hi: 25, d2lo: 7, d2hi: 11, cross2: 1800, gap2: 330, n3lo: 22, n3hi: 30, d3lo: 8, d3hi: 12, cross3: 2000, gap3: 300 };   // (as the game's meta.js has them)
 const FLASH_DEFAULTS = { n1: 6, n2: 7, n3: 8, ms1: 500, ms2: 500, ms3: 500 };
@@ -532,7 +566,7 @@ function attCard(c) {
   const rows = c.rows.map(([k, label, lo, hi, step]) => `<tr><th>${label}</th>${[1, 2, 3].map(L => `<td>${inp(k.replace('{L}', L), lo, hi, step)}</td>`).join('')}</tr>`).join('');
   return `<div class="card ctl" id="${c.id}Card"><h2>${c.title}</h2>
     <p class="note">${c.note} Aimed at a typical player getting about 85% of rounds right at level 1, 65% at level 2 and 45% at level 3 (the computer gets them right that often). Applies to rounds dealt from then on.</p>
-    <table class="atttab"><tr><th></th><th>Level 1</th><th>Level 2</th><th>Level 3</th></tr>${rows}</table>
+    <div class="tbl"><table class="atttab"><tr><th></th><th>Level 1</th><th>Level 2</th><th>Level 3</th></tr>${rows}</table></div>
     <div class="rform">${c.extra.map(([k, label, lo, hi, step]) => `<label class="rf"><span>${label}</span>${inp(k, lo, hi, step)}</label>`).join('')}<button class="btn" data-attsave="${c.id}">Save ${c.title.replace(' tuning', '')}</button></div></div>`;
 }
 async function saveAttCfg(btn) {
@@ -547,11 +581,11 @@ async function saveAttCfg(btn) {
   render();
 }
 // ---------- the finger games' difficulty (config/skyhop, config/scoop, config/pinball, read by the game and the server) ----------
-const HOP_DEFAULTS = { target: 500, bounce: 22, gap0: 1.8, gap1: 4.5, wide0: 2.6, wide1: 1.4, moveAt: 60, move: 55, moveV: 1.8, breakAt: 120, brk: 45, hazAt: 90, hazGap: 45, fill0: 1.2, fill1: 0.4 };   // (as the game's meta.js has them)
+const HOP_DEFAULTS = { target: 300, bounce: 22, gap0: 3, gap1: 4.5, wide0: 1.7, wide1: 1.5, moveAt: 20, move: 50, moveV: 1.8, breakAt: 8, brk0: 25, brk: 40, hazAt: 30, hazGap: 40, fill0: 0.4, fill1: 0.25 };   // (as the game's meta.js has them)
 const SCOOP_DEFAULTS = { target: 25, v0: 5, v1: 8.5, gap0: 0.9, gap1: 0.6, haz0: 18, haz1: 38, sway: 1, cone: 12 };
 const PINB_DEFAULTS = { size: 1.7, save: 3, maxBall: 120, g: 1, bump: 1, spin: 1 };
 const FING_CARDS = [
-  { id: 'skyhop', title: 'Sky Hop tuning', defaults: HOP_DEFAULTS, fields: [['target', 'Target height (m)', 100, 3000, 10], ['bounce', 'Bounce speed (m/s; 22 rises 5.5 m)', 12, 30, 0.1], ['gap0', 'Gap between platforms at the bottom (m)', 0.6, 6, 0.05], ['gap1', 'Gap at the top (m)', 0.6, 6, 0.05], ['wide0', 'Platform width at the bottom (m; the sky is 9 wide)', 0.8, 6, 0.05], ['wide1', 'Platform width at the top (m)', 0.8, 6, 0.05], ['fill0', 'Extra platforms per gap at the bottom', 0, 4, 0.05], ['fill1', 'Extra platforms per gap at the top', 0, 4, 0.05], ['moveAt', 'Moving platforms from (m)', 0, 3000, 1], ['move', 'Moving platforms by the top (%)', 0, 90, 1], ['moveV', 'Moving platform speed (m/s)', 0.2, 4, 0.05], ['breakAt', 'Breaking platforms from (m)', 0, 3000, 1], ['brk', 'Breaking platforms by the top (%)', 0, 90, 1], ['hazAt', 'Burrs from (m)', 0, 3000, 1], ['hazGap', 'About one burr every (m)', 5, 500, 1]],
+  { id: 'skyhop', title: 'Sky Hop tuning', defaults: HOP_DEFAULTS, fields: [['target', 'Target height (m)', 50, 3000, 10], ['bounce', 'Bounce speed (m/s; 22 rises 5.5 m)', 12, 30, 0.1], ['gap0', 'Gap between platforms at the bottom (m)', 0.6, 6, 0.05], ['gap1', 'Gap at the top (m)', 0.6, 6, 0.05], ['wide0', 'Platform width at the bottom (m; the sky is 9 wide)', 0.8, 6, 0.05], ['wide1', 'Platform width at the top (m)', 0.8, 6, 0.05], ['fill0', 'Extra platforms per gap at the bottom', 0, 4, 0.05], ['fill1', 'Extra platforms per gap at the top', 0, 4, 0.05], ['moveAt', 'Moving platforms from (m)', 0, 3000, 1], ['move', 'Moving platforms by the top (%)', 0, 90, 1], ['moveV', 'Moving platform speed (m/s)', 0.2, 4, 0.05], ['breakAt', 'Breaking platforms from (m)', 0, 3000, 1], ['brk0', 'Breaking platforms at that height (%)', 0, 90, 1], ['brk', 'Breaking platforms by the top (%)', 0, 90, 1], ['hazAt', 'Burrs from (m)', 0, 3000, 1], ['hazGap', 'About one burr every (m)', 5, 500, 1]],
     note: 'The hopper bounces up off platforms; a drag steers it and the sky wraps at the sides. Falling off the bottom ends the attempt and the highest point is kept. Higher up: wider gaps, narrower platforms, more that move or break after one bounce, and burrs to avoid (never across the way up). Every gap can be made: the course always has a chain of platforms within a bounce. Default 500 m; tuned so an average player needs about 3 to 6 attempts (the computer: about 4).' },
   { id: 'scoop', title: 'Scoop Stack tuning', defaults: SCOOP_DEFAULTS, fields: [['target', 'Target (scoops)', 5, 200, 1], ['v0', 'Falling speed at the start (units/s; the screen is 10 wide)', 1, 15, 0.1], ['v1', 'Falling speed at the target', 1, 15, 0.1], ['gap0', 'Time between items at the start (s)', 0.3, 4, 0.05], ['gap1', 'Time between items at the target (s)', 0.3, 4, 0.05], ['haz0', 'Hazards at the start (% of items)', 0, 70, 1], ['haz1', 'Hazards at the target (%)', 0, 70, 1], ['cone', 'Cone speed (units/s)', 5, 40, 0.5], ['sway', 'Sway of the stack (1 = normal, 0 = none)', 0, 3, 0.05]],
     note: 'Scoops and hazards (pebbles, burnt scoops) fall to the top of the stack; the cone follows the finger. A hazard on the stack, or 3 missed scoops, ends the attempt; the stack is kept. Speed and hazards rise with the stack. Every attempt is checked to be catchable at 72% of the cone speed. Default 25 scoops; tuned so an average player needs about 3 to 6 attempts (the computer: about 4.5).' },
@@ -760,9 +794,9 @@ async function loadPeople() {
 }
 async function loadCtl() {
   const g = p => fb.dbM.get(fb.dbM.ref(fb.db, p)).then(s => s.val()).catch(() => null);
-  const [config, secretsSet, bots, botStats, alertStats, features, log, releases, runCfg, bullsCfg, wheelsCfg, plinkoCfg, oddCfg, headCfg, flashCfg, snapCfg, hopCfg, scoopCfg, pinCfg] = await Promise.all([g('admin/config'), g('admin/secretsSet'), g('bots'), g('botStats'), g('alertStats'), g('features'),
-    fb.dbM.get(fb.dbM.query(fb.dbM.ref(fb.db, 'alertLog'), fb.dbM.orderByChild('at'), fb.dbM.limitToLast(8))).then(s => s.val()).catch(() => null), g('releases'), g('config/run'), g('config/bulls'), g('config/wheels'), g('config/plinko'), g('config/oddone'), g('config/headcount'), g('config/flash'), g('config/snapshot'), g('config/skyhop'), g('config/scoop'), g('config/pinball')]);
-  ctl = { config: config || {}, secretsSet: secretsSet || {}, bots: bots || {}, botStats: botStats || {}, alertStats: alertStats || {}, features: features || {}, releases: releases || {}, runCfg: runCfg || {}, bullsCfg: bullsCfg || {}, wheelsCfg: wheelsCfg || {}, plinkoCfg: plinkoCfg || {}, oddCfg: oddCfg || {}, attCfg: { headcount: headCfg || {}, flash: flashCfg || {}, snapshot: snapCfg || {} }, fingCfg: { skyhop: hopCfg || {}, scoop: scoopCfg || {}, pinball: pinCfg || {} },
+  const [config, secretsSet, bots, botStats, alertStats, features, log, releases, runCfg, bullsCfg, wheelsCfg, plinkoCfg, oddCfg, headCfg, flashCfg, snapCfg, hopCfg, scoopCfg, pinCfg, pigCfg, roadsCfg] = await Promise.all([g('admin/config'), g('admin/secretsSet'), g('bots'), g('botStats'), g('alertStats'), g('features'),
+    fb.dbM.get(fb.dbM.query(fb.dbM.ref(fb.db, 'alertLog'), fb.dbM.orderByChild('at'), fb.dbM.limitToLast(8))).then(s => s.val()).catch(() => null), g('releases'), g('config/run'), g('config/bulls'), g('config/wheels'), g('config/plinko'), g('config/oddone'), g('config/headcount'), g('config/flash'), g('config/snapshot'), g('config/skyhop'), g('config/scoop'), g('config/pinball'), g('config/pig'), g('config/roads')]);
+  ctl = { config: config || {}, secretsSet: secretsSet || {}, bots: bots || {}, botStats: botStats || {}, alertStats: alertStats || {}, features: features || {}, releases: releases || {}, runCfg: runCfg || {}, bullsCfg: bullsCfg || {}, wheelsCfg: wheelsCfg || {}, plinkoCfg: plinkoCfg || {}, pigCfg: pigCfg || {}, roadsCfg: roadsCfg || {}, oddCfg: oddCfg || {}, attCfg: { headcount: headCfg || {}, flash: flashCfg || {}, snapshot: snapCfg || {} }, fingCfg: { skyhop: hopCfg || {}, scoop: scoopCfg || {}, pinball: pinCfg || {} },
     alertLog: Object.values(log || {}).sort((a, b) => b.at - a.at) };
 }
 async function signIn(how) {
@@ -797,6 +831,8 @@ app.addEventListener('click', e => {
   else if (b.dataset.bullsave) saveBullsCfg(b);
   else if (b.dataset.wheelsave) saveWheelsCfg(b);
   else if (b.dataset.plinkosave) savePlinkoCfg(b);
+  else if (b.dataset.pigsave) savePigCfg(b);
+  else if (b.dataset.roadssave) saveRoadsCfg(b);
   else if (b.dataset.oddsave) saveOddCfg(b);
   else if (b.dataset.attsave) saveAttCfg(b);
   else if (b.dataset.fingsave) saveFingCfg(b);
@@ -810,6 +846,7 @@ app.addEventListener('change', e => {
   else if (e.target.dataset && e.target.dataset.rel) saveRelease(e.target);
 });
 boot().catch(() => { app.innerHTML = '<div class="card msg"><h1>Tic Tac Chaos Stats</h1><p>Could not load. Check the connection and reload.</p></div>'; });
+document.addEventListener('gesturestart', e => e.preventDefault(), { passive: false }); document.addEventListener('gesturechange', e => e.preventDefault(), { passive: false });   // (iPhone's pinch)
 </script>
 </body>
 </html>

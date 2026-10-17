@@ -317,6 +317,9 @@ export function init() {
     else if (e.key === 'Enter') submitWord();
   });
   document.addEventListener('contextmenu', e => e.preventDefault());
+  // No zooming (with the viewport's maximum-scale and touch-action: manipulation): iPhone's pinch is a gesture
+  // event that the viewport tag alone does not stop.
+  for (const ev of ['gesturestart', 'gesturechange', 'gestureend']) document.addEventListener(ev, e => e.preventDefault(), { passive: false });
 }
 
 // Setters for the names other modules reassign (an imported name is read-only there).

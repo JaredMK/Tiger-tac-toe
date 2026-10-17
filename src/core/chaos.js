@@ -91,7 +91,7 @@ export function scCpu(state, rng, force) {   // force: { square, moves } to play
   }
   if (!sh.sc.me) return null;
   const i = sh.sc.me.square;
-  return { side: cpu, square: i, mini: sh.squares[i].mini, out: sh.sc.me.out, win: sh.sc.me.win, steps };
+  return Object.assign({ side: cpu, square: i, mini: sh.squares[i].mini, out: sh.sc.me.out, win: sh.sc.me.win, steps }, sh.sc.me.gives ? { gives: sh.sc.me.gives } : {});
 }
 
 // A move in a Super Chaos round (playMove hands it here): the player's own square, as they see it. One
@@ -121,12 +121,14 @@ export function chaosPlay(state, i, m, rng, opts) {
   if (sc.moved == null) sq.mv[p] += 1;                                                // a round's move counts once, however many steps it takes
   sc.moved = i;
   const win = res.outcome === 'win' && (res.winner || p) === p;
+  const gives = res.outcome === 'win' && !win ? res.winner : null;                     // a move that hands the square to the other player (Higher/Lower's 5th guess missing)
   const again = !!res.again && !opts.noAgain && res.outcome === 'continue';
-  const flash = { kind: win ? 'claim' : again ? 'again' : 'move', by: p, next: p, square: i, type: mini.type, note: res.note || null, pass: null, timeout: !!opts.forced, sc: sc.round };
+  const flash = { kind: win || gives ? 'claim' : again ? 'again' : 'move', by: p, next: p, square: i, type: mini.type, note: res.note || null, pass: null, timeout: !!opts.forced, sc: sc.round };
   if (game.moveFlash) game.moveFlash(m, p, range, bjFrom, mini, flash);
   if (win) { flash.winner = p; mini.winCells = res.cells || null; }
+  if (gives) flash.winner = gives;
   if (again) state.lock = i;
-  else { state.lock = null; sc.me = { square: i, out: res.outcome, win }; state.done = flash; }
+  else { state.lock = null; sc.me = Object.assign({ square: i, out: res.outcome, win }, gives ? { gives } : {}); state.done = flash; }
   state.draft = ''; state.pick = null; state.sel = [];
   state.moves += 1; state.lastSquare = i; state.lastBy = p;
   state.flash = flash;
@@ -164,7 +166,7 @@ export function chaosResolve(state, rng) {
   const wins = [];
   for (const i of squares) {
     const sq = state.squares[i], base = sc.base[i], forks = {}, own = { X: false, O: false };
-    for (const p of ['X', 'O']) if (moves[p] && moves[p].square === i) { forks[p] = p === me ? sq.mini : moves[p].mini; own[p] = !!moves[p].win; }
+    for (const p of ['X', 'O']) if (moves[p] && moves[p].square === i) { forks[p] = p === me ? sq.mini : moves[p].mini; own[p] = own[p] || !!moves[p].win; if (moves[p].gives) own[moves[p].gives] = true; }   // (a square handed over is the other player's win)
     const played = ['X', 'O'].filter(p => forks[p]);           // (X's first in a shared history)
     let m;
     if (played.length === 1) m = clone(forks[played[0]]);
@@ -177,7 +179,7 @@ export function chaosResolve(state, rng) {
     const game = rulesOf(m.type);
     const out = (game.scMerge && game.scMerge(m, { base, forks, played, wins: own, me, cpu, rng })) || {};
     const win = out.win || own;
-    const winners = played.filter(p => win[p]);
+    const winners = ['X', 'O'].filter(p => win[p]);
     if (sq.mv == null) sq.mv = { X: 0, O: 0 };
     if (forks[cpu]) sq.mv[cpu] += 1;
     if (out.replay) recap.replay = { square: i, type: m.type, last: clone(m.last), win: winners.slice() };

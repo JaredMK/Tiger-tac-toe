@@ -33,7 +33,8 @@
 :root { color-scheme: light; }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 *::before, *::after { box-sizing: border-box; }   /* rings drawn with ::before / ::after stay centred in their cells */
-html, body { margin: 0; height: 100%; }
+html, body { margin: 0; height: 100%; touch-action: manipulation; }   /* no zooming: no double-tap zoom (the play areas: none at all) */
+input, textarea, select { font-size: max(16px, 1em); }   /* 16px at least: iPhone zooms into a smaller field when it is focused */
 body {
   position: fixed; inset: 0; overflow: hidden;
   background: var(--bg); color: var(--text);
@@ -1928,7 +1929,7 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .sarrow { fill: var(--ink); opacity: .55; }
 .schest { transform-box: fill-box; transform-origin: center; }
 .schest .sbox { fill: #b87333; stroke: var(--ink); stroke-width: .9; } .schest .slid { fill: #d18b43; stroke: var(--ink); stroke-width: .9; } .schest .slock { fill: #ffd34d; }
-.arcres.hot { color: #e0601f; } .arcres.cold { color: #3b86c9; }
+.arcres.hot { color: #e0601f; } .arcres.cold { color: #3b86c9; } .arcres.same { color: var(--muted); }
 .tsniff { width: 62cqw; height: 62cqw; }
 .tsniff rect { fill: #e3d5b2; }
 .tsniff line { stroke-width: 6; stroke-linecap: round; }
@@ -2171,3 +2172,44 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .sq.screset { animation: screset .7s cubic-bezier(.2, 1.1, .4, 1) both; }
 @keyframes screset { 0% { transform: scale(.82) rotate(-6deg); filter: brightness(1.6); } 60% { transform: scale(1.04) rotate(1deg); } 100% { transform: none; filter: none; } }
 @media (prefers-reduced-motion: reduce) { .sq.screset { animation: none; } }
+
+/* ---- Risky Rolls' eight-sided die: its own outline (no square die behind it), the number on its face ---- */
+.die.d8, .sdie.d8 { background: none; border: 0; box-shadow: none; border-radius: 0; }
+.die.d8 svg, .sdie.d8 svg { width: 100%; height: 100%; overflow: visible; }
+svg.d8 .d8o { fill: var(--panel-2); stroke: var(--ink); stroke-width: 5; stroke-linejoin: round; }
+svg.d8 .d8f { fill: #fff; stroke: var(--ink); stroke-width: 3.5; stroke-linejoin: round; }
+svg.d8 .d8l { fill: none; stroke: var(--ink); stroke-width: 3; stroke-linejoin: round; }
+svg.d8 text { font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-size: 30px; fill: var(--ink); }
+.sdie.d8 svg.d8 text { font-size: 34px; }
+.sdie.d8.dup svg.d8 .d8f { fill: var(--x); }
+.sdie.d8.dup { background: none; }
+.die.d8 { filter: drop-shadow(0 5px 0 var(--ink)); }
+
+/* ---- Higher/Lower: 1 to 30, each player's guesses left as pips ---- */
+.g-hilo.t30 { gap: 10px; }
+.g-hilo.t30 .pad { grid-template-columns: repeat(6, 1fr); gap: 7px; }
+.g-hilo.t30 .pad button { height: 46px; font-size: 17px; }
+.g-hilo.t30 .range { padding: 10px 14px; }
+.g-hilo.t30 .range b { font-size: 34px; }
+@media (max-height: 600px) {   /* a short phone: the 30 numbers, the range and the pips fit under the bar */
+  .g-hilo.t30 { gap: 6px; } .g-hilo.t30 .pad { gap: 5px; } .g-hilo.t30 .pad button { height: 34px; font-size: 15px; }
+  .g-hilo.t30 .range { padding: 6px 12px; } .g-hilo.t30 .range b { font-size: 26px; } .g-hilo.t30 .range small { font-size: 12px; margin-bottom: 0; }
+}
+.hleft { display: flex; justify-content: space-between; gap: 10px; height: 26px; flex: none; }
+.hleft > span { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.hleft > span > b { font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-weight: 400; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px; }
+.hleft b.X, .thpips b.X { color: var(--x); } .hleft b.O, .thpips b.O { color: #b88a00; }
+.hpips { display: inline-flex; gap: 3px; font-style: normal; flex: none; }
+.hpips i { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--ink); background: transparent; box-sizing: border-box; }
+.hpips.X i.on { background: var(--x); } .hpips.O i.on { background: var(--o); }
+.thpips { display: flex; flex-direction: column; align-items: center; gap: 2cqw; margin-top: 2cqw; }
+.thpips > span { display: flex; align-items: center; gap: 2cqw; }
+.thpips b { font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-weight: 400; font-size: 8cqw; display: inline; line-height: 1; }
+.thpips .hpips { gap: 1.5cqw; }
+.thpips .hpips i { width: 7cqw; height: 7cqw; border-width: 1.2px; }
+
+/* ---- Roads' honeycomb: the hexagons' faces under the edges (the layers above as before: grey never over a road) ---- */
+.rcell { fill: #f3e9d2; stroke: none; }
+.rmap.comb .rseg.open { stroke-width: 1.5; }
+.rmap.comb .rhit { stroke-width: 10; }
+.troad.comb line { stroke-width: 2.2; } .troad.comb line.X, .troad.comb line.O { stroke-width: 6.5; } .troad.comb line.B { stroke-width: 3.2; stroke-dasharray: 2.5 3; }

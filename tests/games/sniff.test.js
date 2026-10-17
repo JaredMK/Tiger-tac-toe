@@ -5,11 +5,12 @@ const assert = require('node:assert/strict');
 const E = require('../engine.js');
 
 /* ===================================== Sniff ===================================== */
-test('sniff: a 5x5 field, the dog at least 3 steps from the treasure; a step is hotter or colder, always right; onto it wins', () => {
+test('sniff: a 5x5 field, the dog at least 3 steps from the treasure (as the crow flies); a step is hotter, colder or the same, always right; onto it wins', () => {
   const rng = E.makeRng('sn-rules');
+  const seen = { hot: 0, cold: 0, same: 0 };
   for (let k = 0; k < 2000; k++) {
     const m = E.newMini('sniff', rng);
-    assert.ok(E.sniffDist(m.dog, m.treasure) >= 3, 'at least 3 steps away');
+    assert.ok(E.sniffSteps(m.dog, m.treasure) >= (m.treasure === 12 ? 2 : 3), 'at least 3 steps, diagonals and all (2 from the very middle)');
     assert.equal(m.dog, m.start);
     let r, n = 0;
     while (!r || r.outcome !== 'win') {
@@ -17,19 +18,31 @@ test('sniff: a 5x5 field, the dog at least 3 steps from the treasure; a step is 
       assert.ok(E.sniffDirs(from).includes(d), 'a legal step');
       r = E.applyMove(m, n % 2 ? 'O' : 'X', d, rng);
       assert.equal(r.ok, true);
-      const hot = E.sniffDist(m.dog, m.treasure) < E.sniffDist(from, m.treasure);
-      assert.equal(m.last.hot, hot, 'hotter or colder: always right');
-      assert.equal(m.trail[m.trail.length - 1].hot, hot ? 1 : 0);
+      const a = Math.hypot(Math.floor(m.dog / 5) - Math.floor(m.treasure / 5), m.dog % 5 - m.treasure % 5), b = Math.hypot(Math.floor(from / 5) - Math.floor(m.treasure / 5), from % 5 - m.treasure % 5);
+      const res = Math.abs(a - b) < 1e-9 ? 'same' : a < b ? 'hot' : 'cold';
+      assert.equal(m.last.res, res, 'hotter, colder or the same: always right');
+      assert.equal(m.trail[m.trail.length - 1].r, res);
+      if (r.outcome !== 'win') { assert.equal(r.note, res); seen[res]++; }
       assert.equal(r.outcome === 'win', m.dog === m.treasure);
       if (++n > 500) assert.fail('never found');
     }
   }
+  assert.ok(seen.hot && seen.cold && seen.same, 'all three come up: ' + JSON.stringify(seen));
   const m = E.newMini('sniff', rng);
   for (const bad of ['up', 3, null]) assert.equal(E.applyMove(m, 'X', bad, rng).ok, false);
-  // off the edge: refused
+  // eight ways: the diagonals too; off the edge: refused
+  const mid = Object.assign(E.newMini('sniff', rng), { dog: 12, start: 12, treasure: 0 });
+  assert.deepEqual(E.sniffDirs(12).sort(), ['E', 'N', 'NE', 'NW', 'S', 'SE', 'SW', 'W']);
+  assert.equal(E.applyMove(mid, 'X', 'NW', rng).note, 'hot'); assert.equal(mid.dog, 6, 'a diagonal step: up and left');
   const corner = Object.assign(E.newMini('sniff', rng), { dog: 0, start: 0, treasure: 24 });
-  assert.equal(E.applyMove(corner, 'X', 'N', rng).ok, false); assert.equal(E.applyMove(corner, 'X', 'W', rng).ok, false);
-  assert.deepEqual(E.sniffDirs(0).sort(), ['E', 'S']);
+  for (const d of ['N', 'W', 'NW', 'NE', 'SW']) assert.equal(E.applyMove(corner, 'X', d, rng).ok, false, d);
+  assert.deepEqual(E.sniffDirs(0).sort(), ['E', 'S', 'SE']);
+  // the same: a step that keeps the straight-line distance (from (1,2) to (2,1), the treasure at (0,0): both √5)
+  assert.equal(E.sniffRes(7, 11, 0), 'same');
+  const same = Object.assign(E.newMini('sniff', rng), { dog: 7, start: 7, treasure: 0 });
+  const r = E.applyMove(same, 'X', 'SW', rng);
+  assert.deepEqual([same.dog, r.note, same.last.res, E.publicMini(same).trail[0].r], [11, 'same', 'same', 'same']);
+  assert.equal(E.sniffRes(7, 6, 0), 'hot'); assert.equal(E.sniffRes(7, 8, 0), 'cold');
 });
 test('sniff: no memory on the board: the square keeps only the last 3 steps (the computer\'s memory); the word shows about 2 s', () => {
   const rng = E.makeRng('sn-mem'), m = Object.assign(E.newMini('sniff', rng), { dog: 0, start: 0, treasure: 24 });

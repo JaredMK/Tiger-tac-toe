@@ -1,13 +1,13 @@
 // The finger-game framework (Sky Hop, Scoop Stack, Pinball): Start, the inputs from anywhere on the
 // screen, the attempt, replays and the shared table.
 import { attStart } from '../games/shared/attention.js';
-import { FING, FINGER_TYPES, HOP, fdiff, fingAt, fingGoal, fingLog, fingMs, fingRaw, fingRecorder, fingUnlog, fwrap } from '../games/shared/finger.js';
+import { FING, FINGER_TYPES, HOP, fingAt, fingGoal, fingLog, fingMs, fingRaw, fingRecorder, fingUnlog } from '../games/shared/finger.js';
 import { PHYSICS, physicsReady } from '../games/shared/physics.js';
 import { RUNT } from '../games/shared/runner.js';
 import { drawPin } from '../games/pinball/view.js';
 import { SCOOP, scoopResult, scoopSize, scoopStart, scoopStep, scoopTop } from '../games/scoop/rules.js';
 import { drawScoop, scoopBall } from '../games/scoop/view.js';
-import { hopResult, hopStart, hopStep } from '../games/skyhop/rules.js';
+import { hopClampX, hopResult, hopStart, hopStep } from '../games/skyhop/rules.js';
 import { drawHop } from '../games/skyhop/view.js';
 import { SND, ownPress } from '../audio/sound.js';
 import { attemptMove, dbStart } from '../net/moves.js';
@@ -40,7 +40,7 @@ const FING_KEY = 'ttt-fing-run';
 const FING_EARLY = 700;                                          // online: an attempt ends this long before the turn's time is up, so it goes in before the timeout
 const FING_END = { skyhop: 750, scoop: 700, pinball: 650 };      // the end of an attempt (a fall, a splat, a drain) plays this long before it goes in
 const FING_TEXT = {
-  skyhop: { note: 'Tap Start, then drag left or right to steer. The sides wrap round.', hint: 'Drag to steer', scene: 'The sky, with the hopper on its ledge', unit: 'm' },
+  skyhop: { note: 'Tap Start, then drag left or right to steer. The sides are walls.', hint: 'Drag to steer', scene: 'The sky, with the hopper on its ledge', unit: 'm' },
   scoop: { note: 'Tap Start, then drag left or right to move the cone. Catch scoops, dodge the rest.', hint: 'Drag to move the cone', scene: 'The cone and the falling scoops', unit: 'scoops' },
   pinball: { note: 'Tap Start, then tap (or pull down) to launch. Hold left or right to flip.', hint: 'Hold left or right to flip', scene: 'The pinball table', unit: 'lit' },
 };
@@ -174,10 +174,9 @@ export function fingFinish() {
   attemptMove(m);
   render();
 }
-// Where the finger puts the hopper's or the cone's goal (Sky Hop: round the edges, never more than half the
-// sky away, so it always goes the way the finger went; Scoop Stack: within the screen).
+// Where the finger puts the hopper's or the cone's goal: within the walls (Sky Hop) or the screen (Scoop Stack).
 function fingAim(fd, tx) {
-  if (fd.type === 'skyhop') { const lim = HOP.w / 2 - 0.6, d = fdiff(tx, fd.sim.x, HOP.w); fd.tx = fwrap(Math.abs(d) > lim ? fd.sim.x + Math.sign(d) * lim : tx, HOP.w); }
+  if (fd.type === 'skyhop') fd.tx = hopClampX(tx);
   else fd.tx = Math.max(SCOOP.edge, Math.min(SCOOP.w - SCOOP.edge, tx));
 }
 function fingHud(fd) {

@@ -316,3 +316,34 @@ test('Super Chaos stats: its own mode, reported by the phone; a line each in one
   assert.equal(up['mini/chaos/wordle/won'], 1);
   assert.equal(up['mini/chaos/hilo/draw'], 1);
 });
+
+test('Super Chaos Higher/Lower: the same 5 guesses each; a 5th that misses hands the square over, for either player', () => {
+  const h5 = (target, xUsed, oUsed) => ({ type: 'hilo', target, lo: 1, hi: 30, top: 30, limit: 5, guesses: [].concat(Array.from({ length: xUsed }, (_, k) => ({ by: 'X', n: 30 - k, res: 'lower' })), Array.from({ length: oUsed }, (_, k) => ({ by: 'O', n: 26 - k, res: 'lower' }))) });
+  // the human's 5th misses: the computer (playing elsewhere) claims it
+  const st = round([h5(10, 4, 0)], { square: 1, moves: [20] });
+  st.squares[0].mini.hi = 25;
+  human(st, 0, [3]);
+  assert.equal(st.flash, null);
+  assert.equal(st.sc.me.gives, 'O');
+  assert.equal(st.squares[0].owner, null, 'nothing claimed before the round ends');
+  resolve(st);
+  assert.equal(st.squares[0].owner, 'O');
+  // the computer's 5th misses: the human claims it
+  const s2 = round([h5(10, 0, 4)], { square: 0, moves: [3] });
+  s2.squares[0].mini.hi = 22;
+  assert.equal(s2.sc.cpu.gives, 'X');
+  human(s2, 1, [20]);
+  resolve(s2);
+  assert.equal(s2.squares[0].owner, 'X');
+  // both players' 5th guesses miss in the same round: each hands it to the other, so both "win" it: a reset
+  const s3 = round([h5(10, 4, 4)], { square: 0, moves: [3] });
+  s3.squares[0].mini.hi = 22;
+  human(s3, 0, [15]);
+  assert.deepEqual(resolve(s3).resets.map(x => [x.square, x.why]), [[0, 'both']]);
+  // one finds it as the other runs out: the finder's
+  const s4 = round([h5(10, 4, 4)], { square: 0, moves: [10] });
+  s4.squares[0].mini.hi = 22;
+  human(s4, 0, [15]);
+  resolve(s4);
+  assert.equal(s4.squares[0].owner, 'O');
+});

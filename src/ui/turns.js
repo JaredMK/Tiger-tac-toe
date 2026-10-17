@@ -81,6 +81,7 @@ export function playFlash(played) {
   let hold = FLASH_MS[f.kind] || 800;
   if (f.type === 'memory' && f.kind === 'move') hold = MEMORY_MS;
   if (f.type === 'pig' && f.kind === 'move') hold = f.note === 'bust' ? FLASH_MS.card : FLASH_MS.move;   // a bust gets a proper card; a bank just its points moving over
+  if (f.type === 'pig' && f.kind === 'again') hold = 0;                      // a roll that keeps the turn: Roll again the moment the die has landed and its points counted
   clearTimeout(flashTimer); setFlashTimer(setTimeout(dismissFlash, ms + hold));
 }
 export function dismissFlash() {

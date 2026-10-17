@@ -224,7 +224,7 @@
       "skyhop": {
         ".write": "auth != null && auth.token.admin === true",
         "$k": {
-          ".validate": "$k.matches(/^(target|bounce|gap[01]|wide[01]|moveAt|move|moveV|breakAt|brk|hazAt|hazGap|fill[01])$/) && newData.isNumber() && newData.val() >= 0 && newData.val() <= 3000"
+          ".validate": "$k.matches(/^(target|bounce|gap[01]|wide[01]|moveAt|move|moveV|breakAt|brk0|brk|hazAt|hazGap|fill[01])$/) && newData.isNumber() && newData.val() >= 0 && newData.val() <= 3000"
         }
       },
       "scoop": {
@@ -249,6 +249,27 @@
         },
         "d3": {
           ".validate": "newData.isNumber() && newData.val() >= 0.5 && newData.val() <= 25"
+        },
+        "$other": {
+          ".validate": false
+        }
+      },
+      "roads": {
+        ".write": "auth != null && auth.token.admin === true",
+        "layout": {
+          ".validate": "newData.isString() && (newData.val() == 'hex7' || newData.val() == 'hex4')"
+        },
+        "$other": {
+          ".validate": false
+        }
+      },
+      "pig": {
+        ".write": "auth != null && auth.token.admin === true",
+        "sides": {
+          ".validate": "newData.isNumber() && (newData.val() == 6 || newData.val() == 8)"
+        },
+        "target": {
+          ".validate": "newData.isNumber() && newData.val() >= 10 && newData.val() <= 200"
         },
         "$other": {
           ".validate": false

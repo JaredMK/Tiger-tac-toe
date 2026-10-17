@@ -50,7 +50,7 @@ export const fdiff = (a, b, w) => { const d = fwrap(a - b, w); return d > w / 2 
 // saved height that holds for the grace seconds, with nothing hazardous in the first bounce's reach.
 // Heights in metres; the sky is w wide; the screen's bottom edge is fall metres below the highest point
 // reached (falling out past it ends the attempt); view: how far the course is kept in reach.
-export const HOP = { w: 9, view: 17, fall: 6, g: 44, vx: 11, foot: 0.3, below: 0.6, body: 0.36, bodyY: 0.45, haz: 0.48, gapK: 0.86, reachK: 0.8, clear: 1.9 };
+export const HOP = { w: 9, view: 17, fall: 6, g: 44, vx: 11, foot: 0.3, below: 0.6, body: 0.36, bodyY: 0.45, haz: 0.48, gapK: 0.86, reachK: 0.8, clear: 1.9, edge: 0.42 };   // edge: the sky's sides are walls; the hopper's middle stays this far in
 export const HOP_MEMO = new Map();
 
 // An attempt played through from its inputs (the phone's, the computer's): the same steps the phone took.

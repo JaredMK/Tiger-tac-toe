@@ -7,6 +7,8 @@ import { setFlashConfig } from './games/flash/rules.js';
 import { setHeadConfig } from './games/headcount/rules.js';
 import { fetchOddConfig } from './games/oddone/view.js';
 import { setPinConfig } from './games/pinball/rules.js';
+import { fetchPigConfig } from './games/pig/view.js';
+import { fetchRoadsConfig } from './games/roads/view.js';
 import { fetchPlinkoConfig } from './games/plinko/view.js';
 import { init as pongInit } from './games/pong/view.js';
 import { setScoopConfig } from './games/scoop/rules.js';
@@ -57,6 +59,8 @@ function boot() {
   fetchBullsConfig();                                         // Bullseye's board, bullseye and sweep speeds, likewise
   fetchWheelsConfig();                                        // Risk Wheels' points, odds and target, likewise
   fetchPlinkoConfig();                                        // Plinko's target, likewise
+  fetchPigConfig();                                           // Risky Rolls' die and target, likewise
+  fetchRoadsConfig();                                         // Roads' honeycomb, likewise
   fetchOddConfig();                                           // Odd One Out's shade differences, likewise
   fetchAttConfig('headcount', setHeadConfig); fetchAttConfig('flash', setFlashConfig); fetchAttConfig('snapshot', setSnapConfig);   // the attention games' difficulty, likewise
   fetchAttConfig('skyhop', setHopConfig); fetchAttConfig('scoop', setScoopConfig); fetchAttConfig('pinball', setPinConfig);   // and the finger games'

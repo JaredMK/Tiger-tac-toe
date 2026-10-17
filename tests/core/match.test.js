@@ -468,7 +468,7 @@ test('the computer always takes a square that wins the match, in any game that a
   const wins = [
     tttOf('X', 'X', null, 'O', null, null, null, null, null),
     Object.assign(mini('hilo'), { lo: 7, hi: 7, target: 7, guesses: [{ by: 'O', n: 6, res: 'higher' }, { by: 'O', n: 8, res: 'lower' }] }),
-    Object.assign(mini('pig'), { bank: { X: 16, O: 0 }, turn: { by: 'X', rolls: [5], pot: 5 } }),
+    Object.assign(mini('pig'), { bank: { X: 46, O: 0 }, turn: { by: 'X', rolls: [5], pot: 5 } }),   // (51 to win)
     Object.assign(L.newMini('hex', lcg(1)), { cells: ['X', 'X', 'X', null, null, null, null, null, null, null, null, null, null, null, null, null] }),
   ];
   for (const sq2 of wins) {
@@ -909,7 +909,7 @@ test('stats: each mini-game counts the turns each side spent in it, bonus moves 
   assert.deepEqual(back.squares[0].mv, { X: 1, O: 0 });
 });
 
-test('timeouts: Coin flip flips, Battleship fires at an open cell, Risky Rolls banks once 21 is reached', () => {
+test('timeouts: Coin flip flips, Battleship fires at an open cell, Risky Rolls banks once 51 is reached', () => {
   const st = matchWith(['coins', 'bs', 'pig']);
   st.timer = L.newTimer(30);
   for (let k = 0; k < 40; k++) {
@@ -917,7 +917,7 @@ test('timeouts: Coin flip flips, Battleship fires at an open cell, Risky Rolls b
     assert.ok(Number.isInteger(m) && m >= 0 && m < 16 && !st.squares[1].mini.revealed[m]);
   }
   assert.equal(L.randomLegalMove(st.squares[0].mini, 'X'), 'flip');
-  st.squares[2].mini = Object.assign(mini('pig'), { bank: { X: 18, O: 0 }, turn: { by: 'X', rolls: [4], pot: 4 } });
+  st.squares[2].mini = Object.assign(mini('pig'), { bank: { X: 48, O: 0 }, turn: { by: 'X', rolls: [4], pot: 4 } });   // (51 to win)
   st.lock = 2;
   const r = L.timeoutMove(st, lcg(5));
   assert.equal(r.ok, true); assert.equal(r.move, 'bank');
