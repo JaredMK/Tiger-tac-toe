@@ -1,6 +1,6 @@
 // Mini Golf: the rules (pure: no page, no clock; the server runs the same code).
 import { needRng, randInt } from '../../core/random.js';
-import { PHYSICS, physLast, physRandom, physRun, physShot } from '../shared/physics.js';
+import { PHYSICS, physLast, physRandom, physRun, physRunBoth, physShot } from '../shared/physics.js';
 export { physicsMoveFlash as moveFlash } from '../shared/physics.js';
 
 export const GOLF = { goal: 1, aiErr: [0.035, 0.04], hold: 700 };
@@ -55,5 +55,29 @@ export function randomMove(mini, p, rng, from, empties) {
   return physRandom(mini, p, rng);   // a random gentle shot
 }
 export function flashMs(f, winLen, won) {
+  if (f.phys && f.phys.locked) return 500;                         // Super Chaos: a shot locked in (it plays at the round's end)
   return (f.phys ? f.phys.ms : 3000) + GOLF.hold + (won ? 600 : 0);
+}
+// Super Chaos: each player locks in an aim and a power (scApply); once the round ends, the shots locked in
+// play out together from where the balls stood, so both balls roll at once and can collide. A ball that
+// drops this round wins the square; both dropping resets it.
+export function scApply(mini, p, m, rng) {
+  const shot = physShot(m);
+  if (!shot) return { ok: false, reason: 'bad' };
+  if (mini.holed[p]) return { ok: false, reason: 'done' };
+  if (mini.aim && mini.aim[p]) return { ok: false, reason: 'locked' };
+  mini.aim = Object.assign({}, mini.aim, { [p]: shot });
+  mini.last = { by: p, aim: shot.aim, power: shot.power, locked: true };
+  return { ok: true, outcome: 'continue', note: 'locked' };
+}
+export function scMerge(m, c) {
+  const b = c.base, shots = {};
+  for (const p of c.played) { const a = c.forks[p].aim; if (a && a[p]) shots[p] = a[p]; }
+  m.balls = JSON.parse(JSON.stringify(b.balls)); m.holed = Object.assign({}, b.holed); m.shots = Object.assign({}, b.shots); delete m.aim;
+  const r = Object.keys(shots).length ? physRunBoth(b, shots) : null;
+  if (!r) { m.last = b.last; return { win: { X: false, O: false } }; }
+  for (const p of Object.keys(shots)) m.shots[p] += 1;
+  for (const q of ['X', 'O']) if (r.final[q] !== undefined) { if (r.final[q] === null) m.holed[q] = true; else m.balls[q] = r.final[q]; }
+  m.last = { by: c.cpu in shots ? c.cpu : c.me, both: shots, aim: (shots[c.me] || shots[c.cpu]).aim, power: (shots[c.me] || shots[c.cpu]).power, ms: r.ms, events: r.events, rec: r.rec, holed: r.result.holed, first: r.result.first, lip: r.events.some(e => e.k === 'lip') };
+  return { win: { X: !b.holed.X && m.holed.X, O: !b.holed.O && m.holed.O }, replay: true };
 }

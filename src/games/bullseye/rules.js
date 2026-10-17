@@ -86,3 +86,7 @@ export function bullsAim(b) {
   const t1 = vx.ms, h0 = t1 + BULLT.gap, t2 = h0 + vy.ms;
   return { per, perY, vx, vy, t1, h0, t2, fly: t2 + BULLT.gap };
 }
+// Super Chaos: both throws are at the board where it stood; then it moves on.
+export function scMerge(m, c) {
+  m.pos = c.forks[c.played[c.played.length - 1]].pos.slice();
+}

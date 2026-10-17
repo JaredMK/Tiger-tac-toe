@@ -9,7 +9,7 @@
  *                          the runners (Dash, Lane Rush) add runs, distSum (metres, over all runs),
  *                          finishes, finishRuns (the winners' runs) and crash/{bin} (crashes per 50 m)
  *   modes/{mode}           started, finished, resigned, timeouts, turns, ms, timed (matches with a time),
- *                          xWins, oWins, draws (no line left for either side)
+ *                          xWins, oWins, draws (no line left for either side; Super Chaos: a line each in one round)
  *   days/{YYYY-MM-DD}      logins, active, newAccounts, started/{mode}, finished/{mode}
  *   weeks/{YYYY-Www}       logins, active, newAccounts
  *   months/{YYYY-MM}       logins, active, newAccounts
@@ -19,11 +19,11 @@
  */
 const crypto = require('node:crypto');
 
-const MODES = ['local', 'cpu', 'cvc', 'friend', 'match', 'bot', 'casual', 'ranked'];   // two people on one phone, vs the computer, computer vs computer, friend code, Find Match, Find Match against a bot (casual and ranked: before it was one queue)
-const CLIENT_MODES = ['local', 'cpu', 'cvc'];                          // the ones a phone reports; the server records the online ones itself
+const MODES = ['local', 'cpu', 'cvc', 'friend', 'match', 'bot', 'casual', 'ranked', 'chaos'];   // two people on one phone, vs the computer, computer vs computer, friend code, Find Match, Find Match against a bot (casual and ranked: before it was one queue), Super Chaos (simultaneous rounds, vs the computer)
+const CLIENT_MODES = ['local', 'cpu', 'cvc', 'chaos'];                 // the ones a phone reports; the server records the online ones itself
 const MAX_MS = 3 * 3600 * 1000;                                        // a match "lasting" longer was left and picked up again: no time for it
 const ENDS = ['won', 'draw', 'open'];
-const REASONS = ['line', 'blocked', 'majority', 'resign', 'timeout'];
+const REASONS = ['line', 'blocked', 'majority', 'resign', 'timeout', 'both'];   // both: a line each in the same Super Chaos round (a draw)
 
 const pad = n => String(n).padStart(2, '0');
 // The day, ISO week and month of a time, in UTC.
@@ -91,7 +91,7 @@ function endUpdates(mode, sum, ms, t, withStart, testTypes) {
   if (sum.reason === 'resign') add(`modes/${mode}/resigned`, 1);
   if (sum.reason === 'timeout') add(`modes/${mode}/timeouts`, 1);
   if (sum.winner) add(`modes/${mode}/${sum.winner === 'X' ? 'xWins' : 'oWins'}`, 1);
-  else if (sum.reason === 'blocked') add(`modes/${mode}/draws`, 1);   // a draw: no line left for either side
+  else if (sum.reason === 'blocked' || sum.reason === 'both') add(`modes/${mode}/draws`, 1);   // a draw: no line left for either side, or (Super Chaos) a line each in the same round
   if (Number.isFinite(ms) && ms >= 0 && ms <= MAX_MS) { add(`modes/${mode}/ms`, Math.round(ms)); add(`modes/${mode}/timed`, 1); }
   for (const e of sum.squares) {
     const b = `mini/${testTypes && testTypes.includes(e.t) ? 'testing' : mode}/${e.t}/`;
@@ -127,7 +127,7 @@ function periodUpdates(what, t) {
 // under way on screen, so a long match stays one session), and one start and one end per match, so an
 // event sent twice (a retry, a reload) is kept once.
 const DEV_EVENTS = ['open', 'live', 'start', 'finish', 'leave'];
-const DEV_MODES = ['local', 'cpu', 'cvc', 'friend', 'match'];
+const DEV_MODES = ['local', 'cpu', 'cvc', 'friend', 'match', 'chaos'];
 const TAG_RE = /^[a-z0-9][a-z0-9_-]{0,23}$/;
 const tagOk = v => typeof v === 'string' && TAG_RE.test(v);
 function devHash(dev) { return crypto.createHash('sha256').update('ttc-dev:' + dev).digest('hex').slice(0, 20); }

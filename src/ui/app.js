@@ -58,7 +58,11 @@ function load() {
     if (s && s.v === 4 && Array.isArray(s.squares) && s.squares.length === 9 && (s.turn === 'X' || s.turn === 'O') && s.setup) {
       if (s.lock != null && !s.winner) { s.screen = 'mini'; s.zoom = s.lock; }
       else if (s.done && !s.flash && !s.winner) leaveSquare(s);   // a result that was still on show: the board was next anyway
-      s.notice = null; s.sel = []; s.stamp = null; s.spot = null;
+      s.notice = null; s.sel = []; s.stamp = null; s.stamps = null; s.spot = null;
+      if (s.sc && typeof s.sc === 'object' && !s.online) {        // Super Chaos: a recap cut short goes straight on to the next round; the round's clock gives at least 10 s back
+        if (s.sc.recap) { s.flash = null; s.screen = s.winner ? 'win' : 'board'; s.zoom = null; }
+        if (s.sc.deadline != null) { s.sc.held = Math.min(s.sc.limit * 1000, Math.max(10000, s.sc.deadline - Date.now())); s.sc.deadline = null; }
+      } else if (s.sc) s.sc = null;
       if (!s.timer || typeof s.timer !== 'object') s.timer = newTimer(0);
       if (s.setup.timer == null) s.setup.timer = 0;
       if (!s.setup.mode) s.setup.mode = 'two';

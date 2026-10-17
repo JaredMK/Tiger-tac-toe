@@ -23,6 +23,7 @@ import { closeSeat, init as roomInit, joinCode, joinName, resumeOnline, setJoinC
 import { devOpen, devPulse, init as trackingInit, takeTag } from './net/tracking.js';
 import { clockTimer, commit, setClockTimer, state } from './ui/app.js';
 import { fetchAttConfig } from './ui/attention.js';
+import { init as chaosInit } from './ui/chaos.js';
 import { tick } from './ui/clock.js';
 import { KEY } from './ui/config.js';
 import { init as debugInit } from './ui/debug.js';
@@ -48,6 +49,7 @@ roomInit();
 inputInit();
 pongInit();
 soundInit();
+chaosInit();
 function boot() {
   setClockTimer(setInterval(tick, 250));
   fetchReleases();                                            // which mini-games are released, before any match is set up

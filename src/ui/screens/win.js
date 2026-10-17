@@ -89,7 +89,7 @@ function findAgainBtn() { return findOn ? '<button class="primary" data-act="fin
 function renderDraw() {
   const final = state.squares.map(s => `<i class="${s.owner || ''}">${s.owner ? toonT(s.owner) : ''}</i>`).join('');
   return `<main class="scr win-scr">${netBar()}<div class="win-card${isMM() ? ' mm' : ''}">
-    <div class="winburst">${endBurst(endMessage())}</div><div class="big-g both">${toonT('X')}${toonT('O')}</div><h1>It's a draw!</h1><p>Nobody could get three in a row any more, so the match ended there</p>${mmResult()}
+    <div class="winburst">${endBurst(endMessage())}</div><div class="big-g both">${toonT('X')}${toonT('O')}</div><h1>It's a draw!</h1><p>${state.winReason === 'both' ? 'Both made three in a row in the same round' : 'Nobody could get three in a row any more, so the match ended there'}</p>${mmResult()}
     <div class="final" aria-hidden="true">${final}</div>
     <div class="row">${isMM() ? findAgainBtn() : `<button class="primary" data-act="rematch"${state.online && !connected ? ' disabled' : ''}>Rematch</button>`}<button class="btn" data-act="review">View board</button><button class="btn" data-act="${state.online ? 'leave' : 'menu'}">Main menu</button></div></div></main>`;
 }

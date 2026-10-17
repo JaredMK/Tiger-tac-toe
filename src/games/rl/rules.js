@@ -51,3 +51,7 @@ export function flashMs(f, winLen, won) {
   return RLT.spin + RLT.settle + RLT.hold + (won ? 600 : 0);
 }
 export const RLT = { spin: 2700, settle: 450, hold: 1000 };
+// Super Chaos: both spins join the recent spins.
+export function scMerge(m, c) {
+  m.spins = (c.base.spins || []).concat(c.played.map(p => { const s = c.forks[p].spins || []; return s[s.length - 1]; }).filter(Boolean)).slice(-6);
+}

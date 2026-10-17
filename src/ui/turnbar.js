@@ -5,6 +5,7 @@ import { REACTS, reactCooling, reactOn, rx } from '../net/reactions.js';
 import { awayNote, net, presence, room } from '../net/room.js';
 import { N, NAV_SCREENS, esc, menuOpen, state } from './app.js';
 import { toon } from './art.js';
+import { scTurnText } from './chaos.js';
 import { clockText } from './clock.js';
 import { fx, fxAt, fxAttr, startFx } from './fx.js';
 
@@ -15,7 +16,9 @@ export function renderHeader() {
   const won = state.winner && !state.spot;                      // (a winning move about to be played back: not yet)
   const drawn = won && state.winner === 'draw';                  // a draw: nobody can make a line any more
   const t = won && !drawn ? state.winner : state.turn;
-  const clock = state.timer && state.timer.limit && !state.winner ? `<span class="clock" id="clock" aria-label="Time left this turn">${clockText()}</span>` : '';
+  const sc = !!state.sc && !state.online;                        // Super Chaos: the round and the round's clock
+  const clock = sc ? `<span class="clock" id="clock" aria-label="Time left this round">${clockText()}</span>`   // (kept to the results screen: the bar never changes shape)
+    : state.timer && state.timer.limit && !state.winner ? `<span class="clock" id="clock" aria-label="Time left this turn">${clockText()}</span>` : '';
   // the reaction bubble hangs by the sender's character; the bubble is always there (hidden when empty), so the bar's shape stays the same
   const card = p => (rx.card && rx.card.side === p && !menuOpen ? rx.card : null);   // (not over the in-game menu)
   const side = p => `<div class="tside ${p}${p === t ? ' on' : ''}"><span class="tg">${toon(p)}<span class="rbub${card(p) ? ' on' : ''}"${card(p) ? fxAttr(card(p).at) : ''} aria-live="polite">${card(p) ? card(p).e : ''}</span></span><b class="nm">${N(p)}</b></div>`;
@@ -24,7 +27,7 @@ export function renderHeader() {
   const tray = reactOn() && rx.tray && !menuOpen ? `<div class="rtray" role="group" aria-label="Send a reaction">${REACTS.map(([em, nm], i) => `<button data-act="react-send" data-i="${i}" aria-label="${nm}"${cool ? ' disabled' : ''}>${em}</button>`).join('')}</div>` : '';
   return `<header class="hdr t-${t}${clock ? ' has-clock' : ''}">
     <div class="hdrrow"><button class="menubtn" data-act="pause" aria-label="Menu">Menu</button><div class="tbar">${side('X')}${side('O')}</div>${react}</div>
-    <div class="hdrrow2"><div class="turn" aria-live="polite">${drawn ? '<span class="who">Draw · no line left</span>' : `<span class="g">${t}</span><span class="who">${won ? `${N(t)} wins` : `${N(t)}<i class="suf">'s turn</i>`}</span>`}</div><span class="clockbox">${clock}</span></div>${tray}
+    <div class="hdrrow2"><div class="turn" aria-live="polite">${drawn ? `<span class="who">Draw · ${state.winReason === 'both' ? 'both made a line' : 'no line left'}</span>` : won ? `<span class="g">${t}</span><span class="who">${N(t)} wins</span>` : sc ? scTurnText() : `<span class="g">${t}</span><span class="who">${N(t)}<i class="suf">'s turn</i></span>`}</div><span class="clockbox">${clock}</span></div>${tray}
   </header>`;
 }
 

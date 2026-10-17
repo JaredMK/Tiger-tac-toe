@@ -532,6 +532,55 @@ plays and how it is made. Sound is on by default, and the switch on the main men
 menu turns it off (remembered between visits). The searching screen of Find a Match is silent (its one sound is the match being found). The first tap unlocks audio, as iPhone requires; on
 iPhone the audio session is *ambient*, so the silent switch mutes the game and the player's music carries on. A game's own inputs (pads, keys, cells, Start buttons and the like) play only their own sound, never the menu click as well.
 
+## Super Chaos (simultaneous play, vs Computer)
+
+A second way to play Play Local, switched on in its setup ("Super Chaos: Off / On"). It is admin only
+until released: the switch shows only to the admin (with a Testing sticker) until the dashboard's Game
+releases card releases it (`releases/superchaos`). Phase 1 is against the computer only; the normal modes
+are unchanged.
+
+- **Rounds.** Each round both players choose any unclaimed square and make one move there (the game's
+  normal move: one run, one hand, one guess; a move that goes on, such as a right Hangman letter or a
+  Craps point, goes on to its end). Both play at the same time: neither waits for the other, and nobody
+  gets a second move for being quick. The round ends once both moves are in, or when the round's clock
+  (60 seconds, in the top bar with the round counter) runs out: then the game's timeout rule makes the
+  move (a random legal one), with no match lost for it. The clock holds while the menu or an explainer is
+  open, or the page is out of sight.
+- **Results resolve together.** A square both players won in the same round resets with a new random
+  Super Chaos game; both completing three in a row in the same round is a draw; any other claim stands.
+  Both may play in the same square in the same round.
+- **Shared squares.** Where both share a target, board or question, each player sees only their own
+  move's result during the round; the other's move and result stay hidden until the round's recap, and
+  both resolve as if simultaneous. Battleship: a 5x5 sea with a one-square ship; a hit wins. Wordle,
+  Higher/Lower, Mastermind, Treasure Hunt: both guesses (and their answers) join the shared history.
+  Hangman: one shared word; each sees the letters known before the round plus their own; a player whose
+  own view completes it wins; finished only by both together, it resets. Trivia and Patterns: the
+  question is face up for both; wrong answers are crossed out for both at the round's end, each player
+  who was right scores, and a new question comes if anyone was. Bump: both pieces move; a piece ending
+  on the other's space sends it home; both on the same space, both go home. Plinko: both may drop from
+  the same slot (it locks once); both on the bonus peg get +2 each and one new peg appears. Mini Golf:
+  each player locks in aim and power; at the round's end both shots play out together (the balls roll at
+  once and can collide), and the recap plays the result; both sinking resets it. Craps: each player has
+  their own round and point (no shared continuation); Stop keeps your point for your next roll. Every
+  other Super Chaos game already keeps each player's progress apart and plays as normal.
+- **Super Chaos games** (each game's `meta.js`: `superChaos`): Battleship, Wordle, Hangman,
+  Higher/Lower, Snakes and Ladders, Candy Race, Bump, Risky Rolls, Treasure Hunt, Mastermind, Blackjack,
+  Ride the Bus, Roulette, Bullseye, Echo, Plinko, Cup Pong, Trivia, Odd One Out, Dash, Lane Rush, Mini
+  Golf, Bowling, Craps, Flap, Chopper, Patterns, Risk Wheels, Headcount, Flash, Snapshot, Sky Hop, Scoop
+  Stack, Pinball. The Advanced checklist shows only these while Super Chaos is on.
+- **The computer** makes its move at the start of each round, with its usual choice of square and the
+  game's own tactics, without seeing the human's choice or this round's results; it takes a person's
+  time over it.
+- **The recap** (about 2 seconds, on the main board): a Mini Golf square plays both shots first; then the
+  computer's square lights up with its move told (now in the square's history), then the claims stamp in
+  and any reset square turns over; then the next round.
+- **Stats**: its own mode, `chaos`, in the anonymous stats and the dashboard (Matches by mode, the
+  mini-game table, the playtest log). Not in a player's local record or history yet.
+- How it is built: `src/core/chaos.js` (the round: each player's move on their own copy of the board, the
+  merge, claims and resets; each game's Super Chaos hooks in its `rules.js`: `scCreate`, `scFork`,
+  `scApply`, `scAfter`, `scMerge`) and `src/ui/chaos.js` (the clock, the end of the round, the recap).
+  Tests: `tests/core/chaos.test.js`.
+
 ## Playing against the computer
 
 The computer takes its turn in the open: a short pause to think, then the square it chose lights up

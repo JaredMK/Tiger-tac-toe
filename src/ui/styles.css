@@ -2159,3 +2159,15 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .tbpts .tr { display: flex; align-items: baseline; gap: 2cqw; font-weight: 800; font-size: 10cqw; line-height: 1; }
 .tbpts .tr span { font: 400 15cqw 'Luckiest Guy', sans-serif; } .tbpts .tr small { font-size: 8cqw; color: var(--muted); }
 @media (max-height: 640px) { .rln, .rlg, .rlz { height: 28px; font-size: 13px; } .bjres { min-height: 28px; font-size: 15px; } }
+
+/* ---- Super Chaos: the mode's switch on the setup screen, Battleship's 5x5 sea, the recap's label and resets ---- */
+.scmode > span { display: flex; align-items: center; gap: 8px; }
+.scmode > span .tst { position: static; font-size: 9px; line-height: 1; letter-spacing: .05em; text-transform: uppercase; padding: 3px 6px 2px; border: 2px solid var(--ink); border-radius: 999px; background: var(--o-soft); color: var(--ink); font-style: normal; }
+.scmode .seg { flex: 1; }
+.bsgrid.n5 { grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(5, 1fr); gap: 6px; }
+.tbs .tg.g4.n5 { grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(5, 1fr); gap: 1.2px; }
+.spot-lab.sc { max-height: 4em; }
+.spot-lab.sc small { display: block; font-family: Nunito, Arial, sans-serif; font-weight: 800; font-size: .9em; opacity: .92; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sq.screset { animation: screset .7s cubic-bezier(.2, 1.1, .4, 1) both; }
+@keyframes screset { 0% { transform: scale(.82) rotate(-6deg); filter: brightness(1.6); } 60% { transform: scale(1.04) rotate(1deg); } 100% { transform: none; filter: none; } }
+@media (prefers-reduced-motion: reduce) { .sq.screset { animation: none; } }

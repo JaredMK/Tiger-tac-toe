@@ -50,3 +50,13 @@ export function hide(m, k, st) {
 export function flashMs(f, winLen, won) {
   return 650;
 }
+// Super Chaos: one shared word. Each player's move is the normal one (guessing on while right), seeing only
+// the letters known before the round and their own. At the round's end every guess joins the word; a player
+// whose own view completed it wins it, and a word completed only by the two together resets the square.
+export function scMerge(m, c) {
+  const n = c.base.letters.length, seen = new Set(c.base.letters.map(x => x.l));
+  m.letters = c.base.letters.slice();
+  for (const p of c.played) for (const x of c.forks[p].letters.slice(n)) if (!seen.has(x.l)) { seen.add(x.l); m.letters.push(x); }
+  const done = m.word.split('').every(ch => seen.has(ch));
+  if (done && !c.wins.X && !c.wins.O) return { reset: true, note: 'merged' };
+}

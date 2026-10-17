@@ -14,6 +14,7 @@ import { blocked, presentingSeq } from '../net/room.js';
 import { N, REDUCED, app, state } from './app.js';
 import { ICONS } from './art.js';
 import { fxAt } from './fx.js';
+import { scShown } from './chaos.js';
 import { arcTally, lateAt, pips } from './progress.js';
 import { render } from './render.js';
 import { outlined, rr, runCanvas, runColours } from './runner.js';
@@ -52,6 +53,13 @@ export let physDraft = null, physRaf = 0;
 export function physResult(f, long) {
   const ph = f.phys, by = f.by, o = other(by), who = `<b class="${by}">${N(by)}</b>`, them = `<b class="${o}">${N(o)}</b>`;
   if (!ph) return { text: long ? `${who} shot` : 'Shot', ok: false };
+  if (f.type === 'golf' && ph.locked) return { text: long ? `${who} locked in a shot` : 'Shot locked in', ok: false };   // Super Chaos: it plays when the round ends
+  if (f.type === 'golf' && ph.both) {                                     // Super Chaos: the round's shots, played together
+    const sank = ['X', 'O'].filter(p => ph.holed && ph.holed[p]), nm = p => `<b class="${p}">${N(p)}</b>`;
+    if (sank.length === 2) return { text: 'Both in the cup!', ok: false };
+    if (sank.length === 1) return { text: `${nm(sank[0])} sank it!`, ok: true };
+    return { text: ph.lip ? 'Lipped out!' : 'Not yet', ok: false };
+  }
   if (f.type === 'golf') {
     if (ph.first === by) return { text: long ? `${who} sank it!` : 'In the cup!', ok: true };
     if (ph.first) return { text: long ? `${who} knocked ${them}'s ball in!` : `Knocked in — ${them} takes it`, ok: false };
@@ -86,6 +94,7 @@ export function physTable(mini, a, o) {
   const res = ph ? (r => `<p ${lateAt('arcres ' + (r.ok ? 'ok' : 'no'), t)} role="status">${r.text}</p>`)(physResult(a))
     : o.view ? `<p class="arcnote">${l ? physResult({ type, by: l.by, phys: l }, true).text : ''}</p>`
     : bowl && bowl.step === 3 ? `<p class="arcnote">Rolling…</p>`
+    : state.sc && mini.aim && mini.aim[turn] ? '<p class="arcnote">Shot locked in</p>'
     : mine ? '<p class="arcnote"></p>'
     : `<p class="arcnote">Waiting for <b class="${turn}">${N(turn)}</b>…</p>`;
   const strike = ph && type === 'bowling' && ph.strike ? `<div ${lateAt('pstrike', t)} aria-hidden="true">STRIKE!</div>` : '';
@@ -130,7 +139,7 @@ function physLoop(now) {
 }
 // One drawing of the zoomed square's table; true when another frame is wanted (a replay or a drag under way).
 function physDrawNow(cv, now) {
-  const sq = state.squares && state.squares[state.zoom];
+  const sq = state.squares && (scShown(state.zoom) || state.squares[state.zoom]);   // (Super Chaos's recap: the square before its claim or reset)
   if (!sq || !PHYS_TYPES.includes(sq.mini.type) || !physicsReady()) return false;
   const mini = sq.mini, f = state.flash, d = state.done;
   const ph = f && f.square === state.zoom && f.phys ? f.phys : null;
@@ -144,9 +153,19 @@ function physDrawNow(cv, now) {
   const g = { c, W, H, k, M, X: x => ox + x * k, Y: y => oy + y * k };
   if (mini.type === 'golf') drawGolf(g, mini, pos); else if (mini.type === 'pool') drawPool(g, mini, pos); else drawBowl(g, mini, pos);
   if (dr) drawAim(g, mini, pos, dr);
+  else if (mini.type === 'golf' && mini.aim && state.sc && !ph) for (const p of Object.keys(mini.aim)) if (pos[p]) drawLocked(g, pos[p], mini.aim[p]);   // Super Chaos: a shot locked in, waiting for the round's end
   const bd = mini.type === 'bowling' && !ph && bowlDraft && bowlDraft.sq === state.zoom ? bowlDraft : null;
   if (bd) drawBowlAim(g, pos, bd, now);
   return !!(dr || (bd && bd.step < 3) || (fr && !fr.done));
+}
+// Super Chaos: a golf shot locked in, as a still arrow from the ball (its length the power).
+function drawLocked(g, from, shot) {
+  const c = g.c, S = PHYS_S('golf'), X = g.X(from[0]), Y = g.Y(from[1]), len = (0.12 + 0.3 * shot.power) * S.h * g.k;
+  const hx = X + Math.sin(shot.aim) * len, hy = Y - Math.cos(shot.aim) * len;
+  c.save(); c.lineWidth = 3; c.strokeStyle = 'rgba(255,255,255,.9)';
+  c.beginPath(); c.moveTo(X, Y); c.lineTo(hx, hy); c.stroke();
+  c.beginPath(); c.moveTo(hx, hy); c.lineTo(hx - Math.sin(shot.aim + 2.6) * 10, hy + Math.cos(shot.aim + 2.6) * 10); c.lineTo(hx - Math.sin(shot.aim - 2.6) * 10, hy + Math.cos(shot.aim - 2.6) * 10); c.closePath(); c.fillStyle = '#fff'; c.fill();
+  c.restore();
 }
 // ---- the drawing: bold ink outlines and flat colours, like the rest of the game ----
 export function physBall(g, x, y, r, fill, label, ink) {
@@ -216,10 +235,12 @@ export function physThumb(mini) {
 }
 export function physicsSounds(f, add, won, mini, last) {   // the recording's events, as they come round in the replay; then the result
   const ph = f.phys; if (!ph) return;
+  if (ph.locked) { add('clack', 0); return; }                              // Super Chaos: the putt locked in (it plays at the round's end)
   const live = ph.rec && !REDUCED, end = live ? ph.ms : 0;
   if (live) for (const e of ph.events || []) { const t = e.t * 1000; if (e.k === 'balls') add('clack', t); else if (e.k === 'wall') add('cushion', t); else if (e.k === 'pin') add('pinHit', t); else if (e.k === 'hole') add('plop', t); else if (e.k === 'pocket') add(e.id === 'cue' ? 'thud' : 'plop', t); else if (e.k === 'lip') add('clink', t); else if (e.k === 'gutter') add('thud', t); }
   if (f.type === 'bowling') add(ph.strike ? 'strike' : ph.gutter ? 'thud' : 'ding', end);
   else if (f.type === 'pool') add(ph.black ? 'buzz' : ph.scratch ? 'thud' : ph.own && !ph.theirs ? 'ding' : 'thud', end);
+  else if (ph.both) { if (!(ph.holed && (ph.holed.X || ph.holed.O))) add(ph.lip ? 'thud' : 'ding', end); }
   else if (!ph.first) add(ph.lip ? 'thud' : 'ding', end);
   return;
 }

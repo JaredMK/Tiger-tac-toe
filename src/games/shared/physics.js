@@ -31,6 +31,8 @@ export function wrapAim(a) { a = ((a + Math.PI) % (2 * Math.PI) + 2 * Math.PI) %
 // The aim from a point to a target: 0 is straight up the table (y decreasing), positive is to the right.
 export const aimTo = (from, to) => Math.atan2(to[0] - from[0], from[1] - to[1]);
 export function physRun(mini, p, shot) { return PHYSICS.lib ? PHYSICS.lib.run(mini.type, mini, p, shot) : null; }
+// Super Chaos's Mini Golf: both balls struck at once (shots: { X, O }, either may be missing).
+export function physRunBoth(mini, shots) { return PHYSICS.lib ? PHYSICS.lib.run(mini.type, mini, shots) : null; }
 export const physLast = (p, shot, r, extra) => Object.assign({ by: p, aim: shot.aim, power: shot.power, ms: r.ms, events: r.events, rec: r.rec }, extra);
 // What a shot would do, for the computer: the same simulation, scored.
 export function physScore(mini, p, r) {

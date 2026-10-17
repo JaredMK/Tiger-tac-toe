@@ -31,3 +31,10 @@ export function hide(m, k, st) {
 export function flashMs(f, winLen, won) {
   return 1100;
 }
+// Super Chaos: each player gets their own answer during their move; at the round's end both guesses and their
+// answers join the shared history (the range narrowed by both).
+export function scMerge(m, c) {
+  const n = c.base.guesses.length;
+  m.guesses = c.base.guesses.concat(...c.played.map(p => c.forks[p].guesses.slice(n)));
+  m.lo = Math.max(c.base.lo, ...c.played.map(p => c.forks[p].lo)); m.hi = Math.min(c.base.hi, ...c.played.map(p => c.forks[p].hi));
+}

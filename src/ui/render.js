@@ -4,6 +4,7 @@ import { refusedNote } from '../net/moves.js';
 import { devWatch } from '../net/tracking.js';
 import { app, entering, esc, lastView, menuOpen, setEntering, setLastView, setMenuOpen, state } from './app.js';
 import { renderBoard, reviewSquares } from './board.js';
+import { scShown } from './chaos.js';
 import { closeExplain, explainT, renderExplain, renderHowTo } from './explainer.js';
 import { fingPaint } from './finger.js';
 import { anchorFx, animate, fxAt, startFx, sweepBursts } from './fx.js';
@@ -120,7 +121,7 @@ function renderMain() {
     if (sq) return renderMini(sq, true);
   }
   if (state.screen === 'mini' && state.zoom != null) {
-    const sq = state.squares[state.zoom];
+    const sq = scShown(state.zoom) || state.squares[state.zoom];   // (Super Chaos's recap: the square before its claim or reset)
     if (sq) return renderMini(sq);
   }
   return renderBoard();

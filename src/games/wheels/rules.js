@@ -119,3 +119,8 @@ export function moveFlash(m, p, range, bjFrom, mini, flash) {
 export function flashMs(f, winLen, won) {
   return WHEELT.spin + WHEELT.hold + (won ? 600 : 0);
 }
+// Super Chaos: each wheel spun this round comes to rest where it stopped.
+export function scMerge(m, c) {
+  m.rest = Object.assign({ high: 0, mid: 0, low: 0 }, c.base.rest);
+  for (const p of c.played) for (const [w, at] of Object.entries(c.forks[p].rest || {})) if (at !== (c.base.rest || {})[w]) m.rest[w] = at;
+}

@@ -1,5 +1,6 @@
 // The main board and the turn flow: a move played (playMove), the result shown and cleared (endFlash),
 // leaving a square, timeouts, and the match won or drawn (mainResult).
+import { chaosPlay } from './chaos.js';
 import { dealable, pickType } from './match.js';
 import { anyMove, applyMove, canMove, newMini, randomLegalMove } from './minis.js';
 import { needRng, randInt } from './random.js';
@@ -63,6 +64,7 @@ export function majorityResult(squares) {
 // and a player with no legal move anywhere on the board is skipped (flash.pass) so the match
 // never freezes.
 export function playMove(state, i, m, rng, opts) {
+  if (state.sc && !state.online) return chaosPlay(state, i, m, rng, opts);   // Super Chaos: a move in a simultaneous round (core/chaos.js)
   rng = needRng(rng); opts = opts || {};
   if (state.winner) return { ok: false, reason: 'over' };
   if (state.flash) return { ok: false, reason: 'busy' };
@@ -137,6 +139,7 @@ export function endFlash(state, hold) {
   if (!state.flash) return false;
   const f = state.flash;
   state.flash = null;
+  if (f.recap && state.sc) { state.screen = 'board'; state.zoom = null; return true; }   // Super Chaos: a square's round result, shown in the recap (ui/chaos.js goes on from there)
   if (state.winner) { state.screen = 'win'; state.zoom = null; state.done = null; }
   else if (f.kind === 'again') { state.screen = 'mini'; state.zoom = state.lock; }
   else if (hold && state.done) { state.screen = 'mini'; state.zoom = f.square; }
@@ -152,7 +155,8 @@ export function leaveSquare(state) {
   if (state.flash || state.lock != null || state.winner) return false;
   const d = state.done;
   state.stamp = null;
-  if (d) {
+  if (d && state.sc && !state.online) state.done = null;                         // Super Chaos: the move is in; nothing passes until the round ends
+  else if (d) {
     state.turn = d.next;
     state.stamp = d.kind === 'claim' ? d.square : null;
     state.stampId = d.kind === 'claim' ? `${state.id || 'm'}:${state.moves}` : null;  // this claim's stamp: it plays once, whatever re-renders follow

@@ -2,9 +2,10 @@
 import { PHYS_TYPES } from '../games/shared/physics.js';
 import { GAMES } from '../games/index.js';
 import { testBadge, visibleTypes } from '../net/releases.js';
-import { app } from './app.js';
+import { app, state } from './app.js';
 import { CHEV, ICONS } from './art.js';
 import { fxAt, fxAttr, startFx } from './fx.js';
+import { chaosSetup } from './screens/setup.js';
 import { scheduleCpu } from './turns.js';
 
 /* ----- explainers: the rules in short, from the "?" in a mini-game, the game list, or How to Play ----- */
@@ -14,20 +15,28 @@ const RULES_CORE = [
   'Once neither player can get three in a row any more, the match ends in a draw.',
 ];
 export const EXPLAIN = Object.fromEntries(Object.keys(GAMES).map(t => [t, GAMES[t].meta.explainer]));
+// Super Chaos: the mode's own explainer (its switch on the setup screen), and a game's Super Chaos rules where they differ.
+const SC_EXPLAIN = { name: 'Super Chaos', play: "Each round, you and the computer each pick any open square and make one move there, at the same time. You see the computer's move when the round ends.", win: "Get three in a row. Win the same square in the same round and it resets; both make three in a row in the same round and it's a draw." };
+const SC_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linejoin="round"><path d="M13.5 2 5 13.5h6L9.5 22 19 9.5h-6z"/></svg>';
+const scNow = () => !!(state.sc && ['board', 'mini'].includes(state.screen)) || (state.screen === 'setup' && chaosSetup());
+export function explainOf(t) {
+  if (t === 'superchaos') return SC_EXPLAIN;
+  return (scNow() && GAMES[t] && GAMES[t].meta.scExplainer) || EXPLAIN[t];
+}
 export let explainT = null;                          // the mini-game whose explainer is open
-export const qBtn = (t, cls) => `<button class="qbtn${cls ? ' ' + cls : ''}" data-act="explain" data-t="${t}" aria-label="How to play ${EXPLAIN[t].name}">${cls === 'sm' ? '<i>?</i>' : '?'}</button>`;   // the small one: a 26px sticker in a 40px tap target
+export const qBtn = (t, cls) => `<button class="qbtn${cls ? ' ' + cls : ''}" data-act="explain" data-t="${t}" aria-label="How to play ${explainOf(t).name}">${cls === 'sm' ? '<i>?</i>' : '?'}</button>`;   // the small one: a 26px sticker in a 40px tap target
 export function renderExplain() {
-  const x = explainT && EXPLAIN[explainT];
+  const x = explainT && explainOf(explainT);
   if (!x) return '';
   return `<div class="explain" data-act="explain-close" role="dialog" aria-modal="true" aria-label="How to play ${x.name}"${fxAttr(fxAt('explain', explainT))}><div class="excard">
-    <h2>${ICONS[explainT]}<span>${x.name}</span></h2>
+    <h2>${explainT === 'superchaos' ? SC_ICON : ICONS[explainT]}<span>${x.name}</span></h2>
     <p class="exline play"><b>Play</b><span>${x.play}</span></p>
     <p class="exline win"><b>Win</b><span>${x.win}</span></p>
     <small>Tap anywhere to close</small></div></div>`;
 }
 // Opened and closed in place: the screen underneath is not drawn again (no scroll jump, no move used).
 export function openExplain(t) {
-  if (!EXPLAIN[t]) return;
+  if (!explainOf(t)) return;
   closeExplain(true);
   explainT = t;
   startFx('explain', t);

@@ -72,3 +72,16 @@ export function moveFlash(m, p, range, bjFrom, mini, flash) {
 export function flashMs(f, winLen, won) {
   return !f.craps ? CRAPS.roll + CRAPS.hold : f.craps.kind === 'stop' ? CRAPS.stop : !f.craps.roll ? crapsTimes(f.craps.rolls, f.craps.point).end + CRAPS.hold + (won ? 600 : 0) : CRAPS.land + CRAPS.flash + (won ? 600 : 0);   // one roll: the dice land, the result flashes, and the controls are back (a flash from before: the whole round)
 }
+// Super Chaos: each player has their own round and point here (no shared continuation): scp and scr keep
+// each player's point and rolls, and the square shows its player's own (scFork). Stop keeps the point on for
+// that player's next roll.
+export function scCreate(type, rng) { return Object.assign(create(type, rng), { scp: { X: null, O: null }, scr: { X: [], O: [] } }); }
+export function scFork(mini, p) {
+  if (!mini.scp) { mini.scp = { X: null, O: null }; mini.scr = { X: [], O: [] }; }
+  mini.point = mini.scp[p] == null ? null : mini.scp[p]; mini.rolls = (mini.scr[p] || []).map(d => d.slice()); mini.live = null;
+}
+export function scMerge(m, c) {
+  m.scp = Object.assign({ X: null, O: null }, c.base.scp); m.scr = JSON.parse(JSON.stringify(c.base.scr || { X: [], O: [] }));
+  for (const p of c.played) { const f = c.forks[p]; m.scp[p] = f.point == null ? null : f.point; m.scr[p] = (f.rolls || []).map(d => d.slice()); }
+  m.live = null;
+}

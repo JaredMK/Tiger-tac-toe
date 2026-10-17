@@ -1,5 +1,5 @@
 // Battleship: the screen, the miniature, the move's words and sounds, and the inputs.
-import { BS } from './rules.js';
+import { BS, bsN } from './rules.js';
 import { mv } from '../../ui/app.js';
 
 // Battleship: the burst on a hit, a ship's part in its cell, and the card naming the ship being hunted.
@@ -15,8 +15,8 @@ const SHIP_PART = {
   bow: '<path class="hull" d="M-6,30 H56 L90,50 L56,70 H-6 Z"/><circle class="port" cx="28" cy="50" r="7"/>',
 };
 const shipPart = (len, k) => (len === 1 ? 'one' : k === 0 ? 'stern' : k === len - 1 ? 'bow' : 'mid');
-function shipSeg(ship, i) {
-  const cells = ship.slice().sort((a, b) => a - b), k = cells.indexOf(i), down = cells.length > 1 && cells[1] - cells[0] === BS.n;
+function shipSeg(ship, i, n) {
+  const cells = ship.slice().sort((a, b) => a - b), k = cells.indexOf(i), down = cells.length > 1 && cells[1] - cells[0] === n;
   return `<svg class="bseg" viewBox="0 0 100 100" aria-hidden="true"><g${down ? ' transform="rotate(90 50 50)"' : ''}>${SHIP_PART[shipPart(cells.length, k)]}</g></svg>`;
 }
 // Under the sea: the ship being hunted, its name and its parts (as many filled in as have been hit).
@@ -30,20 +30,21 @@ function bsShipCard(mini, sunkBy, fresh) {
 export function miniature(mini, final) {
   const sunk = mini.winCells || [], hits = mini.hits || [], len = mini.len || 1;
   const parts = Array.from({ length: len }, (_, k) => `<g transform="translate(${k * 100} 0)">${SHIP_PART[shipPart(len, k)].replace('class="hull"', `class="hull${k < hits.length ? ' hit' : ''}"`)}</g>`).join('');
-  return `<div class="tbs"><div class="tg g4 sea">${mini.revealed.map((r, i) => `<i class="${sunk.includes(i) ? 'ship ' + (r || '') : hits.includes(i) ? 'hit' : r ? 'miss' : ''}"></i>`).join('')}</div>
+  return `<div class="tbs"><div class="tg g4 sea${bsN(mini) !== BS.n ? ' n' + bsN(mini) : ''}">${mini.revealed.map((r, i) => `<i class="${sunk.includes(i) ? 'ship ' + (r || '') : hits.includes(i) ? 'hit' : r ? 'miss' : ''}"></i>`).join('')}</div>
         <div class="tship" aria-label="${BS.names[len]}, ${len} part${len === 1 ? '' : 's'}"><svg viewBox="0 20 ${len * 100} 60" aria-hidden="true">${parts}</svg><b>${BS.names[len]}</b></div></div>`;
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
-  // One hidden ship on a 4x4 sea. A shot shows a hit (a burst) or a miss (a splash), never which
+  // One hidden ship on a 4x4 sea (Super Chaos: a Patrol Boat on 5x5). A shot shows a hit (a burst) or a miss (a splash), never which
   // way the ship lies; the shot that sinks it reveals the whole ship, which then goes under.
   const hits = mini.hits || [], ship = mini.ship || null, sunk = !!sq.owner && !!ship;
   const shown = ship && (sunk || view) ? ship : [];             // the ship's cells, once it may be seen
   const sinking = sunk && fresh;
-  g = `<div class="g-bs"><div class="bsgrid">${mini.revealed.map((r, i) => {
-        const r0 = Math.floor(i / BS.n) + 1, c0 = i % BS.n + 1;
+  const n = bsN(mini);
+  g = `<div class="g-bs"><div class="bsgrid${n !== BS.n ? ' n' + n : ''}">${mini.revealed.map((r, i) => {
+        const r0 = Math.floor(i / n) + 1, c0 = i % n + 1;
         if (shown.includes(i)) {
           const cls = `cell sea ship ${sunk ? sq.owner : 'ghost'}${sinking ? ' sink' : ''}${anim === i ? ' flipin' : ''}`;
-          return `<button class="${cls}" data-act="move" ${mv(i)} aria-label="Row ${r0} column ${c0}, ship" disabled>${shipSeg(ship, i)}${sinking ? HITFX : ''}</button>`;   // while sinking: the hit bursts give way to the ship
+          return `<button class="${cls}" data-act="move" ${mv(i)} aria-label="Row ${r0} column ${c0}, ship" disabled>${shipSeg(ship, i, n)}${sinking ? HITFX : ''}</button>`;   // while sinking: the hit bursts give way to the ship
         }
         const hit = hits.includes(i);
         const cls = hit ? ' bshit' : r ? ' miss' : '';

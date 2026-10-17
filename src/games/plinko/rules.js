@@ -87,3 +87,19 @@ export function moveFlash(m, p, range, bjFrom, mini, flash) {
 export function flashMs(f, winLen, won) {
   return PLINKO.rows * PLINKO.step + PLINKO.land + (won ? 600 : 0);
 }
+// Super Chaos: both may drop from the same slot (it locks once). Each drop scores its own points; both
+// touching the bonus peg get +2 each, and one new bonus peg appears for the next round.
+export function scMerge(m, c) {
+  const b = c.base;
+  m.used = b.used.slice(); m.bonus = b.bonus;
+  let hit = null;
+  for (const p of [c.me].concat(c.played.filter(q => q !== c.me))) {
+    if (!c.played.includes(p)) continue;
+    const l = c.forks[p].last;
+    if (!l) continue;
+    m.used[l.slot] = true;
+    if (l.hit && !hit) hit = c.forks[p].bonus;                     // (the player's own new peg, if they hit it: what they already see)
+  }
+  if (m.used.every(Boolean)) m.used = new Array(PLINKO.slots).fill(false);
+  if (hit) m.bonus = { x: hit.x, r: hit.r };
+}

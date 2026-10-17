@@ -6,6 +6,7 @@
 
 export { cpuEcho, STYLE0, AI, needsOf, winChance, localBest, squareValue, moveGain, cpuMove } from './ai.js';
 export { lineOpen, majorityResult, LINES, timeoutMove, mainResult, playMove, endFlash, leaveSquare } from './board.js';
+export { SC, scTypes, isChaos, scHuman, scSquareMini, startChaos, scBegin, scCpu, chaosPlay, chaosTimeout, chaosResolve, chaosNext, scPool, scMainResult } from './chaos.js';
 export { cfgKit, lohi } from './config.js';
 export { isReleased, releasedTypes, allowedTypes, restrictGames } from './games.js';
 export { dealable, normLocal, seatLocal, NAME_MAX, pickType, newSquare, CPU_NAME, defaultSetup, cpuSide, normSetup, syncNames, enabledGames, playerName, newState, startMatch, newMatch } from './match.js';
@@ -17,7 +18,7 @@ export { normTimer, TIMER_OPTIONS, newTimer, PLAY, playMs, replayMs, armClock } 
 export { clamp01, r2, r3, other } from './util.js';
 export { BJ, BJT, bjValue, bjTotal, bjNatural, bjDealerPlay, bjOutcome, bjStrategy, bjPlan, bjMs } from '../games/bj/rules.js';
 export { BOWLG } from '../games/bowling/rules.js';
-export { BS, bsCandidates, bsPlacements, bsShip } from '../games/bs/rules.js';
+export { BS, bsN, bsCandidates, bsPlacements, bsShip } from '../games/bs/rules.js';
 export { BULL_DEFAULTS } from '../games/bullseye/meta.js';
 export { BULLS, BULLT, bullsLeg, bullsAim, BULL_LIMITS, BULL_CFG, bullsNorm, setBullsConfig, bullsConfig, bullsSpot, bullsScore, bullsRates, bullsPeriod } from '../games/bullseye/rules.js';
 export { BUMP } from '../games/bump/rules.js';

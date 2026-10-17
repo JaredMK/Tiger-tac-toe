@@ -11,6 +11,7 @@ import {
   CPU_MS, FLASH_MS, FLIP_MS, MEMORY_MS, RNG, commit, cpuPlan, cpuTimer, flashReady, flashTimer, holdTimer,
   menuOpen, pickKey, setCpuPlan, setCpuTimer, setFlashReady, setFlashTimer, setHoldTimer, state
 } from './app.js';
+import { chaosStep } from './chaos.js';
 import { explainT } from './explainer.js';
 import { animMs, fx, fxAt, stampFx, startFx } from './fx.js';
 import { joinAsk } from './input.js';
@@ -21,6 +22,7 @@ export function cpuTurn() { return !!state.cpu && state.cpu.includes(state.turn)
 // Runs after every render: arms the computer's next step whenever it is its turn and nothing else is going on.
 export function scheduleCpu() {
   clearTimeout(cpuTimer); setCpuTimer(null);
+  chaosStep();                                                   // Super Chaos: the round's own steps (ui/chaos.js)
   if (!cpuTurn() || state.flash || state.done || state.confirm || menuOpen || explainT || joinAsk) return;
   if (state.screen === 'board') { setCpuPlan(null); setCpuTimer(setTimeout(cpuSpot, CPU_MS.think)); return; }
   if (state.screen !== 'mini') return;

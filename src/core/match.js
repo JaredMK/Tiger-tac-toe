@@ -110,9 +110,9 @@ export function newState(rng) {
 // A game that can be dealt right now: Trivia only once its questions are in (trivia.json: the page
 // fetches it, the server has it as a file); without them a Trivia square could never be played.
 export const dealable = t => (t === 'trivia' ? triviaReady() : PHYS_TYPES.includes(t) || t === 'pinball' ? physicsReady() && !!PHYSICS.lib.PIN : true);
-export function startMatch(state, rng) {
+export function startMatch(state, rng, only) {   // only: the games this kind of match may deal (Super Chaos's)
   rng = needRng(rng);
-  const games = enabledGames(state.setup).filter(dealable);
+  const games = enabledGames(state.setup).filter(dealable).filter(t => !only || only.includes(t));
   if (!games.length) return false;
   syncNames(state.setup);
   for (const p of ['X', 'O']) {
@@ -132,6 +132,7 @@ export function startMatch(state, rng) {
   state.draft = ''; state.pick = null; state.pickSq = null; state.sel = []; state.confirm = null; state.notice = null;
   state.winner = null; state.winLine = null; state.winReason = null; state.counts = null;
   state.lastSquare = null; state.lastBy = null; state.moves = 0; state.sqlog = [];
+  state.sc = null;                                            // (a Super Chaos match: core/chaos.js, startChaos)
   markCoins(state, 'X', rng);
   return true;
 }

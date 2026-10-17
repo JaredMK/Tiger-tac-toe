@@ -1,5 +1,6 @@
 // Input: the page's click handler (each game's own controls go to its view.js: actions), the keyboard,
 // scrolling lists, and joining by link.
+import { startChaos } from '../core/chaos.js';
 import { restrictGames } from '../core/games.js';
 import { NAME_MAX, normLocal, normSetup, seatLocal, startMatch, syncNames } from '../core/match.js';
 import { resignLocal } from '../core/records.js';
@@ -33,7 +34,7 @@ import { backspace, submitWord, typeLetter } from './keyboard.js';
 import { render } from './render.js';
 import { runGo } from './runner.js';
 import { hist, openHistory, openLeaderboard, openProfile, prof, profileBack, setHist } from './screens/profile.js';
-import { setGames } from './screens/setup.js';
+import { chaosSetup, setGames, setupTypes } from './screens/setup.js';
 import { cpuTurn, dismissFlash, scheduleCpu } from './turns.js';
 
 // A mini-game's own control: the view whose actions have it.
@@ -117,7 +118,12 @@ export function init() {
     } else if (act === 'mode-go') {              // the main menu: pick a mode, then set up
       state.setup.mode = 'two'; normSetup(state.setup); normLocal(state.setup); state.screen = 'setup'; setAdvOpen(false); commit();
     } else if (act === 'kind') {                 // Play Local: player 2 is a Human or the Computer
+      if (chaosSetup() && el.dataset.kind !== 'cpu') { SND.play('error'); return; }   // (Super Chaos: against the computer only, for now)
       normLocal(state.setup).p2 = el.dataset.kind === 'cpu' ? 'cpu' : 'human'; commit();
+    } else if (act === 'chaos') {                // Play Local: Super Chaos on or off (against the computer)
+      state.setup.chaos = el.dataset.v === '1';
+      if (state.setup.chaos) normLocal(state.setup).p2 = 'cpu';
+      commit();
     } else if (act === 'lside') {                // Play Local: player 1's side, X, O or Random (drawn at every start)
       normLocal(state.setup).pick = ['X', 'O', 'random'].includes(el.dataset.side) ? el.dataset.side : 'X'; commit();
     } else if (act === 'review') {               // the results screen: look back over the final board
@@ -137,7 +143,7 @@ export function init() {
     } else if (act === 'rematch') {               // the same settings again (a Random side drawn again)
       if (state.online) { rematchOnline(); return; }
       seatLocal(state.setup, RNG);
-      if (startMatch(state, RNG)) { trackStart(); commit(); }
+      if (state.sc ? startChaos(state, RNG) : startMatch(state, RNG)) { trackStart(); commit(); }   // (a Super Chaos match: another)
     } else if (act === 'online-go') {
       state.screen = 'online'; setNet('idle', ''); commit();
       connectQuiet();                               // (whether Find Match is on: it follows the database from here)
@@ -210,9 +216,9 @@ export function init() {
     } else if (act === 'adv') {
       setAdvOpen(!advOpen); render();
     } else if (act === 'games-none') {            // Deselect all: every mini-game off, in place (Start waits for one)
-      if (state.screen === 'setup') setGames(g => { for (const t of TYPES) g[t] = false; });
+      if (state.screen === 'setup') setGames(g => { for (const t of chaosSetup() ? setupTypes() : TYPES) g[t] = false; });
     } else if (act === 'games-all') {             // Select all: every mini-game on, in place
-      if (state.screen === 'setup') setGames(g => { for (const t of visibleTypes()) g[t] = true; });
+      if (state.screen === 'setup') setGames(g => { for (const t of setupTypes()) g[t] = true; });
     } else if (act === 'side') {
       if (isHost()) {                             // X or O: the seats move over in the room (its answer updates the screen); Random: drawn at each start
         const pick = el.dataset.side === 'random' ? 'random' : el.dataset.side === 'O' ? 'O' : 'X';
@@ -245,9 +251,10 @@ export function init() {
       state.confirm = null; commit();
     } else if (act === 'start') {
       if (state.online) { startOnline(); return; }
+      if (chaosSetup()) normLocal(state.setup).p2 = 'cpu';       // (Super Chaos: against the computer)
       seatLocal(state.setup, RNG);
       restrictGames(state.setup.games, visibleTypes());           // never a game this player may not see
-      if (startMatch(state, RNG)) { trackStart(); commit(); }
+      if (chaosSetup() ? startChaos(state, RNG) : startMatch(state, RNG)) { trackStart(); commit(); }
     } else {                                       // a mini-game's own control: its view's actions
       const own = gameAction(act);
       if (own) own(el, e, act);

@@ -6,6 +6,7 @@ import { isMM } from '../net/matchmaking.js';
 import { parseMatch, remoteTurn, room } from '../net/room.js';
 import { N, cpuPlays, esc, state } from './app.js';
 import { CHEV, CPU_ICON, ICONS, toon } from './art.js';
+import { scHint, scRecapStage, scShown } from './chaos.js';
 import { BURST_MS, burstPick, burstSvg, fxAt, fxAttr } from './fx.js';
 import { pauseMenu } from './mini.js';
 import { reviewCtx } from './screens/profile.js';
@@ -28,25 +29,30 @@ export function renderBoard(review) {
   const stampAt = !review && state.stamp != null && state.squares[state.stamp] && state.squares[state.stamp].owner ? fxAt('stamp', state.stampId) : null;
   const el = stampAt == null ? Infinity : performance.now() - stampAt;
   const stampOn = el < STAMP_MS;
+  const stamped = i => state.stamp === i || (!!state.sc && Array.isArray(state.stamps) && state.stamps.includes(i));   // (Super Chaos: both players may claim a square in the same round)
+  const rc = !review && !state.online && state.sc && state.sc.recap, resetAt = rc && rc.resets.length && scRecapStage() === 'stamp' ? fxAt('screset', 'sc' + rc.round) : null;
   const sqs = state.squares.map((sq, i) => {
     const cls = ['sq'];
     if (spot && spot.square === i && spot.before) sq = spot.before;     // a move about to be played back: the square as it was until then
+    if (!review) sq = scShown(i) || sq;                                  // Super Chaos's recap: both moves in, nothing claimed yet
+    const reset = resetAt != null && rc.resets.some(x => x.square === i);
+    if (reset) cls.push('screset');
     if (sq.owner) cls.push('own-' + sq.owner);
     else if (i === state.lastSquare && state.lastBy && !(spot && spot.square === i)) cls.push('last-' + state.lastBy);
     if (spot && spot.square === i) cls.push('spot', 'spot-' + spot.by);
     const info = INFO[sq.mini.type];
     // a claimed square keeps its label and final state, with the owner's mark laid over them
     const body = `<div class="lab${info.name.length > 14 ? ' long' : ''}">${ICONS[sq.mini.type]}<span>${info.name}</span></div><div class="thumb">${thumb(sq.mini, !!sq.owner)}</div>`
-      + (sq.owner ? `<div class="own-ov${stampOn && state.stamp === i ? ' stamp' : ''}"${stampOn && state.stamp === i ? fxAttr(stampAt) : ''} aria-hidden="true">${toon(sq.owner)}<b class="sr">${sq.owner}</b></div>` : '')   // a fresh claim stamps in
-      + (spot && spot.square === i ? `<div class="spot-lab ${spot.by}" role="status">${cpuPlays(spot.by) ? CPU_ICON : ''}${esc(spot.label)}</div>` : '');
+      + (sq.owner ? `<div class="own-ov${stampOn && stamped(i) ? ' stamp' : ''}"${stampOn && stamped(i) ? fxAttr(stampAt) : ''} aria-hidden="true">${toon(sq.owner)}<b class="sr">${sq.owner}</b></div>` : '')   // a fresh claim stamps in
+      + (spot && spot.square === i ? `<div class="spot-lab ${spot.by}${spot.html ? ' sc' : ''}" role="status">${spot.html ? spot.html : `${cpuPlays(spot.by) ? CPU_ICON : ''}${esc(spot.label)}`}</div>` : '');
     const label = sq.owner ? `Square ${i + 1}: ${info.name}, won by ${esc(playerName(state, sq.owner))}. Tap to view` : `Square ${i + 1}: ${info.name}`;
     if (review) return `<button class="${cls.join(' ')}" data-act="${reviewCtx.sq}" data-i="${i}" aria-label="${label}. Tap to see it">${body}</button>`;
-    return `<button class="${cls.join(' ')}" data-act="zoom" data-i="${i}" aria-label="${label}"${spot && spot.square === i ? fxAttr(fxAt('spot', spot)) : ''}${cpuTurn() ? ' disabled' : ''}>${body}</button>`;
+    return `<button class="${cls.join(' ')}" data-act="zoom" data-i="${i}" aria-label="${label}"${spot && spot.square === i ? fxAttr(fxAt('spot', spot)) : reset ? fxAttr(resetAt) : ''}${cpuTurn() || rc ? ' disabled' : ''}>${body}</button>`;
   }).join('');
   if (review) return `<main class="scr board-scr review-scr"><div class="revhead"><button class="back" data-act="${reviewCtx.back}" aria-label="${reviewCtx.backAria}">${CHEV}${reviewCtx.backLabel}</button>
       <div class="ttl"><b>${reviewCtx.title}</b><small>Tap any square to see how it ended</small></div></div><div class="board">${sqs}</div>
     <div class="foot"><span class="hint">Every hidden word, number, card and ship is shown</span></div>${pauseMenu()}</main>`;
-  const hint = spot ? (cpuPlays(spot.by) ? CPU_ICON : '') + esc(spot.label) : cpuTurn() ? `${N(state.turn)} is thinking…` : remoteTurn() ? `Waiting for ${N(state.turn)}…`
+  const hint = state.sc && !state.online && !state.winner ? scHint() : spot ? (cpuPlays(spot.by) ? CPU_ICON : '') + esc(spot.label) : cpuTurn() ? `${N(state.turn)} is thinking…` : remoteTurn() ? `Waiting for ${N(state.turn)}…`
     : state.moves ? 'Tap any open square to make a move' : `${N(state.turn)}: tap a square to start`;
   const st = el < BOARD_BURST[1] + BURST_MS ? state.stamp : null;    // a fresh claim: two bursts around it, gone after about a second
   const bw = st == null ? null : burstPick('board:' + state.stampId), bend = k => Math.round(stampAt + BOARD_BURST[k] + BURST_MS);

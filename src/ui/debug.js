@@ -53,9 +53,13 @@ import { hist, prof, record, signed } from './screens/profile.js';
 import { setGames } from './screens/setup.js';
 import { BUMP_SPEC, CANDY_SPEC, DICE_SPEC, SNL_SPEC } from './track.js';
 import { dismissFlash, playFlash } from './turns.js';
+import { chaosNext, chaosResolve, chaosTimeout, scCpu, scTypes, startChaos } from '../core/chaos.js';
+import { cpuMove } from '../core/ai.js';
+import { scClockLeft, scUi, setScUi } from './chaos.js';
 
 const names = {
   state: () => state,
+  cpuMove: () => cpuMove, startChaos: () => startChaos, chaosResolve: () => chaosResolve, chaosNext: () => chaosNext, chaosTimeout: () => chaosTimeout, scCpu: () => scCpu, scTypes: () => scTypes, scUi: () => scUi, scClockLeft: () => scClockLeft,
   KEY: () => KEY,
   commit: () => commit,
   online: () => online,
@@ -194,7 +198,7 @@ const names = {
   PHYSICS: () => PHYSICS,
   flArt: () => flArt,
 };
-const setters = { render: setRender, bullDraft: setBullDraft, connected: setConnected, fingDraw: setFingDraw, moveRejected: setMoveRejected, fingFrame: setFingFrame, call: setCall, net: assignNet, acct: setAcct, bowlDraft: setBowlDraft, cpuTimer: setCpuTimer, cpuPlan: setCpuPlan, bowlNow: setBowlNow, devLast: setDevLast, menuOpen: setMenuOpen };
+const setters = { scUi: setScUi, render: setRender, bullDraft: setBullDraft, connected: setConnected, fingDraw: setFingDraw, moveRejected: setMoveRejected, fingFrame: setFingFrame, call: setCall, net: assignNet, acct: setAcct, bowlDraft: setBowlDraft, cpuTimer: setCpuTimer, cpuPlan: setCpuPlan, bowlNow: setBowlNow, devLast: setDevLast, menuOpen: setMenuOpen };
 export function init() {
   for (const [name, get] of Object.entries(names)) Object.defineProperty(window, name, { get, set: setters[name], configurable: true });
 }

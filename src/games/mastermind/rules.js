@@ -75,3 +75,9 @@ export function hide(m, k, st) {
 export function flashMs(f, winLen, won) {
   return 450 + MM.pegs * 250 + (won ? 900 : 0);
 }
+// Super Chaos: each player gets their own feedback during their move; at the round's end both guesses join
+// the shared history.
+export function scMerge(m, c) {
+  const n = c.base.guesses.length;
+  m.guesses = c.base.guesses.concat(...c.played.map(p => c.forks[p].guesses.slice(n)));
+}

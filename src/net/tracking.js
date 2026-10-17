@@ -31,7 +31,7 @@ export function track(data) {
     fetch(trackUrl(), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data }), keepalive: true }).catch(() => {});
   } catch (e) { /* stats are never worth an error */ }
 }
-const localMode = () => (state.cpu === 'XO' ? 'cvc' : state.cpu ? 'cpu' : 'local');
+const localMode = () => (state.sc ? 'chaos' : state.cpu === 'XO' ? 'cvc' : state.cpu ? 'cpu' : 'local');   // (Super Chaos: a mode of its own)
 export function trackStart() {
   if (state.online) return;
   const id = Array.from(crypto.getRandomValues(new Uint8Array(10)), b => b.toString(16).padStart(2, '0')).join('');
@@ -123,7 +123,7 @@ export function pendingLocal(list) {
 }
 export function reportLocal() {
   if (state.online || !state.winner || !loggedIn() || window.TTT_FIREBASE && window.TTT_FIREBASE.uid) return;
-  if (!state.stats || state.stats.rec || state.stats.mode === 'cvc') return;      // local matches only (started here), once each
+  if (!state.stats || state.stats.rec || state.stats.mode === 'cvc' || state.stats.mode === 'chaos') return;      // local matches only (started here), once each (Super Chaos: counted in the game stats only, for now)
   state.stats.rec = true;
   const side = state.setup.human === 'O' ? 'O' : 'X', opp = other(side);
   const final = { squares: state.squares, winner: state.winner, winLine: state.winLine, winReason: state.winReason, resigned: state.resigned || null, counts: state.counts, moves: state.moves, games: state.games, names: { X: playerName(state, 'X'), O: playerName(state, 'O') } };

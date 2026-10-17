@@ -86,7 +86,7 @@ export function enterGame(id, side) {
   clearTimeout(spotTimer); setSpotTimer(null); clearTimeout(flashTimer); setFlashTimer(null); clearTimeout(holdTimer); setHoldTimer(null);
   clearTimeout(moveTimer); setMoveWait(null); setPresentingSeq(null); setAwayNote('');
   state.stats = null;                         // an online match: never recorded as a local one
-  state.online = { kind: 'mm', game: id, me: side, joined: true, shownSeq: null, matchId: null };
+  state.online = { kind: 'mm', game: id, me: side, joined: true, shownSeq: null, matchId: null }; state.sc = null;
   state.setup.mode = 'online'; state.cpu = null; setMenuOpen(false); setMenuStep('main');
   state.flash = null; state.done = null; state.spot = null; state.lock = null; state.zoom = null;
   search.found = true;

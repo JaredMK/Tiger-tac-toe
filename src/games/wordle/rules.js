@@ -57,3 +57,8 @@ export function hide(m, k, st) {
 export function flashMs(f, winLen, won) {
   return 1200;
 }
+// Super Chaos: both players may guess in the same round; both guesses go into the shared history.
+export function scMerge(m, c) {
+  const n = c.base.guesses.length;
+  m.guesses = c.base.guesses.concat(...c.played.map(p => c.forks[p].guesses.slice(n)));
+}

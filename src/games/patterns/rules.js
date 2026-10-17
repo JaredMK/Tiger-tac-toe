@@ -258,3 +258,21 @@ export function hide(m, k, st) {
 export function flashMs(f, winLen, won) {
   return PATTERNS.reveal + (won ? 600 : 0);
 }
+// Super Chaos: the puzzle is shared and each answers in their own move; a right answer keeps it on show
+// until the round ends (scAfter). At the round's end the wrong answers are crossed out for both, each player
+// who was right scores, and if anyone was, a new puzzle comes next round.
+export function scAfter(mini, before, p, res) {
+  if (res.note === 'right') { mini.puz = before.puz; mini.answer = before.answer; mini.rule = before.rule; mini.crossed = (before.crossed || []).slice(); }
+}
+export function scMerge(m, c) {
+  const b = c.base, crossed = new Set(b.crossed || []);
+  m.puz = b.puz; m.answer = b.answer; m.rule = b.rule;
+  let right = false;
+  for (const p of c.played) {
+    const l = c.forks[p].last;
+    if (!l) continue;
+    if (l.correct) right = true; else if (l.picked >= 0) crossed.add(l.picked);
+  }
+  m.crossed = [...crossed].sort((x, y) => x - y);
+  if (right) { let next = null; const r = needRng(c.rng); while (!next) next = patPuzzle(r, b.puz.fam); m.puz = next.puz; m.answer = next.answer; m.rule = next.rule; m.crossed = []; }
+}

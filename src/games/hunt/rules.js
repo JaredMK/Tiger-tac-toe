@@ -49,3 +49,8 @@ export function hide(m, k, st) {
 export function flashMs(f, winLen, won) {
   return won ? 1400 : 800;
 }
+// Super Chaos: each player sees their own clue during their move; at the round's end both digs join the grid.
+export function scMerge(m, c) {
+  m.dug = c.base.dug.slice(); m.last = null;
+  for (const p of c.played) c.forks[p].dug.forEach((d, k) => { if (d && !m.dug[k]) m.dug[k] = d; });
+}

@@ -36,11 +36,11 @@ Sounds start from the events they belong to, never from drawing the screen: a re
 
 | Sound | When it plays | How it is made |
 |---|---|---|
-| `spot` | The opponent's or computer's square lights up before its move | Two soft sines that swell in |
-| `turn` | The turn passes to the other player | Boing: sine glide 260→620 Hz, then a small blip |
-| `stamp` | A square is claimed (the owner's mark stamps in) | Low thump: sine 130→55 Hz with lowpass noise |
+| `spot` | The opponent's or computer's square lights up before its move (Super Chaos: in the round's recap) | Two soft sines that swell in |
+| `turn` | The turn passes to the other player (Super Chaos: a new round begins) | Boing: sine glide 260→620 Hz, then a small blip |
+| `stamp` | A square is claimed (the owner's mark stamps in; Super Chaos: in the round's recap) | Low thump: sine 130→55 Hz with lowpass noise |
 | `burst` | A comic burst pops round a square just claimed on the board. *Varied.* | Noise plus glide 900→1800 Hz |
-| `reset` | A square resets after a draw | Falling tone 520→240 Hz with low noise |
+| `reset` | A square resets after a draw (Super Chaos: also a square both players won in the same round) | Falling tone 520→240 Hz with low noise |
 | `swish` | A line of three is drawn (tic-tac-toe, and the board's winning line) | Noise sweep up 600→3200 Hz with a blip |
 | `won` | A square is won in its mini-game | Three-note chime |
 | `winFanfare` | The match is won | Four-note fanfare, then a held chord |
@@ -136,7 +136,7 @@ Sounds start from the events they belong to, never from drawing the screen: a re
 | Patterns | `ding` / `thud` | Right (the answer drops into the gap) / wrong (crossed out), as the pick is marked (Trivia's) | As above |
 | Risk Wheels | `rlSpin` / `wheelTick` / `ding` / `thud` / `sparkle` | The wheel starts (Roulette's spin) and ticks round, slower and slower (Candy race's wheel ticks); it stops on points (ding; a sparkle for the high-risk wheel's 10) or on nothing (thud) | As above |
 | Sniff | `hop` / `higher` / `lower` / `dig` / `sparkle` | The dog's paws as it trots (Bump's hop); "Hotter!" or "Colder!" (Higher/Lower's rising and falling tones); onto the treasure: it digs (Treasure hunt's dig) and the chest sparkles | As above |
-| Mini Golf, Pool, Bowling | `clack` / `cushion` / `pinHit` / `plop` / `clink` / `thud` | The shot's recording plays back, and its events sound as they come round, on both phones: two balls meeting (the Connect 4 clack), a ball on a wall or a cushion, the ball or a pin on a pin, a ball dropping in the cup or a pocket (Plinko's plop; the white ball in a pocket thuds), a lip-out (Cup Pong's clink), a gutter ball | Cushion: a short falling triangle 220→140 Hz under low noise; pin hit: a sharp band of noise at 1500 Hz with a falling triangle |
+| Mini Golf, Pool, Bowling | `clack` / `cushion` / `pinHit` / `plop` / `clink` / `thud` | (Super Chaos's Mini Golf: a clack as a shot locks in.) The shot's recording plays back, and its events sound as they come round, on both phones: two balls meeting (the Connect 4 clack), a ball on a wall or a cushion, the ball or a pin on a pin, a ball dropping in the cup or a pocket (Plinko's plop; the white ball in a pocket thuds), a lip-out (Cup Pong's clink), a gutter ball | Cushion: a short falling triangle 220→140 Hz under low noise; pin hit: a sharp band of noise at 1500 Hz with a falling triangle |
 | Mini Golf, Pool, Bowling | `ding` / `thud` / `strike` / `buzz` / `won` | The result as the replay ends: a ding for a good one (a ball sunk and another shot in Pool, six or more pins), a thud for a poor one (a lip-out, a scratch, a gutter ball); a strike's fanfare; the buzz when the black goes down; the square's chime when it is won | Strike: four rising triangle notes (E5 G5 B5 E6) over a band of noise sweeping down |
 | Dash, Lane Rush | `beep` / `go` / `jump` / `skid` / `crash` / `sparkle` / `thud` / `ding` | The 3-2-1 count and go; a jump (Dash) or a lane change's tyres (Lane Rush) from the tap or swipe; the tumble or spin-out; then the result, for both phones: a thud (a crash) or a sparkle (the finish) as it shows, and a ding as the bar lands at the new distance | Beep: a short 880 Hz square; go: two rising squares; jump: a triangle sweeping up 420→900 Hz; skid: a band of noise falling 2200→900 Hz; crash: a noise burst over a low falling sine |
 | Odd One Out | `reveal` / `tap` / `ding` / `thud` | Reveal (Mastermind's reveal); for someone else's pick: their reveal, then their tap; found (ding) / not that one or out of time (thud) | As above |

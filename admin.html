@@ -126,8 +126,8 @@ const FIREBASE_CONFIG = {
   databaseURL: 'https://tic-tac-chaos-default-rtdb.firebaseio.com',
   projectId: 'tic-tac-chaos',
 };
-const MODES = [['local', 'Two players'], ['cpu', 'vs Computer'], ['cvc', 'Computer vs Computer (old)'], ['friend', 'Friend code'], ['match', 'Find Match'], ['bot', 'Find Match vs a bot'], ['casual', 'Casual (old)'], ['ranked', 'Ranked (old)']];
-const MODE_COLORS = { local: 'var(--o)', cpu: 'var(--sky)', cvc: 'var(--stone)', friend: 'var(--plum)', match: 'var(--green)', bot: '#2f7f6f', casual: '#8fbf7a', ranked: 'var(--x)' };
+const MODES = [['local', 'Two players'], ['cpu', 'vs Computer'], ['chaos', 'Super Chaos'], ['cvc', 'Computer vs Computer (old)'], ['friend', 'Friend code'], ['match', 'Find Match'], ['bot', 'Find Match vs a bot'], ['casual', 'Casual (old)'], ['ranked', 'Ranked (old)']];
+const MODE_COLORS = { local: 'var(--o)', cpu: 'var(--sky)', chaos: '#d9622b', cvc: 'var(--stone)', friend: 'var(--plum)', match: 'var(--green)', bot: '#2f7f6f', casual: '#8fbf7a', ranked: 'var(--x)' };
 const GAMES = { ttt: 'Tic-tac-toe', c4: 'Connect 4', bs: 'Battleship', wordle: 'Wordle', hangman: 'Hangman', hex: 'Hex', hilo: 'Higher/Lower', snakes: 'Snakes and Ladders', memory: 'Memory', candy: 'Candy Race', bump: 'Bump', coins: 'Coin Flip', pig: 'Risky Rolls', hunt: 'Treasure Hunt', mastermind: 'Mastermind', bj: 'Blackjack', bus: 'Ride the Bus', rl: 'Roulette', bullseye: 'Bullseye', echo: 'Echo', plinko: 'Plinko', pong: 'Cup Pong', trivia: 'Trivia', oddone: 'Odd One Out', dash: 'Dash', lane: 'Lane Rush', golf: 'Mini Golf', pool: 'Pool', bowling: 'Bowling', craps: 'Craps', takeover: 'Takeover', flood: 'Flood', seating: 'Seating', districts: 'Districts', shelves: 'Shelves', roads: 'Roads', flap: 'Flap', chopper: 'Chopper', patterns: 'Patterns', wheels: 'Risk Wheels', sniff: 'Sniff', headcount: 'Headcount', flash: 'Flash', snapshot: 'Snapshot', skyhop: 'Sky Hop', scoop: 'Scoop Stack', pinball: 'Pinball' };   // the games in the pool (Hexapawn and the Dice race are gone; their numbers stay in the database)
 const app = document.getElementById('app');
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -394,14 +394,17 @@ function playCard() {
 const TEST_TYPES = ['bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads', 'flap', 'chopper', 'patterns', 'wheels', 'sniff', 'headcount', 'flash', 'snapshot', 'skyhop', 'scoop', 'pinball'];   // (as engine.js has them; the switches cover every game the stats know)
 const isReleased = t => (ctl.releases && typeof ctl.releases[t] === 'boolean' ? ctl.releases[t] : !TEST_TYPES.includes(t));
 function releasesCard() {
-  const rows = Object.entries(GAMES).map(([t, name]) => { const on = isReleased(t); return `<tr><td>${esc(name)}</td><td><label class="sw"><input type="checkbox" data-rel="${t}"${on ? ' checked' : ''}><span class="${on ? 'good' : ''}">${on ? 'Released' : 'Admin only'}</span></label></td></tr>`; }).join('');
+  const sc = !!(ctl.releases && ctl.releases.superchaos === true);   // the Super Chaos mode: admin only until released here (releases/superchaos)
+  const rows = `<tr><td><b>Super Chaos</b> <small>(mode: simultaneous rounds, vs Computer)</small></td><td><label class="sw"><input type="checkbox" data-rel="superchaos"${sc ? ' checked' : ''}><span class="${sc ? 'good' : ''}">${sc ? 'Released' : 'Admin only'}</span></label></td></tr>`
+    + Object.entries(GAMES).map(([t, name]) => { const on = isReleased(t); return `<tr><td>${esc(name)}</td><td><label class="sw"><input type="checkbox" data-rel="${t}"${on ? ' checked' : ''}><span class="${on ? 'good' : ''}">${on ? 'Released' : 'Admin only'}</span></label></td></tr>`; }).join('');
   return `<div class="card ctl" id="relCard"><h2>Game releases</h2>
     <p class="note">Admin only: the game exists for nobody but you (not in the Advanced checklist, How to Play, random draws, Find Match or anyone else's rooms). You can play it in local matches and in friend games you host; your guest plays it in that match only. Find Match deals released games only, even for you. A change applies to new matches at once; matches under way are not affected. Squares of admin-only games are counted under "Admin-only games (testing)" in the mini-game stats.</p>
     <div class="tbl"><table><thead><tr><th>Mini-game</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
 }
 async function saveRelease(el) {
   const t = el.dataset.rel, on = el.checked;
-  if (on && !confirm(`Release ${GAMES[t] || t} to everyone?\n\nIt will appear in the Advanced checklist, How to Play, random draws and Find Match for every player, in new matches from now on.`)) { el.checked = false; return; }
+  if (on && t === 'superchaos' && !confirm('Release Super Chaos to everyone?\n\nIts switch will appear in every player\'s Play Local setup (vs Computer), from now on.')) { el.checked = false; return; }
+  if (on && t !== 'superchaos' && !confirm(`Release ${GAMES[t] || t} to everyone?\n\nIt will appear in the Advanced checklist, How to Play, random draws and Find Match for every player, in new matches from now on.`)) { el.checked = false; return; }
   try {
     await fb.dbM.set(fb.dbM.ref(fb.db, `releases/${t}`), on);
     ctl.releases = Object.assign({}, ctl.releases, { [t]: on });

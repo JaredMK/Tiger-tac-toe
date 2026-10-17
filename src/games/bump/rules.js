@@ -31,3 +31,11 @@ export function moveFlash(m, p, range, bjFrom, mini, flash) {
 export function flashMs(f, winLen, won) {
   return PLAY.spin3 + Math.max(1, f.to - f.from) * PLAY.hop + (f.bumped ? PLAY.knock : 0) + 250;
 }
+// Super Chaos: both pieces move. A piece ending on the other's space sends that one Home (the normal rule,
+// when only one of them moved here); both ending on the same space send both Home.
+export function scMerge(m, c) {
+  if (c.played.length < 2) return;
+  const fin = BUMP.n + 1, a = c.forks.X.pos.X, b = c.forks.O.pos.O;
+  m.pos = { X: a, O: b };
+  if (a === b && a > 0 && a < fin) { m.pos = { X: 0, O: 0 }; m.last = Object.assign({}, m.last, { both: true }); return { note: 'bothHome' }; }
+}

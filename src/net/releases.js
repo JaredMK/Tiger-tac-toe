@@ -27,3 +27,8 @@ export function fetchReleases() {                                     // a plain
 const isAdmin = () => !!(acct && acct.admin);
 export const visibleTypes = () => allowedTypes(releases, isAdmin());     // the games this player may see and play
 export const testBadge = t => (isReleased(t, releases) ? '' : '<i class="tst">Testing</i>');   // (only the admin ever sees one)
+// Super Chaos (simultaneous rounds) is a mode with its own switch, releases/superchaos: admin only until the
+// admin's dashboard releases it (true), never on by default.
+export const chaosReleased = () => releases.superchaos === true;
+export const chaosVisible = () => isAdmin() || chaosReleased();
+export const chaosBadge = () => (chaosReleased() ? '' : '<i class="tst">Testing</i>');

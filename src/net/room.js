@@ -23,6 +23,7 @@ import {
   setSpotTimer, spotTimer, state
 } from '../ui/app.js';
 import { attPinned } from '../ui/attention.js';
+import { scWaiting } from '../ui/chaos.js';
 import { STAMP_MS } from '../ui/board.js';
 import { KEY } from '../ui/config.js';
 import { fingPinned } from '../ui/finger.js';
@@ -50,7 +51,7 @@ function isGuest() { return !!state.online && state.online.role === 'guest'; }
 export function mySide() { return state.online ? state.online.me : state.cpu && state.cpu.length === 1 ? other(state.cpu) : null; }   // a match the computer plays both sides of has no side here
 export function remoteTurn() { return !!state.online && !state.winner && state.turn !== state.online.me; }
 // nothing to tap: the computer or the other player is on the move, a move of ours is still being written, or the line is down
-export function blocked() { return cpuTurn() || remoteTurn() || !!moveWait || (!!state.online && !connected); }
+export function blocked() { return cpuTurn() || remoteTurn() || !!moveWait || (!!state.online && !connected) || scWaiting(); }   // (Super Chaos: the move is in for this round)
 export function pinned() { return echoPinned() || oddPinned() || attPinned() || fingPinned(); }   // an attempt under way that the player has started (Echo's pattern played, Odd One Out's grid revealed): they stay in the square until it goes in
 export function lockMine() { return state.lock != null && (mySide() == null || state.turn === mySide()); }
 export function setNet(status, msg) { net = { status, msg: msg || '' }; noteNet(); }
@@ -103,7 +104,7 @@ export async function hostRoom(code, resume) {
   if (!resume) {
     if (state.setup.hostPick !== 'random') state.setup.hostPick = state.setup.human === 'O' ? 'O' : 'X';
     state.stats = null;                         // an online match: never recorded as a local one
-    state.online = { role: 'host', code: code || roomCode(), me: state.setup.human === 'O' ? 'O' : 'X', joined: false, shownSeq: null, matchId: null };
+    state.online = { role: 'host', code: code || roomCode(), me: state.setup.human === 'O' ? 'O' : 'X', joined: false, shownSeq: null, matchId: null }; state.sc = null;   // (never a Super Chaos match online)
     state.setup.mode = 'online'; state.screen = 'setup';
     state.setup.timer = normTimer(state.setup.timer);           // an older 30 s or 3 min choice: 1 minute
   }
@@ -211,7 +212,7 @@ export async function joinRoom(code, name, resume) {
     if (!validCode(code)) { setNet('error', 'Enter the 5-letter room code.'); render(); return; }
     try { localStorage.setItem(KEY + '.name', name); } catch (e) { /* no storage */ }
     state.stats = null;                         // an online match: never recorded as a local one
-    state.online = { role: 'guest', code, me: null, name, joined: false, shownSeq: null, matchId: null };
+    state.online = { role: 'guest', code, me: null, name, joined: false, shownSeq: null, matchId: null }; state.sc = null;
     state.setup.mode = 'online'; state.screen = 'join';
   }
   setNet('connecting', resume ? 'Reconnecting…' : 'Connecting…');

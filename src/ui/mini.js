@@ -12,6 +12,7 @@ import { blocked, leaveLoses, lockMine, moveWait, mySide, pinned, remoteTurn } f
 import { N, esc, menuOpen, menuStep, state } from './app.js';
 import { CHEV, RESET, dieFace, toonT } from './art.js';
 import { attPinned } from './attention.js';
+import { scWaiting } from './chaos.js';
 import { qBtn } from './explainer.js';
 import { fingPinned } from './finger.js';
 import { animMs, fx, fxAt, fxAttr } from './fx.js';
@@ -40,6 +41,7 @@ export function renderMini(sq, review) {
     : mini.type === 'bj' ? `<b class="${turn}">${N(turn)}</b>'s hand`
     : mini.type === 'bus' ? (a ? '' : `<b class="${turn}">${N(turn)}</b>'s run`) : mini.type === 'bs' ? `<b class="${turn}">${N(turn)}</b> hit · goes again` : mini.type === 'craps' ? `<b class="${turn}">${N(turn)}</b> on point ${mini.point}` : mini.type === 'pool' ? `<b class="${turn}">${N(turn)}</b> sank one · goes again` : `<b class="${turn}">${N(turn)}</b> guessed right · goes again`) : '';
   if (!view && !f && !d && remoteTurn()) sub = `Waiting for <b class="${turn}">${N(turn)}</b>…`;
+  else if (!view && !f && !d && scWaiting()) sub = 'Your move is in';                 // Super Chaos: one move a round
   else if (!view && !f && !d && moveWait) sub = 'Sending your move…';
   let secret = '';
   if (view) {

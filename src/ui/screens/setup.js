@@ -1,4 +1,5 @@
 // The setup screen: sides, names, the timer and the mini-game checklist.
+import { scTypes } from '../../core/chaos.js';
 import { restrictGames } from '../../core/games.js';
 import { CPU_NAME, NAME_MAX, cpuSide, dealable, enabledGames, normLocal } from '../../core/match.js';
 import { TIMER_OPTIONS } from '../../core/timer.js';
@@ -6,7 +7,7 @@ import { other } from '../../core/util.js';
 import { INFO } from '../../games/index.js';
 import { connected } from '../../net/connect.js';
 import { noticeSeq } from '../../net/moves.js';
-import { testBadge, visibleTypes } from '../../net/releases.js';
+import { chaosBadge, chaosVisible, testBadge, visibleTypes } from '../../net/releases.js';
 import { dbSetup, isHost, net } from '../../net/room.js';
 import { TIMER_LABEL, advOpen, app, esc, save, state } from '../app.js';
 import { CHEV, CPU_ICON, ICONS, toonT } from '../art.js';
@@ -14,10 +15,15 @@ import { qBtn } from '../explainer.js';
 import { fxAt, fxAttr } from '../fx.js';
 
 /* ----- setup screen ----- */
+// Super Chaos (simultaneous rounds) is on for the next local match: its switch on, and the mode visible here
+// (admin only until released). Its checklist holds only the Super Chaos games.
+export const chaosSetup = () => !isHost() && !!state.setup.chaos && chaosVisible();
+export const setupTypes = () => (chaosSetup() ? visibleTypes().filter(t => scTypes().includes(t)) : visibleTypes());
 export function renderSetup() {
   const s = state.setup;
-  const VT = visibleTypes(), on = enabledGames(s).filter(t => VT.includes(t)).length;   // (an admin-only game does not exist here for anyone but the admin)
+  const VT = setupTypes(), on = enabledGames(s).filter(t => VT.includes(t)).length;   // (an admin-only game does not exist here for anyone but the admin)
   const host = isHost(), mode = host ? 'online' : s.mode === 'cpu' ? 'cpu' : 'two', human = s.human === 'O' ? 'O' : 'X', cpu = cpuSide(s);
+  const sc = chaosSetup();
   const guest = host ? other(state.online.me) : null;
   const field = p => (p === guest
     ? `<div class="field ${p}"><span>${p} player · friend</span><div class="namebox">${state.online.joined ? esc(s.names[p]) : '<i>not joined yet</i>'}</div></div>`
@@ -46,7 +52,7 @@ export function renderSetup() {
       <label class="field ${s1 || ''}"><span>Player 1 name${L.pick === 'random' ? ' · X or O, drawn every match' : ''}</span><input data-ln="n1" value="${esc(L.n1)}" maxlength="${NAME_MAX}" placeholder="${s1 || 'X or O'}" autocomplete="off" autocapitalize="words" aria-label="Player 1 name"></label></div>
     <div class="slot ${s2 || 'R'} p2${isCpu ? ' cpu' : ''}">
       <div class="who-p">${face(s2)}</div>
-      <div class="kind" role="group" aria-label="Player 2"><button class="seg${isCpu ? '' : ' on'}" data-act="kind" data-kind="human" aria-pressed="${!isCpu}">Human</button><button class="seg${isCpu ? ' on' : ''}" data-act="kind" data-kind="cpu" aria-pressed="${isCpu}">Computer</button></div>
+      <div class="kind" role="group" aria-label="Player 2"><button class="seg${isCpu ? '' : ' on'}" data-act="kind" data-kind="human" aria-pressed="${!isCpu}"${sc ? ' disabled' : ''}>Human</button><button class="seg${isCpu ? ' on' : ''}" data-act="kind" data-kind="cpu" aria-pressed="${isCpu}">Computer</button></div>
       <label class="field ${s2 || ''}">${isCpu ? `<i class="slot-ico" aria-hidden="true">${CPU_ICON}</i>` : ''}<span>Player 2 name</span><input data-ln="n2" value="${esc(L.n2)}" maxlength="${NAME_MAX}" placeholder="${isCpu ? CPU_NAME : s2 || 'X or O'}" autocomplete="off" autocapitalize="words" aria-label="Player 2 name"></label></div>`;
   };
   return `<main class="scr setup">
@@ -55,6 +61,7 @@ export function renderSetup() {
     <div class="setup-box" data-keep-scroll="setup">
     ${room}
     ${host ? `<div class="names">${field('X')}${field('O')}</div>` : `<div class="slots">${slots()}</div>`}
+    ${!host && chaosVisible() ? `<div class="timerrow scmode" role="group" aria-label="Super Chaos"><span>Super Chaos ${chaosBadge()}${qBtn('superchaos', 'sm')}</span><button class="seg${sc ? '' : ' on'}" data-act="chaos" data-v="0" aria-pressed="${!sc}">Off</button><button class="seg${sc ? ' on' : ''}" data-act="chaos" data-v="1" aria-pressed="${sc}">On</button></div>` : ''}
     ${host ? sides : ''}
     ${timer}
     <div class="adv${advOpen ? ' open' : ''}"><button class="adv-h" data-act="adv" aria-expanded="${advOpen}"><span>Advanced</span><small>${on} of ${VT.length} mini-games on</small><i class="chev">${CHEV}</i></button>
@@ -63,7 +70,7 @@ export function renderSetup() {
   <div class="setup-foot"><button class="primary" data-act="start"${ready ? '' : ' disabled'}>Start match</button><small class="warn">${setupWarn(s)}</small></div></main>`;
 }
 // Start opens once at least one mini-game is on (online, also once the friend is in).
-const onGames = s => enabledGames(s).filter(t => visibleTypes().includes(t));   // the games on, among those this player may see
+const onGames = s => enabledGames(s).filter(t => setupTypes().includes(t));   // the games on, among those this player may see (Super Chaos: its own)
 function setupReady(s) { const on = onGames(s).length; return isHost() ? !!(on && state.online.joined && connected) : !!on; }
 function setupWarn(s) { return !onGames(s).length ? 'Select at least one mini-game to start' : isHost() && !setupReady(s) ? 'Start opens once your friend has joined' : ''; }
 // Ticking a mini-game (or Select all) changes the screen in place, with no re-render, so the list
@@ -72,7 +79,7 @@ export function setGames(change) {
   const s = state.setup;
   change(s.games);
   save();
-  const VT = visibleTypes(), on = onGames(s).length;
+  const VT = setupTypes(), on = onGames(s).length;
   for (const box of app.querySelectorAll('input[data-t]')) {
     const v = !!s.games[box.dataset.t];
     box.checked = v;

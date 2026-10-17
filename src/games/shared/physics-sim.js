@@ -117,13 +117,17 @@ export function makePhysics(Matter) {
 
   // A shot, played out: the shooter's ball is sent off at its aim and power; everything runs until it
   // all stops (or the time is up). Returns the final places, what happened, and the recording.
+  // (Super Chaos's Mini Golf: shooter is { X: shot, O: shot } and both balls are struck at once.)
   function run(type, pos, shooter, shot) {
     const { engine, tracked, S } = build(type, pos);
     const byId = Object.fromEntries(tracked);
-    const mover = byId[type === 'golf' ? shooter : type === 'pool' ? 'cue' : 'ball'];
-    if (!mover) return null;
-    const power = Math.max(0, Math.min(1, Number(shot.power) || 0)), aim = Number(shot.aim) || 0, v0 = Math.pow(power, S.curve || 1) * S.vMax;
-    Body.setVelocity(mover, { x: Math.sin(aim) * v0 / 60, y: -Math.cos(aim) * v0 / 60 });   // (Matter's velocity is per step at 60 Hz, whatever the step's length)
+    const shots = shooter && typeof shooter === 'object' ? shooter : { [type === 'golf' ? shooter : type === 'pool' ? 'cue' : 'ball']: shot };
+    const movers = Object.keys(shots).filter(id => byId[id] && shots[id]);
+    if (!movers.length) return null;
+    for (const id of movers) {
+      const power = Math.max(0, Math.min(1, Number(shots[id].power) || 0)), aim = Number(shots[id].aim) || 0, v0 = Math.pow(power, S.curve || 1) * S.vMax;
+      Body.setVelocity(byId[id], { x: Math.sin(aim) * v0 / 60, y: -Math.cos(aim) * v0 / 60 });   // (Matter's velocity is per step at 60 Hz, whatever the step's length)
+    }
     const events = [], gone = {}, flags = {};
     let t = 0, hitPin = false;
     const ev = (k, extra) => { if (events.length < 60) events.push(Object.assign({ t: r2(t / TS), k }, extra || {})); };   // (the time as it plays: see TS)

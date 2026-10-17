@@ -102,3 +102,22 @@ export function hide(m, k, st) {
 export function flashMs(f, winLen, won) {
   return (f.trivia && f.trivia.fresh ? TRIVIA.flip : 0) + TRIVIA.pause + TRIVIA.reveal + (won ? 600 : 0);   // (another phone: the card turned up, a pause, then the pick)
 }
+// Super Chaos: the question is face up for both, and each answers in their own move. A right answer keeps
+// the question on show until the round ends (scAfter). At the round's end the wrong answers are crossed out
+// for both, each player who was right scores (their own count), and if anyone was, the core deals a new
+// question for the next round.
+export function scAfter(mini, before, p, res) {
+  if (res.note === 'right' && before.ask) { mini.ask = before.ask; mini.answer = before.answer; mini.crossed = (before.crossed || []).slice(); mini.asked = (before.asked || []).slice(); }
+}
+export function scMerge(m, c) {
+  const b = c.base, id = b.ask && b.ask.id, crossed = new Set(b.crossed || []);
+  m.ask = b.ask; m.answer = b.answer; m.asked = (b.asked || []).slice(); m.shown = true; delete m.fresh;
+  let right = false;
+  for (const p of c.played) {
+    const l = c.forks[p].last;
+    if (!l || l.id !== id) continue;
+    if (l.correct) right = true; else if (l.picked >= 0) crossed.add(l.picked);
+  }
+  m.crossed = [...crossed].sort((x, y) => x - y);
+  if (right) { m.asked = m.asked.concat(id); m.ask = null; m.answer = null; m.crossed = []; return { deal: true }; }
+}

@@ -12,7 +12,7 @@
   const TZ = 'America/New_York';
   const GAP = 30 * 60000;                       // a session ends after this long with nothing
   const HOUR = 3600000, DAY = 86400000;
-  const MODE_NAMES = { local: 'Two players', cpu: 'vs Computer', cvc: 'Computer vs Computer', friend: 'Friend code', match: 'Find Match' };
+  const MODE_NAMES = { local: 'Two players', cpu: 'vs Computer', chaos: 'Super Chaos', cvc: 'Computer vs Computer', friend: 'Friend code', match: 'Find Match' };
 
   // ---------- New York time ----------
   let fmt = null;
