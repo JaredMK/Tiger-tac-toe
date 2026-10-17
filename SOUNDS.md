@@ -18,7 +18,7 @@ Sounds start from the events they belong to, never from drawing the screen: a re
 
 | Sound | When it plays | How it is made |
 |---|---|---|
-| `tap` | Any button press, including tapping a square to open it and the Board button (not a move or card) | Triangle glide 640→430 Hz with a short noise tick. *Varied.* |
+| `tap` | Any button press, including tapping a square to open it and the Board button (not a move or card, and never a game's own input: pads, keys, cells, Start buttons and presses a game takes itself play only their own sounds) | Triangle glide 640→430 Hz with a short noise tick. *Varied.* |
 | `key` | Wordle or Hangman key, Enter, Backspace | Triangle blip 1400→1100 Hz. *Varied.* |
 | `toggle` | A switch, box or the sound switch | Two rising blips, 660 then 880 Hz |
 | `pop` | An emoji reaction is sent, or the other player's arrives. *Varied.* | Sine glide 620→980 Hz with a faint overtone at 1240 Hz |
@@ -119,8 +119,8 @@ Sounds start from the events they belong to, never from drawing the screen: a re
 | Roulette | `sparkle` | Green 0 comes up on a bet on 0: the square at once | Rising sparkles |
 | Bullseye | `mark` | The first tap locks the sideways line (Tic-tac-toe's mark) | As above |
 | Bullseye | `whoosh` / `dartHit` / `dartMiss` / `sparkle` | The dart flies (the Connect 4 whoosh); it lands in the board with a thunk, or off it with a clank; a bullseye sparkles too | Thunk: a short noise burst with a low falling triangle; clank: a falling square wave with a bright click |
-| Echo | `tone` | Each step of the pattern as it plays (timed from the Play pattern tap), each pad tapped back (at the press), and, for someone else's attempt, their pattern and their taps as they replay. *The rate sets the pad's note: G, C, E, G.* | A soft triangle note, 392 Hz |
-| Echo | `ding` / `thud` | The attempt passed / slipped | As above |
+| Echo | `tone` | Each step of the pattern as it plays (timed from the Play pattern tap), each pad tapped back (at the press, and nothing else: no tap click), and, for someone else's attempt, their pattern and their taps as they replay. *The rate sets the pad's note: G, C, E, G.* | A soft triangle note, 392 Hz |
+| Echo | `ding` / `thud` | The attempt passed / slipped (your own: 0.3 s after the last tap, once its tone has sounded) | As above |
 | Plinko | `peg` / `ding` / `plop` / `point` / `sparkle` | The chip clicks on every peg (Mastermind's peg, a little higher each row); a ding as it touches the bonus peg; it drops into its bin and the points sound (`point`); the winning drop sparkles | Plop: a sine falling 520→260 Hz |
 | Cup Pong | `whoosh` / `clink` / `splash` / `thud` | The throw; a rim bounce clinks; a sunk cup splashes, a miss thuds | As above |
 | Trivia | `ding` / `thud` | Right / wrong (crossed out), as the pick is marked | As above |
@@ -151,7 +151,7 @@ Sounds start from the events they belong to, never from drawing the screen: a re
 
 ## Rules the game follows
 
-- Every control plays a tap sound when pressed, whether or not the game takes the press.
+- Every control plays a tap sound when pressed, whether or not the game takes the press; a mini-game's own inputs never do (they play their own sound only, and the click that ends a press a game took itself is silent).
 - Opening a square and going back to the board make no whoosh: only your own tap plays (opening the
   computer's or the opponent's square, or coming back after a result, is silent apart from the move).
 - Each move's sounds start from the move itself, timed to the animation they go with, once. Opponent

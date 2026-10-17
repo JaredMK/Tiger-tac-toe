@@ -1445,7 +1445,7 @@ test('Headcount, Flash and Snapshot tuning (config/headcount, config/flash, conf
   await new Promise(r => setTimeout(r, 21000));                 // (the server keeps the config 20 s)
   const g = await pairUp(a, b);
   for (const [type, wrongOf, check] of [
-    ['headcount', r => E.attTruth('headcount', r) + 1, r => { assert.equal(r.items.length, 4, 'Headcount: the admin\'s count'); assert.ok(r.items.every(it => { const m = it.k.includes('mouse') ? 0.85 : 1; return it.d >= Math.round(2500 * 0.85 * m) && it.d <= Math.round(2500 * 1.15 * m); }), 'and crossing time (about even at level 1; mice a little quicker)'); }],
+    ['headcount', r => E.attTruth('headcount', r) + 1, r => { assert.equal(E.attTruth('headcount', r), 4, 'Headcount: the admin\'s count (decoys aside)'); assert.ok(r.items.every(it => { const m = it.k.includes('mouse') ? 0.85 : 1; return it.d >= Math.round(2500 * 0.85 * m) && it.d <= Math.round(2500 * 1.15 * m); }), 'and crossing time (about even at level 1; mice a little quicker)'); }],
     ['flash', r => (r.ans + 1) % 4, r => { assert.equal(r.items.length, 6, 'Flash: the admin\'s number of items'); assert.equal(r.ms, 1200, 'and time per item'); }],
     ['snapshot', r => E.attWrong('snapshot', r, E.makeRng('w')), r => { assert.deepEqual([r.c, r.r, r.cells.length, r.show, r.wait], [3, 4, 5, 4000, 2000], 'Snapshot: the admin\'s grid, cells, time on show and countdown'); }],
   ]) {
