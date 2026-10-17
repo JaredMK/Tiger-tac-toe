@@ -918,10 +918,11 @@ function oddGrid(level, rng, cfg) {
 // way). The round is in the open (the page plays it); its right answer follows from it, and the engine
 // works it out (attTruth). On the page, Start holds the player to the square until the answer goes in;
 // no answer in the turn's time counts as wrong ('auto'). Every difficulty value is the admin's
-// (config/headcount, config/flash, config/snapshot), aimed at a typical player getting about 85%, 65%
-// and 45% of rounds right at levels 1, 2 and 3; the computer gets them right that often.
+// (config/headcount, config/flash, config/snapshot), aimed at the share of rounds a typical player gets
+// right at each level (ATT.aiOk); the computer gets them right that often.
 const ATT_TYPES = ['headcount', 'flash', 'snapshot'];
-const ATT = { goal: 3, aiOk: [0.85, 0.65, 0.45], pause: 900, show: 1600 };   // pause: someone else's round, then their answer; show: the result and the right answer
+const ATT = { goal: 3, aiOk: { headcount: [0.45, 0.3, 0.2], flash: [0.8, 0.7, 0.6], snapshot: [0.65, 0.5, 0.35] }, pause: 900, show: 1600 };   // pause: someone else's round, then their answer; show: the result and the right answer
+const attOk = (type, level) => { const a = ATT.aiOk[type] || ATT.aiOk.headcount; return a[Math.min(level, a.length - 1)]; };
 function cfgKit(defaults, limits, fix) {                      // a config's checks: each value a number in its range (else the default), then any cross-checks
   const box = { cfg: null };
   const norm = raw => { const out = {}; for (const k of Object.keys(defaults)) { const [lo, hi, step] = limits[k], x = raw && raw[k] != null ? Number(raw[k]) : NaN; out[k] = Number.isFinite(x) && x >= lo && x <= hi ? (step ? Math.round(x / step) * step : x) : defaults[k]; } return fix ? fix(out) : out; };
@@ -929,64 +930,94 @@ function cfgKit(defaults, limits, fix) {                      // a config's chec
 }
 const lohi = keys => out => { for (const [a, b] of keys) if (out[b] < out[a]) out[b] = out[a]; return out; };
 
-// Headcount: creatures cross the field, one after another; count the ones asked for. Level 1: one kind,
-// one direction, a steady pace, spaced out; level 2: more, faster, mixed with decoys (another kind, or
-// the same in another colour) that do not count; level 3: more still, faster, both directions, uneven
-// timing with bunches. Every creature crosses the whole field (in from one edge, out at the other) and
-// no two ever cover each other (each runs in a lane, and in a lane they keep apart all the way).
-const HEAD = { lanes: 5, size: 11, lead: 400 };                 // the field: 100 across, 5 lanes; a creature is 11 across
-const HEAD_KINDS = { beetle: ['beetle', 'beetles'], gbeetle: ['green beetle', 'green beetles'], bbeetle: ['blue beetle', 'blue beetles'], ladybird: ['ladybird', 'ladybirds'], mouse: ['mouse', 'mice'], acorn: ['acorn', 'acorns'], leaf: ['leaf', 'leaves'] };
-const HEAD_THEMES = [                                           // what to count, the decoys, and how they move (h: crawling or scurrying across; v: falling)
-  { t: 'beetle', d: 'ladybird', axis: 'h' }, { t: 'ladybird', d: 'beetle', axis: 'h' }, { t: 'mouse', d: 'beetle', axis: 'h' },
-  { t: 'gbeetle', d: 'bbeetle', axis: 'h' }, { t: 'acorn', d: 'leaf', axis: 'v' },
+// Headcount: creatures cross the field; count the ones asked for, not the decoys. Level 1: 14-20 to count
+// and a few decoys of another kind, left and right, uneven timing with bunches; level 2: 18-25 and more
+// decoys, in all four directions (left, right, up, down) at widely varying speeds, so they cross each
+// other's paths often; level 3: 22-30, decoys that look like them (the same creature in a near colour),
+// four directions, stopping and starting, in bunches. Every creature crosses the whole field (in from one
+// edge, out at the other); two going the same way in the same lane never cover each other (a crossing
+// path can: that is the overlap).
+const HEAD = { lanes: 5, size: 11, lead: 400 };                 // the field: 100 across and 100 down, 5 lanes each way; a creature is 11 across
+const HEAD_KINDS = { beetle: ['beetle', 'beetles'], gbeetle: ['green beetle', 'green beetles'], bbeetle: ['blue beetle', 'blue beetles'], ladybird: ['ladybird', 'ladybirds'], mouse: ['mouse', 'mice'], acorn: ['acorn', 'acorns'], leaf: ['leaf', 'leaves'],
+  rladybird: ['red ladybird', 'red ladybirds'], oladybird: ['orange ladybird', 'orange ladybirds'], gmouse: ['grey mouse', 'grey mice'], bmouse: ['brown mouse', 'brown mice'], tbeetle: ['teal beetle', 'teal beetles'] };
+const HEAD_THEMES = [                                           // what to count and the decoys, by level (1: another kind; 2: another kind; 3: a look-alike)
+  { t: 'beetle', d: 'ladybird', L: [1, 2] }, { t: 'ladybird', d: 'beetle', L: [1, 2] }, { t: 'mouse', d: 'beetle', L: [1, 2] }, { t: 'beetle', d: 'mouse', L: [1, 2] },
+  { t: 'gbeetle', d: 'tbeetle', L: [3] }, { t: 'rladybird', d: 'oladybird', L: [3] }, { t: 'gmouse', d: 'bmouse', L: [3] },
 ];
-const HEAD_DEFAULTS = { n1lo: 6, n1hi: 10, d1lo: 0, d1hi: 0, cross1: 3200, gap1: 950, n2lo: 10, n2hi: 15, d2lo: 3, d2hi: 6, cross2: 2300, gap2: 560, n3lo: 14, n3hi: 20, d3lo: 4, d3hi: 7, cross3: 1800, gap3: 430 };   // n: how many to count; d: decoys; cross: ms to cross the field; gap: ms between starts, about
+const HEAD_DEFAULTS = { n1lo: 14, n1hi: 20, d1lo: 4, d1hi: 7, cross1: 1800, gap1: 430, n2lo: 18, n2hi: 25, d2lo: 7, d2hi: 11, cross2: 1800, gap2: 330, n3lo: 22, n3hi: 30, d3lo: 8, d3hi: 12, cross3: 2000, gap3: 300 };   // n: how many to count; d: decoys; cross: ms to cross the field (moving); gap: ms between starts, about
 const HEAD_LIMITS = {}; for (const L of [1, 2, 3]) Object.assign(HEAD_LIMITS, { ['n' + L + 'lo']: [1, 30, 1], ['n' + L + 'hi']: [1, 30, 1], ['d' + L + 'lo']: [0, 15, 1], ['d' + L + 'hi']: [0, 15, 1], ['cross' + L]: [600, 8000, 10], ['gap' + L]: [120, 3000, 10] });
 const HEAD_KIT = cfgKit(HEAD_DEFAULTS, HEAD_LIMITS, lohi([[`n1lo`, 'n1hi'], ['d1lo', 'd1hi'], ['n2lo', 'n2hi'], ['d2lo', 'd2hi'], ['n3lo', 'n3hi'], ['d3lo', 'd3hi']]));
 const setHeadConfig = HEAD_KIT.set, headConfig = HEAD_KIT.get;
-// Where a creature is (0-100 across its lane, its middle), ms into the round; null before it starts or after it is gone.
+// How far along its way a creature is (0 at the near edge, out of sight, to 1 past the far one), ms into
+// the round; null before it starts or after it is gone. Stops (s: [[where, ms]...]) hold it still a while.
+function headU(it, ms) {
+  const e = ms - it.t;
+  if (e < 0 || e > it.d) return null;
+  const stops = it.s || [], move = it.d - stops.reduce((a, [, w]) => a + w, 0);
+  let time = 0, u = 0;
+  for (const [at, w] of stops) {
+    const go = ((at - u) * move);
+    if (e <= time + go) return u + (e - time) / move;
+    time += go; u = at;
+    if (e <= time + w) return u;
+    time += w;
+  }
+  return Math.min(1, u + (e - time) / move);
+}
+// Where a creature is (its middle, 0-100 along its way across the field), ms into the round.
 function headAt(it, ms) {
-  const u = (ms - it.t) / it.d;
-  if (u < 0 || u > 1) return null;
+  const u = headU(it, ms);
+  if (u == null) return null;
   const x = -HEAD.size / 2 + u * (100 + HEAD.size);
   return it.dir > 0 ? x : 100 - x;
+}
+// The way a creature goes: across ('h': right if dir > 0) or down and up ('v': down if dir > 0).
+const headAxis = (it, r) => it.axis || (r && r.axis) || 'h';
+// Its motion as key points [time 0-1, way 0-1], for the page to animate exactly as the engine moves it.
+function headKeys(it) {
+  const stops = it.s || [], move = it.d - stops.reduce((a, [, w]) => a + w, 0), out = [[0, 0]];
+  let time = 0, u = 0;
+  for (const [at, w] of stops) { time += (at - u) * move; u = at; out.push([time / it.d, u]); time += w; out.push([time / it.d, u]); }
+  out.push([1, 1]);
+  return out;
 }
 function headRound(level, rng, cfg) {
   cfg = cfg || headConfig();
   const L = Math.min(level, 2) + 1, pick = (lo, hi) => lo + randInt(rng, hi - lo + 1);
-  const n = pick(cfg['n' + L + 'lo'], cfg['n' + L + 'hi']), dn = L === 1 ? 0 : pick(cfg['d' + L + 'lo'], cfg['d' + L + 'hi']);
-  const themes = L === 3 ? HEAD_THEMES.filter(t => t.axis === 'h') : HEAD_THEMES, th = themes[randInt(rng, themes.length)];
+  const n = pick(cfg['n' + L + 'lo'], cfg['n' + L + 'hi']), dn = pick(cfg['d' + L + 'lo'], cfg['d' + L + 'hi']);
+  const themes = HEAD_THEMES.filter(x => x.L.includes(L)), th = themes[randInt(rng, themes.length)];
   const kinds = shuffle(Array(n).fill(th.t).concat(Array(dn).fill(th.d)), rng), cross = cfg['cross' + L], gap = cfg['gap' + L];
   const items = [];
   let t = HEAD.lead, bunch = 0;
   const clear = (a, b) => { const t0 = Math.max(a.t, b.t), t1 = Math.min(a.t + a.d, b.t + b.d); for (let m = t0; m <= t1; m += 30) { const xa = headAt(a, m), xb = headAt(b, m); if (xa != null && xb != null && Math.abs(xa - xb) < HEAD.size + 2) return false; } return true; };
   for (const k of kinds) {
-    const d = Math.round(cross * (L === 1 ? 1 : 0.85 + rng() * 0.3) * (k === 'mouse' ? 0.85 : 1)), dir = L === 3 && rng() < 0.5 ? -1 : 1;
+    const speed = L === 1 ? 0.85 + rng() * 0.3 : 0.6 + rng() * 0.9;   // level 1: about even; then widely varied
+    const stops = L === 3 ? Array.from({ length: 1 + randInt(rng, 2) }, () => [0.2 + rng() * 0.6, 250 + randInt(rng, 400)]).sort((x, y) => x[0] - y[0]).map(([at, w]) => [Math.round(at * 1000) / 1000, w]) : null;
+    const d = Math.round(cross * speed * (k.includes('mouse') ? 0.85 : 1)) + (stops ? stops.reduce((a, [, w]) => a + w, 0) : 0);
+    const axis = L === 1 || rng() < 0.5 ? 'h' : 'v', dir = rng() < 0.5 ? -1 : 1;   // level 1: across, either way; from level 2: any of the four
+    if (stops && stops.length === 2 && stops[1][0] - stops[0][0] < 0.12) stops.pop();
     let it = null;
-    for (let tries = 0; !it && tries < 400; tries++) {           // the first lane (in a random order) where it keeps clear of the ones already in it; else a moment later
-      for (const lane of shuffle([0, 1, 2, 3, 4].slice(0, HEAD.lanes), rng)) { const c = { k, t: Math.round(t), d, lane, dir }; if (items.every(o => o.lane !== lane || clear(o, c))) { it = c; break; } }
+    for (let tries = 0; !it && tries < 400; tries++) {           // the first lane (in a random order) where it keeps clear of the ones going its way in it; else a moment later
+      for (const lane of shuffle([0, 1, 2, 3, 4].slice(0, HEAD.lanes), rng)) { const c = { k, t: Math.round(t), d, lane, dir, axis }; if (stops) c.s = stops; if (items.every(o => o.lane !== lane || o.axis !== axis || clear(o, c))) { it = c; break; } }
       if (!it) t += 60;
     }
     items.push(it);
-    if (L === 1) t += gap * (0.9 + rng() * 0.2);                // steady
-    else if (L === 2) t += gap * (0.6 + rng() * 0.8);           // a little uneven
-    else if (bunch > 0) { bunch -= 1; t += gap * (0.2 + rng() * 0.2); }   // a bunch: close together
-    else { if (rng() < 0.3) bunch = 1 + randInt(rng, 2); t += gap * (0.5 + rng() * 1.1); }
+    if (bunch > 0) { bunch -= 1; t += gap * (0.2 + rng() * 0.2); }   // a bunch: close together
+    else { if (rng() < (L === 2 ? 0.2 : 0.3)) bunch = 1 + randInt(rng, 2); t += gap * (0.5 + rng() * 1.1); }   // uneven timing
   }
   const ms = Math.max(...items.map(o => o.t + o.d)) + 250;
-  return { level: L - 1, t: th.t, d: dn ? th.d : null, axis: th.axis, items, ms };
+  return { level: L - 1, t: th.t, d: dn ? th.d : null, axis: 'mixed', items, ms };
 }
-const headAsk = r => `How many ${HEAD_KINDS[r.t][1]} were there?`;
-const headWatch = r => (r.d ? `Count the ${HEAD_KINDS[r.t][1]} only, not the ${HEAD_KINDS[r.d][1]}` : `Count the ${HEAD_KINDS[r.t][1]}`);
+const headAsk = r => `How many ${HEAD_KINDS[r.t][1]}?`;   // (shown from before Start: what to count)
+const headWatch = r => (r.d ? `Count the ${HEAD_KINDS[r.t][1]} only, not the ${HEAD_KINDS[r.d][1]}` : `Count the ${HEAD_KINDS[r.t][1]}`);   // (for the tests and the explainer: the page no longer shows it)
 
-// Flash: items flash one at a time in the middle (a shape in a colour; never the X or O colours), then one
-// question with 4 options. Level 1: about 0.9 s each, one attribute ("How many blue items?"); level 2:
-// 0.6 s, a combination ("How many blue stars?", "...NOT green?"); level 3: 0.45 s, order and position
-// ("What was the 5th item?", "...right after the first heart?"), the options as shape-and-colour icons.
-// The wrong options are near misses: one off, a similar combination's count, the items next to it.
-const FLASH = { shapes: ['star', 'heart', 'bolt'], colours: ['blue', 'green', 'purple'], on: 0.78 };   // on: the part of each item's time it shows (then a blank, so a repeat flashes twice)
-const FLASH_DEFAULTS = { n: 8, ms1: 900, ms2: 600, ms3: 450 };
-const FLASH_LIMITS = { n: [4, 12, 1], ms1: [150, 3000, 10], ms2: [150, 3000, 10], ms3: [150, 3000, 10] };
+// Flash: cards flash one at a time in the middle (a shape in a colour; never the X or O colours), each
+// for 0.5 s, then one question with 4 options: "How many [shape]s?" or "How many [colour] items?". Level
+// 1 flashes 6 cards, level 2 7, level 3 8. The wrong options are near misses: one off, the count of a
+// neighbouring shape or colour, two off.
+const FLASH = { shapes: ['star', 'heart', 'bolt'], colours: ['blue', 'green', 'purple'], on: 0.78 };   // on: the part of each card's time it shows (then a blank, so a repeat flashes twice)
+const FLASH_DEFAULTS = { n1: 6, n2: 7, n3: 8, ms1: 500, ms2: 500, ms3: 500 };
+const FLASH_LIMITS = { n1: [4, 12, 1], n2: [4, 12, 1], n3: [4, 12, 1], ms1: [150, 3000, 10], ms2: [150, 3000, 10], ms3: [150, 3000, 10] };
 const FLASH_KIT = cfgKit(FLASH_DEFAULTS, FLASH_LIMITS);
 const setFlashConfig = FLASH_KIT.set, flashConfig = FLASH_KIT.get;
 const ORD = ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th', '11th', '12th'];
@@ -1008,20 +1039,17 @@ function flashAnswer(items, q) {
 }
 function flashRound(level, rng, cfg) {
   cfg = cfg || flashConfig();
-  const L = Math.min(level, 2) + 1, N = cfg.n, ms = cfg['ms' + L], S = FLASH.shapes, C = FLASH.colours;
+  const L = Math.min(level, 2) + 1, N = cfg['n' + L], ms = cfg['ms' + L], S = FLASH.shapes, C = FLASH.colours;
   for (let tries = 0; tries < 200; tries++) {
     const items = Array.from({ length: N }, () => [S[randInt(rng, 3)], C[randInt(rng, 3)]]);
     if (new Set(items.map(it => it[0])).size < 2 || new Set(items.map(it => it[1])).size < 2) continue;   // (never a round of one shape or one colour)
     const s = S[randInt(rng, 3)], c = C[randInt(rng, 3)];
-    let q;
-    if (L === 1) q = rng() < 0.5 ? { kind: 'colour', c, text: `How many ${c} items?` } : { kind: 'shape', s, text: `How many ${plural(s)}?` };
-    else if (L === 2) { const r = rng(); q = r < 0.5 ? { kind: 'combo', s, c, text: `How many ${c} ${plural(s)}?` } : r < 0.75 ? { kind: 'notColour', c, text: `How many items were NOT ${c}?` } : { kind: 'notShape', s, text: `How many items were NOT ${plural(s)}?` }; }
-    else { const r = rng(); q = r < 0.4 ? { kind: 'nth', i: 1 + randInt(rng, N - 2) } : r < 0.75 ? (rng() < 0.5 ? { kind: 'after', s } : { kind: 'after', c }) : { kind: 'before', s }; q.text = q.kind === 'nth' ? `What was the ${ORD[q.i]} item?` : q.kind === 'after' ? `Which item came right after the first ${q.s || q.c + ' item'}?` : `Which item came right before the last ${q.s}?`; }
+    const q = rng() < 0.5 ? { kind: 'colour', c, text: `How many ${c} items?` } : { kind: 'shape', s, text: `How many ${plural(s)}?` };   // the two questions there are, at every level
     const truth = flashAnswer(items, q);
     if (truth == null) continue;
     let opts;
     if (typeof truth === 'number') {                            // counts: one off either side first, then a similar combination's count, then two off
-      if (L === 1 && truth === 0) continue;                     // (level 1 never asks about something that never showed)
+      if (truth === 0) continue;                                // (never a question about something that never showed)
       const similar = q.kind === 'combo' ? [flashAnswer(items, { kind: 'combo', s, c: C[(C.indexOf(c) + 1) % 3] }), flashAnswer(items, { kind: 'combo', s: S[(S.indexOf(s) + 1) % 3], c }), flashAnswer(items, { kind: 'colour', c })]
         : q.kind === 'colour' ? [flashAnswer(items, { kind: 'colour', c: C[(C.indexOf(c) + 1) % 3] })] : q.kind === 'shape' ? [flashAnswer(items, { kind: 'shape', s: S[(S.indexOf(s) + 1) % 3] })] : [];
       const ok = v => v >= 0 && v <= N && v !== truth, wrong = [truth + 1, truth - 1].filter(ok);
@@ -1043,12 +1071,12 @@ function flashRound(level, rng, cfg) {
   return null;
 }
 
-// Snapshot: a grid with some cells filled, shown for a few seconds (a countdown), then hidden; tap the
-// cells back in and Submit: an exact match counts. Level 1: 4x4 with 6; level 2: 4 across by 5 down with
-// 8; level 3: 5x5 with 10. Never a trivial pattern: no full row or column, no solid block, no straight
-// run of 4, nothing symmetric.
-const SNAP_DEFAULTS = { c1: 4, r1: 4, k1: 6, c2: 4, r2: 5, k2: 8, c3: 5, r3: 5, k3: 10, show: 5000 };
-const SNAP_LIMITS = { c1: [3, 7, 1], r1: [3, 7, 1], k1: [2, 30, 1], c2: [3, 7, 1], r2: [3, 7, 1], k2: [2, 30, 1], c3: [3, 7, 1], r3: [3, 7, 1], k3: [2, 30, 1], show: [1000, 15000, 100] };
+// Snapshot: a grid with some cells filled, shown for 5 seconds, then the grid blank with a 5-second
+// countdown, then the player taps the cells back in and Submits: an exact match counts. Level 1: 4
+// across by 5 down with 7; level 2: 5x5 with 9; level 3: 5 across by 6 down with 11. Never a trivial
+// pattern: no full row or column, no solid block, no straight run of 4, nothing symmetric.
+const SNAP_DEFAULTS = { c1: 4, r1: 5, k1: 7, c2: 5, r2: 5, k2: 9, c3: 5, r3: 6, k3: 11, show: 5000, wait: 5000 };
+const SNAP_LIMITS = { c1: [3, 7, 1], r1: [3, 7, 1], k1: [2, 30, 1], c2: [3, 7, 1], r2: [3, 7, 1], k2: [2, 30, 1], c3: [3, 7, 1], r3: [3, 7, 1], k3: [2, 30, 1], show: [1000, 15000, 100], wait: [0, 15000, 100] };
 const SNAP_KIT = cfgKit(SNAP_DEFAULTS, SNAP_LIMITS, out => { for (const L of [1, 2, 3]) out['k' + L] = Math.min(out['k' + L], out['c' + L] * out['r' + L] - 2); return out; });
 const setSnapConfig = SNAP_KIT.set, snapConfig = SNAP_KIT.get;
 function snapTrivial(cells, c, r) {
@@ -1067,9 +1095,9 @@ function snapRound(level, rng, cfg) {
   const L = Math.min(level, 2) + 1, c = cfg['c' + L], r = cfg['r' + L], k = cfg['k' + L];
   for (let tries = 0; tries < 500; tries++) {
     const cells = shuffle(Array.from({ length: c * r }, (_, i) => i), rng).slice(0, k).sort((a, b) => a - b);
-    if (!snapTrivial(cells, c, r)) return { level: L - 1, c, r, cells, show: cfg.show };
+    if (!snapTrivial(cells, c, r)) return { level: L - 1, c, r, cells, show: cfg.show, wait: cfg.wait };
   }
-  return { level: L - 1, c, r, cells: shuffle(Array.from({ length: c * r }, (_, i) => i), rng).slice(0, k).sort((a, b) => a - b), show: cfg.show };   // (settings that leave no other choice)
+  return { level: L - 1, c, r, cells: shuffle(Array.from({ length: c * r }, (_, i) => i), rng).slice(0, k).sort((a, b) => a - b), show: cfg.show, wait: cfg.wait };   // (settings that leave no other choice)
 }
 
 // The three together: a round, its right answer, a check of an answer, how long it plays, and a near miss (the computer's slip).
@@ -1093,7 +1121,7 @@ function attStart(state, i, p) {
   state.lock = i;
   return { ok: true };
 }
-const attMs = (type, r) => (type === 'headcount' ? r.ms : type === 'flash' ? r.items.length * r.ms + 300 : r.show);
+const attMs = (type, r) => (type === 'headcount' ? r.ms : type === 'flash' ? r.items.length * r.ms + 300 : r.show + (r.wait || 0));   // (Snapshot: the pattern, then the blank grid's countdown)
 function attWrong(type, r, rng) {
   if (type === 'headcount') { const t = attTruth(type, r), d = [1, -1, 2, -2][randInt(rng, 4)]; return Math.max(0, t + d === t ? t + 1 : t + d); }
   if (type === 'flash') { let w = randInt(rng, r.opts.length - 1); if (w >= r.ans) w++; return w; }
@@ -2202,7 +2230,7 @@ function sniffPick(pm, rng) {
 // plays this square carries on that round (the point wins it for them, a 7 loses it, and they may stop in
 // turn). A lost round takes nothing away; after a round the next roll here is a fresh come-out. Stopping
 // only hands the point to the other player, never the better choice: the computer always rolls on.
-const CRAPS = { goal: 3, roll: 900, quick: 560, quickAfter: 4, puck: 420, hold: 800, stop: 600, winOdds: 244 / 495 };
+const CRAPS = { goal: 3, roll: 900, quick: 560, quickAfter: 4, puck: 420, hold: 800, stop: 600, land: 560, flash: 250, winOdds: 244 / 495 };   // land: the dice's tumble; flash: the result, briefly, before Roll again or Stop (roll, quick, puck, hold: a whole round's flash, from before)
 const CRAPS_MAKE = { 4: 1 / 3, 5: 0.4, 6: 5 / 11, 8: 5 / 11, 9: 0.4, 10: 1 / 3 };   // the chance a point is rolled before a 7
 function crapsRound(rng) {
   const rolls = [];
@@ -2447,11 +2475,13 @@ function distSearch(pm, me, rng) {                               // two moves de
   }
   return best;
 }
-// Shelves: 6 shelves of 3 spots. A move puts your mark on an open spot; then a grey mark lands on a random
+// Shelves: 7 shelves of 3 spots. A move puts your mark on an open spot; then a grey mark lands on a random
 // open spot (drawn as the move is made). Once every spot is filled, each player scores the shelves they
-// are on (up to 6); higher wins, and a tie resets the square.
-const SHELF = { n: 6, per: 3 };
-const shelfOn = (cells, p) => { let n = 0; for (let s = 0; s < SHELF.n; s++) if (cells.slice(s * SHELF.per, s * SHELF.per + SHELF.per).includes(p)) n++; return n; };
+// are on (up to 7); higher wins, and a tie goes to the player who did not open the square (the first mover
+// otherwise wins 99.6% of the squares a tie does not reset; this way, 51.7% to 48.3% between the
+// computer players, solved exactly). A square from before (6 shelves, ties reset) plays on as it was.
+const SHELF = { n: 7, per: 3 };
+const shelfOn = (cells, p) => { let n = 0; for (let s = 0; s * SHELF.per < cells.length; s++) if (cells.slice(s * SHELF.per, s * SHELF.per + SHELF.per).includes(p)) n++; return n; };
 // The computer: a shelf it is not on yet, more so one the other player is missing too, and one nearly full.
 function shelfPick(pm, me, rng) {
   const o = other(me), c = pm.cells;
@@ -2565,6 +2595,10 @@ function poolSpot(mini) {
   }
   return start.slice();
 }
+// Mini Golf's hole for a new square: a page may choose it (a local game: one this device has not had lately);
+// otherwise (the server, online) any hole at random.
+let golfPick = null;
+const setGolfPick = fn => { golfPick = typeof fn === 'function' ? fn : null; };
 function physRun(mini, p, shot) { return PHYSICS.lib ? PHYSICS.lib.run(mini.type, mini, p, shot) : null; }
 // A hole's path (the way round its walls, ending at the cup): the next point to make for from a place,
 // and how far there is still to go along it.
@@ -2702,8 +2736,9 @@ function newMini(type, rng) {
     case 'plinko':      { const r = needRng(rng); return { type, vals: shuffle(PLINKO.vals.slice(), r), pts: { X: 0, O: 0 }, used: new Array(PLINKO.slots).fill(false), bonus: plinkoBonus(r), target: plinkoConfig().target, last: null }; }
     case 'pong':        return { type, cups: { X: [true, true, true], O: [true, true, true] }, last: null };
     case 'trivia':      return { type, right: { X: 0, O: 0 }, ask: null, answer: null, crossed: [], asked: [], shown: false, last: null };   // ask: the square's question; answer: the right option's place (hidden online); crossed: the places picked wrong; asked: the ids answered here
-    case 'golf': {                                            // a hole from the six; both balls side by side on the tee
-      const L = PHYSICS.lib, hole = randInt(needRng(rng), L ? L.HOLES.length : 6), tee = L ? L.HOLES[hole].tee : [50, 140];
+    case 'golf': {                                            // a hole (any of them, or the page's own choice: golfPick); both balls side by side on the tee
+      const L = PHYSICS.lib, n = L ? L.HOLES.length : 6, r = needRng(rng), own = golfPick && L ? golfPick(r, L.HOLES) : null;
+      const hole = Number.isInteger(own) && own >= 0 && own < n ? own : randInt(r, n), tee = L ? L.HOLES[hole].tee : [50, 140];
       return { type, hole, balls: { X: [tee[0] - 3, tee[1]], O: [tee[0] + 3, tee[1]] }, holed: { X: false, O: false }, shots: { X: 0, O: 0 }, last: null };
     }
     case 'pool': {                                            // the fixed layout: the cue ball, two of each colour, the black
@@ -2715,7 +2750,7 @@ function newMini(type, rng) {
     case 'takeover':    return { type, cells: new Array(TAKE.n * TAKE.n).fill(null), last: null };
     case 'seating': { const r = needRng(rng), color = Array.from({ length: SEAT.tables * 2 }, () => randInt(r, SEAT.colors)); return { type, color, who: new Array(SEAT.tables * 2).fill(null), next: color[randInt(r, color.length)], last: null }; }   // next: the next customer's colour, shown (one with a seat)
     case 'districts': { const map = distMap(needRng(rng)); return { type, map, who: new Array(map.spots.length).fill(null), grey: true, last: null }; }
-    case 'shelves':     return { type, cells: new Array(SHELF.n * SHELF.per).fill(null), last: null };
+    case 'shelves':     return { type, cells: new Array(SHELF.n * SHELF.per).fill(null), first: null, last: null };   // first: who opened the square (a tie goes to the other player)
     case 'roads':       return { type, segs: new Array(ROAD_SEGS.length).fill(null), last: null };
     case 'patterns': { const r = needRng(rng); let g = null; while (!g) g = patPuzzle(r); return { type, right: { X: 0, O: 0 }, puz: g.puz, answer: g.answer, rule: g.rule, crossed: [], last: null }; }   // answer, rule: the server's (hidden online)
     case 'wheels':      { const g = wheelsConfig(); return { type, target: g.target, wheels: wheelsDeal(needRng(rng), g), pts: { X: 0, O: 0 }, spins: { X: 0, O: 0 }, rest: { high: 0, mid: 0, low: 0 }, last: null }; }   // the square's own three wheels; rest: where each wheel last stopped
@@ -3252,11 +3287,13 @@ function applyMove(mini, p, m, rng) {
     case 'shelves': {                                         // a spot; then a grey mark on a random open one; once full, most shelves
       if (!Number.isInteger(m) || m < 0 || m >= mini.cells.length || mini.cells[m]) return { ok: false, reason: 'bad' };
       mini.cells[m] = p;
+      if (mini.first === null) mini.first = p;                 // (a square from before has no first: its ties reset)
       const g = randomEmpty(mini.cells, needRng(rng));
       if (g != null) mini.cells[g] = 'G';
       mini.last = { by: p, at: m, grey: g };
       if (mini.cells.includes(null)) return { ok: true, outcome: 'continue', note: 'mark' };
       const x = shelfOn(mini.cells, 'X'), y = shelfOn(mini.cells, 'O');
+      if (x === y && mini.first) return { ok: true, outcome: 'win', note: 'tiebreak', winner: other(mini.first), counts: { X: x, O: y } };
       if (x === y) return { ok: true, outcome: 'draw', note: 'tie' };
       return { ok: true, outcome: 'win', note: 'full', winner: x > y ? 'X' : 'O', counts: { X: x, O: y } };
     }
@@ -3692,7 +3729,7 @@ function needsOf(pm, p) {
     case 'pong':    return Math.max(1, pm.cups[p].filter(Boolean).length / 0.45);
     case 'trivia':  return Math.max(1, (TRIVIA.goal - pm.right[p]) / TRIVIA.aiRight);
     case 'skyhop': case 'scoop': case 'pinball': return fingNeeds(pm, p);
-    case 'headcount': case 'flash': case 'snapshot': { let n = 0; for (let f = pm.right[p]; f < ATT.goal; f++) n += 1 / ATT.aiOk[Math.min(f, ATT.aiOk.length - 1)]; return Math.max(1, n); }
+    case 'headcount': case 'flash': case 'snapshot': { let n = 0; for (let f = pm.right[p]; f < ATT.goal; f++) n += 1 / attOk(pm.type, f); return Math.max(1, n); }
     case 'oddone':  { let n = 0; for (let f = pm.finds[p]; f < ODD.goal; f++) n += 1 / ODD.aiFind[Math.min(f, ODD.aiFind.length - 1)]; return Math.max(1, n); }
     case 'ttt':     return lineNeeds(pm.cells, 3, 3, 3, p);
     case 'c4':      return lineNeeds(pm.cells, C4.cols, C4.rows, C4.k, p, c4Playable(pm.cells));
@@ -3962,7 +3999,7 @@ function localBest(pm, me, rng, style, ctx) {
     }
     case 'skyhop': case 'scoop': case 'pinball': { const n = fingNeeds(pm, me); return { move: { fing: true }, q: n <= 1 ? 0.6 : 0.35 / n }; }   // the attempt itself is played (cpuMove) only for the square chosen
     case 'headcount': case 'flash': case 'snapshot': {          // right about 85%, 65%, then 45% of the time; else a near miss (one off, a wrong option, a cell out of place)
-      const r = pm.round && pm.round[me], q = ATT.aiOk[Math.min(pm.right[me], ATT.aiOk.length - 1)];
+      const r = pm.round && pm.round[me], q = attOk(pm.type, pm.right[me]);
       if (!r) return { move: 'auto', q: 0 };
       return { move: rng() < q ? attTruth(pm.type, r) : attWrong(pm.type, r, rng), q };
     }
@@ -4661,7 +4698,7 @@ function playMs(f, winLen) {
     case 'bj':      return bjMs(f.bj) + (won ? 600 : 0);
     case 'bus':     return BUST.pre + BUST.draw + BUST.flip + BUST.mark + (f.bus && f.bus.right ? BUST.fly : 0) + (won ? 600 : 0);
     case 'rl':      return RLT.spin + RLT.settle + RLT.hold + (won ? 600 : 0);
-    case 'craps':   return !f.craps ? CRAPS.roll + CRAPS.hold : f.craps.kind === 'stop' ? CRAPS.stop : !f.craps.roll ? crapsTimes(f.craps.rolls, f.craps.point).end + CRAPS.hold + (won ? 600 : 0) : CRAPS.roll + (f.craps.result === 'point' ? CRAPS.puck : 0) + CRAPS.hold + (won ? 600 : 0);   // (a flash from before: the whole round)
+    case 'craps':   return !f.craps ? CRAPS.roll + CRAPS.hold : f.craps.kind === 'stop' ? CRAPS.stop : !f.craps.roll ? crapsTimes(f.craps.rolls, f.craps.point).end + CRAPS.hold + (won ? 600 : 0) : CRAPS.land + CRAPS.flash + (won ? 600 : 0);   // one roll: the dice land, the result flashes, and the controls are back (a flash from before: the whole round)
     case 'takeover': return TAKEOVER_MS.place + TAKEOVER_MS.flip + (won ? 900 : 0);
     case 'seating': return PLACE_MS.mark + (f.seat && (f.seat.z != null || f.seat.left) ? PLACE_MS.walk : 0) + PLACE_MS.hold + (won ? 600 : 0);
     case 'districts': return PLACE_MS.mark + (f.dist && f.dist.grey != null ? PLACE_MS.drop : 0) + PLACE_MS.hold + (won ? 900 : 0);
@@ -4805,4 +4842,4 @@ function matchStats(st) {
 }
 
 // Node (the Cloud Functions and the tests): the same names as a module.
-if (typeof module !== "undefined" && module.exports) module.exports = { PINB, PINB_DEFAULTS, PINB_LIMITS, PINB_KIT, setPinConfig, pinConfig, pinCount, pinCheck, fingCheck, fingAi, fingAt, fingGoal, FING_GAIN, fingNeeds, fingRaw, fingMs, fingPlay, FINGER_TYPES, FING, fingLog, fingUnlog, clamp01, fwrap, fdiff, HOP, HOP_DEFAULTS, HOP_LIMITS, HOP_KIT, setHopConfig, hopConfig, hopPeak, HOP_MEMO, hopCourse, hopPx, hopStart, hopCam, hopStep, hopResult, SCOOP, SCOOP_DEFAULTS, SCOOP_LIMITS, SCOOP_KIT, setScoopConfig, scoopConfig, scoopItems, scoopStart, scoopTop, scoopSize, scoopStep, scoopResult, scoopY, fingReplay, fingRecorder, FHAND, hopPlan, hopAi, scoopAi, PHYS_TYPES, PHYSICS, setPhysics, physicsReady, GOLF, POOLG, poolPow, BOWLG, poolMine, poolRank, poolIds, poolOwns, poolFree, physShot, wrapAim, aimTo, poolSpot, physRun, golfClear, golfNext, golfAhead, golfLeft, physLast, physScore, physCandidates, physAi, physRandom, physNeeds, RUN_TYPES, RUN_DEFAULTS, RUN_LIMITS, RUN_EXTRA, RUN, RUNT, RUN_CFG, LANE_TIGHT, LANE_NEAR, r2, runNorm, setRunConfig, runConfig, runSpeed, runSecs, runAfter, runGrace, DASH_OBS, DASH, LANE, FLAP, CHOP, PATTERNS, patKey, patRot, patFits, patSolve3, patFeature, patFitting, patNumTemplate, patNumMisses, patNumPuzzle, patDotsTemplate, patShapePuzzle, patPuzzle, patNum, patDots, patShape, patPick, patRange, WHEELS, WHEEL_SEGS, WHEELS_SAFE, WHEEL_DEFAULTS, WHEEL_LIMITS, WHEELT, WHEEL_CFG, wheelsNorm, setWheelsConfig, wheelsConfig, wheelAvg, wheelsCheck, wheelsDeal, WHEEL_MEMO, wheelsTable, wheelSpin, SNIFF, SNIFF_DIRS, sniffDist, sniffStep, sniffDirs, sniffCands, sniffPick, runCave, caveHeight, caveWalls, runWalls, weightedPick, laneRow, laneNeed, laneDrive, runCourse, runCheck, runAuto, gaussOf, normCdf, runAiMean, runAi, runNeeds, runLog, runStart, runJump, runRelease, runLane, runLaneX, overlap, runHit, runStep, runResult, TEST_TYPES, isReleased, releasedTypes, allowedTypes, restrictGames, dealable, CRAPS, CRAPS_MAKE, crapsRound, crapsTimes, TAKE, takeNear, takeCount, takeApply, takeSearch, FLOOD, floodNear, floodWaves, floodGain, floodApply, floodSearch, raceNeeds, TAKEOVER_MS, FLOOD_MS, PLACE_MS, SEAT, seatTable, seatMate, seatTables, seatZ, seatNext, seatPick, DIST, r1d, distClip, distMap, distTo, distTally, distEval, distSearch, SHELF, shelfOn, shelfPick, ROAD, ROAD_SEGS, roadLongest, roadPick, randomEmpty, BULLS, BULLT, bullsLeg, bullsAim, BULL_DEFAULTS, BULL_LIMITS, BULL_CFG, bullsNorm, setBullsConfig, bullsConfig, bullsSpot, bullsScore, bullsRates, r3, ECHO, PLINKO, PONG, TRIVIA, ODD, ATT_TYPES, ATT, cfgKit, lohi, plural, HEAD, HEAD_KINDS, HEAD_THEMES, HEAD_DEFAULTS, HEAD_LIMITS, HEAD_KIT, setHeadConfig, headConfig, headAt, headRound, headAsk, headWatch, FLASH, FLASH_DEFAULTS, FLASH_LIMITS, FLASH_KIT, setFlashConfig, flashConfig, flashAnswer, flashRound, ORD, SNAP_DEFAULTS, SNAP_LIMITS, SNAP_KIT, setSnapConfig, snapConfig, snapTrivial, snapRound, attRound, attTruth, attValid, attJudge, attStart, attMs, attWrong, ODD_DEFAULTS, ODD_LIMITS, ODD_CFG, oddNorm, setOddConfig, oddConfig, hslRgb, rgbLab, deltaE00, oddDelta, bullsPeriod, echoSeqs, echoBase, echoSeq, echoAim, plinkoPath, plinkoOdds, PLINKO_DEFAULTS, PLINKO_LIMITS, PLINKO_CFG, plinkoNorm, setPlinkoConfig, plinkoConfig, plinkoPegs, plinkoBonus, plinkoTouches, plinkoWays, plinkoDist, plinkoExp, plinkoOpen, pongThrow, pongAimAt, pongDist, setTriviaBank, triviaReady, triviaDeal, triviaReveal, triviaUsed, oddGrid, cpuEcho, CARD, BJ, BUS, RL, BJT, BUST, RLT, BUS_AVG, cardDeck, isCard, cardRank, cardRed, cardName, bjValue, bjTotal, bjNatural, bjDealerPlay, bjOutcome, bjStrategy, bjPlan, bjMs, busRight, busDeck, busOdds, rlRed, rlBet, rlCovers, tttOpen, lineOpen, majorityResult, STYLE0, huntSize, huntBand, huntClue, normTimer, resignLocal, TYPES, OLD_TYPES, SNL, BUMP, snlRow, snlBoard, snlValid, snlExpected, coinPick, markCoins, coinMarksFor, normLocal, seatLocal, INFO, C4, HP, MM, HEX_N, HILO, CANDY, NAME_MAX, COINS, RISKY, BS, HUNT, DICE_GOAL, MEMORY, LINES, WORDS5, WORDS_HANG, VALID5, other, makeRng, needRng, randInt, randomType, shuffle, memoryDeck, wordleMarks, hexNeighbors, hexPath, canMove, hpMoves, mmFeedback, mmValid, MM_ALL, mmAll, mmCode, mmCandidates, mmBestGuess, hpGoalRow, upgradeMini, anyMove, huntDist, candyTrack, newMini, pickType, newSquare, CPU_NAME, defaultSetup, cpuSide, normSetup, syncNames, enabledGames, TIMER_OPTIONS, newTimer, playerName, newState, startMatch, newMatch, findRun, applyMove, AI, publicMini, wordleCandidates, hangmanCandidates, bsCandidates, bsPlacements, bsShip, huntCandidates, WINDOWS, windowsOf, lineNeeds, c4Playable, hexDist, candyExpected, COIN_NEEDS, needsOf, memoryPair, winChance, tttMinimax, c4Drop, c4Eval, C4_ORDER, c4Search, C4_DEPTH, c4Moves, HP_MEMO, hpSolve, hpMovesValued, hpNeeds, hexMoves, threatScore, pickValued, localBest, squareValue, moveGain, cpuMove, VALID5_LIST, randomLegalMove, timeoutMove, mainResult, playMove, endFlash, leaveSquare, RECENT_MAX, MATCH_FIELDS, secretOf, hideMini, matchRecord, fullState, settle, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, applyOnlineReveal, applyOnlineStart, newOnlineMatch, PLAY, diceSlot, playMs, replayMs, armClock, applyOnlineResign, matchStats };
+if (typeof module !== "undefined" && module.exports) module.exports = { golfPick, setGolfPick, PINB, PINB_DEFAULTS, PINB_LIMITS, PINB_KIT, setPinConfig, pinConfig, pinCount, pinCheck, fingCheck, fingAi, fingAt, fingGoal, FING_GAIN, fingNeeds, fingRaw, fingMs, fingPlay, FINGER_TYPES, FING, fingLog, fingUnlog, clamp01, fwrap, fdiff, HOP, HOP_DEFAULTS, HOP_LIMITS, HOP_KIT, setHopConfig, hopConfig, hopPeak, HOP_MEMO, hopCourse, hopPx, hopStart, hopCam, hopStep, hopResult, SCOOP, SCOOP_DEFAULTS, SCOOP_LIMITS, SCOOP_KIT, setScoopConfig, scoopConfig, scoopItems, scoopStart, scoopTop, scoopSize, scoopStep, scoopResult, scoopY, fingReplay, fingRecorder, FHAND, hopPlan, hopAi, scoopAi, PHYS_TYPES, PHYSICS, setPhysics, physicsReady, GOLF, POOLG, poolPow, BOWLG, poolMine, poolRank, poolIds, poolOwns, poolFree, physShot, wrapAim, aimTo, poolSpot, physRun, golfClear, golfNext, golfAhead, golfLeft, physLast, physScore, physCandidates, physAi, physRandom, physNeeds, RUN_TYPES, RUN_DEFAULTS, RUN_LIMITS, RUN_EXTRA, RUN, RUNT, RUN_CFG, LANE_TIGHT, LANE_NEAR, r2, runNorm, setRunConfig, runConfig, runSpeed, runSecs, runAfter, runGrace, DASH_OBS, DASH, LANE, FLAP, CHOP, PATTERNS, patKey, patRot, patFits, patSolve3, patFeature, patFitting, patNumTemplate, patNumMisses, patNumPuzzle, patDotsTemplate, patShapePuzzle, patPuzzle, patNum, patDots, patShape, patPick, patRange, WHEELS, WHEEL_SEGS, WHEELS_SAFE, WHEEL_DEFAULTS, WHEEL_LIMITS, WHEELT, WHEEL_CFG, wheelsNorm, setWheelsConfig, wheelsConfig, wheelAvg, wheelsCheck, wheelsDeal, WHEEL_MEMO, wheelsTable, wheelSpin, SNIFF, SNIFF_DIRS, sniffDist, sniffStep, sniffDirs, sniffCands, sniffPick, runCave, caveHeight, caveWalls, runWalls, weightedPick, laneRow, laneNeed, laneDrive, runCourse, runCheck, runAuto, gaussOf, normCdf, runAiMean, runAi, runNeeds, runLog, runStart, runJump, runRelease, runLane, runLaneX, overlap, runHit, runStep, runResult, TEST_TYPES, isReleased, releasedTypes, allowedTypes, restrictGames, dealable, CRAPS, CRAPS_MAKE, crapsRound, crapsTimes, TAKE, takeNear, takeCount, takeApply, takeSearch, FLOOD, floodNear, floodWaves, floodGain, floodApply, floodSearch, raceNeeds, TAKEOVER_MS, FLOOD_MS, PLACE_MS, SEAT, seatTable, seatMate, seatTables, seatZ, seatNext, seatPick, DIST, r1d, distClip, distMap, distTo, distTally, distEval, distSearch, SHELF, shelfOn, shelfPick, ROAD, ROAD_SEGS, roadLongest, roadPick, randomEmpty, BULLS, BULLT, bullsLeg, bullsAim, BULL_DEFAULTS, BULL_LIMITS, BULL_CFG, bullsNorm, setBullsConfig, bullsConfig, bullsSpot, bullsScore, bullsRates, r3, ECHO, PLINKO, PONG, TRIVIA, ODD, ATT_TYPES, ATT, cfgKit, lohi, plural, HEAD, HEAD_KINDS, HEAD_THEMES, HEAD_DEFAULTS, HEAD_LIMITS, HEAD_KIT, setHeadConfig, headConfig, headU, headAt, headAxis, headKeys, headRound, headAsk, headWatch, FLASH, FLASH_DEFAULTS, FLASH_LIMITS, FLASH_KIT, setFlashConfig, flashConfig, flashAnswer, flashRound, ORD, SNAP_DEFAULTS, SNAP_LIMITS, SNAP_KIT, setSnapConfig, snapConfig, snapTrivial, snapRound, attOk, attRound, attTruth, attValid, attJudge, attStart, attMs, attWrong, ODD_DEFAULTS, ODD_LIMITS, ODD_CFG, oddNorm, setOddConfig, oddConfig, hslRgb, rgbLab, deltaE00, oddDelta, bullsPeriod, echoSeqs, echoBase, echoSeq, echoAim, plinkoPath, plinkoOdds, PLINKO_DEFAULTS, PLINKO_LIMITS, PLINKO_CFG, plinkoNorm, setPlinkoConfig, plinkoConfig, plinkoPegs, plinkoBonus, plinkoTouches, plinkoWays, plinkoDist, plinkoExp, plinkoOpen, pongThrow, pongAimAt, pongDist, setTriviaBank, triviaReady, triviaDeal, triviaReveal, triviaUsed, oddGrid, cpuEcho, CARD, BJ, BUS, RL, BJT, BUST, RLT, BUS_AVG, cardDeck, isCard, cardRank, cardRed, cardName, bjValue, bjTotal, bjNatural, bjDealerPlay, bjOutcome, bjStrategy, bjPlan, bjMs, busRight, busDeck, busOdds, rlRed, rlBet, rlCovers, tttOpen, lineOpen, majorityResult, STYLE0, huntSize, huntBand, huntClue, normTimer, resignLocal, TYPES, OLD_TYPES, SNL, BUMP, snlRow, snlBoard, snlValid, snlExpected, coinPick, markCoins, coinMarksFor, normLocal, seatLocal, INFO, C4, HP, MM, HEX_N, HILO, CANDY, NAME_MAX, COINS, RISKY, BS, HUNT, DICE_GOAL, MEMORY, LINES, WORDS5, WORDS_HANG, VALID5, other, makeRng, needRng, randInt, randomType, shuffle, memoryDeck, wordleMarks, hexNeighbors, hexPath, canMove, hpMoves, mmFeedback, mmValid, MM_ALL, mmAll, mmCode, mmCandidates, mmBestGuess, hpGoalRow, upgradeMini, anyMove, huntDist, candyTrack, newMini, pickType, newSquare, CPU_NAME, defaultSetup, cpuSide, normSetup, syncNames, enabledGames, TIMER_OPTIONS, newTimer, playerName, newState, startMatch, newMatch, findRun, applyMove, AI, publicMini, wordleCandidates, hangmanCandidates, bsCandidates, bsPlacements, bsShip, huntCandidates, WINDOWS, windowsOf, lineNeeds, c4Playable, hexDist, candyExpected, COIN_NEEDS, needsOf, memoryPair, winChance, tttMinimax, c4Drop, c4Eval, C4_ORDER, c4Search, C4_DEPTH, c4Moves, HP_MEMO, hpSolve, hpMovesValued, hpNeeds, hexMoves, threatScore, pickValued, localBest, squareValue, moveGain, cpuMove, VALID5_LIST, randomLegalMove, timeoutMove, mainResult, playMove, endFlash, leaveSquare, RECENT_MAX, MATCH_FIELDS, secretOf, hideMini, matchRecord, fullState, settle, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, applyOnlineReveal, applyOnlineStart, newOnlineMatch, PLAY, diceSlot, playMs, replayMs, armClock, applyOnlineResign, matchStats };

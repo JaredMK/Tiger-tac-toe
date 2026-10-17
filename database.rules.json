@@ -212,13 +212,13 @@
       "flash": {
         ".write": "auth != null && auth.token.admin === true",
         "$k": {
-          ".validate": "$k.matches(/^(n|ms[123])$/) && newData.isNumber() && newData.val() >= 1 && newData.val() <= 3000"
+          ".validate": "$k.matches(/^(n[123]|ms[123])$/) && newData.isNumber() && newData.val() >= 1 && newData.val() <= 3000"
         }
       },
       "snapshot": {
         ".write": "auth != null && auth.token.admin === true",
         "$k": {
-          ".validate": "$k.matches(/^([crk][123]|show)$/) && newData.isNumber() && newData.val() >= 1 && newData.val() <= 15000"
+          ".validate": "$k.matches(/^([crk][123]|show|wait)$/) && newData.isNumber() && newData.val() >= ($k === 'wait' ? 0 : 1) && newData.val() <= 15000"
         }
       },
       "skyhop": {

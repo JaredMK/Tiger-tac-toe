@@ -8,34 +8,46 @@ const E = require('../engine.js');
 const lcg = seed => () => (seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296;
 
 /* ===================================== Headcount ===================================== */
-test('headcount: the count is what crossed; decoys never count; every creature crosses the whole field, and none ever covers another', () => {
-  const cfg = E.headConfig(), dirs = { 0: new Set(), 1: new Set(), 2: new Set() };
+test('headcount: the count is what crossed; decoys never count; every creature crosses the whole field; two going the same way in a lane never cover each other; level 1 left and right, level 2 all four ways at varied speeds, level 3 look-alikes stopping and starting', () => {
+  const cfg = E.headConfig(), ways = { 0: new Set(), 1: new Set(), 2: new Set() }, look = new Set(E.HEAD_THEMES.filter(x => x.L.includes(3)).map(x => x.d));
+  const at = (it, r, ms) => { const a = E.headAt(it, ms), c = 10 + it.lane * 20; return a == null ? null : E.headAxis(it, r) === 'v' ? [c, a] : [a, c]; };
   for (let level = 0; level < 3; level++) {
-    const L = level + 1;
-    for (let k = 0; k < 600; k++) {
+    const L = level + 1; let crossings = 0, spread = 0;
+    for (let k = 0; k < 300; k++) {
       const r = E.headRound(level, lcg(k * 7 + level));
       const targets = r.items.filter(o => o.k === r.t), decoys = r.items.filter(o => o.k !== r.t);
       assert.equal(E.attTruth('headcount', r), targets.length, 'the answer: the ones asked for, counted');
       assert.ok(targets.length >= cfg['n' + L + 'lo'] && targets.length <= cfg['n' + L + 'hi'], `level ${L}: ${targets.length} to count`);
-      if (L === 1) assert.equal(decoys.length, 0, 'level 1: one kind only');
-      else { assert.ok(decoys.length >= cfg['d' + L + 'lo'] && decoys.length <= cfg['d' + L + 'hi'], `level ${L}: ${decoys.length} decoys`); assert.ok(decoys.every(o => o.k === r.d) && r.d !== r.t, 'decoys: another kind (or colour)'); }
-      assert.equal(E.headAsk(r), `How many ${E.HEAD_KINDS[r.t][1]} were there?`);
+      assert.ok(decoys.length >= cfg['d' + L + 'lo'] && decoys.length <= cfg['d' + L + 'hi'], `level ${L}: ${decoys.length} decoys`);
+      assert.ok(decoys.every(o => o.k === r.d) && r.d !== r.t, 'decoys: another kind (or colour)');
+      assert.equal(L === 3, look.has(r.d), 'level 3 alone: decoys that look like them');
+      assert.equal(E.headAsk(r), `How many ${E.HEAD_KINDS[r.t][1]}?`);
       for (const o of r.items) {
-        r.items.forEach(o2 => dirs[level].add(o2.dir));
+        ways[level].add(E.headAxis(o, r) + o.dir);
         assert.ok(o.t >= E.HEAD.lead && o.t + o.d <= r.ms, 'starts after the lead-in, gone before the question');
-        assert.equal(E.headAt(o, o.t), o.dir > 0 ? -E.HEAD.size / 2 : 100 + E.HEAD.size / 2, 'in from the edge (just out of sight)');
-        assert.equal(E.headAt(o, o.t + o.d), o.dir > 0 ? 100 + E.HEAD.size / 2 : -E.HEAD.size / 2, 'out at the far edge');
+        assert.ok(Math.abs(E.headAt(o, o.t) - (o.dir > 0 ? -E.HEAD.size / 2 : 100 + E.HEAD.size / 2)) < 1e-9, 'in from the edge (just out of sight)');
+        assert.ok(Math.abs(E.headAt(o, o.t + o.d) - (o.dir > 0 ? 100 + E.HEAD.size / 2 : -E.HEAD.size / 2)) < 1e-9, 'out at the far edge');
         assert.ok(o.d >= 500 && o.lane >= 0 && o.lane < E.HEAD.lanes, 'in sight long enough, in a lane');
+        assert.equal(!!(o.s && o.s.length), L === 3, 'level 3 alone: each one stops and starts');
+        // the page's key points move it exactly as the engine does
+        const keys = E.headKeys(o);
+        for (let f = 0; f <= 1; f += 0.05) { const j = keys.findIndex(([t]) => t >= f), [t1, u1] = keys[j], [t0, u0] = keys[Math.max(0, j - 1)], u = t1 === t0 ? u1 : u0 + ((f - t0) / (t1 - t0)) * (u1 - u0); assert.ok(Math.abs(u - E.headU(o, o.t + f * o.d)) < 1e-6, 'key points match'); }
       }
+      if (L > 1) { const sp = r.items.map(o => o.d - (o.s || []).reduce((x, [, w]) => x + w, 0)); spread += Math.max(...sp) / Math.min(...sp); }
       for (let i = 0; i < r.items.length; i++) for (let j = i + 1; j < r.items.length; j++) {
-        const a = r.items[i], b = r.items[j];
-        if (a.lane !== b.lane) continue;
-        for (let ms = Math.max(a.t, b.t); ms <= Math.min(a.t + a.d, b.t + b.d); ms += 10) { const xa = E.headAt(a, ms), xb = E.headAt(b, ms); if (xa != null && xb != null) assert.ok(Math.abs(xa - xb) >= E.HEAD.size, `level ${L} round ${k}: two in lane ${a.lane} never cover each other`); }
+        const a = r.items[i], b = r.items[j], same = a.lane === b.lane && E.headAxis(a, r) === E.headAxis(b, r);
+        for (let ms = Math.max(a.t, b.t); ms <= Math.min(a.t + a.d, b.t + b.d); ms += 10) {
+          const pa = at(a, r, ms), pb = at(b, r, ms);
+          if (!pa || !pb) continue;
+          if (same) assert.ok(Math.abs(pa[0] - pb[0]) + Math.abs(pa[1] - pb[1]) >= E.HEAD.size, `level ${L} round ${k}: two going the same way in lane ${a.lane} never cover each other`);
+          else if (Math.abs(pa[0] - pb[0]) < E.HEAD.size && Math.abs(pa[1] - pb[1]) < E.HEAD.size) { crossings++; break; }
+        }
       }
-      if (L === 1) { const g = r.items.slice(1).map((o, i) => o.t - r.items[i].t); assert.ok(g.every(x => x >= cfg.gap1 * 0.85), 'level 1: spaced out, steadily'); }
     }
+    if (L > 1) { assert.ok(crossings / 300 >= 8, `level ${L}: paths cross often (${(crossings / 300).toFixed(1)} a round)`); assert.ok(spread / 300 >= 1.8, `level ${L}: speeds vary widely`); }
   }
-  assert.deepEqual([...dirs[0]], [1]); assert.deepEqual([...dirs[1]], [1]); assert.deepEqual([...dirs[2]].sort(), [-1, 1], 'level 3 alone: both directions');
+  assert.deepEqual([...ways[0]].sort(), ['h-1', 'h1'], 'level 1: left and right');
+  assert.deepEqual([...ways[1]].sort(), ['h-1', 'h1', 'v-1', 'v1'], 'level 2: all four ways'); assert.deepEqual([...ways[2]].sort(), ['h-1', 'h1', 'v-1', 'v1']);
 });
 
 /* ===================================== Flash ===================================== */
@@ -53,36 +65,38 @@ function answerOf(items, text) {
   if ((m = text.match(/^Which item came right before the last (star|heart|bolt)\?$/))) { let k = -1; items.forEach((it, j) => { if (it[0] === m[1]) k = j; }); return items[k - 1].join(':'); }
   throw new Error('a question not understood: ' + text + words.length);
 }
-test('flash: 8 items, a shape in a colour (never the X or O colours); every question has exactly one right option, checked against the items shown; near-miss wrong options', () => {
-  const cfg = E.flashConfig(), kinds = { 0: new Set(), 1: new Set(), 2: new Set() };
+test('flash: 6, 7 and 8 cards at 0.5 s each, a shape in a colour (never the X or O colours); only "How many [shape]s?" and "How many [colour] items?"; exactly one right option, checked against the cards shown; near-miss wrong options', () => {
+  const cfg = E.flashConfig(), kinds = new Set();
   assert.ok(!E.FLASH.colours.some(c => ['red', 'yellow', 'orange'].includes(c)), 'colours apart from X (red) and O (yellow)');
   for (let level = 0; level < 3; level++) {
     for (let k = 0; k < 2000; k++) {
       const r = E.flashRound(level, lcg(k * 11 + level));
-      assert.equal(r.items.length, 8); assert.equal(r.ms, cfg['ms' + (level + 1)]);
+      assert.equal(r.items.length, 6 + level); assert.equal(r.ms, 500); assert.equal(r.ms, cfg['ms' + (level + 1)]);
       assert.ok(r.items.every(it => E.FLASH.shapes.includes(it[0]) && E.FLASH.colours.includes(it[1])));
       assert.ok(new Set(r.items.map(it => it[0])).size >= 2 && new Set(r.items.map(it => it[1])).size >= 2, 'never one shape or one colour throughout');
-      kinds[level].add(r.q.kind);
-      const truth = answerOf(r.items, r.q.text), key = o => (Array.isArray(o) ? o.join(':') : o);
+      kinds.add(r.q.kind);
+      const truth = answerOf(r.items, r.q.text);
+      assert.ok(/^How many ((blue|green|purple) items|(star|heart|bolt)s)\?$/.test(r.q.text), r.q.text);
+      assert.ok(truth >= 1, 'never about something that never showed');
       assert.equal(r.opts.length, 4);
-      assert.equal(new Set(r.opts.map(key)).size, 4, 'four different options');
-      assert.equal(r.opts.filter(o => key(o) === truth).length, 1, `exactly one right option: ${r.q.text} ${JSON.stringify(r.items)} ${JSON.stringify(r.opts)}`);
-      assert.equal(key(r.opts[r.ans]), truth, 'and it is the one the engine marks');
-      if (typeof truth === 'number') { assert.ok(level < 2, 'counts at levels 1 and 2'); assert.ok(r.opts.every(o => o >= 0 && o <= 8) && r.opts.filter(o => o !== truth && Math.abs(o - truth) <= 3).length >= 2, `near misses (one or two off; at most one a similar combination's count): ${r.opts} for ${truth}`); assert.ok(r.opts.some(o => Math.abs(o - truth) === 1), 'one off among them'); }
-      else assert.ok(level === 2 && r.opts.every(o => Array.isArray(o)), 'level 3: icons');
+      assert.equal(new Set(r.opts).size, 4, 'four different options');
+      assert.equal(r.opts.filter(o => o === truth).length, 1, `exactly one right option: ${r.q.text} ${JSON.stringify(r.items)} ${JSON.stringify(r.opts)}`);
+      assert.equal(r.opts[r.ans], truth, 'and it is the one the engine marks');
+      assert.ok(r.opts.every(o => Number.isInteger(o) && o >= 0 && o <= r.items.length) && r.opts.filter(o => o !== truth && Math.abs(o - truth) <= 3).length >= 2, `near misses: ${r.opts} for ${truth}`);
+      assert.ok(r.opts.some(o => Math.abs(o - truth) === 1), 'one off among them');
     }
   }
-  assert.deepEqual([...kinds[0]].sort(), ['colour', 'shape']); assert.deepEqual([...kinds[1]].sort(), ['combo', 'notColour', 'notShape']); assert.deepEqual([...kinds[2]].sort(), ['after', 'before', 'nth']);
+  assert.deepEqual([...kinds].sort(), ['colour', 'shape'], 'the two questions, at every level');
 });
 
 /* ===================================== Snapshot ===================================== */
-test('snapshot: 4x4 with 6, 4x5 with 8, 5x5 with 10; never a trivial pattern; only an exact match counts', () => {
-  const sizes = [[4, 4, 6], [4, 5, 8], [5, 5, 10]];
+test('snapshot: 4x5 with 7, 5x5 with 9, 5x6 with 11; 5 s on show, then 5 s blank; never a trivial pattern; only an exact match counts', () => {
+  const sizes = [[4, 5, 7], [5, 5, 9], [5, 6, 11]];
   for (let level = 0; level < 3; level++) {
     const [c, rr, k] = sizes[level];
     for (let n = 0; n < 2000; n++) {
       const r = E.snapRound(level, lcg(n * 13 + level));
-      assert.deepEqual([r.c, r.r, r.cells.length, r.show], [c, rr, k, 5000]);
+      assert.deepEqual([r.c, r.r, r.cells.length, r.show, r.wait, E.attMs('snapshot', r)], [c, rr, k, 5000, 5000, 10000]);
       const on = new Set(r.cells), at = (x, y) => on.has(y * c + x);
       for (let y = 0; y < rr; y++) assert.ok(!Array.from({ length: c }, (_, x) => at(x, y)).every(Boolean), 'no full row');
       for (let x = 0; x < c; x++) assert.ok(!Array.from({ length: rr }, (_, y) => at(x, y)).every(Boolean), 'no full column');
@@ -152,8 +166,9 @@ test('attention games: Start holds the player to the square (online too); a time
   }
 });
 
-test('attention games: the computer gets about 85%, 65% and 45% right at levels 1-3, and its misses are near misses', () => {
-  for (const type of E.ATT_TYPES) for (const [level, want] of [[0, 0.85], [1, 0.65], [2, 0.45]]) {
+test('attention games: the computer gets right as often as a typical player (Headcount 45%, 30%, 20%; Flash 80%, 70%, 60%; Snapshot 65%, 50%, 35%), and its misses are near misses', () => {
+  const want = { headcount: [0.45, 0.3, 0.2], flash: [0.8, 0.7, 0.6], snapshot: [0.65, 0.5, 0.35] };
+  for (const type of E.ATT_TYPES) for (const level of [0, 1, 2]) {
     const rng = lcg(91 + level); let ok = 0; const N = 1200;
     for (let k = 0; k < N; k++) {
       const m = E.newMini(type, lcg(k)); m.right.X = level; m.round.X = E.attRound(type, level, lcg(k + 5));
@@ -162,7 +177,8 @@ test('attention games: the computer gets about 85%, 65% and 45% right at levels 
       if (E.attJudge(type, m.round.X, b.move)) ok++;
       else if (type === 'headcount') assert.ok(Math.abs(b.move - E.attTruth(type, m.round.X)) <= 2, 'one or two off');
     }
-    assert.ok(Math.abs(ok / N - want) < 0.045, `${type} level ${level + 1}: ${(ok / N).toFixed(3)} (wanted ~${want})`);
+    assert.equal(E.attOk(type, level), want[type][level]);
+    assert.ok(Math.abs(ok / N - want[type][level]) < 0.045, `${type} level ${level + 1}: ${(ok / N).toFixed(3)} (wanted ~${want[type][level]})`);
   }
 });
 
@@ -177,8 +193,8 @@ test('attention games: the move\'s playback (someone else\'s round at full lengt
     st.timer = E.newTimer(60); const t = E.timeoutMove(st, lcg(10));
     assert.equal(t.ok, true); assert.equal(st.flash.att.correct, false); assert.equal(E.playMs(st.flash), E.ATT.show, 'timed out: no round to replay');
     // the computer against itself
-    const m = E.newMatch(lcg(20), { games: [type] }); let n = 0;
-    while (!m.winner && n++ < 400) { if (m.flash) E.endFlash(m); if (m.winner) break; const c = E.cpuMove(m, lcg(30 + n)); const res = E.playMove(m, c.square, c.move, lcg(40 + n)); assert.equal(res.ok, true, `${type}: ${JSON.stringify(c.move)}`); }
+    const m = E.newMatch(lcg(20), { games: [type] }), ra = lcg(30), rb = lcg(40); let n = 0;   // (one stream each: a fresh lcg's first draw is never below 0.23, so the computer would never hit a 20% chance)
+    while (!m.winner && n++ < 600) { if (m.flash) E.endFlash(m); if (m.winner) break; const c = E.cpuMove(m, ra); const res = E.playMove(m, c.square, c.move, rb); assert.equal(res.ok, true, `${type}: ${JSON.stringify(c.move)}`); }
     assert.ok(m.winner, `${type}: a match of it played to the end (${n} moves)`);
   }
 });
@@ -189,8 +205,8 @@ test('attention games: the admin\'s values, checked one by one (off its range: t
   assert.equal(E.attTruth('headcount', E.headRound(0, lcg(1))), 3, 'three to count, as set');
   E.setHeadConfig({ n2lo: 9, n2hi: 4 }); assert.ok(E.headConfig().n2hi >= E.headConfig().n2lo, 'a range kept the right way round');
   E.setHeadConfig(null);
-  E.setFlashConfig({ ms1: 700, n: 10 }); const f = E.flashRound(0, lcg(2)); assert.deepEqual([f.ms, f.items.length], [700, 10]); E.setFlashConfig(null);
-  E.setSnapConfig({ c1: 3, r1: 3, k1: 20, show: 3000 }); const s = E.snapRound(0, lcg(3)); assert.deepEqual([s.c, s.r, s.cells.length, s.show], [3, 3, 7, 3000], 'never more cells than the grid allows'); E.setSnapConfig(null);
+  E.setFlashConfig({ ms1: 700, n1: 10 }); const f = E.flashRound(0, lcg(2)); assert.deepEqual([f.ms, f.items.length], [700, 10]); E.setFlashConfig(null);
+  E.setSnapConfig({ c1: 3, r1: 3, k1: 20, show: 3000, wait: 0 }); const s = E.snapRound(0, lcg(3)); assert.deepEqual([s.c, s.r, s.cells.length, s.show, s.wait], [3, 3, 7, 3000, 0], 'never more cells than the grid allows; no countdown, as set'); E.setSnapConfig(null);
   assert.deepEqual(E.snapConfig(), E.SNAP_DEFAULTS);
   assert.ok(E.TEST_TYPES.includes('headcount') && E.TEST_TYPES.includes('flash') && E.TEST_TYPES.includes('snapshot'), 'admin only to begin with');
 });

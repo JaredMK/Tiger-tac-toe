@@ -146,7 +146,7 @@ Sounds start from the events they belong to, never from drawing the screen: a re
 | Pinball | `plunger` / `flipper` / `bumper` / `cushion` / `ding` / `beep` / `whoosh` / `sparkle` | The launch (new: noise rising 600→2600 Hz under a triangle 180→520 Hz); a flipper going up (new: a sharp noise click over a low triangle thump); a pop bumper (new: a square 1100→700 Hz with a bright sine); a slingshot (Pool's cushion); a target lit (ding); a ball saved (the runners' beep); the drain (whoosh); every target lit (sparkle). Live, and in someone else's replay from its recording | As said |
 | Sky Hop, Scoop Stack, Pinball | `ding` / `thud` / `won` | The result, for both phones: a ding for any gain, a thud for none; the square's chime when it is won | As above |
 | Headcount, Flash | `go` / `tickSoft` / `reveal` / `key` | Start (the runners' go); in Flash a soft tick with each item; the question (Mastermind's reveal); the number pad's keys (Wordle's) | As above |
-| Snapshot | `reveal` / `tickSoft` / `flipDown` / `mark` / `deselect` | The pattern shows (reveal), a soft tick each second of the countdown, the grid empties (Memory's cards turning back); a cell picked (Tic-tac-toe's mark) or unpicked | As above |
+| Snapshot | `reveal` / `flipDown` / `tickSoft` / `go` / `mark` / `deselect` | The pattern shows (reveal), the grid empties (Memory's cards turning back), a soft tick each second of the countdown, then the taps open (go); a cell picked (Tic-tac-toe's mark) or unpicked | As above |
 | Headcount, Flash, Snapshot | `tap` / `ding` / `thud` | For someone else's round: its own sounds as it plays, then their answer (tap); right (ding) / wrong or out of time (thud) | As above |
 
 ## Rules the game follows

@@ -1431,23 +1431,23 @@ test('Headcount, Flash and Snapshot tuning (config/headcount, config/flash, conf
   const boss = await player('AttBoss'), a = await player('Att_A'), b = await player('Att_B');
   assert.match(await runScript('make-admin.js', 'AttBoss', 'grant'), /AttBoss is now the admin/);
   await boss.auth.currentUser.getIdToken(true);
-  const head = Object.assign({}, E.HEAD_DEFAULTS, { n1lo: 4, n1hi: 4, cross1: 2500 }), flash = { n: 6, ms1: 1200, ms2: 600, ms3: 450 }, snap = Object.assign({}, E.SNAP_DEFAULTS, { c1: 3, r1: 4, k1: 5, show: 4000 });
+  const head = Object.assign({}, E.HEAD_DEFAULTS, { n1lo: 4, n1hi: 4, cross1: 2500 }), flash = { n1: 6, n2: 7, n3: 9, ms1: 1200, ms2: 600, ms3: 450 }, snap = Object.assign({}, E.SNAP_DEFAULTS, { c1: 3, r1: 4, k1: 5, show: 4000, wait: 2000 });
   for (const [k, cfg] of [['headcount', head], ['flash', flash], ['snapshot', snap]]) {
     await denied(a.write(`config/${k}`, cfg), `${k}: a player setting the difficulty`);
     await boss.write(`config/${k}`, cfg);
     assert.deepEqual(await a.read(`config/${k}`), cfg, `${k}: everyone can read it`);
     await denied(boss.write(`config/${k}/other`, 1), `${k}: anything else`);
   }
-  assert.equal((await fetch(`http://${DB_HOST}/config/flash/n.json?ns=${NS}`)).status, 200, 'without a login too');
+  assert.equal((await fetch(`http://${DB_HOST}/config/flash/n1.json?ns=${NS}`)).status, 200, 'without a login too');
   await denied(boss.write('config/headcount', Object.assign({}, head, { cross1: 99999 })), 'a crossing time off its range');
   await denied(boss.write('config/flash', Object.assign({}, flash, { ms2: 'fast' })), 'not a number');
   await denied(boss.write('config/snapshot', Object.assign({}, snap, { show: 0 })), 'no time on show');
   await new Promise(r => setTimeout(r, 21000));                 // (the server keeps the config 20 s)
   const g = await pairUp(a, b);
   for (const [type, wrongOf, check] of [
-    ['headcount', r => E.attTruth('headcount', r) + 1, r => { assert.equal(r.items.length, 4, 'Headcount: the admin\'s count'); assert.ok(r.items.every(it => it.d === Math.round(2500 * (it.k === 'mouse' ? 0.85 : 1))), 'and crossing time (mice a little quicker)'); }],
+    ['headcount', r => E.attTruth('headcount', r) + 1, r => { assert.equal(r.items.length, 4, 'Headcount: the admin\'s count'); assert.ok(r.items.every(it => { const m = it.k.includes('mouse') ? 0.85 : 1; return it.d >= Math.round(2500 * 0.85 * m) && it.d <= Math.round(2500 * 1.15 * m); }), 'and crossing time (about even at level 1; mice a little quicker)'); }],
     ['flash', r => (r.ans + 1) % 4, r => { assert.equal(r.items.length, 6, 'Flash: the admin\'s number of items'); assert.equal(r.ms, 1200, 'and time per item'); }],
-    ['snapshot', r => E.attWrong('snapshot', r, E.makeRng('w')), r => { assert.deepEqual([r.c, r.r, r.cells.length, r.show], [3, 4, 5, 4000], 'Snapshot: the admin\'s grid, cells and time on show'); }],
+    ['snapshot', r => E.attWrong('snapshot', r, E.makeRng('w')), r => { assert.deepEqual([r.c, r.r, r.cells.length, r.show, r.wait], [3, 4, 5, 4000, 2000], 'Snapshot: the admin\'s grid, cells, time on show and countdown'); }],
   ]) {
     await rewrite(g.id, full => { full.squares[4].owner = null; full.squares[4].mini = E.newMini(type, E.makeRng('srv-' + type)); full.turn = 'X'; full.lock = null; });
     const r0 = (await gameState(g.id)).squares[4].mini.round.X;

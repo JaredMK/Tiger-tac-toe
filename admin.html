@@ -512,16 +512,16 @@ async function savePlinkoCfg(btn) {
   render();
 }
 // ---------- the attention games' difficulty (config/headcount, config/flash, config/snapshot, read by the game and the server) ----------
-const HEAD_DEFAULTS = { n1lo: 6, n1hi: 10, d1lo: 0, d1hi: 0, cross1: 3200, gap1: 950, n2lo: 10, n2hi: 15, d2lo: 3, d2hi: 6, cross2: 2300, gap2: 560, n3lo: 14, n3hi: 20, d3lo: 4, d3hi: 7, cross3: 1800, gap3: 430 };   // (as engine.js has them)
-const FLASH_DEFAULTS = { n: 8, ms1: 900, ms2: 600, ms3: 450 };
-const SNAP_DEFAULTS = { c1: 4, r1: 4, k1: 6, c2: 4, r2: 5, k2: 8, c3: 5, r3: 5, k3: 10, show: 5000 };
+const HEAD_DEFAULTS = { n1lo: 14, n1hi: 20, d1lo: 4, d1hi: 7, cross1: 1800, gap1: 430, n2lo: 18, n2hi: 25, d2lo: 7, d2hi: 11, cross2: 1800, gap2: 330, n3lo: 22, n3hi: 30, d3lo: 8, d3hi: 12, cross3: 2000, gap3: 300 };   // (as engine.js has them)
+const FLASH_DEFAULTS = { n1: 6, n2: 7, n3: 8, ms1: 500, ms2: 500, ms3: 500 };
+const SNAP_DEFAULTS = { c1: 4, r1: 5, k1: 7, c2: 5, r2: 5, k2: 9, c3: 5, r3: 6, k3: 11, show: 5000, wait: 5000 };
 const ATT_CARDS = [
-  { id: 'headcount', title: 'Headcount tuning', defaults: HEAD_DEFAULTS, rows: [['n{L}lo', 'Creatures to count: fewest', 1, 30, 1], ['n{L}hi', 'Creatures to count: most', 1, 30, 1], ['d{L}lo', 'Decoys: fewest (level 1 has none)', 0, 15, 1], ['d{L}hi', 'Decoys: most', 0, 15, 1], ['cross{L}', 'Time to cross the field (ms)', 600, 8000, 10], ['gap{L}', 'Time between starts, about (ms)', 120, 3000, 10]], extra: [],
-    note: 'Creatures cross the field and the player counts the ones asked for. Level 1: one kind, one direction, steady. Level 2: decoys that do not count, faster, a little uneven. Level 3: both directions, uneven with bunches, faster still.' },
-  { id: 'flash', title: 'Flash tuning', defaults: FLASH_DEFAULTS, rows: [['ms{L}', 'Time per item (ms)', 150, 3000, 10]], extra: [['n', 'Items in a round', 4, 12, 1]],
-    note: 'Items flash one at a time, then one question with four options. Level 1: one attribute; level 2: a combination; level 3: order and position.' },
-  { id: 'snapshot', title: 'Snapshot tuning', defaults: SNAP_DEFAULTS, rows: [['c{L}', 'Columns', 3, 7, 1], ['r{L}', 'Rows', 3, 7, 1], ['k{L}', 'Filled cells', 2, 30, 1]], extra: [['show', 'Time the pattern shows (ms)', 1000, 15000, 100]],
-    note: 'A pattern shows for a few seconds, then the player taps it back in. Never a full row or column, a straight run of 4, one solid rectangle or a symmetric shape.' },
+  { id: 'headcount', title: 'Headcount tuning', defaults: HEAD_DEFAULTS, rows: [['n{L}lo', 'Creatures to count: fewest', 1, 30, 1], ['n{L}hi', 'Creatures to count: most', 1, 30, 1], ['d{L}lo', 'Decoys: fewest', 0, 15, 1], ['d{L}hi', 'Decoys: most', 0, 15, 1], ['cross{L}', 'Time to cross the field, moving (ms)', 600, 8000, 10], ['gap{L}', 'Time between starts, about (ms)', 120, 3000, 10]], extra: [],
+    note: 'Creatures cross the field and the player counts the ones asked for. Level 1: decoys of another kind, left and right, uneven with bunches. Level 2: more of both, in all four directions at widely varying speeds, crossing paths often. Level 3: decoys that look like them (the same creature in a near colour), four directions, stopping and starting, in bunches. The computer gets 45%, 30% and 20% right.' },
+  { id: 'flash', title: 'Flash tuning', defaults: FLASH_DEFAULTS, rows: [['n{L}', 'Cards in a round', 4, 12, 1], ['ms{L}', 'Time per card (ms)', 150, 3000, 10]], extra: [],
+    note: 'Cards flash one at a time, then one question with four options: how many of a shape, or how many of a colour. The computer gets 80%, 70% and 60% right.' },
+  { id: 'snapshot', title: 'Snapshot tuning', defaults: SNAP_DEFAULTS, rows: [['c{L}', 'Columns', 3, 7, 1], ['r{L}', 'Rows', 3, 7, 1], ['k{L}', 'Filled cells', 2, 30, 1]], extra: [['show', 'Time the pattern shows (ms)', 1000, 15000, 100], ['wait', 'Countdown on the blank grid (ms)', 0, 15000, 100]],
+    note: 'A pattern shows, then the grid stays blank for a countdown, then the player taps it back in. The computer gets 65%, 50% and 35% right. Never a full row or column, a straight run of 4, one solid rectangle or a symmetric shape.' },
 ];
 function attCard(c) {
   const raw = (ctl.attCfg || {})[c.id] || {}, num = (v, d) => (v != null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : d);

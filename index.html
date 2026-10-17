@@ -27,6 +27,7 @@
   --green: #4e9d3a;
   --yellow: #f6c21b;
   --card: #fffaf0;
+  --spot: #fff;                     /* an empty spot to place on (Districts) */
   --cr: #e5432a;
   --cy: #f6c21b;
   --cg: #4e9d3a;
@@ -519,10 +520,6 @@ main.scr.mini:has(.fing), main.scr.mini:has(.fing) * { touch-action: none; -webk
 .dig.open > span, .dig.open svg { animation: pop .35s .45s ease-out both; }
 .dig.found.open svg { animation: pop .35s .45s ease-out both, sparkle .45s .85s ease-in-out 2 alternate; }
 .dig.found.open::after { content: '✦'; position: absolute; top: 6%; right: 10%; color: #fff; font-size: 45%; animation: twinkle .4s .9s ease-in-out 3 alternate both; }
-.heat { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; font-size: 12px; font-weight: 700; }
-.heat .hb { display: flex; flex-direction: column; align-items: center; padding: 3px 2px 2px; border-radius: 9px; border: 2px solid var(--ink); line-height: 1.05; min-width: 0; }
-.heat .hb b { font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-weight: 400; font-size: 13px; padding-top: 2px; }
-.heat .hb small { font-size: 11px; opacity: .85; }
 .g-candy { width: var(--g); display: flex; flex-direction: column; gap: 10px; }
 .g-snakes, .g-bump { width: var(--g); display: flex; flex-direction: column; align-items: center; gap: 10px; }
 .g-snakes .track { width: min(100%, calc((100dvh - 400px) * 1.2)); }   /* the tall board shrinks on a short phone, the die and button still in view */
@@ -1069,7 +1066,6 @@ b.O { box-shadow: inset 0 -.38em 0 var(--o-soft); }
   50% { background: var(--dbg); transform: scale(1.15, .85) rotate(3deg); }
   100% { background: var(--dbg); transform: scale(1) rotate(0); }
 }
-.heat { font-weight: 400; }
 .pointer { border-top-color: var(--ink); border-left-width: 11px; border-right-width: 11px; border-top-width: 18px; }
 .wheel { border: 4px solid var(--ink); box-shadow: 0 6px 0 var(--ink); }
 .range small { color: var(--muted); font-weight: 400; font-size: 14px; }
@@ -1185,11 +1181,6 @@ button.seg.X.on { background: var(--x); color: var(--paper); } .seg.O.on { backg
 .mmfb i { width: 13px; height: 13px; border-radius: 50%; border: 2px dashed rgba(22, 18, 16, .35); }
 .mmfb i.sd { background: var(--ink); border: 2px solid var(--ink); }
 .mmfb i.hw { background: #fff; border: 2.5px solid var(--ink); }
-.mmkey { flex: none; display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 16px; margin-top: -4px; color: var(--muted); font-size: 14px; line-height: 1.2; }
-.mmkey span { display: inline-flex; align-items: center; gap: 6px; }
-.mmkey i { width: 13px; height: 13px; border-radius: 50%; }
-.mmkey i.sd { background: var(--ink); border: 2px solid var(--ink); }
-.mmkey i.hw { background: #fff; border: 2.5px solid var(--ink); }
 .mmfb i.rv { animation: markin .3s cubic-bezier(.3, 1.8, .5, 1) both; animation-delay: calc(.45s + var(--k) * .25s); }
 .mmcur { flex: none; display: flex; justify-content: center; gap: 10px; }
 .mmcur .mmslot { width: calc(var(--pg) + 8px); height: calc(var(--pg) + 8px); padding: 3px; border-radius: 50%; border: 3px dashed var(--ink); background: rgba(255, 255, 255, .6); }
@@ -1657,7 +1648,9 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .rprog small { color: var(--muted); font-size: 12px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; text-align: right; overflow: hidden; }
 .rscene { position: relative; margin: 0 auto; width: 100%; border: 3px solid var(--ink); border-radius: 14px; overflow: hidden; background: #cfe9f7; touch-action: none; user-select: none; -webkit-user-select: none; min-height: 150px; }
 .rscene.dash { flex: 0 1 auto; aspect-ratio: 16 / 11; max-height: 100%; }
-.rscene.lane { flex: 1; min-height: 220px; }
+.rscene.lane { flex: 1; min-height: 240px; }
+.rscene > .arcnote, .rscene > .arcres { position: absolute; left: 10px; right: 10px; top: 34px; margin: 0 auto; width: fit-content; max-width: calc(100% - 20px); height: auto; padding: 6px 12px; background: var(--paper); border: 2.5px solid var(--ink); border-radius: 12px; pointer-events: none; }
+.rscene > .arcnote:empty { display: none; }   /* Lane Rush: the status or result over the road ahead */
 .rscene.flap { flex: 0 1 auto; aspect-ratio: 4 / 3; max-height: 100%; }
 .rscene.chopper { flex: 0 1 auto; aspect-ratio: 16 / 11; max-height: 100%; }
 .rscene canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
@@ -1709,8 +1702,8 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .cpts > i.off { background: transparent; border-style: dashed; border-color: var(--muted); }
 .cpuck { position: absolute; top: 50%; width: 34px; height: 34px; margin: -17px 0 0 -17px; border-radius: 50%; border: 3px solid var(--ink); background: #1b1b1b; color: #fff; display: grid; place-items: center; font: 800 10px Nunito, sans-serif; box-shadow: 0 3px 0 var(--ink); z-index: 1; }
 .cpuck.on { background: #fff; color: var(--ink); }
-.cpuck.move { animation: puckon .42s var(--t, 0ms) cubic-bezier(.3, 1.4, .5, 1) both; }
-.cpuck.moveoff { animation: puckoff .42s var(--t, 0ms) cubic-bezier(.3, 1.4, .5, 1) both; }
+.cpuck.move { animation: puckon .25s var(--t, 0ms) cubic-bezier(.3, 1.4, .5, 1) both; }
+.cpuck.moveoff { animation: puckoff .25s var(--t, 0ms) cubic-bezier(.3, 1.4, .5, 1) both; }
 @keyframes puckoff { from { left: var(--from); background: #fff; color: var(--ink); } 60% { background: #fff; color: var(--ink); } to { left: var(--to); background: #1b1b1b; color: #fff; } }
 @keyframes puckon { from { left: var(--from); background: #1b1b1b; color: #fff; } 60% { background: #1b1b1b; color: #fff; } to { left: var(--to); background: #fff; color: var(--ink); } }
 .cfelt { position: relative; height: 150px; width: min(100%, 360px); margin: 0 auto; border: 3px solid var(--ink); border-radius: 18px; background: radial-gradient(circle at 50% 45%, #3b9a4b, #2a7238); overflow: hidden; display: grid; place-items: center; }
@@ -1809,16 +1802,17 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .tseat i.X { background: var(--x); opacity: 1; } .tseat i.O { background: var(--o); opacity: 1; } .tseat i.Z { background: #8d8d8d; opacity: 1; }
 /* Districts: the map, each region in its leader's shade; spots on borders count for both sides */
 .districts { flex: 1; display: flex; flex-direction: column; gap: 8px; justify-content: center; min-height: 0; }
-.dmap { display: block; width: min(100%, 320px, calc((100dvh - 328px) * .84)); margin: 0 auto; }   /* (328: the bars, the tallies, the ties line and the status line) */
+.dmap { display: block; width: min(100%, 320px, calc((100dvh - 340px) * .84)); margin: 0 auto; }   /* (340: the bars, the tallies, the ties line and the status line) */
+.ctal .dbig { display: grid; font: 400 30px/1 'Luckiest Guy', 'Arial Black', sans-serif; color: var(--ink); padding-top: 2px; } .ctal .dbig > span { grid-area: 1 / 1; text-align: right; }   /* Districts: the regions each leads, big */
 .dreg { fill: var(--paper); stroke: var(--ink); stroke-width: 1.2; stroke-linejoin: round; }
 .dreg.X { fill: var(--x-soft); } .dreg.O { fill: var(--o-soft); }
 .dreg.shift { animation: dshift .45s var(--t, 0ms) both; }
 .dreg.shift.fromnone { --f0: var(--paper); } .dreg.shift.fromX { --f0: var(--x-soft); } .dreg.shift.fromO { --f0: var(--o-soft); }
 @keyframes dshift { from { fill: var(--f0); } }
 .dspot .dhit { fill: transparent; }
-.dspot .dpc { fill: #fff; stroke: var(--ink); stroke-width: 1.3; }
+.dspot .dpc { fill: var(--spot); stroke: var(--ink); stroke-width: 1.3; }
 .dspot.edge .dpc { stroke-width: 1.7; }
-.dspot.open { cursor: pointer; } .dspot.open:hover .dpc { fill: var(--panel-2); }
+.dspot.open { cursor: pointer; }   /* (no hover shade: on a phone it sticks wherever the finger last was, and an empty spot must always look the same) */
 .dspot.X .dpc { fill: var(--x); } .dspot.O .dpc { fill: var(--o); } .dspot.G .dpc { fill: #9d9d9d; }
 .dspot.drop .pp { animation: ddrop .5s var(--t, 0ms) both; }
 @keyframes ddrop { 0% { transform: translateY(-12px); opacity: 0; } 35% { opacity: 1; } 65% { transform: translateY(0); } 80% { transform: translateY(-2px); } 100% { transform: none; } }
@@ -1829,13 +1823,13 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .dspot.pop .pp { animation: markpop .35s ease-out both; }
 .tdist { width: 52cqw; height: 62cqw; }
 .tdist .dreg { stroke-width: 2; }
-.tdist circle { fill: #fff; stroke: var(--ink); stroke-width: 1.6; } .tdist circle.X { fill: var(--x); } .tdist circle.O { fill: var(--o); } .tdist circle.G { fill: #a3a3a3; }
+.tdist circle { fill: var(--spot); stroke: var(--ink); stroke-width: 1.6; } .tdist circle.X { fill: var(--x); } .tdist circle.O { fill: var(--o); } .tdist circle.G { fill: #a3a3a3; }
 /* Shelves: six shelves of three; the grey mark drops in after each move */
 .shelves { flex: 1; display: flex; flex-direction: column; gap: 8px; justify-content: center; min-height: 0; }
 .shcase { width: min(100%, 330px); margin: 0 auto; border: 3px solid var(--ink); border-radius: 12px; background: #8a5a35; padding: 6px 8px 4px; display: grid; gap: 4px; box-shadow: 0 4px 0 var(--ink); }
 .shrow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: end; padding-bottom: 4px; border-bottom: 6px solid #d9a46b; }
 .shspots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-.shs { height: 38px; border: 3px dashed rgba(255, 255, 255, .55); border-radius: 8px 8px 3px 3px; background: rgba(255, 255, 255, .12); padding: 0; display: grid; place-items: center; }
+.shs { height: clamp(26px, calc((var(--gh) - 150px) / 7 - 18px), 38px); border: 3px dashed rgba(255, 255, 255, .55); border-radius: 8px 8px 3px 3px; background: rgba(255, 255, 255, .12); padding: 0; display: grid; place-items: center; }
 .shs.X, .shs.O, .shs.G { border: 3px solid var(--ink); }
 .shs.X { background: var(--x); color: #fff; } .shs.O { background: var(--o); color: var(--ink); } .shs.G { background: #9d9d9d; }
 .shs b { font: 400 20px 'Luckiest Guy', sans-serif; padding-top: 3px; }
@@ -1846,9 +1840,9 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .shon i { width: 22px; height: 22px; border-radius: 50%; border: 2.5px solid rgba(0, 0, 0, .3); font: 400 12px 'Luckiest Guy', sans-serif; font-style: normal; display: grid; place-items: center; color: rgba(255, 255, 255, .3); padding-top: 2px; }
 .shon i.on { border-color: var(--ink); } .shon i.on.X { background: var(--x); color: #fff; } .shon i.on.O { background: var(--o); color: var(--ink); }
 .shon i.fillin { animation: pipfill .4s cubic-bezier(.3, 1.6, .5, 1) both; }
-.tshelf { display: grid; gap: 1.4cqw; width: 52cqw; padding: 2cqw; background: #8a5a35; border-radius: 2.5cqw; }
+.tshelf { display: grid; gap: 1.1cqw; width: 52cqw; padding: 2cqw; background: #8a5a35; border-radius: 2.5cqw; }
 .tshelf span { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.4cqw; padding-bottom: .8cqw; border-bottom: 1.4cqw solid #d9a46b; }
-.tshelf i { height: 5.2cqw; border-radius: 1cqw; background: rgba(255, 255, 255, .2); } .tshelf i.X { background: var(--x); } .tshelf i.O { background: var(--o); } .tshelf i.G { background: #a3a3a3; }
+.tshelf i { height: 4.6cqw; border-radius: 1cqw; background: rgba(255, 255, 255, .2); } .tshelf i.X { background: var(--x); } .tshelf i.O { background: var(--o); } .tshelf i.G { background: #a3a3a3; }
 /* Roads: dots and lines; a claimed line draws in, a blocked one is crossed; the longest roads glow */
 .roads { flex: 1; display: flex; flex-direction: column; gap: 8px; justify-content: center; min-height: 0; }
 .rmap { display: block; width: min(100%, 320px, calc(100dvh - 320px)); margin: 0 auto; background: var(--paper); border: 3px solid var(--ink); border-radius: 16px; }
@@ -2012,13 +2006,14 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .hcfield { position: relative; width: 100%; height: 100%; border: 3px solid var(--ink); border-radius: 14px; overflow: hidden;
   background: radial-gradient(circle at 20% 30%, rgba(255,255,255,.18) 0 8%, transparent 9%), radial-gradient(circle at 75% 70%, rgba(0,0,0,.06) 0 10%, transparent 11%), #a9d47c; }
 .hcfield.fall { background: linear-gradient(#bfe3f2, #e9f3d4); }
-.hcr { position: absolute; left: 0; top: var(--p); width: 11%; aspect-ratio: 1; animation: hcr var(--d) linear var(--t) both; }
-.hcr.l { animation-name: hcl; } .hcr.l svg { transform: scaleX(-1); }
-.hcr.v { left: var(--p); top: 0; animation-name: hcv; } .hcr.v.k-acorn svg, .hcr.v.k-leaf svg { transform: none; }
+.hcr { position: absolute; left: 0; top: var(--p); width: 11%; aspect-ratio: 1; animation: var(--hcanim, hcr) var(--d) linear var(--t) both; }   /* its way across: one of the four below, or its own (stopping and starting) */
+.hcr.l svg { transform: scaleX(-1); }
+.hcr.dn, .hcr.up { left: var(--p); top: 0; } .hcr.dn svg { transform: rotate(90deg); } .hcr.up svg { transform: rotate(-90deg); } .hcr.k-acorn svg, .hcr.k-leaf svg { transform: none; }
 .hcr svg { width: 100%; height: 100%; display: block; animation: hcwob .28s ease-in-out infinite alternate; }
 @keyframes hcr { from { transform: translateX(-100%); } to { transform: translateX(909.1%); } }
 @keyframes hcl { from { transform: translateX(909.1%); } to { transform: translateX(-100%); } }
 @keyframes hcv { from { transform: translateY(-100%); } to { transform: translateY(909.1%); } }
+@keyframes hcu { from { transform: translateY(909.1%); } to { transform: translateY(-100%); } }
 @keyframes hcwob { from { translate: 0 -4%; rotate: -4deg; } to { translate: 0 4%; rotate: 4deg; } }
 .hcpad { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: 1.1fr repeat(4, 1fr); gap: 6px; width: 100%; height: 100%; min-height: 0; }
 .hcdst { grid-column: 1 / -1; display: grid; min-height: 0; } .hcdst > div { grid-area: 1 / 1; display: grid; }
@@ -2034,7 +2029,6 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .fit { position: absolute; inset: 14%; opacity: 0; animation: fon var(--on) linear var(--t); }
 .fit svg { width: 100%; height: 100%; display: block; }
 @keyframes fon { from, to { opacity: 1; } }
-.flwait { color: var(--muted); font-size: 15px; }
 .flopts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: min(100%, 320px); }
 .flopts.dim { opacity: .4; }
 .flopts.lay { display: grid; grid-template-columns: 1fr; } .flopts.lay > div { grid-area: 1 / 1; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -2052,10 +2046,10 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .snc.hit { background: #4e9d3a; } .snc.miss { background: #fff; border-style: dashed; border-color: #3b87c7; box-shadow: inset 0 0 0 4px #9fc5e8; } .snc.extra { background: #f9c7b6; }
 .snc.extra::after { content: '×'; position: absolute; inset: 0; display: grid; place-items: center; font-weight: 900; color: var(--x); font-size: 22px; }
 .snin { height: 44px; width: 100%; display: grid; place-items: center; }
-.sncount { display: flex; align-items: center; gap: 10px; } .sncount .obar { width: 160px; }
-.sndig { display: grid; } .sndig b { grid-area: 1 / 1; font: 400 26px/1 'Luckiest Guy', 'Arial Black', sans-serif; }
+.sncount { display: flex; align-items: center; gap: 10px; } .sncount .obar { width: 160px; } .snbars { display: grid; } .snbars > .obar { grid-area: 1 / 1; }
+.sndig { display: grid; min-width: 18px; } .sndig b { grid-area: 1 / 1; font: 400 26px/1 'Luckiest Guy', 'Arial Black', sans-serif; }
 .sndig .tf.tu { animation: tfrom 1ms var(--f, 0ms) both, tuntil 1ms var(--u, 0ms) both; }
-@media (prefers-reduced-motion: reduce) { .hcr { animation: var(--hcanim, hcr) var(--d) linear var(--t) both !important; } .hcr.l { animation-name: hcl !important; } .hcr.v { animation-name: hcv !important; } .fit { animation: fon var(--on) linear var(--t) !important; } .tu2, .sndig .tf.tu { animation: tfrom 1ms var(--f, 0ms) both, tuntil 1ms var(--u, 0ms) both !important; } .snstack > .tu { display: flex !important; animation: tuntil 1ms var(--u, 0ms) both !important; } }   /* the rounds are the game: they play with reduced motion too (no wobble) */
+@media (prefers-reduced-motion: reduce) { .hcr { animation: var(--hcanim, hcr) var(--d) linear var(--t) both !important; } .fit { animation: fon var(--on) linear var(--t) !important; } .tu2, .sndig .tf.tu { animation: tfrom 1ms var(--f, 0ms) both, tuntil 1ms var(--u, 0ms) both !important; } .snstack > .tu { display: flex !important; animation: tuntil 1ms var(--u, 0ms) both !important; } }   /* the rounds are the game: they play with reduced motion too (no wobble) */
 
 @keyframes obar { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 @media (prefers-reduced-motion: reduce) { .epad.play { animation: var(--lit) !important; } @keyframes padlit { 0% { opacity: .55; } 12%, 80% { opacity: 1; } 100% { opacity: .55; } } }   /* Echo's flashes are the pattern itself: kept with reduced motion (a change of brightness, without the swell) */
@@ -2162,6 +2156,8 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .tplk .tbpts { display: flex; gap: 10cqw; justify-content: center; flex: none; }
 .tplk small { font-size: 9cqw; font-weight: 800; color: var(--muted); }
 .tpip .X i.on { background: var(--x); } .tpip .O i.on { background: var(--o); }
+.tpip .topts { display: flex; justify-content: center; gap: 4cqw; padding-top: 3cqw; border-top: 1.2cqw dashed var(--muted); } .tpip .topts i { width: 10cqw; height: 10cqw; background: var(--ink); position: relative; }
+.tpip .topts i.out { opacity: .3; background: var(--paper); } .tpip .topts i.out::after { content: ''; position: absolute; left: 50%; top: -25%; width: 1.4cqw; height: 150%; margin-left: -.7cqw; background: var(--ink); transform: rotate(45deg); }   /* Trivia: the answers left, the crossed-out ones dimmed and struck */
 .tpip .bus i { border-radius: 3cqw; width: 12cqw; height: 16cqw; }
 .tpip .last { align-self: center; font: 400 11cqw 'Luckiest Guy', sans-serif; color: #fff; min-width: 20cqw; height: 20cqw; border-radius: 50%; display: grid; place-items: center; border: 1.6cqw solid var(--ink); padding-top: 1cqw; }
 .tpip .last.r { background: #d6301e; } .tpip .last.b { background: var(--ink); } .tpip .last.g { background: #2f8a3c; }
@@ -2749,7 +2745,7 @@ const EXPLAIN = {
   bump: { name: 'Bump', play: 'Spin and move 1, 2 or 3 spaces. Land on your opponent to send them back home.', win: 'Reach the finish first.' },
   coins: { name: 'Coin Flip', play: "Flip up to 3 coins that aren't yours.", win: 'All 5 coins show your side.' },
   pig: { name: 'Risky Rolls', play: 'Roll as many times as you dare, then bank your points. Roll a number you already rolled this turn and you lose them.', win: 'Bank 21 first.' },   // ('pig': its id from when it was called Pig)
-  hunt: { name: 'Treasure Hunt', play: 'Dig a square. It tells you if the treasure is hot, warm, cool or cold.', win: 'Dig up the treasure.' },
+  hunt: { name: 'Treasure Hunt', play: 'Dig a square. It tells you how close the treasure is: hot (1 step away), warm (2–3), cool (4–5) or cold (6 or more).', win: 'Dig up the treasure.' },
   hexapawn: { name: 'Hexapawn', play: 'Move a pawn forward, or capture diagonally.', win: 'Get a pawn to the far side.' },
   mastermind: { name: 'Mastermind', play: 'Guess the 4-colour code. Black marker means right colour and spot; white marker means right colour, wrong spot.', win: 'Crack the code.' },
   bj: { name: 'Blackjack', play: 'Hit, stand, or double (one more card, counts double if you win). Beat the dealer without going over 21. Tie? Play another hand.', win: 'First to 3 wins.' },
@@ -2771,15 +2767,15 @@ const EXPLAIN = {
   flood: { name: 'Flood', play: 'Pick a colour. The blob grows into it, and every square it grabs is yours.', win: 'Get 18 squares first.' },
   seating: { name: 'Seating', play: 'Seat yourself at any table. After each move a customer takes a seat of their colour (you\'ll see who\'s next). If none of their colour is free, they walk out.', win: 'Fill the most tables with your own pair.' },
   districts: { name: 'Districts', play: 'Place a piece. It counts for every region it touches. A grey piece lands somewhere after each move.', win: 'Lead in the most regions when the map is full. Ties go to the player who moved second.' },
-  shelves: { name: 'Shelves', play: 'Put a mark on a shelf. A grey mark lands somewhere after each move.', win: 'Be on the most shelves.' },
+  shelves: { name: 'Shelves', play: 'Put a mark on a shelf. A grey mark lands somewhere after each move.', win: 'Be on the most of the 7 shelves. A tie goes to whoever moved second here.' },
   roads: { name: 'Roads', play: 'Claim a line. A random line gets blocked after each move.', win: 'Have the longest unbroken road.' },
   flap: { name: 'Flap', play: 'Tap to flap through the gaps. It gets faster, and you keep your distance when you crash.', win: 'Reach 1,000 m first.' },
   chopper: { name: 'Chopper', play: 'Hold to rise, let go to drop. It gets faster, and you keep your distance when you crash.', win: 'Reach 1,000 m first.' },
   patterns: { name: 'Patterns', play: 'Pick what comes next, or what\'s missing. Wrong answers get crossed out and the puzzle stays until someone gets it.', win: 'Get 3 right.' },
   wheels: { name: 'Risk Wheels', play: 'Pick a wheel and spin. Each square deals three new wheels of ten equal segments: purple has a 10 (or two) and mostly zeros, green always pays a little, blue sits between. The darker a segment, the more it pays.', get win() { return `Reach ${wheelsConfig().target} first.`; } },   // (the target is the admin's)
-  headcount: { name: 'Headcount', play: "Count the critters as they cross. Watch out for the ones you're not counting.", win: 'Get 3 right. It gets harder each time.' },
-  flash: { name: 'Flash', play: 'Watch 8 items flash by, then answer a question about them.', win: 'Get 3 right. It gets harder each time.' },
-  snapshot: { name: 'Snapshot', play: 'Memorise the pattern in 5 seconds, then tap it back in.', win: 'Get 3 right. The grid gets bigger each time.' },
+  headcount: { name: 'Headcount', play: 'Count the critters the question asks for as they cross. Ignore the others.', win: 'Get 3 right. It gets harder each time.' },
+  flash: { name: 'Flash', play: 'Cards flash by one at a time. Then say how many there were of a shape or a colour.', win: 'Get 3 right. It gets harder each time.' },
+  snapshot: { name: 'Snapshot', play: 'Memorise the pattern in 5 seconds. Wait out the countdown, then tap it back in and Submit.', win: 'Get 3 right. The grid gets bigger each time.' },
   skyhop: { name: 'Sky Hop', play: 'Drag to steer as you bounce up. Fall and your turn ends, but you keep your height.', win: 'Reach the top first.' },
   scoop: { name: 'Scoop Stack', play: 'Drag the cone to catch scoops. Dodge the bad stuff. Your stack carries over between turns.', win: 'Stack to the target first.' },
   pinball: { name: 'Pinball', play: 'Tap left or right to flip. One ball per turn. Targets you hit stay lit.', win: 'Light every target first.' },
@@ -3008,7 +3004,10 @@ function thumb(mini, final) {
     case 'echo': return `<div class="tpip">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${ECHO.lengths.map((_, k) => `<i class="sq${k < mini.level[p] ? ' on' : ''}"></i>`).join('')}</div>`).join('')}</div>`;
     case 'plinko': { const pts = mini.pts || { X: 0, O: 0 }, tg = mini.target || PLINKO_DEFAULTS.target; return `<div class="tplk" aria-label="Plinko: X ${pts.X}, O ${pts.O} of ${tg} points"><div class="tbins">${(mini.vals || []).map((v, b) => `<i class="${v === 5 ? 'top' : ''}${mini.last && mini.last.bin === b ? ' ' + mini.last.by : ''}">${v}</i>`).join('')}</div><div class="tbpts">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><span>${Math.min(tg, pts[p])}</span><small>/${tg}</small></div>`).join('')}</div></div>`; }
     case 'pong': return `<div class="tpip">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${mini.cups[p].map(up => `<i class="${up ? 'on' : ''}"></i>`).join('')}</div>`).join('')}</div>`;
-    case 'trivia': return `<div class="tpip">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${Array.from({ length: TRIVIA.goal }, (_, k) => `<i class="${k < mini.right[p] ? 'on' : ''}"></i>`).join('')}</div>`).join('')}</div>`;
+    case 'trivia': {                                              // both players' progress, and the question's options: those still standing, the crossed-out ones dimmed and struck
+      const n = mini.ask ? (Array.isArray(mini.ask.opts) ? mini.ask.opts.length : mini.ask.n || TRIVIA.options) : TRIVIA.options, out = new Set(mini.crossed || []);
+      return `<div class="tpip">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${Array.from({ length: TRIVIA.goal }, (_, k) => `<i class="${k < mini.right[p] ? 'on' : ''}"></i>`).join('')}</div>`).join('')}<div class="topts" aria-label="${n - out.size} of ${n} answers left">${Array.from({ length: n }, (_, k) => `<i class="${out.has(k) ? 'out' : ''}"></i>`).join('')}</div></div>`;
+    }
     case 'headcount': case 'flash': case 'snapshot': return `<div class="tpip">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${Array.from({ length: ATT.goal }, (_, k) => `<i class="${k < mini.right[p] ? 'on' : ''}"></i>`).join('')}</div>`).join('')}</div>`;   // both players' progress: ●●○
     case 'skyhop': case 'scoop': return `<div class="trun" aria-label="X at ${fingAt(mini, 'X')}, O at ${fingAt(mini, 'O')} of ${mini.cfg.target}">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><i style="--w:${(100 * Math.min(1, fingAt(mini, p) / mini.cfg.target)).toFixed(1)}%"></i></div>`).join('')}</div>`;   // both players' progress: the height climbed, the scoops stacked
     case 'pinball': return `<div class="tpip t7" aria-label="X has lit ${fingAt(mini, 'X')}, O ${fingAt(mini, 'O')} of ${mini.lit.X.length}">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${mini.lit[p].map(on => `<i class="${on ? 'on' : ''}"></i>`).join('')}</div>`).join('')}</div>`;   // each player's lit targets out of the seven
@@ -3018,7 +3017,7 @@ function thumb(mini, final) {
     case 'takeover': return `<div class="tg gtk">${mini.cells.map(c => `<i class="${c || ''}"></i>`).join('')}</div>`;
     case 'seating': return `<div class="tseat">${Array.from({ length: SEAT.tables }, (_, t) => { const l = mini.who[2 * t], r = mini.who[2 * t + 1], own = l && l === r && l !== 'Z' ? ' own ' + l : ''; return `<span class="${own}">${[2 * t, 2 * t + 1].map(i => `<i class="${mini.who[i] || ''}" style="--sc:${SEAT_COL[mini.color[i]]}"></i>`).join('')}</span>`; }).join('')}</div>`;
     case 'districts': { const t = distTally(mini.map, mini.who); return `<svg class="tdist" viewBox="-2 -2 104 124" aria-hidden="true">${mini.map.regions.map((poly, r) => `<path class="dreg${t.lead[r] ? ' ' + t.lead[r] : ''}" d="${distPath(poly)}"/>`).join('')}${mini.map.spots.map((sp, k) => `<circle class="${mini.who[k] || ''}" cx="${sp.x}" cy="${sp.y}" r="4.6"/>`).join('')}</svg>`; }
-    case 'shelves': return `<div class="tshelf">${Array.from({ length: SHELF.n }, (_, r) => `<span>${mini.cells.slice(r * SHELF.per, r * SHELF.per + SHELF.per).map(w => `<i class="${w || ''}"></i>`).join('')}</span>`).join('')}</div>`;
+    case 'shelves': return `<div class="tshelf">${Array.from({ length: mini.cells.length / SHELF.per }, (_, r) => `<span>${mini.cells.slice(r * SHELF.per, r * SHELF.per + SHELF.per).map(w => `<i class="${w || ''}"></i>`).join('')}</span>`).join('')}</div>`;
     case 'roads': return `<svg class="troad" viewBox="0 0 100 100" aria-hidden="true">${mini.segs.map((w, k) => { const [p, q] = ROAD_SEGS[k].map(ROAD_PT); return `<line class="${w || ''}" x1="${p[0]}" y1="${p[1]}" x2="${q[0]}" y2="${q[1]}"/>`; }).join('')}</svg>`;
     case 'patterns': { const pz = mini.puz || (mini.last ? { seq: mini.last.seq } : null); return `<div class="tpat">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${Array.from({ length: PATTERNS.goal }, (_, k) => `<i class="${k < mini.right[p] ? 'on' : ''}"></i>`).join('')}</div>`).join('')}${pz ? `<div class="tseq">${pz.seq.map(it => (it ? `<span>${patSvg(it)}</span>` : '<span class="q">?</span>')).join('')}</div>` : ''}</div>`; }   // the right answers so far, and the puzzle open now
     case 'wheels': return `<div class="trun" aria-label="X has ${mini.pts.X}, O has ${mini.pts.O} of ${mini.target}">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><i style="--w:${(100 * Math.min(1, mini.pts[p] / mini.target)).toFixed(1)}%"></i></div>`).join('')}</div>`;   // both players' points to the target
@@ -3130,7 +3129,7 @@ function bjTable(mini, a, o) {
   };
   const bannerSet = H => {
     const x = H.hand;
-    const inner = x.res ? `<div ${lateAt('bjres ' + x.res, anim ? H.end : null)} role="status">${toon(by)}<span>${H.pushed ? 'Push: a new hand' : bjResText(x)}</span></div>` : `<div class="bjres none">Dealer stands on 17</div>`;
+    const inner = x.res ? `<div ${lateAt('bjres ' + x.res, anim ? H.end : null)} role="status">${toon(by)}<span>${H.pushed ? 'Push: a new hand' : bjResText(x)}</span></div>` : '<div class="bjres none">&nbsp;</div>';
     return layer(H, inner);
   };
   const ghost = `<div class="bjset"><span class="bjlab">&nbsp;</span><div class="bjcards">${pcard(null, { down: true, cls: 'ghost' })}</div></div>`;
@@ -3146,7 +3145,7 @@ function bjTable(mini, a, o) {
     ? `<div class="cbtns one"><button class="big ${turn}" data-act="move" ${mv('deal')}${o.locked ? ' disabled' : ''}>Deal</button></div>`
     : `<div class="cbtns three"><button class="big ${turn}" data-act="move" ${mv('hit')}${o.locked || !mine ? ' disabled' : ''}>Hit</button><button class="big bank" data-act="move" ${mv('stand')}${o.locked || !mine ? ' disabled' : ''}>Stand</button><button class="big dbl" data-act="move" ${mv('double')}${o.locked || !mine || h.cards.length !== 2 ? ' disabled' : ''}>Double</button></div>`;
   const dealer = hands.length ? hands.map(dealerSet).join('') : ghost, player = hands.length ? hands.map(playerSet).join('') : ghost;
-  const mid = hands.length ? hands.map(bannerSet).join('') : '<div class="bjset"><div class="bjres none">Deal a hand to play</div></div>';
+  const mid = hands.length ? hands.map(bannerSet).join('') : '<div class="bjset"><div class="bjres none">&nbsp;</div></div>';
   return `<div class="g-bj"><div class="ctals">${tally('X')}${tally('O')}</div>
     <div class="felt"><div class="bjrow dealer bjstack">${dealer}</div><div class="bjstack bjmid">${mid}</div><div class="bjrow player bjstack">${player}</div></div>
     ${btns}</div>`;
@@ -3260,7 +3259,7 @@ function rlTable(mini, a, o) {
     return `<div class="ctal ${p}${!o.view && turn === p ? ' now' : ''}"><b class="${p}">${N(p)}</b><span class="pips" aria-label="${mini.hits[p]} of ${RL.goal} hits">${pips}</span></div>`;
   };
   const shown = b || l;
-  const res = shown ? `<p ${lateAt('rlres', b ? tEnd : null)}><span class="rlnum ${n === 0 ? 'g' : rlRed(n) ? 'r' : 'b'}">${n}</span><span><b class="${b ? a.by : l.by}">${N(b ? a.by : l.by)}</b> bet ${rlBetText(shown.bet)} · ${shown.hit ? (shown.bet === 'zero' ? 'green 0!' : 'hit!') : 'miss'}</span></p>` : '<p class="rlres">Place a bet, then spin</p>';
+  const res = shown ? `<p ${lateAt('rlres', b ? tEnd : null)}><span class="rlnum ${n === 0 ? 'g' : rlRed(n) ? 'r' : 'b'}">${n}</span><span><b class="${b ? a.by : l.by}">${N(b ? a.by : l.by)}</b> bet ${rlBetText(shown.bet)} · ${shown.hit ? (shown.bet === 'zero' ? 'green 0!' : 'hit!') : 'miss'}</span></p>` : '<p class="rlres">&nbsp;</p>';
   // The bet on the board: the move playing out, else the one being put together on this phone.
   if (!rlDraft || rlDraft.sq !== o.zoom || o.moved) rlDraft = { sq: o.zoom, nums: [], bet: null };   // a fresh bet after every spin
   const dr = b ? { nums: Array.isArray(b.bet) ? b.bet : [], bet: Array.isArray(b.bet) ? null : b.bet } : o.view ? { nums: [], bet: null } : rlDraft;
@@ -3272,9 +3271,9 @@ function rlTable(mini, a, o) {
     return `<div class="rlrow">${cells.join('')}<button class="rlg${dr.bet === g ? ' on' : ''}" data-act="rlgrp" data-g="${g}" aria-pressed="${dr.bet === g}" aria-label="Group ${lo} to ${hi}"${dis}>${lo}–${hi}</button></div>`;
   }).join('');
   const bet = dr.bet || (dr.nums.length === RL.pick ? dr.nums : null);
-  const say = dr.bet === 'zero' ? 'Green 0 on its own: if it comes up, the square is yours'
+  const say = dr.bet === 'zero' ? 'Betting green 0'
     : dr.bet ? `Betting the group ${rlBetText(dr.bet)}` : dr.nums.length === RL.pick ? 'Betting your 8 numbers'
-    : dr.nums.length ? `${RL.pick - dr.nums.length} more number${RL.pick - dr.nums.length === 1 ? '' : 's'} to pick` : 'Pick 8 numbers, a group, or green 0';
+    : dr.nums.length ? `${RL.pick - dr.nums.length} more number${RL.pick - dr.nums.length === 1 ? '' : 's'} to pick` : '&nbsp;';
   const board = o.view ? '' : `<div class="rlboard"><div class="rlrow top"><button class="rlz${dr.bet === 'zero' ? ' on' : ''}" data-act="rlzero" aria-pressed="${dr.bet === 'zero'}" aria-label="Green 0"${dis}>0</button><p class="rlsay">${say}</p></div>${grid}</div>
     <div class="cbtns one"><button class="big ${turn} rlspin" data-act="move" ${mv(bet || [])}${!bet || o.locked ? ' disabled' : ''}>Spin</button></div>`;
   // Once the ball lands: HIT!, MISS or GREEN 0!, big on the wheel, held a second before the game moves on.
@@ -3334,7 +3333,7 @@ function bullsTable(mini, a, o) {
   const res = b ? `<p ${lateAt('arcres ' + (b.pts ? 'ok' : 'no'), tEnd)} role="status">${say(b.pts)}</p>`
     : o.done && l ? `<p class="arcres ${l.pts ? 'ok' : 'no'}"><b class="${l.by}">${N(l.by)}</b>: ${say(l.pts)}</p>`
     : o.view ? `<p class="arcnote">${l ? `<b class="${l.by}">${N(l.by)}</b>'s last throw: ${say(l.pts)}` : ''}</p>`
-    : live ? `<p class="arcnote">${step === 1 ? 'Tap to stop the sideways line' : 'Now tap to stop the up-down line'}</p>`
+    : live ? '<p class="arcnote"></p>'
     : `<p class="arcnote">Waiting for <b class="${turn}">${N(turn)}</b>…</p>`;
   const label = A ? `<span class="bswap"><span class="tu" style="--u:${A.t1}ms">Stop</span><span class="tf" style="--f:${A.t1}ms">Throw!</span></span>` : step === 2 ? 'Throw!' : 'Stop';   // someone else's throw: the button as theirs read
   const btn = o.view ? '' : `<div class="cbtns one"><button class="big ${b ? b && a.by : turn}" data-act="bulls"${o.locked || !live ? ' disabled' : ''}>${label}</button></div>`;
@@ -3371,7 +3370,7 @@ function bullsTap() {
 app.addEventListener('pointerdown', e => {
   const t = e.target.closest && e.target.closest('.bfield[data-live], button[data-act="bulls"]:not(:disabled)');
   if (!t || state.screen !== 'mini') return;
-  e.preventDefault();
+  e.preventDefault(); ownPress();
   bullsTap();
 });
 // The miniature: both players' points and the board's spot on the field.
@@ -3461,7 +3460,7 @@ function fetchWheelsConfig() {
 // flash and a tone, from the tap); then the pads come alive, and each tap lights its pad and sounds. The taps
 // go in as one move when complete or at the first slip. Someone else's attempt (the computer's, the other
 // phone's) plays as their screen did: the pattern, a beat, their taps, then the result.
-const ECHO_PADS = ['◆', '●', '▲', '■'], ECHO_RATES = [1, 1.26, 1.5, 2];
+const ECHO_PADS = ['◆', '●', '▲', '■'], ECHO_RATES = [1, 1.26, 1.5, 2], ECHO_TONE = 300;   // (a pad's tone lasts up to 0.3 s: the result's sound follows it)
 const ECHO_KEY = 'ttt-echo-played';                             // the attempt whose pattern has played: a reload does not play it again
 const echoId = (sq, p, lvl) => `${state.online ? state.online.matchId || state.online.code || 'on' : 'local'}:${state.moves}:${sq}:${p}:${lvl}:${(state.squares[sq].mini.base || []).join('')}`;
 function echoPre(f) { return f && f.type === 'echo' && f.echo && !f.timeout && !REDUCED && (state.online ? f.by !== state.online.me : cpuPlays(f.by)) ? echoAim(f.echo).end : 0; }   // someone else's attempt: it plays first
@@ -3506,11 +3505,9 @@ function echoTable(mini, a, o) {
   const steps = mine ? `<div class="esteps" aria-label="${taps.length} of ${seq.length} tapped">${seq.map((_, i) => `<i class="${i < taps.length ? 'on' : ''}"></i>`).join('')}</div>`
     : pre ? `<div class="esteps">${seq.map((_, i) => `<i ${lateAt('', i < e.taps.length && (e.pass || i < e.failAt) ? A.tap(i) : null, 'tapin')}></i>`).join('')}</div>` : '<div class="esteps"></div>';
   const who = p => `<b class="${p}">${N(p)}</b>`;
-  const note = !mine ? (pre ? `<p class="arcnote"><span class="tu" style="--u:${A.t0}ms">${who(mover)}: pattern ${lvl + 1}, ${seq.length} steps</span><span class="tf" style="--f:${A.t0}ms">${who(mover)} taps it back</span></p>`
-      : e ? '<p class="arcnote"></p>' : o.view ? `<p class="arcnote">Patterns beaten: X ${mini.level.X}, O ${mini.level.O}</p>` : `<p class="arcnote">${who(turn)} is on pattern ${lvl + 1} (${ECHO.lengths[lvl]} steps)</p>`)
-    : !started ? `<p class="arcnote">Pattern ${lvl + 1}: ${seq.length} steps. It plays once.</p>`
-    : fresh ? `<p class="arcnote"><span class="tu" style="--u:${playEnd}ms">Watch the pattern…</span><span class="tf" style="--f:${playEnd}ms">Your turn: tap it back</span></p>`
-    : '<p class="arcnote">Your turn: tap it back</p>';
+  const note = !mine ? (pre ? `<p class="arcnote">${who(mover)} · pattern ${lvl + 1}</p>`
+      : e ? '<p class="arcnote"></p>' : o.view ? `<p class="arcnote">Patterns beaten: X ${mini.level.X}, O ${mini.level.O}</p>` : `<p class="arcnote">${who(turn)} is on pattern ${lvl + 1}</p>`)
+    : '<p class="arcnote"></p>';   // (how to play is in the ? explainer)
   const res = e ? `<p ${lateAt('arcres ' + (e.pass ? 'ok' : 'no'), pre)} role="status">${e.pass ? (pre ? `${who(mover)} beat pattern ${e.level + 1}` : `Pattern ${e.level + 1} beaten!`) : `${pre ? who(mover) + ' slipped' : 'Slipped'} at step ${e.failAt + 1} of ${e.len}`}</p>`
     : l && !mine ? `<p class="arcres ${l.pass ? 'ok' : 'no'}">${l.pass ? `${who(l.by)} beat pattern ${l.level + 1}` : `${who(l.by)} slipped at step ${l.failAt + 1}`}</p>` : '<p class="arcres"></p>';
   const go = mine && !started;
@@ -3537,7 +3534,7 @@ function echoTap(el) {
 app.addEventListener('pointerdown', e => {
   const pad = e.target.closest && e.target.closest('.epad.live:not(:disabled)');
   if (!pad || state.screen !== 'mini') return;
-  e.preventDefault();
+  e.preventDefault(); ownPress();
   echoTap(pad);
 });
 // Plinko: the slots to drop from, the pegs, the bins (WIN marked); the chip bounces peg to peg along the
@@ -3609,7 +3606,7 @@ function plinkoTable(mini, a, o) {
   const won = pl && a.kind === 'claim', open = PLINKO.slots - mini.used.filter(Boolean).length;
   const res = pl ? `<p ${lateAt('arcres ' + (pl.pts >= 3 ? 'ok' : 'no'), inBin)} role="status">${won ? `${pl.total} points: WIN!` : `+${pl.pts}${pl.hit ? ` (bonus +${PLINKO.bonus})` : ''}: ${pl.total} of ${tg}`}${pl.reset ? '<br><small>All seven used: every slot opens again</small>' : ''}</p>`
     : l && o.view ? `<p class="arcres"><b class="${l.by}">${N(l.by)}</b> reached ${mini.pts[l.by]}</p>`
-    : `<p class="arcnote">Drop from an open slot (${open} left). First to ${tg} wins.</p>`;
+    : '<p class="arcnote"></p>';
   return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="plinko">${slots}<div class="pboard">${style}<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${pegs.join('')}${bins}</svg><div class="pvals">${vals}</div>${bonus}${chip}${pop}</div>${res}</div></div>`;
 }
 // Cup Pong: the table from above, the thrower's rack of cups at the far end (three cups touching in a tight
@@ -3632,7 +3629,7 @@ function pongTable(mini, a, o) {
     ball = `<div class="pfly" style="--tx:${(lx * 100).toFixed(2)}%;--ty:${((0.08 - ly) * 100).toFixed(2)}%;--d:${T}ms"><div class="parc"><div class="pball ${g.sunk ? 'in' : g.rim ? 'rim off' : 'off'}" style="--t:${T}ms;--f:${g.rim ? T + 400 : T}ms"></div></div></div>`;
   } else if (!o.view) ball = `<div class="pball${mine ? ' ready' : ''}" style="left:50%;top:92%" data-pong="ball"></div>`;
   const table = `<div class="ptable" data-pong="table" aria-label="The table">${style}${cupEls}${ball}</div>`;   // (no aim guides: the ball and the cups, nothing else)
-  const res = g ? `<p ${lateAt('arcres ' + (g.sunk ? 'ok' : 'no'), T + (g.rim ? 400 : 0))} role="status">${g.sunk ? (g.rim ? 'Off the rim and in!' : 'Sunk!') : g.rim ? 'Rimmed out' : 'Miss'}</p>` : l && !mine ? `<p class="arcres ${l.sunk ? 'ok' : 'no'}"><b class="${l.by}">${N(l.by)}</b> ${l.sunk ? 'sank a cup' : l.rim ? 'rimmed out' : 'missed'}</p>` : `<p class="arcnote">${mine ? 'Flick up anywhere: the direction aims, the speed sets the distance' : o.view ? '' : `Waiting for <b class="${turn}">${N(turn)}</b>…`}</p>`;
+  const res = g ? `<p ${lateAt('arcres ' + (g.sunk ? 'ok' : 'no'), T + (g.rim ? 400 : 0))} role="status">${g.sunk ? (g.rim ? 'Off the rim and in!' : 'Sunk!') : g.rim ? 'Rimmed out' : 'Miss'}</p>` : l && !mine ? `<p class="arcres ${l.sunk ? 'ok' : 'no'}"><b class="${l.by}">${N(l.by)}</b> ${l.sunk ? 'sank a cup' : l.rim ? 'rimmed out' : 'missed'}</p>` : `<p class="arcnote">${mine || o.view ? '' : `Waiting for <b class="${turn}">${N(turn)}</b>…`}</p>`;
   return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="pong${mine ? ' live' : ''}" data-pong="area">${table}${res}</div></div>`;
 }
 // Trivia: the player's question and four answers. After a tap the right one glows (and a wrong pick
@@ -3659,7 +3656,7 @@ function triviaTable(mini, a, o) {
   const W = p => `<b class="${p}">${N(p)}</b>`;
   if (!shown && down) {                                        // face down: Reveal (the player to move), or waiting
     const mine = !o.view && !o.locked;
-    const note = mine ? `<p class="arcnote">Reveal the question, then answer it this turn</p>` : `<p class="arcnote">${o.view ? '' : `${W(turn)}'s turn · the question is face down`}</p>`;
+    const note = mine ? '<p class="arcnote"></p>' : `<p class="arcnote">${o.view ? '' : `${W(turn)}'s turn · the question is face down`}</p>`;
     const btn = o.view ? '' : `<div class="cbtns one${mine ? '' : ' hold'}"><button class="big" data-act="trivia-reveal"${mine ? '' : ' disabled tabindex="-1" aria-hidden="true"'}>Reveal</button></div>`;
     return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="trivia">${TQBACK}${note}</div>${btn}</div>`;
   }
@@ -3729,8 +3726,8 @@ function oddTable(mini, a, o) {
   const startPerf = open ? performance.now() - (Date.now() - oddDraft.at) : null;
   const res = d ? `<p ${lateAt('arcres ' + (d.correct ? 'ok' : 'no'), pre + 250)} role="status">${pre ? `${W(who)} ${d.correct ? 'found it' : d.picked < 0 ? 'ran out of time' : 'missed it'}` : d.correct ? 'Found it!' : d.picked < 0 ? 'Out of time' : 'Not that one'}</p>`
     : shown ? `<p class="arcres ${shown.correct ? 'ok' : 'no'}">${W(who)} ${shown.correct ? 'found it' : 'missed it'}</p>`
-    : open ? `<p class="arcnote onote"${fxAttr(startPerf)}><span>Find the odd one</span><span class="obar"><i style="--d:${ODD.secs * 1000}ms"></i></span></p>`
-    : mine ? `<p class="arcnote">Tap Reveal, then you have ${ODD.secs} seconds</p>`
+    : open ? `<p class="arcnote onote"${fxAttr(startPerf)}><span class="obar"><i style="--d:${ODD.secs * 1000}ms"></i></span></p>`
+    : mine ? '<p class="arcnote"></p>'
     : `<p class="arcnote">${o.view ? '' : `${W(who)}'s turn`}</p>`;
   const go = mine && !open;
   const btn = o.view ? '' : `<div class="cbtns one${go ? '' : ' hold'}"><button class="big" data-act="odd-reveal"${go ? '' : ' disabled tabindex="-1" aria-hidden="true"'}>Reveal</button></div>`;   // the row stays (hidden) so the grid never moves
@@ -3754,12 +3751,13 @@ function attSave() { try { localStorage.setItem(ATT_KEY, JSON.stringify({ id: at
 // The creatures, drawn facing right (bold ink outlines, flat colours).
 const HC_ART = {
   beetle: c => `<ellipse cx="19" cy="20" rx="11" ry="9" fill="${c || '#4e9d3a'}"/><path d="M19 11v18" stroke="#161210" stroke-width="2"/><circle cx="32" cy="20" r="5" fill="#161210"/><path d="M10 12l-4-4M18 11l-1-5M26 12l3-5M10 28l-4 4M18 29l-1 5M26 28l3 5" stroke="#161210" stroke-width="2.4" stroke-linecap="round"/>`,
-  ladybird: () => `<path d="M8 20a11 10 0 0 1 22 0a11 10 0 0 1-22 0z" fill="#e5432a"/><circle cx="32" cy="20" r="5" fill="#161210"/><path d="M19 10v20" stroke="#161210" stroke-width="2"/><circle cx="14" cy="15" r="2.3" fill="#161210"/><circle cx="24" cy="15" r="2.3" fill="#161210"/><circle cx="14" cy="25" r="2.3" fill="#161210"/><circle cx="24" cy="25" r="2.3" fill="#161210"/>`,
-  mouse: () => `<path d="M7 24q-6 3-4 9" fill="none" stroke="#161210" stroke-width="2" stroke-linecap="round"/><ellipse cx="18" cy="23" rx="12" ry="8" fill="#a3a1ad"/><circle cx="27" cy="15" r="4.5" fill="#d7c2c8" stroke="#161210" stroke-width="2"/><path d="M28 18q8 2 9 6q-5 2-9 0z" fill="#a3a1ad"/><circle cx="31" cy="20" r="1.5" fill="#161210"/><circle cx="37" cy="24" r="1.6" fill="#161210"/>`,
+  ladybird: c => `<path d="M8 20a11 10 0 0 1 22 0a11 10 0 0 1-22 0z" fill="${c || '#e5432a'}"/><circle cx="32" cy="20" r="5" fill="#161210"/><path d="M19 10v20" stroke="#161210" stroke-width="2"/><circle cx="14" cy="15" r="2.3" fill="#161210"/><circle cx="24" cy="15" r="2.3" fill="#161210"/><circle cx="14" cy="25" r="2.3" fill="#161210"/><circle cx="24" cy="25" r="2.3" fill="#161210"/>`,
+  mouse: c => `<path d="M7 24q-6 3-4 9" fill="none" stroke="#161210" stroke-width="2" stroke-linecap="round"/><ellipse cx="18" cy="23" rx="12" ry="8" fill="${c || '#a3a1ad'}"/><circle cx="27" cy="15" r="4.5" fill="#d7c2c8" stroke="#161210" stroke-width="2"/><path d="M28 18q8 2 9 6q-5 2-9 0z" fill="${c || '#a3a1ad'}"/><circle cx="31" cy="20" r="1.5" fill="#161210"/><circle cx="37" cy="24" r="1.6" fill="#161210"/>`,
   acorn: () => `<path d="M11 18h18q0 14-9 17q-9-3-9-17z" fill="#d6a35c"/><path d="M9 18q11-10 22 0z" fill="#7a4a22"/><path d="M20 9v-4" stroke="#161210" stroke-width="2.4" stroke-linecap="round"/>`,
   leaf: () => `<path d="M20 4q14 10 0 32q-14-22 0-32z" fill="#e08a2c"/><path d="M20 8v28" stroke="#161210" stroke-width="1.8"/>`,
 };
-const hcArt = k => { const a = k === 'gbeetle' ? HC_ART.beetle('#4e9d3a') : k === 'bbeetle' ? HC_ART.beetle('#3b87c7') : HC_ART[k](); return `<svg viewBox="0 0 40 40" aria-hidden="true"><g stroke="#161210" stroke-width="2.4" stroke-linejoin="round">${a}</g></svg>`; };
+const HC_LOOK = { gbeetle: ['beetle', '#4e9d3a'], bbeetle: ['beetle', '#3b87c7'], tbeetle: ['beetle', '#2b9fa8'], rladybird: ['ladybird', '#e5432a'], oladybird: ['ladybird', '#f39a2a'], gmouse: ['mouse', '#a3a1ad'], bmouse: ['mouse', '#a0703f'] };   // the look-alikes: one creature in two near colours
+const hcArt = k => { const [b, c] = HC_LOOK[k] || [k]; const a = HC_ART[b](c); return `<svg viewBox="0 0 40 40" aria-hidden="true"><g stroke="#161210" stroke-width="2.4" stroke-linejoin="round">${a}</g></svg>`; };
 // Flash's items: a shape in a colour.
 const FL_COL = { blue: '#3b87c7', green: '#3f9b4f', purple: '#8d5bd8' };
 const FL_SHAPE = { star: 'M20 3l5.2 10.6 11.7 1.7-8.5 8.2 2 11.6L20 29.6 9.6 35.1l2-11.6-8.5-8.2 11.7-1.7z', heart: 'M20 35S4 25 4 14a8 8 0 0 1 16-2.5A8 8 0 0 1 36 14c0 11-16 21-16 21z', bolt: 'M23 3L8 22h10l-3 15 17-21H21z' };
@@ -3774,8 +3772,11 @@ function attArm(type, round) {
 // The play area of each game: { stage, input, watch (during the round), ask (the question), say (an answer in words) }.
 function headView(c) {
   const r = c.round, anim = c.playing || c.pre, len = attMs('headcount', r);   // the crossing: this phone's (from Start), or someone else's (from the move)
-  const crit = anim ? r.items.map(it => `<i class="hcr ${r.axis === 'v' ? 'v' : it.dir > 0 ? 'r' : 'l'} k-${it.k}" style="--t:${it.t}ms;--d:${it.d}ms;--p:${10 + it.lane * 20 - 5.5}%">${hcArt(it.k)}</i>`).join('') : '';
-  const field = `<div class="hcfield${r.axis === 'v' ? ' fall' : ''}"${c.started ? fxAttr(c.startPerf) : ''} aria-label="The field">${crit}</div>`;
+  // each creature's way: right, left, down or up at its own speed; one that stops and starts has its own key points (from the engine's)
+  const way = it => (headAxis(it, r) === 'v' ? (it.dir > 0 ? 'dn' : 'up') : it.dir > 0 ? 'r' : 'l'), along = (it, u) => `translate${headAxis(it, r) === 'v' ? 'Y' : 'X'}(${+(it.dir > 0 ? -100 + u * 1009.1 : 909.1 - u * 1009.1).toFixed(1)}%)`;
+  const frames = anim ? r.items.map((it, i) => (it.s ? `@keyframes hk${i} {${headKeys(it).map(([f, u]) => ` ${+(f * 100).toFixed(2)}% { transform: ${along(it, u)}; }`).join('')} }` : '')).join('') : '';
+  const crit = anim ? r.items.map((it, i) => `<i class="hcr ${way(it)} k-${it.k}" style="--t:${it.t}ms;--d:${it.d}ms;--p:${10 + it.lane * 20 - 5.5}%;--hcanim:${it.s ? 'hk' + i : { r: 'hcr', l: 'hcl', dn: 'hcv', up: 'hcu' }[way(it)]}">${hcArt(it.k)}</i>`).join('') : '';
+  const field = `<div class="hcfield${r.axis === 'v' ? ' fall' : ''}"${c.started ? fxAttr(c.startPerf) : ''} aria-label="The field">${frames ? `<style>${frames}</style>` : ''}${crit}</div>`;
   const entry = c.started && attDraft ? attDraft.entry : '', live = c.answering && c.live;
   const shownAns = c.shown ? (c.shown.answer == null ? '–' : String(c.shown.answer)) : entry || '';
   const disp = cls => `<div class="hcdisp${cls}" aria-label="Your answer">${c.shown ? shownAns : shownAns || '<i>?</i>'}</div>`;
@@ -3785,33 +3786,35 @@ function headView(c) {
   // one square box: the field while the creatures cross, then the number pad in its place (the question, the answer, the result)
   const stage = c.shown && c.pre ? `<div class="hcbox"><div class="hcl tu" style="--u:${len}ms">${field}</div><div class="hcl tf" style="--f:${len}ms">${pad}</div></div>`
     : `<div class="hcbox"><div class="hcl">${c.answering || c.shown ? pad : field}</div></div>`;
-  return { stage, input: '', watch: headWatch(r), ask: headAsk(r), say: n => `${n} ${HEAD_KINDS[r.t][n === 1 ? 0 : 1]}` };
+  return { stage, input: '', watch: headAsk(r), ask: headAsk(r), say: n => `${n} ${HEAD_KINDS[r.t][n === 1 ? 0 : 1]}` };   // (the question shows from before Start: what to count)
 }
 function flashView(c) {
   const r = c.round, anim = c.playing || c.pre;
   const items = anim ? r.items.map(([s, col], i) => `<span class="fit" style="--t:${i * r.ms}ms;--on:${Math.round(r.ms * FLASH.on)}ms">${flArt(s, col)}</span>`).join('') : '';
-  const stage = `<div class="flbox"${c.started ? fxAttr(c.startPerf) : ''} aria-label="The flashes">${items}${!anim && !c.shown && !c.answering ? `<b class="flwait">${r.items.length} items</b>` : ''}</div>`;
+  const stage = `<div class="flbox"${c.started ? fxAttr(c.startPerf) : ''} aria-label="The flashes">${items}</div>`;
   const opt = (o, k, cls) => `<button class="flopt${cls || ''}" data-act="move" ${mv(k)} aria-label="${esc(flSay(o))}"${c.answering && c.live && !cls ? '' : ' disabled'}>${Array.isArray(o) ? flArt(o[0], o[1]) : `<b>${o}</b>`}</button>`;
   const plain = c.answering ? r.opts.map((o, k) => opt(o, k)).join('') : r.opts.map(() => '<button class="flopt" disabled tabindex="-1" aria-hidden="true"></button>').join('');   // (the options only once the question is asked: nothing to go on before)
   const marked = c.shown ? r.opts.map((o, k) => opt(o, k, k === r.ans ? ' right' : k === c.shown.answer ? ' wrong' : '')).join('') : '';
   const input = c.shown ? (c.pre ? `<div class="flopts lay"><div class="tf" style="--f:${attMs('flash', r)}ms">${r.opts.map((o, k) => opt(o, k, k === c.shown.answer ? ' picked' : '')).join('')}</div><div class="tf" style="--f:${c.pre}ms">${marked}</div></div>` : `<div class="flopts">${marked}</div>`)
     : `<div class="flopts${c.answering ? '' : ' dim'}">${plain}</div>`;
-  return { stage, input, watch: `Watch the ${r.items.length} items`, ask: r.q.text, say: () => flSay(r.opts[r.ans]) };
+  return { stage, input, watch: '', ask: r.q.text, say: () => flSay(r.opts[r.ans]) };
 }
 function snapView(c) {
   const r = c.round, cellsN = r.c * r.r, orig = new Set(r.cells);
   const grid = (cls, act) => `<div class="sngrid" style="grid-template-columns:repeat(${r.c}, 1fr);--c:${r.c};--r:${r.r}">${Array.from({ length: cellsN }, (_, i) => `<button class="snc${cls(i)}"${act ? ` data-act="snap-cell" data-i="${i}" aria-label="Cell ${i + 1}${cls(i).includes(' sel') ? ', picked' : ''}"` : ' tabindex="-1" aria-hidden="true"'}${act && c.answering && c.live ? '' : ' disabled'}></button>`).join('')}</div>`;
   const pick = c.shown ? new Set(c.shown.answer || []) : new Set(c.started && attDraft ? attDraft.entry : []);
   const res = i => (orig.has(i) && pick.has(i) ? ' hit' : orig.has(i) ? ' miss' : pick.has(i) ? ' extra' : '');
-  const show = r.show, secs = Math.ceil(show / 1000);
+  const show = r.show, wait = r.wait || 0, len = show + wait, secs = Math.ceil(wait / 1000), blank = () => '';
+  // the pattern for its seconds, then the grid blank for the countdown's, then (this phone's round) the grid to tap
   let stage, count = '';
-  if (c.shown && c.pre) stage = `<div class="snstack"><div class="tu" style="--u:${show}ms">${grid(i => (orig.has(i) ? ' on' : ''))}</div><div class="tf tu2" style="--f:${show}ms;--u:${c.pre}ms">${grid(i => (pick.has(i) ? ' sel' : ''))}</div><div class="tf" style="--f:${c.pre}ms">${grid(res)}</div></div>`;
+  if (c.shown && c.pre) stage = `<div class="snstack"><div class="tu" style="--u:${show}ms">${grid(i => (orig.has(i) ? ' on' : ''))}</div><div class="tf tu2" style="--f:${show}ms;--u:${len}ms">${grid(blank)}</div><div class="tf tu2" style="--f:${len}ms;--u:${c.pre}ms">${grid(i => (pick.has(i) ? ' sel' : ''))}</div><div class="tf" style="--f:${c.pre}ms">${grid(res)}</div></div>`;
   else if (c.shown) stage = grid(res);
-  else if (c.playing) stage = `<div class="snstack"${fxAttr(c.startPerf)}><div class="tu" style="--u:${show}ms">${grid(i => (orig.has(i) ? ' on' : ''))}</div></div>`;
+  else if (c.playing) stage = `<div class="snstack"${fxAttr(c.startPerf)}><div>${grid(blank)}</div><div class="tu" style="--u:${show}ms">${grid(i => (orig.has(i) ? ' on' : ''))}</div></div>`;
   else stage = grid(i => (c.answering && pick.has(i) ? ' sel' : ''), true);
-  if (c.playing || (c.shown && c.pre)) count = `<div class="sncount"${c.playing ? fxAttr(c.startPerf) : ''}><span class="sndig">${Array.from({ length: secs }, (_, k) => `<b class="tf tu" style="--f:${k * 1000}ms;--u:${(k + 1) * 1000}ms">${secs - k}</b>`).join('')}</span><span class="obar"><i style="--d:${show}ms"></i></span></div>`;
+  // the time left: a bar while the pattern shows; then the countdown, in seconds and a bar of its own
+  if (c.playing || (c.shown && c.pre)) count = `<div class="sncount"${c.playing ? fxAttr(c.startPerf) : ''}><span class="sndig">${Array.from({ length: secs }, (_, k) => `<b class="tf tu" style="--f:${show + k * 1000}ms;--u:${show + (k + 1) * 1000}ms">${secs - k}</b>`).join('')}</span><span class="snbars"><span class="obar tu" style="--u:${show}ms"><i style="--d:${show}ms"></i></span>${wait ? `<span class="obar tf" style="--f:${show}ms"><i style="--d:${wait}ms;animation-delay:${show}ms"></i></span>` : ''}</span></div>`;
   const input = `<div class="snin">${count}</div>`;
-  return { stage, input, watch: `Remember the pattern: ${secs} seconds`, ask: `Tap the ${r.cells.length} cells back in, then Submit`, say: () => `${r.cells.length} cells` };
+  return { stage, input, watch: '', ask: `Which ${r.cells.length} cells were filled?`, say: () => `${r.cells.length} cells` };
 }
 function attTable(mini, a, o) {
   const type = mini.type, f = a && a.att ? a.att : null, l = mini.last, turn = o.turn, pre = f ? attPre(a) : 0;
@@ -3839,7 +3842,7 @@ function attTable(mini, a, o) {
   const words = shown ? (pre ? `<span class="tu" style="--u:${len}ms">${esc(v.watch)}</span><span class="tf tu2" style="--f:${len}ms;--u:${pre}ms">${esc(v.ask)}</span><span ${lateAt('arcres ' + (shown.correct ? 'ok' : 'no'), pre)} role="status">${result}</span>` : `<span class="arcres ${shown.correct ? 'ok' : 'no'}" role="status">${result}</span>`)
     : playing ? `<span class="atstack"${fxAttr(c.startPerf)}><span class="tu" style="--u:${len - since}ms">${esc(v.watch)}</span><span class="tf" style="--f:${len - since}ms">${esc(v.ask)}</span></span>`
     : answering ? esc(v.ask)
-    : mine ? `Level ${round.level + 1} of 3 · ${esc(type === 'headcount' ? headWatch(round) : type === 'flash' ? `${round.items.length} items will flash by` : `Remember the pattern in ${Math.ceil(round.show / 1000)} seconds`)}`
+    : mine ? `Level ${round.level + 1} of 3${v.watch ? ' · ' + esc(v.watch) : ''}`
     : o.view ? '' : `${W(turn)}'s turn`;
   const go = mine && !started, sub = type === 'snapshot' && answering;
   const btn = o.view ? '' : `<div class="cbtns one${go || sub ? '' : ' hold'}">${go ? `<button class="big" data-act="att-start"${live ? '' : ' disabled'}>Start</button>` : sub ? `<button class="big" data-act="snap-submit"${live ? '' : ' disabled'}>Submit</button>` : '<button class="big" disabled tabindex="-1" aria-hidden="true">Start</button>'}</div>`;   // the row stays (hidden) so nothing moves
@@ -4014,10 +4017,7 @@ function fingHud(fd) {
   else { const w = (100 * Math.min(1, val / goal)).toFixed(2) + '%', bi = row.querySelector('.rbar i'); if (bi) { bi.classList.remove('grow'); bi.style.setProperty('--w0', w); bi.style.setProperty('--w1', w); } }
   const sm = row.querySelector('small');
   if (sm) sm.textContent = fingSay(fd.type, val, goal);
-  const say = fingLiveWords(fd), wd = app.querySelector('.fwords > span');
-  if (wd && wd.textContent !== say) wd.textContent = say;
 }
-const fingLiveWords = fd => (fd.type === 'pinball' ? (!fd.w.inPlay && !fd.w.over ? 'Tap, or pull down and let go, to launch' : 'Hold left or right to flip') : FING_TEXT[fd.type].hint);
 const fingSay = (type, v, goal) => (type === 'skyhop' ? `${fmtN(v)} / ${fmtN(goal)} m` : type === 'scoop' ? `${fmtN(v)} / ${fmtN(goal)}` : `${v} / ${goal} lit`);
 
 // ---- what the scene shows: the attempt under way, a replay, the last moment, or the clean start ----
@@ -4148,12 +4148,12 @@ function fingTable(mini, a, o) {
   const shown = fg || ((o.done || o.view) && l && !l.auto ? l : null), who = fg ? a.by : shown ? shown.by : turn;
   const said = shown ? fingResultText(type, shown, mini, W(who)) : '';
   const words = fg ? (pre ? `<span class="tu" style="--u:${pre}ms">${W(who)} is having a go…</span><span ${lateAt('arcres ' + (said.ok ? 'ok' : 'no'), pre)} role="status">${said.text}</span>` : `<span class="arcres ${said.ok ? 'ok' : 'no'}" role="status">${said.text}</span>`)
-    : live ? `<span>${esc(fingLiveWords(live))}</span>`
+    : live ? '<span></span>'
     : kept || (mine && moveWait) ? '<span>Sending your attempt…</span>'
     : o.view ? (shown ? `<span>${said.text}</span>` : '')
-    : mine ? `<span>${type === 'pinball' ? `${mini.lit[turn].filter(Boolean).length} of ${goal} lit · ` : ''}${esc(TX.note)}</span>`
+    : mine ? '<span></span>'   // (how to play is in the ? explainer)
     : `<span>${state.lock === o.zoom ? `${W(turn)} is having a go…` : `Waiting for ${W(turn)}…`}</span>`;
-  const hint = live && !live.hintGone ? `<div class="fhint">${esc(type === 'pinball' ? 'Tap to launch · hold left or right to flip' : TX.hint)}</div>` : '';
+  const hint = '';
   const hudV = live ? fingNow(live) : fingAt(mini, fg ? a.by : o.view && mini.last ? mini.last.by : turn);
   const hud = `<div class="rhud fhud" data-fing="hud">${type === 'skyhop' ? `${fmtN(hudV)} m` : type === 'scoop' ? `${fmtN(hudV)} / ${fmtN(goal)}` : `${hudV} / ${goal}`}</div>`;
   const scene = `<div class="fscene ${type}" data-fing="scene" aria-label="${TX.scene}"><canvas data-fing="cv"></canvas>${hud}${hint}</div>`;
@@ -4191,7 +4191,7 @@ function fingResume(sq, p) {
 app.addEventListener('pointerdown', e => {
   const fd = fingDraft;
   if (!fd || fd.phase !== 'play' || !runInputAt(e.target)) return;
-  e.preventDefault();
+  e.preventDefault(); ownPress();
   const scene = app.querySelector('[data-fing="scene"]');
   try { (e.target.closest('main.scr.mini') || scene).setPointerCapture(e.pointerId); } catch (err) { /* no capture: the move and up still reach the page */ }
   if (fd.type === 'pinball') {
@@ -4560,6 +4560,21 @@ function loadPhysics() {
     if (shown && !state.flash && !state.spot && state.stamp == null && presentingSeq == null) render();
   }).catch(() => { physLoading = false; });                    // offline with no copy kept: the three are not dealt this visit
 }
+// Mini Golf in a local game: a hole whose layout this device has not had lately (either way round), until
+// most of them have come up; then it starts again (bar the last few). Online the server deals any hole.
+const GOLF_SEEN = 'ttt-golf-seen';
+setGolfPick((rng, holes) => {
+  if (state && state.online) return null;
+  const bases = [...new Set(holes.map(h => h.of))];
+  let seen = [];
+  try { seen = JSON.parse(localStorage.getItem(GOLF_SEEN) || '[]').filter(b => bases.includes(b)); } catch (e) { /* none kept */ }
+  if (bases.length - new Set(seen).size <= Math.max(1, Math.floor(bases.length / 5))) seen = seen.slice(-3);   // most of them seen: round again
+  const open = bases.filter(b => !seen.includes(b)), b = open[randInt(rng, open.length)];
+  const forms = holes.map((h, i) => (h.of === b ? i : -1)).filter(i => i >= 0);
+  seen.push(b);
+  try { localStorage.setItem(GOLF_SEEN, JSON.stringify(seen)); } catch (e) { /* no storage: any hole */ }
+  return forms[randInt(rng, forms.length)];
+});
 const POOL_RAIL = 6;                                             // the pool table's rail, in table units, the same on all four sides
 const PHYS_S = t => PHYSICS.lib[t === 'golf' ? 'GOLF' : t === 'pool' ? 'POOL' : 'BOWL'];
 const PHYS_PULL = 0.42;                                        // a full-power pull: this much of the table's height on the screen
@@ -4603,7 +4618,7 @@ function physTable(mini, a, o) {
   const res = ph ? (r => `<p ${lateAt('arcres ' + (r.ok ? 'ok' : 'no'), t)} role="status">${r.text}</p>`)(physResult(a))
     : o.view ? `<p class="arcnote">${l ? physResult({ type, by: l.by, phys: l }, true).text : ''}</p>`
     : bowl && bowl.step === 3 ? `<p class="arcnote">Rolling…</p>`
-    : mine ? `<p class="arcnote">${type === 'golf' ? 'Drag back to aim and set power, then let go.' : type === 'pool' ? 'Drag back from the white ball to aim and shoot.' : bowl && bowl.step === 2 ? 'Now tap to stop the power meter' : 'Tap to stop the arrow and aim'}</p>`
+    : mine ? '<p class="arcnote"></p>'
     : `<p class="arcnote">Waiting for <b class="${turn}">${N(turn)}</b>…</p>`;
   const strike = ph && type === 'bowling' && ph.strike ? `<div ${lateAt('pstrike', t)} aria-hidden="true">STRIKE!</div>` : '';
   const label = type === 'golf' ? `Mini golf hole: ${PHYSICS.lib.HOLES[mini.hole].name}` : type === 'pool' ? 'The pool table' : 'The bowling lane';
@@ -4647,7 +4662,7 @@ function bowlTap() {
 app.addEventListener('pointerdown', e => {
   const t = e.target.closest && e.target.closest('.pscene.bowling[data-live], button[data-act="bowl"]:not(:disabled)');
   if (!t || state.screen !== 'mini') return;
-  e.preventDefault();
+  e.preventDefault(); ownPress();
   bowlTap();
 });
 // The arrow from the ball (sweeping, or locked) and, from step 2, the meter up the side, filling to the power.
@@ -4675,10 +4690,10 @@ function drawBowlAim(g, pos, dr, now) {
 function physFrame(ph, now, at) {
   const rec = ph && ph.rec;
   if (!rec || !rec.frames || !rec.frames.length) return null;
-  const k = REDUCED ? rec.frames.length - 1 : Math.max(0, Math.min(rec.frames.length - 1, Math.floor((now - at) / 1000 * rec.fps)));
-  const fr = rec.frames[k], pos = {};
-  rec.ids.forEach((id, i) => { pos[id] = fr[2 * i] == null ? null : [fr[2 * i], fr[2 * i + 1]]; });
-  return { pos, done: k >= rec.frames.length - 1 };
+  const n = rec.frames.length, f = REDUCED ? n - 1 : Math.max(0, Math.min(n - 1, (now - at) / 1000 * rec.fps)), k = Math.floor(f), u = f - k;
+  const fr = rec.frames[k], nx = rec.frames[Math.min(n - 1, k + 1)], pos = {};
+  rec.ids.forEach((id, i) => { const x = fr[2 * i], y = fr[2 * i + 1], x2 = nx[2 * i], y2 = nx[2 * i + 1]; pos[id] = x == null ? null : x2 == null ? [x, y] : [x + (x2 - x) * u, y + (y2 - y) * u]; });   // (between two frames: part way from one to the next, so the balls glide at any screen rate)
+  return { pos, done: k >= n - 1 };
 }
 // Where everything is when nothing is playing: the square as it stands (a bowling square shows the last
 // roll's rack while its result is on show, else a fresh rack).
@@ -4836,7 +4851,7 @@ function physPull(dr) {
 app.addEventListener('pointerdown', e => {
   const scene = e.target.closest && e.target.closest('[data-phys="scene"]');
   if (!scene || !scene.dataset.live || scene.classList.contains('bowling') || physDraft || blocked() || state.flash || state.done) return;
-  e.preventDefault();
+  e.preventDefault(); ownPress();
   physDraft = { sq: state.zoom, p: state.turn, pointer: e.pointerId, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, scene };
   try { scene.setPointerCapture(e.pointerId); } catch (err) { /* no capture: the move and up still reach the page */ }
   physPaint();
@@ -4894,7 +4909,7 @@ function crapsSay(r, who) {                                     // the line unde
 }
 function crapsTable(mini, a, o) {
   const c = a && a.craps ? a.craps : null, l = mini.last, turn = o.turn;
-  const roll = c && c.kind === 'roll' && c.roll ? c : null, land = roll && !REDUCED ? 560 : 0;
+  const roll = c && c.kind === 'roll' && c.roll ? c : null, land = roll && !REDUCED ? CRAPS.land : 0;
   const tal = p => arcTally(p, o, pips(p, Math.min(CRAPS.goal, mini.wins[p]), CRAPS.goal, !!(roll && roll.result === 'win' && a.by === p), land));
   // the puck: on the point while a round has one, OFF otherwise; it moves when a roll sets or ends a point
   const slot = n => (n == null ? 0 : CRAPS_POINTS.indexOf(n) + 1), pct = k => ((k + 0.5) / 7 * 100).toFixed(2);
@@ -4914,11 +4929,11 @@ function crapsTable(mini, a, o) {
   const res = c ? `<p ${lateAt('arcres ' + (roll ? (roll.result === 'win' ? 'ok' : roll.result === 'lose' ? 'no' : '') : ''), land)} role="status">${crapsSay(c)}</p>`
     : l && (o.done || o.view) ? `<p class="arcres ${l.result === 'win' ? 'ok' : l.result === 'lose' ? 'no' : ''}">${W(l.by)}: ${crapsSay(l)}</p>`
     : o.view ? '<p class="arcnote"></p>'
-    : live ? `<p class="arcnote">Point ${mini.point}: roll it again to win, a 7 loses. Or stop, and the next roll here carries on</p>`
-    : mini.point != null ? `<p class="arcnote">${W(turn)}: point ${mini.point} is on. Roll it to win the round, a 7 loses it</p>`
-    : `<p class="arcnote">${W(turn)}: 7 or 11 wins, 2, 3 or 12 loses</p>`;
+    : live ? `<p class="arcnote">Point ${mini.point}</p>`
+    : mini.point != null ? `<p class="arcnote">${W(turn)} · point ${mini.point} is on</p>`
+    : `<p class="arcnote">${W(turn)}'s turn</p>`;
   const btn = o.view ? '' : `<div class="cbtns two"><button class="big ${turn}" data-act="move" ${mv('roll')}${o.locked ? ' disabled' : ''}>${live ? 'Roll again' : 'Roll'}</button><button class="big" data-act="move" ${mv('stop')}${o.locked || !live ? ' disabled' : ''}>Stop</button></div>`;
-  return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="craps">${strip}<div class="cfelt">${dice || '<p class="arcnote">Roll the dice</p>'}</div>${log}${res}</div>${btn}</div>`;
+  return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="craps">${strip}<div class="cfelt">${dice || '<p class="arcnote"></p>'}</div>${log}${res}</div>${btn}</div>`;
 }
 // Takeover: the 5x5 board; a tap on an empty cell is the move. The cell pops in, then the cells around it
 // turn over to the mover's colour, one after the other.
@@ -4952,7 +4967,7 @@ function takeTable(mini, a, o) {
   const l = mini.last;
   const res = tk ? `<p ${lateAt('arcres ok', TAKEOVER_MS.place)} role="status">+${tk.took.length + tk.flipped.length}${tk.flipped.length ? ` · ${tk.flipped.length} turned over` : ''}</p>`
     : o.view ? `<p class="arcnote">${l ? `${takeCount(mini.cells, 'X')} to ${takeCount(mini.cells, 'O')}` : ''}</p>`
-    : `<p class="arcnote">${o.locked ? `Waiting for <b class="${turn}">${N(turn)}</b>…` : 'Tap an empty square'}</p>`;
+    : `<p class="arcnote">${o.locked ? `Waiting for <b class="${turn}">${N(turn)}</b>…` : ''}</p>`;
   return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="takeover"><div class="tkgrid">${cells}</div>${bar}${res}</div></div>`;
 }
 // Flood: the 6x6 grid in its colours, the blob's cells and the cells each player has grabbed marked in
@@ -4980,7 +4995,7 @@ function floodTable(mini, a, o) {
   }).join('');
   const btns = o.view ? '' : `<div class="fbtns">${FLOOD_COL.map((col, c) => `<button class="fsw" style="background:${col}" data-act="move" ${mv(c)} aria-label="${FLOOD_NAMES[c]}"${c === blob || o.locked ? ' disabled' : ''}>${c === blob ? '<i>blob</i>' : ''}</button>`).join('')}</div>`;
   const res = fl ? `<p ${lateAt('arcres ' + (fl.gain ? 'ok' : 'no'), FLOOD_MS.base)} role="status">${fl.gain ? `+${fl.gain}` : 'Nothing grabbed'}</p>`
-    : `<p class="arcnote">${o.view ? '' : o.locked ? `Waiting for <b class="${turn}">${N(turn)}</b>…` : 'Pick a colour for the blob'}</p>`;
+    : `<p class="arcnote">${o.view ? '' : o.locked ? `Waiting for <b class="${turn}">${N(turn)}</b>…` : ''}</p>`;
   return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="flood"><div class="flgrid">${cells}</div><div class="fbars">${fbar('X')}${fbar('O')}</div>${res}</div>${btns}</div>`;
 }
 // Seating: ten tables of two seats, each seat a colour. A tap on an empty seat is the move: the mover sits
@@ -5014,7 +5029,7 @@ function seatingTable(mini, a, o) {
     : s && (s.z != null || s.left) ? `<span class="snext">Next customer: <span class="sgwrap"><span class="sgo" style="--t:${zAt}ms">${door(s.zColor)}</span><span ${lateAt('snew', zEnd)}>${door(mini.next)}</span></span></span>`
     : `<span class="snext">Next customer: <span>${door(mini.next)}</span></span>`;
   const res = s ? `<p ${lateAt('arcres ' + (s.table != null ? 'ok' : ''), s.table != null ? tAt : zEnd)} role="status">${s.table != null ? `Table ${s.table + 1} is ${N(a.by)}'s!` : s.z != null ? `A ${SEAT_NAMES[s.zColor]} customer sat down` : s.left ? `No ${SEAT_NAMES[s.zColor]} seat: the customer left` : 'Seated'}</p>`
-    : `<p class="arcnote">${o.view ? '' : o.locked ? `Waiting for <b class="${turn}">${N(turn)}</b>…` : 'Tap an empty seat'}</p>`;
+    : `<p class="arcnote">${o.view ? '' : o.locked ? `Waiting for <b class="${turn}">${N(turn)}</b>…` : ''}</p>`;
   const leave = s && s.left && !REDUCED ? `<span class="sleave" style="--t:${zAt}ms;--sc:${SEAT_COL[s.zColor]}"><span class="sguest">${SEAT_GUEST}</span></span>` : '';   // no seat of their colour: in at the door, across the room and out
   return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="seating"><div class="sdoor">${next}</div><div class="stbls">${tables}${leave}</div>${res}</div></div>`;
 }
@@ -5026,10 +5041,12 @@ const distPath = poly => 'M' + poly.map(p => p.join(' ')).join('L') + 'Z';
 function distTable(mini, a, o) {
   const ds = a && a.dist ? a.dist : null, map = mini.map, turn = o.turn, t = distTally(map, mini.who);
   const led = p => t.lead.filter(l => l === p).length;
-  const tal = p => arcTally(p, o, `<small>${led(p)} of ${map.regions.length} regions</small>`);
   const second = other(mini.first || turn), tie = a && a.note === 'tiebreak';
   let before = null;
   if (ds) { const w = mini.who.slice(); w[ds.spot] = null; if (ds.grey != null) w[ds.grey] = null; before = distTally(map, w).lead; }
+  // each player's regions as a big number by their name (the move's change turning over as the regions shift)
+  const big = p => { const n = led(p), n0 = before ? before.filter(l => l === p).length : n; return `<b class="dbig" aria-label="${n} region${n === 1 ? '' : 's'}">${n0 !== n ? `<span class="tu" style="--u:${PLACE_MS.mark}ms">${n0}</span><span class="tf" style="--f:${PLACE_MS.mark}ms">${n}</span>` : `<span>${n}</span>`}</b>`; };
+  const tal = p => arcTally(p, o, big(p));
   const regs = map.regions.map((poly, r) => {
     const l = t.lead[r], was = before ? before[r] : l, moved = before && was !== l;
     return `<path class="dreg${l ? ' ' + l : ''}${moved ? ' shift' + (was ? ' from' + was : ' fromnone') : ''}"${moved ? ` style="--t:${PLACE_MS.mark}ms"` : ''} d="${distPath(poly)}"/>`;
@@ -5040,16 +5057,17 @@ function distTable(mini, a, o) {
     return `<g class="dspot${w ? ' ' + w : ''}${s.r.length > 1 ? ' edge' : ''}${pop ? ' pop' : ''}${drop ? ' drop' : ''}${open ? ' open' : ''}" ${open ? `data-act="move" ${mv(k)} role="button" tabindex="0"` : ''} aria-label="${label}" transform="translate(${s.x} ${s.y})"><g class="pp"${drop ? ` style="--t:${PLACE_MS.mark}ms"` : ''}><circle class="dhit" r="5.5"/><circle class="dpc" r="4.3"/>${w && w !== 'G' ? `<text y="1.75">${w}</text>` : ''}</g></g>`;
   }).join('');
   const res = ds ? `<p ${lateAt('arcres ok', PLACE_MS.mark)} role="status">${tie ? `${led('X')} each · the tie goes to ${N(a.winner)}` : `${N(a.by)} leads ${led(a.by)} of ${map.regions.length}`}</p>`
-    : `<p class="arcnote">${o.view ? '' : o.locked ? `Waiting for <b class="${turn}">${N(turn)}</b>…` : 'Tap an empty spot'}</p>`;
+    : `<p class="arcnote">${o.view ? '' : o.locked ? `Waiting for <b class="${turn}">${N(turn)}</b>…` : ''}</p>`;
   const ties = mini.grey ? `<p class="dties">Ties go to <b class="${second}">${N(second)}</b></p>` : '';   // (a square from before the grey pieces has no ties)
   return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="districts">${ties}<svg class="dmap" viewBox="-2 -2 104 124" role="group" aria-label="The map">${regs}${spots}</svg>${res}</div></div>`;
 }
 // Shelves: six shelves of three spots. A tap on an open spot is the move: the mark pops in, then a grey
 // mark drops onto a random open spot. At each shelf's end, who is on it.
 function shelfTable(mini, a, o) {
-  const sh = a && a.shelf ? a.shelf : null, turn = o.turn, c = mini.cells;
-  const tal = p => arcTally(p, o, `<small>on ${shelfOn(c, p)} of ${SHELF.n}</small>`);
-  const rows = Array.from({ length: SHELF.n }, (_, s) => {
+  const sh = a && a.shelf ? a.shelf : null, turn = o.turn, c = mini.cells, nS = c.length / SHELF.per;   // (a square from before: 6 shelves)
+  const tal = p => arcTally(p, o, `<small>on ${shelfOn(c, p)} of ${nS}</small>`);
+  const second = other(mini.first || turn), tie = a && a.note === 'tiebreak';
+  const rows = Array.from({ length: nS }, (_, s) => {
     const ids = Array.from({ length: SHELF.per }, (_, k) => s * SHELF.per + k), on = p => ids.some(i => c[i] === p);
     const spots = ids.map(i => {
       const w = c[i];
@@ -5062,9 +5080,10 @@ function shelfTable(mini, a, o) {
     const tag = ['X', 'O'].map(p => `<i class="${on(p) ? 'on ' + p : ''}${fresh(p) ? ' fillin' : ''}">${p}</i>`).join('');
     return `<div class="shrow"><div class="shspots">${spots}</div><div class="shon" aria-label="On shelf ${s + 1}: ${['X', 'O'].filter(on).join(' and ') || 'nobody'}">${tag}</div></div>`;
   }).join('');
-  const res = sh ? `<p ${lateAt('arcres ok', PLACE_MS.mark)} role="status">${N(a.by)} is on ${shelfOn(c, a.by)} shel${shelfOn(c, a.by) === 1 ? 'f' : 'ves'}</p>`
-    : `<p class="arcnote">${o.view ? '' : o.locked ? `Waiting for <b class="${turn}">${N(turn)}</b>…` : 'Tap an open spot'}</p>`;
-  return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="shelves"><div class="shcase">${rows}</div>${res}</div></div>`;
+  const res = sh ? `<p ${lateAt('arcres ok', PLACE_MS.mark)} role="status">${tie ? `${shelfOn(c, 'X')} each · the tie goes to ${N(a.winner)}` : `${N(a.by)} is on ${shelfOn(c, a.by)} shel${shelfOn(c, a.by) === 1 ? 'f' : 'ves'}`}</p>`
+    : `<p class="arcnote">${o.view ? '' : o.locked ? `Waiting for <b class="${turn}">${N(turn)}</b>…` : ''}</p>`;
+  const ties = mini.first !== undefined ? `<p class="dties">Ties go to <b class="${second}">${N(second)}</b></p>` : '';   // (a square from before the tie rule: its ties reset)
+  return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="shelves">${ties}<div class="shcase">${rows}</div>${res}</div></div>`;
 }
 // Roads: 4x4 dots and the 24 lines between them. A tap on an open line is the move: it draws in, then a
 // random open line is blocked. Each player's longest road glows.
@@ -5088,7 +5107,7 @@ function roadTable(mini, a, o) {
   const hits = o.locked ? '' : segs.map((w, k) => (w ? '' : line(k, 'rhit', ` data-act="move" ${mv(k)} role="button" tabindex="0" aria-label="Line ${k + 1}"`))).join('');
   const dots = Array.from({ length: 16 }, (_, v) => { const [x, y] = ROAD_PT(v); return `<circle class="rdot" cx="${x}" cy="${y}" r="2.6"/>`; }).join('');
   const res = rd ? `<p ${lateAt('arcres ok', PLACE_MS.mark)} role="status">${N(a.by)}'s road: ${best[a.by].len}</p>`
-    : `<p class="arcnote">${o.view ? '' : o.locked ? `Waiting for <b class="${turn}">${N(turn)}</b>…` : 'Tap an open line'}</p>`;
+    : `<p class="arcnote">${o.view ? '' : o.locked ? `Waiting for <b class="${turn}">${N(turn)}</b>…` : ''}</p>`;
   return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="roads"><svg class="rmap" viewBox="0 0 100 100" role="group" aria-label="The roads">${glow}${lines}${dots}${hits}</svg>${res}</div></div>`;
 }
 // Patterns: the sequence with its gap, and four options (two by two). As Trivia: a wrong pick is crossed
@@ -5176,7 +5195,7 @@ function wheelTable(mini, a, o) {
   }).join('');
   const res = s ? `<p ${lateAt('arcres ' + (s.v ? 'ok' : 'no'), WHEELT.spin)} role="status">${s.v ? `+${s.v}!` : 'Nothing this time'}</p>`
     : (o.view || o.done) && l ? `<p class="arcres ${l.v ? 'ok' : 'no'}"><b class="${l.by}">${N(l.by)}</b> spun the ${WHEEL_LOOK[l.w].say} wheel: ${l.v ? '+' + l.v : 'nothing'}</p>`
-    : `<p class="arcnote">${o.view ? '' : o.locked ? `Waiting for <b class="${turn}">${N(turn)}</b>…` : `Pick a wheel and spin · first to ${T}`}</p>`;
+    : `<p class="arcnote">${o.view ? '' : o.locked ? `Waiting for <b class="${turn}">${N(turn)}</b>…` : ''}</p>`;
   return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="wheels"><div class="rwrow">${wheels}</div>${res}</div></div>`;
 }
 // Sniff: the 5x5 field and the dog, nothing else: no trail. The dog's four neighbours (inside the field)
@@ -5211,7 +5230,7 @@ function sniffTable(mini, a, o) {
   const word = s ? (s.found ? 'Found it!' : s.hot ? 'Hotter!' : 'Colder!') : null;
   const res = s ? `<p ${lateAt('arcres ' + (s.found || s.hot ? 'hot' : 'cold'), SNIFF.step)} role="status">${word}</p>`
     : o.view ? '<p class="arcnote"></p>'
-    : `<p class="arcnote">${o.locked ? `Waiting for <b class="${turn}">${N(turn)}</b>…` : 'Tap a square next to the dog to walk it there'}</p>`;
+    : `<p class="arcnote">${o.locked ? `Waiting for <b class="${turn}">${N(turn)}</b>…` : ''}</p>`;
   return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="sniff"><svg class="sfield" viewBox="0 0 100 100" role="group" aria-label="The field and the dog">${cells}${paws}${dog}${chest}${moves}</svg>${res}</div></div>`;
 }
 // Dash and Lane Rush: the run is played here, in real time, on a canvas. The engine's runStep is the
@@ -5267,14 +5286,15 @@ function runTable(mini, a, o) {
   const res = r ? `<p ${lateAt('arcres ' + (r.done ? 'ok' : 'no'), pre)} role="status">${r.done ? `<b class="${a.by}">${N(a.by)}</b> reached ${fmtM(T)} m!` : `<b class="${a.by}">${N(a.by)}</b> ${TX.verb} ${fmtM(r.to - r.from)} m — now at ${fmtM(r.to)}/${fmtM(T)}`}</p>`
     : o.view ? `<p class="arcnote">${l ? `<b class="${l.by}">${N(l.by)}</b> ${l.done ? 'reached the finish' : `${TX.verb} ${fmtM(l.to - l.from)} m`}` : ''}</p>`
     : live ? '<p class="arcnote"></p>'
-    : mine ? `<p class="arcnote">${TX.note}</p>`
+    : mine ? '<p class="arcnote"></p>'
     : `<p class="arcnote">Waiting for <b class="${turn}">${N(turn)}</b>…</p>`;
-  const hint = live && live.phase === 'run' && live.sim.t < 1.6 ? `<div class="rhint">${TX.hint}</div>` : '';
+  const hint = '';   // (no hint over the run: how to play is in the ? explainer)
   const count = live && live.phase === 'count' ? `<div class="rcount" aria-live="assertive">${live.count > 0 ? live.count : 'GO!'}</div>` : '';
   const hud = `<div class="rhud" data-run="hud">${fmtM(live ? live.sim.d : r ? r.to : mini.dist[who])} m</div>`;
-  const scene = `<div class="rscene ${type}" data-run="scene" aria-label="${TX.scene}"><canvas data-run="cv"></canvas>${hud}${count}${hint}</div>`;
+  const tall = type === 'lane';                     // Lane Rush: the result over the top of the road, so the scene takes its line too
+  const scene = `<div class="rscene ${type}" data-run="scene" aria-label="${TX.scene}"><canvas data-run="cv"></canvas>${hud}${count}${hint}${tall ? res : ''}</div>`;
   const btn = o.view ? '' : `<div class="cbtns one${mine && !live ? '' : ' hold'}"><button class="big ${turn}" data-act="run-go"${mine && !live ? '' : ' disabled tabindex="-1" aria-hidden="true"'}>${TX.go}${mini.dist[turn] > 0 ? ` on from ${fmtM(mini.dist[turn])} m` : ''}</button></div>`;   // always there (hidden while it can't be used), so the course never moves
-  return `<div class="g-arc"><div class="runner"><div class="rprogs">${bar('X')}${bar('O')}</div>${scene}${res}</div>${btn}</div>`;
+  return `<div class="g-arc"><div class="runner"><div class="rprogs">${bar('X')}${bar('O')}</div>${scene}${tall ? '' : res}</div>${btn}</div>`;
 }
 // Run: the count starts; the run itself starts when it ends.
 function runGo() {
@@ -5384,7 +5404,7 @@ app.addEventListener('pointerdown', e => {
   const rd = runDraft;
   if (!rd || rd.phase !== 'run' || !runInputAt(e.target)) return;
   const scene = app.querySelector('[data-run="scene"]');
-  e.preventDefault();
+  e.preventDefault(); ownPress();
   rd.pointer = e.pointerId; rd.x0 = e.clientX; rd.swiped = false; rd.scene = scene;
   if (rd.sim.type !== 'lane' && runJump(rd.sim)) { if (rd.sim.type === 'chopper') runRotor(true); else SND.play(RUN_PRESS[rd.sim.type]); }   // a jump, a flap; the chopper's rotor runs while held
   try { (e.target.closest('main.scr.mini') || scene).setPointerCapture(e.pointerId); } catch (err) { /* no capture: the move and up still reach the page */ }
@@ -5612,7 +5632,7 @@ function drawChopper(c, x, y, S, sim, rd, now, P) {
 }
 const TRAFFIC = ['#7fc8f0', '#a9b4c4', '#f7f3e6', '#9ad88a', '#d8a0e8'];   // (no yellow or red: those are the players' cars)
 function drawLane(c, W, H, sim, rd, now) {
-  const P = runColours(), road = { x: W * 0.1, w: W * 0.8 }, laneW = road.w / 3, S = H / 34, cy = H * 0.82, toY = m => cy - (m - sim.d) * S;
+  const P = runColours(), road = { x: W * 0.1, w: W * 0.8 }, laneW = road.w / 3, S = H / 40, cy = H * 0.87, toY = m => cy - (m - sim.d) * S;   // the car low in a tall scene: about 35 m of road ahead in sight
   c.fillStyle = '#95cf9e'; c.fillRect(0, 0, W, H);
   c.fillStyle = '#6d8a5a';                                                     // trees along the verges, going by
   for (let k = -1; k < 12; k++) { const yy = ((k * H) / 9 + sim.d * S) % (H + 40) - 20; for (const tx of [W * 0.04, W * 0.96]) { c.beginPath(); c.arc(tx, yy, W * 0.035, 0, Math.PI * 2); c.fill(); } }
@@ -5700,7 +5720,7 @@ function renderMini(sq, review) {
       const rank = { x: 1, y: 2, g: 3 };
       const bestOf = list => { const b = {}; for (const gs of list) gs.word.split('').forEach((ch, k) => { if ((rank[gs.marks[k]] || 0) > (rank[b[ch]] || 0)) b[ch] = gs.marks[k]; }); return b; };
       const best = bestOf(mini.guesses), before = a ? bestOf(mini.guesses.slice(0, -1)) : best;   // keys recolour once the tiles have flipped
-      g = `<div class="g-wordle"><div class="wlist" id="wlist">${rows || `<div class="empty">${view ? 'No guesses were made.' : 'No guesses yet. Type a 5-letter word.'}</div>`}</div>
+      g = `<div class="g-wordle"><div class="wlist" id="wlist">${rows || `<div class="empty">${view ? 'No guesses were made.' : 'No guesses yet'}</div>`}</div>
         ${state.notice ? `<div class="notice" role="alert"${fxAttr(fxAt('notice', noticeSeq))}>${esc(state.notice)}</div>` : ''}
         ${view ? '' : `<div class="wrow cur${state.notice ? ' shake' : ''}" aria-label="Your guess"${state.notice ? fxAttr(fxAt('notice', noticeSeq)) : ''}>${cur}</div>`}
         ${keyboard(k => (best[k] || '') + (best[k] && best[k] !== before[k] ? ' kc' : ''), () => locked || dr.length >= 5, { enter: locked || dr.length !== 5, bksp: locked || !dr.length })}</div>`;
@@ -5858,7 +5878,7 @@ function renderMini(sq, review) {
         const style = b ? ` style="--dbg:${b.bg};--dfg:${b.fg};background:var(--dbg);color:var(--dfg)"` : '';
         const r = Math.floor(i / hn) + 1, c = i % hn + 1;
         return `<button class="dig${found ? ' found' : ''}${anim === i ? ' open' : ''}" data-act="move" ${mv(i)}${style} aria-label="Row ${r} column ${c}${found ? ', treasure' : dg ? `, ${b.name.toLowerCase()}` : ''}"${dg || locked ? ' disabled' : ''}>${found ? GEM : dg ? `<span>${b.name}</span>` : ''}</button>`;
-      }).join('')}</div><div class="heat">${[1, 2, 3, 4].map(k => `<span class="hb" style="background:${BAND[k].bg};color:${BAND[k].fg}"><b>${BAND[k].name}</b><small>${BAND[k].steps}</small></span>`).join('')}</div></div>`;
+      }).join('')}</div></div>`;   // (what each band means is in the ? explainer)
       break;
     }
     case 'mastermind': {
@@ -5880,8 +5900,7 @@ function renderMini(sq, review) {
       const slots = dr.map((c, k) => `<button class="mmslot${k === mmDraft.at && !locked ? ' at' : ''}" data-act="mmslot" data-k="${k}" aria-label="Slot ${k + 1}${c != null ? ', ' + MM_NAMES[c] + ' (tap to clear)' : ', empty'}"${k === pop ? fxAttr(mmPop.at) : ''}${locked ? ' disabled' : ''}>${c != null ? mmPeg(c, k === pop ? 'pop' : '') : ''}</button>`).join('');
       const pal = Array.from({ length: MM.colors }, (_, c) => `<button class="mmcol c${c}" data-act="mmcol" data-c="${c}" aria-label="${MM_NAMES[c]}"${locked || dr.includes(c) ? ' disabled' : ''}>${mmPeg(c)}</button>`).join('');
       g = `<div class="g-mm"><div class="mmcode small${won ? ' cracked' : ''}" aria-label="The hidden code">${code}</div>
-        <div class="mmkey"><span><i class="sd"></i>right colour, right spot</span><span><i class="hw"></i>right colour, wrong spot</span></div>
-        <div class="mmlist" id="mmlist">${rows || `<div class="empty">${view ? 'No guesses were made.' : 'No guesses yet. Put four different colours together.'}</div>`}</div>
+        <div class="mmlist" id="mmlist">${rows || `<div class="empty">${view ? 'No guesses were made.' : 'No guesses yet'}</div>`}</div>
         ${view ? '' : `<div class="mmcur" aria-label="Your guess">${slots}</div><div class="mmpal">${pal}</div>
         <button class="big mmgo" data-act="move" ${mv(full ? dr : [])}${!full || locked ? ' disabled' : ''}>Submit guess</button>`}</div>`;
       break;
@@ -5929,14 +5948,14 @@ function renderMini(sq, review) {
         return `<button class="hpc${(r + col) % 2 ? ' dk' : ''}${tgt ? ' tgt' : ''}${tgt && c ? ' cap' : ''}${i === sel ? ' sel' : ''}${won(i) ? ' win' : ''}${lit ? ' lit' : ''}" data-i="${i}" ${act} aria-label="${label}"${act ? '' : ' disabled'}>${ghost}${piece}</button>`;
       }).join('');
       g = `<div class="g-hp"><div class="hpgoal X">X wins by reaching this row</div><div class="hpb">${cells}</div><div class="hpgoal O">O wins by reaching this row</div>
-        <p class="hpnote">${stuck ? `<b class="${turn}">${N(turn)}</b> has no move here: play another square` : sel != null ? 'Tap a highlighted square' : !locked ? 'Tap one of your pawns' : ''}</p></div>`;
+        <p class="hpnote">${stuck ? `<b class="${turn}">${N(turn)}</b> has no move here: play another square` : ''}</p></div>`;
       break;
     }
   }
   const lock = state.lock != null && mini.type !== 'trivia' && !ATT_TYPES.includes(mini.type) && !FINGER_TYPES.includes(mini.type);   // a bonus move (a Trivia reveal, an attention game's or a finger game's Start holds the player too: not a bonus)
-  let sub = lock ? (mini.type === 'pig' ? `<b class="${turn}">${N(turn)}</b>'s turn in progress: roll again or bank`
-    : mini.type === 'bj' ? `<b class="${turn}">${N(turn)}</b>'s hand: hit, stand${mini.hand && mini.hand.cards.length === 2 ? ' or double' : ''}`
-    : mini.type === 'bus' ? (a ? info.hint : `<b class="${turn}">${N(turn)}</b>'s run: make the next guess`) : mini.type === 'bs' ? `<b class="${turn}">${N(turn)}</b> hit: fire again` : mini.type === 'craps' ? `<b class="${turn}">${N(turn)}</b> on point ${mini.point}: roll again or stop` : mini.type === 'pool' ? `<b class="${turn}">${N(turn)}</b> sank one: shoot again` : `<b class="${turn}">${N(turn)}</b> guessed right: go again`) : info.hint;
+  let sub = lock ? (mini.type === 'pig' ? `<b class="${turn}">${N(turn)}</b>'s turn in progress`   // (turn info only: how to play is in the ? explainer)
+    : mini.type === 'bj' ? `<b class="${turn}">${N(turn)}</b>'s hand`
+    : mini.type === 'bus' ? (a ? '' : `<b class="${turn}">${N(turn)}</b>'s run`) : mini.type === 'bs' ? `<b class="${turn}">${N(turn)}</b> hit · goes again` : mini.type === 'craps' ? `<b class="${turn}">${N(turn)}</b> on point ${mini.point}` : mini.type === 'pool' ? `<b class="${turn}">${N(turn)}</b> sank one · goes again` : `<b class="${turn}">${N(turn)}</b> guessed right · goes again`) : '';
   if (!view && !f && !d && remoteTurn()) sub = `Waiting for <b class="${turn}">${N(turn)}</b>…`;
   else if (!view && !f && !d && moveWait) sub = 'Sending your move…';
   let secret = '';
@@ -7933,7 +7952,7 @@ app.addEventListener('click', e => {
     const len = attMs(type, r) / 1000;
     if (type === 'headcount') { SND.play('go'); SND.play('reveal', { at: len }); }
     else if (type === 'flash') { SND.play('go'); r.items.forEach((_, i) => SND.play('tickSoft', { at: (i * r.ms) / 1000 })); SND.play('reveal', { at: len }); }
-    else { SND.play('reveal'); for (let k = 1; k < Math.ceil(r.show / 1000); k++) SND.play('tickSoft', { at: k }); SND.play('flipDown', { at: len }); }
+    else { SND.play('reveal'); SND.play('flipDown', { at: r.show / 1000 }); for (let k = 1; k < Math.ceil((r.wait || 0) / 1000); k++) SND.play('tickSoft', { at: r.show / 1000 + k }); if (r.wait) SND.play('go', { at: len }); }   // the pattern, the grid blank (each second of the countdown), then the taps
     render();
   } else if (act === 'hc-key') {               // Headcount: the number pad (up to two digits); OK answers
     if (zoomedType() !== 'headcount' || !attDraft || state.flash || state.done || blocked()) return;
@@ -8034,6 +8053,7 @@ let tapScroll = null;
 app.addEventListener('pointerdown', e => {
   const area = e.target.closest && e.target.closest('.pong.live[data-pong="area"]');
   if (!area || pongDrag || state.screen !== 'mini' || state.flash || state.done || blocked() || !area.querySelector('.pball.ready')) return;
+  ownPress();
   const table = area.querySelector('.ptable');
   pongDrag = { id: e.pointerId, x0: e.clientX, y0: e.clientY, t0: performance.now(), x: e.clientX, y: e.clientY, table, pts: [[performance.now(), e.clientX, e.clientY]] };
   try { area.setPointerCapture(e.pointerId); } catch (err) { /* no capture: the move and up still reach the page */ }
@@ -8548,13 +8568,21 @@ SND.setMuted = function (m) {
 try { SND.muted = localStorage.getItem(KEY + '.sound') === 'off'; } catch (e) { /* no storage: sound on */ }
 try { if (navigator.audioSession) navigator.audioSession.type = 'ambient'; } catch (e) { /* not here: the silent switch is the phone's own */ }
 ['pointerdown', 'touchend', 'click', 'keydown'].forEach(ev => document.addEventListener(ev, SND.unlock, { capture: true, passive: true }));
+// A press a game takes itself, on pointerdown (Echo's pads, Bullseye, Bowling, the drags and the runs): the
+// click that ends it plays no tap, whatever is under the finger by then (the result coming up, say).
+let ownDown = false, ownUp = -1e9;
+function ownPress() { ownDown = true; }
+document.addEventListener('pointerup', () => { if (ownDown) { ownDown = false; ownUp = performance.now(); } }, true);
+document.addEventListener('pointercancel', () => { ownDown = false; }, true);
 // Every control plays its tap sound when pressed (whether or not the game takes the press). The moves
 // and card turns play their own sounds, from their events. A press on a disabled control is an error.
 const TAP_SOUND = { explain: 'open', 'explain-close': 'close', pause: 'open', 'pause-resume': 'close', zoom: null, move: null, pick: null,
+  'echo-tap': null, 'echo-play': null, bulls: null, bowl: null, 'run-go': null, 'fing-start': null, 'odd-reveal': null, 'trivia-reveal': null, 'att-start': null, 'hc-key': null, 'snap-cell': null, 'snap-submit': null, hpsel: 'select',   // a game's own inputs: each plays its own sound (from its handler or its move), never the click as well
   mmcol: 'peg', mmslot: 'peg', rlnum: 'peg', rlgrp: 'peg', rlzero: 'peg', key: 'key', bksp: 'key', enter: 'key', side: 'toggle', kind: 'toggle', lside: 'toggle', timer: 'toggle', adv: 'toggle',
   sound: 'toggle', 'games-all': 'select', 'games-none': 'deselect', share: 'copy', back: 'tap' };   // (back: the Board button in a square, a plain tap)
 document.addEventListener('click', e => {
   if (search.on) return;                                           // the searching screen is silent (even its Cancel)
+  if (performance.now() - ownUp < 350) return;                     // the click that ends a press a game took itself (its own sound came with it), wherever it lands
   const el = e.target.closest && e.target.closest('[data-act], label.chk');
   if (!el || el.classList.contains('chk')) return;                 // (a box: its change plays the toggle)
   const act = el.dataset.act;
@@ -8624,7 +8652,7 @@ function moveSounds(f) {
       break;
     }
     case 'bullseye': { const pre = bullsPre(f); if (pre) { const A = bullsAim(f.bull); add('mark', A.t1); add('mark', A.t2); } add('whoosh', pre); add(f.bull && f.bull.pts ? 'dartHit' : 'dartMiss', pre + BULLT.fly); if (f.bull && f.bull.pts === BULLS.bullPts) add('sparkle', pre + BULLT.fly + 120); break; }   // someone else's throw: the two lines stopping (as the taps would), then the dart
-    case 'echo': { const pre = echoPre(f); if (pre) { const A = echoAim(f.echo); f.echo.seq.forEach((k, i) => add('tone', i * ECHO.step, ECHO_RATES[k])); f.echo.taps.forEach((k, i) => add('tone', A.tap(i), ECHO_RATES[k])); } if (f.echo) add(f.echo.pass ? 'ding' : 'thud', pre); break; }   // someone else's attempt: the pattern and their taps, then the result
+    case 'echo': { const pre = echoPre(f); if (pre) { const A = echoAim(f.echo); f.echo.seq.forEach((k, i) => add('tone', i * ECHO.step, ECHO_RATES[k])); f.echo.taps.forEach((k, i) => add('tone', A.tap(i), ECHO_RATES[k])); } if (f.echo) add(f.echo.pass ? 'ding' : 'thud', pre || ECHO_TONE); break; }   // someone else's attempt: the pattern and their taps, then the result (your own: after your last tap's tone)
     case 'plinko': { for (let k = 1; k <= PLINKO.rows; k++) add('peg', k * PLINKO.step, 1 + (k % 3) * 0.08); add('plop', PLINKO.rows * PLINKO.step + 120); if (f.plinko) { if (f.plinko.hit) add('ding', f.plinko.bonus.r * PLINKO.step); add('point', PLINKO.rows * PLINKO.step + 160); if (won) add('sparkle', PLINKO.rows * PLINKO.step + PLINKO.land); } break; }   // the bonus peg's ding as the chip touches it; the points as it lands
     case 'pong': { add('whoosh', 0); if (f.pong) { if (f.pong.rim) add('clink', PONG.fly); add(f.pong.sunk ? 'splash' : 'thud', PONG.fly + (f.pong.rim ? 400 : 0)); } break; }
     case 'trivia': { const pre = triviaPre(f); if (pre && f.trivia && f.trivia.fresh) add('reveal', TRIVIA.flip - 350); if (pre && f.trivia && f.trivia.picked >= 0 && !f.trivia.auto) add('tap', pre); if (f.trivia) add(f.trivia.correct ? 'ding' : 'thud', pre + 250); break; }   // someone else's pick: the card turned up, then their tap
@@ -8633,7 +8661,7 @@ function moveSounds(f) {
       if (pre && r) {
         if (f.type === 'flash') { add('go', 0); r.items.forEach((_, i) => add('tickSoft', i * r.ms)); }
         else if (f.type === 'headcount') add('go', 0);
-        else { add('reveal', 0); for (let k = 1; k < Math.ceil(r.show / 1000); k++) add('tickSoft', k * 1000); add('flipDown', r.show); }
+        else { add('reveal', 0); add('flipDown', r.show); for (let k = 1; k < Math.ceil((r.wait || 0) / 1000); k++) add('tickSoft', r.show + k * 1000); if (r.wait) add('go', r.show + r.wait); }
         add('tap', attMs(f.type, r));
       }
       if (f.att) add(f.att.correct ? 'ding' : 'thud', pre + 250);

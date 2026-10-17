@@ -501,3 +501,17 @@ test('the arcade games: random moves are legal, timeouts work, and matches of th
     assert.ok(ms >= 500 && ms <= ({ bullseye: 6500, echo: 10500 }[t] || 3500), `${t}: plays in ${ms} ms`);   // (Bullseye and Echo include someone else's aim or attempt, replayed)
   }
 });
+
+test('oddone: the odd tile is equally likely in every cell (1,000 grids a level, each from its own seed as the server deals them; no column or row favoured)', () => {
+  const crit = { 8: 26.1, 15: 37.7, 24: 51.2 };                            // chi-squared at p = 0.001, by degrees of freedom (3x3, 4x4, 5x5)
+  for (let level = 0; level < 3; level++) {
+    const n = E.ODD.sizes[level], cnt = new Array(n * n).fill(0), N = 1000;
+    for (let i = 0; i < N; i++) cnt[E.oddGrid(level, E.makeRng('oddpos:' + level + ':' + i)).pos]++;
+    const exp = N / (n * n), chi = cnt.reduce((s, x) => s + (x - exp) ** 2 / exp, 0);
+    assert.ok(chi < crit[n * n - 1], `level ${level + 1}: chi-squared ${chi.toFixed(1)} over ${n * n} cells`);
+    for (let c = 0; c < n; c++) {
+      const col = cnt.filter((_, k) => k % n === c).reduce((a, b) => a + b, 0) / N, row = cnt.filter((_, k) => Math.floor(k / n) === c).reduce((a, b) => a + b, 0) / N;
+      assert.ok(Math.abs(col - 1 / n) < 0.05 && Math.abs(row - 1 / n) < 0.05, `level ${level + 1}: column ${c + 1} ${col.toFixed(3)}, row ${c + 1} ${row.toFixed(3)} (each about ${(1 / n).toFixed(3)})`);
+    }
+  }
+});
