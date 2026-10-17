@@ -3,7 +3,7 @@
  * searching alone for a while, when the admin has bots switched on (admin/config/bots). The match plays
  * as usual; each bot plays with its own tendencies and at its own pace. Tune them here.
  *
- * style (the computer player's knobs, see STYLE0 in engine.js):
+ * style (the computer player's knobs, see STYLE0 in src/core/ai.js):
  *   attack   how much it values lines still open for itself (1 = the standard computer)
  *   defend   how much it values lines still open for the other side, and how hard it blocks
  *   mistake  the chance, each move, of a careless move: anything legal in any open square

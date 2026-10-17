@@ -1,6 +1,6 @@
 'use strict';
 // The server's own rules, kept apart from the database so the tests can run them directly: usernames,
-// ratings and matchmaking pairs. (The game's rules are in engine.js, shared with the page.)
+// ratings and matchmaking pairs. (The game's rules are in src/core and src/games, shared with the page.)
 
 // ---------- usernames ----------
 const USERNAME_RE = /^[A-Za-z0-9_]{3,16}$/;

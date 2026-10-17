@@ -1,7 +1,9 @@
-# Deploys the Cloud Functions and the Realtime Database rules whenever they change on main.
-# It needs one repository secret, FIREBASE_SERVICE_ACCOUNT: a service-account key (JSON) for the
-# Firebase project (README: "Deploying"). The engine and server tests run first, on the Firebase
-# Emulator Suite; nothing is deployed unless they pass.
+# Deploys the Cloud Functions and the Realtime Database rules when they change on main: only the part that
+# changed (functions, rules, or both), from the push's own diff. The functions run the page's engine and
+# every game's rules, AI and meta (src/core, src/games; scripts/sync-functions.js copies them into
+# functions/), so a change there deploys the functions too. It needs one repository secret,
+# FIREBASE_SERVICE_ACCOUNT: a service-account key (JSON) for the Firebase project (README: "Deploying").
+# The unit tests and the server tests (Firebase Emulator Suite) run first; nothing deploys unless they pass.
 name: Deploy Firebase (functions and rules)
 
 on:
@@ -9,14 +11,16 @@ on:
     branches: [main]
     paths:
       - 'functions/**'
-      - 'engine.js'
-      - 'physics.js'
+      - 'src/core/**'
+      - 'src/games/**'
+      - '!src/games/*/view.js'
       - 'trivia.json'
       - 'database.rules.json'
       - 'firebase.json'
       - '.firebaserc'
-      - 'test/server.test.js'
-      - 'test/bots-rules.test.js'
+      - 'tests/emulator/**'
+      - 'tests/server/**'
+      - 'scripts/sync-functions.js'
       - 'scripts/smoke-live.js'
       - 'scripts/backfill-records.js'
       - 'scripts/backfill-accounts.js'
@@ -36,6 +40,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0                 # the push's diff decides what deploys
       - uses: actions/setup-node@v5
         with:
           node-version: 22
@@ -48,8 +54,18 @@ jobs:
           npm ci
           npm ci --prefix functions
           npm i -g firebase-tools@14
-      - name: Engine tests
-        run: node --test test/logic.test.js test/phys.test.js test/server-rules.test.js test/bots-rules.test.js
+      - name: What changed (functions, rules, or both)
+        id: what
+        run: |
+          before='${{ github.event.before }}'
+          if [ '${{ github.event_name }}' = push ] && git cat-file -e "$before" 2>/dev/null; then changed=$(git diff --name-only "$before" '${{ github.sha }}'); else changed=ALL; fi
+          only=''
+          if [ "$changed" = ALL ] || echo "$changed" | grep -v '/view\.js$' | grep -qE '^(functions/|src/core/|src/games/|trivia\.json|firebase\.json|\.firebaserc|scripts/sync-functions\.js|\.github/workflows/firebase\.yml)'; then only=functions; fi
+          if [ "$changed" = ALL ] || echo "$changed" | grep -qE '^(database\.rules\.json|firebase\.json|\.github/workflows/firebase\.yml)'; then only="${only:+$only,}database"; fi
+          echo "only=$only" >> "$GITHUB_OUTPUT"
+          echo "Deploying: ${only:-nothing}"
+      - name: Unit tests
+        run: npm test
       - name: Server tests on the Firebase Emulator Suite
         run: npm run test:emulators
       - name: Credentials
@@ -105,7 +121,9 @@ jobs:
       - name: Deploy functions and rules
         # Once more after two minutes if it fails: Google's services can need a few minutes after first use.
         run: |
-          deploy() { firebase deploy --only functions,database --project tic-tac-chaos --non-interactive --force; }
+          only='${{ steps.what.outputs.only }}'
+          if [ -z "$only" ]; then echo "Nothing to deploy."; exit 0; fi
+          deploy() { firebase deploy --only "$only" --project tic-tac-chaos --non-interactive --force; }
           deploy || { echo "::warning::The deploy failed; trying again in two minutes."; sleep 120; deploy; }
       - name: Check the live functions and rules
         run: node scripts/smoke-live.js

@@ -5,13 +5,16 @@ Play it: https://jaredmk.github.io/Tiger-tac-toe/
 A two-player, pass-and-play game for one phone, against the computer, or online, drawn in a
 1930s rubber-hose cartoon style: thick wobbly ink lines, flat colours on cream paper, an X and an O
 with faces, and a squash-and-stretch stamp with comic-book bursts when a square is won. The
-fonts (Luckiest Guy, Patrick Hand) are embedded, so the look survives offline. The game is
-`index.html` (inline CSS and the UI) plus `engine.js` (every rule of the game, shared with the
-server); no build step, and the local modes work offline. Online play uses Firebase: the Realtime
+fonts (Luckiest Guy, Patrick Hand) are embedded, so the look survives offline. The game is plain
+ES modules with no build step: `index.html` is a shell that loads `src/main.js`; the engine
+(`src/core`) and every mini-game's rules, AI and meta (`src/games/<game>/`) are shared with the
+server; the page's own code is in `src/ui`, `src/audio`, `src/net` and each game's `view.js` (see
+CLAUDE.md for the map). The local modes work offline. Online play uses Firebase: the Realtime
 Database, Authentication, and Cloud Functions for accounts, matchmaking, records and history (see
 "Setting up Firebase").
 
-Open `index.html` in a browser (or serve the folder with any static server) and play.
+Serve the folder with any static server (ES modules do not load from `file://`), for example
+`npx http-server .`, and open it in a browser.
 
 A main menu comes first: "Play Local", "Play Online" and "How to Play", with a small "by JarHead
 Labs" credit and the studio's jar logo at the foot, linking to its X account (https://x.com/jarheadlabs,
@@ -184,7 +187,7 @@ credit is under How to Play in the game.
 Mini Golf, Pool, Bowling and Pinball run on [Matter.js](https://brm.io/matter-js) (MIT licence, by Liam Brummitt
 and contributors): the page loads it from cdnjs (`matter-js` 0.20.0), with the copy from npm beside the
 page as a fallback, and the Cloud Functions use the npm package. The tables, the shots and the rules are
-the game's own (`physics.js`, run by `engine.js`).
+the game's own (`src/games/shared/physics-sim.js`, run by the engine).
 
 ## Playing online
 
@@ -317,7 +320,7 @@ Build, Artifact Registry, Cloud Run, Eventarc, Cloud Scheduler), which can take 
 For local work, the Firebase CLI installs with `npm install -g firebase-tools` (Node 22). The
 emulators need Java 11 or newer; `firebase login` is only needed to deploy from your own computer.
 
-The web config in `index.html` (`FIREBASE_CONFIG`) is not a secret: it identifies the project, and
+The web config in `src/net/connect.js` (`FIREBASE_CONFIG`) is not a secret: it identifies the project, and
 the security rules decide what anyone can do with it. The Firebase SDK (about 400 KB) is fetched
 from Google's CDN only when something online is used (or at start for a player who logged in
 before); local modes stay offline-capable.
@@ -371,7 +374,7 @@ Match reads **Back to your match**. When a match starts, a vs card shows both us
 records for about 3 seconds (or until tapped); the server's turn clock allows for it.
 
 **The server runs these games.** A move goes to a Cloud Function, which checks that it is that
-player's turn and that the move is legal with the same engine the page uses (`engine.js`), makes
+player's turn and that the move is legal with the same engine the page uses (`src/core`), makes
 every random choice itself (dice, coins, spins, cards, words, codes, timeout moves), applies the
 move and writes the public state. The phones never write a matchmaking game; they read its public
 state and play every move back exactly as in a friend game (the square lit up on the board, the
@@ -418,7 +421,7 @@ rule). Tapping a game opens the read-only review board with
 everything that was hidden revealed.
 
 **Ratings and the leaderboard are switched off for now.** One flag, `RATINGS_ENABLED = false`, in
-`index.html` and in `functions/serverRules.js`, turns them off: no rating is calculated, changed or
+`src/ui/config.js` and in `functions/serverRules.js`, turns them off: no rating is calculated, changed or
 shown anywhere, the leaderboard is gone from the menu, and matchmaking pairs by wait time only. The
 Elo, rating-range pairing and leaderboard code is all still there; setting both flags to `true`
 brings back ranked play with ratings (everyone starts at 1200, standard Elo with K = 32) and the
@@ -457,8 +460,8 @@ affected. Switching it on takes effect at once on every open page.
 
 Every mini-game is **Released** or **Admin only**. The **Game releases** card on the admin dashboard
 has a switch per game (stored at `releases/{type}`: anyone can read it, only the admin can change it;
-a game not there is as the code has it, `TEST_TYPES` in `engine.js`, which lists the games that start
-admin only). Releasing a game asks for a confirmation; the change applies to new matches at once, and
+a game not there is as the code has it: each game's `meta.js` says `release = 'admin'` for the games
+that start admin only, gathered as `TEST_TYPES` in `src/games/index.js`). Releasing a game asks for a confirmation; the change applies to new matches at once, and
 matches already under way are not affected.
 
 An admin-only game exists for nobody but the admin: it is not in the Advanced checklist, How to Play
@@ -582,15 +585,22 @@ https://jaredmk.github.io/Tiger-tac-toe/. After a change, publish it with one co
 ./deploy.sh "what changed"
 ```
 
-It commits everything and pushes `main`. Two GitHub Actions workflows take it from there:
+It commits everything and pushes `main`, deploying only what changed since the live version (the git
+diff against the remote's `main`), and says which:
 
-- `pages.yml` publishes the site (only the web files: `index.html`, `admin.html`, `engine.js`, `playtest.js`, `styles.html`)
-  within a minute or so, on every push.
-- `firebase.yml` runs when the server changed (`functions/`, `engine.js`, `database.rules.json`,
-  `firebase.json`): it runs the engine tests and the server tests on the Firebase Emulator Suite,
-  and only if they pass deploys the Cloud Functions and the database rules with the
-  `FIREBASE_SERVICE_ACCOUNT` secret. `deploy.sh` says when it will run. To deploy those from your
-  own computer instead: `DEPLOY_FIREBASE=local ./deploy.sh "message"` (after `firebase login`).
+- the site (`index.html`, `src/`, `admin.html`, `trivia.json`): `pages.yml` publishes the web files
+  (the page and its modules as they are, the admin page, the Trivia questions) within a minute or so;
+- the functions (`functions/`, the engine in `src/core`, the games' rules, AI and meta in `src/games`)
+  and the database rules (`database.rules.json`): `firebase.yml` runs the unit tests and the server
+  tests on the Firebase Emulator Suite and, only if they pass, deploys the part that changed
+  (`firebase deploy --only functions`, `--only database`, or both) with the `FIREBASE_SERVICE_ACCOUNT`
+  secret.
+
+Each workflow runs only when its files changed. The functions run the page's own engine and rules:
+`scripts/sync-functions.js` copies `src/core` and `src/games` (without the views) and `trivia.json` into
+`functions/` before every deploy (firebase.json's predeploy) and every emulator run. To deploy the
+functions and rules from your own computer instead: `DEPLOY_FIREBASE=local ./deploy.sh "message"`
+(after `firebase login`). `DEPLOY_REMOTE` and `DEPLOY_BRANCH` push somewhere else than `origin main`.
 
 First-time setup: create an empty public repository called `Tiger-tac-toe` on GitHub, then push
 `main` to it. The Pages workflow switches Pages on and publishes the site on that first push.
@@ -685,28 +695,38 @@ repository; usernames are public anyway (records and profiles).
 
 ## Tests
 
-The rules of the game live in `engine.js`: pure and deterministic (no clock, no `Math.random`;
-every random choice comes from an rng passed in, `makeRng(seed)` for a seeded one), loaded by the
-page as a plain script and by the Cloud Functions with `require`. `test/logic.test.js` covers it
-(every mini-game's win and draw logic, the main board, random and timed-out moves, the computer
-player, the online match records with hidden values kept apart, resigning, the turn clock, Battleship's
-shot again after a hit, Treasure hunt's bands, Hexapawn's far-row win and resets in older matches,
-games no longer dealt never dealt again (resets included), and that the same
-seed plays the same match). `test/server-rules.test.js` covers the server's own rules (usernames and
-the word list with look-alikes and names hidden inside longer ones, Elo, matchmaking pairs, records
-recounted from history). `test/playtest.test.js` covers the playtest numbers (New York days and
-hours across both clock changes, 30-minute sessions, games finished in a row and ending mid-match,
-devices, retention, the funnel and the hourly chart). `test/cards.test.js` covers Blackjack (pushes
-in a row within one turn included), Ride the Bus and Roulette. `test/bots-rules.test.js` covers the bots' make-up (styles, paces, made-up
-usernames, the wait), the computer's style knobs, and the alert's limits and phone numbers. All
-three run with Node's test runner:
+The rules of the game live in `src/core` (the main board, turns, the timer, randomness, win and draw)
+and `src/games/<game>/` (each mini-game's rules, AI and meta): pure and deterministic (no clock, no
+`Math.random`; every random choice comes from an rng passed in, `makeRng(seed)` for a seeded one),
+imported by the page and required by the Cloud Functions (`src/core/engine.js` gathers them as one
+namespace, E). The unit tests are filed by what they cover:
+
+- `tests/games/<game>.test.js`: one mini-game's rules and AI;
+- `tests/shared/<family>.test.js`: what a family of games shares (the runners, the attention games,
+  the finger games, the physics games, the card games, the race tracks);
+- `tests/core/`: setup, turns, the main board, the computer, timeouts, online records, release control,
+  the admin page's copies of the engine's lists;
+- `tests/server/`: the server's own rules (usernames and the word list, Elo, matchmaking, records),
+  the stats, the bots and the alert's limits, the playtest numbers;
+- `tests/page.test.js`: the page's modules link (every import exists) and keep their one-name rules.
+
+They run in about ten seconds:
 
 ```sh
 npm install
-node --test
+npm test
 ```
 
-`test/server.test.js` runs the server on the Firebase Emulator Suite (Auth, Realtime Database,
+The slow simulations (the computer against itself over whole matches, balance and first-mover runs,
+thousands of dealt boards) are in `tests/sim/` and run only when asked, one at a time or all:
+
+```sh
+npm run sim                 # the list
+npm run sim -- districts    # one (a game, a family, or matches)
+npm run sim -- all
+```
+
+`tests/emulator/server.test.js` runs the server on the Firebase Emulator Suite (Auth, Realtime Database,
 Functions; it needs Java): usernames, the security rules refusing direct writes to ratings, records,
 history and games, two (and six) players searching at once each paired exactly once in one queue
 by wait time, every Find Match game at 1 minute a turn, a full match with hidden values unreadable
@@ -721,7 +741,7 @@ the result recorded with the records switch, counted apart), the empty-queue ale
 the cooldown, the gap, the daily cap, never for the admin, before the bot) and its test, the back-fills from history running once (records; games by side and last activity), games by side after every kind of match, the playtest log (each event once, the first tester tag kept, nothing personal, the admin only), last activity, and the game stats (local matches reported by a
 phone counted once and bad reports refused, logins and new accounts, Find Match and friend-code
 matches counted by the server, and the stats readable only by the admin, with `make-admin.js` giving
-and taking back the flag). `test/stats-rules.test.js` covers what each event adds to the stats:
+and taking back the flag). The emulator tests:
 
 ```sh
 npm install && npm install --prefix functions

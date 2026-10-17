@@ -1,11 +1,14 @@
 #!/usr/bin/env sh
-# Commit every change with the message you give and push, so the live site updates.
+# Commits every change with the message you give and pushes it to main, deploying only what changed
+# since the live version (the git diff against the remote's main):
+#   the site (index.html, src/, the admin page, trivia.json)        the "Deploy to GitHub Pages" workflow
+#   the functions (functions/, src/core, src/games but the views)   "Deploy Firebase", --only functions
+#   the database rules (database.rules.json)                        "Deploy Firebase", --only database
+# Each workflow runs only when its part changed (its path filter) and Firebase deploys only its changed
+# part, so a push deploys exactly what this prints.
 #   ./deploy.sh "what changed"
-# Pushes HEAD to the main branch of the origin remote. GitHub Pages then publishes the site, and when
-# the Cloud Functions or the database rules changed (functions/, engine.js, database.rules.json,
-# firebase.json), the "Deploy Firebase" workflow tests them on the emulators and deploys them too.
-# Override with DEPLOY_REMOTE=<remote> DEPLOY_BRANCH=<branch> ./deploy.sh "message".
-# DEPLOY_FIREBASE=local also deploys functions and rules from this computer (needs `firebase login`).
+# DEPLOY_REMOTE=<remote> DEPLOY_BRANCH=<branch> push elsewhere (default: origin main).
+# DEPLOY_FIREBASE=local also deploys the functions and rules from this computer (needs `firebase login`).
 set -e
 msg="${1:?usage: ./deploy.sh \"what changed\"}"
 remote="${DEPLOY_REMOTE:-origin}"
@@ -17,16 +20,24 @@ else
   git commit -m "$msg"
 fi
 git fetch -q "$remote" "$branch" 2>/dev/null || true
-server=$(git diff --name-only "$remote/$branch" HEAD -- functions engine.js physics.js database.rules.json firebase.json .firebaserc 2>/dev/null || echo "unknown")
+if git rev-parse -q --verify "$remote/$branch" >/dev/null; then changed=$(git diff --name-only "$remote/$branch" HEAD); else changed=ALL; fi
+site=''; fns=''; rules=''
+if [ "$changed" = ALL ]; then site=1; fns=1; rules=1; fi
+if echo "$changed" | grep -qE '^(index\.html|admin\.html|styles\.html|playtest\.js|trivia\.json|src/)'; then site=1; fi
+if echo "$changed" | grep -v '/view\.js$' | grep -qE '^(functions/|src/core/|src/games/|trivia\.json|firebase\.json|\.firebaserc)'; then fns=1; fi
+if echo "$changed" | grep -qE '^(database\.rules\.json|firebase\.json)'; then rules=1; fi
 git push "$remote" "HEAD:$branch"
-echo "Pushed to $remote/$branch. GitHub Pages rebuilds in about a minute."
-if [ -n "$server" ]; then
+echo "Pushed to $remote/$branch."
+if [ -n "$site" ]; then echo "Site: GitHub Pages rebuilds in about a minute."; fi
+only=''
+if [ -n "$fns" ]; then only=functions; fi
+if [ -n "$rules" ]; then only="${only:+$only,}database"; fi
+if [ -z "$site$only" ]; then echo "No site, functions or rules change: nothing deploys."; fi
+if [ -n "$only" ]; then
   if [ "$DEPLOY_FIREBASE" = "local" ]; then
-    cp engine.js functions/engine.js
-    cp physics.js functions/physics.js
-    cp trivia.json functions/trivia.json
-    firebase deploy --only functions,database --project tic-tac-chaos
+    node scripts/sync-functions.js
+    firebase deploy --only "$only" --project tic-tac-chaos
   else
-    echo "Functions or rules changed: the \"Deploy Firebase\" workflow tests and deploys them (a few minutes)."
+    echo "Firebase ($only): the \"Deploy Firebase\" workflow tests and deploys it (a few minutes)."
   fi
 fi

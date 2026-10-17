@@ -1,7 +1,7 @@
 # Sounds in Tic Tac Chaos
 
 Every sound in the game is **synthesised in the page** with the Web Audio API (oscillators and filtered
-noise, all written in the `sound` section of `index.html`). No audio files are used, so:
+noise, all written in `src/audio/sound.js`). No audio files are used, so:
 
 - **Source:** the project itself. Nothing is downloaded, copied or licensed from anyone else.
 - **Licence:** none needed. The sounds are original work in this repository.

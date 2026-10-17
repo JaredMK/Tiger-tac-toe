@@ -1,10 +1,19 @@
-# Publishes the game to GitHub Pages on every push to main.
-# The first run also switches Pages on for the repository, so no manual setup is needed.
+# Publishes the game to GitHub Pages when the site changed on main (the page, its modules in src/, the
+# admin page, the Trivia questions). The first run also switches Pages on for the repository.
 name: Deploy to GitHub Pages
 
 on:
   push:
     branches: [main]
+    paths:
+      - 'index.html'
+      - 'admin.html'
+      - 'styles.html'
+      - 'playtest.js'
+      - 'trivia.json'
+      - 'src/**'
+      - 'package-lock.json'
+      - '.github/workflows/pages.yml'
   workflow_dispatch:
 
 permissions:
@@ -31,11 +40,13 @@ jobs:
         with:
           enablement: true
       - name: Collect the site (only the web files; not the functions or tests)
-        # Matter.js (for Mini Golf, Pool and Bowling) loads from cdnjs; the copy from npm sits beside the page as the fallback.
+        # The page and its modules as they are (no build step). Matter.js (for Mini Golf, Pool, Bowling and
+        # Pinball) loads from cdnjs; the copy from npm sits beside the page as the fallback.
         run: |
           npm ci
           mkdir _site
-          cp index.html admin.html engine.js physics.js playtest.js trivia.json styles.html .nojekyll _site/
+          cp index.html admin.html playtest.js trivia.json styles.html .nojekyll _site/
+          cp -r src _site/src
           cp node_modules/matter-js/build/matter.min.js _site/matter.min.js
       - uses: actions/upload-pages-artifact@v3
         with:

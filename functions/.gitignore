@@ -1,4 +1,4 @@
-node_modules/
-engine.js
-physics.js
+node_modules
+# copied in by scripts/sync-functions.js (before every deploy and emulator run)
+src/
 trivia.json

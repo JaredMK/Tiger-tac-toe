@@ -390,7 +390,7 @@ function playCard() {
 }
 
 // ---------- game releases: Released or Admin only, per mini-game (releases/{type}, read by the game and the server) ----------
-// A game not in the database is as the code has it (TEST_TYPES in engine.js: admin only until released here).
+// A game not in the database is as the code has it (TEST_TYPES in src/games/index.js, from each game's meta.js: admin only until released here).
 const TEST_TYPES = ['bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads', 'flap', 'chopper', 'patterns', 'wheels', 'sniff', 'headcount', 'flash', 'snapshot', 'skyhop', 'scoop', 'pinball'];   // (as engine.js has them; the switches cover every game the stats know)
 const isReleased = t => (ctl.releases && typeof ctl.releases[t] === 'boolean' ? ctl.releases[t] : !TEST_TYPES.includes(t));
 function releasesCard() {
@@ -413,7 +413,7 @@ async function saveRelease(el) {
 // under way keeps the values it was dealt with). The tracker shows what the squares played so far say:
 // how many runs a finish takes, how far a run goes, and where the crashes cluster.
 const RUN_TYPES = ['dash', 'lane', 'flap', 'chopper'];
-const RUN_DEFAULTS = { dash: { target: 1000, v0: 8, ramp: 1.5, gapMin: 26, gapMax: 48, mix: { rock: 30, crate: 20, spike: 20, flyer: 20, pair: 10 } }, lane: { target: 1000, v0: 27, ramp: 2.7, gapMin: 10, gapMax: 18, mix: { one: 50, two: 50 } }, flap: { target: 600, v0: 6, ramp: 1.0, gapMin: 9, gapMax: 13, mix: { wide: 20, mid: 45, narrow: 35 } }, chopper: { target: 1000, v0: 14.4, ramp: 1.6, gapMin: 22, gapMax: 40, mix: { none: 10, small: 50, big: 40 }, cave0: 5.6, cave1: 3.4 } };   // (as engine.js has them)
+const RUN_DEFAULTS = { dash: { target: 1000, v0: 8, ramp: 1.5, gapMin: 26, gapMax: 48, mix: { rock: 30, crate: 20, spike: 20, flyer: 20, pair: 10 } }, lane: { target: 1000, v0: 27, ramp: 2.7, gapMin: 10, gapMax: 18, mix: { one: 50, two: 50 } }, flap: { target: 600, v0: 6, ramp: 1.0, gapMin: 9, gapMax: 13, mix: { wide: 20, mid: 45, narrow: 35 } }, chopper: { target: 1000, v0: 14.4, ramp: 1.6, gapMin: 22, gapMax: 40, mix: { none: 10, small: 50, big: 40 }, cave0: 5.6, cave1: 3.4 } };   // (as the game's meta.js has them)
 const RUN_FIELDS = [['target', 'Target distance (m)', 200, 5000], ['v0', 'Starting speed (m/s)', 3, 30], ['ramp', 'Speed ramp (m/s more per 100 m)', 0, 10], ['gapMin', 'Obstacle spacing, min (m)', 8, 200], ['gapMax', 'Obstacle spacing, max (m)', 10, 400]];
 const RUN_MIX = { dash: [['rock', 'Rocks'], ['crate', 'Crates'], ['spike', 'Spikes'], ['flyer', 'Low flyers'], ['pair', 'Pairs']], lane: [['one', 'Rows with one car'], ['two', 'Rows with two cars']], flap: [['wide', 'Wide gaps'], ['mid', 'Middle gaps'], ['narrow', 'Narrow gaps']], chopper: [['none', 'No block'], ['small', 'Small blocks'], ['big', 'Big blocks']] };
 const RUN_EXTRA = { chopper: [['cave0', 'Cave height at the start (sky is 10)', 3, 9.5], ['cave1', 'Cave height at the finish (sky is 10)', 2.5, 9.5]] };   // a runner's own settings
@@ -471,7 +471,7 @@ async function saveRunCfg(t, btn) {
 // The board's size and the bullseye's (in field units: the field is 100 across, 120 down), how long a line
 // takes to sweep across at the start, and how much faster a player's lines get with each throw of theirs
 // that scores. A change applies to squares dealt from then on.
-const BULL_DEFAULTS = { board: 9, bull: 2.5, sweep: 1040, ramp: 1.12 };   // (as engine.js has them)
+const BULL_DEFAULTS = { board: 9, bull: 2.5, sweep: 1040, ramp: 1.12 };   // (as the game's meta.js has them)
 const BULL_FIELDS = [['board', 'Board radius (field is 100 across)', 4, 30, 'any'], ['bull', 'Bullseye radius', 0.5, 12, 'any'], ['sweep', 'Sweep across at the start (ms)', 400, 5000, '10'], ['ramp', 'Speed-up per scoring throw (x)', 1, 2, 'any']];
 function bullsCard() {
   const raw = ctl.bullsCfg || {}, c = {};
@@ -497,7 +497,7 @@ async function saveBullsCfg(btn) {
   render();
 }
 // ---------- Plinko's target (config/plinko, read by the game and the server) ----------
-const PLINKO_DEFAULTS = { target: 12 };   // (as engine.js has it)
+const PLINKO_DEFAULTS = { target: 12 };   // (as the game's meta.js has it)
 function plinkoCard() {
   const raw = ctl.plinkoCfg || {}, v = raw.target != null && Number.isFinite(Number(raw.target)) ? Number(raw.target) : PLINKO_DEFAULTS.target;
   return `<div class="card ctl" id="plinkoCard"><h2>Plinko tuning</h2>
@@ -512,7 +512,7 @@ async function savePlinkoCfg(btn) {
   render();
 }
 // ---------- the attention games' difficulty (config/headcount, config/flash, config/snapshot, read by the game and the server) ----------
-const HEAD_DEFAULTS = { n1lo: 14, n1hi: 20, d1lo: 4, d1hi: 7, cross1: 1800, gap1: 430, n2lo: 18, n2hi: 25, d2lo: 7, d2hi: 11, cross2: 1800, gap2: 330, n3lo: 22, n3hi: 30, d3lo: 8, d3hi: 12, cross3: 2000, gap3: 300 };   // (as engine.js has them)
+const HEAD_DEFAULTS = { n1lo: 14, n1hi: 20, d1lo: 4, d1hi: 7, cross1: 1800, gap1: 430, n2lo: 18, n2hi: 25, d2lo: 7, d2hi: 11, cross2: 1800, gap2: 330, n3lo: 22, n3hi: 30, d3lo: 8, d3hi: 12, cross3: 2000, gap3: 300 };   // (as the game's meta.js has them)
 const FLASH_DEFAULTS = { n1: 6, n2: 7, n3: 8, ms1: 500, ms2: 500, ms3: 500 };
 const SNAP_DEFAULTS = { c1: 4, r1: 5, k1: 7, c2: 5, r2: 5, k2: 9, c3: 5, r3: 6, k3: 11, show: 5000, wait: 5000 };
 const ATT_CARDS = [
@@ -544,7 +544,7 @@ async function saveAttCfg(btn) {
   render();
 }
 // ---------- the finger games' difficulty (config/skyhop, config/scoop, config/pinball, read by the game and the server) ----------
-const HOP_DEFAULTS = { target: 500, bounce: 22, gap0: 1.8, gap1: 4.5, wide0: 2.6, wide1: 1.4, moveAt: 60, move: 55, moveV: 1.8, breakAt: 120, brk: 45, hazAt: 90, hazGap: 45, fill0: 1.2, fill1: 0.4 };   // (as engine.js has them)
+const HOP_DEFAULTS = { target: 500, bounce: 22, gap0: 1.8, gap1: 4.5, wide0: 2.6, wide1: 1.4, moveAt: 60, move: 55, moveV: 1.8, breakAt: 120, brk: 45, hazAt: 90, hazGap: 45, fill0: 1.2, fill1: 0.4 };   // (as the game's meta.js has them)
 const SCOOP_DEFAULTS = { target: 25, v0: 5, v1: 8.5, gap0: 0.9, gap1: 0.6, haz0: 18, haz1: 38, sway: 1, cone: 12 };
 const PINB_DEFAULTS = { size: 1.7, save: 3, maxBall: 120, g: 1, bump: 1, spin: 1 };
 const FING_CARDS = [
@@ -574,7 +574,7 @@ async function saveFingCfg(btn) {
   render();
 }
 // ---------- Odd One Out's shade differences (config/oddone, read by the game and the server) ----------
-const ODD_DEFAULTS = { d1: 4, d2: 2.8, d3: 2 };   // (as engine.js has it)
+const ODD_DEFAULTS = { d1: 4, d2: 2.8, d3: 2 };   // (as the game's meta.js has it)
 const ODD_FIELDS = [['d1', 'Level 1 (3x3)'], ['d2', 'Level 2 (4x4)'], ['d3', 'Level 3 (5x5)']];
 function oddCard() {
   const raw = ctl.oddCfg || {}, num = (v, d) => (v != null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : d);
@@ -592,7 +592,7 @@ async function saveOddCfg(btn) {
 // ---------- Risk Wheels' tuning (config/wheels, read by the game and the server) ----------
 // The target, and the ranges each square's three wheels are drawn from (ten equal segments each). A
 // change applies to squares dealt from then on.
-const WHEEL_DEFAULTS = { target: 18, tensMin: 1, tensMax: 2, smallMax: 2, smallTop: 2, midLo: 0, midHi: 8, lowLo: 1, lowHi: 4, gap: 0.4 };   // (as engine.js has them)
+const WHEEL_DEFAULTS = { target: 18, tensMin: 1, tensMax: 2, smallMax: 2, smallTop: 2, midLo: 0, midHi: 8, lowLo: 1, lowHi: 4, gap: 0.4 };   // (as the game's meta.js has them)
 const WHEEL_FIELDS = [['target', 'Target (points to win)', 6, 60, 1], ['tensMin', 'High: fewest 10s', 1, 3, 1], ['tensMax', 'High: most 10s', 1, 3, 1], ['smallMax', 'High: most small values', 0, 4, 1], ['smallTop', 'High: largest small value', 1, 3, 1], ['midLo', 'Medium: lowest value', 0, 3, 1], ['midHi', 'Medium: highest value (no 10s)', 5, 9, 1], ['lowLo', 'Low: lowest value', 1, 3, 1], ['lowHi', 'Low: highest value', 2, 6, 1], ['gap', 'Averages at least this far apart', 0.1, 1.5, 0.1]];
 function wheelsCard() {
   const raw = ctl.wheelsCfg || {}, num = (v, d) => (v != null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : d);

@@ -6,7 +6,7 @@
  *
  * Matchmaking games (ranked and casual) are run by the server alone. A phone asks for a move with
  * the `move` callable; the server checks that it is that player's turn and that the move is legal
- * (with engine.js, the same rules the page runs), makes every random choice, and writes the public
+ * (with the page's own engine, src/core and src/games: the same rules), makes every random choice, and writes the public
  * state. Hidden values (words, numbers, codes, cards, the treasure, the ship) stay in the game's
  * `sec` node, which no phone can read; the public state shows them only once the game reveals them.
  * The turn deadline is a server time; when it passes, either phone may ask for the timeout move
@@ -48,11 +48,12 @@ const admin = require('firebase-admin');
 const { ServerValue } = require('firebase-admin/database');
 const { getFunctions } = require('firebase-admin/functions');   // (not admin.database.ServerValue: the emulator wraps admin.database)
 const crypto = require('node:crypto');
-const E = require('./engine.js');
-// The Trivia questions (trivia.json, copied here beside engine.js at deploy; from the Open Trivia
-// Database, CC BY-SA 4.0). Without the file Trivia is simply never dealt (engine.js: dealable).
+const E = require('./src/core/engine.js');   // the engine and every mini-game's rules: the page's own modules (scripts/sync-functions.js copies them here)
+const { makePhysics } = require('./src/games/shared/physics-sim.js');
+// The Trivia questions (trivia.json, copied here at deploy; from the Open Trivia
+// Database, CC BY-SA 4.0). Without the file Trivia is simply never dealt (src/core/match.js: dealable).
 try { E.setTriviaBank(require('./trivia.json')); } catch (e) { logger.warn('trivia.json missing: Trivia is not dealt'); }
-try { E.setPhysics(require('./physics.js')); } catch (e) { logger.warn('physics.js missing: Mini Golf, Pool and Bowling are not dealt'); }   // (a copy of the repo's physics.js, like engine.js)
+try { E.setPhysics(makePhysics(require('matter-js'))); } catch (e) { logger.warn('Matter.js missing: Mini Golf, Pool and Bowling are not dealt'); }   // (src/games/shared/physics-sim.js, as the page runs it)
 const R = require('./serverRules.js');
 const S = require('./statsRules.js');
 const B = require('./bots.js');
@@ -280,7 +281,7 @@ exports.cancelSearch = onCall(CALL, async req => {
 });
 // Find Match is on only while the admin page has switched it on (features/findMatch true); missing means off.
 async function findMatchOn() { return (await db.ref('features/findMatch').get()).val() === true; }
-// Release control (engine.js: isReleased): the dashboard's switches, releases/{type}; a game not there is
+// Release control (src/core/games.js: isReleased): the dashboard's switches, releases/{type}; a game not there is
 // as the code has it. testTypes: the games admin only right now (their stats are kept apart).
 async function releasesNow() { return (await db.ref('releases').get()).val() || {}; }
 // The difficulty configs (config/run for the runners, config/bulls for Bullseye, config/wheels for Risk Wheels, config/plinko for Plinko, config/oddone for Odd One Out, config/headcount, config/flash and config/snapshot for the attention games, config/skyhop, config/scoop and config/pinball for the finger games, from the admin's
