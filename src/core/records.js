@@ -1,6 +1,7 @@
 // Online match records: what the shared database holds (the public state, the secrets kept apart), moves
 // settled on the record, timeouts, resigning.
 import { endFlash, playMove, timeoutMove } from './board.js';
+import { chaosResolveOnline, scAutoMove, scTypes, startChaosOnline } from './chaos.js';
 import { defaultSetup, newState, startMatch } from './match.js';
 import { upgradeMini } from './minis.js';
 import { newTimer } from './timer.js';
@@ -18,7 +19,7 @@ import { TYPES, rulesOf } from '../games/index.js';
  * last few moves, so a phone that was away can play back what it missed, one move at a time.
  */
 export const RECENT_MAX = 8;
-export const MATCH_FIELDS = ['id', 'seq', 'recent', 'games', 'squares', 'turn', 'lock', 'moves', 'winner', 'winLine', 'winReason', 'resigned', 'counts', 'lastSquare', 'lastBy', 'pick', 'pickSq', 'timer', 'sqlog'];
+export const MATCH_FIELDS = ['id', 'seq', 'recent', 'games', 'squares', 'turn', 'lock', 'moves', 'winner', 'winLine', 'winReason', 'resigned', 'counts', 'lastSquare', 'lastBy', 'pick', 'pickSq', 'timer', 'sqlog', 'sc'];   // (sc: a Super Chaos match's round, the moves sent in, the last recap)
 // The hidden part of a mini-game, or null when it has none.
 export function secretOf(mini) {
   const game = rulesOf(mini.type);
@@ -133,9 +134,34 @@ export function newOnlineMatch(setup, rng, id) {
   const st = newState(rng);
   st.setup = Object.assign(defaultSetup(), setup || {}, { mode: 'online' });
   if (setup && setup.games) st.setup.games = Object.assign({}, st.setup.games, setup.games);
-  if (!startMatch(st, rng)) return null;
+  if (!startMatch(st, rng, st.setup.chaos ? scTypes() : null)) return null;
+  if (st.setup.chaos) startChaosOnline(st, rng);                 // Super Chaos: simultaneous rounds (core/chaos.js)
   st.id = id; st.seq = 0; st.recent = [];
   return matchRecord(st);
+}
+// Super Chaos in a friend room: a player's move for this round, sent in once it is over on their phone
+// (core/chaos.js scMoveOf). The second one in settles the round on the record.
+export function applyChaosSubmit(rec, side, mv, rng) {
+  const st = rec.state, sc = st.sc;
+  if (!sc || !sc.online) return { ok: false, reason: 'bad' };
+  if (st.winner) return { ok: false, reason: 'over' };
+  if (!mv || mv.round !== sc.round) return { ok: false, reason: 'round' };
+  if (sc.moves && sc.moves[side]) return { ok: false, reason: 'moved' };
+  const full = fullState(rec);
+  full.sc.moves = Object.assign({}, full.sc.moves, { [side]: JSON.parse(JSON.stringify(mv)) });
+  const both = full.sc.moves.X && full.sc.moves.O;
+  const rc = both ? chaosResolveOnline(full, rng) : null;
+  if (both && !rc) return { ok: false, reason: 'bad' };
+  full.seq = (full.seq || 0) + 1;                                // (a change the phones notice)
+  return { ok: true, rec: matchRecord(full), resolved: !!rc };
+}
+// The other player's move is long overdue (away, or the app closed): the computer makes it for them.
+export function applyChaosAuto(rec, side, rng) {
+  const st = rec.state, sc = st.sc;
+  if (!sc || !sc.online || st.winner || (sc.moves && sc.moves[side])) return { ok: false, reason: 'moved' };
+  const full = fullState(rec);
+  const mv = scAutoMove(full, side, rng) || { round: sc.round, side, square: null, auto: true };
+  return applyChaosSubmit(rec, side, mv, rng);
 }
 // A player gives up the match (leaving a matchmaking game through the menu): the other side wins.
 export function applyOnlineResign(rec, side) {

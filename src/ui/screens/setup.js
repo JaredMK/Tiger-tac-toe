@@ -15,9 +15,9 @@ import { qBtn } from '../explainer.js';
 import { fxAt, fxAttr } from '../fx.js';
 
 /* ----- setup screen ----- */
-// Super Chaos (simultaneous rounds) is on for the next local match: its switch on, and the mode visible here
-// (admin only until released). Its checklist holds only the Super Chaos games.
-export const chaosSetup = () => !isHost() && !!state.setup.chaos && chaosVisible();
+// Super Chaos (simultaneous rounds) is on for the next match: its switch on (a friend room: the room's, set by the
+// host), and the mode visible here (admin only until released). Its checklist holds only the Super Chaos games.
+export const chaosSetup = () => (isHost() ? !!state.online.chaos : !!state.setup.chaos) && chaosVisible();
 export const setupTypes = () => (chaosSetup() ? visibleTypes().filter(t => scTypes().includes(t)) : visibleTypes());
 export function renderSetup() {
   const s = state.setup;
@@ -31,7 +31,7 @@ export function renderSetup() {
   const pick = host && s.hostPick === 'random' ? 'random' : human;   // the host: X, O, or drawn at random for every match
   const sides = mode !== 'two' ? `<div class="sides${host ? ' three' : ''}" role="group" aria-label="Your side"><span>You play</span><button class="seg X${pick === 'X' ? ' on' : ''}" data-act="side" data-side="X" aria-pressed="${pick === 'X'}">${host ? 'X<small>goes first</small>' : 'X · goes first'}</button><button class="seg O${pick === 'O' ? ' on' : ''}" data-act="side" data-side="O" aria-pressed="${pick === 'O'}">O</button>${host ? `<button class="seg${pick === 'random' ? ' on' : ''}" data-act="side" data-side="random" aria-pressed="${pick === 'random'}">Random</button>` : ''}</div>` : '';
   const chk = t => `<label class="chk${s.games[t] ? '' : ' off'}${dealable(t) ? '' : ' wait'}" title="${dealable(t) ? '' : `Loading its ${t === 'trivia' ? 'questions' : 'physics'}… (needs a connection the first time)`}"><input type="checkbox" data-t="${t}"${s.games[t] ? ' checked' : ''}>${ICONS[t]}<span>${INFO[t].name}</span>${testBadge(t)}${dealable(t) ? '' : '<i class="tst wait">Loading</i>'}${qBtn(t, 'sm')}</label>`;
-  const timer = host ? `<div class="timerrow" role="group" aria-label="Time per turn"><span>Time per turn</span>${TIMER_OPTIONS.map(v => `<button class="seg${(s.timer || 0) === v ? ' on' : ''}" data-act="timer" data-v="${v}">${TIMER_LABEL[v]}</button>`).join('')}</div>` : '';
+  const timer = host && !sc ? `<div class="timerrow" role="group" aria-label="Time per turn"><span>Time per turn</span>${TIMER_OPTIONS.map(v => `<button class="seg${(s.timer || 0) === v ? ' on' : ''}" data-act="timer" data-v="${v}">${TIMER_LABEL[v]}</button>`).join('')}</div>` : '';
   const room = host ? `<div class="room"><small>Room code</small><b class="code">${esc(state.online.code)}</b>
       <div class="row"><button class="btn" data-act="share">Share link</button></div>
       ${state.notice ? `<div class="notice" role="status"${fxAttr(fxAt('notice', noticeSeq))}>${esc(state.notice)}</div>` : ''}
@@ -61,7 +61,7 @@ export function renderSetup() {
     <div class="setup-box" data-keep-scroll="setup">
     ${room}
     ${host ? `<div class="names">${field('X')}${field('O')}</div>` : `<div class="slots">${slots()}</div>`}
-    ${!host && chaosVisible() ? `<div class="timerrow scmode" role="group" aria-label="Super Chaos"><span>Super Chaos ${chaosBadge()}${qBtn('superchaos', 'sm')}</span><button class="seg${sc ? '' : ' on'}" data-act="chaos" data-v="0" aria-pressed="${!sc}">Off</button><button class="seg${sc ? ' on' : ''}" data-act="chaos" data-v="1" aria-pressed="${sc}">On</button></div>` : ''}
+    ${chaosVisible() ? `<div class="timerrow scmode" role="group" aria-label="Super Chaos"><span>Super Chaos ${chaosBadge()}${qBtn('superchaos', 'sm')}</span><button class="seg${sc ? '' : ' on'}" data-act="chaos" data-v="0" aria-pressed="${!sc}">Off</button><button class="seg${sc ? ' on' : ''}" data-act="chaos" data-v="1" aria-pressed="${sc}">On</button></div>` : ''}
     ${host ? sides : ''}
     ${timer}
     <div class="adv${advOpen ? ' open' : ''}"><button class="adv-h" data-act="adv" aria-expanded="${advOpen}"><span>Advanced</span><small>${on} of ${VT.length} mini-games on</small><i class="chev">${CHEV}</i></button>

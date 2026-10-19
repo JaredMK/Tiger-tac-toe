@@ -14,6 +14,9 @@
           }
         },
         "setup": {
+          "chaos": {
+            ".validate": "newData.isBoolean() && (newData.val() == false || auth.token.admin === true || root.child('releases/superchaos').val() === true)"
+          },
           "games": {
             "$type": {
               ".validate": "newData.isBoolean() && (newData.val() == false || auth.token.admin === true || (root.child('releases').child($type).exists() ? root.child('releases').child($type).val() === true : $type.matches(/^(ttt|c4|bs|wordle|hangman|hex|hilo|snakes|memory|candy|bump|coins|pig|hunt|mastermind|bj|bus|rl|dice|hexapawn)$/)))"

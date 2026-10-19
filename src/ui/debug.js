@@ -35,7 +35,7 @@ import { search } from '../net/matchmaking.js';
 import { attemptMove, dbMove, matchTransaction, moveRejected, predicted, setMoveRejected } from '../net/moves.js';
 import { reactKey } from '../net/reactions.js';
 import { releases, visibleTypes } from '../net/releases.js';
-import { assignNet, blocked, isHost, leaveRoom, moveWait, net, online, pinned, presence, presentingSeq, room, roomCode, roomRef } from '../net/room.js';
+import { applyMatch, assignNet, blocked, isHost, leaveRoom, moveWait, net, online, pinned, presence, presentingSeq, room, roomCode, roomRef } from '../net/room.js';
 import { devIdAny, devLast, devPulse, pendingLocal, setDevLast, testerTag, track, trackStart } from '../net/tracking.js';
 import { RNG, app, commit, cpuPlan, cpuTimer, flashReady, menuOpen, mv, save, setCpuPlan, setCpuTimer, setMenuOpen, spotTimer, state } from './app.js';
 import { attDraft, attPre } from './attention.js';
@@ -75,6 +75,7 @@ const names = {
   physDraft: () => physDraft,
   physPull: () => physPull,
   room: () => room,
+  applyMatch: () => applyMatch,
   connected: () => connected,
   net: () => net,
   randomLegalMove: () => randomLegalMove,

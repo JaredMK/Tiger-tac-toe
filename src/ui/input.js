@@ -126,7 +126,8 @@ export function init() {
     } else if (act === 'kind') {                 // Play Local: player 2 is a Human or the Computer
       if (chaosSetup() && el.dataset.kind !== 'cpu') { SND.play('error'); return; }   // (Super Chaos: against the computer only, for now)
       normLocal(state.setup).p2 = el.dataset.kind === 'cpu' ? 'cpu' : 'human'; commit();
-    } else if (act === 'chaos') {                // Play Local: Super Chaos on or off (against the computer)
+    } else if (act === 'chaos') {                // Super Chaos on or off: Play Local (against the computer), or the host's room (two people)
+      if (isHost()) { state.online.chaos = el.dataset.v === '1'; commit(); dbSetup({ chaos: state.online.chaos }); return; }   // (only the Super Chaos games among those on are dealt)
       state.setup.chaos = el.dataset.v === '1';
       if (state.setup.chaos) normLocal(state.setup).p2 = 'cpu';
       commit();

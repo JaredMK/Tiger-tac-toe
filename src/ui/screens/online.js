@@ -1,4 +1,5 @@
 // The online screens: Play Online, Play a Friend, Join.
+import { scTypes } from '../../core/chaos.js';
 import { NAME_MAX, playerName } from '../../core/match.js';
 import { normTimer } from '../../core/timer.js';
 import { other } from '../../core/util.js';
@@ -40,12 +41,13 @@ export function renderJoin() {
   const hostName = seated && room && room.players && room.players[hostSide] ? room.players[hostSide].name : null;
   const timer = room && room.setup ? normTimer(room.setup.timer) : 0;
   // Seated: the game as separate labelled lines, like the other setup screens.
-  const pool = TYPES.filter(t => visibleTypes().includes(t) || (room && room.setup && room.setup.games && room.setup.games[t]));   // the games this guest knows of, and the host's (an admin host may deal games on test)
+  const sc = !!(room && room.setup && room.setup.chaos);
+  const pool = TYPES.filter(t => (visibleTypes().includes(t) || (room && room.setup && room.setup.games && room.setup.games[t])) && (!sc || scTypes().includes(t)));   // the games this guest knows of, and the host's (an admin host may deal games on test); Super Chaos deals only its own
   const games = room && room.setup && room.setup.games ? pool.filter(t => room.setup.games[t] !== false) : pool;
   const info = seated && room ? `<div class="jinfo">
       <div class="field"><span>Host</span><div class="namebox">${esc(hostName || 'the host')}</div></div>
       <div class="field"><span>Your side</span><div class="namebox">${room.setup && room.setup.hostPick === 'random' ? 'Drawn at random every match' : `<b class="side ${o.me}">${o.me}</b>`}</div></div>
-      <div class="field"><span>Time per turn</span><div class="namebox">${TIMER_LABEL[timer]}</div></div>
+      ${sc ? '<div class="field"><span>Mode</span><div class="namebox">Super Chaos · both move at once, 1 minute a round</div></div>' : `<div class="field"><span>Time per turn</span><div class="namebox">${TIMER_LABEL[timer]}</div></div>`}
       <div class="field"><span>Mini-games</span><div class="namebox${games.length === pool.length ? '' : ' gl'}">${games.length === pool.length ? `All ${pool.length}` : `<span>${games.length} of ${pool.length}</span><span class="gicons" aria-label="${esc(games.map(t => INFO[t].name).join(', '))}">${games.map(t => ICONS[t]).join('')}</span>`}</div></div>
     </div>` : '';
   const status = net.status === 'error' ? `<div class="warn">${esc(net.msg)}</div>`

@@ -92,7 +92,7 @@ export function sounds(f, add, won, mini, last) {
 export function triviaRevealAct(el, e, act) {
   const i = state.zoom, sq = state.squares[i];
   if (!sq || sq.mini.type !== 'trivia' || sq.owner || sq.mini.shown || state.flash || state.done || blocked()) return;
-  if (state.online) { dbReveal(i); return; }
+  if (state.online && !state.sc) { dbReveal(i); return; }
   if (!triviaReveal(state, i, state.turn).ok) return;
   triviaFlip = { sq: i, at: performance.now() }; SND.play('reveal');
   commit();

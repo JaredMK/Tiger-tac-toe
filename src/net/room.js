@@ -13,6 +13,7 @@ import { SND, matchEndSound } from '../audio/sound.js';
 import { connectQuiet, loggedIn } from './accounts.js';
 import { connectFirebase, connected, fb, serverNow } from './connect.js';
 import { isMM, listenGame, onGameValue, resignMM } from './matchmaking.js';
+import { scFollow } from './chaos.js';
 import { predicted, setPredicted, showNotice } from './moves.js';
 import { listenReacts, stopReacts } from './reactions.js';
 import { visibleTypes } from './releases.js';
@@ -152,7 +153,7 @@ async function cleanupRooms() {
 function guestName() { return state.online && state.online.me ? playerName(state, other(state.online.me)) : ''; }
 function roomSetup(players, setup) {
   const p = players || (room && room.players) || {}, s = setup || (room && room.setup) || {};
-  return { names: { X: p.X ? p.X.name : 'X', O: p.O ? p.O.name : 'O' }, games: restrictGames(Object.assign({}, s.games || state.setup.games), visibleTypes()), timer: normTimer(s.timer) };
+  return { names: { X: p.X ? p.X.name : 'X', O: p.O ? p.O.name : 'O' }, games: restrictGames(Object.assign({}, s.games || state.setup.games), visibleTypes()), timer: normTimer(s.timer), chaos: !!s.chaos };   // (chaos: a Super Chaos match, simultaneous rounds)
 }
 // Who plays which side in a match, kept with the match itself (the room's seats can swap for the next one).
 function seatsOf(players) { const seat = q => ({ uid: (q && q.uid) || null, name: String((q && q.name) || '').slice(0, NAME_MAX) }); return { X: seat(players.X), O: seat(players.O) }; }
@@ -265,6 +266,7 @@ function onRoomValue(r) {
   if (r.setup) {
     if (r.setup.games) state.setup.games = Object.assign({}, state.setup.games, r.setup.games);
     state.setup.timer = normTimer(r.setup.timer);
+    o.chaos = !!r.setup.chaos;                                    // (the room's Super Chaos switch)
   }
   const wasJoined = o.joined;
   o.joined = !!(r.players.X && r.players.X.uid && r.players.O && r.players.O.uid);
@@ -290,6 +292,7 @@ export function applyMatch(r) {
   const o = state.online, rec = parseMatch(r.match);
   if (!rec) return;
   const st = rec.state;
+  if (st.sc && st.sc.online) { scFollow(rec); return; }          // Super Chaos: both move at once (net/chaos.js)
   if (predicted && st.seq >= predicted.seq) {     // the server has the move that was shown here: confirmed (shown already) or corrected
     if (JSON.stringify(st.squares) === predicted.squares) o.shownSeq = Math.max(o.shownSeq || 0, predicted.seq);
     setPredicted(null);

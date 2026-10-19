@@ -32,7 +32,7 @@ export const scTypes = () => TYPES.filter(t => GAMES[t].meta.superChaos);
 export const isChaos = st => !!(st && st.sc);
 const clone = v => (v === undefined ? undefined : JSON.parse(JSON.stringify(v)));
 const isPer = v => !!v && typeof v === 'object' && !Array.isArray(v) && Object.keys(v).sort().join() === 'O,X';   // a value each player has their own of
-export const scHuman = st => (st.cpu && st.cpu.length === 1 ? other(st.cpu) : 'X');
+export const scHuman = st => (st.online && st.online.me ? st.online.me : st.cpu && st.cpu.length === 1 ? other(st.cpu) : 'X');   // (a friend room: this phone's side)
 
 // A new Super Chaos square of a type: the game's own Super Chaos form where it has one; a Trivia question
 // dealt face up (both see it from the start).
@@ -55,22 +55,74 @@ export function startChaos(state, rng) {
   scBegin(state, rng);
   return true;
 }
+// A Super Chaos match in a friend room: both players are people, each on their own phone. The record holds the
+// board at the round's start and each move as it is sent in (moves); the second one in settles the round
+// there (chaosResolveOnline), and both phones then play the recap and the next round from the record.
+export function startChaosOnline(state, rng) {
+  rng = needRng(rng);
+  for (const sq of state.squares) scSquareMini(state, sq, sq.mini.type, rng);
+  state.sc = { round: 1, limit: SC.roundS, online: true, moves: {}, recap: null, last: null };
+  return true;
+}
+// A player's move as the record keeps it: where, its result, the square before it and each step (the other
+// phone replays it), and the square as it left it.
+export function scMoveOf(state, side) {
+  const sc = state.sc, me = sc.me;
+  if (!me) return null;
+  return Object.assign({ round: sc.round, side, square: me.square, out: me.out, win: !!me.win, mini: clone(state.squares[me.square].mini), start: sc.start || null, steps: sc.steps || [] }, me.gives ? { gives: me.gives } : {});
+}
+// Both moves are on the record: the round is settled there, with X's move in X's place and O's as the
+// "other" one (the computer's, in a match against it). The recap keeps both moves (mv) so each phone replays
+// the other's; the next round starts on the record at once (each phone joins it after its recap).
+export function chaosResolveOnline(full, rng) {
+  rng = needRng(rng);
+  const sc = full.sc, mv = sc.moves || {};
+  if (!mv.X || !mv.O) return null;
+  const has = p => mv[p].square != null && !!mv[p].mini;
+  if (!has('X') && !has('O')) return null;
+  const hum = has('X') ? 'X' : 'O', oth = other(hum), H = mv[hum], T = mv[oth];   // (one who had no move to make takes the other's place)
+  full.cpu = oth; full.online = null;
+  sc.recap = null;
+  sc.base = full.squares.map(sq => clone(sq.mini));
+  const sq = full.squares[H.square];
+  sq.mini = clone(H.mini); if (!sq.mv) sq.mv = { X: 0, O: 0 }; sq.mv[hum] += 1;
+  sc.me = Object.assign({ square: H.square, out: H.out, win: !!H.win }, H.gives ? { gives: H.gives } : {});
+  sc.cpu = has(oth) ? Object.assign({ side: oth, square: T.square, mini: clone(T.mini), start: T.start, out: T.out, win: !!T.win, steps: T.steps || [] }, T.gives ? { gives: T.gives } : {}) : null;
+  const rc = chaosResolve(full, rng);
+  full.cpu = null;
+  if (!rc) return null;
+  const mvOf = m => (m && m.square != null && m.mini ? { square: m.square, steps: m.steps || [], start: m.start || null, type: m.mini.type, auto: !!m.auto } : null);
+  rc.mv = { X: mvOf(mv.X), O: mvOf(mv.O) };
+  full.moves = (full.moves || 0) + 2;
+  sc.recap = rc;
+  if (!full.winner) sc.round += 1;
+  sc.moves = {}; sc.me = null; sc.cpu = null; sc.base = null; sc.moved = null;
+  return rc;
+}
+// A player who has not sent their move in time (away, or the app closed): the computer makes one for them.
+export function scAutoMove(full, side, rng) {
+  const sh = clone(full);
+  sh.sc.base = sh.squares.map(sq => clone(sq.mini));
+  const m = scCpu(sh, rng, null, side);
+  if (!m) return null;
+  return Object.assign({ round: full.sc.round, side, square: m.square, out: m.out, win: !!m.win, mini: m.mini, start: m.start, steps: m.steps, auto: true }, m.gives ? { gives: m.gives } : {});
+}
 // A round begins: every square as the human sees it, the board kept as it stands (base), the computer's move.
 export function scBegin(state, rng) {
   const sc = state.sc, me = scHuman(state);
   for (const sq of state.squares) if (!sq.owner) project(sq.mini, me);
   sc.base = state.squares.map(sq => clone(sq.mini));
-  sc.me = null; sc.moved = null;
+  sc.me = null; sc.moved = null; sc.start = null; sc.steps = null;
   state.turn = me; state.lock = null; state.done = null; state.flash = null;
-  sc.cpu = state.winner ? null : scCpu(state, rng);
+  sc.cpu = state.winner || sc.online ? null : scCpu(state, rng);   // (a friend room: the other player's move comes from their phone)
 }
 
 // The computer's move for this round, on its own copy of the board as it stood when the round began: the
 // usual choice of square and the game's own tactics, played through to the end of the move (a Hangman
 // letter that hits guesses on, a Risky Rolls turn rolls on until it banks). Kept hidden until the recap.
-export function scCpu(state, rng, force) {   // force: { square, moves } to play instead (the tests)
+export function scCpu(state, rng, force, side) {   // force: { square, moves } to play instead (the tests); side: the player to move for (a friend room's absent player), else the computer
   rng = needRng(rng);
-  const sc = state.sc, cpu = state.cpu;
+  const sc = state.sc, cpu = side || state.cpu;
   const sh = {
     squares: state.squares.map((sq, i) => ({ owner: sq.owner, mini: project(clone(sc.base[i]), cpu), mv: { X: 0, O: 0 } })),
     turn: cpu, lock: null, winner: null, flash: null, done: null, timer: null, games: state.games, setup: state.setup,
@@ -118,6 +170,7 @@ export function chaosPlay(state, i, m, rng, opts) {
   const range = mini.type === 'hilo' ? [mini.lo, mini.hi] : null;
   const bjFrom = mini.type === 'bj' && mini.hand ? mini.hand.cards.length : 0;
   const before = game.scAfter ? clone(mini) : null;
+  if (sc.moved == null) sc.start = clone(mini);                                       // (the square as the move found it, and each step below: a friend room's replay of it)
   const res = game.scApply ? game.scApply(mini, p, m, rng) : applyMove(mini, p, m, rng);
   if (!res.ok) return res;
   if (game.scAfter) game.scAfter(mini, before, p, res);
@@ -139,6 +192,7 @@ export function chaosPlay(state, i, m, rng, opts) {
   state.draft = ''; state.pick = null; state.sel = [];
   state.moves += 1; state.lastSquare = i; state.lastBy = p;
   state.flash = flash;
+  if (sc.online) sc.steps = (sc.steps || []).concat(Object.assign(clone(flash), { after: clone(mini) }));
   return { ok: true, flash };
 }
 

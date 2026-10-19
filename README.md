@@ -540,12 +540,13 @@ plays and how it is made. Sound is on by default, and the switch on the main men
 menu turns it off (remembered between visits). The searching screen of Find a Match is silent (its one sound is the match being found). The first tap unlocks audio, as iPhone requires; on
 iPhone the audio session is *ambient*, so the silent switch mutes the game and the player's music carries on. A game's own inputs (pads, keys, cells, Start buttons and the like) play only their own sound, never the menu click as well.
 
-## Super Chaos (simultaneous play, vs Computer)
+## Super Chaos (simultaneous play, vs Computer or a friend)
 
-A second way to play Play Local, switched on in its setup ("Super Chaos: Off / On"). It is admin only
+A second way to play Play Local and Play a Friend, switched on in its setup ("Super Chaos: Off / On";
+in a friend room the host's lobby, and the guest's lobby shows "Mode: Super Chaos"). It is admin only
 until released: the switch shows only to the admin (with a Testing sticker) until the dashboard's Game
-releases card releases it (`releases/superchaos`). Phase 1 is against the computer only; the normal modes
-are unchanged.
+releases card releases it (`releases/superchaos`; the database rules refuse it on a room otherwise).
+Find Match is unchanged, and so are the normal modes.
 
 - **Rounds.** Each round both players choose any unclaimed square and make one move there (the game's
   normal move: one run, one hand, one guess; a move that goes on, such as a right Hangman letter or a
@@ -599,6 +600,18 @@ are unchanged.
 - **The recap** (on the main board): a Mini Golf square plays both shots first; then the computer's
   square lights up and its move replays in the pop-up; then what both moves settle together (a Bump
   knock, the Roulette spin); then each square's result in turn (about a second each); then the next round.
+- **With a friend** (a friend room, each player on their own phone): the same rounds, both moving at
+  once. Each phone plays its move on its own copy of the round and sends it in (the record's `sc.moves`);
+  the second move in settles the round on the record (`applyChaosSubmit`, the same merge as against the
+  computer) and the next round begins there. Each phone then plays the recap with the other player's
+  move in the pop-up (it travels with its replay log), the results, and joins the next round. The board
+  says "[name] has moved" once the other's move is in. Each phone keeps its own round clock; when it
+  runs out the timeout rule moves for that player, and a player whose move is still missing 1 minute 45 seconds
+  after the other's went in (a phone closed or away) gets one from the computer, so the match goes
+  on. A reload joins the round as it stands. It is for playtesting: the room's record holds every square,
+  so the hidden information is hidden only by the app (as in friend rooms already), and it counts as a
+  friend game in the stats. How it is built: `src/net/chaos.js`, and `startChaosOnline`,
+  `chaosResolveOnline`, `scAutoMove` in `src/core/chaos.js`; tests: `tests/core/chaos-online.test.js`.
 - **Stats**: its own mode, `chaos`, in the anonymous stats and the dashboard (Matches by mode, the
   mini-game table, the playtest log). Not in a player's local record or history yet.
 - How it is built: `src/core/chaos.js` (the round: each player's move on their own copy of the board, the

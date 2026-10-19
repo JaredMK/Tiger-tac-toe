@@ -84,7 +84,7 @@ export function fingGo() {
   const type = sq.mini.type, p = state.turn;
   if (type === 'pinball' && !physicsReady()) return;
   if (!attStart(state, state.zoom, p).ok) return;               // held to the square: here, and on the server
-  if (state.online) dbStart(state.zoom); else save();
+  if (state.online && !state.sc) dbStart(state.zoom); else save();   // (Super Chaos: held on this phone)
   const now = performance.now(), mini = sq.mini;
   fingDraft = { id: fingId(state.zoom, p), sq: state.zoom, p, type, mini, phase: 'play', at: now, last: now, acc: 0, raf: 0, ptr: null, keys: { L: 0, R: 0, dir: 0 }, flipOn: { L: false, R: false }, presses: new Map(), pull: null, kpx: 30, out: {}, brk: {}, keptAt: now, saved: 0, end: null, endAt: 0, hintGone: false };
   const fd = fingDraft;

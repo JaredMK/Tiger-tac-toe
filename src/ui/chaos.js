@@ -16,13 +16,14 @@ import { fxAt, startFx, stampFx } from './fx.js';
 import { toon } from './art.js';
 import { render } from './render.js';
 import { repStart, repStop } from './replay.js';
+import { scNextOnline, scOnlineWait } from '../net/chaos.js';
 import { playFlash } from './turns.js';
 
 export const SC_MS = { cpu: [1400, 4200], spot: 800, claim: 1300, clash: 1050, flip: 900, end: 1300, popup: 2, idle: 300, last: 600, skip: 450 };   // the computer's move takes this long; the recap's steps; the pop-up replay's speed, its longest idle moment (a pause in the inputs, the wait between a move's steps), how long its last result stays up, and the end shown after a skip
 let scTimer = null;
 export let scUi = { round: null, readyAt: 0, stage: null, at: 0, played: false };   // this round on screen: when the computer's move counts as made, the recap's stage
 const now = () => Date.now();
-const live = () => !!state.sc && !state.online;
+const live = () => !!state.sc;   // (against the computer, or in a friend room: sc.online)
 
 // ---- the round's clock: a deadline on this phone's clock, held while the game is paused ----
 export function scClockLeft() {
@@ -93,8 +94,13 @@ export function chaosStep() {
   if (state.winner) return;
   if (scUi.round !== sc.round) {                                    // a round begins (or goes on after a reload)
     const fresh = sc.deadline == null && sc.held == null;
-    scUi = { round: sc.round, readyAt: fresh ? now() + SC_MS.cpu[0] + Math.random() * (SC_MS.cpu[1] - SC_MS.cpu[0]) : 0, stage: null, at: 0, played: false };
+    scUi = { round: sc.round, readyAt: fresh && !sc.online ? now() + SC_MS.cpu[0] + Math.random() * (SC_MS.cpu[1] - SC_MS.cpu[0]) : 0, stage: null, at: 0, played: false };
     if (fresh) sc.deadline = now() + sc.limit * 1000;
+  }
+  if (sc.me && !state.flash && !state.done && state.lock == null && sc.online) {   // a friend room: the move goes in on the record, which settles the round once the other's is in too
+    const w = scOnlineWait();
+    if (w != null) scTimer = setTimeout(chaosStep, w);
+    return;
   }
   if (sc.me && !state.flash && !state.done && state.lock == null) {   // the human's move is in, its result seen: the round ends once the computer's is too
     const wait = scUi.readyAt - now();
@@ -248,11 +254,13 @@ function recapStep() {
       if (!scUi.at) { scUi.at = t; if (rc.result) { SND.play('swish'); SND.play(matchEndSound(), { at: 0.5 }); } }
       const wait = scUi.at + SC_MS.end - t;
       if (wait > 0) { scTimer = setTimeout(chaosStep, wait); return; }
+      if (state.sc.online) { state.sc.recap = null; state.screen = 'win'; state.zoom = null; state.spot = null; commit(); return; }   // (a friend room: the match stays on the record)
       chaosNext(state, RNG);
       state.screen = 'win'; state.zoom = null; state.spot = null;
       commit();
       return;
     }
+    if (state.sc.online) { scNextOnline(); return; }            // a friend room: the next round, from the record
     chaosNext(state, RNG);
     scUi = { round: null, readyAt: 0, stage: null, at: 0, played: false };
     SND.play('turn');
@@ -270,8 +278,8 @@ export function scLastPlayed() {
 export function scHint() {
   const sc = state.sc, cpu = other(scHuman(state));
   if (sc.recap) return `Round ${sc.recap.round} · results`;
-  if (sc.me) return `Waiting for ${N(cpu)}…`;
-  return `Round ${sc.round} · tap any open square`;
+  if (sc.me) return sc.oppIn ? `${N(cpu)} has moved · settling the round…` : `Waiting for ${N(cpu)}…`;
+  return sc.oppIn ? `${N(cpu)} has moved · tap any open square` : `Round ${sc.round} · tap any open square`;
 }
 // The turn row in the header: the round, and how it stands.
 export function scTurnText() {

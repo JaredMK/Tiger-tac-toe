@@ -12,14 +12,14 @@ import { runDraft, runEnd } from './runner.js';
 
 /* ----- the turn clock: a deadline in server time on the record, so both phones count the same; either may call it ----- */
 export function clockLeft() {
-  if (state.sc && !state.online) return scClockLeft();        // Super Chaos: the round's clock
+  if (state.sc) return scClockLeft();                         // Super Chaos: the round's clock (this phone's, in a friend room too)
   const t = state.timer;
   if (!t || !t.limit || t.deadline == null) return null;
   return Math.max(0, Math.min(t.limit * 1000, t.deadline - serverNow()));
 }
 export function clockText() {
   const left = clockLeft();
-  if (left == null && state.sc && !state.online) return fmtClock(state.sc.limit * 1000);
+  if (left == null && state.sc) return fmtClock(state.sc.limit * 1000);
   if (left == null) return state.timer && state.timer.limit ? fmtClock(state.timer.limit * 1000) : '';
   return fmtClock(left);
 }
@@ -41,7 +41,7 @@ export function tick() {
     else tickSec = null;
   }
   if (runDraft && runDraft.phase === 'run' && clockLeft() != null && clockLeft() <= 0) runEnd(true);   // a run under way when the turn's time is up: it ends there, the distance saved
-  if (state.sc && !state.online) { scTick(); return; }           // Super Chaos: the round's time up, the game's timeout rule
+  if (state.sc) { scTick(); return; }                             // Super Chaos: the round's time up, the game's timeout rule
   if (!state.online || !fb || !connected || !room || !room.match || timeoutBusy || state.online.joined === false) return;
   const rec = parseMatch(room.match);
   if (!rec) return;

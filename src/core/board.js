@@ -65,7 +65,7 @@ export function majorityResult(squares) {
 // and a player with no legal move anywhere on the board is skipped (flash.pass) so the match
 // never freezes.
 export function playMove(state, i, m, rng, opts) {
-  if (state.sc && !state.online) return chaosPlay(state, i, m, rng, opts);   // Super Chaos: a move in a simultaneous round (core/chaos.js)
+  if (state.sc) return chaosPlay(state, i, m, rng, opts);   // Super Chaos: a move in a simultaneous round (core/chaos.js; in a friend room too, on this phone's own copy)
   rng = needRng(rng); opts = opts || {};
   if (state.winner) return { ok: false, reason: 'over' };
   if (state.flash) return { ok: false, reason: 'busy' };
@@ -159,7 +159,7 @@ export function leaveSquare(state) {
   if (state.flash || state.lock != null || state.winner) return false;
   const d = state.done;
   state.stamp = null;
-  if (d && state.sc && !state.online) state.done = null;                         // Super Chaos: the move is in; nothing passes until the round ends
+  if (d && state.sc) state.done = null;                         // Super Chaos: the move is in; nothing passes until the round ends
   else if (d) {
     state.turn = d.next;
     state.stamp = d.kind === 'claim' ? d.square : null;

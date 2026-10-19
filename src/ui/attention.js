@@ -106,7 +106,7 @@ export function attStartAct(el, e, act) {
   attDraft = { id: attId(state.zoom, state.turn), sq: state.zoom, at: Date.now(), entry: type === 'snapshot' ? [] : '' };
   attSave();
   attStart(state, state.zoom, state.turn);                    // held to the square: here, and on the server (where a timeout then answers this round, wrong)
-  if (state.online) dbStart(state.zoom); else save();
+  if (state.online && !state.sc) dbStart(state.zoom); else save();   // (Super Chaos: held on this phone)
   const len = attMs(type, r) / 1000;
   if (type === 'headcount') { SND.play('go'); SND.play('reveal', { at: len }); }
   else if (type === 'flash') { SND.play('go'); r.items.forEach((_, i) => SND.play('tickSoft', { at: (i * r.ms) / 1000 })); SND.play('reveal', { at: len }); }

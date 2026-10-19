@@ -21,7 +21,7 @@ import { playFlash } from '../ui/turns.js';
 // a move request from this phone, or the move itself when the game is played here
 export function attemptMove(m) {
   const rep = repTake();                                          // this phone's inputs before the move: they ride with it, for the other side's replay
-  if (state.online) { dbMove(state.zoom, m, rep); return true; }
+  if (state.online && !state.sc) { dbMove(state.zoom, m, rep); return true; }   // (Super Chaos in a friend room: the move is played on this phone's own copy; net/chaos.js sends it in)
   const r = playMove(state, state.zoom, m, RNG, { rep });
   if (r.ok) { playFlash(); commit(); } else SND.play('error');
   return r;
