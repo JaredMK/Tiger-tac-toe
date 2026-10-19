@@ -5,6 +5,7 @@ import { viewOf } from '../games/index.js';
 import { search } from '../net/matchmaking.js';
 import { state } from '../ui/app.js';
 import { KEY } from '../ui/config.js';
+import { shownSq } from '../ui/chaos.js';
 import { hexLen } from '../ui/fx.js';
 import { endKind } from '../ui/screens/win.js';
 
@@ -228,7 +229,7 @@ export const soundBtn = (cls) => `<button class="btn snd ${cls}" data-act="sound
 export function moveSounds(f) {
   const out = [], add = (n, ms, rate) => out.push([n, ms, rate]);
   const won = f.kind === 'claim' || f.kind === 'match', total = playMs(f, hexLen(f));
-  const sq = state.squares[f.square], mini = sq ? sq.mini : {}, last = mini.guesses ? mini.guesses[mini.guesses.length - 1] : null;
+  const sq = shownSq(f.square), mini = sq ? sq.mini : {}, last = mini.guesses ? mini.guesses[mini.guesses.length - 1] : null;
   if (f.timeout) { add('buzz', 0); add('randomMove', 380); }
   const game = viewOf(f.type);
   if (game.sounds) game.sounds(f, add, won, mini, last);

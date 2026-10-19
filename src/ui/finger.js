@@ -14,6 +14,7 @@ import { attemptMove, dbStart } from '../net/moves.js';
 import { blocked, moveWait, remoteTurn } from '../net/room.js';
 import { N, REDUCED, app, cpuPlays, esc, save, state } from './app.js';
 import { hash01 } from './art.js';
+import { shownSq } from './chaos.js';
 import { clockLeft } from './clock.js';
 import { fxAt } from './fx.js';
 import { lateAt } from './progress.js';
@@ -212,7 +213,7 @@ function fingStill(mini, p) {
 const fingReps = new WeakMap();
 function fingReplayOf(f) {
   if (fingReps.has(f)) return fingReps.get(f);
-  const sq = state.squares && state.squares[f.square], fg = f.fing;
+  const sq = shownSq(f.square), fg = f.fing;
   let rep = null;
   if (sq && fg && !fg.auto && (fg.type !== 'pinball' || physicsReady())) {
     const mini0 = fingBefore(sq.mini, fg), raw = fingRaw(fg), ms = fingMs(fg), speed = ms > 0 ? raw / ms : 1;
@@ -255,7 +256,7 @@ export function fingPaint() {
   if (fingRaf) { cancelAnimationFrame(fingRaf); fingRaf = 0; }
   const cv = app.querySelector('canvas[data-fing="cv"]');
   if (!cv || !['mini', 'review-mini'].includes(state.screen)) { fingRep = null; return; }
-  const sq = state.squares && state.squares[state.zoom];
+  const sq = shownSq(state.zoom);
   if (!sq || !FINGER_TYPES.includes(sq.mini.type)) return;
   if (fingDraft && fingDraft.sq === state.zoom) { fingDraw(cv, fingDraftView(fingDraft, performance.now()), performance.now()); return; }   // (its own loop draws it)
   if (fingRepFrame(performance.now())) fingRaf = requestAnimationFrame(fingRepLoop);
@@ -266,7 +267,7 @@ function fingRepLoop(now) {
 }
 // One drawing of the scene with no attempt under way here; true while a replay wants more frames.
 function fingRepFrame(now) {
-  const cv = app.querySelector('canvas[data-fing="cv"]'), sq = state.squares && state.squares[state.zoom];
+  const cv = app.querySelector('canvas[data-fing="cv"]'), sq = shownSq(state.zoom);
   if (!cv || !sq || !FINGER_TYPES.includes(sq.mini.type) || (fingDraft && fingDraft.sq === state.zoom)) return false;
   if (sq.mini.type === 'pinball' && !physicsReady()) return false;
   const f = state.flash && state.flash.square === state.zoom && state.flash.fing ? state.flash : null;

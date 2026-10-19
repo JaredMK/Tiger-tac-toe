@@ -1584,7 +1584,13 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .pboard svg { position: absolute; inset: 0; width: 100%; height: 100%; }
 .pboard .peg { fill: var(--ink); }
 .pboard .bin { fill: var(--panel-2); stroke: var(--ink); stroke-width: 2.5; }
-.pboard .bin.top { fill: #f6c21b; }
+/* the bins shaded by their points, lightest (1) to darkest (5): the same blue, deeper as it pays more */
+.pboard .bin.v1, .tplk .tbins i.v1 { --bin: color-mix(in srgb, var(--sea) 18%, var(--paper)); }
+.pboard .bin.v2, .tplk .tbins i.v2 { --bin: color-mix(in srgb, var(--sea) 42%, var(--paper)); }
+.pboard .bin.v3, .tplk .tbins i.v3 { --bin: color-mix(in srgb, var(--sea) 72%, var(--paper)); }
+.pboard .bin.v5, .tplk .tbins i.v5 { --bin: color-mix(in srgb, var(--sea) 70%, var(--ink)); }
+.pboard .bin[class*=" v"] { fill: var(--bin); }
+.pval.v5, .tplk .tbins i.v5 { color: var(--paper); }
 .pboard .bin.lit { animation: binlit .5s var(--t, 0ms) both; }
 @keyframes binlit { 0%, 100% { filter: none; } 50% { filter: brightness(1.4); } }
 .pboard text { font: 700 11px 'Luckiest Guy', sans-serif; fill: var(--ink); text-anchor: middle; }
@@ -1695,6 +1701,9 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .tphys text { fill: var(--ink); font-weight: 800; text-anchor: middle; font-family: Nunito, Arial, sans-serif; }
 .tbowl { display: grid; gap: 4cqw; width: 84cqw; } .tbowl svg { display: block; width: 100%; height: 46cqw; } .tbowl .pin { fill: #fff; stroke: var(--ink); stroke-width: 1.5; } .tbowl .pin.down { fill: var(--panel-2); stroke: var(--muted); }
 .tbowl .trun { padding: 0; }
+.trun.bscore .tr { grid-template-columns: 9cqw 1fr auto; gap: 2.5cqw; }   /* Bowling: a line each, its mark, its bar and its pins */
+.trun.bscore .tr b { font: 400 9cqw/1 'Luckiest Guy', sans-serif; text-align: center; } .trun.bscore .tr i { height: 7cqw; border-width: 1.4cqw; }
+.trun.bscore .tr span { font: 400 9cqw/1 'Luckiest Guy', sans-serif; font-variant-numeric: tabular-nums; min-width: 17cqw; text-align: right; } .trun.bscore .tr small { font-size: 6cqw; color: var(--muted); }
 /* Craps: the point strip with its puck, the felt where the dice tumble, the rolls so far */
 .craps { flex: 1; display: flex; flex-direction: column; gap: 10px; min-height: 0; justify-content: center; }
 .cpts { position: relative; display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; width: min(100%, 360px); margin: 0 auto; }
@@ -2046,6 +2055,8 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .flopt.right { background: #d7f0c9; border-color: var(--green, #4e9d3a); animation: optglow .6s both; }
 .flopt.wrong { background: #f9c7b6; } .flopt.picked { background: var(--panel-2); }
 .snstack { display: grid; width: 100%; justify-items: center; } .snstack > div { grid-area: 1 / 1; width: 100%; display: flex; justify-content: center; }
+.snstack > .snmsg { align-items: center; pointer-events: none; z-index: 1; }   /* the blank grid's words, over its middle (nothing moves) */
+.snmsg span { background: var(--panel); border: 3px solid var(--ink); border-radius: 999px; box-shadow: 0 3px 0 var(--ink); padding: 9px 16px 6px; font: 400 clamp(16px, 5vw, 21px)/1 'Luckiest Guy', 'Arial Black', sans-serif; text-align: center; max-width: 86%; }
 .sngrid { display: grid; gap: 5px; width: min(100%, 300px, max(120px, calc((var(--gh) - 222px) * var(--c) / var(--r)))); }   /* as wide as the room for its rows allows */
 .snc { aspect-ratio: 1; border: 3px solid var(--ink); border-radius: 8px; background: #fff; padding: 0; position: relative; touch-action: manipulation; }
 .snc:disabled { cursor: default; }
@@ -2174,7 +2185,7 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .tplk { display: flex; flex-direction: column; align-items: center; gap: 4cqw; width: 86cqw; }
 .tplk .tbins { display: flex; gap: 2cqw; width: 100%; }
 .tplk .tbins i { flex: 1; height: 16cqw; border: 1.6cqw solid var(--ink); border-radius: 2cqw; background: var(--paper); font: 400 9cqw/1 'Luckiest Guy', sans-serif; font-style: normal; display: grid; place-items: center; padding-top: 1cqw; }
-.tplk .tbins i.top { background: var(--o); } .tplk .tbins i.X { box-shadow: inset 0 0 0 2cqw var(--x); } .tplk .tbins i.O { box-shadow: inset 0 0 0 2cqw var(--o); }
+.tplk .tbins i[class*="v"] { background: var(--bin); } .tplk .tbins i.X { box-shadow: inset 0 0 0 2cqw var(--x); } .tplk .tbins i.O { box-shadow: inset 0 0 0 2cqw var(--o); }
 .tplk .tbpts { display: flex; gap: 10cqw; justify-content: center; flex: none; }
 .tplk small { font-size: 9cqw; font-weight: 800; color: var(--muted); }
 .tpip .X i.on { background: var(--x); } .tpip .O i.on { background: var(--o); }

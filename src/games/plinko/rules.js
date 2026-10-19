@@ -10,7 +10,7 @@ import { PLINKO_DEFAULTS } from './meta.js';
 // another peg is drawn, there from the next turn until it is hit in turn. The chip's position runs in
 // half-slots (0 to 12, a slot at an even one); at every peg it goes left or right, 50/50, except against
 // a wall, where it can only go inward.
-export const PLINKO = { slots: 7, rows: 6, step: 230, land: 420, vals: [5, 3, 3, 2, 2, 1, 1], bonus: 2 };
+export const PLINKO = { slots: 7, rows: 6, step: 230, land: 420, pop: 1020, vals: [5, 3, 3, 2, 2, 1, 1], bonus: 2 };   // pop: the points popping up out of the bin, from the last peg (the move lasts until they have)
 export const PLINKO_LIMITS = { target: [4, 40] };
 export const PLINKO_CFG = { cfg: null };
 export function plinkoNorm(raw) { const x = raw && raw.target != null ? Number(raw.target) : NaN; return { target: Number.isFinite(x) && x >= PLINKO_LIMITS.target[0] && x <= PLINKO_LIMITS.target[1] ? Math.round(x) : PLINKO_DEFAULTS.target }; }
@@ -85,7 +85,7 @@ export function moveFlash(m, p, range, bjFrom, mini, flash) {
   const l = mini.last; flash.plinko = { slot: l.slot, path: l.path.slice(), bin: l.bin, pts: l.pts, hit: l.hit, bonus: l.bonus, next: mini.bonus, reset: l.reset, total: mini.pts[l.by] }; return;
 }
 export function flashMs(f, winLen, won) {
-  return PLINKO.rows * PLINKO.step + PLINKO.land + (won ? 600 : 0);
+  return PLINKO.rows * PLINKO.step + Math.max(PLINKO.land, PLINKO.pop) + (won ? 600 : 0);
 }
 // Super Chaos: both may drop from the same slot (it locks once). Each drop scores its own points; both
 // touching the bonus peg get +2 each, and one new bonus peg appears for the next round.

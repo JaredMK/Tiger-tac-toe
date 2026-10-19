@@ -140,6 +140,7 @@ function physLoop(now) {
   const cv = app.querySelector('canvas[data-phys="cv"]');
   if (cv && physDrawNow(cv, now)) physRaf = requestAnimationFrame(physLoop);
 }
+const BUMP_LIT = 0.22;                                           // a Mini Golf bumper's flash, in s
 // One drawing of the zoomed square's table; true when another frame is wanted (a replay or a drag under way).
 function physDrawNow(cv, now) {
   const sq = state.squares && (scShown(state.zoom) || state.squares[state.zoom]);   // (Super Chaos's recap: the square before its claim or reset)
@@ -155,7 +156,8 @@ function physDrawNow(cv, now) {
   if (W < 2 || H < 2) return false;
   const S = PHYS_S(mini.type), M = mini.type === 'pool' ? POOL_RAIL : 0, k = Math.min(W / (S.w + 2 * M), H / (S.h + 2 * M)), ox = (W - S.w * k) / 2, oy = (H - S.h * k) / 2;   // the pool table keeps a rail of one width all round
   const g = { c, W, H, k, M, X: x => ox + x * k, Y: y => oy + y * k };
-  if (mini.type === 'golf') drawGolf(g, mini, pos); else if (mini.type === 'pool') drawPool(g, mini, pos); else drawBowl(g, mini, pos);
+  const el = ph && at != null ? (now - at) / 1000 : null, lit = el != null && mini.type === 'golf' ? new Set((ph.events || []).filter(e => e.k === 'bump' && el >= e.t && el < e.t + BUMP_LIT).map(e => e.b)) : null;   // (Mini Golf: a bumper flashes as it kicks)
+  if (mini.type === 'golf') drawGolf(g, mini, pos, lit); else if (mini.type === 'pool') drawPool(g, mini, pos); else drawBowl(g, mini, pos);
   if (dr) drawAim(g, mini, pos, dr);
   else if (mini.type === 'golf' && mini.aim && state.sc && !ph) for (const p of Object.keys(mini.aim)) if (pos[p]) drawLocked(g, pos[p], mini.aim[p]);   // Super Chaos: a shot locked in, waiting for the round's end
   const bd = mini.type === 'bowling' && !ph && bowlDraft && bowlDraft.sq === state.zoom ? bowlDraft : null;
@@ -235,7 +237,7 @@ export function physThumb(mini) {
   const S = L.BOWL, l = mini.last;
   return `<div class="tbowl" aria-label="Bowling: X has ${mini.pins.X} pins, O has ${mini.pins.O} of ${BOWLG.goal}"><svg viewBox="30 6 40 52">
     ${S.pins.map(([x, y], k) => `<circle cx="${x}" cy="${y}" r="${S.pinR * 1.6}" class="pin${l && l.down[k] ? ' down' : ''}"/>`).join('')}</svg>
-    <div class="trun">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><i style="--w:${(100 * Math.min(1, mini.pins[p] / BOWLG.goal)).toFixed(1)}%"></i></div>`).join('')}</div></div>`;
+    <div class="trun bscore">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><i style="--w:${(100 * Math.min(1, mini.pins[p] / BOWLG.goal)).toFixed(1)}%"></i><span>${Math.min(BOWLG.goal, mini.pins[p])}<small>/${BOWLG.goal}</small></span></div>`).join('')}</div></div>`;   // (a line each: the player's mark, their pins as a bar, and the count)
 }
 // Someone else's shot replayed (ui/replay.js): their pull shown as it grew (the drag's readings logged on
 // their phone, or a few made up for the computer), then the shot.
@@ -252,7 +254,7 @@ export function physicsSounds(f, add, won, mini, last) {   // the recording's ev
   const ph = f.phys; if (!ph) return;
   if (ph.locked) { add('clack', 0); return; }                              // Super Chaos: the putt locked in (it plays at the round's end)
   const live = ph.rec && !REDUCED, end = live ? ph.ms : 0;
-  if (live) for (const e of ph.events || []) { const t = e.t * 1000; if (e.k === 'balls') add('clack', t); else if (e.k === 'wall') add('cushion', t); else if (e.k === 'pin') add('pinHit', t); else if (e.k === 'hole') add('plop', t); else if (e.k === 'pocket') add(e.id === 'cue' ? 'thud' : 'plop', t); else if (e.k === 'lip') add('clink', t); else if (e.k === 'gutter') add('thud', t); else if (e.k === 'pit' || e.k === 'end') add('thud', t); }
+  if (live) for (const e of ph.events || []) { const t = e.t * 1000; if (e.k === 'balls') add('clack', t); else if (e.k === 'wall') add('cushion', t); else if (e.k === 'bump') add('bumper', t); else if (e.k === 'pin') add('pinHit', t); else if (e.k === 'hole') add('plop', t); else if (e.k === 'pocket') add(e.id === 'cue' ? 'thud' : 'plop', t); else if (e.k === 'lip') add('clink', t); else if (e.k === 'gutter') add('thud', t); else if (e.k === 'pit' || e.k === 'end') add('thud', t); }
   if (f.type === 'bowling') add(ph.strike ? 'strike' : ph.gutter ? 'thud' : 'ding', end);
   else if (f.type === 'pool') add(ph.black ? 'buzz' : ph.scratch ? 'thud' : ph.own && !ph.theirs ? 'ding' : 'thud', end);
   else if (ph.both) { if (!(ph.holed && (ph.holed.X || ph.holed.O))) add(ph.lip ? 'thud' : 'ding', end); }

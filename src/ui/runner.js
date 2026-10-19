@@ -11,6 +11,7 @@ import { FIREBASE_CONFIG, configured } from '../net/connect.js';
 import { attemptMove } from '../net/moves.js';
 import { blocked } from '../net/room.js';
 import { N, REDUCED, app, cpuPlays, state } from './app.js';
+import { shownSq } from './chaos.js';
 import { clockLeft } from './clock.js';
 import { KEY } from './config.js';
 import { fxAt } from './fx.js';
@@ -157,7 +158,7 @@ export function runEnd(out) {
 export function runPaint() {
   const cv = app.querySelector('canvas[data-run="cv"]');
   if (!cv || state.screen !== 'mini') return;
-  const sq = state.squares && state.squares[state.zoom];
+  const sq = shownSq(state.zoom);
   if (!sq || !RUN_TYPES.includes(sq.mini.type)) return;
   if (runDraft && runDraft.sq === state.zoom) { runFrameDraw(cv, runDraft.sim, runDraft, performance.now()); return; }
   const f = state.flash, r = f && f.run ? f.run : null, p = r ? f.by : sq.owner || state.turn;

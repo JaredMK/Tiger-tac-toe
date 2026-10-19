@@ -120,7 +120,7 @@ export function scBegin(state, rng) {
 // The computer's move for this round, on its own copy of the board as it stood when the round began: the
 // usual choice of square and the game's own tactics, played through to the end of the move (a Hangman
 // letter that hits guesses on, a Risky Rolls turn rolls on until it banks). Kept hidden until the recap.
-export function scCpu(state, rng, force, side) {   // force: { square, moves } to play instead (the tests); side: the player to move for (a friend room's absent player), else the computer
+export function scCpu(state, rng, force, side) {   // force: { square, moves } to play instead (the tests; no moves: its own moves in that square); side: the player to move for (a friend room's absent player), else the computer
   rng = needRng(rng);
   const sc = state.sc, cpu = side || state.cpu;
   const sh = {
@@ -130,7 +130,8 @@ export function scCpu(state, rng, force, side) {   // force: { square, moves } t
   };
   const steps = [];
   let start = null;
-  const next = k => (force ? (k < force.moves.length ? { square: force.square, move: force.moves[k] } : null) : cpuMove(sh, rng));
+  if (force && !force.moves) sh.lock = force.square;
+  const next = k => (force && force.moves ? (k < force.moves.length ? { square: force.square, move: force.moves[k] } : null) : cpuMove(sh, rng));
   let plan = next(0);
   for (let guard = 0; plan && guard < 80 && !sh.sc.me; guard++) {
     if (!start) start = clone(sh.squares[plan.square].mini);                     // the square as the computer found it (the recap's replay starts there)

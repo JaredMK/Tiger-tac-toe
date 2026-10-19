@@ -53,7 +53,7 @@ export function flashMs(f, winLen, won) {
   if (f.rl && f.rl.pending) return RLT.bet;
   return RLT.spin + RLT.settle + RLT.hold + (won ? 600 : 0);
 }
-export const RLT = { spin: 2700, settle: 450, hold: 1000, bet: 900 };   // (bet: Super Chaos's bet put down, no spin)
+export const RLT = { spin: 2700, settle: 450, hold: 1450, bet: 900 };   // (bet: Super Chaos's bet put down, no spin; hold: until the number's landing pulse is over)
 // Super Chaos: the wheel spins once for both. During the round a move only puts the bet down (bets); when
 // the round ends one spin settles both bets together (a hit, a second hit, green 0 on a bet on 0), and the
 // recap plays that spin (resolve). Both taking the square in the same spin resets it, as ever.

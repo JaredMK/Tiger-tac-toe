@@ -38,3 +38,21 @@ test('golf: the page may choose a new square\'s hole (a local game: a layout the
   const m = E.newMini('golf', lcg(4)), tee = P.HOLES[m.hole].tee;
   assert.deepEqual(m.balls, { X: [tee[0] - 3, tee[1]], O: [tee[0] + 3, tee[1]] }, 'both balls on that hole\'s tee');
 });
+
+test('golf: a bumper kicks the ball straight off it, faster than it came (a bump event for the flash and the sound), unlike a wall', () => {
+  P.HOLES.push({ name: 'test', tee: [50, 150], cup: [90, 10], walls: [[50, 60, 30, 5, 0]], bumpers: [[50, 80, 4]], path: [[90, 10]] });
+  try {
+    const h = P.HOLES.length - 1, m = Object.assign(mini('golf', 'kick'), { hole: h, balls: { X: [50, 140], O: [8, 152] }, holed: { X: false, O: false } });
+    const speedAt = (r, t) => { const i = r.rec.ids.indexOf('X') * 2, f = r.rec.frames, k = Math.max(1, Math.min(f.length - 1, Math.round(t * r.rec.fps))); return Math.hypot(f[k][i] - f[k - 1][i], f[k][i + 1] - f[k - 1][i + 1]) * r.rec.fps; };
+    const r = P.run('golf', m, 'X', { aim: 0.02, power: 0.6 }), bump = r.events.find(e => e.k === 'bump');
+    assert.ok(bump && bump.b === 0 && bump.id === 'X', 'the ball hits the bumper');
+    assert.ok(!r.events.some(e => e.k === 'wall' && Math.abs(e.t - bump.t) < 0.02), 'a bump, not a wall');
+    const before = speedAt(r, bump.t - 2 / r.rec.fps), after = speedAt(r, bump.t + 3 / r.rec.fps);
+    assert.ok(after > before + 8, `kicked off faster (${before.toFixed(1)} → ${after.toFixed(1)} u/s)`);
+    assert.ok(r.final.X[1] > 84, 'and back the way it came');
+    // a slow roll into it is kicked off all the same
+    const slow = P.run('golf', Object.assign({}, m, { balls: { X: [50, 92], O: [8, 152] } }), 'X', { aim: 0, power: 0.2 });
+    assert.ok(slow.events.some(e => e.k === 'bump'), 'a slow ball still pops off');
+    assert.ok(P.LAYOUTS.every(hh => hh.bumpers.length >= 3), 'every layout has its bumpers');
+  } finally { P.HOLES.pop(); }
+});

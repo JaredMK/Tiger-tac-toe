@@ -144,6 +144,7 @@ export function endFlash(state, hold) {
   const f = state.flash;
   state.flash = null;
   if (f.recap && state.sc) { if (!f.recapMore) { state.screen = 'board'; state.zoom = null; } return true; }   // Super Chaos: a square's round result, shown in the recap (ui/chaos.js goes on from there; recapMore: another step of the same move follows in the pop-up)
+  if (state.sc && f.phys && f.phys.locked && !state.winner) { state.done = null; state.screen = 'mini'; state.zoom = f.square; return true; }   // Super Chaos's Mini Golf: the shot locked in, the player stays at the hole: both shots play out here once the round ends
   if (state.winner) { state.screen = 'win'; state.zoom = null; state.done = null; }
   else if (f.kind === 'again') { state.screen = 'mini'; state.zoom = state.lock; }
   else if (hold && state.done) { state.screen = 'mini'; state.zoom = f.square; }

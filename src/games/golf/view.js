@@ -23,7 +23,7 @@ setGolfPick((rng, holes) => {
   try { localStorage.setItem(GOLF_SEEN, JSON.stringify(seen)); } catch (e) { /* no storage: any hole */ }
   return forms[randInt(rng, forms.length)];
 });
-export function drawGolf(g, mini, pos) {
+export function drawGolf(g, mini, pos, lit) {   // lit: the bumpers flashing now (a ball just kicked off them)
   const c = g.c, P = runColours(), L = PHYSICS.lib, S = L.GOLF, hole = L.HOLES[mini.hole];
   c.fillStyle = '#2f7a3a'; c.fillRect(0, 0, g.W, g.H);                                   // the surround
   c.fillStyle = '#5fbf5a'; c.fillRect(g.X(0), g.Y(0), S.w * g.k, S.h * g.k);           // the green
@@ -36,10 +36,12 @@ export function drawGolf(g, mini, pos) {
     rr(c, -w / 2 * g.k, -h / 2 * g.k, w * g.k, h * g.k, 2 * g.k); outlined(c, '#c58a4a', P.ink, 2.5);
     c.restore();
   }
-  for (const [x, y, r] of hole.bumpers) {                                                 // the bumpers
-    c.beginPath(); c.arc(g.X(x), g.Y(y), r * g.k, 0, Math.PI * 2); outlined(c, '#f3f0e6', P.ink, 2.5);
-    c.beginPath(); c.arc(g.X(x), g.Y(y), r * g.k * 0.5, 0, Math.PI * 2); c.fillStyle = P.X; c.fill();
-  }
+  hole.bumpers.forEach(([x, y, r], k) => {                                               // the bumpers (one that has just kicked a ball off: lit, with a glow)
+    const on = !!(lit && lit.has(k));
+    if (on) { c.beginPath(); c.arc(g.X(x), g.Y(y), r * g.k * 1.8, 0, Math.PI * 2); c.fillStyle = 'rgba(246, 194, 27, .5)'; c.fill(); }
+    c.beginPath(); c.arc(g.X(x), g.Y(y), r * g.k, 0, Math.PI * 2); outlined(c, on ? '#fff3b8' : '#f3f0e6', P.ink, 2.5);
+    c.beginPath(); c.arc(g.X(x), g.Y(y), r * g.k * 0.5, 0, Math.PI * 2); c.fillStyle = on ? P.O : P.X; c.fill();
+  });
   const cup = hole.cup;                                                                   // the cup, with its flag
   c.beginPath(); c.arc(g.X(cup[0]), g.Y(cup[1]), S.cupR * g.k, 0, Math.PI * 2); c.fillStyle = '#17331c'; c.fill(); c.lineWidth = 2; c.strokeStyle = P.ink; c.stroke();
   const fx = g.X(cup[0]), fy = g.Y(cup[1]), ph = 15 * g.k;                              // the flag: a straight pole up from the cup, the flag on its top

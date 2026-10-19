@@ -12,7 +12,7 @@ import { connected, fb, serverNow } from './connect.js';
 import { matchTransaction } from './moves.js';
 import { parseMatch, room } from './room.js';
 import { NAV_SCREENS, RNG, save, state } from '../ui/app.js';
-import { scRecapStage, setScUi } from '../ui/chaos.js';
+import { scAtHole, scRecapStage, setScUi } from '../ui/chaos.js';
 import { render } from '../ui/render.js';
 
 export const SC_OVERDUE_S = 45;                    // how long past the round's minute a sent move waits for the other's before the computer moves for them
@@ -61,7 +61,8 @@ function scRecap(rec) {
   rc.cpu = rc.mv && rc.mv[opp] ? Object.assign({}, rc.mv[opp]) : null;   // (ui/chaos.js replays "the other move": here, the other player's)
   take(full);
   state.sc = Object.assign(clone(full.sc), { round: rc.round, recap: rc, me: loc.me, moved: null, start: null, steps: null, deadline: null, held: null, sent: rc.round, oppIn: false });
-  state.turn = me; state.screen = 'board'; state.zoom = null;
+  state.turn = me;
+  if (!scAtHole(rc)) { state.screen = 'board'; state.zoom = null; }   // (at the Mini Golf hole with a shot locked in: both shots play out there)
   setScUi({ round: rc.round, readyAt: 0, stage: rc.replay ? 'replay' : 'spot', at: 0, played: false });
   save(); render();
 }

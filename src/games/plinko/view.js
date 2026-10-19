@@ -53,7 +53,7 @@ function plinkoFrames(pl, seedKey) {
 }
 const PK = { pad: 6, top: 10, rows: PLINKO.rows, bottom: 86 };    // the board in percent: the chip starts at the top and the bins sit at the bottom
 function plinkoXY(x, r) { return [PK.pad + (x / 12) * (100 - 2 * PK.pad), r <= 0 ? PK.top : r > PLINKO.rows ? PK.bottom + 4 : PK.top + (r / (PLINKO.rows + 1)) * (PK.bottom - PK.top)]; }
-// Plinko: each bin's points under it (the 5 in gold); the bonus peg, gold and marked +2; the slots dropped
+// Plinko: each bin's points under it (shaded light to dark, 1 to 5); the bonus peg, gold and marked +2; the slots dropped
 // from greyed until all seven are used. The chip bounces down along the server's path; touching the bonus
 // peg, a +2 pops there (and the next bonus peg shows when the chip lands); in its bin, the points pop and
 // the player's total counts up.
@@ -69,8 +69,8 @@ function plinkoTable(mini, a, o) {
   for (let r = 1; r <= PLINKO.rows; r++) for (let x = (r - 1) % 2; x <= 12; x += 2) { const [px, py] = plinkoXY(x, r); pegs.push(`<circle class="peg" cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="1.6"/>`); }
   const w = (100 - 2 * PK.pad) / 6.6;
   const bins = Array.from({ length: PLINKO.slots }, (_, b) => { const [bx] = plinkoXY(b * 2, 0), lit = pl && pl.bin === b;
-    return `<rect ${lateAt('bin' + (mini.vals[b] === 5 ? ' top' : ''), lit ? inBin : null, 'lit')} x="${(bx - w / 2).toFixed(1)}" y="${PK.bottom}" width="${w.toFixed(1)}" height="12" rx="2"/>`; }).join('');
-  const vals = mini.vals.map((v, b) => `<span class="pval${v === 5 ? ' top' : ''}" style="left:${plinkoXY(b * 2, 0)[0].toFixed(1)}%">${v}</span>`).join('');
+    return `<rect ${lateAt('bin v' + mini.vals[b], lit ? inBin : null, 'lit')} x="${(bx - w / 2).toFixed(1)}" y="${PK.bottom}" width="${w.toFixed(1)}" height="12" rx="2"/>`; }).join('');
+  const vals = mini.vals.map((v, b) => `<span class="pval v${v}" style="left:${plinkoXY(b * 2, 0)[0].toFixed(1)}%">${v}</span>`).join('');
   const peg = (q, cls, extra = '') => { const [x, y] = plinkoXY(q.x, q.r); return `<div ${cls} style="left:${x.toFixed(1)}%;top:${y.toFixed(1)}%${extra}" aria-label="Bonus peg: +${PLINKO.bonus}"><b>+${PLINKO.bonus}</b></div>`; };
   let bonus = '';
   if (pl && pl.hit) {                                              // the bonus peg touched: it lights and pops +2 then; the next one shows as the chip lands
@@ -85,7 +85,7 @@ function plinkoTable(mini, a, o) {
     const [ex] = plinkoXY(pl.bin * 2, PLINKO.rows + 1);
     chip = `<div class="pchip ${a.by} drop" style="--path:${name};--d:${land}ms;left:${ex.toFixed(1)}%;top:${PLK_BIN_Y}%"></div>`;   // (where it ends, without the motion)
     pop = `<div class="pplus pbig" style="left:${ex.toFixed(1)}%;top:80%;--t:${inBin}ms">+${mini.vals[pl.bin]}</div>`;
-  } else if (l) { const [cx] = plinkoXY(l.bin * 2, PLINKO.rows + 1); chip = `<div class="pchip ${l.by}" style="left:${cx.toFixed(1)}%;top:${PLK_BIN_Y}%"></div>`; }
+  } else if (l && o.view) { const [cx] = plinkoXY(l.bin * 2, PLINKO.rows + 1); chip = `<div class="pchip ${l.by}" style="left:${cx.toFixed(1)}%;top:${PLK_BIN_Y}%"></div>`; }   // (a square opened shows clear bins; a past game's view keeps its last chip)
   const slots = o.view ? '' : `<div class="pslots" role="group" aria-label="Drop slots">${Array.from({ length: PLINKO.slots }, (_, k) => { const used = mini.used[k];
     return `<button class="${turn}${used ? ' used' : ''}" data-act="move" ${mv(k)}${o.locked || used ? ' disabled' : ''} aria-label="${used ? `Slot ${k + 1}: used` : `Drop from slot ${k + 1}`}">${k + 1}</button>`; }).join('')}</div>`;
   const won = pl && (a.kind === 'claim' || a.kind === 'match'), open = PLINKO.slots - mini.used.filter(Boolean).length;
@@ -95,7 +95,7 @@ function plinkoTable(mini, a, o) {
   return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="plinko">${slots}<div class="pboard">${style}<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${pegs.join('')}${bins}</svg><div class="pvals">${vals}</div>${bonus}${chip}${pop}</div>${res}</div></div>`;
 }
 export function miniature(mini, final) {
-  const pts = mini.pts || { X: 0, O: 0 }, tg = mini.target || PLINKO_DEFAULTS.target; return `<div class="tplk" aria-label="Plinko: X ${pts.X}, O ${pts.O} of ${tg} points"><div class="tbins">${(mini.vals || []).map((v, b) => `<i class="${v === 5 ? 'top' : ''}${mini.last && mini.last.bin === b ? ' ' + mini.last.by : ''}">${v}</i>`).join('')}</div><div class="tbpts">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><span>${Math.min(tg, pts[p])}</span><small>/${tg}</small></div>`).join('')}</div></div>`;
+  const pts = mini.pts || { X: 0, O: 0 }, tg = mini.target || PLINKO_DEFAULTS.target; return `<div class="tplk" aria-label="Plinko: X ${pts.X}, O ${pts.O} of ${tg} points"><div class="tbins">${(mini.vals || []).map((v, b) => `<i class="v${v}${mini.last && mini.last.bin === b ? ' ' + mini.last.by : ''}">${v}</i>`).join('')}</div><div class="tbpts">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><span>${Math.min(tg, pts[p])}</span><small>/${tg}</small></div>`).join('')}</div></div>`;
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   g = plinkoTable(mini, a, { view, locked, turn, zoom: state.zoom }); return g;

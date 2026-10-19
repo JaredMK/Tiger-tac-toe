@@ -166,7 +166,7 @@ test('runners: one difficulty config per game, checked value by value, copied in
   assert.deepEqual(l, { target: 1000, v0: 27, ramp: 2.7, gapMin: 40, gapMax: 42, mix: { one: 100, two: 0 } }, 'a value off its range, or missing, is the default (and a default spacing below the minimum given is opened up)');
   const b = mini('dash', 'cfg-b');
   assert.equal(b.cfg.target, 600, 'a new square plays by the new config');
-  assert.equal(a.cfg.target, 1000, 'the square dealt earlier keeps its own');
+  assert.equal(a.cfg.target, E.RUN_DEFAULTS.dash.target, 'the square dealt earlier keeps its own');
   assert.ok(E.runCourse(b, 'X').every(o => o.k === 'rock' || o.k === 'flyer'), 'the obstacle mix as set');
   assert.ok(E.runCourse(mini('lane', 'cfg-c'), 'O').every(o => o.cars.filter(Boolean).length === 1), 'one car a row when "two" has no weight');
   E.setRunConfig({ dash: { mix: { rock: 0, crate: 0, spike: 0, flyer: 0, pair: 0 } } });
@@ -177,18 +177,18 @@ test('runners: one difficulty config per game, checked value by value, copied in
 /* ===================================== the course ===================================== */
 test('runners: the speed is tied to the distance; the time a stretch takes and the distance a time allows agree', () => {
   const cfg = E.RUN_DEFAULTS.dash;
-  assert.equal(E.runSpeed(cfg, 0), 8); assert.equal(E.runSpeed(cfg, 700), 8 + 1.5 * 7, 'resuming at 700 m runs at 700 m speed');
+  assert.equal(E.runSpeed(cfg, 0), cfg.v0); assert.equal(E.runSpeed(cfg, 400), cfg.v0 + cfg.ramp * 4, 'resuming at 400 m runs at 400 m speed');
   const t = E.runSecs(cfg, 200, 500);
   assert.ok(Math.abs(E.runAfter(cfg, 200, t) - 500) < 1e-6, 'after that long, the run is there');
   assert.ok(E.runSecs(cfg, 0, 100) > E.runSecs(cfg, 900, 1000), 'the last hundred metres go by faster than the first');
   const flat = Object.assign({}, cfg, { ramp: 0 });
-  assert.equal(E.runSecs(flat, 0, 80), 10); assert.equal(E.runAfter(flat, 0, 10), 80, 'with no ramp, a plain constant speed');
+  assert.equal(E.runSecs(flat, 0, 80), 80 / cfg.v0); assert.equal(E.runAfter(flat, 0, 10), 10 * cfg.v0, 'with no ramp, a plain constant speed');
   const g0 = E.runGrace(cfg, 0), g7 = E.runGrace(cfg, 700);
   assert.ok(Math.abs(g0 - E.runAfter(cfg, 0, 2)) < 1e-9 && g7 > g0, 'the grace stretch is two seconds at the run\'s speed: longer further along');
 });
 
 /* ===================================== the move ===================================== */
-test('runners: a move is a run from the saved distance; the crash point is the new saved distance; the speed and the grace stretch follow; 1,000 m takes the square', () => {
+test('runners: a move is a run from the saved distance; the crash point is the new saved distance; the speed and the grace stretch follow; the target takes the square', () => {
   E.setRunConfig(null);
   const m = mini('dash', 'move');
   const c = E.runCourse(m, 'X'), cfg = m.cfg;
@@ -259,14 +259,14 @@ test('runners: a timed-out player who never started gets a run that crashes afte
         assert.ok(ai.q >= 0 && ai.q <= 1);
         const r = E.applyMove(mm, 'X', ai.move, rng);
         assert.equal(r.ok, true, `the computer's run holds up (${r.reason})`);
-        (from < 100 ? first : from > 600 ? late : []).push(mm.dist.X - from);
+        (from < 100 ? first : from > 0.6 * mm.cfg.target ? late : []).push(mm.dist.X - from);
         n++;
       }
       runs += n;
     }
     const avg = runs / squares, mean = a => a.reduce((x, y) => x + y, 0) / a.length;
     assert.ok(avg >= 3.8 && avg <= 5.2, `${t}: the computer finishes in ${avg.toFixed(2)} runs on average`);
-    assert.ok(mean(late) < mean(first), `${t}: its runs are shorter further along (${mean(first).toFixed(0)} m from the start, ${mean(late).toFixed(0)} m past 600)`);
-    console.log(`${t}: the computer finishes in ${avg.toFixed(2)} runs; a run from the start ${mean(first).toFixed(0)} m, past 600 m ${mean(late).toFixed(0)} m`);
+    assert.ok(mean(late) < mean(first), `${t}: its runs are shorter further along (${mean(first).toFixed(0)} m from the start, ${mean(late).toFixed(0)} m past 60% of the way)`);
+    console.log(`${t}: the computer finishes in ${avg.toFixed(2)} runs; a run from the start ${mean(first).toFixed(0)} m, past 60% of the way ${mean(late).toFixed(0)} m`);
   }
 });

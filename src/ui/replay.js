@@ -105,7 +105,7 @@ function repMove() {
   if (rep !== r) return;                                                          // (the move ended the replay: a refused move, a reset)
   r.f = state.flash || null;
   if (!r.f) { repStop(); return; }
-  if (r.speed > 1) repSpeedLoop();
+  if (r.speed > 1) { repSpeedLoop(); repRate(); }               // (the move's render came before its flash was known here: its animations to the replay's rate now)
 }
 // The flash's clock run fast (the Super Chaos recap plays at 2x): the move's event is kept drifting back,
 // so everything timed from it (the canvas replays, the animations re-anchored at each render) sees the

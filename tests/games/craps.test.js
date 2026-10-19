@@ -53,7 +53,7 @@ test('craps: about 49% of rounds win (244 in 495) rolled to the end; one tap of 
   assert.deepEqual([st.flash.kind, st.flash.craps.result, st.flash.craps.point, st.flash.craps.rolls.length], ['move', 'win', 6, 3]);
   const tim = E.crapsTimes(st.flash.craps.rolls, 6, null);
   assert.deepEqual(tim.at, [0, E.CRAPS.roll + E.CRAPS.puck, 2 * E.CRAPS.roll + E.CRAPS.puck], 'each roll in its turn, the puck after the come-out');
-  assert.equal(E.playMs(st.flash), tim.end, 'the round plays out, then the result');
+  assert.equal(E.playMs(st.flash), tim.end + E.CRAPS.pip, 'the round plays out (a round won: its pip filling in), then the result');
   E.endFlash(st); assert.equal(st.lock, null); assert.notEqual(st.turn, p0, 'the turn passes');
   assert.equal(E.localBest(E.publicMini(st.squares[0].mini), st.turn, lcg(1)).move, 'roll', 'the computer rolls');
   assert.equal(E.randomLegalMove(st.squares[0].mini, p0, lcg(1)), 'roll', 'a timeout rolls the round out');

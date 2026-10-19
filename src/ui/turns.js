@@ -76,15 +76,15 @@ function cpuPlay() {
 // for a moment. `played`: a result found on show (a reload): its animation is over already.
 // `speed`: the Super Chaos recap plays a move at 2x (its sounds and its timers to match; the animations
 // run fast from the replay, ui/replay.js).
-export function playFlash(played, speed, holdMax) {   // holdMax: the longest the result stays up after its animation (Super Chaos's replay: no dead time between the steps of a move)
+export function playFlash(played, speed, holdMax, holdAt) {   // holdMax: the longest the result stays up after its animation (Super Chaos's replay: no dead time between the steps of a move); holdAt: exactly this long (its last step: the end held)
   const f = state.flash, sp = speed || 1;
   if (!f || state.spot || fxAt('move', f) != null) return;     // while the square glows on the board, the move has not played yet
   const ms = played ? 0 : animMs(f) / sp;
   startFx('move', f, performance.now() - (played ? animMs(f) : 0));
   if (played || SND.muted || !SND.loaded || !SND.ctx || SND.ctx.state !== 'running') fx.move.quiet = true;   // (a result already heard at a reload, or played before audio was ready: it finishes quietly too)
-  if (!played) for (const [n, at, rate] of moveSounds(f)) SND.play(n, { at: at / 1000 / sp, rate });
   setFlashReady(Date.now() + ms);                   // no tapping the result away while the move is still animating
-  clearTimeout(flashTimer); setFlashTimer(setTimeout(dismissFlash, ms + Math.min(holdMax == null ? Infinity : holdMax, holdOf(f) / sp)));
+  clearTimeout(flashTimer); setFlashTimer(setTimeout(dismissFlash, ms + (holdAt != null ? holdAt : Math.min(holdMax == null ? Infinity : holdMax, holdOf(f) / sp))));   // (first: the result always clears, whatever its sounds do)
+  if (!played) for (const [n, at, rate] of moveSounds(f)) SND.play(n, { at: at / 1000 / sp, rate });
 }
 // How long the result stays up once its animation has played.
 function holdOf(f) {

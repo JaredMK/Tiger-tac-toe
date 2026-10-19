@@ -1291,12 +1291,12 @@ test('runners (Dash, Lane Rush): the difficulty config is public, the admin alon
   assert.ok(Number.isInteger(st.squares[4].mini.seed.X), 'the course seed is in the public state: the server sends it');
   const m = seeds.mini, course = E.runCourse(m, 'X'), okMs = (x, y) => Math.round(E.runSecs(m.cfg, x, y) * 1000);
   const move = mv => g.X.call('move', { game: g.id, square: 4, move: mv });
-  assert.deepEqual(await move({ dist: 700, ms: 1000 }), { ok: false, reason: 'fast' }, 'more distance than the time allows at the course speeds');
+  assert.deepEqual(await move({ dist: m.cfg.target - 50, ms: 1000 }), { ok: false, reason: 'fast' }, 'more distance than the time allows at the course speeds');
   const far = course[course.length - 1];
   assert.deepEqual(await move({ dist: far.at, ms: okMs(0, far.at) + 100 }), { ok: false, reason: 'fast' }, 'more time than the turn has lasted');
   const mid = (course[0].at + course[1].at) / 2;
   assert.deepEqual(await move({ dist: mid, ms: okMs(0, mid) + 100 }), { ok: false, reason: 'course' }, 'a crash where there is nothing to crash into');
-  assert.deepEqual(await move({ dist: 1001, ms: 1000 }), { ok: false, reason: 'bad' }, 'past the target');
+  assert.deepEqual(await move({ dist: m.cfg.target + 1, ms: 1000 }), { ok: false, reason: 'bad' }, 'past the target');
   assert.deepEqual(await move('auto'), { ok: false, reason: 'bad' }, 'a timed-out run is the server\'s to make, not a phone\'s to claim');
   const first = course.find(o => o.at >= E.runGrace(m.cfg, 0));
   const r = await move({ dist: first.at + 0.2, ms: okMs(0, first.at + 0.2) + 150 });

@@ -19,7 +19,7 @@ import { repStart, repStop } from './replay.js';
 import { scNextOnline, scOnlineWait } from '../net/chaos.js';
 import { playFlash } from './turns.js';
 
-export const SC_MS = { cpu: [1400, 4200], spot: 800, claim: 1300, clash: 1050, flip: 900, end: 1300, popup: 2, idle: 300, last: 600, skip: 450 };   // the computer's move takes this long; the recap's steps; the pop-up replay's speed, its longest idle moment (a pause in the inputs, the wait between a move's steps), how long its last result stays up, and the end shown after a skip
+export const SC_MS = { cpu: [1400, 4200], spot: 800, claim: 1300, clash: 1050, flip: 900, end: 1300, popup: 2, idle: 300, last: 1000, skip: 1000 };   // the computer's move takes this long; the recap's steps; the pop-up replay's speed, its longest idle moment (a pause in the inputs, the wait between a move's steps), how long its last result stays up, and the end shown after a skip
 let scTimer = null;
 export let scUi = { round: null, readyAt: 0, stage: null, at: 0, played: false };   // this round on screen: when the computer's move counts as made, the recap's stage
 const now = () => Date.now();
@@ -61,6 +61,9 @@ export function scShown(i) {
   if (!rc.view || !rc.view[i]) return null;
   return { owner: null, mini: rc.view[i], mv };
 }
+// A square as the screen shows it: in the recap, as it was before its claim or reset (a square both won is
+// a new game on the record already, while its replay still plays the old one); else as it stands.
+export const shownSq = i => scShown(i) || (state.squares ? state.squares[i] : null);
 // The round's results, a square at a time: claims, and resets (both won it, or a draw).
 const scItems = rc => rc.claims.map(c => ({ square: c.square, kind: 'claim', by: c.by }))
   .concat(rc.resets.map(r => ({ square: r.square, kind: r.why === 'both' ? 'both' : 'reset', why: r.why })))
@@ -121,9 +124,12 @@ function endRound() {
   if (!rc) return;
   state.sc.deadline = null; state.sc.held = null;
   scUi = { round: rc.round, readyAt: 0, stage: rc.replay ? 'replay' : 'spot', at: 0, played: false };
-  state.screen = 'board'; state.zoom = null; state.spot = null; state.stamp = null; state.stamps = null;
+  if (!scAtHole(rc)) { state.screen = 'board'; state.zoom = null; }   // (a Mini Golf shot locked in: the player is at the hole already, where both shots play)
+  state.spot = null; state.stamp = null; state.stamps = null;
   commit();
 }
+// The player waiting at the Mini Golf hole where the round's shots are to play out (theirs locked in there).
+export const scAtHole = rc => !!(rc && rc.replay && state.screen === 'mini' && state.zoom === rc.replay.square);
 // The Mini Golf square's two shots, played together: its result, as a move the square plays.
 function golfFlash(rc) {
   const r = rc.replay, me = scHuman(state), mini = rc.view[r.square];
@@ -142,7 +148,7 @@ function popupStep(rc, cpu) {
   const f = Object.assign({}, step); delete f.after;
   f.recap = true; f.recapMore = !last;
   repStart({ cpu: true, sq: rc.cpu.square, by: cpu, type: rc.cpu.type, mini: scUi.mini, move: step.m, list: step.rep, timeout: !!step.timeout, speed: SC_MS.popup, lead: k ? 0 : SC_MS.idle, gap: SC_MS.idle,
-    onMove: () => { if (step.after) scUi.mini = clone(step.after); state.flash = f; playFlash(false, SC_MS.popup, last ? SC_MS.last : SC_MS.idle); render(); } });
+    onMove: () => { if (step.after) scUi.mini = clone(step.after); state.flash = f; playFlash(false, SC_MS.popup, SC_MS.idle, last ? SC_MS.last : null); render(); } });   // (its last step: played to its end, the result held a second)
 }
 // A tap on the replay (or its Skip): straight to the end of the computer's move (every step made, the
 // square as the move left it), shown a moment, then the round's results.
@@ -197,7 +203,7 @@ function recapStep() {
     }
     const wait = scUi.at + (rc.cpu ? SC_MS.spot : 200) - t;
     if (wait > 0) { scTimer = setTimeout(chaosStep, wait); return; }
-    const joint = rc.cpu && (rc.resolve || []).some(x => x.joint && x.square === rc.cpu.square);   // (both moved there: its replay shows both moves together, in the next stage)
+    const joint = rc.cpu && ((rc.resolve || []).some(x => x.joint && x.square === rc.cpu.square) || (rc.replay && rc.replay.square === rc.cpu.square));   // (both moved there: its replay shows both moves together, in the next stage; Mini Golf's shots, both played out already)
     scUi.stage = rc.cpu && rc.cpu.steps && rc.cpu.steps.length && !joint ? 'popup' : 'resolve'; scUi.at = 0; scUi.step = 0; scUi.mini = null;
   }
   if (scUi.stage === 'popup') {                                   // the computer's move replayed at 2x, step by step, in a card over the board

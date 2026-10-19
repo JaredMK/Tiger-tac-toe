@@ -76,14 +76,14 @@ test('runners: the public view, the flash, the playback time, the stats log, and
   const ob = E.runCourse(m, 'X')[1];
   const r = E.playMove(st, i, { dist: ob.at, ms: Math.round(E.runSecs(m.cfg, 0, ob.at) * 1000) }, lcg(1));
   assert.equal(r.ok, true);
-  assert.deepEqual(st.flash.run, { from: 0, to: ob.at, ms: Math.round(E.runSecs(m.cfg, 0, ob.at) * 1000), out: false, done: false, dist: { X: ob.at, O: 0 }, runs: { X: 1, O: 0 }, target: 1000 });
+  assert.deepEqual(st.flash.run, { from: 0, to: ob.at, ms: Math.round(E.runSecs(m.cfg, 0, ob.at) * 1000), out: false, done: false, dist: { X: ob.at, O: 0 }, runs: { X: 1, O: 0 }, target: m.cfg.target });
   assert.equal(E.playMs(st.flash), E.RUNT.bar + E.RUNT.hold);
   E.endFlash(st);
-  m.dist.O = 999; m.runs.O = 3; m.crashes.O = [120, 410, 760];
+  m.dist.O = m.cfg.target - 1; m.runs.O = 3; m.crashes.O = [120, 310, 480];
   st.turn = 'O';
-  const w = E.playMove(st, i, { dist: 1000, ms: 200 }, lcg(2));
+  const w = E.playMove(st, i, { dist: m.cfg.target, ms: 200 }, lcg(2));
   assert.equal(w.flash.kind, 'claim'); assert.equal(E.playMs(w.flash), E.RUNT.bar + E.RUNT.hold + 600);
-  assert.deepEqual(st.sqlog[st.sqlog.length - 1], { t: 'dash', end: 'won', w: 'O', X: 1, O: 1, run: { runs: { X: 1, O: 4 }, dist: { X: Math.round(ob.at), O: 1000 }, crashes: { X: [Math.round(ob.at)], O: [120, 410, 760] } } }, 'the square\'s log carries its runs and crashes for the tuning');
+  assert.deepEqual(st.sqlog[st.sqlog.length - 1], { t: 'dash', end: 'won', w: 'O', X: 1, O: 1, run: { runs: { X: 1, O: 4 }, dist: { X: Math.round(ob.at), O: m.cfg.target }, crashes: { X: [Math.round(ob.at)], O: [120, 310, 480] } } }, 'the square\'s log carries its runs and crashes for the tuning');
   const stats = E.matchStats(st);
   assert.deepEqual(stats.squares[0].run.runs, { X: 1, O: 4 });
   E.endFlash(st);
