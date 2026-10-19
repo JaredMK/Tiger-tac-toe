@@ -27,6 +27,14 @@ export function pigFace(n, sides) {
   return `<svg class="d8" viewBox="0 0 100 100" aria-hidden="true"><path class="d8o" d="M50 4 91 28 91 72 50 96 9 72 9 28Z"/><path class="d8f" d="M50 4 91 72 9 72Z"/><path class="d8l" d="M9 72 50 96 91 72"/><text x="50" y="${n === 1 ? 61 : 62}" text-anchor="middle">${n}</text></svg>`;
 }
 
+// The die as it rolls: it tumbles, showing other faces one after another, and lands on the number rolled
+// (styles.css: .die.rr). The faces on the way follow from the result, so a redraw shows the same ones.
+const PIG_FLICK = [3, 1, 4, 2, 5];
+function pigTumble(n, sides) {
+  const on = PIG_FLICK.map(k => ((n - 1 + k) % sides) + 1);
+  return on.map((v, k) => `<span class="rface fl f${k}" aria-hidden="true">${pigFace(v, sides)}</span>`).join('') + `<span class="rface fin">${pigFace(n, sides)}</span>`;
+}
+
 export function miniature(mini, final) {
   const goal = pigGoal(mini);
   return `<div class="tdice">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><div class="bar"><i style="width:${Math.min(100, mini.bank[p] / goal * 100)}%"></i></div><span>${mini.bank[p]}</span></div>`).join('')}</div>`;
@@ -51,11 +59,12 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
   const fresh1 = note === 'roll', bust = note === 'bust';
   const dice = rolls.map((n, k) => `<span class="sdie${sides === 8 ? ' d8' : ''}${(fresh1 || bust) && k === rolls.length - 1 ? (bust ? ' dup' : ' fresh') : ''}" aria-label="${n}">${face(n)}</span>`).join('');
   const shown = mini.last ? mini.last.roll : null;                    // the last number rolled, until the next roll
+  const rolling = (note === 'roll' || note === 'bust') && shown != null;
   const enough = !!(t && t.by === turn && mini.bank[turn] + t.pot >= goal);          // Bank wins it: no more rolling
   const rollBtn = enough ? '' : `<button class="big ${turn}" data-act="move" ${mv('roll')}${locked || rolls.length >= pigMaxRolls(mini) ? ' disabled' : ''}>${rolls.length && !over ? 'Roll again' : 'Roll'}</button>`;
   g = `<div class="g-risky"><div class="rrscores">${score('X')}${score('O')}</div>
         <div class="rrrolls${bust ? ' bust' : ''}" aria-label="Rolled this turn">${dice || '<small>No rolls this turn</small>'}</div>
-        <div class="dieWrap"><div class="die${sides === 8 ? ' d8' : ''}${note === 'roll' || note === 'bust' ? ' roll' : ''}" aria-label="${sides === 8 ? 'Eight-sided die' : 'Die'}${shown ? ': ' + shown : ''}">${shown ? face(shown) : sides === 8 ? pigFace('?', 8) : '<span class="q">?</span>'}</div></div>
+        <div class="dieWrap"><div class="die${sides === 8 ? ' d8' : ''}${rolling ? ' roll rr' : ''}" aria-label="${sides === 8 ? 'Eight-sided die' : 'Die'}${shown ? ': ' + shown : ''}">${rolling ? pigTumble(shown, sides) : shown ? face(shown) : sides === 8 ? pigFace('?', 8) : '<span class="q">?</span>'}</div></div>
         <div class="rrbtns${enough ? ' one' : ''}">${rollBtn}
           <button class="big bank" data-act="move" ${mv('bank')}${locked || !pot || over ? ' disabled' : ''}>Bank${pot && !over ? ' ' + pot : ''}</button></div></div>`;
   return g;
