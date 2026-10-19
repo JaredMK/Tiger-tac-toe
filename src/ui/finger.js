@@ -129,14 +129,15 @@ function fingStep(v, sim, tx, loud) {
     else if (sim.last && loud) SND.play('spring');
     return;
   }
-  const i0 = sim.i;
+  const i0 = sim.i, m0 = sim.miss;
   scoopStep(sim, tx);
   for (let j = i0; j < sim.i; j++) {                               // what came of each item that reached the top in this step
     const it = sim.items[j], top = scoopTop(sim), off = Math.abs(it.x - top);
     const o = it.k === 'scoop' ? (off <= SCOOP.slide ? 'catch' : off <= SCOOP.touch ? 'slide' : 'miss') : off <= SCOOP.hit ? 'hit' : 'dodge';
     v.out[j] = { o, t: sim.t, top };
-    if (loud && o !== 'dodge') SND.play(o === 'catch' ? 'scoop' : o === 'slide' ? 'whoosh' : o === 'miss' ? 'cushion' : 'crash');
+    if (loud && o !== 'dodge' && o !== 'miss') SND.play(o === 'catch' ? 'scoop' : o === 'slide' ? 'whoosh' : 'crash');
   }
+  if (loud && sim.miss > m0) SND.play('cushion');                  // a missed scoop gone off the bottom of the screen: the miss counts now
 }
 function fingPinStep(fd, dt) {
   const L = PHYSICS.lib, w = fd.w;
@@ -416,11 +417,14 @@ export function fingSounds(f, add) {
       while (sim.n < rep.steps && !sim.end) {
         let tx = null;
         if (k < rep.log.length && rep.log[k][0] === sim.n) tx = rep.log[k++][1] / FING.q;
-        const i0 = sim.i;
+        const i0 = sim.i, m0 = sim.miss;
         fingStep(v, sim, tx, false);
         if (n > 200) continue;
         if (rep.type === 'skyhop') { if (sim.last) { add('spring', at(sim.t)); n++; } if (sim.last === 'break') add('crumble', at(sim.t)); }
-        else for (let j = i0; j < sim.i; j++) { const o = v.out[j].o; if (o !== 'dodge') { add(o === 'catch' ? 'scoop' : o === 'slide' ? 'whoosh' : o === 'miss' ? 'cushion' : 'crash', at(sim.t)); n++; } }
+        else {
+          for (let j = i0; j < sim.i; j++) { const o = v.out[j].o; if (o !== 'dodge' && o !== 'miss') { add(o === 'catch' ? 'scoop' : o === 'slide' ? 'whoosh' : 'crash', at(sim.t)); n++; } }
+          if (sim.miss > m0) { add('cushion', at(sim.t)); n++; }                                // (a miss: as it leaves the screen)
+        }
       }
       const e = sim.end && fingEndSound(rep.type, sim.end);
       if (e) add(e, at(sim.t));

@@ -11,7 +11,7 @@ import { isMM } from '../net/matchmaking.js';
 import { rx } from '../net/reactions.js';
 import { blocked, leaveLoses, lockMine, moveWait, mySide, pinned, remoteTurn } from '../net/room.js';
 import { N, esc, menuOpen, menuStep, state } from './app.js';
-import { CHEV, RESET, dieFace, toonT } from './art.js';
+import { CHEV, RESET, dieFace } from './art.js';
 import { attPinned } from './attention.js';
 import { scCpu, scWaiting } from './chaos.js';
 import { qBtn } from './explainer.js';
@@ -42,8 +42,8 @@ export function renderMini(sq, review, popup) {
   const lock = state.lock != null && mini.type !== 'trivia' && !ATT_TYPES.includes(mini.type) && !FINGER_TYPES.includes(mini.type);   // a bonus move (a Trivia reveal, an attention game's or a finger game's Start holds the player too: not a bonus)
   let sub = lock ? (mini.type === 'pig' ? `<b class="${turn}">${N(turn)}</b>'s turn in progress`   // (turn info only: how to play is in the ? explainer)
     : mini.type === 'bj' ? `<b class="${turn}">${N(turn)}</b>'s hand`
-    : mini.type === 'bus' ? (a ? '' : `<b class="${turn}">${N(turn)}</b>'s run`) : mini.type === 'bs' ? `<b class="${turn}">${N(turn)}</b> hit · goes again` : mini.type === 'craps' ? `<b class="${turn}">${N(turn)}</b> on point ${mini.point}` : mini.type === 'pool' ? `<b class="${turn}">${N(turn)}</b> sank one · goes again` : `<b class="${turn}">${N(turn)}</b> guessed right · goes again`) : '';
-  if (popup) sub = `<b class="${rep ? rep.by : turn}">${N(rep ? rep.by : turn)}</b>'s move · 2×`;
+    : mini.type === 'bus' ? (a ? '' : `<b class="${turn}">${N(turn)}</b>'s run`) : mini.type === 'bs' ? `<b class="${turn}">${N(turn)}</b> hit · goes again` : mini.type === 'pool' ? `<b class="${turn}">${N(turn)}</b> sank one · goes again` : `<b class="${turn}">${N(turn)}</b> guessed right · goes again`) : '';
+  if (popup) sub = '2× speed';
   else if (!view && !f && !d && remoteTurn()) sub = `Waiting for <b class="${turn}">${N(turn)}</b>…`;
   else if (!view && !f && !d && scWaiting()) sub = `Waiting for <b class="${scCpu()}">${N(scCpu())}</b>…`;   // Super Chaos: the move is in; the computer is still at its own
   else if (!view && !f && !d && moveWait) sub = 'Sending your move…';
@@ -62,15 +62,15 @@ export function renderMini(sq, review, popup) {
     sub = sq.owner ? `<b class="${sq.owner}">Won by ${N(sq.owner)}</b>${secret ? ' · ' + secret : ''}` : `Not won by anyone${secret ? ' · ' + secret : ''}`;
   }
   if (d && !f) {                                    // the result held a moment longer (Memory's cards turning back): the board follows by itself
-    const head = d.kind === 'claim' ? `<b class="${sq.owner}">Won by ${N(sq.owner)}</b>`
-      : d.kind === 'draw' ? `${d.note === 'stuck' ? 'Stuck' : d.note === 'tie' ? 'Tie' : 'Draw'} · resets to ${INFO[d.newType].name}` : summary(d);
+    const head = d.kind === 'draw' ? `${d.note === 'stuck' ? 'Stuck' : d.note === 'tie' ? 'Tie' : 'Draw'} · resets to ${INFO[d.newType].name}` : summary(d);
     const next = d.pass ? `<b class="${d.pass}">${N(d.pass)}</b> has no move · <b class="${d.next}">${N(d.next)}</b> again` : `<b class="${d.next}">${N(d.next)}</b> next`;
     sub = `${head} · ${next}${secret ? ' · ' + secret : ''}`;
   }
-  const back = popup ? `<span class="back rtag" aria-hidden="true">${REPLAY_ICON}Replay</span>`
+  const back = popup ? `<span class="back rtag ${turn}" aria-hidden="true">${REPLAY_ICON}</span>`
     : review ? `<button class="back" data-act="${reviewCtx.mback}" aria-label="Back to the final board">${CHEV}Board</button>`
     : `<button class="back${!f && !d && ((mini.type === 'trivia' && lockMine()) || attPinned() || fingPinned() || (FINGER_TYPES.includes(mini.type) && lockMine())) ? ' gone' : ''}" data-act="back" aria-label="Back to the board"${f || d || lockMine() || cpuTurn() || pinned() || repActive() ? ' disabled' : ''}>${CHEV}Board</button>`;
-  return `<main class="scr mini${fx.enter && performance.now() - fx.enter.at < 400 ? ' enter' : ''}${popup ? ' screplay' : ''}"${popup ? ' role="dialog" aria-label="Replay"' : ''}>${popup ? '' : netBar()}
+  const banner = popup ? `<div class="repban ${turn}" role="status">${REPLAY_ICON}<span><b>${N(turn)}</b>'s move — replay</span></div>` : '';   // Super Chaos's replay: whose move it is, in their colour, on the pop-up's edge (the whole pop-up: a tap skips to its end)
+  return `<main class="scr mini${fx.enter && performance.now() - fx.enter.at < 400 ? ' enter' : ''}${popup ? ` screplay rep-${turn}` : ''}"${popup ? ` role="dialog" aria-label="${esc(playerName(state, turn))}'s move — replay"` : ''}>${popup ? banner : netBar()}
     <div class="bar${view && sq.owner ? ' won won-' + sq.owner : ''}" role="${view ? 'status' : 'presentation'}">${back}
       <div class="ttl"><b${info.name.length > 14 ? ' class="long"' : ''}>${info.name}</b><small${view ? ' class="won"' : ''}>${sub}</small></div>${qBtn(mini.type)}</div>
     <div class="gwrap"${fxAttr(f ? fxAt('move', f) : d && !f ? fxAt('back', d) : null)}>${g}</div>${f ? renderFlash(f) : ''}${repSkipBtn()}${popup ? '' : pauseMenu()}</main>`;   // the move's animations count from the move
@@ -97,19 +97,10 @@ function summary(f) {
 }
 function renderFlash(f) {
   const who = `<b class="${f.by}">${N(f.by)}</b>`;
-  const name = INFO[f.type].name;
   const at = fxAt('move', f);                      // (the comic bursts pop on the board once the square is stamped, not here)
   const open = `<div class="flash late" style="--late:${animMs(f)}ms"${fxAttr(at)} data-act="dismiss">${f.timeout ? `<div class="timeout-note">${who} ran out of time — random move</div>` : ''}`;   // the result waits for the animation
-  if (f.kind === 'match' && state.winner === 'draw') {          // the square won leaves no line open to either side
-    return `${open}<div class="card"><div class="big-g bang both">${toonT('X')}${toonT('O')}</div><h2>It's a draw!</h2><p>Nobody can get three in a row now · Tap to continue</p></div></div>`;
-  }
-  if (f.kind === 'match') {
-    const w = state.winner;
-    return `${open}<div class="card"><div class="big-g bang ${w}">${toonT(w)}</div><h2>${N(w)} wins the match!</h2><p>Tap to continue</p></div></div>`;
-  }
-  if (f.kind === 'claim') {
-    const w = f.winner || f.by;
-    return `${open}<div class="card claimc" role="status" aria-label="${esc(playerName(state, w))} wins ${name}"><div class="big-g bang ${w}">${toonT(w)}</div></div></div>`;   // the winner's character: no words
+  if (f.kind === 'claim' || f.kind === 'match') {              // a square won: only the game's own winning moment here (the line, the sunk ship, the finish); the X or O goes on the square on the main board, with its stamp, and the match's end after that (dismissFlash)
+    return open.replace('"flash late"', '"flash lite late"') + '</div>';
   }
   if (f.type === 'pig' && f.note === 'bust') {
     return `${open}<div class="card"><div class="big-g">${f.sides === 8 ? pigFace(f.roll, 8) : dieFace(f.roll)}</div><h2>Bust!</h2><p>${who} rolled ${f.roll} again · ${f.pot} point${f.pot === 1 ? '' : 's'} lost</p></div></div>`;

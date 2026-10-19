@@ -40,4 +40,16 @@ test('scoop stack: faster and more hazards as the stack grows; nothing lands in 
     while (!s.last && !s.end) E.scoopStep(s, null);
     assert.equal(s.last, want, `${off} off-centre: ${want}`);
   }
+  // a missed scoop only counts once it has fallen past the bottom edge of the screen
+  for (const [off, kind] of [[0.8, 'slide'], [1.5, 'miss']]) {
+    const s = E.scoopStart(scoopMini(6), 'X'); s.items = [{ T: 0.05, x: s.x + off, k: 'scoop', f: 1, v: 5 }];
+    while (!s.last && !s.end) E.scoopStep(s, null);
+    assert.equal(s.miss, 0, `${kind}: not counted at the top of the stack`);
+    const tTop = s.t, drop = E.scoopDrop(E.scoopSize(s));
+    while (!s.miss && !s.end) E.scoopStep(s, null);
+    assert.equal(s.miss, 1, `${kind}: counted once it has gone`);
+    const want = kind === 'slide' ? E.SCOOP_VIEW.slideT * Math.sqrt(drop / E.SCOOP_VIEW.slide) : drop / 5;
+    assert.ok(Math.abs((s.t - tTop) - want) < 0.03, `${kind}: as it reaches the bottom edge (${(s.t - tTop).toFixed(2)} s after the top, ${want.toFixed(2)} s expected)`);
+  }
+  assert.ok(E.scoopDrop(0) < E.scoopDrop(4) && E.scoopDrop(30) === E.scoopDrop(60), 'a short stack is nearer the bottom; a tall one is kept 4.6 units up');
 });

@@ -35,7 +35,7 @@ export function timeoutMove(state, rng) {
   const m = mini.type === 'pig' ? (mini.turn && mini.turn.by === p ? 'bank' : 'roll') : mini.type === 'bj' ? 'auto' : randomLegalMove(mini, p, rng);   // Blackjack: stand (dealt first if need be) on every hand until one is won or lost; Roulette: a random group; Echo, Trivia, Odd One Out: a failed attempt or a wrong answer; Cup Pong: a random throw
   const r = playMove(state, i, m, rng, { forced: true, noAgain: mini.type === 'hangman' || mini.type === 'bs' || mini.type === 'bus' });   // a timed-out shot fires once; a timed-out guess ends the turn
   if (!r.ok) return r;
-  t.bankNext = state.lock === i && ((mini.type === 'pig' && m === 'roll') || mini.type === 'craps');   // the roll kept the turn: bank it next (Craps: Stop, the point left on for whoever plays here next)
+  t.bankNext = state.lock === i && mini.type === 'pig' && m === 'roll';   // the roll kept the turn: bank it next
   return { ok: true, square: i, move: m };
 }
 export function lineOpen(squares, p) { return LINES.some(line => line.every(k => squares[k].owner !== other(p))); }

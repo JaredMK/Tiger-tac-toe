@@ -46,8 +46,14 @@ function pongRelease(e) {
   const ball = app.querySelector('.pong .pball.ready'); if (ball) ball.classList.add('launch');   // at once, on this phone, while the move goes in
   attemptMove({ aim: Math.round(r.aim * 1000) / 1000, power: Math.round(r.power * 1000) / 1000 });
 }
+// The miniature: a tiny table, each player's three cups as a small triangle at their end (X on the left, O
+// on the right, the front cup towards the middle); a cup they have sunk is filled in their colour, so the
+// fuller a triangle, the closer that player is to the square.
+const TPONG = { X: [[25, 29], [15, 22], [15, 36]], O: [[75, 29], [85, 22], [85, 36]] };
 export function miniature(mini, final) {
-  return `<div class="tpip">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${mini.cups[p].map(up => `<i class="${up ? 'on' : ''}"></i>`).join('')}</div>`).join('')}</div>`;
+  const cups = p => mini.cups[p].map((up, k) => `<circle class="c ${p}${up ? '' : ' in'}" cx="${TPONG[p][k][0]}" cy="${TPONG[p][k][1]}" r="5.6"/>`).join('');
+  const n = p => mini.cups[p].filter(up => !up).length;
+  return `<div class="tpong" aria-label="Cup Pong: X has sunk ${n('X')}, O ${n('O')} of 3"><svg viewBox="0 0 100 58" aria-hidden="true"><rect class="tbl" x="3" y="11" width="94" height="36" rx="6"/><path class="mid" d="M50 13v32"/>${cups('X')}${cups('O')}<text x="15" y="56">X</text><text x="85" y="56">O</text></svg></div>`;
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   g = pongTable(mini, a, { view, locked, turn, zoom: state.zoom }); return g;

@@ -70,6 +70,7 @@ function load() {
       if (!['X', 'O', 'XO'].includes(s.cpu)) s.cpu = null;
       normSetup(s.setup);
       if (s.screen === 'review' || s.screen === 'review-mini') s.screen = s.winner ? 'win' : 'board';
+      if (s.winner && s.screen === 'board' && !s.online) s.screen = 'win';   // (reloaded while the match's last square was stamping in)
       const mm = s.online && s.online.kind === 'mm' && typeof s.online.game === 'string' && /^[-\w]{8,40}$/.test(s.online.game);
       if (!mm && !(s.online && (s.online.role === 'host' || s.online.role === 'guest') && validCode(s.online.code))) s.online = null;
       if (['login', 'username', 'find', 'leaderboard', 'profile', 'profhist', 'hreview', 'hreview-mini', 'howto'].includes(s.screen)) s.screen = mm ? 'board' : 'menu';

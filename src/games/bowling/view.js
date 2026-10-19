@@ -72,7 +72,8 @@ export function drawBowl(g, mini, pos) {
   c.strokeStyle = 'rgba(120,70,20,.22)'; c.lineWidth = 1;                                // the boards
   for (let x = S.gutter + 4; x < S.w - S.gutter; x += 4) { c.beginPath(); c.moveTo(g.X(x), g.Y(0)); c.lineTo(g.X(x), g.Y(S.h)); c.stroke(); }
   c.fillStyle = '#3b3f47'; c.fillRect(g.X(0), g.Y(0), S.gutter * g.k, S.h * g.k); c.fillRect(g.X(S.w - S.gutter), g.Y(0), S.gutter * g.k, S.h * g.k);   // the gutters
-  c.fillStyle = '#1e1e1e'; c.fillRect(g.X(0), g.Y(0), S.w * g.k, 6 * g.k);              // the pit at the back
+  c.fillStyle = '#1e1e1e'; c.fillRect(g.X(0), g.Y(-12), S.w * g.k, 18 * g.k);           // the pit past the end of the lane (no back wall: what rolls in is gone)
+  c.fillStyle = 'rgba(0,0,0,.35)'; c.fillRect(g.X(S.gutter), g.Y(0), (S.w - 2 * S.gutter) * g.k, 1.2 * g.k);   // the lane's edge over the pit
   c.strokeStyle = 'rgba(0,0,0,.45)'; c.lineWidth = 2; c.beginPath(); c.moveTo(g.X(S.gutter), g.Y(S.start[1] + 14)); c.lineTo(g.X(S.w - S.gutter), g.Y(S.start[1] + 14)); c.stroke();   // the foul line
   c.fillStyle = 'rgba(0,0,0,.35)';                                                        // the arrows
   for (let i = 0; i < 7; i++) { const x = 35 + i * 5, y = 150 - Math.abs(i - 3) * 5; c.beginPath(); c.moveTo(g.X(x), g.Y(y - 4)); c.lineTo(g.X(x + 1.6), g.Y(y)); c.lineTo(g.X(x - 1.6), g.Y(y)); c.closePath(); c.fill(); }

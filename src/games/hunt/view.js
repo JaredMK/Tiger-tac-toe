@@ -5,6 +5,8 @@ import { mv } from '../../ui/app.js';
 // Treasure hunt: a dug cell shows its band (Hot 1 step, Warm 2-3, Cool 4-5, Cold 6+), never the distance.
 const BAND = [{ name: 'Found!', bg: '#ffd166', fg: '#1a1a1a' }, { name: 'Hot', bg: '#ff4d4d', fg: '#fff', steps: '1 step' }, { name: 'Warm', bg: '#ffb627', fg: '#1a1a1a', steps: '2–3 steps' },
   { name: 'Cool', bg: '#4cc9c0', fg: '#1a1a1a', steps: '4–5 steps' }, { name: 'Cold', bg: '#3b6fd6', fg: '#fff', steps: '6+ steps' }];
+// The key under the grid: each band's colour and how many steps it means (always there: nothing moves).
+const HKEY = `<div class="hkey" aria-label="Key: ${BAND.slice(1).map(b => `${b.name} ${b.steps}`).join(', ')}">${BAND.slice(1).map(b => `<span><i style="background:${b.bg}"></i><b>${b.name}</b>&nbsp;=&nbsp;${b.steps.replace(' steps', '')}</span>`).join('')}</div>`;
 const GEM = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 3h12l4 6-10 12L2 9z"/><path d="M2 9h20" stroke="rgba(0,0,0,.25)" stroke-width="1.5"/></svg>';
 // a dug cell's distance: from the treasure here, or from the clues the host sent (the treasure itself stays with the host)
 function clueAt(mini, i) { return mini.clues ? mini.clues[i] : huntClue(mini, i); }   // a band, 1 to 4
@@ -24,7 +26,8 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
         const style = b ? ` style="--dbg:${b.bg};--dfg:${b.fg};background:var(--dbg);color:var(--dfg)"` : '';
         const r = Math.floor(i / hn) + 1, c = i % hn + 1;
         return `<button class="dig${found ? ' found' : ''}${anim === i ? ' open' : ''}" data-act="move" ${mv(i)}${style} aria-label="Row ${r} column ${c}${found ? ', treasure' : dg ? `, ${b.name.toLowerCase()}` : ''}"${dg || locked ? ' disabled' : ''}>${found ? GEM : dg ? `<span>${b.name}</span>` : ''}</button>`;
-      }).join('')}</div></div>`;   // (what each band means is in the ? explainer)
+      }).join('')}</div>${HKEY}</div>`;   // the colour key under the grid, in every mode
+
   return g;
 }
 export function moveText(f, who) {

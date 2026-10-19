@@ -501,7 +501,11 @@ main.scr.mini:has(.fing), main.scr.mini:has(.fing) * { touch-action: none; -webk
 .pot.slide-X { --sx: -38%; } .pot.slide-O { --sx: 38%; }
 .pscore.gain .bar i { animation: fill .5s .4s ease-out both; }
 
-.g-hunt { --hg: min(var(--gw), calc(var(--gh) - 56px)); width: var(--hg); display: flex; flex-direction: column; gap: 10px; }
+.g-hunt { --hg: min(var(--gw), calc(var(--gh) - 92px)); width: var(--hg); display: flex; flex-direction: column; gap: 10px; }
+.hkey { display: flex; flex-wrap: nowrap; justify-content: center; gap: 4px 10px; height: 26px; align-items: center; font-size: 12.5px; white-space: nowrap; }   /* the bands' key: one row, always there */
+.hkey span { display: inline-flex; align-items: center; gap: 5px; } .hkey b { font-weight: 800; }
+.hkey i { width: 16px; height: 16px; border-radius: 5px; border: 2px solid var(--ink); flex: none; }
+@media (max-width: 380px) { .hkey { gap: 4px 6px; font-size: 11px; } .hkey span { gap: 3px; } .hkey i { width: 12px; height: 12px; } }
 .hgrid { width: var(--hg); height: var(--hg); display: grid; grid-template-columns: repeat(var(--hn, 6), 1fr); grid-template-rows: repeat(var(--hn, 6), 1fr); gap: 5px; }
 .dig { border: 0; padding: 0; border-radius: 10px; background: var(--panel-2); display: grid; place-items: center; font-weight: 900; font-size: calc(var(--hg) / var(--hn, 6) * .26); line-height: 1; min-width: 0; overflow: hidden; }
 .dig.found svg { width: 60%; height: 60%; }
@@ -1457,7 +1461,6 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .cbtns.three { grid-template-columns: 1fr 1fr 1fr; }
 .cbtns.four { grid-template-columns: repeat(4, 1fr); }
 .cbtns .big { min-width: 0; padding: 4px 6px 0; }
-.big.dbl { background: var(--sky); color: var(--ink); }
 
 /* Blackjack: the felt, with the dealer above and the hand in play below */
 .g-bj { width: min(var(--gw), 440px); height: var(--gh); display: flex; flex-direction: column; gap: 10px; padding-top: 4px; }
@@ -1704,7 +1707,12 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 @keyframes cdietumble { from { transform: translate(-90px, -70px) rotate(-260deg) scale(.7); } 60% { transform: translate(6px, 6px) rotate(20deg); } 80% { transform: translate(-2px, -6px) rotate(-6deg); } to { transform: none; } }
 @keyframes cdietumble2 { from { transform: translate(90px, -80px) rotate(300deg) scale(.7); } 60% { transform: translate(-6px, 4px) rotate(-18deg); } 80% { transform: translate(2px, -5px) rotate(5deg); } to { transform: none; } }
 .crolls { display: flex; flex-wrap: nowrap; gap: 6px; justify-content: center; height: 26px; overflow: hidden; }   /* one row, always this tall: the round's last eight rolls */
+.crolls.long { justify-content: flex-end; }   /* a long round: the latest rolls on show, the first ones off the left */
 .crolls span { min-width: 26px; height: 26px; padding: 0 6px; border-radius: 13px; background: var(--panel-2); border: 2px solid var(--ink); display: grid; place-items: center; font-weight: 800; font-size: 13px; }
+.tpong { width: 100%; display: grid; place-items: center; } .tpong svg { width: 92%; height: auto; overflow: visible; }   /* Cup Pong's miniature: the table, a triangle of cups at each end */
+.tpong .tbl { fill: #3b8a4f; stroke: var(--ink); stroke-width: 2.4; } .tpong .mid { stroke: rgba(255,255,255,.55); stroke-width: 1.4; stroke-dasharray: 3 3; }
+.tpong .c { fill: var(--paper); stroke: var(--ink); stroke-width: 2.2; } .tpong .c.X.in { fill: var(--x); } .tpong .c.O.in { fill: var(--o); }   /* a cup sunk: filled in the thrower's colour */
+.tpong text { font: 400 10px 'Luckiest Guy', 'Arial Black', sans-serif; text-anchor: middle; fill: var(--ink); }
 .tcdice { display: flex; gap: 2cqw; justify-content: center; } .tcdice span { width: 15cqw; height: 15cqw; border: 1.2cqw solid var(--ink); border-radius: 3cqw; background: #fff; display: grid; place-items: center; } .tcdice span svg { width: 100%; height: 100%; }
 .tcdice.w span { box-shadow: 0 0 0 1.2cqw var(--green); }
 /* Takeover: the 5x5 board; the tapped square pops, the ones round it turn over */
@@ -1987,6 +1995,8 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .atwords { margin: 0; height: 44px; min-height: 44px; max-height: 44px; width: 100%; display: grid; place-items: center; text-align: center; font-weight: 700; font-size: 15px; line-height: 1.25; overflow: hidden; }
 .atwords > span { grid-area: 1 / 1; }
 .atstack { display: grid; place-items: center; } .atstack > span { grid-area: 1 / 1; }
+.hcico { display: inline-block; width: 1.55em; height: 1.55em; margin: -.35em .2em -.35em .15em; vertical-align: middle; }   /* Headcount: the creature to count, by its name (its own size: the line does not grow) */
+.hcico svg { width: 100%; height: 100%; display: block; }
 .atwords .arcres { margin: 0; padding: 0; height: auto; min-height: 0; font-size: 15px; line-height: 1.25; }
 .tu2 { animation: tfrom 1ms var(--f, 0ms) both, tuntil 1ms var(--u, 0ms) both; }
 .hcbox { display: grid; width: min(100%, 320px, max(150px, calc(var(--gh) - 170px))); aspect-ratio: 1; } .hcbox > .hcl { grid-area: 1 / 1; display: grid; min-width: 0; min-height: 0; }   /* the field, then the pad in its place: the question takes no room of its own */
@@ -2221,8 +2231,16 @@ g.rpress rect, g.rpress path { fill: var(--ink); }
 .rskip:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
 @keyframes skipin { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 /* Super Chaos's recap: the computer's move replayed in a card over the board */
-#app > main.scr.mini.screplay { position: absolute; left: 10px; right: 10px; top: calc(var(--hdr) + 10px); bottom: 10px; z-index: 6; border-radius: 22px; border: 3.5px solid var(--ink); box-shadow: 0 10px 0 var(--ink), 0 24px 60px rgba(22, 18, 16, .35); background: var(--bg); --vh: calc(100vh - 20px); animation: pop .2s ease-out both; }
-@supports (height: 100dvh) { #app > main.scr.mini.screplay { --vh: calc(100dvh - 20px); } }
-main.scr.mini.screplay .bar .rtag { display: inline-flex; align-items: center; gap: 4px; background: var(--ink); color: var(--paper); opacity: 1; }
-main.scr.mini.screplay .bar .rtag svg { width: 18px; height: 18px; }
+#app > main.scr.mini.screplay { position: absolute; left: 10px; right: 10px; top: calc(var(--hdr) + 24px); bottom: 10px; z-index: 6; border-radius: 22px; border: 5px solid var(--rc, var(--ink)); outline: 2.5px solid var(--ink); outline-offset: 0; box-shadow: 0 10px 0 var(--ink), 0 24px 60px rgba(22, 18, 16, .35); background: var(--bg); --vh: calc(100vh - 34px); animation: pop .2s ease-out both; }
+@supports (height: 100dvh) { #app > main.scr.mini.screplay { --vh: calc(100dvh - 34px); } }
+main.scr.mini.screplay.rep-X { --rc: var(--x); } main.scr.mini.screplay.rep-O { --rc: var(--o); }   /* Super Chaos's replay: framed in the mover's colour */
+main.scr.mini.screplay .bar .rtag { display: inline-flex; align-items: center; justify-content: center; width: 44px; min-width: 44px; padding: 0; background: var(--rc, var(--ink)); color: var(--ink); opacity: 1; }   /* the replay icon where the Board button would be */
+main.scr.mini.screplay .bar .rtag svg { width: 22px; height: 22px; }
+.repban { position: absolute; top: -19px; left: 50%; transform: translateX(-50%); z-index: 8; display: inline-flex; align-items: center; gap: 6px; height: 32px; max-width: calc(100% - 40px); padding: 0 14px 0 10px; border-radius: 16px; border: 3px solid var(--ink); background: var(--rc, var(--paper)); color: var(--ink); box-shadow: 0 3px 0 var(--ink); font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-size: 15px; letter-spacing: .02em; white-space: nowrap; overflow: hidden; pointer-events: none; }   /* "[name]'s move — replay", on the pop-up's top edge */
+.repban > svg { flex: none; width: 17px; height: 17px; }
+.repban span { overflow: hidden; text-overflow: ellipsis; } .repban b { font-weight: 400; } .repban b svg { width: 1em; height: 1em; vertical-align: -.12em; }
+main.scr.mini.screplay * { cursor: pointer; }   /* (a tap anywhere skips to the end) */
+.lpbs { position: absolute; right: 5px; bottom: 5px; z-index: 2; display: flex; gap: 2px; pointer-events: none; }   /* Super Chaos: the square each player played last */
+.lpb { width: 17px; height: 17px; border-radius: 50%; border: 2px solid var(--ink); background: var(--paper); color: var(--ink); font: 400 10px/15px 'Luckiest Guy', 'Arial Black', sans-serif; font-style: normal; text-align: center; box-shadow: 0 1px 0 var(--ink); }
+.lpb.X { background: var(--x); } .lpb.O { background: var(--o); }
 .board-scr:has(+ .screplay) .board { filter: saturate(.6) brightness(.8); }

@@ -1,5 +1,5 @@
 // Scoop Stack: the screen, the miniature, the move's words and sounds, and the inputs.
-import { SCOOP } from './rules.js';
+import { SCOOP, SCOOP_VIEW } from './rules.js';
 import { state } from '../../ui/app.js';
 import { fingSounds, fingTable, fingThing } from '../../ui/finger.js';
 import { outlined, runColours } from '../../ui/runner.js';
@@ -17,7 +17,7 @@ export function drawScoop(c, W, H, v, now) {
   c.fillStyle = '#fbd9de'; for (let x = 0; x < W; x += k * 1.2) c.fillRect(x, 0, k * 0.6, H);
   const counterY = H - 0.45 * k;
   const stack = v.stack || [], n = stack.length, coneH = 1.7, rim0 = counterY - coneH * k, top0 = rim0 - n * SCOOP.piece * k;
-  const sh = Math.max(0, H - 4.6 * k - top0), rimY = rim0 + sh, tipY = counterY + sh, topY = top0 + sh;   // a tall stack: the view follows its top
+  const sh = Math.max(0, H - SCOOP_VIEW.top * k - top0), rimY = rim0 + sh, tipY = counterY + sh, topY = top0 + sh;   // a tall stack: the view follows its top
   if (sh < 0.45 * k) { c.fillStyle = '#c98b4b'; c.fillRect(0, counterY + sh, W, H); c.fillStyle = P.ink; c.fillRect(0, counterY + sh, W, 3); }
   const cx = X(sim.x), s = sim.s, R = SCOOP.r * 1.14 * k;
   if (rimY < H + 2 * k) {                                          // the cone
@@ -40,7 +40,7 @@ export function drawScoop(c, W, H, v, now) {
     const o = v.out && v.out[j];
     if (j < sim.i) {
       if (!o || o.o === 'catch') continue;
-      if (o.o === 'slide') { const u = (t - o.t) / 0.7; if (u > 1) continue; const dir = it.x >= o.top ? 1 : -1; c.save(); c.globalAlpha = 1 - u * 0.6; c.translate(X(o.top) + dir * (0.5 + u * 1.6) * k, topY - R + u * u * 7 * k); c.rotate(dir * u * 3); scoopBall(c, 0, 0, R, it.f, P); c.restore(); continue; }
+      if (o.o === 'slide') { const u = (t - o.t) / SCOOP_VIEW.slideT, yy = topY - R + u * u * SCOOP_VIEW.slide * k; if (yy > H + R) continue; const dir = it.x >= o.top ? 1 : -1; c.save(); c.globalAlpha = 1 - Math.min(1, u) * 0.3; c.translate(X(o.top) + dir * (0.5 + u * 1.6) * k, yy); c.rotate(dir * u * 3); scoopBall(c, 0, 0, R, it.f, P); c.restore(); continue; }   // slid off: it tumbles away and falls off the bottom of the screen (where the miss counts: rules.js)
       if (o.o === 'hit') { fingThing(c, X(it.x), topY - R * 0.8, R, it, P, now, true); continue; }
     }
     const y = topY - R - yu * k;

@@ -65,7 +65,7 @@ export { RL, RLT, rlRed, rlBet, rlCovers } from '../games/rl/rules.js';
 export { ROAD, ROAD_SEGS, ROAD_LAYOUTS, ROAD_BY_COUNT, ROAD_CFG, roadGeom, roadsNorm, setRoadsConfig, roadsConfig, roadLongest, roadPick } from '../games/roads/rules.js';
 export { ROADS_DEFAULTS } from '../games/roads/meta.js';
 export { SCOOP_DEFAULTS } from '../games/scoop/meta.js';
-export { SCOOP, SCOOP_LIMITS, SCOOP_KIT, setScoopConfig, scoopConfig, scoopItems, scoopStart, scoopTop, scoopSize, scoopStep, scoopResult, scoopY, scoopAi } from '../games/scoop/rules.js';
+export { SCOOP, SCOOP_LIMITS, SCOOP_KIT, setScoopConfig, scoopConfig, scoopItems, scoopStart, scoopTop, scoopSize, scoopStep, scoopResult, scoopY, scoopAi, scoopDrop, SCOOP_VIEW } from '../games/scoop/rules.js';
 export { SEAT, seatTable, seatMate, seatTables, seatZ, seatNext, seatPick } from '../games/seating/rules.js';
 export { ATT_TYPES, ATT, plural, FLASH, flashRound, attOk, attRound, attTruth, attValid, attJudge, attStart, attMs, attWrong } from '../games/shared/attention.js';
 export { CARD, cardDeck, isCard, cardName } from '../games/shared/cards.js';

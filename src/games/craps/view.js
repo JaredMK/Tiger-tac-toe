@@ -1,48 +1,54 @@
 // Craps: the screen, the miniature, the move's words and sounds, and the inputs.
-import { CRAPS } from './rules.js';
+import { CRAPS, crapsTimes } from './rules.js';
 import { N, REDUCED, mv, state } from '../../ui/app.js';
 import { dieFace } from '../../ui/art.js';
 import { arcTally, lateAt, pips } from '../../ui/progress.js';
 
-// Craps: one roll a move, rolled where the move is made (the server online). The dice tumble in from the
-// move; the puck goes on at a new point (and off when a round ends); the round's rolls so far sit in a row
-// under the felt (a fixed height: the last eight). With a point standing it is the roller's choice, Roll
-// again or Stop: both buttons are always there (Stop greyed until it can be used), so nothing moves.
+// Craps: one tap of Roll a move, and the dice keep rolling until the round is won or lost (rolled where the
+// move is made: the server online). The page plays the round back roll by roll: each pair tumbles in at its
+// time, the puck goes on at the point, the rolls fill the row under the felt (a fixed height: the last
+// eight on show), and the round's result comes at the end. One button, always there, so nothing moves.
 const CRAPS_POINTS = [4, 5, 6, 8, 9, 10];
-function crapsSay(r, who) {                                     // the line under the felt for a roll (or a stop)
+function crapsSay(r) {                                          // the line under the felt for a round
   if (!r) return '';
-  if (r.kind === 'stop') return `${who ? who + ' stopped' : 'Stopped'}: point ${r.point} stays on for the next roll here`;
-  if (!r.roll) return r.result === 'win' ? 'Round won' : 'Round lost';   // (a round from before)
-  const n = r.sum;
-  if (r.was == null) return r.result === 'win' ? `${n} on the come-out: a winner!` : r.result === 'lose' ? `${n}: craps!` : `Point ${n}: roll again or stop`;
-  return r.result === 'win' ? `Point ${r.was} made!` : r.result === 'lose' ? 'Seven out' : `${n}: the point is still ${r.was}`;
+  if (r.kind === 'stop') return `Stopped on point ${r.point}`;   // (from before)
+  if (r.roll) { const n = r.sum; return r.result === 'win' ? (r.was == null ? `${n} on the come-out: a winner!` : `Point ${r.was} made!`) : r.result === 'lose' ? (r.was == null ? `${n}: craps!` : 'Seven out') : `Point ${r.point}`; }   // (a single roll, from before)
+  const rolls = r.rolls || [], first = rolls.length ? rolls[0][0] + rolls[0][1] : 0;
+  if (r.point == null) return r.result === 'win' ? `${first} on the come-out: a winner!` : `${first}: craps!`;
+  return r.result === 'win' ? `Point ${r.point} made!` : 'Seven out';
 }
 function crapsTable(mini, a, o) {
-  const c = a && a.craps ? a.craps : null, l = mini.last, turn = o.turn;
-  const roll = c && c.kind === 'roll' && c.roll ? c : null, land = roll && !REDUCED ? CRAPS.land : 0;
-  const tal = p => arcTally(p, o, pips(p, Math.min(CRAPS.goal, mini.wins[p]), CRAPS.goal, !!(roll && roll.result === 'win' && a.by === p), land));
-  // the puck: on the point while a round has one, OFF otherwise; it moves when a roll sets or ends a point
+  const c = a && a.craps && a.craps.rolls && !a.craps.roll && a.craps.kind !== 'stop' ? a.craps : null, l = mini.last, turn = o.turn;
+  const shown = c || (l && l.rolls ? l : null);
+  const tim = c ? crapsTimes(c.rolls, c.point, c.was) : null, tEnd = c && !REDUCED ? tim.end : 0;
+  const tal = p => arcTally(p, o, pips(p, Math.min(CRAPS.goal, mini.wins[p]), CRAPS.goal, !!(c && c.result === 'win' && a.by === p), tEnd));
+  // the puck: OFF to begin with; on the point once the come-out sets one (on from the start for a point from before)
   const slot = n => (n == null ? 0 : CRAPS_POINTS.indexOf(n) + 1), pct = k => ((k + 0.5) / 7 * 100).toFixed(2);
-  const before = roll ? roll.was : null, after = mini.point == null ? null : mini.point;
-  const moving = roll && !REDUCED && slot(before) !== slot(after);
-  const pk = slot(after);
-  const puck = `<div class="cpuck${pk ? ' on' : ''}${moving ? (pk ? ' move' : ' moveoff') : ''}" style="left:${pct(pk)}%;--from:${pct(slot(before))}%;--to:${pct(pk)}%${moving ? `;--t:${land}ms` : ''}">${pk ? 'ON' : 'OFF'}</div>`;
-  const strip = `<div class="cpts">${['', ...CRAPS_POINTS].map((n, k) => `<i class="${k === 0 ? 'off' : ''}${after != null && after === n ? ' pt' : ''}">${n}</i>`).join('')}${puck}</div>`;
-  // the dice: the roll just made tumbling in, else the last roll at rest
-  const d = roll ? roll.roll : l && l.roll ? l.roll : l && l.rolls && l.rolls.length ? l.rolls[l.rolls.length - 1] : null;
-  const dice = d ? `<div class="cpair${roll && !REDUCED ? ' tumble' : ''}"><span class="die cdie">${dieFace(d[0])}</span><span class="die cdie b">${dieFace(d[1])}</span></div>` : '';
-  // the round's rolls so far (the one just made appearing as it lands); a round just over keeps its rolls on show
-  const rolls = (roll ? roll.rolls : mini.rolls && mini.rolls.length ? mini.rolls : l && l.rolls ? l.rolls : []).slice(-8);
-  const log = `<div class="crolls" aria-label="This round's rolls">${rolls.map((x, k) => `<span ${roll && k === rolls.length - 1 && !REDUCED ? lateAt('', land) : ''}>${x[0] + x[1]}</span>`).join('')}</div>`;
-  const live = !o.view && mini.live === turn && mini.point != null;     // a point standing, the roller's choice
+  const pk = shown && shown.point != null ? slot(shown.point) : 0;
+  const puckAt = c && c.point != null && c.was == null && !REDUCED ? tim.puck : null;
+  const puck = `<div class="cpuck${pk ? ' on' : ''}${puckAt != null ? ' move' : ''}" style="left:${pct(pk)}%;--from:${pct(0)}%;--to:${pct(pk)}%${puckAt != null ? `;--t:${puckAt}ms` : ''}">${pk ? 'ON' : 'OFF'}</div>`;
+  const strip = `<div class="cpts">${['', ...CRAPS_POINTS].map((n, k) => `<i class="${k === 0 ? 'off' : ''}${shown && shown.point === n ? ' pt' : ''}">${n}</i>`).join('')}${puck}</div>`;
+  // the dice: each roll's pair in its turn, the last one staying
+  let dice = '';
+  if (shown && shown.rolls && shown.rolls.length) {
+    const n = shown.rolls.length;
+    dice = shown.rolls.map((d, k) => {
+      if (!c && k < n - 1) return '';
+      const t0 = c && !REDUCED ? tim.at[k] : null, t1 = c && !REDUCED && k < n - 1 ? tim.at[k + 1] : null;
+      if (c && REDUCED && k < n - 1) return '';
+      return `<div class="cpair${t0 != null ? ' tumble' : ''}${t1 != null ? ' gone' : ''}" style="${t0 != null ? `--t:${t0}ms;` : ''}${t1 != null ? `--t2:${t1}ms` : ''}" aria-hidden="${k < n - 1}"><span class="die cdie">${dieFace(d[0])}</span><span class="die cdie b">${dieFace(d[1])}</span></div>`;
+    }).join('');
+  }
+  // the round's rolls in a row, each as it lands (one row, a fixed height: a long round shows its latest)
+  const all = shown && shown.rolls ? shown.rolls : [];
+  const log = `<div class="crolls${all.length > 8 ? ' long' : ''}" aria-label="The round's rolls">${all.map((d, k) => `<span ${c && !REDUCED ? lateAt('', tim.at[k] + CRAPS.land - 60) : ''}>${d[0] + d[1]}</span>`).join('')}</div>`;
   const W = p => `<b class="${p}">${N(p)}</b>`;
-  const res = c ? `<p ${lateAt('arcres ' + (roll ? (roll.result === 'win' ? 'ok' : roll.result === 'lose' ? 'no' : '') : ''), land)} role="status">${crapsSay(c)}</p>`
+  const res = c ? `<p ${lateAt('arcres ' + (c.result === 'win' ? 'ok' : 'no'), tEnd)} role="status">${crapsSay(c)}</p>`
     : l && (o.done || o.view) ? `<p class="arcres ${l.result === 'win' ? 'ok' : l.result === 'lose' ? 'no' : ''}">${W(l.by)}: ${crapsSay(l)}</p>`
     : o.view ? '<p class="arcnote"></p>'
-    : live ? `<p class="arcnote">Point ${mini.point}</p>`
     : mini.point != null ? `<p class="arcnote">${W(turn)} · point ${mini.point} is on</p>`
     : `<p class="arcnote">${W(turn)}'s turn</p>`;
-  const btn = o.view ? '' : `<div class="cbtns two"><button class="big ${turn}" data-act="move" ${mv('roll')}${o.locked ? ' disabled' : ''}>${live ? 'Roll again' : 'Roll'}</button><button class="big" data-act="move" ${mv('stop')}${o.locked || !live ? ' disabled' : ''}>Stop</button></div>`;
+  const btn = o.view ? '' : `<div class="cbtns one"><button class="big ${turn}" data-act="move" ${mv('roll')}${o.locked ? ' disabled' : ''}>Roll</button></div>`;
   return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="craps">${strip}<div class="cfelt">${dice || '<p class="arcnote"></p>'}</div>${log}${res}</div>${btn}</div>`;
 }
 export function miniature(mini, final) {
@@ -52,13 +58,15 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
   g = crapsTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d }); return g;
 }
 export function moveText(f, who) {
-  return !f.craps ? `${who} rolled` : f.craps.kind === 'stop' ? `${who} stopped on point ${f.craps.point}` : f.craps.result === 'win' ? `${who} won the round` : f.craps.result === 'lose' ? `${who} lost the round` : `${who} rolled ${f.craps.sum}`;
+  return !f.craps ? `${who} rolled` : f.craps.kind === 'stop' ? `${who} stopped on point ${f.craps.point}` : f.craps.result === 'win' ? `${who} won the round` : `${who} lost the round`;
 }
-export function sounds(f, add, won, mini, last) {   // the roll: the rattle, the dice landing; the puck going on or off; a round's result
-  if (!f.craps) return;
-  if (f.craps.kind === 'stop') { add('toggle', 0); return; }
-  add('rattle', 0); add('thunk', 500);
-  if (f.craps.result === 'point' || (f.craps.was != null && f.craps.result !== 'stay')) add('clack', 600);
-  if (f.craps.result === 'win') add('ding', 700); else if (f.craps.result === 'lose') add('thud', 700);
-  return;
+export function sounds(f, add, won, mini, last) {   // each roll: the rattle and the dice landing; the puck going on; the round's result
+  const c = f.craps;
+  if (!c) return;
+  if (c.kind === 'stop') { add('toggle', 0); return; }
+  if (c.roll) { add('rattle', 0); add('thunk', 500); if (c.result === 'win') add('ding', 700); else if (c.result === 'lose') add('thud', 700); return; }   // (a single roll, from before)
+  const tim = crapsTimes(c.rolls, c.point, c.was);
+  c.rolls.forEach((d, k) => { add('rattle', tim.at[k]); add('thunk', tim.at[k] + 500); });
+  if (tim.puck != null) add('clack', tim.puck);
+  add(c.result === 'win' ? 'ding' : 'thud', tim.end - 100);
 }

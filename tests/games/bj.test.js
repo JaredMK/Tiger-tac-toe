@@ -8,7 +8,7 @@ const lcg = seed => () => (seed = (seed * 1664525 + 1013904223) % 4294967296) / 
 const bj = over => Object.assign(E.newMini('bj', lcg(1)), over || {});
 const only = t => Object.fromEntries(E.TYPES.map(g => [g, g === t]));   // a room's games: just this one
 // A Blackjack hand in play for p, with the hole card and the deck (the next card drawn is the last).
-const inHand = (p, cards, up, hole, deck) => bj({ hand: { by: p, cards, up, doubled: false }, hole, deck });
+const inHand = (p, cards, up, hole, deck) => bj({ hand: { by: p, cards, up }, hole, deck });
 
 /* ===================================== Blackjack ===================================== */
 test('blackjack: hand values, with aces as 1 or 11 (soft while an 11 still fits)', () => {
@@ -70,26 +70,23 @@ test('blackjack: Deal, Hit and Stand; a win adds 1, a push, a loss or a bust not
   m = inHand('X', ['KS', 'QH'], 'TC', '7D', ['2S']);
   m.wins.X = 2;
   assert.deepEqual(E.applyMove(m, 'X', 'stand'), { ok: true, outcome: 'win', note: 'win' });
-  // refused: a second deal, hitting without a hand, doubling on three cards, the other player's hand
-  m = inHand('X', ['5S', '6H', '2C'], '7C', 'TD', ['9S']);
+  // refused: a second deal, hitting without a hand, a double (there is none), the other player's hand
+  m = inHand('X', ['5S', '6H'], '7C', 'TD', ['9S']);
   assert.equal(E.applyMove(m, 'X', 'deal').ok, false);
-  assert.equal(E.applyMove(m, 'X', 'double').reason, 'double');
+  assert.equal(E.applyMove(m, 'X', 'double').reason, 'bad', 'no Double');
   assert.equal(E.applyMove(m, 'O', 'hit').reason, 'busy');
   assert.equal(E.applyMove(bj(), 'X', 'hit').reason, 'nohand');
   assert.equal(E.applyMove(bj(), 'X', 'split').reason, 'bad');
 });
 
-test('blackjack: a double draws exactly one card, stands, and counts 2 if it wins (0 if it loses)', () => {
-  let m = inHand('X', ['5S', '6H'], '6C', 'TD', ['8S', '9H']);   // 11, doubles: draws the 9 (20); dealer 16, draws the 8: bust
-  assert.deepEqual(E.applyMove(m, 'X', 'double'), { ok: true, outcome: 'continue', note: 'win' });
-  assert.deepEqual([m.last.cards, m.last.doubled, m.last.gain, m.wins.X], [['5S', '6H', '9H'], true, 2, 2]);
-  m = inHand('O', ['5S', '6H'], '6C', 'KD', ['8S', '2H']);        // 13 after the double, no more cards; dealer 16 + 8: bust
-  m.wins.O = 1;
-  assert.deepEqual(E.applyMove(m, 'O', 'double'), { ok: true, outcome: 'win', note: 'win' }, 'a won double from a tally of 1 takes the square');
-  assert.equal(m.wins.O, 3);
-  m = inHand('X', ['5S', '6H'], 'TC', 'KD', ['2H']);              // 13 against 20
-  assert.equal(E.applyMove(m, 'X', 'double').note, 'lose');
-  assert.equal(m.wins.X, 0, 'a lost double costs nothing');
+test('blackjack: every win counts +1 (no doubling), a loss costs nothing', () => {
+  let m = inHand('X', ['TS', '9H'], '6C', 'TD', ['8S']);           // 19 against 16 + 8: the dealer busts
+  assert.deepEqual(E.applyMove(m, 'X', 'stand'), { ok: true, outcome: 'continue', note: 'win' });
+  assert.deepEqual([m.last.gain, m.wins.X], [1, 1]);
+  m = inHand('X', ['5S', '6H'], 'TC', 'KD', ['2H']);              // 11 stood against 20
+  assert.equal(E.applyMove(m, 'X', 'stand').note, 'lose');
+  assert.equal(m.wins.X, 0, 'a loss costs nothing');
+  assert.equal(E.bjOutcome(['TS', '9H'], ['TC', '6D', '8S'], true, false).gain, 1, 'a hand from before marked doubled still counts 1');
 });
 
 test('blackjack: a natural wins 1 at once, a push against a dealer natural; a dealer blackjack beats any other 21', () => {
@@ -151,26 +148,26 @@ test('blackjack: the hole card and the deck are never visible early (public view
   assert.fail('no hand was left in play');
 });
 
-test('blackjack: the computer plays basic strategy, doubling more readily on a tally of 1', () => {
-  const s = (cards, up, eager) => E.bjStrategy(cards, up, eager);
+test('blackjack: the computer plays basic strategy without doubling: hit or stand', () => {
+  const s = (cards, up) => E.bjStrategy(cards, up);
   assert.equal(s(['TS', '6H'], 'KC'), 'hit', '16 against a 10');
   assert.equal(s(['TS', '6H'], '6C'), 'stand', '16 against a 6');
   assert.equal(s(['TS', '2H'], '3C'), 'hit', '12 against a 3');
   assert.equal(s(['TS', '2H'], '4C'), 'stand');
-  assert.equal(s(['5S', '6H'], '6C'), 'double', '11');
-  assert.equal(s(['3S', '6H', '2C'], '6C'), 'hit', 'an 11 on three cards cannot double: hit');
+  assert.equal(s(['5S', '6H'], '6C'), 'hit', '11: hit (no double)');
   assert.equal(s(['5S', '5H'], 'AC'), 'hit', '10 against an ace');
   assert.equal(s(['AS', '7H'], '9C'), 'hit', 'soft 18 against a 9');
-  assert.equal(s(['AS', '7H'], '4C'), 'double', 'soft 18 against a 4');
+  assert.equal(s(['AS', '7H'], '4C'), 'stand', 'soft 18 against a 4: stand (no double)');
   assert.equal(s(['AS', '7H'], '7C'), 'stand', 'soft 18 against a 7');
+  assert.equal(s(['AS', '6H'], '5C'), 'hit', 'soft 17');
   assert.equal(s(['AS', '8H'], '6C'), 'stand', 'soft 19');
-  assert.equal(s(['4S', '4H'], '5C'), 'hit', '8: hit');
-  assert.equal(s(['4S', '4H'], '5C', true), 'double', '...but on a tally of 1 it doubles');
-  assert.equal(s(['AS', '8H'], '6C', true), 'double', 'soft 19 against a 6, on a tally of 1');
+  assert.equal(s(['TS', '7H'], 'AC'), 'stand', 'hard 17');
+  for (const cards of [['2S', '3H'], ['TS', '6H'], ['AS', '7H'], ['9S', '2H']]) for (const up of ['2C', '6C', '9C', 'AC']) assert.ok(['hit', 'stand'].includes(s(cards, up)), 'never a double');
   const pm = E.publicMini(inHand('X', ['4S', '4H'], '5C', 'TD', ['2S']));
-  assert.equal(E.localBest(Object.assign(pm, { wins: { X: 1, O: 0 } }), 'X', lcg(1)).move, 'double');
+  assert.equal(E.localBest(Object.assign(pm, { wins: { X: 1, O: 0 } }), 'X', lcg(1)).move, 'hit');
   assert.equal(E.localBest(Object.assign(pm, { wins: { X: 0, O: 0 } }), 'X', lcg(1)).move, 'hit');
   assert.equal(E.localBest(E.publicMini(bj()), 'O', lcg(1)).move, 'deal');
+  for (let k = 0; k < 30; k++) assert.ok(['hit', 'stand'].includes(E.randomLegalMove(inHand('X', ['5S', '6H'], '7C', 'TD', ['9S']), 'X', lcg(k))), 'a timeout never doubles');
 });
 
 test('blackjack: a timeout stands (dealing first when no hand is in play); the turn ends', () => {

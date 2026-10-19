@@ -28,3 +28,17 @@ test('bowling: a fresh rack of ten every roll; the pins down go on the roller\'s
   let n = 0; while (w.pins.X < 25 && n++ < 10) { const rr = E.applyMove(w, 'X', { aim: 0, power: 0.85 }); if (rr.outcome === 'win') { assert.equal(rr.note, 'pins'); break; } }
   assert.ok(w.pins.X >= 25);
 });
+test('bowling: no back wall — the ball and any pin that pass the end of the lane drop into the pit and are gone; nothing comes back', () => {
+  const pos = { ball: P.BOWL.start }; P.BOWL.pins.forEach((p, k) => { pos['p' + k] = p; });
+  let pits = 0, back = 0;
+  for (let i = 0; i < 12; i++) {
+    const r = P.run('bowling', pos, 'ball', { aim: (i - 6) * 0.008, power: 0.7 + (i % 3) * 0.15 });
+    assert.ok(!r.events.some(e => e.k === 'wall'), 'nothing hits a wall at the back');
+    pits += r.events.filter(e => e.k === 'pit').length;
+    r.rec.ids.forEach((id, j) => { let low = false; for (const f of r.rec.frames) { const y = f[2 * j + 1]; if (y == null) continue; if (y < 6) low = true; else if (low && y > 12) back++; } });
+    for (const e of r.events.filter(e => e.k === 'pit')) assert.equal(r.final[e.id], null, `${e.id} in the pit is gone`);
+    if (r.final.ball) assert.ok(r.final.ball[1] >= P.BOWL.pit, 'the ball is never left past the end of the lane');
+  }
+  assert.ok(pits > 0, 'pins knocked hard enough drop into the pit');
+  assert.equal(back, 0, 'nothing bounces back down the lane from the end');
+});

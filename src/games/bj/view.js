@@ -7,7 +7,7 @@ import { lateAt } from '../../ui/progress.js';
 
 // Blackjack: when each card comes in is bjPlan in the engine (the turn clock and the sounds use it too).
 const BJ_RES = { bj: 'Blackjack! +1', push: 'Push', bust: 'Bust', lose: 'Dealer wins' };
-const bjResText = r => (r.res === 'win' ? (r.doubled ? 'Wins the double: +2' : 'Wins +1') : r.res === 'lose' && r.dealerBj ? 'Dealer blackjack' : BJ_RES[r.res]);
+const bjResText = r => (r.res === 'win' ? 'Wins +1' : r.res === 'lose' && r.dealerBj ? 'Dealer blackjack' : BJ_RES[r.res]);
 function bjTotalText(cards) {
   const t = bjTotal(cards);
   return t.total > 21 ? `Bust · ${t.total}` : bjNatural(cards) ? 'Blackjack' : `${t.soft && t.total < 21 ? 'Soft ' : ''}${t.total}`;
@@ -21,7 +21,7 @@ function bjTable(mini, a, o) {
   if (b) {
     hands.push({ hand: b, P: plan.P, D: plan.D, pEnd: plan.pEnd, end: plan.end, until: plan.swap, pushed: !!b.next });
     if (b.next) hands.push({ hand: b.next, P: plan.NP, D: plan.ND, pEnd: plan.nPEnd, end: plan.nEnd, from: plan.swap });
-  } else if (h) hands.push({ hand: { cards: h.cards, dealer: [h.up], hole: true, doubled: h.doubled } });
+  } else if (h) hands.push({ hand: { cards: h.cards, dealer: [h.up], hole: true } });
   else if (l) hands.push({ hand: l });
   const by = b ? a.by : h ? h.by : l ? l.by : null, anim = !!b;
   const layer = (H, inner, cls) => `<div class="bjset ${cls || ''}${H.until != null ? ' tu' : ''}${H.from != null ? ' tf' : ''}"${H.until != null || H.from != null ? ` style="${H.until != null ? `--u:${H.until}ms;` : ''}${H.from != null ? `--f:${H.from}ms` : ''}"` : ''}>${inner}</div>`;
@@ -51,7 +51,7 @@ function bjTable(mini, a, o) {
   const mine = !!h && h.by === turn;
   const btns = o.view ? '' : !h
     ? `<div class="cbtns one"><button class="big ${turn}" data-act="move" ${mv('deal')}${o.locked ? ' disabled' : ''}>Deal</button></div>`
-    : `<div class="cbtns three"><button class="big ${turn}" data-act="move" ${mv('hit')}${o.locked || !mine ? ' disabled' : ''}>Hit</button><button class="big bank" data-act="move" ${mv('stand')}${o.locked || !mine ? ' disabled' : ''}>Stand</button><button class="big dbl" data-act="move" ${mv('double')}${o.locked || !mine || h.cards.length !== 2 ? ' disabled' : ''}>Double</button></div>`;
+    : `<div class="cbtns two"><button class="big ${turn}" data-act="move" ${mv('hit')}${o.locked || !mine ? ' disabled' : ''}>Hit</button><button class="big bank" data-act="move" ${mv('stand')}${o.locked || !mine ? ' disabled' : ''}>Stand</button></div>`;
   const dealer = hands.length ? hands.map(dealerSet).join('') : ghost, player = hands.length ? hands.map(playerSet).join('') : ghost;
   const mid = hands.length ? hands.map(bannerSet).join('') : '<div class="bjset"><div class="bjres none">&nbsp;</div></div>';
   return `<div class="g-bj"><div class="ctals">${tally('X')}${tally('O')}</div>

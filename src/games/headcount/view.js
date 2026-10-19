@@ -38,7 +38,9 @@ export function headView(c) {
   // one square box: the field while the creatures cross, then the number pad in its place (the question, the answer, the result)
   const stage = c.shown && c.pre ? `<div class="hcbox"><div class="hcl tu" style="--u:${len}ms">${field}</div><div class="hcl tf" style="--f:${len}ms">${pad}</div></div>`
     : `<div class="hcbox"><div class="hcl">${c.answering || c.shown ? pad : field}</div></div>`;
-  return { stage, input: '', watch: headAsk(r), ask: headAsk(r), say: n => `${n} ${HEAD_KINDS[r.t][n === 1 ? 0 : 1]}` };   // (the question shows from before Start: what to count)
+  // the prompt: what to count, its picture beside its name (before Start and while they cross), then the question, picture and all
+  const many = HEAD_KINDS[r.t][1], ico = `<span class="hcico">${hcArt(r.t)}</span>`;
+  return { stage, input: '', watch: `Count the ${many}`, ask: headAsk(r), watchHtml: `Count the ${ico}${many}`, askHtml: `How many ${ico}${many}?`, say: n => `${n} ${HEAD_KINDS[r.t][n === 1 ? 0 : 1]}` };
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   g = attTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d }); return g;

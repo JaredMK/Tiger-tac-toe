@@ -55,11 +55,19 @@ function repList(o) {
   if (hooks.synth) { const l = hooks.synth(o.move, o.mini, o); if (l) return l; }
   return [[0, 'move', repOf(o.move)]];
 }
-// Start: o = { sq, by, type, mini (as the mover found it), move, list, timeout, cpu, speed, lead, onMove }.
+// Start: o = { sq, by, type, mini (as the mover found it), move, list, timeout, cpu, speed, lead, gap, onMove }.
 // onMove makes the move (the computer's playMove, the record's square and flash) and starts its flash.
+// gap: the longest pause between two inputs as the replay shows it (ms on screen; Super Chaos trims the
+// mover's thinking to 0.3 s): a longer one is cut down to it.
 export function repStart(o) {
   repStop();
-  rep = { sq: o.sq, by: o.by, type: o.type, list: repList(o), k: 0, at: performance.now(), speed: o.speed || 1, lead: o.lead || 0, stage: 'inputs', onMove: o.onMove, f: null, timer: null, pressed: null, cpu: !!o.cpu, start0: null };
+  let list = repList(o);
+  if (o.gap && list.length) {
+    const sp = o.speed || 1, cap = o.gap * sp;                      // (the log's own ms: shown at the replay's speed)
+    let t = 0, prev = list[0][0];
+    list = list.map((e, k) => { if (k) t += Math.min(cap, Math.max(0, e[0] - prev)); prev = e[0]; return [t].concat(e.slice(1)); });
+  }
+  rep = { sq: o.sq, by: o.by, type: o.type, list, k: 0, at: performance.now(), speed: o.speed || 1, lead: o.lead || 0, stage: 'inputs', onMove: o.onMove, f: null, timer: null, pressed: null, cpu: !!o.cpu, start0: null };
   if (!rep.list.length) { repMove(); return; }
   render();
   repArm();

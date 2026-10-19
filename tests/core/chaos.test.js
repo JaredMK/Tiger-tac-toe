@@ -248,24 +248,20 @@ test('Super Chaos: the shared histories and per-player rules of the other games'
   assert.equal(pm.used.filter(Boolean).length, 1, 'slot 3 locked once');
   assert.deepEqual(pm.pts, { X: hx.pts, O: ho.pts }, 'each drop scores its own points');
   if (hx.hit || ho.hit) assert.notDeepEqual(pm.bonus, { x: 6, r: 3 }, 'a new bonus peg'); else assert.deepEqual(pm.bonus, { x: 6, r: 3 });
-  // Craps: each player has their own point; Stop keeps it for their next roll
+  // Craps: each player's round is rolled out within their own move; only the wins are kept, per player
   const cr = E.scSquareMini({ squares: [] }, {}, 'craps', E.makeRng('k'));
-  assert.deepEqual(cr.scp, { X: null, O: null });
   const c = round([cr], { square: 1, moves: [3] });
-  const seq = vals => { let k = 0; return () => vals[k++]; };
-  human(c, 0, ['roll', 'stop'], seq([0.5, 0.0]));            // 4 + 1 = 5: the point; then Stop
-  resolve(c);
-  assert.deepEqual(c.squares[0].mini.scp, { X: 5, O: null }, 'X keeps the point');
-  E.chaosNext(c, E.makeRng('n'));
-  assert.equal(c.squares[0].mini.point, 5, 'the human sees their own point');
-  c.sc.cpu = E.scCpu(c, seq([0.5, 0.5]), { square: 0, moves: ['roll', 'stop'] });   // the computer's come-out: 4 + 4 = 8, its own point; then Stop
-  assert.equal(c.sc.cpu.mini.point, 8);
-  assert.equal(c.sc.cpu.steps[0].craps.was, null, 'the computer started its own round, not X\'s point');
-  human(c, 0, ['roll'], seq([0.5, 0.0]));                    // X rolls 5: the point, a round won
+  const seq = vals => { let k = 0; return () => vals[k++ % vals.length]; };
+  human(c, 0, ['roll'], seq([0.5, 0.0, 0.5, 0.0]));          // 4 + 1 = 5: the point; 5 again: the round won, all in the one move
+  assert.ok(c.sc.me, 'the move is in after one Roll');
+  c.sc.cpu = E.scCpu(c, seq([0.5, 0.5, 0.0, 0.0]), { square: 0, moves: ['roll'] });   // the computer: 4 + 4 = 8, then 1 + 1, ... its own round to the end
+  assert.equal(c.sc.cpu.steps.length, 1, 'one step: the whole round');
+  assert.equal(c.sc.cpu.steps[0].craps.was, null, 'the computer started its own round');
   c.flash = null;
   resolve(c);
-  assert.deepEqual(c.squares[0].mini.wins, { X: 1, O: 0 });
-  assert.deepEqual(c.squares[0].mini.scp, { X: null, O: 8 });
+  const cm = c.squares[0].mini;
+  assert.equal(cm.wins.X, 1, 'X won the round'); assert.equal(cm.point, null, 'no point carried over');
+  assert.ok(!('scp' in cm), 'no own-point rule any more');
 });
 
 test('Super Chaos: the round\'s time out plays the game\'s timeout rule for the human, never a loss', () => {

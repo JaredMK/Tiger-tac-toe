@@ -8,14 +8,14 @@ import { chaosNext, chaosResolve, chaosTimeout, scHuman } from '../core/chaos.js
 import { other } from '../core/util.js';
 import { INFO, rulesOf } from '../games/index.js';
 import { SND, matchEndSound } from '../audio/sound.js';
-import { N, RNG, commit, menuOpen, state } from './app.js';
+import { N, RNG, commit, flashTimer, menuOpen, setFlashTimer, state } from './app.js';
 import { explainT } from './explainer.js';
 import { startFx, stampFx } from './fx.js';
 import { render } from './render.js';
 import { repStart, repStop } from './replay.js';
 import { playFlash } from './turns.js';
 
-export const SC_MS = { cpu: [1400, 4200], spot: 800, stamp: 900, end: 1300, popup: 2 };   // the computer's move takes this long; the recap's steps; the pop-up replay's speed
+export const SC_MS = { cpu: [1400, 4200], spot: 800, stamp: 900, end: 1300, popup: 2, idle: 300, last: 600, skip: 450 };   // the computer's move takes this long; the recap's steps; the pop-up replay's speed, its longest idle moment (a pause in the inputs, the wait between a move's steps), how long its last result stays up, and the end shown after a skip
 let scTimer = null;
 export let scUi = { round: null, readyAt: 0, stage: null, at: 0, played: false };   // this round on screen: when the computer's move counts as made, the recap's stage
 const now = () => Date.now();
@@ -104,8 +104,20 @@ function popupStep(rc, cpu) {
   scUi.step = k + 1;
   const f = Object.assign({}, step); delete f.after;
   f.recap = true; f.recapMore = !last;
-  repStart({ cpu: true, sq: rc.cpu.square, by: cpu, type: rc.cpu.type, mini: scUi.mini, move: step.m, list: step.rep, timeout: !!step.timeout, speed: SC_MS.popup, lead: 350,
-    onMove: () => { if (step.after) scUi.mini = clone(step.after); state.flash = f; playFlash(false, SC_MS.popup); render(); } });
+  repStart({ cpu: true, sq: rc.cpu.square, by: cpu, type: rc.cpu.type, mini: scUi.mini, move: step.m, list: step.rep, timeout: !!step.timeout, speed: SC_MS.popup, lead: k ? 0 : SC_MS.idle, gap: SC_MS.idle,
+    onMove: () => { if (step.after) scUi.mini = clone(step.after); state.flash = f; playFlash(false, SC_MS.popup, last ? SC_MS.last : SC_MS.idle); render(); } });
+}
+// A tap on the replay (or its Skip): straight to the end of the computer's move (every step made, the
+// square as the move left it), shown a moment, then the round's results.
+export function scSkip() {
+  if (scRecapStage() !== 'popup') return false;
+  const rc = state.sc.recap, steps = rc.cpu.steps, lastStep = steps[steps.length - 1];
+  repStop();
+  clearTimeout(flashTimer); setFlashTimer(null); state.flash = null;
+  scUi.step = steps.length; scUi.skipAt = now();
+  if (lastStep && lastStep.after) scUi.mini = clone(lastStep.after);
+  render(); chaosStep();
+  return true;
 }
 function recapStep() {
   const rc = state.sc.recap, me = scHuman(state), cpu = other(me);
@@ -137,15 +149,19 @@ function recapStep() {
   }
   if (scUi.stage === 'popup') {                                   // the computer's move replayed at 2x, step by step, in a card over the board
     if (!scUi.at) {
-      scUi.at = t; scUi.step = 0;
+      scUi.at = t; scUi.step = 0; scUi.skipAt = 0;
       scUi.mini = clone(rc.cpu.start || (state.sc.base && state.sc.base[rc.cpu.square]) || state.squares[rc.cpu.square].mini);
       state.spot = null; state.screen = 'mini'; state.zoom = rc.cpu.square; state.draft = ''; state.pick = null; state.sel = [];
       popupStep(rc, cpu);
       return;
     }
+    if (scUi.skipAt) {                                            // skipped: the move's end on show a moment, then the results
+      const wait = scUi.skipAt + SC_MS.skip - t;
+      if (wait > 0) { scTimer = setTimeout(chaosStep, wait); return; }
+    }
     if (state.flash) return;                                      // a step's result is still playing (dismissFlash brings this round here again)
     if (scUi.step < rc.cpu.steps.length) { popupStep(rc, cpu); return; }
-    repStop();
+    repStop(); scUi.skipAt = 0;
     state.screen = 'board'; state.zoom = null; scUi.mini = null;
     scUi.stage = 'stamp'; scUi.at = 0;
   }
@@ -178,6 +194,13 @@ function recapStep() {
     SND.play('turn');
     commit();
   }
+}
+// The square each player played last (the board's badges): the human's this round once it is in, else
+// the last round's; the computer's from the last round resolved (the recap reveals this round's).
+export function scLastPlayed() {
+  if (!live()) return null;
+  const sc = state.sc, me = scHuman(state), cpu = other(me), last = sc.last || {};
+  return { [me]: sc.me ? sc.me.square : last[me] != null ? last[me] : null, [cpu]: last[cpu] != null ? last[cpu] : null };
 }
 // The board's line under the squares in a Super Chaos round.
 export function scHint() {

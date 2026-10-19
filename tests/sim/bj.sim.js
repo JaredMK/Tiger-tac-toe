@@ -8,14 +8,14 @@ const E = require('../engine.js');
 const lcg = seed => () => (seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296;
 const bj = over => Object.assign(E.newMini('bj', lcg(1)), over || {});
 // A Blackjack hand in play for p, with the hole card and the deck (the next card drawn is the last).
-const inHand = (p, cards, up, hole, deck) => bj({ hand: { by: p, cards, up, doubled: false }, hole, deck });
+const inHand = (p, cards, up, hole, deck) => bj({ hand: { by: p, cards, up }, hole, deck });
 
 test('blackjack: pushes in a row stay in one turn: each one deals a new hand, until a hand is won or lost', () => {
   // a player stands into a push twice, then wins: one turn throughout, a fresh hand each time
   const st = E.newMatch(lcg(11), { games: ['bj'], mode: 'local' });
   st.turn = 'X';
   const sq = st.squares[0];
-  const rig = (cards, up, hole, deck) => Object.assign(sq.mini, { hand: { by: 'X', cards, up, doubled: false }, hole, deck });
+  const rig = (cards, up, hole, deck) => Object.assign(sq.mini, { hand: { by: 'X', cards, up }, hole, deck });
   rig(['TS', '9H'], 'KC', '9D', ['2S']);
   st.lock = 0;
   let seed = 100;
@@ -65,7 +65,7 @@ test('blackjack: pushes in a row stay in one turn: each one deals a new hand, un
     assert.equal(st.turn, 'X', 'still X to play');
     const c = E.cpuMove(st, lcg(seed));
     assert.equal(c.square, 0, 'the computer plays its new hand');
-    assert.ok(['hit', 'stand', 'double'].includes(c.move));
+    assert.ok(['hit', 'stand'].includes(c.move), 'hit or stand, never a double');
     return;
   }
   assert.fail('no push dealt a new hand');

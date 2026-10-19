@@ -84,7 +84,7 @@ export function headRound(level, rng, cfg) {
   const ms = Math.max(...items.map(o => o.t + o.d)) + 250;
   return { level: L - 1, t: th.t, d: dn ? th.d : null, axis: 'mixed', items, ms };
 }
-export const headAsk = r => `How many ${HEAD_KINDS[r.t][1]}?`;   // (shown from before Start: what to count)
+export const headAsk = r => `How many ${HEAD_KINDS[r.t][1]}?`;   // the question once the round has crossed
 export const headWatch = r => (r.d ? `Count the ${HEAD_KINDS[r.t][1]} only, not the ${HEAD_KINDS[r.d][1]}` : `Count the ${HEAD_KINDS[r.t][1]}`);   // (for the tests and the explainer: the page no longer shows it)
 export function publicView(mini) {
   return { type: mini.type, right: { X: mini.right.X, O: mini.right.O }, round: JSON.parse(JSON.stringify(mini.round)) };

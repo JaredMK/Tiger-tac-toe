@@ -11,7 +11,9 @@ export { fingerFlashMs as flashMs } from '../shared/finger.js';
 // Scoop Stack: the cone at the bottom moves towards the finger's place (up to cone units a second); scoops
 // and hazards (pebbles, burnt scoops) fall at the top of the stack. A scoop stacks when it lands within
 // slide of the stack's top; further off but still touching, it slides off; that, or no touch, is a miss.
-// A hazard touching the top ends the attempt, as do three misses. The stack's top sways a little behind
+// A missed scoop only counts once it has fallen past the bottom edge of the screen (the view keeps the
+// stack's top at most 4.6 units above the bottom: scoopDrop). A hazard touching the top ends the attempt,
+// as do three misses. The stack's top sways a little behind
 // fast moves (more as it grows). Everything falls towards the stack's top (the screen follows it), at a
 // speed and a rate that rise with the stack (counted as if every scoop so far had been caught, so an
 // attempt is worked out before it starts), with a hazard now and then, more of them higher up. Before
@@ -52,8 +54,13 @@ export function scoopItems(cfg, seed, tries, n0) {
 }
 export function scoopStart(mini, p) {
   const cfg = mini.cfg, n0 = mini.stack[p].length;
-  return { type: 'scoop', cfg, n0, items: scoopItems(cfg, mini.seed[p], mini.tries[p], n0), i: 0, x: SCOOP.w / 2, tx: SCOOP.w / 2, vx: 0, s: 0, sv: 0, n: 0, t: 0, got: [], miss: 0, end: null, last: null };
+  return { type: 'scoop', cfg, n0, items: scoopItems(cfg, mini.seed[p], mini.tries[p], n0), i: 0, x: SCOOP.w / 2, tx: SCOOP.w / 2, vx: 0, s: 0, sv: 0, n: 0, t: 0, got: [], miss: 0, falling: [], end: null, last: null };
 }
+// How far below the stack's top the bottom edge of the screen is (units), for a stack this size: the view
+// draws the counter and the cone under a short stack and keeps a tall one's top 4.6 units up; a missed
+// scoop counts once its middle has fallen that far (and its own radius past it).
+export const SCOOP_VIEW = { top: 4.6, base: 2.15, ball: 0.57, slide: 7, slideT: 0.7 };
+export const scoopDrop = size => Math.min(SCOOP_VIEW.top, SCOOP_VIEW.base + SCOOP.piece * size) + SCOOP_VIEW.ball;
 export const scoopTop = sim => sim.x + sim.s;                            // where the stack's top is (the cone, plus the sway)
 export const scoopSize = sim => sim.n0 + sim.got.length;
 // One step: the cone moves, the stack sways, any item reaching the top lands, slides off, misses or hits.
@@ -69,16 +76,24 @@ export function scoopStep(sim, tx) {
   if (sim.s > SCOOP.swayMax) { sim.s = SCOOP.swayMax; sim.sv = 0; } else if (sim.s < -SCOOP.swayMax) { sim.s = -SCOOP.swayMax; sim.sv = 0; }
   sim.t = ++sim.n * h;
   sim.last = null;
+  if (!sim.falling) sim.falling = [];
   while (sim.i < sim.items.length && sim.items[sim.i].T <= sim.t) {
     const it = sim.items[sim.i++], off = Math.abs(it.x - scoopTop(sim));
     if (it.k === 'scoop') {
       if (off <= SCOOP.slide) { sim.got.push(it.f); sim.last = 'catch'; }
-      else { sim.miss++; sim.last = off <= SCOOP.touch ? 'slide' : 'miss'; }
+      else {                                                        // missed: it falls on (sliding off the stack, or straight past it) and counts at the bottom of the screen
+        const slide = off <= SCOOP.touch, drop = scoopDrop(scoopSize(sim));
+        sim.falling.push(r2(it.T + (slide ? SCOOP_VIEW.slideT * Math.sqrt(drop / SCOOP_VIEW.slide) : drop / it.v))); sim.falling.sort((a, b) => a - b);
+        sim.last = slide ? 'slide' : 'miss';
+      }
       if (scoopSize(sim) >= cfg.target) { sim.end = 'top'; return sim; }
-      if (sim.miss >= SCOOP.misses) { sim.end = 'miss'; return sim; }
     } else if (off <= SCOOP.hit) { sim.end = 'hazard'; sim.last = 'hit'; return sim; }
   }
-  if (sim.i >= sim.items.length || sim.t >= FING.maxSecs - 1e-9) sim.end = 'out';
+  while (sim.falling.length && sim.falling[0] <= sim.t + 1e-9) {     // a missed scoop leaves the screen: now it counts
+    sim.falling.shift(); sim.miss++; sim.last = sim.last || 'gone';
+    if (sim.miss >= SCOOP.misses) { sim.end = 'miss'; return sim; }
+  }
+  if ((sim.i >= sim.items.length && !sim.falling.length) || sim.t >= FING.maxSecs - 1e-9) sim.end = 'out';
   return sim;
 }
 export const scoopResult = sim => ({ n: scoopSize(sim), end: sim.end || 'out', steps: sim.n });

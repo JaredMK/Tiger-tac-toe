@@ -50,7 +50,7 @@ export function startChaos(state, rng) {
   if (!state.cpu || state.cpu.length !== 1) { state.screen = 'setup'; return false; }   // (phase 1: against the computer only)
   for (const sq of state.squares) scSquareMini(state, sq, sq.mini.type, rng);
   state.turn = scHuman(state);
-  state.sc = { round: 1, limit: SC.roundS, base: null, me: null, moved: null, cpu: null, recap: null };
+  state.sc = { round: 1, limit: SC.roundS, base: null, me: null, moved: null, cpu: null, recap: null, last: null };   // (last: the square each player played in the last round resolved, for the board's badges)
   scBegin(state, rng);
   return true;
 }
@@ -143,7 +143,7 @@ export function chaosPlay(state, i, m, rng, opts) {
 
 // The round's time ran out before the human's move was in: the game's timeout rule, as in a timed turn (a
 // random legal move in a random open square, or in the square they are held to; Risky Rolls banks what it
-// can, Craps stops, a Hangman, Battleship or Ride the Bus guess ends the move). Called again while a move
+// can, Craps rolls its round out, a Hangman, Battleship or Ride the Bus guess ends the move). Called again while a move
 // goes on, until it is in. No match is lost for it.
 export function chaosTimeout(state, rng) {
   rng = needRng(rng);
@@ -219,6 +219,7 @@ export function chaosResolve(state, rng) {
   if (mr) { state.winner = mr.winner; state.winLine = mr.line; state.winReason = mr.reason; state.counts = mr.counts || null; recap.result = mr; }
   state.lock = null; state.done = null; state.flash = null;
   state.lastSquare = recap.cpu ? recap.cpu.square : sc.me.square; state.lastBy = recap.cpu ? cpu : me;
+  sc.last = { [me]: sc.me.square, [cpu]: recap.cpu ? recap.cpu.square : (sc.last && sc.last[cpu] != null ? sc.last[cpu] : null) };   // each player's square this round (a computer that could not move keeps its last)
   sc.recap = recap;
   return recap;
 }

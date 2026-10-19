@@ -88,8 +88,8 @@ function plinkoTable(mini, a, o) {
   } else if (l) { const [cx] = plinkoXY(l.bin * 2, PLINKO.rows + 1); chip = `<div class="pchip ${l.by}" style="left:${cx.toFixed(1)}%;top:${PLK_BIN_Y}%"></div>`; }
   const slots = o.view ? '' : `<div class="pslots" role="group" aria-label="Drop slots">${Array.from({ length: PLINKO.slots }, (_, k) => { const used = mini.used[k];
     return `<button class="${turn}${used ? ' used' : ''}" data-act="move" ${mv(k)}${o.locked || used ? ' disabled' : ''} aria-label="${used ? `Slot ${k + 1}: used` : `Drop from slot ${k + 1}`}">${k + 1}</button>`; }).join('')}</div>`;
-  const won = pl && a.kind === 'claim', open = PLINKO.slots - mini.used.filter(Boolean).length;
-  const res = pl ? `<p ${lateAt('arcres ' + (pl.pts >= 3 ? 'ok' : 'no'), inBin)} role="status">${won ? `${pl.total} points: WIN!` : `+${pl.pts}${pl.hit ? ` (bonus +${PLINKO.bonus})` : ''}: ${pl.total} of ${tg}`}${pl.reset ? '<br><small>All seven used: every slot opens again</small>' : ''}</p>`
+  const won = pl && (a.kind === 'claim' || a.kind === 'match'), open = PLINKO.slots - mini.used.filter(Boolean).length;
+  const res = pl ? `<p ${lateAt('arcres ' + (pl.pts >= 3 ? 'ok' : 'no'), inBin)} role="status">${won ? `+${pl.pts}${pl.hit ? ` (bonus +${PLINKO.bonus})` : ''}: ${pl.total} of ${tg}!` : `+${pl.pts}${pl.hit ? ` (bonus +${PLINKO.bonus})` : ''}: ${pl.total} of ${tg}`}${pl.reset ? '<br><small>All seven used: every slot opens again</small>' : ''}</p>`
     : l && o.view ? `<p class="arcres"><b class="${l.by}">${N(l.by)}</b> reached ${mini.pts[l.by]}</p>`
     : '<p class="arcnote"></p>';
   return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="plinko">${slots}<div class="pboard">${style}<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${pegs.join('')}${bins}</svg><div class="pvals">${vals}</div>${bonus}${chip}${pop}</div>${res}</div></div>`;

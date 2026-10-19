@@ -2,12 +2,13 @@
 import { cpuMove } from '../core/ai.js';
 import { endFlash, leaveSquare, playMove } from '../core/board.js';
 import { playerName } from '../core/match.js';
-import { SND, backSounds, moveSounds } from '../audio/sound.js';
+import { SND, backSounds, matchEndSound, moveSounds } from '../audio/sound.js';
 import { applyPending } from '../net/room.js';
 import {
   CPU_MS, FLASH_MS, FLIP_MS, MEMORY_MS, RNG, commit, cpuPlan, cpuTimer, flashReady, flashTimer, holdTimer,
   menuOpen, setCpuPlan, setCpuTimer, setFlashReady, setFlashTimer, setHoldTimer, state
 } from './app.js';
+import { STAMP_MS } from './board.js';
 import { chaosStep } from './chaos.js';
 import { explainT } from './explainer.js';
 import { animMs, fx, fxAt, stampFx, startFx } from './fx.js';
@@ -75,7 +76,7 @@ function cpuPlay() {
 // for a moment. `played`: a result found on show (a reload): its animation is over already.
 // `speed`: the Super Chaos recap plays a move at 2x (its sounds and its timers to match; the animations
 // run fast from the replay, ui/replay.js).
-export function playFlash(played, speed) {
+export function playFlash(played, speed, holdMax) {   // holdMax: the longest the result stays up after its animation (Super Chaos's replay: no dead time between the steps of a move)
   const f = state.flash, sp = speed || 1;
   if (!f || state.spot || fxAt('move', f) != null) return;     // while the square glows on the board, the move has not played yet
   const ms = played ? 0 : animMs(f) / sp;
@@ -83,7 +84,7 @@ export function playFlash(played, speed) {
   if (played || SND.muted || !SND.loaded || !SND.ctx || SND.ctx.state !== 'running') fx.move.quiet = true;   // (a result already heard at a reload, or played before audio was ready: it finishes quietly too)
   if (!played) for (const [n, at, rate] of moveSounds(f)) SND.play(n, { at: at / 1000 / sp, rate });
   setFlashReady(Date.now() + ms);                   // no tapping the result away while the move is still animating
-  clearTimeout(flashTimer); setFlashTimer(setTimeout(dismissFlash, ms + holdOf(f) / sp));
+  clearTimeout(flashTimer); setFlashTimer(setTimeout(dismissFlash, ms + Math.min(holdMax == null ? Infinity : holdMax, holdOf(f) / sp)));
 }
 // How long the result stays up once its animation has played.
 function holdOf(f) {
@@ -105,6 +106,16 @@ export function skipFlash() {
   clearTimeout(flashTimer); setFlashTimer(setTimeout(dismissFlash, holdOf(f) / sp));
   render();
 }
+// The match is over and its last square has stamped in on the board: the end screen, with its sound.
+const WIN_AFTER = 350;
+let winTimer = null;
+export function toWin() {
+  clearTimeout(winTimer); winTimer = null;
+  if (!state.winner || state.screen !== 'board' || state.sc) return;
+  state.screen = 'win'; state.zoom = null;
+  SND.play('swish'); SND.play(matchEndSound(), { at: 0.25 });
+  commit();
+}
 export function dismissFlash() {
   clearTimeout(flashTimer); setFlashTimer(null);
   const f = state.flash;
@@ -113,6 +124,11 @@ export function dismissFlash() {
   const hold = f.type === 'memory' && f.kind === 'move' && !state.winner;   // let the two cards turn back over first
   const from = { turn: state.turn, mini: state.screen === 'mini' }, quiet = !!(fx.move && fx.move.key === f && fx.move.quiet);
   endFlash(state, hold);
+  const ended = f.kind === 'match' && !!state.winner && state.screen === 'win' && !state.sc && state.squares[f.square] && state.squares[f.square].owner;
+  if (ended) {                                       // the square that ended the match: back to the main board first, where it stamps in; then the match's end (toWin)
+    state.screen = 'board'; state.zoom = null; state.stamp = f.square; state.stampId = `${state.id || 'm'}:${state.moves}`;
+    clearTimeout(winTimer); winTimer = setTimeout(toWin, STAMP_MS + WIN_AFTER);
+  }
   if (hold && state.done) { startFx('back', state.done); if (!quiet) SND.play('flipDown'); }   // the two cards turning back over
   else if (!quiet) backSounds(from);
   stampFx();

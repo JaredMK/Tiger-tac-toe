@@ -28,7 +28,7 @@ export function makePhysics(Matter) {
   const POOL = { w: 100, h: 180, ballR: 3.9, vMax: 300, curve: 2, sub: 4, maxT: 12, air: 0.004, roll: 9,
     pockets: [[0, 0, 8.4], [100, 0, 8.4], [0, 90, 8.4], [100, 90, 8.4], [0, 180, 8.4], [100, 180, 8.4]],   // x, y, the reach of the pocket (and its size as drawn): about 2.2 times the ball across (balls half as big again as they were, pockets twice the size)
     start: { cue: [50, 140], black: [50, 52], x1: [40, 66], x2: [60, 80], o1: [60, 66], o2: [40, 80] } };
-  const BOWL = { w: 100, h: 240, ballR: 3.5, pinR: 2.0, vMax: 150, maxT: 7, air: 0.002, roll: 4, pinAir: 0.004, pinRoll: 6, pinBounce: 0.9, still: 4, gutter: 7, knocked: 2.2,
+  const BOWL = { w: 100, h: 240, ballR: 3.5, pinR: 2.0, vMax: 150, maxT: 7, air: 0.002, roll: 4, pinAir: 0.004, pinRoll: 6, pinBounce: 0.9, still: 4, gutter: 7, knocked: 2.2, pit: 3,   // pit: past the end of the lane (y 0) the ball and the pins drop into the pit (drawn 6 deep) and are gone: nothing bounces back
     start: [50, 214], pins: [[50, 50], [45, 38], [55, 38], [40, 26], [50, 26], [60, 26], [35, 14], [45, 14], [55, 14], [65, 14]] };
   // Mini Golf's holes: walls as [cx, cy, w, h, angle], bumpers as [cx, cy, r], the tee and the cup, and a
   // path (the way round, for the computer's aim). Both balls start side by side on the tee. A full putt
@@ -106,7 +106,7 @@ export function makePhysics(Matter) {
       const rank = id => (id === 'cue' ? 0 : id === 'black' ? 3 : id[0] === 'x' ? 1 : 2);   // (the order engine.js keeps: poolIds)
       for (const id of Object.keys(pos.balls).sort((a, b) => rank(a) - rank(b) || a.localeCompare(b, 'en', { numeric: true }))) if (!pos.down[id]) { const b = ball(pos.balls[id][0], pos.balls[id][1], S.ballR, 'ball:' + id, { frictionAir: S.air }); bodies.push(b); tracked.push([id, b]); }
     } else {
-      bodies.push(wall(S.w / 2, -4, S.w + 40, 8, 0, 'end'));      // the back of the lane; the sides are gutters (nothing to bounce off)
+      // no back wall: the end of the lane is a pit (below), and the sides are gutters (nothing to bounce off)
       const b = ball(S.start[0], S.start[1], S.ballR, 'ball:ball', { frictionAir: S.air, density: 0.03 });
       bodies.push(b); tracked.push(['ball', b]);
       S.pins.forEach(([x, y], k) => { const pin = ball(x, y, S.pinR, 'pin:' + k, { frictionAir: S.pinAir, density: 0.02, restitution: S.pinBounce, friction: 0.05 }); bodies.push(pin); tracked.push(['p' + k, pin]); });
@@ -181,8 +181,9 @@ export function makePhysics(Matter) {
       } else {
         for (const [id, b] of tracked) {
           if (gone[id]) continue;
-          const off = b.position.y < -6 || b.position.y > S.h + 6 || b.position.x < -6 || b.position.x > S.w + 6;
-          if (id === 'ball') { if (off || b.position.x < S.gutter || b.position.x > S.w - S.gutter) remove(id, b.position.y < 0 ? 'end' : 'gutter'); }
+          const pit = b.position.y < S.pit, off = b.position.y > S.h + 6 || b.position.x < -6 || b.position.x > S.w + 6;
+          if (id === 'ball') { if (pit || off || b.position.x < S.gutter || b.position.x > S.w - S.gutter) remove(id, pit ? 'end' : 'gutter'); }
+          else if (pit) remove(id, 'pit');                         // a pin past the end of the lane: into the pit, gone (down)
           else if (off) remove(id, 'off');
         }
       }
