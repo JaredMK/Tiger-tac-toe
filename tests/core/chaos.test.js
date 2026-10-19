@@ -202,11 +202,19 @@ test('Super Chaos Bump: nothing is knocked during the round; the knock is settle
   human(s2, 0, ['spin'], fixed(0.9));
   const r2 = resolve(s2);
   assert.deepEqual(s2.squares[0].mini.pos, { X: 0, O: 0 });
-  assert.deepEqual(r2.resolve[0].flash.scr, { knocked: ['X', 'O'], at: { X: 5, O: 5 } });
-  // no meeting: nothing to settle
+  assert.deepEqual(r2.resolve[0].flash.scr, { knocked: ['X', 'O'], at: { X: 5, O: 5 }, moves: { X: { from: 2, to: 5, spin: 3 }, O: { from: 3, to: 5, spin: 2 } } });
+  assert.equal(r2.resolve[0].joint, true, 'both moved here: replayed together');
+  assert.deepEqual(r2.pre[0].pos, { X: 2, O: 3 }, 'from where the round began');
+  // both moved here without meeting: both hop at once, nobody knocked
   const s3 = round([bump({ X: 2, O: 5 })], { square: 0, moves: ['spin'], rng: fixed(0.5) });
   human(s3, 0, ['spin'], fixed(0.9));
-  assert.deepEqual(resolve(s3).resolve, []);
+  const r3 = resolve(s3);
+  assert.deepEqual(r3.resolve.map(x => [x.joint, x.flash.scr.knocked, x.flash.scr.moves]), [[true, [], { X: { from: 2, to: 5, spin: 3 }, O: { from: 5, to: 7, spin: 2 } }]]);
+  assert.deepEqual(s3.squares[0].mini.pos, { X: 5, O: 7 });
+  // the computer elsewhere and no meeting: nothing to replay at the end (the human's move was seen live)
+  const s4 = round([bump({ X: 2, O: 8 })], { square: 1, moves: [3] });
+  human(s4, 0, ['spin'], fixed(0.9));
+  assert.deepEqual(resolve(s4).resolve, []);
 });
 
 test('Super Chaos Roulette: a move puts the bet down; one spin at the round\'s end settles both bets', () => {

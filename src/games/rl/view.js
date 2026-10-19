@@ -1,6 +1,6 @@
 // Roulette: the screen, the miniature, the move's words and sounds, and the inputs.
 import { RL, RLT, rlCovers, rlRed } from './rules.js';
-import { N, REDUCED, mv, state, zoomedType } from '../../ui/app.js';
+import { N, REDUCED, WAAPI, app, mv, state, zoomedType } from '../../ui/app.js';
 import { lateAt } from '../../ui/progress.js';
 import { render } from '../../ui/render.js';
 
@@ -52,9 +52,13 @@ function rlTable(mini, a, o) {
   const gOn = g => (marks ? (!tint ? (marks[a.by] === g ? ' on' : '') : ['X', 'O'].filter(p => marks[p] === g).map(p => ' on m' + p).join('')) : dr.bet === g ? ' on' : '');
   const zOn = marks ? (!tint ? (marks[a.by] === 'zero' ? ' on' : '') : ['X', 'O'].filter(p => marks[p] === 'zero').map(p => ' on m' + p).join('')) : dr.bet === 'zero' ? ' on' : '';
   const dis = o.locked || marks ? ' disabled' : '';
+  // The marker on the number that came up: it moves there from the wheel as the ball lands (rlMarker), and
+  // stays on it until the next spin, so a bet that covers it is plain to see.
+  const land = k => (spin && spin.n === k ? ' landing' : ''), landT = k => (spin && spin.n === k ? ` style="--t:${tEnd}ms"` : '');
+  const dolly = k => (spin && spin.n === k ? `<i class="dolly fly" style="--t:${tEnd}ms" aria-hidden="true"></i>` : !spin && n === k && n != null && !pend ? '<i class="dolly" aria-hidden="true"></i>' : '');
   const grid = ['g1', 'g2', 'g3'].map(g => {
     const [lo, hi] = RL.groups[g], cells = [];
-    for (let k = lo; k <= hi; k++) { const c = marks ? mk(k) : on(k) ? ' on' : ''; cells.push(`<button class="rln ${rlRed(k) ? 'r' : 'b'}${c}${n === k && !spin ? ' last' : ''}" data-act="rlnum" data-n="${k}" aria-pressed="${!!c}" aria-label="${k}, ${rlRed(k) ? 'red' : 'black'}"${dis}>${k}</button>`); }
+    for (let k = lo; k <= hi; k++) { const c = marks ? mk(k) : on(k) ? ' on' : ''; cells.push(`<button class="rln ${rlRed(k) ? 'r' : 'b'}${c}${n === k && !spin ? ' last' : ''}${land(k)}"${landT(k)} data-act="rlnum" data-n="${k}" aria-pressed="${!!c}" aria-label="${k}, ${rlRed(k) ? 'red' : 'black'}"${dis}>${k}${dolly(k)}</button>`); }
     return `<div class="rlrow">${cells.join('')}<button class="rlg${gOn(g)}" data-act="rlgrp" data-g="${g}" aria-pressed="${!!gOn(g)}" aria-label="Group ${lo} to ${hi}"${dis}>${lo}–${hi}</button></div>`;
   }).join('');
   const bet = dr.bet || (dr.nums.length === RL.pick ? dr.nums : null);
@@ -62,7 +66,7 @@ function rlTable(mini, a, o) {
     : dr.bet === 'zero' ? 'Betting green 0'
     : dr.bet ? `Betting the group ${rlBetText(dr.bet)}` : dr.nums.length === RL.pick ? 'Betting your 8 numbers'
     : dr.nums.length ? `${RL.pick - dr.nums.length} more number${RL.pick - dr.nums.length === 1 ? '' : 's'} to pick` : '&nbsp;';
-  const board = o.view ? '' : `<div class="rlboard"><div class="rlrow top"><button class="rlz${zOn}" data-act="rlzero" aria-pressed="${!!zOn}" aria-label="Green 0"${dis}>0</button><p class="rlsay">${say}</p></div>${grid}</div>
+  const board = o.view ? '' : `<div class="rlboard"><div class="rlrow top"><button class="rlz${zOn}${land(0)}"${landT(0)} data-act="rlzero" aria-pressed="${!!zOn}" aria-label="Green 0"${dis}>0${dolly(0)}</button><p class="rlsay">${say}</p></div>${grid}</div>
     <div class="cbtns one"><button class="big ${turn} rlspin" data-act="move" ${mv(bet || [])}${!bet || o.locked || marks ? ' disabled' : ''}>${state.sc ? 'Place bet' : 'Spin'}</button></div>`;
   // Once the ball lands: HIT!, MISS or GREEN 0!, big on the wheel, held a second before the game moves on.
   const anyHit = spin ? (spin.shared ? ['X', 'O'].some(p => spin.hit[p]) : spin.hit) : false;
@@ -77,6 +81,22 @@ function rlTable(mini, a, o) {
   const spins = spin && !REDUCED ? `<span class="tu" style="--u:${tEnd}ms">${chips(all.slice(0, -1))}</span><span class="tf" style="--f:${tEnd}ms">${chips(all)}</span>` : `<span>${chips(all)}</span>`;
   const hist = `<div class="rlspins" aria-label="Recent spins: ${all.map(x => x.n + (x.hit ? ' (hit)' : '')).join(', ') || 'none'}">${spins}</div>`;
   return `<div class="g-rl"><div class="rltop"><div class="ctals col">${hits('X')}${hits('O')}${res}</div><div class="rlside"><div class="rlwrap">${rlWheel(n, !!spin)}${big}</div>${hist}</div></div>${board}</div>`;
+}
+// The marker's move from the wheel to its number as the ball lands (anchored to the move by its [data-fx]).
+export function rlMarker() {
+  const f = state.flash;
+  if (!f || f.type !== 'rl' || !f.rl || f.rl.pending || !WAAPI || REDUCED) return;
+  const el = app.querySelector('.g-rl .dolly.fly'), ptr = app.querySelector('.g-rl .rlwheel .ptr');
+  if (!el || !ptr) return;
+  const a = ptr.getBoundingClientRect(), b = el.getBoundingClientRect();
+  const dx = a.left + a.width / 2 - (b.left + b.width / 2), dy = a.bottom + 14 - (b.top + b.height / 2), t = RLT.spin + RLT.settle;
+  el.style.animation = 'none';
+  el.animate([
+    { transform: `translate(${dx}px, ${dy}px) scale(.7)`, opacity: 0, offset: 0 },
+    { transform: `translate(${dx}px, ${dy}px) scale(.7)`, opacity: 1, offset: .12 },
+    { transform: `translate(${dx * .5}px, ${dy * .5 - 40}px) scale(1.5)`, opacity: 1, offset: .6, easing: 'ease-in' },
+    { transform: 'translate(0, 0) scale(1)', opacity: 1, offset: 1 },
+  ], { duration: 650, delay: t, fill: 'both', easing: 'ease-out' });
 }
 export function miniature(mini, final) {   // the hits so far, and the recent spins: every one, a hit in the spinner's colour, a miss plain
   const spins = (mini.spins || []).map(x => (typeof x === 'number' ? { n: x, hit: false } : x)).filter(x => x && Number.isInteger(x.n));

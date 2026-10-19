@@ -191,7 +191,8 @@ function recapStep() {
     }
     const wait = scUi.at + (rc.cpu ? SC_MS.spot : 200) - t;
     if (wait > 0) { scTimer = setTimeout(chaosStep, wait); return; }
-    scUi.stage = rc.cpu && rc.cpu.steps && rc.cpu.steps.length ? 'popup' : 'resolve'; scUi.at = 0; scUi.step = 0; scUi.mini = null;
+    const joint = rc.cpu && (rc.resolve || []).some(x => x.joint && x.square === rc.cpu.square);   // (both moved there: its replay shows both moves together, in the next stage)
+    scUi.stage = rc.cpu && rc.cpu.steps && rc.cpu.steps.length && !joint ? 'popup' : 'resolve'; scUi.at = 0; scUi.step = 0; scUi.mini = null;
   }
   if (scUi.stage === 'popup') {                                   // the computer's move replayed at 2x, step by step, in a card over the board
     if (!scUi.at) {

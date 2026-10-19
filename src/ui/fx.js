@@ -19,6 +19,7 @@ import { BOARD_BURST } from './board.js';
 import { fingPre } from './finger.js';
 import { runPre } from './runner.js';
 import { hopToken } from './track.js';
+import { rlMarker } from '../games/rl/view.js';
 
 // A comic-book burst with uneven points, and its word.
 export function burstSvg(word, cls, w, h, size) {
@@ -103,6 +104,7 @@ export function animate() {
     countTo(el, Number(el.dataset.from), Number('to' in el.dataset ? el.dataset.to : el.textContent), Number(el.dataset.ms) || 400, at + (Number(el.dataset.delay) || 0));
   }
   hopToken();
+  rlMarker();
 }
 function countTo(el, from, to, ms, t0) {
   const ease = now => { const k = Math.min(1, Math.max(0, (now - t0) / ms)); return [k, Math.round(from + (to - from) * (1 - Math.pow(1 - k, 2)))]; };

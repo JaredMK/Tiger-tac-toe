@@ -192,7 +192,7 @@ export function chaosResolve(state, rng) {
     if (out.replay) recap.replay = { square: i, type: m.type, last: clone(m.last), win: winners.slice() };
     if (out.resolve) {                                          // settled only now, with both moves known (a Bump knock, the Roulette spin): the recap plays it
       recap.pre[i] = project(clone(out.resolve.pre), me);
-      recap.resolve.push({ square: i, type: m.type, flash: Object.assign({ kind: 'move', by: me, next: me, square: i, type: m.type, note: 'resolve', pass: null, timeout: false, sc: recap.round, recap: true, scr: true }, out.resolve.flash) });
+      recap.resolve.push({ square: i, type: m.type, joint: !!out.resolve.joint, flash: Object.assign({ kind: 'move', by: me, next: me, square: i, type: m.type, note: 'resolve', pass: null, timeout: false, sc: recap.round, recap: true, scr: true }, out.resolve.flash) });
     }
     const drew = played.some(p => moves[p].out === 'draw');
     project(m, me);

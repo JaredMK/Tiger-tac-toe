@@ -1,7 +1,7 @@
 // Race tracks (Snakes and Ladders, Candy Race, Bump, the Dice race): the board and the tokens' hops.
 import { PLAY } from '../core/timer.js';
 import { other } from '../core/util.js';
-import { BUMP, BUMP_KNOCK } from '../games/bump/rules.js';
+import { BUMP, BUMP_KNOCK, bumpHops } from '../games/bump/rules.js';
 import { CANDY } from '../games/candy/rules.js';
 import { DICE_GOAL, diceSlot } from '../games/dice/rules.js';
 import { SNL } from '../games/snakes/rules.js';
@@ -99,7 +99,7 @@ export const SLIDE_MS = PLAY.slide, KNOCK_MS = PLAY.knock, SPIN3_MS = PLAY.spin3
 export function hopToken() {
   const f = state.flash;
   if (!f || !['candy', 'dice', 'snakes', 'bump'].includes(f.type) || !WAAPI || REDUCED) return;
-  if (f.type === 'bump' && f.scr) { knockHome(f); return; }
+  if (f.type === 'bump' && f.scr) { bumpRoundEnd(f); return; }
   const tok = app.querySelector('.gwrap .track .tok.moved');
   if (!tok) return;
   const spec = { candy: CANDY_SPEC, dice: DICE_SPEC, snakes: SNL_SPEC, bump: BUMP_SPEC }[f.type];
@@ -139,22 +139,31 @@ export function hopToken() {
     ], { duration: KNOCK_MS, delay: delay + hops * HOP_MS, fill: 'both', easing: 'ease-out' });
   }
 }
-// Super Chaos's round end in Bump: the pieces knocked from where they landed (side by side when both landed on
-// the same space) back Home, after a moment on show there.
-function knockHome(f) {
-  const spec = BUMP_SPEC, both = f.scr.knocked.length === 2;
-  for (const p of f.scr.knocked) {
-    const hit = app.querySelector(`.gwrap .track .tok.knocked.${p}`);
-    if (!hit) continue;
-    const [x, y] = spec.at(f.scr.at[p] - 1), lx = x + (both || f.scr.at.X === f.scr.at.O ? (p === 'X' ? -2.4 : 2.4) : 0), ly = y;
-    const hx = Number(hit.dataset.x), hy = Number(hit.dataset.y), dir = p === 'X' ? -1 : 1;
-    hit.style.animation = 'none';
-    hit.animate([
-      { transform: `translate(${lx}px, ${ly}px) rotate(0deg) scale(1)`, offset: 0 },
-      { transform: `translate(${lx + 2 * dir}px, ${ly - 2}px) rotate(${25 * dir}deg) scale(1.25)`, offset: .18 },
-      { transform: `translate(${(lx + hx) / 2}px, ${Math.min(ly, hy) - 9}px) rotate(${200 * dir}deg) scale(1.1)`, offset: .6 },
-      { transform: `translate(${hx}px, ${hy}px) rotate(${360 * dir}deg) scale(1)`, offset: 1 },
-    ], { duration: KNOCK_MS, delay: BUMP_KNOCK.lead, fill: 'both', easing: 'ease-out' });
+// Super Chaos's round end in Bump: both pieces hopping at the same time from where the round began (both
+// moved here), then any piece knocked from where it landed (side by side, sharing the space) back Home.
+function bumpRoundEnd(f) {
+  const spec = BUMP_SPEC, scr = f.scr, moves = scr.moves || {}, lead = BUMP_KNOCK.lead, kAt = lead + bumpHops(scr) * HOP_MS;
+  const side = p => (p === 'X' ? -2.4 : 2.4), pt = (slot, dx) => { const [x, y] = spec.at(slot - 1); return [x + dx, y]; };
+  for (const p of ['X', 'O']) {
+    const tok = app.querySelector(`.gwrap .track .tok.${p}`), mv = moves[p], kn = scr.knocked.includes(p), o = other(p);
+    if (!tok || (!mv && !kn)) continue;
+    const s0 = mv ? mv.from : scr.at[p], so = moves[o] ? moves[o].from : scr.at[o];
+    const end = [Number(tok.dataset.x), Number(tok.dataset.y)];
+    const land = kn ? pt(scr.at[p], scr.at.X === scr.at.O ? side(p) : 0) : end;
+    const keys = [[0, pt(s0, s0 === so ? side(p) : 0), 1, 0], [lead, pt(s0, s0 === so ? side(p) : 0), 1, 0]];   // [time, [x, y], scale, turn]
+    if (mv) for (let i = mv.from + 1; i <= mv.to; i++) {
+      const a = keys[keys.length - 1][1], b = i === mv.to ? land : pt(i, 0), t = lead + (i - mv.from) * HOP_MS;
+      keys.push([t - HOP_MS / 2, [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2 - 4], 1.3, 0], [t, b, 1, 0]);
+    }
+    const total = kAt + (kn ? KNOCK_MS : 0) + 1;
+    keys.push([kAt, land, 1, 0]);
+    if (kn) {
+      const d = p === 'X' ? -1 : 1;
+      keys.push([kAt + KNOCK_MS * .18, [land[0] + 2 * d, land[1] - 2], 1.25, 25 * d], [kAt + KNOCK_MS * .6, [(land[0] + end[0]) / 2, Math.min(land[1], end[1]) - 9], 1.1, 200 * d], [kAt + KNOCK_MS, end, 1, 360 * d]);
+    }
+    keys.sort((a, b) => a[0] - b[0]);
+    tok.style.animation = 'none';
+    tok.animate(keys.map(([t, [x, y], sc, r]) => ({ transform: `translate(${x}px, ${y}px) rotate(${r}deg) scale(${sc})`, offset: Math.min(1, t / total), easing: 'ease-in-out' })), { duration: total, fill: 'both' });
   }
 }
 export function trackSounds(f, add, won, mini, last) {
