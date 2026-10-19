@@ -64,7 +64,26 @@ test('dash: the runner runs on its own; a hazard not jumped is a crash at the ha
   // the finish: the target ends the run
   sim = runOut(fresh([]));
   assert.ok(sim.done && sim.d === m.cfg.target, 'the run finishes at the target');
-  assert.deepEqual(E.runResult(sim), { dist: m.cfg.target, ms: Math.round(sim.t * 1000), out: false });
+  assert.deepEqual(E.runResult(sim), { dist: m.cfg.target, ms: Math.round(sim.t * 1000), out: false, log: '', steps: sim.n }, 'the move: the end, the time, and the log (no inputs here) with the steps');
+});
+
+test('dash: the computer\'s runner clears every course when it has nothing to crash at (taps over single hazards, holds over pairs, the ground under flyers), and crashes at the hazard it is given: into a flyer, or short of a ground hazard', () => {
+  E.setRunConfig(null);
+  const lcg = seed => () => (seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296;
+  let flyers = 0, ground = 0;
+  for (let s = 1; s <= 40; s++) for (const f of [0, 0.35, 0.7]) {
+    const m = mini('dash', 'pilot' + s), from = Math.round(f * m.cfg.target); m.dist.X = from;
+    const sim = E.runPilot(E.runStart(m, 'X'), null, lcg(s));
+    assert.ok(sim.done, `course ${s} from ${from}: crashed at ${sim.crash && sim.crash.at} (${sim.crash && sim.crash.ob.k})`);
+    assert.ok(sim.rec.length >= 2 && sim.rec.every(([n, c]) => Number.isInteger(n) && 'jr'.includes(c)), 'its jumps and releases logged');
+    const s2 = E.runStart(m, 'X'), plan = s2.course[Math.min(s2.course.length - 1, 2 + (s % 4))];
+    E.runPilot(s2, plan, lcg(s));
+    assert.ok(s2.crash, `it crashes when told to (from ${from})`);
+    const o = s2.crash.ob, pair = plan.pair === 2 ? s2.course[s2.course.indexOf(plan) - 1] : plan;
+    assert.ok(o === pair || o === plan, `at that hazard (${o.k} at ${o.at}, planned ${plan.k} at ${plan.at})`);
+    if (o.k === 'flyer') flyers++; else ground++;
+  }
+  assert.ok(flyers > 5 && ground > 20, `both ways of crashing come up (${flyers} flyers, ${ground} on the ground)`);
 });
 
 test('dash: a pair needs a well-timed long jump (or two quick ones); a single tap on the first lands on the second', () => {

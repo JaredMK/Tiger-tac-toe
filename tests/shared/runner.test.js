@@ -78,6 +78,82 @@ test('flap and chopper: a whole square between two computers, through the shared
   }
 });
 
+/* ===================================== the log and the replay ===================================== */
+test('runners: a run goes in whole fixed steps (the rest of a frame carries over); the inputs it takes are logged at their steps, releases only when something was held; the log reads back, or not at all', () => {
+  E.setRunConfig(null);
+  assert.equal(E.runLogOf([[10, 'j'], [13, 'r'], [13, 'L'], [66, 'l']]), 'a:j,3:r,0:L,1h:l');
+  assert.deepEqual(E.runUnlog('a:j,3:r,0:L,1h:l', 100), [[10, 'j'], [13, 'r'], [13, 'L'], [66, 'l']]);
+  assert.deepEqual(E.runUnlog('', 5), [], 'no inputs at all');
+  for (const bad of ['a:x', 'a:j,', ':j', 'a:J', '1h:l', 'a:j;3:r', 'zzzzzzz:j', 'a:j,-1:r', 5, null, 'a'.repeat(E.RUN.logMax + 1)]) assert.equal(E.runUnlog(bad, 50), null, `refused: ${JSON.stringify(bad).slice(0, 30)}`);
+  const sim = E.runStart(mini('dash', 'steps'), 'X');
+  assert.deepEqual([sim.n, sim.acc, sim.rec], [0, 0, []]);
+  E.runStep(sim, 1 / 60); assert.equal(sim.n, 4, 'a 60 Hz frame is four whole steps'); assert.ok(sim.acc < 1e-9);
+  E.runStep(sim, 0.01); assert.equal(sim.n, 6); E.runStep(sim, 0.01); assert.equal(sim.n, 8); E.runStep(sim, 0.01); assert.equal(sim.n, 11, 'the rest of a frame carries over (2.4 steps: 2, 2, then 3)');
+  assert.ok(Math.abs(sim.t - 11 / 240) < 1e-9, 'the time is the steps\'');
+  assert.equal(E.runRelease(sim), false, 'nothing held: no release to log');
+  assert.ok(E.runJump(sim)); E.runStep(sim, 0.06); assert.equal(E.runRelease(sim), true); assert.ok(!E.runJump(sim), 'in the air');
+  assert.deepEqual(sim.rec, [[11, 'j'], [25, 'r']], 'the jump at step 11, the release 14 steps on');
+  const ln = E.runStart(mini('lane', 'steps'), 'X');
+  E.runStep(ln, 1 / 30); assert.ok(E.runLane(ln, 1)); for (let k = 0; k < 3; k++) E.runStep(ln, 0.1); assert.ok(!E.runLane(ln, 1), 'no lane further right'); assert.ok(E.runLane(ln, -1)); assert.ok(E.runLane(ln, -1), 'a second change, mid-change');
+  assert.deepEqual(ln.rec, [[8, 'L'], [80, 'l'], [80, 'l']], 'the changes taken (a second one mid-change too), never one refused');
+});
+
+test('runners: the same log replays to the same run on a fresh sim; the computer\'s move for every runner carries a log that replays to its end; the check accepts it and refuses a log whose end, steps or finish do not match', () => {
+  E.setRunConfig(null);
+  const lcg = seed => () => (seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296;
+  for (const t of E.RUN_TYPES) {
+    const rng = lcg(3);
+    for (let s = 0; s < 12; s++) {
+      const m = mini(t, 'rep-' + t + s);
+      let n = 0;
+      while (m.dist.X < m.cfg.target && n++ < 12) {
+        const mv = E.runAi(E.publicMini(m), 'X', rng).move;
+        assert.ok(typeof mv.log === 'string' && Number.isInteger(mv.steps) && mv.steps > 0, `${t}: a log and its steps (${JSON.stringify(mv).slice(0, 60)})`);
+        const log = E.runUnlog(mv.log, mv.steps), sim = E.runReplay(m, 'X', log, mv.steps), again = E.runReplay(m, 'X', log, mv.steps);
+        assert.equal(sim.n, mv.steps); assert.equal(E.r2(Math.min(m.cfg.target, sim.d)), mv.dist, `${t}: the replay ends where the move says`);
+        assert.equal(sim.done, mv.dist >= m.cfg.target); assert.ok(sim.done || sim.crash, 'at a crash or the finish');
+        assert.deepEqual([again.n, again.d, again.y, again.crash], [sim.n, sim.d, sim.y, sim.crash], 'the same again on a fresh sim');
+        assert.equal(E.runCheck(m, 'X', mv), null, `${t}: the computer's move passes (${JSON.stringify(mv).slice(0, 80)})`);
+        if (n === 1) {
+          assert.equal(E.runCheck(m, 'X', Object.assign({}, mv, { dist: E.r2(mv.dist + 0.5) })), mv.dist + 0.5 > m.cfg.target ? 'bad' : 'replay', 'another end');
+          assert.equal(E.runCheck(m, 'X', Object.assign({}, mv, { steps: mv.steps - 1 })), 'replay', 'a step short: the run has not ended there');
+          assert.equal(E.runCheck(m, 'X', Object.assign({}, mv, { steps: mv.steps + 1 })), 'replay', 'a step long: it ended before');
+          if (!sim.done) assert.equal(E.runCheck(m, 'X', Object.assign({}, mv, { dist: m.cfg.target, ms: mv.ms * 10 })), 'replay', 'a finish the log does not reach');
+          assert.equal(E.runCheck(m, 'X', Object.assign({}, mv, { log: mv.log + ',zz:q' })), 'bad', 'a malformed log');
+          assert.equal(E.runCheck(m, 'X', Object.assign({}, mv, { steps: mv.steps + 0.5 })), 'bad');
+          assert.equal(E.runCheck(m, 'X', Object.assign({}, mv, { log: 7 })), 'bad', 'a log that is not a string');
+          if (t !== 'chopper') assert.equal(E.runCheck(m, 'X', { dist: mv.dist, ms: mv.ms }), null, 'without the log: the crash checked against the course, as before');
+        }
+        const r = E.applyMove(m, 'X', mv, rng);
+        assert.equal(r.ok, true, r.reason);
+        assert.equal(m.last.log, mv.log); assert.equal(m.last.steps, mv.steps, 'the square keeps the log of the last run');
+        assert.equal(E.publicMini(m).last, undefined, 'the public view does not carry it');
+      }
+    }
+  }
+  // a run of the page's own kind: inputs between frames, the result's log replays to the same end
+  const m = mini('dash', 'page'), live = E.runStart(m, 'X');
+  for (let k = 0; k < 2000 && !live.crash && !live.done; k++) { if (k % 50 === 20) E.runJump(live); if (k % 50 === 24) E.runRelease(live); E.runStep(live, 1 / 60); }
+  const res = E.runResult(live, false), rep = E.runReplay(m, 'X', E.runUnlog(res.log, res.steps), res.steps);
+  assert.ok(res.log.length > 0 && res.steps === live.n);
+  assert.deepEqual([rep.n, E.r2(Math.min(m.cfg.target, rep.d)), !!rep.crash], [res.steps, res.dist, !!live.crash]);
+  assert.equal(E.runCheck(m, 'X', res), null);
+  assert.equal(E.runCheck(m, 'X', Object.assign({}, res, { log: res.log.replace(/^[^,]*,/, '') })), 'replay', 'an input dropped: another run');
+});
+
+test('runners: a move from a page before the log (no log at all) is checked as it always was: by its distance against the course and its time', () => {
+  E.setRunConfig(null);
+  const m = mini('dash', 'legacy'), c = E.runCourse(m, 'X'), cfg = m.cfg, first = c[0];
+  const okMs = (a, b) => Math.round(E.runSecs(cfg, a, b) * 1000);
+  assert.equal(E.runCheck(m, 'X', { dist: first.at + 0.1, ms: okMs(0, first.at + 0.1) + 50 }), null, 'a crash at the first hazard');
+  assert.equal(E.runCheck(m, 'X', { dist: (c[0].at + c[1].at) / 2, ms: 99999 }), 'course', 'a crash where there is nothing');
+  assert.equal(E.runCheck(m, 'X', { dist: first.at + 0.1, ms: 10 }), 'fast');
+  assert.equal(E.runCheck(m, 'X', { dist: cfg.target, ms: okMs(0, cfg.target) }), null, 'the finish');
+  assert.equal(E.runCheck(m, 'X', { dist: 30, ms: 99999, out: true }), null, 'cut short by the clock');
+  const r = E.applyMove(m, 'X', { dist: first.at + 0.1, ms: okMs(0, first.at + 0.1) + 50 });
+  assert.equal(r.ok, true); assert.equal(m.last.log, undefined, 'no log kept'); assert.equal(m.last.steps, undefined);
+});
+
 /* ===================================== the config ===================================== */
 test('runners: one difficulty config per game, checked value by value, copied into each square as it is dealt (a change applies to new squares only)', () => {
   E.setRunConfig(null);

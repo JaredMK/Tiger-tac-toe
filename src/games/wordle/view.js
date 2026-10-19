@@ -33,3 +33,11 @@ export function moveText(f, who) {
 export function sounds(f, add, won, mini, last) {
   if (last) last.marks.forEach((m, k) => add(m === 'g' ? 'tileG' : m === 'y' ? 'tileY' : 'tileX', 200 + k * 180)); if (won) add('solve', 1100); return;
 }
+// Someone else's guess replayed (ui/replay.js): the letters typed into the row as theirs were, then Enter.
+function replayInput(act, val) {
+  if (act === 'key' && /^k=[A-Z]$/.test(val || '')) { if ((state.draft || '').length < 5) state.draft = (state.draft || '') + val.slice(2); }
+  else if (act === 'bksp') state.draft = (state.draft || '').slice(0, -1);
+  return false;   // (the key's own sound plays)
+}
+const replaySynth = m => (typeof m === 'string' ? m.split('').map((ch, k) => [k * 300, 'key', 'k=' + ch]).concat([[m.length * 300 + 200, 'enter']]) : null);
+export const replay = { input: replayInput, synth: replaySynth };

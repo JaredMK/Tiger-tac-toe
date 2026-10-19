@@ -21,3 +21,17 @@ test('chopper: the cave narrows from 5.6 m to 3.4 m (the config\'s heights) and 
     }
   }
 });
+
+test('chopper: the computer\'s pilot flies all but the odd course through when it has nowhere to crash (from the start or a saved distance), and dives into the floor about where it is told to', () => {
+  const lcg = seed => () => (seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296;
+  let fin = 0, n = 0;
+  for (let s = 1; s <= 40; s++) for (const f of [0, 0.3, 0.6, 0.9]) {
+    const mini = square('chopper', s * 131, Math.round(f * 1000)), sim = E.runPilot(E.runStart(mini, 'X'), Infinity, lcg(s));
+    n++; if (sim.done) fin++;
+    assert.ok(sim.rec.every(([k, c]) => Number.isInteger(k) && 'jr'.includes(c)) && (sim.rec.length > 0 || mini.dist.X > 800), 'its presses and releases logged (a flight from near the end may need none)');
+    const at = mini.dist.X + sim.grace + 40 + (s % 7) * 30, s2 = E.runPilot(E.runStart(mini, 'X'), at, lcg(s));
+    if (at >= mini.cfg.target - 20) continue;
+    assert.ok(s2.crash && s2.d >= at - 12 && s2.d <= at + 40, `a crash near ${at} (from ${mini.dist.X}: ${s2.crash ? s2.crash.at + ' ' + s2.crash.ob.k : 'finished'})`);
+  }
+  assert.ok(fin >= n - 5, `${fin} of ${n} flights finished`);
+});

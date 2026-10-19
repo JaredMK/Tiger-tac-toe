@@ -13,27 +13,29 @@ import { blocked, leaveLoses, lockMine, moveWait, mySide, pinned, remoteTurn } f
 import { N, esc, menuOpen, menuStep, state } from './app.js';
 import { CHEV, RESET, dieFace, toonT } from './art.js';
 import { attPinned } from './attention.js';
-import { scWaiting } from './chaos.js';
+import { scCpu, scWaiting } from './chaos.js';
 import { qBtn } from './explainer.js';
 import { fingPinned } from './finger.js';
 import { animMs, fx, fxAt, fxAttr } from './fx.js';
+import { rep, repActive, repSkipBtn } from './replay.js';
 import { reviewCtx } from './screens/profile.js';
 import { netBar } from './turnbar.js';
 import { cpuTurn } from './turns.js';
 
-export function renderMini(sq, review) {
+// `popup`: Super Chaos's recap replaying the computer's move, as a card over the board (ui/chaos.js).
+export function renderMini(sq, review, popup) {
   const f = state.flash;                            // the move just made: its animation and result are playing
   const d = state.done;                             // the move made here, on show until the player heads back to the board
   const mini = d && d.drawn ? d.drawn : sq.mini;    // after a draw, keep showing the full board that drew
   const info = INFO[mini.type];
   const view = (!!sq.owner || !!review) && !f;     // a claimed square (or any square once the match is over and being reviewed): final state, read-only, secrets revealed
-  const locked = !!f || !!d || view || blocked();   // no input while the result plays, once the move is made, when just looking, or while it is not this phone's move
+  const locked = !!f || !!d || view || (blocked() && !repActive());   // no input while the result plays, once the move is made, when just looking, or while it is not this phone's move (an opponent's inputs replaying: the screen as the mover had it, its controls open; the page takes no tap meanwhile, ui/input.js)
   const a = f && f.type === mini.type ? f : null;   // the move to animate (only while its result is fresh)
   const anim = a ? (Number.isInteger(mini.last) ? mini.last : null) : null;   // the cell just played, for grid games
   const won = i => !!(mini.winCells && mini.winCells.includes(i));
   const wk = i => (mini.winCells ? mini.winCells.indexOf(i) : -1);           // place in the winning run, for staggered highlights
   const fresh = a && (a.kind === 'claim' || a.kind === 'match');             // the square was just won
-  const turn = state.turn;
+  const turn = popup && rep ? rep.by : state.turn;   // (the pop-up: the computer's move, so its screen is the computer's)
   let g = '';
   const game = viewOf(mini.type);
   if (game.screen) g = game.screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g);
@@ -41,8 +43,9 @@ export function renderMini(sq, review) {
   let sub = lock ? (mini.type === 'pig' ? `<b class="${turn}">${N(turn)}</b>'s turn in progress`   // (turn info only: how to play is in the ? explainer)
     : mini.type === 'bj' ? `<b class="${turn}">${N(turn)}</b>'s hand`
     : mini.type === 'bus' ? (a ? '' : `<b class="${turn}">${N(turn)}</b>'s run`) : mini.type === 'bs' ? `<b class="${turn}">${N(turn)}</b> hit · goes again` : mini.type === 'craps' ? `<b class="${turn}">${N(turn)}</b> on point ${mini.point}` : mini.type === 'pool' ? `<b class="${turn}">${N(turn)}</b> sank one · goes again` : `<b class="${turn}">${N(turn)}</b> guessed right · goes again`) : '';
-  if (!view && !f && !d && remoteTurn()) sub = `Waiting for <b class="${turn}">${N(turn)}</b>…`;
-  else if (!view && !f && !d && scWaiting()) sub = 'Your move is in';                 // Super Chaos: one move a round
+  if (popup) sub = `<b class="${rep ? rep.by : turn}">${N(rep ? rep.by : turn)}</b>'s move · 2×`;
+  else if (!view && !f && !d && remoteTurn()) sub = `Waiting for <b class="${turn}">${N(turn)}</b>…`;
+  else if (!view && !f && !d && scWaiting()) sub = `Waiting for <b class="${scCpu()}">${N(scCpu())}</b>…`;   // Super Chaos: the move is in; the computer is still at its own
   else if (!view && !f && !d && moveWait) sub = 'Sending your move…';
   let secret = '';
   if (view) {
@@ -64,11 +67,15 @@ export function renderMini(sq, review) {
     const next = d.pass ? `<b class="${d.pass}">${N(d.pass)}</b> has no move · <b class="${d.next}">${N(d.next)}</b> again` : `<b class="${d.next}">${N(d.next)}</b> next`;
     sub = `${head} · ${next}${secret ? ' · ' + secret : ''}`;
   }
-  return `<main class="scr mini${fx.enter && performance.now() - fx.enter.at < 400 ? ' enter' : ''}">${netBar()}
-    <div class="bar${view && sq.owner ? ' won won-' + sq.owner : ''}" role="${view ? 'status' : 'presentation'}">${review ? `<button class="back" data-act="${reviewCtx.mback}" aria-label="Back to the final board">${CHEV}Board</button>` : `<button class="back${!f && !d && ((mini.type === 'trivia' && lockMine()) || attPinned() || fingPinned() || (FINGER_TYPES.includes(mini.type) && lockMine())) ? ' gone' : ''}" data-act="back" aria-label="Back to the board"${f || d || lockMine() || cpuTurn() || pinned() ? ' disabled' : ''}>${CHEV}Board</button>`}
+  const back = popup ? `<span class="back rtag" aria-hidden="true">${REPLAY_ICON}Replay</span>`
+    : review ? `<button class="back" data-act="${reviewCtx.mback}" aria-label="Back to the final board">${CHEV}Board</button>`
+    : `<button class="back${!f && !d && ((mini.type === 'trivia' && lockMine()) || attPinned() || fingPinned() || (FINGER_TYPES.includes(mini.type) && lockMine())) ? ' gone' : ''}" data-act="back" aria-label="Back to the board"${f || d || lockMine() || cpuTurn() || pinned() || repActive() ? ' disabled' : ''}>${CHEV}Board</button>`;
+  return `<main class="scr mini${fx.enter && performance.now() - fx.enter.at < 400 ? ' enter' : ''}${popup ? ' screplay' : ''}"${popup ? ' role="dialog" aria-label="Replay"' : ''}>${popup ? '' : netBar()}
+    <div class="bar${view && sq.owner ? ' won won-' + sq.owner : ''}" role="${view ? 'status' : 'presentation'}">${back}
       <div class="ttl"><b${info.name.length > 14 ? ' class="long"' : ''}>${info.name}</b><small${view ? ' class="won"' : ''}>${sub}</small></div>${qBtn(mini.type)}</div>
-    <div class="gwrap"${fxAttr(f ? fxAt('move', f) : d && !f ? fxAt('back', d) : null)}>${g}</div>${f ? renderFlash(f) : ''}${pauseMenu()}</main>`;   // the move's animations count from the move
+    <div class="gwrap"${fxAttr(f ? fxAt('move', f) : d && !f ? fxAt('back', d) : null)}>${g}</div>${f ? renderFlash(f) : ''}${repSkipBtn()}${popup ? '' : pauseMenu()}</main>`;   // the move's animations count from the move
 }
+const REPLAY_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.6-5.9"/><path d="M4 4v5h5"/></svg>';
 // The in-game menu: a pause card with Resume and Main menu (which asks first).
 export function pauseMenu() {
   if (!menuOpen) return '';

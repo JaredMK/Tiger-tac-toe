@@ -39,11 +39,13 @@ jobs:
       - uses: actions/configure-pages@v5
         with:
           enablement: true
-      - name: Collect the site (only the web files; not the functions or tests)
+      - name: Test, then collect the site (only the web files; not the functions or tests)
+        # npm test first: the mini-games' rules and the layout checks (a Pinball table with two elements overlapping fails here, and the site stays as it was)
         # The page and its modules as they are (no build step). Matter.js (for Mini Golf, Pool, Bowling and
         # Pinball) loads from cdnjs; the copy from npm sits beside the page as the fallback.
         run: |
           npm ci
+          npm test
           mkdir _site
           cp index.html admin.html playtest.js trivia.json styles.html .nojekyll _site/
           cp -r src _site/src

@@ -91,7 +91,7 @@ export function fingCheck(mini, p, m) {
 export function fingAi(mini, p, rng) {
   if (mini.type === 'skyhop') return hopAi(mini, p, rng).move;
   if (mini.type === 'scoop') return scoopAi(mini, p, rng).move;
-  const r = PHYSICS.lib.pinAi(mini.cfg, mini.lit[p], rng).result;
+  const r = PHYSICS.lib.pinAi(PHYSICS.lib.pinTable(mini), mini.cfg, mini.lit[p], rng).result;
   return { hits: r.hits, ms: r.ms, rec: r.rec, end: r.end };
 }
 // Progress: Sky Hop's height, Scoop Stack's stack, Pinball's lit targets; and how far to go.

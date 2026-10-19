@@ -77,6 +77,17 @@ export function mmcolAct(el, e, act) {
   mmDraft.at = nxt >= 0 ? nxt : Math.max(0, mmDraft.slots.indexOf(null));
   render();
 }
+// Someone else's guess replayed (ui/replay.js): the pegs go into the slots as theirs did, then Submit.
+function replayInput(act, val, r) {
+  if (!mmDraft || mmDraft.sq !== r.sq) mmDraft = { sq: r.sq, slots: [null, null, null, null], at: 0 };
+  if (act === 'mmcol' && /^c=\d$/.test(val || '')) {
+    const c = Number(val.slice(2)), k = mmDraft.slots[mmDraft.at] == null ? mmDraft.at : mmDraft.slots.indexOf(null);
+    if (k >= 0 && !mmDraft.slots.includes(c)) { mmDraft.slots[k] = c; mmPop = { sq: r.sq, k, at: performance.now() }; const nxt = mmDraft.slots.findIndex((x, j) => x == null && j > k); mmDraft.at = nxt >= 0 ? nxt : Math.max(0, mmDraft.slots.indexOf(null)); }
+  } else if (act === 'mmslot' && /^k=\d$/.test(val || '')) { const k = Number(val.slice(2)); if (mmDraft.slots[k] != null) mmDraft.slots[k] = null; mmDraft.at = k; }
+  return false;
+}
+const replaySynth = m => (Array.isArray(m) && m.length === MM.pegs ? m.map((c, k) => [k * 380, 'mmcol', 'c=' + c]).concat([[MM.pegs * 380 + 250, 'move', 'm=' + JSON.stringify(m)]]) : null);
+export const replay = { input: replayInput, synth: replaySynth };
 // Its own controls (data-act): the page's click handler hands them here.
 export const actions = { mmslot: mmslotAct, mmcol: mmcolAct };
 

@@ -1,44 +1,12 @@
 // Lane Rush: the screen, the miniature, the move's words and sounds, and the inputs.
-import { runLane, runLaneX, runStep } from '../shared/runner.js';
-import { LANE, laneDrive } from './rules.js';
-import { REDUCED, app, cpuPlays, state } from '../../ui/app.js';
-import { fxAt } from '../../ui/fx.js';
-import { fmtM, outlined, rr, runCanvas, runColours, runPaint, runTable } from '../../ui/runner.js';
+import { runLaneX } from '../shared/runner.js';
+import { LANE } from './rules.js';
+import { state } from '../../ui/app.js';
+import { outlined, rr, runColours, runTable } from '../../ui/runner.js';
 export { runnerMiniature as miniature } from '../../ui/runner.js';
 export { runnerMoveText as moveText } from '../../ui/runner.js';
 export { runnerSounds as sounds } from '../../ui/runner.js';
 
-// Lane Rush: the computer's run is driven on the road before its result shows (the engine's laneDrive: a
-// drive that ends where the run did; it has no recording). A long run plays faster, so the replay takes
-// LANE_REPLAY_MAX at most. Only here, for the computer: another phone's run shows its result, as before.
-const LANE_REPLAY_MAX = 9000, laneReps = new WeakMap();
-export let laneShow = null;                                             // the replay on screen: { f, sim, i, crashAt, raf }
-export function laneRep(f) {
-  if (!f || f.type !== 'lane' || !f.run || f.timeout || REDUCED || state.online || !cpuPlays(f.by)) return null;
-  if (laneReps.has(f)) return laneReps.get(f);
-  const sq = state.squares && state.squares[f.square], plan = sq ? laneDrive(sq.mini, f.by, f.run.from, f.run.to, !!f.run.done) : null;
-  let rep = null;
-  if (plan) { const speed = Math.max(1, (plan.secs * 1000) / (LANE_REPLAY_MAX - 700)); rep = { plan, speed, drive: Math.round((plan.secs * 1000) / speed), ms: Math.round((plan.secs * 1000) / speed) + (f.run.done ? 500 : 700) }; }
-  laneReps.set(f, rep);
-  return rep;
-}
-export const lanePre = f => { const r = laneRep(f); return r ? r.ms : 0; };
-export function laneShowFrame(now) {
-  const ls = laneShow, f = state.flash;
-  if (!ls || ls.f !== f || state.screen !== 'mini' || state.zoom !== f.square) { if (ls) cancelAnimationFrame(ls.raf); laneShow = null; return; }
-  const rep = laneRep(f), start = fxAt('move', f);
-  if (!rep || start == null || now - start >= rep.ms) { cancelAnimationFrame(ls.raf); laneShow = null; runPaint(); return; }
-  const T = Math.max(0, (now - start) * rep.speed / 1000), steps = rep.plan.steps;
-  while (!ls.sim.crash && !ls.sim.done && ls.sim.t + LANE.step <= T + 1e-9) {
-    while (ls.i < steps.length && steps[ls.i].t <= ls.sim.t + 1e-9) runLane(ls.sim, steps[ls.i++].dir);
-    runStep(ls.sim, LANE.step);
-  }
-  if ((ls.sim.crash || ls.sim.done) && ls.crashAt == null) ls.crashAt = now;
-  const cv = app.querySelector('canvas[data-run="cv"]'), hud = app.querySelector('[data-run="hud"]');
-  if (cv) { const { c, W, H } = runCanvas(cv); if (W > 1 && H > 1) drawLane(c, W, H, ls.sim, ls.sim.crash ? { at: ls.crashAt } : null, now); }
-  if (hud) hud.textContent = fmtM(Math.min(ls.sim.d, f.run.to)) + ' m';
-  ls.raf = requestAnimationFrame(laneShowFrame);
-}
 const TRAFFIC = ['#7fc8f0', '#a9b4c4', '#f7f3e6', '#9ad88a', '#d8a0e8'];   // (no yellow or red: those are the players' cars)
 export function drawLane(c, W, H, sim, rd, now) {
   const P = runColours(), road = { x: W * 0.1, w: W * 0.8 }, laneW = road.w / 3, S = H / 40, cy = H * 0.87, toY = m => cy - (m - sim.d) * S;   // the car low in a tall scene: about 35 m of road ahead in sight
@@ -72,6 +40,3 @@ function drawCar(c, x, y, laneW, S, col, ang, P) {
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   g = runTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d }); return g;
 }
-
-// Setters for the names other modules reassign (an imported name is read-only there).
-export function setLaneShow(v) { laneShow = v; }

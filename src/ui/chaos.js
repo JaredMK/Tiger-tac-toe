@@ -1,19 +1,21 @@
 // Super Chaos on screen (the rules: core/chaos.js). The round's clock (paused with the menu or an explainer),
-// the end of the round once both moves are in (the computer's taking a person's time), and the recap on the
-// main board: a Mini Golf square plays both shots first; then the computer's square lights up with its move
-// told, now in the square's history; then the claims stamp in and any reset square turns over; then the
-// next round, or the match's end.
+// the end of the round once both moves are in (the computer's taking a person's time, "Waiting for…" until
+// then), and the recap on the main board: a Mini Golf square plays both shots first; then the computer's
+// square lights up; then a pop-up over the board replays its move at 2x (its inputs, then each step of the
+// move with its usual animation: ui/replay.js); then the claims stamp in and any reset square turns over;
+// then the next round, or the match's end.
 import { chaosNext, chaosResolve, chaosTimeout, scHuman } from '../core/chaos.js';
 import { other } from '../core/util.js';
-import { INFO, rulesOf, viewOf } from '../games/index.js';
+import { INFO, rulesOf } from '../games/index.js';
 import { SND, matchEndSound } from '../audio/sound.js';
 import { N, RNG, commit, menuOpen, state } from './app.js';
 import { explainT } from './explainer.js';
 import { startFx, stampFx } from './fx.js';
 import { render } from './render.js';
+import { repStart, repStop } from './replay.js';
 import { playFlash } from './turns.js';
 
-export const SC_MS = { cpu: [1400, 4200], spot: 1100, stamp: 900, end: 1300 };   // the computer's move takes this long; the recap's steps
+export const SC_MS = { cpu: [1400, 4200], spot: 800, stamp: 900, end: 1300, popup: 2 };   // the computer's move takes this long; the recap's steps; the pop-up replay's speed
 let scTimer = null;
 export let scUi = { round: null, readyAt: 0, stage: null, at: 0, played: false };   // this round on screen: when the computer's move counts as made, the recap's stage
 const now = () => Date.now();
@@ -36,10 +38,15 @@ function holdClock(p) {
 // The human's move is in, or the round is being shown: nothing to play until the next round.
 export function scWaiting() { return live() && !state.winner && !!(state.sc.me || state.sc.recap); }
 export function scRecapStage() { return live() && state.sc.recap && scUi.round === state.sc.recap.round ? scUi.stage : null; }
-// What a square shows while the recap has not reached its claims and resets: both moves in, nothing claimed.
+export const scPopup = () => scRecapStage() === 'popup';                   // the recap's pop-up replay of the computer's move is up
+export const scCpu = () => other(scHuman(state));
+// What a square shows while the recap has not reached its claims and resets: both moves in, nothing claimed;
+// the computer's square in the pop-up: its move as far as the replay has got.
 export function scShown(i) {
   const rc = live() && state.sc.recap, st = scRecapStage();
-  if (!rc || !rc.view || !rc.view[i] || !(st === 'replay' || st === 'spot')) return null;
+  if (!rc || !(st === 'replay' || st === 'spot' || st === 'popup')) return null;
+  if (st === 'popup' && rc.cpu && rc.cpu.square === i && scUi.mini) return { owner: null, mini: scUi.mini, mv: state.squares[i].mv };
+  if (!rc.view || !rc.view[i]) return null;
   return { owner: null, mini: rc.view[i], mv: state.squares[i].mv };
 }
 
@@ -89,9 +96,20 @@ function golfFlash(rc) {
   if (g.moveFlash) g.moveFlash(null, f.by, null, 0, mini, f);
   return f;
 }
+const clone = v => JSON.parse(JSON.stringify(v));
+// One step of the computer's move in the pop-up: its inputs (the replay's log), then the step's own flash
+// at the pop-up's speed; the square shows the step's result from then on.
+function popupStep(rc, cpu) {
+  const k = scUi.step, step = rc.cpu.steps[k], last = k + 1 >= rc.cpu.steps.length;
+  scUi.step = k + 1;
+  const f = Object.assign({}, step); delete f.after;
+  f.recap = true; f.recapMore = !last;
+  repStart({ cpu: true, sq: rc.cpu.square, by: cpu, type: rc.cpu.type, mini: scUi.mini, move: step.m, list: step.rep, timeout: !!step.timeout, speed: SC_MS.popup, lead: 350,
+    onMove: () => { if (step.after) scUi.mini = clone(step.after); state.flash = f; playFlash(false, SC_MS.popup); render(); } });
+}
 function recapStep() {
   const rc = state.sc.recap, me = scHuman(state), cpu = other(me);
-  if (scUi.round !== rc.round || !scUi.stage) scUi = { round: rc.round, readyAt: 0, stage: 'end', at: 0, played: false };   // (after a reload: straight on)
+  if (scUi.round !== rc.round || !scUi.stage) scUi = { round: rc.round, readyAt: 0, stage: 'end', at: 0, played: false, step: 0, mini: null };   // (after a reload: straight on)
   const t = now();
   if (scUi.stage === 'replay') {
     if (!scUi.played) {
@@ -108,15 +126,27 @@ function recapStep() {
       scUi.at = t;
       state.screen = 'board'; state.zoom = null;
       if (rc.cpu) {
-        const f = rc.cpu.steps[rc.cpu.steps.length - 1], g = viewOf(rc.cpu.type), who = `<b class="${cpu}">${N(cpu)}</b>`;
-        const said = f && g.moveText ? g.moveText(f, who) : '';
-        state.spot = { square: rc.cpu.square, by: cpu, label: `${state.setup.names[cpu] || cpu} played here`, html: `${N(cpu)} played here${said ? `<small>${said}</small>` : ''}`, sc: rc.round };
+        state.spot = { square: rc.cpu.square, by: cpu, label: `${state.setup.names[cpu] || cpu} played here`, html: `${N(cpu)} played here`, sc: rc.round };
         startFx('spot', state.spot); SND.play('spot');
       }
       render();
     }
     const wait = scUi.at + (rc.cpu ? SC_MS.spot : 200) - t;
     if (wait > 0) { scTimer = setTimeout(chaosStep, wait); return; }
+    scUi.stage = rc.cpu && rc.cpu.steps && rc.cpu.steps.length ? 'popup' : 'stamp'; scUi.at = 0; scUi.step = 0; scUi.mini = null;
+  }
+  if (scUi.stage === 'popup') {                                   // the computer's move replayed at 2x, step by step, in a card over the board
+    if (!scUi.at) {
+      scUi.at = t; scUi.step = 0;
+      scUi.mini = clone(rc.cpu.start || (state.sc.base && state.sc.base[rc.cpu.square]) || state.squares[rc.cpu.square].mini);
+      state.spot = null; state.screen = 'mini'; state.zoom = rc.cpu.square; state.draft = ''; state.pick = null; state.sel = [];
+      popupStep(rc, cpu);
+      return;
+    }
+    if (state.flash) return;                                      // a step's result is still playing (dismissFlash brings this round here again)
+    if (scUi.step < rc.cpu.steps.length) { popupStep(rc, cpu); return; }
+    repStop();
+    state.screen = 'board'; state.zoom = null; scUi.mini = null;
     scUi.stage = 'stamp'; scUi.at = 0;
   }
   if (scUi.stage === 'stamp') {
@@ -153,7 +183,7 @@ function recapStep() {
 export function scHint() {
   const sc = state.sc, cpu = other(scHuman(state));
   if (sc.recap) return `Round ${sc.recap.round} · results`;
-  if (sc.me) return `${N(cpu)} is still playing…`;
+  if (sc.me) return `Waiting for ${N(cpu)}…`;
   return `Round ${sc.round} · tap any open square`;
 }
 // The turn row in the header: the round, and how it stands.

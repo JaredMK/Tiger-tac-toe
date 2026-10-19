@@ -32,6 +32,7 @@ import { fingGo } from './finger.js';
 import { startFx } from './fx.js';
 import { backspace, submitWord, typeLetter } from './keyboard.js';
 import { render } from './render.js';
+import { repActive, repNote, repSkip, repVal } from './replay.js';
 import { runGo } from './runner.js';
 import { hist, openHistory, openLeaderboard, openProfile, prof, profileBack, setHist } from './screens/profile.js';
 import { chaosSetup, setGames, setupTypes } from './screens/setup.js';
@@ -87,6 +88,7 @@ export function init() {
     if (act === 'ask-stay') { joinAsk = null; render(); scheduleCpu(); return; }
     if (act === 'ask-leave') { if (joinAsk) leaveAndJoin(joinAsk.code); return; }
     if (act === 'dismiss') { if (Date.now() >= flashReady) dismissFlash(); return; }   // not before the animation is over
+    if (act === 'rep-skip') { repSkip(); return; }                                      // an opponent's replay: straight to its result
     const free = ['pause', 'pause-resume', 'pause-main', 'pause-back', 'pause-leave', 'leave', 'lobby-back', 'menu', 'find-again', 'profile', 'prof-back', 'prof-hist', 'mystats', 'hist-open', 'hist-sq', 'hist-back', 'hist-close', 'leaderboard', 'rejoin', 'host-retry', 'share', 'rematch', 'timer', 'review', 'review-sq', 'review-back', 'results', 'pview', 'react-open', 'react-send'];
     if (act === 'sound') { SND.setMuted(!SND.muted); if (!SND.muted) SND.play('toggle'); render(); return; }   // (the press's own sound came with the press when it was still on)
     if (act === 'react-mute') { rx.mute = !rx.mute; if (rx.mute && rx.card && rx.card.side !== mySide()) { clearTimeout(rx.hide); rx.card = null; } render(); return; }   // this match only: the opponent's emoji stop showing and sounding
@@ -99,6 +101,8 @@ export function init() {
     if (state.flash && !free.includes(act)) return;   // everything else waits for the result to clear
     if (state.done && !free.includes(act)) return;    // the result is still on show
     if (cpuTurn() && !free.includes(act)) return;   // the computer is playing
+    if (repActive() && !free.includes(act)) return;   // an opponent's inputs are playing back
+    if (state.screen === 'mini' && !free.includes(act) && !['zoom', 'back', 'sound', 'key', 'bksp', 'enter'].includes(act)) repNote(act, repVal(el));   // this phone's input, for the move's replay on the other side (the keyboard logs its own)
     if (act === 'react-open') { if (!reactCooling()) { rx.tray = !rx.tray; render(); } return; }   // (before the stamp: a reaction never clears a claim's stamp)
     if (act === 'react-send') { sendReact(Number(el.dataset.i)); return; }
     state.stamp = null;                           // a claim stamps in once
@@ -312,7 +316,7 @@ export function init() {
     if (!type) return;
     if (/^[a-zA-Z]$/.test(e.key)) {
       if (type === 'wordle') typeLetter(e.key.toUpperCase());
-      else if (type === 'hangman') attemptMove(e.key.toUpperCase());
+      else if (type === 'hangman') { repNote('move', `m=${JSON.stringify(e.key.toUpperCase())}`); attemptMove(e.key.toUpperCase()); }
     } else if (e.key === 'Backspace') backspace();
     else if (e.key === 'Enter') submitWord();
   });

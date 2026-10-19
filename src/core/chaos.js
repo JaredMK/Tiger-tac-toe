@@ -19,6 +19,7 @@ import { cpuMove } from './ai.js';
 import { dealable, pickType, startMatch } from './match.js';
 import { applyMove, canMove, newMini, randomLegalMove } from './minis.js';
 import { needRng, randInt } from './random.js';
+import { repMove, repNorm } from './replay.js';
 import { other } from './util.js';
 import { RUN_TYPES, runLog } from '../games/shared/runner.js';
 import { triviaDeal } from '../games/trivia/rules.js';
@@ -75,9 +76,11 @@ export function scCpu(state, rng, force) {   // force: { square, moves } to play
     sqlog: [], moves: 0, sc: { round: sc.round, me: null, moved: null, cpu: null, recap: null, shadow: true },
   };
   const steps = [];
+  let start = null;
   const next = k => (force ? (k < force.moves.length ? { square: force.square, move: force.moves[k] } : null) : cpuMove(sh, rng));
   let plan = next(0);
   for (let guard = 0; plan && guard < 80 && !sh.sc.me; guard++) {
+    if (!start) start = clone(sh.squares[plan.square].mini);                     // the square as the computer found it (the recap's replay starts there)
     let r = playMove(sh, plan.square, plan.move, rng);
     if (!r.ok) {                                                 // never expected: a random legal move there instead
       const m = randomLegalMove(sh.squares[plan.square].mini, cpu, rng);
@@ -85,13 +88,13 @@ export function scCpu(state, rng, force) {   // force: { square, moves } to play
       if (!r.ok) break;
     }
     const f = Object.assign({}, r.flash); delete f.drawn;
-    steps.push(clone(f));
+    steps.push(Object.assign(clone(f), { after: clone(sh.squares[plan.square].mini) }));   // (after: the square as the step left it, for the recap's replay of the move)
     sh.flash = null; sh.done = null;
     if (!sh.sc.me) plan = next(guard + 1);
   }
   if (!sh.sc.me) return null;
   const i = sh.sc.me.square;
-  return Object.assign({ side: cpu, square: i, mini: sh.squares[i].mini, out: sh.sc.me.out, win: sh.sc.me.win, steps }, sh.sc.me.gives ? { gives: sh.sc.me.gives } : {});
+  return Object.assign({ side: cpu, square: i, mini: sh.squares[i].mini, start, out: sh.sc.me.out, win: sh.sc.me.win, steps }, sh.sc.me.gives ? { gives: sh.sc.me.gives } : {});
 }
 
 // A move in a Super Chaos round (playMove hands it here): the player's own square, as they see it. One
@@ -125,6 +128,9 @@ export function chaosPlay(state, i, m, rng, opts) {
   const again = !!res.again && !opts.noAgain && res.outcome === 'continue';
   const flash = { kind: win || gives ? 'claim' : again ? 'again' : 'move', by: p, next: p, square: i, type: mini.type, note: res.note || null, pass: null, timeout: !!opts.forced, sc: sc.round };
   if (game.moveFlash) game.moveFlash(m, p, range, bjFrom, mini, flash);
+  const sm = repMove(m), rep = repNorm(opts.rep);
+  if (sm !== undefined) flash.m = sm;
+  if (rep) flash.rep = rep;
   if (win) { flash.winner = p; mini.winCells = res.cells || null; }
   if (gives) flash.winner = gives;
   if (again) state.lock = i;
@@ -161,7 +167,7 @@ export function chaosResolve(state, rng) {
   if (!sc || !sc.me || state.winner || sc.recap) return null;
   const moves = { [me]: sc.me };
   if (sc.cpu) moves[cpu] = sc.cpu;
-  const recap = { round: sc.round, me: sc.me.square, cpu: sc.cpu ? { square: sc.cpu.square, steps: sc.cpu.steps, type: sc.cpu.mini.type } : null, view: {}, claims: [], resets: [], replay: null, result: null };
+  const recap = { round: sc.round, me: sc.me.square, cpu: sc.cpu ? { square: sc.cpu.square, steps: sc.cpu.steps, start: sc.cpu.start, type: sc.cpu.mini.type } : null, view: {}, claims: [], resets: [], replay: null, result: null };
   const squares = [...new Set(Object.values(moves).map(x => x.square))];
   const wins = [];
   for (const i of squares) {

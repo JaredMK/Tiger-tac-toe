@@ -4,13 +4,14 @@ import { refusedNote } from '../net/moves.js';
 import { devWatch } from '../net/tracking.js';
 import { app, entering, esc, lastView, menuOpen, setEntering, setLastView, setMenuOpen, state } from './app.js';
 import { renderBoard, reviewSquares } from './board.js';
-import { scShown } from './chaos.js';
+import { scPopup, scShown } from './chaos.js';
 import { closeExplain, explainT, renderExplain, renderHowTo } from './explainer.js';
 import { fingPaint } from './finger.js';
 import { anchorFx, animate, fxAt, startFx, sweepBursts } from './fx.js';
 import { refocus, typingIn } from './keyboard.js';
 import { renderMini } from './mini.js';
 import { physPaint } from './physics.js';
+import { repMark, repRate } from './replay.js';
 import { runPaint } from './runner.js';
 import { renderLogin, renderUsername } from './screens/account.js';
 import { renderFind, renderIntro } from './screens/find.js';
@@ -47,6 +48,7 @@ export function render() {
   animate();
   busFly();
   anchorFx();
+  repMark(); repRate();                                       // a replay: the control just pressed, the animations at its rate
   runPaint();
   physPaint();
   fingPaint();
@@ -122,6 +124,7 @@ function renderMain() {
   }
   if (state.screen === 'mini' && state.zoom != null) {
     const sq = scShown(state.zoom) || state.squares[state.zoom];   // (Super Chaos's recap: the square before its claim or reset)
+    if (sq && scPopup()) return renderBoard() + renderMini(sq, false, true);   // the recap's replay of the computer's move: a pop-up over the board
     if (sq) return renderMini(sq);
   }
   return renderBoard();

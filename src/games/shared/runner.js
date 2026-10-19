@@ -2,10 +2,10 @@
 // computer's runs).
 import { gaussOf, makeRng, needRng, randInt } from '../../core/random.js';
 import { r2 } from '../../core/util.js';
-import { CHOP } from '../chopper/rules.js';
-import { DASH, DASH_OBS } from '../dash/rules.js';
-import { FLAP } from '../flap/rules.js';
-import { LANE, laneNeed, laneRow } from '../lane/rules.js';
+import { CHOP, chopPilot } from '../chopper/rules.js';
+import { DASH, DASH_OBS, dashPilot } from '../dash/rules.js';
+import { FLAP, flapPilot } from '../flap/rules.js';
+import { LANE, laneNeed, laneRow, lanePilot } from '../lane/rules.js';
 
 // ---------- Dash and Lane Rush: runs along a seeded course to 1,000 m ----------
 // A move is one run: from the player's saved distance until they crash (or finish), at the speed of
@@ -30,8 +30,10 @@ export const RUN_EXTRA = { chopper: { cave0: [3, 9.5], cave1: [2.5, 9.5] } };   
 // runs the computer takes to finish, about; aiSlow: how much shorter its runs get with speed; aiSpread:
 // the spread of its run lengths (log-normal); tolerance and slackMs: how much faster than the course's
 // own time a reported run may be (frame rounding); hit: how far from an obstacle's place a crash may be
-// reported (before, after); crashBin: the metres per bin in the crash stats.
-export const RUN = { grace: 2, countdown: 3, aiRuns: 4.5, aiSlow: 0.3, aiSpread: 0.45, tolerance: 0.85, slackMs: 200, hit: { dash: [1.5, 2.2], lane: [3.6, 3.6], flap: [1.0, 1.8] }, crashBin: 50, maxCrashes: 40 };
+// reported (before, after: a move from a page before the input log, checked by its distance alone);
+// crashBin: the metres per bin in the crash stats; maxSecs: the longest run the server will play through
+// from its log; logMax: the longest log it will read.
+export const RUN = { grace: 2, countdown: 3, aiRuns: 4.5, aiSlow: 0.3, aiSpread: 0.45, tolerance: 0.85, slackMs: 200, hit: { dash: [1.5, 2.2], lane: [3.6, 3.6], flap: [1.0, 1.8] }, crashBin: 50, maxCrashes: 40, maxSecs: 600, logMax: 60000 };
 export const RUNT = { bar: 900, hold: 700 };                          // the result: the bar fills, then holds
 export const RUN_CFG = { dash: null, lane: null, flap: null, chopper: null };
 // A config checked value by value: anything off, or missing, is the default.
@@ -128,12 +130,25 @@ export function caveWalls(cave, cfg, d) {
 }
 // What a run's result must be: from the saved distance to a crash at an obstacle past the grace stretch
 // (or to the finish), in no less time than the course allows. `out`: the turn's time ran out mid-run
-// (the run ends wherever it was: no obstacle needed; the time must still allow the distance).
+// (the run ends wherever it was: no obstacle needed; the time must still allow the distance). A move
+// with its input log (`log`, `steps`: every run made on a page since the log) is played through again
+// here, step for step, and must end just as it claims: at the same step, at the same distance (to the
+// centimetre), finished if and only if it says so, and at a crash unless finished or out of time. A move
+// without one (a page from before the log) is checked by its distance alone, as it always was.
 export function runCheck(mini, p, m) {
   if (!m || typeof m !== 'object') return 'bad';
   const cfg = mini.cfg, from = mini.dist[p], dist = Number(m.dist), ms = Number(m.ms);
   if (!Number.isFinite(dist) || !Number.isFinite(ms) || ms < 0 || dist < from || dist > cfg.target + 0.01) return 'bad';
   if (ms < runSecs(cfg, from, dist) * 1000 * RUN.tolerance - RUN.slackMs) return 'fast';   // more distance than the time allows at the course's speeds
+  if (m.log != null) {
+    const steps = Number(m.steps);
+    if (typeof m.log !== 'string' || !Number.isInteger(steps) || steps < 0 || steps * runStepOf(mini.type) > RUN.maxSecs) return 'bad';
+    const log = runUnlog(m.log, steps);
+    if (!log) return 'bad';
+    const sim = runReplay(mini, p, log, steps), done = dist >= cfg.target;
+    if (sim.n !== steps || Math.abs(r2(Math.min(cfg.target, sim.d)) - dist) > 1e-9 || sim.done !== done || (!done && !m.out && !sim.crash)) return 'replay';   // (ended sooner, elsewhere, or not as said)
+    return null;
+  }
   if (dist >= cfg.target || m.out) return null;
   if (mini.type === 'chopper' || mini.type === 'flap') return dist >= from + runGrace(cfg, from) - 0.5 ? null : 'course';   // the walls (or the ground) are everywhere past the grace stretch
   const g = from + runGrace(cfg, from), [before, after] = RUN.hit[mini.type];
@@ -150,44 +165,104 @@ export function runAuto(mini, p, rng) {
 }
 export const normCdf = x => 0.5 * (1 + Math.sign(x) * Math.sqrt(1 - Math.exp(-2 * x * x / Math.PI)));
 export function runAiMean(cfg, from) { return (cfg.target / RUN.aiRuns) * Math.pow(cfg.v0 / runSpeed(cfg, from), RUN.aiSlow); }
+// The computer's run: a length drawn so that it finishes in about aiRuns runs (log-normal about
+// runAiMean, shorter the faster it is going), then actually run, with its inputs logged like anyone's:
+// an autopilot (each game's own, runPilot) drives the course well until the first obstacle past that
+// length and fails there on purpose (Chopper: dives into the wall there), or finishes when there is
+// none. The move is the run's result (its end wherever the crash was, so the check plays it through and
+// agrees), and q the chance it finishes.
 export function runAi(mini, p, rng) {
   const cfg = mini.cfg, from = mini.dist[p], g = runGrace(cfg, from), mean = runAiMean(cfg, from), s = RUN.aiSpread;
   const len = Math.max(6, mean * Math.exp(s * gaussOf(rng) - s * s / 2));
-  const ob = mini.type === 'chopper' ? null : runCourse(mini, p).find(o => o.at >= from + g + len);
-  const dist = mini.type === 'chopper' ? Math.min(cfg.target, r2(from + g + len)) : ob ? Math.min(cfg.target, r2(ob.at + 0.2)) : cfg.target;
   const need = cfg.target - from - g;                            // the chance this run finishes
   const q = need <= 0 ? 1 : 1 - normCdf((Math.log(need / mean) + s * s / 2) / s);
-  return { move: { dist, ms: Math.round(runSecs(cfg, from, dist) * 1000) + 80 }, q };
+  const sim = runStart(mini, p), at = from + g + len;
+  const plan = mini.type === 'chopper' ? at : sim.course.find(o => o.at >= at) || null;
+  runPilot(sim, plan, rng);
+  return { move: runResult(sim, !sim.crash && !sim.done), q };   // (a run that somehow never ended goes in as cut short by the clock)
+}
+// The autopilot drives the sim to its end: the game's hand (dashPilot, lanePilot, flapPilot, chopPilot:
+// a function called before every step that makes the inputs) and the steps, up to maxSecs.
+export function runPilot(sim, plan, rng) {
+  const hand = (sim.type === 'dash' ? dashPilot : sim.type === 'lane' ? lanePilot : sim.type === 'flap' ? flapPilot : chopPilot)(sim, plan, rng), max = Math.round(RUN.maxSecs / runStepOf(sim.type));
+  while (!sim.crash && !sim.done && sim.n < max) { hand(); runTick(sim); }
+  return sim;
 }
 export const runNeeds = (cfg, from) => Math.max(1, (cfg.target - from) / (runAiMean(cfg, from) + runGrace(cfg, from)));
 // The run data a square carries to the stats (the admin's tuning): runs, distances and the crashes.
 export const runLog = mini => ({ run: { runs: { X: mini.runs.X, O: mini.runs.O }, dist: { X: Math.round(mini.dist.X), O: Math.round(mini.dist.O) }, crashes: { X: (mini.crashes.X || []).slice(), O: (mini.crashes.O || []).slice() } } });
 
 // ----- the run itself: the page drives it in real time (one frame at a time), the tests step by step -----
+// The run is worked out in fixed steps (DASH.step and the others: 1/240 s) of plain arithmetic, the
+// inputs taken between steps, so the same inputs at the same steps give the same run on every phone and
+// on the server. A sim counts its steps (n) and records the inputs it took (rec: [step, code] pairs, the
+// code 'j' a jump, a flap or the chopper's press, 'r' a release, 'l' and 'L' a lane change left and
+// right); the move carries them as its log (runLogOf), and anyone can play the run through again from it
+// (runReplay): the server to check it, the other phone to show it.
 // A fresh run from the player's saved distance: the course past the grace stretch, the runner on the
 // ground (Dash) or in the middle lane (Lane Rush).
 export function runStart(mini, p) {
   const cfg = mini.cfg, from = mini.dist[p], g = runGrace(cfg, from);
   const cave = mini.type === 'chopper' ? runCave(mini, p) : null;
   const y = mini.type === 'flap' ? FLAP.h / 2 : cave ? r2(caveWalls(cave, cfg, from + g).reduce((a, b) => a + b) / 2) : 0;   // the bird mid-sky; the chopper at the middle of the cave where the grace stretch ends
-  return { type: mini.type, cfg, from, d: from, t: 0, grace: g, course: runCourse(mini, p).filter(o => o.at >= from + g + (mini.type === 'flap' ? FLAP.box.w / 2 : 0)), i: 0, cave,   // (Flap: a post the bird would touch before the grace stretch ends is left out too)
+  return { type: mini.type, cfg, from, d: from, t: 0, n: 0, acc: 0, rec: [], grace: g, course: runCourse(mini, p).filter(o => o.at >= from + g + (mini.type === 'flap' ? FLAP.box.w / 2 : 0)), i: 0, cave,   // (Flap: a post the bird would touch before the grace stretch ends is left out too)
     y, vy: 0, air: false, held: false, holdT: 0, flown: false, lane: 1, laneFrom: 1, laneT: 1, crash: null, done: false };
 }
+export const runStepOf = type => (type === 'dash' ? DASH.step : type === 'flap' ? FLAP.step : type === 'chopper' ? CHOP.step : LANE.step);
+const runNote = (sim, code) => { if (sim.rec) sim.rec.push([sim.n, code]); };   // an input the sim took, at the step it came before
 export function runJump(sim) {                                          // Dash: a jump; Flap: a flap; Chopper: the press (it climbs while held)
   if (sim.crash || sim.done) return false;
-  if (sim.type === 'flap') { sim.vy = FLAP.vy; sim.flown = true; return true; }
-  if (sim.type === 'chopper') { sim.held = true; sim.flown = true; return true; }
+  if (sim.type === 'flap') { sim.vy = FLAP.vy; sim.flown = true; runNote(sim, 'j'); return true; }
+  if (sim.type === 'chopper') { sim.held = true; sim.flown = true; runNote(sim, 'j'); return true; }
   if (sim.type !== 'dash' || sim.air) return false;
-  sim.air = true; sim.vy = DASH.vy; sim.held = true; sim.holdT = 0; return true;
+  sim.air = true; sim.vy = DASH.vy; sim.held = true; sim.holdT = 0; runNote(sim, 'j'); return true;
 }
-export function runRelease(sim) { sim.held = false; }
+export function runRelease(sim) {                                       // let go: recorded when it lets go of something (a press held; not after the run has ended)
+  const took = sim.held && !sim.crash && !sim.done;
+  sim.held = false;
+  if (took) runNote(sim, 'r');
+  return took;
+}
 export function runLane(sim, dir) {
   if (sim.type !== 'lane' || sim.crash || sim.done) return false;
   const to = Math.max(0, Math.min(LANE.lanes - 1, Math.round(sim.lane) + dir));
   if (to === Math.round(sim.lane) && sim.laneT >= 1) return false;
   sim.laneFrom = runLaneX(sim); sim.lane = to; sim.laneT = 0;                 // (a change mid-change starts from where the car is)
+  runNote(sim, dir < 0 ? 'l' : 'L');
   return true;
 }
+export function runInput(sim, code) { return code === 'j' ? runJump(sim) : code === 'r' ? runRelease(sim) : code === 'l' ? runLane(sim, -1) : code === 'L' ? runLane(sim, 1) : false; }
+// The log: the pairs as base-36 step gaps and the code ("a:j,3:r,1k:j"); read back with the steps in
+// order (two inputs can share a step: a tap and its release in one frame), none past maxSteps, or null
+// for anything else.
+export function runLogOf(pairs) { let s = 0; return pairs.map(([k, c]) => { const d = k - s; s = k; return d.toString(36) + ':' + c; }).join(','); }   // (runLog is the stats' name)
+export function runUnlog(str, maxSteps) {
+  if (typeof str !== 'string' || str.length > RUN.logMax) return null;
+  if (!str) return [];
+  const out = [];
+  let s = 0;
+  for (const part of str.split(',')) {
+    const m = /^([0-9a-z]{1,6}):([jrlL])$/.exec(part);
+    if (!m) return null;
+    s += parseInt(m[1], 36);
+    if (s > maxSteps) return null;
+    out.push([s, m[2]]);
+  }
+  return out;
+}
+// A run played through again from its log: a replay (runReplayer: the sim, the inputs and how far along
+// them it is) stepped on to a step (runReplayTo: each input goes in before the step it was logged at),
+// or all the way (runReplay: steps steps, or until the crash or the finish before that).
+export function runReplayer(mini, p, log, steps) { const sim = runStart(mini, p); sim.rec = null; return { sim, log, k: 0, steps }; }
+export function runReplayTo(rep, n) {
+  const { sim, log } = rep, to = Math.min(n, rep.steps);
+  while (sim.n < to && !sim.crash && !sim.done) {
+    while (rep.k < log.length && log[rep.k][0] === sim.n) runInput(sim, log[rep.k++][1]);
+    runTick(sim);
+  }
+  return sim;
+}
+export function runReplay(mini, p, log, steps) { return runReplayTo(runReplayer(mini, p, log, steps), steps); }
 export const runLaneX = sim => (sim.laneT >= 1 ? sim.lane : sim.laneFrom + (sim.lane - sim.laneFrom) * sim.laneT);   // the car's lane, as a number, mid-change
 export const overlap = (a0, a1, b0, b1) => a0 < b1 && b0 < a1;
 // Chopper: the walls at d on this run: in the grace stretch they close in from the edges of the sky.
@@ -235,14 +310,22 @@ export function runHit(sim) {                                            // the 
   }
   return null;
 }
-// One frame of dt seconds, in fixed sub-steps: the distance grows at the course's speed, the jump or the
-// lane change plays out, a touch is a crash (the run ends there), the target is the finish.
+// One frame of dt seconds: as many whole steps as the time adds up to (the rest waits in acc for the
+// next frame; a frame longer than 0.1 s, the page away, counts as 0.1).
 export function runStep(sim, dt) {
   if (sim.crash || sim.done) return sim;
-  const step = sim.type === 'dash' ? DASH.step : sim.type === 'flap' ? FLAP.step : sim.type === 'chopper' ? CHOP.step : LANE.step;
-  let left = Math.max(0, Math.min(0.1, dt));
-  while (left > 1e-9 && !sim.crash && !sim.done) {
-    const h = Math.min(step, left); left -= h;
+  const step = runStepOf(sim.type);
+  sim.acc = (sim.acc || 0) + Math.max(0, Math.min(0.1, dt));
+  while (sim.acc >= step - 1e-9 && !sim.crash && !sim.done) { sim.acc -= step; runTick(sim); }
+  return sim;
+}
+// One step: the distance grows at the course's speed, the jump or the lane change plays out, a touch is a
+// crash (the run ends there), the target is the finish.
+export function runTick(sim) {
+  if (sim.crash || sim.done) return sim;
+  const h = runStepOf(sim.type);
+  sim.n = (sim.n || 0) + 1;
+  {
     sim.d += runSpeed(sim.cfg, sim.d) * h; sim.t += h;
     if (sim.type === 'dash' && sim.air) {
       const g = sim.held && sim.holdT < DASH.holdMax ? DASH.gHold : DASH.g;
@@ -256,7 +339,7 @@ export function runStep(sim, dt) {
       if (sim.flown || past) { sim.vy -= FLAP.g * h; sim.y += sim.vy * h; }
       if (sim.y > FLAP.h - hh) { sim.y = FLAP.h - hh; if (sim.vy > 0) sim.vy = 0; }   // the sky stops it
       if (sim.y < hh) {
-        if (past) { sim.y = hh; sim.crash = { at: r2(sim.d), ob: { k: 'ground' } }; break; }
+        if (past) { sim.y = hh; sim.crash = { at: r2(sim.d), ob: { k: 'ground' } }; return sim; }
         sim.y = hh; sim.vy = 0;                                       // the grace stretch: it lands, unhurt
       }
     }
@@ -266,14 +349,15 @@ export function runStep(sim, dt) {
       if (sim.y > CHOP.h - hh) { sim.y = CHOP.h - hh; sim.vy = Math.min(0, sim.vy); }
       if (sim.y < hh) { sim.y = hh; sim.vy = Math.max(0, sim.vy); }
     }
-    if (sim.d >= sim.cfg.target) { sim.d = sim.cfg.target; sim.done = true; break; }
+    if (sim.d >= sim.cfg.target) { sim.d = sim.cfg.target; sim.done = true; return sim; }
     const hit = runHit(sim);
-    if (hit) { sim.crash = { at: r2(sim.d), ob: hit }; break; }
+    if (hit) sim.crash = { at: r2(sim.d), ob: hit };
   }
   return sim;
 }
-// The move a run makes: its end (the crash, the finish, or where the time ran out) and its time.
-export const runResult = (sim, out) => ({ dist: r2(Math.min(sim.cfg.target, sim.d)), ms: Math.round(sim.t * 1000), out: !!out && !sim.done });
+// The move a run makes: its end (the crash, the finish, or where the time ran out), its time, and its
+// inputs (the log) with the steps it took, for the check and the replays.
+export const runResult = (sim, out) => ({ dist: r2(Math.min(sim.cfg.target, sim.d)), ms: Math.round(sim.t * 1000), out: !!out && !sim.done, log: runLogOf(sim.rec || []), steps: sim.n });
 export function runnerCreate(type, rng) {
   return { type, cfg: runConfig(type), seed: { X: randInt(needRng(rng), 1e9), O: randInt(rng, 1e9) }, dist: { X: 0, O: 0 }, runs: { X: 0, O: 0 }, crashes: { X: [], O: [] }, last: null };   // cfg: the difficulty this square was dealt with; seed: each player's course
 }
@@ -284,7 +368,7 @@ export function runnerApply(mini, p, m, rng, idx) {   // a run: its end and its 
   const from = mini.dist[p], to = Math.min(mini.cfg.target, r2(Number(mv.dist))), done = to >= mini.cfg.target;
   mini.dist[p] = to; mini.runs[p] += 1;
   if (!done) mini.crashes[p] = (mini.crashes[p] || []).concat(Math.round(to)).slice(-RUN.maxCrashes);
-  mini.last = { by: p, from, to, ms: Math.round(Number(mv.ms)), out: !!mv.out && !done, done };
+  mini.last = Object.assign({ by: p, from, to, ms: Math.round(Number(mv.ms)), out: !!mv.out && !done, done }, typeof mv.log === 'string' ? { log: mv.log, steps: Number(mv.steps) } : {});   // (the log: the other phone replays the run from it)
   if (done) return { ok: true, outcome: 'win', note: 'finish' };
   return { ok: true, outcome: 'continue', note: mv.out ? 'out' : 'crash' };
 }
@@ -292,5 +376,5 @@ export function runnerPublicView(mini) {
   return { type: mini.type, cfg: mini.cfg, seed: { X: mini.seed.X, O: mini.seed.O }, dist: { X: mini.dist.X, O: mini.dist.O }, runs: { X: mini.runs.X, O: mini.runs.O } };
 }
 export function runnerMoveFlash(m, p, range, bjFrom, mini, flash) {
-  const l = mini.last; flash.run = { from: l.from, to: l.to, ms: l.ms, out: l.out, done: l.done, dist: { X: mini.dist.X, O: mini.dist.O }, runs: { X: mini.runs.X, O: mini.runs.O }, target: mini.cfg.target }; return;
+  const l = mini.last; flash.run = Object.assign({ from: l.from, to: l.to, ms: l.ms, out: l.out, done: l.done, dist: { X: mini.dist.X, O: mini.dist.O }, runs: { X: mini.runs.X, O: mini.runs.O }, target: mini.cfg.target }, typeof l.log === 'string' ? { log: l.log, steps: l.steps } : {}); return;
 }

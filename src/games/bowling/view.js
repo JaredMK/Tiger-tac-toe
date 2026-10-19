@@ -7,6 +7,7 @@ import { blocked } from '../../net/room.js';
 import { app, state } from '../../ui/app.js';
 import { physBall, physResult, physTable, physThumb } from '../../ui/physics.js';
 import { render } from '../../ui/render.js';
+import { repNote } from '../../ui/replay.js';
 import { outlined, rr, runColours } from '../../ui/runner.js';
 export { physicsSounds as sounds } from '../../ui/physics.js';
 
@@ -28,8 +29,8 @@ export function bowlNow(dr, now) {
 // At each render of the lane: the draft kept, begun (the player to move, a fresh arrow), or dropped.
 export function bowlKeep(o, mine) {
   const dr = bowlDraft, same = dr && dr.sq === o.zoom && dr.p === o.turn;
-  if (mine) { if (!same || dr.step === 3) bowlDraft = { sq: o.zoom, p: o.turn, step: 1, t0: performance.now(), aim: 0, power: 0, shown: null }; }   // (a roll refused comes back to a fresh aim)
-  else if (!(same && dr.step === 3 && !o.view)) bowlDraft = null;   // the roll on its way: both stay locked until it plays
+  if (mine && !(same && dr.rep)) { if (!same || dr.step === 3) bowlDraft = { sq: o.zoom, p: o.turn, step: 1, t0: performance.now(), aim: 0, power: 0, shown: null }; }   // (a roll refused comes back to a fresh aim; a replay of someone else's taps keeps theirs)
+  else if (!(same && (dr.step === 3 || dr.rep) && !o.view)) bowlDraft = null;   // the roll on its way: both stay locked until it plays (rep: someone else's taps replayed)
   return bowlDraft;
 }
 export function bowlTap() {
@@ -37,8 +38,8 @@ export function bowlTap() {
   if (!sq || sq.mini.type !== 'bowling' || sq.owner || state.flash || state.done || blocked() || !physicsReady()) return false;
   if (!dr || dr.sq !== state.zoom || dr.p !== state.turn || dr.step === 3) return false;
   const now = performance.now(), v = dr.shown && now - dr.shown.at < 120 ? dr.shown : bowlNow(dr, now);
-  if (dr.step === 1) { dr.aim = v.aim; dr.step = 2; dr.t0 = now; dr.shown = null; SND.play('mark'); render(); return true; }
-  dr.power = v.power; dr.step = 3; dr.shown = null;
+  if (dr.step === 1) { dr.aim = v.aim; dr.step = 2; dr.t0 = now; dr.shown = null; repNote('bowl', 'aim=' + dr.aim); SND.play('mark'); render(); return true; }
+  dr.power = v.power; dr.step = 3; dr.shown = null; repNote('bowl', 'power=' + dr.power);
   attemptMove(physShot({ aim: dr.aim, power: dr.power }));
   if (state.zoom === dr.sq && bowlDraft === dr && !state.flash) render();   // (online: the roll waits on the server, both locked)
   return true;
@@ -93,6 +94,19 @@ export function drawBowl(g, mini, pos) {
 export function miniature(mini, final) {
   return physThumb(mini);
 }
+// Someone else's roll replayed (ui/replay.js): their two taps as their screen showed them (the arrow stops
+// where they stopped it and the meter rises; the meter stops at their power), then the roll.
+function replayInput(act, val, r) {
+  if (act !== 'bowl') return false;
+  const m = /^(aim|power)=(-?[\d.]+)$/.exec(val || '');
+  if (!m) return false;
+  const now = performance.now();
+  if (m[1] === 'aim') bowlDraft = { sq: r.sq, p: r.by, step: 2, t0: now, aim: r3(Number(m[2])), power: 0, shown: null, rep: true };
+  else if (bowlDraft && bowlDraft.rep && bowlDraft.sq === r.sq) { bowlDraft.power = r3(Number(m[2])); bowlDraft.step = 3; }
+  return false;
+}
+const replaySynth = m => (m && typeof m === 'object' ? [[0, 'bowl', 'aim=' + m.aim], [900, 'bowl', 'power=' + m.power]] : null);
+export const replay = { input: replayInput, synth: replaySynth };
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   g = physTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d }); return g;
 }

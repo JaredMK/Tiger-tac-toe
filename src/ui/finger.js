@@ -88,7 +88,7 @@ export function fingGo() {
   const now = performance.now(), mini = sq.mini;
   fingDraft = { id: fingId(state.zoom, p), sq: state.zoom, p, type, mini, phase: 'play', at: now, last: now, acc: 0, raf: 0, ptr: null, keys: { L: 0, R: 0, dir: 0 }, flipOn: { L: false, R: false }, presses: new Map(), pull: null, kpx: 30, out: {}, brk: {}, keptAt: now, saved: 0, end: null, endAt: 0, hintGone: false };
   const fd = fingDraft;
-  if (type === 'pinball') fd.w = PHYSICS.lib.pinNew(mini.cfg, mini.lit[p]);
+  if (type === 'pinball') fd.w = PHYSICS.lib.pinNew(PHYSICS.lib.pinTable(mini), mini.cfg, mini.lit[p]);
   else { fd.sim = type === 'skyhop' ? hopStart(mini, p) : scoopStart(mini, p); fd.rec = fingRecorder(); fd.tx = fd.sim.x; }
   fingLive = null;
   fingKeep(fd, false);
@@ -196,7 +196,7 @@ const fingSay = (type, v, goal) => (type === 'skyhop' ? `${fmtN(v)} / ${fmtN(goa
 function fingDraftView(fd, now) {
   if (fd.type === 'pinball') {
     const w = fd.w, b = w.ball.position;
-    return { type: 'pinball', p: fd.p, cfg: fd.mini.cfg, lit: w.lit.slice(), ball: [b.x, b.y], flips: [w.flip.L.a, w.flip.R.a], t: w.t, pull: fd.pull ? fd.pull.p : 0, flash: fd.flash, saved: fd.saved, end: fd.end, endAt: fd.endAt, waiting: !w.inPlay && !w.over };
+    return { type: 'pinball', p: fd.p, cfg: fd.mini.cfg, table: w.table, lit: w.lit.slice(), ball: [b.x, b.y], flips: [w.flip.L.a, w.flip.R.a], t: w.t, pull: fd.pull ? fd.pull.p : 0, flash: fd.flash, saved: fd.saved, end: fd.end, endAt: fd.endAt, waiting: !w.inPlay && !w.over, gate: w.gateOn };
   }
   return { type: fd.type, p: fd.p, sim: fd.sim, out: fd.out, brk: fd.brk, stack: fd.type === 'scoop' ? fd.mini.stack[fd.p].concat(fd.sim.got) : null, end: fd.end, endAt: fd.endAt, tx: fd.tx };
 }
@@ -205,7 +205,7 @@ function fingStill(mini, p) {
   if (mini.type === 'skyhop') return { type: 'skyhop', p, sim: hopStart(mini, p), out: {}, brk: {}, still: true };
   if (mini.type === 'scoop') return { type: 'scoop', p, sim: scoopStart(mini, p), out: {}, brk: {}, stack: mini.stack[p].slice(), still: true };
   const T = PHYSICS.lib.PIN;
-  return { type: 'pinball', p, cfg: mini.cfg, lit: mini.lit[p].slice(), ball: T.lane.serve.slice(), flips: [T.flip.rest, T.flip.rest], t: 0, pull: 0, waiting: true, still: true };
+  return { type: 'pinball', p, cfg: mini.cfg, table: PHYSICS.lib.pinTable(mini), lit: mini.lit[p].slice(), ball: T.lane.serve.slice(), flips: [T.flip.rest, T.flip.rest], t: 0, pull: 0, waiting: true, still: true, gate: false };
 }
 // Someone else's attempt, ready to play: from its inputs (stepped as the replay goes) or its recording.
 const fingReps = new WeakMap();
@@ -217,7 +217,7 @@ function fingReplayOf(f) {
     const mini0 = fingBefore(sq.mini, fg), raw = fingRaw(fg), ms = fingMs(fg), speed = ms > 0 ? raw / ms : 1;
     if (fg.type === 'pinball') {
       const L = PHYSICS.lib, frames = L.pinUnpack(fg.rec) || [];
-      rep = { type: 'pinball', p: fg.by, mini0, frames, ang: L.pinFlipAngles(frames), hits: fg.hits || [], ms, speed, raw };
+      rep = { type: 'pinball', p: fg.by, mini0, table: L.pinTable(mini0), frames, ang: L.pinFlipAngles(frames), hits: fg.hits || [], ms, speed, raw };
     } else {
       const log = fingUnlog(fg.log, fg.steps, Math.ceil((fg.type === 'skyhop' ? HOP.w : SCOOP.w) * FING.q)) || [];
       rep = { type: fg.type, p: fg.by, mini0, log, steps: fg.steps, ms, speed, raw };
@@ -236,7 +236,8 @@ function fingRepView(rep, T) {
     const lit = rep.mini0.lit[rep.p].slice(); let flash = null;
     for (const [id, t] of rep.hits) if (t <= T) { lit[id] = 1; if (T - t < 0.6) flash = { id, at: performance.now() - (T - t) * 1000 }; }
     const T0 = L.PIN.lane.serve, waiting = Math.hypot(a[0] - T0[0], a[1] - T0[1]) < 0.5;
-    return { type: 'pinball', p: rep.p, cfg: rep.mini0.cfg, lit, ball: jump ? a.slice(0, 2) : [a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u], flips: [rep.ang[i][0] + (rep.ang[j][0] - rep.ang[i][0]) * u, rep.ang[i][1] + (rep.ang[j][1] - rep.ang[i][1]) * u], t: T, pull: 0, flash, waiting };
+    const gate = !waiting && (a[0] < L.PIN.lane.x0 - 1 || a[1] < L.PIN.lane.top - 1);   // (the gate shuts once the ball is out on the playfield)
+    return { type: 'pinball', p: rep.p, cfg: rep.mini0.cfg, table: rep.table, gate, lit, ball: jump ? a.slice(0, 2) : [a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u], flips: [rep.ang[i][0] + (rep.ang[j][0] - rep.ang[i][0]) * u, rep.ang[i][1] + (rep.ang[j][1] - rep.ang[i][1]) * u], t: T, pull: 0, flash, waiting };
   }
   if (!rep.sim || rep.sim.n > T / FING.step + 1) { rep.sim = rep.type === 'skyhop' ? hopStart(rep.mini0, rep.p) : scoopStart(rep.mini0, rep.p); rep.k = 0; rep.out = {}; rep.brk = {}; rep.tx = rep.sim.x; }
   const sim = rep.sim, want = Math.min(rep.steps, Math.floor(T / FING.step + 1e-6));
@@ -395,7 +396,7 @@ export function fingSounds(f, add) {
     let n = 0;
     add('go', 0);
     if (rep.type === 'pinball') {
-      const T = PHYSICS.lib.PIN, fr = rep.frames, sv = T.lane.serve, near = T.bump.at.map(() => false);
+      const T = PHYSICS.lib.PIN, fr = rep.frames, sv = T.lane.serve, bumps = rep.table.bumpers, near = bumps.map(() => false);
       let bits = 0, lane = true;
       for (let i = 0; i < fr.length && n < 160; i++) {
         const [x, y, b] = fr[i], t = i / T.fps, inLane = Math.hypot(x - sv[0], y - sv[1]) < 0.5;
@@ -404,7 +405,7 @@ export function fingSounds(f, add) {
         if ((b & 1) && !(bits & 1)) { add('flipper', at(t)); n++; }
         if ((b & 2) && !(bits & 2)) { add('flipper', at(t)); n++; }
         bits = b;
-        T.bump.at.forEach(([bx, by], j) => { const on = Math.hypot(x - bx, y - by) < T.bump.r + T.ballR + 1.5; if (on && !near[j]) { add('bumper', at(t)); n++; } near[j] = on; });
+        bumps.forEach(([bx, by, br], j) => { const on = Math.hypot(x - bx, y - by) < br + T.ballR + 1.5; if (on && !near[j]) { add('bumper', at(t)); n++; } near[j] = on; });
       }
       for (const [, t] of rep.hits) add('ding', at(t));
       const e = fingEndSound('pinball', fg.end);

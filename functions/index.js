@@ -654,7 +654,7 @@ exports.move = onCall(CALL, async req => {
       const t = rec.state.timer, ms = sq.mini.type === 'pinball' ? Number(d.move.ms) : Number(d.move.steps) * E.FING.step * 1000;
       if (t && t.limit && t.deadline != null && !(ms <= now() - (t.deadline - t.limit * 1000) + E.FING.slackMs)) return { ok: false, reason: 'fast' };
     }
-    return E.applyOnlineMove(rec, side, i, d.move, seedRng());
+    return E.applyOnlineMove(rec, side, i, d.move, seedRng(), { rep: d.rep });   // (rep: the mover's inputs before the move, checked and kept by the engine for the other phone's replay)
   });
 });
 // The turn's time is up: the random move for the player on the move (or the match, on a second

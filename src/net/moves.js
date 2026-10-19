@@ -14,13 +14,15 @@ import {
 import { RNG, commit, flashTimer, holdTimer, noticeTimer, setFlashTimer, setHoldTimer, setNoticeTimer, state } from '../ui/app.js';
 import { startFx } from '../ui/fx.js';
 import { render } from '../ui/render.js';
+import { repTake } from '../ui/replay.js';
 import { playFlash } from '../ui/turns.js';
 
 // ---------- moves: a transaction on the room's match record ----------
 // a move request from this phone, or the move itself when the game is played here
 export function attemptMove(m) {
-  if (state.online) { dbMove(state.zoom, m); return true; }
-  const r = playMove(state, state.zoom, m, RNG);
+  const rep = repTake();                                          // this phone's inputs before the move: they ride with it, for the other side's replay
+  if (state.online) { dbMove(state.zoom, m, rep); return true; }
+  const r = playMove(state, state.zoom, m, RNG, { rep });
   if (r.ok) { playFlash(); commit(); } else SND.play('error');
   return r;
 }
@@ -39,12 +41,12 @@ export function matchTransaction(fn) {
 // as before, and show their result when the server has it.
 const PREDICT = ['ttt', 'c4', 'hex', 'hexapawn'];
 export let predicted = null;                            // { seq, entry, squares }: the move shown here, not yet confirmed
-function predictMove(i, m) {
+function predictMove(i, m, rep) {
   const sq = state.squares && state.squares[i];
   if (!sq || !PREDICT.includes(sq.mini.type) || !state.online) return null;
   const rec = parseMatch(room && room.match);
   if (!rec) return null;
-  const r = applyOnlineMove(Object.assign({ secrets: {} }, rec), state.online.me, i, m, RNG);
+  const r = applyOnlineMove(Object.assign({ secrets: {} }, rec), state.online.me, i, m, RNG, { rep });
   if (!r.ok) return { ok: false, reason: r.reason };
   if (r.entries[0] && r.entries[0].kind === 'draw') return null;   // a draw deals the square a random new game: the server's draw is the one shown
   return { ok: true, seq: r.rec.state.seq, entry: r.entries[0], squares: JSON.stringify(r.rec.state.squares), rec: r.rec };
@@ -61,7 +63,7 @@ function rollbackMove(reason) {
   }
 }
 export let tapEl = null;                                // the control just tapped (set by the tap, read by dbMove)
-export async function dbMove(i, m) {
+export async function dbMove(i, m, rep) {
   const pressed = tapEl; tapEl = null;
   if (blocked() || !fb || !room || i == null) return false;
   const me = state.online.me;
@@ -70,11 +72,11 @@ export async function dbMove(i, m) {
   clearTimeout(moveTimer); setMoveTimer(setTimeout(() => { if (moveWait) { setMoveWait(null); render(); } }, NET_MS.move));
   let reason = null;
   if (isMM()) {                                                  // the server checks and makes the move
-    const pr = predictMove(i, m);
+    const pr = predictMove(i, m, rep);
     if (pr && !pr.ok) { setMoveWait(null); moveRejected(pr.reason); render(); return true; }   // refused by the rules here: nothing is sent
     if (pr) { predicted = { seq: pr.seq, entry: pr.entry, squares: pr.squares }; presentEntry(pr.rec.state, pr.entry, []); }   // shown now
     clearTimeout(moveTimer); setMoveTimer(setTimeout(() => { if (moveWait) { setMoveWait(null); render(); } }, NET_MS.call));
-    try { const r = await call('move', { game: state.online.game, square: i, move: m }); if (!r.ok) rollbackMove(r.reason); }
+    try { const r = await call('move', Object.assign({ game: state.online.game, square: i, move: m }, rep ? { rep } : {})); if (!r.ok) rollbackMove(r.reason); }
     catch (e) { rollbackMove('network'); }
     clearTimeout(moveTimer); setMoveWait(null); render();
     return true;
@@ -82,7 +84,7 @@ export async function dbMove(i, m) {
   try {
     const res = await matchTransaction(rec => {
       const turn0 = rec.state.turn;
-      const r = applyOnlineMove(rec, me, i, m, RNG);
+      const r = applyOnlineMove(rec, me, i, m, RNG, { rep });
       if (!r.ok) { reason = r.reason; return null; }
       if (r.rec.state.turn !== turn0 || r.rec.state.winner) armClock(r.rec.state, r.entries, serverNow());   // one clock per turn: set when the turn passes on
       return r.rec;

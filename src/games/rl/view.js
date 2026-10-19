@@ -91,6 +91,18 @@ export function rlnumAct(el, e, act) {
   }
   render();
 }
+// Someone else's bet replayed (ui/replay.js): their numbers, group or 0 go onto the board as theirs did, then Spin.
+function replayInput(act, val, r) {
+  if (!rlDraft || rlDraft.sq !== r.sq) rlDraft = { sq: r.sq, nums: [], bet: null };
+  const dr = rlDraft;
+  if (act === 'rlnum' && /^n=\d+$/.test(val || '')) { const n = Number(val.slice(2)); if (dr.bet) { dr.bet = null; dr.nums = []; } if (!dr.nums.includes(n)) { if (dr.nums.length >= RL.pick) dr.nums.shift(); dr.nums.push(n); } }
+  else if (act === 'rlgrp' && /^g=g[123]$/.test(val || '')) { dr.bet = val.slice(2); dr.nums = []; }
+  else if (act === 'rlzero') { dr.bet = 'zero'; dr.nums = []; }
+  return false;
+}
+const replaySynth = m => (Array.isArray(m) ? m.map((n, k) => [k * 260, 'rlnum', 'n=' + n]).concat([[m.length * 260 + 300, 'move', 'm=' + JSON.stringify(m)]])
+  : m === 'zero' ? [[0, 'rlzero'], [700, 'move', 'm="zero"']] : typeof m === 'string' ? [[0, 'rlgrp', 'g=' + m], [700, 'move', 'm=' + JSON.stringify(m)]] : null);
+export const replay = { input: replayInput, synth: replaySynth };
 // Its own controls (data-act): the page's click handler hands them here.
 export const actions = { rlnum: rlnumAct, rlgrp: rlnumAct, rlzero: rlnumAct };
 

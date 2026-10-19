@@ -5,6 +5,7 @@ import { attemptMove, dbPick } from '../../net/moves.js';
 import { blocked } from '../../net/room.js';
 import { RNG, commit, pickKey, state } from '../../ui/app.js';
 import { fxAt, fxAttr, startFx } from '../../ui/fx.js';
+import { repTake } from '../../ui/replay.js';
 import { playFlash } from '../../ui/turns.js';
 
 const CARD_COLORS = { green: '#5be37a', yellow: '#ffd54a', purple: '#c084fc', orange: '#ff9e4a' };
@@ -51,9 +52,18 @@ export function pickAct(el, e, act) {
   }
   if (first == null) { state.pick = i; state.pickSq = state.zoom; startFx('pick', pickKey()); SND.play('flipUp'); }   // the card turns up: its own event
   else if (first === i) { state.pick = null; state.pickSq = null; }
-  else if (!playMove(state, state.zoom, [first, i], RNG).ok) { state.pick = null; state.pickSq = null; }
+  else if (!playMove(state, state.zoom, [first, i], RNG, { rep: repTake() }).ok) { state.pick = null; state.pickSq = null; }
   else playFlash();
   commit();
 }
+// Someone else's move replayed (ui/replay.js): their first card turns up as it did for them; the second is the move.
+function replayInput(act, val, r) {
+  if (act !== 'pick' || !/^i=\d$/.test(val || '')) return false;
+  const i = Number(val.slice(2));
+  if (state.pick == null || state.pickSq !== r.sq) { state.pick = i; state.pickSq = r.sq; startFx('pick', pickKey()); SND.play('flipUp'); }
+  return true;
+}
+const replaySynth = m => (Array.isArray(m) && m.length === 2 ? [[0, 'pick', 'i=' + m[0]], [800, 'pick', 'i=' + m[1]]] : null);
+export const replay = { input: replayInput, synth: replaySynth };
 // Its own controls (data-act): the page's click handler hands them here.
 export const actions = { pick: pickAct };

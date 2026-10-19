@@ -212,56 +212,129 @@ export function makePhysics(Matter) {
   // Units as the other tables: 100 across, 180 tall, y down. The walls, the bumpers, the slingshots and
   // the targets are Matter bodies; the two flippers are swept capsules worked out here each step (a
   // flipper's surface speed goes into the bounce, and at these step lengths nothing moves more than a
-  // third of the ball's width in a step, so the ball never passes through a flipper or a wall). The ball
-  // starts in the plunger lane on the right; a launch sends it up the lane and round the top. The targets
-  // are the same for both players; each player lights their own. A ball that drains in the first save
-  // seconds after its launch is served again (the same move goes on).
+  // third of the ball's width in a step: the ball at its fastest 0.9 units, a flipper's tip 1.1, so the
+  // ball never passes through a flipper or a wall). The lower table is the same on every table: the two
+  // flippers low down with a gap between their tips a ball can drain through, an inlane and an outlane
+  // above each (the guide feeds the inlane's ball onto the flipper; the outlane drains beside it), a
+  // slingshot above each inlane. The upper playfield is one of PIN_LAYOUTS (bumpers, rails, lanes, each
+  // with its spots), and a square's seven targets are seven of its layout's spots (mini.table: { k, t };
+  // pinTable builds the table from them, the same on the server and on both phones). The ball starts in
+  // the plunger lane on the right; a launch sends it up the lane and round the arch, and a one-way gate
+  // closes the lane's top behind it (pinGate). The targets are the same for both players; each player
+  // lights their own. A ball that drains in the first save seconds after its launch is served again.
   const PIN = {
-    w: 100, h: 180, ballR: 2.6, g: 300, hz: 480, fps: 30, vmax: 420, drain: 176, wall: 0.5,
-    flip: { len: 21, thick: 3.8, rest: 0.48, up: -0.48, speed: 17, e: 0.4, L: [22, 149], R: [68, 149] },
-    lane: { x0: 89.7, x1: 98, top: 44, serve: [93.9, 168] },
-    bump: { r: 5, kick: 165, at: [[30, 54], [60, 54], [45, 72]] },
+    w: 100, h: 180, ballR: 2.6, g: 300, hz: 480, fps: 30, vmax: 420, drain: 177, wall: 0.5,
+    flip: { len: 21, thick: 3.8, rest: 0.48, up: -0.48, speed: 26, e: 0.4, L: [21.5, 165], R: [68.5, 165] },   // the pivots low on the table: the tips at rest reach y 174.7, 9.8 apart (7.3 clear: 1.4 balls)
+    lane: { x0: 89.7, x1: 98, top: 44, serve: [93.85, 168], gate: [88.5, 44, 99, 36, 2.4] },   // the plunger lane beside the playfield, and the gate across its top (from the lane wall's top up to the outside)
+    bump: { r: 5, kick: 165 },
     sling: { kick: 150 },
-    spin: { cx: 45, cy: 104, r: 10, w: 1.7 },
-    // the targets: id, place, size, and how they are reached (for the drawing and the tuning)
-    targets: [
-      { id: 0, x: 3.4, y: 98, r: 2.8, name: 'Left post' },
-      { id: 1, x: 83.9, y: 98, r: 2.8, name: 'Right post' },
-      { id: 2, x: 45, y: 34, r: 2.6, name: 'Top centre' },
-      { id: 3, x: 15, y: 23, r: 2.4, name: 'Left lane' },
-      { id: 4, x: 74, y: 67, r: 2.4, name: 'Behind the rail' },
-      { id: 5, x: 45, y: 104, r: 2.6, name: 'Spinner', spin: true },
-      { id: 6, x: 22, y: 72, r: 2.4, name: 'Left loop' },
-    ],
+    spin: { r: 10, w: 1.7 },      // a spinner spot: its target goes round a ring this big at this speed (radians a second, times the spin setting)
+    targets: null,                // the classic seven (layout 0's first seven spots): a square from before the layouts plays on them; filled in below
   };
-  // The walls as thick segments [x1, y1, x2, y2, thickness]: the outside (the top arched), the lane, the
-  // inlanes and outlanes, the rails. The playfield is 2 to 88 across, the plunger lane beside it.
-  const PIN_WALLS = [
-    [1, 180, 1, 34, 2], [1, 34, 7, 15, 2.4], [7, 15, 20, 5, 2.4], [20, 5, 50, 1.5, 2.4], [50, 1.5, 80, 5, 2.4], [80, 5, 93, 11, 2.4], [93, 11, 99, 25, 2.4], [99, 25, 99, 180, 2],   // the outside
-    [88.5, 180, 88.5, PIN.lane.top, 2.4],                                                                 // the plunger lane's inner wall
-    [10.5, 30, 10.5, 40, 2.4], [19.5, 30, 19.5, 40, 2.4],                                                  // the left lane's posts (the target at its top)
-    [9.5, 112, 9.5, 126, 2.4], [9.5, 126, 19, 139, 2.6], [80, 112, 80, 126, 2.4], [80, 126, 71, 139, 2.6],   // the inlane guides (the outlanes outside them)
-    [59, 72, 77, 56, 2.6], [77, 56, 77, 48, 2.4],                                                         // the rail with a target behind it
-    [16, 62, 16, 80, 2.4], [16, 80, 23, 86, 2.4],                                                         // the left loop's wall (its target inside)
+  // A polyline as thick wall segments [x1, y1, x2, y2, thickness], joined end to end.
+  const pinPoly = (t, ...pts) => pts.slice(1).map((p, i) => [pts[i][0], pts[i][1], p[0], p[1], t]);
+  // The outside: the left side, the arch, the right side (split where the gate meets it, so the gate joins
+  // it end to end) and the bottom (below the drain line: the ball is gone before it gets there).
+  const PIN_OUTER = [[1, 181.2], [1, 34], [7, 15], [20, 5], [50, 1.5], [80, 5], [93, 11], [99, 25], [99, 36], [99, 181.2], [1, 181.2]];
+  // The lower table, on every layout: the outside, the plunger lane's wall, the inlane guides and the
+  // slingshots. A guide's outer side is the outlane (7 units wide: a ball falls straight down it to the
+  // drain beside the flipper), its inner side the inlane (6 wide, between the guide and the slingshot's
+  // outer edge); at the bottom the guide bends in to the flipper's pivot, its end buried in the pivot's
+  // disc, so the inlane's ball rolls off the guide onto the flipper and nothing can slip behind the
+  // flipper or rest at its base. The slingshots are a triangle each above the inlane; the long face kicks.
+  // Nothing here makes a pocket a ball can rest in (pinLayoutCheck's pocket rule), and nothing on a
+  // layout may come within a unit of any of it (its rule on clearance), so the lower table plays the
+  // same whatever is above it.
+  const PIN_LOWER = {
+    walls: [
+      ...pinPoly(2.4, ...PIN_OUTER),
+      [88.5, 181.2, 88.5, PIN.lane.top, 2.4],
+      ...pinPoly(2.4, [10.5, 122], [10.5, 150], [20.5, 162.5]), ...pinPoly(2.4, [79.5, 122], [79.5, 150], [69.5, 162.5]),
+    ],
+    slings: [[[18, 124], [18, 146], [26, 154]], [[72, 124], [72, 146], [64, 154]]],
+  };
+  // The upper playfields. Each: its walls (rails and lanes, all above y 120), its pop bumpers, and its
+  // spots: a spot is a place a target can be dealt at ({ x, y, r, name }, r the target's size before the
+  // admin's size setting, up to twice; a spinner spot { spin: [cx, cy] } moves round a ring). A square's
+  // seven targets are seven of them. Every spot keeps at least a unit from everything else at any size,
+  // leaves room for the ball to reach it, and makes no pocket with anything (a gap narrower than a ball
+  // that could hold one: so a spot is never nearer a wall, a slingshot or another spot than a ball's
+  // width and a half beyond its own edge); pinLayoutCheck holds every layout to that in the tests. The
+  // computer's hand lights every spot in the simulations (tests/sim/pinball.sim.js: pinReach), so any
+  // seven can be dealt. (The side posts are 12.5 and 77 across: a ball passes between them and the walls.)
+  const PIN_LAYOUTS = [
+    { name: 'Classic',                                                   // the first table: three bumpers, the left lane, a rail with a target behind it, the left loop, the spinner
+      walls: [[12, 34, 12, 44, 2.4], [21, 34, 21, 44, 2.4], [59, 72, 77, 56, 2.4], ...pinPoly(2.4, [12, 62], [12, 84], [22, 92])],
+      bumpers: [[30, 54], [60, 54], [45, 68]],
+      spots: [{ x: 12.5, y: 100, r: 2.2, name: 'Left post' }, { x: 77, y: 100, r: 2.2, name: 'Right post' }, { x: 45, y: 32, r: 2.4, name: 'Top centre' }, { x: 20, y: 22, r: 2.2, name: 'Left lane' }, { x: 74, y: 44, r: 2.2, name: 'Behind the rail' }, { spin: [45, 108], r: 2.4, name: 'Spinner' }, { x: 24, y: 74, r: 2.2, name: 'Left loop' },
+        { x: 74, y: 22, r: 2.2, name: 'Upper right' }, { x: 45, y: 82, r: 2.4, name: 'Below the bumpers' }, { x: 60, y: 15, r: 2.2, name: 'Top right' }, { x: 34, y: 15, r: 2.2, name: 'Top left' }] },
+    { name: 'Bumper nest',                                               // four bumpers in a diamond, three lanes under the arch
+      walls: [[25.5, 24, 25.5, 34, 2.4], [38.5, 24, 38.5, 34, 2.4], [51.5, 24, 51.5, 34, 2.4], [64.5, 24, 64.5, 34, 2.4]],
+      bumpers: [[31, 52], [59, 52], [45, 70], [45, 40]],
+      spots: [{ x: 32, y: 14, r: 1.6, name: 'Left lane' }, { x: 45, y: 12.5, r: 1.6, name: 'Middle lane' }, { x: 58, y: 13, r: 1.6, name: 'Right lane' }, { x: 45, y: 52, r: 2.2, name: 'Nest centre' }, { x: 12.5, y: 50, r: 2.2, name: 'Left orbit' }, { x: 77, y: 50, r: 2.2, name: 'Right orbit' },
+        { x: 45, y: 90, r: 2.4, name: 'Below the nest' }, { x: 14, y: 30, r: 2.2, name: 'Upper left' }, { x: 76, y: 30, r: 2.2, name: 'Upper right' }, { x: 12.5, y: 100, r: 2.2, name: 'Left post' }, { x: 77, y: 100, r: 2.2, name: 'Right post' }, { x: 18, y: 72, r: 2.2, name: 'Left of the nest' }, { x: 72, y: 72, r: 2.2, name: 'Right of the nest' }] },
+    { name: 'Twin ramps',                                                // two rails sloping in from the sides to a gap in the middle, a bumper at the top
+      walls: [[2, 42, 36, 66, 2.4], [87.6, 50, 54, 66, 2.4]],
+      bumpers: [[45, 30]],
+      spots: [{ x: 14, y: 66, r: 2.2, name: 'Under the left ramp' }, { x: 75, y: 69, r: 2.2, name: 'Under the right ramp' }, { x: 13, y: 34, r: 2.2, name: 'Left ramp top' }, { x: 76, y: 38, r: 2.2, name: 'Right ramp top' }, { x: 45, y: 80, r: 2.4, name: 'The gap' }, { x: 25, y: 16, r: 2.2, name: 'Top left' },
+        { x: 65, y: 16, r: 2.2, name: 'Top right' }, { x: 12.5, y: 100, r: 2.2, name: 'Left post' }, { x: 77, y: 100, r: 2.2, name: 'Right post' }, { x: 45, y: 102, r: 2.4, name: 'Centre line' }, { x: 12.5, y: 84, r: 2.2, name: 'Left side' }, { x: 77, y: 84, r: 2.2, name: 'Right side' }] },
+    { name: 'The loop',                                                  // an arch over the upper left, open below (a bumper under it), the spinner below that
+      walls: pinPoly(2.4, [14, 64], [14, 46], [20, 32], [32, 23], [46, 21], [60, 25], [70, 35]),
+      bumpers: [[36, 50]],
+      spots: [{ x: 45, y: 9, r: 2, name: 'Orbit top' }, { x: 12.5, y: 100, r: 2.2, name: 'Orbit exit' }, { x: 45, y: 62, r: 2.2, name: 'Under the arch' }, { x: 77, y: 52, r: 2.2, name: 'Right of the loop' }, { x: 24, y: 76, r: 2.2, name: 'Loop mouth' }, { x: 62, y: 74, r: 2.2, name: 'Under the loop' },
+        { x: 77, y: 22, r: 2.2, name: 'Top right' }, { x: 77, y: 100, r: 2.2, name: 'Right post' }, { spin: [45, 100], r: 2.4, name: 'Spinner' }, { x: 77, y: 78, r: 2.2, name: 'Lower right' }, { x: 60, y: 46, r: 2.2, name: 'Inside the loop' }] },
+    { name: 'The bank',                                                  // a roof across the middle with a bank of three spots under it, two bumpers low at the sides
+      walls: pinPoly(2.4, [20, 50], [45, 46], [70, 50]),
+      bumpers: [[20, 84], [70, 84]],
+      spots: [{ x: 30, y: 60, r: 2.2, name: 'Bank left' }, { x: 45, y: 58, r: 2.2, name: 'Bank middle' }, { x: 60, y: 60, r: 2.2, name: 'Bank right' }, { x: 45, y: 30, r: 2.4, name: 'Over the bank' }, { x: 12.5, y: 36, r: 2.2, name: 'Left side' }, { x: 77, y: 36, r: 2.2, name: 'Right side' },
+        { x: 45, y: 86, r: 2.4, name: 'Between the bumpers' }, { x: 12.5, y: 100, r: 2.2, name: 'Left post' }, { x: 77, y: 100, r: 2.2, name: 'Right post' }, { x: 24, y: 18, r: 2.2, name: 'Top left' }, { x: 66, y: 18, r: 2.2, name: 'Top right' }] },
+    { name: 'The alley',                                                 // two rails making a central alley, a bumper either side, the spinner at its foot
+      walls: [[33, 30, 33, 60, 2.4], [57, 30, 57, 60, 2.4]],
+      bumpers: [[18, 50], [72, 50]],
+      spots: [{ x: 45, y: 22, r: 2.2, name: 'Alley top' }, { x: 45, y: 45, r: 2.2, name: 'In the alley' }, { x: 13, y: 36, r: 2.2, name: 'Left orbit' }, { x: 77, y: 36, r: 2.2, name: 'Right orbit' }, { x: 12.5, y: 72, r: 2.2, name: 'Left side' }, { x: 77, y: 72, r: 2.2, name: 'Right side' },
+        { spin: [45, 92], r: 2.4, name: 'Spinner' }, { x: 12.5, y: 100, r: 2.2, name: 'Left post' }, { x: 77, y: 100, r: 2.2, name: 'Right post' }, { x: 45, y: 66, r: 2.2, name: 'Alley foot' }, { x: 24, y: 18, r: 2.2, name: 'Top left' }, { x: 66, y: 18, r: 2.2, name: 'Top right' }] },
+    { name: 'Islands',                                                   // three short rails scattered about, a bumper between them and one low at each side
+      walls: [[20, 38, 32, 48, 2.4], [70, 38, 58, 48, 2.4], [38, 76, 52, 72, 2.4]],
+      bumpers: [[45, 52], [22, 70], [68, 70]],
+      spots: [{ x: 22, y: 26, r: 2.2, name: 'Over the left island' }, { x: 68, y: 26, r: 2.2, name: 'Over the right island' }, { x: 26, y: 60, r: 2.2, name: 'Under the left island' }, { x: 64, y: 60, r: 2.2, name: 'Under the right island' }, { x: 45, y: 90, r: 2.4, name: 'Under the low island' }, { x: 45, y: 30, r: 2.4, name: 'Top centre' },
+        { x: 12.5, y: 50, r: 2.2, name: 'Left side' }, { x: 77, y: 50, r: 2.2, name: 'Right side' }, { x: 12.5, y: 100, r: 2.2, name: 'Left post' }, { x: 77, y: 100, r: 2.2, name: 'Right post' }, { x: 12.5, y: 84, r: 2.2, name: 'Lower left' }, { x: 77, y: 84, r: 2.2, name: 'Lower right' }] },
   ];
-  // The slingshots: the triangle's corners; the inner face kicks.
-  const PIN_SLINGS = [[[14, 114], [14, 130], [24, 137]], [[76, 114], [76, 130], [66, 137]]];
+  const PIN_CLASSIC = [0, 1, 2, 3, 4, 5, 6];   // the classic seven: layout 0's first spots, for a square dealt before the layouts (no mini.table)
+  // A target from a spot: its id (its place in the square's seven), its size at the admin's size setting,
+  // and for a spinner its ring.
+  const pinSpot = (s, id, size) => (s.spin ? { id, x: s.spin[0], y: s.spin[1], r: s.r * size, name: s.name, spin: { cx: s.spin[0], cy: s.spin[1], r: PIN.spin.r, w: PIN.spin.w } } : { id, x: s.x, y: s.y, r: s.r * size, name: s.name, spin: null });
+  PIN.targets = PIN_CLASSIC.map((i, id) => pinSpot(PIN_LAYOUTS[0].spots[i], id, 1));
+  // The table of a square: its layout's walls after the lower table's, its bumpers, the slingshots, its
+  // targets (the square's spots, ids 0..6, at the size the square's settings give), the lane and the
+  // flippers. A square without a table (from before the layouts) plays the classic seven on layout 0. The
+  // same description builds the Matter world (pinNew), the drawing, the check and the layout check.
+  function pinTable(mini) {
+    const cfg = (mini && mini.cfg) || {}, size = cfg.size || 1;
+    const tb = mini && mini.table && PIN_LAYOUTS[mini.table.k] && Array.isArray(mini.table.t) ? mini.table : { k: 0, t: PIN_CLASSIC };
+    const lay = PIN_LAYOUTS[tb.k], spots = tb.t.map(i => lay.spots[i]).filter(Boolean), walls = PIN_LOWER.walls.concat(lay.walls), joints = [], seen = new Set();
+    walls.forEach((w, i) => { for (const [x, y] of [[w[0], w[1]], [w[2], w[3]]]) { const key = x + ',' + y + ',' + w[4]; if (seen.has(key)) continue; seen.add(key); joints.push([x, y, w[4] / 2, i < PIN_LOWER.walls.length]); } });   // every wall is a capsule: its rectangle exactly its length, a disc of half its thickness at each end (so a bend is round, flush with both faces, and no ball rests on a corner or a bump at it)
+    return { k: tb.k, name: lay.name, cfg, size, outer: PIN_OUTER, walls, joints, lower: PIN_LOWER.walls.length, lane: PIN.lane, gate: PIN.lane.gate, flip: PIN.flip, bumpers: lay.bumpers.map(([x, y]) => [x, y, PIN.bump.r]), slings: PIN_LOWER.slings, targets: spots.map((s, id) => pinSpot(s, id, size)) };
+  }
+  // A layout with every one of its spots as a target (for the checks and the simulations).
+  const pinAllSpots = (k, cfg) => pinTable({ cfg, table: { k, t: PIN_LAYOUTS[k].spots.map((_, i) => i) } });
+  // A wall's bodies: the rectangle along the segment (exactly its length) and a disc at each end: a capsule.
   function pinSeg(x1, y1, x2, y2, t, label) {
-    const len = Math.hypot(x2 - x1, y2 - y1);
-    return Bodies.rectangle((x1 + x2) / 2, (y1 + y2) / 2, len + t, t, { isStatic: true, angle: Math.atan2(y2 - y1, x2 - x1), restitution: PIN.wall, friction: 0, label: label || 'wall' });
+    const len = Math.hypot(x2 - x1, y2 - y1), o = { isStatic: true, restitution: PIN.wall, friction: 0, label: label || 'wall' };
+    return [Bodies.rectangle((x1 + x2) / 2, (y1 + y2) / 2, len, t, Object.assign({ angle: Math.atan2(y2 - y1, x2 - x1) }, o)), Bodies.circle(x1, y1, t / 2, o), Bodies.circle(x2, y2, t / 2, o)];
   }
   // A table for one ball: its targets as they stand for the player (lit: an array of 0/1), the ball in the lane.
-  function pinNew(cfg, lit) {
-    cfg = cfg || {};
+  function pinNew(table, cfg, lit) {
+    cfg = cfg || table.cfg || {};
     const engine = Engine.create({ gravity: { x: 0, y: 0 }, positionIterations: 6, velocityIterations: 6 }), bodies = [];
-    for (const w of PIN_WALLS) bodies.push(pinSeg(...w));
-    for (const [x, y] of PIN.bump.at) bodies.push(Bodies.circle(x, y, PIN.bump.r, { isStatic: true, restitution: 0.6, friction: 0, label: 'bumper' }));
-    PIN_SLINGS.forEach((tri, k) => bodies.push(Bodies.fromVertices((tri[0][0] + tri[1][0] + tri[2][0]) / 3, (tri[0][1] + tri[1][1] + tri[2][1]) / 3, [tri.map(([x, y]) => ({ x, y }))], { isStatic: true, restitution: 0.6, friction: 0, label: 'sling:' + k })));
-    for (const t of PIN.targets) if (!t.spin) bodies.push(Bodies.circle(t.x, t.y, t.r * (cfg.size || 1), { isStatic: true, restitution: 0.55, friction: 0, label: 'target:' + t.id }));
-    const ball = Bodies.circle(PIN.lane.serve[0], PIN.lane.serve[1], PIN.ballR, { restitution: 0.4, friction: 0, frictionAir: 0, frictionStatic: 0, density: 0.02, label: 'ball' });
+    for (const w of table.walls) bodies.push(...pinSeg(...w));
+    for (const [x, y, r] of table.bumpers) bodies.push(Bodies.circle(x, y, r, { isStatic: true, restitution: 0.6, friction: 0, label: 'bumper' }));
+    table.slings.forEach((tri, k) => bodies.push(Bodies.fromVertices((tri[0][0] + tri[1][0] + tri[2][0]) / 3, (tri[0][1] + tri[1][1] + tri[2][1]) / 3, [tri.map(([x, y]) => ({ x, y }))], { isStatic: true, restitution: 0.6, friction: 0, label: 'sling:' + k })));
+    for (const t of table.targets) if (!t.spin) bodies.push(Bodies.circle(t.x, t.y, t.r, { isStatic: true, restitution: 0.55, friction: 0, label: 'target:' + t.id }));
+    const ball = Bodies.circle(table.lane.serve[0], table.lane.serve[1], PIN.ballR, { restitution: 0.4, friction: 0, frictionAir: 0, frictionStatic: 0, density: 0.02, label: 'ball' });
     bodies.push(ball);
     Composite.add(engine.world, bodies);
-    const w = { cfg, engine, ball, t: 0, inPlay: false, launchedAt: null, lit: (lit || []).slice(), hits: [], events: [], frames: [], flip: { L: { a: PIN.flip.rest, w: 0, on: false }, R: { a: PIN.flip.rest, w: 0, on: false } }, over: false, saves: 0, n: 0, frameAt: 0, still: { x: 0, y: 0, t: 0 }, nudges: 0 };
+    const gate = pinSeg(table.gate[0], table.gate[1], table.gate[2], table.gate[3], table.gate[4], 'gate');   // (in the world only once the ball has left the lane: pinGate; its bodies, a capsule)
+    const w = { table, cfg, engine, ball, gate, gateOn: false, t: 0, acc: 0, inPlay: false, launchedAt: null, lit: (lit || []).slice(), hits: [], events: [], frames: [], flip: { L: { a: PIN.flip.rest, w: 0, on: false }, R: { a: PIN.flip.rest, w: 0, on: false } }, over: false, saves: 0, n: 0, frameAt: 0, still: { x: 0, y: 0, t: 0 }, nudges: 0 };
     Events.on(engine, 'collisionStart', e => { for (const pr of e.pairs) pinTouch(w, pr.bodyA === ball ? pr.bodyB : pr.bodyB === ball ? pr.bodyA : null); });
     pinFrame(w);
     return w;
@@ -269,8 +342,8 @@ export function makePhysics(Matter) {
   const pinV = w => ({ x: w.ball.velocity.x * 60, y: w.ball.velocity.y * 60 });          // the ball's speed, units a second
   const pinSetV = (w, vx, vy) => { const s = Math.hypot(vx, vy), k = s > PIN.vmax ? PIN.vmax / s : 1; Body.setVelocity(w.ball, { x: (vx * k) / 60, y: (vy * k) / 60 }); };
   const pinEv = (w, k, extra) => { if (w.events.length < 400) w.events.push(Object.assign({ t: Math.round(w.t * 1000) / 1000, k }, extra || {})); };
-  // The spinner's target, t seconds in (it goes round its centre).
-  const pinSpinAt = (t, cfg) => { const s = PIN.spin, a = t * s.w * ((cfg && cfg.spin) || 1); return [s.cx + s.r * Math.cos(a), s.cy + s.r * Math.sin(a)]; };
+  // A spinner target's place, t seconds in (it goes round its ring).
+  const pinSpinAt = (tg, t, cfg) => { const s = tg.spin, a = t * s.w * ((cfg && cfg.spin) != null ? cfg.spin : 1); return [s.cx + s.r * Math.cos(a), s.cy + s.r * Math.sin(a)]; };
   function pinLight(w, id) {
     if (w.lit[id]) return;
     w.lit[id] = 1; w.hits.push({ id, t: Math.round(w.t * 1000) / 1000 }); pinEv(w, 'hit', { id });
@@ -282,13 +355,16 @@ export function makePhysics(Matter) {
     else if (L === 'bumper') {                                       // a pop bumper: the ball is kicked straight off it
       const n = { x: b.x - body.position.x, y: b.y - body.position.y }, d = Math.hypot(n.x, n.y) || 1, k = PIN.bump.kick * ((w.cfg && w.cfg.bump) || 1);
       pinSetV(w, (n.x / d) * k, (n.y / d) * k); pinEv(w, 'bump');
-    } else if (L.startsWith('sling:')) {                             // a slingshot: its inner face kicks the ball across and up
+    } else if (L.startsWith('sling:')) {                             // a slingshot: its long face kicks the ball across and up (a touch on its outer side, from the inlane, is a plain bounce)
       const k = Number(L.slice(6)), dir = k === 0 ? 1 : -1, v = pinV(w);
       if ((dir > 0 && b.x > body.position.x) || (dir < 0 && b.x < body.position.x)) { pinSetV(w, dir * PIN.sling.kick * 0.8 + v.x * 0.2, -PIN.sling.kick * 0.6); pinEv(w, 'sling'); }
     }
   }
-  // The ball back in the plunger lane, waiting for a launch.
-  function pinServe(w) { Body.setPosition(w.ball, { x: PIN.lane.serve[0], y: PIN.lane.serve[1] }); Body.setVelocity(w.ball, { x: 0, y: 0 }); w.inPlay = false; w.launchedAt = null; }
+  // The ball back in the plunger lane, waiting for a launch (the gate open again).
+  function pinServe(w) {
+    Body.setPosition(w.ball, { x: w.table.lane.serve[0], y: w.table.lane.serve[1] }); Body.setVelocity(w.ball, { x: 0, y: 0 }); w.inPlay = false; w.launchedAt = null;
+    if (w.gateOn) { for (const b of w.gate) Composite.remove(w.engine.world, b); w.gateOn = false; }
+  }
   // A launch: power 0..1 (a tap: the default).
   function pinLaunch(w, power) {
     if (w.inPlay || w.over) return false;
@@ -296,15 +372,27 @@ export function makePhysics(Matter) {
     w.inPlay = true; w.launchedAt = w.t; pinSetV(w, 0, -(lo + (hi - lo) * p)); pinEv(w, 'launch', { p: Math.round(p * 100) / 100 });
     return true;
   }
+  // The one-way gate across the lane's top: it goes into the world the moment the ball is clear of it on
+  // the playfield side (the ball leaves the lane upwards through where it will be, so a ball that has left
+  // the lane is above it within a few steps, and is clear of it by half a unit when it appears: nothing
+  // overlaps). From then on the lane is closed: a ball falling on the gate slides off it, down its slope
+  // into the playfield. A launch too weak to leave the lane falls back with the gate still open, and
+  // the ball is served again (pinStep's lane check).
+  function pinGate(w) {
+    if (w.gateOn) return;
+    const [x1, y1, x2, y2, t] = w.table.gate, b = w.ball.position, len = Math.hypot(x2 - x1, y2 - y1);
+    const nx = (y2 - y1) / len, ny = -(x2 - x1) / len;              // the gate's normal towards the playfield (up and to the left)
+    if ((b.x - x1) * nx + (b.y - y1) * ny > PIN.ballR + t / 2 + 0.5) { Composite.add(w.engine.world, w.gate); w.gateOn = true; pinEv(w, 'gate'); }
+  }
   // A flipper's line (pivot to tip) at its angle.
-  function pinFlipLine(side, a) { const [px, py] = PIN.flip[side], s = side === 'L' ? 1 : -1; return [px, py, px + s * PIN.flip.len * Math.cos(a), py + PIN.flip.len * Math.sin(a)]; }
+  function pinFlipLine(table, side, a) { const F = (table && table.flip) || PIN.flip, [px, py] = F[side], s = side === 'L' ? 1 : -1; return [px, py, px + s * F.len * Math.cos(a), py + F.len * Math.sin(a)]; }
   // The flippers' sweep and the ball against them: a capsule each, its surface moving with the flipper.
   function pinFlippers(w, dt) {
-    const F = PIN.flip, ball = w.ball;
-    for (const side of ['L', 'R']) {
-      const f = w.flip[side], to = f.on ? F.up : F.rest, max = F.speed * dt, da = Math.max(-max, Math.min(max, to - f.a));
-      f.a += da; f.w = da / dt;
-      const [x1, y1, x2, y2] = pinFlipLine(side, f.a), bx = ball.position.x, by = ball.position.y;
+    const F = w.table.flip || PIN.flip, ball = w.ball;
+    for (const side of ['L', 'R']) { const f = w.flip[side], to = f.on ? F.up : F.rest, max = F.speed * dt, da = Math.max(-max, Math.min(max, to - f.a)); f.a += da; f.w = da / dt; }
+    for (let pass = 0; pass < 2; pass++) for (const side of ['L', 'R']) {   // (twice: a ball squeezed between the two tips, both flipping, is pushed clear of both, up out of the pinch)
+      const f = w.flip[side];
+      const [x1, y1, x2, y2] = pinFlipLine(w.table, side, f.a), bx = ball.position.x, by = ball.position.y;
       const dx = x2 - x1, dy = y2 - y1, u = Math.max(0, Math.min(1, ((bx - x1) * dx + (by - y1) * dy) / (dx * dx + dy * dy)));
       const cx = x1 + u * dx, cy = y1 + u * dy, ex = bx - cx, ey = by - cy, d = Math.hypot(ex, ey), rs = PIN.ballR + F.thick / 2 * (1 - 0.35 * u);
       if (d >= rs) continue;
@@ -316,41 +404,49 @@ export function makePhysics(Matter) {
       if (vn < 0) pinSetV(w, v.x - (1 + F.e) * vn * nx, v.y - (1 + F.e) * vn * ny);
     }
   }
-  // One frame's worth of steps (ms of time) with the flippers held as given; returns the events of the frame.
+  // A frame's worth of time (ms) with the flippers held as given; returns the events of it. Only whole
+  // steps are taken: what is left over is kept for the next frame (never a short step, never a step
+  // dropped), so the ball's motion is the same however the frames fall and it never stutters.
   function pinRun(w, ms, input) {
     if (w.over) return [];
-    const from = w.events.length, dt = 1 / PIN.hz, g = PIN.g * ((w.cfg && w.cfg.g) || 1);
+    const from = w.events.length, dt = 1 / PIN.hz;
     if (input) { w.flip.L.on = !!input.L; w.flip.R.on = !!input.R; }
-    let left = Math.min(100, ms) / 1000;
-    while (left > 1e-9 && !w.over) {
-      const h = Math.min(dt, left); left -= h;
-      if (w.inPlay) { const v = pinV(w); pinSetV(w, v.x, v.y + g * h); }
-      Engine.update(w.engine, h * 1000);
-      pinFlippers(w, h);
-      w.t += h; w.n++;
-      const b = w.ball.position;
-      if (!w.inPlay) { Body.setPosition(w.ball, { x: PIN.lane.serve[0], y: PIN.lane.serve[1] }); Body.setVelocity(w.ball, { x: 0, y: 0 }); }
-      else {
-        if (b.x < PIN.ballR || b.x > PIN.w - PIN.ballR || b.y < PIN.ballR) {   // (never past the outside, whatever happened)
-          const v = pinV(w); Body.setPosition(w.ball, { x: Math.max(PIN.ballR + 2, Math.min(PIN.w - PIN.ballR - 2, b.x)), y: Math.max(PIN.ballR + 2, b.y) }); pinSetV(w, b.x < PIN.ballR || b.x > PIN.w - PIN.ballR ? -v.x * 0.5 : v.x, b.y < PIN.ballR ? Math.abs(v.y) * 0.5 : v.y); pinEv(w, 'guard');
-        }
-        const [sx, sy] = pinSpinAt(w.t, w.cfg), st = PIN.targets[5];
-        if (Math.hypot(b.x - sx, b.y - sy) < st.r * ((w.cfg && w.cfg.size) || 1) + PIN.ballR) pinLight(w, 5);
-        for (const t of PIN.targets) if (!t.spin && !w.lit[t.id] && Math.hypot(b.x - t.x, b.y - t.y) < t.r * ((w.cfg && w.cfg.size) || 1) + PIN.ballR) pinLight(w, t.id);   // (and by distance: a touch is never missed; never through a wall, as no target reaches past one at any size the settings allow)
-        const back = b.x > PIN.lane.x0 + 0.6 && b.y > PIN.lane.top + 4 && w.t - w.launchedAt > 0.6;
-        if (b.y > PIN.drain || back) {
-          const saved = back || w.t - w.launchedAt < ((w.cfg && w.cfg.save) != null ? w.cfg.save : 3);
-          if (saved) { pinEv(w, back ? 'lane' : 'save'); w.saves++; pinServe(w); }
-          else { pinEv(w, 'drain'); w.over = true; }
-        }
-        if (w.lit.length && w.lit.every(Boolean)) { w.over = true; pinEv(w, 'all'); }
-        if (Math.hypot(b.x - w.still.x, b.y - w.still.y) > 1.5) w.still = { x: b.x, y: b.y, t: w.t };
-        else if (w.inPlay && w.t - w.still.t > 2 && b.y < PIN.flip.L[1] - 6) { const s = w.nudges++ % 2 ? 1 : -1; pinSetV(w, s * 90, -130); w.still.t = w.t; pinEv(w, 'nudge'); }   // a ball resting off the flippers: a nudge sets it going again
-        if (w.inPlay && w.t - w.launchedAt > ((w.cfg && w.cfg.maxBall) || 120)) { pinEv(w, 'time'); w.over = true; }   // (a ball can't last for ever)
-      }
-      if (w.t >= w.frames.length / PIN.fps - 1e-9) pinFrame(w);   // (frame k at k/30 s exactly, so the recording keeps time with the ball however the steps fall)
-    }
+    w.acc += Math.min(100, Math.max(0, Number(ms) || 0)) / 1000;
+    while (w.acc >= dt - 1e-12 && !w.over) { w.acc -= dt; pinStep(w, dt); }
     return w.events.slice(from);
+  }
+  // One step of h seconds.
+  function pinStep(w, h) {
+    const T = w.table, g = PIN.g * ((w.cfg && w.cfg.g) || 1);
+    if (w.inPlay) { const v = pinV(w); pinSetV(w, v.x, v.y + g * h); }
+    Engine.update(w.engine, h * 1000);
+    pinFlippers(w, h);
+    w.t += h; w.n++;
+    const b = w.ball.position;
+    if (!w.inPlay) { Body.setPosition(w.ball, { x: T.lane.serve[0], y: T.lane.serve[1] }); Body.setVelocity(w.ball, { x: 0, y: 0 }); }
+    else {
+      if (b.x < PIN.ballR || b.x > PIN.w - PIN.ballR || b.y < PIN.ballR) {   // (never past the outside, whatever happened)
+        const v = pinV(w); Body.setPosition(w.ball, { x: Math.max(PIN.ballR + 2, Math.min(PIN.w - PIN.ballR - 2, b.x)), y: Math.max(PIN.ballR + 2, b.y) }); pinSetV(w, b.x < PIN.ballR || b.x > PIN.w - PIN.ballR ? -v.x * 0.5 : v.x, b.y < PIN.ballR ? Math.abs(v.y) * 0.5 : v.y); pinEv(w, 'guard');
+      }
+      pinGate(w);
+      for (const t of T.targets) {                                   // (and by distance: a touch is never missed; never through a wall, as every spot keeps clear of the walls at any size the settings allow)
+        if (w.lit[t.id]) continue;
+        const [x, y] = t.spin ? pinSpinAt(t, w.t, w.cfg) : [t.x, t.y];
+        if (Math.hypot(b.x - x, b.y - y) < t.r + PIN.ballR) pinLight(w, t.id);
+      }
+      const since = w.t - w.launchedAt, v = pinV(w);
+      const back = b.x > T.lane.x0 + 0.6 && b.y > T.lane.top + 4 && (since > 1.5 || (since > 0.6 && v.y > 0));   // still (or again) in the lane: a launch that fell back, or a ball through the gate somehow
+      if (b.y > PIN.drain || back) {
+        const saved = back || since < ((w.cfg && w.cfg.save) != null ? w.cfg.save : 3);
+        if (saved) { pinEv(w, back ? 'lane' : 'save'); w.saves++; pinServe(w); }
+        else { pinEv(w, 'drain', { x: Math.round(b.x * 10) / 10 }); w.over = true; }
+      }
+      if (w.lit.length && w.lit.every(Boolean)) { w.over = true; pinEv(w, 'all'); }
+      if (Math.hypot(b.x - w.still.x, b.y - w.still.y) > 1.5) w.still = { x: b.x, y: b.y, t: w.t };
+      else if (w.inPlay && w.t - w.still.t > 2 && b.y < T.flip.L[1] - 6) { const s = w.nudges++ % 2 ? 1 : -1; pinSetV(w, s * 90, -130); w.still.t = w.t; pinEv(w, 'nudge', { at: Math.round(b.x) + ',' + Math.round(b.y) }); }   // a ball resting off the flippers: a nudge sets it going again
+      if (w.inPlay && since > ((w.cfg && w.cfg.maxBall) || 120)) { pinEv(w, 'time'); w.over = true; }   // (a ball can't last for ever)
+    }
+    if (w.t >= w.frames.length / PIN.fps - 1e-9) pinFrame(w);   // (frame k at k/30 s exactly, so the recording keeps time with the ball however the steps fall)
   }
   // The recording: the ball and the flippers 30 times a second (and the events with their times).
   // (a frame: the ball's place to a tenth, and which flippers were held)
@@ -378,13 +474,13 @@ export function makePhysics(Matter) {
     for (const f of frames) { for (const [s, bit] of [['L', 1], ['R', 2]]) { const to = f[2] & bit ? PIN.flip.up : PIN.flip.rest; a[s] += Math.max(-max, Math.min(max, to - a[s])); } out.push([a.L, a.R]); }
     return out;
   }
-  const pinResult = w => ({ hits: w.hits.map(h => [h.id, h.t]), ms: Math.round(w.t * 1000), rec: pinPack(w.frames), events: w.events.filter(e => e.k !== 'guard').slice(0, 300), saves: w.saves, end: w.over ? (w.lit.every(Boolean) ? 'all' : w.events.some(e => e.k === 'time') ? 'time' : 'drain') : 'out' });
+  const pinResult = w => ({ hits: w.hits.map(h => [h.id, h.t]), ms: Math.round(w.t * 1000), rec: pinPack(w.frames), events: w.events.filter(e => e.k !== 'guard' && e.k !== 'gate').slice(0, 300), saves: w.saves, end: w.over ? (w.lit.every(Boolean) ? 'all' : w.events.some(e => e.k === 'time') ? 'time' : 'drain') : 'out' });
   // The computer's hand: it sees the ball react seconds late; when the ball comes down over a flipper it
   // flips (a little early or late: jitter) and holds for a moment. A launch: a tap at a random power.
-  function pinAi(cfg, lit, rng, hand) {
+  function pinAi(table, cfg, lit, rng, hand) {
     hand = hand || { react: [0.05, 0.09], jitter: 0.05, hold: [0.12, 0.28], launch: [0.4, 1] };
-    const w = pinNew(cfg, lit), seen = [], react = hand.react[0] + (hand.react[1] - hand.react[0]) * rng(), plan = { L: null, R: null };
-    const F = PIN.flip, frame = 1000 / 60;
+    const w = pinNew(table, cfg, lit), seen = [], react = hand.react[0] + (hand.react[1] - hand.react[0]) * rng(), plan = { L: null, R: null };
+    const F = table.flip || PIN.flip, frame = 1000 / 60;
     let wait = 0.6 + rng() * 0.6;
     for (let k = 0; k < 60 * 180 && !w.over; k++) {
       if (!w.inPlay) { wait -= frame / 1000; if (wait <= 0) { pinLaunch(w, hand.launch[0] + (hand.launch[1] - hand.launch[0]) * rng()); wait = 0.5 + rng() * 0.6; } }
@@ -403,6 +499,175 @@ export function makePhysics(Matter) {
     }
     return { w, result: pinResult(w) };
   }
+  // Reachability: the computer's hand plays balls on the table (every target unlit for each) and the
+  // count of hits per target comes back, with the ball each was first hit on and how the balls ended.
+  // The simulations run it on every layout with all its spots (every spot must be hit) and on dealt squares.
+  function pinReach(table, rng, balls, hand) {
+    const n = table.targets.length, hits = new Array(n).fill(0), first = new Array(n).fill(null), ends = {}, zeros = new Array(n).fill(0), drains = [];
+    let ms = 0;
+    for (let b = 0; b < (balls || 20); b++) {
+      const r = pinAi(table, table.cfg, zeros, rng, hand).result, d = r.events.find(e => e.k === 'drain');
+      for (const [id] of r.hits) { hits[id]++; if (first[id] == null) first[id] = b; }
+      ends[r.end] = (ends[r.end] || 0) + 1; ms += r.ms; if (d) drains.push(d.x);
+    }
+    return { hits, first, balls: balls || 20, ends, ms, drains };   // (drains: where each drained ball went down, its x)
+  }
 
-  return { GOLF, POOL, BOWL, HOLES, LAYOUTS, SIZES, FPS, TS, run, PIN, PIN_WALLS, PIN_SLINGS, pinNew, pinServe, pinLaunch, pinRun, pinFlipLine, pinSpinAt, pinResult, pinAi, pinV, pinPack, pinUnpack, pinFlipAngles };
+  // ---- the layout check: pure geometry, for the tests (pinLayoutCheck) ----
+  // Every element of a table as a shape: the walls as the rectangles Matter makes of them (the segment
+  // plus half the thickness past each end), the bumpers and the targets as circles (a spinner's target
+  // at places round its ring), the slingshots as triangles, each flipper's sweep as capsules at angles
+  // from rest to up, the lane as the rectangle the ball is served in. Returns the problems found, as
+  // words: two elements closer than the clearance (1 unit), unless they are walls joined end to end or
+  // at a T (or the lane and the lower table's walls, which bound it); an element outside the table; a
+  // target without room for the ball to reach it (the ball touching the target, and half a unit further
+  // out, clear of everything else, in some direction). An empty list: the table is sound.
+  const PIN_CLEAR = 1.0;
+  const segDist2 = (px, py, x1, y1, x2, y2) => { const dx = x2 - x1, dy = y2 - y1, l2 = dx * dx + dy * dy, u = l2 ? Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / l2)) : 0; return Math.hypot(px - x1 - u * dx, py - y1 - u * dy); };
+  const segCross = (a, b, c, d) => {   // do the segments a-b and c-d cross?
+    const o = (p, q, r) => Math.sign((q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]));
+    return o(a, b, c) !== o(a, b, d) && o(c, d, a) !== o(c, d, b) && o(a, b, c) !== 0 && o(c, d, a) !== 0;
+  };
+  const segSeg = (a, b) => (segCross([a[0], a[1]], [a[2], a[3]], [b[0], b[1]], [b[2], b[3]]) ? 0 : Math.min(segDist2(a[0], a[1], ...b), segDist2(a[2], a[3], ...b), segDist2(b[0], b[1], ...a), segDist2(b[2], b[3], ...a)));
+  const inPoly = (p, poly) => { let c = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const [xi, yi] = poly[i], [xj, yj] = poly[j]; if ((yi > p[1]) !== (yj > p[1]) && p[0] < ((xj - xi) * (p[1] - yi)) / (yj - yi) + xi) c = !c; } return c; };
+  const polyEdges = poly => poly.map((p, i) => [p[0], p[1], poly[(i + 1) % poly.length][0], poly[(i + 1) % poly.length][1]]);
+  const ptPoly = (p, poly) => (inPoly(p, poly) ? 0 : Math.min(...polyEdges(poly).map(e => segDist2(p[0], p[1], ...e))));
+  const rectOf = ([x1, y1, x2, y2, t]) => { const len = Math.hypot(x2 - x1, y2 - y1), ux = (x2 - x1) / (len || 1), uy = (y2 - y1) / (len || 1), hx = ux * len / 2, hy = uy * len / 2, cx = (x1 + x2) / 2, cy = (y1 + y2) / 2, px = -uy * t / 2, py = ux * t / 2; return [[cx - hx - px, cy - hy - py], [cx + hx - px, cy + hy - py], [cx + hx + px, cy + hy + py], [cx - hx + px, cy - hy + py]]; };
+  // The distance between two shapes (0 when they overlap).
+  function shapeDist(a, b) {
+    if (a.kind === 'circle' && b.kind === 'circle') return Math.hypot(a.c[0] - b.c[0], a.c[1] - b.c[1]) - a.r - b.r;
+    if (a.kind === 'circle' && b.kind === 'poly') return ptPoly(a.c, b.poly) - a.r;
+    if (a.kind === 'circle' && b.kind === 'capsule') return segDist2(a.c[0], a.c[1], ...b.seg) - a.r - b.r;
+    if (a.kind === 'poly' && b.kind === 'poly') {
+      if (a.poly.some(p => inPoly(p, b.poly)) || b.poly.some(p => inPoly(p, a.poly))) return 0;
+      let d = Infinity; for (const e of polyEdges(a.poly)) for (const f of polyEdges(b.poly)) d = Math.min(d, segSeg(e, f)); return d;
+    }
+    if (a.kind === 'poly' && b.kind === 'capsule') {
+      if (inPoly([b.seg[0], b.seg[1]], a.poly) || inPoly([b.seg[2], b.seg[3]], a.poly)) return -b.r;
+      let d = Infinity; for (const e of polyEdges(a.poly)) d = Math.min(d, segSeg(e, b.seg)); return d - b.r;
+    }
+    if (a.kind === 'capsule' && b.kind === 'capsule') return segSeg(a.seg, b.seg) - a.r - b.r;
+    return shapeDist(b, a);
+  }
+  // The elements of a table.
+  function pinElements(table) {
+    const els = [], F = table.flip || PIN.flip, wallSeg = (seg, i, name, lower) => ({ kind: 'poly', poly: rectOf(seg), seg, what: 'wall', name: name || `wall ${i} (${seg[0]},${seg[1]})-(${seg[2]},${seg[3]})`, lower: lower != null ? lower : i < table.lower, group: 'wall:' + i });
+    table.walls.forEach((seg, i) => els.push(wallSeg(seg, i)));
+    els.push(wallSeg(table.gate, table.walls.length, 'the gate', true));
+    table.joints.forEach(([x, y, r, lower], i) => els.push({ kind: 'circle', c: [x, y], r, seg: [x, y, x, y, r * 2], what: 'wall', name: `wall end ${i} (${x},${y})`, lower: !!lower }));   // (a wall's end disc: it joins the walls that end there)
+    for (const g of [[table.gate[0], table.gate[1]], [table.gate[2], table.gate[3]]]) els.push({ kind: 'circle', c: g, r: table.gate[4] / 2, seg: [g[0], g[1], g[0], g[1], table.gate[4]], what: 'wall', name: `the gate's end (${g[0]},${g[1]})`, lower: true });
+    table.bumpers.forEach(([x, y, r], i) => els.push({ kind: 'circle', c: [x, y], r, what: 'bumper', name: `bumper ${i} (${x},${y})` }));
+    table.slings.forEach((tri, i) => els.push({ kind: 'poly', poly: tri, what: 'sling', name: `slingshot ${i}`, lower: true }));
+    for (const t of table.targets) {
+      if (t.spin) for (let k = 0; k < 24; k++) { const a = (k * Math.PI * 2) / 24; els.push({ kind: 'circle', c: [t.spin.cx + t.spin.r * Math.cos(a), t.spin.cy + t.spin.r * Math.sin(a)], r: t.r, what: 'target', target: t, name: `target ${t.id} "${t.name}" (on its ring)`, group: 'target:' + t.id }); }
+      else els.push({ kind: 'circle', c: [t.x, t.y], r: t.r, what: 'target', target: t, name: `target ${t.id} "${t.name}" (${t.x},${t.y})` });
+    }
+    for (const side of ['L', 'R']) for (let k = 0; k <= 8; k++) { const a = F.rest + (F.up - F.rest) * k / 8; els.push({ kind: 'capsule', seg: pinFlipLine(table, side, a), r: F.thick / 2, what: 'flipper', name: `flipper ${side}`, group: 'flip:' + side, lower: true, rest: k === 0, pivot: F[side] }); }
+    const ln = table.lane;
+    els.push({ kind: 'poly', poly: [[ln.x0, ln.top], [ln.x1, ln.top], [ln.x1, PIN.h], [ln.x0, PIN.h]], what: 'lane', name: 'the lane', lower: true });
+    for (const e of els) if (e.what === 'wall' && !e.lower) e.bounds = els.some(o => o !== e && o.what === 'wall' && o.lower && pinJoined(e, o));   // (a rail joined to the lower table's walls bounds the lane with them)
+    return els;
+  }
+  // Two walls joined: a shared end, or an end of one buried in the other (a T: the end within the other's thickness).
+  const pinJoined = (a, b) => { const e = [[a.seg[0], a.seg[1]], [a.seg[2], a.seg[3]]], f = [[b.seg[0], b.seg[1]], [b.seg[2], b.seg[3]]]; return e.some(p => segDist2(p[0], p[1], ...b.seg) <= b.seg[4] / 2 + 1e-6) || f.some(p => segDist2(p[0], p[1], ...a.seg) <= a.seg[4] / 2 + 1e-6); };
+  // The places a ball could come to rest: the ball touching two elements at once (or a level top) with
+  // gravity balanced by the two contacts (straight up lies between the contacts' normals: a wedge, a
+  // cradle, a ball on a target's shoulder against a wall). Sampled along every element's surface at the
+  // ball's distance, each sample against every other element it touches. The bumpers kick the ball off
+  // and never hold it; the flippers hold it only at rest (a held flipper is the player's choice); the
+  // bottom wall and the lane are where the ball waits to be served. Another target never blocks a
+  // pocket here (a square deals only some of the spots), so a pocket found with every spot in place is
+  // one some square could have, and a table with none has none whichever spots it deals.
+  function pinPockets(els, outer) {
+    const R = PIN.ballR, up = [0, -1], out = [], seen = new Set();
+    const world = els.filter(e => e.what !== 'lane' && !(e.what === 'wall' && e.seg[1] > PIN.h && e.seg[3] > PIN.h) && !(e.what === 'flipper' && !e.rest));   // what is there with the flippers down
+    const blockers = world.filter(e => e.what !== 'target');
+    const samples = e => {                                           // ball centres touching e, with the contact normal (from e into the ball); flat: on a straight side at least a ball wide (a ball could sit level on it)
+      const pts = [], step = 0.3;
+      const arc = (c, r, a0, a1) => { const n = Math.max(2, Math.ceil(Math.abs(a1 - a0) * r / step)); for (let k = 0; k <= n; k++) { const a = a0 + (a1 - a0) * k / n; pts.push([[c[0] + r * Math.cos(a), c[1] + r * Math.sin(a)], [Math.cos(a), Math.sin(a)], false]); } };
+      const side = (a, b, nx, ny, off) => { const dx = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dx, dy) || 1, m = Math.ceil(len / step); for (let k = 0; k <= m; k++) pts.push([[a[0] + dx * k / m + nx * off, a[1] + dy * k / m + ny * off], [nx, ny], len >= 2 * R]); };
+      if (e.kind === 'circle') arc(e.c, e.r + R, 0, Math.PI * 2);
+      else if (e.kind === 'capsule') { const [x1, y1, x2, y2] = e.seg, dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy) || 1, ux = dx / len, uy = dy / len, a = Math.atan2(uy, ux); for (const s of [1, -1]) side([x1, y1], [x2, y2], -uy * s, ux * s, e.r + R); arc([x2, y2], e.r + R, a - Math.PI / 2, a + Math.PI / 2); arc([x1, y1], e.r + R, a + Math.PI / 2, a + Math.PI * 3 / 2); }
+      else {
+        const P = e.poly, n = P.length, area = P.reduce((s, p, i) => s + p[0] * P[(i + 1) % n][1] - P[(i + 1) % n][0] * p[1], 0), sg = area > 0 ? 1 : -1;   // the outward normal of each edge, by the polygon's winding
+        for (let i = 0; i < n; i++) {
+          const a = P[i], b = P[(i + 1) % n], dx = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dx, dy) || 1, nx = sg * dy / len, ny = -sg * dx / len;
+          side(a, b, nx, ny, R);
+          const c = P[(i + 2) % n], ex = c[0] - b[0], ey = c[1] - b[1], el = Math.hypot(ex, ey) || 1, n2x = sg * ey / el, n2y = -sg * ex / el;   // the arc round the corner at b, from this edge's normal to the next's
+          let a0 = Math.atan2(ny, nx), a1 = Math.atan2(n2y, n2x); if (sg > 0 ? a1 < a0 : a1 > a0) a1 += sg * Math.PI * 2; arc(b, R, a0, a1);
+        }
+      }
+      return pts;
+    };
+    const normalFrom = (p, e) => {                                   // the contact normal from e to a ball at p
+      if (e.kind === 'circle') { const d = [p[0] - e.c[0], p[1] - e.c[1]], l = Math.hypot(...d) || 1; return [d[0] / l, d[1] / l]; }
+      if (e.kind === 'capsule') { const [x1, y1, x2, y2] = e.seg, dx = x2 - x1, dy = y2 - y1, u = Math.max(0, Math.min(1, ((p[0] - x1) * dx + (p[1] - y1) * dy) / (dx * dx + dy * dy))), q = [x1 + u * dx, y1 + u * dy], d = [p[0] - q[0], p[1] - q[1]], l = Math.hypot(...d) || 1; return [d[0] / l, d[1] / l]; }
+      let best = null;
+      for (const ed of polyEdges(e.poly)) { const dx = ed[2] - ed[0], dy = ed[3] - ed[1], u = Math.max(0, Math.min(1, ((p[0] - ed[0]) * dx + (p[1] - ed[1]) * dy) / (dx * dx + dy * dy))), q = [ed[0] + u * dx, ed[1] + u * dy], d = Math.hypot(p[0] - q[0], p[1] - q[1]); if (!best || d < best.d) best = { d, q }; }
+      const d = [p[0] - best.q[0], p[1] - best.q[1]], l = Math.hypot(...d) || 1; return [d[0] / l, d[1] / l];
+    };
+    const cross = (a, b) => a[0] * b[1] - a[1] * b[0];
+    for (const A of world) {
+      if (A.what === 'bumper') continue;
+      for (const [p, nA, flat] of samples(A)) {
+        if (p[1] > PIN.drain - R || (p[0] >= PIN.lane.x0 - R && p[1] > PIN.lane.top) || !inPoly(p, outer)) continue;   // (the drain, the lane, outside)
+        if (!blockers.every(C => C === A || shapeDist({ kind: 'circle', c: p, r: R }, C) > -0.05)) continue;   // not a place the ball can be
+        if (flat && nA[1] < -0.9995) { const key = A.name + '|level'; if (!seen.has(key)) { seen.add(key); out.push(`a ball can rest on ${A.name} (level top) at (${p[0].toFixed(1)},${p[1].toFixed(1)})`); } continue; }
+        for (const B of world) {
+          if (B === A || B.what === 'bumper' || (A.group && A.group === B.group)) continue;
+          const d = shapeDist({ kind: 'circle', c: p, r: R }, B);
+          if (d > 0.15 || d < -0.15) continue;
+          const nB = normalFrom(p, B), cr = cross(nA, nB);
+          if (Math.abs(cr) < 1e-6) continue;
+          const l1 = cross(up, nB) / cr, l2 = cross(nA, up) / cr;
+          if (l1 < -1e-6 || l2 < -1e-6) continue;
+          // balanced, but held? in a cradle the ball cannot move sideways at this height (both sides rise into
+          // it); on a hilltop (the top of a bend, the far side of a rail) it can, and rolls off
+          // (0.03: more than the brush a convex surface gives a ball moved 0.3 sideways, 0.3 squared over twice the ball's radius)
+          const held = [-1, 1].every(dir => [A, B].some(E => shapeDist({ kind: 'circle', c: [p[0] + dir * 0.3, p[1]], r: R }, E) < -0.03));
+          if (!held) continue;
+          const key = [A.name, B.name].sort().join('|');
+          if (!seen.has(key)) { seen.add(key); out.push(`a ball can rest on ${A.name} against ${B.name} at (${p[0].toFixed(1)},${p[1].toFixed(1)})`); }
+        }
+      }
+    }
+    return out;
+  }
+  // A wall ending in a flipper's pivot disc (the inlane guides), and the sweep's reach from the pivot
+  // the wall must keep clear of (the disc, the wall's half thickness and the clearance).
+  const PIN_PIVOT_JOIN = 4.2;
+  const pinAtPivot = (w, f) => [[w.seg[0], w.seg[1]], [w.seg[2], w.seg[3]]].some(p => Math.hypot(p[0] - f.pivot[0], p[1] - f.pivot[1]) <= f.r + w.seg[4] / 2 + 1e-6);
+  function pinLayoutCheck(table) {
+    const els = pinElements(table), out = [], R = PIN.ballR;
+    for (const e of els) {                                           // inside the table (the outside walls are its edges)
+      if (e.what === 'wall' && e.lower) continue;
+      const pts = e.kind === 'circle' ? [[e.c[0] - e.r, e.c[1] - e.r], [e.c[0] + e.r, e.c[1] + e.r]] : e.kind === 'poly' ? e.poly : [[e.seg[0] - e.r, e.seg[1] - e.r], [e.seg[2] + e.r, e.seg[3] + e.r]];
+      if (pts.some(([x, y]) => x < 0 || x > PIN.w || y < 0 || y > PIN.h)) out.push(`${e.name} is outside the table`);
+    }
+    for (let i = 0; i < els.length; i++) for (let j = i + 1; j < els.length; j++) {
+      const a = els[i], b = els[j];
+      if (a.group && a.group === b.group) continue;
+      if (a.what === 'wall' && b.what === 'wall' && pinJoined(a, b)) continue;
+      if ((a.what === 'lane' && (b.lower || b.bounds)) || (b.what === 'lane' && (a.lower || a.bounds))) continue;
+      let d;
+      if ((a.what === 'wall' && b.what === 'flipper' && pinAtPivot(a, b)) || (b.what === 'wall' && a.what === 'flipper' && pinAtPivot(b, a))) {   // a guide ending in the pivot's disc: clear of the flipper from the disc outwards
+        const f = a.what === 'flipper' ? a : b, w = f === a ? b : a, [x1, y1, x2, y2] = f.seg, len = Math.hypot(x2 - x1, y2 - y1), k = PIN_PIVOT_JOIN / len;
+        d = shapeDist(w, { kind: 'capsule', seg: [x1 + (x2 - x1) * k, y1 + (y2 - y1) * k, x2, y2], r: f.r });
+      } else d = shapeDist(a, b);
+      if (d < PIN_CLEAR - 1e-9) out.push(`${a.name} and ${b.name} are ${d.toFixed(2)} apart (less than ${PIN_CLEAR})`);
+    }
+    for (const p of pinPockets(els, table.outer)) out.push(p);
+    for (const t of els.filter(e => e.what === 'target')) {          // room for the ball: in some direction the ball touches the target, and sits half a unit further out, clear of everything else
+      const others = els.filter(e => e !== t && !(e.group && e.group === t.group));
+      let ok = false;
+      for (let k = 0; k < 24 && !ok; k++) {
+        const a = (k * Math.PI * 2) / 24, dx = Math.cos(a), dy = Math.sin(a);
+        ok = [0, 0.25, 0.5].every(s => { const c = [t.c[0] + (t.r + R + s) * dx, t.c[1] + (t.r + R + s) * dy]; return c[0] > R && c[0] < PIN.w - R && c[1] > R && others.every(o => shapeDist({ kind: 'circle', c, r: R }, o) >= 0); });
+      }
+      if (!ok) out.push(`${t.name} has no room for the ball to reach it`);
+    }
+    return out;
+  }
+
+  return { GOLF, POOL, BOWL, HOLES, LAYOUTS, SIZES, FPS, TS, run, PIN, PIN_LAYOUTS, PIN_LOWER, PIN_OUTER, PIN_CLASSIC, pinTable, pinAllSpots, pinNew, pinServe, pinLaunch, pinRun, pinFlipLine, pinSpinAt, pinResult, pinAi, pinReach, pinLayoutCheck, pinV, pinPack, pinUnpack, pinFlipAngles };
 }

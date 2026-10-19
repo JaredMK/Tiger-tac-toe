@@ -1,28 +1,32 @@
 // The runner framework (Dash, Lane Rush, Flap, Chopper): the run in real time, its inputs, the canvas
 // and the result bars.
-import { RUN, RUNT, RUN_TYPES, runCourse, runJump, runLane, runRelease, runResult, runStart, runStep, setRunConfig } from '../games/shared/runner.js';
+import { RUN, RUNT, RUN_TYPES, runCourse, runJump, runLane, runRelease, runReplayTo, runReplayer, runResult, runStart, runStep, runStepOf, runUnlog, setRunConfig } from '../games/shared/runner.js';
 import { drawCave } from '../games/chopper/view.js';
 import { drawDash } from '../games/dash/view.js';
 import { FLAP } from '../games/flap/rules.js';
 import { drawFlap } from '../games/flap/view.js';
-import { drawLane, lanePre, laneRep, laneShow, laneShowFrame, setLaneShow } from '../games/lane/view.js';
+import { drawLane } from '../games/lane/view.js';
 import { SND, ownPress } from '../audio/sound.js';
 import { FIREBASE_CONFIG, configured } from '../net/connect.js';
 import { attemptMove } from '../net/moves.js';
 import { blocked } from '../net/room.js';
-import { N, app, state } from './app.js';
+import { N, REDUCED, app, cpuPlays, state } from './app.js';
 import { clockLeft } from './clock.js';
 import { KEY } from './config.js';
 import { fxAt } from './fx.js';
 import { lateAt } from './progress.js';
 import { render } from './render.js';
 
-// Dash and Lane Rush: the run is played here, in real time, on a canvas. The engine's runStep is the
-// physics (the same the tests step), this is the loop, the drawing and the inputs. A run: the Run
-// button, a 3-2-1 count, the grace stretch, then the course until a crash, the finish, or the turn's
-// time running out; the result goes in as one move ({ dist, ms }). The other phone sees the result
-// (the bar growing to the new distance), never a replay. The difficulty comes from config/run in the
-// database (the admin's dashboard), fetched at every start and kept for the next visit.
+// Dash, Lane Rush, Flap and Chopper: the run is played here, in real time, on a canvas. The engine's
+// runStep is the physics (the same the tests step: whole fixed steps, the inputs between them), this is
+// the loop, the drawing and the inputs. A run: the Run button, a 3-2-1 count, the grace stretch, then
+// the course until a crash, the finish, or the turn's time running out; the result goes in as one move
+// ({ dist, ms, log, steps }: the engine's sim records every input it takes, and the move carries them as
+// its log). Someone else's run (the computer's, the other phone's) is played back on the scene from
+// that log, step for step at its own speed, with its sounds, the crash or the finish, and then its
+// result (runPre: how long that takes; the result and the bar's growth wait for it). The difficulty
+// comes from config/run in the database (the admin's dashboard), fetched at every start and kept for
+// the next visit.
 const RUN_KEY = KEY + '.runcfg';
 export function fetchRunConfig() {
   try { const v = JSON.parse(localStorage.getItem(RUN_KEY) || 'null'); if (v && typeof v === 'object') setRunConfig(v); } catch (e) { /* none kept */ }
@@ -46,6 +50,18 @@ export let runDraft = null;
 // the start (the other phone, which never saw the run, sees the bar grow); while the move is on its way
 // to the server, the bar stays where the run ended.
 let runLive = null;
+// Someone else's run playing back on the scene: the flash it belongs to, the engine's replay (the sim,
+// its log and where it is in it), when the run ended on screen (the tumble or the flourish plays from
+// then), and the frame loop.
+export let runShow = null;
+// How long someone else's run takes to play back here, in ms: the run itself (its steps at the game's
+// step) and the crash's tumble or the finish's flourish; 0 when there is nothing to play (this phone's
+// own run, a timed-out player's, a move from before the log, reduced motion).
+export function runPre(f) {
+  const r = f && RUN_TYPES.includes(f.type) && f.run ? f.run : null;
+  if (!r || typeof r.log !== 'string' || !Number.isInteger(r.steps) || f.timeout || REDUCED || !(state.online ? f.by !== state.online.me : cpuPlays(f.by))) return 0;
+  return Math.round(r.steps * runStepOf(f.type) * 1000) + (r.done ? 500 : r.out ? 0 : 700);
+}
 const RUN_TEXT = {
   dash: { note: 'Tap to jump, hold to jump higher. Stay down for the flyers.', hint: 'Tap to jump · hold for higher', scene: 'The course, from the side', go: 'Run', verb: 'ran' },
   lane: { note: 'Swipe left or right to change lanes, or tap a side.', hint: 'Swipe to change lanes', scene: 'The road, from above', go: 'Run', verb: 'ran' },
@@ -54,16 +70,17 @@ const RUN_TEXT = {
 };
 const RUN_PRESS = { dash: 'jump', flap: 'flap', chopper: 'rotor' };   // the press's sound (Lane Rush: a swipe, its skid)
 export function runTable(mini, a, o) {
-  const r = a && a.run ? a.run : null, l = mini.last, turn = o.turn, T = mini.cfg.target, type = mini.type, pre = r && a === state.flash ? lanePre(a) : 0;   // (the computer's Lane Rush run plays first)
+  const r = a && a.run ? a.run : null, l = mini.last, turn = o.turn, T = mini.cfg.target, type = mini.type, pre = r && a === state.flash ? runPre(a) : 0;   // (someone else's run plays on the scene first)
+  const start = pre ? fxAt('move', a) : null, playing = pre > 0 && (start == null || performance.now() - start < pre);   // (their run still playing: the bar and the counter follow it, from runShowFrame)
   const ranHere = p => runLive && runLive.sq === o.zoom && runLive.p === p && performance.now() - runLive.at < 20000 ? runLive : null;
   if (runDraft && (runDraft.sq !== o.zoom || r || o.view || o.locked)) runStop();   // another square, or the result on show: no run under way here
   const live = runDraft && runDraft.sq === o.zoom ? runDraft : null;
   const mine = !o.view && !r && !o.locked;
   const bar = p => {
-    const fresh = r && a.by === p, mine = ranHere(p), at = fresh ? r.to : mine && !r && mine.to > mini.dist[p] ? mine.to : mini.dist[p];
-    const seen = fresh && mine && Math.abs(mine.to - r.to) < 1;   // this phone watched the bar fill during the run
+    const fresh = r && a.by === p, mine = ranHere(p), at = fresh ? (playing ? r.from : r.to) : mine && !r && mine.to > mini.dist[p] ? mine.to : mini.dist[p];
+    const seen = fresh && (pre > 0 || (mine && Math.abs(mine.to - r.to) < 1));   // this phone watched the bar fill during the run (its own, or the replay of someone else's)
     const w1 = 100 * Math.min(1, at / T), w0 = fresh && !seen ? 100 * Math.min(1, r.from / T) : w1;
-    return `<div class="rprog ${p}${!o.view && turn === p ? ' now' : ''}"><b class="${p}">${N(p)}</b><div class="rbar" role="progressbar" aria-valuenow="${Math.round(at)}" aria-valuemax="${T}"><i class="${fresh && !seen ? 'grow' : ''}" style="--w0:${w0.toFixed(1)}%;--w1:${w1.toFixed(1)}%;--d:${RUNT.bar}ms${fresh && pre ? `;--t:${pre}ms` : ''}"></i></div><small>${fresh && pre ? `<span class="sbn"><span class="tu" style="--u:${pre}ms">${fmtM(r.from)}</span><span class="tf" style="--f:${pre}ms">${fmtM(at)}</span></span>` : fmtM(at)} / ${fmtM(T)} m</small></div>`;   // (after a replay, the new distance as the bar grows)
+    return `<div class="rprog ${p}${!o.view && turn === p ? ' now' : ''}"><b class="${p}">${N(p)}</b><div class="rbar" role="progressbar" aria-valuenow="${Math.round(at)}" aria-valuemax="${T}"><i class="${fresh && !seen ? 'grow' : ''}" style="--w0:${w0.toFixed(1)}%;--w1:${w1.toFixed(1)}%;--d:${RUNT.bar}ms"></i></div><small>${fmtM(at)} / ${fmtM(T)} m</small></div>`;
   };
   const who = r ? a.by : turn;
   const TX = RUN_TEXT[type];
@@ -74,7 +91,7 @@ export function runTable(mini, a, o) {
     : `<p class="arcnote">Waiting for <b class="${turn}">${N(turn)}</b>…</p>`;
   const hint = '';   // (no hint over the run: how to play is in the ? explainer)
   const count = live && live.phase === 'count' ? `<div class="rcount" aria-live="assertive">${live.count > 0 ? live.count : 'GO!'}</div>` : '';
-  const hud = `<div class="rhud" data-run="hud">${fmtM(live ? live.sim.d : r ? r.to : mini.dist[who])} m</div>`;
+  const hud = `<div class="rhud" data-run="hud">${fmtM(live ? live.sim.d : r ? (playing ? r.from : r.to) : mini.dist[who])} m</div>`;
   const tall = type === 'lane';                     // Lane Rush: the result over the top of the road, so the scene takes its line too
   const scene = `<div class="rscene ${type}" data-run="scene" aria-label="${TX.scene}"><canvas data-run="cv"></canvas>${hud}${count}${hint}${tall ? res : ''}</div>`;
   const btn = o.view ? '' : `<div class="cbtns one${mine && !live ? '' : ' hold'}"><button class="big ${turn}" data-act="run-go"${mine && !live ? '' : ' disabled tabindex="-1" aria-hidden="true"'}>${TX.go}${mini.dist[turn] > 0 ? ` on from ${fmtM(mini.dist[turn])} m` : ''}</button></div>`;   // always there (hidden while it can't be used), so the course never moves
@@ -103,14 +120,7 @@ function runFrame(now) {
     else if (n !== rd.count) { rd.count = n; SND.play('beep'); render(); }       // the next digit, with its beep
   } else if (rd.phase === 'run') {
     runStep(rd.sim, dt);
-    const hud = app.querySelector('[data-run="hud"]');
-    if (hud) hud.textContent = fmtM(rd.sim.d) + ' m';
-    const own = app.querySelector(`.rprog.${rd.p}`);               // the runner's own bar fills as they go
-    if (own) {
-      const w = (100 * Math.min(1, rd.sim.d / rd.sim.cfg.target)).toFixed(2) + '%', bi = own.querySelector('.rbar i'), sm = own.querySelector('small');
-      if (bi) { bi.classList.remove('grow'); bi.style.setProperty('--w0', w); bi.style.setProperty('--w1', w); }
-      if (sm) sm.textContent = `${fmtM(rd.sim.d)} / ${fmtM(rd.sim.cfg.target)} m`;
-    }
+    runHud(rd.sim, rd.p, Infinity);
     if (rd.sim.t >= 1.6 && !rd.hintGone) { rd.hintGone = true; const h = app.querySelector('.rhint'); if (h) h.remove(); }
     const left = clockLeft();
     if (rd.sim.crash) { rd.phase = 'crash'; rd.at = now; runRotor(false); SND.play('crash'); }
@@ -121,7 +131,19 @@ function runFrame(now) {
   if (cv) runFrameDraw(cv, rd.sim, rd, now);
   rd.raf = requestAnimationFrame(runFrame);
 }
-// The run is over: its end and its time go in as the move (online, the server checks them against the course).
+// The counter and the runner's own bar follow a run as it goes (this phone's, or someone else's playing
+// back), the counter never past `cap` (a replay's end).
+function runHud(sim, p, cap) {
+  const d = Math.min(sim.d, cap), hud = app.querySelector('[data-run="hud"]');
+  if (hud) hud.textContent = fmtM(d) + ' m';
+  const own = app.querySelector(`.rprog.${p}`);
+  if (!own) return;
+  const w = (100 * Math.min(1, d / sim.cfg.target)).toFixed(2) + '%', bi = own.querySelector('.rbar i'), sm = own.querySelector('small');
+  if (bi) { bi.classList.remove('grow'); bi.style.setProperty('--w0', w); bi.style.setProperty('--w1', w); }
+  if (sm) sm.textContent = `${fmtM(d)} / ${fmtM(sim.cfg.target)} m`;
+}
+// The run is over: its end, its time and its log go in as the move (online, the server plays the log
+// through and checks the end against it).
 export function runEnd(out) {
   const rd = runDraft;
   if (!rd) return;
@@ -130,8 +152,8 @@ export function runEnd(out) {
   runLive = { sq: rd.sq, p: rd.p, to: res.dist, at: performance.now() };
   attemptMove(res);
 }
-// After every render: the canvas of a runner square shows the run under way, or the runner standing at
-// the saved distance (after a move: where it ended) with the course ahead.
+// After every render: the canvas of a runner square shows the run under way, someone else's run playing
+// back, or the runner standing at the saved distance (after a move: where it ended) with the course ahead.
 export function runPaint() {
   const cv = app.querySelector('canvas[data-run="cv"]');
   if (!cv || state.screen !== 'mini') return;
@@ -139,16 +161,38 @@ export function runPaint() {
   if (!sq || !RUN_TYPES.includes(sq.mini.type)) return;
   if (runDraft && runDraft.sq === state.zoom) { runFrameDraw(cv, runDraft.sim, runDraft, performance.now()); return; }
   const f = state.flash, r = f && f.run ? f.run : null, p = r ? f.by : sq.owner || state.turn;
-  const rep = r ? laneRep(f) : null, start = rep ? fxAt('move', f) : null;
-  if (rep && start != null && performance.now() - start < rep.ms) {   // the computer's run, driven on the road first
-    if (!laneShow || laneShow.f !== f) { const m = Object.assign({}, sq.mini, { dist: Object.assign({}, sq.mini.dist, { [p]: r.from }) }); setLaneShow({ f, sim: Object.assign(runStart(m, p), { p }), i: 0, crashAt: null, raf: 0 }); }
-    cancelAnimationFrame(laneShow.raf); laneShowFrame(performance.now());
+  const pre = r ? runPre(f) : 0, start = pre ? fxAt('move', f) : null;
+  if (pre && start != null && performance.now() - start < pre) {   // someone else's run, played back on the scene first
+    if (!runShow || runShow.f !== f) {
+      const m = Object.assign({}, sq.mini, { dist: Object.assign({}, sq.mini.dist, { [p]: r.from }) }), rep = runReplayer(m, p, runUnlog(r.log, r.steps) || [], r.steps);
+      rep.sim.p = p;
+      runShow = { f, rep, endAt: null, raf: 0 };
+    }
+    cancelAnimationFrame(runShow.raf); runShowFrame(performance.now());
     return;
   }
+  if (runShow) { cancelAnimationFrame(runShow.raf); runShow = null; }
   const sim = Object.assign(runStart(sq.mini, p), { p, d: r ? r.to : sq.mini.dist[p] });   // at rest: the course as Start would show it (the stretch ahead clear), no crash
   if (r && !r.done) { sim.course = runCourse(sq.mini, p); sim.crash = { at: r.to, ob: null }; sim.grace = 0; if (sim.type === 'flap') sim.y = FLAP.box.h / 2; }   // the crash just made, while its result shows: down on the ground (the course as it was)
   if ((r && r.done) || sim.d >= sq.mini.cfg.target) sim.done = true;
   runFrameDraw(cv, sim, null, performance.now());
+}
+// One frame of someone else's run: the replay stepped to the time since the move's event (whole steps
+// at the game's step, the logged inputs going in before theirs), drawn as a live run is (the tumble or
+// the flourish from the moment it ended), the counter and their bar following; then the scene at rest.
+function runShowFrame(now) {
+  const rs = runShow, f = state.flash;
+  if (!rs || rs.f !== f || state.screen !== 'mini' || state.zoom !== f.square) { if (rs) cancelAnimationFrame(rs.raf); runShow = null; return; }
+  const pre = runPre(f), start = fxAt('move', f);
+  if (!pre || start == null || now - start >= pre) { cancelAnimationFrame(rs.raf); runShow = null; runPaint(); return; }
+  const sim = rs.rep.sim;
+  runReplayTo(rs.rep, Math.floor((now - start) / 1000 / runStepOf(sim.type) + 1e-6));
+  const over = sim.crash || sim.done || sim.n >= rs.rep.steps;
+  if (over && rs.endAt == null) rs.endAt = now;
+  const cv = app.querySelector('canvas[data-run="cv"]');
+  if (cv) runFrameDraw(cv, sim, over && (sim.crash || sim.done) ? { at: rs.endAt } : null, now);
+  runHud(sim, f.by, f.run.to);
+  rs.raf = requestAnimationFrame(runShowFrame);
 }
 // ---- the inputs: on the scene, from pointerdown (no waiting for a click) ----
 // Anywhere on the mini-game screen counts (above, on or below the course), except the header's buttons.
@@ -198,12 +242,20 @@ export function runnerMiniature(mini, final) {
 export function runnerMoveText(f, who) {
   return f.run ? (f.run.done ? `${who} reached ${fmtM(f.run.target)} m!` : `${who} ${RUN_TEXT[f.type].verb} ${fmtM(f.run.to - f.run.from)} m — now at ${fmtM(f.run.to)}/${fmtM(f.run.target)}`) : `${who} ${RUN_TEXT[f.type].verb}`;
 }
+// The sounds of a move, for moveSounds: someone else's run as it plays back (its presses from the log
+// at their steps: jumps, flaps, skids; the chopper's rotor cannot loop from a schedule, so it is left
+// out), its crash or its finish when the run ends, then the result's ding; a run this phone saw, just the
+// crash (or the finish) as the result shows, the bar landing at its new distance.
 export function runnerSounds(f, add, won, mini, last) {
-  if (f.run) {
-    const rep = laneRep(f);                                     // the computer's Lane Rush run: its skids and crash first
-    if (rep) { for (const st of rep.plan.steps) add('skid', Math.round((st.t * 1000) / rep.speed)); add(f.run.done ? 'sparkle' : 'crash', rep.drive); add('ding', rep.ms + RUNT.bar); }
-    else { add(f.run.done ? 'sparkle' : 'thud', 0); add('ding', RUNT.bar); }
-  } return;   // the crash (or the finish) as the result shows, the bar landing at its new distance
+  if (!f.run) return;
+  const pre = runPre(f);
+  if (!pre) { add(f.run.done ? 'sparkle' : 'thud', 0); add('ding', RUNT.bar); return; }
+  const r = f.run, step = runStepOf(f.type), press = f.type === 'chopper' ? null : f.type === 'lane' ? 'skid' : RUN_PRESS[f.type];
+  let n = 0;
+  for (const [k, c] of runUnlog(r.log, r.steps) || []) { if (press && c !== 'r' && n < 300) { add(press, Math.round(k * step * 1000)); n++; } }
+  const drive = Math.round(r.steps * step * 1000);
+  if (r.done) add('sparkle', drive); else if (!r.out) add('crash', drive);
+  add('ding', pre + RUNT.bar);
 }
 
 // Its listeners: main.js calls this once, in the page's original order of listeners.

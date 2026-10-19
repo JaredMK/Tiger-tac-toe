@@ -4,6 +4,7 @@ import { chaosPlay } from './chaos.js';
 import { dealable, pickType } from './match.js';
 import { anyMove, applyMove, canMove, newMini, randomLegalMove } from './minis.js';
 import { needRng, randInt } from './random.js';
+import { repMove, repNorm } from './replay.js';
 import { other } from './util.js';
 import { ATT_TYPES } from '../games/shared/attention.js';
 import { FINGER_TYPES } from '../games/shared/finger.js';
@@ -93,6 +94,9 @@ export function playMove(state, i, m, rng, opts) {
   };
   const game = rulesOf(mini.type);
   if (game.moveFlash) game.moveFlash(m, p, range, bjFrom, mini, flash);
+  const sm = repMove(m), rep = repNorm(opts.rep);                 // the replay: the move (small enough to ride) and the mover's inputs before it (core/replay.js)
+  if (sm !== undefined) flash.m = sm;
+  if (rep) flash.rep = rep;
   if (outcome === 'win') {
     const w = res.winner || p;                   // a mini-game may hand the square to the other player
     sq.owner = w;
@@ -139,7 +143,7 @@ export function endFlash(state, hold) {
   if (!state.flash) return false;
   const f = state.flash;
   state.flash = null;
-  if (f.recap && state.sc) { state.screen = 'board'; state.zoom = null; return true; }   // Super Chaos: a square's round result, shown in the recap (ui/chaos.js goes on from there)
+  if (f.recap && state.sc) { if (!f.recapMore) { state.screen = 'board'; state.zoom = null; } return true; }   // Super Chaos: a square's round result, shown in the recap (ui/chaos.js goes on from there; recapMore: another step of the same move follows in the pop-up)
   if (state.winner) { state.screen = 'win'; state.zoom = null; state.done = null; }
   else if (f.kind === 'again') { state.screen = 'mini'; state.zoom = state.lock; }
   else if (hold && state.done) { state.screen = 'mini'; state.zoom = f.square; }

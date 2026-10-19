@@ -261,14 +261,18 @@ test('a Find Match game: all mini-games, one minute a turn, hidden values hidden
   assert.deepEqual(await outsider.call('move', { game: g.id, square: 4, move: 0 }), { ok: false, reason: 'not-player' });
   assert.equal(await get(`games/${g.id}/pub/state`), before, 'nothing changed');
   // a Wordle guess: the word stays hidden until it is guessed
-  const w = await g.X.call('move', { game: g.id, square: 3, move: 'CRATE' });
+  const w = await g.X.call('move', { game: g.id, square: 3, move: 'CRATE', rep: [[0, 'key', 'k=C'], [310, 'key', 'k=R'], [600, 'key', 'k=A'], [5000, 'key', 'k=T'], [5200, 'key', 'k=E'], [5500, 'enter']] });
   assert.equal(w.ok, true);
   let s3 = await gameState(g.id);
   assert.equal(s3.turn, 'O'); assert.ok(!('word' in s3.squares[3].mini), 'still hidden after a wrong guess');
+  const ent = s3.recent[s3.recent.length - 1];   // the move's replay log rides its entry, normalized (a long pause cut to 1.5 s), for the other phone to play back
+  assert.deepEqual(ent.rep, [[0, 'key', 'k=C'], [310, 'key', 'k=R'], [600, 'key', 'k=A'], [2100, 'key', 'k=T'], [2300, 'key', 'k=E'], [2600, 'enter']], 'the log on the entry');
+  assert.equal(ent.m, 'CRATE', 'and the move itself');
   assert.deepEqual(s3.squares[3].mini.guesses[0].marks, ['g', 'g', 'g', 'x', 'g']);
   assert.ok(s3.timer.deadline > Date.now() + 55000, 'a fresh minute for the next player (plus the playback)');
-  assert.equal((await g.O.call('move', { game: g.id, square: 3, move: 'CRANE' })).ok, true);
+  assert.equal((await g.O.call('move', { game: g.id, square: 3, move: 'CRANE', rep: 'nonsense' })).ok, true);   // (a bad log is dropped, the move stands)
   s3 = await gameState(g.id);
+  assert.ok(!('rep' in s3.recent[s3.recent.length - 1]), 'a malformed log is left off the entry');
   assert.equal(s3.squares[3].owner, 'O'); assert.equal(s3.squares[3].mini.word, 'CRANE', 'revealed once guessed');
   // X wins the match: three in a row
   const fin = await g.X.call('move', { game: g.id, square: 2, move: 2 });

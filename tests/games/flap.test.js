@@ -33,3 +33,18 @@ test('flap: posts every 9-12 m, each gap of the mix\'s size, its middle within r
 test('flap: a pilot that reacts 0.12 s late finishes every course', () => {
   for (let s = 1; s <= 25; s++) { const sim = flyFlap(square('flap', s * 7919), 0.12); assert.ok(sim.done, `course ${s}: crashed at ${Math.round(sim.d)} m (${sim.crash && sim.crash.ob.k})`); }
 });
+
+test('flap: the computer\'s bird flies all but the odd course through when it has no post to crash at (from the start or a saved distance), and flies into the upper post it is given', () => {
+  const lcg = seed => () => (seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296;
+  let fin = 0, n = 0;
+  for (let s = 1; s <= 40; s++) for (const f of [0, 0.3, 0.6, 0.9]) {
+    const mini = square('flap', s * 131, Math.round(f * 450)), sim = E.runPilot(E.runStart(mini, 'X'), null, lcg(s));
+    n++; if (sim.done) fin++;
+    assert.ok(sim.rec.length > 0 && sim.rec.every(([k, c]) => Number.isInteger(k) && c === 'j'), 'its flaps logged');
+    const s2 = E.runStart(mini, 'X'), plan = s2.course[Math.min(s2.course.length - 1, 1 + (s % 5))];
+    if (!plan) continue;
+    E.runPilot(s2, plan, lcg(s));
+    assert.ok(s2.crash && s2.crash.ob === plan && s2.y > plan.gy, `into that post, from above (from ${mini.dist.X}: ${s2.crash && s2.crash.ob.at}, planned ${plan.at})`);
+  }
+  assert.ok(fin >= n - 3, `${fin} of ${n} flights finished`);
+});

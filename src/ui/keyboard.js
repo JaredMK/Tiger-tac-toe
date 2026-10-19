@@ -1,6 +1,7 @@
 // The on-screen keyboard (Wordle, Hangman).
 import { attemptMove, showNotice } from '../net/moves.js';
 import { app, commit, mv, state, zoomedType } from './app.js';
+import { repNote } from './replay.js';
 
 const BKSP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 5H8l-5 7 5 7h13a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1z"/><path d="m18 9-6 6M12 9l6 6"/></svg>';
 
@@ -29,14 +30,17 @@ export function keyboard(cls, disabled, extra) {
 }
 export function typeLetter(k) {
   if (zoomedType() !== 'wordle' || (state.draft || '').length >= 5) return;
+  repNote('key', 'k=' + k);                                     // (logged here, for the on-screen keys and a real keyboard alike)
   state.draft = (state.draft || '') + k; commit();
 }
 export function backspace() {
   if (zoomedType() !== 'wordle' || !(state.draft || '').length) return;
+  repNote('bksp');
   state.draft = state.draft.slice(0, -1); commit();
 }
 export function submitWord() {
   if (zoomedType() !== 'wordle' || (state.draft || '').length !== 5) return;
+  repNote('enter');
   const r = attemptMove(state.draft);
   if (r === true || r.ok) return;
   if (r.reason === 'notword') showNotice('Not a word', 1200);   // the guess stays typed and the turn is still theirs

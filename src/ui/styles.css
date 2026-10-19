@@ -2213,3 +2213,16 @@ svg.d8 text { font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-size:
 .rmap.comb .rseg.open { stroke-width: 1.5; }
 .rmap.comb .rhit { stroke-width: 10; }
 .troad.comb line { stroke-width: 2.2; } .troad.comb line.X, .troad.comb line.O { stroke-width: 6.5; } .troad.comb line.B { stroke-width: 3.2; stroke-dasharray: 2.5 3; }
+
+/* ---------- opponent replays (ui/replay.js) ---------- */
+.rpress, .rpress:disabled { transform: scale(.93) !important; filter: brightness(.9); box-shadow: 0 0 0 3px var(--ink) inset !important; opacity: 1 !important; transition: transform .08s; }   /* the control the other side pressed, as it was pressed */
+g.rpress rect, g.rpress path { fill: var(--ink); }
+.rskip { position: absolute; right: 14px; bottom: 14px; z-index: 9; height: 40px; padding: 0 14px 0 12px; border: 3px solid var(--ink); border-radius: 12px; background: var(--paper); color: var(--ink); font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-weight: 400; font-size: 15px; letter-spacing: .02em; box-shadow: 0 3px 0 var(--ink); opacity: 0; animation: skipin .25s ease-out 2s both; }   /* two seconds into a replay */
+.rskip:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+@keyframes skipin { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+/* Super Chaos's recap: the computer's move replayed in a card over the board */
+#app > main.scr.mini.screplay { position: absolute; left: 10px; right: 10px; top: calc(var(--hdr) + 10px); bottom: 10px; z-index: 6; border-radius: 22px; border: 3.5px solid var(--ink); box-shadow: 0 10px 0 var(--ink), 0 24px 60px rgba(22, 18, 16, .35); background: var(--bg); --vh: calc(100vh - 20px); animation: pop .2s ease-out both; }
+@supports (height: 100dvh) { #app > main.scr.mini.screplay { --vh: calc(100dvh - 20px); } }
+main.scr.mini.screplay .bar .rtag { display: inline-flex; align-items: center; gap: 4px; background: var(--ink); color: var(--paper); opacity: 1; }
+main.scr.mini.screplay .bar .rtag svg { width: 18px; height: 18px; }
+.board-scr:has(+ .screplay) .board { filter: saturate(.6) brightness(.8); }

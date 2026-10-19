@@ -71,11 +71,11 @@ export function settle(full, before) {
   full.seq = (full.seq || 0) + 1;
   const entry = Object.assign(JSON.parse(JSON.stringify(f)), { seq: full.seq, moves: full.moves, after }, before ? { before: JSON.parse(JSON.stringify(before)) } : {});
   endFlash(full, false);
-  full.recent = (full.recent || []).map(e => (e.phys && e.phys.rec ? Object.assign({}, e, { phys: Object.assign({}, e.phys, { rec: null }) }) : e)).concat([entry]).slice(-RECENT_MAX);   // (a physics recording rides only the latest entry: the record stays small)
+  full.recent = (full.recent || []).map(e => { const o = e.phys && e.phys.rec ? Object.assign({}, e, { phys: Object.assign({}, e.phys, { rec: null }) }) : e; if (o.rep) { const c = Object.assign({}, o); delete c.rep; return c; } return o; }).concat([entry]).slice(-RECENT_MAX);   // (a physics recording and a replay log ride only the latest entry: the record stays small)
   return entry;
 }
 // One move by `side`, applied to a record: { ok, rec, entries } or { ok: false, reason }.
-export function applyOnlineMove(rec, side, i, m, rng, opts) {
+export function applyOnlineMove(rec, side, i, m, rng, opts) {   // opts.rep: the mover's inputs before the move (core/replay.js), kept on the entry for the other phone's replay
   const full = fullState(rec);
   if (full.winner) return { ok: false, reason: 'over' };
   if (full.turn !== side) return { ok: false, reason: 'turn' };

@@ -3,6 +3,7 @@ import { PHYSICS } from '../shared/physics.js';
 import { poolRank } from './rules.js';
 import { state } from '../../ui/app.js';
 import { physBall, physResult, physSkull, physTable, physThumb } from '../../ui/physics.js';
+export { physReplay as replay } from '../../ui/physics.js';
 import { outlined, rr, runColours } from '../../ui/runner.js';
 export { physicsSounds as sounds } from '../../ui/physics.js';
 

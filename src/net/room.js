@@ -29,6 +29,7 @@ import { KEY } from '../ui/config.js';
 import { fingPinned } from '../ui/finger.js';
 import { fxAt, startFx } from '../ui/fx.js';
 import { render } from '../ui/render.js';
+import { repStart, repStop } from '../ui/replay.js';
 import { noteNet } from '../ui/turnbar.js';
 import { cpuTurn, playFlash } from '../ui/turns.js';
 
@@ -280,7 +281,7 @@ function onRoomValue(r) {
     save(); render();
   }
 }
-export function presenting() { return !!(state.flash || state.done || state.spot || presentingSeq != null || stampLeft() > 0); }
+export function presenting() { return !!(state.flash || state.done || state.spot || presentingSeq != null || stampLeft() > 0); }   // (presentingSeq covers a replay's inputs playing before the move)
 // A square's stamp still playing on the board (ms left): the next move played back waits for it.
 function stampLeft() { const at = state.stamp != null ? fxAt('stamp', state.stampId) : null; return at == null ? 0 : Math.max(0, STAMP_MS - (performance.now() - at)); }
 let pendingTimer = null;
@@ -317,6 +318,7 @@ function takeFields(st) {
 }
 export function showLatest(st) {
   const o = state.online, pick0 = pickKey(), live = ['board', 'mini'].includes(state.screen);
+  repStop();
   takeFields(st);
   if (pickKey() != null && pickKey() !== pick0) { startFx('pick', pickKey()); SND.play('flipUp'); }   // a Memory card just turned up (on the other phone, or this one's own pick coming back)
   if (live && state.winner && !state.flash) SND.play(matchEndSound());   // the match ended while this phone was on the board (not on a reload)
@@ -348,13 +350,20 @@ export function presentEntry(st, e, rest) {
   const over = e.kind === 'match';
   state.winner = over ? st.winner || e.winner : null;           // (the match's result: a square won can also leave a draw)
   if (!over) { state.winLine = null; state.winReason = null; state.counts = null; }
-  const f = Object.assign({}, e); delete f.after; delete f.seq; delete f.moves;
-  state.flash = f;
-  state.done = !over && e.kind !== 'again' ? f : null;
+  const f = Object.assign({}, e); delete f.after; delete f.seq; delete f.moves; delete f.before;
+  const done = !over && e.kind !== 'again' ? f : null;
   state.spot = null; state.stamp = null;
   presentingSeq = e.seq;
-  if (e.by === o.me && !e.timeout) { state.screen = 'mini'; state.zoom = e.square; state.draft = ''; state.notice = null; playFlash(); }
-  else showRemoteMove(e.square, moveLabel(e), before ? clone(before) : null);
+  if (e.by === o.me && !e.timeout) { state.flash = f; state.done = done; state.screen = 'mini'; state.zoom = e.square; state.draft = ''; state.notice = null; playFlash(); }
+  else {
+    // The other player's move: the square as it was until their inputs have played (ui/replay.js), then the
+    // square as the move left it and the move's own animation.
+    const mini0 = before ? clone(before) : null;
+    if (mini0) state.squares[e.square] = clone(mini0);
+    const start = () => repStart({ sq: e.square, by: e.by, type: f.type, mini: mini0 ? mini0.mini : state.squares[e.square].mini, move: f.m, list: mini0 ? f.rep : null, timeout: !!f.timeout,
+      onMove: () => { state.squares[e.square] = clone(e.after); state.flash = f; state.done = done; state.draft = ''; state.notice = null; playFlash(); save(); render(); } });
+    showRemoteMove(e.square, moveLabel(e), mini0, start);
+  }
   save(); render();
 }
 // After a result has played out here: the move counts as seen, and the record is looked at again.
@@ -370,10 +379,10 @@ export function applyPending() {
 // A move by the other player (or a timed-out one): the board first, with the square lit up and a
 // label (and drawn as it was before the move), then the zoom and the move's animation. The flash is
 // already set; it only starts as the mini-game comes into view (playFlash), not while the square glows.
-function showRemoteMove(i, label, before) {
+function showRemoteMove(i, label, before, start) {
   clearTimeout(spotTimer); setSpotTimer(null);
-  if (state.screen === 'mini' && state.zoom === i && !state.spot) { state.draft = ''; state.notice = null; playFlash(); return; }   // already looking at this square (a bonus move, or a watcher): it plays right here
-  state.spot = { square: i, by: state.flash ? state.flash.by : state.turn, label, before: before || null };
+  if (state.screen === 'mini' && state.zoom === i && !state.spot) { state.draft = ''; state.notice = null; start(); return; }   // already looking at this square (a bonus move, or a watcher): it plays right here
+  state.spot = { square: i, by: state.turn, label, before: before || null };
   startFx('spot', state.spot); SND.play('spot');
   state.screen = 'board'; state.zoom = null; state.draft = ''; state.notice = null;
   setSpotTimer(setTimeout(() => {
@@ -382,7 +391,7 @@ function showRemoteMove(i, label, before) {
     const sq = state.spot.square;
     state.spot = null;
     state.screen = 'mini'; state.zoom = sq;
-    playFlash();
+    start();
     save(); render();
   }, SPOT_MS));
 }
@@ -427,7 +436,7 @@ export function leaveRoom(silent) {
   clearTimeout(spotTimer); setSpotTimer(null);
   clearTimeout(flashTimer); setFlashTimer(null);
   clearTimeout(holdTimer); setHoldTimer(null);
-  clearTimeout(moveTimer); moveWait = null; presentingSeq = null; awayNote = '';
+  clearTimeout(moveTimer); moveWait = null; presentingSeq = null; awayNote = ''; repStop();
   state.online = null;
   setNet('idle', '');
   setMenuOpen(false); setMenuStep('main');
@@ -477,7 +486,7 @@ export function quitMatch() {
   clearTimeout(cpuTimer); setCpuTimer(null); setCpuPlan(null);
   clearTimeout(spotTimer); setSpotTimer(null);
   clearTimeout(flashTimer); setFlashTimer(null);
-  clearTimeout(holdTimer); setHoldTimer(null);
+  clearTimeout(holdTimer); setHoldTimer(null); repStop();
   setMenuOpen(false); setMenuStep('main');
   state.flash = null; state.done = null; state.spot = null; state.lock = null;
   state.screen = 'menu'; state.zoom = null; state.confirm = null;

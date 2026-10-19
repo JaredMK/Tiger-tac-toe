@@ -22,7 +22,6 @@ import { echoDraft } from '../games/echo/view.js';
 import { flArt } from '../games/flash/view.js';
 import { floodGain } from '../games/flood/rules.js';
 import { headAt, headAxis, headU } from '../games/headcount/rules.js';
-import { lanePre, laneShow } from '../games/lane/view.js';
 import { hopPlan } from '../games/skyhop/rules.js';
 import { sniffDirs, sniffStep } from '../games/sniff/rules.js';
 import { setTriviaBank, triviaDeal, triviaReady } from '../games/trivia/rules.js';
@@ -38,17 +37,18 @@ import { reactKey } from '../net/reactions.js';
 import { releases, visibleTypes } from '../net/releases.js';
 import { assignNet, blocked, isHost, leaveRoom, moveWait, net, online, pinned, presence, presentingSeq, room, roomCode, roomRef } from '../net/room.js';
 import { devIdAny, devLast, devPulse, pendingLocal, setDevLast, testerTag, track, trackStart } from '../net/tracking.js';
-import { RNG, app, commit, cpuPlan, cpuTimer, menuOpen, mv, save, setCpuPlan, setCpuTimer, setMenuOpen, spotTimer, state } from './app.js';
+import { RNG, app, commit, cpuPlan, cpuTimer, flashReady, menuOpen, mv, save, setCpuPlan, setCpuTimer, setMenuOpen, spotTimer, state } from './app.js';
 import { attDraft, attPre } from './attention.js';
 import { pcard } from './cards.js';
 import { clockLeft, tick } from './clock.js';
 import { KEY } from './config.js';
 import { EXPLAIN, explainT } from './explainer.js';
 import { fingDraft, fingDraw, fingFinish, fingFrame, fingPre, fingRep, setFingDraw, setFingFrame } from './finger.js';
-import { BURSTS, burstPick, fxAt } from './fx.js';
-import { physDraft, physPull, physRaf, physStill } from './physics.js';
+import { BURSTS, animMs, burstPick, fxAt } from './fx.js';
+import { physDraft, physPull, physRaf, physRepOn, physStill } from './physics.js';
 import { render, setRender } from './render.js';
-import { runDraft } from './runner.js';
+import { rep, repActive, repSkip, repTake } from './replay.js';
+import { runDraft, runPre, runShow } from './runner.js';
 import { hist, prof, record, signed } from './screens/profile.js';
 import { setGames } from './screens/setup.js';
 import { BUMP_SPEC, CANDY_SPEC, DICE_SPEC, SNL_SPEC } from './track.js';
@@ -87,6 +87,7 @@ const names = {
   acct: () => acct,
   fb: () => fb,
   playFlash: () => playFlash,
+  rep: () => rep, repActive: () => repActive, repSkip: () => repSkip, repTake: () => repTake,
   TYPES: () => TYPES,
   explainT: () => explainT,
   triviaReady: () => triviaReady,
@@ -124,7 +125,7 @@ const names = {
   roomCode: () => roomCode,
   roomRef: () => roomRef,
   physRaf: () => physRaf,
-  physStill: () => physStill,
+  physStill: () => physStill, physRepOn: () => physRepOn,
   loginMsg: () => loginMsg,
   cpuTimer: () => cpuTimer,
   EXPLAIN: () => EXPLAIN,
@@ -156,7 +157,7 @@ const names = {
   fingFrame: () => fingFrame,
   fingDraft: () => fingDraft,
   fingFinish: () => fingFinish,
-  fxAt: () => fxAt,
+  fxAt: () => fxAt, animMs: () => animMs, flashReady: () => flashReady,
   fingPre: () => fingPre,
   fingMs: () => fingMs,
   fingRaw: () => fingRaw,
@@ -164,8 +165,8 @@ const names = {
   hopPlan: () => hopPlan,
   clockLeft: () => clockLeft,
   predicted: () => predicted,
-  lanePre: () => lanePre,
-  laneShow: () => laneShow,
+  runPre: () => runPre,
+  runShow: () => runShow,
   newTimer: () => newTimer,
   bowlDraft: () => bowlDraft,
   bowlTap: () => bowlTap,

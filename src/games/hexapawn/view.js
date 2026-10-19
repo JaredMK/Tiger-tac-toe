@@ -45,6 +45,13 @@ export function hpselAct(el, e, act) {
   hpSel = hpSel && hpSel.sq === state.zoom && hpSel.from === i ? null : { sq: state.zoom, from: i };
   render();
 }
+// Someone else's move replayed (ui/replay.js): their pawn picked up first, then its step.
+function replayInput(act, val, r) {
+  if (act === 'hpsel' && /^i=\d+$/.test(val || '')) hpSel = { sq: r.sq, from: Number(val.slice(2)) };
+  return false;
+}
+const replaySynth = m => (Array.isArray(m) && m.length === 2 ? [[0, 'hpsel', 'i=' + m[0]], [650, 'move', 'm=' + JSON.stringify(m)]] : null);
+export const replay = { input: replayInput, synth: replaySynth };
 // Its own controls (data-act): the page's click handler hands them here.
 export const actions = { hpsel: hpselAct };
 

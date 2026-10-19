@@ -17,6 +17,7 @@ import { fxAt } from './fx.js';
 import { scShown } from './chaos.js';
 import { arcTally, lateAt, pips } from './progress.js';
 import { render } from './render.js';
+import { repNote, repOn } from './replay.js';
 import { outlined, rr, runCanvas, runColours } from './runner.js';
 
 // Mini Golf, Pool and Bowling: the physics games. The table is drawn on a canvas. In Golf and Pool a shot
@@ -49,6 +50,8 @@ const PHYS_S = t => PHYSICS.lib[t === 'golf' ? 'GOLF' : t === 'pool' ? 'POOL' : 
 const PHYS_PULL = 0.42;                                        // a full-power pull: this much of the table's height on the screen
 // The drag under way on this phone: the square, the player, the pointer, where it went down and where it is.
 export let physDraft = null, physRaf = 0;
+export const physRepOn = () => physRep;   // (the browser tests look)
+let physRep = null;                                            // someone else's shot being lined up in a replay: { sq, p, shot: { aim, power } } (ui/replay.js)
 // What a shot did, in words, for the result line (and the board's label for a move seen from the other side).
 export function physResult(f, long) {
   const ph = f.phys, by = f.by, o = other(by), who = `<b class="${by}">${N(by)}</b>`, them = `<b class="${o}">${N(o)}</b>`;
@@ -146,7 +149,8 @@ function physDrawNow(cv, now) {
   const at = ph ? fxAt('move', f) : null;
   const fr = ph && at != null ? physFrame(ph, now, at) : null;
   const pos = fr ? fr.pos : physStill(mini, !!(ph || d || sq.owner || state.winner));
-  const dr = physDraft && physDraft.sq === state.zoom && !ph ? physDraft : null;
+  if (physRep && (ph || !repOn(state.zoom))) physRep = null;   // the shot has played, or the replay is over
+  const dr = physDraft && physDraft.sq === state.zoom && !ph ? physDraft : physRep && physRep.sq === state.zoom && !ph ? physRep : null;
   const { c, W, H } = runCanvas(cv);
   if (W < 2 || H < 2) return false;
   const S = PHYS_S(mini.type), M = mini.type === 'pool' ? POOL_RAIL : 0, k = Math.min(W / (S.w + 2 * M), H / (S.h + 2 * M)), ox = (W - S.w * k) / 2, oy = (H - S.h * k) / 2;   // the pool table keeps a rail of one width all round
@@ -185,7 +189,7 @@ export function physSkull(g, x, y, r) {                                 // the b
 function drawAim(g, mini, pos, dr) {
   const c = g.c, P = runColours(), S = PHYS_S(mini.type), from = physFrom(mini, dr.p, pos);
   if (!from) return;
-  const shot = physPull(dr);
+  const shot = dr.shot ? Object.assign({ px: dr.shot.power * PHYS_PULL * g.H }, dr.shot) : physPull(dr);   // (a replay: the shot as the other side had it lined up)
   const X = g.X(from[0]), Y = g.Y(from[1]), len = (0.12 + 0.3 * shot.power) * S.h * g.k;
   c.save();
   c.setLineDash([6, 6]); c.lineWidth = 3; c.strokeStyle = 'rgba(255,255,255,.9)';
@@ -233,6 +237,17 @@ export function physThumb(mini) {
     ${S.pins.map(([x, y], k) => `<circle cx="${x}" cy="${y}" r="${S.pinR * 1.6}" class="pin${l && l.down[k] ? ' down' : ''}"/>`).join('')}</svg>
     <div class="trun">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><i style="--w:${(100 * Math.min(1, mini.pins[p] / BOWLG.goal)).toFixed(1)}%"></i></div>`).join('')}</div></div>`;
 }
+// Someone else's shot replayed (ui/replay.js): their pull shown as it grew (the drag's readings logged on
+// their phone, or a few made up for the computer), then the shot.
+function physReplayInput(act, val, r) {
+  const m = /^a=(-?[\d.]+),p=([\d.]+)$/.exec(val || '');
+  if ((act !== 'drag' && act !== 'aim') || !m) return false;
+  physRep = { sq: r.sq, p: r.by, shot: { aim: Number(m[1]), power: Number(m[2]) } };
+  physPaint();
+  return true;
+}
+const physReplaySynth = m => (m && typeof m === 'object' && Number.isFinite(m.aim) ? [0.2, 0.5, 0.8].map((k, i) => [i * 280, 'drag', `a=${m.aim},p=${(m.power * k).toFixed(3)}`]).concat([[900, 'aim', `a=${m.aim},p=${m.power}`]]) : null);
+export const physReplay = { input: physReplayInput, synth: physReplaySynth };
 export function physicsSounds(f, add, won, mini, last) {   // the recording's events, as they come round in the replay; then the result
   const ph = f.phys; if (!ph) return;
   if (ph.locked) { add('clack', 0); return; }                              // Super Chaos: the putt locked in (it plays at the round's end)
@@ -255,7 +270,12 @@ export function init() {
     try { scene.setPointerCapture(e.pointerId); } catch (err) { /* no capture: the move and up still reach the page */ }
     physPaint();
   });
-  app.addEventListener('pointermove', e => { const dr = physDraft; if (dr && dr.pointer === e.pointerId) { dr.x = e.clientX; dr.y = e.clientY; } });
+  app.addEventListener('pointermove', e => {
+    const dr = physDraft;
+    if (!dr || dr.pointer !== e.pointerId) return;
+    dr.x = e.clientX; dr.y = e.clientY;
+    if (!dr.noted || performance.now() - dr.noted > 150) { const s = physPull(dr); dr.noted = performance.now(); repNote('drag', `a=${s.aim.toFixed(3)},p=${s.power.toFixed(3)}`); }   // the pull as it grows, for the other side's replay
+  });
   app.addEventListener('pointerup', e => {
     const dr = physDraft;
     if (!dr || dr.pointer !== e.pointerId) return;
@@ -263,7 +283,9 @@ export function init() {
     const shot = physPull(dr);
     physDraft = null;
     if (shot.power < 0.05 || dr.sq !== state.zoom) { physPaint(); return; }           // a tap, or a pull too short to count: nothing
-    attemptMove(physShot({ aim: shot.aim, power: shot.power }));
+    const m = physShot({ aim: shot.aim, power: shot.power });
+    repNote('aim', `a=${m.aim},p=${m.power}`);
+    attemptMove(m);
   });
   app.addEventListener('pointercancel', e => { if (physDraft && physDraft.pointer === e.pointerId) { physDraft = null; physPaint(); } });
 }

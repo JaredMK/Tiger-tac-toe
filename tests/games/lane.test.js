@@ -52,3 +52,20 @@ test('lane rush: the car drives on; a car ahead in its lane is a crash; a change
   runUntil(sim, s => s.laneT >= 1); assert.equal(E.runLaneX(sim), 2);
   assert.ok(runOut(fresh([])).done, 'an empty course: the finish');
 });
+
+test('lane rush: the computer\'s driver gets through every course when it has no row to crash at, and crashes into a car of the row it is given (or, when no lane blocked there is within reach, one of the next)', () => {
+  E.setRunConfig(null);
+  const lcg = seed => () => (seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296;
+  let at = 0, later = 0;
+  for (let s = 1; s <= 40; s++) for (const f of [0, 0.35, 0.7]) {
+    const m = mini('lane', 'driver' + s), from = Math.round(f * m.cfg.target); m.dist.X = from;
+    const sim = E.runPilot(E.runStart(m, 'X'), null, lcg(s));
+    assert.ok(sim.done, `course ${s} from ${from}: crashed at ${sim.crash && sim.crash.at}`);
+    assert.ok(sim.rec.every(([n, c]) => Number.isInteger(n) && 'lL'.includes(c)), 'its lane changes logged');
+    const s2 = E.runStart(m, 'X'), plan = s2.course[Math.min(s2.course.length - 1, 2 + (s % 4))];
+    E.runPilot(s2, plan, lcg(s));
+    assert.ok(s2.crash && s2.crash.ob.at >= plan.at, `it crashes when told to, at the row or past it (from ${from}: ${s2.crash && s2.crash.ob.at}, planned ${plan.at})`);
+    if (s2.crash.ob === plan) at++; else { later++; assert.ok(s2.crash.ob.at - plan.at < 60, 'not far past it'); }
+  }
+  assert.ok(at > later * 10, `almost always the row itself (${at} there, ${later} later)`);
+});
