@@ -13,7 +13,8 @@
 //
 // The games' hooks (rules.js): scCreate (a Super Chaos square, where it differs), scFork (a square as one
 // player sees it), scApply (a move made differently), scAfter (a move's result as its player sees it until the
-// round ends), scMerge (both moves together). A game without them keeps each player's progress apart already.
+// round ends), scMerge (both moves together; it may return win, reset, replay, or resolve: a result settled only now,
+// such as a Bump knock or the Roulette spin, for the recap to play). A game without them keeps each player's progress apart already.
 import { LINES, playMove } from './board.js';
 import { cpuMove } from './ai.js';
 import { dealable, pickType, startMatch } from './match.js';
@@ -167,7 +168,7 @@ export function chaosResolve(state, rng) {
   if (!sc || !sc.me || state.winner || sc.recap) return null;
   const moves = { [me]: sc.me };
   if (sc.cpu) moves[cpu] = sc.cpu;
-  const recap = { round: sc.round, me: sc.me.square, cpu: sc.cpu ? { square: sc.cpu.square, steps: sc.cpu.steps, start: sc.cpu.start, type: sc.cpu.mini.type } : null, view: {}, claims: [], resets: [], replay: null, result: null };
+  const recap = { round: sc.round, me: sc.me.square, cpu: sc.cpu ? { square: sc.cpu.square, steps: sc.cpu.steps, start: sc.cpu.start, type: sc.cpu.mini.type } : null, view: {}, pre: {}, resolve: [], claims: [], resets: [], replay: null, result: null };
   const squares = [...new Set(Object.values(moves).map(x => x.square))];
   const wins = [];
   for (const i of squares) {
@@ -189,6 +190,10 @@ export function chaosResolve(state, rng) {
     if (sq.mv == null) sq.mv = { X: 0, O: 0 };
     if (forks[cpu]) sq.mv[cpu] += 1;
     if (out.replay) recap.replay = { square: i, type: m.type, last: clone(m.last), win: winners.slice() };
+    if (out.resolve) {                                          // settled only now, with both moves known (a Bump knock, the Roulette spin): the recap plays it
+      recap.pre[i] = project(clone(out.resolve.pre), me);
+      recap.resolve.push({ square: i, type: m.type, flash: Object.assign({ kind: 'move', by: me, next: me, square: i, type: m.type, note: 'resolve', pass: null, timeout: false, sc: recap.round, recap: true, scr: true }, out.resolve.flash) });
+    }
     const drew = played.some(p => moves[p].out === 'draw');
     project(m, me);
     recap.view[i] = clone(m);                                   // the square once both moves are in, before its claim or reset

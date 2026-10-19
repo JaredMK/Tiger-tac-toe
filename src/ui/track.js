@@ -1,7 +1,7 @@
 // Race tracks (Snakes and Ladders, Candy Race, Bump, the Dice race): the board and the tokens' hops.
 import { PLAY } from '../core/timer.js';
 import { other } from '../core/util.js';
-import { BUMP } from '../games/bump/rules.js';
+import { BUMP, BUMP_KNOCK } from '../games/bump/rules.js';
 import { CANDY } from '../games/candy/rules.js';
 import { DICE_GOAL, diceSlot } from '../games/dice/rules.js';
 import { SNL } from '../games/snakes/rules.js';
@@ -88,7 +88,8 @@ export function trackSvg(spec, opts) {
     if (slot == null) continue;
     const [x, y] = at(slot);
     const shared = opts.tokens[other(p)] === slot, dx = shared ? (p === 'X' ? -2.4 : 2.4) : 0;
-    tokens += `<g class="tok ${p}${opts.moved === p ? ' moved' : ''}${opts.knocked === p ? ' knocked' : ''}" data-x="${x + dx}" data-y="${y}" style="transform:translate(${x + dx}px,${y}px)"><g class="pc p${p}" transform="translate(${-r * 1.3} ${-r * 1.3}) scale(${r * 2.6 / 100})">${toonG(p)}</g></g>`;
+    const kn = Array.isArray(opts.knocked) ? opts.knocked.includes(p) : opts.knocked === p;
+    tokens += `<g class="tok ${p}${opts.moved === p ? ' moved' : ''}${kn ? ' knocked' : ''}" data-x="${x + dx}" data-y="${y}" style="transform:translate(${x + dx}px,${y}px)"><g class="pc p${p}" transform="translate(${-r * 1.3} ${-r * 1.3}) scale(${r * 2.6 / 100})">${toonG(p)}</g></g>`;
   }
   return `<svg class="track${opts.mini ? ' small' : ''}${opts.cls ? ' ' + opts.cls : ''}" viewBox="0 0 ${spec.w} ${spec.h}" aria-hidden="true"><path class="path" d="${d}"/>${arrows}${spaces}${opts.overlay || ''}${nums}${start}${finish}${tokens}</svg>`;
 }
@@ -98,6 +99,7 @@ export const SLIDE_MS = PLAY.slide, KNOCK_MS = PLAY.knock, SPIN3_MS = PLAY.spin3
 export function hopToken() {
   const f = state.flash;
   if (!f || !['candy', 'dice', 'snakes', 'bump'].includes(f.type) || !WAAPI || REDUCED) return;
+  if (f.type === 'bump' && f.scr) { knockHome(f); return; }
   const tok = app.querySelector('.gwrap .track .tok.moved');
   if (!tok) return;
   const spec = { candy: CANDY_SPEC, dice: DICE_SPEC, snakes: SNL_SPEC, bump: BUMP_SPEC }[f.type];
@@ -135,6 +137,24 @@ export function hopToken() {
       { transform: `translate(${(lx + hx) / 2}px, ${Math.min(ly, hy) - 9}px) rotate(-200deg) scale(1.1)`, offset: .6 },
       { transform: `translate(${hx}px, ${hy}px) rotate(-360deg) scale(1)`, offset: 1 },
     ], { duration: KNOCK_MS, delay: delay + hops * HOP_MS, fill: 'both', easing: 'ease-out' });
+  }
+}
+// Super Chaos's round end in Bump: the pieces knocked from where they landed (side by side when both landed on
+// the same space) back Home, after a moment on show there.
+function knockHome(f) {
+  const spec = BUMP_SPEC, both = f.scr.knocked.length === 2;
+  for (const p of f.scr.knocked) {
+    const hit = app.querySelector(`.gwrap .track .tok.knocked.${p}`);
+    if (!hit) continue;
+    const [x, y] = spec.at(f.scr.at[p] - 1), lx = x + (both || f.scr.at.X === f.scr.at.O ? (p === 'X' ? -2.4 : 2.4) : 0), ly = y;
+    const hx = Number(hit.dataset.x), hy = Number(hit.dataset.y), dir = p === 'X' ? -1 : 1;
+    hit.style.animation = 'none';
+    hit.animate([
+      { transform: `translate(${lx}px, ${ly}px) rotate(0deg) scale(1)`, offset: 0 },
+      { transform: `translate(${lx + 2 * dir}px, ${ly - 2}px) rotate(${25 * dir}deg) scale(1.25)`, offset: .18 },
+      { transform: `translate(${(lx + hx) / 2}px, ${Math.min(ly, hy) - 9}px) rotate(${200 * dir}deg) scale(1.1)`, offset: .6 },
+      { transform: `translate(${hx}px, ${hy}px) rotate(${360 * dir}deg) scale(1)`, offset: 1 },
+    ], { duration: KNOCK_MS, delay: BUMP_KNOCK.lead, fill: 'both', easing: 'ease-out' });
   }
 }
 export function trackSounds(f, add, won, mini, last) {

@@ -4,4 +4,5 @@ export const info = { name: 'Roulette',     hint: 'Bet 8 numbers, a group or gre
 export const release = 'released';   // the default (the admin's dashboard can change it)
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Roulette', play: 'Bet on 8 numbers, a group of 8, or green 0, then spin.', win: 'Two hits, or hit green 0 for an instant win.' };
+export const scExplainer = { name: 'Roulette', play: 'Bet on 8 numbers, a group of 8, or green 0. When the round ends, one spin settles both bets together.', win: 'Two hits, or hit green 0 for an instant win. Both win on the same spin: the square resets.' };   // in Super Chaos
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9.2"/><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v5.9M12 15.3v5.9M2.8 12h5.9M15.3 12h5.9" stroke-width="1.8"/><circle cx="17.6" cy="6.4" r="1.6" fill="currentColor" stroke="none"/></svg>';

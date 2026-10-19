@@ -44,6 +44,7 @@ export function renderMini(sq, review, popup) {
     : mini.type === 'bj' ? `<b class="${turn}">${N(turn)}</b>'s hand`
     : mini.type === 'bus' ? (a ? '' : `<b class="${turn}">${N(turn)}</b>'s run`) : mini.type === 'bs' ? `<b class="${turn}">${N(turn)}</b> hit · goes again` : mini.type === 'pool' ? `<b class="${turn}">${N(turn)}</b> sank one · goes again` : `<b class="${turn}">${N(turn)}</b> guessed right · goes again`) : '';
   if (popup) sub = '2× speed';
+  else if (f && f.scr) sub = 'Both moves together';   // Super Chaos's round end: what both moves add up to here (a Bump knock, the Roulette spin)
   else if (!view && !f && !d && remoteTurn()) sub = `Waiting for <b class="${turn}">${N(turn)}</b>…`;
   else if (!view && !f && !d && scWaiting()) sub = `Waiting for <b class="${scCpu()}">${N(scCpu())}</b>…`;   // Super Chaos: the move is in; the computer is still at its own
   else if (!view && !f && !d && moveWait) sub = 'Sending your move…';

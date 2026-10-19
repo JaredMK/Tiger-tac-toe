@@ -21,40 +21,62 @@ function rlWheel(n, anim, t0) {
 }
 const rlBetText = bet => (bet === 'zero' ? 'green 0' : RL.groups[bet] ? `${RL.groups[bet][0]}–${RL.groups[bet][1]}` : '8 numbers');
 function rlTable(mini, a, o) {
+  // Super Chaos: a move puts the bet down (pending: the wheel stays still), and at the round's end one spin
+  // settles both players' bets together (shared): both bets on the board in their colours, each one's result.
   const b = a && a.rl ? a.rl : null, l = mini.last, turn = o.turn, tEnd = RLT.spin + RLT.settle;
-  const n = b ? b.n : l ? l.n : null;
+  const spin = b && !b.pending ? b : null, shared = spin ? !!spin.shared : !!(l && l.shared && !b);
+  const pend = b ? (b.pending ? { by: a.by, bet: b.bet } : null) : l && l.pending ? { by: l.by, bet: l.bet } : null;
+  const prev = (mini.spins || []).filter(x => x != null).slice(-1)[0], prevN = prev == null ? null : typeof prev === 'number' ? prev : prev.n;
+  const n = spin ? spin.n : l && !l.pending && l.n != null ? l.n : prevN;
+  const hitBy = p => (spin ? (spin.shared ? !!spin.hit[p] && spin.bets[p] !== 'zero' : spin.hit && a.by === p && spin.bet !== 'zero') : false);
   const hits = p => {
-    const h = Math.min(RL.goal, mini.hits[p]), fresh = b && b.hit && a.by === p && b.bet !== 'zero';
+    const h = Math.min(RL.goal, mini.hits[p]), fresh = hitBy(p);
     const pips = Array.from({ length: RL.goal }, (_, k) => `<i ${lateAt(k < h ? 'on' : '', fresh && k === h - 1 ? tEnd : null, 'fillin')}></i>`).join('');
     return `<div class="ctal ${p}${!o.view && turn === p ? ' now' : ''}"><b class="${p}">${N(p)}</b><span class="pips" aria-label="${mini.hits[p]} of ${RL.goal} hits">${pips}</span></div>`;
   };
-  const shown = b || l;
-  const res = shown ? `<p ${lateAt('rlres', b ? tEnd : null)}><span class="rlnum ${n === 0 ? 'g' : rlRed(n) ? 'r' : 'b'}">${n}</span><span><b class="${b ? a.by : l.by}">${N(b ? a.by : l.by)}</b> bet ${rlBetText(shown.bet)} · ${shown.hit ? (shown.bet === 'zero' ? 'green 0!' : 'hit!') : 'miss'}</span></p>` : '<p class="rlres">&nbsp;</p>';
-  // The bet on the board: the move playing out, else the one being put together on this phone.
+  const W = p => `<b class="${p}">${N(p)}</b>`, num = k => `<span class="rlnum ${k === 0 ? 'g' : rlRed(k) ? 'r' : 'b'}">${k}</span>`;
+  const one = (bet, hit) => (hit ? (bet === 'zero' ? 'green 0!' : 'hit!') : 'miss');
+  const sh = spin && spin.shared ? spin : shared ? l : null;   // the shared spin, playing or as it ended
+  const res = sh ? `<p ${lateAt('rlres', spin ? tEnd : null)}>${num(sh.n)}<span>${['X', 'O'].filter(p => sh.bets[p]).map(p => `${W(p)} ${one(sh.bets[p], sh.hit[p])}`).join(' · ')}</span></p>`
+    : pend ? `<p class="rlres"><span>${W(pend.by)} bet ${rlBetText(pend.bet)} · waiting for the spin</span></p>`
+    : spin || l ? `<p ${lateAt('rlres', spin ? tEnd : null)}>${num(n)}<span>${W(spin ? a.by : l.by)} bet ${rlBetText((spin || l).bet)} · ${one((spin || l).bet, (spin || l).hit)}</span></p>` : '<p class="rlres">&nbsp;</p>';
+  // The bet on the board: the move playing out (both players' in a shared spin, each in their colour), a bet
+  // waiting for its spin, else the one being put together on this phone.
   if (!rlDraft || rlDraft.sq !== o.zoom || o.moved) rlDraft = { sq: o.zoom, nums: [], bet: null };   // a fresh bet after every spin
-  const dr = b ? { nums: Array.isArray(b.bet) ? b.bet : [], bet: Array.isArray(b.bet) ? null : b.bet } : o.view ? { nums: [], bet: null } : rlDraft;
+  const marks = spin ? (spin.shared ? spin.bets : { [a.by]: spin.bet }) : pend ? { [pend.by]: pend.bet } : null;
+  const dr = o.view || marks ? { nums: [], bet: null } : rlDraft;
+  const covers = (bet, k) => !!bet && (Array.isArray(bet) ? bet.includes(k) : bet !== 'zero' && rlCovers(bet, k));
+  const tint = !(spin && !spin.shared);                          // a bet waiting for its spin, or the shared spin: each in its player's colour
+  const mk = k => (!marks ? '' : !tint ? (covers(marks[a.by], k) ? ' on' : '') : ['X', 'O'].filter(p => covers(marks[p], k)).map(p => ' on m' + p).join(''));
   const on = k => dr.nums.includes(k) || (dr.bet && dr.bet !== 'zero' && rlCovers(dr.bet, k));
-  const dis = o.locked ? ' disabled' : '';
+  const gOn = g => (marks ? (!tint ? (marks[a.by] === g ? ' on' : '') : ['X', 'O'].filter(p => marks[p] === g).map(p => ' on m' + p).join('')) : dr.bet === g ? ' on' : '');
+  const zOn = marks ? (!tint ? (marks[a.by] === 'zero' ? ' on' : '') : ['X', 'O'].filter(p => marks[p] === 'zero').map(p => ' on m' + p).join('')) : dr.bet === 'zero' ? ' on' : '';
+  const dis = o.locked || marks ? ' disabled' : '';
   const grid = ['g1', 'g2', 'g3'].map(g => {
     const [lo, hi] = RL.groups[g], cells = [];
-    for (let k = lo; k <= hi; k++) cells.push(`<button class="rln ${rlRed(k) ? 'r' : 'b'}${on(k) ? ' on' : ''}${n === k && !b ? ' last' : ''}" data-act="rlnum" data-n="${k}" aria-pressed="${on(k)}" aria-label="${k}, ${rlRed(k) ? 'red' : 'black'}"${dis}>${k}</button>`);
-    return `<div class="rlrow">${cells.join('')}<button class="rlg${dr.bet === g ? ' on' : ''}" data-act="rlgrp" data-g="${g}" aria-pressed="${dr.bet === g}" aria-label="Group ${lo} to ${hi}"${dis}>${lo}–${hi}</button></div>`;
+    for (let k = lo; k <= hi; k++) { const c = marks ? mk(k) : on(k) ? ' on' : ''; cells.push(`<button class="rln ${rlRed(k) ? 'r' : 'b'}${c}${n === k && !spin ? ' last' : ''}" data-act="rlnum" data-n="${k}" aria-pressed="${!!c}" aria-label="${k}, ${rlRed(k) ? 'red' : 'black'}"${dis}>${k}</button>`); }
+    return `<div class="rlrow">${cells.join('')}<button class="rlg${gOn(g)}" data-act="rlgrp" data-g="${g}" aria-pressed="${!!gOn(g)}" aria-label="Group ${lo} to ${hi}"${dis}>${lo}–${hi}</button></div>`;
   }).join('');
   const bet = dr.bet || (dr.nums.length === RL.pick ? dr.nums : null);
-  const say = dr.bet === 'zero' ? 'Betting green 0'
+  const say = marks ? ['X', 'O'].filter(p => marks[p]).map(p => `${W(p)}: ${rlBetText(marks[p])}`).join(' · ')
+    : dr.bet === 'zero' ? 'Betting green 0'
     : dr.bet ? `Betting the group ${rlBetText(dr.bet)}` : dr.nums.length === RL.pick ? 'Betting your 8 numbers'
     : dr.nums.length ? `${RL.pick - dr.nums.length} more number${RL.pick - dr.nums.length === 1 ? '' : 's'} to pick` : '&nbsp;';
-  const board = o.view ? '' : `<div class="rlboard"><div class="rlrow top"><button class="rlz${dr.bet === 'zero' ? ' on' : ''}" data-act="rlzero" aria-pressed="${dr.bet === 'zero'}" aria-label="Green 0"${dis}>0</button><p class="rlsay">${say}</p></div>${grid}</div>
-    <div class="cbtns one"><button class="big ${turn} rlspin" data-act="move" ${mv(bet || [])}${!bet || o.locked ? ' disabled' : ''}>Spin</button></div>`;
+  const board = o.view ? '' : `<div class="rlboard"><div class="rlrow top"><button class="rlz${zOn}" data-act="rlzero" aria-pressed="${!!zOn}" aria-label="Green 0"${dis}>0</button><p class="rlsay">${say}</p></div>${grid}</div>
+    <div class="cbtns one"><button class="big ${turn} rlspin" data-act="move" ${mv(bet || [])}${!bet || o.locked || marks ? ' disabled' : ''}>${state.sc ? 'Place bet' : 'Spin'}</button></div>`;
   // Once the ball lands: HIT!, MISS or GREEN 0!, big on the wheel, held a second before the game moves on.
-  const big = b ? `<b ${lateAt('rlbig ' + (b.hit ? (b.bet === 'zero' ? 'zero' : 'hit') : 'miss'), tEnd)} role="status">${b.hit ? (b.bet === 'zero' ? 'Green 0!' : 'Hit!') : 'Miss'}</b>` : '';
+  const anyHit = spin ? (spin.shared ? ['X', 'O'].some(p => spin.hit[p]) : spin.hit) : false;
+  const zeroHit = spin ? (spin.shared ? ['X', 'O'].some(p => spin.hit[p] && spin.bets[p] === 'zero') : spin.hit && spin.bet === 'zero') : false;
+  const bigTxt = !spin ? '' : zeroHit ? 'Green 0!' : spin.shared && spin.hit.X && spin.hit.O ? 'Both hit!' : anyHit ? 'Hit!' : 'Miss';
+  const bigCls = !spin ? '' : zeroHit ? 'zero' : anyHit ? 'hit' + (spin.shared && !(spin.hit.X && spin.hit.O) ? ' ' + (spin.hit.X ? 'X' : 'O') : '') : 'miss';
+  const big = spin ? `<b ${lateAt('rlbig ' + bigCls, tEnd)} role="status">${bigTxt}</b>` : '';
   // Under the wheel: the recent spins, as on the miniature (a hit in the spinner's colour, a miss plain). While
   // a spin plays, the row before it stays; the new one takes its place as the ball lands.
   const chips = list => (list.length ? list.map(x => `<i class="sp ${x.n === 0 ? 'g' : rlRed(x.n) ? 'r' : 'b'}${x.hit ? ' hit ' + (x.by || '') : ''}" title="${x.n}${x.hit ? ': a hit' : ''}">${x.n}</i>`).join('') : '<small>No spins yet</small>');
   const all = (mini.spins || []).map(x => (typeof x === 'number' ? { n: x, hit: false } : x)).filter(x => x && Number.isInteger(x.n));
-  const spins = b && !REDUCED ? `<span class="tu" style="--u:${tEnd}ms">${chips(all.slice(0, -1))}</span><span class="tf" style="--f:${tEnd}ms">${chips(all)}</span>` : `<span>${chips(all)}</span>`;
+  const spins = spin && !REDUCED ? `<span class="tu" style="--u:${tEnd}ms">${chips(all.slice(0, -1))}</span><span class="tf" style="--f:${tEnd}ms">${chips(all)}</span>` : `<span>${chips(all)}</span>`;
   const hist = `<div class="rlspins" aria-label="Recent spins: ${all.map(x => x.n + (x.hit ? ' (hit)' : '')).join(', ') || 'none'}">${spins}</div>`;
-  return `<div class="g-rl"><div class="rltop"><div class="ctals col">${hits('X')}${hits('O')}${res}</div><div class="rlside"><div class="rlwrap">${rlWheel(n, !!b)}${big}</div>${hist}</div></div>${board}</div>`;
+  return `<div class="g-rl"><div class="rltop"><div class="ctals col">${hits('X')}${hits('O')}${res}</div><div class="rlside"><div class="rlwrap">${rlWheel(n, !!spin)}${big}</div>${hist}</div></div>${board}</div>`;
 }
 export function miniature(mini, final) {   // the hits so far, and the recent spins: every one, a hit in the spinner's colour, a miss plain
   const spins = (mini.spins || []).map(x => (typeof x === 'number' ? { n: x, hit: false } : x)).filter(x => x && Number.isInteger(x.n));
@@ -65,14 +87,18 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
   g = rlTable(mini, a, { view, locked, turn, zoom: state.zoom, moved: !!(f || d) }); return g;
 }
 export function moveText(f, who) {
+  if (f.rl && f.rl.pending) return `${who} bet ${rlBetText(f.rl.bet)}`;
+  if (f.rl && f.rl.shared) return `${f.rl.n}${f.rl.n === 0 ? ' green' : rlRed(f.rl.n) ? ' red' : ' black'} · ${['X', 'O'].filter(p => f.rl.bets[p]).map(p => `${N(p)} ${f.rl.hit[p] ? 'hit' : 'missed'}`).join(', ')}`;
   return f.rl ? `${f.rl.n}${f.rl.n === 0 ? ' green' : rlRed(f.rl.n) ? ' red' : ' black'} · ${f.rl.hit ? 'a hit' : 'a miss'}` : `${who} spun`;
 }
 export function sounds(f, add, won, mini, last) {
+  if (f.rl && f.rl.pending) { add('chips', 0); return; }         // Super Chaos: the bet put down
   const ticks = 14;                                              // the ball clicks over the pockets, slower and slower
   add('rlSpin', 0);
   for (let k = 1; k <= ticks; k++) add('ballTick', Math.round(RLT.spin * Math.pow(k / ticks, 0.6)));
   add('ballDrop', RLT.spin);
-  if (f.rl) add(f.rl.hit ? (f.rl.bet === 'zero' ? 'sparkle' : 'ding') : 'thud', RLT.spin + RLT.settle);
+  if (f.rl && f.rl.shared) { const h = ['X', 'O'].filter(p => f.rl.hit[p]); add(!h.length ? 'thud' : h.some(p => f.rl.bets[p] === 'zero') ? 'sparkle' : 'ding', RLT.spin + RLT.settle); }
+  else if (f.rl) add(f.rl.hit ? (f.rl.bet === 'zero' ? 'sparkle' : 'ding') : 'thud', RLT.spin + RLT.settle);
   return;
 }
 // Roulette: put the bet together (numbers, a group, or green 0 alone)

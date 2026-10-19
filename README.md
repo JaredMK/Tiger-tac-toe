@@ -553,7 +553,10 @@ are unchanged.
   gets a second move for being quick. Once the player's move is in, their square says "Waiting for
   Computer…" until the computer's is too; then the recap opens a pop-up over the computer's square
   with a 2x replay of its move (the same replay system: its inputs, then each step of the move with
-  its animation), and closes into the round's results (claims, resets, stamps). The replay skips dead
+  its animation). Then anything only both moves together decide plays in its square ("Both moves
+  together": a Bump knock, the Roulette spin), and then the round's results play on the board one
+  square at a time: a square won glows with "X takes it!" as its mark stamps in; a square both won
+  shows both marks flying in and clashing ("Both won it: reset!"), then turns over to its new game. The replay skips dead
   time: any idle gap over 0.3 s (thinking, waiting) is cut to 0.3 s. It is plainly a replay: a
   "[name]'s move — replay" banner, a frame in the opponent's colour and a small replay icon; a tap
   anywhere on it, or Skip, jumps to the end. On the main board a small badge in each player's colour
@@ -573,11 +576,14 @@ are unchanged.
   Hangman: one shared word; each sees the letters known before the round plus their own; a player whose
   own view completes it wins; finished only by both together, it resets. Trivia and Patterns: the
   question is face up for both; wrong answers are crossed out for both at the round's end, each player
-  who was right scores, and a new question comes if anyone was. Bump: both pieces move; a piece ending
-  on the other's space sends it home; both on the same space, both go home. Plinko: both may drop from
+  who was right scores, and a new question comes if anyone was. Bump: both pieces move; nothing is knocked
+  during the round (a piece may land on the other's space): when it ends, a piece ending on the other's
+  space sends it home, and both on the same space both go home. Plinko: both may drop from
   the same slot (it locks once); both on the bonus peg get +2 each and one new peg appears. Mini Golf:
   each player locks in aim and power; at the round's end both shots play out together (the balls roll at
-  once and can collide), and the recap plays the result; both sinking resets it. Craps: each player's
+  once and can collide), and the recap plays the result; both sinking resets it. Roulette: a move puts the bet down
+  (Place bet; the wheel stays still); when the round ends one spin settles both bets together, and both
+  taking the square on that spin resets it. Craps: each player's
   round always ends within their own move (nothing carries over). Every
   other Super Chaos game already keeps each player's progress apart and plays as normal.
 - **Super Chaos games** (each game's `meta.js`: `superChaos`): Battleship, Wordle, Hangman,
@@ -588,9 +594,9 @@ are unchanged.
 - **The computer** makes its move at the start of each round, with its usual choice of square and the
   game's own tactics, without seeing the human's choice or this round's results; it takes a person's
   time over it.
-- **The recap** (about 2 seconds, on the main board): a Mini Golf square plays both shots first; then the
-  computer's square lights up with its move told (now in the square's history), then the claims stamp in
-  and any reset square turns over; then the next round.
+- **The recap** (on the main board): a Mini Golf square plays both shots first; then the computer's
+  square lights up and its move replays in the pop-up; then what both moves settle together (a Bump
+  knock, the Roulette spin); then each square's result in turn (about a second each); then the next round.
 - **Stats**: its own mode, `chaos`, in the anonymous stats and the dashboard (Matches by mode, the
   mini-game table, the playtest log). Not in a player's local record or history yet.
 - How it is built: `src/core/chaos.js` (the round: each player's move on their own copy of the board, the

@@ -6,7 +6,7 @@ import { isMM } from '../net/matchmaking.js';
 import { parseMatch, remoteTurn, room } from '../net/room.js';
 import { N, cpuPlays, esc, state } from './app.js';
 import { CHEV, CPU_ICON, ICONS, toon } from './art.js';
-import { scHint, scLastPlayed, scRecapStage, scShown } from './chaos.js';
+import { scHint, scLastPlayed, scShown, scVerdict } from './chaos.js';
 import { BURST_MS, burstPick, burstSvg, fxAt, fxAttr } from './fx.js';
 import { pauseMenu } from './mini.js';
 import { reviewCtx } from './screens/profile.js';
@@ -31,13 +31,13 @@ export function renderBoard(review) {
   const stampOn = el < STAMP_MS;
   const stamped = i => state.stamp === i || (!!state.sc && Array.isArray(state.stamps) && state.stamps.includes(i));   // (Super Chaos: both players may claim a square in the same round)
   const lastP = review ? null : scLastPlayed();                       // Super Chaos: the square each player played last, a badge in their colour on it
-  const rc = !review && !state.online && state.sc && state.sc.recap, resetAt = rc && rc.resets.length && scRecapStage() === 'stamp' ? fxAt('screset', 'sc' + rc.round) : null;
+  const rc = !review && !state.online && state.sc && state.sc.recap;
   const sqs = state.squares.map((sq, i) => {
     const cls = ['sq'];
     if (spot && spot.square === i && spot.before) sq = spot.before;     // a move about to be played back: the square as it was until then
     if (!review) sq = scShown(i) || sq;                                  // Super Chaos's recap: both moves in, nothing claimed yet
-    const reset = resetAt != null && rc.resets.some(x => x.square === i);
-    if (reset) cls.push('screset');
+    const vd = review ? null : scVerdict(i);                          // Super Chaos's results: this square's, now playing
+    if (vd) cls.push(...vd.cls);
     if (sq.owner) cls.push('own-' + sq.owner);
     else if (!lastP && i === state.lastSquare && state.lastBy && !(spot && spot.square === i)) cls.push('last-' + state.lastBy);
     if (spot && spot.square === i) cls.push('spot', 'spot-' + spot.by);
@@ -46,11 +46,12 @@ export function renderBoard(review) {
     const body = `<div class="lab${info.name.length > 14 ? ' long' : ''}">${ICONS[sq.mini.type]}<span>${info.name}</span></div><div class="thumb">${thumb(sq.mini, !!sq.owner)}</div>`
       + (sq.owner ? `<div class="own-ov${stampOn && stamped(i) ? ' stamp' : ''}"${stampOn && stamped(i) ? fxAttr(stampAt) : ''} aria-hidden="true">${toon(sq.owner)}<b class="sr">${sq.owner}</b></div>` : '')   // a fresh claim stamps in
       + (lastP && (lastP.X === i || lastP.O === i) ? `<div class="lpbs" aria-hidden="true">${['X', 'O'].filter(p => lastP[p] === i).map(p => `<i class="lpb ${p}">${p}</i>`).join('')}</div>` : '')   // (both players' badges at once, in a fixed corner: nothing moves)
+      + (vd ? vd.html : '')
       + (spot && spot.square === i ? `<div class="spot-lab ${spot.by}${spot.html ? ' sc' : ''}" role="status">${spot.html ? spot.html : `${cpuPlays(spot.by) ? CPU_ICON : ''}${esc(spot.label)}`}</div>` : '');
     const lastTxt = lastP ? ['X', 'O'].filter(p => lastP[p] === i).map(p => `, ${esc(playerName(state, p))} played here last`).join('') : '';
     const label = (sq.owner ? `Square ${i + 1}: ${info.name}, won by ${esc(playerName(state, sq.owner))}. Tap to view` : `Square ${i + 1}: ${info.name}`) + lastTxt;
     if (review) return `<button class="${cls.join(' ')}" data-act="${reviewCtx.sq}" data-i="${i}" aria-label="${label}. Tap to see it">${body}</button>`;
-    return `<button class="${cls.join(' ')}" data-act="zoom" data-i="${i}" aria-label="${label}"${spot && spot.square === i ? fxAttr(fxAt('spot', spot)) : reset ? fxAttr(resetAt) : ''}${cpuTurn() || rc ? ' disabled' : ''}>${body}</button>`;
+    return `<button class="${cls.join(' ')}" data-act="zoom" data-i="${i}" aria-label="${label}"${spot && spot.square === i ? fxAttr(fxAt('spot', spot)) : vd && vd.at != null ? fxAttr(vd.at) : ''}${cpuTurn() || rc ? ' disabled' : ''}>${body}</button>`;
   }).join('');
   if (review) return `<main class="scr board-scr review-scr"><div class="revhead"><button class="back" data-act="${reviewCtx.back}" aria-label="${reviewCtx.backAria}">${CHEV}${reviewCtx.backLabel}</button>
       <div class="ttl"><b>${reviewCtx.title}</b><small>Tap any square to see how it ended</small></div></div><div class="board">${sqs}</div>

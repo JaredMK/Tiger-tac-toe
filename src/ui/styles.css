@@ -2145,6 +2145,14 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .rlg.on, .rlz.on { box-shadow: 0 0 0 3px var(--o); }
 .rlg.on { background: var(--o); }
 .rlz { background: #2f8a3c; }
+/* Super Chaos: a bet waiting for its spin, and both bets on one shared spin, each in its player's colour */
+.rln.mX { box-shadow: inset 0 0 0 3px var(--x), 0 0 0 2px var(--x); } .rln.mO { box-shadow: inset 0 0 0 3px var(--o), 0 0 0 2px var(--o); }
+.rln.mX.mO { box-shadow: inset 0 0 0 3px var(--x), 0 0 0 3px var(--o); }
+.rlg.mX { background: var(--x); color: #fff; box-shadow: 0 0 0 3px var(--x); } .rlg.mO { background: var(--o); box-shadow: 0 0 0 3px var(--o); }
+.rlg.mX.mO { background: linear-gradient(90deg, var(--x) 50%, var(--o) 50%); box-shadow: 0 0 0 3px var(--ink); }
+.rlz.mX { box-shadow: 0 0 0 3px var(--x); } .rlz.mO { box-shadow: 0 0 0 3px var(--o); } .rlz.mX.mO { box-shadow: 0 0 0 3px var(--x), 0 0 0 6px var(--o); }
+.rlbig.hit.X { background: var(--x); color: #fff; }
+.rlspins i.sp.hit.XO, .tpip .tspins i.sp.hit.XO { background: linear-gradient(90deg, var(--x) 50%, var(--o) 50%); color: #fff; }
 .rlrow.top .rlsay { grid-column: 2 / -1; align-self: center; text-align: left; padding-left: 6px; }
 .rln:disabled, .rlg:disabled, .rlz:disabled { opacity: 1; filter: saturate(.75); }
 .rlsay { margin: 0; text-align: center; font-size: 13px; font-weight: 700; color: var(--muted); flex: none; }
@@ -2192,6 +2200,23 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .sq.screset { animation: screset .7s cubic-bezier(.2, 1.1, .4, 1) both; }
 @keyframes screset { 0% { transform: scale(.82) rotate(-6deg); filter: brightness(1.6); } 60% { transform: scale(1.04) rotate(1deg); } 100% { transform: none; filter: none; } }
 @media (prefers-reduced-motion: reduce) { .sq.screset { animation: none; } }
+/* Super Chaos's results, a square at a time: the winner's glow and label as its mark stamps in; both marks
+   flying in from the sides and clashing (both won it), then the square turning over to a new game */
+.sq.scwin { z-index: 1; animation: spotglow .9s ease-in-out 2; }
+.sq.scwin-X { --spot: var(--x); } .sq.scwin-O { --spot: var(--o); }
+.sq.scclash-on { z-index: 1; animation: scshake .5s .38s ease-out both; }
+.scclash { position: absolute; inset: 0; display: grid; grid-template-columns: 1fr 1fr; place-items: center; pointer-events: none; z-index: 2; }
+.scclash > span { width: 92%; aspect-ratio: 1; display: grid; place-items: center; }
+.scclash .pc { width: 100%; height: 100%; }
+.scclash .cx { animation: scinx .42s cubic-bezier(.3, 0, .6, 1) both; }
+.scclash .co { animation: scino .42s .06s cubic-bezier(.3, 0, .6, 1) both; }
+@keyframes scinx { 0% { transform: translateX(-140%) rotate(-30deg) scale(1.3); opacity: 0; } 70% { transform: translateX(18%) rotate(8deg) scale(1.05); opacity: 1; } 100% { transform: translateX(6%) rotate(0) scale(1); opacity: 1; } }
+@keyframes scino { 0% { transform: translateX(140%) rotate(30deg) scale(1.3); opacity: 0; } 70% { transform: translateX(-18%) rotate(-8deg) scale(1.05); opacity: 1; } 100% { transform: translateX(-6%) rotate(0) scale(1); opacity: 1; } }
+@keyframes scshake { 0%, 100% { transform: none; } 20% { transform: translateX(-4px) rotate(-2deg); } 40% { transform: translateX(4px) rotate(2deg); } 60% { transform: translateX(-3px); } 80% { transform: translateX(2px); } }
+.spot-lab.scv { top: 4px; bottom: auto; font-size: clamp(10px, 10cqw, 15px); z-index: 3; }   /* at the top: clear of the last-played badges in the corner */
+.spot-lab.scv.X { background: var(--x); color: #fff; } .spot-lab.scv.O { background: var(--o); color: var(--ink); }
+.spot-lab.scv.both { background: linear-gradient(90deg, var(--x) 50%, var(--o) 50%); color: #fff; text-shadow: 0 1px 0 var(--ink), 0 0 3px var(--ink); }
+@media (prefers-reduced-motion: reduce) { .sq.scwin, .sq.scclash-on, .scclash .cx, .scclash .co { animation: none; } }
 
 /* ---- Risky Rolls' eight-sided die: its own outline (no square die behind it), the number on its face ---- */
 .die.d8, .sdie.d8 { background: none; border: 0; box-shadow: none; border-radius: 0; }

@@ -2,20 +2,23 @@
 // the end of the round once both moves are in (the computer's taking a person's time, "Waiting for…" until
 // then), and the recap on the main board: a Mini Golf square plays both shots first; then the computer's
 // square lights up; then a pop-up over the board replays its move at 2x (its inputs, then each step of the
-// move with its usual animation: ui/replay.js); then the claims stamp in and any reset square turns over;
-// then the next round, or the match's end.
+// move with its usual animation: ui/replay.js); then what only both moves together settle plays in its square
+// (a Bump knock, the Roulette spin: resolve); then each square's result on the board, one at a time: its
+// X or O stamping in, or (both won it) both marks clashing and the square turning over to a new game; then
+// the next round, or the match's end.
 import { chaosNext, chaosResolve, chaosTimeout, scHuman } from '../core/chaos.js';
 import { other } from '../core/util.js';
 import { INFO, rulesOf } from '../games/index.js';
 import { SND, matchEndSound } from '../audio/sound.js';
 import { N, RNG, commit, flashTimer, menuOpen, setFlashTimer, state } from './app.js';
 import { explainT } from './explainer.js';
-import { startFx, stampFx } from './fx.js';
+import { fxAt, startFx, stampFx } from './fx.js';
+import { toon } from './art.js';
 import { render } from './render.js';
 import { repStart, repStop } from './replay.js';
 import { playFlash } from './turns.js';
 
-export const SC_MS = { cpu: [1400, 4200], spot: 800, stamp: 900, end: 1300, popup: 2, idle: 300, last: 600, skip: 450 };   // the computer's move takes this long; the recap's steps; the pop-up replay's speed, its longest idle moment (a pause in the inputs, the wait between a move's steps), how long its last result stays up, and the end shown after a skip
+export const SC_MS = { cpu: [1400, 4200], spot: 800, claim: 1300, clash: 1050, flip: 900, end: 1300, popup: 2, idle: 300, last: 600, skip: 450 };   // the computer's move takes this long; the recap's steps; the pop-up replay's speed, its longest idle moment (a pause in the inputs, the wait between a move's steps), how long its last result stays up, and the end shown after a skip
 let scTimer = null;
 export let scUi = { round: null, readyAt: 0, stage: null, at: 0, played: false };   // this round on screen: when the computer's move counts as made, the recap's stage
 const now = () => Date.now();
@@ -40,14 +43,42 @@ export function scWaiting() { return live() && !state.winner && !!(state.sc.me |
 export function scRecapStage() { return live() && state.sc.recap && scUi.round === state.sc.recap.round ? scUi.stage : null; }
 export const scPopup = () => scRecapStage() === 'popup';                   // the recap's pop-up replay of the computer's move is up
 export const scCpu = () => other(scHuman(state));
-// What a square shows while the recap has not reached its claims and resets: both moves in, nothing claimed;
-// the computer's square in the pop-up: its move as far as the replay has got.
+// What a square shows while the recap has not reached its result: both moves in, nothing claimed (a square
+// still to be settled together: both moves made, nothing knocked or spun yet); the computer's square in the
+// pop-up: its move as far as the replay has got; once the results play, a square not reached yet.
 export function scShown(i) {
   const rc = live() && state.sc.recap, st = scRecapStage();
-  if (!rc || !(st === 'replay' || st === 'spot' || st === 'popup')) return null;
-  if (st === 'popup' && rc.cpu && rc.cpu.square === i && scUi.mini) return { owner: null, mini: scUi.mini, mv: state.squares[i].mv };
+  if (!rc || !['replay', 'spot', 'popup', 'resolve', 'result'].includes(st)) return null;
+  const mv = state.squares[i].mv;
+  if (st === 'popup' && rc.cpu && rc.cpu.square === i && scUi.mini) return { owner: null, mini: scUi.mini, mv };
+  const rk = (rc.resolve || []).findIndex(x => x.square === i);
+  if (rk >= 0 && rc.pre && rc.pre[i] && (st !== 'resolve' && st !== 'result' || (st === 'resolve' && rk >= (scUi.rk || 0)))) return { owner: null, mini: rc.pre[i], mv };
+  if (st === 'result') {
+    const k = scItems(rc).findIndex(x => x.square === i);
+    if (k < 0 || k < scUi.k || (k === scUi.k && scUi.phase !== 'clash')) return null;   // its result shown (or none): as it now stands
+  }
   if (!rc.view || !rc.view[i]) return null;
-  return { owner: null, mini: rc.view[i], mv: state.squares[i].mv };
+  return { owner: null, mini: rc.view[i], mv };
+}
+// The round's results, a square at a time: claims, and resets (both won it, or a draw).
+const scItems = rc => rc.claims.map(c => ({ square: c.square, kind: 'claim', by: c.by }))
+  .concat(rc.resets.map(r => ({ square: r.square, kind: r.why === 'both' ? 'both' : 'reset', why: r.why })))
+  .sort((a, b) => a.square - b.square);
+// A square's result as the board shows it now: its label, the clash of both marks, its turning over.
+export function scVerdict(i) {
+  const rc = live() && state.sc.recap;
+  if (!rc || scRecapStage() !== 'result' || scUi.k < 0) return null;
+  const it = scItems(rc)[scUi.k];
+  if (!it || it.square !== i) return null;
+  const key = `sc${rc.round}:${scUi.k}`;
+  const lab = it.kind === 'claim' ? `${N(it.by)} takes it!` : it.kind === 'both' ? 'Both won it: reset!' : 'Reset';
+  const chip = `<div class="spot-lab sc scv ${it.kind === 'claim' ? it.by : 'both'}" role="status">${lab}</div>`;
+  if (scUi.phase === 'clash') {
+    const at = fxAt('scclash', key);
+    return { cls: ['scclash-on'], at, html: `<div class="scclash" aria-hidden="true"><span class="cx">${toon('X')}</span><span class="co">${toon('O')}</span></div>${chip}` };
+  }
+  if (scUi.phase === 'flip') return { cls: ['screset'], at: fxAt('screset', key), html: chip };
+  return { cls: ['scwin', 'scwin-' + it.by], at: null, html: chip };
 }
 
 // Runs after every render (from scheduleCpu): keeps the round moving.
@@ -119,6 +150,21 @@ export function scSkip() {
   render(); chaosStep();
   return true;
 }
+// One square's result begins: its X or O stamps in; both marks clash (both won it); it turns over to a new game.
+function resultPhase(rc, items, phase) {
+  const k = scUi.k, it = items[k], key = `sc${rc.round}:${k}`;
+  scUi.phase = phase; scUi.at = now();
+  state.spot = null; state.screen = 'board'; state.zoom = null;
+  if (phase === 'claim') {
+    state.stamp = it.square; state.stamps = [it.square]; state.stampId = `sc${state.id || 'm'}:${rc.round}:${k}`;
+    stampFx(); render();                                         // (the stamp's event first: the board draws it stamping in)
+    return;
+  }
+  state.stamp = null; state.stamps = null;
+  if (phase === 'clash') { startFx('scclash', key); SND.play('stamp'); SND.play('stamp', { at: 0.12 }); SND.play('knock', { at: 0.42 }); }
+  else { startFx('screset', key); SND.play('reset'); }
+  render();
+}
 function recapStep() {
   const rc = state.sc.recap, me = scHuman(state), cpu = other(me);
   if (scUi.round !== rc.round || !scUi.stage) scUi = { round: rc.round, readyAt: 0, stage: 'end', at: 0, played: false, step: 0, mini: null };   // (after a reload: straight on)
@@ -145,7 +191,7 @@ function recapStep() {
     }
     const wait = scUi.at + (rc.cpu ? SC_MS.spot : 200) - t;
     if (wait > 0) { scTimer = setTimeout(chaosStep, wait); return; }
-    scUi.stage = rc.cpu && rc.cpu.steps && rc.cpu.steps.length ? 'popup' : 'stamp'; scUi.at = 0; scUi.step = 0; scUi.mini = null;
+    scUi.stage = rc.cpu && rc.cpu.steps && rc.cpu.steps.length ? 'popup' : 'resolve'; scUi.at = 0; scUi.step = 0; scUi.mini = null;
   }
   if (scUi.stage === 'popup') {                                   // the computer's move replayed at 2x, step by step, in a card over the board
     if (!scUi.at) {
@@ -163,20 +209,37 @@ function recapStep() {
     if (scUi.step < rc.cpu.steps.length) { popupStep(rc, cpu); return; }
     repStop(); scUi.skipAt = 0;
     state.screen = 'board'; state.zoom = null; scUi.mini = null;
-    scUi.stage = 'stamp'; scUi.at = 0;
+    scUi.stage = 'resolve'; scUi.at = 0;
   }
-  if (scUi.stage === 'stamp') {
-    if (!scUi.at) {
-      scUi.at = t;
-      state.spot = null; state.screen = 'board'; state.zoom = null;
-      const claimed = rc.claims.map(c => c.square);
-      state.stamp = claimed.length ? claimed[0] : null; state.stamps = claimed.length ? claimed : null;
-      state.stampId = claimed.length ? `sc${state.id || 'm'}:${rc.round}` : null;
-      if (rc.resets.length) { startFx('screset', 'sc' + rc.round); SND.play('reset', { at: claimed.length ? 0.35 : 0 }); }
-      render(); stampFx();
+  if (scUi.stage === 'resolve') {                                 // what both moves settle together, in its square (the game's own animation)
+    const list = rc.resolve || [];
+    if (!scUi.at) { scUi.at = t; scUi.rk = 0; }
+    if (state.flash) return;                                      // its result is playing (dismissFlash brings this round here again)
+    if (scUi.rk < list.length) {
+      const it = list[scUi.rk];
+      scUi.rk += 1;
+      state.spot = null; state.screen = 'mini'; state.zoom = it.square; state.draft = ''; state.pick = null; state.sel = [];
+      state.flash = Object.assign({}, it.flash);
+      playFlash(); render();
+      return;
     }
-    const wait = scUi.at + (rc.claims.length || rc.resets.length ? SC_MS.stamp : 0) - t;
-    if (wait > 0) { scTimer = setTimeout(chaosStep, wait); return; }
+    state.screen = 'board'; state.zoom = null;
+    scUi.stage = 'result'; scUi.at = 0; scUi.k = -1; scUi.phase = null;
+  }
+  if (scUi.stage === 'result') {                                  // each square's result in turn, on the board
+    const items = scItems(rc);
+    for (;;) {
+      if (scUi.k >= 0 && scUi.k < items.length) {
+        const wait = scUi.at + SC_MS[scUi.phase] - t;
+        if (wait > 0) { scTimer = setTimeout(chaosStep, wait); return; }
+        if (scUi.phase === 'clash') { resultPhase(rc, items, 'flip'); continue; }
+      }
+      scUi.k += 1;
+      if (scUi.k >= items.length) break;
+      const it = items[scUi.k];
+      resultPhase(rc, items, it.kind === 'claim' ? 'claim' : it.kind === 'both' ? 'clash' : 'flip');
+    }
+    state.stamp = null; state.stamps = null;
     scUi.stage = 'end'; scUi.at = 0;
   }
   if (scUi.stage === 'end') {
