@@ -198,7 +198,7 @@ export async function startOnline() {
   if (!fb || !isHost() || !room || !o.joined || !connected) return;
   const random = room.setup && room.setup.hostPick === 'random';
   const seats = random ? drawSeats(room.players, fb.uid) : { players: room.players, hostSide: o.me };
-  const fresh = newOnlineMatch(roomSetup(seats.players), RNG, newId());
+  const fresh = newOnlineMatch(roomSetup(seats.players), RNG, newId(), serverNow());
   if (!fresh) return;
   armClock(fresh.state, [], serverNow());
   const up = { status: 'playing', match: Object.assign(packMatch(fresh), { seats: seatsOf(seats.players) }), left: null };
@@ -409,7 +409,7 @@ export async function rematchOnline() {
       const rec = parseMatch(r.match);
       if (!rec || !rec.state.winner || !r.players || !r.players.X || !r.players.O) return;   // the other player already started it
       const seats = r.setup && r.setup.hostPick === 'random' ? drawSeats(r.players, r.host) : { players: r.players, hostSide: r.players.X.uid === r.host ? 'X' : 'O' };
-      const fresh = newOnlineMatch(roomSetup(seats.players, r.setup), RNG, newId());
+      const fresh = newOnlineMatch(roomSetup(seats.players, r.setup), RNG, newId(), serverNow());
       if (!fresh) return;
       armClock(fresh.state, [], serverNow());
       return Object.assign({}, r, { players: seats.players, setup: Object.assign({}, r.setup, { hostSide: seats.hostSide }), match: Object.assign(packMatch(fresh), { seats: seatsOf(seats.players) }), left: null });

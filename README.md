@@ -609,17 +609,27 @@ Find Match is unchanged, and so are the normal modes.
   game: `tests/core/chaos-double.test.js` (both win the same square: it resets, the replay is there,
   play goes on), from rounds found by `tests/core/sc-double.js` (the seeds kept in `sc-double.json`).
 - **With a friend** (a friend room, each player on their own phone): the same rounds, both moving at
-  once. Each phone plays its move on its own copy of the round and sends it in (the record's `sc.moves`);
-  the second move in settles the round on the record (`applyChaosSubmit`, the same merge as against the
-  computer) and the next round begins there. Each phone then plays the recap with the other player's
-  move in the pop-up (it travels with its replay log), the results, and joins the next round. The board
-  says "[name] has moved" once the other's move is in. Each phone keeps its own round clock; when it
-  runs out the timeout rule moves for that player, and a player whose move is still missing 1 minute 45 seconds
-  after the other's went in (a phone closed or away) gets one from the computer, so the match goes
-  on. A reload joins the round as it stands. It is for playtesting: the room's record holds every square,
-  so the hidden information is hidden only by the app (as in friend rooms already), and it counts as a
-  friend game in the stats. How it is built: `src/net/chaos.js`, and `startChaosOnline`,
-  `chaosResolveOnline`, `scAutoMove` in `src/core/chaos.js`; tests: `tests/core/chaos-online.test.js`.
+  once. The room's record is the one truth of each round: its number, its deadline in server time (the
+  round clock both phones show, from the database's clock offset), and each player's move once sent in
+  (`sc.moves`). Each phone plays its move on its own copy of the round and sends it in the moment it is
+  made; the first in waits ("Waiting for [name]…" with the shared countdown), and the board says
+  "[name] has moved" once the other's move is in. The second move in settles the round on the record
+  (`applyChaosSubmit`, the same merge as against the computer); so does the deadline: a phone whose
+  clock runs out plays the timeout rule's move itself and sends it, and a side still not in 2.5 seconds
+  after the deadline (a phone closed or away) gets the timeout rule's move from the other phone
+  (`applyChaosDeadline`). The settled round carries a shared start, in server time, a second ahead (or
+  as long as the last mover's own result still has to play), and both phones play the same sequence
+  from that moment, timed from it: a Mini Golf square's joint shot, the other player's square lit, the
+  other's move in the pop-up (it travels with its replay log; the two pop-ups run to the longer, the
+  shorter's end held), what both moves settle together, each square's result, then the next round,
+  within a few tens of milliseconds of each other. The first phone through the recap begins the next
+  round on the record (`applyChaosBegin`: its deadline). A reload, or a phone coming back, reads the
+  record and joins the round as it stands, or the recap where it is in its sequence. It is for
+  playtesting: the room's record holds every square, so the hidden information is hidden only by the
+  app (as in friend rooms already), and it counts as a friend game in the stats. How it is built:
+  `src/net/chaos.js`, `src/ui/chaos.js` (the sequence by the clock), and `startChaosOnline`,
+  `chaosResolveOnline`, `scTimeoutMove`, `SC_ONLINE` in `src/core/chaos.js`; tests:
+  `tests/core/chaos-online.test.js`.
 - **Stats**: its own mode, `chaos`, in the anonymous stats and the dashboard (Matches by mode, the
   mini-game table, the playtest log). Not in a player's local record or history yet.
 - How it is built: `src/core/chaos.js` (the round: each player's move on their own copy of the board, the

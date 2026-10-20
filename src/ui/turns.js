@@ -76,18 +76,21 @@ function cpuPlay() {
 // for a moment. `played`: a result found on show (a reload): its animation is over already.
 // `speed`: the Super Chaos recap plays a move at 2x (its sounds and its timers to match; the animations
 // run fast from the replay, ui/replay.js).
-export function playFlash(played, speed, holdMax, holdAt) {   // holdMax: the longest the result stays up after its animation (Super Chaos's replay: no dead time between the steps of a move); holdAt: exactly this long (its last step: the end held)
-  const f = state.flash, sp = speed || 1;
+let flashEnds = 0;                                 // when the result on show clears (this phone's clock)
+export const flashLeft = () => (state.flash && flashTimer ? Math.max(0, flashEnds - Date.now()) : 0);   // how much longer the result on show stays up
+export function playFlash(played, speed, holdMax, holdAt, elapsed) {   // holdMax: the longest the result stays up after its animation (Super Chaos's replay: no dead time between the steps of a move); holdAt: exactly this long (its last step: the end held); elapsed: the move began this long ago (a sequence joined part way: its animation that far on, quietly)
+  const f = state.flash, sp = speed || 1, el = Math.max(0, elapsed || 0), anim = animMs(f) / sp;   // (el: real ms of the move already gone; anim: its animation on screen)
   if (!f || state.spot || fxAt('move', f) != null) return;     // while the square glows on the board, the move has not played yet
-  const ms = played ? 0 : animMs(f) / sp;
-  startFx('move', f, performance.now() - (played ? animMs(f) : 0));
-  if (played || SND.muted || !SND.loaded || !SND.ctx || SND.ctx.state !== 'running') fx.move.quiet = true;   // (a result already heard at a reload, or played before audio was ready: it finishes quietly too)
+  const ms = played ? 0 : Math.max(0, anim - el);
+  startFx('move', f, performance.now() - (played ? animMs(f) : el));
+  if (played || el > 0 || SND.muted || !SND.loaded || !SND.ctx || SND.ctx.state !== 'running') fx.move.quiet = true;   // (a result already heard at a reload, played before audio was ready, or joined part way: it finishes quietly too)
   setFlashReady(Date.now() + ms);                   // no tapping the result away while the move is still animating
-  clearTimeout(flashTimer); setFlashTimer(setTimeout(dismissFlash, ms + (holdAt != null ? holdAt : Math.min(holdMax == null ? Infinity : holdMax, holdOf(f) / sp))));   // (first: the result always clears, whatever its sounds do)
-  if (!played) for (const [n, at, rate] of moveSounds(f)) SND.play(n, { at: at / 1000 / sp, rate });
+  const hold = holdAt != null ? holdAt : Math.max(0, Math.min(holdMax == null ? Infinity : holdMax, holdOf(f) / sp) - Math.max(0, el - anim));   // (holdAt: exactly this long from the animation's end; else the usual hold, less what is gone already)
+  clearTimeout(flashTimer); setFlashTimer(setTimeout(dismissFlash, ms + hold)); flashEnds = Date.now() + ms + hold;   // (first: the result always clears, whatever its sounds do)
+  if (!played && !(el > 0)) for (const [n, at, rate] of moveSounds(f)) SND.play(n, { at: at / 1000 / sp, rate });
 }
 // How long the result stays up once its animation has played.
-function holdOf(f) {
+export function holdOf(f) {
   let hold = FLASH_MS[f.kind] || 800;
   if (f.type === 'memory' && f.kind === 'move') hold = MEMORY_MS;
   if (f.type === 'pig' && f.kind === 'move') hold = f.note === 'bust' ? FLASH_MS.card : FLASH_MS.move;   // a bust gets a proper card; a bank just its points moving over
@@ -103,7 +106,7 @@ export function skipFlash() {
   startFx('move', f, performance.now() - animMs(f) * Math.max(1, sp));   // (past its end at any speed)
   fx.move.quiet = true;
   setFlashReady(Date.now());
-  clearTimeout(flashTimer); setFlashTimer(setTimeout(dismissFlash, holdOf(f) / sp));
+  clearTimeout(flashTimer); setFlashTimer(setTimeout(dismissFlash, holdOf(f) / sp)); flashEnds = Date.now() + holdOf(f) / sp;
   render();
 }
 // The match is over and its last square has stamped in on the board: the end screen, with its sound.

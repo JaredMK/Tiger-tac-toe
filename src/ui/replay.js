@@ -61,16 +61,27 @@ function repList(o) {
 // mover's thinking to 0.3 s): a longer one is cut down to it.
 export function repStart(o) {
   repStop();
+  const list = repTimed(o);
+  rep = { sq: o.sq, by: o.by, type: o.type, list, k: 0, at: performance.now() - Math.max(0, o.elapsed || 0), speed: o.speed || 1, lead: o.lead || 0, stage: 'inputs', onMove: o.onMove, f: null, timer: null, pressed: null, cpu: !!o.cpu, start0: null };   // (elapsed: joined this far in: the inputs due by now press straight away)
+  if (!rep.list.length) { repMove(); return; }
+  render();
+  repArm();
+}
+// The inputs as the replay shows them: the log's times, the long pauses cut to the gap.
+function repTimed(o) {
   let list = repList(o);
   if (o.gap && list.length) {
     const sp = o.speed || 1, cap = o.gap * sp;                      // (the log's own ms: shown at the replay's speed)
     let t = 0, prev = list[0][0];
     list = list.map((e, k) => { if (k) t += Math.min(cap, Math.max(0, e[0] - prev)); prev = e[0]; return [t].concat(e.slice(1)); });
   }
-  rep = { sq: o.sq, by: o.by, type: o.type, list, k: 0, at: performance.now(), speed: o.speed || 1, lead: o.lead || 0, stage: 'inputs', onMove: o.onMove, f: null, timer: null, pressed: null, cpu: !!o.cpu, start0: null };
-  if (!rep.list.length) { repMove(); return; }
-  render();
-  repArm();
+  return list;
+}
+// How long the inputs take on screen before the move (ms), for a sequence timed ahead: none, the move at once.
+export function repDuration(o) {
+  const list = repTimed(o), sp = o.speed || 1;
+  if (!list.length) return 0;
+  return (o.lead || 0) + (list[list.length - 1][0] + REP.press) / sp;
 }
 function repArm() {
   const r = rep;

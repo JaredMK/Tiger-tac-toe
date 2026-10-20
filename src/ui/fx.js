@@ -120,8 +120,9 @@ function countTo(el, from, to, ms, t0) {
   requestAnimationFrame(step);
 }
 // Back on the board after a move: a square just won stamps in now, once (the event its stamp belongs to).
-export function stampFx() {
+export function stampFx(elapsed) {                                   // elapsed: the stamp began this long ago (a sequence joined part way: quietly)
   if (state.screen !== 'board' || state.stamp == null || state.stampId == null || fxAt('stamp', state.stampId) != null) return;
-  startFx('stamp', state.stampId);
+  startFx('stamp', state.stampId, elapsed ? performance.now() - elapsed : undefined);
+  if (elapsed > 200) return;
   SND.play('stamp'); SND.play('burst', { at: BOARD_BURST[0] / 1000 }); SND.play('burst', { at: BOARD_BURST[1] / 1000 });
 }

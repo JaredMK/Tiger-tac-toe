@@ -27,6 +27,7 @@ import { triviaDeal } from '../games/trivia/rules.js';
 import { GAMES, TYPES, rulesOf } from '../games/index.js';
 
 export const SC = { roundS: 60 };   // the round's time, in seconds
+export const SC_ONLINE = { leadMs: 1000, graceMs: 2500 };   // a friend room: a round settled on the record plays on both phones from a shared start this long ahead (server time); a phone that has not sent its move this long past the deadline gets the timeout rule's move from the other phone
 // The games dealt in Super Chaos (meta.js: superChaos).
 export const scTypes = () => TYPES.filter(t => GAMES[t].meta.superChaos);
 export const isChaos = st => !!(st && st.sc);
@@ -55,13 +56,16 @@ export function startChaos(state, rng) {
   scBegin(state, rng);
   return true;
 }
-// A Super Chaos match in a friend room: both players are people, each on their own phone. The record holds the
-// board at the round's start and each move as it is sent in (moves); the second one in settles the round
-// there (chaosResolveOnline), and both phones then play the recap and the next round from the record.
-export function startChaosOnline(state, rng) {
+// A Super Chaos match in a friend room: both players are people, each on their own phone. The record (the
+// room's match on the database) is the one truth of each round: its number, its deadline in server time, and
+// each move as it is sent in (moves). The second move in settles the round there (chaosResolveOnline), as does
+// the deadline (applyChaosDeadline: the timeout rule's move for a side not in). The recap carries a shared
+// start (at, server time, a moment ahead): both phones play the same sequence from that moment, and the first
+// to finish it starts the next round on the record (its deadline; applyChaosBegin).
+export function startChaosOnline(state, rng, now) {
   rng = needRng(rng);
   for (const sq of state.squares) scSquareMini(state, sq, sq.mini.type, rng);
-  state.sc = { round: 1, limit: SC.roundS, online: true, moves: {}, recap: null, last: null };
+  state.sc = { round: 1, limit: SC.roundS, online: true, deadline: (now || 0) + SC.roundS * 1000, moves: {}, recap: null, last: null };
   return true;
 }
 // A player's move as the record keeps it: where, its result, the square before it and each step (the other
@@ -74,7 +78,7 @@ export function scMoveOf(state, side) {
 // Both moves are on the record: the round is settled there, with X's move in X's place and O's as the
 // "other" one (the computer's, in a match against it). The recap keeps both moves (mv) so each phone replays
 // the other's; the next round starts on the record at once (each phone joins it after its recap).
-export function chaosResolveOnline(full, rng) {
+export function chaosResolveOnline(full, rng, now, lead) {   // lead: the mover's own result still on show this long (the shared start waits for it, a second at least)
   rng = needRng(rng);
   const sc = full.sc, mv = sc.moves || {};
   if (!mv.X || !mv.O) return null;
@@ -94,18 +98,21 @@ export function chaosResolveOnline(full, rng) {
   const mvOf = m => (m && m.square != null && m.mini ? { square: m.square, steps: m.steps || [], start: m.start || null, type: m.mini.type, auto: !!m.auto } : null);
   rc.mv = { X: mvOf(mv.X), O: mvOf(mv.O) };
   full.moves = (full.moves || 0) + 2;
+  rc.at = (now || 0) + Math.max(SC_ONLINE.leadMs, lead || 0);                        // the shared start: both phones play the recap from this moment (server time)
   sc.recap = rc;
   if (!full.winner) sc.round += 1;
+  sc.deadline = null;                                            // (the next round's: set by the first phone through the recap, applyChaosBegin)
   sc.moves = {}; sc.me = null; sc.cpu = null; sc.base = null; sc.moved = null;
   return rc;
 }
-// A player who has not sent their move in time (away, or the app closed): the computer makes one for them.
-export function scAutoMove(full, side, rng) {
+// The round's deadline passed with a side's move not in (away, or the app closed): the timeout rule's move
+// for them, as their own phone would have made it (a random legal move in a random open square).
+export function scTimeoutMove(full, side, rng) {
   const sh = clone(full);
   sh.sc.base = sh.squares.map(sq => clone(sq.mini));
-  const m = scCpu(sh, rng, null, side);
+  const m = scCpu(sh, rng, { timeout: true }, side);
   if (!m) return null;
-  return Object.assign({ round: full.sc.round, side, square: m.square, out: m.out, win: !!m.win, mini: m.mini, start: m.start, steps: m.steps, auto: true }, m.gives ? { gives: m.gives } : {});
+  return Object.assign({ round: full.sc.round, side, square: m.square, out: m.out, win: !!m.win, mini: m.mini, start: m.start, steps: m.steps, auto: true, timeout: true }, m.gives ? { gives: m.gives } : {});
 }
 // A round begins: every square as the human sees it, the board kept as it stands (base), the computer's move.
 export function scBegin(state, rng) {
@@ -120,7 +127,7 @@ export function scBegin(state, rng) {
 // The computer's move for this round, on its own copy of the board as it stood when the round began: the
 // usual choice of square and the game's own tactics, played through to the end of the move (a Hangman
 // letter that hits guesses on, a Risky Rolls turn rolls on until it banks). Kept hidden until the recap.
-export function scCpu(state, rng, force, side) {   // force: { square, moves } to play instead (the tests; no moves: its own moves in that square); side: the player to move for (a friend room's absent player), else the computer
+export function scCpu(state, rng, force, side) {   // force: { square, moves } to play instead (the tests; no moves: its own moves in that square; timeout: the timeout rule's moves); side: the player to move for (a friend room's absent player), else the computer
   rng = needRng(rng);
   const sc = state.sc, cpu = side || state.cpu;
   const sh = {
@@ -130,16 +137,25 @@ export function scCpu(state, rng, force, side) {   // force: { square, moves } t
   };
   const steps = [];
   let start = null;
-  if (force && !force.moves) sh.lock = force.square;
-  const next = k => (force && force.moves ? (k < force.moves.length ? { square: force.square, move: force.moves[k] } : null) : cpuMove(sh, rng));
+  if (force && !force.moves && !force.timeout) sh.lock = force.square;
+  const next = k => (force && force.moves ? (k < force.moves.length ? { square: force.square, move: force.moves[k] } : null) : force && force.timeout ? { timeout: true } : cpuMove(sh, rng));
   let plan = next(0);
   for (let guard = 0; plan && guard < 80 && !sh.sc.me; guard++) {
-    if (!start) start = clone(sh.squares[plan.square].mini);                     // the square as the computer found it (the recap's replay starts there)
-    let r = playMove(sh, plan.square, plan.move, rng);
-    if (!r.ok) {                                                 // never expected: a random legal move there instead
-      const m = randomLegalMove(sh.squares[plan.square].mini, cpu, rng);
-      r = playMove(sh, plan.square, m, rng);
-      if (!r.ok) break;
+    let r;
+    if (plan.timeout) {                                          // the timeout rule's move (a side not in by the deadline): it plays the move itself
+      const t = chaosTimeout(sh, rng);
+      if (!t.ok) break;
+      plan = { square: t.square, move: t.move };
+      if (!start) start = project(clone(sc.base[plan.square]), cpu);   // (the square as the side found it)
+      r = { ok: true, flash: sh.flash };
+    } else {
+      if (!start) start = clone(sh.squares[plan.square].mini);                     // the square as the computer found it (the recap's replay starts there)
+      r = playMove(sh, plan.square, plan.move, rng);
+      if (!r.ok) {                                                 // never expected: a random legal move there instead
+        const m = randomLegalMove(sh.squares[plan.square].mini, cpu, rng);
+        r = playMove(sh, plan.square, m, rng);
+        if (!r.ok) break;
+      }
     }
     const f = Object.assign({}, r.flash); delete f.drawn;
     steps.push(Object.assign(clone(f), { after: clone(sh.squares[plan.square].mini) }));   // (after: the square as the step left it, for the recap's replay of the move)

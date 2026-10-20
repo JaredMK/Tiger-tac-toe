@@ -1,7 +1,7 @@
 // Online match records: what the shared database holds (the public state, the secrets kept apart), moves
 // settled on the record, timeouts, resigning.
 import { endFlash, playMove, timeoutMove } from './board.js';
-import { chaosResolveOnline, scAutoMove, scTypes, startChaosOnline } from './chaos.js';
+import { SC_ONLINE, chaosResolveOnline, scTimeoutMove, scTypes, startChaosOnline } from './chaos.js';
 import { defaultSetup, newState, startMatch } from './match.js';
 import { upgradeMini } from './minis.js';
 import { newTimer } from './timer.js';
@@ -130,38 +130,61 @@ export function applyOnlinePick(rec, side, i, card) {
   return { ok: true, rec: matchRecord(full) };
 }
 // A fresh match for a room: the names, the mini-games and the time per turn from the lobby.
-export function newOnlineMatch(setup, rng, id) {
+export function newOnlineMatch(setup, rng, id, now) {         // now: server time (a Super Chaos match's first round is timed from it)
   const st = newState(rng);
   st.setup = Object.assign(defaultSetup(), setup || {}, { mode: 'online' });
   if (setup && setup.games) st.setup.games = Object.assign({}, st.setup.games, setup.games);
   if (!startMatch(st, rng, st.setup.chaos ? scTypes() : null)) return null;
-  if (st.setup.chaos) startChaosOnline(st, rng);                 // Super Chaos: simultaneous rounds (core/chaos.js)
+  if (st.setup.chaos) startChaosOnline(st, rng, now || 0);      // Super Chaos: simultaneous rounds (core/chaos.js)
   st.id = id; st.seq = 0; st.recent = [];
   return matchRecord(st);
 }
-// Super Chaos in a friend room: a player's move for this round, sent in once it is over on their phone
-// (core/chaos.js scMoveOf). The second one in settles the round on the record.
-export function applyChaosSubmit(rec, side, mv, rng) {
+// Super Chaos in a friend room (the record is the round's one truth: core/chaos.js). A player's move for this
+// round, sent in once it is over on their phone (scMoveOf); the second one in settles the round on the record,
+// with a shared start a moment ahead (now: server time). A move in after the deadline still counts while the
+// round is unsettled (better the move made than the timeout rule's).
+export function applyChaosSubmit(rec, side, mv, rng, now, lead) {
   const st = rec.state, sc = st.sc;
   if (!sc || !sc.online) return { ok: false, reason: 'bad' };
   if (st.winner) return { ok: false, reason: 'over' };
   if (!mv || mv.round !== sc.round) return { ok: false, reason: 'round' };
   if (sc.moves && sc.moves[side]) return { ok: false, reason: 'moved' };
+  if (sc.deadline == null) return { ok: false, reason: 'recap' };   // (the round has not begun: its recap is playing)
   const full = fullState(rec);
   full.sc.moves = Object.assign({}, full.sc.moves, { [side]: JSON.parse(JSON.stringify(mv)) });
   const both = full.sc.moves.X && full.sc.moves.O;
-  const rc = both ? chaosResolveOnline(full, rng) : null;
+  const rc = both ? chaosResolveOnline(full, rng, now || 0, lead) : null;
   if (both && !rc) return { ok: false, reason: 'bad' };
   full.seq = (full.seq || 0) + 1;                                // (a change the phones notice)
   return { ok: true, rec: matchRecord(full), resolved: !!rc };
 }
-// The other player's move is long overdue (away, or the app closed): the computer makes it for them.
-export function applyChaosAuto(rec, side, rng) {
+// The round's deadline has passed: the timeout rule's move for each side not in, and the round settles.
+// Either phone may call it (the first to, past the deadline and the grace for the mover's own phone to send
+// its timeout move); refused before then, or once the round is settled.
+export function applyChaosDeadline(rec, now, rng) {
   const st = rec.state, sc = st.sc;
-  if (!sc || !sc.online || st.winner || (sc.moves && sc.moves[side])) return { ok: false, reason: 'moved' };
+  if (!sc || !sc.online) return { ok: false, reason: 'bad' };
+  if (st.winner) return { ok: false, reason: 'over' };
+  if (sc.deadline == null) return { ok: false, reason: 'recap' };
+  if (now < sc.deadline + SC_ONLINE.graceMs) return { ok: false, reason: 'early' };
   const full = fullState(rec);
-  const mv = scAutoMove(full, side, rng) || { round: sc.round, side, square: null, auto: true };
-  return applyChaosSubmit(rec, side, mv, rng);
+  full.sc.moves = Object.assign({}, full.sc.moves);
+  for (const side of ['X', 'O']) if (!full.sc.moves[side]) full.sc.moves[side] = scTimeoutMove(full, side, rng) || { round: sc.round, side, square: null, auto: true, timeout: true };
+  const rc = chaosResolveOnline(full, rng, now);
+  if (!rc) return { ok: false, reason: 'bad' };
+  full.seq = (full.seq || 0) + 1;
+  return { ok: true, rec: matchRecord(full), resolved: true };
+}
+// The recap is over on a phone: the next round begins on the record, its deadline from now (server time).
+// The first phone through sets it; the other finds it set.
+export function applyChaosBegin(rec, now) {
+  const st = rec.state, sc = st.sc;
+  if (!sc || !sc.online || st.winner) return { ok: false, reason: 'bad' };
+  if (sc.deadline != null) return { ok: false, reason: 'begun' };
+  const full = fullState(rec);
+  full.sc.deadline = now + sc.limit * 1000;
+  full.seq = (full.seq || 0) + 1;
+  return { ok: true, rec: matchRecord(full) };
 }
 // A player gives up the match (leaving a matchmaking game through the menu): the other side wins.
 export function applyOnlineResign(rec, side) {
