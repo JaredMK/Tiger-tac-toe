@@ -68,7 +68,7 @@ function rlTable(mini, a, o) {
     : dr.nums.length ? `${RL.pick - dr.nums.length} more number${RL.pick - dr.nums.length === 1 ? '' : 's'} to pick` : '&nbsp;';
   const board = o.view ? '' : `<div class="rlboard"><div class="rlrow top"><button class="rlz${zOn}${land(0)}"${landT(0)} data-act="rlzero" aria-pressed="${!!zOn}" aria-label="Green 0"${dis}>0${dolly(0)}</button><p class="rlsay">${say}</p></div>${grid}</div>
     <div class="cbtns one"><button class="big ${turn} rlspin" data-act="move" ${mv(bet || [])}${!bet || o.locked || marks ? ' disabled' : ''}>${state.sc ? 'Place bet' : 'Spin'}</button></div>`;
-  // Once the ball lands: HIT!, MISS or GREEN 0!, big on the wheel, held a second before the game moves on.
+  // Once the ball lands: HIT!, MISS or GREEN 0!, big in its own slot under the wheel (never over it), held a second before the game moves on.
   const anyHit = spin ? (spin.shared ? ['X', 'O'].some(p => spin.hit[p]) : spin.hit) : false;
   const zeroHit = spin ? (spin.shared ? ['X', 'O'].some(p => spin.hit[p] && spin.bets[p] === 'zero') : spin.hit && spin.bet === 'zero') : false;
   const bigTxt = !spin ? '' : zeroHit ? 'Green 0!' : spin.shared && spin.hit.X && spin.hit.O ? 'Both hit!' : anyHit ? 'Hit!' : 'Miss';
@@ -80,7 +80,7 @@ function rlTable(mini, a, o) {
   const all = (mini.spins || []).map(x => (typeof x === 'number' ? { n: x, hit: false } : x)).filter(x => x && Number.isInteger(x.n));
   const spins = spin && !REDUCED ? `<span class="tu" style="--u:${tEnd}ms">${chips(all.slice(0, -1))}</span><span class="tf" style="--f:${tEnd}ms">${chips(all)}</span>` : `<span>${chips(all)}</span>`;
   const hist = `<div class="rlspins" aria-label="Recent spins: ${all.map(x => x.n + (x.hit ? ' (hit)' : '')).join(', ') || 'none'}">${spins}</div>`;
-  return `<div class="g-rl"><div class="rltop"><div class="ctals col">${hits('X')}${hits('O')}${res}</div><div class="rlside"><div class="rlwrap">${rlWheel(n, !!spin)}${big}</div>${hist}</div></div>${board}</div>`;
+  return `<div class="g-rl"><div class="rltop"><div class="ctals col">${hits('X')}${hits('O')}${res}</div><div class="rlside"><div class="rlwrap">${rlWheel(n, !!spin)}</div><div class="rlbigslot">${big}</div>${hist}</div></div>${board}</div>`;
 }
 // The marker's move from the wheel to its number as the ball lands (anchored to the move by its [data-fx]).
 export function rlMarker() {

@@ -236,6 +236,10 @@
           ".validate": "$k.matches(/^(target|v[01]|gap[01]|haz[01]|sway|cone)$/) && newData.isNumber() && newData.val() >= 0 && newData.val() <= 200"
         }
       },
+      "bowling": {
+        ".write": "auth != null && auth.token.admin === true",
+        "$k": { ".validate": "$k.matches(/^(aimMs|meterMs)$/) && newData.isNumber() && newData.val() >= 300 && newData.val() <= 3000" }
+      },
       "pinball": {
         ".write": "auth != null && auth.token.admin === true",
         "$k": {

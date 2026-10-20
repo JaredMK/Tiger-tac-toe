@@ -117,6 +117,7 @@ function repMove() {
   r.f = state.flash || null;
   if (!r.f) { repStop(); return; }
   if (r.speed > 1) { repSpeedLoop(); repRate(); }               // (the move's render came before its flash was known here: its animations to the replay's rate now)
+  if (app.querySelector('.rskip:not(.until)')) render();        // (Skip drawn again, now timed to go as the move's animation ends)
 }
 // The flash's clock run fast (the Super Chaos recap plays at 2x): the move's event is kept drifting back,
 // so everything timed from it (the canvas replays, the animations re-anchored at each render) sees the
@@ -165,5 +166,6 @@ export function repSkipBtn() {
   if (!rep || rep.sq !== state.zoom) return '';
   const at = rep.stage === 'move' && rep.f ? fxAt('move', rep.f) : rep.at;
   if (rep.stage === 'move' && rep.f && at != null && performance.now() - at >= animMs(rep.f) / rep.speed) return '';   // the result is up: nothing left to skip
-  return `<button class="rskip" data-act="rep-skip" data-fx="${rep.at}" aria-label="Skip the replay">Skip</button>`;
+  const until = rep.stage === 'move' && rep.f && at != null ? Math.max(0, Math.round(at - rep.at + animMs(rep.f) / rep.speed)) : null;   // (gone the moment the move's animation ends: the result's line is never under it)
+  return `<button class="rskip${until != null ? ' until' : ''}" data-act="rep-skip" data-fx="${rep.at}"${until != null ? ` style="--u:${until}ms"` : ''} aria-label="Skip the replay">Skip</button>`;
 }

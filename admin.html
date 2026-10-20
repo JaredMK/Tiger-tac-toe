@@ -279,6 +279,7 @@ function render() {
     ${oddCard()}
     ${ATT_CARDS.map(attCard).join('')}
     ${FING_CARDS.map(fingCard).join('')}
+    ${BOWL_CARDS.map(fingCard).join('')}
     ${wheelsCard()}
     ${botsCard()}
     ${alertsCard()}
@@ -581,12 +582,17 @@ async function saveAttCfg(btn) {
   render();
 }
 // ---------- the finger games' difficulty (config/skyhop, config/scoop, config/pinball, read by the game and the server) ----------
-const HOP_DEFAULTS = { target: 300, bounce: 22, gap0: 3, gap1: 4.5, wide0: 1.7, wide1: 1.5, moveAt: 20, move: 50, moveV: 1.8, breakAt: 8, brk0: 25, brk: 40, hazAt: 30, hazGap: 40, fill0: 0.4, fill1: 0.25 };   // (as the game's meta.js has them)
+const HOP_DEFAULTS = { target: 150, bounce: 22, gap0: 3, gap1: 4.5, wide0: 1.5, wide1: 1.1, moveAt: 10, move: 65, moveV: 2.2, breakAt: 8, brk0: 25, brk: 60, hazAt: 15, hazGap: 25, fill0: 0.4, fill1: 0.2 };   // (as the game's meta.js has them)
 const SCOOP_DEFAULTS = { target: 25, v0: 5, v1: 8.5, gap0: 0.9, gap1: 0.6, haz0: 18, haz1: 38, sway: 1, cone: 12 };
 const PINB_DEFAULTS = { size: 1.7, save: 3, maxBall: 120, g: 1, bump: 1, spin: 1 };
+const BOWL_DEFAULTS = { aimMs: 733, meterMs: 600 };   // (as Bowling's meta.js has them)
+const BOWL_CARDS = [
+  { id: 'bowling', title: 'Bowling tuning', defaults: BOWL_DEFAULTS, fields: [['aimMs', 'Aim arrow: one side to the other (ms)', 300, 3000, 10], ['meterMs', 'Power meter: empty to full (ms)', 300, 3000, 10]],
+    note: 'The two taps: the arrow sweeps across the lane, then the power meter rises and falls. Lower is faster (harder to time).' },
+];
 const FING_CARDS = [
   { id: 'skyhop', title: 'Sky Hop tuning', defaults: HOP_DEFAULTS, fields: [['target', 'Target height (m)', 50, 3000, 10], ['bounce', 'Bounce speed (m/s; 22 rises 5.5 m)', 12, 30, 0.1], ['gap0', 'Gap between platforms at the bottom (m)', 0.6, 6, 0.05], ['gap1', 'Gap at the top (m)', 0.6, 6, 0.05], ['wide0', 'Platform width at the bottom (m; the sky is 9 wide)', 0.8, 6, 0.05], ['wide1', 'Platform width at the top (m)', 0.8, 6, 0.05], ['fill0', 'Extra platforms per gap at the bottom', 0, 4, 0.05], ['fill1', 'Extra platforms per gap at the top', 0, 4, 0.05], ['moveAt', 'Moving platforms from (m)', 0, 3000, 1], ['move', 'Moving platforms by the top (%)', 0, 90, 1], ['moveV', 'Moving platform speed (m/s)', 0.2, 4, 0.05], ['breakAt', 'Breaking platforms from (m)', 0, 3000, 1], ['brk0', 'Breaking platforms at that height (%)', 0, 90, 1], ['brk', 'Breaking platforms by the top (%)', 0, 90, 1], ['hazAt', 'Burrs from (m)', 0, 3000, 1], ['hazGap', 'About one burr every (m)', 5, 500, 1]],
-    note: 'The hopper bounces up off platforms; a drag steers it and the sky wraps at the sides. Falling off the bottom ends the attempt and the highest point is kept. Higher up: wider gaps, narrower platforms, more that move or break after one bounce, and burrs to avoid (never across the way up). Every gap can be made: the course always has a chain of platforms within a bounce. Default 500 m; tuned so an average player needs about 3 to 6 attempts (the computer: about 4).' },
+    note: 'The hopper bounces up off platforms; a drag steers it and the sky wraps at the sides. Falling off the bottom ends the attempt and the highest point is kept. Higher up: wider gaps, narrower platforms, more that move or break after one bounce, and burrs to avoid (never across the way up). Every gap can be made: the course always has a chain of platforms within a bounce. Default 150 m: a strong run reaches the top in about 28 s; tuned so an average player needs about 3 to 6 attempts (the computer: about 4.5).' },
   { id: 'scoop', title: 'Scoop Stack tuning', defaults: SCOOP_DEFAULTS, fields: [['target', 'Target (scoops)', 5, 200, 1], ['v0', 'Falling speed at the start (units/s; the screen is 10 wide)', 1, 15, 0.1], ['v1', 'Falling speed at the target', 1, 15, 0.1], ['gap0', 'Time between items at the start (s)', 0.3, 4, 0.05], ['gap1', 'Time between items at the target (s)', 0.3, 4, 0.05], ['haz0', 'Hazards at the start (% of items)', 0, 70, 1], ['haz1', 'Hazards at the target (%)', 0, 70, 1], ['cone', 'Cone speed (units/s)', 5, 40, 0.5], ['sway', 'Sway of the stack (1 = normal, 0 = none)', 0, 3, 0.05]],
     note: 'Scoops and hazards (pebbles, burnt scoops) fall to the top of the stack; the cone follows the finger. A hazard on the stack, or 3 missed scoops, ends the attempt; the stack is kept. Speed and hazards rise with the stack. Every attempt is checked to be catchable at 72% of the cone speed. Default 25 scoops; tuned so an average player needs about 3 to 6 attempts (the computer: about 4.5).' },
   { id: 'pinball', title: 'Pinball tuning', defaults: PINB_DEFAULTS, fields: [['size', 'Target size (1 = the drawn size; up to 2)', 0.6, 2, 0.05], ['save', 'Ball save after launch (s)', 0, 10, 0.5], ['maxBall', 'Longest ball (s)', 20, 300, 5], ['g', 'Table slope (gravity, 1 = normal)', 0.5, 2, 0.05], ['bump', 'Bumper kick (1 = normal)', 0.5, 2, 0.05], ['spin', 'Spinner speed (1 = normal, 0 = still)', 0, 3, 0.05]],
@@ -600,7 +606,7 @@ function fingCard(c) {
     <div class="rform"><button class="btn" data-fingsave="${c.id}">Save ${c.title.replace(' tuning', '')}</button></div></div>`;
 }
 async function saveFingCfg(btn) {
-  const c = FING_CARDS.find(x => x.id === btn.dataset.fingsave), out = {};
+  const c = FING_CARDS.concat(BOWL_CARDS).find(x => x.id === btn.dataset.fingsave), out = {};
   for (const el of app.querySelectorAll(`input[data-fingcfg="${c.id}"]`)) {
     const v = Number(el.value), f = c.fields.find(x => x[0] === el.dataset.k);
     if (!Number.isFinite(v) || v < f[2] || v > f[3]) { alert(`${f[1]}: a number from ${f[2]} to ${f[3]}`); return; }
@@ -794,9 +800,9 @@ async function loadPeople() {
 }
 async function loadCtl() {
   const g = p => fb.dbM.get(fb.dbM.ref(fb.db, p)).then(s => s.val()).catch(() => null);
-  const [config, secretsSet, bots, botStats, alertStats, features, log, releases, runCfg, bullsCfg, wheelsCfg, plinkoCfg, oddCfg, headCfg, flashCfg, snapCfg, hopCfg, scoopCfg, pinCfg, pigCfg, roadsCfg] = await Promise.all([g('admin/config'), g('admin/secretsSet'), g('bots'), g('botStats'), g('alertStats'), g('features'),
-    fb.dbM.get(fb.dbM.query(fb.dbM.ref(fb.db, 'alertLog'), fb.dbM.orderByChild('at'), fb.dbM.limitToLast(8))).then(s => s.val()).catch(() => null), g('releases'), g('config/run'), g('config/bulls'), g('config/wheels'), g('config/plinko'), g('config/oddone'), g('config/headcount'), g('config/flash'), g('config/snapshot'), g('config/skyhop'), g('config/scoop'), g('config/pinball'), g('config/pig'), g('config/roads')]);
-  ctl = { config: config || {}, secretsSet: secretsSet || {}, bots: bots || {}, botStats: botStats || {}, alertStats: alertStats || {}, features: features || {}, releases: releases || {}, runCfg: runCfg || {}, bullsCfg: bullsCfg || {}, wheelsCfg: wheelsCfg || {}, plinkoCfg: plinkoCfg || {}, pigCfg: pigCfg || {}, roadsCfg: roadsCfg || {}, oddCfg: oddCfg || {}, attCfg: { headcount: headCfg || {}, flash: flashCfg || {}, snapshot: snapCfg || {} }, fingCfg: { skyhop: hopCfg || {}, scoop: scoopCfg || {}, pinball: pinCfg || {} },
+  const [config, secretsSet, bots, botStats, alertStats, features, log, releases, runCfg, bullsCfg, wheelsCfg, plinkoCfg, oddCfg, headCfg, flashCfg, snapCfg, hopCfg, scoopCfg, pinCfg, pigCfg, roadsCfg, bowlCfg] = await Promise.all([g('admin/config'), g('admin/secretsSet'), g('bots'), g('botStats'), g('alertStats'), g('features'),
+    fb.dbM.get(fb.dbM.query(fb.dbM.ref(fb.db, 'alertLog'), fb.dbM.orderByChild('at'), fb.dbM.limitToLast(8))).then(s => s.val()).catch(() => null), g('releases'), g('config/run'), g('config/bulls'), g('config/wheels'), g('config/plinko'), g('config/oddone'), g('config/headcount'), g('config/flash'), g('config/snapshot'), g('config/skyhop'), g('config/scoop'), g('config/pinball'), g('config/pig'), g('config/roads'), g('config/bowling')]);
+  ctl = { config: config || {}, secretsSet: secretsSet || {}, bots: bots || {}, botStats: botStats || {}, alertStats: alertStats || {}, features: features || {}, releases: releases || {}, runCfg: runCfg || {}, bullsCfg: bullsCfg || {}, wheelsCfg: wheelsCfg || {}, plinkoCfg: plinkoCfg || {}, pigCfg: pigCfg || {}, roadsCfg: roadsCfg || {}, oddCfg: oddCfg || {}, attCfg: { headcount: headCfg || {}, flash: flashCfg || {}, snapshot: snapCfg || {} }, fingCfg: { skyhop: hopCfg || {}, scoop: scoopCfg || {}, bowling: bowlCfg || {}, pinball: pinCfg || {} },
     alertLog: Object.values(log || {}).sort((a, b) => b.at - a.at) };
 }
 async function signIn(how) {

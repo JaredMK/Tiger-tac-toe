@@ -39,7 +39,7 @@ test('sky hop: every course is a chain of platforms each within one bounce of th
 });
 test('sky hop: an attempt resumes at the saved height on a safe start (2 seconds of grace, nothing hazardous in reach), and keeps the best height', () => {
   const cfg = E.hopConfig(), peak = E.hopPeak(cfg);
-  for (const h0 of [0, 31.5, 77, 160.9, 262]) {
+  for (const h0 of [0, 0.105, 0.257, 0.536, 0.873].map(f => Math.round(E.hopConfig().target * f * 10) / 10)) {   // (from the bottom to near the top)
     const mini = hopMini(77, h0), sim = E.hopStart(mini, 'X');
     assert.equal(sim.y, h0); assert.equal(sim.top, h0);
     assert.ok(sim.haz.every(h => h.y > h0 + peak + 0.5), 'no hazard within the first bounce');
@@ -56,7 +56,7 @@ test('sky hop: an attempt resumes at the saved height on a safe start (2 seconds
 });
 test('sky hop: difficulty rises with height (wider gaps, narrower, moving and breaking platforms, hazards higher up)', () => {
   const cfg = E.hopConfig(), lo = [], hi = [];
-  for (let s = 0; s < 20; s++) for (const q of E.hopCourse(cfg, 'd' + s).plats) (q.y < 60 ? lo : q.y > 220 ? hi : []).push(q);
+  for (let s = 0; s < 20; s++) for (const q of E.hopCourse(cfg, 'd' + s).plats) (q.y < cfg.target * 0.2 ? lo : q.y > cfg.target * 0.73 && q.y <= cfg.target ? hi : []).push(q);
   const share = (a, k) => a.filter(q => q.k === k).length / a.length;
   assert.ok(avg(hi.map(q => q.w)) < avg(lo.map(q => q.w)), 'narrower higher up');
   assert.ok(share(hi, 'm') > share(lo, 'm') && share(hi, 'b') > share(lo, 'b'), 'more moving and breaking platforms higher up');
@@ -66,7 +66,7 @@ test('sky hop: difficulty rises with height (wider gaps, narrower, moving and br
 });
 test('sky hop: a breaking platform takes one bounce; a burr ends the attempt; falling off the bottom ends it; the top ends it', () => {
   const ends = {};
-  for (let s = 0; s < 40; s++) { const r = E.hopAi(hopMini(300 + s, 80 + (s % 5) * 35), 'X', E.makeRng('e' + s)); ends[r.move.end] = (ends[r.move.end] || 0) + 1; if (r.move.end === 'top') assert.equal(r.move.h, E.hopConfig().target); }
+  for (let s = 0; s < 40; s++) { const r = E.hopAi(hopMini(300 + s, Math.round(E.hopConfig().target * (0.27 + (s % 5) * 0.12))), 'X', E.makeRng('e' + s)); ends[r.move.end] = (ends[r.move.end] || 0) + 1; if (r.move.end === 'top') assert.equal(r.move.h, E.hopConfig().target); }
   assert.ok(ends.fall > 0 && ends.hazard > 0, `falls and hazards both happen (${JSON.stringify(ends)})`);
   const sim = E.hopStart(hopMini(9, 110), 'X');
   for (let n = 0; n < 60 / E.FING.step && !sim.end; n++) { E.hopStep(sim, null); if (sim.last === 'break') assert.equal(sim.gone[sim.on], 1, 'a broken platform is gone'); }

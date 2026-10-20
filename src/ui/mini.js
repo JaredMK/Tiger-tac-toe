@@ -3,7 +3,6 @@ import { playerName } from '../core/match.js';
 import { ATT_TYPES } from '../games/shared/attention.js';
 import { FINGER_TYPES } from '../games/shared/finger.js';
 import { BS } from '../games/bs/rules.js';
-import { pigFace } from '../games/pig/view.js';
 import { huntSize } from '../games/hunt/rules.js';
 import { INFO, viewOf } from '../games/index.js';
 import { soundBtn } from '../audio/sound.js';
@@ -11,7 +10,7 @@ import { isMM } from '../net/matchmaking.js';
 import { rx } from '../net/reactions.js';
 import { blocked, leaveLoses, lockMine, moveWait, mySide, pinned, remoteTurn } from '../net/room.js';
 import { N, esc, menuOpen, menuStep, state } from './app.js';
-import { CHEV, RESET, dieFace } from './art.js';
+import { CHEV } from './art.js';
 import { attPinned } from './attention.js';
 import { scCpu, scWaiting } from './chaos.js';
 import { qBtn } from './explainer.js';
@@ -96,31 +95,30 @@ function summary(f) {
   if (game.moveText) return game.moveText(f, who);
   return `${who} placed`;
 }
+// The move's result: the game's own animation on its screen, and its words (if any) in the header's turn line, the
+// reserved place every game screen has (flashLine): nothing is laid over the game. The overlay is clear, a tap
+// on it dismisses the result.
 function renderFlash(f) {
+  const at = fxAt('move', f);
+  const open = `<div class="flash lite late" style="--late:${animMs(f)}ms"${fxAttr(at)} data-act="dismiss">`;
+  return `${f.type === 'memory' && f.kind === 'move' ? open.replace(' data-act="dismiss"', '') : open}</div>`;   // (Memory: the two cards stay up for the full 2 seconds)
+}
+const LINE_TYPES = ['bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads', 'flap', 'chopper', 'patterns', 'wheels', 'sniff', 'headcount', 'flash', 'snapshot', 'skyhop', 'scoop', 'pinball'];
+// The result's words for the header line (HTML), or '' when the game's own screen says it all: a square won (its
+// winning moment), the games that show their result in their own reserved line, a Risky Rolls roll or bank.
+export function flashLine(f) {
+  if (!f) return '';
   const who = `<b class="${f.by}">${N(f.by)}</b>`;
-  const at = fxAt('move', f);                      // (the comic bursts pop on the board once the square is stamped, not here)
-  const open = `<div class="flash late" style="--late:${animMs(f)}ms"${fxAttr(at)} data-act="dismiss">${f.timeout ? `<div class="timeout-note">${who} ran out of time — random move</div>` : ''}`;   // the result waits for the animation
-  if (f.kind === 'claim' || f.kind === 'match') {              // a square won: only the game's own winning moment here (the line, the sunk ship, the finish); the X or O goes on the square on the main board, with its stamp, and the match's end after that (dismissFlash)
-    return open.replace('"flash late"', '"flash lite late"') + '</div>';
-  }
-  if (f.type === 'pig' && f.note === 'bust') {
-    return `${open}<div class="card"><div class="big-g">${f.sides === 8 ? pigFace(f.roll, 8) : dieFace(f.roll)}</div><h2>Bust!</h2><p>${who} rolled ${f.roll} again · ${f.pot} point${f.pot === 1 ? '' : 's'} lost</p></div></div>`;
-  }
-  if ((['bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads', 'flap', 'chopper', 'patterns', 'wheels', 'sniff', 'headcount', 'flash', 'snapshot', 'skyhop', 'scoop', 'pinball'].includes(f.type)) && (f.kind === 'again' || f.kind === 'move')) {   // the table shows it all: the cards, the tick or cross, the number and the hits
-    return open.replace('"flash late"', '"flash lite late"') + '</div>';
-  }
-  if (f.type === 'pig' && (f.note === 'bank' || f.kind === 'again')) {   // a roll or a bank speaks for itself: the +N grows, or moves into the score
-    return open.replace('"flash late"', '"flash lite late"') + '</div>';
-  }
-  if (f.kind === 'draw') {
-    const TIE = { seating: 'The same number of tables each', shelves: 'On as many shelves each', roads: 'Roads the same length' };
-    const [head, why] = f.note === 'stuck' ? ['Stuck!', 'No legal moves for either player'] : f.note === 'blocked' ? ['Draw!', 'Nobody can get three in a row'] : f.note === 'tie' ? ['Tie!', TIE[f.type] || 'Level at the end'] : ['Draw!', 'Full board'];
-    return `${open}<div class="card"><div class="big-g">${RESET}</div><h2>${head}</h2><p>${why} · Square reset to ${INFO[f.newType].name}</p></div></div>`;
-  }
-  if (f.kind === 'again') {
-    const msg = f.type === 'bs' ? `${who} hit! · fire again` : `${who} found ${f.letter} · guess again`;
-    return `${open.replace('"flash late"', '"flash lite late"')}<div class="toast">${msg}</div></div>`;
-  }
-  const lite = open.replace('"flash late"', '"flash lite late"');
-  return `${f.type === 'memory' ? lite.replace(' data-act="dismiss"', '') : lite}<div class="toast">${summary(f)}</div></div>`;   // the two cards stay up for the full 2 seconds
+  const note = f.timeout ? `${who} ran out of time — random move` : '';
+  let say = '';
+  if (f.kind === 'claim' || f.kind === 'match') say = '';
+  else if (f.type === 'pig' && f.note === 'bust') say = `Bust! ${who} rolled ${f.roll} again · ${f.pot} point${f.pot === 1 ? '' : 's'} lost`;
+  else if (LINE_TYPES.includes(f.type) || (f.type === 'pig' && (f.note === 'bank' || f.kind === 'again'))) say = '';
+  else if (f.kind === 'draw') {
+    const TIE = { seating: 'the same number of tables each', shelves: 'on as many shelves each', roads: 'roads the same length' };
+    const head = f.note === 'stuck' ? 'Stuck! No legal moves' : f.note === 'blocked' ? 'Draw! Nobody can win it' : f.note === 'tie' ? `Tie! ${TIE[f.type] || 'level at the end'}` : 'Draw! Full board';
+    say = `${head} · now ${INFO[f.newType].name}`;
+  } else if (f.kind === 'again') say = f.type === 'bs' ? `${who} hit! · fire again` : `${who} found ${f.letter} · guess again`;
+  else say = summary(f);
+  return [note, say].filter(Boolean).join(' · ');
 }

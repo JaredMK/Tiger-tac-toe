@@ -1491,6 +1491,13 @@ test('Sky Hop, Scoop Stack and Pinball over the server: the tuning is public, th
   assert.equal((await fetch(`http://${DB_HOST}/config/skyhop/target.json?ns=${NS}`)).status, 200, 'without a login too');
   await denied(boss.write('config/skyhop', Object.assign({}, cfgs.skyhop, { target: 99999 })), 'a height off its range');
   await denied(boss.write('config/scoop', Object.assign({}, cfgs.scoop, { cone: 'fast' })), 'not a number');
+  // Bowling's two taps' speeds (config/bowling): the same, in its own range
+  await denied(a.write('config/bowling', E.BOWL_DEFAULTS), 'bowling: a player setting its speeds');
+  await boss.write('config/bowling', E.BOWL_DEFAULTS);
+  assert.deepEqual(await a.read('config/bowling'), E.BOWL_DEFAULTS, 'bowling: everyone can read it');
+  await denied(boss.write('config/bowling', { aimMs: 100, meterMs: 600 }), 'bowling: faster than its range');
+  await denied(boss.write('config/bowling/other', 500), 'bowling: anything else');
+  await boss.write('config/bowling', null);
   for (const k of Object.keys(cfgs)) await boss.write(`config/${k}`, null);
   const g = await pairUp(a, b);
   const at = (type, mini, p) => (type === 'skyhop' ? mini.height[p] : type === 'scoop' ? mini.stack[p].length : mini.lit[p].filter(Boolean).length);

@@ -10,7 +10,7 @@ const hopMini = (seed, h0) => ({ type: 'skyhop', cfg: E.hopConfig(), seed: { X: 
 
 test('sky hop: no impossible gaps — a perfect hand climbs every course to the top, from anywhere', () => {
   const perfect = { react: [0, 0], aim: 0, lapse: 0, misjudge: 0 }, fails = [];
-  for (let s = 0; s < 14; s++) for (const h0 of [0, 70, 150, 230, 285]) {
+  for (let s = 0; s < 14; s++) for (const h0 of [0, 0.23, 0.5, 0.77, 0.95].map(f => Math.round(E.hopConfig().target * f))) {
     const r = E.hopAi(hopMini(5000 + s, h0), 'X', E.makeRng('p' + s + h0), perfect);
     if (r.move.end !== 'top') fails.push([s, h0, r.move.end, r.move.h]);
   }

@@ -1,8 +1,14 @@
 // Bowling: the rules (pure: no page, no clock; the server runs the same code).
+import { cfgKit } from '../../core/config.js';
 import { physLast, physRandom, physRun, physShot } from '../shared/physics.js';
+import { BOWL_DEFAULTS } from './meta.js';
 export { physicsMoveFlash as moveFlash } from '../shared/physics.js';
 
 export const BOWLG = { goal: 25, rack: 10, aiErr: [0.025, 0.04], hold: 800 };
+// The two taps' speeds (config/bowling, from the admin's dashboard): the arrow's sweep and the power meter's rise, in ms.
+export const BOWL_LIMITS = { aimMs: [300, 3000, 10], meterMs: [300, 3000, 10] };
+export const BOWL_KIT = cfgKit(BOWL_DEFAULTS, BOWL_LIMITS);
+export const setBowlConfig = BOWL_KIT.set, bowlConfig = BOWL_KIT.get;
 export function create(type, rng) {
   return { type, pins: { X: 0, O: 0 }, rolls: { X: 0, O: 0 }, last: null };
 }

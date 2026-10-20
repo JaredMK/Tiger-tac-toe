@@ -7,7 +7,8 @@ import { N, NAV_SCREENS, esc, menuOpen, state } from './app.js';
 import { toon } from './art.js';
 import { scTurnText } from './chaos.js';
 import { clockText } from './clock.js';
-import { fx, fxAt, fxAttr, startFx } from './fx.js';
+import { animMs, fx, fxAt, fxAttr, startFx } from './fx.js';
+import { flashLine } from './mini.js';
 
 // The game screen's top: a slim row with Menu and the clock in its own fixed box, then the turn bar:
 // X and O with their names on each side (the player on the move bouncing gently), and whose turn it is.
@@ -27,10 +28,18 @@ export function renderHeader() {
   const tray = reactOn() && rx.tray && !menuOpen ? `<div class="rtray" role="group" aria-label="Send a reaction">${REACTS.map(([em, nm], i) => `<button data-act="react-send" data-i="${i}" aria-label="${nm}"${cool ? ' disabled' : ''}>${em}</button>`).join('')}</div>` : '';
   return `<header class="hdr t-${t}${clock ? ' has-clock' : ''}">
     <div class="hdrrow"><button class="menubtn" data-act="pause" aria-label="Menu">Menu</button><div class="tbar">${side('X')}${side('O')}</div>${react}</div>
-    <div class="hdrrow2"><div class="turn" aria-live="polite">${drawn ? `<span class="who">Draw · ${state.winReason === 'both' ? 'both made a line' : 'no line left'}</span>` : won ? `<span class="g">${t}</span><span class="who">${N(t)} wins</span>` : sc ? scTurnText() : `<span class="g">${t}</span><span class="who">${N(t)}<i class="suf">'s turn</i></span>`}</div><span class="clockbox">${clock}</span></div>${tray}
+    <div class="hdrrow2"><div class="turn" aria-live="polite">${resultLine(drawn ? `<span class="who">Draw · ${state.winReason === 'both' ? 'both made a line' : 'no line left'}</span>` : won ? `<span class="g">${t}</span><span class="who">${N(t)} wins</span>` : sc ? scTurnText() : `<span class="g">${t}</span><span class="who">${N(t)}<i class="suf">'s turn</i></span>`)}</div><span class="clockbox">${clock}</span></div>${tray}
   </header>`;
 }
 
+// A move's result in words, in the turn line (the reserved place on every game screen: nothing laid over the
+// game): from the end of the move's animation, while the result is up; the turn text before it.
+function resultLine(turn) {
+  const f = state.flash, line = f && state.screen === 'mini' ? flashLine(f) : '';
+  if (!line) return turn;
+  const ms = animMs(f);
+  return `<span class="tswap"${fxAttr(fxAt('move', f))}><span class="tu" style="--u:${ms}ms">${turn}</span><span class="tf flres" style="--f:${ms}ms" role="status">${line}</span></span>`;
+}
 // The connection banner during online play: nothing while all is well. It pops in when what it says
 // changes (noteNet, called where the connection, the other player's presence or a note change).
 function netInfo() {

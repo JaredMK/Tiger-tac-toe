@@ -93,10 +93,9 @@ export function runTable(mini, a, o) {
   const hint = '';   // (no hint over the run: how to play is in the ? explainer)
   const count = live && live.phase === 'count' ? `<div class="rcount" aria-live="assertive">${live.count > 0 ? live.count : 'GO!'}</div>` : '';
   const hud = `<div class="rhud" data-run="hud">${fmtM(live ? live.sim.d : r ? (playing ? r.from : r.to) : mini.dist[who])} m</div>`;
-  const tall = type === 'lane';                     // Lane Rush: the result over the top of the road, so the scene takes its line too
-  const scene = `<div class="rscene ${type}" data-run="scene" aria-label="${TX.scene}"><canvas data-run="cv"></canvas>${hud}${count}${hint}${tall ? res : ''}</div>`;
+  const scene = `<div class="rscene ${type}" data-run="scene" aria-label="${TX.scene}"><canvas data-run="cv"></canvas>${hud}${count}${hint}</div>`;
   const btn = o.view ? '' : `<div class="cbtns one${mine && !live ? '' : ' hold'}"><button class="big ${turn}" data-act="run-go"${mine && !live ? '' : ' disabled tabindex="-1" aria-hidden="true"'}>${TX.go}${mini.dist[turn] > 0 ? ` on from ${fmtM(mini.dist[turn])} m` : ''}</button></div>`;   // always there (hidden while it can't be used), so the course never moves
-  return `<div class="g-arc"><div class="runner"><div class="rprogs">${bar('X')}${bar('O')}</div>${scene}${tall ? '' : res}</div>${btn}</div>`;
+  return `<div class="g-arc"><div class="runner"><div class="rprogs">${bar('X')}${bar('O')}</div>${scene}${res}</div>${btn}</div>`;
 }
 // Run: the count starts; the run itself starts when it ends.
 export function runGo() {

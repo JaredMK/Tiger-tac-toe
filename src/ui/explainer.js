@@ -1,7 +1,7 @@
 // The "?" explainer pop-up and How to Play (each game's meta.js: explainer).
 import { PHYS_TYPES } from '../games/shared/physics.js';
 import { GAMES } from '../games/index.js';
-import { testBadge, visibleTypes } from '../net/releases.js';
+import { chaosBadge, chaosVisible, testBadge, visibleTypes } from '../net/releases.js';
 import { app, state } from './app.js';
 import { CHEV, ICONS } from './art.js';
 import { fxAt, fxAttr, startFx } from './fx.js';
@@ -16,7 +16,7 @@ const RULES_CORE = [
 ];
 export const EXPLAIN = Object.fromEntries(Object.keys(GAMES).map(t => [t, GAMES[t].meta.explainer]));
 // Super Chaos: the mode's own explainer (its switch on the setup screen), and a game's Super Chaos rules where they differ.
-const SC_EXPLAIN = { name: 'Super Chaos', play: "Each round, you and the computer each pick any open square and make one move there, at the same time. You see the computer's move when the round ends.", win: "Get three in a row. Win the same square in the same round and it resets; both make three in a row in the same round and it's a draw." };
+const SC_EXPLAIN = { name: 'Super Chaos', play: "Both players move at the same time. Each round, pick any square and make one move. When you're both done (or time runs out), you'll see what your opponent did. Win the same square in the same round and it resets.", win: 'Three in a row wins.' };   // (against the computer and online alike)
 const SC_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linejoin="round"><path d="M13.5 2 5 13.5h6L9.5 22 19 9.5h-6z"/></svg>';
 const scNow = () => !!(state.sc && ['board', 'mini'].includes(state.screen)) || (state.screen === 'setup' && chaosSetup());
 export function explainOf(t) {
@@ -56,6 +56,8 @@ export function renderHowTo() {
       <div class="ttl"><b>How to Play</b></div></div>
     <div class="setup-box" data-keep-scroll="howto">
       <div class="rulecard">${RULES_CORE.map(t => `<p>${t}</p>`).join('')}</div>
+      ${chaosVisible() ? `<div class="games-h"><span>Modes</span><small>Tap for its rules</small></div>
+      <div class="games howlist"><button class="chk how" data-act="explain" data-t="superchaos" aria-label="How to play Super Chaos">${SC_ICON}<span>Super Chaos</span>${chaosBadge()}<i class="qbtn sm" aria-hidden="true">?</i></button></div>` : ''}
       <div class="games-h"><span>Mini-games</span><small>Tap one for its rules</small></div>
       <div class="games howlist">${visibleTypes().map(t => `<button class="chk how" data-act="explain" data-t="${t}" aria-label="How to play ${EXPLAIN[t].name}">${ICONS[t]}<span>${EXPLAIN[t].name}</span>${testBadge(t)}<i class="qbtn sm" aria-hidden="true">?</i></button>`).join('')}</div>
       ${visibleTypes().includes('trivia') || visibleTypes().some(t => PHYS_TYPES.includes(t) || t === 'pinball') ? `<div class="games-h"><span>Credits</span></div><div class="rulecard credits">${visibleTypes().includes('trivia') ? '<p>Trivia questions from the <a href="https://opentdb.com" target="_blank" rel="noopener noreferrer">Open Trivia Database</a>, opentdb.com, <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a>.</p>' : ''}${visibleTypes().some(t => PHYS_TYPES.includes(t) || t === 'pinball') ? '<p>Mini Golf, Pool, Bowling and Pinball run on <a href="https://brm.io/matter-js" target="_blank" rel="noopener noreferrer">Matter.js</a> (MIT licence).</p>' : ''}</div>` : ''}

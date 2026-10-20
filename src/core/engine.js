@@ -18,7 +18,8 @@ export { normTimer, TIMER_OPTIONS, newTimer, PLAY, playMs, replayMs, armClock } 
 export { REP, repNorm, repMove, repOf } from './replay.js';
 export { clamp01, r2, r3, other } from './util.js';
 export { BJ, BJT, bjValue, bjTotal, bjNatural, bjDealerPlay, bjOutcome, bjStrategy, bjPlan, bjMs } from '../games/bj/rules.js';
-export { BOWLG } from '../games/bowling/rules.js';
+export { BOWL_DEFAULTS } from '../games/bowling/meta.js';
+export { BOWLG, BOWL_LIMITS, BOWL_KIT, setBowlConfig, bowlConfig } from '../games/bowling/rules.js';
 export { BS, bsN, bsCandidates, bsPlacements, bsShip } from '../games/bs/rules.js';
 export { BULL_DEFAULTS } from '../games/bullseye/meta.js';
 export { BULLS, BULLT, bullsLeg, bullsAim, BULL_LIMITS, BULL_CFG, bullsNorm, setBullsConfig, bullsConfig, bullsSpot, bullsScore, bullsRates, bullsPeriod } from '../games/bullseye/rules.js';

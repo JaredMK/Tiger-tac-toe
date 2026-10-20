@@ -1,6 +1,7 @@
 // Bowling: the screen, the miniature, the move's words and sounds, and the inputs.
 import { r3 } from '../../core/util.js';
 import { PHYSICS, physShot, physicsReady } from '../shared/physics.js';
+import { bowlConfig } from './rules.js';
 import { SND, ownPress } from '../../audio/sound.js';
 import { attemptMove } from '../../net/moves.js';
 import { blocked } from '../../net/room.js';
@@ -17,13 +18,13 @@ export { physicsSounds as sounds } from '../../ui/physics.js';
 // sweeps are drawn on the canvas from the moment their step began, back and forth at a steady speed; a tap
 // takes what the last frame showed. The arrow covers the lane to the gutters (beyond about 0.1 either way
 // the ball misses the pins); the meter runs from nothing to full (below about 0.35 the ball stops short).
-const BOWL_AIM = { max: 0.2, per: 1100, perP: 900 };         // the arrow: ±0.2 rad, one side to the other in 1.1 s; the meter: empty to full in 0.9 s
+const BOWL_AIM = { max: 0.2 };                                // the arrow: ±0.2 rad; its sweep and the meter's rise from config/bowling (bowlConfig: aimMs, meterMs)
 export let bowlDraft = null;                                          // { sq, p, step, t0, aim, power, shown: { aim, power, at } }
 const bowlWave = (t, per) => { const k = Math.floor(t / per), f = (t % per) / per; return k % 2 ? 1 - f : f; };
 export function bowlNow(dr, now) {
   const t = Math.max(0, now - dr.t0);
-  if (dr.step === 1) return { aim: r3((bowlWave(t, BOWL_AIM.per) * 2 - 1) * BOWL_AIM.max), power: null };
-  if (dr.step === 2) return { aim: dr.aim, power: r3(bowlWave(t, BOWL_AIM.perP)) };
+  if (dr.step === 1) return { aim: r3((bowlWave(t, bowlConfig().aimMs) * 2 - 1) * BOWL_AIM.max), power: null };
+  if (dr.step === 2) return { aim: dr.aim, power: r3(bowlWave(t, bowlConfig().meterMs)) };
   return { aim: dr.aim, power: dr.power };
 }
 // At each render of the lane: the draft kept, begun (the player to move, a fresh arrow), or dropped.

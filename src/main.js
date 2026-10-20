@@ -7,6 +7,7 @@ import { setFlashConfig } from './games/flash/rules.js';
 import { setHeadConfig } from './games/headcount/rules.js';
 import { fetchOddConfig } from './games/oddone/view.js';
 import { setPinConfig } from './games/pinball/rules.js';
+import { setBowlConfig } from './games/bowling/rules.js';
 import { fetchPigConfig } from './games/pig/view.js';
 import { fetchRoadsConfig } from './games/roads/view.js';
 import { fetchPlinkoConfig } from './games/plinko/view.js';
@@ -64,6 +65,7 @@ function boot() {
   fetchOddConfig();                                           // Odd One Out's shade differences, likewise
   fetchAttConfig('headcount', setHeadConfig); fetchAttConfig('flash', setFlashConfig); fetchAttConfig('snapshot', setSnapConfig);   // the attention games' difficulty, likewise
   fetchAttConfig('skyhop', setHopConfig); fetchAttConfig('scoop', setScoopConfig); fetchAttConfig('pinball', setPinConfig);   // and the finger games'
+  fetchAttConfig('bowling', setBowlConfig);                       // Bowling's two taps' speeds
   loadTrivia();                                               // the Trivia questions, for the match to come
   loadPhysics();                                              // Matter.js and physics.js, for Mini Golf, Pool and Bowling
   takeTag();                                                  // a playtester's link (?t=sam): before the address is tidied below

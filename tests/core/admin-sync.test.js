@@ -41,6 +41,9 @@ test('admin page: Risk Wheels\' and Plinko\'s default tuning are the engine\'s',
   assert.deepEqual(literal('HEAD_DEFAULTS'), E.HEAD_DEFAULTS); assert.deepEqual(literal('FLASH_DEFAULTS'), E.FLASH_DEFAULTS); assert.deepEqual(literal('SNAP_DEFAULTS'), E.SNAP_DEFAULTS);
 });
 test('admin page: the finger games\' tuning cards are the engine\'s settings and ranges', () => {
+  assert.deepEqual(literal('BOWL_DEFAULTS'), E.BOWL_DEFAULTS);
+  { const at = admin.indexOf('const BOWL_CARDS = ['), end = admin.indexOf('];', at); const cards = new Function('BOWL_DEFAULTS', `return ${admin.slice(at + 'const BOWL_CARDS = '.length, end + 1)};`)(E.BOWL_DEFAULTS);
+    assert.deepEqual(cards[0].fields.map(([k, , lo, hi, step]) => [k, [lo, hi, step]]), Object.entries(E.BOWL_LIMITS), 'Bowling: a field for each setting, the engine\'s ranges'); }
   assert.deepEqual(literal('HOP_DEFAULTS'), E.HOP_DEFAULTS); assert.deepEqual(literal('SCOOP_DEFAULTS'), E.SCOOP_DEFAULTS); assert.deepEqual(literal('PINB_DEFAULTS'), E.PINB_DEFAULTS);
   const at = admin.indexOf('const FING_CARDS = ['), end = admin.indexOf('];\nfunction fingCard');
   assert.ok(at > 0 && end > at, 'admin.html has FING_CARDS');
