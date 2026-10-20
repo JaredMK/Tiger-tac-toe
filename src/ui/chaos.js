@@ -4,7 +4,7 @@
 // board, a sequence timed from one start (scPlan): a Mini Golf square plays both shots first; then the other
 // player's square lights up; then a pop-up over the board replays their move at 2x (its inputs, then each step
 // of the move with its usual animation: ui/replay.js); then what only both moves together settle plays in its
-// square (a Bump knock, the Roulette spin: resolve); then each square's result on the board, one at a time: its
+// square (a Bump knock, a Clash Grid collision: resolve); then each square's result on the board, one at a time: its
 // X or O stamping in, or (both won it) both marks clashing and the square turning over to a new game; then
 // the next round, or the match's end. In a friend room both phones play the sequence from the record's shared
 // start (server time), so they see the same part at the same moment; a phone coming back joins where it is.

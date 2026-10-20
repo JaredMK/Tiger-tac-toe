@@ -26,8 +26,8 @@ export function sniffStep(cell, dir) {
 export const sniffDirs = cell => Object.keys(SNIFF_DIRS).filter(d => sniffStep(cell, d) != null);
 // Where the treasure may still be, from what is remembered (the last few steps): never where the dog has
 // stood in them, nor where it stands, and every one of those steps' hotter, colder or same true of it.
-export function sniffCands(pm) {
-  const been = new Set([pm.dog].concat(...(pm.trail || []).map(s => [s.f, s.t])));
+export function sniffCands(pm) {   // (pm.not: cells it cannot be in besides: Super Chaos's middle and both dogs' paths)
+  const been = new Set([pm.dog].concat(...(pm.trail || []).map(s => [s.f, s.t]), pm.not || []));
   const out = [];
   for (let c = 0; c < SNIFF.n * SNIFF.n; c++) {
     if (been.has(c)) continue;
@@ -55,6 +55,7 @@ export function create(type, rng) {   // the treasure (hidden online), and the d
   return { type, treasure, dog, start: dog, trail: [], last: null };
 }
 export function apply(mini, p, m, rng, idx) {   // the dog one step: hotter, colder or the same; onto the treasure: found
+  if (mini.dogs) return scWalk(mini, p, m);
   const to = typeof m === 'string' ? sniffStep(mini.dog, m) : null;
   if (to == null) return { ok: false, reason: 'bad' };
   if (!Number.isInteger(mini.treasure)) return { ok: false, reason: 'secret' };
@@ -65,10 +66,11 @@ export function apply(mini, p, m, rng, idx) {   // the dog one step: hotter, col
   return { ok: true, outcome: 'continue', note: res };
 }
 export function publicView(mini) {
+  if (mini.dogs) return { type: 'sniff', dogs: Object.assign({}, mini.dogs), paths: { X: mini.paths.X.slice(), O: mini.paths.O.slice() }, trails: { X: mini.trails.X.map(t => Object.assign({}, t)), O: mini.trails.O.map(t => Object.assign({}, t)) } };
   return { type: 'sniff', dog: mini.dog, start: mini.start, trail: (mini.trail || []).slice(-SNIFF.memory).map(t => Object.assign({}, t)) };   // never the treasure; the last few steps
 }
 export function randomMove(mini, p, rng, from, empties) {
-  return from(sniffDirs(mini.dog));
+  return from(sniffDirs(mini.dogs ? mini.dogs[p] : mini.dog));
 }
 export function moveFlash(m, p, range, bjFrom, mini, flash) {
   const l = mini.last; flash.sniff = { f: l.f, t: l.t, hot: l.hot, res: l.res || (l.hot ? 'hot' : 'cold'), found: l.found }; return;
@@ -81,4 +83,27 @@ export function hide(m, k, st) {
 }
 export function flashMs(f, winLen, won) {
   return SNIFF.step + SNIFF.hold + (won ? 900 : 0);
+}
+
+// Super Chaos: one field and one treasure (never in the middle cell), but a dog each, both starting in the
+// middle. A move walks your own dog one step: hotter, colder or the same by your own dog's distance. Both dogs
+// and their paths stay on the board, each in its owner's colour. The first dog onto the treasure wins the
+// square; both in the same round reset it. Each player's dog, path and last few steps (trails: what the
+// computer remembers) are their own (core/chaos.js merges them player by player).
+export const SNIFF_MID = Math.floor(SNIFF.n * SNIFF.n / 2);
+export function scCreate(type, rng) {
+  let treasure = randInt(needRng(rng), SNIFF.n * SNIFF.n - 1);
+  if (treasure >= SNIFF_MID) treasure += 1;
+  return { type, treasure, dogs: { X: SNIFF_MID, O: SNIFF_MID }, paths: { X: [SNIFF_MID], O: [SNIFF_MID] }, trails: { X: [], O: [] }, last: null };
+}
+function scWalk(mini, p, m) {
+  const from = mini.dogs[p], to = typeof m === 'string' ? sniffStep(from, m) : null;
+  if (to == null) return { ok: false, reason: 'bad' };
+  if (!Number.isInteger(mini.treasure)) return { ok: false, reason: 'secret' };
+  const res = sniffRes(from, to, mini.treasure), hot = res === 'hot', found = to === mini.treasure;
+  mini.dogs[p] = to; mini.paths[p] = mini.paths[p].concat(to);
+  mini.trails[p] = mini.trails[p].concat({ f: from, t: to, by: p, r: res, hot: hot ? 1 : 0 }).slice(-SNIFF.memory);
+  mini.last = { by: p, f: from, t: to, hot, res, found };
+  if (found) return { ok: true, outcome: 'win', note: 'found' };
+  return { ok: true, outcome: 'continue', note: res };
 }

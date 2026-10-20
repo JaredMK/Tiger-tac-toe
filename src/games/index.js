@@ -55,6 +55,7 @@ import * as snapshotR from './snapshot/rules.js'; import * as snapshotA from './
 import * as skyhopR from './skyhop/rules.js'; import * as skyhopA from './skyhop/ai.js'; import * as skyhopM from './skyhop/meta.js'; add('skyhop', skyhopR, skyhopA, skyhopM);
 import * as scoopR from './scoop/rules.js'; import * as scoopA from './scoop/ai.js'; import * as scoopM from './scoop/meta.js'; add('scoop', scoopR, scoopA, scoopM);
 import * as pinballR from './pinball/rules.js'; import * as pinballA from './pinball/ai.js'; import * as pinballM from './pinball/meta.js'; add('pinball', pinballR, pinballA, pinballM);
+import * as clashR from './clash/rules.js'; import * as clashA from './clash/ai.js'; import * as clashM from './clash/meta.js'; add('clash', clashR, clashA, clashM);
 import * as diceR from './dice/rules.js'; import * as diceA from './dice/ai.js'; import * as diceM from './dice/meta.js'; add('dice', diceR, diceA, diceM);
 import * as hexapawnR from './hexapawn/rules.js'; import * as hexapawnA from './hexapawn/ai.js'; import * as hexapawnM from './hexapawn/meta.js'; add('hexapawn', hexapawnR, hexapawnA, hexapawnM);
 /* ===================== Game logic (pure, no DOM) =====================
@@ -71,5 +72,7 @@ export const TEST_TYPES = TYPES.filter(t => GAMES[t].meta.release === 'admin');
 // No longer dealt, still played to the end in older matches and shown in their history: the Dice race
 // (Snakes and Ladders replaced it) and Hexapawn (taken out: with nobody obliged to move in a square,
 // the best play was often not to move at all).
+// Super Chaos only (meta.scOnly): a game made for simultaneous rounds (Clash Grid's collisions), never dealt in a normal match.
+export const SC_ONLY = TYPES.filter(t => GAMES[t].meta.scOnly);
 export const OLD_TYPES = Object.keys(GAMES).filter(t => GAMES[t].meta.retired);
 export const INFO = Object.fromEntries(Object.keys(GAMES).map(t => [t, GAMES[t].meta.info]));

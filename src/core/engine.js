@@ -6,7 +6,7 @@
 
 export { cpuEcho, STYLE0, AI, needsOf, winChance, localBest, squareValue, moveGain, cpuMove } from './ai.js';
 export { lineOpen, majorityResult, LINES, timeoutMove, mainResult, playMove, endFlash, leaveSquare } from './board.js';
-export { SC, scTypes, isChaos, scHuman, scSquareMini, startChaos, scBegin, scCpu, chaosPlay, chaosTimeout, chaosResolve, chaosNext, scPool, scMainResult, SC_ONLINE, startChaosOnline, scMoveOf, chaosResolveOnline, scTimeoutMove } from './chaos.js';
+export { SC, scTypes, isChaos, scHuman, scSquareMini, startChaos, scBegin, scCpu, chaosPlay, chaosTimeout, chaosResolve, chaosNext, scPool, scMainResult, SC_ONLINE, startChaosOnline, scMoveOf, chaosResolveOnline, scTimeoutMove, scRoundStart } from './chaos.js';
 export { cfgKit, lohi } from './config.js';
 export { isReleased, releasedTypes, allowedTypes, restrictGames } from './games.js';
 export { dealable, normLocal, seatLocal, NAME_MAX, pickType, newSquare, CPU_NAME, defaultSetup, cpuSide, normSetup, syncNames, enabledGames, playerName, newState, startMatch, newMatch } from './match.js';
@@ -29,6 +29,7 @@ export { C4, c4Playable, c4Drop, c4Eval, C4_ORDER, c4Search, C4_DEPTH, c4Moves }
 export { CANDY, candyTrack, candyExpected } from '../games/candy/rules.js';
 export { CHOP, chopPilot } from '../games/chopper/rules.js';
 export { coinPick, markCoins, coinMarksFor, COINS, COIN_NEEDS } from '../games/coins/rules.js';
+export { CLASH, CLASH_LINES, clashLine, clashOpen } from '../games/clash/rules.js';
 export { CRAPS, CRAPS_MAKE, crapsRound, crapsTimes } from '../games/craps/rules.js';
 export { DASH_OBS, DASH, dashPilot } from '../games/dash/rules.js';
 export { DICE_GOAL, diceSlot } from '../games/dice/rules.js';
@@ -47,7 +48,7 @@ export { HEX_N, hexNeighbors, hexPath, hexDist, hexMoves } from '../games/hex/ru
 export { HP, hpMoves, hpGoalRow, HP_MEMO, hpSolve, hpMovesValued, hpNeeds } from '../games/hexapawn/rules.js';
 export { HILO, hiloTop, hiloLimit, hiloUsed, hiloLeft } from '../games/hilo/rules.js';
 export { huntSize, huntBand, huntClue, HUNT, huntDist, huntCandidates } from '../games/hunt/rules.js';
-export { TEST_TYPES, TYPES, OLD_TYPES, INFO } from '../games/index.js';
+export { TEST_TYPES, TYPES, OLD_TYPES, INFO, SC_ONLY } from '../games/index.js';
 export { LANE_TIGHT, LANE_NEAR, LANE, laneRow, laneNeed, lanePilot } from '../games/lane/rules.js';
 export { MM, mmFeedback, mmValid, MM_ALL, mmAll, mmCode, mmCandidates, mmBestGuess } from '../games/mastermind/rules.js';
 export { MEMORY, memoryDeck, memoryPair } from '../games/memory/rules.js';
@@ -81,7 +82,7 @@ export { HOP_LIMITS, HOP_KIT, setHopConfig, hopConfig, hopPeak, hopCourse, hopPx
 export { SNL, snlRow, snlBoard, snlValid, snlExpected } from '../games/snakes/rules.js';
 export { SNAP_DEFAULTS } from '../games/snapshot/meta.js';
 export { SNAP_LIMITS, SNAP_KIT, setSnapConfig, snapConfig, snapTrivial, snapRound } from '../games/snapshot/rules.js';
-export { SNIFF, SNIFF_DIRS, sniffD2, sniffDist, sniffSteps, sniffRes, sniffStep, sniffDirs, sniffCands, sniffPick } from '../games/sniff/rules.js';
+export { SNIFF, SNIFF_DIRS, sniffD2, sniffDist, sniffSteps, sniffRes, sniffStep, sniffDirs, sniffCands, sniffPick, SNIFF_MID, scCreate as sniffScCreate } from '../games/sniff/rules.js';
 export { TAKE, takeNear, takeCount, takeApply, takeSearch, TAKEOVER_MS } from '../games/takeover/rules.js';
 export { TRIVIA, setTriviaBank, triviaReady, triviaDeal, triviaReveal, triviaUsed } from '../games/trivia/rules.js';
 export { tttOpen, tttMinimax } from '../games/ttt/rules.js';

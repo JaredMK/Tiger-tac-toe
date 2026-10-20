@@ -96,3 +96,22 @@ test('Super Chaos online: the deadline settles the round with the timeout rule\'
   const r3 = E.applyChaosDeadline(rec, dl + E.SC_ONLINE.graceMs, E.makeRng('d2'));
   assert.ok(r3.ok && r3.rec.state.sc.recap.mv.X.auto && r3.rec.state.sc.recap.mv.O.auto);
 });
+
+test('Super Chaos online Roulette: the record draws the round\'s spin (kept off the public state); both phones\' bets land on it; a new one each round', () => {
+  const rl = { type: 'rl', hits: { X: 0, O: 0 }, spins: [], last: null };
+  const full0 = E.fullState(room([rl]));
+  E.scRoundStart(full0.squares, E.makeRng('d'));
+  const rec = E.matchRecord(Object.assign(full0, { sc: clone(full0.sc) }));
+  const spin = E.fullState(rec).squares[0].mini.spin;
+  assert.ok(Number.isInteger(spin), 'drawn on the record');
+  assert.equal(rec.state.squares[0].mini.spin, undefined, 'not in the public state');
+  const mx = play(rec, 'X', 0, ['g1']), mo = play(rec, 'O', 0, ['zero']);
+  assert.deepEqual([mx.mini.last.n, mo.mini.last.n], [spin, spin], 'one spin for both bets');
+  const r1 = E.applyChaosSubmit(rec, 'X', mx, E.makeRng('r'), T0 + 1000);
+  const r2 = E.applyChaosSubmit(r1.rec, 'O', mo, E.makeRng('r'), T0 + 2000);
+  assert.ok(r2.resolved);
+  const after = E.fullState(r2.rec).squares[0];
+  assert.deepEqual([after.owner, after.mini.type, spin], [null, 'rl', 11], 'both missed (11: neither 1–8 nor green 0)');
+  assert.deepEqual(after.mini.spins, [{ n: 11, by: '', hit: false }], 'once in the history');
+  assert.ok(Number.isInteger(after.mini.spin), 'the next round\'s spin is drawn as the round settles');
+});

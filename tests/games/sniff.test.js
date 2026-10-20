@@ -89,3 +89,42 @@ test('sniff: the computer walks toward cells still consistent with every hotter 
   assert.ok(steps / games < 9, `about ${(steps / games).toFixed(1)} moves to find it`);
   assert.ok(inCands / moves > 0.4, `steps onto a possible cell ${(100 * inCands / moves).toFixed(0)}% of the time`);
 });
+
+test('sniff in Super Chaos: one treasure, never in the middle; a dog each from the middle; hotter/colder by your own dog; both paths kept', () => {
+  const rng = E.makeRng('sn-sc');
+  const seen = new Set();
+  for (let k = 0; k < 400; k++) { const m = E.sniffScCreate('sniff', rng); assert.notEqual(m.treasure, 12); seen.add(m.treasure); assert.deepEqual(m.dogs, { X: 12, O: 12 }); }
+  assert.equal(seen.size, 24, 'any cell but the middle');
+  const m = E.sniffScCreate('sniff', rng); m.treasure = 0;
+  let r = E.applyMove(m, 'X', 'NW', rng);
+  assert.deepEqual([r.outcome, m.last.res, m.dogs.X, m.dogs.O], ['continue', 'hot', 6, 12], 'X\'s dog only');
+  r = E.applyMove(m, 'O', 'SE', rng);
+  assert.deepEqual([m.last.res, m.dogs.O], ['cold', 18], 'by O\'s own dog\'s distance');
+  assert.deepEqual(m.paths, { X: [12, 6], O: [12, 18] });
+  assert.ok(E.sniffDirs(6).includes(E.randomLegalMove(m, 'X', rng)), 'a timeout walks the player\'s own dog');
+  r = E.applyMove(m, 'X', 'NW', rng);
+  assert.equal(r.outcome, 'win', 'the first dog onto the treasure');
+  const pm = E.publicMini(m);
+  assert.equal(pm.treasure, undefined, 'the treasure never reaches the computer');
+  assert.deepEqual(pm.dogs, { X: 0, O: 18 });
+  const rec = E.matchRecord({ squares: [{ owner: null, mini: E.sniffScCreate('sniff', rng) }] });
+  assert.equal(rec.state.squares[0].mini.treasure, undefined, 'kept off the record online');
+});
+
+test('sniff in Super Chaos: the computer walks its own dog, never back onto a cell either dog stood on, and finds the treasure', () => {
+  const rng = E.makeRng('sn-sc-ai');
+  let total = 0;
+  for (let g = 0; g < 200; g++) {
+    const m = E.sniffScCreate('sniff', rng);
+    let n = 0, r;
+    while (!r || r.outcome !== 'win') {
+      const p = n % 2 ? 'O' : 'X', pm = E.publicMini(m), b = E.localBest(pm, p, rng);
+      assert.ok(E.sniffDirs(m.dogs[p]).includes(b.move));
+      assert.ok(E.needsOf(pm, p) >= 1);
+      r = E.applyMove(m, p, b.move, rng);
+      if (++n > 200) assert.fail('never found');
+    }
+    total += n / 2;
+  }
+  assert.ok(total / 200 >= 2 && total / 200 <= 8, 'a few moves each: ' + (total / 200));
+});

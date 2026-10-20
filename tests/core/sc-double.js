@@ -74,7 +74,7 @@ function findDouble(type, opts) {
       for (const x of near(xs)) for (const o of near(os)) for (let q = 0; q < 4; q++) {   // (q: the round's end, where it decides something: a Roulette spin)
         if (step) break;
         const c = clone(st), t = { o: o.seed, x: x.seed, r: `ar${r}:${q}` }, { rc } = playRound(c, t, t.r);
-        if (kept(c, rc) && need(c) <= need(st) && JSON.stringify(E.publicMini(c.squares[SQ].mini)) !== JSON.stringify(E.publicMini(st.squares[SQ].mini))) step = t;
+        if (kept(c, rc) && need(c) <= need(st) && JSON.stringify(c.squares[SQ].mini) !== JSON.stringify(st.squares[SQ].mini)) step = t;   // (anything played: a Roulette round's spin is the same whatever the bets, a miss included)
       }
       if (!step) break;                                          // the square goes whatever they do: a fresh one
       playRound(st, step, step.r);

@@ -27,9 +27,11 @@ export function create(type, rng) {
   return { type, hits: { X: 0, O: 0 }, spins: [], last: null };
 }
 export function apply(mini, p, m, rng, idx) {
+  return spinBet(mini, p, m, RL.wheel[randInt(needRng(rng), RL.wheel.length)]);
+}
+function spinBet(mini, p, m, n) {
   const bet = rlBet(m);
   if (!bet) return { ok: false, reason: 'bad' };
-  const n = RL.wheel[randInt(needRng(rng), RL.wheel.length)];
   const hit = rlCovers(bet, n);
   if (hit && bet !== 'zero') mini.hits[p] += 1;
   mini.last = { by: p, bet, n, hit };
@@ -54,12 +56,24 @@ export function flashMs(f, winLen, won) {
   return RLT.spin + RLT.settle + RLT.hold + (won ? 600 : 0);
 }
 export const RLT = { spin: 2700, settle: 450, hold: 1450, bet: 900 };   // (bet: Super Chaos's bet put down, no spin; hold: until the number's landing pulse is over)
-// Super Chaos: each player's bet spins their own wheel the moment it is placed (the result plays out on their
-// own screen at once, as in a normal turn). At the round's end both spins join the square's history (X's first)
+// Super Chaos: the square's spin is drawn as each round begins (scRound), so a bet spins the wheel at once on
+// the mover's own screen, and two bets placed there in the same round land on the same number: one spin
+// settles both. At the round's end it joins the square's history once (in the colour of each player it hit),
 // and each player's hits count as usual; both taking the square in the same round resets it, as ever.
+export function scRound(mini, rng) {
+  mini.spin = RL.wheel[randInt(needRng(rng), RL.wheel.length)];
+}
+export function scApply(mini, p, m, rng) {
+  return Number.isInteger(mini.spin) ? spinBet(mini, p, m, mini.spin) : apply(mini, p, m, rng);
+}
+export function secret(mini) {                                   // the round's spin stays off the board until a bet lands on it
+  return Number.isInteger(mini.spin) ? { spin: mini.spin } : null;
+}
+export function hide(m) { delete m.spin; }
 export function scMerge(m, c) {
-  const spins = (c.base.spins || []).slice();
-  for (const p of c.played) { const f = c.forks[p], l = f.last; if (l && l.by === p && l.n != null) spins.push({ n: l.n, by: p, hit: !!l.hit }); }
+  const spins = (c.base.spins || []).slice(), mine = c.played.map(p => c.forks[p].last).filter((l, k) => l && l.by === c.played[k] && l.n != null);
+  if (mine.length === 2 && mine[0].n === mine[1].n) { const hit = mine.filter(l => l.hit).map(l => l.by); spins.push({ n: mine[0].n, by: hit.join(''), hit: hit.length > 0 }); }   // (the one spin both bets shared)
+  else for (const l of mine) spins.push({ n: l.n, by: l.by, hit: !!l.hit });
   m.spins = spins.slice(-6);
   return {};
 }

@@ -1746,6 +1746,26 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .tkc.turn.X.fromO { --c0: var(--o); } .tkc.turn.O.fromX { --c0: var(--x); }
 .tkc.turn.X { --c1: var(--x); } .tkc.turn.O { --c1: var(--o); }
 @keyframes tkturn { 0% { transform: rotateY(0); background: var(--c0); color: transparent; } 49% { transform: rotateY(90deg); background: var(--c0); color: transparent; } 51% { transform: rotateY(90deg); background: var(--c1); } 100% { transform: none; background: var(--c1); } }
+/* Clash Grid: the 5x5 grid; a blocked cell grey and crossed; both marks slamming into one cell */
+.clashg { flex: 1; display: flex; flex-direction: column; gap: 10px; justify-content: center; min-height: 0; }
+.clgrid { display: grid; grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(5, 1fr); gap: 6px; width: min(100%, 340px, calc(100dvh - 330px)); aspect-ratio: 1; margin: 0 auto; }
+.clc { position: relative; overflow: hidden; min-width: 0; min-height: 0; border: 3px solid var(--ink); border-radius: 10px; background: var(--paper); padding: 0; display: grid; place-items: center; font-family: 'Luckiest Guy', sans-serif; font-size: 20px; box-shadow: 0 3px 0 var(--ink); color: var(--ink); }
+.clc:disabled { box-shadow: none; }
+.clc.X { background: var(--x); color: #fff; } .clc.O { background: var(--o); color: var(--ink); } .clc.B { background: var(--muted); }
+.clc b { font-weight: 400; padding-top: 3px; }
+.clc s { position: absolute; inset: 0; background: linear-gradient(45deg, transparent 45%, var(--ink) 45% 55%, transparent 55%), linear-gradient(-45deg, transparent 45%, var(--ink) 45% 55%, transparent 55%), var(--muted); }
+.clc.pop { animation: markpop .35s ease-out both; } .clc.pop.win { animation: markpop .35s ease-out both, clwin .5s var(--t, 0ms) ease-out both; }
+.clc.win { animation: clwin .5s var(--t, 0ms) ease-out both; }
+@keyframes clwin { 0% { transform: scale(1); } 50% { transform: scale(1.14); box-shadow: 0 0 0 4px var(--green); } 100% { transform: scale(1); box-shadow: 0 0 0 4px var(--green); } }
+.clc.clash .cx, .clc.clash .co { position: absolute; top: 0; bottom: 0; width: 50%; display: grid; place-items: center; font-style: normal; padding-top: 3px; }
+.clc.clash .cx { left: 0; background: var(--x); color: #fff; animation: clin-x .45s ease-in both; } .clc.clash .co { right: 0; background: var(--o); color: var(--ink); animation: clin-o .45s ease-in both; }
+.clc.clash { animation: clshake .3s .45s ease-in-out both; }
+@keyframes clin-x { from { transform: translateX(-110%); } to { transform: none; } }
+@keyframes clin-o { from { transform: translateX(110%); } to { transform: none; } }
+@keyframes clshake { 0%, 100% { transform: none; } 25% { transform: translateX(-4px) rotate(-3deg); } 75% { transform: translateX(4px) rotate(3deg); } }
+@media (prefers-reduced-motion: reduce) { .clc.clash, .clc.clash .cx, .clc.clash .co, .clc.win { animation: none; } }
+.tg.gcl { grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(5, 1fr); width: 62cqw; height: 62cqw; }
+.tg.gcl i { border-radius: 2px; background: var(--panel-2); } .tg.gcl i.X { background: var(--x); } .tg.gcl i.O { background: var(--o); } .tg.gcl i.B { background: var(--muted); }
 .tg.gtk { grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(5, 1fr); width: 62cqw; height: 62cqw; }
 .tg.gtk i { border-radius: 2px; background: var(--panel-2); } .tg.gtk i.X { background: var(--x); } .tg.gtk i.O { background: var(--o); }
 /* Flood: the 6x6 grid; the blob's cells and each player's in their colour */
@@ -1946,6 +1966,7 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .sdog .sear { fill: #8a5a35; stroke: var(--ink); stroke-width: .8; }
 .sdog .shead { fill: #c98f55; stroke: var(--ink); stroke-width: .9; }
 .sdog .smuz { fill: #f3e2c6; } .sdog .seye { fill: var(--ink); } .sdog .snose { fill: var(--ink); }
+.sdog .sown { fill: var(--paper); stroke-width: 2.4; } .sdog.X .sown { stroke: var(--x); } .sdog.O .sown { stroke: var(--o); }   /* Super Chaos: each dog ringed in its owner's colour */
 .sdog.walk .sdogin { animation: sdwalk var(--d, 420ms) ease-in-out both; }
 @keyframes sdwalk { from { transform: translate(var(--dx, 0px), var(--dy, 0px)); } to { transform: none; } }
 .smove { cursor: pointer; }
@@ -1960,7 +1981,10 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .tsniff rect { fill: #e3d5b2; }
 .tsniff line { stroke-width: 6; stroke-linecap: round; }
 .tsniff .tdog { fill: #c98f55; stroke: var(--ink); stroke-width: 3; }
-@media (prefers-reduced-motion: reduce) { .wbar i.grow { animation: none; } .sdog.walk .sdogin { animation: none; } }
+.tsniff .tdog.X { fill: var(--x); } .tsniff .tdog.O { fill: var(--o); }
+.tsniff .tpath { fill: none; stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; opacity: .8; } .tsniff .tpath.X { stroke: var(--x); } .tsniff .tpath.O { stroke: var(--o); }
+@media (prefers-reduced-motion: reduce) { .wbar i.grow { animation: none; } .sdog .sown { fill: var(--paper); stroke-width: 2.4; } .sdog.X .sown { stroke: var(--x); } .sdog.O .sown { stroke: var(--o); }   /* Super Chaos: each dog ringed in its owner's colour */
+.sdog.walk .sdogin { animation: none; } }
 /* Trivia: the question and its four answers */
 .trivia { flex: 1; display: flex; flex-direction: column; min-height: 0; gap: 8px; justify-content: center; }
 .tqcard { background: var(--paper); border: 3px solid var(--ink); border-radius: 16px 12px 15px 11px; box-shadow: 0 4px 0 var(--ink); padding: 10px 12px; }

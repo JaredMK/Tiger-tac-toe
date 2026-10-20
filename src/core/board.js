@@ -112,7 +112,7 @@ export function playMove(state, i, m, rng, opts) {
     flash.drawn = mini;                          // keep the full board for the result overlay
     flash.counts = res.counts || null;
     const dealt = (state.games || []).filter(t => TYPES.includes(t) && dealable(t));      // an older match's list may name a game no longer dealt
-    const pool = dealt.length ? dealt : TYPES.filter(dealable);
+    const pool = dealt.length ? dealt : TYPES.filter(t => dealable(t));
     state.sqlog.push(Object.assign({ t: mini.type, end: 'draw', w: null, X: sq.mv.X, O: sq.mv.O }, RUN_TYPES.includes(mini.type) ? runLog(mini) : {}));
     sq.mv = { X: 0, O: 0 };
     sq.mini = newMini(pickType(pool, rng), rng); // the square resets with a new random mini-game from this match's list

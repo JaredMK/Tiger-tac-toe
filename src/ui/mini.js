@@ -103,7 +103,7 @@ function renderFlash(f) {
   const open = `<div class="flash lite late" style="--late:${animMs(f)}ms"${fxAttr(at)} data-act="dismiss">`;
   return `${f.type === 'memory' && f.kind === 'move' ? open.replace(' data-act="dismiss"', '') : open}</div>`;   // (Memory: the two cards stay up for the full 2 seconds)
 }
-const LINE_TYPES = ['bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads', 'flap', 'chopper', 'patterns', 'wheels', 'sniff', 'headcount', 'flash', 'snapshot', 'skyhop', 'scoop', 'pinball'];
+const LINE_TYPES = ['bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads', 'flap', 'chopper', 'patterns', 'wheels', 'sniff', 'clash', 'headcount', 'flash', 'snapshot', 'skyhop', 'scoop', 'pinball'];
 // The result's words for the header line (HTML), or '' when the game's own screen says it all: a square won (its
 // winning moment), the games that show their result in their own reserved line, a Risky Rolls roll or bank.
 export function flashLine(f) {

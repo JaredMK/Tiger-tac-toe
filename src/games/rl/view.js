@@ -21,8 +21,8 @@ function rlWheel(n, anim, t0) {
 }
 const rlBetText = bet => (bet === 'zero' ? 'green 0' : RL.groups[bet] ? `${RL.groups[bet][0]}–${RL.groups[bet][1]}` : '8 numbers');
 function rlTable(mini, a, o) {
-  // Super Chaos: a move puts the bet down (pending: the wheel stays still), and at the round's end one spin
-  // settles both players' bets together (shared): both bets on the board in their colours, each one's result.
+  // (pending and shared: a bet put down and one spin settling both at the round's end, from Super Chaos matches
+  // saved before each round drew its spin up front; a bet now always spins at once, on the round's number.)
   const b = a && a.rl ? a.rl : null, l = mini.last, turn = o.turn, tEnd = RLT.spin + RLT.settle;
   const spin = b && !b.pending ? b : null, shared = spin ? !!spin.shared : !!(l && l.shared && !b);
   const pend = b ? (b.pending ? { by: a.by, bet: b.bet } : null) : l && l.pending ? { by: l.by, bet: l.bet } : null;

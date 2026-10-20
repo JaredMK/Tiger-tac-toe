@@ -4,7 +4,7 @@ import { restrictGames } from '../../core/games.js';
 import { CPU_NAME, NAME_MAX, cpuSide, dealable, enabledGames, normLocal } from '../../core/match.js';
 import { TIMER_OPTIONS } from '../../core/timer.js';
 import { other } from '../../core/util.js';
-import { GAMES, INFO } from '../../games/index.js';
+import { GAMES, INFO, SC_ONLY } from '../../games/index.js';
 import { connected } from '../../net/connect.js';
 import { noticeSeq } from '../../net/moves.js';
 import { chaosBadge, chaosVisible, testBadge, visibleTypes } from '../../net/releases.js';
@@ -18,7 +18,7 @@ import { fxAt, fxAttr } from '../fx.js';
 // Super Chaos (simultaneous rounds) is on for the next match: its switch on (a friend room: the room's, set by the
 // host), and the mode visible here (admin only until released). Its checklist holds only the Super Chaos games.
 export const chaosSetup = () => (isHost() ? !!state.online.chaos : !!state.setup.chaos) && chaosVisible();
-export const setupTypes = () => (chaosSetup() ? visibleTypes().filter(t => scTypes().includes(t)) : visibleTypes());
+export const setupTypes = () => (chaosSetup() ? visibleTypes().filter(t => scTypes().includes(t)) : visibleTypes().filter(t => !SC_ONLY.includes(t)));   // (a Super Chaos only game: in its checklist only)
 export function renderSetup() {
   const s = state.setup;
   const VT = setupTypes(), on = enabledGames(s).filter(t => VT.includes(t)).length;   // (an admin-only game does not exist here for anyone but the admin)

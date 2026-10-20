@@ -6,7 +6,7 @@ import { other } from './util.js';
 import { PHYSICS, PHYS_TYPES, physicsReady } from '../games/shared/physics.js';
 import { markCoins } from '../games/coins/rules.js';
 import { triviaDeal, triviaReady } from '../games/trivia/rules.js';
-import { TYPES } from '../games/index.js';
+import { SC_ONLY, TYPES } from '../games/index.js';
 
 export const NAME_MAX = 12;
 export function pickType(games, rng) { return games[randInt(rng, games.length)]; }
@@ -88,7 +88,7 @@ export function newState(rng) {
     online: null,             // { role: 'host' | 'guest', code, me, name, joined } while playing over the network
     timer: newTimer(0),       // the online turn clock: limit in seconds (0 = none), deadline, timeouts per player
     spot: null,               // { square, by, label }: the square the other player is about to play in, shown before the zoom
-    squares: Array.from({ length: 9 }, () => newSquare(TYPES, rng)),
+    squares: Array.from({ length: 9 }, () => newSquare(TYPES.filter(t => !SC_ONLY.includes(t)), rng)),
     zoom: null,               // index of the mini-game being viewed
     flash: null,              // the move just made: its result, while the animation and toast play
     done: null,               // the move just made, kept on show until the player heads back to the board (that is when the turn passes)
@@ -107,12 +107,12 @@ export function newState(rng) {
 }
 // Start a match from the setup screen: tidy the names, draw nine squares from the ticked games.
 // Returns false (and changes nothing) when no mini-game is ticked.
-// A game that can be dealt right now: Trivia only once its questions are in (trivia.json: the page
+// A game that can be dealt right now (sc: in a Super Chaos match; a Super Chaos only game never in another): Trivia only once its questions are in (trivia.json: the page
 // fetches it, the server has it as a file); without them a Trivia square could never be played.
-export const dealable = t => (t === 'trivia' ? triviaReady() : PHYS_TYPES.includes(t) || t === 'pinball' ? physicsReady() && !!PHYSICS.lib.PIN : true);
+export const dealable = (t, sc) => (!sc && SC_ONLY.includes(t) ? false : t === 'trivia' ? triviaReady() : PHYS_TYPES.includes(t) || t === 'pinball' ? physicsReady() && !!PHYSICS.lib.PIN : true);
 export function startMatch(state, rng, only) {   // only: the games this kind of match may deal (Super Chaos's)
   rng = needRng(rng);
-  const games = enabledGames(state.setup).filter(dealable).filter(t => !only || only.includes(t));
+  const games = enabledGames(state.setup).filter(t => dealable(t, !!only)).filter(t => !only || only.includes(t));
   if (!games.length) return false;
   syncNames(state.setup);
   for (const p of ['X', 'O']) {

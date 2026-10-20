@@ -233,7 +233,7 @@ export function moveSounds(f) {
   if (f.timeout) { add('buzz', 0); add('randomMove', 380); }
   const game = viewOf(f.type);
   if (game.sounds) game.sounds(f, add, won, mini, last);
-  const CASINO = ['bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads', 'flap', 'chopper', 'patterns', 'wheels', 'sniff', 'headcount', 'flash', 'snapshot', 'skyhop', 'scoop', 'pinball'];
+  const CASINO = ['bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads', 'flap', 'chopper', 'patterns', 'wheels', 'sniff', 'clash', 'headcount', 'flash', 'snapshot', 'skyhop', 'scoop', 'pinball'];
   if (won && CASINO.includes(f.type)) add('won', total - 600);   // the card games and the wheel: the chime once the result shows
   else if (won && f.type !== 'ttt' && f.type !== 'wordle' && f.type !== 'hangman') add('won', Math.round(total * .5));   // the game is won: a chime (the square's stamp, and a match's end, follow on the board)
   if (f.kind === 'draw') add('reset', 420);                          // the square resets with a new mini-game

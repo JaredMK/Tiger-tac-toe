@@ -3,7 +3,7 @@ import { scTypes } from '../../core/chaos.js';
 import { NAME_MAX, playerName } from '../../core/match.js';
 import { normTimer } from '../../core/timer.js';
 import { other } from '../../core/util.js';
-import { INFO, TYPES } from '../../games/index.js';
+import { INFO, SC_ONLY, TYPES } from '../../games/index.js';
 import { acct } from '../../net/accounts.js';
 import { findOn, isMM } from '../../net/matchmaking.js';
 import { visibleTypes } from '../../net/releases.js';
@@ -42,7 +42,7 @@ export function renderJoin() {
   const timer = room && room.setup ? normTimer(room.setup.timer) : 0;
   // Seated: the game as separate labelled lines, like the other setup screens.
   const sc = !!(room && room.setup && room.setup.chaos);
-  const pool = TYPES.filter(t => (visibleTypes().includes(t) || (room && room.setup && room.setup.games && room.setup.games[t])) && (!sc || scTypes().includes(t)));   // the games this guest knows of, and the host's (an admin host may deal games on test); Super Chaos deals only its own
+  const pool = TYPES.filter(t => (visibleTypes().includes(t) || (room && room.setup && room.setup.games && room.setup.games[t])) && (sc ? scTypes().includes(t) : !SC_ONLY.includes(t)));   // the games this guest knows of, and the host's (an admin host may deal games on test); Super Chaos deals only its own
   const games = room && room.setup && room.setup.games ? pool.filter(t => room.setup.games[t] !== false) : pool;
   const info = seated && room ? `<div class="jinfo">
       <div class="field"><span>Host</span><div class="namebox">${esc(hostName || 'the host')}</div></div>

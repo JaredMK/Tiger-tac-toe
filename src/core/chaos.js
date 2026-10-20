@@ -11,10 +11,11 @@
 // until the recap. At the round's end chaosResolve merges each square played (each game's scMerge hook for
 // what the two moves share: a guess history, a board, a question), then applies claims and resets.
 //
-// The games' hooks (rules.js): scCreate (a Super Chaos square, where it differs), scFork (a square as one
+// The games' hooks (rules.js): scCreate (a Super Chaos square, where it differs), scRound (a draw at each
+// round's start that both players' moves there share: the Roulette spin), scFork (a square as one
 // player sees it), scApply (a move made differently), scAfter (a move's result as its player sees it until the
 // round ends), scMerge (both moves together; it may return win, reset, replay, or resolve: a result settled only now,
-// such as a Bump knock or the Roulette spin, for the recap to play). A game without them keeps each player's progress apart already.
+// such as a Bump knock or a Clash Grid collision, for the recap to play). A game without them keeps each player's progress apart already.
 import { LINES, playMove } from './board.js';
 import { cpuMove } from './ai.js';
 import { dealable, pickType, startMatch } from './match.js';
@@ -43,6 +44,10 @@ export function scSquareMini(state, sq, type, rng) {
   if (type === 'trivia') { triviaDeal(state, sq, rng); sq.mini.shown = true; }
   return sq.mini;
 }
+// A round begins: each open square's draw for the round (scRound), on the board both players' moves start from.
+export function scRoundStart(squares, rng) {
+  for (const sq of squares) if (!sq.owner) { const g = rulesOf(sq.mini.type); if (g.scRound) g.scRound(sq.mini, rng); }
+}
 const project = (mini, p) => { const g = rulesOf(mini.type); if (g.scFork) g.scFork(mini, p); return mini; };
 
 // A Super Chaos match from the setup screen: the ticked Super Chaos games only, the computer on one side.
@@ -65,6 +70,7 @@ export function startChaos(state, rng) {
 export function startChaosOnline(state, rng, now) {
   rng = needRng(rng);
   for (const sq of state.squares) scSquareMini(state, sq, sq.mini.type, rng);
+  scRoundStart(state.squares, rng);
   state.sc = { round: 1, limit: SC.roundS, online: true, deadline: (now || 0) + SC.roundS * 1000, moves: {}, recap: null, last: null };
   return true;
 }
@@ -100,7 +106,7 @@ export function chaosResolveOnline(full, rng, now, lead) {   // lead: the mover'
   full.moves = (full.moves || 0) + 2;
   rc.at = (now || 0) + Math.max(SC_ONLINE.leadMs, lead || 0);                        // the shared start: both phones play the recap from this moment (server time)
   sc.recap = rc;
-  if (!full.winner) sc.round += 1;
+  if (!full.winner) { sc.round += 1; scRoundStart(full.squares, rng); }
   sc.deadline = null;                                            // (the next round's: set by the first phone through the recap, applyChaosBegin)
   sc.moves = {}; sc.me = null; sc.cpu = null; sc.base = null; sc.moved = null;
   return rc;
@@ -117,6 +123,7 @@ export function scTimeoutMove(full, side, rng) {
 // A round begins: every square as the human sees it, the board kept as it stands (base), the computer's move.
 export function scBegin(state, rng) {
   const sc = state.sc, me = scHuman(state);
+  if (!sc.online) scRoundStart(state.squares, rng);
   for (const sq of state.squares) if (!sq.owner) project(sq.mini, me);
   sc.base = state.squares.map(sq => clone(sq.mini));
   sc.me = null; sc.moved = null; sc.start = null; sc.steps = null;
@@ -262,7 +269,7 @@ export function chaosResolve(state, rng) {
     if (sq.mv == null) sq.mv = { X: 0, O: 0 };
     if (forks[cpu]) sq.mv[cpu] += 1;
     if (out.replay) recap.replay = { square: i, type: m.type, last: clone(m.last), win: winners.slice() };
-    if (out.resolve) {                                          // settled only now, with both moves known (a Bump knock, the Roulette spin): the recap plays it
+    if (out.resolve) {                                          // settled only now, with both moves known (a Bump knock, a Clash Grid collision): the recap plays it
       recap.pre[i] = project(clone(out.resolve.pre), me);
       recap.resolve.push({ square: i, type: m.type, joint: !!out.resolve.joint, flash: Object.assign({ kind: 'move', by: me, next: me, square: i, type: m.type, note: 'resolve', pass: null, timeout: false, sc: recap.round, recap: true, scr: true }, out.resolve.flash) });
     }
@@ -312,8 +319,8 @@ export function chaosNext(state, rng) {
 }
 // The games a reset may deal: this match's Super Chaos games that can be dealt now.
 export function scPool(state) {
-  const sct = scTypes(), dealt = (state.games || []).filter(t => sct.includes(t) && dealable(t));
-  return dealt.length ? dealt : sct.filter(dealable);
+  const sct = scTypes(), dealt = (state.games || []).filter(t => sct.includes(t) && dealable(t, true));
+  return dealt.length ? dealt : sct.filter(t => dealable(t, true));
 }
 // The match's result after a round: a line for one player wins; a line for each (completed in the same round)
 // is a draw; and, as ever, a board where neither can make a line any more is a draw.

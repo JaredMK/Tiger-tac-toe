@@ -26,7 +26,8 @@ const L = Object.assign({}, E, {
 const seq = (...vals) => { let i = 0; return () => vals[i++ % vals.length]; };
 // rng value that makes randInt(rng, n) return k
 const pick = (k, n) => (k + 0.5) / n;
-const typeRng = type => seq(pick(L.TYPES.indexOf(type), L.TYPES.length), 0.5);
+const POOL = L.TYPES.filter(t => !L.SC_ONLY.includes(t));   // the games a normal match deals (not the Super Chaos only ones)
+const typeRng = type => seq(pick(POOL.indexOf(type), POOL.length), 0.5);
 const lcg = seed => () => (seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296;
 
 function matchWith(types, rng = lcg(7)) {
@@ -159,8 +160,8 @@ test('ttt: in random play a square goes on only while someone can still make thr
   assert.ok(blocked > 10, `blocked draws come up (${blocked})`);
 });
 
-test('ttt: a draw can reset to any game in the full list, including the same type', () => {
-  for (const type of L.TYPES) {
+test('ttt: a draw can reset to any game in the full list, including the same type (never a Super Chaos only one)', () => {
+  for (const type of POOL) {
     const st = matchWith(['ttt']);
     for (let i = 0; i < 8; i++) st.squares[0].mini.cells[i] = TTT_DRAW[i];
     st.turn = TTT_DRAW[8];
