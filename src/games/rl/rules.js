@@ -54,35 +54,12 @@ export function flashMs(f, winLen, won) {
   return RLT.spin + RLT.settle + RLT.hold + (won ? 600 : 0);
 }
 export const RLT = { spin: 2700, settle: 450, hold: 1450, bet: 900 };   // (bet: Super Chaos's bet put down, no spin; hold: until the number's landing pulse is over)
-// Super Chaos: the wheel spins once for both. During the round a move only puts the bet down (bets); when
-// the round ends one spin settles both bets together (a hit, a second hit, green 0 on a bet on 0), and the
-// recap plays that spin (resolve). Both taking the square in the same spin resets it, as ever.
-export function scApply(mini, p, m, rng) {
-  const bet = rlBet(m);
-  if (!bet) return { ok: false, reason: 'bad' };
-  mini.bets = Object.assign({ X: null, O: null }, mini.bets);
-  mini.bets[p] = bet;
-  mini.last = { by: p, bet, n: null, hit: false, pending: true };
-  return { ok: true, outcome: 'continue', note: 'bet' };
-}
+// Super Chaos: each player's bet spins their own wheel the moment it is placed (the result plays out on their
+// own screen at once, as in a normal turn). At the round's end both spins join the square's history (X's first)
+// and each player's hits count as usual; both taking the square in the same round resets it, as ever.
 export function scMerge(m, c) {
-  const bets = { X: null, O: null };
-  for (const p of c.played) { const b = c.forks[p].bets && c.forks[p].bets[p]; if (b) bets[p] = b; }
-  const who = ['X', 'O'].filter(p => bets[p]);
-  if (!who.length) return;
-  const pre = JSON.parse(JSON.stringify(m));
-  pre.bets = { X: bets.X, O: bets.O }; pre.hits = { X: c.base.hits.X, O: c.base.hits.O }; pre.spins = (c.base.spins || []).slice(); pre.last = c.base.last || null;
-  const n = RL.wheel[randInt(needRng(c.rng), RL.wheel.length)];
-  const hit = { X: false, O: false }, win = { X: false, O: false };
-  m.hits = { X: c.base.hits.X, O: c.base.hits.O };
-  for (const p of who) {
-    hit[p] = rlCovers(bets[p], n);
-    if (hit[p] && bets[p] !== 'zero') m.hits[p] += 1;
-    win[p] = hit[p] && (bets[p] === 'zero' || m.hits[p] >= RL.goal);
-  }
-  const hitters = who.filter(p => hit[p]);
-  m.bets = { X: null, O: null };
-  m.last = { by: who.length === 1 ? who[0] : c.me, shared: true, n, bets: { X: bets.X, O: bets.O }, hit, bet: bets[who[0]] };
-  m.spins = (c.base.spins || []).concat({ n, by: hitters.length === 2 ? 'XO' : hitters[0] || null, hit: hitters.length > 0 }).slice(-6);
-  return { win, resolve: { pre, flash: { by: m.last.by, rl: { shared: true, n, bets: { X: bets.X, O: bets.O }, hit, hits: { X: m.hits.X, O: m.hits.O } } } } };
+  const spins = (c.base.spins || []).slice();
+  for (const p of c.played) { const f = c.forks[p], l = f.last; if (l && l.by === p && l.n != null) spins.push({ n: l.n, by: p, hit: !!l.hit }); }
+  m.spins = spins.slice(-6);
+  return {};
 }

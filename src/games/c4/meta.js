@@ -2,5 +2,6 @@
 
 export const info = { name: 'Connect 4',    hint: 'Pieces drop. Four in a row wins' };
 export const release = 'released';   // the default (the admin's dashboard can change it)
+export const category = 'brain';   // the Advanced checklist's group: 'luck', 'skill' or 'brain'
 export const explainer = { name: 'Connect 4', play: 'Drop a piece into a column.', win: 'Four in a row, any direction.' };
 export const icon = '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="19" r="3"/><circle cx="12" cy="19" r="3"/><circle cx="19" cy="19" r="3"/><path d="M12 2v9M8.5 8 12 11.5 15.5 8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';

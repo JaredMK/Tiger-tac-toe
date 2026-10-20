@@ -3,6 +3,7 @@
 export const info = { name: 'Bowling',      hint: 'Roll at a fresh rack each turn. First to 25 pins' };
 export const BOWL_DEFAULTS = { aimMs: 733, meterMs: 600 };   // the arrow: one side of the lane to the other in this long; the power meter: empty to full (config/bowling)
 export const release = 'admin';   // the default (the admin's dashboard can change it)
+export const category = 'skill';   // the Advanced checklist's group: 'luck', 'skill' or 'brain'
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Bowling', play: 'Two taps, as in Darts: an arrow sweeps across the lane, tap to lock your aim; then the power meter rises and falls, tap to lock the power. The ball rolls with exactly those. Every pin you knock down counts.', win: '25 pins total.' };
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.5c-2.5 0-2 3-1 5.5-3 3-3 8-1.5 13h5c1.5-5 1.5-10-1.5-13 1-2.5 1.5-5.5-1-5.5z"/><circle cx="17" cy="16" r="4.5"/><circle cx="16" cy="15" r=".6" fill="currentColor"/><circle cx="18.2" cy="15" r=".6" fill="currentColor"/><circle cx="17.1" cy="17.2" r=".6" fill="currentColor"/></svg>';

@@ -61,6 +61,10 @@ export function scShown(i) {
   if (!rc || !['wait', 'replay', 'spot', 'popup', 'resolve', 'result'].includes(st)) return null;
   const mv = state.squares[i].mv;
   if (st === 'popup' && rc.cpu && rc.cpu.square === i && scUi.mini) return { owner: null, mini: scUi.mini, mv };
+  if (rc.cpu && rc.cpu.square === i && ['wait', 'replay', 'spot'].includes(st) && !(rc.pre && rc.pre[i])) {   // the other player's square: nothing of their move on the board until it has been replayed
+    const before = (rc.mine && rc.mine[i]) || rc.cpu.start;
+    if (before) return { owner: null, mini: before, mv };
+  }
   const rk = (rc.resolve || []).findIndex(x => x.square === i);
   if (rk >= 0 && rc.pre && rc.pre[i] && (st !== 'resolve' && st !== 'result' || (st === 'resolve' && rk >= (scUi.rk || 0)))) return { owner: null, mini: rc.pre[i], mv };
   if (st === 'result') {
@@ -303,8 +307,9 @@ export function scSkip() {
 // the last round's; the computer's from the last round resolved (the recap reveals this round's).
 export function scLastPlayed() {
   if (!live()) return null;
-  const sc = state.sc, me = scHuman(state), cpu = other(me), last = sc.last || {};
-  return { [me]: sc.me ? sc.me.square : last[me] != null ? last[me] : null, [cpu]: last[cpu] != null ? last[cpu] : null };
+  const sc = state.sc, me = scHuman(state), cpu = other(me), rc = sc.recap, early = rc && rc.lastBefore !== undefined && (!scRecapStage() || ['wait', 'replay'].includes(scRecapStage()));
+  const last = (early ? rc.lastBefore : sc.last) || {}, mine = rc ? rc.me : null;   // (the other player's badge moves only once the recap shows their square)
+  return { [me]: sc.me ? sc.me.square : mine != null ? mine : last[me] != null ? last[me] : null, [cpu]: last[cpu] != null ? last[cpu] : null };
 }
 // The board's line under the squares in a Super Chaos round.
 export function scHint() {

@@ -217,30 +217,25 @@ test('Super Chaos Bump: nothing is knocked during the round; the knock is settle
   assert.deepEqual(resolve(s4).resolve, []);
 });
 
-test('Super Chaos Roulette: a move puts the bet down; one spin at the round\'s end settles both bets', () => {
+test('Super Chaos Roulette: each bet spins its own wheel at once (the result plays out on the mover\'s screen); the round\'s end joins both spins', () => {
   const rl = hits => ({ type: 'rl', hits, spins: [], last: null });
   const at = n => (E.RL.wheel.indexOf(n) + 0.5) / E.RL.wheel.length;   // an rng value that spins n
-  // X bets 1–8, O bets 9–16 in the same square; 3 comes up: X's hit only
+  // X bets 1–8 and 3 comes up: X's hit, there and then (nothing put off to the round's end)
   const st = round([rl({ X: 0, O: 0 })], { square: 0, moves: ['g2'] });
-  human(st, 0, ['g1']);
-  assert.deepEqual([st.squares[0].mini.bets.X, st.squares[0].mini.hits.X, st.squares[0].mini.spins.length], ['g1', 0, 0], 'the bet is down; no spin yet');
-  assert.equal(st.sc.cpu.mini.spins.length, 0, 'nor for the computer');
-  const rc = E.chaosResolve(st, fixed(at(3)));
+  human(st, 0, ['g1'], fixed(at(3)));
+  const mine = st.squares[0].mini;
+  assert.deepEqual([mine.hits.X, mine.spins.length, mine.last.n, mine.last.hit, !!mine.last.pending], [1, 1, 3, true, false], 'the spin and its result at once');
+  assert.equal(st.sc.cpu.mini.spins.length, 1, 'the computer spun its own wheel too');
+  const rc = E.chaosResolve(st, E.makeRng('r'));
   const m = st.squares[0].mini;
-  assert.deepEqual([m.hits, m.spins.length, m.spins[0].n, m.bets], [{ X: 1, O: 0 }, 1, 3, { X: null, O: null }], 'one spin for both');
-  assert.deepEqual(rc.resolve.map(x => [x.square, x.flash.rl.shared, x.flash.rl.n, x.flash.rl.hit, x.flash.rl.bets]), [[0, true, 3, { X: true, O: false }, { X: 'g1', O: 'g2' }]]);
-  assert.deepEqual(rc.pre[0].bets, { X: 'g1', O: 'g2' });
-  assert.equal(st.squares[0].owner, null);
-  // both on their second hit, the same group: both take it in the same spin, so it resets
-  const s2 = round([rl({ X: 1, O: 1 })], { square: 0, moves: ['g1'] });
-  human(s2, 0, ['g1']);
-  const r2 = E.chaosResolve(s2, fixed(at(5)));
-  assert.deepEqual(r2.resets.map(x => [x.square, x.why]), [[0, 'both']]);
-  // one bet alone (the computer elsewhere) still waits for the round's end: a second hit claims it there
+  assert.deepEqual(rc.resolve, [], 'nothing left to settle at the round\'s end');
+  assert.deepEqual([m.spins.length, m.spins[0], m.spins[1].by], [2, { n: 3, by: 'X', hit: true }, 'O'], 'both spins in the square\'s history, X\'s first');
+  assert.equal(m.hits.X, 1);
+  // a second hit on the player's own spin: the square is theirs once the round settles
   const s3 = round([rl({ X: 1, O: 0 })], { square: 1, moves: [3] });
-  human(s3, 0, ['g3']);
-  assert.equal(s3.squares[0].owner, null);
-  const r3 = E.chaosResolve(s3, fixed(at(20)));
+  human(s3, 0, ['g3'], fixed(at(20)));
+  assert.equal(s3.sc.me.win, true, 'won on the spin, there and then');
+  const r3 = E.chaosResolve(s3, E.makeRng('r3'));
   assert.deepEqual(r3.claims.map(c => [c.square, c.by]), [[0, 'X']]);
 });
 

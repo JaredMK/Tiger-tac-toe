@@ -2,6 +2,7 @@
 
 export const info = { name: 'Scoop Stack',  hint: 'Drag the cone to catch scoops. Stack to the target first' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
+export const category = 'skill';   // the Advanced checklist's group: 'luck', 'skill' or 'brain'
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Scoop Stack', play: 'Drag the cone to catch scoops. Dodge the bad stuff. Your stack carries over between turns.', win: 'Stack to the target first.' };
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round"><path d="M7.5 13.5h9L12 22.5z" fill="currentColor" fill-opacity=".35"/><circle cx="12" cy="10.5" r="3.6"/><circle cx="12" cy="4.6" r="2.8" fill="currentColor"/></svg>';

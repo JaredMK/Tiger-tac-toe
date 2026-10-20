@@ -67,7 +67,7 @@ function rlTable(mini, a, o) {
     : dr.bet ? `Betting the group ${rlBetText(dr.bet)}` : dr.nums.length === RL.pick ? 'Betting your 8 numbers'
     : dr.nums.length ? `${RL.pick - dr.nums.length} more number${RL.pick - dr.nums.length === 1 ? '' : 's'} to pick` : '&nbsp;';
   const board = o.view ? '' : `<div class="rlboard"><div class="rlrow top"><button class="rlz${zOn}${land(0)}"${landT(0)} data-act="rlzero" aria-pressed="${!!zOn}" aria-label="Green 0"${dis}>0${dolly(0)}</button><p class="rlsay">${say}</p></div>${grid}</div>
-    <div class="cbtns one"><button class="big ${turn} rlspin" data-act="move" ${mv(bet || [])}${!bet || o.locked || marks ? ' disabled' : ''}>${state.sc ? 'Place bet' : 'Spin'}</button></div>`;
+    <div class="cbtns one"><button class="big ${turn} rlspin" data-act="move" ${mv(bet || [])}${!bet || o.locked || marks ? ' disabled' : ''}>Spin</button></div>`;
   // Once the ball lands: HIT!, MISS or GREEN 0!, big in its own slot under the wheel (never over it), held a second before the game moves on.
   const anyHit = spin ? (spin.shared ? ['X', 'O'].some(p => spin.hit[p]) : spin.hit) : false;
   const zeroHit = spin ? (spin.shared ? ['X', 'O'].some(p => spin.hit[p] && spin.bets[p] === 'zero') : spin.hit && spin.bet === 'zero') : false;

@@ -2,6 +2,7 @@
 
 export const info = { name: 'Battleship',   hint: 'Sink the hidden ship. A hit fires again' };
 export const release = 'released';   // the default (the admin's dashboard can change it)
+export const category = 'luck';   // the Advanced checklist's group: 'luck', 'skill' or 'brain'
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Battleship', play: "Fire at a square. Hit? Fire again. The ship's size is shown below.", win: 'Sink the ship.' };
 export const scExplainer = { name: 'Battleship', play: 'Fire at one square of the 5×5 sea. The ship is a single square.', win: 'Hit the ship.' };   // in Super Chaos

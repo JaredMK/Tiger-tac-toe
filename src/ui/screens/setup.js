@@ -4,7 +4,7 @@ import { restrictGames } from '../../core/games.js';
 import { CPU_NAME, NAME_MAX, cpuSide, dealable, enabledGames, normLocal } from '../../core/match.js';
 import { TIMER_OPTIONS } from '../../core/timer.js';
 import { other } from '../../core/util.js';
-import { INFO } from '../../games/index.js';
+import { GAMES, INFO } from '../../games/index.js';
 import { connected } from '../../net/connect.js';
 import { noticeSeq } from '../../net/moves.js';
 import { chaosBadge, chaosVisible, testBadge, visibleTypes } from '../../net/releases.js';
@@ -65,10 +65,13 @@ export function renderSetup() {
     ${host ? sides : ''}
     ${timer}
     <div class="adv${advOpen ? ' open' : ''}"><button class="adv-h" data-act="adv" aria-expanded="${advOpen}"><span>Advanced</span><small>${on} of ${VT.length} mini-games on</small><i class="chev">${CHEV}</i></button>
-      ${advOpen ? `<div class="games-top"><button class="btn selall" data-act="games-none"${on === 0 ? ' disabled' : ''}>Deselect all</button><button class="btn selall" data-act="games-all"${on === VT.length ? ' disabled' : ''}>Select all</button></div><div class="games">${VT.map(chk).join('')}</div>` : ''}</div>
+      ${advOpen ? `<div class="games-top"><button class="btn selall" data-act="games-none"${on === 0 ? ' disabled' : ''}>Deselect all</button><button class="btn selall" data-act="games-all"${on === VT.length ? ' disabled' : ''}>Select all</button></div>${CATS.map(([c, label]) => { const ts = catTypes(VT, c), n = ts.filter(t => s.games[t]).length; return ts.length ? `<div class="games-cat" data-cat="${c}"><div class="games-h cat"><span>${label}</span><span class="catbtns"><button class="btn selall sm" data-act="games-none" data-cat="${c}"${n === 0 ? ' disabled' : ''}>Deselect all</button><button class="btn selall sm" data-act="games-all" data-cat="${c}"${n === ts.length ? ' disabled' : ''}>Select all</button></span></div><div class="games">${ts.map(chk).join('')}</div></div>` : ''; }).join('')}` : ''}</div>
   </div>
   <div class="setup-foot"><button class="primary" data-act="start"${ready ? '' : ' disabled'}>Start match</button><small class="warn">${setupWarn(s)}</small></div></main>`;
 }
+// The Advanced checklist's three groups (each game's meta.js: category), each in alphabetical order.
+export const CATS = [['luck', 'More luck'], ['skill', 'More skill'], ['brain', 'More brain']];
+export const catTypes = (types, c) => types.filter(t => GAMES[t] && GAMES[t].meta.category === c).sort((a, b) => INFO[a].name.localeCompare(INFO[b].name));
 // Start opens once at least one mini-game is on (online, also once the friend is in).
 const onGames = s => enabledGames(s).filter(t => setupTypes().includes(t));   // the games on, among those this player may see (Super Chaos: its own)
 function setupReady(s) { const on = onGames(s).length; return isHost() ? !!(on && state.online.joined && connected) : !!on; }
@@ -86,8 +89,13 @@ export function setGames(change) {
     box.closest('.chk').classList.toggle('off', !v);
   }
   const n = app.querySelector('.adv-h small'); if (n) n.textContent = `${on} of ${VT.length} mini-games on`;
-  const all = app.querySelector('[data-act="games-all"]'); if (all) all.disabled = on === VT.length;
-  const none = app.querySelector('[data-act="games-none"]'); if (none) none.disabled = on === 0;
+  const all = app.querySelector('[data-act="games-all"]:not([data-cat])'); if (all) all.disabled = on === VT.length;
+  const none = app.querySelector('[data-act="games-none"]:not([data-cat])'); if (none) none.disabled = on === 0;
+  for (const [c] of CATS) {                                              // each group's own buttons
+    const ts = catTypes(VT, c), n = ts.filter(t => s.games[t]).length;
+    const ca = app.querySelector(`[data-act="games-all"][data-cat="${c}"]`); if (ca) ca.disabled = n === ts.length;
+    const cn = app.querySelector(`[data-act="games-none"][data-cat="${c}"]`); if (cn) cn.disabled = n === 0;
+  }
   const start = app.querySelector('[data-act="start"]'); if (start) start.disabled = !setupReady(s);
   const warn = app.querySelector('.setup-foot .warn'); if (warn) warn.textContent = setupWarn(s);
   dbSetup({ games: restrictGames(Object.assign({}, s.games), VT) });   // (the room never holds a game its host may not deal)

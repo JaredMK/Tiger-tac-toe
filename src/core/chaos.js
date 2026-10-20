@@ -239,11 +239,12 @@ export function chaosResolve(state, rng) {
   if (!sc || !sc.me || state.winner || sc.recap) return null;
   const moves = { [me]: sc.me };
   if (sc.cpu) moves[cpu] = sc.cpu;
-  const recap = { round: sc.round, me: sc.me.square, cpu: sc.cpu ? { square: sc.cpu.square, steps: sc.cpu.steps, start: sc.cpu.start, type: sc.cpu.mini.type } : null, view: {}, pre: {}, resolve: [], claims: [], resets: [], replay: null, result: null };
+  const recap = { round: sc.round, me: sc.me.square, cpu: sc.cpu ? { square: sc.cpu.square, steps: sc.cpu.steps, start: sc.cpu.start, type: sc.cpu.mini.type } : null, view: {}, pre: {}, mine: {}, resolve: [], claims: [], resets: [], replay: null, result: null, lastBefore: clone(sc.last || null) };   // (mine: each square as this player saw it before the round settled; lastBefore: the badges before it)
   const squares = [...new Set(Object.values(moves).map(x => x.square))];
   const wins = [];
   for (const i of squares) {
     const sq = state.squares[i], base = sc.base[i], forks = {}, own = { X: false, O: false };
+    recap.mine[i] = clone(sq.mini);                             // (the board shows it so until the other player's move has been replayed)
     for (const p of ['X', 'O']) if (moves[p] && moves[p].square === i) { forks[p] = p === me ? sq.mini : moves[p].mini; own[p] = own[p] || !!moves[p].win; if (moves[p].gives) own[moves[p].gives] = true; }   // (a square handed over is the other player's win)
     const played = ['X', 'O'].filter(p => forks[p]);           // (X's first in a shared history)
     let m;

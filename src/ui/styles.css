@@ -2312,3 +2312,15 @@ main.scr.mini.screplay * { cursor: pointer; }   /* (a tap anywhere skips to the 
 /* Plinko: a bonus peg's own "+N" goes as its "+N" pops up from it (one at a time) */
 .pbonus.hit b { animation: tuntil 1ms var(--t, 0ms) both; }
 .rskip.until { animation: skipin .25s ease-out 2s both, tuntil 1ms var(--u, 0ms) both; }   /* gone as the move's animation ends */
+
+/* the Advanced checklist's groups: More luck, More skill, More brain, each with its own Select all / Deselect all */
+.games-cat { padding-top: 14px; }
+.games-h.cat { align-items: center; padding-bottom: 8px; gap: 8px; }
+.games-h.cat .catbtns { display: flex; gap: 6px; flex: none; }
+.selall.sm { height: 44px; padding: 0 10px; font-size: 13px; }   /* (a full 44px tap target) */
+/* the page never scrolls or rubber-bands, on any screen: a fixed full-height layout (100dvh); only the
+   designated inner lists scroll, and their overscroll stays inside them */
+html { height: 100%; overflow: hidden; overscroll-behavior: none; }
+#app { height: 100vh; height: 100dvh; max-height: 100dvh; overflow: hidden; overscroll-behavior: none; }
+.wlist, .setup-box, .online-mid, .mmlist, .excard, .hlist, [data-keep-scroll] { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+button.btn.snd { padding: 0; display: grid; place-items: center; }   /* the speaker: centred in its square, whatever padding a screen's buttons have */

@@ -34,9 +34,11 @@ function take(full, keep) {
   state.spot = null; state.stamp = null; state.stamps = null; state.lock = null;
 }
 // The record's recap as this phone plays it: the other player's move is "the other move" (ui/chaos.js replays it).
-function recapOf(sc, me) {
+function recapOf(sc, me, own) {
   const rc = clone(sc.recap), opp = other(me);
   rc.cpu = rc.mv && rc.mv[opp] ? Object.assign({}, rc.mv[opp]) : null;
+  rc.mine = {};                                                 // each square as this phone saw it before the round settled (own: its own copy of the round; none after a reload: the other's square as they found it)
+  if (own) for (const i of Object.keys(rc.view || {})) if (own[i]) rc.mine[i] = clone(own[i].mini);
   return rc;
 }
 // The room's record changed (room.js applyMatch hands a Super Chaos match here).
@@ -79,7 +81,7 @@ function scJoin(rec) {
 // The round played here is settled on the record: its recap plays from the shared start (ui/chaos.js).
 function scRecap(rec) {
   const full = fullState(rec), me = state.online.me;
-  const rc = recapOf(full.sc, me), own = !!(state.flash && state.sc.me && state.flash.by === me && state.flash.sc === rc.round && flashLeft() > 0);   // (this phone's move settled the round: its result plays out, the shared start after it)
+  const rc = recapOf(full.sc, me, state.sc && state.sc.round === full.sc.recap.round ? state.squares : null), own = !!(state.flash && state.sc.me && state.flash.by === me && state.flash.sc === rc.round && flashLeft() > 0);   // (this phone's move settled the round: its result plays out, the shared start after it)
   take(full, own);
   recapState(full, rc, own);
   save(); render(); chaosStep();                                  // (the sequence begins by the clock: its wait for the shared start)
