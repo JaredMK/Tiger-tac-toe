@@ -149,3 +149,19 @@ test('mastermind: a timed-out random move is a valid 4-colour guess', () => {
     assert.equal(L.applyMove(m, 'X', g).ok, true);
   }
 });
+
+test('mastermind: the admin\'s settings (colours, the computer ignoring the clues) are dealt into the square and played by', () => {
+  E.setTune('mastermind', { colors: 4, miss: 60 });
+  const m = E.newMini('mastermind', E.makeRng('mm-tune'));
+  E.setTune('mastermind', null);
+  assert.deepEqual(m.tune, { colors: 4, miss: 60 });
+  assert.ok(m.code.every(c => c < 4));
+  assert.equal(E.applyMove(m, 'X', [0, 1, 2, 5], anyRng()).ok, false, 'a colour not in play');
+  assert.equal(E.applyMove(m, 'X', [3, 2, 1, 0], anyRng()).ok, true);
+  assert.equal(E.mmAll().length, 360, 'the default list stays as it was');
+  const pm = E.publicMini(m);
+  assert.ok(E.mmCandidates(pm).length <= 24);
+  for (let k = 0; k < 10; k++) { const g = E.localBest(pm, 'O', E.makeRng('mm-ai' + k)).move; assert.ok(E.mmValid(g, 4), JSON.stringify(g)); }
+  for (let k = 0; k < 40 && !E.applyMove(m, 'O', E.localBest(E.publicMini(m), 'O', E.makeRng('mm-p' + k)).move, anyRng()).outcome.startsWith('win'); k++);
+  assert.ok(m.guesses.some(g => g.solid === 4), 'cracked');
+});

@@ -128,3 +128,23 @@ test('sniff in Super Chaos: the computer walks its own dog, never back onto a ce
   }
   assert.ok(total / 200 >= 2 && total / 200 <= 8, 'a few moves each: ' + (total / 200));
 });
+
+test('sniff: the admin settings: the dog starts 4 steps off, the word holds longer, the computer remembers more (in Super Chaos too)', () => {
+  E.setTune('sniff', { minStart: 4, hold: 3000, memory: 6, miss: 20 });
+  try {
+    const rng = E.makeRng('sn-tune');
+    for (let k = 0; k < 30; k++) {
+      const m = E.newMini('sniff', rng), most = Math.max(...Array.from({ length: 25 }, (_, c) => E.sniffSteps(c, m.treasure)));
+      assert.ok(E.sniffSteps(m.dog, m.treasure) >= Math.min(4, most));
+      for (let n = 0; n < 8 && !(m.last && m.last.found); n++) E.applyMove(m, n % 2 ? 'O' : 'X', E.localBest(E.publicMini(m), 'X', rng).move, rng);
+      assert.ok(m.trail.length <= 6); assert.ok(E.publicMini(m).trail.length === m.trail.length);
+    }
+    const st = E.newState(rng); st.squares[0].mini = E.newMini('sniff', rng);
+    const r = E.playMove(st, 0, E.sniffDirs(st.squares[0].mini.dog)[0], rng);
+    assert.equal(r.ok, true); assert.equal(st.flash.hold, 3000);
+    assert.equal(E.playMs(st.flash), 420 + 3000 + (st.flash.kind === 'claim' ? 900 : 0));
+    const sc = E.scSquareMini({}, {}, 'sniff', rng);
+    for (let n = 0; n < 8 && !(sc.last && sc.last.found); n++) E.applyMove(sc, 'X', E.localBest(E.publicMini(sc), 'X', rng).move, rng);
+    assert.ok(sc.trails.X.length <= 6 && sc.trails.X.length > 3 || (sc.last && sc.last.found));
+  } finally { E.setTune('sniff', null); }
+});

@@ -118,3 +118,22 @@ test('memory tactics: a known pair is flipped, otherwise only unseen cards', () 
   assert.equal(cm.square, 0, 'a sure claim beats a fresh square');
   assert.equal(L.playMove(st, 0, cm.move).flash.kind, 'claim');
 });
+
+test('memory: the admin\'s settings (pairs in the deck, the computer\'s memory) are dealt into the square and played by', () => {
+  E.setTune('memory', { pairs: 3, mem: 0 });
+  const m = E.newMini('memory', E.makeRng('mem-tune'));
+  E.setTune('memory', null);
+  assert.deepEqual(m.tune, { pairs: 3, mem: 0 });
+  const key = c => c.s + c.c, count = {};
+  for (const c of m.cards) count[key(c)] = (count[key(c)] || 0) + 1;
+  assert.equal(m.cards.length, 9);
+  assert.equal(Object.values(count).filter(n => n === 2).length, 3, 'three pairs');
+  const a = m.cards.findIndex(c => count[key(c)] === 2), b = m.cards.findIndex((c, i) => i !== a && key(c) === key(m.cards[a]));
+  m.seen = [a, b];
+  const pm = E.publicMini(m);
+  let other = 0;
+  for (let k = 0; k < 20; k++) { const mv = E.localBest(pm, 'X', E.makeRng('mem-ai' + k)).move; if (!(mv.includes(a) && mv.includes(b))) other++; }
+  assert.ok(other > 0, 'it forgets the pair it saw');
+  delete m.tune;
+  assert.deepEqual(E.localBest(E.publicMini(m), 'X', anyRng()).move.slice().sort(), [a, b].sort(), 'the default: it remembers');
+});

@@ -195,3 +195,15 @@ test('connect 4 tactics: completes four, blocks three, and otherwise prefers the
   for (const [p, col] of [['O', 4], ['O', 5], ['O', 6], ['X', 4], ['X', 5]]) L.applyMove(edge, p, col);
   assert.equal(L.localBest(L.publicMini(edge), 'X', cpuRng()).move, 3, 'blocks the open end of three on the right');
 });
+
+test('connect 4: the admin\'s settings (run length, look-ahead) are dealt into the square and played by', () => {
+  E.setTune('c4', { k: 3, depth: 2 });
+  const m = E.newMini('c4', E.makeRng('c4-tune'));
+  E.setTune('c4', null);
+  assert.deepEqual(m.tune, { k: 3, depth: 2 });
+  assert.equal(E.applyMove(m, 'X', 0, anyRng()).outcome, 'continue');
+  assert.equal(E.applyMove(m, 'X', 1, anyRng()).outcome, 'continue');
+  const lb = E.localBest(E.publicMini(m), 'X', anyRng());
+  assert.ok(lb.win && (lb.move === 2), 'three in a row wins now');
+  assert.equal(E.applyMove(m, 'X', 2, anyRng()).outcome, 'win');
+});

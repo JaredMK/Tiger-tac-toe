@@ -220,3 +220,16 @@ test('tic-tac-toe tactics: win now, else block, else take the best minimax move'
   const empty = L.localBest({ type: 'ttt', cells: new Array(9).fill(null) }, 'X', cpuRng());
   assert.equal(empty.move, 4, 'the centre from an empty board');
 });
+
+test('tic-tac-toe: the admin\'s settings (the computer\'s mistake rate) are dealt into the square and played by', () => {
+  E.setTune('ttt', { miss: 50 });
+  const m = E.newMini('ttt', E.makeRng('ttt-tune'));
+  E.setTune('ttt', null);
+  assert.deepEqual(m.tune, { miss: 50 });
+  m.cells = ['X', 'X', null, 'O', 'O', null, null, null, null];
+  const moves = new Set();
+  for (let k = 0; k < 30; k++) moves.add(E.localBest(E.publicMini(m), 'X', E.makeRng('ttt-ai' + k)).move);
+  assert.ok(moves.has(2) && moves.size > 1, 'a slip now and then');
+  delete m.tune;
+  for (let k = 0; k < 10; k++) assert.equal(E.localBest(E.publicMini(m), 'X', E.makeRng('ttt-ai' + k)).move, 2, 'the default: never a slip');
+});

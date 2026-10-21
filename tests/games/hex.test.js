@@ -100,3 +100,14 @@ test('hex tactics: connects when one cell short and blocks the opponent\'s last 
   assert.equal(L.hexDist(new Array(16).fill(null), 'X'), 4);
   assert.equal(L.hexDist(['O', 'O', 'O', 'O', null, null, null, null, null, null, null, null, null, null, null, null], 'O'), 3, 'a row does not help O');
 });
+
+test('hex: the admin\'s settings (the computer\'s mistake rate) are dealt into the square and played by', () => {
+  E.setTune('hex', { miss: 50 });
+  const m = E.newMini('hex', E.makeRng('hex-tune'));
+  E.setTune('hex', null);
+  assert.deepEqual(m.tune, { miss: 50 });
+  m.cells[0] = m.cells[1] = m.cells[2] = 'X';               // X wins at cell 3
+  const moves = new Set();
+  for (let k = 0; k < 30; k++) moves.add(E.localBest(E.publicMini(m), 'X', E.makeRng('hex-ai' + k)).move);
+  assert.ok(moves.has(3) && moves.size > 1, 'a slip now and then');
+});

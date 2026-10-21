@@ -68,3 +68,18 @@ test('trivia: the reveal holds the player to the square: no other square this tu
   assert.equal(E.playMs(st.flash), E.TRIVIA.flip + E.TRIVIA.pause + E.TRIVIA.reveal, 'the playback: the reveal, the pause, the pick');
   assert.equal(st.squares[k].mini.shown, false, 'answered right: a new question, face down');
 });
+
+test('trivia: the admin\'s settings (right answers to win, options, the computer\'s knowledge) are dealt into the square and played by', () => {
+  E.setTune('trivia', { goal: 2, opts: 2, know: 100 });
+  const m = E.newMini('trivia', E.makeRng('tr-tune'));
+  E.setTune('trivia', null);
+  assert.deepEqual(m.tune, { goal: 2, opts: 2, know: 100 });
+  const st = { squares: [{ mini: m }] }, rng = E.makeRng('tr-deal');
+  E.triviaDeal(st, st.squares[0], rng);
+  assert.equal(m.ask.opts.length, 2);
+  const mv = E.localBest(E.publicMini(m), 'X', E.makeRng('tr-ai')).move;
+  assert.equal(mv, m.answer, 'it knows it');
+  assert.equal(E.applyMove(m, 'X', mv, rng).outcome, 'continue');
+  E.triviaDeal(st, st.squares[0], rng);
+  assert.equal(E.applyMove(m, 'X', m.answer, rng).outcome, 'win', 'two right wins');
+});
