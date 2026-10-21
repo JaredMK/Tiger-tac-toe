@@ -136,3 +136,25 @@ test('clash grid: computer against computer in Super Chaos rounds: squares are w
   assert.ok(blocked > 0, 'collisions: ' + blocked);
   console.log(`clash AI v AI: ${avg.toFixed(2)} rounds a square, ${won}/${games} won, ${blocked} cells blocked`);
 });
+
+test('clash grid: the admin settings deal a 6x6 grid where three in a row wins (also at the round\'s end); the computer plays it', () => {
+  E.setTune('clash', { n: 6, need: 3, miss: 10 });
+  try {
+    const m = E.newMini('clash', E.makeRng('t'));
+    assert.equal(m.cells.length, 36); assert.deepEqual(m.tune, { n: 6, need: 3, miss: 10 });
+    assert.equal(E.applyMove(m, 'X', 0).outcome, 'continue'); assert.equal(E.applyMove(m, 'X', 7).outcome, 'continue');
+    assert.deepEqual(E.applyMove(m, 'X', 14).cells, [0, 7, 14]);
+    const rng = E.makeRng('t2'), g = E.newMini('clash', rng);
+    for (let n = 0; n < 36; n++) { const mv = E.localBest(E.publicMini(g), n % 2 ? 'O' : 'X', rng).move; assert.equal(g.cells[mv], null); if (E.applyMove(g, n % 2 ? 'O' : 'X', mv).outcome === 'win') break; }
+    // Super Chaos: X's third in a row is judged at the round's end
+    const st = E.newState(rng);
+    st.setup.local = { pick: 'X', p2: 'cpu', n1: '', n2: '' };
+    E.seatLocal(st.setup, rng);
+    assert.ok(E.startChaos(st, rng));
+    st.squares = Array.from({ length: 9 }, (_, i) => sq(i ? { type: 'hilo', target: 20, lo: 1, hi: 20, guesses: [] } : Object.assign(E.newMini('clash', rng), { cells: grid('XX.... ...... ...... ...... ...... ......') })));
+    E.scBegin(st, rng);
+    st.sc.cpu = E.scCpu(st, rng, { square: 0, moves: [35] });
+    human(st, 2);
+    assert.equal(st.squares[0].owner, 'X');
+  } finally { E.setTune('clash', null); }
+});

@@ -1,4 +1,5 @@
 // Clash Grid: the rules (pure: no page, no clock; the server runs the same code).
+import { tune, tuneLive } from '../../core/tune.js';
 
 // Clash Grid (Super Chaos only): a 5x5 grid both players share. A move claims one empty cell. Both claiming
 // the same cell in the same round block it for good (grey: nobody's, and it breaks lines). Four in a row (a
@@ -6,26 +7,33 @@
 // that is full, or where neither player can still make four. Each player's claim shows on their own screen at
 // once, never judged there (the other player's claim could block it): the round's end (scMerge) puts both
 // claims on the shared grid, plays a clash where they met, and only then looks for four in a row (and plays it).
-export const CLASH = { n: 5, need: 4, place: 380, hold: 900, clash: 1300 };
-// Every run of four cells in a line: 10 across, 10 down, 8 diagonal.
-export const CLASH_LINES = (() => {
-  const n = CLASH.n, k = CLASH.need, out = [];
+export const CLASH = { n: 5, need: 4, place: 380, hold: 900, clash: 1300 };   // (n, need: the defaults of its settings, TUNE in meta.js)
+// Every run of k cells in a line on an n x n grid (5 and 4: 10 across, 10 down, 8 diagonal).
+const LINES = {};
+export function clashLines(n = CLASH.n, k = CLASH.need) {
+  if (LINES[n + ':' + k]) return LINES[n + ':' + k];
+  const out = [];
   for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) for (const [dr, dc] of [[0, 1], [1, 0], [1, 1], [1, -1]]) {
     const end = [r + dr * (k - 1), c + dc * (k - 1)];
     if (end[0] < 0 || end[0] >= n || end[1] < 0 || end[1] >= n) continue;
     out.push(Array.from({ length: k }, (_, j) => (r + dr * j) * n + c + dc * j));
   }
-  return out;
-})();
-export const clashLine = (cells, p) => CLASH_LINES.find(l => l.every(k => cells[k] === p)) || null;
-export const clashOpen = (cells, p) => CLASH_LINES.filter(l => l.every(k => cells[k] == null || cells[k] === p));   // the runs p can still make four of
+  return (LINES[n + ':' + k] = out);
+}
+export const CLASH_LINES = clashLines();
+export const clashSize = mini => Math.round(Math.sqrt(mini.cells.length));   // the grid's width (the square keeps it as its cells)
+export const clashNeed = mini => tune(mini).need || CLASH.need;               // how many in a row: the square's own setting
+export const clashLinesOf = mini => clashLines(clashSize(mini), clashNeed(mini));
+export const clashLine = (cells, p, lines = CLASH_LINES) => lines.find(l => l.every(k => cells[k] === p)) || null;
+export const clashOpen = (cells, p, lines = CLASH_LINES) => lines.filter(l => l.every(k => cells[k] == null || cells[k] === p));   // the runs p can still make four of
 export function create(type, rng) {
-  return { type, cells: new Array(CLASH.n * CLASH.n).fill(null), last: null };
+  const n = tuneLive(type).n;                                    // (the admin's setting: the grid's width)
+  return { type, cells: new Array(n * n).fill(null), last: null };
 }
 export function apply(mini, p, m, rng, idx) {   // an empty cell: the mover's (until the round's end says otherwise)
   if (!Number.isInteger(m) || m < 0 || m >= mini.cells.length || mini.cells[m] != null) return { ok: false, reason: 'bad' };
   mini.cells[m] = p;
-  const line = clashLine(mini.cells, p);
+  const line = clashLine(mini.cells, p, clashLinesOf(mini));
   mini.last = { by: p, c: m, line };
   if (line) return { ok: true, outcome: 'win', note: 'four', cells: line };
   return { ok: true, outcome: 'continue', note: 'claim' };
@@ -59,7 +67,7 @@ export function scMerge(m, c) {
   const met = at.X != null && at.X === at.O;
   if (met) m.cells[at.X] = 'B';
   else for (const p of Object.keys(at)) m.cells[at[p]] = p;
-  const line = { X: clashLine(m.cells, 'X'), O: clashLine(m.cells, 'O') }, win = { X: !!line.X, O: !!line.O };
+  const L = clashLinesOf(m), line = { X: clashLine(m.cells, 'X', L), O: clashLine(m.cells, 'O', L) }, win = { X: !!line.X, O: !!line.O };
   if (win.X !== win.O) m.winCells = line[win.X ? 'X' : 'O'];
   const out = { win };
   if (met) {
@@ -74,7 +82,7 @@ export function scMerge(m, c) {
   }
   if (!win.X && !win.O) {
     if (!m.cells.includes(null)) { out.reset = true; out.note = 'full'; }
-    else if (!clashOpen(m.cells, 'X').length && !clashOpen(m.cells, 'O').length) { out.reset = true; out.note = 'blocked'; }
+    else if (!clashOpen(m.cells, 'X', L).length && !clashOpen(m.cells, 'O', L).length) { out.reset = true; out.note = 'blocked'; }
   }
   return out;
 }

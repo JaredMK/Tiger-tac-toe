@@ -2,6 +2,7 @@
 import { makeRng, needRng, randInt, shuffle } from '../../core/random.js';
 import { other } from '../../core/util.js';
 import { PLACE_MS, randomEmpty } from '../shared/placement.js';
+import { tuneLive } from '../../core/tune.js';
 
 // Districts: a map of 5 regions with 16 spots, each inside a region or on a border (counting for every
 // region it touches); every region is touched by an odd number of spots, at least 3. A move places a piece;
@@ -21,7 +22,7 @@ export function distClip(poly, a, b) {                                   // keep
   }
   return out;
 }
-export function distMap(src, opt) {                     // opt: the admin's settings (regions, spots), else DIST's
+export function distMap(src, opt) {                     // opt: the admin's settings (regions, spots; 4-6 and 12-20 always make a map), else DIST's
   const D = opt ? Object.assign({}, DIST, { regions: opt.regions, minSpots: opt.spots - 1, maxSpots: opt.spots + 1 }) : DIST;
   const rng = makeRng('map ' + src());   // one draw seeds the map's own generator: a map is always found, however plain the source
   for (let tries = 0; tries < 400; tries++) {
@@ -123,7 +124,7 @@ export function distSearch(pm, me, rng) {                               // two m
   return best;
 }
 export function create(type, rng) {
-  const map = distMap(needRng(rng)); return { type, map, who: new Array(map.spots.length).fill(null), grey: true, last: null };
+  const map = distMap(needRng(rng), tuneLive(type)); return { type, map, who: new Array(map.spots.length).fill(null), grey: true, last: null };
 }
 export function apply(mini, p, m, rng, idx) {   // a spot; once the map is full, most regions led
   if (!Number.isInteger(m) || m < 0 || m >= mini.who.length || mini.who[m]) return { ok: false, reason: 'bad' };

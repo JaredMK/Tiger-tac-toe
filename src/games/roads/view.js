@@ -35,7 +35,7 @@ function roadTable(mini, a, o) {
   const open = [], blocked = [], cases = [], roads = [];
   segs.forEach((w, k) => {
     if (!w) { open.push(line(k, 'rseg open')); return; }
-    if (w === 'B') { const [p, q] = ROAD_SEGS[k].map(ROAD_PT), mx = (p[0] + q[0]) / 2, my = (p[1] + q[1]) / 2, drop = rd && rd.block === k; blocked.push(`<g class="rblk${drop ? ' drop' : ''}"${drop ? ` style="--t:${PLACE_MS.mark}ms"` : ''}>${line(k, 'rseg B')}<g transform="translate(${mx} ${my})"><path class="rx" d="M-3 -3L3 3M3 -3L-3 3"/></g></g>`); return; }
+    if (w === 'B') { const [p, q] = ROAD_SEGS[k].map(ROAD_PT), mx = (p[0] + q[0]) / 2, my = (p[1] + q[1]) / 2, drop = rd && (rd.block === k || (rd.more || []).includes(k)); blocked.push(`<g class="rblk${drop ? ' drop' : ''}"${drop ? ` style="--t:${PLACE_MS.mark}ms"` : ''}>${line(k, 'rseg B')}<g transform="translate(${mx} ${my})"><path class="rx" d="M-3 -3L3 3M3 -3L-3 3"/></g></g>`); return; }
     const dr = rd && rd.seg === k;
     cases.push(line(k, `rcase${dr ? ' draw' : ''}`, dr ? ' pathLength="1"' : '')); roads.push(line(k, `rseg ${w}${dr ? ' draw' : ''}`, dr ? ' pathLength="1"' : ''));
   });
@@ -58,5 +58,5 @@ export function moveText(f, who) {
   return `${who} claimed an edge`;
 }
 export function sounds(f, add, won, mini, last) {
-  if (f.road) { add('pieceSlide', 0); if (f.road.block != null) add('knock', PLACE_MS.mark + PLACE_MS.drop - 150); } return;
+  if (f.road) { add('pieceSlide', 0); if (f.road.block != null) add('knock', PLACE_MS.mark + PLACE_MS.drop - 150); (f.road.more || []).forEach((_, n) => add('knock', PLACE_MS.mark + PLACE_MS.drop - 100 + n * 60)); } return;
 }

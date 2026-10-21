@@ -3,6 +3,7 @@ import { needRng } from '../../core/random.js';
 import { other } from '../../core/util.js';
 import { PLACE_MS, randomEmpty } from '../shared/placement.js';
 import { ROADS_DEFAULTS } from './meta.js';
+import { tune } from '../../core/tune.js';
 
 // Roads: a honeycomb of 7 hexagons (one in the middle, a ring of six round it): 24 corners and the 30 edges
 // between them are the roads. A move claims an open edge; then a random open edge is blocked (drawn as the
@@ -43,6 +44,8 @@ export const ROAD_CFG = { cfg: null };
 export function roadsNorm(raw) { return { layout: raw && (raw.layout === 'hex7' || raw.layout === 'hex4') ? raw.layout : ROADS_DEFAULTS.layout }; }
 export function setRoadsConfig(raw) { ROAD_CFG.cfg = raw && typeof raw === 'object' ? roadsNorm(raw) : null; }
 export const roadsConfig = () => Object.assign({}, ROAD_CFG.cfg || ROADS_DEFAULTS);
+// A square's own Mini-game Settings (core/tune.js): the edges blocked after each move, the computer's mistakes.
+export const roadCfg = m => Object.assign({ blocks: 1, miss: 0 }, tune(m));
 // The longest trail through p's lines: { len, segs } (the lines in order along it).
 export function roadLongest(segs, p) {
   const E = roadGeom(segs).segs, mine = E.map((e, k) => (segs[k] === p ? k : -1)).filter(k => k >= 0);
@@ -86,9 +89,11 @@ export function create(type, rng) {
 export function apply(mini, p, m, rng, idx) {   // a line; then a random open line is blocked; once none is open, the longest road
   if (!Number.isInteger(m) || m < 0 || m >= mini.segs.length || mini.segs[m]) return { ok: false, reason: 'bad' };
   mini.segs[m] = p;
-  const b = randomEmpty(mini.segs, needRng(rng));
+  const r = needRng(rng), nb = roadCfg(mini).blocks, more = [];
+  const b = nb ? randomEmpty(mini.segs, r) : null;
   if (b != null) mini.segs[b] = 'B';
-  mini.last = { by: p, seg: m, block: b };
+  for (let k = 1; k < nb && b != null; k++) { const x = randomEmpty(mini.segs, r); if (x == null) break; mini.segs[x] = 'B'; more.push(x); }   // (the admin's settings: more than one)
+  mini.last = Object.assign({ by: p, seg: m, block: b }, more.length ? { more } : {});
   if (mini.segs.includes(null)) return { ok: true, outcome: 'continue', note: 'road' };
   const x = roadLongest(mini.segs, 'X').len, y = roadLongest(mini.segs, 'O').len;
   if (x === y) return { ok: true, outcome: 'draw', note: 'tie' };
@@ -101,7 +106,7 @@ export function randomMove(mini, p, rng, from, empties) {
   return from(empties(mini.segs, c => !c));
 }
 export function moveFlash(m, p, range, bjFrom, mini, flash) {
-  const l = mini.last; flash.road = { seg: l.seg, block: l.block, len: { X: roadLongest(mini.segs, 'X').len, O: roadLongest(mini.segs, 'O').len } }; return;
+  const l = mini.last; flash.road = Object.assign({ seg: l.seg, block: l.block, len: { X: roadLongest(mini.segs, 'X').len, O: roadLongest(mini.segs, 'O').len } }, l.more ? { more: l.more.slice() } : {}); return;
 }
 export function flashMs(f, winLen, won) {
   return PLACE_MS.mark + (f.road && f.road.block != null ? PLACE_MS.drop : 0) + PLACE_MS.hold + (won ? 600 : 0);
