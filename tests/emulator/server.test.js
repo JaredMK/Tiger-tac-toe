@@ -1618,8 +1618,9 @@ test('match logs: a Find Match game (its start, a refused move with its reason, 
   await host.write(`rooms/${code}/match`, E.packMatch(rec));
   const fkey = `f${code}_lm1`;
   await until(() => get(`matchLogRoom/${code}`), 10000, "the room pointed at its match's log");
-  await guest.write(`presence/${code}/O`, { online: true, away: false, at: Date.now() });
-  await guest.write(`presence/${code}/O`, { online: false, at: Date.now() });
+  const logged = k => until(async () => { const v = await get(`matchLogs/${fkey}`); return v && Object.values(v).some(e => e.k === k) ? v : null; }, 10000, `${k} in the log`);
+  await guest.write(`presence/${code}/O`, { online: true, away: false, at: Date.now() }); await logged('online');   // (each logged before the next: the emulator's triggers can overlap)
+  await guest.write(`presence/${code}/O`, { online: false, at: Date.now() }); await logged('offline');
   await guest.write(`presence/${code}/O`, { online: true, away: false, at: Date.now() });
   let r = rec;
   for (const i of [0, 1, 2]) { r.state.turn = 'O'; r = E.applyOnlineMove(r, 'O', i, r.secrets[i].target, E.makeRng(i)).rec; await guest.write(`rooms/${code}/match`, E.packMatch(r)); }
