@@ -71,3 +71,15 @@ test('sky hop: a breaking platform takes one bounce; a burr ends the attempt; fa
   const sim = E.hopStart(hopMini(9, 110), 'X');
   for (let n = 0; n < 60 / E.FING.step && !sim.end; n++) { E.hopStep(sim, null); if (sim.last === 'break') assert.equal(sim.gone[sim.on], 1, 'a broken platform is gone'); }
 });
+
+test('sky hop: its settings (TUNE) are dealt into the square: the computer\'s hand', () => {
+  const { fingHand } = require('../../src/games/shared/finger.js');
+  E.setTune('skyhop', { aiReact0: 100, aiReact1: 100, aiAim: 0, aiLapse: 0, aiMisjudge: 0 });
+  const mini = E.newMini('skyhop', E.makeRng('tune'));
+  E.setTune('skyhop', null);
+  assert.deepEqual(mini.tune, { aiReact0: 100, aiReact1: 100, aiAim: 0, aiLapse: 0, aiMisjudge: 0 });
+  assert.deepEqual(fingHand(mini), { react: [0.1, 0.1], aim: 0, lapse: 0, misjudge: 0 });
+  assert.equal(fingHand(E.newMini('skyhop', E.makeRng('plain'))), E.FHAND.skyhop, 'untuned: the usual hand');
+  const mv = E.fingAi(mini, 'X', E.makeRng('ai')), r = E.applyMove(mini, 'X', mv);
+  assert.equal(r.ok, true); assert.ok(mini.height.X > 0);
+});

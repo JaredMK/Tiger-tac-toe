@@ -9,6 +9,6 @@ export const explainer = { name: 'Ride the Bus', play: 'Guess red or black, then
 // Its settings (the admin's Mini-game Settings; core/tune.js): read with tune(mini).
 export const TUNE = [
   { k: 'ties', label: 'A tie (equal value) is', def: 'wrong', opts: ['wrong', 'right'], group: 'Rules' },
-  { k: 'miss', label: 'Computer mistake rate (%)', def: 0, min: 0, max: 60, step: 5, group: 'Computer' },
+  { k: 'miss', label: 'Computer mistake rate (%)', def: 0, min: 0, max: 100, step: 5, group: 'Computer' },
 ];
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><rect x="2.5" y="4" width="19" height="13" rx="2.5"/><path d="M2.5 10.5h19M8.5 4v6.5M15 4v6.5"/><circle cx="7" cy="18.5" r="2" fill="currentColor"/><circle cx="17" cy="18.5" r="2" fill="currentColor"/></svg>';

@@ -1,5 +1,6 @@
 // Treasure Hunt: the rules (pure: no page, no clock; the server runs the same code).
 import { randInt } from '../../core/random.js';
+import { tuneLive } from '../../core/tune.js';
 
 // Treasure hunt: a 6x6 grid. A dug cell tells only how far the treasure is, as a band of steps up, down,
 // left or right: Hot (1), Warm (2-3), Cool (4-5), Cold (6 or more). (Older 5x5 squares play on as they are.)
@@ -13,7 +14,8 @@ export function huntDist(a, b, n = HUNT.n) {
   return Math.abs(Math.floor(a / n) - Math.floor(b / n)) + Math.abs(a % n - b % n);
 }
 export function create(type, rng) {
-  return { type, treasure: randInt(rng, HUNT.n * HUNT.n), dug: new Array(HUNT.n * HUNT.n).fill(null), last: null };
+  const n = tuneLive(type).n;                                    // (the admin's setting: the grid's size; the square keeps it as dug's length)
+  return { type, treasure: randInt(rng, n * n), dug: new Array(n * n).fill(null), last: null };
 }
 export function apply(mini, p, m, rng, idx) {
   if (!idx(mini.dug.length)) return { ok: false, reason: 'bad' };

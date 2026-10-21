@@ -88,3 +88,22 @@ test('ride the bus: a timeout is one random guess, and the turn ends even when i
     assert.equal(st.flash.kind === 'again', false);
   }
 });
+
+test('ride the bus: the admin\'s settings (a tie right, the computer\'s mistakes) are dealt into the square and played by', () => {
+  E.setTune('bus', { ties: 'right', miss: 100 });
+  const m = E.newMini('bus', E.makeRng('bus-tune'));
+  E.setTune('bus', null);
+  assert.deepEqual(m.tune, { ties: 'right', miss: 100 });
+  // a tie is right: higher and lower both count an equal value
+  const odds = Object.fromEntries(E.busOdds(['7S'], true).map(o => [o.guess, Math.round(o.p * 51)]));
+  assert.deepEqual(odds, { higher: 31, lower: 23 });
+  m.prog.X = ['7S'];
+  const rng = E.makeRng('bus-tie');
+  let ties = 0;
+  for (let k = 0; k < 200; k++) { const c = JSON.parse(JSON.stringify(m)), r = E.applyMove(c, 'X', 'higher', rng); if (c.last.card[0] === '7') { ties++; assert.equal(c.last.right, true); } assert.ok(r.ok); }
+  assert.ok(ties > 0);
+  // a mistake rate of 100: the computer's suit guess is any suit, not just the likeliest
+  m.prog.X = ['2H', '3H', '4H'];
+  const seen = new Set(); for (let k = 0; k < 40; k++) seen.add(E.localBest(E.publicMini(m), 'X', rng).move);
+  assert.ok(seen.size > 1);
+});

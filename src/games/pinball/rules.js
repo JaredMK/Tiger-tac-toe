@@ -1,5 +1,6 @@
 // Pinball: the rules (pure: no page, no clock; the server runs the same code).
 import { cfgKit } from '../../core/config.js';
+import { tuneLive } from '../../core/tune.js';
 import { PHYSICS } from '../shared/physics.js';
 import { PINB_DEFAULTS } from './meta.js';
 export { fingerApply as apply } from '../shared/finger.js';
@@ -26,12 +27,14 @@ export const pinCount = () => PINB.targets;
 // The table of a square (its layout and its seven targets, built by the physics), for the check, the
 // screen and the computer: pinTable falls back to the classic table for a square dealt before the layouts.
 export const pinTableOf = mini => (PHYSICS.lib && PHYSICS.lib.PIN ? PHYSICS.lib.pinTable(mini) : null);
-// A square's table dealt: a layout at random, then seven of its spots at random (each spot at most once).
-export function pinDeal(rng) {
+// A square's table dealt: a layout at random, then seven of its spots at random (each spot at most once;
+// n: how many, the square's setting, seven by default).
+export function pinDeal(rng, n) {
+  n = n || PINB.targets;
   const L = PHYSICS.lib, lays = L && L.PIN_LAYOUTS;
   if (!lays || !lays.length) return null;
   const k = Math.min(lays.length - 1, Math.floor(rng() * lays.length)), pool = lays[k].spots.map((_, i) => i), t = [];
-  while (t.length < PINB.targets && pool.length) t.push(pool.splice(Math.min(pool.length - 1, Math.floor(rng() * pool.length)), 1)[0]);
+  while (t.length < n && pool.length) t.push(pool.splice(Math.min(pool.length - 1, Math.floor(rng() * pool.length)), 1)[0]);
   return { k, t };
 }
 export function pinCheck(mini, p, m) {
@@ -63,7 +66,7 @@ export function pinCheck(mini, p, m) {
   return null;
 }
 export function create(type, rng) {
-  const table = pinDeal(rng), n = table ? table.t.length : pinCount();
+  const table = pinDeal(rng, tuneLive(type).targets), n = table ? table.t.length : pinCount();   // (targets: the admin's setting; a square without physics plays the classic seven)
   return Object.assign({ type, cfg: pinConfig() }, table ? { table } : {}, { lit: { X: new Array(n).fill(0), O: new Array(n).fill(0) }, balls: { X: 0, O: 0 }, last: null });
 }
 export function publicView(mini) {

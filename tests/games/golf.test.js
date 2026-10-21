@@ -56,3 +56,18 @@ test('golf: a bumper kicks the ball straight off it, faster than it came (a bump
     assert.ok(P.LAYOUTS.every(hh => hh.bumpers.length >= 3), 'every layout has its bumpers');
   } finally { P.HOLES.pop(); }
 });
+
+test('golf: its settings (TUNE) are dealt into the square and played by: a faster ball drops; the computer\'s error', () => {
+  E.setTune('golf', { holeSpeed: 60, aiAim: 0, aiPow: 0 });
+  const m = mini('golf', 'tune'); m.hole = 2;
+  E.setTune('golf', null);
+  assert.deepEqual(m.tune, { holeSpeed: 60, aiAim: 0, aiPow: 0 });
+  const cup = P.HOLES[2].cup;
+  m.balls.X = [cup[0], cup[1] + 36]; m.balls.O = [90, 150];
+  const plain = Object.assign(JSON.parse(JSON.stringify(m)), { tune: undefined });
+  assert.equal(E.applyMove(plain, 'X', { aim: 0, power: 0.65 }).note, 'lip', 'by default it lips out');
+  const r = E.applyMove(JSON.parse(JSON.stringify(m)), 'X', { aim: 0, power: 0.65 });
+  assert.equal(r.note, 'holed', 'dealt a faster cup, it drops');
+  const ai = E.physAi(E.publicMini(m), 'O', E.makeRng('ai'));
+  assert.ok(ai.move && Number.isFinite(ai.move.aim));
+});

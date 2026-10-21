@@ -75,3 +75,17 @@ test('roulette: a timeout bets a random group', () => {
   }
   assert.equal(seen.size, 3);
 });
+
+test('roulette: the admin\'s settings (hits to win, the computer\'s bets on 0) are dealt into the square and played by', () => {
+  E.setTune('rl', { goal: 3, zeroCrit: 0, zeroBehind: 100 });
+  const m = E.newMini('rl', E.makeRng('rl-tune'));
+  E.setTune('rl', null);
+  assert.deepEqual(m.tune, { goal: 3, zeroCrit: 0, zeroBehind: 100 });
+  m.hits.X = 1;
+  let r;
+  do r = E.applyMove(m, 'X', 'g1', E.makeRng('rl-' + m.spins.length + ':' + m.hits.X)); while (m.hits.X < 2 && m.spins.length < 6);
+  assert.equal(m.hits.X, 2);
+  assert.equal(r.outcome, 'continue', 'two hits: not yet, with three to win');
+  const pm = E.publicMini(m); pm.hits = { X: 0, O: 2 };
+  assert.equal(E.localBest(pm, 'X', E.makeRng('rl-ai'), null, { value: 0, behind: 2 }).move, 'zero', 'behind: always 0');
+});

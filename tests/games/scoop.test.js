@@ -53,3 +53,16 @@ test('scoop stack: faster and more hazards as the stack grows; nothing lands in 
   }
   assert.ok(E.scoopDrop(0) < E.scoopDrop(4) && E.scoopDrop(30) === E.scoopDrop(60), 'a short stack is nearer the bottom; a tall one is kept 4.6 units up');
 });
+
+test('scoop stack: its settings (TUNE) are dealt into the square: the misses allowed; the computer\'s hand', () => {
+  E.setTune('scoop', { misses: 1, aiAim: 200, aiLapse: 0 });
+  const mini = E.newMini('scoop', E.makeRng('tune'));
+  E.setTune('scoop', null);
+  assert.deepEqual(mini.tune, { misses: 1, aiAim: 200, aiLapse: 0 });
+  assert.equal(E.scoopStart(mini, 'X').misses, 1);
+  const mv = E.fingAi(mini, 'X', E.makeRng('ai')), r = E.applyMove(mini, 'X', mv);
+  assert.equal(r.ok, true);
+  if (mv.end === 'miss') assert.equal(mini.last.end, 'miss');
+  const sim = E.fingReplay('scoop', mini, 'X', [], 1e5);
+  assert.equal(sim.miss <= 1 && (sim.end === 'miss' || sim.end === 'hazard' || sim.end === 'top'), true, `one miss ends it (${sim.end}, ${sim.miss})`);
+});

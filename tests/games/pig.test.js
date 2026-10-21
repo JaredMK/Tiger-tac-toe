@@ -271,3 +271,14 @@ test('Risky Rolls with a d8: the computer banks around 12 (its best pot) and nee
     assert.equal(E.localBest(pm, 'X', rng, E.STYLE0, {}).move, 'roll');
   } finally { E.setPigConfig({ sides: 6, target: 21 }); }
 });
+
+test('risky rolls: the computer\'s banking setting is dealt into the square and played by', () => {
+  E.setTune('pig', { risk: 8 });
+  const m = E.newMini('pig', E.makeRng('pig-tune'));
+  E.setTune('pig', null);
+  assert.deepEqual(m.tune, { risk: 8 });
+  const at = (mini, pot) => { const pm = E.publicMini(mini); pm.turn = { by: 'X', rolls: [pot], pot }; return E.localBest(pm, 'X', E.makeRng('p')).move; };
+  const plain = E.newMini('pig', E.makeRng('pig-tune'));
+  assert.equal(at(plain, 8), 'roll'); assert.equal(at(plain, 12), 'bank', 'the usual: banks at 12 (a d8)');
+  assert.equal(at(m, 12), 'roll', 'banks later');
+});

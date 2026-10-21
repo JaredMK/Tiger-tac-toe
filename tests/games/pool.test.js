@@ -100,3 +100,16 @@ test('pool, no tunnelling at full power: balls never pass through a rail or each
     assert.ok(first >= 0 && r.rec.frames.slice(0, first + 1).every(f => f[2 * j + 1] == null || f[2 * j + 1] > (f[2 * i + 1] == null ? -1 : f[2 * i + 1]) - 0.5), `${gap} apart: the white stays behind the ball it strikes`);
   }
 });
+
+test('pool: its settings (TUNE) are dealt into the square and played by: a slower full-power shot', () => {
+  E.setTune('pool', { vMax: 150, aiAim: 0 });
+  const m = mini('pool', 'tune');
+  E.setTune('pool', null);
+  assert.deepEqual(m.tune, { vMax: 150, aiAim: 0 });
+  const far = s => { const r = s.last.rec, i = r.ids.indexOf('cue'); return Math.max(...r.frames.map(f => Math.abs(f[i * 2 + 1] - r.frames[0][i * 2 + 1]) + Math.abs(f[i * 2] - r.frames[0][i * 2]))); };
+  const slow = JSON.parse(JSON.stringify(m)), fast = Object.assign(JSON.parse(JSON.stringify(m)), { tune: undefined });
+  E.applyMove(slow, 'X', { aim: -Math.PI / 2, power: 0.3 }); E.applyMove(fast, 'X', { aim: -Math.PI / 2, power: 0.3 });
+  assert.ok(slow.last.ms < fast.last.ms || far(slow) < far(fast), 'the same shot runs slower');
+  const ai = E.physAi(E.publicMini(m), 'X', E.makeRng('ai'));
+  assert.equal(E.applyMove(JSON.parse(JSON.stringify(m)), 'X', ai.move).ok, true);
+});

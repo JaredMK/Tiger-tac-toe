@@ -1,5 +1,6 @@
 // Trivia: the rules (pure: no page, no clock; the server runs the same code).
 import { needRng, randInt, shuffle } from '../../core/random.js';
+import { tune } from '../../core/tune.js';
 
 // Trivia: the questions come from the bank the host sets (trivia.json, from the Open Trivia Database;
 // setTriviaBank). A square has one question at a time, shared by both players, dealt from the questions
@@ -35,7 +36,7 @@ export function triviaDeal(state, sq, rng) {
   let pool = TRIVIA.bank.questions.filter(q => !used.has(q.id));
   if (!pool.length) pool = TRIVIA.bank.questions;
   const q = pool[randInt(rng, pool.length)];
-  const opts = shuffle([q.a].concat(q.wrong.slice(0, TRIVIA.options - 1)), rng);
+  const opts = shuffle([q.a].concat(q.wrong.slice(0, tune(m).opts - 1)), rng);
   m.ask = { id: q.id, q: q.q, cat: q.cat || '', opts };
   m.answer = opts.indexOf(q.a);
   m.crossed = [];
@@ -77,7 +78,7 @@ export function apply(mini, p, m, rng, idx) {   // the square's question: a wron
   mini.right[p] += 1;
   mini.asked = (mini.asked || []).concat(ask.id);
   mini.ask = null; mini.answer = null; mini.crossed = [];  // the next question is dealt by playMove, from the whole match's unasked ones
-  if (mini.right[p] >= TRIVIA.goal) return { ok: true, outcome: 'win', note: 'right' };
+  if (mini.right[p] >= tune(mini).goal) return { ok: true, outcome: 'win', note: 'right' };
   return { ok: true, outcome: 'continue', note: 'right' };
 }
 // Trivia and Odd One Out: the computer plays to a success rate (it knows the answer about half the
@@ -85,7 +86,7 @@ export function apply(mini, p, m, rng, idx) {   // the square's question: a wron
 // answer here and makes up its mind from there. Online, a phone
 // never gets these (hideMini): only the server, which plays the bots, does.
 export function publicView(mini) {
-  return { type: 'trivia', right: { X: mini.right.X, O: mini.right.O }, answer: Number.isInteger(mini.answer) ? mini.answer : null, crossed: (mini.crossed || []).slice(), ask: mini.ask && (mini.ask.q || mini.ask.down) ? { opts: mini.ask.opts ? mini.ask.opts.length : mini.ask.n || TRIVIA.options } : null };
+  return { type: 'trivia', right: { X: mini.right.X, O: mini.right.O }, answer: Number.isInteger(mini.answer) ? mini.answer : null, crossed: (mini.crossed || []).slice(), ask: mini.ask && (mini.ask.q || mini.ask.down) ? { opts: mini.ask.opts ? mini.ask.opts.length : mini.ask.n || tune(mini).opts } : null };
 }
 export function randomMove(mini, p, rng, from, empties) {
   return 'auto';                                      // one wrong pick: an option still standing is crossed out
@@ -97,7 +98,7 @@ export function secret(mini) {
   const s = { answer: Number.isInteger(mini.answer) ? mini.answer : null }; if (mini.ask && !mini.shown) s.ask = mini.ask; return s;
 }
 export function hide(m, k, st) {
-  delete m.answer; delete m.answers; if (m.ask && !m.shown) m.ask = { down: true, n: m.ask.opts ? m.ask.opts.length : TRIVIA.options }; return;   // face down: only that there is one
+  delete m.answer; delete m.answers; if (m.ask && !m.shown) m.ask = { down: true, n: m.ask.opts ? m.ask.opts.length : tune(m).opts }; return;   // face down: only that there is one
 }
 export function flashMs(f, winLen, won) {
   return (f.trivia && f.trivia.fresh ? TRIVIA.flip : 0) + TRIVIA.pause + TRIVIA.reveal + (won ? 600 : 0);   // (another phone: the card turned up, a pause, then the pick)

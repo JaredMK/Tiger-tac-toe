@@ -196,3 +196,19 @@ test('coins: marks survive the online record, and the computer reads its exact o
   const bad = Object.assign(mini('coins'), { coins: ['X', 'X', 'O', 'O', '?'], marks: { by: 'X', coins: [0, 2, 3] } });
   assert.equal(L.coinMarksFor(bad, 'X'), null, 'marks on your own coin are not used');
 });
+
+test('coins: the admin settings deal seven coins and flip up to four (the marks and the computer follow)', () => {
+  E.setTune('coins', { n: 7, flips: 4 });
+  try {
+    const st = L.newState(); st.squares[0].mini = L.newMini('coins', lcg(4));
+    const m = st.squares[0].mini;
+    assert.equal(m.coins.length, 7); assert.deepEqual(m.tune, { n: 7, flips: 4 });
+    assert.deepEqual(['X', 'O', '?'].map(s => m.coins.filter(c => c === s).length), [3, 3, 1]);
+    L.markCoins(st, 'X', lcg(5));
+    assert.equal(m.marks.coins.length, 4); assert.deepEqual(L.coinMarksFor(m, 'X'), m.marks.coins);
+    assert.equal(L.applyMove(m, 'X', 'flip', lcg(6)).ok, true); assert.equal(m.last.flipped.length, 4);
+    assert.equal(L.localBest(L.publicMini(m), 'O', lcg(7)).move, 'flip');
+    assert.ok(E.needsOf(L.publicMini(m), 'O') > 0);
+  } finally { E.setTune('coins', null); }
+  assert.equal(L.newMini('coins', lcg(4)).coins.length, 5);
+});

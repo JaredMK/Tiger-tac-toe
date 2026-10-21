@@ -187,3 +187,16 @@ test('blackjack: a timeout stands (dealing first when no hand is in play); the t
   assert.notEqual(m2.last.res, 'push', 'a push never ends the turn');
   assert.equal(st2.lock, null, 'the turn ends');
 });
+
+test('blackjack: the admin\'s settings (hands to win, the dealer\'s stand) are dealt into the square and played by', () => {
+  E.setTune('bj', { goal: 1, stand: 15 });
+  const m = E.newMini('bj', lcg(1));
+  E.setTune('bj', null);
+  assert.deepEqual(m.tune, { goal: 1, stand: 15 });
+  assert.deepEqual(E.newMini('bj', lcg(1)).tune, undefined, 'back to the defaults: nothing kept');
+  // the dealer stands on 15 now; one win takes the square
+  Object.assign(m, { hand: { by: 'X', cards: ['TS', '9H'], up: '9C' }, hole: '6D', deck: ['4H'] });
+  assert.deepEqual(E.applyMove(m, 'X', 'stand', lcg(1)), { ok: true, outcome: 'win', note: 'win' });
+  assert.deepEqual(m.last.dealer, ['9C', '6D'], '15: the dealer stands');
+  assert.equal(E.publicMini(m).tune.goal, 1);
+});

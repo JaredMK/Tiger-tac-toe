@@ -1,4 +1,6 @@
 // Treasure Hunt: the computer's play.
+import { randInt } from '../../core/random.js';
+import { tune } from '../../core/tune.js';
 import { huntBand, huntCandidates, huntDist, huntSize } from './rules.js';
 
 export function needs(pm, p) {
@@ -8,6 +10,8 @@ export function best(pm, me, rng, style, ctx) {
   const cand = huntCandidates(pm);
   if (!cand.length) { const open = pm.dug.map((d, i) => (d ? -1 : i)).filter(i => i >= 0); return { move: open[0], q: 0, shared: true }; }
   if (cand.length === 1) return { move: cand[0], q: 1, shared: true };
+  const miss = tune(pm).miss || 0;                               // (the admin's mistake rate: a dig anywhere it could be)
+  if (miss && rng() * 100 < miss) return { move: cand[randInt(rng, cand.length)], q: 1 / cand.length, shared: true };
   let best = cand[0], bestSplit = Infinity;        // the dig that, if it misses, leaves the fewest candidates on average (by the band it would show)
   const n = huntSize(pm);
   for (const c of cand) {

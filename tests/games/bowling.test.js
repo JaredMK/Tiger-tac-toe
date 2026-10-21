@@ -42,3 +42,15 @@ test('bowling: no back wall — the ball and any pin that pass the end of the la
   assert.ok(pits > 0, 'pins knocked hard enough drop into the pit');
   assert.equal(back, 0, 'nothing bounces back down the lane from the end');
 });
+
+test('bowling: its settings (TUNE) are dealt into the square and played by: a slower ball; the computer\'s error', () => {
+  E.setTune('bowling', { vMax: 90, aiPow: 0 });
+  const m = mini('bowling', 'tune');
+  E.setTune('bowling', null);
+  assert.deepEqual(m.tune, { vMax: 90, aiPow: 0 });
+  const slow = JSON.parse(JSON.stringify(m)), fast = Object.assign(JSON.parse(JSON.stringify(m)), { tune: undefined });
+  E.applyMove(slow, 'X', { aim: 0.3, power: 1 }); E.applyMove(fast, 'X', { aim: 0.3, power: 1 });
+  assert.ok(slow.last.ms > fast.last.ms, `the same roll is slower (${slow.last.ms} vs ${fast.last.ms} ms)`);
+  const ai = E.physAi(E.publicMini(m), 'X', E.makeRng('ai'));
+  assert.equal(E.applyMove(JSON.parse(JSON.stringify(m)), 'X', ai.move).ok, true);
+});

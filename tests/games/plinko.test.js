@@ -96,3 +96,16 @@ test('plinko: a square from before (a WIN bin) becomes a points square', () => {
   assert.deepEqual(old.vals, [3, 3, 5, 2, 2, 1, 1]); assert.deepEqual(old.pts, { X: 0, O: 0 }); assert.equal(old.target, 12); assert.equal(old.win, undefined);
   assert.equal(E.applyMove(old, 'X', 2, lcg(1)).ok, true);
 });
+
+test('plinko: the admin\'s settings (the bonus peg\'s points, the computer\'s mistakes) are dealt into the square and played by', () => {
+  E.setTune('plinko', { bonus: 5, miss: 100 });
+  const m = E.newMini('plinko', E.makeRng('plk-tune'));
+  E.setTune('plinko', null);
+  assert.deepEqual(m.tune, { bonus: 5, miss: 100 });
+  const rng = E.makeRng('plk-play');
+  let hit = null;
+  for (let k = 0; k < 200 && !hit; k++) { const c = JSON.parse(JSON.stringify(m)); E.applyMove(c, 'X', k % 7, rng); if (c.last.hit) hit = c.last; }
+  assert.ok(hit); assert.equal(hit.pts, m.vals[hit.bin] + 5);
+  const seen = new Set(); for (let k = 0; k < 40; k++) seen.add(E.localBest(E.publicMini(m), 'X', rng).move);
+  assert.ok(seen.size > 1, 'any open slot');
+});

@@ -7,6 +7,7 @@ import { N, REDUCED, commit, cpuPlays, esc, mv, state } from '../../ui/app.js';
 import { KEY } from '../../ui/config.js';
 import { fxAttr } from '../../ui/fx.js';
 import { arcTally, lateAt, pips } from '../../ui/progress.js';
+import { tune } from '../../core/tune.js';
 import { render } from '../../ui/render.js';
 
 // Trivia: the player's question and four answers. After a tap the right one glows (and a wrong pick
@@ -25,7 +26,8 @@ const triviaUp = mini => !!(mini.shown && mini.ask && mini.ask.q);
 const TQBACK = `<div class="tqcard tqback" aria-label="The question, face down"><span aria-hidden="true">?</span><small>Trivia</small></div>`;
 function triviaTable(mini, a, o) {
   const t = a && a.trivia ? a.trivia : null, l = mini.last, turn = o.turn, pre = t ? triviaPre(a) : 0, flipT = t && t.fresh && pre ? TRIVIA.flip : 0;
-  const tal = p => arcTally(p, o, pips(p, Math.min(TRIVIA.goal, mini.right[p]), TRIVIA.goal, t && t.correct && a.by === p, pre + 250));
+  const goal = tune(mini).goal;   // (its settings: TUNE)
+  const tal = p => arcTally(p, o, pips(p, Math.min(goal, mini.right[p]), goal, t && t.correct && a.by === p, pre + 250));
   const ask = triviaUp(mini) ? mini.ask : null, down = !!(mini.ask && !mini.shown);
   // what shows: the pick just made (fresh), else the one on show until heading back or when looking back, else the open question
   const pick = t || ((o.done || o.view) && l ? l : null);
@@ -76,8 +78,8 @@ export function loadTrivia() {
   } catch (e) { /* offline: as last kept */ }
 }
 export function miniature(mini, final) {   // both players' progress, and the question's options: those still standing, the crossed-out ones dimmed and struck
-  const n = mini.ask ? (Array.isArray(mini.ask.opts) ? mini.ask.opts.length : mini.ask.n || TRIVIA.options) : TRIVIA.options, out = new Set(mini.crossed || []);
-  return `<div class="tpip">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${Array.from({ length: TRIVIA.goal }, (_, k) => `<i class="${k < mini.right[p] ? 'on' : ''}"></i>`).join('')}</div>`).join('')}<div class="topts" aria-label="${n - out.size} of ${n} answers left">${Array.from({ length: n }, (_, k) => `<i class="${out.has(k) ? 'out' : ''}"></i>`).join('')}</div></div>`;
+  const t = tune(mini), n = mini.ask ? (Array.isArray(mini.ask.opts) ? mini.ask.opts.length : mini.ask.n || t.opts) : t.opts, out = new Set(mini.crossed || []);
+  return `<div class="tpip${t.goal > 4 ? ' t7' : ''}">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${Array.from({ length: t.goal }, (_, k) => `<i class="${k < mini.right[p] ? 'on' : ''}"></i>`).join('')}</div>`).join('')}<div class="topts" aria-label="${n - out.size} of ${n} answers left">${Array.from({ length: n }, (_, k) => `<i class="${out.has(k) ? 'out' : ''}"></i>`).join('')}</div></div>`;
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   g = triviaTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d }); return g;

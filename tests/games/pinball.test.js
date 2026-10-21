@@ -80,3 +80,15 @@ test('pinball: lit targets stay lit, for that player only; lighting all seven wi
   assert.ok(st.squares[i].owner, 'someone lit all seven');
   assert.ok(st.squares[i].mini.lit[st.squares[i].owner].every(Boolean));
 });
+
+test('pinball: its settings (TUNE) are dealt into the square: fewer targets; the computer\'s hand', () => {
+  E.setTune('pinball', { targets: 4, aiReact0: 100, aiReact1: 150, aiJitter: 20 });
+  const mini = E.newMini('pinball', E.makeRng('tune'));
+  E.setTune('pinball', null);
+  assert.deepEqual(mini.tune, { targets: 4, aiReact0: 100, aiReact1: 150, aiJitter: 20 });
+  assert.equal(mini.table.t.length, 4); assert.equal(mini.lit.X.length, 4); assert.equal(P.pinTable(mini).targets.length, 4);
+  assert.equal(E.fingGoal(mini), 4);
+  const mv = E.fingAi(mini, 'X', E.makeRng('ai')), r = E.applyMove(mini, 'X', mv);
+  assert.equal(r.ok, true, 'the computer\'s ball passes the check');
+  assert.ok(mini.lit.X.length === 4 && mini.balls.X === 1);
+});

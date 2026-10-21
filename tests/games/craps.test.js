@@ -72,3 +72,14 @@ test('craps: online, a timed-out turn rolls its round out in the one move; the t
   assert.equal(m.point, null, 'nothing left on'); assert.equal(full.lock, null); assert.equal(full.turn, 'O');
   assert.equal(m.last.kind, 'round');
 });
+
+test('craps: the admin\'s rounds to win are dealt into the square and played by', () => {
+  E.setTune('craps', { goal: 2 });
+  const m = E.newMini('craps', E.makeRng('cr-tune'));
+  E.setTune('craps', null);
+  assert.deepEqual(m.tune, { goal: 2 });
+  const rng = E.makeRng('cr-play');
+  let r;
+  for (let k = 0; k < 100 && m.wins.X < 2; k++) r = E.applyMove(m, 'X', 'roll', rng);
+  assert.equal(m.wins.X, 2); assert.equal(r.outcome, 'win', 'two rounds won takes it');
+});

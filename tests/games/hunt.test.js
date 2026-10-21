@@ -162,3 +162,15 @@ test('treasure hunt tactics: only cells consistent with every clue, the best spl
   }
   assert.ok(total / 60 < 8, `found in ${(total / 60).toFixed(1)} digs on average`);
 });
+
+test('hunt: the admin settings deal an 8x8 grid; the clues and the computer work on it', () => {
+  E.setTune('hunt', { n: 8, miss: 30 });
+  try {
+    const m = L.newMini('hunt', lcg(9));
+    assert.equal(m.dug.length, 64); assert.equal(L.huntSize(m), 8); assert.deepEqual(m.tune, { n: 8, miss: 30 });
+    let out, k = 0;
+    do { out = L.applyMove(m, k % 2 ? 'O' : 'X', L.localBest(L.publicMini(m), 'X', lcg(k)).move); assert.ok(out.ok); k++; } while (out.outcome !== 'win' && k < 64);
+    assert.equal(out.outcome, 'win');
+  } finally { E.setTune('hunt', null); }
+  assert.equal(L.newMini('hunt', lcg(9)).dug.length, 36);
+});

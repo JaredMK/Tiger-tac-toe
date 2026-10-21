@@ -12,5 +12,5 @@ export const PLINKO_DEFAULTS = { target: 12 };
 // Its settings besides the target (the admin's Mini-game Settings; core/tune.js): read with tune(mini).
 export const TUNE = [
   { k: 'bonus', label: 'Bonus peg points', def: 2, min: 1, max: 5, step: 1, group: 'Rules' },
-  { k: 'miss', label: 'Computer mistake rate (%)', def: 0, min: 0, max: 60, step: 5, group: 'Computer' },
+  { k: 'miss', label: 'Computer mistake rate (%)', def: 0, min: 0, max: 100, step: 5, group: 'Computer' },
 ];

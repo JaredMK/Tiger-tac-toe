@@ -70,3 +70,14 @@ test('wheels: the computer works out each wheel\'s chance of reaching the target
   const b = E.localBest({ type: 'wheels', target: 18, wheels, pts: { X: 8, O: 17 }, spins: { X: 0, O: 0 } }, 'X', rng);
   assert.equal(b.move, 'high'); assert.equal(b.q, 0.1);
 });
+
+test('wheels: the computer\'s mistake rate is dealt into the square and played by', () => {
+  E.setTune('wheels', { miss: 60 });
+  const m = E.newMini('wheels', E.makeRng('wh-tune'));
+  E.setTune('wheels', null);
+  assert.deepEqual(m.tune, { miss: 60 });
+  const rng = E.makeRng('wh-miss'), seen = new Set(), plain = new Set();
+  const pm = E.publicMini(m), pm0 = Object.assign({}, pm, { tune: undefined });
+  for (let k = 0; k < 60; k++) { seen.add(E.localBest(pm, 'X', rng).move); plain.add(E.localBest(pm0, 'X', rng).move); }
+  assert.equal(plain.size, 1); assert.ok(seen.size > 1);
+});
