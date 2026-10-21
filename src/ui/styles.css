@@ -1243,6 +1243,7 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 @media (max-height: 600px) { .menu-card { gap: 8px; } .btn.howto { height: 44px; } .g-hilo { gap: 10px; } .pad button { height: 46px; } .g-dice { gap: 8px; } }   /* a short phone: Higher/Lower fits under the turn bar */
 .explain { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; padding: 20px max(16px, env(safe-area-inset-right)) 20px max(16px, env(safe-area-inset-left)); background: rgba(22, 18, 16, .5); animation: fade .15s ease-out; cursor: pointer; }
 .excard { width: min(100%, 380px); max-height: 100%; overflow-y: auto; background: var(--paper); border: 4px solid var(--ink); box-shadow: 0 7px 0 var(--ink); border-radius: 26px 18px 24px 20px / 20px 26px 18px 24px; padding: 18px 18px 12px; display: flex; flex-direction: column; gap: 12px; animation: pop .25s cubic-bezier(.3, 1.5, .5, 1) both; }
+.excard .excat { margin: 0 0 4px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); min-height: 16px; }
 .excard h2 { display: flex; align-items: center; gap: 10px; margin: 0; font-size: 26px; line-height: 1.1; padding-top: 3px; }
 .excard h2 svg { width: 30px; height: 30px; flex: none; color: var(--ink); }
 .exline { margin: 0; display: grid; grid-template-columns: 58px 1fr; gap: 10px; align-items: start; font-size: 19px; line-height: 1.3; }
@@ -2381,10 +2382,6 @@ main.scr.mini.screplay * { cursor: pointer; }   /* (a tap anywhere skips to the 
 .pbonus.hit b { animation: tuntil 1ms var(--t, 0ms) both; }
 .rskip.until { animation: skipin .25s ease-out 2s both, tuntil 1ms var(--u, 0ms) both; }   /* gone as the move's animation ends */
 
-/* the Advanced checklist: each game's kind (setup.js catIcon), a small sticker on the row's top edge by the "?" */
-.chk .gcat { position: absolute; top: -12px; right: 38px; z-index: 1; width: 22px; height: 22px; box-sizing: border-box; border-radius: 50%; border: 2.5px solid var(--ink); background: #fff; box-shadow: 0 2px 0 var(--ink); display: grid; place-items: center; }
-.chk .gcat svg { display: block; width: 14px; height: 14px; }
-.chk .gcat.luck svg { color: var(--green); } .chk .gcat.skill svg { color: var(--x); } .chk .gcat.brain svg { color: var(--sea); }
 /* the page never scrolls or rubber-bands, on any screen: a fixed full-height layout (100dvh); only the
    designated inner lists scroll, and their overscroll stays inside them */
 html { height: 100%; overflow: hidden; overscroll-behavior: none; }

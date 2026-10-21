@@ -2,7 +2,7 @@
 
 export const info = { name: 'Risky Rolls',  hint: "Roll and bank. A repeated number loses this turn's points. First to 51 wins" };   // ('pig': its id in saved games, records and stats, from when it was called Pig)
 export const release = 'released';   // the default (the admin's dashboard can change it)
-export const category = 'luck';   // the game's kind, an icon in the Advanced checklist: 'luck', 'skill' or 'brain'
+export const category = 'luck';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const target = 'own';   // the header's icon: 'shared' (one board for both), 'own' (each player's own progress) or 'course' (one course for both, each their own distance)
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Risky Rolls', play: 'Roll as many times as you dare, then bank your points. Roll a number you already rolled this turn and you lose them.', win: 'Bank 51 first.' };   // ('pig': its id from when it was called Pig)

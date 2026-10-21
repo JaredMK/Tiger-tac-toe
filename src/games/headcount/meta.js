@@ -2,7 +2,7 @@
 
 export const info = { name: 'Headcount',    hint: 'Count the critters as they cross. Three right wins' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
-export const category = 'brain';   // the game's kind, an icon in the Advanced checklist: 'luck', 'skill' or 'brain'
+export const category = 'brain';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const target = 'own';   // the header's icon: 'shared' (one board for both), 'own' (each player's own progress) or 'course' (one course for both, each their own distance)
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Headcount', play: 'Count the critters the question asks for as they cross. Ignore the others.', win: 'Get 3 right. It gets harder each time.' };

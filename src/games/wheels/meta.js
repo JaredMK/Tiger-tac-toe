@@ -3,7 +3,7 @@ import { wheelsConfig } from './rules.js';
 
 export const info = { name: 'Risk Wheels',  hint: 'Pick a wheel and spin. First to 18' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
-export const category = 'luck';   // the game's kind, an icon in the Advanced checklist: 'luck', 'skill' or 'brain'
+export const category = 'luck';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const target = 'own';   // the header's icon: 'shared' (one board for both), 'own' (each player's own progress) or 'course' (one course for both, each their own distance)
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Risk Wheels', play: 'Pick a wheel and spin. Each square deals three new wheels of ten equal segments: purple has a 10 (or two) and mostly zeros, green always pays a little, blue sits between. The darker a segment, the more it pays.', get win() { return `Reach ${wheelsConfig().target} first.`; } };   // (the target is the admin's)

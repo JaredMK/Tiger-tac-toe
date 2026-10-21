@@ -2,7 +2,7 @@
 
 export const info = { name: 'Bullseye',     hint: 'Stop both lines on the board. Bullseye 3, board 1. First to 5' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
-export const category = 'skill';   // the game's kind, an icon in the Advanced checklist: 'luck', 'skill' or 'brain'
+export const category = 'skill';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const target = 'own';   // the header's icon: 'shared' (one board for both), 'own' (each player's own progress) or 'course' (one course for both, each their own distance)
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Bullseye', play: 'Stop the sideways line, then the up-down line. The dart lands where they cross. Bullseye is {bullPts}, the board is 1.', win: 'First to {goal}.' };   // ({bullPts}, {goal}: its settings, TUNE below)

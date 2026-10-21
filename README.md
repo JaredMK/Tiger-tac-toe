@@ -26,14 +26,14 @@ the side's letter, and the computer's is "Computer". So it is two people passing
 person against the computer on either side; the computer no longer plays itself. A computer slot also
 has its level, **Easy**, **Normal** or **Hard** (see "Playing against the computer"), kept for the next
 match. X moves first.
-A rematch keeps the choice: X or O stay, and Random is drawn again for every match. Under "Advanced"
+A rematch keeps the choice: X or O stay, and Random is drawn again for every match. Under "Mini-games"
 are the mini-games in the mix (all on by default), with "Deselect all" and "Select all" buttons at
 the top, in one alphabetical list; a small icon at each row's right end shows the game's kind, luck
 (a clover), skill (a target) or brain (each game's `category` in its meta.js; its word on hover and for
 screen readers). The page itself never scrolls or
 rubber-bands on any screen; only inner lists like this one scroll. With none ticked, Start stays off and a short note says "Select at least one mini-game to
 start". Ticking a game, Select all or Deselect all changes the list in place: it stays exactly where
-it was scrolled, Advanced stays open, and the choice is saved for the next match. Computer players carry the computer icon next to their name in the game: in
+it was scrolled, Mini-games stays open, and the choice is saved for the next match. Computer players carry the computer icon next to their name in the game: in
 the turn indicator, on the square they are about to play, and in the results.
 
 The game screen has a slim top row with "Menu" and the turn clock in a fixed-size box of its own
@@ -119,7 +119,7 @@ does not zoom in.
   and how to win. It never uses a turn, and a tap anywhere closes it; it covers the whole screen, so
   nothing underneath takes that tap, and going to another screen closes it too. It opens as an overlay on
   top of the page: nothing under it moves or changes size. The same "?" sits on each game in the
-  Advanced checklist, and "How to Play" on the main menu shows the core rules with the list of
+  Mini-games checklist, and "How to Play" on the main menu shows the core rules with the list of
   mini-games, each opening its card.
 - Pages only ever scroll up and down: sideways scrolling is locked across the app.
 
@@ -525,7 +525,7 @@ a game not there is as the code has it: each game's `meta.js` says `release = 'a
 that start admin only, gathered as `TEST_TYPES` in `src/games/index.js`). Releasing a game asks for a confirmation; the change applies to new matches at once, and
 matches already under way are not affected.
 
-An admin-only game exists for nobody but the admin: it is not in the Advanced checklist, How to Play
+An admin-only game exists for nobody but the admin: it is not in the Mini-games checklist, How to Play
 or the explainer list, never dealt or drawn for a reset, never in Find Match, and never in a room
 anyone else hosts, logged in or not. The game page reads the releases at every start (a plain read of
 the public node, SDK or no SDK, kept for the next visit) and follows them live once online; the
@@ -673,7 +673,7 @@ Find Match is unchanged, and so are the normal modes.
   Higher/Lower, Snakes and Ladders, Candy Race, Bump, Risky Rolls, Treasure Hunt, Mastermind, Blackjack,
   Ride the Bus, Roulette, Bullseye, Echo, Plinko, Cup Pong, Trivia, Odd One Out, Dash, Lane Rush, Mini
   Golf, Bowling, Craps, Flap, Chopper, Patterns, Risk Wheels, Headcount, Flash, Snapshot, Sky Hop, Scoop
-  Stack, Pinball, Sniff, Clash Grid. The Advanced checklist shows only these while Super Chaos is on. Clash Grid
+  Stack, Pinball, Sniff, Clash Grid. The Mini-games checklist shows only these while Super Chaos is on. Clash Grid
   is Super Chaos only (`meta.scOnly`): never in a normal match's checklist or deal (`dealable(t, sc)`).
 - **The computer** makes its move at the start of each round, with its usual choice of square and the
   game's own tactics, without seeing the human's choice or this round's results; it takes a person's

@@ -2,7 +2,7 @@
 
 export const info = { name: 'Cup Pong',     hint: 'Swipe up to throw. Sink all three cups' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
-export const category = 'skill';   // the game's kind, an icon in the Advanced checklist: 'luck', 'skill' or 'brain'
+export const category = 'skill';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const target = 'own';   // the header's icon: 'shared' (one board for both), 'own' (each player's own progress) or 'course' (one course for both, each their own distance)
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Cup Pong', play: 'Swipe up to throw. Aim with direction, distance with speed.', win: 'Sink all 3 of your cups.' };

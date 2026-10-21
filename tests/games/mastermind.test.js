@@ -70,7 +70,7 @@ test('mastermind: a hidden code of 4 different colours from 6; guesses must be 4
     assert.deepEqual(L.applyMove(m, 'X', bad), { ok: false, reason: 'bad' }, JSON.stringify(bad));
   }
   assert.equal(m.guesses.length, 0, 'refused guesses leave nothing behind');
-  assert.ok(L.defaultSetup().games.mastermind, 'on by default in the Advanced list');
+  assert.ok(L.defaultSetup().games.mastermind, 'on by default in the Mini-games list');
   assert.ok(L.TYPES.includes('mastermind'));
 });
 

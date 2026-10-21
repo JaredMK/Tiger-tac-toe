@@ -43,10 +43,12 @@ export const TARGETS = {
 };
 export const targetOf = t => (GAMES[t] && ((scNow() && GAMES[t].meta.scTarget) || GAMES[t].meta.target)) || 'shared';
 export const tgtBtn = t => { const k = targetOf(t), [line, svg] = TARGETS[k]; return `<button class="tgtbtn tgt-${k}" data-act="target-tip" aria-label="${line}" title="${line}"><i>${svg}</i><span class="tgt-tip" role="tooltip">${line}</span></button>`; };   // (a 30px sticker in a 40px tap target)
+const CAT_LABEL = { luck: 'More luck', skill: 'More skill', brain: 'More brain' };   // a game's kind (meta.js category), at the top of its "?"
 export function renderExplain() {
   const x = explainT && explainOf(explainT);
   if (!x) return '';
   return `<div class="explain" data-act="explain-close" role="dialog" aria-modal="true" aria-label="How to play ${x.name}"${fxAttr(fxAt('explain', explainT))}><div class="excard">
+    <p class="excat">${CAT_LABEL[GAMES[explainT] && GAMES[explainT].meta.category] || '&nbsp;'}</p>
     <h2>${explainT === 'superchaos' ? SC_ICON : ICONS[explainT]}<span>${x.name}</span></h2>
     <p class="exline play"><b>Play</b><span>${x.play}</span></p>
     <p class="exline win"><b>Win</b><span>${x.win}</span></p>

@@ -2,7 +2,7 @@
 
 export const info = { name: 'Trivia',       hint: 'Wrong answers get crossed out. Three right wins' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
-export const category = 'brain';   // the game's kind, an icon in the Advanced checklist: 'luck', 'skill' or 'brain'
+export const category = 'brain';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const target = 'shared';   // the header's icon: 'shared' (one board for both), 'own' (each player's own progress) or 'course' (one course for both, each their own distance)
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Trivia', play: 'A new question starts face down. Tap Reveal to see it, then you must answer it this turn. Wrong answers get crossed out and the question stays up, for both players, until someone gets it.', win: 'Get {goal} right.' };   // ({goal}: its setting, TUNE below)

@@ -69,7 +69,7 @@ test('hexapawn: three pawns each on the home rows, two empty rows between them',
   assert.deepEqual(L.hpMoves(m.cells, 'O'), [[0, 3], [1, 4], [2, 5]], 'O can only step straight down');
   assert.ok(!L.TYPES.includes('hexapawn') && L.OLD_TYPES.includes('hexapawn'), 'no longer dealt; an older match still plays it');
   assert.equal(L.INFO.hexapawn.name, 'Hexapawn', 'its name stays for older matches, history and stats');
-  assert.equal(L.defaultSetup().games.hexapawn, undefined, 'not in the Advanced list');
+  assert.equal(L.defaultSetup().games.hexapawn, undefined, 'not in the Mini-games list');
 });
 
 test('an older match with a Hexapawn square still plays it to the end: moves, the computer, a timed-out move, the record', () => {

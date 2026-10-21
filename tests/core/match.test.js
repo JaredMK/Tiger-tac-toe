@@ -90,7 +90,7 @@ test('setup: the app opens on the main menu with default names and every game ti
   L.restrictGames(g, L.releasedTypes({}));
   assert.ok(L.TEST_TYPES.every(t => g[t] === false) && g.ttt === true, 'a setup cut down to the released games');
   assert.ok(!L.TYPES.includes('dice'), 'Snakes and Ladders took the Dice race\'s place');
-  assert.ok(!L.TYPES.includes('hexapawn') && !('hexapawn' in st.setup.games), 'Hexapawn is out of the pool and the Advanced list');
+  assert.ok(!L.TYPES.includes('hexapawn') && !('hexapawn' in st.setup.games), 'Hexapawn is out of the pool and the Mini-games list');
   assert.deepEqual(L.OLD_TYPES, ['dice', 'hexapawn'], 'no longer dealt, still played in older matches');
   for (const t of L.TYPES) assert.ok(L.INFO[t] && L.INFO[t].name && L.INFO[t].hint, `info for ${t}`);
   assert.equal(L.playerName(st, 'X'), 'X');

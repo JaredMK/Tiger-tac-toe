@@ -2,7 +2,7 @@
 
 export const info = { name: 'Snapshot',     hint: 'Memorise the pattern, tap it back. Three right wins' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
-export const category = 'brain';   // the game's kind, an icon in the Advanced checklist: 'luck', 'skill' or 'brain'
+export const category = 'brain';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const target = 'own';   // the header's icon: 'shared' (one board for both), 'own' (each player's own progress) or 'course' (one course for both, each their own distance)
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Snapshot', play: 'Memorise the pattern in 5 seconds. Wait out the countdown, then tap it back in and Submit.', win: 'Get 3 right. The grid gets bigger each time.' };

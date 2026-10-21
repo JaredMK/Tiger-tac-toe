@@ -37,7 +37,7 @@ export const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<':
 export const N = p => (cpuPlays(p) ? CPU_ICON : '') + esc(playerName(state, p));   // a player's display name, safe for innerHTML, with the computer icon for a computer
 export function cpuPlays(p) { return !state.online && !!state.cpu && state.cpu.includes(p); }
 export const pickKey = () => (state.pick == null ? null : `${state.pickSq}:${state.pick}`);   // Memory: the first card turned up, as an event key
-export let advOpen = false;                    // the setup screen's Advanced section (the mini-game list)
+export let advOpen = false;                    // the setup screen's Mini-games section (the mini-game list)
 export const mv = x => `data-m='${JSON.stringify(x)}'`;
 export const NAV_SCREENS = ['login', 'username', 'find', 'leaderboard', 'profile', 'profhist', 'hreview', 'hreview-mini', 'howto'];
 // Render with another state in place of the live one (a past game), and put the live one back.

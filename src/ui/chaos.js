@@ -185,8 +185,8 @@ const ownSq = (rc, side) => (rc.mv ? (rc.mv[side] && rc.mv[side].square != null 
 function scParts(rc, mine, opp) {   // mine: the square this player played; opp: the other player's move (core/chaos.js scRecapOrder: the order)
   const parts = [];
   for (const o of scRecapOrder(rc, mine, opp)) {
-    if (o.kind === 'replay') { const f = golfFlash(rc); parts.push({ kind: 'replay', f, own: !!o.own, dur: animMs(f) + holdOf(f) }); }
-    else if (o.kind === 'resolve') { const it = rc.resolve[o.k], f = Object.assign({}, it.flash); parts.push({ kind: 'resolve', k: o.k, it, f, own: !!o.own, dur: animMs(f) + holdOf(f) }); }
+    if (o.kind === 'replay') { const f = golfFlash(rc); parts.push({ kind: 'replay', f, own: !!o.own, pop: !o.own, dur: animMs(f) + holdOf(f) }); }   // (pop: the other player's, in the replay pop-up like any other move)
+    else if (o.kind === 'resolve') { const it = rc.resolve[o.k], f = Object.assign({}, it.flash); parts.push({ kind: 'resolve', k: o.k, it, f, own: !!o.own, pop: !o.own, dur: animMs(f) + holdOf(f) }); }
     else if (o.kind === 'spot') parts.push({ kind: 'spot', dur: opp ? SC_MS.spot : 200 });
     else {                                                        // the pop-up: a step of their move at a time
       const steps = opp.steps, sp = SC_MS.popup;
@@ -262,8 +262,9 @@ function enterSeg(rc, seg, e) {
   const cpu = scCpu(), quiet = e > 200, endAbs = rc.at + seg.end;
   state.spot = null;
   if (seg.kind === 'replay') {
-    scUi.stage = 'replay';
+    scUi.stage = seg.pop ? 'popup' : 'replay'; scUi.mini = null;
     state.screen = 'mini'; state.zoom = rc.replay.square; state.draft = ''; state.pick = null; state.sel = [];
+    if (seg.pop && scUi.skipped) { render(); return; }            // (skipped: its end on show)
     state.flash = Object.assign({}, seg.f);
     playFlash(false, 1, undefined, Math.max(0, endAbs - tnow() - Math.max(0, animMs(seg.f) - e)), e); render();
   } else if (seg.kind === 'spot') {
@@ -289,8 +290,9 @@ function enterSeg(rc, seg, e) {
         playFlash(false, sp, SC_MS.idle, Math.max(0, endAbs - tnow() - Math.max(0, animMs(f) / sp - el)), el); render();
       } });
   } else if (seg.kind === 'resolve') {                            // what both moves settle together, in its square (the game's own animation)
-    scUi.stage = 'resolve'; scUi.rk = seg.k + 1;
+    scUi.stage = seg.pop ? 'popup' : 'resolve'; scUi.rk = seg.k + 1; scUi.mini = null;
     state.screen = 'mini'; state.zoom = seg.it.square; state.draft = ''; state.pick = null; state.sel = [];
+    if (seg.pop && scUi.skipped) { render(); return; }
     state.flash = Object.assign({}, seg.f);
     playFlash(false, 1, undefined, Math.max(0, endAbs - tnow() - Math.max(0, animMs(seg.f) - e)), e); render();
   } else if (seg.kind === 'result') {                             // one square's result, on the board: its X or O stamps in; both marks clash (both won it); it turns over to a new game
@@ -335,12 +337,12 @@ function recapDone(rc) {
 // friend room it runs on at its own pace (the other phone's too), so the two stay together.
 export function scSkip() {
   if (scRecapStage() !== 'popup') return false;
-  const rc = state.sc.recap, steps = rc.cpu.steps, lastStep = steps[steps.length - 1];
+  const rc = state.sc.recap, seg = scUi.plan.segs[scUi.seg], steps = rc.cpu ? rc.cpu.steps || [] : [], lastStep = steps[steps.length - 1];
   dropFlash();
   scUi.skipped = true;
-  if (lastStep && lastStep.after) scUi.mini = clone(lastStep.after);
+  if (seg && seg.kind === 'popup' && lastStep && lastStep.after) scUi.mini = clone(lastStep.after);
   if (!state.sc.online) {
-    const pops = scUi.plan.segs.filter(s => s.kind === 'popup'), end = pops[pops.length - 1].end;
+    const pops = scUi.plan.segs.filter(s => s.kind === 'popup' || s.pop), end = pops[pops.length - 1].end;
     rc.at = Math.min(rc.at, now() - (end - SC_MS.skip));          // (the sequence set so the pop-up's end comes after the skip's moment)
   }
   render(); chaosStep();
