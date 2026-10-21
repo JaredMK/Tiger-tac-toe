@@ -84,3 +84,34 @@ test('shelves: the admin\'s settings: five shelves of four and mistakes deal a s
   } finally { E.setTune('shelves', null); }
   assert.equal(E.newMini('shelves', lcg(1)).cells.length, 21);
 });
+
+/* ---------- the Hard computer ---------- */
+test('shelves: Hard solves the square (every grey mark counted): it keeps the tie that Normal throws away, plays a legal spot, and takes under 60 ms', () => {
+  const hard = { level: 'hard', until: null };
+  // X opened the square, so a tie is O's. O to move, spots 7, 18 and 20 open: a mark on shelf 6 (18 or 20) holds X
+  // to a tie half the time (X takes the last spot of shelf 6 only when the grey misses it); Normal's 7 lets X have
+  // shelf 6 for sure, and the square
+  const cells = 'XGGGXOO.XGGGXGXGGO.O.'.split('').map(c => (c === '.' ? null : c));
+  const pm = { type: 'shelves', cells, first: 'X' };
+  assert.equal(E.shelfPick(pm, 'O', null).i, 7, 'Normal');
+  const b = E.localBest(pm, 'O', lcg(1), {}, hard);
+  assert.ok(b.move === 18 || b.move === 20, 'Hard: ' + b.move);
+  assert.equal(b.after.cells[b.move], 'O');
+  // the public view says who opened the square (the tie)
+  const m = E.newMini('shelves', lcg(2)); E.applyMove(m, 'O', 3, lcg(3));
+  assert.equal(E.publicMini(m).first, 'O');
+  // a legal move from any position, on the usual board and the admin's; the time it takes
+  const times = [];
+  for (let g = 0; g < 12; g++) {
+    const q = E.newMini('shelves', lcg(20 + g)), rng = lcg(40 + g);
+    let p = 'X';
+    for (let k = 0; k < g % 7; k++) { E.applyMove(q, p, q.cells.indexOf(null), rng); p = E.other(p); }
+    const t0 = performance.now(), r = E.localBest(E.publicMini(q), p, rng, {}, hard);
+    times.push(performance.now() - t0);
+    assert.equal(q.cells[r.move], null, 'a legal spot');
+    assert.equal(E.applyMove(q, p, r.move, rng).ok, true);
+  }
+  assert.ok(Math.max(...times.slice(1)) < 60, 'ms: ' + times.map(t => t.toFixed(1)).join(' '));
+  E.setTune('shelves', { n: 5, per: 4 });
+  try { const q = E.newMini('shelves', lcg(9)); const r = E.localBest(E.publicMini(q), 'X', lcg(1), {}, hard); assert.equal(q.cells[r.move], null); } finally { E.setTune('shelves', null); }
+});

@@ -39,7 +39,8 @@ export function best(pm, me, rng, style, ctx) {
 
 // ---- Hard: the expected value of every cell against the other player's likely claims ----
 // The other player's claim is guessed as a mix: half the ordinary computer's own choice (the cells it would
-// pick from, each as likely), half a softer weighing of every open cell by what it is worth to them. For
+// pick from, each as likely), half a softer weighing of every open cell by what it is worth to them, and a
+// share spread over every open cell (a player is never read for certain: a four they might miss is tried). For
 // each of my cells, every claim of theirs is played through the round's rule (the same cell: blocked for
 // good; four in a row for one side: the square, for both: a reset) and the rest valued by the runs still
 // open to each side; the best few cells, with the clock, a round further (the same reckoning in the position
@@ -56,7 +57,7 @@ export function clashEv(pm, me, rng, until) {
     const vals = open.map((i, k) => { const p = Math.min(0.85, pref[k] / sum); return (1 - p) * worth(cells, i, o, w, L) + worth(cells, i, me, wd, L); });
     const hi = Math.max(...vals), near = vals.map(v => (v >= hi * 0.8 - 1e-9 ? 1 : 0)), nn = near.reduce((a, b) => a + b, 0) || 1;
     const soft = vals.map(v => v * v), ss = soft.reduce((a, b) => a + b, 0) || 1;
-    return open.map((i, k) => ({ i, p: 0.5 * near[k] / nn + 0.5 * soft[k] / ss }));
+    return open.map((i, k) => ({ i, p: 0.85 * (0.5 * near[k] / nn + 0.5 * soft[k] / ss) + 0.15 / open.length }));   // (and a share spread over every cell: a player is never read for certain)
   };
   const lineOf = (cells, p) => L.find(l => l.every(k => cells[k] === p)) || null;
   const still = (cells, p) => L.some(l => l.every(k => cells[k] == null || cells[k] === p));
@@ -67,7 +68,7 @@ export function clashEv(pm, me, rng, until) {
       if (m < 0 || (m && t)) continue;
       v += m ? f[m] : -f[t];
     }
-    return v / (Math.abs(v) + 24);
+    return v / (Math.abs(v) + 100);                              // (a run of three, 16, is worth about a seventh of the square: a chance of taking it now outweighs the runs)
   };
   // the round from a position: my cell i against theirs j: { v, win, lose, cells }
   const round = (cells, i, j) => {
@@ -92,6 +93,7 @@ export function clashEv(pm, me, rng, until) {
         v += p * rv; if (r.win) q += p; if (r.lose) ql += p;
         tick();
       }
+      if (out && outs.length) break;                             // (the clock: a value not whole is no value, past the first)
       outs.push({ i, v, q, ql });
     }
     return outs.sort((a, b) => b.v - a.v);

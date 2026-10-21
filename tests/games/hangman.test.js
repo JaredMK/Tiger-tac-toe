@@ -170,3 +170,52 @@ test('hangman: the admin\'s settings (word lengths, the computer\'s random lette
   assert.ok(moves.size > 1, 'a random letter now and then');
   assert.ok(E.newMini('hangman', E.makeRng('hang-def')).word.length <= 7);
 });
+
+// ================================ The Hard computer ================================
+const HARD = { level: 'hard', until: null };
+function raceOf(type, n) {
+  const lcg2 = seed => () => (seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296;
+  const out = { hard: 0, normal: 0, ms: 0 };
+  for (let k = 0; k < n; k++) {
+    const rng = lcg2(500 + k), m = E.newMini(type, rng), hardSide = k % 2 ? 'O' : 'X';
+    let p = 'X';
+    for (let t = 0; t < 60; t++) {
+      const pm = E.publicMini(m), hard = p === hardSide, t0 = performance.now();
+      const b = E.localBest(pm, p, rng, {}, hard ? HARD : {});
+      if (hard) out.ms = Math.max(out.ms, performance.now() - t0);
+      const r = E.applyMove(m, p, b.move, rng);
+      assert.equal(r.ok, true, `${type}: a legal move (${JSON.stringify(b.move)})`);
+      if (r.outcome === 'win') { out[hard ? 'hard' : 'normal']++; break; }
+      if (!r.again) p = p === 'X' ? 'O' : 'X';
+    }
+  }
+  return out;
+}
+test('hangman, Hard: the race for the word: a letter some candidate holds, a known word finished, the sure finish taken, more squares than Normal, quickly', () => {
+  const m = L.newMini('hangman', lcg(3));
+  const pm = L.publicMini(m), cand = L.hangmanCandidates(pm);
+  let b = L.localBest(pm, 'X', cpuRng(), {}, HARD);
+  assert.match(b.move, /^[A-Z]$/); assert.ok(cand.some(w => w.includes(b.move)), 'a letter in some word still possible'); assert.equal(b.shared, true);
+  // one word left: its letters, to the end
+  const one = { type: 'hangman', word: 'PLANET', letters: [] };
+  for (const l of 'PLANE') L.applyMove(one, 'X', l);
+  b = L.localBest(L.publicMini(one), 'O', cpuRng(), {}, HARD);
+  assert.equal(b.move, 'T'); assert.equal(b.q, 1);
+  // two words apart by one letter each (the race's end): a letter that wins half the time; the sure finish when one word is left among several letters
+  const two = L.WORDS_HANG.map(w => w.toUpperCase()).filter(w => w.length === 6);
+  const found = [];
+  for (let i = 0; i < two.length && !found.length; i++) for (let j = i + 1; j < two.length; j++) { let diff = 0; for (let k = 0; k < 6; k++) if (two[i][k] !== two[j][k]) diff++; if (diff === 1 && !two[i].split('').some(ch => two[j].includes(ch) && !two[i].includes(ch))) { found.push(two[i], two[j]); break; } }
+  if (found.length) {
+    const w = { type: 'hangman', word: found[0], letters: [] };
+    for (const l of new Set(found[0].split('').filter((ch, k) => found[0][k] === found[1][k]))) L.applyMove(w, 'X', l);
+    const pw = L.publicMini(w), cw = L.hangmanCandidates(pw);
+    if (cw.length === 2) { const h = L.localBest(pw, 'O', cpuRng(), {}, HARD); assert.ok(found[0].includes(h.move) || found[1].includes(h.move), 'one of the two letters that tell'); assert.equal(h.q, 0.5); }
+  }
+  const r = raceOf('hangman', 80);
+  assert.ok(r.hard > r.normal, `Hard wins the race: ${r.hard} to ${r.normal}`);
+  const ms = [];
+  for (let k = 0; k < 3; k++) { const t0 = performance.now(); L.localBest(pm, 'X', cpuRng(), {}, HARD); ms.push(performance.now() - t0); }
+  assert.ok(Math.min(...ms) < 60, `under 60 ms: ${ms.map(x => x.toFixed(1))}`);
+  assert.ok(r.ms < 200, `never slow in the race (${r.ms.toFixed(1)} ms at worst)`);
+  assert.deepEqual(L.localBest(pm, 'X', cpuRng(), {}, { level: 'normal', until: null }), L.localBest(pm, 'X', cpuRng()), 'Normal untouched');
+});

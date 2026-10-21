@@ -29,10 +29,10 @@ export function best(pm, me, rng, style, ctx) {
 // the letters tried: for each letter, the words that hold it, grouped by where it sits (the side goes again
 // from that group; a group of one word is a win, the rest of its letters sure), and the words that do not
 // (the other side moves from those). Solved over the untried letters, every set met kept in a memo, deeper
-// as the budget allows (iterative deepening; a set of 8 or fewer to the end, a bigger one out of reach
-// worth 0.5). A letter in no candidate is a pass (the other side faces the same words): taken only when it
-// beats the best letter clearly.
-const HH = { exact: 8, work: 1.2e5, depth: 14, margin: 0.05 };
+// as the budget allows (iterative deepening; a set of 4 or fewer to the end). A bigger set out of reach is
+// worth the side to move about 0.5 + 0.2 x its best letter's chance of a hit (what the solved sets show: a
+// hit's extra go is a real edge). Never a letter in no candidate (a pass, and it never paid).
+const HH = { exact: 4, work: 8e4, depth: 14, edge: 0.3 };
 const HT = {};                                                  // per word length: its words, and where each letter sits in each (a bit per position)
 function hangTable(len) {
   if (HT[len]) return HT[len];
@@ -52,7 +52,7 @@ function hangHard(pm, cand, triedSet, ctx) {
   const V = (S, t, d) => {                                       // the side to move's chance from the words S with the letters t tried, d plies deep
     const m = S.length;
     if (m <= 1) return 1;
-    if (m > HH.exact && d <= 0) return 0.5;
+    if (m > HH.exact && d <= 0) return leaf(S, t);
     if (stop) return 0.5;
     const key = t + ':' + S.join(','), hit = memo.get(key);
     if (hit && (hit.full || hit.d >= d)) return hit.v;
@@ -61,6 +61,12 @@ function hangHard(pm, cand, triedSet, ctx) {
     for (let l = 0; l < 26; l++) { if (t & (1 << l)) continue; const v = letter(S, t, l, d - 1); if (stop) return 0.5; if (v > top) top = v; }
     memo.set(key, { d, v: top, full: m <= HH.exact });
     return top;
+  };
+  const leaf = (S, t) => {                                       // out of reach: the best letter's chance of a hit, as an edge
+    let top = 0;
+    work += S.length * 26;
+    for (let l = 0; l < 26; l++) { if (t & (1 << l)) continue; let c = 0; for (const w of S) if (pos[w * 26 + l]) c++; if (c > top) top = c; }
+    return 0.5 + HH.edge * top / S.length;
   };
   const letter = (S, t, l, d) => {                               // a letter's worth (-1: in no candidate)
     const m = S.length, gr = [], miss = [];
@@ -72,22 +78,20 @@ function hangHard(pm, cand, triedSet, ctx) {
     if (miss.length) v += miss.length / m * (1 - V(miss, t2, d));
     return v;
   };
-  let move = -1, top = 0, stall = -1;
+  let move = -1;
   for (let d = 1; d <= HH.depth && !stop; d++) {
     let best = -1, pick = -1;
     for (let l = 0; l < 26; l++) {
       if (tried & (1 << l)) continue;
       const v = letter(C, tried, l, d - 1); if (stop) break;
-      if (v < 0) { if (stall < 0) stall = l; continue; }
       if (v > best) { best = v; pick = l; }
     }
     if (stop) break;
-    move = pick; top = best;
+    move = pick;
     if (n <= HH.exact) break;
   }
   if (move < 0) { for (let l = 0; l < 26 && move < 0; l++) if (!(tried & (1 << l))) move = l; }
-  if (stall >= 0 && 1 - top > top + HH.margin) move = stall;
   let q = 0;                                                     // the chance this turn ends it: a letter that leaves one word
-  if (move !== stall) { const one = []; for (const c of C) if (pos[c * 26 + move]) (one[pos[c * 26 + move]] || (one[pos[c * 26 + move]] = [])).push(c); for (const g of one) if (g && g.length === 1) q += 1 / n; }
+  const one = []; for (const c of C) if (pos[c * 26 + move]) (one[pos[c * 26 + move]] || (one[pos[c * 26 + move]] = [])).push(c); for (const g of one) if (g && g.length === 1) q += 1 / n;
   return { move: String.fromCharCode(65 + move), q, shared: true };
 }

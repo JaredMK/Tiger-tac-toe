@@ -165,3 +165,49 @@ test('mastermind: the admin\'s settings (colours, the computer ignoring the clue
   for (let k = 0; k < 40 && !E.applyMove(m, 'O', E.localBest(E.publicMini(m), 'O', E.makeRng('mm-p' + k)).move, anyRng()).outcome.startsWith('win'); k++);
   assert.ok(m.guesses.some(g => g.solid === 4), 'cracked');
 });
+
+// ================================ The Hard computer ================================
+const HARD = { level: 'hard', until: null };
+// Hard against Normal over n squares of one game, sides alternating: { hard, normal, ms } (ms: the slowest Hard move).
+function raceOf(type, n) {
+  const lcg2 = seed => () => (seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296;
+  const out = { hard: 0, normal: 0, ms: 0 };
+  for (let k = 0; k < n; k++) {
+    const rng = lcg2(500 + k), m = E.newMini(type, rng), hardSide = k % 2 ? 'O' : 'X';
+    let p = 'X';
+    for (let t = 0; t < 60; t++) {
+      const pm = E.publicMini(m), hard = p === hardSide, t0 = performance.now();
+      const b = E.localBest(pm, p, rng, {}, hard ? HARD : {});
+      if (hard) out.ms = Math.max(out.ms, performance.now() - t0);
+      const r = E.applyMove(m, p, b.move, rng);
+      assert.equal(r.ok, true, `${type}: a legal move (${JSON.stringify(b.move)})`);
+      if (r.outcome === 'win') { out[hard ? 'hard' : 'normal']++; break; }
+      if (!r.again) p = p === 'X' ? 'O' : 'X';
+    }
+  }
+  return out;
+}
+test('mastermind, Hard: the race for the code: legal guesses, the last candidates guessed, the game-theoretic guess with few left, more squares than Normal, quickly', () => {
+  const m = mmMini([3, 1, 4, 0]);
+  let b = L.localBest(L.publicMini(m), 'X', cpuRng(), {}, HARD);
+  assert.ok(L.mmValid(b.move), 'a fresh square: a valid code'); assert.equal(b.shared, true);
+  L.applyMove(m, 'X', [0, 1, 2, 3]);
+  const pm = L.publicMini(m), cand = L.mmCandidates(pm);
+  b = L.localBest(pm, 'O', cpuRng(), {}, HARD);
+  assert.ok(L.mmValid(b.move)); assert.ok(cand.some(c => c.join() === b.move.join()), 'a guess that could be the code'); assert.equal(b.q, 1 / cand.length);
+  // few left: the guess with the best chance of being first, from a position the test works out itself:
+  // the candidates after two guesses, and the values of a one-step look-ahead (a wrong guess hands the
+  // rest to the other side, who wins at once from a group of one)
+  for (const g of L.mmAll()) { const r = mmMini([3, 1, 4, 0]); L.applyMove(r, 'X', [0, 1, 2, 3]); L.applyMove(r, 'O', g); const c = L.mmCandidates(L.publicMini(r)); if (c.length === 2) { const h = L.localBest(L.publicMini(r), 'X', cpuRng(), {}, HARD); assert.ok(c.some(x => x.join() === h.move.join()), 'two left: one of them'); assert.equal(h.q, 0.5); break; } }
+  // against Normal (the best split: it hands the other side a nearly solved code), over 80 squares
+  const r = raceOf('mastermind', 80);
+  assert.ok(r.hard > r.normal, `Hard wins the race: ${r.hard} to ${r.normal}`);
+  // a Hard guess never takes long without a clock (a fixed amount of work)
+  const ms = [];
+  for (let k = 0; k < 3; k++) { const t0 = performance.now(); L.localBest(pm, 'O', cpuRng(), {}, HARD); ms.push(performance.now() - t0); }
+  assert.ok(Math.min(...ms) < 60, `under 60 ms: ${ms.map(x => x.toFixed(1))}`);
+  assert.ok(r.ms < 200, `never slow in the race (${r.ms.toFixed(1)} ms at worst)`);
+  // Normal is untouched: the same minimax guess, the same rng draws
+  const n1 = L.localBest(pm, 'O', cpuRng(), {}, { level: 'normal', until: null }), n2 = L.localBest(pm, 'O', cpuRng());
+  assert.deepEqual(n1, n2); assert.deepEqual(n1.move, L.mmBestGuess(cand));
+});

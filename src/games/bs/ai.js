@@ -35,9 +35,9 @@ export function best(pm, me, rng, style, ctx) {
 // each cell some placement covers, the chance of a hit (the placements through it: the last part, sunk; else
 // the side fires again from those placements) and of a miss (the other side moves, from the rest). Solved
 // over the cells, every state met kept in a memo, deeper as the budget allows (iterative deepening; 8
-// placements or fewer to the end, more out of reach worth 0.5). At the root a shot at a cell no placement
-// covers is a pass (the other side faces the same sea): taken only when it beats the best shot clearly.
-const BSH = { exact: 8, work: 1.2e5, depth: 16, margin: 0.05 };
+// placements or fewer to the end, more out of reach worth 0.5). Never a shot at a cell no placement covers
+// (a pass, and it never paid).
+const BSH = { exact: 8, work: 1.2e5, depth: 16 };
 function bsHard(pm, cand, open, ctx) {
   const N = bsN(pm), nn = N * N;
   const pc = cand.map(cells => cells.reduce((a, k) => a | (1 << k), 0));   // each placement's cells as bits
@@ -70,20 +70,18 @@ function bsHard(pm, cand, open, ctx) {
     if (miss.length) v += miss.length / m * (1 - V(miss, h, d));
     return v;
   };
-  let move = open[0], top = 0, stall = -1;
+  let move = open[0];
   for (let d = 1; d <= BSH.depth && !stop; d++) {
     let best = -1, pick = -1;
     for (const k of open) {
       if ((H >> k) & 1) continue;
       const v = shot(C, H, k, d - 1); if (stop) break;
-      if (v < 0) { if (stall < 0) stall = k; continue; }
       if (v > best) { best = v; pick = k; }
     }
     if (stop) break;
-    move = pick; top = best;
+    move = pick;
     if (n <= BSH.exact) break;
   }
-  if (stall >= 0 && 1 - top > top + BSH.margin) move = stall;
   let q = 0;
   for (const p of C) if (pc[p] === (H | (1 << move))) q = 1 / n;
   return { move, q, shared: true };

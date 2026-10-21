@@ -66,15 +66,16 @@ export function distExpecti(pm, me, until, rng) {
       if (empty === 1 || !grey) v = node(o, depth - 1, empty - 1);
       else for (let h = 0; h < G; h++) { const w = kinds[h].e / (empty - 1); if (!w) continue; put(h, 0, 1); v += w * node(o, depth - 1, empty - 2); put(h, 0, -1); rem -= w; if (out || (top && v + rem <= top.v)) break; }
       put(g, 1, -1);
+      if (out) break;                                            // (the clock: this kind's value is not whole)
       if (!top || v > top.v) top = { g, v };
     }
     return top;
   };
   let got = null;
-  if (empty <= FULL) got = pick(empty);
+  if (empty <= FULL) { if (until) got = pick(2); const ex = pick(empty); if (!out || !got) got = ex; }   // (with a clock, a quick look first: the solve may be cut short)
   else if (!until) got = pick(empty <= MID ? 3 : 2);
   else for (let d = 2; !out && d <= empty; d++) { const r = pick(d); if (!out || !got) got = r; }
-  if (!got) got = pick(1);
+  if (!got) { const b = distSearch(pm, me, null); return { k: b.k, v: 0, after: b.after }; }   // (no time at all: the ordinary search)
   const spots = kinds[got.g].spots.filter(k => !who[k]), k = spots[rng ? randInt(rng, spots.length) : 0];   // (any empty spot of the kind: alike)
   const after = who.slice(); after[k] = me;
   return { k, v: got.v, after };

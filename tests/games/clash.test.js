@@ -158,3 +158,30 @@ test('clash grid: the admin settings deal a 6x6 grid where three in a row wins (
     assert.equal(st.squares[0].owner, 'X');
   } finally { E.setTune('clash', null); }
 });
+
+/* ---------- the Hard computer ---------- */
+test('clash grid: Hard plays the expected value against the other player\'s likely claims: its four where it will not be met, the cell the other player needs, more squares than Normal, under 60 ms', () => {
+  const hard = { level: 'hard', until: null }, pm = c => ({ type: 'clash', cells: c, last: null }), rng = E.makeRng('hd');
+  const own = E.localBest(pm(grid('OOO.O XXX.O ..... ....O .....')), 'O', rng, {}, hard);
+  assert.equal(own.move, 14, 'down its column, where X will not clash');
+  assert.ok(own.q > 0.5 && own.q <= 1 && own.qLose >= 0 && own.qLose < 0.5, JSON.stringify(own));
+  assert.equal(E.localBest(pm(grid('OOO.. ..... XX... ..... .....')), 'O', rng, {}, hard).move, 3, 'its own four');
+  assert.equal(E.localBest(pm(grid('XXX.. ..... ..O.. ..... .....')), 'O', rng, {}, hard).move, 3, 'the cell X needs: a clash there blocks it too');
+  // Hard against Normal in simultaneous rounds: more squares, and legal claims throughout
+  let hw = 0, nw = 0; const times = [];
+  for (let g = 0; g < 60; g++) {
+    let cells = new Array(25).fill(null), res = null; const hardSide = g % 2 ? 'O' : 'X', r2 = E.makeRng('g' + g);
+    for (let r = 0; r < 25 && !res; r++) {
+      const mv = {};
+      for (const p of ['X', 'O']) { const t0 = performance.now(); mv[p] = E.localBest(pm(cells), p, r2, {}, p === hardSide ? hard : {}).move; if (p === hardSide) times.push(performance.now() - t0); assert.equal(cells[mv[p]], null); }
+      cells = cells.slice();
+      if (mv.X === mv.O) cells[mv.X] = 'B'; else { cells[mv.X] = 'X'; cells[mv.O] = 'O'; }
+      const wx = E.clashLine(cells, 'X'), wo = E.clashLine(cells, 'O');
+      if (wx || wo) res = wx && wo ? 'reset' : wx ? 'X' : 'O';
+      else if (!cells.includes(null) || (!E.clashOpen(cells, 'X').length && !E.clashOpen(cells, 'O').length)) res = 'reset';
+    }
+    if (res === hardSide) hw++; else if (res && res !== 'reset') nw++;
+  }
+  assert.ok(hw > nw, `Hard ${hw}, Normal ${nw}`);
+  assert.ok(Math.max(...times.slice(1)) < 60, 'ms: ' + Math.max(...times.slice(1)).toFixed(1));
+});

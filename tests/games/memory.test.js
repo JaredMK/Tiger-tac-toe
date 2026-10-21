@@ -137,3 +137,54 @@ test('memory: the admin\'s settings (pairs in the deck, the computer\'s memory) 
   delete m.tune;
   assert.deepEqual(E.localBest(E.publicMini(m), 'X', anyRng()).move.slice().sort(), [a, b].sort(), 'the default: it remembers');
 });
+
+// ================================ The Hard computer ================================
+const HARD = { level: 'hard', until: null };
+function raceOf(type, n) {
+  const lcg2 = seed => () => (seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296;
+  const out = { hard: 0, normal: 0, ms: 0 };
+  for (let k = 0; k < n; k++) {
+    const rng = lcg2(500 + k), m = E.newMini(type, rng), hardSide = k % 2 ? 'O' : 'X';
+    let p = 'X';
+    for (let t = 0; t < 60; t++) {
+      const pm = E.publicMini(m), hard = p === hardSide, t0 = performance.now();
+      const b = E.localBest(pm, p, rng, {}, hard ? HARD : {});
+      if (hard) out.ms = Math.max(out.ms, performance.now() - t0);
+      const r = E.applyMove(m, p, b.move, rng);
+      assert.equal(r.ok, true, `${type}: a legal move (${JSON.stringify(b.move)})`);
+      if (r.outcome === 'win') { out[hard ? 'hard' : 'normal']++; break; }
+      if (!r.again) p = p === 'X' ? 'O' : 'X';
+    }
+  }
+  return out;
+}
+test('memory, Hard: a known pair taken; else an unseen card beside a seen one (as likely its twin, one card less shown), two unseen with nothing seen; more squares than Normal', () => {
+  const m = mini('memory', lcg(3));
+  let b = L.localBest(L.publicMini(m), 'X', cpuRng(), {}, HARD);
+  assert.equal(b.move.length, 2); assert.ok(!m.seen.includes(b.move[0]) && !m.seen.includes(b.move[1]), 'nothing seen: two unseen'); assert.equal(b.shared, true);
+  // three cards seen, all different: one of them with an unseen card (Normal turns two unseen)
+  L.applyMove(m, 'X', b.move);
+  if (!pairOf([m.cards[b.move[0]], m.cards[b.move[1]]])) {
+    const third = [0, 1, 2, 3, 4, 5, 6, 7, 8].find(i => !m.seen.includes(i));
+    L.applyMove(m, 'O', [third, m.seen[0]]);
+    const pm = L.publicMini(m);
+    if (!L.memoryPair(pm, pm.seen)) {
+      assert.equal(pm.seen.length, 3);
+      const h = L.localBest(pm, 'X', cpuRng(), {}, HARD), n = L.localBest(pm, 'X', cpuRng());
+      assert.equal(h.move.filter(i => pm.seen.includes(i)).length, 1, 'one seen card, one unseen');
+      assert.equal(n.move.filter(i => pm.seen.includes(i)).length, 0, 'Normal: two unseen');
+      assert.ok(h.q > 0 && h.q < 1, 'a chance of the pair');
+    }
+  }
+  // a known pair: taken
+  const k = { type: 'memory', cards: L.memoryDeck(lcg(9), 1), flips: 0, seen: [], last: null };
+  const pair = pairOf(k.cards);
+  k.seen = pair.slice();
+  b = L.localBest(L.publicMini(k), 'O', cpuRng(), {}, HARD);
+  assert.deepEqual(b.move.slice().sort(), pair.slice().sort()); assert.equal(b.q, 1);
+  const r = raceOf('memory', 200);
+  assert.ok(r.hard >= r.normal - 10, `Hard holds its own in the race (${r.hard} to ${r.normal}: the choice differs only with no pair known, a small edge in a game of luck)`);
+  assert.ok(r.ms < 60, `quick (${r.ms.toFixed(1)} ms at worst)`);
+  const fresh = L.publicMini(mini('memory', lcg(5)));
+  assert.deepEqual(L.localBest(fresh, 'X', cpuRng(), {}, { level: 'normal', until: null }), L.localBest(fresh, 'X', cpuRng()), 'Normal untouched');
+});

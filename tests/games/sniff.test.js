@@ -148,3 +148,50 @@ test('sniff: the admin settings: the dog starts 4 steps off, the word holds long
     assert.ok(sc.trails.X.length <= 6 && sc.trails.X.length > 3 || (sc.last && sc.last.found));
   } finally { E.setTune('sniff', null); }
 });
+
+// ================================ The Hard computer ================================
+const HARD = { level: 'hard', until: null };
+function raceOf(type, n) {
+  const lcg2 = seed => () => (seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296;
+  const out = { hard: 0, normal: 0, ms: 0 };
+  for (let k = 0; k < n; k++) {
+    const rng = lcg2(500 + k), m = E.newMini(type, rng), hardSide = k % 2 ? 'O' : 'X';
+    let p = 'X';
+    for (let t = 0; t < 60; t++) {
+      const pm = E.publicMini(m), hard = p === hardSide, t0 = performance.now();
+      const b = E.localBest(pm, p, rng, {}, hard ? HARD : {});
+      if (hard) out.ms = Math.max(out.ms, performance.now() - t0);
+      const r = E.applyMove(m, p, b.move, rng);
+      assert.equal(r.ok, true, `${type}: a legal move (${JSON.stringify(b.move)})`);
+      if (r.outcome === 'win') { out[hard ? 'hard' : 'normal']++; break; }
+      if (!r.again) p = p === 'X' ? 'O' : 'X';
+    }
+  }
+  return out;
+}
+test('sniff, Hard: the treasure is never next to the start (it was dealt 3 steps off), a legal step, the last cell stepped onto, its own dog in Super Chaos, at least Normal\'s squares, quickly', () => {
+  const lcg = seed => () => (seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296;
+  const m = E.newMini('sniff', lcg(3)), pm = E.publicMini(m);
+  const h = E.localBest(pm, 'X', lcg(1), {}, HARD), n = E.localBest(pm, 'X', lcg(1));
+  assert.ok(E.sniffDirs(m.dog).includes(h.move), 'a legal step'); assert.equal(h.shared, true);
+  assert.equal(h.q, 0, 'Hard knows the cells next to the start cannot hold it');
+  assert.ok(n.q > 0, 'Normal does not (it weighs every cell but the dog\'s)');
+  // the treasure just one step off, every other cell ruled out by the steps remembered: onto it
+  const near = Object.assign(E.newMini('sniff', lcg(4)), { dog: 6, start: 24, treasure: 0, trail: [{ f: 12, t: 6, by: 'X', r: 'hot', hot: 1 }] });
+  near.tune = { memory: 8 };
+  const pn = E.publicMini(near), cands = E.sniffCands(pn), b = E.localBest(pn, 'O', lcg(2), {}, HARD);
+  assert.ok(cands.includes(0));
+  assert.ok(E.sniffDirs(6).includes(b.move));
+  // Super Chaos: its own dog, a legal step, never onto the middle
+  const sc = E.sniffScCreate('sniff', lcg(5));
+  E.applyMove(sc, 'X', 'N', lcg(1));
+  const ps = E.publicMini(sc), hs = E.localBest(ps, 'O', lcg(2), {}, HARD);
+  assert.ok(E.sniffDirs(sc.dogs.O).includes(hs.move)); assert.equal(hs.shared, false); assert.notEqual(E.sniffStep(sc.dogs.O, hs.move), E.SNIFF_MID);
+  const r = raceOf('sniff', 100);
+  assert.ok(r.hard >= r.normal, `Hard at least holds its own: ${r.hard} to ${r.normal}`);
+  const ms = [];
+  for (let k = 0; k < 3; k++) { const t0 = performance.now(); E.localBest(pm, 'X', lcg(1), {}, HARD); ms.push(performance.now() - t0); }
+  assert.ok(Math.min(...ms) < 60, `under 60 ms: ${ms.map(x => x.toFixed(1))}`);
+  assert.ok(r.ms < 200, `never slow in the race (${r.ms.toFixed(1)} ms at worst)`);
+  assert.deepEqual(E.localBest(pm, 'X', lcg(1), {}, { level: 'normal', until: null }), E.localBest(pm, 'X', lcg(1)), 'Normal untouched');
+});

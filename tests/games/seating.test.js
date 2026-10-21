@@ -100,3 +100,30 @@ test('seating: the admin\'s settings: six tables, two colours, three tables to w
   } finally { E.setTune('seating', null); }
   assert.equal(E.newMini('seating', lcg(1)).who.length, 20);
 });
+
+/* ---------- the Hard computer ---------- */
+test('seating: Hard counts the customer: it leaves a half-table the customer is sure to spoil and starts its own (Normal blocks it), completes a fifth table, plays a legal seat, under 60 ms', () => {
+  const hard = { level: 'hard', until: null };
+  // O's half at table 2 (seat 4), its other seat (5) the only one of the next customer's colour: the customer takes it
+  const pm = { type: 'seating', color: new Array(20).fill(0), who: new Array(20).fill(null), next: 3 };
+  pm.color[5] = 3; pm.who[4] = 'O';
+  assert.equal(E.seatPick(pm, 'X', lcg(1)).move, 5, 'Normal blocks');
+  const b = E.localBest(pm, 'X', lcg(1), {}, hard);
+  assert.notEqual(b.move, 5, 'Hard: ' + b.move);
+  assert.ok(!pm.who[b.move] && !pm.who[E.seatMate(b.move)], 'a fresh table');
+  // its fifth table at once
+  const win = { type: 'seating', color: new Array(20).fill(1), who: ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', null, 'O', 'O', 'Z', 'Z', null, null, null, null, null, null], next: 1 };
+  const w = E.localBest(win, 'X', lcg(1), {}, hard);
+  assert.deepEqual([w.move, w.win], [9, true]);
+  const times = [];
+  for (let g = 0; g < 10; g++) {
+    const q = E.newMini('seating', lcg(30 + g)), rng = lcg(50 + g);
+    let p = 'X';
+    for (let k = 0; k < g % 8 && q.who.includes(null); k++) { E.applyMove(q, p, q.who.indexOf(null), rng); p = E.other(p); }
+    const t0 = performance.now(), r = E.localBest(E.publicMini(q), p, rng, {}, hard);
+    times.push(performance.now() - t0);
+    assert.equal(q.who[r.move], null, 'a legal seat');
+    assert.equal(E.applyMove(q, p, r.move, rng).ok, true);
+  }
+  assert.ok(Math.max(...times.slice(1)) < 60, 'ms: ' + times.map(t => t.toFixed(1)).join(' '));
+});

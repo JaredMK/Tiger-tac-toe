@@ -18,7 +18,7 @@ export function best(pm, me, rng, style, ctx) {
 // grey mark, from the mover's side, with a memo). A board too big for that (the admin's settings) is searched
 // a few moves deep with a plain eval at the leaves, deeper while the clock allows.
 const KIND = (f, m, t) => f * 4 + m + 2 * t;                     // f spots filled, m: the mover is on it, t: the other player is
-const kindOf = (k, per) => [Math.floor(k / 4), k & 1, (k >> 1) & 1, per];
+const POW = Array.from({ length: 20 }, (_, k) => 3 * Math.pow(8, k));   // (a kind's place in a position's number)
 export function shelfSolve(pm, me, cf, until) {
   const per = cf.per, cells = pm.cells, n = Math.ceil(cells.length / per), o = other(me);
   const K = 4 * (per + 1), counts = new Array(K).fill(0), shelves = [];   // shelves: each shelf's kind, to turn a kind back into a spot
@@ -27,7 +27,7 @@ export function shelfSolve(pm, me, cf, until) {
     const k = KIND(row.filter(Boolean).length, row.includes(me) ? 1 : 0, row.includes(o) ? 1 : 0); shelves.push(k); counts[k]++;
   }
   const tie = pm.first ? (other(pm.first) === me ? 1 : -1) : cells.some(Boolean) ? 0 : -1;   // ties to the mover, to the other player (opening the square makes them mine to lose), or to nobody (a square from before)
-  let bound = 1; for (let j = 1; j <= n; j++) bound = bound * (K - 1 + j) / j;   // multisets of n shelves over K kinds
+  let bound = 1; for (let j = 1; j <= n; j++) bound = bound * (4 * per - 1 + j) / j;   // multisets of n shelves over the 4 * per kinds a shelf can be
   const memo = new Map();
   let nodes = 0, out = false;
   const tick = () => { if (until && (++nodes & 255) === 0 && until() <= 0) out = true; };
@@ -37,7 +37,7 @@ export function shelfSolve(pm, me, cf, until) {
     for (let k = 0; k < K; k++) { if (!c[k]) continue; const f = Math.floor(k / 4), m = k & 1, th = (k >> 1) & 1; empty += c[k] * (per - f); on += m * c[k]; off += th * c[k]; if (f < per) { canM += (1 - m) * c[k]; canT += (1 - th) * c[k]; } }
     if (!empty) return on > off ? 1 : off > on ? -1 : t;
     if (depth === 0) return Math.max(-0.9, Math.min(0.9, (on - off + 0.5 * (canM - canT)) / n));
-    const key = c.join('') + t + (depth === Infinity ? 'I' : depth);
+    let key = t + 1; for (let k = 0; k < K; k++) if (c[k]) key += c[k] * POW[k]; key = key * 64 + (depth === Infinity ? 63 : depth);   // (counts under 8, kinds under 17, depth under 63: a number)
     const got = memo.get(key); if (got !== undefined) return got;
     tick();
     let bestV = -Infinity;
@@ -72,15 +72,16 @@ export function shelfSolve(pm, me, cf, until) {
       let v = 0, empty = 0; for (let j = 0; j < K; j++) empty += c[j] * (per - Math.floor(j / 4));
       if (!empty) v = -solve(swap(c), -tie, depth);
       else for (let j = 0; j < K; j++) { if (!c[j]) continue; const w = c[j] * (per - Math.floor(j / 4)) / empty; if (!w) continue; c[j]--; c[j + 4]++; v -= w * solve(swap(c), -tie, depth - 1); c[j + 4]--; c[j]++; if (out) break; }
+      if (out) break;                                            // (the clock: this kind's value is not whole)
       if (!top || v > top.v) top = { k, v };
     }
     return top;
   };
   let got = null;
-  if (bound <= 60000) got = pick(Infinity);
+  if (bound <= 60000) { if (until) got = pick(2); const ex = pick(Infinity); if (!out || !got) got = ex; }   // (with a clock, a quick look first: the solve may be cut short)
   else if (!until) got = pick(4);
   else for (let d = 2; !out && d <= 2 * n * per; d++) { const r = pick(d); if (!out || !got) got = r; }
-  if (!got) got = pick(0);
+  if (!got) return shelfPick(pm, me, null);                      // (no time at all: the ordinary pick)
   const s = shelves.indexOf(got.k), at = cells.findIndex((c, i) => !c && Math.floor(i / per) === s);
   return { i: at, v: got.v };
 }

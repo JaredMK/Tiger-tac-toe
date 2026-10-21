@@ -32,8 +32,8 @@ export function best(pm, me, rng, style, ctx) {
 // from that group. Solved over the candidate cells as digs, every set met kept in a memo, deeper as the
 // budget allows (iterative deepening; a set of 8 or fewer to the end, a bigger one out of reach worth 0.5).
 // Then every other open cell at the depth reached: a dig outside the candidates can leave the other side a
-// set it can do little with (one whose band tells nothing is a pass: the other side faces the same cells),
-// taken when it beats the best candidate clearly.
+// set it can do little with, taken when it beats the best candidate clearly (never one whose band would
+// tell nothing: a pass, and two sides passing would never end).
 const HUH = { exact: 8, work: 1.2e5, depth: 14, margin: 0.05 };
 const BANDS = {};                                               // per grid size: the band between any two cells
 function bandTable(n) {
@@ -78,7 +78,7 @@ function huntHard(pm, cand, ctx) {
   if (depth) {
     stop = false; work = 0;
     const inC = new Set(C);
-    for (let g = 0; g < nn; g++) { if (pm.dug[g] || inC.has(g)) continue; let v = dig(C, g, depth - 1, false); if (stop) break; if (v < 0) v = 1 - top; if (v > top + HUH.margin) { top = v; move = g; } }
+    for (let g = 0; g < nn; g++) { if (pm.dug[g] || inC.has(g)) continue; const v = dig(C, g, depth - 1, false); if (stop) break; if (v > top + HUH.margin) { top = v; move = g; } }
   }
   return { move, q: C.includes(move) ? 1 / m0 : 0, shared: true };
 }

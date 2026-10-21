@@ -154,3 +154,47 @@ test('wordle: the admin\'s settings (the computer ignoring the clues) are dealt 
   for (let k = 0; k < 20; k++) { const lb = E.localBest(pm, 'O', E.makeRng('wordle-ai' + k)); if (!cand.includes(lb.move)) off++; }
   assert.ok(off > 0 && off < 20, 'some guesses ignore the clues');
 });
+
+// ================================ The Hard computer ================================
+const HARD = { level: 'hard', until: null };
+function raceOf(type, n) {
+  const lcg2 = seed => () => (seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296;
+  const out = { hard: 0, normal: 0, ms: 0 };
+  for (let k = 0; k < n; k++) {
+    const rng = lcg2(500 + k), m = E.newMini(type, rng), hardSide = k % 2 ? 'O' : 'X';
+    let p = 'X';
+    for (let t = 0; t < 60; t++) {
+      const pm = E.publicMini(m), hard = p === hardSide, t0 = performance.now();
+      const b = E.localBest(pm, p, rng, {}, hard ? HARD : {});
+      if (hard) out.ms = Math.max(out.ms, performance.now() - t0);
+      const r = E.applyMove(m, p, b.move, rng);
+      assert.equal(r.ok, true, `${type}: a legal move (${JSON.stringify(b.move)})`);
+      if (r.outcome === 'win') { out[hard ? 'hard' : 'normal']++; break; }
+      if (!r.again) p = p === 'X' ? 'O' : 'X';
+    }
+  }
+  return out;
+}
+test('wordle, Hard: the race for the word: legal guesses that could be the word, the last candidates guessed, more squares than Normal, quickly', () => {
+  const m = L.newMini('wordle', wordRng(L.WORDS5, 'crane'));
+  let b = L.localBest(L.publicMini(m), 'X', cpuRng(), {}, HARD);
+  assert.ok(L.VALID5.has(b.move), 'a fresh square: a real word'); assert.equal(b.shared, true);
+  L.applyMove(m, 'X', 'SLATE');
+  const pm = L.publicMini(m), cand = L.wordleCandidates(pm);
+  b = L.localBest(pm, 'O', cpuRng(), {}, HARD);
+  assert.ok(L.VALID5.has(b.move));
+  if (cand.includes(b.move)) assert.equal(b.q, 1 / cand.length, 'a guess that could be the word');
+  else { assert.equal(b.q, 0); assert.ok(cand.length > 2 && cand.length <= 12, 'a word outside them only with few left, when it leaves the other side least'); }
+  L.applyMove(m, 'O', b.move);
+  if (m.guesses[1].word !== 'CRANE') {
+    const pm2 = L.publicMini(m), c2 = L.wordleCandidates(pm2), h = L.localBest(pm2, 'X', cpuRng(), {}, HARD);
+    assert.ok(L.VALID5.has(h.move)); if (c2.length <= 2) assert.ok(c2.includes(h.move), 'the last candidates: guessed');
+  }
+  const r = raceOf('wordle', 80);
+  assert.ok(r.hard > r.normal, `Hard wins the race: ${r.hard} to ${r.normal}`);
+  const ms = [];
+  for (let k = 0; k < 3; k++) { const t0 = performance.now(); L.localBest(pm, 'O', cpuRng(), {}, HARD); ms.push(performance.now() - t0); }
+  assert.ok(Math.min(...ms) < 60, `under 60 ms: ${ms.map(x => x.toFixed(1))}`);
+  assert.ok(r.ms < 200, `never slow in the race (${r.ms.toFixed(1)} ms at worst)`);
+  assert.deepEqual(L.localBest(pm, 'O', cpuRng(), {}, { level: 'normal', until: null }), L.localBest(pm, 'O', cpuRng()), 'Normal untouched');
+});

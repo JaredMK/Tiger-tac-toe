@@ -49,8 +49,9 @@ export function roadSearch(pm, me, rng, until) {
     const rest = e.filter(j => j !== k);
     if (!blocks || !rest.length) return { k, v: after(k, null, false) };
     let v = 0; for (const b of rest) { v += after(k, b, false) / rest.length; tick(); if (out) break; }
-    return { k, v };
+    return { k, v: out ? -Infinity : v };                        // (the clock: a value not whole is no value)
   }).sort((a, b) => b.v - a.v);
+  if (c1[0].v === -Infinity) return done(roadPick(pm, me, null));   // (no time at all: the ordinary pick)
   if (out || e.length <= 2 || !blocks) return done(c1[0]);
   // two moves: the best few edges, the block sampled, the cut found
   const top = c1.slice(0, until ? 2 * TOP : TOP), order = shuffle(e.slice(), rng);

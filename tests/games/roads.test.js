@@ -150,3 +150,26 @@ test('roads: the admin\'s settings: two edges blocked a move, or none, and mista
   finally { E.setTune('roads', null); }
   const d = E.newMini('roads', lcg(1)); E.applyMove(d, 'X', 0, lcg(2)); assert.equal(d.segs.filter(w => w === 'B').length, 1); assert.equal(d.last.more, undefined);
 });
+
+/* ---------- the Hard computer ---------- */
+test('roads: Hard counts the block and the other player\'s cut: the line that wins more often than Normal\'s, a legal line always, under 60 ms', () => {
+  const hard = { level: 'hard', until: null };
+  // an older square's grid, four lines open: line 21 (checked against a full expectimax) wins 3 squares in 8 more than line 4
+  const segs = 'XOOB.OXBB.OBOX.XXOO.B.BB'.split('').map(c => (c === '.' ? null : c));
+  const pm = { type: 'roads', segs };
+  assert.equal(E.roadPick(pm, 'X', null).k, 4, 'Normal');
+  const b = E.localBest(pm, 'X', lcg(1), {}, hard);
+  assert.equal(b.move, 21, 'Hard');
+  assert.equal(b.after.segs[21], 'X');
+  const times = [];
+  for (let g = 0; g < 10; g++) {
+    const q = E.newMini('roads', lcg(30 + g)), rng = lcg(50 + g);
+    let p = 'X';
+    for (let k = 0; k < g % 6; k++) { E.applyMove(q, p, q.segs.indexOf(null), rng); p = E.other(p); }
+    const t0 = performance.now(), r = E.localBest(E.publicMini(q), p, rng, {}, hard);
+    times.push(performance.now() - t0);
+    assert.equal(q.segs[r.move], null, 'a legal line');
+    assert.equal(E.applyMove(q, p, r.move, rng).ok, true);
+  }
+  assert.ok(Math.max(...times.slice(1)) < 60, 'ms: ' + times.map(t => t.toFixed(1)).join(' '));
+});

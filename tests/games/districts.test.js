@@ -124,3 +124,34 @@ test('districts: the admin\'s settings: six regions, 20 spots and mistakes deal 
   } finally { E.setTune('districts', null); }
   assert.equal(E.newMini('districts', lcg(1)).map.regions.length, 5);
 });
+
+/* ---------- the Hard computer ---------- */
+test('districts: Hard searches the greys too and solves the last moves: a forced win Normal misses, a legal spot always, under 60 ms', () => {
+  const hard = { level: 'hard', until: null };
+  const m = E.newMini('districts', E.makeRng('f20'));
+  assert.equal(m.map.spots.length, 16);
+  m.who = '..OG.G.X.G.O..GX'.split('').map(c => (c === '.' ? null : c)); m.first = 'X';
+  const pm = E.publicMini(m);
+  assert.equal(pm.first, 'X', 'the public view says who opened the square (the tie)');
+  assert.equal(E.distSearch(pm, 'X', null).k, 12, 'Normal');
+  const b = E.localBest(pm, 'X', lcg(1), {}, hard);
+  assert.equal(b.move, 0, 'Hard: the spot that wins the square whatever the greys do');
+  assert.equal(b.after.who[0], 'X');
+  // played out against Normal from there, every grey: X wins
+  for (let g = 0; g < 20; g++) {
+    const q = JSON.parse(JSON.stringify(m)), rng = lcg(100 + g);
+    let p = 'X', r = null;
+    while (!r || r.outcome === 'continue') { const mv = E.localBest(E.publicMini(q), p, rng, {}, p === 'X' ? hard : {}).move; r = E.applyMove(q, p, mv, rng); p = E.other(p); }
+    assert.equal(r.winner, 'X', 'greys ' + g);
+  }
+  const times = [];
+  for (let g = 0; g < 10; g++) {
+    const q = E.newMini('districts', lcg(30 + g)), rng = lcg(50 + g);
+    let p = 'X';
+    for (let k = 0; k < g % 5; k++) { E.applyMove(q, p, q.who.indexOf(null), rng); p = E.other(p); }
+    const t0 = performance.now(), r = E.localBest(E.publicMini(q), p, rng, {}, hard);
+    times.push(performance.now() - t0);
+    assert.equal(q.who[r.move], null, 'a legal spot');
+  }
+  assert.ok(Math.max(...times.slice(1)) < 60, 'ms: ' + times.map(t => t.toFixed(1)).join(' '));
+});

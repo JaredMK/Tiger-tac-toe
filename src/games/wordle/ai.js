@@ -13,7 +13,7 @@ export function best(pm, me, rng, style, ctx) {
   if (cand.length === 1) return { move: cand[0], q: 1, shared: true };
   const miss = tune(pm).miss;
   if (miss && rng() * 100 < miss) { const w = WORDS5[randInt(rng, WORDS5.length)].toUpperCase(); return { move: w, q: cand.includes(w) ? 1 / cand.length : 0, shared: true }; }   // a slip: a word at random, clues ignored
-  if (ctx && ctx.level === 'hard') return wordleHard(cand, ctx);
+  if (ctx && ctx.level === 'hard') return wordleHard(pm, cand, ctx);
   let best = cand[0];
   if (cand.length > 24) {                                      // many left: the guess with the most common letters
     const freq = {};
@@ -41,8 +41,8 @@ export function best(pm, me, rng, style, ctx) {
 // move), every set met kept in a memo, deeper as the budget allows (iterative deepening; a set of 10 or fewer
 // to the end, a bigger one out of reach worth 0.5). At the root with few left every answer word is weighed
 // too: one outside the candidates can leave the other side a set it cannot do much with (one that tells
-// nothing is a pass: the other side faces the same set), taken when it beats the best candidate clearly.
-// With too many left to table (over 80), the candidate with the fewest common letters: the word that gives
+// nothing is a pass: the other side faces the same set), taken when it beats the best candidate clearly, and
+// never twice running (two sides passing would never end). With too many left to table (over 80), the candidate with the fewest common letters: the word that gives
 // least away.
 const WH = { exact: 10, rootAll: 12, table: 80, work: 1.2e5, depth: 12, margin: 0.02 };
 const LEFT = new Uint8Array(26);
@@ -53,7 +53,7 @@ function markCode(g, w) {                                        // wordleMarks 
   for (let i = 0; i < 5; i++) { const c = g.charCodeAt(i); k = k * 3 + (c === w.charCodeAt(i) ? 2 : LEFT[c - 65] > 0 ? (LEFT[c - 65]--, 1) : 0); }
   return k;
 }
-function wordleHard(cand, ctx) {
+function wordleHard(pm, cand, ctx) {
   const n = cand.length;
   if (n > WH.table) {
     const freq = {};
@@ -98,7 +98,8 @@ function wordleHard(cand, ctx) {
   }
   if (n <= WH.rootAll && depth) {                                // every other answer word, at the depth reached
     stop = false; work = 0;
-    for (const w of WORDS5) { const W = w.toUpperCase(); if (cand.includes(W)) continue; let v = split(C, c => markCode(W, cand[c]), depth - 1, false); if (stop) break; if (v < 0) v = 1 - top; if (v > top + WH.margin) { top = v; move = W; } }
+    const told = !pm.guesses.length || wordleCandidates({ guesses: pm.guesses.slice(0, -1) }).length > n;
+    for (const w of WORDS5) { const W = w.toUpperCase(); if (cand.includes(W)) continue; let v = split(C, c => markCode(W, cand[c]), depth - 1, false); if (stop) break; if (v < 0) { if (!told) continue; v = 1 - top; } if (v > top + WH.margin) { top = v; move = W; } }
   }
   return { move, q: cand.includes(move) ? 1 / n : 0, shared: true };
 }

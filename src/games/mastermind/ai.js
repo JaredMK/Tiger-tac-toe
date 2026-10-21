@@ -23,7 +23,8 @@ export function best(pm, me, rng, style, ctx) {
 // (iterative deepening; a set of 10 or fewer to the end, a bigger one out of reach worth 0.5). At the root
 // with few left, every code is weighed too: one outside the candidates can leave the other side a set it
 // cannot do much with (one that tells nothing is a pass: the other side faces the same set), taken when it
-// beats the best candidate clearly. The first guess is any (all the same).
+// beats the best candidate clearly, and never twice running (two sides passing would never end). The first
+// guess is any (all the same).
 const MMH = { exact: 10, rootAll: 12, work: 1.2e5, depth: 12, margin: 0.02 };
 const MMT = {};                                                 // per colour count: every code, feedback between any two (fb[i * n + j]) and each code's index
 function mmTable(colors) {
@@ -68,7 +69,8 @@ function mmHard(pm, cand, colors, ctx) {
   }
   if (n <= MMH.rootAll && depth) {                               // every other code, at the depth reached
     stop = false; work = 0;
-    for (let g = 0; g < N; g++) { if (C.includes(g)) continue; let v = split(C, g, depth - 1, false); if (stop) break; if (v < 0) v = 1 - top; if (v > top + MMH.margin) { top = v; move = g; } }
+    const last = pm.guesses[pm.guesses.length - 1], told = !last || mmCandidates({ type: pm.type, tune: pm.tune, guesses: pm.guesses.slice(0, -1) }).length > n;
+    for (let g = 0; g < N; g++) { if (C.includes(g)) continue; let v = split(C, g, depth - 1, false); if (stop) break; if (v < 0) { if (!told) continue; v = 1 - top; } if (v > top + MMH.margin) { top = v; move = g; } }
   }
   return { move: all[move].slice(), q: C.includes(move) ? 1 / n : 0, shared: true };
 }

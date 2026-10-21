@@ -174,3 +174,50 @@ test('hunt: the admin settings deal an 8x8 grid; the clues and the computer work
   } finally { E.setTune('hunt', null); }
   assert.equal(L.newMini('hunt', lcg(9)).dug.length, 36);
 });
+
+// ================================ The Hard computer ================================
+const HARD = { level: 'hard', until: null };
+function raceOf(type, n) {
+  const lcg2 = seed => () => (seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296;
+  const out = { hard: 0, normal: 0, ms: 0 };
+  for (let k = 0; k < n; k++) {
+    const rng = lcg2(500 + k), m = E.newMini(type, rng), hardSide = k % 2 ? 'O' : 'X';
+    let p = 'X';
+    for (let t = 0; t < 60; t++) {
+      const pm = E.publicMini(m), hard = p === hardSide, t0 = performance.now();
+      const b = E.localBest(pm, p, rng, {}, hard ? HARD : {});
+      if (hard) out.ms = Math.max(out.ms, performance.now() - t0);
+      const r = E.applyMove(m, p, b.move, rng);
+      assert.equal(r.ok, true, `${type}: a legal move (${JSON.stringify(b.move)})`);
+      if (r.outcome === 'win') { out[hard ? 'hard' : 'normal']++; break; }
+      if (!r.again) p = p === 'X' ? 'O' : 'X';
+    }
+  }
+  return out;
+}
+test('hunt, Hard: the race for the treasure: a dig that fits the clues, the last cell dug, at least Normal\'s squares, quickly', () => {
+  const m = L.newMini('hunt', lcg(3));
+  let pm = L.publicMini(m), b = L.localBest(pm, 'X', cpuRng(), {}, HARD);
+  assert.ok(Number.isInteger(b.move) && !pm.dug[b.move]); assert.equal(b.shared, true);
+  L.applyMove(m, 'X', b.move);
+  if (m.dug[m.treasure] == null) {
+    pm = L.publicMini(m); b = L.localBest(pm, 'O', cpuRng(), {}, HARD);
+    assert.ok(!pm.dug[b.move], 'an open cell');
+    if (L.huntCandidates(pm).includes(b.move)) assert.equal(b.q, 1 / L.huntCandidates(pm).length);
+  }
+  // one cell left: dug
+  const one = { type: 'hunt', treasure: 0, dug: new Array(36).fill(null), last: null };
+  L.applyMove(one, 'X', 1); L.applyMove(one, 'O', 6); L.applyMove(one, 'X', 8);   // hot, hot, warm: only the corner fits
+  pm = L.publicMini(one);
+  assert.deepEqual(L.huntCandidates(pm), [0]);
+  b = L.localBest(pm, 'X', cpuRng(), {}, HARD);
+  assert.equal(b.move, 0); assert.equal(b.q, 1);
+  const r = raceOf('hunt', 100);
+  assert.ok(r.hard >= r.normal, `Hard at least holds its own: ${r.hard} to ${r.normal}`);
+  const ms = [];
+  for (let k = 0; k < 3; k++) { const t0 = performance.now(); L.localBest(L.publicMini(L.newMini('hunt', lcg(k + 1))), 'X', cpuRng(), {}, HARD); ms.push(performance.now() - t0); }
+  assert.ok(Math.min(...ms) < 60, `under 60 ms: ${ms.map(x => x.toFixed(1))}`);
+  assert.ok(r.ms < 200, `never slow in the race (${r.ms.toFixed(1)} ms at worst)`);
+  const fresh = L.publicMini(L.newMini('hunt', lcg(5)));
+  assert.deepEqual(L.localBest(fresh, 'X', cpuRng(), {}, { level: 'normal', until: null }), L.localBest(fresh, 'X', cpuRng()), 'Normal untouched');
+});

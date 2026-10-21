@@ -20,17 +20,19 @@ export function best(pm, me, rng, style, ctx) {
 // a reset) where it comes; a memo of the positions met.
 export function seatExpecti(pm, me, cf, until) {
   const who = pm.who.slice(), color = pm.color, n = who.length, o = other(me), goal = cf.goal;
+  const cnt = []; for (let i = 0; i < n; i++) if (!who[i]) cnt[color[i]] = (cnt[color[i]] || 0) + 1;   // the empty seats of each colour, kept as the search goes
+  let open = 0; for (const c of cnt) if (c) open++;              // the colours with a seat
+  const sit = (i, w) => { who[i] = w; const c = color[i]; if (w) { if (--cnt[c] === 0) open--; } else { if (cnt[c]++ === 0) open++; } };
   let nodes = 0, out = false;
-  const tick = () => { if (until && (++nodes & 255) === 0 && until() <= 0) out = true; };
+  const tick = () => { if (until && (++nodes & 63) === 0 && until() <= 0) out = true; };
   const tables = p => { let t = 0; for (let i = 0; i < n; i += 2) if (who[i] === p && who[i + 1] === p) t++; return t; };
-  const colours = () => { const c = []; for (let i = 0; i < n; i++) if (!who[i] && !c.includes(color[i])) c.push(color[i]); return c; };
+  const colours = () => { const c = []; for (let k = 0; k < cnt.length; k++) if (cnt[k]) c.push(k); return c; };
   const leaf = next => {                                         // next: the customer's colour, or null for any with a seat
-    const open = next == null ? colours() : null, of = c => { let k = 0; for (let i = 0; i < n; i++) if (!who[i] && color[i] === c) k++; return k; };
     let v = tables(me) - tables(o);
     for (let i = 0; i < n; i++) {
       const w = who[i]; if (w !== me && w !== o) continue;
       const j = seatMate(i); if (who[j]) continue;
-      const risk = open ? 1 / (open.length * of(color[j])) : color[j] === next ? 1 / of(next) : 0;   // the customer takes the other seat
+      const c = color[j], risk = next == null ? 1 / (open * cnt[c]) : c === next ? 1 / cnt[c] : 0;   // the customer takes the other seat
       v += (w === me ? 0.5 : -0.5) * (1 - risk);
     }
     return Math.max(-0.9, Math.min(0.9, v / 3));
@@ -48,25 +50,24 @@ export function seatExpecti(pm, me, cf, until) {
       if (who[m]) continue;
       const v = after(m, p, next, depth, e);
       if (p === me ? v > bestV : v < bestV) bestV = v;
+      tick();
     }
     if (!out) memo.set(key, bestV);
     return bestV;
   };
   const full = () => { const a = tables(me), b = tables(o); return a > b ? 1 : b > a ? -1 : 0; };
   const after = (m, p, next, depth, e) => {                     // p sits at m: the square won, or the customer, then on
-    who[m] = p;
+    sit(m, p);
     let v;
     if (tables(p) >= goal) v = p === me ? 1 : -1;
     else if (e === 1) v = full();
+    else if (!cnt[next]) v = depth > 1 ? node(other(p), null, depth - 1, e - 1) : leaf(null);   // none of their colour: they leave
     else {
-      const seats = []; for (let i = 0; i < n; i++) if (!who[i] && color[i] === next) seats.push(i);
-      if (!seats.length) v = depth > 1 ? node(other(p), null, depth - 1, e - 1) : leaf(null);   // none of their colour: they leave
-      else {
-        v = 0;
-        for (const z of seats) { who[z] = 'Z'; v += (e === 2 ? full() : depth > 1 ? node(other(p), null, depth - 1, e - 2) : leaf(null)) / seats.length; who[z] = null; if (out) break; }
-      }
+      v = 0;
+      const k = cnt[next];
+      for (let z = 0; z < n; z++) { if (who[z] || color[z] !== next) continue; sit(z, 'Z'); v += (e === 2 ? full() : depth > 1 ? node(other(p), null, depth - 1, e - 2) : leaf(null)) / k; sit(z, null); if (out) break; }
     }
-    who[m] = null;
+    sit(m, null);
     return v;
   };
   const empty = who.filter(w => !w).length;
@@ -75,6 +76,7 @@ export function seatExpecti(pm, me, cf, until) {
     for (let m = 0; m < n && !out; m++) {
       if (who[m]) continue;
       const v = after(m, me, pm.next, depth, empty);
+      if (out) break;                                            // (the clock: this seat's value is not whole)
       if (!top || v > top.v) top = { move: m, v };
     }
     return top;
@@ -82,6 +84,6 @@ export function seatExpecti(pm, me, cf, until) {
   let got = null;
   if (!until) got = pick(2);
   else for (let d = 1; !out && d <= empty; d++) { const r = pick(d); if (!out || !got) got = r; }
-  if (!got) got = pick(1);
+  if (!got) return seatPick(pm, me, null);                       // (no time at all: the ordinary pick)
   return got;
 }
