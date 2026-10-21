@@ -40,6 +40,8 @@ import { catTypes, chaosSetup, setGames, setupTypes } from './screens/setup.js';
 import { cpuTurn, dismissFlash, scheduleCpu } from './turns.js';
 import { closeReport, openReport } from './report.js';
 
+let tipTimer = 0;                                             // (the target icon's line: when it goes)
+
 // A mini-game's own control: the view whose actions have it.
 const gameAction = act => { for (const t in GAMES) { const a = GAMES[t].view && GAMES[t].view.actions; if (a && Object.hasOwn(a, act)) return a[act]; } return null; };
 // A tap inside a scrolling list never moves it: anything the browser does on its own (bringing a box it
@@ -86,6 +88,14 @@ export function init() {
     if (!el || el.disabled) return;
     const act = el.dataset.act;
     if (act === 'explain') { e.preventDefault(); openExplain(el.dataset.t); return; }    // never a move: open over anything, even mid-turn
+    if (act === 'target-tip') {                                                       // the header's target icon: its line, for a moment (never a move)
+      e.preventDefault();
+      const on = !el.classList.contains('open');
+      document.querySelectorAll('.tgtbtn.open').forEach(b => b.classList.remove('open'));
+      clearTimeout(tipTimer);
+      if (on) { el.classList.add('open'); tipTimer = setTimeout(() => el.classList.remove('open'), 2500); }
+      return;
+    }
     if (act === 'explain-close') { closeExplain(); return; }
     if (act === 'intro-close') { closeIntro(); return; }
     if (act === 'ask-stay') { joinAsk = null; render(); scheduleCpu(); return; }

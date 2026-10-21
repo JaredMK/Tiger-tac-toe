@@ -126,7 +126,7 @@ function periodUpdates(what, t) {
 // person is sent or kept. k: one per app open and per 'live' (sent every 10 minutes while a match is
 // under way on screen, so a long match stays one session), and one start and one end per match, so an
 // event sent twice (a retry, a reload) is kept once.
-const DEV_EVENTS = ['open', 'live', 'start', 'finish', 'leave', 'error', 'report', 'mlog'];   // (error: something went wrong on the phone, a short line, with its match where there was one)
+const DEV_EVENTS = ['open', 'live', 'start', 'finish', 'leave', 'error', 'report', 'mlog', 'audio'];   // (error: something went wrong on the phone, a short line, with its match where there was one; audio: the phone's sound went down or came back, or failed, a short line)
 const DEV_MODES = ['local', 'cpu', 'cvc', 'friend', 'match', 'chaos'];
 const TAG_RE = /^[a-z0-9][a-z0-9_-]{0,23}$/;
 const tagOk = v => typeof v === 'string' && TAG_RE.test(v);
@@ -139,11 +139,11 @@ function checkDev(d, t) {
   if (d.ev === 'open') {
     if (!idOk(d.o)) return null;
     k = 'o' + d.o;
-  } else if (d.ev === 'error') {
+  } else if (d.ev === 'error' || d.ev === 'audio') {
     if (!idOk(d.o) || typeof d.msg !== 'string' || !d.msg.trim()) return null;
     ev.msg = d.msg.replace(/[^\x20-\x7e]/g, '?').slice(0, 160);
     if (match()) { ev.m = d.mode; ev.g = d.g; }
-    k = 'x' + d.o;
+    k = (d.ev === 'audio' ? 'a' : 'x') + d.o;
   } else if (d.ev === 'report' || d.ev === 'mlog') {               // a "Report a problem" (its note), or an event for the match's log only: always with its match
     if (!idOk(d.o) || !match()) return null;
     ev.m = d.mode; ev.g = d.g;

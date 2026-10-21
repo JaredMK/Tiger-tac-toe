@@ -34,22 +34,23 @@ export function miniature(mini, final) {
         <div class="tship" aria-label="${BS.names[len]}, ${len} part${len === 1 ? '' : 's'}"><svg viewBox="0 20 ${len * 100} 60" aria-hidden="true">${parts}</svg><b>${BS.names[len]}</b></div></div>`;
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
-  // One hidden ship on a 4x4 sea (Super Chaos: a Patrol Boat on 5x5). A shot shows a hit (a burst) or a miss (a splash), never which
+  // One hidden ship on a 4x4 sea (Super Chaos: a Submarine on 5x5). A shot shows a hit (a burst) or a miss (a splash), never which
   // way the ship lies; the shot that sinks it reveals the whole ship, which then goes under.
   const hits = mini.hits || [], ship = mini.ship || null, sunk = !!sq.owner && !!ship;
-  const shown = ship && (sunk || view) ? ship : [];             // the ship's cells, once it may be seen
+  const own = !sq.owner && !!ship && ship.every(k => hits.includes(k));   // sunk on the player's own sea, not claimed yet (Super Chaos: the claim comes at the round's end)
+  const shown = ship && (sunk || own || view) ? ship : [];      // the ship's cells, once it may be seen
   const sinking = sunk && fresh;
   const n = bsN(mini);
   g = `<div class="g-bs"><div class="bsgrid${n !== BS.n ? ' n' + n : ''}">${mini.revealed.map((r, i) => {
         const r0 = Math.floor(i / n) + 1, c0 = i % n + 1;
         if (shown.includes(i)) {
-          const cls = `cell sea ship ${sunk ? sq.owner : 'ghost'}${sinking ? ' sink' : ''}${anim === i ? ' flipin' : ''}`;
+          const cls = `cell sea ship ${sunk ? sq.owner : own ? 'own' : 'ghost'}${sinking ? ' sink' : ''}${anim === i ? ' flipin' : ''}`;
           return `<button class="${cls}" data-act="move" ${mv(i)} aria-label="Row ${r0} column ${c0}, ship" disabled>${shipSeg(ship, i, n)}${sinking ? HITFX : ''}</button>`;   // while sinking: the hit bursts give way to the ship
         }
         const hit = hits.includes(i);
         const cls = hit ? ' bshit' : r ? ' miss' : '';
         return `<button class="cell sea${cls}${anim === i ? ' flipin' : ''}" data-act="move" ${mv(i)} aria-label="Row ${r0} column ${c0}${hit ? ', hit' : r ? ', miss' : ''}"${r || locked ? ' disabled' : ''}>${hit ? HITFX : ''}</button>`;
-      }).join('')}</div>${bsShipCard(mini, sunk ? sq.owner : null, sinking)}</div>`;
+      }).join('')}</div>${bsShipCard(mini, sunk ? sq.owner : own ? 'own' : null, sinking)}</div>`;
   return g;
 }
 export function moveText(f, who) {

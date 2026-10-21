@@ -119,7 +119,7 @@ Sounds start from the events they belong to, never from drawing the screen: a re
 | Roulette | `sparkle` | Green 0 comes up on a bet on 0: the square at once | Rising sparkles |
 | Bullseye | `mark` | The first tap locks the sideways line (Tic-tac-toe's mark) | As above |
 | Bullseye | `whoosh` / `dartHit` / `dartMiss` / `sparkle` | The dart flies (the Connect 4 whoosh); it lands in the board with a thunk, or off it with a clank; a bullseye sparkles too | Thunk: a short noise burst with a low falling triangle; clank: a falling square wave with a bright click |
-| Echo | `tone` | Each step of the pattern as it plays (timed from the Play pattern tap), each pad tapped back (at the press, and nothing else: no tap click), and, for someone else's attempt, their pattern and their taps as they replay. *The rate sets the pad's note: G, C, E, G.* | A soft triangle note, 392 Hz |
+| Echo | `tone` (live) | Each step of the pattern as it plays (timed from the Play pattern tap), each pad tapped back (at the press, and nothing else: no tap click), and, for someone else's attempt, their pattern and their taps as they replay. *The rate sets the pad's note: G, C, E, G.* | A soft triangle note, 392 Hz, made by an oscillator each time it plays (not rendered at load) |
 | Echo | `ding` / `thud` | The attempt passed / slipped (your own: 0.3 s after the last tap, once its tone has sounded) | As above |
 | Plinko | `peg` / `ding` / `plop` / `point` / `sparkle` | The chip clicks on every peg (Mastermind's peg, a little higher each row); a ding as it touches the bonus peg; it drops into its bin and the points sound (`point`); the winning drop sparkles | Plop: a sine falling 520→260 Hz |
 | Cup Pong | `whoosh` / `clink` / `splash` / `thud` | The throw; a rim bounce clinks; a sunk cup splashes, a miss thuds | As above |
@@ -161,3 +161,6 @@ Sounds start from the events they belong to, never from drawing the screen: a re
 - The first tap unlocks audio, as iPhone requires. On iPhone the audio session is set to *ambient*, so
   the silent switch mutes the game and music already playing carries on. (The browser's own setting
   is used where the device supports it.)
+- Audio that goes down (iPhone: backgrounded, locked, a notification, Bluetooth, a long session) comes back:
+  the context is checked before every sound and replaced when it is not running or its clock has stopped
+  (on any tap; once when the page comes back). A "Tap to restore sound" chip shows while it is down.

@@ -9,12 +9,12 @@ const mini = (t, seed) => E.newMini(t, E.makeRng(seed || t));
 function runUntil(sim, cond, max = 20000) { for (let k = 0; k < max && !sim.crash && !sim.done && !cond(sim); k++) E.runStep(sim, 1 / 60); return sim; }
 const runOut = sim => runUntil(sim, () => false);
 
-test('dash: a fixed, seeded course per player per square: ground hazards, low flyers and pairs, spaced within the config\'s gaps, up to the target', () => {
+test('dash: a fixed, seeded course per square, the same for both players: ground hazards, low flyers and pairs, spaced within the config\'s gaps, up to the target', () => {
   E.setRunConfig(null);
   const m = mini('dash', 'course');
   const cx = E.runCourse(m, 'X'), co = E.runCourse(m, 'O');
   assert.deepEqual(E.runCourse(m, 'X'), cx, 'the same course every time');
-  assert.notDeepEqual(cx, co, 'each player their own');
+  assert.deepEqual(co, cx, 'one course for both players');
   assert.notDeepEqual(E.runCourse(mini('dash', 'other'), 'X'), cx, 'another square, another course');
   const cfg = m.cfg;
   assert.ok(cx[0].at >= E.runGrace(cfg, 0) + 5, 'nothing in the opening grace stretch');
@@ -95,5 +95,5 @@ test('dash: a pair needs a well-timed long jump (or two quick ones); a single ta
   assert.ok(go(0.25, false).crash, 'one tap: over the first, into the second');
   assert.ok(!go(0.2, true).crash, 'a well-timed hold clears both');
   assert.ok(go(0.05, true).crash && go(0.5, true).crash, 'too late or too early, it does not');
-  assert.ok(E.runCourse(m, 'O').some(o => o.pair), 'pairs are part of the course');
+  assert.ok(['pair', 'pair2', 'pair3', 'pair4'].some(k => E.runCourse(mini('dash', k), 'O').some(o => o.pair)), 'pairs are part of the course');
 });

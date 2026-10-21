@@ -89,6 +89,7 @@ test('ttt: a drawn square resets to a fresh random mini-game and stays unclaimed
   const st = matchWith(['ttt']);
   for (let i = 0; i < 8; i++) st.squares[0].mini.cells[i] = TTT_DRAW[i];
   st.turn = TTT_DRAW[8];
+  st.games = ['c4'];                                            // (the reset's only choice)
   const r = L.playMove(st, 0, 8, typeRng('c4'));
   assert.equal(r.ok, true);
   assert.equal(st.flash.kind, 'draw');
@@ -128,6 +129,7 @@ test('ttt: a blocked square resets like a full one: unclaimed, a new mini-game, 
   const st = matchWith(['ttt']);
   st.squares[0].mini.cells = TTT_BLOCKED.slice(); st.squares[0].mini.cells[8] = null;
   st.turn = 'O';
+  st.games = ['c4'];
   const r = L.playMove(st, 0, 8, typeRng('c4'));
   assert.equal(r.ok, true);
   assert.deepEqual([st.flash.kind, st.flash.note, st.flash.newType], ['draw', 'blocked', 'c4']);
@@ -160,13 +162,51 @@ test('ttt: in random play a square goes on only while someone can still make thr
   assert.ok(blocked > 10, `blocked draws come up (${blocked})`);
 });
 
-test('ttt: a draw can reset to any game in the full list, including the same type (never a Super Chaos only one)', () => {
-  for (const type of POOL) {
-    const st = matchWith(['ttt']);
+test('dealing: with nine or more games the nine starting squares are nine different games; with fewer, any of them', () => {
+  for (let k = 0; k < 300; k++) {
+    const rng = lcg(1000 + k), many = POOL.slice(0, 9 + (k % 20)), few = POOL.slice(0, 1 + (k % 8));
+    const a = L.newMatch(rng, { games: many }), types = a.squares.map(q => q.mini.type);
+    assert.equal(new Set(types).size, 9, `no repeats: ${types}`);
+    assert.ok(types.every(t => many.includes(t)));
+    const b = L.newMatch(rng, { games: few });
+    assert.ok(b.squares.every(q => few.includes(q.mini.type)));
+  }
+  const all = L.newMatch(lcg(5)), types = all.squares.map(q => q.mini.type);
+  assert.equal(new Set(types).size, 9, 'a new state too');
+  assert.ok(types.every(t => POOL.includes(t)), 'never a Super Chaos only one');
+});
+
+test('dealing: a reset draws first from the match\'s games not used yet, then from those not on the board, then any', () => {
+  const games = POOL.slice(0, 12);
+  for (let k = 0; k < 200; k++) {
+    const st = L.newMatch(lcg(2000 + k), { games });
+    const on = st.squares.map(q => q.mini.type), unused = games.filter(t => !on.includes(t));
+    st.sqlog = [{ t: unused[0], end: 'draw' }];                  // one of the three left was played (and reset) earlier
+    const r = lcg(3000 + k);
+    assert.ok(unused.slice(1).includes(L.pickReset(st, games, r, 4)), 'a game not used this match');
+    st.sqlog = unused.map(t => ({ t, end: 'won' }));              // all twelve used: one not on the board now (nor the square's own)
+    st.squares[2].owner = 'X';                                    // (a claimed square's game is off the board)
+    const t = L.pickReset(st, games, r, 4);
+    assert.ok(t !== on[4] && !on.filter((x, i) => i !== 4 && i !== 2).includes(t), `${t}: not on the open squares, not the one resetting`);
+  }
+  // exactly nine games, all on the board: the only one not on another open square is the square's own
+  const nine = POOL.slice(0, 9), st = L.newMatch(lcg(9), { games: nine });
+  assert.equal(L.pickReset(st, nine, lcg(1), 3), st.squares[3].mini.type);
+  // fewer games than squares: anything from the list
+  const two = ['ttt', 'c4'], s2 = matchWith(['ttt', 'ttt', 'c4', 'c4', 'ttt', 'ttt', 'c4', 'ttt', 'c4']);
+  assert.ok(two.includes(L.pickReset(s2, two, lcg(3), 0)));
+});
+
+test('dealing: a drawn square takes a game not used yet this match through playMove', () => {
+  for (let k = 0; k < 30; k++) {
+    const st = L.newMatch(lcg(500 + k), { games: POOL.slice(0, 11) });
+    st.squares[0].mini = L.newMini('ttt', lcg(1));
+    const before = st.squares.map(q => q.mini.type);
     for (let i = 0; i < 8; i++) st.squares[0].mini.cells[i] = TTT_DRAW[i];
     st.turn = TTT_DRAW[8];
-    L.playMove(st, 0, 8, typeRng(type));
-    assert.equal(st.squares[0].mini.type, type);
+    L.playMove(st, 0, 8, lcg(600 + k));
+    const now = st.squares[0].mini.type;
+    assert.ok(!before.includes(now) && st.games.includes(now) && now !== 'ttt', `${now} not on the board before`);
   }
 });
 

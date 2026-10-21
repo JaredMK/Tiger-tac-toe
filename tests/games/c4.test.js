@@ -172,6 +172,7 @@ test('c4: a drawn square resets through playMove', () => {
     }
   }
   st.turn = C4_DRAW[c4idx(0, 6)];
+  st.games = ['hex'];                                           // (the reset's only choice)
   assert.equal(L.playMove(st, 0, 6, typeRng('hex')).ok, true);
   assert.equal(st.flash.kind, 'draw');
   assert.equal(st.squares[0].owner, null);

@@ -285,19 +285,9 @@ test('Super Chaos Mini Golf: each shot is locked in, then both play out together
 });
 
 test('Super Chaos: the shared histories and per-player rules of the other games', () => {
-  // Battleship: a Patrol Boat on 5x5; one shot a move; both shots join the sea
+  // Battleship: a Submarine (3 long) on 5x5; both players' shots join the sea (test 'Super Chaos Battleship' below)
   const bs = E.scSquareMini({ squares: [] }, {}, 'bs', E.makeRng('b'));
-  assert.equal(bs.n, 5); assert.equal(bs.len, 1); assert.equal(bs.revealed.length, 25);
-  const ship = bs.ship[0], miss = (ship + 1) % 25, miss2 = (ship + 2) % 25;
-  const st = round([bs], { square: 0, moves: [miss2] });
-  human(st, 0, [miss]);
-  resolve(st);
-  assert.equal(st.squares[0].mini.revealed.filter(Boolean).length, 2);
-  E.chaosNext(st, E.makeRng('n'));
-  st.sc.cpu = E.scCpu(st, E.makeRng('c'), { square: 1, moves: [3] });
-  human(st, 0, [ship]);
-  resolve(st);
-  assert.equal(st.squares[0].owner, 'X', 'a hit sinks it');
+  assert.equal(bs.n, 5); assert.equal(bs.len, 3); assert.equal(bs.revealed.length, 25);
   // Higher/Lower: both guesses and both answers narrow the range
   const h = round([hilo(10)], { square: 0, moves: [14] });
   human(h, 0, [4]);
@@ -409,4 +399,70 @@ test('Super Chaos Higher/Lower: the same 5 guesses each; a 5th that misses hands
   human(s4, 0, [15]);
   resolve(s4);
   assert.equal(s4.squares[0].owner, 'O');
+});
+
+test('Super Chaos Battleship: a Submarine on 5x5; a hit fires again until a miss or the sinking shot; both players\' hits merge at the round\'s end; whoever hits the last part wins it, both doing so resets it', () => {
+  for (let k = 0; k < 200; k++) {                                // the ship: 3 cells in a row, across or down, inside the 5x5 sea
+    const m = E.scSquareMini({ squares: [] }, {}, 'bs', E.makeRng('ship' + k)), c = m.ship.slice().sort((x, y) => x - y);
+    const across = c[1] - c[0] === 1 && c[2] - c[1] === 1 && Math.floor(c[0] / 5) === Math.floor(c[2] / 5), down = c[1] - c[0] === 5 && c[2] - c[1] === 5;
+    assert.ok(across || down, JSON.stringify(m.ship));
+  }
+  const sub = (cells) => ({ type: 'bs', n: 5, len: 3, ship: cells, revealed: new Array(25).fill(null), hits: [], last: null });
+  const SHIP = [6, 7, 8];
+  // one move: a hit fires again (the player stays in the square), a miss ends it
+  let st = round([sub(SHIP)], { square: 1, moves: [3] });
+  let r = E.playMove(st, 0, 6, E.makeRng('h'));
+  assert.equal(r.flash.kind, 'again'); assert.equal(st.sc.me, null, 'still firing'); st.flash = null;
+  r = E.playMove(st, 0, 7, E.makeRng('h'));
+  assert.equal(r.flash.kind, 'again'); st.flash = null;
+  r = E.playMove(st, 0, 0, E.makeRng('h'));
+  assert.ok(st.sc.me && r.flash.note === 'miss', 'a miss ends the move'); st.flash = null; E.leaveSquare(st);
+  resolve(st);
+  assert.deepEqual(st.squares[0].mini.hits.sort(), [6, 7]); assert.equal(st.squares[0].owner, null);
+  // the next round: the computer hits the last part; it takes the square
+  E.chaosNext(st, E.makeRng('n'));
+  st.sc.cpu = E.scCpu(st, E.makeRng('c'), { square: 0, moves: [8] });
+  human(st, 1, [5]);
+  let rc = resolve(st);
+  assert.equal(st.squares[0].owner, 'O', 'the last part hit by the computer: its square');
+  assert.deepEqual(rc.claims.map(c => [c.square, c.by]), [[0, 'O']]);
+  // both players' hits in one round join the sea (shown in the recap), the ship still afloat
+  st = round([sub(SHIP)], { square: 0, moves: [8, 4] });
+  human(st, 0, [6, 0]);
+  rc = resolve(st);
+  assert.deepEqual(rc.view[0].hits.slice().sort(), [6, 8], 'the recap shows both hits');
+  assert.equal(st.squares[0].owner, null);
+  assert.ok(rc.view[0].revealed[0] && rc.view[0].revealed[4], 'and both misses');
+  // both sink it on their own sea in the same round: a reset
+  st = round([sub(SHIP)], { square: 0, moves: [6, 7, 8] });
+  human(st, 0, [8, 7, 6]);
+  rc = resolve(st);
+  assert.equal(st.squares[0].owner, null); assert.deepEqual(rc.resets.map(x => [x.square, x.why]), [[0, 'both']]);
+  // the two share out the last parts (neither sinks it alone): the round's hits sink it together, a reset
+  st = round([sub(SHIP)], { square: 0, moves: [6, 1] });
+  human(st, 0, [7, 8, 0]);
+  assert.equal(st.sc.me.win, false, 'not sunk on X\'s own sea');
+  rc = resolve(st);
+  assert.deepEqual(rc.resets.map(x => [x.square, x.why]), [[0, 'both']], 'sunk by the two together');
+  assert.ok(rc.view[0].hits.length === 3, 'the recap shows the ship with all three hits');
+  // one sinks it alone, the other hit one of its last parts in the same round: both hit the last parts, a reset
+  st = round([sub(SHIP)], { square: 0, moves: [8, 1] });
+  human(st, 0, [6, 7, 8]);
+  assert.equal(st.sc.me.win, true, 'X sank it on their own sea');
+  rc = resolve(st);
+  assert.deepEqual(rc.resets.map(x => [x.square, x.why]), [[0, 'both']], 'O hit a last part too');
+  st = round([sub(SHIP)], { square: 0, moves: [6, 2] });
+  human(st, 0, [7, 3]);
+  rc = resolve(st);
+  assert.deepEqual(rc.resets.map(x => [x.square, x.why]), [], 'two parts hit, one afloat: on it goes');
+  E.chaosNext(st, E.makeRng('n2'));
+  st.sc.cpu = E.scCpu(st, E.makeRng('c2'), { square: 1, moves: [3] });
+  human(st, 0, [8]);
+  resolve(st);
+  assert.equal(st.squares[0].owner, 'X', 'X alone hit the last part');
+  // the timeout rule fires once (no second shot after a hit)
+  st = round([sub(SHIP)], { square: 1, moves: [3] });
+  for (let g = 0; g < 9; g++) if (g !== 0) st.squares[g].owner = g % 2 ? 'X' : 'O';
+  const t = E.chaosTimeout(st, E.makeRng('t'));
+  assert.ok(t.ok && st.sc.me, 'one shot and the move is in');
 });

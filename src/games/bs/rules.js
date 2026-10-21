@@ -2,13 +2,14 @@
 import { randInt } from '../../core/random.js';
 
 // Battleship: one hidden ship on a 4x4 grid, 1 to 4 cells long, lying across or down. Both players fire at it.
-export const BS = { n: 4, names: { 4: 'Battleship', 3: 'Submarine', 2: 'Destroyer', 1: 'Patrol Boat' }, sc: 5 };   // sc: Super Chaos's sea (a Patrol Boat on 5x5)
+export const BS = { n: 4, names: { 4: 'Battleship', 3: 'Submarine', 2: 'Destroyer', 1: 'Patrol Boat' }, sc: 5, scLen: 3 };   // sc, scLen: Super Chaos's sea and ship (a Submarine on 5x5)
 // The sea's width: 4, or a Super Chaos square's own (mini.n).
 export const bsN = mini => (mini && Number.isInteger(mini.n) ? mini.n : BS.n);
 
-// Battleship: a ship of random length (1 to 4) placed across or down, anywhere it fits.
-export function bsShip(rng) {
-  const len = 1 + randInt(rng, 4), across = randInt(rng, 2) === 0, N = BS.n;
+// Battleship: a ship of random length (1 to 4; or len) placed across or down, anywhere it fits on an N x N sea.
+export function bsShip(rng, N = BS.n, len) {
+  len = len || 1 + randInt(rng, 4);
+  const across = randInt(rng, 2) === 0;
   const r = randInt(rng, across ? N : N - len + 1), c = randInt(rng, across ? N - len + 1 : N);
   return Array.from({ length: len }, (_, k) => (across ? r * N + c + k : (r + k) * N + c));
 }
@@ -59,16 +60,26 @@ export function hide(m, k, st) {
 export function flashMs(f, winLen, won) {
   return won ? 1700 : 1100;
 }
-// Super Chaos: a Patrol Boat (one cell) on a 5x5 sea. One shot a move: a hit sinks it. Both players' shots
-// join the sea at the round's end.
+// Super Chaos: a Submarine (3 cells, across or down) on a 5x5 sea. A move fires as in a match: a hit fires
+// again, until a miss or the sinking shot (the timeout rule: one shot). Both players' shots join the sea at
+// the round's end. Whoever hits the ship's last part wins it: when the round's shots sink it, the one who
+// hit any of the parts still afloat at the round's start takes it; both did (each sank it on their own sea,
+// or the two shared out the last parts), and the square resets.
 export function scCreate(type, rng) {
-  const N = BS.sc; return { type, n: N, len: 1, ship: [randInt(rng, N * N)], revealed: new Array(N * N).fill(null), hits: [], last: null };
+  const N = BS.sc, ship = bsShip(rng, N, BS.scLen);
+  return { type, n: N, len: ship.length, ship, revealed: new Array(N * N).fill(null), hits: [], last: null };
 }
 export function scMerge(m, c) {
+  const ship = m.ship || c.base.ship;
+  if (!ship) return undefined;                                   // (no ship to judge by: each move's own result stands)
+  const afloat = new Set(ship.filter(k => !c.base.hits.includes(k))), hit = { X: false, O: false };
   m.revealed = c.base.revealed.slice(); m.hits = c.base.hits.slice();
   for (const p of c.played) {
     const f = c.forks[p];
     f.revealed.forEach((r, k) => { if (r && !m.revealed[k]) m.revealed[k] = r; });
-    for (const h of f.hits) if (!m.hits.includes(h)) m.hits.push(h);
+    for (const h of f.hits) { if (!m.hits.includes(h)) m.hits.push(h); if (afloat.has(h)) hit[p] = true; }
   }
+  if (!ship.every(k => m.hits.includes(k))) return { win: { X: false, O: false } };                // still afloat: the hits stay on the sea
+  if (hit.X && hit.O) return { win: { X: true, O: true } };                                        // both hit its last parts this round: a reset
+  return { win: hit };
 }

@@ -25,6 +25,16 @@ export function explainOf(t) {
 }
 export let explainT = null;                          // the mini-game whose explainer is open
 export const qBtn = (t, cls) => `<button class="qbtn${cls ? ' ' + cls : ''}" data-act="explain" data-t="${t}" aria-label="How to play ${explainOf(t).name}">${cls === 'sm' ? '<i>?</i>' : '?'}</button>`;   // the small one: a 26px sticker in a 40px tap target
+// The header's target icon (meta.js: target; scTarget in Super Chaos where it differs): one board for both
+// players, each their own progress, or one course for both. A tap (or a hover) shows its one line, under it.
+const TGT_SVG = (body) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
+export const TARGETS = {
+  shared: ['Shared: one board for both players', TGT_SVG('<rect x="3.5" y="4" width="17" height="16" rx="3"/><circle cx="9" cy="12" r="2.2" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="2.2" fill="currentColor" stroke="none"/>')],
+  own: ['Individual: your own progress only', TGT_SVG('<rect x="2.5" y="6" width="8.5" height="12" rx="2"/><rect x="13" y="6" width="8.5" height="12" rx="2"/><circle cx="6.75" cy="12" r="1.9" fill="currentColor" stroke="none"/><circle cx="17.25" cy="12" r="1.9" fill="currentColor" stroke="none"/>')],
+  course: ['Shared course: same course, own distance', TGT_SVG('<path d="M2.5 8.5h13M2.5 15.5h13"/><path d="M19 4v16"/><path d="M19 4.5h3l-1 2 1 2h-3" fill="currentColor"/>')],
+};
+export const targetOf = t => (GAMES[t] && ((scNow() && GAMES[t].meta.scTarget) || GAMES[t].meta.target)) || 'shared';
+export const tgtBtn = t => { const k = targetOf(t), [line, svg] = TARGETS[k]; return `<button class="tgtbtn tgt-${k}" data-act="target-tip" aria-label="${line}" title="${line}"><i>${svg}</i><span class="tgt-tip" role="tooltip">${line}</span></button>`; };   // (a 30px sticker in a 40px tap target)
 export function renderExplain() {
   const x = explainT && explainOf(explainT);
   if (!x) return '';

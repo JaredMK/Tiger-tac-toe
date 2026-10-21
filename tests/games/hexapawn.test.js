@@ -129,6 +129,7 @@ test('hexapawn: leaving the other side without a move wins nothing; when neither
   // X steps in front of O's only pawn: O is blocked, and so is X
   const st = matchWith(['hexapawn', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt']);
   st.squares[0].mini = hp(hpAt(3, 0), 'X', hpAt(1, 0), 'O');
+  st.games = ['ttt'];                                           // (the reset's only choice)
   const f = turn(st, 0, [hpAt(3, 0), hpAt(2, 0)], typeRng('ttt'));
   assert.equal(f.kind, 'draw', 'nobody can move: no winner'); assert.equal(f.note, 'stuck');
   assert.equal(st.squares[0].owner, null);

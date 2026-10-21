@@ -11,6 +11,23 @@ import { SC_ONLY, TYPES } from '../games/index.js';
 export const NAME_MAX = 12;
 export function pickType(games, rng) { return games[randInt(rng, games.length)]; }
 export function newSquare(games, rng) { return { owner: null, mini: newMini(pickType(games, rng), rng) }; }
+// The nine starting squares: nine different games when the match has nine or more to deal from (fewer:
+// each square any of them, as ever).
+export function dealNine(games, rng) {
+  if (games.length < 9) return Array.from({ length: 9 }, () => newSquare(games, rng));
+  const bag = games.slice();
+  return Array.from({ length: 9 }, () => ({ owner: null, mini: newMini(bag.splice(randInt(rng, bag.length), 1)[0], rng) }));
+}
+// A reset square's new game, from the match's list (pool): first one not yet used this match (dealt at
+// the start, played, or on the board now), then one not on the board now (the open squares and the one
+// resetting), then one not on the other open squares, then any.
+export function pickReset(state, pool, rng, at) {
+  const sqs = state.squares || [], old = sqs[at] && sqs[at].mini ? sqs[at].mini.type : null;
+  const open = new Set(sqs.filter((q, k) => k !== at && q && !q.owner && q.mini).map(q => q.mini.type));
+  const used = new Set((state.sqlog || []).map(e => e.t).concat(sqs.filter(q => q && q.mini).map(q => q.mini.type)));
+  const tiers = [pool.filter(t => !used.has(t)), pool.filter(t => !open.has(t) && t !== old), pool.filter(t => !open.has(t)), pool];
+  return pickType(tiers.find(x => x.length), rng);
+}
 export const CPU_NAME = 'Computer';
 export function defaultSetup() {
   const games = {};
@@ -88,7 +105,7 @@ export function newState(rng) {
     online: null,             // { role: 'host' | 'guest', code, me, name, joined } while playing over the network
     timer: newTimer(0),       // the online turn clock: limit in seconds (0 = none), deadline, timeouts per player
     spot: null,               // { square, by, label }: the square the other player is about to play in, shown before the zoom
-    squares: Array.from({ length: 9 }, () => newSquare(TYPES.filter(t => !SC_ONLY.includes(t)), rng)),
+    squares: dealNine(TYPES.filter(t => !SC_ONLY.includes(t)), rng),
     zoom: null,               // index of the mini-game being viewed
     flash: null,              // the move just made: its result, while the animation and toast play
     done: null,               // the move just made, kept on show until the player heads back to the board (that is when the turn passes)
@@ -125,7 +142,7 @@ export function startMatch(state, rng, only) {   // only: the games this kind of
   state.endPick = null;                                       // the match-end message is picked afresh
   state.timer = newTimer(state.setup.mode === 'online' ? normTimer(state.setup.timer) : 0);
   state.spot = null;
-  state.squares = Array.from({ length: 9 }, () => newSquare(games, rng));
+  state.squares = dealNine(games, rng);
   for (const sq of state.squares) if (sq.mini.type === 'trivia') triviaDeal(state, sq, rng);   // a question each, no two squares alike
   state.screen = 'board'; state.turn = 'X';
   state.zoom = null; state.flash = null; state.done = null; state.stamp = null; state.lock = null;

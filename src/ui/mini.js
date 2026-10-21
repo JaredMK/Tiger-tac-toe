@@ -14,7 +14,7 @@ import { N, esc, menuOpen, menuStep, state } from './app.js';
 import { CHEV } from './art.js';
 import { attPinned } from './attention.js';
 import { scCpu, scWaiting } from './chaos.js';
-import { qBtn } from './explainer.js';
+import { qBtn, tgtBtn } from './explainer.js';
 import { fingPinned } from './finger.js';
 import { animMs, fx, fxAt, fxAttr } from './fx.js';
 import { rep, repActive, repSkipBtn } from './replay.js';
@@ -74,7 +74,7 @@ export function renderMini(sq, review, popup) {
   const banner = popup ? `<div class="repban ${turn}" role="status">${REPLAY_ICON}<span><b>${N(turn)}</b>'s move — replay</span></div>` : '';   // Super Chaos's replay: whose move it is, in their colour, on the pop-up's edge (the whole pop-up: a tap skips to its end)
   return `<main class="scr mini${fx.enter && performance.now() - fx.enter.at < 400 ? ' enter' : ''}${popup ? ` screplay rep-${turn}` : ''}"${popup ? ` role="dialog" aria-label="${esc(playerName(state, turn))}'s move — replay"` : ''}>${popup ? banner : netBar()}
     <div class="bar${view && sq.owner ? ' won won-' + sq.owner : ''}" role="${view ? 'status' : 'presentation'}">${back}
-      <div class="ttl"><b${info.name.length > 14 ? ' class="long"' : ''}>${info.name}</b><small${view ? ' class="won"' : ''}>${sub}</small></div>${qBtn(mini.type)}</div>
+      <div class="ttl"><b${info.name.length > 14 ? ' class="long"' : ''}>${info.name}</b><small${view ? ' class="won"' : ''}>${sub}</small></div>${tgtBtn(mini.type)}${qBtn(mini.type)}</div>
     <div class="gwrap"${fxAttr(f ? fxAt('move', f) : d && !f ? fxAt('back', d) : null)}>${g}</div>${f ? renderFlash(f) : ''}${repSkipBtn()}${popup ? '' : pauseMenu()}</main>`;   // the move's animations count from the move
 }
 const REPLAY_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.6-5.9"/><path d="M4 4v5h5"/></svg>';

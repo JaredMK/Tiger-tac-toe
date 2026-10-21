@@ -842,7 +842,7 @@ exports.gamePresenceLog = onValueWritten({ ref: '/gpresence/{id}/{side}' }, asyn
   await presenceLog(ML.mmKey(event.params.id), event.params.side, event.data.before.val(), event.data.after.val());
 });
 // The phones' own events with a match (devlog): a phone's start in it (its device and app version), its
-// leaving, an error on it, a "Report a problem", and what only a phone knows (mlog: a match against the
+// leaving, an error on it, its sound going down or coming back (audio), a "Report a problem", and what only a phone knows (mlog: a match against the
 // computer, a move the record refused). The device is the same hash as the device log's, shortened.
 async function clientLog(c, t) {
   const key = c.ev.g && ML.keyOk(c.ev.g) ? c.ev.g : null;
@@ -851,7 +851,7 @@ async function clientLog(c, t) {
   const ev = c.ev.ev;
   if (ev === 'start') await mlogSafe(key, [Object.assign({ k: 'device', v: c.v || undefined }, base)], meta);
   else if (ev === 'leave') await mlogSafe(key, [Object.assign({ k: 'left' }, base)], meta);
-  else if (ev === 'error') await mlogSafe(key, [Object.assign({ k: 'error', msg: c.ev.msg, v: c.v || undefined }, base)], meta);
+  else if (ev === 'error' || ev === 'audio') await mlogSafe(key, [Object.assign({ k: ev, msg: c.ev.msg, v: c.v || undefined }, base)], meta);
   else if (ev === 'report') await mlogSafe(key, [Object.assign({ k: 'report', note: c.note || undefined, v: c.v || undefined }, base)], Object.assign(meta, { report: { t, note: c.note } }));
   else if (ev === 'mlog') { const e = ML.clientEvent(c.e, t); if (e) await mlogSafe(key, [Object.assign(e, { dev, s: c.s || e.s })], meta); }
 }

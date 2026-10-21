@@ -15,11 +15,19 @@ import { endKind } from '../ui/screens/win.js';
  * (SOUNDS.md lists them all). Each sound is rendered once when the page loads, so a play starts at once.
  * The first tap unlocks audio (iPhone needs a gesture). On iPhone the audio session is 'ambient': the
  * silent switch mutes the game, and music the player already has playing carries on.
+ * Keeping it alive: iPhone takes a page's audio away (the page backgrounded, the phone locked, a call or a
+ * notification's sound, Bluetooth headphones connecting) and leaves the context 'interrupted' or
+ * 'suspended', or, worse, 'running' with its clock stopped, and a resume() often never brings it back. So
+ * the context is checked before every sound (SND.ensure): one that is not running (or whose clock has
+ * stopped) is replaced by a new one, at once on a tap (iPhone starts one only inside a gesture), and once
+ * when the page comes back. While audio is down a small "Tap to restore sound" chip shows. Every change
+ * of state, and every failure, goes to the device's log and the match's (SND.report: net/tracking.js).
+ * Echo's pads are played live, by oscillators (`live`), not from a rendered buffer.
  * Sounds start from the events they belong to (playFlash, stampFx, backSounds, showRemoteMove, ...),
  * never from drawing the screen, and each event starts its sounds once.
  */
 export const SFX = {};                                             // name -> { dur, level, vary, make(c, out, t) }
-export const SND = { ctx: null, out: null, bufs: {}, muted: false, loaded: false, log: [] };
+export const SND = { ctx: null, out: null, bufs: {}, muted: false, loaded: false, log: [], down: false, ever: false, made: 0, events: [], report: null };
 // One tone: a sine, triangle or square, optionally gliding from f to o.to over its length.
 function sfxTone(c, d, t, f, dur, o = {}) {
   const n = c.createOscillator(), g = c.createGain(), v = o.vol == null ? 0.5 : o.vol;
@@ -47,7 +55,8 @@ function sfxNoise(c, d, t, dur, o = {}) {
 }
 // name, length in seconds, loudness (the peak it is normalised to), and whether its pitch varies a little
 // each time (for the sounds that repeat: taps, hops, ticks), so they do not feel mechanical.
-const def = (name, dur, make, o = {}) => { SFX[name] = { dur, level: o.level == null ? 0.6 : o.level, vary: !!o.vary, make }; };
+// live: made by oscillators each time it plays (make(c, out, t, rate)), never rendered.
+const def = (name, dur, make, o = {}) => { SFX[name] = { dur, level: o.level == null ? 0.6 : o.level, vary: !!o.vary, live: !!o.live, make }; };
 // ---- interface
 def('tap', 0.09, (c, d, t) => { sfxTone(c, d, t, 640, .07, { to: 430, vol: .5, type: 'triangle' }); sfxNoise(c, d, t, .02, { f: 2600, vol: .25 }); }, { level: .4, vary: true });
 def('key', 0.06, (c, d, t) => sfxTone(c, d, t, 1400, .04, { to: 1100, vol: .5, type: 'triangle' }), { level: .3, vary: true });
@@ -133,7 +142,7 @@ def('push', 0.32, (c, d, t) => { sfxTone(c, d, t, 523, .12, { vol: .3, type: 'tr
 def('rlSpin', 1.3, (c, d, t) => { sfxNoise(c, d, t, 1.25, { f: 1100, to: 300, q: .6, filter: 'lowpass', vol: .3, att: .12 }); sfxTone(c, d, t, 90, 1.2, { to: 55, vol: .12, att: .15 }); }, { level: .35 });   // (fades as the wheel slows; the ball's clicks carry on to the drop)
 def('ballTick', 0.04, (c, d, t) => sfxTone(c, d, t, 3100, .025, { vol: .35, type: 'triangle' }), { level: .28, vary: true });
 // ---- the arcade games
-def('tone', 0.3, (c, d, t) => sfxTone(c, d, t, 392, .28, { vol: .45, type: 'triangle', att: .01 }), { level: .5 });   // an Echo pad (its rate sets the pad's note: G, C, E, G)
+def('tone', 0.3, (c, d, t, rate) => sfxTone(c, d, t, 392 * (rate || 1), .28, { vol: .5, type: 'triangle', att: .01 }), { level: .5, live: true });   // an Echo pad, live (its rate sets the pad's note: G, C, E, G)
 def('dartHit', 0.22, (c, d, t) => { sfxNoise(c, d, t, .05, { f: 900, q: 1.2, vol: .5 }); sfxTone(c, d, t, 180, .18, { to: 120, vol: .5, type: 'triangle' }); }, { level: .6 });   // a dart in the board: a thunk
 def('dartMiss', 0.3, (c, d, t) => { sfxTone(c, d, t, 1500, .22, { to: 900, vol: .3, type: 'square', att: .003 }); sfxNoise(c, d, t, .04, { f: 3200, q: 2, vol: .3 }); }, { level: .45 });   // off the board: a clank
 def('beep', 0.12, (c, d, t) => sfxTone(c, d, t, 880, .1, { vol: .35, type: 'square', att: .003 }), { level: .45 });   // the runners' countdown: 3, 2, 1
@@ -156,7 +165,7 @@ def('ballDrop', 0.3, (c, d, t) => { sfxTone(c, d, t, 1900, .05, { vol: .45, type
 SND.load = function () {
   const OC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
   if (!OC) return Promise.resolve();
-  return Object.keys(SFX).reduce((p, name) => p.then(() => new Promise(done => {
+  return Object.keys(SFX).filter(name => !SFX[name].live).reduce((p, name) => p.then(() => new Promise(done => {
     const s = SFX[name], oc = new OC(1, Math.ceil(s.dur * 44100), 44100);
     oc.oncomplete = e => {
       const buf = e.renderedBuffer, x = buf.getChannelData(0);
@@ -168,44 +177,129 @@ SND.load = function () {
     oc.startRendering();
   })), Promise.resolve()).then(() => { SND.loaded = true; });
 };
-// The first tap (or key) unlocks audio: the context starts inside the gesture, as iPhone requires.
-SND.unlock = function () {
+// ----- keeping audio alive (see the top) -----
+const AUDIO_CHECK_MS = 1500;                                       // while the page shows: is audio still up?
+let probe = null, madeTap = false, ran = false, triedAway = false, lastSaid = '';
+const nowMs = () => performance.now();
+const hidden = () => document.visibilityState === 'hidden';
+function say(msg) {                                                // a line for the logs (the same line twice in a row: once)
+  SND.events.push({ t: Date.now(), msg }); if (SND.events.length > 60) SND.events.splice(0, 30);
+  if (msg === lastSaid) return;
+  lastSaid = msg;
+  try { if (SND.report) SND.report(msg); } catch (e) { /* the log is never worth an error */ }
+}
+const errText = e => String((e && (e.name || e.message)) || e).slice(0, 60);
+// Its clock stopped while it says 'running' (iPhone after an interruption): the audio clock has not moved
+// in half a second and more of the page's.
+function stalled(c) {
+  const w = nowMs();
+  if (!probe || probe.c !== c) { probe = { c, w, ct: c.currentTime, st: false }; return false; }
+  if (w - probe.w < 500) return probe.st;
+  const st = c.currentTime - probe.ct < 0.05;
+  probe = { c, w, ct: c.currentTime, st };
+  return st;
+}
+// Up: running with its clock moving, or made inside a tap a moment ago and not yet started (iPhone starts
+// it a beat later; what is scheduled now plays then).
+function up() {
+  const c = SND.ctx;
+  if (!c) return false;
+  if (c.state === 'running') return !stalled(c);
+  return c.state === 'suspended' && madeTap && !ran && nowMs() - SND.made < 1500;
+}
+function makeCtx(why, tap) {
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return false;
+  let c;
+  try { c = new AC(); } catch (e) { say(`create failed (${why}): ${errText(e)}`); return false; }
+  const old = SND.ctx;
+  if (old) { old.onstatechange = null; try { old.close().catch(() => {}); } catch (e) { /* gone already */ } }
+  SND.ctx = c; SND.made = nowMs(); madeTap = !!tap; ran = c.state === 'running'; probe = null;
+  SND.out = c.createGain(); SND.out.gain.value = 0.9; SND.out.connect(c.destination);
+  let started = false;
+  c.onstatechange = () => {
+    if (SND.ctx !== c) return;
+    const first = c.state === 'running' && !started;
+    if (c.state === 'running') { ran = true; started = true; }
+    if (!(first && !SND.down)) say(`state ${c.state}${hidden() ? ' (hidden)' : ''}`);   // (a context starting as it should is not news)
+    refresh();
+  };
+  if (old) say(`new context (${why}): ${c.state}`);
+  return true;
+}
+function kick(c) {
+  try { const r = c.resume(); if (r && r.catch) r.catch(e => say('resume failed: ' + errText(e))); } catch (e) { say('resume failed: ' + errText(e)); }
+  try {                                                            // a silent sound inside the gesture: the rest of iPhone's unlock
+    const b = c.createBuffer(1, 1, 22050), s = c.createBufferSource();
+    s.buffer = b; s.connect(c.destination); s.start(0);
+  } catch (e) { say('unlock failed: ' + errText(e)); }
+}
+// Is audio up? If not, a new context: always on a tap (gesture: true), once when the page is back.
+// Checked before every sound. Returns whether sounds can play now.
+SND.ensure = function (gesture) {
   if (!SND.ctx) {
-    const AC = window.AudioContext || window.webkitAudioContext;
-    if (!AC) return;
-    try { SND.ctx = new AC(); } catch (e) { return; }
-    SND.out = SND.ctx.createGain(); SND.out.gain.value = 0.9; SND.out.connect(SND.ctx.destination);
+    if (!gesture) return false;                                    // (before the first tap: nothing yet, and nothing down)
+    if (!makeCtx('first tap', true)) return false;
+    kick(SND.ctx);
+  } else if (!up() && !hidden()) {
+    const was = `${SND.ctx.state}${SND.ctx.state === 'running' ? ', clock stopped' : ''}`;
+    if (gesture) { if (makeCtx(`tap, was ${was}`, true)) kick(SND.ctx); }
+    else if (!triedAway) { triedAway = true; if (makeCtx(`check, was ${was}`)) kick(SND.ctx); }
   }
-  if (SND.ctx.state !== 'running') {
-    SND.ctx.resume().catch(() => {});
-    const b = SND.ctx.createBuffer(1, 1, 22050), s = SND.ctx.createBufferSource();   // a silent sound inside the gesture: the rest of iPhone's unlock
-    s.buffer = b; s.connect(SND.ctx.destination); s.start(0);
-  }
+  const ok = up();
+  if (ok) { triedAway = false; if (!SND.ever) SND.ever = true; }
+  refresh(ok);
+  return ok;
 };
+// The first tap (or key) unlocks audio, and every tap after it brings it back if it is down.
+SND.unlock = function () { SND.ensure(true); };
+// The "Tap to restore sound" chip: shown while audio is down (after it has once been up, sound on, the
+// page showing). Fixed over the page: nothing moves when it comes and goes. Its tap is the gesture.
+let chip = null, chipOff = 0;
+function refresh(ok) {
+  if (ok === undefined) ok = up();
+  const down = !ok && SND.ever && !SND.muted && !hidden();
+  if (down !== SND.down) { SND.down = down; say(down ? `down (${SND.ctx ? SND.ctx.state : 'none'})` : 'restored'); }
+  if (!chip) return;
+  clearTimeout(chipOff);
+  if (down) chip.hidden = false;
+  else if (!chip.hidden) chipOff = setTimeout(() => { chip.hidden = true; }, 450);   // (gone once the tap that brought sound back has ended: its click lands on the chip, not on what is under it)
+}
 // A sound played over and over until stopped (the chopper's rotor while the press is held): { stop() }.
 SND.loop = function (name) {
   const b = SND.bufs[name], none = { stop() {} };
   SND.log.push(name);
-  if (!b || SND.muted || !SND.ctx || SND.ctx.state !== 'running') return none;
-  const src = SND.ctx.createBufferSource(), g = SND.ctx.createGain();
-  src.buffer = b; src.loop = true; g.gain.value = 1;
-  src.connect(g); g.connect(SND.out); src.start();
-  return { stop() { try { const t = SND.ctx.currentTime; g.gain.setTargetAtTime(0, t, 0.02); src.stop(t + 0.1); } catch (e) { /* already stopped */ } } };   // a short fade, no click
+  if (!b || SND.muted || !SND.ensure(false)) return none;
+  const c = SND.ctx;
+  try {
+    const src = c.createBufferSource(), g = c.createGain();
+    src.buffer = b; src.loop = true; g.gain.value = 1;
+    src.connect(g); g.connect(SND.out); src.start();
+    return { stop() { try { const t = c.currentTime; g.gain.setTargetAtTime(0, t, 0.02); src.stop(t + 0.1); } catch (e) { /* already stopped */ } } };   // a short fade, no click
+  } catch (e) { say(`play failed (${name}): ${errText(e)}`); return none; }
 };
 // Starts a sound now (or `o.at` seconds later). Nothing plays while muted, or before audio is unlocked.
 SND.play = function (name, o = {}) {
-  const b = SND.bufs[name];
-  if (!b || SND.muted || !SND.ctx || SND.ctx.state !== 'running') return;
-  const src = SND.ctx.createBufferSource(), g = SND.ctx.createGain();
-  src.buffer = b;
-  src.playbackRate.value = o.rate || (SFX[name].vary ? 0.94 + Math.random() * 0.12 : 1);
-  g.gain.value = o.vol == null ? 1 : o.vol;
-  src.connect(g); g.connect(SND.out);
-  src.start(SND.ctx.currentTime + (o.at || 0));
+  const s = SFX[name], b = SND.bufs[name];
+  if (!s || (!b && !s.live) || SND.muted || !SND.ensure(false)) return;
+  const c = SND.ctx, at = c.currentTime + (o.at || 0);
+  try {
+    const g = c.createGain();
+    g.gain.value = o.vol == null ? 1 : o.vol;
+    g.connect(SND.out);
+    if (s.live) s.make(c, g, at, o.rate || 1);                     // (Echo's pads: oscillators, made now)
+    else {
+      const src = c.createBufferSource();
+      src.buffer = b;
+      src.playbackRate.value = o.rate || (s.vary ? 0.94 + Math.random() * 0.12 : 1);
+      src.connect(g); src.start(at);
+    }
+  } catch (e) { say(`play failed (${name}): ${errText(e)}`); return; }
   SND.log.push(name); if (SND.log.length > 400) SND.log.splice(0, 200);   // (what has played, for the tests)
 };
 SND.setMuted = function (m) {
   SND.muted = !!m;
+  refresh();
   try { localStorage.setItem(KEY + '.sound', SND.muted ? 'off' : 'on'); } catch (e) { /* no storage: the choice lasts this visit */ }
 };
 try { SND.muted = localStorage.getItem(KEY + '.sound') === 'off'; } catch (e) { /* no storage: sound on */ }
@@ -249,6 +343,20 @@ export function backSounds(from) {
 // Its listeners: main.js calls this once, in the page's original order of listeners.
 export function init() {
   ['pointerdown', 'touchend', 'click', 'keydown'].forEach(ev => document.addEventListener(ev, SND.unlock, { capture: true, passive: true }));
+  chip = document.createElement('button');
+  chip.className = 'snd-chip'; chip.type = 'button'; chip.hidden = true; chip.textContent = 'Tap to restore sound';
+  chip.addEventListener('click', e => { e.stopPropagation(); if (SND.ensure(true)) SND.play('toggle'); });   // (its pointerdown already made the new context)
+  document.body.appendChild(chip);
+  const back = () => {                                             // back on the page: checked afresh; still down a moment later, a new context
+    if (hidden()) { refresh(); return; }
+    probe = null; triedAway = false;
+    if (SND.ctx && !up()) { kick(SND.ctx); setTimeout(() => SND.ensure(false), 700); }   // (the old one's own resume first: it may come back by itself)
+    else SND.ensure(false);
+  };
+  document.addEventListener('visibilitychange', () => { if (SND.ctx) say(`page ${document.visibilityState}, ${SND.ctx.state}`); back(); });
+  window.addEventListener('pageshow', back);
+  window.addEventListener('focus', back);
+  setInterval(() => { if (SND.ctx && !hidden()) SND.ensure(false); }, AUDIO_CHECK_MS);
   document.addEventListener('pointerup', () => { if (ownDown) { ownDown = false; ownUp = performance.now(); } }, true);
   document.addEventListener('pointercancel', () => { ownDown = false; }, true);
   document.addEventListener('click', e => {

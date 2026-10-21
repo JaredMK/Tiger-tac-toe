@@ -102,6 +102,14 @@ function devMatch() {
   if (!['board', 'mini', 'win', 'review', 'review-mini'].includes(state.screen)) return null;
   return state.stats && state.stats.id ? { g: 'l' + state.stats.id, mode: state.stats.mode } : null;
 }
+// The phone's sound (audio/sound.js: SND.report): its state changing, a new context, a failure. Kept with
+// the device's events and, in a match, in the match's log. At most 60 a visit (a phone left flapping).
+let audioSent = 0;
+export function devAudio(msg) {
+  if (++audioSent > 60) return;
+  const m = devMatch() || {};
+  devEvent(Object.assign({ ev: 'audio', o: 'a' + randHex(8), msg: String(msg).slice(0, 160) }, m.g ? { g: m.g, mode: m.mode } : {}));
+}
 // The match's log (functions/matchLogRules.js): what only this phone knows (a match against the computer,
 // a move the record refused). e: { k: kind, ...short fields }. Fire and forget.
 export function matchLog(e) {

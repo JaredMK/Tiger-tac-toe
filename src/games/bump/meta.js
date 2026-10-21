@@ -3,6 +3,7 @@
 export const info = { name: 'Bump',         hint: 'Spin 1, 2 or 3. Land on your opponent to send them home' };
 export const release = 'released';   // the default (the admin's dashboard can change it)
 export const category = 'luck';   // the Advanced checklist's group: 'luck', 'skill' or 'brain'
+export const target = 'shared';   // the header's icon: 'shared' (one board for both), 'own' (each player's own progress) or 'course' (one course for both, each their own distance)
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Bump', play: 'Spin and move 1, 2 or 3 spaces. Land on your opponent to send them back home.', win: 'Reach the finish first.' };
 export const scExplainer = { name: 'Bump', play: 'Spin and move 1, 2 or 3 spaces. Knocks happen when the round ends: land on the other piece to send it home; land on the same space together and both go home.', win: 'Reach the finish first.' };   // in Super Chaos

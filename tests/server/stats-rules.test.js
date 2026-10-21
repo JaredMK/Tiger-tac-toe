@@ -88,3 +88,13 @@ test('playtest log: an error event from a phone (a move that would not save) is 
   assert.equal(S.checkDev({ dev, ev: 'error', o: 'o12345678', msg: 'hm', mode: 'nope', g: 'fABCDE_m1' }, t).ev.g, undefined, 'a mode not known: the match left off');
   assert.ok(S.DEV_EVENTS.includes('error'));
 });
+
+test('playtest log: an audio event (the phone\'s sound going down, coming back or failing) is kept like an error line, with its match', () => {
+  const t = 1700000000000, dev = 'd0123456789abcdef0123456';
+  const ok = S.checkDev({ dev, ev: 'audio', o: 'a12345678', msg: 'new context (tap, was running, clock stopped): running', mode: 'cpu', g: 'labcdef12', v: 'a1b2c3d' }, t);
+  assert.ok(ok && ok.k === 'aa12345678' && ok.v === 'a1b2c3d');
+  assert.deepEqual(ok.ev, { t, ev: 'audio', msg: 'new context (tap, was running, clock stopped): running', m: 'cpu', g: 'labcdef12' });
+  assert.deepEqual(S.checkDev({ dev, ev: 'audio', o: 'a12345678', msg: 'state interrupted' }, t).ev, { t, ev: 'audio', msg: 'state interrupted' }, 'outside a match: the device\'s log only');
+  assert.equal(S.checkDev({ dev, ev: 'audio', o: 'a12345678', msg: '' }, t), null);
+  assert.ok(S.DEV_EVENTS.includes('audio'));
+});

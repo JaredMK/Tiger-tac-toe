@@ -270,3 +270,20 @@ test('runners: a timed-out player who never started gets a run that crashes afte
     console.log(`${t}: the computer finishes in ${avg.toFixed(2)} runs; a run from the start ${mean(first).toFixed(0)} m, past 60% of the way ${mean(late).toFixed(0)} m`);
   }
 });
+
+test('one course per square for both players (Dash, Lane Rush, Flap, Chopper, Sky Hop, Scoop Stack), in a match and in Super Chaos; each player\'s distance stays their own', () => {
+  for (const t of ['dash', 'lane', 'flap', 'chopper', 'skyhop', 'scoop']) {
+    for (const sc of [false, true]) {
+      const st = E.newMatch(E.makeRng('course ' + t));
+      const m = sc ? (E.scSquareMini(st, st.squares[0], t, E.makeRng('sc ' + t)), st.squares[0].mini) : mini(t, 'c ' + t);
+      assert.equal(m.seed.X, m.seed.O, `${t}${sc ? ' (Super Chaos)' : ''}: one seed`);
+      const layout = p => (t === 'skyhop' ? E.hopCourse(m.cfg, m.seed[p]) : t === 'scoop' ? E.scoopItems(m.cfg, m.seed[p], 0, 0) : t === 'chopper' ? [E.runCourse(m, p), E.runCave(m, p)] : E.runCourse(m, p));
+      assert.deepEqual(layout('O'), layout('X'), `${t}: the same obstacles for both`);
+      assert.notDeepEqual(mini(t, 'other ' + t).seed, m.seed, `${t}: another square, another course`);
+    }
+  }
+  // a run moves only the mover's distance, on the shared course
+  const m = mini('dash', 'race');
+  for (let k = 0; k < 4; k++) assert.equal(E.applyMove(m, 'X', 'auto', E.makeRng('run' + k)).ok, true);
+  assert.ok(m.dist.X > 0 && m.dist.O === 0, `X ${m.dist.X}, O ${m.dist.O}`);
+});

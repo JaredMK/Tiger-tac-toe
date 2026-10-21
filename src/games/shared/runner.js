@@ -1,6 +1,6 @@
 // Dash, Lane Rush, Flap and Chopper: what the runners share (courses, the run itself, the checks, the
 // computer's runs).
-import { gaussOf, makeRng, needRng, randInt } from '../../core/random.js';
+import { courseSeed, gaussOf, makeRng, needRng, randInt } from '../../core/random.js';
 import { r2 } from '../../core/util.js';
 import { CHOP, chopPilot } from '../chopper/rules.js';
 import { DASH, DASH_OBS, dashPilot } from '../dash/rules.js';
@@ -9,9 +9,9 @@ import { LANE, laneNeed, laneRow, lanePilot } from '../lane/rules.js';
 
 // ---------- Dash and Lane Rush: runs along a seeded course to 1,000 m ----------
 // A move is one run: from the player's saved distance until they crash (or finish), at the speed of
-// that distance (the further along, the faster); the crash point is the new saved distance. Each
-// player's course (where the obstacles are) is fixed per square from a seed, so what crashed you is
-// still there on the retry; every run opens with a grace stretch (two seconds at that speed) where the
+// that distance (the further along, the faster); the crash point is the new saved distance. The
+// course (where the obstacles are) is fixed per square from a seed, one course for both players (each
+// with their own distance on it), so what crashed you is still there on the retry, and for the other player; every run opens with a grace stretch (two seconds at that speed) where the
 // course's obstacles are left out. The page runs the run in real time, with the step function here;
 // the engine knows the course, the speeds and what a result may be: a crash at an obstacle past the
 // grace stretch (or the finish), in no less time than the course allows. The difficulty is one config
@@ -359,7 +359,7 @@ export function runTick(sim) {
 // inputs (the log) with the steps it took, for the check and the replays.
 export const runResult = (sim, out) => ({ dist: r2(Math.min(sim.cfg.target, sim.d)), ms: Math.round(sim.t * 1000), out: !!out && !sim.done, log: runLogOf(sim.rec || []), steps: sim.n });
 export function runnerCreate(type, rng) {
-  return { type, cfg: runConfig(type), seed: { X: randInt(needRng(rng), 1e9), O: randInt(rng, 1e9) }, dist: { X: 0, O: 0 }, runs: { X: 0, O: 0 }, crashes: { X: [], O: [] }, last: null };   // cfg: the difficulty this square was dealt with; seed: each player's course
+  return { type, cfg: runConfig(type), seed: courseSeed(rng), dist: { X: 0, O: 0 }, runs: { X: 0, O: 0 }, crashes: { X: [], O: [] }, last: null };   // cfg: the difficulty this square was dealt with; seed: the course, one for both (the same on each side)
 }
 export function runnerApply(mini, p, m, rng, idx) {   // a run: its end and its time, checked against the course
   const mv = m === 'auto' ? runAuto(mini, p, needRng(rng)) : m;

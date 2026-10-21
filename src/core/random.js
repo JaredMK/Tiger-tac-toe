@@ -29,3 +29,7 @@ export function shuffle(arr, rng) {
 // (log-normal around a mean that shrinks a little as the course speeds up), then put at the obstacle
 // there, like any crash.
 export const gaussOf = rng => { const u = Math.max(1e-9, rng()), v = rng(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+// One course for both players (the runners, Sky Hop, Scoop Stack): the same seed on each side, so both face
+// the same obstacles; each player's distance stays their own. (Two draws, as when each had their own: the
+// rest of a deal stays as it was.)
+export function courseSeed(rng) { const s = randInt(needRng(rng), 1e9); randInt(rng, 1e9); return { X: s, O: s }; }

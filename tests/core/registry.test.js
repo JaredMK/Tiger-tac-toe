@@ -30,3 +30,9 @@ test('registry: the game lists come from it, in menu order, the retired games la
 test('every game has a checklist group (meta.js category: luck, skill or brain)', () => {
   for (const t of Object.keys(E.INFO)) assert.ok(["luck", "skill", "brain"].includes(GAMES[t].meta.category), `${t}: ${GAMES[t].meta.category}`);
 });
+test('every game says whether its target is shared, individual or a shared course (meta.js target, for the header icon); the runners are shared courses', () => {
+  for (const t of Object.keys(E.INFO)) assert.ok(['shared', 'own', 'course'].includes(GAMES[t].meta.target), `${t}: ${GAMES[t].meta.target}`);
+  for (const t of Object.keys(E.INFO)) if (GAMES[t].meta.scTarget) assert.ok(['shared', 'own', 'course'].includes(GAMES[t].meta.scTarget), t);
+  assert.deepEqual(Object.keys(E.INFO).filter(t => GAMES[t].meta.target === 'course').sort(), ['chopper', 'dash', 'flap', 'lane', 'scoop', 'skyhop']);
+  assert.equal(GAMES.hunt.meta.category, 'luck'); assert.equal(GAMES.sniff.meta.category, 'luck');
+});

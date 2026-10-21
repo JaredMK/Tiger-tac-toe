@@ -1646,6 +1646,10 @@ test('match logs: a Find Match game (its start, a refused move with its reason, 
   assert.ok(after.some(e => e.k === 'report' && e.note === 'The board froze' && e.s === 'O' && e.dev), 'the report in the log');
   assert.ok(after.some(e => e.k === 'reject' && e.src === 'cli' && e.why === 'turn'), "the phone's own event");
   assert.equal(await get(`devlog/${S.devHash(dev)}/lmlg0000001`), null, "an mlog event is for the match's log only");
+  // the phone's sound going down (devlog audio): in the device's log and the match's
+  assert.equal((await guest.call('devlog', { dev, ev: 'audio', o: 'aud0000001', g: fkey, mode: 'friend', msg: 'state interrupted', v: 'abc1234', s: 'O' })).ok, true);
+  assert.equal((await get(`devlog/${S.devHash(dev)}/aaud0000001`)).msg, 'state interrupted');
+  await until(async () => Object.values(await get(`matchLogs/${fkey}`)).some(e => e.k === 'audio' && e.msg === 'state interrupted' && e.s === 'O') || null, 10000, "the sound's event in the match's log");
 
   // the admin alone reads them; nobody writes them
   await denied(guest.read(`matchLogs/${fkey}`), 'a player reading a match log');

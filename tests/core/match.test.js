@@ -678,7 +678,7 @@ test('timeouts over every kind of game keep the state legal and plain', () => {
   const rng = lcg(31337);
   const seen = new Set();
   for (let game = 0; game < 6; game++) {
-    const st = L.newMatch(rng, { mode: 'online', timer: 30, games: L.TYPES.filter(t => !['echo', 'trivia', 'oddone', 'patterns', 'skyhop', 'scoop', 'pinball'].includes(t)) });   // (a timed-out attempt at those is always a failed one, or none: a square of theirs never falls to timeouts)
+    const st = L.newMatch(rng, { mode: 'online', timer: 30, games: L.TYPES.filter(t => !['echo', 'trivia', 'oddone', 'patterns', 'skyhop', 'scoop', 'pinball', 'headcount', 'flash', 'snapshot'].includes(t)) });   // (a timed-out attempt at those is always a failed one, or none: a square of theirs never falls to timeouts)
     let guard = 0;
     while (!st.winner && guard++ < 3000) {
       const open = st.squares.map((q, i) => (q.owner ? -1 : i)).filter(i => i >= 0);

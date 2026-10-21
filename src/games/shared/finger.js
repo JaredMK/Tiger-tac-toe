@@ -41,8 +41,8 @@ export const fdiff = (a, b, w) => { const d = fwrap(a - b, w); return d > w / 2 
 
 // Sky Hop: the hopper bounces off every platform it falls onto (each bounce the same height up); a drag
 // steers it (it moves towards the finger's place at up to vx, round the edges: the sky wraps). The course
-// goes up to the target height, made per player per square from a seed (a section that beat you is still
-// there next time): a chain of platforms each within a bounce of the last (sure to be reachable: never
+// goes up to the target height, made per square from a seed, one course for both players (a section that beat
+// you is still there next time, and for the other player): a chain of platforms each within a bounce of the last (sure to be reachable: never
 // more than gapK of a bounce up, never further across than the time in the air allows), with more
 // platforms between; higher up the gaps grow, the platforms narrow, some move, some break after one
 // bounce, and now and then a hazard floats beside the way up (never across it). Falling below the screen

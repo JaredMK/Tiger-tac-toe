@@ -1,6 +1,6 @@
 // Sky Hop: the rules (pure: no page, no clock; the server runs the same code).
 import { cfgKit } from '../../core/config.js';
-import { gaussOf, makeRng, needRng, randInt } from '../../core/random.js';
+import { courseSeed, gaussOf, makeRng } from '../../core/random.js';
 import { clamp01, r2 } from '../../core/util.js';
 import { FHAND, FING, HOP, HOP_MEMO, fingLog, fingRecorder } from '../shared/finger.js';
 import { HOP_DEFAULTS } from './meta.js';
@@ -153,7 +153,7 @@ export function hopAi(mini, p, rng, hand) {
   return { move: { log: fingLog(rec.pairs), steps: r.steps, h: r.h, end: r.end }, sim };
 }
 export function create(type, rng) {
-  return { type, cfg: hopConfig(), seed: { X: randInt(needRng(rng), 1e9), O: randInt(rng, 1e9) }, height: { X: 0, O: 0 }, tries: { X: 0, O: 0 }, last: null };   // cfg: as dealt; seed: each player's course
+  return { type, cfg: hopConfig(), seed: courseSeed(rng), height: { X: 0, O: 0 }, tries: { X: 0, O: 0 }, last: null };   // cfg: as dealt; seed: the course, one for both
 }
 export function publicView(mini) {
   const c = JSON.parse(JSON.stringify(mini)); if (c.last) { delete c.last.rec; delete c.last.log; } return c;

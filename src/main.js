@@ -23,7 +23,7 @@ import { connectQuiet, finishLogin, hadAccount, redirectPending } from './net/ac
 import { openFind } from './net/matchmaking.js';
 import { fetchReleases } from './net/releases.js';
 import { closeSeat, init as roomInit, joinCode, joinName, resumeOnline, setJoinCode, setJoinName } from './net/room.js';
-import { devOpen, devPulse, init as trackingInit, takeTag } from './net/tracking.js';
+import { devAudio, devOpen, devPulse, init as trackingInit, takeTag } from './net/tracking.js';
 import { clockTimer, commit, setClockTimer, state } from './ui/app.js';
 import { fetchAttConfig } from './ui/attention.js';
 import { init as chaosInit } from './ui/chaos.js';
@@ -51,6 +51,7 @@ trackingInit();
 roomInit();
 inputInit();
 pongInit();
+SND.report = devAudio;                                      // (the sound's ups and downs, to the device's and match's logs)
 soundInit();
 chaosInit();
 function boot() {

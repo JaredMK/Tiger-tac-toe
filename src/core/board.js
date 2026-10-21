@@ -1,7 +1,7 @@
 // The main board and the turn flow: a move played (playMove), the result shown and cleared (endFlash),
 // leaving a square, timeouts, and the match won or drawn (mainResult).
 import { chaosPlay } from './chaos.js';
-import { dealable, pickType } from './match.js';
+import { dealable, pickReset } from './match.js';
 import { anyMove, applyMove, canMove, newMini, randomLegalMove } from './minis.js';
 import { needRng, randInt } from './random.js';
 import { repMove, repNorm } from './replay.js';
@@ -115,7 +115,7 @@ export function playMove(state, i, m, rng, opts) {
     const pool = dealt.length ? dealt : TYPES.filter(t => dealable(t));
     state.sqlog.push(Object.assign({ t: mini.type, end: 'draw', w: null, X: sq.mv.X, O: sq.mv.O }, RUN_TYPES.includes(mini.type) ? runLog(mini) : {}));
     sq.mv = { X: 0, O: 0 };
-    sq.mini = newMini(pickType(pool, rng), rng); // the square resets with a new random mini-game from this match's list
+    sq.mini = newMini(pickReset(state, pool, rng, i), rng); // the square resets with a new mini-game from this match's list (one not used yet first)
     if (sq.mini.type === 'trivia') triviaDeal(state, sq, rng);
     flash.newType = sq.mini.type;
   }

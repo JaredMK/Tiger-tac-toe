@@ -18,7 +18,7 @@
 // such as a Bump knock or a Clash Grid collision, for the recap to play). A game without them keeps each player's progress apart already.
 import { LINES, playMove } from './board.js';
 import { cpuMove } from './ai.js';
-import { dealable, pickType, startMatch } from './match.js';
+import { dealable, pickReset, startMatch } from './match.js';
 import { applyMove, canMove, newMini, randomLegalMove } from './minis.js';
 import { needRng, randInt } from './random.js';
 import { repMove, repNorm } from './replay.js';
@@ -285,7 +285,7 @@ export function chaosResolve(state, rng) {
       state.sqlog.push(Object.assign({ t: m.type, end: 'draw', w: null, X: sq.mv.X, O: sq.mv.O }, RUN_TYPES.includes(m.type) ? runLog(m) : {}));
       sq.mv = { X: 0, O: 0 };
       const pool = scPool(state);
-      scSquareMini(state, sq, pickType(pool, rng), rng);
+      scSquareMini(state, sq, pickReset(state, pool, rng, i), rng);
       project(sq.mini, me);
       recap.resets.push({ square: i, from: m.type, to: sq.mini.type, why: winners.length === 2 ? 'both' : out.note || 'draw' });
     } else {

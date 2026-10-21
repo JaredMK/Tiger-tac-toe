@@ -1,6 +1,6 @@
 // Scoop Stack: the rules (pure: no page, no clock; the server runs the same code).
 import { cfgKit } from '../../core/config.js';
-import { gaussOf, makeRng, needRng, randInt } from '../../core/random.js';
+import { courseSeed, gaussOf, makeRng, randInt } from '../../core/random.js';
 import { clamp01, r2 } from '../../core/util.js';
 import { FHAND, FING, fingLog, fingRecorder } from '../shared/finger.js';
 import { SCOOP_DEFAULTS } from './meta.js';
@@ -129,7 +129,7 @@ export function scoopAi(mini, p, rng, hand) {
   return { move: { log: fingLog(rec.pairs), steps: sim.n, n: scoopResult(sim).n, end: scoopResult(sim).end }, sim };
 }
 export function create(type, rng) {
-  return { type, cfg: scoopConfig(), seed: { X: randInt(needRng(rng), 1e9), O: randInt(rng, 1e9) }, stack: { X: [], O: [] }, tries: { X: 0, O: 0 }, last: null };   // stack: each player's scoops (their flavours)
+  return { type, cfg: scoopConfig(), seed: courseSeed(rng), stack: { X: [], O: [] }, tries: { X: 0, O: 0 }, last: null };   // stack: each player's scoops (their flavours)
 }
 export function publicView(mini) {
   const c = JSON.parse(JSON.stringify(mini)); if (c.last) { delete c.last.rec; delete c.last.log; } return c;

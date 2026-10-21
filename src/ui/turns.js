@@ -83,7 +83,7 @@ export function playFlash(played, speed, holdMax, holdAt, elapsed) {   // holdMa
   if (!f || state.spot || fxAt('move', f) != null) return;     // while the square glows on the board, the move has not played yet
   const ms = played ? 0 : Math.max(0, anim - el);
   startFx('move', f, performance.now() - (played ? animMs(f) : el));
-  if (played || el > 0 || SND.muted || !SND.loaded || !SND.ctx || SND.ctx.state !== 'running') fx.move.quiet = true;   // (a result already heard at a reload, played before audio was ready, or joined part way: it finishes quietly too)
+  if (played || el > 0 || SND.muted || !SND.loaded || !SND.ensure(false)) fx.move.quiet = true;   // (a result already heard at a reload, played before audio was ready, or joined part way: it finishes quietly too)
   setFlashReady(Date.now() + ms);                   // no tapping the result away while the move is still animating
   const hold = holdAt != null ? holdAt : Math.max(0, Math.min(holdMax == null ? Infinity : holdMax, holdOf(f) / sp) - Math.max(0, el - anim));   // (holdAt: exactly this long from the animation's end; else the usual hold, less what is gone already)
   clearTimeout(flashTimer); setFlashTimer(setTimeout(dismissFlash, ms + hold)); flashEnds = Date.now() + ms + hold;   // (first: the result always clears, whatever its sounds do)
