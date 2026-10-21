@@ -61,10 +61,19 @@ export function flashMs(f, winLen, won) {
   return won ? 1700 : 1100;
 }
 // Super Chaos: a Submarine (3 cells, across or down) on a 5x5 sea. A move fires as in a match: a hit fires
-// again, until a miss or the sinking shot (the timeout rule: one shot). Both players' shots join the sea at
+// again, until a miss or the shot that hits its last part (the timeout rule: one shot); that shot is a plain
+// hit on the mover's screen (scApply). Both players' shots join the sea at
 // the round's end. Whoever hits the ship's last part wins it: when the round's shots sink it, the one who
 // hit any of the parts still afloat at the round's start takes it; both did (each sank it on their own sea,
 // or the two shared out the last parts), and the square resets.
+// A shot as the mover's own sea shows it: a hit fires again, but the shot that hits the last part is not
+// judged there (the other player may hit a last part this round too): the move ends, and the round's end
+// says who sank it.
+export function scApply(mini, p, m, rng, idx) {
+  const res = apply(mini, p, m, rng, idx || (n => Number.isInteger(m) && m >= 0 && m < n));
+  if (res.ok && res.outcome === 'win') return { ok: true, outcome: 'continue', note: 'hit' };
+  return res;
+}
 export function scCreate(type, rng) {
   const N = BS.sc, ship = bsShip(rng, N, BS.scLen);
   return { type, n: N, len: ship.length, ship, revealed: new Array(N * N).fill(null), hits: [], last: null };

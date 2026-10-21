@@ -511,7 +511,7 @@ function runnersCard() {
     return `<div class="runner"><h3>${esc(name)}</h3>
       <div class="rkpis">${kpi('Runs to finish', num(ratio(s.finishRuns, s.finishes)), `${s.finishes} square${s.finishes === 1 ? '' : 's'} finished`)}${kpi('Avg distance per run', s.runs ? Math.round(s.distSum / s.runs) + ' m' : '—', `${s.runs} run${s.runs === 1 ? '' : 's'}`)}${kpi('Crashes', crashes, 'where they cluster, below')}</div>
       ${chart}
-      <div class="rform">${fields}${mix}<button class="btn" data-runsave="${t}">Save ${esc(name)}</button></div></div>`;
+      <div class="rform">${fields}${mix}<button class="btn" data-runsave="${t}">Save ${esc(name)}</button><button class="btn tplay" data-testplay="${t}" title="Opens the game alone in a new tab with these settings, saved or not (the live settings are not touched)">Test play</button></div></div>`;
   };
   return `<div class="card ctl" id="runCard"><h2>Runner tuning</h2>
     <p class="note">Dash, Lane Rush, Flap and Chopper: a race to the target distance, one run a move. Obstacle spacing is the posts' spacing in Flap and the blocks' in Chopper (the mix decides each one's gap, or the block's size, or none). Everything here goes to the game and the server at once and applies to squares dealt from then on (a square under way keeps its values). The mix numbers are weights (any scale). Aim: an average player finishes in 3-6 runs, most runs lasting 10-25 seconds; the crash chart (every ${RUN_BIN} m, every mode together) shows where the course bites.</p>
@@ -545,7 +545,7 @@ function bullsCard() {
   const fields = BULL_FIELDS.map(([k, l, lo, hi, st]) => `<label class="rf"><span>${l}</span><input type="number" step="${st}" min="${lo}" max="${hi}" data-bullcfg="${k}" value="${c[k]}"></label>`).join('');
   return `<div class="card ctl" id="bullsCard"><h2>Bullseye tuning</h2>
     <p class="note">Bullseye: a small board moves round a field 100 units across and 120 down; a throw stops a sideways line, then an up-down line, and the dart lands where they cross. Bullseye 3 points, the board 1, first to 5. Everything here goes to the game and the server at once and applies to squares dealt from then on. Aim: about 5-6 throws to win at the start. A bigger board or bullseye, or a slower sweep, makes it easier; the speed-up makes each scoring throw harder than the last.</p>
-    <div class="rform">${fields}<button class="btn" data-bullsave="1">Save Bullseye</button></div></div>`;
+    <div class="rform">${fields}<button class="btn" data-bullsave="1">Save Bullseye</button><button class="btn tplay" data-testplay="bullseye" title="Opens the game alone in a new tab with these settings, saved or not (the live settings are not touched)">Test play</button></div></div>`;
 }
 async function saveBullsCfg(btn) {
   const out = {};
@@ -568,7 +568,7 @@ function plinkoCard() {
   const raw = ctl.plinkoCfg || {}, v = raw.target != null && Number.isFinite(Number(raw.target)) ? Number(raw.target) : PLINKO_DEFAULTS.target;
   return `<div class="card ctl" id="plinkoCard"><h2>Plinko tuning</h2>
     <p class="note">Plinko: the bins are worth 5, 3, 3, 2, 2, 1 and 1 points (the order drawn per square), the bonus peg 2; each player's points add up and the first to the target wins. Default 12. Applies to squares dealt from then on.</p>
-    <div class="rform"><label class="rf"><span>Target (points to win)</span><input type="number" step="1" min="4" max="40" data-plinkocfg="target" value="${v}"></label><button class="btn" data-plinkosave="1">Save Plinko</button></div></div>`;
+    <div class="rform"><label class="rf"><span>Target (points to win)</span><input type="number" step="1" min="4" max="40" data-plinkocfg="target" value="${v}"></label><button class="btn" data-plinkosave="1">Save Plinko</button><button class="btn tplay" data-testplay="plinko" title="Opens the game alone in a new tab with these settings, saved or not (the live settings are not touched)">Test play</button></div></div>`;
 }
 async function savePlinkoCfg(btn) {
   const el = app.querySelector('input[data-plinkocfg="target"]'), v = Number(el.value);
@@ -583,7 +583,7 @@ function pigCard() {
   const raw = ctl.pigCfg || {}, sides = raw.sides === 6 || raw.sides === 8 ? raw.sides : PIG_DEFAULTS.sides, t = raw.target != null && Number.isFinite(Number(raw.target)) ? Number(raw.target) : PIG_DEFAULTS.target;
   return `<div class="card ctl" id="pigCard"><h2>Risky Rolls tuning</h2>
     <p class="note">Risky Rolls: roll as often as you dare, then bank; a number already rolled this turn loses the turn's points. The die (6 or 8 sides) and the score to bank to win. Default: 8 sides, 51. Applies to squares dealt from then on.</p>
-    <div class="rform"><label class="rf"><span>Die</span><select data-pigcfg="sides">${[6, 8].map(n => `<option value="${n}"${n === sides ? ' selected' : ''}>${n} sides</option>`).join('')}</select></label><label class="rf"><span>Target (points to win)</span><input type="number" step="1" min="10" max="200" data-pigcfg="target" value="${t}"></label><button class="btn" data-pigsave="1">Save Risky Rolls</button></div></div>`;
+    <div class="rform"><label class="rf"><span>Die</span><select data-pigcfg="sides">${[6, 8].map(n => `<option value="${n}"${n === sides ? ' selected' : ''}>${n} sides</option>`).join('')}</select></label><label class="rf"><span>Target (points to win)</span><input type="number" step="1" min="10" max="200" data-pigcfg="target" value="${t}"></label><button class="btn" data-pigsave="1">Save Risky Rolls</button><button class="btn tplay" data-testplay="pig" title="Opens the game alone in a new tab with these settings, saved or not (the live settings are not touched)">Test play</button></div></div>`;
 }
 async function savePigCfg(btn) {
   const sides = Number(app.querySelector('[data-pigcfg="sides"]').value), t = Number(app.querySelector('[data-pigcfg="target"]').value);
@@ -599,7 +599,7 @@ function roadsCard() {
   const raw = ctl.roadsCfg || {}, lay = raw.layout === 'hex4' || raw.layout === 'hex7' ? raw.layout : ROADS_DEFAULTS.layout;
   return `<div class="card ctl" id="roadsCard"><h2>Roads tuning</h2>
     <p class="note">Roads: claim an edge, then a random edge is blocked; the longest road wins. Every move uses two edges, so the honeycomb sets the length: 7 hexagons (30 edges) is about 7 to 8 moves each; the smaller 4 (19 edges) about 5 each. Default 7. Applies to squares dealt from then on.</p>
-    <div class="rform"><label class="rf"><span>Honeycomb</span><select data-roadscfg="layout">${[['hex7', '7 hexagons (30 edges)'], ['hex4', '4 hexagons (19 edges)']].map(([v, l]) => `<option value="${v}"${v === lay ? ' selected' : ''}>${l}</option>`).join('')}</select></label><button class="btn" data-roadssave="1">Save Roads</button></div></div>`;
+    <div class="rform"><label class="rf"><span>Honeycomb</span><select data-roadscfg="layout">${[['hex7', '7 hexagons (30 edges)'], ['hex4', '4 hexagons (19 edges)']].map(([v, l]) => `<option value="${v}"${v === lay ? ' selected' : ''}>${l}</option>`).join('')}</select></label><button class="btn" data-roadssave="1">Save Roads</button><button class="btn tplay" data-testplay="roads" title="Opens the game alone in a new tab with these settings, saved or not (the live settings are not touched)">Test play</button></div></div>`;
 }
 async function saveRoadsCfg(btn) {
   const layout = app.querySelector('[data-roadscfg="layout"]').value;
@@ -627,7 +627,7 @@ function attCard(c) {
   return `<div class="card ctl" id="${c.id}Card"><h2>${c.title}</h2>
     <p class="note">${c.note} Aimed at a typical player getting about 85% of rounds right at level 1, 65% at level 2 and 45% at level 3 (the computer gets them right that often). Applies to rounds dealt from then on.</p>
     <div class="tbl"><table class="atttab"><tr><th></th><th>Level 1</th><th>Level 2</th><th>Level 3</th></tr>${rows}</table></div>
-    <div class="rform">${c.extra.map(([k, label, lo, hi, step]) => `<label class="rf"><span>${label}</span>${inp(k, lo, hi, step)}</label>`).join('')}<button class="btn" data-attsave="${c.id}">Save ${c.title.replace(' tuning', '')}</button></div></div>`;
+    <div class="rform">${c.extra.map(([k, label, lo, hi, step]) => `<label class="rf"><span>${label}</span>${inp(k, lo, hi, step)}</label>`).join('')}<button class="btn" data-attsave="${c.id}">Save ${c.title.replace(' tuning', '')}</button><button class="btn tplay" data-testplay="${c.id}" title="Opens the game alone in a new tab with these settings, saved or not (the live settings are not touched)">Test play</button></div></div>`;
 }
 async function saveAttCfg(btn) {
   const c = ATT_CARDS.find(x => x.id === btn.dataset.attsave), out = {};
@@ -662,7 +662,7 @@ function fingCard(c) {
   return `<div class="card ctl" id="${c.id}Card"><h2>${c.title}</h2>
     <p class="note">${c.note} Applies to squares dealt from then on.</p>
     <div class="rform">${c.fields.map(([k, label, lo, hi, step]) => `<label class="rf"><span>${label}</span><input type="number" step="${step}" min="${lo}" max="${hi}" data-fingcfg="${c.id}" data-k="${k}" value="${num(raw[k], c.defaults[k])}"></label>`).join('')}</div>
-    <div class="rform"><button class="btn" data-fingsave="${c.id}">Save ${c.title.replace(' tuning', '')}</button></div></div>`;
+    <div class="rform"><button class="btn" data-fingsave="${c.id}">Save ${c.title.replace(' tuning', '')}</button><button class="btn tplay" data-testplay="${c.id}" title="Opens the game alone in a new tab with these settings, saved or not (the live settings are not touched)">Test play</button></div></div>`;
 }
 async function saveFingCfg(btn) {
   const c = FING_CARDS.concat(BOWL_CARDS).find(x => x.id === btn.dataset.fingsave), out = {};
@@ -682,7 +682,7 @@ function oddCard() {
   const raw = ctl.oddCfg || {}, num = (v, d) => (v != null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : d);
   return `<div class="card ctl" id="oddCard"><h2>Odd One Out tuning</h2>
     <p class="note">How different the odd tile is at each level, in perceptual units (ΔE 2000: about 1 is the smallest difference most people can see side by side; the same on every colour). Smaller is harder. Meant for a typical player to miss about 25% at level 1, 40% at level 2 and 55% at level 3 within the 5 seconds. Defaults: 4, 2.8, 2. Applies to grids dealt from then on.</p>
-    <div class="rform">${ODD_FIELDS.map(([k, label]) => `<label class="rf"><span>${label}</span><input type="number" step="0.1" min="0.5" max="25" data-oddcfg="${k}" value="${num(raw[k], ODD_DEFAULTS[k])}"></label>`).join('')}<button class="btn" data-oddsave="1">Save Odd One Out</button></div></div>`;
+    <div class="rform">${ODD_FIELDS.map(([k, label]) => `<label class="rf"><span>${label}</span><input type="number" step="0.1" min="0.5" max="25" data-oddcfg="${k}" value="${num(raw[k], ODD_DEFAULTS[k])}"></label>`).join('')}<button class="btn" data-oddsave="1">Save Odd One Out</button><button class="btn tplay" data-testplay="oddone" title="Opens the game alone in a new tab with these settings, saved or not (the live settings are not touched)">Test play</button></div></div>`;
 }
 async function saveOddCfg(btn) {
   const out = {};
@@ -701,7 +701,7 @@ function wheelsCard() {
   return `<div class="card ctl" id="wheelsCard"><h2>Risk Wheels tuning</h2>
     <p class="note">Risk Wheels: each square deals three wheels of ten equal segments, drawn again until every rule holds. High risk: 10s (fewest to most) and 0s, with at most a few small values; the lowest average. Medium: no 10s, at least two 5s, a top value above Low's, its average between. Low: every value in its range, at least two different; the highest average. Defaults: first to 18; High one or two 10s and at most two small values of 1-2; Medium two 5s, the rest 0-8; Low 1-4; averages 0.4 apart. Applies to squares dealt from then on.</p>
     <div class="rform">${WHEEL_FIELDS.map(([k, label, lo, hi, step]) => `<label class="rf"><span>${label}</span><input type="number" step="${step}" min="${lo}" max="${hi}" data-wheelcfg="${k}" value="${num(raw[k], WHEEL_DEFAULTS[k])}"></label>`).join('')}</div>
-    <div class="rform"><button class="btn" data-wheelsave="1">Save Risk Wheels</button></div></div>`;
+    <div class="rform"><button class="btn" data-wheelsave="1">Save Risk Wheels</button><button class="btn tplay" data-testplay="wheels" title="Opens the game alone in a new tab with these settings, saved or not (the live settings are not touched)">Test play</button></div></div>`;
 }
 async function saveWheelsCfg(btn) {
   const out = {};
@@ -719,6 +719,29 @@ async function saveWheelsCfg(btn) {
     ctl.wheelsCfg = out;
   } catch (e) { alert('Could not save: ' + (e && e.message)); }
   render();
+}
+// ---------- Test play: a game alone in a new tab, with its card's settings as the editor has them (saved or
+// not; checked by nothing here: the game takes what it can). The live settings are never touched: the
+// settings ride in the address (?sandbox=<game>&cfg=<base64url JSON>) and the game, which checks the
+// admin's sign-in, keeps them in that tab only (src/ui/sandbox.js). ----------
+function editorCfg(t) {
+  const q = sel => [...app.querySelectorAll(sel)];
+  const val = el => (el.tagName === 'SELECT' && !Number.isFinite(Number(el.value)) ? el.value : Number(el.value));
+  if (RUN_TYPES.includes(t)) {
+    const out = { mix: {} };
+    for (const el of q(`input[data-runcfg^="${t}:"]`)) { const k = el.dataset.runcfg.split(':')[1]; if (k.startsWith('mix.')) out.mix[k.slice(4)] = val(el); else out[k] = val(el); }
+    return out;
+  }
+  const one = { bullseye: 'bullcfg', plinko: 'plinkocfg', pig: 'pigcfg', roads: 'roadscfg', oddone: 'oddcfg', wheels: 'wheelcfg' }[t];
+  if (one) return Object.fromEntries(q(`[data-${one}]`).map(el => [el.dataset[one], val(el)]));
+  return Object.fromEntries(q(`[data-attcfg="${t}"], [data-fingcfg="${t}"]`).map(el => [el.dataset.k, val(el)]));
+}
+const b64url = s => btoa(unescape(encodeURIComponent(s))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+function testPlay(t) {
+  const u = new URL('index.html', location.href);
+  u.searchParams.set('sandbox', t);
+  u.searchParams.set('cfg', b64url(JSON.stringify(editorCfg(t))));
+  window.open(u.href, '_blank', 'noopener');
 }
 // ---------- matchmaking controls: Find Match on or off (features/findMatch, read by the game and the server) ----------
 function findCard() {
@@ -899,6 +922,7 @@ app.addEventListener('click', e => {
   else if (b.dataset.dev) { devOpen = devOpen === b.dataset.dev ? null : b.dataset.dev; render(); const el = devOpen && document.getElementById('devTimeline'); if (el) el.scrollIntoView({ block: 'nearest' }); }
   else if (b.dataset.act === 'all-sessions') { allSessions = !allSessions; render(); }
   else if (b.dataset.act === 'save-keys') saveKeys();
+  else if (b.dataset.testplay) testPlay(b.dataset.testplay);
   else if (b.dataset.runsave) saveRunCfg(b.dataset.runsave, b);
   else if (b.dataset.bullsave) saveBullsCfg(b);
   else if (b.dataset.wheelsave) saveWheelsCfg(b);

@@ -961,7 +961,6 @@ b.O { box-shadow: inset 0 -.38em 0 var(--o-soft); }
 .sil .port { fill: var(--paper); stroke: var(--ink); stroke-width: 5; }
 .bsship.sunk { background: var(--x-soft); }
 .bsship.sunk.O { background: var(--o-soft); }
-.bsship.sunk.own { background: var(--paper); }   /* sunk on the player's own sea, its claim still to come (Super Chaos) */
 .bsship.sunk.fresh { animation: pop .3s 1.2s ease-out both; }
 .tg.g4 { grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(4, 1fr); width: 62px; height: 62px; width: 60cqw; height: 60cqw; gap: 1.5px; }
 .tbs { display: flex; flex-direction: column; align-items: center; gap: 2cqw; }
@@ -1365,7 +1364,14 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .pcard .prec b { font-family: 'Luckiest Guy', sans-serif; font-weight: 400; font-size: 24px; padding-top: 3px; }
 .pcard .pjoin { grid-column: 1 / -1; }
 .hh { margin: 6px 0 0; font-family: 'Luckiest Guy', sans-serif; font-weight: 400; font-size: 18px; }
-.hirow { grid-template-columns: 52px minmax(0, 1fr) auto; }
+.hirow { grid-template-columns: 46px 46px minmax(0, 1fr) auto; gap: 8px; padding-left: 8px; }
+.hsnap { width: 46px; height: 46px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; padding: 2px; box-sizing: border-box; background: #b9ab8c; border: 2px solid var(--ink); border-radius: 8px; }   /* the final board, small: X, O and empty; the player's own squares outlined */
+.hsnap i { display: grid; place-items: center; background: var(--paper); border-radius: 3px; font-style: normal; font-family: 'Luckiest Guy', sans-serif; font-size: 10px; line-height: 1; padding-top: 1px; color: transparent; }
+.hsnap i.X { background: var(--x-soft); color: var(--x); } .hsnap i.O { background: var(--o-soft); color: #b8860b; }
+.hsnap i.mine { box-shadow: 0 0 0 2px var(--ink); position: relative; z-index: 1; border-radius: 2px; }   /* the player's own squares: a firm ink outline */
+.hirow .hname { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hyou { font-style: normal; font-family: 'Luckiest Guy', sans-serif; font-size: 13px; line-height: 1; padding: 4px 7px 2px; border: 2px solid var(--ink); border-radius: 999px; white-space: nowrap; }
+.hyou.X { background: var(--x-soft); } .hyou.O { background: var(--o-soft); }
 .hirow .hres { font-family: 'Luckiest Guy', sans-serif; padding-top: 3px; }
 .hirow.win .hres { color: var(--green); } .hirow.loss .hres { color: var(--x); }
 .hirow .hvs { min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
@@ -1958,20 +1964,23 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .ctal.X .wbar i { background: var(--x); } .ctal.O .wbar i { background: var(--o); }
 .wbar i.grow { animation: wgrow .5s var(--t, 0ms) cubic-bezier(.2, .7, .3, 1) both; }
 @keyframes wgrow { from { width: var(--w0, 0%); } to { width: var(--w1, 0%); } }
-/* Sniff: the field and the dog; a move's paw prints (warm hotter, cool colder, ringed in the walker's colour) while it plays */
+/* Sniff: the field and the dog; a move's step drawn as a thin line in the walker's colour while it plays (Super Chaos: each dog's whole path) */
 .sniff { flex: 1; display: flex; flex-direction: column; gap: 8px; justify-content: center; min-height: 0; }
 .sfield { display: block; width: min(100%, 320px, calc(100dvh - 320px)); margin: 0 auto; background: #e8dcbf; border: 3px solid var(--ink); border-radius: 16px; overflow: hidden; }
 .scell { fill: #d9c9a2; } .scell.alt { fill: #e3d5b2; }
-.spaw .sring { stroke-width: 1.5; stroke-linejoin: round; } .spaw.X .sring { stroke: var(--x); fill: var(--x); } .spaw.O .sring { stroke: var(--o); fill: var(--o); }   /* the walker's colour round each print */
-.spaw .sfill { stroke: var(--ink); stroke-width: .3; }
-.spaw.fresh { animation: appear .18s var(--t, 0ms) both; }
+.strail { pointer-events: none; }   /* a dog's path: a thin line in its owner's colour, a dot on each cell, an arrowhead on its latest step */
+.spath { fill: none; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; } .spath.X { stroke: var(--x); } .spath.O { stroke: var(--o); }
+.spath.fresh { stroke-dasharray: var(--len); stroke-dashoffset: var(--len); animation: sdraw var(--d, 420ms) ease-out both; }
+@keyframes sdraw { to { stroke-dashoffset: 0; } }
+.sdot, .sarr { stroke: var(--ink); stroke-width: .35; } .sdot.X, .sarr.X { fill: var(--x); } .sdot.O, .sarr.O { fill: var(--o); }
+.sdot.fresh, .sarr.fresh { animation: appear .18s var(--t, 0ms) both; }
 .sdog .sear { fill: #8a5a35; stroke: var(--ink); stroke-width: .8; }
 .sdog .shead { fill: #c98f55; stroke: var(--ink); stroke-width: .9; }
 .sdog .smuz { fill: #f3e2c6; } .sdog .seye { fill: var(--ink); } .sdog .snose { fill: var(--ink); }
 .sdog .sown { fill: var(--paper); stroke-width: 2.4; } .sdog.X .sown { stroke: var(--x); } .sdog.O .sown { stroke: var(--o); }   /* Super Chaos: each dog ringed in its owner's colour */
 .sdog.walk .sdogin { animation: sdwalk var(--d, 420ms) ease-in-out both; }
 @keyframes sdwalk { from { transform: translate(var(--dx, 0px), var(--dy, 0px)); } to { transform: none; } }
-.smove { cursor: pointer; }
+.smove { cursor: pointer; -webkit-tap-highlight-color: transparent; outline: none; -webkit-user-select: none; user-select: none; }
 .shit { fill: rgba(255, 255, 255, .28); stroke: var(--ink); stroke-width: .8; stroke-dasharray: 2 1.6; }
 .smove:hover .shit, .smove:focus-visible .shit { fill: rgba(255, 255, 255, .6); }
 .smove:focus { outline: none; }
@@ -1985,7 +1994,7 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .tsniff .tdog { fill: #c98f55; stroke: var(--ink); stroke-width: 3; }
 .tsniff .tdog.X { fill: var(--x); } .tsniff .tdog.O { fill: var(--o); }
 .tsniff .tpath { fill: none; stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; opacity: .8; } .tsniff .tpath.X { stroke: var(--x); } .tsniff .tpath.O { stroke: var(--o); }
-@media (prefers-reduced-motion: reduce) { .wbar i.grow { animation: none; } .sdog .sown { fill: var(--paper); stroke-width: 2.4; } .sdog.X .sown { stroke: var(--x); } .sdog.O .sown { stroke: var(--o); }   /* Super Chaos: each dog ringed in its owner's colour */
+@media (prefers-reduced-motion: reduce) { .wbar i.grow { animation: none; } .spath.fresh { animation: none; stroke-dashoffset: 0; } .sdog .sown { fill: var(--paper); stroke-width: 2.4; } .sdog.X .sown { stroke: var(--x); } .sdog.O .sown { stroke: var(--o); }   /* Super Chaos: each dog ringed in its owner's colour */
 .sdog.walk .sdogin { animation: none; } }
 /* Trivia: the question and its four answers */
 .trivia { flex: 1; display: flex; flex-direction: column; min-height: 0; gap: 8px; justify-content: center; }
@@ -2304,7 +2313,10 @@ svg.d8 text { font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-size:
 
 /* ---------- opponent replays (ui/replay.js) ---------- */
 .rpress, .rpress:disabled { transform: scale(.93) !important; filter: brightness(.9); box-shadow: 0 0 0 3px var(--ink) inset !important; opacity: 1 !important; transition: transform .08s; }   /* the control the other side pressed, as it was pressed */
-g.rpress rect, g.rpress path { fill: var(--ink); }
+g.rpress, g.rpress:disabled { transform: none !important; filter: none; }   /* an SVG control (Sniff's steps): no scale (it would slide off its cell), no black: a short highlight in the mover's colour */
+g.rpress rect { fill-opacity: .6; stroke-dasharray: none; stroke-width: 1.4; } g.rpress path { opacity: 1; }
+g.rpress.rpX rect, g.rpress.rpX path { fill: var(--x); } g.rpress.rpX rect { stroke: var(--x); }
+g.rpress.rpO rect, g.rpress.rpO path { fill: var(--o); } g.rpress.rpO rect { stroke: var(--o); }
 .rskip { position: absolute; right: 14px; bottom: 14px; z-index: 9; height: 40px; padding: 0 14px 0 12px; border: 3px solid var(--ink); border-radius: 12px; background: var(--paper); color: var(--ink); font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-weight: 400; font-size: 15px; letter-spacing: .02em; box-shadow: 0 3px 0 var(--ink); opacity: 0; animation: skipin .25s ease-out 2s both; }   /* two seconds into a replay */
 .rskip:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
 @keyframes skipin { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
@@ -2372,3 +2384,15 @@ button.btn.snd { padding: 0; display: grid; place-items: center; }   /* the spea
 .tgt-tip { position: absolute; top: calc(100% + 4px); right: -2px; z-index: 40; padding: 5px 10px 4px; border: 2px solid var(--ink); border-radius: 10px; background: var(--paper); color: var(--ink); box-shadow: 0 2px 0 var(--ink); font-size: 14px; line-height: 1.2; white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity .15s; }
 .tgtbtn.open .tgt-tip { opacity: 1; }
 @media (hover: hover) { .tgtbtn:hover .tgt-tip { opacity: 1; } }
+
+/* The admin's test play (ui/sandbox.js): its bar fixed at the bottom; the page is that much shorter, so it covers nothing */
+body.sbx { --sbxh: 56px; }
+body.sbx #app { height: calc(100vh - var(--sbxh)); height: calc(100dvh - var(--sbxh)); }
+body.sbx .scr { --vh: calc(100vh - var(--sbxh)); }
+@supports (height: 100dvh) { body.sbx .scr { --vh: calc(100dvh - var(--sbxh)); } }
+.sbxbar { position: fixed; left: 0; right: 0; bottom: 0; height: var(--sbxh); box-sizing: border-box; z-index: 50; display: flex; align-items: center; gap: 6px; padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px)); background: var(--paper); border-top: 3px solid var(--ink); font-family: 'Patrick Hand', cursive; }
+.sbxbar .sbxname { flex: 1 1 64px; min-width: 0; display: flex; flex-direction: column; line-height: 1.1; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
+.sbxbar .sbxname b { font-family: 'Luckiest Guy', sans-serif; font-weight: 400; color: var(--ink); font-size: 14px; }
+.sbxbar .btn { flex: none; min-height: 40px; padding: 4px 7px 2px; font-size: 12px; border-radius: 10px; box-shadow: 0 2px 0 var(--ink); }
+.sbxbar .btn[aria-pressed="true"] { background: var(--o-soft); }
+.sbxwait .card { max-width: 340px; padding: 18px; text-align: center; }

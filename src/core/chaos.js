@@ -128,7 +128,7 @@ export function scBegin(state, rng) {
   sc.base = state.squares.map(sq => clone(sq.mini));
   sc.me = null; sc.moved = null; sc.start = null; sc.steps = null;
   state.turn = me; state.lock = null; state.done = null; state.flash = null;
-  sc.cpu = state.winner || sc.online ? null : scCpu(state, rng);   // (a friend room: the other player's move comes from their phone)
+  sc.cpu = state.winner || sc.online || state.solo ? null : scCpu(state, rng, state.only != null ? { square: state.only } : undefined);   // (a friend room: the other player's move comes from their phone; the admin's test play: its one square, or no computer at all)
 }
 
 // The computer's move for this round, on its own copy of the board as it stood when the round began: the

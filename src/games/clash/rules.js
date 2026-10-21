@@ -4,7 +4,8 @@
 // the same cell in the same round block it for good (grey: nobody's, and it breaks lines). Four in a row (a
 // row, a column or a diagonal) takes the square; both completing one in the same round reset it, as does a grid
 // that is full, or where neither player can still make four. Each player's claim shows on their own screen at
-// once; the round's end (scMerge) puts both claims on the shared grid and plays a clash where they met.
+// once, never judged there (the other player's claim could block it): the round's end (scMerge) puts both
+// claims on the shared grid, plays a clash where they met, and only then looks for four in a row (and plays it).
 export const CLASH = { n: 5, need: 4, place: 380, hold: 900, clash: 1300 };
 // Every run of four cells in a line: 10 across, 10 down, 8 diagonal.
 export const CLASH_LINES = (() => {
@@ -27,6 +28,13 @@ export function apply(mini, p, m, rng, idx) {   // an empty cell: the mover's (u
   const line = clashLine(mini.cells, p);
   mini.last = { by: p, c: m, line };
   if (line) return { ok: true, outcome: 'win', note: 'four', cells: line };
+  return { ok: true, outcome: 'continue', note: 'claim' };
+}
+// Super Chaos (the only way it is played): the claim alone; lines are looked for at the round's end.
+export function scApply(mini, p, m, rng) {
+  if (!Number.isInteger(m) || m < 0 || m >= mini.cells.length || mini.cells[m] != null) return { ok: false, reason: 'bad' };
+  mini.cells[m] = p;
+  mini.last = { by: p, c: m, line: null };
   return { ok: true, outcome: 'continue', note: 'claim' };
 }
 export function publicView(mini) {   // nothing hidden
@@ -58,6 +66,11 @@ export function scMerge(m, c) {
     const pre = JSON.parse(JSON.stringify(m)); pre.cells = c.base.cells.slice(); delete pre.winCells;
     m.last = { by: c.me, c: at.X, blocked: true, line: null };
     out.resolve = { pre, joint: false, flash: { by: c.me, scr: { blocked: at.X } } };
+  } else if (win.X || win.O) {                                    // four in a row, found now both claims are down: the recap lights it up
+    const pre = JSON.parse(JSON.stringify(m)); delete pre.winCells;
+    const who = ['X', 'O'].filter(p => win[p]);
+    m.last = { by: who.length === 1 ? who[0] : c.me, c: at[who[0]], line: line[who[0]] };
+    out.resolve = { pre, joint: false, flash: { by: who.length === 1 ? who[0] : c.me, scr: { lines: who.map(p => line[p]), who: who.join('') } } };
   }
   if (!win.X && !win.O) {
     if (!m.cells.includes(null)) { out.reset = true; out.note = 'full'; }

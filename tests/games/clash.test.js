@@ -63,6 +63,22 @@ test('clash grid in Super Chaos: four in a row claims the square; a collision on
   assert.deepEqual(r3.resets.map(x => [x.square, x.why]), [[0, 'both']], 'a double win resets');
 });
 
+test('clash grid in Super Chaos: the fourth claim is never judged on the mover\'s own screen (no win, no line); four in a row is found, and lit up, only at the round\'s end', () => {
+  const st = round(grid('XXX.. OOO.. ..... ..... .....'), 20);
+  const r = E.playMove(st, 0, 3, E.makeRng('h'));
+  assert.ok(r.ok);
+  assert.deepEqual([r.flash.kind, r.flash.winner, r.flash.clash.line, st.sc.me.win], ['move', undefined, null, false], 'a plain claim on the mover\'s screen');
+  assert.equal(st.squares[0].mini.winCells, undefined);
+  st.flash = null; E.leaveSquare(st);
+  const rc = E.chaosResolve(st, E.makeRng('r'));
+  assert.deepEqual(rc.resolve.map(x => [x.square, x.flash.scr.lines, x.flash.scr.who]), [[0, [[0, 1, 2, 3]], 'X']], 'the round\'s end lights the line in the square');
+  assert.deepEqual(rc.claims.map(c => [c.square, c.by]), [[0, 'X']]);
+  // the computer's fourth claim, in its own move: a plain claim too (the recap replays it), the line only at the end
+  const s2 = round(grid('XX... OOO.. ..... ..... .....'), 8);
+  assert.equal(s2.sc.cpu.win, false);
+  assert.ok(s2.sc.cpu.steps.every(f => !f.clash.line && f.kind === 'move'));
+});
+
 test('clash grid in Super Chaos: a full grid, or one where neither can still make four, resets', () => {
   const full = grid('XOXOX XOXOX OXOXO OXOXO XOX..');
   const st = round(full, 23);

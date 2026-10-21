@@ -5,25 +5,30 @@ import { arcTally, lateAt } from '../../ui/progress.js';
 import { other } from '../../core/util.js';
 
 // Sniff: the 5x5 field and the dog, nothing else: no trail. The dog's eight neighbours (inside the field,
-// diagonals too) are the moves: a tap walks it there; it trots over leaving two paw prints behind it (warm
-// for hotter, cool for colder, grey for the same, ringed in the walker's colour), then "Hotter!", "Colder!"
-// or "Same" for a moment; once the move is over the prints and the word are gone. Onto the treasure: it
-// digs, the chest pops up.
-const SNIFF_HOT = '#f2763a', SNIFF_COLD = '#5aa6e8', SNIFF_SAME = '#a89a80';
+// diagonals too) are the moves: a tap walks it there; it trots over, its step drawn behind it as a thin line
+// in the walker's colour (a dot on each cell, an arrowhead on the way it went), then "Hotter!", "Colder!" or
+// "Same" for a moment; once the move is over the line and the word are gone. Onto the treasure: it digs,
+// the chest pops up.
 const SNIFF_ANG = { N: 0, NE: 45, E: 90, SE: 135, S: 180, SW: 225, W: 270, NW: 315 };
 const SNIFF_WAY = { N: 'up', NE: 'up and right', E: 'right', SE: 'down and right', S: 'down', SW: 'down and left', W: 'left', NW: 'up and left' };
 const resOf = s => s.res || s.r || (s.hot ? 'hot' : 'cold');
 const sniffXY = c => [Math.floor(c % SNIFF.n) * 20 + 10, Math.floor(c / SNIFF.n) * 20 + 10];   // a cell's middle, in a 100 x 100 field
-const SNIFF_PAW = '<ellipse cx="0" cy="1.3" rx="2" ry="1.7"/><circle cx="-1.9" cy="-1.5" r=".75"/><circle cx="-.65" cy="-2.5" r=".75"/><circle cx=".65" cy="-2.5" r=".75"/><circle cx="1.9" cy="-1.5" r=".75"/>';
-function sniffPaws(trail, fresh) {   // (a step with own: a path's print in its owner's colour only, not the step's word)
-  const seen = {};
-  return trail.map((s, k) => {
-    const [x0, y0] = sniffXY(s.f), [x1, y1] = sniffXY(s.t), len = Math.hypot(x1 - x0, y1 - y0) || 1, dx = (x1 - x0) / len, dy = (y1 - y0) / len, ang = Math.atan2(dy, dx) * 180 / Math.PI + 90;   // (a diagonal step: the prints a little further apart)
-    const edge = Math.min(s.f, s.t) + ':' + Math.max(s.f, s.t), n = seen[edge] = (seen[edge] || 0) + 1, off = ((n - 1) % 3 - 1) * 2.4;   // the same way again: a little to one side
-    const px = -dy, py = dx, isNew = fresh && k === trail.length - 1;
-    return [0.12, 0.42].map((f, j) => { const side = (j ? 2.6 : -2.6) + off, x = x0 + (x1 - x0) * f + px * side, y = y0 + (y1 - y0) * f + py * side;   // behind the dog as it arrives, one either side: never under it
-      return `<g class="spaw ${s.by}${isNew ? ' fresh' : ''}" style="--t:${isNew ? SNIFF.step * (0.25 + 0.3 * j) : 0}ms" transform="translate(${x.toFixed(2)} ${y.toFixed(2)}) rotate(${ang.toFixed(0)}) scale(1.15)"><g class="sring">${SNIFF_PAW}</g>${s.own ? '' : `<g class="sfill" fill="${resOf(s) === 'hot' ? SNIFF_HOT : resOf(s) === 'same' ? SNIFF_SAME : SNIFF_COLD}">${SNIFF_PAW}</g>`}</g>`; }).join('');
-  }).join('');
+// A dog's path: a thin line in its owner's colour from the middle of each cell to the next, a small dot on
+// every cell it has stood on, and a small arrowhead halfway along its latest step, pointing the way it went.
+// The step playing now (fresh) draws itself in as the dog trots, its arrowhead last. off: a nudge to one side,
+// so two paths along the same cells both show.
+function sniffPath(cells, p, fresh, off) {
+  if (!cells || cells.length < 2) return '';
+  const pts = cells.map(c => sniffXY(c).map(v => v + (off || 0)));
+  const fx = n => n.toFixed(1), last = pts.length - 1, [x0, y0] = pts[last - 1], [x1, y1] = pts[last];
+  const done = fresh ? pts.slice(0, last) : pts;
+  const old = done.length > 1 ? `<polyline class="spath ${p}" points="${done.map(q => q.map(fx).join(',')).join(' ')}"/>` : '';
+  const len = Math.hypot(x1 - x0, y1 - y0);
+  const step = fresh ? `<line class="spath ${p} fresh" x1="${fx(x0)}" y1="${fx(y0)}" x2="${fx(x1)}" y2="${fx(y1)}" style="--len:${fx(len)};--d:${SNIFF.step}ms"/>` : '';
+  const dots = pts.map((q, k) => `<circle class="sdot ${p}${fresh && k === last ? ' fresh' : ''}" cx="${fx(q[0])}" cy="${fx(q[1])}" r="1.5"${fresh && k === last ? ` style="--t:${SNIFF.step}ms"` : ''}/>`).join('');
+  const ang = Math.atan2(y1 - y0, x1 - x0) * 180 / Math.PI, mx = (x0 + x1) / 2, my = (y0 + y1) / 2;
+  const arrow = `<path class="sarr ${p}${fresh ? ' fresh' : ''}"${fresh ? ` style="--t:${Math.round(SNIFF.step * 0.5)}ms"` : ''} transform="translate(${fx(mx)} ${fx(my)}) rotate(${fx(ang)})" d="M2.6 0 L-1.8 -2.4 L-1.8 2.4 Z"/>`;
+  return `<g class="strail">${old}${step}${dots}${arrow}</g>`;
 }
 const SNIFF_DOG = '<g class="sdogart"><ellipse cx="-6.2" cy="-1.4" rx="2.6" ry="4.6" transform="rotate(18 -6.2 -1.4)" class="sear"/><ellipse cx="6.2" cy="-1.4" rx="2.6" ry="4.6" transform="rotate(-18 6.2 -1.4)" class="sear"/><circle r="6.6" class="shead"/><ellipse cx="0" cy="2.6" rx="3.6" ry="2.7" class="smuz"/><circle cx="-2.4" cy="-1.6" r=".95" class="seye"/><circle cx="2.4" cy="-1.6" r=".95" class="seye"/><ellipse cx="0" cy="1.6" rx="1.4" ry="1" class="snose"/></g>';
 function sniffTable(mini, a, o) {
@@ -31,7 +36,7 @@ function sniffTable(mini, a, o) {
   const s = a && a.sniff ? a.sniff : null, turn = o.turn;
   const tal = p => arcTally(p, o, '');
   const cells = Array.from({ length: SNIFF.n * SNIFF.n }, (_, c) => { const [x, y] = sniffXY(c); return `<rect x="${x - 10}" y="${y - 10}" width="20" height="20" class="scell${(Math.floor(c / SNIFF.n) + c % SNIFF.n) % 2 ? ' alt' : ''}"/>`; }).join('');
-  const paws = s ? sniffPaws([{ f: s.f, t: s.t, by: a.by, hot: s.hot, res: resOf(s) }], true) : '';   // this move's prints only, while it plays
+  const paws = s ? sniffPath([s.f, s.t], a.by === 'O' ? 'O' : 'X', true, 0) : '';   // this move's step only, while it plays (nothing stays on the board)
   const [dx, dy] = sniffXY(mini.dog), [fx, fy] = s ? sniffXY(s.f) : [dx, dy];
   const moves = o.locked || s ? '' : sniffDirs(mini.dog).map(d => { const to = sniffStep(mini.dog, d), [x, y] = sniffXY(to), ar = SNIFF_ANG[d];
     return `<g class="smove" data-act="move" ${mv(d)} role="button" tabindex="0" aria-label="Walk ${SNIFF_WAY[d]}"><rect x="${x - 10}" y="${y - 10}" width="20" height="20" class="shit"/><path class="sarrow" transform="translate(${x} ${y}) rotate(${ar})" d="M0 -4.5 L4 0.5 L1.4 0.5 L1.4 4.5 L-1.4 4.5 L-1.4 0.5 L-4 0.5 Z"/></g>`; }).join('');
@@ -44,19 +49,15 @@ function sniffTable(mini, a, o) {
     : `<p class="arcnote">${o.locked ? `Waiting for <b class="${turn}">${N(turn)}</b>…` : ''}</p>`;
   return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="sniff"><svg class="sfield" viewBox="0 0 100 100" role="group" aria-label="The field and the dog">${cells}${paws}${dog}${chest}${moves}</svg>${res}</div></div>`;
 }
-// Super Chaos: a dog each (a ring in its owner's colour), both from the middle, and both paths: each step's
-// two prints in its walker's colour. The arrows are round the mover's own dog; the step playing out walks that
-// dog, its prints warm, cool or grey for its word, as in the normal game. Two dogs on one cell stand side by side.
+// Super Chaos: a dog each (a ring in its owner's colour), both from the middle, and both paths, each a line in
+// its owner's colour (sniffPath). The arrows are round the mover's own dog; the step playing out walks that
+// dog and draws its path's newest step. Two dogs on one cell stand side by side.
 const SNIFF_SC = 0.72;
 function sniffScTable(mini, a, o) {
   const s = a && a.sniff ? a.sniff : null, turn = o.turn, by = s ? a.by : null;
   const cells = Array.from({ length: SNIFF.n * SNIFF.n }, (_, c) => { const [x, y] = sniffXY(c); return `<rect x="${x - 10}" y="${y - 10}" width="20" height="20" class="scell${(Math.floor(c / SNIFF.n) + c % SNIFF.n) % 2 ? ' alt' : ''}"/>`; }).join('');
-  const steps = [];
-  for (const p of ['X', 'O']) {
-    const path = mini.paths[p];
-    for (let k = 1; k < path.length; k++) if (!(p === by && k === path.length - 1)) steps.push({ f: path[k - 1], t: path[k], by: p, own: true });
-  }
-  const paws = sniffPaws(steps, false) + (s ? sniffPaws([{ f: s.f, t: s.t, by, hot: s.hot, res: resOf(s) }], true) : '');
+  const twin = mini.paths.X.length > 1 && mini.paths.O.length > 1;   // (both have walked: each path a little to its side)
+  const paws = ['X', 'O'].map(p => sniffPath(mini.paths[p], p, p === by, twin ? (p === 'X' ? -1.2 : 1.2) : 0)).join('');   // each dog's whole path in its own colour; the step playing now draws in
   const same = mini.dogs.X === mini.dogs.O;
   const dog = p => {
     const [x0, y0] = sniffXY(mini.dogs[p]), sh = same ? (p === 'X' ? -4 : 4) : 0, dx = x0 + sh, dy = y0, walk = p === by;

@@ -49,7 +49,10 @@ export function zoomedType() {
 }
 
 export function commit() { trackEnd(); reportLocal(); save(); render(); scheduleCpu(); }
+// Admin test play (ui/sandbox.js): one mini-game alone with the admin's editor settings; nothing of it is saved.
+export const sbx = { on: false, type: null, cfg: null, cpu: true, sc: false, status: 'checking', at: 0 };
 export function save() {
+  if (sbx.on) return;                                         // (the sandbox never touches the saved match)
   try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* no storage: just play without resume */ }
 }
 function load() {

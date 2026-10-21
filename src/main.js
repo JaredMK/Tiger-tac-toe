@@ -35,6 +35,7 @@ import { init as inputInit, joinAsk, linkCode, matchUnderway, setJoinAsk } from 
 import { init as physicsInit, loadPhysics } from './ui/physics.js';
 import { render } from './ui/render.js';
 import { fetchRunConfig, init as runnerInit } from './ui/runner.js';
+import { sandboxBoot, sandboxParams } from './ui/sandbox.js';
 import { acctLoading, setAcctLoading } from './ui/screens/menu.js';
 import { playFlash } from './ui/turns.js';
 
@@ -56,6 +57,7 @@ soundInit();
 chaosInit();
 function boot() {
   setClockTimer(setInterval(tick, 250));
+  if (sandboxParams()) { loadTrivia(); loadPhysics(); sandboxBoot(); return; }   // the admin's test play: one mini-game with the editor's settings (no live config, nothing saved or reported)
   fetchReleases();                                            // which mini-games are released, before any match is set up
   fetchRunConfig();                                           // the runners' difficulty, for the squares to come
   fetchBullsConfig();                                         // Bullseye's board, bullseye and sweep speeds, likewise

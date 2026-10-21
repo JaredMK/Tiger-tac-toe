@@ -18,6 +18,7 @@ import { renderFind, renderIntro } from './screens/find.js';
 import { renderMenu } from './screens/menu.js';
 import { renderFriend, renderJoin, renderJoinAsk, renderOnline } from './screens/online.js';
 import { renderHistory, renderLeaderboard, renderProfHist, renderProfile } from './screens/profile.js';
+import { renderSandbox } from './sandbox.js';
 import { renderSetup } from './screens/setup.js';
 import { renderWin } from './screens/win.js';
 import { renderHeader } from './turnbar.js';
@@ -103,6 +104,7 @@ function graft(oldP, newP, pairs) {
   }
 }
 function renderMain() {
+  if (state.screen === 'sandbox') return renderSandbox();     // (the admin's test play, while it checks or when it cannot run)
   if (state.screen === 'menu') return renderMenu();
   if (state.screen === 'online') return renderOnline();
   if (state.screen === 'friend') return renderFriend();

@@ -5,7 +5,7 @@ import { needRng, randInt } from '../../core/random.js';
 // A 5x5 field with one buried treasure and one dog, shared. The dog starts at least 3 steps from the treasure
 // (2 when the treasure is in the very middle, where nothing is further). A move walks it one step, any of the 8 ways (diagonals too): "Hotter" when that
 // step brought it closer to the treasure in a straight line, "Colder" when further, "Same" when the straight-
-// line distance did not change. Nothing of the past stays on the board: the step's paw prints and its word
+// line distance did not change. Nothing of the past stays on the board: the step's line and its word
 // show while it plays, then they are gone. The square keeps only the last 3 steps (who made each, and which it
 // was), for the computer, which remembers that much. Whoever walks the dog onto the treasure wins the square.
 // Online the server keeps the treasure.

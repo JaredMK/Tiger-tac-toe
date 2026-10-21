@@ -168,6 +168,18 @@ export function renderProfile() {
       <div class="ttl"><b>${own ? 'My Stats' : esc(u ? u.username : 'Profile')}</b><small>${own ? esc(u ? u.username : '') : 'Player profile'}</small></div></div>
     <div class="setup-box" data-keep-scroll="profile">${body}${own ? '<button class="link wide" data-act="logout">Log out</button>' : ''}</div></main>`;
 }
+// A past game's final main board, small: X, O and empty squares, the profile's own squares outlined.
+const SNAP = new Map();                                    // entry id -> its squares' owners (each final parsed once)
+function histSnap(h) {
+  let own = SNAP.get(h.id);
+  if (!own) {
+    try { const f = JSON.parse(h.final); own = (f.squares || []).map(q => (q && (q.owner === 'X' || q.owner === 'O') ? q.owner : '')); } catch (e) { own = []; }
+    if (own.length !== 9) own = new Array(9).fill('');
+    SNAP.set(h.id, own);
+  }
+  const me = h.side === 'X' || h.side === 'O' ? h.side : null;
+  return `<span class="hsnap" aria-hidden="true">${own.map(o => `<i class="${o}${o && o === me ? ' mine' : ''}">${o}</i>`).join('')}</span>`;
+}
 // The game history of the profile on show: every online game, newest first, each opening its final board.
 export function renderProfHist() {
   const p = prof || {}, u = p.user;
@@ -177,8 +189,8 @@ export function renderProfHist() {
   else list = `<div class="hlist">${p.hist.map(h => {
     const r = h.result === 'win' ? 'Won' : h.result === 'loss' ? 'Lost' : 'Draw';
     const chg = RATINGS_ENABLED && h.ratingAfter != null ? `<small class="hchg ${h.ratingAfter >= h.ratingBefore ? 'up' : 'down'}">${h.ratingBefore} → ${h.ratingAfter} (${signed(h.ratingAfter - h.ratingBefore)})</small>` : '';
-    return `<button class="hirow ${h.result}" data-act="hist-open" data-id="${esc(h.id)}" aria-label="${r} against ${esc(h.opponent && h.opponent.name)}, ${HOW_TEXT[h.how] || ''}, ${fmtDate(h.date)}. Tap to see the final board">
-      <span class="hres">${r}</span><span class="hvs">vs ${esc(h.opponent && h.opponent.name || '?')}<small>${HOW_TEXT[h.how] || ''} · ${fmtDate(h.date)}</small></span><span class="hmeta"><i class="badge ${h.mode}">${MODE_TEXT[h.mode] || ''}</i>${chg}</span></button>`;
+    return `<button class="hirow ${h.result}" data-act="hist-open" data-id="${esc(h.id)}" aria-label="${r} against ${esc(h.opponent && h.opponent.name)}${h.side === 'X' || h.side === 'O' ? `, you played ${h.side}` : ''}, ${HOW_TEXT[h.how] || ''}, ${fmtDate(h.date)}. Tap to see the final board">
+      ${histSnap(h)}<span class="hres">${r}</span><span class="hvs"><span class="hname">vs ${esc(h.opponent && h.opponent.name || '?')}</span><small>${HOW_TEXT[h.how] || ''} · ${fmtDate(h.date)}</small></span><span class="hmeta">${h.side === 'X' || h.side === 'O' ? `<i class="hyou ${h.side}">You: ${h.side}</i>` : ''}<i class="badge ${h.mode}">${MODE_TEXT[h.mode] || ''}</i>${chg}</span></button>`;
   }).join('')}</div>`;
   return `<main class="scr setup acct-scr prof-scr">
     <div class="bar"><button class="back" data-act="profile" data-uid="${esc(p.uid || '')}" aria-label="Back to the stats">${CHEV}Stats</button>

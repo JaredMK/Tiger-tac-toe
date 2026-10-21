@@ -448,7 +448,7 @@ test('Super Chaos Battleship: a Submarine on 5x5; a hit fires again until a miss
   // one sinks it alone, the other hit one of its last parts in the same round: both hit the last parts, a reset
   st = round([sub(SHIP)], { square: 0, moves: [8, 1] });
   human(st, 0, [6, 7, 8]);
-  assert.equal(st.sc.me.win, true, 'X sank it on their own sea');
+  assert.equal(st.sc.me.win, false, 'the last part hit: never judged on X\'s own sea, only at the round\'s end');
   rc = resolve(st);
   assert.deepEqual(rc.resets.map(x => [x.square, x.why]), [[0, 'both']], 'O hit a last part too');
   st = round([sub(SHIP)], { square: 0, moves: [6, 2] });

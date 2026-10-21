@@ -27,7 +27,7 @@ export function scheduleCpu() {
   if (state.screen !== 'mini') return;
   if (cpuPlan && cpuPlan.square === state.zoom && state.spot) return;   // the glow is still showing; cpuZoom takes it from here
   if (!cpuPlan || cpuPlan.square !== state.zoom) {
-    setCpuPlan(cpuMove(state, RNG)); cpuPlan.stage = 0;
+    setCpuPlan(cpuMove(state, RNG)); if (!cpuPlan) return; cpuPlan.stage = 0;   // (no move at all: the admin's test play, its square over)
     if (cpuPlan.square !== state.zoom) { state.zoom = cpuPlan.square; state.draft = ''; state.pick = null; state.sel = []; commit(); return; }   // after a reload mid-move
   }
   setCpuTimer(setTimeout(cpuAct, cpuPlan.stage ? CPU_MS.pre : state.lock != null ? CPU_MS.again : CPU_MS.zoom));
@@ -35,7 +35,7 @@ export function scheduleCpu() {
 function cpuSpot() {                                           // the computer has chosen: show where, then go there
   setCpuTimer(null);
   if (!cpuTurn() || state.screen !== 'board' || state.confirm || menuOpen) return;
-  setCpuPlan(cpuMove(state, RNG)); cpuPlan.stage = 0;
+  setCpuPlan(cpuMove(state, RNG)); if (!cpuPlan) { render(); return; } cpuPlan.stage = 0;
   state.spot = { square: cpuPlan.square, by: state.turn, label: `${playerName(state, state.turn)} plays here` };
   startFx('spot', state.spot); SND.play('spot');
   render();                                                     // no commit: the glow is not for the saved state

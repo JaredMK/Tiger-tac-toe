@@ -153,8 +153,9 @@ export function repMark() {
   if (left <= 0) return;
   const el = [...app.querySelectorAll(`[data-act="${p.act}"]`)].find(e => p.val == null || repVal(e) === p.val);
   if (!el) return;
-  el.classList.add('rpress');
-  pressTimer = setTimeout(() => el.classList.remove('rpress'), left);
+  const by = r.by === 'X' || r.by === 'O' ? 'rp' + r.by : 'rpX';   // (in the mover's colour)
+  el.classList.add('rpress', by);
+  pressTimer = setTimeout(() => el.classList.remove('rpress', by), left);
 }
 // The animations of a replay played fast: at the replay's rate (after anchorFx has set their time).
 export function repRate() {

@@ -83,7 +83,9 @@ export function cpuMove(state, rng, style) {
   rng = needRng(rng);
   const st = Object.assign({}, STYLE0, style || {});
   const me = state.turn;
-  const open = state.lock != null ? [state.lock] : state.squares.map((s, i) => (s.owner || !canMove(s.mini, me) ? -1 : i)).filter(i => i >= 0);   // not a square where it is stuck
+  const open = state.lock != null ? [state.lock] : state.only != null ? [state.only].filter(i => !state.squares[i].owner && canMove(state.squares[i].mini, me))   // (the admin's test play: its one square)
+    : state.squares.map((s, i) => (s.owner || !canMove(s.mini, me) ? -1 : i)).filter(i => i >= 0);   // not a square where it is stuck
+  if (!open.length) return null;
   if (st.mistake > 0 && open.length && rng() < st.mistake) {      // a careless move: anything legal, anywhere open
     const i = open[randInt(rng, open.length)], m = randomLegalMove(state.squares[i].mini, me, rng);
     if (m != null) return { square: i, move: m, score: 0, value: 0, gain: 0, careless: true };
