@@ -1,12 +1,13 @@
 // Bullseye: the computer's play.
 import { r3 } from '../../core/util.js';
 import { BULLS, bullsRates } from './rules.js';
+import { tune } from '../../core/tune.js';
 
 export function needs(pm, p) {
-  let n = 0, pts = pm.pts[p], s = pm.speed[p]; while (pts < BULLS.goal && n < 60) { const r = bullsRates(s), e = r.bull * BULLS.bullPts + r.board * BULLS.boardPts; pts += e; s *= 1 + (pm.cfg.ramp - 1) * (r.bull + r.board); n++; } return Math.max(1, n);
+  const t = tune(pm); let n = 0, pts = pm.pts[p], s = pm.speed[p]; while (pts < t.goal && n < 60) { const r = bullsRates(s, t), e = r.bull * t.bullPts + r.board * BULLS.boardPts; pts += e; s *= 1 + (pm.cfg.ramp - 1) * (r.bull + r.board); n++; } return Math.max(1, n);
 }
 export function best(pm, me, rng, style, ctx) {   // the bullseye, the board or a miss at its rates (15%, 45%, 40% at the start), and a spot to match
-  const r = bullsRates(pm.speed[me]), u = rng(), cfg = pm.cfg, [cx, cy] = pm.pos;
+  const t = tune(pm), r = bullsRates(pm.speed[me], t), u = rng(), cfg = pm.cfg, [cx, cy] = pm.pos;
   const kind = u < r.bull ? 'bull' : u < r.bull + r.board ? 'board' : 'miss';
   let pt;
   if (kind === 'miss') {
@@ -16,5 +17,5 @@ export function best(pm, me, rng, style, ctx) {   // the bullseye, the board or 
     const rad = lo + Math.sqrt(rng()) * (hi - lo), th = rng() * Math.PI * 2;
     pt = [cx + Math.cos(th) * rad, cy + Math.sin(th) * rad];
   }
-  return { move: { x: r3(Math.max(0, Math.min(1, pt[0] / BULLS.w))), y: r3(Math.max(0, Math.min(1, pt[1] / BULLS.h))) }, q: Math.min(0.95, (r.bull * BULLS.bullPts + r.board) / 2) };
+  return { move: { x: r3(Math.max(0, Math.min(1, pt[0] / BULLS.w))), y: r3(Math.max(0, Math.min(1, pt[1] / BULLS.h))) }, q: Math.min(0.95, (r.bull * t.bullPts + r.board) / 2) };
 }

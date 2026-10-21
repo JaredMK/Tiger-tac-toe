@@ -1,7 +1,8 @@
 // Bullseye: the screen, the miniature, the move's words and sounds, and the inputs.
 import { r3 } from '../../core/util.js';
 import { BULL_DEFAULTS } from './meta.js';
-import { BULLS, BULLT, bullsAim, bullsPeriod, setBullsConfig } from './rules.js';
+import { BULLS, BULLT, bullIs, bullsAim, bullsPeriod, setBullsConfig } from './rules.js';
+import { tune } from '../../core/tune.js';
 import { SND, ownPress } from '../../audio/sound.js';
 import { FIREBASE_CONFIG, configured } from '../../net/connect.js';
 import { attemptMove } from '../../net/moves.js';
@@ -26,10 +27,10 @@ const DART = '<svg viewBox="0 0 26 66" aria-hidden="true"><path d="M13 2v40" str
 export let bullDraft = null;                                          // { sq, p, x, at }: the first line stopped (x), and when
 const BOARD_SVG = (bull, board) => `<svg viewBox="-50 -50 100 100" aria-hidden="true"><circle r="48" class="bring"/>${Array.from({ length: 12 }, (_, k) => { const a0 = (k / 12) * Math.PI * 2, a1 = ((k + 1) / 12) * Math.PI * 2, r = 44; return `<path d="M0 0L${(Math.cos(a0) * r).toFixed(2)} ${(Math.sin(a0) * r).toFixed(2)}A${r} ${r} 0 0 1 ${(Math.cos(a1) * r).toFixed(2)} ${(Math.sin(a1) * r).toFixed(2)}Z" class="${k % 2 ? 'bsa' : 'bsb'}"/>`; }).join('')}<circle r="${(48 * Math.max(0.08, bull / board) + 3).toFixed(2)}" class="bbulo"/><circle r="${(48 * Math.max(0.08, bull / board)).toFixed(2)}" class="bbul"/></svg>`;
 function bullsTable(mini, a, o) {
-  const b = a && a.bull ? a.bull : null, l = mini.last, turn = o.turn, cfg = mini.cfg || BULL_DEFAULTS, B = BULLS;
+  const b = a && a.bull ? a.bull : null, l = mini.last, turn = o.turn, cfg = mini.cfg || BULL_DEFAULTS, B = BULLS, goal = tune(mini).goal;
   const pre = b ? bullsPre(a) : 0, A = pre ? bullsAim(b) : null;   // someone else's throw: their two lines sweep and stop first, as their screen showed it
   const tEnd = REDUCED ? 0 : pre + BULLT.fly;
-  const tal = p => arcTally(p, o, pips(p, Math.min(B.goal, mini.pts[p]), B.goal, !!(b && b.pts && a.by === p), tEnd));   // the points as five pips
+  const tal = p => arcTally(p, o, pips(p, Math.min(goal, mini.pts[p]), goal, !!(b && b.pts && a.by === p), tEnd));   // the points as five pips
   const shown = b || (o.done && l ? l : null);                 // a throw on show: the board where it was, the lines and the dart where they stopped
   const live = !o.view && !b && !o.locked;
   if (bullDraft && (bullDraft.sq !== o.zoom || !live || bullDraft.p !== turn)) bullDraft = null;
@@ -56,7 +57,7 @@ function bullsTable(mini, a, o) {
   }
   const field = `<div class="bfield" data-bulls="field"${live ? ' data-live="1"' : ''} aria-label="The dartboard field">${board}${lines}</div>`;
   const step = live ? (bullDraft && bullDraft.sq === o.zoom ? 2 : 1) : 0;
-  const say = pts => (pts === B.bullPts ? 'BULLSEYE! +3' : pts ? 'On the board +1' : 'Missed the board');
+  const say = pts => (bullIs(pts) ? `BULLSEYE! +${pts}` : pts ? 'On the board +1' : 'Missed the board');
   const res = b ? `<p ${lateAt('arcres ' + (b.pts ? 'ok' : 'no'), tEnd)} role="status">${say(b.pts)}</p>`
     : o.done && l ? `<p class="arcres ${l.pts ? 'ok' : 'no'}"><b class="${l.by}">${N(l.by)}</b>: ${say(l.pts)}</p>`
     : o.view ? `<p class="arcnote">${l ? `<b class="${l.by}">${N(l.by)}</b>'s last throw: ${say(l.pts)}` : ''}</p>`
@@ -96,9 +97,9 @@ function bullsTap() {
 }
 // The miniature: both players' points and the board's spot on the field.
 function bullsThumb(mini) {
-  const c = mini.cfg || BULL_DEFAULTS, pos = mini.pos || [BULLS.w / 2, BULLS.h / 2], pts = mini.pts || { X: 0, O: 0 };
-  return `<div class="tbull" aria-label="Bullseye: X ${pts.X}, O ${pts.O} of ${BULLS.goal} points"><svg viewBox="0 0 ${BULLS.w} ${BULLS.h}"><rect x="1.5" y="1.5" width="${BULLS.w - 3}" height="${BULLS.h - 3}" rx="6" class="tbf"/><circle cx="${pos[0]}" cy="${pos[1]}" r="${Math.max(12, c.board)}" class="tbb"/><circle cx="${pos[0]}" cy="${pos[1]}" r="${Math.max(4, c.bull * Math.max(12, c.board) / c.board)}" class="tbu"/></svg>`
-    + `<div class="tbpts">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><span>${Math.min(BULLS.goal, pts[p])}</span><small>/${BULLS.goal}</small></div>`).join('')}</div></div>`;
+  const c = mini.cfg || BULL_DEFAULTS, pos = mini.pos || [BULLS.w / 2, BULLS.h / 2], pts = mini.pts || { X: 0, O: 0 }, goal = tune(mini).goal;
+  return `<div class="tbull" aria-label="Bullseye: X ${pts.X}, O ${pts.O} of ${goal} points"><svg viewBox="0 0 ${BULLS.w} ${BULLS.h}"><rect x="1.5" y="1.5" width="${BULLS.w - 3}" height="${BULLS.h - 3}" rx="6" class="tbf"/><circle cx="${pos[0]}" cy="${pos[1]}" r="${Math.max(12, c.board)}" class="tbb"/><circle cx="${pos[0]}" cy="${pos[1]}" r="${Math.max(4, c.bull * Math.max(12, c.board) / c.board)}" class="tbu"/></svg>`
+    + `<div class="tbpts">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><span>${Math.min(goal, pts[p])}</span><small>/${goal}</small></div>`).join('')}</div></div>`;
 }
 // The difficulty (config/bulls, the admin's dashboard): fetched at every start and kept for the next visit.
 const BULLS_KEY = KEY + '.bullscfg';
@@ -122,10 +123,10 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
   g = bullsTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d }); return g;
 }
 export function moveText(f, who) {
-  return f.bull ? `${who} threw: ${f.bull.pts === BULLS.bullPts ? 'a bullseye, +3' : f.bull.pts ? 'on the board, +1' : 'off the board'}` : `${who} threw`;
+  return f.bull ? `${who} threw: ${bullIs(f.bull.pts) ? `a bullseye, +${f.bull.pts}` : f.bull.pts ? 'on the board, +1' : 'off the board'}` : `${who} threw`;
 }
 export function sounds(f, add, won, mini, last) {
-  const pre = bullsPre(f); if (pre) { const A = bullsAim(f.bull); add('mark', A.t1); add('mark', A.t2); } add('whoosh', pre); add(f.bull && f.bull.pts ? 'dartHit' : 'dartMiss', pre + BULLT.fly); if (f.bull && f.bull.pts === BULLS.bullPts) add('sparkle', pre + BULLT.fly + 120); return;
+  const pre = bullsPre(f); if (pre) { const A = bullsAim(f.bull); add('mark', A.t1); add('mark', A.t2); } add('whoosh', pre); add(f.bull && f.bull.pts ? 'dartHit' : 'dartMiss', pre + BULLT.fly); if (f.bull && bullIs(f.bull.pts)) add('sparkle', pre + BULLT.fly + 120); return;
 }
 // Bullseye: the taps come from the press itself (pointerdown, bullsTap); the click after it does nothing
 export function bullsAct(el, e, act) {

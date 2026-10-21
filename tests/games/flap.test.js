@@ -3,6 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const E = require('../engine.js');
+const mini = (t, seed) => E.newMini(t, E.makeRng(seed || t));
 const square = (type, seed, from = 0) => ({ type, cfg: E.runConfig(type), seed: { X: seed, O: seed + 1 }, dist: { X: from, O: 0 }, runs: { X: 0, O: 0 }, crashes: { X: [], O: [] } });
 // Flap: aim a little below the middle of the next gap; flap when, from what it saw `lag` ago, it would sink below it.
 function flyFlap(mini, lag) {
@@ -47,4 +48,17 @@ test('flap: the computer\'s bird flies all but the odd course through when it ha
     assert.ok(s2.crash && s2.crash.ob === plan && s2.y > plan.gy, `into that post, from above (from ${mini.dist.X}: ${s2.crash && s2.crash.ob.at}, planned ${plan.at})`);
   }
   assert.ok(fin >= n - 3, `${fin} of ${n} flights finished`);
+});
+
+test('flap: the Mini-game Settings: a square is dealt with them (in its cfg) and plays by them; the computer\'s runs pass the check', () => {
+  E.setRunConfig(null); E.setTune('flap', { grace: 3, gaps: 120, aiRuns: 3, aiSpread: 20 });
+  const m = mini('flap', 'tuned');
+  E.setTune('flap', null);
+  assert.equal(m.cfg.grace, 3); assert.equal(m.cfg.aiRuns, 3); assert.equal(m.cfg.aiSpread, 20);
+  assert.ok(Math.abs(E.runGrace(m.cfg, 0) - E.runAfter(m.cfg, 0, 3)) < 1e-9, 'a three-second clear start');
+  assert.ok(E.runNeeds(m.cfg, 0) < E.runNeeds(mini('flap', 'tuned').cfg, 0), 'the computer means to finish in fewer runs');
+  for (const o of E.runCourse(m, 'X')) assert.ok(Math.abs(o.gh - E.FLAP.gaps[o.k] * 1.2) < 0.01, 'the gaps 20% wider');
+  const rng = E.makeRng('tuned-ai');
+  for (let k = 0; k < 3 && m.dist.O < m.cfg.target; k++) { const r = E.applyMove(m, 'O', E.runAi(E.publicMini(m), 'O', rng).move, rng); assert.equal(r.ok, true, r.reason); }
+  assert.deepEqual(Object.keys(mini('flap', 'plain').cfg).sort(), Object.keys(E.runConfig('flap')).sort(), 'back to the defaults: nothing added');
 });

@@ -2,9 +2,10 @@
 // computer's candidates).
 import { randomLegalMove } from '../../core/minis.js';
 import { gaussOf, randInt } from '../../core/random.js';
+import { tune } from '../../core/tune.js';
 import { other } from '../../core/util.js';
 import { BOWLG } from '../bowling/rules.js';
-import { GOLF, golfLeft, golfNext } from '../golf/rules.js';
+import { golfLeft, golfNext } from '../golf/rules.js';
 import { POOLG, poolMine, poolOwns, poolPow } from '../pool/rules.js';
 
 // ---------- Mini Golf, Pool and Bowling: the physics games (Matter.js, through physics.js) ----------
@@ -30,9 +31,16 @@ export function physShot(m) {
 export function wrapAim(a) { a = ((a + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI; return Math.max(-3.141, Math.min(3.141, a)); }
 // The aim from a point to a target: 0 is straight up the table (y decreasing), positive is to the right.
 export const aimTo = (from, to) => Math.atan2(to[0] - from[0], from[1] - to[1]);
-export function physRun(mini, p, shot) { return PHYSICS.lib ? PHYSICS.lib.run(mini.type, mini, p, shot) : null; }
+// A square's own settings for its simulation (meta.js TUNE, dealt into the square: mini.tune): Mini Golf's
+// cup speed and bumper kick, Pool's and Bowling's full-power speed. None for a square dealt with the defaults.
+export function physOpt(mini) {
+  if (!mini || !mini.tune) return undefined;
+  const t = tune(mini);
+  return mini.type === 'golf' ? { holeSpeed: t.holeSpeed, kick: t.kick } : { vMax: t.vMax };
+}
+export function physRun(mini, p, shot) { return PHYSICS.lib ? PHYSICS.lib.run(mini.type, mini, p, shot, physOpt(mini)) : null; }
 // Super Chaos's Mini Golf: both balls struck at once (shots: { X, O }, either may be missing).
-export function physRunBoth(mini, shots) { return PHYSICS.lib ? PHYSICS.lib.run(mini.type, mini, shots) : null; }
+export function physRunBoth(mini, shots) { return PHYSICS.lib ? PHYSICS.lib.run(mini.type, mini, shots, undefined, physOpt(mini)) : null; }
 export const physLast = (p, shot, r, extra) => Object.assign({ by: p, aim: shot.aim, power: shot.power, ms: r.ms, events: r.events, rec: r.rec }, extra);
 // What a shot would do, for the computer: the same simulation, scored.
 export function physScore(mini, p, r) {
@@ -65,7 +73,7 @@ export function physCandidates(mini, p, rng) {
     }
     for (let k2 = 0; k2 < 3; k2++) out.push({ aim: (rng() - 0.5) * Math.PI * 1.6, power: 0.4 + rng() * 0.55 });   // the odd bank shot
   } else if (mini.type === 'pool') {
-    const cue = mini.balls.cue, R = L.POOL.ballR;
+    const cue = mini.balls.cue, R = L.POOL.ballR, vm = tune(mini).vMax, pow = sp => poolPow(sp, vm);
     for (const id of poolMine(p, mini)) {
       if (mini.down[id]) continue;
       const b = mini.balls[id];
@@ -74,11 +82,11 @@ export function physCandidates(mini, p, rng) {
         const dx = b[0] - pk[0], dy = b[1] - pk[1], n = Math.hypot(dx, dy) || 1;
         const ghost = [b[0] + (dx / n) * R * 2, b[1] + (dy / n) * R * 2];    // where the cue ball must be to send it pocketwards
         const a = aimTo(cue, ghost);
-        for (const sp of [36, 54, 78]) out.push({ aim: a, power: poolPow(sp) });
-        out.push({ aim: a + 0.03, power: poolPow(60) }, { aim: a - 0.03, power: poolPow(60) });
+        for (const sp of [36, 54, 78]) out.push({ aim: a, power: pow(sp) });
+        out.push({ aim: a + 0.03, power: pow(60) }, { aim: a - 0.03, power: pow(60) });
       }
     }
-    for (let k = 0; k < 3; k++) out.push({ aim: (rng() - 0.5) * 2.4, power: poolPow(30 + rng() * 36) });   // a soft safety
+    for (let k = 0; k < 3; k++) out.push({ aim: (rng() - 0.5) * 2.4, power: pow(30 + rng() * 36) });   // a soft safety
   } else {
     const from = L.BOWL.start, head = L.BOWL.pins[0], a = aimTo(from, head);
     for (const da of [-0.07, -0.045, -0.025, 0, 0.025, 0.045, 0.07]) out.push({ aim: a + da, power: 0.9 });
@@ -88,7 +96,7 @@ export function physCandidates(mini, p, rng) {
 }
 // The computer's shot: the best of its candidates, then a little error so it is not perfect.
 export function physAi(mini, p, rng) {
-  const err = mini.type === 'golf' ? GOLF.aiErr : mini.type === 'pool' ? POOLG.aiErr : BOWLG.aiErr;
+  const t = tune(mini), err = [t.aiAim / 1000, t.aiPow / 100];   // (the settings' aim error in thousandths of a radian, power error in %: GOLF, POOLG and BOWLG.aiErr by default)
   let best = null;
   for (const c of physCandidates(mini, p, rng)) {
     const r = physRun(mini, p, c);
@@ -109,7 +117,7 @@ export function physRandom(mini, p, rng) {
     const hole = L.HOLES[mini.hole], from = mini.balls[p], to = hole.path[golfNext(hole, from)], d = Math.hypot(to[0] - from[0], to[1] - from[1]);
     return physShot({ aim: wrapAim(aimTo(from, to) + (rng() - 0.5) * 0.7), power: Math.max(0.2, Math.min(0.75, Math.pow(d / (L.GOLF.reach || 174), 0.57) * (0.7 + rng() * 0.5))) });
   }
-  if (mini.type === 'pool') { const ids = poolMine(p, mini).filter(id => !mini.down[id]); const to = ids.length ? mini.balls[ids[randInt(rng, ids.length)]] : L.POOL.start.black; return physShot({ aim: wrapAim(aimTo(mini.balls.cue, to) + (rng() - 0.5) * 0.6), power: poolPow(30 + rng() * 30) }); }
+  if (mini.type === 'pool') { const ids = poolMine(p, mini).filter(id => !mini.down[id]); const to = ids.length ? mini.balls[ids[randInt(rng, ids.length)]] : L.POOL.start.black; return physShot({ aim: wrapAim(aimTo(mini.balls.cue, to) + (rng() - 0.5) * 0.6), power: poolPow(30 + rng() * 30, tune(mini).vMax) }); }
   return physShot({ aim: (rng() - 0.5) * 0.2, power: 0.5 + rng() * 0.25 });
 }
 // How many moves the computer reckons it needs in a physics square (for its choice of square).

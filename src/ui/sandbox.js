@@ -5,6 +5,7 @@
 // device events go out). Admin only: the page checks the signed-in account first. A bar at the bottom:
 // Restart, the computer opponent on or off, normal or Super Chaos rules.
 import { startChaos } from '../core/chaos.js';
+import { setTune } from '../core/tune.js';
 import { dealable, newState, seatLocal, startMatch } from '../core/match.js';
 import { setBowlConfig } from '../games/bowling/rules.js';
 import { setBullsConfig } from '../games/bullseye/rules.js';
@@ -51,6 +52,7 @@ export async function sandboxBoot() {
   mountBar();
   if (!sbx.type) return halt('bad', 'No such mini-game.');
   if (sbx.cfg && APPLY[sbx.type]) APPLY[sbx.type](sbx.cfg);
+  if (sbx.cfg && sbx.cfg.tune) setTune(sbx.type, sbx.cfg.tune);   // the game's Mini-game Settings, as the editor has them
   state.screen = 'sandbox'; render();
   await connectQuiet();
   for (let k = 0; k < 40 && !acct.admin; k++) await new Promise(r => setTimeout(r, 250));   // (the admin flag comes with the sign-in's token)

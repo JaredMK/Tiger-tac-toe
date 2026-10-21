@@ -7,6 +7,7 @@ const NONE = Object.freeze({});
 export const rulesOf = t => (GAMES[t] ? GAMES[t].rules : NONE);
 export const aiOf = t => (GAMES[t] ? GAMES[t].ai : NONE);
 export const viewOf = t => (GAMES[t] && GAMES[t].view) || NONE;
+import { registerTunes } from '../core/tune.js';
 const add = (type, rules, ai, meta) => { GAMES[type] = { type, rules, ai, meta, view: null }; };
 import * as tttR from './ttt/rules.js'; import * as tttA from './ttt/ai.js'; import * as tttM from './ttt/meta.js'; add('ttt', tttR, tttA, tttM);
 import * as c4R from './c4/rules.js'; import * as c4A from './c4/ai.js'; import * as c4M from './c4/meta.js'; add('c4', c4R, c4A, c4M);
@@ -76,3 +77,4 @@ export const TEST_TYPES = TYPES.filter(t => GAMES[t].meta.release === 'admin');
 export const SC_ONLY = TYPES.filter(t => GAMES[t].meta.scOnly);
 export const OLD_TYPES = Object.keys(GAMES).filter(t => GAMES[t].meta.retired);
 export const INFO = Object.fromEntries(Object.keys(GAMES).map(t => [t, GAMES[t].meta.info]));
+registerTunes(Object.fromEntries(Object.keys(GAMES).map(t => [t, GAMES[t].meta.TUNE])));   // each game's settings (meta.js TUNE; core/tune.js)

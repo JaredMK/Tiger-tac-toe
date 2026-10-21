@@ -16,7 +16,7 @@ import { render } from './render.js';
 import { cpuTurn } from './turns.js';
 
 // Headcount's, Flash's and Snapshot's difficulty (config/headcount, config/flash, config/snapshot): likewise.
-export function fetchAttConfig(name, set) {
+export function fetchAttConfig(name, set, cleared) {   // cleared: nothing in the database puts the defaults back (the Mini-game Settings' reset)
   const k = KEY + '.' + name + 'cfg';
   try { const v = JSON.parse(localStorage.getItem(k) || 'null'); if (v && typeof v === 'object') set(v); } catch (e) { /* none kept */ }
   if (!configured()) return;
@@ -24,7 +24,7 @@ export function fetchAttConfig(name, set) {
   const url = hook && hook.emulator ? `http://${hook.emulator.host}:${hook.emulator.port}/config/${name}.json?ns=${c.projectId}-default-rtdb` : `${c.databaseURL}/config/${name}.json`;
   try {
     fetch(url).then(r => (r.ok ? r.json() : null)).then(v => {
-      if (!v || typeof v !== 'object') return;
+      if (!v || typeof v !== 'object') { if (cleared && v === null) { set(null); try { localStorage.removeItem(k); } catch (e) { /* (none kept) */ } } return; }
       set(v);
       try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* no storage: read again next visit */ }
     }).catch(() => {});

@@ -1,5 +1,5 @@
 // Chopper: the rules (pure: no page, no clock; the server runs the same code).
-import { RUNT, runJump, runRelease, runSpeed, runWalls } from '../shared/runner.js';
+import { RUNT, runJump, runRelease, runSpeed, runVal, runWalls } from '../shared/runner.js';
 export { runnerCreate as create } from '../shared/runner.js';
 export { runnerApply as apply } from '../shared/runner.js';
 export { runnerPublicView as publicView } from '../shared/runner.js';
@@ -48,7 +48,7 @@ export function chopPilot(sim, plan, rng) {
       if (x <= near) { Fn = Math.max(Fn, f); Cn = Math.min(Cn, c); }
     }
     const m = Math.min(H.edge, (Cn - Fn) / 2), aim = Math.min(Cn - m, Math.max(Fn + m, (F + C) / 2));   // the middle of the whole corridor, kept well inside the near one (where the cave climbs or drops beyond, it waits at that side of the near one)
-    const stop = sim.vy > 0 ? sim.vy * sim.vy / (2 * CHOP.down) : -sim.vy * sim.vy / (2 * CHOP.up);   // where it would come to rest, let go now (rising) or held now (falling)
+    const stop = sim.vy > 0 ? sim.vy * sim.vy / (2 * runVal(sim.cfg, 'down', CHOP.down)) : -sim.vy * sim.vy / (2 * runVal(sim.cfg, 'up', CHOP.up));   // where it would come to rest, let go now (rising) or held now (falling)
     if (sim.y + stop < aim - band) { if (!sim.held) runJump(sim); }
     else if (sim.y + stop > aim + band && sim.held) runRelease(sim);
   };

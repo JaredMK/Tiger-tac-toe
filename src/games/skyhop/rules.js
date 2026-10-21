@@ -2,7 +2,7 @@
 import { cfgKit } from '../../core/config.js';
 import { courseSeed, gaussOf, makeRng } from '../../core/random.js';
 import { clamp01, r2 } from '../../core/util.js';
-import { FHAND, FING, HOP, HOP_MEMO, fingLog, fingRecorder } from '../shared/finger.js';
+import { FING, HOP, HOP_MEMO, fingHand, fingLog, fingRecorder } from '../shared/finger.js';
 import { HOP_DEFAULTS } from './meta.js';
 export { fingerApply as apply } from '../shared/finger.js';
 export { fingerMoveFlash as moveFlash } from '../shared/finger.js';
@@ -140,7 +140,7 @@ export function hopPlan(sim, hand, rng, memo) {
   return best;
 }
 export function hopAi(mini, p, rng, hand) {
-  hand = hand || FHAND.skyhop;
+  hand = hand || fingHand(mini);   // (FHAND.skyhop, with the square's settings)
   const sim = hopStart(mini, p), rec = fingRecorder(), memo = Object.assign(new Map(), { stuck: new Map() }), lag = Math.round((hand.react[0] + (hand.react[1] - hand.react[0]) * rng()) / FING.step), queue = [];
   let aim = sim.x;
   while (!sim.end && sim.t < FING.maxSecs - 1) {

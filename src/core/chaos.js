@@ -19,7 +19,7 @@
 import { LINES, playMove } from './board.js';
 import { cpuMove } from './ai.js';
 import { dealable, pickReset, startMatch } from './match.js';
-import { applyMove, canMove, newMini, randomLegalMove } from './minis.js';
+import { applyMove, canMove, newMini, randomLegalMove, withTune } from './minis.js';
 import { needRng, randInt } from './random.js';
 import { repMove, repNorm } from './replay.js';
 import { other } from './util.js';
@@ -40,7 +40,7 @@ export const scHuman = st => (st.online && st.online.me ? st.online.me : st.cpu 
 // dealt face up (both see it from the start).
 export function scSquareMini(state, sq, type, rng) {
   const g = rulesOf(type);
-  sq.mini = g.scCreate ? g.scCreate(type, rng) : newMini(type, rng);
+  sq.mini = g.scCreate ? withTune(g.scCreate(type, rng)) : newMini(type, rng);
   if (type === 'trivia') { triviaDeal(state, sq, rng); sq.mini.shown = true; }
   return sq.mini;
 }

@@ -2,6 +2,7 @@
 import { needRng } from '../../core/random.js';
 import { r3 } from '../../core/util.js';
 import { BULL_DEFAULTS } from './meta.js';
+import { tune } from '../../core/tune.js';
 
 // ---------- the arcade games: Bullseye, Echo, Plinko, Cup Pong, Trivia, Odd One Out ----------
 // Bullseye: a small dartboard (with a bullseye in its middle) sits somewhere on a field 100 units across
@@ -41,26 +42,27 @@ export function bullsSpot(cfg, prev, rng) {
   return best.pt;
 }
 // What a throw scores: where it landed (field units), how far from the board's middle, and the points.
-export function bullsScore(cfg, pos, x, y) {
+export function bullsScore(cfg, pos, x, y, bullPts) {
   const at = [r3(x * BULLS.w), r3(y * BULLS.h)], d = r3(Math.hypot(at[0] - pos[0], at[1] - pos[1]));
-  return { at, d, pts: d <= cfg.bull ? BULLS.bullPts : d <= cfg.board ? BULLS.boardPts : 0 };
+  return { at, d, pts: d <= cfg.bull ? bullPts || BULLS.bullPts : d <= cfg.board ? BULLS.boardPts : 0 };
 }
 export const bullsPeriod = (cfg, speed) => cfg.sweep / speed;            // ms for the vertical line to cross the field (the horizontal one: as fast, so h/w as long)
 // The computer: a bullseye, the board or a miss at its rates, slipping as its lines speed up.
-export function bullsRates(speed) { const f = Math.pow(1 / Math.max(1, speed), BULLS.ai.worse); return { bull: BULLS.ai.bull * f, board: BULLS.ai.board * f }; }
+export function bullsRates(speed, t) { const f = Math.pow(1 / Math.max(1, speed), BULLS.ai.worse); return { bull: (t ? t.aiBull / 100 : BULLS.ai.bull) * f, board: (t ? t.aiBoard / 100 : BULLS.ai.board) * f }; }   // (t: the square's settings)
+export const bullIs = pts => pts > BULLS.boardPts;                       // a bullseye (whatever it scores)
 export function create(type, rng) {
   const cfg = bullsConfig(); return { type, cfg, pts: { X: 0, O: 0 }, speed: { X: 1, O: 1 }, pos: bullsSpot(cfg, null, needRng(rng)), last: null };
 }
 export function apply(mini, p, m, rng, idx) {   // where the two lines stopped: scored against the board where it is; then the board moves on
   const x = m && typeof m === 'object' ? Number(m.x) : NaN, y = m && typeof m === 'object' ? Number(m.y) : NaN;
   if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || x > 1 || y < 0 || y > 1) return { ok: false, reason: 'bad' };
-  const cfg = mini.cfg, pos = mini.pos, sc = bullsScore(cfg, pos, x, y), per = Math.round(bullsPeriod(cfg, mini.speed[p] || 1));   // per: the sweep these lines ran at
+  const t = tune(mini), cfg = mini.cfg, pos = mini.pos, sc = bullsScore(cfg, pos, x, y, t.bullPts), per = Math.round(bullsPeriod(cfg, mini.speed[p] || 1));   // per: the sweep these lines ran at
   mini.pts[p] += sc.pts;
   if (sc.pts) mini.speed[p] = r3(mini.speed[p] * cfg.ramp);
   mini.last = { by: p, x: r3(x), y: r3(y), at: sc.at, d: sc.d, pts: sc.pts, pos: pos.slice(), per };
   mini.pos = bullsSpot(cfg, pos, needRng(rng));
-  if (mini.pts[p] >= BULLS.goal) return { ok: true, outcome: 'win', note: sc.pts === BULLS.bullPts ? 'bull' : 'board' };
-  return { ok: true, outcome: 'continue', note: sc.pts === BULLS.bullPts ? 'bull' : sc.pts ? 'board' : 'miss' };
+  if (mini.pts[p] >= t.goal) return { ok: true, outcome: 'win', note: bullIs(sc.pts) ? 'bull' : 'board' };
+  return { ok: true, outcome: 'continue', note: bullIs(sc.pts) ? 'bull' : sc.pts ? 'board' : 'miss' };
 }
 export function publicView(mini) {
   return { type: 'bullseye', cfg: Object.assign({}, mini.cfg), pts: { X: mini.pts.X, O: mini.pts.O }, speed: { X: mini.speed.X, O: mini.speed.O }, pos: mini.pos.slice() };

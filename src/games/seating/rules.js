@@ -2,6 +2,7 @@
 import { needRng, randInt } from '../../core/random.js';
 import { other } from '../../core/util.js';
 import { PLACE_MS } from '../shared/placement.js';
+import { tune, tuneLive } from '../../core/tune.js';
 
 // ---------- Seating, Districts, Shelves and Roads ----------
 // Seating: a restaurant of 10 tables for two; every seat has a colour (one of four). A move seats you in
@@ -12,8 +13,11 @@ import { PLACE_MS } from '../shared/placement.js';
 // with both its seats. Five tables wins at once; else, once every seat is taken, most tables wins and a
 // tie resets the square.
 export const SEAT = { tables: 10, colors: 4, goal: 5 };
+// A square's own (the admin's settings: tables, colours, the tables that win at once, the computer's mistakes;
+// SEAT without a type). The tables: from its seats.
+export const seatCfg = m => Object.assign({}, SEAT, tune(m));
 export const seatTable = i => Math.floor(i / 2), seatMate = i => (i % 2 ? i - 1 : i + 1);
-export const seatTables = (who, p) => { let n = 0; for (let t = 0; t < SEAT.tables; t++) if (who[2 * t] === p && who[2 * t + 1] === p) n++; return n; };
+export const seatTables = (who, p) => { let n = 0; for (let t = 0; 2 * t < who.length; t++) if (who[2 * t] === p && who[2 * t + 1] === p) n++; return n; };
 export function seatZ(mini, rng) {                                       // the customer sits; returns the seat (null when the room is full, -1 when none of their colour is free: they leave)
   const empty = mini.who.map((w, i) => (w ? -1 : i)).filter(i => i >= 0);
   if (!empty.length) return null;
@@ -38,7 +42,8 @@ export function seatPick(pm, me, rng) {
   return { move: empty[randInt(rng, empty.length)], why: 'any' };
 }
 export function create(type, rng) {
-  const r = needRng(rng), color = Array.from({ length: SEAT.tables * 2 }, () => randInt(r, SEAT.colors)); return { type, color, who: new Array(SEAT.tables * 2).fill(null), next: color[randInt(r, color.length)], last: null };
+  const c = tuneLive(type);                                  // (the admin's settings: tables and colours)
+  const r = needRng(rng), color = Array.from({ length: c.tables * 2 }, () => randInt(r, c.colors)); return { type, color, who: new Array(c.tables * 2).fill(null), next: color[randInt(r, color.length)], last: null };
 }
 export function apply(mini, p, m, rng, idx) {   // a seat; then the customer sits; five tables, or most once the room is full
   if (!Number.isInteger(m) || m < 0 || m >= mini.who.length || mini.who[m]) return { ok: false, reason: 'bad' };
@@ -49,7 +54,7 @@ export function apply(mini, p, m, rng, idx) {   // a seat; then the customer sit
   const done = mini.who[seatMate(m)] === p ? seatTable(m) : null;
   mini.last = { by: p, seat: m, z, zColor, table: done, next: mini.next, left };
   const mt = seatTables(mini.who, p), ot = seatTables(mini.who, o);
-  if (mt >= SEAT.goal) return { ok: true, outcome: 'win', note: 'tables', counts: { [p]: mt, [o]: ot } };
+  if (mt >= seatCfg(mini).goal) return { ok: true, outcome: 'win', note: 'tables', counts: { [p]: mt, [o]: ot } };
   if (mini.who.includes(null)) return { ok: true, outcome: 'continue', note: done != null ? 'table' : 'seat' };
   if (mt === ot) return { ok: true, outcome: 'draw', note: 'tie' };
   return { ok: true, outcome: 'win', note: 'full', winner: mt > ot ? p : o, counts: { [p]: mt, [o]: ot } };

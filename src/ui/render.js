@@ -25,9 +25,10 @@ import { renderHeader } from './turnbar.js';
 import { playFlash } from './turns.js';
 
 export function render() {
-  // The in-game menu belongs to a live game: it closes when the match ends or the screen leaves the game
-  // (the results screen has no menu card to close it, so a menu left open would refuse every tap there).
-  if (menuOpen && (state.winner || !['board', 'mini', 'review', 'review-mini'].includes(state.screen))) setMenuOpen(false);
+  // The in-game menu belongs to the game's screens (the board and a square, live or under review after the
+  // match): it closes when the screen leaves them (the results screen has no menu card to close it, so a
+  // menu left open would refuse every tap there). After the match, View board's Menu opens it as ever.
+  if (menuOpen && (!['board', 'mini', 'review', 'review-mini'].includes(state.screen) || (state.winner && (state.screen === 'board' || state.screen === 'mini')))) setMenuOpen(false);
   const view = state.screen + ':' + state.zoom;
   setEntering(view !== lastView); setLastView(view);
   if (entering) startFx('enter', view);                       // a new screen: the event for its own entry (the zoom into a square)

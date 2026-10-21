@@ -86,6 +86,7 @@ export function makePhysics(Matter) {
   const HOLES = LAYOUTS.map((h, i) => Object.assign({}, h, { of: i }));
   LAYOUTS.forEach((h, i) => { const m = mirror(h); if (shape(m) !== shape(h)) HOLES.push(Object.assign(m, { of: i })); });
   const SIZES = { golf: GOLF, pool: POOL, bowling: BOWL };
+  const RUN_OPT = ['holeSpeed', 'kick', 'vMax'];
 
   const wall = (x, y, w, h, angle, label) => Bodies.rectangle(x, y, w, h, { isStatic: true, angle: angle || 0, restitution: 0.72, friction: 0, label: label || 'wall' });
   const edges = (w, h, t) => [wall(w / 2, -t / 2, w + 2 * t, t), wall(w / 2, h + t / 2, w + 2 * t, t), wall(-t / 2, h / 2, t, h + 2 * t), wall(w + t / 2, h / 2, t, h + 2 * t)];
@@ -119,8 +120,10 @@ export function makePhysics(Matter) {
   // A shot, played out: the shooter's ball is sent off at its aim and power; everything runs until it
   // all stops (or the time is up). Returns the final places, what happened, and the recording.
   // (Super Chaos's Mini Golf: shooter is { X: shot, O: shot } and both balls are struck at once.)
-  function run(type, pos, shooter, shot) {
-    const { engine, tracked, S } = build(type, pos);
+  // opt: a square's own settings over the table's (RUN_OPT: Mini Golf's holeSpeed and kick, the others' vMax).
+  function run(type, pos, shooter, shot, opt) {
+    const { engine, tracked } = build(type, pos), S = opt ? Object.assign({}, SIZES[type]) : SIZES[type];
+    if (opt) for (const k of RUN_OPT) if (Number.isFinite(opt[k])) S[k] = opt[k];
     const byId = Object.fromEntries(tracked);
     const shots = shooter && typeof shooter === 'object' ? shooter : { [type === 'golf' ? shooter : type === 'pool' ? 'cue' : 'ball']: shot };
     const movers = Object.keys(shots).filter(id => byId[id] && shots[id]);
@@ -492,7 +495,7 @@ export function makePhysics(Matter) {
   // The computer's hand: it sees the ball react seconds late; when the ball comes down over a flipper it
   // flips (a little early or late: jitter) and holds for a moment. A launch: a tap at a random power.
   function pinAi(table, cfg, lit, rng, hand) {
-    hand = hand || { react: [0.05, 0.09], jitter: 0.05, hold: [0.12, 0.28], launch: [0.4, 1] };
+    hand = Object.assign({ react: [0.05, 0.09], jitter: 0.05, hold: [0.12, 0.28], launch: [0.4, 1] }, hand);   // (a square's settings over these: finger.js fingHand)
     const w = pinNew(table, cfg, lit), seen = [], react = hand.react[0] + (hand.react[1] - hand.react[0]) * rng(), plan = { L: null, R: null };
     const F = table.flip || PIN.flip, frame = 1000 / 60;
     let wait = 0.6 + rng() * 0.6;

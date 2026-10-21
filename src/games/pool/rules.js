@@ -4,8 +4,9 @@ import { PHYSICS, physLast, physRandom, physRun, physShot } from '../shared/phys
 export { physicsMoveFlash as moveFlash } from '../shared/physics.js';
 
 export const POOLG = { goal: 2, aiErr: [0.02, 0.025], hold: 700, order: ['cue', 'x1', 'x2', 'o1', 'o2', 'black'] };
-// Pool's power for a speed (units a second): the meter's level goes with the square root of the speed (physics.js: POOL.curve).
-export const poolPow = speed => Math.min(1, Math.pow(Math.max(0, speed) / PHYSICS.lib.POOL.vMax, 1 / (PHYSICS.lib.POOL.curve || 1)));
+// Pool's power for a speed (units a second): the meter's level goes with the square root of the speed (physics.js: POOL.curve);
+// vMax: the square's full-power speed (its settings), the table's by default.
+export const poolPow = (speed, vMax) => Math.min(1, Math.pow(Math.max(0, speed) / (vMax || PHYSICS.lib.POOL.vMax), 1 / (PHYSICS.lib.POOL.curve || 1)));
 // Pool's balls by id: the cue, each side's (x1, x2 ... and o1, o2 ...: a scratch adds one to the other
 // side's), the black; in that order everywhere (the recording, the drawing).
 export const poolRank = id => (id === 'cue' ? 0 : id === 'black' ? 3 : id[0] === 'x' ? 1 : 2);

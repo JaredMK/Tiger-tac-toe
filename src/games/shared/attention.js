@@ -2,6 +2,7 @@
 // computer's chances).
 import { needRng, randInt, shuffle } from '../../core/random.js';
 import { FINGER_TYPES } from './finger.js';
+import { tune } from '../../core/tune.js';
 import { flashAnswer, flashConfig } from '../flash/rules.js';
 import { headRound } from '../headcount/rules.js';
 import { snapRound } from '../snapshot/rules.js';
@@ -17,7 +18,7 @@ import { snapRound } from '../snapshot/rules.js';
 // right at each level (ATT.aiOk); the computer gets them right that often.
 export const ATT_TYPES = ['headcount', 'flash', 'snapshot'];
 export const ATT = { goal: 3, aiOk: { headcount: [0.45, 0.3, 0.2], flash: [0.8, 0.7, 0.6], snapshot: [0.65, 0.5, 0.35] }, pause: 900, show: 1600 };   // pause: someone else's round, then their answer; show: the result and the right answer
-export const attOk = (type, level) => { const a = ATT.aiOk[type] || ATT.aiOk.headcount; return a[Math.min(level, a.length - 1)]; };
+export const attOk = (type, level, t) => { const a = t && t.ai1 != null ? [t.ai1 / 100, t.ai2 / 100, t.ai3 / 100] : ATT.aiOk[type] || ATT.aiOk.headcount; return a[Math.min(level, a.length - 1)]; };   // (t: the square's settings, ai1-ai3 in %)
 
 // Flash: cards flash one at a time in the middle (a shape in a colour; never the X or O colours), each
 // for 0.5 s, then one question with 4 options: "How many [shape]s?" or "How many [colour] items?". Level
@@ -106,7 +107,7 @@ export function attentionApply(mini, p, m, rng, idx) {   // one round: right, a 
   return { ok: true, outcome: 'continue', note: correct ? 'right' : 'wrong' };
 }
 export function attentionBest(pm, me, rng, style, ctx) {   // right about 85%, 65%, then 45% of the time; else a near miss (one off, a wrong option, a cell out of place)
-  const r = pm.round && pm.round[me], q = attOk(pm.type, pm.right[me]);
+  const r = pm.round && pm.round[me], q = attOk(pm.type, pm.right[me], tune(pm));
   if (!r) return { move: 'auto', q: 0 };
   return { move: rng() < q ? attTruth(pm.type, r) : attWrong(pm.type, r, rng), q };
 }

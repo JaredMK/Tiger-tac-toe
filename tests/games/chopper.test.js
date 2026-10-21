@@ -3,6 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const E = require('../engine.js');
+const mini = (t, seed) => E.newMini(t, E.makeRng(seed || t));
 const square = (type, seed, from = 0) => ({ type, cfg: E.runConfig(type), seed: { X: seed, O: seed + 1 }, dist: { X: from, O: 0 }, runs: { X: 0, O: 0 }, crashes: { X: [], O: [] } });
 
 test('chopper: the cave narrows from 5.6 m to 3.4 m (the config\'s heights) and stays in the sky; every block leaves room to pass, all the way in', () => {
@@ -34,4 +35,17 @@ test('chopper: the computer\'s pilot flies all but the odd course through when i
     assert.ok(s2.crash && s2.d >= at - 12 && s2.d <= at + 40, `a crash near ${at} (from ${mini.dist.X}: ${s2.crash ? s2.crash.at + ' ' + s2.crash.ob.k : 'finished'})`);
   }
   assert.ok(fin >= n - 5, `${fin} of ${n} flights finished`);
+});
+
+test('chopper: the Mini-game Settings: a square is dealt with them (in its cfg) and plays by them; the computer\'s runs pass the check', () => {
+  E.setRunConfig(null); E.setTune('chopper', { grace: 3, up: 20, down: 12, aiRuns: 3, aiSpread: 20 });
+  const m = mini('chopper', 'tuned');
+  E.setTune('chopper', null);
+  assert.equal(m.cfg.grace, 3); assert.equal(m.cfg.aiRuns, 3); assert.equal(m.cfg.aiSpread, 20);
+  assert.ok(Math.abs(E.runGrace(m.cfg, 0) - E.runAfter(m.cfg, 0, 3)) < 1e-9, 'a three-second clear start');
+  assert.ok(E.runNeeds(m.cfg, 0) < E.runNeeds(mini('chopper', 'tuned').cfg, 0), 'the computer means to finish in fewer runs');
+  const sim = E.runStart(m, 'X'); E.runJump(sim); E.runTick(sim); assert.ok(Math.abs(sim.vy - 20 * E.CHOP.step) < 1e-9, 'it climbs at the dealt rate');
+  const rng = E.makeRng('tuned-ai');
+  for (let k = 0; k < 3 && m.dist.O < m.cfg.target; k++) { const r = E.applyMove(m, 'O', E.runAi(E.publicMini(m), 'O', rng).move, rng); assert.equal(r.ok, true, r.reason); }
+  assert.deepEqual(Object.keys(mini('chopper', 'plain').cfg).sort(), Object.keys(E.runConfig('chopper')).sort(), 'back to the defaults: nothing added');
 });

@@ -42,3 +42,14 @@ test('cup pong: an aim and a power; the ball lands with a little scatter; a good
   for (let k = 0; k < 2000; k++) { const g = E.newMini('pong', lcg(k)); g.cups.X[0] = false; g.cups.X[1] = false; const b = E.localBest(E.publicMini(g), 'X', rr); if (E.applyMove(g, 'X', b.move, rr).outcome === 'win') last++; }
   assert.ok(last / 2000 > 0.25, `the last cup (${last / 2000})`);
 });
+
+test('pong: the admin\'s Mini-game Settings deal a square that plays by them (no scatter, every rim ball in, the computer dead on)', () => {
+  E.setTune('pong', { spread: 0.02, rimIn: 100, aiAim: 0, aiPower: 0 });
+  const m = E.newMini('pong', lcg(5));
+  E.setTune('pong', null);
+  assert.deepEqual(m.tune, { spread: 0.02, rimIn: 100, aiAim: 0, aiPower: 0 });
+  const rng = lcg(6); let n = 0, res;
+  while (n++ < 30 && !(res && res.outcome === 'win')) res = E.applyMove(m, 'X', E.localBest(E.publicMini(m), 'X', rng).move, rng);
+  assert.equal(res.outcome, 'win', `the computer, dead on with little scatter, sinks all three (${n} throws)`);
+  assert.ok(n <= 8);
+});

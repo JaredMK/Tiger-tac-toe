@@ -1,4 +1,5 @@
 // The "?" explainer pop-up and How to Play (each game's meta.js: explainer).
+import { tune, tuneLive } from '../core/tune.js';
 import { PHYS_TYPES } from '../games/shared/physics.js';
 import { GAMES } from '../games/index.js';
 import { chaosBadge, chaosVisible, testBadge, visibleTypes } from '../net/releases.js';
@@ -21,7 +22,14 @@ const SC_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stro
 const scNow = () => !!(state.sc && ['board', 'mini'].includes(state.screen)) || (state.screen === 'setup' && chaosSetup());
 export function explainOf(t) {
   if (t === 'superchaos') return SC_EXPLAIN;
-  return (scNow() && GAMES[t] && GAMES[t].meta.scExplainer) || EXPLAIN[t];
+  return fillTune(t, (scNow() && GAMES[t] && GAMES[t].meta.scExplainer) || EXPLAIN[t]);
+}
+// A setting in the text ({k}: meta.js TUNE): the square's own value when it is open, else the one dealt now.
+function fillTune(t, x) {
+  if (!x || !/\{\w+\}/.test(x.play + x.win)) return x;
+  const sq = state.screen === 'mini' && state.squares && state.squares[state.zoom], v = sq && sq.mini && sq.mini.type === t ? tune(sq.mini) : tuneLive(t);
+  const f = s => s.replace(/\{(\w+)\}/g, (m, k) => (v[k] != null ? String(v[k]) : m));
+  return { name: x.name, play: f(x.play), win: f(x.win) };
 }
 export let explainT = null;                          // the mini-game whose explainer is open
 export const qBtn = (t, cls) => `<button class="qbtn${cls ? ' ' + cls : ''}" data-act="explain" data-t="${t}" aria-label="How to play ${explainOf(t).name}">${cls === 'sm' ? '<i>?</i>' : '?'}</button>`;   // the small one: a 26px sticker in a 40px tap target

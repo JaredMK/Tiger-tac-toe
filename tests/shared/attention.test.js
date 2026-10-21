@@ -84,3 +84,15 @@ test('attention games: the admin\'s values, checked one by one (off its range: t
   assert.deepEqual(E.snapConfig(), E.SNAP_DEFAULTS);
   assert.ok(E.TEST_TYPES.includes('headcount') && E.TEST_TYPES.includes('flash') && E.TEST_TYPES.includes('snapshot'), 'admin only to begin with');
 });
+
+test('headcount, snapshot: the admin\'s Mini-game Settings deal a square the computer plays by (its right answers at each level)', () => {
+  for (const type of ['headcount', 'snapshot']) {
+    E.setTune(type, { ai1: 100, ai3: 0 });
+    const m = E.newMini(type, lcg(5));
+    E.setTune(type, null);
+    const rng = lcg(6);
+    assert.deepEqual(E.localBest(E.publicMini(m), 'X', rng).move, E.attTruth(type, m.round.X), `${type}: level 1, always right`);
+    m.right.X = 2; m.round.X = E.attRound(type, 2, lcg(7));
+    for (let k = 0; k < 10; k++) assert.notDeepEqual(E.localBest(E.publicMini(m), 'X', rng).move, E.attTruth(type, m.round.X), `${type}: level 3, never right`);
+  }
+});

@@ -479,12 +479,23 @@ to queue anyone, and anyone already searching is taken out of the queue and sent
 Matches already under way carry on, and "Back to your match" still works. Play a Friend is not
 affected. Switching it on takes effect at once on every open page.
 
+### Mini-game Settings (admin)
+
+Every mini-game has its own settings page on the dashboard (**Mini-game Settings**, grouped Luck, Skill and
+Brain): all its tunable values (sizes, targets, speeds, counts, odds, timings, the computer's rates), listed in
+the game's `meta.js` as `TUNE` (`{ k, label, def, min, max, step, group }`, group Board, Rules, Timing or
+Computer; `def` is the value the code had). **Save** writes the values that differ from the defaults to
+`config/tune/<game>` (anyone can read it, only the admin can write it); the game reads it at start and the
+server every 20 s, and a square is dealt with the values of that moment and keeps them (`mini.tune`, only the
+non-default ones) to its end, on both phones and the server alike (`src/core/tune.js`: `tuneLive` when
+dealing, `tune(mini)` after). **Reset to defaults** removes them (and the game's older tuning card's values,
+where it has one, shown on the same page). A "?" explainer can name a setting (`{k}` in its text), filled with
+the square's own value.
+
 ### Test play (admin)
 
-Next to each game's settings on the admin dashboard (every tuning card: the runners, Bullseye, Plinko, Risky
-Rolls, Roads, the attention games, Bowling, Sky Hop, Scoop Stack, Pinball, Odd One Out, Risk Wheels) a
-**Test play** button opens a new tab with that mini-game alone (`index.html?sandbox=<game>&cfg=…`), using the
-settings as they stand in the editor, saved or not: they ride in the address (base64url JSON) and are set in
+On each game's settings page a **Test play** button opens a new tab with that mini-game alone (`index.html?sandbox=<game>&cfg=…`), using the
+settings as they stand on the page (its settings and its tuning card's), saved or not: they ride in the address (base64url JSON) and are set in
 that tab only, never read from or written to the live config. The tab checks the signed-in account is the
 admin's first (anyone else is told it is for the admin only). Nothing there is saved (the saved match on that
 device is untouched) and no stats or device events go out. The game is played in the middle square, the
@@ -820,16 +831,28 @@ never counted).
 Per mini-game, counting only completed squares (those that ended claimed by X or O; a square still
 open when the match ended, by any route, and a board reset after a draw are left out, and the note
 under the table says how many): completed, average moves the winner made in it, the loser, and in
-total (the two together); X and O win rates. An **All mini-games** row on top combines every completed
+total (the two together); X and O win rates; then the same for Super Chaos in columns of its own (SC
+completed, average winner moves, average total moves: every Super Chaos square, against the computer
+and in friend rooms, is counted under `mini/chaos`, so the mode picker covers normal matches only).
+Squares of abandoned matches (resigned, lost on time, never finished) are not counted at all (from
+21 Oct 2026; before that, resigned matches' squares counted, and friend-room Super Chaos squares counted
+under Friend code). An **All mini-games** row on top combines every completed
 square. The stored counters keep claimed squares apart from draws and open ones, so the table is
 worked out from them for past matches too.
 "Moves" are the turns a side spent in that square (a Risky Rolls roll or a Hangman letter that earns another go
 is part of the same turn). Overall: logins and active players per day, week and month (UTC; a login is
 an account signing in or coming back to the game); new accounts; matches started and finished by mode;
-average match length in turns and minutes; abandon, resign and timeout rates; how often X, who moves
-first, wins.
+finished (played to a result) and abandoned (resigned, lost on time or never finished, each counted)
+per mode; average match length in turns and minutes over finished matches only (`modes/{mode}/done`,
+`doneTurns`, `doneMs`, `doneTimed`, from 21 Oct 2026); how often X, who moves first, wins.
 
-The dashboard is https://jaredmk.github.io/Tiger-tac-toe/admin.html: the **Find Match** on/off switch
+The dashboard is https://jaredmk.github.io/Tiger-tac-toe/admin.html. It opens on a menu of section tiles,
+each its own page with a back button (the address keeps the page: `#overview`, `#players`, `#playtest`,
+`#matches`, `#settings`, `#settings/<game>`, `#bots`, `#releases`, `#stats`): **Overview** (the headline
+numbers and the players and matches charts), **Players & Accounts** (Accounts, usernames to review, players
+over time), **Playtesters & Devices**, **Matches** (the match inspector), **Mini-game Settings** (below),
+**Bot Settings** (Find Match on/off, the bots, the empty-queue alert), **Releases** and **Stats** (Matches by
+mode, the mini-game table). What is on them: the **Find Match** on/off switch
 (see "Switching Find Match on and off"), the **Bots** and **Empty-queue alerts** controls (see
 "Matchmaking backfill and the empty-queue alert"), tables and charts, with the
 mini-game table sortable (by average winner moves to find games that are too fast or too slow), the

@@ -11,6 +11,7 @@ import { PLINKO } from '../games/plinko/rules.js';
 import { WHEEL_DEFAULTS } from '../games/wheels/meta.js';
 import { WHEELS, WHEEL_SEGS } from '../games/wheels/rules.js';
 import { rulesOf } from '../games/index.js';
+import { tuneSnap } from './tune.js';
 
 // Does p have a legal move in this mini-game? Only Hexapawn can leave a player stuck; every other game
 // always offers a move. A stuck player simply plays in another square.
@@ -76,9 +77,11 @@ export function upgradeMini(mini) {
 }
 export function anyMove(state, p) { return state.squares.some(s => !s.owner && canMove(s.mini, p)); }
 
+// A square keeps the settings it was dealt with (core/tune.js): only those that differ from the defaults.
+export function withTune(mini) { const s = mini && tuneSnap(mini.type); if (s) mini.tune = s; return mini; }
 export function newMini(type, rng) {
   const game = rulesOf(type);
-  if (game.create) return game.create(type, rng);
+  if (game.create) return withTune(game.create(type, rng));
   throw new Error('unknown mini-game: ' + type);
 }
 
@@ -95,7 +98,7 @@ export function applyMove(mini, p, m, rng) {
 // What a player can see of a mini-game. Hidden information is left out, not blanked.
 export function publicMini(mini) {
   const game = rulesOf(mini.type);
-  if (game.publicView) return game.publicView(mini);
+  if (game.publicView) { const v = game.publicView(mini); if (mini.tune && v && typeof v === 'object' && !v.tune) v.tune = mini.tune; return v; }   // (its settings: never secret)
   throw new Error('unknown mini-game: ' + mini.type);
 }
 export function randomLegalMove(mini, p, rng) {

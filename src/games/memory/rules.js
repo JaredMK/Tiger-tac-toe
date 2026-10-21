@@ -1,17 +1,21 @@
 // Memory: the rules (pure: no page, no clock; the server runs the same code).
 import { randInt, shuffle } from '../../core/random.js';
+import { tuneLive } from '../../core/tune.js';
 
 export const MEMORY = { shapes: ['circle', 'square', 'triangle', 'diamond'], colors: ['green', 'yellow', 'purple', 'orange'] };
-// 9 cards: one matching pair plus seven other, all-different shape/colour combinations.
-export function memoryDeck(rng) {
+// 9 cards: one matching pair plus seven other, all-different shape/colour combinations (pairs: TUNE's count
+// of matching pairs, the rest all different).
+export function memoryDeck(rng, pairs = 1) {
   const combos = [];
   for (const s of MEMORY.shapes) for (const c of MEMORY.colors) combos.push({ s, c });
-  const pick = shuffle(combos, rng).slice(0, 8);
-  const cards = [{ s: pick[0].s, c: pick[0].c }, { s: pick[0].s, c: pick[0].c }].concat(pick.slice(1));
+  const pick = shuffle(combos, rng).slice(0, 9 - pairs);
+  let cards = [];
+  for (let k = 0; k < pairs; k++) cards.push({ s: pick[k].s, c: pick[k].c }, { s: pick[k].s, c: pick[k].c });
+  cards = cards.concat(pick.slice(pairs));
   return shuffle(cards, rng);
 }
 export function create(type, rng) {
-  return { type, cards: memoryDeck(rng), flips: 0, seen: [], last: null };   // seen: cards shown so far
+  return { type, cards: memoryDeck(rng, tuneLive(type).pairs), flips: 0, seen: [], last: null };   // seen: cards shown so far
 }
 export function apply(mini, p, m, rng, idx) {
   if (!Array.isArray(m) || m.length !== 2) return { ok: false, reason: 'bad' };

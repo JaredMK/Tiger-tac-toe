@@ -12,5 +12,5 @@ export function matchStats(st) {
     squares.push(Object.assign({ t: sq.mini.type, end: 'open', w: null, X: sq.mv.X, O: sq.mv.O }, RUN_TYPES.includes(sq.mini.type) ? runLog(sq.mini) : {}));
   }
   const turns = squares.reduce((n, e) => n + e.X + e.O, 0);
-  return { squares, turns, winner: st.winner || null, reason: st.winReason || null };
+  return { squares, turns, winner: st.winner || null, reason: st.winReason || null, sc: !!st.sc };   // sc: a Super Chaos match (its squares counted apart)
 }

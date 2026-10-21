@@ -26,6 +26,7 @@ import { closeSeat, init as roomInit, joinCode, joinName, resumeOnline, setJoinC
 import { devAudio, devOpen, devPulse, init as trackingInit, takeTag } from './net/tracking.js';
 import { clockTimer, commit, setClockTimer, state } from './ui/app.js';
 import { fetchAttConfig } from './ui/attention.js';
+import { setTunes } from './core/tune.js';
 import { init as chaosInit } from './ui/chaos.js';
 import { tick } from './ui/clock.js';
 import { KEY } from './ui/config.js';
@@ -69,6 +70,7 @@ function boot() {
   fetchAttConfig('headcount', setHeadConfig); fetchAttConfig('flash', setFlashConfig); fetchAttConfig('snapshot', setSnapConfig);   // the attention games' difficulty, likewise
   fetchAttConfig('skyhop', setHopConfig); fetchAttConfig('scoop', setScoopConfig); fetchAttConfig('pinball', setPinConfig);   // and the finger games'
   fetchAttConfig('bowling', setBowlConfig);                       // Bowling's two taps' speeds
+  fetchAttConfig('tune', setTunes, true);                         // every mini-game's settings (Mini-game Settings: config/tune), likewise
   loadTrivia();                                               // the Trivia questions, for the match to come
   loadPhysics();                                              // Matter.js and physics.js, for Mini Golf, Pool and Bowling
   takeTag();                                                  // a playtester's link (?t=sam): before the address is tidied below

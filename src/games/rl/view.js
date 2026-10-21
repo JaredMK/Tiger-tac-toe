@@ -1,4 +1,5 @@
 // Roulette: the screen, the miniature, the move's words and sounds, and the inputs.
+import { tune } from '../../core/tune.js';
 import { RL, RLT, rlCovers, rlRed } from './rules.js';
 import { N, REDUCED, WAAPI, app, mv, state, zoomedType } from '../../ui/app.js';
 import { lateAt } from '../../ui/progress.js';
@@ -29,10 +30,10 @@ function rlTable(mini, a, o) {
   const prev = (mini.spins || []).filter(x => x != null).slice(-1)[0], prevN = prev == null ? null : typeof prev === 'number' ? prev : prev.n;
   const n = spin ? spin.n : l && !l.pending && l.n != null ? l.n : prevN;
   const hitBy = p => (spin ? (spin.shared ? !!spin.hit[p] && spin.bets[p] !== 'zero' : spin.hit && a.by === p && spin.bet !== 'zero') : false);
-  const hits = p => {
-    const h = Math.min(RL.goal, mini.hits[p]), fresh = hitBy(p);
-    const pips = Array.from({ length: RL.goal }, (_, k) => `<i ${lateAt(k < h ? 'on' : '', fresh && k === h - 1 ? tEnd : null, 'fillin')}></i>`).join('');
-    return `<div class="ctal ${p}${!o.view && turn === p ? ' now' : ''}"><b class="${p}">${N(p)}</b><span class="pips" aria-label="${mini.hits[p]} of ${RL.goal} hits">${pips}</span></div>`;
+  const goal = tune(mini).goal, hits = p => {
+    const h = Math.min(goal, mini.hits[p]), fresh = hitBy(p);
+    const pips = Array.from({ length: goal }, (_, k) => `<i ${lateAt(k < h ? 'on' : '', fresh && k === h - 1 ? tEnd : null, 'fillin')}></i>`).join('');
+    return `<div class="ctal ${p}${!o.view && turn === p ? ' now' : ''}"><b class="${p}">${N(p)}</b><span class="pips" aria-label="${mini.hits[p]} of ${goal} hits">${pips}</span></div>`;
   };
   const W = p => `<b class="${p}">${N(p)}</b>`, num = k => `<span class="rlnum ${k === 0 ? 'g' : rlRed(k) ? 'r' : 'b'}">${k}</span>`;
   const one = (bet, hit) => (hit ? (bet === 'zero' ? 'green 0!' : 'hit!') : 'miss');
@@ -101,7 +102,7 @@ export function rlMarker() {
 export function miniature(mini, final) {   // the hits so far, and the recent spins: every one, a hit in the spinner's colour, a miss plain
   const spins = (mini.spins || []).map(x => (typeof x === 'number' ? { n: x, hit: false } : x)).filter(x => x && Number.isInteger(x.n));
   const chip = x => `<i class="sp ${x.n === 0 ? 'g' : rlRed(x.n) ? 'r' : 'b'}${x.hit ? ' hit ' + (x.by || '') : ''}" title="${x.n}${x.hit ? ': a hit' : ''}">${x.n}</i>`;
-  return `<div class="tpip">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${Array.from({ length: RL.goal }, (_, k) => `<i class="${k < mini.hits[p] ? 'on' : ''}"></i>`).join('')}</div>`).join('')}${spins.length ? `<div class="tspins" aria-label="Recent spins: ${spins.map(x => x.n + (x.hit ? ' (hit)' : '')).join(', ')}">${spins.map(chip).join('')}</div>` : ''}</div>`;
+  return `<div class="tpip">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${Array.from({ length: tune(mini).goal }, (_, k) => `<i class="${k < mini.hits[p] ? 'on' : ''}"></i>`).join('')}</div>`).join('')}${spins.length ? `<div class="tspins" aria-label="Recent spins: ${spins.map(x => x.n + (x.hit ? ' (hit)' : '')).join(', ')}">${spins.map(chip).join('')}</div>` : ''}</div>`;
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   g = rlTable(mini, a, { view, locked, turn, zoom: state.zoom, moved: !!(f || d) }); return g;

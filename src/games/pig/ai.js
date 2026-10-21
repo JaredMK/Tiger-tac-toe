@@ -1,4 +1,5 @@
 // Risky Rolls: the computer's play.
+import { tune } from '../../core/tune.js';
 import { other } from '../../core/util.js';
 import { pigGoal, pigMaxRolls, pigSides } from './rules.js';
 
@@ -15,7 +16,7 @@ export function best(pm, me, rng, style, ctx) {
   if (bank + t.pot >= pigGoal(pm)) return { move: 'bank', q: 1 };
   if (t.rolls.length >= pigMaxRolls(pm)) return { move: 'bank', q: 0 };
   const gap = pm.bank[other(me)] - bank;                      // positive when behind
-  const target = Math.max(4, Math.min(base + 11, Math.max(base - 3, Math.min(base + 5, base + Math.round(gap / (sides === 8 ? 6 : 4)))) + ((style && style.rollRisk) || 0)));   // riskier when behind, safer when ahead (a bolder or warier style shifts it)
+  const target = Math.max(4, Math.min(base + 11, Math.max(base - 3, Math.min(base + 5, base + Math.round(gap / (sides === 8 ? 6 : 4)))) + ((style && style.rollRisk) || 0) + tune(pm).risk));   // riskier when behind, safer when ahead (a bolder or warier style, or the admin's setting, shifts it)
   if (t.pot >= target || t.rolls.length / sides > 0.5) return { move: 'bank', q: 0 };
   return { move: 'roll', q: 0 };
 }

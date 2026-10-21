@@ -1,5 +1,6 @@
 // Blackjack: the screen, the miniature, the move's words and sounds, and the inputs.
-import { BJ, bjNatural, bjPlan, bjTotal } from './rules.js';
+import { tune } from '../../core/tune.js';
+import { BJT, bjNatural, bjPlan, bjTotal } from './rules.js';
 import { N, mv } from '../../ui/app.js';
 import { toon } from '../../ui/art.js';
 import { pcard } from '../../ui/cards.js';
@@ -29,11 +30,13 @@ function bjTable(mini, a, o) {
   const dealerSet = H => {
     const x = H.hand, cards = x.dealer.map((c, k) => pcard(c, { slide: at(H.D, k).slideAt, flip: at(H.D, k).flipAt })).join('') + (x.hole ? pcard(null, { down: true, slide: at(H.D, 1).slideAt }) : '');
     const txt = x.hole ? `shows ${bjTotal([x.dealer[0]]).total}` : bjTotalText(x.dealer);
-    return layer(H, `<span class="bjlab">Dealer <b ${lateAt('bjtot', anim && !x.hole ? H.end : anim ? H.pEnd : null)}>${txt}</b></span><div class="bjcards">${cards}</div>`);
+    const shownAt = anim && x.hole && H.D && H.D[0] && H.D[0].flipAt != null ? H.D[0].flipAt + BJT.flip : anim && x.hole ? H.pEnd : null;   // (the up card's value as soon as it has turned)
+    return layer(H, `<span class="bjlab">Dealer <b ${lateAt('bjtot', anim && !x.hole ? H.end : shownAt)}>${txt}</b></span><div class="bjcards">${cards}</div>`);
   };
   const playerSet = H => {
     const x = H.hand, cards = x.cards.map((c, k) => pcard(c, { slide: at(H.P, k).slideAt, flip: at(H.P, k).flipAt })).join('');
-    return layer(H, `<span class="bjlab"><b class="${by}">${N(by)}</b> <b ${lateAt('bjtot', anim ? H.pEnd : null)}>${bjTotalText(x.cards)}</b></span><div class="bjcards">${cards}</div>`);
+    const lastP = H.P && H.P.length ? H.P[H.P.length - 1] : null, totAt = anim ? (lastP && lastP.flipAt != null ? lastP.flipAt + BJT.flip : H.pEnd) : null;   // the total the moment the last card is face up
+    return layer(H, `<span class="bjlab"><b class="${by}">${N(by)}</b> <b ${lateAt('bjtot', totAt)}>${bjTotalText(x.cards)}</b></span><div class="bjcards">${cards}</div>`);
   };
   const bannerSet = H => {
     const x = H.hand;
@@ -43,10 +46,10 @@ function bjTable(mini, a, o) {
   const ghost = `<div class="bjset"><span class="bjlab">&nbsp;</span><div class="bjcards">${pcard(null, { down: true, cls: 'ghost' })}</div></div>`;
   // the tallies: a pip fills when its hand is won, as its result shows
   const won = b ? (b.next ? b.next : b) : null, wonAt = b ? (b.next ? plan.nEnd : plan.end) : null;
-  const tally = p => {
-    const w = Math.min(BJ.goal, mini.wins[p]), fresh = won && won.res && won.gain && a.by === p ? won.gain : 0;
-    const pips = Array.from({ length: BJ.goal }, (_, k) => `<i ${lateAt(k < w ? 'on' : '', k < w && k >= w - fresh ? wonAt : null, 'fillin')}></i>`).join('');
-    return `<div class="ctal ${p}${!o.view && turn === p ? ' now' : ''}"><b class="${p}">${N(p)}</b><span class="pips" aria-label="${mini.wins[p]} of ${BJ.goal} wins">${pips}</span></div>`;
+  const goal = tune(mini).goal, tally = p => {
+    const w = Math.min(goal, mini.wins[p]), fresh = won && won.res && won.gain && a.by === p ? won.gain : 0;
+    const pips = Array.from({ length: goal }, (_, k) => `<i ${lateAt(k < w ? 'on' : '', k < w && k >= w - fresh ? wonAt : null, 'fillin')}></i>`).join('');
+    return `<div class="ctal ${p}${!o.view && turn === p ? ' now' : ''}"><b class="${p}">${N(p)}</b><span class="pips" aria-label="${mini.wins[p]} of ${goal} wins">${pips}</span></div>`;
   };
   const mine = !!h && h.by === turn;
   const btns = o.view ? '' : !h
@@ -59,7 +62,7 @@ function bjTable(mini, a, o) {
     ${btns}</div>`;
 }
 export function miniature(mini, final) {
-  return `<div class="tpip">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${Array.from({ length: BJ.goal }, (_, k) => `<i class="${k < mini.wins[p] ? 'on' : ''}"></i>`).join('')}</div>`).join('')}</div>`;
+  return `<div class="tpip">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${Array.from({ length: tune(mini).goal }, (_, k) => `<i class="${k < mini.wins[p] ? 'on' : ''}"></i>`).join('')}</div>`).join('')}</div>`;
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   g = bjTable(mini, a, { view, locked, turn }); return g;

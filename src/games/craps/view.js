@@ -1,4 +1,5 @@
 // Craps: the screen, the miniature, the move's words and sounds, and the inputs.
+import { tune } from '../../core/tune.js';
 import { CRAPS, crapsTimes } from './rules.js';
 import { N, REDUCED, mv, state } from '../../ui/app.js';
 import { dieFace } from '../../ui/art.js';
@@ -21,7 +22,7 @@ function crapsTable(mini, a, o) {
   const c = a && a.craps && a.craps.rolls && !a.craps.roll && a.craps.kind !== 'stop' ? a.craps : null, l = mini.last, turn = o.turn;
   const shown = c || (l && l.rolls ? l : null);
   const tim = c ? crapsTimes(c.rolls, c.point, c.was) : null, tEnd = c && !REDUCED ? tim.end : 0;
-  const tal = p => arcTally(p, o, pips(p, Math.min(CRAPS.goal, mini.wins[p]), CRAPS.goal, !!(c && c.result === 'win' && a.by === p), tEnd));
+  const tal = p => arcTally(p, o, pips(p, Math.min(tune(mini).goal, mini.wins[p]), tune(mini).goal, !!(c && c.result === 'win' && a.by === p), tEnd));
   // the puck: OFF to begin with; on the point once the come-out sets one (on from the start for a point from before)
   const slot = n => (n == null ? 0 : CRAPS_POINTS.indexOf(n) + 1), pct = k => ((k + 0.5) / 7 * 100).toFixed(2);
   const pk = shown && shown.point != null ? slot(shown.point) : 0;
@@ -52,7 +53,7 @@ function crapsTable(mini, a, o) {
   return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="craps">${strip}<div class="cfelt">${dice || '<p class="arcnote"></p>'}</div>${log}${res}</div>${btn}</div>`;
 }
 export function miniature(mini, final) {
-  const d = mini.last ? mini.last.roll || (mini.last.rolls || [])[(mini.last.rolls || []).length - 1] : null; return `<div class="tpip">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${Array.from({ length: CRAPS.goal }, (_, k) => `<i class="${k < mini.wins[p] ? 'on' : ''}"></i>`).join('')}</div>`).join('')}${d ? `<div class="tcdice ${mini.last.result === 'win' ? 'w' : mini.last.result === 'lose' ? 'l' : ''}"><span>${dieFace(d[0])}</span><span>${dieFace(d[1])}</span></div>` : ''}</div>`;
+  const d = mini.last ? mini.last.roll || (mini.last.rolls || [])[(mini.last.rolls || []).length - 1] : null; return `<div class="tpip">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${Array.from({ length: tune(mini).goal }, (_, k) => `<i class="${k < mini.wins[p] ? 'on' : ''}"></i>`).join('')}</div>`).join('')}${d ? `<div class="tcdice ${mini.last.result === 'win' ? 'w' : mini.last.result === 'lose' ? 'l' : ''}"><span>${dieFace(d[0])}</span><span>${dieFace(d[1])}</span></div>` : ''}</div>`;
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   g = crapsTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d }); return g;

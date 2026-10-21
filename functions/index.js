@@ -310,7 +310,8 @@ async function releasesNow() { return (await db.ref('releases').get()).val() || 
 let runCfgAt = 0;
 async function runConfigNow() {
   if (now() - runCfgAt < 20000) return;
-  const [run, bulls, wheels, plinko, odd, head, flash, snap, hop, scoop, pin, pig, roads] = await Promise.all(['run', 'bulls', 'wheels', 'plinko', 'oddone', 'headcount', 'flash', 'snapshot', 'skyhop', 'scoop', 'pinball', 'pig', 'roads'].map(k => db.ref('config/' + k).get()));
+  const [run, bulls, wheels, plinko, odd, head, flash, snap, hop, scoop, pin, pig, roads, tune] = await Promise.all(['run', 'bulls', 'wheels', 'plinko', 'oddone', 'headcount', 'flash', 'snapshot', 'skyhop', 'scoop', 'pinball', 'pig', 'roads', 'tune'].map(k => db.ref('config/' + k).get()));
+  E.setTunes(tune.val() || null);                                       // every mini-game's settings (Mini-game Settings: config/tune/<type>)
   E.setRunConfig(run.val() || null);
   E.setBullsConfig(bulls.val() || null);
   E.setWheelsConfig(wheels.val() || null);

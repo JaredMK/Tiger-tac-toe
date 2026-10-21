@@ -1,5 +1,5 @@
 // Flood: the screen, the miniature, the move's words and sounds, and the inputs.
-import { FLOOD, FLOOD_MS } from './rules.js';
+import { FLOOD, FLOOD_MS, floodCfg } from './rules.js';
 import { N, mv, state } from '../../ui/app.js';
 import { arcTally, lateAt, sbar } from '../../ui/progress.js';
 
@@ -11,9 +11,10 @@ const FLOOD_NAMES = ['blue', 'teal', 'purple', 'green', 'pink'];
 function floodTable(mini, a, o) {
   const fl = a && a.flood ? a.flood : null, turn = o.turn, blob = mini.colors[0];
   const tal = p => arcTally(p, o, '');
+  const { goal, colors: nc } = floodCfg(mini);
   // the bar chart: each player's cells against the target
-  const fbar = p => { const n = Math.min(FLOOD.goal, mini.score[p]), n0 = fl && a.by === p ? Math.min(FLOOD.goal, mini.score[p] - fl.gain) : n;
-    return `<div class="fbr ${p}"><b class="${p}">${p}</b>${sbar([{ cls: p, n, n0, label: p }, { cls: 'E', n: FLOOD.goal - n, n0: FLOOD.goal - n0, label: 'To go' }], FLOOD.goal, fl && a.by === p ? FLOOD_MS.base : null, true)}<small>${fl && a.by === p && n !== n0 ? `<span class="sbn"><span class="tu" style="--u:${FLOOD_MS.base}ms">${n0}</span><span class="tf" style="--f:${FLOOD_MS.base}ms">${n}</span></span>` : n}<span>/${FLOOD.goal}</span></small></div>`; };
+  const fbar = p => { const n = Math.min(goal, mini.score[p]), n0 = fl && a.by === p ? Math.min(goal, mini.score[p] - fl.gain) : n;
+    return `<div class="fbr ${p}"><b class="${p}">${p}</b>${sbar([{ cls: p, n, n0, label: p }, { cls: 'E', n: goal - n, n0: goal - n0, label: 'To go' }], goal, fl && a.by === p ? FLOOD_MS.base : null, true)}<small>${fl && a.by === p && n !== n0 ? `<span class="sbn"><span class="tu" style="--u:${FLOOD_MS.base}ms">${n0}</span><span class="tf" style="--f:${FLOOD_MS.base}ms">${n}</span></span>` : n}<span>/${goal}</span></small></div>`; };
   const waveOf = {};
   if (fl) fl.waves.forEach((w, k) => w.forEach(i => { waveOf[i] = k; }));
   const cells = mini.colors.map((c, i) => {
@@ -26,7 +27,7 @@ function floodTable(mini, a, o) {
     else if (fl && own != null) { cls += ' recolor'; st += `;--c0:${FLOOD_COL[fl.from == null ? c : fl.from]};--c1:${FLOOD_COL[c]};--t:0ms`; }
     return `<i class="${cls}" style="${st}">${own === 'X' || own === 'O' ? `<b>${own}</b>` : ''}</i>`;
   }).join('');
-  const btns = o.view ? '' : `<div class="fbtns">${FLOOD_COL.map((col, c) => `<button class="fsw" style="background:${col}" data-act="move" ${mv(c)} aria-label="${FLOOD_NAMES[c]}"${c === blob || o.locked ? ' disabled' : ''}>${c === blob ? '<i>blob</i>' : ''}</button>`).join('')}</div>`;
+  const btns = o.view ? '' : `<div class="fbtns">${FLOOD_COL.slice(0, nc).map((col, c) => `<button class="fsw" style="background:${col}" data-act="move" ${mv(c)} aria-label="${FLOOD_NAMES[c]}"${c === blob || o.locked ? ' disabled' : ''}>${c === blob ? '<i>blob</i>' : ''}</button>`).join('')}</div>`;
   const res = fl ? `<p ${lateAt('arcres ' + (fl.gain ? 'ok' : 'no'), FLOOD_MS.base)} role="status">${fl.gain ? `+${fl.gain}` : 'Nothing grabbed'}</p>`
     : `<p class="arcnote">${o.view ? '' : o.locked ? `Waiting for <b class="${turn}">${N(turn)}</b>…` : ''}</p>`;
   return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="flood"><div class="flgrid">${cells}</div><div class="fbars">${fbar('X')}${fbar('O')}</div>${res}</div>${btns}</div>`;

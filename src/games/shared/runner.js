@@ -1,6 +1,7 @@
 // Dash, Lane Rush, Flap and Chopper: what the runners share (courses, the run itself, the checks, the
 // computer's runs).
 import { courseSeed, gaussOf, makeRng, needRng, randInt } from '../../core/random.js';
+import { tuneSnap } from '../../core/tune.js';
 import { r2 } from '../../core/util.js';
 import { CHOP, chopPilot } from '../chopper/rules.js';
 import { DASH, DASH_OBS, dashPilot } from '../dash/rules.js';
@@ -36,6 +37,10 @@ export const RUN_EXTRA = { chopper: { cave0: [3, 9.5], cave1: [2.5, 9.5] } };   
 export const RUN = { grace: 2, countdown: 3, aiRuns: 4.5, aiSlow: 0.3, aiSpread: 0.45, tolerance: 0.85, slackMs: 200, hit: { dash: [1.5, 2.2], lane: [3.6, 3.6], flap: [1.0, 1.8] }, crashBin: 50, maxCrashes: 40, maxSecs: 600, logMax: 60000 };
 export const RUNT = { bar: 900, hold: 700 };                          // the result: the bar fills, then holds
 export const RUN_CFG = { dash: null, lane: null, flap: null, chopper: null };
+// The game's Mini-game Settings (its meta.js TUNE; core/tune.js) go into the square's cfg beside the
+// difficulty, only those changed from the defaults: grace (s), aiRuns, aiSpread (%), and a game's own
+// (Dash: jump, %; Lane Rush: shift, ms; Flap: gaps, %; Chopper: up and down). runVal: one, or its default.
+export const runVal = (cfg, k, d) => (cfg && cfg[k] != null ? cfg[k] : d);
 // A config checked value by value: anything off, or missing, is the default.
 export function runNorm(type, raw) {
   const d = RUN_DEFAULTS[type], out = {};
@@ -62,7 +67,7 @@ export const runSpeed = (cfg, d) => cfg.v0 + cfg.ramp * Math.max(0, d) / 100;   
 export function runSecs(cfg, a, b) { if (b <= a) return 0; return cfg.ramp > 0 ? (100 / cfg.ramp) * Math.log(runSpeed(cfg, b) / runSpeed(cfg, a)) : (b - a) / cfg.v0; }
 // Where a run from a is after t seconds.
 export function runAfter(cfg, a, t) { if (t <= 0) return a; return cfg.ramp > 0 ? (runSpeed(cfg, a) * Math.exp(cfg.ramp * t / 100) - cfg.v0) * 100 / cfg.ramp : a + cfg.v0 * t; }
-export const runGrace = (cfg, a) => runAfter(cfg, a, RUN.grace) - a;                               // the obstacle-free stretch at the start of a run from a
+export const runGrace = (cfg, a) => runAfter(cfg, a, runVal(cfg, 'grace', RUN.grace)) - a;                               // the obstacle-free stretch at the start of a run from a
 export function weightedPick(mix, rng) {
   const ks = Object.keys(mix), tot = ks.reduce((s, k) => s + mix[k], 0);
   let r = rng() * tot;
@@ -79,7 +84,7 @@ export function runCourse(mini, p) {
   while (d < cfg.target - 4) {
     const k = weightedPick(cfg.mix, rng);
     if (mini.type === 'flap') {                                       // a post: the gap's middle within reach of the last one
-      const gh = FLAP.gaps[k], lo = FLAP.margin + gh / 2, hi = FLAP.h - FLAP.margin - gh / 2;
+      const gh = cfg.gaps != null ? r2(FLAP.gaps[k] * cfg.gaps / 100) : FLAP.gaps[k], lo = FLAP.margin + gh / 2, hi = FLAP.h - FLAP.margin - gh / 2;
       gy = Math.max(lo, Math.min(hi, gy + (rng() * 2 - 1) * FLAP.shift));
       out.push({ at: r2(d), k, gy: r2(gy), gh });
     } else if (mini.type === 'chopper') {                             // a block, or none here; room to pass on one side at least
@@ -164,7 +169,7 @@ export function runAuto(mini, p, rng) {
   return { dist, ms: Math.round(runSecs(cfg, from, dist) * 1000) + 60 };
 }
 export const normCdf = x => 0.5 * (1 + Math.sign(x) * Math.sqrt(1 - Math.exp(-2 * x * x / Math.PI)));
-export function runAiMean(cfg, from) { return (cfg.target / RUN.aiRuns) * Math.pow(cfg.v0 / runSpeed(cfg, from), RUN.aiSlow); }
+export function runAiMean(cfg, from) { return (cfg.target / runVal(cfg, 'aiRuns', RUN.aiRuns)) * Math.pow(cfg.v0 / runSpeed(cfg, from), RUN.aiSlow); }
 // The computer's run: a length drawn so that it finishes in about aiRuns runs (log-normal about
 // runAiMean, shorter the faster it is going), then actually run, with its inputs logged like anyone's:
 // an autopilot (each game's own, runPilot) drives the course well until the first obstacle past that
@@ -172,7 +177,7 @@ export function runAiMean(cfg, from) { return (cfg.target / RUN.aiRuns) * Math.p
 // none. The move is the run's result (its end wherever the crash was, so the check plays it through and
 // agrees), and q the chance it finishes.
 export function runAi(mini, p, rng) {
-  const cfg = mini.cfg, from = mini.dist[p], g = runGrace(cfg, from), mean = runAiMean(cfg, from), s = RUN.aiSpread;
+  const cfg = mini.cfg, from = mini.dist[p], g = runGrace(cfg, from), mean = runAiMean(cfg, from), s = cfg.aiSpread != null ? cfg.aiSpread / 100 : RUN.aiSpread;
   const len = Math.max(6, mean * Math.exp(s * gaussOf(rng) - s * s / 2));
   const need = cfg.target - from - g;                            // the chance this run finishes
   const q = need <= 0 ? 1 : 1 - normCdf((Math.log(need / mean) + s * s / 2) / s);
@@ -215,7 +220,7 @@ export function runJump(sim) {                                          // Dash:
   if (sim.type === 'flap') { sim.vy = FLAP.vy; sim.flown = true; runNote(sim, 'j'); return true; }
   if (sim.type === 'chopper') { sim.held = true; sim.flown = true; runNote(sim, 'j'); return true; }
   if (sim.type !== 'dash' || sim.air) return false;
-  sim.air = true; sim.vy = DASH.vy; sim.held = true; sim.holdT = 0; runNote(sim, 'j'); return true;
+  sim.air = true; sim.vy = sim.cfg.jump != null ? DASH.vy * sim.cfg.jump / 100 : DASH.vy; sim.held = true; sim.holdT = 0; runNote(sim, 'j'); return true;
 }
 export function runRelease(sim) {                                       // let go: recorded when it lets go of something (a press held; not after the run has ended)
   const took = sim.held && !sim.crash && !sim.done;
@@ -332,7 +337,7 @@ export function runTick(sim) {
       sim.holdT += h; sim.vy -= g * h; sim.y += sim.vy * h;
       if (sim.y <= 0) { sim.y = 0; sim.vy = 0; sim.air = false; sim.held = false; }
     }
-    if (sim.type === 'lane' && sim.laneT < 1) sim.laneT = Math.min(1, sim.laneT + h / LANE.switchSecs);
+    if (sim.type === 'lane' && sim.laneT < 1) sim.laneT = Math.min(1, sim.laneT + h / (sim.cfg.shift != null ? sim.cfg.shift / 1000 : LANE.switchSecs));
     const past = sim.d >= sim.from + sim.grace;
     if (sim.type === 'flap') {
       const hh = FLAP.box.h / 2;
@@ -345,7 +350,7 @@ export function runTick(sim) {
     }
     if (sim.type === 'chopper') {
       const hh = CHOP.box.h / 2;
-      if (sim.flown || past) { sim.vy = Math.max(-CHOP.vmax, Math.min(CHOP.vmax, sim.vy + (sim.held ? CHOP.up : -CHOP.down) * h)); sim.y += sim.vy * h; }
+      if (sim.flown || past) { sim.vy = Math.max(-CHOP.vmax, Math.min(CHOP.vmax, sim.vy + (sim.held ? runVal(sim.cfg, 'up', CHOP.up) : -runVal(sim.cfg, 'down', CHOP.down)) * h)); sim.y += sim.vy * h; }
       if (sim.y > CHOP.h - hh) { sim.y = CHOP.h - hh; sim.vy = Math.min(0, sim.vy); }
       if (sim.y < hh) { sim.y = hh; sim.vy = Math.max(0, sim.vy); }
     }
@@ -359,7 +364,7 @@ export function runTick(sim) {
 // inputs (the log) with the steps it took, for the check and the replays.
 export const runResult = (sim, out) => ({ dist: r2(Math.min(sim.cfg.target, sim.d)), ms: Math.round(sim.t * 1000), out: !!out && !sim.done, log: runLogOf(sim.rec || []), steps: sim.n });
 export function runnerCreate(type, rng) {
-  return { type, cfg: runConfig(type), seed: courseSeed(rng), dist: { X: 0, O: 0 }, runs: { X: 0, O: 0 }, crashes: { X: [], O: [] }, last: null };   // cfg: the difficulty this square was dealt with; seed: the course, one for both (the same on each side)
+  return { type, cfg: Object.assign(runConfig(type), tuneSnap(type)), seed: courseSeed(rng), dist: { X: 0, O: 0 }, runs: { X: 0, O: 0 }, crashes: { X: [], O: [] }, last: null };   // cfg: the difficulty (and the changed settings) this square was dealt with; seed: the course, one for both (the same on each side)
 }
 export function runnerApply(mini, p, m, rng, idx) {   // a run: its end and its time, checked against the course
   const mv = m === 'auto' ? runAuto(mini, p, needRng(rng)) : m;

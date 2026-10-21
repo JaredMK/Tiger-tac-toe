@@ -181,3 +181,21 @@ test('bs: an old 3x3 game is moved into the top-left of the 4x4 grid as a Patrol
   L.upgradeMini(pub);
   assert.equal(pub.len, 1); assert.equal(pub.revealed.length, 16); assert.ok(!('ship' in pub));
 });
+
+test('bs: the admin settings deal a 5x5 sea with a long ship (and a 4x4 Super Chaos sea); the computer plays them', () => {
+  E.setTune('bs', { n: 5, lenMin: 4, lenMax: 4, scN: 4, scLen: 2, miss: 50 });
+  try {
+    const m = L.newMini('bs', lcg(3));
+    assert.equal(m.n, 5); assert.equal(m.len, 4); assert.equal(m.revealed.length, 25);
+    assert.deepEqual(m.tune, { n: 5, lenMin: 4, scN: 4, scLen: 2, miss: 50 });
+    for (let k = 0; k < 6; k++) {
+      const pm = L.publicMini(m), mv = L.localBest(pm, 'X', lcg(k)).move;
+      assert.ok(mv >= 0 && mv < 25 && !m.revealed[mv]);
+      assert.ok(L.applyMove(m, 'X', mv).ok);
+    }
+    const sc = E.scSquareMini({}, {}, 'bs', lcg(5));
+    assert.equal(sc.n, 4); assert.equal(sc.len, 2); assert.equal(sc.revealed.length, 16);
+  } finally { E.setTune('bs', null); }
+  const d = L.newMini('bs', lcg(3));
+  assert.ok(!('n' in d) && !('tune' in d)); assert.equal(d.revealed.length, 16);
+});

@@ -1,8 +1,9 @@
 // Craps: the rules (pure: no page, no clock; the server runs the same code).
 import { needRng, randInt } from '../../core/random.js';
+import { tune } from '../../core/tune.js';
 
 // ---------- Craps, Takeover and Flood ----------
-// Craps: each player has their own count of rounds won; first to 3 takes the square. A move is one tap of
+// Craps: each player has their own count of rounds won; first to 3 (the admin's, tune(mini).goal) takes the square. A move is one tap of
 // Roll: the dice keep rolling until the round is won or lost, all rolled where the move is made (the server
 // online: no roll is known before it lands). The come-out roll wins on 7 or 11 and loses on 2, 3 or 12
 // (craps); anything else is the point, and then the point wins and a 7 loses. A lost round takes nothing
@@ -46,7 +47,7 @@ export function apply(mini, p, m, rng, idx) {   // Roll: the round, rolled out
   mini.rounds[p] += 1; if (r.result === 'win') mini.wins[p] += 1;
   mini.last = { by: p, kind: 'round', rolls: r.rolls.map(d => d.slice()), point: r.point, was, result: r.result };
   mini.point = null; mini.live = null; mini.rolls = [];
-  if (mini.wins[p] >= CRAPS.goal) return { ok: true, outcome: 'win', note: 'won' };
+  if (mini.wins[p] >= tune(mini).goal) return { ok: true, outcome: 'win', note: 'won' };
   return { ok: true, outcome: 'continue', note: r.result === 'win' ? 'won' : 'lost' };
 }
 export function publicView(mini) {

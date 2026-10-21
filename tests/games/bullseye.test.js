@@ -120,3 +120,15 @@ test('darts: someone else\'s throw replays its aim, each line stopping exactly w
   E.playMove(st, 4, { x: 0.3, y: 0.7 }, E.makeRng('dc'));
   assert.equal(E.playMs(st.flash), E.bullsAim(st.flash.bull).fly + E.BULLT.fly + E.BULLT.hold + (st.flash.kind === 'claim' ? 600 : 0));
 });
+
+test('bullseye: the admin\'s Mini-game Settings deal a square that plays by them (points to win, bullseye points, the computer\'s rates)', () => {
+  E.setTune('bullseye', { goal: 3, bullPts: 5, aiBull: 50, aiBoard: 0 });
+  const m = E.newMini('bullseye', lcg(3));
+  assert.deepEqual(m.tune, { goal: 3, bullPts: 5, aiBull: 50, aiBoard: 0 });
+  E.setTune('bullseye', null);
+  const pos = m.pos.slice(), res = E.applyMove(m, 'X', { x: pos[0] / E.BULLS.w, y: pos[1] / E.BULLS.h }, lcg(4));
+  assert.deepEqual([m.pts.X, res.outcome, res.note], [5, 'win', 'bull'], 'a bullseye scores 5, and 3 wins (the dealt values, after the settings changed back)');
+  const rng = lcg(9); let hit = 0, board = 0;
+  for (let k = 0; k < 400; k++) { const g = E.newMini('bullseye', rng); g.tune = { aiBull: 50, aiBoard: 0 }; const r = E.localBest(E.publicMini(g), 'X', rng), s = E.bullsScore(g.cfg, g.pos, r.move.x, r.move.y).pts; if (s === 3) hit++; else if (s) board++; }
+  assert.ok(hit > 150 && hit < 250 && board === 0, `the computer at its set rates (${hit} bullseyes, ${board} board)`);
+});

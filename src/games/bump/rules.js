@@ -1,13 +1,15 @@
 // Bump: the rules (pure: no page, no clock; the server runs the same code).
 import { needRng, randInt } from '../../core/random.js';
 import { PLAY } from '../../core/timer.js';
+import { tuneLive } from '../../core/tune.js';
 import { other } from '../../core/util.js';
 
 // Bump: 9 spaces between Home and the Finish (10); a spin moves 1, 2 or 3.
 export const BUMP = { n: 9, max: 3 };
 export const BUMP_KNOCK = { lead: 450, hold: 900 };   // Super Chaos's round end: a moment on both pieces where they landed, the knock, then held
 export function create(type, rng) {
-  return { type, pos: { X: 0, O: 0 }, last: null };   // 0 is Home, 10 the Finish
+  const s = tuneLive(type).start;                                 // (the admin's setting: both pieces' first space)
+  return { type, pos: { X: s, O: s }, last: null };   // 0 is Home, 10 the Finish
 }
 export function apply(mini, p, m, rng, idx) {
   // One spin of 1, 2 or 3: the piece hops that far. Landing exactly on the other piece sends it

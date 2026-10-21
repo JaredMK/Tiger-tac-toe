@@ -102,3 +102,15 @@ test('candy: X can spin on consecutive turns and win before O ever spins (lopsid
   assert.equal(st.squares[0].owner, 'X');
   assert.equal(st.squares[0].mini.pos.O, -1);
 });
+
+test('candy: the admin setting deals the track with its gap (4: every four spaces differ)', () => {
+  E.setTune('candy', { gap: 4 });
+  try {
+    for (let k = 0; k < 20; k++) {
+      const m = L.newMini('candy', L.makeRng('g' + k));
+      assert.deepEqual(m.tune, { gap: 4 });
+      for (let i = 3; i < m.track.length; i++) assert.equal(new Set(m.track.slice(i - 3, i + 1)).size, 4);
+      assert.ok(L.applyMove(m, 'X', 1, L.makeRng('s' + k)).ok);
+    }
+  } finally { E.setTune('candy', null); }
+});

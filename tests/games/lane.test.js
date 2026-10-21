@@ -69,3 +69,16 @@ test('lane rush: the computer\'s driver gets through every course when it has no
   }
   assert.ok(at > later * 10, `almost always the row itself (${at} there, ${later} later)`);
 });
+
+test('lane: the Mini-game Settings: a square is dealt with them (in its cfg) and plays by them; the computer\'s runs pass the check', () => {
+  E.setRunConfig(null); E.setTune('lane', { grace: 3, shift: 300, aiRuns: 3, aiSpread: 20 });
+  const m = mini('lane', 'tuned');
+  E.setTune('lane', null);
+  assert.equal(m.cfg.grace, 3); assert.equal(m.cfg.aiRuns, 3); assert.equal(m.cfg.aiSpread, 20);
+  assert.ok(Math.abs(E.runGrace(m.cfg, 0) - E.runAfter(m.cfg, 0, 3)) < 1e-9, 'a three-second clear start');
+  assert.ok(E.runNeeds(m.cfg, 0) < E.runNeeds(mini('lane', 'tuned').cfg, 0), 'the computer means to finish in fewer runs');
+  const sim = E.runStart(m, 'X'); E.runLane(sim, 1); let k = 0; while (sim.laneT < 1) { E.runTick(sim); k++; } assert.ok(Math.abs(k * E.LANE.step - 0.3) < 0.01, `the lane change takes 0.3 s (${k} steps)`);
+  const rng = E.makeRng('tuned-ai');
+  for (let k = 0; k < 3 && m.dist.O < m.cfg.target; k++) { const r = E.applyMove(m, 'O', E.runAi(E.publicMini(m), 'O', rng).move, rng); assert.equal(r.ok, true, r.reason); }
+  assert.deepEqual(Object.keys(mini('lane', 'plain').cfg).sort(), Object.keys(E.runConfig('lane')).sort(), 'back to the defaults: nothing added');
+});

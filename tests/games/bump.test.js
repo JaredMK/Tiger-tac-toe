@@ -61,3 +61,15 @@ test('bump: a spin of 1, 2 or 3 hops forward; landing on the other piece sends i
   assert.equal(L.localBest({ type: 'bump', pos: { X: 0, O: 0 } }, 'X', cpuRng()).q, 0);
   assert.equal(L.randomLegalMove(mini('bump'), 'X'), 'spin');
 });
+
+test('bump: the admin setting starts both pieces further up the track (in Super Chaos too)', () => {
+  E.setTune('bump', { start: 3 });
+  try {
+    const m = L.newMini('bump', lcg(1));
+    assert.deepEqual(m.pos, { X: 3, O: 3 }); assert.deepEqual(m.tune, { start: 3 });
+    assert.equal(L.applyMove(m, 'X', 'spin', seq(pick(1, 3))).ok, true); assert.equal(m.pos.X, 5);
+    assert.equal(L.applyMove(m, 'O', 'spin', seq(pick(1, 3))).note, 'bump'); assert.equal(m.pos.X, 0);
+    assert.deepEqual(E.scSquareMini({}, {}, 'bump', lcg(2)).pos, { X: 3, O: 3 });
+  } finally { E.setTune('bump', null); }
+  assert.deepEqual(L.newMini('bump', lcg(1)).pos, { X: 0, O: 0 });
+});

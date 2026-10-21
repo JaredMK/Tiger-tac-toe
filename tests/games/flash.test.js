@@ -93,3 +93,13 @@ test('runners: the public view, the flash, the playback time, the stats log, and
   const open = E.matchStats(st).squares.find(e => e.end === 'open' && e.t === 'lane');
   assert.ok(open && open.run && open.run.runs.X === 1 && open.run.crashes.X.length === 1, 'a square still open reports its runs too');
 });
+
+test('flash: the admin\'s Mini-game Settings deal a square the computer plays by (its right answers at each level)', () => {
+  E.setTune('flash', { ai1: 0, ai2: 100 });
+  const m = E.newMini('flash', lcg(5));
+  E.setTune('flash', null);
+  const rng = lcg(6);
+  for (let k = 0; k < 20; k++) assert.notEqual(E.localBest(E.publicMini(m), 'X', rng).move, m.round.X.ans, 'level 1: never right');
+  m.right.X = 1;
+  assert.equal(E.localBest(E.publicMini(m), 'X', rng).move, m.round.X.ans, 'level 2: always right');
+});

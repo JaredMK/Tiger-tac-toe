@@ -1,11 +1,13 @@
 // Blackjack: the rules (pure: no page, no clock; the server runs the same code).
 import { needRng, shuffle } from '../../core/random.js';
 import { cardDeck } from '../shared/cards.js';
+import { tune } from '../../core/tune.js';
 
 // Blackjack: each player plays their own hands against the dealer, hitting or standing; every win adds 1
 // to their tally (a natural blackjack too), and the first to 3 takes the square. Every hand is dealt from
 // a freshly shuffled 52-card deck; the dealer's hole card and the deck stay hidden (online, with the
 // server) until the dealer plays. The dealer hits on 16 or less and stands on every 17, soft ones too.
+// (The admin's settings, TUNE in meta.js: the wins to take the square and the dealer's stand; tune(mini).)
 export const BJ = { goal: 3, dealerStand: 17 };
 export function bjValue(c) { return c[0] === 'A' ? 1 : 'TJQK'.includes(c[0]) ? 10 : Number(c[0]); }
 // A hand's best total: aces count 11 where that does not go over 21 (soft), otherwise 1.
@@ -17,9 +19,9 @@ export function bjTotal(cards) {
 }
 export const bjNatural = cards => cards.length === 2 && bjTotal(cards).total === 21;
 // The dealer turns the hole card over and draws to 17 or more.
-export function bjDealerPlay(dealer, deck) {
+export function bjDealerPlay(dealer, deck, stand = BJ.dealerStand) {
   const out = dealer.slice();
-  while (bjTotal(out).total < BJ.dealerStand && deck.length) out.push(deck.pop());
+  while (bjTotal(out).total < stand && deck.length) out.push(deck.pop());
   return out;
 }
 // How a finished hand ends: 'bj' (a natural), 'win', 'push', 'lose' or 'bust', and what it adds to the tally.
@@ -55,6 +57,7 @@ export function apply(mini, p, m, rng, idx) {
   if (h && h.by !== p) return { ok: false, reason: 'busy' };
   if (m === 'deal' && h) return { ok: false, reason: 'dealt' };
   if (m === 'hit' && !h) return { ok: false, reason: 'nohand' };
+  const c = tune(mini);
   mini.pushed = null;                                // the hands this move ended in a push (shown before the new deal)
   const deal = () => {                               // player, dealer up, player, dealer face down; true for a natural
     const deck = shuffle(cardDeck(), needRng(rng));
@@ -66,7 +69,7 @@ export function apply(mini, p, m, rng, idx) {
   const settle = (natural) => {                      // the hand is over: the hole card turns, the dealer plays
     const hole = mini.hole, deck = mini.deck || [], hand = mini.hand;
     const bust = bjTotal(hand.cards).total > 21;
-    const dealer = natural || bust ? [hand.up, hole] : bjDealerPlay([hand.up, hole], deck);
+    const dealer = natural || bust ? [hand.up, hole] : bjDealerPlay([hand.up, hole], deck, c.stand);
     const o = bjOutcome(hand.cards, dealer, hand.doubled, natural);
     mini.last = { by: p, cards: hand.cards.slice(), dealer, res: o.res, gain: o.gain, dealerBj: !!o.dealerBj, natural: !!natural };
     mini.hand = null; mini.hole = null; mini.deck = null;
@@ -88,7 +91,7 @@ export function apply(mini, p, m, rng, idx) {
     if (m !== 'auto') return { ok: true, outcome: 'continue', note: 'push', again: true };
     res = settle(false);
   }
-  if (mini.wins[p] >= BJ.goal) return { ok: true, outcome: 'win', note: res };
+  if (mini.wins[p] >= c.goal) return { ok: true, outcome: 'win', note: res };
   return { ok: true, outcome: 'continue', note: res };
 }
 export function publicView(mini) {

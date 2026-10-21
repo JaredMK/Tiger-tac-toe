@@ -5,11 +5,15 @@
  * stats/ (readable by the admin only, written only by the server)
  *   mini/{mode}/{type}     played, won, draw (reset), open (match ended first), winMoves, loseMoves,
  *                          allMoves, xWins, oWins: sums, averaged on the dashboard (mode 'testing': the
- *                          squares of games that were admin only when the match ended, kept apart);
+ *                          squares of games that were admin only when the match ended, kept apart; every
+ *                          Super Chaos square, friend rooms' too, under 'chaos' ('testingSc' for the admin
+ *                          only ones); an abandoned match's squares are not counted at all);
  *                          the runners (Dash, Lane Rush) add runs, distSum (metres, over all runs),
  *                          finishes, finishRuns (the winners' runs) and crash/{bin} (crashes per 50 m)
  *   modes/{mode}           started, finished, resigned, timeouts, turns, ms, timed (matches with a time),
- *                          xWins, oWins, draws (no line left for either side; Super Chaos: a line each in one round)
+ *                          xWins, oWins, draws (no line left for either side; Super Chaos: a line each in one round);
+ *                          done, doneTurns, doneMs, doneTimed: the same over matches played to a result only
+ *                          (not resigned or timed out: those, like a match never finished, are abandoned)
  *   days/{YYYY-MM-DD}      logins, active, newAccounts, started/{mode}, finished/{mode}
  *   weeks/{YYYY-Www}       logins, active, newAccounts
  *   months/{YYYY-MM}       logins, active, newAccounts
@@ -24,6 +28,7 @@ const CLIENT_MODES = ['local', 'cpu', 'cvc', 'chaos'];                 // the on
 const MAX_MS = 3 * 3600 * 1000;                                        // a match "lasting" longer was left and picked up again: no time for it
 const ENDS = ['won', 'draw', 'open'];
 const REASONS = ['line', 'blocked', 'majority', 'resign', 'timeout', 'both'];   // both: a line each in the same Super Chaos round (a draw)
+const ABANDONED = ['resign', 'timeout'];                                // a match given up (or left to run out its clock): abandoned, not finished
 
 const pad = n => String(n).padStart(2, '0');
 // The day, ISO week and month of a time, in UTC.
@@ -57,7 +62,7 @@ function checkEnd(d, types) {
     squares.push(Object.assign({ t: e.t, end: e.end, w, X, O }, run ? { run } : {}));
   }
   const winner = d.winner === 'X' || d.winner === 'O' ? d.winner : null;
-  return { squares, winner, reason: REASONS.includes(d.reason) ? d.reason : null };
+  return { squares, winner, reason: REASONS.includes(d.reason) ? d.reason : null, sc: d.sc === true };
 }
 
 // A runner square's run data as a phone reports it: runs and distances per side, the crash points.
@@ -92,9 +97,16 @@ function endUpdates(mode, sum, ms, t, withStart, testTypes) {
   if (sum.reason === 'timeout') add(`modes/${mode}/timeouts`, 1);
   if (sum.winner) add(`modes/${mode}/${sum.winner === 'X' ? 'xWins' : 'oWins'}`, 1);
   else if (sum.reason === 'blocked' || sum.reason === 'both') add(`modes/${mode}/draws`, 1);   // a draw: no line left for either side, or (Super Chaos) a line each in the same round
-  if (Number.isFinite(ms) && ms >= 0 && ms <= MAX_MS) { add(`modes/${mode}/ms`, Math.round(ms)); add(`modes/${mode}/timed`, 1); }
+  const timed = Number.isFinite(ms) && ms >= 0 && ms <= MAX_MS;
+  if (timed) { add(`modes/${mode}/ms`, Math.round(ms)); add(`modes/${mode}/timed`, 1); }
+  if (ABANDONED.includes(sum.reason)) return up;                       // abandoned: its squares say nothing about the mini-games
+  add(`modes/${mode}/done`, 1);
+  add(`modes/${mode}/doneTurns`, turns);
+  if (timed) { add(`modes/${mode}/doneMs`, Math.round(ms)); add(`modes/${mode}/doneTimed`, 1); }
+  const sc = !!sum.sc || mode === 'chaos';
   for (const e of sum.squares) {
-    const b = `mini/${testTypes && testTypes.includes(e.t) ? 'testing' : mode}/${e.t}/`;
+    const test = testTypes && testTypes.includes(e.t);
+    const b = `mini/${test ? (sc ? 'testingSc' : 'testing') : sc ? 'chaos' : mode}/${e.t}/`;
     add(b + 'played', 1);
     add(b + e.end, 1);
     add(b + 'allMoves', e.X + e.O);
@@ -163,5 +175,5 @@ function checkDev(d, t) {
   return out;
 }
 
-module.exports = { MODES, CLIENT_MODES, MAX_MS, periodKeys, PERIOD_NODE, hashId, idOk, checkEnd, checkRun, RUN_BIN, startUpdates, endUpdates, periodUpdates,
+module.exports = { MODES, CLIENT_MODES, MAX_MS, ABANDONED, periodKeys, PERIOD_NODE, hashId, idOk, checkEnd, checkRun, RUN_BIN, startUpdates, endUpdates, periodUpdates,
   DEV_EVENTS, DEV_MODES, TAG_RE, tagOk, devHash, checkDev };

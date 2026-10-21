@@ -1,5 +1,6 @@
 // Higher/Lower: the rules (pure: no page, no clock; the server runs the same code).
 import { randInt } from '../../core/random.js';
+import { tuneLive } from '../../core/tune.js';
 import { other } from '../../core/util.js';
 
 // 1 to 30, and each player has 5 guesses in a square: a player whose 5th guess misses loses the square to
@@ -10,7 +11,8 @@ export const hiloLimit = mini => (mini && Number.isInteger(mini.limit) ? mini.li
 export const hiloUsed = (mini, p) => mini.guesses.filter(g => g.by === p).length;
 export const hiloLeft = (mini, p) => (hiloLimit(mini) ? Math.max(0, hiloLimit(mini) - hiloUsed(mini, p)) : Infinity);
 export function create(type, rng) {
-  return { type, target: HILO.lo + randInt(rng, HILO.hi - HILO.lo + 1), lo: HILO.lo, hi: HILO.hi, top: HILO.hi, limit: HILO.limit, guesses: [] };
+  const c = tuneLive(type);                                 // (the admin's settings: the top number and the guesses each)
+  return { type, target: HILO.lo + randInt(rng, c.hi - HILO.lo + 1), lo: HILO.lo, hi: c.hi, top: c.hi, limit: c.limit, guesses: [] };
 }
 export function apply(mini, p, m, rng, idx) {
   if (!Number.isInteger(m) || m < mini.lo || m > mini.hi) return { ok: false, reason: 'bad' };

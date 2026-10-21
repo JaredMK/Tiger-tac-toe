@@ -1,6 +1,7 @@
 // Mastermind: the screen, the miniature, the move's words and sounds, and the inputs.
 import { MM } from './rules.js';
 import { mv, state, zoomedType } from '../../ui/app.js';
+import { tune } from '../../core/tune.js';
 import { toon } from '../../ui/art.js';
 import { fxAttr } from '../../ui/fx.js';
 import { render } from '../../ui/render.js';
@@ -44,10 +45,11 @@ export function screen(sq, f, d, mini, view, locked, a, anim, _won, wk, fresh, t
   const dr = mmDraft.slots, full = dr.every(c => c != null);
   const pop = mmPop && mmPop.sq === state.zoom && performance.now() - mmPop.at < 300 ? mmPop.k : -1;
   const slots = dr.map((c, k) => `<button class="mmslot${k === mmDraft.at && !locked ? ' at' : ''}" data-act="mmslot" data-k="${k}" aria-label="Slot ${k + 1}${c != null ? ', ' + MM_NAMES[c] + ' (tap to clear)' : ', empty'}"${k === pop ? fxAttr(mmPop.at) : ''}${locked ? ' disabled' : ''}>${c != null ? mmPeg(c, k === pop ? 'pop' : '') : ''}</button>`).join('');
-  const pal = Array.from({ length: MM.colors }, (_, c) => `<button class="mmcol c${c}" data-act="mmcol" data-c="${c}" aria-label="${MM_NAMES[c]}"${locked || dr.includes(c) ? ' disabled' : ''}>${mmPeg(c)}</button>`).join('');
+  const nc = tune(mini).colors;                                       // (the colours this square was dealt with: TUNE)
+  const pal = Array.from({ length: nc }, (_, c) => `<button class="mmcol c${c}" data-act="mmcol" data-c="${c}" aria-label="${MM_NAMES[c]}"${locked || dr.includes(c) ? ' disabled' : ''}>${mmPeg(c)}</button>`).join('');
   g = `<div class="g-mm"><div class="mmcode small${won ? ' cracked' : ''}" aria-label="The hidden code">${code}</div>
         <div class="mmlist" id="mmlist">${rows || `<div class="empty">${view ? 'No guesses were made.' : 'No guesses yet'}</div>`}</div>
-        ${view ? '' : `<div class="mmcur" aria-label="Your guess">${slots}</div><div class="mmpal">${pal}</div>
+        ${view ? '' : `<div class="mmcur" aria-label="Your guess">${slots}</div><div class="mmpal"${nc !== MM.colors ? ` style="grid-template-columns: repeat(${nc}, calc((100% - 20px) / 6)); justify-content: center"` : ''}>${pal}</div>
         <button class="big mmgo" data-act="move" ${mv(full ? dr : [])}${!full || locked ? ' disabled' : ''}>Submit guess</button>`}</div>`;
   return g;
 }

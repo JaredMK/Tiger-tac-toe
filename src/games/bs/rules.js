@@ -1,14 +1,15 @@
 // Battleship: the rules (pure: no page, no clock; the server runs the same code).
 import { randInt } from '../../core/random.js';
+import { tuneLive } from '../../core/tune.js';
 
 // Battleship: one hidden ship on a 4x4 grid, 1 to 4 cells long, lying across or down. Both players fire at it.
 export const BS = { n: 4, names: { 4: 'Battleship', 3: 'Submarine', 2: 'Destroyer', 1: 'Patrol Boat' }, sc: 5, scLen: 3 };   // sc, scLen: Super Chaos's sea and ship (a Submarine on 5x5)
 // The sea's width: 4, or a Super Chaos square's own (mini.n).
 export const bsN = mini => (mini && Number.isInteger(mini.n) ? mini.n : BS.n);
 
-// Battleship: a ship of random length (1 to 4; or len) placed across or down, anywhere it fits on an N x N sea.
-export function bsShip(rng, N = BS.n, len) {
-  len = len || 1 + randInt(rng, 4);
+// Battleship: a ship of random length (1 to 4, or lo to hi; or len) placed across or down, anywhere it fits on an N x N sea.
+export function bsShip(rng, N = BS.n, len, lo = 1, hi = 4) {
+  len = len || lo + randInt(rng, Math.max(lo, hi) - lo + 1);
   const across = randInt(rng, 2) === 0;
   const r = randInt(rng, across ? N : N - len + 1), c = randInt(rng, across ? N - len + 1 : N);
   return Array.from({ length: len }, (_, k) => (across ? r * N + c + k : (r + k) * N + c));
@@ -23,7 +24,8 @@ export function bsPlacements(len, N = BS.n) {
   return out;
 }
 export function create(type, rng) {
-  const ship = bsShip(rng); return { type, len: ship.length, ship, revealed: new Array(BS.n * BS.n).fill(null), hits: [], last: null };
+  const c = tuneLive(type), N = c.n, ship = bsShip(rng, N, 0, c.lenMin, c.lenMax);   // (the admin's settings: the sea and the ship's lengths)
+  return Object.assign({ type }, N !== BS.n ? { n: N } : {}, { len: ship.length, ship, revealed: new Array(N * N).fill(null), hits: [], last: null });
 }
 export function apply(mini, p, m, rng, idx) {
   // One shot at one cell. A hit or a miss is shown; the ship's direction never is. A hit that does not
@@ -75,7 +77,7 @@ export function scApply(mini, p, m, rng, idx) {
   return res;
 }
 export function scCreate(type, rng) {
-  const N = BS.sc, ship = bsShip(rng, N, BS.scLen);
+  const c = tuneLive(type), N = c.scN, ship = bsShip(rng, N, c.scLen);
   return { type, n: N, len: ship.length, ship, revealed: new Array(N * N).fill(null), hits: [], last: null };
 }
 export function scMerge(m, c) {

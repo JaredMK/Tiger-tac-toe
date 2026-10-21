@@ -13,3 +13,9 @@ export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" 
 // across by 5 down with 7; level 2: 5x5 with 9; level 3: 5 across by 6 down with 11. Never a trivial
 // pattern: no full row or column, no solid block, no straight run of 4, nothing symmetric.
 export const SNAP_DEFAULTS = { c1: 4, r1: 5, k1: 7, c2: 5, r2: 5, k2: 9, c3: 5, r3: 6, k3: 11, show: 5000, wait: 5000 };
+// Its settings (the admin's Mini-game Settings; core/tune.js) beyond config/snapshot: how often the computer gets a round right at each level.
+export const TUNE = [
+  { k: 'ai1', label: "Computer's right patterns, level 1 (%)", def: 65, min: 0, max: 100, step: 1, group: 'Computer' },
+  { k: 'ai2', label: "Computer's right patterns, level 2 (%)", def: 50, min: 0, max: 100, step: 1, group: 'Computer' },
+  { k: 'ai3', label: "Computer's right patterns, level 3 (%)", def: 35, min: 0, max: 100, step: 1, group: 'Computer' },
+];

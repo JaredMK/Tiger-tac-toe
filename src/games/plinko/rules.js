@@ -1,12 +1,13 @@
 // Plinko: the rules (pure: no page, no clock; the server runs the same code).
 import { needRng, randInt, shuffle } from '../../core/random.js';
+import { tune } from '../../core/tune.js';
 import { PLINKO_DEFAULTS } from './meta.js';
 
 // Plinko: 7 drop slots, 6 rows of pegs, 7 bins worth 5, 3, 3, 2, 2, 1 and 1 points, in an order drawn
 // for each square. Each player has their own points; the first to the target (12: the admin's
 // config/plinko, copied into each square as dealt) wins. A slot dropped from, by either player, is locked
 // until all seven have been used; then they all open again. One peg (drawn at random, never in the top
-// row, where a slot would hit it every time) is the bonus peg: +2 when the chip touches it; once hit,
+// row, where a slot would hit it every time) is the bonus peg: +2 (the admin's, tune(mini).bonus) when the chip touches it; once hit,
 // another peg is drawn, there from the next turn until it is hit in turn. The chip's position runs in
 // half-slots (0 to 12, a slot at an even one); at every peg it goes left or right, 50/50, except against
 // a wall, where it can only go inward.
@@ -31,10 +32,11 @@ export function plinkoWays(slot) {
   }
   return out;
 }
+export const plinkoBonusPts = mini => tune(mini).bonus ?? PLINKO.bonus;   // (the bonus peg's points: the admin's, as the square was dealt)
 // A drop's points from a slot on this square, as chances: { points: chance } (the bin and the bonus peg)
 export function plinkoDist(mini, slot) {
-  const out = {}, b = mini.bonus;
-  for (const w of plinkoWays(slot)) { const v = mini.vals[w.bin] + (b && plinkoTouches(slot, w.path)[b.r - 1] === b.x ? PLINKO.bonus : 0); out[v] = (out[v] || 0) + w.p; }
+  const out = {}, b = mini.bonus, bonus = plinkoBonusPts(mini);
+  for (const w of plinkoWays(slot)) { const v = mini.vals[w.bin] + (b && plinkoTouches(slot, w.path)[b.r - 1] === b.x ? bonus : 0); out[v] = (out[v] || 0) + w.p; }
   return out;
 }
 export function plinkoExp(mini, slot) { let e = 0; for (const [v, p] of Object.entries(plinkoDist(mini, slot))) e += Number(v) * p; return e; }
@@ -65,7 +67,7 @@ export function apply(mini, p, m, rng, idx) {
   if (!idx(PLINKO.slots)) return { ok: false, reason: 'bad' };
   if (mini.used[m]) return { ok: false, reason: 'used' };
   const { path, bin } = plinkoPath(m, needRng(rng));
-  const was = mini.bonus, hit = !!was && plinkoTouches(m, path)[was.r - 1] === was.x, pts = mini.vals[bin] + (hit ? PLINKO.bonus : 0);
+  const was = mini.bonus, hit = !!was && plinkoTouches(m, path)[was.r - 1] === was.x, pts = mini.vals[bin] + (hit ? plinkoBonusPts(mini) : 0);
   mini.pts[p] += pts;
   mini.used[m] = true;
   const reset = mini.used.every(Boolean);

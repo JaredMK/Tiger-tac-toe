@@ -1,6 +1,7 @@
 // Odd One Out: the rules (pure: no page, no clock; the server runs the same code).
 import { needRng, randInt } from '../../core/random.js';
 import { ODD_DEFAULTS } from './meta.js';
+import { tune, tuneLive } from '../../core/tune.js';
 
 // Odd One Out: a grid of tiles of one colour, one of them a different shade (a little lighter or
 // darker, and a touch off in hue, so it is fair with colours hard to tell apart). A player's grid grows
@@ -48,9 +49,12 @@ export function deltaE00(l1, l2) {
   return Math.sqrt(Math.pow(dLp / SL, 2) + Math.pow(dCp / SC, 2) + Math.pow(dHp / SH, 2) + RT * (dCp / SC) * (dHp / SH));
 }
 export const oddDelta = (base, odd) => deltaE00(rgbLab(hslRgb(...base)), rgbLab(hslRgb(...odd)));
-export function oddGrid(level, rng, cfg) {
-  cfg = cfg || oddConfig();
-  const k = Math.min(level, ODD.sizes.length - 1), n = ODD.sizes[k], want = cfg['d' + (k + 1)];
+export const oddSizes = t => [t.n1, t.n2, t.n3];                    // the grid at each level (the square's settings)
+// The computer's chance of a find at a level (the square's settings).
+export const oddAi = (t, level) => [t.ai1, t.ai2, t.ai3][Math.min(level, 2)] / 100;
+export function oddGrid(level, rng, cfg, sizes) {
+  cfg = cfg || oddConfig(); sizes = sizes || ODD.sizes;
+  const k = Math.min(level, sizes.length - 1), n = sizes[k], want = cfg['d' + (k + 1)];
   const h = randInt(rng, 360), sat = 50 + randInt(rng, 25), l = 42 + randInt(rng, 20);
   const up = l < 52 ? 1 : -1, hd = rng() < 0.5 ? -1 : 1;           // the odd tile leans toward the middle lightness (always visible), its hue a touch either way
   const at = dl => [(h + hd * dl * ODD.hueRatio + 360) % 360, sat, l + up * dl];
@@ -64,7 +68,7 @@ export function oddGrid(level, rng, cfg) {
   return { grid: { n, base, odd, tiles: Array.from({ length: n * n }, (_, i) => (i === pos ? odd : base)) }, pos };
 }
 export function create(type, rng) {
-  const gx = oddGrid(0, needRng(rng)), go = oddGrid(0, rng);
+  const sz = oddSizes(tuneLive(type)), gx = oddGrid(0, needRng(rng), null, sz), go = oddGrid(0, rng, null, sz);
   return { type, finds: { X: 0, O: 0 }, grid: { X: gx.grid, O: go.grid }, pos: { X: gx.pos, O: go.pos }, last: null };   // pos: the odd tile's place (hidden online)
 }
 export function apply(mini, p, m, rng, idx) {
@@ -77,9 +81,9 @@ export function apply(mini, p, m, rng, idx) {
   const correct = picked === pos;
   if (correct) mini.finds[p] += 1;
   mini.last = { by: p, n: grid.n, tiles: grid.tiles.slice(), pos, picked, correct };
-  const next = oddGrid(mini.finds[p], needRng(rng));          // a new grid every move, at the player's level
+  const t = tune(mini), next = oddGrid(mini.finds[p], needRng(rng), null, oddSizes(t));   // a new grid every move, at the player's level
   mini.grid[p] = next.grid; mini.pos[p] = next.pos;
-  if (mini.finds[p] >= ODD.goal) return { ok: true, outcome: 'win', note: 'found' };
+  if (mini.finds[p] >= t.goal) return { ok: true, outcome: 'win', note: 'found' };
   return { ok: true, outcome: 'continue', note: correct ? 'found' : 'wrong' };
 }
 export function publicView(mini) {

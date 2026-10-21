@@ -1,5 +1,6 @@
 // Battleship: the computer's play.
 import { randInt } from '../../core/random.js';
+import { tune } from '../../core/tune.js';
 import { bsCandidates, bsN } from './rules.js';
 
 export function needs(pm, p) {
@@ -10,6 +11,8 @@ export function best(pm, me, rng, style, ctx) {
   // is one); between equals, the shot most likely to sink it.
   const cand = bsCandidates(pm), open = pm.revealed.map((r, i) => (r ? -1 : i)).filter(i => i >= 0);
   if (!cand.length) return { move: open[randInt(rng, open.length)], q: 0, shared: true };
+  const miss = tune(pm).miss || 0;                               // (the admin's mistake rate: a shot anywhere open)
+  if (miss && rng() * 100 < miss) return { move: open[randInt(rng, open.length)], q: 0, shared: true };
   const N = bsN(pm), cover = new Array(N * N).fill(0), sinks = new Array(N * N).fill(0);
   for (const cells of cand) {
     const left = cells.filter(k => !pm.hits.includes(k));

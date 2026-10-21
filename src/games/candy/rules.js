@@ -1,21 +1,22 @@
 // Candy Race: the rules (pure: no page, no clock; the server runs the same code).
 import { needRng, randInt } from '../../core/random.js';
 import { PLAY } from '../../core/timer.js';
+import { tuneLive } from '../../core/tune.js';
 
 export const CANDY = { len: 12, colors: ['red', 'yellow', 'green', 'blue'], gap: 3 };   // same colour at least 3 spaces apart
 // Candy race track: 12 random colours where any three consecutive spaces differ, so the same colour
-// is never closer than 3 spaces to itself.
-export function candyTrack(rng) {
+// is never closer than 3 spaces to itself (or gap: the admin's setting).
+export function candyTrack(rng, gap = CANDY.gap) {
   const track = [];
   for (let i = 0; i < CANDY.len; i++) {
-    const recent = track.slice(Math.max(0, i - (CANDY.gap - 1)), i);
+    const recent = track.slice(Math.max(0, i - (gap - 1)), i);
     const options = CANDY.colors.filter(c => !recent.includes(c));
     track.push(options[randInt(rng, options.length)]);
   }
   return track;
 }
 export function create(type, rng) {
-  return { type, track: candyTrack(rng), pos: { X: -1, O: -1 }, last: null };
+  return { type, track: candyTrack(rng, tuneLive(type).gap), pos: { X: -1, O: -1 }, last: null };
 }
 export function apply(mini, p, m, rng, idx) {
   const color = CANDY.colors[randInt(needRng(rng), CANDY.colors.length)];

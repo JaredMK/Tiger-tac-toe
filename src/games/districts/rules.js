@@ -21,16 +21,17 @@ export function distClip(poly, a, b) {                                   // keep
   }
   return out;
 }
-export function distMap(src) {
+export function distMap(src, opt) {                     // opt: the admin's settings (regions, spots), else DIST's
+  const D = opt ? Object.assign({}, DIST, { regions: opt.regions, minSpots: opt.spots - 1, maxSpots: opt.spots + 1 }) : DIST;
   const rng = makeRng('map ' + src());   // one draw seeds the map's own generator: a map is always found, however plain the source
   for (let tries = 0; tries < 400; tries++) {
     const seeds = [];
-    for (let k = 0; k < 400 && seeds.length < DIST.regions; k++) {
-      const p = [12 + rng() * (DIST.w - 24), 12 + rng() * (DIST.h - 24)];
+    for (let k = 0; k < 400 && seeds.length < D.regions; k++) {
+      const p = [12 + rng() * (D.w - 24), 12 + rng() * (D.h - 24)];
       if (seeds.every(q => Math.hypot(p[0] - q[0], p[1] - q[1]) > 34)) seeds.push(p);
     }
-    if (seeds.length < DIST.regions) continue;
-    const polys = seeds.map((s, i) => seeds.reduce((poly, t, j) => (i === j ? poly : distClip(poly, s, t)), [[0, 0], [DIST.w, 0], [DIST.w, DIST.h], [0, DIST.h]]));
+    if (seeds.length < D.regions) continue;
+    const polys = seeds.map((s, i) => seeds.reduce((poly, t, j) => (i === j ? poly : distClip(poly, s, t)), [[0, 0], [D.w, 0], [D.w, D.h], [0, D.h]]));
     const near = (p, i) => Math.hypot(p[0] - seeds[i][0], p[1] - seeds[i][1]);
     const touching = p => { const d = seeds.map((_, i) => near(p, i)), m = Math.min(...d); return d.map((x, i) => (x - m < 0.01 ? i : -1)).filter(i => i >= 0); };
     const cand = [];
@@ -46,32 +47,32 @@ export function distMap(src) {
       const t = touching(mid);
       if (t.length === 2 && t[0] === i && Math.hypot(q[0] - p[0], q[1] - p[1]) >= 14) cand.push({ p: mid, r: t, kind: 'border' });
       const tv = touching(p);
-      if (tv.length === 3 && tv[0] === i && p[0] > 3 && p[0] < DIST.w - 3 && p[1] > 3 && p[1] < DIST.h - 3) cand.push({ p, r: tv, kind: 'corner' });
+      if (tv.length === 3 && tv[0] === i && p[0] > 3 && p[0] < D.w - 3 && p[1] > 3 && p[1] < D.h - 3) cand.push({ p, r: tv, kind: 'corner' });
     }
     // only spots that plainly sit in (or on the edge of) the regions they count for: none where a fourth region
     // nearly meets a corner, and none whose drawn circle would reach into a region it does not count for
-    const clear = c => polys.every((poly, i) => c.r.includes(i) || distTo(c.p, poly) >= DIST.clear);
+    const clear = c => polys.every((poly, i) => c.r.includes(i) || distTo(c.p, poly) >= D.clear);
     for (let k = cand.length - 1; k >= 0; k--) if (!clear(cand[k])) cand.splice(k, 1);
     // a random choice of them, kept apart, with every region touched an odd number of times (3 or more)
     for (let pick = 0; pick < 60; pick++) {
       const order = shuffle(cand.map((_, k) => k), rng).sort((a, b) => cand[b].r.length - cand[a].r.length), chosen = [];   // border and corner spots first: they count for more regions, so fewer spots do
-      const far = c => chosen.every(k => Math.hypot(cand[k].p[0] - c.p[0], cand[k].p[1] - c.p[1]) >= DIST.gap);
-      const want = DIST.minSpots + randInt(rng, 3);   // (the mending below may add one or two)
+      const far = c => chosen.every(k => Math.hypot(cand[k].p[0] - c.p[0], cand[k].p[1] - c.p[1]) >= D.gap);
+      const want = D.minSpots + randInt(rng, 3);   // (the mending below may add one or two)
       for (const k of order) { if (chosen.length >= want) break; if (far(cand[k])) chosen.push(k); }
-      const count = () => { const n = new Array(DIST.regions).fill(0); for (const k of chosen) for (const r of cand[k].r) n[r]++; return n; };
+      const count = () => { const n = new Array(D.regions).fill(0); for (const k of chosen) for (const r of cand[k].r) n[r]++; return n; };
       // mend the counts: an inside spot changes one region's count by one
       for (let fix = 0; fix < 20; fix++) {
         const n = count(), bad = n.findIndex(x => x < 3 || x % 2 === 0);
         if (bad < 0) break;
         const add = order.find(k => !chosen.includes(k) && cand[k].kind === 'in' && cand[k].r[0] === bad && far(cand[k]));
         const drop = chosen.find(k => cand[k].kind === 'in' && cand[k].r[0] === bad);
-        if (n[bad] < 3 || add != null && (n[bad] % 2 === 0) && (chosen.length < DIST.maxSpots || drop == null)) { if (add == null) break; chosen.push(add); }
+        if (n[bad] < 3 || add != null && (n[bad] % 2 === 0) && (chosen.length < D.maxSpots || drop == null)) { if (add == null) break; chosen.push(add); }
         else if (drop != null && n[bad] > 3) chosen.splice(chosen.indexOf(drop), 1);
         else if (add != null) chosen.push(add);
         else break;
       }
       const n = count();
-      if (chosen.length >= DIST.minSpots && chosen.length <= DIST.maxSpots && chosen.length % DIST.per === 0 && n.every(x => x >= 3 && x % 2 === 1)) {   // (with the greys: both players place as many pieces)
+      if (chosen.length >= D.minSpots && chosen.length <= D.maxSpots && chosen.length % D.per === 0 && n.every(x => x >= 3 && x % 2 === 1)) {   // (with the greys: both players place as many pieces)
         const spots = chosen.map(k => ({ x: r1d(cand[k].p[0]), y: r1d(cand[k].p[1]), r: cand[k].r.slice().sort((a, b) => a - b) })).sort((a, b) => a.y - b.y || a.x - b.x);
         return { regions: polys.map(poly => poly.map(p => [r1d(p[0]), r1d(p[1])])), spots };
       }

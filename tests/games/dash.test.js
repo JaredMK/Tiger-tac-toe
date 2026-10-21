@@ -97,3 +97,16 @@ test('dash: a pair needs a well-timed long jump (or two quick ones); a single ta
   assert.ok(go(0.05, true).crash && go(0.5, true).crash, 'too late or too early, it does not');
   assert.ok(['pair', 'pair2', 'pair3', 'pair4'].some(k => E.runCourse(mini('dash', k), 'O').some(o => o.pair)), 'pairs are part of the course');
 });
+
+test('dash: the Mini-game Settings: a square is dealt with them (in its cfg) and plays by them; the computer\'s runs pass the check', () => {
+  E.setRunConfig(null); E.setTune('dash', { grace: 3, jump: 110, aiRuns: 3, aiSpread: 20 });
+  const m = mini('dash', 'tuned');
+  E.setTune('dash', null);
+  assert.equal(m.cfg.grace, 3); assert.equal(m.cfg.aiRuns, 3); assert.equal(m.cfg.aiSpread, 20);
+  assert.ok(Math.abs(E.runGrace(m.cfg, 0) - E.runAfter(m.cfg, 0, 3)) < 1e-9, 'a three-second clear start');
+  assert.ok(E.runNeeds(m.cfg, 0) < E.runNeeds(mini('dash', 'tuned').cfg, 0), 'the computer means to finish in fewer runs');
+  const sim = E.runStart(m, 'X'); E.runJump(sim); assert.ok(Math.abs(sim.vy - E.DASH.vy * 1.1) < 1e-9, 'the jump 10% stronger');
+  const rng = E.makeRng('tuned-ai');
+  for (let k = 0; k < 3 && m.dist.O < m.cfg.target; k++) { const r = E.applyMove(m, 'O', E.runAi(E.publicMini(m), 'O', rng).move, rng); assert.equal(r.ok, true, r.reason); }
+  assert.deepEqual(Object.keys(mini('dash', 'plain').cfg).sort(), Object.keys(E.runConfig('dash')).sort(), 'back to the defaults: nothing added');
+});

@@ -1,7 +1,7 @@
 // Plinko: the screen, the miniature, the move's words and sounds, and the inputs.
 import { makeRng } from '../../core/random.js';
 import { PLINKO_DEFAULTS } from './meta.js';
-import { PLINKO, setPlinkoConfig } from './rules.js';
+import { PLINKO, plinkoBonusPts, setPlinkoConfig } from './rules.js';
 import { FIREBASE_CONFIG, configured } from '../../net/connect.js';
 import { N, mv, state } from '../../ui/app.js';
 import { KEY } from '../../ui/config.js';
@@ -59,7 +59,7 @@ function plinkoXY(x, r) { return [PK.pad + (x / 12) * (100 - 2 * PK.pad), r <= 0
 // total counts up and the points (and any bonus) are said in the result line under the board (nothing over it).
 function plinkoTable(mini, a, o) {
   const pl = a && a.plinko ? a.plinko : null, l = mini.last, turn = o.turn, tg = mini.target || PLINKO_DEFAULTS.target;
-  const T = PLINKO.rows * PLINKO.step, land = T + PLINKO.land, inBin = T + 120;
+  const T = PLINKO.rows * PLINKO.step, land = T + PLINKO.land, inBin = T + 120, bp = plinkoBonusPts(mini);
   const score = p => {
     const now = mini.pts[p];
     return pl && a.by === p ? `<span class="ppts"><span class="tu" style="--u:${inBin}ms">${now - pl.pts}</span><span class="tf" style="--f:${inBin}ms">${now}</span></span>` : `<span class="ppts"><span>${now}</span></span>`;
@@ -71,7 +71,7 @@ function plinkoTable(mini, a, o) {
   const bins = Array.from({ length: PLINKO.slots }, (_, b) => { const [bx] = plinkoXY(b * 2, 0), lit = pl && pl.bin === b;
     return `<rect ${lateAt('bin v' + mini.vals[b], lit ? inBin : null, 'lit')} x="${(bx - w / 2).toFixed(1)}" y="${PK.bottom}" width="${w.toFixed(1)}" height="12" rx="2"/>`; }).join('');
   const vals = mini.vals.map((v, b) => `<span class="pval v${v}" style="left:${plinkoXY(b * 2, 0)[0].toFixed(1)}%">${v}</span>`).join('');
-  const peg = (q, cls, extra = '') => { const [x, y] = plinkoXY(q.x, q.r); return `<div ${cls} style="left:${x.toFixed(1)}%;top:${y.toFixed(1)}%${extra}" aria-label="Bonus peg: +${PLINKO.bonus}"><b>+${PLINKO.bonus}</b></div>`; };
+  const peg = (q, cls, extra = '') => { const [x, y] = plinkoXY(q.x, q.r); return `<div ${cls} style="left:${x.toFixed(1)}%;top:${y.toFixed(1)}%${extra}" aria-label="Bonus peg: +${bp}"><b>+${bp}</b></div>`; };
   let bonus = '';
   if (pl && pl.hit) {                                              // the bonus peg touched: it lights and pops +2 then; the next one shows as the chip lands
     const th = pl.bonus.r * PLINKO.step;
@@ -88,7 +88,7 @@ function plinkoTable(mini, a, o) {
   const slots = o.view ? '' : `<div class="pslots" role="group" aria-label="Drop slots">${Array.from({ length: PLINKO.slots }, (_, k) => { const used = mini.used[k];
     return `<button class="${turn}${used ? ' used' : ''}" data-act="move" ${mv(k)}${o.locked || used ? ' disabled' : ''} aria-label="${used ? `Slot ${k + 1}: used` : `Drop from slot ${k + 1}`}">${k + 1}</button>`; }).join('')}</div>`;
   const won = pl && (a.kind === 'claim' || a.kind === 'match'), open = PLINKO.slots - mini.used.filter(Boolean).length;
-  const res = pl ? `<p ${lateAt('arcres ' + (pl.pts >= 3 ? 'ok' : 'no'), inBin)} role="status">${won ? `+${pl.pts}${pl.hit ? ` (bonus +${PLINKO.bonus})` : ''}: ${pl.total} of ${tg}!` : `+${pl.pts}${pl.hit ? ` (bonus +${PLINKO.bonus})` : ''}: ${pl.total} of ${tg}`}${pl.reset ? '<br><small>All seven used: every slot opens again</small>' : ''}</p>`
+  const res = pl ? `<p ${lateAt('arcres ' + (pl.pts >= 3 ? 'ok' : 'no'), inBin)} role="status">${won ? `+${pl.pts}${pl.hit ? ` (bonus +${bp})` : ''}: ${pl.total} of ${tg}!` : `+${pl.pts}${pl.hit ? ` (bonus +${bp})` : ''}: ${pl.total} of ${tg}`}${pl.reset ? '<br><small>All seven used: every slot opens again</small>' : ''}</p>`
     : l && o.view ? `<p class="arcres"><b class="${l.by}">${N(l.by)}</b> reached ${mini.pts[l.by]}</p>`
     : '<p class="arcnote"></p>';
   return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="plinko">${slots}<div class="pboard">${style}<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${pegs.join('')}${bins}</svg><div class="pvals">${vals}</div>${bonus}${chip}</div>${res}</div></div>`;

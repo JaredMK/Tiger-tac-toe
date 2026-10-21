@@ -47,8 +47,9 @@ export function drawScoop(c, W, H, v, now) {
     if (y > H + R) continue;
     fingThing(c, X(it.x), y, R, it, P, now, false);
   }
-  for (let m = 0; m < SCOOP.misses; m++) {                          // the misses allowed: a cone each, crossed out once used
-    const x = W - 14 - m * 22, y = 16, used = m >= SCOOP.misses - sim.miss;
+  const ms = sim.misses || SCOOP.misses;
+  for (let m = 0; m < ms; m++) {                                    // the misses allowed (the square's setting): a cone each, crossed out once used
+    const x = W - 14 - m * 22, y = 16, used = m >= ms - sim.miss;
     c.save(); c.globalAlpha = used ? 0.35 : 1;
     c.beginPath(); c.moveTo(x - 6, y - 2); c.lineTo(x + 6, y - 2); c.lineTo(x, y + 11); c.closePath(); outlined(c, '#e7b56f', P.ink, 1.8);
     c.beginPath(); c.arc(x, y - 4, 6, 0, Math.PI * 2); outlined(c, SCOOP_FLAV[0], P.ink, 1.8);

@@ -6,3 +6,9 @@ export const category = 'brain';   // the Advanced checklist's group: 'luck', 's
 export const target = 'shared';   // the header's icon: 'shared' (one board for both), 'own' (each player's own progress) or 'course' (one course for both, each their own distance)
 export const explainer = { name: 'Takeover', play: 'Tap an empty square to take it and the squares around it, even your opponent\'s.', win: 'Own the most when the board is full.' };
 export const icon = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="9" y="2.5" width="6" height="6" rx="1.2"/><rect x="2.5" y="9" width="6" height="6" rx="1.2"/><rect x="9" y="9" width="6" height="6" rx="1.2"/><rect x="15.5" y="9" width="6" height="6" rx="1.2"/><rect x="9" y="15.5" width="6" height="6" rx="1.2"/></svg>';
+// Its settings (the admin's Mini-game Settings; core/tune.js): the board's side dealt into each square (its cells).
+export const TUNE = [
+  { k: 'size', label: 'Board size (cells a side)', def: 5, opts: [5, 7], group: 'Board' },
+  { k: 'depth', label: 'Computer look-ahead (moves)', def: 2, opts: [1, 2], group: 'Computer' },
+  { k: 'miss', label: 'Computer mistake rate (%)', def: 0, min: 0, max: 50, step: 5, group: 'Computer' },
+];

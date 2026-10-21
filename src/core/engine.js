@@ -10,7 +10,8 @@ export { SC, scTypes, isChaos, scHuman, scSquareMini, startChaos, scBegin, scCpu
 export { cfgKit, lohi } from './config.js';
 export { isReleased, releasedTypes, allowedTypes, restrictGames } from './games.js';
 export { dealable, normLocal, seatLocal, NAME_MAX, pickType, pickReset, dealNine, newSquare, CPU_NAME, defaultSetup, cpuSide, normSetup, syncNames, enabledGames, playerName, newState, startMatch, newMatch } from './match.js';
-export { canMove, upgradeMini, anyMove, newMini, applyMove, publicMini, randomLegalMove } from './minis.js';
+export { canMove, upgradeMini, anyMove, newMini, withTune, applyMove, publicMini, randomLegalMove } from './minis.js';
+export { registerTunes, tuneFields, tuneDefaults, tuneValue, tuneNorm, setTune, setTunes, tuneLive, tuneSnap, tune } from './tune.js';
 export { gaussOf, makeRng, needRng, randInt, randomType, shuffle } from './random.js';
 export { resignLocal, RECENT_MAX, MATCH_FIELDS, secretOf, hideMini, matchRecord, fullState, settle, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, applyOnlineReveal, applyOnlineStart, newOnlineMatch, applyOnlineResign, applyChaosSubmit, applyChaosDeadline, applyChaosBegin, parseMatch, packMatch, matchTxn } from './records.js';
 export { matchStats } from './stats.js';

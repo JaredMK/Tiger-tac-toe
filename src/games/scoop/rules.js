@@ -2,7 +2,8 @@
 import { cfgKit } from '../../core/config.js';
 import { courseSeed, gaussOf, makeRng, randInt } from '../../core/random.js';
 import { clamp01, r2 } from '../../core/util.js';
-import { FHAND, FING, fingLog, fingRecorder } from '../shared/finger.js';
+import { tune } from '../../core/tune.js';
+import { FING, fingHand, fingLog, fingRecorder } from '../shared/finger.js';
 import { SCOOP_DEFAULTS } from './meta.js';
 export { fingerApply as apply } from '../shared/finger.js';
 export { fingerMoveFlash as moveFlash } from '../shared/finger.js';
@@ -54,7 +55,7 @@ export function scoopItems(cfg, seed, tries, n0) {
 }
 export function scoopStart(mini, p) {
   const cfg = mini.cfg, n0 = mini.stack[p].length;
-  return { type: 'scoop', cfg, n0, items: scoopItems(cfg, mini.seed[p], mini.tries[p], n0), i: 0, x: SCOOP.w / 2, tx: SCOOP.w / 2, vx: 0, s: 0, sv: 0, n: 0, t: 0, got: [], miss: 0, falling: [], end: null, last: null };
+  return { type: 'scoop', cfg, n0, misses: tune(mini).misses, items: scoopItems(cfg, mini.seed[p], mini.tries[p], n0), i: 0, x: SCOOP.w / 2, tx: SCOOP.w / 2, vx: 0, s: 0, sv: 0, n: 0, t: 0, got: [], miss: 0, falling: [], end: null, last: null };
 }
 // How far below the stack's top the bottom edge of the screen is (units), for a stack this size: the view
 // draws the counter and the cone under a short stack and keeps a tall one's top 4.6 units up; a missed
@@ -91,7 +92,7 @@ export function scoopStep(sim, tx) {
   }
   while (sim.falling.length && sim.falling[0] <= sim.t + 1e-9) {     // a missed scoop leaves the screen: now it counts
     sim.falling.shift(); sim.miss++; sim.last = sim.last || 'gone';
-    if (sim.miss >= SCOOP.misses) { sim.end = 'miss'; return sim; }
+    if (sim.miss >= (sim.misses || SCOOP.misses)) { sim.end = 'miss'; return sim; }   // (misses: the square's setting)
   }
   if ((sim.i >= sim.items.length && !sim.falling.length) || sim.t >= FING.maxSecs - 1e-9) sim.end = 'out';
   return sim;
@@ -102,7 +103,7 @@ export const scoopY = (it, t) => { const y = (it.T - t) * it.v; return y > SCOOP
 // Scoop Stack: it goes for the next scoop it has seen falling (aiming a little off), keeping clear of the
 // hazards it has noticed that land first.
 export function scoopAi(mini, p, rng, hand) {
-  hand = hand || FHAND.scoop;
+  hand = hand || fingHand(mini);   // (FHAND.scoop, with the square's settings)
   const sim = scoopStart(mini, p), rec = fingRecorder();
   const react = hand.react[0] + (hand.react[1] - hand.react[0]) * rng(), err = new Map(), seen = new Map();
   let aim = sim.x;

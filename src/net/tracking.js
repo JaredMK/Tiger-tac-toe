@@ -43,7 +43,7 @@ export function trackEnd() {
   if (!s || s.sent || !state.winner || state.online) return;
   s.sent = true;
   const m = matchStats(state);
-  track({ ev: 'end', mode: s.mode, id: s.id, turns: m.turns, winner: m.winner, reason: m.reason, squares: m.squares });
+  track({ ev: 'end', mode: s.mode, id: s.id, turns: m.turns, winner: m.winner, reason: m.reason, sc: m.sc, squares: m.squares });
 }
 // ----- playtest activity, no account needed: this device's app opens and its matches (started, then
 // finished or left), for the admin's playtest page. The device is the random id above, kept in this

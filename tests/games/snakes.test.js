@@ -75,3 +75,20 @@ test('snakes: the odds and expected rolls come from the board; random play alway
     assert.equal(out.outcome, 'win');
   }
 });
+
+test('snakes: the admin settings deal their ladders and snakes (any count, any span) and roll their die', () => {
+  for (const cfg of [{ ladders: 3, snakes: 1, minSpan: 6, die: 3 }, { ladders: 0, snakes: 3, minSpan: 2, die: 4 }, { ladders: 3, snakes: 3, minSpan: 6, die: 5 }]) {
+    E.setTune('snakes', cfg);
+    try {
+      for (let k = 0; k < 30; k++) {
+        const m = L.newMini('snakes', L.makeRng('t' + k)), r = L.makeRng('r' + k);
+        assert.ok(L.snlValid(m, Object.assign({}, L.SNL, cfg)), JSON.stringify(m));
+        assert.equal(L.localBest(Object.assign(L.publicMini(m), { pos: { X: 20 - cfg.die, O: 0 } }), 'X', cpuRng()).q, 1 / cfg.die);
+        let n = 0, out;
+        do { out = L.applyMove(m, n % 2 ? 'O' : 'X', 'roll', r); assert.ok(m.last.roll <= cfg.die); n++; } while (out.outcome !== 'win' && n < 2000);
+        assert.equal(out.outcome, 'win');
+      }
+    } finally { E.setTune('snakes', null); }
+  }
+  assert.ok(!('tune' in L.newMini('snakes', lcg(1))));
+});

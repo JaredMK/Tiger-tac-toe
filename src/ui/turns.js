@@ -95,6 +95,7 @@ export function holdOf(f) {
   if (f.type === 'memory' && f.kind === 'move') hold = MEMORY_MS;
   if (f.type === 'pig' && f.kind === 'move') hold = f.note === 'bust' ? FLASH_MS.card : FLASH_MS.move;   // a bust gets a proper card; a bank just its points moving over
   if (f.type === 'pig' && f.kind === 'again') hold = 0;                      // a roll that keeps the turn: Roll again the moment the die has landed and its points counted
+  if (f.type === 'bj' && f.kind === 'again') hold = 0;                       // Blackjack, a hand still on: Hit and Stand the moment its cards are down (about 0.3 s after the last lands)
   return hold;
 }
 // Skip (an opponent's replay): the move's animation jumps to its end, quietly; the result stays up its usual

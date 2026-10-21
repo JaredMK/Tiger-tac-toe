@@ -1,9 +1,12 @@
 // Hangman: the rules (pure: no page, no clock; the server runs the same code).
 import { randInt } from '../../core/random.js';
+import { tuneLive } from '../../core/tune.js';
 import { WORDS_HANG } from './words.js';
 
 export function create(type, rng) {
-  return { type, word: WORDS_HANG[randInt(rng, WORDS_HANG.length)].toUpperCase(), letters: [] };
+  const c = tuneLive(type), lo = Math.min(c.minLen, c.maxLen), hi = Math.max(c.minLen, c.maxLen);   // (the admin's settings: the word lengths dealt)
+  const fit = WORDS_HANG.filter(w => w.length >= lo && w.length <= hi), list = fit.length ? fit : WORDS_HANG;
+  return { type, word: list[randInt(rng, list.length)].toUpperCase(), letters: [] };
 }
 export function apply(mini, p, m, rng, idx) {
   const l = typeof m === 'string' ? m.toUpperCase() : '';

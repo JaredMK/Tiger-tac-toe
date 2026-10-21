@@ -1,5 +1,6 @@
 // Sky Hop, Scoop Stack and Pinball: what the finger games share (an attempt, its log, the server's check,
 // the computer's hand).
+import { tune } from '../../core/tune.js';
 import { PHYSICS } from './physics.js';
 import { PINB, pinCheck } from '../pinball/rules.js';
 import { SCOOP, scoopAi, scoopResult, scoopStart, scoopStep } from '../scoop/rules.js';
@@ -73,6 +74,14 @@ export function fingRecorder() {
 // The computer's hand (an average player's): it sees what happens react seconds late, aims off by a
 // little (aim: the spread, in units), and now and then misses a hazard (lapse) or misjudges a platform.
 export const FHAND = { skyhop: { react: [0.22, 0.32], aim: 0.65, lapse: 0.15, misjudge: 0.5 }, scoop: { react: [0.26, 0.36], aim: 0.46, lapse: 0.2 } };
+// A square's hand: FHAND (Pinball's: physics-sim.js pinAi's own) with its settings over it (meta.js TUNE:
+// reactions in ms, aim and odds in hundredths), for a square dealt with any.
+export function fingHand(mini) {
+  if (!mini || !mini.tune) return FHAND[mini && mini.type];
+  const t = tune(mini), react = [t.aiReact0 / 1000, t.aiReact1 / 1000];
+  if (mini.type === 'pinball') return { react, jitter: t.aiJitter / 1000 };
+  return Object.assign({}, FHAND[mini.type], { react, aim: t.aiAim / 100, lapse: t.aiLapse / 100 }, mini.type === 'skyhop' ? { misjudge: t.aiMisjudge / 100 } : {});
+}
 // The finger games' moves: checked (Sky Hop and Scoop Stack played through again from their inputs),
 // then the attempt's result. Returns { why } or { to, sim } (to: the progress after it).
 export function fingCheck(mini, p, m) {
@@ -91,7 +100,7 @@ export function fingCheck(mini, p, m) {
 export function fingAi(mini, p, rng) {
   if (mini.type === 'skyhop') return hopAi(mini, p, rng).move;
   if (mini.type === 'scoop') return scoopAi(mini, p, rng).move;
-  const r = PHYSICS.lib.pinAi(PHYSICS.lib.pinTable(mini), mini.cfg, mini.lit[p], rng).result;
+  const r = PHYSICS.lib.pinAi(PHYSICS.lib.pinTable(mini), mini.cfg, mini.lit[p], rng, fingHand(mini)).result;
   return { hits: r.hits, ms: r.ms, rec: r.rec, end: r.end };
 }
 // Progress: Sky Hop's height, Scoop Stack's stack, Pinball's lit targets; and how far to go.

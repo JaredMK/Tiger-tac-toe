@@ -35,3 +35,16 @@ test('oddone: the odd tile is equally likely in every cell (1,000 grids a level,
     }
   }
 });
+
+test('oddone: the admin\'s Mini-game Settings deal a square that plays by them (grid sizes, finds to win, the computer\'s finds)', () => {
+  E.setTune('oddone', { goal: 2, n1: 6, n2: 3, ai1: 100, ai2: 100, secs: 9 });
+  const m = E.newMini('oddone', lcg(5));
+  E.setTune('oddone', null);
+  assert.deepEqual([m.grid.X.n, m.grid.O.n, m.grid.X.tiles.length], [6, 6, 36], 'level 1: 6 across');
+  const rng = lcg(6), a = E.localBest(E.publicMini(m), 'X', rng);
+  assert.equal(a.move, m.pos.X, 'the computer always finds it, as set');
+  assert.equal(E.applyMove(m, 'X', a.move, rng).outcome, 'continue');
+  assert.equal(m.grid.X.n, 3, 'level 2: 3 across');
+  assert.equal(E.applyMove(m, 'X', m.pos.X, rng).outcome, 'win', 'two finds win');
+  assert.equal(E.tune(E.publicMini(m)).secs, 9, 'the time to pick rides the public view');
+});
