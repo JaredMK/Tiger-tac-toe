@@ -640,7 +640,19 @@ Find Match is unchanged, and so are the normal modes.
   shorter's end held), what both moves settle together, each square's result, then the next round,
   within a few tens of milliseconds of each other. The first phone through the recap begins the next
   round on the record (`applyChaosBegin`: its deadline). A reload, or a phone coming back, reads the
-  record and joins the round as it stands, or the recap where it is in its sequence. It is for
+  record and joins the round as it stands, or the recap where it is in its sequence. A move made on a
+  phone is never dropped for a move not yet made: the moment it is made the phone is locked ("Waiting
+  for…"), and if the record has not taken it yet (a reload mid-round, a write refused) the phone keeps
+  it and sends it again every second. The record takes exactly one move a side a round (a second one,
+  a move for the other side, a wrong round or a mismatched square is refused: `applyChaosSubmit`; a
+  write from a phone not seated in the room is refused by the security rules), and a phone that sent
+  its move checks the record carries it. A write the record refuses or that fails is never silent: the
+  hint says "Move not saved (why) · trying again…" in red with a short notice and the error sound,
+  the browser console gets it, and the device's playtest log on the server gets an `error` event (the
+  admin's dashboard shows them in the session); a round settled before the move got in says so too.
+  Tested with two SDK clients on the database emulator, under the live rules:
+  `tests/server/chaos-online.test.js` (two rounds, a duplicate move, a stranger's move, a timeout
+  round), in `npm test`. It is for
   playtesting: the room's record holds every square, so the hidden information is hidden only by the
   app (as in friend rooms already), and it counts as a friend game in the stats. How it is built:
   `src/net/chaos.js`, `src/ui/chaos.js` (the sequence by the clock), and `startChaosOnline`,

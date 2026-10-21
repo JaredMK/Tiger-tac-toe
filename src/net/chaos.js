@@ -13,13 +13,14 @@ import { MATCH_FIELDS, applyChaosBegin, applyChaosDeadline, applyChaosSubmit, fu
 import { other } from '../core/util.js';
 import { SND } from '../audio/sound.js';
 import { connected, fb, serverNow } from './connect.js';
-import { matchTransaction } from './moves.js';
+import { matchTransaction, showNotice } from './moves.js';
 import { parseMatch, room } from './room.js';
 import { NAV_SCREENS, RNG, flashTimer, save, setFlashTimer, state } from '../ui/app.js';
 import { flashLeft } from '../ui/turns.js';
 import { chaosStep, scAtHole, scRecapStage, scRecapTotal, setScUi } from '../ui/chaos.js';
 import { render } from '../ui/render.js';
 import { repStop } from '../ui/replay.js';
+import { devError } from './tracking.js';
 
 const clone = v => JSON.parse(JSON.stringify(v));
 let sending = false, busy = false;
@@ -53,13 +54,23 @@ export function scFollow(rec) {
   if (sc.deadline != null && loc.deadline !== sc.deadline) loc.deadline = sc.deadline;   // the round's clock, as the record has it
   const mine = sc.moves && sc.moves[o.me], oppIn = !!(sc.moves && sc.moves[other(o.me)]);
   if (mine && !loc.me) { scJoin(rec); return; }                 // our move went in from elsewhere (this phone open twice)
+  if (!mine && loc.me && loc.sent === loc.round && !sending) loc.sent = null;   // sent, yet not on the record: sent again (the record decides: 'moved' if it is there after all)
   if (oppIn !== !!loc.oppIn) loc.oppIn = oppIn;
   render();
+}
+// This phone's move for the round the record is on, not on the record yet (a reload, a write refused): it
+// is kept as the record is joined, to go in; never dropped for a move not yet made.
+function heldMove(full) {
+  const loc = state.sc, sc = full.sc, me = state.online.me;
+  if (!loc || !loc.online || !loc.me || state.id !== full.id || loc.round !== sc.round || sc.recap || sc.deadline == null || (sc.moves && sc.moves[me])) return null;
+  const sq = state.squares[loc.me.square];
+  if (!sq || sq.owner || !sq.mini) return null;
+  return { me: clone(loc.me), moved: loc.moved, start: clone(loc.start || null), steps: clone(loc.steps || []), square: clone(sq), fail: loc.fail || null };
 }
 // The record, joined here: the recap where it is in its sequence (the round just settled, its start a moment
 // ahead or part way through), else the round as it stands, and this phone's move if it is in already.
 function scJoin(rec) {
-  const full = fullState(rec), o = state.online, me = o.me, sc = full.sc, mine = sc.moves && sc.moves[me];
+  const full = fullState(rec), o = state.online, me = o.me, sc = full.sc, mine = sc.moves && sc.moves[me], held = heldMove(full);
   take(full);
   if (sc.recap && sc.deadline == null) {                        // the round just settled: its recap is on (or its start still ahead)
     recapState(full, recapOf(sc, me));
@@ -71,6 +82,9 @@ function scJoin(rec) {
     if (mine.square != null && mine.mini) state.squares[mine.square].mini = clone(mine.mini);
     state.sc.me = Object.assign({ square: mine.square, out: mine.out || 'none', win: !!mine.win }, mine.gives ? { gives: mine.gives } : {});
     state.sc.moved = mine.square; state.sc.sent = sc.round;
+  } else if (held) {                                              // this phone's move, made but not in: it stays made, and goes in from here
+    state.squares[held.me.square] = held.square;
+    Object.assign(state.sc, { me: held.me, moved: held.moved, start: held.start, steps: held.steps, fail: held.fail });
   }
   state.turn = me;
   setScUi({ round: null, readyAt: 0, stage: null, at: 0, played: false });
@@ -120,16 +134,43 @@ async function scSend() {
   const mv = scMoveOf(state, o.me);
   if (!mv) return;
   mv.at = serverNow();
-  const round = sc.round;
-  let reason = null, ok = false;
+  const round = sc.round, square = sc.me.square;
+  let reason = null, ok = false, err = null;
   sending = true;
   try {
     const res = await matchTransaction(rec => { const r = applyChaosSubmit(rec, o.me, mv, RNG, serverNow(), flashLeft()); if (!r.ok) { reason = r.reason; return null; } return r.rec; });   // (the shared start waits for the result on show here, should this move settle the round)
     ok = !!(res && res.committed);
-  } catch (e) { reason = 'network'; }
+    if (!ok && !reason) reason = 'norecord';                      // nothing written: no match on the record to take the move
+  } catch (e) { reason = 'network'; err = e; }
   sending = false;
-  if (state.sc && state.sc.round === round && (ok || reason === 'moved' || reason === 'round' || reason === 'over')) state.sc.sent = round;   // in (or the record has moved on: it decides)
+  if (!state.sc || state.sc.round !== round) { save(); render(); return; }   // the round moved on meanwhile: the record decided
+  if (ok || reason === 'moved') { state.sc.sent = round; state.sc.fail = null; }   // in (or in already: this phone open twice)
+  else if (reason === 'round' || reason === 'over') { state.sc.sent = round; state.sc.fail = null; scLost(reason, round, square); }   // the record moved on without it
+  else if (reason !== 'recap') scFailed(reason, err, round, square);   // ('recap': the next round has not begun on the record yet; tried again in a second)
   save(); render();
+}
+// A move's write refused or failed: said on screen (the hint, until it goes in), in the console, and in the
+// device's log on the server (the admin's playtest page), once per kind of failure; tried again every second.
+const SC_FAIL_TEXT = { PERMISSION_DENIED: 'not allowed by the server', network: 'no connection', norecord: 'no match on the record', bad: 'refused by the rules', maxretry: 'the record kept changing', disconnect: 'the connection dropped' };
+export const scFailText = code => SC_FAIL_TEXT[code] || SC_FAIL_TEXT[String(code || '').replace(/^.*\//, '')] || String(code || 'unknown');
+function scFailed(reason, err, round, square) {
+  const text = err ? String(err.code || err.message || err.name || err) : '', sc = state.sc;
+  const code = /permission.denied/i.test(text) ? 'PERMISSION_DENIED' : /maxretr/i.test(text) ? 'maxretry' : /disconnect/i.test(text) ? 'disconnect' : (err && err.code ? String(err.code).replace(/^.*\//, '') : reason);
+  const again = sc.fail && sc.fail.code === code;
+  sc.fail = { code, n: again ? sc.fail.n + 1 : 1, at: Date.now() };
+  if (again) return;
+  const what = `move not saved: ${code} (round ${round}, square ${square})`;
+  console.error('[Super Chaos] ' + what, err || '');
+  devError('scmove', what + (err && err.message ? ' ' + err.message : ''));
+  SND.play('error');
+  showNotice(`Move not saved: ${scFailText(code)}. Trying again…`, 2600);
+}
+// The round settled on the record before this phone's move went in (the timeout rule's move stood for it), or the match is over.
+function scLost(reason, round, square) {
+  const what = `move lost: ${reason} (round ${round}, square ${square})`;
+  console.warn('[Super Chaos] ' + what);
+  devError('sclost', what);
+  if (reason === 'round') showNotice('The round ended before your move went in', 2600);
 }
 // The deadline is past: the timeout rule's move for a side not in, and the round settled (once, whichever phone first).
 async function scDeadline() {

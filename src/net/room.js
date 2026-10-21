@@ -3,7 +3,7 @@
 import { restrictGames } from '../core/games.js';
 import { NAME_MAX, playerName } from '../core/match.js';
 import { upgradeMini } from '../core/minis.js';
-import { MATCH_FIELDS, applyOnlineResign, newOnlineMatch, resignLocal } from '../core/records.js';
+import { MATCH_FIELDS, applyOnlineResign, newOnlineMatch, packMatch, parseMatch, resignLocal } from '../core/records.js';
 import { armClock, newTimer, normTimer } from '../core/timer.js';
 import { other } from '../core/util.js';
 import { echoPinned } from '../games/echo/view.js';
@@ -60,15 +60,7 @@ export function setNet(status, msg) { net = { status, msg: msg || '' }; noteNet(
 function roomLink() { return location.origin + location.pathname + '?room=' + state.online.code; }
 export function roomRef(path) { return fb.m.ref(fb.db, 'rooms/' + state.online.code + (path ? '/' + path : '')); }
 function presRef(side) { return fb.m.ref(fb.db, isMM() ? `gpresence/${state.online.game}/${side}` : `presence/${state.online.code}/${side}`); }
-export function parseMatch(v) {
-  if (!v || typeof v.state !== 'string') return null;
-  try {
-    const st = JSON.parse(v.state);
-    if (!st || !Array.isArray(st.squares) || st.squares.length !== 9 || !st.squares.every(q => q && q.mini && typeof q.mini.type === 'string')) return null;   // not a match: ignored (a refused write shows locally for a moment)
-    return { state: st, secrets: v.secrets ? JSON.parse(v.secrets) : {} };
-  } catch (e) { return null; }
-}
-export function packMatch(rec) { return { state: JSON.stringify(rec.state), secrets: JSON.stringify(rec.secrets || {}) }; }
+export { packMatch, parseMatch };                                 // (core/records.js: the record as the database holds it)
 // ----- presence: this phone's seat says whether it is online and whether the app is in front -----
 export function presenceUp() {
   const o = state.online;

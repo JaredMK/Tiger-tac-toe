@@ -54,6 +54,7 @@ jobs:
           npm ci
           npm ci --prefix functions
           npm i -g firebase-tools@14
+          firebase setup:emulators:database    # the database emulator's jar: the two-client Super Chaos test in npm test runs on it
       - name: What changed (functions, rules, or both)
         id: what
         run: |

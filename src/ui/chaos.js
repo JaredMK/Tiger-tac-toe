@@ -20,7 +20,7 @@ import { animMs, fxAt, startFx, stampFx } from './fx.js';
 import { toon } from './art.js';
 import { render } from './render.js';
 import { repDuration, repStart, repStop } from './replay.js';
-import { scNextOnline, scOnlineWait } from '../net/chaos.js';
+import { scFailText, scNextOnline, scOnlineWait } from '../net/chaos.js';
 import { holdOf, playFlash } from './turns.js';
 
 export const SC_MS = { cpu: [1400, 4200], spot: 800, claim: 1300, clash: 1050, flip: 900, end: 1300, popup: 2, idle: 300, last: 1000, skip: 1000 };   // the computer's move takes this long; the recap's steps; the pop-up replay's speed, its longest idle moment (a pause in the inputs, the wait between a move's steps), how long its last result stays up, and the end shown after a skip
@@ -315,6 +315,7 @@ export function scLastPlayed() {
 export function scHint() {
   const sc = state.sc, cpu = other(scHuman(state));
   if (sc.recap) return scRecapStage() === 'wait' ? 'Both moves in · settling the round…' : `Round ${sc.recap.round} · results`;
+  if (sc.me && sc.online && sc.fail) return `<span class="scfail">Move not saved (${scFailText(sc.fail.code)}) · trying again…</span>`;   // (a friend room: the record refused or could not take the move; sent again every second)
   if (sc.me) return sc.oppIn ? `${N(cpu)} has moved · settling the round…` : `Waiting for ${N(cpu)}…${sc.online ? ` <span class="scleft">${fmtClock(scClockLeft() || 0)}</span>` : ''}`;   // (a friend room: the round's clock, the same on both phones)
   return sc.oppIn ? `${N(cpu)} has moved · tap any open square` : `Round ${sc.round} · tap any open square`;
 }

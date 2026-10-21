@@ -81,6 +81,12 @@ function devEvent(data) {
   } catch (e) { /* never worth an error */ }
 }
 export const devOpen = () => devEvent({ ev: 'open', o: 'o' + randHex(8) });
+// Something went wrong on this phone (a move that would not save): kept with the device's events for the
+// admin's playtest page, with the match it was in. Never more than a short line; never a name.
+export function devError(kind, msg) {
+  const m = devMatch() || {};
+  devEvent(Object.assign({ ev: 'error', o: 'o' + randHex(8), msg: String(kind + ': ' + msg).slice(0, 160) }, m.g ? { g: m.g, mode: m.mode } : {}));
+}
 // The match on show here, by a key that stays the same across reloads (the server keeps each start and
 // end once): a Find Match game, a friend match, or a local one.
 function devMatch() {

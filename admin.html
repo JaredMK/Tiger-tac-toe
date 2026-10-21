@@ -353,9 +353,10 @@ const midText = m => (m === 'left' ? '<span class="mid-left">Yes, left</span>' :
 function timeline(r) {
   const ses = r.sessions.slice().reverse();
   return `<div class="tlist">${ses.map(s => {
-    const opens = s.events.filter(e => e.ev === 'open').length;
+    const opens = s.events.filter(e => e.ev === 'open').length, errs = s.events.filter(e => e.ev === 'error');
+    const errLine = errs.length ? `<p class="mid-left">${errs.length} error${errs.length === 1 ? '' : 's'} on the phone: ${esc([...new Set(errs.map(e => e.msg || '?'))].slice(0, 3).join(' · '))}</p>` : '';
     const games = s.games.map(g => `<li>${PT.nyWhen(g.start).replace(/^\w+ \d+, /, '')} · ${esc(PT.MODE_NAMES[g.mode] || g.mode || '?')} · ${g.how === 'finish' ? `finished after ${PT.dur(g.end - g.start)}` : g.how === 'leave' ? `<span class="mid-left">left after ${PT.dur(g.end - g.start)}</span>` : '<span class="mid-open">not finished</span>'}</li>`).join('');
-    return `<div class="tses"><h3>${PT.nyWhen(s.start)} · ${PT.dur(s.ms)}</h3><p>${s.played} game${s.played === 1 ? '' : 's'} · ${s.streak} finished in a row · ${modeList(s.modes)} · ended mid-match: ${midText(s.mid)}${opens ? ` · opened the app${opens > 1 ? ` ${opens} times` : ''}` : ''}</p>${games ? `<ul>${games}</ul>` : ''}</div>`;
+    return `<div class="tses"><h3>${PT.nyWhen(s.start)} · ${PT.dur(s.ms)}</h3><p>${s.played} game${s.played === 1 ? '' : 's'} · ${s.streak} finished in a row · ${modeList(s.modes)} · ended mid-match: ${midText(s.mid)}${opens ? ` · opened the app${opens > 1 ? ` ${opens} times` : ''}` : ''}</p>${errLine}${games ? `<ul>${games}</ul>` : ''}</div>`;
   }).join('') || '<p class="note">No events.</p>'}</div>`;
 }
 // A device's timeline, under the devices table: its sessions, newest first, each with its games.

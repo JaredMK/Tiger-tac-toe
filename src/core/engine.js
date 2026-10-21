@@ -12,7 +12,7 @@ export { isReleased, releasedTypes, allowedTypes, restrictGames } from './games.
 export { dealable, normLocal, seatLocal, NAME_MAX, pickType, newSquare, CPU_NAME, defaultSetup, cpuSide, normSetup, syncNames, enabledGames, playerName, newState, startMatch, newMatch } from './match.js';
 export { canMove, upgradeMini, anyMove, newMini, applyMove, publicMini, randomLegalMove } from './minis.js';
 export { gaussOf, makeRng, needRng, randInt, randomType, shuffle } from './random.js';
-export { resignLocal, RECENT_MAX, MATCH_FIELDS, secretOf, hideMini, matchRecord, fullState, settle, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, applyOnlineReveal, applyOnlineStart, newOnlineMatch, applyOnlineResign, applyChaosSubmit, applyChaosDeadline, applyChaosBegin } from './records.js';
+export { resignLocal, RECENT_MAX, MATCH_FIELDS, secretOf, hideMini, matchRecord, fullState, settle, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, applyOnlineReveal, applyOnlineStart, newOnlineMatch, applyOnlineResign, applyChaosSubmit, applyChaosDeadline, applyChaosBegin, parseMatch, packMatch, matchTxn } from './records.js';
 export { matchStats } from './stats.js';
 export { normTimer, TIMER_OPTIONS, newTimer, PLAY, playMs, replayMs, armClock } from './timer.js';
 export { REP, repNorm, repMove, repOf } from './replay.js';

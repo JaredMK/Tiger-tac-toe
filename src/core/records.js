@@ -44,6 +44,26 @@ export function matchRecord(full) {
   state.squares.forEach((sq, k) => { if (!sq.owner || PHYS_TYPES.includes(sq.mini.type)) hideMini(sq.mini, k, full); });
   return { state, secrets };
 }
+// A room's match as the database holds it: { state, secrets } as JSON strings (seats ride beside them).
+export function parseMatch(v) {
+  if (!v || typeof v.state !== 'string') return null;
+  try {
+    const st = JSON.parse(v.state);
+    if (!st || !Array.isArray(st.squares) || st.squares.length !== 9 || !st.squares.every(q => q && q.mini && typeof q.mini.type === 'string')) return null;   // not a match: ignored (a refused write shows locally for a moment)
+    return { state: st, secrets: v.secrets ? JSON.parse(v.secrets) : {} };
+  } catch (e) { return null; }
+}
+export function packMatch(rec) { return { state: JSON.stringify(rec.state), secrets: JSON.stringify(rec.secrets || {}) }; }
+// A change to the room's match as a database transaction makes it: fn gets the record and returns the new
+// one, or nothing to leave it (then nothing is written, not even where no match is). The seats ride along.
+export function matchTxn(fn) {
+  return cur => {
+    const rec = parseMatch(cur);
+    if (!rec) return undefined;                                   // no match there (or not in the cache yet): nothing to apply, nothing written
+    const out = fn(rec);
+    return out ? Object.assign(packMatch(out), cur.seats ? { seats: cur.seats } : {}) : undefined;
+  };
+}
 // The full state again, from a record: the secrets back in their squares, the screen-only fields blank.
 export function fullState(rec) {
   const st = JSON.parse(JSON.stringify(rec.state));
@@ -147,9 +167,12 @@ export function applyChaosSubmit(rec, side, mv, rng, now, lead) {
   const st = rec.state, sc = st.sc;
   if (!sc || !sc.online) return { ok: false, reason: 'bad' };
   if (st.winner) return { ok: false, reason: 'over' };
-  if (!mv || mv.round !== sc.round) return { ok: false, reason: 'round' };
-  if (sc.moves && sc.moves[side]) return { ok: false, reason: 'moved' };
+  if (side !== 'X' && side !== 'O' || !mv || mv.side !== side) return { ok: false, reason: 'bad' };
+  if (mv.round !== sc.round) return { ok: false, reason: 'round' };
+  if (sc.moves && sc.moves[side]) return { ok: false, reason: 'moved' };   // one move a round: a second is refused, whatever it holds
   if (sc.deadline == null) return { ok: false, reason: 'recap' };   // (the round has not begun: its recap is playing)
+  const sq = Number.isInteger(mv.square) ? st.squares[mv.square] : null;   // the move must be in an open square of the game it says
+  if (!sq || sq.owner || !mv.mini || mv.mini.type !== sq.mini.type || !Array.isArray(mv.steps)) return { ok: false, reason: 'bad' };
   const full = fullState(rec);
   full.sc.moves = Object.assign({}, full.sc.moves, { [side]: JSON.parse(JSON.stringify(mv)) });
   const both = full.sc.moves.X && full.sc.moves.O;

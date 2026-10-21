@@ -1,14 +1,14 @@
 // Online moves: a transaction on the room's record, or the server's move function; instant moves shown
 // at once and rolled back if refused.
 import { playMove } from '../core/board.js';
-import { applyOnlineMove, applyOnlinePick, applyOnlineReveal, applyOnlineStart } from '../core/records.js';
+import { applyOnlineMove, applyOnlinePick, applyOnlineReveal, applyOnlineStart, matchTxn } from '../core/records.js';
 import { armClock } from '../core/timer.js';
 import { setTriviaFlip, triviaFlip } from '../games/trivia/view.js';
 import { SND } from '../audio/sound.js';
 import { NET_MS, call, fb, serverNow } from './connect.js';
 import { isMM } from './matchmaking.js';
 import {
-  blocked, moveTimer, moveWait, packMatch, parseMatch, presentEntry, presentingSeq, room, roomRef, setMoveTimer,
+  blocked, moveTimer, moveWait, parseMatch, presentEntry, presentingSeq, room, roomRef, setMoveTimer,
   setMoveWait, setPresentingSeq, showLatest
 } from './room.js';
 import { RNG, commit, flashTimer, holdTimer, noticeTimer, setFlashTimer, setHoldTimer, setNoticeTimer, state } from '../ui/app.js';
@@ -27,12 +27,7 @@ export function attemptMove(m) {
   return r;
 }
 export function matchTransaction(fn) {
-  return fb.m.runTransaction(roomRef('match'), cur => {
-    const rec = parseMatch(cur);
-    if (!rec) return cur;                                         // nothing here yet (or not in the cache): a no-op, retried with the server's value
-    const out = fn(rec);
-    return out ? Object.assign(packMatch(out), cur.seats ? { seats: cur.seats } : {}) : undefined;   // the seats stay with the match
-  }, { applyLocally: false });
+  return fb.m.runTransaction(roomRef('match'), matchTxn(fn), { applyLocally: false });   // (core/records.js: the record changed as fn says, the seats kept; a refused change writes nothing)
 }
 // ---- instant moves (Find Match): your own move shows at once, and the server still decides ----
 // A move the phone can work out from what it can see (tic-tac-toe, Connect 4, Hex, Hexapawn) is checked by the

@@ -115,3 +115,28 @@ test('Super Chaos online Roulette: the record draws the round\'s spin (kept off 
   assert.deepEqual(after.mini.spins, [{ n: 11, by: '', hit: false }], 'once in the history');
   assert.ok(Number.isInteger(after.mini.spin), 'the next round\'s spin is drawn as the round settles');
 });
+
+test('Super Chaos online: the record takes exactly one move a side a round and refuses the rest (a second move, the other side\'s, a wrong round, a claimed or mismatched square)', () => {
+  const rec = room([wordle('CRANE'), wordle('SLATE')]);
+  const mx = play(rec, 'X', 0, ['CRANE']);
+  const r1 = E.applyChaosSubmit(rec, 'X', mx, E.makeRng('r'), T0 + 1000);
+  assert.ok(r1.ok);
+  const again = play(r1.rec, 'X', 1, ['SLATE']);                 // a second move from X in the same round, in another square
+  assert.equal(E.applyChaosSubmit(r1.rec, 'X', again, E.makeRng('r'), T0 + 2000).reason, 'moved');
+  assert.equal(E.applyChaosSubmit(r1.rec, 'X', mx, E.makeRng('r'), T0 + 2000).reason, 'moved', 'the same move sent twice');
+  assert.equal(E.applyChaosSubmit(r1.rec, 'O', mx, E.makeRng('r'), T0 + 2000).reason, 'bad', "X's move sent as O's");
+  assert.equal(E.applyChaosSubmit(r1.rec, 'O', Object.assign({}, play(r1.rec, 'O', 1, ['SLATE']), { round: 3 }), E.makeRng('r'), T0 + 2000).reason, 'round');
+  assert.equal(E.applyChaosSubmit(r1.rec, 'O', Object.assign({}, play(r1.rec, 'O', 1, ['SLATE']), { square: 0, mini: { type: 'hilo' } }), E.makeRng('r'), T0 + 2000).reason, 'bad', 'a square of another game');
+  assert.equal(E.applyChaosSubmit(r1.rec, 'Z', mx, E.makeRng('r'), T0 + 2000).reason, 'bad');
+  assert.deepEqual(Object.keys(r1.rec.state.sc.moves), ['X'], 'the record still holds the one move');
+  const mo = play(r1.rec, 'O', 1, ['SLATE']);
+  const r2 = E.applyChaosSubmit(r1.rec, 'O', mo, E.makeRng('r'), T0 + 3000);
+  assert.ok(r2.ok && r2.resolved);
+  assert.equal(E.applyChaosSubmit(r2.rec, 'X', Object.assign({}, mx, { round: 2 }), E.makeRng('r'), T0 + 3500).reason, 'recap', 'nothing taken until the next round has begun');
+  // the record as the database holds it, and back: the same match
+  const packed = E.packMatch(r2.rec);
+  assert.deepEqual(Object.keys(packed).sort(), ['secrets', 'state']);
+  assert.deepEqual(E.parseMatch(packed), r2.rec);
+  assert.equal(E.parseMatch({ state: 'not json' }), null);
+  assert.equal(E.parseMatch(null), null);
+});

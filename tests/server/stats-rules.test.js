@@ -75,3 +75,16 @@ test('stats: Snakes and Ladders and Bump are counted; a Dice race from an older 
   const s2 = S.checkEnd(E.matchStats(st), E.TYPES);
   assert.ok(s2.squares.length >= 3 && s2.squares.every(e => ['snakes', 'bump'].includes(e.t)));
 });
+
+test('playtest log: an error event from a phone (a move that would not save) is kept with its line and its match; anything malformed is not', () => {
+  const t = 1700000000000, dev = 'd0123456789abcdef0123456';
+  const ok = S.checkDev({ dev, ev: 'error', o: 'o12345678', msg: 'scmove: move not saved: PERMISSION_DENIED (round 2, square 4)', mode: 'friend', g: 'fABCDE_m1' }, t);
+  assert.ok(ok && ok.k === 'xo12345678');
+  assert.deepEqual(ok.ev, { t, ev: 'error', msg: 'scmove: move not saved: PERMISSION_DENIED (round 2, square 4)', m: 'friend', g: 'fABCDE_m1' });
+  const bare = S.checkDev({ dev, ev: 'error', o: 'o12345678', msg: 'x'.repeat(400) + '\u0007' }, t);
+  assert.deepEqual(bare.ev, { t, ev: 'error', msg: 'x'.repeat(160) }, 'no match named: just the line, cut short, printable only');
+  assert.equal(S.checkDev({ dev, ev: 'error', o: 'o12345678', msg: '   ' }, t), null, 'no line: nothing kept');
+  assert.equal(S.checkDev({ dev, ev: 'error', o: 'bad', msg: 'hm' }, t), null);
+  assert.equal(S.checkDev({ dev, ev: 'error', o: 'o12345678', msg: 'hm', mode: 'nope', g: 'fABCDE_m1' }, t).ev.g, undefined, 'a mode not known: the match left off');
+  assert.ok(S.DEV_EVENTS.includes('error'));
+});

@@ -4,7 +4,7 @@
  * funnel. Pure (no page, no database), so the tests run it as it is: admin.html loads it as a script,
  * Node requires it.
  *
- * A device's events: { t, ev: 'open' | 'live' | 'start' | 'finish' | 'leave', m: mode, g: match }. A session starts
+ * A device's events: { t, ev: 'open' | 'live' | 'start' | 'finish' | 'leave' | 'error', m: mode, g: match, msg (an error's line) }. A session starts
  * after 30 minutes with nothing from the device. Days and hours are New York time (America/New_York),
  * summer time included.
  */
@@ -42,7 +42,7 @@
   }
 
   // ---------- one device ----------
-  const EVS = ['open', 'live', 'start', 'finish', 'leave'];          // ('live': still playing, every 10 minutes of a match)
+  const EVS = ['open', 'live', 'start', 'finish', 'leave', 'error'];   // ('live': still playing, every 10 minutes of a match; 'error': something went wrong on the phone, its msg)
   function eventsOf(log) {                     // the device's events, oldest first (anything malformed left out)
     return Object.values(log || {}).filter(e => e && Number.isFinite(e.t) && EVS.includes(e.ev)).sort((a, b) => a.t - b.t);
   }

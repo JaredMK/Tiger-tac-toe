@@ -45,6 +45,7 @@ jobs:
         # Pinball) loads from cdnjs; the copy from npm sits beside the page as the fallback.
         run: |
           npm ci
+          npm i -g firebase-tools@14 && firebase setup:emulators:database   # the database emulator's jar: the two-client Super Chaos test in npm test runs on it (Java is on the runner)
           npm test
           mkdir _site
           cp index.html admin.html playtest.js trivia.json styles.html .nojekyll _site/

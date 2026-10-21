@@ -62,6 +62,8 @@ function load() {
       if (s.sc && typeof s.sc === 'object' && !s.online) {        // Super Chaos: a recap cut short goes straight on to the next round; the round's clock gives at least 10 s back
         if (s.sc.recap) { s.flash = null; s.screen = s.winner ? 'win' : 'board'; s.zoom = null; }
         if (s.sc.deadline != null) { s.sc.held = Math.min(s.sc.limit * 1000, Math.max(10000, s.sc.deadline - Date.now())); s.sc.deadline = null; }
+      } else if (s.sc && typeof s.sc === 'object' && s.sc.online && s.online) {   // a friend room: the round as this phone had it stays (a move made here and not yet on the record goes in from here; the record is joined again as it stands)
+        s.sc.recap = null; s.sc.sent = null; s.sc.oppIn = false; s.sc.deadline = null;
       } else if (s.sc) s.sc = null;
       if (!s.timer || typeof s.timer !== 'object') s.timer = newTimer(0);
       if (s.setup.timer == null) s.setup.timer = 0;
