@@ -745,6 +745,14 @@ page, where they can be reset; it is never run on its own) and apply to Hard onl
 the code's own numbers whatever is saved. `npm run sim -- levels` plays Hard against Normal (and Easy
 against Normal) over whole matches and prints the win rates (LEVELS_N=500 for the full run).
 
+Whose move it is shows on the main board at a glance (`src/ui/board.js`, `waitBand`): while the computer or
+the other phone is on the move (in Super Chaos, once this side's move is in and the other's is not), the
+board dims a little and a translucent band across its middle shows the other side's character bouncing
+gently, "[name] is playing…" ("Waiting for [name]…" in Super Chaos) and the turn's countdown where there is
+one; on one's own turn the board is at full brightness with a soft glow round it in one's colour. The band
+lies over the board (nothing moves), never over the top bar or Menu, lets taps through, and fades in and out;
+it stays through the computer's chosen square lighting up unless that square lies under it.
+
 The computer takes its turn in the open: a short pause to think, then the square it chose lights up
 on the main board for about a second (a pulsing glow in its colour and a "Computer plays here" label),
 then it zooms into that square, makes its move with the usual animation (its chosen cards, coins or

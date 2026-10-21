@@ -3,14 +3,14 @@ import { needRng, randInt } from '../../core/random.js';
 import { tune, tuneLive } from '../../core/tune.js';
 
 // ---------- Sniff ----------
-// A 5x5 field with one buried treasure and one dog, shared. The dog starts at least 3 steps from the treasure
-// (2 when the treasure is in the very middle, where nothing is further). A move walks it one step, any of the 8 ways (diagonals too): "Hotter" when that
+// A 7x7 field with one buried treasure and one dog, shared. The dog starts at a random cell at least 3 steps
+// from the treasure in a straight line (its setting, minStart). A move walks it one step, any of the 8 ways (diagonals too): "Hotter" when that
 // step brought it closer to the treasure in a straight line, "Colder" when further, "Same" when the straight-
 // line distance did not change. Nothing of the past stays on the board: the step's line and its word
 // show while it plays, then they are gone. The square keeps only the last 3 steps (who made each, and which it
 // was), for the computer, which remembers that much. Whoever walks the dog onto the treasure wins the square.
 // Online the server keeps the treasure.
-export const SNIFF = { n: 5, minStart: 3, step: 420, hold: 1900, memory: 3 };   // (minStart, hold, memory: the defaults of its settings, TUNE in meta.js)
+export const SNIFF = { n: 7, minStart: 3, step: 420, hold: 1900, memory: 3 };   // (minStart, hold, memory: the defaults of its settings, TUNE in meta.js)
 const sniffMem = mini => tune(mini).memory || SNIFF.memory;           // the steps a square keeps: its own setting
 export const SNIFF_DIRS = { N: [-1, 0], NE: [-1, 1], E: [0, 1], SE: [1, 1], S: [1, 0], SW: [1, -1], W: [0, -1], NW: [-1, -1] };
 // The straight-line distance squared (whole numbers, so "Same" is exact), the distance, and the steps a walk needs.
@@ -50,11 +50,11 @@ export function sniffPick(pm, rng) {
   }
   return { move: best[randInt(rng, best.length)], q: 0 };
 }
-export function create(type, rng) {   // the treasure (hidden online), and the dog at least 3 steps from it
+export function create(type, rng) {   // the treasure (hidden online), and the dog at least 3 steps from it, as the crow flies
   const r = needRng(rng), treasure = randInt(r, SNIFF.n * SNIFF.n), cells = Array.from({ length: SNIFF.n * SNIFF.n }, (_, c) => c);
-  const most = Math.min(tuneLive(type).minStart, Math.max(...cells.map(c => sniffSteps(c, treasure)))), far = cells.filter(c => sniffSteps(c, treasure) >= most);   // (a treasure in the middle: every cell is within 2 steps, so 2)
+  const far = cells.filter(c => sniffDist(c, treasure) >= tuneLive(type).minStart);   // (on 7x7 every cell has some at least 4 away)
   const dog = far[randInt(r, far.length)];
-  return { type, treasure, dog, start: dog, trail: [], last: null };
+  return { type, g: SNIFF.n, treasure, dog, start: dog, trail: [], last: null };
 }
 export function apply(mini, p, m, rng, idx) {   // the dog one step: hotter, colder or the same; onto the treasure: found
   if (mini.dogs) return scWalk(mini, p, m);
@@ -68,8 +68,9 @@ export function apply(mini, p, m, rng, idx) {   // the dog one step: hotter, col
   return { ok: true, outcome: 'continue', note: res };
 }
 export function publicView(mini) {
-  if (mini.dogs) return { type: 'sniff', dogs: Object.assign({}, mini.dogs), paths: { X: mini.paths.X.slice(), O: mini.paths.O.slice() }, trails: { X: mini.trails.X.map(t => Object.assign({}, t)), O: mini.trails.O.map(t => Object.assign({}, t)) } };
-  return { type: 'sniff', dog: mini.dog, start: mini.start, trail: (mini.trail || []).slice(-sniffMem(mini)).map(t => Object.assign({}, t)) };   // never the treasure; the last few steps
+  const was = mini.was ? { was: mini.was } : {};                 // (a square from the 5x5 field: the computer's to know)
+  if (mini.dogs) return { type: 'sniff', g: mini.g, ...was, dogs: Object.assign({}, mini.dogs), paths: { X: mini.paths.X.slice(), O: mini.paths.O.slice() }, trails: { X: mini.trails.X.map(t => Object.assign({}, t)), O: mini.trails.O.map(t => Object.assign({}, t)) } };
+  return { type: 'sniff', g: mini.g, ...was, dog: mini.dog, start: mini.start, trail: (mini.trail || []).slice(-sniffMem(mini)).map(t => Object.assign({}, t)) };   // never the treasure; the last few steps
 }
 export function randomMove(mini, p, rng, from, empties) {
   return from(sniffDirs(mini.dogs ? mini.dogs[p] : mini.dog));
@@ -89,6 +90,19 @@ export function flashMs(f, winLen, won) {
   return SNIFF.step + (f.hold || SNIFF.hold) + (won ? 900 : 0);
 }
 
+// A square from the 5x5 field (no g): its cells move into the middle of the 7x7 one, one row and column in,
+// so every distance (and every clue already given) stays as it was; the treasure too, where it is known.
+export function sniffUpgrade(mini) {
+  if (!mini || mini.type !== 'sniff' || mini.g) return mini;
+  const at = c => (Number.isInteger(c) ? (Math.floor(c / 5) + 1) * SNIFF.n + (c % 5) + 1 : c);
+  const step = s => Object.assign({}, s, { f: at(s.f), t: at(s.t) });
+  for (const k of ['treasure', 'dog', 'start']) if (Number.isInteger(mini[k])) mini[k] = at(mini[k]);
+  if (Array.isArray(mini.trail)) mini.trail = mini.trail.map(step);
+  if (mini.dogs) for (const p of ['X', 'O']) { mini.dogs[p] = at(mini.dogs[p]); mini.paths[p] = (mini.paths[p] || []).map(at); mini.trails[p] = (mini.trails[p] || []).map(step); }
+  if (mini.last) mini.last = Object.assign({}, mini.last, { f: at(mini.last.f), t: at(mini.last.t) });
+  mini.g = SNIFF.n; mini.was = 5;   // (was: the computer knows the treasure is in the middle five, and that its start rule was another)
+  return mini;
+}
 // Super Chaos: one field and one treasure (never in the middle cell), but a dog each, both starting in the
 // middle. A move walks your own dog one step: hotter, colder or the same by your own dog's distance. Both dogs
 // and their paths stay on the board, each in its owner's colour. The first dog onto the treasure wins the
@@ -98,7 +112,7 @@ export const SNIFF_MID = Math.floor(SNIFF.n * SNIFF.n / 2);
 export function scCreate(type, rng) {
   let treasure = randInt(needRng(rng), SNIFF.n * SNIFF.n - 1);
   if (treasure >= SNIFF_MID) treasure += 1;
-  return { type, treasure, dogs: { X: SNIFF_MID, O: SNIFF_MID }, paths: { X: [SNIFF_MID], O: [SNIFF_MID] }, trails: { X: [], O: [] }, last: null };
+  return { type, g: SNIFF.n, treasure, dogs: { X: SNIFF_MID, O: SNIFF_MID }, paths: { X: [SNIFF_MID], O: [SNIFF_MID] }, trails: { X: [], O: [] }, last: null };
 }
 function scWalk(mini, p, m) {
   const from = mini.dogs[p], to = typeof m === 'string' ? sniffStep(from, m) : null;

@@ -7,6 +7,9 @@ import { parseMatch, remoteTurn, room } from '../net/room.js';
 import { N, cpuPlays, esc, state } from './app.js';
 import { CHEV, CPU_ICON, ICONS, toon } from './art.js';
 import { scHint, scLastPlayed, scShown, scVerdict } from './chaos.js';
+import { clockLeft, fmtClock } from './clock.js';
+import { scHuman } from '../core/chaos.js';
+import { other } from '../core/util.js';
 import { BURST_MS, burstPick, burstSvg, fxAt, fxAttr } from './fx.js';
 import { pauseMenu } from './mini.js';
 import { reviewCtx } from './screens/profile.js';
@@ -14,6 +17,33 @@ import { netBar } from './turnbar.js';
 import { cpuTurn } from './turns.js';
 
 /* ----- main board ----- */
+// Whose move it is, at a glance. Waiting (the computer or the other phone is on the move; Super Chaos: this
+// side's move is in and the other's is not): the board dims a little and a translucent band across its
+// middle shows the other side's character bouncing gently, "[name] is playing…" ("Waiting for [name]…" in
+// Super Chaos) and the turn's countdown where there is one (clock.js keeps it ticking). This side's own turn:
+// the board at full brightness with a soft glow round it in its colour. The band lies over the board (its
+// row is absolute: nothing moves), never over the top bar or Menu; it fades in when the wait starts and out
+// when it ends (the other side's square lighting up, its replay, the round's recap), its fade timed from
+// that moment so a redraw does not restart it.
+let band = null;                                   // { key, side, txt, at, out }: the band on show, or fading out
+function waitBand(spot) {
+  const sc = state.sc, live = !state.winner && !state.flash && !state.done;
+  let side = null, txt = '', mine = null;
+  if (sc) {
+    const me = scHuman(state);
+    if (live && sc.me && !sc.recap && !sc.oppIn) { side = other(me); txt = `Waiting for ${esc(playerName(state, side))}…`; }
+    else if (live && !sc.me && !sc.recap) mine = me;
+  } else if (live && (!spot || spot.square < 3 || spot.square > 5) && (cpuTurn() || remoteTurn())) { side = state.turn; txt = `${esc(playerName(state, side))} is playing…`; }   // (through the other side's chosen square lighting up, unless that square lies under the band)
+  else if (live && !spot && !state.lock) mine = state.turn;
+  const now = performance.now(), key = side ? `${state.id || 'm'}:${sc ? 'r' + sc.round : state.moves}:${side}` : null;
+  if (key && (!band || band.key !== key || band.out)) band = { key, side, txt, at: now, out: false };
+  else if (key) band.txt = txt;
+  else if (band && !band.out) { band.out = true; band.at = now; }
+  if (!band || (band.out && now - band.at > 400)) return { on: false, mine, html: '' };
+  const left = !band.out ? clockLeft() : null;
+  const html = `<div class="wband ${band.side}${band.out ? ' out' : ''}" role="status" aria-live="polite"${fxAttr(band.at)}><span class="wtoon">${toon(band.side)}</span><span class="wtxt">${band.txt}</span>${left != null ? `<span class="wleft">${fmtClock(left)}</span>` : ''}</div>`;
+  return { on: !band.out, mine, html };
+}
 // The squares as they ended, every secret included (online, the unclaimed squares' secrets come from the room).
 export function reviewSquares() {
   if (isMM() && room && room.pub && room.pub.final) { try { return JSON.parse(room.pub.final).squares; } catch (e) { /* not yet: the public board */ } }   // a server game: its final state, everything revealed
@@ -61,7 +91,8 @@ export function renderBoard(review) {
   const st = el < BOARD_BURST[1] + BURST_MS ? state.stamp : null;    // a fresh claim: two bursts around it, gone after about a second
   const bw = st == null ? null : burstPick('board:' + state.stampId), bend = k => Math.round(stampAt + BOARD_BURST[k] + BURST_MS);
   const pow = st == null ? '' : `<div class="pow-b c${st % 3}" style="grid-row:${Math.floor(st / 3) + 1} / span 1;grid-column:${st % 3 + 1} / span 1"${fxAttr(stampAt)} aria-hidden="true">${el < BOARD_BURST[0] + BURST_MS ? `<span class="b1" data-bend="${bend(0)}">${burstSvg(bw.words[0], 'y', 150, 110, 34)}</span>` : ''}<span class="b2" data-bend="${bend(1)}">${burstSvg(bw.words[1], 'r', 160, 104, 28)}</span></div>`;
-  return `<main class="scr board-scr">${netBar()}<div class="board">${sqs}${pow}</div>
+  const w = waitBand(spot), mood = w.on ? ' waiting' : w.mine ? ` myturn my-${w.mine}` : '';
+  return `<main class="scr board-scr${mood}">${netBar()}<div class="board">${sqs}${pow}${w.html}</div>
     <div class="foot"><span class="hint">${hint}</span></div>${pauseMenu()}</main>`;
 }
 // Miniatures: public information only. Hidden words, numbers, cards and the ship never appear here,

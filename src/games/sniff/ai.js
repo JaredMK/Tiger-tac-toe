@@ -1,11 +1,14 @@
 // Sniff: the computer's play.
 import { randInt } from '../../core/random.js';
 import { tune } from '../../core/tune.js';
-import { SNIFF, SNIFF_MID, sniffCands, sniffDirs, sniffPick, sniffRes, sniffStep, sniffSteps } from './rules.js';
+import { SNIFF, SNIFF_MID, sniffCands, sniffDirs, sniffDist, sniffPick, sniffRes, sniffStep, sniffSteps } from './rules.js';
 
 // Super Chaos: a dog each. The computer walks its own, from what both players' last few steps showed (each
 // was shown in its replay), never onto the middle or a cell either dog has stood on.
-const own = (pm, p) => (pm.dogs ? { dog: pm.dogs[p], trail: pm.trails.X.concat(pm.trails.O), not: [SNIFF_MID].concat(pm.paths.X, pm.paths.O) } : pm);
+// A square moved up from the 5x5 field (was: 5): its treasure is in the middle five rows and columns, never the outer ring.
+const RING = Array.from({ length: SNIFF.n * SNIFF.n }, (_, c) => c).filter(c => { const r = Math.floor(c / SNIFF.n), k = c % SNIFF.n; return !r || !k || r === SNIFF.n - 1 || k === SNIFF.n - 1; });
+const ring = pm => (pm.was === 5 ? RING : []);
+const own = (pm, p) => (pm.dogs ? { dog: pm.dogs[p], trail: pm.trails.X.concat(pm.trails.O), not: [SNIFF_MID].concat(pm.paths.X, pm.paths.O, ring(pm)) } : pm.was === 5 ? Object.assign({}, pm, { not: (pm.not || []).concat(RING) }) : pm);
 
 export function needs(pm, p) {   // the steps to the nearest cell it may be in (diagonals count one), and what is still unknown
   pm = own(pm, p);
@@ -20,8 +23,8 @@ export function best(pm, me, rng, style, ctx) {
 
 // ---- Hard: the race for the treasure ----
 // Where the treasure may be, weighed: every cell the remembered steps allow and, in a match, the dog's start
-// (it was dealt at least minStart steps from the treasure, two when the treasure is in the middle: so never
-// nearer the start than that), each cell by the chance the dog was started where it was with the treasure
+// (it was dealt at least minStart cells from the treasure in a straight line, fewer only where no cell is that
+// far: so never nearer the start than that; a square from the 5x5 field had another rule, so not there), each cell by the chance the dog was started where it was with the treasure
 // there (one over the cells that far from it). The value of a set of cells for the side to move, the dog
 // where it is: for each step, the chance that cell is it, else, by what the step would say of the rest
 // (hotter, colder, same), what is left of the other side's chances from that group with the dog there.
@@ -32,24 +35,24 @@ export function best(pm, me, rng, style, ctx) {
 // computer's own walk alone, each further step worth less.
 const SH = { work: 4e4, depth: 10, disc: 0.75 };
 const NN = SNIFF.n * SNIFF.n;
-const FAR = {};                                                 // per minStart: for a treasure in each cell, the least steps its dog started away (most) and the cells that far (far)
+const FAR = {};                                                 // per minStart: for a treasure in each cell, the least straight-line distance its dog started away (most) and the cells that far (far)
 function farTable(minStart) {
   if (FAR[minStart]) return FAR[minStart];
-  const most = new Uint8Array(NN), far = new Float64Array(NN);
+  const most = new Float64Array(NN), far = new Float64Array(NN);
   for (let c = 0; c < NN; c++) {
     let top = 0;
-    for (let x = 0; x < NN; x++) top = Math.max(top, sniffSteps(x, c));
+    for (let x = 0; x < NN; x++) top = Math.max(top, sniffDist(x, c));
     most[c] = Math.min(minStart, top);
-    for (let x = 0; x < NN; x++) if (sniffSteps(x, c) >= most[c]) far[c]++;
+    for (let x = 0; x < NN; x++) if (sniffDist(x, c) >= most[c]) far[c]++;
   }
   return (FAR[minStart] = { most, far });
 }
 function sniffHard(pm, me, ctx) {
   const solo = !!pm.dogs, W = new Float64Array(NN).fill(1);
   let cands = sniffCands(me);
-  if (!solo && Number.isInteger(pm.start)) {                     // a match: the start's say
+  if (!solo && Number.isInteger(pm.start) && pm.was !== 5) {                     // a match: the start's say
     const T = farTable(Math.max(1, tune(pm).minStart || SNIFF.minStart));
-    cands = cands.filter(c => c !== pm.start && sniffSteps(pm.start, c) >= T.most[c]);
+    cands = cands.filter(c => c !== pm.start && sniffDist(pm.start, c) >= T.most[c] - 1e-9);
     for (let c = 0; c < NN; c++) W[c] = 1 / T.far[c];
   }
   if (!cands.length) return null;

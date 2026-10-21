@@ -2397,3 +2397,25 @@ body.sbx .scr { --vh: calc(100vh - var(--sbxh)); }
 .sbxbar .btn { flex: none; min-height: 40px; padding: 4px 7px 2px; font-size: 12px; border-radius: 10px; box-shadow: 0 2px 0 var(--ink); }
 .sbxbar .btn[aria-pressed="true"] { background: var(--o-soft); }
 .sbxwait .card { max-width: 340px; padding: 18px; text-align: center; }
+/* Whose move it is (board.js waitBand): waiting dims the board under a translucent band with the other side's
+   character bouncing, its name and the countdown; one's own turn glows round the board in one's colour. The
+   band lies over the board (absolute, no layout of its own), taps pass through it, and it fades in and out. */
+.board-scr .board .sq { transition: filter .35s ease; }
+.board-scr.waiting .board .sq { filter: brightness(.82) saturate(.8); }
+.board-scr .board { border-radius: calc(var(--r) + 4px); transition: box-shadow .35s ease; }
+.board-scr.my-X .board { box-shadow: 0 0 0 3px var(--x), 0 0 18px 2px color-mix(in srgb, var(--x) 55%, transparent); }
+.board-scr.my-O .board { box-shadow: 0 0 0 3px var(--o), 0 0 18px 2px color-mix(in srgb, var(--o) 60%, transparent); }
+.wband { position: absolute; left: -2px; right: -2px; top: 50%; height: 64px; margin-top: -32px; z-index: 6; pointer-events: none;
+  display: flex; align-items: center; gap: 10px; padding: 0 14px; box-sizing: border-box;
+  background: color-mix(in srgb, var(--paper) 86%, transparent); border-top: 3px solid var(--ink); border-bottom: 3px solid var(--ink);
+  -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); animation: wbIn .35s ease-out both; }
+.wband.X { box-shadow: inset 6px 0 0 var(--x); } .wband.O { box-shadow: inset 6px 0 0 var(--o); }
+.wband.out { animation: wbOut .35s ease-in both; }
+.wband .wtoon { flex: none; width: 46px; height: 46px; animation: wbBob 1.1s ease-in-out infinite; transform-origin: 50% 100%; }
+.wband .wtoon .pc { width: 46px; height: 46px; }
+.wband .wtxt { flex: 1; min-width: 0; font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-size: clamp(13px, 4.2vw, 17px); letter-spacing: .02em; line-height: 1.1; padding-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wband .wleft { flex: none; min-width: 3.2em; text-align: right; font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-size: 17px; padding-top: 3px; font-variant-numeric: tabular-nums; }
+@keyframes wbIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes wbOut { from { opacity: 1; } to { opacity: 0; } }
+@keyframes wbBob { 0%, 100% { transform: translateY(0) scale(1, 1); } 45% { transform: translateY(-7px) scale(.97, 1.03); } 60% { transform: translateY(-7px); } 88% { transform: translateY(0) scale(1.05, .95); } }
+@media (prefers-reduced-motion: reduce) { .wband .wtoon { animation: none; } .wband, .wband.out { animation-duration: .01s; } }

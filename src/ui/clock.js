@@ -40,6 +40,8 @@ export function tick() {
     if (left != null && left <= 10000 && left > 0) { const sec = Math.ceil(left / 1000); if (sec !== tickSec) { tickSec = sec; SND.play(sec <= 3 ? 'tickLoud' : 'tickSoft'); } }
     else tickSec = null;
   }
+  const wl = document.querySelector('.wband .wleft');
+  if (wl) wl.textContent = fmtClock(clockLeft() || 0);          // the waiting band's countdown (board.js)
   const sl = state.sc && document.querySelector('.scleft');
   if (sl) sl.textContent = fmtClock(clockLeft() || 0);          // Super Chaos in a friend room: the countdown by "Waiting for…" (the record's clock)
   if (runDraft && runDraft.phase === 'run' && clockLeft() != null && clockLeft() <= 0) runEnd(true);   // a run under way when the turn's time is up: it ends there, the distance saved

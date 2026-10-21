@@ -2,6 +2,7 @@
 // random legal move; each game's own rules do the work (src/games/<game>/rules.js).
 import { needRng, randInt } from './random.js';
 import { BS } from '../games/bs/rules.js';
+import { sniffUpgrade } from '../games/sniff/rules.js';
 import { BULL_DEFAULTS } from '../games/bullseye/meta.js';
 import { BULLS } from '../games/bullseye/rules.js';
 import { C4 } from '../games/c4/rules.js';
@@ -19,6 +20,7 @@ export function canMove(mini, p) { return mini.type === 'hexapawn' ? hpMoves(min
 // Saved games and rooms from before Connect 4 grew to 7 columns: the old 5-wide board gets an empty
 // column on each side, so every piece keeps its place (and its support) in the middle five.
 export function upgradeMini(mini) {
+  if (mini && mini.type === 'sniff' && !mini.g) sniffUpgrade(mini);   // Sniff from the 5x5 field: the same square in the middle of the 7x7 one
   // Risk Wheels from when each wheel had two segments sized to their chances: ten equal segments, the first value on its share (to the nearest tenth).
   if (mini && mini.type === 'wheels' && !mini.wheels && mini.cfg) {
     const c = mini.cfg; mini.target = c.target || WHEEL_DEFAULTS.target; mini.wheels = {};

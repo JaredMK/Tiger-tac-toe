@@ -4,12 +4,11 @@ export const info = { name: 'Sniff',        hint: 'Walk the dog, any of 8 ways. 
 export const release = 'admin';   // the default (the admin's dashboard can change it)
 export const category = 'luck';   // the Advanced checklist's group: 'luck', 'skill' or 'brain'
 export const target = 'shared';   // the header's icon: 'shared' (one board for both), 'own' (each player's own progress) or 'course' (one course for both, each their own distance)
-export const scTarget = 'own';   // in Super Chaos: a dog each, racing to the one treasure
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds (its own form: a dog each)
 export const explainer = { name: 'Sniff', play: 'Move the dog one step, any of 8 ways. You\'ll see if it\'s getting hotter, colder or the same (as the crow flies), for a moment only: nothing stays on the board, so remember it.', win: 'Be the one who finds the treasure.' };
 // Its settings (the admin's Mini-game Settings; core/tune.js): read from the square's own values.
 export const TUNE = [
-  { k: 'minStart', label: 'Dog starts at least (steps from the treasure)', def: 3, min: 1, max: 4, step: 1, group: 'Board' },
+  { k: 'minStart', label: 'Dog starts at least (cells from the treasure, straight line)', def: 3, min: 1, max: 4, step: 1, group: 'Board' },
   { k: 'hold', label: 'Hotter/colder shown for (ms)', def: 1900, min: 800, max: 4000, step: 100, group: 'Timing' },
   { k: 'memory', label: 'Computer remembers (last steps)', def: 3, min: 1, max: 8, step: 1, group: 'Computer' },
   { k: 'miss', label: 'Computer mistake rate (%)', def: 0, min: 0, max: 60, step: 5, group: 'Computer' },
