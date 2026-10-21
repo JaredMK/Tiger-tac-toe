@@ -85,13 +85,13 @@ test('pong: the flash carries what the throw\'s animation needs, for each outcom
         const [cx, cy] = E.PONG.cups[g.cup];
         assert.ok(Math.abs(g.ra - Math.atan2(g.x - cx, g.y - cy)) < 0.001, 'the rim struck where the ball came down on it');
         assert.ok(Number.isFinite(g.bx) && Number.isFinite(g.by) && Math.hypot(g.bx - cx, g.by - cy) >= 0.198, 'it pops off the rim');
-        assert.ok(before.every((up, q) => !up || Math.hypot(g.bx - E.PONG.cups[q][0], g.by - E.PONG.cups[q][1]) >= 0.15 - 1e-9), 'and comes down on the table, not in a cup');
+        assert.ok(before.every((up, q) => !up || Math.hypot(g.bx - E.PONG.cups[q][0], g.by - E.PONG.cups[q][1]) >= 0.138), 'and comes down on the table, not in a cup');
         assert.ok(P.bounce === P.hit + E.PONG.hop);
       } else assert.ok(P.bounce === P.hit && g.ra === undefined);
       // the roll passes no standing cup (beyond the one it starts beside, which it rolls away from)
       for (let s = 1; s <= 20; s++) {
         const x = fx + (g.ox - fx) * s / 20, y = fy + (g.oy - fy) * s / 20;
-        before.forEach((up, q) => { if (up) { const d = Math.hypot(x - E.PONG.cups[q][0], y - E.PONG.cups[q][1]), d0 = Math.hypot(fx - E.PONG.cups[q][0], fy - E.PONG.cups[q][1]); assert.ok(d >= Math.min(0.1, d0) - 0.002, `rolls clear of cup ${q}`); } });
+        before.forEach((up, q) => { if (up) { const d = Math.hypot(x - E.PONG.cups[q][0], y - E.PONG.cups[q][1]), d0 = Math.hypot(fx - E.PONG.cups[q][0], fy - E.PONG.cups[q][1]); assert.ok(d >= Math.min(0.14, d0) - 0.002, `rolls clear of cup ${q}`); } });
       }
     }
     assert.ok(R.flashMs({ pong: g }, 4, false) >= P.end && R.flashMs({ pong: g }, 4, true) === R.flashMs({ pong: g }, 4, false) + 600, 'the move\'s time covers the whole animation');

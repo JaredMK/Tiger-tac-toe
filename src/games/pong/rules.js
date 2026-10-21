@@ -9,7 +9,7 @@ import { tune } from '../../core/tune.js';
 // quarter of the time; otherwise it misses.
 // The throw as drawn (ms): the flight; a make drops into the cup, a rim ball pops off the rim; the splash, then the
 // cup lifted off the table; a ball on the table rolls to the edge and off it (rollPer ms a table length).
-export const PONG = { cups: [[0, 0.825], [-0.085, 0.93], [0.085, 0.93]], r: 0.055, rim: 0.03, rimIn: 0.25, spread: 0.068, angle: 0.35, near: 0.5, far: 1.1, goal: 3, fly: 900, drop: 220, hop: 420, splash: 260, lift: 450, rollPer: 1300, rollMin: 320, rollMax: 900, settle: 120, aiErr: [0.012, 0.018] };
+export const PONG = { cups: [[0, 0.825], [-0.085, 0.93], [0.085, 0.93]], r: 0.055, rim: 0.03, rimIn: 0.25, spread: 0.068, angle: 0.35, near: 0.5, far: 1.1, goal: 3, fly: 900, drop: 220, hop: 420, splash: 320, lift: 450, rollPer: 1300, rollMin: 320, rollMax: 900, settle: 120, aiErr: [0.012, 0.018] };
 export const pongDist = power => PONG.near + (PONG.far - PONG.near) * power;
 export function pongThrow(cups, aim, power, rng, t) {   // (t: the square's settings: spread, rimIn)
   const spread = t ? t.spread : PONG.spread, rimIn = t ? t.rimIn / 100 : PONG.rimIn;
@@ -50,7 +50,7 @@ export function randomMove(mini, p, rng, from, empties) {
 // landed, to (ox, oy), just past the table's edge. Its way clear of the cups still standing: the throw's own
 // direction first, else the nearest one that is.
 const r3 = v => Math.round(v * 1000) / 1000 + 0;   // (+ 0: never a -0)
-const CLEAR = 0.1;
+const CLEAR = 0.14;                                  // (a cup's rim and the ball's size: the ball as drawn never touches a cup it rolls past)
 function pongExit(px, py, dx, dy) {                  // where a ball rolling from (px, py) along (dx, dy) is wholly off the table
   const X = 0.56, Y0 = -0.05, Y1 = 1.05;
   if (px > X || px < -X || py > Y1 || py < Y0) return [px + dx * 0.08, py + dy * 0.08];
@@ -77,7 +77,7 @@ export function pongPath(l, up) {                    // l: the throw (mini.last)
     for (const o of TURNS.slice(0, 9)) for (const d of [0.2, 0.26, 0.32]) {
       if (pick) break;
       const a = ra + o, dx = Math.sin(a), dy = Math.cos(a), bx = cx + dx * d, by = cy + dy * d;
-      if (PONG.cups.some(([qx, qy], k) => up[k] && Math.hypot(bx - qx, by - qy) < CLEAR + PONG.r)) continue;   // (it comes down on the table, not on a cup)
+      if (PONG.cups.some(([qx, qy], k) => up[k] && Math.hypot(bx - qx, by - qy) < CLEAR)) continue;   // (it comes down on the table, not on a cup)
       const [ox, oy] = pongExit(bx, by, dx, dy);
       if (pongClear(up, bx, by, ox, oy)) pick = { bx, by, ox, oy };
     }

@@ -1631,9 +1631,11 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .pcup.rimhit.lift { animation: pcupwob .32s var(--t, 900ms) both, pcuplift var(--lift, 450ms) var(--l, 0ms) cubic-bezier(.5, 0, .8, .6) both; }
 @keyframes pcupwob { 25% { translate: -7% 2%; } 60% { translate: 5% -1%; } 85% { translate: -2% 0; } }
 .psplash { position: absolute; width: 17%; aspect-ratio: 1; margin: -8.5% 0 0 -8.5%; pointer-events: none; z-index: 3; }   /* the splash: drops thrown up out of the cup */
-.psplash i { position: absolute; left: 50%; top: 50%; width: 22%; aspect-ratio: 1; margin: -11% 0 0 -11%; border-radius: 50%; background: var(--sky); border: 1.5px solid var(--ink); transform: scale(0); animation: pdropout .42s var(--t, 0ms) cubic-bezier(.2, .7, .4, 1) both; }
-.psplash i:nth-child(1) { --dx: -150%; --dy: -170%; } .psplash i:nth-child(2) { --dx: 0%; --dy: -230%; } .psplash i:nth-child(3) { --dx: 150%; --dy: -170%; }
-.psplash i:nth-child(4) { --dx: -210%; --dy: 10%; } .psplash i:nth-child(5) { --dx: 210%; --dy: 10%; } .psplash i:nth-child(6) { --dx: 0%; --dy: 120%; width: 16%; margin: -8% 0 0 -8%; }
+.psplash i { position: absolute; left: 50%; top: 50%; width: 30%; aspect-ratio: 1; margin: -15% 0 0 -15%; border-radius: 50%; background: var(--sky); border: 2px solid var(--ink); transform: scale(0); animation: pdropout .5s var(--t, 0ms) cubic-bezier(.2, .7, .4, 1) both; }
+.psplash i:nth-of-type(1) { --dx: -170%; --dy: -210%; } .psplash i:nth-of-type(2) { --dx: 0%; --dy: -290%; } .psplash i:nth-of-type(3) { --dx: 170%; --dy: -210%; }
+.psplash i:nth-of-type(4) { --dx: -250%; --dy: 0%; } .psplash i:nth-of-type(5) { --dx: 250%; --dy: 0%; } .psplash i:nth-of-type(6) { --dx: 0%; --dy: 170%; width: 22%; margin: -11% 0 0 -11%; }
+.psplash b { position: absolute; inset: 22%; border-radius: 50%; border: 3px solid var(--sky); transform: scale(.3); opacity: 0; animation: pring .45s var(--t, 0ms) ease-out both; }   /* the ripple in the cup */
+@keyframes pring { 0% { transform: scale(.3); opacity: 1; } 100% { transform: scale(1.25); opacity: 0; } }
 @keyframes pdropout { 0% { transform: scale(0); } 25% { transform: translate(calc(var(--dx) * .5), calc(var(--dy) * .5)) scale(1.1); } 100% { transform: translate(var(--dx), var(--dy)) scale(0); } }
 .pball { position: absolute; width: 9%; aspect-ratio: 1; margin: -4.5% 0 0 -4.5%; border-radius: 50%; background: #fff; border: 2.5px solid var(--ink); box-shadow: 0 2px 0 var(--ink); }
 .pball.ready { cursor: grab; }
@@ -1656,10 +1658,12 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 @keyframes pdown { to { transform: scale(.55); } }
 @keyframes primin { 45% { transform: scale(1.4); } 100% { transform: scale(.55); } }
 @keyframes prout { 50% { transform: scale(1.6); } 100% { transform: none; } }
-@keyframes pbump { 0%, 100% { transform: none; } 45% { transform: scale(1.18); } }
+@keyframes pbump { 0%, 100% { scale: 1; } 45% { scale: 1.18; } }   /* (its own property: the pop off the rim, on transform, still shows under it) */
 @keyframes pgone { to { visibility: hidden; } }
 .pcups { display: inline-flex; gap: 3px; } .pcups i { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--ink); background: var(--paper); }
 .ctal.X .pcups i.on { background: var(--x); } .ctal.O .pcups i.on { background: var(--o); }
+.pcups i.on.out { animation: pcupout .4s var(--t, 0ms) both; }   /* a cup made: its mark empties at the splash */
+@keyframes pcupout { 0% { transform: none; } 1%, 100% { background: var(--paper); } 45% { transform: scale(1.35); background: var(--paper); } 100% { transform: none; } }
 /* Dash and Lane Rush: the two progress bars, the run on a canvas, the countdown over it */
 .runner { flex: 1; display: flex; flex-direction: column; min-height: 0; gap: 8px; }
 .rprogs { display: grid; gap: 6px; }

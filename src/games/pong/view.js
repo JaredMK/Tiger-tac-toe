@@ -43,14 +43,14 @@ function pongBall(g) {
 function pongTable(mini, a, o) {
   const g = a && a.pong ? a.pong : null, l = mini.last, turn = o.turn, mover = g ? a.by : o.view && l ? l.by : turn;
   const P = g ? pongPlan(g) : null, still = REDUCED;   // (reduced motion: the throw's end, drawn at once)
-  const cups = p => `<span class="pcups" aria-label="${mini.cups[p].filter(Boolean).length} cups left">${mini.cups[p].map((up, k) => `<i ${lateAt(up ? 'on' : '', g && g.sunk && a.by === p && g.cup === k && !still ? P.splash : null, 'fillin')}></i>`).join('')}</span>`;
+  const cups = p => `<span class="pcups" aria-label="${mini.cups[p].filter(Boolean).length} cups left">${mini.cups[p].map((up, k) => `<i ${g && g.sunk && a.by === p && g.cup === k && !still ? lateAt('on', P.splash, 'out') : `class="${up ? 'on' : ''}"`}></i>`).join('')}</span>`;   // (the cup made empties at the splash, not before)
   const tal = p => arcTally(p, o, cups(p));
   const rack = mover, up = g && !still ? g.cups[rack].map((c, k) => c || (g.sunk && g.cup === k)) : g ? g.cups[rack] : mini.cups[rack];   // during the throw the cup it sinks stands until it is lifted off
   const cupEls = PONG.cups.map(([cx, cy], k) => {
     const hit = g && !still && g.cup === k, cls = hit && g.sunk ? ' lift' : '', wob = hit && g.rim ? ' rimhit' : '';
     return `<div class="pcup ${rack}${up[k] ? '' : ' gone'}${cls}${wob}" style="left:${px(cx)}%;top:${py(cy)}%;--t:${g ? P.hit : 0}ms;--l:${g && g.sunk ? P.lift : 0}ms;--lift:${PONG.lift}ms;--lx:${cx < 0 ? -1 : 1}"></div>`;
   }).join('');
-  const splash = g && g.sunk && !still ? `<div class="psplash" style="left:${px(PONG.cups[g.cup][0])}%;top:${py(PONG.cups[g.cup][1])}%;--t:${P.splash}ms">${'<i></i>'.repeat(6)}</div>` : '';
+  const splash = g && g.sunk && !still ? `<div class="psplash" style="left:${px(PONG.cups[g.cup][0])}%;top:${py(PONG.cups[g.cup][1])}%;--t:${P.splash}ms"><b></b>${'<i></i>'.repeat(6)}</div>` : '';
   let ball = '';
   const mine = !o.view && !g && !o.locked;
   if (g && !still) ball = pongBall(g);
