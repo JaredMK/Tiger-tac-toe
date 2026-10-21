@@ -59,3 +59,19 @@ test('echo: someone else\'s attempt replays as it looked (the pattern, a beat, t
   assert.equal(st.flash.echo.seq.length, 4);
   assert.equal(E.playMs(st.flash), E.echoAim(st.flash.echo).end + E.ECHO.result + (st.flash.kind === 'claim' ? 600 : 0));
 });
+
+/* ---------- the admin's Mini-game Settings ---------- */
+test('echo: the admin\'s settings: patterns of 3, 6, 9 and 12 steps at a slower pace, and the computer\'s rates, deal a square that plays by them', () => {
+  E.setTune('echo', { start: 3, add: 3, step: 600, ai1: 100, ai2: 100, ai3: 100, ai4: 100 });
+  try {
+    const m = E.newMini('echo', lcg(2));
+    assert.equal(m.base.length, 12);
+    assert.deepEqual([0, 1, 2, 3].map(l => E.echoSeq(m, 'X', l).length), [3, 6, 9, 12]);
+    for (let l = 0; l < 4; l++) { const plan = E.localBest(E.publicMini(m), 'O', lcg(l)), taps = E.cpuEcho(m, 'O', plan.move, lcg(l)); assert.equal(E.applyMove(m, 'O', taps).note, 'pass', 'the computer at 100%'); }
+    assert.equal(m.level.O, 4);
+    const st = E.newMatch(lcg(4), { games: Object.fromEntries(E.TYPES.map(t => [t, t === 'echo'])) });
+    E.playMove(st, 4, E.echoSeq(st.squares[4].mini, st.turn, 0), lcg(5));
+    assert.equal(st.flash.echo.step, 600); assert.equal(E.echoAim(st.flash.echo).play, 3 * 600);
+  } finally { E.setTune('echo', null); }
+  assert.equal(E.newMini('echo', lcg(2)).base.length, 10);
+});

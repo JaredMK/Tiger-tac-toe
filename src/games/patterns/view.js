@@ -1,5 +1,5 @@
 // Patterns: the screen, the miniature, the move's words and sounds, and the inputs.
-import { PATTERNS, patRot } from './rules.js';
+import { patCfg, patRot } from './rules.js';
 import { N, esc, mv, state } from '../../ui/app.js';
 import { arcTally, lateAt, pips } from '../../ui/progress.js';
 
@@ -34,7 +34,7 @@ function patSvg(it) {
 }
 function patternsTable(mini, a, o) {
   const t = a && a.pat ? a.pat : null, l = mini.last, turn = o.turn;
-  const tal = p => arcTally(p, o, pips(p, Math.min(PATTERNS.goal, mini.right[p]), PATTERNS.goal, !!(t && t.correct && a.by === p), 250));
+  const goal = patCfg(mini).goal, tal = p => arcTally(p, o, pips(p, Math.min(goal, mini.right[p]), goal, !!(t && t.correct && a.by === p), 250));
   const pick = t || ((o.done || o.view) && l ? l : null);   // the pick just made (fresh), the one on show until heading back or when looking back, else the open puzzle
   const shown = pick || mini.puz;
   if (!shown) return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><p class="arcnote">No puzzle here.</p></div>`;
@@ -59,7 +59,7 @@ function patternsTable(mini, a, o) {
   return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="patterns"><div class="patcard"><small>${ask}</small><div class="pseq" style="--n:${shown.seq.length}" aria-label="The sequence: ${esc(shown.seq.map(patSay).join(', '))}">${seq}</div></div><div class="popts">${opts}</div>${res}</div></div>`;
 }
 export function miniature(mini, final) {
-  const pz = mini.puz || (mini.last ? { seq: mini.last.seq } : null); return `<div class="tpat">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${Array.from({ length: PATTERNS.goal }, (_, k) => `<i class="${k < mini.right[p] ? 'on' : ''}"></i>`).join('')}</div>`).join('')}${pz ? `<div class="tseq">${pz.seq.map(it => (it ? `<span>${patSvg(it)}</span>` : '<span class="q">?</span>')).join('')}</div>` : ''}</div>`;
+  const pz = mini.puz || (mini.last ? { seq: mini.last.seq } : null); return `<div class="tpat">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${Array.from({ length: patCfg(mini).goal }, (_, k) => `<i class="${k < mini.right[p] ? 'on' : ''}"></i>`).join('')}</div>`).join('')}${pz ? `<div class="tseq">${pz.seq.map(it => (it ? `<span>${patSvg(it)}</span>` : '<span class="q">?</span>')).join('')}</div>` : ''}</div>`;
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   g = patternsTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d }); return g;

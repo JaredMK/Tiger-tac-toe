@@ -56,3 +56,30 @@ test('takeover: the computer looks two moves ahead: it takes the most it can kee
   const { n, owner } = cpuSquare('takeover', 11);
   assert.ok(owner && n >= 6 && n <= 14, `a square of the computer against itself is decided (${n} moves)`);
 });
+
+/* ---------- the admin's Mini-game Settings ---------- */
+function tunedPlay(t, seed, guard = 400) {                        // (the computer on both sides of square 4 until it is decided)
+  const st = E.newMatch(lcg(seed), { games: Object.fromEntries(E.TYPES.map(g => [g, g === t])) }), rr = lcg(seed + 7);
+  let n = 0, kind = null;
+  while (n < guard) {
+    st.lock = 4;
+    const m = E.cpuMove(st, rr), r = E.playMove(st, 4, m.move, rr);
+    assert.equal(r.ok, true, `${t}: ${JSON.stringify(m.move)} refused (${r.reason})`);
+    n++; kind = st.flash.kind; E.endFlash(st); st.lock = null;
+    if (kind !== 'move' && kind !== 'again') break;
+  }
+  assert.ok(n < guard, `${t}: the square is decided`);
+  return st;
+}
+test('takeover: the admin\'s settings: a 7x7 board, a one-move look-ahead and mistakes deal a square that plays by them', () => {
+  E.setTune('takeover', { size: 7, depth: 1, miss: 30 });
+  try {
+    const m = E.newMini('takeover', lcg(1));
+    assert.equal(m.cells.length, 49); assert.deepEqual(m.tune, { size: 7, depth: 1, miss: 30 });
+    E.applyMove(m, 'X', 8);
+    assert.deepEqual(m.cells.map((c, i) => (c ? i : -1)).filter(i => i >= 0), [1, 7, 8, 9, 15], 'the neighbours on a 7-wide board');
+    const st = tunedPlay('takeover', 3);
+    assert.equal(st.squares[4].mini.cells.length, 49);
+  } finally { E.setTune('takeover', null); }
+  assert.equal(E.newMini('takeover', lcg(1)).cells.length, 25); assert.equal(E.newMini('takeover', lcg(1)).tune, undefined);
+});

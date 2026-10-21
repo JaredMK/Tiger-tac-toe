@@ -793,10 +793,9 @@ const TGROUPS = ['Board', 'Rules', 'Timing', 'Computer'];
 let META = {}, TUNE = null;                     // each game's meta.js; core/tune.js (tuneValue, tuneNorm)
 async function loadMetas() {
   if (TUNE) return;
-  const ts = Object.keys(GAMES), ms = await Promise.all(ts.map(t => import(`./src/games/${t}/meta.js`).catch(() => ({}))));
+  const reg = await import('./src/games/index.js'), ts = Object.keys(GAMES), ms = ts.map(t => (reg.GAMES[t] && reg.GAMES[t].meta) || {});   // (the registry: each game's meta, in the order the game loads them)
   META = Object.fromEntries(ts.map((t, i) => [t, ms[i]]));
-  TUNE = await import('./src/core/tune.js');
-  TUNE.registerTunes(Object.fromEntries(ts.map(t => [t, META[t].TUNE])));
+  TUNE = await import('./src/core/tune.js');   // (the registry has registered every game's settings)
 }
 const tuneList = t => (META[t] && Array.isArray(META[t].TUNE) ? META[t].TUNE : []);
 function legacyCard(t) {                       // the older tuning card, where the game has one

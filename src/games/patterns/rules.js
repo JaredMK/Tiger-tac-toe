@@ -1,5 +1,6 @@
 // Patterns: the rules (pure: no page, no clock; the server runs the same code).
 import { needRng, randInt, shuffle } from '../../core/random.js';
+import { tune, tuneLive } from '../../core/tune.js';
 
 // ---------- Patterns: sequence puzzles, made by rules ----------
 // Nothing is written by hand: each template is a rule (a number sequence, a shape changing step by step,
@@ -14,6 +15,12 @@ import { needRng, randInt, shuffle } from '../../core/random.js';
 // sides; r its turn in degrees; z its size 1-5; c its colour 0-5; f 1 solid, 0 outline), dots { d, c }.
 export const PATTERNS = { goal: 3, aiRight: 0.6, options: 4, colours: 6, maxN: 999, maxDots: 16, reveal: 1200,
   mix: [['num', 40], ['shape', 38], ['dots', 22]], middle: 0.25 };
+// A square's own (the admin's settings: the target, the kinds' mix, the gap in the middle, the computer's
+// rate; PATTERNS without a type): { goal, aiRight, mix, middle }.
+export function patCfg(m) {
+  const t = m && m.type ? tune(m) : null;
+  return t && t.goal ? { goal: t.goal, aiRight: t.right / 100, mix: [['num', t.num], ['shape', t.shape], ['dots', t.dots]], middle: t.mid / 100 } : PATTERNS;
+}
 export const patKey = it => (it == null ? '?' : 'n' in it ? `n${it.n}` : 'd' in it ? `d${it.d}c${it.c}` : `g${it.g}r${patRot(it)}z${it.z}c${it.c}f${it.f}`);
 // a turn that cannot be seen is no turn: a circle has none, a polygon repeats itself every 360/sides degrees
 export const patRot = it => (it.g === 0 ? 0 : it.g === 1 ? ((it.r % 360) + 360) % 360 : ((it.r % (360 / it.g)) + 360 / it.g) % (360 / it.g));
@@ -137,8 +144,8 @@ export function patNumMisses(t, gap, ans, vals, rng) {
   if (next != null && prev != null) far.push(Math.round((prev + next) / 2));   // (a gap in the middle: halfway between its neighbours)
   return shuffle(near, rng).concat(shuffle(far, rng));
 }
-export function patNumPuzzle(rng, fam) {
-  const t = fam === 'dots' ? patDotsTemplate(rng) : patNumTemplate(rng), mid = rng() < PATTERNS.middle;
+export function patNumPuzzle(rng, fam, middle = PATTERNS.middle) {
+  const t = fam === 'dots' ? patDotsTemplate(rng) : patNumTemplate(rng), mid = rng() < middle;
   const len = t.len, gap = mid ? patRange(rng, 1, len - 2) : len - 1;
   const vals = Array.from({ length: len }, (_, i) => t.at(i)), ans = vals[gap];
   const max = fam === 'dots' ? PATTERNS.maxDots : PATTERNS.maxN, min = fam === 'dots' ? 1 : 0;
@@ -157,7 +164,7 @@ export function patDotsTemplate(rng) {
   return { rule: 'dots triangle', len: 5, at: i => (i + 1) * (i + 2) / 2, steps: [] };
 }
 // A shape template: the features that change (and how), the rest fixed.
-export function patShapePuzzle(rng) {
+export function patShapePuzzle(rng, middle = PATTERNS.middle) {
   const kind = patPick(rng, ['turn', 'sides', 'size', 'colour', 'fill', 'sides+fill', 'turn+colour']);
   const c0 = randInt(rng, PATTERNS.colours), base = { g: patPick(rng, [0, 3, 4, 5, 6]), r: 0, z: 3, c: c0, f: 1 };
   let len = 5, at, rule = kind;
@@ -170,7 +177,7 @@ export function patShapePuzzle(rng) {
   else if (kind === 'fill') at = i => ({ ...base, f: (fill0 + i) % 2 });
   else if (kind === 'sides+fill') at = i => ({ ...base, g: s0 + i, f: (fill0 + i) % 2 });
   else { len = 6; at = i => ({ ...base, g: 1, r: r0 + turnStep * i, c: cycle[i % 3] }); }
-  const mid = rng() < PATTERNS.middle, gap = mid ? patRange(rng, 1, len - 2) : len - 1;
+  const mid = rng() < middle, gap = mid ? patRange(rng, 1, len - 2) : len - 1;
   const items = Array.from({ length: len }, (_, i) => { const s = at(i); return patShape(s.g, s.r, s.z, s.c, s.f); }), ans = items[gap];
   const v = (o, ch) => patShape(ch.g != null ? ch.g : o.g, ch.r != null ? ch.r : o.r, ch.z != null ? ch.z : o.z, ch.c != null ? ch.c : o.c, ch.f != null ? ch.f : o.f);
   const after = at(gap + 1), before = at(gap - 1), turns = kind.startsWith('turn');
@@ -191,11 +198,12 @@ export function patShapePuzzle(rng) {
 }
 // A puzzle: { fam, seq (null at the gap), opts }, the right option's place (answer) and the rule's name,
 // checked: the right option the only one any fitting rule gives, the four options all different to look at.
-export function patPuzzle(rng, avoid) {
+export function patPuzzle(rng, avoid, cfg = PATTERNS) {
+  const { mix, middle } = cfg;
   for (let tries = 0; tries < 200; tries++) {
-    let fam = PATTERNS.mix[0][0]; { let r = rng() * PATTERNS.mix.reduce((s, x) => s + x[1], 0); for (const [f, w] of PATTERNS.mix) { r -= w; if (r < 0) { fam = f; break; } } }
+    let fam = mix[0][0]; { let r = rng() * mix.reduce((s, x) => s + x[1], 0); for (const [f, w] of mix) { r -= w; if (r < 0) { fam = f; break; } } }
     if (fam === avoid && tries < 20) continue;                        // (not the same kind twice running, if it can be helped)
-    const p = fam === 'shape' ? patShapePuzzle(rng) : patNumPuzzle(rng, fam);
+    const p = fam === 'shape' ? patShapePuzzle(rng, middle) : patNumPuzzle(rng, fam, middle);
     if (!p) continue;
     const seen = new Set([patKey(p.ans)]), wrong = [];
     for (const m of p.misses) {                                       // near misses first (each template orders its own), each looking unlike the rest
@@ -214,7 +222,7 @@ export function patPuzzle(rng, avoid) {
   return null;
 }
 export function create(type, rng) {
-  const r = needRng(rng); let g = null; while (!g) g = patPuzzle(r); return { type, right: { X: 0, O: 0 }, puz: g.puz, answer: g.answer, rule: g.rule, crossed: [], last: null };
+  const r = needRng(rng), t = tuneLive(type), cf = patCfg({ type, tune: t }); let g = null; while (!g) g = patPuzzle(r, undefined, cf); return { type, right: { X: 0, O: 0 }, puz: g.puz, answer: g.answer, rule: g.rule, crossed: [], last: null };
 }
 export function apply(mini, p, m, rng, idx) {   // the square's puzzle: a wrong pick is crossed out and it stays; the right one scores and a new one comes
   const puz = mini.puz, right = mini.answer;
@@ -234,9 +242,10 @@ export function apply(mini, p, m, rng, idx) {   // the square's puzzle: a wrong 
     return { ok: true, outcome: 'continue', note: 'wrong' };
   }
   mini.right[p] += 1;
-  if (mini.right[p] >= PATTERNS.goal) return { ok: true, outcome: 'win', note: 'right' };
+  const cf = patCfg(mini);
+  if (mini.right[p] >= cf.goal) return { ok: true, outcome: 'win', note: 'right' };
   let next = null; const r = needRng(rng);
-  while (!next) next = patPuzzle(r, puz.fam);                 // a new puzzle (made here: the server, online), not the same kind as this one if it can be helped
+  while (!next) next = patPuzzle(r, puz.fam, cf);                 // a new puzzle (made here: the server, online), not the same kind as this one if it can be helped
   mini.puz = next.puz; mini.answer = next.answer; mini.rule = next.rule; mini.crossed = [];
   return { ok: true, outcome: 'continue', note: 'right' };
 }
@@ -274,5 +283,5 @@ export function scMerge(m, c) {
     if (l.correct) right = true; else if (l.picked >= 0) crossed.add(l.picked);
   }
   m.crossed = [...crossed].sort((x, y) => x - y);
-  if (right) { let next = null; const r = needRng(c.rng); while (!next) next = patPuzzle(r, b.puz.fam); m.puz = next.puz; m.answer = next.answer; m.rule = next.rule; m.crossed = []; }
+  if (right) { let next = null; const r = needRng(c.rng); while (!next) next = patPuzzle(r, b.puz.fam, patCfg(b)); m.puz = next.puz; m.answer = next.answer; m.rule = next.rule; m.crossed = []; }
 }

@@ -106,3 +106,12 @@ test('playtest log: an audio event (the phone\'s sound going down, coming back o
   assert.equal(S.checkDev({ dev, ev: 'audio', o: 'a12345678', msg: '' }, t), null);
   assert.ok(S.DEV_EVENTS.includes('audio'));
 });
+
+test('stats: a runner square adds its runs, metres and crashes (a finished match), none when the match was abandoned', () => {
+  const run = { runs: { X: 2, O: 1 }, dist: { X: 120, O: 60 }, crashes: { X: [55, 120], O: [60] } };
+  const sum = S.checkEnd({ winner: 'X', reason: 'line', squares: [{ t: 'dash', end: 'won', w: 'X', X: 2, O: 1, run }] }, E.TYPES);
+  const up = S.endUpdates('cpu', sum, 1000, Date.parse('2026-10-13T12:00:00Z'), false);
+  assert.equal(up['mini/cpu/dash/runs'], 3); assert.equal(up['mini/cpu/dash/distSum'], 180); assert.equal(up['mini/cpu/dash/crash/50'], 2); assert.equal(up['mini/cpu/dash/finishRuns'], 2);
+  const gaveUp = S.endUpdates('cpu', Object.assign({}, sum, { reason: 'resign' }), 1000, Date.parse('2026-10-13T12:00:00Z'), false);
+  assert.equal(gaveUp['mini/cpu/dash/runs'], undefined);
+});

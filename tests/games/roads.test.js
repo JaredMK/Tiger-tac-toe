@@ -122,3 +122,31 @@ test('roads: on the honeycomb, the computer against itself: 15 moves (7.5 each) 
   assert.equal(avg.hex4.perPlayer, 5);
   console.log('# roads AI vs AI:', JSON.stringify(avg));
 });
+
+/* ---------- the admin's Mini-game Settings ---------- */
+function tunedPlay(t, seed, guard = 400) {                        // (the computer on both sides of square 4 until it is decided)
+  const st = E.newMatch(lcg(seed), { games: Object.fromEntries(E.TYPES.map(g => [g, g === t])) }), rr = lcg(seed + 7);
+  let n = 0, kind = null;
+  while (n < guard) {
+    st.lock = 4;
+    const m = E.cpuMove(st, rr), r = E.playMove(st, 4, m.move, rr);
+    assert.equal(r.ok, true, `${t}: ${JSON.stringify(m.move)} refused (${r.reason})`);
+    n++; kind = st.flash.kind; E.endFlash(st); st.lock = null;
+    if (kind !== 'move' && kind !== 'again') break;
+  }
+  assert.ok(n < guard, `${t}: the square is decided`);
+  return st;
+}
+test('roads: the admin\'s settings: two edges blocked a move, or none, and mistakes deal a square that plays by them', () => {
+  E.setTune('roads', { blocks: 2, miss: 20 });
+  try {
+    const m = E.newMini('roads', lcg(1));
+    E.applyMove(m, 'X', 0, lcg(2));
+    assert.equal(m.segs.filter(w => w === 'B').length, 2); assert.equal(m.last.more.length, 1);
+    tunedPlay('roads', 13);
+  } finally { E.setTune('roads', null); }
+  E.setTune('roads', { blocks: 0 });
+  try { const m = E.newMini('roads', lcg(1)); E.applyMove(m, 'X', 0, lcg(2)); assert.equal(m.segs.filter(Boolean).length, 1); assert.equal(m.last.block, null); }
+  finally { E.setTune('roads', null); }
+  const d = E.newMini('roads', lcg(1)); E.applyMove(d, 'X', 0, lcg(2)); assert.equal(d.segs.filter(w => w === 'B').length, 1); assert.equal(d.last.more, undefined);
+});

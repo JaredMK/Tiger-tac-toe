@@ -1311,17 +1311,12 @@ test('runners (Dash, Lane Rush): the difficulty config is public, the admin alon
   assert.equal(to.squares[4].mini.runs.O + to.squares.filter((sq, i) => i !== 4 && sq.mini.runs.O).length, 1, 'one run for O, somewhere');
   const oSq = to.squares.find(sq => sq.mini.runs.O);
   assert.ok(oSq.mini.dist.O > 0 && oSq.mini.dist.O < 150, `a short run (${oSq.mini.dist.O})`);
-  // the end: resigned by O; the runs and the crashes are counted (admin-only games: under testing)
-  const before = (await get('stats/mini/testing/dash')) || {};
+  // the end: resigned by O, so the match is abandoned: its squares, runs and crashes are not counted
+  // (statsRules' unit tests cover what a finished match's runner squares add)
+  const before = JSON.stringify((await get('stats/mini/testing/dash')) || {});
   assert.equal((await g.O.call('resign', { game: g.id })).ok, true);
   await recorded(g.id);
-  const s = await get('stats/mini/testing/dash');
-  const n = k => (s[k] || 0) - (before[k] || 0);
-  assert.equal(n('runs'), 2, 'two runs: X\'s and the clock\'s for O');
-  assert.equal(n('distSum'), Math.round(first.at + 0.2) + Math.round(oSq.mini.dist.O), 'the metres covered');
-  assert.equal(n('open'), 1 + (oSq === to.squares[4] ? 0 : 1), 'the squares still open at the end count as open');
-  const bin = Math.floor((first.at + 0.2) / 50) * 50;
-  assert.equal((s.crash && s.crash[bin] || 0) - (before.crash && before.crash[bin] || 0), Math.floor(oSq.mini.dist.O / 50) * 50 === bin ? 2 : 1, `X's crash in the ${bin} m bin (and O's, on whichever square the clock ran it, if it fell in the same bin)`);
+  assert.equal(JSON.stringify((await get('stats/mini/testing/dash')) || {}), before, 'an abandoned match adds nothing to the mini-game stats');
   assert.match(await script('RunBoss', 'revoke'), /no longer an admin/);
 });
 

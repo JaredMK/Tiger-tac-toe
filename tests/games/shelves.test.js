@@ -57,3 +57,30 @@ test('shelves: the computer goes for shelves it is not on, more so ones the othe
   pm.cells[8] = 'G';
   assert.equal(E.shelfPick(pm, 'X', null).i, 5, 'then the nearly full one only the other player is on');
 });
+
+/* ---------- the admin's Mini-game Settings ---------- */
+function tunedPlay(t, seed, guard = 400) {                        // (the computer on both sides of square 4 until it is decided)
+  const st = E.newMatch(lcg(seed), { games: Object.fromEntries(E.TYPES.map(g => [g, g === t])) }), rr = lcg(seed + 7);
+  let n = 0, kind = null;
+  while (n < guard) {
+    st.lock = 4;
+    const m = E.cpuMove(st, rr), r = E.playMove(st, 4, m.move, rr);
+    assert.equal(r.ok, true, `${t}: ${JSON.stringify(m.move)} refused (${r.reason})`);
+    n++; kind = st.flash.kind; E.endFlash(st); st.lock = null;
+    if (kind !== 'move' && kind !== 'again') break;
+  }
+  assert.ok(n < guard, `${t}: the square is decided`);
+  return st;
+}
+test('shelves: the admin\'s settings: five shelves of four and mistakes deal a square that plays by them', () => {
+  E.setTune('shelves', { n: 5, per: 4, miss: 20 });
+  try {
+    const m = E.newMini('shelves', lcg(1));
+    assert.equal(m.cells.length, 20);
+    m.cells = ['X', null, null, null, null, 'X', null, null, null, null, null, null, null, null, null, null, null, null, null, null];
+    assert.equal(E.shelfOn(m.cells, 'X', 4), 2, 'spots 0 and 5: shelves 1 and 2 of four spots each');
+    const st = tunedPlay('shelves', 11);
+    assert.equal(st.squares[4].mini.cells.length, 20);
+  } finally { E.setTune('shelves', null); }
+  assert.equal(E.newMini('shelves', lcg(1)).cells.length, 21);
+});

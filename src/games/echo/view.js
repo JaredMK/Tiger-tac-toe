@@ -1,5 +1,6 @@
 // Echo: the screen, the miniature, the move's words and sounds, and the inputs.
-import { ECHO, echoAim, echoSeq } from './rules.js';
+import { ECHO, echoAim, echoLens, echoSeq } from './rules.js';
+import { tune } from '../../core/tune.js';
 import { SND, ownPress } from '../../audio/sound.js';
 import { attemptMove } from '../../net/moves.js';
 import { blocked } from '../../net/room.js';
@@ -21,8 +22,8 @@ const echoId = (sq, p, lvl) => `${state.online ? state.online.matchId || state.o
 export function echoPre(f) { return f && f.type === 'echo' && f.echo && !f.timeout && !REDUCED && (state.online ? f.by !== state.online.me : cpuPlays(f.by)) ? echoAim(f.echo).end : 0; }   // someone else's attempt: it plays first
 export const echoPinned = () => !!(echoDraft && echoDraft.at != null && state.screen === 'mini' && state.zoom === echoDraft.sq && !state.flash);
 function echoTable(mini, a, o) {
-  const e = a && a.echo ? a.echo : null, l = mini.last, turn = o.turn, mover = e ? a.by : turn;
-  const levels = p => `<span class="elev" aria-label="${mini.level[p]} of 4 patterns">${ECHO.lengths.map((n, k) => `<i ${lateAt(k < mini.level[p] ? 'on' : '', e && e.pass && a.by === p && k === mini.level[p] - 1 ? echoPre(a) : null, 'fillin')} title="${n} steps"></i>`).join('')}</span>`;
+  const e = a && a.echo ? a.echo : null, l = mini.last, turn = o.turn, mover = e ? a.by : turn, S = tune(mini).step || ECHO.step;   // (the admin's settings: the pattern's pace)
+  const levels = p => `<span class="elev" aria-label="${mini.level[p]} of 4 patterns">${(mini.base ? echoLens(tune(mini)) : ECHO.lengths).map((n, k) => `<i ${lateAt(k < mini.level[p] ? 'on' : '', e && e.pass && a.by === p && k === mini.level[p] - 1 ? echoPre(a) : null, 'fillin')} title="${n} steps"></i>`).join('')}</span>`;
   const tal = p => arcTally(p, o, levels(p));
   const lvl = e ? e.level : Math.min(mini.level[mover], ECHO.lengths.length - 1);
   const seq = e && e.seq && e.seq.length ? e.seq : echoSeq(mini, mover, lvl);
@@ -35,11 +36,11 @@ function echoTable(mini, a, o) {
       echoDraft = { id, sq: o.zoom, level: lvl, taps: [], at: played ? -1 : null };
     }
   }
-  const started = mine && echoDraft.at != null, fresh = started && echoDraft.at >= 0, playEnd = seq.length * ECHO.step;
+  const started = mine && echoDraft.at != null, fresh = started && echoDraft.at >= 0, playEnd = seq.length * S;
   const pre = e ? echoPre(a) : 0, A = pre ? echoAim(e) : null;
   const anims = k => {                                           // each pad's flashes, timed from the Play tap (or from the move)
     const out = [];
-    if (fresh || pre) seq.forEach((x, i) => { if (x === k) out.push(`padlit ${ECHO.flash}ms ${i * ECHO.step}ms`); });   // (shorter than a step: the same pad twice in a row flashes twice, dark between)
+    if (fresh || pre) seq.forEach((x, i) => { if (x === k) out.push(`padlit ${ECHO.flash}ms ${i * S}ms`); });   // (shorter than a step: the same pad twice in a row flashes twice, dark between)
     if (pre) e.taps.forEach((x, i) => { if (x === k) out.push(`padlit .3s ${A.tap(i)}ms`); });
     if (e && e.pass) out.push(`padpass .65s ${pre}ms`);   // (no fill: an animation held early would cover the flashes listed before it)
     if (e && !e.pass && e.failAt >= 0) {
@@ -96,7 +97,7 @@ export function moveText(f, who) {
   return f.echo ? (f.echo.pass ? `${who} beat pattern ${f.echo.level + 1}` : `${who} slipped at step ${f.echo.failAt + 1}`) : `${who} tried`;
 }
 export function sounds(f, add, won, mini, last) {
-  const pre = echoPre(f); if (pre) { const A = echoAim(f.echo); f.echo.seq.forEach((k, i) => add('tone', i * ECHO.step, ECHO_RATES[k])); f.echo.taps.forEach((k, i) => add('tone', A.tap(i), ECHO_RATES[k])); } if (f.echo) add(f.echo.pass ? 'ding' : 'thud', pre || ECHO_TONE); return;
+  const pre = echoPre(f); if (pre) { const A = echoAim(f.echo); f.echo.seq.forEach((k, i) => add('tone', i * (f.echo.step || ECHO.step), ECHO_RATES[k])); f.echo.taps.forEach((k, i) => add('tone', A.tap(i), ECHO_RATES[k])); } if (f.echo) add(f.echo.pass ? 'ding' : 'thud', pre || ECHO_TONE); return;
 }
 // Echo: the taps come from the press itself (pointerdown, echoTap); the click after it does nothing
 export function echoTapAct(el, e, act) {
@@ -105,9 +106,9 @@ export function echoTapAct(el, e, act) {
 // Echo: the pattern plays, once; from now the player stays in the square until the attempt goes in
 export function echoPlayAct(el, e, act) {
   if (!echoDraft || echoDraft.at != null || echoDraft.sq !== state.zoom || state.flash || state.done || blocked()) return;
-  const seq = echoSeq(state.squares[state.zoom].mini, state.turn, echoDraft.level), at = performance.now();
+  const mini = state.squares[state.zoom].mini, seq = echoSeq(mini, state.turn, echoDraft.level), S = tune(mini).step || ECHO.step, at = performance.now();
   echoDraft.at = at; startFx('echo', echoDraft.id, at);
-  seq.forEach((k, i) => SND.play('tone', { at: i * ECHO.step / 1000, rate: ECHO_RATES[k] }));
+  seq.forEach((k, i) => SND.play('tone', { at: i * S / 1000, rate: ECHO_RATES[k] }));
   try { localStorage.setItem(ECHO_KEY, echoDraft.id); } catch (err) { /* no storage */ }
   render();
 }

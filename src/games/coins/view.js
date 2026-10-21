@@ -18,7 +18,7 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
   const n = Math.min(coinMax(mini), before.filter(c => c !== (held ? mini.last.by : turn)).length);
   const marked = !view && !a && !d && mini.marks && mini.marks.by === turn ? mini.marks.coins : [];   // the coins this turn's flip will turn, picked as the turn started
   const cn = mini.coins.length, cols = Math.max(5, cn);           // (fewer than five: centred in the five columns)
-  g = `<div class="g-coins"><div class="coins"${cn !== 5 ? ` style="grid-template-columns:repeat(${cols},1fr)"` : ''}>${mini.coins.map((c, i) => {
+  g = `<div class="g-coins"><div class="coins"${cn !== 5 ? ` style="grid-template-columns:repeat(${cols},1fr)${cn > 5 ? ';gap:5px;padding:0 6px' : ''}"` : ''}>${mini.coins.map((c, i) => {
         const flip = flipped.includes(i), m = c === COINS.mystery, from = was[flipped.indexOf(i)], mk = marked.includes(i);
         const c0 = from === COINS.mystery ? '#fff' : `var(--${(from || other(a ? a.by : turn)).toLowerCase()})`;
         const st = (flip ? `--k:${flipped.indexOf(i)};--c0:${c0};` : '') + (i === 0 && cn < 5 ? `grid-column-start:${1 + (5 - cn) / 2};` : '');

@@ -99,3 +99,28 @@ test('districts: the computer looks two moves ahead on the regions still in play
   const { n, owner } = cpuSquare('districts', 31);
   assert.ok(owner && n === m.map.spots.length || owner, `decided (${n} moves)`);
 });
+
+/* ---------- the admin's Mini-game Settings ---------- */
+function tunedPlay(t, seed, guard = 400) {                        // (the computer on both sides of square 4 until it is decided)
+  const st = E.newMatch(lcg(seed), { games: Object.fromEntries(E.TYPES.map(g => [g, g === t])) }), rr = lcg(seed + 7);
+  let n = 0, kind = null;
+  while (n < guard) {
+    st.lock = 4;
+    const m = E.cpuMove(st, rr), r = E.playMove(st, 4, m.move, rr);
+    assert.equal(r.ok, true, `${t}: ${JSON.stringify(m.move)} refused (${r.reason})`);
+    n++; kind = st.flash.kind; E.endFlash(st); st.lock = null;
+    if (kind !== 'move' && kind !== 'again') break;
+  }
+  assert.ok(n < guard, `${t}: the square is decided`);
+  return st;
+}
+test('districts: the admin\'s settings: six regions, 20 spots and mistakes deal a square that plays by them', () => {
+  E.setTune('districts', { regions: 6, spots: 20, miss: 20 });
+  try {
+    const m = E.newMini('districts', lcg(1));
+    assert.equal(m.map.regions.length, 6); assert.ok(m.map.spots.length >= 19 && m.map.spots.length <= 21 && m.map.spots.length % 4 === 0);
+    const st = tunedPlay('districts', 9);
+    assert.equal(st.squares[4].mini.map.regions.length, 6);
+  } finally { E.setTune('districts', null); }
+  assert.equal(E.newMini('districts', lcg(1)).map.regions.length, 5);
+});

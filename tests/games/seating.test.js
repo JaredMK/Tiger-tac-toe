@@ -72,3 +72,31 @@ test('seating: the computer completes its own half-table, then blocks the other 
   pm.who[4] = null; pm.color = new Array(20).fill(0); pm.color[15] = 3; pm.next = 0;
   assert.equal(E.seatPick(pm, 'X', lcg(1)).move, 14, 'a fresh table whose other seat the next customer will not take');
 });
+
+/* ---------- the admin's Mini-game Settings ---------- */
+function tunedPlay(t, seed, guard = 400) {                        // (the computer on both sides of square 4 until it is decided)
+  const st = E.newMatch(lcg(seed), { games: Object.fromEntries(E.TYPES.map(g => [g, g === t])) }), rr = lcg(seed + 7);
+  let n = 0, kind = null;
+  while (n < guard) {
+    st.lock = 4;
+    const m = E.cpuMove(st, rr), r = E.playMove(st, 4, m.move, rr);
+    assert.equal(r.ok, true, `${t}: ${JSON.stringify(m.move)} refused (${r.reason})`);
+    n++; kind = st.flash.kind; E.endFlash(st); st.lock = null;
+    if (kind !== 'move' && kind !== 'again') break;
+  }
+  assert.ok(n < guard, `${t}: the square is decided`);
+  return st;
+}
+test('seating: the admin\'s settings: six tables, two colours, three tables to win and mistakes deal a square that plays by them', () => {
+  E.setTune('seating', { tables: 6, colors: 2, goal: 3, miss: 20 });
+  try {
+    const m = E.newMini('seating', lcg(1));
+    assert.equal(m.who.length, 12); assert.ok(m.color.every(c => c < 2));
+    m.who = ['X', 'X', 'X', 'X', null, null, null, null, null, null, null, null]; m.color = m.color.map(() => 0); m.next = 0;
+    m.color[5] = 1;
+    const r = E.applyMove(m, 'X', 4, lcg(3));
+    assert.ok(r.outcome === 'win' || m.who[5] !== 'X', 'three tables would win at once');
+    tunedPlay('seating', 7);
+  } finally { E.setTune('seating', null); }
+  assert.equal(E.newMini('seating', lcg(1)).who.length, 20);
+});

@@ -51,3 +51,28 @@ test('flood: the computer looks two moves ahead, always grows the blob when it c
   for (let k = 0; k < N; k++) { const { n, owner } = cpuSquare('flood', 100 + k); assert.ok(owner, `decided (${n} moves)`); total += n; }
   assert.ok(total / N / 2 >= 3 && total / N / 2 <= 8, `about ${(total / N / 2).toFixed(1)} moves a player`);
 });
+
+/* ---------- the admin's Mini-game Settings ---------- */
+function tunedPlay(t, seed, guard = 400) {                        // (the computer on both sides of square 4 until it is decided)
+  const st = E.newMatch(lcg(seed), { games: Object.fromEntries(E.TYPES.map(g => [g, g === t])) }), rr = lcg(seed + 7);
+  let n = 0, kind = null;
+  while (n < guard) {
+    st.lock = 4;
+    const m = E.cpuMove(st, rr), r = E.playMove(st, 4, m.move, rr);
+    assert.equal(r.ok, true, `${t}: ${JSON.stringify(m.move)} refused (${r.reason})`);
+    n++; kind = st.flash.kind; E.endFlash(st); st.lock = null;
+    if (kind !== 'move' && kind !== 'again') break;
+  }
+  assert.ok(n < guard, `${t}: the square is decided`);
+  return st;
+}
+test('flood: the admin\'s settings: three colours, 12 to win and mistakes deal a square that plays by them', () => {
+  E.setTune('flood', { colors: 3, goal: 12, miss: 20 });
+  try {
+    const m = E.newMini('flood', lcg(1));
+    assert.ok(m.colors.every(c => c < 3)); assert.equal(E.applyMove(m, 'X', 3).ok, false, 'a fourth colour is no move');
+    const st = tunedPlay('flood', 5), sq = st.squares[4].mini;
+    assert.ok(Math.max(sq.score.X, sq.score.O) >= 12 && Math.min(sq.score.X, sq.score.O) < 12, `won at 12 (${sq.score.X} to ${sq.score.O})`);
+  } finally { E.setTune('flood', null); }
+  assert.equal(E.newMini('flood', lcg(1)).tune, undefined);
+});

@@ -72,3 +72,18 @@ test('patterns: the computer is right about 60% of the time and never picks a cr
   }
   assert.ok(Math.abs(right / n - 0.6) < 0.035, `right ${(100 * right / n).toFixed(1)}%`);
 });
+
+/* ---------- the admin's Mini-game Settings ---------- */
+test('patterns: the admin\'s settings: two to win, dot puzzles only with the gap in the middle, and the computer always right', () => {
+  E.setTune('patterns', { goal: 2, num: 0, shape: 0, dots: 100, mid: 100, right: 100 });
+  try {
+    const rng = E.makeRng('pat-tune'), m = E.newMini('patterns', rng);
+    assert.equal(m.puz.fam, 'dots'); assert.notEqual(m.puz.seq.indexOf(null), m.puz.seq.length - 1, 'the gap in the middle');
+    assert.equal(E.applyMove(m, 'X', m.answer, rng).outcome, 'continue');
+    assert.equal(m.puz.fam, 'dots');
+    const b = E.localBest(E.publicMini(m), 'X', rng);
+    assert.equal(b.move, m.answer, 'right every time');
+    assert.equal(E.applyMove(m, 'X', m.answer, rng).outcome, 'win', 'two right wins');
+  } finally { E.setTune('patterns', null); }
+  assert.equal(E.newMini('patterns', E.makeRng('pat-tune')).tune, undefined);
+});
