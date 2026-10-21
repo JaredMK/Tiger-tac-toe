@@ -1625,28 +1625,39 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .pcup { position: absolute; width: 17%; aspect-ratio: 1; margin: -8.5% 0 0 -8.5%; border-radius: 50%; border: 3px solid var(--ink); background: radial-gradient(circle at 50% 45%, #fff 0 30%, var(--x) 32%); }
 .pcup.O { background: radial-gradient(circle at 50% 45%, #fff 0 30%, var(--sky) 32%); }
 .pcup.gone { display: none; }
-.pcup.sink { animation: cupsink .5s var(--t, 0ms) both; }
-@keyframes cupsink { to { transform: scale(.3); opacity: 0; } }
+.pcup.lift { animation: pcuplift var(--lift, 450ms) var(--l, 0ms) cubic-bezier(.5, 0, .8, .6) both; z-index: 2; }   /* a cup made: lifted, then carried off the side of the table */
+@keyframes pcuplift { 0% { transform: none; } 30% { transform: scale(1.14); box-shadow: 0 6px 0 rgba(0,0,0,.25); } 100% { transform: translateX(calc(var(--lx, 1) * 420%)) scale(1.14); box-shadow: 0 6px 0 rgba(0,0,0,.25); } }
+.pcup.rimhit { animation: pcupwob .32s var(--t, 900ms) both; }   /* the rim struck: the cup rocks */
+.pcup.rimhit.lift { animation: pcupwob .32s var(--t, 900ms) both, pcuplift var(--lift, 450ms) var(--l, 0ms) cubic-bezier(.5, 0, .8, .6) both; }
+@keyframes pcupwob { 25% { translate: -7% 2%; } 60% { translate: 5% -1%; } 85% { translate: -2% 0; } }
+.psplash { position: absolute; width: 17%; aspect-ratio: 1; margin: -8.5% 0 0 -8.5%; pointer-events: none; z-index: 3; }   /* the splash: drops thrown up out of the cup */
+.psplash i { position: absolute; left: 50%; top: 50%; width: 22%; aspect-ratio: 1; margin: -11% 0 0 -11%; border-radius: 50%; background: var(--sky); border: 1.5px solid var(--ink); transform: scale(0); animation: pdropout .42s var(--t, 0ms) cubic-bezier(.2, .7, .4, 1) both; }
+.psplash i:nth-child(1) { --dx: -150%; --dy: -170%; } .psplash i:nth-child(2) { --dx: 0%; --dy: -230%; } .psplash i:nth-child(3) { --dx: 150%; --dy: -170%; }
+.psplash i:nth-child(4) { --dx: -210%; --dy: 10%; } .psplash i:nth-child(5) { --dx: 210%; --dy: 10%; } .psplash i:nth-child(6) { --dx: 0%; --dy: 120%; width: 16%; margin: -8% 0 0 -8%; }
+@keyframes pdropout { 0% { transform: scale(0); } 25% { transform: translate(calc(var(--dx) * .5), calc(var(--dy) * .5)) scale(1.1); } 100% { transform: translate(var(--dx), var(--dy)) scale(0); } }
 .pball { position: absolute; width: 9%; aspect-ratio: 1; margin: -4.5% 0 0 -4.5%; border-radius: 50%; background: #fff; border: 2.5px solid var(--ink); box-shadow: 0 2px 0 var(--ink); }
 .pball.ready { cursor: grab; }
-.pfly { position: absolute; inset: 0; pointer-events: none; animation: pflight var(--d, 900ms) cubic-bezier(.3, .2, .6, 1) both; will-change: transform; }
-@keyframes pflight { from { transform: none; } to { transform: translate(var(--tx, 0%), var(--ty, 0%)); } }
-.parc { position: absolute; left: 50%; top: 92%; width: 9%; aspect-ratio: 1; margin: -4.5% 0 0 -4.5%; animation: parc var(--d, 900ms) ease-in-out both; will-change: transform; }
-@keyframes parc { 0%, 100% { transform: none; } 50% { transform: scale(1.7); } }
-.parc .pball { position: absolute; inset: 0; width: auto; margin: 0; animation: none; }
-.parc .pball.in { animation: ballin .35s var(--f, 900ms) both; }
-.parc .pball.off { animation: balloff .5s var(--f, 900ms) both; }
-.parc .pball.rim.off { animation: prim .4s var(--t, 900ms) both, balloff .5s var(--f, 900ms) both; }
-@keyframes prim { 25% { translate: -22% 0; } 75% { translate: 22% 0; } }
 .pball.launch { animation: plaunch .25s ease-out both; }   /* let go, online: the ball answers at once while the server works out the throw */
 @keyframes plaunch { 50% { transform: scale(1.18); } to { transform: scale(1.08); } }
-.pball.fly { animation: var(--arc) var(--d, 900ms) cubic-bezier(.3, .2, .6, 1) both; }
-.pball.rim { animation: var(--arc) var(--d, 900ms) cubic-bezier(.3, .2, .6, 1) both, rimwobble .4s var(--t, 900ms) both; }
-@keyframes rimwobble { 0%, 100% { margin-left: -4.5%; } 25% { margin-left: -6.5%; } 75% { margin-left: -2.5%; } }
-.pball.in { animation: var(--arc) var(--d, 900ms) cubic-bezier(.3, .2, .6, 1) both, ballin .35s var(--f, 900ms) both; }
-@keyframes ballin { to { transform: scale(.2); opacity: 0; } }
-.pball.off { animation: var(--arc) var(--d, 900ms) cubic-bezier(.3, .2, .6, 1) both, balloff .5s var(--f, 900ms) both; }
-@keyframes balloff { to { opacity: 0; } }
+/* the throw, as the flash has it: each layer is the table's size and moves the ball one leg (the flight; off the rim or into the cup; the roll off the table) */
+.pfly, .pleg { position: absolute; inset: 0; pointer-events: none; will-change: transform; z-index: 4; }
+.pfly { animation: pleg var(--d, 900ms) cubic-bezier(.3, .2, .6, 1) both; }
+.pleg.go { animation: pleg var(--d, 400ms) var(--t, 900ms) ease-out both; }
+.pleg.roll.go { animation-timing-function: cubic-bezier(.3, .1, .7, 1); }   /* rolling, a little faster as it goes over the edge */
+@keyframes pleg { from { transform: none; } to { transform: translate(var(--tx, 0%), var(--ty, 0%)); } }
+.parc { position: absolute; left: 50%; top: 92%; width: 9%; aspect-ratio: 1; margin: -4.5% 0 0 -4.5%; animation: parc var(--d, 900ms) ease-in-out both; will-change: transform; }
+@keyframes parc { 0%, 100% { transform: none; } 50% { transform: scale(1.7); } }
+.phop { position: absolute; inset: 0; will-change: transform; }
+.parc .pball { position: absolute; inset: 0; width: auto; margin: 0; }
+.phop.drop { animation: pdown var(--d) var(--t) ease-in both, pgone 1ms var(--s) both; }   /* a make: down into the cup, out of sight at the splash */
+.phop.rimin { animation: primin var(--d) var(--t) ease-in-out both, pgone 1ms var(--s) both; }   /* off the rim, up and in */
+.phop.rimout { animation: prout var(--d) var(--t) ease-in-out both, pbump .24s var(--b) ease-out both; }   /* off the rim, up and down on the table */
+.phop.land { animation: pbump .24s var(--t) ease-out both; }   /* a miss: a little bounce where it lands */
+@keyframes pdown { to { transform: scale(.55); } }
+@keyframes primin { 45% { transform: scale(1.4); } 100% { transform: scale(.55); } }
+@keyframes prout { 50% { transform: scale(1.6); } 100% { transform: none; } }
+@keyframes pbump { 0%, 100% { transform: none; } 45% { transform: scale(1.18); } }
+@keyframes pgone { to { visibility: hidden; } }
 .pcups { display: inline-flex; gap: 3px; } .pcups i { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--ink); background: var(--paper); }
 .ctal.X .pcups i.on { background: var(--x); } .ctal.O .pcups i.on { background: var(--o); }
 /* Dash and Lane Rush: the two progress bars, the run on a canvas, the countdown over it */
@@ -2106,7 +2117,7 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 
 @keyframes obar { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 @media (prefers-reduced-motion: reduce) { .epad.play { animation: var(--lit) !important; } @keyframes padlit { 0% { opacity: .55; } 12%, 80% { opacity: 1; } 100% { opacity: .55; } } }   /* Echo's flashes are the pattern itself: kept with reduced motion (a change of brightness, without the swell) */
-@media (prefers-reduced-motion: reduce) { .bvline.sweep { animation: none; left: 50%; } .bhline.sweep { animation: none; top: 50%; } .bdboard.slide { animation: none; } .pchip.drop, .pball.fly, .pball.rim, .pball.in, .pball.off { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .bvline.sweep { animation: none; left: 50%; } .bhline.sweep { animation: none; top: 50%; } .bdboard.slide { animation: none; } .pchip.drop { animation: none; } }
 .tu { animation: tuntil 1ms var(--u, 0ms) both; }
 .tf { animation: tfrom 1ms var(--f, 0ms) both; }
 @keyframes tuntil { to { visibility: hidden; opacity: 0; } }

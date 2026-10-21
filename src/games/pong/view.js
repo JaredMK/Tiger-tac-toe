@@ -1,33 +1,62 @@
 // Cup Pong: the screen, the miniature, the move's words and sounds, and the inputs.
-import { PONG } from './rules.js';
+import { PONG, pongPlan } from './rules.js';
 import { ownPress } from '../../audio/sound.js';
 import { attemptMove } from '../../net/moves.js';
 import { blocked } from '../../net/room.js';
-import { N, app, state } from '../../ui/app.js';
+import { N, REDUCED, app, state } from '../../ui/app.js';
 import { arcTally, lateAt } from '../../ui/progress.js';
 
 let pongDrag = null;                           // Echo: { id, sq, level, taps, at } the attempt (at: when Play pattern was tapped); Cup Pong: the swipe under way
 // Cup Pong: the table from above, the thrower's rack of cups at the far end (three cups touching in a tight
 // triangle), the ball at this end. Opened, the rack is the player to move's own (during a throw, the
 // thrower's; a decided square, the last thrower's). A swipe up from the ball throws it: the direction aims,
-// the speed sets the distance. The ball flies (and grows, then shrinks) to where the throw landed, timed
-// from the move; then it sinks, rims or misses.
+// the speed sets the distance. The ball flies (and grows, then shrinks) to where it comes down, timed from
+// the move (the flash: rules.js pongPath and pongPlan); then what the throw did plays out: a make drops into
+// the cup, splashes, and the cup is lifted off the table; a rim ball clinks on the rim (the cup wobbles),
+// pops up and comes down off it (in the cup, or on the table and rolls off it); a miss lands and rolls off
+// the table. Transforms only (smooth at 60 fps): layers the size of the table carry the ball, leg by leg.
+const RIMV = 0.075;                                  // the rim as drawn, in table widths from a cup's centre (the cup is 0.17 across)
+const px = x => ((x + 0.5) * 100).toFixed(1), py = y => ((1 - y) * 100).toFixed(1);
+const leg = (x0, y0, x1, y1) => `--tx:${((x1 - x0) * 100).toFixed(2)}%;--ty:${((y0 - y1) * 100).toFixed(2)}%`;   // a layer's move, table x/y to table x/y
+export const pongWord = g => (g.sunk ? 'In!' : g.rim ? 'Rim out' : 'Miss');
+function pongBall(g) {
+  const P = pongPlan(g), T = PONG.fly;
+  let hx = g.x, hy = g.y;                            // where it comes down first: in the cup, on the table, or on the rim (drawn on the rim's line)
+  if (g.rim) {
+    const [cx, cy] = PONG.cups[g.cup], vx = Math.sin(g.ra), vy = Math.cos(g.ra) * 1.4, n = Math.hypot(vx, vy) || 1;   // (the table is drawn 1.4 times as long as it is wide)
+    hx = cx + vx / n * RIMV; hy = cy + vy / n * RIMV / 1.4;
+  }
+  const lx = Math.max(-0.9, Math.min(0.9, hx)), ly = Math.max(-0.2, Math.min(1.3, hy));
+  let l2 = '', l3 = '', hop;
+  if (g.sunk) {                                      // into the cup's middle, smaller as it goes down, gone at the splash
+    const [cx, cy] = PONG.cups[g.cup], dd = P.splash - T;
+    l2 = `${leg(lx, ly, cx, cy)};--t:${T}ms;--d:${dd}ms`;
+    hop = `${g.rim ? 'rimin' : 'drop'}" style="--t:${T}ms;--d:${dd}ms;--s:${P.splash}ms`;
+  } else {
+    let fx = lx, fy = ly;
+    if (g.rim) { l2 = `${leg(lx, ly, g.bx, g.by)};--t:${T}ms;--d:${P.bounce - T}ms`; fx = g.bx; fy = g.by; }
+    if (g.ox != null) l3 = `${leg(fx, fy, g.ox, g.oy)};--t:${P.bounce}ms;--d:${P.roll}ms`;
+    hop = `${g.rim ? 'rimout' : 'land'}" style="--t:${T}ms;--d:${P.bounce - T}ms;--b:${P.bounce}ms`;
+  }
+  return `<div class="pfly" style="${leg(0, 0.08, lx, ly)};--d:${T}ms"><div class="pleg${l2 ? ' go' : ''}" style="${l2}"><div class="pleg roll${l3 ? ' go' : ''}" style="${l3}"><div class="parc" style="--d:${T}ms"><div class="phop ${hop}"><div class="pball"></div></div></div></div></div></div>`;
+}
 function pongTable(mini, a, o) {
   const g = a && a.pong ? a.pong : null, l = mini.last, turn = o.turn, mover = g ? a.by : o.view && l ? l.by : turn;
-  const T = PONG.fly;
-  const cups = p => `<span class="pcups" aria-label="${mini.cups[p].filter(Boolean).length} cups left">${mini.cups[p].map((up, k) => `<i ${lateAt(up ? 'on' : '', g && g.sunk && a.by === p && g.cup === k ? T : null, 'fillin')}></i>`).join('')}</span>`;
+  const P = g ? pongPlan(g) : null, still = REDUCED;   // (reduced motion: the throw's end, drawn at once)
+  const cups = p => `<span class="pcups" aria-label="${mini.cups[p].filter(Boolean).length} cups left">${mini.cups[p].map((up, k) => `<i ${lateAt(up ? 'on' : '', g && g.sunk && a.by === p && g.cup === k && !still ? P.splash : null, 'fillin')}></i>`).join('')}</span>`;
   const tal = p => arcTally(p, o, cups(p));
-  const rack = mover, up = g ? g.cups[rack].map((c, k) => c || (g.sunk && g.cup === k)) : mini.cups[rack];   // during the throw the cup it sank still stands until it sinks
-  const px = x => ((x + 0.5) * 100).toFixed(1), py = y => ((1 - y) * 100).toFixed(1);
-  const cupEls = PONG.cups.map(([cx, cy], k) => `<div class="pcup ${rack}${up[k] ? '' : ' gone'}${g && g.sunk && g.cup === k ? ' sink' : ''}" style="left:${px(cx)}%;top:${py(cy)}%;--t:${T}ms"></div>`).join('');
-  let ball = '', style = '';
+  const rack = mover, up = g && !still ? g.cups[rack].map((c, k) => c || (g.sunk && g.cup === k)) : g ? g.cups[rack] : mini.cups[rack];   // during the throw the cup it sinks stands until it is lifted off
+  const cupEls = PONG.cups.map(([cx, cy], k) => {
+    const hit = g && !still && g.cup === k, cls = hit && g.sunk ? ' lift' : '', wob = hit && g.rim ? ' rimhit' : '';
+    return `<div class="pcup ${rack}${up[k] ? '' : ' gone'}${cls}${wob}" style="left:${px(cx)}%;top:${py(cy)}%;--t:${g ? P.hit : 0}ms;--l:${g && g.sunk ? P.lift : 0}ms;--lift:${PONG.lift}ms;--lx:${cx < 0 ? -1 : 1}"></div>`;
+  }).join('');
+  const splash = g && g.sunk && !still ? `<div class="psplash" style="left:${px(PONG.cups[g.cup][0])}%;top:${py(PONG.cups[g.cup][1])}%;--t:${P.splash}ms">${'<i></i>'.repeat(6)}</div>` : '';
+  let ball = '';
   const mine = !o.view && !g && !o.locked;
-  if (g) {                                                      // the flight: transforms only (smooth at 60 fps): a layer the size of the table moves the ball across it, the ball swells and shrinks for the arc
-    const lx = Math.max(-0.48, Math.min(0.48, g.x)), ly = Math.max(0.05, Math.min(1.08, g.y));
-    ball = `<div class="pfly" style="--tx:${(lx * 100).toFixed(2)}%;--ty:${((0.08 - ly) * 100).toFixed(2)}%;--d:${T}ms"><div class="parc"><div class="pball ${g.sunk ? 'in' : g.rim ? 'rim off' : 'off'}" style="--t:${T}ms;--f:${g.rim ? T + 400 : T}ms"></div></div></div>`;
-  } else if (!o.view) ball = `<div class="pball${mine ? ' ready' : ''}" style="left:50%;top:92%" data-pong="ball"></div>`;
-  const table = `<div class="ptable" data-pong="table" aria-label="The table">${style}${cupEls}${ball}</div>`;   // (no aim guides: the ball and the cups, nothing else)
-  const res = g ? `<p ${lateAt('arcres ' + (g.sunk ? 'ok' : 'no'), T + (g.rim ? 400 : 0))} role="status">${g.sunk ? (g.rim ? 'Off the rim and in!' : 'Sunk!') : g.rim ? 'Rimmed out' : 'Miss'}</p>` : l && !mine ? `<p class="arcres ${l.sunk ? 'ok' : 'no'}"><b class="${l.by}">${N(l.by)}</b> ${l.sunk ? 'sank a cup' : l.rim ? 'rimmed out' : 'missed'}</p>` : `<p class="arcnote">${mine || o.view ? '' : `Waiting for <b class="${turn}">${N(turn)}</b>…`}</p>`;
+  if (g && !still) ball = pongBall(g);
+  else if (!o.view && !g) ball = `<div class="pball${mine ? ' ready' : ''}" style="left:50%;top:92%" data-pong="ball"></div>`;
+  const table = `<div class="ptable" data-pong="table" aria-label="The table">${cupEls}${splash}${ball}</div>`;   // (no aim guides: the ball and the cups, nothing else)
+  const res = g ? `<p ${lateAt('arcres ' + (g.sunk ? 'ok' : 'no'), still ? null : P.res)} role="status">${pongWord(g)}</p>` : l && !mine ? `<p class="arcres ${l.sunk ? 'ok' : 'no'}">${pongWord(l)}</p>` : `<p class="arcnote">${mine || o.view ? '' : `Waiting for <b class="${turn}">${N(turn)}</b>…`}</p>`;
   return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="pong${mine ? ' live' : ''}" data-pong="area">${table}${res}</div></div>`;
 }
 // The throw a swipe makes: its direction from the start, its power from the finger's speed over its last
@@ -62,7 +91,7 @@ export function moveText(f, who) {
   return f.pong ? `${who} ${f.pong.sunk ? 'sank a cup' : f.pong.rim ? 'rimmed out' : 'missed'}` : `${who} threw`;
 }
 export function sounds(f, add, won, mini, last) {
-  add('whoosh', 0); if (f.pong) { if (f.pong.rim) add('clink', PONG.fly); add(f.pong.sunk ? 'splash' : 'thud', PONG.fly + (f.pong.rim ? 400 : 0)); } return;
+  add('whoosh', 0); if (f.pong) { const P = pongPlan(f.pong); if (f.pong.rim) add('clink', P.hit); add(f.pong.sunk ? 'splash' : 'thud', f.pong.sunk ? P.splash : P.bounce); } return;
 }
 
 // Its listeners: main.js calls this once, in the page's original order of listeners.

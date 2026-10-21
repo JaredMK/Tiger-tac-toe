@@ -53,3 +53,52 @@ test('pong: the admin\'s Mini-game Settings deal a square that plays by them (no
   assert.equal(res.outcome, 'win', `the computer, dead on with little scatter, sinks all three (${n} throws)`);
   assert.ok(n <= 8);
 });
+
+test('pong: the flash carries what the throw\'s animation needs, for each outcome (the rim point, where it pops to, where it rolls off), and the move\'s time covers it all', () => {
+  const R = require('../../src/games/pong/rules.js');
+  const off = (x, y) => x > 0.5 || x < -0.5 || y > 1 || y < 0;
+  const seen = { make: 0, rimIn: 0, rimOut: 0, miss: 0 };
+  const st = E.newMatch(E.makeRng('pongfx'), { games: Object.fromEntries(E.TYPES.map(t => [t, t === 'pong'])) });
+  for (let k = 0; k < 600; k++) {
+    const m = E.newMini('pong', lcg(k)), rng = lcg(1000 + k), p = k % 2 ? 'O' : 'X';
+    if (k % 3 === 0) m.cups[p][k % 3] = false;
+    const target = m.cups[p].indexOf(true), a = E.pongAimAt(target);
+    const mv = k % 4 === 3 ? { aim: rng() * 2 - 1, power: rng() } : { aim: a.aim + (rng() - 0.5) * 0.4, power: a.power + (rng() - 0.5) * 0.3 };
+    const before = m.cups[p].slice();
+    E.applyMove(m, p, mv, rng);
+    const f = {}; R.moveFlash(null, p, null, 0, m, f); const g = f.pong, P = R.pongPlan(g);
+    assert.deepEqual(f, (() => { const h = {}; R.moveFlash(null, p, null, 0, m, h); return h; })(), 'the same throw, the same flash');
+    assert.ok(JSON.stringify(g) === JSON.stringify(JSON.parse(JSON.stringify(g))), 'plain JSON (it rides the move online)');
+    assert.equal(P.hit, E.PONG.fly);
+    if (g.sunk) {
+      seen[g.rim ? 'rimIn' : 'make']++;
+      assert.equal(g.ox, undefined, 'a make rolls nowhere');
+      if (g.rim) assert.ok(Number.isFinite(g.ra)); else assert.equal(g.ra, undefined);
+      assert.ok(P.splash > P.hit && P.lift > P.splash && P.end > P.lift && P.res === P.splash, 'down into the cup, the splash, the cup lifted off');
+      assert.equal(m.cups[p][g.cup], false);
+    } else {
+      seen[g.rim ? 'rimOut' : 'miss']++;
+      assert.ok(Number.isFinite(g.ox) && Number.isFinite(g.oy) && off(g.ox, g.oy), `it rolls off the table (${g.ox}, ${g.oy})`);
+      assert.ok(P.roll >= E.PONG.rollMin && P.roll <= E.PONG.rollMax && P.end === P.bounce + P.roll);
+      const fx = g.rim ? g.bx : g.x, fy = g.rim ? g.by : g.y;
+      if (g.rim) {
+        const [cx, cy] = E.PONG.cups[g.cup];
+        assert.ok(Math.abs(g.ra - Math.atan2(g.x - cx, g.y - cy)) < 0.001, 'the rim struck where the ball came down on it');
+        assert.ok(Number.isFinite(g.bx) && Number.isFinite(g.by) && Math.hypot(g.bx - cx, g.by - cy) >= 0.198, 'it pops off the rim');
+        assert.ok(before.every((up, q) => !up || Math.hypot(g.bx - E.PONG.cups[q][0], g.by - E.PONG.cups[q][1]) >= 0.15 - 1e-9), 'and comes down on the table, not in a cup');
+        assert.ok(P.bounce === P.hit + E.PONG.hop);
+      } else assert.ok(P.bounce === P.hit && g.ra === undefined);
+      // the roll passes no standing cup (beyond the one it starts beside, which it rolls away from)
+      for (let s = 1; s <= 20; s++) {
+        const x = fx + (g.ox - fx) * s / 20, y = fy + (g.oy - fy) * s / 20;
+        before.forEach((up, q) => { if (up) { const d = Math.hypot(x - E.PONG.cups[q][0], y - E.PONG.cups[q][1]), d0 = Math.hypot(fx - E.PONG.cups[q][0], fy - E.PONG.cups[q][1]); assert.ok(d >= Math.min(0.1, d0) - 0.002, `rolls clear of cup ${q}`); } });
+      }
+    }
+    assert.ok(R.flashMs({ pong: g }, 4, false) >= P.end && R.flashMs({ pong: g }, 4, true) === R.flashMs({ pong: g }, 4, false) + 600, 'the move\'s time covers the whole animation');
+  }
+  assert.ok(Object.values(seen).every(n => n > 10), `every outcome seen (${JSON.stringify(seen)})`);
+  // through the engine: the match's flash and its time
+  E.playMove(st, 4, { aim: 0, power: 0.55 }, E.makeRng('pf'));
+  assert.ok(st.flash.pong && st.flash.type === 'pong');
+  assert.equal(E.playMs(st.flash), R.pongPlan(st.flash.pong).end + E.PONG.settle + (st.flash.kind === 'claim' ? 600 : 0));
+});
