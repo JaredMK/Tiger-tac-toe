@@ -9,6 +9,7 @@ import { connected } from '../../net/connect.js';
 import { noticeSeq } from '../../net/moves.js';
 import { chaosBadge, chaosVisible, testBadge, visibleTypes } from '../../net/releases.js';
 import { dbSetup, isHost, net } from '../../net/room.js';
+import { LEVELS, LEVEL_NAME } from '../../core/aiw.js';
 import { TIMER_LABEL, advOpen, app, esc, save, state } from '../app.js';
 import { CHEV, CPU_ICON, ICONS, toonT } from '../art.js';
 import { qBtn } from '../explainer.js';
@@ -53,7 +54,8 @@ export function renderSetup() {
     <div class="slot ${s2 || 'R'} p2${isCpu ? ' cpu' : ''}">
       <div class="who-p">${face(s2)}</div>
       <div class="kind" role="group" aria-label="Player 2"><button class="seg${isCpu ? '' : ' on'}" data-act="kind" data-kind="human" aria-pressed="${!isCpu}"${sc ? ' disabled' : ''}>Human</button><button class="seg${isCpu ? ' on' : ''}" data-act="kind" data-kind="cpu" aria-pressed="${isCpu}">Computer</button></div>
-      <label class="field ${s2 || ''}">${isCpu ? `<i class="slot-ico" aria-hidden="true">${CPU_ICON}</i>` : ''}<span>Player 2 name</span><input data-ln="n2" value="${esc(L.n2)}" maxlength="${NAME_MAX}" placeholder="${isCpu ? CPU_NAME : s2 || 'X or O'}" autocomplete="off" autocapitalize="words" aria-label="Player 2 name"></label></div>`;
+      <label class="field ${s2 || ''}">${isCpu ? `<i class="slot-ico" aria-hidden="true">${CPU_ICON}</i>` : ''}<span>Player 2 name</span><input data-ln="n2" value="${esc(L.n2)}" maxlength="${NAME_MAX}" placeholder="${isCpu ? CPU_NAME : s2 || 'X or O'}" autocomplete="off" autocapitalize="words" aria-label="Player 2 name"></label>
+      ${isCpu ? `<div class="sides three level" role="group" aria-label="Computer level"><span>Level</span>${LEVELS.map(v => `<button class="seg${L.level === v ? ' on' : ''}" data-act="level" data-v="${v}" aria-pressed="${L.level === v}">${LEVEL_NAME[v]}</button>`).join('')}</div>` : ''}</div>`;
   };
   return `<main class="scr setup">
     <div class="bar">${host ? `<button class="back" data-act="lobby-back" aria-label="Close the room and go back">${CHEV}Back</button>` : `<button class="back" data-act="menu" aria-label="Back to the main menu">${CHEV}Menu</button>`}

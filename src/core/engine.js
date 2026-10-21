@@ -4,13 +4,15 @@
 // every random choice comes from an rng passed in (makeRng(seed) for a seeded one). The page imports the
 // same modules, so a move is checked the same way on a phone and on the server.
 
-export { cpuEcho, STYLE0, AI, needsOf, winChance, localBest, squareValue, moveGain, cpuMove } from './ai.js';
+export { cpuEcho, STYLE0, EASY, BUDGET_MS, AI_CLOCK, AI, needsOf, winChance, localBest, squareValue, moveGain, cpuMove } from './ai.js';
 export { lineOpen, majorityResult, LINES, timeoutMove, mainResult, playMove, endFlash, leaveSquare } from './board.js';
 export { SC, scTypes, isChaos, scHuman, scSquareMini, startChaos, scBegin, scCpu, chaosPlay, chaosTimeout, chaosResolve, chaosNext, scPool, scMainResult, SC_ONLINE, startChaosOnline, scMoveOf, chaosResolveOnline, scTimeoutMove, scRoundStart } from './chaos.js';
 export { cfgKit, lohi } from './config.js';
 export { isReleased, releasedTypes, allowedTypes, restrictGames } from './games.js';
 export { dealable, normLocal, seatLocal, NAME_MAX, pickType, pickReset, dealNine, newSquare, CPU_NAME, defaultSetup, cpuSide, normSetup, syncNames, enabledGames, playerName, newState, startMatch, newMatch } from './match.js';
 export { canMove, upgradeMini, anyMove, newMini, withTune, applyMove, publicMini, randomLegalMove } from './minis.js';
+export { LEVELS, LEVEL_NAME, levelOf, AI_DEFAULTS, AI_LIMITS, AI_CFG, aiNorm, setAiWeights, aiWeights } from './aiw.js';
+export { mcPick } from './mc.js';
 export { registerTunes, tuneFields, tuneDefaults, tuneValue, tuneNorm, setTune, setTunes, tuneLive, tuneSnap, tune } from './tune.js';
 export { gaussOf, makeRng, needRng, randInt, randomType, shuffle } from './random.js';
 export { resignLocal, RECENT_MAX, MATCH_FIELDS, secretOf, hideMini, matchRecord, fullState, settle, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, applyOnlineReveal, applyOnlineStart, newOnlineMatch, applyOnlineResign, applyChaosSubmit, applyChaosDeadline, applyChaosBegin, parseMatch, packMatch, matchTxn } from './records.js';

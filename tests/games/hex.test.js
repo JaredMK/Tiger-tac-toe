@@ -111,3 +111,46 @@ test('hex: the admin\'s settings (the computer\'s mistake rate) are dealt into t
   for (let k = 0; k < 30; k++) moves.add(E.localBest(E.publicMini(m), 'X', E.makeRng('hex-ai' + k)).move);
   assert.ok(moves.has(3) && moves.size > 1, 'a slip now and then');
 });
+
+test('hex: the Hard computer searches deeper (a forced win Normal misses), legal moves, within its time', () => {
+  const hard = { level: 'hard', until: null }, normal = { level: 'normal', until: null };
+  const R = require('../../src/games/hex/rules.js');                 // (the search itself)
+  const cells = [null, 'X', null, null, 'X', null, null, null, null, 'O', null, 'O', null, null, null, null];   // X to move: cell 6 wins by force in four plies; Normal plays 2 and O wins by force
+  const pm = { type: 'hex', cells };
+  const h = R.hexHard(cells, 'X');
+  assert.ok(h.moves[0].i === 6 && h.moves[0].v >= R.HEX_HARD.win - 16, `a forced win seen (${JSON.stringify(h.moves[0])} at depth ${h.depth})`);
+  assert.equal(L.localBest(pm, 'X', cpuRng(), {}, hard).move, 6);
+  assert.equal(L.localBest(pm, 'X', cpuRng(), {}, normal).move, 2, 'Normal as before');
+  const after = cells.slice(); after[2] = 'X';
+  assert.ok(R.hexHard(after, 'O').moves[0].v >= R.HEX_HARD.win - 16, 'after Normal\'s move O wins by force');
+  // the shape the square choice needs: a win now, a block, the position after
+  const row = ['X', 'X', 'X', null, null, null, null, null, null, null, null, null, null, null, null, null];
+  const w = L.localBest({ type: 'hex', cells: row }, 'X', cpuRng(), {}, hard);
+  assert.equal(w.move, 3); assert.equal(w.win, true); assert.equal(w.after.cells[3], 'X');
+  assert.equal(L.localBest({ type: 'hex', cells: row }, 'O', cpuRng(), {}, hard).move, 3, 'O blocks');
+  const e = L.localBest(L.publicMini(mini('hex')), 'X', cpuRng(), {}, hard);
+  assert.ok(Number.isInteger(e.move) && e.move >= 0 && e.move < 16 && e.after.cells[e.move] === 'X' && !e.win);
+  const r = lcg(5);
+  for (let k = 0; k < 8; k++) {
+    const b = mini('hex', lcg(k + 20)); let p = 'X', dead = false;
+    for (let i = 0; i < k; i++) { const mv = L.randomLegalMove(b, p, r); if (L.applyMove(b, p, mv, r).outcome !== 'continue') { dead = true; break; } p = L.other(p); }
+    if (dead) continue;
+    const mv = L.localBest(L.publicMini(b), p, cpuRng(), {}, hard).move;
+    assert.ok(Number.isInteger(mv) && !b.cells[mv], `a legal cell (${mv})`);
+  }
+  const sq = mini('hex'); sq.tune = { miss: 50 }; sq.cells[0] = sq.cells[1] = sq.cells[2] = 'X';
+  const slips = new Set();
+  for (let i = 0; i < 20; i++) slips.add(L.localBest(L.publicMini(sq), 'X', E.makeRng('hex-hard-miss' + i), {}, hard).move);
+  assert.ok(slips.has(3) && slips.size > 1, 'the mistake rate still applies');
+  // the time: a fixed amount of work without a clock, under 60 ms a move here; with a clock it stops when told
+  L.localBest(L.publicMini(mini('hex')), 'X', cpuRng(), {}, hard);                                  // (warm)
+  for (const seed of [0, 1, 2, 3]) {
+    const b = mini('hex', lcg(seed + 40)); let p = 'X';
+    for (let i = 0; i < seed * 2; i++) { const mv = L.randomLegalMove(b, p, r); L.applyMove(b, p, mv, r); p = L.other(p); }
+    const t0 = performance.now(); L.localBest(L.publicMini(b), p, cpuRng(), {}, hard); const ms = performance.now() - t0;
+    assert.ok(ms < 60, `a Hard move in ${ms.toFixed(1)} ms`);
+  }
+  const t1 = performance.now(), until = () => Math.max(0, t1 + 12 - performance.now());
+  const timed = L.localBest(L.publicMini(mini('hex')), 'X', cpuRng(), {}, { level: 'hard', until });
+  assert.ok(performance.now() - t1 < 40 && Number.isInteger(timed.move) && timed.move >= 0 && timed.move < 16, 'stops at its budget with a legal move');
+});

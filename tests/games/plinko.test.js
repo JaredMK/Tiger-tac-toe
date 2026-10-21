@@ -109,3 +109,30 @@ test('plinko: the admin\'s settings (the bonus peg\'s points, the computer\'s mi
   const seen = new Set(); for (let k = 0; k < 40; k++) seen.add(E.localBest(E.publicMini(m), 'X', rng).move);
   assert.ok(seen.size > 1, 'any open slot');
 });
+
+test('plinko: the Hard computer drops where the square is likeliest won: the slot that finishes, the other side\'s best reply locked away, the race from there', () => {
+  const A = require('../../src/games/plinko/ai.js'), ctx = { level: 'hard', until: null };
+  const sq = (seed, over) => Object.assign(E.publicMini(E.newMini('plinko', E.makeRng('pl' + seed))), over || {});
+  const t0 = performance.now();
+  for (let s = 0; s < 5; s++) { const pm = sq(s); const b = A.best(pm, 'X', lcg(s), {}, ctx); assert.ok(pm.used[b.move] === false, 'an open slot'); }
+  assert.ok(performance.now() - t0 < 60, 'five Hard moves under 60 ms');
+  const near = sq(1, { pts: { X: 10, O: 0 } });                   // bins 1 2 1 3 2 3 5: two points to go
+  assert.equal(A.best(near, 'X', lcg(1), {}, ctx).move, 5, 'the slot that lands 2 or more every time (3 or 5 either side)');
+  assert.equal(A.best(near, 'X', lcg(1), {}, ctx).q, 1); assert.equal(A.best(near, 'X', lcg(1), {}, {}).move, 5);
+  const far = sq(21, { pts: { X: 9, O: 0 } });                     // bins 1 1 2 2 3 3 5
+  const h = A.best(far, 'X', lcg(1), {}, ctx), n = A.best(far, 'X', lcg(1), {}, {});
+  assert.ok(h.q >= n.q - 1e-9, 'three points to go: Hard\'s slot finishes at least as often as the most points to expect (' + h.q.toFixed(3) + ' vs ' + n.q.toFixed(3) + ')');
+  const block = sq(21, { pts: { X: 0, O: 10 } });
+  assert.equal(A.best(block, 'X', lcg(1), {}, ctx).move, 6, 'the other side two points from the square: the slot that would hand it to them, taken (locked) first');
+  const R = A.plinkoRace(12, [[2, 0.5], [3, 0.5]]);
+  assert.equal(R[11 * 12 + 11], 1, 'a point to go, to move: won'); assert.ok(Math.abs(R[0] - 205 / 256) < 1e-9, 'from 0-0 the first to drop (4 to 6 drops each, mostly 5; a tie is theirs): ' + R[0].toFixed(4));
+  const rng = E.makeRng('plinko-hard');
+  let hardWins = 0;
+  for (let g = 0; g < 200; g++) {
+    const side = g % 2 ? 'O' : 'X', m = E.newMini('plinko', rng);
+    let p = 'X', r;
+    for (let k = 0; k < 60; k++) { r = E.applyMove(m, p, A.best(E.publicMini(m), p, rng, E.STYLE0, p === side ? ctx : {}).move, rng); assert.equal(r.ok, true); if (r.outcome === 'win') break; p = p === 'X' ? 'O' : 'X'; }
+    if (p === side) hardWins++;
+  }
+  assert.ok(hardWins >= 100, 'Hard against the usual computer: ' + hardWins + ' of 200');
+});

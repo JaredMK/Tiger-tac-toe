@@ -310,8 +310,9 @@ async function releasesNow() { return (await db.ref('releases').get()).val() || 
 let runCfgAt = 0;
 async function runConfigNow() {
   if (now() - runCfgAt < 20000) return;
-  const [run, bulls, wheels, plinko, odd, head, flash, snap, hop, scoop, pin, pig, roads, tune] = await Promise.all(['run', 'bulls', 'wheels', 'plinko', 'oddone', 'headcount', 'flash', 'snapshot', 'skyhop', 'scoop', 'pinball', 'pig', 'roads', 'tune'].map(k => db.ref('config/' + k).get()));
+  const [run, bulls, wheels, plinko, odd, head, flash, snap, hop, scoop, pin, pig, roads, tune, ai] = await Promise.all(['run', 'bulls', 'wheels', 'plinko', 'oddone', 'headcount', 'flash', 'snapshot', 'skyhop', 'scoop', 'pinball', 'pig', 'roads', 'tune', 'ai'].map(k => db.ref('config/' + k).get()));
   E.setTunes(tune.val() || null);                                       // every mini-game's settings (Mini-game Settings: config/tune/<type>)
+  E.setAiWeights(ai.val() || null);                                     // the Hard computer's weights (npm run tune-ai: config/ai)
   E.setRunConfig(run.val() || null);
   E.setBullsConfig(bulls.val() || null);
   E.setWheelsConfig(wheels.val() || null);
@@ -466,7 +467,8 @@ async function planBot(id, st, sec, bg, start, again) {
   if (!bg || !bg.live || st.winner || st.turn !== bg.side) return null;
   if (bg.next && bg.next.seq === st.seq && bg.next.step === 'move') return bg.next;   // planned already: one think per move
   const bot = B.byKey(bg.key) || B.BOTS[0], rng = seedRng();
-  const plan = E.cpuMove(E.fullState({ state: st, secrets: sec }), rng, bot.style);
+  await runConfigNow();
+  const plan = E.cpuMove(E.fullState({ state: st, secrets: sec }), rng, bot.style, { level: B.botConfig(await adminConfig()).level, clock: Date.now });   // (the admin's level for the bots: Hard searches and plays out the match, inside its time budget)
   if (!plan) return null;
   const due = Math.max(start, now()) + B.thinkMs(bot, again ? 'again' : 'turn', rng, st.squares[plan.square].mini.type);
   const next = { seq: st.seq, step: 'move', due, square: plan.square, move: plan.move };

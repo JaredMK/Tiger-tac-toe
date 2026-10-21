@@ -450,6 +450,12 @@
           }
         }
       },
+      "ai": {
+        ".write": "auth != null && auth.token.admin === true",
+        "$k": {
+          ".validate": "$k.matches(/^(attack|defend|rollRisk|explore|prog|fresh|playouts|tuned|matches)$/) && newData.isNumber()"
+        }
+      },
       "$other": {
         ".validate": false
       }

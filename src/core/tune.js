@@ -37,6 +37,7 @@ export function tuneNorm(type, raw) {
 }
 export function setTune(type, raw) { CFG[type] = tuneNorm(type, raw); }
 export function setTunes(all) { for (const t of Object.keys(FIELDS)) setTune(t, all && all[t]); }
+export const tuneAll = () => Object.assign({}, CFG);   // (as set: for another engine instance, the page's worker)
 // The values a square is dealt with now (rules.create reads these), and what it keeps of them.
 export const tuneLive = type => Object.assign({}, DEF[type], CFG[type]);
 export const tuneSnap = type => (CFG[type] && Object.keys(CFG[type]).length ? Object.assign({}, CFG[type]) : null);

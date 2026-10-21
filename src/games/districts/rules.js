@@ -139,7 +139,7 @@ export function apply(mini, p, m, rng, idx) {   // a spot; once the map is full,
   return { ok: true, outcome: 'win', note: 'full', winner: x > y ? 'X' : 'O', counts: { X: x, O: y } };
 }
 export function publicView(mini) {
-  return { type: 'districts', map: mini.map, who: mini.who.slice() };
+  return { type: 'districts', map: mini.map, who: mini.who.slice(), first: mini.first || null };   // (first: who opened it, for the tie)
 }
 export function randomMove(mini, p, rng, from, empties) {
   return from(empties(mini.who, c => !c));

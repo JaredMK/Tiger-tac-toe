@@ -28,6 +28,13 @@ test('the five bots: each its own style and pace, tunable in one place; username
   assert.ok(names.some(n => /\d/.test(n)) && names.some(n => /_/.test(n)) && names.some(n => /^[A-Z]/.test(n)) && names.some(n => !/[\d_]/.test(n)), 'the usual variety: digits, underscores, capitals, plain');
 });
 
+test('the bots\' level: easy, normal or hard from the admin\'s settings, normal by default and for anything else', () => {
+  assert.equal(B.botConfig({}).level, 'normal');
+  assert.equal(B.botConfig({ bots: { level: 'hard' } }).level, 'hard');
+  assert.equal(B.botConfig({ bots: { level: 'expert' } }).level, 'normal');
+  assert.equal(B.DEFAULTS.bots.level, 'normal');
+});
+
 test('bot pacing: ordinary moves 1.5 to 5 s, each bot in its own window; word games 3 to 8 s; follow-ups 1 to 2.5 s; never past 8 s', () => {
   const rng = lcg(5), mean = a => a.reduce((s, x) => s + x, 0) / a.length;
   for (const b of B.BOTS) {
@@ -52,11 +59,11 @@ test('bot pacing: ordinary moves 1.5 to 5 s, each bot in its own window; word ga
 
 test('bot wait and settings: the wait drawn inside the window; settings clamped to sane values; both off by default', () => {
   const cfg = B.botConfig({});
-  assert.deepEqual(cfg, { enabled: false, waitMin: 40, waitMax: 70, countInRecords: true });
+  assert.deepEqual(cfg, { enabled: false, waitMin: 40, waitMax: 70, countInRecords: true, level: 'normal' });
   const rng = lcg(3), ws = Array.from({ length: 1000 }, () => B.waitMs(cfg, rng));
   assert.ok(ws.every(w => w >= 40000 && w <= 70000));
   assert.ok(Math.max(...ws) - Math.min(...ws) > 25000, 'spread over the window');
-  assert.deepEqual(B.botConfig({ bots: { enabled: true, waitMin: 2, waitMax: 9999, countInRecords: false } }), { enabled: true, waitMin: 5, waitMax: 600, countInRecords: false });
+  assert.deepEqual(B.botConfig({ bots: { enabled: true, waitMin: 2, waitMax: 9999, countInRecords: false } }), { enabled: true, waitMin: 5, waitMax: 600, countInRecords: false, level: 'normal' });
   assert.equal(B.botConfig({ bots: { waitMin: 90, waitMax: 30 } }).waitMax, 90, 'the top of the window never below the bottom');
   const a = B.alertConfig({});
   assert.equal(a.enabled, false); assert.equal(a.after, 5); assert.equal(a.cooldownMin, 30); assert.equal(a.gapMin, 3); assert.equal(a.dailyCap, 20);

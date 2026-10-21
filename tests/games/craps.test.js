@@ -83,3 +83,13 @@ test('craps: the admin\'s rounds to win are dealt into the square and played by'
   for (let k = 0; k < 100 && m.wins.X < 2; k++) r = E.applyMove(m, 'X', 'roll', rng);
   assert.equal(m.wins.X, 2); assert.equal(r.outcome, 'win', 'two rounds won takes it');
 });
+
+test('craps: the Hard computer has no choice to make (Roll rolls the round out): the same as the usual one', () => {
+  const A = require('../../src/games/craps/ai.js'), ctx = { level: 'hard', until: null };
+  for (const wins of [0, 1, 2]) {
+    const m = E.newMini('craps', lcg(1)); m.wins.X = wins;
+    const pm = E.publicMini(m), t0 = performance.now(), h = A.best(pm, 'X', lcg(1), {}, ctx);
+    assert.ok(performance.now() - t0 < 60);
+    assert.deepEqual(h, A.best(pm, 'X', lcg(1), {}, {})); assert.equal(h.move, 'roll');
+  }
+});

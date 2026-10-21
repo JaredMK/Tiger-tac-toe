@@ -2,6 +2,7 @@
 // scrolling lists, and joining by link.
 import { startChaos } from '../core/chaos.js';
 import { restrictGames } from '../core/games.js';
+import { levelOf } from '../core/aiw.js';
 import { NAME_MAX, normLocal, normSetup, seatLocal, startMatch, syncNames } from '../core/match.js';
 import { resignLocal } from '../core/records.js';
 import { normTimer } from '../core/timer.js';
@@ -143,6 +144,8 @@ export function init() {
       state.setup.chaos = el.dataset.v === '1';
       if (state.setup.chaos) normLocal(state.setup).p2 = 'cpu';
       commit();
+    } else if (act === 'level') {                // Play Local: the computer's level, Easy, Normal or Hard
+      normLocal(state.setup).level = levelOf(el.dataset.v); commit();
     } else if (act === 'lside') {                // Play Local: player 1's side, X, O or Random (drawn at every start)
       normLocal(state.setup).pick = ['X', 'O', 'random'].includes(el.dataset.side) ? el.dataset.side : 'X'; commit();
     } else if (act === 'review') {               // the results screen: look back over the final board

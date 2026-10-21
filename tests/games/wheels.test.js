@@ -81,3 +81,15 @@ test('wheels: the computer\'s mistake rate is dealt into the square and played b
   for (let k = 0; k < 60; k++) { seen.add(E.localBest(pm, 'X', rng).move); plain.add(E.localBest(pm0, 'X', rng).move); }
   assert.equal(plain.size, 1); assert.ok(seen.size > 1);
 });
+
+test('wheels: the Hard computer spins what the usual one does: the table already holds each wheel\'s exact chance of reaching the target first', () => {
+  const A = require('../../src/games/wheels/ai.js'), ctx = { level: 'hard', until: null };
+  const m = E.newMini('wheels', E.makeRng('wheels-hard'));
+  for (const [x, o] of [[0, 0], [4, 12], [12, 4], [15, 15], [17, 0]]) {
+    m.pts = { X: x, O: o };
+    const pm = E.publicMini(m), t0 = performance.now(), h = A.best(pm, 'X', E.makeRng('h'), {}, ctx);
+    assert.ok(performance.now() - t0 < 60);
+    assert.ok(E.WHEELS.includes(h.move)); assert.deepEqual(h, A.best(pm, 'X', E.makeRng('h'), {}, {}));
+    assert.equal(h.move, E.wheelsTable(pm.target, pm.wheels).best[Math.min(pm.target - 1, x)][Math.min(pm.target - 1, o)]);
+  }
+});

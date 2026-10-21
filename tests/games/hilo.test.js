@@ -93,3 +93,30 @@ test('hilo: the computer halves the range, finds any number from 1 to 30 within 
   assert.ok(E.moveGain(pm, 'X', b) < 0, 'not worth it');
   assert.equal(L.localBest(pm, 'O', seq(0.5)).qLose, 0, 'O still has all five');
 });
+
+test('hilo: the Hard computer guesses to be the one who lands on the number (every miss narrows it for the other side too), and beats the halver', () => {
+  const A = require('../../src/games/hilo/ai.js'), ctx = { level: 'hard', until: null };
+  const t0 = performance.now();
+  const pm = (lo, hi, used) => ({ type: 'hilo', lo, hi, top: 30, limit: 5, guesses: [].concat(...['X', 'O'].map(p => Array.from({ length: (used || {})[p] || 0 }, () => ({ by: p, n: 0, res: 'lower' })))) });
+  const three = A.best(pm(11, 13), 'X', seq(0.5), {}, ctx);
+  assert.ok(three.move === 11 || three.move === 13, 'three numbers: an end (2 in 3 to win; the middle, 1 in 3)');
+  assert.deepEqual(A.hiloRace(3, 5, 5), { w: 2 / 3, wh: 2 / 3, k: 1 });
+  assert.equal(L.localBest(pm(11, 13), 'X', seq(0.5)).move, 12, '(the usual computer halves)');
+  assert.ok(Math.abs(A.hiloRace(30, 5, 5).w - 0.5) < 1e-9, 'thirty numbers, five guesses each: a coin toss against the best play');
+  assert.ok(A.hiloRace(30, 5, 5).wh > 0.6, 'but against a halver: ' + A.hiloRace(30, 5, 5).wh.toFixed(3));
+  const b = A.best(pm(1, 30), 'X', seq(0.5), {}, ctx);
+  assert.ok(Number.isInteger(b.move) && b.move >= 1 && b.move <= 30 && b.shared && b.q === 1 / 30, 'a legal guess, the usual shape');
+  assert.equal(A.best(pm(1, 10, { X: 4 }), 'X', seq(0.5), {}, ctx).qLose, 0.9, 'its last guess: a likely loss, as ever');
+  assert.ok(performance.now() - t0 < 60, 'under 60 ms');
+  // Hard against the halver, both ways round, from fresh squares
+  const rng = E.makeRng('hilo-hard');
+  let hardWins = 0;
+  for (let g = 0; g < 200; g++) {
+    const side = g % 2 ? 'O' : 'X', m = L.newMini('hilo', rng);
+    let p = 'X', r;
+    for (let n = 0; n < 12; n++) { r = L.applyMove(m, p, L.localBest(E.publicMini(m), p, rng, E.STYLE0, p === side ? ctx : {}).move, rng); assert.equal(r.ok, true); if (r.outcome === 'win') break; p = p === 'X' ? 'O' : 'X'; }
+    if ((r.winner || p) === side) hardWins++;
+  }
+  assert.ok(hardWins > 110, 'Hard won ' + hardWins + ' of 200');
+  for (let k = 0; k < 5; k++) { const t1 = performance.now(); A.best(pm(1, 99 - k, { X: k, O: 1 }), 'X', seq(0.5), {}, ctx); assert.ok(performance.now() - t1 < 60); }
+});

@@ -158,7 +158,7 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;'
 let fb = null, user = null, stats = null, flagged = null, view = { status: 'loading', error: '' };
 let ctl = { config: {}, secretsSet: {}, bots: {}, botStats: {}, alertLog: [], alertStats: {} }, testResult = null, keyMsg = '';
 // The defaults the server uses for anything not set (functions/bots.js).
-const DEF = { bots: { enabled: false, waitMin: 40, waitMax: 70, countInRecords: true }, alerts: { enabled: false, sms: false, email: true, phone: '', to: '', after: 5, cooldownMin: 30, gapMin: 3, dailyCap: 20 } };
+const DEF = { bots: { enabled: false, waitMin: 40, waitMax: 70, countInRecords: true, level: 'normal' }, alerts: { enabled: false, sms: false, email: true, phone: '', to: '', after: 5, cooldownMin: 30, gapMin: 3, dailyCap: 20 } };
 const cfgGet = (sec, k) => { const v = ((ctl.config || {})[sec] || {})[k]; return v === undefined || v === null || v === '' ? DEF[sec][k] : v; };
 let sortBy = { k: 'avgWin', dir: 1 }, miniMode = 'all', period = 'd';
 let accts = null, acctSort = { k: 'joined', dir: -1 };                       // the Accounts table: newest first
@@ -302,7 +302,7 @@ function render() {
     playtest: () => playCard(),
     matches: () => matchCard(),
     settings: sub => (sub && GAMES[sub] ? gamePage(sub) : settingsIndex()),
-    bots: () => `${findCard()}${botsCard()}${alertsCard()}`,
+    bots: () => `${findCard()}${botsCard()}${aiCard()}${alertsCard()}`,
     releases: () => releasesCard(),
     stats: () => `<div class="card"><h2>Matches by mode</h2>${modeTable}</div>
     <div class="card"><div class="row"><h2>Mini-games</h2><label>Modes <select id="mm">${[['all', 'All modes'], ['people', 'All but computer vs computer']].concat(MODES.filter(m => m[0] !== 'chaos'), [['testing', 'Admin-only games (testing)']]).map(([v, l]) => `<option value="${v}"${miniMode === v ? ' selected' : ''}>${l}</option>`).join('')}</select></label></div>
@@ -882,12 +882,30 @@ function botsCard() {
   return `<div class="card ctl" id="botsCard"><div class="row"><h2>Bots</h2><label class="sw">${chk('bots', 'enabled')}<span>${cfgGet('bots', 'enabled') ? 'On' : 'Off'}</span></label></div>
     <p class="note">When someone searches Find Match and nobody else is searching, a bot takes them on after a random wait between these two numbers. The player is not told it is a bot. Off: they keep waiting.</p>
     <div class="fields"><label>Wait from ${numIn('bots', 'waitMin', 5, 600)} s</label><label>to ${numIn('bots', 'waitMax', 5, 600)} s</label>
-      <label>${chk('bots', 'countInRecords')} Count bot matches in players' records</label></div>
+      <label>${chk('bots', 'countInRecords')} Count bot matches in players' records</label>
+      <label>Bots play at <select data-cfg="bots.level">${[['easy', 'Easy'], ['normal', 'Normal'], ['hard', 'Hard']].map(([v, l]) => `<option value="${v}"${cfgGet('bots', 'level') === v ? ' selected' : ''}>${l}</option>`).join('')}</select></label></div>
+    <p class="note">The computer's levels, as in Play Local: Easy is Normal with a careless move now and then; Normal the computer as it has always played, each bot with its own style; Hard searches inside the mini-games and plays the rest of the match out (Monte Carlo) before choosing its square, within about 0.3 s a move. The default for new bot matches; a match under way keeps its level.</p>
     <div class="kpis" style="margin-top:12px">
       <div class="kpi"><small>Bot matches run</small><b>${n(b.started)}</b><span>${n(b.finished)} finished</span></div>
       <div class="kpi"><small>Players won</small><b>${n(b.playerWins)}</b><span>bots won ${n(b.botWins)} · draws ${n(b.draws)}</span></div></div>
     ${list.length ? `<div class="tbl" style="margin-top:8px"><table><thead><tr><th>Bot account</th><th style="text-align:left">Plays like</th></tr></thead><tbody>${list.map(x => `<tr><td>${esc(x.username)}</td><td style="text-align:left;white-space:normal">${esc(x.about || '')}</td></tr>`).join('')}</tbody></table></div>`
       : '<p class="note">The five bot accounts are made the first time a bot is needed. Their styles and pace are set in functions/bots.js.</p>'}</div>`;
+}
+// ---------- the Hard computer's weights (config/ai): what npm run tune-ai saved by self-play, read by the game and the server ----------
+const AI_W = [['attack', 'Line value (own lines)'], ['defend', 'Defence priority'], ['rollRisk', 'Risk appetite (Risky Rolls, points)'], ['explore', 'Playout exploring'], ['prog', 'Playout progress chance'], ['fresh', 'Moves needed in a reset square'], ['playouts', 'Playouts per candidate']];
+function aiCard() {
+  const w = ctl.ai || {}, set = Object.keys(w).filter(k => AI_W.some(x => x[0] === k)).length;
+  const row = ([k, label]) => `<tr><td>${label}</td><td>${w[k] != null ? `<b>${esc(w[k])}</b>` : '<span class="dim">default</span>'}</td></tr>`;
+  return `<div class="card ctl" id="aiCard"><div class="row"><h2>Hard computer's weights</h2><span class="note" style="margin:0">${set ? `${set} tuned${w.tuned ? ` · ${PT.nyWhen(w.tuned)}` : ''}${w.matches ? ` · ${w.matches} matches` : ''}` : 'the code\'s defaults'}</span></div>
+    <div class="tbl"><table><thead><tr><th style="text-align:left">Weight</th><th>Value</th></tr></thead><tbody>${AI_W.map(row).join('')}</tbody></table></div>
+    <p class="note">Tuned by self-play with <code>npm run tune-ai</code> (thousands of computer-against-computer matches; a change is kept only when it wins more; never run on its own). Normal and Easy play the code's own numbers whatever is here. Reset puts the defaults back for the Hard computer and the bots at Hard.</p>
+    <div class="rform"><button class="btn" data-airesets="1"${set ? '' : ' disabled'}>Reset to defaults</button></div></div>`;
+}
+async function resetAi(btn) {
+  if (!confirm('Put the Hard computer\'s weights back to the code\'s defaults?')) return;
+  btn.disabled = true;
+  try { await fb.dbM.set(fb.dbM.ref(fb.db, 'config/ai'), null); ctl.ai = {}; } catch (e) { alert('Could not reset: ' + (e && e.message)); }
+  render();
 }
 function alertsCard() {
   const set = k => (ctl.secretsSet && ctl.secretsSet[k] ? '<span class="set">saved</span>' : '<span class="unset">not set</span>');
@@ -1005,7 +1023,7 @@ async function loadCtl() {
   const [config, secretsSet, bots, botStats, alertStats, features, log, releases, runCfg, bullsCfg, wheelsCfg, plinkoCfg, oddCfg, headCfg, flashCfg, snapCfg, hopCfg, scoopCfg, pinCfg, pigCfg, roadsCfg, bowlCfg] = await Promise.all([g('admin/config'), g('admin/secretsSet'), g('bots'), g('botStats'), g('alertStats'), g('features'),
     fb.dbM.get(fb.dbM.query(fb.dbM.ref(fb.db, 'alertLog'), fb.dbM.orderByChild('at'), fb.dbM.limitToLast(8))).then(s => s.val()).catch(() => null), g('releases'), g('config/run'), g('config/bulls'), g('config/wheels'), g('config/plinko'), g('config/oddone'), g('config/headcount'), g('config/flash'), g('config/snapshot'), g('config/skyhop'), g('config/scoop'), g('config/pinball'), g('config/pig'), g('config/roads'), g('config/bowling'), loadMetas()]);
   ctl = { config: config || {}, secretsSet: secretsSet || {}, bots: bots || {}, botStats: botStats || {}, alertStats: alertStats || {}, features: features || {}, releases: releases || {}, runCfg: runCfg || {}, bullsCfg: bullsCfg || {}, wheelsCfg: wheelsCfg || {}, plinkoCfg: plinkoCfg || {}, pigCfg: pigCfg || {}, roadsCfg: roadsCfg || {}, oddCfg: oddCfg || {}, attCfg: { headcount: headCfg || {}, flash: flashCfg || {}, snapshot: snapCfg || {} }, fingCfg: { skyhop: hopCfg || {}, scoop: scoopCfg || {}, bowling: bowlCfg || {}, pinball: pinCfg || {} },
-    alertLog: Object.values(log || {}).sort((a, b) => b.at - a.at), tune: (await g('config/tune')) || {} };
+    alertLog: Object.values(log || {}).sort((a, b) => b.at - a.at), tune: (await g('config/tune')) || {}, ai: (await g('config/ai')) || {} };
 }
 async function signIn(how) {
   view.error = '';
@@ -1042,6 +1060,7 @@ app.addEventListener('click', e => {
   else if (b.dataset.testplay) testPlay(b.dataset.testplay);
   else if (b.dataset.tunesave) saveTune(b.dataset.tunesave, b);
   else if (b.dataset.tunereset) resetTune(b.dataset.tunereset, b);
+  else if (b.dataset.airesets) resetAi(b);
   else if (b.dataset.runsave) saveRunCfg(b.dataset.runsave, b);
   else if (b.dataset.bullsave) saveBullsCfg(b);
   else if (b.dataset.wheelsave) saveWheelsCfg(b);

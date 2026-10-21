@@ -139,7 +139,7 @@ export function scCpu(state, rng, force, side) {   // force: { square, moves } t
   const sc = state.sc, cpu = side || state.cpu;
   const sh = {
     squares: state.squares.map((sq, i) => ({ owner: sq.owner, mini: project(clone(sc.base[i]), cpu), mv: { X: 0, O: 0 } })),
-    turn: cpu, lock: null, winner: null, flash: null, done: null, timer: null, games: state.games, setup: state.setup,
+    turn: cpu, lock: null, winner: null, flash: null, done: null, timer: null, games: state.games, setup: state.setup, cpuLevel: state.cpuLevel,
     sqlog: [], moves: 0, sc: { round: sc.round, me: null, moved: null, cpu: null, recap: null, shadow: true },
   };
   const steps = [];

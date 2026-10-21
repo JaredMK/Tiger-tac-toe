@@ -282,3 +282,33 @@ test('risky rolls: the computer\'s banking setting is dealt into the square and 
   assert.equal(at(plain, 8), 'roll'); assert.equal(at(plain, 12), 'bank', 'the usual: banks at 12 (a d8)');
   assert.equal(at(m, 12), 'roll', 'banks later');
 });
+
+test('Risky Rolls: the Hard computer plays the exact race (a d8 to 51): its table built in bounded slices, the bank or roll the rule misses, its prediction borne out in play', () => {
+  const A = require('../../src/games/pig/ai.js'), ctx = { level: 'hard', until: null };
+  E.setPigConfig(null);
+  try {
+    let e, calls = 0;
+    do { const t0 = performance.now(); e = A.pigRace(8, 51, null); assert.ok(performance.now() - t0 < 60, 'a slice under 60 ms'); calls++; } while (!e.done && calls < 100);
+    assert.ok(e.done && calls <= 20, 'the table within a few calls: ' + calls);
+    assert.ok(e.P[0] > 0.55 && e.P[0] < 0.62, 'the first to roll wins about 59% from 0-0: ' + e.P[0].toFixed(3));
+    assert.ok(e.P[50 * 51 + 0] > 0.99 && e.P[0 * 51 + 50] < 0.05, 'one point short against none, and the other way');
+    const pm = (a, b, rolls) => ({ type: 'pig', bank: { X: a, O: b }, turn: { by: 'X', rolls, pot: rolls.reduce((x, y) => x + y, 0) }, sides: 8, target: 51 });
+    const hard = (a, b, rolls, style) => A.best(pm(a, b, rolls), 'X', lcg(3), style || {}, ctx).move, rule = (a, b, rolls) => A.best(pm(a, b, rolls), 'X', lcg(3), {}, {}).move;
+    assert.equal(hard(0, 0, [3, 5]), 'roll'); assert.equal(hard(0, 0, [1, 2, 3, 4, 5]), 'bank'); assert.equal(hard(40, 0, [8, 3]), 'bank', 'the square: q 1');
+    assert.equal(hard(44, 0, [2, 3]), 'bank', 'well ahead, a small pot banks: a bust would cost the turn'); assert.equal(rule(44, 0, [2, 3]), 'roll', '(the rule rolls on)');
+    assert.equal(hard(10, 48, [5, 6, 7]), 'roll', 'the other side a roll from the square: 28 banked would not do'); assert.equal(rule(10, 48, [5, 6, 7]), 'bank', '(the rule banks)');
+    assert.equal(hard(30, 30, [1, 2, 3]), 'bank', 'three of eight numbers rolled: a bust costs the pot and the turn'); assert.equal(rule(30, 30, [1, 2, 3]), 'roll');
+    assert.equal(hard(30, 30, [1, 2, 3], { rollRisk: 6 }), 'roll', 'a bolder style banks as if the pot were smaller'); assert.equal(hard(44, 0, [2, 3], { rollRisk: -3 }), 'bank');
+    E.setTune('pig', { risk: 8 }); assert.equal(A.best(Object.assign(pm(30, 30, [1, 2, 3]), { tune: { risk: 8 } }), 'X', lcg(3), {}, ctx).move, 'roll', 'the admin\'s banks-later setting too'); E.setTune('pig', null);
+    // a square played through: Hard against Hard from 0-0, the first to roll wins about as the table says; Hard against the rule, Hard wins more
+    const play = (rng, sides) => { const m = E.newMini('pig', rng); let p = 'X', n = 0; for (;;) { const b = A.best(E.publicMini(m), p, rng, E.STYLE0, sides[p]); const r = E.applyMove(m, p, b.move, rng); assert.equal(r.ok, true); if (r.outcome === 'win') return p; if (!r.again) p = p === 'X' ? 'O' : 'X'; assert.ok(++n < 500); } };
+    const rng = lcg(21);
+    let first = 0; for (let g = 0; g < 300; g++) if (play(rng, { X: ctx, O: ctx }) === 'X') first++;
+    assert.ok(first > 150 && first < 205, 'the first to roll won ' + first + ' of 300 (the table: ' + Math.round(300 * e.P[0]) + ')');
+    let hardWins = 0; for (let g = 0; g < 400; g++) { const side = g % 2 ? 'O' : 'X'; if (play(rng, { X: side === 'X' ? ctx : {}, O: side === 'O' ? ctx : {} }) === side) hardWins++; }
+    assert.ok(hardWins > 200, 'Hard against the rule (about 54% over many): ' + hardWins + ' of 400');
+    for (let k = 0; k < 5; k++) { const t0 = performance.now(); A.best(pm(12 + k, 20, [4, 7]), 'X', lcg(k), {}, ctx); assert.ok(performance.now() - t0 < 60, 'a Hard move under 60 ms'); }
+    const t0 = performance.now(); A.best(Object.assign(pm(0, 0, [2]), { sides: 6, target: 21 }), 'X', lcg(1), {}, ctx); assert.ok(performance.now() - t0 < 60, 'a new table\'s first slice under 60 ms');
+    assert.equal(A.best(Object.assign(pm(0, 0, [2]), { target: 200 }), 'X', lcg(1), {}, ctx).move, 'roll', 'a target too big for a table: the rule');
+  } finally { E.setPigConfig({ sides: 6, target: 21 }); E.setTune('pig', null); }
+});

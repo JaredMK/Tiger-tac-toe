@@ -53,13 +53,14 @@ import { hist, prof, record, signed } from './screens/profile.js';
 import { setGames } from './screens/setup.js';
 import { BUMP_SPEC, CANDY_SPEC, DICE_SPEC, SNL_SPEC } from './track.js';
 import { dismissFlash, playFlash } from './turns.js';
+import { thinkInfo } from './think.js';
 import { chaosNext, chaosResolve, chaosTimeout, scCpu, scTypes, startChaos } from '../core/chaos.js';
 import { cpuMove } from '../core/ai.js';
 import { scClockLeft, scUi, setScUi } from './chaos.js';
 
 const names = {
   state: () => state,
-  cpuMove: () => cpuMove, startChaos: () => startChaos, chaosResolve: () => chaosResolve, chaosNext: () => chaosNext, chaosTimeout: () => chaosTimeout, scCpu: () => scCpu, scTypes: () => scTypes, scUi: () => scUi, scClockLeft: () => scClockLeft,
+  cpuMove: () => cpuMove, thinkInfo: () => thinkInfo, startChaos: () => startChaos, chaosResolve: () => chaosResolve, chaosNext: () => chaosNext, chaosTimeout: () => chaosTimeout, scCpu: () => scCpu, scTypes: () => scTypes, scUi: () => scUi, scClockLeft: () => scClockLeft,
   KEY: () => KEY,
   commit: () => commit,
   online: () => online,

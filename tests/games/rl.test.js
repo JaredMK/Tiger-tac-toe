@@ -89,3 +89,21 @@ test('roulette: the admin\'s settings (hits to win, the computer\'s bets on 0) a
   const pm = E.publicMini(m); pm.hits = { X: 0, O: 2 };
   assert.equal(E.localBest(pm, 'X', E.makeRng('rl-ai'), null, { value: 0, behind: 2 }).move, 'zero', 'behind: always 0');
 });
+
+test('roulette: the Hard computer bets green 0 or a group by the chance of winning the square\'s race', () => {
+  const A = require('../../src/games/rl/ai.js'), ctx = { level: 'hard', until: null, value: 2, behind: 0 };
+  const pm = (x, o, goal) => ({ type: 'rl', hits: { X: x, O: o }, tune: goal ? { goal } : undefined });
+  const t0 = performance.now();
+  for (let i = 0; i < 20; i++) assert.ok(['g1', 'g2', 'g3'].includes(A.best(pm(0, 0), 'X', lcg(i), {}, ctx).move), 'level: a group');
+  assert.ok(['g1', 'g2', 'g3'].includes(A.best(pm(0, 1), 'X', lcg(1), {}, Object.assign({}, ctx, { value: E.AI.block + 1 })).move), 'two hits to win: a group even a hit behind on a square that matters');
+  assert.equal(A.best(pm(0, 3, 4), 'X', lcg(1), {}, ctx).move, 'zero', 'four hits to win, none to three: green 0 (1 in 25 now beats four hits before their one)');
+  assert.equal(A.best(pm(1, 3, 4), 'X', lcg(1), {}, ctx).move, 'zero', 'three hits to their one: still green 0'); assert.ok(A.best(pm(2, 3, 4), 'X', lcg(1), {}, ctx).move !== 'zero', 'two to their one: a group'); assert.ok(A.best(pm(0, 1, 4), 'X', lcg(1), {}, ctx).move !== 'zero');
+  assert.equal(A.best(pm(0, 2, 3), 'X', lcg(1), {}, ctx).move, 'zero', 'three hits to win, none to two');
+  assert.ok(performance.now() - t0 < 60, 'under 60 ms');
+  const r = A.rlRace(4), P = r.P;
+  assert.ok(P[0 * 4 + 3] > 0.11 && P[0 * 4 + 3] < 0.12, 'none to three, to move: ' + P[3].toFixed(3));
+  assert.ok(P[3 * 4 + 0] > 0.92 && P[3 * 4 + 0] < 0.93, 'three to none, to move: ' + P[12].toFixed(3));
+  assert.ok(Math.abs(P[0] - 0.526) < 0.002, 'the first to bet: ' + P[0].toFixed(3));
+  assert.equal(A.rlRace(2).zero.some(Boolean), false, 'two hits to win: green 0 never');
+  assert.equal(A.best(pm(0, 1), 'X', lcg(1), {}, Object.assign({}, ctx, { value: E.AI.block + 1 })).q, 0);
+});

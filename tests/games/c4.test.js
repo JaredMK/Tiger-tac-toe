@@ -207,3 +207,50 @@ test('connect 4: the admin\'s settings (run length, look-ahead) are dealt into t
   assert.ok(lb.win && (lb.move === 2), 'three in a row wins now');
   assert.equal(E.applyMove(m, 'X', 2, anyRng()).outcome, 'win');
 });
+
+test('connect 4: the Hard computer searches deeper (a forced win Normal misses), legal moves, within its time', () => {
+  const hard = { level: 'hard', until: null }, normal = { level: 'normal', until: null };
+  const R = require('../../src/games/c4/rules.js');                 // (the search itself)
+  const m = mini('c4');                                      // X to move: column 5 wins by force in eight plies; Normal (five plies) plays 2 and lets it go
+  for (const [p, col] of [['X', 5], ['O', 3], ['X', 5], ['O', 6], ['X', 2], ['O', 0], ['X', 3], ['O', 5]]) assert.equal(L.applyMove(m, p, col).outcome, 'continue');
+  const pm = L.publicMini(m);
+  const h = R.c4Hard(pm.cells, 'X');
+  assert.ok(h.depth >= 8 && h.moves[0].i === 5 && h.moves[0].v >= R.C4_HARD.win - 42, `a forced win seen (${JSON.stringify(h.moves[0])} at depth ${h.depth})`);
+  assert.equal(L.localBest(pm, 'X', cpuRng(), {}, hard).move, 5);
+  assert.equal(L.localBest(pm, 'X', cpuRng(), {}, normal).move, 2, 'Normal as before');
+  const after = L.publicMini(m); after.cells[L.c4Drop(after.cells, 2)] = 'X';
+  assert.ok(R.c4Hard(after.cells, 'O').moves[0].v > -R.C4_HARD.win + 42, 'after Normal\'s move O is not lost within the horizon');
+  // the shape the square choice needs, and legal moves in any position
+  const w = L.localBest(L.publicMini(mini('c4')), 'X', cpuRng(), {}, hard);
+  assert.equal(w.move, 3); assert.equal(w.win, false); assert.equal(w.after.type, 'c4'); assert.equal(w.after.cells[c4idx(5, 3)], 'X');
+  const r = lcg(5);
+  for (let k = 0; k < 6; k++) {
+    const b = mini('c4', lcg(k + 20));
+    let p = 'X';
+    for (let i = 0; i < 8 + k * 3; i++) { const mv = L.randomLegalMove(b, p, r); if (L.applyMove(b, p, mv, r).outcome !== 'continue') break; p = L.other(p); }
+    if (L.findRun(b.cells, 7, 6, 4, 'X') || L.findRun(b.cells, 7, 6, 4, 'O')) continue;
+    const mv = L.localBest(L.publicMini(b), p, cpuRng(), {}, hard).move;
+    assert.ok(Number.isInteger(mv) && mv >= 0 && mv < 7 && !b.cells[mv], `a legal column (${mv})`);
+    if (L.findRun(b.cells, 7, 6, 4, p)) continue;
+    const win = L.localBest(L.publicMini(b), p, cpuRng(), {}, hard);
+    assert.equal(win.win, !!L.findRun(win.after.cells, 7, 6, 4, p), 'win says what the position after says');
+  }
+  // the admin's run length and mistake rate still apply
+  const k3 = mini('c4'); k3.tune = { k: 3 };
+  L.applyMove(k3, 'X', 0); L.applyMove(k3, 'X', 1);
+  assert.ok(L.localBest(L.publicMini(k3), 'X', cpuRng(), {}, hard).win, 'three in a row wins with k 3');
+  const slips = new Set(); const sq = mini('c4'); sq.tune = { miss: 50 };
+  for (let i = 0; i < 20; i++) slips.add(L.localBest(L.publicMini(sq), 'X', E.makeRng('c4-hard-miss' + i), {}, hard).move);
+  assert.ok(slips.has(3) && slips.size > 1, 'the mistake rate still applies');
+  // the time: a fixed amount of work without a clock, under 60 ms a move here; with a clock it stops when told
+  L.localBest(L.publicMini(mini('c4')), 'X', cpuRng(), {}, hard);                                   // (warm)
+  for (const seed of [1, 2, 3, 4]) {
+    const b = mini('c4', lcg(seed + 40)); let p = 'X';
+    for (let i = 0; i < seed * 4; i++) { const mv = L.randomLegalMove(b, p, r); if (L.applyMove(b, p, mv, r).outcome !== 'continue') break; p = L.other(p); }
+    const t0 = performance.now(); L.localBest(L.publicMini(b), p, cpuRng(), {}, hard); const ms = performance.now() - t0;
+    assert.ok(ms < 60, `a Hard move in ${ms.toFixed(1)} ms`);
+  }
+  const t1 = performance.now(), until = () => Math.max(0, t1 + 12 - performance.now());
+  const timed = L.localBest(pm, 'X', cpuRng(), {}, { level: 'hard', until });
+  assert.ok(performance.now() - t1 < 40 && Number.isInteger(timed.move) && !pm.cells[timed.move], 'stops at its budget with a legal move');
+});

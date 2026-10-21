@@ -107,3 +107,17 @@ test('ride the bus: the admin\'s settings (a tie right, the computer\'s mistakes
   const seen = new Set(); for (let k = 0; k < 40; k++) seen.add(E.localBest(E.publicMini(m), 'X', rng).move);
   assert.ok(seen.size > 1);
 });
+
+test('ride the bus: the Hard computer plays as the usual one does: the likeliest guess each round is the best there is (a miss costs only the turn)', () => {
+  const A = require('../../src/games/bus/ai.js'), ctx = { level: 'hard', until: null };
+  const m = E.newMini('bus', lcg(2));
+  for (const kept of [[], ['2H'], ['2H', 'KS'], ['2H', 'KS', '7D']]) {
+    m.prog.X = kept.slice();
+    const pm = E.publicMini(m), t0 = performance.now(), h = A.best(pm, 'X', lcg(7), {}, ctx);
+    assert.ok(performance.now() - t0 < 60);
+    assert.ok(E.BUS.guesses[kept.length].includes(h.move), 'a legal guess');
+    const top = Math.max(...E.busOdds(kept, false).map(o => o.p));
+    assert.ok(E.busOdds(kept, false).find(o => o.guess === h.move).p >= top - 1e-9, 'the likeliest');
+    assert.equal(h.move, A.best(pm, 'X', lcg(7), {}, {}).move, 'the same as Normal, the same rng');
+  }
+});

@@ -1,10 +1,11 @@
 // Admin test play: the admin dashboard's "Test play" opens the page in a new tab as
-// ?sandbox=<type>&cfg=<the editor's settings, JSON in base64url>[&cpu=0|1][&sc=0|1]. One mini-game alone
+// ?sandbox=<type>&cfg=<the editor's settings, JSON in base64url>[&cpu=0|1][&sc=0|1][&level=easy|normal|hard]. One mini-game alone
 // (the square in the middle; the player is held to it), with the settings from the editor, saved or not:
 // they are set in this tab only (the live config is never read or written, nothing is saved, no stats or
 // device events go out). Admin only: the page checks the signed-in account first. A bar at the bottom:
 // Restart, the computer opponent on or off, normal or Super Chaos rules.
 import { startChaos } from '../core/chaos.js';
+import { LEVEL_NAME, LEVELS, levelOf } from '../core/aiw.js';
 import { setTune } from '../core/tune.js';
 import { dealable, newState, seatLocal, startMatch } from '../core/match.js';
 import { setBowlConfig } from '../games/bowling/rules.js';
@@ -43,6 +44,7 @@ export function sandboxParams() {
   sbx.type = TYPES.includes(t) ? t : null;
   sbx.cfg = q.get('cfg') ? b64(q.get('cfg')) : null;
   sbx.cpu = q.get('cpu') !== '0';
+  sbx.level = levelOf(q.get('level'));
   sbx.sc = sbx.type ? (scOnly(sbx.type) || (q.get('sc') === '1' && scOk(sbx.type))) : false;
   return true;
 }
@@ -67,7 +69,7 @@ function halt(status, msg) { sbx.status = status; sbx.msg = msg; state.screen = 
 // A fresh game: the square in the middle, X the player, O the computer (or a second player).
 export function restart() {
   const st = newState(RNG);
-  st.setup.local = { pick: 'X', p2: sbx.cpu || sbx.sc ? 'cpu' : 'human', n1: '', n2: '' };   // (Super Chaos needs a computer seat: without it, it simply never moves)
+  st.setup.local = { pick: 'X', p2: sbx.cpu || sbx.sc ? 'cpu' : 'human', n1: '', n2: '', level: sbx.level };   // (Super Chaos needs a computer seat: without it, it simply never moves)
   seatLocal(st.setup, RNG);
   for (const t of TYPES) st.setup.games[t] = t === sbx.type;
   st.only = SQ; st.solo = sbx.sc && !sbx.cpu;
@@ -108,8 +110,9 @@ function mountBar() {
     const k = b.dataset.sbx;
     if (k === 'cpu') sbx.cpu = !sbx.cpu;
     if (k === 'sc') sbx.sc = !sbx.sc;
+    if (k === 'level') sbx.level = LEVELS[(LEVELS.indexOf(sbx.level) + 1) % LEVELS.length];
     if (k !== 'restart') {
-      try { const u = new URL(location.href); u.searchParams.set('cpu', sbx.cpu ? '1' : '0'); u.searchParams.set('sc', sbx.sc ? '1' : '0'); history.replaceState(null, '', u); } catch (err) { /* (kept as it was) */ }
+      try { const u = new URL(location.href); u.searchParams.set('cpu', sbx.cpu ? '1' : '0'); u.searchParams.set('sc', sbx.sc ? '1' : '0'); u.searchParams.set('level', sbx.level); history.replaceState(null, '', u); } catch (err) { /* (kept as it was) */ }
     }
     restart();
   });
@@ -121,6 +124,7 @@ function paintBar() {
   const t = sbx.type, on = sbx.status === 'on', scLock = t && (scOnly(t) || !scOk(t));
   bar.innerHTML = `<span class="sbxname"><b>Test play</b>${t ? esc(INFO[t].name) : ''}${sbx.cfg ? ' · editor settings' : ''}</span>`
     + `<button class="btn" data-sbx="restart"${on ? '' : ' disabled'}>Restart</button>`
-    + `<button class="btn" data-sbx="cpu" aria-pressed="${sbx.cpu}"${on ? '' : ' disabled'}>Computer: ${sbx.cpu ? 'On' : 'Off'}</button>`
-    + `<button class="btn" data-sbx="sc" aria-pressed="${sbx.sc}"${on && !scLock ? '' : ' disabled'}${scLock && t ? ` title="${scOnly(t) ? 'Super Chaos only' : 'Not in Super Chaos'}"` : ''}>Rules: ${sbx.sc ? 'Super Chaos' : 'Normal'}</button>`;
+    + `<button class="btn" data-sbx="cpu" aria-pressed="${sbx.cpu}"${on ? '' : ' disabled'}>CPU: ${sbx.cpu ? 'On' : 'Off'}</button>`
+    + `<button class="btn" data-sbx="level" aria-label="Computer level: ${LEVEL_NAME[sbx.level]}" title="The computer's level"${on && (sbx.cpu || sbx.sc) ? '' : ' disabled'}>${LEVEL_NAME[sbx.level]}</button>`
+    + `<button class="btn" data-sbx="sc" aria-pressed="${sbx.sc}"${on && !scLock ? '' : ' disabled'}${scLock && t ? ` title="${scOnly(t) ? 'Super Chaos only' : 'Not in Super Chaos'}"` : ''} aria-label="Rules: ${sbx.sc ? 'Super Chaos' : 'turns'}">${sbx.sc ? 'Super Chaos' : 'Turns'}</button>`;
 }

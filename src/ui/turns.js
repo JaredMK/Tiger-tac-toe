@@ -1,5 +1,4 @@
 // The turn flow on screen: the computer's turn (think, zoom, play), the result shown and dismissed.
-import { cpuMove } from '../core/ai.js';
 import { endFlash, leaveSquare, playMove } from '../core/board.js';
 import { playerName } from '../core/match.js';
 import { SND, backSounds, matchEndSound, moveSounds } from '../audio/sound.js';
@@ -15,27 +14,51 @@ import { animMs, fx, fxAt, stampFx, startFx } from './fx.js';
 import { joinAsk } from './input.js';
 import { render } from './render.js';
 import { rep, repActive, repStart, repStop } from './replay.js';
+import { cpuThink } from './think.js';
 
 /* ----- the computer's turn: a pause to think, a zoom into its square, its choice shown, then the move ----- */
 export function cpuTurn() { return !!state.cpu && state.cpu.includes(state.turn) && !state.winner && ['board', 'mini'].includes(state.screen); }   // (on any other screen the match waits)
 // Runs after every render: arms the computer's next step whenever it is its turn and nothing else is going on.
+let thinking = false;                                          // its move is being worked out (the Hard computer's worker, ui/think.js): no second question meanwhile
 export function scheduleCpu() {
   clearTimeout(cpuTimer); setCpuTimer(null);
   chaosStep();                                                   // Super Chaos: the round's own steps (ui/chaos.js)
+  if (thinking) return;
   if (!cpuTurn() || state.flash || state.done || state.confirm || menuOpen || explainT || joinAsk || repActive()) return;   // (repActive: its inputs are playing; the replay makes the move when they are done)
-  if (state.screen === 'board') { setCpuPlan(null); setCpuTimer(setTimeout(cpuSpot, CPU_MS.think)); return; }
+  if (state.screen === 'board') {                               // its move, worked out while it pauses to think; then its square lit up
+    const t0 = performance.now();
+    setCpuPlan(null);
+    think(plan => { setCpuPlan(plan); setCpuTimer(setTimeout(cpuSpot, Math.max(0, CPU_MS.think - (performance.now() - t0)))); });
+    return;
+  }
   if (state.screen !== 'mini') return;
   if (cpuPlan && cpuPlan.square === state.zoom && state.spot) return;   // the glow is still showing; cpuZoom takes it from here
   if (!cpuPlan || cpuPlan.square !== state.zoom) {
-    setCpuPlan(cpuMove(state, RNG)); if (!cpuPlan) return; cpuPlan.stage = 0;   // (no move at all: the admin's test play, its square over)
-    if (cpuPlan.square !== state.zoom) { state.zoom = cpuPlan.square; state.draft = ''; state.pick = null; state.sel = []; commit(); return; }   // after a reload mid-move
+    think(plan => {
+      setCpuPlan(plan); if (!plan) return; plan.stage = 0;        // (no move at all: the admin's test play, its square over)
+      if (plan.square !== state.zoom) { state.zoom = plan.square; state.draft = ''; state.pick = null; state.sel = []; commit(); return; }   // after a reload mid-move
+      setCpuTimer(setTimeout(cpuAct, state.lock != null ? CPU_MS.again : CPU_MS.zoom));
+    });
+    return;
   }
   setCpuTimer(setTimeout(cpuAct, cpuPlan.stage ? CPU_MS.pre : state.lock != null ? CPU_MS.again : CPU_MS.zoom));
+}
+// The computer's choice for the match as it stands (ui/think.js): the answer may come later (the Hard
+// computer's worker); by then the match must stand just the same, else it is asked again.
+function think(cb) {
+  const mark = () => `${state.moves}:${state.turn}:${state.lock}:${state.screen}:${state.zoom}`, at = mark();
+  thinking = true;
+  cpuThink(state, plan => {
+    thinking = false;
+    if (mark() !== at || !cpuTurn() || state.flash || state.done || state.confirm || menuOpen || explainT || joinAsk || repActive()) { scheduleCpu(); return; }
+    cb(plan);
+  });
 }
 function cpuSpot() {                                           // the computer has chosen: show where, then go there
   setCpuTimer(null);
   if (!cpuTurn() || state.screen !== 'board' || state.confirm || menuOpen) return;
-  setCpuPlan(cpuMove(state, RNG)); if (!cpuPlan) { render(); return; } cpuPlan.stage = 0;
+  if (!cpuPlan) { render(); return; }
+  cpuPlan.stage = 0;
   state.spot = { square: cpuPlan.square, by: state.turn, label: `${playerName(state, state.turn)} plays here` };
   startFx('spot', state.spot); SND.play('spot');
   render();                                                     // no commit: the glow is not for the saved state

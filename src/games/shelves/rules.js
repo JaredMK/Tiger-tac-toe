@@ -47,7 +47,7 @@ export function apply(mini, p, m, rng, idx) {   // a spot; then a grey mark on a
   return { ok: true, outcome: 'win', note: 'full', winner: x > y ? 'X' : 'O', counts: { X: x, O: y } };
 }
 export function publicView(mini) {
-  return { type: 'shelves', cells: mini.cells.slice() };
+  return { type: 'shelves', cells: mini.cells.slice(), first: mini.first || null };   // (first: who opened it, for the tie)
 }
 export function randomMove(mini, p, rng, from, empties) {
   return from(empties(mini.cells, c => !c));

@@ -83,3 +83,39 @@ test('takeover: the admin\'s settings: a 7x7 board, a one-move look-ahead and mi
   } finally { E.setTune('takeover', null); }
   assert.equal(E.newMini('takeover', lcg(1)).cells.length, 25); assert.equal(E.newMini('takeover', lcg(1)).tune, undefined);
 });
+
+test('takeover: the Hard computer searches deeper (a forced win Normal misses), legal moves, within its time', () => {
+  const hard = { level: 'hard', until: null }, normal = { level: 'normal', until: null };
+  const R = require('../../src/games/takeover/rules.js');                 // (the search itself)
+  const cells = ['X', 'X', 'X', null, null, null, 'X', 'X', 'X', null, null, 'O', 'X', null, 'O', 'O', 'O', 'O', 'O', 'O', null, 'O', null, null, 'O'];   // X to move: cell 4 wins by force; Normal (two moves deep) plays 22 and O wins by force
+  const pm = { type: 'takeover', cells };
+  const h = R.takeHard(cells, 'X');
+  assert.ok(h.i === 4 && h.v >= R.TAKE_HARD.win, `a forced win seen (${h.i}: ${h.v} at depth ${h.depth})`);
+  assert.equal(E.localBest(pm, 'X', lcg(1), {}, hard).move, 4);
+  assert.equal(E.localBest(pm, 'X', lcg(1), {}, normal).move, 22, 'Normal as before');
+  assert.ok(R.takeHard(E.takeApply(cells, 22, 'X'), 'O').v >= R.TAKE_HARD.win, 'after Normal\'s move O wins by force');
+  // the shape the square choice needs: the position after, the last cell's win
+  const w = E.localBest(pm, 'X', lcg(1), {}, hard);
+  assert.deepEqual(w.after, { type: 'takeover', cells: E.takeApply(cells, 4, 'X') }); assert.equal(w.win, false);
+  const last = Array.from({ length: 25 }, (_, i) => (i < 12 ? 'X' : 'O')); last[12] = null;
+  assert.deepEqual(E.localBest({ type: 'takeover', cells: last }, 'X', lcg(1), {}, hard).win, true, 'the last cell, most cells');
+  // legal moves everywhere (5x5 and the admin's 7x7), the mistake rate still applied, quickly
+  const r = lcg(5);
+  E.localBest(E.publicMini(E.newMini('takeover', lcg(1))), 'X', lcg(1), {}, hard);               // (warm)
+  for (let k = 0; k < 8; k++) {
+    const b = E.newMini('takeover', lcg(k)); if (k >= 6) { b.tune = { size: 7 }; b.cells = new Array(49).fill(null); }
+    let p = 'X';
+    for (let i = 0; i < k; i++) { const mv = E.randomLegalMove(b, p, r); if (E.applyMove(b, p, mv, r).outcome !== 'continue') break; p = E.other(p); }
+    if (!b.cells.includes(null)) continue;
+    const t0 = performance.now(); const mv = E.localBest(E.publicMini(b), p, lcg(k), {}, hard).move; const ms = performance.now() - t0;
+    assert.ok(Number.isInteger(mv) && b.cells[mv] === null, `a legal cell (${mv})`);
+    assert.ok(ms < 60, `a Hard move in ${ms.toFixed(1)} ms`);
+  }
+  const sq = E.newMini('takeover', lcg(2)); sq.tune = { miss: 50 };
+  const slips = new Set();
+  for (let i = 0; i < 20; i++) slips.add(E.localBest(E.publicMini(sq), 'X', E.makeRng('take-hard-miss' + i), {}, hard).move);
+  assert.ok(slips.size > 1, 'the mistake rate still applies');
+  const t1 = performance.now(), until = () => Math.max(0, t1 + 12 - performance.now());
+  const timed = E.localBest(E.publicMini(E.newMini('takeover', lcg(3))), 'X', lcg(1), {}, { level: 'hard', until });
+  assert.ok(performance.now() - t1 < 40 && Number.isInteger(timed.move) && timed.move >= 0 && timed.move < 25, 'stops at its budget with a legal move');
+});

@@ -3,6 +3,7 @@ import { newMini } from './minis.js';
 import { needRng, randInt } from './random.js';
 import { newTimer, normTimer } from './timer.js';
 import { other } from './util.js';
+import { levelOf } from './aiw.js';
 import { PHYSICS, PHYS_TYPES, physicsReady } from '../games/shared/physics.js';
 import { markCoins } from '../games/coins/rules.js';
 import { triviaDeal, triviaReady } from '../games/trivia/rules.js';
@@ -61,7 +62,7 @@ export function syncNames(setup) {
   }
 }
 // Play Local: player 1 is always a person, who picks X, O or Random; player 2 is a person or the
-// computer and takes the other side. Kept as setup.local { pick, p2, n1, n2 }; an older setup (a
+// computer and takes the other side, at a level (Easy, Normal or Hard). Kept as setup.local { pick, p2, n1, n2, level }; an older setup (a
 // Human or Computer on each side) is read into it, with the computer, if any, as player 2.
 export function normLocal(setup) {
   let L = setup.local;
@@ -73,7 +74,7 @@ export function normLocal(setup) {
   }
   setup.local = {
     pick: ['X', 'O', 'random'].includes(L.pick) ? L.pick : 'X', p2: L.p2 === 'cpu' ? 'cpu' : 'human',
-    n1: String(L.n1 || '').slice(0, NAME_MAX), n2: String(L.n2 || '').slice(0, NAME_MAX),
+    n1: String(L.n1 || '').slice(0, NAME_MAX), n2: String(L.n2 || '').slice(0, NAME_MAX), level: levelOf(L.level),
   };
   return setup.local;
 }
@@ -87,6 +88,7 @@ export function seatLocal(setup, rng) {
   setup.names = { X: 'X', O: 'O' };
   setup.names[s1] = L.n1.trim() || s1;
   setup.names[s2] = L.n2.trim() || (L.p2 === 'cpu' ? CPU_NAME : s2);
+  setup.level = L.level;
   return s1;
 }
 export function enabledGames(setup) { return TYPES.filter(t => setup && setup.games && setup.games[t]); }
@@ -101,6 +103,7 @@ export function newState(rng) {
     games: TYPES.slice(),     // the mini-games the current match draws from (squares and resets)
     turn: 'X',
     cpu: null,                // the side(s) the computer plays in this match: 'X', 'O', 'XO', or null for two people
+    cpuLevel: null,           // ...and how well: 'easy', 'normal' or 'hard' (core/aiw.js)
     endPick: null,            // the match-end message picked for this match (so it does not change on screen)
     online: null,             // { role: 'host' | 'guest', code, me, name, joined } while playing over the network
     timer: newTimer(0),       // the online turn clock: limit in seconds (0 = none), deadline, timeouts per player
@@ -139,6 +142,7 @@ export function startMatch(state, rng, only) {   // only: the games this kind of
   state.games = games;
   normSetup(state.setup);
   state.cpu = cpuSide(state.setup);
+  state.cpuLevel = state.cpu ? levelOf(state.setup.level) : null;
   state.endPick = null;                                       // the match-end message is picked afresh
   state.timer = newTimer(state.setup.mode === 'online' ? normTimer(state.setup.timer) : 0);
   state.spot = null;
@@ -163,6 +167,7 @@ export function newMatch(rng, setup) {
   else if (setup && setup.mode === 'cpu') st.setup.players = null;   // the older "vs Computer" form: normSetup reads it
   normSetup(st.setup);
   if (setup && setup.timer != null) st.setup.timer = setup.timer;
+  if (setup && setup.level) st.setup.level = setup.level;
   if (setup && Array.isArray(setup.games)) for (const t of TYPES) st.setup.games[t] = setup.games.includes(t);
   else if (setup && setup.games) Object.assign(st.setup.games, setup.games);
   startMatch(st, rng);

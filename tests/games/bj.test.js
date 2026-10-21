@@ -200,3 +200,23 @@ test('blackjack: the admin\'s settings (hands to win, the dealer\'s stand) are d
   assert.deepEqual(m.last.dealer, ['9C', '6D'], '15: the dealer stands');
   assert.equal(E.publicMini(m).tune.goal, 1);
 });
+
+test('blackjack: the Hard computer hits or stands by the chance of winning the hand (a push dealt again), over the deck as it shows, for the square\'s own dealer', () => {
+  const A = require('../../src/games/bj/ai.js'), ctx = { level: 'hard', until: null };
+  const at = (cards, up, over) => { const m = inHand('X', cards, up, 'TD', ['2S']); Object.assign(m, over || {}); return A.best(E.publicMini(m), 'X', lcg(1), {}, ctx); };
+  const t0 = performance.now();
+  assert.equal(at(['TS', '6H'], 'KC').move, 'hit', '16 against a 10'); assert.equal(at(['TS', '6H'], '6C').move, 'stand', '16 against a 6');
+  assert.equal(at(['AS', '7H'], '9C').move, 'hit', 'soft 18 against a 9'); assert.equal(at(['9S', '5H'], '6C').move, 'stand');
+  assert.ok(performance.now() - t0 < 60, 'four Hard moves, the first with its deal table, under 60 ms');
+  assert.equal(at(['3S', '9H'], '3C').move, 'stand', '12 against a 3: a win is a win, a push is a hand again (basic strategy, playing for money, hits)');
+  assert.equal(E.bjStrategy(['3S', '9H'], '3C'), 'hit');
+  assert.equal(at(['TS', '6H'], 'KC', { tune: { stand: 15 } }).move, 'stand', 'a dealer standing on 15: 16 holds against a 10'); assert.equal(at(['9S', '5H'], '6C', { tune: { stand: 15 } }).move, 'hit', 'and 14 against a 6 hits');
+  assert.equal(at(['TS', '2H'], '4C', { tune: { stand: 19 } }).move, 'stand', 'a dealer drawing to 19 busts a lot: 12 stands');
+  const v = A.bjHard(['TS', '6H'], 'KC', 17);
+  assert.ok(v.hit > v.stand && v.hit > 0.2 && v.hit < 0.25, 'the hand\'s worth: ' + v.hit.toFixed(3) + ' hit, ' + v.stand.toFixed(3) + ' stand');
+  const w = A.pushWorth(17); assert.ok(w > 0.45 && w < 0.5, 'a fresh hand is worth about 0.47 (0.43 won outright, a push dealt again): ' + w.toFixed(3));
+  assert.equal(A.best(E.publicMini(bj()), 'X', lcg(1), {}, ctx).move, 'deal');
+  const h = at(['TS', '6H'], 'KC', { wins: { X: 2, O: 0 } }); assert.ok(h.q > 0.2 && h.q < 0.25, 'one hand from the square: q is the hand\'s worth');
+  for (let k = 0; k < 5; k++) { const t1 = performance.now(); at(['7S', '5H'], ['2C', '5C', '8C', 'TC', 'AC'][k]); assert.ok(performance.now() - t1 < 60); }
+  assert.equal(at(['3S', '9H'], '3C', { tune: null }).move, 'stand'); assert.equal(A.best(E.publicMini(inHand('X', ['3S', '9H'], '3C', 'TD', ['2S'])), 'X', lcg(1), {}, {}).move, 'hit', 'the usual computer: basic strategy, as before');
+});

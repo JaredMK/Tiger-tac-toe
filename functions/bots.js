@@ -43,7 +43,7 @@ const MAX_THINK_MS = 8000;        // the longest any bot waits: the ranges above
 
 // The admin's settings (admin/config), with the defaults for anything not set. Both start switched off.
 const DEFAULTS = {
-  bots: { enabled: false, waitMin: 40, waitMax: 70, countInRecords: true },
+  bots: { enabled: false, waitMin: 40, waitMax: 70, countInRecords: true, level: 'normal' },   // level: how well the bots play (easy, normal or hard: the computer's levels, src/core/aiw.js)
   alerts: { enabled: false, sms: false, email: true, phone: '', to: '', after: 5, cooldownMin: 30, gapMin: 3, dailyCap: 20,
     site: 'https://jaredmk.github.io/Tiger-tac-toe/' },
 };
@@ -51,7 +51,7 @@ const num = (v, lo, hi, d) => (Number.isFinite(Number(v)) && v !== '' && v !== n
 function botConfig(conf) {
   const c = Object.assign({}, DEFAULTS.bots, (conf && conf.bots) || {}), d = DEFAULTS.bots;
   const waitMin = num(c.waitMin, 5, 600, d.waitMin), waitMax = Math.max(waitMin, num(c.waitMax, 5, 600, d.waitMax));
-  return { enabled: c.enabled === true, waitMin, waitMax, countInRecords: c.countInRecords !== false };
+  return { enabled: c.enabled === true, waitMin, waitMax, countInRecords: c.countInRecords !== false, level: ['easy', 'normal', 'hard'].includes(c.level) ? c.level : d.level };
 }
 function alertConfig(conf) {
   const c = Object.assign({}, DEFAULTS.alerts, (conf && conf.alerts) || {}), d = DEFAULTS.alerts;

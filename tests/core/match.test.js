@@ -943,8 +943,8 @@ test('local setup: player 1 picks X, O or Random; player 2 (a person or the comp
   for (let k = 0; k < 3; k++) { L.seatLocal(st.setup, lcg(k)); L.startMatch(st, lcg(k)); assert.deepEqual(st.setup.names, { X: 'Bob', O: 'Ann' }); assert.equal(st.cpu, null); }
   // older setups: the computer, if any, becomes player 2; two computers can no longer happen
   const old = (players, names) => L.normLocal({ players, names });
-  assert.deepEqual(old({ X: 'cpu', O: 'human' }, { X: 'Computer', O: 'Zed' }), { pick: 'O', p2: 'cpu', n1: 'Zed', n2: '' });
-  assert.deepEqual(old({ X: 'human', O: 'human' }, { X: 'Ann', O: 'O' }), { pick: 'X', p2: 'human', n1: 'Ann', n2: '' });
-  assert.deepEqual(old({ X: 'cpu', O: 'cpu' }, { X: 'Computer', O: 'Computer' }), { pick: 'X', p2: 'cpu', n1: '', n2: '' }, 'computer vs computer: player 1 is a person');
-  assert.deepEqual(L.normLocal({ local: { pick: 'Q', p2: 'robot', n1: 5 } }), { pick: 'X', p2: 'human', n1: '5', n2: '' }, 'junk is tidied');
+  assert.deepEqual(old({ X: 'cpu', O: 'human' }, { X: 'Computer', O: 'Zed' }), { pick: 'O', p2: 'cpu', n1: 'Zed', n2: '', level: 'normal' });
+  assert.deepEqual(old({ X: 'human', O: 'human' }, { X: 'Ann', O: 'O' }), { pick: 'X', p2: 'human', n1: 'Ann', n2: '', level: 'normal' });
+  assert.deepEqual(old({ X: 'cpu', O: 'cpu' }, { X: 'Computer', O: 'Computer' }), { pick: 'X', p2: 'cpu', n1: '', n2: '', level: 'normal' }, 'computer vs computer: player 1 is a person');
+  assert.deepEqual(L.normLocal({ local: { pick: 'Q', p2: 'robot', n1: 5 } }), { pick: 'X', p2: 'human', n1: '5', n2: '', level: 'normal' }, 'junk is tidied');
 });

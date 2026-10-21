@@ -23,7 +23,9 @@ smallest phone. Play Online offers "Play a Friend" (host or join a room) and "Fi
 player slots. Player 1 is always a person: a name and a side, X, O or Random. Player 2 is Human or
 Computer and gets the other side (a computer slot shows a little computer above it). A blank name is
 the side's letter, and the computer's is "Computer". So it is two people passing one phone, or a
-person against the computer on either side; the computer no longer plays itself. X moves first.
+person against the computer on either side; the computer no longer plays itself. A computer slot also
+has its level, **Easy**, **Normal** or **Hard** (see "Playing against the computer"), kept for the next
+match. X moves first.
 A rematch keeps the choice: X or O stay, and Random is drawn again for every match. Under "Advanced"
 are the mini-games in the mix (all on by default), with "Deselect all" and "Select all" buttons at
 the top, in three groups, each in alphabetical order with its own Deselect all / Select all: More luck,
@@ -500,8 +502,9 @@ that tab only, never read from or written to the live config. The tab checks the
 admin's first (anyone else is told it is for the admin only). Nothing there is saved (the saved match on that
 device is untouched) and no stats or device events go out. The game is played in the middle square, the
 player held to it; a bar at the bottom (the page is that much shorter: it covers nothing) has **Restart**,
-**Computer: On/Off** (off: two players on the phone; in Super Chaos it simply never moves) and **Rules:
-Normal/Super Chaos** (fixed for a game that is only one or the other) (`src/ui/sandbox.js`).
+**Computer: On/Off** (off: two players on the phone; in Super Chaos it simply never moves), **Level:
+Easy/Normal/Hard** (the computer's level, `&level=`) and **Rules: Normal/Super Chaos** (fixed for a game that
+is only one or the other) (`src/ui/sandbox.js`).
 
 ### Game releases
 
@@ -715,6 +718,32 @@ Find Match is unchanged, and so are the normal modes.
   Tests: `tests/core/chaos.test.js`.
 
 ## Playing against the computer
+
+The computer plays at one of three levels, chosen under Player 2 in Play Local (and by the admin for the
+Find Match bots, on Bot Settings): **Normal** is the computer described below, as it has always played;
+**Easy** is the same computer with a careless move about 30% of the time (any legal move, anywhere open);
+**Hard** chooses its square by Monte Carlo search and plays the strategy games by search and the luck
+games by expected value. Hard's square choice (`src/core/mc.js`): every open square is a race, as Normal
+sees it (the moves each side still needs there), and for each candidate square the rest of the match is
+played out a few hundred times on that model, each side picking its square as Normal would (with some
+exploring), each move making its progress with a set chance, until the board decides; the square whose
+playouts win most often is the move, its own first move judged as the game's tactics judge it (a win now,
+a loss now, or the position after). Inside the squares Hard's tactics are each game's own (`ai.js`, with
+`ctx.level === 'hard'` and `ctx.until`, the ms left): deeper, time-bounded search where there is a search
+(Connect 4, Hex, Hexapawn, Takeover, Flood, Seating, Districts, Shelves, Roads, Clash Grid), expected-value
+decisions in the luck and decision games (Risky Rolls, Blackjack, Roulette, Plinko and the rest), and
+sharper inference in the hidden-information games. A Hard decision keeps to about 300 ms: on the page it
+runs in a web worker (`src/ui/ai.worker.js`, `src/ui/think.js`) while the computer "thinks", so the page
+never stalls (the physics games' shots are worked out on the page first and handed over; Super Chaos's
+computer, which the engine runs itself at the round's start, keeps to the same budget on the page's
+thread); on the server, in Node, the same budget. Hard's strategy weights (line value, defence priority,
+risk appetite, the playouts' exploring and progress chance, the playouts per candidate) are tuned by
+self-play with `npm run tune-ai` (`scripts/tune-ai.js`: hill climbing over thousands of computer-against-
+computer matches on every core, a change kept only when it wins clearly more; `--save` writes them to
+`config/ai`, read by the game at start and the server every 20 s and shown on the admin's Bot Settings
+page, where they can be reset; it is never run on its own) and apply to Hard only: Normal and Easy play
+the code's own numbers whatever is saved. `npm run sim -- levels` plays Hard against Normal (and Easy
+against Normal) over whole matches and prints the win rates (LEVELS_N=500 for the full run).
 
 The computer takes its turn in the open: a short pause to think, then the square it chose lights up
 on the main board for about a second (a pulsing glow in its colour and a "Computer plays here" label),

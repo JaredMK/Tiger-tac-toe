@@ -1276,6 +1276,7 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .slot .kind { display: flex; gap: 8px; }
 .slot .kind button.seg { flex: 1; }
 .slot .field { grid-column: 1 / -1; }
+.slot .level { grid-column: 1 / -1; min-width: 0; margin-top: -2px; } .slot .level button.seg { flex: 1; }   /* the computer's level, Easy / Normal / Hard, under its name */
 .slot.cpu .field { position: relative; padding-top: 24px; }                  /* room for the computer, bobbing inside its card */
 .slot-ico { position: absolute; top: 2px; right: 10px; width: 36px; height: 36px; animation: bobin 1.4s ease-in-out infinite; transform-origin: 50% 100%; pointer-events: none; }
 .slot-ico .cpui { width: 36px; height: 36px; margin: 0; }

@@ -212,3 +212,12 @@ test('coins: the admin settings deal seven coins and flip up to four (the marks 
   } finally { E.setTune('coins', null); }
   assert.equal(L.newMini('coins', lcg(4)).coins.length, 5);
 });
+
+test('coins: the Hard computer has no choice to make (Flip is the only move): the same as the usual one', () => {
+  const A = require('../../src/games/coins/ai.js'), ctx = { level: 'hard', until: null };
+  for (let k = 0; k < 5; k++) {
+    const pm = E.publicMini(L.newMini('coins', lcg(k))), t0 = performance.now(), h = A.best(pm, 'X', lcg(1), {}, ctx);
+    assert.ok(performance.now() - t0 < 60);
+    assert.deepEqual(h, A.best(pm, 'X', lcg(1), {}, {})); assert.equal(h.move, 'flip');
+  }
+});

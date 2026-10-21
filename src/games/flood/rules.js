@@ -46,6 +46,123 @@ export function floodSearch(pm, me, rng) {
   }
   return best;
 }
+// ---- Hard: iterative deepening negamax with alpha-beta and a transposition table ----
+// The grid as bytes (the colours; the owners: 0 nobody, 1 the searcher, 2 the other side, 3 the start),
+// copied a ply at a time for the undo (36 cells: nothing). Only colours that grab something are played (one
+// that grabs nothing is a pass, and the blob always touches a cell it can take until someone has won), in
+// order of what they grab, the table's best first. The leaf value: the lead in cells; the goal reached, a
+// win (sooner better). Deeper each round until the time (until: the ms left, checked every 256 nodes) or,
+// without a clock, FLOOD_HARD.depth plies or FLOOD_HARD.nodes nodes; the last round completed is the
+// answer (a forced win or loss ends the rounds early). The table is a fixed array keyed by two hashes
+// (Zobrist over the owners and the blob's colour, from a fixed seed), emptied every call.
+export const FLOOD_HARD = { depth: 10, nodes: 20000, win: 1000 };
+const FN = FLOOD.n * FLOOD.n;
+const fzob = (() => { let s = 0x1b873593 >>> 0; const t = new Uint32Array(FN * 8 + 16); for (let i = 0; i < t.length; i++) { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; t[i] = s; } return t; })();
+const FNB = (() => { const at = new Int32Array(FN + 1), of = []; for (let i = 0; i < FN; i++) { at[i] = of.length; for (const k of floodNear(i)) of.push(k); } at[FN] = of.length; return { at, of: Int8Array.from(of) }; })();
+const FTT_N = 1 << 14, FTT = { key: new Float64Array(FTT_N), v: new Int32Array(FTT_N), d: new Int8Array(FTT_N), f: new Int8Array(FTT_N), m: new Int8Array(FTT_N) };
+const FQ = new Int8Array(FN), FSEEN = new Uint8Array(FN);
+// The best colour for me: { c, v, gain, after, win, depth, nodes }.
+export function floodHard(pm, me, until = null, cap = FLOOD_HARD) {
+  const { colors: nc, goal } = floodCfg(pm), WIN = cap.win, at = FNB.at, of = FNB.of;
+  const col = Uint8Array.from(pm.colors), own = new Uint8Array(FN), score = [0, pm.score[me], pm.score[other(me)]];
+  const COL = Array.from({ length: FN + 1 }, () => new Uint8Array(FN)), OWN = Array.from({ length: FN + 1 }, () => new Uint8Array(FN)), GAINS = Array.from({ length: FN + 1 }, () => new Int8Array(8)), ORD = Array.from({ length: FN + 1 }, () => new Int8Array(8));
+  let h1 = 0, h2 = 0, nodes = 0, stop = false;
+  const hashOwn = (k, o) => { h1 ^= fzob[8 * k + o]; h2 ^= fzob[8 * k + 4 + o]; };
+  const hashBlob = c => { h1 ^= fzob[FN * 8 + c]; h2 ^= fzob[FN * 8 + 8 + c]; };
+  pm.owner.forEach((x, k) => { if (x == null) return; own[k] = x === me ? 1 : x === '-' ? 3 : 2; hashOwn(k, own[k]); });
+  hashBlob(col[0]);
+  FTT.d.fill(-1);
+  // the cells colour c would grab (the blob's neighbours of that colour and on through them), into FQ; how many
+  const grab = c => {
+    let qt = 0;
+    FSEEN.fill(0);
+    for (let i = 0; i < FN; i++) { if (!own[i]) continue; for (let j = at[i], z = at[i + 1]; j < z; j++) { const k = of[j]; if (!own[k] && !FSEEN[k] && col[k] === c) { FSEEN[k] = 1; FQ[qt++] = k; } } }
+    for (let qh = 0; qh < qt; qh++) { const i = FQ[qh]; for (let j = at[i], z = at[i + 1]; j < z; j++) { const k = of[j]; if (!own[k] && !FSEEN[k] && col[k] === c) { FSEEN[k] = 1; FQ[qt++] = k; } } }
+    return qt;
+  };
+  const play = (c, s, n, ply) => {   // colour c for s, its n cells in FQ (grab(c) just called); the position saved for the undo
+    COL[ply].set(col); OWN[ply].set(own);
+    hashBlob(col[0]);
+    for (let i = 0; i < FN; i++) if (own[i]) col[i] = c;
+    for (let q = 0; q < n; q++) { const k = FQ[q]; own[k] = s; col[k] = c; hashOwn(k, s); }
+    score[s] += n;
+    hashBlob(c);
+  };
+  const unplay = (c, s, n, ply) => {
+    hashBlob(c);
+    for (let q = 0; q < n; q++) { const k = FQ[q]; hashOwn(k, s); }
+    score[s] -= n;
+    col.set(COL[ply]); own.set(OWN[ply]);
+    hashBlob(col[0]);
+  };
+  const order = (ply) => {   // the colours that grab something, most first; GAINS their grabs
+    const g = GAINS[ply], o = ORD[ply], blob = col[0];
+    let m = 0;
+    for (let c = 0; c < nc; c++) {
+      if (c === blob) continue;
+      const n = grab(c);
+      if (!n) continue;
+      g[c] = n;
+      let q = m++;
+      while (q > 0 && g[o[q - 1]] < n) { o[q] = o[q - 1]; q--; }
+      o[q] = c;
+    }
+    return m;
+  };
+  const search = (s, depth, alpha, beta, ply) => {   // the value for s, s to move
+    if ((++nodes & 255) === 0 && (until ? until() <= 0 : nodes > cap.nodes)) { stop = true; return 0; }
+    const key = h1 * 1048576 + (h2 & 0xfffff), x = ((h1 ^ h2) >>> 0) & (FTT_N - 1), hit = FTT.key[x] === key && FTT.d[x] >= 0;
+    let first = -1;
+    if (hit) {
+      if (FTT.d[x] >= depth) {
+        const v = FTT.v[x], f = FTT.f[x];
+        if (f === 0) return v;
+        if (f === 1) { if (v > alpha) alpha = v; } else if (v < beta) beta = v;
+        if (alpha >= beta) return v;
+      }
+      first = FTT.m[x];
+    }
+    const t = 3 - s, g = GAINS[ply], o = ORD[ply], m = order(ply), a0 = alpha;
+    if (depth === 0) return score[s] - score[t];
+    if (!m) return score[s] - score[t];                        // (nothing to grab: cannot happen before a win)
+    let best = -Infinity, bm = -1;
+    for (let i = -1; i < m; i++) {
+      const c = i < 0 ? first : o[i];
+      if (c < 0 || (i >= 0 && c === first)) continue;
+      const n = grab(c);
+      play(c, s, n, ply);
+      const v = score[s] >= goal ? WIN - ply : -search(t, depth - 1, -beta, -alpha, ply + 1);
+      unplay(c, s, n, ply);
+      if (stop) return 0;
+      if (v > best) { best = v; bm = c; }
+      if (best > alpha) alpha = best;
+      if (alpha >= beta) break;
+    }
+    FTT.key[x] = key; FTT.v[x] = best; FTT.d[x] = depth; FTT.f[x] = best <= a0 ? 2 : best >= beta ? 1 : 0; FTT.m[x] = bm;
+    return best;
+  };
+  const m0 = order(0), cs = m0 ? Array.from(ORD[0].subarray(0, m0)) : Array.from({ length: nc }, (_, c) => c).filter(c => c !== col[0]);
+  let bc = cs[0], bv = 0, depth = 0;
+  const max = until ? FN : cap.depth;
+  for (let d = 1; d <= max && !stop; d++) {
+    let alpha = -Infinity, top = bc, pick = -1;
+    for (let i = -1; i < cs.length; i++) {
+      const c = i < 0 ? top : cs[i];
+      if (i >= 0 && c === top) continue;
+      const n = grab(c);
+      play(c, 1, n, 0);
+      const v = score[1] >= goal ? WIN - 1 : -search(2, d - 1, -Infinity, -alpha, 1);
+      unplay(c, 1, n, 0);
+      if (stop) break;
+      if (v > alpha) { alpha = v; pick = c; }
+    }
+    if (stop) break;
+    bc = pick; bv = alpha; depth = d;
+    if (Math.abs(bv) >= WIN - FN) break;                      // decided: no round deeper changes it
+  }
+  const a = floodApply(pm, bc, me);
+  return { c: bc, v: bv, gain: a.score[me] - pm.score[me], after: { type: 'flood', colors: a.colors, owner: a.owner, score: a.score }, win: a.score[me] >= goal, depth, nodes };
+}
 export function create(type, rng) {   // five colours at random; the start cell's neighbours never its colour (the blob starts as one cell)
   const nc = tuneLive(type).colors;                          // (the admin's settings: how many colours)
   const r = needRng(rng), N = FLOOD.n * FLOOD.n, colors = Array.from({ length: N }, () => randInt(r, nc));

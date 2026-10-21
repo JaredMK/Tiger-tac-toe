@@ -240,3 +240,34 @@ test('hexapawn through playMove: the result carries the slide and the capture fo
   assert.deepEqual(rec.state.squares[0].mini.cells, st.squares[0].mini.cells);
   assert.equal(rec.secrets[0], undefined);
 });
+
+test('hexapawn: the Hard computer plays the same full minimax, and between equal moves sets the trap with the fewest ways out', () => {
+  const hard = { level: 'hard', until: null }, normal = { level: 'normal', until: null };
+  const holds = (cells, p) => {                                // the replies for p that keep what the position is worth to p
+    const v = L.hpSolve(cells, p).v;
+    return L.hpMoves(cells, p).filter(([a, b]) => { const n = cells.slice(); n[b] = p; n[a] = null; return (Math.floor(b / 3) === L.hpGoalRow(p) ? 1 : -L.hpSolve(n, 'O' === p ? 'X' : 'O').v) === v; }).length;
+  };
+  const cells = ['O', null, null, 'X', 'O', 'O', null, null, 'X', null, 'X', null];     // O to move: a drawn square either way; [4, 7] leaves X one holding reply, [4, 8] two
+  const pm = { type: 'hexapawn', cells };
+  const h = L.localBest(pm, 'O', cpuRng(), {}, hard), n = L.localBest(pm, 'O', cpuRng(), {}, normal);
+  assert.deepEqual(h.move, [4, 7]); assert.deepEqual(n.move, [4, 8], 'Normal as before');
+  const vals = L.hpMovesValued(cells, 'O');
+  assert.equal(vals.find(m => m.move[1] === 7).v, vals.find(m => m.move[1] === 8).v, 'the same value');
+  assert.ok(holds(h.after.cells, 'X') < holds(n.after.cells, 'X'), 'fewer replies hold for X');
+  assert.equal(h.after.type, 'hexapawn'); assert.equal(h.win, false);
+  // a forced win is taken, the shortest; a move through wins now
+  const open = L.localBest(L.publicMini(mini('hexapawn')), 'X', cpuRng(), {}, hard);
+  assert.deepEqual(open.move, L.localBest(L.publicMini(mini('hexapawn')), 'X', cpuRng(), {}, normal).move, 'the opening: as Normal');
+  const through = { type: 'hexapawn', cells: [null, null, null, null, 'X', null, null, null, null, null, null, null] };
+  assert.deepEqual(L.localBest(through, 'X', cpuRng(), {}, hard), { move: [4, 1], win: true, after: { type: 'hexapawn', cells: [null, 'X', null, null, null, null, null, null, null, null, null, null] } });
+  // legal moves everywhere, quickly
+  const r = lcg(5);
+  for (let k = 0; k < 10; k++) {
+    const b = mini('hexapawn', lcg(k)); let p = 'X', dead = false;
+    for (let i = 0; i < k % 5; i++) { if (!L.canMove(b, p)) { dead = true; break; } const mv = L.randomLegalMove(b, p, r); if (L.applyMove(b, p, mv, r).outcome !== 'continue') { dead = true; break; } p = L.other(p); }
+    if (dead || !L.canMove(b, p)) continue;
+    const t0 = performance.now(); const mv = L.localBest(L.publicMini(b), p, cpuRng(), {}, hard).move; const ms = performance.now() - t0;
+    assert.ok(L.hpMoves(b.cells, p).some(([a, c]) => a === mv[0] && c === mv[1]), `a legal move (${JSON.stringify(mv)})`);
+    assert.ok(ms < 60, `a Hard move in ${ms.toFixed(1)} ms`);
+  }
+});

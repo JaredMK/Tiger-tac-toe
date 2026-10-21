@@ -27,6 +27,8 @@ import { devAudio, devOpen, devPulse, init as trackingInit, takeTag } from './ne
 import { clockTimer, commit, setClockTimer, state } from './ui/app.js';
 import { fetchAttConfig } from './ui/attention.js';
 import { setTunes } from './core/tune.js';
+import { AI_CLOCK } from './core/ai.js';
+import { setAiWeights } from './core/aiw.js';
 import { init as chaosInit } from './ui/chaos.js';
 import { tick } from './ui/clock.js';
 import { KEY } from './ui/config.js';
@@ -56,6 +58,7 @@ pongInit();
 SND.report = devAudio;                                      // (the sound's ups and downs, to the device's and match's logs)
 soundInit();
 chaosInit();
+AI_CLOCK.now = () => performance.now();                      // the engine's computer keeps to its time budget here (the Hard computer, where the core runs it itself: Super Chaos)
 function boot() {
   setClockTimer(setInterval(tick, 250));
   if (sandboxParams()) { loadTrivia(); loadPhysics(); sandboxBoot(); return; }   // the admin's test play: one mini-game with the editor's settings (no live config, nothing saved or reported)
@@ -71,6 +74,7 @@ function boot() {
   fetchAttConfig('skyhop', setHopConfig); fetchAttConfig('scoop', setScoopConfig); fetchAttConfig('pinball', setPinConfig);   // and the finger games'
   fetchAttConfig('bowling', setBowlConfig);                       // Bowling's two taps' speeds
   fetchAttConfig('tune', setTunes, true);                         // every mini-game's settings (Mini-game Settings: config/tune), likewise
+  fetchAttConfig('ai', setAiWeights, true);                       // the Hard computer's weights (npm run tune-ai: config/ai), likewise
   loadTrivia();                                               // the Trivia questions, for the match to come
   loadPhysics();                                              // Matter.js and physics.js, for Mini Golf, Pool and Bowling
   takeTag();                                                  // a playtester's link (?t=sam): before the address is tidied below
