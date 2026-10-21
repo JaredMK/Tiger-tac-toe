@@ -24,6 +24,7 @@ on:
       - 'scripts/smoke-live.js'
       - 'scripts/backfill-records.js'
       - 'scripts/backfill-accounts.js'
+      - 'scripts/backfill-opponents.js'
       - 'scripts/check-usernames.js'
       - '.github/workflows/firebase.yml'
   workflow_dispatch:
@@ -132,5 +133,7 @@ jobs:
         run: node scripts/backfill-records.js
       - name: Back-fill games played as X and as O, and accounts' last activity, from game history (once)
         run: node scripts/backfill-accounts.js
+      - name: Back-fill each player's record against each opponent (Top opponents) from game history (once)
+        run: node scripts/backfill-opponents.js
       - name: Check existing usernames against the word list (once per rules version)
         run: node scripts/check-usernames.js

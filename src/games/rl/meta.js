@@ -2,7 +2,7 @@
 
 export const info = { name: 'Roulette',     hint: 'Bet 8 numbers, a group or green 0. Two hits wins' };
 export const release = 'released';   // the default (the admin's dashboard can change it)
-export const category = 'luck';   // the Advanced checklist's group: 'luck', 'skill' or 'brain'
+export const category = 'luck';   // the game's kind, an icon in the Advanced checklist: 'luck', 'skill' or 'brain'
 export const target = 'own';   // the header's icon: 'shared' (one board for both), 'own' (each player's own progress) or 'course' (one course for both, each their own distance)
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Roulette', play: 'Bet on 8 numbers, a group of 8, or green 0, then spin.', win: '{goal} hits, or hit green 0 for an instant win.' };   // ({goal}: its setting, TUNE below)

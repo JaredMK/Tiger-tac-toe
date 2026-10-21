@@ -31,7 +31,7 @@ export function renderSetup() {
     : `<label class="field ${p}"><span>${p} player${cpu === p ? ' · computer' : host ? ' · you' : ''}</span><input data-p="${p}" value="${esc(s.names[p] || '')}" maxlength="${NAME_MAX}" placeholder="${cpu === p ? CPU_NAME : p}" autocomplete="off" autocapitalize="words" aria-label="${p} player name"></label>`);
   const pick = host && s.hostPick === 'random' ? 'random' : human;   // the host: X, O, or drawn at random for every match
   const sides = mode !== 'two' ? `<div class="sides${host ? ' three' : ''}" role="group" aria-label="Your side"><span>You play</span><button class="seg X${pick === 'X' ? ' on' : ''}" data-act="side" data-side="X" aria-pressed="${pick === 'X'}">${host ? 'X<small>goes first</small>' : 'X · goes first'}</button><button class="seg O${pick === 'O' ? ' on' : ''}" data-act="side" data-side="O" aria-pressed="${pick === 'O'}">O</button>${host ? `<button class="seg${pick === 'random' ? ' on' : ''}" data-act="side" data-side="random" aria-pressed="${pick === 'random'}">Random</button>` : ''}</div>` : '';
-  const chk = t => `<label class="chk${s.games[t] ? '' : ' off'}${dealable(t) ? '' : ' wait'}" title="${dealable(t) ? '' : `Loading its ${t === 'trivia' ? 'questions' : 'physics'}… (needs a connection the first time)`}"><input type="checkbox" data-t="${t}"${s.games[t] ? ' checked' : ''}>${ICONS[t]}<span>${INFO[t].name}</span>${testBadge(t)}${dealable(t) ? '' : '<i class="tst wait">Loading</i>'}${qBtn(t, 'sm')}</label>`;
+  const chk = t => `<label class="chk${s.games[t] ? '' : ' off'}${dealable(t) ? '' : ' wait'}" title="${dealable(t) ? '' : `Loading its ${t === 'trivia' ? 'questions' : 'physics'}… (needs a connection the first time)`}"><input type="checkbox" data-t="${t}"${s.games[t] ? ' checked' : ''}>${ICONS[t]}<span>${INFO[t].name}</span>${testBadge(t)}${dealable(t) ? '' : '<i class="tst wait">Loading</i>'}${catIcon(t)}${qBtn(t, 'sm')}</label>`;
   const timer = host && !sc ? `<div class="timerrow" role="group" aria-label="Time per turn"><span>Time per turn</span>${TIMER_OPTIONS.map(v => `<button class="seg${(s.timer || 0) === v ? ' on' : ''}" data-act="timer" data-v="${v}">${TIMER_LABEL[v]}</button>`).join('')}</div>` : '';
   const room = host ? `<div class="room"><small>Room code</small><b class="code">${esc(state.online.code)}</b>
       <div class="row"><button class="btn" data-act="share">Share link</button></div>
@@ -67,13 +67,20 @@ export function renderSetup() {
     ${host ? sides : ''}
     ${timer}
     <div class="adv${advOpen ? ' open' : ''}"><button class="adv-h" data-act="adv" aria-expanded="${advOpen}"><span>Advanced</span><small>${on} of ${VT.length} mini-games on</small><i class="chev">${CHEV}</i></button>
-      ${advOpen ? `<div class="games-top"><button class="btn selall" data-act="games-none"${on === 0 ? ' disabled' : ''}>Deselect all</button><button class="btn selall" data-act="games-all"${on === VT.length ? ' disabled' : ''}>Select all</button></div>${CATS.map(([c, label]) => { const ts = catTypes(VT, c), n = ts.filter(t => s.games[t]).length; return ts.length ? `<div class="games-cat" data-cat="${c}"><div class="games-h cat"><span>${label}</span><span class="catbtns"><button class="btn selall sm" data-act="games-none" data-cat="${c}"${n === 0 ? ' disabled' : ''}>Deselect all</button><button class="btn selall sm" data-act="games-all" data-cat="${c}"${n === ts.length ? ' disabled' : ''}>Select all</button></span></div><div class="games">${ts.map(chk).join('')}</div></div>` : ''; }).join('')}` : ''}</div>
+      ${advOpen ? `<div class="games-top"><button class="btn selall" data-act="games-none"${on === 0 ? ' disabled' : ''}>Deselect all</button><button class="btn selall" data-act="games-all"${on === VT.length ? ' disabled' : ''}>Select all</button></div><div class="games">${byName(VT).map(chk).join('')}</div>` : ''}</div>
   </div>
   <div class="setup-foot"><button class="primary" data-act="start"${ready ? '' : ' disabled'}>Start match</button><small class="warn">${setupWarn(s)}</small></div></main>`;
 }
-// The Advanced checklist's three groups (each game's meta.js: category), each in alphabetical order.
-export const CATS = [['luck', 'More luck'], ['skill', 'More skill'], ['brain', 'More brain']];
-export const catTypes = (types, c) => types.filter(t => GAMES[t] && GAMES[t].meta.category === c).sort((a, b) => INFO[a].name.localeCompare(INFO[b].name));
+// The Advanced checklist: one list in alphabetical order, each game's kind (meta.js: category) a small
+// sticker on the row's top edge, by the "?" (no room taken from the name), its word on hover and for a screen reader.
+export const byName = types => types.slice().sort((a, b) => INFO[a].name.localeCompare(INFO[b].name));
+const CAT_SVG = body => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
+export const CATS = {
+  luck: ['Luck', CAT_SVG('<path d="M12 11.2C10.5 10 7.8 8.7 7.8 6.1a2.1 2.1 0 0 1 4.2 0 2.1 2.1 0 0 1 4.2 0c0 2.6-2.7 3.9-4.2 5.1z" transform="rotate(45 12 12)" fill="currentColor" stroke="none"/><path d="M12 11.2C10.5 10 7.8 8.7 7.8 6.1a2.1 2.1 0 0 1 4.2 0 2.1 2.1 0 0 1 4.2 0c0 2.6-2.7 3.9-4.2 5.1z" transform="rotate(135 12 12)" fill="currentColor" stroke="none"/><path d="M12 11.2C10.5 10 7.8 8.7 7.8 6.1a2.1 2.1 0 0 1 4.2 0 2.1 2.1 0 0 1 4.2 0c0 2.6-2.7 3.9-4.2 5.1z" transform="rotate(225 12 12)" fill="currentColor" stroke="none"/><path d="M12 11.2C10.5 10 7.8 8.7 7.8 6.1a2.1 2.1 0 0 1 4.2 0 2.1 2.1 0 0 1 4.2 0c0 2.6-2.7 3.9-4.2 5.1z" transform="rotate(315 12 12)" fill="currentColor" stroke="none"/><path d="M12 13c.1 3 .6 5.8 1.8 8.2"/>')],   // a four-leaf clover
+  skill: ['Skill', CAT_SVG('<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/>')],   // a target
+  brain: ['Brain', CAT_SVG('<path d="M12 4.5v15"/><path d="M12 6.5C12 4.8 10.6 3.8 9 3.8 7.3 3.8 6 5 6 6.6 4.4 6.9 3.5 8.3 3.5 9.8c0 1 .4 1.8 1.1 2.4-.7.6-1.1 1.5-1.1 2.5 0 1.7 1.3 3 2.9 3.2.3 1.6 1.6 2.6 3.1 2.6 1.4 0 2.5-1 2.5-2.5"/><path d="M12 6.5c0-1.7 1.4-2.7 3-2.7 1.7 0 3 1.2 3 2.8 1.6.3 2.5 1.7 2.5 3.2 0 1-.4 1.8-1.1 2.4.7.6 1.1 1.5 1.1 2.5 0 1.7-1.3 3-2.9 3.2-.3 1.6-1.6 2.6-3.1 2.6-1.4 0-2.5-1-2.5-2.5"/><path d="M7 10.5c1.3 0 2.2.8 2.2 2M17 10.5c-1.3 0-2.2.8-2.2 2"/>')],   // two halves
+};
+const catIcon = t => { const c = GAMES[t] && GAMES[t].meta.category, k = CATS[c]; return k ? `<i class="gcat ${c}" role="img" aria-label="${k[0]}" title="${k[0]}">${k[1]}</i>` : ''; };
 // Start opens once at least one mini-game is on (online, also once the friend is in).
 const onGames = s => enabledGames(s).filter(t => setupTypes().includes(t));   // the games on, among those this player may see (Super Chaos: its own)
 function setupReady(s) { const on = onGames(s).length; return isHost() ? !!(on && state.online.joined && connected) : !!on; }
@@ -91,13 +98,8 @@ export function setGames(change) {
     box.closest('.chk').classList.toggle('off', !v);
   }
   const n = app.querySelector('.adv-h small'); if (n) n.textContent = `${on} of ${VT.length} mini-games on`;
-  const all = app.querySelector('[data-act="games-all"]:not([data-cat])'); if (all) all.disabled = on === VT.length;
-  const none = app.querySelector('[data-act="games-none"]:not([data-cat])'); if (none) none.disabled = on === 0;
-  for (const [c] of CATS) {                                              // each group's own buttons
-    const ts = catTypes(VT, c), n = ts.filter(t => s.games[t]).length;
-    const ca = app.querySelector(`[data-act="games-all"][data-cat="${c}"]`); if (ca) ca.disabled = n === ts.length;
-    const cn = app.querySelector(`[data-act="games-none"][data-cat="${c}"]`); if (cn) cn.disabled = n === 0;
-  }
+  const all = app.querySelector('[data-act="games-all"]'); if (all) all.disabled = on === VT.length;
+  const none = app.querySelector('[data-act="games-none"]'); if (none) none.disabled = on === 0;
   const start = app.querySelector('[data-act="start"]'); if (start) start.disabled = !setupReady(s);
   const warn = app.querySelector('.setup-foot .warn'); if (warn) warn.textContent = setupWarn(s);
   dbSetup({ games: restrictGames(Object.assign({}, s.games), VT) });   // (the room never holds a game its host may not deal)

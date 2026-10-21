@@ -127,6 +127,7 @@ test('rules: a phone cannot write ratings, records, profiles, usernames, the lea
   await denied(p.write('usernames/someone', p.uid), 'claiming a name directly');
   await denied(p.write(`leaderboard/${p.uid}`, { username: 'Mallory', rating: 3000 }), 'a leaderboard entry');
   await denied(p.write(`history/${p.uid}/x`, { result: 'win' }), 'history');
+  await denied(p.write(`oppStats/${p.uid}/x`, { name: 'x', wins: 99 }), 'the record against an opponent');
   await denied(p.write(`queue/match/${p.uid}`, { since: 1 }), 'the queue');
   await denied(p.write(`users/${p.uid}/minis/ttt/won`, 99), 'the mini-game stats');
   await denied(p.write(`users/${p.uid}/friend/wins`, 99), 'the friends record');
@@ -297,6 +298,9 @@ test('a Find Match game: all mini-games, one minute a turn, hidden values hidden
   assert.equal(hx.mode, 'match'); assert.equal(hx.rated, false); assert.equal(hx.how, 'line');
   assert.deepEqual([hx.ratingBefore, hx.ratingAfter], [undefined, undefined], 'no rating in the history');
   assert.deepEqual(hx.opponent, { uid: g.O.uid, name: g.O.name });
+  const ox = await g.X.read(`oppStats/${g.X.uid}/${g.O.uid}`), oo = await g.O.read(`oppStats/${g.O.uid}/${g.X.uid}`);
+  assert.deepEqual([ox.wins, ox.losses, ox.draws, ox.name], [1, undefined, undefined, g.O.name], 'the record against that opponent (Top opponents)');
+  assert.deepEqual([oo.wins, oo.losses, oo.name], [undefined, 1, g.X.name]);
   assert.equal(JSON.parse(hx.final).winner, 'X');
   assert.equal(await g.X.read(`active/${g.X.uid}`), null, 'no longer in a game');
   assert.equal(await get(`leaderboard/${g.X.uid}`), null, 'no leaderboard while ratings are off');
@@ -304,6 +308,7 @@ test('a Find Match game: all mini-games, one minute a turn, hidden values hidden
   const peek = await player('Nosy');
   assert.equal((await peek.read(`history/${g.X.uid}/${g.id}`)).result, 'win');
   assert.equal((await peek.read(`users/${g.X.uid}`)).wins, 1, 'and their record');
+  assert.equal((await peek.read(`oppStats/${g.X.uid}/${g.O.uid}`)).wins, 1, 'and their top opponents');
 });
 
 test('Memory over the server: the first card is turned up for both, the second completes the move', async () => {
@@ -421,6 +426,9 @@ test('friend-code games are saved to the history of players with accounts, marke
   assert.deepEqual(hu.friend, { wins: 1, games: 1, sides: { X: { wins: 1, games: 1 } } }, 'a win on the host\'s vs-friends record, played as X');
   assert.deepEqual(gu.friend, { losses: 1, games: 1, sides: { O: { losses: 1, games: 1 } } }, 'a loss on the guest\'s, as O');
   assert.equal(hu.sides, undefined, 'the Find Match sides untouched');
+  const oh = await get(`oppStats/${host.uid}/${guest.uid}`), og = await get(`oppStats/${guest.uid}/${host.uid}`);
+  assert.deepEqual([oh.name, oh.wins, oh.losses, oh.draws], ['Guest1', 1, undefined, undefined], 'the host\'s record against the guest (Top opponents)');
+  assert.deepEqual([og.name, og.wins, og.losses], ['Host1', undefined, 1]);
   assert.deepEqual([hu.wins, hu.games], [0, 0], 'the main record is Find Match games only');
   const sq = E.fullState(end).squares.slice(0, 3).map(q => q.mini.type), counts = {};
   for (const t of sq) counts[t] = (counts[t] || 0) + 1;

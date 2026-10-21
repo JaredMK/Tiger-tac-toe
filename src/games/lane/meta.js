@@ -2,7 +2,7 @@
 
 export const info = { name: 'Lane Rush',    hint: 'Swipe between lanes, dodge the traffic. First to 1,000 m' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
-export const category = 'skill';   // the Advanced checklist's group: 'luck', 'skill' or 'brain'
+export const category = 'skill';   // the game's kind, an icon in the Advanced checklist: 'luck', 'skill' or 'brain'
 export const target = 'course';   // the header's icon: 'shared' (one board for both), 'own' (each player's own progress) or 'course' (one course for both, each their own distance)
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Lane Rush', play: 'Swipe to change lanes and dodge traffic. It gets faster as you go, and you keep your distance when you crash.', win: 'Reach 1,000 m first.' };

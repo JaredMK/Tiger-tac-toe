@@ -8,7 +8,7 @@
 // X or O stamping in, or (both won it) both marks clashing and the square turning over to a new game; then
 // the next round, or the match's end. In a friend room both phones play the sequence from the record's shared
 // start (server time), so they see the same part at the same moment; a phone coming back joins where it is.
-import { chaosNext, chaosResolve, chaosTimeout, scHuman } from '../core/chaos.js';
+import { chaosNext, chaosResolve, chaosTimeout, scHuman, scRecapOrder } from '../core/chaos.js';
 import { serverNow } from '../net/connect.js';
 import { other } from '../core/util.js';
 import { INFO, rulesOf } from '../games/index.js';
@@ -66,8 +66,8 @@ export function scShown(i) {
     const before = (rc.mine && rc.mine[i]) || rc.cpu.start;
     if (before) return { owner: null, mini: before, mv };
   }
-  const rk = (rc.resolve || []).findIndex(x => x.square === i);
-  if (rk >= 0 && rc.pre && rc.pre[i] && (st !== 'resolve' && st !== 'result' || (st === 'resolve' && rk >= (scUi.rk || 0)))) return { owner: null, mini: rc.pre[i], mv };
+  const rk = (rc.resolve || []).findIndex(x => x.square === i), played = scUi.plan ? scUi.plan.segs.slice(0, scUi.seg + 1).some(s => s.kind === 'resolve' && s.k === rk) : false;
+  if (rk >= 0 && rc.pre && rc.pre[i] && st !== 'result' && !played) return { owner: null, mini: rc.pre[i], mv };   // (settled together: as it stood before, until its part plays)
   if (st === 'result') {
     const k = scItems(rc).findIndex(x => x.square === i);
     if (k < 0 || k < scUi.k || (k === scUi.k && scUi.phase !== 'clash')) return null;   // its result shown (or none): as it now stands
@@ -99,6 +99,7 @@ export function scVerdict(i) {
   return { cls: ['scwin', 'scwin-' + it.by], at: null, html: chip };
 }
 
+const segSquare = (rc, seg) => (seg.kind === 'replay' ? rc.replay.square : seg.it ? seg.it.square : null);
 // Runs after every render (from scheduleCpu): keeps the round moving.
 export function chaosStep() {
   clearTimeout(scTimer); scTimer = null;
@@ -143,12 +144,17 @@ function endRound() {
   rc.at = now();                                                 // the recap plays from now (a friend room's comes from the record, with its shared start)
   state.sc.deadline = null; state.sc.held = null;
   scUi = { round: null, readyAt: 0, stage: null, at: 0, played: false };
-  if (!scAtHole(rc)) { state.screen = 'board'; state.zoom = null; }   // (a Mini Golf shot locked in: the player is at the hole already, where both shots play)
+  if (!scAtHole(rc)) { state.screen = 'board'; state.zoom = null; }   // (a Mini Golf shot locked in, a Bump spin: the player is in the square already, where it plays out)
   state.spot = null; state.stamp = null; state.stamps = null;
   commit();
 }
-// The player waiting at the Mini Golf hole where the round's shots are to play out (theirs locked in there).
-export const scAtHole = rc => !!(rc && rc.replay && state.screen === 'mini' && state.zoom === rc.replay.square);
+// The player waiting in their own square where the recap begins: their Mini Golf shot locked in there, or a move
+// settled there only now (both shots, the knock, the shared spin play out where they are).
+export function scAtHole(rc) {
+  if (!rc || state.screen !== 'mini' || state.zoom == null) return false;
+  const i = state.zoom;
+  return i === ownSq(rc, scHuman(state)) && (!!(rc.replay && rc.replay.square === i) || (rc.resolve || []).some(x => x.square === i));
+}
 // The Mini Golf square's two shots, played together: its result, as a move the square plays.
 function golfFlash(rc) {
   const r = rc.replay, me = scHuman(state), mini = rc.view[r.square];
@@ -163,35 +169,47 @@ const clone = v => JSON.parse(JSON.stringify(v));
 function stepFlash(step, last) { const f = Object.assign({}, step); delete f.after; f.recap = true; f.recapMore = !last; return f; }
 
 // ---- the recap as a sequence timed from its start (rc.at): each part's place and length are known ahead, so a
-// phone plays it by the clock (two phones from one shared start play the same part at the same moment; a phone
-// coming back joins where the sequence is): a Mini Golf square's shots; the other player's square lit; the
-// pop-up, a step of their move at a time (its inputs, then the step's animation at 2x, the last held a second);
-// what both moves settle together; each square's result; the match's end ----
+// phone plays it by the clock (two phones from one shared start reach the results at the same moment; a phone
+// coming back joins where the sequence is). First this player's own outcome, where it is settled only now: their
+// Mini Golf shot; what both moves settle in their square (a Bump knock, a Clash Grid collision), both moves played
+// together in their own view when both played there. Then the other player's move: their square lit, the pop-up
+// replaying it a step at a time (its inputs, then the step's animation at 2x, the last held a second), or their
+// Mini Golf shot; none when both played one square and its joint result has shown it. Then what their move
+// settles in their square; each square's result; the match's end ----
+const SC_OWN = new Set();                                          // the rounds whose own outcome this phone has shown (kept over a reload)
+const ownKey = rc => `${state.id || 'm'}:${rc.round}`;
+const ownSeen = rc => { if (SC_OWN.has(ownKey(rc))) return true; try { return sessionStorage.getItem('scOwn') === ownKey(rc); } catch (e) { return false; } };
+function ownShown(rc) { SC_OWN.add(ownKey(rc)); try { sessionStorage.setItem('scOwn', ownKey(rc)); } catch (e) { /* (this visit only) */ } }
+// The square this player played this round (a friend room's from the record's moves).
+const ownSq = (rc, side) => (rc.mv ? (rc.mv[side] && rc.mv[side].square != null ? rc.mv[side].square : null) : rc.me);
+function scParts(rc, mine, opp) {   // mine: the square this player played; opp: the other player's move (core/chaos.js scRecapOrder: the order)
+  const parts = [];
+  for (const o of scRecapOrder(rc, mine, opp)) {
+    if (o.kind === 'replay') { const f = golfFlash(rc); parts.push({ kind: 'replay', f, own: !!o.own, dur: animMs(f) + holdOf(f) }); }
+    else if (o.kind === 'resolve') { const it = rc.resolve[o.k], f = Object.assign({}, it.flash); parts.push({ kind: 'resolve', k: o.k, it, f, own: !!o.own, dur: animMs(f) + holdOf(f) }); }
+    else if (o.kind === 'spot') parts.push({ kind: 'spot', dur: opp ? SC_MS.spot : 200 });
+    else {                                                        // the pop-up: a step of their move at a time
+      const steps = opp.steps, sp = SC_MS.popup;
+      steps.forEach((step, k) => {
+        const last = k + 1 >= steps.length, f = stepFlash(step, last);
+        const inputs = repDuration({ type: opp.type, move: step.m, list: step.rep, timeout: !!step.timeout, speed: sp, lead: k ? 0 : SC_MS.idle, gap: SC_MS.idle });
+        const hold = last ? SC_MS.last : Math.min(SC_MS.idle, holdOf(f) / sp);
+        parts.push({ kind: 'popup', k, step, f, inputs, dur: inputs + animMs(f) / sp + hold });
+      });
+    }
+  }
+  return parts;
+}
 function scPlan(rc) {
-  const segs = [];
+  const segs = [], me = scHuman(state), opp = other(me);
   let t = 0;
   const add = s => { s.start = t; t += s.dur; s.end = t; segs.push(s); return s; };
-  if (rc.replay) { const f = golfFlash(rc); add({ kind: 'replay', f, dur: animMs(f) + holdOf(f) }); }
-  const joint = mv => !!mv && ((rc.resolve || []).some(x => x.joint && x.square === mv.square) || !!(rc.replay && rc.replay.square === mv.square));   // (both moved there: its replay shows both moves together; Mini Golf's shots, both played out already)
-  const popOf = mv => {                                          // the pop-up's steps for a move: the other player's here; this player's on the other phone (a friend room)
-    const list = [];
-    if (!mv || !mv.steps || !mv.steps.length || joint(mv)) return list;
-    const steps = mv.steps, sp = SC_MS.popup;
-    steps.forEach((step, k) => {
-      const last = k + 1 >= steps.length, f = stepFlash(step, last);
-      const inputs = repDuration({ type: mv.type, move: step.m, list: step.rep, timeout: !!step.timeout, speed: sp, lead: k ? 0 : SC_MS.idle, gap: SC_MS.idle });
-      const hold = last ? SC_MS.last : Math.min(SC_MS.idle, holdOf(f) / sp);
-      list.push({ kind: 'popup', k, step, f, inputs, dur: inputs + animMs(f) / sp + hold });
-    });
-    return list;
-  };
-  const pops = popOf(rc.cpu), theirs = rc.mv ? popOf(rc.mv[scHuman(state)]) : [];   // (a friend room: the other phone replays this player's move in the same time; the two pop-ups run to the longer, the shorter's end held)
-  const sum = l => l.reduce((a, s) => a + s.dur, 0), pad = Math.max(0, sum(theirs) - sum(pops));
-  const anyMove = !!(rc.cpu || (rc.mv && (rc.mv.X || rc.mv.O)));
-  add({ kind: 'spot', dur: (anyMove ? SC_MS.spot : 200) + (pops.length ? 0 : pad) });
-  if (pops.length) pops[pops.length - 1].dur += pad;
-  pops.forEach(add);
-  (rc.resolve || []).forEach((it, k) => { const f = Object.assign({}, it.flash); add({ kind: 'resolve', k, it, f, dur: animMs(f) + holdOf(f) }); });
+  const parts = scParts(rc, ownSq(rc, me), rc.cpu);
+  if (rc.mv) {                                                    // a friend room: the other phone's parts take their own time; the results wait for the longer
+    const sum = l => l.reduce((a, s) => a + s.dur, 0), pad = sum(scParts(rc, ownSq(rc, opp), rc.mv[me])) - sum(parts);
+    if (pad > 0 && parts.length) parts[parts.length - 1].dur += pad;
+  }
+  parts.forEach(add);
   scItems(rc).forEach((it, k) => {
     if (it.kind === 'claim') add({ kind: 'result', k, phase: 'claim', dur: SC_MS.claim });
     else if (it.kind === 'both') { add({ kind: 'result', k, phase: 'clash', dur: SC_MS.clash }); add({ kind: 'result', k, phase: 'flip', dur: SC_MS.flip }); }
@@ -200,13 +218,26 @@ function scPlan(rc) {
   add({ kind: 'end', dur: state.winner ? SC_MS.end : 0 });
   return { segs, total: t };
 }
+// This player's own outcome is in the recap and not shown yet: a phone that joins the recap after it began (out of
+// sight, the menu open, the app reopened) plays it from its start all the same, the rest after it.
+export function scOwnDue() {
+  const rc = state.sc && state.sc.recap;
+  return !!rc && !ownSeen(rc) && scPlan(rc).segs.some(s => s.own);
+}
+function ownCatchUp(rc, plan) {
+  const first = plan.segs.find(s => s.own);
+  if (!first) return;
+  if (ownSeen(rc)) return;
+  const t = tnow() - rc.at;
+  if (t > first.start + 250) rc.at = tnow() - first.start;        // (this phone only: its results come that much later, the next round waits for it)
+}
 // How long the recap on show takes in all (ms from rc.at).
 export function scRecapTotal() { const rc = state.sc && state.sc.recap; return rc ? scPlan(rc).total : 0; }
 // A result on show is taken down (the sequence moves on, by the clock, whatever its timer did).
 function dropFlash() { clearTimeout(flashTimer); setFlashTimer(null); state.flash = null; repStop(); }
 function recapStep() {
   const rc = state.sc.recap;
-  if (scUi.round !== rc.round || !scUi.plan) scUi = { round: rc.round, readyAt: 0, stage: 'wait', at: 0, played: false, seg: -1, k: -1, phase: null, rk: 0, step: 0, mini: null, skipped: false, pausedAt: null, plan: scPlan(rc) };
+  if (scUi.round !== rc.round || !scUi.plan) { scUi = { round: rc.round, readyAt: 0, stage: 'wait', at: 0, played: false, seg: -1, k: -1, phase: null, rk: 0, step: 0, mini: null, skipped: false, pausedAt: null, oppShown: false, plan: scPlan(rc) }; ownCatchUp(rc, scUi.plan); }
   if (scUi.pausedAt != null) { rc.at += now() - scUi.pausedAt; scUi.pausedAt = null; }   // (the time paused, against the computer: the sequence goes on from where it stopped)
   const plan = scUi.plan, t = tnow() - rc.at;
   if (t < 0) {                                                    // the shared start is a moment ahead: the board as the round left it, until then
@@ -217,7 +248,13 @@ function recapStep() {
   const i = plan.segs.findIndex(s => t < s.end);
   if (i < 0) { recapDone(rc); return; }
   const seg = plan.segs[i];
-  if (i !== scUi.seg) { if (state.flash) dropFlash(); scUi.seg = i; enterSeg(rc, seg, t - seg.start); }
+  if (i !== scUi.seg) {
+    if (state.flash) dropFlash();
+    scUi.seg = i;
+    if (!seg.own && plan.segs.some(s => s.own)) ownShown(rc);   // (its own outcome is over: not again, after a reload)
+    if (seg.kind === 'spot' || (seg.own && rc.cpu && rc.cpu.square === segSquare(rc, seg))) scUi.oppShown = true;   // (the other player's square: lit, or played together with this one)
+    enterSeg(rc, seg, t - seg.start);
+  }
   scTimer = setTimeout(chaosStep, Math.max(10, seg.end - t + 10));
 }
 // A part of the recap begins, e ms into it (0 as a rule; later when the sequence is joined part way).
@@ -278,6 +315,7 @@ function enterSeg(rc, seg, e) {
 // The sequence is over: the match's end, or the next round (a friend room's from the record).
 function recapDone(rc) {
   if (state.flash) dropFlash();
+  ownShown(rc);                                                   // (through the whole sequence: its own outcome with it)
   scUi = { round: null, readyAt: 0, stage: null, at: 0, played: false };
   if (state.winner) {
     if (state.sc.online) { state.sc.recap = null; state.screen = 'win'; state.zoom = null; state.spot = null; commit(); return; }   // (a friend room: the match stays on the record)
@@ -312,7 +350,7 @@ export function scSkip() {
 // the last round's; the computer's from the last round resolved (the recap reveals this round's).
 export function scLastPlayed() {
   if (!live()) return null;
-  const sc = state.sc, me = scHuman(state), cpu = other(me), rc = sc.recap, early = rc && rc.lastBefore !== undefined && (!scRecapStage() || ['wait', 'replay'].includes(scRecapStage()));
+  const sc = state.sc, me = scHuman(state), cpu = other(me), rc = sc.recap, early = rc && rc.lastBefore !== undefined && (!scRecapStage() || (['wait', 'replay', 'resolve'].includes(scRecapStage()) && !scUi.oppShown));
   const last = (early ? rc.lastBefore : sc.last) || {}, mine = rc ? rc.me : null;   // (the other player's badge moves only once the recap shows their square)
   return { [me]: sc.me ? sc.me.square : mine != null ? mine : last[me] != null ? last[me] : null, [cpu]: last[cpu] != null ? last[cpu] : null };
 }

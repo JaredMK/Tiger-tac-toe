@@ -307,6 +307,24 @@ export function chaosResolve(state, rng) {
   sc.recap = recap;
   return recap;
 }
+// The order a phone plays a settled round in, before its results (ui/chaos.js times each part): this player's own
+// outcome first, where it is settled only now (their Mini Golf shot; what both moves settle in their square, both
+// moves together when both played there); then the other player's move (their square lit, then its replay, or
+// their Mini Golf shot), none when both played one square and its joint result has shown it; then what their move
+// settles in their square. mine: the square this player played; opp: the other's move ({ square, steps }) or null.
+export function scRecapOrder(rc, mine, opp) {
+  const out = [], res = rc.resolve || [], golf = rc.replay;
+  if (golf && golf.square === mine) out.push({ kind: 'replay', square: mine, own: true });
+  res.forEach((it, k) => { if (it.square === mine) out.push({ kind: 'resolve', k, square: mine, own: true }); });
+  const joint = !!opp && opp.square === mine && out.some(o => o.kind === 'replay' || res[o.k].joint);
+  if (!joint) {
+    out.push({ kind: 'spot', square: opp ? opp.square : null });
+    if (opp && golf && golf.square === opp.square && opp.square !== mine) out.push({ kind: 'replay', square: opp.square });
+    else if (opp && opp.steps && opp.steps.length) out.push({ kind: 'popup', square: opp.square });
+  }
+  res.forEach((it, k) => { if (it.square !== mine) out.push({ kind: 'resolve', k, square: it.square }); });
+  return out;
+}
 // The recap has been shown: the next round (unless the match is over).
 export function chaosNext(state, rng) {
   const sc = state.sc;

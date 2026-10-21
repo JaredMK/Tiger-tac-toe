@@ -2,7 +2,7 @@
 
 export const info = { name: 'Flash',        hint: 'Watch 8 items flash by, answer one question. Three right wins' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
-export const category = 'brain';   // the Advanced checklist's group: 'luck', 'skill' or 'brain'
+export const category = 'brain';   // the game's kind, an icon in the Advanced checklist: 'luck', 'skill' or 'brain'
 export const target = 'own';   // the header's icon: 'shared' (one board for both), 'own' (each player's own progress) or 'course' (one course for both, each their own distance)
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Flash', play: 'Cards flash by one at a time. Then say how many there were of a shape or a colour.', win: 'Get 3 right. It gets harder each time.' };

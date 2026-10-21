@@ -55,7 +55,7 @@ export function moveFlash(m, p, range, bjFrom, mini, flash) {
   const l = mini.last; flash.clash = { c: l.c, line: l.line ? l.line.slice() : null };
 }
 export function flashMs(f, winLen, won) {
-  if (f.scr) return CLASH.clash + CLASH.hold;
+  if (f.scr) return (f.scr.blocked != null ? CLASH.clash : f.scr.both ? CLASH.place : 0) + (f.scr.lines ? 600 : 0) + CLASH.hold;
   return CLASH.place + CLASH.hold + (f.clash && f.clash.line ? 600 : 0);
 }
 // The round's end: both claims on the grid, X's and O's (one cell claimed by both: blocked, with a clash in
@@ -69,16 +69,15 @@ export function scMerge(m, c) {
   else for (const p of Object.keys(at)) m.cells[at[p]] = p;
   const L = clashLinesOf(m), line = { X: clashLine(m.cells, 'X', L), O: clashLine(m.cells, 'O', L) }, win = { X: !!line.X, O: !!line.O };
   if (win.X !== win.O) m.winCells = line[win.X ? 'X' : 'O'];
-  const out = { win };
-  if (met) {
-    const pre = JSON.parse(JSON.stringify(m)); pre.cells = c.base.cells.slice(); delete pre.winCells;
-    m.last = { by: c.me, c: at.X, blocked: true, line: null };
-    out.resolve = { pre, joint: false, flash: { by: c.me, scr: { blocked: at.X } } };
-  } else if (win.X || win.O) {                                    // four in a row, found now both claims are down: the recap lights it up
+  const out = { win }, joint = at.X != null && at.O != null;   // (both claimed here this round: both claims drop in together, in each player's own view)
+  if (met || joint || win.X || win.O) {                          // settled now both claims are down: a cell both took is shut; four in a row lights up
     const pre = JSON.parse(JSON.stringify(m)); delete pre.winCells;
-    const who = ['X', 'O'].filter(p => win[p]);
-    m.last = { by: who.length === 1 ? who[0] : c.me, c: at[who[0]], line: line[who[0]] };
-    out.resolve = { pre, joint: false, flash: { by: who.length === 1 ? who[0] : c.me, scr: { lines: who.map(p => line[p]), who: who.join('') } } };
+    if (met || joint) pre.cells = c.base.cells.slice();
+    const who = ['X', 'O'].filter(p => win[p]), scr = {};
+    if (met) { scr.blocked = at.X; m.last = { by: c.me, c: at.X, blocked: true, line: null }; }
+    else if (joint) scr.both = { X: at.X, O: at.O };
+    if (who.length) { scr.lines = who.map(p => line[p]); scr.who = who.join(''); m.last = { by: who.length === 1 ? who[0] : c.me, c: at[who[0]], line: line[who[0]] }; }
+    out.resolve = { pre, joint, flash: { by: who.length === 1 ? who[0] : c.me, scr } };
   }
   if (!win.X && !win.O) {
     if (!m.cells.includes(null)) { out.reset = true; out.note = 'full'; }

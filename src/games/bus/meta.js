@@ -2,7 +2,7 @@
 
 export const info = { name: 'Ride the Bus', hint: 'Colour, higher or lower, inside or outside, then the suit' };
 export const release = 'released';   // the default (the admin's dashboard can change it)
-export const category = 'luck';   // the Advanced checklist's group: 'luck', 'skill' or 'brain'
+export const category = 'luck';   // the game's kind, an icon in the Advanced checklist: 'luck', 'skill' or 'brain'
 export const target = 'own';   // the header's icon: 'shared' (one board for both), 'own' (each player's own progress) or 'course' (one course for both, each their own distance)
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Ride the Bus', play: 'Guess red or black, then higher or lower, then inside or outside, then the suit. Miss and your turn ends, but you keep your progress.', win: 'Get through all four.' };

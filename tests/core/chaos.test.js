@@ -187,6 +187,18 @@ test('Super Chaos Bump: both pieces move; landing on the same space sends both h
   assert.deepEqual(resolve(s4).resets.map(x => x.why), ['both']);
 });
 
+test('Super Chaos Sniff: both dogs walked in the same square: the two steps play together at the round\'s end (resolve), from where the round began; one dog alone: nothing left to settle', () => {
+  const sn = () => Object.assign(E.sniffScCreate('sniff', E.makeRng('sn')), { treasure: 8 });
+  const st = round([sn()], { square: 0, moves: ['SE'] });
+  human(st, 0, ['NW']);
+  const rc = resolve(st);
+  assert.deepEqual(rc.resolve.map(x => [x.square, x.joint, x.flash.scr.steps.X.f, x.flash.scr.steps.X.t, x.flash.scr.steps.X.res, x.flash.scr.steps.O.t, x.flash.scr.steps.O.res]), [[0, true, 24, 16, 'hot', 32, 'cold']]);
+  assert.deepEqual([rc.pre[0].dogs, rc.pre[0].paths], [{ X: 24, O: 24 }, { X: [24], O: [24] }], 'both dogs where the round began, until the steps play');
+  assert.deepEqual(st.squares[0].mini.dogs, { X: 16, O: 32 });
+  const s2 = round([sn()], { square: 1, moves: [3] });
+  human(s2, 0, ['NW']);
+  assert.deepEqual(resolve(s2).resolve, []);
+});
 test('Super Chaos Bump: nothing is knocked during the round; the knock is settled at its end, and the recap plays it', () => {
   // the computer plays elsewhere: X lands on O's piece; O stays put until the round ends
   const st = round([bump({ X: 2, O: 5 })], { square: 1, moves: [3] });
@@ -231,7 +243,8 @@ test('Super Chaos Roulette: one spin a round per square, drawn as the round begi
   assert.deepEqual([st.sc.cpu.mini.last.n, st.sc.cpu.mini.last.hit], [3, false], 'the computer\'s bet landed on the same spin');
   const rc = E.chaosResolve(st, E.makeRng('r'));
   const m = st.squares[0].mini;
-  assert.deepEqual(rc.resolve, [], 'nothing left to settle at the round\'s end');
+  assert.deepEqual(rc.resolve.map(x => [x.square, x.joint, x.flash.rl.shared, x.flash.rl.n, x.flash.rl.bets, x.flash.rl.hit]), [[0, true, true, 3, { X: 'g1', O: 'g2' }, { X: true, O: false }]], 'both bets here: the one spin plays again at the round\'s end, both bets on the board');
+  assert.deepEqual([rc.pre[0].hits, rc.pre[0].spins], [{ X: 0, O: 0 }, []], 'as the round began, until it plays');
   assert.deepEqual(m.spins, [{ n: 3, by: 'X', hit: true }], 'one spin in the square\'s history');
   assert.deepEqual(m.hits, { X: 1, O: 0 });
   // the next round draws a new spin

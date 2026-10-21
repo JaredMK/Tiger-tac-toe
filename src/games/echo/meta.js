@@ -2,7 +2,7 @@
 
 export const info = { name: 'Echo',         hint: 'Play the pattern once, then tap it back. Beat all four' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
-export const category = 'brain';   // the Advanced checklist's group: 'luck', 'skill' or 'brain'
+export const category = 'brain';   // the game's kind, an icon in the Advanced checklist: 'luck', 'skill' or 'brain'
 export const target = 'own';   // the header's icon: 'shared' (one board for both), 'own' (each player's own progress) or 'course' (one course for both, each their own distance)
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Echo', play: 'Tap Play pattern to watch it once, then tap it back. One pattern per square, the same for both players: {start} steps, then {add} more each time.', win: 'Beat all four patterns.' };   // ({start}, {add}: its settings, TUNE below)

@@ -2,7 +2,7 @@
 
 export const info = { name: 'Clash Grid',   hint: 'Claim a cell. Same cell as your opponent: blocked. Four in a row wins' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
-export const category = 'brain';   // the Advanced checklist's group: 'luck', 'skill' or 'brain'
+export const category = 'brain';   // the game's kind, an icon in the Advanced checklist: 'luck', 'skill' or 'brain'
 export const target = 'shared';   // the header's icon: 'shared' (one board for both), 'own' (each player's own progress) or 'course' (one course for both, each their own distance)
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const scOnly = true;       // made for simultaneous rounds: never dealt in a normal match

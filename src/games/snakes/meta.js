@@ -2,7 +2,7 @@
 
 export const info = { name: 'Snakes and Ladders', hint: 'Roll and climb. Ladders lift you, snakes slide you down' };
 export const release = 'released';   // the default (the admin's dashboard can change it)
-export const category = 'luck';   // the Advanced checklist's group: 'luck', 'skill' or 'brain'
+export const category = 'luck';   // the game's kind, an icon in the Advanced checklist: 'luck', 'skill' or 'brain'
 export const target = 'own';   // the header's icon: 'shared' (one board for both), 'own' (each player's own progress) or 'course' (one course for both, each their own distance)
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Snakes and Ladders', play: 'Roll and move up that many spaces. Ladders lift you up, snakes slide you down.', win: 'Reach the top first.' };

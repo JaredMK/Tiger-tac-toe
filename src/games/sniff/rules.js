@@ -114,6 +114,20 @@ export function scCreate(type, rng) {
   if (treasure >= SNIFF_MID) treasure += 1;
   return { type, g: SNIFF.n, treasure, dogs: { X: SNIFF_MID, O: SNIFF_MID }, paths: { X: [SNIFF_MID], O: [SNIFF_MID] }, trails: { X: [], O: [] }, last: null };
 }
+// Both walked their dogs in the same round: the two steps play together at the round's end (resolve), in each
+// player's own view: both dogs trot from where the round began, each with its own word.
+export function scMerge(m, c) {
+  if (c.played.length !== 2) return undefined;
+  const pre = JSON.parse(JSON.stringify(m)), steps = {};
+  for (const p of c.played) {
+    const l = c.forks[p].last;
+    if (!l || l.by !== p || !Number.isInteger(l.f)) return undefined;
+    steps[p] = { f: l.f, t: l.t, res: l.res, hot: !!l.hot, found: !!l.found };
+    pre.dogs[p] = l.f; pre.paths[p] = pre.paths[p].slice(0, -1);
+  }
+  pre.last = null;
+  return { resolve: { pre, joint: true, flash: { by: c.me, scr: { steps } } } };
+}
 function scWalk(mini, p, m) {
   const from = mini.dogs[p], to = typeof m === 'string' ? sniffStep(from, m) : null;
   if (to == null) return { ok: false, reason: 'bad' };

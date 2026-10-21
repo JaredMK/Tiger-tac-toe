@@ -20,6 +20,7 @@
  *   usernames/{lowercase}  uid
  *   leaderboard/{uid}      username, rating, record; only players with 5+ ranked games
  *   history/{uid}/{game}   one finished online game, from that player's side
+ *   oppStats/{uid}/{opp}   that player's record against one opponent (people with an account, never a bot)
  *   queue/match/{uid}      searching players (Find Match is one queue, 1 minute a turn)
  *   active/{uid}           the matchmaking game a player is in
  *   games/{id}/pub         the public game: players, mode, status, state (JSON), result, final (JSON)
@@ -354,6 +355,14 @@ function recordUp(up, uid, result, squares, side, friend) {
     if (v.won) up[`users/${uid}/minis/${t}/won`] = ServerValue.increment(v.won);
     if (v.lost) up[`users/${uid}/minis/${t}/lost`] = ServerValue.increment(v.lost);
   }
+}
+// A player's record against one opponent with an account (oppStats/{uid}/{their uid}: the profile's Top
+// opponents), counted once per finished match; the name as last played.
+function oppUp(up, uid, them, result, at) {
+  if (!them || !them.uid || them.uid === uid) return;
+  const base = `oppStats/${uid}/${them.uid}/`, d = R.recordDelta(result);
+  for (const k of ['wins', 'losses', 'draws']) if (d[k]) up[base + k] = ServerValue.increment(d[k]);
+  up[base + 'name'] = String(them.name || '?'); up[base + 'last'] = at;
 }
 // A paired game, made exactly once from the two queue entries: the random board, the sides as drawn,
 // all mini-games on, the queue's time per turn. Then both players are pointed at it.
@@ -756,6 +765,7 @@ async function finishGame(id) {
   for (const s of ['X', 'O']) {
     const me = pub.players[s], them = pub.players[E.other(s)];
     up[`history/${me.uid}/${id}`] = historyRecord(pub.mode, s, them, st, final, t, result.ratings && result.ratings[s]);
+    if (!bg) oppUp(up, me.uid, them, R.resultFor(st, s), t);   // (a game against a bot: no one's Top opponents)
     up[`active/${me.uid}`] = null;
   }
   up[`games/${id}/pub/result`] = result;
@@ -925,6 +935,7 @@ exports.friendGameDone = onValueWritten({ ref: '/rooms/{code}/match' }, async ev
     const ouser = o.uid ? (await db.ref(`users/${o.uid}/username`).get()).val() : null;
     up[`history/${p.uid}/${id}`] = historyRecord('friend', s, { uid: ouser ? o.uid : null, name: o.name || E.other(s) }, st, final, now(), null);
     if (done) recordUp(up, p.uid, R.resultFor(st, s), final.squares, s, true);   // the friends record and the mini-game stats (once: the end's claim)
+    if (done && ouser) oppUp(up, p.uid, { uid: o.uid, name: ouser }, R.resultFor(st, s), t1);
   }
   if (Object.keys(up).length) await db.ref().update(up);
 });

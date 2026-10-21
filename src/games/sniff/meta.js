@@ -2,7 +2,7 @@
 
 export const info = { name: 'Sniff',        hint: 'Walk the dog, any of 8 ways. Hotter, colder or the same? Find the treasure' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
-export const category = 'luck';   // the Advanced checklist's group: 'luck', 'skill' or 'brain'
+export const category = 'luck';   // the game's kind, an icon in the Advanced checklist: 'luck', 'skill' or 'brain'
 export const target = 'shared';   // the header's icon: 'shared' (one board for both), 'own' (each player's own progress) or 'course' (one course for both, each their own distance)
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds (its own form: a dog each)
 export const explainer = { name: 'Sniff', play: 'Move the dog one step, any of 8 ways. You\'ll see if it\'s getting hotter, colder or the same (as the crow flies), for a moment only: nothing stays on the board, so remember it.', win: 'Be the one who finds the treasure.' };

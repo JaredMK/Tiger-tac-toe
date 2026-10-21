@@ -28,8 +28,9 @@ has its level, **Easy**, **Normal** or **Hard** (see "Playing against the comput
 match. X moves first.
 A rematch keeps the choice: X or O stay, and Random is drawn again for every match. Under "Advanced"
 are the mini-games in the mix (all on by default), with "Deselect all" and "Select all" buttons at
-the top, in three groups, each in alphabetical order with its own Deselect all / Select all: More luck,
-More skill and More brain (each game's `category` in its meta.js). The page itself never scrolls or
+the top, in one alphabetical list; a small icon at each row's right end shows the game's kind, luck
+(a clover), skill (a target) or brain (each game's `category` in its meta.js; its word on hover and for
+screen readers). The page itself never scrolls or
 rubber-bands on any screen; only inner lists like this one scroll. With none ticked, Start stays off and a short note says "Select at least one mini-game to
 start". Ticking a game, Select all or Deselect all changes the list in place: it stays exactly where
 it was scrolled, Advanced stays open, and the choice is saved for the next match. Computer players carry the computer icon next to their name in the game: in
@@ -174,7 +175,7 @@ are fine; there are no weights). A square that resets draws again from the same 
 | Sky Hop | Both players climb the same course, the same every time (seeded per square, one course for both: a stretch that beat you is still there next try, and for the other player); each player's height is their own. A move is one attempt: the square opens on the hopper standing on its start ledge at the height the player reached, with **Start** below; Start begins the attempt and holds the player to the square until it ends. The hopper (a round sprout in the player's colour, original art) bounces on its own off every platform it lands on; dragging a finger left and right anywhere on the mini-game screen (on, above or below the scene) steers it, one to one; the sides of the sky are walls (nothing wraps round), and every platform, its swing too, lies inside them. Falling off the bottom ends the attempt; the highest point reached is kept. Each attempt starts on a full-width ledge at the saved height that holds for 2 seconds, with nothing hazardous, and nothing that breaks, in reach of the first bounce. The start is not easy: wide gaps, narrow platforms, few extras between, and a quarter of the platforms on the way up crumble from 8 m. Higher up: wider gaps, narrower platforms, cloud planks that slide to and fro, biscuits that crumble after one bounce, and now and then a burr beside the way up (never across it). Every course is a chain of platforms each within one bounce of the last, so no gap is impossible (a perfect hand climbs every course to the top). First to the target height (150 m) wins. Every value is on the admin's **Sky Hop tuning** card (`config/skyhop`): target 150 m, bounce 22 m/s, gaps 3 to 4.5 m, platforms 1.5 to 1.1 m wide, extras 0.4 to 0.2 per gap, moving platforms from 10 m (65% by the top, 2.2 m/s), breaking from 8 m (25% there, 60% by the top), burrs from 15 m (about one every 25 m). A strong run reaches the top in about 28 s (inside the minute's turn); an average hand needs about 4.5 attempts (`tests/sim/finger.sim.js`). The computer, playing like an average player, needs about 4 to 5 attempts of about 13 s each |
 | Scoop Stack | Each player keeps their own stack from turn to turn. Both players face the same drops: the square's seed (one for both) sets what falls in each attempt, so a player's third attempt drops what the other player's third did. A move is one attempt, started with **Start** (held to the square until it ends). A drag left and right anywhere on the screen moves the cone at the bottom; scoops (strawberry, mint, vanilla, caramel, blueberry) fall to the top of the stack, which grows upwards (the view follows its top). A scoop landing within half a scoop of the top's middle stacks; further off it slides off, or falls straight past (a miss). A miss counts only once the scoop has fallen to the bottom edge of the screen (the misses' cones cross out then); three misses end the attempt, as does catching a pebble or a burnt scoop. The top of the stack sways a little behind quick moves. Nothing lands in the first 2 seconds. Falling speed and hazards rise with the stack. Every attempt is checked before it starts to be catchable by a cone moving at 72% of its speed (a perfect cone catches every scoop and dodges every hazard, sway and all). First to 25 scoops wins. Every value is on the **Scoop Stack tuning** card (`config/scoop`); the computer needs about 4 to 5 attempts |
 | Pinball | A portrait table on Matter.js, dealt per square: one of seven upper playfields (Classic, Bumper nest, Twin ramps, The loop, The bank, The alley, Islands: their own bumper clusters, rails, lanes and loops) picked at random, with seven of that layout's target spots dealt at random (11 to 13 spots each; a spinner spot moves round its ring). The lower table is the same on every layout and built like a real one: the two flippers at the bottom of the table, a drain gap of about a ball and a half between their tips at rest (so a ball really can go down between them), an inlane guide above each flipper feeding the ball onto it with an outlane beside it, and a slingshot above each inlane. The table is enclosed: walls all round, the plunger lane on the right with a one-way gate across its top that shuts once the ball is out, so the ball can never leave the screen or fall back into the lane; every wall is a capsule (round ends: no corner a ball can catch on), and every element keeps a unit clear of every other. A layout check holds every layout to that in `npm test` (no two elements overlapping or within a unit, nothing outside the table, no pocket a ball could rest in, room for the ball at every spot: an overlap fails the build), and `npm run sim -- pinball` has the computer's hand light every spot of every layout, so any seven dealt can all be hit, and checks the drains between the flippers, that the ball never escapes or sticks, and that the recordings pass the check. Each player lights their own targets, which stay lit for them from turn to turn (shown in their colour before they launch). A move is one ball: **Start**, then a tap (or a pull down and let go: the further, the harder) launches it from the plunger; a press on the left half of the screen holds the left flipper, on the right half the right one (below the table too). The ball plays until it drains; a drain in the first 3 seconds is saved (the ball comes back to the plunger). Lighting every target wins. The flippers are swept shapes worked out at 480 steps a second (a ball pinched between both tips is pushed clear, up), so nothing passes through them or the walls, and every touch of a target counts. The table's settings (target size, ball save, longest ball, slope, bumper kick, spinner speed) are on the **Pinball tuning** card (`config/pinball`) |
-| Clash Grid | Super Chaos only (never in a normal match). A 5x5 grid both share. A move claims one empty cell (it pops in, in the mover's colour, on their own screen at once; never judged there: no four in a row, no line, since the other player's claim could block it). Both claiming the same cell in the same round block it for good: grey and crossed, nobody's, and it breaks lines (in the recap both marks slam into it from either side, then it shuts). First to four in a row (row, column or diagonal: 28 runs) wins, looked for only at the round's end once both claims (and any block) are down, the line lighting up in the square in the recap; both completing one in the same round reset the square, as does a full grid or one where neither player can still make four. Timeout: a random empty cell. The computer completes its own four, blocks the other player's threes (and, more lightly, twos), weighs its own runs above the other player's, and goes easy on a cell the other player is likely to want when a collision there would cost it (a collision keeps the block but gains it nothing); among near-equal cells it picks at random, so it cannot be read. Computer against computer: about 7 rounds a square, under half won (the rest reset). Admin only, More brain. |
+| Clash Grid | Super Chaos only (never in a normal match). A 5x5 grid both share. A move claims one empty cell (it pops in, in the mover's colour, on their own screen at once; never judged there: no four in a row, no line, since the other player's claim could block it). Both claiming the same cell in the same round block it for good: grey and crossed, nobody's, and it breaks lines (in the recap both marks slam into it from either side, then it shuts). First to four in a row (row, column or diagonal: 28 runs) wins, looked for only at the round's end once both claims (and any block) are down, the line lighting up in the square in the recap; both completing one in the same round reset the square, as does a full grid or one where neither player can still make four. Timeout: a random empty cell. The computer completes its own four, blocks the other player's threes (and, more lightly, twos), weighs its own runs above the other player's, and goes easy on a cell the other player is likely to want when a collision there would cost it (a collision keeps the block but gains it nothing); among near-equal cells it picks at random, so it cannot be read. Computer against computer: about 7 rounds a square, under half won (the rest reset). Admin only; a brain game. |
 
 No longer dealt, but still played to the end in a match started before they were taken out, and kept
 under their own names in that match's history and the stats:
@@ -432,7 +433,13 @@ friend games together (with a "Find Match x-y-z · Friends x-y-z" line under it)
 games, All both. The record (wins-losses-draws and the win rate: wins over all games, draws
 included, so 3-5-1 is 33%) and the table of mini-games (squares won, squares lost and win rate, most
 won first) both follow the selection, and so does the **Played as** table: games played as X and as O,
-the record and the win rate of each. The mini-game table counts a square only once it ended claimed by
+the record and the win rate of each. Above that table, **Top opponents**: the three people played most
+online (Find Match and friend rooms; never a bot, the computer or a friend playing without an account),
+most games first (then the latest played, then by name), each with the record against them (W-L-D); a
+tap opens their profile, whose Back returns here. Its three rows are always there, blank where there is
+no one yet ("No online opponents yet"), so nothing moves as it loads. The server keeps the count
+(`oppStats/{uid}/{opponent}`) where it records each result, so it covers every game, not only the
+history the profile loads; anyone logged in can read it, so another player's profile shows theirs. The mini-game table counts a square only once it ended claimed by
 X or O (a square still open when the match ended, by any route, or a board reset after a draw is not
 counted), with an **All mini-games** row on top that adds up every completed square. Another player's profile (tap their name) shows their online
 stats only, with no selector: local games stay private. The mini-game table lists only the games in
@@ -458,11 +465,15 @@ player's records and mini-game counts from their game history (older ranked and 
 as Find Match) and leaves a marker so it never runs twice. It prints only counts. In the same way
 `scripts/backfill-accounts.js` recounted the games played as X and as O from every player's game
 history (Find Match, friends and local; a match against a bot left out of the player's count when
-bot matches are kept out of the records) and set each account's last activity from its latest game.
+bot matches are kept out of the records) and set each account's last activity from its latest game. Top opponents came
+the same way: `scripts/backfill-opponents.js` counts every player's record against each opponent from
+their game history once (games against a bot left out).
 
-**Security rules** (`database.rules.json`): phones may read profiles, records and histories, and
+**Security rules** (`database.rules.json`): phones may read profiles, records, histories and the
+records against each opponent (`oppStats`), and
 their own matchmaking game's public state; a player's local record and history only by that player;
 only Cloud Functions write ratings, records, mini-game counts, usernames, the leaderboard, histories,
+the records against each opponent,
 queues and game state. A game's hidden values have no read rule at all, and the username review list
 is readable by the admin only. The admin's matchmaking settings (`admin/config`) are read and written
 by the admin only; the alert keys (`admin/secrets`) can be written by the admin and read by nobody
@@ -686,12 +697,16 @@ Find Match is unchanged, and so are the normal modes.
   after the deadline (a phone closed or away) gets the timeout rule's move from the other phone
   (`applyChaosDeadline`). The settled round carries a shared start, in server time, a second ahead (or
   as long as the last mover's own result still has to play), and both phones play the same sequence
-  from that moment, timed from it: a Mini Golf square's joint shot, the other player's square lit, the
-  other's move in the pop-up (it travels with its replay log; the two pop-ups run to the longer, the
-  shorter's end held), what both moves settle together, each square's result, then the next round,
-  within a few tens of milliseconds of each other. The first phone through the recap begins the next
-  round on the record (`applyChaosBegin`: its deadline). A reload, or a phone coming back, reads the
-  record and joins the round as it stands, or the recap where it is in its sequence. A move made on a
+  from that moment, timed from it, each phone its own outcome first (`scRecapOrder`): its Mini Golf
+  shot, or what both moves settle in its square (both moves played together there when both played it:
+  the shots, the shared Roulette spin, a Bump knock, both Clash Grid claims, both Sniff dogs, and then no
+  replay of the other's move there); then the other player's square lit and their move in the pop-up (it
+  travels with its replay log), what their move settles; then each square's result, reached on both
+  phones at the same moment (the shorter side's last part held), then the next round. The first phone
+  through the recap begins the next round on the record (`applyChaosBegin`: its deadline). A reload, or
+  a phone coming back, reads the record and joins the round as it stands, or the recap where it is in
+  its sequence; except that a phone that has not seen its own outcome yet (out of sight, the menu open
+  while the round settled) plays it from its start first, even if the next round has begun. A move made on a
   phone is never dropped for a move not yet made: the moment it is made the phone is locked ("Waiting
   for…"), and if the record has not taken it yet (a reload mid-round, a write refused) the phone keeps
   it and sends it again every second. The record takes exactly one move a side a round (a second one,
@@ -749,7 +764,7 @@ Whose move it is shows on the main board at a glance (`src/ui/board.js`, `waitBa
 the other phone is on the move (in Super Chaos, once this side's move is in and the other's is not), the
 board dims a little and a translucent band across its middle shows the other side's character bouncing
 gently, "[name] is playing…" ("Waiting for [name]…" in Super Chaos) and the turn's countdown where there is
-one; on one's own turn the board is at full brightness with a soft glow round it in one's colour. The band
+one; on one's own turn the board is at full brightness. The band
 lies over the board (nothing moves), never over the top bar or Menu, lets taps through, and fades in and out;
 it stays through the computer's chosen square lighting up unless that square lies under it.
 

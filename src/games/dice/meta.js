@@ -2,7 +2,7 @@
 
 export const info = { name: 'Dice Race',    hint: 'Roll and race along 15 spaces. First to the finish wins' };
 export const release = 'released';   // the default (the admin's dashboard can change it)
-export const category = 'luck';   // the Advanced checklist's group: 'luck', 'skill' or 'brain'
+export const category = 'luck';   // the game's kind, an icon in the Advanced checklist: 'luck', 'skill' or 'brain'
 export const target = 'own';   // the header's icon: 'shared' (one board for both), 'own' (each player's own progress) or 'course' (one course for both, each their own distance)
 export const retired = true;   // no longer dealt; older matches still play it out
 export const explainer = { name: 'Dice Race', play: 'Roll and move that many spaces.', win: 'Reach the finish first.' };

@@ -2,7 +2,7 @@
 
 export const info = { name: 'Hexapawn',     hint: 'Step forward, capture diagonally. Reach the far row to win' };
 export const release = 'released';   // the default (the admin's dashboard can change it)
-export const category = 'brain';   // the Advanced checklist's group: 'luck', 'skill' or 'brain'
+export const category = 'brain';   // the game's kind, an icon in the Advanced checklist: 'luck', 'skill' or 'brain'
 export const target = 'shared';   // the header's icon: 'shared' (one board for both), 'own' (each player's own progress) or 'course' (one course for both, each their own distance)
 export const retired = true;   // no longer dealt; older matches still play it out
 export const explainer = { name: 'Hexapawn', play: 'Move a pawn forward, or capture diagonally.', win: 'Get a pawn to the far side.' };

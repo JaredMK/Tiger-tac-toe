@@ -2,7 +2,7 @@
 
 export const info = { name: 'Coin Flip',    hint: "Flip up to 3 coins that aren't yours. All five the same wins" };
 export const release = 'released';   // the default (the admin's dashboard can change it)
-export const category = 'luck';   // the Advanced checklist's group: 'luck', 'skill' or 'brain'
+export const category = 'luck';   // the game's kind, an icon in the Advanced checklist: 'luck', 'skill' or 'brain'
 export const target = 'shared';   // the header's icon: 'shared' (one board for both), 'own' (each player's own progress) or 'course' (one course for both, each their own distance)
 export const explainer = { name: 'Coin Flip', play: "Flip up to {flips} coins that aren't yours.", win: 'All {n} coins show your side.' };   // ({flips}, {n}: its settings, TUNE below)
 // Its settings (the admin's Mini-game Settings; core/tune.js): the coins are dealt with them, a flip turns up to flips.

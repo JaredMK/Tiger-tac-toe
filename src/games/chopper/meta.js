@@ -2,7 +2,7 @@
 
 export const info = { name: 'Chopper',      hint: 'Hold to rise, let go to drop. First to 1,000 m' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
-export const category = 'skill';   // the Advanced checklist's group: 'luck', 'skill' or 'brain'
+export const category = 'skill';   // the game's kind, an icon in the Advanced checklist: 'luck', 'skill' or 'brain'
 export const target = 'course';   // the header's icon: 'shared' (one board for both), 'own' (each player's own progress) or 'course' (one course for both, each their own distance)
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Chopper', play: 'Hold to rise, let go to drop. It gets faster, and you keep your distance when you crash.', win: 'Reach 1,000 m first.' };

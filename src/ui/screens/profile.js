@@ -1,6 +1,7 @@
 // Profiles, My Stats, game history and the leaderboard.
 import { newState } from '../../core/match.js';
 import { upgradeMini } from '../../core/minis.js';
+import { topOpponents } from '../../core/stats.js';
 import { INFO, TYPES } from '../../games/index.js';
 import { acct, connectQuiet, needAccount } from '../../net/accounts.js';
 import { fb } from '../../net/connect.js';
@@ -12,7 +13,7 @@ import { renderMini } from '../mini.js';
 import { render } from '../render.js';
 
 let lb = null;                               // the leaderboard as last loaded: { rows, me, error }
-export let prof = null;                             // the profile on show: { uid, user, hist, back, error }
+export let prof = null;                             // the profile on show: { uid, user, hist, opps, back, prev, error }
 export let hist = null;                             // a past game on the review board: { entry, view, zoom }
 
 /* ----- the leaderboard: the top 100 by rating (players with 5+ ranked games), and your own rank ----- */
@@ -43,17 +44,20 @@ export async function openLeaderboard() {
 export async function openProfile(uid, back) {
   if (!uid) { if (!(await needAccount('profile'))) return; uid = acct.user.uid; }
   if (prof && prof.uid === uid && prof.user && state.screen === 'profhist') { state.screen = 'profile'; render(); return; }   // back from its game history
-  prof = { uid, user: null, hist: null, local: null, view: prof && prof.uid === uid ? prof.view : 'online', back: back || (NAV_SCREENS.includes(state.screen) ? state.screen : state.screen === 'win' ? 'win' : 'menu'), error: null };
+  const prev = state.screen === 'profile' && prof && prof.uid !== uid && prof.user ? prof : null;   // a Top opponent's, from a profile: Back returns to that one
+  prof = { uid, user: null, hist: null, local: null, opps: null, prev, view: prof && prof.uid === uid ? prof.view : 'online', back: back || (NAV_SCREENS.includes(state.screen) ? state.screen : state.screen === 'win' ? 'win' : 'menu'), error: null };
   state.screen = 'profile'; commit();
   if (!(await connectQuiet())) { prof.error = 'No connection. Check your internet and try again.'; render(); return; }
   try {
     const m = fb.m;
     const own = acct.user && uid === acct.user.uid;
     const last50 = node => m.get(m.query(m.ref(fb.db, `${node}/${uid}`), m.orderByChild('date'), m.limitToLast(50)));
-    const [u, h, ls, lh] = await Promise.all([m.get(m.ref(fb.db, 'users/' + uid)), last50('history'),
-      own ? m.get(m.ref(fb.db, 'localStats/' + uid)).catch(() => null) : null, own ? last50('localHistory').catch(() => null) : null]);   // local games: your own, private
+    const [u, h, ls, lh, os] = await Promise.all([m.get(m.ref(fb.db, 'users/' + uid)), last50('history'),
+      own ? m.get(m.ref(fb.db, 'localStats/' + uid)).catch(() => null) : null, own ? last50('localHistory').catch(() => null) : null,   // local games: your own, private
+      m.get(m.ref(fb.db, 'oppStats/' + uid)).catch(() => null)]);   // the record against each opponent (the server's tally)
     if (!prof || prof.uid !== uid) return;
     prof.user = u.val();
+    prof.opps = topOpponents(os ? os.val() : null, 3);
     prof.local = ls ? ls.val() || {} : null;
     if (!prof.user) prof.error = 'This player has no profile.';
     const list = [];
@@ -64,6 +68,7 @@ export async function openProfile(uid, back) {
   render();
 }
 export function profileBack() {
+  if (prof && prof.prev) { prof = prof.prev; state.screen = 'profile'; render(); return; }   // back to the profile it was opened from
   const back = prof && prof.back;
   if (back === 'win' && state.winner) state.screen = 'win';
   else if (back === 'leaderboard' && RATINGS_ENABLED) state.screen = 'leaderboard';
@@ -117,12 +122,12 @@ export function renderLeaderboard() {
       <div class="ttl"><b>Leaderboard</b><small>Top 100 by rating · players with 5+ ranked games</small></div></div>
     <div class="setup-box" data-keep-scroll="leaderboard">${body}</div>${mine}</main>`;
 }
-// A profile (My Stats for your own): the Find Match record and win rate, the vs-friends record, squares won
-// and lost per mini-game in all online games (most won first), and a way to the game history.
+// A profile (My Stats for your own): the Find Match record and win rate, the vs-friends record, the top
+// opponents, squares won and lost per mini-game in all online games (most won first), and a way to the game history.
 export function renderProfile() {
   const p = prof || {};
   const own = acct.user && p.uid === acct.user.uid;
-  const backLabel = p.back === 'win' ? 'Results' : p.back === 'leaderboard' && RATINGS_ENABLED ? 'Leaderboard' : 'Menu';
+  const backLabel = p.prev ? 'Back' : p.back === 'win' ? 'Results' : p.back === 'leaderboard' && RATINGS_ENABLED ? 'Leaderboard' : 'Menu';
   const u = p.user;
   let body = '';
   if (p.error) body = `<div class="warn">${esc(p.error)}</div>`;
@@ -148,6 +153,12 @@ export function renderProfile() {
       ${view === 'online' ? `<div class="pfr"><small>Find Match ${record(u)} · Friends ${record(u.friend)}</small></div>` : ''}
       <small class="pjoin">Joined ${fmtDate(u.joined)}</small></div>`;
     const sideRow = p => { const r = sides[p], g = r.wins + r.losses + r.draws; return `<tr><td><span class="pg">${toon(p)}<span>As ${p}</span></span></td><td>${g}</td><td>${record(r)}</td><td>${winPct(r)}</td></tr>`; };
+    // Top opponents: the three people played most online (never a bot or the computer), each with the record
+    // against them; three rows always, so nothing moves whatever there is to show.
+    const opps = p.opps || [];
+    const oppRow = (r, i) => (r ? `<button class="popp" data-act="profile" data-uid="${esc(r.uid)}" aria-label="${esc(r.name)}: ${r.wins} won, ${r.losses} lost, ${r.draws} drawn. Open their profile"><b class="pk">${i + 1}</b><span class="pn">${esc(r.name)}</span><b class="pr">${record(r)}</b><i class="pc" aria-hidden="true">${CHEV}</i></button>`
+      : `<div class="popp${i === 0 ? ' none' : ''}"${i ? ' aria-hidden="true"' : ''}>${i === 0 ? 'No online opponents yet' : ''}</div>`);
+    const oppBox = `<h3 class="hh hopp"><span>Top opponents</span><small>W-L-D</small></h3><div class="popps">${[0, 1, 2].map(i => oppRow(opps[i], i)).join('')}</div>`;
     const sideTable = `<table class="ptab psides" aria-label="Games played as X and as O"><thead><tr><th>Played as</th><th>Games</th><th>W-L-D</th><th>Win rate</th></tr></thead><tbody>${sideRow('X')}${sideRow('O')}</tbody></table>`;
     // Squares count once they end claimed by X or O (a square still open when the match ended, or a board
     // reset after a draw, is not a mini-game won or lost).
@@ -161,7 +172,7 @@ export function renderProfile() {
     const nh = p.hist ? p.hist.length : null;
     const what = { online: 'online games: Find Match and friends', local: 'local games (you as player 1)', all: 'every game: online and local' }[view];
     body = `<button class="btn wide phist" data-act="prof-hist"${p.hist ? '' : ' disabled'}>Game history${nh != null ? ` (${nh})` : ''}</button>
-      ${card}${sideTable}<h3 class="hh">Mini-games</h3><p class="hint">Squares won and lost in ${what}. Only squares that ended claimed count.</p>${table}`;   // the game history first, then the stats
+      ${card}${oppBox}${sideTable}<h3 class="hh">Mini-games</h3><p class="hint">Squares won and lost in ${what}. Only squares that ended claimed count.</p>${table}`;   // the game history first, then the stats
   }
   return `<main class="scr setup acct-scr prof-scr">
     <div class="bar"><button class="back" data-act="prof-back" aria-label="Back">${CHEV}${backLabel}</button>

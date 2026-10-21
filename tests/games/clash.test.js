@@ -49,7 +49,8 @@ test('clash grid in Super Chaos: the same cell in the same round is blocked for 
   const s2 = round(grid('..... ..... ..... ..... .....'), 6);
   const r2 = human(s2, 12);
   assert.deepEqual([s2.squares[0].mini.cells[12], s2.squares[0].mini.cells[6]], ['X', 'O']);
-  assert.deepEqual(r2.resolve, []);
+  assert.deepEqual(r2.resolve.map(x => [x.square, x.joint, x.flash.scr.both]), [[0, true, { X: 12, O: 6 }]], 'both claims drop in together at the round\'s end');
+  assert.deepEqual([r2.pre[0].cells[12], r2.pre[0].cells[6]], [null, null]);
 });
 
 test('clash grid in Super Chaos: four in a row claims the square; a collision on the fourth cell stops it; both at once reset it', () => {

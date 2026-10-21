@@ -2,7 +2,7 @@
 
 export const info = { name: 'Patterns',     hint: 'What comes next? Wrong picks get crossed out. Three right wins' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
-export const category = 'brain';   // the Advanced checklist's group: 'luck', 'skill' or 'brain'
+export const category = 'brain';   // the game's kind, an icon in the Advanced checklist: 'luck', 'skill' or 'brain'
 export const target = 'shared';   // the header's icon: 'shared' (one board for both), 'own' (each player's own progress) or 'course' (one course for both, each their own distance)
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Patterns', play: 'Pick what comes next, or what\'s missing. Wrong answers get crossed out and the puzzle stays until someone gets it.', win: 'Get {goal} right.' };   // ({goal}: its setting, TUNE below)

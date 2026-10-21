@@ -37,7 +37,7 @@ import { scPopup, scSkip } from './chaos.js';
 import { repActive, repNote, repSkip, repVal } from './replay.js';
 import { runGo } from './runner.js';
 import { hist, openHistory, openLeaderboard, openProfile, prof, profileBack, setHist } from './screens/profile.js';
-import { catTypes, chaosSetup, setGames, setupTypes } from './screens/setup.js';
+import { chaosSetup, setGames, setupTypes } from './screens/setup.js';
 import { cpuTurn, dismissFlash, scheduleCpu } from './turns.js';
 import { closeReport, openReport } from './report.js';
 
@@ -238,9 +238,9 @@ export function init() {
     } else if (act === 'adv') {
       setAdvOpen(!advOpen); render();
     } else if (act === 'games-none') {            // Deselect all: every mini-game off, in place (Start waits for one)
-      if (state.screen === 'setup') setGames(g => { for (const t of el.dataset.cat ? catTypes(setupTypes(), el.dataset.cat) : chaosSetup() ? setupTypes() : TYPES) g[t] = false; });   // (a group's own button: that group only)
+      if (state.screen === 'setup') setGames(g => { for (const t of chaosSetup() ? setupTypes() : TYPES) g[t] = false; });
     } else if (act === 'games-all') {             // Select all: every mini-game on, in place
-      if (state.screen === 'setup') setGames(g => { for (const t of el.dataset.cat ? catTypes(setupTypes(), el.dataset.cat) : setupTypes()) g[t] = true; });
+      if (state.screen === 'setup') setGames(g => { for (const t of setupTypes()) g[t] = true; });
     } else if (act === 'side') {
       if (isHost()) {                             // X or O: the seats move over in the room (its answer updates the screen); Random: drawn at each start
         const pick = el.dataset.side === 'random' ? 'random' : el.dataset.side === 'O' ? 'O' : 'X';

@@ -1413,6 +1413,20 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .ptab .pg svg { width: 18px; height: 18px; flex: none; }
 .ptab tr.pall td { font-weight: 700; background: var(--panel); border-bottom: 3px solid var(--ink); }   /* every mini-game together, above the rest */
 .ptab.psides { margin-top: 2px; }
+/* Top opponents (profile.js): always three rows of the same height, the empty ones blank, so nothing moves as it loads */
+.hh.hopp { flex: none; display: flex; justify-content: space-between; align-items: baseline; }
+.hh.hopp small { font-size: 13px; color: var(--muted); padding-right: 40px; }
+.popps { flex: none; display: flex; flex-direction: column; background: #fff; border: 3px solid var(--ink); border-radius: 14px; overflow: hidden; box-shadow: 0 4px 0 var(--ink); }
+.popp { box-sizing: border-box; width: 100%; height: 46px; flex: none; display: grid; grid-template-columns: 22px minmax(0, 1fr) auto 18px; align-items: center; gap: 10px; padding: 0 10px 0 12px; margin: 0; border: 0; border-bottom: 1.5px solid var(--panel-2); border-radius: 0; background: none; box-shadow: none; color: var(--ink); text-align: left; font-family: 'Patrick Hand', cursive; font-size: 17px; -webkit-tap-highlight-color: transparent; }
+.popp:last-child { border-bottom: 0; }
+button.popp:active { background: var(--panel); }
+.popp .pk { font-family: 'Luckiest Guy', sans-serif; font-weight: 400; font-size: 14px; color: var(--muted); padding-top: 2px; }
+.popp .pn { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.popp .pr { font-family: 'Luckiest Guy', sans-serif; font-weight: 400; font-size: 16px; padding-top: 3px; }
+.popp .pc { display: block; width: 18px; height: 18px; color: var(--muted); transform: rotate(180deg); }
+.popp .pc svg { display: block; width: 18px; height: 18px; }
+div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank row, no rule) */
+.popp.none { display: flex; color: var(--muted); }
 .btn.wide { width: 100%; }
 .sides.three .seg { padding: 0 8px; line-height: 1.05; }
 .sides.three .seg small { display: block; font-size: 10px; opacity: .75; }
@@ -2367,11 +2381,10 @@ main.scr.mini.screplay * { cursor: pointer; }   /* (a tap anywhere skips to the 
 .pbonus.hit b { animation: tuntil 1ms var(--t, 0ms) both; }
 .rskip.until { animation: skipin .25s ease-out 2s both, tuntil 1ms var(--u, 0ms) both; }   /* gone as the move's animation ends */
 
-/* the Advanced checklist's groups: More luck, More skill, More brain, each with its own Select all / Deselect all */
-.games-cat { padding-top: 14px; }
-.games-h.cat { align-items: center; padding-bottom: 8px; gap: 8px; }
-.games-h.cat .catbtns { display: flex; gap: 6px; flex: none; }
-.selall.sm { height: 44px; padding: 0 10px; font-size: 13px; }   /* (a full 44px tap target) */
+/* the Advanced checklist: each game's kind (setup.js catIcon), a small sticker on the row's top edge by the "?" */
+.chk .gcat { position: absolute; top: -12px; right: 38px; z-index: 1; width: 22px; height: 22px; box-sizing: border-box; border-radius: 50%; border: 2.5px solid var(--ink); background: #fff; box-shadow: 0 2px 0 var(--ink); display: grid; place-items: center; }
+.chk .gcat svg { display: block; width: 14px; height: 14px; }
+.chk .gcat.luck svg { color: var(--green); } .chk .gcat.skill svg { color: var(--x); } .chk .gcat.brain svg { color: var(--sea); }
 /* the page never scrolls or rubber-bands, on any screen: a fixed full-height layout (100dvh); only the
    designated inner lists scroll, and their overscroll stays inside them */
 html { height: 100%; overflow: hidden; overscroll-behavior: none; }
@@ -2413,13 +2426,10 @@ body.sbx .scr { --vh: calc(100vh - var(--sbxh)); }
 .sbxbar .btn[aria-pressed="true"] { background: var(--o-soft); }
 .sbxwait .card { max-width: 340px; padding: 18px; text-align: center; }
 /* Whose move it is (board.js waitBand): waiting dims the board under a translucent band with the other side's
-   character bouncing, its name and the countdown; one's own turn glows round the board in one's colour. The
-   band lies over the board (absolute, no layout of its own), taps pass through it, and it fades in and out. */
+   character bouncing, its name and the countdown. The band lies over the board (absolute, no layout of its
+   own), taps pass through it, and it fades in and out. */
 .board-scr .board .sq { transition: filter .35s ease; }
 .board-scr.waiting .board .sq { filter: brightness(.82) saturate(.8); }
-.board-scr .board { border-radius: calc(var(--r) + 4px); transition: box-shadow .35s ease; }
-.board-scr.my-X .board { box-shadow: 0 0 0 3px var(--x), 0 0 18px 2px color-mix(in srgb, var(--x) 55%, transparent); }
-.board-scr.my-O .board { box-shadow: 0 0 0 3px var(--o), 0 0 18px 2px color-mix(in srgb, var(--o) 60%, transparent); }
 .wband { position: absolute; left: -2px; right: -2px; top: 50%; height: 64px; margin-top: -32px; z-index: 6; pointer-events: none;
   display: flex; align-items: center; gap: 10px; padding: 0 14px; box-sizing: border-box;
   background: color-mix(in srgb, var(--paper) 86%, transparent); border-top: 3px solid var(--ink); border-bottom: 3px solid var(--ink);

@@ -165,3 +165,49 @@ test('Super Chaos online, two clients on the emulator: one move a side a round, 
   const seen = c => c.seen.filter((s, k, l) => !k || s.seq !== l[k - 1].seq).map(s => `${s.round}${s.recap ? 'r' : ''}:${s.moves}`);
   assert.deepEqual(seen(host).slice(-4), seen(guest).slice(-4), `both clients followed the same rounds (host ${seen(host)}; guest ${seen(guest)})`);
 });
+
+// Each player's own outcome first (core/chaos.js scRecapOrder, as ui/chaos.js plays a settled round): a Mini Golf
+// shot locked in plays out on its player's phone before the other's replay; both at one hole, both shots play
+// together and neither phone replays the other's; both walking their dogs in one Sniff square, likewise.
+test('Super Chaos online, two clients on the emulator: each phone shows its own outcome first, then the other\'s replay; one square both played shows them together, no replay', async () => {
+  E.setPhysics(require('../physics.js'));
+  for (const t of ['golf', 'sniff']) await owner('PUT', `/releases/${t}.json`, 'true');   // (released: the server's check takes a room's match off it when it holds a game its host may not deal)
+  const code = 'SCGLF';
+  const host = client('uid-host-glf'), guest = client('uid-guest-glf');
+  await host.write(`rooms/${code}`, { created: Date.now(), host: host.uid, status: 'lobby', players: { X: { uid: host.uid, name: 'Hosty', joined: Date.now() } }, setup: { hostSide: 'X', timer: 0, chaos: true } });
+  await guest.write(`rooms/${code}/players/O`, { uid: guest.uid, name: 'Guesty', joined: Date.now() });
+  host.follow(code); guest.follow(code);
+  const fresh = E.newOnlineMatch({ names: { X: 'Hosty', O: 'Guesty' }, games: Object.fromEntries(E.TYPES.map(t => [t, t === 'hilo'])), timer: 0, chaos: true }, E.makeRng('sc-glf'), 'g1', Date.now());
+  const full = E.fullState(fresh); full.sc = JSON.parse(JSON.stringify(fresh.state.sc));
+  const golf = E.newMini('golf', E.makeRng('glf')), sniff = Object.assign(E.sniffScCreate('sniff', E.makeRng('snf')), { treasure: 8 });
+  full.squares = Array.from({ length: 9 }, (_, i) => ({ owner: null, mini: i === 6 ? golf : i === 2 ? sniff : hilo(10 + i), mv: { X: 0, O: 0 } }));
+  await host.write(`rooms/${code}/status`, 'playing');
+  await host.write(`rooms/${code}/match`, E.packMatch(E.matchRecord(full)));
+  for (const c of [host, guest]) await until(() => c.rec(), 10000, 'the match on both clients');
+  // a round: X's move and O's go in from each phone; once settled, the order each phone plays it in
+  async function round(r, mx, mo) {
+    for (const c of [host, guest]) await until(() => c.rec() && c.rec().state.sc.round === r && c.rec().state.sc.deadline != null, 10000, `round ${r} on both`);
+    assert.deepEqual(await submit(host, code, 'X', moveOf(host.rec(), 'X', ...mx)), { committed: true, reason: null });
+    await until(() => guest.rec().state.sc.moves && guest.rec().state.sc.moves.X, 10000, "X's move on the guest's client");
+    assert.deepEqual(await submit(guest, code, 'O', moveOf(guest.rec(), 'O', ...mo)), { committed: true, reason: null });
+    const order = {};
+    for (const [c, side] of [[host, 'X'], [guest, 'O']]) {
+      const rc = (await until(() => { const v = c.rec(); return v && v.state.sc.recap && v.state.sc.recap.round === r ? v.state.sc.recap : null; }, 10000, `round ${r} settled on ${side}'s client`));
+      order[side] = E.scRecapOrder(rc, rc.mv[side].square, rc.mv[side === 'X' ? 'O' : 'X']).map(o => o.kind + ':' + o.square + (o.own ? ':own' : ''));
+    }
+    assert.deepEqual(await guest.txn(code, rec => E.applyChaosBegin(rec, Date.now())), { committed: true, reason: null });
+    return order;
+  }
+  // 1. the host shoots at the Mini Golf hole, the guest guesses elsewhere: the host's shot first on the host's phone, then the guest's replay; the guest sees the host's square lit, then the shot
+  const o1 = await round(1, [6, [{ aim: 0.05, power: 0.55 }]], [1, [15]]);
+  assert.deepEqual(o1.X, ['replay:6:own', 'spot:1', 'popup:1'], "the host: its own shot, then the guest's move");
+  assert.deepEqual(o1.O, ['spot:6', 'replay:6'], "the guest (its own guess shown as it made it): the host's square, then the shot");
+  // 2. both shoot at the same hole: both shots play together on each phone, and neither replays the other's
+  const o2 = await round(2, [6, [{ aim: 0.05, power: 0.55 }]], [6, [{ aim: 3.1, power: 0.4 }]]);
+  assert.deepEqual([o2.X, o2.O], [['replay:6:own'], ['replay:6:own']]);
+  // 3. both walk their dogs in the Sniff square: both steps together on each phone, no replay
+  const o3 = await round(3, [2, ['NW']], [2, ['SE']]);
+  assert.deepEqual([o3.X, o3.O], [['resolve:2:own'], ['resolve:2:own']]);
+  const rc3 = host.rec().state.sc.recap;
+  assert.deepEqual([rc3.resolve[0].joint, rc3.resolve[0].flash.scr.steps.X.t, rc3.resolve[0].flash.scr.steps.O.t], [true, 16, 32], 'both steps, from where the round began');
+});

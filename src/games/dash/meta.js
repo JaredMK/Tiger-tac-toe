@@ -2,7 +2,7 @@
 
 export const info = { name: 'Dash',         hint: 'Jump the hazards, duck the flyers. First to 550 m' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
-export const category = 'skill';   // the Advanced checklist's group: 'luck', 'skill' or 'brain'
+export const category = 'skill';   // the game's kind, an icon in the Advanced checklist: 'luck', 'skill' or 'brain'
 export const target = 'course';   // the header's icon: 'shared' (one board for both), 'own' (each player's own progress) or 'course' (one course for both, each their own distance)
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Dash', play: 'Tap to jump, hold to jump higher. Duck low flyers by staying down. It gets faster as you go, and you keep your distance when you crash.', win: 'Reach 550 m first.' };

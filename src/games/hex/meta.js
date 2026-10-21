@@ -2,7 +2,7 @@
 
 export const info = { name: 'Hex',          hint: 'X joins left to right, O joins top to bottom' };
 export const release = 'released';   // the default (the admin's dashboard can change it)
-export const category = 'brain';   // the Advanced checklist's group: 'luck', 'skill' or 'brain'
+export const category = 'brain';   // the game's kind, an icon in the Advanced checklist: 'luck', 'skill' or 'brain'
 export const target = 'shared';   // the header's icon: 'shared' (one board for both), 'own' (each player's own progress) or 'course' (one course for both, each their own distance)
 export const explainer = { name: 'Hex', play: 'Claim a hex. X connects left to right, O connects top to bottom.', win: 'Complete your path.' };
 // Its settings (the admin's Mini-game Settings; core/tune.js): read through tune(mini).

@@ -28,7 +28,7 @@ test('registry: the game lists come from it, in menu order, the retired games la
   assert.deepEqual(E.TEST_TYPES, E.TYPES.filter(t => GAMES[t].meta.release === 'admin'));
   for (const t of Object.keys(GAMES)) assert.equal(E.INFO[t], GAMES[t].meta.info);
 });
-test('every game has a checklist group (meta.js category: luck, skill or brain)', () => {
+test('every game has a kind (meta.js category: luck, skill or brain; its icon in the Advanced checklist)', () => {
   for (const t of Object.keys(E.INFO)) assert.ok(["luck", "skill", "brain"].includes(GAMES[t].meta.category), `${t}: ${GAMES[t].meta.category}`);
 });
 test('every game says whether its target is shared, individual or a shared course (meta.js target, for the header icon); the runners are shared courses', () => {

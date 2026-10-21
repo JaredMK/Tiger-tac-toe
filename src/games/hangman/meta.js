@@ -2,7 +2,7 @@
 
 export const info = { name: 'Hangman',      hint: 'Right letter: go again. Last letter wins' };
 export const release = 'released';   // the default (the admin's dashboard can change it)
-export const category = 'luck';   // the Advanced checklist's group: 'luck', 'skill' or 'brain'
+export const category = 'luck';   // the game's kind, an icon in the Advanced checklist: 'luck', 'skill' or 'brain'
 export const target = 'shared';   // the header's icon: 'shared' (one board for both), 'own' (each player's own progress) or 'course' (one course for both, each their own distance)
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Hangman', play: 'Guess a letter. Got one right? Go again.', win: 'Reveal the last letter.' };

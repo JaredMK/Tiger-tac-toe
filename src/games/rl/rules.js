@@ -73,8 +73,14 @@ export function secret(mini) {                                   // the round's 
 export function hide(m) { delete m.spin; }
 export function scMerge(m, c) {
   const spins = (c.base.spins || []).slice(), mine = c.played.map(p => c.forks[p].last).filter((l, k) => l && l.by === c.played[k] && l.n != null);
-  if (mine.length === 2 && mine[0].n === mine[1].n) { const hit = mine.filter(l => l.hit).map(l => l.by); spins.push({ n: mine[0].n, by: hit.join(''), hit: hit.length > 0 }); }   // (the one spin both bets shared)
+  const both = mine.length === 2 && mine[0].n === mine[1].n;
+  if (both) { const hit = mine.filter(l => l.hit).map(l => l.by); spins.push({ n: mine[0].n, by: hit.join(''), hit: hit.length > 0 }); }   // (the one spin both bets shared)
   else for (const l of mine) spins.push({ n: l.n, by: l.by, hit: !!l.hit });
   m.spins = spins.slice(-6);
-  return {};
+  if (!both) return {};
+  // both bet here: the round's end plays the one spin again with both bets on the board (resolve), in each player's own view
+  const pre = JSON.parse(JSON.stringify(m)), bets = {}, hit = {};
+  pre.spins = (c.base.spins || []).slice(-6); pre.hits = { X: c.base.hits.X, O: c.base.hits.O };
+  for (const l of mine) { bets[l.by] = Array.isArray(l.bet) ? l.bet.slice() : l.bet; hit[l.by] = !!l.hit; }
+  return { resolve: { pre, joint: true, flash: { by: c.me, rl: { shared: true, n: mine[0].n, bets, hit, hits: { X: m.hits.X, O: m.hits.O } } } } };
 }
