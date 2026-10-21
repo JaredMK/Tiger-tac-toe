@@ -1588,3 +1588,74 @@ test('Bullseye tuning (config/bulls): public to read, the admin alone sets it, w
   assert.equal((await g.O.call('resign', { game: g.id })).ok, true);
   assert.match(await script('BullBoss', 'revoke'), /no longer an admin/);
 });
+
+/* ===================================== match logs ===================================== */
+// functions/matchLogRules.js: every online match's log, written by the server (Find Match moves, a friend
+// room's record, presence) and by the phones through devlog (a report, an mlog event); the admin alone reads
+// them; a log 30 days past its last event is deleted by the sweep.
+test('match logs: a Find Match game (its start, a refused move with its reason, the moves, the end), a friend room (start, moves, a phone dropping off and back, the end), a report; admin-only; deleted after 30 days', async () => {
+  const a = await player('LogAnn'), b = await player('LogBob');
+  const g = await pairUp(a, b);
+  await nearWin(g.id, 'X');
+  const notYours = await g.O.call('move', { game: g.id, square: 2, move: 2 });
+  assert.equal(notYours.ok, false, "O's move on X's turn: refused");
+  assert.equal((await g.X.call('move', { game: g.id, square: 2, move: 2 })).ok, true);
+  await recorded(g.id);
+  const key = 'm' + g.id;
+  const ix = await until(() => get(`matchLogIndex/${key}`), 10000, "the game's log");
+  assert.deepEqual([ix.mode, ix.players.X.uid, ix.players.O.uid], ['match', g.X.uid, g.O.uid]);
+  const evs = Object.values(await until(async () => { const v = await get(`matchLogs/${key}`); return v && Object.values(v).some(e => e.k === 'end') ? v : null; }, 10000, 'the end in the log')).sort((x, y) => x.t - y.t);
+  const ks = evs.map(e => e.k);
+  assert.equal(ks[0], 'start');
+  const rej = evs.find(e => e.k === 'reject');
+  assert.ok(rej && rej.s === 'O' && rej.why === notYours.reason, `the refused move and why (${JSON.stringify(rej)})`);
+  assert.ok(evs.some(e => e.k === 'move' && e.s === 'X' && e.q === 2 && e.g === 'ttt'), 'the winning move');
+  assert.equal(evs.find(e => e.k === 'end').w, 'X');
+  assert.ok(evs.every(e => Number.isFinite(e.t) && e.src === 'srv'));
+
+  // a friend room: the record's start and moves, presence off and on again, the end
+  const host = await player(null, { anonymous: true }), guest = await player(null, { anonymous: true });
+  const code = 'LGGDX';                                       // (a room code: no I or O)
+  const rec = E.newOnlineMatch({ names: { X: 'H', O: 'G' }, games: Object.fromEntries(E.TYPES.map(t => [t, t === 'hilo'])) }, E.makeRng(7), 'lm1');
+  await host.write(`rooms/${code}`, { created: Date.now(), host: host.uid, status: 'lobby', players: { X: { uid: host.uid, name: 'H', joined: Date.now() } }, setup: { hostSide: 'X', timer: 0 } });
+  await guest.write(`rooms/${code}/players/O`, { uid: guest.uid, name: 'G', joined: Date.now() });
+  await host.write(`rooms/${code}/status`, 'playing');
+  await host.write(`rooms/${code}/match`, E.packMatch(rec));
+  const fkey = `f${code}_lm1`;
+  await until(() => get(`matchLogRoom/${code}`), 10000, "the room pointed at its match's log");
+  await guest.write(`presence/${code}/O`, { online: true, away: false, at: Date.now() });
+  await guest.write(`presence/${code}/O`, { online: false, at: Date.now() });
+  await guest.write(`presence/${code}/O`, { online: true, away: false, at: Date.now() });
+  let r = rec;
+  for (const i of [0, 1, 2]) { r.state.turn = 'O'; r = E.applyOnlineMove(r, 'O', i, r.secrets[i].target, E.makeRng(i)).rec; await guest.write(`rooms/${code}/match`, E.packMatch(r)); }
+  const fev = Object.values(await until(async () => { const v = await get(`matchLogs/${fkey}`); return v && Object.values(v).some(e => e.k === 'end') && Object.values(v).some(e => e.k === 'reconnect') ? v : null; }, 15000, "the friend match's log")).sort((x, y) => x.t - y.t);
+  const fk = fev.map(e => e.k);
+  assert.equal(fk[0], 'start');
+  for (const k of ['online', 'offline', 'reconnect', 'move', 'end']) assert.ok(fk.includes(k), `${k} in ${fk}`);
+  assert.equal(fev.filter(e => e.k === 'move').length, 3);
+  const fix = await get(`matchLogIndex/${fkey}`);
+  assert.deepEqual([fix.mode, fix.room, fix.players.X.name, fix.players.O.uid], ['friend', code, 'H', guest.uid]);
+
+  // a phone's report (and an mlog event) through devlog: the match flagged, the moment stamped
+  const dev = 'dlogtest0123456789abcdef';
+  assert.equal((await guest.call('devlog', { dev, ev: 'report', o: 'rep0000001', g: fkey, mode: 'friend', note: 'The board froze', v: 'abc1234', s: 'O' })).ok, true);
+  assert.equal((await guest.call('devlog', { dev, ev: 'mlog', o: 'mlg0000001', g: fkey, mode: 'friend', e: { k: 'reject', q: 3, why: 'turn' }, v: 'abc1234', s: 'O' })).ok, true);
+  const rix = await until(async () => { const v = await get(`matchLogIndex/${fkey}`); return v && v.reported ? v : null; }, 10000, 'the match flagged');
+  assert.deepEqual([rix.note, rix.reports, rix.vers], ['The board froze', 1, 'abc1234']);
+  const after = Object.values(await get(`matchLogs/${fkey}`));
+  assert.ok(after.some(e => e.k === 'report' && e.note === 'The board froze' && e.s === 'O' && e.dev), 'the report in the log');
+  assert.ok(after.some(e => e.k === 'reject' && e.src === 'cli' && e.why === 'turn'), "the phone's own event");
+  assert.equal(await get(`devlog/${S.devHash(dev)}/lmlg0000001`), null, "an mlog event is for the match's log only");
+
+  // the admin alone reads them; nobody writes them
+  await denied(guest.read(`matchLogs/${fkey}`), 'a player reading a match log');
+  await denied(guest.read('matchLogIndex'), 'a player reading the index');
+  await denied(guest.write(`matchLogIndex/${fkey}/reported`, null), 'a player clearing a report');
+
+  // 30 days after its last event: deleted by the sweep
+  await patch(`matchLogIndex/${fkey}`, { last: Date.now() - 31 * 86400000 });
+  await sweep();
+  assert.equal(await get(`matchLogIndex/${fkey}`), null);
+  assert.equal(await get(`matchLogs/${fkey}`), null);
+  assert.ok(await get(`matchLogIndex/${key}`), 'a recent one stays');
+});

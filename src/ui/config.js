@@ -3,6 +3,8 @@
 
 /* ===================== UI: render everything from state ===================== */
 export const KEY = 'tiger-tac-toe.v4';
+// The app's version, in the match logs (the deploy writes the commit here: pages.yml; 'dev' anywhere else).
+export const APP_VERSION = 'dev';
 
 /* ===================== Accounts, matchmaking, the leaderboard, history =====================
  * Logging in (Google, or an email and a password) gives a player a username, a rating and a game

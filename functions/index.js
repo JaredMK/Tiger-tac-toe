@@ -57,6 +57,7 @@ try { E.setPhysics(makePhysics(require('matter-js'))); } catch (e) { logger.warn
 const R = require('./serverRules.js');
 const S = require('./statsRules.js');
 const B = require('./bots.js');
+const ML = require('./matchLogRules.js');
 
 setGlobalOptions({ region: 'us-central1', maxInstances: 10, memory: '256MiB' });
 const cfg = JSON.parse(process.env.FIREBASE_CONFIG || '{}');
@@ -70,6 +71,23 @@ const MATCH_GRACE_MS = 6000;     // the first turn's clock starts late: both pho
 const OLD_QUEUES = ['ranked', 'casual30', 'casual60', 'casual180'];   // before Find Match was one queue: left on cancel
 const GAME_KEEP_MS = 24 * 3600 * 1000;   // finished games are deleted after a day (their history stays)
 const CALL = { cors: true };
+/* ===================== match logs (for debugging: matchLogRules.js) ===================== */
+// Events added to a match's log, and its summary in the index (capped: a full log takes no more).
+// Without meta (the server's own events in a match it logged from the start): one write, no read.
+async function mlog(key, events, meta) {
+  events = (events || []).filter(Boolean).map(e => JSON.parse(JSON.stringify(e)));   // (undefined fields dropped)
+  if (!ML.keyOk(key) || !events.length) return;
+  const t = now(), up = {};
+  for (const e of events) up[`matchLogs/${key}/${db.ref().push().key}`] = e;
+  if (!meta) {
+    up[`matchLogIndex/${key}/last`] = t; up[`matchLogIndex/${key}/n`] = ServerValue.increment(events.length);
+    await db.ref().update(up);
+    return;
+  }
+  const tx = await db.ref(`matchLogIndex/${key}`).transaction(cur => ML.indexMerge(cur, meta, events.length, t), undefined, false);
+  if (tx.committed) await db.ref().update(up);
+}
+const mlogSafe = (key, events, meta) => mlog(key, events, meta).catch(e => logger.error('match log', key, e));
 
 const now = () => Date.now();
 const isAnon = req => !req.auth || !req.auth.token || !req.auth.token.firebase || req.auth.token.firebase.sign_in_provider === 'anonymous';
@@ -164,10 +182,12 @@ const DEV_CAP = 20000;                                         // events kept pe
 exports.devlog = onCall(CALL, async req => {
   const t = now(), c = S.checkDev(req.data, t);
   if (!c) throw new HttpsError('invalid-argument', 'Not an event.');
+  if (c.ev.ev === 'mlog') { await clientLog(c, t); return { ok: true }; }   // (for the match's log only, not the device's)
   const seen = (await db.ref(`devices/${c.h}/n`).get()).val() || 0;
   if (seen >= DEV_CAP) return { ok: false };
   const tx = await db.ref(`devlog/${c.h}/${c.k}`).transaction(cur => (cur ? undefined : c.ev), undefined, false);
   if (!tx.committed) return { ok: true, seen: true };          // sent before (a retry or a reload)
+  await clientLog(c, t);
   await db.ref(`devices/${c.h}`).transaction(cur => {
     const d = cur || {};
     d.first = Math.min(d.first || t, t); d.last = Math.max(d.last || 0, t); d.n = (d.n || 0) + 1;
@@ -379,6 +399,8 @@ async function makeGame(key, id, X, O, opts) {
       up['botStats/started'] = ServerValue.increment(1);
     }
     await db.ref().update(up);
+    await mlogSafe(ML.mmKey(id), [{ t, k: 'start', mode: bot ? 'bot' : 'match', queue: key, timer: Q.timer, games: rec.state.squares.map(q => q.mini.type).join(' '), bot: bot ? bot.key : undefined, src: 'srv' }],
+      { srv: true, mode: bot ? 'bot' : 'match', players: { X: { name: X.e.name, uid: X.uid }, O: { name: O.e.name, uid: O.uid } } });
     await db.ref().update(statsUp(S.startUpdates(bot ? 'bot' : Q.mode, t))).catch(e => logger.error('stats', e));
     await markActive([X, O].filter(p => !bot || p.uid !== bot.uid).map(p => 'u:' + p.uid), t).catch(e => logger.error('stats', e));
     if (bgNew) await planBot(id, rec.state, rec.secrets, bgNew, t + MATCH_GRACE_MS, false).catch(e => logger.error('bot plan', id, e));
@@ -478,13 +500,13 @@ async function runBot(id, opts) {
   if (next.step === 'second') {                              // Memory: the second card
     if (st.pickSq !== next.square) return false;
     const r = await changeGame(id, bg.bot, (rec, side) => (rec.state.seq !== next.seq || rec.state.pickSq !== next.square ? { ok: false, reason: 'stale' }
-      : E.applyOnlineMove(rec, side, next.square, next.move, seedRng())));
+      : E.applyOnlineMove(rec, side, next.square, next.move, seedRng())), 'bot');
     return r.ok;
   }
   const mini = st.squares[next.square] && st.squares[next.square].mini;
   if (mini && mini.type === 'memory' && Array.isArray(next.move) && when !== 'force') {   // Memory: the first card now
     const r = await changeGame(id, bg.bot, (rec, side) => (rec.state.seq !== next.seq || rec.state.pickSq != null ? { ok: false, reason: 'stale' }
-      : E.applyOnlinePick(rec, side, next.square, next.move[0])));
+      : E.applyOnlinePick(rec, side, next.square, next.move[0])), 'bot');
     if (r.ok) {
       const bot = B.byKey(bg.key) || B.BOTS[0], due = now() + B.thinkMs(bot, 'second', seedRng());
       await db.ref(`botGames/${id}/next`).set({ seq: next.seq, step: 'second', due, square: next.square, move: next.move });
@@ -493,7 +515,7 @@ async function runBot(id, opts) {
     return r.ok;
   }
   const r = await changeGame(id, bg.bot, (rec, side) => (rec.state.seq !== next.seq ? { ok: false, reason: 'stale' }
-    : E.applyOnlineMove(rec, side, next.square, next.move, seedRng())));
+    : E.applyOnlineMove(rec, side, next.square, next.move, seedRng())), 'bot');
   return r.ok;
 }
 // The bot's move, run by its Cloud Task at the time it is due (see planBot).
@@ -595,14 +617,15 @@ exports.testAlert = onCall(CALL, async req => {
 // One change to a game, run as a transaction on games/{id} (public and hidden parts together).
 // `step(rec, side, pub)` returns the engine's answer; on success the new record is written, the turn
 // clock started and, if the match is over, the result recorded afterwards.
-async function changeGame(id, uid, step) {
-  let out = { ok: false, reason: 'missing' }, over = false, info = null;
+async function changeGame(id, uid, step, what) {   // what: the kind of change, for the match's log ('move', 'pick', 'reveal', 'start', 'timeout', 'resign', 'bot')
+  let out = { ok: false, reason: 'missing' }, over = false, info = null, who = null, end = null;
   const res = await db.ref(`games/${id}`).transaction(cur => {
     if (cur === null) { out = { ok: false, reason: 'missing' }; return cur; }   // (a first guess from an empty cache: retried with the real value)
     const pub = cur.pub;
     if (!pub || pub.status !== 'playing') { out = { ok: false, reason: 'over' }; return undefined; }
     const side = uid ? sideOf(pub, uid) : null;
     if (uid && !side) { out = { ok: false, reason: 'not-player' }; return undefined; }
+    who = side;
     const rec = { state: parse(pub.state), secrets: parse(cur.sec) }, turn0 = rec.state.turn;
     const r = step(rec, side, pub);
     if (!r.ok) { out = { ok: false, reason: r.reason }; return undefined; }
@@ -613,6 +636,7 @@ async function changeGame(id, uid, step) {
     pub.state = JSON.stringify(r.rec.state); cur.sec = JSON.stringify(r.rec.secrets || {});
     pub.updated = t;
     over = !!r.rec.state.winner;
+    end = over ? { w: r.rec.state.winner, why: r.rec.state.winReason || null, resigned: r.rec.state.resigned || null } : null;
     if (over) { pub.status = 'over'; pub.ended = t; cur.dl = 1; }      // 1: over, the result still to record
     else cur.dl = r.rec.state.timer && r.rec.state.timer.deadline || null;
     out = { ok: true, seq: r.rec.state.seq };
@@ -620,8 +644,19 @@ async function changeGame(id, uid, step) {
     return cur;
   }, undefined, false);
   if (!res.committed && out.ok) out = { ok: false, reason: 'busy' };
-  if (res.committed && over) await finishGame(id).catch(e => logger.error('finishGame', id, e));
-  if (res.committed && out.ok && info && info.entries && !over) await afterBotChange(id, info).catch(e => logger.error('bot plan', id, e));   // (a game against a bot: its next move)
+  const t = now(), lw = what || 'move', ev = [];
+  if (out.ok) {
+    const es = (info && info.entries) || [];
+    for (const e of es) { const x = ML.entryEvent(Object.assign({}, e, lw === 'timeout' ? { timeout: true } : {}), t); if (x) ev.push(x); }
+    if (!es.length) ev.push({ t, k: lw, s: who || undefined, seq: out.seq, src: 'srv' });
+    if (lw === 'bot') ev.forEach(e => { e.bot = true; });
+    if (end) ev.push({ t, k: 'end', w: end.w, why: end.why || undefined, resigned: end.resigned || undefined, src: 'srv' });
+  } else if (!['stale', 'early', 'missing'].includes(out.reason)) ev.push({ t, k: 'reject', s: who || undefined, what: lw, why: out.reason, src: 'srv' });   // (stale, early: the server's own timing checks, not a refusal of anyone's move)
+  await Promise.all([
+    ev.length ? mlogSafe(ML.mmKey(id), ev) : null,
+    res.committed && over ? finishGame(id).catch(e => logger.error('finishGame', id, e)) : null,
+    res.committed && out.ok && info && info.entries && !over ? afterBotChange(id, info).catch(e => logger.error('bot plan', id, e)) : null,   // (a game against a bot: its next move)
+  ]);
   return out;
 }
 // A move (or Memory's first card, kind 'pick'; Trivia's question turned up, kind 'reveal'; an attention game's Start, kind 'start') from the player on the move.
@@ -631,10 +666,10 @@ exports.move = onCall(CALL, async req => {
   if (!Number.isInteger(i) || i < 0 || i > 8) return { ok: false, reason: 'bad' };
   if (d.kind === 'pick') {
     const card = d.card == null ? null : d.card;
-    return changeGame(id, uid, (rec, side) => E.applyOnlinePick(rec, side, i, card));
+    return changeGame(id, uid, (rec, side) => E.applyOnlinePick(rec, side, i, card), 'pick');
   }
-  if (d.kind === 'reveal') return changeGame(id, uid, (rec, side) => E.applyOnlineReveal(rec, side, i));   // Trivia: the question turned up (the turn goes on)
-  if (d.kind === 'start') return changeGame(id, uid, (rec, side) => E.applyOnlineStart(rec, side, i));     // Headcount, Flash, Snapshot: Start (held to the square; a timeout answers that round)
+  if (d.kind === 'reveal') return changeGame(id, uid, (rec, side) => E.applyOnlineReveal(rec, side, i), 'reveal');   // Trivia: the question turned up (the turn goes on)
+  if (d.kind === 'start') return changeGame(id, uid, (rec, side) => E.applyOnlineStart(rec, side, i), 'start');     // Headcount, Flash, Snapshot: Start (held to the square; a timeout answers that round)
   if (d.move === undefined) return { ok: false, reason: 'bad' };
   await runConfigNow();
   return changeGame(id, uid, (rec, side) => {
@@ -655,7 +690,7 @@ exports.move = onCall(CALL, async req => {
       if (t && t.limit && t.deadline != null && !(ms <= now() - (t.deadline - t.limit * 1000) + E.FING.slackMs)) return { ok: false, reason: 'fast' };
     }
     return E.applyOnlineMove(rec, side, i, d.move, seedRng(), { rep: d.rep });   // (rep: the mover's inputs before the move, checked and kept by the engine for the other phone's replay)
-  });
+  }, 'move');
 });
 // The turn's time is up: the random move for the player on the move (or the match, on a second
 // timeout in a row). Only once the deadline has really passed, by the server's clock.
@@ -669,12 +704,12 @@ exports.timeout = onCall(CALL, async req => {
   const uid = needUid(req), id = gameId((req.data || {}).game);
   await runConfigNow();
   if (await runBot(id, { when: 'force' }).catch(() => false)) return { ok: true };   // a bot on the move moves instead (it never times out)
-  return changeGame(id, uid, timeoutStep);
+  return changeGame(id, uid, timeoutStep, 'timeout');
 });
 // Leaving a matchmaking game through the menu: a resignation, which loses the match.
 exports.resign = onCall(CALL, async req => {
   const uid = needUid(req), id = gameId((req.data || {}).game);
-  return changeGame(id, uid, (rec, side) => E.applyOnlineResign(rec, side));
+  return changeGame(id, uid, (rec, side) => E.applyOnlineResign(rec, side), 'resign');
 });
 
 /* ===================== the result: ratings, records, leaderboard, history ===================== */
@@ -776,6 +811,60 @@ exports.recordLocal = onCall(CALL, async req => {
   return { ok: true, result: h.result };
 });
 
+/* ===================== match logs: friend rooms, presence, the phones' own events ===================== */
+// One write to a room's match, in the match's log: a new match (its players, and the room pointed at
+// its log for presence), each move or round, the end.
+async function friendLog(code, b, st, after) {
+  const key = ML.friendKey(code, String(st.id || 'm').replace(/[^-\w]/g, '')), t = now();
+  const ev = ML.friendEvents(b, st, t);
+  if (!ev.length) return;
+  if (!b || b.id !== st.id) {
+    const room = (await db.ref(`rooms/${code}/players`).get()).val() || {}, seats = after.seats && after.seats.X ? after.seats : room;
+    const pl = s => (seats[s] ? { name: seats[s].name, uid: seats[s].uid } : null);
+    await db.ref(`matchLogRoom/${code}`).set({ k: key, t }).catch(e => logger.error('match log room', code, e));
+    await mlogSafe(key, ev, { srv: true, mode: st.sc && st.sc.online ? 'friend-sc' : 'friend', room: code, players: { X: pl('X'), O: pl('O') } });
+  } else await mlogSafe(key, ev);
+}
+// A phone dropping off or coming back (its presence in the room or the game going offline or online):
+// in the log of the match it is in. Presence that only says the app went to the background is not logged.
+async function presenceLog(key, side, before, after) {
+  const was = !!(before && before.online), is = !!(after && after.online);
+  if (was === is || !key || !after) return;                    // (!after: the room or game itself deleted)
+  await mlogSafe(key, [{ t: now(), k: is ? (before ? 'reconnect' : 'online') : 'offline', s: side, src: 'srv' }]);
+}
+exports.roomPresenceLog = onValueWritten({ ref: '/presence/{code}/{side}' }, async event => {
+  const before = event.data.before.val(), after = event.data.after.val();
+  if (!!(before && before.online) === !!(after && after.online)) return;
+  const m = (await db.ref(`matchLogRoom/${event.params.code}`).get()).val();
+  await presenceLog(m && m.k, event.params.side, before, after);
+});
+exports.gamePresenceLog = onValueWritten({ ref: '/gpresence/{id}/{side}' }, async event => {
+  await presenceLog(ML.mmKey(event.params.id), event.params.side, event.data.before.val(), event.data.after.val());
+});
+// The phones' own events with a match (devlog): a phone's start in it (its device and app version), its
+// leaving, an error on it, a "Report a problem", and what only a phone knows (mlog: a match against the
+// computer, a move the record refused). The device is the same hash as the device log's, shortened.
+async function clientLog(c, t) {
+  const key = c.ev.g && ML.keyOk(c.ev.g) ? c.ev.g : null;
+  if (!key) return;
+  const dev = c.h.slice(0, 10), base = { t, s: c.s || undefined, dev, src: 'cli' }, meta = { mode: c.ev.m, dev, ver: c.v };
+  const ev = c.ev.ev;
+  if (ev === 'start') await mlogSafe(key, [Object.assign({ k: 'device', v: c.v || undefined }, base)], meta);
+  else if (ev === 'leave') await mlogSafe(key, [Object.assign({ k: 'left' }, base)], meta);
+  else if (ev === 'error') await mlogSafe(key, [Object.assign({ k: 'error', msg: c.ev.msg, v: c.v || undefined }, base)], meta);
+  else if (ev === 'report') await mlogSafe(key, [Object.assign({ k: 'report', note: c.note || undefined, v: c.v || undefined }, base)], Object.assign(meta, { report: { t, note: c.note } }));
+  else if (ev === 'mlog') { const e = ML.clientEvent(c.e, t); if (e) await mlogSafe(key, [Object.assign(e, { dev, s: c.s || e.s })], meta); }
+}
+// The logs' upkeep (from the sweep): a match's log 30 days after its last event, and a room's pointer
+// to its match's log after two days (a room lasts one).
+async function pruneLogs(t, up) {
+  const old = (await db.ref('matchLogIndex').orderByChild('last').endAt(t - ML.LOG_KEEP_MS).limitToFirst(100).get()).val() || {};
+  for (const k of Object.keys(old)) { up[`matchLogIndex/${k}`] = null; up[`matchLogs/${k}`] = null; }
+  const rooms = (await db.ref('matchLogRoom').orderByChild('t').endAt(t - 2 * 86400000).limitToFirst(100).get()).val() || {};
+  for (const c of Object.keys(rooms)) up[`matchLogRoom/${c}`] = null;
+  return Object.keys(old).length;
+}
+
 /* ===================== friend-code games: history for logged-in players ===================== */
 // A room's match (played by the two phones, unrated) is saved to the history of each player who has
 // an account, once, when it ends.
@@ -785,6 +874,7 @@ exports.friendGameDone = onValueWritten({ ref: '/rooms/{code}/match' }, async ev
   const st = parse(after.state);
   const b = before && typeof before.state === 'string' ? parse(before.state) : null;
   const sid = 'f_' + event.params.code + '_' + String(st.id || 'm').replace(/[^-\w]/g, '');
+  await friendLog(event.params.code, b, st, after);              // the match's log: what this write changed (matchLogRules.js friendEvents)
   if (!b || b.id !== st.id) {                                  // a new match in the room: counted as started
     const t = now();
     // The match may only hold games its players may see: the released ones, or any game when the
@@ -848,7 +938,7 @@ async function sweep() {
   for (const [id, g] of Object.entries(due)) {
     if (g.pub && g.pub.status === 'over') { if (await finishGame(id).catch(() => false)) finished++; continue; }
     if (bots[id] && await runBot(id, { force: true }).catch(() => false)) { botMoves++; continue; }   // a bot never times out
-    const r = await changeGame(id, null, timeoutStep).catch(() => ({ ok: false }));
+    const r = await changeGame(id, null, timeoutStep, 'timeout').catch(() => ({ ok: false }));
     if (r.ok) timeouts++;
   }
   const old = (await db.ref('games').orderByChild('pub/ended').startAt(1).endAt(t - GAME_KEEP_MS).limitToFirst(50).get()).val() || {};
@@ -856,7 +946,9 @@ async function sweep() {
   let deleted = 0;
   for (const [id, g] of Object.entries(old)) if (g.pub && g.pub.recorded && g.pub.recorded.done) { up[`games/${id}`] = null; up[`gpresence/${id}`] = null; up[`botGames/${id}`] = null; up[`reacts/${id}`] = null; deleted++; }
   await pruneSeen(t, up).catch(e => logger.error('stats prune', e));
+  const logs = await pruneLogs(t, up).catch(e => { logger.error('match log prune', e); return 0; });
   if (Object.keys(up).length) await db.ref().update(up);
+  if (logs) logger.info('match logs deleted', logs);
   return { timeouts, finished, deleted, botMoves };
 }
 // What the stats have seen, once it can no longer matter: matches after three days, players once their

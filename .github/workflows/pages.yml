@@ -50,6 +50,8 @@ jobs:
           mkdir _site
           cp index.html admin.html playtest.js trivia.json styles.html .nojekyll _site/
           cp -r src _site/src
+          sed -i "s/^export const APP_VERSION = 'dev';/export const APP_VERSION = '${GITHUB_SHA::7}';/" _site/src/ui/config.js   # the version in the match logs: this commit
+          grep -q "APP_VERSION = '${GITHUB_SHA::7}'" _site/src/ui/config.js
           cp node_modules/matter-js/build/matter.min.js _site/matter.min.js
       - uses: actions/upload-pages-artifact@v3
         with:

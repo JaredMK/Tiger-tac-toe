@@ -38,6 +38,7 @@ import { runGo } from './runner.js';
 import { hist, openHistory, openLeaderboard, openProfile, prof, profileBack, setHist } from './screens/profile.js';
 import { catTypes, chaosSetup, setGames, setupTypes } from './screens/setup.js';
 import { cpuTurn, dismissFlash, scheduleCpu } from './turns.js';
+import { closeReport, openReport } from './report.js';
 
 // A mini-game's own control: the view whose actions have it.
 const gameAction = act => { for (const t in GAMES) { const a = GAMES[t].view && GAMES[t].view.actions; if (a && Object.hasOwn(a, act)) return a[act]; } return null; };
@@ -91,14 +92,15 @@ export function init() {
     if (act === 'ask-leave') { if (joinAsk) leaveAndJoin(joinAsk.code); return; }
     if (act === 'dismiss') { if (Date.now() >= flashReady) dismissFlash(); return; }   // not before the animation is over
     if (act === 'rep-skip') { repSkip(); return; }                                      // an opponent's replay: straight to its result
-    const free = ['pause', 'pause-resume', 'pause-main', 'pause-back', 'pause-leave', 'leave', 'lobby-back', 'menu', 'find-again', 'profile', 'prof-back', 'prof-hist', 'mystats', 'hist-open', 'hist-sq', 'hist-back', 'hist-close', 'leaderboard', 'rejoin', 'host-retry', 'share', 'rematch', 'timer', 'review', 'review-sq', 'review-back', 'results', 'pview', 'react-open', 'react-send'];
+    const free = ['pause', 'pause-report', 'pause-resume', 'pause-main', 'pause-back', 'pause-leave', 'leave', 'lobby-back', 'menu', 'find-again', 'profile', 'prof-back', 'prof-hist', 'mystats', 'hist-open', 'hist-sq', 'hist-back', 'hist-close', 'leaderboard', 'rejoin', 'host-retry', 'share', 'rematch', 'timer', 'review', 'review-sq', 'review-back', 'results', 'pview', 'react-open', 'react-send'];
     if (act === 'sound') { SND.setMuted(!SND.muted); if (!SND.muted) SND.play('toggle'); render(); return; }   // (the press's own sound came with the press when it was still on)
     if (act === 'react-mute') { rx.mute = !rx.mute; if (rx.mute && rx.card && rx.card.side !== mySide()) { clearTimeout(rx.hide); rx.card = null; } render(); return; }   // this match only: the opponent's emoji stop showing and sounding
     if (act === 'pause') { setMenuOpen(true); setMenuStep('main'); startFx('menu', menuStep); render(); scheduleCpu(); return; }
-    if (act === 'pause-resume') { setMenuOpen(false); setMenuStep('main'); render(); scheduleCpu(); return; }
+    if (act === 'pause-resume') { closeReport(); setMenuOpen(false); setMenuStep('main'); render(); scheduleCpu(); return; }
     if (act === 'pause-main') { setMenuStep('confirm'); startFx('menu', menuStep); render(); return; }
     if (act === 'pause-back') { setMenuStep('main'); startFx('menu', menuStep); render(); return; }
     if (act === 'pause-leave') { quitMatch(); return; }
+    if (act === 'pause-report') { openReport(); return; }                            // (a dialog of its own over the menu: ui/report.js)
     if (menuOpen) return;                         // the menu is up: nothing underneath reacts
     if (state.flash && !free.includes(act)) return;   // everything else waits for the result to clear
     if (state.done && !free.includes(act)) return;    // the result is still on show
@@ -314,7 +316,7 @@ export function init() {
   document.addEventListener('keydown', e => {
     if (explainT) { if (e.key === 'Escape' || e.key === 'Enter') closeExplain(); return; }
     if (e.metaKey || e.ctrlKey || e.altKey) return;
-    if (e.target && e.target.tagName === 'INPUT') return;   // typing a name
+    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;   // typing a name, or a report's note
     const type = zoomedType();
     if (!type) return;
     if (/^[a-zA-Z]$/.test(e.key)) {

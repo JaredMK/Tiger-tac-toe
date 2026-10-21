@@ -16,6 +16,7 @@ import { startFx } from '../ui/fx.js';
 import { render } from '../ui/render.js';
 import { repTake } from '../ui/replay.js';
 import { playFlash } from '../ui/turns.js';
+import { matchLog } from './tracking.js';
 
 // ---------- moves: a transaction on the room's match record ----------
 // a move request from this phone, or the move itself when the game is played here
@@ -84,8 +85,8 @@ export async function dbMove(i, m, rep) {
       if (r.rec.state.turn !== turn0 || r.rec.state.winner) armClock(r.rec.state, r.entries, serverNow());   // one clock per turn: set when the turn passes on
       return r.rec;
     });
-    if (!res.committed) moveRejected(reason || 'turn');
-  } catch (e) { moveRejected('network'); }
+    if (!res.committed) { moveRejected(reason || 'turn'); matchLog({ k: 'reject', q: i, why: reason || 'norecord' }); }   // (a friend room: the record refused it; the server never saw it, so the phone logs it)
+  } catch (e) { moveRejected('network'); matchLog({ k: 'reject', q: i, why: String((e && (e.code || e.message)) || 'network').slice(0, 60) }); }
   clearTimeout(moveTimer); setMoveWait(null); render();
   return true;
 }

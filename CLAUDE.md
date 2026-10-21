@@ -22,6 +22,7 @@ Plain ES modules, no build step: GitHub Pages serves the files as they are.
 - Client and server share `rules.js`: `functions/index.js` requires `src/core/engine.js` (Node 22 loads ES modules with `require`). `scripts/sync-functions.js` copies `src/core` and `src/games` (no views) and `trivia.json` into `functions/` before every deploy (firebase.json predeploy) and every emulator run.
 - Load-time rule: a module must not use another module's value while loading if the two import each other (only inside functions). Keys and switches read at load live in `ui/config.js` and `core/config.js`.
 - `admin.html` + `playtest.js`: the admin dashboard (keeps its own copies of a few defaults; `tests/core/admin-sync.test.js` checks them).
+- Match logs (`functions/matchLogRules.js`): every online and Super Chaos match keeps a compact event log (`matchLogs/{key}`, summary in `matchLogIndex`), written by the server where it can (Find Match moves, the friend rooms' record, presence) and by the phone through `devlog` (`error`, `mlog`, `report`: `net/tracking.js`); deleted 30 days after the last event. The admin's Match inspector lists them (reported first), shows a timeline and exports one as JSON. The in-game menu's "Report a problem" (`ui/report.js`) flags the match.
 - Tests: `npm test` runs `tests/games/<game>.test.js`, `tests/shared/`, `tests/core/`, `tests/server/` and `tests/page.test.js` (about 10 s); one game alone: `node --test tests/games/<game>.test.js`. `npm run sim -- <name>` runs a slow simulation in `tests/sim/` (`npm run sim` lists them). `npm run test:emulators` runs the server on the Firebase Emulator Suite (needs Java). `tests/server/chaos-online.test.js` (in `npm test`) plays a friend-room Super Chaos match with two SDK clients on the database emulator (the jar in firebase-tools' cache, `firebase setup:emulators:database`; skipped, and says so, without it or Java).
 - Deploy: `./deploy.sh "message"` commits, pushes `main` and deploys only what changed since the live version (git diff): the site through `pages.yml`, functions and/or rules through `firebase.yml` (tests first). `DEPLOY_REMOTE` picks the remote (the live repository is Tiger-tac-toe).
 
@@ -48,6 +49,7 @@ Create src/games/<name>/ with rules.js, view.js, ai.js and meta.js, and register
 - Ratings and the leaderboard are off (RATINGS_ENABLED = false). Don't re-enable without being asked.
 
 ## Workflow
+- When debugging a match issue, ask me for the exported match log (the admin's Match inspector → Export) if one isn't attached.
 - Keep changes scoped to what's asked. Touch only the relevant game folders.
 - Run `npm test` for the games you changed. Run simulations only when a prompt asks or when changing a game's balance.
 - Don't stop for review unless the prompt asks. If something is ambiguous, pick the option most consistent with these rules and note it.

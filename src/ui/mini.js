@@ -8,6 +8,7 @@ import { INFO, viewOf } from '../games/index.js';
 import { soundBtn } from '../audio/sound.js';
 import { isMM } from '../net/matchmaking.js';
 import { rx } from '../net/reactions.js';
+import { canReport } from '../net/tracking.js';
 import { blocked, leaveLoses, lockMine, moveWait, mySide, pinned, remoteTurn } from '../net/room.js';
 import { N, esc, menuOpen, menuStep, state } from './app.js';
 import { CHEV } from './art.js';
@@ -87,7 +88,7 @@ export function pauseMenu() {
       <div class="row"><button class="btn" data-act="pause-back">No</button><button class="btn go" data-act="pause-leave">Yes</button></div></div></div>`;
   }
   return `<div class="flash pause" role="dialog" aria-label="Menu"${fxAttr(fxAt('menu', menuStep))}><div class="card"><h2>Paused</h2><p>${state.online && state.timer.limit ? 'The turn clock keeps running.' : state.cpu ? 'The computer waits.' : 'Take your time.'}</p>
-    <div class="row"><button class="btn go" data-act="pause-resume">Resume</button><button class="btn" data-act="pause-main">Main menu</button></div>${state.online && mySide() ? `<button class="btn react-mute" data-act="react-mute" aria-pressed="${rx.mute}">Mute opponent's reactions: ${rx.mute ? 'On' : 'Off'}</button>` : ''}${soundBtn('pause')}</div></div>`;
+    <div class="row"><button class="btn go" data-act="pause-resume">Resume</button><button class="btn" data-act="pause-main">Main menu</button></div>${canReport() ? '<button class="btn repbtn" data-act="pause-report">Report a problem</button>' : ''}${state.online && mySide() ? `<button class="btn react-mute" data-act="react-mute" aria-pressed="${rx.mute}">Mute opponent's reactions: ${rx.mute ? 'On' : 'Off'}</button>` : ''}${soundBtn('pause')}</div></div>`;
 }
 // One line about a move, for the result toast and the handoff bar.
 function summary(f) {

@@ -2349,3 +2349,10 @@ html { height: 100%; overflow: hidden; overscroll-behavior: none; }
 #app { height: 100vh; height: 100dvh; max-height: 100dvh; overflow: hidden; overscroll-behavior: none; }
 .wlist, .setup-box, .online-mid, .mmlist, .excard, .hlist, [data-keep-scroll] { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
 button.btn.snd { padding: 0; display: grid; place-items: center; }   /* the speaker: centred in its square, whatever padding a screen's buttons have */
+
+/* "Report a problem" (ui/report.js): its own dialog over the in-game menu */
+.flash.repdlg { position: fixed; z-index: 30; }
+.repdlg .card { width: min(360px, 92vw); box-sizing: border-box; }
+.repdlg textarea { display: block; box-sizing: border-box; width: 100%; margin: 12px auto 4px; padding: 10px 12px; border: 2px solid var(--line); border-radius: 12px; background: var(--card); color: var(--text); font-family: inherit; font-size: 16px; font-weight: 600; line-height: 1.3; resize: none; user-select: text; -webkit-user-select: text; touch-action: manipulation; }
+.repdlg .repleft { font-size: 13px; color: var(--muted); text-align: right; }
+.pause .repbtn { display: block; margin: 12px auto 0; height: 40px; font-size: 14px; }

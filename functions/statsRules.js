@@ -126,7 +126,7 @@ function periodUpdates(what, t) {
 // person is sent or kept. k: one per app open and per 'live' (sent every 10 minutes while a match is
 // under way on screen, so a long match stays one session), and one start and one end per match, so an
 // event sent twice (a retry, a reload) is kept once.
-const DEV_EVENTS = ['open', 'live', 'start', 'finish', 'leave', 'error'];   // (error: something went wrong on the phone, a short line, with its match where there was one)
+const DEV_EVENTS = ['open', 'live', 'start', 'finish', 'leave', 'error', 'report', 'mlog'];   // (error: something went wrong on the phone, a short line, with its match where there was one)
 const DEV_MODES = ['local', 'cpu', 'cvc', 'friend', 'match', 'chaos'];
 const TAG_RE = /^[a-z0-9][a-z0-9_-]{0,23}$/;
 const tagOk = v => typeof v === 'string' && TAG_RE.test(v);
@@ -134,6 +134,7 @@ function devHash(dev) { return crypto.createHash('sha256').update('ttc-dev:' + d
 function checkDev(d, t) {
   if (!d || typeof d !== 'object' || !idOk(d.dev) || !DEV_EVENTS.includes(d.ev)) return null;
   const ev = { t, ev: d.ev };
+  const match = () => DEV_MODES.includes(d.mode) && typeof d.g === 'string' && /^[-\w]{4,60}$/.test(d.g);
   let k;
   if (d.ev === 'open') {
     if (!idOk(d.o)) return null;
@@ -141,15 +142,25 @@ function checkDev(d, t) {
   } else if (d.ev === 'error') {
     if (!idOk(d.o) || typeof d.msg !== 'string' || !d.msg.trim()) return null;
     ev.msg = d.msg.replace(/[^\x20-\x7e]/g, '?').slice(0, 160);
-    if (DEV_MODES.includes(d.mode) && typeof d.g === 'string' && /^[-\w]{4,60}$/.test(d.g)) { ev.m = d.mode; ev.g = d.g; }
+    if (match()) { ev.m = d.mode; ev.g = d.g; }
     k = 'x' + d.o;
+  } else if (d.ev === 'report' || d.ev === 'mlog') {               // a "Report a problem" (its note), or an event for the match's log only: always with its match
+    if (!idOk(d.o) || !match()) return null;
+    ev.m = d.mode; ev.g = d.g;
+    if (d.ev === 'mlog' && (!d.e || typeof d.e !== 'object')) return null;
+    k = (d.ev === 'report' ? 'r' : 'l') + d.o;
   } else {
-    if (!DEV_MODES.includes(d.mode) || typeof d.g !== 'string' || !/^[-\w]{4,60}$/.test(d.g)) return null;
+    if (!match()) return null;
     ev.m = d.mode; ev.g = d.g;
     if (d.ev === 'live') { if (!idOk(d.o)) return null; k = 'p' + d.o; }
     else k = (d.ev === 'start' ? 's' : 'e') + d.g;                        // one start and one end (finished or left) per match
   }
-  return { h: devHash(d.dev), k, ev, tag: tagOk(d.tag) ? d.tag : null };
+  const out = { h: devHash(d.dev), k, ev, tag: tagOk(d.tag) ? d.tag : null };
+  if (typeof d.v === 'string' && /^[-\w.]{1,20}$/.test(d.v)) out.v = d.v;                // the app's version on the phone
+  if (d.s === 'X' || d.s === 'O') out.s = d.s;                                           // the phone's side in the match
+  if (d.ev === 'report') { out.note = typeof d.note === 'string' ? d.note.trim().replace(/[^\x20-\x7e -￿]/g, ' ').slice(0, 140) : ''; if (out.note) ev.note = out.note; }
+  if (d.ev === 'mlog') out.e = d.e;
+  return out;
 }
 
 module.exports = { MODES, CLIENT_MODES, MAX_MS, periodKeys, PERIOD_NODE, hashId, idOk, checkEnd, checkRun, RUN_BIN, startUpdates, endUpdates, periodUpdates,

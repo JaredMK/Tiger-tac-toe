@@ -6,7 +6,7 @@ import { loggedIn } from './accounts.js';
 import { FIREBASE_CONFIG, call, configured, fb } from './connect.js';
 import { isMM } from './matchmaking.js';
 import { state } from '../ui/app.js';
-import { KEY } from '../ui/config.js';
+import { APP_VERSION, KEY } from '../ui/config.js';
 
 // ----- anonymous game stats: local matches are reported to the server's `track` function (online
 // matches are counted by the server itself). Only a random id this browser made up goes with them
@@ -72,6 +72,9 @@ export function takeTag() {                                   // the link's ?t=:
 function devEvent(data) {
   if (!configured() || (window.TTT_FIREBASE && window.TTT_FIREBASE.uid)) return;   // (the friend-game tests run without functions)
   data.dev = devIdAny();
+  data.v = APP_VERSION;                                         // (the match logs: which version each phone ran)
+  const side = state.online ? state.online.me : null;
+  if (side === 'X' || side === 'O') data.s = side;
   const tag = testerTag();
   if (tag) data.tag = tag;
   devLast = Date.now();
@@ -98,6 +101,21 @@ function devMatch() {
   }
   if (!['board', 'mini', 'win', 'review', 'review-mini'].includes(state.screen)) return null;
   return state.stats && state.stats.id ? { g: 'l' + state.stats.id, mode: state.stats.mode } : null;
+}
+// The match's log (functions/matchLogRules.js): what only this phone knows (a match against the computer,
+// a move the record refused). e: { k: kind, ...short fields }. Fire and forget.
+export function matchLog(e) {
+  const m = devMatch();
+  if (m && /^[-\w]{4,60}$/.test(m.g)) devEvent({ ev: 'mlog', o: 'l' + randHex(8), g: m.g, mode: m.mode, e });
+}
+// "Report a problem": the match flagged for the admin's inspector, the moment stamped in its log, with the
+// player's note (at most 140 characters). Only where there is a match on show.
+export const canReport = () => { const m = devMatch(); return !!(m && /^[-\w]{4,60}$/.test(m.g)); };
+export function reportProblem(note) {
+  const m = devMatch();
+  if (!m) return false;
+  devEvent({ ev: 'report', o: 'r' + randHex(8), g: m.g, mode: m.mode, note: String(note || '').trim().slice(0, 140) });
+  return true;
 }
 const devSent = new Set();
 export function devWatch() {

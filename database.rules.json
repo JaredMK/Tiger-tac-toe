@@ -238,7 +238,9 @@
       },
       "bowling": {
         ".write": "auth != null && auth.token.admin === true",
-        "$k": { ".validate": "$k.matches(/^(aimMs|meterMs)$/) && newData.isNumber() && newData.val() >= 300 && newData.val() <= 3000" }
+        "$k": {
+          ".validate": "$k.matches(/^(aimMs|meterMs)$/) && newData.isNumber() && newData.val() >= 300 && newData.val() <= 3000"
+        }
       },
       "pinball": {
         ".write": "auth != null && auth.token.admin === true",
@@ -442,6 +444,21 @@
       "$other": {
         ".validate": false
       }
+    },
+    "matchLogs": {
+      ".read": "auth != null && auth.token.admin === true"
+    },
+    "matchLogIndex": {
+      ".read": "auth != null && auth.token.admin === true",
+      ".indexOn": [
+        "last",
+        "reported"
+      ]
+    },
+    "matchLogRoom": {
+      ".indexOn": [
+        "t"
+      ]
     }
   }
 }

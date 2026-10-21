@@ -87,7 +87,11 @@ select { border: 2.5px solid var(--ink); border-radius: 10px; padding: 4px 8px; 
 .chart .hit { fill: transparent; } .chart .hit:hover { fill: rgba(22, 18, 16, .07); }
 .lnk { all: unset; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; font-family: ui-monospace, Menlo, monospace; font-size: 14px; }
 .lnk:focus-visible { outline: 2px solid var(--sky); outline-offset: 2px; }
-tr.dev { cursor: pointer; } tr.dev:hover td, tr.dev.open td { background: var(--paper); }
+tr.dev, tr.mlrow { cursor: pointer; } tr.mlrow:hover td, tr.mlrow.open td { background: var(--paper); } tr.mlrow.rep td:first-child { color: var(--x); font-weight: 800; }
+.mlfilt { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 10px; } .mlfilt input, .mlfilt select { height: 36px; }
+.mltl { font: 13px/1.45 ui-monospace, Menlo, Consolas, monospace; overflow-wrap: anywhere; max-height: 420px; overflow: auto; margin: 6px 0 0; padding: 0; list-style: none; }
+.mltl li { padding: 2px 0; border-bottom: 1px dashed var(--stone); } .mltl .k { display: inline-block; min-width: 72px; font-weight: 800; } .mltl .k.reject, .mltl .k.error, .mltl .k.report { color: var(--x); } .mltl .k.offline { color: var(--plum); }
+ tr.dev:hover td, tr.dev.open td { background: var(--paper); }
 .tlpanel { margin-top: 10px; border: 2.5px solid var(--ink); border-radius: 14px; background: var(--paper); padding: 10px 12px 12px; }
 .tlpanel .row { margin-bottom: 8px; } .tlpanel .row h3 { flex: 1; margin: 0; font: 400 16px 'Luckiest Guy', sans-serif; letter-spacing: .02em; }
 #playCard .kpis { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
@@ -140,6 +144,7 @@ const cfgGet = (sec, k) => { const v = ((ctl.config || {})[sec] || {})[k]; retur
 let sortBy = { k: 'avgWin', dir: 1 }, miniMode = 'all', period = 'd';
 let accts = null, acctSort = { k: 'joined', dir: -1 };                       // the Accounts table: newest first
 let play = null, devSort = { k: 'last', dir: -1 }, devOpen = null, tagPick = '', allSessions = false;   // the playtest section
+let mlogs = null, mlEvents = {}, mlOpen = null, mlFilt = { who: '', mode: '', from: '', to: '' };       // the match inspector: the logs' index, the logs opened, the filters
 const PT = window.Playtest;
 
 // ---------- the numbers ----------
@@ -267,6 +272,7 @@ function render() {
       ${kpi('First player (X) wins', pct(ratio(t.xWins, t.xWins + t.oWins)), `${t.xWins} of ${t.xWins + t.oWins} decided`)}
     </div>
     <div class="grid2"><div class="card"><h2>Players per day</h2>${players}</div><div class="card"><h2>Matches finished per day</h2>${matches}</div></div>
+    ${matchCard()}
     ${playCard()}
     ${accountsCard()}
     ${findCard()}
@@ -288,6 +294,56 @@ function render() {
       ${miniTable}<h2 style="margin-top:14px">Average winner moves</h2>${hbarChart(rows, 'avgWin', 'Average winner moves by mini-game', v => num(v))}</div>
     ${flaggedCard()}
     <div class="card"><div class="row"><h2>Players over time</h2><div class="tabs">${[['d', 'Days'], ['w', 'Weeks'], ['m', 'Months']].map(([k, l]) => `<button data-period="${k}" aria-pressed="${period === k}">${l}</button>`).join('')}</div></div>${ptable}</div>`;
+}
+
+// ---------- the match inspector: every logged match (matchLogIndex), reported ones first; a match's
+// event timeline (matchLogs/{key}) and its export as JSON. (functions/matchLogRules.js: the events.) ----------
+const ML_MODES = { match: 'Find Match', bot: 'Find Match vs a bot', friend: 'Friend code', 'friend-sc': 'Super Chaos (friend)', chaos: 'Super Chaos', local: 'Two players', cpu: 'vs Computer', cvc: 'Computer vs Computer' };
+function mlRows() {
+  const f = mlFilt, from = f.from ? Date.parse(f.from + 'T00:00:00') : null, to = f.to ? Date.parse(f.to + 'T23:59:59') : null, who = f.who.trim().toLowerCase();
+  return Object.entries(mlogs || {}).map(([key, x]) => Object.assign({ key }, x)).filter(r => (!f.mode || r.mode === f.mode) && (!who || (r.who || '').includes(who) || r.key.toLowerCase().includes(who))
+    && (from == null || (r.last || 0) >= from) && (to == null || (r.started || 0) <= to))
+    .sort((a, b) => (b.reported || 0) - (a.reported || 0) || (b.last || 0) - (a.last || 0));
+}
+const mlPlayers = r => ['X', 'O'].map(s => (r.players && r.players[s] && r.players[s].name ? `${s} ${esc(r.players[s].name)}` : '')).filter(Boolean).join(' · ') || '<span class="dim">–</span>';
+function mlTimeline(key) {
+  const ev = mlEvents[key];
+  if (!ev) return '<p class="note">Loading…</p>';
+  if (ev === 'error') return '<p class="note">Could not load this log.</p>';
+  const t0 = ev.length ? ev[0].t : 0, rel = t => { const s = Math.round((t - t0) / 1000); return `+${Math.floor(s / 60)}:${pad(s % 60)}`; };
+  const fields = e => Object.entries(e).filter(([k]) => !['t', 'k'].includes(k)).map(([k, v]) => `${esc(k)}=${esc(typeof v === 'object' ? JSON.stringify(v) : v)}`).join(' ');
+  return `<ul class="mltl">${ev.map(e => `<li>${esc(PT.nyWhen(e.t))} <span class="dim">${rel(e.t)}</span> <span class="k ${esc(e.k)}">${esc(e.k)}</span> ${fields(e)}</li>`).join('') || '<li>No events.</li>'}</ul>`;
+}
+function matchCard() {
+  if (!mlogs) return '<div class="card"><h2>Match inspector</h2><p class="note">Not loaded.</p></div>';
+  const rows = mlRows(), shown = rows.slice(0, 200), nrep = rows.filter(r => r.reported).length;
+  const filt = `<div class="mlfilt"><input id="mlWho" type="search" placeholder="Player, uid, device or room" value="${esc(mlFilt.who)}">
+    <select id="mlMode"><option value="">All modes</option>${Object.entries(ML_MODES).map(([k, l]) => `<option value="${k}"${mlFilt.mode === k ? ' selected' : ''}>${l}</option>`).join('')}</select>
+    <label>From <input id="mlFrom" type="date" value="${esc(mlFilt.from)}"></label><label>To <input id="mlTo" type="date" value="${esc(mlFilt.to)}"></label></div>`;
+  const body = shown.map(r => {
+    const open = mlOpen === r.key;
+    return `<tr class="mlrow${open ? ' open' : ''}${r.reported ? ' rep' : ''}" data-ml="${esc(r.key)}"><td>${r.reported ? `Reported ${esc(PT.nyWhen(r.reported))}${r.reports > 1 ? ` (${r.reports})` : ''}` : ''}</td><td>${r.started ? esc(PT.nyWhen(r.started)) : '–'}</td><td>${esc(ML_MODES[r.mode] || r.mode || '?')}</td><td>${mlPlayers(r)}</td><td>${n(r.n)}</td><td>${esc(r.vers || '')}</td><td>${esc(r.note || '')}</td></tr>`
+;
+  }).join('');
+  const sel = mlOpen && rows.find(r => r.key === mlOpen);       // the match opened: its timeline under the table (the table scrolls sideways on a phone; this does not)
+  const panel = sel ? `<div class="tlpanel" id="mlTimeline" role="region" aria-label="Match ${esc(sel.key)}: its log"><div class="row"><h3>${esc(sel.key)}${sel.room ? ` · room ${esc(sel.room)}` : ''}</h3><button class="btn" data-mlexport="${esc(sel.key)}">Export</button><button class="btn" data-mlclose="1">Close</button></div>${sel.note ? `<p class="note mid-left" style="margin:0">Reported: ${esc(sel.note)}</p>` : ''}${sel.devs ? `<p class="note" style="margin:0">Devices ${esc(sel.devs)}</p>` : ''}${mlTimeline(sel.key)}</div>` : '';
+  return `<div class="card" id="mlCard"><div class="row"><h2>Match inspector</h2><span class="note" style="margin:0">${rows.length} match${rows.length === 1 ? '' : 'es'}${nrep ? ` · ${nrep} reported` : ''} · kept 30 days</span></div>${filt}
+    <div class="tbl"><table><thead><tr><th>Reported</th><th>Started</th><th>Mode</th><th>Players</th><th>Events</th><th>App</th><th>Note</th></tr></thead><tbody>${body || '<tr><td colspan="7" class="dim">No matches</td></tr>'}</tbody></table></div>
+    ${rows.length > shown.length ? `<p class="note">The ${shown.length} most recent shown: narrow the filters for the rest.</p>` : ''}${panel}</div>`;
+}
+async function mlLoad(key) {
+  if (mlEvents[key] && mlEvents[key] !== 'error') return;
+  try { const v = (await fb.dbM.get(fb.dbM.ref(fb.db, `matchLogs/${key}`))).val() || {}; mlEvents[key] = Object.entries(v).map(([id, e]) => Object.assign({}, e, { id })).sort((a, b) => a.t - b.t || (a.id < b.id ? -1 : 1)).map(e => { delete e.id; return e; }); }
+  catch (e) { mlEvents[key] = 'error'; }
+  render();
+}
+async function mlExport(key) {
+  await mlLoad(key);
+  const blob = new Blob([JSON.stringify({ key, exported: new Date().toISOString(), summary: (mlogs || {})[key] || null, events: Array.isArray(mlEvents[key]) ? mlEvents[key] : [] }, null, 1)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = `match-log-${key}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
 
 // ---------- sorting a table: a heading's button flips its order ----------
@@ -795,7 +851,10 @@ async function load() {
 // playtest logs (devices/, devlog/: the admin only). Each part on its own: one refused leaves the rest.
 async function loadPeople() {
   const g = p => fb.dbM.get(fb.dbM.ref(fb.db, p)).then(s => s.val() || {}).catch(() => null);
-  const [users, local, seen, devices, logs] = await Promise.all([g('users'), g('localStats'), g('lastSeen'), g('devices'), g('devlog')]);
+  const q = (ord, lim) => fb.dbM.get(fb.dbM.query(fb.dbM.ref(fb.db, 'matchLogIndex'), fb.dbM.orderByChild(ord), ...lim)).then(s => s.val() || {}).catch(() => null);
+  const [users, local, seen, devices, logs, mlRecent, mlRep] = await Promise.all([g('users'), g('localStats'), g('lastSeen'), g('devices'), g('devlog'),
+    q('last', [fb.dbM.limitToLast(500)]), q('reported', [fb.dbM.startAt(1), fb.dbM.limitToLast(200)])]);   // (the match inspector: the latest, and every reported one)
+  mlogs = mlRecent || mlRep ? Object.assign({}, mlRecent || {}, mlRep || {}) : null; mlEvents = {};
   accts = users ? { users, local: local || {}, seen: seen || {} } : null;
   play = devices || logs ? { devices: devices || {}, logs: logs || {} } : null;
 }
@@ -822,7 +881,11 @@ async function signIn(how) {
 app.addEventListener('click', e => {
   let b = e.target.closest('button');
   if (!b) { const tr = e.target.closest('tr.dev'); if (tr) b = tr.querySelector('button[data-dev]'); }   // a tap anywhere on a device's row
+  const mr = !b && e.target.closest('tr.mlrow');
+  if (mr && fb) { const k = mr.dataset.ml; mlOpen = mlOpen === k ? null : k; render(); if (mlOpen) { mlLoad(mlOpen); const el = document.getElementById('mlTimeline'); if (el) el.scrollIntoView({ block: 'nearest' }); } return; }   // a match's row: its timeline
   if (!b || !fb) return;
+  if (b.dataset.mlexport) { mlExport(b.dataset.mlexport); return; }
+  if (b.dataset.mlclose) { mlOpen = null; render(); return; }
   if (b.dataset.act === 'google') signIn('google');
   else if (b.dataset.act === 'email') signIn('email');
   else if (b.dataset.act === 'signout') fb.authM.signOut(fb.auth);
@@ -847,6 +910,7 @@ app.addEventListener('click', e => {
 });
 app.addEventListener('change', e => {
   if (e.target.id === 'mm') { miniMode = e.target.value; render(); }
+  else if (['mlWho', 'mlMode', 'mlFrom', 'mlTo'].includes(e.target.id)) { mlFilt[{ mlWho: 'who', mlMode: 'mode', mlFrom: 'from', mlTo: 'to' }[e.target.id]] = e.target.value; mlOpen = null; render(); }
   else if (e.target.id === 'tagPick') { tagPick = e.target.value; devOpen = null; render(); }
   else if (e.target.dataset && e.target.dataset.cfg) saveCfg(e.target);
   else if (e.target.dataset && e.target.dataset.feat) saveFeat(e.target);

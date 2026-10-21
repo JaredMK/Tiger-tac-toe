@@ -22,6 +22,7 @@ import { render } from './render.js';
 import { repDuration, repStart, repStop } from './replay.js';
 import { scFailText, scNextOnline, scOnlineWait } from '../net/chaos.js';
 import { holdOf, playFlash } from './turns.js';
+import { matchLog } from '../net/tracking.js';
 
 export const SC_MS = { cpu: [1400, 4200], spot: 800, claim: 1300, clash: 1050, flip: 900, end: 1300, popup: 2, idle: 300, last: 1000, skip: 1000 };   // the computer's move takes this long; the recap's steps; the pop-up replay's speed, its longest idle moment (a pause in the inputs, the wait between a move's steps), how long its last result stays up, and the end shown after a skip
 let scTimer = null;
@@ -111,7 +112,7 @@ export function chaosStep() {
   if (scUi.round !== sc.round) {                                    // a round begins (or goes on after a reload)
     const fresh = sc.deadline == null && sc.held == null;
     scUi = { round: sc.round, readyAt: fresh && !sc.online ? now() + SC_MS.cpu[0] + Math.random() * (SC_MS.cpu[1] - SC_MS.cpu[0]) : 0, stage: null, at: 0, played: false };
-    if (fresh && !sc.online) sc.deadline = now() + sc.limit * 1000;
+    if (fresh && !sc.online) { sc.deadline = now() + sc.limit * 1000; matchLog({ k: 'round', r: sc.round }); }   // (against the computer: the phone's log of the match; a friend room's is the server's)
   }
   if (sc.online) {                                                 // a friend room: the move goes in on the record, which settles the round (both in, or the deadline); looked at every second
     const w = scOnlineWait();
@@ -130,11 +131,15 @@ export function scTick() {
   const left = scClockLeft();
   if (left == null || left > 0) return;
   const r = chaosTimeout(state, RNG);
+  if (r.ok) matchLog({ k: 'timeout', r: state.sc.round, q: r.square, g: state.squares[r.square] && state.squares[r.square].mini.type });
   if (r.ok) { state.screen = 'mini'; state.zoom = r.square; state.spot = null; playFlash(); commit(); }   // the random move, played where it was made
 }
 function endRound() {
   const rc = chaosResolve(state, RNG);
   if (!rc) return;
+  const typ = i => (rc.view && rc.view[i] ? rc.view[i].type : state.squares[i] && state.squares[i].mini.type);
+  matchLog({ k: 'resolve', r: rc.round, me: rc.me, mg: typ(rc.me), cpu: rc.cpu ? rc.cpu.square : undefined, cg: rc.cpu ? rc.cpu.type : undefined,
+    claims: rc.claims.map(c => c.square + c.by).join(' ') || undefined, resets: rc.resets.map(x => `${x.square}:${x.why}`).join(' ') || undefined, w: rc.result ? rc.result.winner : undefined });
   rc.at = now();                                                 // the recap plays from now (a friend room's comes from the record, with its shared start)
   state.sc.deadline = null; state.sc.held = null;
   scUi = { round: null, readyAt: 0, stage: null, at: 0, played: false };

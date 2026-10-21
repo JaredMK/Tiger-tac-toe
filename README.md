@@ -850,6 +850,29 @@ also run it yourself (`node scripts/make-admin.js <username>`, with `GOOGLE_APPL
 pointing at a key). The username you type shows in the workflow's log, which is public for a public
 repository; usernames are public anyway (records and profiles).
 
+## Match logs and the match inspector (for debugging)
+
+Every online match (Find Match, a friend room, Super Chaos in a friend room) and every Super Chaos match
+against the computer keeps a compact, timestamped log of what happened: the start (mode, players, the
+squares dealt), each round's start and result, each move accepted or refused and why, timeouts, a phone
+dropping off and coming back (presence), the phones' errors, each phone's app version (the deploy stamps the
+commit into `src/ui/config.js` `APP_VERSION`) and its anonymous device id (the device log's hash,
+shortened). The server writes what it sees itself: Find Match moves and refusals (`changeGame`), a friend
+room's record write by write (`friendGameDone`: `friendEvents`), presence (`roomPresenceLog`,
+`gamePresenceLog`). The phones send the rest through the device log (`devlog`): `error` (with its match),
+`mlog` (only the phone knows it: a match against the computer's rounds and timeouts, a move a friend room's
+record refused; kept for the match's log only) and `report`. Stored in `matchLogs/{key}` (events) and
+`matchLogIndex/{key}` (the summary: mode, players, started, last, events, versions, devices, reported, note),
+the admin alone may read them and nobody writes them but the server; capped at 3,000 events a match, and
+deleted by the sweep 30 days after a match's last event. Keys: `m{game}` (Find Match), `f{room}_{match}`
+(friend room), `l{id}` (a match on one phone). Rules: `functions/matchLogRules.js`; tests:
+`tests/server/match-log.test.js`, and the server's in `tests/emulator/server.test.js`.
+
+The admin dashboard's **Match inspector** lists the logged matches, reported ones first, filtered by player
+(name, uid, device or room), mode or dates; a match's row opens its event timeline, and **Export** downloads
+its log as JSON. In a match, the in-game menu's **Report a problem** takes an optional note (up to 140
+characters), flags the match and stamps the moment in its log (`src/ui/report.js`).
+
 ## Tests
 
 The rules of the game live in `src/core` (the main board, turns, the timer, randomness, win and draw)
