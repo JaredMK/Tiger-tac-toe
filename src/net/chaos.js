@@ -12,11 +12,11 @@ import { upgradeMini } from '../core/minis.js';
 import { MATCH_FIELDS, applyChaosBegin, applyChaosDeadline, applyChaosSubmit, fullState } from '../core/records.js';
 import { other } from '../core/util.js';
 import { SND } from '../audio/sound.js';
-import { connected, fb, serverNow } from './connect.js';
-import { matchTransaction, showNotice } from './moves.js';
-import { parseMatch, room } from './room.js';
-import { NAV_SCREENS, RNG, flashTimer, save, setFlashTimer, state } from '../ui/app.js';
-import { flashLeft } from '../ui/turns.js';
+import { call, connected, fb, serverNow } from './connect.js';
+import { matchTransaction, moveRejected, showNotice } from './moves.js';
+import { blocked, parseMatch, room, setMoveWait } from './room.js';
+import { NAV_SCREENS, RNG, commit, flashTimer, save, setFlashTimer, state } from '../ui/app.js';
+import { flashLeft, playFlash } from '../ui/turns.js';
 import { chaosStep, scAtHole, scOwnDue, scRecapStage, scRecapTotal, setScUi } from '../ui/chaos.js';
 import { render } from '../ui/render.js';
 import { repStop } from '../ui/replay.js';
@@ -24,6 +24,35 @@ import { devError } from './tracking.js';
 
 const clone = v => JSON.parse(JSON.stringify(v));
 let sending = false, busy = false;
+// A Super Chaos match from Find Match: the server runs it (core/scgame.js). This phone sends each step of
+// its move as a request (scRequest) and plays the server's answer; the round's deadline and the next
+// round's start are the server's to act on, asked for here (scTick, scBegin); the record read is the game's
+// public state with this side's own node merged in (net/matchmaking.js).
+const srv = () => !!(state.online && state.online.kind === 'mm');
+let scBusy = false, scLater = null, nudgeAt = 0;
+const NUDGE_MS = 2500;
+export async function scRequest(i, m, rep) {
+  const sc = state.sc, o = state.online;
+  if (!sc || !o || !srv() || scBusy || blocked() || sc.me || sc.recap || i == null) return false;
+  if ((state.lock != null && state.lock !== i) || (sc.moved != null && sc.moved !== i)) { SND.play('error'); return false; }
+  scBusy = true; setMoveWait(Date.now()); render();
+  let r;
+  try { r = await call('scMove', Object.assign({ game: o.game, square: i, move: m }, rep ? { rep } : {})); }
+  catch (e) { r = { ok: false, reason: 'network' }; }
+  scBusy = false; setMoveWait(null);
+  const later = scLater; scLater = null;
+  if (state.sc !== sc || !state.online || state.online.game !== o.game) return false;   // (the match moved on meanwhile)
+  if (!r || !r.ok) { moveRejected(r ? r.reason : 'network'); render(); if (later) scFollow(later); return false; }
+  state.squares[i].mini = r.mini;                                 // the square as the server left it (what this phone may see of it)
+  state.lock = r.lock == null ? null : r.lock; sc.moved = r.moved;
+  if (r.me) { sc.me = r.me; state.done = r.flash; sc.sent = sc.round; }
+  state.draft = ''; state.pick = null; state.sel = [];
+  state.moves += 1; state.lastSquare = i; state.lastBy = o.me;
+  state.flash = r.flash;
+  playFlash(); commit();                                          // (the move's animation and sound, once, from its result)
+  if (later) scFollow(later);                                     // (the record that arrived meanwhile: the round settled, or the other side in)
+  return true;
+}
 
 // The match's fields from the record, every secret in its square (this phone plays its own copy of the round).
 // keep: this phone's own move, its result still on show, stays up (the round settled with it: the shared start waits for it).
@@ -46,6 +75,7 @@ function recapOf(sc, me, own) {
 // The room's record changed (room.js applyMatch hands a Super Chaos match here).
 export function scFollow(rec) {
   const st = rec.state, sc = st.sc, o = state.online;
+  if (scBusy) { scLater = rec; return; }                        // (a step of this phone's move on its way: the answer first, then the record)
   if (o.matchId !== st.id) { o.matchId = st.id; o.shownSeq = st.seq; scJoin(rec); return; }   // a new match
   if (scRecapStage()) return;                                   // a recap is playing here by the clock: the record is read again at its end
   const loc = state.sc && state.sc.online ? state.sc : null;
@@ -63,6 +93,7 @@ export function scFollow(rec) {
 // is kept as the record is joined, to go in; never dropped for a move not yet made.
 function heldMove(full) {
   const loc = state.sc, sc = full.sc, me = state.online.me;
+  if (srv()) return null;                                        // (the server has every step as it was made)
   if (!loc || !loc.online || !loc.me || state.id !== full.id || loc.round !== sc.round || sc.recap || sc.deadline == null || (sc.moves && sc.moves[me])) return null;
   const sq = state.squares[loc.me.square];
   if (!sq || sq.owner || !sq.mini) return null;
@@ -88,6 +119,9 @@ function scJoin(rec) {
   } else if (held) {                                              // this phone's move, made but not in: it stays made, and goes in from here
     state.squares[held.me.square] = held.square;
     Object.assign(state.sc, { me: held.me, moved: held.moved, start: held.start, steps: held.steps, fail: held.fail });
+  } else if (full.scProg && full.scProg.square != null) {         // a move still going on at the server (a reload mid-move): held to its square, as its steps left it
+    const p = full.scProg;
+    state.squares[p.square].mini = clone(p.mini); state.lock = p.lock == null ? null : p.lock; state.sc.moved = p.moved;
   }
   state.turn = me;
   setScUi({ round: null, readyAt: 0, stage: null, at: 0, played: false });
@@ -123,11 +157,12 @@ export function scNextOnline() {
 // next look (ui/chaos.js chaosStep comes back then), or null.
 export function scOnlineWait() {
   const sc = state.sc, o = state.online;
-  if (sc.me && sc.sent !== sc.round) { scSend(); return 1000; }
+  if (sc.me && sc.sent !== sc.round) { if (srv()) sc.sent = sc.round; else { scSend(); return 1000; } }   // (the server had every step as it was made)
   const rec = room && parseMatch(room.match);
   if (!rec || !rec.state.sc || rec.state.winner || rec.state.sc.round !== sc.round) return null;
   const rsc = rec.state.sc;
   if (rsc.deadline != null && serverNow() >= rsc.deadline + SC_ONLINE.graceMs && !(rsc.moves && rsc.moves.X && rsc.moves.O)) { scDeadline(); return 1500; }
+  if (srv() && sc.me && Date.now() - nudgeAt >= NUDGE_MS) { nudgeAt = Date.now(); call('scTick', { game: o.game }).catch(() => {}); }   // waiting on the other side: a word to the server every few seconds (a bot's move once due; its own timings)
   if (o && o.me && rsc.moves && rsc.moves[o.me] && sc.sent !== sc.round) sc.sent = sc.round;
   return 1000;
 }
@@ -179,6 +214,7 @@ function scLost(reason, round, square) {
 async function scDeadline() {
   if (busy || !fb || !connected) return;
   busy = true;
+  if (srv()) { try { await call('scTick', { game: state.online.game }); } catch (e) { /* the next look tries again */ } busy = false; return; }
   try { await matchTransaction(rec => { const r = applyChaosDeadline(rec, serverNow(), RNG); return r.ok ? r.rec : null; }); } catch (e) { /* the next look tries again */ }
   busy = false;
 }
@@ -186,6 +222,7 @@ async function scDeadline() {
 async function scBegin() {
   if (busy || !fb || !connected) return;
   busy = true;
+  if (srv()) { try { await call('scBegin', { game: state.online.game }); } catch (e) { /* the next look tries again */ } busy = false; return; }
   try { await matchTransaction(rec => { const r = applyChaosBegin(rec, serverNow()); return r.ok ? r.rec : null; }); } catch (e) { /* the next look tries again */ }
   busy = false;
 }

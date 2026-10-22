@@ -73,6 +73,11 @@
       "$id": {
         "pub": {
           ".read": "auth != null && (data.child('players/X/uid').val() === auth.uid || data.child('players/O/uid').val() === auth.uid)"
+        },
+        "sides": {
+          "$side": {
+            ".read": "auth != null && $side.matches(/^[XO]$/) && root.child('games').child($id).child('pub/players').child($side).child('uid').val() === auth.uid"
+          }
         }
       }
     },

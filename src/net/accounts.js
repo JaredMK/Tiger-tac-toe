@@ -93,7 +93,7 @@ export function afterAccount() {
 // The server made a game for this player while searching: straight into it.
 function onActive() {
   const a = acct.active;
-  if (a && (a.game || a.room) && (search.on || search.found)) enterMatched(a);
+  if (a && a.game && (search.on || search.found)) enterMatched(a);
 }
 // Find Match, a profile, hosting a friend game: these need an account (and a username). Otherwise the login screen.
 export async function needAccount(next) {

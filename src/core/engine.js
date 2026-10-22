@@ -16,6 +16,7 @@ export { mcPick } from './mc.js';
 export { registerTunes, tuneFields, tuneDefaults, tuneValue, tuneNorm, setTune, setTunes, tuneLive, tuneSnap, tune } from './tune.js';
 export { gaussOf, makeRng, needRng, randInt, randomType, shuffle } from './random.js';
 export { resignLocal, RECENT_MAX, MATCH_FIELDS, secretOf, hideMini, matchRecord, fullState, settle, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, applyOnlineReveal, applyOnlineStart, newOnlineMatch, applyOnlineResign, applyChaosSubmit, applyChaosDeadline, applyChaosBegin, parseMatch, packMatch, matchTxn } from './records.js';
+export { SC_GAME, newScGame, scSideState, applyScMove, applyScTimeout, applyScBot, applyScBegin, applyScResign, scDue, scPublicState, scSideView, scFinal } from './scgame.js';
 export { matchStats, topOpponents, oppTally } from './stats.js';
 export { normTimer, TIMER_OPTIONS, newTimer, PLAY, playMs, replayMs, armClock } from './timer.js';
 export { REP, repNorm, repMove, repOf } from './replay.js';

@@ -515,7 +515,7 @@ const TEST_TYPES = ['bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'd
 const isReleased = t => (ctl.releases && typeof ctl.releases[t] === 'boolean' ? ctl.releases[t] : !TEST_TYPES.includes(t));
 function releasesCard() {
   const sc = !!(ctl.releases && ctl.releases.superchaos === true);   // the Super Chaos mode: admin only until released here (releases/superchaos)
-  const rows = `<tr><td><b>Super Chaos mode</b> <small>(off: players get Classic only, no Mode selector; on: everyone gets the Mode selector, Super Chaos by default, in Play Local, friend games and Find Match)</small></td><td><label class="sw"><input type="checkbox" data-rel="superchaos"${sc ? ' checked' : ''}><span class="${sc ? 'good' : ''}">${sc ? 'Released' : 'Admin only'}</span></label></td></tr>`
+  const rows = `<tr><td><b>Super Chaos mode</b> <small>(off: players get Classic only, no Mode selector; on: everyone gets the Mode selector, Super Chaos by default, in Play Local and friend games; Find Match is Super Chaos either way)</small></td><td><label class="sw"><input type="checkbox" data-rel="superchaos"${sc ? ' checked' : ''}><span class="${sc ? 'good' : ''}">${sc ? 'Released' : 'Admin only'}</span></label></td></tr>`
     + Object.entries(GAMES).map(([t, name]) => { const on = isReleased(t); return `<tr><td>${esc(name)}</td><td><label class="sw"><input type="checkbox" data-rel="${t}"${on ? ' checked' : ''}><span class="${on ? 'good' : ''}">${on ? 'Released' : 'Admin only'}</span></label></td></tr>`; }).join('');
   return `<div class="card ctl" id="relCard"><h2>Game releases</h2>
     <p class="note">Admin only: the game exists for nobody but you (not in the Advanced checklist, How to Play, random draws, Find Match or anyone else's rooms). You can play it in local matches and in friend games you host; your guest plays it in that match only. Find Match deals released games only, even for you. A change applies to new matches at once; matches under way are not affected. Squares of admin-only games are counted under "Admin-only games (testing)" in the mini-game stats.</p>
@@ -523,7 +523,7 @@ function releasesCard() {
 }
 async function saveRelease(el) {
   const t = el.dataset.rel, on = el.checked;
-  if (on && t === 'superchaos' && !confirm('Release Super Chaos to everyone?\n\nEvery player gets the Mode selector (Super Chaos | Classic), Super Chaos by default, in Play Local, friend games and Find Match, from now on.')) { el.checked = false; return; }
+  if (on && t === 'superchaos' && !confirm('Release Super Chaos to everyone?\n\nEvery player gets the Mode selector (Super Chaos | Classic), Super Chaos by default, in Play Local and friend games, from now on.')) { el.checked = false; return; }
   if (on && t !== 'superchaos' && !confirm(`Release ${GAMES[t] || t} to everyone?\n\nIt will appear in the Mini-games checklist, How to Play, random draws and Find Match for every player, in new matches from now on.`)) { el.checked = false; return; }
   try {
     await fb.dbM.set(fb.dbM.ref(fb.db, `releases/${t}`), on);

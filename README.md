@@ -385,8 +385,9 @@ code needs no account (a guest in a friend game without one uses an anonymous se
 Hosting a friend game needs an account too: tapping **Host game** while logged out goes to the login
 first, then straight back to hosting once logged in (and named). Joining a friend's game does not.
 
-**Find Match** (Play Online → Find a Match; needs an account) pairs strangers in a single queue: every mini-game on and always
-1 minute a turn, with no options to pick. Tapping Find a Match goes straight into searching (after
+**Find Match** (Play Online → Find a Match; needs an account) pairs strangers in a single queue for a
+**Super Chaos** match (both move at once, 1 minute a round; every released Super Chaos game on), with no
+options to pick. Tapping Find a Match goes straight into searching (after
 logging in, if needed): "Searching…" (X and O hopping on one looping CSS animation, O half a hop
 behind by its delay) with just the time waited, and **Cancel**, which goes back to Play Online. The
 server pairs players by how long they have waited, longest first. Sides are drawn at random. Two
@@ -395,7 +396,25 @@ transaction. A player can be in only one matchmaking game at a time; with one in
 Match reads **Back to your match**. When a match starts, a vs card shows both usernames with their
 records for about 3 seconds (or until tapped); the server's turn clock allows for it.
 
-**The server runs these games.** A move goes to a Cloud Function, which checks that it is that
+**The server runs these games** (`src/core/scgame.js`, `functions/index.js`: `scMove`, `scTick`, `scBegin`).
+Each step of a move (a guess, a hit, a roll, a locked-in shot) goes to a Cloud Function as a request, which
+checks it with the same engine the page uses (`src/core`) on that side's own copy of the round, makes every
+random choice itself (dice, coins, the round's Roulette spin, cards, words, codes, timeout moves), applies it and
+answers with what that phone may see: the move's result and its square as the step left it, the secrets hidden.
+The phone plays its own result from that answer. The other side learns only that a move is in; both moves
+show on both phones in the round's recap, played from a shared start (server time) once both are in, with the
+joint results (Mini Golf's two shots, the shared spin, a Bump knock) worked out on the server. The round's
+deadline is a server time: past it (and a short grace) the first phone to ask, or the scheduled sweep, has the
+server play the timeout rule's move for a side not in and settle the round; the first phone through the recap
+begins the next round. The phones never write a matchmaking game; they read its public state and their own
+side's node (`games/{id}/sides/{side}`: their move, or their progress through one, for a reload). These matches
+count as Find Match on the records, in the history and in the stats (their squares under Super Chaos). The
+Classic Find Match (turn by turn, the server playing each move) stays as code, unused, for the day it is
+wanted again; its moves below describe it. A lone searcher gets a bot after their wait, as before: the bot
+plays by the computer's own Super Chaos play at the admin's level, its move due after a think, and bot
+matches are counted apart.
+
+In a Classic game a move goes to a Cloud Function, which checks that it is that
 player's turn and that the move is legal with the same engine the page uses (`src/core`), makes
 every random choice itself (dice, coins, spins, cards, words, codes, timeout moves), applies the
 move and writes the public state. The phones never write a matchmaking game; they read its public
@@ -514,15 +533,12 @@ is only one or the other) (`src/ui/sandbox.js`).
 
 ### Mode: Super Chaos or Classic
 
-One **Mode** selector, Super Chaos | Classic, in Play Local's setup, the host's lobby and on Play Online (for
-Find Match); the choice is kept on the device. The guest's join screen shows the host's mode. The Mini-games
+One **Mode** selector, Super Chaos | Classic, in Play Local's setup and the host's lobby (Find Match is Super
+Chaos only); the choice is kept on the device. The guest's join screen shows the host's mode. The Mini-games
 list shows only the games of the mode chosen. The selector shows only where Super Chaos is open to the player:
 the admin, or everyone once **Super Chaos mode** is released on the admin's Releases page
 (`releases/superchaos`), Super Chaos then being the default; otherwise players get Classic only, with no
-selector. Find Match keeps a queue per mode, so players meet only others in the same mode: a Classic pair plays
-the server's game as ever; a Super Chaos pair plays in a room the server opens for the two of them (both seated,
-the match started; `active/{uid}` names the room), played as a friend room's Super Chaos is. No bots in Super
-Chaos.
+selector. Find Match is Super Chaos for everyone, run by the server (above), whatever the switch says.
 
 ### Game releases
 

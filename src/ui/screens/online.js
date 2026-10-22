@@ -6,8 +6,6 @@ import { other } from '../../core/util.js';
 import { INFO, SC_ONLY, TYPES } from '../../games/index.js';
 import { acct } from '../../net/accounts.js';
 import { activeElsewhere, findOn } from '../../net/matchmaking.js';
-import { scMode } from '../../net/releases.js';
-import { modeRow } from './setup.js';
 import { visibleTypes } from '../../net/releases.js';
 import { joinCode, joinName, leaveLoses, net, online, room } from '../../net/room.js';
 import { TIMER_LABEL, esc, state } from '../app.js';
@@ -22,8 +20,7 @@ export function renderOnline() {
     <div class="bar"><button class="back" data-act="menu" aria-label="Back to the main menu">${CHEV}Menu</button></div>
     <div class="online-mid" data-keep-scroll="online"><div class="menu-card">
     <h1>Play Online</h1>
-    <p class="sub">Play a friend with a room code, or find a match against anyone waiting. Both need an internet connection.</p>
-    ${modeRow(scMode())}
+    <p class="sub">Play a friend with a room code, or find a Super Chaos match against anyone waiting. Both need an internet connection.</p>
     <button class="primary" data-act="friend-go">Play a Friend</button>
     <button class="primary mm${can ? '' : ' off'}" data-act="find-go"${can ? '' : ' disabled'}>${back ? 'Back to your match' : `Find a Match${can ? '' : '<small>Not available at this time</small>'}`}</button>
   </div></div></main>`;

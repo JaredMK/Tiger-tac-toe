@@ -79,13 +79,15 @@ function elo(rx, ro, scoreX, k = ELO_K) {
 }
 
 // ---------- matchmaking ----------
-// Find Match is one queue, with 1 minute a turn. Its games are 'match' games (rated 'ranked' ones if
-// ratings come back). Older games were 'ranked' or 'casual': all of them count as Find Match games.
+// Find Match is Super Chaos: one queue, the match run by the server (core/scgame.js), 'match' games (rated
+// 'ranked' ones when ratings come). The Classic queue (turns, 1 minute each; games the server plays move by
+// move) stays as code, unused: the admin alone may ask for it (the tests do), for the day it is wanted again.
+// Older games were 'ranked' or 'casual': all of them count as Find Match games.
 const FIND_MATCH_TIMER = 60;
-const QUEUES = { match: { key: 'match', mode: RATINGS_ENABLED ? 'ranked' : 'match', timer: FIND_MATCH_TIMER },
-  chaos: { key: 'chaos', mode: 'match', timer: 0, chaos: true } };   // Super Chaos: its own queue (players of one mode only meet each other), played in a room the server opens for the pair
+const QUEUES = { chaos: { key: 'chaos', mode: RATINGS_ENABLED ? 'ranked' : 'match', timer: 0, chaos: true },
+  match: { key: 'match', mode: RATINGS_ENABLED ? 'ranked' : 'match', timer: FIND_MATCH_TIMER, classic: true } };
 const FIND_MATCH_MODES = ['match', 'ranked', 'casual'];
-function queueKey(mode) { return mode === 'chaos' ? 'chaos' : 'match'; }   // Classic (whatever an older page asks for), or Super Chaos
+function queueKey(mode, classicAllowed) { return mode === 'classic' && classicAllowed ? 'match' : 'chaos'; }   // Super Chaos, whatever an older page asks for; Classic only where allowed
 // How far apart two ratings may be, given how long the longer-waiting of the two has been searching:
 // close at first, wider every few seconds, and anyone at all after a minute and a half.
 function ratingRange(waitMs) { return waitMs >= 90000 ? Infinity : 100 + 50 * Math.floor(Math.max(0, waitMs) / 5000); }

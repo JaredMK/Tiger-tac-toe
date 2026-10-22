@@ -200,16 +200,6 @@ export async function startOnline() {
 }
 
 // ---------- the guest: joins with the code (or the shared link) and takes the free seat ----------
-// A Super Chaos match from Find Match: the room the server opened for the pair, both seated and the match on;
-// this phone takes its seat there (as a player coming back to it) and plays it as a friend room.
-export function enterRoomMM(code) {
-  if (state.online && state.online.code === code && state.online.joined) return;   // (in it already)
-  stopListening();
-  state.stats = null;
-  state.online = { role: 'guest', code, me: null, name: '', joined: false, shownSeq: null, matchId: null, mmRoom: true }; state.sc = null;
-  state.setup.mode = 'online'; state.screen = 'join';
-  return joinRoom(code, '', true);
-}
 export async function joinRoom(code, name, resume) {
   if (!resume) {
     code = String(code || '').toUpperCase().replace(/[^A-Z]/g, '');

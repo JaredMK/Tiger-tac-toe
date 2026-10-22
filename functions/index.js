@@ -70,6 +70,7 @@ const STALE_MS = 15000;          // a searcher that has not checked in for this 
 const RUN_SLACK_MS = 2500;      // a run may claim this much more time than the turn has lasted (the phone's clock, the call's way here)
 const MATCH_GRACE_MS = 6000;     // the first turn's clock starts late: both phones load the board and show the players
 const OLD_QUEUES = ['ranked', 'casual30', 'casual60', 'casual180'];   // before Find Match was one queue: left on cancel
+const CLASSIC_OK = () => process.env.FUNCTIONS_EMULATOR === 'true';   // the Classic queue: only the tests may ask for it (the admin, were it wanted again)
 const GAME_KEEP_MS = 24 * 3600 * 1000;   // finished games are deleted after a day (their history stays)
 const CALL = { cors: true };
 /* ===================== match logs (for debugging: matchLogRules.js) ===================== */
@@ -228,8 +229,8 @@ exports.claimUsername = onCall(CALL, async req => {
 // with them (when bots are on). Anyone else searching meanwhile is paired with them as usual first.
 exports.findMatch = onCall(CALL, async req => {
   const uid = needAccount(req);
-  const key = R.queueKey(req.data && req.data.mode);            // the player's mode: Classic (an older page too) or Super Chaos
-  if (R.QUEUES[key].chaos && !(req.auth.token && req.auth.token.admin === true) && (await releasesNow()).superchaos !== true) throw new HttpsError('failed-precondition', 'Super Chaos is not available at this time.');
+  const isAdmin = !!(req.auth.token && req.auth.token.admin === true);
+  const key = R.queueKey(req.data && req.data.mode, isAdmin || CLASSIC_OK());   // Super Chaos (the Classic queue is for the tests)
   const prof = (await db.ref(`users/${uid}`).get()).val();
   if (!prof || !prof.username) throw new HttpsError('failed-precondition', 'Pick a username first.');
   // The entry first, then the active game: a pairing that removes the entry writes the active game in the
@@ -243,9 +244,8 @@ exports.findMatch = onCall(CALL, async req => {
     if (paired) { await createGame(key, paired.game).catch(() => {}); return Object.assign({ status: 'matched' }, paired); }   // paired just before the switch: that game goes on
     throw new HttpsError('failed-precondition', 'Find Match is not available at this time.', { off: true });
   }
-  for (const other of OLD_QUEUES) await leaveQueue(other, uid);                // (from an older page)
+  for (const other of OLD_QUEUES.concat(Object.keys(R.QUEUES).filter(k => k !== key))) await leaveQueue(other, uid);   // (from an older page, or the other queue)
   const conf = await adminConfig(), bc = B.botConfig(conf), ac = B.alertConfig(conf);
-  if (R.QUEUES[key].chaos) bc.enabled = false;                  // (no bots in Super Chaos: they play Classic only)
   const free = bc.enabled && prev && !prev.game && prev.botAt && now() >= prev.botAt ? await freeBots() : [];   // only looked up once a bot could be due
   let made = [], mine = null, alone = false, entry = null, botGame = null, vanished = false;
   await db.ref(`queue/${key}`).transaction(cur => {
@@ -283,13 +283,11 @@ exports.findMatch = onCall(CALL, async req => {
   for (const p of made) await createGame(key, p.id).catch(e => logger.error('createGame', p.id, e));
   if (botGame) await createBotGame(key, uid, botGame.id, botGame.bot).catch(e => logger.error('createBotGame', botGame.id, e));
   if (!mine) {
-    const isAdmin = !!(req.auth.token && req.auth.token.admin === true);   // (the admin's own searches never alert the admin)
     if (alone && ac.enabled && !isAdmin) await maybeAlert(key, uid, entry, prof, ac).catch(e => logger.error('alert', e));
     return { status: 'searching' };
   }
   if (botGame && botGame.id === mine.game) return { status: 'matched', game: mine.game, side: mine.side };
   await createGame(key, mine.game).catch(() => {});   // made by another call: make sure it exists (it is made once)
-  if (R.QUEUES[key].chaos) { const a = await activeGame(uid); return a ? matchedOf(a) : { status: 'searching' }; }   // (its room, once made)
   return { status: 'matched', game: mine.game, side: mine.side };
 });
 exports.cancelSearch = onCall(CALL, async req => {
@@ -301,7 +299,6 @@ exports.cancelSearch = onCall(CALL, async req => {
       return null;
     }, undefined, false);
   }
-  if (game) { const a = await activeGame(uid); if (a) return matchedOf(a); }   // (a Super Chaos pair: its room)
   return game ? Object.assign({ status: 'matched' }, game) : { status: 'cancelled' };
 });
 // Find Match is on only while the admin page has switched it on (features/findMatch true); missing means off.
@@ -339,15 +336,9 @@ async function leaveQueue(key, uid) {
   await db.ref(`queue/${key}/${uid}`).transaction(cur => (cur && cur.game ? undefined : null), undefined, false);
 }
 // The game a player is in, if it is still being played.
-const matchedOf = a => Object.assign({ status: 'matched', side: a.side }, a.room ? { room: a.room } : { game: a.game });   // a Classic game, or a Super Chaos room
+const matchedOf = a => ({ status: 'matched', game: a.game, side: a.side });
 async function activeGame(uid) {
   const a = (await db.ref(`active/${uid}`).get()).val();
-  if (a && a.room) {                                            // a Super Chaos match from Find Match: its room, while its match is on
-    const r = (await db.ref(`rooms/${a.room}`).get()).val(), rec = r && r.match ? E.parseMatch(r.match) : null;
-    if (rec && !rec.state.winner && !r.left) return a;
-    await db.ref(`active/${uid}`).remove();
-    return null;
-  }
   if (!a || !a.game) return null;
   const status = (await db.ref(`games/${a.game}/pub/status`).get()).val();
   if (status === 'playing') return a;
@@ -394,44 +385,33 @@ async function createBotGame(key, uid, id, bot) {
   const human = { uid, e }, me = { uid: bot.uid, e: { name: p.username || bot.username, rec: recordOf(p) } };
   return makeGame(key, id, e.side === 'X' ? human : me, e.side === 'X' ? me : human, { bot });
 }
-// A Super Chaos pair: a room the server opens with both seated and the match started (X hosts it), played as a
-// friend room is (net/chaos.js: the record settles each round). The games: the released Super Chaos ones, or
-// every one when both are admins. Made once (the queue entries go with it); both are pointed at the room.
-const ROOM_LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
-async function makeChaosRoom(key, id, X, O) {
-  const t = now(), rng = seedRng(), rel = await releasesNow();
-  await runConfigNow();
-  const admins = (await isAdminUser(X.uid)) && (await isAdminUser(O.uid));
-  const types = E.scTypes().filter(g => admins || E.releasedTypes(rel).includes(g));
-  let code = null;
-  for (let k = 0; k < 8 && !code; k++) { const c = Array.from({ length: 5 }, () => ROOM_LETTERS[crypto.randomInt(ROOM_LETTERS.length)]).join(''); if (!(await db.ref(`rooms/${c}`).get()).exists()) code = c; }
-  if (!code || !types.length) { logger.error('chaos room', id, code ? 'no Super Chaos games released' : 'no free code'); return false; }
-  const games = Object.fromEntries(E.scTypes().map(g => [g, types.includes(g)]));
-  const rec = E.newOnlineMatch({ names: { X: X.e.name, O: O.e.name }, games, timer: 0, chaos: true }, rng, id, t);
-  const made = await db.ref(`queue/${key}`).transaction(cur => {   // the pair still there and not made yet: taken out of the queue now (once)
-    if (cur === null) return null;                                // (a first look at an empty cache: the real queue comes back to try again)
-    if (!cur[X.uid] || !cur[O.uid] || cur[X.uid].game !== id || cur[O.uid].game !== id) return undefined;
-    delete cur[X.uid]; delete cur[O.uid]; return cur;
-  }, undefined, false);
-  if (!made.committed) return false;
-  const seat = p => ({ uid: p.uid, name: p.e.name, joined: t });
-  await db.ref(`rooms/${code}`).set({ created: t, host: X.uid, status: 'playing', mm: true, players: { X: seat(X), O: seat(O) }, setup: { games, timer: 0, hostSide: 'X', hostPick: 'X', chaos: true }, match: E.packMatch(rec) });
-  await db.ref().update({ [`active/${X.uid}`]: { room: code, side: 'X', queue: key, mode: 'chaos' }, [`active/${O.uid}`]: { room: code, side: 'O', queue: key, mode: 'chaos' } });
-  return true;
-}
 // The game itself, made exactly once; then the players are pointed at it.
 async function makeGame(key, id, X, O, opts) {
   const bot = opts && opts.bot;
   const Q = R.QUEUES[key], t = now();
-  if (Q.chaos) return makeChaosRoom(key, id, X, O);
   const rng = seedRng();
   await runConfigNow();
-  const rec = E.newOnlineMatch({ names: { X: X.e.name, O: O.e.name }, games: Object.fromEntries(E.releasedTypes(await releasesNow()).map(g => [g, true])), timer: Q.timer }, rng, id);   // released games only, whoever is playing
-  E.armClock(rec.state, [], t + MATCH_GRACE_MS);
+  const rel = await releasesNow();
   const seat = p => Object.assign({ uid: p.uid, name: p.e.name, record: p.e.rec || { wins: 0, losses: 0, draws: 0 } }, R.RATINGS_ENABLED ? { rating: p.e.rating } : {});   // the record for the players' intro
   const players = { X: seat(X), O: seat(O) };
-  const pub = { mode: Q.mode, queue: key, timer: Q.timer, players, status: 'playing', created: t, updated: t, state: JSON.stringify(rec.state) };
-  const made = await db.ref(`games/${id}`).transaction(cur => (cur ? undefined : { pub, sec: JSON.stringify(rec.secrets), dl: rec.state.timer.deadline }), undefined, false);
+  let rec, node;
+  if (Q.chaos) {                                                  // Super Chaos, run here (core/scgame.js): the released Super Chaos games (every one when both players are admins)
+    const admins = !bot && (await isAdminUser(X.uid)) && (await isAdminUser(O.uid));
+    const types = E.scTypes().filter(g => admins || E.releasedTypes(rel).includes(g));
+    if (!types.length) { logger.error('chaos game', id, 'no Super Chaos game released'); return false; }
+    const g = E.newScGame({ names: { X: X.e.name, O: O.e.name }, games: Object.fromEntries(E.scTypes().map(x => [x, types.includes(x)])) }, rng, id, t, MATCH_GRACE_MS);
+    if (!g) return false;
+    rec = { state: g.full };
+    const pub = { mode: Q.mode, queue: key, chaos: true, timer: 0, players, status: 'playing', created: t, updated: t };
+    node = { pub, sec: {}, sides: {} };
+    scPack(node, g, t);
+  } else {
+    rec = E.newOnlineMatch({ names: { X: X.e.name, O: O.e.name }, games: Object.fromEntries(E.releasedTypes(rel).map(g => [g, true])), timer: Q.timer }, rng, id);   // released games only, whoever is playing
+    E.armClock(rec.state, [], t + MATCH_GRACE_MS);
+    const pub = { mode: Q.mode, queue: key, timer: Q.timer, players, status: 'playing', created: t, updated: t, state: JSON.stringify(rec.state) };
+    node = { pub, sec: JSON.stringify(rec.secrets), dl: rec.state.timer.deadline };
+  }
+  const made = await db.ref(`games/${id}`).transaction(cur => (cur ? undefined : node), undefined, false);
   if (made.committed) {
     let bgNew = null;
     const up = {
@@ -451,10 +431,123 @@ async function makeGame(key, id, X, O, opts) {
       { srv: true, mode: bot ? 'bot' : 'match', players: { X: { name: X.e.name, uid: X.uid }, O: { name: O.e.name, uid: O.uid } } });
     await db.ref().update(statsUp(S.startUpdates(bot ? 'bot' : Q.mode, t))).catch(e => logger.error('stats', e));
     await markActive([X, O].filter(p => !bot || p.uid !== bot.uid).map(p => 'u:' + p.uid), t).catch(e => logger.error('stats', e));
-    if (bgNew) await planBot(id, rec.state, rec.secrets, bgNew, t + MATCH_GRACE_MS, false).catch(e => logger.error('bot plan', id, e));
+    if (bgNew) await (Q.chaos ? planScBot(id, rec.state.sc.round, bgNew, t + MATCH_GRACE_MS) : planBot(id, rec.state, rec.secrets, bgNew, t + MATCH_GRACE_MS, false)).catch(e => logger.error('bot plan', id, e));
   }
   return made.committed;
 }
+
+/* ===================== Super Chaos from Find Match: the server runs the match ===================== */
+// games/{id}: pub (what both phones may see: the players, the state with every secret hidden and the other
+// side's move kept back, the round, its deadline), sec (the match entire, each side's progress: the server's
+// alone), sides/X and sides/O (each side's own move or progress, for its phone after a reload), dl (when the
+// sweep must look: the deadline past its grace, a recap left unbegun, 1 once over). Every change is one
+// transaction on the node (changeSc), as a Classic game's (changeGame).
+const scOf = cur => ({ full: parse(cur.sec.full), prog: parse(cur.sec.prog) });
+function scPack(cur, g, t) {
+  cur.sec = { full: JSON.stringify(g.full), prog: JSON.stringify(g.prog) };
+  cur.pub.state = JSON.stringify(E.scPublicState(g)); cur.pub.updated = t; cur.pub.round = g.full.sc.round; cur.pub.deadline = g.full.sc.deadline || null;
+  cur.sides = { X: JSON.stringify(E.scSideView(g, 'X')), O: JSON.stringify(E.scSideView(g, 'O')) };
+  if (g.full.winner) { cur.pub.status = 'over'; cur.pub.ended = t; cur.dl = 1; } else cur.dl = E.scDue(g);
+}
+// what: the change, for the match's log ('move', 'timeout', 'bot', 'begin', 'resign', 'sweep').
+async function changeSc(id, uid, step, what) {
+  let out = { ok: false, reason: 'missing' }, who = null, over = false, end = null, before = null, after = null;
+  const res = await db.ref(`games/${id}`).transaction(cur => {
+    if (cur === null) { out = { ok: false, reason: 'missing' }; return cur; }   // (a first guess from an empty cache: retried with the real value)
+    const pub = cur.pub;
+    if (!pub || !pub.chaos || pub.status !== 'playing') { out = { ok: false, reason: 'over' }; return undefined; }
+    const side = uid ? sideOf(pub, uid) : null;
+    if (uid && !side) { out = { ok: false, reason: 'not-player' }; return undefined; }
+    who = side;
+    const g = scOf(cur), t = now();
+    before = { round: g.full.sc.round, deadline: g.full.sc.deadline };
+    const r = step(g, side, t);
+    if (!r.ok) { out = { ok: false, reason: r.reason }; return undefined; }
+    scPack(cur, g, t);
+    over = !!g.full.winner;
+    end = over ? { w: g.full.winner, why: g.full.winReason || null, resigned: g.full.resigned || null } : null;
+    after = { round: g.full.sc.round, deadline: g.full.sc.deadline, recap: g.full.sc.recap ? { claims: g.full.sc.recap.claims, resets: g.full.sc.recap.resets } : null };
+    out = Object.assign({ ok: true, seq: g.full.seq }, r, { ok: true });
+    return cur;
+  }, undefined, false);
+  if (!res.committed && out.ok) out = { ok: false, reason: 'busy' };
+  const t = now(), ev = [];
+  if (out.ok) {
+    if (what === 'move') ev.push({ t, k: 'move', s: who || undefined, q: out.moved, g: out.flash && out.flash.type, r: before.round, done: !!out.me || undefined, src: 'srv' });
+    else if (what === 'bot') ev.push({ t, k: 'move', s: who || undefined, q: out.square, g: out.type, r: before.round, bot: true, src: 'srv' });
+    else if (what === 'timeout' || what === 'sweep') ev.push({ t, k: 'timeout', r: before.round, s: (out.timed || []).join('') || undefined, src: 'srv' });
+    else if (what === 'begin') ev.push({ t, k: 'round', r: after.round, src: 'srv' });
+    if (after && after.round !== before.round && after.recap) ev.push({ t, k: 'resolve', r: before.round, claims: (after.recap.claims || []).map(c => c.square + c.by).join(' ') || undefined, resets: (after.recap.resets || []).map(x => `${x.square}:${x.why}`).join(' ') || undefined, src: 'srv' });
+    if (end) ev.push({ t, k: 'end', w: end.w, why: end.why || undefined, resigned: end.resigned || undefined, src: 'srv' });
+  } else if (!['stale', 'early', 'missing', 'begun', 'recap'].includes(out.reason)) ev.push({ t, k: 'reject', s: who || undefined, what, why: out.reason, src: 'srv' });
+  const begun = out.ok && after && after.deadline != null && (before.deadline == null || after.round !== before.round);   // a round begun (the first, or the next after a recap): a bot's move for it
+  await Promise.all([
+    ev.length ? mlogSafe(ML.mmKey(id), ev) : null,
+    res.committed && over ? finishGame(id).catch(e => logger.error('finishGame', id, e)) : null,
+    res.committed && begun && !over ? afterScBegin(id, after.round, after.deadline).catch(e => logger.error('bot plan', id, e)) : null,
+  ]);
+  return out;
+}
+// A step of a player's move: their square and the move as their phone would play it (core/scgame.js applyScMove).
+exports.scMove = onCall(CALL, async req => {
+  const uid = needUid(req), d = req.data || {}, id = gameId(d.game);
+  if (!Number.isInteger(d.square) || d.square < 0 || d.square > 8 || d.move === undefined) return { ok: false, reason: 'bad' };
+  await runConfigNow();
+  const r = await changeSc(id, uid, (g, side, t) => E.applyScMove(g, side, d.square, d.move, seedRng(), t, { rep: d.rep }), 'move');
+  if (!r.ok) return r;
+  return { ok: true, seq: r.seq, flash: r.flash, mini: r.mini, lock: r.lock, moved: r.moved, me: r.me, resolved: r.resolved };
+});
+// The round's clock, the match's bot: a phone waiting on the other side asks every few seconds. The bot's move
+// once due; the deadline past its grace: the timeout rule's move for a side not in; a recap left unbegun too long.
+exports.scTick = onCall(CALL, async req => {
+  const uid = needUid(req), id = gameId((req.data || {}).game);
+  await runConfigNow();
+  await runScBot(id, { when: 'tick' }).catch(e => logger.error('bot', id, e));
+  const r = await changeSc(id, null, (g, side, t) => scSweepStep(g, t), 'timeout');
+  return { ok: true, settled: r.ok };
+});
+const scSweepStep = (g, t) => (g.full.sc.deadline != null ? E.applyScTimeout(g, t, seedRng()) : g.full.sc.recap && t >= (g.full.sc.recap.at || 0) + E.SC_GAME.recapMaxMs ? E.applyScBegin(g, t) : { ok: false, reason: 'early' });
+// The recap is over on a phone: the next round begins (once: the first phone through begins it).
+exports.scBegin = onCall(CALL, async req => {
+  const uid = needUid(req), id = gameId((req.data || {}).game);
+  const r = await changeSc(id, uid, (g, side, t) => E.applyScBegin(g, t), 'begin');
+  return r.ok ? { ok: true } : r;
+});
+// A bot in a Super Chaos match: its move for the round planned as the round begins (due after a think, as
+// a Classic bot's turn is: bots.js thinkMs), queued as a task for that moment; the phones' ticks and the sweep
+// move it once due all the same.
+async function planScBot(id, round, bg, start) {
+  if (!bg || !bg.live) return null;
+  if (bg.next && bg.next.round === round) return bg.next;
+  const bot = B.byKey(bg.key) || B.BOTS[0], rng = seedRng();
+  const due = Math.max(start, now()) + B.thinkMs(bot, 'turn', rng);
+  const next = { round, step: 'sc', due };
+  await db.ref(`botGames/${id}/next`).set(next);
+  await queueBot(id, round, 'sc', due);
+  return next;
+}
+async function afterScBegin(id, round, deadline) {
+  const bg = (await db.ref(`botGames/${id}`).get()).val();
+  if (!bg || !bg.live) return;
+  await planScBot(id, round, bg, now());
+}
+async function runScBot(id, opts) {
+  const o = opts || {}, when = o.when || 'tick';
+  const [bgs, gs] = await Promise.all([db.ref(`botGames/${id}`).get(), db.ref(`games/${id}`).get()]);
+  const bg = bgs.val(), g = gs.val();
+  if (!bg || !bg.live || !g || !g.pub || !g.pub.chaos || g.pub.status !== 'playing') return false;
+  const st = parse(g.pub.state), sc = st.sc;
+  if (st.winner || sc.deadline == null || (sc.moves && sc.moves[bg.side])) return false;   // (over, the recap on, or its move in)
+  if (o.round != null && o.round !== sc.round) return false;
+  let next = bg.next && bg.next.round === sc.round ? bg.next : null;
+  if (!next) { next = await planScBot(id, sc.round, bg, sc.deadline - sc.limit * 1000); if (!next || when === 'task') return false; }
+  if (when !== 'task' && when !== 'force' && now() < next.due - BOT_EARLY_MS) return false;
+  const level = B.botConfig(await adminConfig()).level;
+  const r = await changeSc(id, bg.bot, (gm, side, t) => (gm.full.sc.round !== sc.round ? { ok: false, reason: 'stale' } : E.applyScBot(gm, side, seedRng(), level, t)), 'bot');
+  return r.ok;
+}
+// A side leaves the match through the menu: the other side wins.
+async function scResign(id, uid) { return changeSc(id, uid, (g, side) => E.applyScResign(g, side), 'resign'); }
 
 /* ===================== the bots ===================== */
 // The bot accounts (functions/bots.js), made the first time they are needed: an ordinary profile and
@@ -539,6 +632,7 @@ async function runBot(id, opts) {
   const [bgs, gs] = await Promise.all([db.ref(`botGames/${id}`).get(), db.ref(`games/${id}`).get()]);
   const bg = bgs.val(), g = gs.val();
   if (!bg || !bg.live || !g || !g.pub || g.pub.status !== 'playing') return false;
+  if (g.pub.chaos) return runScBot(id, Object.assign({}, o, { round: o.seq }));   // a Super Chaos match: its own planning (the task's seq is the round)
   const st = parse(g.pub.state);
   if (st.winner || st.turn !== bg.side) return false;
   if (o.seq != null && o.seq !== st.seq) return false;       // a task for a move already made
@@ -758,6 +852,7 @@ exports.timeout = onCall(CALL, async req => {
 // Leaving a matchmaking game through the menu: a resignation, which loses the match.
 exports.resign = onCall(CALL, async req => {
   const uid = needUid(req), id = gameId((req.data || {}).game);
+  if ((await db.ref(`games/${id}/pub/chaos`).get()).val() === true) return scResign(id, uid);
   return changeGame(id, uid, (rec, side) => E.applyOnlineResign(rec, side), 'resign');
 });
 
@@ -776,7 +871,8 @@ async function finishGame(id) {
   const pub = g.pub, st = parse(pub.state);
   const bg = (await db.ref(`botGames/${id}`).get()).val();      // a game against a bot: its own stats; the player's record as the admin chose
   const counted = !bg || B.botConfig(await adminConfig()).countInRecords;
-  const final = finalOf({ state: st, secrets: parse(g.sec) }, { X: pub.players.X.name, O: pub.players.O.name });
+  const names = { X: pub.players.X.name, O: pub.players.O.name };
+  const final = pub.chaos ? E.scFinal(scOf(g), names) : finalOf({ state: st, secrets: parse(g.sec) }, names);   // (a Super Chaos match: every square revealed from the server's record)
   const how = R.howEnded(st), t = pub.ended || now();
   const up = {};
   const result = { winner: st.winner === 'X' || st.winner === 'O' ? st.winner : null, how, records: {} };   // (a draw: no winner)
@@ -988,8 +1084,8 @@ async function sweep() {
   let timeouts = 0, finished = 0;
   for (const [id, g] of Object.entries(due)) {
     if (g.pub && g.pub.status === 'over') { if (await finishGame(id).catch(() => false)) finished++; continue; }
-    if (bots[id] && await runBot(id, { force: true }).catch(() => false)) { botMoves++; continue; }   // a bot never times out
-    const r = await changeGame(id, null, timeoutStep, 'timeout').catch(() => ({ ok: false }));
+    if (bots[id] && await runBot(id, { when: 'force' }).catch(() => false)) { botMoves++; if (!g.pub.chaos) continue; }   // a bot never times out (in Super Chaos the other side may still be due the rule's move)
+    const r = await (g.pub.chaos ? changeSc(id, null, (gm, side, t) => scSweepStep(gm, t), 'sweep') : changeGame(id, null, timeoutStep, 'timeout')).catch(() => ({ ok: false }));
     if (r.ok) timeouts++;
   }
   const old = (await db.ref('games').orderByChild('pub/ended').startAt(1).endAt(t - GAME_KEEP_MS).limitToFirst(50).get()).val() || {};

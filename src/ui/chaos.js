@@ -129,6 +129,7 @@ export function chaosStep() {
 // The round's time is up (the clock's tick): the game's timeout rule for the human's move.
 export function scTick() {
   if (!live() || paused() || state.winner) return;
+  if (state.online && state.online.kind === 'mm') return;         // (a match the server runs: its timeout rule is the server's, asked for by net/chaos.js)
   const left = scClockLeft();
   if (left == null || left > 0) return;
   const r = chaosTimeout(state, RNG);

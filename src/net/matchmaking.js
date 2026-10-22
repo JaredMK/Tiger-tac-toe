@@ -6,9 +6,8 @@ import { listenReacts } from './reactions.js';
 import {
   applyMatch, awayNote, leaveRoom, moveTimer, moveWait, net, pendingRoom, presUnsub, presence, presenceUp,
   presenting, presentingSeq, room, roomUnsub, setAwayNote, setMoveWait, setNet, setPendingRoom, setPresUnsub,
-  setPresence, setPresentingSeq, setRoom, setRoomUnsub, setTimeoutBusy, stopListening, timeoutBusy, enterRoomMM
+  setPresence, setPresentingSeq, setRoom, setRoomUnsub, setTimeoutBusy, stopListening, timeoutBusy
 } from './room.js';
-import { scMode } from './releases.js';
 import {
   app, commit, flashTimer, holdTimer, menuNote, menuOpen, menuStep, setFlashTimer, setHoldTimer, setMenuNote,
   setMenuOpen, setMenuStep, setSpotTimer, spotTimer, state
@@ -51,7 +50,7 @@ async function searchTick() {
   if (!searchBusy) {
     searchBusy = true;
     try {
-      const r = await call('findMatch', { mode: scMode() ? 'chaos' : 'classic' });   // the player's mode: only players of the same mode are paired
+      const r = await call('findMatch', {});                     // Find Match is Super Chaos: one queue
       searchBusy = false;
       if (search.on && r.status === 'matched') { enterMatched(r); return; }
       search.msg = '';
@@ -78,17 +77,12 @@ export function findAgain() {                          // the results screen: an
   startSearch();
 }
 
-// Paired: a Classic game (the server's), or a Super Chaos match (a room the server opened for the pair: net/room.js).
-export function enterMatched(a) {
-  if (a.room) { if (search.on || search.found) SND.play('found'); stopSearch(); search.found = false; enterRoomMM(a.room); return; }
-  enterGame(a.game, a.side);
-}
+// Paired: into the server's game (a Super Chaos match the server runs: core/scgame.js, net/chaos.js).
+export function enterMatched(a) { enterGame(a.game, a.side); }
 // A match of this player's in progress that this phone is not showing.
 export function activeElsewhere() {
   const a = acct.active;
-  if (!a) return false;
-  if (a.room) return !(state.online && state.online.code === a.room && state.online.joined);
-  return !!a.game && !(isMM() && state.online.game === a.game);
+  return !!(a && a.game) && !(isMM() && state.online.game === a.game);
 }
 /* ----- a matchmaking game: the public game read live, moves sent to the server ----- */
 export function enterGame(id, side) {
@@ -111,15 +105,34 @@ export function enterGame(id, side) {
 }
 export function listenGame(id) {
   stopListening();
+  scSide = null; scPub = null;
   setRoomUnsub(fb.m.onValue(fb.m.ref(fb.db, `games/${id}/pub`), s => onGameValue(s.val()), () => { setNet('error', 'Lost access to this match.'); commit(); }));
+  const off = fb.m.onValue(fb.m.ref(fb.db, `games/${id}/sides/${state.online.me}`), s => {   // (a Super Chaos match: this side's own node, read with the game; let go once this phone has left it)
+    if (!state.online || state.online.kind !== 'mm' || state.online.game !== id) { off(); return; }
+    scSide = s.val() ? JSON.parse(s.val()) : null; if (scPub) onGameValue(scPub);
+  }, () => {});
   setPresUnsub(fb.m.onValue(fb.m.ref(fb.db, `gpresence/${id}`), s => { setPresence(s.val()); noteNet(); if (state.online) render(); }));
   listenReacts(id);
+}
+// A Super Chaos match: the public state with this side's own move (or its progress) merged in from its own
+// node (both are written together; the node still on its way: wait for it).
+let scSide = null, scPub = null;
+function scMerged(pub, me) {
+  const st = JSON.parse(pub.state);
+  st.sc.moves = Object.assign({}, st.sc.moves);
+  const node = scSide && scSide.round === st.sc.round ? scSide : null;
+  if (st.sc.moves[me] && !(node && node.me)) return null;
+  st.sc.moves[me] = node && node.me ? node.me : false;
+  if (node && node.prog) st.scProg = node.prog;
+  return st;
 }
 export function onGameValue(pub) {
   const o = state.online;
   if (!o || o.kind !== 'mm' || !fb) return;
   if (!pub || !pub.players) { setMenuNote('That match is over.'); leaveRoom(true); return; }
-  setRoom({ kind: 'mm', status: 'playing', players: pub.players, match: { state: pub.state }, setup: { timer: pub.timer }, pub });
+  let stateJson = pub.state;
+  if (pub.chaos) { scPub = pub; const st = scMerged(pub, o.me); if (!st) return; stateJson = JSON.stringify(st); o.chaos = true; }
+  setRoom({ kind: 'mm', status: 'playing', players: pub.players, match: { state: stateJson }, setup: { timer: pub.timer, chaos: !!pub.chaos }, pub });
   for (const s of ['X', 'O']) state.setup.names[s] = String(pub.players[s].name || s);
   state.setup.timer = pub.timer;
   o.mode = pub.mode; o.queue = pub.queue;

@@ -17,12 +17,14 @@ import { render } from '../ui/render.js';
 import { repTake } from '../ui/replay.js';
 import { playFlash } from '../ui/turns.js';
 import { matchLog } from './tracking.js';
+import { scRequest } from './chaos.js';
 
 // ---------- moves: a transaction on the room's match record ----------
 // a move request from this phone, or the move itself when the game is played here
 export function attemptMove(m) {
   const rep = repTake();                                          // this phone's inputs before the move: they ride with it, for the other side's replay
   if (state.online && !state.sc) { dbMove(state.zoom, m, rep); return true; }   // (Super Chaos in a friend room: the move is played on this phone's own copy; net/chaos.js sends it in)
+  if (isMM() && state.sc) { scRequest(state.zoom, m, rep); return true; }   // Super Chaos from Find Match: the server plays it (net/chaos.js)
   const r = playMove(state, state.zoom, m, RNG, { rep });
   if (r.ok) { playFlash(); commit(); } else SND.play('error');
   return r;

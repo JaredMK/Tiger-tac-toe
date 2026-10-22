@@ -47,7 +47,7 @@ async function player(username, opts = {}) {
   const fns = F.getFunctions(app, 'us-central1'); F.connectFunctionsEmulator(fns, '127.0.0.1', 5001);
   const cred = opts.anonymous ? await A.signInAnonymously(auth) : await A.createUserWithEmailAndPassword(auth, `${(username || 'player').toLowerCase()}${n}@example.com`, 'secret-password');
   const p = { app, auth, db, uid: cred.user.uid, name: username };
-  p.call = async (name, data) => (await F.httpsCallable(fns, name)(data)).data;
+  p.call = async (name, data) => (await F.httpsCallable(fns, name)(name === 'findMatch' ? Object.assign({ mode: 'classic' }, data) : data)).data;   // (Find Match is Super Chaos; these tests ask for the Classic queue, kept as code, unless they say otherwise)
   p.read = async path => (await D.get(D.ref(db, path))).val();
   p.write = (path, v) => D.set(D.ref(db, path), v);
   if (username && !opts.anonymous && !opts.noName) assert.deepEqual(await p.call('claimUsername', { username }), { ok: true, username });
@@ -752,7 +752,7 @@ const B = require('../../functions/bots.js');
 const runScript = (file, ...args) => new Promise((resolve, reject) => execFile(process.execPath, [path.join(__dirname, '..', '..', 'scripts', file), ...args],
   { env: Object.assign({}, process.env, { TTC_PROJECT: PROJECT, GCLOUD_PROJECT: PROJECT }) }, (e, out) => (e ? reject(new Error(out || e.message)) : resolve(out))));
 const botsOn = (o = {}) => put('admin/config/bots', Object.assign({ enabled: true, waitMin: 40, waitMax: 70, countInRecords: true }, o));
-const clearQueue = () => put('queue/match', null);
+const clearQueue = () => Promise.all([put('queue/match', null), put('queue/chaos', null)]);
 // A game rewritten as its owner through the engine (hidden values kept apart, as the server keeps them).
 async function rewrite(id, fn) {
   const g = await get(`games/${id}`);
@@ -1668,27 +1668,118 @@ test('match logs: a Find Match game (its start, a refused move with its reason, 
   assert.ok(await get(`matchLogIndex/${key}`), 'a recent one stays');
 });
 
-// The Mode: Find Match pairs players of one mode only. Super Chaos is refused until released (or for an admin);
-// released, two Super Chaos searchers get a room the server opened for them, both seated and the match on, and a
-// Classic searcher waiting meanwhile is not paired with either.
-test('find match by mode: Super Chaos only once released; Super Chaos searchers meet only each other, in a room opened for them', async () => {
-  const a = await player('ModeAnn'), b = await player('ModeBob'), c = await player('ModeCal');
-  await assert.rejects(a.call('findMatch', { mode: 'chaos' }), /not available/, 'not released: refused');
-  await put('releases/superchaos', true);
-  try {
-    assert.equal((await c.call('findMatch', { mode: 'classic' })).status, 'searching');
-    let ra = { status: 'searching' }, rb = ra;
-    for (let k = 0; k < 20 && (ra.status !== 'matched' || rb.status !== 'matched'); k++) [ra, rb] = await Promise.all([a.call('findMatch', { mode: 'chaos' }), b.call('findMatch', { mode: 'chaos' })]);
-    assert.deepEqual([ra.status, rb.status], ['matched', 'matched']);
-    assert.ok(ra.room && ra.room === rb.room && !ra.game, `one room for both (${JSON.stringify([ra, rb])})`);
-    assert.notEqual(ra.side, rb.side);
-    const r = await get(`rooms/${ra.room}`), rec = E.parseMatch(r.match);
-    assert.equal(r.status, 'playing'); assert.equal(r.setup.chaos, true);
-    assert.deepEqual([r.players[ra.side].uid, r.players[rb.side].uid], [a.uid, b.uid], 'both seated');
-    assert.ok(rec.state.sc && rec.state.sc.online, 'a Super Chaos match on the record');
-    assert.ok(rec.state.squares.every(q => E.scTypes().includes(q.mini.type)), 'Super Chaos games only');
-    assert.deepEqual(await get(`active/${a.uid}`), { room: ra.room, side: ra.side, queue: 'chaos', mode: 'chaos' });
-    assert.equal((await c.call('findMatch', { mode: 'classic' })).status, 'searching', 'the Classic searcher still waits');
-    assert.deepEqual(await a.call('findMatch', { mode: 'chaos' }), { status: 'matched', side: ra.side, room: ra.room }, 'searching again: back to the room');
-  } finally { await put('releases/superchaos', null); await c.call('cancelSearch', {}); }
+// Find Match is Super Chaos, run by the server (core/scgame.js): every move a request checked and made there,
+// every secret and every draw the server's, each side shown only its own square until the recap; the round
+// settled once both are in, or at the deadline with the timeout rule's move; the next round begun by the
+// first phone through the recap; the result on both Find Match records, in the history and the stats; a lone
+// searcher given a bot that plays by the computer's Super Chaos play, counted apart.
+const scRig = async (id, minis) => {   // the match's squares set as given (the rest Higher/Lower squares nobody plays), on the server's record and what the phones see
+  const g = await get(`games/${id}`), full = JSON.parse(g.sec.full), prog = JSON.parse(g.sec.prog);
+  full.squares = Array.from({ length: 9 }, (_, i) => ({ owner: null, mini: minis[i] || { type: 'hilo', target: 20, lo: 1, hi: 30, guesses: [] }, mv: { X: 0, O: 0 } }));
+  const rec = { full, prog };
+  await patch(`games/${id}`, { 'sec/full': JSON.stringify(full), 'pub/state': JSON.stringify(E.scPublicState(rec)), 'sides/X': JSON.stringify(E.scSideView(rec, 'X')), 'sides/O': JSON.stringify(E.scSideView(rec, 'O')) });
+};
+const scPast = async id => {           // the round's deadline moved back past its grace (as time would)
+  const g = await get(`games/${id}`), full = JSON.parse(g.sec.full), st = JSON.parse(g.pub.state), dl = Date.now() - E.SC_ONLINE.graceMs - 1000;
+  full.sc.deadline = dl; st.sc.deadline = dl;
+  await patch(`games/${id}`, { 'sec/full': JSON.stringify(full), 'pub/state': JSON.stringify(st), 'pub/deadline': dl, dl: dl + E.SC_ONLINE.graceMs });
+};
+const scState = async id => JSON.parse(await get(`games/${id}/pub/state`));
+test('Super Chaos Find Match, two clients: paired into a match the server runs; a move a request at a time, checked, hidden; the round settled once both are in, the recap for both; the deadline\'s timeout rule; the next round begun once; the win recorded as Find Match', async () => {
+  await clearQueue();
+  const a = await player('ScAnn'), b = await player('ScBob'), c = await player('ScCal');
+  let ra = { status: 'searching' }, rb = ra;
+  for (let k = 0; k < 20 && (ra.status !== 'matched' || rb.status !== 'matched'); k++) [ra, rb] = await Promise.all([a.call('findMatch', { mode: 'chaos' }), b.call('findMatch', { mode: 'chaos' })]);
+  assert.deepEqual([ra.status, rb.status], ['matched', 'matched']); assert.equal(ra.game, rb.game); assert.notEqual(ra.side, rb.side);
+  const id = ra.game, by = { [ra.side]: a, [rb.side]: b }, X = by.X, O = by.O;
+  const pub = await X.read(`games/${id}/pub`);
+  assert.deepEqual([pub.chaos, pub.queue, pub.mode, pub.timer, pub.status, pub.round], [true, 'chaos', 'match', 0, 'playing', 1]);
+  assert.deepEqual(await get(`active/${X.uid}`), { game: id, side: 'X', queue: 'chaos', mode: 'match' });
+  assert.deepEqual(await get(`queue/chaos`), null, 'out of the queue');
+  const st0 = JSON.parse(pub.state);
+  assert.ok(st0.sc && st0.sc.online && st0.sc.round === 1 && st0.sc.deadline > Date.now() + 60000, 'round 1 timed from the server, with a grace for the intro');
+  assert.ok(st0.squares.every(q => E.scTypes().includes(q.mini.type)), 'Super Chaos games only');
+  const full0 = JSON.parse(await get(`games/${id}/sec/full`));
+  assert.ok(st0.squares.every((q, i) => { const sec = E.secretOf(full0.squares[i].mini); return !sec || Object.keys(sec).every(k => q.mini[k] === undefined || JSON.stringify(q.mini[k]) !== JSON.stringify(sec[k])); }), 'no secret in what the phones see');
+  await denied(X.read(`games/${id}/sec`), 'the server\'s record'); await denied(X.read(`games/${id}/sides/O`), 'the other side\'s node'); await denied(c.read(`games/${id}/pub`), 'an onlooker');
+  assert.equal(JSON.parse(await X.read(`games/${id}/sides/X`)).round, 1, 'its own node');
+  await scRig(id, [{ type: 'wordle', word: 'CRANE', guesses: [] }, { type: 'wordle', word: 'SLATE', guesses: [] }, { type: 'wordle', word: 'BREAD', guesses: [] }, { type: 'hangman', word: 'ZEBRA', letters: [] }]);
+  // round 1: X wins square 0 with a word; O's Hangman hit keeps its move going, the next letter ends it: settled
+  assert.deepEqual(await c.call('scMove', { game: id, square: 0, move: 'CRANE' }), { ok: false, reason: 'not-player' }, 'an onlooker');
+  const mx = await X.call('scMove', { game: id, square: 0, move: 'CRANE', rep: [[0, 'key', 'C']] });
+  assert.deepEqual([mx.ok, mx.me.win, mx.moved, mx.lock, mx.resolved, mx.mini.guesses.length], [true, true, 0, null, false, 1], JSON.stringify(mx));
+  assert.notEqual(mx.mini.word, 'CRANE', 'the word stays on the server');
+  assert.deepEqual(await X.call('scMove', { game: id, square: 1, move: 'SLATE' }), { ok: false, reason: 'moved' }, 'one move a round');
+  let st = await scState(id);
+  assert.deepEqual(st.sc.moves, { X: true, O: false }); assert.equal(st.squares[0].mini.guesses.length, 0, 'nothing of X\'s move on the board yet');
+  assert.equal(JSON.parse(await X.read(`games/${id}/sides/X`)).me.square, 0, 'X\'s own move, in its node');
+  const o1 = await O.call('scMove', { game: id, square: 3, move: 'Z' });
+  assert.deepEqual([o1.ok, o1.lock, o1.me, o1.mini.letters.length], [true, 3, null, 1], JSON.stringify(o1));
+  assert.deepEqual(await O.call('scMove', { game: id, square: 4, move: 10 }), { ok: false, reason: 'locked' }, 'held to its square');
+  assert.equal(JSON.parse(await O.read(`games/${id}/sides/O`)).prog.square, 3, 'its progress, for a reload');
+  const o2 = await O.call('scMove', { game: id, square: 3, move: 'Q' });
+  assert.ok(o2.ok && o2.me && o2.resolved, JSON.stringify(o2));
+  st = await scState(id);
+  assert.deepEqual([st.sc.round, st.sc.deadline, st.squares[0].owner], [2, null, 'X'], 'settled: round 2 waits for a phone through the recap');
+  const rc = st.sc.recap;
+  assert.deepEqual([rc.round, rc.claims.map(x => x.square + x.by), rc.mv.X.square, rc.mv.O.square, rc.mv.O.steps.length], [1, ['0X'], 0, 3, 2]);
+  assert.ok(rc.at > Date.now() - 5000 && rc.mv.O.steps[1].after.word !== 'ZEBRA', 'the shared start; the recap hidden too');
+  assert.deepEqual(await O.call('scMove', { game: id, square: 4, move: 10 }), { ok: false, reason: 'recap' });
+  assert.deepEqual(await X.call('scBegin', { game: id }), { ok: true }); assert.deepEqual(await O.call('scBegin', { game: id }), { ok: false, reason: 'begun' });
+  st = await scState(id); assert.ok(st.sc.deadline > Date.now() + 55000, 'round 2 begun, timed from then');
+  // round 2: X in, O never: the deadline past its grace gives O the timeout rule's move (a phone asks; the sweep would)
+  assert.ok((await X.call('scMove', { game: id, square: 1, move: 'SLATE' })).me.win);
+  assert.deepEqual(await X.call('scTick', { game: id }), { ok: true, settled: false }, 'too early');
+  await scPast(id);
+  assert.deepEqual(await X.call('scTick', { game: id }), { ok: true, settled: true });
+  st = await scState(id);
+  assert.deepEqual([st.sc.round, st.squares[1].owner, st.sc.recap.mv.O.auto], [3, 'X', true], 'O: the rule\'s move');
+  assert.deepEqual(await O.call('scBegin', { game: id }), { ok: true });
+  // round 3: X's third word makes the line; the match ends when O's move is in; recorded as Find Match for both
+  assert.ok((await X.call('scMove', { game: id, square: 2, move: 'BREAD' })).me.win);
+  const last = await O.call('scMove', { game: id, square: 4, move: 10 });
+  assert.ok(last.ok && last.resolved, JSON.stringify(last));
+  st = await scState(id); assert.equal(st.winner, 'X');
+  assert.deepEqual(await X.call('scMove', { game: id, square: 5, move: 10 }), { ok: false, reason: 'over' });
+  await recorded(id);
+  const g = await get(`games/${id}`);
+  assert.equal(g.pub.status, 'over'); assert.deepEqual(g.pub.result.records, { X: { wins: 1, losses: 0, draws: 0 }, O: { wins: 0, losses: 1, draws: 0 } });
+  assert.deepEqual([(await get(`users/${X.uid}`)).wins, (await get(`users/${O.uid}`)).losses, await get(`active/${X.uid}`), await get(`active/${O.uid}`)], [1, 1, null, null]);
+  const hx = await get(`history/${X.uid}/${id}`), ho = await get(`history/${O.uid}/${id}`);
+  assert.deepEqual([hx.mode, hx.result, hx.opponent.uid, ho.mode, ho.result, JSON.parse(hx.final).squares[0].mini.word], ['match', 'win', O.uid, 'match', 'loss', 'CRANE'], 'Find Match in the history, the final board revealed');
+  assert.equal((await get(`oppStats/${X.uid}/${O.uid}`)).wins, 1, 'Top opponents');
+  const log = Object.values(await get(`matchLogs/m${id}`) || {}).map(e => e.k);
+  for (const k of ['start', 'move', 'resolve', 'round', 'timeout', 'end']) assert.ok(log.includes(k), `${k} in the match's log (${log})`);
+});
+test('Super Chaos Find Match against a bot: a lone searcher gets a bot after their wait; it moves by the computer\'s Super Chaos play once its think is over; the round settles; counted apart', async () => {
+  await clearQueue(); await botsOn();
+  const h = await player('ScSolo');
+  assert.equal((await h.call('findMatch', { mode: 'chaos' })).status, 'searching');
+  await patch(`queue/chaos/${h.uid}`, { botAt: Date.now() - 1 });
+  const r = await h.call('findMatch', { mode: 'chaos' });
+  assert.equal(r.status, 'matched', 'a bot once the wait is over');
+  const id = r.game, botSide = r.side === 'X' ? 'O' : 'X';
+  const pub = await h.read(`games/${id}/pub`), bg = await get(`botGames/${id}`);
+  assert.equal(pub.chaos, true); assert.deepEqual([bg.side, bg.human, bg.live], [botSide, h.uid, true]);
+  assert.ok(bg.next && bg.next.round === 1 && bg.next.due > Date.now(), 'its move for round 1 planned, due after a think');
+  assert.deepEqual(Object.keys(pub).sort(), ['chaos', 'created', 'deadline', 'mode', 'players', 'queue', 'round', 'state', 'status', 'timer', 'updated'], 'nothing in the game says bot');
+  assert.deepEqual(await h.call('scTick', { game: id }), { ok: true, settled: false }, 'not due yet: the bot waits');
+  assert.equal((await scState(id)).sc.moves[botSide], false);
+  await patch(`botGames/${id}/next`, { due: Date.now() - 1 });
+  await h.call('scTick', { game: id });
+  let st = await scState(id);
+  assert.equal(st.sc.moves[botSide], true, 'the bot\'s move in once due');
+  await scRig(id, [{ type: 'wordle', word: 'CRANE', guesses: [] }]);   // (the human's square; the bot's move stands)
+  const m = await h.call('scMove', { game: id, square: 0, move: 'CRANE' });
+  assert.ok(m.ok && m.resolved, JSON.stringify(m));
+  st = await scState(id);
+  assert.equal(st.sc.round, 2); assert.ok(st.sc.recap.mv[botSide].steps.length >= 1, 'the bot\'s move, for the replay');
+  assert.deepEqual(await h.call('scBegin', { game: id }), { ok: true });
+  assert.equal((await get(`botGames/${id}/next`)).round, 2, 'its move for round 2 planned as the round began');
+  assert.equal((await h.call('resign', { game: id })).ok, true);
+  await recorded(id);
+  const done = await get(`botGames/${id}`);
+  assert.deepEqual([done.done, done.live, done.winner], [true, undefined, botSide]);
+  assert.equal((await get(`history/${h.uid}/${id}`)).mode, 'match');
+  assert.ok((await get('botStats/finished')) >= 1, 'bot matches counted apart');
 });
