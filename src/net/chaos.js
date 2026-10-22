@@ -18,7 +18,7 @@ import { matchTransaction, moveRejected, showNotice } from './moves.js';
 import { blocked, parseMatch, room, setMoveWait } from './room.js';
 import { NAV_SCREENS, RNG, commit, flashTimer, save, setFlashTimer, state } from '../ui/app.js';
 import { flashLeft, playFlash } from '../ui/turns.js';
-import { chaosStep, scAtHole, scOwnDue, scRecapStage, scRecapTotal, setScUi } from '../ui/chaos.js';
+import { chaosStep, scAtHole, scOppDue, scOwnDue, scRecapStage, scRecapTotal, setScUi } from '../ui/chaos.js';
 import { render } from '../ui/render.js';
 import { repStop } from '../ui/replay.js';
 import { devError } from './tracking.js';
@@ -110,7 +110,7 @@ function scJoin(rec) {
   const late = !!sc.recap && sc.deadline != null && was === sc.recap.round;   // this phone played the round just settled, and was away while the other phone went on to the next
   if (sc.recap && (sc.deadline == null || late)) {               // the round just settled: its recap is on (or its start still ahead)
     recapState(full, recapOf(sc, me));
-    if (late ? scOwnDue() : full.winner || serverNow() < state.sc.recap.at + scRecapTotal() || scOwnDue()) { save(); render(); chaosStep(); return; }   // (the sequence joined where it is; this phone's own outcome, not seen yet, from its start, even with the next round on)
+    if (late ? scOwnDue() : full.winner || serverNow() < state.sc.recap.at + scRecapTotal() || scOwnDue() || scOppDue()) { save(); render(); chaosStep(); return; }   // (the sequence joined where it is; this phone's own outcome, not seen yet, from its start, even with the next round on)
     if (!full.winner && !late) scBegin();                        // over already (this phone was away through it): through the recap; the next round begins on the record once the other phone is too
   }
   state.sc = Object.assign(clone(sc), { me: null, moved: null, start: null, steps: null, recap: null, deadline: sc.deadline != null ? sc.deadline : null, held: null, sent: null, missed: null, oppIn: !!(sc.moves && sc.moves[other(me)]) });   // (no deadline on the record yet: the other phone is still in the recap; nothing to play until it begins)
@@ -136,6 +136,7 @@ function scRecap(rec) {
   const full = fullState(rec), me = state.online.me;
   const rc = recapOf(full.sc, me, state.sc && state.sc.round === full.sc.recap.round ? state.squares : null), own = !!(state.flash && state.sc.me && state.flash.by === me && state.flash.sc === rc.round && flashLeft() > 0);   // (this phone's move settled the round: its result plays out, the shared start after it)
   take(full, own);
+  if (own) rc.at = Math.max(rc.at, serverNow() + flashLeft() + 300);   // (this phone's own result still playing, whatever the server guessed of it: the recap after it, the other's replay from its start)
   recapState(full, rc, own);
   save(); render(); chaosStep();                                  // (the sequence begins by the clock: its wait for the shared start)
 }

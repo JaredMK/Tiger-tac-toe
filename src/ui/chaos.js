@@ -23,7 +23,7 @@ import { render } from './render.js';
 import { repDuration, repStart, repStop } from './replay.js';
 import { scFailText, scNextOnline, scOnlineWait } from '../net/chaos.js';
 import { holdOf, playFlash } from './turns.js';
-import { matchLog } from '../net/tracking.js';
+import { devError, matchLog } from '../net/tracking.js';
 
 export const SC_MS = { cpu: [1400, 4200], spot: 800, claim: 1300, clash: 1050, flip: 900, end: 1300, popup: 2, idle: 300, last: 1000, skip: 1000 };   // the computer's move takes this long; the recap's steps; the pop-up replay's speed, its longest idle moment (a pause in the inputs, the wait between a move's steps), how long its last result stays up, and the end shown after a skip
 let scTimer = null;
@@ -200,6 +200,18 @@ const SC_OWN = new Set();                                          // the rounds
 const ownKey = rc => `${state.id || 'm'}:${rc.round}`;
 const ownSeen = rc => { if (SC_OWN.has(ownKey(rc))) return true; try { return sessionStorage.getItem('scOwn') === ownKey(rc); } catch (e) { return false; } };
 function ownShown(rc) { SC_OWN.add(ownKey(rc)); try { sessionStorage.setItem('scOwn', ownKey(rc)); } catch (e) { /* (this visit only) */ } }
+// Likewise the other player's replay: a phone that reaches it late the first time (its own result still playing, a
+// slow answer from the server, the app reopened) plays it from its start, never a moment of it; once played through,
+// a reload joins where the sequence is.
+const SC_OPP = new Set(), SC_OPP_ON = new Set();
+const oppSeen = rc => { if (SC_OPP.has(ownKey(rc))) return true; try { return sessionStorage.getItem('scOpp') === ownKey(rc); } catch (e) { return false; } };
+function oppShownDone(rc) { SC_OPP.add(ownKey(rc)); try { sessionStorage.setItem('scOpp', ownKey(rc)); } catch (e) { /* (this visit only) */ } }
+function oppCatchUp(rc, plan) {
+  const spot = plan.segs.find(s => s.kind === 'spot');
+  if (!spot || !rc.cpu || oppSeen(rc) || SC_OPP_ON.has(ownKey(rc))) return;   // (once it has begun here, the sequence is joined where it is)
+  const t = tnow() - rc.at;
+  if (t > spot.start + 250) rc.at = tnow() - spot.start;          // (this phone only: the next round waits for it)
+}
 // The square this player played this round (a friend room's from the record's moves).
 const ownSq = (rc, side) => (rc.mv ? (rc.mv[side] && rc.mv[side].square != null ? rc.mv[side].square : null) : rc.me);
 function scParts(rc, mine, opp) {   // mine: the square this player played; opp: the other player's move (core/chaos.js scRecapOrder: the order)
@@ -232,10 +244,16 @@ function scPlan(rc) {
     else add({ kind: 'result', k, phase: 'flip', dur: SC_MS.flip });
   });
   add({ kind: 'end', dur: state.winner ? SC_MS.end : 0 });
+  const opp = rc.cpu, mine = ownSq(rc, me);
+  if (opp && opp.square != null && !parts.some(p => p.kind === 'popup' || p.pop) && !(opp.square === mine && parts.some(p => p.own))) replayError(rc, `no replay of the other move (square ${opp.square}, ${opp.type || '?'}: ${opp.steps ? opp.steps.length : 'no'} steps)`);   // (never an empty pop-up: the board goes on, the match log says why)
   return { segs, total: t };
 }
 // This player's own outcome is in the recap and not shown yet: a phone that joins the recap after it began (out of
 // sight, the menu open, the app reopened) plays it from its start all the same, the rest after it.
+export function scOppDue() {   // the other player's replay in the recap, not played through here yet
+  const rc = state.sc && state.sc.recap;
+  return !!rc && !!rc.cpu && !oppSeen(rc) && !SC_OPP_ON.has(ownKey(rc)) && scPlan(rc).segs.some(s => s.kind === 'popup' || s.pop);
+}
 export function scOwnDue() {
   const rc = state.sc && state.sc.recap;
   return !!rc && !ownSeen(rc) && scPlan(rc).segs.some(s => s.own);
@@ -254,6 +272,7 @@ function dropFlash() { clearTimeout(flashTimer); setFlashTimer(null); state.flas
 function recapStep() {
   const rc = state.sc.recap;
   if (scUi.round !== rc.round || !scUi.plan) { scUi = { round: rc.round, readyAt: 0, stage: 'wait', at: 0, played: false, seg: -1, k: -1, phase: null, rk: 0, step: 0, mini: null, skipped: false, pausedAt: null, oppShown: false, plan: scPlan(rc) }; ownCatchUp(rc, scUi.plan); }
+  oppCatchUp(rc, scUi.plan);                                      // (every step until the other's replay has begun here: a phone that was held up, frozen or out of sight, starts it from its start)
   if (scUi.pausedAt != null) { rc.at += now() - scUi.pausedAt; scUi.pausedAt = null; }   // (the time paused, against the computer: the sequence goes on from where it stopped)
   const plan = scUi.plan, t = tnow() - rc.at;
   if (t < 0) {                                                    // the shared start is a moment ahead: the board as the round left it, until then
@@ -268,11 +287,17 @@ function recapStep() {
     if (state.flash) dropFlash();
     scUi.seg = i;
     if (!seg.own && plan.segs.some(s => s.own)) ownShown(rc);   // (its own outcome is over: not again, after a reload)
+    const lastPop = plan.segs.map(s => s.kind === 'popup' || s.pop).lastIndexOf(true);
+    if (lastPop >= 0 && i > lastPop) oppShownDone(rc);
+    if (seg.kind === 'spot' || seg.kind === 'popup' || seg.pop) SC_OPP_ON.add(ownKey(rc));            // (the other player's replay played through)
     if (seg.kind === 'spot' || (seg.own && rc.cpu && rc.cpu.square === segSquare(rc, seg))) scUi.oppShown = true;   // (the other player's square: lit, or played together with this one)
     enterSeg(rc, seg, t - seg.start);
   }
   scTimer = setTimeout(chaosStep, Math.max(10, seg.end - t + 10));
 }
+// A replay that cannot play: the match log says so (once a round), and the recap goes on without it.
+const REPLAY_ERR = new Set();
+function replayError(rc, msg) { const k = `${ownKey(rc)}:${msg}`; if (REPLAY_ERR.has(k)) return; REPLAY_ERR.add(k); try { devError('replay', `round ${rc.round}: ${msg}`); } catch (e) { /* (the log is never worth an error) */ } }
 // A part of the recap begins, e ms into it (0 as a rule; later when the sequence is joined part way).
 function enterSeg(rc, seg, e) {
   const cpu = scCpu(), quiet = e > 200, endAbs = rc.at + seg.end;
@@ -293,6 +318,7 @@ function enterSeg(rc, seg, e) {
     render();
   } else if (seg.kind === 'popup') {                              // the other player's move replayed at 2x, step by step, in a card over the board
     const steps = rc.cpu.steps, k = seg.k, step = seg.step;
+    if (!step || !steps || !steps[k]) { replayError(rc, `replay step ${k} missing`); scUi.stage = 'spot'; state.screen = 'board'; state.zoom = null; render(); return; }
     scUi.stage = 'popup'; scUi.step = k + 1;
     scUi.mini = clone(k ? steps[k - 1].after : rc.cpu.start || (state.sc.base && state.sc.base[rc.cpu.square]) || state.squares[rc.cpu.square].mini);
     state.screen = 'mini'; state.zoom = rc.cpu.square; state.draft = ''; state.pick = null; state.sel = [];
@@ -332,6 +358,7 @@ function enterSeg(rc, seg, e) {
 }
 // The sequence is over: the match's end, or the next round (a friend room's from the record).
 function recapDone(rc) {
+  oppShownDone(rc);                                               // (through the recap: the other's replay not again)
   if (state.flash) dropFlash();
   ownShown(rc);                                                   // (through the whole sequence: its own outcome with it)
   scUi = { round: null, readyAt: 0, stage: null, at: 0, played: false };

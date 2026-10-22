@@ -218,4 +218,11 @@ test('Super Chaos online, two clients on the emulator: each phone shows its own 
   assert.deepEqual([o3.X, o3.O], [['resolve:2:own'], ['resolve:2:own']]);
   const rc3 = host.rec().state.sc.recap;
   assert.deepEqual([rc3.resolve[0].joint, rc3.resolve[0].flash.scr.steps.X.t, rc3.resolve[0].flash.scr.steps.O.t], [true, 16, 32], 'both steps, from where the round began');
+  // 4. both spin in the same Risk Wheels square (each their own progress, nothing settled jointly): each phone still replays the other's spin, its steps on the record
+  await host.txn(code, rec => { const f = E.fullState(rec); f.squares[4] = { owner: null, mini: E.newMini('wheels', E.makeRng('whl')), mv: { X: 0, O: 0 } }; return { ok: true, rec: E.matchRecord(f) }; });
+  for (const c of [host, guest]) await until(() => c.rec() && c.rec().state.squares[4].mini.type === 'wheels', 10000, 'the Risk Wheels square on both');
+  const o4 = await round(4, [4, ['high']], [4, ['low']]);
+  assert.deepEqual([o4.X, o4.O], [['spot:4', 'popup:4'], ['spot:4', 'popup:4']], 'one square, each their own progress: each sees the other\'s replay');
+  const rc4 = host.rec().state.sc.recap;
+  for (const side of ['X', 'O']) assert.ok(rc4.mv[side].steps.length === 1 && rc4.mv[side].steps[0].type === 'wheels' && rc4.mv[side].start, `${side}'s spin kept for the other's replay`);
 });

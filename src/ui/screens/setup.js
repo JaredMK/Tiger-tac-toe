@@ -23,7 +23,7 @@ export const chaosSetup = () => (isHost() ? !!state.online.chaos : scMode()) && 
 export const setupTypes = () => (chaosSetup() ? visibleTypes().filter(t => scTypes().includes(t)) : visibleTypes().filter(t => !SC_ONLY.includes(t)));   // (a Super Chaos only game: in its checklist only)
 // The Mode selector, Super Chaos | Classic (Play Local, the host's room, Find Match): only where Super Chaos is open
 // to this player; its "?" explains Super Chaos.
-export const modeRow = sc => (chaosVisible() ? `<div class="timerrow scmode" role="group" aria-label="Mode"><span>Mode ${qBtn('superchaos', 'sm')}</span><button class="seg${sc ? ' on' : ''}" data-act="gmode" data-v="chaos" aria-pressed="${sc}">Super Chaos${chaosBadge()}</button><button class="seg${sc ? '' : ' on'}" data-act="gmode" data-v="classic" aria-pressed="${!sc}">Classic</button></div>` : '');
+export const modeRow = sc => (chaosVisible() ? `<div class="timerrow scmode" role="group" aria-label="Mode"><span>Mode ${qBtn('mode', 'sm')}</span><button class="seg${sc ? ' on' : ''}" data-act="gmode" data-v="chaos" aria-pressed="${sc}">Super Chaos${chaosBadge()}</button><button class="seg${sc ? '' : ' on'}" data-act="gmode" data-v="classic" aria-pressed="${!sc}">Classic</button></div>` : '');
 export function renderSetup() {
   const s = state.setup;
   const VT = setupTypes(), on = enabledGames(s).filter(t => VT.includes(t)).length;   // (an admin-only game does not exist here for anyone but the admin)
