@@ -263,7 +263,7 @@ function onRoomValue(r) {
   const wasJoined = o.joined;
   o.joined = !!(r.players.X && r.players.X.uid && r.players.O && r.players.O.uid);
   if (wasJoined === false && o.joined) SND.play('join');
-  if (r.status === 'playing' && r.match) {
+  if ((r.status === 'playing' || r.status === 'over') && r.match) {   // (over: the match ended by a forfeit, the room closed: its result stays on show)
     if (net.status !== 'connected') setNet('connected', '');
     if (presenting()) { pendingRoom = r; return; }               // a move is still playing out here: afterwards
     applyMatch(r);

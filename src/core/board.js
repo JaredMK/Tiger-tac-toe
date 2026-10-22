@@ -39,7 +39,7 @@ export function timeoutMove(state, rng) {
   t.timeouts[p] += 1; t.streak[p] += 1;
   t.miss = { by: p, kind: 'missed', n: t.missN };
   if (t.streak[p] >= 2) {
-    state.winner = other(p); state.winLine = null; state.winReason = 'timeout'; state.counts = null;
+    state.winner = other(p); state.winLine = null; state.winReason = 'timeout'; state.resigned = p; state.counts = null;   // (a forfeit: two turns in a row missed)
     state.lock = null; state.done = null; state.flash = null; state.spot = null; t.deadline = null; t.startBy = null;
     state.screen = 'win'; state.zoom = null;
     return { ok: true, lost: p };

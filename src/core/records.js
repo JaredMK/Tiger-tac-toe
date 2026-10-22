@@ -4,7 +4,7 @@ import { endFlash, playMove, timeoutMove } from './board.js';
 import { SC_ONLINE, chaosResolveOnline, scTypes, startChaosOnline } from './chaos.js';
 import { defaultSetup, newState, startMatch } from './match.js';
 import { upgradeMini } from './minis.js';
-import { newTimer } from './timer.js';
+import { armClock, clockDeadline, newTimer } from './timer.js';
 import { other } from './util.js';
 import { attStart } from '../games/shared/attention.js';
 import { PHYS_TYPES } from '../games/shared/physics.js';
@@ -215,6 +215,42 @@ export function scReady(sc, now, side) {
   if (JSON.stringify(ready) === was) return { ok: false, reason: 'waiting' };
   sc.ready = ready;
   return { ok: true, begun: false };
+}
+// The server's look at a friend room's match, whether or not either phone is open (functions/index.js: the
+// deadline check on every write and the sweep each minute). Being away never pauses a turn or a round:
+// Classic, a turn past its deadline is missed (applyOnlineTimeout; its start counted at the latest when the
+// replay before it would be over, startBy); Super Chaos, a round past its deadline and grace settles with no
+// move for a side not in (applyChaosDeadline), and a recap neither phone gets through begins the next round
+// (after SC_ROOM.recapMaxMs, or the wait for a phone gone). A second miss in a row ends the match as a forfeit.
+export const SC_ROOM = { recapMaxMs: 90000, classicGraceMs: 4000 };
+export function roomDue(rec) {
+  const st = rec && rec.state;
+  if (!st || st.winner) return null;
+  const sc = st.sc;
+  if (sc && sc.online) {
+    if (sc.deadline != null) return sc.deadline + SC_ONLINE.graceMs;
+    if (!sc.recap) return null;
+    const at = Object.values(sc.ready || {}), gone = (sc.recap.at || 0) + SC_ROOM.recapMaxMs;
+    return at.length ? Math.min(gone, Math.min(...at) + SC_ONLINE.readyWaitMs) : gone;
+  }
+  const dl = clockDeadline(st.timer);
+  return dl == null ? null : dl + SC_ROOM.classicGraceMs;   // (a phone open fires at the deadline itself; the server a moment later)
+}
+export function applyRoomSweep(rec, now, rng) {
+  const due = roomDue(rec);
+  if (due == null || now < due) return { ok: false, reason: 'early' };
+  const st = rec.state, sc = st.sc;
+  if (sc && sc.online) {
+    if (sc.deadline != null) return applyChaosDeadline(rec, now, rng);
+    const full = fullState(rec);
+    full.sc.deadline = now + full.sc.limit * 1000; full.sc.ready = null;   // the recap left unfinished: the next round begins, timed from now
+    full.seq = (full.seq || 0) + 1;
+    return { ok: true, rec: matchRecord(full), begun: true };
+  }
+  const r = applyOnlineTimeout(rec, rng);
+  if (!r.ok) return r;
+  armClock(r.rec.state, r.entries, now);   // (as a phone's own timeout write: ui/clock.js fireTimeout)
+  return r;
 }
 // A player gives up the match (leaving a matchmaking game through the menu): the other side wins.
 export function applyOnlineResign(rec, side) {

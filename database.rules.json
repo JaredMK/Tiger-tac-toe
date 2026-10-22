@@ -3,7 +3,8 @@
     "rooms": {
       ".read": "auth != null",
       ".indexOn": [
-        "created"
+        "created",
+        "dl"
       ],
       "$code": {
         ".validate": "$code.matches(/^[ABCDEFGHJKLMNPQRSTUVWXYZ]{5}$/)",

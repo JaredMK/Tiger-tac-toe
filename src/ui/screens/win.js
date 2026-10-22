@@ -70,16 +70,16 @@ export function renderWin() {
   const w = state.winner;
   if (w === 'draw') return renderDraw();
   const why = state.winReason === 'line' ? 'Three squares in a row'
-    : state.winReason === 'timeout' ? `${N(other(w))} ran out of time twice`
+    : state.winReason === 'timeout' ? `${N(other(w))} forfeited — 2 missed turns`
     : state.winReason === 'resign' ? `${N(other(w))} left the match`
     : `Most squares: ${state.counts[w]} to ${state.counts[other(w)]}`;
   const final = state.squares.map((s, i) =>
     `<i class="${s.owner || ''}${state.winLine && state.winLine.includes(i) ? ' hl' : ''}">${s.owner ? toonT(s.owner) : ''}</i>`
   ).join('');
   return `<main class="scr win-scr">${netBar()}<div class="win-card${isMM() ? ' mm' : ''}">
-    <div class="winburst">${endBurst(endMessage())}</div><div class="big-g ${w}">${toonT(w)}</div><h1>${state.winReason === 'timeout' || state.winReason === 'resign' ? `${N(w)} wins — ${why}` : `${N(w)} wins the match!`}</h1><p>${state.winReason === 'timeout' ? (state.sc ? 'Two rounds in a row missed: that counts as giving up' : 'Two turns in a row missed: that counts as giving up') : state.winReason === 'resign' ? 'Leaving a match counts as a loss' : why}</p>${mmResult()}
+    <div class="winburst">${endBurst(endMessage())}</div><div class="big-g ${w}">${toonT(w)}</div><h1>${state.winReason === 'timeout' ? `${N(w)} wins` : state.winReason === 'resign' ? `${N(w)} wins — ${why}` : `${N(w)} wins the match!`}</h1><p>${state.winReason === 'timeout' ? why : state.winReason === 'resign' ? 'Leaving a match counts as a loss' : why}</p>${mmResult()}
     <div class="final" aria-hidden="true">${final}</div>
-    <div class="row">${isMM() ? findAgainBtn() : `<button class="primary" data-act="rematch"${state.online && !connected ? ' disabled' : ''}>Rematch</button>`}<button class="btn" data-act="review">View board</button><button class="btn" data-act="${state.online ? 'leave' : 'menu'}">Main menu</button></div></div></main>`;
+    <div class="row">${isMM() ? findAgainBtn() : (state.online && room && room.status === 'over' ? '' : `<button class="primary" data-act="rematch"${state.online && !connected ? ' disabled' : ''}>Rematch</button>`)}<button class="btn" data-act="review">View board</button><button class="btn" data-act="${state.online ? 'leave' : 'menu'}">Main menu</button></div></div></main>`;
 }
 
 
@@ -91,5 +91,5 @@ function renderDraw() {
   return `<main class="scr win-scr">${netBar()}<div class="win-card${isMM() ? ' mm' : ''}">
     <div class="winburst">${endBurst(endMessage())}</div><div class="big-g both">${toonT('X')}${toonT('O')}</div><h1>It's a draw!</h1><p>${state.winReason === 'both' ? 'Both made three in a row in the same round' : state.winReason === 'timeout' ? 'Both missed two rounds in a row' : 'Nobody could get three in a row any more, so the match ended there'}</p>${mmResult()}
     <div class="final" aria-hidden="true">${final}</div>
-    <div class="row">${isMM() ? findAgainBtn() : `<button class="primary" data-act="rematch"${state.online && !connected ? ' disabled' : ''}>Rematch</button>`}<button class="btn" data-act="review">View board</button><button class="btn" data-act="${state.online ? 'leave' : 'menu'}">Main menu</button></div></div></main>`;
+    <div class="row">${isMM() ? findAgainBtn() : (state.online && room && room.status === 'over' ? '' : `<button class="primary" data-act="rematch"${state.online && !connected ? ' disabled' : ''}>Rematch</button>`)}<button class="btn" data-act="review">View board</button><button class="btn" data-act="${state.online ? 'leave' : 'menu'}">Main menu</button></div></div></main>`;
 }

@@ -1024,7 +1024,8 @@ exports.friendGameDone = onValueWritten({ ref: '/rooms/{code}/match' }, async ev
   const st = parse(after.state);
   const b = before && typeof before.state === 'string' ? parse(before.state) : null;
   const sid = 'f_' + event.params.code + '_' + String(st.id || 'm').replace(/[^-\w]/g, '');
-  await friendLog(event.params.code, b, st, after);              // the match's log: what this write changed (matchLogRules.js friendEvents)
+  await friendLog(event.params.code, b, st, after);
+  await roomDueSet(event.params.code);                           // when the server must look at the room next (a turn or round run out), whether or not a phone is open: what this write changed (matchLogRules.js friendEvents)
   if (!b || b.id !== st.id) {                                  // a new match in the room: counted as started
     const t = now();
     // The match may only hold games its players may see: the released ones, or any game when the
@@ -1077,6 +1078,31 @@ exports.friendGameDone = onValueWritten({ ref: '/rooms/{code}/match' }, async ev
   if (Object.keys(up).length) await db.ref().update(up);
 });
 
+// Friend rooms: missed turns enforced by the server. Every write to a room's match sets rooms/{code}/dl, the
+// moment a turn or round runs out (core/records.js roomDue: its deadline and grace); the sweep looks at each
+// room past it and applies the timeout there (applyRoomSweep: a turn missed, a round settled with no move for
+// a side not in, a recap nobody finished begun). Being away never pauses the clock; a second miss in a row
+// ends the match as a forfeit (stats and history: friendGameDone, on that write) and closes the room.
+async function roomDueSet(code) {
+  const rec = E.parseMatch((await db.ref(`rooms/${code}/match`).get()).val());   // (the match as it is now: writes close together may trigger out of order)
+  const due = rec ? E.roomDue(rec) : null;
+  const up = { [`rooms/${code}/dl`]: due == null ? null : due };
+  if (rec && rec.state.winner && rec.state.winReason === 'timeout') up[`rooms/${code}/status`] = 'over';   // a forfeit: the room is closed (both phones show the result; no rematch)
+  await db.ref().update(up).catch(e => logger.warn('room dl', code, e.message));
+}
+async function sweepRooms(t) {
+  const due = (await db.ref('rooms').orderByChild('dl').startAt(1).endAt(t).limitToFirst(50).get()).val() || {};
+  let n = 0;
+  for (const code of Object.keys(due)) {
+    let changed = false;
+    const step = E.matchTxn(rec => { const r = E.applyRoomSweep(rec, now(), seedRng()); changed = !!r.ok; return r.ok ? r.rec : null; });
+    const res = await db.ref(`rooms/${code}/match`).transaction(cur => (cur === null ? null : step(cur))).catch(e => { logger.warn('room sweep', code, e.message); return null; });
+    if (changed && res && res.committed) n++;
+    else if (res && res.committed === false && !changed) await db.ref(`rooms/${code}/dl`).set(E.roomDue(E.parseMatch(res.snapshot.val()) || {}) || null).catch(() => {});   // (nothing due after all: the next look when it is)
+  }
+  return n;
+}
+
 /* ===================== the sweep: every minute ===================== */
 // Timeouts for games nobody is watching, results not yet recorded, and finished games past a day.
 async function sweep() {
@@ -1092,6 +1118,7 @@ async function sweep() {
     const r = await (g.pub.chaos ? changeSc(id, null, (gm, side, t) => scSweepStep(gm, t), 'sweep') : changeGame(id, null, timeoutStep, 'timeout')).catch(() => ({ ok: false }));
     if (r.ok) timeouts++;
   }
+  const roomTimeouts = await sweepRooms(t).catch(e => { logger.error('room sweep', e); return 0; });
   const old = (await db.ref('games').orderByChild('pub/ended').startAt(1).endAt(t - GAME_KEEP_MS).limitToFirst(50).get()).val() || {};
   const up = {};
   let deleted = 0;
@@ -1100,7 +1127,7 @@ async function sweep() {
   const logs = await pruneLogs(t, up).catch(e => { logger.error('match log prune', e); return 0; });
   if (Object.keys(up).length) await db.ref().update(up);
   if (logs) logger.info('match logs deleted', logs);
-  return { timeouts, finished, deleted, botMoves };
+  return { timeouts, finished, deleted, botMoves, roomTimeouts };
 }
 // What the stats have seen, once it can no longer matter: matches after three days, players once their
 // day, week or month is well over (the counts stay).
@@ -1115,7 +1142,7 @@ async function pruneSeen(t, up) {
 }
 exports.sweep = onSchedule({ schedule: 'every 1 minutes', timeZone: 'Etc/UTC', retryCount: 0 }, async () => {
   const r = await sweep();
-  if (r.timeouts || r.finished || r.deleted || r.botMoves) logger.info('sweep', r);
+  if (r.timeouts || r.finished || r.deleted || r.botMoves || r.roomTimeouts) logger.info('sweep', r);
 });
 // The emulator cannot fire schedules: the tests run the same sweep through this hook, which exists
 // only in the emulator.
