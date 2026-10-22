@@ -23,13 +23,19 @@ export function renderHeader() {
   // the reaction bubble hangs by the sender's character; the bubble is always there (hidden when empty), so the bar's shape stays the same
   const card = p => (rx.card && rx.card.side === p && !menuOpen ? rx.card : null);   // (not over the in-game menu)
   const side = p => `<div class="tside ${p}${p === t ? ' on' : ''}"><span class="tg">${toon(p)}<span class="rbub${card(p) ? ' on' : ''}"${card(p) ? fxAttr(card(p).at) : ''} aria-live="polite">${card(p) ? card(p).e : ''}</span></span><b class="nm">${N(p)}</b></div>`;
-  const cool = reactCooling();
-  const react = reactOn() ? `<button class="rbtn" data-act="react-open" aria-label="Send a reaction" aria-expanded="${rx.tray}"${cool ? ' disabled' : ''}>💬</button>` : '';
-  const tray = reactOn() && rx.tray && !menuOpen ? `<div class="rtray" role="group" aria-label="Send a reaction">${REACTS.map(([em, nm], i) => `<button data-act="react-send" data-i="${i}" aria-label="${nm}"${cool ? ' disabled' : ''}>${em}</button>`).join('')}</div>` : '';
   return `<header class="hdr t-${t}${clock ? ' has-clock' : ''}">
-    <div class="hdrrow"><button class="menubtn" data-act="pause" aria-label="Menu">Menu</button><div class="tbar">${side('X')}${side('O')}</div>${react}</div>
-    <div class="hdrrow2"><div class="turn" aria-live="polite">${resultLine(drawn ? `<span class="who">Draw · ${state.winReason === 'both' ? 'both made a line' : 'no line left'}</span>` : won ? `<span class="g">${t}</span><span class="who">${N(t)} wins</span>` : sc ? scTurnText() : `<span class="g">${t}</span><span class="who">${N(t)}<i class="suf">'s turn</i></span>`)}</div><span class="clockbox">${clock}</span></div>${tray}
+    <div class="hdrrow"><button class="menubtn" data-act="pause" aria-label="Menu">Menu</button><div class="tbar">${side('X')}${side('O')}</div></div>
+    <div class="hdrrow2"><div class="turn" aria-live="polite">${resultLine(drawn ? `<span class="who">Draw · ${state.winReason === 'both' ? 'both made a line' : 'no line left'}</span>` : won ? `<span class="g">${t}</span><span class="who">${N(t)} wins</span>` : sc ? scTurnText() : `<span class="g">${t}</span><span class="who">${N(t)}<i class="suf">'s turn</i></span>`)}</div><span class="clockbox">${clock}</span></div>
   </header>`;
+}
+// The reactions' button, at the bottom of the game screen in a strip kept for it (#app.rxon: the board and the
+// mini-game are that much shorter, the whole match long), over everything but a dialog, never dimmed; its tray
+// opens above it.
+export function renderReactDock() {
+  if (!reactOn()) return '';
+  const cool = reactCooling();
+  const tray = rx.tray && !menuOpen ? `<div class="rtray" role="group" aria-label="Send a reaction">${REACTS.map(([em, nm], i) => `<button data-act="react-send" data-i="${i}" aria-label="${nm}"${cool ? ' disabled' : ''}>${em}</button>`).join('')}</div>` : '';
+  return `<div class="rxdock"><button class="rbtn${cool ? ' cool' : ''}" data-act="react-open" aria-label="Send a reaction" aria-expanded="${rx.tray}"${cool ? ' aria-disabled="true"' : ''}>💬</button>${tray}</div>`;
 }
 
 // A move's result in words, in the turn line (the reserved place on every game screen: nothing laid over the

@@ -69,11 +69,13 @@ export function renderSetup() {
     ${modeRow(sc)}
     ${host ? sides : ''}
     ${timer}
-    <div class="adv${advOpen ? ' open' : ''}"><button class="adv-h" data-act="adv" aria-expanded="${advOpen}"><span>Mini-games</span><small>${on} of ${VT.length} mini-games on</small><i class="chev">${CHEV}</i></button>
+    <div class="adv${advOpen ? ' open' : ''}"><button class="adv-h" data-act="adv" aria-expanded="${advOpen}"><span>Mini-games</span><small>${gamesCount(on, VT.length)}</small><i class="chev">${CHEV}</i></button>
       ${advOpen ? `<div class="games-top"><button class="btn selall" data-act="games-none"${on === 0 ? ' disabled' : ''}>Deselect all</button><button class="btn selall" data-act="games-all"${on === VT.length ? ' disabled' : ''}>Select all</button></div><div class="games">${byName(VT).map(chk).join('')}</div>` : ''}</div>
   </div>
   <div class="setup-foot"><button class="primary" data-act="start"${ready ? '' : ' disabled'}>Start match</button><small class="warn">${setupWarn(s)}</small></div></main>`;
 }
+// How many mini-games are on: "All", or "x/N".
+export const gamesCount = (on, n) => (on === n ? 'All' : `${on}/${n}`);
 // The Mini-games checklist: one list in alphabetical order (a game's kind, meta.js category, is in its "?").
 export const byName = types => types.slice().sort((a, b) => INFO[a].name.localeCompare(INFO[b].name));
 // Start opens once at least one mini-game is on (online, also once the friend is in).
@@ -92,7 +94,7 @@ export function setGames(change) {
     box.checked = v;
     box.closest('.chk').classList.toggle('off', !v);
   }
-  const n = app.querySelector('.adv-h small'); if (n) n.textContent = `${on} of ${VT.length} mini-games on`;
+  const n = app.querySelector('.adv-h small'); if (n) n.textContent = gamesCount(on, VT.length);
   const all = app.querySelector('[data-act="games-all"]'); if (all) all.disabled = on === VT.length;
   const none = app.querySelector('[data-act="games-none"]'); if (none) none.disabled = on === 0;
   const start = app.querySelector('[data-act="start"]'); if (start) start.disabled = !setupReady(s);

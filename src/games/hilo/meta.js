@@ -3,7 +3,7 @@
 export const info = { name: 'Higher/Lower', hint: 'Guess the number from 1 to 30 in 5 guesses' };
 export const release = 'released';   // the default (the admin's dashboard can change it)
 export const category = 'luck';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
-export const target = 'shared';   // the header's icon: 'shared' (one board for both), 'own' (each player's own progress) or 'course' (one course for both, each their own distance)
+export const target = 'shared';   // what the players share, in its "?" label: 'shared' (one board for both), 'own' (each player's own progress) or 'course' (one course for both, each their own distance)
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Higher/Lower', play: "Guess a number from 1 to {hi}. You'll be told higher or lower.", win: 'Guess it. Use up {limit} guesses and you lose the square.' };   // ({hi}, {limit}: its settings, TUNE below)
 export const scExplainer = { name: 'Higher/Lower', play: "Guess a number from 1 to {hi}. You'll be told higher or lower; both guesses join the list when the round ends.", win: 'Guess it. Use up {limit} guesses and you lose the square.' };   // in Super Chaos

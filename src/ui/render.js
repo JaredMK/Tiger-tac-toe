@@ -21,7 +21,8 @@ import { renderHistory, renderLeaderboard, renderProfHist, renderProfile } from 
 import { renderSandbox } from './sandbox.js';
 import { renderSetup } from './screens/setup.js';
 import { renderWin } from './screens/win.js';
-import { renderHeader } from './turnbar.js';
+import { renderHeader, renderReactDock } from './turnbar.js';
+import { reactOn } from '../net/reactions.js';
 import { playFlash } from './turns.js';
 
 export function render() {
@@ -36,7 +37,8 @@ export function render() {
   const kept = entering ? [] : [...app.querySelectorAll('[data-keep-scroll]')].map(e => [e.dataset.keepScroll, e.scrollTop]);
   const focus = entering ? null : typingIn();
   const boards = entering ? [] : KEEP_BOARDS.map(sel => [sel, app.querySelector(sel)]).filter(([, e]) => e);
-  const html = renderHeader() + renderMain() + renderExplain() + renderIntro() + renderJoinAsk() + (refusedNote && state.online ? `<div class="refused" role="status">${esc(refusedNote)}</div>` : '');
+  app.classList.toggle('rxon', reactOn());                       // (an online match: the reactions' strip at the bottom, kept the whole match)
+  const html = renderHeader() + renderMain() + renderReactDock() + renderExplain() + renderIntro() + renderJoinAsk() + (refusedNote && state.online ? `<div class="refused" role="status">${esc(refusedNote)}</div>` : '');
   if (!boards.length) app.innerHTML = html;
   else {
     const fresh = document.createElement('div');

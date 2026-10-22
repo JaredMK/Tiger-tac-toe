@@ -8,7 +8,8 @@ import { acct } from '../../net/accounts.js';
 import { activeElsewhere, findOn } from '../../net/matchmaking.js';
 import { visibleTypes } from '../../net/releases.js';
 import { joinCode, joinName, leaveLoses, net, online, room } from '../../net/room.js';
-import { TIMER_LABEL, esc, state } from '../app.js';
+import { TIMER_LABEL, advOpen, esc, state } from '../app.js';
+import { byName, gamesCount } from './setup.js';
 import { CHEV, ICONS } from '../art.js';
 import { joinAsk } from '../input.js';
 
@@ -44,12 +45,15 @@ export function renderJoin() {
   const sc = !!(room && room.setup && room.setup.chaos);
   const pool = TYPES.filter(t => (visibleTypes().includes(t) || (room && room.setup && room.setup.games && room.setup.games[t])) && (sc ? scTypes().includes(t) : !SC_ONLY.includes(t)));   // the games this guest knows of, and the host's (an admin host may deal games on test); Super Chaos deals only its own
   const games = room && room.setup && room.setup.games ? pool.filter(t => room.setup.games[t] !== false) : pool;
+  const pick = room && room.setup && room.setup.hostPick === 'random' ? 'Random' : (o && o.me) || 'X';   // (the host's Random: drawn every match)
+  const on = new Set(games), list = byName(pool);
   const info = seated && room ? `<div class="jinfo">
       <div class="field"><span>Host</span><div class="namebox">${esc(hostName || 'the host')}</div></div>
-      <div class="field"><span>Your side</span><div class="namebox">${room.setup && room.setup.hostPick === 'random' ? 'Drawn at random every match' : `<b class="side ${o.me}">${o.me}</b>`}</div></div>
-      <div class="field"><span>Mode</span><div class="namebox">${sc ? 'Super Chaos · both move at once, 1 minute a round' : 'Classic'}</div></div>
+      <div class="field"><span>You play</span><div class="namebox">${pick === 'Random' ? 'Random' : `<b class="side ${pick}">${pick}</b>`}</div></div>
+      <div class="field"><span>Mode</span><div class="namebox">${sc ? 'Super Chaos' : 'Classic'}</div></div>
       ${sc ? '' : `<div class="field"><span>Time per turn</span><div class="namebox">${TIMER_LABEL[timer]}</div></div>`}
-      <div class="field"><span>Mini-games</span><div class="namebox${games.length === pool.length ? '' : ' gl'}">${games.length === pool.length ? `All ${pool.length}` : `<span>${games.length} of ${pool.length}</span><span class="gicons" aria-label="${esc(games.map(t => INFO[t].name).join(', '))}">${games.map(t => ICONS[t]).join('')}</span>`}</div></div>
+      <div class="adv jgames${advOpen ? ' open' : ''}"><button class="adv-h" data-act="adv" aria-expanded="${advOpen}"><span>Mini-games</span><small>${gamesCount(games.length, pool.length)}</small><i class="chev">${CHEV}</i></button>
+        ${advOpen ? `<div class="games">${list.map(t => `<div class="chk ro${on.has(t) ? '' : ' off'}"><input type="checkbox" disabled${on.has(t) ? ' checked' : ''} aria-label="${esc(INFO[t].name)}: ${on.has(t) ? 'on' : 'off'}">${ICONS[t]}<span>${INFO[t].name}</span></div>`).join('')}</div>` : ''}</div>
     </div>` : '';
   const status = net.status === 'error' ? `<div class="warn">${esc(net.msg)}</div>`
     : seated && room ? `${info}<div class="status ok">Waiting for <b>${esc(hostName || 'the host')}</b> to start…</div>`

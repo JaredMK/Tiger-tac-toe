@@ -3,7 +3,7 @@
 export const info = { name: 'Pool',         hint: 'Sink two of your balls. The black ball loses' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
 export const category = 'skill';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
-export const target = 'shared';   // the header's icon: 'shared' (one board for both), 'own' (each player's own progress) or 'course' (one course for both, each their own distance)
+export const target = 'shared';   // what the players share, in its "?" label: 'shared' (one board for both), 'own' (each player's own progress) or 'course' (one course for both, each their own distance)
 export const explainer = { name: 'Pool', play: 'Drag back from the white ball to aim and shoot. Sink your own ball to go again. Sink the white (a scratch) and it goes back on its spot, and the other player gets an extra ball of their colour on the table.', win: 'Sink two of your balls first. Sink the black ball and you lose.' };
 // Its settings (the admin's Mini-game Settings; core/tune.js): dealt into each square; the shots' simulation reads them (physics.js: physOpt).
 export const TUNE = [

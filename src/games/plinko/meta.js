@@ -3,7 +3,7 @@
 export const info = { name: 'Plinko',       hint: 'Drop from an open slot. Race to the target' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
 export const category = 'luck';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
-export const target = 'own';   // the header's icon: 'shared' (one board for both), 'own' (each player's own progress) or 'course' (one course for both, each their own distance)
+export const target = 'own';   // what the players share, in its "?" label: 'shared' (one board for both), 'own' (each player's own progress) or 'course' (one course for both, each their own distance)
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Plinko', play: 'Drop the chip from an open slot. The bins are worth 5, 3, 3, 2, 2, 1 and 1 points, and the gold bonus peg adds {bonus} (a new one appears once it is hit). A slot used by either player stays locked until all seven are used.', win: 'First to the target score (12 unless the admin changed it).' };
 export const scExplainer = { name: 'Plinko', play: 'Drop the chip from an open slot (both players may pick the same one). The gold bonus peg adds {bonus} to everyone who hits it; a new one appears next round.', win: 'First to the target score (12 unless the admin changed it).' };   // in Super Chaos

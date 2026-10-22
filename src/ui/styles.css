@@ -24,6 +24,7 @@
   --foot: 52px;
   --bar: 56px;
   --pad: 12px;
+  --rxh: 0px;                                   /* the reactions' strip at the bottom of a game screen (online matches) */
   --r: 14px;
   --sat: env(safe-area-inset-top, 0px);
   --sab: env(safe-area-inset-bottom, 0px);
@@ -81,7 +82,9 @@ b.X { color: var(--x); } b.O { color: var(--o); }
 @supports (height: 100dvh) { .scr { --vh: 100dvh; } }
 
 /* ---------- main board ---------- */
-.board-scr { --s: min(var(--gw), calc(var(--vh) - var(--hdr) - var(--foot) - 2 * var(--pad) - var(--sat) - var(--sab))); }
+.board-scr { --s: min(var(--gw), calc(var(--vh) - var(--hdr) - var(--foot) - var(--rxh) - 2 * var(--pad) - var(--sat) - var(--sab))); }
+#app.rxon { --rxh: 54px; }
+#app.rxon > main.board-scr, #app.rxon > main.scr.mini:not(.screplay) { padding-bottom: calc(var(--pad) + var(--rxh)); }
 .board {
   width: var(--s); height: var(--s);
   display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); gap: 8px;
@@ -190,7 +193,7 @@ svg text { text-rendering: geometricPrecision; }   /* laid out at its true size,
 
 /* ---------- zoomed mini-game ---------- */
 .mini {
-  --gh: calc(var(--vh) - var(--hdr) - var(--bar) - 2 * var(--pad) - var(--sat) - var(--sab));
+  --gh: calc(var(--vh) - var(--hdr) - var(--bar) - var(--rxh) - 2 * var(--pad) - var(--sat) - var(--sab));
   --g: min(var(--gw), var(--gh));
 }
 .mini.enter { animation: zoomin .18s ease-out; }   /* on the way in from the board (anchored to that moment: a re-render carries it on) */
@@ -577,7 +580,8 @@ main.scr.mini:has(.fing), main.scr.mini:has(.fing) * { touch-action: none; -webk
 .arrow.up, .arrow.yes { color: var(--green); } .arrow.dn { color: var(--x); }
 .guess.fresh .arrow.up { animation: bobup .5s .3s ease-in-out 2; }
 .guess.fresh .arrow.dn { animation: bobdn .5s .3s ease-in-out 2; }
-.pad button.out { animation: fadeout .4s .45s ease-out both; }
+.pad button.out { animation: hiloOut .4s .45s ease-out both; }   /* ruled out by the guess: dimmed to the disabled look, never gone (its own keyframes: a later fadeout goes to 0) */
+@keyframes hiloOut { from { opacity: 1; } to { opacity: .25; } }
 .pad { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
 .pad button { height: 52px; border: 0; border-radius: 12px; background: var(--panel-2); font-weight: 800; font-size: 18px; font-variant-numeric: tabular-nums; }
 .pad button:disabled { opacity: .25; }
@@ -737,6 +741,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 #app { overflow-x: clip; }
 .setup-box, .online-mid, .mmlist, .hlist, [data-keep-scroll] { overflow-x: hidden; }               /* the pop-ups cover the whole screen: nothing under them takes a tap */
 #app > .vsintro { position: fixed; z-index: 35; }
+#app > .rxdock { position: fixed; z-index: 39; }   /* the reactions' button: over the bands, replays and intro, under an explainer */
 .toonf, h1, h2, .ttl > b, .primary, .btn, .big, .menubtn, .back, .seg, .key, .turn .who, .clock, .lab, .room .code, .adv-h, .pad button, .pscore .val, .range b, .toast, .hexgoal, .coin, .tcoin i, .pot, .guess .n, .thilo b, .tdice .tr, .hwin, .netbar, .timeout-note, .notice, .link, .chk span, .field span, .sides > span, .timerrow > span, .namebox, .twr i, .wt, .ht, .face, .dig, .final i, .room small, .games-h { font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-weight: 400; letter-spacing: .02em; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 b.X, b.O { color: var(--ink); box-shadow: inset 0 -.38em 0 var(--x-soft); padding: 0 .1em; }
@@ -790,13 +795,13 @@ b.O { box-shadow: inset 0 -.38em 0 var(--o-soft); }
 .hdr { position: relative; height: var(--hdr); display: flex; flex-direction: column; justify-content: center; align-items: stretch; gap: 0; padding: 4px 10px 4px 12px; }   /* (position: the reaction tray and bubbles hang off it) */
 .hdrrow { display: flex; align-items: center; gap: 8px; height: 46px; min-width: 0; }   /* (not .hrow: that is a Hex board row) */
 .hdrrow .menubtn { flex: none; height: 44px; min-width: 52px; font-size: 15px; padding: 0 10px; box-shadow: 0 3px 0 var(--ink); }   /* a full 44px tap target */
-.hdrrow > .rbtn { flex: none; }
 .hdrrow2 { display: flex; align-items: center; gap: 8px; height: 28px; min-width: 0; }
 .clockbox { flex: none; width: 76px; height: 28px; display: grid; place-items: center; }
 .clockbox .clock { width: 100%; text-align: center; padding: 0; font-size: 16px; line-height: 28px; }
 .tbar { flex: 1 1 auto; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 8px; }
-.tside { position: relative; display: flex; align-items: center; gap: 6px; min-width: 0; opacity: .5; transition: opacity .2s; }
-.tside.on { opacity: 1; }
+.tside { position: relative; display: flex; align-items: center; gap: 6px; min-width: 0; }
+.tside .nm, .tside .tg > :not(.rbub) { opacity: .5; transition: opacity .2s; }   /* the side not on the move, dimmed (its reaction bubble never is) */
+.tside.on .nm, .tside.on .tg > :not(.rbub) { opacity: 1; }
 .tside.O { flex-direction: row-reverse; text-align: right; }
 .tside .tg { flex: none; width: 30px; height: 30px; display: block; }
 .tside .tg .pc { width: 30px; height: 30px; display: block; }
@@ -810,14 +815,16 @@ b.O { box-shadow: inset 0 -.38em 0 var(--o-soft); }
 @media (prefers-reduced-motion: reduce) { .tside.on .tg { animation: none; } .rbub.on { animation: none; } }
 /* reactions: the emoji button by the Menu, its tray, and the speech bubble by the sender's character */
 .rbtn { flex: none; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 10px; background: var(--paper); color: var(--ink); font-size: 22px; line-height: 1; box-shadow: 0 3px 0 var(--ink); }
-.rbtn:disabled { opacity: .4; box-shadow: none; }                        /* greyed out for the cooldown */
-.rtray { position: absolute; left: 50%; top: calc(100% + 6px); transform: translateX(-50%); z-index: 7; display: flex; gap: 6px; padding: 8px; border: 3px solid var(--ink); border-radius: 14px; background: var(--paper); box-shadow: 0 4px 0 var(--ink); }
+.rbtn.cool { box-shadow: 0 1px 0 var(--ink); transform: translateY(2px); }   /* the cooldown: pressed in, never dimmed */
+.rxdock { position: fixed; right: max(12px, var(--sar)); bottom: calc(6px + var(--sab)); z-index: 39; }   /* over the bands, the replays and the intro; under an explainer or a dialog */
+.rxdock .rbtn { border: 3px solid var(--ink); }
+.rtray { position: absolute; right: 0; bottom: calc(100% + 8px); z-index: 7; display: flex; gap: 6px; padding: 8px; border: 3px solid var(--ink); border-radius: 14px; background: var(--paper); box-shadow: 0 4px 0 var(--ink); }
 .rtray button { width: 44px; height: 44px; padding: 0; border: 0; border-radius: 10px; background: var(--cream); font-size: 24px; line-height: 1; }
 .rtray button:disabled { opacity: .4; }
 #app > .refused { position: fixed; z-index: 9; top: calc(var(--hdr) + 10px); left: 50%; transform: translateX(-50%); padding: 8px 14px; border: 3px solid var(--ink); border-radius: 14px; background: var(--paper); box-shadow: 0 4px 0 var(--ink); font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-size: 16px; white-space: nowrap; pointer-events: none; }
 #app > .hdr { z-index: 2; }                                       /* over the board, so the tray and the bubbles are not under it (#app > * is z 1) */
 .tg { position: relative; }                                     /* (the bubble hangs off the character) */
-.rbub { display: none; position: absolute; top: 50%; margin-top: -20px; left: calc(100% + 6px); z-index: 6; pointer-events: none; align-items: center; justify-content: center; min-width: 40px; height: 40px; box-sizing: border-box; padding: 0 9px; border: 3px solid var(--ink); border-radius: 16px; background: var(--paper); box-shadow: 0 3px 0 var(--ink); font-size: 24px; line-height: 1; white-space: nowrap; }
+.rbub { display: none; position: absolute; top: 50%; margin-top: -20px; left: calc(100% + 6px); z-index: 39; pointer-events: none; align-items: center; justify-content: center; min-width: 40px; height: 40px; box-sizing: border-box; padding: 0 9px; border: 3px solid var(--ink); border-radius: 16px; background: var(--paper); box-shadow: 0 3px 0 var(--ink); font-size: 24px; line-height: 1; white-space: nowrap; }
 .rbub::after { content: ''; position: absolute; left: -11px; top: 13px; border: 7px solid transparent; border-right: 8px solid var(--ink); border-left: 0; }   /* the tail, pointing back at the character */
 .tside.O .rbub { left: auto; right: calc(100% + 6px); }
 .tside.O .rbub::after { left: auto; right: -11px; border-right: 0; border-left: 8px solid var(--ink); }
@@ -1265,6 +1272,7 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .ptabs { display: flex; gap: 8px; margin-bottom: 10px; }
 .ptabs .seg { flex: 1; }
 .jinfo { display: flex; flex-direction: column; gap: 10px; }
+.jinfo .chk.ro { cursor: default; } .jinfo .chk.ro input { pointer-events: none; }   /* the host's choice, shown: on (ticked) or off (faded) */
 .jinfo .namebox { height: auto; min-height: 46px; padding: 6px 12px 3px; border-style: solid; background: var(--paper); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .jinfo .side { font-size: 20px; } .jinfo .side.X { color: var(--x); } .jinfo .side.O { color: var(--o); text-shadow: var(--ol1, none); }
 .jinfo .gl { flex-direction: column; align-items: flex-start; gap: 4px; padding-bottom: 8px; }   /* some games off: the count, then which ones */
@@ -2314,6 +2322,11 @@ svg.d8 text { font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-size:
   .g-hilo.t30 { gap: 6px; } .g-hilo.t30 .pad { gap: 5px; } .g-hilo.t30 .pad button { height: 34px; font-size: 15px; }
   .g-hilo.t30 .range { padding: 6px 12px; } .g-hilo.t30 .range b { font-size: 26px; } .g-hilo.t30 .range small { font-size: 12px; margin-bottom: 0; }
 }
+/* Higher/Lower fits the game area whatever the phone: the range, the guesses left and the result keep their
+   space, and the pad's keys take what is left (the game never grows past the area and over the header) */
+.g-hilo { max-height: 100%; }
+.g-hilo .pad button { height: clamp(30px, calc((var(--gh) - 250px) / 4 - 8px), 52px); }
+.g-hilo.t30 .pad button { height: clamp(28px, calc((var(--gh) - 228px) / 5 - 7px), 46px); }
 .hleft { display: flex; justify-content: space-between; gap: 10px; height: 26px; flex: none; }
 .hleft > span { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .hleft > span > b { font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-weight: 400; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px; }
@@ -2390,17 +2403,6 @@ button.btn.snd { padding: 0; display: grid; place-items: center; }   /* the spea
    nothing moves when it comes and goes */
 .snd-chip { position: fixed; left: 50%; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 60; padding: 7px 14px 6px; border: 2.5px solid var(--ink); border-radius: 999px; background: var(--paper); color: var(--ink); box-shadow: 0 3px 0 var(--ink); font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-size: 14px; letter-spacing: .02em; white-space: nowrap; touch-action: none; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; cursor: pointer; }
 .snd-chip[hidden] { display: none; }
-/* the header's target icon (explainer.js tgtBtn): shared board, individual progress or shared course; its
-   line drops below it on a tap, over the game (absolute: nothing moves) */
-.bar .tgtbtn { margin-left: auto; }
-.bar .tgtbtn + .qbtn { margin-left: -4px; }
-.tgtbtn { position: relative; flex: none; width: 40px; height: 40px; padding: 0; border: 0; background: none; color: var(--ink); display: grid; place-items: center; -webkit-tap-highlight-color: transparent; }
-.tgtbtn > i { width: 30px; height: 30px; box-sizing: border-box; border-radius: 10px; border: 2.5px solid var(--ink); background: var(--paper); box-shadow: 0 2px 0 var(--ink); display: grid; place-items: center; }
-.tgtbtn svg { width: 20px; height: 20px; display: block; }
-.tgtbtn:active > i { transform: translateY(1px); box-shadow: 0 1px 0 var(--ink); }
-.tgt-tip { position: absolute; top: calc(100% + 4px); right: -2px; z-index: 40; padding: 5px 10px 4px; border: 2px solid var(--ink); border-radius: 10px; background: var(--paper); color: var(--ink); box-shadow: 0 2px 0 var(--ink); font-size: 14px; line-height: 1.2; white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity .15s; }
-.tgtbtn.open .tgt-tip { opacity: 1; }
-@media (hover: hover) { .tgtbtn:hover .tgt-tip { opacity: 1; } }
 
 /* The admin's test play (ui/sandbox.js): its bar fixed at the bottom; the page is that much shorter, so it covers nothing */
 body.sbx { --sbxh: 56px; }

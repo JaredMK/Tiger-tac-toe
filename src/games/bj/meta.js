@@ -3,7 +3,7 @@
 export const info = { name: 'Blackjack',    hint: 'Beat the dealer without going over 21. First to 3 wins' };
 export const release = 'released';   // the default (the admin's dashboard can change it)
 export const category = 'luck';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
-export const target = 'own';   // the header's icon: 'shared' (one board for both), 'own' (each player's own progress) or 'course' (one course for both, each their own distance)
+export const target = 'own';   // what the players share, in its "?" label: 'shared' (one board for both), 'own' (each player's own progress) or 'course' (one course for both, each their own distance)
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Blackjack', play: 'Hit or stand. Beat the dealer without going over 21. Tie? Play another hand.', win: 'First to {goal} wins.' };   // ({goal}: its setting, TUNE below)
 // Its settings (the admin's Mini-game Settings; core/tune.js): read with tune(mini).

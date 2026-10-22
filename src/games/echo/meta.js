@@ -3,7 +3,7 @@
 export const info = { name: 'Echo',         hint: 'Play the pattern once, then tap it back. Beat all four' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
 export const category = 'brain';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
-export const target = 'own';   // the header's icon: 'shared' (one board for both), 'own' (each player's own progress) or 'course' (one course for both, each their own distance)
+export const target = 'own';   // what the players share, in its "?" label: 'shared' (one board for both), 'own' (each player's own progress) or 'course' (one course for both, each their own distance)
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Echo', play: 'Tap Play pattern to watch it once, then tap it back. One pattern per square, the same for both players: {start} steps, then {add} more each time.', win: 'Beat all four patterns.' };   // ({start}, {add}: its settings, TUNE below)
 export const icon = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2" opacity=".55"/><rect x="3" y="13" width="8" height="8" rx="2" opacity=".55"/><rect x="13" y="13" width="8" height="8" rx="2" opacity=".3"/></svg>';

@@ -3,7 +3,7 @@
 export const info = { name: 'Clash Grid',   hint: 'Claim a cell. Same cell as your opponent: blocked. Four in a row wins' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
 export const category = 'brain';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
-export const target = 'shared';   // the header's icon: 'shared' (one board for both), 'own' (each player's own progress) or 'course' (one course for both, each their own distance)
+export const target = 'shared';   // what the players share, in its "?" label: 'shared' (one board for both), 'own' (each player's own progress) or 'course' (one course for both, each their own distance)
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const scOnly = true;       // made for simultaneous rounds: never dealt in a normal match
 export const explainer = { name: 'Clash Grid', play: 'Claim a square. Pick the same square as your opponent in the same round and it\'s blocked for good.', win: '{need} in a row.' };   // ({need}: its setting, TUNE below)
