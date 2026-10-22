@@ -56,21 +56,19 @@ test('craps: about 49% of rounds win (244 in 495) rolled to the end; one tap of 
   assert.equal(E.playMs(st.flash), tim.end + E.CRAPS.pip, 'the round plays out (a round won: its pip filling in), then the result');
   E.endFlash(st); assert.equal(st.lock, null); assert.notEqual(st.turn, p0, 'the turn passes');
   assert.equal(E.localBest(E.publicMini(st.squares[0].mini), st.turn, lcg(1)).move, 'roll', 'the computer rolls');
-  assert.equal(E.randomLegalMove(st.squares[0].mini, p0, lcg(1)), 'roll', 'a timeout rolls the round out');
   assert.equal(E.secretOf(st.squares[1].mini), null, 'nothing hidden: the dice are rolled as the move is made');
 });
 
-test('craps: online, a timed-out turn rolls its round out in the one move; the turn passes', () => {
+test('craps: online, a timed-out turn rolls nothing; the turn passes', () => {
   const st = E.newMatch(lcg(5), { games: ['craps'], mode: 'online', timer: 60 }), i = 4;
   for (let k = 0; k < 9; k++) if (k !== i) st.squares[k].mini = E.newMini('ttt', lcg(k));
   st.turn = 'X'; st.timer.for = 'X'; st.timer.deadline = 1;
   for (let k = 0; k < 9; k++) if (k !== i) st.squares[k].owner = k % 2 ? 'X' : 'O';
   st.squares[0].owner = null; st.squares[0].mini = E.newMini('craps', lcg(7));
   const r = E.applyOnlineTimeout(E.matchRecord(st), dice([3, 1], [6, 6], [2, 2]));
-  assert.equal(r.ok, true); assert.equal(r.entries.length, 1, 'one move: the round');
-  const full = E.fullState(r.rec), sq = r.entries[0].square, m = full.squares[sq].mini;
-  assert.equal(m.point, null, 'nothing left on'); assert.equal(full.lock, null); assert.equal(full.turn, 'O');
-  assert.equal(m.last.kind, 'round');
+  assert.deepEqual([r.ok, r.entries, r.missed], [true, [], 'X'], 'nothing rolled: no entry');
+  const full = E.fullState(r.rec);
+  assert.deepEqual([full.squares[0].mini.last, full.lock, full.turn], [null, null, 'O']);
 });
 
 test('craps: the admin\'s rounds to win are dealt into the square and played by', () => {

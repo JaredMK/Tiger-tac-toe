@@ -139,22 +139,13 @@ test('hangman tactics: the letter most common among the words still possible, an
   }
 });
 
-test('a timed-out hangman letter never earns another go, even when it hits', () => {
+test('a timeout with a hangman letter owed guesses nothing: the turn ends there', () => {
   const st = matchWith(['hangman', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt']);
   st.timer = L.newTimer(30);
-  st.lock = 0;                                                  // the player is already in the hangman square
-  const word = st.squares[0].mini.word;
-  // an rng that always picks the first unguessed letter: steer it to a hit
-  const first = word[0];
-  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
-  const rng = seq(0, pick(letters.indexOf(first), letters.length), 0.5);
-  const r = L.timeoutMove(st, rng);
-  assert.equal(r.ok, true);
-  assert.equal(r.square, 0);
-  assert.equal(r.move, first);
-  assert.ok(st.squares[0].mini.letters.some(x => x.l === first && x.hit), 'the letter hit');
-  assert.equal(st.flash.kind === 'again', false, 'no bonus move');
-  L.endFlash(st); L.leaveSquare(st);
+  st.lock = 0;                                                  // a right letter: another owed
+  const letters = st.squares[0].mini.letters.length;
+  const r = L.timeoutMove(st, seq(0.5));
+  assert.deepEqual([r.ok, r.square, r.ended, st.squares[0].mini.letters.length, st.flash], [true, 0, true, letters, null], 'no letter guessed for the player');
   assert.equal(st.turn, 'O', 'the turn passes');
   assert.equal(st.lock, null);
 });

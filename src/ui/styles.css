@@ -2423,6 +2423,7 @@ body.sbx .scr { --vh: calc(100vh - var(--sbxh)); }
   background: color-mix(in srgb, var(--paper) 86%, transparent); border-top: 3px solid var(--ink); border-bottom: 3px solid var(--ink);
   -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); animation: wbIn .35s ease-out both; }
 .wband.X { box-shadow: inset 6px 0 0 var(--x); } .wband.O { box-shadow: inset 6px 0 0 var(--o); }
+main.scr.mini > .wband { left: 0; right: 0; }   /* Super Chaos: waiting in the square (a shot or a spin locked in): the same band across the game's middle */
 .wband.out { animation: wbOut .35s ease-in both; }
 .wband .wtoon { flex: none; width: 46px; height: 46px; animation: wbBob 1.1s ease-in-out infinite; transform-origin: 50% 100%; }
 .wband .wtoon .pc { width: 46px; height: 46px; }

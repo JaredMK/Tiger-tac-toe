@@ -60,14 +60,18 @@ test('Super Chaos online: each sends in its move; the second one settles the rou
   assert.deepEqual(rc.claims.map(c => [c.square, c.by]), [[0, 'X']]);
   assert.deepEqual([rc.mv.X.square, rc.mv.O.square, rc.mv.O.steps.length, rc.mv.O.type], [0, 1, 1, 'hilo'], 'both moves kept for the replays');
   assert.deepEqual([st.sc.round, st.sc.moves, st.sc.deadline], [2, {}, null], 'the next round is on the record, not begun yet (its deadline comes once the recap is over)');
-  assert.equal(rc.at, T0 + 9000 + E.SC_ONLINE.leadMs, 'the shared start: a second after the round settled, in server time');
+  assert.equal(rc.at, T0 + 9000 + E.SC_ONLINE.leadMs, 'the recap\'s start: a second after the round settled, in server time');
   const r2b = E.applyChaosSubmit(r1.rec, 'O', mo, E.makeRng('r'), T0 + 9000, 2600);
-  assert.equal(r2b.rec.state.sc.recap.at, T0 + 9000 + 2600, "the mover's own result still on show: the shared start waits for it");
-  assert.equal(E.applyChaosSubmit(r1.rec, 'O', mo, E.makeRng('r'), T0 + 9000, 400).rec.state.sc.recap.at, T0 + 9000 + E.SC_ONLINE.leadMs, 'a second at least');
+  assert.deepEqual([r2b.rec.state.sc.recap.at, r2b.rec.state.sc.recap.lead], [T0 + 9000 + E.SC_ONLINE.leadMs, { O: 2600 }], "the waiting phone starts at once; the mover's own (its result still on show) that much later");
   assert.equal(E.applyChaosSubmit(r2.rec, 'X', Object.assign({}, mx, { round: 2 }), E.makeRng('r'), T0 + 9500).reason, 'recap', 'no move until the round has begun');
-  const b = E.applyChaosBegin(r2.rec, T0 + 20000);
-  assert.ok(b.ok); assert.equal(b.rec.state.sc.deadline, T0 + 80000, 'the first phone through the recap begins the round, timed from then');
-  assert.equal(E.applyChaosBegin(b.rec, T0 + 20300).reason, 'begun', 'the other finds it begun');
+  const b = E.applyChaosBegin(r2.rec, T0 + 20000, 'X');
+  assert.deepEqual([b.ok, b.begun, b.rec.state.sc.deadline, b.rec.state.sc.ready], [true, false, null, { X: T0 + 20000 }], 'one phone through the recap: the round waits for the other');
+  assert.equal(E.applyChaosBegin(b.rec, T0 + 21000, 'X').reason, 'waiting', 'said again: nothing to write');
+  const b2 = E.applyChaosBegin(b.rec, T0 + 26000, 'O');
+  assert.deepEqual([b2.begun, b2.rec.state.sc.deadline, b2.rec.state.sc.ready], [true, T0 + 86000, null], 'both through: the round begins, timed from then');
+  assert.equal(E.applyChaosBegin(b2.rec, T0 + 26300, 'X').reason, 'begun');
+  const b3 = E.applyChaosBegin(b.rec, T0 + 20000 + E.SC_ONLINE.readyWaitMs, 'X');
+  assert.deepEqual([b3.begun, b3.rec.state.sc.deadline], [true, T0 + 20000 + E.SC_ONLINE.readyWaitMs + 60000], 'the other phone gone: begun once this one has waited long enough');
   assert.deepEqual(st.sc.last, { X: 0, O: 1 });
   assert.equal(st.squares[1].mini.guesses.length, 1, "O's guess is on the board");
   // the next round: the order they come in does not matter; both win the same square: it resets
@@ -79,7 +83,7 @@ test('Super Chaos online: each sends in its move; the second one settles the rou
   assert.equal(r4.rec.state.squares[0].owner, null);
 });
 
-test('Super Chaos online: the deadline settles the round with the timeout rule\'s move for a side not in (either phone, once the mover\'s own grace is past); a move in late still counts while unsettled', () => {
+test('Super Chaos online: the deadline settles the round; a side not in has missed it, nothing played for it (either phone, once the mover\'s own grace is past); a move in late still counts while unsettled; two misses in a row lose', () => {
   const rec = room([wordle('CRANE')]), dl = rec.state.sc.deadline;
   const r1 = E.applyChaosSubmit(rec, 'X', play(rec, 'X', 0, ['SLATE']), E.makeRng('r'), T0 + 5000);
   assert.equal(E.applyChaosDeadline(r1.rec, dl - 1, E.makeRng('d')).reason, 'early', 'not before the deadline');
@@ -89,12 +93,18 @@ test('Super Chaos online: the deadline settles the round with the timeout rule\'
   const r2 = E.applyChaosDeadline(r1.rec, dl + E.SC_ONLINE.graceMs, E.makeRng('d'));
   assert.ok(r2.ok && r2.resolved, 'the deadline settles it');
   const rc = r2.rec.state.sc.recap;
-  assert.ok(rc.mv.O && rc.mv.O.auto && Number.isInteger(rc.mv.O.square) && rc.mv.O.steps.length >= 1, 'the timeout rule moved for O');
-  assert.equal(rc.at, dl + E.SC_ONLINE.graceMs + E.SC_ONLINE.leadMs, 'with the shared start a second ahead');
+  assert.deepEqual([rc.mv.O, rc.missed, r2.rec.state.sc.miss], [null, ['O'], { X: 0, O: 1 }], 'O missed the round: no move played for them');
+  assert.equal(rc.mv.X.square, 0);
+  assert.equal(rc.at, dl + E.SC_ONLINE.graceMs + E.SC_ONLINE.leadMs, 'with the recap\'s start a second ahead');
   assert.equal(E.applyChaosDeadline(r2.rec, dl + 9000, E.makeRng('d')).reason, 'recap', 'once only');
-  // nobody in at all: both get the timeout rule's move
+  // nobody in at all: both missed it, the round moves on with nothing played
   const r3 = E.applyChaosDeadline(rec, dl + E.SC_ONLINE.graceMs, E.makeRng('d2'));
-  assert.ok(r3.ok && r3.rec.state.sc.recap.mv.X.auto && r3.rec.state.sc.recap.mv.O.auto);
+  assert.deepEqual([r3.ok, r3.rec.state.sc.recap.missed, r3.rec.state.sc.round, r3.rec.state.squares.map(q => q.mini.guesses && q.mini.guesses.length)], [true, ['X', 'O'], 2, E.fullState(rec).squares.map(q => q.mini.guesses && q.mini.guesses.length)]);
+  // O misses again in the next round: O loses the match
+  const b = E.applyChaosBegin(E.applyChaosBegin(r2.rec, dl + 20000, 'X').rec, dl + 21000, 'O').rec, dl2 = b.state.sc.deadline;
+  const r4 = E.applyChaosSubmit(b, 'X', play(b, 'X', 1, [5]), E.makeRng('r'), dl2 - 1000);
+  const r5 = E.applyChaosDeadline(r4.rec, dl2 + E.SC_ONLINE.graceMs, E.makeRng('d'));
+  assert.deepEqual([r5.rec.state.winner, r5.rec.state.winReason, r5.rec.state.resigned], ['X', 'timeout', 'O'], 'two rounds missed in a row: the match lost');
 });
 
 test('Super Chaos online Roulette: the record draws the round\'s spin (kept off the public state); both phones\' bets land on it; a new one each round', () => {

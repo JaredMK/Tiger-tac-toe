@@ -13,7 +13,8 @@ import { blocked, leaveLoses, lockMine, moveWait, mySide, pinned, remoteTurn } f
 import { N, esc, menuOpen, menuStep, state } from './app.js';
 import { CHEV } from './art.js';
 import { attPinned } from './attention.js';
-import { scCpu, scWaiting } from './chaos.js';
+import { scWaiting } from './chaos.js';
+import { waitBand } from './board.js';
 import { qBtn, tgtBtn } from './explainer.js';
 import { fingPinned } from './finger.js';
 import { animMs, fx, fxAt, fxAttr } from './fx.js';
@@ -47,7 +48,7 @@ export function renderMini(sq, review, popup) {
   else if (f && f.scr) sub = 'Both moves together';   // Super Chaos's round end: what both moves add up to here (a Bump knock, the Roulette spin)
   else if (!view && !f && !d && remoteTurn()) sub = `Waiting for <b class="${turn}">${N(turn)}</b>…`;
   else if (!view && !f && !d && scWaiting() && state.sc.online && state.sc.fail) sub = '<span class="scfail">Move not saved · trying again…</span>';   // Super Chaos in a friend room: the record would not take the move yet
-  else if (!view && !f && !d && scWaiting()) sub = `Waiting for <b class="${scCpu()}">${N(scCpu())}</b>…`;   // Super Chaos: the move is in; the computer is still at its own
+  else if (!view && !f && !d && scWaiting()) sub = '';            // Super Chaos: the move is in, the other's not ready to play yet: the waiting band says so (below)
   else if (!view && !f && !d && moveWait) sub = 'Sending your move…';
   let secret = '';
   if (view) {
@@ -71,11 +72,12 @@ export function renderMini(sq, review, popup) {
   const back = popup ? `<span class="back rtag ${turn}" aria-hidden="true">${REPLAY_ICON}</span>`
     : review ? `<button class="back" data-act="${reviewCtx.mback}" aria-label="Back to the final board">${CHEV}Board</button>`
     : `<button class="back${!f && !d && ((mini.type === 'trivia' && lockMine()) || attPinned() || fingPinned() || (FINGER_TYPES.includes(mini.type) && lockMine())) ? ' gone' : ''}" data-act="back" aria-label="Back to the board"${f || d || lockMine() || cpuTurn() || pinned() || repActive() ? ' disabled' : ''}>${CHEV}Board</button>`;
+  const wb = state.sc && !popup && !review && !view && !f && !d ? waitBand(null) : { on: false, html: '' };   // Super Chaos: waiting in the square (a shot or a spin locked in), the board's own band over the game
   const banner = popup ? `<div class="repban ${turn}" role="status">${REPLAY_ICON}<span><b>${N(turn)}</b>'s move — replay</span></div>` : '';   // Super Chaos's replay: whose move it is, in their colour, on the pop-up's edge (the whole pop-up: a tap skips to its end)
   return `<main class="scr mini${fx.enter && performance.now() - fx.enter.at < 400 ? ' enter' : ''}${popup ? ` screplay rep-${turn}` : ''}"${popup ? ` role="dialog" aria-label="${esc(playerName(state, turn))}'s move — replay"` : ''}>${popup ? banner : netBar()}
     <div class="bar${view && sq.owner ? ' won won-' + sq.owner : ''}" role="${view ? 'status' : 'presentation'}">${back}
       <div class="ttl"><b${info.name.length > 14 ? ' class="long"' : ''}>${info.name}</b><small${view ? ' class="won"' : ''}>${sub}</small></div>${tgtBtn(mini.type)}${qBtn(mini.type)}</div>
-    <div class="gwrap"${fxAttr(f ? fxAt('move', f) : d && !f ? fxAt('back', d) : null)}>${g}</div>${f ? renderFlash(f) : ''}${repSkipBtn()}${popup ? '' : pauseMenu()}</main>`;   // the move's animations count from the move
+    <div class="gwrap"${fxAttr(f ? fxAt('move', f) : d && !f ? fxAt('back', d) : null)}>${g}</div>${wb.html}${f ? renderFlash(f) : ''}${repSkipBtn()}${popup ? '' : pauseMenu()}</main>`;   // the move's animations count from the move
 }
 const REPLAY_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.6-5.9"/><path d="M4 4v5h5"/></svg>';
 // The in-game menu: a pause card with Resume and Main menu (which asks first).
@@ -111,7 +113,7 @@ const LINE_TYPES = ['bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'tr
 export function flashLine(f) {
   if (!f) return '';
   const who = `<b class="${f.by}">${N(f.by)}</b>`;
-  const note = f.timeout ? `${who} ran out of time — random move` : '';
+  const note = f.timeout ? `${who} ran out of time` : '';
   let say = '';
   if (f.kind === 'claim' || f.kind === 'match') say = '';
   else if (f.type === 'pig' && f.note === 'bust') say = `Bust! ${who} rolled ${f.roll} again · ${f.pot} point${f.pot === 1 ? '' : 's'} lost`;

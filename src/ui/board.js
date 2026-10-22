@@ -6,7 +6,7 @@ import { isMM } from '../net/matchmaking.js';
 import { parseMatch, remoteTurn, room } from '../net/room.js';
 import { N, cpuPlays, esc, state } from './app.js';
 import { CHEV, CPU_ICON, ICONS, toon } from './art.js';
-import { scHint, scLastPlayed, scShown, scVerdict } from './chaos.js';
+import { scHeld, scHint, scLastPlayed, scRecapStage, scShown, scVerdict } from './chaos.js';
 import { clockLeft, fmtClock } from './clock.js';
 import { scHuman } from '../core/chaos.js';
 import { other } from '../core/util.js';
@@ -23,13 +23,15 @@ import { cpuTurn } from './turns.js';
 // Super Chaos) and the turn's countdown where there is one (clock.js keeps it ticking). The band lies over
 // the board (its row is absolute: nothing moves), never over the top bar or Menu; it fades in when the wait
 // starts and out when it ends (the other side's square lighting up, its replay, the round's recap), its fade
-// timed from that moment so a redraw does not restart it.
+// timed from that moment so a redraw does not restart it. Super Chaos shows the same band over a mini-game
+// where the player waits in their square (a Mini Golf shot or a Bump spin locked in: ui/mini.js).
 let band = null;                                   // { key, side, txt, at, out }: the band on show, or fading out
-function waitBand(spot) {
+export function waitBand(spot) {
   const sc = state.sc, live = !state.winner && !state.flash && !state.done;
   let side = null, txt = '';
   if (sc) {
-    if (live && sc.me && !sc.recap && !sc.oppIn) { side = other(scHuman(state)); txt = `Waiting for ${esc(playerName(state, side))}…`; }
+    const st = sc.recap ? scRecapStage() : null, waits = sc.recap ? !st || st === 'wait' : (sc.me && !sc.oppIn) || sc.missed === sc.round || scHeld();   // (until the other player's replay is ready to play: the recap's start; online, the other phone still in its recap)
+    if (live && waits) { side = other(scHuman(state)); txt = `Waiting for ${esc(playerName(state, side))}…`; }
   } else if (live && (!spot || spot.square < 3 || spot.square > 5) && (cpuTurn() || remoteTurn())) { side = state.turn; txt = `${esc(playerName(state, side))} is playing…`; }   // (through the other side's chosen square lighting up, unless that square lies under the band)
   const now = performance.now(), key = side ? `${state.id || 'm'}:${sc ? 'r' + sc.round : state.moves}:${side}` : null;
   if (key && (!band || band.key !== key || band.out)) band = { key, side, txt, at: now, out: false };

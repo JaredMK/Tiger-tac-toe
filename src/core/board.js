@@ -2,8 +2,8 @@
 // leaving a square, timeouts, and the match won or drawn (mainResult).
 import { chaosPlay } from './chaos.js';
 import { dealable, pickReset } from './match.js';
-import { anyMove, applyMove, canMove, newMini, randomLegalMove } from './minis.js';
-import { needRng, randInt } from './random.js';
+import { anyMove, applyMove, canMove, newMini } from './minis.js';
+import { needRng } from './random.js';
 import { repMove, repNorm } from './replay.js';
 import { other } from './util.js';
 import { ATT_TYPES } from '../games/shared/attention.js';
@@ -14,29 +14,54 @@ import { triviaDeal } from '../games/trivia/rules.js';
 import { TYPES, rulesOf } from '../games/index.js';
 
 export const LINES = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6]];
-// The player to move ran out of time. A second timeout in a row loses the match; otherwise a random
-// legal move is made for them (Risky Rolls: one roll, then a bank if it did not bust; Hangman: one letter and
-// the turn ends even if it hits; Wordle: a random word from the dictionary; Blackjack: stand, dealing first
-// if no hand is in play, and again on any new hand a push brings; Ride the Bus: one random guess, and the
-// turn ends; Roulette: a random group).
+// The player to move ran out of time. Nothing is played for them. A turn with no move made is missed: it
+// passes to the other player, and a second miss in a row loses the match. A move already under way (the
+// player held to its square) ends as it stands: timeoutClose's move where the game has one (Risky Rolls
+// banks the turn's points, Blackjack stands, a round or an attempt begun counts as failed), else nothing
+// more is played there (a bonus shot, letter or guess owed is not taken); either way the turn passes, and it
+// is not a miss.
 export function timeoutMove(state, rng) {
   rng = needRng(rng);
   const p = state.turn, t = state.timer;
   if (state.winner || state.flash || state.done) return { ok: false, reason: 'busy' };
+  t.missN = (t.missN || 0) + 1;                                  // (each timeout once: the phones say so once)
+  const held = state.lock;
+  if (held != null && state.squares[held] && !state.squares[held].owner) {
+    const m = timeoutClose(state.squares[held].mini, p);
+    if (m != null) {
+      const r = playMove(state, held, m, rng, { forced: true, noAgain: true });
+      if (r.ok) { t.miss = { by: p, kind: 'closed', n: t.missN }; return { ok: true, square: held, move: m, closed: true }; }
+    }
+    passTurn(state, p, rng);
+    t.miss = { by: p, kind: 'ended', n: t.missN };
+    return { ok: true, square: held, ended: true };
+  }
   t.timeouts[p] += 1; t.streak[p] += 1;
+  t.miss = { by: p, kind: 'missed', n: t.missN };
   if (t.streak[p] >= 2) {
     state.winner = other(p); state.winLine = null; state.winReason = 'timeout'; state.counts = null;
-    state.lock = null; state.done = null; state.flash = null; state.spot = null; t.deadline = null;
+    state.lock = null; state.done = null; state.flash = null; state.spot = null; t.deadline = null; t.startBy = null;
     state.screen = 'win'; state.zoom = null;
     return { ok: true, lost: p };
   }
-  const open = state.lock != null ? [state.lock] : state.squares.map((sq, i) => (sq.owner || !canMove(sq.mini, p) ? -1 : i)).filter(i => i >= 0);
-  const i = open[randInt(rng, open.length)], mini = state.squares[i].mini;
-  const m = mini.type === 'pig' ? (mini.turn && mini.turn.by === p ? 'bank' : 'roll') : mini.type === 'bj' ? 'auto' : randomLegalMove(mini, p, rng);   // Blackjack: stand (dealt first if need be) on every hand until one is won or lost; Roulette: a random group; Echo, Trivia, Odd One Out: a failed attempt or a wrong answer; Cup Pong: a random throw
-  const r = playMove(state, i, m, rng, { forced: true, noAgain: mini.type === 'hangman' || mini.type === 'bs' || mini.type === 'bus' });   // a timed-out shot fires once; a timed-out guess ends the turn
-  if (!r.ok) return r;
-  t.bankNext = state.lock === i && mini.type === 'pig' && m === 'roll';   // the roll kept the turn: bank it next
-  return { ok: true, square: i, move: m };
+  passTurn(state, p, rng);
+  return { ok: true, missed: p };
+}
+// A move under way when the time runs out: the move that ends it, with no choice made for the player, or
+// null where nothing more is played (a bonus move owed is simply not taken).
+export function timeoutClose(mini, p) {
+  if (mini.type === 'pig') return mini.turn && mini.turn.by === p && mini.turn.pot ? 'bank' : null;
+  if (mini.type === 'bj') return 'auto';                          // stand, on every hand in play
+  if (ATT_TYPES.includes(mini.type) || FINGER_TYPES.includes(mini.type) || mini.type === 'trivia') return 'auto';   // a round, an attempt or a question begun: a failed one
+  return null;
+}
+// The turn passes with no move made (a timeout): to the other player, unless they have no move anywhere.
+function passTurn(state, p, rng) {
+  let next = other(p);
+  if (!anyMove(state, next) && anyMove(state, p)) next = p;
+  state.turn = next; state.lock = null; state.pick = null; state.pickSq = null; state.draft = ''; state.sel = [];
+  state.screen = 'board'; state.zoom = null;
+  markCoins(state, next, rng);
 }
 export function lineOpen(squares, p) { return LINES.some(line => line.every(k => squares[k].owner !== other(p))); }
 export function mainResult(squares) {
@@ -144,7 +169,7 @@ export function endFlash(state, hold) {
   const f = state.flash;
   state.flash = null;
   if (f.recap && state.sc) { if (!f.recapMore) { state.screen = 'board'; state.zoom = null; } return true; }   // Super Chaos: a square's round result, shown in the recap (ui/chaos.js goes on from there; recapMore: another step of the same move follows in the pop-up)
-  if (state.sc && f.phys && f.phys.locked && !state.winner) { state.done = null; state.screen = 'mini'; state.zoom = f.square; return true; }   // Super Chaos's Mini Golf: the shot locked in, the player stays at the hole: both shots play out here once the round ends
+  if (state.sc && (f.waits || (f.phys && f.phys.locked)) && !state.winner) { state.done = null; state.screen = 'mini'; state.zoom = f.square; return true; }   // Super Chaos: a move settled only at the round's end (a Mini Golf shot, a Bump spin) locked in: the player stays in the square, where it plays out once the round ends
   if (state.winner) { state.screen = 'win'; state.zoom = null; state.done = null; }
   else if (f.kind === 'again') { state.screen = 'mini'; state.zoom = state.lock; }
   else if (hold && state.done) { state.screen = 'mini'; state.zoom = f.square; }

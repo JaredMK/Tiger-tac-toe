@@ -1,8 +1,9 @@
 // A Super Chaos match from Find Match, run by the server (functions/index.js): the one truth of the match
 // lives here, every secret with it, and every random draw is the server's. Each phone sends its moves as
 // requests (a step at a time: a hit, a roll, a guess), sees its own square as the server answers, and gets
-// the round's recap once both moves are in (or the deadline passes: the timeout rule's move for a side not
-// in), played on both phones from a shared start as a friend room's is (net/chaos.js, ui/chaos.js).
+// the round's recap once both moves are in (or the deadline passes: a side not in misses the round), each phone
+// playing it from its start (the last mover's after its own result) as a friend room's does (net/chaos.js,
+// ui/chaos.js); the next round begins once both phones are through it.
 //
 // The record (g): full, the match as core/chaos.js keeps a friend room's (sc.round, deadline, moves, recap,
 // and every square with its secrets), and prog, each side's way through the round: the square it is in, that
@@ -12,13 +13,13 @@
 // the recap shows it) and each side's own node (scSideView: its move once in, or its progress, for a reload).
 import { playMove } from './board.js';
 import { SC_ONLINE, chaosResolveOnline, chaosTimeout, scCpu, scMoveOf } from './chaos.js';
-import { fullState, hideMini, matchRecord, newOnlineMatch } from './records.js';
+import { fullState, hideMini, matchRecord, newOnlineMatch, scReady } from './records.js';
 import { needRng } from './random.js';
 import { playMs } from './timer.js';
 import { other } from './util.js';
 import { PHYS_TYPES } from '../games/shared/physics.js';
 
-export const SC_GAME = { recapMaxMs: 90000, leadHoldMs: 1500 };   // a recap nobody begins the next round after (both phones gone): begun by the sweep this long after its start; the last mover's own result stays on show this long past its animation before the shared start
+export const SC_GAME = { recapMaxMs: 90000, leadHoldMs: 300 };   // a recap neither phone gets through (both gone): the next round begun by the sweep this long after its start; the last mover's phone starts the recap this long after its own result's animation
 const clone = v => (v === undefined ? undefined : JSON.parse(JSON.stringify(v)));
 const prog0 = () => ({ square: null, mini: null, start: null, steps: [], moved: null, lock: null, me: null });
 
@@ -74,13 +75,13 @@ export function applyScMove(g, side, i, m, rng, now, opts) {
   const out = { ok: true, flash: clone(r.flash), lock: st.lock == null ? null : st.lock, moved: st.sc.moved, me: st.sc.me ? clone(st.sc.me) : null, mini: hidden(st.squares[i].mini, i, f), resolved: false };
   if (st.sc.me) {
     f.sc.moves = Object.assign({}, f.sc.moves, { [side]: Object.assign(scMoveOf(st, side), { at: now }) });
-    out.resolved = scSettle(g, rng, now, playMs(r.flash, 4) + SC_GAME.leadHoldMs);
+    out.resolved = scSettle(g, rng, now, { [side]: playMs(r.flash, 4) + SC_GAME.leadHoldMs });
   }
   bump(f);
   return out;
 }
-// The deadline is past its grace: the timeout rule's move for a side not in (a move still going on is played
-// out: chaosTimeout holds it to its square), and the round settles.
+// The deadline is past its grace: a side not in misses the round (nothing is played for it; a move still under
+// way ends as it stands: chaosTimeout), and the round settles.
 export function applyScTimeout(g, now, rng) {
   const f = g.full, no = live(f);
   if (no) return no;
@@ -89,16 +90,15 @@ export function applyScTimeout(g, now, rng) {
   f.sc.moves = Object.assign({}, f.sc.moves);
   const out = { ok: true, timed: [] };
   for (const side of ['X', 'O']) if (!f.sc.moves[side]) { f.sc.moves[side] = scTimeoutOf(g, side, rng, now); out.timed.push(side); }
-  if (!scSettle(g, rng, now, 0)) return { ok: false, reason: 'bad' };
+  if (!scSettle(g, rng, now, null)) return { ok: false, reason: 'bad' };
   bump(f);
   return out;
 }
 function scTimeoutOf(g, side, rng, now) {
-  const st = scSideState(g, side);
-  for (let guard = 0; guard < 80 && !st.sc.me; guard++) { const r = chaosTimeout(st, rng); if (!r.ok) break; st.flash = null; st.done = null; }
-  if (!st.sc.me) return { round: g.full.sc.round, side, square: null, auto: true, timeout: true };   // (nothing it could play)
+  const st = scSideState(g, side), r = chaosTimeout(st, rng);
+  if (!r.ok || r.missed || !st.sc.me) return { round: g.full.sc.round, side, square: null, missed: true };
   g.prog[side] = progOf(st);
-  return Object.assign(scMoveOf(st, side), { at: now, auto: true, timeout: true });
+  return Object.assign(scMoveOf(st, side), { at: now, timeout: true });
 }
 // A bot's move for the round: the computer's own Super Chaos play (core/chaos.js scCpu: its square and the
 // game's tactics, played through to the move's end) at the admin's level, from the board as the round began.
@@ -112,18 +112,23 @@ export function applyScBot(g, side, rng, level, now) {
   const m = scCpu(st, rng, undefined, side);
   if (!m) return { ok: false, reason: 'none' };
   f.sc.moves = Object.assign({}, f.sc.moves, { [side]: Object.assign({ round: f.sc.round, side, square: m.square, out: m.out, win: !!m.win, mini: m.mini, start: m.start, steps: m.steps, at: now }, m.gives ? { gives: m.gives } : {}) });
-  const resolved = scSettle(g, rng, now, 0);
+  const resolved = scSettle(g, rng, now, null);
   bump(f);
   return { ok: true, square: m.square, type: m.mini.type, resolved };
 }
-// The recap is over on a phone (or left too long): the next round begins, timed from now. Once.
-export function applyScBegin(g, now) {
+// The recap is over on a phone (sides: who is through it; a bot is at once): the next round begins, timed
+// from now, once both are through, or one has waited SC_ONLINE.readyWaitMs for the other; with no side (the
+// sweep), once that wait is over, or the recap has been left too long (both phones gone). Once.
+export function applyScBegin(g, now, sides) {
   const f = g.full;
   if (f.winner) return { ok: false, reason: 'over' };
   if (f.sc.deadline != null) return { ok: false, reason: 'begun' };
-  f.sc.deadline = now + f.sc.limit * 1000;
+  let r = { ok: false, reason: 'waiting' };
+  for (const sd of [].concat(sides || [null])) { const x = scReady(f.sc, now, sd); if (x.ok) r = x; if (f.sc.deadline != null) break; }
+  if (f.sc.deadline == null && !sides && now >= (f.sc.recap && f.sc.recap.at || 0) + SC_GAME.recapMaxMs) { f.sc.deadline = now + f.sc.limit * 1000; f.sc.ready = null; r = { ok: true, begun: true }; }
+  if (!r.ok) return r;
   bump(f);
-  return { ok: true };
+  return { ok: true, begun: f.sc.deadline != null };
 }
 // A side gives the match up (leaving it through the menu): the other side wins.
 export function applyScResign(g, side) {
@@ -136,13 +141,14 @@ export function applyScResign(g, side) {
   bump(f);
   return { ok: true };
 }
-// When the sweep must look at the match: the deadline past its grace (the timeout rule), a recap nobody
+// When the sweep must look at the match: the deadline past its grace (a side not in misses the round), a phone through the recap waited long enough for the other, a recap nobody
 // began the next round after, 1 once it is over (its result still to record).
 export function scDue(g) {
   const f = g.full;
   if (f.winner) return 1;
   if (f.sc.deadline != null) return f.sc.deadline + SC_ONLINE.graceMs;
-  return (f.sc.recap && f.sc.recap.at || 0) + SC_GAME.recapMaxMs;
+  const gone = (f.sc.recap && f.sc.recap.at || 0) + SC_GAME.recapMaxMs, at = Object.values(f.sc.ready || {});
+  return at.length ? Math.min(gone, Math.min(...at) + SC_ONLINE.readyWaitMs) : gone;
 }
 // The match as both phones may see it: every square hidden as the record hides it; the moves in shown only as
 // in or not (the other side's move waits for the recap); the recap's squares and steps hidden too (a physics

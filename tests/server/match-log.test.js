@@ -38,14 +38,16 @@ test('match log: a friend room\'s Super Chaos record, write by write: the start 
   assert.deepEqual(settle.map(e => e.k), ['move', 'resolve'], 'the second move came in with the round settled');
   assert.deepEqual([settle[0].s, settle[0].q, settle[0].g], ['O', 1, 'hilo']);
   assert.equal(settle[1].claims, '0X'); assert.equal(settle[1].r, 1);
-  const r3 = E.applyChaosBegin(r2, T + 9000).rec;
-  assert.deepEqual(ML.friendEvents(r2.state, r3.state, T + 9000).map(e => [e.k, e.r]), [['round', 2]]);
-  // a timeout round: the deadline settles it with the rule's move for the side not in
+  const r2b = E.applyChaosBegin(r2, T + 8000, 'X').rec;
+  assert.deepEqual(ML.friendEvents(r2.state, r2b.state, T + 8000), [], 'one phone through the recap: nothing to log yet');
+  const r3 = E.applyChaosBegin(r2b, T + 9000, 'O').rec;
+  assert.deepEqual(ML.friendEvents(r2b.state, r3.state, T + 9000).map(e => [e.k, e.r]), [['round', 2]]);
+  // a timeout round: the deadline settles it; the side not in missed it
   const r4 = E.applyChaosSubmit(r3, 'X', moveOf(r3, 'X', 1, [25]), E.makeRng('s'), T + 10000).rec;
   const r5 = E.applyChaosDeadline(r4, r4.state.sc.deadline + E.SC_ONLINE.graceMs + 1, E.makeRng('d')).rec;
   const to = ML.friendEvents(r4.state, r5.state, T + 99000);
   assert.deepEqual(to.map(e => [e.k, e.s]), [['timeout', 'O'], ['resolve', undefined]]);
-  assert.equal(to[0].auto, true);
+  assert.equal(to[0].missed, true);
   assert.deepEqual(ML.friendEvents(r5.state, r5.state, T), [], 'no change: nothing logged');
 });
 

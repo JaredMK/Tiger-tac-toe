@@ -270,7 +270,7 @@ test('a Find Match game: all mini-games, one minute a turn, hidden values hidden
   assert.deepEqual(ent.rep, [[0, 'key', 'k=C'], [310, 'key', 'k=R'], [600, 'key', 'k=A'], [2100, 'key', 'k=T'], [2300, 'key', 'k=E'], [2600, 'enter']], 'the log on the entry');
   assert.equal(ent.m, 'CRATE', 'and the move itself');
   assert.deepEqual(s3.squares[3].mini.guesses[0].marks, ['g', 'g', 'g', 'x', 'g']);
-  assert.ok(s3.timer.deadline > Date.now() + 55000, 'a fresh minute for the next player (plus the playback)');
+  assert.ok(s3.timer.deadline == null && E.clockDeadline(s3.timer) > Date.now() + 55000, 'a fresh minute for the next player, starting once their phone has played the move back (at the latest after the playback)');
   assert.equal((await g.O.call('move', { game: g.id, square: 3, move: 'CRANE', rep: 'nonsense' })).ok, true);   // (a bad log is dropped, the move stands)
   s3 = await gameState(g.id);
   assert.ok(!('rep' in s3.recent[s3.recent.length - 1]), 'a malformed log is left off the entry');
@@ -334,18 +334,20 @@ test('Memory over the server: the first card is turned up for both, the second c
   await g.O.call('resign', { game: g.id }); await recorded(g.id);
 });
 
-test('timeouts: the server checks the deadline; with both players away the sweep plays it out, two in a row lose', async () => {
+test('timeouts: the server checks the deadline; with both players away the sweep misses the turn (nothing played), two in a row lose', async () => {
   const a = await player('Ola'), b = await player('Pat');
   const g = await pairUp(a, b);
   assert.deepEqual(await g.O.call('timeout', { game: g.id }), { ok: false, reason: 'early' }, 'not before the deadline');
   assert.deepEqual(await sweep(), { timeouts: 0, finished: 0, deleted: 0, botMoves: 0 }, 'the sweep leaves games in time alone');
   const expire = async () => { const st = await gameState(g.id); st.timer.deadline = Date.now() - 1000; await patch(`games/${g.id}`, { 'pub/state': JSON.stringify(st), dl: st.timer.deadline }); };
-  // both phones are gone: the sweep makes the random move for X...
+  // both phones are gone: the sweep misses X's turn, nothing played for X...
+  const st0 = await gameState(g.id);
   await expire();
   assert.equal((await sweep()).timeouts, 1);
   let st = await gameState(g.id);
   assert.equal(st.timer.timeouts.X, 1); assert.equal(st.turn, 'O', 'the turn passed');
-  assert.equal(st.recent[st.recent.length - 1].timeout, true, 'marked as a timed-out move');
+  assert.deepEqual([st.seq, st.recent.length, st.timer.miss.by, st.timer.miss.kind, JSON.stringify(st.squares.map(q => q.mini.last || null)) === JSON.stringify(st0.squares.map(q => q.mini.last || null))], [st0.seq, st0.recent.length, 'X', 'missed', true], 'no move made: nothing to play back, the phones told by the timer');
+  assert.ok(st.timer.deadline > Date.now() + 25000, 'O\'s clock at once (nothing to play back)');
   // ...then for O, then X runs out again: two in a row for X loses the match
   await expire(); await sweep();
   st = await gameState(g.id);
@@ -1311,14 +1313,12 @@ test('runners (Dash, Lane Rush): the difficulty config is public, the admin alon
   assert.equal(r.ok, true, `a crash at the first hazard in the time it takes (${JSON.stringify(r)})`);
   const after = await gameState(g.id);
   assert.equal(after.squares[4].mini.dist.X, Math.round((first.at + 0.2) * 100) / 100); assert.equal(after.squares[4].mini.runs.X, 1); assert.equal(after.turn, 'O');
-  // the clock runs out on O: the server's own run for them, short and at an obstacle
+  // the clock runs out on O: no run made for them; the turn missed
   await patch(`games/${g.id}`, { dl: Date.now() - 1000 });
   await rewrite(g.id, full => { full.timer.deadline = Date.now() - 1000; });
   assert.equal((await g.O.call('timeout', { game: g.id })).ok, true);
   const to = await gameState(g.id);
-  assert.equal(to.squares[4].mini.runs.O + to.squares.filter((sq, i) => i !== 4 && sq.mini.runs.O).length, 1, 'one run for O, somewhere');
-  const oSq = to.squares.find(sq => sq.mini.runs.O);
-  assert.ok(oSq.mini.dist.O > 0 && oSq.mini.dist.O < 150, `a short run (${oSq.mini.dist.O})`);
+  assert.deepEqual([to.squares.filter(sq => sq.mini.runs && sq.mini.runs.O).length, to.turn, to.timer.miss.by], [0, 'X', 'O'], 'no run for O');
   // the end: resigned by O, so the match is abandoned: its squares, runs and crashes are not counted
   // (statsRules' unit tests cover what a finished match's runner squares add)
   const before = JSON.stringify((await get('stats/mini/testing/dash')) || {});
@@ -1670,8 +1670,8 @@ test('match logs: a Find Match game (its start, a refused move with its reason, 
 
 // Find Match is Super Chaos, run by the server (core/scgame.js): every move a request checked and made there,
 // every secret and every draw the server's, each side shown only its own square until the recap; the round
-// settled once both are in, or at the deadline with the timeout rule's move; the next round begun by the
-// first phone through the recap; the result on both Find Match records, in the history and the stats; a lone
+// settled once both are in, or at the deadline (a side not in misses the round); the next round begun once
+// both phones are through the recap (a bot is at once); the result on both Find Match records, in the history and the stats; a lone
 // searcher given a bot that plays by the computer's Super Chaos play, counted apart.
 const scRig = async (id, minis) => {   // the match's squares set as given (the rest Higher/Lower squares nobody plays), on the server's record and what the phones see
   const g = await get(`games/${id}`), full = JSON.parse(g.sec.full), prog = JSON.parse(g.sec.prog);
@@ -1685,7 +1685,7 @@ const scPast = async id => {           // the round's deadline moved back past i
   await patch(`games/${id}`, { 'sec/full': JSON.stringify(full), 'pub/state': JSON.stringify(st), 'pub/deadline': dl, dl: dl + E.SC_ONLINE.graceMs });
 };
 const scState = async id => JSON.parse(await get(`games/${id}/pub/state`));
-test('Super Chaos Find Match, two clients: paired into a match the server runs; a move a request at a time, checked, hidden; the round settled once both are in, the recap for both; the deadline\'s timeout rule; the next round begun once; the win recorded as Find Match', async () => {
+test('Super Chaos Find Match, two clients: paired into a match the server runs; a move a request at a time, checked, hidden; the round settled once both are in, the recap for both; the deadline: a missed round; the next round begun once both are through the recap; the win recorded as Find Match', async () => {
   await clearQueue();
   const a = await player('ScAnn'), b = await player('ScBob'), c = await player('ScCal');
   let ra = { status: 'searching' }, rb = ra;
@@ -1725,16 +1725,21 @@ test('Super Chaos Find Match, two clients: paired into a match the server runs; 
   assert.deepEqual([rc.round, rc.claims.map(x => x.square + x.by), rc.mv.X.square, rc.mv.O.square, rc.mv.O.steps.length], [1, ['0X'], 0, 3, 2]);
   assert.ok(rc.at > Date.now() - 5000 && rc.mv.O.steps[1].after.word !== 'ZEBRA', 'the shared start; the recap hidden too');
   assert.deepEqual(await O.call('scMove', { game: id, square: 4, move: 10 }), { ok: false, reason: 'recap' });
-  assert.deepEqual(await X.call('scBegin', { game: id }), { ok: true }); assert.deepEqual(await O.call('scBegin', { game: id }), { ok: false, reason: 'begun' });
+  assert.deepEqual(await X.call('scBegin', { game: id }), { ok: true, begun: false }, 'X through the recap: round 2 waits for O');
+  assert.equal((await scState(id)).sc.deadline, null);
+  assert.deepEqual(await X.call('scBegin', { game: id }), { ok: false, reason: 'waiting' }, 'said again: nothing changes');
+  assert.deepEqual(await O.call('scBegin', { game: id }), { ok: true, begun: true });
+  assert.deepEqual(await X.call('scBegin', { game: id }), { ok: false, reason: 'begun' });
   st = await scState(id); assert.ok(st.sc.deadline > Date.now() + 55000, 'round 2 begun, timed from then');
-  // round 2: X in, O never: the deadline past its grace gives O the timeout rule's move (a phone asks; the sweep would)
+  // round 2: X in, O never: the deadline past its grace: O missed the round, nothing played for O (a phone asks; the sweep would)
   assert.ok((await X.call('scMove', { game: id, square: 1, move: 'SLATE' })).me.win);
   assert.deepEqual(await X.call('scTick', { game: id }), { ok: true, settled: false }, 'too early');
   await scPast(id);
   assert.deepEqual(await X.call('scTick', { game: id }), { ok: true, settled: true });
   st = await scState(id);
-  assert.deepEqual([st.sc.round, st.squares[1].owner, st.sc.recap.mv.O.auto], [3, 'X', true], 'O: the rule\'s move');
-  assert.deepEqual(await O.call('scBegin', { game: id }), { ok: true });
+  assert.deepEqual([st.sc.round, st.squares[1].owner, st.sc.recap.mv.O, st.sc.recap.missed, st.sc.miss], [3, 'X', null, ['O'], { X: 0, O: 1 }], 'O missed it: no move played for O');
+  assert.deepEqual(await O.call('scBegin', { game: id }), { ok: true, begun: false });
+  assert.deepEqual(await X.call('scBegin', { game: id }), { ok: true, begun: true });
   // round 3: X's third word makes the line; the match ends when O's move is in; recorded as Find Match for both
   assert.ok((await X.call('scMove', { game: id, square: 2, move: 'BREAD' })).me.win);
   const last = await O.call('scMove', { game: id, square: 4, move: 10 });
@@ -1774,7 +1779,7 @@ test('Super Chaos Find Match against a bot: a lone searcher gets a bot after the
   assert.ok(m.ok && m.resolved, JSON.stringify(m));
   st = await scState(id);
   assert.equal(st.sc.round, 2); assert.ok(st.sc.recap.mv[botSide].steps.length >= 1, 'the bot\'s move, for the replay');
-  assert.deepEqual(await h.call('scBegin', { game: id }), { ok: true });
+  assert.deepEqual(await h.call('scBegin', { game: id }), { ok: true, begun: true }, 'the bot is through the recap at once: the round begins with the human');
   assert.equal((await get(`botGames/${id}/next`)).round, 2, 'its move for round 2 planned as the round began');
   assert.equal((await h.call('resign', { game: id })).ok, true);
   await recorded(id);

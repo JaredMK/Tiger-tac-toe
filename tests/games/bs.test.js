@@ -111,21 +111,14 @@ test('bs: a hit fires again until a miss or the sinking shot; whoever hits the f
   assert.equal(f.kind, 'claim'); assert.equal(f.by, 'O'); assert.equal(f.hit, true);
   assert.equal(st.squares[0].owner, 'O');
   assert.deepEqual(st.squares[0].mini.winCells, [1, 5, 9], 'the whole ship is revealed');
-  // a timed-out shot fires once: even a hit ends the turn
+  // the time running out with a bonus shot owed: no shot fired for the player; the turn passes
   const t = matchWith(['bs', 'ttt']);
   t.squares[0].mini = bsAt(0, 1, 2, 3); t.timer = L.newTimer(60);
-  for (let k = 1; k < 9; k++) t.squares[k].owner = k % 2 ? 'X' : 'O';
-  t.squares[3].owner = null; t.squares[3].mini = L.newMini('ttt', lcg(1)); t.squares[3].mini.cells = ['X', 'O', 'X', 'O', 'X', 'O', 'O', 'X', 'O'];
-  for (let k = 0; k < 6; k++) {
-    t.turn = 'X'; t.lock = null; t.timer.streak = { X: 0, O: 0 };
-    const before = t.squares[0].mini.hits.length;
-    const r = L.timeoutMove(t, lcg(k));
-    assert.equal(r.ok, true); assert.equal(r.square, 0);
-    L.endFlash(t);
-    if (t.squares[0].owner) break;
-    assert.equal(t.lock, null, 'no bonus shot after a timeout'); assert.equal(t.turn, 'O');
-    if (t.squares[0].mini.hits.length > before) break;
-  }
+  t.turn = 'X';
+  assert.equal(L.playMove(t, 0, 0, lcg(1)).flash.kind, 'again'); t.flash = null;
+  const hits = t.squares[0].mini.hits.slice();
+  const r = L.timeoutMove(t, lcg(2));
+  assert.deepEqual([r.ok, r.ended, t.lock, t.turn, t.squares[0].mini.hits], [true, true, null, 'O', hits], 'no bonus shot, the hit kept');
 });
 
 test('bs: firing at every cell always sinks the ship (no draw possible)', () => {

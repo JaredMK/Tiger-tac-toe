@@ -9,8 +9,9 @@
  * (with the page's own engine, src/core and src/games: the same rules), makes every random choice, and writes the public
  * state. Hidden values (words, numbers, codes, cards, the treasure, the ship) stay in the game's
  * `sec` node, which no phone can read; the public state shows them only once the game reveals them.
- * The turn deadline is a server time; when it passes, either phone may ask for the timeout move
- * (`timeout`), and a scheduled sweep does it every minute for games nobody is watching.
+ * The turn deadline is a server time; when it passes, either phone may ask for the timeout
+ * (`timeout`: the turn missed, nothing played for the player), and a scheduled sweep does it every minute
+ * for games nobody is watching.
  *
  * Database layout (see database.rules.json):
  *   users/{uid}            profile: username, joined; the Find Match record (wins, losses, draws, games), the
@@ -409,7 +410,7 @@ async function makeGame(key, id, X, O, opts) {
     rec = E.newOnlineMatch({ names: { X: X.e.name, O: O.e.name }, games: Object.fromEntries(E.releasedTypes(rel).map(g => [g, true])), timer: Q.timer }, rng, id);   // released games only, whoever is playing
     E.armClock(rec.state, [], t + MATCH_GRACE_MS);
     const pub = { mode: Q.mode, queue: key, timer: Q.timer, players, status: 'playing', created: t, updated: t, state: JSON.stringify(rec.state) };
-    node = { pub, sec: JSON.stringify(rec.secrets), dl: rec.state.timer.deadline };
+    node = { pub, sec: JSON.stringify(rec.secrets), dl: E.clockDeadline(rec.state.timer) };
   }
   const made = await db.ref(`games/${id}`).transaction(cur => (cur ? undefined : node), undefined, false);
   if (made.committed) {
@@ -476,10 +477,10 @@ async function changeSc(id, uid, step, what) {
     if (what === 'move') ev.push({ t, k: 'move', s: who || undefined, q: out.moved, g: out.flash && out.flash.type, r: before.round, done: !!out.me || undefined, src: 'srv' });
     else if (what === 'bot') ev.push({ t, k: 'move', s: who || undefined, q: out.square, g: out.type, r: before.round, bot: true, src: 'srv' });
     else if (what === 'timeout' || what === 'sweep') ev.push({ t, k: 'timeout', r: before.round, s: (out.timed || []).join('') || undefined, src: 'srv' });
-    else if (what === 'begin') ev.push({ t, k: 'round', r: after.round, src: 'srv' });
+    else if (what === 'begin' && out.begun) ev.push({ t, k: 'round', r: after.round, src: 'srv' });
     if (after && after.round !== before.round && after.recap) ev.push({ t, k: 'resolve', r: before.round, claims: (after.recap.claims || []).map(c => c.square + c.by).join(' ') || undefined, resets: (after.recap.resets || []).map(x => `${x.square}:${x.why}`).join(' ') || undefined, src: 'srv' });
     if (end) ev.push({ t, k: 'end', w: end.w, why: end.why || undefined, resigned: end.resigned || undefined, src: 'srv' });
-  } else if (!['stale', 'early', 'missing', 'begun', 'recap'].includes(out.reason)) ev.push({ t, k: 'reject', s: who || undefined, what, why: out.reason, src: 'srv' });
+  } else if (!['stale', 'early', 'missing', 'begun', 'recap', 'waiting'].includes(out.reason)) ev.push({ t, k: 'reject', s: who || undefined, what, why: out.reason, src: 'srv' });
   const begun = out.ok && after && after.deadline != null && (before.deadline == null || after.round !== before.round);   // a round begun (the first, or the next after a recap): a bot's move for it
   await Promise.all([
     ev.length ? mlogSafe(ML.mmKey(id), ev) : null,
@@ -498,7 +499,8 @@ exports.scMove = onCall(CALL, async req => {
   return { ok: true, seq: r.seq, flash: r.flash, mini: r.mini, lock: r.lock, moved: r.moved, me: r.me, resolved: r.resolved };
 });
 // The round's clock, the match's bot: a phone waiting on the other side asks every few seconds. The bot's move
-// once due; the deadline past its grace: the timeout rule's move for a side not in; a recap left unbegun too long.
+// once due; the deadline past its grace: a side not in misses the round; the next round begun once a phone
+// through the recap has waited long enough for the other (or the recap was left too long).
 exports.scTick = onCall(CALL, async req => {
   const uid = needUid(req), id = gameId((req.data || {}).game);
   await runConfigNow();
@@ -506,12 +508,13 @@ exports.scTick = onCall(CALL, async req => {
   const r = await changeSc(id, null, (g, side, t) => scSweepStep(g, t), 'timeout');
   return { ok: true, settled: r.ok };
 });
-const scSweepStep = (g, t) => (g.full.sc.deadline != null ? E.applyScTimeout(g, t, seedRng()) : g.full.sc.recap && t >= (g.full.sc.recap.at || 0) + E.SC_GAME.recapMaxMs ? E.applyScBegin(g, t) : { ok: false, reason: 'early' });
-// The recap is over on a phone: the next round begins (once: the first phone through begins it).
+const scSweepStep = (g, t) => (g.full.sc.deadline != null ? E.applyScTimeout(g, t, seedRng()) : g.full.sc.recap ? E.applyScBegin(g, t) : { ok: false, reason: 'early' });
+// The recap is over on a phone: that side is through it; the next round begins once both are (a bot is at once).
 exports.scBegin = onCall(CALL, async req => {
   const uid = needUid(req), id = gameId((req.data || {}).game);
-  const r = await changeSc(id, uid, (g, side, t) => E.applyScBegin(g, t), 'begin');
-  return r.ok ? { ok: true } : r;
+  const bg = (await db.ref(`botGames/${id}`).get()).val();
+  const r = await changeSc(id, uid, (g, side, t) => E.applyScBegin(g, t, bg && bg.live && bg.side && bg.side !== side ? [side, bg.side] : [side]), 'begin');
+  return r.ok ? { ok: true, begun: !!r.begun } : r;
 });
 // A bot in a Super Chaos match: its move for the round planned as the round begins (due after a think, as
 // a Classic bot's turn is: bots.js thinkMs), queued as a task for that moment; the phones' ticks and the sweep
@@ -616,7 +619,7 @@ async function planBot(id, st, sec, bg, start, again) {
   return next;
 }
 // When the turn started on the phones: the turn's clock is set to begin it (its deadline less the limit).
-const turnStart = st => (st.timer && st.timer.deadline && st.timer.limit ? st.timer.deadline - st.timer.limit * 1000 : now());
+const turnStart = st => (E.clockDeadline(st.timer) ? E.clockDeadline(st.timer) - st.timer.limit * 1000 : now());
 // After a move in a bot game: the bot's next move, when it is on the move now.
 async function afterBotChange(id, info) {
   const [bgs, gs] = await Promise.all([db.ref(`botGames/${id}`).get(), db.ref(`games/${id}`).get()]);
@@ -781,7 +784,7 @@ async function changeGame(id, uid, step, what) {   // what: the kind of change, 
     over = !!r.rec.state.winner;
     end = over ? { w: r.rec.state.winner, why: r.rec.state.winReason || null, resigned: r.rec.state.resigned || null } : null;
     if (over) { pub.status = 'over'; pub.ended = t; cur.dl = 1; }      // 1: over, the result still to record
-    else cur.dl = r.rec.state.timer && r.rec.state.timer.deadline || null;
+    else cur.dl = E.clockDeadline(r.rec.state.timer) || null;
     out = { ok: true, seq: r.rec.state.seq };
     info = { entries: r.entries || null, sameTurn: r.rec.state.turn === turn0 };
     return cur;
@@ -835,12 +838,13 @@ exports.move = onCall(CALL, async req => {
     return E.applyOnlineMove(rec, side, i, d.move, seedRng(), { rep: d.rep });   // (rep: the mover's inputs before the move, checked and kept by the engine for the other phone's replay)
   }, 'move');
 });
-// The turn's time is up: the random move for the player on the move (or the match, on a second
-// timeout in a row). Only once the deadline has really passed, by the server's clock.
+// The turn's time is up: the player on the move misses the turn (a move under way ends as it stands), or
+// loses the match on a second miss in a row (core/board.js timeoutMove). Only once the deadline has really
+// passed, by the server's clock.
 function timeoutStep(rec) {
-  const t = rec.state.timer;
+  const t = rec.state.timer, dl = E.clockDeadline(t);
   if (rec.state.winner) return { ok: false, reason: 'over' };
-  if (!t || !t.limit || t.deadline == null || now() < t.deadline) return { ok: false, reason: 'early' };
+  if (dl == null || now() < dl) return { ok: false, reason: 'early' };
   return E.applyOnlineTimeout(rec, seedRng());
 }
 exports.timeout = onCall(CALL, async req => {

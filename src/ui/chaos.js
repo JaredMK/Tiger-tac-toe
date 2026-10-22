@@ -6,8 +6,9 @@
 // of the move with its usual animation: ui/replay.js); then what only both moves together settle plays in its
 // square (a Bump knock, a Clash Grid collision: resolve); then each square's result on the board, one at a time: its
 // X or O stamping in, or (both won it) both marks clashing and the square turning over to a new game; then
-// the next round, or the match's end. In a friend room both phones play the sequence from the record's shared
-// start (server time), so they see the same part at the same moment; a phone coming back joins where it is.
+// the next round, or the match's end. Online each phone plays the sequence from the record's start (server
+// time; the last mover's phone once its own result has played), at its own pace (a skip jumps it on), and the
+// next round begins once both phones are through it; a phone coming back joins where it is.
 import { chaosNext, chaosResolve, chaosTimeout, scHuman, scRecapOrder } from '../core/chaos.js';
 import { serverNow } from '../net/connect.js';
 import { other } from '../core/util.js';
@@ -49,8 +50,11 @@ function holdClock(p) {
   if (p && sc.deadline != null && sc.held == null) { sc.held = Math.max(0, sc.deadline - now()); sc.deadline = null; }
   else if (!p && sc.held != null) { sc.deadline = now() + sc.held; sc.held = null; }
 }
-// The human's move is in, or the round is being shown: nothing to play until the next round.
-export function scWaiting() { return live() && !state.winner && !!(state.sc.me || state.sc.recap); }
+// The human's move is in (or their time is up), the round is being shown, or (online) the next round has not
+// begun on the record yet (the other phone still in its recap): nothing to play until the next round.
+export function scWaiting() { const sc = live() && state.sc; return !!sc && !state.winner && !!(sc.me || sc.recap || sc.missed === sc.round || scHeld()); }
+// Online: this phone is through the recap and the next round waits for the other phone's (no deadline yet).
+export const scHeld = () => { const sc = live() && state.sc; return !!sc && !!sc.online && !sc.recap && !state.winner && sc.deadline == null; };
 export function scRecapStage() { return live() && state.sc.recap && scUi.round === state.sc.recap.round ? scUi.stage : null; }
 export const scPopup = () => scRecapStage() === 'popup';                   // the recap's pop-up replay of the computer's move is up
 export const scCpu = () => other(scHuman(state));
@@ -58,7 +62,7 @@ export const scCpu = () => other(scHuman(state));
 // still to be settled together: both moves made, nothing knocked or spun yet); the computer's square in the
 // pop-up: its move as far as the replay has got; once the results play, a square not reached yet.
 export function scShown(i) {
-  const rc = live() && state.sc.recap, st = scRecapStage();
+  const rc = live() && state.sc.recap, st = rc ? scRecapStage() || 'wait' : null;   // (a recap not under way here yet: the board as the round left it, never its settled squares)
   if (!rc || !['wait', 'replay', 'spot', 'popup', 'resolve', 'result'].includes(st)) return null;
   const mv = state.squares[i].mv;
   if (st === 'popup' && rc.cpu && rc.cpu.square === i && scUi.mini) return { owner: null, mini: scUi.mini, mv };
@@ -66,7 +70,7 @@ export function scShown(i) {
     const before = (rc.mine && rc.mine[i]) || rc.cpu.start;
     if (before) return { owner: null, mini: before, mv };
   }
-  const rk = (rc.resolve || []).findIndex(x => x.square === i), played = scUi.plan ? scUi.plan.segs.slice(0, scUi.seg + 1).some(s => s.kind === 'resolve' && s.k === rk) : false;
+  const rk = (rc.resolve || []).findIndex(x => x.square === i), played = scUi.plan && scUi.round === rc.round ? scUi.plan.segs.slice(0, scUi.seg + 1).some(s => s.kind === 'resolve' && s.k === rk) : false;
   if (rk >= 0 && rc.pre && rc.pre[i] && st !== 'result' && !played) return { owner: null, mini: rc.pre[i], mv };   // (settled together: as it stood before, until its part plays)
   if (st === 'result') {
     const k = scItems(rc).findIndex(x => x.square === i);
@@ -120,27 +124,42 @@ export function chaosStep() {
     if (w != null) scTimer = setTimeout(chaosStep, w);
     return;
   }
-  if (sc.me && !state.flash && !state.done && state.lock == null) {   // the human's move is in, its result seen: the round ends once the computer's is too
+  if ((sc.me || sc.missed === sc.round) && !state.flash && !state.done && state.lock == null) {   // the human's move is in (or their time ran out), its result seen: the round ends once the computer's is too
     const wait = scUi.readyAt - now();
     if (wait > 0) { scTimer = setTimeout(chaosStep, wait); return; }
     endRound();
   }
 }
-// The round's time is up (the clock's tick): the game's timeout rule for the human's move.
+// The round's time is up (the clock's tick): nothing is played for the human (core/chaos.js chaosTimeout): with
+// no move made they miss the round; a move under way ends as it stands. In a match the server runs, its own
+// clock decides (net/chaos.js asks it); here the round is simply over for this phone.
 export function scTick() {
   if (!live() || paused() || state.winner) return;
-  if (state.online && state.online.kind === 'mm') return;         // (a match the server runs: its timeout rule is the server's, asked for by net/chaos.js)
-  const left = scClockLeft();
-  if (left == null || left > 0) return;
+  const left = scClockLeft(), sc = state.sc;
+  if (left == null || left > 0 || sc.me || sc.missed === sc.round) return;
+  if (state.online && state.online.kind === 'mm') {               // (a match the server runs: a move under way is ended there, at its sweep)
+    if (state.lock == null && sc.moved == null && !state.flash) { sc.missed = sc.round; leaveMissed(); }
+    return;
+  }
   const r = chaosTimeout(state, RNG);
-  if (r.ok) matchLog({ k: 'timeout', r: state.sc.round, q: r.square, g: state.squares[r.square] && state.squares[r.square].mini.type });
-  if (r.ok) { state.screen = 'mini'; state.zoom = r.square; state.spot = null; playFlash(); commit(); }   // the random move, played where it was made
+  if (!r.ok) return;
+  matchLog({ k: 'timeout', r: sc.round, q: r.square, g: r.square != null && state.squares[r.square] ? state.squares[r.square].mini.type : undefined, missed: r.missed || undefined });
+  if (r.missed) { leaveMissed(); return; }
+  if (r.closed) { state.screen = 'mini'; state.zoom = r.square; state.spot = null; playFlash(); commit(); return; }   // the move under way, ended where it was (a bank, a stand)
+  commit();
+}
+// The round's time ran out with no move made: back to the board, where the round ends.
+function leaveMissed() {
+  state.lock = null; state.draft = ''; state.pick = null; state.sel = [];
+  if (state.screen === 'mini') { state.screen = 'board'; state.zoom = null; }
+  SND.play('error');
+  commit();
 }
 function endRound() {
   const rc = chaosResolve(state, RNG);
   if (!rc) return;
   const typ = i => (rc.view && rc.view[i] ? rc.view[i].type : state.squares[i] && state.squares[i].mini.type);
-  matchLog({ k: 'resolve', r: rc.round, me: rc.me, mg: typ(rc.me), cpu: rc.cpu ? rc.cpu.square : undefined, cg: rc.cpu ? rc.cpu.type : undefined,
+  matchLog({ k: 'resolve', r: rc.round, me: rc.me != null ? rc.me : undefined, mg: rc.me != null ? typ(rc.me) : undefined, missed: rc.missed && rc.missed.length ? rc.missed.join('') : undefined, cpu: rc.cpu ? rc.cpu.square : undefined, cg: rc.cpu ? rc.cpu.type : undefined,
     claims: rc.claims.map(c => c.square + c.by).join(' ') || undefined, resets: rc.resets.map(x => `${x.square}:${x.why}`).join(' ') || undefined, w: rc.result ? rc.result.winner : undefined });
   rc.at = now();                                                 // the recap plays from now (a friend room's comes from the record, with its shared start)
   state.sc.deadline = null; state.sc.held = null;
@@ -202,14 +221,10 @@ function scParts(rc, mine, opp) {   // mine: the square this player played; opp:
   return parts;
 }
 function scPlan(rc) {
-  const segs = [], me = scHuman(state), opp = other(me);
+  const segs = [], me = scHuman(state);
   let t = 0;
   const add = s => { s.start = t; t += s.dur; s.end = t; segs.push(s); return s; };
-  const parts = scParts(rc, ownSq(rc, me), rc.cpu);
-  if (rc.mv) {                                                    // a friend room: the other phone's parts take their own time; the results wait for the longer
-    const sum = l => l.reduce((a, s) => a + s.dur, 0), pad = sum(scParts(rc, ownSq(rc, opp), rc.mv[me])) - sum(parts);
-    if (pad > 0 && parts.length) parts[parts.length - 1].dur += pad;
-  }
+  const parts = scParts(rc, ownSq(rc, me), rc.cpu);              // (online, each phone at its own pace: the next round begins once both are through)
   parts.forEach(add);
   scItems(rc).forEach((it, k) => {
     if (it.kind === 'claim') add({ kind: 'result', k, phase: 'claim', dur: SC_MS.claim });
@@ -334,18 +349,16 @@ function recapDone(rc) {
   commit();
 }
 // A tap on the replay (or its Skip): the end of the other player's move (every step made, the square as the
-// move left it) stays on show. Against the computer the sequence jumps on to the results after a moment; in a
-// friend room it runs on at its own pace (the other phone's too), so the two stay together.
+// move left it) stays on show, and the sequence jumps on to the results after a moment (online too: each phone
+// goes at its own pace, and the next round begins once both are through).
 export function scSkip() {
   if (scRecapStage() !== 'popup') return false;
   const rc = state.sc.recap, seg = scUi.plan.segs[scUi.seg], steps = rc.cpu ? rc.cpu.steps || [] : [], lastStep = steps[steps.length - 1];
   dropFlash();
   scUi.skipped = true;
   if (seg && seg.kind === 'popup' && lastStep && lastStep.after) scUi.mini = clone(lastStep.after);
-  if (!state.sc.online) {
-    const pops = scUi.plan.segs.filter(s => s.kind === 'popup' || s.pop), end = pops[pops.length - 1].end;
-    rc.at = Math.min(rc.at, now() - (end - SC_MS.skip));          // (the sequence set so the pop-up's end comes after the skip's moment)
-  }
+  const pops = scUi.plan.segs.filter(s => s.kind === 'popup' || s.pop), end = pops[pops.length - 1].end;
+  rc.at = Math.min(rc.at, tnow() - (end - SC_MS.skip));           // (the sequence set so the pop-up's end comes after the skip's moment)
   render(); chaosStep();
   return true;
 }
@@ -359,8 +372,14 @@ export function scLastPlayed() {
 }
 // The board's line under the squares in a Super Chaos round.
 export function scHint() {
-  const sc = state.sc, cpu = other(scHuman(state));
-  if (sc.recap) return scRecapStage() === 'wait' ? 'Both moves in · settling the round…' : `Round ${sc.recap.round} · results`;
+  const sc = state.sc, me = scHuman(state), cpu = other(me);
+  if (sc.recap) {
+    const ms = sc.recap.missed || [], st = scRecapStage();
+    if (!st || st === 'wait') return `Waiting for ${N(cpu)}…`;
+    return ms.length ? `Round ${sc.recap.round} · ${ms.length === 2 ? 'both missed it' : ms[0] === me ? 'you missed it' : `${N(ms[0])} missed it`}` : `Round ${sc.recap.round} · results`;
+  }
+  if (scHeld()) return `Waiting for ${N(cpu)}…`;                  // (online: the other phone still in its recap; the next round begins with both)
+  if (sc.missed === sc.round) return `Time's up · Round ${sc.round} missed`;
   if (sc.me && sc.online && sc.fail) return `<span class="scfail">Move not saved (${scFailText(sc.fail.code)}) · trying again…</span>`;   // (a friend room: the record refused or could not take the move; sent again every second)
   if (sc.me) return sc.oppIn ? `${N(cpu)} has moved · settling the round…` : `Waiting for ${N(cpu)}…${sc.online ? ` <span class="scleft">${fmtClock(scClockLeft() || 0)}</span>` : ''}`;   // (a friend room: the round's clock, the same on both phones)
   return sc.oppIn ? `${N(cpu)} has moved · tap any open square` : `Round ${sc.round} · tap any open square`;

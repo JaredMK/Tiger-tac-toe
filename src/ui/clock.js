@@ -1,6 +1,6 @@
 // The turn clock on screen: one deadline a turn, counted the same on both phones; timeouts.
 import { applyOnlineTimeout } from '../core/records.js';
-import { armClock } from '../core/timer.js';
+import { armClock, clockDeadline } from '../core/timer.js';
 import { SND } from '../audio/sound.js';
 import { call, connected, fb, serverNow } from '../net/connect.js';
 import { fireTimeoutMM, isMM, search } from '../net/matchmaking.js';
@@ -13,9 +13,9 @@ import { runDraft, runEnd } from './runner.js';
 /* ----- the turn clock: a deadline in server time on the record, so both phones count the same; either may call it ----- */
 export function clockLeft() {
   if (state.sc) return scClockLeft();                         // Super Chaos: the round's clock (this phone's, in a friend room too)
-  const t = state.timer;
-  if (!t || !t.limit || t.deadline == null) return null;
-  return Math.max(0, Math.min(t.limit * 1000, t.deadline - serverNow()));
+  const t = state.timer, dl = clockDeadline(t);                 // (not started yet: the full time shows until this turn's player has seen the move before it)
+  if (dl == null) return null;
+  return Math.max(0, Math.min(t.limit * 1000, dl - serverNow()));
 }
 export function clockText() {
   const left = clockLeft();
@@ -51,8 +51,9 @@ export function tick() {
   if (!rec) return;
   const st = rec.state, t = st.timer;
   if (isMM() && !st.winner && st.turn !== state.online.me) nudgeMM();
-  if (!t || !t.limit || t.deadline == null || st.winner || serverNow() < t.deadline) return;
-  fireTimeout(st.seq, t.deadline);
+  const dl = clockDeadline(t);
+  if (dl == null || st.winner || serverNow() < dl) return;
+  fireTimeout(st.seq, dl);
 }
 // A matchmaking game, the other side on the move: a word to the server every few seconds, which keeps
 // its own timings for the game going.
@@ -63,14 +64,15 @@ function nudgeMM() {
   nudgeAt = Date.now();
   call('tick', { game: state.online.game }).catch(() => {});
 }
-// The deadline passed: a random move for the player on the move, written once whichever phone gets there first.
+// The deadline passed: the player on the move misses the turn (core/board.js timeoutMove: nothing is played for
+// them; a second miss in a row loses), written once whichever phone gets there first.
 async function fireTimeout(seq, deadline) {
   if (isMM()) { fireTimeoutMM(seq, deadline); return; }
   setTimeoutBusy(true);
   try {
     await matchTransaction(rec => {
       const st = rec.state;
-      if (st.seq !== seq || st.winner || !st.timer || st.timer.deadline !== deadline || serverNow() < st.timer.deadline) return null;   // called already, or not due
+      if (st.seq !== seq || st.winner || !st.timer || clockDeadline(st.timer) !== deadline || serverNow() < deadline) return null;   // called already, or not due
       const r = applyOnlineTimeout(rec, RNG);
       if (!r.ok) return null;
       armClock(r.rec.state, r.entries, serverNow());

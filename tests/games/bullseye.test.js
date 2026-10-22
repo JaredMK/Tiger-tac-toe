@@ -66,7 +66,7 @@ test('bullseye: the config (board, bullseye, sweep, ramp) is checked value by va
   assert.equal(E.applyMove(old, 'X', { x: 0.5, y: 0.5 }, lcg(3)).note, 'bull');
 });
 
-test('bullseye: the computer lands a bullseye about 15%, the board 45% and misses 40% at the start, slipping as its lines speed up; a timeout stops both lines at random', () => {
+test('bullseye: the computer lands a bullseye about 15%, the board 45% and misses 40% at the start, slipping as its lines speed up; a timeout throws nothing', () => {
   const rng = lcg(5), count = speed => {
     const c = { 3: 0, 1: 0, 0: 0 };
     for (let k = 0; k < 4000; k++) { const m = E.newMini('bullseye', rng); m.speed.X = speed; const r = E.localBest(E.publicMini(m), 'X', rng); c[E.bullsScore(m.cfg, m.pos, r.move.x, r.move.y).pts]++; }
@@ -89,8 +89,8 @@ test('bullseye: the computer lands a bullseye about 15%, the board 45% and misse
   const st = E.newMatch(lcg(8), { games: ['bullseye'], mode: 'online', timer: 30 });
   const before = JSON.stringify(st.squares.map(q => q.mini.pts));
   const t = E.timeoutMove(st, lcg(9));
-  assert.equal(t.ok, true); assert.ok(st.flash.timeout && st.flash.bull, 'the timed-out throw is a throw');
-  assert.notEqual(JSON.stringify(st.squares.map(q => q.mini.pts)), before === '' ? null : undefined);
+  assert.deepEqual([t.ok, t.missed, st.flash], [true, 'X', null], 'no throw made for the player');
+  assert.equal(JSON.stringify(st.squares.map(q => q.mini.pts)), before);
   const mv = E.randomLegalMove(E.newMini('bullseye', lcg(1)), 'X', lcg(2));
   assert.ok(mv.x >= 0 && mv.x <= 1 && mv.y >= 0 && mv.y <= 1, 'both lines somewhere on the field');
 });

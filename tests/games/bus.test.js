@@ -77,16 +77,17 @@ test('ride the bus: the odds, and the computer picks the best guess', () => {
   assert.notEqual(suits, 'S', 'with three spades kept, never spades');
 });
 
-test('ride the bus: a timeout is one random guess, and the turn ends even when it is right', () => {
-  for (let seed = 1; seed < 60; seed++) {
+test('ride the bus: a timeout guesses nothing; a run under way ends there, its cards kept, and the turn passes', () => {
+  for (let seed = 1; seed < 30; seed++) {
     const st = E.newMatch(lcg(seed), { games: ['bus'], mode: 'online', timer: 60 });
     st.turn = 'X';
-    const r = E.timeoutMove(st, lcg(seed + 100));
-    assert.equal(r.ok, true);
-    assert.ok(['red', 'black'].includes(r.move));
-    assert.equal(st.lock, null, 'the turn ends');
-    assert.equal(st.flash.kind === 'again', false);
+    assert.deepEqual(E.timeoutMove(st, lcg(seed + 100)), { ok: true, missed: 'X' });
+    assert.deepEqual([st.lock, st.turn, st.flash], [null, 'O', null]);
   }
+  const st = E.newMatch(lcg(3), { games: ['bus'], mode: 'online', timer: 60 });
+  st.turn = 'X'; st.squares[0].mini.prog.X = ['2H']; st.lock = 0;
+  const r = E.timeoutMove(st, lcg(4));
+  assert.deepEqual([r.ended, st.squares[0].mini.prog.X, st.lock, st.turn], [true, ['2H'], null, 'O']);
 });
 
 test('ride the bus: the admin\'s settings (a tie right, the computer\'s mistakes) are dealt into the square and played by', () => {

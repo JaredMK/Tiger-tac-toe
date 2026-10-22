@@ -51,7 +51,7 @@ function friendEvents(b, a, t) {
     const moveEv = (side, m, r) => clean({ t, k: m.timeout || m.auto ? 'timeout' : 'move', s: side, r, q: Number.isInteger(m.square) ? m.square : undefined, g: m.mini ? m.mini.type : m.type || undefined, win: !!m.win, auto: !!m.auto, src: 'srv' });
     const settled = sc.recap && (!bs.recap || bs.recap.round !== sc.recap.round) ? sc.recap : null;
     if (settled) {                                              // the round settled in this write: any move that came in with it (the second one, or the deadline's)
-      for (const side of ['X', 'O']) { const m = settled.mv && settled.mv[side]; if (!bm[side]) out.push(m ? moveEv(side, m, settled.round) : { t, k: 'timeout', s: side, r: settled.round, none: true, src: 'srv' }); }
+      for (const side of ['X', 'O']) { const m = settled.mv && settled.mv[side]; if (!bm[side]) out.push(m ? moveEv(side, m, settled.round) : { t, k: 'timeout', s: side, r: settled.round, missed: true, src: 'srv' }); }
       out.push(clean({ t, k: 'resolve', r: settled.round, claims: (settled.claims || []).map(c => c.square + c.by).join(' ') || undefined, resets: (settled.resets || []).map(x => `${x.square}:${x.why}`).join(' ') || undefined, owners: owners(a), src: 'srv' }));
     } else for (const side of ['X', 'O']) if (am[side] && !bm[side]) out.push(moveEv(side, am[side], sc.round));
     if (bs.deadline == null && sc.deadline != null && !settled) out.push({ t, k: 'round', r: sc.round, dl: sc.deadline, src: 'srv' });

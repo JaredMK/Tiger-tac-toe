@@ -3,8 +3,8 @@
 // round's one truth. Each client is the Firebase SDK signed in as its own player, under the security rules,
 // with a listener on the room as the app keeps, and each move goes in as the app sends it (core/records.js
 // matchTxn with applyChaosSubmit, in a transaction). Two rounds; a second move from the same side in a round
-// (refused, the record untouched); a move from someone not in the room (refused by the rules); a timeout
-// round (the deadline settles it with the rule's move for the side not in); both clients see every round.
+// (refused, the record untouched); a move from someone not in the room (refused by the rules); the next round
+// once both clients are through the recap; a timeout round (the side not in misses it); both clients see every round.
 // The emulator: the one the Firebase Emulator Suite runs (npm run test:emulators), else the database
 // emulator's jar from firebase-tools' cache, started here (needs Java). Without either, the test is skipped
 // and says so.
@@ -133,9 +133,13 @@ test('Super Chaos online, two clients on the emulator: one move a side a round, 
   assert.deepEqual([rc1.sc.recap.mv.X.square, rc1.sc.recap.mv.O.square], [0, 1], 'both moves kept for the replays');
   assert.deepEqual(JSON.stringify(guest.rec().state), JSON.stringify(rc1), 'both clients hold the same record');
   assert.deepEqual(await submit(guest, code, 'O', Object.assign({}, mo, { round: 2 })), { committed: false, reason: 'recap' }, 'no move until the next round has begun');
-  // the first client through the recap begins round 2; the other finds it begun
-  assert.deepEqual(await guest.txn(code, rec => E.applyChaosBegin(rec, Date.now())), { committed: true, reason: null });
-  assert.deepEqual(await host.txn(code, rec => E.applyChaosBegin(rec, Date.now())), { committed: false, reason: 'begun' });
+  // round 2 begins once both clients are through the recap: the first waits for the other
+  assert.deepEqual(await guest.txn(code, rec => E.applyChaosBegin(rec, Date.now(), 'O')), { committed: true, reason: null });
+  await until(() => host.rec() && host.rec().state.sc.ready && host.rec().state.sc.ready.O, 10000, 'the host sees O through');
+  assert.equal(host.rec().state.sc.deadline, null, 'not begun with one through');
+  assert.deepEqual(await guest.txn(code, rec => E.applyChaosBegin(rec, Date.now(), 'O')), { committed: false, reason: 'waiting' }, 'said again: nothing written');
+  assert.deepEqual(await host.txn(code, rec => E.applyChaosBegin(rec, Date.now(), 'X')), { committed: true, reason: null });
+  assert.deepEqual(await host.txn(code, rec => E.applyChaosBegin(rec, Date.now(), 'X')), { committed: false, reason: 'begun' });
   for (const c of [host, guest]) await until(() => c.rec() && c.rec().state.sc.round === 2 && c.rec().state.sc.deadline != null, 10000, 'both see round 2 begun');
 
   // ---- round 2: O first this time, then X; settled again ----
@@ -146,10 +150,12 @@ test('Super Chaos online, two clients on the emulator: one move a side a round, 
   for (const c of [host, guest]) await until(() => c.rec() && c.rec().state.sc.recap && c.rec().state.sc.recap.round === 2, 10000, 'both see round 2 settled');
   assert.equal(host.rec().state.squares[2].owner, 'O', 'O takes the second Wordle square');
   assert.equal(host.rec().state.squares[3].mini.guesses.length, 1, "X's guess is on the board");
-  assert.deepEqual(await host.txn(code, rec => E.applyChaosBegin(rec, Date.now())), { committed: true, reason: null });
+  assert.deepEqual(await host.txn(code, rec => E.applyChaosBegin(rec, Date.now(), 'X')), { committed: true, reason: null });
+  await until(() => guest.rec() && guest.rec().state.sc.ready && guest.rec().state.sc.ready.X, 10000, 'the guest sees X through');
+  assert.deepEqual(await guest.txn(code, rec => E.applyChaosBegin(rec, Date.now(), 'O')), { committed: true, reason: null });
   for (const c of [host, guest]) await until(() => c.rec() && c.rec().state.sc.round === 3 && c.rec().state.sc.deadline != null, 10000, 'both see round 3 begun');
 
-  // ---- round 3, a timeout: X moves, O does not; the deadline (plus the grace) settles the round with the rule's move for O ----
+  // ---- round 3, a timeout: X moves, O does not; the deadline (plus the grace) settles the round; O missed it, nothing played for O ----
   assert.deepEqual(await submit(host, code, 'X', moveOf(host.rec(), 'X', 4, [11])), { committed: true, reason: null });   // (square 4's number: a win)
   await until(() => host.rec() && host.rec().state.sc.moves && host.rec().state.sc.moves.X, 10000, "X's move on the record");
   const dl = host.rec().state.sc.deadline;
@@ -158,7 +164,7 @@ test('Super Chaos online, two clients on the emulator: one move a side a round, 
   for (const c of [host, guest]) await until(() => c.rec() && c.rec().state.sc.recap && c.rec().state.sc.recap.round === 3, 10000, 'both see round 3 settled');
   const rc3 = guest.rec().state;
   assert.equal(rc3.squares[4].owner, 'X', "X's guess took its square");
-  assert.equal(rc3.sc.recap.mv.O.auto, true, "the rule's move stood for O");
+  assert.deepEqual([rc3.sc.recap.mv.O, rc3.sc.recap.missed, rc3.sc.miss], [null, ['O'], { X: 0, O: 1 }], 'O missed the round: no move played for O');
   assert.deepEqual(await host.txn(code, rec => E.applyChaosDeadline(rec, dl + 99999, E.makeRng('d'))), { committed: false, reason: 'recap' }, 'settled once');
   assert.deepEqual(await submit(guest, code, 'O', moveOf(guest.rec(), 'O', 5, [10])), { committed: false, reason: 'recap' }, "O's late move: the round is settled");
   // every record both clients saw, in order: the same sequence of rounds on both
@@ -195,7 +201,9 @@ test('Super Chaos online, two clients on the emulator: each phone shows its own 
       const rc = (await until(() => { const v = c.rec(); return v && v.state.sc.recap && v.state.sc.recap.round === r ? v.state.sc.recap : null; }, 10000, `round ${r} settled on ${side}'s client`));
       order[side] = E.scRecapOrder(rc, rc.mv[side].square, rc.mv[side === 'X' ? 'O' : 'X']).map(o => o.kind + ':' + o.square + (o.own ? ':own' : ''));
     }
-    assert.deepEqual(await guest.txn(code, rec => E.applyChaosBegin(rec, Date.now())), { committed: true, reason: null });
+    assert.deepEqual(await guest.txn(code, rec => E.applyChaosBegin(rec, Date.now(), 'O')), { committed: true, reason: null });
+    await until(() => host.rec().state.sc.ready && host.rec().state.sc.ready.O, 10000, 'the host sees O through the recap');
+    assert.deepEqual(await host.txn(code, rec => E.applyChaosBegin(rec, Date.now(), 'X')), { committed: true, reason: null });
     return order;
   }
   // 1. the host shoots at the Mini Golf hole, the guest guesses elsewhere: the host's shot first on the host's phone, then the guest's replay; the guest sees the host's square lit, then the shot

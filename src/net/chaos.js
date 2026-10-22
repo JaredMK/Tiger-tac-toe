@@ -2,11 +2,12 @@
 // match on the database) is the one truth of each round: its number, its deadline in server time, and each
 // player's move once sent in (the record's sc.moves). A phone plays its move on its own copy of the round
 // (core/chaos.js chaosPlay) and sends it in once it is over; the second move in settles the round on the record
-// (core/records.js applyChaosSubmit), as does the deadline, with the timeout rule's move for a side not in
+// (core/records.js applyChaosSubmit), as does the deadline, where a side not in misses the round
 // (applyChaosDeadline: either phone, once the other has had a moment to send its own). The settled round
-// carries a shared start a second ahead (server time): both phones play the same recap sequence from that
-// moment (ui/chaos.js), and the first through it begins the next round on the record (applyChaosBegin: its
-// deadline). A phone coming back reads the record and joins the round, or the recap where it is.
+// carries its start a second ahead (server time; the phone whose move settled it starts once its own result has
+// played): each phone plays its recap sequence from there at its own pace (ui/chaos.js), and the next round
+// begins on the record once both phones are through it (applyChaosBegin: its deadline; a phone gone is waited
+// for SC_ONLINE.readyWaitMs). A phone coming back reads the record and joins the round, or the recap where it is.
 import { SC_ONLINE, scMoveOf } from '../core/chaos.js';
 import { upgradeMini } from '../core/minis.js';
 import { MATCH_FIELDS, applyChaosBegin, applyChaosDeadline, applyChaosSubmit, fullState } from '../core/records.js';
@@ -66,6 +67,7 @@ function take(full, keep) {
 // The record's recap as this phone plays it: the other player's move is "the other move" (ui/chaos.js replays it).
 function recapOf(sc, me, own) {
   const rc = clone(sc.recap), opp = other(me);
+  if (rc.lead && rc.lead[me]) rc.at += rc.lead[me];             // (this phone's move settled the round: its recap starts once its own result has played)
   rc.cpu = rc.mv && rc.mv[opp] ? Object.assign({}, rc.mv[opp]) : null;
   rc.me = rc.mv && rc.mv[me] && rc.mv[me].square != null ? rc.mv[me].square : null;   // (this phone's square: the record's recap names the first side's)
   rc.mine = {};                                                 // each square as this phone saw it before the round settled (own: its own copy of the round; none after a reload: the other's square as they found it)
@@ -82,7 +84,7 @@ export function scFollow(rec) {
   if (!loc || st.winner) { scJoin(rec); return; }
   if (sc.recap && sc.recap.round === loc.round && !loc.recap) { scRecap(rec); return; }   // the round played here is settled: its recap, from the shared start
   if (loc.round !== sc.round) { scJoin(rec); return; }          // not following this round here (a reload, a round missed)
-  if (sc.deadline != null && loc.deadline !== sc.deadline) loc.deadline = sc.deadline;   // the round's clock, as the record has it
+  if (sc.deadline != null && loc.deadline !== sc.deadline) { if (loc.deadline == null) SND.play('turn'); loc.deadline = sc.deadline; }   // the round's clock, as the record has it (begun: both phones are through the recap)
   const mine = sc.moves && sc.moves[o.me], oppIn = !!(sc.moves && sc.moves[other(o.me)]);
   if (mine && !loc.me) { scJoin(rec); return; }                 // our move went in from elsewhere (this phone open twice)
   if (!mine && loc.me && loc.sent === loc.round && !sending) loc.sent = null;   // sent, yet not on the record: sent again (the record decides: 'moved' if it is there after all)
@@ -108,10 +110,10 @@ function scJoin(rec) {
   const late = !!sc.recap && sc.deadline != null && was === sc.recap.round;   // this phone played the round just settled, and was away while the other phone went on to the next
   if (sc.recap && (sc.deadline == null || late)) {               // the round just settled: its recap is on (or its start still ahead)
     recapState(full, recapOf(sc, me));
-    if (late ? scOwnDue() : full.winner || serverNow() < sc.recap.at + scRecapTotal() || scOwnDue()) { save(); render(); chaosStep(); return; }   // (the sequence joined where it is; this phone's own outcome, not seen yet, from its start, even with the next round on)
-    if (!full.winner && !late) scBegin();                        // over already (this phone was away through it): the next round begins on the record
+    if (late ? scOwnDue() : full.winner || serverNow() < state.sc.recap.at + scRecapTotal() || scOwnDue()) { save(); render(); chaosStep(); return; }   // (the sequence joined where it is; this phone's own outcome, not seen yet, from its start, even with the next round on)
+    if (!full.winner && !late) scBegin();                        // over already (this phone was away through it): through the recap; the next round begins on the record once the other phone is too
   }
-  state.sc = Object.assign(clone(sc), { me: null, moved: null, start: null, steps: null, recap: null, deadline: sc.deadline != null ? sc.deadline : serverNow() + sc.limit * 1000, held: null, sent: null, oppIn: !!(sc.moves && sc.moves[other(me)]) });   // (a deadline not on the record yet: from now, until it is)
+  state.sc = Object.assign(clone(sc), { me: null, moved: null, start: null, steps: null, recap: null, deadline: sc.deadline != null ? sc.deadline : null, held: null, sent: null, missed: null, oppIn: !!(sc.moves && sc.moves[other(me)]) });   // (no deadline on the record yet: the other phone is still in the recap; nothing to play until it begins)
   if (mine) {
     if (mine.square != null && mine.mini) state.squares[mine.square].mini = clone(mine.mini);
     state.sc.me = Object.assign({ square: mine.square, out: mine.out || 'none', win: !!mine.win }, mine.gives ? { gives: mine.gives } : {});
@@ -144,13 +146,15 @@ function recapState(full, rc, own) {
   if (!scAtHole(rc) && !own) { state.screen = 'board'; state.zoom = null; }   // (at the Mini Golf hole with a shot locked in: both shots play out there; the own result still up: where it is)
   setScUi({ round: null, readyAt: 0, stage: null, at: 0, played: false });   // (the sequence is planned and joined where it is at the next step)
 }
-// The recap is over here: on to the record's round (begun there by the first phone through, else by this one).
+// The recap is over here: this phone is through it (the next round begins on the record once both are), and on
+// to the record's round.
 export function scNextOnline() {
   const rec = room && parseMatch(room.match);
   if (!rec || !rec.state.sc) return;
   setScUi({ round: null, readyAt: 0, stage: null, at: 0, played: false });
   scJoin(rec);
-  if (!rec.state.winner) SND.play('turn');
+  if (!rec.state.winner && rec.state.sc.deadline == null) scBegin();
+  if (!rec.state.winner && rec.state.sc.deadline != null) SND.play('turn');
 }
 // Every second while a round is on: this phone's move sent once it is in; the round settled on the record at
 // its deadline once the grace for the mover's own phone is past (either phone, the first to). The ms until the
@@ -161,6 +165,7 @@ export function scOnlineWait() {
   const rec = room && parseMatch(room.match);
   if (!rec || !rec.state.sc || rec.state.winner || rec.state.sc.round !== sc.round) return null;
   const rsc = rec.state.sc;
+  if (rsc.deadline == null && !sc.recap) { if (Date.now() - nudgeAt >= NUDGE_MS) { nudgeAt = Date.now(); scBegin(); } return 1000; }   // through the recap, the other phone not yet: said again every few seconds (the round begins once both are, or once this one has waited long enough)
   if (rsc.deadline != null && serverNow() >= rsc.deadline + SC_ONLINE.graceMs && !(rsc.moves && rsc.moves.X && rsc.moves.O)) { scDeadline(); return 1500; }
   if (srv() && sc.me && Date.now() - nudgeAt >= NUDGE_MS) { nudgeAt = Date.now(); call('scTick', { game: o.game }).catch(() => {}); }   // waiting on the other side: a word to the server every few seconds (a bot's move once due; its own timings)
   if (o && o.me && rsc.moves && rsc.moves[o.me] && sc.sent !== sc.round) sc.sent = sc.round;
@@ -210,7 +215,7 @@ function scLost(reason, round, square) {
   devError('sclost', what);
   if (reason === 'round') showNotice('The round ended before your move went in', 2600);
 }
-// The deadline is past: the timeout rule's move for a side not in, and the round settled (once, whichever phone first).
+// The deadline is past: a side not in has missed the round, and the round is settled (once, whichever phone first).
 async function scDeadline() {
   if (busy || !fb || !connected) return;
   busy = true;
@@ -218,11 +223,13 @@ async function scDeadline() {
   try { await matchTransaction(rec => { const r = applyChaosDeadline(rec, serverNow(), RNG); return r.ok ? r.rec : null; }); } catch (e) { /* the next look tries again */ }
   busy = false;
 }
-// The recap is over: the next round begins on the record, timed from now (once: the first phone through sets it).
+// The recap is over here: this side is through it; the next round begins on the record, timed from then, once
+// both sides are (or this one has waited long enough for the other).
 async function scBegin() {
-  if (busy || !fb || !connected) return;
+  if (busy || !fb || !connected || !state.online) return;
   busy = true;
+  const me = state.online.me;
   if (srv()) { try { await call('scBegin', { game: state.online.game }); } catch (e) { /* the next look tries again */ } busy = false; return; }
-  try { await matchTransaction(rec => { const r = applyChaosBegin(rec, serverNow()); return r.ok ? r.rec : null; }); } catch (e) { /* the next look tries again */ }
+  try { await matchTransaction(rec => { const r = applyChaosBegin(rec, serverNow(), me); return r.ok ? r.rec : null; }); } catch (e) { /* the next look tries again */ }
   busy = false;
 }

@@ -38,12 +38,13 @@ test('blackjack: pushes in a row stay in one turn: each one deals a new hand, un
   assert.equal(st.lock, null, 'the win ends the turn');
   E.endFlash(st);
   assert.deepEqual([st.turn, sq.mini.wins.X], ['O', 1]);
-  // timeouts: every new hand a push brings is stood on, until one is won or lost
+  // the stand a timeout makes on a hand under way ('auto'): every new hand a push brings is stood on, until one is won or lost
   let autos = 0;
   for (let seed = 1; seed < 6000 && autos < 3; seed++) {
     const st = E.newMatch(lcg(seed), { games: ['bj'], mode: 'online', timer: 60 });
     st.turn = 'O';
-    const t = E.timeoutMove(st, lcg(seed + 7)), tm = st.squares[t.square].mini;
+    E.playMove(st, 0, 'auto', lcg(seed + 7), { forced: true, noAgain: true });
+    const tm = st.squares[0].mini;
     if (!tm.pushed) continue;
     if (tm.pushed.length >= 2) autos++;
     assert.ok(tm.pushed.every(h => h.res === 'push' && h.by === 'O'));

@@ -35,9 +35,12 @@ test('timeouts: a timed-out turn makes no attempt and changes nothing; an attemp
   const st = E.newMatch(lcg(8), { games: ['skyhop'] });
   st.timer = E.newTimer(60); st.timer.deadline = 1;
   const before = JSON.stringify(st.squares.map(q => q.mini.height));
+  assert.deepEqual([E.timeoutMove(st, lcg(9)), st.flash], [{ ok: true, missed: 'X' }, null], 'no attempt begun: the turn missed');
+  st.turn = 'X'; st.timer.streak.X = 0;
+  assert.equal(E.attStart(st, 0, 'X').ok, true);
   const r = E.timeoutMove(st, lcg(9));
   assert.equal(r.ok, true);
-  assert.equal(r.move, 'auto');
+  assert.equal(r.move, 'auto', 'an attempt begun and timed out: a failed one');
   assert.equal(JSON.stringify(st.squares.map(q => q.mini.height)), before, 'no height gained or lost');
   assert.equal(st.flash.fing.auto, true);
   assert.equal(E.fingMs(st.flash.fing), 0, 'nothing to replay');

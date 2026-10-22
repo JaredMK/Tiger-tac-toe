@@ -170,22 +170,20 @@ test('blackjack: the computer plays basic strategy without doubling: hit or stan
   for (let k = 0; k < 30; k++) assert.ok(['hit', 'stand'].includes(E.randomLegalMove(inHand('X', ['5S', '6H'], '7C', 'TD', ['9S']), 'X', lcg(k))), 'a timeout never doubles');
 });
 
-test('blackjack: a timeout stands (dealing first when no hand is in play); the turn ends', () => {
+test('blackjack: a timeout with a hand in play stands on it (no card drawn for the player); with no hand in play, nothing is dealt: the turn is missed', () => {
   const st = E.newMatch(lcg(3), { games: ['bj'], mode: 'online', timer: 60 });
   st.squares[0].mini = inHand('X', ['TS', '2H'], '9C', '8D', ['KS', '5H']);
   st.turn = 'X'; st.lock = 0;
   const r = E.timeoutMove(st, lcg(4));
-  assert.deepEqual([r.ok, r.square, r.move], [true, 0, 'auto']);
+  assert.deepEqual([r.ok, r.square, r.move, r.closed], [true, 0, 'auto', true]);
   assert.deepEqual([st.squares[0].mini.hand, st.squares[0].mini.last.cards], [null, ['TS', '2H']], 'stood on 12');
   assert.equal(st.lock, null);
   const st2 = E.newMatch(lcg(5), { games: ['bj'], mode: 'online', timer: 60 });
   st2.turn = 'O';
-  const r2 = E.timeoutMove(st2, lcg(6)), m2 = st2.squares[r2.square].mini;
-  assert.equal(r2.move, 'auto');
-  assert.equal(m2.hand, null, 'dealt and stood at once');
-  assert.ok(m2.last && m2.last.cards.length === 2 && m2.last.by === 'O');
-  assert.notEqual(m2.last.res, 'push', 'a push never ends the turn');
-  assert.equal(st2.lock, null, 'the turn ends');
+  const before = JSON.stringify(st2.squares.map(q => q.mini.hand));
+  assert.deepEqual(E.timeoutMove(st2, lcg(6)), { ok: true, missed: 'O' });
+  assert.equal(JSON.stringify(st2.squares.map(q => q.mini.hand)), before, 'nothing dealt');
+  assert.deepEqual([st2.lock, st2.turn, st2.flash], [null, 'X', null], 'the turn passes');
 });
 
 test('blackjack: the admin\'s settings (hands to win, the dealer\'s stand) are dealt into the square and played by', () => {

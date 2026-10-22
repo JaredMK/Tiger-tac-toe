@@ -6,7 +6,7 @@
 
 export { cpuEcho, STYLE0, EASY, BUDGET_MS, AI_CLOCK, AI, needsOf, winChance, localBest, squareValue, moveGain, cpuMove } from './ai.js';
 export { lineOpen, majorityResult, LINES, timeoutMove, mainResult, playMove, endFlash, leaveSquare } from './board.js';
-export { SC, scTypes, isChaos, scHuman, scSquareMini, startChaos, scBegin, scCpu, chaosPlay, chaosTimeout, chaosResolve, chaosNext, scPool, scMainResult, SC_ONLINE, startChaosOnline, scMoveOf, chaosResolveOnline, scTimeoutMove, scRoundStart, scRecapOrder } from './chaos.js';
+export { SC, scTypes, isChaos, scHuman, scSquareMini, startChaos, scBegin, scCpu, chaosPlay, chaosTimeout, chaosResolve, chaosNext, scPool, scMainResult, SC_ONLINE, startChaosOnline, scMoveOf, chaosResolveOnline, scRoundStart, scRecapOrder } from './chaos.js';
 export { cfgKit, lohi } from './config.js';
 export { isReleased, releasedTypes, allowedTypes, restrictGames } from './games.js';
 export { dealable, normLocal, seatLocal, NAME_MAX, pickType, pickReset, dealNine, newSquare, CPU_NAME, defaultSetup, cpuSide, normSetup, syncNames, enabledGames, playerName, newState, startMatch, newMatch } from './match.js';
@@ -15,10 +15,10 @@ export { LEVELS, LEVEL_NAME, levelOf, AI_DEFAULTS, AI_LIMITS, AI_CFG, aiNorm, se
 export { mcPick } from './mc.js';
 export { registerTunes, tuneFields, tuneDefaults, tuneValue, tuneNorm, setTune, setTunes, tuneLive, tuneSnap, tune } from './tune.js';
 export { gaussOf, makeRng, needRng, randInt, randomType, shuffle } from './random.js';
-export { resignLocal, RECENT_MAX, MATCH_FIELDS, secretOf, hideMini, matchRecord, fullState, settle, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, applyOnlineReveal, applyOnlineStart, newOnlineMatch, applyOnlineResign, applyChaosSubmit, applyChaosDeadline, applyChaosBegin, parseMatch, packMatch, matchTxn } from './records.js';
+export { resignLocal, RECENT_MAX, MATCH_FIELDS, secretOf, hideMini, matchRecord, fullState, settle, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, applyOnlineReveal, applyOnlineStart, newOnlineMatch, applyOnlineResign, applyChaosSubmit, applyChaosDeadline, applyChaosBegin, scReady, parseMatch, packMatch, matchTxn } from './records.js';
 export { SC_GAME, newScGame, scSideState, applyScMove, applyScTimeout, applyScBot, applyScBegin, applyScResign, scDue, scPublicState, scSideView, scFinal } from './scgame.js';
 export { matchStats, topOpponents, oppTally } from './stats.js';
-export { normTimer, TIMER_OPTIONS, newTimer, PLAY, playMs, replayMs, armClock } from './timer.js';
+export { normTimer, TIMER_OPTIONS, newTimer, PLAY, playMs, replayMs, armClock, startClock, clockDeadline, CLOCK } from './timer.js';
 export { REP, repNorm, repMove, repOf } from './replay.js';
 export { clamp01, r2, r3, other } from './util.js';
 export { BJ, BJT, bjValue, bjTotal, bjNatural, bjDealerPlay, bjOutcome, bjStrategy, bjPlan, bjMs } from '../games/bj/rules.js';

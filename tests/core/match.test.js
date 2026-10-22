@@ -571,7 +571,7 @@ test('newTimer and the timer options', () => {
   assert.deepEqual(L.TIMER_OPTIONS, [0, 60], 'a friend game: no limit or 1 minute');
   assert.deepEqual([0, 60, 30, 180, 45, null].map(L.normTimer), [0, 60, 60, 60, 0, 0], 'an older 30 s or 3 min room becomes 1 minute');
   const t = L.newTimer(60);
-  assert.deepEqual(t, { limit: 60, deadline: null, for: null, pausedAt: null, timeouts: { X: 0, O: 0 }, streak: { X: 0, O: 0 }, bankNext: false });
+  assert.deepEqual(t, { limit: 60, deadline: null, for: null, pausedAt: null, timeouts: { X: 0, O: 0 }, streak: { X: 0, O: 0 } });
   assert.equal(L.newTimer(0).limit, 0);
   assert.equal(L.newTimer().limit, 0);
   const st = L.newMatch(lcg(1), { mode: 'online', timer: 60 });
@@ -599,35 +599,26 @@ test('a random wordle move is a dictionary word, a random hangman letter is ungu
   for (let k = 0; k < 30; k++) { const [a, b] = L.randomLegalMove(mem, 'X', rng); assert.notEqual(a, b); assert.ok(a >= 0 && a < 9 && b >= 0 && b < 9); }
 });
 
-test('a timeout plays a random legal move, marks it, and the turn passes', () => {
+const noMarks = sqs => JSON.stringify(sqs.map(q => Object.assign({}, q, { mini: Object.assign({}, q.mini, { marks: undefined }) })));   // (the coins the next player's flips would turn are dealt as a turn begins)
+test('a timeout plays nothing: the turn is missed and passes, counted', () => {
   const st = matchWith(['ttt', 'c4', 'hex', 'bs', 'hunt', 'hilo', 'coins', 'dice', 'candy']);
   st.timer = L.newTimer(30);
+  const before = noMarks(st.squares);
   const r = L.timeoutMove(st, lcg(3));
-  assert.equal(r.ok, true);
-  assert.ok(st.flash, 'the move plays out like any other');
-  assert.equal(st.flash.timeout, true, 'the result says it was forced');
-  assert.equal(st.flash.square, r.square);
-  assert.equal(st.timer.timeouts.X, 1);
-  assert.equal(st.timer.streak.X, 1);
-  assert.equal(st.moves, 1);
-  L.endFlash(st); L.leaveSquare(st);
-  assert.equal(st.turn, 'O', 'the turn passes');
-  // O moves in time: O's streak stays 0; X's timeout streak is untouched by O's move
-  const t2 = L.timeoutMove(st, lcg(4));
-  assert.equal(t2.ok, true);
-  assert.equal(st.timer.streak.O, 1);
-  L.endFlash(st); L.leaveSquare(st);
-  assert.equal(st.turn, 'X');
+  assert.deepEqual(r, { ok: true, missed: 'X' });
+  assert.equal(st.flash, null, 'no move: nothing to play');
+  assert.ok(noMarks(st.squares) === before, 'no square changed (but the coins the next player\'s flips would turn)');
+  assert.deepEqual([st.timer.timeouts.X, st.timer.streak.X, st.moves, st.turn], [1, 1, 0, 'O'], 'counted, and the turn passes');
+  assert.deepEqual(st.timer.miss, { by: 'X', kind: 'missed', n: 1 }, 'the phones are told');
+  // O misses too: O's own count; X's untouched
+  assert.deepEqual(L.timeoutMove(st, lcg(4)), { ok: true, missed: 'O' });
+  assert.deepEqual([st.timer.streak, st.turn], [{ X: 1, O: 1 }, 'X']);
   // X plays in time now: the streak resets
-  const open = st.squares.findIndex((sq, i) => !sq.owner && sq.mini.type === 'ttt' && st.lock == null);
-  if (open >= 0 && st.lock == null) {
-    const m = L.randomLegalMove(st.squares[open].mini, 'X', lcg(9));
-    const rr = L.playMove(st, open, m, lcg(9));
-    assert.equal(rr.ok, true);
-    assert.equal(st.flash.timeout, false);
-    assert.equal(st.timer.streak.X, 0, 'a move made in time clears the streak');
-    assert.equal(st.timer.timeouts.X, 1, 'the count of timeouts stays');
-  }
+  const rr = L.playMove(st, 0, 4, lcg(9));
+  assert.equal(rr.ok, true);
+  assert.equal(st.flash.timeout, false);
+  assert.equal(st.timer.streak.X, 0, 'a move made in time clears the streak');
+  assert.equal(st.timer.timeouts.X, 1, 'the count of timeouts stays');
 });
 
 test('a second timeout in a row loses the match at once', () => {
@@ -665,42 +656,40 @@ test('timeouts by the two players do not add up to a loss; only a player\'s own 
   assert.deepEqual(st.timer.timeouts, { X: 1, O: 1 });
 });
 
-test('a timeout mid-bonus-move stays in the locked square', () => {
+test('a timeout mid-bonus-move ends it where it stands: nothing more played, the turn passes, not a miss', () => {
   const st = matchWith(['ttt', 'memory', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt']);
   st.timer = L.newTimer(30);
   st.lock = 1;
+  const before = noMarks(st.squares);
   const r = L.timeoutMove(st, lcg(8));
-  assert.equal(r.ok, true);
-  assert.equal(r.square, 1, 'the only square open to a locked player');
+  assert.deepEqual(r, { ok: true, square: 1, ended: true });
+  assert.deepEqual([st.lock, st.turn, st.flash, st.timer.streak.X, noMarks(st.squares) === before], [null, 'O', null, 0, true]);
 });
 
-test('timeouts over every kind of game keep the state legal and plain', () => {
+test('timeouts over every kind of game keep the state legal and plain, and play nothing for the player', () => {
   const rng = lcg(31337);
-  const seen = new Set();
   for (let game = 0; game < 6; game++) {
-    const st = L.newMatch(rng, { mode: 'online', timer: 30, games: L.TYPES.filter(t => !['echo', 'trivia', 'oddone', 'patterns', 'skyhop', 'scoop', 'pinball', 'headcount', 'flash', 'snapshot'].includes(t)) });   // (a timed-out attempt at those is always a failed one, or none: a square of theirs never falls to timeouts)
-    let guard = 0;
+    const st = L.newMatch(rng, { mode: 'online', timer: 30 });
+    let guard = 0, misses = 0;
     while (!st.winner && guard++ < 3000) {
-      const open = st.squares.map((q, i) => (q.owner ? -1 : i)).filter(i => i >= 0);
-      if (guard > 400 && st.lock == null && open.every(i => ['wordle', 'mastermind'].includes(st.squares[i].mini.type))) {
-        // only long-shot squares are left (a random word or code rarely cracks them): the forced move finds the secret
-        const m = st.squares[open[0]].mini;
-        assert.equal(L.playMove(st, open[0], m.type === 'wordle' ? m.word.toLowerCase() : m.code.slice(), rng, { forced: true }).ok, true);
-      } else if (st.timer.bankNext) { st.timer.bankNext = false; assert.equal(L.playMove(st, st.lock, st.squares[st.lock].mini.type === 'craps' ? 'stop' : 'bank', rng, { forced: true }).ok, true); }   // (as the server: Risky Rolls banks, Craps stops)
-      else {
+      const sqs = noMarks(st.squares), p = st.turn, held = st.lock;
+      if (rng() < 0.25) {
         const r = L.timeoutMove(st, rng);
-        assert.equal(r.ok, true, `timeout move failed: ${r.reason}`);
-        if (r.lost) break;
-        seen.add(st.flash.type);
-        // the clock alternates with a timely move so the match does not end on streaks straight away
-        st.timer.streak[st.flash.by] = game % 2 ? st.timer.streak[st.flash.by] : 0;
+        assert.equal(r.ok, true, `timeout failed: ${r.reason}`);
+        if (r.lost) { assert.equal(st.winner, L.other(p)); break; }
+        if (held == null) { misses++; assert.ok(noMarks(st.squares) === sqs, 'a missed turn changes no square'); assert.equal(st.turn === p, !L.anyMove(st, L.other(p))); }
+        else if (r.closed) assert.ok(st.flash && st.flash.timeout && st.flash.square === held, 'a move under way ended by its own closing move');
+        st.timer.streak[p] = 0;                                    // (as if they then played in time: the match goes on)
+      } else {
+        const open = held != null ? [held] : st.squares.map((q, i) => (q.owner || !L.canMove(q.mini, p) ? -1 : i)).filter(i => i >= 0);
+        const i = open[Math.floor(rng() * open.length)], m = L.randomLegalMove(st.squares[i].mini, p, rng);
+        assert.equal(L.playMove(st, i, m, rng, { forced: true }).ok, true);
       }
       assert.deepEqual(JSON.parse(JSON.stringify(st)), st);
       L.endFlash(st); L.leaveSquare(st);
     }
-    assert.ok(st.winner, `match ${game} ends (${guard} moves)`);
+    assert.ok(misses > 0, `match ${game}: turns missed`);
   }
-  assert.ok(seen.size >= 6, `timeouts were played in ${seen.size} different games`);
 });
 test('a match record keeps every secret out of the public state and puts it back for a move', () => {
   const rng = lcg(11);
@@ -811,15 +800,18 @@ test('each move on the record carries its square as it was before (for the playb
   assert.deepEqual(e.before, was, 'before: the square as the record had it, unclaimed');
   assert.equal(e.before.owner, null); assert.equal(e.after.owner, 'X');
   assert.deepEqual(r.rec.state.recent[0].before, was, 'kept on the record');
-  // a timeout: the forced roll's square before, and the bank that follows starts where the roll left it
+  // a timeout with a Risky Rolls turn under way: nothing rolled for O; the turn's points banked, an entry like any other
   rec = r.rec;
-  const st2 = L.fullState(rec); st2.lock = 1; st2.turn = 'O'; st2.timer.deadline = 1;   // O's time runs out in Risky Rolls: a roll, then the bank
+  const st2 = L.fullState(rec); st2.lock = 1; st2.turn = 'O'; st2.timer.deadline = 1;
+  st2.squares[1].mini.turn = { by: 'O', rolls: [4], pot: 4 };
   rec = L.matchRecord(st2);
   const was1 = JSON.parse(JSON.stringify(rec.state.squares[1]));
-  r = L.applyOnlineTimeout(rec, () => 0.9);                      // a 6 (a first roll never busts), then the bank
-  assert.equal(r.ok, true); assert.equal(r.entries.length, 2);
-  assert.deepEqual(r.entries[0].before, was1);
-  assert.deepEqual(r.entries[1].before, r.entries[0].after, 'the bank starts from the roll');
+  r = L.applyOnlineTimeout(rec, () => 0.9);
+  assert.equal(r.ok, true); assert.equal(r.entries.length, 1);
+  assert.deepEqual([r.entries[0].before, r.entries[0].note, r.entries[0].timeout, r.rec.state.turn], [was1, 'bank', true, 'X']);
+  // a missed turn: no entry (nothing to play back), the turn passes, the phones told by the record's timer
+  const m = L.applyOnlineTimeout(r.rec, lcg(2));
+  assert.deepEqual([m.entries, m.missed, m.rec.state.turn, m.rec.state.seq, m.rec.state.timer.miss.by], [[], 'X', 'O', r.rec.state.seq, 'X']);
 });
 
 test('a new online match comes from the lobby settings and a rematch starts over with the same ones', () => {
@@ -864,15 +856,23 @@ test('engine: every module the server runs is pure: no clock, no Math.random, no
     assert.ok(!/Math\.random|Date\.now|performance\.now|\bdocument\.|\bwindow\.|localStorage/.test(code), `${f}: no clock, no Math.random, no page in the engine`);
   }
 });
-test('engine: the turn clock allows for the playback of the moves just made', () => {
+test('engine: the turn clock starts when the player on the move has seen the move before it (or at the latest once its playback would be over)', () => {
   const st = { turn: 'O', winner: null, timer: E.newTimer(60) };
   E.armClock(st, [], 1000);
-  assert.equal(st.timer.deadline, 61000); assert.equal(st.timer.for, 'O');
-  const e = { type: 'ttt', kind: 'move', square: 0 };
+  assert.deepEqual([st.timer.deadline, st.timer.for, E.clockDeadline(st.timer)], [61000, 'O', 61000], 'nothing to play back: at once');
+  const e = { type: 'ttt', kind: 'move', square: 0 }, play = E.PLAY.spot + E.playMs(e) + E.PLAY.flash.move;
   E.armClock(st, [e], 1000);
-  assert.equal(st.timer.deadline, 61000 + E.PLAY.spot + E.playMs(e) + E.PLAY.flash.move);
+  assert.deepEqual([st.timer.deadline, st.timer.startBy], [null, 1000 + play + E.CLOCK.startSlackMs], 'not started: its latest start');
+  assert.equal(E.clockDeadline(st.timer), 1000 + play + E.CLOCK.startSlackMs + 60000);
+  assert.equal(E.startClock(st, 'X', 2000), false, 'only the player on the move starts it');
+  assert.equal(E.startClock(st, 'O', 2500), true, 'O has seen the move played back');
+  assert.deepEqual([st.timer.deadline, st.timer.startBy, E.clockDeadline(st.timer)], [62500, null, 62500]);
+  assert.equal(E.startClock(st, 'O', 9000), false, 'once a turn');
+  E.armClock(st, [e], 1000);
+  assert.equal(E.startClock(st, 'O', 1000 + play + E.CLOCK.startSlackMs + 5000), true);
+  assert.equal(st.timer.deadline, 1000 + play + E.CLOCK.startSlackMs + 60000, 'reported late: from its latest start');
   st.winner = 'X'; E.armClock(st, [e], 1000);
-  assert.equal(st.timer.deadline, null, 'no clock once the match is over');
+  assert.deepEqual([st.timer.deadline, E.clockDeadline(st.timer)], [null, null], 'no clock once the match is over');
 });
 test('engine: resigning hands the match to the other side', () => {
   const rec = E.newOnlineMatch({ names: { X: 'A', O: 'B' } }, E.makeRng(5), 'g1');
@@ -920,7 +920,7 @@ test('timeouts: Coin flip flips, Battleship fires at an open cell, Risky Rolls b
   st.squares[2].mini = Object.assign(mini('pig'), { bank: { X: 48, O: 0 }, turn: { by: 'X', rolls: [4], pot: 4 } });   // (51 to win)
   st.lock = 2;
   const r = L.timeoutMove(st, lcg(5));
-  assert.equal(r.ok, true); assert.equal(r.move, 'bank');
+  assert.equal(r.ok, true); assert.equal(r.move, 'bank'); assert.equal(r.closed, true);
   assert.equal(st.squares[2].owner, 'X');
 });
 

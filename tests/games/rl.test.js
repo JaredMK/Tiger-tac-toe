@@ -66,14 +66,12 @@ test('roulette: the computer bets a group as a rule, green 0 when the other side
   for (let i = 0; i < 50; i++) assert.ok(['g1', 'g2', 'g3'].includes(E.localBest(pm(1, 0), 'X', lcg(i), null, { value: 2, behind: 0 }).move));
 });
 
-test('roulette: a timeout bets a random group', () => {
-  const seen = new Set();
-  for (let seed = 1; seed < 40; seed++) {
+test('roulette: a timeout bets nothing; the turn is missed', () => {
+  for (let seed = 1; seed < 10; seed++) {
     const st = E.newMatch(lcg(seed), { games: ['rl'], mode: 'online', timer: 60 });
     const r = E.timeoutMove(st, lcg(seed));
-    assert.ok(['g1', 'g2', 'g3'].includes(r.move)); seen.add(r.move);
+    assert.deepEqual([r, st.flash, st.squares.every(q => !q.mini.last)], [{ ok: true, missed: 'X' }, null, true]);
   }
-  assert.equal(seen.size, 3);
 });
 
 test('roulette: the admin\'s settings (hits to win, the computer\'s bets on 0) are dealt into the square and played by', () => {

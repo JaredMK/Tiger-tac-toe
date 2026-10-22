@@ -292,16 +292,18 @@ nothing stops when one of them is backgrounded, reloaded or switched off for a w
 The host's lobby offers a time per turn: No limit (the default) or 1 minute. Find Match is always
 1 minute. (A room or saved setting from before with 30 seconds or 3 minutes becomes 1 minute.) The
 guest sees the setting in the lobby. With a limit on, a countdown shows in the header on both phones; it starts
-when a turn begins (once the previous move has finished playing), turns red and pulses in the last ten
+when the player on the move has finished or skipped the replay of the move before theirs (their phone starts it
+on the record, once a turn: `core/timer.js` `startClock`; a phone that never gets there still has a turn that runs
+out, from the latest moment the replay could have ended, `startBy`), turns red and pulses in the last ten
 seconds, and keeps running while the in-game menu is open or while a player is away.
 
-When the clock runs out, a random legal move is made for that player and shown on both screens with
-"[name] ran out of time — random move": a random open square, then a random legal action in it (Risky Rolls:
-one roll, then a bank if it did not bust; Hangman: one random letter, and the turn ends even if it
-hits; Wordle: a random dictionary word; Blackjack: stand, dealt first if no hand is in play, and on every new hand a push brings; Ride the
-Bus: one random guess, and the turn ends even if it is right; Roulette: a random group). The turn then passes. Timeouts are counted per player, and
-a player's second timeout in a row loses the match at once: the win screen reads "[name] wins —
-[other] timed out twice".
+When the clock runs out, nothing is played for that player (`core/board.js` `timeoutMove`). A turn with no
+move made is missed: it passes to the other player, and both phones say "[name] ran out of time · turn missed".
+A move already under way ends as it stands, with no choice made for the player: Risky Rolls banks the turn's
+points, Blackjack stands on the hand in play, a round or an attempt begun (Headcount, Flash, Snapshot, a finger
+game, a Trivia question turned up) counts as failed, and a bonus shot, letter or guess owed is simply not taken;
+that is not a miss. A player's second missed turn in a row loses the match at once (it counts as giving up): the
+win screen reads "[name] wins — [other] ran out of time twice".
 
 ### Setting up Firebase
 
@@ -399,14 +401,15 @@ records for about 3 seconds (or until tapped); the server's turn clock allows fo
 **The server runs these games** (`src/core/scgame.js`, `functions/index.js`: `scMove`, `scTick`, `scBegin`).
 Each step of a move (a guess, a hit, a roll, a locked-in shot) goes to a Cloud Function as a request, which
 checks it with the same engine the page uses (`src/core`) on that side's own copy of the round, makes every
-random choice itself (dice, coins, the round's Roulette spin, cards, words, codes, timeout moves), applies it and
+random choice itself (dice, coins, the round's Roulette spin, Bump's spins, cards, words, codes), applies it and
 answers with what that phone may see: the move's result and its square as the step left it, the secrets hidden.
 The phone plays its own result from that answer. The other side learns only that a move is in; both moves
-show on both phones in the round's recap, played from a shared start (server time) once both are in, with the
-joint results (Mini Golf's two shots, the shared spin, a Bump knock) worked out on the server. The round's
-deadline is a server time: past it (and a short grace) the first phone to ask, or the scheduled sweep, has the
-server play the timeout rule's move for a side not in and settle the round; the first phone through the recap
-begins the next round. The phones never write a matchmaking game; they read its public state and their own
+show on both phones in the round's recap once both are in (the waiting phone at once, the last mover's once its
+own result has played), with the joint results (Mini Golf's two shots, the shared spin, Bump's spins) worked out
+on the server. The round's deadline is a server time: past it (and a short grace) the first phone to ask, or the
+scheduled sweep, settles the round, a side not in having missed it (nothing played for it; two missed rounds in
+a row lose the match). The next round begins once both phones are through the recap (a bot is at once; a phone
+gone is waited for 30 seconds). The phones never write a matchmaking game; they read its public state and their own
 side's node (`games/{id}/sides/{side}`: their move, or their progress through one, for a reload). These matches
 count as Find Match on the records, in the history and in the stats (their squares under Super Chaos). The
 Classic Find Match (turn by turn, the server playing each move) stays as code, unused, for the day it is
@@ -647,9 +650,14 @@ Find Match is unchanged, and so are the normal modes.
   anywhere on it, or Skip, jumps to the end. On the main board a small badge in each player's colour
   marks the square each played last (both at once), moved every round. (Mini Golf's shared shot plays
   as before.) The round ends once both moves are in, or when the round's clock
-  (60 seconds, in the top bar with the round counter) runs out: then the game's timeout rule makes the
-  move (a random legal one), with no match lost for it. The clock holds while the menu or an explainer is
-  open, or the page is out of sight.
+  (60 seconds, in the top bar with the round counter) runs out: nothing is played for a player not in, who
+  misses the round (a move under way ends as it stands, as in a timed turn); two missed rounds in a row lose the
+  match. The next round's clock starts only once the recap and its replays are over (online, on both phones). The
+  clock holds while the menu or an explainer is open, or the page is out of sight. From the moment a player's
+  move is in until the other player's replay is ready to play, the waiting band ("Waiting for [name]…") stays
+  up, on the board or over the square where they wait (a Mini Golf shot or a Bump spin locked in), so there is
+  never an empty gap; and the board shows nothing of the round's result (a claim, a reset and its new game, a
+  miniature's change) until the replay or the joint result that shows it has played.
 - **Results resolve together.** Nothing is claimed during the round: a square won shows the game's own
   winning moment, and its X or O comes only on the main board after the round resolves. A square both
   players won in the same round resets with a new random Super Chaos game (the reset on the board, no claim); both completing three in a row in the same round is a draw; any other claim stands.
@@ -657,7 +665,7 @@ Find Match is unchanged, and so are the normal modes.
 - **Shared squares.** Where both share a target, board or question, each player sees only their own
   move's result during the round; the other's move and result stay hidden until the round's recap, and
   both resolve as if simultaneous. Battleship: a 5x5 sea with a Submarine (3 squares, across or
-  down); a hit fires again, as in a match, until a miss or the sinking shot (the timeout rule: one shot). Both
+  down); a hit fires again, as in a match, until a miss or the sinking shot (the time running out ends it there). Both
   players' shots (hits and misses) join the sea at the round's end, and the recap shows them. The shot that hits its last part is a
   plain hit on the mover's screen (no sinking, no claim): whoever hits the ship's last part wins it, judged at the round's end; when both hit its last parts in the same round (each sinking it on their own sea, or
   sharing out the last parts between them), the square resets. Wordle,
@@ -665,11 +673,13 @@ Find Match is unchanged, and so are the normal modes.
   Hangman: one shared word; each sees the letters known before the round plus their own; a player whose
   own view completes it wins; finished only by both together, it resets. Trivia and Patterns: the
   question is face up for both; wrong answers are crossed out for both at the round's end, each player
-  who was right scores, and a new question comes if anyone was. Bump: both pieces move; nothing is knocked
-  during the round (a piece may land on the other's space): when it ends, a piece ending on the other's
-  space sends it home, and both on the same space both go home. When both moved in the square, the
-  recap plays both pieces hopping at the same time from where the round began (instead of the
-  computer's move on its own), then any knock. Plinko: both may drop from
+  who was right scores, and a new question comes if anyone was. Bump: a joint-resolution game, as Mini
+  Golf: a spin is locked in and the player waits in the square; nothing moves and no number is drawn until
+  the round ends, when the system knows whether the other player spun there too. Then the spins are drawn
+  and played in the player's own square: both pieces hopping together from where the round began when both
+  spun there (and no replay of the other's move after), else the player's piece alone; then the knocks (a
+  piece ending on the other's space sends it home; both on the same space both go home). The other
+  player's lone spin elsewhere is their replay. Plinko: both may drop from
   the same slot (it locks once); both on the bonus peg get +2 each and one new peg appears. Mini Golf:
   each player locks in aim and power; at the round's end both shots play out together (the balls roll at
   once and can collide); both sinking resets it. The player stays at the hole once their shot is locked
@@ -716,17 +726,17 @@ Find Match is unchanged, and so are the normal modes.
   made; the first in waits ("Waiting for [name]…" with the shared countdown), and the board says
   "[name] has moved" once the other's move is in. The second move in settles the round on the record
   (`applyChaosSubmit`, the same merge as against the computer); so does the deadline: a phone whose
-  clock runs out plays the timeout rule's move itself and sends it, and a side still not in 2.5 seconds
-  after the deadline (a phone closed or away) gets the timeout rule's move from the other phone
-  (`applyChaosDeadline`). The settled round carries a shared start, in server time, a second ahead (or
-  as long as the last mover's own result still has to play), and both phones play the same sequence
-  from that moment, timed from it, each phone its own outcome first (`scRecapOrder`): its Mini Golf
+  clock runs out ends a move under way as it stands and sends it, and a side still not in 2.5 seconds
+  after the deadline (a phone closed or away) has missed the round, settled by the other phone
+  (`applyChaosDeadline`). The settled round carries its start, in server time, a second ahead (the last
+  mover's phone starts once its own result has played: `recap.lead`), and each phone plays its sequence
+  from there at its own pace (a skip jumps it on), its own outcome first (`scRecapOrder`): its Mini Golf
   shot, or what both moves settle in its square (both moves played together there when both played it:
   the shots, the shared Roulette spin, a Bump knock, both Clash Grid claims, both Sniff dogs, and then no
   replay of the other's move there); then the other player's square lit and their move in the pop-up (it
-  travels with its replay log), what their move settles; then each square's result, reached on both
-  phones at the same moment (the shorter side's last part held), then the next round. The first phone
-  through the recap begins the next round on the record (`applyChaosBegin`: its deadline). A reload, or
+  travels with its replay log), what their move settles; then each square's result, then the next round,
+  which begins on the record once both phones are through the recap (`applyChaosBegin`: `sc.ready`, then
+  its deadline; a phone through it waits at most 30 seconds for the other). A reload, or
   a phone coming back, reads the record and joins the round as it stands, or the recap where it is in
   its sequence; except that a phone that has not seen its own outcome yet (out of sight, the menu open
   while the round settled) plays it from its start first, even if the next round has begun. A move made on a

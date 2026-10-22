@@ -68,7 +68,7 @@ export function scApply(mini, p, m, rng) {
   if (mini.aim && mini.aim[p]) return { ok: false, reason: 'locked' };
   mini.aim = Object.assign({}, mini.aim, { [p]: shot });
   mini.last = { by: p, aim: shot.aim, power: shot.power, locked: true };
-  return { ok: true, outcome: 'continue', note: 'locked' };
+  return { ok: true, outcome: 'continue', note: 'locked', waits: true };
 }
 export function scMerge(m, c) {
   const b = c.base, shots = {};

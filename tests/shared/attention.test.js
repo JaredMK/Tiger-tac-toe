@@ -64,8 +64,12 @@ test('attention games: the move\'s playback (someone else\'s round at full lengt
     assert.deepEqual([st.flash.att.correct, st.flash.att.truth, st.flash.att.right.X], [true, E.attTruth(type, r), 1]);
     assert.equal(E.playMs(st.flash), E.attMs(type, r) + E.ATT.pause + E.ATT.show, `${type}: the round, a pause, the result`);
     E.endFlash(st);
-    st.timer = E.newTimer(60); const t = E.timeoutMove(st, lcg(10));
-    assert.equal(t.ok, true); assert.equal(st.flash.att.correct, false); assert.equal(E.playMs(st.flash), E.ATT.show, 'timed out: no round to replay');
+    st.timer = E.newTimer(60);
+    const s0 = JSON.stringify(st.squares);
+    assert.deepEqual([E.timeoutMove(st, lcg(10)), st.flash, JSON.stringify(st.squares) === s0], [{ ok: true, missed: 'O' }, null, true], 'no round started: the turn missed, nothing played');
+    assert.equal(E.attStart(st, i, 'X').ok, true);
+    const t = E.timeoutMove(st, lcg(10));
+    assert.equal(t.closed, true); assert.equal(st.flash.att.correct, false); assert.equal(E.playMs(st.flash), E.ATT.show, 'a round started and timed out: wrong, no round to replay');
     // the computer against itself
     const m = E.newMatch(lcg(20), { games: [type] }), ra = lcg(30), rb = lcg(40); let n = 0;   // (one stream each: a fresh lcg's first draw is never below 0.23, so the computer would never hit a 20% chance)
     while (!m.winner && n++ < 600) { if (m.flash) E.endFlash(m); if (m.winner) break; const c = E.cpuMove(m, ra); const res = E.playMove(m, c.square, c.move, rb); assert.equal(res.ok, true, `${type}: ${JSON.stringify(c.move)}`); }

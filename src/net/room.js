@@ -4,7 +4,7 @@ import { restrictGames } from '../core/games.js';
 import { NAME_MAX, playerName } from '../core/match.js';
 import { upgradeMini } from '../core/minis.js';
 import { MATCH_FIELDS, applyOnlineResign, newOnlineMatch, packMatch, parseMatch, resignLocal } from '../core/records.js';
-import { armClock, newTimer, normTimer } from '../core/timer.js';
+import { armClock, newTimer, normTimer, startClock } from '../core/timer.js';
 import { other } from '../core/util.js';
 import { echoPinned } from '../games/echo/view.js';
 import { oddPinned } from '../games/oddone/view.js';
@@ -14,7 +14,7 @@ import { connectQuiet, loggedIn } from './accounts.js';
 import { connectFirebase, connected, fb, serverNow } from './connect.js';
 import { isMM, listenGame, onGameValue, resignMM } from './matchmaking.js';
 import { scFollow } from './chaos.js';
-import { predicted, setPredicted, showNotice } from './moves.js';
+import { matchTransaction, predicted, setPredicted, showNotice } from './moves.js';
 import { listenReacts, stopReacts } from './reactions.js';
 import { scMode, visibleTypes } from './releases.js';
 import { reportLocal, trackEnd } from './tracking.js';
@@ -323,7 +323,31 @@ export function showLatest(st) {
   else if (!['board', 'mini'].includes(state.screen)) state.screen = 'board';
   if (!state.winner && state.lock != null && state.turn === o.me) { state.screen = 'mini'; state.zoom = state.lock; }   // our bonus move
   if (state.screen === 'mini' && state.zoom == null) state.screen = 'board';
+  sayMissed(st);
   save(); render();
+  startTurnClock(st);
+}
+// A turn's time ran out (core/board.js timeoutMove): both phones say so once (the record's timer.miss).
+let missSeen = null;                                              // `${match}:${n}`: the last one seen here
+function sayMissed(st) {
+  const m = st.timer && st.timer.miss, key = `${st.id}:${m ? m.n : 0}`, seen = missSeen;
+  missSeen = key;
+  if (!m || key === seen || !seen || seen.split(':')[0] !== String(st.id)) return;   // (the first look at a match: what is there already is not news)
+  if (m.kind === 'closed') return;                                 // (a move under way, ended: its entry plays back with the words)
+  const who = state.online.me === m.by ? 'You' : playerName(state, m.by);
+  sayAway(m.kind === 'missed' ? `${who} ran out of time · turn missed` : `${who} ran out of time · turn over`);   // (the match's note line, as for moves made while away)
+}
+// This phone's turn has begun on screen (the other player's move played back, or skipped): its clock starts now
+// on the record (core/timer.js startClock; once a turn). A phone that never gets here (away) still has a turn
+// that runs out: the record's latest start (startBy).
+let clockAsked = null;
+function startTurnClock(st) {
+  const o = state.online, t = st.timer;
+  if (!o || o.kind === 'mm' || !fb || !connected || !t || !t.limit || st.winner || st.sc || t.for !== o.me || t.deadline != null) return;
+  const key = `${st.id}:${st.seq}`;
+  if (clockAsked === key) return;
+  clockAsked = key;
+  matchTransaction(rec => (rec.state.seq === st.seq && startClock(rec.state, o.me, serverNow()) ? rec : null)).catch(() => { clockAsked = null; });
 }
 // One move from the record, played back as a phone that watched it live would see it, in order: the
 // square lit up on the board as it was before the move (unclaimed, not yet filled in), the zoom and the
@@ -390,7 +414,7 @@ function showRemoteMove(i, label, before, start) {
     save(); render();
   }, SPOT_MS));
 }
-function moveLabel(f) { return f.timeout ? `${playerName(state, f.by)} ran out of time — random move` : `${playerName(state, f.by)} plays here`; }
+function moveLabel(f) { return f.timeout ? `${playerName(state, f.by)} ran out of time` : `${playerName(state, f.by)} plays here`; }
 // Rematch: the same choice of sides as before. X or O stay as they were; with the host's Random the sides
 // are drawn again. The whole room changes at once (the seats may swap), once, whoever taps first.
 export async function rematchOnline() {

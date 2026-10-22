@@ -17,7 +17,7 @@ const RULES_CORE = [
 ];
 export const EXPLAIN = Object.fromEntries(Object.keys(GAMES).map(t => [t, GAMES[t].meta.explainer]));
 // Super Chaos: the mode's own explainer (its switch on the setup screen), and a game's Super Chaos rules where they differ.
-const SC_EXPLAIN = { name: 'Super Chaos', play: "Both players move at the same time. Each round, pick any square and make one move. When you're both done (or time runs out), you'll see what your opponent did. Win the same square in the same round and it resets.", win: 'Three in a row wins.' };   // (against the computer and online alike)
+const SC_EXPLAIN = { name: 'Super Chaos', play: "Both players move at the same time. Each round, pick any square and make one move. When you're both done (or time runs out), you'll see what your opponent did. Win the same square in the same round and it resets. Run out of time and you miss the round; miss two in a row and you lose.", win: 'Three in a row wins.' };   // (against the computer and online alike)
 const SC_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linejoin="round"><path d="M13.5 2 5 13.5h6L9.5 22 19 9.5h-6z"/></svg>';
 const scNow = () => !!(state.sc && ['board', 'mini'].includes(state.screen)) || (state.screen === 'setup' && chaosSetup());
 export function explainOf(t) {

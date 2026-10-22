@@ -158,47 +158,38 @@ test('pig: X can bank up to 21 over several turns while O plays elsewhere (lopsi
   assert.equal(st.squares[0].mini.bank.X, 21);
 });
 
-test('a timed-out pig turn rolls once and, if it did not bust, banks next', () => {
-  for (let seed = 1; seed <= 12; seed++) {
-    const st = matchWith(['pig', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt']);
-    st.timer = L.newTimer(30);
-    st.lock = 0;
-    const r = L.timeoutMove(st, lcg(seed));
-    assert.equal(r.ok, true); assert.equal(r.move, 'roll');
-    const bust = st.flash.note === 'bust';
-    L.endFlash(st);
-    if (bust) {
-      assert.equal(st.timer.bankNext, false);
-      L.leaveSquare(st); assert.equal(st.turn, 'O');
-    } else {
-      assert.equal(st.timer.bankNext, true, 'the roll kept the turn; the bank comes next');
-      assert.equal(st.lock, 0);
-      assert.equal(st.turn, 'X');
-      st.timer.bankNext = false;
-      const b = L.playMove(st, 0, 'bank', lcg(seed), { forced: true });
-      assert.equal(b.ok, true);
-      assert.equal(st.flash.timeout, true);
-      assert.ok(st.squares[0].mini.bank.X > 0 || st.squares[0].owner === 'X');
-      L.endFlash(st); L.leaveSquare(st);
-      if (!st.winner) assert.equal(st.turn, 'O');
-    }
-  }
+test('a timed-out Risky Rolls turn rolls nothing: points in the pot are banked; an empty turn is simply over', () => {
+  const st = matchWith(['pig', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt']);
+  st.timer = L.newTimer(30);
+  st.lock = 0; st.squares[0].mini.turn = { by: 'X', rolls: [4, 3], pot: 7 };
+  const r = L.timeoutMove(st, lcg(1));
+  assert.deepEqual([r.ok, r.move, r.closed, st.flash.timeout, st.squares[0].mini.bank.X], [true, 'bank', true, true, 7]);
+  L.endFlash(st); L.leaveSquare(st);
+  assert.equal(st.turn, 'O');
+  const s2 = matchWith(['pig', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt']);
+  s2.timer = L.newTimer(30);
+  s2.lock = 0;
+  const r2 = L.timeoutMove(s2, lcg(1));
+  assert.deepEqual([r2.ok, r2.ended, s2.flash, s2.squares[0].mini.bank.X, s2.turn], [true, true, null, 0, 'O'], 'nothing rolled, nothing banked');
 });
 
-test('an online timeout makes a random move (Risky Rolls: roll then bank) and the second in a row loses', () => {
+test('an online timeout plays nothing for the player (Risky Rolls under way: the pot banked) and the second miss in a row loses', () => {
   let st = matchWith(['pig', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt'], lcg(8));
-  st.id = 'm'; st.seq = 0; st.recent = []; st.timer = L.newTimer(30); st.lock = 0;
+  st.id = 'm'; st.seq = 0; st.recent = []; st.timer = L.newTimer(30); st.lock = 0; st.squares[0].mini.turn = { by: 'X', rolls: [5], pot: 5 };
   let rec = L.matchRecord(st);
   let r = L.applyOnlineTimeout(rec, lcg(2));
   assert.equal(r.ok, true);
-  assert.equal(r.entries[0].timeout, true); assert.equal(r.entries[0].square, 0);
-  if (r.entries[0].note !== 'bust') { assert.equal(r.entries.length, 2, 'the roll, then the bank'); assert.equal(r.entries[1].pot, undefined === r.entries[1].pot ? r.entries[1].pot : r.entries[1].pot); }
+  assert.deepEqual([r.entries.length, r.entries[0].timeout, r.entries[0].square, r.entries[0].note], [1, true, 0, 'bank'], 'the turn under way banked');
   assert.equal(r.rec.state.turn, 'O'); assert.equal(r.rec.state.lock, null);
-  assert.equal(r.rec.state.timer.timeouts.X, 1); assert.equal(r.rec.state.timer.streak.X, 1); assert.equal(r.rec.state.timer.bankNext, false);
+  assert.deepEqual([r.rec.state.timer.timeouts.X, r.rec.state.timer.streak.X], [0, 0], 'a move under way ended: not a miss');
   rec = r.rec;
   r = L.applyOnlineMove(rec, 'O', 1, 4, lcg(1)); assert.equal(r.ok, true); rec = r.rec;   // O plays in time
+  r = L.applyOnlineTimeout(rec, lcg(3));                                                   // X misses a turn
+  assert.deepEqual([r.ok, r.entries, r.missed, r.rec.state.timer.streak.X], [true, [], 'X', 1]);
+  rec = r.rec;
+  r = L.applyOnlineMove(rec, 'O', 2, 4, lcg(1)); assert.equal(r.ok, true); rec = r.rec;
   assert.deepEqual(rec.state.timer.streak, { X: 1, O: 0 });
-  r = L.applyOnlineTimeout(rec, lcg(3));
+  r = L.applyOnlineTimeout(rec, lcg(3));                                                   // and the next: the match lost
   assert.equal(r.ok, true); assert.equal(r.lost, 'X'); assert.deepEqual(r.entries, []);
   assert.equal(r.rec.state.winner, 'O'); assert.equal(r.rec.state.winReason, 'timeout');
   assert.equal(L.applyOnlineTimeout(r.rec, lcg(4)).ok, false, 'nothing more once it is over');
