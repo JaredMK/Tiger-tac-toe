@@ -431,20 +431,15 @@ badge for the side the player was, and the mode; a tap opens the full final boar
 **My Stats** (tap your username): the **Game history** button first, then a selector, **Online / Local / All**. Online covers Find Match and
 friend games together (with a "Find Match x-y-z · Friends x-y-z" line under it), Local the local
 games, All both. The record (wins-losses-draws and the win rate: wins over all games, draws
-included, so 3-5-1 is 33%) and the table of mini-games (squares won, squares lost and win rate, most
-won first) both follow the selection, and so does the **Played as** table: games played as X and as O,
-the record and the win rate of each. Above that table, **Top opponents**: the three people played most
+included, so 3-5-1 is 33%) follows the selection. The record by side (as X and as O) and the squares won and
+lost per mini-game are the admin's only (the dashboard's player detail, under Accounts). Under the record, **Top opponents**: the three people played most
 online (Find Match and friend rooms; never a bot, the computer or a friend playing without an account),
 most games first (then the latest played, then by name), each with the record against them (W-L-D); a
 tap opens their profile, whose Back returns here. Its three rows are always there, blank where there is
 no one yet ("No online opponents yet"), so nothing moves as it loads. The server keeps the count
 (`oppStats/{uid}/{opponent}`) where it records each result, so it covers every game, not only the
-history the profile loads; anyone logged in can read it, so another player's profile shows theirs. The mini-game table counts a square only once it ended claimed by
-X or O (a square still open when the match ended, by any route, or a board reset after a draw is not
-counted), with an **All mini-games** row on top that adds up every completed square. Another player's profile (tap their name) shows their online
-stats only, with no selector: local games stay private. The mini-game table lists only the games in
-the pool: squares from Hexapawn and the Dice race (both taken out) are not shown, though the numbers
-stay in the database.
+history the profile loads; anyone logged in can read it, so another player's profile shows theirs. Another player's profile (tap their name) shows their online
+record only, with no selector: local games stay private.
 
 **History.** Every online game and, on your own stats, every recorded local game, newest first,
 marked Find Match, Friend or Local, with the opponent, the date, the result and how it ended (three
@@ -516,6 +511,18 @@ player held to it; a bar at the bottom (the page is that much shorter: it covers
 **Computer: On/Off** (off: two players on the phone; in Super Chaos it simply never moves), **Level:
 Easy/Normal/Hard** (the computer's level, `&level=`) and **Rules: Normal/Super Chaos** (fixed for a game that
 is only one or the other) (`src/ui/sandbox.js`).
+
+### Mode: Super Chaos or Classic
+
+One **Mode** selector, Super Chaos | Classic, in Play Local's setup, the host's lobby and on Play Online (for
+Find Match); the choice is kept on the device. The guest's join screen shows the host's mode. The Mini-games
+list shows only the games of the mode chosen. The selector shows only where Super Chaos is open to the player:
+the admin, or everyone once **Super Chaos mode** is released on the admin's Releases page
+(`releases/superchaos`), Super Chaos then being the default; otherwise players get Classic only, with no
+selector. Find Match keeps a queue per mode, so players meet only others in the same mode: a Classic pair plays
+the server's game as ever; a Super Chaos pair plays in a room the server opens for the two of them (both seated,
+the match started; `active/{uid}` names the room), played as a friend room's Super Chaos is. No bots in Super
+Chaos.
 
 ### Game releases
 
@@ -921,7 +928,14 @@ Every account with a username (not the bots): username, sign-up date, last activ
 record (W-L-D, with the win rate), Find Match, friends and local games together (hover a record for
 the split). Sortable by any column; newest sign-ups first. Last active is the last time the account
 played, logged in or opened the game (`lastSeen/{uid}`, written by the server). Dates and times are
-New York time.
+New York time. Tapping an account opens its **player detail** under the table, with an **Online / Local / All**
+selector: the record and win rate, the **Played as** table (games played as X and as O, the record and the
+win rate of each) and the **Mini-games** table (squares won, squares lost and win rate per mini-game, most
+won first, with an **All mini-games** row on top). It counts a square only once it ended claimed by X or O,
+and lists only the games in the pool (Hexapawn's and the Dice race's numbers stay in the database). Players
+don't see these two tables: they are the admin's. The numbers come from `users/{uid}` (Find Match at the
+top, friend games under `friend`) and `localStats/{uid}`, added up by `src/ui/pstats.js`, which the
+profile uses for its record too.
 
 ### Playtest activity (no account needed)
 

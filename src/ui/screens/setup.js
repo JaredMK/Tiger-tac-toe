@@ -7,7 +7,7 @@ import { other } from '../../core/util.js';
 import { GAMES, INFO, SC_ONLY } from '../../games/index.js';
 import { connected } from '../../net/connect.js';
 import { noticeSeq } from '../../net/moves.js';
-import { chaosBadge, chaosVisible, testBadge, visibleTypes } from '../../net/releases.js';
+import { chaosBadge, chaosVisible, scMode, testBadge, visibleTypes } from '../../net/releases.js';
 import { dbSetup, isHost, net } from '../../net/room.js';
 import { LEVELS, LEVEL_NAME } from '../../core/aiw.js';
 import { TIMER_LABEL, advOpen, app, esc, save, state } from '../app.js';
@@ -18,8 +18,11 @@ import { fxAt, fxAttr } from '../fx.js';
 /* ----- setup screen ----- */
 // Super Chaos (simultaneous rounds) is on for the next match: its switch on (a friend room: the room's, set by the
 // host), and the mode visible here (admin only until released). Its checklist holds only the Super Chaos games.
-export const chaosSetup = () => (isHost() ? !!state.online.chaos : !!state.setup.chaos) && chaosVisible();
+export const chaosSetup = () => (isHost() ? !!state.online.chaos : scMode()) && chaosVisible();
 export const setupTypes = () => (chaosSetup() ? visibleTypes().filter(t => scTypes().includes(t)) : visibleTypes().filter(t => !SC_ONLY.includes(t)));   // (a Super Chaos only game: in its checklist only)
+// The Mode selector, Super Chaos | Classic (Play Local, the host's room, Find Match): only where Super Chaos is open
+// to this player; its "?" explains Super Chaos.
+export const modeRow = sc => (chaosVisible() ? `<div class="timerrow scmode" role="group" aria-label="Mode"><span>Mode ${qBtn('superchaos', 'sm')}</span><button class="seg${sc ? ' on' : ''}" data-act="gmode" data-v="chaos" aria-pressed="${sc}">Super Chaos${chaosBadge()}</button><button class="seg${sc ? '' : ' on'}" data-act="gmode" data-v="classic" aria-pressed="${!sc}">Classic</button></div>` : '');
 export function renderSetup() {
   const s = state.setup;
   const VT = setupTypes(), on = enabledGames(s).filter(t => VT.includes(t)).length;   // (an admin-only game does not exist here for anyone but the admin)
@@ -63,7 +66,7 @@ export function renderSetup() {
     <div class="setup-box" data-keep-scroll="setup">
     ${room}
     ${host ? `<div class="names">${field('X')}${field('O')}</div>` : `<div class="slots">${slots()}</div>`}
-    ${chaosVisible() ? `<div class="timerrow scmode" role="group" aria-label="Super Chaos"><span>Super Chaos ${chaosBadge()}${qBtn('superchaos', 'sm')}</span><button class="seg${sc ? '' : ' on'}" data-act="chaos" data-v="0" aria-pressed="${!sc}">Off</button><button class="seg${sc ? ' on' : ''}" data-act="chaos" data-v="1" aria-pressed="${sc}">On</button></div>` : ''}
+    ${modeRow(sc)}
     ${host ? sides : ''}
     ${timer}
     <div class="adv${advOpen ? ' open' : ''}"><button class="adv-h" data-act="adv" aria-expanded="${advOpen}"><span>Mini-games</span><small>${on} of ${VT.length} mini-games on</small><i class="chev">${CHEV}</i></button>

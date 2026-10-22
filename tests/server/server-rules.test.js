@@ -62,7 +62,9 @@ test('matchmaking pairs with ratings on (behind the flag): closest rating first,
 
 test('ratings are off: one Find Match queue, 1 minute a turn, pairs by wait time alone', () => {
   assert.equal(R.RATINGS_ENABLED, false);
-  assert.deepEqual(Object.keys(R.QUEUES), ['match']);
+  assert.deepEqual(Object.keys(R.QUEUES), ['match', 'chaos'], 'Classic and Super Chaos: players of one mode meet only each other');
+  assert.deepEqual(R.QUEUES.chaos, { key: 'chaos', mode: 'match', timer: 0, chaos: true });
+  assert.deepEqual([R.queueKey('chaos'), R.queueKey('classic'), R.queueKey()], ['chaos', 'match', 'match']);
   assert.deepEqual(R.QUEUES.match, { key: 'match', mode: 'match', timer: 60 });
   assert.equal(R.queueKey('casual', 30), 'match', 'an older page asking for another queue gets the one queue');
   const t = 1e6;

@@ -16,7 +16,7 @@ import {
 import { cancelSearch, closeIntro, findAgain, isMM, openFind, resignMM, search, startSearch } from '../net/matchmaking.js';
 import { attemptMove, setTapEl, tapEl } from '../net/moves.js';
 import { reactCooling, rx, sendReact } from '../net/reactions.js';
-import { visibleTypes } from '../net/releases.js';
+import { scMode, setMode, visibleTypes } from '../net/releases.js';
 import {
   dbName, dbSetup, flushName, hostRoom, hostSide, isHost, joinCode, joinName, joinRoom, leaveLobby, leaveLoses,
   leaveRoom, lockMine, mySide, nameTimer, pinned, quitMatch, rematchOnline, room, setJoinCode, setJoinName,
@@ -135,14 +135,14 @@ export function init() {
       if (!state.online) { state.pick = null; state.pickSq = null; }
       commit();
     } else if (act === 'mode-go') {              // the main menu: pick a mode, then set up
-      state.setup.mode = 'two'; normSetup(state.setup); normLocal(state.setup); state.screen = 'setup'; setAdvOpen(false); commit();
+      state.setup.mode = 'two'; normSetup(state.setup); normLocal(state.setup); if (scMode()) normLocal(state.setup).p2 = 'cpu'; state.screen = 'setup'; setAdvOpen(false); commit();
     } else if (act === 'kind') {                 // Play Local: player 2 is a Human or the Computer
       if (chaosSetup() && el.dataset.kind !== 'cpu') { SND.play('error'); return; }   // (Super Chaos: against the computer only, for now)
       normLocal(state.setup).p2 = el.dataset.kind === 'cpu' ? 'cpu' : 'human'; commit();
-    } else if (act === 'chaos') {                // Super Chaos on or off: Play Local (against the computer), or the host's room (two people)
-      if (isHost()) { state.online.chaos = el.dataset.v === '1'; commit(); dbSetup({ chaos: state.online.chaos }); return; }   // (only the Super Chaos games among those on are dealt)
-      state.setup.chaos = el.dataset.v === '1';
-      if (state.setup.chaos) normLocal(state.setup).p2 = 'cpu';
+    } else if (act === 'gmode') {                // the Mode, Super Chaos or Classic: Play Local (Super Chaos against the computer), the host's room, Find Match; kept on this device
+      setMode(el.dataset.v);
+      if (isHost()) { state.online.chaos = scMode(); commit(); dbSetup({ chaos: state.online.chaos }); return; }   // (only the Super Chaos games among those on are dealt)
+      if (scMode() && state.screen === 'setup') normLocal(state.setup).p2 = 'cpu';
       commit();
     } else if (act === 'level') {                // Play Local: the computer's level, Easy, Normal or Hard
       normLocal(state.setup).level = levelOf(el.dataset.v); commit();

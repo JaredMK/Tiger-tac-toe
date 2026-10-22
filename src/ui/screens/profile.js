@@ -2,14 +2,15 @@
 import { newState } from '../../core/match.js';
 import { upgradeMini } from '../../core/minis.js';
 import { topOpponents } from '../../core/stats.js';
-import { INFO, TYPES } from '../../games/index.js';
+import { TYPES } from '../../games/index.js';
 import { acct, connectQuiet, needAccount } from '../../net/accounts.js';
 import { fb } from '../../net/connect.js';
 import { NAV_SCREENS, RNG, commit, esc, state, withView } from '../app.js';
-import { CHEV, ICONS, toon } from '../art.js';
+import { CHEV } from '../art.js';
 import { renderBoard } from '../board.js';
 import { RATINGS_ENABLED } from '../config.js';
 import { renderMini } from '../mini.js';
+import { viewRec, winPct } from '../pstats.js';
 import { render } from '../render.js';
 
 let lb = null;                               // the leaderboard as last loaded: { rows, me, error }
@@ -103,7 +104,6 @@ const fmtDate = t => { try { return new Date(t).toLocaleDateString(undefined, { 
 const HOW_TEXT = { line: 'three in a row', majority: 'most squares', timeout: 'timeout', resign: 'resignation', draw: 'no line left' };
 const MODE_TEXT = RATINGS_ENABLED ? { ranked: 'Ranked', casual: 'Casual', match: 'Find Match', friend: 'Unrated', local: 'Local' } : { ranked: 'Find Match', casual: 'Find Match', match: 'Find Match', friend: 'Friend', local: 'Local' };
 export function record(u) { u = u || {}; return `${u.wins || 0}-${u.losses || 0}-${u.draws || 0}`; }   // wins-losses-draws
-const winPct = u => { const g = (u && ((u.wins || 0) + (u.losses || 0) + (u.draws || 0))) || 0; return g ? Math.round(100 * (u.wins || 0) / g) + '%' : '–'; };   // of all games, draws included
 export function signed(d) { return (d > 0 ? '+' : d < 0 ? '−' : '±') + Math.abs(d); }
 export function renderLeaderboard() {
   const rowOf = (r, me) => `<button class="lbrow${me ? ' me' : ''}" data-act="profile" data-uid="${esc(r.uid)}" aria-label="#${r.rank} ${esc(r.username)}, rating ${r.rating}, ${record(r)}"><b class="rk">#${r.rank}</b><span class="nm">${esc(r.username)}</span><b class="rt">${r.rating}</b><small class="rc">${record(r)}</small></button>`;
@@ -122,8 +122,8 @@ export function renderLeaderboard() {
       <div class="ttl"><b>Leaderboard</b><small>Top 100 by rating · players with 5+ ranked games</small></div></div>
     <div class="setup-box" data-keep-scroll="leaderboard">${body}</div>${mine}</main>`;
 }
-// A profile (My Stats for your own): the Find Match record and win rate, the vs-friends record, the top
-// opponents, squares won and lost per mini-game in all online games (most won first), and a way to the game history.
+// A profile (My Stats for your own): the record and win rate (Find Match and vs friends), the top opponents,
+// and a way to the game history.
 export function renderProfile() {
   const p = prof || {};
   const own = acct.user && p.uid === acct.user.uid;
@@ -134,16 +134,9 @@ export function renderProfile() {
   else if (!u) body = '<p class="hint center">Loading…</p>';
   else {
     // Your own stats: Online (Find Match and friend games together), Local, or All. Someone else's: online only.
+    // (The record by side and the squares per mini-game are the admin's: admin.html's player detail.)
     const view = own ? (p.view || 'online') : 'online';
-    const sum = (...rs) => rs.reduce((t, r) => { r = r || {}; for (const k of ['wins', 'losses', 'draws']) t[k] += r[k] || 0; return t; }, { wins: 0, losses: 0, draws: 0 });
-    const addMinis = (...ms) => { const out = {}; for (const m of ms) for (const [t, v] of Object.entries(m || {})) { const o = (out[t] = out[t] || { won: 0, lost: 0 }); o.won += (v && v.won) || 0; o.lost += (v && v.lost) || 0; } return out; };
-    const loc = own ? p.local || {} : {};
-    const online = sum(u, u.friend), local = sum(loc), all = sum(online, local);
-    const rec = view === 'local' ? local : view === 'all' ? all : online;
-    const minis = view === 'local' ? addMinis(loc.minis) : view === 'all' ? addMinis(u.minis, loc.minis) : addMinis(u.minis);
-    const addSides = (...ss) => ({ X: sum(...ss.map(x => x && x.X)), O: sum(...ss.map(x => x && x.O)) });   // games played as X and as O
-    const fsides = u.friend && u.friend.sides;
-    const sides = view === 'local' ? addSides(loc.sides) : view === 'all' ? addSides(u.sides, fsides, loc.sides) : addSides(u.sides, fsides);
+    const rec = viewRec(u, own ? p.local : null, view);
     const games = rec.wins + rec.losses + rec.draws;
     const tabs = own ? `<div class="ptabs" role="tablist" aria-label="Which games">${[['online', 'Online'], ['local', 'Local'], ['all', 'All']].map(([v, l]) => `<button class="seg${view === v ? ' on' : ''}" role="tab" aria-selected="${view === v}" data-act="pview" data-v="${v}">${l}</button>`).join('')}</div>` : '';
     const label = { online: 'Online record', local: 'Local record', all: 'All games' }[view];
@@ -152,27 +145,15 @@ export function renderProfile() {
       <div class="ppct"><small>Win rate</small><b>${winPct(rec)}</b></div>
       ${view === 'online' ? `<div class="pfr"><small>Find Match ${record(u)} · Friends ${record(u.friend)}</small></div>` : ''}
       <small class="pjoin">Joined ${fmtDate(u.joined)}</small></div>`;
-    const sideRow = p => { const r = sides[p], g = r.wins + r.losses + r.draws; return `<tr><td><span class="pg">${toon(p)}<span>As ${p}</span></span></td><td>${g}</td><td>${record(r)}</td><td>${winPct(r)}</td></tr>`; };
     // Top opponents: the three people played most online (never a bot or the computer), each with the record
     // against them; three rows always, so nothing moves whatever there is to show.
     const opps = p.opps || [];
     const oppRow = (r, i) => (r ? `<button class="popp" data-act="profile" data-uid="${esc(r.uid)}" aria-label="${esc(r.name)}: ${r.wins} won, ${r.losses} lost, ${r.draws} drawn. Open their profile"><b class="pk">${i + 1}</b><span class="pn">${esc(r.name)}</span><b class="pr">${record(r)}</b><i class="pc" aria-hidden="true">${CHEV}</i></button>`
       : `<div class="popp${i === 0 ? ' none' : ''}"${i ? ' aria-hidden="true"' : ''}>${i === 0 ? 'No online opponents yet' : ''}</div>`);
     const oppBox = `<h3 class="hh hopp"><span>Top opponents</span><small>W-L-D</small></h3><div class="popps">${[0, 1, 2].map(i => oppRow(opps[i], i)).join('')}</div>`;
-    const sideTable = `<table class="ptab psides" aria-label="Games played as X and as O"><thead><tr><th>Played as</th><th>Games</th><th>W-L-D</th><th>Win rate</th></tr></thead><tbody>${sideRow('X')}${sideRow('O')}</tbody></table>`;
-    // Squares count once they end claimed by X or O (a square still open when the match ended, or a board
-    // reset after a draw, is not a mini-game won or lost).
-    const rows = Object.entries(minis).filter(([t]) => TYPES.includes(t)).map(([t, v]) => ({ t, won: v.won, lost: v.lost }))   // the games in the pool only (not Hexapawn or the Dice race)
-      .filter(r => r.won + r.lost).sort((a, b) => b.won - a.won || a.lost - b.lost || INFO[a.t].name.localeCompare(INFO[b.t].name));
-    const allWon = rows.reduce((t, r) => t + r.won, 0), allLost = rows.reduce((t, r) => t + r.lost, 0);
-    const rate = (w, l) => `${Math.round(100 * w / (w + l))}%`;
-    const table = rows.length ? `<table class="ptab pmini"><thead><tr><th>Mini-game</th><th>Won</th><th>Lost</th><th>Win rate</th></tr></thead><tbody><tr class="pall"><td><span class="pg"><span>All mini-games</span></span></td><td>${allWon}</td><td>${allLost}</td><td>${rate(allWon, allLost)}</td></tr>${rows.map(r =>
-      `<tr><td><span class="pg">${ICONS[r.t]}<span>${INFO[r.t].name}</span></span></td><td>${r.won}</td><td>${r.lost}</td><td>${rate(r.won, r.lost)}</td></tr>`).join('')}</tbody></table>`
-      : `<p class="hint center">No squares won or lost ${view === 'local' ? 'in local games' : view === 'all' ? '' : 'online'} yet.</p>`;
     const nh = p.hist ? p.hist.length : null;
-    const what = { online: 'online games: Find Match and friends', local: 'local games (you as player 1)', all: 'every game: online and local' }[view];
     body = `<button class="btn wide phist" data-act="prof-hist"${p.hist ? '' : ' disabled'}>Game history${nh != null ? ` (${nh})` : ''}</button>
-      ${card}${oppBox}${sideTable}<h3 class="hh">Mini-games</h3><p class="hint">Squares won and lost in ${what}. Only squares that ended claimed count.</p>${table}`;   // the game history first, then the stats
+      ${card}${oppBox}`;   // the game history first, then the record and the top opponents
   }
   return `<main class="scr setup acct-scr prof-scr">
     <div class="bar"><button class="back" data-act="prof-back" aria-label="Back">${CHEV}${backLabel}</button>

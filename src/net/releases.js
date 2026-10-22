@@ -22,7 +22,7 @@ export function fetchReleases() {                                     // a plain
   if (!configured()) return;
   const hook = window.TTT_FIREBASE, c = (hook && hook.config) || FIREBASE_CONFIG;
   const url = hook && hook.emulator ? `http://${hook.emulator.host}:${hook.emulator.port}/releases.json?ns=${c.projectId}-default-rtdb` : `${c.databaseURL}/releases.json`;
-  try { fetch(url).then(r => (r.ok ? r.json() : null)).then(v => { if (v !== null) setReleases(v || {}); }).catch(() => {}); } catch (e) { /* offline: as last known */ }
+  try { fetch(url).then(r => (r.ok ? r.json() : undefined)).then(v => { if (v !== undefined) setReleases(v || {}); }).catch(() => {}); } catch (e) { /* offline: as last known */ }   // (an empty node, null: nothing released any more)
 }
 const isAdmin = () => !!(acct && acct.admin);
 export const visibleTypes = () => allowedTypes(releases, isAdmin());     // the games this player may see and play
@@ -31,4 +31,10 @@ export const testBadge = t => (isReleased(t, releases) ? '' : '<i class="tst">Te
 // admin's dashboard releases it (true), never on by default.
 export const chaosReleased = () => releases.superchaos === true;
 export const chaosVisible = () => isAdmin() || chaosReleased();
+// The game mode, Super Chaos or Classic: one choice for Play Local, the host's room and Find Match, kept on this
+// device. Super Chaos by default wherever it is open to this player; Classic only (no choice) where it is not.
+const MODE_KEY = KEY + '.mode';
+let modePick = (() => { try { return localStorage.getItem(MODE_KEY); } catch (e) { return null; } })();
+export const scMode = () => chaosVisible() && modePick !== 'classic';
+export function setMode(m) { modePick = m === 'classic' ? 'classic' : 'chaos'; try { localStorage.setItem(MODE_KEY, modePick); } catch (e) { /* this visit only */ } }
 export const chaosBadge = () => (chaosReleased() ? '' : '<i class="tst">Testing</i>');

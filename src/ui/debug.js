@@ -4,7 +4,7 @@ import { endFlash, leaveSquare, mainResult, playMove } from '../core/board.js';
 import { newMatch, startMatch } from '../core/match.js';
 import { newMini, randomLegalMove } from '../core/minis.js';
 import { makeRng } from '../core/random.js';
-import { applyOnlineMove, fullState, hideMini, matchRecord, secretOf } from '../core/records.js';
+import { applyOnlineMove, fullState, hideMini, matchRecord, newOnlineMatch, packMatch, secretOf } from '../core/records.js';
 import { armClock, newTimer } from '../core/timer.js';
 import { other, r2, r3 } from '../core/util.js';
 import { attMs } from '../games/shared/attention.js';
@@ -30,8 +30,8 @@ import { VALID5 } from '../games/wordle/words.js';
 import { INFO, TYPES } from '../games/index.js';
 import { SFX, SND } from '../audio/sound.js';
 import { acct, afterAccount, afterLogin, loginBusy, loginMsg, setAcct } from '../net/accounts.js';
-import { FIREBASE_CDN, call, connected, fb, serverNow, setCall, setConnected } from '../net/connect.js';
-import { search } from '../net/matchmaking.js';
+import { FIREBASE_CDN, call, connectFirebase, connected, fb, serverNow, setCall, setConnected } from '../net/connect.js';
+import { enterMatched, search } from '../net/matchmaking.js';
 import { attemptMove, dbMove, matchTransaction, moveRejected, predicted, setMoveRejected } from '../net/moves.js';
 import { reactKey } from '../net/reactions.js';
 import { releases, visibleTypes } from '../net/releases.js';
@@ -94,7 +94,7 @@ const names = {
   explainT: () => explainT,
   triviaReady: () => triviaReady,
   blocked: () => blocked,
-  matchTransaction: () => matchTransaction,
+  matchTransaction: () => matchTransaction, enterMatched: () => enterMatched, connectFirebase: () => connectFirebase, newOnlineMatch: () => newOnlineMatch, packMatch: () => packMatch,
   r3: () => r3,
   runSpeed: () => runSpeed,
   runSecs: () => runSecs,

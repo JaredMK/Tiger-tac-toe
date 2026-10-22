@@ -88,13 +88,13 @@ select { border: 2.5px solid var(--ink); border-radius: 10px; padding: 4px 8px; 
 .chart .hit { fill: transparent; } .chart .hit:hover { fill: rgba(22, 18, 16, .07); }
 .lnk { all: unset; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; font-family: ui-monospace, Menlo, monospace; font-size: 14px; }
 .lnk:focus-visible { outline: 2px solid var(--sky); outline-offset: 2px; }
-tr.dev, tr.mlrow { cursor: pointer; } tr.mlrow:hover td, tr.mlrow.open td { background: var(--paper); } tr.mlrow.rep td:first-child { color: var(--x); font-weight: 800; }
+tr.dev, tr.mlrow, tr.acct { cursor: pointer; } tr.mlrow:hover td, tr.mlrow.open td, tr.acct:hover td, tr.acct.open td { background: var(--paper); } tr.mlrow.rep td:first-child { color: var(--x); font-weight: 800; }
 .mlfilt { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 10px; } .mlfilt input, .mlfilt select { height: 36px; }
 .mltl { font: 13px/1.45 ui-monospace, Menlo, Consolas, monospace; overflow-wrap: anywhere; max-height: 420px; overflow: auto; margin: 6px 0 0; padding: 0; list-style: none; }
 .mltl li { padding: 2px 0; border-bottom: 1px dashed var(--stone); } .mltl .k { display: inline-block; min-width: 72px; font-weight: 800; } .mltl .k.reject, .mltl .k.error, .mltl .k.report { color: var(--x); } .mltl .k.offline { color: var(--plum); }
  tr.dev:hover td, tr.dev.open td { background: var(--paper); }
 .tlpanel { margin-top: 10px; border: 2.5px solid var(--ink); border-radius: 14px; background: var(--paper); padding: 10px 12px 12px; }
-.tlpanel .row { margin-bottom: 8px; } .tlpanel .row h3 { flex: 1; margin: 0; font: 400 16px 'Luckiest Guy', sans-serif; letter-spacing: .02em; }
+.tlpanel .row { margin-bottom: 8px; } #acctDetail .tbl { margin-top: 10px; } #acctDetail .kpis { grid-template-columns: 1fr 1fr; } .tlpanel .row h3 { flex: 1; margin: 0; font: 400 16px 'Luckiest Guy', sans-serif; letter-spacing: .02em; }
 #playCard .kpis { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
 .tlist { display: flex; flex-direction: column; gap: 10px; }
 .tses h3 { margin: 0 0 4px; font: 400 14px 'Luckiest Guy', sans-serif; letter-spacing: .03em; }
@@ -162,6 +162,7 @@ const DEF = { bots: { enabled: false, waitMin: 40, waitMax: 70, countInRecords: 
 const cfgGet = (sec, k) => { const v = ((ctl.config || {})[sec] || {})[k]; return v === undefined || v === null || v === '' ? DEF[sec][k] : v; };
 let sortBy = { k: 'avgWin', dir: 1 }, miniMode = 'all', period = 'd';
 let accts = null, acctSort = { k: 'joined', dir: -1 };                       // the Accounts table: newest first
+let acctOpen = null, acctView = 'all', PS = null;                             // the player detail: whose, which games; src/ui/pstats.js (the numbers as the profile adds them up)
 let play = null, devSort = { k: 'last', dir: -1 }, devOpen = null, tagPick = '', allSessions = false;   // the playtest section
 let mlogs = null, mlEvents = {}, mlOpen = null, mlFilt = { who: '', mode: '', from: '', to: '' };       // the match inspector: the logs' index, the logs opened, the filters
 const PT = window.Playtest;
@@ -409,8 +410,28 @@ function accountsCard() {
   const rows = sortRows(accountRows(), acctSort);
   const cols = [['name', 'Username'], ['joined', 'Signed up'], ['last', 'Last active'], ['games', 'Games'], ['wins', 'Record (W-L-D)'], ['rate', 'Win rate']];
   return `<div class="card" id="accountsCard"><div class="row"><h2>Accounts</h2><span class="note" style="margin:0">${rows.length} account${rows.length === 1 ? '' : 's'}</span></div>
-    <div class="tbl"><table>${sortHead(cols, acctSort, 'asort')}<tbody>${rows.map(r => `<tr><td>${esc(r.name)}</td><td>${PT.nyDate(r.joined)}</td><td>${r.last ? PT.nyWhen(r.last) : '<span class="dim">–</span>'}</td><td>${r.games}</td><td title="${esc(r.split)}">${r.wins}-${r.losses}-${r.draws}</td><td>${pct(r.rate)}</td></tr>`).join('') || '<tr><td colspan="6" class="dim">No accounts yet</td></tr>'}</tbody></table></div>
-    <p class="note">Games and record: every game played with the account, Find Match, friends and local together (hover a record for the split). Last active: the last time the account played, logged in or opened the game. New York time. Bot accounts are left out.</p></div>`;
+    <div class="tbl"><table>${sortHead(cols, acctSort, 'asort')}<tbody>${rows.map(r => `<tr class="acct${acctOpen === r.uid ? ' open' : ''}" data-uid="${esc(r.uid)}"><td>${esc(r.name)}</td><td>${PT.nyDate(r.joined)}</td><td>${r.last ? PT.nyWhen(r.last) : '<span class="dim">–</span>'}</td><td>${r.games}</td><td title="${esc(r.split)}">${r.wins}-${r.losses}-${r.draws}</td><td>${pct(r.rate)}</td></tr>`).join('') || '<tr><td colspan="6" class="dim">No accounts yet</td></tr>'}</tbody></table></div>
+${acctPanel()}
+    <p class="note">Games and record: every game played with the account, Find Match, friends and local together (hover a record for the split). Last active: the last time the account played, logged in or opened the game. New York time. Bot accounts are left out. Tap an account for its record by side and by mini-game.</p></div>`;
+}
+// One player's detail (a tap on their row): the record as X and as O, and the squares won and lost per
+// mini-game (players no longer see these on their profile). Online (Find Match and friends), Local or All.
+function acctPanel() {
+  const u = acctOpen && accts && accts.users[acctOpen];
+  if (!u) return '';
+  if (!PS) return '<div class="tlpanel" id="acctDetail"><p class="note">Could not load the stats helpers.</p></div>';
+  const loc = (accts.local || {})[acctOpen] || {}, v = acctView;
+  const rec = PS.viewRec(u, loc, v), sides = PS.viewSides(u, loc, v), minis = PS.viewMinis(u, loc, v);
+  const sideRow = p => `<tr><td>As ${p}</td><td>${PS.games(sides[p])}</td><td>${PS.recText(sides[p])}</td><td>${PS.winPct(sides[p])}</td></tr>`;
+  const rate = (w, l) => `${Math.round(100 * w / (w + l))}%`;
+  const won = minis.reduce((t, r) => t + r.won, 0), lost = minis.reduce((t, r) => t + r.lost, 0);
+  const mini = minis.length ? `<tr class="sum"><td>All mini-games</td><td>${won}</td><td>${lost}</td><td>${rate(won, lost)}</td></tr>${minis.map(r => `<tr><td>${esc(r.name)}</td><td>${r.won}</td><td>${r.lost}</td><td>${rate(r.won, r.lost)}</td></tr>`).join('')}`
+    : '<tr><td colspan="4" class="dim">No squares won or lost yet</td></tr>';
+  return `<div class="tlpanel" id="acctDetail"><div class="row"><h3>${esc(u.username)}</h3><div class="tabs">${[['online', 'Online'], ['local', 'Local'], ['all', 'All']].map(([k, l]) => `<button data-aview="${k}" aria-pressed="${v === k}">${l}</button>`).join('')}</div><button class="btn" data-aclose="1">Close</button></div>
+    <div class="kpis"><div class="kpi"><small>Record (W-L-D)</small><b>${PS.recText(rec)}</b><span>${PS.games(rec)} game${PS.games(rec) === 1 ? '' : 's'}</span></div><div class="kpi"><small>Win rate</small><b>${PS.winPct(rec)}</b><span>draws count as games</span></div></div>
+    <div class="tbl"><table><thead><tr><th>Played as</th><th>Games</th><th>W-L-D</th><th>Win rate</th></tr></thead><tbody>${sideRow('X')}${sideRow('O')}</tbody></table></div>
+    <div class="tbl"><table><thead><tr><th>Mini-game</th><th>Won</th><th>Lost</th><th>Win rate</th></tr></thead><tbody>${mini}</tbody></table></div>
+    <p class="note">${{ online: 'Online: Find Match and friend games.', local: 'Local: games on this player\'s phone (as player 1).', all: 'All: online and local.' }[v]} Squares count once they ended claimed by X or O; only the games in the pool.</p></div>`;
 }
 
 // ---------- playtest activity (no account needed): devices/ and devlog/, worked out by playtest.js ----------
@@ -494,7 +515,7 @@ const TEST_TYPES = ['bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'd
 const isReleased = t => (ctl.releases && typeof ctl.releases[t] === 'boolean' ? ctl.releases[t] : !TEST_TYPES.includes(t));
 function releasesCard() {
   const sc = !!(ctl.releases && ctl.releases.superchaos === true);   // the Super Chaos mode: admin only until released here (releases/superchaos)
-  const rows = `<tr><td><b>Super Chaos</b> <small>(mode: simultaneous rounds, vs Computer)</small></td><td><label class="sw"><input type="checkbox" data-rel="superchaos"${sc ? ' checked' : ''}><span class="${sc ? 'good' : ''}">${sc ? 'Released' : 'Admin only'}</span></label></td></tr>`
+  const rows = `<tr><td><b>Super Chaos mode</b> <small>(off: players get Classic only, no Mode selector; on: everyone gets the Mode selector, Super Chaos by default, in Play Local, friend games and Find Match)</small></td><td><label class="sw"><input type="checkbox" data-rel="superchaos"${sc ? ' checked' : ''}><span class="${sc ? 'good' : ''}">${sc ? 'Released' : 'Admin only'}</span></label></td></tr>`
     + Object.entries(GAMES).map(([t, name]) => { const on = isReleased(t); return `<tr><td>${esc(name)}</td><td><label class="sw"><input type="checkbox" data-rel="${t}"${on ? ' checked' : ''}><span class="${on ? 'good' : ''}">${on ? 'Released' : 'Admin only'}</span></label></td></tr>`; }).join('');
   return `<div class="card ctl" id="relCard"><h2>Game releases</h2>
     <p class="note">Admin only: the game exists for nobody but you (not in the Advanced checklist, How to Play, random draws, Find Match or anyone else's rooms). You can play it in local matches and in friend games you host; your guest plays it in that match only. Find Match deals released games only, even for you. A change applies to new matches at once; matches under way are not affected. Squares of admin-only games are counted under "Admin-only games (testing)" in the mini-game stats.</p>
@@ -502,8 +523,8 @@ function releasesCard() {
 }
 async function saveRelease(el) {
   const t = el.dataset.rel, on = el.checked;
-  if (on && t === 'superchaos' && !confirm('Release Super Chaos to everyone?\n\nIts switch will appear in every player\'s Play Local setup (vs Computer), from now on.')) { el.checked = false; return; }
-  if (on && t !== 'superchaos' && !confirm(`Release ${GAMES[t] || t} to everyone?\n\nIt will appear in the Advanced checklist, How to Play, random draws and Find Match for every player, in new matches from now on.`)) { el.checked = false; return; }
+  if (on && t === 'superchaos' && !confirm('Release Super Chaos to everyone?\n\nEvery player gets the Mode selector (Super Chaos | Classic), Super Chaos by default, in Play Local, friend games and Find Match, from now on.')) { el.checked = false; return; }
+  if (on && t !== 'superchaos' && !confirm(`Release ${GAMES[t] || t} to everyone?\n\nIt will appear in the Mini-games checklist, How to Play, random draws and Find Match for every player, in new matches from now on.`)) { el.checked = false; return; }
   try {
     await fb.dbM.set(fb.dbM.ref(fb.db, `releases/${t}`), on);
     ctl.releases = Object.assign({}, ctl.releases, { [t]: on });
@@ -1012,6 +1033,7 @@ async function load() {
 async function loadPeople() {
   const g = p => fb.dbM.get(fb.dbM.ref(fb.db, p)).then(s => s.val() || {}).catch(() => null);
   const q = (ord, lim) => fb.dbM.get(fb.dbM.query(fb.dbM.ref(fb.db, 'matchLogIndex'), fb.dbM.orderByChild(ord), ...lim)).then(s => s.val() || {}).catch(() => null);
+  if (!PS) PS = await import('./src/ui/pstats.js').catch(() => null);
   const [users, local, seen, devices, logs, mlRecent, mlRep] = await Promise.all([g('users'), g('localStats'), g('lastSeen'), g('devices'), g('devlog'),
     q('last', [fb.dbM.limitToLast(500)]), q('reported', [fb.dbM.startAt(1), fb.dbM.limitToLast(200)])]);   // (the match inspector: the latest, and every reported one)
   mlogs = mlRecent || mlRep ? Object.assign({}, mlRecent || {}, mlRep || {}) : null; mlEvents = {};
@@ -1041,11 +1063,15 @@ async function signIn(how) {
 app.addEventListener('click', e => {
   let b = e.target.closest('button');
   if (!b) { const tr = e.target.closest('tr.dev'); if (tr) b = tr.querySelector('button[data-dev]'); }   // a tap anywhere on a device's row
+  const ar = !b && e.target.closest('tr.acct');
+  if (ar && fb) { acctOpen = acctOpen === ar.dataset.uid ? null : ar.dataset.uid; render(); const el = acctOpen && document.getElementById('acctDetail'); if (el) el.scrollIntoView({ block: 'nearest' }); return; }   // an account's row: its detail
   const mr = !b && e.target.closest('tr.mlrow');
   if (mr && fb) { const k = mr.dataset.ml; mlOpen = mlOpen === k ? null : k; render(); if (mlOpen) { mlLoad(mlOpen); const el = document.getElementById('mlTimeline'); if (el) el.scrollIntoView({ block: 'nearest' }); } return; }   // a match's row: its timeline
   if (!b || !fb) return;
   if (b.dataset.mlexport) { mlExport(b.dataset.mlexport); return; }
   if (b.dataset.mlclose) { mlOpen = null; render(); return; }
+  if (b.dataset.aclose) { acctOpen = null; render(); return; }
+  if (b.dataset.aview) { acctView = b.dataset.aview; render(); return; }
   if (b.dataset.act === 'google') signIn('google');
   else if (b.dataset.act === 'email') signIn('email');
   else if (b.dataset.act === 'signout') fb.authM.signOut(fb.auth);

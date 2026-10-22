@@ -6,8 +6,9 @@ import { listenReacts } from './reactions.js';
 import {
   applyMatch, awayNote, leaveRoom, moveTimer, moveWait, net, pendingRoom, presUnsub, presence, presenceUp,
   presenting, presentingSeq, room, roomUnsub, setAwayNote, setMoveWait, setNet, setPendingRoom, setPresUnsub,
-  setPresence, setPresentingSeq, setRoom, setRoomUnsub, setTimeoutBusy, stopListening, timeoutBusy
+  setPresence, setPresentingSeq, setRoom, setRoomUnsub, setTimeoutBusy, stopListening, timeoutBusy, enterRoomMM
 } from './room.js';
+import { scMode } from './releases.js';
 import {
   app, commit, flashTimer, holdTimer, menuNote, menuOpen, menuStep, setFlashTimer, setHoldTimer, setMenuNote,
   setMenuOpen, setMenuStep, setSpotTimer, spotTimer, state
@@ -31,7 +32,7 @@ export function isMM() { return !!(state.online && state.online.kind === 'mm'); 
 
 /* ----- Find Match: a queue on the server; the phone checks in every few seconds while it waits ----- */
 export async function openFind() {
-  if (acct.active && acct.active.game && !(isMM() && state.online.game === acct.active.game)) { enterGame(acct.active.game, acct.active.side); return; }   // back to the match in progress
+  if (activeElsewhere()) { enterMatched(acct.active); return; }   // back to the match in progress
   if (!findOn) { state.screen = 'online'; commit(); return; }   // switched off: the greyed button on Play Online
   if (!(await needAccount('find'))) return;
   search.msg = ''; search.found = false;
@@ -50,9 +51,9 @@ async function searchTick() {
   if (!searchBusy) {
     searchBusy = true;
     try {
-      const r = await call('findMatch', {});                     // one queue, 1 minute a turn
+      const r = await call('findMatch', { mode: scMode() ? 'chaos' : 'classic' });   // the player's mode: only players of the same mode are paired
       searchBusy = false;
-      if (search.on && r.status === 'matched') { enterGame(r.game, r.side); return; }
+      if (search.on && r.status === 'matched') { enterMatched(r); return; }
       search.msg = '';
     } catch (e) {
       searchBusy = false;
@@ -66,7 +67,7 @@ export async function cancelSearch() {
   if (!search.on) return;
   stopSearch();
   state.screen = 'online'; commit();            // back to Play Online
-  try { const r = await call('cancelSearch', {}); if (r.status === 'matched') enterGame(r.game, r.side); }   // paired just before Cancel: the game is on
+  try { const r = await call('cancelSearch', {}); if (r.status === 'matched') enterMatched(r); }   // paired just before Cancel: the game is on
   catch (e) { /* a searcher who stops checking in is dropped from the queue anyway */ }
 }
 export function stopSearch() { search.on = false; clearTimeout(searchTimer); searchTimer = null; }
@@ -77,6 +78,18 @@ export function findAgain() {                          // the results screen: an
   startSearch();
 }
 
+// Paired: a Classic game (the server's), or a Super Chaos match (a room the server opened for the pair: net/room.js).
+export function enterMatched(a) {
+  if (a.room) { if (search.on || search.found) SND.play('found'); stopSearch(); search.found = false; enterRoomMM(a.room); return; }
+  enterGame(a.game, a.side);
+}
+// A match of this player's in progress that this phone is not showing.
+export function activeElsewhere() {
+  const a = acct.active;
+  if (!a) return false;
+  if (a.room) return !(state.online && state.online.code === a.room && state.online.joined);
+  return !!a.game && !(isMM() && state.online.game === a.game);
+}
 /* ----- a matchmaking game: the public game read live, moves sent to the server ----- */
 export function enterGame(id, side) {
   if (search.on || search.found) SND.play('found');

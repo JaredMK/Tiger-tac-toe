@@ -1667,3 +1667,28 @@ test('match logs: a Find Match game (its start, a refused move with its reason, 
   assert.equal(await get(`matchLogs/${fkey}`), null);
   assert.ok(await get(`matchLogIndex/${key}`), 'a recent one stays');
 });
+
+// The Mode: Find Match pairs players of one mode only. Super Chaos is refused until released (or for an admin);
+// released, two Super Chaos searchers get a room the server opened for them, both seated and the match on, and a
+// Classic searcher waiting meanwhile is not paired with either.
+test('find match by mode: Super Chaos only once released; Super Chaos searchers meet only each other, in a room opened for them', async () => {
+  const a = await player('ModeAnn'), b = await player('ModeBob'), c = await player('ModeCal');
+  await assert.rejects(a.call('findMatch', { mode: 'chaos' }), /not available/, 'not released: refused');
+  await put('releases/superchaos', true);
+  try {
+    assert.equal((await c.call('findMatch', { mode: 'classic' })).status, 'searching');
+    let ra = { status: 'searching' }, rb = ra;
+    for (let k = 0; k < 20 && (ra.status !== 'matched' || rb.status !== 'matched'); k++) [ra, rb] = await Promise.all([a.call('findMatch', { mode: 'chaos' }), b.call('findMatch', { mode: 'chaos' })]);
+    assert.deepEqual([ra.status, rb.status], ['matched', 'matched']);
+    assert.ok(ra.room && ra.room === rb.room && !ra.game, `one room for both (${JSON.stringify([ra, rb])})`);
+    assert.notEqual(ra.side, rb.side);
+    const r = await get(`rooms/${ra.room}`), rec = E.parseMatch(r.match);
+    assert.equal(r.status, 'playing'); assert.equal(r.setup.chaos, true);
+    assert.deepEqual([r.players[ra.side].uid, r.players[rb.side].uid], [a.uid, b.uid], 'both seated');
+    assert.ok(rec.state.sc && rec.state.sc.online, 'a Super Chaos match on the record');
+    assert.ok(rec.state.squares.every(q => E.scTypes().includes(q.mini.type)), 'Super Chaos games only');
+    assert.deepEqual(await get(`active/${a.uid}`), { room: ra.room, side: ra.side, queue: 'chaos', mode: 'chaos' });
+    assert.equal((await c.call('findMatch', { mode: 'classic' })).status, 'searching', 'the Classic searcher still waits');
+    assert.deepEqual(await a.call('findMatch', { mode: 'chaos' }), { status: 'matched', side: ra.side, room: ra.room }, 'searching again: back to the room');
+  } finally { await put('releases/superchaos', null); await c.call('cancelSearch', {}); }
+});

@@ -1,6 +1,6 @@
 // Accounts: signing in (Google, email), the username, the account kept on this phone.
 import { NET_MS, call, configured, fb, loadFirebase } from './connect.js';
-import { enterGame, search, startSearch, stopSearch } from './matchmaking.js';
+import { enterMatched, search, startSearch, stopSearch } from './matchmaking.js';
 import { hostRoom } from './room.js';
 import { flushLocal, track } from './tracking.js';
 import { commit, save, state } from '../ui/app.js';
@@ -93,7 +93,7 @@ export function afterAccount() {
 // The server made a game for this player while searching: straight into it.
 function onActive() {
   const a = acct.active;
-  if (a && a.game && (search.on || search.found)) enterGame(a.game, a.side);
+  if (a && (a.game || a.room) && (search.on || search.found)) enterMatched(a);
 }
 // Find Match, a profile, hosting a friend game: these need an account (and a username). Otherwise the login screen.
 export async function needAccount(next) {

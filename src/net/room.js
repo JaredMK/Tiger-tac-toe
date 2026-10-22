@@ -16,7 +16,7 @@ import { isMM, listenGame, onGameValue, resignMM } from './matchmaking.js';
 import { scFollow } from './chaos.js';
 import { predicted, setPredicted, showNotice } from './moves.js';
 import { listenReacts, stopReacts } from './reactions.js';
-import { visibleTypes } from './releases.js';
+import { scMode, visibleTypes } from './releases.js';
 import { reportLocal, trackEnd } from './tracking.js';
 import {
   NAV_SCREENS, RNG, SPOT_MS, commit, cpuPlan, cpuTimer, flashTimer, holdTimer, menuNote, menuOpen, menuStep,
@@ -98,7 +98,7 @@ export async function hostRoom(code, resume) {
   if (!resume) {
     if (state.setup.hostPick !== 'random') state.setup.hostPick = state.setup.human === 'O' ? 'O' : 'X';
     state.stats = null;                         // an online match: never recorded as a local one
-    state.online = { role: 'host', code: code || roomCode(), me: state.setup.human === 'O' ? 'O' : 'X', joined: false, shownSeq: null, matchId: null }; state.sc = null;   // (never a Super Chaos match online)
+    state.online = { role: 'host', code: code || roomCode(), me: state.setup.human === 'O' ? 'O' : 'X', joined: false, shownSeq: null, matchId: null, chaos: scMode() }; state.sc = null;   // (the room's mode: this device's choice to begin with)
     state.setup.mode = 'online'; state.screen = 'setup';
     state.setup.timer = normTimer(state.setup.timer);           // an older 30 s or 3 min choice: 1 minute
   }
@@ -118,7 +118,7 @@ export async function hostRoom(code, resume) {
       await m.set(m.ref(db, 'rooms/' + o.code), {
         created: m.serverTimestamp(), host: uid, status: 'lobby',
         players: { [o.me]: { uid, name, joined: m.serverTimestamp() } },
-        setup: { games: restrictGames(Object.assign({}, state.setup.games), visibleTypes()), timer: state.setup.timer || 0, hostSide: o.me, hostPick: state.setup.hostPick === 'random' ? 'random' : o.me },
+        setup: { games: restrictGames(Object.assign({}, state.setup.games), visibleTypes()), timer: state.setup.timer || 0, hostSide: o.me, hostPick: state.setup.hostPick === 'random' ? 'random' : o.me, chaos: !!o.chaos },
       });
       if (state.online !== o) { closeSeat(o.code, o.me, true); return; }   // went back while the room was opening
     } catch (e) {
@@ -200,6 +200,16 @@ export async function startOnline() {
 }
 
 // ---------- the guest: joins with the code (or the shared link) and takes the free seat ----------
+// A Super Chaos match from Find Match: the room the server opened for the pair, both seated and the match on;
+// this phone takes its seat there (as a player coming back to it) and plays it as a friend room.
+export function enterRoomMM(code) {
+  if (state.online && state.online.code === code && state.online.joined) return;   // (in it already)
+  stopListening();
+  state.stats = null;
+  state.online = { role: 'guest', code, me: null, name: '', joined: false, shownSeq: null, matchId: null, mmRoom: true }; state.sc = null;
+  state.setup.mode = 'online'; state.screen = 'join';
+  return joinRoom(code, '', true);
+}
 export async function joinRoom(code, name, resume) {
   if (!resume) {
     code = String(code || '').toUpperCase().replace(/[^A-Z]/g, '');

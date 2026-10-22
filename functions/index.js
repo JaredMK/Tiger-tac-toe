@@ -228,14 +228,15 @@ exports.claimUsername = onCall(CALL, async req => {
 // with them (when bots are on). Anyone else searching meanwhile is paired with them as usual first.
 exports.findMatch = onCall(CALL, async req => {
   const uid = needAccount(req);
-  const key = R.queueKey();                                     // one queue: whatever an older page asks for
+  const key = R.queueKey(req.data && req.data.mode);            // the player's mode: Classic (an older page too) or Super Chaos
+  if (R.QUEUES[key].chaos && !(req.auth.token && req.auth.token.admin === true) && (await releasesNow()).superchaos !== true) throw new HttpsError('failed-precondition', 'Super Chaos is not available at this time.');
   const prof = (await db.ref(`users/${uid}`).get()).val();
   if (!prof || !prof.username) throw new HttpsError('failed-precondition', 'Pick a username first.');
   // The entry first, then the active game: a pairing that removes the entry writes the active game in the
   // same update, so if the entry is gone by the transaction below, one of the two reads shows why.
   const prev = (await db.ref(`queue/${key}/${uid}`).get()).val();
   const act = await activeGame(uid);
-  if (act) return { status: 'matched', game: act.game, side: act.side };
+  if (act) return matchedOf(act);
   if (!(await findMatchOn())) {                                 // switched off on the admin page: out of the queue, nobody new is paired
     let paired = null;
     await db.ref(`queue/${key}/${uid}`).transaction(cur => { paired = cur && cur.game ? { game: cur.game, side: cur.side } : null; return paired ? undefined : null; }, undefined, false);
@@ -244,6 +245,7 @@ exports.findMatch = onCall(CALL, async req => {
   }
   for (const other of OLD_QUEUES) await leaveQueue(other, uid);                // (from an older page)
   const conf = await adminConfig(), bc = B.botConfig(conf), ac = B.alertConfig(conf);
+  if (R.QUEUES[key].chaos) bc.enabled = false;                  // (no bots in Super Chaos: they play Classic only)
   const free = bc.enabled && prev && !prev.game && prev.botAt && now() >= prev.botAt ? await freeBots() : [];   // only looked up once a bot could be due
   let made = [], mine = null, alone = false, entry = null, botGame = null, vanished = false;
   await db.ref(`queue/${key}`).transaction(cur => {
@@ -276,7 +278,7 @@ exports.findMatch = onCall(CALL, async req => {
   }, undefined, false);
   if (vanished) {
     const act2 = await activeGame(uid);
-    return act2 ? { status: 'matched', game: act2.game, side: act2.side } : { status: 'searching' };
+    return act2 ? matchedOf(act2) : { status: 'searching' };
   }
   for (const p of made) await createGame(key, p.id).catch(e => logger.error('createGame', p.id, e));
   if (botGame) await createBotGame(key, uid, botGame.id, botGame.bot).catch(e => logger.error('createBotGame', botGame.id, e));
@@ -287,6 +289,7 @@ exports.findMatch = onCall(CALL, async req => {
   }
   if (botGame && botGame.id === mine.game) return { status: 'matched', game: mine.game, side: mine.side };
   await createGame(key, mine.game).catch(() => {});   // made by another call: make sure it exists (it is made once)
+  if (R.QUEUES[key].chaos) { const a = await activeGame(uid); return a ? matchedOf(a) : { status: 'searching' }; }   // (its room, once made)
   return { status: 'matched', game: mine.game, side: mine.side };
 });
 exports.cancelSearch = onCall(CALL, async req => {
@@ -298,6 +301,7 @@ exports.cancelSearch = onCall(CALL, async req => {
       return null;
     }, undefined, false);
   }
+  if (game) { const a = await activeGame(uid); if (a) return matchedOf(a); }   // (a Super Chaos pair: its room)
   return game ? Object.assign({ status: 'matched' }, game) : { status: 'cancelled' };
 });
 // Find Match is on only while the admin page has switched it on (features/findMatch true); missing means off.
@@ -335,8 +339,15 @@ async function leaveQueue(key, uid) {
   await db.ref(`queue/${key}/${uid}`).transaction(cur => (cur && cur.game ? undefined : null), undefined, false);
 }
 // The game a player is in, if it is still being played.
+const matchedOf = a => Object.assign({ status: 'matched', side: a.side }, a.room ? { room: a.room } : { game: a.game });   // a Classic game, or a Super Chaos room
 async function activeGame(uid) {
   const a = (await db.ref(`active/${uid}`).get()).val();
+  if (a && a.room) {                                            // a Super Chaos match from Find Match: its room, while its match is on
+    const r = (await db.ref(`rooms/${a.room}`).get()).val(), rec = r && r.match ? E.parseMatch(r.match) : null;
+    if (rec && !rec.state.winner && !r.left) return a;
+    await db.ref(`active/${uid}`).remove();
+    return null;
+  }
   if (!a || !a.game) return null;
   const status = (await db.ref(`games/${a.game}/pub/status`).get()).val();
   if (status === 'playing') return a;
@@ -383,10 +394,36 @@ async function createBotGame(key, uid, id, bot) {
   const human = { uid, e }, me = { uid: bot.uid, e: { name: p.username || bot.username, rec: recordOf(p) } };
   return makeGame(key, id, e.side === 'X' ? human : me, e.side === 'X' ? me : human, { bot });
 }
+// A Super Chaos pair: a room the server opens with both seated and the match started (X hosts it), played as a
+// friend room is (net/chaos.js: the record settles each round). The games: the released Super Chaos ones, or
+// every one when both are admins. Made once (the queue entries go with it); both are pointed at the room.
+const ROOM_LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+async function makeChaosRoom(key, id, X, O) {
+  const t = now(), rng = seedRng(), rel = await releasesNow();
+  await runConfigNow();
+  const admins = (await isAdminUser(X.uid)) && (await isAdminUser(O.uid));
+  const types = E.scTypes().filter(g => admins || E.releasedTypes(rel).includes(g));
+  let code = null;
+  for (let k = 0; k < 8 && !code; k++) { const c = Array.from({ length: 5 }, () => ROOM_LETTERS[crypto.randomInt(ROOM_LETTERS.length)]).join(''); if (!(await db.ref(`rooms/${c}`).get()).exists()) code = c; }
+  if (!code || !types.length) { logger.error('chaos room', id, code ? 'no Super Chaos games released' : 'no free code'); return false; }
+  const games = Object.fromEntries(E.scTypes().map(g => [g, types.includes(g)]));
+  const rec = E.newOnlineMatch({ names: { X: X.e.name, O: O.e.name }, games, timer: 0, chaos: true }, rng, id, t);
+  const made = await db.ref(`queue/${key}`).transaction(cur => {   // the pair still there and not made yet: taken out of the queue now (once)
+    if (cur === null) return null;                                // (a first look at an empty cache: the real queue comes back to try again)
+    if (!cur[X.uid] || !cur[O.uid] || cur[X.uid].game !== id || cur[O.uid].game !== id) return undefined;
+    delete cur[X.uid]; delete cur[O.uid]; return cur;
+  }, undefined, false);
+  if (!made.committed) return false;
+  const seat = p => ({ uid: p.uid, name: p.e.name, joined: t });
+  await db.ref(`rooms/${code}`).set({ created: t, host: X.uid, status: 'playing', mm: true, players: { X: seat(X), O: seat(O) }, setup: { games, timer: 0, hostSide: 'X', hostPick: 'X', chaos: true }, match: E.packMatch(rec) });
+  await db.ref().update({ [`active/${X.uid}`]: { room: code, side: 'X', queue: key, mode: 'chaos' }, [`active/${O.uid}`]: { room: code, side: 'O', queue: key, mode: 'chaos' } });
+  return true;
+}
 // The game itself, made exactly once; then the players are pointed at it.
 async function makeGame(key, id, X, O, opts) {
   const bot = opts && opts.bot;
   const Q = R.QUEUES[key], t = now();
+  if (Q.chaos) return makeChaosRoom(key, id, X, O);
   const rng = seedRng();
   await runConfigNow();
   const rec = E.newOnlineMatch({ names: { X: X.e.name, O: O.e.name }, games: Object.fromEntries(E.releasedTypes(await releasesNow()).map(g => [g, true])), timer: Q.timer }, rng, id);   // released games only, whoever is playing

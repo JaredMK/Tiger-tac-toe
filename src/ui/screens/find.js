@@ -7,6 +7,7 @@ import { CHEV, toon } from '../art.js';
 import { fmtClock } from '../clock.js';
 import { RATINGS_ENABLED } from '../config.js';
 import { record } from './profile.js';
+import { chaosVisible, scMode } from '../../net/releases.js';
 
 export function renderIntro() {
   if (!mmIntro || !isMM() || state.screen !== 'board') return '';
@@ -18,7 +19,7 @@ export function renderFind() {
   const p = acct.profile || {};
   // While searching, the way out is the Cancel under the timer: the one screen with no back button at the top left.
   const back = `<div class="bar">${search.on ? '' : `<button class="back" data-act="online-go" aria-label="Back to Play Online">${CHEV}Back</button>`}
-      <div class="ttl"><b>Find Match</b><small>${esc(p.username || '')} · ${RATINGS_ENABLED ? `rating ${p.rating || 1200}` : `record ${record(p)}`}</small></div></div>`;
+      <div class="ttl"><b>Find Match</b><small>${esc(p.username || '')}${chaosVisible() ? ` · ${scMode() ? 'Super Chaos' : 'Classic'}` : ''} · ${RATINGS_ENABLED ? `rating ${p.rating || 1200}` : `record ${record(p)}`}</small></div></div>`;
   if (search.found) {
     return `<main class="scr setup acct-scr">${back}<div class="setup-box"><div class="searching found" role="status"><div class="big-g">${toon('X')}${toon('O')}</div><h2>Match found!</h2><p class="hint">${esc(net.msg || 'Loading the match…')}</p></div></div></main>`;
   }

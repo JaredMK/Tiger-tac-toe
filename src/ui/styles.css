@@ -1405,15 +1405,6 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .pcard .ppct, .pcard .pfr { display: flex; flex-direction: column; }
 .pcard .ppct { align-items: flex-end; }
 .pcard .ppct b, .pcard .pfr b { font-family: 'Luckiest Guy', sans-serif; font-weight: 400; font-size: 24px; padding-top: 3px; }
-.ptab { width: 100%; border-collapse: collapse; background: #fff; border: 3px solid var(--ink); border-radius: 14px; overflow: hidden; box-shadow: 0 4px 0 var(--ink); font-size: 17px; }
-.ptab th, .ptab td { padding: 7px 8px; text-align: right; border-bottom: 1.5px solid var(--panel-2); white-space: nowrap; }
-.ptab th:first-child, .ptab td:first-child { text-align: left; }
-.ptab th { font-family: 'Luckiest Guy', sans-serif; font-weight: 400; font-size: 13px; color: var(--muted); }
-.ptab tr:last-child td { border-bottom: 0; }
-.ptab .pg { display: inline-flex; align-items: center; gap: 8px; }
-.ptab .pg svg { width: 18px; height: 18px; flex: none; }
-.ptab tr.pall td { font-weight: 700; background: var(--panel); border-bottom: 3px solid var(--ink); }   /* every mini-game together, above the rest */
-.ptab.psides { margin-top: 2px; }
 /* Top opponents (profile.js): always three rows of the same height, the empty ones blank, so nothing moves as it loads */
 .hh.hopp { flex: none; display: flex; justify-content: space-between; align-items: baseline; }
 .hh.hopp small { font-size: 13px; color: var(--muted); padding-right: 40px; }
