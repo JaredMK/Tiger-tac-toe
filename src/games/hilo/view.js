@@ -25,7 +25,7 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
     : `<div class="hist">${hist || 'No guesses yet'}</div>`;
   const out = n => !!(was && lastG && n !== lastG.n && n >= was[0] && n <= was[1] && (n < mini.lo || n > mini.hi));   // numbers this guess ruled out
   const left = hiloLimit(mini) ? `<div class="hleft">${['X', 'O'].map(p => `<span class="${p}"><b class="${p}">${N(p)}</b>${pips(mini, p)}</span>`).join('')}</div>` : '';   // each player's guesses left (always there: the pad never moves)
-  g = `<div class="g-hilo${top > 20 ? ' t30' : ''}"><div class="range"><small>${first ? 'A number from' : 'It is between'}</small><b>${mini.lo}</b><span>${first ? 'to' : 'and'}</span><b>${mini.hi}</b><div class="rbar">${seg}</div></div>
+  g = `<div class="g-hilo${top > 20 ? ' t30' : ''}" style="--cols:${top <= 20 ? 5 : top <= 30 ? 6 : top <= 40 ? 8 : top <= 60 ? 10 : 11}"><div class="range"><small>${first ? 'A number from' : 'It is between'}</small><b>${mini.lo}</b><span>${first ? 'to' : 'and'}</span><b>${mini.hi}</b><div class="rbar">${seg}</div></div>
         ${left}${result}
         <div class="pad">${Array.from({ length: top }, (_, k) => k + 1).map(n =>
           `<button class="${by[n] || ''}${out(n) ? ' out' : ''}" data-act="move" ${mv(n)}${n < mini.lo || n > mini.hi || locked ? ' disabled' : ''}>${n}</button>`
