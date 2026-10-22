@@ -122,15 +122,24 @@ jobs:
             })().catch(e => { console.log("::error::Could not switch on the Cloud Billing API: " + String(e.message).split("\n")[0]); process.exit(1); });
           '
       - name: Deploy functions and rules
-        # Once more after two minutes if it fails: Google's services can need a few minutes after first use.
+        # Again after two minutes if it fails: Google's services can need a few minutes after first use.
         # Every function is deployed, changed or not: a revision that failed to start keeps its source's
         # hash, so a deploy that skipped "unchanged" functions would leave it broken. A fresh stamp in
         # the uploaded source gives each attempt a new hash.
         run: |
           only='${{ steps.what.outputs.only }}'
           if [ -z "$only" ]; then echo "Nothing to deploy."; exit 0; fi
-          deploy() { date +%s%N > functions/deploy-stamp.txt; firebase deploy --only "$only" --project tic-tac-chaos --non-interactive --force; }
-          deploy || { echo "::warning::The deploy failed; trying again in two minutes."; sleep 120; deploy; }
+          deploy() { date +%s%N > functions/deploy-stamp.txt; firebase deploy --only "$1" --project tic-tac-chaos --non-interactive --force 2>&1 | tee "$RUNNER_TEMP/deploy.log"; return "${PIPESTATUS[0]}"; }
+          # A retry deploys only the functions that failed (fewer starting at once), twice at most.
+          failed() { grep -oP '^\s+\K\w+(?=\(us-central1\))' "$RUNNER_TEMP/deploy.log" | sort -u | sed 's/^/functions:/' | paste -sd, - || true; }
+          deploy "$only" && exit 0
+          for n in 1 2; do
+            again=$(failed); [ -z "$again" ] && again="$only"
+            echo "::warning::The deploy failed; trying again in two minutes: $again"
+            sleep 120
+            deploy "$again" && exit 0
+          done
+          exit 1
       - name: Check the live functions and rules
         run: node scripts/smoke-live.js
       - name: Back-fill records from game history (once)
