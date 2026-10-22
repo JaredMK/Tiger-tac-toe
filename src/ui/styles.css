@@ -2178,7 +2178,7 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .g-rl { width: min(var(--gw), 440px); height: var(--gh); display: flex; flex-direction: column; gap: 8px; padding-top: 4px; }
 .rltop { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; }
 /* the wheel: as big as the room left by the board below it allows, never wider than about two thirds of the width */
-.rlwrap { position: relative; width: clamp(96px, min(calc(var(--gh) - 262px), calc(var(--gw) * .62)), 250px); aspect-ratio: 200 / 208; }
+.rlwrap { position: relative; width: clamp(84px, min(calc(var(--gh) - 296px), calc(var(--gw) * .62)), 250px); aspect-ratio: 200 / 208; }
 .rlside { display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .rlspins { display: grid; height: 26px; width: 100%; justify-items: center; } .rlspins > span { grid-area: 1 / 1; display: flex; gap: 4px; align-items: center; }   /* the last spins, under the wheel: the row before a spin and the one after it, in one place */
 .rlspins small { color: var(--muted); font-size: 12px; font-weight: 700; }
