@@ -102,6 +102,8 @@ def('tileY', 0.16, (c, d, t) => sfxTone(c, d, t, 520, .14, { vol: .5, type: 'tri
 def('tileX', 0.12, (c, d, t) => sfxTone(c, d, t, 330, .1, { to: 280, vol: .4, type: 'triangle' }), { level: .45 });
 def('solve', 0.6, (c, d, t) => [784, 988, 1175].forEach((f, i) => sfxTone(c, d, t + i * .09, f, .3, { vol: .35, type: 'triangle' })), { level: .6 });
 def('ding', 0.5, (c, d, t) => { sfxTone(c, d, t, 1046, .5, { vol: .4 }); sfxTone(c, d, t, 1568, .35, { vol: .15 }); }, { level: .55 });
+def('diceWin', 0.9, (c, d, t) => { [523, 659, 784, 1047].forEach((f, i) => sfxTone(c, d, t + i * .1, f, .22, { vol: .4, type: 'triangle' })); [2093, 2637, 3136].forEach((f, i) => sfxTone(c, d, t + .45 + i * .08, f, .12, { vol: .18 })); }, { level: .6 });   // Craps: the point made (a hop-and-spin arpeggio, then sparkles)
+def('diceLose', 0.9, (c, d, t) => { sfxTone(c, d, t, 392, .7, { to: 130, vol: .45, type: 'sawtooth' }); sfxNoise(c, d, t + .55, .3, { f: 500, to: 150, filter: 'lowpass', vol: .3 }); }, { level: .5 });   // Craps: a crap-out (a deflating slide down, a sigh)
 def('thud', 0.22, (c, d, t) => { sfxTone(c, d, t, 120, .2, { to: 70, vol: .6 }); sfxNoise(c, d, t, .1, { f: 400, filter: 'lowpass', vol: .4 }); }, { level: .55 });
 def('cushion', 0.16, (c, d, t) => { sfxTone(c, d, t, 220, .12, { to: 140, vol: .5, type: 'triangle' }); sfxNoise(c, d, t, .08, { f: 700, filter: 'lowpass', vol: .3 }); }, { level: .45, vary: true });
 def('pinHit', 0.14, (c, d, t) => { sfxNoise(c, d, t, .09, { f: 1500, q: 2.5, vol: .6, att: .001 }); sfxTone(c, d, t, 520, .08, { to: 380, vol: .35, type: 'triangle' }); }, { level: .5, vary: true });

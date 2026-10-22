@@ -13,7 +13,8 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
   // spinner's spin turns the wheel and hops the piece; two spin together (both pieces hop at once, no wheel);
   // then any knock back Home.
   const L = mini.last, scr = a && a.scr ? a.scr : null, scMv = scr && scr.moves ? Object.keys(scr.moves) : [], one = scMv.length === 1 ? scr.moves[scMv[0]] : null;
-  const shown = one ? one.spin : L && L.spin ? L.spin : 0, k = shown ? shown - 1 : -1, angle = k < 0 ? 0 : 360 - (k * 120 + 60);   // puts that number under the pointer
+  const resting = !!((a && a.locked) || (L && L.locked && !scr)), shown = resting ? 0 : one ? one.spin : L && L.spin ? L.spin : 0,   // (a spin locked in waits for the round's end: the wheel stays at rest, between 3 and 1, as it was)
+     k = shown ? shown - 1 : -1, angle = k < 0 ? 0 : 360 - (k * 120 + 60);   // puts that number under the pointer
   const kn = L && L.knocked ? L.knocked : null, spinning = !!a && !a.locked && (!scr || !!one);
   const W = p => `<b class="${p}">${N(p)}</b>`, spun = mv0 => ['X', 'O'].filter(p => mv0[p]).map(p => `${W(p)} spun ${mv0[p].spin}`).join(' · ');
   const lab = a && a.locked ? `${W(a.by)} locked in a spin`

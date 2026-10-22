@@ -37,7 +37,8 @@ function crapsTable(mini, a, o) {
       if (!c && k < n - 1) return '';
       const t0 = c && !REDUCED ? tim.at[k] : null, t1 = c && !REDUCED && k < n - 1 ? tim.at[k + 1] : null;
       if (c && REDUCED && k < n - 1) return '';
-      return `<div class="cpair${t0 != null ? ' tumble' : ''}${t1 != null ? ' gone' : ''}" style="${t0 != null ? `--t:${t0}ms;` : ''}${t1 != null ? `--t2:${t1}ms` : ''}" aria-hidden="${k < n - 1}"><span class="die cdie">${dieFace(d[0])}</span><span class="die cdie b">${dieFace(d[1])}</span></div>`;
+      const end = c && !REDUCED && k === n - 1 && (c.result === 'win' || c.result === 'lose') ? ` ${c.result === 'win' ? 'cheer' : 'sad'}` : '';   // the round's last pair: the point made, a dance; a crap-out, a slump (once it has landed)
+      return `<div class="cpair${t0 != null ? ' tumble' : ''}${t1 != null ? ' gone' : ''}" style="${t0 != null ? `--t:${t0}ms;` : ''}${t1 != null ? `--t2:${t1}ms;` : ''}${end ? `--d:${t0 + CRAPS.land}ms` : ''}" aria-hidden="${k < n - 1}"><div class="cdice${end}"><span class="die cdie">${dieFace(d[0])}</span><span class="die cdie b">${dieFace(d[1])}</span></div></div>`;
     }).join('');
   }
   // the round's rolls in a row, each as it lands (one row, a fixed height: a long round shows its latest)
@@ -69,5 +70,5 @@ export function sounds(f, add, won, mini, last) {   // each roll: the rattle and
   const tim = crapsTimes(c.rolls, c.point, c.was);
   c.rolls.forEach((d, k) => { add('rattle', tim.at[k]); add('thunk', tim.at[k] + 500); });
   if (tim.puck != null) add('clack', tim.puck);
-  add(c.result === 'win' ? 'ding' : 'thud', tim.end - 100);
+  add(c.result === 'win' ? 'diceWin' : 'diceLose', tim.at[c.rolls.length - 1] + CRAPS.land);   // (as the dice dance or slump)
 }
