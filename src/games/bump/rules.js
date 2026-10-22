@@ -54,7 +54,7 @@ export function scApply(mini, p, m, rng) {
   return { ok: true, outcome: 'continue', note: 'locked', waits: true };
 }
 export function scMerge(m, c) {
-  const fin = BUMP.n + 1, rng = needRng(c.rng), base = c.base, moves = {}, pos = { X: base.pos.X, O: base.pos.O };
+  const fin = BUMP.n + 1, rng = needRng(c.rng), base = c.base && c.base.pos ? c.base : c.forks[c.played[0]], moves = {}, pos = { X: base.pos.X, O: base.pos.O };   // (the square as the round began; a fork's own if the record has none)
   for (const p of c.played) if (c.forks[p].spun && c.forks[p].spun[p]) { const spin = 1 + randInt(rng, BUMP.max), from = pos[p]; moves[p] = { from, to: Math.min(from + spin, fin), spin }; }
   delete m.spun;
   const who = ['X', 'O'].filter(p => moves[p]);

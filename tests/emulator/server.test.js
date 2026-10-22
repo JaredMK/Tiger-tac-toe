@@ -1770,11 +1770,11 @@ test('Super Chaos Find Match against a bot: a lone searcher gets a bot after the
   assert.deepEqual(Object.keys(pub).sort(), ['chaos', 'created', 'deadline', 'mode', 'players', 'queue', 'round', 'state', 'status', 'timer', 'updated'], 'nothing in the game says bot');
   assert.deepEqual(await h.call('scTick', { game: id }), { ok: true, settled: false }, 'not due yet: the bot waits');
   assert.equal((await scState(id)).sc.moves[botSide], false);
+  await scRig(id, [{ type: 'wordle', word: 'CRANE', guesses: [] }]);   // (the human's square, set before the bot moves: its move stands on this board)
   await patch(`botGames/${id}/next`, { due: Date.now() - 1 });
   await h.call('scTick', { game: id });
   let st = await scState(id);
   assert.equal(st.sc.moves[botSide], true, 'the bot\'s move in once due');
-  await scRig(id, [{ type: 'wordle', word: 'CRANE', guesses: [] }]);   // (the human's square; the bot's move stands)
   const m = await h.call('scMove', { game: id, square: 0, move: 'CRANE' });
   assert.ok(m.ok && m.resolved, JSON.stringify(m));
   st = await scState(id);
