@@ -123,6 +123,10 @@ jobs:
           '
       - name: Deploy functions and rules
         # Once more after two minutes if it fails: Google's services can need a few minutes after first use.
+        # Every function is deployed, changed or not: a revision that failed to start keeps its source's
+        # hash, so a deploy that skipped "unchanged" functions would leave it broken.
+        env:
+          FUNCTIONS_DEPLOY_UNCHANGED: 'true'
         run: |
           only='${{ steps.what.outputs.only }}'
           if [ -z "$only" ]; then echo "Nothing to deploy."; exit 0; fi
