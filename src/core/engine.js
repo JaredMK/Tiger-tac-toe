@@ -92,5 +92,5 @@ export { TRIVIA, setTriviaBank, triviaReady, triviaDeal, triviaReveal, triviaUse
 export { tttOpen, tttMinimax } from '../games/ttt/rules.js';
 export { WHEEL_DEFAULTS } from '../games/wheels/meta.js';
 export { WHEELS, WHEEL_SEGS, WHEELS_SAFE, WHEEL_LIMITS, WHEELT, WHEEL_CFG, wheelsNorm, setWheelsConfig, wheelsConfig, wheelAvg, wheelsCheck, wheelsDeal, WHEEL_MEMO, wheelsTable, wheelSpin } from '../games/wheels/rules.js';
-export { wordleMarks, wordleCandidates, VALID5_LIST } from '../games/wordle/rules.js';
+export { wordleMarks, wordleCandidates, wordleLeft, wordleLimit, VALID5_LIST } from '../games/wordle/rules.js';
 export { WORDS5, VALID5 } from '../games/wordle/words.js';

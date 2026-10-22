@@ -26,6 +26,7 @@ on:
       - 'scripts/backfill-accounts.js'
       - 'scripts/backfill-opponents.js'
       - 'scripts/check-usernames.js'
+      - 'scripts/set-releases.js'
       - '.github/workflows/firebase.yml'
   workflow_dispatch:
 
@@ -137,3 +138,5 @@ jobs:
         run: node scripts/backfill-opponents.js
       - name: Check existing usernames against the word list (once per rules version)
         run: node scripts/check-usernames.js
+      - name: Release switches set by request (once each)
+        run: node scripts/set-releases.js

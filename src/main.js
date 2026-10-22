@@ -59,10 +59,12 @@ SND.report = devAudio;                                      // (the sound's ups 
 soundInit();
 chaosInit();
 AI_CLOCK.now = () => performance.now();                      // the engine's computer keeps to its time budget here (the Hard computer, where the core runs it itself: Super Chaos)
-function boot() {
-  setClockTimer(setInterval(tick, 250));
-  if (sandboxParams()) { loadTrivia(); loadPhysics(); sandboxBoot(); return; }   // the admin's test play: one mini-game with the editor's settings (no live config, nothing saved or reported)
-  fetchReleases();                                            // which mini-games are released, before any match is set up
+// The admin's settings (config/*: Mini-game Settings, the tuning cards, the Hard computer's weights), for the
+// squares dealt from then on: read at the start, and again whenever the page comes back into view (at most
+// once a minute), so a change on the dashboard reaches a phone that stayed open.
+let configsAt = 0;
+function loadConfigs() {
+  configsAt = Date.now();
   fetchRunConfig();                                           // the runners' difficulty, for the squares to come
   fetchBullsConfig();                                         // Bullseye's board, bullseye and sweep speeds, likewise
   fetchWheelsConfig();                                        // Risk Wheels' points, odds and target, likewise
@@ -75,6 +77,13 @@ function boot() {
   fetchAttConfig('bowling', setBowlConfig);                       // Bowling's two taps' speeds
   fetchAttConfig('tune', setTunes, true);                         // every mini-game's settings (Mini-game Settings: config/tune), likewise
   fetchAttConfig('ai', setAiWeights, true);                       // the Hard computer's weights (npm run tune-ai: config/ai), likewise
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && !sandboxParams() && Date.now() - configsAt > 60000) loadConfigs(); });
+function boot() {
+  setClockTimer(setInterval(tick, 250));
+  if (sandboxParams()) { loadTrivia(); loadPhysics(); sandboxBoot(); return; }   // the admin's test play: one mini-game with the editor's settings (no live config, nothing saved or reported)
+  fetchReleases();                                            // which mini-games are released, before any match is set up
+  loadConfigs();                                              // the admin's settings, for the squares to come
   loadTrivia();                                               // the Trivia questions, for the match to come
   loadPhysics();                                              // Matter.js and physics.js, for Mini Golf, Pool and Bowling
   takeTag();                                                  // a playtester's link (?t=sam): before the address is tidied below

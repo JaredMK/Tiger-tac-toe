@@ -14,6 +14,7 @@ import { TIMER_LABEL, advOpen, app, esc, save, state } from '../app.js';
 import { CHEV, CPU_ICON, ICONS, toonT } from '../art.js';
 import { qBtn } from '../explainer.js';
 import { fxAt, fxAttr } from '../fx.js';
+import { render } from '../render.js';
 
 /* ----- setup screen ----- */
 // Super Chaos (simultaneous rounds) is on for the next match: its switch on (a friend room: the room's, set by the
@@ -56,7 +57,7 @@ export function renderSetup() {
       <label class="field ${s1 || ''}"><span>Player 1 name${L.pick === 'random' ? ' · X or O, drawn every match' : ''}</span><input data-ln="n1" value="${esc(L.n1)}" maxlength="${NAME_MAX}" placeholder="${s1 || 'X or O'}" autocomplete="off" autocapitalize="words" aria-label="Player 1 name"></label></div>
     <div class="slot ${s2 || 'R'} p2${isCpu ? ' cpu' : ''}">
       <div class="who-p">${face(s2)}</div>
-      <div class="kind" role="group" aria-label="Player 2"><button class="seg${isCpu ? '' : ' on'}" data-act="kind" data-kind="human" aria-pressed="${!isCpu}"${sc ? ' disabled' : ''}>Human</button><button class="seg${isCpu ? ' on' : ''}" data-act="kind" data-kind="cpu" aria-pressed="${isCpu}">Computer</button></div>
+      <div class="kind" role="group" aria-label="Player 2"><button class="seg${isCpu ? '' : ' on'}" data-act="kind" data-kind="human" aria-pressed="${!isCpu}">Human</button><button class="seg${isCpu ? ' on' : ''}" data-act="kind" data-kind="cpu" aria-pressed="${isCpu}">Computer</button></div>
       <label class="field ${s2 || ''}">${isCpu ? `<i class="slot-ico" aria-hidden="true">${CPU_ICON}</i>` : ''}<span>Player 2 name</span><input data-ln="n2" value="${esc(L.n2)}" maxlength="${NAME_MAX}" placeholder="${isCpu ? CPU_NAME : s2 || 'X or O'}" autocomplete="off" autocapitalize="words" aria-label="Player 2 name"></label>
       ${isCpu ? `<div class="sides three level" role="group" aria-label="Computer level"><span>Level</span>${LEVELS.map(v => `<button class="seg${L.level === v ? ' on' : ''}" data-act="level" data-v="${v}" aria-pressed="${L.level === v}">${LEVEL_NAME[v]}</button>`).join('')}</div>` : ''}</div>`;
   };
@@ -72,7 +73,14 @@ export function renderSetup() {
     <div class="adv${advOpen ? ' open' : ''}"><button class="adv-h" data-act="adv" aria-expanded="${advOpen}"><span>Mini-games</span><small>${gamesCount(on, VT.length)}</small><i class="chev">${CHEV}</i></button>
       ${advOpen ? `<div class="games-top"><button class="btn selall" data-act="games-none"${on === 0 ? ' disabled' : ''}>Deselect all</button><button class="btn selall" data-act="games-all"${on === VT.length ? ' disabled' : ''}>Select all</button></div><div class="games">${byName(VT).map(chk).join('')}</div>` : ''}</div>
   </div>
-  <div class="setup-foot"><button class="primary" data-act="start"${ready ? '' : ' disabled'}>Start match</button><small class="warn">${setupWarn(s)}</small></div></main>`;
+  <div class="setup-foot"><button class="primary" data-act="start"${ready ? '' : ' disabled'}>Start match</button>${(w => `<small class="warn${w ? '' : modeNote ? ' info' : ''}" role="status">${w || modeNote}</small>`)(setupWarn(s))}</div></main>`;
+}
+// A brief note in the setup's foot (its reserved line): Human chosen for player 2 while Super Chaos was on
+// switched the mode to Classic.
+let modeNote = '', modeNoteTimer = 0;
+export function noteMode(text, ms = 3000) {
+  modeNote = text; clearTimeout(modeNoteTimer);
+  modeNoteTimer = setTimeout(() => { modeNote = ''; if (state.screen === 'setup') render(); }, ms);
 }
 // How many mini-games are on: "All", or "x/N".
 export const gamesCount = (on, n) => (on === n ? 'All' : `${on}/${n}`);

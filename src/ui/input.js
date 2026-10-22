@@ -37,7 +37,7 @@ import { scPopup, scSkip } from './chaos.js';
 import { repActive, repNote, repSkip, repVal } from './replay.js';
 import { runGo } from './runner.js';
 import { hist, openHistory, openLeaderboard, openProfile, prof, profileBack, setHist } from './screens/profile.js';
-import { chaosSetup, setGames, setupTypes } from './screens/setup.js';
+import { chaosSetup, noteMode, setGames, setupTypes } from './screens/setup.js';
 import { cpuTurn, dismissFlash, scheduleCpu } from './turns.js';
 import { closeReport, openReport } from './report.js';
 
@@ -128,7 +128,7 @@ export function init() {
     } else if (act === 'mode-go') {              // the main menu: pick a mode, then set up
       state.setup.mode = 'two'; normSetup(state.setup); normLocal(state.setup); if (scMode()) normLocal(state.setup).p2 = 'cpu'; state.screen = 'setup'; setAdvOpen(false); commit();
     } else if (act === 'kind') {                 // Play Local: player 2 is a Human or the Computer
-      if (chaosSetup() && el.dataset.kind !== 'cpu') { SND.play('error'); return; }   // (Super Chaos: against the computer only, for now)
+      if (chaosSetup() && el.dataset.kind !== 'cpu') { setMode('classic'); noteMode('Super Chaos needs a computer or online opponent'); }   // (Super Chaos: against the computer or online only: Human switches to Classic)
       normLocal(state.setup).p2 = el.dataset.kind === 'cpu' ? 'cpu' : 'human'; commit();
     } else if (act === 'gmode') {                // the Mode, Super Chaos or Classic: Play Local (Super Chaos against the computer), the host's room, Find Match; kept on this device
       setMode(el.dataset.v);

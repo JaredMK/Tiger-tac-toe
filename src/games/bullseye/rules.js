@@ -48,7 +48,10 @@ export function bullsScore(cfg, pos, x, y, bullPts) {
 }
 export const bullsPeriod = (cfg, speed) => cfg.sweep / speed;            // ms for the vertical line to cross the field (the horizontal one: as fast, so h/w as long)
 // The computer: a bullseye, the board or a miss at its rates, slipping as its lines speed up.
-export function bullsRates(speed, t) { const f = Math.pow(1 / Math.max(1, speed), BULLS.ai.worse); return { bull: (t ? t.aiBull / 100 : BULLS.ai.bull) * f, board: (t ? t.aiBoard / 100 : BULLS.ai.board) * f }; }   // (t: the square's settings)
+export function bullsRates(speed, t) {   // (t: the square's settings: aiBoard counts every hit on the board, bullseyes included; board here: the hits outside the bullseye)
+  const f = Math.pow(1 / Math.max(1, speed), BULLS.ai.worse), bull = t ? t.aiBull / 100 : BULLS.ai.bull, all = t ? Math.max(bull, t.aiBoard / 100) : BULLS.ai.bull + BULLS.ai.board;
+  return { bull: bull * f, board: (all - bull) * f };
+}
 export const bullIs = pts => pts > BULLS.boardPts;                       // a bullseye (whatever it scores)
 export function create(type, rng) {
   const cfg = bullsConfig(); return { type, cfg, pts: { X: 0, O: 0 }, speed: { X: 1, O: 1 }, pos: bullsSpot(cfg, null, needRng(rng)), last: null };

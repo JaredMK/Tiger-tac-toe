@@ -12,6 +12,8 @@ export const BULL_DEFAULTS = { board: 9, bull: 2.5, sweep: 1040, ramp: 1.12 };  
 export const TUNE = [
   { k: 'goal', label: 'Points to win', def: 5, min: 3, max: 8, step: 1, group: 'Rules' },
   { k: 'bullPts', label: 'Bullseye points', def: 3, min: 2, max: 5, step: 1, group: 'Rules' },
-  { k: 'aiBull', label: "Computer's bullseyes (%)", def: 15, min: 0, max: 50, step: 1, group: 'Computer' },
-  { k: 'aiBoard', label: "Computer's board hits (%)", def: 45, min: 0, max: 50, step: 1, group: 'Computer' },
+  { k: 'aiBull', label: "Computer's bullseyes (%)", def: 15, min: 0, max: 100, step: 1, group: 'Computer' },
+  { k: 'aiBoard', label: "Computer's board hits, bullseyes included (%)", def: 60, min: 0, max: 100, step: 1, group: 'Computer' },
 ];
+// The settings checked together (the admin's Save): a bullseye is a board hit, so never more bullseyes than board hits.
+export const tuneCheck = v => (v.aiBull > v.aiBoard ? "Computer's bullseyes can't be more than its board hits (a bullseye counts as a board hit)." : null);

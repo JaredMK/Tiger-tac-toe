@@ -46,7 +46,8 @@ export function bjStrategy(cards, up) {
 export function create(type, rng) {
   return { type, wins: { X: 0, O: 0 }, hand: null, hole: null, deck: null, last: null };   // hand: the hand being played; hole and deck: hidden
 }
-export function apply(mini, p, m, rng, idx) {
+export function apply(mini, p, m, rng, idx) { return play(mini, p, m, rng, null); }
+function play(mini, p, m, rng, shoe) {   // shoe: Super Chaos's round shoe, for this player's first deal of the round (scApply)
   // A turn is played hand by hand: Deal (or Stand, which deals first), then Hit (again) or Stand.
   // A win or a loss ends the turn. A push does not: a new hand is dealt at once, from a reshuffled
   // deck, and the same player plays on. 'auto' (a timed-out turn) stands, dealing first if need be, and
@@ -60,6 +61,13 @@ export function apply(mini, p, m, rng, idx) {
   const c = tune(mini);
   mini.pushed = null;                                // the hands this move ended in a push (shown before the new deal)
   const deal = () => {                               // player, dealer up, player, dealer face down; true for a natural
+    if (shoe && !shoe.used) {                        // Super Chaos: the round's shoe (the dealer's hand shared, each player their own cards)
+      shoe.used = true;
+      const own = shoe[p].slice().reverse(), c1 = own.pop(), c2 = own.pop();
+      h = mini.hand = { by: p, cards: [c1, c2], up: shoe.up, shared: true };
+      mini.hole = shoe.hole; mini.deck = own; mini.dealerDeck = shoe.dealer.slice().reverse();
+      return bjNatural(h.cards);
+    }
     const deck = shuffle(cardDeck(), needRng(rng));
     const c1 = deck.pop(), up = deck.pop(), c2 = deck.pop(), hole = deck.pop();
     h = mini.hand = { by: p, cards: [c1, c2], up };
@@ -69,10 +77,11 @@ export function apply(mini, p, m, rng, idx) {
   const settle = (natural) => {                      // the hand is over: the hole card turns, the dealer plays
     const hole = mini.hole, deck = mini.deck || [], hand = mini.hand;
     const bust = bjTotal(hand.cards).total > 21;
-    const dealer = natural || bust ? [hand.up, hole] : bjDealerPlay([hand.up, hole], deck, c.stand);
+    const dealer = hand.shared ? bjDealerPlay([hand.up, hole], mini.dealerDeck || [], c.stand)   // (the shared dealer always plays out: the same hand for both players)
+      : natural || bust ? [hand.up, hole] : bjDealerPlay([hand.up, hole], deck, c.stand);
     const o = bjOutcome(hand.cards, dealer, hand.doubled, natural);
     mini.last = { by: p, cards: hand.cards.slice(), dealer, res: o.res, gain: o.gain, dealerBj: !!o.dealerBj, natural: !!natural };
-    mini.hand = null; mini.hole = null; mini.deck = null;
+    mini.hand = null; mini.hole = null; mini.deck = null; delete mini.dealerDeck;
     if (o.res === 'push') mini.pushed = (mini.pushed || []).concat([mini.last]);
     else mini.wins[p] += o.gain;
     return o.res;
@@ -110,11 +119,27 @@ export function moveFlash(m, p, range, bjFrom, mini, flash) {   // what the tabl
   } else flash.bj = Object.assign({ act: m, from: bjFrom, wins }, h ? inPlay() : over(l));
   return;
 }
-export function secret(mini) {
-  return mini.hand && mini.hole ? { hole: mini.hole, deck: (mini.deck || []).slice() } : null;   // only while a hand is being played
+export function secret(mini) {   // the hand in play's hole card and deck; Super Chaos's round shoe
+  const s = {};
+  if (mini.hand && mini.hole) { s.hole = mini.hole; s.deck = (mini.deck || []).slice(); if (mini.dealerDeck) s.dealerDeck = mini.dealerDeck.slice(); }
+  if (mini.shoe) s.shoe = JSON.parse(JSON.stringify(mini.shoe));
+  return Object.keys(s).length ? s : null;
 }
 export function hide(m, k, st) {
-  delete m.hole; delete m.deck; return;
+  delete m.hole; delete m.deck; delete m.dealerDeck; delete m.shoe; return;
+}
+// Super Chaos: one shoe for the square each round, shuffled once as the round begins (scRound: the server's
+// draw online). Both players who play the square that round face the same dealer hand (its up and hole cards,
+// and its draws, played out once to the same end) while each gets their own cards from the same shoe. A push
+// deals again from a fresh deck of the player's own.
+export const BJ_SHOE = { dealer: 12, each: 12 };   // the dealer's draws and each player's cards set aside (more than a hand can take)
+export function scRound(mini, rng) {
+  const deck = shuffle(cardDeck(), needRng(rng)), take = n => deck.splice(deck.length - n, n).reverse();
+  const up = deck.pop(), hole = deck.pop();
+  mini.shoe = { up, hole, dealer: take(BJ_SHOE.dealer), X: take(BJ_SHOE.each), O: take(BJ_SHOE.each) };
+}
+export function scApply(mini, p, m, rng) {
+  return play(mini, p, m, rng, mini.shoe && !mini.hand ? mini.shoe : null);
 }
 export function flashMs(f, winLen, won) {
   return bjMs(f.bj) + (won ? 600 : 0);

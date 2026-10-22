@@ -1,13 +1,21 @@
 // Wordle: the computer's play.
 import { randInt } from '../../core/random.js';
 import { tune } from '../../core/tune.js';
-import { wordleCandidates, wordleMarks } from './rules.js';
+import { wordleCandidates, wordleLeft, wordleMarks } from './rules.js';
 import { WORDS5 } from './words.js';
 
 export function needs(pm, p) {
-  const n = wordleCandidates(pm).length; return n <= 1 ? 1 : Math.min((n + 1) / 2, 1 + Math.log(n) / Math.log(6));
+  const c = wordleCandidates(pm).length, n = c <= 1 ? 1 : Math.min((c + 1) / 2, 1 + Math.log(c) / Math.log(6)), left = wordleLeft(pm, p);
+  return n > left + 0.001 ? Math.max(n, left + 2) : n;   // more than its guesses left: a long shot
 }
+// With guesses each (the square's limit), the last one is always a candidate (a word that could be it), and a miss
+// with it hands the square over (qLose).
 export function best(pm, me, rng, style, ctx) {
+  const r = bestWord(pm, me, rng, style, ctx), left = wordleLeft(pm, me);
+  if (left === 1) { const cand = wordleCandidates(pm); if (cand.length && !cand.includes(r.move)) r.move = cand[0]; r.q = cand.length ? 1 / cand.length : 0; r.qLose = 1 - r.q; }
+  return r;
+}
+function bestWord(pm, me, rng, style, ctx) {
   const cand = wordleCandidates(pm);
   if (!cand.length) return { move: WORDS5[randInt(rng, WORDS5.length)].toUpperCase(), q: 0, shared: true };
   if (cand.length === 1) return { move: cand[0], q: 1, shared: true };

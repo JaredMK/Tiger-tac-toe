@@ -198,3 +198,45 @@ test('wordle, Hard: the race for the word: legal guesses that could be the word,
   assert.ok(r.ms < 200, `never slow in the race (${r.ms.toFixed(1)} ms at worst)`);
   assert.deepEqual(L.localBest(pm, 'O', cpuRng(), {}, { level: 'normal', until: null }), L.localBest(pm, 'O', cpuRng()), 'Normal untouched');
 });
+
+test('wordle: each player has 5 guesses (the setting); a 5th that misses hands the square to the other player', () => {
+  const m = L.newMini('wordle', wordRng(L.WORDS5, 'crane'));
+  assert.equal(m.limit, 5);
+  for (const w of ['SLATE', 'MOUNT', 'BRICK', 'FUDGY']) assert.equal(L.applyMove(m, 'X', w).outcome, 'continue');
+  for (const w of ['PLUMB', 'GHOST', 'WINDY', 'SHAKE']) assert.equal(L.applyMove(m, 'O', w).outcome, 'continue', 'O\'s own five');
+  assert.deepEqual([E.wordleLeft(m, 'X'), E.wordleLeft(m, 'O')], [1, 1]);
+  assert.deepEqual(L.applyMove(m, 'O', 'TRACE'), { ok: true, outcome: 'win', winner: 'X', note: 'out' }, 'O\'s 5th misses: X claims');
+  assert.equal(L.applyMove(m, 'O', 'CRANE').reason, 'out', 'no 6th guess');
+  assert.equal(L.applyMove(m, 'X', 'XXXXX').reason, 'notword', 'a non-word still costs nothing');
+  assert.deepEqual(L.applyMove(m, 'X', 'CRANE'), { ok: true, outcome: 'win' }, 'a 5th that finds it wins');
+  assert.equal(L.publicMini(m).limit, 5);
+  // the setting: 3 guesses each
+  E.setTune('wordle', { limit: 3 });
+  const m3 = L.newMini('wordle', wordRng(L.WORDS5, 'crane'));
+  E.setTune('wordle', null);
+  for (const w of ['SLATE', 'MOUNT']) L.applyMove(m3, 'X', w);
+  assert.equal(L.applyMove(m3, 'X', 'BRICK').winner, 'O');
+  // an older square (no limit) plays on as it was
+  const old = L.newMini('wordle', wordRng(L.WORDS5, 'crane')); delete old.limit;
+  for (let k = 0; k < 7; k++) assert.equal(L.applyMove(old, 'X', 'SLATE').outcome, 'continue');
+  // through the match: the square is the other player's, and the flash says so
+  const st = L.newMatch(seq(0.5));
+  st.squares[0].mini = L.newMini('wordle', wordRng(L.WORDS5, 'crane'));
+  for (const w of ['SLATE', 'MOUNT', 'BRICK', 'FUDGY']) st.squares[0].mini.guesses.push({ by: 'X', word: w, marks: E.wordleMarks(w, 'CRANE') });
+  const r = L.playMove(st, 0, 'PLUMB');
+  assert.equal(r.ok, true);
+  assert.equal(st.squares[0].owner, 'O');
+  assert.equal(r.flash.kind, 'claim'); assert.equal(r.flash.winner, 'O'); assert.equal(r.flash.note, 'out'); assert.equal(r.flash.left, 0);
+});
+
+test('wordle: the computer\'s last guess is always a word that could be it, and it weighs the loss', () => {
+  const m = L.newMini('wordle', wordRng(L.WORDS5, 'crane'));
+  for (const w of ['SLATE', 'MOUNT', 'BRICK', 'FUDGY']) L.applyMove(m, 'X', w);
+  const pm = L.publicMini(m), cand = E.wordleCandidates(pm);
+  for (const level of ['easy', 'normal', 'hard']) {
+    const r = L.localBest(pm, 'X', cpuRng(), null, { level });
+    assert.ok(cand.includes(r.move), `${level}: ${r.move} is a candidate`);
+    assert.ok(r.qLose > 0 || cand.length === 1, `${level}: the last guess weighs the loss`);
+  }
+  assert.ok(E.needsOf(pm, 'X') >= 1);
+});

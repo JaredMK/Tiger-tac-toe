@@ -135,6 +135,9 @@ b.X { color: var(--x); } b.O { color: var(--o); }
 .twr i.g { background: var(--green); box-shadow: none; color: #fff; }
 .twr i.y { background: var(--yellow); box-shadow: none; color: #1a1a1a; }
 .twr i.x { background: var(--line); box-shadow: none; color: var(--muted); }
+.twp { display: flex; align-items: center; gap: 1.5cqw; margin-top: 1cqw; }
+.twp b { font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-weight: 400; font-size: 7cqw; line-height: 1; } .twp b.X { color: var(--x); } .twp b.O { color: #b88a00; margin-left: 2cqw; }
+.twp .hpips { gap: .8cqw; } .twp .hpips i { width: 3.6cqw; height: 3.6cqw; border-width: .6cqw; }
 .tw small, .thg small, .thilo small { font-size: 8cqw; color: var(--muted); font-weight: 700; line-height: 1.2; }
 .thg { display: flex; flex-direction: column; align-items: center; gap: 3cqw; }
 .thg .hw { display: flex; gap: 1.2cqw; --tw: min(12cqw, calc(82cqw / var(--n))); }
@@ -1129,6 +1132,8 @@ button.seg.X.on { background: var(--x); color: var(--paper); } .seg.O.on { backg
 .namebox { border: 3px dashed var(--ink); background: rgba(255, 255, 255, .5); font-weight: 400; padding-top: 3px; }
 .namebox i { color: var(--muted); font-family: 'Patrick Hand', cursive; }
 .warn { color: #b8301b; font-weight: 400; font-size: 16px; }
+.warn.info { color: var(--ink); }
+.setup-foot .warn { min-height: 1.3em; line-height: 1.3; text-align: center; }   /* (its line reserved: a warning or note never moves the foot) */
 .netbar { background: var(--o); color: var(--ink); border: 3.5px solid var(--ink) !important; box-shadow: 0 4px 0 var(--ink); border-radius: 16px 12px 18px 10px; font-weight: 400; font-size: 14px; padding-top: 10px; }
 .netbar.error { background: var(--x); color: var(--paper); }
 .netbar.note { background: var(--paper); color: var(--ink); }

@@ -18,9 +18,11 @@ import { endKind } from '../ui/screens/win.js';
  * Keeping it alive: iPhone takes a page's audio away (the page backgrounded, the phone locked, a call or a
  * notification's sound, Bluetooth headphones connecting) and leaves the context 'interrupted' or
  * 'suspended', or, worse, 'running' with its clock stopped, and a resume() often never brings it back. So
- * the context is checked before every sound (SND.ensure): one that is not running (or whose clock has
- * stopped) is replaced by a new one, at once on a tap (iPhone starts one only inside a gesture), and once
- * when the page comes back. While audio is down a small "Tap to restore sound" chip shows. Every change
+ * the context is checked before every sound (SND.ensure), and any tap anywhere brings it back silently: the
+ * tap's press resumes it, and if it is still down by the tap's end (or its clock has stopped, or it is
+ * closed) a new one is made inside the same tap (iPhone starts one only inside a gesture); once, too, when
+ * the page comes back. Only if a tap could not bring it back does a small "Tap to restore sound" chip show,
+ * and it stays until sound is actually running again. Every change
  * of state, and every failure, goes to the device's log and the match's (SND.report: net/tracking.js).
  * Echo's pads are played live, by oscillators (`live`), not from a rendered buffer.
  * Sounds start from the events they belong to (playFlash, stampFx, backSounds, showRemoteMove, ...),
@@ -179,7 +181,8 @@ SND.load = function () {
 };
 // ----- keeping audio alive (see the top) -----
 const AUDIO_CHECK_MS = 1500;                                       // while the page shows: is audio still up?
-let probe = null, madeTap = false, ran = false, triedAway = false, lastSaid = '';
+let probe = null, madeTap = false, ran = false, triedAway = false, lastSaid = '', resumedAt = -1e9, failCheck = 0, failed = false;
+const TAP_FAIL_MS = 1600;                                           // a tap's attempt not up by then: it failed (the chip)
 const nowMs = () => performance.now();
 const hidden = () => document.visibilityState === 'hidden';
 function say(msg) {                                                // a line for the logs (the same line twice in a row: once)
@@ -242,23 +245,29 @@ SND.ensure = function (gesture) {
     if (!makeCtx('first tap', true)) return false;
     kick(SND.ctx);
   } else if (!up() && !hidden()) {
-    const was = `${SND.ctx.state}${SND.ctx.state === 'running' ? ', clock stopped' : ''}`;
-    if (gesture) { if (makeCtx(`tap, was ${was}`, true)) kick(SND.ctx); }
-    else if (!triedAway) { triedAway = true; if (makeCtx(`check, was ${was}`)) kick(SND.ctx); }
+    const c = SND.ctx, was = `${c.state}${c.state === 'running' ? ', clock stopped' : ''}`;
+    if (gesture) {                                                   // a tap: resume first; still down by the tap's next event (or past resuming), a new one
+      if (c.state === 'running' || c.state === 'closed' || nowMs() - resumedAt < 1000) { if (makeCtx(`tap, was ${was}`, true)) kick(SND.ctx); }
+      else { resumedAt = nowMs(); say(`resume (tap, was ${was})`); kick(c); }
+      clearTimeout(failCheck);
+      failCheck = setTimeout(() => { if (!up() && !hidden() && !SND.muted && SND.ever) { failed = true; say('a tap did not restore it'); refresh(false); } }, TAP_FAIL_MS);
+    } else if (!triedAway) { triedAway = true; if (makeCtx(`check, was ${was}`)) kick(SND.ctx); }
   }
   const ok = up();
-  if (ok) { triedAway = false; if (!SND.ever) SND.ever = true; }
+  if (ok) { triedAway = false; failed = false; if (!SND.ever) SND.ever = true; }
   refresh(ok);
   return ok;
 };
 // The first tap (or key) unlocks audio, and every tap after it brings it back if it is down.
 SND.unlock = function () { SND.ensure(true); };
-// The "Tap to restore sound" chip: shown while audio is down (after it has once been up, sound on, the
-// page showing). Fixed over the page: nothing moves when it comes and goes. Its tap is the gesture.
+// The "Tap to restore sound" chip: shown only once a tap has failed to bring audio back (after it has once
+// been up, sound on, the page showing), until it is running again. Fixed over the page: nothing moves when it
+// comes and goes. Its tap is another gesture to try with.
 let chip = null, chipOff = 0;
 function refresh(ok) {
   if (ok === undefined) ok = up();
-  const down = !ok && SND.ever && !SND.muted && !hidden();
+  if (ok) failed = false;
+  const down = failed && !ok && SND.ever && !SND.muted && !hidden();
   if (down !== SND.down) { SND.down = down; say(down ? `down (${SND.ctx ? SND.ctx.state : 'none'})` : 'restored'); }
   if (!chip) return;
   clearTimeout(chipOff);

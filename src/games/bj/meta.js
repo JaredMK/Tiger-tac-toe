@@ -6,6 +6,7 @@ export const category = 'luck';   // the game's kind, shown in its "?" explainer
 export const target = 'own';   // what the players share, in its "?" label: 'shared' (one board for both), 'own' (each player's own progress) or 'course' (one course for both, each their own distance)
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Blackjack', play: 'Hit or stand. Beat the dealer without going over 21. Tie? Play another hand.', win: 'First to {goal} wins.' };   // ({goal}: its setting, TUNE below)
+export const scExplainer = { name: 'Blackjack', play: 'Hit or stand. Beat the dealer without going over 21. Both playing here in a round face the same dealer hand. Tie? Play another hand.', win: 'First to {goal} wins.' };   // in Super Chaos
 // Its settings (the admin's Mini-game Settings; core/tune.js): read with tune(mini).
 export const TUNE = [
   { k: 'goal', label: 'Hands to win', def: 3, min: 1, max: 4, step: 1, group: 'Rules' },

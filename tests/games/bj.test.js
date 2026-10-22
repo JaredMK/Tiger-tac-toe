@@ -218,3 +218,40 @@ test('blackjack: the Hard computer hits or stands by the chance of winning the h
   for (let k = 0; k < 5; k++) { const t1 = performance.now(); at(['7S', '5H'], ['2C', '5C', '8C', 'TC', 'AC'][k]); assert.ok(performance.now() - t1 < 60); }
   assert.equal(at(['3S', '9H'], '3C', { tune: null }).move, 'stand'); assert.equal(A.best(E.publicMini(inHand('X', ['3S', '9H'], '3C', 'TD', ['2S'])), 'X', lcg(1), {}, {}).move, 'hit', 'the usual computer: basic strategy, as before');
 });
+
+test('bj: Super Chaos: both in the square in one round share one dealer hand (played out once), each with their own cards from the same shoe; a push deals again individually', () => {
+  const R = require('../../src/games/bj/rules.js');
+  let shared = 0, pushes = 0;
+  for (let k = 0; k < 200; k++) {
+    const rng = E.makeRng('bjsc' + k), m = E.newMini('bj', rng);
+    R.scRound(m, rng);
+    const shoe = m.shoe, all = [shoe.up, shoe.hole, ...shoe.dealer, ...shoe.X, ...shoe.O];
+    assert.equal(new Set(all).size, all.length, 'one shoe: no card twice');
+    const fx = JSON.parse(JSON.stringify(m)), fo = JSON.parse(JSON.stringify(m));
+    const rx = R.scApply(fx, 'X', 'stand', E.makeRng('x' + k)), ro = R.scApply(fo, 'O', 'stand', E.makeRng('o' + k));
+    assert.ok(rx.ok && ro.ok);
+    const first = f => (f.pushed && f.pushed.length ? f.pushed[0] : f.last);   // the hand dealt from the shoe (a push shows it before the new deal)
+    const hx = first(fx), ho = first(fo);
+    assert.deepEqual(hx.dealer, ho.dealer, 'the same dealer hand for both');
+    assert.deepEqual(hx.dealer.slice(0, 2), [shoe.up, shoe.hole]);
+    assert.ok(R.bjTotal(hx.dealer).total >= 17, 'played out');
+    assert.deepEqual(hx.cards, shoe.X.slice(0, 2)); assert.deepEqual(ho.cards, shoe.O.slice(0, 2), 'each their own cards');
+    shared++;
+    if (fx.pushed && fx.pushed.length) {
+      pushes++;
+      if (fx.hand) assert.ok(!fx.hand.shared, 'the push deals again from a deck of its own');
+    }
+  }
+  assert.equal(shared, 200);
+  // a hit draws from the player's own run, never the other's or the dealer's
+  const rng = E.makeRng('bjhit'), m = E.newMini('bj', rng); R.scRound(m, rng);
+  let tries = 0; while (R.bjNatural(m.shoe.X.slice(0, 2)) && tries++ < 20) R.scRound(m, rng);
+  const r1 = R.scApply(m, 'X', 'deal', rng); assert.equal(r1.again, true);
+  const r2 = R.scApply(m, 'X', 'hit', rng); assert.ok(r2.ok);
+  const cards = m.hand ? m.hand.cards : (m.pushed && m.pushed.length ? m.pushed[0] : m.last).cards;
+  assert.equal(cards[2], m.shoe.X[2], 'the hit is the next card of X\'s own run');
+  // the shoe stays hidden from the board
+  const sec = R.secret(m), h = JSON.parse(JSON.stringify(m)); R.hide(h);
+  assert.ok(sec && sec.shoe); assert.equal(h.shoe, undefined); assert.equal(h.dealerDeck, undefined);
+  console.log(`${shared} rounds shared a dealer hand (${pushes} pushed and dealt again)`);
+});

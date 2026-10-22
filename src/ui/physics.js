@@ -170,7 +170,7 @@ function drawLocked(g, from, shot) {
   const hx = X + Math.sin(shot.aim) * len, hy = Y - Math.cos(shot.aim) * len;
   c.save(); c.lineWidth = 3; c.strokeStyle = 'rgba(255,255,255,.9)';
   c.beginPath(); c.moveTo(X, Y); c.lineTo(hx, hy); c.stroke();
-  c.beginPath(); c.moveTo(hx, hy); c.lineTo(hx - Math.sin(shot.aim + 2.6) * 10, hy + Math.cos(shot.aim + 2.6) * 10); c.lineTo(hx - Math.sin(shot.aim - 2.6) * 10, hy + Math.cos(shot.aim - 2.6) * 10); c.closePath(); c.fillStyle = '#fff'; c.fill();
+  c.beginPath(); c.moveTo(hx, hy); c.lineTo(hx + Math.sin(shot.aim + 2.6) * 10, hy - Math.cos(shot.aim + 2.6) * 10); c.lineTo(hx + Math.sin(shot.aim - 2.6) * 10, hy - Math.cos(shot.aim - 2.6) * 10); c.closePath(); c.fillStyle = '#fff'; c.fill();
   c.restore();
 }
 // ---- the drawing: bold ink outlines and flat colours, like the rest of the game ----
@@ -193,18 +193,29 @@ function drawAim(g, mini, pos, dr) {
   if (!from) return;
   const shot = dr.shot ? Object.assign({ px: dr.shot.power * PHYS_PULL * g.H }, dr.shot) : physPull(dr);   // (a replay: the shot as the other side had it lined up)
   const X = g.X(from[0]), Y = g.Y(from[1]), len = (0.12 + 0.3 * shot.power) * S.h * g.k;
+  if (dr.scene) { const r = c.canvas.getBoundingClientRect(); dr.ball = [r.left + X, r.top + Y]; }   // (where the ball is on the screen: a pull back to it is no shot)
+  if (dr.scene && physCancel(dr, shot)) {                          // back at the ball, or hardly pulled: let go here and nothing is played (a ring says so)
+    c.save(); c.setLineDash([4, 4]); c.lineWidth = 2.5; c.strokeStyle = 'rgba(255,255,255,.9)';
+    c.beginPath(); c.arc(X, Y, PHYS_CANCEL_PX, 0, Math.PI * 2); c.stroke(); c.restore();
+    return;
+  }
   c.save();
   c.setLineDash([6, 6]); c.lineWidth = 3; c.strokeStyle = 'rgba(255,255,255,.9)';
   c.beginPath(); c.moveTo(X, Y); c.lineTo(X + Math.sin(shot.aim) * len, Y - Math.cos(shot.aim) * len); c.stroke();
   c.setLineDash([]);
   c.beginPath(); c.moveTo(X, Y); c.lineTo(X - Math.sin(shot.aim) * shot.px, Y + Math.cos(shot.aim) * shot.px); c.lineWidth = 2; c.strokeStyle = 'rgba(0,0,0,.35)'; c.stroke();   // the band
   const hx = X + Math.sin(shot.aim) * len, hy = Y - Math.cos(shot.aim) * len;             // the arrow head
-  c.beginPath(); c.moveTo(hx, hy); c.lineTo(hx - Math.sin(shot.aim + 2.6) * 10, hy + Math.cos(shot.aim + 2.6) * 10); c.lineTo(hx - Math.sin(shot.aim - 2.6) * 10, hy + Math.cos(shot.aim - 2.6) * 10); c.closePath(); c.fillStyle = '#fff'; c.fill();
+  c.beginPath(); c.moveTo(hx, hy); c.lineTo(hx + Math.sin(shot.aim + 2.6) * 10, hy - Math.cos(shot.aim + 2.6) * 10); c.lineTo(hx + Math.sin(shot.aim - 2.6) * 10, hy - Math.cos(shot.aim - 2.6) * 10); c.closePath(); c.fillStyle = '#fff'; c.fill();
   const mw = 12, mh = Math.min(g.H * 0.5, 160), mx = g.W - mw - 10, my = (g.H - mh) / 2;   // the meter
   rr(c, mx, my, mw, mh, 6); outlined(c, 'rgba(255,255,255,.5)', P.ink, 2);
   const fill = mh * shot.power, hue = 120 - 120 * shot.power;
   if (fill > 2) { rr(c, mx + 2, my + mh - fill + 1, mw - 4, fill - 2, 4); c.fillStyle = `hsl(${hue} 80% 48%)`; c.fill(); }
   c.restore();
+}
+// A pull let go back at the ball (within PHYS_CANCEL_PX of it on the screen) or hardly pulled at all: no shot.
+const PHYS_CANCEL_PX = 30, PHYS_CANCEL_POWER = 0.05;
+function physCancel(dr, shot) {
+  return shot.power < PHYS_CANCEL_POWER || (!!dr.ball && Math.hypot(dr.x - dr.ball[0], dr.y - dr.ball[1]) < PHYS_CANCEL_PX);
 }
 function physFrom(mini, p, pos) { return mini.type === 'golf' ? pos[p] : mini.type === 'pool' ? pos.cue : pos.ball || PHYSICS.lib.BOWL.start; }
 // The pull as a shot: the aim away from the finger (0 straight up the table), the power from the length.
@@ -262,8 +273,10 @@ export function physicsSounds(f, add, won, mini, last) {   // the recording's ev
   return;
 }
 
+let swallowAt = -1e9;
 // Its listeners: main.js calls this once, in the page's original order of listeners.
 export function init() {
+  document.addEventListener('click', e => { if (performance.now() - swallowAt < 400) { swallowAt = -1e9; e.stopPropagation(); e.preventDefault(); } }, true);
   app.addEventListener('pointerdown', e => {
     const scene = e.target.closest && e.target.closest('[data-phys="scene"]');
     if (!scene || !scene.dataset.live || scene.classList.contains('bowling') || physDraft || blocked() || state.flash || state.done) return;
@@ -284,7 +297,10 @@ export function init() {
     dr.x = e.clientX; dr.y = e.clientY;
     const shot = physPull(dr);
     physDraft = null;
-    if (shot.power < 0.05 || dr.sq !== state.zoom) { physPaint(); return; }           // a tap, or a pull too short to count: nothing
+    try { dr.scene.releasePointerCapture(e.pointerId); } catch (err) { /* released already */ }
+    const at = document.elementFromPoint(e.clientX, e.clientY), back = at && at.closest && at.closest('[data-act="back"]');
+    if (back) { physPaint(); if (!back.disabled) { back.click(); swallowAt = performance.now(); } return; }   // let go on the Board button: no shot, and back to the board (the finger's own click after it lands on nothing)
+    if (physCancel(dr, shot) || dr.sq !== state.zoom) { physPaint(); repNote('drag', 'a=0,p=0'); return; }   // a tap, a pull too short, or pulled back to the ball: nothing
     const m = physShot({ aim: shot.aim, power: shot.power });
     repNote('aim', `a=${m.aim},p=${m.power}`);
     attemptMove(m);
