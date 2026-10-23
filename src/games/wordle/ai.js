@@ -4,6 +4,17 @@ import { tune } from '../../core/tune.js';
 import { wordleCandidates, wordleLeft, wordleMarks } from './rules.js';
 import { WORDS5 } from './words.js';
 
+// Never scripted: the opening is drawn from strong starting words, and later guesses from the best few,
+// weighted toward the best (WVARY.weights, best first).
+export const WVARY = { open: 'SLATE CRANE TRACE CRATE SLANT STARE ROAST RAISE ARISE IRATE LATER ALERT SAINT STALE SNARE SHARE CARET PARSE TRAIN LEAST TEARS STEAL SAUCE HEART PLATE GRATE AROSE SOARE CRONE SALET STORE STONE'.split(' '), weights: [0.5, 0.25, 0.15, 0.1] };
+// one of the best few of a list sorted best first (a weighted draw)
+export function wordleTop(sorted, rng) {
+  const k = Math.min(sorted.length, WVARY.weights.length);
+  let tot = 0; for (let i = 0; i < k; i++) tot += WVARY.weights[i];
+  let r = rng() * tot;
+  for (let i = 0; i < k; i++) { r -= WVARY.weights[i]; if (r < 0) return sorted[i]; }
+  return sorted[0];
+}
 export function needs(pm, p) {
   const c = wordleCandidates(pm).length, n = c <= 1 ? 1 : Math.min((c + 1) / 2, 1 + Math.log(c) / Math.log(6)), left = wordleLeft(pm, p);
   return n > left + 0.001 ? Math.max(n, left + 2) : n;   // more than its guesses left: a long shot
@@ -21,24 +32,24 @@ function bestWord(pm, me, rng, style, ctx) {
   if (cand.length === 1) return { move: cand[0], q: 1, shared: true };
   const miss = tune(pm).miss;
   if (miss && rng() * 100 < miss) { const w = WORDS5[randInt(rng, WORDS5.length)].toUpperCase(); return { move: w, q: cand.includes(w) ? 1 / cand.length : 0, shared: true }; }   // a slip: a word at random, clues ignored
-  if (ctx && ctx.level === 'hard') return wordleHard(pm, cand, ctx);
-  let best = cand[0];
-  if (cand.length > 24) {                                      // many left: the guess with the most common letters
+  if (!pm.guesses.length) { const w = WVARY.open[randInt(rng, WVARY.open.length)]; return { move: w, q: cand.includes(w) ? 1 / cand.length : 0, shared: true }; }   // the opening
+  if (ctx && ctx.level === 'hard') return wordleHard(pm, cand, ctx, rng);
+  let scored;
+  if (cand.length > 24) {                                      // many left: the guesses with the most common letters
     const freq = {};
     for (const w of cand) for (const ch of new Set(w)) freq[ch] = (freq[ch] || 0) + 1;
-    let top = -1;
-    for (const w of cand) { let sc = 0; for (const ch of new Set(w)) sc += freq[ch]; if (sc > top) { top = sc; best = w; } }
-  } else {                                                     // few left: the guess that splits them best
-    let bestSplit = Infinity;
-    for (const g of cand) {
+    scored = cand.map(w => { let sc = 0; for (const ch of new Set(w)) sc += freq[ch]; return { w, v: sc }; });
+  } else {                                                     // few left: the guesses that split them best
+    scored = cand.map(g => {
       const groups = new Map();
       for (const w of cand) if (w !== g) { const k = wordleMarks(g, w).join(''); groups.set(k, (groups.get(k) || 0) + 1); }
       let split = 0;
       for (const n of groups.values()) split += n * n;
-      if (split < bestSplit) { bestSplit = split; best = g; }
-    }
+      return { w: g, v: -split };
+    });
   }
-  return { move: best, q: 1 / cand.length, shared: true };
+  scored.sort((a, b) => b.v - a.v);
+  return { move: wordleTop(scored, rng).w, q: 1 / cand.length, shared: true };
 }
 
 // ---- Hard: the race for the word ----
@@ -52,7 +63,7 @@ function bestWord(pm, me, rng, style, ctx) {
 // nothing is a pass: the other side faces the same set), taken when it beats the best candidate clearly, and
 // never twice running (two sides passing would never end). With too many left to table (over 80), the candidate with the fewest common letters: the word that gives
 // least away.
-const WH = { exact: 10, rootAll: 12, table: 80, work: 1.2e5, depth: 12, margin: 0.02 };
+const WH = { exact: 10, rootAll: 12, table: 80, work: 1.2e5, depth: 12, margin: 0.02, near: 0.04 };   // near: how far below the best a guess may be and still be drawn
 const LEFT = new Uint8Array(26);
 function markCode(g, w) {                                        // wordleMarks as a number, base 3 (x 0, y 1, g 2), without the arrays
   LEFT.fill(0);
@@ -61,14 +72,13 @@ function markCode(g, w) {                                        // wordleMarks 
   for (let i = 0; i < 5; i++) { const c = g.charCodeAt(i); k = k * 3 + (c === w.charCodeAt(i) ? 2 : LEFT[c - 65] > 0 ? (LEFT[c - 65]--, 1) : 0); }
   return k;
 }
-function wordleHard(pm, cand, ctx) {
+function wordleHard(pm, cand, ctx, rng) {
   const n = cand.length;
   if (n > WH.table) {
     const freq = {};
     for (const w of cand) for (const ch of new Set(w)) freq[ch] = (freq[ch] || 0) + 1;
-    let pick = cand[0], low = Infinity;
-    for (const w of cand) { let sc = 0; for (const ch of new Set(w)) sc += freq[ch]; if (sc < low) { low = sc; pick = w; } }
-    return { move: pick, q: 1 / n, shared: true };
+    const scored = cand.map(w => { let sc = 0; for (const ch of new Set(w)) sc += freq[ch]; return { w, v: -sc }; }).sort((a, b) => b.v - a.v);
+    return { move: wordleTop(scored, rng).w, q: 1 / n, shared: true };
   }
   const mk = new Uint8Array(n * n);                              // the colouring of candidate j guessed as i
   for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) mk[i * n + j] = i === j ? 242 : markCode(cand[i], cand[j]);
@@ -98,10 +108,11 @@ function wordleHard(pm, cand, ctx) {
   const C = cand.map((_, i) => i);
   let move = cand[0], top = 0, depth = 0;
   for (let d = 1; d <= WH.depth && !stop; d++) {                 // the candidates as guesses, deeper and deeper
-    let best = -1, pick = null;
-    for (const g of C) { const v = split(C, c => mk[g * n + c], d - 1, true); if (stop) break; if (v > best) { best = v; pick = cand[g]; } }
+    const vals = [];
+    for (const g of C) { const v = split(C, c => mk[g * n + c], d - 1, true); if (stop) break; vals.push({ w: cand[g], v }); }
     if (stop) break;
-    move = pick; top = best; depth = d;
+    vals.sort((a, b) => b.v - a.v);
+    top = vals[0].v; move = wordleTop(vals.filter(x => x.v >= top - WH.near), rng).w; depth = d;   // one of the best few (near the top)
     if (n <= WH.exact) break;
   }
   if (n <= WH.rootAll && depth) {                                // every other answer word, at the depth reached

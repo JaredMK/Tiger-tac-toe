@@ -7,7 +7,7 @@
 // candidate whose playouts win the match most often is the move. Pure: the clock, where there is one, is
 // passed in (until: the ms left), every random choice from the rng.
 import { LINES } from './board.js';
-import { AI, needsOf, squareValue, winChance } from './ai.js';
+import { AI, catchUp, needsOf, squareValue, winChance } from './ai.js';
 import { publicMini } from './minis.js';
 import { other } from './util.js';
 
@@ -74,7 +74,7 @@ function choose(own, need, vals, p, rng, w) {
     const v = vals[i];
     if (v >= AI.win && a <= 1) return i;                          // the match, now
     const gain = a === Infinity ? 0.01 : winChance(Math.max(0.5, a - 1), b) - winChance(a, b);
-    const s = v * Math.max(gain, 0.01);
+    const s = v * Math.max(gain, 0.01) * catchUp(a, b, v);
     OPTS[n] = i; SS[n] = s; sum += s;
     if (top < 0 || s > SS[top]) top = n;
     n++;

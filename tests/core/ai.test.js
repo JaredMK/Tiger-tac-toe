@@ -81,3 +81,21 @@ test('levels: a whole match of Hard against Normal plays out legally, every game
   }
   assert.ok(st.winner, `finishes (${n} moves)`);
 });
+test('catching up: a square the other side is well ahead in, with little chance of catching up, gives way to one still open; not when it would win them the match and can still be stopped', () => {
+  assert.equal(E.catchUp(2, 2, 5), 1, 'level: as it was');
+  assert.equal(E.catchUp(5, 1, 5), E.CATCH.factor, 'well behind: little chance');
+  assert.equal(E.catchUp(3, 2, 5), 1, 'one move behind: still a race');
+  assert.equal(E.catchUp(4.2, 1, E.AI.block + 1), 1, 'their match-winning square, still stoppable');
+  assert.equal(E.catchUp(20, 1, E.AI.block + 1), E.CATCH.factor, 'theirs, but out of reach');
+  const pig = (x, o) => Object.assign(E.newMini('pig', lcg(9)), { bank: { X: x, O: o } });
+  for (const level of ['easy', 'normal', 'hard']) {
+    const behind = board([pig(0, 0), null, null, null, pig(13, 42)], [], 'X');   // the centre: O needs one more turn, X four
+    for (let i = 0; i < 9; i++) if (i !== 0 && i !== 4) behind.squares[i].owner = null;
+    behind.squares.forEach((s, i) => { if (i !== 0 && i !== 4) s.mini = pig(0, 0); });
+    const go = E.cpuMove(behind, lcg(5), null, { level: level === 'easy' ? 'normal' : level });
+    assert.notEqual(go.square, 4, `${level}: builds elsewhere, not in the centre O has nearly won`);
+  }
+  const threat = board([null, pig(0, 0), null, null, pig(13, 42), null, null, pig(0, 0)], [null, 'O', null, null, null, null, null, 'O'], 'X');
+  threat.squares.forEach((s, i) => { if (![1, 4, 7].includes(i)) s.mini = pig(0, 0); });
+  assert.equal(E.cpuMove(threat, lcg(5), null, { level: 'normal' }).square, 4, 'the centre would win O the match: it fights for it');
+});

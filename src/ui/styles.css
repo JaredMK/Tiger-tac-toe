@@ -1627,8 +1627,10 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .pval { position: absolute; top: 0; height: 100%; width: 10%; margin-left: -5%; display: grid; place-items: center; font: 400 clamp(12px, 4.2vw, 18px)/1 'Luckiest Guy', sans-serif; padding-top: 2px; color: var(--ink); }
 .pbonus { position: absolute; width: 7%; aspect-ratio: 1; margin: -3.5% 0 0 -3.5%; border-radius: 50%; background: #f6c21b; border: 2.5px solid var(--ink); box-shadow: 0 0 0 3px rgba(246, 194, 27, .45); display: grid; place-items: center; z-index: 1; pointer-events: none; }
 .pbonus b { position: absolute; bottom: 105%; left: 50%; transform: translateX(-50%); font: 400 clamp(10px, 3.2vw, 13px)/1 'Luckiest Guy', sans-serif; color: #b07d00; white-space: nowrap; text-shadow: 0 0 2px var(--paper), 0 0 2px var(--paper); }
-.pbonus.hit { animation: tuntil 1ms var(--u, 0ms) both, bonushit .5s var(--t, 0ms) both; }
-@keyframes bonushit { 0% { filter: none; } 30% { filter: brightness(1.6); transform: scale(1.5); } 100% { filter: brightness(1.2); transform: none; } }
+.pbonus i { display: none; font: 700 clamp(9px, 2.8vw, 12px)/1 system-ui, sans-serif; font-style: normal; color: var(--ink); }
+.pbonus.hit { animation: bonushit .5s var(--t, 0ms) both; }   /* touched: it flashes, then stays as a spent peg, ticked */
+.pbonus.hit i { display: block; animation: tfrom 1ms var(--t, 0ms) both; }
+@keyframes bonushit { 0% { filter: none; } 30% { filter: brightness(1.6); transform: scale(1.5); } 100% { background: #e3dcc4; box-shadow: none; transform: none; } }
 .pplus { position: absolute; transform: translate(-50%, -50%); font: 400 clamp(14px, 4.6vw, 20px)/1 'Luckiest Guy', sans-serif; color: #b07d00; text-shadow: 0 0 3px var(--paper), 0 0 3px var(--paper); pointer-events: none; z-index: 2; animation: plusup .9s var(--t, 0ms) ease-out both; }
 .pplus.pbig { color: var(--green); font-size: clamp(18px, 6vw, 26px); }
 @keyframes plusup { from { opacity: 0; translate: 0 6px; } 15% { opacity: 1; } 70% { opacity: 1; } to { opacity: 0; translate: 0 -22px; } }

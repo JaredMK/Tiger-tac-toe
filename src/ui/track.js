@@ -1,7 +1,7 @@
 // Race tracks (Snakes and Ladders, Candy Race, Bump, the Dice race): the board and the tokens' hops.
 import { PLAY } from '../core/timer.js';
 import { other } from '../core/util.js';
-import { BUMP, bumpHops, bumpLead } from '../games/bump/rules.js';
+import { BUMP, BUMP_KNOCK, bumpHops } from '../games/bump/rules.js';
 import { CANDY } from '../games/candy/rules.js';
 import { DICE_GOAL, diceSlot } from '../games/dice/rules.js';
 import { SNL } from '../games/snakes/rules.js';
@@ -142,7 +142,7 @@ export function hopToken() {
 // Super Chaos's round end in Bump: both pieces hopping at the same time from where the round began (both
 // moved here), then any piece knocked from where it landed (side by side, sharing the space) back Home.
 function bumpRoundEnd(f) {
-  const spec = BUMP_SPEC, scr = f.scr, moves = scr.moves || {}, lead = bumpLead(scr), kAt = lead + bumpHops(scr) * HOP_MS;
+  const spec = BUMP_SPEC, scr = f.scr, moves = scr.moves || {}, lead = BUMP_KNOCK.lead, kAt = lead + bumpHops(scr) * HOP_MS;
   const side = p => (p === 'X' ? -2.4 : 2.4), pt = (slot, dx) => { const [x, y] = spec.at(slot - 1); return [x + dx, y]; };
   for (const p of ['X', 'O']) {
     const tok = app.querySelector(`.gwrap .track .tok.${p}`), mv = moves[p], kn = scr.knocked.includes(p), o = other(p);

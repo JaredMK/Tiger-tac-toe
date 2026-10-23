@@ -40,6 +40,18 @@ export function winChance(a, b) {
   if (b === Infinity) return 1;
   return b / (a + b);
 }
+// A square the other side is well ahead in: when it leads by CATCH.lead moves or more and the computer's
+// chance of catching up (its chance of the square after its move) is under CATCH.odds, the square counts
+// CATCH.factor of its worth, so the computer builds a lead elsewhere. Not when the square would win the other
+// side the match (its worth includes the block) and the computer can still stop it (a chance of CATCH.stop or more).
+export const CATCH = { lead: 2, odds: 0.25, stop: 0.12, factor: 0.2 };
+export function catchUp(a, b, value) {
+  if (!(a - b >= CATCH.lead)) return 1;                          // (Infinity - Infinity: a dead square, not a race)
+  const chance = winChance(Math.max(0.5, a - 1), b);
+  if (chance >= CATCH.odds) return 1;
+  if (value >= AI.block && chance >= CATCH.stop) return 1;
+  return CATCH.factor;
+}
 export function localBest(pm, me, rng, style, ctx) {
   const game = aiOf(pm.type);
   if (game.best) return game.best(pm, me, rng, style, ctx);
@@ -120,7 +132,7 @@ export function cpuMove(state, rng, style, opts) {
     if (pm.type === 'echo' && local.move && local.move.echo) local.move = cpuEcho(state.squares[i].mini, me, local.move, rng);
     if (value >= AI.win && (local.win || local.q >= 1)) { best = { square: i, move: local.move, score: Infinity, value, gain: 1 }; return done(); }
     const gain = moveGain(pm, me, local);
-    const score = value * Math.max(gain, 0.01);
+    const score = value * Math.max(gain, 0.01) * catchUp(needsOf(pm, me), needsOf(pm, other(me)), value);
     cands.push({ square: i, pm, local, value, gain, score });
     if (!best || score > best.score) best = { square: i, move: local.move, score, value, gain };
   }

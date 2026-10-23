@@ -71,11 +71,11 @@ function plinkoTable(mini, a, o) {
   const bins = Array.from({ length: PLINKO.slots }, (_, b) => { const [bx] = plinkoXY(b * 2, 0), lit = pl && pl.bin === b;
     return `<rect ${lateAt('bin v' + mini.vals[b], lit ? inBin : null, 'lit')} x="${(bx - w / 2).toFixed(1)}" y="${PK.bottom}" width="${w.toFixed(1)}" height="12" rx="2"/>`; }).join('');
   const vals = mini.vals.map((v, b) => `<span class="pval v${v}" style="left:${plinkoXY(b * 2, 0)[0].toFixed(1)}%">${v}</span>`).join('');
-  const peg = (q, cls, extra = '') => { const [x, y] = plinkoXY(q.x, q.r); return `<div ${cls} style="left:${x.toFixed(1)}%;top:${y.toFixed(1)}%${extra}" aria-label="Bonus peg: +${bp}"><b>+${bp}</b></div>`; };
+  const peg = (q, cls, extra = '', label = `Bonus peg: +${bp}`) => { const [x, y] = plinkoXY(q.x, q.r); return `<div ${cls} style="left:${x.toFixed(1)}%;top:${y.toFixed(1)}%${extra}" aria-label="${label}"><b>+${bp}</b><i>✓</i></div>`; };
   let bonus = '';
-  if (pl && pl.hit) {                                              // the bonus peg touched: it lights and pops +2 then; the next one shows as the chip lands
+  if (pl && pl.hit) {                                              // the bonus peg touched: it lights and pops +2, then stays, marked hit, for the rest of the turn (the next one shows from the next turn)
     const th = pl.bonus.r * PLINKO.step;
-    bonus = peg(pl.bonus, 'class="pbonus hit"', `;--u:${inBin}ms;--t:${th}ms`) + (mini.bonus ? peg(mini.bonus, 'class="pbonus appear"', `;--t:${inBin}ms`) : '');
+    bonus = peg(pl.bonus, 'class="pbonus hit"', `;--t:${th}ms`, 'Bonus peg: hit');
   } else if (mini.bonus) bonus = peg(mini.bonus, 'class="pbonus"');
   let chip = '', style = '';
   if (pl) {                                                      // the drop: bounces peg to peg along the server's path, timed from the move

@@ -176,52 +176,50 @@ test('Super Chaos Sniff: both dogs walked in the same square: the two steps play
   human(s2, 0, ['NW']);
   assert.deepEqual(resolve(s2).resolve, []);
 });
-test('Super Chaos Bump: a spin is locked in and drawn when the round ends; both spinning here move together (the same space sends both home); a lone spinner plays alone and bumps as usual', () => {
-  const seq = (...v) => { let k = 0; return () => v[Math.min(k++, v.length - 1)]; };   // the round's draws in turn (0.9: a 3, 0.5: a 2)
-  // both spin here: X from 2 spins 3, O from 3 spins 2: both on 5, both home
-  const st = round([bump({ X: 2, O: 3 })], { square: 0, moves: ['spin'] });
-  const r0 = E.playMove(st, 0, 'spin', E.makeRng('h'));
-  assert.deepEqual([r0.flash.locked, r0.flash.waits, r0.flash.spin], [true, true, undefined], 'locked in: no number yet, the player waits in the square');
-  assert.deepEqual(st.squares[0].mini.pos, { X: 2, O: 3 }, 'no piece moves during the round');
-  E.endFlash(st);
-  assert.deepEqual([st.screen, st.zoom], ['mini', 0], 'still in the square');
-  const r1 = E.chaosResolve(st, seq(0.9, 0.5));
-  assert.deepEqual(st.squares[0].mini.pos, { X: 0, O: 0 });
-  assert.deepEqual(r1.resolve.map(x => [x.square, x.joint, x.whole]), [[0, true, true]]);
+test('Super Chaos Bump: a spin plays at once (own piece only, nothing knocked yet); the round\'s end settles the knocks; both spinning here replay together from where the round began', () => {
+  // X from 2 spins 3 (to 5), O from 3 spins 2 (to 5): both home
+  const st = round([bump({ X: 2, O: 3 })], { square: 0, moves: ['spin'], rng: fixed(0.5) });
+  const r0 = E.playMove(st, 0, 'spin', fixed(0.9));
+  assert.deepEqual([r0.flash.spin, r0.flash.from, r0.flash.to, !!r0.flash.waits], [3, 2, 5, false], 'the spin is drawn and played at once; nobody waits in the square');
+  assert.deepEqual(st.squares[0].mini.pos, { X: 5, O: 3 }, 'the player sees only their own piece move');
+  st.flash = null; E.leaveSquare(st);
+  const r1 = resolve(st);
+  assert.deepEqual(st.squares[0].mini.pos, { X: 0, O: 0 }, 'the same space: both home');
+  assert.deepEqual(r1.resolve.map(x => [x.square, x.joint, x.whole]), [[0, true, false]]);
   assert.deepEqual(r1.resolve[0].flash.scr, { knocked: ['X', 'O'], at: { X: 5, O: 5 }, moves: { X: { from: 2, to: 5, spin: 3 }, O: { from: 3, to: 5, spin: 2 } } });
-  assert.deepEqual(r1.pre[0].pos, { X: 2, O: 3 }, 'played from where the round began');
-  assert.deepEqual(E.scRecapOrder(r1, 0, r1.cpu).map(o => o.kind), ['resolve'], 'together in the player\'s own square, no replay after');
+  assert.deepEqual(r1.pre[0].pos, { X: 2, O: 3 }, 'both pieces from where the round began');
+  assert.deepEqual(E.scRecapOrder(r1, 0, r1.cpu).map(o => o.kind), ['resolve'], 'both moving together is the replay: no other after it');
   // both spin here without meeting: both hop at once, nobody knocked
-  const s2 = round([bump({ X: 2, O: 5 })], { square: 0, moves: ['spin'] });
-  human(s2, 0, ['spin']);
-  const r2 = E.chaosResolve(s2, seq(0.9, 0.5));
+  const s2 = round([bump({ X: 2, O: 5 })], { square: 0, moves: ['spin'], rng: fixed(0.5) });
+  human(s2, 0, ['spin'], fixed(0.9));
+  const r2 = resolve(s2);
   assert.deepEqual(r2.resolve.map(x => [x.joint, x.flash.scr.knocked, x.flash.scr.moves]), [[true, [], { X: { from: 2, to: 5, spin: 3 }, O: { from: 5, to: 7, spin: 2 } }]]);
   assert.deepEqual(s2.squares[0].mini.pos, { X: 5, O: 7 });
-  // the computer elsewhere: X alone lands on O's piece and sends it home; its spin plays alone in its square
+  // the computer elsewhere: X lands on O's piece; O stays put until the round ends, then goes home
   const s3 = round([bump({ X: 2, O: 5 })], { square: 1, moves: [3] });
-  human(s3, 0, ['spin']);
-  const r3 = E.chaosResolve(s3, seq(0.9));
-  assert.deepEqual(s3.squares[0].mini.pos, { X: 5, O: 0 }, 'O knocked home at the round\'s end');
-  assert.deepEqual(r3.resolve.map(x => [x.square, x.joint, x.flash.scr.knocked, x.flash.by, x.flash.scr.moves]), [[0, false, ['O'], 'X', { X: { from: 2, to: 5, spin: 3 } }]]);
-  assert.deepEqual(r3.pre[0].pos, { X: 2, O: 5 });
-  // a lone spin that meets nobody still plays at the round's end (nothing of it before)
+  human(s3, 0, ['spin'], fixed(0.9));
+  assert.deepEqual([s3.squares[0].mini.pos, s3.squares[0].mini.last.bumped], [{ X: 5, O: 5 }, false], 'both on one space, nobody knocked yet');
+  const r3 = resolve(s3);
+  assert.deepEqual(s3.squares[0].mini.pos, { X: 5, O: 0 });
+  assert.deepEqual(r3.resolve.map(x => [x.square, x.joint, x.flash.scr.knocked, x.flash.by]), [[0, false, ['O'], 'X']]);
+  assert.deepEqual(r3.pre[0].pos, { X: 5, O: 5 }, 'the recap shows both where they landed first');
+  // a lone spin that meets nobody: nothing left to settle (it was seen as it was made)
   const s4 = round([bump({ X: 2, O: 8 })], { square: 1, moves: [3] });
-  human(s4, 0, ['spin']);
-  assert.deepEqual(E.chaosResolve(s4, seq(0.9)).resolve.map(x => [x.square, x.joint, x.flash.scr.knocked]), [[0, false, []]]);
-  // the computer's lone spin elsewhere: no pop-up of its locking in; its spin, played at the round's end, is the replay
-  const s5 = round([hilo(20), bump({ X: 2, O: 4 })], { square: 1, moves: ['spin'] });
+  human(s4, 0, ['spin'], fixed(0.9));
+  assert.deepEqual(resolve(s4).resolve, []);
+  // the computer's lone spin elsewhere: its replay (the pop-up), then nothing to settle
+  const s5 = round([hilo(20), bump({ X: 2, O: 4 })], { square: 1, moves: ['spin'], rng: fixed(0.5) });
   human(s5, 0, [10]);
-  const r5 = E.chaosResolve(s5, seq(0.5));
-  assert.deepEqual(E.scRecapOrder(r5, 0, r5.cpu).map(o => [o.kind, o.square]), [['spot', 1], ['resolve', 1]]);
+  const r5 = resolve(s5);
+  assert.deepEqual(E.scRecapOrder(r5, 0, r5.cpu).map(o => [o.kind, o.square]), [['spot', 1], ['popup', 1]]);
   assert.deepEqual(s5.squares[1].mini.pos, { X: 2, O: 6 });
-  // both reach the finish in the same round: a reset; one alone: theirs at the round's end
-  const s6 = round([bump({ X: 8, O: 9 })], { square: 0, moves: ['spin'] });
-  human(s6, 0, ['spin']);
-  assert.deepEqual(E.chaosResolve(s6, seq(0.9, 0.5)).resets.map(x => x.why), ['both']);
+  // both reach the finish in the same round: a reset; one alone: claimed
+  const s6 = round([bump({ X: 8, O: 9 })], { square: 0, moves: ['spin'], rng: fixed(0.5) });
+  human(s6, 0, ['spin'], fixed(0.9));
+  assert.deepEqual(resolve(s6).resets.map(x => x.why), ['both']);
   const s7 = round([bump({ X: 8, O: 0 })], { square: 1, moves: [3] });
-  human(s7, 0, ['spin']);
-  const r7 = E.chaosResolve(s7, seq(0.9));
-  assert.deepEqual([r7.claims, r7.resolve[0].flash.kind, r7.resolve[0].flash.winner], [[{ square: 0, by: 'X' }], 'claim', 'X']);
+  human(s7, 0, ['spin'], fixed(0.9));
+  assert.deepEqual(resolve(s7).claims, [{ square: 0, by: 'X' }]);
 });
 
 test('Super Chaos Roulette: one spin a round per square, drawn as the round begins: both bets there land on the same number, each at once on the mover\'s screen', () => {
