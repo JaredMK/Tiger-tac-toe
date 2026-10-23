@@ -1469,6 +1469,16 @@ test('physics (Mini Golf, Pool, Bowling): a shot is played out on the server and
   assert.equal(sq.mini.pins.O, mine.m.pins.O); assert.ok(sq.mini.pins.O > 0, `pins down (${sq.mini.pins.O})`); assert.equal(sq.mini.rolls.O, 1);
   assert.deepEqual(entry.phys.rec, mine.m.last.rec); assert.equal(entry.phys.knocked, mine.m.last.knocked); assert.deepEqual(entry.phys.down, mine.m.last.down);
   assert.equal(st.recent[st.recent.length - 2].phys.rec, null, 'the entry before it has let its recording go (the record stays small)');
+  if (mine.r.again) {                                             // pins left standing: the frame's second roll, O's again on the same square
+    assert.equal(st.lock, 2, 'O rolls again at the standing pins');
+    const roll2 = { aim: 0.01, power: 0.85 };
+    assert.equal((await move('O', 2, roll2)).ok, true);
+    const r2 = E.applyMove(mine.m, 'O', roll2, E.makeRng('x'));
+    st = await gameState(g.id); sq = st.squares[2]; entry = st.recent[st.recent.length - 1];
+    assert.equal(sq.mini.pins.O, mine.m.pins.O); assert.deepEqual(entry.phys.rec, mine.m.last.rec, 'the second roll: the same standing pins, the same recording');
+    assert.equal(r2.again, undefined, 'the frame is over'); assert.equal(st.lock, null);
+  }
+  assert.equal(st.turn, 'X');
   // pool: X shoots; whatever went down, the rules here and there agree
   const shot = { aim: -0.12, power: 0.55 };
   assert.equal((await move('X', 1, shot)).ok, true);
