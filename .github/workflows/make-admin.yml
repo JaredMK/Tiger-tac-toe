@@ -1,5 +1,5 @@
 # Gives the stats dashboard (admin.html) to one account, or takes it back. Run it by hand from the
-# Actions tab: "Make admin" -> Run workflow -> your username. It uses the same FIREBASE_SERVICE_ACCOUNT
+# Actions tab: "Make admin" -> Run workflow -> the environment and your username. It uses the same FIREBASE_SERVICE_ACCOUNT
 # secret as the deploy, and prints nothing secret (the username you type shows in the run's log).
 name: Make admin (stats dashboard)
 
@@ -10,6 +10,12 @@ on:
         description: 'The Tic Tac Chaos username to give the dashboard to'
         required: true
         type: string
+      environment:
+        description: 'staging or production (production runs only from the main branch)'
+        required: true
+        default: staging
+        type: choice
+        options: [staging, production]
       action:
         description: 'grant or revoke'
         required: true
@@ -23,6 +29,9 @@ permissions:
 jobs:
   admin:
     runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      TARGET: ${{ inputs.environment }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -37,6 +46,8 @@ jobs:
           if [ -z "$SA" ]; then echo "::error::The FIREBASE_SERVICE_ACCOUNT secret is missing (README: Deploying)."; exit 1; fi
           printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
           echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/sa.json" >> "$GITHUB_ENV"
+      - name: The project
+        run: echo "TTC_PROJECT=$(node -e "console.log(JSON.parse(require('fs').readFileSync('.firebaserc','utf8')).projects[process.env.TARGET])")" >> "$GITHUB_ENV"
       - name: Check the key
         run: node scripts/check-key.js
       - name: Set the admin flag

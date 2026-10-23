@@ -1,0 +1,161 @@
+# Deploys Tic Tac Chaos: the site (Firebase Hosting), the Cloud Functions and the Realtime Database rules.
+#   a push to `staging`              deploys to staging (staging.tictacchaos.com, the staging Firebase project);
+#   a push to `main` (a release)     deploys to production (tictacchaos.com, the production project), and only a
+#                                    commit staging already has: `npm run release` moves main to staging's tip.
+# Nothing else deploys to production: a run by hand is for staging only, and any other branch stops at once.
+# Each run uses its GitHub environment's FIREBASE_SERVICE_ACCOUNT (Settings, Environments): the `production`
+# environment's key is available only to the main branch, so no other branch's workflow can reach production.
+# Only what changed since the environment's last successful deploy goes out (the site, the functions, the rules);
+# the unit tests and the server tests (Firebase Emulator Suite) run first, and nothing deploys unless they pass.
+name: Deploy
+
+on:
+  push:
+    branches: [staging, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref_name == 'main' && 'production' || 'staging' }}
+    env:
+      TARGET: ${{ github.ref_name == 'main' && 'production' || 'staging' }}
+    steps:
+      - name: Which environment
+        run: |
+          case "${{ github.ref_name }}:${{ github.event_name }}" in
+            staging:push|staging:workflow_dispatch) echo "Deploying to staging." ;;
+            main:push) echo "Deploying to production (a release)." ;;
+            *) echo "::error::Deploys run only from staging (a push, or by hand) and from main (a push: a release)."; exit 1 ;;
+          esac
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0                 # the diff since the last deploy decides what goes out; a release is checked against staging
+      - name: A release takes only what staging has
+        if: env.TARGET == 'production'
+        run: |
+          git fetch -q origin staging
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/staging; then
+            echo "::error::main is at ${GITHUB_SHA::7}, which staging does not have. Production takes only releases from staging (npm run release)."
+            exit 1
+          fi
+          echo "main ${GITHUB_SHA::7} is on staging: releasing it."
+      - name: The project
+        run: |
+          p=$(node -e "console.log(JSON.parse(require('fs').readFileSync('.firebaserc','utf8')).projects[process.env.TARGET] || '')")
+          if [ -z "$p" ] || echo "$p" | grep -q PASTE_; then echo "::error::.firebaserc has no project for $TARGET."; exit 1; fi
+          echo "TTC_PROJECT=$p" >> "$GITHUB_ENV"
+          echo "$TARGET is the Firebase project $p."
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Install
+        run: |
+          npm ci
+          npm ci --prefix functions
+          npm i -g firebase-tools@14
+          firebase setup:emulators:database    # the database emulator's jar: the two-client Super Chaos test in npm test runs on it
+      - name: What changed (site, functions, rules)
+        id: what
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Since this environment's last deploy that went through (the last successful run on this branch), not since
+          # the last push: a failed deploy's changes are still due. With no successful run to compare with, everything.
+          last=$(gh run list --workflow deploy.yml --branch '${{ github.ref_name }}' --status success --limit 1 --json headSha --jq '.[0].headSha' 2>/dev/null || true)
+          if [ -n "$last" ] && git cat-file -e "$last" 2>/dev/null && [ '${{ github.event_name }}' = push ]; then changed=$(git diff --name-only "$last" "$GITHUB_SHA"); echo "Changed since ${last::7}:"; echo "$changed"; else changed=ALL; fi
+          wf='^\.github/workflows/deploy\.yml$'
+          only=''
+          if [ "$changed" = ALL ] || echo "$changed" | grep -qE "$wf|^(index\.html|admin\.html|playtest\.js|styles\.html|trivia\.json|src/|package-lock\.json|firebase\.json|scripts/build-site\.js)"; then only=hosting; fi
+          if [ "$changed" = ALL ] || echo "$changed" | grep -v '/view\.js$' | grep -qE "$wf|^(functions/|src/core/|src/games/|trivia\.json|firebase\.json|\.firebaserc|scripts/sync-functions\.js)"; then only="${only:+$only,}functions"; fi
+          if [ "$changed" = ALL ] || echo "$changed" | grep -qE "$wf|^(database\.rules\.json|firebase\.json|scripts/staging-rules\.js)"; then only="${only:+$only,}database"; fi
+          echo "only=$only" >> "$GITHUB_OUTPUT"
+          echo "Deploying to $TARGET: ${only:-nothing}"
+      - name: Unit tests
+        run: npm test
+      - name: Server tests on the Firebase Emulator Suite
+        run: npm run test:emulators
+      - name: Credentials
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$SA" ]; then echo "::error::The $TARGET environment has no FIREBASE_SERVICE_ACCOUNT secret (Settings, Environments, $TARGET)."; exit 1; fi
+          printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/sa.json" >> "$GITHUB_ENV"
+      - name: Check the key (the right project, never another environment's)
+        run: |
+          node scripts/check-key.js
+          node -e '
+            const { GoogleAuth } = require("./functions/node_modules/google-auth-library");
+            new GoogleAuth({ scopes: ["https://www.googleapis.com/auth/cloud-platform"] }).getAccessToken()
+              .then(() => console.log("Google accepted the key."), e => { console.log("::error::Google refused the key: " + String(e.message).split("\n")[0]); process.exit(1); });
+          '
+      - name: Cloud Billing API on
+        # The Firebase CLI reads the project's billing status (functions need the Blaze plan) and does not switch this API on itself.
+        run: |
+          node -e '
+            const { GoogleAuth } = require("./functions/node_modules/google-auth-library");
+            (async () => {
+              const c = await new GoogleAuth({ scopes: ["https://www.googleapis.com/auth/cloud-platform"] }).getClient();
+              const api = `https://serviceusage.googleapis.com/v1/projects/${process.env.TTC_PROJECT}/services/cloudbilling.googleapis.com`;
+              if ((await c.request({ url: api })).data.state === "ENABLED") { console.log("The Cloud Billing API is on."); return; }
+              await c.request({ url: api + ":enable", method: "POST" });
+              console.log("Switched the Cloud Billing API on; a minute for it to take effect.");
+              await new Promise(r => setTimeout(r, 60000));
+            })().catch(e => { console.log("::error::Could not switch on the Cloud Billing API: " + String(e.message).split("\n")[0]); process.exit(1); });
+          '
+      - name: Staging's rules (production's, gated to the allowlist)
+        if: env.TARGET == 'staging'
+        run: node scripts/staging-rules.js database.rules.json
+      - name: Deploy
+        # Again after two minutes if it fails (Google's services can need a few minutes after first use), only what failed.
+        # Every function is deployed, changed or not: a fresh stamp gives each attempt a new source hash, so a revision
+        # that failed to start is never skipped as "unchanged". The site is built by firebase.json's predeploy (scripts/build-site.js).
+        run: |
+          only='${{ steps.what.outputs.only }}'
+          if [ -z "$only" ]; then echo "Nothing to deploy."; exit 0; fi
+          deploy() { date +%s%N > functions/deploy-stamp.txt; firebase deploy --only "$1" --project "$TARGET" --non-interactive --force 2>&1 | tee "$RUNNER_TEMP/deploy.log"; return "${PIPESTATUS[0]}"; }
+          failed() { grep -oP '^\s+\K\w+(?=\(us-central1\))' "$RUNNER_TEMP/deploy.log" | sort -u | sed 's/^/functions:/' | paste -sd, - || true; }
+          deploy "$only" && exit 0
+          for n in 1 2; do
+            again=$(failed); [ -z "$again" ] && again="$only"
+            echo "::warning::The deploy failed; trying again in two minutes: $again"
+            sleep 120
+            deploy "$again" && exit 0
+          done
+          exit 1
+      - name: Sign-in from the game's domains (Authentication, authorized domains)
+        run: node scripts/auth-domains.js
+      - name: Check the live site, functions and rules
+        run: node scripts/smoke-live.js "$TARGET"
+      - name: Seed staging (test accounts, the admin, the allowlist; never production)
+        if: env.TARGET == 'staging'
+        env:
+          STAGING_TEST_PASSWORD: ${{ secrets.STAGING_TEST_PASSWORD }}
+          STAGING_ADMIN_EMAIL: ${{ vars.STAGING_ADMIN_EMAIL }}
+          STAGING_ADMIN_USERNAME: ${{ vars.STAGING_ADMIN_USERNAME }}
+        run: node scripts/seed-staging.js
+      - name: Back-fill records from game history (once)
+        if: env.TARGET == 'production'
+        run: node scripts/backfill-records.js
+      - name: Back-fill games played as X and as O, and accounts' last activity (once)
+        if: env.TARGET == 'production'
+        run: node scripts/backfill-accounts.js
+      - name: Back-fill each player's record against each opponent (once)
+        if: env.TARGET == 'production'
+        run: node scripts/backfill-opponents.js
+      - name: Check existing usernames against the word list (once per rules version)
+        run: node scripts/check-usernames.js
+      - name: Release switches set by request (once each)
+        run: node scripts/set-releases.js

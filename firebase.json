@@ -1,4 +1,25 @@
 {
+  "hosting": {
+    "public": "_site",
+    "predeploy": [
+      "node \"$PROJECT_DIR/scripts/build-site.js\""
+    ],
+    "ignore": [
+      "firebase.json",
+      "**/.*"
+    ],
+    "headers": [
+      {
+        "source": "**",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
+      }
+    ]
+  },
   "database": {
     "rules": "database.rules.json"
   },

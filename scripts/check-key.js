@@ -12,3 +12,5 @@ if (!k) { console.log('::error::FIREBASE_SERVICE_ACCOUNT is not a JSON key: past
 fs.writeFileSync(file, JSON.stringify(k));
 console.log('type:', k.type, '| project:', k.project_id);
 if (k.type !== 'service_account') { console.log('::error::FIREBASE_SERVICE_ACCOUNT is not a service-account key.'); process.exit(1); }
+// The key must be for the project this run works on (TTC_PROJECT): a staging run never holds production's key, nor the other way round.
+if (process.env.TTC_PROJECT && k.project_id !== process.env.TTC_PROJECT) { console.log(`::error::The key is for ${k.project_id}, but this run is for ${process.env.TTC_PROJECT}: the environment has the wrong FIREBASE_SERVICE_ACCOUNT.`); process.exit(1); }

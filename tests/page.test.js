@@ -10,10 +10,10 @@ const ROOT = path.join(__dirname, '..'), SRC = path.join(ROOT, 'src');
 const files = []; (function walk(d) { for (const f of fs.readdirSync(d)) { const p = path.join(d, f); if (fs.statSync(p).isDirectory()) walk(p); else if (f.endsWith('.js')) files.push(p); } })(SRC);
 const BROWSER = /\b(document|window|localStorage|sessionStorage|navigator|location|history|matchMedia|requestAnimationFrame|cancelAnimationFrame|Element|HTMLElement|CSS|AudioContext|OfflineAudioContext|Image|getComputedStyle|innerWidth|innerHeight) is not defined\b/;
 
-test('page: index.html loads the styles and src/main.js as a module, and nothing else', () => {
+test('page: index.html loads the styles, src/env.js (the Firebase project by address) and src/main.js as a module, and nothing else', () => {
   const page = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
   const scripts = [...page.matchAll(/<script\b[^>]*>/g)].map(m => m[0]);
-  assert.deepEqual(scripts, ['<script type="module" src="src/main.js">']);
+  assert.deepEqual(scripts, ['<script src="src/env.js">', '<script type="module" src="src/main.js">']);
   for (const href of [...page.matchAll(/<link rel="stylesheet" href="([^"]+)">/g)].map(m => m[1])) assert.ok(fs.existsSync(path.join(ROOT, href)), href);
 });
 test('page: every module parses and every name it imports exists (a missing export or a clash stops the whole page loading)', async () => {

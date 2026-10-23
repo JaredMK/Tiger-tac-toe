@@ -19,7 +19,7 @@ import { loadTrivia } from './games/trivia/view.js';
 import { fetchWheelsConfig } from './games/wheels/view.js';
 import { GAMES } from './games/index.js';
 import { SND, init as soundInit } from './audio/sound.js';
-import { connectQuiet, finishLogin, hadAccount, redirectPending } from './net/accounts.js';
+import { connectQuiet, finishLogin, gateStart, hadAccount, redirectPending } from './net/accounts.js';
 import { openFind } from './net/matchmaking.js';
 import { fetchReleases } from './net/releases.js';
 import { closeSeat, init as roomInit, joinCode, joinName, resumeOnline, setJoinCode, setJoinName } from './net/room.js';
@@ -82,6 +82,7 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 function boot() {
   setClockTimer(setInterval(tick, 250));
   if (sandboxParams()) { loadTrivia(); loadPhysics(); sandboxBoot(); return; }   // the admin's test play: one mini-game with the editor's settings (no live config, nothing saved or reported)
+  gateStart();                                                // staging: who this is, for the allowlist's gate (src/net/accounts.js)
   fetchReleases();                                            // which mini-games are released, before any match is set up
   loadConfigs();                                              // the admin's settings, for the squares to come
   loadTrivia();                                               // the Trivia questions, for the match to come

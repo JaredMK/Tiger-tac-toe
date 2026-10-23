@@ -10,7 +10,7 @@ import { hpSel, setHpSel } from '../games/hexapawn/view.js';
 import { GAMES, TYPES } from '../games/index.js';
 import { SND } from '../audio/sound.js';
 import {
-  acct, afterLogin, connectQuiet, loggedIn, loginMail, loginMsg, loginPass, loginReset, loginWith, logout,
+  acct, afterLogin, connectQuiet, gateAct, gateOn, loggedIn, loginMail, loginMsg, loginPass, loginReset, loginWith, logout,
   needAccount, saveUsername, setAfterLogin, setLoginMail, setLoginMsg, setLoginPass, setUnameDraft, unameDraft
 } from '../net/accounts.js';
 import { cancelSearch, closeIntro, findAgain, isMM, openFind, resignMM, search, startSearch } from '../net/matchmaking.js';
@@ -87,6 +87,12 @@ export function init() {
     const el = e.target.closest('[data-act]');
     if (!el || el.disabled) return;
     const act = el.dataset.act;
+    if (gateOn()) {                                                                     // staging's gate: only its own buttons and the login's
+      if (act.startsWith('gate-')) gateAct(act);
+      else if (act === 'login-google' || act === 'login-email' || act === 'login-create') loginWith(act === 'login-google' ? 'google' : act === 'login-email' ? 'email' : 'create');
+      else if (act === 'login-reset') loginReset();
+      return;
+    }
     if (act === 'explain') { e.preventDefault(); openExplain(el.dataset.t); return; }    // never a move: open over anything, even mid-turn
     if (act === 'explain-close') { closeExplain(); return; }
     if (act === 'intro-close') { closeIntro(); return; }

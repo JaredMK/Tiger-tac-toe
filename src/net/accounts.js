@@ -34,6 +34,44 @@ export function redirectPending() {
 // The page is back from a redirect sign-in (or a sign-in finished while it was away): the menu, logged
 // in, or the username to pick first. Never the login buttons again unless the sign-in failed.
 export let loginFinishing = false;
+
+/* ----- staging: only accounts on the admin's allowlist get in -----
+ * On staging (src/env.js) the page shows nothing but this gate until the player has logged in with an account
+ * on the allowlist (the admin page's Staging access, admin/staging/allow). The server checks the list and puts
+ * a `staging` flag on the account (functions/index.js stagingAccess); staging's database rules and its server
+ * calls refuse anyone without it, so the gate is not only on the page. The tests (window.TTT_FIREBASE) and a
+ * page with no Firebase project set up have no gate. */
+export const GATED = typeof window !== 'undefined' && !!(window.TTC_ENV && window.TTC_ENV.staging) && !window.TTT_FIREBASE;
+export let gate = GATED ? 'checking' : 'ok';          // 'checking' | 'login' | 'verify' | 'denied' | 'offline' | 'ok'
+export let gateEmail = '';
+export function gateOn() { return GATED && configured() && gate !== 'ok'; }
+function setGate(g) { if (gate !== g) { gate = g; render(); } }
+let gateSeq = 0;
+function gateUser(u) {
+  const n = ++gateSeq;
+  if (!u || u.isAnonymous) { gateEmail = ''; setGate('login'); return; }
+  gateEmail = u.email || '';
+  if (gate !== 'ok') setGate('checking');
+  (async () => {
+    const r = await u.getIdTokenResult();
+    if (r.claims.admin === true || r.claims.staging === true) { if (n === gateSeq) setGate('ok'); return; }
+    const res = await call('stagingAccess', {});
+    if (n !== gateSeq) return;
+    if (res && res.ok) { await u.getIdToken(true); location.reload(); return; }   // the flag is on the account now: a fresh start, every listener with it
+    setGate(res && res.reason === 'unverified' ? 'verify' : 'denied');
+  })().catch(() => { if (n === gateSeq) setGate('offline'); });
+}
+// The gate's buttons: check again (after verifying the email, or a network failure), send the verification link again, log out.
+export async function gateAct(act) {
+  if (act === 'gate-out') { await logout(); gateEmail = ''; setGate('login'); return; }
+  if (!(await connectQuiet())) { setGate('offline'); return; }
+  const u = fb.auth.currentUser;
+  if (act === 'gate-resend' && u && !u.isAnonymous) { await fb.authM.sendEmailVerification(u).catch(() => {}); loginMsg = { ok: true, text: 'Sent. Check your inbox.' }; render(); return; }
+  if (u) await u.reload().catch(() => {});
+  gateUser(fb.auth.currentUser);
+}
+// At the start, on staging: connect at once (the gate needs to know who this is).
+export function gateStart() { if (gateOn()) connectQuiet().then(ok => { if (!ok) setGate('offline'); }); }
 export function finishLogin() {
   const go = loginPending();
   loginPending(null);
@@ -59,6 +97,7 @@ export async function connectQuiet() {
 // The signed-in user changed (or the page started): follow their profile and their matchmaking game.
 export function onAuthUser(u) {
   if (!fb || !fb.auth) return;
+  if (GATED) gateUser(u);                             // staging: is this account on the allowlist?
   if (!u) { fb.authM.signInAnonymously(fb.auth).catch(() => {}); return; }   // logged out: a guest again, for friend games
   fb.uid = u.uid;
   const uid = u.isAnonymous ? null : u.uid;

@@ -18,14 +18,8 @@ import { noteNet } from '../ui/turnbar.js';
  * never rendered before they are revealed. Presence uses onDisconnect; the turn clock is a server-time
  * deadline that either phone may call when it passes.
  */
-// ---------- your Firebase project: paste the web app config here (README: "Setting up Firebase") ----------
-export const FIREBASE_CONFIG = {
-  apiKey: 'AIzaSyDnugsFX6N1chaeGHiKOfBiiUFTSYTX9SU',
-  authDomain: 'tic-tac-chaos.firebaseapp.com',
-  databaseURL: 'https://tic-tac-chaos-default-rtdb.firebaseio.com',
-  projectId: 'tic-tac-chaos',
-  appId: '1:475136918613:web:3e63ed7ceaf1e253ed40dc',
-};
+// ---------- the Firebase project: production or staging, by the page's address (src/env.js, window.TTC_ENV) ----------
+export const FIREBASE_CONFIG = (typeof window !== 'undefined' && window.TTC_ENV && window.TTC_ENV.config) || { apiKey: 'PASTE_', databaseURL: 'PASTE_' };
 const FIREBASE_VERSION = '11.10.0';
 export const FIREBASE_CDN = `https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/`;   // the SDK is fetched only when online play is chosen
 export const NET_MS = { connect: 12000, move: 8000, call: 20000 };   // (a server call can wait for a cold start)

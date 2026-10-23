@@ -45,7 +45,7 @@ const MAX_THINK_MS = 8000;        // the longest any bot waits: the ranges above
 const DEFAULTS = {
   bots: { enabled: false, waitMin: 40, waitMax: 70, countInRecords: true, level: 'normal' },   // level: how well the bots play (easy, normal or hard: the computer's levels, src/core/aiw.js)
   alerts: { enabled: false, sms: false, email: true, phone: '', to: '', after: 5, cooldownMin: 30, gapMin: 3, dailyCap: 20,
-    site: 'https://jaredmk.github.io/Tiger-tac-toe/' },
+    site: 'https://tictacchaos.com/' },
 };
 const num = (v, lo, hi, d) => (Number.isFinite(Number(v)) && v !== '' && v !== null ? Math.min(hi, Math.max(lo, Number(v))) : d);
 function botConfig(conf) {

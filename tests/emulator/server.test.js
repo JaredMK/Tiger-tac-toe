@@ -1188,7 +1188,7 @@ test('alerts: someone searching alone alerts the admin by text and email, once, 
   const sms = s.find(m => m.ch === 'sms'), mail = s.find(m => m.ch === 'email');
   assert.equal(sms.to, '+19145550100', 'the number as Twilio wants it');
   assert.equal(mail.to, 'alerts@example.com');
-  assert.match(sms.text, /Waiting_1 \(0-0-0\) is searching .* https:\/\/jaredmk\.github\.io\/Tiger-tac-toe\/\?play=find$/);
+  assert.match(sms.text, /Waiting_1 \(0-0-0\) is searching .* https:\/\/tictacchaos\.com\/\?play=find$/);
   assert.match(mail.subject, /Waiting_1 is waiting for a match/);
   const log = Object.values(await get('alertLog'));
   assert.deepEqual(log[0].channels, { sms: 'sent', email: 'sent' });

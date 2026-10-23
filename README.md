@@ -1,6 +1,6 @@
 # Tic Tac Chaos
 
-Play it: https://jaredmk.github.io/Tiger-tac-toe/
+Play it: https://tictacchaos.com
 
 A two-player, pass-and-play game for one phone, against the computer, or online, drawn in a
 1930s rubber-hose cartoon style: thick wobbly ink lines, flat colours on cream paper, an X and an O
@@ -868,38 +868,48 @@ each side's leading pawn is to the far row.
 
 ## Deploying
 
-The game is served by GitHub Pages from the `main` branch of the `Tiger-tac-toe` repository, at
-https://jaredmk.github.io/Tiger-tac-toe/. After a change, publish it with one command:
+Two environments, each its own Firebase project with its own data:
+
+| | Address | Branch | Firebase project |
+|---|---|---|---|
+| Staging | https://staging.tictacchaos.com | `staging` | `.firebaserc` alias `staging` |
+| Production | https://tictacchaos.com (www redirects to it) | `main` | `tic-tac-chaos` |
+
+The old address, https://jaredmk.github.io/Tiger-tac-toe/, redirects to tictacchaos.com (`pages.yml`,
+`.github/pages-redirect/`). The page picks its project by its address (`src/env.js`): only the production
+hostnames get production; every other address, localhost included, gets staging.
+
+Work goes to staging:
 
 ```sh
-./deploy.sh "what changed"
+npm run deploy:staging -- "what changed"
 ```
 
-It commits everything and pushes `main`, deploying only what changed since the live version (the git
-diff against the remote's `main`), and says which:
+It commits everything and pushes the `staging` branch. The Deploy workflow (`.github/workflows/deploy.yml`)
+runs the unit tests and the server tests on the Firebase Emulator Suite and, only if they pass, deploys
+what changed since staging's last good deploy: the site (Firebase Hosting; `scripts/build-site.js`
+builds `_site/`), the functions, the rules (production's, gated to the allowlist,
+`scripts/staging-rules.js`). Then it checks the live site, functions and rules (`scripts/smoke-live.js`)
+and seeds staging's accounts (`scripts/seed-staging.js`).
 
-- the site (`index.html`, `src/`, `admin.html`, `trivia.json`): `pages.yml` publishes the web files
-  (the page and its modules as they are, the admin page, the Trivia questions) within a minute or so;
-- the functions (`functions/`, the engine in `src/core`, the games' rules, AI and meta in `src/games`)
-  and the database rules (`database.rules.json`): `firebase.yml` runs the unit tests and the server
-  tests on the Firebase Emulator Suite and, only if they pass, deploys the part that changed
-  (`firebase deploy --only functions`, `--only database`, or both) with the `FIREBASE_SERVICE_ACCOUNT`
-  secret.
-
-Each workflow runs only when its files changed. The functions run the page's own engine and rules:
-`scripts/sync-functions.js` copies `src/core` and `src/games` (without the views) and `trivia.json` into
-`functions/` before every deploy (firebase.json's predeploy) and every emulator run. To deploy the
-functions and rules from your own computer instead: `DEPLOY_FIREBASE=local ./deploy.sh "message"`
-(after `firebase login`). `DEPLOY_REMOTE` and `DEPLOY_BRANCH` push somewhere else than `origin main`.
-
-First-time setup: create an empty public repository called `Tiger-tac-toe` on GitHub, then push
-`main` to it. The Pages workflow switches Pages on and publishes the site on that first push.
+Production takes only what staging has, when you release it:
 
 ```sh
-git checkout -B main
-git remote add origin https://github.com/JaredMK/Tiger-tac-toe.git
-git push -u origin main
+npm run release
 ```
+
+From a clean checkout at staging's tip, it runs the tests, checks that staging's deploy of that commit
+passed, lists the commits going out and asks you to type `release`. It then fast-forwards `main` to
+`staging`, and the Deploy workflow deploys that commit to production. A push to `main` with a commit
+staging lacks is refused, a run started by hand never deploys production, and production's
+`FIREBASE_SERVICE_ACCOUNT` lives in the GitHub environment `production`, open to the `main` branch only.
+`npm run check:envs` shows what is live where. `DEPLOY_REMOTE` picks another remote than `origin`.
+
+Staging is for testers only: it is noindex, shows a STAGING badge, and lets in only accounts on the
+allowlist (the admin page's Staging Access; the server checks it and its rules and calls refuse anyone
+else). Its test accounts are `tester1@tictacchaos.com` to `tester3@tictacchaos.com`, with the password in
+the `staging` environment's `STAGING_TEST_PASSWORD` secret; the admin account is the
+`STAGING_ADMIN_EMAIL` and `STAGING_ADMIN_USERNAME` variables.
 
 ## Game stats and the admin dashboard
 
@@ -931,7 +941,7 @@ finished (played to a result) and abandoned (resigned, lost on time or never fin
 per mode; average match length in turns and minutes over finished matches only (`modes/{mode}/done`,
 `doneTurns`, `doneMs`, `doneTimed`, from 21 Oct 2026); how often X, who moves first, wins.
 
-The dashboard is https://jaredmk.github.io/Tiger-tac-toe/admin.html. It opens on a menu of section tiles,
+The dashboard is https://tictacchaos.com/admin.html (staging's: https://staging.tictacchaos.com/admin.html). It opens on a menu of section tiles,
 each its own page with a back button (the address keeps the page: `#overview`, `#players`, `#playtest`,
 `#matches`, `#settings`, `#settings/<game>`, `#bots`, `#releases`, `#stats`): **Overview** (the headline
 numbers and the players and matches charts), **Players & Accounts** (Accounts, usernames to review, players
@@ -970,7 +980,7 @@ Every device gets a random anonymous id, made up by its browser and kept in its 
 Nothing personal is ever collected: the server keeps a one-way hash of the id, the times of the
 device's app opens and matches (started, then finished or left, with the mode), and an optional
 **tester tag**. To tell playtesters apart, send each one their own link with `?t=` and a name, for
-example `https://jaredmk.github.io/Tiger-tac-toe/?t=sam` (letters, numbers, `-` and `_`, up to 24,
+example `https://tictacchaos.com/?t=sam` (letters, numbers, `-` and `_`, up to 24,
 lower case). The tag is saved with that device the first time it is seen and never replaced (a later
 link with another tag keeps the first), and taken out of the address bar. The phone sends each event
 to the `devlog` Cloud Function; a retry or a reload never counts twice.

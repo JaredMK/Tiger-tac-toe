@@ -1,20 +1,15 @@
-# Publishes the game to GitHub Pages when the site changed on main (the page, its modules in src/, the
-# admin page, the Trivia questions). The first run also switches Pages on for the repository.
-name: Deploy to GitHub Pages
+# The old GitHub Pages address (jaredmk.github.io/Tiger-tac-toe/) now only sends visitors to tictacchaos.com, with the
+# rest of the address kept (a friend's ?room= link, admin.html). The game itself is on Firebase Hosting (deploy.yml).
+# It goes out with a release (a push to main), and only once tictacchaos.com serves the game, so the old address never
+# points at a site that is not there yet.
+name: Old address redirect (GitHub Pages)
 
 on:
   push:
     branches: [main]
     paths:
-      - 'index.html'
-      - 'admin.html'
-      - 'styles.html'
-      - 'playtest.js'
-      - 'trivia.json'
-      - 'src/**'
-      - 'package-lock.json'
+      - '.github/pages-redirect/**'
       - '.github/workflows/pages.yml'
-  workflow_dispatch:
 
 permissions:
   contents: read
@@ -26,35 +21,26 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  deploy:
+  redirect:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 22
+      - name: Wait until tictacchaos.com serves the game (up to 30 minutes)
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS https://tictacchaos.com/version.json | grep -q '"env":"production"'; then echo "tictacchaos.com is live."; exit 0; fi
+            sleep 30
+          done
+          echo "::error::tictacchaos.com does not serve the game yet: the old address keeps the old site. Run this workflow again once the domain is connected."
+          exit 1
       - uses: actions/configure-pages@v5
         with:
           enablement: true
-      - name: Test, then collect the site (only the web files; not the functions or tests)
-        # npm test first: the mini-games' rules and the layout checks (a Pinball table with two elements overlapping fails here, and the site stays as it was)
-        # The page and its modules as they are (no build step). Matter.js (for Mini Golf, Pool, Bowling and
-        # Pinball) loads from cdnjs; the copy from npm sits beside the page as the fallback.
-        run: |
-          npm ci
-          npm i -g firebase-tools@14 && firebase setup:emulators:database   # the database emulator's jar: the two-client Super Chaos test in npm test runs on it (Java is on the runner)
-          npm test
-          mkdir _site
-          cp index.html admin.html playtest.js trivia.json styles.html .nojekyll _site/
-          cp -r src _site/src
-          sed -i "s/^export const APP_VERSION = 'dev';/export const APP_VERSION = '${GITHUB_SHA::7}';/" _site/src/ui/config.js   # the version in the match logs: this commit
-          grep -q "APP_VERSION = '${GITHUB_SHA::7}'" _site/src/ui/config.js
-          cp node_modules/matter-js/build/matter.min.js _site/matter.min.js
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: _site
+          path: .github/pages-redirect
       - id: deployment
         uses: actions/deploy-pages@v4

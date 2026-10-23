@@ -146,16 +146,13 @@ tr.dev, tr.mlrow, tr.acct { cursor: pointer; } tr.mlrow:hover td, tr.mlrow.open 
 </head>
 <body>
 <div class="wrap" id="app"><div class="card msg"><h1>Tic Tac Chaos Stats</h1><p>Loading…</p></div></div>
+<script src="src/env.js"></script>
 <script src="playtest.js"></script>
 <script>
 'use strict';
 const FIREBASE_VERSION = '11.10.0';
-const FIREBASE_CONFIG = {
-  apiKey: 'AIzaSyDnugsFX6N1chaeGHiKOfBiiUFTSYTX9SU',
-  authDomain: 'tic-tac-chaos.firebaseapp.com',
-  databaseURL: 'https://tic-tac-chaos-default-rtdb.firebaseio.com',
-  projectId: 'tic-tac-chaos',
-};
+const FIREBASE_CONFIG = window.TTC_ENV.config;   // production or staging, by the page's address (src/env.js)
+const STAGING = window.TTC_ENV.staging;
 const MODES = [['local', 'Two players'], ['cpu', 'vs Computer'], ['chaos', 'Super Chaos'], ['cvc', 'Computer vs Computer (old)'], ['friend', 'Friend code'], ['match', 'Find Match'], ['bot', 'Find Match vs a bot'], ['casual', 'Casual (old)'], ['ranked', 'Ranked (old)']];
 const MODE_COLORS = { local: 'var(--o)', cpu: 'var(--sky)', chaos: '#d9622b', cvc: 'var(--stone)', friend: 'var(--plum)', match: 'var(--green)', bot: '#2f7f6f', casual: '#8fbf7a', ranked: 'var(--x)' };
 const GAMES = { ttt: 'Tic-tac-toe', c4: 'Connect 4', bs: 'Battleship', wordle: 'Wordle', hangman: 'Hangman', hex: 'Hex', hilo: 'Higher/Lower', snakes: 'Snakes and Ladders', memory: 'Memory', candy: 'Candy Race', bump: 'Bump', coins: 'Coin Flip', pig: 'Risky Rolls', hunt: 'Treasure Hunt', mastermind: 'Mastermind', bj: 'Blackjack', bus: 'Ride the Bus', rl: 'Roulette', bullseye: 'Bullseye', echo: 'Echo', plinko: 'Plinko', pong: 'Cup Pong', trivia: 'Trivia', oddone: 'Odd One Out', dash: 'Dash', lane: 'Lane Rush', golf: 'Mini Golf', pool: 'Pool', bowling: 'Bowling', craps: 'Craps', takeover: 'Takeover', flood: 'Flood', seating: 'Seating', districts: 'Districts', shelves: 'Shelves', roads: 'Roads', flap: 'Flap', chopper: 'Chopper', patterns: 'Patterns', wheels: 'Risk Wheels', sniff: 'Sniff', clash: 'Clash Grid', headcount: 'Headcount', flash: 'Flash', snapshot: 'Snapshot', skyhop: 'Sky Hop', scoop: 'Scoop Stack', pinball: 'Pinball' };   // the games in the pool (Hexapawn and the Dice race are gone; their numbers stay in the database)
@@ -312,6 +309,7 @@ function draw() {
     settings: sub => (sub && GAMES[sub] ? gamePage(sub) : settingsIndex()),
     bots: () => `${findCard()}${botsCard()}${aiCard()}${alertsCard()}`,
     releases: () => releasesCard(),
+    access: () => accessCard(),
     stats: () => `<div class="card"><h2>Matches by mode</h2>${modeTable}</div>
     <div class="card"><div class="row"><h2>Mini-games</h2><label>Modes <select id="mm">${[['all', 'All modes'], ['people', 'All but computer vs computer']].concat(MODES.filter(m => m[0] !== 'chaos'), [['testing', 'Admin-only games (testing)']]).map(([v, l]) => `<option value="${v}"${miniMode === v ? ' selected' : ''}>${l}</option>`).join('')}</select></label></div>
       ${miniTable}<h2 style="margin-top:14px">Average winner moves</h2>${hbarChart(rows, 'avgWin', 'Average winner moves by mini-game', v => num(v))}</div>`,
@@ -336,7 +334,7 @@ const SECTIONS = [
   ['bots', 'Bot Settings', () => 'Find Match, bots, empty-queue alerts'],
   ['releases', 'Releases', () => 'Released or admin only, per game'],
   ['stats', 'Stats', () => 'Matches by mode, moves to win'],
-];
+].concat(STAGING ? [['access', 'Staging Access', () => `${Object.keys(ctl.allow || {}).length} on the list`]] : []);   // (staging only: who may use it)
 const route = () => (location.hash || '').replace(/^#\/?/, '').split('/');
 window.addEventListener('hashchange', () => { if (view.status === 'ready') { render(); window.scrollTo(0, 0); } });
 
@@ -535,6 +533,28 @@ function showNote() {
   (el.closest('label') || el).insertAdjacentElement('afterend', m);
 }
 const failed = e => 'Not saved: ' + ((e && e.message) || 'the database refused it');
+// ---------- staging access: the emails allowed into staging (admin/staging/allow/{key}: { email }; staging only) ----------
+// An account with an email on the list gets in (functions/index.js stagingAccess, on its first visit); one taken off is
+// signed out within the hour. The admin is always in.
+const allowKey = email => String(email || '').trim().toLowerCase().replace(/[.#$[\]/]/g, ',');   // (functions/index.js allowKey)
+function accessCard() {
+  const rows = Object.entries(ctl.allow || {}).map(([k, v]) => [k, (v && v.email) || k]).sort((a, b) => a[1].localeCompare(b[1]));
+  return `<div class="card ctl" id="accessCard"><h2>Who can use staging</h2>
+    <p class="note">Only these accounts can open staging.tictacchaos.com (and you, the admin). A new tester logs in with Google, or creates an account with this email and verifies it.</p>
+    <ul class="rels">${rows.map(([k, e]) => `<li><span class="rn">${esc(e)}</span><button class="btn" data-allowdel="${esc(k)}">Remove</button></li>`).join('') || '<li><span class="rn">Nobody yet</span></li>'}</ul>
+    <div class="tbar"><input id="allowAdd" type="email" placeholder="email@example.com" autocomplete="off" style="min-width:min(100%,260px)"><button class="btn" data-act="allowadd">Add</button></div></div>`;
+}
+async function allowEdit(el, email, on) {
+  email = String(email || '').trim().toLowerCase();
+  if (on && !/^[^@\s]+@[^@\s]+$/.test(email)) { said(el, false, 'Not an email address'); return; }
+  const key = on ? allowKey(email) : email;   // (removing: the key itself)
+  try {
+    await fb.dbM.set(fb.dbM.ref(fb.db, `admin/staging/allow/${key}`), on ? { email, by: 'admin', at: Date.now() } : null);
+    const a = Object.assign({}, ctl.allow); if (on) a[key] = { email }; else delete a[key]; ctl.allow = a;
+  } catch (e) { said(el, false, failed(e)); return; }
+  render(); const c = document.getElementById('accessCard'); if (c) said(c.querySelector('[data-act="allowadd"]') || c, true, on ? 'Added' : 'Removed');
+}
+
 // ---------- game releases: Released or Admin only, per mini-game (releases/{type}, read by the game and the server) ----------
 // A game not in the database is as the code has it (TEST_TYPES in src/games/index.js, from each game's meta.js: admin only until released here).
 const TEST_TYPES = ['bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads', 'flap', 'chopper', 'patterns', 'wheels', 'sniff', 'headcount', 'flash', 'snapshot', 'skyhop', 'scoop', 'pinball', 'clash'];   // (as engine.js has them; the switches cover every game the stats know)
@@ -1075,7 +1095,7 @@ async function loadCtl() {
   const [config, secretsSet, bots, botStats, alertStats, features, log, releases, runCfg, bullsCfg, wheelsCfg, plinkoCfg, oddCfg, headCfg, flashCfg, snapCfg, hopCfg, scoopCfg, pinCfg, pigCfg, roadsCfg, bowlCfg] = await Promise.all([g('admin/config'), g('admin/secretsSet'), g('bots'), g('botStats'), g('alertStats'), g('features'),
     fb.dbM.get(fb.dbM.query(fb.dbM.ref(fb.db, 'alertLog'), fb.dbM.orderByChild('at'), fb.dbM.limitToLast(8))).then(s => s.val()).catch(() => null), g('releases'), g('config/run'), g('config/bulls'), g('config/wheels'), g('config/plinko'), g('config/oddone'), g('config/headcount'), g('config/flash'), g('config/snapshot'), g('config/skyhop'), g('config/scoop'), g('config/pinball'), g('config/pig'), g('config/roads'), g('config/bowling'), loadMetas()]);
   ctl = { config: config || {}, secretsSet: secretsSet || {}, bots: bots || {}, botStats: botStats || {}, alertStats: alertStats || {}, features: features || {}, releases: releases || {}, runCfg: runCfg || {}, bullsCfg: bullsCfg || {}, wheelsCfg: wheelsCfg || {}, plinkoCfg: plinkoCfg || {}, pigCfg: pigCfg || {}, roadsCfg: roadsCfg || {}, oddCfg: oddCfg || {}, attCfg: { headcount: headCfg || {}, flash: flashCfg || {}, snapshot: snapCfg || {} }, fingCfg: { skyhop: hopCfg || {}, scoop: scoopCfg || {}, bowling: bowlCfg || {}, pinball: pinCfg || {} },
-    alertLog: Object.values(log || {}).sort((a, b) => b.at - a.at), tune: (await g('config/tune')) || {}, ai: (await g('config/ai')) || {} };
+    alertLog: Object.values(log || {}).sort((a, b) => b.at - a.at), tune: (await g('config/tune')) || {}, ai: (await g('config/ai')) || {}, allow: STAGING ? ((await g('admin/staging/allow')) || {}) : {} };
 }
 async function signIn(how) {
   view.error = '';
@@ -1098,6 +1118,8 @@ app.addEventListener('click', e => {
   const mr = !b && e.target.closest('tr.mlrow');
   if (mr && fb) { const k = mr.dataset.ml; mlOpen = mlOpen === k ? null : k; render(); if (mlOpen) { mlLoad(mlOpen); const el = document.getElementById('mlTimeline'); if (el) el.scrollIntoView({ block: 'nearest' }); } return; }   // a match's row: its timeline
   if (!b || !fb) return;
+  if (b.dataset.allowdel) { allowEdit(b, b.dataset.allowdel, false); return; }
+  if (b.dataset.act === 'allowadd') { const i = document.getElementById('allowAdd'); allowEdit(b, i && i.value, true); return; }
   if (b.dataset.mlexport) { mlExport(b.dataset.mlexport); return; }
   if (b.dataset.mlclose) { mlOpen = null; render(); return; }
   if (b.dataset.aclose) { acctOpen = null; render(); return; }

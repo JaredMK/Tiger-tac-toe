@@ -166,6 +166,15 @@
           ".write": "auth != null && auth.token.admin === true",
           ".validate": "$key.matches(/^(twilioSid|twilioToken|twilioFrom|resendKey|emailFrom)$/) && newData.isString() && newData.val().length <= 300"
         }
+      },
+      "staging": {
+        ".read": "auth != null && auth.token.admin === true",
+        ".write": "auth != null && auth.token.admin === true",
+        "allow": {
+          "$key": {
+            ".validate": "newData.hasChildren(['email']) && newData.child('email').isString() && newData.child('email').val().length <= 254 && newData.child('email').val().matches(/^[^@ ]+@[^@ ]+$/)"
+          }
+        }
       }
     },
     "bots": {

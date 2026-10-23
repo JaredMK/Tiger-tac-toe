@@ -40,7 +40,12 @@
  * `track` callable (which checks and trims what it is sent); online matches are counted here, where
  * they are run or saved. The admin is the account with the `admin` custom claim (scripts/make-admin.js).
  */
-const { onCall, onRequest, HttpsError } = require('firebase-functions/v2/https');
+const { onCall: callable, onRequest, HttpsError } = require('firebase-functions/v2/https');
+// Staging (functions/.env.staging, deployed with --project staging): every server call comes only from a tester on the
+// allowlist (the `staging` flag stagingAccess puts on the account) or the admin. Production is never gated.
+const STAGING = process.env.TTC_ENV === 'staging';
+const onStaging = req => { const t = req.auth && req.auth.token; if (STAGING && !(t && (t.admin === true || t.staging === true))) throw new HttpsError('permission-denied', 'Staging is for testers on the list'); };
+const onCall = (opts, fn) => callable(opts, req => { onStaging(req); return fn(req); });
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { onValueWritten } = require('firebase-functions/v2/database');
 const { onTaskDispatched } = require('firebase-functions/v2/tasks');
@@ -151,6 +156,38 @@ async function claimMatch(id, field, t) {
 }
 // A phone reports a local match (two people, vs the computer, computer vs computer) starting or
 // ending, or an account logging in. Clients cannot write the stats themselves.
+/* ===================== staging's allowlist ===================== */
+// The emails the admin lets into staging (admin/staging/allow/{key}: { email }, the admin page's Staging access).
+const allowKey = email => String(email || '').trim().toLowerCase().replace(/[.#$\[\]\/]/g, ',');
+async function allowed(email) { return !!email && (await db.ref('admin/staging/allow/' + allowKey(email)).get()).exists(); }
+async function setStagingFlag(uid, on) {
+  const u = await admin.auth().getUser(uid), claims = Object.assign({}, u.customClaims || {});
+  if (!!claims.staging === on) return false;
+  if (on) claims.staging = true; else delete claims.staging;
+  await admin.auth().setCustomUserClaims(uid, claims);
+  if (!on) await admin.auth().revokeRefreshTokens(uid);        // taken off the list: signed out within the hour
+  return true;
+}
+// The gate's question (src/net/accounts.js): is this account on the list? Yes: the flag goes on it (the page refreshes its token).
+exports.stagingAccess = callable(CALL, async req => {
+  if (!STAGING) return { ok: true };
+  const t = req.auth && req.auth.token;
+  if (!t || (t.firebase && t.firebase.sign_in_provider === 'anonymous')) return { ok: false, reason: 'login' };
+  if (t.admin === true || t.staging === true) return { ok: true };
+  if (!(await allowed(t.email))) return { ok: false, reason: 'denied' };
+  if (t.email_verified !== true) return { ok: false, reason: 'unverified' };   // (an address on the list is proved before it gets in)
+  await setStagingFlag(req.auth.uid, true);
+  return { ok: true, refresh: true };
+});
+// An email taken off the list: that account loses the flag at once.
+exports.stagingAllowChanged = onValueWritten({ ref: '/admin/staging/allow/{key}' }, async event => {
+  if (!STAGING || event.data.after.exists()) return;
+  const before = event.data.before.val(), email = before && before.email;
+  if (!email) return;
+  try { const u = await admin.auth().getUserByEmail(email); if (!(u.customClaims && u.customClaims.admin)) await setStagingFlag(u.uid, false); }
+  catch (e) { if (e.code !== 'auth/user-not-found') logger.error('staging allowlist', e); }
+});
+
 exports.track = onCall(CALL, async req => {
   const d = req.data || {}, t = now();
   const who = !isAnon(req) ? 'u:' + req.auth.uid : S.idOk(d.dev) ? 'd:' + d.dev : null;

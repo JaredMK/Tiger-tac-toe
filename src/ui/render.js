@@ -13,7 +13,8 @@ import { renderMini } from './mini.js';
 import { physPaint } from './physics.js';
 import { repMark, repRate } from './replay.js';
 import { runPaint } from './runner.js';
-import { renderLogin, renderUsername } from './screens/account.js';
+import { renderGate, renderLogin, renderUsername } from './screens/account.js';
+import { gateOn } from '../net/accounts.js';
 import { renderFind, renderIntro } from './screens/find.js';
 import { renderMenu } from './screens/menu.js';
 import { renderFriend, renderJoin, renderJoinAsk, renderOnline } from './screens/online.js';
@@ -107,6 +108,7 @@ function graft(oldP, newP, pairs) {
   }
 }
 function renderMain() {
+  if (gateOn()) return renderGate();                          // staging: only testers on the allowlist get past this
   if (state.screen === 'sandbox') return renderSandbox();     // (the admin's test play, while it checks or when it cannot run)
   if (state.screen === 'menu') return renderMenu();
   if (state.screen === 'online') return renderOnline();

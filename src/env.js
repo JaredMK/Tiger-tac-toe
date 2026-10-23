@@ -1,0 +1,48 @@
+/* Which Firebase project this page talks to, picked by the address it was opened at (a plain script, loaded
+ * before the modules by index.html and admin.html: window.TTC_ENV).
+ *   production: tictacchaos.com (www redirects there), and the production project's own Firebase addresses;
+ *   staging:    staging.tictacchaos.com, and every other address (the staging project's Firebase addresses,
+ *               localhost): a page that is not production never touches production's data.
+ * On the two custom domains, Google sign-in goes through the page's own domain (/__/auth/handler, served by
+ * Firebase Hosting), so it keeps working in browsers that block third-party cookies.
+ * The web config is not a secret: it names the project; its security rules decide what anyone can do. */
+(function () {
+  var CONFIGS = {
+    production: {
+      apiKey: 'AIzaSyDnugsFX6N1chaeGHiKOfBiiUFTSYTX9SU',
+      authDomain: 'tic-tac-chaos.firebaseapp.com',
+      databaseURL: 'https://tic-tac-chaos-default-rtdb.firebaseio.com',
+      projectId: 'tic-tac-chaos',
+      appId: '1:475136918613:web:3e63ed7ceaf1e253ed40dc',
+    },
+    staging: {                                      // the staging project's web app (Firebase console: Project settings, Your apps)
+      apiKey: 'PASTE_STAGING_API_KEY',
+      authDomain: 'PASTE_STAGING_PROJECT.firebaseapp.com',
+      databaseURL: 'https://PASTE_STAGING_PROJECT-default-rtdb.firebaseio.com',
+      projectId: 'PASTE_STAGING_PROJECT',
+      appId: 'PASTE_STAGING_APP_ID',
+    },
+  };
+  var PRODUCTION_HOSTS = ['tictacchaos.com', 'www.tictacchaos.com', 'tic-tac-chaos.web.app', 'tic-tac-chaos.firebaseapp.com'];
+  var OWN_AUTH_DOMAIN = ['tictacchaos.com', 'staging.tictacchaos.com'];
+  function pick(host) {
+    host = String(host || '').toLowerCase();
+    var name = PRODUCTION_HOSTS.indexOf(host) >= 0 ? 'production' : 'staging', config = {}, k;
+    for (k in CONFIGS[name]) config[k] = CONFIGS[name][k];
+    if (OWN_AUTH_DOMAIN.indexOf(host) >= 0) config.authDomain = host;
+    return { name: name, staging: name === 'staging', config: config };
+  }
+  if (typeof module !== 'undefined' && module.exports) { module.exports = { pick: pick, CONFIGS: CONFIGS, PRODUCTION_HOSTS: PRODUCTION_HOSTS }; return; }   // (the tests)
+  var env = pick(location.hostname);
+  window.TTC_ENV = env;
+  if (env.staging) {                                // a small badge in a corner, over everything, never in the way of a tap
+    var badge = function () {
+      if (document.getElementById('stagebadge')) return;
+      var b = document.createElement('div');
+      b.id = 'stagebadge'; b.textContent = 'STAGING'; b.setAttribute('aria-hidden', 'true');
+      b.style.cssText = 'position:fixed;left:6px;bottom:calc(6px + env(safe-area-inset-bottom));z-index:9999;pointer-events:none;padding:2px 6px;border-radius:5px;background:#d9622b;color:#fff;font:700 10px/1.3 system-ui,sans-serif;letter-spacing:.08em;opacity:.85';
+      document.body.appendChild(b);
+    };
+    if (document.body) badge(); else document.addEventListener('DOMContentLoaded', badge);
+  }
+})();
