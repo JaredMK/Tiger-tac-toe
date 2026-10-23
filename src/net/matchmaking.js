@@ -172,11 +172,14 @@ export async function fireTimeoutMM(seq, deadline) {
 export async function resignMM() {
   const id = state.online.game, over = !!state.winner;
   setMenuOpen(false); setMenuStep('main');
-  if (!over) {
-    setMoveWait(Date.now()); render();
-    try { await call('resign', { game: id }); } catch (e) { /* and if not, the clock runs out for this side */ }
+  if (over) { leaveRoom(true); return; }
+  setMoveWait(Date.now()); render();
+  try {
+    await call('resign', { game: id });                          // the record comes back with the loss: its summary shows first (the win screen), then the main menu
+    setMoveWait(null); render();
+  } catch (e) {                                                   // not reached: the clock runs out for this side; the main menu now
     setMoveWait(null);
     setMenuNote('You left the match: it counts as a loss.');
+    leaveRoom(true);
   }
-  leaveRoom(true);
 }

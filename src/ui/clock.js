@@ -19,7 +19,7 @@ export function clockLeft() {
 }
 export function clockText() {
   const left = clockLeft();
-  if (left == null && state.sc) return fmtClock(state.sc.limit * 1000);
+  if (left == null && state.sc) return state.sc.online ? fmtClock(state.sc.limit * 1000) : '';   // (against the computer a round has no clock)
   if (left == null) return state.timer && state.timer.limit ? fmtClock(state.timer.limit * 1000) : '';
   return fmtClock(left);
 }

@@ -1071,9 +1071,10 @@ exports.friendGameDone = onValueWritten({ ref: '/rooms/{code}/match' }, async ev
     if (!prof) continue;                                       // played without an account: no history
     const o = room.players[E.other(s)] || {};
     const ouser = o.uid ? (await db.ref(`users/${o.uid}/username`).get()).val() : null;
-    up[`history/${p.uid}/${id}`] = historyRecord('friend', s, { uid: ouser ? o.uid : null, name: o.name || E.other(s) }, st, final, now(), null);
+    const them = { uid: o.uid || null, name: ouser || o.name || E.other(s) };   // (the other player's account, with or without a username: a guest signed in is a person too)
+    up[`history/${p.uid}/${id}`] = historyRecord('friend', s, them, st, final, now(), null);
     if (done) recordUp(up, p.uid, R.resultFor(st, s), final.squares, s, true);   // the friends record and the mini-game stats (once: the end's claim)
-    if (done && ouser) oppUp(up, p.uid, { uid: o.uid, name: ouser }, R.resultFor(st, s), t1);
+    if (done && them.uid) oppUp(up, p.uid, them, R.resultFor(st, s), t1);   // Top opponents: every finished match against a person, in every mode
   }
   if (Object.keys(up).length) await db.ref().update(up);
 });

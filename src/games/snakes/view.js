@@ -28,14 +28,20 @@ export function miniature(mini, final) {
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   // The board winds up from the bottom left; the die rolls, the piece hops, then climbs or slides.
-  const L = mini.last, ok = !!L;
-  const tail = L && L.via === 'ladder' ? ` · up the ladder to ${L.to}` : L && L.via === 'snake' ? ` · down the snake to ${L.to}` : L ? ` · space ${L.to}` : '';
-  g = `<div class="g-snakes">${trackSvg(SNL_SPEC, { tokens: { X: mini.pos.X - 1, O: mini.pos.O - 1 }, moved: a ? a.by : null, finish: 'none', goal: true, cls: 'snl', overlay: snlArt(SNL_SPEC, mini) })}
+  // Super Chaos's round end (a.scr): both rolled here; both pieces hop together, the die shows this player's own
+  // roll and the label both.
+  const joint = a && a.scr && a.scr.moves ? a.scr.moves : null, own = joint ? joint[a.by] || joint.X : null;
+  const L = own || mini.last, ok = !!L;
+  const tailOf = l => (l.via === 'ladder' ? ` · up the ladder to ${l.to}` : l.via === 'snake' ? ` · down the snake to ${l.to}` : ` · space ${l.to}`);
+  const lab = joint ? ['X', 'O'].filter(p => joint[p]).map(p => `<b class="${p}">${N(p)}</b> rolled ${joint[p].roll}${joint[p].via ? ` (${joint[p].via})` : ''}`).join(' · ')
+    : ok ? `<b class="${L.by}">${N(L.by)}</b> rolled ${L.roll}${tailOf(L)}` : 'No rolls yet';
+  g = `<div class="g-snakes">${trackSvg(SNL_SPEC, { tokens: { X: mini.pos.X - 1, O: mini.pos.O - 1 }, moved: joint ? ['X', 'O'] : a ? a.by : null, finish: 'none', goal: true, cls: 'snl', overlay: snlArt(SNL_SPEC, mini) })}
         <div class="dieWrap"><div class="die${a ? ' roll' : ''}">${ok ? dieFace(L.roll) : '<span class="q">?</span>'}</div>
-          <div class="dielab${a ? ' late' : ''}">${ok ? `<b class="${L.by}">${N(L.by)}</b> rolled ${L.roll}${tail}` : 'No rolls yet'}</div></div>
+          <div class="dielab${a ? ' late' : ''}">${lab}</div></div>
         <button class="big ${turn}" data-act="move" ${mv('roll')}${locked ? ' disabled' : ''}>Roll for ${N(turn)}</button></div>`;
   return g;
 }
 export function moveText(f, who) {
+  if (f.scr && f.scr.moves) return ['X', 'O'].filter(p => f.scr.moves[p]).map(p => { const l = f.scr.moves[p]; return `<b class="${p}">${N(p)}</b> rolled ${l.roll}${l.via === 'ladder' ? ' · up the ladder' : l.via === 'snake' ? ' · down the snake' : ''}`; }).join(' · ');
   return `${who} rolled ${f.roll}${f.via === 'ladder' ? ` · up the ladder to ${f.to}` : f.via === 'snake' ? ` · down the snake to ${f.to}` : ` · space ${f.to}`}`;
 }

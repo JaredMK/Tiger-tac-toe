@@ -182,7 +182,7 @@ export function renderProfHist() {
     const r = h.result === 'win' ? 'Won' : h.result === 'loss' ? 'Lost' : 'Draw';
     const chg = RATINGS_ENABLED && h.ratingAfter != null ? `<small class="hchg ${h.ratingAfter >= h.ratingBefore ? 'up' : 'down'}">${h.ratingBefore} → ${h.ratingAfter} (${signed(h.ratingAfter - h.ratingBefore)})</small>` : '';
     return `<button class="hirow ${h.result}" data-act="hist-open" data-id="${esc(h.id)}" aria-label="${r} against ${esc(h.opponent && h.opponent.name)}${h.side === 'X' || h.side === 'O' ? `, you played ${h.side}` : ''}, ${HOW_TEXT[h.how] || ''}, ${fmtDate(h.date)}. Tap to see the final board">
-      ${histSnap(h)}<span class="hres">${r}</span><span class="hvs"><span class="hname">vs ${esc(h.opponent && h.opponent.name || '?')}</span><small>${HOW_TEXT[h.how] || ''} · ${fmtDate(h.date)}</small></span><span class="hmeta">${h.side === 'X' || h.side === 'O' ? `<i class="hyou ${h.side}">You: ${h.side}</i>` : ''}<i class="badge ${h.mode}">${MODE_TEXT[h.mode] || ''}</i>${chg}</span></button>`;
+      <span class="hin">${histSnap(h)}<span class="hres">${r}</span><span class="hvs"><span class="hname">vs ${esc(h.opponent && h.opponent.name || '?')}</span><small>${HOW_TEXT[h.how] || ''} · ${fmtDate(h.date)}</small></span><span class="hmeta">${h.side === 'X' || h.side === 'O' ? `<i class="hyou ${h.side}">You: ${h.side}</i>` : ''}<i class="badge ${h.mode}">${MODE_TEXT[h.mode] || ''}</i>${chg}</span></span></button>`;
   }).join('')}</div>`;
   return `<main class="scr setup acct-scr prof-scr">
     <div class="bar"><button class="back" data-act="profile" data-uid="${esc(p.uid || '')}" aria-label="Back to the stats">${CHEV}Stats</button>

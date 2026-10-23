@@ -84,7 +84,7 @@ const REPLAY_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" 
 export function pauseMenu() {
   if (!menuOpen) return '';
   if (menuStep === 'confirm') {
-    const note = state.online && !isMM() ? ' Your friend is told you left and sent back to the main menu.' : '';
+    const note = state.online && !isMM() ? ' Your friend is shown the result.' : '';
     const text = state.winner ? 'The match is over.' : leaveLoses() ? `<b>It will count as a loss.</b>${note}` : `The match ends here.${note}`;
     return `<div class="flash pause" role="dialog" aria-label="Leave this match?"${fxAttr(fxAt('menu', menuStep))}><div class="card"><h2>Leave this match?</h2><p>${text}</p>
       <div class="row"><button class="btn" data-act="pause-back">No</button><button class="btn go" data-act="pause-leave">Yes</button></div></div></div>`;

@@ -1,6 +1,7 @@
 // Wordle: the screen, the miniature, the move's words and sounds, and the inputs.
 import { noticeSeq } from '../../net/moves.js';
 import { N, esc, state } from '../../ui/app.js';
+import { toon } from '../../ui/art.js';
 import { fxAt, fxAttr } from '../../ui/fx.js';
 import { keyboard } from '../../ui/keyboard.js';
 import { wordleLeft, wordleLimit } from './rules.js';
@@ -18,7 +19,7 @@ export function miniature(mini, final) {
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   const n = mini.guesses.length;
-  const rows = mini.guesses.map((gs, r) => `<div class="wrow">${gs.word.split('').map((ch, k) =>
+  const rows = mini.guesses.map((gs, r) => `<div class="wrow"><span class="wby ${gs.by}">${toon(gs.by)}</span>${gs.word.split('').map((ch, k) =>
         `<i class="wt ${gs.marks[k]}${a && r === n - 1 ? ' reveal' : ''}"${a && r === n - 1 ? ` style="--k:${k}"` : ''}>${ch}</i>`).join('')}</div>`).join('');
   const dr = state.draft || '';
   const cur = Array.from({ length: 5 }, (_, k) => `<i class="wt${dr[k] ? ' typed' : ''}">${dr[k] || ''}</i>`).join('');
@@ -28,7 +29,7 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
   const left = wordleLimit(mini) ? `<div class="hleft">${['X', 'O'].map(p => `<span class="${p}"><b class="${p}">${N(p)}</b>${pips(mini, p)}</span>`).join('')}</div>` : '';   // each player's guesses left (always there: nothing moves)
   g = `<div class="g-wordle">${left}<div class="wlist" id="wlist">${rows || `<div class="empty">${view ? 'No guesses were made.' : 'No guesses yet'}</div>`}</div>
         ${state.notice ? `<div class="notice" role="alert"${fxAttr(fxAt('notice', noticeSeq))}>${esc(state.notice)}</div>` : ''}
-        ${view ? '' : `<div class="wrow cur${state.notice ? ' shake' : ''}" aria-label="Your guess"${state.notice ? fxAttr(fxAt('notice', noticeSeq)) : ''}>${cur}</div>`}
+        ${view ? '' : `<div class="wrow cur${state.notice ? ' shake' : ''}" aria-label="Your guess"${state.notice ? fxAttr(fxAt('notice', noticeSeq)) : ''}><span class="wby"></span>${cur}</div>`}
         ${keyboard(k => (best[k] || '') + (best[k] && best[k] !== before[k] ? ' kc' : ''), () => locked || dr.length >= 5, { enter: locked || dr.length !== 5, bksp: locked || !dr.length })}</div>`;
   return g;
 }

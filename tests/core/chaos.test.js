@@ -222,6 +222,49 @@ test('Super Chaos Bump: a spin plays at once (own piece only, nothing knocked ye
   assert.deepEqual(resolve(s7).claims, [{ square: 0, by: 'X' }]);
 });
 
+// Both moved in one shared square (core/chaos.js: the game's scJoint): the recap plays both moves together, from
+// where the round began, in the player's own square (no replay of the other's after), and the square settles to both.
+test('Super Chaos shared boards: both in one Candy Race, Snakes and Ladders or Treasure Hunt square in a round: one joint resolution with both moves, from the round\'s start, settled to both', () => {
+  // Candy Race: X spins red from the Start, O (the computer) spins green from space 4: both hop together
+  const cd = E.newMini('candy', E.makeRng('cd')); cd.pos = { X: -1, O: 3 };
+  const toOf = (from, color) => { for (let i = from + 1; i < 12; i++) if (cd.track[i] === color) return i; return 12; };
+  const st = round([cd], { square: 0, moves: [1], rng: fixed(0.6) });
+  human(st, 0, [1], fixed(0.1));
+  const rc = resolve(st), r0 = rc.resolve[0];
+  assert.deepEqual([rc.resolve.length, r0.square, r0.joint, r0.flash.type, r0.flash.scr.moves], [1, 0, true, 'candy', { X: { by: 'X', color: 'red', from: -1, to: toOf(-1, 'red') }, O: { by: 'O', color: 'green', from: 3, to: toOf(3, 'green') } }]);
+  assert.deepEqual(rc.pre[0].pos, { X: -1, O: 3 }, 'from where the round began');
+  assert.deepEqual(rc.view[0].pos, { X: toOf(-1, 'red'), O: toOf(3, 'green') }, 'settled to both');
+  assert.deepEqual(E.scRecapOrder(rc, 0, rc.cpu).map(o => [o.kind, o.own]), [['resolve', true]], 'together in the player\'s own square, no replay after');
+  assert.ok(E.playMs(r0.flash) >= E.playMs({ type: 'candy', from: -1, to: toOf(-1, 'red') }), 'the flash lasts as long as the longer hop');
+  // the computer elsewhere: nothing to settle together (the human's own spin was seen as made; the computer's is its replay)
+  const s2 = round([Object.assign(E.newMini('candy', E.makeRng('cd')), { pos: { X: -1, O: 3 } }), hilo(20)], { square: 1, moves: [10] });
+  human(s2, 0, [1], fixed(0.1));
+  assert.deepEqual(resolve(s2).resolve, []);
+  // Snakes and Ladders: X from 0 rolls 4 to the ladder's foot (up to 9); O from 3 rolls 4 to the snake's head (down to 2)
+  const sn = Object.assign(E.newMini('snakes', E.makeRng('sn')), { ladders: [[4, 9]], snakes: [[7, 2]], pos: { X: 0, O: 3 } });
+  const s3 = round([sn], { square: 0, moves: ['roll'], rng: fixed(0.5) });
+  human(s3, 0, ['roll'], fixed(0.5));
+  const r3 = resolve(s3), j3 = r3.resolve[0];
+  assert.deepEqual([j3.joint, j3.flash.scr.moves], [true, { X: { by: 'X', roll: 4, from: 0, land: 4, to: 9, via: 'ladder' }, O: { by: 'O', roll: 4, from: 3, land: 7, to: 2, via: 'snake' } }]);
+  assert.deepEqual([r3.pre[0].pos, r3.view[0].pos, s3.squares[0].mini.pos], [{ X: 0, O: 3 }, { X: 9, O: 2 }, { X: 9, O: 2 }]);
+  assert.equal(E.playMs(j3.flash), E.PLAY.die + 4 * E.PLAY.hop + E.PLAY.slide + 250, 'the hops of the longer roll, then the slide');
+  // Treasure Hunt: X digs cell 0, O cell 5: both open together, each with its band; the grid holds both
+  const hunt = () => Object.assign(E.newMini('hunt', E.makeRng('ht')), { treasure: 20 });
+  const s4 = round([hunt()], { square: 0, moves: [5] });
+  human(s4, 0, [0]);
+  const r4 = resolve(s4), j4 = r4.resolve[0], h4 = s4.squares[0].mini;
+  assert.deepEqual([j4.joint, j4.flash.scr], [true, { digs: { X: 0, O: 5 }, bands: { X: E.huntClue(h4, 0), O: E.huntClue(h4, 5) } }]);
+  assert.deepEqual([r4.pre[0].dug.filter(Boolean).length, h4.dug[0], h4.dug[5]], [0, 'X', 'O'], 'from the untouched grid to both digs');
+  // both dig the same cell: dug once (X's mark), both saw its band; both dig the treasure: both win it, and the square resets
+  const s5 = round([hunt()], { square: 0, moves: [0] });
+  human(s5, 0, [0]);
+  const r5 = resolve(s5);
+  assert.deepEqual([r5.resolve[0].flash.scr.digs, s5.squares[0].mini.dug.filter(Boolean).length, s5.squares[0].mini.dug[0]], [{ X: 0, O: 0 }, 1, 'X']);
+  const s6 = round([hunt()], { square: 0, moves: [20] });
+  human(s6, 0, [20]);
+  assert.deepEqual(resolve(s6).resets.map(x => x.why), ['both']);
+});
+
 test('Super Chaos Roulette: one spin a round per square, drawn as the round begins: both bets there land on the same number, each at once on the mover\'s screen', () => {
   const rl = hits => ({ type: 'rl', hits, spins: [], last: null });
   const spinIs = (st, i, n) => { st.squares[i].mini.spin = n; st.sc.base[i].spin = n; };

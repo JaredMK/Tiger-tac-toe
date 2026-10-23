@@ -44,4 +44,5 @@ export function submitWord() {
   const r = attemptMove(state.draft);
   if (r === true || r.ok) return;
   if (r.reason === 'notword') showNotice('Not a word', 1200);   // the guess stays typed and the turn is still theirs
+  else if (r.reason === 'notallowed') showNotice('Not allowed', 1200);   // (an offensive word: no guess spent)
 }

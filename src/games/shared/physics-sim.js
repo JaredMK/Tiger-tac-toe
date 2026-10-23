@@ -111,7 +111,7 @@ export function makePhysics(Matter) {
       // no back wall: the end of the lane is a pit (below), and the sides are gutters (nothing to bounce off)
       const b = ball(S.start[0], S.start[1], S.ballR, 'ball:ball', { frictionAir: S.air, density: 0.03 });
       bodies.push(b); tracked.push(['ball', b]);
-      S.pins.forEach(([x, y], k) => { const pin = ball(x, y, S.pinR, 'pin:' + k, { frictionAir: S.pinAir, density: 0.02, restitution: S.pinBounce, friction: 0.05 }); bodies.push(pin); tracked.push(['p' + k, pin]); });
+      S.pins.forEach(([x, y], k) => { if (pos && pos.standing && !pos.standing[k]) return; const pin = ball(x, y, S.pinR, 'pin:' + k, { frictionAir: S.pinAir, density: 0.02, restitution: S.pinBounce, friction: 0.05 }); bodies.push(pin); tracked.push(['p' + k, pin]); });   // (standing: a second roll at what the first left)
     }
     Composite.add(engine.world, bodies);
     return { engine, tracked, S };
@@ -218,8 +218,9 @@ export function makePhysics(Matter) {
     if (type === 'golf') result = { holed: { X: !!gone.X, O: !!gone.O }, first: (events.find(e => e.k === 'hole') || {}).id || null };
     else if (type === 'pool') result = { pocketed: events.filter(e => e.k === 'pocket').map(e => e.id) };
     else {
-      const down = BOWL.pins.map(([x, y], k) => gone['p' + k] || Math.hypot(final['p' + k][0] - x, final['p' + k][1] - y) > S.knocked);
-      result = { down, knocked: down.filter(Boolean).length, gutter: !hitPin && events.some(e => e.k === 'gutter') };   // a gutter ball: one that never reached the pins
+      const was = pos && pos.standing ? pos.standing : null;        // (pins down before this roll stay down and count for nothing)
+      const down = BOWL.pins.map(([x, y], k) => (was && !was[k]) || gone['p' + k] || Math.hypot(final['p' + k][0] - x, final['p' + k][1] - y) > S.knocked);
+      result = { down, knocked: down.filter((d, k) => d && !(was && !was[k])).length, gutter: !hitPin && events.some(e => e.k === 'gutter') };   // a gutter ball: one that never reached the pins
     }
     ev('stop');
     return { final, events, rec: { fps: FPS * TS, ids, frames }, result, ms: Math.round(frames.length / (FPS * TS) * 1000) };

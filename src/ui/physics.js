@@ -2,7 +2,7 @@
 // aim, the recording replayed, the tables.
 import { other } from '../core/util.js';
 import { PHYSICS, PHYS_TYPES, physShot, physicsReady, setPhysics } from '../games/shared/physics.js';
-import { BOWLG } from '../games/bowling/rules.js';
+import { bowlOpen, bowlTarget } from '../games/bowling/rules.js';
 import { bowlDraft, bowlKeep, drawBowl, drawBowlAim } from '../games/bowling/view.js';
 import { drawGolf } from '../games/golf/view.js';
 import { POOLG, poolIds } from '../games/pool/rules.js';
@@ -80,8 +80,10 @@ export function physResult(f, long) {
     return { text: long ? `${who} shot` : 'Nothing down', ok: false };
   }
   if (ph.strike) return { text: long ? `${who} bowled a strike!` : 'STRIKE!', ok: true };
-  if (ph.gutter) return { text: long ? `${who} rolled a gutter ball` : 'Gutter ball', ok: false };
-  return { text: long ? `${who} knocked ${ph.knocked} pin${ph.knocked === 1 ? '' : 's'}` : `${ph.knocked} pin${ph.knocked === 1 ? '' : 's'}`, ok: ph.knocked >= 6 };
+  if (ph.spare) return { text: long ? `${who} picked up the spare!` : 'SPARE!', ok: true };
+  if (ph.gutter) return { text: long ? `${who} rolled a gutter ball` : ph.roll === 1 ? 'Gutter ball — one more roll' : 'Gutter ball', ok: false };
+  const n = `${ph.knocked} pin${ph.knocked === 1 ? '' : 's'}`;
+  return { text: long ? `${who} knocked ${n}` : ph.roll === 1 ? `${n} — one more roll` : n, ok: ph.knocked >= 6 };
 }
 export function physTable(mini, a, o) {
   const type = mini.type, turn = o.turn;
@@ -90,7 +92,7 @@ export function physTable(mini, a, o) {
   const fresh = p => !!(ph && a.by === p);
   const tal = type === 'golf' ? p => arcTally(p, o, `<small>${mini.holed[p] ? 'in the cup' : `${mini.shots[p]} shot${mini.shots[p] === 1 ? '' : 's'}`}</small>`)
     : type === 'pool' ? p => arcTally(p, o, pips(p, Math.min(POOLG.goal, mini.pocketed[p]), POOLG.goal, fresh(p) && ph.own > 0, ph ? ph.ms : 0))
-    : p => arcTally(p, o, `<small>${fresh(p) && ph.knocked ? `<i class="pins" style="--t:${ph.rec && !REDUCED ? ph.ms : 0}ms"><b class="was">${mini.pins[p] - ph.knocked}</b><b class="now">${mini.pins[p]}</b></i>` : mini.pins[p]} / ${BOWLG.goal} pins</small>`);   // the total before the roll, then the new one as the pins settle
+    : p => arcTally(p, o, `<small>${fresh(p) && ph.knocked ? `<i class="pins" style="--t:${ph.rec && !REDUCED ? ph.ms : 0}ms"><b class="was">${mini.pins[p] - ph.knocked}</b><b class="now">${mini.pins[p]}</b></i>` : mini.pins[p]} / ${bowlTarget(mini)} pins</small>`);   // the total before the roll, then the new one as the pins settle
   const mine = !o.view && !ph && !o.locked;
   const bowl = type === 'bowling' ? bowlKeep(o, mine) : null;   // Bowling's two taps: 1 the arrow sweeps, 2 the meter, 3 both locked (the roll on its way)
   const t = ph ? (ph.rec && !REDUCED ? ph.ms : 0) : null;
@@ -100,7 +102,7 @@ export function physTable(mini, a, o) {
     : state.sc && mini.aim && mini.aim[turn] ? '<p class="arcnote">Shot locked in</p>'
     : mine ? '<p class="arcnote"></p>'
     : `<p class="arcnote">Waiting for <b class="${turn}">${N(turn)}</b>…</p>`;
-  const strike = ph && type === 'bowling' && ph.strike ? `<div ${lateAt('pstrike', t)} aria-hidden="true">STRIKE!</div>` : '';
+  const strike = ph && type === 'bowling' && (ph.strike || ph.spare) ? `<div ${lateAt('pstrike', t)} aria-hidden="true">${ph.strike ? 'STRIKE!' : 'SPARE!'}</div>` : '';
   const label = type === 'golf' ? `Mini golf hole: ${PHYSICS.lib.HOLES[mini.hole].name}` : type === 'pool' ? 'The pool table' : 'The bowling lane';
   const scene = `<div class="pscene ${type}" data-phys="scene"${mine ? ' data-live="1"' : ''} aria-label="${label}"><canvas data-phys="cv"></canvas>${strike}</div>`;
   const btn = type !== 'bowling' || o.view ? '' : `<div class="cbtns one"><button class="big ${ph ? a.by : turn}" data-act="bowl"${mine && bowl && bowl.step < 3 ? '' : ' disabled'}>${bowl && bowl.step >= 2 ? 'Roll!' : 'Stop'}</button></div>`;
@@ -122,9 +124,9 @@ export function physStill(mini, showLast) {
   if (mini.type === 'golf') for (const p of ['X', 'O']) out[p] = mini.holed[p] ? null : mini.balls[p];
   else if (mini.type === 'pool') for (const id of poolIds(mini)) out[id] = mini.down[id] ? null : mini.balls[id];
   else {
-    const l = showLast && mini.last ? mini.last : null;
+    const l = showLast && mini.last ? mini.last : null, open = !l && mini.open && mini.last && bowlOpen(mini, mini.last.by);   // (a second roll owed: the pins as the first left them)
     out.ball = l ? null : L.BOWL.start;
-    L.BOWL.pins.forEach((pt, k) => { out['p' + k] = l && l.down[k] ? null : pt; });
+    L.BOWL.pins.forEach((pt, k) => { out['p' + k] = (l && l.down[k]) || (open && open.down[k]) ? null : pt; });
   }
   return out;
 }
@@ -157,7 +159,7 @@ function physDrawNow(cv, now) {
   const S = PHYS_S(mini.type), M = mini.type === 'pool' ? POOL_RAIL : 0, k = Math.min(W / (S.w + 2 * M), H / (S.h + 2 * M)), ox = (W - S.w * k) / 2, oy = (H - S.h * k) / 2;   // the pool table keeps a rail of one width all round
   const g = { c, W, H, k, M, X: x => ox + x * k, Y: y => oy + y * k };
   const el = ph && at != null ? (now - at) / 1000 : null, lit = el != null && mini.type === 'golf' ? new Set((ph.events || []).filter(e => e.k === 'bump' && el >= e.t && el < e.t + BUMP_LIT).map(e => e.b)) : null;   // (Mini Golf: a bumper flashes as it kicks)
-  if (mini.type === 'golf') drawGolf(g, mini, pos, lit); else if (mini.type === 'pool') drawPool(g, mini, pos); else drawBowl(g, mini, pos);
+  if (mini.type === 'golf') drawGolf(g, mini, pos, lit); else if (mini.type === 'pool') drawPool(g, mini, pos); else drawBowl(g, mini, pos, !ph || !!(fr && fr.done));   // (Bowling: the roll's box fills in once the pins have settled)
   if (dr) drawAim(g, mini, pos, dr);
   else if (mini.type === 'golf' && mini.aim && state.sc && !ph) for (const p of Object.keys(mini.aim)) if (pos[p]) drawLocked(g, pos[p], mini.aim[p]);   // Super Chaos: a shot locked in, waiting for the round's end
   const bd = mini.type === 'bowling' && !ph && bowlDraft && bowlDraft.sq === state.zoom ? bowlDraft : null;
@@ -245,10 +247,10 @@ export function physThumb(mini) {
       ${S.pockets.map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" class="pocket"/>`).join('')}
       ${poolIds(mini).map(id => (mini.down[id] ? '' : ball(mini.balls[id][0], mini.balls[id][1], S.ballR * 1.5, id === 'cue' ? 'cue' : id === 'black' ? 'black' : id[0].toUpperCase(), id === 'cue' || id === 'black' ? '' : id[0].toUpperCase()))).join('')}</svg>`;
   }
-  const S = L.BOWL, l = mini.last;
-  return `<div class="tbowl" aria-label="Bowling: X has ${mini.pins.X} pins, O has ${mini.pins.O} of ${BOWLG.goal}"><svg viewBox="30 6 40 52">
+  const S = L.BOWL, l = mini.last, goal = bowlTarget(mini);
+  return `<div class="tbowl" aria-label="Bowling: X has ${mini.pins.X} pins, O has ${mini.pins.O} of ${goal}"><svg viewBox="30 6 40 52">
     ${S.pins.map(([x, y], k) => `<circle cx="${x}" cy="${y}" r="${S.pinR * 1.6}" class="pin${l && l.down[k] ? ' down' : ''}"/>`).join('')}</svg>
-    <div class="trun bscore">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><i style="--w:${(100 * Math.min(1, mini.pins[p] / BOWLG.goal)).toFixed(1)}%"></i><span>${Math.min(BOWLG.goal, mini.pins[p])}<small>/${BOWLG.goal}</small></span></div>`).join('')}</div></div>`;   // (a line each: the player's mark, their pins as a bar, and the count)
+    <div class="trun bscore">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><i style="--w:${(100 * Math.min(1, mini.pins[p] / goal)).toFixed(1)}%"></i><span>${Math.min(goal, mini.pins[p])}<small>/${goal}</small></span></div>`).join('')}</div></div>`;   // (a line each: the player's mark, their pins as a bar, and the count)
 }
 // Someone else's shot replayed (ui/replay.js): their pull shown as it grew (the drag's readings logged on
 // their phone, or a few made up for the computer), then the shot.

@@ -51,5 +51,13 @@ export function moveFlash(m, p, range, bjFrom, mini, flash) {
   flash.color = mini.last.color; flash.from = mini.last.from; flash.to = mini.last.to; return;
 }
 export function flashMs(f, winLen, won) {
-  return PLAY.spin + Math.max(1, f.to - f.from) * PLAY.hop + 250;
+  const hops = f.scr && f.scr.moves ? Math.max(...Object.values(f.scr.moves).map(mv => Math.max(1, mv.to - mv.from))) : Math.max(1, f.to - f.from);
+  return PLAY.spin + hops * PLAY.hop + 250;
+}
+// Super Chaos: both spun in this square in one round. The recap plays both spins together, from where the
+// round began (the flash carries both moves: scr.moves), and the square settles to both pieces' new spaces.
+export function scJoint(base, forks) {
+  const moves = {};
+  for (const p of ['X', 'O']) { const l = forks[p] && forks[p].last; if (l && l.by === p) moves[p] = { by: p, color: l.color, from: l.from, to: l.to }; }
+  return Object.keys(moves).length === 2 ? { scr: { moves } } : null;
 }

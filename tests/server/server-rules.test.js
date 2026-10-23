@@ -13,7 +13,7 @@ test('usernames: 3 to 16 letters, numbers or underscores; reserved and rude name
 });
 
 test('usernames: the standard word list, look-alikes undone, words caught inside longer names, innocent words left alone', () => {
-  const LIST = require('../../functions/badwords.js');
+  const LIST = require('../../functions/badwords.js').BADWORDS;   // (the list itself lives in src/core/badwords.js, shared with Wordle)
   assert.ok(LIST.length > 400 && LIST.includes('fuck') && LIST.includes('2 girls 1 cup'), 'the LDNOOBW English list, as published');
   // look-alike characters: 0 o, 1 i, 3 e, 4 a, 5 s, 7 t, 8 b
   for (const bad of ['sh1t', 'SH1T_happens', 'a55hole', 'b1tch_please', 'pu55y', 'd1ldo', 'fvck_fuk', 'n4z1', 'H1tl3r', 'r3tard', 'b00bs', 'c0ck_99', 'wh0re', 'Sl0t_slut'.slice(5), '3jaculation'.slice(0, 11)]) {

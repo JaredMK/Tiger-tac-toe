@@ -263,6 +263,10 @@ export function chaosResolve(state, rng, missed) {   // missed: the sides that m
     delete m.winCells;
     const game = rulesOf(m.type);
     const out = (game.scMerge && game.scMerge(m, { base, forks, played, wins: own, me, cpu, rng })) || {};
+    if (played.length === 2 && !out.resolve && !out.replay && game.scJoint) {   // both moved in one shared square (Candy Race, Snakes and Ladders, Treasure Hunt): the recap plays both moves together, from where the round began, and the square settles to both (scJoint: the flash with both moves)
+      const j = game.scJoint(base, forks, m);
+      if (j) out.resolve = { pre: clone(base), joint: true, flash: j };
+    }
     const win = out.win || own;
     const winners = ['X', 'O'].filter(p => win[p]);
     if (sq.mv == null) sq.mv = { X: 0, O: 0 };

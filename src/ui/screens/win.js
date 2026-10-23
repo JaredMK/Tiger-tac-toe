@@ -66,6 +66,22 @@ function mmResult() {
   const mine = recs ? `<p class="rchg rrec">Your record <b>${record(recs[me])}</b></p>` : pub.recorded && pub.recorded.done ? '' : '<p class="rchg wait">Updating records…</p>';   // (a game that ended before records: nothing to wait for)
   return `<div class="mmres">${r}${mine}<p class="vs">vs <button class="link opp" data-act="profile" data-uid="${esc(opp.uid)}">${esc(opp.name)}</button>${recs ? ` <small class="orec">${record(recs[other(me)])}</small>` : ''}</p></div>`;
 }
+// The buttons that start another match: Find Match again after a matchmaking game; a friend room's Rematch,
+// which both players have to tap (the requester waits, and can cancel); a local match's Rematch.
+function againBtns() {
+  if (isMM()) return findAgainBtn();
+  if (!state.online) return '<button class="primary" data-act="rematch">Rematch</button>';
+  if (!room || room.status === 'over' || room.left) return '';   // the room closed, or the other player left: no rematch
+  const me = state.online.me, rm = room.rematch || {};
+  if (rm[me]) return `<button class="primary" disabled>Waiting for ${esc(N(other(me)))}…</button><button class="btn" data-act="rematch-cancel">Cancel</button>`;
+  const bub = rm[other(me)] ? `<span class="rmbub" aria-live="polite">${esc(N(other(me)))} wants a rematch</span>` : '';   // their request, in a bubble under the button
+  return `<span class="rmwrap"><button class="primary" data-act="rematch"${!connected ? ' disabled' : ''}>Rematch</button>${bub}</span>`;
+}
+// Under the buttons, in a friend room: the line the rematch bubble hangs into (always there, so nothing moves).
+function rematchNote() {
+  if (!state.online || isMM() || !room || room.status === 'over' || room.left) return '';
+  return '<div class="rmline"></div>';
+}
 export function renderWin() {
   const w = state.winner;
   if (w === 'draw') return renderDraw();
@@ -79,7 +95,7 @@ export function renderWin() {
   return `<main class="scr win-scr">${netBar()}<div class="win-card${isMM() ? ' mm' : ''}">
     <div class="winburst">${endBurst(endMessage())}</div><div class="big-g ${w}">${toonT(w)}</div><h1>${state.winReason === 'timeout' ? `${N(w)} wins` : state.winReason === 'resign' ? `${N(w)} wins — ${why}` : `${N(w)} wins the match!`}</h1><p>${state.winReason === 'timeout' ? why : state.winReason === 'resign' ? 'Leaving a match counts as a loss' : why}</p>${mmResult()}
     <div class="final" aria-hidden="true">${final}</div>
-    <div class="row">${isMM() ? findAgainBtn() : (state.online && room && room.status === 'over' ? '' : `<button class="primary" data-act="rematch"${state.online && !connected ? ' disabled' : ''}>Rematch</button>`)}<button class="btn" data-act="review">View board</button><button class="btn" data-act="${state.online ? 'leave' : 'menu'}">Main menu</button></div></div></main>`;
+    <div class="row">${againBtns()}<button class="btn" data-act="review">View board</button><button class="btn" data-act="${state.online ? 'leave' : 'menu'}">Main menu</button></div>${rematchNote()}</div></main>`;
 }
 
 
@@ -91,5 +107,5 @@ function renderDraw() {
   return `<main class="scr win-scr">${netBar()}<div class="win-card${isMM() ? ' mm' : ''}">
     <div class="winburst">${endBurst(endMessage())}</div><div class="big-g both">${toonT('X')}${toonT('O')}</div><h1>It's a draw!</h1><p>${state.winReason === 'both' ? 'Both made three in a row in the same round' : state.winReason === 'timeout' ? 'Both missed two rounds in a row' : 'Nobody could get three in a row any more, so the match ended there'}</p>${mmResult()}
     <div class="final" aria-hidden="true">${final}</div>
-    <div class="row">${isMM() ? findAgainBtn() : (state.online && room && room.status === 'over' ? '' : `<button class="primary" data-act="rematch"${state.online && !connected ? ' disabled' : ''}>Rematch</button>`)}<button class="btn" data-act="review">View board</button><button class="btn" data-act="${state.online ? 'leave' : 'menu'}">Main menu</button></div></div></main>`;
+    <div class="row">${againBtns()}<button class="btn" data-act="review">View board</button><button class="btn" data-act="${state.online ? 'leave' : 'menu'}">Main menu</button></div>${rematchNote()}</div></main>`;
 }

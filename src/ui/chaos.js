@@ -117,7 +117,7 @@ export function chaosStep() {
   if (scUi.round !== sc.round) {                                    // a round begins (or goes on after a reload)
     const fresh = sc.deadline == null && sc.held == null;
     scUi = { round: sc.round, readyAt: fresh && !sc.online ? now() + SC_MS.cpu[0] + Math.random() * (SC_MS.cpu[1] - SC_MS.cpu[0]) : 0, stage: null, at: 0, played: false };
-    if (fresh && !sc.online) { sc.deadline = now() + sc.limit * 1000; matchLog({ k: 'round', r: sc.round }); }   // (against the computer: the phone's log of the match; a friend room's is the server's)
+    if (fresh && !sc.online) matchLog({ k: 'round', r: sc.round });   // (against the computer: the phone's log of the match, and no round clock: the round waits for the player; a friend room's clock and log are the server's)
   }
   if (sc.online) {                                                 // a friend room: the move goes in on the record, which settles the round (both in, or the deadline); looked at every second
     const w = scOnlineWait();

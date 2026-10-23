@@ -102,6 +102,22 @@ test('wordle: real words are accepted in any case, non-words and malformed guess
   assert.equal(m.guesses.length, 3, 'every real guess stays on record');
 });
 
+test('wordle: no offensive word is ever the answer, and an offensive guess is refused without using a guess', () => {
+  const { BAD5 } = require('../../src/games/wordle/words.js');
+  assert.ok(BAD5.size > 20, 'the offensive 5-letter words from the username list');
+  for (const w of L.WORDS5) assert.ok(!BAD5.has(w.toUpperCase()), `${w} is never dealt as the answer`);
+  const m = L.newMini('wordle', wordRng(L.WORDS5, 'crane'));
+  const bad = [...BAD5][0];
+  assert.deepEqual(L.applyMove(m, 'X', bad), { ok: false, reason: 'notallowed' });
+  assert.deepEqual(L.applyMove(m, 'X', bad.toLowerCase()), { ok: false, reason: 'notallowed' }, 'in any case');
+  assert.equal(m.guesses.length, 0, 'no guess spent');
+  const st = matchWith(['wordle', 'ttt']);
+  st.squares[0].mini = L.newMini('wordle', wordRng(L.WORDS5, 'crane'));
+  const before = JSON.stringify(st);
+  assert.deepEqual(L.playMove(st, 0, bad), { ok: false, reason: 'notallowed' });
+  assert.equal(JSON.stringify(st), before, 'the same turn, nothing changed');
+});
+
 test('wordle: an invalid guess does not use up the turn', () => {
   const st = matchWith(['wordle', 'ttt']);
   st.squares[0].mini = L.newMini('wordle', wordRng(L.WORDS5, 'crane'));

@@ -89,7 +89,8 @@ export function trackSvg(spec, opts) {
     const [x, y] = at(slot);
     const shared = opts.tokens[other(p)] === slot, dx = shared ? (p === 'X' ? -2.4 : 2.4) : 0;
     const kn = Array.isArray(opts.knocked) ? opts.knocked.includes(p) : opts.knocked === p;
-    tokens += `<g class="tok ${p}${opts.moved === p ? ' moved' : ''}${kn ? ' knocked' : ''}" data-x="${x + dx}" data-y="${y}" style="transform:translate(${x + dx}px,${y}px)"><g class="pc p${p}" transform="translate(${-r * 1.3} ${-r * 1.3}) scale(${r * 2.6 / 100})">${toonG(p)}</g></g>`;
+    const moved = Array.isArray(opts.moved) ? opts.moved.includes(p) : opts.moved === p;   // (Super Chaos's round end: both pieces hopping at once)
+    tokens += `<g class="tok ${p}${moved ? ' moved' : ''}${kn ? ' knocked' : ''}" data-x="${x + dx}" data-y="${y}" style="transform:translate(${x + dx}px,${y}px)"><g class="pc p${p}" transform="translate(${-r * 1.3} ${-r * 1.3}) scale(${r * 2.6 / 100})">${toonG(p)}</g></g>`;
   }
   return `<svg class="track${opts.mini ? ' small' : ''}${opts.cls ? ' ' + opts.cls : ''}" viewBox="0 0 ${spec.w} ${spec.h}" aria-hidden="true"><path class="path" d="${d}"/>${arrows}${spaces}${opts.overlay || ''}${nums}${start}${finish}${tokens}</svg>`;
 }
@@ -100,6 +101,7 @@ export function hopToken() {
   const f = state.flash;
   if (!f || !['candy', 'dice', 'snakes', 'bump'].includes(f.type) || !WAAPI || REDUCED) return;
   if (f.type === 'bump' && f.scr) { bumpRoundEnd(f); return; }
+  if ((f.type === 'candy' || f.type === 'snakes') && f.scr && f.scr.moves) { trackRoundEnd(f); return; }
   const tok = app.querySelector('.gwrap .track .tok.moved');
   if (!tok) return;
   const spec = { candy: CANDY_SPEC, dice: DICE_SPEC, snakes: SNL_SPEC, bump: BUMP_SPEC }[f.type];
@@ -166,11 +168,46 @@ function bumpRoundEnd(f) {
     tok.animate(keys.map(([t, [x, y], sc, r]) => ({ transform: `translate(${x}px, ${y}px) rotate(${r}deg) scale(${sc})`, offset: Math.min(1, t / total), easing: 'ease-in-out' })), { duration: total, fill: 'both' });
   }
 }
+// Super Chaos's round end in Candy Race and Snakes and Ladders: both pieces hopping at the same time from
+// where the round began (both moved here), each its own spaces, then, in Snakes and Ladders, each up its ladder
+// or down its snake. The wheel or die first, as for one move; a piece that shares a space with the other sits
+// a little to its side.
+function trackRoundEnd(f) {
+  const snl = f.type === 'snakes', spec = snl ? SNL_SPEC : CANDY_SPEC, moves = f.scr.moves, lead = snl ? DIE_MS : SPIN_MS;
+  const slot = v => (snl ? v - 1 : v), side = p => (p === 'X' ? -2.4 : 2.4);
+  for (const p of ['X', 'O']) {
+    const tok = app.querySelector(`.gwrap .track .tok.${p}`), mv = moves[p], o = other(p);
+    if (!tok || !mv) continue;
+    const from = slot(mv.from), land = slot(snl ? mv.land : mv.to), shared = moves[o] && moves[o].from === mv.from;
+    const end = [Number(tok.dataset.x), Number(tok.dataset.y)];     // where the piece now sits (its final space, beside the other's if they share it)
+    const stops = [];
+    for (let i = from; i <= land; i++) stops.push(spec.at(i));
+    if (shared) stops[0] = [stops[0][0] + side(p), stops[0][1]];
+    const slide = snl && mv.via ? (mv.via === 'snake'
+      ? [.15, .3, .45, .6, .75, .9].map(t => bezierAt(snakeCurve(spec, mv.land, mv.to), t))
+      : [.25, .5, .75].map(t => [stops[stops.length - 1][0] + (end[0] - stops[stops.length - 1][0]) * t, stops[stops.length - 1][1] + (end[1] - stops[stops.length - 1][1]) * t])) : null;
+    if (!slide) stops[stops.length - 1] = end;
+    const hops = stops.length - 1, total = lead + hops * HOP_MS + (slide ? SLIDE_MS : 0) + 1, frames = [];
+    frames.push({ transform: `translate(${stops[0][0]}px, ${stops[0][1]}px) scale(1)`, offset: 0 });
+    stops.forEach(([x, y], k) => {
+      frames.push({ transform: `translate(${x}px, ${y}px) scale(1)`, offset: (lead + k * HOP_MS) / total, easing: 'ease-in-out' });
+      if (k < hops) {
+        const [nx, ny] = stops[k + 1];
+        frames.push({ transform: `translate(${(x + nx) / 2}px, ${(y + ny) / 2 - 4}px) scale(1.3)`, offset: (lead + (k + .5) * HOP_MS) / total, easing: 'ease-in-out' });
+      }
+    });
+    if (slide) slide.concat([end]).forEach(([x, y], k, all) => frames.push({ transform: `translate(${x}px, ${y}px) scale(${k === all.length - 1 ? 1 : 1.15})`, offset: (lead + hops * HOP_MS + (k + 1) / all.length * SLIDE_MS) / total, easing: 'linear' }));
+    frames.push({ transform: `translate(${end[0]}px, ${end[1]}px) scale(1)`, offset: 1 });
+    tok.style.animation = 'none';
+    tok.animate(frames, { duration: total, fill: 'both' });
+  }
+}
 export function trackSounds(f, add, won, mini, last) {
   add('rattle', 0); add('thunk', DIE_MS);
-  const steps = f.type === 'snakes' ? Math.max(1, f.land - f.from) : Math.max(1, diceSlot(f.total) - diceSlot(f.total - f.roll));
+  const mvs = f.type === 'snakes' && f.scr && f.scr.moves ? Object.values(f.scr.moves) : [f];   // (Super Chaos's round end: both pieces at once)
+  const steps = f.type === 'snakes' ? Math.max(...mvs.map(mv => Math.max(1, mv.land - mv.from))) : Math.max(1, diceSlot(f.total) - diceSlot(f.total - f.roll));
   for (let k = 0; k < steps; k++) add('hop', DIE_MS + k * HOP_MS);
-  if (f.via === 'ladder') add('climb', DIE_MS + steps * HOP_MS);
-  if (f.via === 'snake') add('slide', DIE_MS + steps * HOP_MS);
+  if (mvs.some(mv => mv.via === 'ladder')) add('climb', DIE_MS + steps * HOP_MS);
+  if (mvs.some(mv => mv.via === 'snake')) add('slide', DIE_MS + steps * HOP_MS);
   return;
 }

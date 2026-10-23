@@ -299,7 +299,9 @@ main.scr.mini:has(.fing), main.scr.mini:has(.fing) * { touch-action: none; -webk
 .key.shake::after { animation: strike .25s .35s ease-out both; }
 .key.kc { animation: keycolor .25s 1.1s ease-out both; }
 
-.g-wordle { width: min(var(--gw), 520px); height: var(--gh); display: flex; flex-direction: column; gap: 10px; --tile: min(52px, calc((var(--gw) - 40px) / 5)); }
+.g-wordle { width: min(var(--gw), 520px); height: var(--gh); display: flex; flex-direction: column; gap: 10px; --tile: min(52px, calc((var(--gw) - 72px) / 5)); }   /* (the tiles leave room for the guesser's mark beside each row) */
+.wrow .wby { width: 26px; height: var(--tile); flex: none; display: grid; place-items: center; }   /* who guessed the word, as in Mastermind (a blank one keeps the row being typed in line) */
+.wrow .wby .pc { width: 22px; height: 22px; }
 .wlist { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 5px; align-items: center; padding: 4px 0; }
 .wrow { display: flex; gap: 5px; flex: none; }
 .wrow.cur { justify-content: center; }
@@ -939,6 +941,11 @@ b.O { box-shadow: inset 0 -.38em 0 var(--o-soft); }
 /* Battleship: a hit is a burst on the sea; once sunk, the ship's parts show in their cells */
 .cell.sea.bshit { --fb: #ffe7c2; --fs: 0 5px 0 var(--ink); background: #ffe7c2; box-shadow: 0 5px 0 var(--ink); }
 .cell.sea.bshit::after, .cell.sea.ship::after { display: none; }
+/* Battleship: each shot's centre dot in the colour of whoever fired it (a hit's over the burst, a miss's inside the ring) */
+.cell.sea .bsby { position: absolute; left: 50%; top: 50%; width: 22%; height: 22%; margin: -11% 0 0 -11%; border-radius: 50%; border: 2px solid var(--ink); z-index: 3; pointer-events: none; }
+.cell.sea .bsby.X { background: var(--x); } .cell.sea .bsby.O { background: var(--o); }
+.tg.sea i.miss.byX::after { border-color: var(--x); } .tg.sea i.miss.byO::after { border-color: var(--o); }
+.tg.sea i.hit.byX { box-shadow: inset 0 0 0 1px var(--ink), inset 0 0 0 3px var(--x); } .tg.sea i.hit.byO { box-shadow: inset 0 0 0 1px var(--ink), inset 0 0 0 3px var(--o); }
 .cell .fx { position: absolute; inset: 12%; width: 76%; height: 76%; }
 .fx .f1 { fill: var(--x); stroke: var(--ink); stroke-width: 5; stroke-linejoin: round; }
 .fx .f2 { fill: var(--o); }
@@ -1379,7 +1386,11 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .pcard .prec b { font-family: 'Luckiest Guy', sans-serif; font-weight: 400; font-size: 24px; padding-top: 3px; }
 .pcard .pjoin { grid-column: 1 / -1; }
 .hh { margin: 6px 0 0; font-family: 'Luckiest Guy', sans-serif; font-weight: 400; font-size: 18px; }
-.hirow { grid-template-columns: 46px 46px minmax(0, 1fr) auto; gap: 8px; padding-left: 8px; }
+/* A history row: the button is a plain block (a button is not a grid container on every phone); the grid is the
+   span inside it, every column allowed to shrink, so the snapshot, the texts and the badges always fit the row. */
+.hirow { display: block; min-width: 0; max-width: 100%; overflow: hidden; padding-left: 8px; }
+.hirow .hin { display: grid; grid-template-columns: 46px minmax(40px, auto) minmax(0, 1fr) auto; align-items: center; gap: 8px; min-width: 0; width: 100%; }
+.hirow .hin > * { min-width: 0; }
 .hsnap { width: 46px; height: 46px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; padding: 2px; box-sizing: border-box; background: #b9ab8c; border: 2px solid var(--ink); border-radius: 8px; }   /* the final board, small: X, O and empty; the player's own squares outlined */
 .hsnap i { display: grid; place-items: center; background: var(--paper); border-radius: 3px; font-style: normal; font-family: 'Luckiest Guy', sans-serif; font-size: 10px; line-height: 1; padding-top: 1px; color: transparent; }
 .hsnap i.X { background: var(--x-soft); color: var(--x); } .hsnap i.O { background: var(--o-soft); color: #b8860b; }
@@ -1387,11 +1398,12 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .hirow .hname { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hyou { font-style: normal; font-family: 'Luckiest Guy', sans-serif; font-size: 13px; line-height: 1; padding: 4px 7px 2px; border: 2px solid var(--ink); border-radius: 999px; white-space: nowrap; }
 .hyou.X { background: var(--x-soft); } .hyou.O { background: var(--o-soft); }
-.hirow .hres { font-family: 'Luckiest Guy', sans-serif; padding-top: 3px; }
+.hirow .hres { font-family: 'Luckiest Guy', sans-serif; padding-top: 3px; white-space: nowrap; overflow: hidden; }
 .hirow.win .hres { color: var(--green); } .hirow.loss .hres { color: var(--x); }
 .hirow .hvs { min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
 .hirow .hvs small { color: var(--muted); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.hirow .hmeta { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.hirow .hmeta { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex: none; }
+.hirow .hmeta > * { white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 .badge { font-style: normal; font-size: 13px; padding: 1px 8px; border: 2px solid var(--ink); border-radius: 999px; background: var(--paper); }
 .badge.ranked { background: var(--o); } .badge.casual { background: var(--sky); }
 .hchg { font-size: 13px; color: var(--muted); }
@@ -1400,6 +1412,13 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .rchg b { font-weight: 400; font-size: 26px; }
 .rchg.up b { color: var(--green); } .rchg.down b { color: var(--x); }
 .rchg.wait { color: var(--muted); font-size: 16px; }
+/* The win screen's rematch request from the other player: a bubble hanging under the Rematch button, into a line
+   reserved for it (always there, so nothing moves). */
+.rmwrap { position: relative; display: inline-flex; }
+.rmline { height: 34px; }
+.rmbub { position: absolute; left: 0; top: calc(100% + 12px); z-index: 2; padding: 2px 10px 1px; font-size: 15px; line-height: 20px; white-space: nowrap; border: 2px solid var(--ink); border-radius: 999px; background: var(--paper); box-shadow: 0 2px 0 var(--ink); animation: pop .2s ease-out; }
+.rmbub::before { content: ''; position: absolute; left: 22px; top: -9px; border: 6px solid transparent; border-top: 0; border-bottom: 8px solid var(--ink); }
+.rmbub::after { content: ''; position: absolute; left: 24px; top: -5px; border: 4px solid transparent; border-top: 0; border-bottom: 6px solid var(--paper); }
 .mmres { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0 14px; }
 .rrec b { color: var(--ink); }
 .win-card .vs .orec { color: var(--muted); font-size: 15px; }

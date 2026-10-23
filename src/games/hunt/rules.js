@@ -49,10 +49,22 @@ export function hide(m, k, st) {
   m.clues = m.dug.map((d, i) => (d ? huntClue(m, i) : null)); delete m.treasure; return;   // the bands only
 }
 export function flashMs(f, winLen, won) {
-  return won ? 1400 : 800;
+  return (won ? 1400 : 800) + (f.scr && f.scr.digs ? 300 : 0);   // (Super Chaos's round end: both digs open together, a beat apart)
 }
-// Super Chaos: each player sees their own clue during their move; at the round's end both digs join the grid.
+// Super Chaos: each player sees their own clue during their move; at the round's end both digs join the grid
+// (the same cell dug by both is dug once, X's mark on it; both saw its band).
 export function scMerge(m, c) {
   m.dug = c.base.dug.slice(); m.last = null;
   for (const p of c.played) c.forks[p].dug.forEach((d, k) => { if (d && !m.dug[k]) m.dug[k] = d; });
+}
+// Both dug in this square in one round: the recap opens both cells together, from the grid as the round began
+// (scr.digs: each player's cell; scr.bands: what each found, 0 the treasure).
+export function scJoint(base, forks) {
+  const digs = {}, bands = {};
+  for (const p of ['X', 'O']) {
+    const mk = forks[p], i = mk && Number.isInteger(mk.last) && mk.dug[mk.last] === p ? mk.last : null;
+    if (i == null) continue;
+    digs[p] = i; bands[p] = mk.treasure != null ? huntClue(mk, i) : mk.clues && mk.clues[i] != null ? mk.clues[i] : 4;   // (a phone without the treasure: the band its clues hold)
+  }
+  return Object.keys(digs).length === 2 ? { scr: { digs, bands } } : null;
 }

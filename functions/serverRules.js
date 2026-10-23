@@ -12,9 +12,7 @@ const USERNAME_RE = /^[A-Za-z0-9_]{3,16}$/;
 // (ALLOW: Analyst, Button, Grape, Spoon, Peacock...). A word of 3 letters ("ass", "cum", "tit", "sex")
 // hides inside far too many ordinary words (class, document, title, Essex), so it is refused only as a
 // word of its own: between underscores or digits, or as one part of a CamelCase name ("Big_Ass", "BigAss").
-const LIST = require('./badwords.js');
-const EXTRA = ['fuk', 'nigg', 'retard', 'hitler', 'nazi'];                       // refused anywhere, as before
-const EXTRA_TOKENS = ['kkk', 'chink', 'dyke', 'arse', 'piss', 'crap', 'damn', 'hoe', 'homo'];   // refused as words of their own, as before
+const { BADWORDS: LIST, BAD_EXTRA: EXTRA, BAD_EXTRA_TOKENS: EXTRA_TOKENS } = require('./badwords.js');   // EXTRA: refused anywhere; EXTRA_TOKENS: as words of their own (as before the list)
 const ALLOW = ['advertisement', 'amusement', 'basement', 'endorsement', 'reimbursement', 'among', 'amongst', 'mongoose', 'mongolia',
   'analog', 'analogue', 'analogy', 'analogous', 'analyse', 'analyze', 'analysis', 'analyst', 'analytic', 'canal', 'banal', 'manuscript', 'uranus', 'janus',
   'butte', 'butter', 'buttercup', 'butterfly', 'butterflies', 'butterscotch', 'button', 'buttress', 'rebuttal',

@@ -88,5 +88,13 @@ export function moveFlash(m, p, range, bjFrom, mini, flash) {
   flash.roll = mini.last.roll; flash.from = mini.last.from; flash.land = mini.last.land; flash.to = mini.last.to; flash.via = mini.last.via; return;
 }
 export function flashMs(f, winLen, won) {
-  return PLAY.die + Math.max(1, f.land - f.from) * PLAY.hop + (f.via ? PLAY.slide : 0) + 250;
+  const mvs = f.scr && f.scr.moves ? Object.values(f.scr.moves) : [f];   // (Super Chaos's round end: both pieces at once; the longer of the two)
+  return PLAY.die + Math.max(...mvs.map(mv => Math.max(1, mv.land - mv.from))) * PLAY.hop + (mvs.some(mv => mv.via) ? PLAY.slide : 0) + 250;
+}
+// Super Chaos: both rolled in this square in one round. The recap plays both rolls together, from where the
+// round began (scr.moves: each piece's hops, then its ladder or snake), and the square settles to both.
+export function scJoint(base, forks) {
+  const moves = {};
+  for (const p of ['X', 'O']) { const l = forks[p] && forks[p].last; if (l && l.by === p) moves[p] = { by: p, roll: l.roll, from: l.from, land: l.land, to: l.to, via: l.via || null }; }
+  return Object.keys(moves).length === 2 ? { scr: { moves } } : null;
 }

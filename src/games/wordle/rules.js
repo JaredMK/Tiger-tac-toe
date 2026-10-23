@@ -2,7 +2,7 @@
 import { randInt } from '../../core/random.js';
 import { tuneLive } from '../../core/tune.js';
 import { other } from '../../core/util.js';
-import { VALID5, WORDS5 } from './words.js';
+import { BAD5, VALID5, WORDS5 } from './words.js';
 
 // Standard Wordle feedback: g = right spot, y = in the word elsewhere, x = not in the word (duplicates handled).
 export function wordleMarks(guess, word) {
@@ -28,6 +28,7 @@ export function create(type, rng) {
 export function apply(mini, p, m, rng, idx) {
   const g = typeof m === 'string' ? m.toUpperCase() : '';
   if (!/^[A-Z]{5}$/.test(g)) return { ok: false, reason: 'bad' };
+  if (BAD5.has(g)) return { ok: false, reason: 'notallowed' };    // an offensive word: refused, no guess spent
   if (!VALID5.has(g)) return { ok: false, reason: 'notword' };     // a non-word costs nothing
   if (wordleLeft(mini, p) <= 0) return { ok: false, reason: 'out' };
   mini.guesses.push({ by: p, word: g, marks: wordleMarks(g, mini.word) });

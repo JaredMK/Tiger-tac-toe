@@ -19,7 +19,7 @@ import { reactCooling, rx, sendReact } from '../net/reactions.js';
 import { scMode, setMode, visibleTypes } from '../net/releases.js';
 import {
   dbName, dbSetup, flushName, hostRoom, hostSide, isHost, joinCode, joinName, joinRoom, leaveLobby, leaveLoses,
-  leaveRoom, lockMine, mySide, nameTimer, pinned, quitMatch, rematchOnline, room, setJoinCode, setJoinName,
+  leaveRoom, lockMine, mySide, nameTimer, pinned, quitMatch, rematchCancel, rematchOnline, room, setJoinCode, setJoinName,
   setNameTimer, setNet, shareRoom, startOnline, validCode
 } from '../net/room.js';
 import { reportLocal, trackEnd, trackStart } from '../net/tracking.js';
@@ -94,7 +94,7 @@ export function init() {
     if (act === 'ask-leave') { if (joinAsk) leaveAndJoin(joinAsk.code); return; }
     if (act === 'dismiss') { if (Date.now() >= flashReady) dismissFlash(); return; }   // not before the animation is over
     if (act === 'rep-skip') { repSkip(); return; }                                      // an opponent's replay: straight to its result
-    const free = ['pause', 'pause-report', 'pause-resume', 'pause-main', 'pause-back', 'pause-leave', 'leave', 'lobby-back', 'menu', 'find-again', 'profile', 'prof-back', 'prof-hist', 'mystats', 'hist-open', 'hist-sq', 'hist-back', 'hist-close', 'leaderboard', 'rejoin', 'host-retry', 'share', 'rematch', 'timer', 'review', 'review-sq', 'review-back', 'results', 'pview', 'react-open', 'react-send'];
+    const free = ['pause', 'pause-report', 'pause-resume', 'pause-main', 'pause-back', 'pause-leave', 'leave', 'lobby-back', 'menu', 'find-again', 'profile', 'prof-back', 'prof-hist', 'mystats', 'hist-open', 'hist-sq', 'hist-back', 'hist-close', 'leaderboard', 'rejoin', 'host-retry', 'share', 'rematch', 'rematch-cancel', 'timer', 'review', 'review-sq', 'review-back', 'results', 'pview', 'react-open', 'react-send'];
     if (act === 'sound') { SND.setMuted(!SND.muted); if (!SND.muted) SND.play('toggle'); render(); return; }   // (the press's own sound came with the press when it was still on)
     if (act === 'react-mute') { rx.mute = !rx.mute; if (rx.mute && rx.card && rx.card.side !== mySide()) { clearTimeout(rx.hide); rx.card = null; } render(); return; }   // this match only: the opponent's emoji stop showing and sounding
     if (act === 'pause') { setMenuOpen(true); setMenuStep('main'); startFx('menu', menuStep); render(); scheduleCpu(); return; }
@@ -157,6 +157,8 @@ export function init() {
       if (state.online) { rematchOnline(); return; }
       seatLocal(state.setup, RNG);
       if (state.sc ? startChaos(state, RNG) : startMatch(state, RNG)) { trackStart(); commit(); }   // (a Super Chaos match: another)
+    } else if (act === 'rematch-cancel') {        // the rematch asked for, taken back
+      rematchCancel();
     } else if (act === 'online-go') {
       state.screen = 'online'; setNet('idle', ''); commit();
       connectQuiet();                               // (whether Find Match is on: it follows the database from here)

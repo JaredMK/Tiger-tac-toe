@@ -18,7 +18,7 @@ export function renderHeader() {
   const drawn = won && state.winner === 'draw';                  // a draw: nobody can make a line any more
   const t = won && !drawn ? state.winner : state.turn;
   const sc = !!state.sc;                                        // Super Chaos: the round and the round's clock (against the computer, or in a friend room)
-  const clock = sc ? `<span class="clock" id="clock" aria-label="Time left this round">${clockText()}</span>`   // (kept to the results screen: the bar never changes shape)
+  const clock = sc && sc.online ? `<span class="clock" id="clock" aria-label="Time left this round">${clockText()}</span>`   // (kept to the results screen: the bar never changes shape; against the computer a round has no clock)
     : state.timer && state.timer.limit && !state.winner ? `<span class="clock" id="clock" aria-label="Time left this turn">${clockText()}</span>` : '';
   // the reaction bubble hangs by the sender's character; the bubble is always there (hidden when empty), so the bar's shape stays the same
   const card = p => (rx.card && rx.card.side === p && !menuOpen ? rx.card : null);   // (not over the in-game menu)

@@ -1,7 +1,7 @@
 // Bowling: the screen, the miniature, the move's words and sounds, and the inputs.
 import { r3 } from '../../core/util.js';
 import { PHYSICS, physShot, physicsReady } from '../shared/physics.js';
-import { bowlConfig } from './rules.js';
+import { BOWLG, bowlConfig, bowlTarget } from './rules.js';
 import { SND, ownPress } from '../../audio/sound.js';
 import { attemptMove } from '../../net/moves.js';
 import { blocked } from '../../net/room.js';
@@ -66,7 +66,51 @@ export function drawBowlAim(g, pos, dr, now) {
   }
   c.restore();
 }
-export function drawBowl(g, mini, pos) {
+// Each player's frames so far as bowling-style score boxes in the grey beside the lane (X on the left, O on
+// the right): the two rolls on top (X a strike, / a spare, - nothing), the frame's pins under them and the
+// running total under that, newest at the bottom. The roll just made fills in once the pins have settled
+// (settled: the recording has played); until then the box shows the frame as it stood. A margin too narrow
+// for a box shows only the running total; one with no room shows nothing.
+function drawFrames(g, mini, settled) {
+  const c = g.c, P = runColours(), frames = mini.frames || { X: [], O: [] }, l = mini.last;
+  const mw = g.X(0) - 6, bw = Math.min(64, mw - 4), full = bw >= 36;
+  if (mw < 22) return;
+  const BH = full ? 44 : 22, GAP = 4, top = 8;
+  c.save(); c.textAlign = 'center'; c.textBaseline = 'middle';
+  for (const p of ['X', 'O']) {
+    let fs = frames[p].map(f => ({ r: f.r.slice(), strike: f.strike, spare: f.spare, total: f.total })), pins = mini.pins[p];
+    if (!settled && l && l.by === p && fs.length) {               // the roll under way: not on the board yet
+      const fr = fs[fs.length - 1];
+      fr.r.pop(); fr.total = fr.r.reduce((s, n) => s + n, 0); fr.strike = fr.spare = false; pins -= l.knocked;
+      if (!fr.r.length) fs.pop();
+    }
+    const x0 = p === 'X' ? 3 + (mw - bw) / 2 : g.X(100) + 3 + (mw - bw) / 2;
+    c.font = `800 ${full ? 13 : 11}px Nunito, Arial, sans-serif`; c.fillStyle = P[p];
+    c.fillText(`${p} ${pins}/${bowlTarget(mini)}`, x0 + bw / 2, top + 8);        // the mark and the running total, always
+    let run = 0, y = top + 22;
+    const fit = Math.max(0, Math.floor((g.H - y - 4) / (BH + GAP)));
+    const shown = fs.slice(Math.max(0, fs.length - fit));
+    for (const f of fs.slice(0, fs.length - shown.length)) run += f.total;   // (the earliest frames, off the top: their pins stay in the total)
+    for (const f of shown) {
+      run += f.total;
+      c.beginPath(); rr(c, x0, y, bw, BH, 4); c.fillStyle = 'rgba(255,255,255,.92)'; c.fill(); c.lineWidth = 1.5; c.strokeStyle = P.ink; c.stroke();
+      if (full) {
+        const rh = 16, cw = bw / 2;
+        c.beginPath(); c.moveTo(x0, y + rh); c.lineTo(x0 + bw, y + rh); c.moveTo(x0 + cw, y); c.lineTo(x0 + cw, y + rh); c.stroke();
+        const sym = (n, k) => (k === 0 && f.strike ? 'X' : k === 1 && f.spare ? '/' : n === 0 ? '-' : String(n));
+        c.font = '800 11px Nunito, Arial, sans-serif'; c.fillStyle = P.ink;
+        f.r.forEach((n, k) => c.fillText(sym(n, k), x0 + cw * (k + 0.5), y + rh / 2 + 0.5));
+        c.font = '700 10px Nunito, Arial, sans-serif'; c.fillStyle = '#666'; c.fillText(String(f.total), x0 + bw * 0.28, y + rh + 14);
+        c.font = '800 12px Nunito, Arial, sans-serif'; c.fillStyle = P.ink; c.fillText(String(run), x0 + bw * 0.72, y + rh + 14);
+      } else {
+        c.font = '800 11px Nunito, Arial, sans-serif'; c.fillStyle = P.ink; c.fillText(String(run), x0 + bw / 2, y + BH / 2 + 0.5);
+      }
+      y += BH + GAP;
+    }
+  }
+  c.restore();
+}
+export function drawBowl(g, mini, pos, settled = true) {
   const c = g.c, P = runColours(), L = PHYSICS.lib, S = L.BOWL;
   c.fillStyle = '#6b6f78'; c.fillRect(0, 0, g.W, g.H);                                   // the gutters and beyond
   c.fillStyle = '#e8c58c'; c.fillRect(g.X(S.gutter), g.Y(0), (S.w - 2 * S.gutter) * g.k, S.h * g.k);   // the lane
@@ -92,6 +136,7 @@ export function drawBowl(g, mini, pos) {
     c.fillStyle = 'rgba(0,0,0,.6)';
     for (const [dx, dy] of [[-0.3, -0.1], [0.3, -0.1], [0, 0.35]]) { c.beginPath(); c.arc(X + dx * R, Y + dy * R, R * 0.14, 0, Math.PI * 2); c.fill(); }
   }
+  drawFrames(g, mini, settled);
 }
 export function miniature(mini, final) {
   return physThumb(mini);

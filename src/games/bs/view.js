@@ -1,6 +1,6 @@
 // Battleship: the screen, the miniature, the move's words and sounds, and the inputs.
 import { BS, bsN } from './rules.js';
-import { mv } from '../../ui/app.js';
+import { N, mv } from '../../ui/app.js';
 
 // Battleship: the burst on a hit, a ship's part in its cell, and the card naming the ship being hunted.
 const HITFX = (() => {
@@ -30,7 +30,7 @@ function bsShipCard(mini, sunkBy, fresh) {
 export function miniature(mini, final) {
   const sunk = mini.winCells || [], hits = mini.hits || [], len = mini.len || 1;
   const parts = Array.from({ length: len }, (_, k) => `<g transform="translate(${k * 100} 0)">${SHIP_PART[shipPart(len, k)].replace('class="hull"', `class="hull${k < hits.length ? ' hit' : ''}"`)}</g>`).join('');
-  return `<div class="tbs"><div class="tg g4 sea${bsN(mini) !== BS.n ? ' n' + bsN(mini) : ''}">${mini.revealed.map((r, i) => `<i class="${sunk.includes(i) ? 'ship ' + (r || '') : hits.includes(i) ? 'hit' : r ? 'miss' : ''}"></i>`).join('')}</div>
+  return `<div class="tbs"><div class="tg g4 sea${bsN(mini) !== BS.n ? ' n' + bsN(mini) : ''}">${mini.revealed.map((r, i) => `<i class="${sunk.includes(i) ? 'ship ' + (r || '') : hits.includes(i) ? 'hit' : r ? 'miss' : ''}${(r === 'X' || r === 'O') && !sunk.includes(i) ? ' by' + r : ''}"></i>`).join('')}</div>
         <div class="tship" aria-label="${BS.names[len]}, ${len} part${len === 1 ? '' : 's'}"><svg viewBox="0 20 ${len * 100} 60" aria-hidden="true">${parts}</svg><b>${BS.names[len]}</b></div></div>`;
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
@@ -46,9 +46,9 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
           const cls = `cell sea ship ${sunk ? sq.owner : 'ghost'}${sinking ? ' sink' : ''}${anim === i ? ' flipin' : ''}`;
           return `<button class="${cls}" data-act="move" ${mv(i)} aria-label="Row ${r0} column ${c0}, ship" disabled>${shipSeg(ship, i, n)}${sinking ? HITFX : ''}</button>`;   // while sinking: the hit bursts give way to the ship
         }
-        const hit = hits.includes(i);
+        const hit = hits.includes(i), by = r === 'X' || r === 'O' ? r : null;   // (who fired the shot: its centre dot in their colour)
         const cls = hit ? ' bshit' : r ? ' miss' : '';
-        return `<button class="cell sea${cls}${anim === i ? ' flipin' : ''}" data-act="move" ${mv(i)} aria-label="Row ${r0} column ${c0}${hit ? ', hit' : r ? ', miss' : ''}"${r || locked ? ' disabled' : ''}>${hit ? HITFX : ''}</button>`;
+        return `<button class="cell sea${cls}${anim === i ? ' flipin' : ''}" data-act="move" ${mv(i)} aria-label="Row ${r0} column ${c0}${hit ? ', hit' : r ? ', miss' : ''}${by ? ` (${N(by)})` : ''}"${r || locked ? ' disabled' : ''}>${hit ? HITFX : ''}${by ? `<i class="bsby ${by}"></i>` : ''}</button>`;
       }).join('')}</div>${bsShipCard(mini, sunk ? sq.owner : null, sinking)}</div>`;
   return g;
 }

@@ -255,7 +255,7 @@ function onRoomValue(r) {
   const mine = ['X', 'O'].find(s => r.players[s] && r.players[s].uid === fb.uid);
   if (!mine) { setMenuNote('You are no longer in that room.'); leaveRoom(true); return; }
   if (o.me !== mine) { const old = o.me; o.me = mine; if (old) presenceDown(old); presenceUp(); if (isHost()) state.setup.human = mine; }
-  if (r.left && r.left.side !== o.me) { setMenuNote(`${String(r.left.name || other(o.me)).slice(0, NAME_MAX)} left the match`); leaveRoom(true); return; }
+  if (r.left && r.left.side !== o.me && !matchOver(r)) { setMenuNote(`${String(r.left.name || other(o.me)).slice(0, NAME_MAX)} left the match`); leaveRoom(true); return; }   // (a finished match stays on show: the win screen says they left)
   for (const s of ['X', 'O']) state.setup.names[s] = r.players[s] ? String(r.players[s].name || s).slice(0, NAME_MAX) : s;
   if (r.setup) {
     if (r.setup.games) state.setup.games = Object.assign({}, state.setup.games, r.setup.games);
@@ -264,6 +264,7 @@ function onRoomValue(r) {
   }
   const wasJoined = o.joined;
   o.joined = !!(r.players.X && r.players.X.uid && r.players.O && r.players.O.uid);
+  if (r.rematch && r.rematch.X && r.rematch.O && !r.left && matchOver(r)) rematchStart();   // both want a rematch: it starts
   if (wasJoined === false && o.joined) SND.play('join');
   if ((r.status === 'playing' || r.status === 'over') && r.match) {   // (over: the match ended by a forfeit, the room closed: its result stays on show)
     if (net.status !== 'connected') setNet('connected', '');
@@ -277,6 +278,8 @@ function onRoomValue(r) {
     save(); render();
   }
 }
+// The room holds a finished match (the result on show, a rematch possible).
+function matchOver(r) { const rec = r && r.match && (r.status === 'playing' || r.status === 'over') ? parseMatch(r.match) : null; return !!(rec && rec.state.winner); }
 export function presenting() { return !!(state.flash || state.done || state.spot || presentingSeq != null || stampLeft() > 0); }   // (presentingSeq covers a replay's inputs playing before the move)
 // A square's stamp still playing on the board (ms left): the next move played back waits for it.
 function stampLeft() { const at = state.stamp != null ? fxAt('stamp', state.stampId) : null; return at == null ? 0 : Math.max(0, STAMP_MS - (performance.now() - at)); }
@@ -417,40 +420,76 @@ function showRemoteMove(i, label, before, start) {
   }, SPOT_MS));
 }
 function moveLabel(f) { return f.timeout ? `${playerName(state, f.by)} ran out of time` : `${playerName(state, f.by)} plays here`; }
-// Rematch: the same choice of sides as before. X or O stay as they were; with the host's Random the sides
-// are drawn again. The whole room changes at once (the seats may swap), once, whoever taps first.
+// Rematch: both players have to want it. A tap puts this side's flag on the room (rooms/{code}/rematch/{side}); the
+// other phone shows "[name] wants a rematch" under its Rematch button, and the requester waits ("Waiting for
+// [name]…", Cancel takes the flag off). Once both flags are in, the match starts (rematchStart, from either phone).
 export async function rematchOnline() {
-  if (!fb || !room || !state.winner || !connected) return;
+  const o = state.online;
+  if (!fb || !room || !state.winner || !connected || !o || !o.me || room.left) return;
+  if (room.rematch && room.rematch[o.me]) return;               // asked already: waiting
+  try { await fb.m.set(roomRef('rematch/' + o.me), fb.m.serverTimestamp()); } catch (e) { /* the button stays */ }
+}
+export async function rematchCancel() {
+  const o = state.online;
+  if (!fb || !o || !o.me || !o.code) return;
+  try { await fb.m.remove(roomRef('rematch/' + o.me)); } catch (e) { /* the flag stays; the next tap tries again */ }
+}
+// The next match, once both flags are in: the same choice of sides as before. X or O stay as they were; with the
+// host's Random the sides are drawn again. The whole room changes at once (the seats may swap), once: the other
+// phone's transaction finds the fresh match and does nothing.
+let rematchBusy = false;
+async function rematchStart() {
+  if (!fb || !room || !connected || rematchBusy) return;
+  rematchBusy = true;
   try {
     await fb.m.runTransaction(roomRef(), r => {
       if (!r) return r;                                           // not in the cache yet: retried with the server's value
       const rec = parseMatch(r.match);
       if (!rec || !rec.state.winner || !r.players || !r.players.X || !r.players.O) return;   // the other player already started it
+      if (!r.rematch || !r.rematch.X || !r.rematch.O || r.left) return;                       // (a flag taken back, or a player gone)
       const seats = r.setup && r.setup.hostPick === 'random' ? drawSeats(r.players, r.host) : { players: r.players, hostSide: r.players.X.uid === r.host ? 'X' : 'O' };
       const fresh = newOnlineMatch(roomSetup(seats.players, r.setup), RNG, newId(), serverNow());
       if (!fresh) return;
       armClock(fresh.state, [], serverNow());
-      return Object.assign({}, r, { players: seats.players, setup: Object.assign({}, r.setup, { hostSide: seats.hostSide }), match: Object.assign(packMatch(fresh), { seats: seatsOf(seats.players) }), left: null });
+      return Object.assign({}, r, { players: seats.players, setup: Object.assign({}, r.setup, { hostSide: seats.hostSide }), match: Object.assign(packMatch(fresh), { seats: seatsOf(seats.players) }), left: null, rematch: null });
     }, { applyLocally: false });
-  } catch (e) { /* the button stays */ }
+  } catch (e) { /* the flags stay: the next room value tries again */ }
+  rematchBusy = false;
 }
-// Leaving through the menu: the other player is told and sent to the main menu too.
+// The database side of leaving a friend room: a match under way ends as a loss for the one leaving (the record),
+// then the room is marked left (the other phone shows the result, with no rematch).
+function tellLeft() {
+  const o = state.online;
+  if (!fb || !o || !o.code || !o.me || !room || room.left) return Promise.resolve();
+  const ref = roomRef(), left = { side: o.me, name: playerName(state, o.me), at: fb.m.serverTimestamp() };
+  const resign = room.status === 'playing' && room.match && !state.winner
+    ? fb.m.runTransaction(fb.m.ref(fb.db, `rooms/${o.code}/match`), cur => {      // a match under way: it ends as a loss for the one leaving
+      const rec = parseMatch(cur);
+      if (!rec) return cur;
+      const r = applyOnlineResign(rec, o.me);
+      return r.ok ? Object.assign(packMatch(r.rec), cur.seats ? { seats: cur.seats } : {}) : undefined;
+    }, { applyLocally: false }).catch(() => {})
+    : Promise.resolve();
+  return resign.then(() => fb.m.update(ref, { left }));
+}
+// Leaving a friend match under way through the menu: it ends as a loss for this side (the record), and this phone
+// stays for the result (the loss screen, from the record as it comes back) before the main menu; the other phone
+// sees the win screen. A phone that cannot reach the room goes straight to the menu.
+export function leaveMatch() {
+  const o = state.online;
+  setMenuOpen(false); setMenuStep('main'); state.confirm = null;
+  if (!fb || !o || !o.code || !room) { leaveRoom(false); return; }
+  if (state.winner) { leaveRoom(false); return; }                 // over already: the main menu
+  render();
+  tellLeft().catch(() => { if (state.online && state.online.code === o.code) { setMenuNote('You left the match: it counts as a loss.'); leaveRoom(true); } });
+}
+// Leaving through the menu or from the result: the other player is told (a match under way is lost) and this phone
+// goes to the main menu.
 export function leaveRoom(silent) {
   const o = state.online;
   if (fb && o && o.kind === 'mm' && o.me) presenceDown(o.me);
   if (fb && o && o.code) {
-    if (!silent && o.me && room && !room.left) {
-      const ref = roomRef(), left = { side: o.me, name: playerName(state, o.me), at: fb.m.serverTimestamp() };
-      const resign = room.status === 'playing' && room.match && !state.winner
-        ? fb.m.runTransaction(fb.m.ref(fb.db, `rooms/${o.code}/match`), cur => {      // a match under way: it ends as a loss for the one leaving
-          const rec = parseMatch(cur);
-          if (!rec) return cur;
-          const r = applyOnlineResign(rec, o.me);
-          return r.ok ? Object.assign(packMatch(r.rec), cur.seats ? { seats: cur.seats } : {}) : undefined;
-        }, { applyLocally: false }).catch(() => {})
-        : Promise.resolve();
-      resign.then(() => fb.m.update(ref, { left })).catch(() => {});
-    }
+    if (!silent) tellLeft().catch(() => {});
     if (o.me) presenceDown(o.me);
   }
   stopListening();
@@ -502,15 +541,17 @@ export function leaveLoses() {
 }
 export function quitMatch() {
   if (isMM()) { resignMM(); return; }
-  if (state.online) { leaveRoom(false); return; }
-  if (leaveLoses() && resignLocal(state, state.setup.human === 'O' ? 'O' : 'X')) { trackEnd(); reportLocal(); }   // a loss for player 1, recorded
+  if (state.online) { leaveMatch(); return; }
+  let lost = false;
+  if (leaveLoses() && resignLocal(state, state.setup.human === 'O' ? 'O' : 'X')) { trackEnd(); reportLocal(); lost = true; }   // a loss for player 1, recorded
   clearTimeout(cpuTimer); setCpuTimer(null); setCpuPlan(null);
   clearTimeout(spotTimer); setSpotTimer(null);
   clearTimeout(flashTimer); setFlashTimer(null);
   clearTimeout(holdTimer); setHoldTimer(null); repStop();
   setMenuOpen(false); setMenuStep('main');
   state.flash = null; state.done = null; state.spot = null; state.lock = null;
-  state.screen = 'menu'; state.zoom = null; state.confirm = null;
+  state.screen = lost ? 'win' : 'menu'; state.zoom = null; state.confirm = null;   // a loss that counts: its summary first, then the main menu
+  if (lost) state.endPick = null;
   commit();
 }
 export async function shareRoom() {

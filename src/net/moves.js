@@ -95,6 +95,7 @@ export async function dbMove(i, m, rep) {
 export function moveRejected(reason) {
   SND.play('error');
   if (reason === 'notword') showNotice('Not a word', 1200);
+  else if (reason === 'notallowed') showNotice('Not allowed', 1200);
   else if (reason === 'network') showNotice('No connection', 1200);
   else showRefused("Move didn't go through");
 }

@@ -1,5 +1,9 @@
 // Wordle's words: the answers it hides, and every five-letter word it takes as a guess.
 
+import { BADWORDS, BAD_EXTRA, BAD_EXTRA_TOKENS } from '../../core/badwords.js';
+// The five-letter words of the profanity list the usernames are held to: never an answer, and refused as a guess
+// ("Not allowed", no guess spent).
+export const BAD5 = new Set(BADWORDS.concat(BAD_EXTRA, BAD_EXTRA_TOKENS).map(w => String(w).toLowerCase().replace(/[^a-z]/g, '')).filter(w => w.length === 5).map(w => w.toUpperCase()));
 export const WORDS5 = `about above abuse actor acute admit adopt adult after again agent agree ahead alarm album alert alike alive allow alone along
 alter among angel anger angle angry apart apple apply arena argue arise armor array arrow aside asset avoid awake award aware badly baker basic
 basis beach beard beast begin being below bench berry birth black blade blame blank blast blaze blend bless blind block blood bloom board boast
@@ -27,7 +31,7 @@ strip stuck study stuff style sugar suite sunny super sweet swing sword table ta
 thing think third those three threw throw thumb tiger tight timer tired title toast today token tooth topic total touch tough tower trace track
 trade trail train treat trend trial tribe trick tried truck truly trunk trust truth twice uncle under union unity until upper upset urban usual
 valid value video virus visit vital vivid vocal voice waste watch water weigh weird wheat wheel where which while white whole whose woman women
-world worry worse worst worth would wound write wrong wrote yield young youth`.split(/\s+/);
+world worry worse worst worth would wound write wrong wrote yield young youth`.split(/\s+/).filter(w => !BAD5.has(w.toUpperCase()));
 
 // Every valid 5-letter guess (the standard Wordle guess list, 14855 words), packed five letters per word.
 export const VALID5 = new Set(`aahedaaliiaapasaarghaartiabacaabaciabackabacsabaftabahtabakaabampabandabaseabashabaskabateabayaabbasabbedabbesabbeyabbotabceeabeamabearabeatabeerabeleabengabersabetsabeysabhorabideabiesabiusabjadabjudabledablerablesabletablowabmhoabnetabodeabohmaboilabomaaboonabordaboreabornabortaboutaboveabramabrayabrimabrinabrisabseyabsitabunaabuneaburaaburnabuseabutsabuzzabyesabysmabyssacaisacaraacariaccasacchaaccoyaccraacedyaceneacerbacersacetaacharachedacherachesacheyachooacidsacidyaciesacingaciniackeeackeracmesacmicacnedacnesacockacoelacoldaconeacornacralacredacresacridacronacrosacrylactasactedactinacton

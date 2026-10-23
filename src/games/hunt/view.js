@@ -1,6 +1,6 @@
 // Treasure Hunt: the screen, the miniature, the move's words and sounds, and the inputs.
 import { huntClue, huntSize } from './rules.js';
-import { mv } from '../../ui/app.js';
+import { N, mv } from '../../ui/app.js';
 
 // Treasure hunt: a dug cell shows its band (Hot 1 step, Warm 2-3, Cool 4-5, Cold 6+), never the distance.
 const BAND = [{ name: 'Found!', bg: '#ffd166', fg: '#1a1a1a' }, { name: 'Hot', bg: '#ff4d4d', fg: '#fff', steps: '1 step' }, { name: 'Warm', bg: '#ffb627', fg: '#1a1a1a', steps: '2–3 steps' },
@@ -18,21 +18,29 @@ export function miniature(mini, final) {
     }).join('')}</div>`;
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
-  const hn = huntSize(mini);
+  const hn = huntSize(mini), both = a && a.scr && a.scr.digs ? Object.values(a.scr.digs) : [];   // (Super Chaos's round end: both players' digs open together)
+  const opens = i => anim === i || both.includes(i);
   g = `<div class="g-hunt"><div class="hgrid" style="--hn:${hn}">${mini.dug.map((dg, i) => {
         const found = (dg || view) && i === mini.treasure;
         const k = dg ? clueAt(mini, i) : -1;
         const b = dg ? BAND[k] || BAND[4] : view && found ? BAND[0] : null;
         const style = b ? ` style="--dbg:${b.bg};--dfg:${b.fg};background:var(--dbg);color:var(--dfg)"` : '';
         const r = Math.floor(i / hn) + 1, c = i % hn + 1;
-        return `<button class="dig${found ? ' found' : ''}${anim === i ? ' open' : ''}" data-act="move" ${mv(i)}${style} aria-label="Row ${r} column ${c}${found ? ', treasure' : dg ? `, ${b.name.toLowerCase()}` : ''}"${dg || locked ? ' disabled' : ''}>${found ? GEM : dg ? `<span>${b.name}</span>` : ''}</button>`;
+        return `<button class="dig${found ? ' found' : ''}${opens(i) ? ' open' : ''}" data-act="move" ${mv(i)}${style} aria-label="Row ${r} column ${c}${found ? ', treasure' : dg ? `, ${b.name.toLowerCase()}` : ''}"${dg || locked ? ' disabled' : ''}>${found ? GEM : dg ? `<span>${b.name}</span>` : ''}</button>`;
       }).join('')}</div>${HKEY}</div>`;   // the colour key under the grid, in every mode
 
   return g;
 }
 export function moveText(f, who) {
+  if (f.scr && f.scr.digs) return ['X', 'O'].filter(p => f.scr.digs[p] != null).map(p => `<b class="${p}">${N(p)}</b> dug · ${(BAND[f.scr.bands[p]] || BAND[4]).name}`).join(' · ');
   return `${who} dug · ${(BAND[f.band] || BAND[4]).name}`;
 }
 export function sounds(f, add, won, mini, last) {
+  if (f.scr && f.scr.digs) {                                     // Super Chaos's round end: both digs, a beat apart, each with its band (the treasure's sparkle once)
+    const bands = ['X', 'O'].filter(p => f.scr.digs[p] != null).map(p => f.scr.bands[p]);
+    bands.forEach((b, k) => { add('dig', k * 300); if (b !== 0) add('band', 380 + k * 300, [0, 1100, 880, 660, 440][b] / 880); });
+    if (bands.includes(0) || won) add('sparkle', 1100);
+    return;
+  }
   add('dig', 0); if (f.band === 0 || won) add('sparkle', 800); else add('band', 380, [0, 1100, 880, 660, 440][f.band] / 880); return;
 }
