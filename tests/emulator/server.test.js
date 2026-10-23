@@ -416,11 +416,12 @@ async function friendRoom(host, guest, code, setup, id) {
 }
 const roomRec = async code => E.parseMatch(await get(`rooms/${code}/match`));
 // The owner sets the room's match (its due moment comes from the trigger, as for any write)
+// (a due moment already past: the room's tick, queued by the write, may have looked at the room at once; the sweep is the backup)
 async function roomSet(code, fn) {
-  const rec = await roomRec(code), full = E.fullState(rec);
+  const rec = await roomRec(code), full = E.fullState(rec), dl0 = await get(`rooms/${code}/dl`);
   fn(full);
   await put(`rooms/${code}/match`, E.packMatch(E.matchRecord(full)));
-  await until(async () => { const dl = await get(`rooms/${code}/dl`); return dl != null && dl <= Date.now(); }, 10000, 'the room due now');
+  await until(async () => { const dl = await get(`rooms/${code}/dl`); return dl !== dl0 || (await roomRec(code)).state.seq > rec.state.seq; }, 10000, 'the trigger took the write');
 }
 test('friend games: with both players gone the server misses their turns; two in a row is a forfeit, recorded, the room closed (Classic)', async () => {
   const host = await player('Abby'), guest = await player('Bert');
@@ -432,11 +433,12 @@ test('friend games: with both players gone the server misses their turns; two in
   // both phones closed: each turn runs out on the server alone
   let st = null, misses = 0;
   for (let k = 0; k < 6; k++) {
+    const before = (await roomRec(code)).state.seq;
     await roomSet(code, f => { f.timer.deadline = Date.now() - 10000; f.timer.startBy = null; f.timer.for = f.turn; });
     const r = await sweep();
-    assert.equal(r.roomTimeouts, 1, 'the sweep missed the turn');
+    assert.ok(r.roomTimeouts <= 1, 'the turn missed once: by the sweep, or by the room\'s tick just before it');
     misses++;
-    st = (await roomRec(code)).state;
+    st = await until(async () => { const v = (await roomRec(code)).state; return v.seq > before ? v : null; }, 10000, 'the server missed the turn');
     if (st.winner) break;
     assert.ok(st.timer.deadline > Date.now(), 'the next turn\'s clock runs at once (away is never a pause)');
   }
