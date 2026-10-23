@@ -37,7 +37,7 @@ function pigTumble(n, sides) {
 
 export function miniature(mini, final) {
   const goal = pigGoal(mini);
-  return `<div class="tdice">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><div class="bar"><i style="width:${Math.min(100, mini.bank[p] / goal * 100)}%"></i></div><span>${mini.bank[p]}</span></div>`).join('')}</div>`;
+  return `<div class="tdice"><div class="tmd8">${pigFace(pigSides(mini), pigSides(mini))}</div>${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><div class="bar"><i style="width:${Math.min(100, mini.bank[p] / goal * 100)}%"></i></div><span>${mini.bank[p]}</span></div>`).join('')}</div>`;
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   // Risky Rolls. The two scores, with this turn's points at risk as a small +N by the roller's score; the

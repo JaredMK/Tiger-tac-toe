@@ -84,6 +84,7 @@ function drawFrames(g, mini, settled) {
       fr.r.pop(); fr.total = fr.r.reduce((s, n) => s + n, 0); fr.strike = fr.spare = false; pins -= l.knocked;
       if (!fr.r.length) fs.pop();
     }
+    if (!fs.length) fs = [{ r: [], total: 0, strike: false, spare: false }];   // no roll yet: the first frame's box, empty, so the scoreboards are there from the start
     const x0 = p === 'X' ? 3 + (mw - bw) / 2 : g.X(100) + 3 + (mw - bw) / 2;
     c.font = `800 ${full ? 13 : 11}px Nunito, Arial, sans-serif`; c.fillStyle = P[p];
     c.fillText(`${p} ${pins}/${bowlTarget(mini)}`, x0 + bw / 2, top + 8);        // the mark and the running total, always

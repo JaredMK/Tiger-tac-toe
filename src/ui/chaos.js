@@ -56,6 +56,15 @@ export function scWaiting() { const sc = live() && state.sc; return !!sc && !sta
 // Online: this phone is through the recap and the next round waits for the other phone's (no deadline yet).
 export const scHeld = () => { const sc = live() && state.sc; return !!sc && !!sc.online && !sc.recap && !state.winner && sc.deadline == null; };
 export function scRecapStage() { return live() && state.sc.recap && scUi.round === state.sc.recap.round ? scUi.stage : null; }
+// Both players moved in this square and the recap plays both moves together in it (Mini Golf's shots, Bump, Candy
+// Race, Sniff, ...): the opponent's side, so it is framed like any replay of theirs (banner, their colour, Skip); else null.
+export function scJointFrame() {
+  const rc = live() && state.sc.recap;
+  if (!rc || state.screen !== 'mini' || state.zoom == null || !['replay', 'resolve'].includes(scRecapStage())) return null;
+  const i = state.zoom, me = scHuman(state);
+  if (!rc.cpu || rc.cpu.square !== i || ownSq(rc, me) !== i) return null;
+  return (rc.replay && rc.replay.square === i) || (rc.resolve || []).some(x => x.square === i && x.joint) ? other(me) : null;
+}
 export const scPopup = () => scRecapStage() === 'popup';                   // the recap's pop-up replay of the computer's move is up
 export const scCpu = () => other(scHuman(state));
 // What a square shows while the recap has not reached its result: both moves in, nothing claimed (a square
@@ -379,6 +388,13 @@ function recapDone(rc) {
 // move left it) stays on show, and the sequence jumps on to the results after a moment (online too: each phone
 // goes at its own pace, and the next round begins once both are through).
 export function scSkip() {
+  if (scJointFrame()) {                                           // both moves played together in one square: to the end of it (its result stays on show a moment)
+    const rc = state.sc.recap, seg = scUi.plan.segs[scUi.seg];
+    dropFlash();
+    if (seg) rc.at = Math.min(rc.at, tnow() - (seg.end - SC_MS.skip));
+    render(); chaosStep();
+    return true;
+  }
   if (scRecapStage() !== 'popup') return false;
   const rc = state.sc.recap, seg = scUi.plan.segs[scUi.seg], steps = rc.cpu ? rc.cpu.steps || [] : [], lastStep = steps[steps.length - 1];
   dropFlash();

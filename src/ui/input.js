@@ -33,7 +33,7 @@ import { fingGo } from './finger.js';
 import { startFx } from './fx.js';
 import { backspace, submitWord, typeLetter } from './keyboard.js';
 import { render } from './render.js';
-import { scPopup, scSkip } from './chaos.js';
+import { scJointFrame, scPopup, scSkip } from './chaos.js';
 import { repActive, repNote, repSkip, repVal } from './replay.js';
 import { runGo } from './runner.js';
 import { hist, openHistory, openLeaderboard, openProfile, prof, profileBack, setHist } from './screens/profile.js';
@@ -83,7 +83,7 @@ export function init() {
   /* ----- input ----- */
   app.addEventListener('click', e => {
     if (rx.tray && !e.target.closest('.rtray, [data-act="react-open"]')) { rx.tray = false; render(); }   // a tap elsewhere closes the reaction tray
-    if (scPopup() && e.target.closest('main.screplay') && !e.target.closest('[data-act="explain"]')) { e.preventDefault(); scSkip(); return; }   // Super Chaos's replay: a tap anywhere on it (or its Skip) goes to its end
+    if ((scPopup() || scJointFrame()) && e.target.closest('main.screplay') && !e.target.closest('[data-act="explain"]')) { e.preventDefault(); scSkip(); return; }   // Super Chaos's replay: a tap anywhere on it (or its Skip) goes to its end
     const el = e.target.closest('[data-act]');
     if (!el || el.disabled) return;
     const act = el.dataset.act;

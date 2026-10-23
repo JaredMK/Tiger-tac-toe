@@ -13,7 +13,7 @@ import { blocked, leaveLoses, lockMine, moveWait, mySide, pinned, remoteTurn } f
 import { N, esc, menuOpen, menuStep, state } from './app.js';
 import { CHEV } from './art.js';
 import { attPinned } from './attention.js';
-import { scWaiting } from './chaos.js';
+import { scJointFrame, scWaiting } from './chaos.js';
 import { waitBand } from './board.js';
 import { qBtn } from './explainer.js';
 import { fingPinned } from './finger.js';
@@ -36,7 +36,8 @@ export function renderMini(sq, review, popup) {
   const won = i => !!(mini.winCells && mini.winCells.includes(i));
   const wk = i => (mini.winCells ? mini.winCells.indexOf(i) : -1);           // place in the winning run, for staggered highlights
   const fresh = a && (a.kind === 'claim' || a.kind === 'match');             // the square was just won
-  const turn = popup && rep ? rep.by : state.turn;   // (the pop-up: the computer's move, so its screen is the computer's)
+  const joint = popup ? scJointFrame() : null;   // (both moved in this square: the recap plays both, framed as the opponent's replay)
+  const turn = joint || (popup && rep ? rep.by : state.turn);   // (the pop-up: the computer's move, so its screen is the computer's)
   let g = '';
   const game = viewOf(mini.type);
   if (game.screen) g = game.screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g);
@@ -44,7 +45,7 @@ export function renderMini(sq, review, popup) {
   let sub = lock ? (mini.type === 'pig' ? `<b class="${turn}">${N(turn)}</b>'s turn in progress`   // (turn info only: how to play is in the ? explainer)
     : mini.type === 'bj' ? `<b class="${turn}">${N(turn)}</b>'s hand`
     : mini.type === 'bus' ? (a ? '' : `<b class="${turn}">${N(turn)}</b>'s run`) : mini.type === 'bs' ? `<b class="${turn}">${N(turn)}</b> hit · goes again` : mini.type === 'pool' ? `<b class="${turn}">${N(turn)}</b> sank one · goes again` : `<b class="${turn}">${N(turn)}</b> guessed right · goes again`) : '';
-  if (popup) sub = '2× speed';
+  if (popup) sub = joint ? 'Both moves' : '2× speed';
   else if (f && f.scr) sub = 'Both moves together';   // Super Chaos's round end: what both moves add up to here (a Bump knock, the Roulette spin)
   else if (!view && !f && !d && remoteTurn()) sub = `Waiting for <b class="${turn}">${N(turn)}</b>…`;
   else if (!view && !f && !d && scWaiting() && state.sc.online && state.sc.fail) sub = '<span class="scfail">Move not saved · trying again…</span>';   // Super Chaos in a friend room: the record would not take the move yet
@@ -73,23 +74,23 @@ export function renderMini(sq, review, popup) {
     : review ? `<button class="back" data-act="${reviewCtx.mback}" aria-label="Back to the final board">${CHEV}Board</button>`
     : `<button class="back${!f && !d && ((mini.type === 'trivia' && lockMine()) || attPinned() || fingPinned() || (FINGER_TYPES.includes(mini.type) && lockMine())) ? ' gone' : ''}" data-act="back" aria-label="Back to the board"${f || d || lockMine() || cpuTurn() || pinned() || repActive() ? ' disabled' : ''}>${CHEV}Board</button>`;
   const wb = state.sc && !popup && !review && !view && !f && !d ? waitBand(null) : { on: false, html: '' };   // Super Chaos: waiting in the square (a shot or a spin locked in), the board's own band over the game
-  const banner = popup ? `<div class="repban ${turn}" role="status">${REPLAY_ICON}<span><b>${N(turn)}</b>'s move — replay</span></div>` : '';   // Super Chaos's replay: whose move it is, in their colour, on the pop-up's edge (the whole pop-up: a tap skips to its end)
+  const banner = popup ? `<div class="repban ${turn}" role="status">${REPLAY_ICON}<span>${joint ? 'Both moves' : `<b>${N(turn)}</b>'s move`} — replay</span></div>` : '';   // Super Chaos's replay: whose move it is, in their colour, on the pop-up's edge (the whole pop-up: a tap skips to its end)
   return `<main class="scr mini${fx.enter && performance.now() - fx.enter.at < 400 ? ' enter' : ''}${popup ? ` screplay rep-${turn}` : ''}"${popup ? ` role="dialog" aria-label="${esc(playerName(state, turn))}'s move — replay"` : ''}>${popup ? banner : netBar()}
     <div class="bar${view && sq.owner ? ' won won-' + sq.owner : ''}" role="${view ? 'status' : 'presentation'}">${back}
       <div class="ttl"><b${info.name.length > 14 ? ' class="long"' : ''}>${info.name}</b><small${view ? ' class="won"' : ''}>${sub}</small></div>${qBtn(mini.type)}</div>
-    <div class="gwrap"${fxAttr(f ? fxAt('move', f) : d && !f ? fxAt('back', d) : null)}>${g}</div>${wb.html}${f ? renderFlash(f) : ''}${repSkipBtn()}${popup ? '' : pauseMenu()}</main>`;   // the move's animations count from the move
+    <div class="gwrap"${fxAttr(f ? fxAt('move', f) : d && !f ? fxAt('back', d) : null)}>${g}</div>${wb.html}${f ? renderFlash(f) : ''}${repSkipBtn() || (joint ? '<button class="rskip late" data-act="rep-skip" aria-label="Skip the replay">Skip</button>' : '')}${popup ? '' : pauseMenu()}</main>`;   // the move's animations count from the move
 }
 const REPLAY_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.6-5.9"/><path d="M4 4v5h5"/></svg>';
 // The in-game menu: a pause card with Resume and Main menu (which asks first).
 export function pauseMenu() {
   if (!menuOpen) return '';
   if (menuStep === 'confirm') {
-    const note = state.online && !isMM() ? ' Your friend is shown the result.' : '';
+    const note = '';
     const text = state.winner ? 'The match is over.' : leaveLoses() ? `<b>It will count as a loss.</b>${note}` : `The match ends here.${note}`;
     return `<div class="flash pause" role="dialog" aria-label="Leave this match?"${fxAttr(fxAt('menu', menuStep))}><div class="card"><h2>Leave this match?</h2><p>${text}</p>
       <div class="row"><button class="btn" data-act="pause-back">No</button><button class="btn go" data-act="pause-leave">Yes</button></div></div></div>`;
   }
-  return `<div class="flash pause" role="dialog" aria-label="Menu"${fxAttr(fxAt('menu', menuStep))}><div class="card"><h2>Paused</h2><p>${state.online && state.timer.limit ? 'The turn clock keeps running.' : state.cpu ? 'The computer waits.' : 'Take your time.'}</p>
+  return `<div class="flash pause" role="dialog" aria-label="Menu"${fxAttr(fxAt('menu', menuStep))}><div class="card"><h2>Menu</h2>${state.online && state.timer.limit ? '<p>The turn clock keeps running.</p>' : state.cpu ? '<p>The computer waits.</p>' : ''}
     <div class="row"><button class="btn go" data-act="pause-resume">Resume</button><button class="btn" data-act="pause-main">Main menu</button></div>${canReport() ? '<button class="btn repbtn" data-act="pause-report">Report a problem</button>' : ''}${state.online && mySide() ? `<button class="btn react-mute" data-act="react-mute" aria-pressed="${rx.mute}">Mute opponent's reactions: ${rx.mute ? 'On' : 'Off'}</button>` : ''}${soundBtn('pause')}</div></div>`;
 }
 // One line about a move, for the result toast and the handoff bar.

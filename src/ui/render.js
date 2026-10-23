@@ -4,7 +4,7 @@ import { refusedNote } from '../net/moves.js';
 import { devWatch } from '../net/tracking.js';
 import { app, entering, esc, lastView, menuOpen, setEntering, setLastView, setMenuOpen, state } from './app.js';
 import { renderBoard, reviewSquares } from './board.js';
-import { scPopup, scShown } from './chaos.js';
+import { scJointFrame, scPopup, scShown } from './chaos.js';
 import { closeExplain, explainT, renderExplain, renderHowTo } from './explainer.js';
 import { fingPaint } from './finger.js';
 import { anchorFx, animate, fxAt, startFx, sweepBursts } from './fx.js';
@@ -131,7 +131,7 @@ function renderMain() {
   }
   if (state.screen === 'mini' && state.zoom != null) {
     const sq = scShown(state.zoom) || state.squares[state.zoom];   // (Super Chaos's recap: the square before its claim or reset)
-    if (sq && scPopup()) return renderBoard() + renderMini(sq, false, true);   // the recap's replay of the computer's move: a pop-up over the board
+    if (sq && (scPopup() || scJointFrame())) return renderBoard() + renderMini(sq, false, true);   // the recap's replay of the computer's move: a pop-up over the board
     if (sq) return renderMini(sq);
   }
   return renderBoard();
