@@ -2,6 +2,6 @@
   "projects": {
     "default": "tic-tac-chaos",
     "production": "tic-tac-chaos",
-    "staging": "PASTE_STAGING_PROJECT"
+    "staging": "tic-tac-chaos-staging"
   }
 }

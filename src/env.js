@@ -17,9 +17,9 @@
     },
     staging: {                                      // the staging project's web app (Firebase console: Project settings, Your apps)
       apiKey: 'PASTE_STAGING_API_KEY',
-      authDomain: 'PASTE_STAGING_PROJECT.firebaseapp.com',
-      databaseURL: 'https://PASTE_STAGING_PROJECT-default-rtdb.firebaseio.com',
-      projectId: 'PASTE_STAGING_PROJECT',
+      authDomain: 'tic-tac-chaos-staging.firebaseapp.com',
+      databaseURL: 'https://tic-tac-chaos-staging-default-rtdb.firebaseio.com',
+      projectId: 'tic-tac-chaos-staging',
       appId: 'PASTE_STAGING_APP_ID',
     },
   };
