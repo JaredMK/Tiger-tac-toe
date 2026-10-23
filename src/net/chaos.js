@@ -10,21 +10,28 @@
 // for SC_ONLINE.readyWaitMs). A phone coming back reads the record and joins the round, or the recap where it is.
 import { SC_ONLINE, scMoveOf } from '../core/chaos.js';
 import { upgradeMini } from '../core/minis.js';
-import { MATCH_FIELDS, applyChaosBegin, applyChaosDeadline, applyChaosSubmit, fullState } from '../core/records.js';
+import { MATCH_FIELDS, applyChaosBegin, applyChaosDeadline, applyChaosSubmit, fullState, scResyncPlan } from '../core/records.js';
 import { other } from '../core/util.js';
 import { SND } from '../audio/sound.js';
-import { call, connected, fb, serverNow } from './connect.js';
+import { bounce, call, connected, fb, restGet, serverNow } from './connect.js';
 import { matchTransaction, moveRejected, showNotice } from './moves.js';
-import { blocked, parseMatch, room, setMoveWait } from './room.js';
+import { blocked, parseMatch, room, setMoveWait, syncRoom } from './room.js';
 import { NAV_SCREENS, RNG, commit, flashTimer, save, setFlashTimer, state } from '../ui/app.js';
 import { flashLeft, playFlash } from '../ui/turns.js';
 import { chaosStep, scAtHole, scOppDue, scOwnDue, scRecapStage, scRecapTotal, setScUi } from '../ui/chaos.js';
 import { render } from '../ui/render.js';
 import { repStop } from '../ui/replay.js';
-import { devError } from './tracking.js';
+import { devError, matchLog } from './tracking.js';
 
 const clone = v => JSON.parse(JSON.stringify(v));
 let sending = false, busy = false;
+// The record is the one truth, and a phone's connection can be dead without the SDK knowing (its keepalive
+// notices after a minute or so: a move sent on it sits unconfirmed, the phone showing "Waiting for…" while the
+// other phone waits for that move). So: a send unconfirmed for sendMs is given up and sent again; a phone that
+// has been waiting waitMs (its move in, the other's not; or the next round not begun) reads the record afresh by
+// HTTP (scResync) and acts on what it finds (core/records.js scResyncPlan).
+export const SC_SYNC = { sendMs: 5000, waitMs: 5000 };
+let sendSeq = 0, waitKey = '', waitSince = 0, syncAt = 0, syncing = false;
 // A Super Chaos match from Find Match: the server runs it (core/scgame.js). This phone sends each step of
 // its move as a request (scRequest) and plays the server's answer; the round's deadline and the next
 // round's start are the server's to act on, asked for here (scTick, scBegin); the record read is the game's
@@ -163,6 +170,7 @@ export function scNextOnline() {
 export function scOnlineWait() {
   const sc = state.sc, o = state.online;
   if (sc.me && sc.sent !== sc.round) { if (srv()) sc.sent = sc.round; else { scSend(); return 1000; } }   // (the server had every step as it was made)
+  if (!srv()) scWatch(sc);
   const rec = room && parseMatch(room.match);
   if (!rec || !rec.state.sc || rec.state.winner || rec.state.sc.round !== sc.round) return null;
   const rsc = rec.state.sc;
@@ -178,28 +186,59 @@ async function scSend() {
   const mv = scMoveOf(state, o.me);
   if (!mv) return;
   mv.at = serverNow();
-  const round = sc.round, square = sc.me.square;
+  const round = sc.round, square = sc.me.square, seq = ++sendSeq;
   let reason = null, ok = false, err = null;
   sending = true;
   try {
-    const res = await matchTransaction(rec => { const r = applyChaosSubmit(rec, o.me, mv, RNG, serverNow(), flashLeft()); if (!r.ok) { reason = r.reason; return null; } return r.rec; });   // (the shared start waits for the result on show here, should this move settle the round)
+    const res = await Promise.race([
+      matchTransaction(rec => { const r = applyChaosSubmit(rec, o.me, mv, RNG, serverNow(), flashLeft()); if (!r.ok) { reason = r.reason; return null; } return r.rec; }),   // (the shared start waits for the result on show here, should this move settle the round)
+      new Promise((_, rej) => setTimeout(() => rej(new Error('unconfirmed')), SC_SYNC.sendMs)),   // no answer in time: given up (a late answer counts for nothing: the record decides), sent again
+    ]);
     ok = !!(res && res.committed);
     if (!ok && !reason) reason = 'norecord';                      // nothing written: no match on the record to take the move
   } catch (e) { reason = 'network'; err = e; }
+  if (seq !== sendSeq) return;                                    // (given up on meanwhile: scResync)
   sending = false;
   if (!state.sc || state.sc.round !== round) { save(); render(); return; }   // the round moved on meanwhile: the record decided
   if (ok || reason === 'moved') { state.sc.sent = round; state.sc.fail = null; }   // in (or in already: this phone open twice)
   else if (reason === 'round' || reason === 'over') { state.sc.sent = round; state.sc.fail = null; scLost(reason, round, square); }   // the record moved on without it
   else if (reason !== 'recap') scFailed(reason, err, round, square);   // ('recap': the next round has not begun on the record yet; tried again in a second)
   save(); render();
+  if (err && /unconfirmed/.test(String(err.message))) scResync('send');   // (the connection is suspect: the record read past it, and the connection made again)
+}
+// Waiting on the other phone (this phone's move in, theirs not; or the next round not begun): after waitMs, and
+// every waitMs after, the record read afresh.
+function scWatch(sc) {
+  const key = sc.me ? `${sc.round}:in` : sc.deadline == null ? `${sc.round}:held` : '';
+  if (key !== waitKey) { waitKey = key; waitSince = Date.now(); syncAt = waitSince; }
+  if (!key) return;
+  if (Date.now() - syncAt >= SC_SYNC.waitMs) { syncAt = Date.now(); scResync('wait'); }
+}
+// The record read afresh by HTTP (past the SDK's connection). The record ahead of what the listener holds: handed
+// over as the listener's would be, and the connection made again (a dead one let go). This phone's move not on it
+// while it believes it sent: sent again. No answer: the line is down (the SDK comes back by itself, and the send is
+// tried again every second anyway).
+async function scResync(why) {
+  const o = state.online, sc = state.sc;
+  if (syncing || !fb || !o || !o.code || srv() || !sc || !sc.online) return;
+  syncing = true;
+  let r = null;
+  try { r = await restGet(`rooms/${o.code}`); } catch (e) { r = null; }
+  syncing = false;
+  if (!r || state.sc !== sc || !state.online || state.online.code !== o.code) return;
+  const plan = scResyncPlan(sc, o.me, parseMatch(room && room.match), parseMatch(r.match));
+  if (plan.resend) { sendSeq += 1; sending = false; sc.sent = null; }   // (a send under way is given up: the next look sends again)
+  if (plan.apply || plan.resend || why === 'send') { matchLog({ k: 'resync', why, apply: plan.apply || undefined, resend: plan.resend || undefined, r: sc.round }); bounce(); }
+  if (plan.apply) syncRoom(r);
+  else if (plan.resend) render();
 }
 // A move's write refused or failed: said on screen (the hint, until it goes in), in the console, and in the
 // device's log on the server (the admin's playtest page), once per kind of failure; tried again every second.
-const SC_FAIL_TEXT = { PERMISSION_DENIED: 'not allowed by the server', network: 'no connection', norecord: 'no match on the record', bad: 'refused by the rules', maxretry: 'the record kept changing', disconnect: 'the connection dropped' };
+const SC_FAIL_TEXT = { PERMISSION_DENIED: 'not allowed by the server', network: 'no connection', norecord: 'no match on the record', bad: 'refused by the rules', maxretry: 'the record kept changing', disconnect: 'the connection dropped', unconfirmed: 'no answer from the server' };
 export const scFailText = code => SC_FAIL_TEXT[code] || SC_FAIL_TEXT[String(code || '').replace(/^.*\//, '')] || String(code || 'unknown');
 function scFailed(reason, err, round, square) {
   const text = err ? String(err.code || err.message || err.name || err) : '', sc = state.sc;
-  const code = /permission.denied/i.test(text) ? 'PERMISSION_DENIED' : /maxretr/i.test(text) ? 'maxretry' : /disconnect/i.test(text) ? 'disconnect' : (err && err.code ? String(err.code).replace(/^.*\//, '') : reason);
+  const code = /permission.denied/i.test(text) ? 'PERMISSION_DENIED' : /maxretr/i.test(text) ? 'maxretry' : /disconnect/i.test(text) ? 'disconnect' : /unconfirmed/.test(text) ? 'unconfirmed' : (err && err.code ? String(err.code).replace(/^.*\//, '') : reason);
   const again = sc.fail && sc.fail.code === code;
   sc.fail = { code, n: again ? sc.fail.n + 1 : 1, at: Date.now() };
   if (again) return;

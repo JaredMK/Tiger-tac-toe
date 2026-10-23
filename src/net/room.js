@@ -80,6 +80,8 @@ function resync() {
   if (isMM()) fb.m.get(fb.m.ref(fb.db, `games/${state.online.game}/pub`)).then(s => onGameValue(s.val())).catch(() => {});
   else fb.m.get(roomRef()).then(s => onRoomValue(s.val())).catch(() => {});
 }
+// A room read some other way (net/chaos.js scResync, by HTTP) goes through as the listener's would.
+export function syncRoom(r) { if (r && typeof r === 'object') onRoomValue(r); }
 function listenRoom(code) {
   stopListening();
   roomUnsub = fb.m.onValue(fb.m.ref(fb.db, 'rooms/' + code), s => onRoomValue(s.val()), () => { setNet('error', 'Lost access to this room.'); commit(); });

@@ -62,7 +62,7 @@ function friendEvents(b, a, t) {
 
 // An event a phone sends for the log (devlog's mlog: what only the phone knows, a match against the
 // computer above all): kept only in a known shape, short. Returns the event (t and src added) or null.
-const CLIENT_KINDS = ['round', 'resolve', 'timeout', 'move', 'reject', 'reconnect', 'offline', 'note'];
+const CLIENT_KINDS = ['round', 'resolve', 'timeout', 'move', 'reject', 'reconnect', 'offline', 'note', 'resync'];
 function clientEvent(e, t) {
   if (!e || typeof e !== 'object' || !CLIENT_KINDS.includes(e.k)) return null;
   const out = { t, k: e.k, src: 'cli' };

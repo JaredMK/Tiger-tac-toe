@@ -470,9 +470,11 @@ test('friend games: Super Chaos with both phones gone: rounds settle on the serv
   })();
   await host.write(`rooms/${code}/match`, E.packMatch(E.applyChaosSubmit(r1, 'X', mv, E.makeRng('s'), Date.now(), 0).rec));
   for (let k = 0; k < 6; k++) {
+    const before = (await roomRec(code)).state.seq;
     await roomSet(code, f => { if (f.sc.deadline != null) f.sc.deadline = Date.now() - 10000; else { f.sc.recap.at = Date.now() - 200000; f.sc.ready = null; } });
-    assert.equal((await sweep()).roomTimeouts, 1);
-    const st = (await roomRec(code)).state;
+    const sw = await sweep();                                     // (a due moment already past: the room's tick, queued by the write, may have looked first; the sweep is the backup: one of them, once)
+    assert.ok(sw.roomTimeouts <= 1, 'looked at once');
+    const st = await until(async () => { const r = (await roomRec(code)).state; return r.seq > before ? r : null; }, 10000, 'the server moved the match on');
     if (st.winner) break;
   }
   const st = (await roomRec(code)).state;
@@ -481,6 +483,33 @@ test('friend games: Super Chaos with both phones gone: rounds settle on the serv
   const id = 'f_' + code + '_gs1';
   assert.deepEqual([(await until(() => host.read(`history/${host.uid}/${id}`), 10000, 'history')).result, (await until(() => guest.read(`history/${guest.uid}/${id}`), 10000, 'history')).result], ['win', 'loss']);
   for (const p of [host, guest]) { const rec = E.parseMatch((await p.read(`rooms/${code}`)).match); assert.equal(rec.state.winner, 'X', `${p.name} sees the result`); }
+});
+
+// The round's deadline is the server's to keep, whatever the phones show: the record's write queues the server's look
+// at the room for the due moment (roomTick, a Cloud Task; the sweep each minute is the backup). Here no phone acts
+// and no sweep runs: the task settles the round at its deadline.
+test('friend games: Super Chaos round nobody settles: the server settles it at its deadline by the room\'s tick (queued by the round\'s write), no phone open, no sweep', async () => {
+  await put('releases/superchaos', true);
+  const host = await player('Tock'), guest = await player('Tick');
+  const code = 'GTCKS';
+  await friendRoom(host, guest, code, { chaos: true, games: Object.fromEntries(E.TYPES.map(t => [t, t === 'hilo'])) }, 'gt1');
+  const r1 = await roomRec(code), mv = (() => {
+    const st = E.fullState(r1); st.online = { role: 'host', code, me: 'X' };
+    st.sc = Object.assign(JSON.parse(JSON.stringify(r1.state.sc)), { me: null, moved: null, start: null, steps: null, recap: null });
+    st.turn = 'X'; st.lock = null;
+    assert.ok(E.playMove(st, st.squares.findIndex(q => q.mini.type === 'hilo'), 15, E.makeRng('hm')).ok);
+    return Object.assign(E.scMoveOf(st, 'X'), { at: Date.now() });
+  })();
+  await host.write(`rooms/${code}/match`, E.packMatch(E.applyChaosSubmit(r1, 'X', mv, E.makeRng('s'), Date.now(), 0).rec));
+  // the host's move in; the guest never moves. The deadline brought close: this write queues the server's look at the room for the due moment
+  const t0 = Date.now();
+  await roomSet(code, f => { f.sc.deadline = t0 + 1500; });
+  const due = await until(async () => { const v = await get(`rooms/${code}/dl`); return v === t0 + 1500 + E.SC_ONLINE.graceMs ? v : null; }, 10000, "the room's due moment");
+  const st = await until(async () => { const r = await roomRec(code); return r.state.sc.recap && r.state.sc.recap.round === 1 ? r.state : null; }, 20000, 'the round settled by the server at its deadline');
+  const at = Date.now();
+  assert.deepEqual([st.sc.recap.mv.O, st.sc.recap.missed, st.sc.miss], [null, ['O'], { X: 0, O: 1 }], 'the guest missed the round; nothing played for them');
+  assert.ok(at >= due - 1000 && at - due < 8000, `settled at its due moment, not before (${at - due} ms after it)`);
+  assert.ok((await get(`rooms/${code}/dl`)) > at, 'the next look queued: the recap nobody finishes begins the next round');
 });
 
 test('friend-code games are saved to the history of players with accounts, marked unrated', async () => {

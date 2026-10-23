@@ -216,6 +216,19 @@ export function scReady(sc, now, side) {
   sc.ready = ready;
   return { ok: true, begun: false };
 }
+// A phone that has been waiting a while reads the record afresh (net/chaos.js scResync: by HTTP, past a
+// connection that may be dead without the SDK knowing yet). What the fresh record tells it: apply, the record has
+// moved on past what its listener holds (hand it over, and drop the connection so the listener catches up);
+// resend, its own move for this round is not on the record (a send that never got there: sent again). loc: the
+// phone's own round (sc), have: the record its listener holds, fresh: the record just read.
+export function scResyncPlan(loc, me, have, fresh) {
+  const fs = fresh && fresh.state, hs = have && have.state;
+  if (!fs || !fs.sc || !fs.sc.online) return { apply: false, resend: false };
+  const apply = !hs || fs.id !== hs.id || (fs.seq || 0) > (hs.seq || 0);
+  const sc = fs.sc, mine = !!(sc.moves && sc.moves[me]);
+  const resend = !!loc && !!loc.online && !!loc.me && loc.round === sc.round && !sc.recap && sc.deadline != null && !mine && !fs.winner;
+  return { apply, resend };
+}
 // The server's look at a friend room's match, whether or not either phone is open (functions/index.js: the
 // deadline check on every write and the sweep each minute). Being away never pauses a turn or a round:
 // Classic, a turn past its deadline is missed (applyOnlineTimeout; its start counted at the latest when the

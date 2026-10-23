@@ -85,6 +85,23 @@ function onConnected(on) {
   if (on && state.online && state.online.me) presenceUp();
   if (state.online) render();
 }
+// A read past the SDK's connection (plain HTTP, this account's token): what the database holds now, even while the
+// SDK's socket is dead without its knowing (it notices only after its keepalive fails, a minute or so). null: no answer.
+export async function restGet(path, ms) {
+  const hook = window.TTT_FIREBASE, c = (hook && hook.config) || FIREBASE_CONFIG;
+  const q = [hook && hook.emulator ? `ns=${c.projectId}-default-rtdb` : null];
+  if (fb && fb.auth && fb.auth.currentUser) q.push('auth=' + encodeURIComponent(await fb.auth.currentUser.getIdToken()));
+  const url = (hook && hook.emulator ? `http://${hook.emulator.host}:${hook.emulator.port}` : c.databaseURL) + `/${path}.json?` + q.filter(Boolean).join('&');
+  const r = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(ms || 4000) });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+// The SDK's connection dropped and made again: a dead socket is let go (its listeners read the database afresh;
+// a write sent on it is given up, and the caller sends it again).
+export function bounce() {
+  if (!fb) return;
+  try { fb.m.goOffline(fb.db); fb.m.goOnline(fb.db); } catch (e) { /* (the SDK comes back by itself) */ }
+}
 export function call(name, data) { return fb.fnM.httpsCallable(fb.fns, name)(data || {}).then(r => r.data); }
 
 // Setters for the names other modules reassign (an imported name is read-only there).

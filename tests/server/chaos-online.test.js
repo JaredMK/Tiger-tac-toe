@@ -225,4 +225,94 @@ test('Super Chaos online, two clients on the emulator: each phone shows its own 
   assert.deepEqual([o4.X, o4.O], [['spot:4', 'popup:4'], ['spot:4', 'popup:4']], 'one square, each their own progress: each sees the other\'s replay');
   const rc4 = host.rec().state.sc.recap;
   for (const side of ['X', 'O']) assert.ok(rc4.mv[side].steps.length === 1 && rc4.mv[side].steps[0].type === 'wheels' && rc4.mv[side].start, `${side}'s spin kept for the other's replay`);
+  // 5-7. Bump: a spin plays at once on the spinner's own phone (its step on the record is the other phone's replay); the round's end settles the knocks
+  const bumpAt = async (X, O) => {
+    await host.txn(code, rec => { const f = E.fullState(rec); const mini = { type: 'bump', pos: { X, O }, last: null }; f.squares[5] = { owner: null, mini, mv: { X: 0, O: 0 } }; if (Array.isArray(f.sc.base)) f.sc.base[5] = JSON.parse(JSON.stringify(mini)); return { ok: true, rec: E.matchRecord(f) }; });   // (the square, and the round's own start of it)
+    for (const c of [host, guest]) await until(() => { const q = c.rec() && c.rec().state.squares[5].mini; return q && q.type === 'bump' && q.pos.X === X && q.pos.O === O; }, 10000, 'the Bump square on both');
+  };
+  // 5. the opponent elsewhere: X spins from 2 (nothing to settle at the round's end); O guesses in Higher/Lower; each phone replays the other's move
+  await bumpAt(2, 7);
+  const sX = moveOf(host.rec(), 'X', 5, ['spin']).mini.last.spin, sO = moveOf(guest.rec(), 'O', 5, ['spin']).mini.last.spin;   // (each side's spin: its own stream of draws)
+  assert.ok(sX >= 1 && sX <= 3 && sO >= 1 && sO <= 3);
+  const o5 = await round(5, [5, ['spin']], [1, [12]]);
+  const rc5 = host.rec().state.sc.recap;
+  assert.deepEqual([o5.X, o5.O], [['spot:1', 'popup:1'], ['spot:5', 'popup:5']], "the opponent elsewhere: each phone's own move as it made it, then the other's replay");
+  assert.deepEqual([rc5.mv.X.steps.length, rc5.mv.X.steps[0].type, rc5.mv.X.steps[0].from, rc5.mv.X.steps[0].to, rc5.mv.X.steps[0].spin], [1, 'bump', 2, 2 + sX, sX], "X's spin on the record: the step O's phone replays (the piece hopping from 2)");
+  assert.deepEqual([rc5.resolve, host.rec().state.squares[5].mini.pos], [[], { X: 2 + sX, O: 7 }], 'nothing to settle together; the piece where the spin took it');
+  // 6. both spin in the Bump square and nobody is bumped: both pieces hop together on each phone, from where the round began; no replay after
+  await bumpAt(0, 5);
+  const o6 = await round(6, [5, ['spin']], [5, ['spin']]);
+  const rc6 = host.rec().state.sc.recap;
+  assert.deepEqual([o6.X, o6.O], [['resolve:5:own'], ['resolve:5:own']], 'both in one Bump square: the joint resolution in each player\'s own view, no replay');
+  assert.deepEqual([rc6.resolve[0].joint, rc6.resolve[0].flash.scr.knocked, rc6.resolve[0].flash.scr.moves, rc6.pre[5].pos], [true, [], { X: { from: 0, to: sX, spin: sX }, O: { from: 5, to: 5 + sO, spin: sO } }, { X: 0, O: 5 }], 'both spins, played from where the round began');
+  assert.deepEqual(host.rec().state.squares[5].mini.pos, { X: sX, O: 5 + sO }, 'the board settles to the final positions');
+  assert.deepEqual(guest.rec().state.squares[5].mini.pos, { X: sX, O: 5 + sO });
+  // 7. both spin and land on the same space: both pieces hop together, then both go home
+  await bumpAt(4, 4 + sX - sO);
+  const o7 = await round(7, [5, ['spin']], [5, ['spin']]);
+  const rc7 = host.rec().state.sc.recap;
+  assert.deepEqual([o7.X, o7.O], [['resolve:5:own'], ['resolve:5:own']]);
+  assert.deepEqual([rc7.resolve[0].joint, rc7.resolve[0].flash.scr.knocked, rc7.resolve[0].flash.scr.at, rc7.pre[5].pos], [true, ['X', 'O'], { X: 4 + sX, O: 4 + sX }, { X: 4, O: 4 + sX - sO }], 'the same space: both knocked, from where they landed');
+  for (const c of [host, guest]) assert.deepEqual(c.rec().state.squares[5].mini.pos, { X: 0, O: 0 }, 'both home on both phones');
+});
+
+// The match log of a two-phone test (room ACVJL, round 9): X's move went in; O's phone finished its move and showed
+// "Waiting for…" while its send sat on a connection that was dead without the SDK knowing (it gave up only 40 s
+// later: 'disconnect'); nothing on either phone read the record afresh meanwhile. The record is the one truth: a
+// phone waiting more than a few seconds reads it again past its connection (net/chaos.js scResync; core/records.js
+// scResyncPlan says what to do), a send unconfirmed that long is sent again, and the server settles a round at its
+// deadline whatever either phone believes (functions/index.js roomTick, and the sweep: applyRoomSweep).
+test('Super Chaos online, two clients: a move sent on a dead connection never reaches the record; the fresh read says send it again, the late copy is refused, both see the round settled; a round nobody settles, the server settles at its deadline', async () => {
+  const code = 'SCDLK';
+  const host = client('uid-host-dlk'), guest = client('uid-guest-dlk');
+  await host.write(`rooms/${code}`, { created: Date.now(), host: host.uid, status: 'lobby', players: { X: { uid: host.uid, name: 'Hosty', joined: Date.now() } }, setup: { hostSide: 'X', timer: 0, chaos: true } });
+  await guest.write(`rooms/${code}/players/O`, { uid: guest.uid, name: 'Guesty', joined: Date.now() });
+  host.follow(code); guest.follow(code);
+  const fresh = E.newOnlineMatch({ names: { X: 'Hosty', O: 'Guesty' }, games: Object.fromEntries(E.TYPES.map(t => [t, t === 'hilo'])), timer: 0, chaos: true }, E.makeRng('sc-dlk'), 'd1', Date.now());
+  const full = E.fullState(fresh); full.sc = JSON.parse(JSON.stringify(fresh.state.sc));
+  full.squares = Array.from({ length: 9 }, (_, i) => ({ owner: null, mini: hilo(10 + i), mv: { X: 0, O: 0 } }));
+  await host.write(`rooms/${code}/status`, 'playing');
+  await host.write(`rooms/${code}/match`, E.packMatch(E.matchRecord(full)));
+  for (const c of [host, guest]) await until(() => c.rec() && c.rec().state.sc.round === 1 && c.rec().state.sc.deadline != null, 10000, 'round 1 on both');
+  // ---- round 1: X's move goes in; O's phone makes its move and sends it on a dead line (the client offline: the send waits, the record never sees it); O's phone shows "Waiting for…", so does X's ----
+  assert.deepEqual(await submit(host, code, 'X', moveOf(host.rec(), 'X', 0, [10])), { committed: true, reason: null });
+  await until(() => guest.rec() && guest.rec().state.sc.moves && guest.rec().state.sc.moves.X, 10000, "the guest sees X's move is in");
+  const mo = moveOf(guest.rec(), 'O', 1, [11]);
+  D.goOffline(guest.db);
+  const late = submit(guest, code, 'O', mo).catch(e => ({ committed: false, reason: String(e.message) }));   // (pending, on the dead line)
+  await wait(700);
+  assert.deepEqual(Object.keys(host.rec().state.sc.moves), ['X'], "O's move never reached the record");
+  // O's phone, waiting 5 s: the record read afresh past the dead line (here: another connection of O's own); its move is not there: sent again
+  const guest2 = client(guest.uid);
+  guest2.follow(code);
+  await until(() => guest2.rec() && guest2.rec().state.sc.moves && guest2.rec().state.sc.moves.X, 10000, 'the fresh read');
+  const loc = { online: true, round: 1, me: { square: 1 }, sent: 1 };
+  assert.deepEqual(E.scResyncPlan(loc, 'O', guest.rec(), guest2.rec()), { apply: false, resend: true }, 'the fresh record: nothing newer than the listener holds, and no move of O\'s on it: send it again');
+  assert.deepEqual(await submit(guest2, code, 'O', mo), { committed: true, reason: null }, 'sent again on the live connection: in, and the round settles');
+  await until(() => guest2.rec() && guest2.rec().state.sc.recap && guest2.rec().state.sc.recap.round === 1, 10000, 'the round settled on the fresh connection');
+  assert.deepEqual(E.scResyncPlan(loc, 'O', guest.rec(), guest2.rec()), { apply: true, resend: false }, 'the dead listener is behind the record now: the fresh record is handed over');
+  // the dead line comes back: the first copy of the move arrives at a settled round and is refused (one move a round, never two); the listener catches up
+  D.goOnline(guest.db);
+  assert.deepEqual(await late, { committed: false, reason: 'round' }, 'the late copy: refused, the record untouched');
+  for (const c of [host, guest, guest2]) await until(() => c.rec() && c.rec().state.sc.recap && c.rec().state.sc.recap.round === 1, 10000, 'every client sees round 1 settled');
+  const rc1 = host.rec().state.sc.recap;
+  assert.deepEqual([rc1.mv.X.square, rc1.mv.O.square, rc1.missed], [0, 1, []], 'both moves counted, once each');
+  assert.equal(JSON.stringify(guest.rec().state), JSON.stringify(host.rec().state), 'the same record on both phones');
+  // ---- round 2: both through the recap; X moves; O's phone goes dead for good (both phones show "Waiting for…"); nobody settles the round, so the server does, at its deadline ----
+  assert.deepEqual(await guest2.txn(code, rec => E.applyChaosBegin(rec, Date.now(), 'O')), { committed: true, reason: null });
+  await until(() => host.rec() && host.rec().state.sc.ready && host.rec().state.sc.ready.O, 10000, 'the host sees O through');
+  assert.deepEqual(await host.txn(code, rec => E.applyChaosBegin(rec, Date.now(), 'X')), { committed: true, reason: null });
+  for (const c of [host, guest]) await until(() => c.rec() && c.rec().state.sc.round === 2 && c.rec().state.sc.deadline != null, 10000, 'round 2 begun on both');
+  assert.deepEqual(await submit(host, code, 'X', moveOf(host.rec(), 'X', 2, [12])), { committed: true, reason: null });
+  await until(() => host.rec() && host.rec().state.sc.moves && host.rec().state.sc.moves.X, 10000, "X's move on the record");
+  D.goOffline(guest.db); await deleteApp(guest2.app);
+  const dl = host.rec().state.sc.deadline;
+  assert.equal(E.roomDue(host.rec()), dl + E.SC_ONLINE.graceMs, "the room's due moment: the round's deadline and the grace for a move finished in time");
+  assert.deepEqual(await host.txn(code, rec => E.applyRoomSweep(rec, dl + E.SC_ONLINE.graceMs - 1, E.makeRng('t'))), { committed: false, reason: 'early' }, "the server's look before then: nothing");
+  assert.deepEqual(await host.txn(code, rec => E.applyRoomSweep(rec, dl + E.SC_ONLINE.graceMs, E.makeRng('t'))), { committed: true, reason: null }, "at the due moment: the round settled, O's move missed");
+  await until(() => host.rec() && host.rec().state.sc.recap && host.rec().state.sc.recap.round === 2, 10000, 'X sees round 2 settled');
+  assert.deepEqual([host.rec().state.sc.recap.mv.O, host.rec().state.sc.recap.missed, host.rec().state.sc.miss], [null, ['O'], { X: 0, O: 1 }]);
+  D.goOnline(guest.db);
+  await until(() => guest.rec() && guest.rec().state.sc.recap && guest.rec().state.sc.recap.round === 2, 10000, 'O, back, sees round 2 settled');
+  assert.equal(JSON.stringify(guest.rec().state), JSON.stringify(host.rec().state), 'the same record on both phones');
 });

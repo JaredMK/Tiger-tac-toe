@@ -15,7 +15,7 @@ export { LEVELS, LEVEL_NAME, levelOf, AI_DEFAULTS, AI_LIMITS, AI_CFG, aiNorm, se
 export { mcPick } from './mc.js';
 export { registerTunes, tuneFields, tuneDefaults, tuneValue, tuneNorm, setTune, setTunes, tuneLive, tuneSnap, tune } from './tune.js';
 export { gaussOf, makeRng, needRng, randInt, randomType, shuffle } from './random.js';
-export { resignLocal, RECENT_MAX, MATCH_FIELDS, secretOf, hideMini, matchRecord, fullState, settle, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, applyOnlineReveal, applyOnlineStart, newOnlineMatch, applyOnlineResign, applyChaosSubmit, applyChaosDeadline, applyChaosBegin, scReady, roomDue, applyRoomSweep, SC_ROOM, parseMatch, packMatch, matchTxn } from './records.js';
+export { resignLocal, RECENT_MAX, MATCH_FIELDS, secretOf, hideMini, matchRecord, fullState, settle, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, applyOnlineReveal, applyOnlineStart, newOnlineMatch, applyOnlineResign, applyChaosSubmit, applyChaosDeadline, applyChaosBegin, scReady, roomDue, applyRoomSweep, SC_ROOM, scResyncPlan, parseMatch, packMatch, matchTxn } from './records.js';
 export { SC_GAME, newScGame, scSideState, applyScMove, applyScTimeout, applyScBot, applyScBegin, applyScResign, scDue, scPublicState, scSideView, scFinal } from './scgame.js';
 export { matchStats, topOpponents, oppTally } from './stats.js';
 export { normTimer, TIMER_OPTIONS, newTimer, PLAY, playMs, replayMs, armClock, startClock, clockDeadline, CLOCK } from './timer.js';

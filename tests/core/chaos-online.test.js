@@ -150,3 +150,17 @@ test('Super Chaos online: the record takes exactly one move a side a round and r
   assert.equal(E.parseMatch({ state: 'not json' }), null);
   assert.equal(E.parseMatch(null), null);
 });
+
+// A phone waiting on the other reads the record afresh (net/chaos.js scResync, by HTTP past a connection that may be
+// dead unnoticed): the plan from what it finds (records.js scResyncPlan).
+test('Super Chaos online: the fresh read of the record: ahead of the listener\'s, it is applied; this phone\'s move not on it, it is sent again; nothing otherwise', () => {
+  const rec = (seq, moves, more) => ({ state: Object.assign({ id: 'm1', seq, sc: Object.assign({ online: true, round: 3, deadline: T0 + 60000, moves }, more || {}) }, more && more.winner ? { winner: more.winner } : {}), secrets: {} });
+  const loc = { online: true, round: 3, me: { square: 4 }, sent: 3 };
+  assert.deepEqual(E.scResyncPlan(loc, 'O', rec(5, { X: {} }), rec(5, { X: {} })), { apply: false, resend: true }, "the move this phone believes it sent is not on the record: sent again");
+  assert.deepEqual(E.scResyncPlan(loc, 'O', rec(5, { X: {} }), rec(5, { X: {}, O: {} })), { apply: false, resend: false }, 'on the record: nothing to do');
+  assert.deepEqual(E.scResyncPlan(loc, 'O', rec(5, { X: {} }), rec(7, {}, { round: 4, recap: { round: 3 }, deadline: null })), { apply: true, resend: false }, 'the record moved on (the round settled) past what the listener holds: applied; no move for a settled round');
+  assert.deepEqual(E.scResyncPlan(loc, 'O', null, rec(5, {})), { apply: true, resend: true }, 'nothing from the listener yet: the fresh record is applied, the move sent');
+  assert.deepEqual(E.scResyncPlan(Object.assign({}, loc, { me: null }), 'O', rec(5, {}), rec(5, {})), { apply: false, resend: false }, 'no move made here: nothing to send');
+  assert.deepEqual(E.scResyncPlan(loc, 'O', rec(5, {}), rec(6, {}, { winner: 'X' })), { apply: true, resend: false }, 'the match over: applied, nothing sent');
+  assert.deepEqual(E.scResyncPlan(loc, 'O', rec(5, {}), { state: { id: 'm1', seq: 9 } }), { apply: false, resend: false }, 'not a Super Chaos record: nothing');
+});

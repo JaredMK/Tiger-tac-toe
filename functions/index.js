@@ -1085,21 +1085,39 @@ exports.friendGameDone = onValueWritten({ ref: '/rooms/{code}/match' }, async ev
 // ends the match as a forfeit (stats and history: friendGameDone, on that write) and closes the room.
 async function roomDueSet(code) {
   const rec = E.parseMatch((await db.ref(`rooms/${code}/match`).get()).val());   // (the match as it is now: writes close together may trigger out of order)
-  const due = rec ? E.roomDue(rec) : null;
+  const due = rec ? E.roomDue(rec) : null, was = (await db.ref(`rooms/${code}/dl`).get()).val();
   const up = { [`rooms/${code}/dl`]: due == null ? null : due };
   if (rec && rec.state.winner && rec.state.winReason === 'timeout') up[`rooms/${code}/status`] = 'over';   // a forfeit: the room is closed (both phones show the result; no rematch)
   await db.ref().update(up).catch(e => logger.warn('room dl', code, e.message));
+  if (due != null && due !== was) await queueRoomTick(code, due);
+}
+// The server's look at the room, at its due moment, as a Cloud Task (roomTick): the round settles at its deadline
+// (the recap begins the next round once its wait is over) whatever the phones believe or show, open or not. The
+// sweep each minute is the backup, should the task not be queued or not fire.
+async function queueRoomTick(code, due) {
+  try { await getFunctions().taskQueue('roomTick').enqueue({ code, due }, { scheduleTime: new Date(Math.max(due, now())), id: `${code}-${due}` }); }
+  catch (e) { if (!/already exists/i.test(String(e.message))) logger.warn('room tick not queued: the sweep looks at it when due', code, e.message); }
+}
+exports.roomTick = onTaskDispatched({ retryConfig: { maxAttempts: 2, minBackoffSeconds: 2 }, rateLimits: { maxConcurrentDispatches: 20 } }, async req => {
+  const d = req.data || {};
+  if (typeof d.code !== 'string' || !/^[A-Z]{5}$/.test(d.code)) return;
+  const early = typeof d.due === 'number' ? d.due - now() : 0;
+  if (early > 0 && early <= 55000) await new Promise(r => setTimeout(r, early));   // (dispatched ahead of its moment, as the emulator does: the moment waited for)
+  await sweepRoom(d.code).catch(e => logger.error('room tick', d.code, e));
+});
+// One room's match, looked at (core/records.js applyRoomSweep): true when it changed something.
+async function sweepRoom(code) {
+  let changed = false;
+  const step = E.matchTxn(rec => { const r = E.applyRoomSweep(rec, now(), seedRng()); changed = !!r.ok; return r.ok ? r.rec : null; });
+  const res = await db.ref(`rooms/${code}/match`).transaction(cur => (cur === null ? null : step(cur))).catch(e => { logger.warn('room sweep', code, e.message); return null; });
+  if (changed && res && res.committed) return true;
+  if (res && res.committed === false && !changed) await db.ref(`rooms/${code}/dl`).set(E.roomDue(E.parseMatch(res.snapshot.val()) || {}) || null).catch(() => {});   // (nothing due after all: the next look when it is)
+  return false;
 }
 async function sweepRooms(t) {
   const due = (await db.ref('rooms').orderByChild('dl').startAt(1).endAt(t).limitToFirst(50).get()).val() || {};
   let n = 0;
-  for (const code of Object.keys(due)) {
-    let changed = false;
-    const step = E.matchTxn(rec => { const r = E.applyRoomSweep(rec, now(), seedRng()); changed = !!r.ok; return r.ok ? r.rec : null; });
-    const res = await db.ref(`rooms/${code}/match`).transaction(cur => (cur === null ? null : step(cur))).catch(e => { logger.warn('room sweep', code, e.message); return null; });
-    if (changed && res && res.committed) n++;
-    else if (res && res.committed === false && !changed) await db.ref(`rooms/${code}/dl`).set(E.roomDue(E.parseMatch(res.snapshot.val()) || {}) || null).catch(() => {});   // (nothing due after all: the next look when it is)
-  }
+  for (const code of Object.keys(due)) if (await sweepRoom(code)) n++;
   return n;
 }
 
