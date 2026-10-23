@@ -16,11 +16,11 @@
       appId: '1:475136918613:web:3e63ed7ceaf1e253ed40dc',
     },
     staging: {                                      // the staging project's web app (Firebase console: Project settings, Your apps)
-      apiKey: 'PASTE_STAGING_API_KEY',
+      apiKey: 'AIzaSyDVTEmY_gI1Rv-K1Kg7gG41OtHj_sEOsQ0',
       authDomain: 'tic-tac-chaos-staging.firebaseapp.com',
       databaseURL: 'https://tic-tac-chaos-staging-default-rtdb.firebaseio.com',
       projectId: 'tic-tac-chaos-staging',
-      appId: 'PASTE_STAGING_APP_ID',
+      appId: '1:695949456928:web:0b6516fa9ed7ca92572e45',
     },
   };
   var PRODUCTION_HOSTS = ['tictacchaos.com', 'www.tictacchaos.com', 'tic-tac-chaos.web.app', 'tic-tac-chaos.firebaseapp.com'];
