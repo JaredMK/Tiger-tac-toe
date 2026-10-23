@@ -59,9 +59,15 @@ jobs:
           firebase setup:emulators:database    # the database emulator's jar: the two-client Super Chaos test in npm test runs on it
       - name: What changed (functions, rules, or both)
         id: what
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          before='${{ github.event.before }}'
-          if [ '${{ github.event_name }}' = push ] && git cat-file -e "$before" 2>/dev/null; then changed=$(git diff --name-only "$before" '${{ github.sha }}'); else changed=ALL; fi
+          # What changed since the last deploy that went through (the last successful run of this workflow on main), not
+          # since the last push: a failed deploy's changes are still due. Without a successful run to compare with (or on a
+          # dispatch), everything deploys.
+          last=$(gh run list --workflow firebase.yml --branch main --status success --limit 1 --json headSha --jq '.[0].headSha' 2>/dev/null || true)
+          [ -n "$last" ] && git cat-file -e "$last" 2>/dev/null || last='${{ github.event.before }}'
+          if [ '${{ github.event_name }}' = push ] && git cat-file -e "$last" 2>/dev/null; then changed=$(git diff --name-only "$last" '${{ github.sha }}'); echo "Changed since $last:"; echo "$changed"; else changed=ALL; fi
           only=''
           if [ "$changed" = ALL ] || echo "$changed" | grep -v '/view\.js$' | grep -qE '^(functions/|src/core/|src/games/|trivia\.json|firebase\.json|\.firebaserc|scripts/sync-functions\.js|\.github/workflows/firebase\.yml)'; then only=functions; fi
           if [ "$changed" = ALL ] || echo "$changed" | grep -qE '^(database\.rules\.json|firebase\.json|\.github/workflows/firebase\.yml)'; then only="${only:+$only,}database"; fi
