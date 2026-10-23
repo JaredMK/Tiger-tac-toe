@@ -433,12 +433,12 @@ test('friend games: with both players gone the server misses their turns; two in
   // both phones closed: each turn runs out on the server alone
   let st = null, misses = 0;
   for (let k = 0; k < 6; k++) {
-    const before = (await roomRec(code)).state.seq;
+    const was = (await roomRec(code)).state, missed = v => (v.timer.timeouts ? v.timer.timeouts.X + v.timer.timeouts.O : 0);
     await roomSet(code, f => { f.timer.deadline = Date.now() - 10000; f.timer.startBy = null; f.timer.for = f.turn; });
     const r = await sweep();
     assert.ok(r.roomTimeouts <= 1, 'the turn missed once: by the sweep, or by the room\'s tick just before it');
     misses++;
-    st = await until(async () => { const v = (await roomRec(code)).state; return v.seq > before ? v : null; }, 10000, 'the server missed the turn');
+    st = await until(async () => { const v = (await roomRec(code)).state; return missed(v) > missed(was) || v.winner ? v : null; }, 10000, 'the server missed the turn');
     if (st.winner) break;
     assert.ok(st.timer.deadline > Date.now(), 'the next turn\'s clock runs at once (away is never a pause)');
   }
