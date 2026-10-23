@@ -512,7 +512,7 @@ test('friend games: Super Chaos round nobody settles: the server settles it at i
   const at = Date.now();
   assert.deepEqual([st.sc.recap.mv.O, st.sc.recap.missed, st.sc.miss], [null, ['O'], { X: 0, O: 1 }], 'the guest missed the round; nothing played for them');
   assert.ok(at >= due - 1000 && at - due < 8000, `settled at its due moment, not before (${at - due} ms after it)`);
-  assert.ok((await get(`rooms/${code}/dl`)) > at, 'the next look queued: the recap nobody finishes begins the next round');
+  await until(async () => { const v = await get(`rooms/${code}/dl`); return v != null && v !== due ? v : null; }, 10000, 'the next look queued: the recap nobody finishes begins the next round');   // (a new due moment, not the one just served: on a slow runner it can already be past)
 });
 
 test('friend-code games are saved to the history of players with accounts, marked unrated', async () => {
