@@ -14,7 +14,13 @@ const json = { 'content-type': 'application/json' };
 let failed = false;
 const check = (good, what) => { console.log(`${good ? 'ok  ' : 'FAIL'} ${what}`); if (!good) failed = true; };
 (async () => {
-  const v = await fetch(`${SITE}/version.json`, { cache: 'no-store' }).then(r => r.json()).catch(() => null);
+  // (the site can take a minute to answer after a deploy: tried for up to two minutes, saying what it got)
+  let v = null, got = '';
+  for (let k = 0; k < 12 && !(v && v.env === ENV); k++) {
+    if (k) await new Promise(r => setTimeout(r, 10000));
+    try { const r = await fetch(`${SITE}/version.json`, { cache: 'no-store' }); got = `HTTP ${r.status}`; v = r.ok ? await r.json() : null; } catch (e) { got = e.message; v = null; }
+  }
+  if (!v) console.log(`${SITE}/version.json: ${got}`);
   check(!!v && v.env === ENV && (!process.env.GITHUB_SHA || v.sha === process.env.GITHUB_SHA), `the ${ENV} site is live at ${v ? String(v.sha).slice(0, 7) : '(none)'}${process.env.GITHUB_SHA ? `, this commit ${process.env.GITHUB_SHA.slice(0, 7)}` : ''}`);
   const robots = await fetch(`${SITE}/robots.txt`).then(r => r.text()).catch(() => '');
   check(STAGING ? /Disallow: \/\s*$/m.test(robots) : !/Disallow: \/\s*$/m.test(robots), STAGING ? 'staging keeps crawlers out (robots.txt)' : 'production lets crawlers in (robots.txt)');
@@ -63,7 +69,7 @@ const check = (good, what) => { console.log(`${good ? 'ok  ' : 'FAIL'} ${what}`)
     const lo = await fetch(`${DB}/localHistory/someone-else.json?shallow=true&auth=${s.idToken}`);
     check(lo.status === 401, `a phone cannot read someone else's local games (HTTP ${lo.status})`);
     const c = await fetch(`${FN}/claimUsername`, { method: 'POST', headers: Object.assign({ authorization: 'Bearer ' + s.idToken }, json), body: JSON.stringify({ data: { username: 'smoke_test' } }) });
-    check(c.status === 401, `a guest cannot claim a username (HTTP ${c.status})`);
+    check(c.status === (STAGING ? 403 : 401), `a guest cannot claim a username (HTTP ${c.status})`);
     await fetch(`${ID}:delete?key=${KEY}`, { method: 'POST', headers: json, body: JSON.stringify({ idToken: s.idToken }) }).catch(() => {});
   }
   if (failed) { console.log('::error::The live check failed.'); process.exit(1); }
