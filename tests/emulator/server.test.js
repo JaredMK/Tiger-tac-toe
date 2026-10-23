@@ -1056,7 +1056,7 @@ test('bots: the match is an ordinary one against an ordinary-looking, online acc
   assert.equal((await gameState(id)).seq, before.seq, 'the sweep plans the bot\'s move: it does not move before it is due');
   await patch(`botGames/${id}/next`, { due: Date.now() - 10 });
   const sw = await sweep(), after = await gameState(id);
-  assert.ok(sw.botMoves >= 1 && after.seq === before.seq + 1, 'the bot moved once due');
+  assert.ok(after.seq === before.seq + 1 && sw.botMoves <= 1, 'the bot moved once due (the sweep, or its queued task landing first)');
   assert.equal(after.timer.timeouts[botSide], 0, 'no timeout counted against it');
   // the player's phone calls time on the bot: it moves instead
   await rewrite(id, full => { full.turn = botSide; full.lock = null; full.timer.deadline = Date.now() - 1000; full.timer.for = botSide; });
