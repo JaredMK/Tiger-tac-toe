@@ -502,8 +502,9 @@ test('friend games: Super Chaos round nobody settles: the server settles it at i
   })();
   await host.write(`rooms/${code}/match`, E.packMatch(E.applyChaosSubmit(r1, 'X', mv, E.makeRng('s'), Date.now(), 0).rec));
   // the host's move in; the guest never moves. The deadline brought close: this write queues the server's look at the room for the due moment
-  const t0 = Date.now();
-  await roomSet(code, f => { f.sc.deadline = t0 + 1500; });
+  const t0 = Date.now(), full = E.fullState(await roomRec(code));
+  full.sc.deadline = t0 + 1500;
+  await put(`rooms/${code}/match`, E.packMatch(E.matchRecord(full)));   // (not roomSet: that waits for a due moment already past)
   const due = await until(async () => { const v = await get(`rooms/${code}/dl`); return v === t0 + 1500 + E.SC_ONLINE.graceMs ? v : null; }, 10000, "the room's due moment");
   const st = await until(async () => { const r = await roomRec(code); return r.state.sc.recap && r.state.sc.recap.round === 1 ? r.state : null; }, 20000, 'the round settled by the server at its deadline');
   const at = Date.now();
