@@ -130,6 +130,9 @@ jobs:
           deploy "$only" && exit 0
           for n in 1 2; do
             again=$(failed); [ -z "$again" ] && again="$only"
+            # (a retry of failed functions still carries the site and the rules: the first attempt may have stopped before them)
+            extra=$(echo "$only" | tr ',' '\n' | grep -v '^functions$' | paste -sd, - || true)
+            case "$again" in "$only") ;; *) [ -n "$extra" ] && again="$extra,$again" ;; esac
             echo "::warning::The deploy failed; trying again in two minutes: $again"
             sleep 120
             deploy "$again" && exit 0
