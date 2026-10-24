@@ -16,8 +16,8 @@ const check = (good, what) => { console.log(`${good ? 'ok  ' : 'FAIL'} ${what}`)
 (async () => {
   // (the site can take a minute to answer after a deploy, and the CDN a moment to serve the new version: tried for up to
   // two minutes, saying what it got. This commit is expected live only when this deploy carried the site, DEPLOYED from
-  // the workflow's "What changed"; a deploy of functions or rules alone leaves the site at an earlier commit.)
-  const sha = process.env.GITHUB_SHA, siteToo = !process.env.DEPLOYED || /\bhosting\b/.test(process.env.DEPLOYED), want = x => !!x && x.env === ENV && (!sha || !siteToo || x.sha === sha);
+  // the workflow's "What changed", empty when nothing deployed; a deploy of functions or rules alone, or of nothing, leaves the site at an earlier commit.)
+  const sha = process.env.GITHUB_SHA, siteToo = process.env.DEPLOYED === undefined || /\bhosting\b/.test(process.env.DEPLOYED), want = x => !!x && x.env === ENV && (!sha || !siteToo || x.sha === sha);
   let v = null, got = '';
   for (let k = 0; k < 12 && !want(v); k++) {
     if (k) await new Promise(r => setTimeout(r, 10000));
