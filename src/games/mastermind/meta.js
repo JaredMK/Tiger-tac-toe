@@ -3,10 +3,9 @@
 export const info = { name: 'Codebreaker',   hint: 'Crack the hidden 4-colour code' };
 export const release = 'released';   // the default (the admin's dashboard can change it)
 export const category = 'brain';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
-export const target = 'shared';   // what the players share, in its "?" label: 'shared' (one board for both), 'own' (each player's own progress) or 'course' (one course for both, each their own distance)
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Codebreaker', play: 'Guess the 4-colour code. Black marker means right colour and spot; white marker means right colour, wrong spot.', win: 'Crack the code.' };
-export const scExplainer = { name: 'Codebreaker', play: "Guess the 4-colour code. Black marker means right colour and spot; white marker means right colour, wrong spot. Both players' guesses join the board when the round ends.", win: 'Crack the code.' };   // in Super Chaos
+export const scExplainer = { name: 'Codebreaker', play: "Guess the 4-colour code. Black marker means right colour and spot; white marker means right colour, wrong spot.", win: 'Crack the code.' };   // in Super Chaos
 // Its settings (the admin's Mini-game Settings; core/tune.js): read through tune(mini).
 export const TUNE = [
   { k: 'colors', label: 'Colours to choose from', def: 6, min: 4, max: 6, step: 1, group: 'Rules' },

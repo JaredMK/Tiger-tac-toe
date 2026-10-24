@@ -13,10 +13,10 @@ import {
   acct, afterLogin, connectQuiet, gateAct, gateOn, loggedIn, loginMail, loginMsg, loginPass, loginReset, loginWith, logout,
   needAccount, saveUsername, setAfterLogin, setLoginMail, setLoginMsg, setLoginPass, setUnameDraft, unameDraft
 } from '../net/accounts.js';
-import { cancelSearch, closeIntro, findAgain, isMM, openFind, resignMM, search, startSearch } from '../net/matchmaking.js';
+import { cancelSearch, closeIntro, findAgain, isMM, openFind, resignMM, resumeMatch, search, startSearch } from '../net/matchmaking.js';
 import { attemptMove, setTapEl, tapEl } from '../net/moves.js';
 import { reactCooling, rx, sendReact } from '../net/reactions.js';
-import { scMode, setMode, visibleTypes } from '../net/releases.js';
+import { scMode, scPicked, setMode, visibleTypes } from '../net/releases.js';
 import {
   dbName, dbSetup, flushName, hostRoom, hostSide, isHost, joinCode, joinName, joinRoom, leaveLobby, leaveLoses,
   leaveRoom, lockMine, mySide, nameTimer, pinned, quitMatch, rematchCancel, rematchOnline, room, setJoinCode, setJoinName,
@@ -128,15 +128,17 @@ export function init() {
       state.screen = 'board'; state.zoom = null; state.draft = ''; state.sel = []; state.notice = null; state.stamp = null;
       if (!state.online) { state.pick = null; state.pickSq = null; }
       commit();
+    } else if (act === 'resume') {               // the main menu: back into the online match this phone was playing (held at the page's load)
+      resumeMatch();
     } else if (act === 'mode-go') {              // the main menu: pick a mode, then set up
-      state.setup.mode = 'two'; normSetup(state.setup); normLocal(state.setup); if (scMode()) normLocal(state.setup).p2 = 'cpu'; state.screen = 'setup'; setAdvOpen(false); commit();
+      state.setup.mode = 'two'; normSetup(state.setup); normLocal(state.setup); if (scPicked()) normLocal(state.setup).p2 = 'cpu'; state.screen = 'setup'; setAdvOpen(false); commit();
     } else if (act === 'kind') {                 // Play Local: player 2 is a Human or the Computer
       if (chaosSetup() && el.dataset.kind !== 'cpu') { setMode('classic'); noteMode('Super Chaos needs a computer or online opponent'); }   // (Super Chaos: against the computer or online only: Human switches to Classic)
       normLocal(state.setup).p2 = el.dataset.kind === 'cpu' ? 'cpu' : 'human'; commit();
     } else if (act === 'gmode') {                // the Mode, Super Chaos or Classic: Play Local (Super Chaos against the computer), the host's room, Find Match; kept on this device
       setMode(el.dataset.v);
       if (isHost()) { state.online.chaos = scMode(); commit(); dbSetup({ chaos: state.online.chaos }); return; }   // (only the Super Chaos games among those on are dealt)
-      if (scMode() && state.screen === 'setup') normLocal(state.setup).p2 = 'cpu';
+      if (scPicked() && state.screen === 'setup') normLocal(state.setup).p2 = 'cpu';
       commit();
     } else if (act === 'level') {                // Play Local: the computer's level, Easy, Normal or Hard
       normLocal(state.setup).level = levelOf(el.dataset.v); commit();

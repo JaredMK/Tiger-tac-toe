@@ -3,9 +3,8 @@
 export const info = { name: 'Chopper',      hint: 'Hold to rise, let go to drop. First to 1,000 m' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
 export const category = 'skill';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
-export const target = 'course';   // what the players share, in its "?" label: 'shared' (one board for both), 'own' (each player's own progress) or 'course' (one course for both, each their own distance)
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
-export const explainer = { name: 'Chopper', play: 'Hold to rise, let go to drop. It gets faster, and you keep your distance when you crash.', win: 'Reach 1,000 m first.' };
+export const explainer = { name: 'Chopper', play: 'Hold to rise, let go to drop.', win: 'Reach 1,000 m first.' };
 // Its settings (the admin's Mini-game Settings; core/tune.js), beside the runner config (config/run): dealt
 // into the square's cfg when changed (shared/runner.js).
 export const TUNE = [

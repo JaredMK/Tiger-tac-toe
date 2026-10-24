@@ -3,10 +3,9 @@
 export const info = { name: 'Trivia',       hint: 'Wrong answers get crossed out. Three right wins' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
 export const category = 'brain';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
-export const target = 'shared';   // what the players share, in its "?" label: 'shared' (one board for both), 'own' (each player's own progress) or 'course' (one course for both, each their own distance)
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
-export const explainer = { name: 'Trivia', play: 'A new question starts face down. Tap Reveal to see it, then you must answer it this turn. Wrong answers get crossed out and the question stays up, for both players, until someone gets it.', win: 'Get {goal} right.' };   // ({goal}: its setting, TUNE below)
-export const scExplainer = { name: 'Trivia', play: 'Both players see the question. Pick an answer. When the round ends, wrong answers are crossed out for both, and a new question comes if anyone got it.', win: 'Get {goal} right.' };   // in Super Chaos
+export const explainer = { name: 'Trivia', play: 'Answer the question.', win: 'Get {goal} right.' };   // ({goal}: its setting, TUNE below)
+export const scExplainer = { name: 'Trivia', play: 'Answer the question.', win: 'Get {goal} right.' };   // in Super Chaos
 // Its settings (the admin's Mini-game Settings; core/tune.js): read through tune(mini).
 export const TUNE = [
   { k: 'goal', label: 'Right answers to win', def: 3, min: 2, max: 5, step: 1, group: 'Rules' },

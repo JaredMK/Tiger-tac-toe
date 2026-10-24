@@ -17,7 +17,7 @@ test('an untouched export changes nothing', async () => {
 test('an edit changes only its own text, quotes and placeholders kept', async () => {
   const md = (await exportHelp())
     .replace(/^Rule 1: .*$/m, 'Rule 1: It\'s "new".\n  Wrapped.')
-    .replace(/^(## Risk Wheels \[wheels\]\n(?:.*\n){2}Play: .*\nWin: ).*$/m, '$1Hit {target} first.')
+    .replace(/^(## Risk Wheels \[wheels\]\n(?:.*\n){1}Play: .*\nWin: ).*$/m, '$1Hit {target} first.')
     .replace(/^Badge: .*$/m, 'Badge: TEST');
   const r = await run(md);
   assert.deepEqual(r.changes.map(c => c.id + '/' + c.label), ['rules/Rule 1', 'wheels/Win', 'staging/Badge']);
@@ -28,7 +28,25 @@ test('an edit changes only its own text, quotes and placeholders kept', async ()
   assert.deepEqual(Object.keys(r.files).sort(), ['src/env.js', 'src/games/wheels/meta.js', 'src/ui/explainer.js']);
 });
 
-test('a category or target line moves a game to another label', async () => {
+test('the format has no target label, and the pop-up\'s labels are text, never the code around them', async () => {
+  const md = await exportHelp();
+  assert.doesNotMatch(md, /^Target|Shared board|Your own progress|Shared course/m);
+  assert.match(md, /^## Mini-game pop-up \[popup\]\nPlay label: Play\nWin label: Win\n/m);
+  const r = await run(md.replace(/^Play label: Play$/m, 'Play label: How'));
+  assert.deepEqual(r.changes.map(c => c.id + '/' + c.label), ['popup/Play label']);
+  assert.match(r.files['src/ui/explainer.js'], /<b>How<\/b><span>\$\{x\.play\}/);
+  assert.match(r.files['src/ui/explainer.js'], /<b>\$\{k\}<\/b><span>\$\{v\}<\/span>/, 'the lines\' code untouched');
+});
+
+test('Risky Rolls\' {target} (its config, named in EXPLAIN_KEYS) is a placeholder the importer knows', async () => {
+  const md0 = await exportHelp();
+  assert.match(md0, /^## Risky Rolls \[pig\]\n(?:.*\n){2}Win: Bank \{target\} first\.$/m, 'the target as its setting, not a number');
+  const r = await run(md0.replace('Win: Bank {target} first.', 'Win: Bank {target} points first.'));
+  assert.deepEqual(r.warnings, []);
+  assert.match(r.files['src/games/pig/meta.js'], /win: 'Bank \{target\} points first\.'/);
+});
+
+test('a category line moves a game to another label', async () => {
   const md = (await exportHelp()).replace(/^(## Five Letters \[wordle\]\n)Category: .*$/m, '$1Category: More luck');
   const r = await run(md);
   assert.equal(r.changes.length, 1);

@@ -1,12 +1,12 @@
 // Find Match: the queue, the search, and a matchmaking game read live (its moves go to the server).
 import { SND } from '../audio/sound.js';
-import { acct, loggedIn, needAccount } from './accounts.js';
+import { acct, connectQuiet, loggedIn, needAccount } from './accounts.js';
 import { call, fb } from './connect.js';
 import { listenReacts } from './reactions.js';
 import {
   applyMatch, awayNote, leaveRoom, moveTimer, moveWait, net, pendingRoom, presUnsub, presence, presenceUp,
   presenting, presentingSeq, room, roomUnsub, setAwayNote, setMoveWait, setNet, setPendingRoom, setPresUnsub,
-  setPresence, setPresentingSeq, setRoom, setRoomUnsub, setTimeoutBusy, stopListening, stopLobby, tellLeft, timeoutBusy
+  setPresence, setPresentingSeq, setRoom, setRoomUnsub, setTimeoutBusy, stopListening, stopLobby, tellLeft, timeoutBusy, listenLobby, closeSeat
 } from './room.js';
 import {
   app, commit, flashTimer, holdTimer, menuNote, menuOpen, menuStep, setFlashTimer, setHoldTimer, setMenuNote,
@@ -14,6 +14,7 @@ import {
 } from '../ui/app.js';
 import { setTimeoutTry, timeoutTry } from '../ui/clock.js';
 import { KEY } from '../ui/config.js';
+import { newTimer } from '../core/timer.js';
 import { render } from '../ui/render.js';
 import { noteNet } from '../ui/turnbar.js';
 
@@ -86,6 +87,7 @@ export function activeElsewhere() {
 }
 /* ----- a matchmaking game: the public game read live, moves sent to the server ----- */
 export function enterGame(id, side) {
+  holdResume(null);                                // (in a match now: nothing held for the menu's Resume)
   if (search.on || search.found) SND.play('found');
   stopSearch();
   if (isMM() && state.online.game === id) return;
@@ -102,6 +104,52 @@ export function enterGame(id, side) {
   commit();
   listenGame(id);
   presenceUp();
+}
+/* ----- a fresh visit: the main menu, an online match in progress held for its "Resume match" button ----- */
+// A page load always opens the main menu (main.js boot); a match of this phone's still being played online is
+// never entered by itself but held here (kept on the device: a second reload still finds it) for the menu's
+// Resume match, which goes back into it from the server's record as Find Match does (enterGame).
+const RESUME_KEY = KEY + '.resume';
+const resumeOk = r => !!(r && typeof r.game === 'string' && /^[-\w]{8,40}$/.test(r.game) && (r.me === 'X' || r.me === 'O') && (r.room == null || /^[ABCDEFGHJKLMNPQRSTUVWXYZ]{5}$/.test(r.room)));   // (a room's code as room.js validCode has it: read at load, so not from room.js, which imports this module)
+export let resumable = (() => { try { const r = JSON.parse(localStorage.getItem(RESUME_KEY) || 'null'); return resumeOk(r) ? r : null; } catch (e) { return null; } })();
+export function holdResume(o) {
+  const r = o ? { game: o.game, me: o.me, room: o.room || null } : null;
+  resumable = resumeOk(r) ? r : null;
+  try { if (resumable) localStorage.setItem(RESUME_KEY, JSON.stringify(resumable)); else localStorage.removeItem(RESUME_KEY); } catch (e) { /* this visit only */ }
+}
+// The held match still being played? (Over meanwhile, or gone: the button goes.) Asked once the page is signed in.
+export async function checkResume() {
+  const r = resumable;
+  if (!r) return;
+  if (!(await connectQuiet())) return;                 // (offline: the button stays; a tap tries again)
+  try {
+    const s = (await fb.m.get(fb.m.ref(fb.db, `games/${r.game}/pub/status`))).val();
+    if (resumable === r && s !== 'playing') { holdResume(null); render(); }
+  } catch (e) { /* (not readable: left as it is) */ }
+}
+export async function resumeMatch() {
+  const r = resumable;
+  if (!r || resumeBusy) return;
+  resumeBusy = true; setMenuNote(''); render();
+  const ok = await connectQuiet();
+  resumeBusy = false;
+  if (resumable !== r || state.screen !== 'menu') return;
+  if (!ok) { setMenuNote('Online play needs an internet connection. Check it and try again.'); render(); return; }
+  enterGame(r.game, r.me);
+  if (r.room) { state.online.room = r.room; listenLobby(r.room); }   // (a friend room's match: its room too, for the rematch and who left)
+  state.screen = 'board'; commit();
+}
+export let resumeBusy = false;
+// A fresh visit (main.js boot, no join link) opens the main menu: no other screen is restored from the saved state.
+// An online match still in progress is held for Resume match, never entered by itself; a friend room's lobby left
+// behind lets go of its seat; a local match is left as it was (a new one is set up from Play Local).
+export function freshVisit() {
+  const o = state.online;
+  if (o && isMM() && !state.winner) holdResume(o);
+  else if (o && !isMM() && /^[ABCDEFGHJKLMNPQRSTUVWXYZ]{5}$/.test(o.code || '') && o.me) connectQuiet().then(ok => { if (ok) closeSeat(o.code, o.me, o.role === 'host'); }).catch(() => {});
+  if (o) { state.online = null; state.sc = null; state.setup.mode = 'two'; state.timer = newTimer(0); }
+  state.flash = null; state.done = null; state.spot = null; state.zoom = null; state.confirm = null; state.notice = null;
+  state.screen = 'menu';
 }
 export function listenGame(id) {
   stopListening();

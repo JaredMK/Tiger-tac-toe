@@ -3,7 +3,6 @@
 export const info = { name: 'Tic-Tac-Toe',  hint: 'Three in a row wins' };
 export const release = 'released';   // the default (the admin's dashboard can change it)
 export const category = 'brain';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
-export const target = 'shared';   // what the players share, in its "?" label: 'shared' (one board for both), 'own' (each player's own progress) or 'course' (one course for both, each their own distance)
 export const explainer = { name: 'Tic-tac-toe', play: 'Place your mark.', win: 'Three in a row. Once nobody can get three in a row, the square resets.' };
 // Its settings (the admin's Mini-game Settings; core/tune.js): read through tune(mini).
 export const TUNE = [

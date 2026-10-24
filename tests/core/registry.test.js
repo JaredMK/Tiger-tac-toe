@@ -31,11 +31,9 @@ test('registry: the game lists come from it, in menu order, the retired games la
 test('every game has a kind (meta.js category: luck, skill or brain; its icon in the Mini-games checklist)', () => {
   for (const t of Object.keys(E.INFO)) assert.ok(["luck", "skill", "brain"].includes(GAMES[t].meta.category), `${t}: ${GAMES[t].meta.category}`);
 });
-test('every game says whether its target is shared, individual or a shared course (meta.js target, for the header icon); the runners are shared courses', () => {
-  for (const t of Object.keys(E.INFO)) assert.ok(['shared', 'own', 'course'].includes(GAMES[t].meta.target), `${t}: ${GAMES[t].meta.target}`);
-  for (const t of Object.keys(E.INFO)) if (GAMES[t].meta.scTarget) assert.ok(['shared', 'own', 'course'].includes(GAMES[t].meta.scTarget), t);
-  assert.deepEqual(Object.keys(E.INFO).filter(t => GAMES[t].meta.target === 'course').sort(), ['chopper', 'dash', 'flap', 'lane', 'scoop', 'skyhop']);
+test('the luck games are luck; no game carries a target label any more (its "?" shows the category alone)', () => {
   for (const t of ['hilo', 'hangman', 'sniff', 'hunt']) assert.equal(GAMES[t].meta.category, 'luck', t);
+  for (const t of Object.keys(E.INFO)) assert.ok(!('target' in GAMES[t].meta) && !('scTarget' in GAMES[t].meta), `${t}: no target label`);
 });
 
 test('registry: every game lists its settings (meta.js TUNE) for Mini-game Settings, each valid, its default the code\'s', () => {

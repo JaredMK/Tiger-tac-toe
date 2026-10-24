@@ -20,7 +20,7 @@ import { fetchWheelsConfig } from './games/wheels/view.js';
 import { GAMES } from './games/index.js';
 import { SND, init as soundInit } from './audio/sound.js';
 import { connectQuiet, finishLogin, gateStart, hadAccount, redirectPending } from './net/accounts.js';
-import { openFind } from './net/matchmaking.js';
+import { checkResume, freshVisit, openFind, resumable } from './net/matchmaking.js';
 import { fetchReleases } from './net/releases.js';
 import { closeSeat, init as roomInit, joinCode, joinName, resumeOnline, setJoinCode, setJoinName } from './net/room.js';
 import { devAudio, devOpen, devPulse, init as trackingInit, takeTag } from './net/tracking.js';
@@ -101,10 +101,12 @@ function boot() {
       setJoinCode(link); state.screen = 'join'; state.setup.mode = 'two';
     }
   }
+  if (state.screen !== 'join' && !joinAsk) freshVisit();      // a fresh visit: the main menu (a join link: joining, or its question over the match it would leave)
   const play = !link && new URLSearchParams(location.search).get('play') === 'find';   // the empty-queue alert's link: straight into Find Match
   if (play) { try { history.replaceState(null, '', location.pathname); } catch (e) { /* (kept) */ } }
   if (state.flash && !state.spot) playFlash(true);           // a result still on show at the reload: its move has played, the result finishes
   commit();                                                   // (a match that ended as the page loaded is reported like any other)
+  if (resumable) checkResume();                               // (a match held for Resume that has ended meanwhile: its button goes)
   if (state.online) resumeOnline();
   else if (hadAccount() || redirectPending()) {             // logged in before, or back from Google's sign-in page: the account, in the background
     setAcctLoading(true); render();

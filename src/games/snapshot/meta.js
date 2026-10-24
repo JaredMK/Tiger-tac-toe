@@ -3,7 +3,6 @@
 export const info = { name: 'Snapshot',     hint: 'Memorise the pattern, tap it back. Three right wins' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
 export const category = 'brain';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
-export const target = 'own';   // what the players share, in its "?" label: 'shared' (one board for both), 'own' (each player's own progress) or 'course' (one course for both, each their own distance)
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Snapshot', play: 'Memorise the pattern in 5 seconds. Wait out the countdown, then tap it back in and Submit.', win: 'Get 3 right. The grid gets bigger each time.' };
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2.5"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/><rect x="9" y="3" width="6" height="6" fill="currentColor"/><rect x="3" y="15" width="6" height="6" fill="currentColor"/><rect x="15" y="9" width="6" height="6" fill="currentColor"/></svg>';

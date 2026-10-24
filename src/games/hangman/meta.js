@@ -3,10 +3,9 @@
 export const info = { name: 'Hangman',      hint: 'Right letter: go again. Last letter wins' };
 export const release = 'released';   // the default (the admin's dashboard can change it)
 export const category = 'luck';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
-export const target = 'shared';   // what the players share, in its "?" label: 'shared' (one board for both), 'own' (each player's own progress) or 'course' (one course for both, each their own distance)
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Hangman', play: 'Guess a letter. Got one right? Go again.', win: 'Reveal the last letter.' };
-export const scExplainer = { name: 'Hangman', play: "Guess a letter. Got one right? Go again. You see the letters found before the round and your own; everyone's join when the round ends.", win: 'Reveal the last letter yourself. Finished only by both players together, the word resets.' };   // in Super Chaos
+export const scExplainer = { name: 'Hangman', play: "Guess a letter. Got one right? Go again.", win: 'Reveal the last letter.' };   // in Super Chaos
 // Its settings (the admin's Mini-game Settings; core/tune.js): read through tune(mini).
 export const TUNE = [
   { k: 'minLen', label: 'Shortest word (letters)', def: 5, min: 5, max: 7, step: 1, group: 'Rules' },

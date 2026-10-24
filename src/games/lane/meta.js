@@ -3,9 +3,8 @@
 export const info = { name: 'Lane Rush',    hint: 'Swipe between lanes, dodge the traffic. First to 1,000 m' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
 export const category = 'skill';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
-export const target = 'course';   // what the players share, in its "?" label: 'shared' (one board for both), 'own' (each player's own progress) or 'course' (one course for both, each their own distance)
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
-export const explainer = { name: 'Lane Rush', play: 'Swipe to change lanes and dodge traffic. It gets faster as you go, and you keep your distance when you crash.', win: 'Reach 1,000 m first.' };
+export const explainer = { name: 'Lane Rush', play: 'Swipe to change lanes and dodge traffic.', win: 'Reach 1,000 m first.' };
 // Its settings (the admin's Mini-game Settings; core/tune.js), beside the runner config (config/run): dealt
 // into the square's cfg when changed (shared/runner.js).
 export const TUNE = [

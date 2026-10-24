@@ -75,7 +75,9 @@ function loadModel(read, oldTypes) {
   const region = (file, re, mode, ph, group = 1) => {   // the text sits in capture group `group`; the pattern names its code around it, never the text, so an edited text is found again
     const src = read(file), ms = [...src.matchAll(new RegExp(re.source, 'dg'))];
     if (ms.length !== 1) throw new Error(`${file}: expected one place for ${re}, found ${ms.length}`);
-    return { file, start: ms[0].indices[group][0], end: ms[0].indices[group][1], mode, ph };
+    const s = { file, start: ms[0].indices[group][0], end: ms[0].indices[group][1], mode, ph };
+    noCode(read, s, re);
+    return s;
   };
   const after = (file, re) => {                       // the string literal right after the code `re` matches
     const src = read(file), ms = [...src.matchAll(new RegExp(re.source, 'g'))];
@@ -111,11 +113,8 @@ function loadModel(read, oldTypes) {
 
   // Mini-games
   const lab = (name, keys, labels) => { a = ex.indexOf(`${name} = {`); b = lineEnd(ex, a); return keys.map(k => [k, keyLiteral(ex, a, b, k)]); };
-  const cats = lab('const CAT_LABEL', ['luck', 'skill', 'brain']), tgts = lab('export const TARGETS', ['shared', 'own', 'course']);
-  sec('games', 'labels', 'Category and target labels', [
-    ...cats.map(([k, l]) => fld(`Category ${k}`, site(EXPLAINER, l), { key: k, group: 'cat' })),
-    ...tgts.map(([k, l]) => fld(`Target ${k}`, site(EXPLAINER, l), { key: k, group: 'target' })),
-  ]);
+  const cats = lab('const CAT_LABEL', ['luck', 'skill', 'brain']);
+  sec('games', 'labels', 'Category labels', cats.map(([k, l]) => fld(`Category ${k}`, site(EXPLAINER, l), { key: k, group: 'cat' })));
   const gameDirs = fs.readdirSync(path.join(ROOT, 'src/games')).filter(d => fs.existsSync(path.join(ROOT, 'src/games', d, 'meta.js')));
   const games = [];
   for (const g of gameDirs) {
@@ -134,18 +133,17 @@ function loadModel(read, oldTypes) {
       }
     }
     if (!nameL || !play || !winSite) throw new Error(`${file}: explainer is not plain name/play/win strings`);
-    const fields = [], cat = constLit(src, 'category'), tg = constLit(src, 'target'), stg = constLit(src, 'scTarget');
+    const fields = [], cat = constLit(src, 'category');
     if (cat) fields.push(fld('Category', site(file, cat), { group: 'catOf' }));
-    if (tg) fields.push(fld('Target', site(file, tg), { group: 'targetOf' }));
     fields.push(fld('Play', site(file, play), { kind: 'text' }), fld('Win', winSite, { kind: 'text' }));
-    if (stg) fields.push(fld('Super Chaos target', site(file, stg), { group: 'targetOf' }));
     const sm = /^export const scExplainer = /m.exec(src);
     if (sm) {
       const sa = sm.index, sb = lineEnd(src, sa), sp = keyLiteral(src, sa, sb, 'play'), sw = keyLiteral(src, sa, sb, 'win');
       if (!sp || !sw) throw new Error(`${file}: scExplainer is not plain play/win strings`);
       fields.push(fld('Super Chaos Play', site(file, sp), { kind: 'text' }), fld('Super Chaos Win', site(file, sw), { kind: 'text' }));
     }
-    const allowed = new Set([...src.matchAll(/\bk: '(\w+)'/g)].map(m => m[1]));
+    const ek = /^export const EXPLAIN_KEYS = \[([^\]]*)\]/m.exec(src);   // settings outside TUNE the explainer fills in (Risky Rolls' target, from config/pig)
+    const allowed = new Set([...src.matchAll(/\bk: '(\w+)'/g)].map(m => m[1]).concat(ek ? [...ek[1].matchAll(/'(\w+)'/g)].map(m => m[1]) : []));
     for (const f of fields) for (const s of f.sites) for (const m of siteValue(read, s).matchAll(/\{(\w+)\}/g)) allowed.add(m[1]);
     games.push({ id: g, title: nameL.value, fields, allowed, retired: oldTypes.includes(g) });
   }
@@ -154,8 +152,8 @@ function loadModel(read, oldTypes) {
 
   // Other
   sec('other', 'popup', 'Mini-game pop-up', [
-    fld('Play label', region(EXPLAINER, /<b>(.*?)<\/b><span>\$\{x\.play\}/, 'tpl')),
-    fld('Win label', region(EXPLAINER, /<b>(.*?)<\/b><span>\$\{x\.win\}/, 'tpl')),
+    fld('Play label', region(EXPLAINER, /<b>([^<>`$]*)<\/b><span>\$\{x\.play\}/, 'tpl')),   // (the label alone: never across the code before it on the line)
+    fld('Win label', region(EXPLAINER, /<b>([^<>`$]*)<\/b><span>\$\{x\.win\}/, 'tpl')),
     fld('Close hint', region(EXPLAINER, /<small>(.*?)<\/small><\/div><\/div>`;/, 'tpl')),
   ]);
   sec('other', 'credits', 'Credits', [
@@ -176,6 +174,14 @@ function loadModel(read, oldTypes) {
   return entries;
 }
 
+// A text the pattern found must be text, never code: no template expression or backtick left once its own
+// placeholders are taken out (a pattern that reached past its text into the code around it fails the export).
+function noCode(read, s, re) {
+  if (s.mode === 'lit') return;
+  let raw = read(s.file).slice(s.start, s.end);
+  for (const code of Object.values(s.ph || {})) raw = raw.split(code).join('');
+  if (/\$\{|`|=>|\.join\(/.test(raw)) throw new Error(`${s.file}: ${re} captured code, not text: ${raw.slice(0, 80)}`);
+}
 // A site's text as shown in the file, and a shown text as source code.
 function siteValue(read, s) {
   const raw = read(s.file).slice(s.start, s.end);
@@ -207,13 +213,13 @@ function siteSource(read, s, shown) {
 const SECTIONS = [
   ['howto', 'How to Play', 'The core rules and the How to Play screen.'],
   ['modes', 'Modes', 'The explainers for Super Chaos and Classic.'],
-  ['games', 'Mini-games', 'Each mini-game\'s "?" explainer, alphabetical: its category and target, then Play and Win. "Super Chaos" lines appear only where the game\'s rules differ there.'],
+  ['games', 'Mini-games', 'Each mini-game\'s "?" explainer, alphabetical: its category, then Play and Win. "Super Chaos" lines appear only where the game\'s rules differ there.'],
   ['retired', 'Retired mini-games (not shown in the app)', ''],
   ['other', 'Other help text', 'The pop-up\'s fixed labels, Credits and the staging notices.'],
 ];
 const NOTE = `Edit the text after each label. Don't change the IDs in brackets.
 
-Keep anything in {braces} (a setting the game fills in) and any <tags> or links as they are. A long text may be wrapped onto more lines. Every label is optional to change; one left out stays as it is. Changing a Category or Target line moves the game to another label from the Category and target labels entry; to reword a label itself, edit it there.`;
+Keep anything in {braces} (a setting the game fills in) and any <tags> or links as they are. A long text may be wrapped onto more lines. Every label is optional to change; one left out stays as it is. Changing a Category line moves the game to another label from the Category labels entry; to reword a label itself, edit it there.`;
 
 function readFn(root) {
   const cache = {};
@@ -226,7 +232,7 @@ function shownOf(read, f) {
   return vals[0];
 }
 function labelMaps(read, entries) {
-  const L = entries.find(e => e.id === 'labels'), m = { cat: {}, target: {} };
+  const L = entries.find(e => e.id === 'labels'), m = { cat: {} };
   for (const f of L.fields) m[f.group][f.key] = shownOf(read, f);
   return m;
 }
@@ -245,7 +251,6 @@ async function exportHelp(root = ROOT) {
       for (const f of e.fields) {
         let v = shownOf(read, f);
         if (f.group === 'catOf') v = maps.cat[v] || v;
-        if (f.group === 'targetOf') v = maps.target[v] || v;
         out.push(`${f.label}: ${v}`);
       }
       out.push('');
@@ -304,8 +309,8 @@ async function importHelp(md, { root = ROOT, write = true } = {}) {
       if (next === undefined) { warn(`[${e.id}] has no "${f.label}:" line: left as it is`); continue; }
       if (next === '') { warn(`[${e.id}] "${f.label}:" is empty: left as it is`); continue; }
       let from = old, shownOld = old, change = null;
-      if (f.group === 'catOf' || f.group === 'targetOf') {
-        const kind = f.group === 'catOf' ? 'cat' : 'target', o = oldMaps[kind], n = newMaps[kind];
+      if (f.group === 'catOf') {
+        const o = oldMaps.cat, n = newMaps.cat;
         shownOld = n[old] || old;
         if (next === n[old] || next === o[old]) continue;
         const k = Object.keys(n).find(x => n[x] === next) || Object.keys(o).find(x => o[x] === next);
@@ -317,7 +322,7 @@ async function importHelp(md, { root = ROOT, write = true } = {}) {
         for (const s of f.sites) for (const name of Object.keys(s.ph || {})) if (!next.includes(`{${name}}`)) warn(`[${e.id}] "${f.label}" has lost {${name}}`);
         change = next;
       }
-      changes.push({ id: e.id, label: f.label, file: f.sites[0].file, old: f.group ? shownOld : old, next: f.group === 'catOf' || f.group === 'targetOf' ? next : change });
+      changes.push({ id: e.id, label: f.label, file: f.sites[0].file, old: f.group ? shownOld : old, next: f.group === 'catOf' ? next : change });
       for (const s of f.sites) edits.push({ file: s.file, start: s.start, end: s.end, text: siteSource(read, s, change) });
     }
   }
@@ -337,8 +342,8 @@ async function importHelp(md, { root = ROOT, write = true } = {}) {
       e.fields.forEach((f, i) => {
         const was = shownOf(read, f), now = shownOf(read2, e2.fields[i]);
         const c = changes.find(x => x.id === e.id && x.label === f.label);
-        if (!c && was !== now && !(f.group === 'catOf' || f.group === 'targetOf')) throw new Error(`self-check: [${e.id}] "${f.label}" changed without being asked to`);
-        if (c && f.group !== 'catOf' && f.group !== 'targetOf' && now !== c.next) throw new Error(`self-check: [${e.id}] "${f.label}" did not read back as written`);
+        if (!c && was !== now && f.group !== 'catOf') throw new Error(`self-check: [${e.id}] "${f.label}" changed without being asked to`);
+        if (c && f.group !== 'catOf' && now !== c.next) throw new Error(`self-check: [${e.id}] "${f.label}" did not read back as written`);
       });
     }
     if (write) for (const [file, src] of Object.entries(outFiles)) fs.writeFileSync(path.join(root, file), src);

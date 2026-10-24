@@ -3,9 +3,8 @@
 export const info = { name: 'Flash',        hint: 'Watch 8 items flash by, answer one question. Three right wins' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
 export const category = 'brain';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
-export const target = 'own';   // what the players share, in its "?" label: 'shared' (one board for both), 'own' (each player's own progress) or 'course' (one course for both, each their own distance)
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
-export const explainer = { name: 'Flash', play: 'Cards flash by one at a time. Then say how many there were of a shape or a colour.', win: 'Get 3 right. It gets harder each time.' };
+export const explainer = { name: 'Flash', play: 'Cards flash by one at a time. Remember them and answer a question.', win: 'Get 3 right.' };
 export const icon = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M13.5 2L5 13.5h6L9.5 22 19 9.5h-6z"/></svg>';
 export const FLASH_DEFAULTS = { n1: 6, n2: 7, n3: 8, ms1: 500, ms2: 500, ms3: 500 };
 // Its settings (the admin's Mini-game Settings; core/tune.js) beyond config/flash: how often the computer gets a round right at each level.

@@ -212,11 +212,6 @@ test('sniff, Hard: the treasure is never next to the start (it was dealt 3 cells
   assert.deepEqual(E.localBest(pm, 'X', lcg(1), {}, { level: 'normal', until: null }), E.localBest(pm, 'X', lcg(1)), 'Normal untouched');
 });
 
-test('sniff: the header says shared in both modes', () => {
-  const GAMES = E.GAMES || require('../../src/games/index.js').GAMES;   // (the registry, where the engine does not name it)
-  assert.equal(GAMES.sniff.meta.target, 'shared');
-  assert.equal(GAMES.sniff.meta.scTarget, undefined, 'shared in Super Chaos too');
-});
 
 // A square from the 5x5 field (no g): into the middle of the 7x7 one, every distance and clue as it was.
 const d5 = (a, b) => (Math.floor(a / 5) - Math.floor(b / 5)) ** 2 + (a % 5 - b % 5) ** 2;
