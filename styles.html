@@ -493,17 +493,17 @@ const G = {
   names: { X: 'Rae', O: 'Mo' }, turn: 'O', clock: '0:42', score: { X: 2, O: 1 },
   squares: [
     { t: 'ttt', name: 'Tic-Tac-Toe', own: 'X', cells: 'XOXOX.O.X' },
-    { t: 'c4', name: 'Connect 4' },
-    { t: 'wordle', name: 'Wordle', own: 'O', rows: [['CRANE', 'xyxxy'], ['STOLE', 'xxggg'], ['WHOLE', 'ggggg']] },
+    { t: 'c4', name: 'Four in a Row' },
+    { t: 'wordle', name: 'Five Letters', own: 'O', rows: [['CRANE', 'xyxxy'], ['STOLE', 'xxggg'], ['WHOLE', 'ggggg']] },
     { t: 'dice', name: 'Dice Race', pos: { X: 9, O: 5 }, roll: 4 },
     { t: 'hangman', name: 'Hangman', pattern: 'P_PP_R', wrong: 2 },
     { t: 'coins', name: 'Coin Flip', own: 'X', coins: 'XXXXXX' },
     { t: 'candy', name: 'Candy Race', pos: { X: 4, O: 7 } },
     { t: 'coins', name: 'Coin Flip', coins: 'XOXOOX' },
-    { t: 'memory', name: 'Memory', up: { 2: 'tri', 6: 'sq' } },
+    { t: 'memory', name: 'Find the Pair', up: { 2: 'tri', 6: 'sq' } },
   ],
 };
-// the Connect 4 square, mid-game (row 0 is the top); the last piece dropped animates in
+// the Four in a Row square, mid-game (row 0 is the top); the last piece dropped animates in
 const C4 = ['.....', '.....', '..O..', '.XO..', 'OXXO.', 'XOOXO'];
 const C4_NEW = [2, 2];
 const CANDY = ['r', 'y', 't', 'b', 'y', 'r', 'b', 't', 'r', 't', 'y', 'b'];
@@ -637,8 +637,8 @@ function screens(key) {
     <div class="btns" style="margin-top:${key === 'zine' ? 30 : 6}px">${B('Play vs Computer')}${B('2 Players')}${B('Play Online')}</div>${st.menuFoot}</div></section>`;
   const board = `${cap('2', 'Mid-match board')}<section class="phone"><div class="screen">${header(st)}
     <div class="board">${G.squares.map((s, i) => square(s, i, st)).join('')}</div>${scorebar(st)}</div></section>`;
-  const c4 = `${cap('3a', 'Connect 4, full view')}<section class="phone"><div class="screen">
-    <div class="bar"><button class="back-b">‹ Board</button><div class="ttl"><b>Connect 4</b><small>Four in a row wins</small></div></div>
+  const c4 = `${cap('3a', 'Four in a Row, full view')}<section class="phone"><div class="screen">
+    <div class="bar"><button class="back-b">‹ Board</button><div class="ttl"><b>Four in a Row</b><small>Four in a row wins</small></div></div>
     <div class="c4wrap"><div class="drops">${'▼▼▼▼▼'.split('').map(a => `<span>${a}</span>`).join('')}</div>
     <div class="c4">${C4.map((row, r) => row.split('').map((c, k) => `<i class="${r === C4_NEW[0] && k === C4_NEW[1] ? 'new' : ''}">${c === '.' ? '' : st.mark(c)}</i>`).join('')).join('')}</div></div>
     <p class="c4note">Mo dropped in column 3 · <b>Rae's turn</b></p>${scorebar(st)}</div></section>`;

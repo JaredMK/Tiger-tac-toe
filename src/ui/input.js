@@ -324,7 +324,7 @@ export function init() {
     const el = e.target;
     if (el.matches && el.matches('input[data-t]') && state.setup) setGames(g => { g[el.dataset.t] = el.checked; });
   });
-  // Physical keyboard, for desktops: Wordle typing and Hangman letters.
+  // Physical keyboard, for desktops: Five Letters typing and Hangman letters.
   document.addEventListener('keydown', e => {
     if (explainT) { if (e.key === 'Escape' || e.key === 'Enter') closeExplain(); return; }
     if (e.metaKey || e.ctrlKey || e.altKey) return;

@@ -320,7 +320,7 @@ export function showLatest(st) {
   const o = state.online, pick0 = pickKey(), live = ['board', 'mini'].includes(state.screen);
   repStop();
   takeFields(st);
-  if (pickKey() != null && pickKey() !== pick0) { startFx('pick', pickKey()); SND.play('flipUp'); }   // a Memory card just turned up (on the other phone, or this one's own pick coming back)
+  if (pickKey() != null && pickKey() !== pick0) { startFx('pick', pickKey()); SND.play('flipUp'); }   // a Find the Pair card just turned up (on the other phone, or this one's own pick coming back)
   if (live && state.winner && !state.flash) SND.play(matchEndSound());   // the match ended while this phone was on the board (not on a reload)
   state.flash = null; state.done = null; state.spot = null;
   o.shownSeq = st.seq;

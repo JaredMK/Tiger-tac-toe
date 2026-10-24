@@ -162,7 +162,7 @@ export function playMove(state, i, m, rng, opts) {
 }
 
 // The result overlay is over: the win screen if the match is decided; the same mini-game if the
-// mover goes again (bonus move) or if `hold` asks for the result to stay a moment longer (Memory's
+// mover goes again (bonus move) or if `hold` asks for the result to stay a moment longer (Find the Pair's
 // cards turning back over); otherwise straight back to the board, where the turn passes.
 export function endFlash(state, hold) {
   if (!state.flash) return false;

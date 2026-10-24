@@ -1,7 +1,7 @@
-// Clash Grid: the rules (pure: no page, no clock; the server runs the same code).
+// Standoff Grid: the rules (pure: no page, no clock; the server runs the same code).
 import { tune, tuneLive } from '../../core/tune.js';
 
-// Clash Grid (Super Chaos only): a 5x5 grid both players share. A move claims one empty cell. Both claiming
+// Standoff Grid (Super Chaos only): a 5x5 grid both players share. A move claims one empty cell. Both claiming
 // the same cell in the same round block it for good (grey: nobody's, and it breaks lines). Four in a row (a
 // row, a column or a diagonal) takes the square; both completing one in the same round reset it, as does a grid
 // that is full, or where neither player can still make four. Each player's claim shows on their own screen at

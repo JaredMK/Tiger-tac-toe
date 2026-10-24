@@ -1,4 +1,4 @@
-// Mastermind: the screen, the miniature, the move's words and sounds, and the inputs.
+// Codebreaker: the screen, the miniature, the move's words and sounds, and the inputs.
 import { MM } from './rules.js';
 import { mv, state, zoomedType } from '../../ui/app.js';
 import { tune } from '../../core/tune.js';
@@ -6,7 +6,7 @@ import { toon } from '../../ui/art.js';
 import { fxAttr } from '../../ui/fx.js';
 import { render } from '../../ui/render.js';
 
-// Mastermind pegs: six colours, each with a symbol of its own (so colour is never the only cue).
+// Codebreaker pegs: six colours, each with a symbol of its own (so colour is never the only cue).
 const MM_NAMES = ['Red', 'Orange', 'Yellow', 'Green', 'Blue', 'Pink'];
 const MM_SYM = [
   '<circle cx="12" cy="12" r="5.6"/>',
@@ -20,7 +20,7 @@ const mmPeg = (c, cls = '', style = '') => `<i class="peg c${c}${cls ? ' ' + cls
 // The feedback: solid markers first, then hollow ones, then empty places, always in that order.
 const mmMarks = (g, cls = '', fresh = false) => `<span class="mmfb${cls ? ' ' + cls : ''}" role="img" aria-label="${g.solid} solid, ${g.hollow} hollow">${Array.from({ length: MM.pegs }, (_, k) =>
   `<i class="${k < g.solid ? 'sd' : k < g.solid + g.hollow ? 'hw' : ''}${fresh ? ' rv' : ''}"${fresh ? ` style="--k:${k}"` : ''}></i>`).join('')}</span>`;
-export let mmDraft = null;                                              // Mastermind: { sq, slots, at } the guess being put together on this phone
+export let mmDraft = null;                                              // Codebreaker: { sq, slots, at } the guess being put together on this phone
 let mmPop = null;
 export function miniature(mini, final) {
   const last = mini.guesses.slice(-4), more = mini.guesses.length - last.length;
@@ -59,7 +59,7 @@ export function moveText(f, who) {
 export function sounds(f, add, won, mini, last) {
   const n = (f.solid || 0) + (f.hollow || 0); for (let k = 0; k < n; k++) add('marker', 450 + k * 250); if (won) add('reveal', 1450); return;
 }
-// Mastermind: pick a slot; a filled one is cleared
+// Codebreaker: pick a slot; a filled one is cleared
 export function mmslotAct(el, e, act) {
   if (zoomedType() !== 'mastermind' || !mmDraft) return;
   const k = Number(el.dataset.k);

@@ -27,7 +27,7 @@ export function secretOf(mini) {
   return null;
 }
 // Strip a mini-game's secret in place, leaving only what the board is allowed to show: the Hangman
-// word as its pattern, the Treasure hunt's clues, the Memory cards that have been seen (or picked).
+// word as its pattern, the Treasure hunt's clues, the Find the Pair cards that have been seen (or picked).
 export function hideMini(m, k, st) {
   if (PHYS_TYPES.includes(m.type)) { if (m.last) delete m.last.rec; return; }   // nothing hidden; the recording rides the move's entry, not the square
   const game = rulesOf(m.type);
@@ -131,7 +131,7 @@ export function applyOnlineStart(rec, side, i) {
   const r = attStart(full, i, side);
   return r.ok ? { ok: true, rec: matchRecord(full) } : r;
 }
-// Memory: the first card chosen is turned up for both phones (or turned back when tapped again).
+// Find the Pair: the first card chosen is turned up for both phones (or turned back when tapped again).
 export function applyOnlinePick(rec, side, i, card) {
   const full = fullState(rec);
   if (full.winner || full.turn !== side) return { ok: false, reason: 'turn' };

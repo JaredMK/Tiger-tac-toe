@@ -4,7 +4,7 @@ import { r3 } from '../../core/util.js';
 import { BULL_DEFAULTS } from './meta.js';
 import { tune } from '../../core/tune.js';
 
-// ---------- the arcade games: Bullseye, Echo, Plinko, Cup Pong, Trivia, Odd One Out ----------
+// ---------- the arcade games: Bullseye, Echo, Peg Drop, Cup Pong, Trivia, Odd One Out ----------
 // Bullseye: a small dartboard (with a bullseye in its middle) sits somewhere on a field 100 units across
 // and 120 down, and moves to a new random spot after every throw. A throw is aimed in two steps: a
 // vertical line sweeps left and right (a tap stops it), then a horizontal line sweeps up and down (a

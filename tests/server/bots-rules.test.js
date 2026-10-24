@@ -54,7 +54,7 @@ test('bot pacing: ordinary moves 1.5 to 5 s, each bot in its own window; word ga
   assert.ok(avg(slow) > avg(quick), 'the slow, careful one takes longer than the quick one');
   assert.equal(B.MAX_THINK_MS, 8000, 'never past 8 s');
   const second = Array.from({ length: 500 }, () => B.thinkMs(quick, 'second', rng, 'memory'));
-  assert.ok(second.every(x => x >= 1000 && x <= 2600), 'Memory\'s second card a moment after the first');
+  assert.ok(second.every(x => x >= 1000 && x <= 2600), 'Find the Pair\'s second card a moment after the first');
 });
 
 test('bot wait and settings: the wait drawn inside the window; settings clamped to sane values; both off by default', () => {

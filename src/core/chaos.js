@@ -16,7 +16,7 @@
 // round's start that both players' moves there share: the Roulette spin), scFork (a square as one
 // player sees it), scApply (a move made differently), scAfter (a move's result as its player sees it until the
 // round ends), scMerge (both moves together; it may return win, reset, replay, or resolve: a result settled only now,
-// such as a Bump knock or a Clash Grid collision, for the recap to play). A game without them keeps each player's progress apart already.
+// such as a Bump knock or a Standoff Grid collision, for the recap to play). A game without them keeps each player's progress apart already.
 import { LINES, playMove, timeoutClose } from './board.js';
 import { cpuMove } from './ai.js';
 import { dealable, pickReset, startMatch } from './match.js';
@@ -272,7 +272,7 @@ export function chaosResolve(state, rng, missed) {   // missed: the sides that m
     if (sq.mv == null) sq.mv = { X: 0, O: 0 };
     if (forks[cpu]) sq.mv[cpu] += 1;
     if (out.replay) recap.replay = { square: i, type: m.type, last: clone(m.last), win: winners.slice() };
-    if (out.resolve) {                                          // settled only now, with both moves known (a Bump knock, a Clash Grid collision): the recap plays it
+    if (out.resolve) {                                          // settled only now, with both moves known (a Bump knock, a Standoff Grid collision): the recap plays it
       recap.pre[i] = project(clone(out.resolve.pre), me);
       recap.resolve.push({ square: i, type: m.type, joint: !!out.resolve.joint, whole: !!out.resolve.whole, flash: Object.assign({ kind: 'move', by: me, next: me, square: i, type: m.type, note: 'resolve', pass: null, timeout: false, sc: recap.round, recap: true, scr: true }, out.resolve.flash) });
     }

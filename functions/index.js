@@ -344,7 +344,7 @@ async function findMatchOn() { return (await db.ref('features/findMatch').get())
 // Release control (src/core/games.js: isReleased): the dashboard's switches, releases/{type}; a game not there is
 // as the code has it. testTypes: the games admin only right now (their stats are kept apart).
 async function releasesNow() { return (await db.ref('releases').get()).val() || {}; }
-// The difficulty configs (config/run for the runners, config/bulls for Bullseye, config/wheels for Risk Wheels, config/plinko for Plinko, config/pig for Risky Rolls, config/roads for Roads, config/oddone for Odd One Out, config/headcount, config/flash and config/snapshot for the attention games, config/skyhop, config/scoop and config/pinball for the finger games, from the admin's
+// The difficulty configs (config/run for the runners, config/bulls for Bullseye, config/wheels for Risk Wheels, config/plinko for Peg Drop, config/pig for Risky Rolls, config/roads for Roads, config/oddone for Odd One Out, config/headcount, config/flash and config/snapshot for the attention games, config/skyhop, config/scoop and config/pinball for the finger games, from the admin's
 // dashboard): set in the engine before a square can be dealt (a new match, a draw's reset), so new
 // squares play by the current values; read afresh after 20 s.
 let runCfgAt = 0;
@@ -634,7 +634,7 @@ async function freeBots() {
 // A bot's move is planned as its turn starts: the move itself, and when it is due (once the last move has
 // played on the phones, plus a think time). It is queued as a Cloud Task for that moment, so the bot moves on
 // time without waiting for a phone or the sweep. If the task cannot be queued, the phones' ticks and the sweep
-// still move the bot once it is due. Memory is two steps: the first card, then the second a moment later.
+// still move the bot once it is due. Find the Pair is two steps: the first card, then the second a moment later.
 const BOT_EARLY_MS = 1000;                                   // a tick lands up to a second early
 async function queueBot(id, seq, step, due) {
   try {
@@ -680,14 +680,14 @@ async function runBot(id, opts) {
   if (!next) { next = await planBot(id, st, parse(g.sec), bg, turnStart(st), false); if (!next || when === 'task') return false; }
   if (o.step && o.step !== next.step) return false;
   if (when !== 'task' && when !== 'force' && now() < next.due - BOT_EARLY_MS) return false;
-  if (next.step === 'second') {                              // Memory: the second card
+  if (next.step === 'second') {                              // Find the Pair: the second card
     if (st.pickSq !== next.square) return false;
     const r = await changeGame(id, bg.bot, (rec, side) => (rec.state.seq !== next.seq || rec.state.pickSq !== next.square ? { ok: false, reason: 'stale' }
       : E.applyOnlineMove(rec, side, next.square, next.move, seedRng())), 'bot');
     return r.ok;
   }
   const mini = st.squares[next.square] && st.squares[next.square].mini;
-  if (mini && mini.type === 'memory' && Array.isArray(next.move) && when !== 'force') {   // Memory: the first card now
+  if (mini && mini.type === 'memory' && Array.isArray(next.move) && when !== 'force') {   // Find the Pair: the first card now
     const r = await changeGame(id, bg.bot, (rec, side) => (rec.state.seq !== next.seq || rec.state.pickSq != null ? { ok: false, reason: 'stale' }
       : E.applyOnlinePick(rec, side, next.square, next.move[0])), 'bot');
     if (r.ok) {
@@ -814,7 +814,7 @@ async function changeGame(id, uid, step, what) {   // what: the kind of change, 
     if (!r.ok) { out = { ok: false, reason: r.reason }; return undefined; }
     const t = now();
     // The turn's clock is set once, when the turn passes on: an action within the turn (a Risky Rolls roll,
-    // a Battleship or Hangman follow-up, Memory's first card) keeps the deadline the turn started with.
+    // a Sea Battle or Hangman follow-up, Find the Pair's first card) keeps the deadline the turn started with.
     if (r.entries && (r.rec.state.turn !== turn0 || r.rec.state.winner)) E.armClock(r.rec.state, r.entries, t);
     pub.state = JSON.stringify(r.rec.state); cur.sec = JSON.stringify(r.rec.secrets || {});
     pub.updated = t;
@@ -842,7 +842,7 @@ async function changeGame(id, uid, step, what) {   // what: the kind of change, 
   ]);
   return out;
 }
-// A move (or Memory's first card, kind 'pick'; Trivia's question turned up, kind 'reveal'; an attention game's Start, kind 'start') from the player on the move.
+// A move (or Find the Pair's first card, kind 'pick'; Trivia's question turned up, kind 'reveal'; an attention game's Start, kind 'start') from the player on the move.
 exports.move = onCall(CALL, async req => {
   const uid = needUid(req), d = req.data || {}, id = gameId(d.game);
   const i = d.square;

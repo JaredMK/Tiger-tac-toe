@@ -1,4 +1,4 @@
-// Plinko: the screen, the miniature, the move's words and sounds, and the inputs.
+// Peg Drop: the screen, the miniature, the move's words and sounds, and the inputs.
 import { makeRng } from '../../core/random.js';
 import { PLINKO_DEFAULTS } from './meta.js';
 import { PLINKO, plinkoBonusPts, setPlinkoConfig } from './rules.js';
@@ -7,7 +7,7 @@ import { N, mv, state } from '../../ui/app.js';
 import { KEY } from '../../ui/config.js';
 import { arcTally, lateAt } from '../../ui/progress.js';
 
-// Plinko's target (config/plinko, the admin's dashboard): likewise.
+// Peg Drop's target (config/plinko, the admin's dashboard): likewise.
 const PLINKO_KEY = KEY + '.plinkocfg';
 export function fetchPlinkoConfig() {
   try { const v = JSON.parse(localStorage.getItem(PLINKO_KEY) || 'null'); if (v && typeof v === 'object') setPlinkoConfig(v); } catch (e) { /* none kept */ }
@@ -22,7 +22,7 @@ export function fetchPlinkoConfig() {
     }).catch(() => {});
   } catch (e) { /* offline: as last known */ }
 }
-// Plinko: the slots to drop from, the pegs, the bins (WIN marked); the chip bounces peg to peg along the
+// Peg Drop: the slots to drop from, the pegs, the bins (WIN marked); the chip bounces peg to peg along the
 // path the move was given, then the bin lights.
 // The chip's way down as keyframes. From the slot it drops onto the first peg; at each peg it squashes
 // a little, pops up and out half a column in a short arc (gravity: across at a steady pace, up then
@@ -53,7 +53,7 @@ function plinkoFrames(pl, seedKey) {
 }
 const PK = { pad: 6, top: 10, rows: PLINKO.rows, bottom: 86 };    // the board in percent: the chip starts at the top and the bins sit at the bottom
 function plinkoXY(x, r) { return [PK.pad + (x / 12) * (100 - 2 * PK.pad), r <= 0 ? PK.top : r > PLINKO.rows ? PK.bottom + 4 : PK.top + (r / (PLINKO.rows + 1)) * (PK.bottom - PK.top)]; }
-// Plinko: each bin's points under it (shaded light to dark, 1 to 5); the bonus peg, gold and marked +2; the slots dropped
+// Peg Drop: each bin's points under it (shaded light to dark, 1 to 5); the bonus peg, gold and marked +2; the slots dropped
 // from greyed until all seven are used. The chip bounces down along the server's path; touching the bonus
 // peg, it lights (and the next bonus peg shows when the chip lands); in its bin, the bin lights, the player's
 // total counts up and the points (and any bonus) are said in the result line under the board (nothing over it).
@@ -94,7 +94,7 @@ function plinkoTable(mini, a, o) {
   return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="plinko">${slots}<div class="pboard">${style}<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${pegs.join('')}${bins}</svg><div class="pvals">${vals}</div>${bonus}${chip}</div>${res}</div></div>`;
 }
 export function miniature(mini, final) {
-  const pts = mini.pts || { X: 0, O: 0 }, tg = mini.target || PLINKO_DEFAULTS.target; return `<div class="tplk" aria-label="Plinko: X ${pts.X}, O ${pts.O} of ${tg} points"><div class="tbins">${(mini.vals || []).map((v, b) => `<i class="v${v}${mini.last && mini.last.bin === b ? ' ' + mini.last.by : ''}">${v}</i>`).join('')}</div><div class="tbpts">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><span>${Math.min(tg, pts[p])}</span><small>/${tg}</small></div>`).join('')}</div></div>`;
+  const pts = mini.pts || { X: 0, O: 0 }, tg = mini.target || PLINKO_DEFAULTS.target; return `<div class="tplk" aria-label="Peg Drop: X ${pts.X}, O ${pts.O} of ${tg} points"><div class="tbins">${(mini.vals || []).map((v, b) => `<i class="v${v}${mini.last && mini.last.bin === b ? ' ' + mini.last.by : ''}">${v}</i>`).join('')}</div><div class="tbpts">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><span>${Math.min(tg, pts[p])}</span><small>/${tg}</small></div>`).join('')}</div></div>`;
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   g = plinkoTable(mini, a, { view, locked, turn, zoom: state.zoom }); return g;

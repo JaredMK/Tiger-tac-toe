@@ -4,7 +4,7 @@
 // board, a sequence timed from one start (scPlan): a Mini Golf square plays both shots first; then the other
 // player's square lights up; then a pop-up over the board replays their move at 2x (its inputs, then each step
 // of the move with its usual animation: ui/replay.js); then what only both moves together settle plays in its
-// square (a Bump knock, a Clash Grid collision: resolve); then each square's result on the board, one at a time: its
+// square (a Bump knock, a Standoff Grid collision: resolve); then each square's result on the board, one at a time: its
 // X or O stamping in, or (both won it) both marks clashing and the square turning over to a new game; then
 // the next round, or the match's end. Online each phone plays the sequence from the record's start (server
 // time; the last mover's phone once its own result has played), at its own pace (a skip jumps it on), and the
@@ -200,7 +200,7 @@ function stepFlash(step, last) { const f = Object.assign({}, step); delete f.aft
 // ---- the recap as a sequence timed from its start (rc.at): each part's place and length are known ahead, so a
 // phone plays it by the clock (two phones from one shared start reach the results at the same moment; a phone
 // coming back joins where the sequence is). First this player's own outcome, where it is settled only now: their
-// Mini Golf shot; what both moves settle in their square (a Bump knock, a Clash Grid collision), both moves played
+// Mini Golf shot; what both moves settle in their square (a Bump knock, a Standoff Grid collision), both moves played
 // together in their own view when both played there. Then the other player's move: their square lit, the pop-up
 // replaying it a step at a time (its inputs, then the step's animation at 2x, the last held a second), or their
 // Mini Golf shot; none when both played one square and its joint result has shown it. Then what their move

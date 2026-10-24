@@ -279,7 +279,7 @@ main.scr.mini:has(.fing), main.scr.mini:has(.fing) * { touch-action: none; -webk
 .c4p.X { background: var(--x); } .c4p.O { background: var(--o); }
 .c4c.win.lit { animation: c4win .5s ease-out both; animation-delay: calc(.55s + var(--k, 0) * .08s); }
 
-/* on-screen keyboard (Wordle, Hangman) */
+/* on-screen keyboard (Five Letters, Hangman) */
 .kb { flex: none; width: 100%; display: flex; flex-direction: column; gap: 6px; }
 .krow { display: flex; justify-content: center; gap: 4px; }
 .key {
@@ -300,7 +300,7 @@ main.scr.mini:has(.fing), main.scr.mini:has(.fing) * { touch-action: none; -webk
 .key.kc { animation: keycolor .25s 1.1s ease-out both; }
 
 .g-wordle { width: min(var(--gw), 520px); height: var(--gh); display: flex; flex-direction: column; gap: 10px; --tile: min(52px, calc((var(--gw) - 72px) / 5)); }   /* (the tiles leave room for the guesser's mark beside each row) */
-.wrow .wby { width: 26px; height: var(--tile); flex: none; display: grid; place-items: center; }   /* who guessed the word, as in Mastermind (a blank one keeps the row being typed in line) */
+.wrow .wby { width: 26px; height: var(--tile); flex: none; display: grid; place-items: center; }   /* who guessed the word, as in Codebreaker (a blank one keeps the row being typed in line) */
 .wrow .wby .pc { width: 22px; height: 22px; }
 .wlist { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 5px; align-items: center; padding: 4px 0; }
 .wrow { display: flex; gap: 5px; flex: none; }
@@ -938,10 +938,10 @@ b.O { box-shadow: inset 0 -.38em 0 var(--o-soft); }
 .cell.hit.X { --fb: var(--x-soft); --fs: 0 5px 0 var(--ink); }
 .cell.hit.O { --fb: var(--o-soft); --fs: 0 5px 0 var(--ink); }
 .cell.miss.flipin::before { border-color: var(--ink); }
-/* Battleship: a hit is a burst on the sea; once sunk, the ship's parts show in their cells */
+/* Sea Battle: a hit is a burst on the sea; once sunk, the ship's parts show in their cells */
 .cell.sea.bshit { --fb: #ffe7c2; --fs: 0 5px 0 var(--ink); background: #ffe7c2; box-shadow: 0 5px 0 var(--ink); }
 .cell.sea.bshit::after, .cell.sea.ship::after { display: none; }
-/* Battleship: each shot's centre dot in the colour of whoever fired it (a hit's over the burst, a miss's inside the ring) */
+/* Sea Battle: each shot's centre dot in the colour of whoever fired it (a hit's over the burst, a miss's inside the ring) */
 .cell.sea .bsby { position: absolute; left: 50%; top: 50%; width: 22%; height: 22%; margin: -11% 0 0 -11%; border-radius: 50%; border: 2px solid var(--ink); z-index: 3; pointer-events: none; }
 .cell.sea .bsby.X { background: var(--x); } .cell.sea .bsby.O { background: var(--o); }
 .tg.sea i.miss.byX::after { border-color: var(--x); } .tg.sea i.miss.byO::after { border-color: var(--o); }
@@ -1178,7 +1178,7 @@ button.seg.X.on { background: var(--x); color: var(--paper); } .seg.O.on { backg
 .winburst svg { width: 100%; height: auto; overflow: visible; animation: wiggle 1.4s ease-in-out infinite; }
 .win-card .big-g .pc { animation: bob 1s ease-in-out infinite; transform-origin: 50% 100%; }
 
-/* Mastermind */
+/* Codebreaker */
 :root { --mc0: #e5432a; --mc1: #f08a24; --mc2: #f6c21b; --mc3: #4e9d3a; --mc4: #58a8cf; --mc5: #f19aa0; }
 .peg { display: inline-grid; place-items: center; width: 100%; aspect-ratio: 1; border-radius: 50%; border: 3px solid var(--ink); box-shadow: 0 3px 0 var(--ink); font-style: normal; position: relative; }
 .peg svg { width: 66%; height: 66%; fill: #fff; stroke: var(--ink); stroke-width: 1.6; overflow: visible; }
@@ -1562,7 +1562,7 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .bsl.got.tf .plc { animation: arrive .3s var(--f, 0ms) cubic-bezier(.3, 1.6, .5, 1) both; }
 @keyframes arrive { from { opacity: 0; transform: scale(.7); } to { opacity: 1; transform: none; } }
 /* timed swaps, from the move: .tu shows until --u, .tf from --f (nothing in the progress rows changes early) */
-/* ---- the arcade games: Bullseye, Echo, Plinko, Cup Pong, Trivia, Odd One Out ---- */
+/* ---- the arcade games: Bullseye, Echo, Peg Drop, Cup Pong, Trivia, Odd One Out ---- */
 .g-arc { width: min(var(--gw), 440px); height: var(--gh); display: flex; flex-direction: column; gap: 8px; padding-top: 4px; }
 .g-arc .ctal small { font-size: 12px; color: var(--muted); font-weight: 700; white-space: nowrap; }
 .ctal small, .ctal .pips { font-variant-numeric: tabular-nums; }
@@ -1622,7 +1622,7 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .elev { display: inline-flex; gap: 3px; } .elev i { width: 12px; height: 12px; border-radius: 3px; border: 2px solid var(--ink); background: var(--paper); }
 .ctal.X .elev i.on { background: var(--x); } .ctal.O .elev i.on { background: var(--o); }
 .elev i.fillin { animation: pipfill .4s var(--t, 0ms) cubic-bezier(.3, 1.6, .5, 1) both; }   /* a pattern beaten: its square fills in when the result shows */
-/* Plinko: the slots, the pegs, the bins, the chip */
+/* Peg Drop: the slots, the pegs, the bins, the chip */
 .plinko { flex: 1; display: flex; flex-direction: column; min-height: 0; gap: 6px; }
 .pslots { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; width: min(100%, 380px); margin: 0 auto; }
 .pslots button { height: 40px; border: 3px solid var(--ink); border-radius: 10px; background: var(--paper); font-family: 'Luckiest Guy', sans-serif; font-size: 14px; box-shadow: 0 3px 0 var(--ink); padding: 0; }
@@ -1811,7 +1811,7 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .tkc.turn.X.fromO { --c0: var(--o); } .tkc.turn.O.fromX { --c0: var(--x); }
 .tkc.turn.X { --c1: var(--x); } .tkc.turn.O { --c1: var(--o); }
 @keyframes tkturn { 0% { transform: rotateY(0); background: var(--c0); color: transparent; } 49% { transform: rotateY(90deg); background: var(--c0); color: transparent; } 51% { transform: rotateY(90deg); background: var(--c1); } 100% { transform: none; background: var(--c1); } }
-/* Clash Grid: the 5x5 grid; a blocked cell grey and crossed; both marks slamming into one cell */
+/* Standoff Grid: the 5x5 grid; a blocked cell grey and crossed; both marks slamming into one cell */
 .clashg { flex: 1; display: flex; flex-direction: column; gap: 10px; justify-content: center; min-height: 0; }
 .clgrid { display: grid; grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(5, 1fr); gap: 6px; width: min(100%, 340px, calc(100dvh - 330px)); aspect-ratio: 1; margin: 0 auto; }
 .clc { position: relative; overflow: hidden; min-width: 0; min-height: 0; border: 3px solid var(--ink); border-radius: 10px; background: var(--paper); padding: 0; display: grid; place-items: center; font-family: 'Luckiest Guy', sans-serif; font-size: 20px; box-shadow: 0 3px 0 var(--ink); color: var(--ink); }
@@ -2302,7 +2302,7 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .tbpts .tr span { font: 400 15cqw 'Luckiest Guy', sans-serif; } .tbpts .tr small { font-size: 8cqw; color: var(--muted); }
 @media (max-height: 640px) { .rln, .rlg, .rlz { height: 28px; font-size: 13px; } .bjres { min-height: 28px; font-size: 15px; } }
 
-/* ---- Super Chaos: the mode's switch on the setup screen, Battleship's 5x5 sea, the recap's label and resets ---- */
+/* ---- Super Chaos: the mode's switch on the setup screen, Sea Battle's 5x5 sea, the recap's label and resets ---- */
 .scmode > span { display: flex; align-items: center; gap: 8px; }
 .scmode > span .tst { position: static; font-size: 9px; line-height: 1; letter-spacing: .05em; text-transform: uppercase; padding: 3px 6px 2px; border: 2px solid var(--ink); border-radius: 999px; background: var(--o-soft); color: var(--ink); font-style: normal; }
 .scmode .seg { flex: 1; }
@@ -2414,7 +2414,7 @@ main.scr.mini.screplay * { cursor: pointer; }   /* (a tap anywhere skips to the 
 /* Craps: the puck in its own row under the point numbers (never over a number) */
 .cpts { padding-bottom: 34px; }
 .cpts > .cpuck { top: auto; bottom: 0; width: 30px; height: 30px; margin: 0 0 0 -15px; }
-/* Plinko: a bonus peg's own "+N" goes as its "+N" pops up from it (one at a time) */
+/* Peg Drop: a bonus peg's own "+N" goes as its "+N" pops up from it (one at a time) */
 .pbonus.hit b { animation: tuntil 1ms var(--t, 0ms) both; }
 .rskip.until { animation: skipin .25s ease-out 2s both, tuntil 1ms var(--u, 0ms) both; }   /* gone as the move's animation ends */
 

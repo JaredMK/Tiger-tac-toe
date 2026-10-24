@@ -1,8 +1,8 @@
-// Battleship: the screen, the miniature, the move's words and sounds, and the inputs.
+// Sea Battle: the screen, the miniature, the move's words and sounds, and the inputs.
 import { BS, bsN } from './rules.js';
 import { N, mv } from '../../ui/app.js';
 
-// Battleship: the burst on a hit, a ship's part in its cell, and the card naming the ship being hunted.
+// Sea Battle: the burst on a hit, a ship's part in its cell, and the card naming the ship being hunted.
 const HITFX = (() => {
   const star = (n, R, r, j) => Array.from({ length: n * 2 }, (_, k) => { const a = k * Math.PI / n - Math.PI / 2, d = k % 2 ? r : R * (1 - (k % 4 === 0 ? 0 : j)); return `${(50 + Math.cos(a) * d).toFixed(1)},${(50 + Math.sin(a) * d).toFixed(1)}`; }).join(' ');
   return `<svg class="fx" viewBox="0 0 100 100" aria-hidden="true"><polygon class="f1" points="${star(9, 46, 25, .14)}"/><polygon class="f2" points="${star(7, 24, 12, .1)}"/></svg>`;

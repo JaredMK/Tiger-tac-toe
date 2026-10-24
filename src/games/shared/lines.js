@@ -1,4 +1,4 @@
-// Line games (Tic-Tac-Toe, Connect 4, Hex): runs and windows, and the tactics they share.
+// Line games (Tic-Tac-Toe, Four in a Row, Hex): runs and windows, and the tactics they share.
 import { tune } from '../../core/tune.js';
 import { other } from '../../core/util.js';
 import { C4 } from '../c4/rules.js';
@@ -44,7 +44,7 @@ export function lineNeeds(cells, W, H, K, p, playable) {
     for (const k of win) { const c = cells[k]; if (c === p) mine++; else if (c) { bad = true; break; } else empty = k; }
     if (bad) continue;
     let n = K - mine;
-    if (n === 1 && playable && !playable(empty)) n = 2;        // Connect 4: a hole still needs a piece under it
+    if (n === 1 && playable && !playable(empty)) n = 2;        // Four in a Row: a hole still needs a piece under it
     if (n < best) best = n;
   }
   return best;
@@ -62,7 +62,7 @@ export function threatScore(cells, W, H, K, me) {
 }
 // Pick among valued moves: the best value, then the position with the most open lines (or, in Hex, the biggest lead in distance).
 export function pickValued(pm, me, moves, place) {
-  const o = other(me), K = pm.type === 'c4' ? tune(pm).k : C4.k;   // (Connect 4: its square's run length)
+  const o = other(me), K = pm.type === 'c4' ? tune(pm).k : C4.k;   // (Four in a Row: its square's run length)
   let best = null;
   for (const mv of moves) {
     const after = { type: pm.type, cells: pm.cells.slice() };

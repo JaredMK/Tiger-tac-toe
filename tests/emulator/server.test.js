@@ -238,14 +238,14 @@ test('a Find Match game: all mini-games, one minute a turn, hidden values hidden
   await denied(outsider.read(`games/${g.id}/pub`), 'an outsider reading the game');
   for (const sq of st.squares) {
     const m = sq.mini;
-    assert.ok(!('word' in m) || m.type === 'hangman', 'no Wordle word');
+    assert.ok(!('word' in m) || m.type === 'hangman', 'no Five Letters word');
     if (m.type === 'hangman') assert.match(m.word, /^_+$/, 'only the Hangman pattern');
     for (const k of ['target', 'hidden', 'ship', 'treasure', 'code']) assert.ok(!(k in m) || (k === 'target' && m.type === 'pig'), `no ${k} in ${m.type}`);   // (Risky Rolls' target is the score to bank: public)
-    if (m.type === 'memory') assert.ok(m.cards.every(c => c === null), 'no Memory card');
+    if (m.type === 'memory') assert.ok(m.cards.every(c => c === null), 'no Find the Pair card');
   }
   const sec = JSON.parse(await get(`games/${g.id}/sec`));
   assert.ok(Object.keys(sec).length >= 0);
-  // a board where every rule can be tried: Wordle in square 3, Tic-Tac-Toe elsewhere
+  // a board where every rule can be tried: Five Letters in square 3, Tic-Tac-Toe elsewhere
   await nearWin(g.id, 'X');
   const s2 = await gameState(g.id);
   s2.squares[3] = { owner: null, mini: { type: 'wordle', guesses: [] } };
@@ -261,7 +261,7 @@ test('a Find Match game: all mini-games, one minute a turn, hidden values hidden
   assert.deepEqual(await g.X.call('move', { game: g.id, square: 3, move: 'QZXJV' }), { ok: false, reason: 'notword' }, 'not a word');
   assert.deepEqual(await outsider.call('move', { game: g.id, square: 4, move: 0 }), { ok: false, reason: 'not-player' });
   assert.equal(await get(`games/${g.id}/pub/state`), before, 'nothing changed');
-  // a Wordle guess: the word stays hidden until it is guessed
+  // a Five Letters guess: the word stays hidden until it is guessed
   const w = await g.X.call('move', { game: g.id, square: 3, move: 'CRATE', rep: [[0, 'key', 'k=C'], [310, 'key', 'k=R'], [600, 'key', 'k=A'], [5000, 'key', 'k=T'], [5200, 'key', 'k=E'], [5500, 'enter']] });
   assert.equal(w.ok, true);
   let s3 = await gameState(g.id);
@@ -291,7 +291,7 @@ test('a Find Match game: all mini-games, one minute a turn, hidden values hidden
   assert.deepEqual([px.rating, px.wins, px.losses, px.draws, px.games], [1200, 1, 0, 0, 1], 'the record moves, the rating does not');
   assert.deepEqual([po.rating, po.wins, po.losses, po.draws, po.games], [1200, 0, 1, 0, 1]);
   assert.deepEqual(px.minis.ttt, { won: 3 }, 'X won three Tic-Tac-Toe squares');
-  assert.deepEqual(px.minis.wordle, { lost: 1 }, 'and lost the Wordle square');
+  assert.deepEqual(px.minis.wordle, { lost: 1 }, 'and lost the Five Letters square');
   assert.deepEqual(po.minis.ttt, { lost: 3 }); assert.deepEqual(po.minis.wordle, { won: 1 });
   const hx = await g.X.read(`history/${g.X.uid}/${g.id}`), ho = await g.O.read(`history/${g.O.uid}/${g.id}`);
   assert.equal(hx.result, 'win'); assert.equal(ho.result, 'loss');
@@ -311,7 +311,7 @@ test('a Find Match game: all mini-games, one minute a turn, hidden values hidden
   assert.equal((await peek.read(`oppStats/${g.X.uid}/${g.O.uid}`)).wins, 1, 'and their top opponents');
 });
 
-test('Memory over the server: the first card is turned up for both, the second completes the move', async () => {
+test('Find the Pair over the server: the first card is turned up for both, the second completes the move', async () => {
   const a = await player('Mia'), b = await player('Ned');
   const g = await pairUp(a, b, 'casual', 60);
   const st = await gameState(g.id);
@@ -1066,7 +1066,7 @@ test('bots: the match is an ordinary one against an ordinary-looking, online acc
   assert.equal((await h.call('timeout', { game: id })).ok, true);
   const a2 = await gameState(id);
   assert.equal(a2.seq, b2.seq + 1); assert.equal(a2.timer.timeouts[botSide], 0);
-  // Memory: the first card, then a moment later the second
+  // Find the Pair: the first card, then a moment later the second
   await rewrite(id, full => {
     const owners = [null, 'X', 'O', 'O', 'X', 'X', 'X', 'O', 'O'];
     full.squares.forEach((sq, i) => { sq.owner = owners[i]; if (i) sq.mini = E.newMini('ttt', E.makeRng('m' + i)); });
@@ -1091,7 +1091,7 @@ test('bots: the match is an ordinary one against an ordinary-looking, online acc
   await put('admin/config', null);
 });
 
-test('bots: after a player\'s move, the bot\'s move is planned inside its own window in every mini-game (3 to 8 s for the word games and Mastermind)', async () => {
+test('bots: after a player\'s move, the bot\'s move is planned inside its own window in every mini-game (3 to 8 s for the word games and Codebreaker)', async () => {
   await clearQueue(); await botsOn();
   const h = await player('Window_Who');
   const r = await soloUntilBot(h);

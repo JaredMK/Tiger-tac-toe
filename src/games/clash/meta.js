@@ -1,12 +1,12 @@
-// Clash Grid: its names, its "?" explainer, its icon and its release default.
+// Standoff Grid: its names, its "?" explainer, its icon and its release default.
 
-export const info = { name: 'Clash Grid',   hint: 'Claim a cell. Same cell as your opponent: blocked. Four in a row wins' };
+export const info = { name: 'Standoff Grid',   hint: 'Claim a cell. Same cell as your opponent: blocked. Four in a row wins' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
 export const category = 'brain';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const target = 'shared';   // what the players share, in its "?" label: 'shared' (one board for both), 'own' (each player's own progress) or 'course' (one course for both, each their own distance)
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const scOnly = true;       // made for simultaneous rounds: never dealt in a normal match
-export const explainer = { name: 'Clash Grid', play: 'Claim a square. Pick the same square as your opponent in the same round and it\'s blocked for good.', win: '{need} in a row.' };   // ({need}: its setting, TUNE below)
+export const explainer = { name: 'Standoff Grid', play: 'Claim a square. Pick the same square as your opponent in the same round and it\'s blocked for good.', win: '{need} in a row.' };   // ({need}: its setting, TUNE below)
 // Its settings (the admin's Mini-game Settings; core/tune.js): the grid is dealt with them, lines read by them.
 export const TUNE = [
   { k: 'n', label: 'Grid size (cells across)', def: 5, opts: [4, 5, 6], group: 'Board' },

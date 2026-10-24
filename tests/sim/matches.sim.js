@@ -4,7 +4,7 @@
 // ---- from the arcade tests ----
 {
   // Run with:  node --test
-  // The arcade games in the shared engine (engine.js): Bullseye, Echo, Plinko, Cup Pong, Trivia and Odd One Out.
+  // The arcade games in the shared engine (engine.js): Bullseye, Echo, Peg Drop, Cup Pong, Trivia and Odd One Out.
   const test = require('node:test');
   const assert = require('node:assert/strict');
   const E = require('../engine.js');

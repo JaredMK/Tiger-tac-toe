@@ -1,5 +1,5 @@
 'use strict';
-// Battleship: its rules and AI, test by test (npm test). The engine is the one the page and the server run.
+// Sea Battle: its rules and AI, test by test (npm test). The engine is the one the page and the server run.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -57,10 +57,10 @@ function cpuMatch(me, squares, owners = []) {
   return st;
 }
 
-// ================================ Battleship ================================
+// ================================ Sea Battle ================================
 test('bs: one hidden ship of 1 to 4 cells, across or down, always inside the 4x4 grid', () => {
   assert.deepEqual(oneMove().ship, [0]);
-  assert.deepEqual(L.newMini('bs', seq(pick(3, 4), pick(1, 2), pick(0, 1), pick(2, 4))).ship, [2, 6, 10, 14], 'a Battleship down column 3');
+  assert.deepEqual(L.newMini('bs', seq(pick(3, 4), pick(1, 2), pick(0, 1), pick(2, 4))).ship, [2, 6, 10, 14], 'a Sea Battle down column 3');
   assert.deepEqual(L.newMini('bs', seq(pick(2, 4), pick(0, 2), pick(3, 4), pick(1, 2))).ship, [13, 14, 15], 'a Submarine across the bottom row');
   const lens = new Set(), dirs = new Set(), rng = lcg(31);
   for (let k = 0; k < 400; k++) {
@@ -76,7 +76,7 @@ test('bs: one hidden ship of 1 to 4 cells, across or down, always inside the 4x4
     assert.equal(m.revealed.length, 16); assert.deepEqual(m.hits, []);
   }
   assert.deepEqual([...lens].sort(), [1, 2, 3, 4]); assert.equal(dirs.size, 2);
-  assert.deepEqual(L.BS.names, { 4: 'Battleship', 3: 'Submarine', 2: 'Destroyer', 1: 'Patrol Boat' });
+  assert.deepEqual(L.BS.names, { 4: 'Carrier', 3: 'Submarine', 2: 'Destroyer', 1: 'Patrol Boat' });
   assert.equal(L.bsPlacements(1).length, 16); assert.equal(L.bsPlacements(4).length, 8);
 });
 
@@ -149,7 +149,7 @@ test('bs: the computer fires where the ship can still fit, around a hit once the
     const first = L.localBest(L.publicMini(bsAt(0, 1)), 'X', lcg(k)).move;
     assert.ok([5, 6, 9, 10].includes(first), `the middle (${first})`);
   }
-  // a Battleship (4) whose middle misses leave only the edges
+  // a Sea Battle (4) whose middle misses leave only the edges
   const edge = bsAt(0, 4, 8, 12);
   for (const c of [5, 6, 9, 10]) L.applyMove(edge, 'O', c);
   const pe = L.publicMini(edge);

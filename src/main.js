@@ -68,7 +68,7 @@ function loadConfigs() {
   fetchRunConfig();                                           // the runners' difficulty, for the squares to come
   fetchBullsConfig();                                         // Bullseye's board, bullseye and sweep speeds, likewise
   fetchWheelsConfig();                                        // Risk Wheels' points, odds and target, likewise
-  fetchPlinkoConfig();                                        // Plinko's target, likewise
+  fetchPlinkoConfig();                                        // Peg Drop's target, likewise
   fetchPigConfig();                                           // Risky Rolls' die and target, likewise
   fetchRoadsConfig();                                         // Roads' honeycomb, likewise
   fetchOddConfig();                                           // Odd One Out's shade differences, likewise

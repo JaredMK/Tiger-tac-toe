@@ -50,7 +50,7 @@ for (const type of E.scTypes()) {
       assert.equal(rc.cpu.type, type, 'the replay is of the game the move was made in');
       assert.ok(rc.cpu.start && rc.cpu.start.type === type, 'it starts from the square as the computer found it');
       for (const step of rc.cpu.steps) assert.equal(step.after.type, type);
-      const sunkTogether = type === 'bs' && rc.view[sq].ship.every(k => rc.view[sq].hits.includes(k));   // (Battleship: the two moves' hits together can sink it)
+      const sunkTogether = type === 'bs' && rc.view[sq].ship.every(k => rc.view[sq].hits.includes(k));   // (Sea Battle: the two moves' hits together can sink it)
       assert.equal(rc.cpu.steps[rc.cpu.steps.length - 1].kind === 'claim' || rc.cpu.steps[rc.cpu.steps.length - 1].kind === 'match' || !!rc.resolve.length || !!rc.replay || sunkTogether, true, 'its last step is the winning one (or the round\'s end settles it)');
     }
     assert.ok(rc.view && rc.view[sq] && rc.view[sq].type === type, 'the board shows the square as it was until its result');

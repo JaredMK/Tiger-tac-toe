@@ -1,4 +1,4 @@
-// The on-screen keyboard (Wordle, Hangman).
+// The on-screen keyboard (Five Letters, Hangman).
 import { attemptMove, showNotice } from '../net/moves.js';
 import { app, commit, mv, state, zoomedType } from './app.js';
 import { repNote } from './replay.js';
@@ -21,7 +21,7 @@ export function refocus(f) {
   el.focus({ preventScroll: true });
   try { if (f.start != null) el.setSelectionRange(f.start, f.end); } catch (e) { /* (email fields) */ }
 }
-// QWERTY keyboard. With `extra` the keys type into the Wordle draft; without it each key is a Hangman move.
+// QWERTY keyboard. With `extra` the keys type into the Five Letters draft; without it each key is a Hangman move.
 export function keyboard(cls, disabled, extra) {
   const rows = ['QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM'];
   return `<div class="kb">${rows.map((row, ri) => `<div class="krow">${ri === 2 && extra ? `<button class="key wide" data-act="enter"${extra.enter ? ' disabled' : ''}>Enter</button>` : ''}${row.split('').map(k =>

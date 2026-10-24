@@ -26,8 +26,8 @@ const BOTS = [
 ];
 
 // Thinking time, in seconds, drawn afresh for every move (thinkMs). A bot's ordinary moves are drawn from its own
-// window inside 1.5 to 5 seconds; Wordle, Hangman and Mastermind take 3 to 8 seconds a guess; a follow-up within
-// the same turn (the next Risky Rolls roll, the next Battleship shot) is a short pause of 1 to 2.5 seconds.
+// window inside 1.5 to 5 seconds; Five Letters, Hangman and Codebreaker take 3 to 8 seconds a guess; a follow-up within
+// the same turn (the next Risky Rolls roll, the next Sea Battle shot) is a short pause of 1 to 2.5 seconds.
 const PACES = {
   quick:   { turn: [1.5, 3] },
   steady:  { turn: [2, 4] },
@@ -38,7 +38,7 @@ const PACES = {
 const WORD_TYPES = ['wordle', 'hangman', 'mastermind'];
 const WORD_THINK = [3, 8];        // seconds a guess
 const AGAIN_THINK = [1, 2.5];     // seconds between two actions in one turn
-const MEMORY_SECOND = [1, 2.6];   // seconds between Memory's two cards
+const MEMORY_SECOND = [1, 2.6];   // seconds between Find the Pair's two cards
 const MAX_THINK_MS = 8000;        // the longest any bot waits: the ranges above, always inside the turn clock
 
 // The admin's settings (admin/config), with the defaults for anything not set. Both start switched off.
@@ -65,7 +65,7 @@ function alertConfig(conf) {
 }
 
 // How long a bot thinks before its next move: 'turn' (the first move of a turn), 'again' (a follow-up in the
-// same turn), 'second' (Memory's second card). `type` is the mini-game of the move.
+// same turn), 'second' (Find the Pair's second card). `type` is the mini-game of the move.
 function thinkMs(bot, kind, rng, type) {
   const range = kind === 'second' ? MEMORY_SECOND : WORD_TYPES.includes(type) ? WORD_THINK
     : kind === 'again' ? AGAIN_THINK : (PACES[bot && bot.pace] || PACES.casual).turn;

@@ -65,7 +65,7 @@ export function renderMini(sq, review, popup) {
       : mini.type === 'rl' ? `${mini.hits.X} hit${mini.hits.X === 1 ? '' : 's'} to ${mini.hits.O}` : '';
     sub = sq.owner ? `<b class="${sq.owner}">Won by ${N(sq.owner)}</b>${secret ? ' · ' + secret : ''}` : `Not won by anyone${secret ? ' · ' + secret : ''}`;
   }
-  if (d && !f) {                                    // the result held a moment longer (Memory's cards turning back): the board follows by itself
+  if (d && !f) {                                    // the result held a moment longer (Find the Pair's cards turning back): the board follows by itself
     const head = d.kind === 'draw' ? `${d.note === 'stuck' ? 'Stuck' : d.note === 'tie' ? 'Tie' : 'Draw'} · resets to ${INFO[d.newType].name}` : summary(d);
     const next = d.pass ? `<b class="${d.pass}">${N(d.pass)}</b> has no move · <b class="${d.next}">${N(d.next)}</b> again` : `<b class="${d.next}">${N(d.next)}</b> next`;
     sub = `${head} · ${next}${secret ? ' · ' + secret : ''}`;
@@ -106,7 +106,7 @@ function summary(f) {
 function renderFlash(f) {
   const at = fxAt('move', f);
   const open = `<div class="flash lite late" style="--late:${animMs(f)}ms"${fxAttr(at)} data-act="dismiss">`;
-  return `${f.type === 'memory' && f.kind === 'move' ? open.replace(' data-act="dismiss"', '') : open}</div>`;   // (Memory: the two cards stay up for the full 2 seconds)
+  return `${f.type === 'memory' && f.kind === 'move' ? open.replace(' data-act="dismiss"', '') : open}</div>`;   // (Find the Pair: the two cards stay up for the full 2 seconds)
 }
 const LINE_TYPES = ['bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads', 'flap', 'chopper', 'patterns', 'wheels', 'sniff', 'clash', 'headcount', 'flash', 'snapshot', 'skyhop', 'scoop', 'pinball'];
 // The result's words for the header line (HTML), or '' when the game's own screen says it all: a square won (its

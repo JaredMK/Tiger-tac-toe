@@ -1,4 +1,4 @@
-// Battleship: the computer's play.
+// Sea Battle: the computer's play.
 import { randInt } from '../../core/random.js';
 import { tune } from '../../core/tune.js';
 import { bsCandidates, bsN } from './rules.js';

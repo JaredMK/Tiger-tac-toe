@@ -1,4 +1,4 @@
-// Memory: the screen, the miniature, the move's words and sounds, and the inputs.
+// Find the Pair: the screen, the miniature, the move's words and sounds, and the inputs.
 import { playMove } from '../../core/board.js';
 import { SND } from '../../audio/sound.js';
 import { attemptMove, dbPick } from '../../net/moves.js';

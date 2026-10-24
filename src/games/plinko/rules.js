@@ -1,9 +1,9 @@
-// Plinko: the rules (pure: no page, no clock; the server runs the same code).
+// Peg Drop: the rules (pure: no page, no clock; the server runs the same code).
 import { needRng, randInt, shuffle } from '../../core/random.js';
 import { tune } from '../../core/tune.js';
 import { PLINKO_DEFAULTS } from './meta.js';
 
-// Plinko: 7 drop slots, 6 rows of pegs, 7 bins worth 5, 3, 3, 2, 2, 1 and 1 points, in an order drawn
+// Peg Drop: 7 drop slots, 6 rows of pegs, 7 bins worth 5, 3, 3, 2, 2, 1 and 1 points, in an order drawn
 // for each square. Each player has their own points; the first to the target (12: the admin's
 // config/plinko, copied into each square as dealt) wins. A slot dropped from, by either player, is locked
 // until all seven have been used; then they all open again. One peg (drawn at random, never in the top

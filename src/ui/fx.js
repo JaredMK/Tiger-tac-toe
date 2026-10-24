@@ -64,8 +64,8 @@ export function sweepBursts() {
 }
 /* ----- animations: each one started by the event that causes it, exactly once -----
  * An event records when its animation began (startFx): a move made here, by the computer or played back
- * (playFlash), a claim landing on the board, the glow on a square about to be played, a Memory card
- * turned up or the cards turning back, a Mastermind peg placed, a note popping up, the pause card, a new
+ * (playFlash), a claim landing on the board, the glow on a square about to be played, a Find the Pair card
+ * turned up or the cards turning back, a Codebreaker peg placed, a note popping up, the pause card, a new
  * screen coming into view. Rendering never starts anything: it draws the state as it is, and then
  * anchorFx sets every animation on the page to the point its event has reached. A re-render in the middle
  * of one (a room update, someone's presence, the clock) carries on from where it was, and one after the

@@ -128,7 +128,7 @@ test('Super Chaos online, two clients on the emulator: one move a side a round, 
   assert.deepEqual(await submit(guest, code, 'O', mo), { committed: true, reason: null });
   for (const c of [host, guest]) await until(() => c.rec() && c.rec().state.sc.recap && c.rec().state.sc.recap.round === 1, 10000, 'both see round 1 settled');
   const rc1 = host.rec().state;
-  assert.equal(rc1.squares[0].owner, 'X', 'X takes the Wordle square');
+  assert.equal(rc1.squares[0].owner, 'X', 'X takes the Five Letters square');
   assert.deepEqual([rc1.sc.round, rc1.sc.deadline, rc1.sc.moves], [2, null, {}], 'round 2 on the record, not begun until a recap is over');
   assert.deepEqual([rc1.sc.recap.mv.X.square, rc1.sc.recap.mv.O.square], [0, 1], 'both moves kept for the replays');
   assert.deepEqual(JSON.stringify(guest.rec().state), JSON.stringify(rc1), 'both clients hold the same record');
@@ -148,7 +148,7 @@ test('Super Chaos online, two clients on the emulator: one move a side a round, 
   assert.deepEqual(await submit(guest, code, 'O', moveOf(guest.rec(), 'O', 3, [10])), { committed: false, reason: 'moved' });
   assert.deepEqual(await submit(host, code, 'X', moveOf(host.rec(), 'X', 3, [5])), { committed: true, reason: null });   // (square 3's number is 10: a guess, not a win)
   for (const c of [host, guest]) await until(() => c.rec() && c.rec().state.sc.recap && c.rec().state.sc.recap.round === 2, 10000, 'both see round 2 settled');
-  assert.equal(host.rec().state.squares[2].owner, 'O', 'O takes the second Wordle square');
+  assert.equal(host.rec().state.squares[2].owner, 'O', 'O takes the second Five Letters square');
   assert.equal(host.rec().state.squares[3].mini.guesses.length, 1, "X's guess is on the board");
   assert.deepEqual(await host.txn(code, rec => E.applyChaosBegin(rec, Date.now(), 'X')), { committed: true, reason: null });
   await until(() => guest.rec() && guest.rec().state.sc.ready && guest.rec().state.sc.ready.X, 10000, 'the guest sees X through');

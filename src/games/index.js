@@ -73,7 +73,7 @@ export const TEST_TYPES = TYPES.filter(t => GAMES[t].meta.release === 'admin');
 // No longer dealt, still played to the end in older matches and shown in their history: the Dice race
 // (Snakes and Ladders replaced it) and Hexapawn (taken out: with nobody obliged to move in a square,
 // the best play was often not to move at all).
-// Super Chaos only (meta.scOnly): a game made for simultaneous rounds (Clash Grid's collisions), never dealt in a normal match.
+// Super Chaos only (meta.scOnly): a game made for simultaneous rounds (Standoff Grid's collisions), never dealt in a normal match.
 export const SC_ONLY = TYPES.filter(t => GAMES[t].meta.scOnly);
 export const OLD_TYPES = Object.keys(GAMES).filter(t => GAMES[t].meta.retired);
 export const INFO = Object.fromEntries(Object.keys(GAMES).map(t => [t, GAMES[t].meta.info]));

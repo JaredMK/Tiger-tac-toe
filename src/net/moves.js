@@ -33,7 +33,7 @@ export function matchTransaction(fn) {
   return fb.m.runTransaction(roomRef('match'), matchTxn(fn), { applyLocally: false });   // (core/records.js: the record changed as fn says, the seats kept; a refused change writes nothing)
 }
 // ---- instant moves (Find Match): your own move shows at once, and the server still decides ----
-// A move the phone can work out from what it can see (tic-tac-toe, Connect 4, Hex, Hexapawn) is checked by the
+// A move the phone can work out from what it can see (tic-tac-toe, Four in a Row, Hex, Hexapawn) is checked by the
 // same rules the server runs, and shown straight away; the server's record then confirms it, or corrects it. A
 // move the server refuses is taken back, with a note. The mini-games whose result is hidden or random are sent
 // as before, and show their result when the server has it.

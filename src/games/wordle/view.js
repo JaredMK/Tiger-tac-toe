@@ -1,4 +1,4 @@
-// Wordle: the screen, the miniature, the move's words and sounds, and the inputs.
+// Five Letters: the screen, the miniature, the move's words and sounds, and the inputs.
 import { noticeSeq } from '../../net/moves.js';
 import { N, esc, state } from '../../ui/app.js';
 import { toon } from '../../ui/art.js';

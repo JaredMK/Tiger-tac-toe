@@ -17,7 +17,7 @@ import { tuneSnap } from './tune.js';
 // Does p have a legal move in this mini-game? Only Hexapawn can leave a player stuck; every other game
 // always offers a move. A stuck player simply plays in another square.
 export function canMove(mini, p) { return mini.type === 'hexapawn' ? hpMoves(mini.cells, p).length > 0 : mini.type === 'trivia' ? !!(mini.ask && (mini.ask.q || mini.ask.down)) : mini.type === 'patterns' ? !!mini.puz : mini.type === 'golf' ? !mini.holed[p] : true; }   // (Trivia: only with its question dealt)
-// Saved games and rooms from before Connect 4 grew to 7 columns: the old 5-wide board gets an empty
+// Saved games and rooms from before Four in a Row grew to 7 columns: the old 5-wide board gets an empty
 // column on each side, so every piece keeps its place (and its support) in the middle five.
 export function upgradeMini(mini) {
   if (mini && mini.type === 'sniff' && !mini.g) sniffUpgrade(mini);   // Sniff from the 5x5 field: the same square in the middle of the 7x7 one
@@ -29,7 +29,7 @@ export function upgradeMini(mini) {
   }
   // Craps from when a move was a whole round: no round under way.
   if (mini && mini.type === 'craps') { if (mini.point === undefined) mini.point = null; if (mini.live === undefined) mini.live = null; if (!Array.isArray(mini.rolls)) mini.rolls = []; }
-  // Plinko from when one bin was the WIN bin: that bin is worth 5, the rest 3, 3, 2, 2, 1, 1 in order; points from 0.
+  // Peg Drop from when one bin was the WIN bin: that bin is worth 5, the rest 3, 3, 2, 2, 1, 1 in order; points from 0.
   if (mini && mini.type === 'plinko' && !Array.isArray(mini.vals)) {
     const w = Number.isInteger(mini.win) ? mini.win : 3, rest = [3, 3, 2, 2, 1, 1];
     mini.vals = Array.from({ length: PLINKO.slots }, (_, b) => (b === w ? 5 : rest.shift()));
@@ -62,7 +62,7 @@ export function upgradeMini(mini) {
     if (Number.isInteger(mini.last)) mini.last = at(mini.last);
     if (Array.isArray(mini.winCells)) mini.winCells = mini.winCells.map(at);
   }
-  // ...and from before Battleship grew to 4x4 with ships of 1 to 4 cells: the old 3x3 sea sits in the
+  // ...and from before Sea Battle grew to 4x4 with ships of 1 to 4 cells: the old 3x3 sea sits in the
   // top-left corner and its one-cell ship becomes a Patrol Boat.
   if (mini && mini.type === 'bs' && Array.isArray(mini.revealed) && mini.revealed.length === 9) {
     const at = k => Math.floor(k / 3) * BS.n + (k % 3);

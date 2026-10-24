@@ -30,13 +30,13 @@ export const app = document.getElementById('app');
 export let state = load() || newState(RNG);
 export let flashTimer = null, noticeTimer = null, flashReady = 0;   // flashReady: when the result may be tapped away (its animation is over)
 export let lastView = null, entering = false;                         // which screen (and square) was last drawn, so the zoom-in plays once
-export let cpuTimer = null, cpuPlan = null, holdTimer = null;          // the computer's next step, its chosen move, and Memory's flip-back pause
+export let cpuTimer = null, cpuPlan = null, holdTimer = null;          // the computer's next step, its chosen move, and Find the Pair's flip-back pause
 export let spotTimer = null, menuOpen = false, menuStep = 'main', menuNote = '';   // the pre-zoom glow, the in-game menu, a note for the main menu
 export let clockTimer = null;
 export const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 export const N = p => (cpuPlays(p) ? CPU_ICON : '') + esc(playerName(state, p));   // a player's display name, safe for innerHTML, with the computer icon for a computer
 export function cpuPlays(p) { return !state.online && !!state.cpu && state.cpu.includes(p); }
-export const pickKey = () => (state.pick == null ? null : `${state.pickSq}:${state.pick}`);   // Memory: the first card turned up, as an event key
+export const pickKey = () => (state.pick == null ? null : `${state.pickSq}:${state.pick}`);   // Find the Pair: the first card turned up, as an event key
 export let advOpen = false;                    // the setup screen's Mini-games section (the mini-game list)
 export const mv = x => `data-m='${JSON.stringify(x)}'`;
 export const NAV_SCREENS = ['login', 'username', 'find', 'leaderboard', 'profile', 'profhist', 'hreview', 'hreview-mini', 'howto'];
@@ -87,7 +87,7 @@ function load() {
         if (!['board', 'mini', 'win', 'setup', 'join'].includes(s.screen)) s.screen = mm ? 'board' : s.online.role === 'host' ? 'setup' : 'join';
       }
       for (const sq of s.squares) if (sq.mini.type === 'memory' && !Array.isArray(sq.mini.seen)) sq.mini.seen = [];
-      for (const sq of s.squares) upgradeMini(sq.mini);                     // Connect 4 grew from 5 to 7 columns
+      for (const sq of s.squares) upgradeMini(sq.mini);                     // Four in a Row grew from 5 to 7 columns
       if ('dice' in s.setup.games && !('snakes' in s.setup.games)) s.setup.games.snakes = s.setup.games.dice;   // Snakes and Ladders took the Dice race's place in the list
       for (const t of TYPES) if (!(t in s.setup.games)) s.setup.games[t] = true;   // a game added since the save is on by default
       if (!TYPES.some(t => s.setup.games[t])) for (const t of TYPES) s.setup.games[t] = true;   // only games no longer dealt were on (Hexapawn alone): all on again

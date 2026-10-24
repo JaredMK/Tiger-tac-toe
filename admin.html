@@ -155,7 +155,7 @@ const FIREBASE_CONFIG = window.TTC_ENV.config;   // production or staging, by th
 const STAGING = window.TTC_ENV.staging;
 const MODES = [['local', 'Two players'], ['cpu', 'vs Computer'], ['chaos', 'Super Chaos'], ['cvc', 'Computer vs Computer (old)'], ['friend', 'Friend code'], ['match', 'Find Match'], ['bot', 'Find Match vs a bot'], ['casual', 'Casual (old)'], ['ranked', 'Ranked (old)']];
 const MODE_COLORS = { local: 'var(--o)', cpu: 'var(--sky)', chaos: '#d9622b', cvc: 'var(--stone)', friend: 'var(--plum)', match: 'var(--green)', bot: '#2f7f6f', casual: '#8fbf7a', ranked: 'var(--x)' };
-const GAMES = { ttt: 'Tic-tac-toe', c4: 'Connect 4', bs: 'Battleship', wordle: 'Wordle', hangman: 'Hangman', hex: 'Hex', hilo: 'Higher/Lower', snakes: 'Snakes and Ladders', memory: 'Memory', candy: 'Candy Race', bump: 'Bump', coins: 'Coin Flip', pig: 'Risky Rolls', hunt: 'Treasure Hunt', mastermind: 'Mastermind', bj: 'Blackjack', bus: 'Ride the Bus', rl: 'Roulette', bullseye: 'Bullseye', echo: 'Echo', plinko: 'Plinko', pong: 'Cup Pong', trivia: 'Trivia', oddone: 'Odd One Out', dash: 'Dash', lane: 'Lane Rush', golf: 'Mini Golf', pool: 'Pool', bowling: 'Bowling', craps: 'Craps', takeover: 'Takeover', flood: 'Flood', seating: 'Seating', districts: 'Districts', shelves: 'Shelves', roads: 'Roads', flap: 'Flap', chopper: 'Chopper', patterns: 'Patterns', wheels: 'Risk Wheels', sniff: 'Sniff', clash: 'Clash Grid', headcount: 'Headcount', flash: 'Flash', snapshot: 'Snapshot', skyhop: 'Sky Hop', scoop: 'Scoop Stack', pinball: 'Pinball' };   // the games in the pool (Hexapawn and the Dice race are gone; their numbers stay in the database)
+const GAMES = { ttt: 'Tic-tac-toe', c4: 'Four in a Row', bs: 'Sea Battle', wordle: 'Five Letters', hangman: 'Hangman', hex: 'Hex', hilo: 'Higher/Lower', snakes: 'Snakes and Ladders', memory: 'Find the Pair', candy: 'Candy Race', bump: 'Bump', coins: 'Coin Flip', pig: 'Risky Rolls', hunt: 'Treasure Hunt', mastermind: 'Codebreaker', bj: 'Blackjack', bus: 'Ride the Bus', rl: 'Roulette', bullseye: 'Bullseye', echo: 'Echo', plinko: 'Peg Drop', pong: 'Cup Pong', trivia: 'Trivia', oddone: 'Odd One Out', dash: 'Dash', lane: 'Lane Rush', golf: 'Mini Golf', pool: 'Pool', bowling: 'Bowling', craps: 'Craps', takeover: 'Takeover', flood: 'Flood', seating: 'Seating', districts: 'Districts', shelves: 'Shelves', roads: 'Roads', flap: 'Flap', chopper: 'Chopper', patterns: 'Patterns', wheels: 'Risk Wheels', sniff: 'Sniff', clash: 'Standoff Grid', headcount: 'Headcount', flash: 'Flash', snapshot: 'Snapshot', skyhop: 'Sky Hop', scoop: 'Scoop Stack', pinball: 'Pinball' };   // the games in the pool (Hexapawn and the Dice race are gone; their numbers stay in the database)
 const app = document.getElementById('app');
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 let fb = null, user = null, stats = null, flagged = null, view = { status: 'loading', error: '' };
@@ -694,13 +694,13 @@ async function saveBullsCfg(btn) {
   } catch (e) { said(btn, false, failed(e)); return; }
   render(); said(btn, true, 'Saved');
 }
-// ---------- Plinko's target (config/plinko, read by the game and the server) ----------
+// ---------- Peg Drop's target (config/plinko, read by the game and the server) ----------
 const PLINKO_DEFAULTS = { target: 12 };   // (as the game's meta.js has it)
 function plinkoCard() {
   const raw = ctl.plinkoCfg || {}, v = raw.target != null && Number.isFinite(Number(raw.target)) ? Number(raw.target) : PLINKO_DEFAULTS.target;
-  return `<div class="card ctl" id="plinkoCard"><h2>Plinko tuning</h2>
-    <p class="note">Plinko: the bins are worth 5, 3, 3, 2, 2, 1 and 1 points (the order drawn per square), the bonus peg 2; each player's points add up and the first to the target wins. Default 12. Applies to squares dealt from then on.</p>
-    <div class="rform"><label class="rf"><span>Target (points to win)</span><input type="number" step="1" min="4" max="40" data-plinkocfg="target" value="${v}"></label><button class="btn" data-plinkosave="1">Save Plinko</button><button class="btn tplay" data-testplay="plinko" title="Opens the game alone in a new tab with these settings, saved or not (the live settings are not touched)">Test play</button></div></div>`;
+  return `<div class="card ctl" id="plinkoCard"><h2>Peg Drop tuning</h2>
+    <p class="note">Peg Drop: the bins are worth 5, 3, 3, 2, 2, 1 and 1 points (the order drawn per square), the bonus peg 2; each player's points add up and the first to the target wins. Default 12. Applies to squares dealt from then on.</p>
+    <div class="rform"><label class="rf"><span>Target (points to win)</span><input type="number" step="1" min="4" max="40" data-plinkocfg="target" value="${v}"></label><button class="btn" data-plinkosave="1">Save Peg Drop</button><button class="btn tplay" data-testplay="plinko" title="Opens the game alone in a new tab with these settings, saved or not (the live settings are not touched)">Test play</button></div></div>`;
 }
 async function savePlinkoCfg(btn) {
   const el = app.querySelector('input[data-plinkocfg="target"]'), v = Number(el.value);

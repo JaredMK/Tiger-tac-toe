@@ -334,7 +334,7 @@ test('Super Chaos Mini Golf: each shot is locked in, then both play out together
 });
 
 test('Super Chaos: the shared histories and per-player rules of the other games', () => {
-  // Battleship: a Submarine (3 long) on 5x5; both players' shots join the sea (test 'Super Chaos Battleship' below)
+  // Sea Battle: a Submarine (3 long) on 5x5; both players' shots join the sea (test 'Super Chaos Sea Battle' below)
   const bs = E.scSquareMini({ squares: [] }, {}, 'bs', E.makeRng('b'));
   assert.equal(bs.n, 5); assert.equal(bs.len, 3); assert.equal(bs.revealed.length, 25);
   // Higher/Lower: both guesses and both answers narrow the range
@@ -342,7 +342,7 @@ test('Super Chaos: the shared histories and per-player rules of the other games'
   human(h, 0, [4]);
   resolve(h);
   assert.deepEqual([h.squares[0].mini.lo, h.squares[0].mini.hi, h.squares[0].mini.guesses.length], [5, 13, 2]);
-  // Plinko: the same slot, locked once; both on the bonus peg: +2 each and one new peg
+  // Peg Drop: the same slot, locked once; both on the bonus peg: +2 each and one new peg
   const pl = { type: 'plinko', vals: [5, 3, 3, 2, 2, 1, 1], pts: { X: 0, O: 0 }, used: new Array(7).fill(false), bonus: { x: 6, r: 2 }, target: 12, last: null };
   // from slot 3 the chip is at half-slot 6 at row 1, then 5 or 7 at row 2: with the bonus at 6 on row 3, a left-then-right path touches it
   const pl3 = Object.assign({}, pl, { bonus: { x: 6, r: 3 } });
@@ -464,7 +464,7 @@ test('Super Chaos Higher/Lower: the same 5 guesses each; a 5th that misses hands
   assert.equal(s4.squares[0].owner, 'O');
 });
 
-test('Super Chaos Battleship: a Submarine on 5x5; a hit fires again until a miss or the sinking shot; both players\' hits merge at the round\'s end; whoever hits the last part wins it, both doing so resets it', () => {
+test('Super Chaos Sea Battle: a Submarine on 5x5; a hit fires again until a miss or the sinking shot; both players\' hits merge at the round\'s end; whoever hits the last part wins it, both doing so resets it', () => {
   for (let k = 0; k < 200; k++) {                                // the ship: 3 cells in a row, across or down, inside the 5x5 sea
     const m = E.scSquareMini({ squares: [] }, {}, 'bs', E.makeRng('ship' + k)), c = m.ship.slice().sort((x, y) => x - y);
     const across = c[1] - c[0] === 1 && c[2] - c[1] === 1 && Math.floor(c[0] / 5) === Math.floor(c[2] / 5), down = c[1] - c[0] === 5 && c[2] - c[1] === 5;

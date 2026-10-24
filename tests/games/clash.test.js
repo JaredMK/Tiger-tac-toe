@@ -1,5 +1,5 @@
 'use strict';
-// Clash Grid: its rules, its Super Chaos round end and its AI, test by test (npm test).
+// Standoff Grid: its rules, its Super Chaos round end and its AI, test by test (npm test).
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const E = require('../engine.js');
@@ -7,7 +7,7 @@ const E = require('../engine.js');
 const grid = s => s.replace(/\s/g, '').split('').map(ch => (ch === '.' ? null : ch));   // 25 cells, row by row: . X O B
 const clash = cells => ({ type: 'clash', cells, last: null });
 const sq = mini => ({ owner: null, mini, mv: { X: 0, O: 0 } });
-// A Super Chaos round against the computer (it plays O): Clash Grid in square 0, the computer's claim given.
+// A Super Chaos round against the computer (it plays O): Standoff Grid in square 0, the computer's claim given.
 function round(cells, cpuCell) {
   const rng = E.makeRng('cl');
   const st = E.newState(rng);

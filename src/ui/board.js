@@ -94,7 +94,7 @@ export function renderBoard(review) {
     <div class="foot"><span class="hint">${hint}</span></div>${pauseMenu()}</main>`;
 }
 // Miniatures: public information only. Hidden words, numbers, cards and the ship never appear here,
-// except that a claimed Memory square shows the pair that won it.
+// except that a claimed Find the Pair square shows the pair that won it.
 function thumb(mini, final) {
   const game = viewOf(mini.type);
   if (game.miniature) return game.miniature(mini, final);

@@ -114,12 +114,12 @@ export function newState(rng) {
     done: null,               // the move just made, kept on show until the player heads back to the board (that is when the turn passes)
     stamp: null,              // square whose owner's mark stamps in on the board (just claimed)
     lock: null,               // square the current player must keep playing (Hangman bonus guess, Risky Rolls turn)
-    draft: '',                // letters typed so far (Wordle)
-    pick: null,               // first card chosen (Memory)
+    draft: '',                // letters typed so far (Five Letters)
+    pick: null,               // first card chosen (Find the Pair)
     pickSq: null,             // ...and the square it belongs to
     sel: [],                  // coins chosen so far (Coin flip)
     confirm: null,            // 'new' while the "abandon this match?" card is up
-    notice: null,             // short message over the Wordle keyboard ("Not a word")
+    notice: null,             // short message over the Five Letters keyboard ("Not a word")
     winner: null, winLine: null, winReason: null, counts: null,
     lastSquare: null, lastBy: null, moves: 0,
     sqlog: [],                // every mini-game that ended this match: { t: type, end: 'won' | 'draw', w: winner, X, O: turns each side spent in it }

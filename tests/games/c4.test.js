@@ -1,5 +1,5 @@
 'use strict';
-// Connect 4: its rules and AI, test by test (npm test). The engine is the one the page and the server run.
+// Four in a Row: its rules and AI, test by test (npm test). The engine is the one the page and the server run.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -37,7 +37,7 @@ function matchWith(types, rng = lcg(7)) {
 const sorted = a => a.slice().sort((x, y) => x - y);
 const mini = (type, rng) => L.newMini(type, rng || lcg(11));
 
-// ================================ Connect 4 ================================
+// ================================ Four in a Row ================================
 const c4idx = (row, col) => row * L.C4.cols + col; // row 0 = top, row 5 = bottom
 
 // A full 7x6 board with no four in a row anywhere; X has 22 pieces, O has 20.

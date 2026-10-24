@@ -168,7 +168,7 @@ test('moves are refused while a result is showing, on claimed squares, and after
   const st = matchWith(['ttt', 'ttt']);
   assert.equal(L.playMove(st, 0, 0).ok, true);
   assert.deepEqual(L.playMove(st, 1, 0), { ok: false, reason: 'busy' });
-  L.endFlash(st, true);                           // the result held a moment longer (Memory's cards turning back)
+  L.endFlash(st, true);                           // the result held a moment longer (Find the Pair's cards turning back)
   assert.equal(L.endFlash(st), false);
   assert.equal(st.screen, 'mini');
   assert.deepEqual(L.playMove(st, 1, 0), { ok: false, reason: 'done' }, 'the move is made: nothing more while its result is on show');
@@ -480,7 +480,7 @@ test('the computer always takes a square that wins the match, in any game that a
     assert.equal(r.ok, true);
     assert.equal(st.winner, 'X', `${sq2.type}: and wins it`);
   }
-  // a known Memory pair and a Wordle with one word left also win on the spot
+  // a known Find the Pair pair and a Five Letters with one word left also win on the spot
   const mem = mini('memory');
   const pairIdx = (() => { const seen = new Map(); let p = null; mem.cards.forEach((c, i) => { const k = c.s + c.c; if (seen.has(k)) p = [seen.get(k), i]; else seen.set(k, i); }); return p; })();
   mem.seen = pairIdx.slice();
@@ -909,7 +909,7 @@ test('stats: each mini-game counts the turns each side spent in it, bonus moves 
   assert.deepEqual(back.squares[0].mv, { X: 1, O: 0 });
 });
 
-test('timeouts: Coin flip flips, Battleship fires at an open cell, Risky Rolls banks once 51 is reached', () => {
+test('timeouts: Coin flip flips, Sea Battle fires at an open cell, Risky Rolls banks once 51 is reached', () => {
   const st = matchWith(['coins', 'bs', 'pig']);
   st.timer = L.newTimer(30);
   for (let k = 0; k < 40; k++) {

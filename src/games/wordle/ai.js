@@ -1,4 +1,4 @@
-// Wordle: the computer's play.
+// Five Letters: the computer's play.
 import { randInt } from '../../core/random.js';
 import { tune } from '../../core/tune.js';
 import { wordleCandidates, wordleLeft, wordleMarks } from './rules.js';

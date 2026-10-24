@@ -1,4 +1,4 @@
-// Memory: the computer's play.
+// Find the Pair: the computer's play.
 import { randInt, shuffle } from '../../core/random.js';
 import { tune } from '../../core/tune.js';
 import { memoryPair } from './rules.js';

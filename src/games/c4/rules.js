@@ -1,4 +1,4 @@
-// Connect 4: the rules (pure: no page, no clock; the server runs the same code).
+// Four in a Row: the rules (pure: no page, no clock; the server runs the same code).
 import { tune } from '../../core/tune.js';
 import { other } from '../../core/util.js';
 import { findRun, windowsOf } from '../shared/lines.js';

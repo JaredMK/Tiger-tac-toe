@@ -1,4 +1,4 @@
-// Clash Grid: the computer's play.
+// Standoff Grid: the computer's play.
 import { clashLinesOf, clashNeed } from './rules.js';
 import { randInt } from '../../core/random.js';
 import { tune } from '../../core/tune.js';

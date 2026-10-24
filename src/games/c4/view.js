@@ -1,4 +1,4 @@
-// Connect 4: the screen, the miniature, the move's words and sounds, and the inputs.
+// Four in a Row: the screen, the miniature, the move's words and sounds, and the inputs.
 import { C4 } from './rules.js';
 import { mv } from '../../ui/app.js';
 import { toon } from '../../ui/art.js';

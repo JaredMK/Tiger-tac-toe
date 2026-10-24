@@ -1,5 +1,5 @@
 'use strict';
-// Mastermind: its rules and AI, test by test (npm test). The engine is the one the page and the server run.
+// Codebreaker: its rules and AI, test by test (npm test). The engine is the one the page and the server run.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -31,7 +31,7 @@ function matchWith(types, rng = lcg(7)) {
 // ================================ Computer player ================================
 const cpuRng = () => lcg(314);
 
-// ================================ Mastermind ================================
+// ================================ Codebreaker ================================
 const mmMini = code => ({ type: 'mastermind', code, guesses: [] });
 
 test('mastermind: feedback against known examples, including all the right colours in all the wrong spots', () => {

@@ -1,13 +1,13 @@
-// Battleship: the rules (pure: no page, no clock; the server runs the same code).
+// Sea Battle: the rules (pure: no page, no clock; the server runs the same code).
 import { randInt } from '../../core/random.js';
 import { tuneLive } from '../../core/tune.js';
 
-// Battleship: one hidden ship on a 4x4 grid, 1 to 4 cells long, lying across or down. Both players fire at it.
-export const BS = { n: 4, names: { 4: 'Battleship', 3: 'Submarine', 2: 'Destroyer', 1: 'Patrol Boat' }, sc: 5, scLen: 3 };   // sc, scLen: Super Chaos's sea and ship (a Submarine on 5x5)
+// Sea Battle: one hidden ship on a 4x4 grid, 1 to 4 cells long, lying across or down. Both players fire at it.
+export const BS = { n: 4, names: { 4: 'Carrier', 3: 'Submarine', 2: 'Destroyer', 1: 'Patrol Boat' }, sc: 5, scLen: 3 };   // sc, scLen: Super Chaos's sea and ship (a Submarine on 5x5)
 // The sea's width: 4, or a Super Chaos square's own (mini.n).
 export const bsN = mini => (mini && Number.isInteger(mini.n) ? mini.n : BS.n);
 
-// Battleship: a ship of random length (1 to 4, or lo to hi; or len) placed across or down, anywhere it fits on an N x N sea.
+// Sea Battle: a ship of random length (1 to 4, or lo to hi; or len) placed across or down, anywhere it fits on an N x N sea.
 export function bsShip(rng, N = BS.n, len, lo = 1, hi = 4) {
   len = len || lo + randInt(rng, Math.max(lo, hi) - lo + 1);
   const across = randInt(rng, 2) === 0;
@@ -42,7 +42,7 @@ export function apply(mini, p, m, rng, idx) {
 export function publicView(mini) {
   return Object.assign({ type: 'bs', len: mini.len, revealed: mini.revealed.slice(), hits: mini.hits.slice() }, mini.n ? { n: mini.n } : {});
 }
-// Battleship: the placements of the ship that still fit every hit and every miss.
+// Sea Battle: the placements of the ship that still fit every hit and every miss.
 export function bsCandidates(pm) {
   const miss = new Set(pm.revealed.map((r, k) => (r && !pm.hits.includes(k) ? k : -1)).filter(k => k >= 0));
   return bsPlacements(pm.len, bsN(pm)).filter(cells => pm.hits.every(h => cells.includes(h)) && !cells.some(k => miss.has(k)));

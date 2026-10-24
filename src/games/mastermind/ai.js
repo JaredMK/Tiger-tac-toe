@@ -1,4 +1,4 @@
-// Mastermind: the computer's play.
+// Codebreaker: the computer's play.
 import { tune } from '../../core/tune.js';
 import { MM, mmAll, mmBestGuess, mmCandidates, mmCode, mmFeedback } from './rules.js';
 

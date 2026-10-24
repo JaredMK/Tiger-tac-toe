@@ -1,4 +1,4 @@
-// Memory: the rules (pure: no page, no clock; the server runs the same code).
+// Find the Pair: the rules (pure: no page, no clock; the server runs the same code).
 import { randInt, shuffle } from '../../core/random.js';
 import { tuneLive } from '../../core/tune.js';
 

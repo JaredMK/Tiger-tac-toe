@@ -1,4 +1,4 @@
-// Clash Grid: the screen, the miniature, the move's words and sounds, and the inputs.
+// Standoff Grid: the screen, the miniature, the move's words and sounds, and the inputs.
 import { CLASH, clashNeed, clashSize } from './rules.js';
 import { mv, state } from '../../ui/app.js';
 import { arcTally, lateAt } from '../../ui/progress.js';

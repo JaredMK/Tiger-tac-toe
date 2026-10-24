@@ -1,5 +1,5 @@
 'use strict';
-// Memory: its rules and AI, test by test (npm test). The engine is the one the page and the server run.
+// Find the Pair: its rules and AI, test by test (npm test). The engine is the one the page and the server run.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -39,7 +39,7 @@ function turn(st, i, m, rng) {
 const sorted = a => a.slice().sort((x, y) => x - y);
 const mini = (type, rng) => L.newMini(type, rng || lcg(11));
 
-// ================================== Memory ==================================
+// ================================== Find the Pair ==================================
 function pairOf(cards) {
   const seen = new Map();
   let pair = null;

@@ -1,5 +1,5 @@
 'use strict';
-// Plinko: its rules and AI, test by test (npm test). The engine is the one the page and the server run.
+// Peg Drop: its rules and AI, test by test (npm test). The engine is the one the page and the server run.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const E = require('../engine.js');
@@ -9,7 +9,7 @@ const lcg = seed => () => (seed = (seed * 1664525 + 1013904223) % 4294967296) / 
 const bank = n => ({ questions: Array.from({ length: n }, (_, i) => ({ id: 'q' + i, cat: i % 2 ? 'Science' : 'History', q: `Question ${i}?`, a: 'Right ' + i, wrong: ['Wrong a' + i, 'Wrong b' + i, 'Wrong c' + i] })) });
 test.before(() => E.setTriviaBank(bank(40)));
 
-/* ===================================== Plinko ===================================== */
+/* ===================================== Peg Drop ===================================== */
 test('plinko: seven slots, six rows, seven bins; the path is drawn at the drop; the walls turn the chip inward; the odds from every slot', () => {
   const m = E.newMini('plinko', lcg(3));
   const r = E.applyMove(m, 'X', 3, lcg(4));
@@ -22,7 +22,7 @@ test('plinko: seven slots, six rows, seven bins; the path is drawn at the drop; 
   // the odds: every row sums to one, the middle is the most likely from the middle, the walls pile up beside them
   const rows = [];
   for (let s = 0; s < 7; s++) { const o = E.plinkoOdds(s); assert.ok(Math.abs(o.reduce((a, b) => a + b, 0) - 1) < 1e-9); rows.push(o.map(v => Math.round(v * 100))); }
-  console.log('Plinko: the chance (%) of each bin from each slot');
+  console.log('Peg Drop: the chance (%) of each bin from each slot');
   rows.forEach((row, s) => console.log(`  slot ${s}: ${row.map(v => String(v).padStart(3)).join('')}`));
   assert.deepEqual(rows[3], [2, 9, 23, 31, 23, 9, 2]);
   assert.deepEqual(rows[0], [31, 47, 19, 3, 0, 0, 0], 'from the edge: more often one in than straight down');

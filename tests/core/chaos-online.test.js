@@ -56,7 +56,7 @@ test('Super Chaos online: each sends in its move; the second one settles the rou
   const r2 = E.applyChaosSubmit(r1.rec, 'O', mo, E.makeRng('r'), T0 + 9000);
   assert.ok(r2.ok && r2.resolved, 'settled');
   const st = r2.rec.state, rc = st.sc.recap;
-  assert.equal(st.squares[0].owner, 'X', 'X takes the Wordle square');
+  assert.equal(st.squares[0].owner, 'X', 'X takes the Five Letters square');
   assert.deepEqual(rc.claims.map(c => [c.square, c.by]), [[0, 'X']]);
   assert.deepEqual([rc.mv.X.square, rc.mv.O.square, rc.mv.O.steps.length, rc.mv.O.type], [0, 1, 1, 'hilo'], 'both moves kept for the replays');
   assert.deepEqual([st.sc.round, st.sc.moves, st.sc.deadline], [2, {}, null], 'the next round is on the record, not begun yet (its deadline comes once the recap is over)');

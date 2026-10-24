@@ -1,10 +1,10 @@
-// Wordle: the rules (pure: no page, no clock; the server runs the same code).
+// Five Letters: the rules (pure: no page, no clock; the server runs the same code).
 import { randInt } from '../../core/random.js';
 import { tuneLive } from '../../core/tune.js';
 import { other } from '../../core/util.js';
 import { BAD5, VALID5, WORDS5 } from './words.js';
 
-// Standard Wordle feedback: g = right spot, y = in the word elsewhere, x = not in the word (duplicates handled).
+// Standard Five Letters feedback: g = right spot, y = in the word elsewhere, x = not in the word (duplicates handled).
 export function wordleMarks(guess, word) {
   const marks = new Array(5).fill('x');
   const left = {};

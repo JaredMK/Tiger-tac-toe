@@ -1,9 +1,9 @@
-// Mastermind: the rules (pure: no page, no clock; the server runs the same code).
+// Codebreaker: the rules (pure: no page, no clock; the server runs the same code).
 import { shuffle } from '../../core/random.js';
 import { tune, tuneLive } from '../../core/tune.js';
 
-export const MM = { pegs: 4, colors: 6 };    // Mastermind: a code of 4 pegs from 6 colours, no colour twice      // Hexapawn: X starts on the bottom row and moves up, O starts on the top row and moves down
-// Mastermind: one hidden code shared by both players, 4 pegs from 6 colours, no colour twice (in the
+export const MM = { pegs: 4, colors: 6 };    // Codebreaker: a code of 4 pegs from 6 colours, no colour twice      // Hexapawn: X starts on the bottom row and moves up, O starts on the top row and moves down
+// Codebreaker: one hidden code shared by both players, 4 pegs from 6 colours, no colour twice (in the
 // code or in a guess). Feedback: a solid marker per peg right in colour and place, a hollow one per peg
 // right in colour but in the wrong place. Everything guessed stays on show; the exact code wins.
 export function mmFeedback(guess, code) {

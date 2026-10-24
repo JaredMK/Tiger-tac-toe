@@ -1,4 +1,4 @@
-// Connect 4: the computer's play.
+// Four in a Row: the computer's play.
 import { tune } from '../../core/tune.js';
 import { lineNeeds, pickValued, slip } from '../shared/lines.js';
 import { C4, c4Drop, c4Hard, c4Moves, c4Playable } from './rules.js';

@@ -1,5 +1,5 @@
 'use strict';
-// Wordle: its rules and AI, test by test (npm test). The engine is the one the page and the server run.
+// Five Letters: its rules and AI, test by test (npm test). The engine is the one the page and the server run.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -56,7 +56,7 @@ function cpuMatch(me, squares, owners = []) {
   return st;
 }
 
-// ================================== Wordle ==================================
+// ================================== Five Letters ==================================
 test('wordle: the hidden word comes from a list of common words, all of them valid guesses', () => {
   assert.ok(L.WORDS5.length >= 200, `only ${L.WORDS5.length} words`);
   assert.equal(new Set(L.WORDS5).size, L.WORDS5.length, 'duplicates in the list');
