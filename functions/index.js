@@ -93,9 +93,10 @@ const CALL = { cors: true, enforceAppCheck: APP_CHECK };
 // functions that send alerts once TTC_SECRETS=on in the project's .env file (the deploy's service account needs the
 // Secret Manager Admin role for the binding; README: Deploying). admin/secrets on the database is read where a
 // secret is not set (or not bound) yet.
-const ALERT_SECRETS = [defineSecret('TWILIO_SID'), defineSecret('TWILIO_TOKEN'), defineSecret('TWILIO_FROM'), defineSecret('RESEND_KEY'), defineSecret('EMAIL_FROM')];
-const BOUND_SECRETS = process.env.TTC_SECRETS === 'on' ? ALERT_SECRETS : [];
-const secretValue = p => { try { const v = BOUND_SECRETS.length ? p.value() : ''; return v && v !== 'unset' ? String(v) : ''; } catch (e) { return ''; } };   // ('unset': the deploy's placeholder until the real key is set)
+// (Defined only once switched on: a defined secret is looked up in Secret Manager at every deploy, API enabled or not.)
+const ALERT_SECRETS = process.env.TTC_SECRETS === 'on' ? ['TWILIO_SID', 'TWILIO_TOKEN', 'TWILIO_FROM', 'RESEND_KEY', 'EMAIL_FROM'].map(defineSecret) : [];
+const BOUND_SECRETS = ALERT_SECRETS;
+const secretValue = p => { try { const v = p ? p.value() : ''; return v && v !== 'unset' ? String(v) : ''; } catch (e) { return ''; } };   // ('unset': the deploy's placeholder until the real key is set)
 // Writes from a phone are bounded: at most `max` of one kind (what) by one caller (who) a minute (rate/{minute}/{hash};
 // the sweep deletes minutes gone by). False means over the limit.
 async function rateOk(what, who, max) {
@@ -801,7 +802,7 @@ async function maybeAlert(key, uid, entry, prof, ac) {
 // is written to test/alertsSent instead. Answers with each channel's outcome.
 async function sendAlert(ac, msg) {
   const out = { sms: 'off', email: 'off' };
-  const [SID, TOKEN, FROM, RESEND, EMAIL] = ALERT_SECRETS.map(secretValue);
+  const [SID, TOKEN, FROM, RESEND, EMAIL] = [0, 1, 2, 3, 4].map(i => secretValue(ALERT_SECRETS[i]));
   const stored = SID && TOKEN && FROM && RESEND ? {} : (await db.ref('admin/secrets').get()).val() || {};   // (the database's copy only until Secret Manager has them all)
   const keys = { twilioSid: SID || stored.twilioSid, twilioToken: TOKEN || stored.twilioToken, twilioFrom: FROM || stored.twilioFrom, resendKey: RESEND || stored.resendKey, emailFrom: EMAIL || stored.emailFrom };
   const fake = process.env.FUNCTIONS_EMULATOR === 'true';
