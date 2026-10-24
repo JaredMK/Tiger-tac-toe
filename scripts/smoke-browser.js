@@ -31,6 +31,12 @@ async function main() {
     check(r && r.ok(), `the site loads (HTTP ${r && r.status()})`);
     const policy = r ? r.headers()['content-security-policy'] || '' : '';
     check(/script-src/.test(policy) && /apis\.google\.com/.test(policy), `the site sends its Content-Security-Policy, Google's sign-in scripts allowed${policy ? '' : ' (none sent)'}`);   // (the checks below are only worth something with the policy in force)
+    // Link previews: the tags a chat app reads, the image they name (1200x630 PNG) and the home-screen icon, on this site's own address.
+    const tag = await page.evaluate(() => { const g = k => { const e = document.querySelector(`meta[property="${k}"], meta[name="${k}"]`); return e && e.content; }; return { title: g('og:title'), desc: g('og:description'), image: g('og:image'), url: g('og:url'), w: g('og:image:width'), h: g('og:image:height'), card: g('twitter:card'), tw: g('twitter:image'), noindex: !!document.querySelector('meta[name="robots"][content*="noindex"]'), touch: (document.querySelector('link[rel="apple-touch-icon"]') || {}).href }; });
+    check(tag.title === 'Tic Tac Chaos' && /every square is a mini-game/.test(tag.desc || '') && tag.card === 'summary_large_image' && tag.w === '1200' && tag.h === '630', `the page has its link-preview tags (og:title, og:description, size, twitter:card)`);
+    check(tag.image === SITE + '/assets/share/og-image.png' && tag.tw === tag.image && tag.url === SITE + '/', `the preview image and url are absolute, on ${SITE} (${tag.image})`);
+    for (const [what, u] of [['the preview image', tag.image], ['the home-screen icon', tag.touch], ['the favicon', SITE + '/favicon.ico']]) { const f = u ? await ctx.request.get(u) : null; check(f && f.ok() && /image\//.test(f.headers()['content-type'] || ''), `${what} is served as an image (${u}: HTTP ${f && f.status()})`); }
+    check(tag.noindex === (TARGET === 'staging'), TARGET === 'staging' ? 'staging stays noindex' : 'production is indexable (no noindex)');
     await page.waitForSelector('[data-act="login"], [data-act="login-google"]', { timeout: 20000 });
     if (!(await page.$('[data-act="login-google"]'))) await page.click('[data-act="login"]');
     await page.waitForSelector('[data-act="login-google"]:not([disabled])', { timeout: 20000 });
