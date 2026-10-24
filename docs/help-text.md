@@ -44,7 +44,7 @@ Target shared: Shared board
 Target own: Your own progress
 Target course: Shared course
 
-## Battleship [bs]
+## Sea Battle [bs]
 Category: More luck
 Target: Shared board
 Play: Fire at a square. Hit? Fire again. The ship's size is shown below.
@@ -92,7 +92,7 @@ Target: Shared course
 Play: Hold to rise, let go to drop. It gets faster, and you keep your distance when you crash.
 Win: Reach 1,000 m first.
 
-## Clash Grid [clash]
+## Standoff Grid [clash]
 Category: More brain
 Target: Shared board
 Play: Claim a square. Pick the same square as your opponent in the same round and it's blocked for good.
@@ -104,7 +104,7 @@ Target: Shared board
 Play: Flip up to {flips} coins that aren't yours.
 Win: All {n} coins show your side.
 
-## Connect 4 [c4]
+## Four in a Row [c4]
 Category: More brain
 Target: Shared board
 Play: Drop a piece into a column.
@@ -192,7 +192,7 @@ Target: Shared course
 Play: Swipe to change lanes and dodge traffic. It gets faster as you go, and you keep your distance when you crash.
 Win: Reach 1,000 m first.
 
-## Mastermind [mastermind]
+## Codebreaker [mastermind]
 Category: More brain
 Target: Shared board
 Play: Guess the 4-colour code. Black marker means right colour and spot; white marker means right colour, wrong spot.
@@ -200,7 +200,7 @@ Win: Crack the code.
 Super Chaos Play: Guess the 4-colour code. Black marker means right colour and spot; white marker means right colour, wrong spot. Both players' guesses join the board when the round ends.
 Super Chaos Win: Crack the code.
 
-## Memory [memory]
+## Find the Pair [memory]
 Category: More brain
 Target: Shared board
 Play: Flip two cards. Matching pairs in the deck: {pairs}.
@@ -234,7 +234,7 @@ Target: Your own progress
 Play: Tap left or right to flip. One ball per turn. Targets you hit stay lit.
 Win: Light every target first.
 
-## Plinko [plinko]
+## Peg Drop [plinko]
 Category: More luck
 Target: Your own progress
 Play: Drop the chip from an open slot. The bins are worth 5, 3, 3, 2, 2, 1 and 1 points, and the gold bonus peg adds {bonus} (a new one appears once it is hit). A slot used by either player stays locked until all seven are used.
@@ -352,7 +352,7 @@ Win: Get {goal} right.
 Super Chaos Play: Both players see the question. Pick an answer. When the round ends, wrong answers are crossed out for both, and a new question comes if anyone got it.
 Super Chaos Win: Get {goal} right.
 
-## Wordle [wordle]
+## Five Letters [wordle]
 Category: More brain
 Target: Shared board
 Play: Guess a 5-letter word. Green is correct letter placement, yellow is in the word but different position, grey isn't in it.

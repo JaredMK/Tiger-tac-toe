@@ -29,7 +29,7 @@ test('an edit changes only its own text, quotes and placeholders kept', async ()
 });
 
 test('a category or target line moves a game to another label', async () => {
-  const md = (await exportHelp()).replace(/^(## Wordle \[wordle\]\n)Category: .*$/m, '$1Category: More luck');
+  const md = (await exportHelp()).replace(/^(## Five Letters \[wordle\]\n)Category: .*$/m, '$1Category: More luck');
   const r = await run(md);
   assert.equal(r.changes.length, 1);
   assert.match(r.files['src/games/wordle/meta.js'], /export const category = 'luck'/);
@@ -37,7 +37,7 @@ test('a category or target line moves a game to another label', async () => {
 
 test('unknown and missing IDs, unknown labels and placeholders are warned about', async () => {
   const md = (await exportHelp())
-    .replace('## Wordle [wordle]', '## Wordle [wordel]')
+    .replace('## Five Letters [wordle]', '## Five Letters [wordel]')
     .replace(/^Win: First to \{goal\} wins\.$/m, 'Win: First to {gaol} wins.')
     .replace(/^Category: More brain$/m, 'Category: Nonsense');
   const r = await run(md);
