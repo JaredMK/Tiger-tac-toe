@@ -36,7 +36,7 @@ const check = (good, what) => { console.log(`${good ? 'ok  ' : 'FAIL'} ${what}`)
   const tr = await fetch(`${FN}/track`, { method: 'POST', headers: json, body: '{"data":{}}' });
   const tj = await tr.json().catch(() => ({}));
   if (STAGING) check(tr.status === 403, `track is live and refuses anyone not on the staging list (HTTP ${tr.status})`);
-  else check(tr.status === 400 && tj.error && tj.error.status === 'INVALID_ARGUMENT', `track is live and refuses an empty event (HTTP ${tr.status})`);
+  else check(tr.status === 401 && tj.error && tj.error.status === 'UNAUTHENTICATED', `track is live and asks for a login (HTTP ${tr.status})`);   // (a login first since the security review: the page signs in anonymously before it sends an event)
   if (STAGING) {
     const sa = await fetch(`${FN}/stagingAccess`, { method: 'POST', headers: json, body: '{"data":{}}' });
     const sj = await sa.json().catch(() => ({}));
