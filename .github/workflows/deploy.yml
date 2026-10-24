@@ -115,7 +115,7 @@ jobs:
               await new Promise(r => setTimeout(r, 60000));
             })().catch(e => { console.log("::error::Could not switch on the Cloud Billing API: " + String(e.message).split("\n")[0]); process.exit(1); });
           '
-      - name: The alert secrets exist in Secret Manager (placeholders until set: firebase functions:secrets:set TWILIO_SID ...)
+      - name: "The alert secrets exist in Secret Manager (placeholders until set with firebase functions:secrets:set)"
         if: contains(steps.what.outputs.only, 'functions')
         run: |
           grep -q '^TTC_SECRETS=on' "functions/.env.$TARGET" || { echo "Secret Manager not switched on for $TARGET yet (functions/.env.$TARGET TTC_SECRETS=on): the alert keys stay on the database."; exit 0; }
