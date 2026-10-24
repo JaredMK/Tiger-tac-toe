@@ -29,6 +29,8 @@ async function main() {
   try {
     const r = await page.goto(SITE + '/', { waitUntil: 'load', timeout: 30000 });
     check(r && r.ok(), `the site loads (HTTP ${r && r.status()})`);
+    const policy = r ? r.headers()['content-security-policy'] || '' : '';
+    check(/script-src/.test(policy) && /apis\.google\.com/.test(policy), `the site sends its Content-Security-Policy, Google's sign-in scripts allowed${policy ? '' : ' (none sent)'}`);   // (the checks below are only worth something with the policy in force)
     await page.waitForSelector('[data-act="login"], [data-act="login-google"]', { timeout: 20000 });
     if (!(await page.$('[data-act="login-google"]'))) await page.click('[data-act="login"]');
     await page.waitForSelector('[data-act="login-google"]:not([disabled])', { timeout: 20000 });
