@@ -482,7 +482,8 @@ async function makeGame(key, id, X, O, opts) {
   if (Q.chaos) {                                                  // Super Chaos, run here (core/scgame.js): the released Super Chaos games (every one when both players are admins, or in the admin's room)
     if (friend && !(friend.admin || rel.superchaos === true)) return false;   // (Super Chaos not open to this room's host)
     const admins = !bot && !friend && (await isAdminUser(X.uid)) && (await isAdminUser(O.uid));
-    const types = E.scTypes().filter(g => (admins || (friend ? allowed : E.releasedTypes(rel)).includes(g)) && on(g));
+    const pool = friend ? allowed : E.findMatchTypes(admins ? E.TYPES : E.releasedTypes(rel));   // (Find Match: only games whose result the server can verify, core/games.js FIND_MATCH_HOLD)
+    const types = E.scTypes().filter(g => pool.includes(g) && on(g));
     if (!types.length) { logger.error('chaos game', id, 'no Super Chaos game released'); return false; }
     const g = E.newScGame({ names: { X: X.e.name, O: O.e.name }, games: Object.fromEntries(E.scTypes().map(x => [x, types.includes(x)])) }, rng, id, t, MATCH_GRACE_MS);
     if (!g) return false;
@@ -491,7 +492,7 @@ async function makeGame(key, id, X, O, opts) {
     node = { pub, sec: {}, sides: {} };
     scPack(node, g, t);
   } else {
-    const types = friend ? E.TYPES.filter(g => allowed.includes(g) && on(g)) : E.releasedTypes(rel);
+    const types = friend ? E.TYPES.filter(g => allowed.includes(g) && on(g)) : E.findMatchTypes(E.releasedTypes(rel));
     if (friend && !types.length) return false;
     rec = E.newOnlineMatch({ names: { X: X.e.name, O: O.e.name }, games: Object.fromEntries(E.TYPES.map(g => [g, types.includes(g)])), timer: Q.timer }, rng, id);   // released games only, whoever is playing
     if (!rec) return false;

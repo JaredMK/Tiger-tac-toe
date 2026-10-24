@@ -1764,6 +1764,7 @@ test('Super Chaos Find Match, two clients: paired into a match the server runs; 
   const st0 = JSON.parse(pub.state);
   assert.ok(st0.sc && st0.sc.online && st0.sc.round === 1 && st0.sc.deadline > Date.now() + 60000, 'round 1 timed from the server, with a grace for the intro');
   assert.ok(st0.squares.every(q => E.scTypes().includes(q.mini.type)), 'Super Chaos games only');
+  assert.ok(st0.squares.every(q => !E.FIND_MATCH_HOLD.includes(q.mini.type)), 'none of the games held back from Find Match (results the server cannot verify)');
   const full0 = JSON.parse(await get(`games/${id}/sec/full`));
   assert.ok(st0.squares.every((q, i) => { const sec = E.secretOf(full0.squares[i].mini); return !sec || Object.keys(sec).every(k => q.mini[k] === undefined || JSON.stringify(q.mini[k]) !== JSON.stringify(sec[k])); }), 'no secret in what the phones see');
   await denied(X.read(`games/${id}/sec`), 'the server\'s record'); await denied(X.read(`games/${id}/sides/O`), 'the other side\'s node'); await denied(c.read(`games/${id}/pub`), 'an onlooker');
