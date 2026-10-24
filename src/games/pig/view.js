@@ -58,15 +58,18 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
   };
   const fresh1 = note === 'roll', bust = note === 'bust';
   const dice = rolls.map((n, k) => `<span class="sdie${sides === 8 ? ' d8' : ''}${(fresh1 || bust) && k === rolls.length - 1 ? (bust ? ' dup' : ' fresh') : ''}" aria-label="${n}">${face(n)}</span>`).join('');
-  const shown = mini.last ? mini.last.roll : null;                    // the last number rolled, until the next roll
+  const shown = a && a.roll ? a.roll : mini.last ? mini.last.roll : null;   // the last number rolled, until the next roll (while a roll plays: the move's own number, the mover's, whoever's the square's last was)
   const rolling = (note === 'roll' || note === 'bust') && shown != null;
-  const enough = !!(t && t.by === turn && mini.bank[turn] + t.pot >= goal);          // Bank wins it: no more rolling
+  // The number a roll adds is not shown before the die has landed: through the tumble the Bank button still says what it said, and takes the new points as they land (the same moment as the +N); the Roll button too stays as it was.
+  const potBefore = note === 'roll' ? pot - a.roll : t ? t.pot : 0;
+  const enough = !!(t && t.by === turn && mini.bank[turn] + potBefore >= goal);      // Bank wins it: no more rolling
+  const bankPot = note === 'roll' ? (potBefore ? `<b class="cnt" data-from="${potBefore}" data-delay="600" data-ms="400">${pot}</b>` : `<b class="bpot">${pot}</b>`) : pot && !over ? String(pot) : '';
   const rollBtn = enough ? '' : `<button class="big ${turn}" data-act="move" ${mv('roll')}${locked || rolls.length >= pigMaxRolls(mini) ? ' disabled' : ''}>${rolls.length && !over ? 'Roll again' : 'Roll'}</button>`;
   g = `<div class="g-risky"><div class="rrscores">${score('X')}${score('O')}</div>
         <div class="rrrolls${bust ? ' bust' : ''}" aria-label="Rolled this turn">${dice || '<small>No rolls this turn</small>'}</div>
         <div class="dieWrap"><div class="die${sides === 8 ? ' d8' : ''}${rolling ? ' roll rr' : ''}" aria-label="${sides === 8 ? 'Eight-sided die' : 'Die'}${shown ? ': ' + shown : ''}">${rolling ? pigTumble(shown, sides) : shown ? face(shown) : sides === 8 ? pigFace('?', 8) : '<span class="q">?</span>'}</div></div>
         <div class="rrbtns${enough ? ' one' : ''}">${rollBtn}
-          <button class="big bank" data-act="move" ${mv('bank')}${locked || !pot || over ? ' disabled' : ''}>Bank${pot && !over ? ' ' + pot : ''}</button></div></div>`;
+          <button class="big bank" data-act="move" ${mv('bank')}${locked || !pot || over ? ' disabled' : ''}>Bank${bankPot ? ' ' + bankPot : ''}</button></div></div>`;
   return g;
 }
 export function moveText(f, who) {

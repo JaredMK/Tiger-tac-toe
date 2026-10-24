@@ -31,7 +31,7 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
   // Super Chaos's round end (a.scr): both rolled here; both pieces hop together, the die shows this player's own
   // roll and the label both.
   const joint = a && a.scr && a.scr.moves ? a.scr.moves : null, own = joint ? joint[a.by] || joint.X : null;
-  const L = own || mini.last, ok = !!L;
+  const L = own || (a && !joint && a.roll ? { by: a.by, roll: a.roll, from: a.from, land: a.land, to: a.to, via: a.via } : mini.last), ok = !!L;   // (the move's own roll: an opponent's replay shows theirs, never the square's last result, which may be the other player's)
   const tailOf = l => (l.via === 'ladder' ? ` · up the ladder to ${l.to}` : l.via === 'snake' ? ` · down the snake to ${l.to}` : ` · space ${l.to}`);
   const lab = joint ? ['X', 'O'].filter(p => joint[p]).map(p => `<b class="${p}">${N(p)}</b> rolled ${joint[p].roll}${joint[p].via ? ` (${esc(joint[p].via)})` : ''}`).join(' · ')
     : ok ? `<b class="${L.by}">${N(L.by)}</b> rolled ${L.roll}${tailOf(L)}` : 'No rolls yet';

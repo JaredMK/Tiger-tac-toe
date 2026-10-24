@@ -1057,6 +1057,7 @@ b.O { box-shadow: inset 0 -.38em 0 var(--o-soft); }
 .risk { font-family: 'Luckiest Guy', sans-serif; font-weight: 400; font-size: 18px; color: var(--green); padding: 2px 7px 0; border-radius: 999px; background: #fff; border: 2.5px solid var(--ink); line-height: 1.1; align-self: center; }
 .risk.grow { animation: riskbump .35s .6s ease-out; }                  /* the +N stays up while the die tumbles, then takes the new points as it lands */
 .risk.grow.first { animation: markpop .35s .6s ease-out both; }      /* the turn's first roll: the +N appears as the die lands */
+.bpot { display: inline-block; animation: markpop .35s .6s ease-out both; }   /* the Bank button's points after a turn's first roll: they appear as the die lands (a later roll counts up, .cnt) */
 .risk.bank { animation: riskin .55s .15s ease-in both; }
 .risk.lost { animation: lostmark 0s .65s both, riskout .55s .8s ease-in both; }   /* a bust: red and struck through only once the die has landed */
 @keyframes lostmark { from { color: var(--green); text-decoration-line: none; } to { color: var(--x); text-decoration-line: line-through; } }

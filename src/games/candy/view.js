@@ -9,11 +9,14 @@ export function miniature(mini, final) {
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   // Super Chaos's round end (a.scr): both spun here; both pieces hop together, the wheel shows this player's own
   // colour and the label both spins.
+  // The spin shown is the move's own (a: the recorded move, the mover's spin: an opponent's replay shows theirs),
+  // never the square's last result, which may be the other player's (a replay found the square as it was before).
   const joint = a && a.scr && a.scr.moves ? a.scr.moves : null, own = joint ? joint[a.by] || joint.X : null;
-  const k = own ? CANDY.colors.indexOf(own.color) : mini.last ? CANDY.colors.indexOf(mini.last.color) : -1;
+  const spun = a && !joint && a.color ? { by: a.by, color: a.color } : mini.last;
+  const k = own ? CANDY.colors.indexOf(own.color) : spun ? CANDY.colors.indexOf(spun.color) : -1;
   const angle = k < 0 ? 0 : 360 - (k * 90 + 45);        // puts that colour under the pointer
   const W = p => `<b class="${p}">${N(p)}</b>`;
-  const lab = joint ? ['X', 'O'].filter(p => joint[p]).map(p => `${W(p)} spun ${esc(joint[p].color)}`).join(' · ') : mini.last ? `${W(mini.last.by)} spun ${esc(mini.last.color)}` : 'No spins yet';
+  const lab = joint ? ['X', 'O'].filter(p => joint[p]).map(p => `${W(p)} spun ${esc(joint[p].color)}`).join(' · ') : spun ? `${W(spun.by)} spun ${esc(spun.color)}` : 'No spins yet';
   g = `<div class="g-candy">${trackSvg(CANDY_SPEC, { colors: mini.track, tokens: { X: mini.pos.X, O: mini.pos.O }, moved: joint ? ['X', 'O'] : a ? a.by : null, finish: 'colours' })}
         <div class="wheelwrap"><div class="pointer"></div><div class="wheel${a ? ' spin' : ''}" style="--to:${(a ? 1080 : 0) + angle}deg" aria-hidden="true"></div>
           <div class="dielab${a ? ' late' : ''}">${lab}</div></div>

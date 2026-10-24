@@ -11,7 +11,9 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
   // A 1-2-3 spinner; the piece hops; landing on the other piece knocks it back Home.
   // Super Chaos's round end (a.scr): no spin; both pieces hop together from where the round began when both
   // spun here, then any knock back Home.
-  const L = mini.last, scr = a && a.scr ? a.scr : null, k = L && L.spin ? L.spin - 1 : -1, angle = k < 0 ? 0 : 360 - (k * 120 + 60);   // puts that number under the pointer
+  // The spin shown is the move's own (a: the recorded move, the mover's spin: an opponent's replay shows theirs),
+  // never the square's last result, which may be the other player's.
+  const scr = a && a.scr ? a.scr : null, L = a && !scr && a.spin ? { by: a.by, spin: a.spin, from: a.from, to: a.to, bumped: a.bumped } : mini.last, k = L && L.spin ? L.spin - 1 : -1, angle = k < 0 ? 0 : 360 - (k * 120 + 60);   // puts that number under the pointer
   const kn = L && L.knocked ? L.knocked : null, spinning = !!a && !scr;
   const W = p => `<b class="${p}">${N(p)}</b>`, spun = mv0 => ['X', 'O'].filter(p => mv0[p]).map(p => `${W(p)} spun ${mv0[p].spin}`).join(' · ');
   const lab = scr ? (scr.moves ? spun(scr.moves) + (scr.knocked.length ? ' · both go home!' : '') : scr.knocked.length === 2 ? 'Same space: both go home!' : `${W(a.by)} bumped ${W(scr.knocked[0])} home!`)
