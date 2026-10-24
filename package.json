@@ -3,7 +3,7 @@
   "private": true,
   "description": "Tic Tac Chaos: a 3x3 board where every square is a mini-game",
   "scripts": {
-    "test": "node --test \"tests/{games,shared,core,server}/*.test.js\" tests/page.test.js",
+    "test": "node --test \"tests/{games,shared,core,server}/*.test.js\" tests/page.test.js tests/ui/*.test.mjs",
     "sim": "node scripts/sim.js",
     "test:emulators": "node scripts/sync-functions.js && firebase emulators:exec --only auth,database,functions --project demo-tic-tac-chaos \"node --test --test-concurrency=1 --test-force-exit tests/emulator/server.test.js tests/server/chaos-online.test.js\"",
     "tune-ai": "node scripts/tune-ai.js",
