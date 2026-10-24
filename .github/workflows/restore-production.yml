@@ -1,0 +1,51 @@
+# Puts a backup of production's database back (scripts/restore-backup.js): the whole database replaced by the
+# backup's, after saving the database as it is now. Run it by hand from the Actions tab: "Restore production" ->
+# Run workflow -> backup "list" first (the run's log lists them), then the backup's name and RESTORE-PRODUCTION.
+name: Restore production
+
+on:
+  workflow_dispatch:
+    inputs:
+      backup:
+        description: 'The backup (backups/....json.gz), or list'
+        required: true
+        default: list
+        type: string
+      confirm:
+        description: 'Type RESTORE-PRODUCTION to restore (list needs nothing)'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-data
+  cancel-in-progress: false
+
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Install
+        run: npm ci --prefix functions
+      - name: Credentials
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$SA" ]; then echo "::error::The FIREBASE_SERVICE_ACCOUNT secret is missing."; exit 1; fi
+          printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/sa.json" >> "$GITHUB_ENV"
+          echo "TTC_PROJECT=$(node -e "console.log(JSON.parse(require('fs').readFileSync('.firebaserc','utf8')).projects.production)")" >> "$GITHUB_ENV"
+      - name: Check the key
+        run: node scripts/check-key.js
+      - name: Restore
+        env:
+          BACKUP: ${{ inputs.backup }}
+          CONFIRM: ${{ inputs.confirm }}
+        run: node scripts/restore-backup.js "$BACKUP"

@@ -31,7 +31,7 @@
  *                          one every 2 seconds (database.rules.json); removed with its game (sweep) or room (cleanup)
  *   stats/...              anonymous game stats (see statsRules.js): readable by the admin only
  *   statsSeen/match/{id}   a match the stats have counted (its start time, whether start and end were counted)
- *   statsSeen/{d|w|m}/{period}/{hash}  a player counted as active in that day, week or month (never readable)
+ *   statsSeen/{d|w|m|a}/{period}/{hash}  a player counted as active in that day, week, month or ever (never readable)
  *   localStats/{uid}       a logged-in player's local record and squares per mini-game (recordLocal; that player only)
  *   localHistory/{uid}/l_{id}  one local match, from player 1's side (that player only)
  *   review/flaggedNames    existing usernames the word list would refuse (scripts/check-usernames.js; admin only)
@@ -137,9 +137,9 @@ async function markActive(ids, t) {
   if (Object.keys(seen).length) await db.ref().update(seen);
   for (const id of new Set(ids.filter(Boolean))) {
     const h = S.hashId(id);
-    for (const p of ['d', 'w', 'm']) {
+    for (const p of ['d', 'w', 'm', 'a']) {                          // (a: all time, each player counted once ever)
       const r = await db.ref(`statsSeen/${p}/${k[p]}/${h}`).transaction(cur => (cur ? undefined : true), undefined, false);
-      if (r.committed) up[`${S.PERIOD_NODE[p]}/${k[p]}/active`] = (up[`${S.PERIOD_NODE[p]}/${k[p]}/active`] || 0) + 1;
+      if (r.committed) { const path = `${S.PERIOD_PATH(p, k[p])}/active`; up[path] = (up[path] || 0) + 1; }
     }
   }
   if (Object.keys(up).length) await db.ref().update(statsUp(up));

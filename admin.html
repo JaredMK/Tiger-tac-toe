@@ -176,18 +176,45 @@ const ratio = (a, b) => (b ? a / b : null);
 const pct = v => (v == null ? '–' : `${Math.round(v * 100)}%`);
 const num = (v, d = 1) => (v == null ? '–' : (Math.round(v * 10 ** d) / 10 ** d).toLocaleString());
 const pad = x => String(x).padStart(2, '0');
-function periodKeys(t) {               // the same keys as the server (functions/statsRules.js), in UTC
-  const d = new Date(t);
-  const th = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+const NY = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' });
+function periodKeys(t) {               // the same keys as the server (functions/statsRules.js): New York's day, ISO week and month
+  const o = {}; for (const x of NY.formatToParts(new Date(t))) if (x.type !== 'literal') o[x.type] = Number(x.value);
+  const th = new Date(Date.UTC(o.year, o.month - 1, o.day));
   th.setUTCDate(th.getUTCDate() + 4 - (th.getUTCDay() || 7));
   const week = Math.ceil(((th - new Date(Date.UTC(th.getUTCFullYear(), 0, 1))) / 86400000 + 1) / 7);
-  return { d: `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`, w: `${th.getUTCFullYear()}-W${pad(week)}`, m: `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}` };
+  return { d: `${o.year}-${pad(o.month)}-${pad(o.day)}`, w: `${th.getUTCFullYear()}-W${pad(week)}`, m: `${o.year}-${pad(o.month)}` };
 }
-function lastDays(k) { const out = []; for (let i = k - 1; i >= 0; i--) out.push(periodKeys(Date.now() - i * 86400000).d); return out; }
+// The calendar days (YYYY-MM-DD) from one day to another, both included.
+function dayRange(from, to) {
+  const out = [], d = new Date(from + 'T12:00:00Z'), end = new Date(to + 'T12:00:00Z');
+  while (d <= end && out.length < 4000) { out.push(d.toISOString().slice(0, 10)); d.setUTCDate(d.getUTCDate() + 1); }
+  return out;
+}
+// The Overview's period (Today / This week / This month / All time), remembered on this device.
+const OV_KEY = 'ttc.admin.ovPeriod', OV_PERIODS = [['today', 'Today'], ['week', 'This week'], ['month', 'This month'], ['all', 'All time']];
+let ovPeriod = 'all';
+try { const v = localStorage.getItem(OV_KEY); if (OV_PERIODS.some(([k]) => k === v)) ovPeriod = v; } catch (e) { /* no storage: All time */ }
+function setOvPeriod(v) { ovPeriod = v; try { localStorage.setItem(OV_KEY, v); } catch (e) { /* not remembered */ } }
+// The days a period covers (New York's calendar): today; Monday to today; the 1st to today; every day since the first counted.
+function ovDays(p) {
+  const today = periodKeys(Date.now()).d;
+  if (p === 'today') return [today];
+  if (p === 'week') { const d = new Date(today + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7)); return dayRange(d.toISOString().slice(0, 10), today); }
+  if (p === 'month') return dayRange(today.slice(0, 8) + '01', today);
+  const first = Object.keys(stats.days || {}).sort()[0];
+  return first && first < today ? dayRange(first, today) : [today];
+}
+// The bucket of a period: its players' counters and its mode totals (all time: stats.modes, which go back furthest).
+function ovBucket(p) {
+  const k = periodKeys(Date.now()), node = { today: ['days', k.d], week: ['weeks', k.w], month: ['months', k.m] }[p];
+  if (node) { const b = (stats[node[0]] && stats[node[0]][node[1]]) || {}; return { players: b, modes: b.modes || {} }; }
+  const a = stats.alltime || {}, sum = f => Object.values(stats.months || {}).reduce((s, m) => s + n(m[f]), 0);
+  return { players: { active: n(a.active), logins: Math.max(n(a.logins), sum('logins')), newAccounts: Math.max(n(a.newAccounts), sum('newAccounts')) }, modes: stats.modes || {} };
+}
 function modeRow(m) { return (stats.modes && stats.modes[m]) || {}; }
-function totals() {
+function totals(modes = stats.modes || {}) {
   const t = { started: 0, finished: 0, turns: 0, ms: 0, timed: 0, xWins: 0, oWins: 0, draws: 0, resigned: 0, timeouts: 0, done: 0, doneTurns: 0, doneMs: 0, doneTimed: 0 };
-  for (const [m] of MODES) if (m !== 'bot') for (const k of Object.keys(t)) t[k] += n(modeRow(m)[k]);   // (matches against a bot: their own row, not the people's totals)
+  for (const [m] of MODES) if (m !== 'bot') for (const k of Object.keys(t)) t[k] += n((modes[m] || {})[k]);   // (matches against a bot: their own row, not the people's totals)
   return t;
 }
 // A mini-game counts only once its square ended claimed by X or O: a square still open when the match
@@ -262,17 +289,16 @@ function draw() {
     app.innerHTML = `<div class="card msg"><h1>Not for this account</h1><p>This page is for the game's admin only. ${view.error ? esc(view.error) : ''}</p><button class="btn" data-act="signout">Sign out</button></div>`;
     return;
   }
-  const t = totals(), now = periodKeys(Date.now()), P = (node, k) => (stats[node] && stats[node][k]) || {};
-  const today = P('days', now.d), week = P('weeks', now.w), month = P('months', now.m);
-  const accounts = Object.values(stats.months || {}).reduce((s, m) => s + n(m.newAccounts), 0);
+  const ob = ovBucket(ovPeriod), t = totals(ob.modes), pl = ob.players, P = (node, k) => (stats[node] && stats[node][k]) || {};
+  const ovName = { today: 'today', week: 'this week', month: 'this month', all: 'all time' }[ovPeriod];
   const kpi = (label, big, sub) => `<div class="card kpi"><small>${label}</small><b>${big}</b>${sub ? `<span>${sub}</span>` : ''}</div>`;
-  const days = lastDays(30), D = d => P('days', d);
+  const days = ovDays(ovPeriod), D = d => P('days', d);
   const players = barChart(days, [
     { name: 'Active players', color: 'var(--green)', values: days.map(d => n(D(d).active)) },
     { name: 'Logins', color: 'var(--sky)', values: days.map(d => n(D(d).logins)) },
     { name: 'New accounts', color: 'var(--o)', values: days.map(d => n(D(d).newAccounts)) },
-  ], { label: 'Players per day, last 30 days' });
-  const matches = barChart(days, MODES.map(([m, name]) => ({ name, color: MODE_COLORS[m], values: days.map(d => n((D(d).finished || {})[m])) })), { stack: true, label: 'Matches finished per day by mode, last 30 days' });
+  ], { label: `Players per day, ${ovName}` });
+  const matches = barChart(days, MODES.map(([m, name]) => ({ name, color: MODE_COLORS[m], values: days.map(d => n((D(d).finished || {})[m])) })), { stack: true, label: `Matches finished per day by mode, ${ovName}` });
   const mins = (ms, k) => { const v = ratio(ms, k); return v == null ? null : v / 60000; };
   const modeTable = `<div class="tbl"><table><thead><tr><th>Mode</th><th>Started</th><th>Finished</th><th>Abandoned</th><th>of which resigned</th><th>timed out</th><th>never finished</th><th>Avg turns (finished)</th><th>Avg minutes (finished)</th><th>X (first) wins</th><th>Draws</th></tr></thead><tbody>${MODES.map(([m, name]) => {
     const r = modeRow(m), st = n(r.started), quit = n(r.resigned) + n(r.timeouts), fin = Math.max(0, n(r.finished) - quit), never = Math.max(0, st - n(r.finished)), ab = never + quit, dec = n(r.xWins) + n(r.oWins);
@@ -290,18 +316,20 @@ function draw() {
   const ptable = `<div class="tbl"><table><thead><tr><th>${{ d: 'Day', w: 'Week', m: 'Month' }[period]}</th><th>Active players</th><th>Logins</th><th>New accounts</th>${period === 'd' ? '<th>Matches started</th><th>Finished</th>' : ''}</tr></thead><tbody>${keys.map(k => {
     const r = stats[pnode][k] || {}, sum = o => Object.values(o || {}).reduce((s, v) => s + n(v), 0);
     return `<tr><td>${k}</td><td>${n(r.active)}</td><td>${n(r.logins)}</td><td>${n(r.newAccounts)}</td>${period === 'd' ? `<td>${sum(r.started)}</td><td>${sum(r.finished)}</td>` : ''}</tr>`;
-  }).join('') || '<tr><td colspan="6" class="dim">Nothing yet</td></tr>'}</tbody></table></div><p class="note">Days, weeks (ISO) and months in UTC. Active: players (accounts, or guests' browsers) who played or logged in.</p>`;
+  }).join('') || '<tr><td colspan="6" class="dim">Nothing yet</td></tr>'}</tbody></table></div><p class="note">Days, weeks (ISO, Monday to Sunday) and months in New York time. Active: players (accounts, or guests' browsers) who played or logged in.</p>`;
   const sec = {
-    overview: () => `<div class="kpis">
-      ${kpi('Active players', n(today.active), `this week ${n(week.active)} · this month ${n(month.active)}`)}
-      ${kpi('Logins today', n(today.logins), `this week ${n(week.logins)} · this month ${n(month.logins)}`)}
-      ${kpi('New accounts', n(today.newAccounts), `this month ${n(month.newAccounts)} · all ${accounts}`)}
+    overview: () => `<div class="card"><div class="row"><h2>Overview: ${ovName}</h2><div class="tabs">${OV_PERIODS.map(([k, l]) => `<button data-ovp="${k}" aria-pressed="${ovPeriod === k}">${l}</button>`).join('')}</div></div>
+      <p class="note">Every number and chart below covers the period picked, in New York time (weeks run Monday to Sunday). Today, this week and this month count matches from 24 Oct 2026, when they began to be kept per period.</p></div>
+    <div class="kpis">
+      ${kpi('Active players', n(pl.active), ovName)}
+      ${kpi('Logins', n(pl.logins), ovName)}
+      ${kpi('New accounts', n(pl.newAccounts), ovName)}
       ${kpi('Matches', `${Math.max(0, t.finished - t.resigned - t.timeouts)} / ${t.started}`, 'finished / started')}
       ${kpi('Abandon rate', pct(ratio(Math.max(0, t.started - t.finished) + t.resigned + t.timeouts, t.started)), 'resigned, timed out or never finished')}
       ${kpi('Avg finished match', `${num(ratio(t.doneTurns, t.done))} turns`, `${num(mins(t.doneMs, t.doneTimed))} minutes`)}
       ${kpi('First player (X) wins', pct(ratio(t.xWins, t.xWins + t.oWins)), `${t.xWins} of ${t.xWins + t.oWins} decided`)}
     </div>
-    <div class="grid2"><div class="card"><h2>Players per day</h2>${players}</div><div class="card"><h2>Matches finished per day</h2>${matches}</div></div>`,
+    <div class="grid2"><div class="card"><h2>Players per day, ${ovName}</h2>${players}</div><div class="card"><h2>Matches finished per day, ${ovName}</h2>${matches}</div></div>`,
     players: () => `${accountsCard()}${flaggedCard()}
     <div class="card"><div class="row"><h2>Players over time</h2><div class="tabs">${[['d', 'Days'], ['w', 'Weeks'], ['m', 'Months']].map(([k, l]) => `<button data-period="${k}" aria-pressed="${period === k}">${l}</button>`).join('')}</div></div>${ptable}</div>`,
     playtest: () => playCard(),
@@ -1130,6 +1158,7 @@ app.addEventListener('click', e => {
   else if (b.dataset.act === 'refresh') { b.disabled = true; load(); }
   else if (b.dataset.sort) { const k = b.dataset.sort; sortBy = { k, dir: sortBy.k === k ? -sortBy.dir : ['name', 'avgWin', 'avgLose', 'avgAll', 'scAvgWin', 'scAvgAll'].includes(k) ? 1 : -1 }; render(); }
   else if (b.dataset.period) { period = b.dataset.period; render(); }
+  else if (b.dataset.ovp) { setOvPeriod(b.dataset.ovp); render(); }
   else if (b.dataset.asort) { acctSort = flip(acctSort, b.dataset.asort, ['joined', 'last', 'games', 'wins', 'rate']); render(); }
   else if (b.dataset.dsort) { devSort = flip(devSort, b.dataset.dsort, ['first', 'last', 'nSessions', 'games', 'perSession', 'back']); render(); }
   else if (b.dataset.dev) { devOpen = devOpen === b.dataset.dev ? null : b.dataset.dev; render(); const el = devOpen && document.getElementById('devTimeline'); if (el) el.scrollIntoView({ block: 'nearest' }); }

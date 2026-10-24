@@ -1,0 +1,59 @@
+# The launch reset (scripts/reset-production.js): a dated backup of production's database to Cloud Storage
+# first (gs://tic-tac-chaos-backups/backups/), then matches, history, match logs, stats and tracking deleted and
+# every record back to 0-0-0. Accounts, usernames, the admin flag, releases, game, computer and bot settings stay.
+# Run it by hand from the Actions tab: "Reset production" -> Run workflow -> type RESET-PRODUCTION.
+# "Dry run" makes the backup and prints what would go, and changes nothing. Undo: the "Restore production" workflow.
+name: Reset production
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type RESET-PRODUCTION to delete (a dry run needs nothing)'
+        required: false
+        type: string
+      dry_run:
+        description: 'Dry run: back up and report only'
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-data
+  cancel-in-progress: false
+
+jobs:
+  reset:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Confirm
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+          DRY: ${{ inputs.dry_run }}
+        run: |
+          if [ "$DRY" != "true" ] && [ "$CONFIRM" != "RESET-PRODUCTION" ]; then echo "::error::Type RESET-PRODUCTION in the confirm box (or run a dry run)."; exit 1; fi
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Install
+        run: npm ci --prefix functions
+      - name: Credentials
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$SA" ]; then echo "::error::The FIREBASE_SERVICE_ACCOUNT secret is missing."; exit 1; fi
+          printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/sa.json" >> "$GITHUB_ENV"
+          echo "TTC_PROJECT=$(node -e "console.log(JSON.parse(require('fs').readFileSync('.firebaserc','utf8')).projects.production)")" >> "$GITHUB_ENV"
+      - name: Check the key
+        run: node scripts/check-key.js
+      - name: Back up, then reset
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+          DRY: ${{ inputs.dry_run }}
+        run: node scripts/reset-production.js $([ "$DRY" = "true" ] && echo --dry-run)

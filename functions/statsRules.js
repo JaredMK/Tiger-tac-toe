@@ -14,9 +14,12 @@
  *                          xWins, oWins, draws (no line left for either side; Super Chaos: a line each in one round);
  *                          done, doneTurns, doneMs, doneTimed: the same over matches played to a result only
  *                          (not resigned or timed out: those, like a match never finished, are abandoned)
- *   days/{YYYY-MM-DD}      logins, active, newAccounts, started/{mode}, finished/{mode}
- *   weeks/{YYYY-Www}       logins, active, newAccounts
- *   months/{YYYY-MM}       logins, active, newAccounts
+ *   days/{YYYY-MM-DD}      logins, active, newAccounts, started/{mode}, finished/{mode}, modes/{mode}/... (as modes/ above)
+ *   weeks/{YYYY-Www}       logins, active, newAccounts, modes/{mode}/...
+ *   months/{YYYY-MM}       logins, active, newAccounts, modes/{mode}/...
+ *   alltime                logins, active (each player once, ever), newAccounts
+ * Days, weeks (ISO, Monday to Sunday) and months are New York's (America/New_York, with its daylight saving), so
+ * the admin's Today / This week / This month match the calendar there.
  * "Moves" in a mini-game are the turns a side spent in it: a Risky Rolls roll or a Hangman letter that earns
  * another go is part of the same turn. Players are counted as active by a one-way hash of their account
  * or of a random id their browser made up; nothing else about them is stored.
@@ -31,17 +34,29 @@ const REASONS = ['line', 'blocked', 'majority', 'resign', 'timeout', 'both'];   
 const ABANDONED = ['resign', 'timeout'];                                // a match given up (or left to run out its clock): abandoned, not finished
 
 const pad = n => String(n).padStart(2, '0');
-// The day, ISO week and month of a time, in UTC.
+// The day, ISO week and month of a time, in New York (and 'all', the all-time bucket).
+const TZ = 'America/New_York';
+const NY = new Intl.DateTimeFormat('en-US', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' });
+function localDate(t) {                                                   // { y, m, d } of the calendar day in New York
+  const o = {}; for (const x of NY.formatToParts(new Date(t))) if (x.type !== 'literal') o[x.type] = Number(x.value);
+  return { y: o.year, m: o.month, d: o.day };
+}
 function periodKeys(t) {
-  const d = new Date(t);
-  const day = `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
-  const th = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  const { y, m, d: dd } = localDate(t);
+  const day = `${y}-${pad(m)}-${pad(dd)}`;
+  const th = new Date(Date.UTC(y, m - 1, dd));
   th.setUTCDate(th.getUTCDate() + 4 - (th.getUTCDay() || 7));            // the Thursday of this week decides its year
   const y0 = new Date(Date.UTC(th.getUTCFullYear(), 0, 1));
   const week = Math.ceil(((th - y0) / 86400000 + 1) / 7);
-  return { d: day, w: `${th.getUTCFullYear()}-W${pad(week)}`, m: `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}` };
+  return { d: day, w: `${th.getUTCFullYear()}-W${pad(week)}`, m: `${y}-${pad(m)}`, a: 'all' };
 }
-const PERIOD_NODE = { d: 'days', w: 'weeks', m: 'months' };
+const PERIOD_NODE = { d: 'days', w: 'weeks', m: 'months', a: 'alltime' };
+const PERIOD_PATH = (p, key) => (p === 'a' ? PERIOD_NODE.a : `${PERIOD_NODE[p]}/${key}`);
+// The mode totals (modes/...) of one event, kept per day, week and month too: the admin's period filter reads them.
+function withPeriods(up, k) {
+  for (const [path, n] of Object.entries(up)) if (path.startsWith('modes/')) for (const p of ['d', 'w', 'm']) up[`${PERIOD_NODE[p]}/${k[p]}/${path}`] = n;
+  return up;
+}
 
 function hashId(id) { return crypto.createHash('sha256').update('ttc-stats:' + id).digest('hex').slice(0, 20); }
 const idOk = v => typeof v === 'string' && /^[-\w]{6,48}$/.test(v);
@@ -81,7 +96,7 @@ function checkRun(r) {
 // What a match starting adds.
 function startUpdates(mode, t) {
   const k = periodKeys(t);
-  return { [`modes/${mode}/started`]: 1, [`days/${k.d}/started/${mode}`]: 1 };
+  return withPeriods({ [`modes/${mode}/started`]: 1, [`days/${k.d}/started/${mode}`]: 1 }, k);
 }
 // What a finished match adds: the mode's totals and every mini-game played in it. `ms` is null when
 // the match has no usable time. testTypes: the mini-games that are admin only at the time (their
@@ -99,7 +114,7 @@ function endUpdates(mode, sum, ms, t, withStart, testTypes) {
   else if (sum.reason === 'blocked' || sum.reason === 'both') add(`modes/${mode}/draws`, 1);   // a draw: no line left for either side, or (Super Chaos) a line each in the same round
   const timed = Number.isFinite(ms) && ms >= 0 && ms <= MAX_MS;
   if (timed) { add(`modes/${mode}/ms`, Math.round(ms)); add(`modes/${mode}/timed`, 1); }
-  if (ABANDONED.includes(sum.reason)) return up;                       // abandoned: its squares say nothing about the mini-games
+  if (ABANDONED.includes(sum.reason)) return withPeriods(up, k);      // abandoned: its squares say nothing about the mini-games
   add(`modes/${mode}/done`, 1);
   add(`modes/${mode}/doneTurns`, turns);
   if (timed) { add(`modes/${mode}/doneMs`, Math.round(ms)); add(`modes/${mode}/doneTimed`, 1); }
@@ -122,12 +137,12 @@ function endUpdates(mode, sum, ms, t, withStart, testTypes) {
       if (e.end === 'won') { add(b + 'finishes', 1); add(b + 'finishRuns', e.run.runs[e.w]); }
     }
   }
-  return up;
+  return withPeriods(up, k);
 }
-// A login, or a new account: the counter for the day, the week and the month.
+// A login, or a new account: the counter for the day, the week, the month and all time.
 function periodUpdates(what, t) {
   const k = periodKeys(t), up = {};
-  for (const p of ['d', 'w', 'm']) up[`${PERIOD_NODE[p]}/${k[p]}/${what}`] = 1;
+  for (const p of ['d', 'w', 'm', 'a']) up[`${PERIOD_PATH(p, k[p])}/${what}`] = 1;
   return up;
 }
 
@@ -175,5 +190,5 @@ function checkDev(d, t) {
   return out;
 }
 
-module.exports = { MODES, CLIENT_MODES, MAX_MS, ABANDONED, periodKeys, PERIOD_NODE, hashId, idOk, checkEnd, checkRun, RUN_BIN, startUpdates, endUpdates, periodUpdates,
+module.exports = { MODES, CLIENT_MODES, MAX_MS, ABANDONED, TZ, localDate, periodKeys, PERIOD_NODE, PERIOD_PATH, hashId, idOk, checkEnd, checkRun, RUN_BIN, startUpdates, endUpdates, periodUpdates,
   DEV_EVENTS, DEV_MODES, TAG_RE, tagOk, devHash, checkDev };

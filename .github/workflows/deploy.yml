@@ -142,6 +142,14 @@ jobs:
         run: node scripts/auth-domains.js
       - name: Check the live site, functions and rules
         run: node scripts/smoke-live.js "$TARGET"
+      - name: What is live where, and the old GitHub Pages address (a report; never fails the deploy)
+        continue-on-error: true
+        run: |
+          git fetch -q --unshallow origin 2>/dev/null || true
+          node scripts/check-envs.js origin || echo "::warning::check:envs: a site is not at its branch (above)."
+          page=$(curl -sSL --max-time 20 https://jaredmk.github.io/Tiger-tac-toe/ || true)
+          if printf '%s' "$page" | grep -q 'tictacchaos.com'; then echo "ok   old address https://jaredmk.github.io/Tiger-tac-toe/ redirects to tictacchaos.com: $(printf '%s' "$page" | grep -o '<meta[^>]*refresh[^>]*>' | head -1)"; else echo "::warning::The old GitHub Pages address does not redirect to tictacchaos.com."; printf '%s' "$page" | head -c 400; fi
+          echo "old address, a deep link: $(curl -sSL --max-time 20 -o /dev/null -w '%{http_code} %{url_effective}' 'https://jaredmk.github.io/Tiger-tac-toe/admin.html' || true)"
       - name: Seed staging (test accounts, the admin, the allowlist; never production)
         if: env.TARGET == 'staging'
         env:

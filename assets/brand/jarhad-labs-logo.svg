@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <title>JarHead Labs</title>
+  <rect width="1024" height="1024" fill="#f8f6f1"/>
+  <g id="mark">
+    <defs>
+      <clipPath id="jhIn"><path d="M401 365V402C401 436 321 432 321 497V790Q321 854 385 854H640Q704 854 704 790V497C704 432 624 436 624 402V365Z"/></clipPath>
+    </defs>
+    <path d="M611 136V186H663" fill="none" stroke="#f7982e" stroke-width="46" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="490" cy="186" r="32" fill="#8150b5"/>
+    <circle cx="553" cy="252" r="17" fill="#00adbf"/>
+    <path d="M401 365V402C401 436 321 432 321 497V790Q321 854 385 854H640Q704 854 704 790V497C704 432 624 436 624 402V365Z" fill="#ffffff"/>
+    <path clip-path="url(#jhIn)" d="M300 612C372 586 420 628 488 610S612 566 730 578V880H300Z" fill="#00adbf"/>
+    <circle cx="568" cy="682" r="19" fill="#ffffff"/>
+    <circle cx="505" cy="740" r="13" fill="#ffffff"/>
+    <path d="M401 365V402C401 436 321 432 321 497V790Q321 854 385 854H640Q704 854 704 790V497C704 432 624 436 624 402V365" fill="none" stroke="#0f2a30" stroke-width="22" stroke-linejoin="round"/>
+    <rect x="371" y="301" width="283" height="53" rx="20" fill="#ffffff" stroke="#0f2a30" stroke-width="22"/>
+    <ellipse cx="443" cy="500" rx="15" ry="23" fill="#0f2a30"/>
+    <ellipse cx="577" cy="500" rx="15" ry="23" fill="#0f2a30"/>
+    <path d="M472 551Q510 586 548 551" fill="none" stroke="#0f2a30" stroke-width="18" stroke-linecap="round"/>
+  </g>
+</svg>

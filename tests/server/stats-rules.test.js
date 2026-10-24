@@ -5,12 +5,15 @@ const assert = require('node:assert/strict');
 const S = require('../../functions/statsRules.js');
 const E = require('../engine.js');
 
-test('stats periods: the UTC day, ISO week and month', () => {
+test('stats periods: the New York day, ISO week and month', () => {
   const k = t => S.periodKeys(Date.parse(t));
-  assert.deepEqual(k('2026-10-13T12:00:00Z'), { d: '2026-10-13', w: '2026-W42', m: '2026-10' });
-  assert.deepEqual(k('2025-12-29T00:30:00Z'), { d: '2025-12-29', w: '2026-W01', m: '2025-12' }, 'a week belongs to the year of its Thursday');
-  assert.deepEqual(k('2027-01-03T23:59:00Z'), { d: '2027-01-03', w: '2026-W53', m: '2027-01' });
-  assert.deepEqual(k('2026-03-01T00:00:00Z').d, '2026-03-01');
+  assert.deepEqual(k('2026-10-13T12:00:00Z'), { d: '2026-10-13', w: '2026-W42', m: '2026-10', a: 'all' });
+  assert.deepEqual(k('2026-10-14T03:30:00Z'), { d: '2026-10-13', w: '2026-W42', m: '2026-10', a: 'all' }, 'still the 13th in New York (EDT)');
+  assert.deepEqual(k('2025-12-29T05:30:00Z'), { d: '2025-12-29', w: '2026-W01', m: '2025-12', a: 'all' }, 'a week belongs to the year of its Thursday');
+  assert.deepEqual(k('2025-12-29T04:30:00Z').d, '2025-12-28', 'before midnight in New York (EST)');
+  assert.deepEqual(k('2027-01-01T04:00:00Z'), { d: '2026-12-31', w: '2026-W53', m: '2026-12', a: 'all' });
+  assert.deepEqual(k('2026-03-08T06:59:00Z').d, '2026-03-08', 'daylight saving starts');
+  assert.deepEqual(k('2026-03-01T04:59:00Z').d, '2026-02-28');
 });
 
 test('stats: a phone\'s report of a match is checked and trimmed; anything that does not hold together is refused', () => {
@@ -27,7 +30,10 @@ test('stats: a finished match adds its mode\'s totals and every mini-game played
   const t = Date.parse('2026-10-13T12:00:00Z');
   const sum = { winner: 'O', reason: 'line', squares: [
     { t: 'ttt', end: 'won', w: 'O', X: 2, O: 3 }, { t: 'ttt', end: 'draw', w: null, X: 2, O: 2 }, { t: 'bs', end: 'open', w: null, X: 1, O: 0 }] };
-  const up = S.endUpdates('cpu', sum, 90000, t, false);
+  const all = S.endUpdates('cpu', sum, 90000, t, false);
+  const up = Object.fromEntries(Object.entries(all).filter(([k]) => !/^(days|weeks|months)\/[^/]+\/modes\//.test(k)));
+  for (const [k, n] of Object.entries(all)) if (k.startsWith('modes/')) for (const p of ['days/2026-10-13', 'weeks/2026-W42', 'months/2026-10']) assert.equal(all[`${p}/${k}`], n, `${p}/${k}`);
+  assert.equal(Object.keys(all).length, Object.keys(up).length + 3 * Object.keys(up).filter(k => k.startsWith('modes/')).length, 'only the mode totals are kept per period');
   assert.deepEqual(up, {
     'modes/cpu/finished': 1, 'days/2026-10-13/finished/cpu': 1, 'modes/cpu/turns': 10, 'modes/cpu/oWins': 1, 'modes/cpu/ms': 90000, 'modes/cpu/timed': 1,
     'modes/cpu/done': 1, 'modes/cpu/doneTurns': 10, 'modes/cpu/doneMs': 90000, 'modes/cpu/doneTimed': 1,
@@ -47,8 +53,9 @@ test('stats: a finished match adds its mode\'s totals and every mini-game played
   assert.equal(late['modes/local/started'], 1, 'a start never reported is counted with the end');
   assert.equal(late['modes/local/timeouts'], 1);
   assert.equal(late['modes/local/ms'], undefined, 'a match left for hours and picked up again has no time');
-  assert.deepEqual(S.startUpdates('ranked', t), { 'modes/ranked/started': 1, 'days/2026-10-13/started/ranked': 1 });
-  assert.deepEqual(S.periodUpdates('logins', t), { 'days/2026-10-13/logins': 1, 'weeks/2026-W42/logins': 1, 'months/2026-10/logins': 1 });
+  assert.deepEqual(S.startUpdates('ranked', t), { 'modes/ranked/started': 1, 'days/2026-10-13/started/ranked': 1,
+    'days/2026-10-13/modes/ranked/started': 1, 'weeks/2026-W42/modes/ranked/started': 1, 'months/2026-10/modes/ranked/started': 1 });
+  assert.deepEqual(S.periodUpdates('logins', t), { 'days/2026-10-13/logins': 1, 'weeks/2026-W42/logins': 1, 'months/2026-10/logins': 1, 'alltime/logins': 1 });
   assert.notEqual(S.hashId('u:abc'), 'u:abc'); assert.equal(S.hashId('u:abc'), S.hashId('u:abc')); assert.equal(S.hashId('u:abc').length, 20);
 });
 

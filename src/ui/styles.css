@@ -1333,7 +1333,7 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .scr.menu { padding-top: calc(var(--pad) + 52px); }
 .scr.menu > .menu-card { margin: auto 0; }                     /* centred in the room above the credit */
 .credit { flex: none; display: inline-flex; align-items: center; gap: 7px; min-height: 44px; margin-top: 6px; padding: 0 12px; border-radius: 12px; color: var(--muted); font-size: 15px; line-height: 1; text-decoration: none; white-space: nowrap; -webkit-tap-highlight-color: transparent; }
-.credit .jhl { flex: none; width: auto; height: 26px; overflow: visible; }   /* (the jar's foot sits inside the viewBox with room to spare: nothing of it is clipped) */
+.credit .jhl { flex: none; width: auto; height: 30px; overflow: visible; }   /* (assets/brand/jarhad-labs-logo.svg without its background) */
 .credit span { padding-top: 2px; }
 .credit:active { opacity: .7; }
 .credit:focus-visible { outline: 3px solid var(--sky); outline-offset: 2px; }
