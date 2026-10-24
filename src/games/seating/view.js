@@ -1,7 +1,7 @@
 // Seating: the screen, the miniature, the move's words and sounds, and the inputs.
 import { PLACE_MS } from '../shared/placement.js';
 import { seatCfg, seatTable, seatTables } from './rules.js';
-import { N, REDUCED, mv, state } from '../../ui/app.js';
+import { N, REDUCED, esc, mv, state } from '../../ui/app.js';
 import { arcTally, lateAt, pips } from '../../ui/progress.js';
 
 // Seating: ten tables of two seats, each seat a colour. A tap on an empty seat is the move: the mover sits
@@ -20,14 +20,14 @@ function seatingTable(mini, a, o) {
     let cls = 'sts' + (w ? ' ' + w : ''), st = `--sc:${col}`;
     if (s && i === s.seat) cls += ' pop';
     else if (s && i === s.z) { cls += ' walk'; st += `;--t:${zAt}ms`; }
-    const label = `Table ${seatTable(i) + 1}, ${side} seat, ${SEAT_NAMES[mini.color[i]]}${w === 'Z' ? ', a customer' : w ? ', ' + w : ''}`;
-    const inner = w === 'Z' ? `<span class="sguest">${SEAT_GUEST}</span>` : w ? `<b>${w}</b>` : '';
+    const label = `Table ${seatTable(i) + 1}, ${side} seat, ${SEAT_NAMES[mini.color[i]]}${w === 'Z' ? ', a customer' : w ? ', ' + esc(w) : ''}`;
+    const inner = w === 'Z' ? `<span class="sguest">${SEAT_GUEST}</span>` : w ? `<b>${esc(w)}</b>` : '';
     return `<button class="${cls}" style="${st}" data-act="move" ${mv(i)} aria-label="${label}"${w || o.locked ? ' disabled' : ''}>${inner}</button>`;
   };
   const tables = Array.from({ length: nT }, (_, t) => {
     const l = who[2 * t], r = who[2 * t + 1], own = l && l === r && l !== 'Z' ? l : '';
     const fresh = s && s.table === t;
-    return `<div class="stbl${own ? ' own ' + own : ''}${fresh ? ' got' : ''}"${fresh ? ` style="--t:${tAt}ms"` : ''}>${seat(2 * t)}<span class="stop">${own ? `<b>${own}</b>` : t + 1}</span>${seat(2 * t + 1)}</div>`;
+    return `<div class="stbl${own ? ' own ' + own : ''}${fresh ? ' got' : ''}"${fresh ? ` style="--t:${tAt}ms"` : ''}>${seat(2 * t)}<span class="stop">${own ? `<b>${esc(own)}</b>` : t + 1}</span>${seat(2 * t + 1)}</div>`;
   }).join('');
   const full = !who.includes(null);
   const door = c => `<i class="sgdot" style="background:${SEAT_COL[c]}"></i><b>${SEAT_NAMES[c]}</b>`;

@@ -1,6 +1,7 @@
 // Playing cards on screen (Blackjack, Ride the Bus).
 import { cardName } from '../games/shared/cards.js';
 import { cardRed } from '../games/bus/rules.js';
+import { esc } from './app.js';
 
 /* ----- the card games and the wheel: Blackjack, Ride the Bus, Roulette ----- */
 // Playing cards: each suit drawn as a shape (the same on every phone), the rank big in the corner so it
@@ -20,7 +21,7 @@ export function pcard(c, o = {}) {
   const down = o.down || !c;
   const cls = `plc${down ? ' down' : ''}${c && cardRed(c) ? ' red' : ''}${o.slide != null ? ' slide' : ''}${o.flip != null ? ' flip' : ''}${o.cls ? ' ' + o.cls : ''}`;
   const style = [o.slide != null ? `--d:${o.slide}ms` : '', o.flip != null ? `--f:${o.flip}ms` : '', o.style || ''].filter(Boolean).join(';');
-  const face = c ? `<span class="pcf fc"><b class="rk">${rankText(c)}</b>${suitSvg(c[1], 'sm')}${suitSvg(c[1], 'lg')}</span>` : '';
-  return `<span class="${cls}"${style ? ` style="${style}"` : ''} role="img" aria-label="${down ? 'Face-down card' : cardName(c)}"><span class="pcin">${face}<span class="pcf rev"></span></span></span>`;
+  const face = c ? `<span class="pcf fc"><b class="rk">${esc(rankText(c))}</b>${suitSvg(c[1], 'sm')}${suitSvg(c[1], 'lg')}</span>` : '';
+  return `<span class="${cls}"${style ? ` style="${style}"` : ''} role="img" aria-label="${down ? 'Face-down card' : esc(cardName(c))}"><span class="pcin">${face}<span class="pcf rev"></span></span></span>`;
 }
-export const cardShort = c => `<span class="cshort${cardRed(c) ? ' red' : ''}">${rankText(c)}${suitSvg(c[1], 'inl')}</span>`;
+export const cardShort = c => `<span class="cshort${cardRed(c) ? ' red' : ''}">${esc(rankText(c))}${suitSvg(c[1], 'inl')}</span>`;

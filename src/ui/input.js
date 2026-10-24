@@ -67,11 +67,8 @@ async function leaveAndJoin(code) {
   joinAsk = null;
   clearTimeout(cpuTimer); setCpuTimer(null); setCpuPlan(null);
   if (isMM()) await resignMM();
-  else if (state.online) {
-    const t0 = Date.now();
-    while (state.online && !room && Date.now() - t0 < 6000) await new Promise(r => setTimeout(r, 150));   // the room, to leave it properly
-    if (state.online) leaveRoom(false);
-  } else if (leaveLoses() && resignLocal(state, state.setup.human === 'O' ? 'O' : 'X')) { trackEnd(); reportLocal(); }
+  else if (state.online) leaveLobby();
+  else if (leaveLoses() && resignLocal(state, state.setup.human === 'O' ? 'O' : 'X')) { trackEnd(); reportLocal(); }
   setMenuNote('');
   setJoinCode(code); state.online = null; state.setup.mode = 'two'; state.screen = 'join'; setNet('idle', '');
   commit();

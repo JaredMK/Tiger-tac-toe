@@ -1,5 +1,6 @@
 // Shared art: the X and O characters, icons, dice faces, ticks and crosses.
 import { GAMES } from '../games/index.js';
+import { esc } from './app.js';
 
 // A little cartoon computer, shown next to computer players.
 export const CPU_ICON = '<svg class="cpui" viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="2.5" width="19" height="13.5" rx="3" fill="#58a8cf" stroke="#161210" stroke-width="2"/><ellipse cx="9" cy="8.6" rx="1.5" ry="2" fill="#161210"/><ellipse cx="15" cy="8.6" rx="1.5" ry="2" fill="#161210"/><path d="M9 12q3 2.2 6 0" fill="none" stroke="#161210" stroke-width="1.7" stroke-linecap="round"/><path d="M9.6 16.4v3.4h4.8v-3.4M6.5 20.6h11" fill="none" stroke="#161210" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
@@ -13,8 +14,8 @@ export function toonG(p) {
   if (p === 'X') return `<path class="ol" d="M22 20 L78 80 M78 20 L22 80"/><path class="fl" d="M22 20 L78 80 M78 20 L22 80"/>${face(44, 8)}<path class="mouth" d="M42 60 Q50 67 58 60"/>`;
   return `<circle class="ol" cx="50" cy="50" r="32"/><circle class="fl" cx="50" cy="50" r="32"/>${face(46, 7)}<path class="mouth" d="M43 59 Q50 65 57 59"/>`;
 }
-export const toon = p => `<svg class="pc p${p}" viewBox="0 0 100 100" aria-hidden="true">${toonG(p)}</svg>`;
-export const toonT = p => `${toon(p)}<b class="sr">${p}</b>`;                 // the character, with its letter for screen readers
+export const toon = p => `<svg class="pc p${esc(p)}" viewBox="0 0 100 100" aria-hidden="true">${toonG(p)}</svg>`;
+export const toonT = p => `${toon(p)}<b class="sr">${esc(p)}</b>`;                 // the character, with its letter for screen readers
 export const CHEV = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m14.5 6-6 6 6 6"/></svg>';
 export function dieFace(n) {
   const P = { 1: [[12, 12]], 2: [[6.5, 6.5], [17.5, 17.5]], 3: [[6.5, 6.5], [12, 12], [17.5, 17.5]], 4: [[6.5, 6.5], [17.5, 6.5], [6.5, 17.5], [17.5, 17.5]],

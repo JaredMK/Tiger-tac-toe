@@ -1,5 +1,5 @@
 // Snakes and Ladders: the screen, the miniature, the move's words and sounds, and the inputs.
-import { N, mv } from '../../ui/app.js';
+import { N, esc, mv } from '../../ui/app.js';
 import { dieFace } from '../../ui/art.js';
 import { SNL_SPEC, bezierAt, snakeCurve, trackSvg } from '../../ui/track.js';
 export { trackSounds as sounds } from '../../ui/track.js';
@@ -33,7 +33,7 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
   const joint = a && a.scr && a.scr.moves ? a.scr.moves : null, own = joint ? joint[a.by] || joint.X : null;
   const L = own || mini.last, ok = !!L;
   const tailOf = l => (l.via === 'ladder' ? ` · up the ladder to ${l.to}` : l.via === 'snake' ? ` · down the snake to ${l.to}` : ` · space ${l.to}`);
-  const lab = joint ? ['X', 'O'].filter(p => joint[p]).map(p => `<b class="${p}">${N(p)}</b> rolled ${joint[p].roll}${joint[p].via ? ` (${joint[p].via})` : ''}`).join(' · ')
+  const lab = joint ? ['X', 'O'].filter(p => joint[p]).map(p => `<b class="${p}">${N(p)}</b> rolled ${joint[p].roll}${joint[p].via ? ` (${esc(joint[p].via)})` : ''}`).join(' · ')
     : ok ? `<b class="${L.by}">${N(L.by)}</b> rolled ${L.roll}${tailOf(L)}` : 'No rolls yet';
   g = `<div class="g-snakes">${trackSvg(SNL_SPEC, { tokens: { X: mini.pos.X - 1, O: mini.pos.O - 1 }, moved: joint ? ['X', 'O'] : a ? a.by : null, finish: 'none', goal: true, cls: 'snl', overlay: snlArt(SNL_SPEC, mini) })}
         <div class="dieWrap"><div class="die${a ? ' roll' : ''}">${ok ? dieFace(L.roll) : '<span class="q">?</span>'}</div>

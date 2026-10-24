@@ -44,13 +44,27 @@ export function matchRecord(full) {
   state.squares.forEach((sq, k) => { if (!sq.owner || PHYS_TYPES.includes(sq.mini.type)) hideMini(sq.mini, k, full); });
   return { state, secrets };
 }
-// A room's match as the database holds it: { state, secrets } as JSON strings (seats ride beside them).
+// A match as the database holds it: { state, secrets } as JSON strings. Only the match's own fields are taken
+// (MATCH_FIELDS: anything else in the blob is dropped, never applied to the page), and each is held to its shape:
+// a record that does not hold together is no match at all (a tampered or corrupt blob is ignored).
+const SIDE = v => v === 'X' || v === 'O';
+const FIELD_OK = {
+  id: v => typeof v === 'string' && v.length <= 60, seq: Number.isInteger, recent: Array.isArray, games: Array.isArray, squares: Array.isArray,
+  turn: SIDE, lock: v => v === null || (Number.isInteger(v) && v >= 0 && v < 9), moves: Number.isInteger,
+  winner: v => v === null || SIDE(v) || v === 'draw', winLine: v => v === null || (Array.isArray(v) && v.every(Number.isInteger)),
+  winReason: v => v === null || typeof v === 'string', resigned: v => v === null || SIDE(v), counts: v => v === null || (v && typeof v === 'object'),
+  lastSquare: v => v === null || Number.isInteger(v), lastBy: v => v === null || SIDE(v), pick: v => v === null || Number.isInteger(v), pickSq: v => v === null || Number.isInteger(v),
+  timer: v => v === null || (v && typeof v === 'object'), sqlog: Array.isArray, sc: v => v === null || (v && typeof v === 'object'),
+};
 export function parseMatch(v) {
   if (!v || typeof v.state !== 'string') return null;
   try {
-    const st = JSON.parse(v.state);
-    if (!st || !Array.isArray(st.squares) || st.squares.length !== 9 || !st.squares.every(q => q && q.mini && typeof q.mini.type === 'string')) return null;   // not a match: ignored (a refused write shows locally for a moment)
-    return { state: st, secrets: v.secrets ? JSON.parse(v.secrets) : {} };
+    const raw = JSON.parse(v.state);
+    if (!raw || typeof raw !== 'object' || !Array.isArray(raw.squares) || raw.squares.length !== 9 || !raw.squares.every(q => q && typeof q === 'object' && q.mini && typeof q.mini === 'object' && typeof q.mini.type === 'string' && (q.owner == null || SIDE(q.owner)))) return null;   // not a match: ignored (a refused write shows locally for a moment)
+    const st = {};
+    for (const k of MATCH_FIELDS) { if (raw[k] === undefined) continue; if (!FIELD_OK[k](raw[k])) return null; st[k] = raw[k]; }
+    const secrets = v.secrets ? JSON.parse(v.secrets) : {};
+    return { state: st, secrets: secrets && typeof secrets === 'object' && !Array.isArray(secrets) ? secrets : {} };
   } catch (e) { return null; }
 }
 export function packMatch(rec) { return { state: JSON.stringify(rec.state), secrets: JSON.stringify(rec.secrets || {}) }; }

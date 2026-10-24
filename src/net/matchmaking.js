@@ -6,7 +6,7 @@ import { listenReacts } from './reactions.js';
 import {
   applyMatch, awayNote, leaveRoom, moveTimer, moveWait, net, pendingRoom, presUnsub, presence, presenceUp,
   presenting, presentingSeq, room, roomUnsub, setAwayNote, setMoveWait, setNet, setPendingRoom, setPresUnsub,
-  setPresence, setPresentingSeq, setRoom, setRoomUnsub, setTimeoutBusy, stopListening, timeoutBusy
+  setPresence, setPresentingSeq, setRoom, setRoomUnsub, setTimeoutBusy, stopListening, stopLobby, tellLeft, timeoutBusy
 } from './room.js';
 import {
   app, commit, flashTimer, holdTimer, menuNote, menuOpen, menuStep, setFlashTimer, setHoldTimer, setMenuNote,
@@ -89,7 +89,7 @@ export function enterGame(id, side) {
   if (search.on || search.found) SND.play('found');
   stopSearch();
   if (isMM() && state.online.game === id) return;
-  if (state.online) stopListening();
+  if (state.online) { stopListening(); stopLobby(); }
   clearTimeout(spotTimer); setSpotTimer(null); clearTimeout(flashTimer); setFlashTimer(null); clearTimeout(holdTimer); setHoldTimer(null);
   clearTimeout(moveTimer); setMoveWait(null); setPresentingSeq(null); setAwayNote('');
   state.stats = null;                         // an online match: never recorded as a local one
@@ -170,12 +170,13 @@ export async function fireTimeoutMM(seq, deadline) {
 }
 // Leaving a matchmaking game through the menu: a resignation, which loses the match.
 export async function resignMM() {
-  const id = state.online.game, over = !!state.winner;
+  const id = state.online.game, over = !!state.winner, friend = !!state.online.room;
   setMenuOpen(false); setMenuStep('main');
   if (over) { leaveRoom(true); return; }
   setMoveWait(Date.now()); render();
   try {
     await call('resign', { game: id });                          // the record comes back with the loss: its summary shows first (the win screen), then the main menu
+    if (friend) await tellLeft().catch(() => {});                // (a friend room: marked left, so the other phone offers no rematch)
     setMoveWait(null); render();
   } catch (e) {                                                   // not reached: the clock runs out for this side; the main menu now
     setMoveWait(null);

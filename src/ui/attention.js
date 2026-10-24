@@ -70,7 +70,7 @@ export function attTable(mini, a, o) {
   const c = { o, f, shown, pre, started, playing, answering, live, round, len, startPerf: started ? performance.now() - since : null };
   const v = type === 'headcount' ? headView(c) : type === 'flash' ? flashView(c) : snapView(c);
   const who = shown ? shown.by || (f && a.by) : turn, W = p => `<b class="${p}">${N(p)}</b>`;
-  const truth = shown ? v.say(shown.truth) : '';
+  const truth = shown ? esc(v.say(shown.truth)) : '';
   const result = shown ? (shown.correct ? `${pre || o.view || o.done ? W(who) + ' got it right' : 'Right!'}${type === 'headcount' ? ': ' + truth : ''}`
     : `${pre || o.view || o.done ? W(who) + (shown.answer == null ? ' ran out of time' : ' got it wrong') : shown.answer == null ? 'Out of time' : 'Not quite'} · it was ${truth}`) : '';
   // the words: one box, two lines tall, whatever it says (so nothing below it moves); a view may give them as HTML (Headcount: the creature's picture by its name)

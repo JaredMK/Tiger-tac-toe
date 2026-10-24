@@ -14,6 +14,7 @@
       databaseURL: 'https://tic-tac-chaos-default-rtdb.firebaseio.com',
       projectId: 'tic-tac-chaos',
       appId: '1:475136918613:web:3e63ed7ceaf1e253ed40dc',
+      appCheckKey: '',                              // reCAPTCHA Enterprise site key (Firebase console: App Check); empty: App Check off
     },
     staging: {                                      // the staging project's web app (Firebase console: Project settings, Your apps)
       apiKey: 'AIzaSyDVTEmY_gI1Rv-K1Kg7gG41OtHj_sEOsQ0',
@@ -21,6 +22,7 @@
       databaseURL: 'https://tic-tac-chaos-staging-default-rtdb.firebaseio.com',
       projectId: 'tic-tac-chaos-staging',
       appId: '1:695949456928:web:0b6516fa9ed7ca92572e45',
+      appCheckKey: '',
     },
   };
   var PRODUCTION_HOSTS = ['tictacchaos.com', 'www.tictacchaos.com', 'tic-tac-chaos.web.app', 'tic-tac-chaos.firebaseapp.com'];
@@ -30,7 +32,8 @@
     var name = PRODUCTION_HOSTS.indexOf(host) >= 0 ? 'production' : 'staging', config = {}, k;
     for (k in CONFIGS[name]) config[k] = CONFIGS[name][k];
     if (OWN_AUTH_DOMAIN.indexOf(host) >= 0) config.authDomain = host;
-    return { name: name, staging: name === 'staging', config: config };
+    var appCheckKey = config.appCheckKey || ''; delete config.appCheckKey;   // (App Check's key rides beside the web config, not in it)
+    return { name: name, staging: name === 'staging', config: config, appCheckKey: appCheckKey };
   }
   if (typeof module !== 'undefined' && module.exports) { module.exports = { pick: pick, CONFIGS: CONFIGS, PRODUCTION_HOSTS: PRODUCTION_HOSTS }; return; }   // (the tests)
   var env = pick(location.hostname);

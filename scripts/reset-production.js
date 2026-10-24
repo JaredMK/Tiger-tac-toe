@@ -19,8 +19,8 @@ const crypto = require('node:crypto');
 const START_RATING = 1200;                                              // (functions/serverRules.js START_RATING)
 const DELETE = ['rooms', 'games', 'gpresence', 'presence', 'reacts', 'active', 'queue', 'botGames', 'history', 'localHistory',
   'matchLogs', 'matchLogIndex', 'matchLogRoom', 'stats', 'statsSeen', 'localStats', 'oppStats', 'leaderboard', 'botStats',
-  'alertLog', 'alertStats', 'devices', 'devlog', 'lastSeen', 'reports'];
-const KEEP = ['users', 'usernames', 'admin', 'config', 'releases', 'features', 'bots', 'meta', 'review'];
+  'alertLog', 'alertStats', 'alertState', 'botsLock', 'devices', 'devlog', 'lastSeen', 'reports', 'rate'];
+const KEEP = ['users', 'usernames', 'admin', 'config', 'releases', 'features', 'bots', 'meta', 'review', 'rate'];
 const RECORD = { wins: 0, losses: 0, draws: 0, games: 0, rating: START_RATING, friend: null, minis: null };
 const PROFILE = ['username', 'joined', ...Object.keys(RECORD)];        // the fields an account is known to have
 
@@ -56,8 +56,10 @@ async function main() {
   admin.initializeApp({ projectId: PROJECT, databaseURL: `https://${PROJECT}-default-rtdb.firebaseio.com` });
   const db = admin.database();
 
-  // 1. The backup.
+  // 1. The backup. The alert keys (admin/secrets: Twilio, Resend) stay out of it: a backup is not a place for
+  // credentials, and a restore must never roll them back (they live in Secret Manager from now on anyway).
   const data = (await db.ref('/').get()).val() || {};
+  if (data.admin && data.admin.secrets) { delete data.admin.secrets; console.log('admin/secrets left out of the backup.'); }
   const json = JSON.stringify(data), gz = zlib.gzipSync(json, { level: 9 });
   const hash = crypto.createHash('sha256').update(json).digest('hex');
   const storage = new Storage({ projectId: PROJECT }), bucketName = `${PROJECT}-backups`, bucket = storage.bucket(bucketName);

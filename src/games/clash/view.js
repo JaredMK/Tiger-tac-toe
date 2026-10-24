@@ -1,6 +1,6 @@
 // Standoff Grid: the screen, the miniature, the move's words and sounds, and the inputs.
 import { CLASH, clashNeed, clashSize } from './rules.js';
-import { mv, state } from '../../ui/app.js';
+import { esc, mv, state } from '../../ui/app.js';
 import { arcTally, lateAt } from '../../ui/progress.js';
 
 // The 5x5 grid: a tap on an empty cell claims it (it pops in, in the mover's colour). Four in a row lights
@@ -15,11 +15,11 @@ function clashTable(mini, a, o) {
   const cl = a && a.clash ? a.clash : null, scr = a && a.scr ? a.scr : null, lines = scr && scr.lines ? scr.lines : null;
   const line = cl && cl.line ? cl.line : lines ? [].concat(...lines) : !a && mini.winCells ? mini.winCells : null;   // (the round's end: the lines it found light up)
   const cells = mini.cells.map((c, i) => {
-    let cls = 'clc' + (c ? ' ' + c : ''), st = '', inner = c === 'B' ? '<s aria-hidden="true"></s>' : c ? `<b>${c}</b>` : '';
+    let cls = 'clc' + (c ? ' ' + c : ''), st = '', inner = c === 'B' ? '<s aria-hidden="true"></s>' : c ? `<b>${esc(c)}</b>` : '';
     if ((cl && i === cl.c) || (scr && scr.both && (i === scr.both.X || i === scr.both.O))) cls += ' pop';
     if (line && line.includes(i)) { cls += ' win'; if (cl || lines) st = ` style="--t:${(lines && !scr.both ? 0 : CLASH.place) + (line.indexOf(i) % k) * 80}ms"`; }
     if (scr && scr.blocked != null && i === scr.blocked) { cls = 'clc clash'; inner = `<i class="cx">X</i><i class="co">O</i><s ${lateAt('', CLASH.clash * 0.55)} aria-hidden="true"></s>`; st = ` style="--t:${Math.round(CLASH.clash * 0.55)}ms"`; }
-    return `<button class="${cls}"${st} data-act="move" ${mv(i)} aria-label="Square ${i + 1}${c === 'B' ? ', blocked' : c ? ', ' + c : ''}"${c || o.locked || o.view || a ? ' disabled' : ''}>${inner}</button>`;
+    return `<button class="${cls}"${st} data-act="move" ${mv(i)} aria-label="Square ${i + 1}${c === 'B' ? ', blocked' : c ? ', ' + esc(c) : ''}"${c || o.locked || o.view || a ? ' disabled' : ''}>${inner}</button>`;
   }).join('');
   const res = lines ? `<p ${lateAt('arcres hot', scr.both ? CLASH.place : null)} role="status">${scr.who.length > 1 ? `Both made ${four.toLowerCase()}!` : `${four} in a row!`}</p>`
     : scr && scr.blocked != null ? `<p ${lateAt('arcres cold', CLASH.clash * 0.55)} role="status">Same square: blocked!</p>`

@@ -5,7 +5,7 @@ import { SND } from '../../audio/sound.js';
 import { FIREBASE_CONFIG, configured } from '../../net/connect.js';
 import { attemptMove } from '../../net/moves.js';
 import { blocked } from '../../net/room.js';
-import { N, REDUCED, cpuPlays, mv, state, zoomedType } from '../../ui/app.js';
+import { N, REDUCED, cpuPlays, esc, mv, state, zoomedType } from '../../ui/app.js';
 import { CROSS } from '../../ui/art.js';
 import { KEY } from '../../ui/config.js';
 import { fxAttr } from '../../ui/fx.js';
@@ -66,7 +66,7 @@ function oddTable(mini, a, o) {
     if (shown) { if (k === shown.pos) cls += ' odd'; else if (k === shown.picked) { cls += ' wrong'; mark = `<i class="ox">${CROSS}</i>`; } }
     if (pre && k === shown.picked) cls += ' picked';
     const cover = !shown && !open ? '<i class="ocv"></i>' : pre ? `<i class="ocv tu" style="--u:${ODD.show}ms"></i>` : '';
-    return `<button class="${cls}" style="background:${c}${shown ? `;--t:${pre + 250}ms;--p:${pre}ms` : ''}" data-act="move" ${mv(k)} aria-label="Tile ${k + 1}"${open && !o.locked ? '' : ' disabled'}>${cover}${mark}</button>`;
+    return `<button class="${cls}" style="background:${esc(c)}${shown ? `;--t:${pre + 250}ms;--p:${pre}ms` : ''}" data-act="move" ${mv(k)} aria-label="Tile ${k + 1}"${open && !o.locked ? '' : ' disabled'}>${cover}${mark}</button>`;
   }).join('');
   const who = d ? a.by : shown ? l.by : turn, W = p => `<b class="${p}">${N(p)}</b>`;
   const startPerf = open ? performance.now() - (Date.now() - oddDraft.at) : null;

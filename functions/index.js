@@ -14,6 +14,9 @@
  * for games nobody is watching.
  *
  * Database layout (see database.rules.json):
+ *   rooms/{code}           a friend room's lobby: host, players (the two seats), setup, status, game (the match the
+ *                          server runs for it, in games/), rematch flags, left. Opened, joined and started through the
+ *                          server (openRoom, joinRoom, startRoom); readable by its two players only
  *   users/{uid}            profile: username, joined; the Find Match record (wins, losses, draws, games), the
  *                          friend-code record (friend: { wins, losses, draws, games }), squares won and lost
  *                          per mini-game in all online games (minis: { type: { won, lost } }); rating (unused
@@ -32,6 +35,8 @@
  *   stats/...              anonymous game stats (see statsRules.js): readable by the admin only
  *   statsSeen/match/{id}   a match the stats have counted (its start time, whether start and end were counted)
  *   statsSeen/{d|w|m|a}/{period}/{hash}  a player counted as active in that day, week, month or ever (never readable)
+ *   rate/{minute}/{hash}   a caller's writes of one kind that minute (rateOk; never readable, pruned by the sweep)
+ *   devicesDay/{YYYY-MM-DD}  new devices seen that day (devlog: at most DEVICES_PER_DAY)
  *   localStats/{uid}       a logged-in player's local record and squares per mini-game (recordLocal; that player only)
  *   localHistory/{uid}/l_{id}  one local match, from player 1's side (that player only)
  *   review/flaggedNames    existing usernames the word list would refuse (scripts/check-usernames.js; admin only)
@@ -41,6 +46,7 @@
  * they are run or saved. The admin is the account with the `admin` custom claim (scripts/make-admin.js).
  */
 const { onCall: callable, onRequest, HttpsError } = require('firebase-functions/v2/https');
+const { defineSecret } = require('firebase-functions/params');
 // Staging (functions/.env.staging, deployed with --project staging): every server call comes only from a tester on the
 // allowlist (the `staging` flag stagingAccess puts on the account) or the admin. Production is never gated.
 const STAGING = process.env.TTC_ENV === 'staging';
@@ -78,7 +84,29 @@ const MATCH_GRACE_MS = 6000;     // the first turn's clock starts late: both pho
 const OLD_QUEUES = ['ranked', 'casual30', 'casual60', 'casual180'];   // before Find Match was one queue: left on cancel
 const CLASSIC_OK = () => process.env.FUNCTIONS_EMULATOR === 'true';   // the Classic queue: only the tests may ask for it (the admin, were it wanted again)
 const GAME_KEEP_MS = 24 * 3600 * 1000;   // finished games are deleted after a day (their history stays)
-const CALL = { cors: true };
+// App Check (reCAPTCHA Enterprise on the page: src/net/connect.js): every call carries a token from a real copy of the
+// site, and with TTC_APPCHECK=enforce in the project's .env file the server refuses calls without one. Off until the
+// keys exist (README: App Check); the database's own enforcement is a console switch.
+const APP_CHECK = process.env.TTC_APPCHECK === 'enforce';
+const CALL = { cors: true, enforceAppCheck: APP_CHECK };
+// The alert keys (Twilio, Resend) from Secret Manager (firebase functions:secrets:set TWILIO_SID ...), bound to the
+// functions that send alerts once TTC_SECRETS=on in the project's .env file (the deploy's service account needs the
+// Secret Manager Admin role for the binding; README: Deploying). admin/secrets on the database is read where a
+// secret is not set (or not bound) yet.
+const ALERT_SECRETS = [defineSecret('TWILIO_SID'), defineSecret('TWILIO_TOKEN'), defineSecret('TWILIO_FROM'), defineSecret('RESEND_KEY'), defineSecret('EMAIL_FROM')];
+const BOUND_SECRETS = process.env.TTC_SECRETS === 'on' ? ALERT_SECRETS : [];
+const secretValue = p => { try { const v = BOUND_SECRETS.length ? p.value() : ''; return v && v !== 'unset' ? String(v) : ''; } catch (e) { return ''; } };   // ('unset': the deploy's placeholder until the real key is set)
+// Writes from a phone are bounded: at most `max` of one kind (what) by one caller (who) a minute (rate/{minute}/{hash};
+// the sweep deletes minutes gone by). False means over the limit.
+async function rateOk(what, who, max) {
+  const minute = Math.floor(now() / 60000), h = S.hashId(what + ':' + who);
+  const r = await db.ref(`rate/${minute}/${h}`).transaction(cur => ((cur || 0) >= max ? undefined : (cur || 0) + 1), undefined, false);
+  return r.committed;
+}
+async function pruneRate(t, up) {
+  const old = (await db.ref('rate').orderByKey().endAt(String(Math.floor(t / 60000) - 3)).limitToFirst(20).get()).val() || {};
+  for (const k of Object.keys(old)) up[`rate/${k}`] = null;
+}
 /* ===================== match logs (for debugging: matchLogRules.js) ===================== */
 // Events added to a match's log, and its summary in the index (capped: a full log takes no more).
 // Without meta (the server's own events in a match it logged from the start): one write, no read.
@@ -88,6 +116,8 @@ async function mlog(key, events, meta) {
   const t = now(), up = {};
   for (const e of events) up[`matchLogs/${key}/${db.ref().push().key}`] = e;
   if (!meta) {
+    const n = (await db.ref(`matchLogIndex/${key}/n`).get()).val() || 0;   // the cap holds here too: a match's log never grows past it
+    if (n + events.length > ML.LOG_CAP) return;
     up[`matchLogIndex/${key}/last`] = t; up[`matchLogIndex/${key}/n`] = ServerValue.increment(events.length);
     await db.ref().update(up);
     return;
@@ -188,8 +218,12 @@ exports.stagingAllowChanged = onValueWritten({ ref: '/admin/staging/allow/{key}'
   catch (e) { if (e.code !== 'auth/user-not-found') logger.error('staging allowlist', e); }
 });
 
+// A caller's own id for the limits: the account, or the signed-in guest (a phone signs in, anonymously at least, before
+// it reports anything: no login, no write).
+const TRACK_PER_MIN = 30, DEVLOG_PER_MIN = 60, DEVICES_PER_DAY = 500;
 exports.track = onCall(CALL, async req => {
-  const d = req.data || {}, t = now();
+  const uid = needUid(req), d = req.data || {}, t = now();
+  if (!(await rateOk('track', uid, TRACK_PER_MIN))) throw new HttpsError('resource-exhausted', 'Too many reports.');
   const who = !isAnon(req) ? 'u:' + req.auth.uid : S.idOk(d.dev) ? 'd:' + d.dev : null;
   if (d.ev === 'login') {
     if (isAnon(req)) return { ok: false };
@@ -220,11 +254,16 @@ exports.track = onCall(CALL, async req => {
 // event also moves their account's last activity on (lastSeen), which stays apart from the device.
 const DEV_CAP = 20000;                                         // events kept per device: enough for any playtest
 exports.devlog = onCall(CALL, async req => {
-  const t = now(), c = S.checkDev(req.data, t);
+  const uid = needUid(req), t = now(), c = S.checkDev(req.data, t);
   if (!c) throw new HttpsError('invalid-argument', 'Not an event.');
+  if (!(await rateOk('devlog', uid, DEVLOG_PER_MIN))) throw new HttpsError('resource-exhausted', 'Too many events.');
   if (c.ev.ev === 'mlog') { await clientLog(c, t); return { ok: true }; }   // (for the match's log only, not the device's)
-  const seen = (await db.ref(`devices/${c.h}/n`).get()).val() || 0;
+  const seen = (await db.ref(`devices/${c.h}/n`).get()).val();
   if (seen >= DEV_CAP) return { ok: false };
+  if (seen == null) {                                             // a device never seen: so many new ones a day, no more (a loop making up ids stops here)
+    const day = await db.ref(`devicesDay/${S.periodKeys(t).d}`).transaction(cur => ((cur || 0) >= DEVICES_PER_DAY ? undefined : (cur || 0) + 1), undefined, false);
+    if (!day.committed) return { ok: false };
+  }
   const tx = await db.ref(`devlog/${c.h}/${c.k}`).transaction(cur => (cur ? undefined : c.ev), undefined, false);
   if (!tx.committed) return { ok: true, seen: true };          // sent before (a retry or a reload)
   await clientLog(c, t);
@@ -265,7 +304,7 @@ exports.claimUsername = onCall(CALL, async req => {
 // Searching alone (no other live searcher): after a few seconds the admin is alerted (when alerts are on),
 // and once the player's own randomized wait is over (40 to 70 seconds by default), a free bot is paired
 // with them (when bots are on). Anyone else searching meanwhile is paired with them as usual first.
-exports.findMatch = onCall(CALL, async req => {
+exports.findMatch = onCall(Object.assign({ secrets: BOUND_SECRETS }, CALL), async req => {
   const uid = needAccount(req);
   const isAdmin = !!(req.auth.token && req.auth.token.admin === true);
   const key = R.queueKey(req.data && req.data.mode, isAdmin || CLASSIC_OK());   // Super Chaos (the Classic queue is for the tests)
@@ -424,35 +463,45 @@ async function createBotGame(key, uid, id, bot) {
   return makeGame(key, id, e.side === 'X' ? human : me, e.side === 'X' ? me : human, { bot });
 }
 // The game itself, made exactly once; then the players are pointed at it.
+// A friend room's match (opts.friend: { code, setup, admin }: the room, its lobby's setup, whether its host is the
+// admin) is the same game with mode 'friend': the room's games (the released ones, or any for the admin's room),
+// its time per turn and its Super Chaos switch; no queue, no `active` entry (Find Match stays free), the records
+// credited as friend games (finishGame).
 async function makeGame(key, id, X, O, opts) {
-  const bot = opts && opts.bot;
-  const Q = R.QUEUES[key], t = now();
+  const bot = opts && opts.bot, friend = opts && opts.friend;
+  const Q = friend ? { mode: 'friend', chaos: !!friend.setup.chaos, timer: E.normTimer(Number(friend.setup.timer) || 0) } : R.QUEUES[key], t = now();
   const rng = seedRng();
   await runConfigNow();
   const rel = await releasesNow();
   const seat = p => Object.assign({ uid: p.uid, name: p.e.name, record: p.e.rec || { wins: 0, losses: 0, draws: 0 } }, R.RATINGS_ENABLED ? { rating: p.e.rating } : {});   // the record for the players' intro
   const players = { X: seat(X), O: seat(O) };
+  const on = g => !friend || !friend.setup.games || friend.setup.games[g] !== false;   // (a room: the games its host left on)
+  const allowed = friend ? E.allowedTypes(rel, !!friend.admin) : null;
   let rec, node;
-  if (Q.chaos) {                                                  // Super Chaos, run here (core/scgame.js): the released Super Chaos games (every one when both players are admins)
-    const admins = !bot && (await isAdminUser(X.uid)) && (await isAdminUser(O.uid));
-    const types = E.scTypes().filter(g => admins || E.releasedTypes(rel).includes(g));
+  if (Q.chaos) {                                                  // Super Chaos, run here (core/scgame.js): the released Super Chaos games (every one when both players are admins, or in the admin's room)
+    if (friend && !(friend.admin || rel.superchaos === true)) return false;   // (Super Chaos not open to this room's host)
+    const admins = !bot && !friend && (await isAdminUser(X.uid)) && (await isAdminUser(O.uid));
+    const types = E.scTypes().filter(g => (admins || (friend ? allowed : E.releasedTypes(rel)).includes(g)) && on(g));
     if (!types.length) { logger.error('chaos game', id, 'no Super Chaos game released'); return false; }
     const g = E.newScGame({ names: { X: X.e.name, O: O.e.name }, games: Object.fromEntries(E.scTypes().map(x => [x, types.includes(x)])) }, rng, id, t, MATCH_GRACE_MS);
     if (!g) return false;
     rec = { state: g.full };
-    const pub = { mode: Q.mode, queue: key, chaos: true, timer: 0, players, status: 'playing', created: t, updated: t };
+    const pub = Object.assign({ mode: Q.mode, queue: key, chaos: true, timer: 0, players, status: 'playing', created: t, updated: t }, friend ? { room: friend.code } : {});
     node = { pub, sec: {}, sides: {} };
     scPack(node, g, t);
   } else {
-    rec = E.newOnlineMatch({ names: { X: X.e.name, O: O.e.name }, games: Object.fromEntries(E.releasedTypes(rel).map(g => [g, true])), timer: Q.timer }, rng, id);   // released games only, whoever is playing
+    const types = friend ? E.TYPES.filter(g => allowed.includes(g) && on(g)) : E.releasedTypes(rel);
+    if (friend && !types.length) return false;
+    rec = E.newOnlineMatch({ names: { X: X.e.name, O: O.e.name }, games: Object.fromEntries(E.TYPES.map(g => [g, types.includes(g)])), timer: Q.timer }, rng, id);   // released games only, whoever is playing
+    if (!rec) return false;
     E.armClock(rec.state, [], t + MATCH_GRACE_MS);
-    const pub = { mode: Q.mode, queue: key, timer: Q.timer, players, status: 'playing', created: t, updated: t, state: JSON.stringify(rec.state) };
+    const pub = Object.assign({ mode: Q.mode, queue: key, timer: Q.timer, players, status: 'playing', created: t, updated: t, state: JSON.stringify(rec.state) }, friend ? { room: friend.code } : {});
     node = { pub, sec: JSON.stringify(rec.secrets), dl: E.clockDeadline(rec.state.timer) };
   }
   const made = await db.ref(`games/${id}`).transaction(cur => (cur ? undefined : node), undefined, false);
   if (made.committed) {
     let bgNew = null;
-    const up = {
+    const up = friend ? {} : {
       [`active/${X.uid}`]: { game: id, side: 'X', queue: key, mode: Q.mode },
       [`active/${O.uid}`]: { game: id, side: 'O', queue: key, mode: Q.mode },
       [`queue/${key}/${X.uid}`]: null, [`queue/${key}/${O.uid}`]: null,
@@ -464,11 +513,12 @@ async function makeGame(key, id, X, O, opts) {
       up[`gpresence/${id}/${side}`] = { online: true, away: false, at: t };
       up['botStats/started'] = ServerValue.increment(1);
     }
-    await db.ref().update(up);
-    await mlogSafe(ML.mmKey(id), [{ t, k: 'start', mode: bot ? 'bot' : 'match', queue: key, timer: Q.timer, games: rec.state.squares.map(q => q.mini.type).join(' '), bot: bot ? bot.key : undefined, src: 'srv' }],
-      { srv: true, mode: bot ? 'bot' : 'match', players: { X: { name: X.e.name, uid: X.uid }, O: { name: O.e.name, uid: O.uid } } });
+    if (Object.keys(up).length) await db.ref().update(up);
+    const lmode = bot ? 'bot' : friend ? (Q.chaos ? 'friend-sc' : 'friend') : 'match';
+    await mlogSafe(ML.mmKey(id), [{ t, k: 'start', mode: lmode, queue: friend ? undefined : key, timer: Q.timer, games: rec.state.squares.map(q => q.mini.type).join(' '), bot: bot ? bot.key : undefined, src: 'srv' }],
+      Object.assign({ srv: true, mode: lmode, players: { X: { name: X.e.name, uid: X.uid }, O: { name: O.e.name, uid: O.uid } } }, friend ? { room: friend.code } : {}));
     await db.ref().update(statsUp(S.startUpdates(bot ? 'bot' : Q.mode, t))).catch(e => logger.error('stats', e));
-    await markActive([X, O].filter(p => !bot || p.uid !== bot.uid).map(p => 'u:' + p.uid), t).catch(e => logger.error('stats', e));
+    await markActive([X, O].filter(p => (!bot || p.uid !== bot.uid) && (!friend || p.account)).map(p => 'u:' + p.uid), t).catch(e => logger.error('stats', e));
     if (bgNew) await (Q.chaos ? planScBot(id, rec.state.sc.round, bgNew, t + MATCH_GRACE_MS) : planBot(id, rec.state, rec.secrets, bgNew, t + MATCH_GRACE_MS, false)).catch(e => logger.error('bot plan', id, e));
   }
   return made.committed;
@@ -517,7 +567,7 @@ async function changeSc(id, uid, step, what) {
     else if (what === 'begin' && out.begun) ev.push({ t, k: 'round', r: after.round, src: 'srv' });
     if (after && after.round !== before.round && after.recap) ev.push({ t, k: 'resolve', r: before.round, claims: (after.recap.claims || []).map(c => c.square + c.by).join(' ') || undefined, resets: (after.recap.resets || []).map(x => `${x.square}:${x.why}`).join(' ') || undefined, src: 'srv' });
     if (end) ev.push({ t, k: 'end', w: end.w, why: end.why || undefined, resigned: end.resigned || undefined, src: 'srv' });
-  } else if (!['stale', 'early', 'missing', 'begun', 'recap', 'waiting'].includes(out.reason)) ev.push({ t, k: 'reject', s: who || undefined, what, why: out.reason, src: 'srv' });
+  } else if (!['stale', 'early', 'missing', 'begun', 'recap', 'waiting'].includes(out.reason) && await rateOk('reject', uid || id, 20)) ev.push({ t, k: 'reject', s: who || undefined, what, why: out.reason, src: 'srv' });   // (a loop of bad moves: logged 20 times a minute at most)
   const begun = out.ok && after && after.deadline != null && (before.deadline == null || after.round !== before.round);   // a round begun (the first, or the next after a recap): a bot's move for it
   await Promise.all([
     ev.length ? mlogSafe(ML.mmKey(id), ev) : null,
@@ -751,7 +801,9 @@ async function maybeAlert(key, uid, entry, prof, ac) {
 // is written to test/alertsSent instead. Answers with each channel's outcome.
 async function sendAlert(ac, msg) {
   const out = { sms: 'off', email: 'off' };
-  const keys = (await db.ref('admin/secrets').get()).val() || {};
+  const [SID, TOKEN, FROM, RESEND, EMAIL] = ALERT_SECRETS.map(secretValue);
+  const stored = SID && TOKEN && FROM && RESEND ? {} : (await db.ref('admin/secrets').get()).val() || {};   // (the database's copy only until Secret Manager has them all)
+  const keys = { twilioSid: SID || stored.twilioSid, twilioToken: TOKEN || stored.twilioToken, twilioFrom: FROM || stored.twilioFrom, resendKey: RESEND || stored.resendKey, emailFrom: EMAIL || stored.emailFrom };
   const fake = process.env.FUNCTIONS_EMULATOR === 'true';
   const go = async (ch, fn) => { try { out[ch] = await fn(); } catch (e) { out[ch] = 'error: ' + String(e && e.message || e).slice(0, 160); } };
   const jobs = [];
@@ -787,7 +839,7 @@ async function sendAlert(ac, msg) {
   return out;
 }
 // The dashboard's "Send a test alert": the channels as set (or as asked), whatever the limits.
-exports.testAlert = onCall(CALL, async req => {
+exports.testAlert = onCall(Object.assign({ secrets: BOUND_SECRETS }, CALL), async req => {
   needAdmin(req);
   const ac = B.alertConfig(await adminConfig()), d = req.data || {};
   const use = Object.assign({}, ac, d.sms !== undefined || d.email !== undefined ? { sms: !!d.sms, email: !!d.email } : {});
@@ -834,7 +886,7 @@ async function changeGame(id, uid, step, what) {   // what: the kind of change, 
     if (!es.length) ev.push({ t, k: lw, s: who || undefined, seq: out.seq, src: 'srv' });
     if (lw === 'bot') ev.forEach(e => { e.bot = true; });
     if (end) ev.push({ t, k: 'end', w: end.w, why: end.why || undefined, resigned: end.resigned || undefined, src: 'srv' });
-  } else if (!['stale', 'early', 'missing'].includes(out.reason)) ev.push({ t, k: 'reject', s: who || undefined, what: lw, why: out.reason, src: 'srv' });   // (stale, early: the server's own timing checks, not a refusal of anyone's move)
+  } else if (!['stale', 'early', 'missing'].includes(out.reason) && await rateOk('reject', uid || id, 20)) ev.push({ t, k: 'reject', s: who || undefined, what: lw, why: out.reason, src: 'srv' });   // (stale, early: the server's own timing checks, not a refusal of anyone's move; a loop of bad moves: logged 20 times a minute at most)
   await Promise.all([
     ev.length ? mlogSafe(ML.mmKey(id), ev) : null,
     res.committed && over ? finishGame(id).catch(e => logger.error('finishGame', id, e)) : null,
@@ -917,9 +969,12 @@ async function finishGame(id) {
   const how = R.howEnded(st), t = pub.ended || now();
   const up = {};
   const result = { winner: st.winner === 'X' || st.winner === 'O' ? st.winner : null, how, records: {} };   // (a draw: no winner)
+  const friend = pub.mode === 'friend';                           // a friend room's match: the friends record, for players with an account (a guest without one: no record, no history)
   const [px, po] = await Promise.all(['X', 'O'].map(s => db.ref(`users/${pub.players[s].uid}`).get().then(v => v.val() || {})));
+  const named = { X: !!px.username, O: !!po.username };
   for (const [s, p] of [['X', px], ['O', po]]) {                 // every Find Match game: both records and the mini-game stats
     const res = R.resultFor(st, s), d = R.recordDelta(res), r0 = recordOf(p);
+    if (friend) { if (named[s]) recordUp(up, pub.players[s].uid, res, final.squares, s, true); result.records[s] = r0; continue; }
     if (!counted && pub.players[s].uid === bg.human) { result.records[s] = r0; continue; }   // left out of the record: as it was
     recordUp(up, pub.players[s].uid, res, final.squares, s, false);
     result.records[s] = { wins: r0.wins + d.wins, losses: r0.losses + d.losses, draws: r0.draws + d.draws };   // as the results screen shows it
@@ -938,10 +993,13 @@ async function finishGame(id) {
   }
   for (const s of ['X', 'O']) {
     const me = pub.players[s], them = pub.players[E.other(s)];
-    up[`history/${me.uid}/${id}`] = historyRecord(pub.mode, s, them, st, final, t, result.ratings && result.ratings[s]);
-    if (!bg) oppUp(up, me.uid, them, R.resultFor(st, s), t);   // (a game against a bot: no one's Top opponents)
-    up[`active/${me.uid}`] = null;
+    if (friend && !named[s]) continue;                            // (no account: nothing kept for them)
+    const opp = friend && !named[E.other(s)] ? { uid: null, name: them.name } : them;   // (only an opponent with a registered username counts as someone: Top opponents)
+    up[`history/${me.uid}/${id}`] = historyRecord(pub.mode, s, opp, st, final, t, result.ratings && result.ratings[s]);
+    if (!bg) oppUp(up, me.uid, opp, R.resultFor(st, s), t);   // (a game against a bot: no one's Top opponents)
+    if (!friend) up[`active/${me.uid}`] = null;
   }
+  if (friend && pub.room && st.winReason === 'timeout') up[`rooms/${pub.room}/status`] = 'over';   // a forfeit: the room is closed (both phones show the result; no rematch)
   up[`games/${id}/pub/result`] = result;
   up[`games/${id}/pub/final`] = JSON.stringify(final);
   up[`games/${id}/pub/recorded`] = { at: now(), done: true };
@@ -953,7 +1011,7 @@ async function finishGame(id) {
     up[`botStats/${st.winner !== 'X' && st.winner !== 'O' ? 'draws' : st.winner === bg.side ? 'botWins' : 'playerWins'}`] = ServerValue.increment(1);
   }
   await db.ref().update(up);                                   // all of it at once: both ratings, records, leaderboard, history, stats
-  await markActive(['X', 'O'].filter(s => !bg || pub.players[s].uid !== bg.bot).map(s => 'u:' + pub.players[s].uid), t).catch(e => logger.error('stats', e));
+  await markActive(['X', 'O'].filter(s => (!bg || pub.players[s].uid !== bg.bot) && (!friend || named[s])).map(s => 'u:' + pub.players[s].uid), t).catch(e => logger.error('stats', e));
   return true;
 }
 // The final state with every hidden value revealed, for history and the review board.
@@ -998,20 +1056,7 @@ exports.recordLocal = onCall(CALL, async req => {
   return { ok: true, result: h.result };
 });
 
-/* ===================== match logs: friend rooms, presence, the phones' own events ===================== */
-// One write to a room's match, in the match's log: a new match (its players, and the room pointed at
-// its log for presence), each move or round, the end.
-async function friendLog(code, b, st, after) {
-  const key = ML.friendKey(code, String(st.id || 'm').replace(/[^-\w]/g, '')), t = now();
-  const ev = ML.friendEvents(b, st, t);
-  if (!ev.length) return;
-  if (!b || b.id !== st.id) {
-    const room = (await db.ref(`rooms/${code}/players`).get()).val() || {}, seats = after.seats && after.seats.X ? after.seats : room;
-    const pl = s => (seats[s] ? { name: seats[s].name, uid: seats[s].uid } : null);
-    await db.ref(`matchLogRoom/${code}`).set({ k: key, t }).catch(e => logger.error('match log room', code, e));
-    await mlogSafe(key, ev, { srv: true, mode: st.sc && st.sc.online ? 'friend-sc' : 'friend', room: code, players: { X: pl('X'), O: pl('O') } });
-  } else await mlogSafe(key, ev);
-}
+/* ===================== match logs: presence, the phones' own events ===================== */
 // A phone dropping off or coming back (its presence in the room or the game going offline or online):
 // in the log of the match it is in. Presence that only says the app went to the background is not logged.
 async function presenceLog(key, side, before, after) {
@@ -1019,12 +1064,6 @@ async function presenceLog(key, side, before, after) {
   if (was === is || !key || !after) return;                    // (!after: the room or game itself deleted)
   await mlogSafe(key, [{ t: now(), k: is ? (before ? 'reconnect' : 'online') : 'offline', s: side, src: 'srv' }]);
 }
-exports.roomPresenceLog = onValueWritten({ ref: '/presence/{code}/{side}' }, async event => {
-  const before = event.data.before.val(), after = event.data.after.val();
-  if (!!(before && before.online) === !!(after && after.online)) return;
-  const m = (await db.ref(`matchLogRoom/${event.params.code}`).get()).val();
-  await presenceLog(m && m.k, event.params.side, before, after);
-});
 exports.gamePresenceLog = onValueWritten({ ref: '/gpresence/{id}/{side}' }, async event => {
   await presenceLog(ML.mmKey(event.params.id), event.params.side, event.data.before.val(), event.data.after.val());
 });
@@ -1042,121 +1081,129 @@ async function clientLog(c, t) {
   else if (ev === 'report') await mlogSafe(key, [Object.assign({ k: 'report', note: c.note || undefined, v: c.v || undefined }, base)], Object.assign(meta, { report: { t, note: c.note } }));
   else if (ev === 'mlog') { const e = ML.clientEvent(c.e, t); if (e) await mlogSafe(key, [Object.assign(e, { dev, s: c.s || e.s })], meta); }
 }
-// The logs' upkeep (from the sweep): a match's log 30 days after its last event, and a room's pointer
-// to its match's log after two days (a room lasts one).
+// The logs' upkeep (from the sweep): a match's log 30 days after its last event.
 async function pruneLogs(t, up) {
   const old = (await db.ref('matchLogIndex').orderByChild('last').endAt(t - ML.LOG_KEEP_MS).limitToFirst(100).get()).val() || {};
   for (const k of Object.keys(old)) { up[`matchLogIndex/${k}`] = null; up[`matchLogs/${k}`] = null; }
-  const rooms = (await db.ref('matchLogRoom').orderByChild('t').endAt(t - 2 * 86400000).limitToFirst(100).get()).val() || {};
-  for (const c of Object.keys(rooms)) up[`matchLogRoom/${c}`] = null;
   return Object.keys(old).length;
 }
 
-/* ===================== friend-code games: history for logged-in players ===================== */
-// A room's match (played by the two phones, unrated) is saved to the history of each player who has
-// an account, once, when it ends.
-exports.friendGameDone = onValueWritten({ ref: '/rooms/{code}/match' }, async event => {
-  const after = event.data.after.val(), before = event.data.before.val();
-  if (!after || typeof after.state !== 'string') return;
-  const st = parse(after.state);
-  const b = before && typeof before.state === 'string' ? parse(before.state) : null;
-  const sid = 'f_' + event.params.code + '_' + String(st.id || 'm').replace(/[^-\w]/g, '');
-  await friendLog(event.params.code, b, st, after);
-  await roomDueSet(event.params.code);                           // when the server must look at the room next (a turn or round run out), whether or not a phone is open: what this write changed (matchLogRules.js friendEvents)
-  if (!b || b.id !== st.id) {                                  // a new match in the room: counted as started
-    const t = now();
-    // The match may only hold games its players may see: the released ones, or any game when the
-    // host is the admin (a guest plays them in that match only). A match that does not (a tampered
-    // page) is taken out of the room, which goes back to its lobby. Matches already under way are
-    // not touched when a game's release changes.
-    await runConfigNow();
-    const roomNow = (await db.ref(`rooms/${event.params.code}`).get()).val() || {};
-    const allowed = E.allowedTypes(await releasesNow(), await isAdminUser(roomNow.host));
-    const held = (Array.isArray(st.games) ? st.games : []).concat((st.squares || []).map(sq => sq && sq.mini && sq.mini.type));
-    const bad = held.filter(g => g && !allowed.includes(g) && !E.OLD_TYPES.includes(g));
-    if (bad.length) {
-      logger.warn('room match refused: admin-only games', event.params.code, bad);
-      await db.ref(`rooms/${event.params.code}`).update({ match: null, status: 'lobby', refused: { at: t, games: [...new Set(bad)] } });
-      return;
-    }
-    if (await claimMatch(sid, 's', t)) {
-      await db.ref().update(statsUp(S.startUpdates('friend', t)));
-      const room0 = (await db.ref(`rooms/${event.params.code}/players`).get()).val() || {};
-      await markActive(['X', 'O'].map(s => room0[s] && room0[s].uid ? 'u:' + room0[s].uid : null), t);
-    }
+/* ===================== friend rooms: the lobby on the database, the match run here ===================== */
+// rooms/{code}: a lobby. The host opens it here (openRoom: a fresh code, their own seat), a friend joins here with the
+// exact code (joinRoom: the free seat; no room is ever listed or read before one is seated in it), the host starts it
+// (startRoom: a games/{id} match, as Find Match's, mode 'friend'); the match is then played through the same calls
+// (move, scMove, timeout, resign...), so the server holds every secret, checks every move and credits the records
+// (finishGame). The rules let the players write only their own seat's name, the host the setup, either their rematch
+// flag and their leaving; everything else is written here. A room lives a day (the sweep deletes older ones).
+const ROOM_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ', ROOM_TTL_MS = 24 * 3600 * 1000;   // (no I or O: they look like 1 and 0)
+const roomCodeOk = c => typeof c === 'string' && /^[ABCDEFGHJKLMNPQRSTUVWXYZ]{5}$/.test(c);
+const roomCodeOf = v => String(v || '').toUpperCase().replace(/[^A-Z]/g, '');
+const roomName = (v, dflt) => String(v || '').trim().slice(0, E.NAME_MAX) || dflt;
+function newRoomCode() { let c = ''; for (let i = 0; i < 5; i++) c += ROOM_ALPHABET[crypto.randomInt(ROOM_ALPHABET.length)]; return c; }
+// The lobby's setup as the host sends it, checked: the games (true or false by type; a game the host may not deal is off),
+// the time per turn, the host's side (X, O or Random each match) and the Super Chaos switch (only where it is open to them).
+function roomSetupOf(d, rel, admin) {
+  const o = d && typeof d === 'object' ? d : {}, allowed = E.allowedTypes(rel, admin), games = {};
+  for (const t of E.TYPES) games[t] = allowed.includes(t) && (!o.games || typeof o.games !== 'object' || o.games[t] !== false);
+  return { games, timer: E.normTimer(Number(o.timer) || 0), hostPick: o.hostPick === 'random' ? 'random' : o.hostPick === 'O' ? 'O' : 'X', chaos: !!o.chaos && (admin || rel.superchaos === true) };
+}
+const roomSide = (room, uid) => (room && room.players ? ['X', 'O'].find(s => room.players[s] && room.players[s].uid === uid) || null : null);
+exports.openRoom = onCall(CALL, async req => {
+  const uid = needAccount(req), d = req.data || {}, t = now();   // hosting needs an account (as the page asks before Host)
+  const admin = !!(req.auth.token && req.auth.token.admin === true);
+  const side = d.side === 'O' ? 'O' : 'X', name = roomName(d.name, side);
+  const setup = Object.assign(roomSetupOf(d.setup, await releasesNow(), admin), { hostSide: side });
+  for (let k = 0; k < 8; k++) {
+    const code = newRoomCode();
+    const made = await db.ref(`rooms/${code}`).transaction(cur => (cur ? undefined : { created: t, host: uid, status: 'lobby', players: { [side]: { uid, name, joined: t } }, setup }), undefined, false);
+    if (made.committed) return { ok: true, code, side };
   }
-  if (!st.winner) return;
-  if (b && b.id === st.id && b.winner) return;                 // the end was seen already
-  // who played which side: as the match itself says (the seats can swap for a rematch, with Random
-  // sides, before this runs), else as the room says (a match written by an older page)
-  const seats = after.seats && after.seats.X && after.seats.O ? after.seats : null;
-  const room = seats ? { players: seats } : (await db.ref(`rooms/${event.params.code}`).get()).val();
-  if (!room || !room.players) return;
-  const t1 = now(), done = await claimMatch(sid, 'e', t1);
-  if (done) {
-    const started = !!(done.prev && done.prev.s);
-    await db.ref().update(statsUp(S.endUpdates('friend', E.matchStats(st), started ? t1 - done.prev.t0 : null, t1, !started, testTypesOf(await releasesNow()))));
-  }
-  const names = { X: room.players.X ? room.players.X.name : 'X', O: room.players.O ? room.players.O.name : 'O' };
-  const final = finalOf({ state: st, secrets: parse(after.secrets) }, names);
-  const id = 'f_' + event.params.code + '_' + (st.id || st.seq);
-  const up = {};
-  for (const s of ['X', 'O']) {
-    const p = room.players[s];
-    if (!p || !p.uid) continue;
-    const prof = (await db.ref(`users/${p.uid}/username`).get()).val();
-    if (!prof) continue;                                       // played without an account: no history
-    const o = room.players[E.other(s)] || {};
-    const ouser = o.uid ? (await db.ref(`users/${o.uid}/username`).get()).val() : null;
-    const them = { uid: ouser ? o.uid : null, name: ouser || o.name || E.other(s) };   // (only an opponent with a registered username counts as someone: Top opponents)
-    up[`history/${p.uid}/${id}`] = historyRecord('friend', s, them, st, final, now(), null);
-    if (done) recordUp(up, p.uid, R.resultFor(st, s), final.squares, s, true);   // the friends record and the mini-game stats (once: the end's claim)
-    if (done && them.uid) oppUp(up, p.uid, them, R.resultFor(st, s), t1);   // Top opponents: finished matches against opponents with registered usernames
-  }
-  if (Object.keys(up).length) await db.ref().update(up);
+  throw new HttpsError('resource-exhausted', 'Could not open a room. Try again.');
 });
-
-// Friend rooms: missed turns enforced by the server. Every write to a room's match sets rooms/{code}/dl, the
-// moment a turn or round runs out (core/records.js roomDue: its deadline and grace); the sweep looks at each
-// room past it and applies the timeout there (applyRoomSweep: a turn missed, a round settled with no move for
-// a side not in, a recap nobody finished begun). Being away never pauses the clock; a second miss in a row
-// ends the match as a forfeit (stats and history: friendGameDone, on that write) and closes the room.
-async function roomDueSet(code) {
-  const rec = E.parseMatch((await db.ref(`rooms/${code}/match`).get()).val());   // (the match as it is now: writes close together may trigger out of order)
-  const due = rec ? E.roomDue(rec) : null, was = (await db.ref(`rooms/${code}/dl`).get()).val();
-  const up = { [`rooms/${code}/dl`]: due == null ? null : due };
-  if (rec && rec.state.winner && rec.state.winReason === 'timeout') up[`rooms/${code}/status`] = 'over';   // a forfeit: the room is closed (both phones show the result; no rematch)
-  await db.ref().update(up).catch(e => logger.warn('room dl', code, e.message));
-  if (due != null && due !== was) await queueRoomTick(code, due);
-}
-// The server's look at the room, at its due moment, as a Cloud Task (roomTick): the round settles at its deadline
-// (the recap begins the next round once its wait is over) whatever the phones believe or show, open or not. The
-// sweep each minute is the backup, should the task not be queued or not fire.
-async function queueRoomTick(code, due) {
-  try { await getFunctions().taskQueue('roomTick').enqueue({ code, due }, { scheduleTime: new Date(Math.max(due, now())), id: `${code}-${due}` }); }
-  catch (e) { if (!/already exists/i.test(String(e.message))) logger.warn('room tick not queued: the sweep looks at it when due', code, e.message); }
-}
-exports.roomTick = onTaskDispatched({ retryConfig: { maxAttempts: 2, minBackoffSeconds: 2 }, rateLimits: { maxConcurrentDispatches: 20 } }, async req => {
-  const d = req.data || {};
-  if (typeof d.code !== 'string' || !/^[A-Z]{5}$/.test(d.code)) return;
-  const early = typeof d.due === 'number' ? d.due - now() : 0;
-  if (early > 0 && early <= 55000) await new Promise(r => setTimeout(r, early));   // (dispatched ahead of its moment, as the emulator does: the moment waited for)
-  await sweepRoom(d.code).catch(e => logger.error('room tick', d.code, e));
+// A friend joins with the code: the free seat (or their own seat again, back after a reload; a new name goes with it).
+exports.joinRoom = onCall(CALL, async req => {
+  const uid = needUid(req), d = req.data || {}, code = roomCodeOf(d.code), name = roomName(d.name, '');
+  if (!roomCodeOk(code)) return { ok: false, reason: 'code' };
+  let out = { ok: false, reason: 'missing' };
+  await db.ref(`rooms/${code}`).transaction(cur => {
+    if (cur === null) { out = { ok: false, reason: 'missing' }; return cur; }   // (a first guess from an empty cache: retried with the real value)
+    const t = now(), p = cur.players || {};
+    const mine = ['X', 'O'].find(s => p[s] && p[s].uid === uid);
+    if (mine) { if (name) p[mine].name = name; cur.players = p; out = { ok: true, side: mine, status: cur.status }; return cur; }
+    if (t - (cur.created || 0) > ROOM_TTL_MS) { out = { ok: false, reason: 'expired' }; return undefined; }
+    const free = ['X', 'O'].find(s => !p[s] || !p[s].uid);
+    if (!free) { out = { ok: false, reason: 'full' }; return undefined; }
+    if (cur.status !== 'lobby') { out = { ok: false, reason: 'started' }; return undefined; }
+    p[free] = { uid, name: name || 'Friend', joined: t }; cur.players = p;
+    out = { ok: true, side: free, status: 'lobby' };
+    return cur;
+  }, undefined, false);
+  return out;
 });
-// One room's match, looked at (core/records.js applyRoomSweep): true when it changed something.
-async function sweepRoom(code) {
-  let changed = false;
-  const step = E.matchTxn(rec => { const r = E.applyRoomSweep(rec, now(), seedRng()); changed = !!r.ok; return r.ok ? r.rec : null; });
-  const res = await db.ref(`rooms/${code}/match`).transaction(cur => (cur === null ? null : step(cur))).catch(e => { logger.warn('room sweep', code, e.message); return null; });
-  if (changed && res && res.committed) return true;
-  if (res && res.committed === false && !changed) await db.ref(`rooms/${code}/dl`).set(E.roomDue(E.parseMatch(res.snapshot.val()) || {}) || null).catch(() => {});   // (nothing due after all: the next look when it is)
-  return false;
+// The host takes the other side in the lobby: the seats (and the friend's, if there is one) move over.
+exports.roomSide = onCall(CALL, async req => {
+  const uid = needUid(req), d = req.data || {}, code = roomCodeOf(d.code), side = d.side === 'O' ? 'O' : 'X';
+  if (!roomCodeOk(code)) return { ok: false, reason: 'code' };
+  let out = { ok: false, reason: 'missing' };
+  await db.ref(`rooms/${code}`).transaction(cur => {
+    if (cur === null) { out = { ok: false, reason: 'missing' }; return cur; }
+    if (cur.host !== uid) { out = { ok: false, reason: 'host' }; return undefined; }
+    if (cur.status !== 'lobby') { out = { ok: false, reason: 'started' }; return undefined; }
+    const p = cur.players || {}, was = roomSide(cur, uid);
+    if (!was) { out = { ok: false, reason: 'not-player' }; return undefined; }
+    if (was !== side) { const next = { [side]: p[was] }; if (p[side] && p[side].uid) next[was] = p[side]; cur.players = next; }
+    cur.setup = Object.assign({}, cur.setup, { hostSide: side });
+    out = { ok: true, side };
+    return cur;
+  }, undefined, false);
+  return out;
+});
+// The host's Random: the seats for the next match, drawn afresh (the host's seat swapped over half the time).
+function drawSeats(players, host) {
+  const hostSide = players.X && players.X.uid === host ? 'X' : 'O', want = crypto.randomInt(2) === 0 ? 'X' : 'O';
+  return want === hostSide ? { players, hostSide, swapped: false } : { players: { X: players.O, O: players.X }, hostSide: want, swapped: true };
 }
-async function sweepRooms(t) {
-  const due = (await db.ref('rooms').orderByChild('dl').startAt(1).endAt(t).limitToFirst(50).get()).val() || {};
-  let n = 0;
-  for (const code of Object.keys(due)) if (await sweepRoom(code)) n++;
-  return n;
+// The match starts: by the host from the lobby, or by either player once both want a rematch (the flags on the room).
+// One match at a time: a lock on the room while it is made (two phones starting the rematch at once make one).
+exports.startRoom = onCall(CALL, async req => {
+  const uid = needUid(req), code = roomCodeOf((req.data || {}).code);
+  if (!roomCodeOk(code)) return { ok: false, reason: 'code' };
+  const room = (await db.ref(`rooms/${code}`).get()).val();
+  if (!room || !room.players) return { ok: false, reason: 'missing' };
+  const side = roomSide(room, uid);
+  if (!side) return { ok: false, reason: 'not-player' };
+  if (!(room.players.X && room.players.X.uid && room.players.O && room.players.O.uid)) return { ok: false, reason: 'alone' };
+  if (room.left) return { ok: false, reason: 'left' };
+  if (room.status === 'over') return { ok: false, reason: 'over' };
+  const rematch = room.status !== 'lobby';
+  if (!rematch && room.host !== uid) return { ok: false, reason: 'host' };
+  if (rematch) {
+    const st = room.game ? (await db.ref(`games/${room.game}/pub/status`).get()).val() : null;
+    if (st === 'playing') return { ok: false, reason: 'playing' };
+    if (!(room.rematch && room.rematch.X && room.rematch.O)) return { ok: false, reason: 'rematch' };
+  }
+  const t = now();
+  const lock = await db.ref(`rooms/${code}/starting`).transaction(cur => (cur && t - cur < 20000 ? undefined : t), undefined, false);
+  if (!lock.committed) return { ok: true, started: false };
+  try {
+    const seats = room.setup && room.setup.hostPick === 'random' ? drawSeats(room.players, room.host) : { players: room.players, hostSide: room.players.X.uid === room.host ? 'X' : 'O', swapped: false };
+    const admin = await isAdminUser(room.host);
+    const named = await Promise.all(['X', 'O'].map(s => db.ref(`users/${seats.players[s].uid}/username`).get().then(v => !!v.val())));
+    const at = s => ({ uid: seats.players[s].uid, account: named[s === 'X' ? 0 : 1], e: { name: roomName(seats.players[s].name, s) } });
+    const id = db.ref('games').push().key;
+    const ok = await makeGame(null, id, at('X'), at('O'), { friend: { code, setup: room.setup || {}, admin } });
+    if (!ok) { await db.ref(`rooms/${code}/starting`).remove(); return { ok: false, reason: 'games' }; }   // (no game left to deal: the setup refused)
+    const up = { [`rooms/${code}/game`]: id, [`rooms/${code}/status`]: 'playing', [`rooms/${code}/rematch`]: null, [`rooms/${code}/left`]: null, [`rooms/${code}/starting`]: null };
+    if (seats.swapped) { up[`rooms/${code}/players`] = seats.players; up[`rooms/${code}/setup/hostSide`] = seats.hostSide; }
+    await db.ref().update(up);
+    return { ok: true, started: true, game: id };
+  } catch (e) { await db.ref(`rooms/${code}/starting`).remove().catch(() => {}); throw e; }
+});
+// Rooms nobody can still be playing in (older than a day), with their presence and reactions (from the sweep).
+async function sweepRooms(t, up) {
+  const old = (await db.ref('rooms').orderByChild('created').endAt(t - ROOM_TTL_MS).limitToFirst(50).get()).val() || {};
+  for (const code of Object.keys(old)) { up[`rooms/${code}`] = null; up[`presence/${code}`] = null; up[`reacts/${code}`] = null; }
+  return Object.keys(old).length;
 }
 
 /* ===================== the sweep: every minute ===================== */
@@ -1174,16 +1221,17 @@ async function sweep() {
     const r = await (g.pub.chaos ? changeSc(id, null, (gm, side, t) => scSweepStep(gm, t), 'sweep') : changeGame(id, null, timeoutStep, 'timeout')).catch(() => ({ ok: false }));
     if (r.ok) timeouts++;
   }
-  const roomTimeouts = await sweepRooms(t).catch(e => { logger.error('room sweep', e); return 0; });
   const old = (await db.ref('games').orderByChild('pub/ended').startAt(1).endAt(t - GAME_KEEP_MS).limitToFirst(50).get()).val() || {};
   const up = {};
   let deleted = 0;
+  const rooms = await sweepRooms(t, up).catch(e => { logger.error('room sweep', e); return 0; });
   for (const [id, g] of Object.entries(old)) if (g.pub && g.pub.recorded && g.pub.recorded.done) { up[`games/${id}`] = null; up[`gpresence/${id}`] = null; up[`botGames/${id}`] = null; up[`reacts/${id}`] = null; deleted++; }
   await pruneSeen(t, up).catch(e => logger.error('stats prune', e));
+  await pruneRate(t, up).catch(e => logger.error('rate prune', e));
   const logs = await pruneLogs(t, up).catch(e => { logger.error('match log prune', e); return 0; });
   if (Object.keys(up).length) await db.ref().update(up);
   if (logs) logger.info('match logs deleted', logs);
-  return { timeouts, finished, deleted, botMoves, roomTimeouts };
+  return { timeouts, finished, deleted, botMoves, rooms };
 }
 // What the stats have seen, once it can no longer matter: matches after three days, players once their
 // day, week or month is well over (the counts stay).
@@ -1198,7 +1246,7 @@ async function pruneSeen(t, up) {
 }
 exports.sweep = onSchedule({ schedule: 'every 1 minutes', timeZone: 'Etc/UTC', retryCount: 0 }, async () => {
   const r = await sweep();
-  if (r.timeouts || r.finished || r.deleted || r.botMoves || r.roomTimeouts) logger.info('sweep', r);
+  if (r.timeouts || r.finished || r.deleted || r.botMoves || r.rooms) logger.info('sweep', r);
 });
 // The emulator cannot fire schedules: the tests run the same sweep through this hook, which exists
 // only in the emulator.

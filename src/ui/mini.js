@@ -53,11 +53,11 @@ export function renderMini(sq, review, popup) {
   else if (!view && !f && !d && moveWait) sub = 'Sending your move…';
   let secret = '';
   if (view) {
-    secret = mini.type === 'wordle' || mini.type === 'hangman' ? `The word was ${mini.word}`
+    secret = mini.type === 'wordle' || mini.type === 'hangman' ? `The word was ${esc(mini.word)}`
       : mini.type === 'hilo' ? `The number was ${mini.target}`
       : mini.type === 'bs' ? `${sq.owner ? 'Sank' : 'It was'} the ${BS.names[mini.len] || 'ship'}`
       : mini.type === 'memory' ? 'Every card shown'
-      : mini.type === 'coins' ? `All five show ${sq.owner}`
+      : mini.type === 'coins' ? `All five show ${esc(sq.owner)}`
       : mini.type === 'hunt' ? `The treasure was at row ${Math.floor(mini.treasure / huntSize(mini)) + 1}, column ${mini.treasure % huntSize(mini) + 1}`
       : mini.type === 'pig' ? `${mini.bank.X} to ${mini.bank.O}`
       : mini.type === 'bj' ? `${mini.wins.X} to ${mini.wins.O}`
@@ -123,7 +123,7 @@ export function flashLine(f) {
     const TIE = { seating: 'the same number of tables each', shelves: 'on as many shelves each', roads: 'roads the same length' };
     const head = f.note === 'stuck' ? 'Stuck! No legal moves' : f.note === 'blocked' ? 'Draw! Nobody can win it' : f.note === 'tie' ? `Tie! ${TIE[f.type] || 'level at the end'}` : 'Draw! Full board';
     say = `${head} · now ${INFO[f.newType].name}`;
-  } else if (f.kind === 'again') say = f.type === 'bs' ? `${who} hit! · fire again` : `${who} found ${f.letter} · guess again`;
+  } else if (f.kind === 'again') say = f.type === 'bs' ? `${who} hit! · fire again` : `${who} found ${esc(f.letter)} · guess again`;
   else say = summary(f);
   return [note, say].filter(Boolean).join(' · ');
 }

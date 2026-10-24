@@ -2,7 +2,7 @@
 import { other } from '../../core/util.js';
 import { PLACE_MS } from '../shared/placement.js';
 import { distTally } from './rules.js';
-import { N, mv, state } from '../../ui/app.js';
+import { N, esc, mv, state } from '../../ui/app.js';
 import { arcTally, lateAt } from '../../ui/progress.js';
 
 // Districts: the map's five regions, each shaded in its leader's colour, and its spots; a spot on a
@@ -25,8 +25,8 @@ function distTable(mini, a, o) {
   }).join('');
   const spots = map.spots.map((s, k) => {
     const w = mini.who[k], open = !w && !o.locked, pop = ds && ds.spot === k, drop = ds && ds.grey === k;
-    const label = `Spot ${k + 1}, region${s.r.length > 1 ? 's' : ''} ${s.r.map(r => r + 1).join(' and ')}${w === 'G' ? ', grey' : w ? ', ' + w : ''}`;
-    return `<g class="dspot${w ? ' ' + w : ''}${s.r.length > 1 ? ' edge' : ''}${pop ? ' pop' : ''}${drop ? ' drop' : ''}${open ? ' open' : ''}" ${open ? `data-act="move" ${mv(k)} role="button" tabindex="0"` : ''} aria-label="${label}" transform="translate(${s.x} ${s.y})"><g class="pp"${drop ? ` style="--t:${PLACE_MS.mark}ms"` : ''}><circle class="dhit" r="5.5"/><circle class="dpc" r="4.3"/>${w && w !== 'G' ? `<text y="1.75">${w}</text>` : ''}</g></g>`;
+    const label = `Spot ${k + 1}, region${s.r.length > 1 ? 's' : ''} ${s.r.map(r => r + 1).join(' and ')}${w === 'G' ? ', grey' : w ? ', ' + esc(w) : ''}`;
+    return `<g class="dspot${w ? ' ' + w : ''}${s.r.length > 1 ? ' edge' : ''}${pop ? ' pop' : ''}${drop ? ' drop' : ''}${open ? ' open' : ''}" ${open ? `data-act="move" ${mv(k)} role="button" tabindex="0"` : ''} aria-label="${label}" transform="translate(${s.x} ${s.y})"><g class="pp"${drop ? ` style="--t:${PLACE_MS.mark}ms"` : ''}><circle class="dhit" r="5.5"/><circle class="dpc" r="4.3"/>${w && w !== 'G' ? `<text y="1.75">${esc(w)}</text>` : ''}</g></g>`;
   }).join('');
   const res = ds ? `<p ${lateAt('arcres ok', PLACE_MS.mark)} role="status">${tie ? `${led('X')} each · the tie goes to ${N(a.winner)}` : `${N(a.by)} leads ${led(a.by)} of ${map.regions.length}`}</p>`
     : `<p class="arcnote">${o.view ? '' : o.locked ? `Waiting for <b class="${turn}">${N(turn)}</b>…` : ''}</p>`;

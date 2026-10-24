@@ -4,7 +4,6 @@ import { armClock, clockDeadline } from '../core/timer.js';
 import { SND } from '../audio/sound.js';
 import { call, connected, fb, serverNow } from '../net/connect.js';
 import { fireTimeoutMM, isMM, search } from '../net/matchmaking.js';
-import { matchTransaction } from '../net/moves.js';
 import { parseMatch, room, setTimeoutBusy, timeoutBusy } from '../net/room.js';
 import { RNG, state } from './app.js';
 import { scClockLeft, scTick } from './chaos.js';
@@ -67,19 +66,7 @@ function nudgeMM() {
 // The deadline passed: the player on the move misses the turn (core/board.js timeoutMove: nothing is played for
 // them; a second miss in a row loses), written once whichever phone gets there first.
 async function fireTimeout(seq, deadline) {
-  if (isMM()) { fireTimeoutMM(seq, deadline); return; }
-  setTimeoutBusy(true);
-  try {
-    await matchTransaction(rec => {
-      const st = rec.state;
-      if (st.seq !== seq || st.winner || !st.timer || clockDeadline(st.timer) !== deadline || serverNow() < deadline) return null;   // called already, or not due
-      const r = applyOnlineTimeout(rec, RNG);
-      if (!r.ok) return null;
-      armClock(r.rec.state, r.entries, serverNow());
-      return r.rec;
-    });
-  } catch (e) { /* the next tick tries again */ }
-  setTimeoutBusy(false);
+  if (isMM()) fireTimeoutMM(seq, deadline);                      // (every online match is the server's: it checks the deadline itself)
 }
 export let timeoutTry = { key: null, at: 0 };       // a matchmaking game's last call for time (at most every 2 s)
 

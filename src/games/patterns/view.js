@@ -19,7 +19,7 @@ function patSay(it) {
 }
 // An item drawn in a 100 x 100 box: a number, a shape (ink-outlined, the game's style), or dots.
 function patSvg(it) {
-  if ('n' in it) { const t = String(it.n); return `<svg viewBox="0 0 100 100" aria-hidden="true"><text x="50" y="${t.length > 3 ? 62 : 66}" class="pnum" font-size="${t.length > 3 ? 30 : t.length > 2 ? 38 : 48}">${t}</text></svg>`; }
+  if ('n' in it) { const t = String(it.n); return `<svg viewBox="0 0 100 100" aria-hidden="true"><text x="50" y="${t.length > 3 ? 62 : 66}" class="pnum" font-size="${t.length > 3 ? 30 : t.length > 2 ? 38 : 48}">${esc(t)}</text></svg>`; }
   if ('d' in it) {
     const n = it.d, cols = n <= 3 ? n : n <= 4 ? 2 : n <= 9 ? 3 : 4, rows = Math.ceil(n / cols), gap = cols <= 3 && rows <= 3 ? 26 : 21, r = gap * 0.36;
     const dots = Array.from({ length: n }, (_, k) => { const row = Math.floor(k / cols), inRow = row === rows - 1 ? n - row * cols : cols, col = k % cols; return `<circle cx="${(50 + (col - (inRow - 1) / 2) * gap).toFixed(1)}" cy="${(50 + (row - (rows - 1) / 2) * gap).toFixed(1)}" r="${r.toFixed(1)}"/>`; }).join('');

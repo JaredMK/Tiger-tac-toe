@@ -32,10 +32,10 @@ import { SFX, SND } from '../audio/sound.js';
 import { acct, afterAccount, afterLogin, loginBusy, loginMsg, setAcct } from '../net/accounts.js';
 import { FIREBASE_CDN, call, connectFirebase, connected, fb, serverNow, setCall, setConnected } from '../net/connect.js';
 import { enterMatched, search } from '../net/matchmaking.js';
-import { attemptMove, dbMove, matchTransaction, moveRejected, predicted, setMoveRejected } from '../net/moves.js';
+import { attemptMove, dbMove, moveRejected, predicted, setMoveRejected } from '../net/moves.js';
 import { reactKey } from '../net/reactions.js';
 import { releases, visibleTypes } from '../net/releases.js';
-import { applyMatch, assignNet, blocked, isHost, leaveRoom, moveWait, net, online, pinned, presence, presentingSeq, room, roomCode, roomRef } from '../net/room.js';
+import { applyMatch, assignNet, blocked, isHost, leaveRoom, moveWait, net, online, pinned, presence, presentingSeq, room, roomRef } from '../net/room.js';
 import { devIdAny, devLast, devPulse, pendingLocal, setDevLast, testerTag, track, trackStart } from '../net/tracking.js';
 import { RNG, app, commit, cpuPlan, cpuTimer, flashReady, menuOpen, mv, save, setCpuPlan, setCpuTimer, setMenuOpen, spotTimer, state } from './app.js';
 import { attDraft, attPre } from './attention.js';
@@ -94,7 +94,7 @@ const names = {
   explainT: () => explainT,
   triviaReady: () => triviaReady,
   blocked: () => blocked,
-  matchTransaction: () => matchTransaction, enterMatched: () => enterMatched, connectFirebase: () => connectFirebase, newOnlineMatch: () => newOnlineMatch, packMatch: () => packMatch,
+  enterMatched: () => enterMatched, connectFirebase: () => connectFirebase, newOnlineMatch: () => newOnlineMatch, packMatch: () => packMatch,
   r3: () => r3,
   runSpeed: () => runSpeed,
   runSecs: () => runSecs,
@@ -124,7 +124,6 @@ const names = {
   hideMini: () => hideMini,
   visibleTypes: () => visibleTypes,
   presence: () => presence,
-  roomCode: () => roomCode,
   roomRef: () => roomRef,
   physRaf: () => physRaf,
   physStill: () => physStill, physRepOn: () => physRepOn,

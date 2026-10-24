@@ -1,5 +1,5 @@
 // Tic-Tac-Toe: the screen, the miniature, the move's words and sounds, and the inputs.
-import { mv } from '../../ui/app.js';
+import { esc, mv } from '../../ui/app.js';
 import { toonT } from '../../ui/art.js';
 
 /* ----- zoomed mini-game ----- */
@@ -16,7 +16,7 @@ export function miniature(mini, final) {
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   const line = mini.winCells ? tttLine(mini.winCells, sq.owner || 'X', !!fresh) : '';
   g = `<div class="g-ttt">${mini.cells.map((c, i) =>
-        `<button class="cell ${c || ''}${won(i) ? ' win' : ''}${won(i) && fresh ? ' lit' : ''}${anim === i ? ' pop' : ''}" data-act="move" ${mv(i)} aria-label="Cell ${i + 1}${c ? ', ' + c : ''}"${c || locked ? ' disabled' : ''}>${c ? `<span class="mk">${toonT(c)}</span>` : ''}</button>`
+        `<button class="cell ${c || ''}${won(i) ? ' win' : ''}${won(i) && fresh ? ' lit' : ''}${anim === i ? ' pop' : ''}" data-act="move" ${mv(i)} aria-label="Cell ${i + 1}${c ? ', ' + esc(c) : ''}"${c || locked ? ' disabled' : ''}>${c ? `<span class="mk">${toonT(c)}</span>` : ''}</button>`
       ).join('')}${line}</div>`;
   return g;
 }

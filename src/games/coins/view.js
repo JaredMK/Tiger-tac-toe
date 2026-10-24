@@ -1,12 +1,12 @@
 // Coin Flip: the screen, the miniature, the move's words and sounds, and the inputs.
 import { other } from '../../core/util.js';
 import { COINS, coinMax } from './rules.js';
-import { mv, state } from '../../ui/app.js';
+import { esc, mv, state } from '../../ui/app.js';
 
 const WORD = { 3: 'three', 5: 'five', 7: 'seven' };
 export function miniature(mini, final) {
   const sz = mini.coins.length > 5 ? ' style="width:10cqw;height:10cqw;font-size:7cqw"' : '';   // (more than five: smaller, to fit)
-  return `<div class="tcoin">${mini.coins.map(c => `<i class="${c === COINS.mystery ? 'm' : c}"${sz}>${c}</i>`).join('')}</div>`;
+  return `<div class="tcoin">${mini.coins.map(c => `<i class="${c === COINS.mystery ? 'm' : c}"${sz}>${esc(c)}</i>`).join('')}</div>`;
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   // Five coins: two each and a mystery coin (?) that belongs to nobody until it is flipped.
@@ -22,9 +22,9 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
         const flip = flipped.includes(i), m = c === COINS.mystery, from = was[flipped.indexOf(i)], mk = marked.includes(i);
         const c0 = from === COINS.mystery ? '#fff' : `var(--${(from || other(a ? a.by : turn)).toLowerCase()})`;
         const st = (flip ? `--k:${flipped.indexOf(i)};--c0:${c0};` : '') + (i === 0 && cn < 5 ? `grid-column-start:${1 + (5 - cn) / 2};` : '');
-        return `<span class="coin ${m ? 'm' : c}${flip ? ' flip' : ''}${mk ? ` mk mk${turn}` : ''}"${st ? ` style="${st}"` : ''} aria-label="Coin ${i + 1}, ${m ? 'mystery' : c}${mk ? ', flips next' : ''}"><b>${c}</b></span>`;
+        return `<span class="coin ${m ? 'm' : c}${flip ? ' flip' : ''}${mk ? ` mk mk${turn}` : ''}"${st ? ` style="${st}"` : ''} aria-label="Coin ${i + 1}, ${m ? 'mystery' : esc(c)}${mk ? ', flips next' : ''}"><b>${esc(c)}</b></span>`;
       }).join('')}</div>
-        ${view ? `<div class="dielab">All ${WORD[cn] || cn} show ${sq.owner}</div>` : ''}
+        ${view ? `<div class="dielab">All ${WORD[cn] || cn} show ${esc(sq.owner)}</div>` : ''}
         <button class="big ${turn}" data-act="move" ${mv('flip')}${locked ? ' disabled' : ''}>Flip${view ? '' : ' ' + n}</button></div>`;
   return g;
 }

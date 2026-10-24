@@ -3,7 +3,7 @@ import { playerName } from '../../core/match.js';
 import { other } from '../../core/util.js';
 import { connected } from '../../net/connect.js';
 import { findOn, isMM } from '../../net/matchmaking.js';
-import { room } from '../../net/room.js';
+import { lobby, room } from '../../net/room.js';
 import { N, esc, save, state } from '../app.js';
 import { toonT } from '../art.js';
 import { RATINGS_ENABLED } from '../config.js';
@@ -55,7 +55,7 @@ function endBurst(m) {
 // A matchmaking game's results: both records after the game (the rating change too, with ratings on) and a
 // way to the opponent's profile.
 function mmResult() {
-  if (!isMM() || !room || !room.pub) return '';
+  if (!isMM() || state.online.room || !room || !room.pub) return '';   // (a friend room's match: the friends record is on the profile, not here)
   const pub = room.pub, me = state.online.me, opp = pub.players[other(me)];
   const recs = pub.result && pub.result.records;
   let r = '';
@@ -69,17 +69,17 @@ function mmResult() {
 // The buttons that start another match: Find Match again after a matchmaking game; a friend room's Rematch,
 // which both players have to tap (the requester waits, and can cancel); a local match's Rematch.
 function againBtns() {
-  if (isMM()) return findAgainBtn();
+  if (isMM() && !state.online.room) return findAgainBtn();
   if (!state.online) return '<button class="primary" data-act="rematch">Rematch</button>';
-  if (!room || room.status === 'over' || room.left) return '';   // the room closed, or the other player left: no rematch
-  const me = state.online.me, rm = room.rematch || {};
+  if (!lobby || lobby.status === 'over' || lobby.left) return '';   // the room closed (a forfeit), or the other player left: no rematch
+  const me = state.online.me, rm = lobby.rematch || {};
   if (rm[me]) return `<button class="primary" disabled>Waiting for ${esc(N(other(me)))}…</button><button class="btn" data-act="rematch-cancel">Cancel</button>`;
   const bub = rm[other(me)] ? `<span class="rmbub" aria-live="polite">${esc(N(other(me)))} wants a rematch</span>` : '';   // their request, in a bubble under the button
   return `<span class="rmwrap"><button class="primary" data-act="rematch"${!connected ? ' disabled' : ''}>Rematch</button>${bub}</span>`;
 }
 // Under the buttons, in a friend room: the line the rematch bubble hangs into (always there, so nothing moves).
 function rematchNote() {
-  if (!state.online || isMM() || !room || room.status === 'over' || room.left) return '';
+  if (!state.online || !state.online.room || !lobby || lobby.status === 'over' || lobby.left) return '';
   return '<div class="rmline"></div>';
 }
 export function renderWin() {

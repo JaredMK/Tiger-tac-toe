@@ -2,7 +2,7 @@
 import { other } from '../../core/util.js';
 import { PLACE_MS } from '../shared/placement.js';
 import { shelfCfg, shelfOn } from './rules.js';
-import { N, mv, state } from '../../ui/app.js';
+import { N, esc, mv, state } from '../../ui/app.js';
 import { arcTally, lateAt } from '../../ui/progress.js';
 
 // Shelves: six shelves of three spots. A tap on an open spot is the move: the mark pops in, then a grey
@@ -18,7 +18,7 @@ function shelfTable(mini, a, o) {
       let cls = 'shs' + (w ? ' ' + w : ''), st = '';
       if (sh && i === sh.at) cls += ' pop';
       else if (sh && i === sh.grey) { cls += ' drop'; st = ` style="--t:${PLACE_MS.mark}ms"`; }
-      return `<button class="${cls}"${st} data-act="move" ${mv(i)} aria-label="Shelf ${s + 1}, spot ${i % per + 1}${w === 'G' ? ', grey' : w ? ', ' + w : ''}"${w || o.locked ? ' disabled' : ''}>${w === 'G' ? '' : w ? `<b>${w}</b>` : ''}</button>`;
+      return `<button class="${cls}"${st} data-act="move" ${mv(i)} aria-label="Shelf ${s + 1}, spot ${i % per + 1}${w === 'G' ? ', grey' : w ? ', ' + esc(w) : ''}"${w || o.locked ? ' disabled' : ''}>${w === 'G' ? '' : w ? `<b>${esc(w)}</b>` : ''}</button>`;
     }).join('');
     const fresh = p => sh && a.by === p && ids.includes(sh.at) && ids.filter(i => c[i] === p).length === 1;
     const tag = ['X', 'O'].map(p => `<i class="${on(p) ? 'on ' + p : ''}${fresh(p) ? ' fillin' : ''}">${p}</i>`).join('');

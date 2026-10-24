@@ -1,20 +1,24 @@
 {
   "rules": {
     "rooms": {
-      ".read": "auth != null",
       ".indexOn": [
-        "created",
-        "dl"
+        "created"
       ],
       "$code": {
         ".validate": "$code.matches(/^[ABCDEFGHJKLMNPQRSTUVWXYZ]{5}$/)",
-        ".write": "auth != null && ((!data.exists() && newData.child('host').val() == auth.uid && newData.child('players').child(newData.child('setup/hostSide').val()).child('uid').val() == auth.uid) || data.child('players/X/uid').val() == auth.uid || data.child('players/O/uid').val() == auth.uid || (!newData.exists() && data.child('created').val() < now - 86400000))",
+        ".read": "auth != null && (data.child('players/X/uid').val() === auth.uid || data.child('players/O/uid').val() === auth.uid)",
+        ".write": "auth != null && !newData.exists() && data.child('host').val() === auth.uid && data.child('status').val() === 'lobby'",
         "players": {
           "$side": {
-            ".write": "auth != null && $side.matches(/^[XO]$/) && !data.exists() && newData.child('uid').val() == auth.uid && root.child('rooms').child($code).child('status').val() == 'lobby'"
+            ".write": "auth != null && $side.matches(/^[XO]$/) && !newData.exists() && data.child('uid').val() === auth.uid && root.child('rooms').child($code).child('status').val() === 'lobby'",
+            "name": {
+              ".write": "auth != null && data.parent().child('uid').val() === auth.uid",
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 12"
+            }
           }
         },
         "setup": {
+          ".write": "auth != null && root.child('rooms').child($code).child('host').val() === auth.uid && root.child('rooms').child($code).child('status').val() === 'lobby'",
           "chaos": {
             ".validate": "newData.isBoolean() && (newData.val() == false || auth.token.admin === true || root.child('releases/superchaos').val() === true)"
           },
@@ -22,6 +26,39 @@
             "$type": {
               ".validate": "newData.isBoolean() && (newData.val() == false || auth.token.admin === true || (root.child('releases').child($type).exists() ? root.child('releases').child($type).val() === true : $type.matches(/^(ttt|c4|bs|wordle|hangman|hex|hilo|snakes|memory|candy|bump|coins|pig|hunt|mastermind|bj|bus|rl|dice|hexapawn)$/)))"
             }
+          },
+          "timer": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 600"
+          },
+          "hostPick": {
+            ".validate": "newData.isString() && (newData.val() == 'X' || newData.val() == 'O' || newData.val() == 'random')"
+          },
+          "hostSide": {
+            ".validate": "newData.isString() && (newData.val() == 'X' || newData.val() == 'O')"
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
+        "rematch": {
+          "$side": {
+            ".write": "auth != null && $side.matches(/^[XO]$/) && root.child('rooms').child($code).child('players').child($side).child('uid').val() === auth.uid",
+            ".validate": "newData.isNumber() && newData.val() == now"
+          }
+        },
+        "left": {
+          ".write": "auth != null && !data.exists() && newData.hasChildren(['side', 'name', 'at']) && root.child('rooms').child($code).child('players').child(newData.child('side').val()).child('uid').val() === auth.uid",
+          "side": {
+            ".validate": "newData.isString() && (newData.val() == 'X' || newData.val() == 'O')"
+          },
+          "name": {
+            ".validate": "newData.isString() && newData.val().length <= 12"
+          },
+          "at": {
+            ".validate": "newData.val() == now"
+          },
+          "$other": {
+            ".validate": false
           }
         }
       }
@@ -35,9 +72,22 @@
     },
     "presence": {
       "$code": {
-        ".read": "auth != null",
+        ".read": "auth != null && (root.child('rooms').child($code).child('players/X/uid').val() === auth.uid || root.child('rooms').child($code).child('players/O/uid').val() === auth.uid)",
         "$side": {
-          ".write": "auth != null && (root.child('rooms').child($code).child('players').child($side).child('uid').val() == auth.uid || !root.child('rooms').child($code).exists())"
+          ".write": "auth != null && $side.matches(/^[XO]$/) && root.child('rooms').child($code).child('players').child($side).child('uid').val() === auth.uid",
+          ".validate": "newData.hasChildren(['online']) && newData.child('online').isBoolean()",
+          "online": {
+            ".validate": "newData.isBoolean()"
+          },
+          "away": {
+            ".validate": "newData.isBoolean()"
+          },
+          "at": {
+            ".validate": "newData.isNumber()"
+          },
+          "$other": {
+            ".validate": false
+          }
         }
       }
     },
@@ -86,7 +136,20 @@
       "$id": {
         ".read": "auth != null && (root.child('games').child($id).child('pub/players/X/uid').val() === auth.uid || root.child('games').child($id).child('pub/players/O/uid').val() === auth.uid)",
         "$side": {
-          ".write": "auth != null && $side.matches(/^[XO]$/) && root.child('games').child($id).child('pub/players').child($side).child('uid').val() === auth.uid"
+          ".write": "auth != null && $side.matches(/^[XO]$/) && root.child('games').child($id).child('pub/players').child($side).child('uid').val() === auth.uid",
+          ".validate": "newData.hasChildren(['online']) && newData.child('online').isBoolean()",
+          "online": {
+            ".validate": "newData.isBoolean()"
+          },
+          "away": {
+            ".validate": "newData.isBoolean()"
+          },
+          "at": {
+            ".validate": "newData.isNumber()"
+          },
+          "$other": {
+            ".validate": false
+          }
         }
       }
     },

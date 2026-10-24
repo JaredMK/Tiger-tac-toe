@@ -2,8 +2,8 @@
 import { playerName } from '../core/match.js';
 import { matchStats } from '../core/stats.js';
 import { other } from '../core/util.js';
-import { loggedIn } from './accounts.js';
-import { FIREBASE_CONFIG, call, configured, fb } from './connect.js';
+import { connectQuiet, loggedIn } from './accounts.js';
+import { call, configured, fb } from './connect.js';
 import { isMM } from './matchmaking.js';
 import { state } from '../ui/app.js';
 import { APP_VERSION, KEY } from '../ui/config.js';
@@ -18,18 +18,25 @@ function devId() {
     return id;
   } catch (e) { return null; }
 }
-function fnUrl(name) {
-  const hook = window.TTT_FIREBASE, c = (hook && hook.config) || FIREBASE_CONFIG;
-  return hook && hook.functions ? `http://${hook.functions.host}:${hook.functions.port}/${c.projectId}/us-central1/${name}` : `https://us-central1-${c.projectId}.cloudfunctions.net/${name}`;
-}
-const trackUrl = () => fnUrl('track');
-export function track(data) {
+// Every report is a signed-in call (the server takes nothing without a login: a guest signs in anonymously). The first
+// report loads the SDK quietly; reports made before it is here wait for it (a few at most), and go if it never comes.
+const pending = [];
+let connecting = false;
+function send(name, data) {
   if (!configured() || (window.TTT_FIREBASE && window.TTT_FIREBASE.uid)) return;   // (the friend-game tests run without functions)
+  if (fb && fb.fns && fb.uid) { call(name, data).catch(() => {}); return; }
+  if (pending.length < 40) pending.push([name, data]);
+  if (connecting) return;
+  connecting = true;
+  connectQuiet().then(ok => {
+    connecting = false;
+    const list = pending.splice(0);
+    if (ok && fb && fb.fns) for (const [n, d] of list) call(n, d).catch(() => {});   // (no connection: the reports are dropped; stats are never worth an error)
+  }).catch(() => { connecting = false; pending.length = 0; });
+}
+export function track(data) {
   data.dev = devId();
-  try {
-    if (fb && fb.fns) { call('track', data).catch(() => {}); return; }       // the SDK is here: the call carries the account, if any
-    fetch(trackUrl(), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data }), keepalive: true }).catch(() => {});
-  } catch (e) { /* stats are never worth an error */ }
+  try { send('track', data); } catch (e) { /* stats are never worth an error */ }
 }
 const localMode = () => (state.sc ? 'chaos' : state.cpu === 'XO' ? 'cvc' : state.cpu ? 'cpu' : 'local');   // (Super Chaos: a mode of its own)
 export function trackStart() {
@@ -78,10 +85,7 @@ function devEvent(data) {
   const tag = testerTag();
   if (tag) data.tag = tag;
   devLast = Date.now();
-  try {
-    if (fb && fb.fns) { call('devlog', data).catch(() => {}); return; }      // the SDK is here: the call carries the account (its last activity)
-    fetch(fnUrl('devlog'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data }), keepalive: true }).catch(() => {});
-  } catch (e) { /* never worth an error */ }
+  try { send('devlog', data); } catch (e) { /* never worth an error */ }
 }
 export const devOpen = () => devEvent({ ev: 'open', o: 'o' + randHex(8) });
 // Something went wrong on this phone (a move that would not save): kept with the device's events for the
@@ -96,8 +100,7 @@ function devMatch() {
   if (!Array.isArray(state.squares) || state.squares.length !== 9) return null;
   const o = state.online;
   if (o) {
-    if (isMM()) return o.game ? { g: 'm' + o.game, mode: 'match' } : null;
-    return o.matchId && o.code ? { g: 'f' + o.code + '_' + o.matchId, mode: 'friend' } : null;
+    return isMM() && o.game ? { g: 'm' + o.game, mode: o.room ? 'friend' : 'match' } : null;   // (a friend room's match: the server's game, logged under its id)
   }
   if (!['board', 'mini', 'win', 'review', 'review-mini'].includes(state.screen)) return null;
   return state.stats && state.stats.id ? { g: 'l' + state.stats.id, mode: state.stats.mode } : null;

@@ -1,7 +1,7 @@
 // Hexapawn: the screen, the miniature, the move's words and sounds, and the inputs.
 import { other } from '../../core/util.js';
 import { HP, hpMoves } from './rules.js';
-import { N, mv, state, zoomedType } from '../../ui/app.js';
+import { N, esc, mv, state, zoomedType } from '../../ui/app.js';
 import { toon, toonT } from '../../ui/art.js';
 import { render } from '../../ui/render.js';
 
@@ -25,7 +25,7 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
     const ghost = moved && a.capture ? `<span class="hpp ghost" style="--kx:${col >= (a.from % HP.cols) ? 1 : -1}" aria-hidden="true">${toon(other(a.by))}</span>` : '';
     const piece = c ? `<span class="hpp${moved ? ' slide' : ''}"${style}>${toonT(c)}</span>` : '';
     const act = mine && tgt ? `data-act="move" ${mv([sel, i])}` : mine && movable ? 'data-act="hpsel"' : '';
-    const label = `Row ${r + 1} column ${col + 1}${c ? ', ' + c + ' pawn' : ''}${tgt ? (c ? ', capture here' : ', move here') : ''}`;
+    const label = `Row ${r + 1} column ${col + 1}${c ? ', ' + esc(c) + ' pawn' : ''}${tgt ? (c ? ', capture here' : ', move here') : ''}`;
     return `<button class="hpc${(r + col) % 2 ? ' dk' : ''}${tgt ? ' tgt' : ''}${tgt && c ? ' cap' : ''}${i === sel ? ' sel' : ''}${won(i) ? ' win' : ''}${lit ? ' lit' : ''}" data-i="${i}" ${act} aria-label="${label}"${act ? '' : ' disabled'}>${ghost}${piece}</button>`;
   }).join('');
   g = `<div class="g-hp"><div class="hpgoal X">X wins by reaching this row</div><div class="hpb">${cells}</div><div class="hpgoal O">O wins by reaching this row</div>

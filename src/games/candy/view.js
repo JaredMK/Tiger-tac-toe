@@ -1,6 +1,6 @@
 // Candy Race: the screen, the miniature, the move's words and sounds, and the inputs.
 import { CANDY } from './rules.js';
-import { HOP_MS, N, SPIN_MS, mv } from '../../ui/app.js';
+import { HOP_MS, N, SPIN_MS, esc, mv } from '../../ui/app.js';
 import { CANDY_SPEC, trackSvg } from '../../ui/track.js';
 
 export function miniature(mini, final) {
@@ -13,7 +13,7 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
   const k = own ? CANDY.colors.indexOf(own.color) : mini.last ? CANDY.colors.indexOf(mini.last.color) : -1;
   const angle = k < 0 ? 0 : 360 - (k * 90 + 45);        // puts that colour under the pointer
   const W = p => `<b class="${p}">${N(p)}</b>`;
-  const lab = joint ? ['X', 'O'].filter(p => joint[p]).map(p => `${W(p)} spun ${joint[p].color}`).join(' · ') : mini.last ? `${W(mini.last.by)} spun ${mini.last.color}` : 'No spins yet';
+  const lab = joint ? ['X', 'O'].filter(p => joint[p]).map(p => `${W(p)} spun ${esc(joint[p].color)}`).join(' · ') : mini.last ? `${W(mini.last.by)} spun ${esc(mini.last.color)}` : 'No spins yet';
   g = `<div class="g-candy">${trackSvg(CANDY_SPEC, { colors: mini.track, tokens: { X: mini.pos.X, O: mini.pos.O }, moved: joint ? ['X', 'O'] : a ? a.by : null, finish: 'colours' })}
         <div class="wheelwrap"><div class="pointer"></div><div class="wheel${a ? ' spin' : ''}" style="--to:${(a ? 1080 : 0) + angle}deg" aria-hidden="true"></div>
           <div class="dielab${a ? ' late' : ''}">${lab}</div></div>
@@ -21,8 +21,8 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
   return g;
 }
 export function moveText(f, who) {
-  if (f.scr && f.scr.moves) return ['X', 'O'].filter(p => f.scr.moves[p]).map(p => `<b class="${p}">${N(p)}</b> spun ${f.scr.moves[p].color}`).join(' · ');
-  return `${who} spun ${f.color}`;
+  if (f.scr && f.scr.moves) return ['X', 'O'].filter(p => f.scr.moves[p]).map(p => `<b class="${p}">${N(p)}</b> spun ${esc(f.scr.moves[p].color)}`).join(' · ');
+  return `${who} spun ${esc(f.color)}`;
 }
 export function sounds(f, add, won, mini, last) {
   const ticks = 12;                                              // the wheel ticks, slower and slower as it stops

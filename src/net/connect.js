@@ -40,6 +40,7 @@ export function loadFirebase() {
     const [appM, m, authM, fnM] = await Promise.all([import(base + 'firebase-app.js'), import(base + 'firebase-database.js'),
       mock ? null : import(base + 'firebase-auth.js'), mock ? null : import(base + 'firebase-functions.js')]);
     const app = appM.initializeApp((hook && hook.config) || FIREBASE_CONFIG);
+    await appCheck(app, base, hook);                        // (App Check first: every request after it carries the token)
     const db = m.getDatabase(app);
     if (hook && hook.emulator) m.connectDatabaseEmulator(db, hook.emulator.host, hook.emulator.port, mock ? { mockUserToken: { sub: hook.uid, user_id: hook.uid } } : undefined);
     const f = { m, db, uid: mock ? hook.uid : null, authM, fnM, auth: null, fns: null };
@@ -95,6 +96,19 @@ export async function restGet(path, ms) {
 export function bounce() {
   if (!fb) return;
   try { fb.m.goOffline(fb.db); fb.m.goOnline(fb.db); } catch (e) { /* (the SDK comes back by itself) */ }
+}
+// App Check: the page proves it is a real copy of the site (reCAPTCHA Enterprise, invisible) and every database and
+// function request carries the token; the server refuses requests without one once enforcement is on (functions:
+// TTC_APPCHECK; the database: the console). Off where the project has no key yet (src/env.js appCheckKey), and
+// never in the tests or the emulators. On localhost a debug token is used (the console lists it to allow).
+async function appCheck(app, base, hook) {
+  const key = window.TTC_ENV && window.TTC_ENV.appCheckKey;
+  if (!key || hook) return;
+  try {
+    if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+    const ac = await import(base + 'firebase-app-check.js');
+    ac.initializeAppCheck(app, { provider: new ac.ReCaptchaEnterpriseProvider(key), isTokenAutoRefreshEnabled: true });
+  } catch (e) { console.warn('[App Check] not started', e && e.message); }
 }
 export function call(name, data) { return fb.fnM.httpsCallable(fb.fns, name)(data || {}).then(r => r.data); }
 

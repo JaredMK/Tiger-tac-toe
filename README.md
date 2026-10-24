@@ -720,43 +720,19 @@ Find Match is unchanged, and so are the normal modes.
   game: `tests/core/chaos-double.test.js` (both win the same square: it resets, the replay is there,
   play goes on), from rounds found by `tests/core/sc-double.js` (the seeds kept in `sc-double.json`).
 - **With a friend** (a friend room, each player on their own phone): the same rounds, both moving at
-  once. The room's record is the one truth of each round: its number, its deadline in server time (the
-  round clock both phones show, from the database's clock offset), and each player's move once sent in
-  (`sc.moves`). Each phone plays its move on its own copy of the round and sends it in the moment it is
-  made; the first in waits ("Waiting for [name]…" with the shared countdown), and the board says
-  "[name] has moved" once the other's move is in. The second move in settles the round on the record
-  (`applyChaosSubmit`, the same merge as against the computer); so does the deadline: a phone whose
-  clock runs out ends a move under way as it stands and sends it, and a side still not in 2.5 seconds
-  after the deadline (a phone closed or away) has missed the round, settled by the other phone
-  (`applyChaosDeadline`). The settled round carries its start, in server time, a second ahead (the last
-  mover's phone starts once its own result has played: `recap.lead`), and each phone plays its sequence
-  from there at its own pace (a skip jumps it on), its own outcome first (`scRecapOrder`): its Mini Golf
-  shot, or what both moves settle in its square (both moves played together there when both played it:
-  the shots, the shared Roulette spin, a Bump knock, both Standoff Grid claims, both Sniff dogs, and then no
-  replay of the other's move there); then the other player's square lit and their move in the pop-up (it
-  travels with its replay log), what their move settles; then each square's result, then the next round,
-  which begins on the record once both phones are through the recap (`applyChaosBegin`: `sc.ready`, then
-  its deadline; a phone through it waits at most 30 seconds for the other). A reload, or
-  a phone coming back, reads the record and joins the round as it stands, or the recap where it is in
-  its sequence; except that a phone that has not seen its own outcome yet (out of sight, the menu open
-  while the round settled) plays it from its start first, even if the next round has begun. A move made on a
-  phone is never dropped for a move not yet made: the moment it is made the phone is locked ("Waiting
-  for…"), and if the record has not taken it yet (a reload mid-round, a write refused) the phone keeps
-  it and sends it again every second. The record takes exactly one move a side a round (a second one,
-  a move for the other side, a wrong round or a mismatched square is refused: `applyChaosSubmit`; a
-  write from a phone not seated in the room is refused by the security rules), and a phone that sent
-  its move checks the record carries it. A write the record refuses or that fails is never silent: the
-  hint says "Move not saved (why) · trying again…" in red with a short notice and the error sound,
-  the browser console gets it, and the device's playtest log on the server gets an `error` event (the
-  admin's dashboard shows them in the session); a round settled before the move got in says so too.
-  Tested with two SDK clients on the database emulator, under the live rules:
-  `tests/server/chaos-online.test.js` (two rounds, a duplicate move, a stranger's move, a timeout
-  round), in `npm test`. It is for
-  playtesting: the room's record holds every square, so the hidden information is hidden only by the
-  app (as in friend rooms already), and it counts as a friend game in the stats. How it is built:
-  `src/net/chaos.js`, `src/ui/chaos.js` (the sequence by the clock), and `startChaosOnline`,
-  `chaosResolveOnline`, `scTimeoutMove`, `SC_ONLINE` in `src/core/chaos.js`; tests:
-  `tests/core/chaos-online.test.js`.
+  once, and the server runs the match exactly as it runs Find Match (`core/scgame.js`; the room is only a
+  lobby that points at the match, `rooms/{code}/game`). Each step of a move is a request (`scMove`), the
+  round settles on the server once both are in or at its deadline (a side not in misses the round; two
+  misses in a row forfeit), the settled round carries its start in server time and each phone plays the
+  recap from there at its own pace, its own outcome first (`scRecapOrder`), and the next round begins
+  once both phones are through it (`scBegin`; a phone through it waits at most 30 seconds for the other).
+  A reload, or a phone coming back, reads the record and joins the round as it stands, or the recap where
+  it is. Nothing of the other player's move, and no secret, ever reaches a phone before the recap (the
+  public state is the server's `scPublicState`, each side's own node its `scSideView`). How it is built:
+  `src/net/chaos.js`, `src/ui/chaos.js` (the sequence by the clock), `src/core/scgame.js`; tests:
+  `tests/core/scgame.test.js`, and the server's in `tests/emulator/server.test.js`. (Until October 2026 a
+  friend room's match was a record the two phones wrote by transactions, under the security rules alone;
+  the review found that record forgeable, so every online match is the server's now.)
 - **Stats**: its own mode, `chaos`, in the anonymous stats and the dashboard (Matches by mode, the
   mini-game table, the playtest log). Not in a player's local record or history yet.
 - How it is built: `src/core/chaos.js` (the round: each player's move on their own copy of the board, the
@@ -1019,15 +995,14 @@ against the computer keeps a compact, timestamped log of what happened: the star
 squares dealt), each round's start and result, each move accepted or refused and why, timeouts, a phone
 dropping off and coming back (presence), the phones' errors, each phone's app version (the deploy stamps the
 commit into `src/ui/config.js` `APP_VERSION`) and its anonymous device id (the device log's hash,
-shortened). The server writes what it sees itself: Find Match moves and refusals (`changeGame`), a friend
-room's record write by write (`friendGameDone`: `friendEvents`), presence (`roomPresenceLog`,
-`gamePresenceLog`). The phones send the rest through the device log (`devlog`): `error` (with its match),
-`mlog` (only the phone knows it: a match against the computer's rounds and timeouts, a move a friend room's
-record refused; kept for the match's log only) and `report`. Stored in `matchLogs/{key}` (events) and
+shortened). The server writes what it sees itself: every online match's moves and refusals (`changeGame`,
+`changeSc`: Find Match's and a friend room's alike), presence (`gamePresenceLog`). The phones send the rest through the device log (`devlog`): `error` (with its match),
+`mlog` (only the phone knows it: a match against the computer's rounds and timeouts, a move the server
+refused; kept for the match's log only) and `report`. Stored in `matchLogs/{key}` (events) and
 `matchLogIndex/{key}` (the summary: mode, players, started, last, events, versions, devices, reported, note),
 the admin alone may read them and nobody writes them but the server; capped at 3,000 events a match, and
-deleted by the sweep 30 days after a match's last event. Keys: `m{game}` (Find Match), `f{room}_{match}`
-(friend room), `l{id}` (a match on one phone). Rules: `functions/matchLogRules.js`; tests:
+deleted by the sweep 30 days after a match's last event. Keys: `m{game}` (every online match, Find Match's and a
+friend room's), `l{id}` (a match on one phone). Rules: `functions/matchLogRules.js`; tests:
 `tests/server/match-log.test.js`, and the server's in `tests/emulator/server.test.js`.
 
 The admin dashboard's **Match inspector** lists the logged matches, reported ones first, filtered by player

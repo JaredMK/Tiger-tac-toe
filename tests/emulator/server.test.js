@@ -402,153 +402,169 @@ test('ratings off: five wins in a row list nobody on the leaderboard and leave t
   assert.equal(await get(`leaderboard/${star.uid}`), null, 'not listed');
 });
 
-// A friend game whose players have both gone: the server alone misses their turns (Classic) or rounds (Super
-// Chaos), and a second miss in a row ends the match as a forfeit, recorded, the room closed; a phone that comes
-// back finds the result.
-async function friendRoom(host, guest, code, setup, id) {
-  const rec = E.newOnlineMatch(Object.assign({ names: { X: host.name, O: guest.name } }, setup), E.makeRng(code), id, Date.now());
-  if (!setup.chaos) E.armClock(rec.state, [], Date.now());     // (the host's phone starts the first turn's clock, as the app does)
-  await host.write(`rooms/${code}`, { created: Date.now(), host: host.uid, status: 'lobby', players: { X: { uid: host.uid, name: host.name, joined: Date.now() } }, setup: { hostSide: 'X', timer: setup.timer || 0, chaos: !!setup.chaos } });
-  await guest.write(`rooms/${code}/players/O`, { uid: guest.uid, name: guest.name, joined: Date.now() });
-  await host.write(`rooms/${code}/status`, 'playing');
-  await host.write(`rooms/${code}/match`, E.packMatch(rec));
-  return rec;
+// Friend rooms: the lobby on the database, opened and joined through the server (openRoom, joinRoom), the match the
+// server runs for it (startRoom: a games/{id} match with mode 'friend', played through move/scMove/timeout/resign as
+// Find Match's), the records credited as friend games (players with an account only), and the rules: only the two
+// players read the room, nobody but the server seats anyone or writes a match (security review F1, F4, F5, F10, F12).
+const only = (...ts) => Object.fromEntries(E.TYPES.map(t => [t, ts.includes(t)]));
+async function openRoom(host, setup, side) {
+  const r = await host.call('openRoom', { name: host.name || 'Host', side: side || 'X', setup: setup || {} });
+  assert.equal(r.ok, true, JSON.stringify(r)); assert.match(r.code, /^[ABCDEFGHJKLMNPQRSTUVWXYZ]{5}$/, 'a room code');
+  return r.code;
 }
-const roomRec = async code => E.parseMatch(await get(`rooms/${code}/match`));
-// The owner sets the room's match (its due moment comes from the trigger, as for any write)
-// (a due moment already past: the room's tick, queued by the write, may have looked at the room at once; the sweep is the backup)
-async function roomSet(code, fn) {
-  const rec = await roomRec(code), full = E.fullState(rec), dl0 = await get(`rooms/${code}/dl`);
-  fn(full);
-  await put(`rooms/${code}/match`, E.packMatch(E.matchRecord(full)));
-  await until(async () => { const dl = await get(`rooms/${code}/dl`); return dl !== dl0 || (await roomRec(code)).state.seq > rec.state.seq; }, 10000, 'the trigger took the write');
+async function friendRoom(host, guest, setup) {
+  const code = await openRoom(host, setup);
+  const j = await guest.call('joinRoom', { code, name: guest.name || 'Guest' });
+  assert.deepEqual([j.ok, j.side, j.status], [true, 'O', 'lobby'], JSON.stringify(j));
+  const st = await host.call('startRoom', { code });
+  assert.deepEqual([st.ok, st.started], [true, true], JSON.stringify(st));
+  const room = await get(`rooms/${code}`);
+  assert.deepEqual([room.status, room.game], ['playing', st.game], 'the room points at its match');
+  return { code, id: st.game };
 }
-test('friend games: with both players gone the server misses their turns; two in a row is a forfeit, recorded, the room closed (Classic)', async () => {
-  const host = await player('Abby'), guest = await player('Bert');
-  const code = 'GWNEC';
-  await friendRoom(host, guest, code, { timer: 30, games: Object.fromEntries(E.TYPES.map(t => [t, t === 'hilo' || t === 'c4'])) }, 'gc1');
-  const dl0 = await until(() => get(`rooms/${code}/dl`), 10000, 'the room\'s due moment from its first write');
-  assert.ok(dl0 > Date.now(), 'not due yet: the first turn\'s clock runs');
-  assert.equal((await sweep()).roomTimeouts, 0, 'nothing due: the sweep leaves it');
-  // both phones closed: each turn runs out on the server alone
-  let st = null, misses = 0;
-  for (let k = 0; k < 6; k++) {
-    const was = (await roomRec(code)).state, missed = v => (v.timer.timeouts ? v.timer.timeouts.X + v.timer.timeouts.O : 0);
-    await roomSet(code, f => { f.timer.deadline = Date.now() - 10000; f.timer.startBy = null; f.timer.for = f.turn; });
-    const r = await sweep();
-    assert.ok(r.roomTimeouts <= 1, 'the turn missed once: by the sweep, or by the room\'s tick just before it');
-    misses++;
-    st = await until(async () => { const v = (await roomRec(code)).state; return missed(v) > missed(was) || v.winner ? v : null; }, 10000, 'the server missed the turn');
-    if (st.winner) break;
-    assert.ok(st.timer.deadline > Date.now(), 'the next turn\'s clock runs at once (away is never a pause)');
-  }
-  assert.equal(st.winReason, 'timeout'); assert.equal(st.winner, 'O'); assert.equal(st.resigned, 'X', 'X missed two in a row first');
-  assert.ok(misses <= 4, `ended after ${misses} misses`);
-  await until(async () => (await get(`rooms/${code}/status`)) === 'over', 10000, 'the room closed');
-  assert.equal(await get(`rooms/${code}/dl`), null, 'nothing more due');
-  const id = 'f_' + code + '_gc1';
-  const hx = await until(() => host.read(`history/${host.uid}/${id}`), 10000, 'the forfeit in the host\'s history');
-  const ho = await until(() => guest.read(`history/${guest.uid}/${id}`), 10000, 'and the guest\'s');
-  assert.deepEqual([hx.result, hx.how, ho.result, ho.how], ['loss', 'timeout', 'win', 'timeout']);
-  // both come back: the room (its status, the match's result) is what each phone opens on
-  for (const p of [host, guest]) {
-    const room = await p.read(`rooms/${code}`), rec = E.parseMatch(room.match);
-    assert.deepEqual([room.status, rec.state.winner, rec.state.winReason, rec.state.resigned], ['over', 'O', 'timeout', 'X'], `${p.name} sees the result`);
-  }
+test('friend rooms: opened and joined through the server; only its two players read the room; nobody seats anyone, writes a match or lists the rooms (the forgery of a record is closed)', async () => {
+  const host = await player('RoomHost'), guest = await player('RoomGuest'), stranger = await player('RoomStranger'), victim = await player('RoomVictim');
+  const code = await openRoom(host, { games: only('hilo', 'c4'), timer: 60, hostPick: 'X' });
+  const room = await host.read(`rooms/${code}`);
+  assert.deepEqual([room.host, room.status, room.players.X.uid, room.players.X.name, room.setup.timer, room.setup.hostSide, room.setup.games.hilo, room.setup.games.ttt], [host.uid, 'lobby', host.uid, 'RoomHost', 60, 'X', true, false]);
+  await denied(stranger.read(`rooms/${code}`), 'someone not in the room reading it');
+  await denied(stranger.read('rooms'), 'listing the rooms');
+  await denied(stranger.write(`rooms/${code}/players/O`, { uid: stranger.uid, name: 'Me', joined: Date.now() }), 'taking a seat by hand');
+  await denied(stranger.write('rooms/FORGE', { created: Date.now(), host: stranger.uid, status: 'playing', players: { X: { uid: stranger.uid, name: 'S', joined: 1 }, O: { uid: victim.uid, name: 'V', joined: 1 } } }), 'making a room by hand, seating someone else');
+  await denied(host.write(`rooms/${code}/players/O`, { uid: victim.uid, name: 'V', joined: Date.now() }), 'the host seating someone else');
+  await denied(host.write(`rooms/${code}/match`, { state: '{}' }), 'a match written by a phone');
+  await denied(host.write(`rooms/${code}/status`, 'playing'), 'the status');
+  await denied(host.write(`rooms/${code}/game`, 'xxxxxxxxxx'), "the match's id");
+  await denied(host.write(`rooms/${code}/host`, victim.uid), 'the host');
+  const j = await guest.call('joinRoom', { code, name: 'RoomGuest' });
+  assert.deepEqual([j.ok, j.side], [true, 'O']);
+  assert.deepEqual(await stranger.call('joinRoom', { code, name: 'Third' }), { ok: false, reason: 'full' });
+  assert.deepEqual(await stranger.call('joinRoom', { code: 'ZZZZZ', name: 'Lost' }), { ok: false, reason: 'missing' });
+  assert.deepEqual(await stranger.call('joinRoom', { code: 'bad code', name: 'Lost' }), { ok: false, reason: 'code' });
+  assert.equal((await guest.read(`rooms/${code}`)).players.O.uid, guest.uid, 'the guest reads the room now');
+  await denied(stranger.read(`rooms/${code}`), 'still not a stranger');
+  await guest.write(`rooms/${code}/players/O/name`, 'Guesty');
+  await denied(guest.write(`rooms/${code}/players/X/name`, 'Hacked'), "the other's name");
+  await denied(guest.write(`rooms/${code}/players/O/uid`, stranger.uid), "the seat's uid");
+  await host.write(`rooms/${code}/setup/timer`, 0);
+  await denied(guest.write(`rooms/${code}/setup/timer`, 0), 'the guest changing the setup');
+  await denied(host.write(`rooms/${code}/setup/timer`, 9999), 'a timer out of range');
+  await guest.write(`presence/${code}/O`, { online: true, away: false, at: Date.now() });
+  await denied(guest.write(`presence/${code}/X`, { online: true, at: Date.now() }), "the other seat's presence");
+  await denied(guest.write(`presence/${code}/O`, { online: 'yes', at: Date.now() }), 'presence out of shape');
+  await denied(stranger.read(`presence/${code}`), 'a stranger reading the presence');
+  assert.deepEqual(await guest.call('startRoom', { code }), { ok: false, reason: 'host' }, 'the host alone starts the match');
+  const s = await host.call('startRoom', { code });
+  assert.equal(s.ok, true, JSON.stringify(s));
+  const pub = await host.read(`games/${s.game}/pub`);
+  assert.deepEqual([pub.mode, pub.room, pub.players.X.uid, pub.players.O.uid, pub.players.O.name, pub.timer], ['friend', code, host.uid, guest.uid, 'Guesty', 0]);
+  await denied(stranger.read(`games/${s.game}/pub`), 'a stranger reading the match');
+  assert.equal(await get(`active/${host.uid}`), null, 'no Find Match entry: a friend match leaves Find Match free');
+  await denied(host.write(`rooms/${code}/setup/timer`, 60), 'the setup once the match is on');
+  await denied(host.write(`rooms/${code}`, null), 'the host deleting the room once the match is on');
+  assert.deepEqual(await stranger.call('joinRoom', { code, name: 'Late' }), { ok: false, reason: 'full' });
+  await denied(host.write(`history/${victim.uid}/${s.game}`, { result: 'loss' }), 'history by hand');
+  assert.equal((await host.call('resign', { game: s.game })).ok, true); await recorded(s.game);
+  assert.equal(await get(`history/${victim.uid}`), null, 'nothing reached anyone not in the match');
 });
-test('friend games: Super Chaos with both phones gone: rounds settle on the server, a recap nobody finished begins the next, two misses in a row forfeit', async () => {
-  await put('releases/superchaos', true);
-  const host = await player('Cass'), guest = await player('Dree');
-  const code = 'GWNES';
-  await friendRoom(host, guest, code, { chaos: true, games: Object.fromEntries(E.TYPES.map(t => [t, t === 'hilo'])) }, 'gs1');
-  // round 1: the host moves, then closes the app; the guest never comes back
-  const r1 = await roomRec(code), mv = (() => {
-    const st = E.fullState(r1); st.online = { role: 'host', code, me: 'X' };
-    st.sc = Object.assign(JSON.parse(JSON.stringify(r1.state.sc)), { me: null, moved: null, start: null, steps: null, recap: null });
-    st.turn = 'X'; st.lock = null;
-    const i = st.squares.findIndex(q => q.mini.type === 'hilo');
-    assert.ok(E.playMove(st, i, 15, E.makeRng('hm')).ok);
-    return Object.assign(E.scMoveOf(st, 'X'), { at: Date.now() });
-  })();
-  await host.write(`rooms/${code}/match`, E.packMatch(E.applyChaosSubmit(r1, 'X', mv, E.makeRng('s'), Date.now(), 0).rec));
-  for (let k = 0; k < 6; k++) {
-    const before = (await roomRec(code)).state.seq;
-    await roomSet(code, f => { if (f.sc.deadline != null) f.sc.deadline = Date.now() - 10000; else { f.sc.recap.at = Date.now() - 200000; f.sc.ready = null; } });
-    const sw = await sweep();                                     // (a due moment already past: the room's tick, queued by the write, may have looked first; the sweep is the backup: one of them, once)
-    assert.ok(sw.roomTimeouts <= 1, 'looked at once');
-    const st = await until(async () => { const r = (await roomRec(code)).state; return r.seq > before ? r : null; }, 10000, 'the server moved the match on');
-    if (st.winner) break;
-  }
-  const st = (await roomRec(code)).state;
-  assert.deepEqual([st.winner, st.winReason, st.resigned, st.sc.miss], ['X', 'timeout', 'O', { X: 1, O: 2 }], 'the guest missed two rounds in a row (the host one): the host wins by forfeit');
-  await until(async () => (await get(`rooms/${code}/status`)) === 'over', 10000, 'the room closed');
-  const id = 'f_' + code + '_gs1';
-  assert.deepEqual([(await until(() => host.read(`history/${host.uid}/${id}`), 10000, 'history')).result, (await until(() => guest.read(`history/${guest.uid}/${id}`), 10000, 'history')).result], ['win', 'loss']);
-  for (const p of [host, guest]) { const rec = E.parseMatch((await p.read(`rooms/${code}`)).match); assert.equal(rec.state.winner, 'X', `${p.name} sees the result`); }
-});
-
-// The round's deadline is the server's to keep, whatever the phones show: the record's write queues the server's look
-// at the room for the due moment (roomTick, a Cloud Task; the sweep each minute is the backup). Here no phone acts
-// and no sweep runs: the task settles the round at its deadline.
-test('friend games: Super Chaos round nobody settles: the server settles it at its deadline by the room\'s tick (queued by the round\'s write), no phone open, no sweep', async () => {
-  await put('releases/superchaos', true);
-  const host = await player('Tock'), guest = await player('Tick');
-  const code = 'GTCKS';
-  await friendRoom(host, guest, code, { chaos: true, games: Object.fromEntries(E.TYPES.map(t => [t, t === 'hilo'])) }, 'gt1');
-  const r1 = await roomRec(code), mv = (() => {
-    const st = E.fullState(r1); st.online = { role: 'host', code, me: 'X' };
-    st.sc = Object.assign(JSON.parse(JSON.stringify(r1.state.sc)), { me: null, moved: null, start: null, steps: null, recap: null });
-    st.turn = 'X'; st.lock = null;
-    assert.ok(E.playMove(st, st.squares.findIndex(q => q.mini.type === 'hilo'), 15, E.makeRng('hm')).ok);
-    return Object.assign(E.scMoveOf(st, 'X'), { at: Date.now() });
-  })();
-  await host.write(`rooms/${code}/match`, E.packMatch(E.applyChaosSubmit(r1, 'X', mv, E.makeRng('s'), Date.now(), 0).rec));
-  // the host's move in; the guest never moves. The deadline brought close: this write queues the server's look at the room for the due moment
-  const t0 = Date.now(), full = E.fullState(await roomRec(code));
-  full.sc.deadline = t0 + 1500;
-  await put(`rooms/${code}/match`, E.packMatch(E.matchRecord(full)));   // (not roomSet: that waits for a due moment already past)
-  const due = await until(async () => { const v = await get(`rooms/${code}/dl`); return v === t0 + 1500 + E.SC_ONLINE.graceMs ? v : null; }, 10000, "the room's due moment");
-  const st = await until(async () => { const r = await roomRec(code); return r.state.sc.recap && r.state.sc.recap.round === 1 ? r.state : null; }, 20000, 'the round settled by the server at its deadline');
-  const at = Date.now();
-  assert.deepEqual([st.sc.recap.mv.O, st.sc.recap.missed, st.sc.miss], [null, ['O'], { X: 0, O: 1 }], 'the guest missed the round; nothing played for them');
-  assert.ok(at >= due - 1000 && at - due < 8000, `settled at its due moment, not before (${at - due} ms after it)`);
-  await until(async () => { const v = await get(`rooms/${code}/dl`); return v != null && v !== due ? v : null; }, 10000, 'the next look queued: the recap nobody finishes begins the next round');   // (a new due moment, not the one just served: on a slow runner it can already be past)
-});
-
-test('friend-code games are saved to the history of players with accounts, marked unrated', async () => {
-  const host = await player('Host1'), guest = await player('Guest1');
-  const anon = await player(null, { anonymous: true });
-  const code = 'FRDGM';
-  const rec = E.newOnlineMatch({ names: { X: 'Host1', O: 'Guest1' } }, E.makeRng(9), 'fm1');
-  await host.write(`rooms/${code}`, { created: Date.now(), host: host.uid, status: 'lobby', players: { X: { uid: host.uid, name: 'Host1', joined: Date.now() } }, setup: { hostSide: 'X', timer: 0 } });
-  await guest.write(`rooms/${code}/players/O`, { uid: guest.uid, name: 'Guest1', joined: Date.now() });
-  await host.write(`rooms/${code}/status`, 'playing');
-  await host.write(`rooms/${code}/match`, { state: JSON.stringify(rec.state), secrets: JSON.stringify(rec.secrets) });
-  // the host wins on the board
-  const full = E.fullState(rec);
-  full.squares[0].owner = 'X'; full.squares[1].owner = 'X'; full.squares[2].owner = 'X';
-  full.winner = 'X'; full.winLine = [0, 1, 2]; full.winReason = 'line';
-  const end = E.matchRecord(full);
-  await guest.write(`rooms/${code}/match`, { state: JSON.stringify(end.state), secrets: JSON.stringify(end.secrets) });
-  const id = 'f_' + code + '_fm1';
-  const hh = await until(() => host.read(`history/${host.uid}/${id}`), 10000, 'the friend game in the host\'s history');
-  assert.equal(hh.mode, 'friend'); assert.equal(hh.rated, false); assert.equal(hh.result, 'win'); assert.equal(hh.how, 'line');
-  assert.deepEqual(hh.opponent, { uid: guest.uid, name: 'Guest1' });
-  const gh = await until(() => guest.read(`history/${guest.uid}/${id}`), 10000, 'the friend game in the guest\'s history');
-  assert.equal(gh.result, 'loss'); assert.equal(gh.ratingBefore, undefined);
+test('friend rooms: the match is the server\'s, played through the same calls as Find Match; the result goes on the friends record and the history of players with accounts (a guest without one gets none)', async () => {
+  const host = await player('FrHost'), guest = await player('FrGuest');
+  const { code, id } = await friendRoom(host, guest, { games: only('ttt', 'hilo'), timer: 0 });
+  const st0 = await gameState(id);
+  assert.ok(st0.squares.every(q => ['ttt', 'hilo'].includes(q.mini.type)), "the room's games"); assert.equal(st0.timer.limit, 0, "the room's timer: none");
+  await nearWin(id, 'X');
+  assert.deepEqual(await guest.call('move', { game: id, square: 2, move: 2 }), { ok: false, reason: 'turn' }, "the guest on the host's turn");
+  assert.equal((await host.call('move', { game: id, square: 2, move: 2 })).ok, true);
+  await recorded(id);
+  const hh = await host.read(`history/${host.uid}/${id}`), gh = await guest.read(`history/${guest.uid}/${id}`);
+  assert.deepEqual([hh.mode, hh.rated, hh.result, hh.how, hh.side], ['friend', false, 'win', 'line', 'X']);
+  assert.deepEqual(hh.opponent, { uid: guest.uid, name: 'FrGuest' });
+  assert.deepEqual([gh.result, gh.side, gh.ratingBefore], ['loss', 'O', undefined]);
   const hu = await get(`users/${host.uid}`), gu = await get(`users/${guest.uid}`);
   assert.equal(hu.rating, 1200, 'friend games never change ratings');
-  assert.deepEqual(hu.friend, { wins: 1, games: 1, sides: { X: { wins: 1, games: 1 } } }, 'a win on the host\'s vs-friends record, played as X');
-  assert.deepEqual(gu.friend, { losses: 1, games: 1, sides: { O: { losses: 1, games: 1 } } }, 'a loss on the guest\'s, as O');
-  assert.equal(hu.sides, undefined, 'the Find Match sides untouched');
-  const oh = await get(`oppStats/${host.uid}/${guest.uid}`), og = await get(`oppStats/${guest.uid}/${host.uid}`);
-  assert.deepEqual([oh.name, oh.wins, oh.losses, oh.draws], ['Guest1', 1, undefined, undefined], 'the host\'s record against the guest (Top opponents)');
-  assert.deepEqual([og.name, og.wins, og.losses], ['Host1', undefined, 1]);
-  assert.deepEqual([hu.wins, hu.games], [0, 0], 'the main record is Find Match games only');
-  const sq = E.fullState(end).squares.slice(0, 3).map(q => q.mini.type), counts = {};
-  for (const t of sq) counts[t] = (counts[t] || 0) + 1;
-  for (const [t, n] of Object.entries(counts)) { assert.equal(hu.minis[t].won, n, `host won ${n} ${t}`); assert.equal(gu.minis[t].lost, n); }
-  assert.equal(await get(`history/${anon.uid}`), null);
+  assert.deepEqual(hu.friend, { wins: 1, games: 1, sides: { X: { wins: 1, games: 1 } } }, "a win on the host's vs-friends record, as X");
+  assert.deepEqual(gu.friend, { losses: 1, games: 1, sides: { O: { losses: 1, games: 1 } } });
+  assert.deepEqual([hu.wins, hu.games, hu.sides], [0, 0, undefined], 'the Find Match record untouched');
+  assert.deepEqual([(await get(`oppStats/${host.uid}/${guest.uid}`)).wins, (await get(`oppStats/${guest.uid}/${host.uid}`)).losses], [1, 1], 'Top opponents');
+  assert.equal(hu.minis.ttt.won, 3); assert.equal(gu.minis.ttt.lost, 3);
+  assert.deepEqual([(await get(`rooms/${code}/status`)), await get(`rooms/${code}/game`)], ['playing', id], 'the room stays, the result on show (a rematch possible)');
+  // a guest without an account: the match plays, nothing is kept for them; the host's opponent is nameless
+  const anon = await player(null, { anonymous: true }); anon.name = 'Ghost';
+  const r2 = await friendRoom(host, anon, { games: only('ttt'), timer: 0 });
+  await nearWin(r2.id, 'X');
+  assert.equal((await host.call('move', { game: r2.id, square: 2, move: 2 })).ok, true);
+  await recorded(r2.id);
+  assert.equal(await get(`history/${anon.uid}`), null, 'no history for a guest without an account');
+  assert.deepEqual((await host.read(`history/${host.uid}/${r2.id}`)).opponent, { name: 'Ghost' }, 'the opponent nameless (no uid: the database keeps no nulls)');
+  assert.equal((await get(`users/${host.uid}`)).friend.wins, 2);
+  assert.equal(await get(`oppStats/${host.uid}/${anon.uid}`), null, "a guest is nobody's Top opponent");
+});
+test('friend rooms: Super Chaos in a room is the server\'s too (a move a request at a time, the round settled once both are in); a rematch starts when both ask, once; leaving marks the room left: no rematch', async () => {
+  await put('releases/superchaos', true);
+  const host = await player('ScHost'), guest = await player('ScGuest'), stranger = await player('ScStranger');
+  const { code, id } = await friendRoom(host, guest, { chaos: true, games: only('hilo', 'wordle') });
+  const pub = await get(`games/${id}/pub`);
+  assert.deepEqual([pub.chaos, pub.mode, pub.room], [true, 'friend', code]);
+  await scRig(id, [{ type: 'hilo', target: 20, lo: 1, hi: 30, guesses: [] }, { type: 'hilo', target: 7, lo: 1, hi: 30, guesses: [] }]);
+  const mx = await host.call('scMove', { game: id, square: 0, move: 20 });
+  assert.equal(mx.ok, true, JSON.stringify(mx)); assert.equal(mx.me && mx.me.win, true);
+  assert.deepEqual((await scState(id)).sc.moves, { X: true, O: false }, 'the other side sees only that X is in');
+  assert.deepEqual(await stranger.call('scMove', { game: id, square: 1, move: 7 }), { ok: false, reason: 'not-player' });
+  const mo = await guest.call('scMove', { game: id, square: 1, move: 7 });
+  assert.equal(mo.ok, true, JSON.stringify(mo)); assert.equal(mo.resolved, true, 'both in: the round settles');
+  const st = await scState(id);
+  assert.equal(st.sc.recap.round, 1); assert.deepEqual((st.sc.recap.claims || []).map(c => c.square + c.by).sort(), ['0X', '1O']);
+  // the match ends (the guest gives up): a loss on their friends record
+  assert.equal((await guest.call('resign', { game: id })).ok, true); await recorded(id);
+  assert.deepEqual([(await get(`history/${guest.uid}/${id}`)).result, (await get(`history/${host.uid}/${id}`)).how], ['loss', 'resign']);
+  // the rematch: both flags on the room, then either phone asks the server, which makes one match (the other ask finds it)
+  assert.deepEqual(await host.call('startRoom', { code }), { ok: false, reason: 'rematch' }, 'not before both want it');
+  await host.write(`rooms/${code}/rematch/X`, D.serverTimestamp());
+  await denied(host.write(`rooms/${code}/rematch/O`, D.serverTimestamp()), "the other's flag");
+  await denied(guest.write(`rooms/${code}/rematch/O`, 12345), 'a flag that is not the moment');
+  await guest.write(`rooms/${code}/rematch/O`, D.serverTimestamp());
+  const [r1, r2] = await Promise.all([host.call('startRoom', { code }), guest.call('startRoom', { code })]);
+  const started = [r1, r2].filter(r => r.ok && r.started);
+  assert.equal(started.length, 1, `one match made (${JSON.stringify([r1, r2])})`);
+  const room2 = await host.read(`rooms/${code}`);
+  assert.equal(room2.game, started[0].game); assert.notEqual(room2.game, id); assert.equal(room2.rematch, undefined, 'the flags cleared');
+  assert.equal((await get(`games/${room2.game}/pub`)).chaos, true, 'the same settings again');
+  // leaving the new match through the menu: a loss, and the room marked left: no rematch after it
+  assert.equal((await guest.call('resign', { game: room2.game })).ok, true); await recorded(room2.game);
+  await denied(stranger.write(`rooms/${code}/left`, { side: 'O', name: 'x', at: D.serverTimestamp() }), 'a stranger marking the room left');
+  await denied(guest.write(`rooms/${code}/left`, { side: 'X', name: 'x', at: D.serverTimestamp() }), 'leaving for the other side');
+  await guest.write(`rooms/${code}/left`, { side: 'O', name: 'ScGuest', at: D.serverTimestamp() });
+  await host.write(`rooms/${code}/rematch/X`, D.serverTimestamp()); await guest.write(`rooms/${code}/rematch/O`, D.serverTimestamp());
+  assert.deepEqual(await host.call('startRoom', { code }), { ok: false, reason: 'left' }, 'no rematch once someone left');
+});
+test('friend rooms: the host\'s Random draws the sides each match; with both phones gone the server misses the turns, two in a row forfeit the match and close the room (no rematch)', async () => {
+  const host = await player('RndHost'), guest = await player('RndGuest');
+  const code = await openRoom(host, { games: only('hilo'), timer: 60, hostPick: 'random' });
+  assert.equal((await guest.call('joinRoom', { code, name: 'RndGuest' })).ok, true);
+  assert.equal((await host.call('startRoom', { code })).ok, true);
+  const room = await host.read(`rooms/${code}`), pub = await get(`games/${room.game}/pub`);
+  const hostSide = pub.players.X.uid === host.uid ? 'X' : 'O';
+  assert.deepEqual([pub.players[hostSide].uid, pub.players[E.other(hostSide)].uid], [host.uid, guest.uid]);
+  assert.deepEqual([room.players[hostSide].uid, room.setup.hostSide], [host.uid, hostSide], "the room's seats follow the draw");
+  assert.equal(JSON.parse(pub.state).timer.limit, 60, "the room's timer");
+  let st = null;
+  for (let k = 0; k < 6 && !(st && st.winner); k++) {                 // both phones closed: each turn runs out on the server alone
+    const was = await gameState(room.game), missed = v => v.timer.timeouts.X + v.timer.timeouts.O;
+    await rewrite(room.game, f => { f.timer.deadline = Date.now() - 1000; f.timer.startBy = null; f.timer.for = f.turn; });
+    await sweep();
+    st = await until(async () => { const v = await gameState(room.game); return missed(v) > missed(was) || v.winner ? v : null; }, 10000, 'the server missed the turn');
+  }
+  assert.equal(st.winReason, 'timeout'); assert.ok(st.winner === 'X' || st.winner === 'O');
+  await recorded(room.game);
+  await until(async () => (await get(`rooms/${code}/status`)) === 'over', 10000, 'the room closed');
+  assert.equal((await get(`history/${host.uid}/${room.game}`)).how, 'timeout');
+  await host.write(`rooms/${code}/rematch/${hostSide}`, D.serverTimestamp()); await guest.write(`rooms/${code}/rematch/${E.other(hostSide)}`, D.serverTimestamp());
+  assert.deepEqual(await host.call('startRoom', { code }), { ok: false, reason: 'over' }, 'a forfeit closes the room: no rematch');
+  // a room a day old goes with the sweep (its presence and reactions too)
+  await patch(`rooms/${code}`, { created: Date.now() - 25 * 3600000 });
+  await put(`presence/${code}/X`, { online: false, at: 1 });
+  await sweep();
+  assert.equal(await get(`rooms/${code}`), null, 'the old room deleted'); assert.equal(await get(`presence/${code}`), null);
 });
 
 /* ===================================== game stats ===================================== */
@@ -580,22 +596,18 @@ test('stats: a phone reports its local matches (each local mode), counted once; 
   });
   assert.deepEqual(moved, { 'modes/cpu/started': 1, 'modes/cpu/finished': 1, 'modes/cpu/turns': 15, 'modes/cpu/xWins': 1, 'modes/cpu/timed': 1, [`days/${d}/started/cpu`]: 1, [`days/${d}/finished/cpu`]: 1,
     'mini/cpu/ttt/played': 2, 'mini/cpu/ttt/won': 1, 'mini/cpu/ttt/draw': 1, 'mini/cpu/ttt/winMoves': 3, 'mini/cpu/ttt/loseMoves': 2, 'mini/cpu/ttt/allMoves': 13, 'mini/cpu/ttt/xWins': 1, 'mini/cpu/coins/open': 1, [`days/${d}/active`]: 1 });
-  // the page without the SDK (a guest playing on one phone) posts the same call with no login at all
+  // no login, no report: a phone signs in (anonymously at least) before it reports anything
   const plain = async data => { const r = await fetch(`${FN}/track`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ data }) }); return { status: r.status, body: await r.json() }; };
-  for (const mode of ['local', 'cvc']) {
-    const mid = mode + Date.now();
-    const m2 = await delta([`modes/${mode}/started`, `modes/${mode}/finished`], async () => {
-      assert.equal((await plain({ ev: 'start', mode, id: mid, dev: 'dplain' + Date.now() })).status, 200);
-      assert.equal((await plain({ ev: 'end', mode, id: mid, dev: 'dplain' + Date.now(), winner: 'O', reason: 'majority', squares: [{ t: 'pig', end: 'won', w: 'O', X: 1, O: 2 }] })).status, 200);
-    });
-    assert.deepEqual(m2, { [`modes/${mode}/started`]: 1, [`modes/${mode}/finished`]: 1 }, mode);
-  }
+  const m2 = await delta(['modes/local/started'], async () => {
+    const r = await plain({ ev: 'start', mode: 'local', id: 'nologin' + Date.now(), dev: 'dplain' + Date.now() });
+    assert.equal(r.status, 401); assert.equal(r.body.error.status, 'UNAUTHENTICATED');
+  });
+  assert.deepEqual(m2, { 'modes/local/started': 0 });
   // refused: online modes (the server counts those), a broken match, nonsense
   const unchanged = await delta(['modes/ranked/finished', 'modes/local/finished'], async () => {
     for (const bad of [{ ev: 'end', mode: 'ranked', id: 'r' + Date.now(), squares: [] }, { ev: 'end', mode: 'local', id: 'b' + Date.now(), squares: [{ t: 'chess', end: 'won', w: 'X', X: 1, O: 1 }] },
       { ev: 'end', mode: 'local', id: 'c' + Date.now(), squares: [{ t: 'ttt', end: 'won', X: 1, O: 1 }] }, { ev: 'start', mode: 'local', id: 'x/y' }, { ev: 'boom', mode: 'local', id: 'z' + Date.now() }, {}]) {
-      const r = await plain(bad);
-      assert.equal(r.status, 400, JSON.stringify(bad)); assert.equal(r.body.error.status, 'INVALID_ARGUMENT');
+      await assert.rejects(guest.call('track', bad), e => /invalid-argument/.test(String(e.code)), JSON.stringify(bad));
     }
   });
   assert.deepEqual(unchanged, { 'modes/ranked/finished': 0, 'modes/local/finished': 0 });
@@ -632,29 +644,19 @@ test('stats: Find Match games are counted by the server, started when paired and
   assert.deepEqual(res, { 'modes/match/started': 1, 'modes/match/finished': 1, 'modes/match/resigned': 1, 'modes/match/oWins': 1 });
 });
 
-test('stats: friend-code matches are counted from the room, start and end once each', async () => {
-  const host = await player(null, { anonymous: true }), guest = await player(null, { anonymous: true });
-  const code = 'STATS', d = day().d;
+test('stats: friend-room matches are counted by the server, start and end once each', async () => {
+  const host = await player('StatHost'), guest = await player(null, { anonymous: true }); guest.name = 'G';
+  const d = day().d;
   const moved = await delta(['modes/friend/started', 'modes/friend/finished', 'modes/friend/oWins', `days/${d}/finished/friend`, 'mini/friend/hilo/won'], async () => {
-    const rec = E.newOnlineMatch({ names: { X: 'H', O: 'G' }, games: Object.fromEntries(E.TYPES.map(t => [t, t === 'hilo'])) }, E.makeRng(5), 'sm1');
-    await host.write(`rooms/${code}`, { created: Date.now(), host: host.uid, status: 'lobby', players: { X: { uid: host.uid, name: 'H', joined: Date.now() } }, setup: { hostSide: 'X', timer: 0 } });
-    await guest.write(`rooms/${code}/players/O`, { uid: guest.uid, name: 'G', joined: Date.now() });
-    await host.write(`rooms/${code}/status`, 'playing');
-    await host.write(`rooms/${code}/match`, { state: JSON.stringify(rec.state), secrets: JSON.stringify(rec.secrets) });
-    await until(async () => at(await statsNow(), 'modes/friend/started'), 10000, 'the friend match counted as started');
-    // O claims three squares in a row by guessing each number
-    let r = { state: rec.state, secrets: rec.secrets };
-    for (const i of [0, 1, 2]) {
-      const target = r.secrets[i].target;
-      r.state.turn = 'O';
-      const m = E.applyOnlineMove(r, 'O', i, target, E.makeRng(i));
-      assert.equal(m.ok, true); r = m.rec;
+    const { id } = await friendRoom(host, guest, { games: only('hilo'), timer: 0 });
+    const sec = JSON.parse(await get(`games/${id}/sec`));
+    for (const i of [0, 1, 2]) {                                     // O claims three squares in a row by guessing each number (the turn handed to O each time)
+      await rewrite(id, f => { f.turn = 'O'; f.lock = null; });
+      const r = await guest.call('move', { game: id, square: i, move: sec[i].target });
+      assert.equal(r.ok, true, JSON.stringify(r));
     }
-    assert.equal(r.state.winner, 'O');
-    await guest.write(`rooms/${code}/match`, { state: JSON.stringify(r.state), secrets: JSON.stringify(r.secrets) });
-    await until(async () => at(await statsNow(), 'mini/friend/hilo/won') >= 3, 10000, 'the friend match counted as finished');
-    await host.write(`rooms/${code}/match/seen`, 1);                 // another write to the finished match: not counted again
-    await wait(1500);
+    await recorded(id);
+    assert.equal((await gameState(id)).winner, 'O');
   });
   assert.equal(moved['modes/friend/started'], 1); assert.equal(moved['modes/friend/finished'], 1); assert.equal(moved['modes/friend/oWins'], 1);
   assert.equal(moved[`days/${d}/finished/friend`], 1); assert.equal(moved['mini/friend/hilo/won'], 3);
@@ -691,27 +693,6 @@ test('stats: the sweep forgets counted matches after three days (the counts stay
   assert.equal(await get('statsSeen/match/l_oldone'), null, 'a match from four days ago is forgotten');
   assert.ok(await get('statsSeen/match/l_newone'), 'an hour-old one is kept');
   assert.deepEqual(await get('stats/modes'), before, 'the counts are untouched');
-});
-
-test('records: a friend match is credited by the seats it was played in (the room may have swapped them for a Random rematch)', async () => {
-  const host = await player('SeatHost'), guest = await player('SeatGuest');
-  const code = 'SEATS';
-  await host.write(`rooms/${code}`, { created: Date.now(), host: host.uid, status: 'lobby', players: { X: { uid: host.uid, name: 'SeatHost', joined: Date.now() } }, setup: { hostSide: 'X', hostPick: 'random', timer: 0 } });
-  await guest.write(`rooms/${code}/players/O`, { uid: guest.uid, name: 'SeatGuest', joined: Date.now() });
-  // the match was played with the guest as X; by the time its end is read the room says otherwise
-  const seats = { X: { uid: guest.uid, name: 'SeatGuest' }, O: { uid: host.uid, name: 'SeatHost' } };
-  const rec = E.newOnlineMatch({ names: { X: 'SeatGuest', O: 'SeatHost' }, games: Object.fromEntries(E.TYPES.map(t => [t, !E.TEST_TYPES.includes(t)])) }, E.makeRng(4), 'seat1');   // (released games only: the host is no admin)
-  const full = E.fullState(rec);
-  full.squares[0].owner = 'X'; full.squares[4].owner = 'X'; full.squares[8].owner = 'X'; full.winner = 'X'; full.winLine = [0, 4, 8]; full.winReason = 'line';
-  const end = E.matchRecord(full);
-  await host.write(`rooms/${code}/status`, 'playing');
-  await guest.write(`rooms/${code}/match`, { state: JSON.stringify(end.state), secrets: JSON.stringify(end.secrets), seats });
-  const id = 'f_' + code + '_seat1';
-  const gh = await until(() => guest.read(`history/${guest.uid}/${id}`), 10000, 'the guest\'s history');
-  assert.equal(gh.side, 'X'); assert.equal(gh.result, 'win', 'the guest played X and won');
-  assert.equal((await host.read(`history/${host.uid}/${id}`)).result, 'loss');
-  assert.deepEqual((await get(`users/${guest.uid}`)).friend, { wins: 1, games: 1, sides: { X: { wins: 1, games: 1 } } }, 'the side as played');
-  assert.deepEqual((await get(`users/${host.uid}`)).friend, { losses: 1, games: 1, sides: { O: { losses: 1, games: 1 } } });
 });
 
 /* ===================================== local matches ===================================== */
@@ -791,27 +772,6 @@ test('a draw: once neither player can still make a line, a Find Match game ends 
   assert.deepEqual([ls.wins || 0, ls.losses, ls.draws, ls.games], [0, 1, 1, 2]);
   assert.deepEqual(ls.sides, { X: { losses: 1, draws: 1, games: 2 } });
   assert.equal((await get(`localHistory/${lp.uid}/l_locdraw1`)).how, 'draw');
-});
-
-test('friend games: leaving a match under way ends it as a loss for the one who left, recorded for both', async () => {
-  const host = await player('LeaveHost'), guest = await player('LeaveGuest');
-  const code = 'LEAVE';
-  await host.write(`rooms/${code}`, { created: Date.now(), host: host.uid, status: 'lobby', players: { X: { uid: host.uid, name: 'LeaveHost', joined: Date.now() } }, setup: { hostSide: 'X', timer: 0 } });
-  await guest.write(`rooms/${code}/players/O`, { uid: guest.uid, name: 'LeaveGuest', joined: Date.now() });
-  const rec = E.newOnlineMatch({ names: { X: 'LeaveHost', O: 'LeaveGuest' } }, E.makeRng(9), 'lv1');
-  await host.write(`rooms/${code}/status`, 'playing');
-  await host.write(`rooms/${code}/match`, { state: JSON.stringify(rec.state), secrets: JSON.stringify(rec.secrets) });
-  // the guest leaves through the menu: the page resigns the match first (as index.html's leaveRoom does), then says it left
-  const r = E.applyOnlineResign(rec, 'O');
-  assert.equal(r.ok, true);
-  await guest.write(`rooms/${code}/match`, { state: JSON.stringify(r.rec.state), secrets: JSON.stringify(r.rec.secrets) });
-  await guest.write(`rooms/${code}/left`, { side: 'O', name: 'LeaveGuest', at: Date.now() });
-  const id = 'f_' + code + '_lv1';
-  const gh = await until(() => guest.read(`history/${guest.uid}/${id}`), 10000, 'the leaver\'s history');
-  assert.equal(gh.result, 'loss'); assert.equal(gh.how, 'resign');
-  assert.equal((await host.read(`history/${host.uid}/${id}`)).result, 'win');
-  assert.deepEqual((await get(`users/${guest.uid}`)).friend, { losses: 1, games: 1, sides: { O: { losses: 1, games: 1 } } }, 'a loss on the leaver\'s record');
-  assert.deepEqual((await get(`users/${host.uid}`)).friend, { wins: 1, games: 1, sides: { X: { wins: 1, games: 1 } } });
 });
 
 test('usernames already taken are checked against the word list once: the ones that fail are listed for the admin, none changed', async () => {
@@ -1331,44 +1291,31 @@ test('release control: an admin-only game exists for nobody but the admin: not i
   assert.equal(st.games.length, E.releasedTypes({ ttt: false }).length, 'every other released game is dealt');
   assert.equal((await a.call('resign', { game: g.id })).ok, true);
   await recorded(g.id);
-  // a room: a non-admin host cannot deal it (the rules refuse the setup); off is fine; the admin's room may
-  const code = 'RELNA';
-  await a.write(`rooms/${code}`, { created: Date.now(), host: a.uid, status: 'lobby', players: { X: { uid: a.uid, name: 'Rel_A', joined: Date.now() } }, setup: { games: only('c4', 'hilo'), timer: 0, hostSide: 'X' } });
+  // a room: a non-admin host's setup is cut to the released games by the server (and the rules refuse switching one on); the match deals none of it
+  const code = await openRoom(a, { games: only('ttt', 'c4', 'hilo'), timer: 0 });
+  assert.equal(await a.read(`rooms/${code}/setup/games/ttt`), false, 'the admin-only game is off in the room, whatever the host asked');
   await denied(a.write(`rooms/${code}/setup/games/ttt`, true), 'a non-admin host putting an admin-only game in the room');
   await denied(a.write(`rooms/${code}/setup/games`, only('ttt', 'c4')), 'nor in the whole list');
   await a.write(`rooms/${code}/setup/games/ttt`, false);
   await a.write(`rooms/${code}/setup/games/hex`, true);
-  // the match itself, tampered to hold it: the server takes it out of the room, which goes back to its lobby
-  await guest.write(`rooms/${code}/players/O`, { uid: guest.uid, name: 'Rel_G', joined: Date.now() });
-  const tampered = E.newOnlineMatch({ names: { X: 'Rel_A', O: 'Rel_G' }, games: only('ttt', 'c4') }, E.makeRng(21), 'rel1');
-  assert.ok(tampered.state.squares.some(sq => sq.mini.type === 'ttt'), '(the tampered match holds Tic-tac-toe squares)');
-  await a.write(`rooms/${code}/status`, 'playing');
-  await a.write(`rooms/${code}/match`, { state: JSON.stringify(tampered.state), secrets: JSON.stringify(tampered.secrets) });
-  const refused = await until(async () => { const r = await get(`rooms/${code}`); return r && !r.match && r.status === 'lobby' && r.refused ? r : null; }, 10000, 'the tampered match taken out of the room');
-  assert.deepEqual(refused.refused.games, ['ttt']);
-  assert.equal(await get(`history/${a.uid}/f_${code}_rel1`), null, 'nothing of it recorded');
+  assert.equal((await guest.call('joinRoom', { code, name: 'Rel_G' })).ok, true);
+  const sa = await a.call('startRoom', { code }); assert.equal(sa.ok, true, JSON.stringify(sa));
+  const sta = await gameState(sa.game);
+  assert.ok(!sta.games.includes('ttt') && sta.squares.every(sq => sq.mini.type !== 'ttt'), "no Tic-tac-toe in a non-admin's room match");
+  assert.equal((await a.call('resign', { game: sa.game })).ok, true); await recorded(sa.game);
   // the admin's room: the game may be dealt, the guest plays it in that match, and its squares are counted apart
-  const ac = 'RELAD';
-  await boss.write(`rooms/${ac}`, { created: Date.now(), host: boss.uid, status: 'lobby', players: { X: { uid: boss.uid, name: 'Rel_Boss', joined: Date.now() } }, setup: { games: only('ttt', 'c4'), timer: 0, hostSide: 'X' } });
-  await b.write(`rooms/${ac}/players/O`, { uid: b.uid, name: 'Rel_B', joined: Date.now() });
-  const rec = E.newOnlineMatch({ names: { X: 'Rel_Boss', O: 'Rel_B' }, games: only('ttt', 'c4') }, E.makeRng(22), 'rel2');
-  await boss.write(`rooms/${ac}/status`, 'playing');
-  await boss.write(`rooms/${ac}/match`, { state: JSON.stringify(rec.state), secrets: JSON.stringify(rec.secrets) });
-  await wait(1500);
-  const kept = await get(`rooms/${ac}`);
-  assert.ok(kept.match && kept.status === 'playing' && !kept.refused, 'the admin\'s match stays');
-  const full = E.fullState(rec);
-  full.squares.forEach((sq, i) => { sq.mini = E.newMini(i < 3 ? 'ttt' : 'c4', E.makeRng('r' + i)); sq.mv = { X: 2, O: 1 }; });
-  full.squares[0].owner = 'X'; full.squares[1].owner = 'X'; full.squares[2].owner = 'X'; full.squares[4].owner = 'O';
-  full.winner = 'X'; full.winLine = [0, 1, 2]; full.winReason = 'line';
-  full.sqlog = [{ t: 'ttt', end: 'won', w: 'X', X: 2, O: 1 }, { t: 'ttt', end: 'won', w: 'X', X: 2, O: 1 }, { t: 'ttt', end: 'won', w: 'X', X: 2, O: 1 }, { t: 'c4', end: 'won', w: 'O', X: 1, O: 2 }];
-  const end = E.matchRecord(full);
-  const d = await delta(['mini/testing/ttt/won', 'mini/friend/ttt/won', 'mini/friend/c4/won', 'mini/testing/c4/won'], async () => {
-    await b.write(`rooms/${ac}/match`, { state: JSON.stringify(end.state), secrets: JSON.stringify(end.secrets) });
-    await until(() => b.read(`history/${b.uid}/f_${ac}_rel2`), 10000, 'the admin\'s friend match recorded');
+  const ac = await openRoom(boss, { games: only('ttt', 'c4'), timer: 0 });
+  assert.equal((await b.call('joinRoom', { code: ac, name: 'Rel_B' })).ok, true);
+  const sb = await boss.call('startRoom', { code: ac }); assert.equal(sb.ok, true, JSON.stringify(sb));
+  const stb = await gameState(sb.game);
+  assert.ok(stb.games.includes('ttt') && stb.squares.some(sq => sq.mini.type === 'ttt'), "the admin's room deals it");
+  const d = await delta(['mini/testing/ttt/won', 'mini/friend/ttt/won'], async () => {
+    await nearWin(sb.game, 'X');
+    assert.equal((await boss.call('move', { game: sb.game, square: 2, move: 2 })).ok, true);
+    await recorded(sb.game);
   });
-  assert.deepEqual(d, { 'mini/testing/ttt/won': 3, 'mini/friend/ttt/won': 0, 'mini/friend/c4/won': 1, 'mini/testing/c4/won': 0 }, 'the admin-only game\'s squares under testing, the released one\'s under the mode');
-  assert.deepEqual((await get(`users/${b.uid}`)).minis.ttt, { lost: 3 }, 'the players\' own records count them like any square');
+  assert.ok(d['mini/testing/ttt/won'] >= 1 && d['mini/friend/ttt/won'] === 0, `the admin-only game's squares under testing, not the mode (${JSON.stringify(d)})`);
+  assert.ok((await get(`users/${b.uid}`)).minis.ttt.lost >= 1, "the players' own records count them like any square");
   // a local match reported by a phone: the same split
   const dl = await delta(['mini/testing/ttt/won', 'mini/cpu/ttt/won', 'mini/cpu/hilo/won'], async () => {
     await guest.call('track', { ev: 'end', mode: 'cpu', id: 'relloc' + Date.now(), dev: 'drel1', winner: 'X', reason: 'line', squares: [{ t: 'ttt', end: 'won', w: 'X', X: 3, O: 2 }, { t: 'hilo', end: 'won', w: 'O', X: 1, O: 2 }] });
@@ -1739,29 +1686,24 @@ test('match logs: a Find Match game (its start, a refused move with its reason, 
   assert.equal(evs.find(e => e.k === 'end').w, 'X');
   assert.ok(evs.every(e => Number.isFinite(e.t) && e.src === 'srv'));
 
-  // a friend room: the record's start and moves, presence off and on again, the end
-  const host = await player(null, { anonymous: true }), guest = await player(null, { anonymous: true });
-  const code = 'LGGDX';                                       // (a room code: no I or O)
-  const rec = E.newOnlineMatch({ names: { X: 'H', O: 'G' }, games: Object.fromEntries(E.TYPES.map(t => [t, t === 'hilo'])) }, E.makeRng(7), 'lm1');
-  await host.write(`rooms/${code}`, { created: Date.now(), host: host.uid, status: 'lobby', players: { X: { uid: host.uid, name: 'H', joined: Date.now() } }, setup: { hostSide: 'X', timer: 0 } });
-  await guest.write(`rooms/${code}/players/O`, { uid: guest.uid, name: 'G', joined: Date.now() });
-  await host.write(`rooms/${code}/status`, 'playing');
-  await host.write(`rooms/${code}/match`, E.packMatch(rec));
-  const fkey = `f${code}_lm1`;
-  await until(() => get(`matchLogRoom/${code}`), 10000, "the room pointed at its match's log");
+  // a friend room's match: the server's log (mode friend, the room), moves, a phone off and on again, the end
+  const host = await player('LogHost'), guest = await player(null, { anonymous: true }); guest.name = 'G';
+  const fr = await friendRoom(host, guest, { games: only('hilo'), timer: 0 });
+  const code = fr.code, fkey = 'm' + fr.id;
   const logged = k => until(async () => { const v = await get(`matchLogs/${fkey}`); return v && Object.values(v).some(e => e.k === k) ? v : null; }, 10000, `${k} in the log`);
-  await guest.write(`presence/${code}/O`, { online: true, away: false, at: Date.now() }); await logged('online');   // (each logged before the next: the emulator's triggers can overlap)
-  await guest.write(`presence/${code}/O`, { online: false, at: Date.now() }); await logged('offline');
-  await guest.write(`presence/${code}/O`, { online: true, away: false, at: Date.now() });
-  let r = rec;
-  for (const i of [0, 1, 2]) { r.state.turn = 'O'; r = E.applyOnlineMove(r, 'O', i, r.secrets[i].target, E.makeRng(i)).rec; await guest.write(`rooms/${code}/match`, E.packMatch(r)); }
+  await logged('start');
+  await guest.write(`gpresence/${fr.id}/O`, { online: true, away: false, at: Date.now() }); await logged('online');   // (each logged before the next: the emulator's triggers can overlap)
+  await guest.write(`gpresence/${fr.id}/O`, { online: false, at: Date.now() }); await logged('offline');
+  await guest.write(`gpresence/${fr.id}/O`, { online: true, away: false, at: Date.now() });
+  const fsec = JSON.parse(await get(`games/${fr.id}/sec`));
+  for (const i of [0, 1, 2]) { await rewrite(fr.id, f => { f.turn = 'O'; f.lock = null; }); assert.equal((await guest.call('move', { game: fr.id, square: i, move: fsec[i].target })).ok, true); }
   const fev = Object.values(await until(async () => { const v = await get(`matchLogs/${fkey}`); return v && Object.values(v).some(e => e.k === 'end') && Object.values(v).some(e => e.k === 'reconnect') ? v : null; }, 15000, "the friend match's log")).sort((x, y) => x.t - y.t);
   const fk = fev.map(e => e.k);
   assert.equal(fk[0], 'start');
   for (const k of ['online', 'offline', 'reconnect', 'move', 'end']) assert.ok(fk.includes(k), `${k} in ${fk}`);
   assert.equal(fev.filter(e => e.k === 'move').length, 3);
   const fix = await get(`matchLogIndex/${fkey}`);
-  assert.deepEqual([fix.mode, fix.room, fix.players.X.name, fix.players.O.uid], ['friend', code, 'H', guest.uid]);
+  assert.deepEqual([fix.mode, fix.room, fix.players.X.name, fix.players.O.uid], ['friend', code, 'LogHost', guest.uid]);
 
   // a phone's report (and an mlog event) through devlog: the match flagged, the moment stamped
   const dev = 'dlogtest0123456789abcdef';

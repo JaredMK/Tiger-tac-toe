@@ -30,7 +30,7 @@ import { outlined, rr, runCanvas, runColours } from './runner.js';
 // move's event (fxAt), so both phones see the same shot. Matter.js comes from cdnjs as the page starts
 // (a copy beside the page as the fallback); until it and physics.js are in, the three are not dealt
 // (engine.js: dealable) and the checklist says so.
-const MATTER_URLS = ['https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.20.0/matter.min.js', 'matter.min.js'];
+const MATTER_URLS = ['matter.min.js', 'https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.20.0/matter.min.js'];   // the site's own copy first (build-site.js stages it); the CDN only should it fail to load
 let physLoading = false;
 export function loadPhysics() {
   if (physicsReady() || physLoading) return;

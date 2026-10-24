@@ -1,6 +1,6 @@
 // Higher/Lower: the screen, the miniature, the move's words and sounds, and the inputs.
 import { HILO, hiloLeft, hiloLimit, hiloTop } from './rules.js';
-import { N, mv } from '../../ui/app.js';
+import { N, esc, mv } from '../../ui/app.js';
 
 // Each player's guesses left, as pips (filled: left; hollow: used). A square from before the limit: none.
 const pips = (mini, p) => { const k = hiloLimit(mini), left = hiloLeft(mini, p); return `<i class="hpips ${p}" aria-label="${p}: ${left} guess${left === 1 ? '' : 'es'} left">${Array.from({ length: k }, (_, j) => `<i class="${j < left ? 'on' : ''}"></i>`).join('')}</i>`; };
@@ -18,7 +18,7 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
   const was = a ? a.range : null;                                                       // the range before this guess
   const seg = was ? `<i class="seg shrink" style="--l:${l};--w:${w};--pl:${pct(was[0], was[1])[0]};--pw:${pct(was[0], was[1])[1]}"></i>` : `<i class="seg" style="--l:${l};--w:${w}"></i>`;
   const lastG = mini.guesses[mini.guesses.length - 1];
-  const hist = mini.guesses.slice(-3).map(x => `<b class="${x.by}">${N(x.by)}</b> ${x.n}: ${x.res === 'hit' ? 'yes!' : x.res}`).join(' · ');
+  const hist = mini.guesses.slice(-3).map(x => `<b class="${x.by}">${N(x.by)}</b> ${x.n}: ${x.res === 'hit' ? 'yes!' : esc(x.res)}`).join(' · ');
   const result = (a || d) && lastG                                                     // the fresh guess, with its arrow
     ? `<div class="guess${a ? ' fresh' : ''}"><b class="${lastG.by}">${N(lastG.by)}</b> said <b class="n">${lastG.n}</b>${lastG.res === 'hit' ? '<span class="arrow yes">✓</span> Yes!'
           : `<span class="arrow ${lastG.res === 'higher' ? 'up' : 'dn'}">${lastG.res === 'higher' ? '▲' : '▼'}</span> ${lastG.res === 'higher' ? 'Higher' : 'Lower'}!${a && a.note === 'out' ? ' No guesses left' : ''}`}</div>`

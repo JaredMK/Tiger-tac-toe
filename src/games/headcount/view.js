@@ -4,7 +4,7 @@ import { HEAD_KINDS, headAsk, headAxis, headKeys } from './rules.js';
 import { SND } from '../../audio/sound.js';
 import { attemptMove } from '../../net/moves.js';
 import { blocked } from '../../net/room.js';
-import { state, zoomedType } from '../../ui/app.js';
+import { esc, state, zoomedType } from '../../ui/app.js';
 import { ATT_KEY, attDraft, attSave, attStartAct, attTable } from '../../ui/attention.js';
 import { fxAttr } from '../../ui/fx.js';
 import { render } from '../../ui/render.js';
@@ -27,11 +27,11 @@ export function headView(c) {
   // each creature's way: right, left, down or up at its own speed; one that stops and starts has its own key points (from the engine's)
   const way = it => (headAxis(it, r) === 'v' ? (it.dir > 0 ? 'dn' : 'up') : it.dir > 0 ? 'r' : 'l'), along = (it, u) => `translate${headAxis(it, r) === 'v' ? 'Y' : 'X'}(${+(it.dir > 0 ? -100 + u * 1009.1 : 909.1 - u * 1009.1).toFixed(1)}%)`;
   const frames = anim ? r.items.map((it, i) => (it.s ? `@keyframes hk${i} {${headKeys(it).map(([f, u]) => ` ${+(f * 100).toFixed(2)}% { transform: ${along(it, u)}; }`).join('')} }` : '')).join('') : '';
-  const crit = anim ? r.items.map((it, i) => `<i class="hcr ${way(it)} k-${it.k}" style="--t:${it.t}ms;--d:${it.d}ms;--p:${10 + it.lane * 20 - 5.5}%;--hcanim:${it.s ? 'hk' + i : { r: 'hcr', l: 'hcl', dn: 'hcv', up: 'hcu' }[way(it)]}">${hcArt(it.k)}</i>`).join('') : '';
+  const crit = anim ? r.items.map((it, i) => `<i class="hcr ${way(it)} k-${esc(it.k)}" style="--t:${it.t}ms;--d:${it.d}ms;--p:${10 + it.lane * 20 - 5.5}%;--hcanim:${it.s ? 'hk' + i : { r: 'hcr', l: 'hcl', dn: 'hcv', up: 'hcu' }[way(it)]}">${hcArt(it.k)}</i>`).join('') : '';
   const field = `<div class="hcfield${r.axis === 'v' ? ' fall' : ''}"${c.started ? fxAttr(c.startPerf) : ''} aria-label="The field">${frames ? `<style>${frames}</style>` : ''}${crit}</div>`;
   const entry = c.started && attDraft ? attDraft.entry : '', live = c.answering && c.live;
   const shownAns = c.shown ? (c.shown.answer == null ? '–' : String(c.shown.answer)) : entry || '';
-  const disp = cls => `<div class="hcdisp${cls}" aria-label="Your answer">${c.shown ? shownAns : shownAns || '<i>?</i>'}</div>`;
+  const disp = cls => `<div class="hcdisp${cls}" aria-label="Your answer">${c.shown ? esc(shownAns) : esc(shownAns) || '<i>?</i>'}</div>`;
   const mark = c.shown ? (c.shown.correct ? ' ok' : ' no') : '';
   const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'del', '0', 'ok'].map(k => `<button class="hckey${k === 'ok' ? ' ok' : ''}" data-act="hc-key" data-k="${k}" aria-label="${k === 'del' ? 'Delete' : k === 'ok' ? 'Done' : k}"${live && (k !== 'ok' || entry) ? '' : ' disabled'}>${k === 'del' ? '⌫' : k === 'ok' ? 'OK' : k}</button>`).join('');
   const pad = `<div class="hcpad${live || c.shown ? '' : ' dim'}">${c.shown && c.pre ? `<div class="hcdst"><div class="tu" style="--u:${c.pre}ms">${disp('')}</div><div class="tf" style="--f:${c.pre}ms">${disp(mark)}</div></div>` : disp(mark)}${keys}</div>`;

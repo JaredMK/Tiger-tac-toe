@@ -170,7 +170,7 @@ function histSnap(h) {
     SNAP.set(h.id, own);
   }
   const me = h.side === 'X' || h.side === 'O' ? h.side : null;
-  return `<span class="hsnap" aria-hidden="true">${own.map(o => `<i class="${o}${o && o === me ? ' mine' : ''}">${o}</i>`).join('')}</span>`;
+  return `<span class="hsnap" aria-hidden="true">${own.map(o => `<i class="${o}${o && o === me ? ' mine' : ''}">${esc(o)}</i>`).join('')}</span>`;
 }
 // The game history of the profile on show: every online game, newest first, each opening its final board.
 export function renderProfHist() {

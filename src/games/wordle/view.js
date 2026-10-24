@@ -12,7 +12,7 @@ const pips = (mini, p) => { const k = wordleLimit(mini), left = wordleLeft(mini,
 export function miniature(mini, final) {
   const lim = wordleLimit(mini), last = mini.guesses.slice(lim ? -3 : -4);   // (with the dots: three rows)
   const rows = last.length
-    ? last.map(g => `<div class="twr">${g.word.split('').map((ch, k) => `<i class="${g.marks[k]}">${ch}</i>`).join('')}</div>`).join('')
+    ? last.map(g => `<div class="twr">${g.word.split('').map((ch, k) => `<i class="${g.marks[k]}">${esc(ch)}</i>`).join('')}</div>`).join('')
     : `<div class="twr">${'<i></i>'.repeat(5)}</div><div class="twr">${'<i></i>'.repeat(5)}</div>`;
   const more = mini.guesses.length - last.length;
   return `<div class="tw">${rows}${more > 0 ? `<small>+${more} earlier</small>` : ''}${lim ? `<span class="twp">${['X', 'O'].map(p => `<b class="${p}">${p}</b>${pips(mini, p)}`).join('')}</span>` : ''}</div>`;
@@ -20,9 +20,9 @@ export function miniature(mini, final) {
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   const n = mini.guesses.length;
   const rows = mini.guesses.map((gs, r) => `<div class="wrow"><span class="wby ${gs.by}">${toon(gs.by)}</span>${gs.word.split('').map((ch, k) =>
-        `<i class="wt ${gs.marks[k]}${a && r === n - 1 ? ' reveal' : ''}"${a && r === n - 1 ? ` style="--k:${k}"` : ''}>${ch}</i>`).join('')}</div>`).join('');
+        `<i class="wt ${gs.marks[k]}${a && r === n - 1 ? ' reveal' : ''}"${a && r === n - 1 ? ` style="--k:${k}"` : ''}>${esc(ch)}</i>`).join('')}</div>`).join('');
   const dr = state.draft || '';
-  const cur = Array.from({ length: 5 }, (_, k) => `<i class="wt${dr[k] ? ' typed' : ''}">${dr[k] || ''}</i>`).join('');
+  const cur = Array.from({ length: 5 }, (_, k) => `<i class="wt${dr[k] ? ' typed' : ''}">${esc(dr[k] || '')}</i>`).join('');
   const rank = { x: 1, y: 2, g: 3 };
   const bestOf = list => { const b = {}; for (const gs of list) gs.word.split('').forEach((ch, k) => { if ((rank[gs.marks[k]] || 0) > (rank[b[ch]] || 0)) b[ch] = gs.marks[k]; }); return b; };
   const best = bestOf(mini.guesses), before = a ? bestOf(mini.guesses.slice(0, -1)) : best;   // keys recolour once the tiles have flipped
@@ -34,7 +34,7 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
   return g;
 }
 export function moveText(f, who) {
-  return f.note === 'out' ? `${who} tried ${f.word} · out of guesses` : `${who} tried ${f.word}`;
+  return f.note === 'out' ? `${who} tried ${esc(f.word)} · out of guesses` : `${who} tried ${esc(f.word)}`;
 }
 export function sounds(f, add, won, mini, last) {
   if (last) last.marks.forEach((m, k) => add(m === 'g' ? 'tileG' : m === 'y' ? 'tileY' : 'tileX', 200 + k * 180)); if (won && f.note !== 'out') add('solve', 1100); if (f.note === 'out') add('thud', 1100); return;   // the last guess gone: the square goes to the other player

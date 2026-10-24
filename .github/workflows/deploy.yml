@@ -64,7 +64,7 @@ jobs:
         run: |
           npm ci
           npm ci --prefix functions
-          npm i -g firebase-tools@14
+          npm i -g firebase-tools@14.27.0    # pinned: a deploy never picks up a new release unseen
           firebase setup:emulators:database    # the database emulator's jar: the two-client Super Chaos test in npm test runs on it
       - name: What changed (site, functions, rules)
         id: what
@@ -115,6 +115,17 @@ jobs:
               await new Promise(r => setTimeout(r, 60000));
             })().catch(e => { console.log("::error::Could not switch on the Cloud Billing API: " + String(e.message).split("\n")[0]); process.exit(1); });
           '
+      - name: The alert secrets exist in Secret Manager (placeholders until set: firebase functions:secrets:set TWILIO_SID ...)
+        if: contains(steps.what.outputs.only, 'functions')
+        run: |
+          grep -q '^TTC_SECRETS=on' "functions/.env.$TARGET" || { echo "Secret Manager not switched on for $TARGET yet (functions/.env.$TARGET TTC_SECRETS=on): the alert keys stay on the database."; exit 0; }
+          for s in TWILIO_SID TWILIO_TOKEN TWILIO_FROM RESEND_KEY EMAIL_FROM; do
+            if firebase functions:secrets:access "$s" --project "$TARGET" >/dev/null 2>&1; then continue; fi
+            if ! printf 'unset' | firebase functions:secrets:set "$s" --project "$TARGET" --data-file=- --force --non-interactive >/dev/null 2>&1; then
+              echo "::error::Could not create the secret $s in Secret Manager. Give the deploy's service account the Secret Manager Admin role (README: Deploying) and run again."; exit 1
+            fi
+            echo "$s: a placeholder secret made (set the real value with: firebase functions:secrets:set $s --project $TARGET)."
+          done
       - name: Staging's rules (production's, gated to the allowlist)
         if: env.TARGET == 'staging'
         run: node scripts/staging-rules.js database.rules.json

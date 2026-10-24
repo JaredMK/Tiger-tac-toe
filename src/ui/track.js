@@ -5,7 +5,7 @@ import { BUMP, BUMP_KNOCK, bumpHops } from '../games/bump/rules.js';
 import { CANDY } from '../games/candy/rules.js';
 import { DICE_GOAL, diceSlot } from '../games/dice/rules.js';
 import { SNL } from '../games/snakes/rules.js';
-import { HOP_MS, REDUCED, SPIN_MS, WAAPI, app, state } from './app.js';
+import { HOP_MS, REDUCED, SPIN_MS, WAAPI, app, esc, state } from './app.js';
 import { toonG } from './art.js';
 
 const DIE_MS = PLAY.die;                // the die's tumble before the piece sets off
@@ -70,7 +70,7 @@ export function trackSvg(spec, opts) {
   for (let i = 0; i < n; i++) {
     const [x, y] = at(i);
     const color = opts.colors ? opts.colors[i] : opts.goal && i === n - 1 ? 'goal' : 'plain';
-    spaces += `<rect class="space ${color}" x="${x - half}" y="${y - half}" width="${S}" height="${S}" rx="2.2"/>`;
+    spaces += `<rect class="space ${esc(color)}" x="${x - half}" y="${y - half}" width="${S}" height="${S}" rx="2.2"/>`;
     if (!opts.mini) nums += opts.colors ? `<text class="num" x="${x - half + 1.2}" y="${y - half + 3.2}">${i + 1}</text>` : `<text class="numc" x="${x}" y="${y}">${i + 1}</text>`;
   }
   if (!opts.overlay) { spaces += nums; nums = ''; }                 // with ladders and snakes over the track, the numbers go on top of them

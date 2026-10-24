@@ -1,25 +1,26 @@
-// Friend games: the room (host and guest), presence, the match as the database holds it, and the
-// opponent's moves played back on this phone.
+// Friend games: the room (host and guest: the lobby on the database, opened and joined through the server), presence,
+// the match as the server runs it (a games/{id} match like Find Match's: net/matchmaking.js reads it, the moves go to
+// the server), and the opponent's moves played back on this phone.
 import { restrictGames } from '../core/games.js';
 import { NAME_MAX, playerName } from '../core/match.js';
 import { upgradeMini } from '../core/minis.js';
-import { MATCH_FIELDS, applyOnlineResign, newOnlineMatch, packMatch, parseMatch, resignLocal } from '../core/records.js';
-import { armClock, newTimer, normTimer, startClock } from '../core/timer.js';
+import { MATCH_FIELDS, packMatch, parseMatch, resignLocal } from '../core/records.js';
+import { newTimer, normTimer } from '../core/timer.js';
 import { other } from '../core/util.js';
 import { echoPinned } from '../games/echo/view.js';
 import { oddPinned } from '../games/oddone/view.js';
 import { TYPES } from '../games/index.js';
 import { SND, matchEndSound } from '../audio/sound.js';
 import { connectQuiet, loggedIn } from './accounts.js';
-import { connectFirebase, connected, fb, serverNow } from './connect.js';
+import { call, connectFirebase, connected, fb, serverNow } from './connect.js';
 import { isMM, listenGame, onGameValue, resignMM } from './matchmaking.js';
 import { scFollow } from './chaos.js';
-import { matchTransaction, predicted, setPredicted, showNotice } from './moves.js';
+import { predicted, setPredicted, showNotice } from './moves.js';
 import { listenReacts, stopReacts } from './reactions.js';
 import { scMode, visibleTypes } from './releases.js';
 import { reportLocal, trackEnd } from './tracking.js';
 import {
-  NAV_SCREENS, RNG, SPOT_MS, commit, cpuPlan, cpuTimer, flashTimer, holdTimer, menuNote, menuOpen, menuStep,
+  NAV_SCREENS, SPOT_MS, commit, cpuPlan, cpuTimer, flashTimer, holdTimer, menuNote, menuOpen, menuStep,
   pickKey, save, setCpuPlan, setCpuTimer, setFlashTimer, setHoldTimer, setMenuNote, setMenuOpen, setMenuStep,
   setSpotTimer, spotTimer, state
 } from '../ui/app.js';
@@ -34,18 +35,15 @@ import { repStart, repStop } from '../ui/replay.js';
 import { noteNet } from '../ui/turnbar.js';
 import { cpuTurn, playFlash } from '../ui/turns.js';
 
-const ROOM_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ';   // no I or O: they look like 1 and 0
-const ROOM_TTL_MS = 24 * 60 * 60 * 1000;           // rooms older than this are deleted when a new one is created
 const REPLAY_MAX = 6;                              // at most this many missed moves are played back after a time away
 export let net = { status: 'idle', msg: '' };             // 'idle' | 'connecting' | 'waiting' | 'connected' | 'error'
-export let room = null, pendingRoom = null, roomUnsub = null, presUnsub = null;   // the room as last read; one that arrived mid-playback
+export let room = null, pendingRoom = null, roomUnsub = null, presUnsub = null;   // the room (the lobby, then the match the server runs for it) as last read; one that arrived mid-playback
+export let lobby = null, lobbyUnsub = null;        // a friend room's own node (rooms/{code}: the seats, the setup, the match's id, the rematch flags, who left), kept while the match plays
 export let presence = null;
 export let presentingSeq = null;                          // the move being played back here right now
 export let moveWait = null, moveTimer = null, timeoutBusy = false, joinCode = '', joinName = '', nameTimer = null, awayNote = '', awayTimer = null;
 
-export function roomCode() { let c = ''; for (let i = 0; i < 5; i++) c += ROOM_ALPHABET[Math.floor(Math.random() * ROOM_ALPHABET.length)]; return c; }
 export function validCode(c) { return typeof c === 'string' && /^[ABCDEFGHJKLMNPQRSTUVWXYZ]{5}$/.test(c); }   // no constants: load() calls this before they exist
-function newId() { return Math.random().toString(36).slice(2, 10) + Date.now().toString(36); }
 export function online() { return state.online || null; }
 export function isHost() { return !!state.online && state.online.role === 'host'; }     // the host set the room up; in the match both phones are equal
 function isGuest() { return !!state.online && state.online.role === 'guest'; }
@@ -60,6 +58,7 @@ export function setNet(status, msg) { net = { status, msg: msg || '' }; noteNet(
 function roomLink() { return location.origin + location.pathname + '?room=' + state.online.code; }
 export function roomRef(path) { return fb.m.ref(fb.db, 'rooms/' + state.online.code + (path ? '/' + path : '')); }
 function presRef(side) { return fb.m.ref(fb.db, isMM() ? `gpresence/${state.online.game}/${side}` : `presence/${state.online.code}/${side}`); }
+const inRoomGame = () => !!(state.online && state.online.kind === 'mm' && state.online.room);   // a friend room's match (the server runs it, as Find Match's)
 export { packMatch, parseMatch };                                 // (core/records.js: the record as the database holds it)
 // ----- presence: this phone's seat says whether it is online and whether the app is in front -----
 export function presenceUp() {
@@ -74,90 +73,66 @@ function presenceDown(side) {
   const r = presRef(side);
   fb.m.onDisconnect(r).cancel().catch(() => {});
   fb.m.remove(r).catch(() => {});
+  if (inRoomGame()) { const l = fb.m.ref(fb.db, `presence/${state.online.room}/${side}`); fb.m.onDisconnect(l).cancel().catch(() => {}); fb.m.remove(l).catch(() => {}); }   // (the lobby's seat too)
 }
 function resync() {
   if (!fb || !state.online) return;
   if (isMM()) fb.m.get(fb.m.ref(fb.db, `games/${state.online.game}/pub`)).then(s => onGameValue(s.val())).catch(() => {});
   else fb.m.get(roomRef()).then(s => onRoomValue(s.val())).catch(() => {});
 }
-// A room read some other way (net/chaos.js scResync, by HTTP) goes through as the listener's would.
-export function syncRoom(r) { if (r && typeof r === 'object') onRoomValue(r); }
+// The room's own node, read while this phone is in the room: the lobby, and through the match (its id, the rematch flags,
+// who left). Only its two players may read it: a read refused means the room is gone (the host closed it, or it expired).
+export function listenLobby(code) {
+  stopLobby();
+  lobbyUnsub = fb.m.onValue(fb.m.ref(fb.db, 'rooms/' + code), s => onRoomValue(s.val()), () => { if (isMM()) { lobby = null; render(); } else { setMenuNote('The room was closed.'); leaveRoom(true); } });
+}
+export function stopLobby() { if (lobbyUnsub) lobbyUnsub(); lobbyUnsub = null; lobby = null; }
 function listenRoom(code) {
   stopListening();
-  roomUnsub = fb.m.onValue(fb.m.ref(fb.db, 'rooms/' + code), s => onRoomValue(s.val()), () => { setNet('error', 'Lost access to this room.'); commit(); });
+  listenLobby(code);
   presUnsub = fb.m.onValue(fb.m.ref(fb.db, 'presence/' + code), s => { presence = s.val(); noteNet(); if (state.online) render(); });
   listenReacts(code);
 }
-export function stopListening() {
+export function stopListening() {                                 // (the match's listeners; the room's own node stays until the room is left: stopLobby)
   if (roomUnsub) roomUnsub();
   if (presUnsub) presUnsub();
   stopReacts();
   roomUnsub = presUnsub = null; room = pendingRoom = null; presence = null;
 }
 
-// ---------- the host: opens a room, shares its code, sets the match up, starts it ----------
+// ---------- the host: opens a room (the server picks its code), shares it, sets the match up, starts it ----------
 export async function hostRoom(code, resume) {
   if (!resume) {
     if (state.setup.hostPick !== 'random') state.setup.hostPick = state.setup.human === 'O' ? 'O' : 'X';
     state.stats = null;                         // an online match: never recorded as a local one
-    state.online = { role: 'host', code: code || roomCode(), me: state.setup.human === 'O' ? 'O' : 'X', joined: false, shownSeq: null, matchId: null, chaos: scMode() }; state.sc = null;   // (the room's mode: this device's choice to begin with)
+    state.online = { role: 'host', code: '', me: state.setup.human === 'O' ? 'O' : 'X', joined: false, shownSeq: null, matchId: null, chaos: scMode() }; state.sc = null;   // (the room's mode: this device's choice to begin with; the code comes from the server)
     state.setup.mode = 'online'; state.screen = 'setup';
     state.setup.timer = normTimer(state.setup.timer);           // an older 30 s or 3 min choice: 1 minute
   }
   setNet('connecting', resume ? `Reopening room ${state.online.code}…` : 'Opening the room…');
   commit();
   if (!(await connectFirebase()) || !isHost()) return;
-  const o = state.online, { m, db, uid } = fb;
+  const o = state.online;
   if (!resume) {
     try {
-      await cleanupRooms();
-      for (let tries = 0; tries < 5; tries++) {                   // a code already in use (rare) gets another
-        const snap = await m.get(m.ref(db, 'rooms/' + o.code));
-        if (!snap.exists()) break;
-        o.code = roomCode();
-      }
       const name = String(state.setup.names[o.me] || '').trim().slice(0, NAME_MAX) || o.me;
-      await m.set(m.ref(db, 'rooms/' + o.code), {
-        created: m.serverTimestamp(), host: uid, status: 'lobby',
-        players: { [o.me]: { uid, name, joined: m.serverTimestamp() } },
-        setup: { games: restrictGames(Object.assign({}, state.setup.games), visibleTypes()), timer: state.setup.timer || 0, hostSide: o.me, hostPick: state.setup.hostPick === 'random' ? 'random' : o.me, chaos: !!o.chaos },
-      });
-      if (state.online !== o) { closeSeat(o.code, o.me, true); return; }   // went back while the room was opening
+      const r = await call('openRoom', { name, side: o.me, setup: { games: restrictGames(Object.assign({}, state.setup.games), visibleTypes()), timer: state.setup.timer || 0, hostPick: state.setup.hostPick === 'random' ? 'random' : o.me, chaos: !!o.chaos } });
+      if (state.online !== o) { if (r && r.ok) closeSeat(r.code, r.side, true); return; }   // went back while the room was opening
+      if (!r || !r.ok) throw new Error('refused');
+      o.code = r.code; o.me = r.side;
     } catch (e) {
       if (state.online !== o) return;
-      setNet('error', "Couldn't open a room. Check your internet connection (switching to Wi-Fi helps) and try again."); commit(); return;
+      setNet('error', e && /permission/i.test(String(e.code)) ? String(e.message) : "Couldn't open a room. Check your internet connection (switching to Wi-Fi helps) and try again."); commit(); return;
     }
   }
-  if (!isHost()) return;
+  if (!isHost() || !validCode(o.code)) return;
   listenRoom(o.code);
   presenceUp();
   setNet('waiting', 'Waiting for friend…'); commit();
 }
-// Rooms nobody can still be playing in (older than a day) are removed when a new one is opened.
-async function cleanupRooms() {
-  const { m, db } = fb;
-  try {
-    const q = m.query(m.ref(db, 'rooms'), m.orderByChild('created'), m.endAt(serverNow() - ROOM_TTL_MS), m.limitToFirst(30));
-    const snap = await m.get(q);
-    const jobs = [];
-    snap.forEach(ch => { jobs.push(m.remove(m.ref(db, 'rooms/' + ch.key)).then(() => Promise.all([m.remove(m.ref(db, 'presence/' + ch.key)), m.remove(m.ref(db, 'reacts/' + ch.key))])).catch(() => {})); });
-    await Promise.all(jobs);
-  } catch (e) { /* best effort: the rules only let stale rooms go */ }
-}
 function guestName() { return state.online && state.online.me ? playerName(state, other(state.online.me)) : ''; }
-function roomSetup(players, setup) {
-  const p = players || (room && room.players) || {}, s = setup || (room && room.setup) || {};
-  return { names: { X: p.X ? p.X.name : 'X', O: p.O ? p.O.name : 'O' }, games: restrictGames(Object.assign({}, s.games || state.setup.games), visibleTypes()), timer: normTimer(s.timer), chaos: !!s.chaos };   // (chaos: a Super Chaos match, simultaneous rounds)
-}
-// Who plays which side in a match, kept with the match itself (the room's seats can swap for the next one).
-function seatsOf(players) { const seat = q => ({ uid: (q && q.uid) || null, name: String((q && q.name) || '').slice(0, NAME_MAX) }); return { X: seat(players.X), O: seat(players.O) }; }
-// The host's Random: the seats for the next match, drawn afresh (the host's seat swapped over half the time).
-function drawSeats(players, host) {
-  const hostSide = players.X && players.X.uid === host ? 'X' : 'O', want = RNG() < 0.5 ? 'X' : 'O';
-  return want === hostSide ? { players, hostSide } : { players: { X: players.O, O: players.X }, hostSide: want };
-}
 export async function dbSetup(patch) {
-  if (!fb || !isHost()) return;
+  if (!fb || !isHost() || !validCode(state.online.code)) return;
   try { await fb.m.update(roomRef('setup'), patch); } catch (e) { /* the next change tries again */ }
 }
 export function dbName(name) {
@@ -167,38 +142,28 @@ export function dbName(name) {
 }
 export function flushName(name) {                                       // written to whichever seat is ours by then
   const o = state.online;
-  if (!fb || !o || !o.me || !room || !room.players || !room.players[o.me] || room.players[o.me].uid !== fb.uid) return;
-  fb.m.update(roomRef('players/' + o.me), { name: String(name || '').trim().slice(0, NAME_MAX) || o.me }).catch(() => {});
+  if (!fb || !o || !o.me || !validCode(o.code) || !lobby || !lobby.players || !lobby.players[o.me] || lobby.players[o.me].uid !== fb.uid) return;
+  fb.m.set(roomRef('players/' + o.me + '/name'), String(name || '').trim().slice(0, NAME_MAX) || o.me).catch(() => {});
 }
-// The host takes the other side: its seat (and its friend's, if there is one) move over.
+// The host takes the other side: the server moves its seat (and its friend's, if there is one) over.
 export async function hostSide(side) {
-  const o = state.online, was = o.me;
-  if (!fb || !isHost() || side === was) return;
-  const name = String(state.setup.names[was] || '').trim().slice(0, NAME_MAX) || side;   // the name typed so far goes with the seat
+  const o = state.online;
+  if (!fb || !isHost() || side === o.me || !validCode(o.code)) return;
   clearTimeout(nameTimer); nameTimer = null;
-  try {
-    await fb.m.runTransaction(roomRef('players'), p => {
-      if (!p) return p;
-      if (!p[was] || p[was].uid !== fb.uid) return;             // not our seat any more
-      const next = { [side]: Object.assign({}, p[was], { name }) };
-      if (p[side] && p[side].uid) next[was] = p[side];
-      return next;
-    });
-    await fb.m.update(roomRef('setup'), { hostSide: side });
-  } catch (e) { return; }
+  try { await call('roomSide', { code: o.code, side }); } catch (e) { /* the room's value says where the seats are */ }
 }
+// Start: the server makes the match (a games/{id} match, as Find Match's) and points the room at it; both phones follow it there.
+let startBusy = false;
 export async function startOnline() {
   const o = state.online;
-  if (!fb || !isHost() || !room || !o.joined || !connected) return;
-  const random = room.setup && room.setup.hostPick === 'random';
-  const seats = random ? drawSeats(room.players, fb.uid) : { players: room.players, hostSide: o.me };
-  const fresh = newOnlineMatch(roomSetup(seats.players), RNG, newId(), serverNow());
-  if (!fresh) return;
-  armClock(fresh.state, [], serverNow());
-  const up = { status: 'playing', match: Object.assign(packMatch(fresh), { seats: seatsOf(seats.players) }), left: null };
-  if (seats.hostSide !== o.me) Object.assign(up, { players: seats.players, 'setup/hostSide': seats.hostSide });   // Random put the host on the other side
-  try { await fb.m.update(roomRef(), up); }
-  catch (e) { setNet('error', "Couldn't start the match. Check your connection and try again."); commit(); }
+  if (!fb || !isHost() || !lobby || !o.joined || !connected || startBusy) return;
+  startBusy = true;
+  try {
+    const r = await call('startRoom', { code: o.code });
+    if (!r.ok && state.online === o) setNet('error', r.reason === 'games' ? 'No mini-game can be dealt with these settings. Turn some on.' : "Couldn't start the match. Try again.");
+  } catch (e) { if (state.online === o) setNet('error', "Couldn't start the match. Check your connection and try again."); }
+  startBusy = false;
+  if (state.online === o) commit();
 }
 
 // ---------- the guest: joins with the code (or the shared link) and takes the free seat ----------
@@ -214,29 +179,20 @@ export async function joinRoom(code, name, resume) {
   setNet('connecting', resume ? 'Reconnecting…' : 'Connecting…');
   commit();
   if (!(await connectFirebase()) || !isGuest()) return;
-  const o = state.online, { m, db, uid } = fb;
+  const o = state.online;
   try {
-    const snap = await m.get(m.ref(db, 'rooms/' + o.code));
-    const r = snap.val();
-    if (state.online !== o) return;                               // went back meanwhile: nothing to show
-    if (!r || !r.players) { setNet('error', `No game with the code ${o.code} is open. Check the code with the host.`); commit(); return; }
-    if (!resume && Number(r.created) < Date.now() - 24 * 3600 * 1000) { setNet('error', `The game ${o.code} has expired. Ask the host for a new code.`); commit(); return; }
-    const mine = ['X', 'O'].find(s => r.players[s] && r.players[s].uid === uid);
-    if (mine) {                                                   // our seat from before: back into it
-      o.me = mine;
-      if (!resume && o.name) await m.update(m.ref(db, `rooms/${o.code}/players/${mine}`), { name: o.name });
-    } else {
-      const free = ['X', 'O'].find(s => !r.players[s]);
-      if (!free) { setNet('error', 'That room is full: two players are in it already.'); commit(); return; }
-      if (r.status !== 'lobby') { setNet('error', 'That match has already started without you.'); commit(); return; }
-      const nm = String(o.name || (resume && r.players[free] && r.players[free].name) || '').trim().slice(0, NAME_MAX) || 'Friend';
-      await m.set(m.ref(db, `rooms/${o.code}/players/${free}`), { uid, name: nm, joined: m.serverTimestamp() });   // the rules let only an empty seat be taken
-      o.me = free;
-      if (state.online !== o) { closeSeat(o.code, free, false); return; }   // went back while joining
+    const r = await call('joinRoom', Object.assign({ code: o.code }, resume ? {} : { name: String(o.name || '').trim().slice(0, NAME_MAX) || 'Friend' }));   // the server seats this phone (the free seat, or its own from before)
+    if (state.online !== o) { if (r && r.ok && !resume) closeSeat(o.code, r.side, false); return; }   // went back while joining
+    if (!r || !r.ok) {
+      const why = r && r.reason;
+      setNet('error', why === 'full' ? 'That room is full: two players are in it already.' : why === 'started' ? 'That match has already started without you.'
+        : why === 'expired' ? `The game ${o.code} has expired. Ask the host for a new code.` : `No game with the code ${o.code} is open. Check the code with the host.`);
+      commit(); return;
     }
+    o.me = r.side;
   } catch (e) {
     if (state.online !== o) return;
-    setNet('error', e && /PERMISSION_DENIED|permission/i.test(String(e.code || e.message)) ? 'That room is full: two players are in it already.' : 'No connection. Check your internet (switching to Wi-Fi helps) and try again.');
+    setNet('error', e && /permission/i.test(String(e.code)) ? String(e.message) : 'No connection. Check your internet (switching to Wi-Fi helps) and try again.');
     commit(); return;
   }
   if (!isGuest()) return;
@@ -250,36 +206,52 @@ export async function joinRoom(code, name, resume) {
 function onRoomValue(r) {
   const o = state.online;
   if (!o || !fb) return;
-  room = r;
+  lobby = r;
   if (!r || !r.players) { setMenuNote('The room was closed.'); leaveRoom(true); return; }
   const mine = ['X', 'O'].find(s => r.players[s] && r.players[s].uid === fb.uid);
   if (!mine) { setMenuNote('You are no longer in that room.'); leaveRoom(true); return; }
-  if (o.me !== mine) { const old = o.me; o.me = mine; if (old) presenceDown(old); presenceUp(); if (isHost()) state.setup.human = mine; }
-  if (r.left && r.left.side !== o.me && !matchOver(r)) { setMenuNote(`${String(r.left.name || other(o.me)).slice(0, NAME_MAX)} left the match`); leaveRoom(true); return; }   // (a finished match stays on show: the win screen says they left)
-  for (const s of ['X', 'O']) state.setup.names[s] = r.players[s] ? String(r.players[s].name || s).slice(0, NAME_MAX) : s;
+  const inGame = o.kind === 'mm' && !!o.game && o.game === r.game;   // this phone is in the match the room points at
+  if (o.me !== mine) { const old = o.me; o.me = mine; if (!inGame) { if (old) presenceDown(old); presenceUp(); } if (isHost()) state.setup.human = mine; }
+  if (r.left && r.left.side !== o.me && !(inGame && state.winner)) { setMenuNote(`${String(r.left.name || other(o.me)).slice(0, NAME_MAX)} left the match`); leaveRoom(true); return; }   // (a finished match stays on show: the win screen says they left)
+  if (!inGame) for (const s of ['X', 'O']) state.setup.names[s] = r.players[s] ? String(r.players[s].name || s).slice(0, NAME_MAX) : s;   // (in the match the names are the game's)
   if (r.setup) {
-    if (r.setup.games) state.setup.games = Object.assign({}, state.setup.games, r.setup.games);
-    state.setup.timer = normTimer(r.setup.timer);
+    if (r.setup.games && !inGame) state.setup.games = Object.assign({}, state.setup.games, r.setup.games);
+    if (!inGame) state.setup.timer = normTimer(r.setup.timer);
     o.chaos = !!r.setup.chaos;                                    // (the room's Super Chaos switch)
   }
   const wasJoined = o.joined;
   o.joined = !!(r.players.X && r.players.X.uid && r.players.O && r.players.O.uid);
-  if (r.rematch && r.rematch.X && r.rematch.O && !r.left && matchOver(r)) rematchStart();   // both want a rematch: it starts
-  if (wasJoined === false && o.joined) SND.play('join');
-  if ((r.status === 'playing' || r.status === 'over') && r.match) {   // (over: the match ended by a forfeit, the room closed: its result stays on show)
-    if (net.status !== 'connected') setNet('connected', '');
-    if (presenting()) { pendingRoom = r; return; }               // a move is still playing out here: afterwards
-    applyMatch(r);
-  } else {                                                        // the lobby
-    if (isHost()) setNet(o.joined ? 'connected' : 'waiting', o.joined ? '' : 'Waiting for friend…');
-    else if (net.status !== 'error') setNet('connected', '');
-    const screen = isHost() ? 'setup' : 'join';
-    if (state.screen !== screen) state.screen = screen;
-    save(); render();
+  if (r.rematch && r.rematch.X && r.rematch.O && !r.left && inGame && state.winner) rematchStart();   // both want a rematch: the server starts it (either phone asks; it makes one match)
+  if (wasJoined === false && o.joined && !inGame) SND.play('join');
+  if (r.game && (r.status === 'playing' || r.status === 'over')) {   // the match (the server runs it): into it, or the rematch's new one
+    if (!inGame) enterRoomGame(r.game, mine); else render();
+    return;
   }
+  // the lobby
+  room = r;
+  if (isHost()) setNet(o.joined ? 'connected' : 'waiting', o.joined ? '' : 'Waiting for friend…');
+  else if (net.status !== 'error') setNet('connected', '');
+  const screen = isHost() ? 'setup' : 'join';
+  if (state.screen !== screen) state.screen = screen;
+  save(); render();
 }
-// The room holds a finished match (the result on show, a rematch possible).
-function matchOver(r) { const rec = r && r.match && (r.status === 'playing' || r.status === 'over') ? parseMatch(r.match) : null; return !!(rec && rec.state.winner); }
+// The room's match: the same listeners and calls as a Find Match game (net/matchmaking.js), this phone's seat kept.
+function enterRoomGame(id, mine) {
+  const o = state.online;
+  clearTimeout(spotTimer); setSpotTimer(null); clearTimeout(flashTimer); setFlashTimer(null); clearTimeout(holdTimer); setHoldTimer(null);
+  clearTimeout(moveTimer); moveWait = null; presentingSeq = null; awayNote = ''; repStop();
+  state.stats = null;
+  Object.assign(o, { kind: 'mm', game: id, me: mine, joined: true, shownSeq: null, matchId: null, room: o.code }); state.sc = null;
+  state.setup.mode = 'online'; state.cpu = null; setMenuOpen(false); setMenuStep('main');
+  state.flash = null; state.done = null; state.spot = null; state.lock = null; state.zoom = null; state.winner = null; state.endPick = null;
+  state.screen = 'board';
+  setNet('connecting', 'Loading the match…');
+  commit();
+  listenGame(id);                                                 // (the match's listeners; the room's own node stays listened to)
+  presenceUp();
+}
+// The room's match is over (the result on show, a rematch possible).
+const matchOver = r => !!(r && r.game && isMM() && state.online.game === r.game && state.winner);
 export function presenting() { return !!(state.flash || state.done || state.spot || presentingSeq != null || stampLeft() > 0); }   // (presentingSeq covers a replay's inputs playing before the move)
 // A square's stamp still playing on the board (ms left): the next move played back waits for it.
 function stampLeft() { const at = state.stamp != null ? fxAt('stamp', state.stampId) : null; return at == null ? 0 : Math.max(0, STAMP_MS - (performance.now() - at)); }
@@ -330,7 +302,6 @@ export function showLatest(st) {
   if (state.screen === 'mini' && state.zoom == null) state.screen = 'board';
   sayMissed(st);
   save(); render();
-  startTurnClock(st);
 }
 // A turn's time ran out (core/board.js timeoutMove): both phones say so once (the record's timer.miss).
 let missSeen = null;                                              // `${match}:${n}`: the last one seen here
@@ -341,18 +312,6 @@ function sayMissed(st) {
   if (m.kind === 'closed') return;                                 // (a move under way, ended: its entry plays back with the words)
   const who = state.online.me === m.by ? 'You' : playerName(state, m.by);
   sayAway(m.kind === 'missed' ? `${who} ran out of time · turn missed` : `${who} ran out of time · turn over`);   // (the match's note line, as for moves made while away)
-}
-// This phone's turn has begun on screen (the other player's move played back, or skipped): its clock starts now
-// on the record (core/timer.js startClock; once a turn). A phone that never gets here (away) still has a turn
-// that runs out: the record's latest start (startBy).
-let clockAsked = null;
-function startTurnClock(st) {
-  const o = state.online, t = st.timer;
-  if (!o || o.kind === 'mm' || !fb || !connected || !t || !t.limit || st.winner || st.sc || t.for !== o.me || t.deadline != null) return;
-  const key = `${st.id}:${st.seq}`;
-  if (clockAsked === key) return;
-  clockAsked = key;
-  matchTransaction(rec => (rec.state.seq === st.seq && startClock(rec.state, o.me, serverNow()) ? rec : null)).catch(() => { clockAsked = null; });
 }
 // One move from the record, played back as a phone that watched it live would see it, in order: the
 // square lit up on the board as it was before the move (unclaimed, not yet filled in), the zoom and the
@@ -422,77 +381,54 @@ function showRemoteMove(i, label, before, start) {
 function moveLabel(f) { return f.timeout ? `${playerName(state, f.by)} ran out of time` : `${playerName(state, f.by)} plays here`; }
 // Rematch: both players have to want it. A tap puts this side's flag on the room (rooms/{code}/rematch/{side}); the
 // other phone shows "[name] wants a rematch" under its Rematch button, and the requester waits ("Waiting for
-// [name]…", Cancel takes the flag off). Once both flags are in, the match starts (rematchStart, from either phone).
+// [name]…", Cancel takes the flag off). Once both flags are in, the server starts the next match (startRoom, asked
+// for by either phone: it makes one match, the same choice of sides as before; the host's Random is drawn again).
 export async function rematchOnline() {
   const o = state.online;
-  if (!fb || !room || !state.winner || !connected || !o || !o.me || room.left) return;
-  if (room.rematch && room.rematch[o.me]) return;               // asked already: waiting
+  if (!fb || !lobby || !state.winner || !connected || !o || !o.me || !validCode(o.code) || lobby.left) return;
+  if (lobby.rematch && lobby.rematch[o.me]) return;             // asked already: waiting
   try { await fb.m.set(roomRef('rematch/' + o.me), fb.m.serverTimestamp()); } catch (e) { /* the button stays */ }
 }
 export async function rematchCancel() {
   const o = state.online;
-  if (!fb || !o || !o.me || !o.code) return;
+  if (!fb || !o || !o.me || !validCode(o.code)) return;
   try { await fb.m.remove(roomRef('rematch/' + o.me)); } catch (e) { /* the flag stays; the next tap tries again */ }
 }
-// The next match, once both flags are in: the same choice of sides as before. X or O stay as they were; with the
-// host's Random the sides are drawn again. The whole room changes at once (the seats may swap), once: the other
-// phone's transaction finds the fresh match and does nothing.
 let rematchBusy = false;
 async function rematchStart() {
-  if (!fb || !room || !connected || rematchBusy) return;
+  const o = state.online;
+  if (!fb || !o || !validCode(o.code) || !connected || rematchBusy) return;
   rematchBusy = true;
-  try {
-    await fb.m.runTransaction(roomRef(), r => {
-      if (!r) return r;                                           // not in the cache yet: retried with the server's value
-      const rec = parseMatch(r.match);
-      if (!rec || !rec.state.winner || !r.players || !r.players.X || !r.players.O) return;   // the other player already started it
-      if (!r.rematch || !r.rematch.X || !r.rematch.O || r.left) return;                       // (a flag taken back, or a player gone)
-      const seats = r.setup && r.setup.hostPick === 'random' ? drawSeats(r.players, r.host) : { players: r.players, hostSide: r.players.X.uid === r.host ? 'X' : 'O' };
-      const fresh = newOnlineMatch(roomSetup(seats.players, r.setup), RNG, newId(), serverNow());
-      if (!fresh) return;
-      armClock(fresh.state, [], serverNow());
-      return Object.assign({}, r, { players: seats.players, setup: Object.assign({}, r.setup, { hostSide: seats.hostSide }), match: Object.assign(packMatch(fresh), { seats: seatsOf(seats.players) }), left: null, rematch: null });
-    }, { applyLocally: false });
-  } catch (e) { /* the flags stay: the next room value tries again */ }
+  try { await call('startRoom', { code: o.code }); } catch (e) { /* the flags stay: the next room value tries again */ }
   rematchBusy = false;
 }
-// The database side of leaving a friend room: a match under way ends as a loss for the one leaving (the record),
-// then the room is marked left (the other phone shows the result, with no rematch).
-function tellLeft() {
+// The database side of leaving a friend room: a match under way ends as a loss for the one leaving (the server's
+// resign), then the room is marked left (the other phone shows the result, with no rematch).
+export function tellLeft() {
   const o = state.online;
-  if (!fb || !o || !o.code || !o.me || !room || room.left) return Promise.resolve();
-  const ref = roomRef(), left = { side: o.me, name: playerName(state, o.me), at: fb.m.serverTimestamp() };
-  const resign = room.status === 'playing' && room.match && !state.winner
-    ? fb.m.runTransaction(fb.m.ref(fb.db, `rooms/${o.code}/match`), cur => {      // a match under way: it ends as a loss for the one leaving
-      const rec = parseMatch(cur);
-      if (!rec) return cur;
-      const r = applyOnlineResign(rec, o.me);
-      return r.ok ? Object.assign(packMatch(r.rec), cur.seats ? { seats: cur.seats } : {}) : undefined;
-    }, { applyLocally: false }).catch(() => {})
-    : Promise.resolve();
-  return resign.then(() => fb.m.update(ref, { left }));
+  if (!fb || !o || !validCode(o.code) || !o.me || !lobby || lobby.left) return Promise.resolve();
+  const code = o.code, left = { side: o.me, name: playerName(state, o.me), at: fb.m.serverTimestamp() };
+  const resign = o.kind === 'mm' && o.game && !state.winner ? call('resign', { game: o.game }).catch(() => {}) : Promise.resolve();   // a match under way: it ends as a loss for the one leaving
+  return resign.then(() => fb.m.set(fb.m.ref(fb.db, `rooms/${code}/left`), left));
 }
-// Leaving a friend match under way through the menu: it ends as a loss for this side (the record), and this phone
+// Leaving a friend match under way through the menu: it ends as a loss for this side (the server's record), and this phone
 // stays for the result (the loss screen, from the record as it comes back) before the main menu; the other phone
-// sees the win screen. A phone that cannot reach the room goes straight to the menu.
+// sees the win screen. A phone that cannot reach the server goes straight to the menu.
 export function leaveMatch() {
   const o = state.online;
   setMenuOpen(false); setMenuStep('main'); state.confirm = null;
-  if (!fb || !o || !o.code || !room) { leaveRoom(false); return; }
-  if (state.winner) { leaveRoom(false); return; }                 // over already: the main menu
-  render();
-  tellLeft().catch(() => { if (state.online && state.online.code === o.code) { setMenuNote('You left the match: it counts as a loss.'); leaveRoom(true); } });
+  if (!fb || !o || !validCode(o.code) || !lobby) { leaveRoom(false); return; }
+  if (state.winner || o.kind !== 'mm' || !o.game) { leaveRoom(false); return; }   // over already (or no match yet): the main menu
+  moveWait = Date.now(); render();
+  tellLeft().then(() => { moveWait = null; render(); }).catch(() => { moveWait = null; if (state.online && state.online.code === o.code) { setMenuNote('You left the match: it counts as a loss.'); leaveRoom(true); } });
 }
 // Leaving through the menu or from the result: the other player is told (a match under way is lost) and this phone
 // goes to the main menu.
 export function leaveRoom(silent) {
   const o = state.online;
-  if (fb && o && o.kind === 'mm' && o.me) presenceDown(o.me);
-  if (fb && o && o.code) {
-    if (!silent) tellLeft().catch(() => {});
-    if (o.me) presenceDown(o.me);
-  }
-  stopListening();
+  if (fb && o && o.me) presenceDown(o.me);
+  if (fb && o && validCode(o.code) && !silent) tellLeft().catch(() => {});
+  stopListening(); stopLobby();
   clearTimeout(spotTimer); setSpotTimer(null);
   clearTimeout(flashTimer); setFlashTimer(null);
   clearTimeout(holdTimer); setHoldTimer(null);
@@ -511,10 +447,10 @@ export function leaveRoom(silent) {
 export function leaveLobby() {
   const o = state.online;
   if (!o) return;
-  if (room && room.status === 'playing') { leaveRoom(); return; }   // a match is on: leaving it tells the other player
+  if (o.kind === 'mm' && o.game) { leaveRoom(); return; }           // a match is on: leaving it tells the other player
   const host = o.role === 'host';
-  if (fb && o.code && o.me) closeSeat(o.code, o.me, host);
-  stopListening();
+  if (fb && validCode(o.code) && o.me) closeSeat(o.code, o.me, host);
+  stopListening(); stopLobby();
   clearTimeout(moveTimer); moveWait = null; presentingSeq = null; awayNote = '';
   state.online = null;
   setNet('idle', '');
@@ -536,12 +472,12 @@ export function closeSeat(code, side, host) {
 export function leaveLoses() {
   if (state.winner) return false;
   if (isMM()) return true;
-  if (state.online) return room ? !!(room.status === 'playing' && room.match) : !!state.online.matchId;   // (a match seen here before the room loads again)
+  if (state.online) return false;                                 // (a lobby: nothing to lose)
   return loggedIn();
 }
 export function quitMatch() {
-  if (isMM()) { resignMM(); return; }
-  if (state.online) { leaveMatch(); return; }
+  if (isMM()) { if (state.online.room) leaveMatch(); else resignMM(); return; }   // (a friend room's match: the loss, then the room marked left)
+  if (state.online) { leaveLobby(); return; }
   let lost = false;
   if (leaveLoses() && resignLocal(state, state.setup.human === 'O' ? 'O' : 'X')) { trackEnd(); reportLocal(); lost = true; }   // a loss for player 1, recorded
   clearTimeout(cpuTimer); setCpuTimer(null); setCpuPlan(null);
@@ -572,7 +508,7 @@ export function resumeOnline() {
     connectQuiet().then(ok => {
       if (!isMM() || state.online !== o) return;
       if (!ok) { setNet('error', 'Online play needs an internet connection. Check it and try again.'); commit(); return; }
-      listenGame(o.game); presenceUp();
+      listenGame(o.game); if (validCode(o.room)) listenLobby(o.room); presenceUp();   // (a friend room's match: its room too, for the rematch and who left)
     });
     return;
   }
