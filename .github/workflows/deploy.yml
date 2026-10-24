@@ -77,7 +77,7 @@ jobs:
           if [ -n "$last" ] && git cat-file -e "$last" 2>/dev/null && [ '${{ github.event_name }}' = push ]; then changed=$(git diff --name-only "$last" "$GITHUB_SHA"); echo "Changed since ${last::7}:"; echo "$changed"; else changed=ALL; fi
           wf='^\.github/workflows/deploy\.yml$'
           only=''
-          if [ "$changed" = ALL ] || echo "$changed" | grep -qE "$wf|^(index\.html|admin\.html|admin\.js|playtest\.js|styles\.html|trivia\.json|src/|package-lock\.json|firebase\.json|scripts/build-site\.js)"; then only=hosting; fi
+          if [ "$changed" = ALL ] || echo "$changed" | grep -qE "$wf|^(index\.html|admin\.html|admin\.js|playtest\.js|styles\.html|trivia\.json|src/|assets/share/|package-lock\.json|firebase\.json|scripts/build-site\.js)"; then only=hosting; fi
           if [ "$changed" = ALL ] || echo "$changed" | grep -v '/view\.js$' | grep -qE "$wf|^(functions/|src/core/|src/games/|trivia\.json|firebase\.json|\.firebaserc|scripts/sync-functions\.js)"; then only="${only:+$only,}functions"; fi
           if [ "$changed" = ALL ] || echo "$changed" | grep -qE "$wf|^(database\.rules\.json|firebase\.json|scripts/staging-rules\.js)"; then only="${only:+$only,}database"; fi
           echo "only=$only" >> "$GITHUB_OUTPUT"

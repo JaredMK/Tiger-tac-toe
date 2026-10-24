@@ -3,7 +3,9 @@
 // admin page, the Trivia questions and Matter.js's fallback copy, with
 //   - the version in the match logs stamped in (src/ui/config.js APP_VERSION: this commit),
 //   - version.json ({ sha, env, built }): what is live where (scripts/check-envs.js reads it),
-//   - staging only: a noindex meta tag on every page and a robots.txt that keeps crawlers out.
+//   - the link-preview image, home-screen icon and favicons (assets/share, made by scripts/make-share-images.js),
+//   - staging only: a noindex meta tag on every page and a robots.txt that keeps crawlers out, and the preview tags
+//     pointing at staging's own address (its image is served there before a release puts it on production).
 // Which environment: the argument, or the project being deployed (firebase.json's predeploy runs this with
 // GCLOUD_PROJECT set): the production project is production, anything else is staging.
 //   node scripts/build-site.js [production|staging]
@@ -19,6 +21,9 @@ function envOf(arg, project) {
 }
 const NOINDEX = '<meta name="robots" content="noindex, nofollow">';
 function noindex(html) { return html.includes(NOINDEX) ? html : html.replace(/<head>\n?/i, m => m + NOINDEX + '\n'); }
+// index.html names production's address in its preview tags; staging's build points them at itself.
+const PROD_HOST = 'https://tictacchaos.com/', STAGING_HOST = 'https://staging.tictacchaos.com/';
+function previewHost(html, env) { return env === 'staging' ? html.replace(/(<meta (?:property|name)="(?:og:url|og:image|twitter:image)" content=")https:\/\/tictacchaos\.com\//g, '$1' + STAGING_HOST) : html; }
 function robots(env) { return env === 'staging' ? 'User-agent: *\nDisallow: /\n' : 'User-agent: *\nAllow: /\n'; }
 function build(env, sha) {
   fs.rmSync(OUT, { recursive: true, force: true });
@@ -31,12 +36,15 @@ function build(env, sha) {
   const stamped = src.replace(/^export const APP_VERSION = 'dev';/m, `export const APP_VERSION = '${sha.slice(0, 7)}';`);
   if (stamped === src) throw new Error('APP_VERSION not found in src/ui/config.js');
   fs.writeFileSync(cfg, stamped);
+  fs.cpSync(path.join(ROOT, 'assets', 'share'), path.join(OUT, 'assets', 'share'), { recursive: true });
+  for (const [f, to] of [['favicon.ico', 'favicon.ico'], ['apple-touch-icon.png', 'apple-touch-icon.png']]) fs.copyFileSync(path.join(ROOT, 'assets', 'share', f), path.join(OUT, to));
+  if (env === 'staging') fs.writeFileSync(path.join(OUT, 'index.html'), previewHost(fs.readFileSync(path.join(OUT, 'index.html'), 'utf8'), env));
   if (env === 'staging') for (const f of ['index.html', 'admin.html', 'styles.html']) { const p = path.join(OUT, f); if (fs.existsSync(p)) fs.writeFileSync(p, noindex(fs.readFileSync(p, 'utf8'))); }
   fs.writeFileSync(path.join(OUT, 'robots.txt'), robots(env));
   fs.writeFileSync(path.join(OUT, 'version.json'), JSON.stringify({ sha, env, built: new Date().toISOString() }) + '\n');
   return OUT;
 }
-module.exports = { envOf, noindex, robots, build, PRODUCTION_PROJECT };
+module.exports = { envOf, noindex, previewHost, robots, build, PRODUCTION_PROJECT };
 if (require.main === module) {
   const env = envOf(process.argv[2], process.env.GCLOUD_PROJECT);
   let sha = process.env.GITHUB_SHA || '';

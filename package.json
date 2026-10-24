@@ -7,6 +7,7 @@
     "sim": "node scripts/sim.js",
     "test:emulators": "node scripts/sync-functions.js && firebase emulators:exec --only auth,database,functions --project demo-tic-tac-chaos \"node --test --test-concurrency=1 --test-force-exit tests/emulator/server.test.js\"",
     "tune-ai": "node scripts/tune-ai.js",
+    "share-images": "node scripts/make-share-images.js",
     "deploy:staging": "node scripts/deploy-staging.js",
     "release": "node scripts/release.js",
     "export:help": "node scripts/help-text.js export",
