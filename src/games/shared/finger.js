@@ -2,7 +2,7 @@
 // the computer's hand).
 import { tune } from '../../core/tune.js';
 import { PHYSICS } from './physics.js';
-import { PINB, pinCheck } from '../pinball/rules.js';
+import { PINB, pinCheck, pinReplayCheck } from '../pinball/rules.js';
 import { SCOOP, scoopAi, scoopResult, scoopStart, scoopStep } from '../scoop/rules.js';
 import { hopAi, hopResult, hopStart, hopStep } from '../skyhop/rules.js';
 
@@ -85,7 +85,7 @@ export function fingHand(mini) {
 // The finger games' moves: checked (Sky Hop and Scoop Stack played through again from their inputs),
 // then the attempt's result. Returns { why } or { to, sim } (to: the progress after it).
 export function fingCheck(mini, p, m) {
-  if (mini.type === 'pinball') return { why: pinCheck(mini, p, m) };
+  if (mini.type === 'pinball') return m && typeof m === 'object' && m.log != null ? pinReplayCheck(mini, p, m) : { why: pinCheck(mini, p, m) };   // its inputs: the ball played through again here (online); its recording: checked (local play, the computer's own ball)
   if (!m || typeof m !== 'object') return { why: 'bad' };
   const steps = Number(m.steps), maxV = Math.ceil((mini.type === 'skyhop' ? HOP.w : SCOOP.w) * FING.q);
   if (!Number.isInteger(steps) || steps < 1 || steps > FING.maxSecs / FING.step) return { why: 'bad' };
@@ -122,10 +122,12 @@ export function fingerApply(mini, p, m, rng, idx) {   // one attempt: checked (p
     if (c.why) return { ok: false, reason: c.why };
     if (mini.type === 'skyhop') { to = Math.max(from, hopResult(c.sim).h); mini.height[p] = to; last = { by: p, from, to, log: m.log, steps: m.steps, end: m.end, try: mini.tries[p] }; }
     else if (mini.type === 'scoop') { mini.stack[p] = mini.stack[p].concat(c.sim.got).slice(0, mini.cfg.target); to = mini.stack[p].length; last = { by: p, from, to, log: m.log, steps: m.steps, end: m.end, try: mini.tries[p], got: c.sim.got.slice() }; }
+    else if (c.sim) { const r = c.sim; for (const [id] of r.hits) mini.lit[p][id] = 1; to = fingAt(mini, p); last = Object.assign({ by: p, from, to, hits: r.hits.map(h => [h[0], Math.round(Number(h[1]) * 1000) / 1000]), ms: r.ms, rec: r.rec, end: r.end }, c.diff ? { diff: true } : {}); }   // the ball as played through again here, whatever the phone said of it
     else { for (const [id] of m.hits) mini.lit[p][id] = 1; to = fingAt(mini, p); last = { by: p, from, to, hits: m.hits.map(h => [h[0], Math.round(Number(h[1]) * 1000) / 1000]), ms: Math.round(Number(m.ms)), rec: m.rec, end: String(m.end || 'drain') }; }
   }
   if (mini.type === 'pinball') mini.balls[p] += 1; else mini.tries[p] += 1;
   mini.last = last;
+  if (mini.started) mini.started[p] = null;                     // (the next attempt: its own Start)
   if (to >= fingGoal(mini)) return { ok: true, outcome: 'win', note: 'top' };
   return { ok: true, outcome: 'continue', note: last.auto ? 'out' : to > from ? 'up' : 'none' };
 }

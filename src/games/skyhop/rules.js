@@ -153,7 +153,7 @@ export function hopAi(mini, p, rng, hand) {
   return { move: { log: fingLog(rec.pairs), steps: r.steps, h: r.h, end: r.end }, sim };
 }
 export function create(type, rng) {
-  return { type, cfg: hopConfig(), seed: courseSeed(rng), height: { X: 0, O: 0 }, tries: { X: 0, O: 0 }, last: null };   // cfg: as dealt; seed: the course, one for both
+  return { type, cfg: hopConfig(), seed: courseSeed(rng), height: { X: 0, O: 0 }, tries: { X: 0, O: 0 }, started: { X: null, O: null }, last: null };   // cfg: as dealt; seed: the course, one for both; started: when each pressed Start (online: server time, the attempt timed from it)
 }
 export function publicView(mini) {
   const c = JSON.parse(JSON.stringify(mini)); if (c.last) { delete c.last.rec; delete c.last.log; } return c;

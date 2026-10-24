@@ -65,9 +65,31 @@ export function pinCheck(mini, p, m) {
   }
   return null;
 }
+// Online (security review F3): a ball is its inputs (m.log, m.steps: physics-sim.js pinLogPack), and the server
+// plays it through again on a fresh table (pinReplay) and takes its own ball's result (the targets lit, the time,
+// the recording the other phone replays), never the phone's. The phone's claim (hits, end) is only compared,
+// for the record (diff). The same ball is simulated at most once here (PIN_MEMO: a transaction tried again).
+export const PIN_MEMO = new Map();
+export function pinReplayCheck(mini, p, m) {
+  const L = PHYSICS.lib;
+  if (!L || !L.PIN) return { why: 'physics' };
+  const steps = Number(m.steps), max = Math.ceil(((mini.cfg && mini.cfg.maxBall) || 120) * L.PIN.hz) + 90 * L.PIN.hz;
+  if (typeof m.log !== 'string' || !Number.isInteger(steps) || steps < 1 || steps > max) return { why: 'bad' };
+  const log = L.pinLogUnpack(m.log, steps);
+  if (!log) return { why: 'bad' };
+  const key = JSON.stringify([mini.table || null, mini.cfg, mini.lit[p], m.log, steps]);
+  let sim = PIN_MEMO.get(key);
+  if (!sim) {
+    sim = L.pinResult(L.pinReplay(L.pinTable(mini), mini.cfg, mini.lit[p], log, steps));
+    if (PIN_MEMO.size >= 40) PIN_MEMO.clear();
+    PIN_MEMO.set(key, sim);
+  }
+  const same = Array.isArray(m.hits) && m.hits.length === sim.hits.length && m.hits.every((h, k) => Array.isArray(h) && h[0] === sim.hits[k][0]) && String(m.end) === sim.end;
+  return { why: null, sim, diff: !same };
+}
 export function create(type, rng) {
   const table = pinDeal(rng, tuneLive(type).targets), n = table ? table.t.length : pinCount();   // (targets: the admin's setting; a square without physics plays the classic seven)
-  return Object.assign({ type, cfg: pinConfig() }, table ? { table } : {}, { lit: { X: new Array(n).fill(0), O: new Array(n).fill(0) }, balls: { X: 0, O: 0 }, last: null });
+  return Object.assign({ type, cfg: pinConfig() }, table ? { table } : {}, { lit: { X: new Array(n).fill(0), O: new Array(n).fill(0) }, balls: { X: 0, O: 0 }, started: { X: null, O: null }, last: null });   // started: when each pressed Start (online: server time, the attempt timed from it)
 }
 export function publicView(mini) {
   const c = JSON.parse(JSON.stringify(mini)); if (c.last) { delete c.last.rec; delete c.last.log; } return c;

@@ -100,3 +100,32 @@ test('headcount, snapshot: the admin\'s Mini-game Settings deal a square the com
     for (let k = 0; k < 10; k++) assert.notDeepEqual(E.localBest(E.publicMini(m), 'X', rng).move, E.attTruth(type, m.round.X), `${type}: level 3, never right`);
   }
 });
+
+test('attention games online: a round is the server\'s until Start (the record shows its frame alone: the level, what to count, the grid; the secrets keep it whole); Start stamps when (the first stamp stays), the answer clears it; the round shows in the record from Start to the answer', () => {
+  const T = 1700000000000;
+  for (const type of E.ATT_TYPES) {
+    const st = E.newMatch(lcg(21), { games: [type] });
+    const i = st.squares.findIndex(q => q.mini.type === type), mini = st.squares[i].mini;
+    st.id = 'a1'; st.seq = 0; st.recent = [];
+    assert.deepEqual(mini.started, { X: null, O: null });
+    let rec = E.matchRecord(st), pub = rec.state.squares[i].mini;
+    for (const p of ['X', 'O']) {
+      const f = pub.round[p];
+      assert.equal(f.hidden, true, `${type}: ${p}'s round hidden`); assert.equal(f.level, 0);
+      if (type === 'headcount') { assert.equal(f.t, mini.round[p].t, 'what to count shows (the screen says so before Start)'); assert.deepEqual(f.items, []); }
+      else if (type === 'flash') { assert.deepEqual(f.items, []); assert.equal(f.q.text, ''); assert.equal(f.opts.length, mini.round[p].opts.length, 'as many options (the buttons\' places)'); assert.equal(f.ans, -1); }
+      else { assert.deepEqual([f.c, f.r, f.cells, f.show, f.wait], [mini.round[p].c, mini.round[p].r, [], mini.round[p].show, mini.round[p].wait], 'the grid\'s size, no cells'); }
+      assert.deepEqual(E.attFrame(type, f), f, 'a frame framed again is itself');
+    }
+    assert.deepEqual(rec.secrets[i].round, mini.round, 'the rounds ride the secrets');
+    assert.deepEqual(E.fullState(rec).squares[i].mini.round, mini.round, 'and come back whole for the server');
+    assert.equal(E.attStart(st, i, 'X', T).ok, true); assert.equal(mini.started.X, T);
+    assert.equal(E.attStart(st, i, 'X', T + 5000).ok, true); assert.equal(mini.started.X, T, 'a Start again (a reload) keeps the first stamp');
+    rec = E.matchRecord(st); pub = rec.state.squares[i].mini;
+    assert.deepEqual(pub.round.X, mini.round.X, `${type}: X's round shows once started`); assert.equal(pub.round.O.hidden, true, 'O\'s not');
+    assert.equal(E.applyMove(mini, 'X', E.attTruth(type, mini.round.X), lcg(2)).ok, true);
+    assert.equal(mini.started.X, null, 'answered: the next round waits for its Start');
+    assert.equal(E.matchRecord(st).state.squares[i].mini.round.X.hidden, true, 'and is hidden again');
+    assert.equal(E.applyMove(mini, 'O', 'auto', lcg(3)).ok, true, 'a timeout answers without a Start (the server\'s own)');
+  }
+});

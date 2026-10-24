@@ -79,7 +79,7 @@ admin.initializeApp({ databaseURL: `https://${projectId}-default-rtdb.firebaseio
 const db = admin.database();
 
 const STALE_MS = 15000;          // a searcher that has not checked in for this long has left the queue
-const RUN_SLACK_MS = 2500;      // a run may claim this much more time than the turn has lasted (the phone's clock, the call's way here)
+
 const MATCH_GRACE_MS = 6000;     // the first turn's clock starts late: both phones load the board and show the players
 const OLD_QUEUES = ['ranked', 'casual30', 'casual60', 'casual180'];   // before Find Match was one queue: left on cancel
 const CLASSIC_OK = () => process.env.FUNCTIONS_EMULATOR === 'true';   // the Classic queue: only the tests may ask for it (the admin, were it wanted again)
@@ -567,6 +567,7 @@ async function changeSc(id, uid, step, what) {
     else if (what === 'bot') ev.push({ t, k: 'move', s: who || undefined, q: out.square, g: out.type, r: before.round, bot: true, src: 'srv' });
     else if (what === 'timeout' || what === 'sweep') ev.push({ t, k: 'timeout', r: before.round, s: (out.timed || []).join('') || undefined, src: 'srv' });
     else if (what === 'begin' && out.begun) ev.push({ t, k: 'round', r: after.round, src: 'srv' });
+    else if (what === 'start') ev.push({ t, k: 'start', s: who || undefined, r: before.round, src: 'srv' });
     if (after && after.round !== before.round && after.recap) ev.push({ t, k: 'resolve', r: before.round, claims: (after.recap.claims || []).map(c => c.square + c.by).join(' ') || undefined, resets: (after.recap.resets || []).map(x => `${x.square}:${x.why}`).join(' ') || undefined, src: 'srv' });
     if (end) ev.push({ t, k: 'end', w: end.w, why: end.why || undefined, resigned: end.resigned || undefined, src: 'srv' });
   } else if (!['stale', 'early', 'missing', 'begun', 'recap', 'waiting'].includes(out.reason) && await rateOk('reject', uid || id, 20)) ev.push({ t, k: 'reject', s: who || undefined, what, why: out.reason, src: 'srv' });   // (a loop of bad moves: logged 20 times a minute at most)
@@ -586,6 +587,14 @@ exports.scMove = onCall(CALL, async req => {
   const r = await changeSc(id, uid, (g, side, t) => E.applyScMove(g, side, d.square, d.move, seedRng(), t, { rep: d.rep }), 'move');
   if (!r.ok) return r;
   return { ok: true, seq: r.seq, flash: r.flash, mini: r.mini, lock: r.lock, moved: r.moved, me: r.me, resolved: r.resolved };
+});
+// Start (an attention or finger game): the side is held to its square, its round or attempt timed from now by the
+// server's clock; an attention game's round (the server's until now) comes back with it (core/scgame.js applyScStart).
+exports.scStart = onCall(CALL, async req => {
+  const uid = needUid(req), d = req.data || {}, id = gameId(d.game);
+  if (!Number.isInteger(d.square) || d.square < 0 || d.square > 8) return { ok: false, reason: 'bad' };
+  const r = await changeSc(id, uid, (g, side, t) => E.applyScStart(g, side, d.square, t), 'start');
+  return r.ok ? { ok: true, seq: r.seq, round: r.round || null } : r;
 });
 // The round's clock, the match's bot: a phone waiting on the other side asks every few seconds. The bot's move
 // once due; the deadline past its grace: a side not in misses the round; the next round begun once a phone
@@ -876,7 +885,7 @@ async function changeGame(id, uid, step, what) {   // what: the kind of change, 
     end = over ? { w: r.rec.state.winner, why: r.rec.state.winReason || null, resigned: r.rec.state.resigned || null } : null;
     if (over) { pub.status = 'over'; pub.ended = t; cur.dl = 1; }      // 1: over, the result still to record
     else cur.dl = E.clockDeadline(r.rec.state.timer) || null;
-    out = { ok: true, seq: r.rec.state.seq };
+    out = Object.assign({ ok: true, seq: r.rec.state.seq }, r.out || {});   // (out: what goes back to the phone with it, e.g. an attention game's round at Start)
     info = { entries: r.entries || null, sameTurn: r.rec.state.turn === turn0 };
     return cur;
   }, undefined, false);
@@ -906,27 +915,20 @@ exports.move = onCall(CALL, async req => {
     return changeGame(id, uid, (rec, side) => E.applyOnlinePick(rec, side, i, card), 'pick');
   }
   if (d.kind === 'reveal') return changeGame(id, uid, (rec, side) => E.applyOnlineReveal(rec, side, i), 'reveal');   // Trivia: the question turned up (the turn goes on)
-  if (d.kind === 'start') return changeGame(id, uid, (rec, side) => E.applyOnlineStart(rec, side, i), 'start');     // Headcount, Flash, Snapshot: Start (held to the square; a timeout answers that round)
+  if (d.kind === 'start') return changeGame(id, uid, (rec, side) => E.applyOnlineStart(rec, side, i, now()), 'start');   // Headcount, Flash, Snapshot, Sky Hop, Scoop Stack, Pinball: Start (held to the square, the round or attempt timed from now; an attention game's round goes back with it; a timeout answers that round)
   if (d.move === undefined) return { ok: false, reason: 'bad' };
   await runConfigNow();
   return changeGame(id, uid, (rec, side) => {
-    // A runner's run (Dash, Lane Rush): the engine checks it against the course; here, against the clock
-    // too: no run may be longer than the turn has lasted (the turn's deadline, less its limit, is when
-    // the turn began, after the last move's playback), so no more distance than that time allows.
-    const sq = rec.state.squares && rec.state.squares[i];
-    if (sq && E.RUN_TYPES.includes(sq.mini.type)) {
-      if (!d.move || typeof d.move !== 'object') return { ok: false, reason: 'bad' };   // (a timed-out run is the server's to make, from the sweep: never a phone's to claim)
-      const t = rec.state.timer;
-      if (t && t.limit && t.deadline != null && Number(d.move.ms) > now() - (t.deadline - t.limit * 1000) + RUN_SLACK_MS) return { ok: false, reason: 'fast' };
-    }
-    // The finger games (Sky Hop, Scoop Stack, Pinball): the engine plays the attempt through again (or checks
-    // its recording); here, against the clock: no attempt longer than the turn has lasted.
-    if (sq && E.FINGER_TYPES.includes(sq.mini.type)) {
-      if (!d.move || typeof d.move !== 'object' || d.move.fing) return { ok: false, reason: 'bad' };   // (a timed-out attempt is the server's to make)
-      const t = rec.state.timer, ms = sq.mini.type === 'pinball' ? Number(d.move.ms) : Number(d.move.steps) * E.FING.step * 1000;
-      if (t && t.limit && t.deadline != null && !(ms <= now() - (t.deadline - t.limit * 1000) + E.FING.slackMs)) return { ok: false, reason: 'fast' };
-    }
-    return E.applyOnlineMove(rec, side, i, d.move, seedRng(), { rep: d.rep });   // (rep: the mover's inputs before the move, checked and kept by the engine for the other phone's replay)
+    // What the server holds a phone's move to beyond the game's rules (core/verify.js, security review F3): never a
+    // timeout ('auto' is the server's to play), a run with its inputs and no longer than the turn has lasted (the
+    // turn's deadline, less its limit, is when it began, after the last move's playback), an attempt after Start
+    // with its inputs and no longer than the time since, an attention game's answer after Start and in time.
+    const full = E.fullState(rec), sq = full.squares && full.squares[i];
+    if (!sq) return { ok: false, reason: 'bad' };
+    if (full.lock != null && full.lock !== i) return { ok: false, reason: 'locked' };   // (held to another square: as the engine refuses it, before anything else is asked of the move)
+    const t = full.timer, chk = E.onlineCheck(sq.mini, side, d.move, now(), t && t.limit && t.deadline != null ? t.deadline - t.limit * 1000 : null);
+    if (chk && chk.why) return { ok: false, reason: chk.why };
+    return E.applyOnlineMove(rec, side, i, chk && chk.move !== undefined ? chk.move : d.move, seedRng(), { rep: d.rep });   // (rep: the mover's inputs before the move, checked and kept by the engine for the other phone's replay)
   }, 'move');
 });
 // The turn's time is up: the player on the move misses the turn (a move under way ends as it stands), or

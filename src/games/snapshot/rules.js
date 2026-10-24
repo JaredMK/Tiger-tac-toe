@@ -6,6 +6,7 @@ export { attentionCreate as create } from '../shared/attention.js';
 export { attentionApply as apply } from '../shared/attention.js';
 export { attentionMoveFlash as moveFlash } from '../shared/attention.js';
 export { attentionFlashMs as flashMs } from '../shared/attention.js';
+export { attentionHide as hide, attentionSecret as secret } from '../shared/attention.js';   // online: a round is the server's until its Start (security review F3)
 
 export const SNAP_LIMITS = { c1: [3, 7, 1], r1: [3, 7, 1], k1: [2, 30, 1], c2: [3, 7, 1], r2: [3, 7, 1], k2: [2, 30, 1], c3: [3, 7, 1], r3: [3, 7, 1], k3: [2, 30, 1], show: [1000, 15000, 100], wait: [0, 15000, 100] };
 export const SNAP_KIT = cfgKit(SNAP_DEFAULTS, SNAP_LIMITS, out => { for (const L of [1, 2, 3]) out['k' + L] = Math.min(out['k' + L], out['c' + L] * out['r' + L] - 2); return out; });

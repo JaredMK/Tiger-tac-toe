@@ -34,7 +34,7 @@ export const RUN_EXTRA = { chopper: { cave0: [3, 9.5], cave1: [2.5, 9.5] } };   
 // reported (before, after: a move from a page before the input log, checked by its distance alone);
 // crashBin: the metres per bin in the crash stats; maxSecs: the longest run the server will play through
 // from its log; logMax: the longest log it will read.
-export const RUN = { grace: 2, countdown: 3, aiRuns: 4.5, aiSlow: 0.3, aiSpread: 0.45, tolerance: 0.85, slackMs: 200, hit: { dash: [1.5, 2.2], lane: [3.6, 3.6], flap: [1.0, 1.8] }, crashBin: 50, maxCrashes: 40, maxSecs: 600, logMax: 60000 };
+export const RUN = { grace: 2, countdown: 3, aiRuns: 4.5, aiSlow: 0.3, aiSpread: 0.45, tolerance: 0.85, slackMs: 200, clockSlackMs: 2500, hit: { dash: [1.5, 2.2], lane: [3.6, 3.6], flap: [1.0, 1.8] }, crashBin: 50, maxCrashes: 40, maxSecs: 600, logMax: 60000 };   // clockSlackMs: a run may claim this much more time than the turn or round has lasted (the phone's clock, the call's way to the server: core/verify.js)
 export const RUNT = { bar: 900, hold: 700 };                          // the result: the bar fills, then holds
 export const RUN_CFG = { dash: null, lane: null, flap: null, chopper: null };
 // The game's Mini-game Settings (its meta.js TUNE; core/tune.js) go into the square's cfg beside the
@@ -139,7 +139,8 @@ export function caveWalls(cave, cfg, d) {
 // with its input log (`log`, `steps`: every run made on a page since the log) is played through again
 // here, step for step, and must end just as it claims: at the same step, at the same distance (to the
 // centimetre), finished if and only if it says so, and at a crash unless finished or out of time. A move
-// without one (a page from before the log) is checked by its distance alone, as it always was.
+// without one (the engine's own run for a timed-out player, runAuto; a test's) is checked by its distance
+// alone; online no run without its log gets this far (core/verify.js: every run a phone sends is its inputs).
 export function runCheck(mini, p, m) {
   if (!m || typeof m !== 'object') return 'bad';
   const cfg = mini.cfg, from = mini.dist[p], dist = Number(m.dist), ms = Number(m.ms);

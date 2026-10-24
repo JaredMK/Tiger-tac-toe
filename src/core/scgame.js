@@ -18,6 +18,8 @@ import { needRng } from './random.js';
 import { playMs } from './timer.js';
 import { other } from './util.js';
 import { PHYS_TYPES } from '../games/shared/physics.js';
+import { ATT_TYPES, attStart } from '../games/shared/attention.js';
+import { onlineCheck } from './verify.js';
 
 export const SC_GAME = { recapMaxMs: 90000, leadHoldMs: 300 };   // a recap neither phone gets through (both gone): the next round begun by the sweep this long after its start; the last mover's phone starts the recap this long after its own result's animation
 const clone = v => (v === undefined ? undefined : JSON.parse(JSON.stringify(v)));
@@ -29,7 +31,7 @@ export function newScGame(setup, rng, id, now, graceMs) {
   const rec = newOnlineMatch(Object.assign({}, setup, { timer: 0, chaos: true }), rng, id, now);
   if (!rec) return null;
   const full = fullState(rec);
-  full.sc.deadline = now + (graceMs || 0) + full.sc.limit * 1000;
+  full.sc.deadline = now + (graceMs || 0) + full.sc.limit * 1000; full.sc.began = now;   // (began: a run or an attempt is no longer than the round has lasted, core/verify.js)
   return { full, prog: { X: prog0(), O: prog0() } };
 }
 // A side's own copy of the round, as its phone plays it in a friend room: the board as the round left it,
@@ -69,6 +71,10 @@ export function applyScMove(g, side, i, m, rng, now, opts) {
   if (!Number.isInteger(i) || i < 0 || i > 8) return { ok: false, reason: 'bad' };
   rng = needRng(rng);
   const st = scSideState(g, side);
+  if ((st.lock != null && st.lock !== i) || (st.sc.moved != null && st.sc.moved !== i)) return { ok: false, reason: 'locked' };   // (held to another square: as chaosPlay refuses it, before anything else is asked of the move)
+  const chk = onlineCheck(st.squares[i].mini, side, m, now, f.sc.began != null ? f.sc.began : f.sc.deadline - f.sc.limit * 1000 - 6000);   // what the server holds a phone's move to (a timeout is never a phone's, a run or an attempt its inputs within the time, an answer after Start and in time)
+  if (chk && chk.why) return { ok: false, reason: chk.why };
+  if (chk && chk.move !== undefined) m = chk.move;
   const r = playMove(st, i, m, rng, { rep: opts && opts.rep });
   if (!r.ok) return { ok: false, reason: r.reason || 'bad' };
   g.prog[side] = progOf(st);
@@ -79,6 +85,29 @@ export function applyScMove(g, side, i, m, rng, now, opts) {
   }
   bump(f);
   return out;
+}
+// Start (an attention or finger game, security review F3): the side is held to the square and its round or attempt
+// is timed from now (server time: core/verify.js holds the answer or the attempt to it); an attention game's round,
+// the server's until now, goes back to the phone with it. The stamp goes on the match itself (the side's own copy of
+// the round is rebuilt from it at every step); a Start again (a reload) is the same round on the same clock.
+export function applyScStart(g, side, i, now) {
+  const f = g.full, no = live(f);
+  if (no) return no;
+  if (side !== 'X' && side !== 'O') return { ok: false, reason: 'bad' };
+  if (f.sc.moves && f.sc.moves[side]) return { ok: false, reason: 'moved' };
+  if (!Number.isInteger(i) || i < 0 || i > 8) return { ok: false, reason: 'bad' };
+  const st = scSideState(g, side);
+  if (st.sc.me || (st.sc.moved != null && st.sc.moved !== i)) return { ok: false, reason: 'moved' };
+  const m0 = st.squares[i].mini;
+  if (m0.started && m0.started[side] != null && f.sc.began != null && m0.started[side] < f.sc.began) m0.started[side] = null;   // (a stamp left from an earlier round: this round's Start is a new one, on its own clock)
+  const r = attStart(st, i, side, now);
+  if (!r.ok) return r;
+  const started = clone(st.squares[i].mini.started), p = g.prog[side] || prog0();
+  f.squares[i].mini.started = started;
+  if (p.square === i && p.mini) p.mini.started = clone(started);
+  g.prog[side] = Object.assign(p, { lock: i });
+  bump(f);
+  return { ok: true, round: ATT_TYPES.includes(st.squares[i].mini.type) ? clone(st.squares[i].mini.round[side]) : null };
 }
 // The deadline is past its grace: a side not in misses the round (nothing is played for it; a move still under
 // way ends as it stands: chaosTimeout), and the round settles.
@@ -125,7 +154,7 @@ export function applyScBegin(g, now, sides) {
   if (f.sc.deadline != null) return { ok: false, reason: 'begun' };
   let r = { ok: false, reason: 'waiting' };
   for (const sd of [].concat(sides || [null])) { const x = scReady(f.sc, now, sd); if (x.ok) r = x; if (f.sc.deadline != null) break; }
-  if (f.sc.deadline == null && !sides && now >= (f.sc.recap && f.sc.recap.at || 0) + SC_GAME.recapMaxMs) { f.sc.deadline = now + f.sc.limit * 1000; f.sc.ready = null; r = { ok: true, begun: true }; }
+  if (f.sc.deadline == null && !sides && now >= (f.sc.recap && f.sc.recap.at || 0) + SC_GAME.recapMaxMs) { f.sc.deadline = now + f.sc.limit * 1000; f.sc.began = now; f.sc.ready = null; r = { ok: true, begun: true }; }
   if (!r.ok) return r;
   bump(f);
   return { ok: true, begun: f.sc.deadline != null };

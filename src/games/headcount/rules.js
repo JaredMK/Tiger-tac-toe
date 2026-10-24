@@ -6,6 +6,7 @@ export { attentionCreate as create } from '../shared/attention.js';
 export { attentionApply as apply } from '../shared/attention.js';
 export { attentionMoveFlash as moveFlash } from '../shared/attention.js';
 export { attentionFlashMs as flashMs } from '../shared/attention.js';
+export { attentionHide as hide, attentionSecret as secret } from '../shared/attention.js';   // online: a round is the server's until its Start (security review F3)
 
 // Headcount: creatures cross the field; count the ones asked for, not the decoys. Level 1: 14-20 to count
 // and a few decoys of another kind, left and right, uneven timing with bunches; level 2: 18-25 and more

@@ -352,7 +352,7 @@ export function makePhysics(Matter) {
     bodies.push(ball);
     Composite.add(engine.world, bodies);
     const gate = pinSeg(table.gate[0], table.gate[1], table.gate[2], table.gate[3], table.gate[4], 'gate');   // (in the world only once the ball has left the lane: pinGate; its bodies, a capsule)
-    const w = { table, cfg, engine, ball, gate, gateOn: false, t: 0, acc: 0, inPlay: false, launchedAt: null, lit: (lit || []).slice(), hits: [], events: [], frames: [], flip: { L: { a: PIN.flip.rest, w: 0, on: false }, R: { a: PIN.flip.rest, w: 0, on: false } }, over: false, saves: 0, n: 0, frameAt: 0, still: { x: 0, y: 0, t: 0 }, nudges: 0 };
+    const w = { table, cfg, engine, ball, gate, gateOn: false, t: 0, acc: 0, inPlay: false, launchedAt: null, lit: (lit || []).slice(), hits: [], events: [], frames: [], flip: { L: { a: PIN.flip.rest, w: 0, on: false }, R: { a: PIN.flip.rest, w: 0, on: false } }, over: false, saves: 0, n: 0, frameAt: 0, still: { x: 0, y: 0, t: 0 }, nudges: 0, log: [], logBits: 0 };   // log: the inputs at their steps (the flippers' state as it changes, each launch and its power): the ball played through again from them is the same ball (pinReplay)
     Events.on(engine, 'collisionStart', e => { for (const pr of e.pairs) pinTouch(w, pr.bodyA === ball ? pr.bodyB : pr.bodyB === ball ? pr.bodyA : null); });
     pinFrame(w);
     return w;
@@ -386,8 +386,9 @@ export function makePhysics(Matter) {
   // A launch: power 0..1 (a tap: the default).
   function pinLaunch(w, power) {
     if (w.inPlay || w.over) return false;
-    const p = power == null ? 0.82 : Math.max(0, Math.min(1, power)), lo = 240, hi = 400;
-    w.inPlay = true; w.launchedAt = w.t; pinSetV(w, 0, -(lo + (hi - lo) * p)); pinEv(w, 'launch', { p: Math.round(p * 100) / 100 });
+    const p = Math.round((power == null ? 0.82 : Math.max(0, Math.min(1, power))) * 100) / 100, lo = 240, hi = 400;   // (the power to a hundredth: as the log keeps it, so a replay launches just the same)
+    w.inPlay = true; w.launchedAt = w.t; pinSetV(w, 0, -(lo + (hi - lo) * p)); pinEv(w, 'launch', { p });
+    if (w.log.length < 20000) w.log.push([w.n, 4 + Math.round(p * 100)]);
     return true;
   }
   // The one-way gate across the lane's top: it goes into the world the moment the ball is clear of it on
@@ -429,6 +430,8 @@ export function makePhysics(Matter) {
     if (w.over) return [];
     const from = w.events.length, dt = 1 / PIN.hz;
     if (input) { w.flip.L.on = !!input.L; w.flip.R.on = !!input.R; }
+    const bits = (w.flip.L.on ? 1 : 0) + (w.flip.R.on ? 2 : 0);
+    if (bits !== w.logBits && w.log.length < 20000) { w.log.push([w.n, bits]); w.logBits = bits; }
     w.acc += Math.min(100, Math.max(0, Number(ms) || 0)) / 1000;
     while (w.acc >= dt - 1e-12 && !w.over) { w.acc -= dt; pinStep(w, dt); }
     return w.events.slice(from);
@@ -493,6 +496,34 @@ export function makePhysics(Matter) {
     return out;
   }
   const pinResult = w => ({ hits: w.hits.map(h => [h.id, h.t]), ms: Math.round(w.t * 1000), rec: pinPack(w.frames), events: w.events.filter(e => e.k !== 'guard' && e.k !== 'gate').slice(0, 300), saves: w.saves, end: w.over ? (w.lit.every(Boolean) ? 'all' : w.events.some(e => e.k === 'time') ? 'time' : 'drain') : 'out' });
+  // The input log as a string (step gaps and values in base 36: 0-3 the flippers held, 4 + power in hundredths a
+  // launch), and back; a ball played through again from one, step for step, on a fresh table (security review F3:
+  // the server takes its own ball's result, never the phone's). The steps are fixed (pinRun: whole steps of 1/hz,
+  // however the frames fall) and the inputs apply at their step, so the same inputs make the same ball anywhere.
+  const pinLogPack = log => { let s = 0; return log.map(([k, v]) => { const d = k - s; s = k; return d.toString(36) + ':' + v.toString(36); }).join(','); };
+  function pinLogUnpack(str, maxSteps) {
+    if (typeof str !== 'string' || str.length > 200000) return null;
+    if (!str) return [];
+    const out = [];
+    let s = 0;
+    for (const part of str.split(',')) {
+      const m = /^([0-9a-z]{1,7}):([0-9a-z]{1,3})$/.exec(part);
+      if (!m) return null;
+      s += parseInt(m[1], 36); const v = parseInt(m[2], 36);
+      if (s > maxSteps || v > 104 || (out.length && s < out[out.length - 1][0])) return null;
+      out.push([s, v]);
+    }
+    return out;
+  }
+  function pinReplay(table, cfg, lit, log, steps) {
+    const w = pinNew(table, cfg, lit), dt = 1 / PIN.hz;
+    let j = 0;
+    while (w.n < steps && !w.over) {
+      while (j < log.length && log[j][0] <= w.n) { const v = log[j++][1]; if (v >= 4) pinLaunch(w, (v - 4) / 100); else { w.flip.L.on = !!(v & 1); w.flip.R.on = !!(v & 2); w.logBits = v; } }
+      pinStep(w, dt);
+    }
+    return w;
+  }
   // The computer's hand: it sees the ball react seconds late; when the ball comes down over a flipper it
   // flips (a little early or late: jitter) and holds for a moment. A launch: a tap at a random power.
   function pinAi(table, cfg, lit, rng, hand) {
@@ -515,7 +546,7 @@ export function makePhysics(Matter) {
       }
       pinRun(w, frame, { L: !!(plan.L && plan.L.until != null && w.t <= plan.L.until), R: !!(plan.R && plan.R.until != null && w.t <= plan.R.until) });
     }
-    return { w, result: pinResult(w) };
+    return { w, result: pinResult(w), log: pinLogPack(w.log), steps: w.n };
   }
   // Reachability: the computer's hand plays balls on the table (every target unlit for each) and the
   // count of hits per target comes back, with the ball each was first hit on and how the balls ended.
@@ -687,5 +718,5 @@ export function makePhysics(Matter) {
     return out;
   }
 
-  return { GOLF, POOL, BOWL, HOLES, LAYOUTS, SIZES, FPS, TS, run, PIN, PIN_LAYOUTS, PIN_LOWER, PIN_OUTER, PIN_CLASSIC, pinTable, pinAllSpots, pinNew, pinServe, pinLaunch, pinRun, pinFlipLine, pinSpinAt, pinResult, pinAi, pinReach, pinLayoutCheck, pinV, pinPack, pinUnpack, pinFlipAngles };
+  return { GOLF, POOL, BOWL, HOLES, LAYOUTS, SIZES, FPS, TS, run, PIN, PIN_LAYOUTS, PIN_LOWER, PIN_OUTER, PIN_CLASSIC, pinTable, pinAllSpots, pinNew, pinServe, pinLaunch, pinRun, pinFlipLine, pinSpinAt, pinResult, pinAi, pinReach, pinLayoutCheck, pinV, pinPack, pinUnpack, pinFlipAngles, pinLogPack, pinLogUnpack, pinReplay };
 }

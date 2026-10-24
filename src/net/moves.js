@@ -103,9 +103,15 @@ export async function dbReveal(i) {
   if (ok) { setTriviaFlip({ sq: i, at: performance.now() }); SND.play('reveal'); }
   render();
 }
-export async function dbStart(i) {                                     // Headcount, Flash, Snapshot: Start, for the server (the round itself plays here from the tap, without waiting)
-  if (!fb || !room || !isMM()) return;
-  try { await call('move', { game: state.online.game, square: i, kind: 'start' }); } catch (e) { /* the round goes on here */ }
+// Headcount, Flash, Snapshot, Sky Hop, Scoop Stack, Pinball: Start, on the server first (Classic: move with kind
+// 'start'; Super Chaos: scStart). It holds the player to the square and times the round or the attempt from its own
+// clock (core/verify.js); an attention game's round, the server's until now, comes back with its answer (r.round).
+export async function dbStart(i) {
+  if (!fb || !room || !isMM()) return { ok: true };
+  try {
+    const r = await call(state.sc ? 'scStart' : 'move', Object.assign({ game: state.online.game, square: i }, state.sc ? {} : { kind: 'start' }));
+    return r && typeof r === 'object' ? r : { ok: false, reason: 'network' };
+  } catch (e) { return { ok: false, reason: 'network' }; }
 }
 export async function dbPick(i, card) {
   if (blocked() || !fb || !room || !isMM()) return;

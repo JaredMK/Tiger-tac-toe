@@ -5,6 +5,7 @@ export { attentionCreate as create } from '../shared/attention.js';
 export { attentionApply as apply } from '../shared/attention.js';
 export { attentionMoveFlash as moveFlash } from '../shared/attention.js';
 export { attentionFlashMs as flashMs } from '../shared/attention.js';
+export { attentionHide as hide, attentionSecret as secret } from '../shared/attention.js';   // online: a round is the server's until its Start (security review F3)
 
 export const FLASH_LIMITS = { n1: [4, 12, 1], n2: [4, 12, 1], n3: [4, 12, 1], ms1: [150, 3000, 10], ms2: [150, 3000, 10], ms3: [150, 3000, 10] };
 export const FLASH_KIT = cfgKit(FLASH_DEFAULTS, FLASH_LIMITS);

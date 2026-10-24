@@ -92,3 +92,37 @@ test('pinball: its settings (TUNE) are dealt into the square: fewer targets; the
   assert.equal(r.ok, true, 'the computer\'s ball passes the check');
   assert.ok(mini.lit.X.length === 4 && mini.balls.X === 1);
 });
+
+test('pinball: a ball is its inputs (the log: the flippers as they change, each launch and its power, at their steps): played through again from them it is the same ball (hits, time, recording); the server takes its own ball, never the phone\'s claim; a log out of shape is refused', () => {
+  const mini = E.newMini('pinball', E.makeRng('log')), TB = P.pinTable(mini);
+  const a = P.pinAi(TB, mini.cfg, mini.lit.X, E.makeRng('real-log'));
+  assert.ok(typeof a.log === 'string' && a.log.length > 0 && a.steps > 0 && a.steps === a.w.n, 'the computer\'s ball logs its inputs');
+  const log = P.pinLogUnpack(a.log, a.steps);
+  assert.ok(log && log.some(([, v]) => v >= 4) && log.some(([, v]) => v < 4), 'a launch and some flipping');
+  assert.deepEqual(P.pinLogPack(log), a.log, 'the log reads back as it was');
+  const w2 = P.pinReplay(TB, mini.cfg, mini.lit.X, log, a.steps), r2 = P.pinResult(w2);
+  assert.deepEqual([r2.hits, r2.ms, r2.end, w2.n], [a.result.hits, a.result.ms, a.result.end, a.steps], 'the same ball again');
+  assert.equal(r2.rec, a.result.rec, 'the same recording');
+  const move = { hits: a.result.hits, ms: a.result.ms, end: a.result.end, log: a.log, steps: a.steps };
+  const c = E.pinReplayCheck(mini, 'X', move);
+  assert.equal(c.why, null); assert.equal(c.diff, false); assert.deepEqual(c.sim.hits, a.result.hits);
+  // the server's result stands whatever the phone says: a hit claimed that the ball never made is not lit (and noted)
+  const far = TB.targets.find(t => !a.result.hits.some(h => h[0] === t.id));
+  if (far) {
+    const m2 = JSON.parse(JSON.stringify(mini)), forged = Object.assign({}, move, { hits: move.hits.concat([[far.id, 0.1]]) });
+    const r = E.applyMove(m2, 'X', forged, E.makeRng('x'));
+    assert.equal(r.ok, true); assert.equal(m2.lit.X[far.id], 0, 'the forged hit is not lit'); assert.equal(m2.last.diff, true, 'the claim differed from the ball');
+    assert.deepEqual(m2.last.hits.map(h => h[0]), a.result.hits.map(h => h[0])); assert.equal(m2.last.rec, a.result.rec, 'the server\'s own recording rides the move');
+  }
+  const m3 = JSON.parse(JSON.stringify(mini));
+  assert.equal(E.applyMove(m3, 'X', move, E.makeRng('y')).ok, true); assert.equal(m3.last.diff, undefined, 'an honest claim: nothing noted');
+  for (const bad of [{ log: 'zz!', steps: 10 }, { log: a.log, steps: 0 }, { log: a.log, steps: 1e9 }, { log: a.log + ',1:zz', steps: a.steps }, { log: 7, steps: 5 }]) assert.equal(E.pinReplayCheck(mini, 'X', Object.assign({}, move, bad)).why, 'bad', `refused: ${JSON.stringify(bad).slice(0, 40)}`);
+  assert.equal(P.pinLogUnpack('a:1,5:0,-1:3', 1000), null, 'a step going backwards'); assert.equal(P.pinLogUnpack('a:1,5:2z', 1000), null, 'a value out of range'); assert.deepEqual(P.pinLogUnpack('', 10), []);
+  // a ball the phone plays in frames of any length logs the same inputs a replay applies: launch, flips held and let go
+  const w = P.pinNew(TB, mini.cfg, mini.lit.X);
+  P.pinRun(w, 300, { L: false, R: false }); P.pinLaunch(w, 0.7137); P.pinRun(w, 16.7, { L: true, R: false }); P.pinRun(w, 33.3, { L: true, R: true }); P.pinRun(w, 9, { L: false, R: false });
+  let k = 0; while (!w.over && k++ < 60 * 20) P.pinRun(w, 1000 / 60 + (k % 3) * 2.5, { L: k % 40 < 8, R: k % 50 < 9 });
+  const rw = P.pinResult(w), again = P.pinResult(P.pinReplay(TB, mini.cfg, mini.lit.X, P.pinLogUnpack(P.pinLogPack(w.log), w.n), w.n));
+  assert.deepEqual([again.hits, again.ms, again.end, again.rec], [rw.hits, rw.ms, rw.end, rw.rec], 'frames of any length: the same ball from the log');
+  assert.ok(w.log.some(([, v]) => v === 4 + 71), 'the launch power kept to a hundredth (as the launch itself uses it)');
+});

@@ -81,7 +81,7 @@ export function attTable(mini, a, o) {
     : mine ? `<span>Level ${round.level + 1} of 3${v.watch ? ' · ' + vw() : ''}</span>`
     : o.view ? '' : `<span>${W(turn)}'s turn</span>`;   // (each in one span: the box is a grid, and a picture in the line stays in the line)
   const go = mine && !started, sub = type === 'snapshot' && answering;
-  const btn = o.view ? '' : `<div class="cbtns one${go || sub ? '' : ' hold'}">${go ? `<button class="big" data-act="att-start"${live ? '' : ' disabled'}>Start</button>` : sub ? `<button class="big" data-act="snap-submit"${live ? '' : ' disabled'}>Submit</button>` : '<button class="big" disabled tabindex="-1" aria-hidden="true">Start</button>'}</div>`;   // the row stays (hidden) so nothing moves
+  const btn = o.view ? '' : `<div class="cbtns one${go || sub ? '' : ' hold'}">${go ? `<button class="big" data-act="att-start"${live && attStarting == null ? '' : ' disabled'}>Start</button>` : sub ? `<button class="big" data-act="snap-submit"${live ? '' : ' disabled'}>Submit</button>` : '<button class="big" disabled tabindex="-1" aria-hidden="true">Start</button>'}</div>`;   // the row stays (hidden) so nothing moves
   return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="att att-${type}"><div class="atstage">${v.stage}</div><p class="atwords">${words}</p>${v.input}</div>${btn}</div>`;
 }
 export function attentionMiniature(mini, final) {
@@ -98,15 +98,28 @@ export function attentionSounds(f, add, won, mini, last) {   // someone else's r
   if (f.att) add(f.att.correct ? 'ding' : 'thud', pre + 250);
   return;
 }
-// Headcount, Flash, Snapshot: the round plays, timed from now; from here the player stays in the square until the answer goes in
-export function attStartAct(el, e, act) {
+let attStarting = null;                                         // the square whose Start is with the server (online: the round comes back with its answer)
+// Headcount, Flash, Snapshot: the round plays, timed from now; from here the player stays in the square until the answer goes in.
+// Online the server comes first: it holds the player to the square, times the round from its own clock (an answer too
+// late counts as out of time: core/verify.js) and hands over the round, which is its secret until Start.
+export async function attStartAct(el, e, act) {
   const type = zoomedType();
-  if (!ATT_TYPES.includes(type) || attDraft || state.flash || state.done || blocked()) return;
-  const sq = state.squares[state.zoom], r = sq.mini.round[state.turn];
-  attDraft = { id: attId(state.zoom, state.turn), sq: state.zoom, at: Date.now(), entry: type === 'snapshot' ? [] : '' };
+  if (!ATT_TYPES.includes(type) || attDraft || attStarting != null || state.flash || state.done || blocked()) return;
+  const i = state.zoom, p = state.turn;
+  if (state.online) {
+    attStarting = i; render();
+    const res = await dbStart(i);
+    attStarting = null;
+    const cur = state.squares && state.squares[i];
+    if (!res || !res.ok || state.zoom !== i || state.turn !== p || !cur || cur.owner || cur.mini.type !== type || attDraft || state.flash || state.done) { if (res && !res.ok) SND.play('error'); render(); return; }
+    if (res.round) cur.mini.round[p] = res.round;
+  }
+  const sq = state.squares[i], r = sq.mini.round[p];
+  if (!r || r.hidden) { SND.play('error'); render(); return; }   // (no round to play: the server did not hand one over)
+  attDraft = { id: attId(i, p), sq: i, at: Date.now(), entry: type === 'snapshot' ? [] : '' };
   attSave();
-  attStart(state, state.zoom, state.turn);                    // held to the square: here, and on the server (where a timeout then answers this round, wrong)
-  if (state.online && !state.sc) dbStart(state.zoom); else save();   // (Super Chaos: held on this phone)
+  attStart(state, i, p, Date.now());                          // held to the square here too (online, the server's hold and clock came first; a timeout then answers this round, wrong)
+  if (!state.online) save();
   const len = attMs(type, r) / 1000;
   if (type === 'headcount') { SND.play('go'); SND.play('reveal', { at: len }); }
   else if (type === 'flash') { SND.play('go'); r.items.forEach((_, i) => SND.play('tickSoft', { at: (i * r.ms) / 1000 })); SND.play('reveal', { at: len }); }

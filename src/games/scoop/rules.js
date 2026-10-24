@@ -130,7 +130,7 @@ export function scoopAi(mini, p, rng, hand) {
   return { move: { log: fingLog(rec.pairs), steps: sim.n, n: scoopResult(sim).n, end: scoopResult(sim).end }, sim };
 }
 export function create(type, rng) {
-  return { type, cfg: scoopConfig(), seed: courseSeed(rng), stack: { X: [], O: [] }, tries: { X: 0, O: 0 }, last: null };   // stack: each player's scoops (their flavours)
+  return { type, cfg: scoopConfig(), seed: courseSeed(rng), stack: { X: [], O: [] }, tries: { X: 0, O: 0 }, started: { X: null, O: null }, last: null };   // stack: each player's scoops (their flavours); started: when each pressed Start (online: server time, the attempt timed from it)
 }
 export function publicView(mini) {
   const c = JSON.parse(JSON.stringify(mini)); if (c.last) { delete c.last.rec; delete c.last.log; } return c;

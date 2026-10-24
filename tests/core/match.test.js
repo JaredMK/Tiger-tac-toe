@@ -70,7 +70,7 @@ function cpuMatch(me, squares, owners = []) {
 const tttOf = (...cells) => Object.assign(mini('ttt'), { cells: cells.map(c => c || null) });
 
 // ---- online match records: the public state and the secrets apart, moves applied to the pair ----
-const SECRET_KEYS = { wordle: 'word', hangman: 'word', hilo: 'target', bs: 'ship', hunt: 'treasure', memory: 'cards', mastermind: 'code' , trivia: 'answer', oddone: 'pos', patterns: 'answer', sniff: 'treasure' };
+const SECRET_KEYS = { wordle: 'word', hangman: 'word', hilo: 'target', bs: 'ship', hunt: 'treasure', memory: 'cards', mastermind: 'code' , trivia: 'answer', oddone: 'pos', patterns: 'answer', sniff: 'treasure', headcount: 'round', flash: 'round', snapshot: 'round' };   // (round: an attention game's rounds are the server's until Start; the public state shows each as its frame)
 
 // ================================ Setup / match flow ================================
 test('setup: the app opens on the main menu with default names and every game ticked', () => {
@@ -703,6 +703,7 @@ test('a match record keeps every secret out of the public state and puts it back
       assert.ok(rec.secrets[0], `${type}: a secret is kept`);
       if (type === 'hangman') assert.match(pub.word, /^_+$/, 'hangman shows only the length');
       else if (type === 'memory') assert.ok(pub.cards.every(c => c === null), 'no card is known');
+      else if (key === 'round') for (const p of ['X', 'O']) { const r = pub.round[p]; assert.equal(r.hidden, true, `${type}: ${p}'s round shows as its frame before Start`); assert.ok(!(r.items || []).length && !(r.cells || []).length && (r.ans == null || r.ans === -1), `${type}: nothing of the round itself`); }
       else assert.ok(!(key in pub), `${type}: ${key} is not public`);
       if (type === 'hunt') assert.equal(pub.clues.length, 36);
     } else assert.equal(rec.secrets[0], undefined, `${type}: nothing to hide`);

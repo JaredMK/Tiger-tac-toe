@@ -72,6 +72,7 @@ async function pairUp(a, b, queue = 'match', timer = 60) {
   return { id: ra.game, X: by.X, O: by.O };
 }
 const gameState = async id => JSON.parse((await get(`games/${id}/pub/state`)));
+const fullOf = async id => { const x = await get(`games/${id}`); return E.fullState({ state: JSON.parse(x.pub.state), secrets: JSON.parse(x.sec) }); };   // the match whole, secrets in (the server's view)
 // Rewrite a game as its owner: X owns squares 0 and 1, square 2 is Tic-Tac-Toe with X on 0 and 1,
 // and it is `turn`'s move: X wins the match by playing cell 2 of square 2.
 async function nearWin(id, turn = 'X') {
@@ -1359,20 +1360,20 @@ test('runners (Dash, Lane Rush): the difficulty config is public, the admin alon
   });
   const st = await gameState(g.id);
   assert.ok(Number.isInteger(st.squares[4].mini.seed.X), 'the course seed is in the public state: the server sends it');
-  const m = seeds.mini, course = E.runCourse(m, 'X'), okMs = (x, y) => Math.round(E.runSecs(m.cfg, x, y) * 1000);
+  const m = seeds.mini, real = E.runAi(m, 'X', E.makeRng('srv-run')).move;   // the computer's run, as a phone would send its own: its inputs (the log) with its end
   const move = mv => g.X.call('move', { game: g.id, square: 4, move: mv });
-  assert.deepEqual(await move({ dist: m.cfg.target - 50, ms: 1000 }), { ok: false, reason: 'fast' }, 'more distance than the time allows at the course speeds');
-  const far = course[course.length - 1];
-  assert.deepEqual(await move({ dist: far.at, ms: okMs(0, far.at) + 100 }), { ok: false, reason: 'fast' }, 'more time than the turn has lasted');
-  const mid = (course[0].at + course[1].at) / 2;
-  assert.deepEqual(await move({ dist: mid, ms: okMs(0, mid) + 100 }), { ok: false, reason: 'course' }, 'a crash where there is nothing to crash into');
-  assert.deepEqual(await move({ dist: m.cfg.target + 1, ms: 1000 }), { ok: false, reason: 'bad' }, 'past the target');
-  assert.deepEqual(await move('auto'), { ok: false, reason: 'bad' }, 'a timed-out run is the server\'s to make, not a phone\'s to claim');
-  const first = course.find(o => o.at >= E.runGrace(m.cfg, 0));
-  const r = await move({ dist: first.at + 0.2, ms: okMs(0, first.at + 0.2) + 150 });
-  assert.equal(r.ok, true, `a crash at the first hazard in the time it takes (${JSON.stringify(r)})`);
+  assert.deepEqual(await move({ dist: real.dist, ms: real.ms }), { ok: false, reason: 'log' }, 'a run without its inputs is refused, whatever it claims (security review F3)');
+  assert.deepEqual(await move({ dist: m.cfg.target - 50, ms: 1000 }), { ok: false, reason: 'log' }, 'however short');
+  assert.deepEqual(await move(Object.assign({}, real, { dist: m.cfg.target + 1 })), { ok: false, reason: 'bad' }, 'past the target');
+  assert.deepEqual(await move('auto'), { ok: false, reason: 'auto' }, 'a timed-out run is the server\'s to make, not a phone\'s to claim');
+  await rewrite(g.id, full => { full.timer.deadline = Date.now() + full.timer.limit * 1000; });
+  assert.deepEqual(await move(real), { ok: false, reason: 'fast' }, 'the turn just begun: a run longer than it has lasted');
+  await rewrite(g.id, full => { full.timer.deadline = Date.now() + 45000; });
+  const r = await move(real);
+  assert.equal(r.ok, true, `the run, played through again from its inputs, in the time the turn has lasted (${JSON.stringify(r)})`);
   const after = await gameState(g.id);
-  assert.equal(after.squares[4].mini.dist.X, Math.round((first.at + 0.2) * 100) / 100); assert.equal(after.squares[4].mini.runs.X, 1); assert.equal(after.turn, 'O');
+  assert.equal(after.squares[4].mini.dist.X, real.dist); assert.equal(after.squares[4].mini.runs.X, 1); assert.equal(after.turn, 'O');
+  assert.equal(after.squares[4].mini.last.log, real.log, 'the inputs ride the move, for the other phone\'s replay');
   // the clock runs out on O: no run made for them; the turn missed
   await patch(`games/${g.id}`, { dl: Date.now() - 1000 });
   await rewrite(g.id, full => { full.timer.deadline = Date.now() - 1000; });
@@ -1527,23 +1528,34 @@ test('Headcount, Flash and Snapshot tuning (config/headcount, config/flash, conf
     ['snapshot', r => E.attWrong('snapshot', r, E.makeRng('w')), r => { assert.deepEqual([r.c, r.r, r.cells.length, r.show, r.wait], [3, 4, 5, 4000, 2000], 'Snapshot: the admin\'s grid, cells, time on show and countdown'); }],
   ]) {
     await rewrite(g.id, full => { full.squares[4].owner = null; full.squares[4].mini = E.newMini(type, E.makeRng('srv-' + type)); full.turn = 'X'; full.lock = null; });
-    const r0 = (await gameState(g.id)).squares[4].mini.round.X;
-    assert.equal((await g.X.call('move', { game: g.id, square: 4, move: type === 'flash' ? 7 : type === 'headcount' ? -1 : [99] })).ok, false, `${type}: an answer that cannot be is refused`);
+    // the round is the server's until Start (security review F3): the public state shows its frame alone; Start hands it over, timed from then
+    assert.equal((await gameState(g.id)).squares[4].mini.round.X.hidden, true, `${type}: the round hidden until Start`);
+    const r0 = (await fullOf(g.id)).squares[4].mini.round.X;
+    assert.equal((await g.X.call('move', { game: g.id, square: 4, move: E.attTruth(type, r0) })).reason, 'start', `${type}: no answer before Start`);
+    assert.equal((await g.X.call('move', { game: g.id, square: 4, move: 'auto' })).reason, 'auto', `${type}: a timeout is never a phone's to play`);
     assert.equal((await g.O.call('move', { game: g.id, square: 4, kind: 'start' })).ok, false, 'Start: only the player to move');
-    assert.equal((await g.X.call('move', { game: g.id, square: 4, kind: 'start' })).ok, true);
-    assert.equal((await gameState(g.id)).lock, 4, `${type}: Start holds the player to the square on the server`);
+    const sx = await g.X.call('move', { game: g.id, square: 4, kind: 'start' });
+    assert.equal(sx.ok, true); assert.deepEqual(sx.round, r0, `${type}: Start hands the round over`);
+    const stS = await gameState(g.id);
+    assert.equal(stS.lock, 4, `${type}: Start holds the player to the square on the server`);
+    assert.deepEqual(stS.squares[4].mini.round.X, r0, 'and the record shows it from then on'); assert.equal(stS.squares[4].mini.round.O.hidden, true, 'the other player\'s not');
+    assert.equal((await g.X.call('move', { game: g.id, square: 4, move: type === 'flash' ? 7 : type === 'headcount' ? -1 : [99] })).ok, false, `${type}: an answer that cannot be is refused`);
     assert.equal((await g.X.call('move', { game: g.id, square: 2, kind: 'start' })).ok, false, 'no second round elsewhere');
     assert.equal((await g.X.call('move', { game: g.id, square: 4, move: wrongOf(r0) })).ok, true);
     assert.equal((await gameState(g.id)).lock, null, 'answered: the hold is over');
     let m = (await gameState(g.id)).squares[4].mini;
     assert.deepEqual([m.right.X, m.last.correct, m.last.by], [0, false, 'X'], `${type}: wrong, no step`);
     assert.deepEqual(m.last.truth, E.attTruth(type, r0), 'the right answer, for the result');
-    check(m.round.X);
-    const r1 = m.round.X;
-    assert.equal((await g.O.call('move', { game: g.id, square: 4, move: E.attTruth(type, m.round.O) })).ok, true);
+    assert.equal(m.round.X.hidden, true, 'the next round: the server\'s until its Start');
+    const r1 = (await fullOf(g.id)).squares[4].mini.round.X;
+    check(r1);
+    const so = await g.O.call('move', { game: g.id, square: 4, kind: 'start' });
+    assert.equal(so.ok, true);
+    assert.equal((await g.O.call('move', { game: g.id, square: 4, move: E.attTruth(type, so.round) })).ok, true);
     m = (await gameState(g.id)).squares[4].mini;
-    assert.deepEqual([m.right.O, m.last.correct, m.round.O.level], [1, true, 1], `${type}: right, a step up and the next level`);
-    assert.deepEqual(m.round.X, r1, 'the other player\'s round untouched');
+    const fullB = (await fullOf(g.id)).squares[4].mini;
+    assert.deepEqual([m.right.O, m.last.correct, fullB.round.O.level], [1, true, 1], `${type}: right, a step up and the next level`);
+    assert.deepEqual(fullB.round.X, r1, 'the other player\'s round untouched');
   }
   for (const k of ['headcount', 'flash', 'snapshot']) await boss.write(`config/${k}`, null);
   assert.equal((await g.O.call('resign', { game: g.id })).ok, true);
@@ -1578,27 +1590,32 @@ test('Sky Hop, Scoop Stack and Pinball over the server: the tuning is public, th
     // the turn began long ago (so a real attempt is within the time it has lasted)
     await rewrite(g.id, full => { full.squares[4].owner = null; full.squares[4].mini = E.newMini(type, E.makeRng('srv-' + type)); full.turn = 'X'; full.lock = null; full.timer.deadline = Date.now() + 5000; });
     let mini = (await gameState(g.id)).squares[4].mini;
-    const real = E.fingAi(mini, 'X', E.makeRng('srv-ai-' + type));
+    // the computer's attempt as a phone would send it: Sky Hop and Scoop Stack their inputs; Pinball its inputs too (the log), never a recording (the server plays the ball through again and keeps its own)
+    const attempt = (p, seed) => { if (type !== 'pinball') return { move: E.fingAi(mini, p, E.makeRng(seed)) }; const a = E.PHYSICS.lib.pinAi(E.PHYSICS.lib.pinTable(mini), mini.cfg, mini.lit[p], E.makeRng(seed)); return { move: { hits: a.result.hits, ms: a.result.ms, end: a.result.end, log: a.log, steps: a.steps }, rec: a.result.rec }; };
+    const { move: real, rec: realRec } = attempt('X', 'srv-ai-' + type);
     assert.equal((await g.X.call('move', { game: g.id, square: 4, move: { fing: true } })).reason, 'bad', `${type}: the computer's placeholder is no attempt`);
-    assert.equal((await g.X.call('move', { game: g.id, square: 4, move: 'auto' })).reason, 'bad', `${type}: a timed-out attempt is the server's to make`);
+    assert.equal((await g.X.call('move', { game: g.id, square: 4, move: 'auto' })).reason, 'auto', `${type}: a timed-out attempt is the server's to make`);
+    assert.equal((await g.X.call('move', { game: g.id, square: 4, move: real })).reason, 'start', `${type}: no attempt before Start`);
     assert.equal((await g.O.call('move', { game: g.id, square: 4, kind: 'start' })).ok, false, 'Start: only the player to move');
     assert.equal((await g.X.call('move', { game: g.id, square: 4, kind: 'start' })).ok, true);
     assert.equal((await gameState(g.id)).lock, 4, `${type}: Start holds the player to the square on the server`);
     assert.equal((await g.X.call('move', { game: g.id, square: 2, kind: 'start' })).ok, false, 'no second attempt elsewhere');
-    const fake = type !== 'pinball' ? Object.assign({}, real, { steps: real.steps + 240 }) : Object.assign({}, real, { hits: real.hits.concat(E.PHYSICS.lib.PIN.targets.filter(t => !real.hits.some(h => h[0] === t.id)).slice(0, 1).map(t => [t.id, 0.2])) });
-    assert.equal((await g.X.call('move', { game: g.id, square: 4, move: fake })).ok, false, `${type}: more than the attempt did is refused`);
+    await rewrite(g.id, full => { full.squares[4].mini.started.X = Date.now() - 60000; });   // (Start was a minute ago: a real attempt fits the time since)
+    const fake = type !== 'pinball' ? Object.assign({}, real, { steps: real.steps + 240 }) : { hits: real.hits, ms: real.ms, end: real.end, rec: realRec };
+    assert.equal((await g.X.call('move', { game: g.id, square: 4, move: fake })).reason, type !== 'pinball' ? 'replay' : 'log', `${type}: ${type !== 'pinball' ? 'more than the attempt did' : 'a recording without the inputs'} is refused`);
     assert.equal((await g.X.call('move', { game: g.id, square: 4, move: real })).ok, true, `${type}: the real attempt goes in`);
     let st = await gameState(g.id);
     mini = st.squares[4].mini;
     assert.equal(st.lock, null, 'the hold is over');
     assert.ok(at(type, mini, 'X') > 0 || real.end !== 'top', `${type}: progress kept (${at(type, mini, 'X')})`);
     assert.equal(mini.last.by, 'X');
-    assert.ok(type === 'pinball' ? mini.last.rec === real.rec : mini.last.log === real.log, 'the inputs or the recording ride the move, for the other phone\'s replay');
-    // O's turn, just begun: an attempt longer than the turn has lasted is refused
+    assert.ok(type === 'pinball' ? mini.last.rec === realRec && mini.last.diff === undefined : mini.last.log === real.log, 'the inputs (or the server\'s own recording of the ball) ride the move, for the other phone\'s replay');
+    assert.equal(mini.started.X, null, 'the attempt in: the next needs its own Start');
+    // O's turn, just begun: an attempt longer than the time since Start is refused
     if (st.turn === 'O' && !st.squares[4].owner) {
-      await rewrite(g.id, full => { full.timer.deadline = Date.now() + full.timer.limit * 1000; });
-      const long = E.fingAi(mini, 'O', E.makeRng('srv-long-' + type)), ms = type === 'pinball' ? long.ms : long.steps * E.FING.step * 1000;
-      if (ms > E.FING.slackMs + 3000) assert.equal((await g.O.call('move', { game: g.id, square: 4, move: long })).reason, 'fast', `${type}: ${Math.round(ms)} ms of attempt in a turn of a second or two`);
+      assert.equal((await g.O.call('move', { game: g.id, square: 4, kind: 'start' })).ok, true);
+      const { move: long } = attempt('O', 'srv-long-' + type), ms = type === 'pinball' ? (long.steps / E.PHYSICS.lib.PIN.hz) * 1000 : long.steps * E.FING.step * 1000;
+      if (ms > E.FING.slackMs + 3000) assert.equal((await g.O.call('move', { game: g.id, square: 4, move: long })).reason, 'fast', `${type}: ${Math.round(ms)} ms of attempt a second or two after Start`);
       await rewrite(g.id, full => { full.turn = 'X'; full.lock = null; });
     }
   }

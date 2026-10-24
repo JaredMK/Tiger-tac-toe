@@ -65,7 +65,7 @@ function fingBefore(mini, fg) {
 }
 // The attempt as a move, as it stands (an attempt still under way: as if it ended now, 'out').
 function fingMove(fd) {
-  if (fd.type === 'pinball') { const r = PHYSICS.lib.pinResult(fd.w); return { hits: r.hits, ms: r.ms, rec: r.rec, end: r.end }; }
+  if (fd.type === 'pinball') { const L = PHYSICS.lib, r = L.pinResult(fd.w); return state.online ? { hits: r.hits, ms: r.ms, end: r.end, log: L.pinLogPack(fd.w.log), steps: fd.w.n } : { hits: r.hits, ms: r.ms, rec: r.rec, end: r.end }; }   // online: the ball's inputs (the server plays it through again and keeps its own recording); local play: the recording itself
   const log = fingLog(fd.rec.pairs);
   if (fd.type === 'skyhop') { const r = hopResult(fd.sim); return { log, steps: r.steps, h: r.h, end: r.end }; }
   const r = scoopResult(fd.sim); return { log, steps: r.steps, n: r.n, end: r.end };
@@ -78,15 +78,24 @@ function fingKeep(fd, final) {
 }
 const fingKept = () => { try { return JSON.parse(localStorage.getItem(FING_KEY) || 'null'); } catch (e) { return null; } };
 const fingForget = () => { try { localStorage.removeItem(FING_KEY); } catch (e) { /* no storage */ } };
-// Start: the attempt begins at once (the hold goes to the server alongside).
-export function fingGo() {
-  const sq = state.squares && state.squares[state.zoom];
-  if (!sq || !FINGER_TYPES.includes(sq.mini.type) || sq.owner || fingDraft || state.flash || state.done || blocked()) return;
-  const type = sq.mini.type, p = state.turn;
+let fingStarting = null;                                        // the square whose Start is with the server (online: the attempt begins once it has answered)
+// Start: the attempt begins (online, once the server has held the player to the square: it times the attempt from
+// its own clock, and plays it through again from its inputs when it comes in: core/verify.js).
+export async function fingGo() {
+  const sq0 = state.squares && state.squares[state.zoom];
+  if (!sq0 || !FINGER_TYPES.includes(sq0.mini.type) || sq0.owner || fingDraft || fingStarting != null || state.flash || state.done || blocked()) return;
+  const type = sq0.mini.type, p = state.turn, i = state.zoom;
   if (type === 'pinball' && !physicsReady()) return;
-  if (!attStart(state, state.zoom, p).ok) return;               // held to the square: here, and on the server
-  if (state.online && !state.sc) dbStart(state.zoom); else save();   // (Super Chaos: held on this phone)
-  const now = performance.now(), mini = sq.mini;
+  if (state.online) {
+    fingStarting = i; render();
+    const res = await dbStart(i);
+    fingStarting = null;
+    const cur = state.squares && state.squares[i];
+    if (!res || !res.ok || state.zoom !== i || state.turn !== p || !cur || cur.owner || cur.mini.type !== type || fingDraft || state.flash || state.done) { if (res && !res.ok) SND.play('error'); render(); return; }
+  }
+  if (!attStart(state, i, p, Date.now()).ok) return;            // held to the square here too
+  if (!state.online) save();
+  const sq = state.squares[i], now = performance.now(), mini = sq.mini;
   fingDraft = { id: fingId(state.zoom, p), sq: state.zoom, p, type, mini, phase: 'play', at: now, last: now, acc: 0, raf: 0, ptr: null, keys: { L: 0, R: 0, dir: 0 }, flipOn: { L: false, R: false }, presses: new Map(), pull: null, kpx: 30, out: {}, brk: {}, keptAt: now, saved: 0, end: null, endAt: 0, hintGone: false };
   const fd = fingDraft;
   if (type === 'pinball') fd.w = PHYSICS.lib.pinNew(PHYSICS.lib.pinTable(mini), mini.cfg, mini.lit[p]);
@@ -333,7 +342,7 @@ export function fingTable(mini, a, o) {
   const hud = `<div class="rhud fhud" data-fing="hud">${type === 'skyhop' ? `${fmtN(hudV)} m` : type === 'scoop' ? `${fmtN(hudV)} / ${fmtN(goal)}` : `${hudV} / ${goal}`}</div>`;
   const scene = `<div class="fscene ${type}" data-fing="scene" aria-label="${TX.scene}"><canvas data-fing="cv"></canvas>${hud}${hint}</div>`;
   const go = mine && !live && !kept && !o.locked && (type !== 'pinball' || physicsReady());
-  const btn = o.view ? '' : `<div class="cbtns one${go ? '' : ' hold'}"><button class="big ${turn}" data-act="fing-start"${go ? '' : ' disabled tabindex="-1" aria-hidden="true"'}>Start</button></div>`;   // always there (hidden while it can't be used), so the scene never moves
+  const btn = o.view ? '' : `<div class="cbtns one${go ? '' : ' hold'}"><button class="big ${turn}" data-act="fing-start"${go ? (fingStarting == null ? '' : ' disabled') : ' disabled tabindex="-1" aria-hidden="true"'}>Start</button></div>`;   // always there (hidden while it can't be used; waiting on the server's answer to Start: there, disabled), so the scene never moves
   const rows = type === 'pinball' ? `<div class="ctals col">${row('X')}${row('O')}</div>` : `<div class="rprogs">${row('X')}${row('O')}</div>`;
   return `<div class="g-arc"><div class="fing">${rows}${scene}<p class="atwords fwords">${words}</p></div>${btn}</div>`;
 }

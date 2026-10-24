@@ -10,7 +10,13 @@ export function allowedTypes(releases, admin) { return admin ? TYPES.slice() : r
 // back here while its result still rests on what the phone says: it stays in local play and friend rooms
 // (where the players know each other) until its family is hardened (a run re-simulated from its inputs,
 // an attempt played through again, a round dealt and timed by the server) and tested; then it comes off.
-export const FIND_MATCH_HOLD = ['dash', 'lane', 'flap', 'chopper', 'skyhop', 'scoop', 'pinball', 'bullseye', 'headcount', 'flash', 'snapshot'];
+// Hardened and back in Find Match: the runners (a run is its input log, played through again, no longer than the
+// round: runner.js runCheck, core/verify.js), Sky Hop and Scoop Stack (an attempt is its inputs, after Start, no
+// longer than the time since: finger.js fingCheck), Pinball (its inputs re-simulated on the server, which keeps its own
+// ball: pinball/rules.js pinReplayCheck), the attention games (the round is the server's until Start, the answer timed:
+// attention.js attentionHide, verify.js). Bullseye stays held: a throw is where two lines sweeping about once a second
+// were stopped, and the server cannot time a tap to better than a connection's slack, so it has no way to verify one.
+export const FIND_MATCH_HOLD = ['bullseye'];
 export const findMatchTypes = types => types.filter(t => !FIND_MATCH_HOLD.includes(t));
 export function restrictGames(games, allowed) {
   if (!games || typeof games !== 'object') return games;

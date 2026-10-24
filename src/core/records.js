@@ -6,7 +6,7 @@ import { defaultSetup, newState, startMatch } from './match.js';
 import { upgradeMini } from './minis.js';
 import { armClock, clockDeadline, newTimer } from './timer.js';
 import { other } from './util.js';
-import { attStart } from '../games/shared/attention.js';
+import { ATT_TYPES, attStart } from '../games/shared/attention.js';
 import { PHYS_TYPES } from '../games/shared/physics.js';
 import { triviaReveal } from '../games/trivia/rules.js';
 import { TYPES, rulesOf } from '../games/index.js';
@@ -140,10 +140,12 @@ export function applyOnlineReveal(rec, side, i) {
 }
 // Headcount, Flash, Snapshot: Start holds the player to the square (the server too, online), so the
 // round's answer, or a timeout counted as a wrong one, goes to that square.
-export function applyOnlineStart(rec, side, i) {
+export function applyOnlineStart(rec, side, i, now) {   // now: server time (the round or the attempt is timed from it: core/verify.js); an attention game's round, the server's until now, goes back with it
   const full = fullState(rec);
-  const r = attStart(full, i, side);
-  return r.ok ? { ok: true, rec: matchRecord(full) } : r;
+  const r = attStart(full, i, side, now);
+  if (!r.ok) return r;
+  const mini = full.squares[i].mini;
+  return { ok: true, rec: matchRecord(full), out: ATT_TYPES.includes(mini.type) ? { round: JSON.parse(JSON.stringify(mini.round[side])) } : {} };
 }
 // Find the Pair: the first card chosen is turned up for both phones (or turned back when tapped again).
 export function applyOnlinePick(rec, side, i, card) {
@@ -225,7 +227,7 @@ export function scReady(sc, now, side) {
   const ready = Object.assign({}, sc.ready), was = JSON.stringify(ready);
   if ((side === 'X' || side === 'O') && !ready[side]) ready[side] = now;
   const at = Object.values(ready);
-  if ((ready.X && ready.O) || (at.length && now >= Math.min(...at) + SC_ONLINE.readyWaitMs)) { sc.deadline = now + sc.limit * 1000; sc.ready = null; return { ok: true, begun: true }; }
+  if ((ready.X && ready.O) || (at.length && now >= Math.min(...at) + SC_ONLINE.readyWaitMs)) { sc.deadline = now + sc.limit * 1000; sc.began = now; sc.ready = null; return { ok: true, begun: true }; }
   if (JSON.stringify(ready) === was) return { ok: false, reason: 'waiting' };
   sc.ready = ready;
   return { ok: true, begun: false };
@@ -270,7 +272,7 @@ export function applyRoomSweep(rec, now, rng) {
   if (sc && sc.online) {
     if (sc.deadline != null) return applyChaosDeadline(rec, now, rng);
     const full = fullState(rec);
-    full.sc.deadline = now + full.sc.limit * 1000; full.sc.ready = null;   // the recap left unfinished: the next round begins, timed from now
+    full.sc.deadline = now + full.sc.limit * 1000; full.sc.began = now; full.sc.ready = null;   // the recap left unfinished: the next round begins, timed from now
     full.seq = (full.seq || 0) + 1;
     return { ok: true, rec: matchRecord(full), begun: true };
   }
