@@ -153,6 +153,11 @@ jobs:
         run: node scripts/auth-domains.js
       - name: Check the live site, functions and rules
         run: node scripts/smoke-live.js "$TARGET"
+      - name: "Check the live site in a browser: no CSP violations, Google sign-in reaches Google, the admin page loads"
+        run: |
+          npm i --no-save --no-audit --no-fund playwright@1.56.1
+          npx playwright install --with-deps chromium
+          node scripts/smoke-browser.js "$TARGET"
       - name: What is live where, and the old GitHub Pages address (a report; never fails the deploy)
         continue-on-error: true
         run: |

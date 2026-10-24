@@ -23,7 +23,7 @@ function robots(env) { return env === 'staging' ? 'User-agent: *\nDisallow: /\n'
 function build(env, sha) {
   fs.rmSync(OUT, { recursive: true, force: true });
   fs.mkdirSync(OUT);
-  for (const f of ['index.html', 'admin.html', 'playtest.js', 'trivia.json', 'styles.html']) if (fs.existsSync(path.join(ROOT, f))) fs.copyFileSync(path.join(ROOT, f), path.join(OUT, f));
+  for (const f of ['index.html', 'admin.html', 'admin.js', 'playtest.js', 'trivia.json', 'styles.html']) if (fs.existsSync(path.join(ROOT, f))) fs.copyFileSync(path.join(ROOT, f), path.join(OUT, f));
   fs.cpSync(path.join(ROOT, 'src'), path.join(OUT, 'src'), { recursive: true });
   const matter = path.join(ROOT, 'node_modules', 'matter-js', 'build', 'matter.min.js');
   if (fs.existsSync(matter)) fs.copyFileSync(matter, path.join(OUT, 'matter.min.js'));

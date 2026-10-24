@@ -50,4 +50,24 @@ const ask = q => new Promise(res => { const rl = readline.createInterface({ inpu
   if (a !== 'release') { console.log('Not released.'); return; }
   execSync(`git push -q ${remote} ${staging}:refs/heads/main`, { stdio: 'inherit' });   // a fast-forward: main becomes staging's tip
   console.log(`Released ${staging.slice(0, 7)}. The Deploy workflow deploys it to production in a few minutes: https://tictacchaos.com`);
+  await afterRelease(staging);
 })().catch(e => fail(e.message));
+
+// Once production serves the release (its version.json; the production deploy may wait for its approval first),
+// the site in a real browser (scripts/smoke-browser.js): no CSP violations, Google sign-in reaches Google's sign-in
+// page, the admin page loads. The Deploy workflow runs the same check after every deploy; this one reports here.
+async function afterRelease(sha) {
+  const SITE = 'https://tictacchaos.com', short = sha.slice(0, 7), until = Date.now() + 30 * 60000;
+  console.log(`\nWaiting for production to serve ${short} (approve the production deploy on GitHub if it asks; up to 30 minutes)…`);
+  let live = null, seen = '';
+  while (Date.now() < until) {
+    try { const v = await fetch(`${SITE}/version.json`, { cache: 'no-store' }).then(r => r.json()); live = v && v.sha; } catch (e) { live = null; }
+    if (live && sha.startsWith(String(live).slice(0, 7))) break;
+    if (String(live) !== seen) { seen = String(live); console.log(`  production serves ${live ? String(live).slice(0, 7) : '(could not read version.json)'}`); }
+    await new Promise(r => setTimeout(r, 20000));
+  }
+  if (!live || !sha.startsWith(String(live).slice(0, 7))) { console.log(`Production is not serving ${short} yet: run the browser check once it is (node scripts/smoke-browser.js production). The Deploy workflow runs it too.`); process.exitCode = 1; return; }
+  console.log(`Production serves ${short}. The browser check:`);
+  const r = spawnSync('node', [require('node:path').join(__dirname, 'smoke-browser.js'), 'production'], { stdio: 'inherit' });
+  if (r.status !== 0) { console.log('\nThe browser check FAILED on production (above): sign-in or the admin page may be broken. Roll back or fix now.'); process.exitCode = 1; }
+}

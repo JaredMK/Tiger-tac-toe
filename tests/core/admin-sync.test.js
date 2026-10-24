@@ -8,7 +8,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const E = require('../engine.js');
 
-const admin = fs.readFileSync(path.join(__dirname, '..', '..', 'admin.html'), 'utf8');
+const admin = fs.readFileSync(path.join(__dirname, '..', '..', 'admin.js'), 'utf8');   // (the admin page's script, admin.html loads it)
 const literal = name => { const m = admin.match(new RegExp(`^const ${name} = (.*?);(?:\\s*//.*)?$`, 'm')); assert.ok(m, `admin.html has ${name}`); return new Function(`return (${m[1]});`)(); };
 
 test('admin page: the admin-only games are the engine\'s TEST_TYPES', () => {
