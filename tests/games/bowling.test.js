@@ -9,36 +9,24 @@ E.setPhysics(P);
 const lcg = seed => () => (seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296;
 const mini = (t, seed) => E.newMini(t, E.makeRng(seed || t));
 
-test('bowling: a frame of up to two rolls: the first at a fresh rack, the second (owed when pins stand: again) at what it left; a strike ends the frame; a wide roll is a gutter ball; every pin down counts, no bonuses; the target takes the square', () => {
+test('bowling: a turn is one roll at a fresh rack; a wide roll is a gutter ball; every pin down counts, no bonuses; the target takes the square', () => {
   const m = mini('bowling', 'b');
-  assert.deepEqual([m.pins, m.frames, m.open], [{ X: 0, O: 0 }, { X: [], O: [] }, null]); assert.equal(P.BOWL.pins.length, 10);
+  assert.deepEqual([m.pins, m.frames, m.open], [{ X: 0, O: 0 }, { X: [], O: [] }, undefined]); assert.equal(P.BOWL.pins.length, 10);
   const r = E.applyMove(m, 'X', { aim: 0, power: 0.85 });
-  assert.equal(r.outcome, 'continue'); assert.ok(m.pins.X >= 3 && m.pins.X < 10, `a straight roll knocks a few (${m.pins.X})`); assert.equal(m.rolls.X, 1);
-  assert.deepEqual([r.again, m.last.roll, m.open.by, m.frames.X], [true, 1, 'X', [{ r: [m.pins.X], strike: false, spare: false, total: m.pins.X }]], 'pins stand: the same player rolls again, the frame open');
+  assert.equal(r.outcome, 'continue'); assert.equal(r.again, undefined, 'one roll: the turn passes at once'); assert.ok(m.pins.X >= 3 && m.pins.X <= 10, `a straight roll knocks a few (${m.pins.X})`); assert.equal(m.rolls.X, 1);
+  assert.deepEqual(m.frames.X, [{ r: [m.pins.X], strike: m.pins.X === 10, total: m.pins.X }]);
   assert.equal(m.last.down.filter(Boolean).length, m.last.knocked);
-  assert.deepEqual(m.open.down, m.last.down, 'what stands for the second roll');
-  // the second roll goes at the pins left standing: a pin already down is not knocked again
-  const up = P.BOWL.pins.filter((pt, k) => !m.open.down[k]), mid = [up.reduce((s, pt) => s + pt[0], 0) / up.length, up.reduce((s, pt) => s + pt[1], 0) / up.length];
-  const first = m.pins.X, r2 = E.applyMove(m, 'X', { aim: E.aimTo(P.BOWL.start, mid), power: 0.9 });
-  assert.deepEqual([r2.ok, r2.again, m.open, m.last.roll, m.rolls.X], [true, undefined, null, 2, 2], 'the frame closes');
-  assert.ok(m.last.knocked >= 1 && m.last.knocked <= 10 - first, `only standing pins can fall (${m.last.knocked} of ${10 - first})`);
-  assert.deepEqual(m.frames.X[0], { r: [first, m.last.knocked], strike: false, spare: m.last.down.every(Boolean), total: first + m.last.knocked });
-  assert.equal(m.pins.X, first + m.last.knocked, 'the total: the pins down, nothing more');
-  // the other player: a fresh rack of their own; a gutter ball is a roll of nothing, and the second roll is still owed
+  // the other player: a fresh rack of their own; a gutter ball is a roll of nothing
   const g = E.applyMove(m, 'O', { aim: 0.45, power: 0.9 });
-  assert.deepEqual([g.note, g.again, m.pins.O, m.last.gutter, m.frames.O], ['gutter', true, 0, true, [{ r: [0], strike: false, spare: false, total: 0 }]]);
-  assert.equal(E.applyMove(m, 'O', { aim: 0, power: 0.85 }).again, undefined); assert.ok(m.pins.O > 0, 'the second roll at the full rack still standing');
-  // X's next turn: a fresh rack again (the old frame is closed)
+  assert.deepEqual([g.note, g.again, m.pins.O, m.last.gutter, m.frames.O], ['gutter', undefined, 0, true, [{ r: [0], strike: false, total: 0 }]]);
+  // X's next turn: a fresh rack again
   const before = m.pins.X;
-  assert.equal(E.applyMove(m, 'X', { aim: 0, power: 0.85 }).again, true);
+  assert.equal(E.applyMove(m, 'X', { aim: 0, power: 0.85 }).again, undefined);
   assert.ok(m.pins.X > before && m.frames.X.length === 2, 'a fresh rack: the same roll knocks pins again');
-  // a strike ends the frame at once: the best angle of the computer's comes up with one over a few racks
+  // a strike (all ten down) is noted: the best angle of the computer's comes up with one over a few racks
   let strike = false; const rng = lcg(5);
-  for (let k = 0; k < 12 && !strike; k++) { const t = mini('bowling', 'strike' + k); const ai = E.physAi(t, 'X', rng); const rr = E.applyMove(t, 'X', ai.move); if (rr.note === 'strike') { strike = true; assert.deepEqual([rr.again, t.open, t.frames.X[0].strike, t.frames.X[0].r], [undefined, null, true, [10]]); } assert.ok(t.pins.X <= 10); }
-  assert.ok(strike, 'a strike within a dozen computer rolls');
-  // the computer's second roll goes at what stands
-  const t2 = mini('bowling', 'ai2'); E.applyMove(t2, 'X', { aim: 0.03, power: 0.8 });
-  if (t2.open) { const ai = E.physAi(t2, 'X', lcg(9)); const was = t2.pins.X; const rr = E.applyMove(t2, 'X', ai.move); assert.equal(rr.ok, true); assert.ok(t2.pins.X >= was); }
+  for (let k = 0; k < 40 && !strike; k++) { const t = mini('bowling', 'strike' + k); const ai = E.physAi(t, 'X', rng); const rr = E.applyMove(t, 'X', ai.move); if (rr.note === 'strike') { strike = true; assert.deepEqual([rr.again, t.frames.X[0].strike, t.pins.X], [undefined, true, 10]); } }
+  assert.ok(strike, 'a strike within forty computer rolls');
   // 35 pins take the square (the target: the admin's setting)
   const w = mini('bowling', 'w'); w.pins.X = 30;
   let n = 0; while (w.pins.X < 35 && n++ < 10) { const rr = E.applyMove(w, 'X', { aim: 0, power: 0.85 }); if (rr.outcome === 'win') { assert.equal(rr.note, 'pins'); break; } }

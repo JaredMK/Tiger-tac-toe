@@ -2,7 +2,7 @@
 // aim, the recording replayed, the tables.
 import { other } from '../core/util.js';
 import { PHYSICS, PHYS_TYPES, physShot, physicsReady, setPhysics } from '../games/shared/physics.js';
-import { bowlOpen, bowlTarget } from '../games/bowling/rules.js';
+import { bowlTarget } from '../games/bowling/rules.js';
 import { bowlDraft, bowlKeep, drawBowl, drawBowlAim } from '../games/bowling/view.js';
 import { drawGolf } from '../games/golf/view.js';
 import { POOLG, poolIds } from '../games/pool/rules.js';
@@ -80,10 +80,9 @@ export function physResult(f, long) {
     return { text: long ? `${who} shot` : 'Nothing down', ok: false };
   }
   if (ph.strike) return { text: long ? `${who} bowled a strike!` : 'STRIKE!', ok: true };
-  if (ph.spare) return { text: long ? `${who} picked up the spare!` : 'SPARE!', ok: true };
-  if (ph.gutter) return { text: long ? `${who} rolled a gutter ball` : ph.roll === 1 ? 'Gutter ball — one more roll' : 'Gutter ball', ok: false };
+  if (ph.gutter) return { text: long ? `${who} rolled a gutter ball` : 'Gutter ball', ok: false };
   const n = `${ph.knocked} pin${ph.knocked === 1 ? '' : 's'}`;
-  return { text: long ? `${who} knocked ${n}` : ph.roll === 1 ? `${n} — one more roll` : n, ok: ph.knocked >= 6 };
+  return { text: long ? `${who} knocked ${n}` : n, ok: ph.knocked >= 6 };
 }
 export function physTable(mini, a, o) {
   const type = mini.type, turn = o.turn;
@@ -102,7 +101,7 @@ export function physTable(mini, a, o) {
     : state.sc && mini.aim && mini.aim[turn] ? '<p class="arcnote">Shot locked in</p>'
     : mine ? '<p class="arcnote"></p>'
     : `<p class="arcnote">Waiting for <b class="${turn}">${N(turn)}</b>…</p>`;
-  const strike = ph && type === 'bowling' && (ph.strike || ph.spare) ? `<div ${lateAt('pstrike', t)} aria-hidden="true">${ph.strike ? 'STRIKE!' : 'SPARE!'}</div>` : '';
+  const strike = ph && type === 'bowling' && ph.strike ? `<div ${lateAt('pstrike', t)} aria-hidden="true">STRIKE!</div>` : '';
   const label = type === 'golf' ? `Mini golf hole: ${PHYSICS.lib.HOLES[mini.hole].name}` : type === 'pool' ? 'The pool table' : 'The bowling lane';
   const scene = `<div class="pscene ${type}" data-phys="scene"${mine ? ' data-live="1"' : ''} aria-label="${label}"><canvas data-phys="cv"></canvas>${strike}</div>`;
   const btn = type !== 'bowling' || o.view ? '' : `<div class="cbtns one"><button class="big ${ph ? a.by : turn}" data-act="bowl"${mine && bowl && bowl.step < 3 ? '' : ' disabled'}>${bowl && bowl.step >= 2 ? 'Roll!' : 'Stop'}</button></div>`;
@@ -124,9 +123,9 @@ export function physStill(mini, showLast) {
   if (mini.type === 'golf') for (const p of ['X', 'O']) out[p] = mini.holed[p] ? null : mini.balls[p];
   else if (mini.type === 'pool') for (const id of poolIds(mini)) out[id] = mini.down[id] ? null : mini.balls[id];
   else {
-    const l = showLast && mini.last ? mini.last : null, open = !l && mini.open && mini.last && bowlOpen(mini, mini.last.by);   // (a second roll owed: the pins as the first left them)
+    const l = showLast && mini.last ? mini.last : null;
     out.ball = l ? null : L.BOWL.start;
-    L.BOWL.pins.forEach((pt, k) => { out['p' + k] = (l && l.down[k]) || (open && open.down[k]) ? null : pt; });
+    L.BOWL.pins.forEach((pt, k) => { out['p' + k] = l && l.down[k] ? null : pt; });
   }
   return out;
 }

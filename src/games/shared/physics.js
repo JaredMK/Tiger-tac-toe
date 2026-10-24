@@ -4,7 +4,7 @@ import { randomLegalMove } from '../../core/minis.js';
 import { gaussOf, randInt } from '../../core/random.js';
 import { tune } from '../../core/tune.js';
 import { other } from '../../core/util.js';
-import { bowlOpen, bowlTarget } from '../bowling/rules.js';
+import { bowlTarget } from '../bowling/rules.js';
 import { golfLeft, golfNext } from '../golf/rules.js';
 import { POOLG, poolMine, poolOwns, poolPow } from '../pool/rules.js';
 
@@ -38,9 +38,7 @@ export function physOpt(mini) {
   const t = tune(mini);
   return mini.type === 'golf' ? { holeSpeed: t.holeSpeed, kick: t.kick } : { vMax: t.vMax };
 }
-// (Bowling's second roll: at the pins the first left standing; the rack as the square has it otherwise.)
-const bowlPos = (mini, p) => { const o = mini.type === 'bowling' ? bowlOpen(mini, p) : null; return o ? Object.assign({}, mini, { standing: o.down.map(d => !d) }) : mini; };
-export function physRun(mini, p, shot) { return PHYSICS.lib ? PHYSICS.lib.run(mini.type, bowlPos(mini, p), p, shot, physOpt(mini)) : null; }
+export function physRun(mini, p, shot) { return PHYSICS.lib ? PHYSICS.lib.run(mini.type, mini, p, shot, physOpt(mini)) : null; }
 // Super Chaos's Mini Golf: both balls struck at once (shots: { X, O }, either may be missing).
 export function physRunBoth(mini, shots) { return PHYSICS.lib ? PHYSICS.lib.run(mini.type, mini, shots, undefined, physOpt(mini)) : null; }
 export const physLast = (p, shot, r, extra) => Object.assign({ by: p, aim: shot.aim, power: shot.power, ms: r.ms, events: r.events, rec: r.rec }, extra);
@@ -90,8 +88,7 @@ export function physCandidates(mini, p, rng) {
     }
     for (let k = 0; k < 3; k++) out.push({ aim: (rng() - 0.5) * 2.4, power: pow(30 + rng() * 36) });   // a soft safety
   } else {
-    const from = L.BOWL.start, open = bowlOpen(mini, p), up = open ? L.BOWL.pins.filter((pt, k) => !open.down[k]) : [];
-    const head = up.length ? [up.reduce((s, pt) => s + pt[0], 0) / up.length, up.reduce((s, pt) => s + pt[1], 0) / up.length] : L.BOWL.pins[0];   // the second roll: at the middle of what stands
+    const from = L.BOWL.start, head = L.BOWL.pins[0];
     const a = aimTo(from, head);
     for (const da of [-0.07, -0.045, -0.025, 0, 0.025, 0.045, 0.07]) out.push({ aim: a + da, power: 0.9 });
     out.push({ aim: a + 0.01, power: 0.75 }, { aim: a - 0.01, power: 0.75 });

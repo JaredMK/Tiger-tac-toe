@@ -67,7 +67,7 @@ export function drawBowlAim(g, pos, dr, now) {
   c.restore();
 }
 // Each player's frames so far as bowling-style score boxes in the grey beside the lane (X on the left, O on
-// the right): the two rolls on top (X a strike, / a spare, - nothing), the frame's pins under them and the
+// the right): the roll on top (X a strike, - nothing), the turn's pins under it and the
 // running total under that, newest at the bottom. The roll just made fills in once the pins have settled
 // (settled: the recording has played); until then the box shows the frame as it stood. A margin too narrow
 // for a box shows only the running total; one with no room shows nothing.
@@ -78,13 +78,13 @@ function drawFrames(g, mini, settled) {
   const BH = full ? 44 : 22, GAP = 4, top = 8;
   c.save(); c.textAlign = 'center'; c.textBaseline = 'middle';
   for (const p of ['X', 'O']) {
-    let fs = frames[p].map(f => ({ r: f.r.slice(), strike: f.strike, spare: f.spare, total: f.total })), pins = mini.pins[p];
+    let fs = frames[p].map(f => ({ r: f.r.slice(), strike: f.strike, total: f.total })), pins = mini.pins[p];
     if (!settled && l && l.by === p && fs.length) {               // the roll under way: not on the board yet
       const fr = fs[fs.length - 1];
-      fr.r.pop(); fr.total = fr.r.reduce((s, n) => s + n, 0); fr.strike = fr.spare = false; pins -= l.knocked;
+      fr.r.pop(); fr.total = fr.r.reduce((s, n) => s + n, 0); fr.strike = false; pins -= l.knocked;
       if (!fr.r.length) fs.pop();
     }
-    if (!fs.length) fs = [{ r: [], total: 0, strike: false, spare: false }];   // no roll yet: the first frame's box, empty, so the scoreboards are there from the start
+    if (!fs.length) fs = [{ r: [], total: 0, strike: false }];   // no roll yet: the first turn's box, empty, so the scoreboards are there from the start
     const x0 = p === 'X' ? 3 + (mw - bw) / 2 : g.X(100) + 3 + (mw - bw) / 2;
     c.font = `800 ${full ? 13 : 11}px Nunito, Arial, sans-serif`; c.fillStyle = P[p];
     c.fillText(`${p} ${pins}/${bowlTarget(mini)}`, x0 + bw / 2, top + 8);        // the mark and the running total, always
@@ -96,11 +96,11 @@ function drawFrames(g, mini, settled) {
       run += f.total;
       c.beginPath(); rr(c, x0, y, bw, BH, 4); c.fillStyle = 'rgba(255,255,255,.92)'; c.fill(); c.lineWidth = 1.5; c.strokeStyle = P.ink; c.stroke();
       if (full) {
-        const rh = 16, cw = bw / 2;
-        c.beginPath(); c.moveTo(x0, y + rh); c.lineTo(x0 + bw, y + rh); c.moveTo(x0 + cw, y); c.lineTo(x0 + cw, y + rh); c.stroke();
-        const sym = (n, k) => (k === 0 && f.strike ? 'X' : k === 1 && f.spare ? '/' : n === 0 ? '-' : String(n));
+        const rh = 16;
+        c.beginPath(); c.moveTo(x0, y + rh); c.lineTo(x0 + bw, y + rh); c.stroke();
+        const sym = n => (f.strike ? 'X' : n === 0 ? '-' : String(n));
         c.font = '800 11px Nunito, Arial, sans-serif'; c.fillStyle = P.ink;
-        f.r.forEach((n, k) => c.fillText(sym(n, k), x0 + cw * (k + 0.5), y + rh / 2 + 0.5));
+        f.r.forEach(n => c.fillText(sym(n), x0 + bw / 2, y + rh / 2 + 0.5));
         c.font = '700 10px Nunito, Arial, sans-serif'; c.fillStyle = '#666'; c.fillText(String(f.total), x0 + bw * 0.28, y + rh + 14);
         c.font = '800 12px Nunito, Arial, sans-serif'; c.fillStyle = P.ink; c.fillText(String(run), x0 + bw * 0.72, y + rh + 14);
       } else {
