@@ -9,6 +9,8 @@
     "tune-ai": "node scripts/tune-ai.js",
     "deploy:staging": "node scripts/deploy-staging.js",
     "release": "node scripts/release.js",
+    "export:help": "node scripts/help-text.js export",
+    "import:help": "node scripts/help-text.js import",
     "check:envs": "node scripts/check-envs.js"
   },
   "devDependencies": {
