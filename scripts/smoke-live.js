@@ -14,14 +14,17 @@ const json = { 'content-type': 'application/json' };
 let failed = false;
 const check = (good, what) => { console.log(`${good ? 'ok  ' : 'FAIL'} ${what}`); if (!good) failed = true; };
 (async () => {
-  // (the site can take a minute to answer after a deploy: tried for up to two minutes, saying what it got)
+  // (the site can take a minute to answer after a deploy, and the CDN a moment to serve the new version: tried for up to
+  // two minutes, saying what it got. This commit is expected live only when this deploy carried the site, DEPLOYED from
+  // the workflow's "What changed"; a deploy of functions or rules alone leaves the site at an earlier commit.)
+  const sha = process.env.GITHUB_SHA, siteToo = !process.env.DEPLOYED || /\bhosting\b/.test(process.env.DEPLOYED), want = x => !!x && x.env === ENV && (!sha || !siteToo || x.sha === sha);
   let v = null, got = '';
-  for (let k = 0; k < 12 && !(v && v.env === ENV); k++) {
+  for (let k = 0; k < 12 && !want(v); k++) {
     if (k) await new Promise(r => setTimeout(r, 10000));
     try { const r = await fetch(`${SITE}/version.json`, { cache: 'no-store' }); got = `HTTP ${r.status}`; v = r.ok ? await r.json() : null; } catch (e) { got = e.message; v = null; }
   }
   if (!v) console.log(`${SITE}/version.json: ${got}`);
-  check(!!v && v.env === ENV && (!process.env.GITHUB_SHA || v.sha === process.env.GITHUB_SHA), `the ${ENV} site is live at ${v ? String(v.sha).slice(0, 7) : '(none)'}${process.env.GITHUB_SHA ? `, this commit ${process.env.GITHUB_SHA.slice(0, 7)}` : ''}`);
+  check(want(v), `the ${ENV} site is live at ${v ? String(v.sha).slice(0, 7) : '(none)'}${sha ? (siteToo ? `, this commit ${sha.slice(0, 7)}` : ' (this deploy did not carry the site)') : ''}`);
   const robots = await fetch(`${SITE}/robots.txt`).then(r => r.text()).catch(() => '');
   check(STAGING ? /Disallow: \/\s*$/m.test(robots) : !/Disallow: \/\s*$/m.test(robots), STAGING ? 'staging keeps crawlers out (robots.txt)' : 'production lets crawlers in (robots.txt)');
   for (const f of ['claimUsername', 'findMatch', 'cancelSearch', 'move', 'timeout', 'resign', 'recordLocal', 'tick']) {
