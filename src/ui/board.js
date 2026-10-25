@@ -32,7 +32,7 @@ export function waitBand(spot) {
   if (sc) {
     const st = sc.recap ? scRecapStage() : null, waits = sc.recap ? !st || st === 'wait' : (sc.me && !sc.oppIn) || sc.missed === sc.round || scHeld();   // (until the other player's replay is ready to play: the recap's start; online, the other phone still in its recap)
     if (live && waits) { side = other(scHuman(state)); txt = `Waiting for ${esc(playerName(state, side))}…`; }
-  } else if (live && (!spot || spot.square < 3 || spot.square > 5) && (cpuTurn() || remoteTurn())) { side = state.turn; txt = `${esc(playerName(state, side))} is playing…`; }   // (through the other side's chosen square lighting up, unless that square lies under the band)
+  } else if (live && (!spot || spot.square < 3 || spot.square > 5) && remoteTurn()) { side = state.turn; txt = `${esc(playerName(state, side))} is playing…`; }   // (online only, through the other side's chosen square lighting up, unless that square lies under the band; the computer moves at once, shown by its square lighting up and its replay: no band)
   const now = performance.now(), key = side ? `${state.id || 'm'}:${sc ? 'r' + sc.round : state.moves}:${side}` : null;
   if (key && (!band || band.key !== key || band.out)) band = { key, side, txt, at: now, out: false };
   else if (key) band.txt = txt;

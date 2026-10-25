@@ -210,3 +210,8 @@ test('hangman, Hard: the race for the word: a letter some candidate holds, a kno
   assert.ok(r.ms < 200, `never slow in the race (${r.ms.toFixed(1)} ms at worst)`);
   assert.deepEqual(L.localBest(pm, 'X', cpuRng(), {}, { level: 'normal', until: null }), L.localBest(pm, 'X', cpuRng()), 'Normal untouched');
 });
+test('hangman: a right letter keeps the turn with almost no pause before the next guess', () => {
+  const H = require('../../src/games/hangman/rules.js');
+  assert.ok(H.flashMs({ kind: 'again' }) <= 300, 'a right letter: the next guess almost at once');
+  assert.equal(H.flashMs({ kind: 'move' }), 650, 'a miss or the solving letter: as before');
+});

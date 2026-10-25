@@ -458,7 +458,7 @@ test('friend rooms: opened and joined through the server; only its two players r
   const s = await host.call('startRoom', { code });
   assert.equal(s.ok, true, JSON.stringify(s));
   const pub = await host.read(`games/${s.game}/pub`);
-  assert.deepEqual([pub.mode, pub.room, pub.players.X.uid, pub.players.O.uid, pub.players.O.name, pub.timer], ['friend', code, host.uid, guest.uid, 'Guesty', 0]);
+  assert.deepEqual([pub.mode, pub.room, pub.players.X.uid, pub.players.O.uid, pub.players.O.name, pub.timer], ['friend', code, host.uid, guest.uid, 'RoomGuest', 0], 'a player with a username plays under it, whatever their seat says');
   await denied(stranger.read(`games/${s.game}/pub`), 'a stranger reading the match');
   assert.equal(await get(`active/${host.uid}`), null, 'no Find Match entry: a friend match leaves Find Match free');
   await denied(host.write(`rooms/${code}/setup/timer`, 60), 'the setup once the match is on');

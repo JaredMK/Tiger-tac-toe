@@ -2,7 +2,9 @@
 import { scTypes } from '../../core/chaos.js';
 import { SUPER_CHAOS_ENABLED } from '../../core/config.js';
 import { restrictGames } from '../../core/games.js';
-import { NAME_MAX, dealable, enabledGames, normLocal } from '../../core/match.js';
+import { CPU_NAME, NAME_MAX, dealable, enabledGames, normCpu, normLocal } from '../../core/match.js';
+import { LEVELS, LEVEL_NAME } from '../../core/aiw.js';
+import { acct, loggedIn } from '../../net/accounts.js';
 import { TIMER_OPTIONS } from '../../core/timer.js';
 import { other } from '../../core/util.js';
 import { GAMES, INFO, SC_ONLY } from '../../games/index.js';
@@ -19,7 +21,7 @@ import { render } from '../render.js';
 /* ----- setup screen ----- */
 // Super Chaos (simultaneous rounds) is on for the next match: its switch on (a friend room: the room's, set by the
 // host), and the mode visible here (admin only until released). Its checklist holds only the Super Chaos games.
-export const chaosSetup = () => (isHost() ? !!state.online.chaos && chaosVisible() : scPicked());   // (Play Local: Super Chaos against the computer is always open; a host's room: only where the switch is on)
+export const chaosSetup = () => (isHost() ? !!state.online.chaos && chaosVisible() : state.setup.vs === 'cpu' && scPicked());   // (Play Local: Super Chaos against the computer is always open; a host's room: only where the switch is on)
 export const setupTypes = () => (chaosSetup() ? visibleTypes().filter(t => scTypes().includes(t)) : visibleTypes().filter(t => !SC_ONLY.includes(t)));   // (a Super Chaos only game: in its checklist only)
 // The Mode selector, Super Chaos | Classic (Play Local, the host's room, Find Match): only where Super Chaos is open
 // to this player; its "?" explains Super Chaos.
@@ -33,17 +35,18 @@ export function renderSetup() {
   // The host's room: the host is Player 1 and the friend Player 2 (X and O are drawn at random when each match starts).
   const field = p => (p === guest
     ? `<div class="field"><span>Player 2 · friend</span><div class="namebox">${state.online.joined ? esc(s.names[p]) : '<i>not joined yet</i>'}</div></div>`
-    : `<label class="field"><span>Player 1 · you</span><input data-p="${p}" value="${esc(s.names[p] && s.names[p] !== p ? s.names[p] : '')}" maxlength="${NAME_MAX}" placeholder="Your name" autocomplete="off" autocapitalize="words" aria-label="Your name"></label>`);
+    : `<div class="field"><span>Player 1 · you</span><div class="namebox">${esc((acct.profile && acct.profile.username) || s.names[p] || 'You')}</div></div>`);   // (hosting needs an account: always its username)
   const chk = t => `<label class="chk${s.games[t] ? '' : ' off'}${dealable(t) ? '' : ' wait'}" title="${dealable(t) ? '' : `Loading its ${t === 'trivia' ? 'questions' : 'physics'}… (needs a connection the first time)`}"><input type="checkbox" data-t="${t}"${s.games[t] ? ' checked' : ''}>${ICONS[t]}<span>${INFO[t].name}</span>${testBadge(t)}${dealable(t) ? '' : '<i class="tst wait">Loading</i>'}${qBtn(t, 'sm')}</label>`;
   const timer = host && !sc ? `<div class="timerrow" role="group" aria-label="Time per turn"><span>Time per turn</span>${TIMER_OPTIONS.map(v => `<button class="seg${(s.timer || 0) === v ? ' on' : ''}" data-act="timer" data-v="${v}">${TIMER_LABEL[v]}</button>`).join('')}</div>` : '';
   const room = host ? `<div class="room"><small>Room code</small><b class="code">${esc(state.online.code)}</b>
-      <div class="row"><button class="btn" data-act="share">Share invite</button></div>
+      <div class="row"><button class="btn" data-act="share">Share invite</button><button class="btn" data-act="copy-invite">Copy invite</button></div>
       ${state.notice ? `<div class="notice" role="status"${fxAttr(fxAt('notice', noticeSeq))}>${esc(state.notice)}</div>` : ''}
       <div class="status${net.status === 'connected' ? ' ok' : net.status === 'error' ? ' bad' : ''}">${net.status === 'connected' ? `<b>${esc(s.names[guest])}</b> joined` : esc(net.msg || 'Waiting for friend…')}</div>
       ${net.status === 'error' ? '<button class="btn" data-act="host-retry">Try again</button>' : ''}</div>` : '';
   const ready = setupReady(s);
-  const title = host ? 'Host game' : 'Same phone';
-  const sub = host ? 'Share the code, set up, then start once your friend is in' : 'Two players taking turns on this phone';
+  const vsCpu = !host && s.vs === 'cpu';
+  const title = host ? 'Host game' : vsCpu ? 'Play Computer' : 'Same phone';
+  const sub = host ? 'Share the code, set up, then start once your friend is in' : vsCpu ? 'You vs Computer' : 'Two players taking turns on this phone';
   // Same phone: two people on this phone; player 1 picks X, O or Random, player 2 takes the other side. (The computer is
   // Play Computer's, from the main menu: no Human/Computer choice here.)
   const L = host ? null : normLocal(s), s1 = L && L.pick !== 'random' ? L.pick : null, s2 = s1 ? other(s1) : null;
@@ -58,12 +61,20 @@ export function renderSetup() {
       <div class="who-p">${face(s2)}</div>
       <label class="field ${s2 || ''}"><span>Player 2 name</span><input data-ln="n2" value="${esc(L.n2)}" maxlength="${NAME_MAX}" placeholder="${s2 || 'X or O'}" autocomplete="off" autocapitalize="words" aria-label="Player 2 name"></label></div>`;
   };
+  // Play Computer: you (your username, or "You") against the computer; your side X, O or Random, its difficulty.
+  const cpuSlots = () => {
+    const C = normCpu(s), c1 = C.pick !== 'random' ? C.pick : null, c2 = c1 ? other(c1) : null, you = (loggedIn() && acct.profile.username) || 'You';
+    const pick = v => `<button class="seg${v === 'random' ? '' : ' ' + v}${C.pick === v ? ' on' : ''}" data-act="cside" data-side="${v}" aria-pressed="${C.pick === v}">${v === 'random' ? 'Random' : v}</button>`;
+    return `<div class="vscpu"><div class="vsme">${face(c1)}<b>${esc(you)}</b></div><i class="vsv" aria-hidden="true">vs</i><div class="vsme">${face(c2)}<b>${CPU_NAME}</b></div></div>
+    <div class="timerrow" role="group" aria-label="Your side"><span>Your side${C.pick === 'random' ? ' · drawn every match' : ''}</span>${pick('X')}${pick('O')}${pick('random')}</div>
+    <div class="timerrow" role="group" aria-label="Difficulty"><span>Difficulty</span>${LEVELS.map(v => `<button class="seg${C.level === v ? ' on' : ''}" data-act="clevel" data-v="${v}" aria-pressed="${C.level === v}">${LEVEL_NAME[v]}</button>`).join('')}</div>`;
+  };
   return `<main class="scr setup">
-    <div class="bar">${host ? `<button class="back" data-act="lobby-back" aria-label="Close the room and go back">${CHEV}Back</button>` : `<button class="back" data-act="friend-go" aria-label="Back to Play a Friend">${CHEV}Back</button>`}
+    <div class="bar">${host ? `<button class="back" data-act="lobby-back" aria-label="Close the room and go back">${CHEV}Back</button>` : vsCpu ? `<button class="back" data-act="menu" aria-label="Back to the main menu">${CHEV}Menu</button>` : `<button class="back" data-act="friend-go" aria-label="Back to Play a Friend">${CHEV}Back</button>`}
       <div class="ttl"><b>${title}</b>${sub ? `<small>${sub}</small>` : ''}</div></div>
     <div class="setup-box" data-keep-scroll="setup">
     ${room}
-    ${host ? `<div class="names">${field(state.online.me)}${field(guest)}</div>` : `<div class="slots">${slots()}</div>`}
+    ${host ? `<div class="names">${field(state.online.me)}${field(guest)}</div>` : vsCpu ? cpuSlots() : `<div class="slots">${slots()}</div>`}
     ${SUPER_CHAOS_ENABLED ? modeRow(sc) : ''}
     ${timer}
     <div class="adv${advOpen ? ' open' : ''}"><button class="adv-h" data-act="adv" aria-expanded="${advOpen}"><span>Mini-games</span><small>${gamesCount(on, VT.length)}</small><i class="chev">${CHEV}</i></button>

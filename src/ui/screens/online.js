@@ -4,6 +4,7 @@ import { NAME_MAX, playerName } from '../../core/match.js';
 import { normTimer } from '../../core/timer.js';
 import { other } from '../../core/util.js';
 import { INFO, SC_ONLY, TYPES } from '../../games/index.js';
+import { acct, loggedIn } from '../../net/accounts.js';
 import { visibleTypes } from '../../net/releases.js';
 import { joinCode, joinName, leaveLoses, net, online, room } from '../../net/room.js';
 import { TIMER_LABEL, advOpen, esc, state } from '../app.js';
@@ -46,7 +47,7 @@ export function renderJoin() {
     : seated && room ? `${info}<div class="status ok">Waiting for <b>${esc(hostName || 'the host')}</b> to start…</div>`
     : o && net.status === 'connecting' ? `<div class="status">${esc(net.msg)}</div>`
     : o ? '<div class="status">Connected · waiting for the host…</div>' : '';
-  const form = o ? '' : `<label class="field"><span>Your name</span><input id="jname" value="${esc(joinName)}" maxlength="${NAME_MAX}" placeholder="Your name" autocomplete="off" autocapitalize="words"></label>
+  const form = o ? '' : `${loggedIn() ? `<div class="field"><span>You play as</span><div class="namebox">${esc(acct.profile.username)}</div></div>` : `<label class="field"><span>Your name</span><input id="jname" value="${esc(joinName)}" maxlength="${NAME_MAX}" placeholder="Your name" autocomplete="off" autocapitalize="words"></label>`}
     <label class="field"><span>Room code</span><input id="jcode" class="codein" value="${esc(joinCode)}" maxlength="5" placeholder="ABCDE" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="latin"></label>`;
   return `<main class="scr setup">
     <div class="bar"><button class="back" data-act="lobby-back" aria-label="${o ? 'Leave the room and go back' : 'Back to Play a Friend'}">${CHEV}Back</button>

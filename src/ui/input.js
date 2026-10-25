@@ -1,8 +1,9 @@
 // Input: the page's click handler (each game's own controls go to its view.js: actions), the keyboard,
 // scrolling lists, and joining by link.
 import { startChaos } from '../core/chaos.js';
-import { releasedTypes, restrictGames } from '../core/games.js';
-import { NAME_MAX, normLocal, normSetup, seatLocal, startMatch, startQuick } from '../core/match.js';
+import { restrictGames } from '../core/games.js';
+import { levelOf } from '../core/aiw.js';
+import { NAME_MAX, normCpu, normLocal, normSetup, seatLocal, startCpu, startMatch } from '../core/match.js';
 import { resignLocal } from '../core/records.js';
 import { normTimer } from '../core/timer.js';
 import { hpSel, setHpSel } from '../games/hexapawn/view.js';
@@ -16,11 +17,11 @@ import {
 import { cancelSearch, closeIntro, findAgain, isMM, onIntroClosed, openFind, resignMM, resumeMatch, search, showSides, startSearch } from '../net/matchmaking.js';
 import { attemptMove, setTapEl, tapEl } from '../net/moves.js';
 import { reactCooling, rx, sendReact } from '../net/reactions.js';
-import { releases, scMode, scPicked, setMode, visibleTypes } from '../net/releases.js';
+import { scMode, scPicked, setMode, visibleTypes } from '../net/releases.js';
 import {
-  dbName, dbSetup, hostRoom, isHost, joinCode, joinName, joinRoom, leaveLobby, leaveLoses,
+  dbSetup, hostRoom, isHost, joinCode, joinName, joinRoom, leaveLobby, leaveLoses,
   leaveRoom, lockMine, mySide, pinned, quitMatch, rematchCancel, rematchOnline, room, setJoinCode, setJoinName,
-  setNet, shareRoom, startOnline, validCode
+  setNet, shareRoom, copyInvite, startOnline, validCode
 } from '../net/room.js';
 import { reportLocal, trackEnd, trackStart } from '../net/tracking.js';
 import {
@@ -82,11 +83,13 @@ function revealSides() {
   const players = { X: { name: n('X') }, O: { name: n('O') } };
   showSides(players, state.cpu && state.cpu.length === 1 ? other(state.cpu) : null);
 }
-// Play Computer: a Classic match at once, no setup screen: the side drawn at random, every released game, Normal.
+// Play Computer's start (its setup screen's Start, and the rematch): you against the computer, your side as picked
+// (Random drawn again each time), its level, the mini-games ticked.
 function playComputer() {
-  const name = (loggedIn() ? acct.profile.username : normLocal(state.setup).n1.trim()) || 'You';
+  const name = (loggedIn() ? acct.profile.username : '') || 'You';
   setMode('classic');
-  if (!startQuick(state, RNG, releasedTypes(releases), name)) return false;
+  restrictGames(state.setup.games, visibleTypes());           // never a game this player may not see
+  if (!startCpu(state, RNG, name)) return false;
   trackStart(); revealSides(); commit();
   return true;
 }
@@ -115,7 +118,7 @@ export function init() {
     if (act === 'ask-leave') { if (joinAsk) leaveAndJoin(joinAsk.code); return; }
     if (act === 'dismiss') { if (Date.now() >= flashReady) dismissFlash(); return; }   // not before the animation is over
     if (act === 'rep-skip') { repSkip(); return; }                                      // an opponent's replay: straight to its result
-    const free = ['pause', 'pause-report', 'pause-resume', 'pause-main', 'pause-back', 'pause-leave', 'leave', 'lobby-back', 'menu', 'find-again', 'profile', 'prof-back', 'prof-hist', 'mystats', 'hist-open', 'hist-sq', 'hist-back', 'hist-close', 'leaderboard', 'rejoin', 'host-retry', 'share', 'rematch', 'rematch-cancel', 'timer', 'review', 'review-sq', 'review-back', 'results', 'pview', 'react-open', 'react-send'];
+    const free = ['pause', 'pause-report', 'pause-resume', 'pause-main', 'pause-back', 'pause-leave', 'leave', 'lobby-back', 'menu', 'find-again', 'profile', 'prof-back', 'prof-hist', 'mystats', 'hist-open', 'hist-sq', 'hist-back', 'hist-close', 'leaderboard', 'rejoin', 'host-retry', 'share', 'copy-invite', 'rematch', 'rematch-cancel', 'timer', 'review', 'review-sq', 'review-back', 'results', 'pview', 'react-open', 'react-send'];
     if (act === 'sound') { SND.setMuted(!SND.muted); if (!SND.muted) SND.play('toggle'); render(); return; }   // (the press's own sound came with the press when it was still on)
     if (act === 'react-mute') { rx.mute = !rx.mute; if (rx.mute && rx.card && rx.card.side !== mySide()) { clearTimeout(rx.hide); rx.card = null; } render(); return; }   // this match only: the opponent's emoji stop showing and sounding
     if (act === 'pause') { setMenuOpen(true); setMenuStep('main'); startFx('menu', menuStep); render(); scheduleCpu(); return; }
@@ -148,10 +151,14 @@ export function init() {
       commit();
     } else if (act === 'resume') {               // the main menu: back into the online match this phone was playing (held at the page's load)
       resumeMatch();
-    } else if (act === 'cpu-go') {               // the main menu: Play Computer, a match at once
-      playComputer();
+    } else if (act === 'cpu-go') {               // the main menu: Play Computer, its setup (You vs Computer, your side, mini-games, level), then Start
+      state.setup.mode = 'two'; state.setup.vs = 'cpu'; normSetup(state.setup); normCpu(state.setup); state.screen = 'setup'; setAdvOpen(false); commit();
     } else if (act === 'same-go') {              // Play a Friend: Same phone, two people on this phone (its setup: names, sides, mini-games)
-      state.setup.mode = 'two'; normSetup(state.setup); normLocal(state.setup).p2 = scPicked() ? 'cpu' : 'human'; state.screen = 'setup'; setAdvOpen(false); commit();
+      state.setup.mode = 'two'; state.setup.vs = 'same'; normSetup(state.setup); normLocal(state.setup).p2 = scPicked() ? 'cpu' : 'human'; state.screen = 'setup'; setAdvOpen(false); commit();
+    } else if (act === 'cside') {                // Play Computer: your side, X, O or Random (drawn at every start)
+      normCpu(state.setup).pick = ['X', 'O', 'random'].includes(el.dataset.side) ? el.dataset.side : 'random'; save(); commit();
+    } else if (act === 'clevel') {               // Play Computer: the computer's level, Easy, Normal or Hard
+      normCpu(state.setup).level = levelOf(el.dataset.v); save(); commit();
     } else if (act === 'gmode') {                // the Mode, Super Chaos or Classic: Play Local (Super Chaos against the computer), the host's room, Find Match; kept on this device
       setMode(el.dataset.v);
       if (isHost()) { state.online.chaos = scMode(); commit(); dbSetup({ chaos: state.online.chaos }); return; }   // (only the Super Chaos games among those on are dealt)
@@ -239,12 +246,15 @@ export function init() {
       state.screen = 'join'; state.online = null; setNet('idle', ''); render();
     } else if (act === 'join') {
       const nameEl = document.getElementById('jname'), codeEl = document.getElementById('jcode');
-      setJoinName((nameEl ? nameEl.value : joinName).trim().slice(0, NAME_MAX) || 'Friend'); setJoinCode((codeEl ? codeEl.value : joinCode).toUpperCase().replace(/[^A-Z]/g, ''));
+      if (loggedIn()) setJoinName(acct.profile.username);          // (a logged-in player always plays under their username)
+      else setJoinName((nameEl ? nameEl.value : joinName).trim().slice(0, NAME_MAX) || 'Friend'); setJoinCode((codeEl ? codeEl.value : joinCode).toUpperCase().replace(/[^A-Z]/g, ''));
       joinRoom(joinCode, joinName, false);
     } else if (act === 'rejoin') {
       if (state.online) joinRoom(null, null, true);
     } else if (act === 'share') {
       shareRoom();
+    } else if (act === 'copy-invite') {
+      copyInvite();
     } else if (act === 'leave') {
       leaveRoom();
     } else if (act === 'adv') {
@@ -273,6 +283,7 @@ export function init() {
       state.confirm = null; commit();
     } else if (act === 'start') {
       if (state.online) { startOnline(); return; }
+      if (state.setup.vs === 'cpu') { playComputer(); return; }
       normLocal(state.setup).p2 = chaosSetup() ? 'cpu' : 'human';   // (Same phone: two people; Super Chaos, were it on: against the computer)
       seatLocal(state.setup, RNG);
       restrictGames(state.setup.games, visibleTypes());           // never a game this player may not see
@@ -308,7 +319,6 @@ export function init() {
   // ticking a game updates the list in place.
   app.addEventListener('input', e => {
     const el = e.target;
-    if (el.matches && el.matches('input[data-p]') && state.setup) { state.setup.names[el.dataset.p] = el.value; save(); if (state.online && state.online.me === el.dataset.p) dbName(el.value); }
     if (el.matches && el.matches('input[data-ln]') && state.setup) { normLocal(state.setup)[el.dataset.ln === 'n2' ? 'n2' : 'n1'] = el.value.slice(0, NAME_MAX); save(); }
     if (el.id === 'jname') setJoinName(el.value);
     if (el.id === 'lemail') setLoginMail(el.value);

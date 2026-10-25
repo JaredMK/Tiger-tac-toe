@@ -1114,10 +1114,12 @@ function roomSetupOf(d, rel, admin) {
 }
 const TEST_SEATS = () => process.env.FUNCTIONS_EMULATOR === 'true';   // (the tests alone may keep the host on X, hostPick 'X', so their moves know whose turn it is)
 const roomSide = (room, uid) => (room && room.players ? ['X', 'O'].find(s => room.players[s] && room.players[s].uid === uid) || null : null);
+// A player with a username always plays a friend room under it (no name of their own choosing); a guest without one names themselves.
+async function usernameOf(uid) { try { return (await db.ref(`users/${uid}/username`).get()).val() || null; } catch (e) { return null; } }
 exports.openRoom = onCall(CALL, async req => {
   const uid = needAccount(req), d = req.data || {}, t = now();   // hosting needs an account (as the page asks before Host)
   const admin = !!(req.auth.token && req.auth.token.admin === true);
-  const side = d.side === 'O' ? 'O' : 'X', name = roomName(d.name, side);
+  const side = d.side === 'O' ? 'O' : 'X', name = roomName(await usernameOf(uid) || d.name, side);
   const setup = Object.assign(roomSetupOf(d.setup, await releasesNow(), admin), { hostSide: side });
   for (let k = 0; k < 8; k++) {
     const code = newRoomCode();
@@ -1128,8 +1130,9 @@ exports.openRoom = onCall(CALL, async req => {
 });
 // A friend joins with the code: the free seat (or their own seat again, back after a reload; a new name goes with it).
 exports.joinRoom = onCall(CALL, async req => {
-  const uid = needUid(req), d = req.data || {}, code = roomCodeOf(d.code), name = roomName(d.name, '');
+  const uid = needUid(req), d = req.data || {}, code = roomCodeOf(d.code);
   if (!roomCodeOk(code)) return { ok: false, reason: 'code' };
+  const name = roomName(await usernameOf(uid) || d.name, '');
   let out = { ok: false, reason: 'missing' };
   await db.ref(`rooms/${code}`).transaction(cur => {
     if (cur === null) { out = { ok: false, reason: 'missing' }; return cur; }   // (a first guess from an empty cache: retried with the real value)
@@ -1195,8 +1198,8 @@ exports.startRoom = onCall(CALL, async req => {
     const fixed = TEST_SEATS() && room.setup && room.setup.hostPick === 'X';
     const seats = fixed ? { players: room.players, hostSide: room.players.X.uid === room.host ? 'X' : 'O', swapped: false } : drawSeats(room.players, room.host);   // X and O drawn at random for every match, the rematch too
     const admin = await isAdminUser(room.host);
-    const named = await Promise.all(['X', 'O'].map(s => db.ref(`users/${seats.players[s].uid}/username`).get().then(v => !!v.val())));
-    const at = s => ({ uid: seats.players[s].uid, account: named[s === 'X' ? 0 : 1], e: { name: roomName(seats.players[s].name, s) } });
+    const named = await Promise.all(['X', 'O'].map(s => usernameOf(seats.players[s].uid)));
+    const at = s => ({ uid: seats.players[s].uid, account: !!named[s === 'X' ? 0 : 1], e: { name: roomName(named[s === 'X' ? 0 : 1] || seats.players[s].name, s) } });   // (a username, always, for a player with one)
     const id = db.ref('games').push().key;
     const ok = await makeGame(null, id, at('X'), at('O'), { friend: { code, setup: room.setup || {}, admin } });
     if (!ok) { await db.ref(`rooms/${code}/starting`).remove(); return { ok: false, reason: 'games' }; }   // (no game left to deal: the setup refused)

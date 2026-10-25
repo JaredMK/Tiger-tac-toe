@@ -41,7 +41,7 @@ export let room = null, pendingRoom = null, roomUnsub = null, presUnsub = null; 
 export let lobby = null, lobbyUnsub = null;        // a friend room's own node (rooms/{code}: the seats, the setup, the match's id, the rematch flags, who left), kept while the match plays
 export let presence = null;
 export let presentingSeq = null;                          // the move being played back here right now
-export let moveWait = null, moveTimer = null, timeoutBusy = false, joinCode = '', joinName = '', nameTimer = null, awayNote = '', awayTimer = null;
+export let moveWait = null, moveTimer = null, timeoutBusy = false, joinCode = '', joinName = '', awayNote = '', awayTimer = null;
 
 export function validCode(c) { return typeof c === 'string' && /^[ABCDEFGHJKLMNPQRSTUVWXYZ]{5}$/.test(c); }   // no constants: load() calls this before they exist
 export function online() { return state.online || null; }
@@ -115,8 +115,7 @@ export async function hostRoom(code, resume) {
   const o = state.online;
   if (!resume) {
     try {
-      const typed = String(state.setup.names[o.me] || '').trim().slice(0, NAME_MAX), mine = ['X', 'O', 'Friend'].includes(typed) ? '' : typed;   // (a side's letter is no name)
-      const name = mine || String((acct.profile && acct.profile.username) || '').slice(0, NAME_MAX) || 'Player 1';   // (hosting needs an account: its username by default)
+      const name = String((acct.profile && acct.profile.username) || '').slice(0, NAME_MAX) || 'Player 1';   // (hosting needs an account: always its username; the server holds to it too)
       state.setup.names[o.me] = name;
       const r = await call('openRoom', { name, side: o.me, setup: { games: restrictGames(Object.assign({}, state.setup.games), visibleTypes()), timer: state.setup.timer || 0, hostPick: 'random', chaos: !!o.chaos } });
       if (state.online !== o) { if (r && r.ok) closeSeat(r.code, r.side, true); return; }   // went back while the room was opening
@@ -136,16 +135,6 @@ function guestName() { return state.online && state.online.me ? playerName(state
 export async function dbSetup(patch) {
   if (!fb || !isHost() || !validCode(state.online.code)) return;
   try { await fb.m.update(roomRef('setup'), patch); } catch (e) { /* the next change tries again */ }
-}
-export function dbName(name) {
-  if (!fb || !state.online || !state.online.me) return;
-  clearTimeout(nameTimer);
-  nameTimer = setTimeout(() => { nameTimer = null; flushName(name); }, 300);
-}
-export function flushName(name) {                                       // written to whichever seat is ours by then
-  const o = state.online;
-  if (!fb || !o || !o.me || !validCode(o.code) || !lobby || !lobby.players || !lobby.players[o.me] || lobby.players[o.me].uid !== fb.uid) return;
-  fb.m.set(roomRef('players/' + o.me + '/name'), String(name || '').trim().slice(0, NAME_MAX) || o.me).catch(() => {});
 }
 // Start: the server makes the match (a games/{id} match, as Find Match's) and points the room at it; both phones follow it there.
 let startBusy = false;
@@ -485,14 +474,20 @@ export function quitMatch() {
   if (lost) state.endPick = null;
   commit();
 }
-// The invite: the room's code in the words and in the link alike (some apps drop the text, some the link), e.g.
-// "Join my Tic Tac Chaos game! Code: ABCDE tictacchaos.com/?room=ABCDE". The link joins at once; the code goes in the Join screen.
-export function inviteText(code, url) { return `Join my Tic Tac Chaos game! Code: ${code} ${String(url).replace(/^https?:\/\//, '')}`; }
+// The invite: one text holding everything, the room's code and the link (which carries the code too), e.g.
+// "Join my Tic Tac Chaos game! Code: ABCDE https://tictacchaos.com/?room=ABCDE". It is shared as that text alone, with no
+// separate url field (iMessage drops the text when a url comes with it). The link joins at once; the code goes in the Join screen.
+export function inviteText(code, url) { return `Join my Tic Tac Chaos game! Code: ${code} ${url}`; }
 export async function shareRoom() {
-  const url = roomLink(), text = inviteText(state.online.code, url);
+  const text = inviteText(state.online.code, roomLink());
   try {
-    if (navigator.share) { await navigator.share({ title: 'Tic Tac Chaos', text, url }); return; }
+    if (navigator.share) { await navigator.share({ text }); return; }
   } catch (e) { if (e && e.name === 'AbortError') return; }
+  await copyInvite();                                              // (no share sheet here: the invite is copied instead)
+}
+// Copy invite: the same text, on the clipboard.
+export async function copyInvite() {
+  const text = inviteText(state.online.code, roomLink());
   let note = 'Invite copied';
   try { await navigator.clipboard.writeText(text); } catch (e) { note = text; }
   showNotice(note, 1800);
@@ -530,7 +525,6 @@ export function setJoinCode(v) { joinCode = v; }
 export function setJoinName(v) { joinName = v; }
 export function setMoveTimer(v) { moveTimer = v; }
 export function setMoveWait(v) { moveWait = v; }
-export function setNameTimer(v) { nameTimer = v; }
 export function assignNet(v) { net = v; }
 export function setPendingRoom(v) { pendingRoom = v; }
 export function setPresUnsub(v) { presUnsub = v; }
