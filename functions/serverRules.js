@@ -85,7 +85,7 @@ const FIND_MATCH_TIMER = 60;
 const QUEUES = { chaos: { key: 'chaos', mode: RATINGS_ENABLED ? 'ranked' : 'match', timer: 0, chaos: true },
   match: { key: 'match', mode: RATINGS_ENABLED ? 'ranked' : 'match', timer: FIND_MATCH_TIMER, classic: true } };
 const FIND_MATCH_MODES = ['match', 'ranked', 'casual'];
-function queueKey(mode, classicAllowed) { return mode === 'classic' && classicAllowed ? 'match' : 'chaos'; }   // Super Chaos, whatever an older page asks for; Classic only where allowed
+function queueKey(mode, chaosAllowed) { return mode === 'chaos' && chaosAllowed ? 'chaos' : 'match'; }   // Classic, whatever an older page asks for; the Super Chaos queue only while it is open (core/config.js SUPER_CHAOS_ENABLED; the tests)
 // How far apart two ratings may be, given how long the longer-waiting of the two has been searching:
 // close at first, wider every few seconds, and anyone at all after a minute and a half.
 function ratingRange(waitMs) { return waitMs >= 90000 ? Infinity : 100 + 50 * Math.floor(Math.max(0, waitMs) / 5000); }

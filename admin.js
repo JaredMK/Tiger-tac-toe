@@ -443,7 +443,7 @@ function releasesCard() {
   return `<div class="card ctl" id="relCard"><h2>Game releases</h2>
     <p class="note">A tap releases or un-releases at once, for new matches; matches under way are not affected.</p>
     <ul class="rels">${row('superchaos', '<b>Super Chaos mode</b>', sc)}${Object.entries(GAMES).map(([t, name]) => row(t, esc(name), isReleased(t))).join('')}</ul>
-    <p class="note">Super Chaos mode off: players get Classic only, no Mode selector. On: everyone gets the Mode selector, Super Chaos by default, in Play Local and friend games. Find Match is Super Chaos either way.</p>
+    <p class="note">Super Chaos is switched off in the code for everyone, you included (src/core/config.js SUPER_CHAOS_ENABLED): every match is Classic, Find Match too, and no Mode selector shows, whatever this switch says. Its code and settings are kept; once the code switch is back on, this switch decides again (off: Classic only; on: the Mode selector for everyone).</p>
     <p class="note">Admin only: the game exists for nobody but you (not in the Advanced checklist, How to Play, random draws, Find Match or anyone else's rooms). You play it in local matches and friend games you host; your guest plays it in that match only. Find Match deals released games only, even for you. Squares of admin-only games are counted under "Admin-only games (testing)" in the stats.</p></div>`;
 }
 async function saveRelease(el) {

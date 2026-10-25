@@ -2,7 +2,8 @@
 import { pigConfig, pigGoal } from '../games/pig/rules.js';
 import { tune, tuneLive } from '../core/tune.js';
 import { PHYS_TYPES } from '../games/shared/physics.js';
-import { GAMES } from '../games/index.js';
+import { GAMES, SC_ONLY } from '../games/index.js';
+import { SUPER_CHAOS_ENABLED } from '../core/config.js';
 import { testBadge, visibleTypes } from '../net/releases.js';
 import { app, state } from './app.js';
 import { CHEV, ICONS } from './art.js';
@@ -73,10 +74,10 @@ export function renderHowTo() {
       <div class="ttl"><b>How to Play</b></div></div>
     <div class="setup-box" data-keep-scroll="howto">
       <div class="rulecard">${RULES_CORE.map(t => `<p>${t}</p>`).join('')}</div>
-      <div class="games-h"><span>Modes</span><small>Tap for its rules</small></div>
-      <div class="games howlist"><button class="chk how" data-act="explain" data-t="superchaos" aria-label="How to play Super Chaos">${SC_ICON}<span>Super Chaos</span><i class="qbtn sm" aria-hidden="true">?</i></button></div>
+      ${SUPER_CHAOS_ENABLED ? `<div class="games-h"><span>Modes</span><small>Tap for its rules</small></div>
+      <div class="games howlist"><button class="chk how" data-act="explain" data-t="superchaos" aria-label="How to play Super Chaos">${SC_ICON}<span>Super Chaos</span><i class="qbtn sm" aria-hidden="true">?</i></button></div>` : ''}
       <div class="games-h"><span>Mini-games</span><small>Tap one for its rules</small></div>
-      <div class="games howlist">${visibleTypes().map(t => `<button class="chk how" data-act="explain" data-t="${t}" aria-label="How to play ${EXPLAIN[t].name}">${ICONS[t]}<span>${EXPLAIN[t].name}</span>${testBadge(t)}<i class="qbtn sm" aria-hidden="true">?</i></button>`).join('')}</div>
+      <div class="games howlist">${visibleTypes().filter(t => SUPER_CHAOS_ENABLED || !SC_ONLY.includes(t)).map(t => `<button class="chk how" data-act="explain" data-t="${t}" aria-label="How to play ${EXPLAIN[t].name}">${ICONS[t]}<span>${EXPLAIN[t].name}</span>${testBadge(t)}<i class="qbtn sm" aria-hidden="true">?</i></button>`).join('')}</div>
       ${visibleTypes().includes('trivia') || visibleTypes().some(t => PHYS_TYPES.includes(t) || t === 'pinball') ? `<div class="games-h"><span>Credits</span></div><div class="rulecard credits">${visibleTypes().includes('trivia') ? '<p>Trivia questions from the <a href="https://opentdb.com" target="_blank" rel="noopener noreferrer">Open Trivia Database</a>, opentdb.com, <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a>.</p>' : ''}${visibleTypes().some(t => PHYS_TYPES.includes(t) || t === 'pinball') ? '<p>Mini Golf, Pool, Bowling and Pinball run on <a href="https://brm.io/matter-js" target="_blank" rel="noopener noreferrer">Matter.js</a> (MIT licence).</p>' : ''}</div>` : ''}
     </div></main>`;
 }

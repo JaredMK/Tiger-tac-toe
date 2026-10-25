@@ -369,6 +369,7 @@ main.scr.mini:has(.fing), main.scr.mini:has(.fing) * { touch-action: none; -webk
 
 /* ---------- online play ---------- */
 .link.wide { width: 100%; height: 44px; font-size: 15px; }
+.menu-card .link.same { width: auto; align-self: center; height: 40px; padding: 0 18px; font-size: 15px; }   /* Play a Friend's small Same phone */
 .room { background: var(--panel); border-radius: 16px; padding: 12px 14px; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
 .room small { color: var(--muted); font-weight: 800; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
 .room .code { font-size: 44px; font-weight: 900; letter-spacing: .18em; line-height: 1.1; font-variant-numeric: tabular-nums; padding-left: .18em; }
@@ -1434,6 +1435,7 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .vsp i { font-style: normal; font-size: 13px; background: var(--ink); color: var(--paper); border-radius: 999px; padding: 1px 9px; }
 .vsmid { font-family: 'Luckiest Guy', sans-serif; font-size: 30px; color: var(--x); text-shadow: 2px 2px 0 var(--ink); }
 .vscard .hint { grid-column: 1 / -1; margin: 4px 0 0; text-align: center; }
+.vscard .vstitle { grid-column: 1 / -1; margin: 0 0 4px; text-align: center; font-size: 26px; line-height: 1.1; overflow-wrap: anywhere; }   /* "You are X" (a shared phone: who is which) */
 /* My Stats and profiles */
 .pcard.rec { grid-template-columns: 1fr auto; }
 .pcard .ppct, .pcard .pfr { display: flex; flex-direction: column; }

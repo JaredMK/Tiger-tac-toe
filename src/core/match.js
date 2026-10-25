@@ -91,6 +91,22 @@ export function seatLocal(setup, rng) {
   setup.level = L.level;
   return s1;
 }
+// Play Computer: a Classic match against the computer at once, with no setup screen: the player's side drawn at random,
+// every game in types (the released ones), Normal. The Same phone setup's choices (setup.local, the games ticked) stay as
+// they were; state.quick marks the match, so a rematch is another of these (the side drawn again). Returns the
+// player's side, or null (no game could be dealt).
+export function startQuick(state, rng, types, name) {
+  rng = needRng(rng);
+  const s = state.setup, human = randInt(rng, 2) ? 'O' : 'X', cpu = other(human), keep = s.games;
+  s.mode = 'two'; s.human = human; s.players = { X: 'human', O: 'human' }; s.players[cpu] = 'cpu';
+  s.names = { X: 'X', O: 'O' }; s.names[human] = String(name || '').trim().slice(0, NAME_MAX) || human; s.names[cpu] = CPU_NAME;
+  s.level = 'normal';
+  s.games = Object.fromEntries(TYPES.map(t => [t, types.includes(t) && !SC_ONLY.includes(t)]));
+  const ok = startMatch(state, rng);
+  s.games = keep;
+  state.quick = ok;
+  return ok ? human : null;
+}
 export function enabledGames(setup) { return TYPES.filter(t => setup && setup.games && setup.games[t]); }
 export function playerName(state, p) { return (state.setup && state.setup.names && state.setup.names[p]) || p; }
 // The whole app state. It opens on the setup screen; startMatch turns it into a match.
@@ -106,6 +122,7 @@ export function newState(rng) {
     cpuLevel: null,           // ...and how well: 'easy', 'normal' or 'hard' (core/aiw.js)
     endPick: null,            // the match-end message picked for this match (so it does not change on screen)
     online: null,             // { role: 'host' | 'guest', code, me, name, joined } while playing over the network
+    quick: false,             // a Play Computer match (startQuick): its rematch is another, the side drawn again
     timer: newTimer(0),       // the online turn clock: limit in seconds (0 = none), deadline, timeouts per player
     spot: null,               // { square, by, label }: the square the other player is about to play in, shown before the zoom
     squares: dealNine(TYPES.filter(t => !SC_ONLY.includes(t)), rng),
@@ -154,6 +171,7 @@ export function startMatch(state, rng, only) {   // only: the games this kind of
   state.winner = null; state.winLine = null; state.winReason = null; state.counts = null;
   state.lastSquare = null; state.lastBy = null; state.moves = 0; state.sqlog = [];
   state.sc = null;                                            // (a Super Chaos match: core/chaos.js, startChaos)
+  state.quick = false;                                        // (Play Computer's match: startQuick marks it after)
   markCoins(state, 'X', rng);
   return true;
 }

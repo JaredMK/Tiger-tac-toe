@@ -1,7 +1,6 @@
 // A fresh visit opens the main menu (src/net/matchmaking.js freshVisit, called by main.js boot without a join link):
 // no screen is restored from the saved state; an online match in progress is held for the menu's "Resume match",
-// never entered by itself. And Play Local always offers Super Chaos against the computer, whatever the release
-// switch (staging's database starts with it off); a host's room offers it only where it is open.
+// never entered by itself. And every match is Classic: Super Chaos is off for everyone (core/config.js), no Mode selector.
 // Rendered in Node with the browser's names stubbed (no page needed).
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -46,20 +45,18 @@ test('a fresh visit: an online match in progress opens the main menu with Resume
   MM.freshVisit();
   assert.deepEqual([state.screen, state.online, MM.resumable], ['menu', null, null], 'a lobby: let go of, no Resume');
 });
-test('Play Local offers Super Chaos against the computer whatever the release switch; a host\'s room only where it is open', () => {
-  acct.admin = false;
-  R.setReleases({});                                                  // (staging: the switch never set)
-  Object.assign(state, board(), { screen: 'setup', online: null });
-  R.setMode('chaos');
-  assert.equal(chaosSetup(), true, 'local: Super Chaos picked');
-  const html = renderSetup();
-  assert.match(html, /data-act="gmode" data-v="chaos"/, 'the Mode selector is there');
-  assert.doesNotMatch(html.match(/data-v="chaos"[^]*?<\/button>/)[0], /Testing/, 'no Testing badge in Play Local');
-  R.setMode('classic'); assert.equal(chaosSetup(), false); R.setMode('chaos');
-  state.online = { role: 'host', code: 'ABCDE', me: 'X', chaos: true, joined: false };
-  assert.equal(chaosSetup(), false, 'a host\'s room: Super Chaos only where the switch is on');
-  assert.doesNotMatch(renderSetup(), /data-act="gmode"/, 'and no selector there');
-  R.setReleases({ superchaos: true });
-  assert.equal(chaosSetup(), true);
-  state.online = null;
+test('Classic only: Super Chaos is off for everyone, admins and a released switch included: no Mode selector anywhere', () => {
+  for (const admin of [false, true]) {
+    acct.admin = admin;
+    R.setReleases({ superchaos: true });
+    R.setMode('chaos');
+    Object.assign(state, board(), { screen: 'setup', online: null });
+    assert.equal(chaosSetup(), false, 'Same phone: Classic');
+    assert.doesNotMatch(renderSetup(), /data-act="gmode"|Super Chaos/, 'no Mode selector on Same phone');
+    state.online = { role: 'host', code: 'ABCDE', me: 'X', chaos: true, joined: false };
+    assert.equal(chaosSetup(), false, "a host's room: Classic");
+    assert.doesNotMatch(renderSetup(), /data-act="gmode"|Super Chaos/, "and no selector in the host's room");
+    state.online = null;
+  }
+  acct.admin = false; R.setReleases({});
 });

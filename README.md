@@ -16,16 +16,17 @@ Database, Authentication, and Cloud Functions for accounts, matchmaking, records
 Serve the folder with any static server (ES modules do not load from `file://`), for example
 `npx http-server .`, and open it in a browser.
 
-A main menu comes first: "Play Local", "Play Online" and "How to Play", with a small "by JarHead
+A main menu comes first: "Play Computer", "Play a Friend", "Find Match" and "How to Play", with a small "by JarHead
 Labs" credit and the studio's jar logo at the foot, linking to its X account (https://x.com/jarheadlabs,
 in a new tab). The menu card is centred in the space above it, so the two never overlap, even on the
-smallest phone. Play Online offers "Play a Friend" (host or join a room) and "Find a Match". Play Local opens one setup screen with two
-player slots. Player 1 is always a person: a name and a side, X, O or Random. Player 2 is Human or
-Computer and gets the other side (a computer slot shows a little computer above it). A blank name is
-the side's letter, and the computer's is "Computer". So it is two people passing one phone, or a
-person against the computer on either side; the computer no longer plays itself. A computer slot also
-has its level, **Easy**, **Normal** or **Hard** (see "Playing against the computer"), kept for the next
-match. X moves first.
+smallest phone. Every match is Classic: Super Chaos is switched off for everyone (`src/core/config.js`
+`SUPER_CHAOS_ENABLED`), its code kept for its return, and no mode is offered anywhere. **Play Computer**
+starts a match at once, with no setup screen: your side drawn at random, every released mini-game, the
+computer at Normal (a rematch draws the side again). **Play a Friend** offers "Host game" and "Join game"
+(below), and a small **Same phone** for two people passing one phone: one setup screen with two player
+slots, player 1 a name and a side (X, O or Random), player 2 a name and the other side. A blank name is
+the side's letter. X moves first. Every match opens with a card saying who is who ("You are X", or on a
+shared phone "Player 1 is X · Player 2 is O"), for about 3 seconds or until tapped.
 A rematch keeps the choice: X or O stay, and Random is drawn again for every match. Under "Mini-games"
 are the mini-games in the mix (all on by default), with "Deselect all" and "Select all" buttons at
 the top, in one alphabetical list; a small icon at each row's right end shows the game's kind, luck
@@ -53,7 +54,7 @@ SNATCHED!, MINE!, CLAIMED!, GOTCHA!, KABLAM! and BOP!, never one shown the time 
 in, stays about a second and pops out; it never stays on screen (with reduced motion it does not
 animate, and still goes after a second).
 
-Every screen outside a match (Play Local, Play Online, Play a Friend, Find a Match, Host game, Join
+Every screen outside a match (Play a Friend, Same phone, Find Match, Host game, Join
 game and its waiting screen) has its back button in the top-left corner, in the same style as the Board button inside a
 mini-game, and it goes back one screen. The one exception is Find a Match while it is searching: its
 only way out is the Cancel button under the timer.
@@ -213,15 +214,16 @@ the game's own (`src/games/shared/physics-sim.js`, run by the engine).
 
 ## Playing online
 
-"Play Online" offers "Play a Friend" and "Find a Match" (below). Play a Friend offers "Host game" and
-"Join game". The host gets a five-letter room code (no look-alike
-letters) and a Share button that sends a link to the game with the code filled in; "Waiting for
-friend…" shows until the guest joins. The guest enters a name and the code, or opens the shared link.
-The host picks a side (X, O or Random), the mini-games and the time per turn, and starts once the
-guest is in; both phones then show the same board. A rematch keeps the same choice: X or O stay as
-picked, and with Random the sides are drawn again for every match, rematches included. Once in, the
-guest sees the game as separate labelled lines, like the other setup screens: Host, Your side (X, O,
-or "Drawn at random every match"), Time per turn and Mini-games, then "Waiting for [host] to start…".
+Play a Friend offers "Host game" and "Join game" (and Same phone, above). The host gets a five-letter
+room code (no look-alike letters) and a **Share invite** button: "Join my Tic Tac Chaos game! Code: ABCDE
+tictacchaos.com/?room=ABCDE", the code in both the words and the link, since some apps drop one of them;
+"Waiting for friend…" shows until the guest joins. The guest enters the code on the Join screen, or opens
+the link, which joins at once. The host is Player 1 and the guest Player 2: there is no side to pick, and
+X and O are drawn at random when each match starts, rematches included. The host picks the mini-games
+and the time per turn, and starts once the guest is in; both phones then show the same board. Once in,
+the guest sees the game as separate labelled lines, like the other setup screens: Player 1 (the host),
+Player 2 (them), Sides ("X and O drawn at random each match"), Time per turn and Mini-games, then
+"Waiting for [host] to start…".
 Who played which side is stored with the match itself, so the result is credited to the right players
 even when the next match swaps the seats.
 
@@ -387,18 +389,19 @@ code needs no account (a guest in a friend game without one uses an anonymous se
 Hosting a friend game needs an account too: tapping **Host game** while logged out goes to the login
 first, then straight back to hosting once logged in (and named). Joining a friend's game does not.
 
-**Find Match** (Play Online → Find a Match; needs an account) pairs strangers in a single queue for a
-**Super Chaos** match (both move at once, 1 minute a round; every released Super Chaos game on), with no
-options to pick. Tapping Find a Match goes straight into searching (after
+**Find Match** (main menu; needs an account) pairs strangers in a single queue for a **Classic** match
+(turn by turn, 1 minute a turn; every released mini-game the server can verify), with no options to
+pick. Tapping Find Match goes straight into searching (after
 logging in, if needed): "Searching…" (X and O hopping on one looping CSS animation, O half a hop
-behind by its delay) with just the time waited, and **Cancel**, which goes back to Play Online. The
+behind by its delay) with just the time waited, and **Cancel**, which goes back to the main menu. The
 server pairs players by how long they have waited, longest first. Sides are drawn at random. Two
 players who search at the same moment are paired once: the queue is changed in one database
 transaction. A player can be in only one matchmaking game at a time; with one in progress, Find
 Match reads **Back to your match**. When a match starts, a vs card shows both usernames with their
 records for about 3 seconds (or until tapped); the server's turn clock allows for it.
 
-**The server runs these games** (`src/core/scgame.js`, `functions/index.js`: `scMove`, `scTick`, `scBegin`).
+**Super Chaos from Find Match** (off for now; kept as code, and described here for its return; the server
+runs these games: `src/core/scgame.js`, `functions/index.js`: `scMove`, `scTick`, `scBegin`).
 Each step of a move (a guess, a hit, a roll, a locked-in shot) goes to a Cloud Function as a request, which
 checks it with the same engine the page uses (`src/core`) on that side's own copy of the round, makes every
 random choice itself (dice, coins, the round's Roulette spin, Bump's spins, cards, words, codes), applies it and
@@ -411,11 +414,10 @@ scheduled sweep, settles the round, a side not in having missed it (nothing play
 a row lose the match). The next round begins once both phones are through the recap (a bot is at once; a phone
 gone is waited for 30 seconds). The phones never write a matchmaking game; they read its public state and their own
 side's node (`games/{id}/sides/{side}`: their move, or their progress through one, for a reload). These matches
-count as Find Match on the records, in the history and in the stats (their squares under Super Chaos). The
-Classic Find Match (turn by turn, the server playing each move) stays as code, unused, for the day it is
-wanted again; its moves below describe it. A lone searcher gets a bot after their wait, as before: the bot
-plays by the computer's own Super Chaos play at the admin's level, its move due after a think, and bot
-matches are counted apart.
+count as Find Match on the records, in the history and in the stats (their squares under Super Chaos).
+Find Match is Classic now (turn by turn, the server playing each move, below). A lone searcher gets a bot
+after their wait: the bot plays by the computer's own play at the admin's level, its move due after a
+think, and bot matches are counted apart.
 
 In a Classic game a move goes to a Cloud Function, which checks that it is that
 player's turn and that the move is legal with the same engine the page uses (`src/core`), makes
@@ -503,9 +505,9 @@ records (`botGames`) and the alert limits have no read rule at all.
 
 Find Match is **off** until it is switched on with the **Find Match** card on the admin dashboard
 (it is stored at `features/findMatch` in the database: anyone can read it, only the admin can change
-it). While it is off, the **Find a Match** button on Play Online is greyed out with "Not available at
+it). While it is off, the **Find Match** button on the main menu is greyed out with "Not available at
 this time" (as is the Find Match button on a finished Find Match game's results), the server refuses
-to queue anyone, and anyone already searching is taken out of the queue and sent back to Play Online.
+to queue anyone, and anyone already searching is taken out of the queue and sent back to the main menu.
 Matches already under way carry on, and "Back to your match" still works. Play a Friend is not
 affected. Switching it on takes effect at once on every open page.
 
@@ -535,6 +537,10 @@ Easy/Normal/Hard** (the computer's level, `&level=`) and **Rules: Normal/Super C
 is only one or the other) (`src/ui/sandbox.js`).
 
 ### Mode: Super Chaos or Classic
+
+**Off for now: every match is Classic, and no Mode selector shows anywhere, the admin included**
+(`src/core/config.js` `SUPER_CHAOS_ENABLED` false; the admin's Releases page says so). The rest of this
+section, and the Super Chaos section below, describe it for when it returns.
 
 One **Mode** selector, Super Chaos | Classic, in Play Local's setup and the host's lobby (Find Match is Super
 Chaos only); the choice is kept on the device. The guest's join screen shows the host's mode. The Mini-games
@@ -743,7 +749,7 @@ Find Match is unchanged, and so are the normal modes.
 
 ## Playing against the computer
 
-The computer plays at one of three levels, chosen under Player 2 in Play Local (and by the admin for the
+The computer plays at one of three levels: Play Computer plays it at **Normal** (the admin sets the level for the
 Find Match bots, on Bot Settings): **Normal** is the computer described below, as it has always played;
 **Easy** is the same computer with a careless move about 30% of the time (any legal move, anywhere open);
 **Hard** chooses its square by Monte Carlo search and plays the strategy games by search and the luck

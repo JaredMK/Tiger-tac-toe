@@ -1,4 +1,5 @@
 // Which mini-games are released (the admin's switches), and whether this player is an admin.
+import { SUPER_CHAOS_ENABLED } from '../core/config.js';
 import { allowedTypes, isReleased } from '../core/games.js';
 import { acct } from './accounts.js';
 import { FIREBASE_CONFIG, configured } from './connect.js';
@@ -27,17 +28,18 @@ export function fetchReleases() {                                     // a plain
 const isAdmin = () => !!(acct && acct.admin);
 export const visibleTypes = () => allowedTypes(releases, isAdmin());     // the games this player may see and play
 export const testBadge = t => (isReleased(t, releases) ? '' : '<i class="tst">Testing</i>');   // (only the admin ever sees one)
-// Super Chaos (simultaneous rounds) against the computer is always open in Play Local. Online (a friend room's
-// host; Find Match is the server's) it has its own switch, releases/superchaos: admin only until the admin's
-// dashboard releases it (true), never on by default. (Each environment has its own database, so the switch is set
-// per environment: staging's starts off.)
-export const chaosReleased = () => releases.superchaos === true;
-export const chaosVisible = () => isAdmin() || chaosReleased();
+// Super Chaos (simultaneous rounds) is off everywhere for now, admins included (core/config.js SUPER_CHAOS_ENABLED):
+// every match is Classic and no mode is offered anywhere. Its code stays: with the switch back on, it is always open
+// against the computer, and online (a friend room's host; Find Match is the server's) it has its own release switch,
+// releases/superchaos, admin only until the admin's dashboard releases it (true). (Each environment has its own
+// database, so that switch is set per environment.)
+export const chaosReleased = () => SUPER_CHAOS_ENABLED && releases.superchaos === true;
+export const chaosVisible = () => SUPER_CHAOS_ENABLED && (isAdmin() || chaosReleased());
 // The game mode, Super Chaos or Classic: one choice for Play Local and the host's room, kept on this device. Super
 // Chaos by default; in Play Local always offered (scPicked), in a host's room only where it is open (scMode).
 const MODE_KEY = KEY + '.mode';
 let modePick = (() => { try { return localStorage.getItem(MODE_KEY); } catch (e) { return null; } })();
-export const scPicked = () => modePick !== 'classic';
+export const scPicked = () => SUPER_CHAOS_ENABLED && modePick !== 'classic';
 export const scMode = () => chaosVisible() && scPicked();
 export function setMode(m) { modePick = m === 'classic' ? 'classic' : 'chaos'; try { localStorage.setItem(MODE_KEY, modePick); } catch (e) { /* this visit only */ } }
 export const chaosBadge = () => (chaosReleased() ? '' : '<i class="tst">Testing</i>');

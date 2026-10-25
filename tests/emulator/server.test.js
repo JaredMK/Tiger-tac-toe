@@ -409,7 +409,7 @@ test('ratings off: five wins in a row list nobody on the leaderboard and leave t
 // players read the room, nobody but the server seats anyone or writes a match (security review F1, F4, F5, F10, F12).
 const only = (...ts) => Object.fromEntries(E.TYPES.map(t => [t, ts.includes(t)]));
 async function openRoom(host, setup, side) {
-  const r = await host.call('openRoom', { name: host.name || 'Host', side: side || 'X', setup: setup || {} });
+  const r = await host.call('openRoom', { name: host.name || 'Host', side: side || 'X', setup: Object.assign({ hostPick: 'X' }, setup || {}) });   // (the host kept on X: the tests' hook; players get X and O drawn at random, see the Random test)
   assert.equal(r.ok, true, JSON.stringify(r)); assert.match(r.code, /^[ABCDEFGHJKLMNPQRSTUVWXYZ]{5}$/, 'a room code');
   return r.code;
 }
@@ -544,6 +544,7 @@ test('friend rooms: the host\'s Random draws the sides each match; with both pho
   assert.equal((await guest.call('joinRoom', { code, name: 'RndGuest' })).ok, true);
   assert.equal((await host.call('startRoom', { code })).ok, true);
   const room = await host.read(`rooms/${code}`), pub = await get(`games/${room.game}/pub`);
+  assert.equal(room.setup.hostPick, 'random', 'X and O drawn at random: no side kept for the host');
   const hostSide = pub.players.X.uid === host.uid ? 'X' : 'O';
   assert.deepEqual([pub.players[hostSide].uid, pub.players[E.other(hostSide)].uid], [host.uid, guest.uid]);
   assert.deepEqual([room.players[hostSide].uid, room.setup.hostSide], [host.uid, hostSide], "the room's seats follow the draw");

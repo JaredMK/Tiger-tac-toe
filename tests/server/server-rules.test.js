@@ -62,11 +62,11 @@ test('matchmaking pairs with ratings on (behind the flag): closest rating first,
 
 test('ratings are off: one Find Match queue, 1 minute a turn, pairs by wait time alone', () => {
   assert.equal(R.RATINGS_ENABLED, false);
-  assert.deepEqual(Object.keys(R.QUEUES), ['chaos', 'match'], 'Find Match is Super Chaos; the Classic queue stays as code');
+  assert.deepEqual(Object.keys(R.QUEUES), ['chaos', 'match'], 'Find Match is Classic; the Super Chaos queue stays as code');
   assert.deepEqual(R.QUEUES.chaos, { key: 'chaos', mode: 'match', timer: 0, chaos: true });
-  assert.deepEqual([R.queueKey(), R.queueKey('chaos'), R.queueKey('classic'), R.queueKey('classic', true)], ['chaos', 'chaos', 'chaos', 'match'], 'Classic only where allowed (the tests, the admin)');
+  assert.deepEqual([R.queueKey(), R.queueKey('chaos'), R.queueKey('classic'), R.queueKey('classic', true), R.queueKey('chaos', true)], ['match', 'match', 'match', 'match', 'chaos'], 'Classic; Super Chaos only while it is open (the tests)');
   assert.deepEqual(R.QUEUES.match, { key: 'match', mode: 'match', timer: 60, classic: true });
-  assert.equal(R.queueKey('casual', true), 'chaos', 'an older page asking for another queue gets Super Chaos');
+  assert.equal(R.queueKey('casual', true), 'match', 'an older page asking for another queue gets Classic');
   const t = 1e6;
   const q = { a: { rating: 1200, since: t - 10 }, b: { rating: 2400, since: t - 30 }, c: { rating: 1210, since: t - 20 }, d: { rating: 800, since: t - 5, game: 'g' } };
   assert.deepEqual(R.pairQueue(q, t), [['b', 'c']], 'the two who waited longest, whatever their ratings; an odd one out waits');

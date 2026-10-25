@@ -1,6 +1,6 @@
 // The Find Match screen and its intro.
 import { acct } from '../../net/accounts.js';
-import { isMM, mmIntro, search } from '../../net/matchmaking.js';
+import { mmIntro, search } from '../../net/matchmaking.js';
 import { net } from '../../net/room.js';
 import { esc, state } from '../app.js';
 import { CHEV, toon } from '../art.js';
@@ -9,16 +9,18 @@ import { RATINGS_ENABLED } from '../config.js';
 import { record } from './profile.js';
 
 export function renderIntro() {
-  if (!mmIntro || !isMM() || state.screen !== 'board') return '';
-  const side = s => { const p = mmIntro.players[s] || {}; return `<div class="vsp ${s}">${toon(s)}<b>${esc(p.name || s)}</b><small>${record(p.record)}</small>${mmIntro.me === s ? '<i>You</i>' : ''}</div>`; };
-  return `<div class="vsintro" data-act="intro-close" role="dialog" aria-label="Your match"><div class="vscard">${side('X')}<div class="vsmid">VS</div>${side('O')}
-    <p class="hint">${mmIntro.me === 'X' ? 'You go first' : `${esc((mmIntro.players.X || {}).name || 'X')} goes first`} · tap to start</p></div></div>`;
+  if (!mmIntro || state.screen !== 'board') return '';
+  const me = mmIntro.me;
+  const side = s => { const p = mmIntro.players[s] || {}; return `<div class="vsp ${s}">${toon(s)}<b>${esc(p.name || s)}</b>${p.record ? `<small>${record(p.record)}</small>` : ''}${me === s ? '<i>You</i>' : ''}</div>`; };
+  const title = me ? `You are ${me}` : `${esc((mmIntro.players.X || {}).name || 'X')} is X · ${esc((mmIntro.players.O || {}).name || 'O')} is O`;
+  return `<div class="vsintro" data-act="intro-close" role="dialog" aria-label="${me ? `You are ${me}` : 'Who plays X and O'}"><div class="vscard"><h2 class="vstitle">${title}</h2>${side('X')}<div class="vsmid">VS</div>${side('O')}
+    <p class="hint">${me === 'X' ? 'You go first' : `${esc((mmIntro.players.X || {}).name || 'X')} goes first`} · tap to start</p></div></div>`;
 }
 export function renderFind() {
   const p = acct.profile || {};
   // While searching, the way out is the Cancel under the timer: the one screen with no back button at the top left.
-  const back = `<div class="bar">${search.on ? '' : `<button class="back" data-act="online-go" aria-label="Back to Play Online">${CHEV}Back</button>`}
-      <div class="ttl"><b>Find Match</b><small>${esc(p.username || '')} · Super Chaos · ${RATINGS_ENABLED ? `rating ${p.rating || 1200}` : `record ${record(p)}`}</small></div></div>`;
+  const back = `<div class="bar">${search.on ? '' : `<button class="back" data-act="menu" aria-label="Back to the main menu">${CHEV}Menu</button>`}
+      <div class="ttl"><b>Find Match</b><small>${esc(p.username || '')} · ${RATINGS_ENABLED ? `rating ${p.rating || 1200}` : `record ${record(p)}`}</small></div></div>`;
   if (search.found) {
     return `<main class="scr setup acct-scr">${back}<div class="setup-box"><div class="searching found" role="status"><div class="big-g">${toon('X')}${toon('O')}</div><h2>Match found!</h2><p class="hint">${esc(net.msg || 'Loading the match…')}</p></div></div></main>`;
   }

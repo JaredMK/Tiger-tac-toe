@@ -25,7 +25,7 @@ export function setFindOn(on) {
   if (on === findOn) return;
   findOn = on;
   try { localStorage.setItem(KEY + '.find', on ? 'on' : 'off'); } catch (e) { /* no storage: read again next visit */ }
-  if (!on && search.on) { cancelSearch(); return; }   // switched off mid-search: out of the queue, back to Play Online
+  if (!on && search.on) { cancelSearch(); return; }   // switched off mid-search: out of the queue, back to the main menu
   render();
 }
 export function isMM() { return !!(state.online && state.online.kind === 'mm'); }
@@ -33,7 +33,7 @@ export function isMM() { return !!(state.online && state.online.kind === 'mm'); 
 /* ----- Find Match: a queue on the server; the phone checks in every few seconds while it waits ----- */
 export async function openFind() {
   if (activeElsewhere()) { enterMatched(acct.active); return; }   // back to the match in progress
-  if (!findOn) { state.screen = 'online'; commit(); return; }   // switched off: the greyed button on Play Online
+  if (!findOn) { state.screen = 'menu'; commit(); return; }   // switched off: the greyed button on the main menu
   if (!(await needAccount('find'))) return;
   search.msg = ''; search.found = false;
   state.screen = 'find'; commit();
@@ -51,13 +51,13 @@ async function searchTick() {
   if (!searchBusy) {
     searchBusy = true;
     try {
-      const r = await call('findMatch', {});                     // Find Match is Super Chaos: one queue
+      const r = await call('findMatch', {});                     // Find Match is Classic: one queue, run by the server
       searchBusy = false;
       if (search.on && r.status === 'matched') { enterMatched(r); return; }
       search.msg = '';
     } catch (e) {
       searchBusy = false;
-      if (e && e.details && e.details.off) { stopSearch(); setFindOn(false); state.screen = 'online'; commit(); return; }   // switched off: already out of the queue
+      if (e && e.details && e.details.off) { stopSearch(); setFindOn(false); state.screen = 'menu'; commit(); return; }   // switched off: already out of the queue
       search.msg = e && /precondition|invalid-argument|unauthenticated/.test(String(e.code)) ? String(e.message) : 'Connection trouble: still trying…';
     }
   }
@@ -66,7 +66,7 @@ async function searchTick() {
 export async function cancelSearch() {
   if (!search.on) return;
   stopSearch();
-  state.screen = 'online'; commit();            // back to Play Online
+  state.screen = 'menu'; commit();              // back to the main menu
   try { const r = await call('cancelSearch', {}); if (r.status === 'matched') enterMatched(r); }   // paired just before Cancel: the game is on
   catch (e) { /* a searcher who stops checking in is dropped from the queue anyway */ }
 }
@@ -78,7 +78,7 @@ export function findAgain() {                          // the results screen: an
   startSearch();
 }
 
-// Paired: into the server's game (a Super Chaos match the server runs: core/scgame.js, net/chaos.js).
+// Paired: into the server's game (a Classic match the server runs: functions/index.js changeGame).
 export function enterMatched(a) { enterGame(a.game, a.side); }
 // A match of this player's in progress that this phone is not showing.
 export function activeElsewhere() {
@@ -185,20 +185,30 @@ export function onGameValue(pub) {
   state.setup.timer = pub.timer;
   o.mode = pub.mode; o.queue = pub.queue;
   if (net.status !== 'connected') setNet('connected', '');
-  if (state.screen === 'find') {
-    state.screen = 'board'; search.found = false;
+  if (state.screen === 'find') { state.screen = 'board'; search.found = false; }
+  if (o.introFor !== o.game) {                                    // a fresh game (Find Match's, or a friend room's match or rematch): who plays whom first
+    o.introFor = o.game;
     let st0 = null; try { st0 = JSON.parse(pub.state); } catch (e) { /* shown as it comes */ }
-    if (st0 && !st0.seq && !st0.moves && !st0.winner) showIntro(pub);   // a fresh game: who plays whom first
+    if (st0 && !st0.seq && !st0.moves && !st0.winner && !(st0.sc && st0.sc.round > 1)) showIntro(pub);
   }
   if (presenting()) { setPendingRoom(room); return; }
   applyMatch(room);
 }
-// The players' intro: both usernames with their records, about 3 seconds (or until tapped), then the
-// board. The server starts the first turn's clock late enough for it.
+// The side reveal that opens every match (Find Match, a friend room's, Play Computer's, Same phone's): who is X and who
+// is O, "You" on this phone's side (none on a shared phone), about 3 seconds (or until tapped), then the board. Find
+// Match's shows the players' records. Online, the server starts the first turn's clock late enough for it; the
+// computer waits for it (ui/turns.js scheduleCpu, then afterIntro).
 export let mmIntro = null, introTimer = null;
 const INTRO_MS = 3000;
+let afterIntro = null;
+export function onIntroClosed(f) { afterIntro = f; }               // (input.js: the computer's turn, once the intro is gone)
 function showIntro(pub) {
-  mmIntro = { players: pub.players, me: state.online.me };
+  const friend = pub.mode === 'friend', players = {};
+  for (const s of ['X', 'O']) { const p = pub.players[s] || {}; players[s] = friend ? { name: p.name } : p; }   // (a friend room's match: no Find Match record)
+  showSides(players, state.online.me);
+}
+export function showSides(players, me) {
+  mmIntro = { players, me: me || null };
   clearTimeout(introTimer); introTimer = setTimeout(closeIntro, INTRO_MS);
 }
 export function closeIntro() {
@@ -206,6 +216,7 @@ export function closeIntro() {
   if (!mmIntro) return;
   mmIntro = null;
   const el = app.querySelector('.vsintro'); if (el) el.remove();
+  if (afterIntro) afterIntro();
 }
 // The clock ran out on a matchmaking game: ask the server, which checks the deadline itself.
 export async function fireTimeoutMM(seq, deadline) {

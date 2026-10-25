@@ -82,7 +82,7 @@ const STALE_MS = 15000;          // a searcher that has not checked in for this 
 
 const MATCH_GRACE_MS = 6000;     // the first turn's clock starts late: both phones load the board and show the players
 const OLD_QUEUES = ['ranked', 'casual30', 'casual60', 'casual180'];   // before Find Match was one queue: left on cancel
-const CLASSIC_OK = () => process.env.FUNCTIONS_EMULATOR === 'true';   // the Classic queue: only the tests may ask for it (the admin, were it wanted again)
+const SC_OK = () => E.SUPER_CHAOS_ENABLED || process.env.FUNCTIONS_EMULATOR === 'true';   // Super Chaos (Find Match's queue, a friend room's switch): off for everyone (core/config.js), its code kept; only the tests may still ask for it
 const GAME_KEEP_MS = 24 * 3600 * 1000;   // finished games are deleted after a day (their history stays)
 // App Check (reCAPTCHA Enterprise on the page: src/net/connect.js): every call carries a token from a real copy of the
 // site, and with TTC_APPCHECK=enforce in the project's .env file the server refuses calls without one. Off until the
@@ -308,7 +308,7 @@ exports.claimUsername = onCall(CALL, async req => {
 exports.findMatch = onCall(Object.assign({ secrets: BOUND_SECRETS }, CALL), async req => {
   const uid = needAccount(req);
   const isAdmin = !!(req.auth.token && req.auth.token.admin === true);
-  const key = R.queueKey(req.data && req.data.mode, isAdmin || CLASSIC_OK());   // Super Chaos (the Classic queue is for the tests)
+  const key = R.queueKey(req.data && req.data.mode, SC_OK());   // Classic (the Super Chaos queue: kept as code, for the tests)
   const prof = (await db.ref(`users/${uid}`).get()).val();
   if (!prof || !prof.username) throw new HttpsError('failed-precondition', 'Pick a username first.');
   // The entry first, then the active game: a pairing that removes the entry writes the active game in the
@@ -480,7 +480,7 @@ async function makeGame(key, id, X, O, opts) {
   const allowed = friend ? E.allowedTypes(rel, !!friend.admin) : null;
   let rec, node;
   if (Q.chaos) {                                                  // Super Chaos, run here (core/scgame.js): the released Super Chaos games (every one when both players are admins, or in the admin's room)
-    if (friend && !(friend.admin || rel.superchaos === true)) return false;   // (Super Chaos not open to this room's host)
+    if (friend && !(SC_OK() && (friend.admin || rel.superchaos === true))) return false;   // (Super Chaos not open to this room's host, or off everywhere)
     const admins = !bot && !friend && (await isAdminUser(X.uid)) && (await isAdminUser(O.uid));
     const pool = friend ? allowed : E.findMatchTypes(admins ? E.TYPES : E.releasedTypes(rel));   // (Find Match: only games whose result the server can verify, core/games.js FIND_MATCH_HOLD)
     const types = E.scTypes().filter(g => pool.includes(g) && on(g));
@@ -1105,12 +1105,14 @@ const roomCodeOf = v => String(v || '').toUpperCase().replace(/[^A-Z]/g, '');
 const roomName = (v, dflt) => String(v || '').trim().slice(0, E.NAME_MAX) || dflt;
 function newRoomCode() { let c = ''; for (let i = 0; i < 5; i++) c += ROOM_ALPHABET[crypto.randomInt(ROOM_ALPHABET.length)]; return c; }
 // The lobby's setup as the host sends it, checked: the games (true or false by type; a game the host may not deal is off),
-// the time per turn, the host's side (X, O or Random each match) and the Super Chaos switch (only where it is open to them).
+// the time per turn and the Super Chaos switch (only where it is open to them). The host is Player 1 and the friend Player 2:
+// X and O are drawn at random when each match starts (hostPick always 'random'; startRoom draws the seats).
 function roomSetupOf(d, rel, admin) {
   const o = d && typeof d === 'object' ? d : {}, allowed = E.allowedTypes(rel, admin), games = {};
   for (const t of E.TYPES) games[t] = allowed.includes(t) && (!o.games || typeof o.games !== 'object' || o.games[t] !== false);
-  return { games, timer: E.normTimer(Number(o.timer) || 0), hostPick: o.hostPick === 'random' ? 'random' : o.hostPick === 'O' ? 'O' : 'X', chaos: !!o.chaos && (admin || rel.superchaos === true) };
+  return { games, timer: E.normTimer(Number(o.timer) || 0), hostPick: TEST_SEATS() && o.hostPick === 'X' ? 'X' : 'random', chaos: !!o.chaos && SC_OK() && (admin || rel.superchaos === true) };
 }
+const TEST_SEATS = () => process.env.FUNCTIONS_EMULATOR === 'true';   // (the tests alone may keep the host on X, hostPick 'X', so their moves know whose turn it is)
 const roomSide = (room, uid) => (room && room.players ? ['X', 'O'].find(s => room.players[s] && room.players[s].uid === uid) || null : null);
 exports.openRoom = onCall(CALL, async req => {
   const uid = needAccount(req), d = req.data || {}, t = now();   // hosting needs an account (as the page asks before Host)
@@ -1190,7 +1192,8 @@ exports.startRoom = onCall(CALL, async req => {
   const lock = await db.ref(`rooms/${code}/starting`).transaction(cur => (cur && t - cur < 20000 ? undefined : t), undefined, false);
   if (!lock.committed) return { ok: true, started: false };
   try {
-    const seats = room.setup && room.setup.hostPick === 'random' ? drawSeats(room.players, room.host) : { players: room.players, hostSide: room.players.X.uid === room.host ? 'X' : 'O', swapped: false };
+    const fixed = TEST_SEATS() && room.setup && room.setup.hostPick === 'X';
+    const seats = fixed ? { players: room.players, hostSide: room.players.X.uid === room.host ? 'X' : 'O', swapped: false } : drawSeats(room.players, room.host);   // X and O drawn at random for every match, the rematch too
     const admin = await isAdminUser(room.host);
     const named = await Promise.all(['X', 'O'].map(s => db.ref(`users/${seats.players[s].uid}/username`).get().then(v => !!v.val())));
     const at = s => ({ uid: seats.players[s].uid, account: named[s === 'X' ? 0 : 1], e: { name: roomName(seats.players[s].name, s) } });

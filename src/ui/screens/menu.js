@@ -1,7 +1,7 @@
 // The main menu.
 import { soundBtn } from '../../audio/sound.js';
 import { acct, loggedIn } from '../../net/accounts.js';
-import { resumable, resumeBusy } from '../../net/matchmaking.js';
+import { activeElsewhere, findOn, resumable, resumeBusy } from '../../net/matchmaking.js';
 import { esc, menuNote } from '../app.js';
 import { toon } from '../art.js';
 import { RATINGS_ENABLED } from '../config.js';
@@ -16,10 +16,16 @@ export function renderMenu() {
     <h1 class="title"><span class="sr">Tic Tac Chaos</span><span class="ttop wob" aria-hidden="true">${'TIC TAC'.split('').map((c, k) => c === ' ' ? '<span>&nbsp;</span>' : `<span style="animation-delay:${(k * .09).toFixed(2)}s">${c}</span>`).join('')}</span><span class="chaos wob">${burstSvg('CHAOS!', 'r', 300, 150, 54)}</span></h1>
     <div class="pals" aria-hidden="true">${toon('X')}${toon('O')}</div>${menuNote ? `<div class="notice" role="status">${esc(menuNote)}</div>` : ''}
     ${resumable ? `<button class="primary resume" data-act="resume"${resumeBusy ? ' disabled' : ''}>Resume match</button>` : ''}
-    <button class="primary" data-act="mode-go" data-mode="local">Play Local</button>
-    <button class="primary alt" data-act="online-go">Play Online</button>
+    <button class="primary" data-act="cpu-go">Play Computer</button>
+    <button class="primary alt" data-act="friend-go">Play a Friend</button>
+    ${findBtn()}
     <button class="btn howto" data-act="howto">How to Play</button>
   </div><a class="credit" href="${JARHEAD_URL}" target="_blank" rel="noopener noreferrer" aria-label="by JarHead Labs, on X (opens in a new tab)">${JARHEAD_LOGO}<span>by JarHead Labs</span></a></main>`;
+}
+// Find Match: greyed while the admin has it off ("Not available at this time"); back into the match in progress if there is one.
+function findBtn() {
+  const back = activeElsewhere(), can = back || findOn;
+  return `<button class="primary mm${can ? '' : ' off'}" data-act="find-go"${can ? '' : ' disabled'}>${back ? 'Back to your match' : `Find Match${can ? '' : '<small>Not available at this time</small>'}`}</button>`;
 }
 // The main menu's top row: My Stats (or the leaderboard, with ratings on), and the account (Log in, or your username).
 export let acctLoading = false;                     // a returning player's account is being fetched at start

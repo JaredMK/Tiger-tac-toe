@@ -11,7 +11,7 @@ import { echoPinned } from '../games/echo/view.js';
 import { oddPinned } from '../games/oddone/view.js';
 import { TYPES } from '../games/index.js';
 import { SND, matchEndSound } from '../audio/sound.js';
-import { connectQuiet, loggedIn } from './accounts.js';
+import { acct, connectQuiet, loggedIn } from './accounts.js';
 import { call, connectFirebase, connected, fb, serverNow } from './connect.js';
 import { isMM, listenGame, onGameValue, resignMM } from './matchmaking.js';
 import { scFollow } from './chaos.js';
@@ -103,9 +103,9 @@ export function stopListening() {                                 // (the match'
 // ---------- the host: opens a room (the server picks its code), shares it, sets the match up, starts it ----------
 export async function hostRoom(code, resume) {
   if (!resume) {
-    if (state.setup.hostPick !== 'random') state.setup.hostPick = state.setup.human === 'O' ? 'O' : 'X';
+    state.setup.hostPick = 'random';            // the host is Player 1, the friend Player 2: X and O are drawn when each match starts (the server's startRoom)
     state.stats = null;                         // an online match: never recorded as a local one
-    state.online = { role: 'host', code: '', me: state.setup.human === 'O' ? 'O' : 'X', joined: false, shownSeq: null, matchId: null, chaos: scMode() }; state.sc = null;   // (the room's mode: this device's choice to begin with; the code comes from the server)
+    state.online = { role: 'host', code: '', me: 'X', joined: false, shownSeq: null, matchId: null, chaos: scMode() }; state.sc = null;   // (the room's mode: this device's choice to begin with; the code comes from the server)
     state.setup.mode = 'online'; state.screen = 'setup';
     state.setup.timer = normTimer(state.setup.timer);           // an older 30 s or 3 min choice: 1 minute
   }
@@ -115,8 +115,10 @@ export async function hostRoom(code, resume) {
   const o = state.online;
   if (!resume) {
     try {
-      const name = String(state.setup.names[o.me] || '').trim().slice(0, NAME_MAX) || o.me;
-      const r = await call('openRoom', { name, side: o.me, setup: { games: restrictGames(Object.assign({}, state.setup.games), visibleTypes()), timer: state.setup.timer || 0, hostPick: state.setup.hostPick === 'random' ? 'random' : o.me, chaos: !!o.chaos } });
+      const typed = String(state.setup.names[o.me] || '').trim().slice(0, NAME_MAX), mine = ['X', 'O', 'Friend'].includes(typed) ? '' : typed;   // (a side's letter is no name)
+      const name = mine || String((acct.profile && acct.profile.username) || '').slice(0, NAME_MAX) || 'Player 1';   // (hosting needs an account: its username by default)
+      state.setup.names[o.me] = name;
+      const r = await call('openRoom', { name, side: o.me, setup: { games: restrictGames(Object.assign({}, state.setup.games), visibleTypes()), timer: state.setup.timer || 0, hostPick: 'random', chaos: !!o.chaos } });
       if (state.online !== o) { if (r && r.ok) closeSeat(r.code, r.side, true); return; }   // went back while the room was opening
       if (!r || !r.ok) throw new Error('refused');
       o.code = r.code; o.me = r.side;
@@ -144,13 +146,6 @@ export function flushName(name) {                                       // writt
   const o = state.online;
   if (!fb || !o || !o.me || !validCode(o.code) || !lobby || !lobby.players || !lobby.players[o.me] || lobby.players[o.me].uid !== fb.uid) return;
   fb.m.set(roomRef('players/' + o.me + '/name'), String(name || '').trim().slice(0, NAME_MAX) || o.me).catch(() => {});
-}
-// The host takes the other side: the server moves its seat (and its friend's, if there is one) over.
-export async function hostSide(side) {
-  const o = state.online;
-  if (!fb || !isHost() || side === o.me || !validCode(o.code)) return;
-  clearTimeout(nameTimer); nameTimer = null;
-  try { await call('roomSide', { code: o.code, side }); } catch (e) { /* the room's value says where the seats are */ }
 }
 // Start: the server makes the match (a games/{id} match, as Find Match's) and points the room at it; both phones follow it there.
 let startBusy = false;
@@ -490,13 +485,16 @@ export function quitMatch() {
   if (lost) state.endPick = null;
   commit();
 }
+// The invite: the room's code in the words and in the link alike (some apps drop the text, some the link), e.g.
+// "Join my Tic Tac Chaos game! Code: ABCDE tictacchaos.com/?room=ABCDE". The link joins at once; the code goes in the Join screen.
+export function inviteText(code, url) { return `Join my Tic Tac Chaos game! Code: ${code} ${String(url).replace(/^https?:\/\//, '')}`; }
 export async function shareRoom() {
-  const url = roomLink(), text = `Join my Tic Tac Chaos game: room ${state.online.code}`;
+  const url = roomLink(), text = inviteText(state.online.code, url);
   try {
     if (navigator.share) { await navigator.share({ title: 'Tic Tac Chaos', text, url }); return; }
   } catch (e) { if (e && e.name === 'AbortError') return; }
-  let note = 'Link copied';
-  try { await navigator.clipboard.writeText(url); } catch (e) { note = url; }
+  let note = 'Invite copied';
+  try { await navigator.clipboard.writeText(text); } catch (e) { note = text; }
   showNotice(note, 1800);
 }
 // Back after a reload or a time away: the same room and seat, from localStorage.

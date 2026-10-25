@@ -2,6 +2,7 @@
 import { endFlash, leaveSquare, playMove } from '../core/board.js';
 import { playerName } from '../core/match.js';
 import { SND, backSounds, matchEndSound, moveSounds } from '../audio/sound.js';
+import { mmIntro } from '../net/matchmaking.js';
 import { applyPending } from '../net/room.js';
 import {
   CPU_MS, FLASH_MS, FLIP_MS, MEMORY_MS, RNG, commit, cpuPlan, cpuTimer, flashReady, flashTimer, holdTimer,
@@ -24,7 +25,7 @@ export function scheduleCpu() {
   clearTimeout(cpuTimer); setCpuTimer(null);
   chaosStep();                                                   // Super Chaos: the round's own steps (ui/chaos.js)
   if (thinking) return;
-  if (!cpuTurn() || state.flash || state.done || state.confirm || menuOpen || explainT || joinAsk || repActive()) return;   // (repActive: its inputs are playing; the replay makes the move when they are done)
+  if (!cpuTurn() || state.flash || state.done || state.confirm || menuOpen || explainT || joinAsk || repActive() || mmIntro) return;   // (mmIntro: the side reveal is up; its close asks again)   // (repActive: its inputs are playing; the replay makes the move when they are done)
   if (state.screen === 'board') {                               // its move, worked out while it pauses to think; then its square lit up
     const t0 = performance.now();
     setCpuPlan(null);

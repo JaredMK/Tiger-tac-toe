@@ -1,26 +1,26 @@
 // Input: the page's click handler (each game's own controls go to its view.js: actions), the keyboard,
 // scrolling lists, and joining by link.
 import { startChaos } from '../core/chaos.js';
-import { restrictGames } from '../core/games.js';
-import { levelOf } from '../core/aiw.js';
-import { NAME_MAX, normLocal, normSetup, seatLocal, startMatch, syncNames } from '../core/match.js';
+import { releasedTypes, restrictGames } from '../core/games.js';
+import { NAME_MAX, normLocal, normSetup, seatLocal, startMatch, startQuick } from '../core/match.js';
 import { resignLocal } from '../core/records.js';
 import { normTimer } from '../core/timer.js';
 import { hpSel, setHpSel } from '../games/hexapawn/view.js';
 import { GAMES, TYPES } from '../games/index.js';
+import { other } from '../core/util.js';
 import { SND } from '../audio/sound.js';
 import {
   acct, afterLogin, connectQuiet, gateAct, gateOn, loggedIn, loginMail, loginMsg, loginPass, loginReset, loginWith, logout,
   needAccount, saveUsername, setAfterLogin, setLoginMail, setLoginMsg, setLoginPass, setUnameDraft, unameDraft
 } from '../net/accounts.js';
-import { cancelSearch, closeIntro, findAgain, isMM, openFind, resignMM, resumeMatch, search, startSearch } from '../net/matchmaking.js';
+import { cancelSearch, closeIntro, findAgain, isMM, onIntroClosed, openFind, resignMM, resumeMatch, search, showSides, startSearch } from '../net/matchmaking.js';
 import { attemptMove, setTapEl, tapEl } from '../net/moves.js';
 import { reactCooling, rx, sendReact } from '../net/reactions.js';
-import { scMode, scPicked, setMode, visibleTypes } from '../net/releases.js';
+import { releases, scMode, scPicked, setMode, visibleTypes } from '../net/releases.js';
 import {
-  dbName, dbSetup, flushName, hostRoom, hostSide, isHost, joinCode, joinName, joinRoom, leaveLobby, leaveLoses,
-  leaveRoom, lockMine, mySide, nameTimer, pinned, quitMatch, rematchCancel, rematchOnline, room, setJoinCode, setJoinName,
-  setNameTimer, setNet, shareRoom, startOnline, validCode
+  dbName, dbSetup, hostRoom, isHost, joinCode, joinName, joinRoom, leaveLobby, leaveLoses,
+  leaveRoom, lockMine, mySide, pinned, quitMatch, rematchCancel, rematchOnline, room, setJoinCode, setJoinName,
+  setNet, shareRoom, startOnline, validCode
 } from '../net/room.js';
 import { reportLocal, trackEnd, trackStart } from '../net/tracking.js';
 import {
@@ -37,7 +37,7 @@ import { scJointFrame, scPopup, scSkip } from './chaos.js';
 import { repActive, repNote, repSkip, repVal } from './replay.js';
 import { runGo } from './runner.js';
 import { hist, openHistory, openLeaderboard, openProfile, prof, profileBack, setHist } from './screens/profile.js';
-import { chaosSetup, noteMode, setGames, setupTypes } from './screens/setup.js';
+import { chaosSetup, setGames, setupTypes } from './screens/setup.js';
 import { cpuTurn, dismissFlash, scheduleCpu } from './turns.js';
 import { closeReport, openReport } from './report.js';
 
@@ -72,10 +72,28 @@ async function leaveAndJoin(code) {
   setMenuNote('');
   setJoinCode(code); state.online = null; state.setup.mode = 'two'; state.screen = 'join'; setNet('idle', '');
   commit();
+  joinRoom(code, joinName.trim() || 'Friend', false);              // (the link joins at once)
+}
+
+// A local match just started (Play Computer, Same phone, a rematch): the side reveal first, "You are X" (or O) against
+// the computer; on a shared phone, who is which.
+function revealSides() {
+  const n = p => { const v = state.setup.names[p]; return v && v !== p ? v : p === state.setup.human ? 'Player 1' : 'Player 2'; };   // (a name left blank is its side's letter: here, who it is)
+  const players = { X: { name: n('X') }, O: { name: n('O') } };
+  showSides(players, state.cpu && state.cpu.length === 1 ? other(state.cpu) : null);
+}
+// Play Computer: a Classic match at once, no setup screen: the side drawn at random, every released game, Normal.
+function playComputer() {
+  const name = (loggedIn() ? acct.profile.username : normLocal(state.setup).n1.trim()) || 'You';
+  setMode('classic');
+  if (!startQuick(state, RNG, releasedTypes(releases), name)) return false;
+  trackStart(); revealSides(); commit();
+  return true;
 }
 
 // Its listeners: main.js calls this once, in the page's original order of listeners.
 export function init() {
+  onIntroClosed(scheduleCpu);                                     // the computer moves once the side reveal is gone
 
   /* ----- input ----- */
   app.addEventListener('click', e => {
@@ -130,19 +148,16 @@ export function init() {
       commit();
     } else if (act === 'resume') {               // the main menu: back into the online match this phone was playing (held at the page's load)
       resumeMatch();
-    } else if (act === 'mode-go') {              // the main menu: pick a mode, then set up
-      state.setup.mode = 'two'; normSetup(state.setup); normLocal(state.setup); if (scPicked()) normLocal(state.setup).p2 = 'cpu'; state.screen = 'setup'; setAdvOpen(false); commit();
-    } else if (act === 'kind') {                 // Play Local: player 2 is a Human or the Computer
-      if (chaosSetup() && el.dataset.kind !== 'cpu') { setMode('classic'); noteMode('Super Chaos needs a computer or online opponent'); }   // (Super Chaos: against the computer or online only: Human switches to Classic)
-      normLocal(state.setup).p2 = el.dataset.kind === 'cpu' ? 'cpu' : 'human'; commit();
+    } else if (act === 'cpu-go') {               // the main menu: Play Computer, a match at once
+      playComputer();
+    } else if (act === 'same-go') {              // Play a Friend: Same phone, two people on this phone (its setup: names, sides, mini-games)
+      state.setup.mode = 'two'; normSetup(state.setup); normLocal(state.setup).p2 = scPicked() ? 'cpu' : 'human'; state.screen = 'setup'; setAdvOpen(false); commit();
     } else if (act === 'gmode') {                // the Mode, Super Chaos or Classic: Play Local (Super Chaos against the computer), the host's room, Find Match; kept on this device
       setMode(el.dataset.v);
       if (isHost()) { state.online.chaos = scMode(); commit(); dbSetup({ chaos: state.online.chaos }); return; }   // (only the Super Chaos games among those on are dealt)
       if (scPicked() && state.screen === 'setup') normLocal(state.setup).p2 = 'cpu';
       commit();
-    } else if (act === 'level') {                // Play Local: the computer's level, Easy, Normal or Hard
-      normLocal(state.setup).level = levelOf(el.dataset.v); commit();
-    } else if (act === 'lside') {                // Play Local: player 1's side, X, O or Random (drawn at every start)
+    } else if (act === 'lside') {                // Same phone: player 1's side, X, O or Random (drawn at every start)
       normLocal(state.setup).pick = ['X', 'O', 'random'].includes(el.dataset.side) ? el.dataset.side : 'X'; commit();
     } else if (act === 'review') {               // the results screen: look back over the final board
       if (state.winner) { state.screen = 'review'; state.zoom = null; render(); }
@@ -160,21 +175,20 @@ export function init() {
       if (isHost()) { state.setup.timer = normTimer(Number(el.dataset.v)); commit(); dbSetup({ timer: state.setup.timer }); }
     } else if (act === 'rematch') {               // the same settings again (a Random side drawn again)
       if (state.online) { rematchOnline(); return; }
+      if (state.quick && !state.sc) { playComputer(); return; }   // (Play Computer's: another, the side drawn again)
       seatLocal(state.setup, RNG);
-      if (state.sc ? startChaos(state, RNG) : startMatch(state, RNG)) { trackStart(); commit(); }   // (a Super Chaos match: another)
+      if (state.sc ? startChaos(state, RNG) : startMatch(state, RNG)) { trackStart(); if (!state.sc) revealSides(); commit(); }   // (a Super Chaos match: another)
     } else if (act === 'rematch-cancel') {        // the rematch asked for, taken back
       rematchCancel();
-    } else if (act === 'online-go') {
-      state.screen = 'online'; setNet('idle', ''); commit();
-      connectQuiet();                               // (whether Find Match is on: it follows the database from here)
-    } else if (act === 'friend-go') {
+    } else if (act === 'friend-go') {             // the main menu: Play a Friend (Host, Join, or Same phone)
       state.screen = 'friend'; setNet('idle', ''); commit();
+      connectQuiet();
     } else if (act === 'find-go') {               // the main menu: Find Match (or back to the match in progress)
       openFind();
     } else if (act === 'search-go') {
       startSearch();
     } else if (act === 'search-cancel') {
-      if (search.on) cancelSearch(); else { state.screen = 'online'; commit(); }
+      if (search.on) cancelSearch(); else { state.screen = 'menu'; commit(); }
     } else if (act === 'find-again') {
       findAgain();
     } else if (act === 'login') {
@@ -239,18 +253,6 @@ export function init() {
       if (state.screen === 'setup') setGames(g => { for (const t of chaosSetup() ? setupTypes() : TYPES) g[t] = false; });
     } else if (act === 'games-all') {             // Select all: every mini-game on, in place
       if (state.screen === 'setup') setGames(g => { for (const t of setupTypes()) g[t] = true; });
-    } else if (act === 'side') {
-      if (isHost()) {                             // X or O: the seats move over in the room (its answer updates the screen); Random: drawn at each start
-        const pick = el.dataset.side === 'random' ? 'random' : el.dataset.side === 'O' ? 'O' : 'X';
-        state.setup.hostPick = pick; save();
-        if (nameTimer) { clearTimeout(nameTimer); setNameTimer(null); flushName(state.setup.names[state.online.me]); }   // the name typed so far first: the room's echo below would show the old one
-        if (pick !== 'random' && pick !== state.online.me) hostSide(pick); else render();
-        dbSetup({ hostPick: pick });
-        return;
-      }
-      const side = el.dataset.side === 'O' ? 'O' : 'X';
-      state.setup.human = side; syncNames(state.setup);
-      commit();
     } else if (act === 'fing-start') {           // Sky Hop, Scoop Stack, Pinball: the attempt starts now; from here the player stays in the square until it ends
       fingGo();
     } else if (act === 'run-go') {                // Dash, Lane Rush: the count, then the run
@@ -271,10 +273,10 @@ export function init() {
       state.confirm = null; commit();
     } else if (act === 'start') {
       if (state.online) { startOnline(); return; }
-      if (chaosSetup()) normLocal(state.setup).p2 = 'cpu';       // (Super Chaos: against the computer)
+      normLocal(state.setup).p2 = chaosSetup() ? 'cpu' : 'human';   // (Same phone: two people; Super Chaos, were it on: against the computer)
       seatLocal(state.setup, RNG);
       restrictGames(state.setup.games, visibleTypes());           // never a game this player may not see
-      if (chaosSetup() ? startChaos(state, RNG) : startMatch(state, RNG)) { trackStart(); commit(); }
+      if (chaosSetup() ? startChaos(state, RNG) : startMatch(state, RNG)) { trackStart(); if (!state.sc) revealSides(); commit(); }
     } else {                                       // a mini-game's own control: its view's actions
       const own = gameAction(act);
       if (own) own(el, e, act);

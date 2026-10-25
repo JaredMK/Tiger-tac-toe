@@ -22,7 +22,7 @@ import { SND, init as soundInit } from './audio/sound.js';
 import { connectQuiet, finishLogin, gateStart, hadAccount, redirectPending } from './net/accounts.js';
 import { checkResume, freshVisit, openFind, resumable } from './net/matchmaking.js';
 import { fetchReleases } from './net/releases.js';
-import { closeSeat, init as roomInit, joinCode, joinName, resumeOnline, setJoinCode, setJoinName } from './net/room.js';
+import { closeSeat, init as roomInit, joinCode, joinName, joinRoom, resumeOnline, setJoinCode, setJoinName } from './net/room.js';
 import { devAudio, devOpen, devPulse, init as trackingInit, takeTag } from './net/tracking.js';
 import { clockTimer, commit, setClockTimer, state } from './ui/app.js';
 import { fetchAttConfig } from './ui/attention.js';
@@ -91,6 +91,7 @@ function boot() {
   devOpen();
   setInterval(devPulse, 60000);
   const link = linkCode();
+  let autoJoin = null;                                        // a join link joins at once (the name kept from before, else "Friend"; the code is the link's)
   try { setJoinName(localStorage.getItem(KEY + '.name') || ''); } catch (e) { /* no storage */ }
   if (link) {
     try { history.replaceState(null, '', location.pathname); } catch (e) { /* (an old browser keeps it) */ }   // handled once: a reload is not a second link
@@ -98,7 +99,7 @@ function boot() {
     else if (matchUnderway()) setJoinAsk({ code: link });                     // ask first: the match would be left
     else {                                                                  // a lobby (left cleanly once connected), or nothing on
       if (state.online) { const o = state.online; connectQuiet().then(ok => { if (ok && o.code && o.me) closeSeat(o.code, o.me, o.role === 'host'); }); state.online = null; }
-      setJoinCode(link); state.screen = 'join'; state.setup.mode = 'two';
+      setJoinCode(link); state.screen = 'join'; state.setup.mode = 'two'; autoJoin = link;
     }
   }
   if (state.screen !== 'join' && !joinAsk) freshVisit();      // a fresh visit: the main menu (a join link: joining, or its question over the match it would leave)
@@ -113,6 +114,7 @@ function boot() {
     connectQuiet().then(() => { setAcctLoading(false); finishLogin(); commit(); if (play && !joinAsk) openFind(); });
   }
   else if (play) openFind();
+  if (autoJoin) joinRoom(autoJoin, joinName.trim() || 'Friend', false);
 }
 
 SND.load();                                                // renders the sounds now, in the background

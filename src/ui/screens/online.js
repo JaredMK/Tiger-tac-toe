@@ -1,11 +1,9 @@
-// The online screens: Play Online, Play a Friend, Join.
+// The online screens: Play a Friend, Join.
 import { scTypes } from '../../core/chaos.js';
 import { NAME_MAX, playerName } from '../../core/match.js';
 import { normTimer } from '../../core/timer.js';
 import { other } from '../../core/util.js';
 import { INFO, SC_ONLY, TYPES } from '../../games/index.js';
-import { acct } from '../../net/accounts.js';
-import { activeElsewhere, findOn } from '../../net/matchmaking.js';
 import { visibleTypes } from '../../net/releases.js';
 import { joinCode, joinName, leaveLoses, net, online, room } from '../../net/room.js';
 import { TIMER_LABEL, advOpen, esc, state } from '../app.js';
@@ -14,26 +12,16 @@ import { CHEV, ICONS } from '../art.js';
 import { joinAsk } from '../input.js';
 
 /* ----- online screens ----- */
-// Play Online: a friend (a room and its code) or Find a Match (anyone waiting).
-export function renderOnline() {
-  const back = activeElsewhere(), can = back || findOn;
-  return `<main class="scr setup online-scr">
-    <div class="bar"><button class="back" data-act="menu" aria-label="Back to the main menu">${CHEV}Menu</button></div>
-    <div class="online-mid" data-keep-scroll="online"><div class="menu-card">
-    <h1>Play Online</h1>
-    <p class="sub">Play a friend with a room code, or find a Super Chaos match against anyone waiting. Both need an internet connection.</p>
-    <button class="primary" data-act="friend-go">Play a Friend</button>
-    <button class="primary mm${can ? '' : ' off'}" data-act="find-go"${can ? '' : ' disabled'}>${back ? 'Back to your match' : `Find a Match${can ? '' : '<small>Not available at this time</small>'}`}</button>
-  </div></div></main>`;
-}
+// Play a Friend: host a room and share its code, or join one; or Same phone, two people taking turns on this phone.
 export function renderFriend() {
   return `<main class="scr setup online-scr">
-    <div class="bar"><button class="back" data-act="online-go" aria-label="Back to Play Online">${CHEV}Back</button></div>
+    <div class="bar"><button class="back" data-act="menu" aria-label="Back to the main menu">${CHEV}Menu</button></div>
     <div class="online-mid" data-keep-scroll="friend"><div class="menu-card">
     <h1>Play a Friend</h1>
     <p class="sub">One of you hosts a room and shares its code; the other joins.</p>
     <button class="primary" data-act="host">Host game</button>
     <button class="primary alt" data-act="join-go">Join game</button>
+    <button class="link wide same" data-act="same-go">Same phone</button>
   </div></div></main>`;
 }
 export function renderJoin() {
@@ -45,12 +33,11 @@ export function renderJoin() {
   const sc = !!(room && room.setup && room.setup.chaos);
   const pool = TYPES.filter(t => (visibleTypes().includes(t) || (room && room.setup && room.setup.games && room.setup.games[t])) && (sc ? scTypes().includes(t) : !SC_ONLY.includes(t)));   // the games this guest knows of, and the host's (an admin host may deal games on test); Super Chaos deals only its own
   const games = room && room.setup && room.setup.games ? pool.filter(t => room.setup.games[t] !== false) : pool;
-  const pick = room && room.setup && room.setup.hostPick === 'random' ? 'Random' : (o && o.me) || 'X';   // (the host's Random: drawn every match)
   const on = new Set(games), list = byName(pool);
   const info = seated && room ? `<div class="jinfo">
-      <div class="field"><span>Host</span><div class="namebox">${esc(hostName || 'the host')}</div></div>
-      <div class="field"><span>You play</span><div class="namebox">${pick === 'Random' ? 'Random' : `<b class="side ${pick}">${pick}</b>`}</div></div>
-      <div class="field"><span>Mode</span><div class="namebox">${sc ? 'Super Chaos' : 'Classic'}</div></div>
+      <div class="field"><span>Player 1 · host</span><div class="namebox">${esc(hostName || 'the host')}</div></div>
+      <div class="field"><span>Player 2 · you</span><div class="namebox">${esc((room.players && room.players[o.me] && room.players[o.me].name) || joinName || 'Friend')}</div></div>
+      <div class="field"><span>Sides</span><div class="namebox">X and O drawn at random each match</div></div>
       ${sc ? '' : `<div class="field"><span>Time per turn</span><div class="namebox">${TIMER_LABEL[timer]}</div></div>`}
       <div class="adv jgames${advOpen ? ' open' : ''}"><button class="adv-h" data-act="adv" aria-expanded="${advOpen}"><span>Mini-games</span><small>${gamesCount(games.length, pool.length)}</small><i class="chev">${CHEV}</i></button>
         ${advOpen ? `<div class="games">${list.map(t => `<div class="chk ro${on.has(t) ? '' : ' off'}"><input type="checkbox" disabled${on.has(t) ? ' checked' : ''} aria-label="${esc(INFO[t].name)}: ${on.has(t) ? 'on' : 'off'}">${ICONS[t]}<span>${INFO[t].name}</span></div>`).join('')}</div>` : ''}</div>

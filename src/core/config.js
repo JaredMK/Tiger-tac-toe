@@ -6,3 +6,7 @@ export function cfgKit(defaults, limits, fix) {                      // a config
   return { box, norm, set: raw => { box.cfg = raw && typeof raw === 'object' ? norm(raw) : null; }, get: () => Object.assign({}, box.cfg || defaults) };
 }
 export const lohi = keys => out => { for (const [a, b] of keys) if (out[b] < out[a]) out[b] = out[a]; return out; };
+// Super Chaos (simultaneous rounds) is off everywhere, for everyone, admins included: no mode selector, no Super Chaos
+// match from Play Computer, a friend room or Find Match (the page and the server read this one switch). Its code and
+// settings stay, for when it comes back: set this true (and its release switch, releases/superchaos, as before).
+export const SUPER_CHAOS_ENABLED = false;

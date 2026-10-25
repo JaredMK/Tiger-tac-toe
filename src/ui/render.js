@@ -17,7 +17,7 @@ import { renderGate, renderLogin, renderUsername } from './screens/account.js';
 import { gateOn } from '../net/accounts.js';
 import { renderFind, renderIntro } from './screens/find.js';
 import { renderMenu } from './screens/menu.js';
-import { renderFriend, renderJoin, renderJoinAsk, renderOnline } from './screens/online.js';
+import { renderFriend, renderJoin, renderJoinAsk } from './screens/online.js';
 import { renderHistory, renderLeaderboard, renderProfHist, renderProfile } from './screens/profile.js';
 import { renderSandbox } from './sandbox.js';
 import { renderSetup } from './screens/setup.js';
@@ -111,7 +111,6 @@ function renderMain() {
   if (gateOn()) return renderGate();                          // staging: only testers on the allowlist get past this
   if (state.screen === 'sandbox') return renderSandbox();     // (the admin's test play, while it checks or when it cannot run)
   if (state.screen === 'menu') return renderMenu();
-  if (state.screen === 'online') return renderOnline();
   if (state.screen === 'friend') return renderFriend();
   if (state.screen === 'join') return renderJoin();
   if (state.screen === 'setup') return renderSetup();
