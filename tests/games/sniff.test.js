@@ -50,7 +50,7 @@ test('sniff: a 7x7 field, the dog at least 3 cells from the treasure in a straig
   assert.deepEqual([same.dog, r.note, same.last.res, E.publicMini(same).trail[0].r], [15, 'same', 'same', 'same']);
   assert.equal(E.sniffRes(9, 8, 0), 'hot'); assert.equal(E.sniffRes(9, 10, 0), 'cold');
 });
-test('sniff: no memory on the board: the square keeps only the last 3 steps (the computer\'s memory); the word shows about 2 s', () => {
+test('sniff: no memory on the board: the square keeps only the last 3 steps (the computer\'s memory); the word shows about 1.2 s', () => {
   const rng = E.makeRng('sn-mem'), m = Object.assign(E.newMini('sniff', rng), { dog: 0, start: 0, treasure: 48 });
   for (const d of ['E', 'E', 'S', 'S', 'W']) E.applyMove(m, 'X', d, rng);
   assert.equal(m.trail.length, 3, 'only the last 3 steps');
@@ -64,7 +64,7 @@ test('sniff: no memory on the board: the square keeps only the last 3 steps (the
   const st = E.newMatch(rng, { games: ['sniff'] }), sq = st.squares[0].mini, d = E.sniffDirs(sq.dog)[0];
   E.playMove(st, 0, d, rng);
   assert.equal(E.playMs(st.flash), E.SNIFF.step + E.SNIFF.hold + (st.flash.kind === 'claim' ? 900 : 0));
-  assert.ok(E.SNIFF.hold >= 1800 && E.SNIFF.hold <= 2200, 'the word: about 2 seconds');
+  assert.ok(E.SNIFF.hold >= 1000 && E.SNIFF.hold <= 1500, 'the word: about 1.2 seconds');
 });
 test('sniff: online the treasure stays on the server; the computer\'s view has the trail, never the treasure', () => {
   const rng = E.makeRng('sn-secret'), m = E.newMini('sniff', rng);

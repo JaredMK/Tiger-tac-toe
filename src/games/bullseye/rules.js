@@ -80,7 +80,7 @@ export function flashMs(f, winLen, won) {
   return (f.bull ? bullsAim(f.bull).fly : 0) + BULLT.fly + BULLT.hold + (won ? 600 : 0);   // (the phone that threw skips the aim: it has just watched its own lines)
 }
 // Bullseye: the dart flies in and lands where the lines crossed, then the points hold a moment.
-export const BULLT = { fly: 380, hold: 800, slide: 450, gap: 280 };
+export const BULLT = { fly: 380, hold: 400, slide: 450, gap: 280 };
 // Someone else's throw, as their screen looked: the sideways line sweeps from the left edge and stops where
 // they stopped it (straight there when that is past 40% across, else across and back), a beat, then the
 // up-down line likewise from the top, a beat, then the dart. ms from the move: t1 and t2 where each stops, fly

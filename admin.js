@@ -208,7 +208,7 @@ const SECTIONS = [
   ['players', 'Players & Accounts', () => (accts ? `${Object.keys(accts.users || {}).length} accounts` : 'Accounts, flagged names, players over time')],
   ['playtest', 'Playtesters & Devices', () => (play ? `${Object.keys(play.devices || {}).length} devices` : 'Devices, sessions, retention')],
   ['matches', 'Matches', () => { const r = Object.values(mlogs || {}).filter(x => x && x.reported).length; return `Match inspector${r ? ` · ${r} reported` : ''}`; }],
-  ['settings', 'Mini-game Settings', () => { const k = Object.keys(ctl.tune || {}).length; return `Every game's settings${k ? ` · ${k} changed` : ''}`; }],
+  ['settings', 'Mini-game Settings', () => { const k = Object.keys(ctl.tune || {}).length, sp = ctl.anim && ctl.anim.speed; return `Every game's settings${k ? ` · ${k} changed` : ''}${sp && sp !== 1 ? ` · speed ${sp}×` : ''}`; }],
   ['bots', 'Bot Settings', () => 'Find Match, bots, empty-queue alerts'],
   ['releases', 'Releases', () => 'Released or admin only, per game'],
   ['stats', 'Stats', () => 'Matches by mode, moves to win'],
@@ -752,8 +752,22 @@ function legacyCard(t) {                       // the older tuning card, where t
 }
 const legacyPath = t => (RUN_TYPES.includes(t) ? `config/run/${t}` : t === 'bullseye' ? 'config/bulls' : ['plinko', 'pig', 'roads', 'oddone', 'wheels', 'headcount', 'flash', 'snapshot', 'skyhop', 'scoop', 'pinball', 'bowling'].includes(t) ? `config/${t}` : null);
 const changedOf = t => Object.keys((ctl.tune && ctl.tune[t]) || {}).length;
+// ---------- Animation speed (config/anim/speed, read by the game and the server): the whole game's feel, one figure ----------
+function animCard() {
+  const v = ctl.anim && Number.isFinite(Number(ctl.anim.speed)) ? Number(ctl.anim.speed) : 1;
+  return `<div class="card ctl" id="animCard"><h2>Animation speed</h2>
+    <p class="note">One multiplier for the whole game's pace: every move's animation, its result's hold, the board's glow before a zoom and the computer's pauses. 1.0 is as designed; 1.5 runs everything half as fast again, 0.8 slows it down (0.5 to 2.0). Players' phones pick it up when the page loads (or comes back after a minute away); the server's turn clock and the bots pace by it too.</p>
+    <div class="rform"><label class="rf"><span>Speed (1.0 = default)</span><input type="number" step="0.1" min="0.5" max="2" data-animcfg="speed" value="${v}"></label><button class="btn" data-animsave="1">Save</button><button class="btn" data-animreset="1"${v === 1 ? ' disabled' : ''}>Reset to 1.0</button></div></div>`;
+}
+async function saveAnimCfg(btn, reset) {
+  const el = app.querySelector('input[data-animcfg="speed"]'), v = reset ? 1 : Math.round(Number(el.value) * 100) / 100;
+  if (!Number.isFinite(v) || v < 0.5 || v > 2) { said(btn, false, 'Speed: from 0.5 to 2.0'); return; }
+  btn.disabled = true;
+  try { await fb.dbM.set(fb.dbM.ref(fb.db, 'config/anim'), v === 1 ? null : { speed: v }); ctl.anim = v === 1 ? {} : { speed: v }; } catch (e) { said(btn, false, failed(e)); return; }
+  render(); said(app.querySelector('[data-animsave]') || btn, true, 'Saved');
+}
 function settingsIndex() {
-  return CATS.map(([c, label]) => {
+  return animCard() + CATS.map(([c, label]) => {
     const ts = Object.keys(GAMES).filter(t => META[t] && META[t].category === c).sort((a, b) => GAMES[a].localeCompare(GAMES[b]));
     return `<div class="card"><h2>${label}</h2><div class="gtiles">${ts.map(t => {
       const k = changedOf(t), old = legacyPath(t) ? ' · tuning card' : '';
@@ -973,7 +987,7 @@ async function loadCtl() {
   const [config, secretsSet, bots, botStats, alertStats, features, log, releases, runCfg, bullsCfg, wheelsCfg, plinkoCfg, oddCfg, headCfg, flashCfg, snapCfg, hopCfg, scoopCfg, pinCfg, pigCfg, roadsCfg, bowlCfg] = await Promise.all([g('admin/config'), g('admin/secretsSet'), g('bots'), g('botStats'), g('alertStats'), g('features'),
     fb.dbM.get(fb.dbM.query(fb.dbM.ref(fb.db, 'alertLog'), fb.dbM.orderByChild('at'), fb.dbM.limitToLast(8))).then(s => s.val()).catch(() => null), g('releases'), g('config/run'), g('config/bulls'), g('config/wheels'), g('config/plinko'), g('config/oddone'), g('config/headcount'), g('config/flash'), g('config/snapshot'), g('config/skyhop'), g('config/scoop'), g('config/pinball'), g('config/pig'), g('config/roads'), g('config/bowling'), loadMetas()]);
   ctl = { config: config || {}, secretsSet: secretsSet || {}, bots: bots || {}, botStats: botStats || {}, alertStats: alertStats || {}, features: features || {}, releases: releases || {}, runCfg: runCfg || {}, bullsCfg: bullsCfg || {}, wheelsCfg: wheelsCfg || {}, plinkoCfg: plinkoCfg || {}, pigCfg: pigCfg || {}, roadsCfg: roadsCfg || {}, oddCfg: oddCfg || {}, attCfg: { headcount: headCfg || {}, flash: flashCfg || {}, snapshot: snapCfg || {} }, fingCfg: { skyhop: hopCfg || {}, scoop: scoopCfg || {}, bowling: bowlCfg || {}, pinball: pinCfg || {} },
-    alertLog: Object.values(log || {}).sort((a, b) => b.at - a.at), tune: (await g('config/tune')) || {}, ai: (await g('config/ai')) || {}, allow: STAGING ? ((await g('admin/staging/allow')) || {}) : {} };
+    alertLog: Object.values(log || {}).sort((a, b) => b.at - a.at), tune: (await g('config/tune')) || {}, ai: (await g('config/ai')) || {}, anim: (await g('config/anim')) || {}, allow: STAGING ? ((await g('admin/staging/allow')) || {}) : {} };
 }
 async function signIn(how) {
   view.error = '';
@@ -1022,6 +1036,8 @@ app.addEventListener('click', e => {
   else if (b.dataset.bullsave) saveBullsCfg(b);
   else if (b.dataset.wheelsave) saveWheelsCfg(b);
   else if (b.dataset.plinkosave) savePlinkoCfg(b);
+  else if (b.dataset.animsave) saveAnimCfg(b, false);
+  else if (b.dataset.animreset) saveAnimCfg(b, true);
   else if (b.dataset.pigsave) savePigCfg(b);
   else if (b.dataset.roadssave) saveRoadsCfg(b);
   else if (b.dataset.oddsave) saveOddCfg(b);

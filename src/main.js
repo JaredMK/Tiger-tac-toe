@@ -29,6 +29,7 @@ import { fetchAttConfig } from './ui/attention.js';
 import { setTunes } from './core/tune.js';
 import { AI_CLOCK } from './core/ai.js';
 import { setAiWeights } from './core/aiw.js';
+import { setAnimSpeed } from './core/timer.js';
 import { init as chaosInit } from './ui/chaos.js';
 import { tick } from './ui/clock.js';
 import { KEY } from './ui/config.js';
@@ -77,6 +78,7 @@ function loadConfigs() {
   fetchAttConfig('bowling', setBowlConfig);                       // Bowling's two taps' speeds
   fetchAttConfig('tune', setTunes, true);                         // every mini-game's settings (Mini-game Settings: config/tune), likewise
   fetchAttConfig('ai', setAiWeights, true);                       // the Hard computer's weights (npm run tune-ai: config/ai), likewise
+  fetchAttConfig('anim', v => setAnimSpeed(v && v.speed), true);   // the admin's Animation speed (config/anim): the whole game's pace
 }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && !sandboxParams() && Date.now() - configsAt > 60000) loadConfigs(); });
 function boot() {

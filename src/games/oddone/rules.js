@@ -12,7 +12,7 @@ import { tune, tuneLive } from '../../core/tune.js';
 // online; the tiles' colours are what the page draws. The grid waits greyed until the player taps
 // Reveal; then they have secs seconds to pick ('auto': no pick, wrong). Someone else's pick replays as
 // their screen showed it: the grey grid, the shades (show), a pause, the pick.
-export const ODD = { goal: 3, sizes: [3, 4, 5], hueRatio: 0.375, aiFind: [0.75, 0.6, 0.45], reveal: 700, secs: 5, show: 350, pause: 1000 };   // aiFind: the computer finds it as often as a typical player is meant to (misses about 25%, 40%, 55%)
+export const ODD = { goal: 3, sizes: [3, 4, 5], hueRatio: 0.375, aiFind: [0.75, 0.6, 0.45], reveal: 500, secs: 5, show: 350, pause: 700 };   // aiFind: the computer finds it as often as a typical player is meant to (misses about 25%, 40%, 55%)
 export const ODD_LIMITS = { d1: [0.5, 25], d2: [0.5, 25], d3: [0.5, 25] };
 export const ODD_CFG = { cfg: null };
 export function oddNorm(raw) {

@@ -11,12 +11,17 @@ export function newTimer(limit) { return { limit: limit || 0, deadline: null, fo
 // The turn clock allows for it, so the next player gets the full time once the move has played out.
 // The phones and the server use the same figures.
 export const PLAY = {
-  spot: 1000,                                                             // the square glows on the board before the zoom
-  flash: { move: 1000, again: 650, claim: 1200, draw: 1700, match: 1200, card: 1500 },   // the result stays up this long (a win: the game's own winning moment; the square's stamp follows on the board)
+  spot: 600,                                                              // the square glows on the board before the zoom
+  flash: { move: 600, again: 350, claim: 800, draw: 1100, match: 900, card: 900 },   // the result stays up this long once its animation is over (a win: the game's own winning moment; the square's stamp follows on the board)
   flip: 500,                                                              // Find the Pair's cards turn back over
   die: 600, spin: 1000, hop: 130,                                          // a die's tumble, the candy wheel's spin, each hop of a token
   spin3: 700, slide: 750, knock: 650,                                     // Bump's 1-2-3 spinner; a ladder climb or a snake slide; a piece knocked Home
 };
+// The global animation speed (the admin's Animation speed, config/anim/speed: 0.5 to 2, default 1): every move's
+// animation, its result's hold, the board's glow and the computer's pauses run this many times as fast (2: twice as
+// fast; 0.5: half as fast). The phones and the server read the same figure (the server's turn clock and bots pace by it).
+export const ANIM = { speed: 1 };
+export function setAnimSpeed(v) { const x = Number(v); ANIM.speed = Number.isFinite(x) && x >= 0.5 && x <= 2 ? x : 1; }
 // The animation of one move. winLen: how many cells a Hex win lights up.
 export function playMs(f, winLen) {
   const won = f.kind === 'claim' || f.kind === 'match';
@@ -28,7 +33,7 @@ export function playMs(f, winLen) {
 export function replayMs(entries) {
   return (entries || []).reduce((ms, e) => {
     const win = e.after && e.after.mini && e.after.mini.winCells ? e.after.mini.winCells.length : 4;
-    return ms + PLAY.spot + playMs(e, win) + (PLAY.flash[e.kind] || 800) + (e.type === 'memory' && e.kind === 'move' ? PLAY.flip : 0);
+    return ms + (PLAY.spot + playMs(e, win) + (PLAY.flash[e.kind] || 800) + (e.type === 'memory' && e.kind === 'move' ? PLAY.flip : 0)) / ANIM.speed;
   }, 0);
 }
 // After moves are settled: the turn clock is set for whoever is on the move. With nothing to play back (the

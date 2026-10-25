@@ -20,7 +20,7 @@ import { listenReacts, stopReacts } from './reactions.js';
 import { scMode, visibleTypes } from './releases.js';
 import { reportLocal, trackEnd } from './tracking.js';
 import {
-  NAV_SCREENS, SPOT_MS, commit, cpuPlan, cpuTimer, flashTimer, holdTimer, menuNote, menuOpen, menuStep,
+  NAV_SCREENS, spotMs, commit, cpuPlan, cpuTimer, flashTimer, holdTimer, menuNote, menuOpen, menuStep,
   pickKey, save, setCpuPlan, setCpuTimer, setFlashTimer, setHoldTimer, setMenuNote, setMenuOpen, setMenuStep,
   setSpotTimer, spotTimer, state
 } from '../ui/app.js';
@@ -360,7 +360,7 @@ function showRemoteMove(i, label, before, start) {
     state.screen = 'mini'; state.zoom = sq;
     start();
     save(); render();
-  }, SPOT_MS));
+  }, spotMs()));
 }
 function moveLabel(f) { return f.timeout ? `${playerName(state, f.by)} ran out of time` : `${playerName(state, f.by)} plays here`; }
 // Rematch: both players have to want it. A tap puts this side's flag on the room (rooms/{code}/rematch/{side}); the

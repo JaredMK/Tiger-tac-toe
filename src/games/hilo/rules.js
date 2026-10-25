@@ -41,7 +41,7 @@ export function hide(m, k, st) {
   delete m.target; return;
 }
 export function flashMs(f, winLen, won) {
-  return 1100;
+  return 800;
 }
 // Super Chaos: each player gets their own answer during their move; at the round's end both guesses and their
 // answers join the shared history (the range narrowed by both).

@@ -15,7 +15,7 @@ import { WHEEL_DEFAULTS } from './meta.js';
 export const WHEELS = ['high', 'mid', 'low'];
 export const WHEEL_SEGS = 10;
 export const WHEEL_LIMITS = { target: [6, 60], tensMin: [1, 3], tensMax: [1, 3], smallMax: [0, 4], smallTop: [1, 3], midLo: [0, 3], midHi: [5, 9], lowLo: [1, 3], lowHi: [2, 6], gap: [0.1, 1.5] };
-export const WHEELT = { spin: 1900, hold: 700 };                            // the spin, then the result held
+export const WHEELT = { spin: 1900, hold: 300 };                            // the spin, then the result held
 export const WHEEL_CFG = { cfg: null };
 export function wheelsNorm(raw) {
   const out = {};

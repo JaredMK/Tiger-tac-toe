@@ -13,7 +13,7 @@ import { tune, tuneLive } from '../../core/tune.js';
 // wrong pick is crossed out for both, the right one scores and a new puzzle comes; first to 3.
 // Items: a number { n }, a shape { g, r, z, c, f } (g: 0 a circle, 1 an arrow, 3-8 a polygon of that many
 // sides; r its turn in degrees; z its size 1-5; c its colour 0-5; f 1 solid, 0 outline), dots { d, c }.
-export const PATTERNS = { goal: 3, aiRight: 0.6, options: 4, colours: 6, maxN: 999, maxDots: 16, reveal: 1200,
+export const PATTERNS = { goal: 3, aiRight: 0.6, options: 4, colours: 6, maxN: 999, maxDots: 16, reveal: 800,
   mix: [['num', 40], ['shape', 38], ['dots', 22]], middle: 0.25 };
 // A square's own (the admin's settings: the target, the kinds' mix, the gap in the middle, the computer's
 // rate; PATTERNS without a type): { goal, aiRight, mix, middle }.

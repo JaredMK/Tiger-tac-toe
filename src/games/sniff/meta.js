@@ -8,7 +8,7 @@ export const explainer = { name: 'Sniff', play: 'Move the dog one step, any of 8
 // Its settings (the admin's Mini-game Settings; core/tune.js): read from the square's own values.
 export const TUNE = [
   { k: 'minStart', label: 'Dog starts at least (cells from the treasure, straight line)', def: 3, min: 1, max: 4, step: 1, group: 'Board' },
-  { k: 'hold', label: 'Hotter/colder shown for (ms)', def: 1900, min: 800, max: 4000, step: 100, group: 'Timing' },
+  { k: 'hold', label: 'Hotter/colder shown for (ms)', def: 1200, min: 600, max: 4000, step: 100, group: 'Timing' },
   { k: 'memory', label: 'Computer remembers (last steps)', def: 3, min: 1, max: 8, step: 1, group: 'Computer' },
   { k: 'miss', label: 'Computer mistake rate (%)', def: 0, min: 0, max: 60, step: 5, group: 'Computer' },
 ];

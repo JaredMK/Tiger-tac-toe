@@ -390,7 +390,8 @@ async function releasesNow() { return (await db.ref('releases').get()).val() || 
 let runCfgAt = 0;
 async function runConfigNow() {
   if (now() - runCfgAt < 20000) return;
-  const [run, bulls, wheels, plinko, odd, head, flash, snap, hop, scoop, pin, pig, roads, tune, ai] = await Promise.all(['run', 'bulls', 'wheels', 'plinko', 'oddone', 'headcount', 'flash', 'snapshot', 'skyhop', 'scoop', 'pinball', 'pig', 'roads', 'tune', 'ai'].map(k => db.ref('config/' + k).get()));
+  const [run, bulls, wheels, plinko, odd, head, flash, snap, hop, scoop, pin, pig, roads, tune, ai, anim] = await Promise.all(['run', 'bulls', 'wheels', 'plinko', 'oddone', 'headcount', 'flash', 'snapshot', 'skyhop', 'scoop', 'pinball', 'pig', 'roads', 'tune', 'ai', 'anim'].map(k => db.ref('config/' + k).get()));
+  E.setAnimSpeed((anim.val() || {}).speed);                             // the admin's Animation speed (config/anim): the replay times the turn clock and the bots allow for
   E.setTunes(tune.val() || null);                                       // every mini-game's settings (Mini-game Settings: config/tune/<type>)
   E.setAiWeights(ai.val() || null);                                     // the Hard computer's weights (npm run tune-ai: config/ai)
   E.setRunConfig(run.val() || null);

@@ -3,7 +3,7 @@ import { needRng, randInt } from '../../core/random.js';
 import { PHYSICS, physLast, physRandom, physRun, physRunBoth, physShot } from '../shared/physics.js';
 export { physicsMoveFlash as moveFlash } from '../shared/physics.js';
 
-export const GOLF = { goal: 1, aiErr: [0.035, 0.04], hold: 700 };
+export const GOLF = { goal: 1, aiErr: [0.035, 0.04], hold: 300 };
 // Mini Golf's hole for a new square: a page may choose it (a local game: one this device has not had lately);
 // otherwise (the server, online) any hole at random.
 export let golfPick = null;

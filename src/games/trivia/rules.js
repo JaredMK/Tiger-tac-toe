@@ -13,7 +13,7 @@ import { tune } from '../../core/tune.js';
 // until they answer, timer and all); once up it stays up for both until it is answered right. A pick
 // on a question still face down turns it up too (the computer, a timeout); last.fresh marks a question
 // turned up in the mover's own turn, so the other phone shows the reveal, a pause, then the pick.
-export const TRIVIA = { goal: 3, options: 4, aiRight: 0.65, aiKnow: 0.53, reveal: 900, flip: 600, pause: 900, bank: null };   // aiKnow: the computer knows it this often, else guesses among what is left (65% right with four left); bank: the questions, as the host sets them
+export const TRIVIA = { goal: 3, options: 4, aiRight: 0.65, aiKnow: 0.53, reveal: 700, flip: 600, pause: 600, bank: null };   // aiKnow: the computer knows it this often, else guesses among what is left (65% right with four left); bank: the questions, as the host sets them
 export function setTriviaBank(bank) { TRIVIA.bank = bank && Array.isArray(bank.questions) && bank.questions.length ? bank : null; }
 export function triviaReady() { return !!TRIVIA.bank; }
 export function triviaUsed(state) {

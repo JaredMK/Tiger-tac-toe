@@ -10,7 +10,7 @@ import { tune, tuneLive } from '../../core/tune.js';
 // show while it plays, then they are gone. The square keeps only the last 3 steps (who made each, and which it
 // was), for the computer, which remembers that much. Whoever walks the dog onto the treasure wins the square.
 // Online the server keeps the treasure.
-export const SNIFF = { n: 7, minStart: 3, step: 420, hold: 1900, memory: 3 };   // (minStart, hold, memory: the defaults of its settings, TUNE in meta.js)
+export const SNIFF = { n: 7, minStart: 3, step: 420, hold: 1200, memory: 3 };   // (minStart, hold, memory: the defaults of its settings, TUNE in meta.js)
 const sniffMem = mini => tune(mini).memory || SNIFF.memory;           // the steps a square keeps: its own setting
 export const SNIFF_DIRS = { N: [-1, 0], NE: [-1, 1], E: [0, 1], SE: [1, 1], S: [1, 0], SW: [1, -1], W: [0, -1], NW: [-1, -1] };
 // The straight-line distance squared (whole numbers, so "Same" is exact), the distance, and the steps a walk needs.

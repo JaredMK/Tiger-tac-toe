@@ -5,7 +5,7 @@ import { physLast, physRandom, physRun, physShot } from '../shared/physics.js';
 import { BOWL_DEFAULTS } from './meta.js';
 export { physicsMoveFlash as moveFlash } from '../shared/physics.js';
 
-export const BOWLG = { rack: 10, aiErr: [0.025, 0.04], hold: 800 };
+export const BOWLG = { rack: 10, aiErr: [0.025, 0.04], hold: 300 };
 export const bowlTarget = mini => tune(mini).target;   // the pins that take the square (the admin's setting, dealt into the square)
 // The two taps' speeds (config/bowling, from the admin's dashboard): the arrow's sweep and the power meter's rise, in ms.
 export const BOWL_LIMITS = { aimMs: [300, 3000, 10], meterMs: [300, 3000, 10] };

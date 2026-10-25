@@ -61,4 +61,4 @@ export function moveFlash(m, p, range, bjFrom, mini, flash) {
 export function flashMs(f, winLen, won) {
   return BUST.pre + BUST.draw + BUST.flip + BUST.mark + (f.bus && f.bus.right ? BUST.fly : 0) + (won ? 600 : 0);
 }
-export const BUST = { pre: 800, draw: 380, flip: 380, mark: 450, fly: 480 };
+export const BUST = { pre: 500, draw: 380, flip: 380, mark: 450, fly: 480 };

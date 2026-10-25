@@ -48,7 +48,7 @@ export function reviewSquares() {
   if (state.online && !isMM() && room && room.match) { const rec = parseMatch(room.match); if (rec) return fullState(rec).squares; }
   return state.squares;
 }
-export const STAMP_MS = 1500;                    // the stamp is over by then
+export const STAMP_MS = 1000;                    // the stamp (.8 s) is over by then
 export const BOARD_BURST = [320, 500];           // when the two bursts on the board pop in, in ms after the stamp starts
 export function renderBoard(review) {
   const spot = review ? null : state.spot;

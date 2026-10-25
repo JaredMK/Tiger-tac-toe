@@ -4,8 +4,9 @@ import { playerName } from '../core/match.js';
 import { SND, backSounds, matchEndSound, moveSounds } from '../audio/sound.js';
 import { mmIntro } from '../net/matchmaking.js';
 import { applyPending } from '../net/room.js';
+import { ANIM } from '../core/timer.js';
 import {
-  CPU_MS, FLASH_MS, FLIP_MS, MEMORY_MS, RNG, commit, cpuPlan, cpuTimer, flashReady, flashTimer, holdTimer,
+  CPU_MS, FLASH_MS, FLIP_MS, MEMORY_MS, RNG, app, commit, cpuPlan, cpuTimer, flashReady, flashTimer, holdTimer,
   menuOpen, setCpuPlan, setCpuTimer, setFlashReady, setFlashTimer, setHoldTimer, state
 } from './app.js';
 import { STAMP_MS } from './board.js';
@@ -103,7 +104,7 @@ function cpuPlay() {
 let flashEnds = 0;                                 // when the result on show clears (this phone's clock)
 export const flashLeft = () => (state.flash && flashTimer ? Math.max(0, flashEnds - Date.now()) : 0);   // how much longer the result on show stays up
 export function playFlash(played, speed, holdMax, holdAt, elapsed) {   // holdMax: the longest the result stays up after its animation (Super Chaos's replay: no dead time between the steps of a move); holdAt: exactly this long (its last step: the end held); elapsed: the move began this long ago (a sequence joined part way: its animation that far on, quietly)
-  const f = state.flash, sp = speed || 1, el = Math.max(0, elapsed || 0), anim = animMs(f) / sp;   // (el: real ms of the move already gone; anim: its animation on screen)
+  const f = state.flash, sp = (speed || 1) * ANIM.speed, el = Math.max(0, elapsed || 0), anim = animMs(f) / sp;   // (ANIM.speed: the admin's Animation speed, on top of a replay's own)   // (el: real ms of the move already gone; anim: its animation on screen)
   if (!f || state.spot || fxAt('move', f) != null) return;     // while the square glows on the board, the move has not played yet
   const ms = played ? 0 : Math.max(0, anim - el);
   startFx('move', f, performance.now() - (played ? animMs(f) : el));
@@ -112,6 +113,22 @@ export function playFlash(played, speed, holdMax, holdAt, elapsed) {   // holdMa
   const hold = holdAt != null ? holdAt : Math.max(0, Math.min(holdMax == null ? Infinity : holdMax, holdOf(f) / sp) - Math.max(0, el - anim));   // (holdAt: exactly this long from the animation's end; else the usual hold, less what is gone already)
   clearTimeout(flashTimer); setFlashTimer(setTimeout(dismissFlash, ms + hold)); flashEnds = Date.now() + ms + hold;   // (first: the result always clears, whatever its sounds do)
   if (!played && !(el > 0)) for (const [n, at, rate] of moveSounds(f)) SND.play(n, { at: at / 1000 / sp, rate });
+  if (sp !== 1 && !played && !(rep && rep.f === f && rep.speed !== 1)) flashRate(f, sp);   // (a replay at its own speed keeps its own clock: ui/replay.js)
+}
+// The Animation speed on a move's animations: the move's event drifts back (or forward), so everything timed from it
+// (the canvas replays, the animations re-anchored at each render) sees the elapsed time multiplied, and the page's
+// running animations play at that rate, until the result is gone.
+function flashRate(f, sp) {
+  const e = fx.move;
+  if (!e || e.key !== f) return;
+  const t0 = e.at, w0 = performance.now();
+  const step = () => {
+    if (state.flash !== f || !fx.move || fx.move.key !== f) return;
+    fx.move.at = t0 - (performance.now() - w0) * (sp - 1);
+    if (typeof app.getAnimations === 'function') for (const a of app.getAnimations({ subtree: true })) if (a.playbackRate !== sp) a.playbackRate = sp;
+    requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
 }
 // How long the result stays up once its animation has played.
 export function holdOf(f) {
@@ -128,7 +145,7 @@ export function holdOf(f) {
 export function skipFlash() {
   const f = state.flash;
   if (!f || fxAt('move', f) == null) return;
-  const sp = rep && rep.f === f ? rep.speed : 1;
+  const sp = (rep && rep.f === f ? rep.speed : 1) * ANIM.speed;
   startFx('move', f, performance.now() - animMs(f) * Math.max(1, sp));   // (past its end at any speed)
   fx.move.quiet = true;
   setFlashReady(Date.now());
@@ -164,6 +181,6 @@ export function dismissFlash() {
   commit();
   if (hold && state.done) {
     clearTimeout(holdTimer);
-    setHoldTimer(setTimeout(() => { if (state.done && !state.flash && leaveSquare(state)) { if (!quiet) backSounds(from); stampFx(); commit(); } applyPending(); }, FLIP_MS));
+    setHoldTimer(setTimeout(() => { if (state.done && !state.flash && leaveSquare(state)) { if (!quiet) backSounds(from); stampFx(); commit(); } applyPending(); }, FLIP_MS / ANIM.speed));
   } else applyPending();                        // online: the room may have moved on meanwhile
 }

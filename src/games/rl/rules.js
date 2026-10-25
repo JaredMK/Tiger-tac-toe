@@ -56,7 +56,7 @@ export function flashMs(f, winLen, won) {
   if (f.rl && f.rl.pending) return RLT.bet;
   return RLT.spin + RLT.settle + RLT.hold + (won ? 600 : 0);
 }
-export const RLT = { spin: 2700, settle: 450, hold: 1450, bet: 900 };   // (bet: Super Chaos's bet put down, no spin; hold: until the number's landing pulse is over)
+export const RLT = { spin: 2700, settle: 300, hold: 500, bet: 900 };   // (bet: Super Chaos's bet put down, no spin; hold: until the number's landing pulse is over)
 // Super Chaos: the square's spin is drawn as each round begins (scRound), so a bet spins the wheel at once on
 // the mover's own screen, and two bets placed there in the same round land on the same number: one spin
 // settles both. At the round's end it joins the square's history once (in the colour of each player it hit),

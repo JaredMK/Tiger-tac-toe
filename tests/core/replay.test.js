@@ -28,3 +28,11 @@ test('replay log: a move played with a log carries it on the flash, normalized; 
   const r2 = E.playMove(st, 4, 0, E.makeRng('y'), { rep: 'nonsense' });
   assert.equal(r2.ok, true); assert.ok(!('rep' in st.flash)); assert.equal(st.flash.m, 0);
 });
+test('animation speed (admin config/anim): 1 by default, 0.5–2 only, and the playback timings scale by it', () => {
+  assert.equal(E.ANIM.speed, 1);
+  const e = [{ type: 'ttt', kind: 'move', square: 0 }], at1 = E.replayMs(e);
+  E.setAnimSpeed(2); assert.equal(E.ANIM.speed, 2); assert.equal(E.replayMs(e), at1 / 2, 'twice as fast: half the playback');
+  for (const bad of [0, 0.2, 5, 'x', null, undefined]) { E.setAnimSpeed(bad); assert.equal(E.ANIM.speed, 1, `${bad}: back to 1`); }
+  E.setAnimSpeed(0.5); assert.equal(E.replayMs(e), at1 * 2);
+  E.setAnimSpeed(1);
+});

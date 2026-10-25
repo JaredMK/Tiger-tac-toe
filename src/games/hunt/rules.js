@@ -49,7 +49,7 @@ export function hide(m, k, st) {
   m.clues = m.dug.map((d, i) => (d ? huntClue(m, i) : null)); delete m.treasure; return;   // the bands only
 }
 export function flashMs(f, winLen, won) {
-  return (won ? 1400 : 800) + (f.scr && f.scr.digs ? 300 : 0);   // (Super Chaos's round end: both digs open together, a beat apart)
+  return (won ? 1100 : 600) + (f.scr && f.scr.digs ? 300 : 0);   // (Super Chaos's round end: both digs open together, a beat apart)
 }
 // Super Chaos: each player sees their own clue during their move; at the round's end both digs join the grid
 // (the same cell dug by both is dug once, X's mark on it; both saw its band).

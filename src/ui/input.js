@@ -20,7 +20,7 @@ import { reactCooling, rx, sendReact } from '../net/reactions.js';
 import { scMode, scPicked, setMode, visibleTypes } from '../net/releases.js';
 import {
   dbSetup, hostRoom, isHost, joinCode, joinName, joinRoom, leaveLobby, leaveLoses,
-  leaveRoom, lockMine, mySide, pinned, quitMatch, rematchCancel, rematchOnline, room, setJoinCode, setJoinName,
+  leaveRoom, lockMine, mySide, pinned, remoteTurn, quitMatch, rematchCancel, rematchOnline, room, setJoinCode, setJoinName,
   setNet, shareRoom, copyInvite, startOnline, validCode
 } from '../net/room.js';
 import { reportLocal, trackEnd, trackStart } from '../net/tracking.js';
@@ -62,6 +62,8 @@ export function matchUnderway() {
   if (state.online) return isMM() || !!state.online.matchId;
   return ['board', 'mini'].includes(state.screen) && Array.isArray(state.squares) && state.squares.length === 9;
 }
+// The result on show is this phone's own move (not the computer's, not the other player's played back here).
+function ownResult() { return !repActive() && !cpuTurn() && !remoteTurn() && !(state.sc); }
 export let joinAsk = null;                             // a shared link opened during a match: { code }, until Leave & Join or Stay
 // Leave & Join: the match is left as from the menu (a loss where it counts, recorded), then the join form for the link's code.
 async function leaveAndJoin(code) {
@@ -128,7 +130,11 @@ export function init() {
     if (act === 'pause-leave') { quitMatch(); return; }
     if (act === 'pause-report') { openReport(); return; }                            // (a dialog of its own over the menu: ui/report.js)
     if (menuOpen) return;                         // the menu is up: nothing underneath reacts
-    if (state.flash && !free.includes(act)) return;   // everything else waits for the result to clear
+    if (state.flash && !free.includes(act)) {         // everything else waits for the result to clear...
+      if (!ownResult() || Date.now() < flashReady) return;
+      dismissFlash();                                 // ...except your own, once its animation is over and it can be read: a tap goes on at once
+      if (state.flash || state.screen !== 'mini') return;   // (the turn passed: the tap took you back to the board; a result kept on show (Find the Pair's cards): nothing more)
+    }
     if (state.done && !free.includes(act)) return;    // the result is still on show
     if (cpuTurn() && !free.includes(act)) return;   // the computer is playing
     if (repActive() && !free.includes(act)) return;   // an opponent's inputs are playing back

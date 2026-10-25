@@ -533,6 +533,15 @@
           }
         }
       },
+      "anim": {
+        ".write": "auth != null && auth.token.admin === true",
+        "speed": {
+          ".validate": "newData.isNumber() && newData.val() >= 0.5 && newData.val() <= 2"
+        },
+        "$other": {
+          ".validate": false
+        }
+      },
       "ai": {
         ".write": "auth != null && auth.token.admin === true",
         "$k": {
