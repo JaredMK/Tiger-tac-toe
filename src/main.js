@@ -20,6 +20,7 @@ import { fetchWheelsConfig } from './games/wheels/view.js';
 import { GAMES } from './games/index.js';
 import { SND, init as soundInit } from './audio/sound.js';
 import { connectQuiet, finishLogin, gateStart, hadAccount, redirectPending } from './net/accounts.js';
+import { init as connectInit } from './net/connect.js';
 import { checkResume, freshVisit, openFind, resumable } from './net/matchmaking.js';
 import { fetchReleases } from './net/releases.js';
 import { closeSeat, init as roomInit, joinCode, joinName, joinRoom, resumeOnline, setJoinCode, setJoinName } from './net/room.js';
@@ -55,6 +56,7 @@ bowlingInit();
 physicsInit();
 runnerInit();
 trackingInit();
+connectInit();                                              // (back in front: the socket bounced before the room's resync below)
 roomInit();
 inputInit();
 pongInit();

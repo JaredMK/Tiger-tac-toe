@@ -9,6 +9,7 @@ import { commit, state } from '../ui/app.js';
 import { render } from '../ui/render.js';
 import { mustUpdate } from '../ui/update.js';
 import { noteNet } from '../ui/turnbar.js';
+import { tick } from '../ui/clock.js';
 
 /* ===================== Online play (Firebase Realtime Database) =====================
  * Neither phone is the server. A room lives at /rooms/CODE in the database; both players read and
@@ -80,10 +81,44 @@ export async function connectFirebase() {
     setNet('error', 'Online play needs an internet connection. Check it (switching to Wi-Fi helps) and try again.'); commit(); return false;
   }
 }
-function onConnected(on) {
+export function onConnected(on) {
   connected = on; noteNet();
   if (on && state.online && state.online.me) presenceUp();
+  if (on) lostClear(); else lostWatch();
   if (state.online) render();
+}
+// The connection lost during an online match: after NET_LOST.afterMs without it (a blip never shows), the banner
+// "Connection lost — reconnecting…" (ui/turnbar.js netInfo, over the board and the mini-game), and the SDK's socket
+// bounced every NET_LOST.retryMs until it is back (and the moment the page comes back into view: init below). The
+// banner goes the moment .info/connected says so again.
+export const NET_LOST = { afterMs: 3000, retryMs: 10000 };
+export let netLost = false;
+let lostTimer = null, retryTimer = null;
+function lostWatch() {
+  if (lostTimer || retryTimer) return;
+  lostTimer = setTimeout(() => {
+    lostTimer = null;
+    if (connected) return;
+    netLost = true; noteNet();
+    if (state.online) { render(); bounce(); }                   // (outside a match the SDK's own retries do: nothing to show, nothing to force)
+    retryTimer = setInterval(() => { if (connected) lostClear(); else if (state.online) bounce(); }, NET_LOST.retryMs);
+  }, NET_LOST.afterMs);
+}
+function lostClear() {
+  clearTimeout(lostTimer); clearInterval(retryTimer); lostTimer = retryTimer = null;
+  if (!netLost) return;
+  netLost = false; noteNet();
+}
+// Back in front (the app from the background, a tab shown again): the socket is bounced at once in an online match (it
+// may be dead without the SDK's knowing: a fresh connection reads the record afresh; net/room.js then resyncs the
+// record on the same event), and whenever the connection is down; then a tick of the clock (ui/clock.js: a deadline
+// passed meanwhile is called in).
+export function init() {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible' || !fb) return;
+    if (state.online || !connected) bounce();
+    tick();
+  });
 }
 // A read past the SDK's connection (plain HTTP, this account's token): what the database holds now, even while the
 // SDK's socket is dead without its knowing (it notices only after its keepalive fails, a minute or so). null: no answer.
@@ -98,8 +133,10 @@ export async function restGet(path, ms) {
 }
 // The SDK's connection dropped and made again: a dead socket is let go (its listeners read the database afresh;
 // a write sent on it is given up, and the caller sends it again).
+export let bounces = 0;                                   // (how many times: the tests)
 export function bounce() {
   if (!fb) return;
+  bounces++;
   try { fb.m.goOffline(fb.db); fb.m.goOnline(fb.db); } catch (e) { /* (the SDK comes back by itself) */ }
 }
 // App Check: the page proves it is a real copy of the site (reCAPTCHA Enterprise, invisible) and every database and
@@ -126,3 +163,4 @@ export function call(name, data) {
 // Setters for the names other modules reassign (an imported name is read-only there).
 export function setCall(v) { call = v; }
 export function setConnected(v) { connected = v; }
+export function setFb(v) { fb = v; }   // (the tests: a stand-in SDK)

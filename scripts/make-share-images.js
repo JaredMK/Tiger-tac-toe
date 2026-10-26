@@ -65,7 +65,7 @@ function ico(pngs) {
   for (const { size, buf } of pngs) { const e = Buffer.alloc(16); e[0] = size; e[1] = size; e.writeUInt16LE(1, 4); e.writeUInt16LE(32, 6); e.writeUInt32LE(buf.length, 8); e.writeUInt32LE(off, 12); off += buf.length; dir.push(e); data.push(buf); }
   return Buffer.concat([head, ...dir, ...data]);
 }
-(async () => {
+async function main() {
   const { chromium } = require('playwright');
   fs.mkdirSync(OUT, { recursive: true });
   const b = await chromium.launch();
@@ -77,4 +77,7 @@ function ico(pngs) {
   fs.writeFileSync(path.join(OUT, 'favicon.ico'), ico([{ size: 16, buf: p16 }, { size: 32, buf: p32 }, { size: 48, buf: p48 }]));
   await b.close();
   console.log('Wrote', fs.readdirSync(OUT).join(', '));
-})();
+}
+// The drawing (the colours, the X and O characters, the burst, the fonts): shared with the app's icons (scripts/make-app-icons.js).
+module.exports = { INK, CREAM, PAPER, X, O, SKY, GREEN, fonts, toonX, toonO, svg, burst, ol2 };
+if (require.main === module) main();

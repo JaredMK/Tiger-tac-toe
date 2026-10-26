@@ -58,6 +58,19 @@ export async function copyText(text) {
   if (cb) { await cb.write({ string: text }); return; }
   await navigator.clipboard.writeText(text);
 }
+// A buzz under the finger, in the app only (the Haptics plugin; nothing on the web, no navigator.vibrate): 'tap' a square
+// opened, 'claim' a square stamped on the board, 'win' and 'loss' the match's end. Each fires once, from its event (the
+// click handler's tap, fx.js stampFx, turns.js toWin), never from a render.
+const HAPTIC_IMPACT = { tap: 'LIGHT', claim: 'HEAVY' }, HAPTIC_NOTE = { win: 'SUCCESS', loss: 'ERROR' };
+export function haptic(kind) {
+  const h = plugin('Haptics');
+  if (!h) return false;
+  try {
+    const p = HAPTIC_NOTE[kind] ? h.notification({ type: HAPTIC_NOTE[kind] }) : h.impact({ style: HAPTIC_IMPACT[kind] || 'MEDIUM' });
+    if (p && p.catch) p.catch(() => {});
+  } catch (e) { /* (a buzz is never worth an error) */ }
+  return true;
+}
 // A page outside the game (credits' sources, the privacy policy, the App Store): the app's in-app browser, or a new tab.
 export function openExternal(url) {
   const br = plugin('Browser');

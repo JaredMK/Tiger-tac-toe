@@ -35,7 +35,7 @@ import { startFx } from './fx.js';
 import { backspace, submitWord, typeLetter } from './keyboard.js';
 import { render } from './render.js';
 import { updateNeeded } from './update.js';
-import { openUpdate, startLink } from '../net/platform.js';
+import { haptic, openUpdate, startLink } from '../net/platform.js';
 import { scJointFrame, scPopup, scSkip } from './chaos.js';
 import { repActive, repNote, repSkip, repVal } from './replay.js';
 import { runGo } from './runner.js';
@@ -153,7 +153,7 @@ export function init() {
       const i = Number(el.dataset.i);
       if (state.winner || !state.squares[i]) { SND.play('error'); return; }
       if (lockMine() && state.lock !== i) { SND.play('error'); return; }
-      state.screen = 'mini'; state.zoom = i; state.draft = ''; state.sel = []; state.notice = null; setHpSel(null); SND.play('tap');   // (a plain tap: no whoosh into the square)
+      state.screen = 'mini'; state.zoom = i; state.draft = ''; state.sel = []; state.notice = null; setHpSel(null); SND.play('tap'); haptic('tap');   // (a plain tap: no whoosh into the square; the app buzzes once with it)
       if (!state.online) { state.pick = null; state.pickSq = null; }
       commit();
     } else if (act === 'back') {
