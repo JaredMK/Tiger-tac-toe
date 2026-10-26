@@ -512,9 +512,10 @@ async function makeGame(key, id, X, O, opts) {
     scPack(node, g, t);
   } else {
     const types = friend ? E.TYPES.filter(g => allowed.includes(g) && on(g)) : both(E.findMatchTypes(E.releasedTypes(rel)));
-    if (!types.length) return false;
+    if (!Array.isArray(types) || !types.length) return false;    // (nothing both clients have and may play: no match)
     rec = E.newOnlineMatch({ names: { X: X.e.name, O: O.e.name }, games: Object.fromEntries(E.TYPES.map(g => [g, types.includes(g)])), timer: Q.timer }, rng, id);   // released games only, whoever is playing
     if (!rec) return false;
+    if (!rec.state.squares.every(q => types.includes(q.mini.type)) || !rec.state.games.every(g => types.includes(g))) { logger.error('makeGame', id, 'dealt outside the clients\' games', rec.state.games); return false; }   // (never expected: the deal and every reset stay within the match's list, which is these)
     E.armClock(rec.state, [], t + MATCH_GRACE_MS);
     const pub = Object.assign({ mode: Q.mode, queue: key, timer: Q.timer, players, status: 'playing', created: t, updated: t, state: JSON.stringify(rec.state) }, friend ? { room: friend.code } : {});
     node = { pub, sec: JSON.stringify(rec.secrets), dl: E.clockDeadline(rec.state.timer) };
@@ -1194,13 +1195,13 @@ function drawSeats(players, host) {
 // The match starts: by the host from the lobby, or by either player once both want a rematch (the flags on the room).
 // One match at a time: a lock on the room while it is made (two phones starting the rematch at once make one).
 exports.startRoom = onCall(CALL, async req => {
-  const uid = needUid(req), code = roomCodeOf((req.data || {}).code);
-  await needCurrent(req);
+  const uid = needUid(req), code = roomCodeOf((req.data || {}).code), client = await needCurrent(req);
   if (!roomCodeOk(code)) return { ok: false, reason: 'code' };
   const room = (await db.ref(`rooms/${code}`).get()).val();
   if (!room || !room.players) return { ok: false, reason: 'missing' };
   const side = roomSide(room, uid);
   if (!side) return { ok: false, reason: 'not-player' };
+  room.players[side].client = client;                           // the seat keeps its latest report (a client older than it was: the match is dealt for what it is now, as joinRoom keeps a guest's)
   if (!(room.players.X && room.players.X.uid && room.players.O && room.players.O.uid)) return { ok: false, reason: 'alone' };
   if (room.left) return { ok: false, reason: 'left' };
   if (room.status === 'over') return { ok: false, reason: 'over' };
@@ -1223,8 +1224,8 @@ exports.startRoom = onCall(CALL, async req => {
     const id = db.ref('games').push().key;
     const ok = await makeGame(null, id, at('X'), at('O'), { friend: { code, setup: room.setup || {}, admin } });
     if (!ok) { await db.ref(`rooms/${code}/starting`).remove(); return { ok: false, reason: 'games' }; }   // (no game left to deal: the setup refused)
-    const up = { [`rooms/${code}/game`]: id, [`rooms/${code}/status`]: 'playing', [`rooms/${code}/rematch`]: null, [`rooms/${code}/left`]: null, [`rooms/${code}/starting`]: null };
-    if (seats.swapped) { up[`rooms/${code}/players`] = seats.players; up[`rooms/${code}/setup/hostSide`] = seats.hostSide; }
+    const up = { [`rooms/${code}/game`]: id, [`rooms/${code}/status`]: 'playing', [`rooms/${code}/rematch`]: null, [`rooms/${code}/left`]: null, [`rooms/${code}/starting`]: null, [`rooms/${code}/players/${side}/client`]: client };
+    if (seats.swapped) { up[`rooms/${code}/players`] = seats.players; up[`rooms/${code}/setup/hostSide`] = seats.hostSide; delete up[`rooms/${code}/players/${side}/client`]; }   // (the seats written whole carry the client)
     await db.ref().update(up);
     return { ok: true, started: true, game: id };
   } catch (e) { await db.ref(`rooms/${code}/starting`).remove().catch(() => {}); throw e; }

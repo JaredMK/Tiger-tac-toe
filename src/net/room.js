@@ -264,7 +264,7 @@ function sayAway(text) {
   awayNote = text; noteNet(); render();
   clearTimeout(awayTimer); awayTimer = setTimeout(() => { awayNote = ''; noteNet(); render(); }, 5000);
 }
-function takeFields(st) {
+export function takeFields(st) {
   for (const k of MATCH_FIELDS) {
     if (k === 'recent') continue;
     state[k] = st[k] === undefined ? (k === 'games' ? TYPES.slice() : k === 'timer' ? newTimer(0) : null) : JSON.parse(JSON.stringify(st[k]));

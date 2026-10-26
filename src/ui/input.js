@@ -35,6 +35,7 @@ import { startFx } from './fx.js';
 import { backspace, submitWord, typeLetter } from './keyboard.js';
 import { render } from './render.js';
 import { updateNeeded } from './update.js';
+import { matchStale, setStaleConfirm } from './screens/stale.js';
 import { openUpdate, startLink } from '../net/platform.js';
 import { scJointFrame, scPopup, scSkip } from './chaos.js';
 import { repActive, repNote, repSkip, repVal } from './replay.js';
@@ -117,6 +118,14 @@ export function init() {
       if (act.startsWith('gate-')) gateAct(act);
       else if (LOGIN_ACTS[act]) loginWith(LOGIN_ACTS[act]);
       else if (act === 'login-reset') loginReset();
+      return;
+    }
+    if (matchStale()) {                                                                 // a match with a mini-game this version lacks (ui/screens/stale.js): its own buttons only
+      if (act === 'stale-update') openUpdate();
+      else if (act === 'stale-leave') { setStaleConfirm(true); render(); }
+      else if (act === 'stale-stay') { setStaleConfirm(false); render(); }
+      else if (act === 'stale-leave-yes') { setStaleConfirm(false); quitMatch(); }      // the usual leaving: a resignation, the loss on the record (resignMM, or a room's leaveMatch)
+      else if (act === 'stale-menu') leaveRoom();                                       // (the match over: the main menu, the other player told as ever)
       return;
     }
     if (act === 'explain') { e.preventDefault(); openExplain(el.dataset.t); return; }    // never a move: open over anything, even mid-turn
