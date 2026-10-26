@@ -4,7 +4,7 @@ import { other } from '../../core/util.js';
 import { connected } from '../../net/connect.js';
 import { findOn, isMM } from '../../net/matchmaking.js';
 import { lobby, room } from '../../net/room.js';
-import { N, esc, save, state } from '../app.js';
+import { N, esc, save, state, isYou } from '../app.js';
 import { toonT } from '../art.js';
 import { RATINGS_ENABLED } from '../config.js';
 import { record, signed } from './profile.js';
@@ -94,7 +94,7 @@ export function renderWin() {
     `<i class="${s.owner || ''}${state.winLine && state.winLine.includes(i) ? ' hl' : ''}">${s.owner ? toonT(s.owner) : ''}</i>`
   ).join('');
   return `<main class="scr win-scr">${netBar()}<div class="win-card${isMM() ? ' mm' : ''}">
-    <div class="winburst">${endBurst(endMessage())}</div><div class="big-g ${w}">${toonT(w)}</div><h1>${state.winReason === 'timeout' ? `${N(w)} wins` : state.winReason === 'resign' ? `${N(w)} wins — ${why}` : `${N(w)} wins the match!`}</h1><p>${state.winReason === 'timeout' ? why : state.winReason === 'resign' ? 'Leaving a match counts as a loss' : why}</p>${mmResult()}
+    <div class="winburst">${endBurst(endMessage())}</div><div class="big-g ${w}">${toonT(w)}</div><h1>${(wins => state.winReason === 'timeout' ? wins : state.winReason === 'resign' ? `${wins} — ${why}` : `${wins} the match!`)(isYou(w) ? 'You win' : `${N(w)} wins`)}</h1><p>${state.winReason === 'timeout' ? why : state.winReason === 'resign' ? 'Leaving a match counts as a loss' : why}</p>${mmResult()}
     <div class="final" aria-hidden="true">${final}</div>
     <div class="row">${againBtns()}<button class="btn" data-act="review">View board</button><button class="btn" data-act="${state.online ? 'leave' : 'menu'}">Main menu</button></div>${rematchNote()}${shareBtn()}</div></main>`;
 }

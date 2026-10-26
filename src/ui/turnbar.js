@@ -3,7 +3,7 @@ import { other } from '../core/util.js';
 import { connected, netLost } from '../net/connect.js';
 import { REACTS, reactCooling, reactOn, rx } from '../net/reactions.js';
 import { awayNote, net, presence, room } from '../net/room.js';
-import { N, NAV_SCREENS, esc, menuOpen, state } from './app.js';
+import { N, NAV_SCREENS, esc, menuOpen, state, isYou } from './app.js';
 import { toon } from './art.js';
 import { scTurnText } from './chaos.js';
 import { clockText } from './clock.js';
@@ -25,7 +25,7 @@ export function renderHeader() {
   const side = p => `<div class="tside ${p}${p === t ? ' on' : ''}"><span class="tg">${toon(p)}<span class="rbub${card(p) ? ' on' : ''}"${card(p) ? fxAttr(card(p).at) : ''} aria-live="polite">${card(p) ? card(p).e : ''}</span></span><b class="nm">${N(p)}</b></div>`;
   return `<header class="hdr t-${t}${clock ? ' has-clock' : ''}">
     <div class="hdrrow"><button class="menubtn" data-act="pause" aria-label="Menu">Menu</button><div class="tbar">${side('X')}${side('O')}</div></div>
-    <div class="hdrrow2"><div class="turn" aria-live="polite">${resultLine(drawn ? `<span class="who">Draw · ${state.winReason === 'both' ? 'both made a line' : 'no line left'}</span>` : won ? `<span class="g">${t}</span><span class="who">${N(t)} wins</span>` : sc ? scTurnText() : `<span class="g">${t}</span><span class="who">${N(t)}<i class="suf">'s turn</i></span>`)}</div><span class="clockbox">${clock}</span></div>
+    <div class="hdrrow2"><div class="turn" aria-live="polite">${resultLine(drawn ? `<span class="who">Draw · ${state.winReason === 'both' ? 'both made a line' : 'no line left'}</span>` : won ? `<span class="g">${t}</span><span class="who">${isYou(t) ? 'You win' : `${N(t)} wins`}</span>` : sc ? scTurnText() : `<span class="g">${t}</span><span class="who">${isYou(t) ? 'Your turn' : `${N(t)}<i class="suf">'s turn</i>`}</span>`)}</div><span class="clockbox">${clock}</span></div>
   </header>`;
 }
 // The reactions' button, at the bottom of the game screen in a strip kept for it (#app.rxon: the board and the

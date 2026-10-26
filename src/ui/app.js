@@ -37,6 +37,7 @@ export let spotTimer = null, menuOpen = false, menuStep = 'main', menuNote = '';
 export let clockTimer = null;
 export const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 export const N = p => (cpuPlays(p) ? CPU_ICON : '') + esc(playerName(state, p));   // a player's display name, safe for innerHTML, with the computer icon for a computer
+export const isYou = p => playerName(state, p) === 'You';                                 // the player with no name (Play Computer logged out): "Your turn", "You win", never "You's turn"
 export function cpuPlays(p) { return !state.online && !!state.cpu && state.cpu.includes(p); }
 export const pickKey = () => (state.pick == null ? null : `${state.pickSq}:${state.pick}`);   // Find the Pair: the first card turned up, as an event key
 export let advOpen = false;                    // the setup screen's Mini-games section (the mini-game list)
