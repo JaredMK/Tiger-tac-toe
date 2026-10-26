@@ -118,15 +118,21 @@ Run these on the Mac, or as the cloud build's steps.
 - **Account deletion (guideline 5.1.1(v)):**
   - Required, because the app lets players create accounts. Players must be able to delete their account inside the app,
     not only by emailing you.
-  - **Not built yet.** Needed: a "Delete account" button on the profile screen and a server call that deletes the
-    account and its data (profile, username, records, history, Top opponents, `localStats`/`localHistory`, `lastSeen`).
-  - Apple accounts must also have their Sign in with Apple token revoked (Apple's REST API, with the same key as above).
+  - **Built.** My Stats has **Delete account** (a Yes/No question first); the server's `deleteAccount` refuses while the
+    player is in an online match, else deletes every node of theirs (profile, public profile, username, records, history,
+    Top opponents, `localStats`/`localHistory`, `lastSeen`, queue and `active` entries, a lobby left open) and the Auth user.
+  - **Still to do:** Apple accounts must also have their Sign in with Apple token revoked (Apple's REST API, with the same key
+    as above; `deleteAccount` is where to add it once the key exists).
 - **Sign in with Apple (guideline 4.8):** required when an app offers Google sign-in. Done, beside Google and email.
 - **Privacy policy (guideline 5.1.1):**
   - Needs a public URL, linked in App Store Connect and inside the app (the login screen or the menu).
-  - **Not written yet.** It must say what is collected: email, username, game records and history, a random device ID
-    and app events for the playtest stats, match logs for problem reports. It must name Firebase/Google as processor,
-    say how long data is kept (match logs 30 days) and how to delete an account.
+  - **Written, as a draft to review:** `privacy.html` (https://tictacchaos.com/privacy.html once released; staging's copy
+    first), linked from the main menu, the login screen and the credits (the app opens the live site's page in its in-app
+    browser: `net/platform.js` `privacyUrl`). It says what is collected (email, username, game records and history, Top
+    opponents, a random device id and app events, match logs, the tester tag), why, how long it is kept (match logs 30 days;
+    device logs, last activity and the alert log 90 days; account data until deletion), how to delete an account, names
+    Firebase/Google as processor and the Open Trivia Database, and the age line (13+). Before it leaves draft: confirm the
+    contact address (privacy@tictacchaos.com is a placeholder) and the studio's legal details.
 - **Age rating:**
   - Apple's questionnaire asks about **simulated gambling**. Blackjack, Roulette, Craps, Risky Rolls and Ride the Bus
     are casino-style games without real money.
@@ -156,8 +162,9 @@ Run these on the Mac, or as the cloud build's steps.
 - [ ] `scripts/app-config.js` filled in (Team ID, bundle ID); deployed; `/.well-known/apple-app-site-association` answers on tictacchaos.com and staging
 - [ ] Firebase: iOS app added to production (and staging); `GoogleService-Info.plist` downloaded
 - [ ] Firebase: Apple provider enabled (Services ID and key for the web); "Continue with Apple" works on staging's web page
-- [ ] Privacy policy page live; link in the app
-- [ ] In-app account deletion built and tested (including Apple token revocation)
+- [ ] Privacy policy page live (written: `privacy.html`, a draft to review; linked in the game) and named in App Store Connect
+- [ ] In-app account deletion built and tested (done, server and page; Apple token revocation still to add)
+- [ ] Email verification for email-and-password accounts (done: Find Match, hosting and the username need a proved email)
 - [ ] Mac or cloud build ready (Xcode current; signing certificate and provisioning profile, or automatic signing)
 - [ ] `npm run build:app -- staging` → `npx cap add ios` → `npx cap sync ios`; the app opens and plays Play Computer offline
 - [ ] On a phone, a staging build:

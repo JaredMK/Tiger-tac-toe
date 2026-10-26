@@ -1,11 +1,11 @@
 // Accounts: signing in (Google, Apple, email: net/auth.js for the providers), the username, the account kept on this phone.
 import { PROVIDERS, providerSignIn, providerSignOut } from './auth.js';
 import { NET_MS, call, configured, fb, loadFirebase } from './connect.js';
-import { enterMatched, search, startSearch, stopSearch } from './matchmaking.js';
+import { enterMatched, holdResume, search, startSearch, stopSearch } from './matchmaking.js';
 import { challengeFriend, hostRoom } from './room.js';
 import { fetchReleases } from './releases.js';
-import { flushLocal, track } from './tracking.js';
-import { commit, save, state } from '../ui/app.js';
+import { flushLocal, pendingLocal, track } from './tracking.js';
+import { commit, save, setMenuNote, state } from '../ui/app.js';
 import { KEY } from '../ui/config.js';
 import { render } from '../ui/render.js';
 import { openProfile, prof, setProf } from '../ui/screens/profile.js';
@@ -123,9 +123,11 @@ export function onAuthUser(u, again) {
   }
   render();
 }
-// Logged in: a username first if there is none yet, then wherever the player was heading.
+// Logged in: a proved email first (an email-and-password account), a username if there is none yet, then wherever the
+// player was heading.
 export function afterAccount() {
   if (!acct.user || !acct.ready) return;
+  if (unverified()) { if (['login', 'username'].includes(state.screen)) { state.screen = 'verify'; loginMsg = null; loginFinishing = false; save(); } return; }
   if (loggedIn()) flushLocal();                                 // local matches still waiting to be recorded
   if (!acct.profile || !acct.profile.username) { if (state.screen === 'login') { state.screen = 'username'; unameMsg = null; loginFinishing = false; save(); } return; }
   if (state.screen !== 'login' && state.screen !== 'username') return;
@@ -148,7 +150,7 @@ export async function needAccount(next) {
   afterLogin = next;
   if (loggedIn()) return true;
   loginMsg = null;
-  state.screen = acct.user && acct.ready ? 'username' : 'login';
+  state.screen = acct.user && acct.ready ? (unverified() ? 'verify' : 'username') : 'login';
   commit();
   if (!(await connectQuiet())) { loginMsg = { text: 'No connection. Check your internet and try again.' }; render(); }
   else if (loggedIn()) { afterAccount(); return false; }
@@ -188,7 +190,7 @@ export async function loginWith(how) {
       if (r === 'away') return;                                 // (the page is off to the provider; it comes back signed in)
       onAuthUser(fb.auth.currentUser);                          // signed in: on to the username or the menu, without waiting for the event
     }
-    else if (how === 'create') await A.createUserWithEmailAndPassword(fb.auth, loginMail, loginPass);
+    else if (how === 'create') { const c = await A.createUserWithEmailAndPassword(fb.auth, loginMail, loginPass); A.sendEmailVerification(c.user).catch(() => {}); }   // (the address is proved before Find Match, hosting or a username: "Verify your email" next)
     else await A.signInWithEmailAndPassword(fb.auth, loginMail, loginPass);
     loginPass = '';
   } catch (e) { loginMsg = authError(e); }
@@ -223,9 +225,71 @@ export async function logout() {
   if (fb && fb.auth) await fb.authM.signOut(fb.auth).catch(() => {});
   await providerSignOut();
   rememberAccount(false);
-  loginFinishing = false; loginPending(null);
+  loginFinishing = false; loginPending(null); verifyAsked = false;
   acct = { user: null, profile: null, active: null, ready: true };
   setProf(null); state.screen = 'menu'; commit();
+}
+
+/* ----- email verification: an email-and-password account proves its address first -----
+ * Find Match, hosting and the username need a verified email (the server refuses an unproved one with { verify: true }:
+ * functions/index.js needAccount); Google's and Apple's accounts are proved by the provider. The sign-up sends the link;
+ * the "Verify your email" screen (ui/screens/account.js renderVerify) has Continue, Send the link again and Log out. */
+export let verifyAsked = false;                     // the server refused a call until the email is proved
+// This account still has to prove its address: an email-and-password account whose email is not verified.
+export function unverified() {
+  const u = fb && fb.auth && fb.auth.currentUser;
+  return !!(u && !u.isAnonymous && !u.emailVerified && (u.providerData || []).some(p => p && p.providerId === 'password'));
+}
+export function verifyEmail() { const u = fb && fb.auth && fb.auth.currentUser; return (u && u.email) || (acct.user && acct.user.email) || ''; }
+// The server refused a call until the email is proved (connect.js call): the verify screen, where the player was on
+// their way into an account feature (never over a match or a game screen: a stray report from there changes nothing).
+export function needVerify() {
+  verifyAsked = true;
+  if (!['login', 'username', 'find', 'friend', 'profile', 'menu', 'verify'].includes(state.screen) && !(state.screen === 'setup' && state.online && state.online.role === 'host')) return;
+  if (state.screen !== 'verify') { state.screen = 'verify'; loginMsg = null; render(); }
+}
+// The verify screen's buttons: Continue (the account read afresh; verified, a fresh token, then on to wherever the player
+// was heading: the username, Find Match, hosting, the menu), Send the link again.
+export async function verifyAct(act) {
+  if (loginBusy) return;
+  if (!(await connectQuiet())) { loginMsg = { text: 'No connection. Check your internet and try again.' }; render(); return; }
+  const u = fb.auth.currentUser;
+  if (!u || u.isAnonymous) { state.screen = 'login'; commit(); return; }
+  loginBusy = true; loginMsg = null; render();
+  if (act === 'verify-resend') {
+    try { await fb.authM.sendEmailVerification(u); loginMsg = { ok: true, text: 'Sent. Check your inbox.' }; }
+    catch (e) { loginMsg = authError(e) || { text: "Couldn't send it. Try again in a minute." }; }
+    loginBusy = false; render(); return;
+  }
+  try { await u.reload(); } catch (e) { /* (offline: the flag as it was) */ }
+  loginBusy = false;
+  if (!u.emailVerified) { loginMsg = { text: 'Not verified yet. Open the link in the email, then tap Continue.' }; render(); return; }
+  await u.getIdToken(true).catch(() => {});                      // (the server reads the flag from the token)
+  verifyAsked = false; loginFinishing = true; state.screen = 'login';   // "Logging you in…" until the profile says where next
+  afterAccount(); commit();
+}
+
+/* ----- deleting the account (the profile's Delete account, after a Yes) -----
+ * The server deletes every node of the account and the account itself (functions/index.js deleteAccount), refusing while
+ * the player is in an online match. Then this phone forgets the account (signed out, nothing kept) and the main menu says so. */
+export let delState = null;                         // null | 'ask' (the question is up) | 'busy' | { error }
+export function askDelete() { delState = 'ask'; render(); }
+export function cancelDelete() { if (delState !== 'busy') { delState = null; render(); } }
+export async function deleteAccount() {
+  if (delState === 'busy' || !acct.user) return;
+  delState = 'busy'; render();
+  try {
+    if (!(await connectQuiet())) throw { code: 'auth/network-request-failed' };
+    await call('deleteAccount', {});
+  } catch (e) {
+    const d = (e && e.details) || {};
+    delState = { error: d.playing ? 'Finish or leave your match first.' : /network/.test(String(e && e.code)) ? 'No connection. Check your internet and try again.' : "Couldn't delete the account. Try again." };
+    render(); return;
+  }
+  delState = null;
+  pendingLocal([]); holdResume(null);                            // nothing of the account stays on this phone
+  await logout();
+  setMenuNote('Account deleted'); render();
 }
 
 // Setters for the names other modules reassign (an imported name is read-only there).

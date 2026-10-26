@@ -171,6 +171,15 @@ function loadModel(read, oldTypes) {
   sec('other', 'credits', 'Credits', [
     fld('Trivia', after(EXPLAINER, /visibleTypes\(\)\.includes\('trivia'\) \? (?=')/)),
     fld('Physics games', after(EXPLAINER, /t === 'pinball'\) \? (?=')/)),
+    fld('Privacy note', region(EXPLAINER, /<p class="priv">(.*?): <a href="\$\{privacyUrl\(\)\}"/, 'tpl')),
+    fld('Privacy link', region(EXPLAINER, /<p class="priv">[^<]*<a href="\$\{privacyUrl\(\)\}"[^>]*>(.*?)<\/a>/, 'tpl')),
+  ]);
+  // The account screens: the login's privacy line and the "Verify your email" screen (ui/screens/account.js).
+  sec('other', 'account', 'Account screens', [
+    fld('Agree', region(ACCOUNT, /<p class="agree">(.*?)<\/p>/, 'tpl', { link: "${privacyLink('Privacy policy')}" })),
+    fld('Verify title', region(ACCOUNT, /verify-scr">\n\s+<div class="bar">.*\n\s+<div class="ttl"><b>(.*?)<\/b>/, 'tpl')),
+    fld('Verify banner', region(ACCOUNT, /verify-scr">\n\s+<div class="bar">.*\n\s+<div class="ttl"><b>.*?<\/b><small>(.*?)<\/small>/, 'tpl')),
+    fld('Verify hint', region(ACCOUNT, /data-keep-scroll="verify">\n\s+<p class="hint">(.*?)<\/p>/, 'tpl', { email: '${esc(verifyEmail())}' })),
   ]);
   const em = { email: '${esc(gateEmail)}' }, em2 = { email: "${esc(gateEmail || 'This account')}" };
   const shellAt = (title, q, ph) => region(ACCOUNT, new RegExp(`shell\\('${title}', ${q}<p class="hint">(.*?)</p>`), q === '`' ? 'tpl' : 'sq', ph);

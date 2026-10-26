@@ -20,11 +20,13 @@
  *   users/{uid}            profile: username, joined; the Find Match record (wins, losses, draws, games), the
  *                          friend-code record (friend: { wins, losses, draws, games }), squares won and lost
  *                          per mini-game in all online games (minis: { type: { won, lost } }); rating (unused
- *                          while R.RATINGS_ENABLED is off)
+ *                          while R.RATINGS_ENABLED is off). Read by its owner and the admin only
+ *   profiles/{uid}         the public part of users/{uid} (serverRules.js publicProfile: username, records, squares,
+ *                          joined), for any logged-in player; kept in step by profileSync (every write to users/{uid})
  *   usernames/{lowercase}  uid
  *   leaderboard/{uid}      username, rating, record; only players with 5+ ranked games
- *   history/{uid}/{game}   one finished online game, from that player's side
- *   oppStats/{uid}/{opp}   that player's record against one opponent (people with an account, never a bot)
+ *   history/{uid}/{game}   one finished online game, from that player's side (that player and the admin only)
+ *   oppStats/{uid}/{opp}   that player's record against one opponent (people with an account, never a bot; that player and the admin only)
  *   queue/match/{uid}      searching players (Find Match is one queue, 1 minute a turn)
  *   active/{uid}           the matchmaking game a player is in
  *   games/{id}/pub         the public game: players, mode, status, state (JSON), result, final (JSON)
@@ -44,6 +46,12 @@
  * Game stats: every match in every mode is counted. Phones report their local matches through the
  * `track` callable (which checks and trims what it is sent); online matches are counted here, where
  * they are run or saved. The admin is the account with the `admin` custom claim (scripts/make-admin.js).
+ *
+ * Accounts and their data (App Store guideline 5.1.1, the privacy policy at /privacy.html): an email-and-password
+ * account must have proved its address before it is let into anything that needs an account (needAccount: the server
+ * answers { verify: true }; the page shows "Verify your email"); a player deletes their own account from their profile
+ * (deleteAccount: every node of theirs, then the Auth user); the sweep keeps device logs, lastSeen and the alert log
+ * 90 days (RETAIN_MS), match logs 30 (matchLogRules.js LOG_KEEP_MS).
  */
 const { onCall: callable, onRequest, HttpsError } = require('firebase-functions/v2/https');
 const { defineSecret } = require('firebase-functions/params');
@@ -141,9 +149,19 @@ function needAdmin(req) {
 }
 // The admin's settings from the dashboard (admin/config): the bots and the empty-queue alert.
 async function adminConfig() { return (await db.ref('admin/config').get()).val() || {}; }
-function needAccount(req) {
+// A logged-in account (not a guest): enough to delete the account itself.
+function needLogin(req) {
   const uid = needUid(req);
-  if (req.auth.token && req.auth.token.firebase && req.auth.token.firebase.sign_in_provider === 'anonymous') throw new HttpsError('unauthenticated', 'Log in first.');
+  if (isAnon(req)) throw new HttpsError('unauthenticated', 'Log in first.');
+  return uid;
+}
+// An account let into what needs one (Find Match, hosting, the username, the records): an email-and-password account
+// must have proved its address (Google's and Apple's are proved by the provider). Refused with { verify: true }: the
+// page shows "Verify your email" (src/net/accounts.js).
+const passwordUnverified = t => !!(t && t.firebase && t.firebase.sign_in_provider === 'password' && t.email_verified !== true);
+function needAccount(req) {
+  const uid = needLogin(req);
+  if (passwordUnverified(req.auth.token)) throw new HttpsError('failed-precondition', 'Verify your email first.', { verify: true });
   return uid;
 }
 // The client that sent a call (its version and platform: src/core/client.js, src/net/connect.js call), and the admin's oldest
@@ -310,8 +328,66 @@ exports.claimUsername = onCall(CALL, async req => {
     return { username: name, rating: R.START_RATING, wins: 0, losses: 0, draws: 0, games: 0, joined: now() };
   }, undefined, false);
   if (!made.committed) { await db.ref(`usernames/${lower}`).remove(); return { ok: false, reason: 'You already have a username' }; }
+  await syncProfile(uid);
   await db.ref().update(statsUp(S.periodUpdates('newAccounts', now()))).catch(e => logger.error('stats', e));
   return { ok: true, username: name };
+});
+
+/* ===================== public profiles ===================== */
+// users/{uid} is its owner's (and the admin's) to read; what other players may see of them is profiles/{uid}
+// (R.publicProfile: the username, the records, the squares per mini-game, the join date). Written here after
+// every write that changes it (claimUsername, finishGame) and, for every other write (the back-fills, the admin's
+// scripts), by the trigger below; scripts/backfill-profiles.js writes the first one for every account from before.
+async function syncProfile(uid) {
+  try {
+    const u = (await db.ref(`users/${uid}`).get()).val();
+    await db.ref(`profiles/${uid}`).set(R.publicProfile(u));
+  } catch (e) { logger.error('profile sync', uid, e); }
+}
+exports.profileSync = onValueWritten({ ref: '/users/{uid}' }, async event => {
+  const after = event.data.after.val();
+  const p = R.publicProfile(after);
+  const have = (await db.ref(`profiles/${event.params.uid}`).get()).val();
+  if (JSON.stringify(have || null) !== JSON.stringify(p)) await db.ref(`profiles/${event.params.uid}`).set(p);   // (no write when nothing public changed)
+});
+
+/* ===================== deleting an account ===================== */
+// A player deletes their own account from their profile (App Store guideline 5.1.1(v)): refused while they are in an
+// online match (Find Match, or a friend room's match: finish or leave it first), else every node of theirs goes, the
+// username is freed, and the Firebase Auth user is deleted. Other players' records of games against them stay (their
+// own history and tallies); the stats count the deletion (deletedAccounts) and the log holds a hash, never who.
+const ALL_QUEUES = () => OLD_QUEUES.concat(Object.keys(R.QUEUES));
+// The friend rooms a player is seated in (by either seat; rooms live a day).
+async function roomsOf(uid) {
+  const out = {};
+  for (const s of ['X', 'O']) Object.assign(out, (await db.ref('rooms').orderByChild(`players/${s}/uid`).equalTo(uid).limitToFirst(20).get()).val() || {});
+  return out;
+}
+exports.deleteAccount = onCall(CALL, async req => {
+  const uid = needLogin(req), t = now();
+  const busy = () => { throw new HttpsError('failed-precondition', 'Finish or leave your match first.', { playing: true }); };
+  if (await activeGame(uid)) busy();
+  const rooms = await roomsOf(uid);
+  for (const room of Object.values(rooms)) {
+    if (room.status !== 'playing' || !room.game) continue;
+    if ((await db.ref(`games/${room.game}/pub/status`).get()).val() === 'playing') busy();
+  }
+  const up = {};
+  for (const [code, room] of Object.entries(rooms)) {               // a lobby left behind: the host's room goes, a guest's seat is freed (a match over: the sweep's)
+    if (room.status !== 'lobby') continue;
+    if (room.host === uid) { up[`rooms/${code}`] = null; up[`presence/${code}`] = null; up[`reacts/${code}`] = null; }
+    else { const s = roomSide(room, uid); if (s) { up[`rooms/${code}/players/${s}`] = null; up[`presence/${code}/${s}`] = null; } }
+  }
+  const name = await usernameOf(uid);
+  if (name && (await db.ref(`usernames/${name.toLowerCase()}`).get()).val() === uid) up[`usernames/${name.toLowerCase()}`] = null;
+  for (const key of ALL_QUEUES()) up[`queue/${key}/${uid}`] = null;
+  for (const node of ['users', 'profiles', 'history', 'oppStats', 'localStats', 'localHistory', 'lastSeen', 'active', 'leaderboard']) up[`${node}/${uid}`] = null;
+  up[`review/flaggedNames/names/${uid}`] = null;
+  statsUp(S.periodUpdates('deletedAccounts', t), up);
+  await db.ref().update(up);
+  await admin.auth().deleteUser(uid).catch(e => { if (e.code !== 'auth/user-not-found') throw e; });
+  logger.info('account deleted', { h: S.hashId('u:' + uid) });
+  return { ok: true };
 });
 
 /* ===================== matchmaking ===================== */
@@ -1035,6 +1111,7 @@ async function finishGame(id) {
     up[`botStats/${st.winner !== 'X' && st.winner !== 'O' ? 'draws' : st.winner === bg.side ? 'botWins' : 'playerWins'}`] = ServerValue.increment(1);
   }
   await db.ref().update(up);                                   // all of it at once: both ratings, records, leaderboard, history, stats
+  for (const s of ['X', 'O']) if (named[s]) await syncProfile(pub.players[s].uid);   // the public profiles, with the new records
   await markActive(['X', 'O'].filter(s => (!bg || pub.players[s].uid !== bg.bot) && (!friend || named[s])).map(s => 'u:' + pub.players[s].uid), t).catch(e => logger.error('stats', e));
   return true;
 }
@@ -1260,9 +1337,37 @@ async function sweep() {
   await pruneSeen(t, up).catch(e => logger.error('stats prune', e));
   await pruneRate(t, up).catch(e => logger.error('rate prune', e));
   const logs = await pruneLogs(t, up).catch(e => { logger.error('match log prune', e); return 0; });
+  const retired = await pruneRetained(t, up).catch(e => { logger.error('retention prune', e); return 0; });
   if (Object.keys(up).length) await db.ref().update(up);
   if (logs) logger.info('match logs deleted', logs);
-  return { timeouts, finished, deleted, botMoves, rooms };
+  if (retired) logger.info('retention: entries deleted', retired);
+  return { timeouts, finished, deleted, botMoves, rooms, retired };
+}
+// Retention (the privacy policy): device logs, a device not seen for 90 days (with its log), an account's last activity
+// and the alert log are kept 90 days. Each sweep takes a bounded bite: whole devices gone quiet (devices/{h}/last), the
+// old events of a few devices still in use (each device looked at once a day: devices/{h}/pruned), lastSeen/{uid} and
+// alertLog entries past the limit. Returns how many entries went.
+const RETAIN_MS = 90 * 86400000, PRUNE_DEVICES = 10, PRUNE_EVENTS = 200;
+async function pruneRetained(t, up) {
+  const old = t - RETAIN_MS;
+  let n = 0;
+  const quiet = (await db.ref('devices').orderByChild('last').startAt(1).endAt(old).limitToFirst(50).get()).val() || {};
+  for (const h of Object.keys(quiet)) { up[`devices/${h}`] = null; up[`devlog/${h}`] = null; n++; }
+  const due = (await db.ref('devices').orderByChild('pruned').endAt(t - 86400000).limitToFirst(PRUNE_DEVICES).get()).val() || {};   // (never pruned sorts first)
+  for (const h of Object.keys(due)) {
+    if (quiet[h]) continue;
+    const evs = (await db.ref(`devlog/${h}`).orderByChild('t').startAt(1).endAt(old).limitToFirst(PRUNE_EVENTS).get()).val() || {};
+    const k = Object.keys(evs);
+    for (const key of k) up[`devlog/${h}/${key}`] = null;
+    if (k.length) up[`devices/${h}/n`] = ServerValue.increment(-k.length);
+    up[`devices/${h}/pruned`] = t;
+    n += k.length;
+  }
+  const seen = (await db.ref('lastSeen').orderByValue().startAt(1).endAt(old).limitToFirst(100).get()).val() || {};
+  for (const uid of Object.keys(seen)) { up[`lastSeen/${uid}`] = null; n++; }
+  const alerts = (await db.ref('alertLog').orderByChild('at').startAt(1).endAt(old).limitToFirst(100).get()).val() || {};
+  for (const key of Object.keys(alerts)) { up[`alertLog/${key}`] = null; n++; }
+  return n;
 }
 // What the stats have seen, once it can no longer matter: matches after three days, players once their
 // day, week or month is well over (the counts stay).

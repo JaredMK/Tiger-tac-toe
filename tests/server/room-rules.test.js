@@ -61,7 +61,7 @@ let n = 0;
 function client(uid) {
   const app = initializeApp({ apiKey: 'test', projectId: PROJECT, databaseURL: `https://${NS}.firebaseio.com`, appId: '1:1:web:1' }, 'c' + (++n));
   const db = D.getDatabase(app);
-  D.connectDatabaseEmulator(db, HOST, PORT, { mockUserToken: { sub: uid, user_id: uid } });
+  D.connectDatabaseEmulator(db, HOST, PORT, uid ? { mockUserToken: { sub: uid, user_id: uid } } : undefined);   // (no uid: nobody logged in)
   const c = { app, db, uid, write: (p, v) => D.set(D.ref(db, p), v), read: async p => (await D.get(D.ref(db, p))).val(), update: (p, v) => D.update(D.ref(db, p), v) };
   clients.push(c);
   return c;
@@ -151,4 +151,31 @@ test('room rules: presence has a shape, is the seat\'s own, and is read by the t
   await denied(host.write('gpresence/g1/X', { online: 1, at: t }), 'game presence out of shape');
   await denied(host.write('gpresence/g1/X', { online: true, extra: 'x' }), 'game presence with more in it');
   await denied(stranger.read('gpresence/g1'), "a stranger reading a game's presence");
+});
+test('account rules: users/{uid}, history/{uid} and oppStats/{uid} are the owner\'s (and the admin\'s) to read; profiles/{uid} is the public part, for any login; nobody writes any of them (security review F9/F11/F15)', async () => {
+  const me = client('uid-me'), other = client('uid-other'), anon = client(null);
+  const t = Date.now();
+  await owner('PUT', `/users/${me.uid}.json`, JSON.stringify({ username: 'Me_1', rating: 1200, wins: 2, losses: 1, draws: 0, games: 3, joined: t }));
+  await owner('PUT', `/profiles/${me.uid}.json`, JSON.stringify({ username: 'Me_1', wins: 2, losses: 1, draws: 0, games: 3, friend: { wins: 0, losses: 0, draws: 0, games: 0 }, joined: t }));
+  await owner('PUT', `/history/${me.uid}/g1.json`, JSON.stringify({ result: 'win', date: t, opponent: { uid: other.uid, name: 'Other' } }));
+  await owner('PUT', `/oppStats/${me.uid}/${other.uid}.json`, JSON.stringify({ name: 'Other', wins: 1, losses: 0, draws: 0, last: t }));
+  assert.equal((await me.read(`users/${me.uid}`)).username, 'Me_1', 'your own account');
+  assert.equal((await me.read(`history/${me.uid}`)).g1.result, 'win', 'your own history');
+  assert.equal((await me.read(`oppStats/${me.uid}`))[other.uid].name, 'Other', 'your own opponents');
+  await denied(other.read(`users/${me.uid}`), "another's account");
+  await denied(other.read(`users/${me.uid}/username`), "another's username through their account");
+  await denied(other.read('users'), 'listing the accounts');
+  await denied(other.read(`history/${me.uid}`), "another's history");
+  await denied(other.read(`history/${me.uid}/g1`), "one of another's games");
+  await denied(other.read(`oppStats/${me.uid}`), "another's opponents");
+  assert.equal((await other.read(`profiles/${me.uid}`)).username, 'Me_1', "another's public profile");
+  assert.deepEqual(Object.keys(await other.read(`profiles/${me.uid}`)).sort(), ['draws', 'friend', 'games', 'joined', 'losses', 'username', 'wins'], 'the public fields alone');
+  await denied(anon.read(`profiles/${me.uid}`), 'a profile without a login');
+  await denied(other.read('profiles'), 'listing the profiles');
+  await denied(me.write(`profiles/${me.uid}/wins`, 99), 'your own profile by hand');
+  await denied(other.write(`profiles/${me.uid}/wins`, 0), "another's profile");
+  await denied(me.write(`users/${me.uid}/wins`, 99), 'your own record by hand');
+  await denied(me.write(`history/${me.uid}/g2`, { result: 'win' }), 'your own history by hand');
+  await denied(me.write(`oppStats/${me.uid}/${other.uid}/wins`, 99), 'your own tally by hand');
+  await denied(me.write(`lastSeen/${me.uid}`, t), 'your last activity by hand');
 });

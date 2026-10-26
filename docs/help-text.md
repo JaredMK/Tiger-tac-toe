@@ -351,6 +351,14 @@ Close hint: Tap anywhere to close
 ## Credits [credits]
 Trivia: <p>Trivia questions from the <a href="https://opentdb.com" target="_blank" rel="noopener noreferrer">Open Trivia Database</a>, opentdb.com, <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a>.</p>
 Physics games: <p>Mini Golf, Pool, Bowling and Pinball run on <a href="https://brm.io/matter-js" target="_blank" rel="noopener noreferrer">Matter.js</a> (MIT licence).</p>
+Privacy note: What the game keeps about you, and how to delete your account
+Privacy link: Privacy policy
+
+## Account screens [account]
+Agree: By continuing you agree to the {link}.
+Verify title: Verify your email
+Verify banner: Find Match, hosting and your username need a verified email
+Verify hint: We sent a verification link to <b>{email}</b>. Open it, then tap Continue.
 
 ## Staging notices [staging]
 Banner: Staging: for testers on the list only

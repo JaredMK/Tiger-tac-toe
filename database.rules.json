@@ -2,7 +2,9 @@
   "rules": {
     "rooms": {
       ".indexOn": [
-        "created"
+        "created",
+        "players/X/uid",
+        "players/O/uid"
       ],
       "$code": {
         ".validate": "$code.matches(/^[ABCDEFGHJKLMNPQRSTUVWXYZ]{5}$/)",
@@ -101,7 +103,15 @@
       }
     },
     "users": {
-      ".read": "auth != null"
+      ".read": "auth != null && auth.token.admin === true",
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid"
+      }
+    },
+    "profiles": {
+      "$uid": {
+        ".read": "auth != null"
+      }
     },
     "usernames": {
       ".read": "auth != null"
@@ -114,7 +124,7 @@
     },
     "history": {
       "$uid": {
-        ".read": "auth != null",
+        ".read": "auth != null && (auth.uid === $uid || auth.token.admin === true)",
         ".indexOn": [
           "date"
         ]
@@ -122,7 +132,7 @@
     },
     "oppStats": {
       "$uid": {
-        ".read": "auth != null"
+        ".read": "auth != null && (auth.uid === $uid || auth.token.admin === true)"
       }
     },
     "games": {
@@ -270,13 +280,25 @@
       ".read": "auth != null && auth.token.admin === true"
     },
     "lastSeen": {
-      ".read": "auth != null && auth.token.admin === true"
+      ".read": "auth != null && auth.token.admin === true",
+      ".indexOn": [
+        ".value"
+      ]
     },
     "devices": {
-      ".read": "auth != null && auth.token.admin === true"
+      ".read": "auth != null && auth.token.admin === true",
+      ".indexOn": [
+        "last",
+        "pruned"
+      ]
     },
     "devlog": {
-      ".read": "auth != null && auth.token.admin === true"
+      ".read": "auth != null && auth.token.admin === true",
+      "$h": {
+        ".indexOn": [
+          "t"
+        ]
+      }
     },
     "config": {
       ".read": true,

@@ -22,6 +22,7 @@ test('the app: the client is iOS at this code\'s version; links and invites name
   assert.equal(P.NATIVE, true);
   assert.deepEqual(P.clientInfo(), { v: CLIENT_VERSION, p: 'ios' });
   assert.equal(P.siteUrl(), 'https://tictacchaos.com/', 'never capacitor://localhost');
+  assert.equal(P.privacyUrl(), 'https://tictacchaos.com/privacy.html', "the privacy policy: the live site's page (opened in the in-app browser)");
 });
 test('the app: the invite goes to the native share sheet', async () => {
   assert.equal(await P.shareText('Join my Tic Tac Chaos game! Code: ABCDE https://tictacchaos.com/?room=ABCDE'), true);

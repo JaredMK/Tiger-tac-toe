@@ -389,6 +389,20 @@ code needs no account (a guest in a friend game without one uses an anonymous se
 Hosting a friend game needs an account too: tapping **Host game** while logged out goes to the login
 first, then straight back to hosting once logged in (and named). Joining a friend's game does not.
 
+**A proved email.** An email-and-password account must open the verification link sent at sign-up
+before Find Match, hosting or a username: the server refuses an unverified one (`needAccount`,
+`{ verify: true }`) and the page shows **Verify your email** (Continue, Send the link again, Log out);
+Google and Apple accounts are proved by the provider. **Deleting the account** is on the player's own
+stats page (**Delete account**, then Yes): the server (`deleteAccount`) refuses while they are in an
+online match, else deletes every node of theirs (profile, username, records, history, Top opponents,
+local records, last activity) and the login itself; other players keep their own history of games
+against them. **What other players may read** is the public profile, `profiles/{uid}` (username, records,
+squares per mini-game, join date), which the server keeps in step with `users/{uid}` (readable by its
+owner and the admin only, as are `history/{uid}` and `oppStats/{uid}`); `scripts/backfill-profiles.js`
+(run by the deploy, once) writes it for every account from before. The **privacy policy** is
+`privacy.html` (linked from the main menu, the login screen and the credits; a draft to review), and the
+sweep keeps device logs, last activity and the alert log 90 days.
+
 **Find Match** (main menu; needs an account) pairs strangers in a single queue for a **Classic** match
 (turn by turn, 1 minute a turn; every released mini-game the server can verify), with no options to
 pick. Tapping Find Match goes straight into searching (after

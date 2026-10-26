@@ -61,6 +61,7 @@ async function searchTick() {
     } catch (e) {
       searchBusy = false;
       if (e && e.details && e.details.off) { stopSearch(); setFindOn(false); state.screen = 'menu'; commit(); return; }   // switched off: already out of the queue
+      if (e && e.details && e.details.verify) { stopSearch(); return; }   // an email not yet proved: "Verify your email" is up (connect.js call); searching again once it is
       search.msg = e && /precondition|invalid-argument|unauthenticated/.test(String(e.code)) ? String(e.message) : 'Connection trouble: still trying…';
     }
   }

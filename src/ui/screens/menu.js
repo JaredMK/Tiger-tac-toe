@@ -2,6 +2,7 @@
 import { soundBtn } from '../../audio/sound.js';
 import { acct, loggedIn } from '../../net/accounts.js';
 import { activeElsewhere, findOn, resumable, resumeBusy } from '../../net/matchmaking.js';
+import { privacyUrl } from '../../net/platform.js';
 import { esc, menuNote } from '../app.js';
 import { toon } from '../art.js';
 import { RATINGS_ENABLED } from '../config.js';
@@ -21,7 +22,7 @@ export function renderMenu() {
     <button class="link wide challenge" data-act="challenge">Challenge a friend</button>
     ${findBtn()}
     <button class="btn howto" data-act="howto">How to Play</button>
-  </div><a class="credit" href="${JARHEAD_URL}" target="_blank" rel="noopener noreferrer" aria-label="by JarHead Labs, on X (opens in a new tab)">${JARHEAD_LOGO}<span>by JarHead Labs</span></a></main>`;
+  </div><div class="menu-foot"><a class="credit" href="${JARHEAD_URL}" target="_blank" rel="noopener noreferrer" aria-label="by JarHead Labs, on X (opens in a new tab)">${JARHEAD_LOGO}<span>by JarHead Labs</span></a><a class="privacy" href="${privacyUrl()}" target="_blank" rel="noopener noreferrer" aria-label="Privacy policy (opens in a new tab)">Privacy</a></div></main>`;
 }
 // Find Match: greyed while the admin has it off ("Not available at this time"); back into the match in progress if there is one.
 function findBtn() {

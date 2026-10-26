@@ -8,7 +8,7 @@
 //    (the bucket is made if it is missing). The upload is read back and compared before anything is deleted.
 // 2. Delete what matches and play left behind (DELETE below): games, rooms, history, match logs, stats, tracking.
 // 3. Every account's record back to 0-0-0 (RECORD below); its username, joined date and anything else stays.
-// Kept: Auth accounts and their claims (the admin flag), users/ profiles, usernames/, admin/, config/ (game and
+// Kept: Auth accounts and their claims (the admin flag), users/ profiles (and their public profiles/, the records zeroed with them), usernames/, admin/, config/ (game and
 // computer settings), releases/, features/, bots/ (bot settings), meta/, review/. A root it does not know is
 // listed in the log and left alone. --dry-run makes the backup and prints what it would do, and changes nothing.
 // Restore: scripts/restore-backup.js (the "Restore production" workflow). The "Reset production" workflow runs this.
@@ -20,8 +20,9 @@ const START_RATING = 1200;                                              // (func
 const DELETE = ['rooms', 'games', 'gpresence', 'presence', 'reacts', 'active', 'queue', 'botGames', 'history', 'localHistory',
   'matchLogs', 'matchLogIndex', 'matchLogRoom', 'stats', 'statsSeen', 'localStats', 'oppStats', 'leaderboard', 'botStats',
   'alertLog', 'alertStats', 'alertState', 'botsLock', 'devices', 'devlog', 'lastSeen', 'reports', 'rate'];
-const KEEP = ['users', 'usernames', 'admin', 'config', 'releases', 'features', 'bots', 'meta', 'review', 'rate'];
+const KEEP = ['users', 'profiles', 'usernames', 'admin', 'config', 'releases', 'features', 'bots', 'meta', 'review', 'rate'];
 const RECORD = { wins: 0, losses: 0, draws: 0, games: 0, rating: START_RATING, friend: null, minis: null };
+const PUBLIC_RECORD = ['wins', 'losses', 'draws', 'games', 'friend', 'minis'];   // the record's part of a public profile (profiles/{uid}: no rating), put back to 0-0-0 with it
 const PROFILE = ['username', 'joined', ...Object.keys(RECORD)];        // the fields an account is known to have
 
 // What the reset does to a database snapshot: the root paths to delete (each child of a big root on its own,
@@ -39,6 +40,7 @@ function plan(data) {
   for (const [uid, u] of Object.entries(data.users || {})) {
     if (!u || typeof u !== 'object') continue;
     for (const [k, v] of Object.entries(RECORD)) records[`users/${uid}/${k}`] = v;
+    if (u.username) for (const k of PUBLIC_RECORD) records[`profiles/${uid}/${k}`] = RECORD[k];   // the public profile's record with it (profileSync would too, in its own time)
     for (const k of Object.keys(u)) if (!PROFILE.includes(k)) extraFields.add(k);
   }
   return { remove, records, unknown, extraFields: [...extraFields].sort(), accounts: Object.keys(data.users || {}).length };

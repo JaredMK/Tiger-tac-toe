@@ -184,6 +184,8 @@ jobs:
       - name: Back-fill each player's record against each opponent (once)
         if: env.TARGET == 'production'
         run: node scripts/backfill-opponents.js
+      - name: Back-fill every account's public profile (profiles/, once; the server keeps them from then on)
+        run: node scripts/backfill-profiles.js
       - name: Check existing usernames against the word list (once per rules version)
         run: node scripts/check-usernames.js
       - name: Release switches set by request (once each)

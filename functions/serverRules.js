@@ -207,8 +207,21 @@ function checkLocal(d, types, mainResult, majorityResult) {
   return { id, side, cpu: opp.cpu === true, opponent: names[o], final };
 }
 
+// A player's public profile (profiles/{uid}: what any logged-in player may read of another, security review F9/F11/F15),
+// from their account (users/{uid}, the owner's and the admin's alone): the username, the Find Match and friends records
+// (with the games by side), the squares won and lost per mini-game, and when they joined. Never the email, the rating
+// or anything else. null for an account without a username (nothing to show yet).
+const PROFILE_KEYS = ['wins', 'losses', 'draws', 'games'];
+function publicProfile(u) {
+  if (!u || typeof u !== 'object' || typeof u.username !== 'string' || !u.username) return null;
+  const rec = r => { const out = {}; for (const k of PROFILE_KEYS) out[k] = Number(r && r[k]) || 0; if (r && r.sides && typeof r.sides === 'object') out.sides = r.sides; return out; };
+  const p = Object.assign({ username: u.username, joined: Number(u.joined) || 0 }, rec(u), { friend: rec(u.friend) });
+  if (u.minis && typeof u.minis === 'object') p.minis = u.minis;
+  return p;
+}
+
 module.exports = {
-  LOCAL_REASONS, checkLocal,
+  LOCAL_REASONS, checkLocal, publicProfile, PROFILE_KEYS,
   USERNAME_RE, usernameProblem, unleet, flatten, badWordIn, BAD, BAD_TOKENS, ALLOW, RATINGS_ENABLED, ELO_K, START_RATING, LEADERBOARD_MIN_GAMES, expected, elo,
   FIND_MATCH_TIMER, FIND_MATCH_MODES, QUEUES, queueKey, ratingRange, pairQueue, howEnded, resultFor,
   recordDelta, squaresFor, recountHistory, recountSides,

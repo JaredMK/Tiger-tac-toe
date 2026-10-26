@@ -12,7 +12,7 @@ import { echoPinned } from '../games/echo/view.js';
 import { oddPinned } from '../games/oddone/view.js';
 import { TYPES } from '../games/index.js';
 import { SND, matchEndSound } from '../audio/sound.js';
-import { acct, connectQuiet, loggedIn } from './accounts.js';
+import { acct, connectQuiet, loggedIn, setAfterLogin } from './accounts.js';
 import { call, connectFirebase, connected, fb, serverNow } from './connect.js';
 import { isMM, listenGame, onGameValue, resignMM } from './matchmaking.js';
 import { scFollow } from './chaos.js';
@@ -124,6 +124,7 @@ export async function hostRoom(code, resume) {
       o.code = r.code; o.me = r.side;
     } catch (e) {
       if (state.online !== o) return;
+      if (e && e.details && e.details.verify) { state.online = null; state.setup.mode = 'two'; setNet('idle', ''); setAfterLogin('host'); commit(); return; }   // an email not yet proved: "Verify your email" is up (connect.js call); the room opens once it is
       setNet('error', e && /permission/i.test(String(e.code)) ? String(e.message) : "Couldn't open a room. Check your internet connection (switching to Wi-Fi helps) and try again."); commit(); return;
     }
   }

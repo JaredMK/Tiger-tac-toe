@@ -35,7 +35,7 @@ function build(env, sha, out) {
   const OUT = out || OUT_SITE;
   fs.rmSync(OUT, { recursive: true, force: true });
   fs.mkdirSync(OUT);
-  for (const f of ['index.html', 'admin.html', 'admin.js', 'playtest.js', 'trivia.json', 'styles.html']) if (fs.existsSync(path.join(ROOT, f))) fs.copyFileSync(path.join(ROOT, f), path.join(OUT, f));
+  for (const f of ['index.html', 'privacy.html', 'admin.html', 'admin.js', 'playtest.js', 'trivia.json', 'styles.html']) if (fs.existsSync(path.join(ROOT, f))) fs.copyFileSync(path.join(ROOT, f), path.join(OUT, f));   // (privacy.html: the privacy policy, on both sites and in the app's build)
   fs.cpSync(path.join(ROOT, 'src'), path.join(OUT, 'src'), { recursive: true });
   const matter = path.join(ROOT, 'node_modules', 'matter-js', 'build', 'matter.min.js');
   if (fs.existsSync(matter)) fs.copyFileSync(matter, path.join(OUT, 'matter.min.js'));
@@ -46,7 +46,7 @@ function build(env, sha, out) {
   fs.cpSync(path.join(ROOT, 'assets', 'share'), path.join(OUT, 'assets', 'share'), { recursive: true });
   for (const [f, to] of [['favicon.ico', 'favicon.ico'], ['apple-touch-icon.png', 'apple-touch-icon.png']]) fs.copyFileSync(path.join(ROOT, 'assets', 'share', f), path.join(OUT, to));
   if (env === 'staging') fs.writeFileSync(path.join(OUT, 'index.html'), previewHost(fs.readFileSync(path.join(OUT, 'index.html'), 'utf8'), env));
-  if (env === 'staging') for (const f of ['index.html', 'admin.html', 'styles.html']) { const p = path.join(OUT, f); if (fs.existsSync(p)) fs.writeFileSync(p, noindex(fs.readFileSync(p, 'utf8'))); }
+  if (env === 'staging') for (const f of ['index.html', 'privacy.html', 'admin.html', 'styles.html']) { const p = path.join(OUT, f); if (fs.existsSync(p)) fs.writeFileSync(p, noindex(fs.readFileSync(p, 'utf8'))); }
   fs.writeFileSync(path.join(OUT, 'robots.txt'), robots(env));
   const links = aasa(require('./app-config.js'));
   if (links) { fs.mkdirSync(path.join(OUT, '.well-known'), { recursive: true }); fs.writeFileSync(path.join(OUT, '.well-known', 'apple-app-site-association'), JSON.stringify(links) + '\n'); }
