@@ -9,6 +9,7 @@ import { toonT } from '../art.js';
 import { RATINGS_ENABLED } from '../config.js';
 import { record, signed } from './profile.js';
 import { netBar } from '../turnbar.js';
+import { shareBtn } from '../sharecard.js';
 
 /* ----- win screen ----- */
 // The match-end message: one picked at random per match, from the winner's, the loser's or the tie list,
@@ -95,7 +96,7 @@ export function renderWin() {
   return `<main class="scr win-scr">${netBar()}<div class="win-card${isMM() ? ' mm' : ''}">
     <div class="winburst">${endBurst(endMessage())}</div><div class="big-g ${w}">${toonT(w)}</div><h1>${state.winReason === 'timeout' ? `${N(w)} wins` : state.winReason === 'resign' ? `${N(w)} wins — ${why}` : `${N(w)} wins the match!`}</h1><p>${state.winReason === 'timeout' ? why : state.winReason === 'resign' ? 'Leaving a match counts as a loss' : why}</p>${mmResult()}
     <div class="final" aria-hidden="true">${final}</div>
-    <div class="row">${againBtns()}<button class="btn" data-act="review">View board</button><button class="btn" data-act="${state.online ? 'leave' : 'menu'}">Main menu</button></div>${rematchNote()}</div></main>`;
+    <div class="row">${againBtns()}<button class="btn" data-act="review">View board</button><button class="btn" data-act="${state.online ? 'leave' : 'menu'}">Main menu</button></div>${rematchNote()}${shareBtn()}</div></main>`;
 }
 
 
@@ -107,5 +108,5 @@ function renderDraw() {
   return `<main class="scr win-scr">${netBar()}<div class="win-card${isMM() ? ' mm' : ''}">
     <div class="winburst">${endBurst(endMessage())}</div><div class="big-g both">${toonT('X')}${toonT('O')}</div><h1>It's a draw!</h1><p>${state.winReason === 'both' ? 'Both made three in a row in the same round' : state.winReason === 'timeout' ? 'Both missed two rounds in a row' : 'Nobody could get three in a row any more, so the match ended there'}</p>${mmResult()}
     <div class="final" aria-hidden="true">${final}</div>
-    <div class="row">${againBtns()}<button class="btn" data-act="review">View board</button><button class="btn" data-act="${state.online ? 'leave' : 'menu'}">Main menu</button></div>${rematchNote()}</div></main>`;
+    <div class="row">${againBtns()}<button class="btn" data-act="review">View board</button><button class="btn" data-act="${state.online ? 'leave' : 'menu'}">Main menu</button></div>${rematchNote()}${shareBtn()}</div></main>`;
 }

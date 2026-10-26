@@ -24,6 +24,34 @@ export async function shareText(text) {
   if (typeof navigator !== 'undefined' && navigator.share) { await navigator.share({ text }); return true; }
   return false;
 }
+// Share a file with a text (the result card, ui/sharecard.js): the app's Share plugin (the file written to the device's
+// cache first, through its Filesystem plugin, since the plugin shares a file by its url), or the browser's share sheet where
+// it takes files (navigator.canShare), else false (the caller saves the file and copies the text).
+export async function shareFile(blob, name, text) {
+  const type = blob.type || 'image/png';
+  const sh = plugin('Share'), fsys = plugin('Filesystem');
+  if (sh && fsys) {
+    const w = await fsys.writeFile({ path: name, data: await blobBase64(blob), directory: 'CACHE' });
+    if (w && w.uri) { await sh.share({ text, files: [w.uri] }); return true; }
+  }
+  if (typeof navigator !== 'undefined' && navigator.share && navigator.canShare && typeof File === 'function') {
+    const files = [new File([blob], name, { type })];
+    if (navigator.canShare({ files })) { await navigator.share({ files, text }); return true; }
+  }
+  return false;
+}
+const blobBase64 = blob => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1] || ''); r.onerror = () => rej(r.error); r.readAsDataURL(blob); });
+// Save a file on the web (a download link clicked); the app has no downloads (its share sheet offers Save Image).
+export function downloadFile(blob, name) {
+  if (NATIVE) return false;
+  try {
+    const u = URL.createObjectURL(blob), a = document.createElement('a');
+    a.href = u; a.download = name; a.rel = 'noopener'; a.style.display = 'none';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(u), 5000);
+    return true;
+  } catch (e) { return false; }
+}
 // Copy a text (the invite): the app's Clipboard plugin, or the browser's clipboard.
 export async function copyText(text) {
   const cb = plugin('Clipboard');

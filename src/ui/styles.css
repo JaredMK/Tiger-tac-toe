@@ -2509,3 +2509,9 @@ main.scr.mini > .wband { left: 0; right: 0; }   /* Super Chaos: waiting in the s
 @keyframes cslump { 0% { transform: none; opacity: 1; } 30% { transform: translateY(6px) rotate(-6deg) scaleY(.92); } 65% { transform: translateY(18px) rotate(8deg) scaleY(.75); opacity: .85; } 100% { transform: translateY(22px) rotate(4deg) scaleY(.7); opacity: .45; } }
 @media (prefers-reduced-motion: reduce) { .cdice.cheer, .cdice.sad, .cdice.cheer::before, .cdice.cheer::after { animation: none; } }
 .exline.wide { grid-template-columns: 116px 1fr; } .exline.wide b { font-size: 14px; }   /* the Mode "?": a mode name in each pill */
+
+/* The growth loop (ui/sharecard.js): the win screen's Share result, its note in a reserved line (nothing moves), and the main menu's Challenge a friend */
+.sharerow { display: flex; flex-direction: column; align-items: center; gap: 2px; margin-top: 2px; }
+.shline { height: 22px; font-size: 15px; line-height: 22px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 88vw; }
+.menu-card .link.wide.challenge { height: 42px; font-size: 16px; }
+@media (max-height: 600px) { .menu-card { gap: 6px; } .menu-card .primary { height: 52px; } .btn.howto { height: 40px; } .menu-card .link.wide.challenge { height: 32px; font-size: 15px; } .shline { height: 18px; line-height: 18px; } }   /* a short phone: the menu with Challenge a friend still ends above the credit */

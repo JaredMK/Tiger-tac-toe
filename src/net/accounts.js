@@ -2,7 +2,7 @@
 import { PROVIDERS, providerSignIn, providerSignOut } from './auth.js';
 import { NET_MS, call, configured, fb, loadFirebase } from './connect.js';
 import { enterMatched, search, startSearch, stopSearch } from './matchmaking.js';
-import { hostRoom } from './room.js';
+import { challengeFriend, hostRoom } from './room.js';
 import { fetchReleases } from './releases.js';
 import { flushLocal, track } from './tracking.js';
 import { commit, save, state } from '../ui/app.js';
@@ -88,7 +88,7 @@ export function finishLogin() {
     if (msg && !(acct.user)) { loginMsg = msg; state.screen = 'login'; save(); return; }
   }
   if (!go || !acct.user) return;
-  afterLogin = ['find', 'profile', 'host'].includes(go) ? go : null;
+  afterLogin = ['find', 'profile', 'host', 'challenge'].includes(go) ? go : null;
   loginFinishing = true;
   if (state.screen !== 'username') state.screen = 'login';   // shows "Logging you in…" until the profile is in
   afterAccount();
@@ -133,6 +133,7 @@ export function afterAccount() {
   const go = afterLogin; afterLogin = null;
   if (go === 'profile') { openProfile(acct.user.uid, 'menu'); return; }
   if (go === 'host') { hostRoom(null, false); return; }       // logged in on the way to hosting: the room opens at once
+  if (go === 'challenge') { challengeFriend(); return; }    // on the way to Challenge a friend: the room opens and its invite is shared
   state.screen = go === 'find' ? 'find' : 'menu';
   save();
   if (go === 'find') startSearch();             // logged in on the way to Find Match: searching at once

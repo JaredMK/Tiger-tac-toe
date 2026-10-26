@@ -485,6 +485,13 @@ export async function shareRoom() {
   catch (e) { if (e && (e.name === 'AbortError' || /cancel/i.test(String(e.message || '')))) return; }
   await copyInvite();                                              // (no share sheet here: the invite is copied instead)
 }
+// Challenge a friend (the main menu): a room hosted as from Play a Friend, and its invite in the share sheet as soon as
+// the server has given it a code (the host then waits in the lobby as usual). Hosting needs an account (ui/input.js).
+export async function challengeFriend() {
+  await hostRoom(null, false);
+  if (!isHost() || !validCode(state.online.code)) return;      // (the room did not open, or the host went back meanwhile)
+  await shareRoom();
+}
 // Copy invite: the same text, on the clipboard.
 export async function copyInvite() {
   const text = inviteText(state.online.code, roomLink());

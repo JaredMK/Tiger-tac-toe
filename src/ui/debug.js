@@ -57,6 +57,7 @@ import { thinkInfo } from './think.js';
 import { chaosNext, chaosResolve, chaosTimeout, scCpu, scTypes, startChaos } from '../core/chaos.js';
 import { cpuMove } from '../core/ai.js';
 import { scClockLeft, scUi, setScUi } from './chaos.js';
+import { cardData, paintCard, renderCard, shareResult } from './sharecard.js';
 
 const names = {
   state: () => state,
@@ -199,6 +200,7 @@ const names = {
   tick: () => tick,
   PHYSICS: () => PHYSICS,
   flArt: () => flArt,
+  cardData: () => cardData, paintCard: () => paintCard, renderCard: () => renderCard, shareResult: () => shareResult,
 };
 const setters = { scUi: setScUi, render: setRender, bullDraft: setBullDraft, connected: setConnected, fingDraw: setFingDraw, moveRejected: setMoveRejected, fingFrame: setFingFrame, call: setCall, net: assignNet, acct: setAcct, bowlDraft: setBowlDraft, cpuTimer: setCpuTimer, cpuPlan: setCpuPlan, bowlNow: setBowlNow, devLast: setDevLast, menuOpen: setMenuOpen };
 export function init() {
