@@ -2,6 +2,7 @@
 
 export const info = { name: 'Flash',        hint: 'Watch 8 items flash by, answer one question. Three right wins' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
+export const minVersion = '1.0.0';   // the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
 export const category = 'brain';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Flash', play: 'Cards flash by one at a time. Remember them and answer a question.', win: 'Get 3 right.' };

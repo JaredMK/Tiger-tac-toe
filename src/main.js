@@ -30,6 +30,8 @@ import { setTunes } from './core/tune.js';
 import { AI_CLOCK } from './core/ai.js';
 import { setAiWeights } from './core/aiw.js';
 import { setAnimSpeed } from './core/timer.js';
+import { setClientMins, updateNeeded } from './ui/update.js';
+import { initPlatform, onAppLink, startLink, tidyLink } from './net/platform.js';
 import { init as chaosInit } from './ui/chaos.js';
 import { tick } from './ui/clock.js';
 import { KEY } from './ui/config.js';
@@ -79,9 +81,11 @@ function loadConfigs() {
   fetchAttConfig('tune', setTunes, true);                         // every mini-game's settings (Mini-game Settings: config/tune), likewise
   fetchAttConfig('ai', setAiWeights, true);                       // the Hard computer's weights (npm run tune-ai: config/ai), likewise
   fetchAttConfig('anim', v => setAnimSpeed(v && v.speed), true);   // the admin's Animation speed (config/anim): the whole game's pace
+  fetchAttConfig('clients', v => { const was = updateNeeded(); setClientMins(v); if (updateNeeded() !== was) render(); }, true);   // the oldest version still allowed per platform (config/clients): below it, "Please update"
 }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && !sandboxParams() && Date.now() - configsAt > 60000) loadConfigs(); });
 function boot() {
+  initPlatform();                                             // the app: links out of the game open in its own browser (net/platform.js)
   setClockTimer(setInterval(tick, 250));
   if (sandboxParams()) { loadTrivia(); loadPhysics(); sandboxBoot(); return; }   // the admin's test play: one mini-game with the editor's settings (no live config, nothing saved or reported)
   gateStart();                                                // staging: who this is, for the allowlist's gate (src/net/accounts.js)
@@ -92,21 +96,13 @@ function boot() {
   takeTag();                                                  // a playtester's link (?t=sam): before the address is tidied below
   devOpen();
   setInterval(devPulse, 60000);
-  const link = linkCode();
-  let autoJoin = null;                                        // a join link joins at once (the name kept from before, else "Friend"; the code is the link's)
   try { setJoinName(localStorage.getItem(KEY + '.name') || ''); } catch (e) { /* no storage */ }
-  if (link) {
-    try { history.replaceState(null, '', location.pathname); } catch (e) { /* (an old browser keeps it) */ }   // handled once: a reload is not a second link
-    if (state.online && state.online.code === link) { /* the same room: carry on in it */ }
-    else if (matchUnderway()) setJoinAsk({ code: link });                     // ask first: the match would be left
-    else {                                                                  // a lobby (left cleanly once connected), or nothing on
-      if (state.online) { const o = state.online; connectQuiet().then(ok => { if (ok && o.code && o.me) closeSeat(o.code, o.me, o.role === 'host'); }); state.online = null; }
-      setJoinCode(link); state.screen = 'join'; state.setup.mode = 'two'; autoJoin = link;
-    }
-  }
+  const url = startLink(), link = linkCode(url);
+  const autoJoin = link ? roomLink(link) : null;
+  if (link) tidyLink();                                       // handled once: a reload is not a second link
   if (state.screen !== 'join' && !joinAsk) freshVisit();      // a fresh visit: the main menu (a join link: joining, or its question over the match it would leave)
-  const play = !link && new URLSearchParams(location.search).get('play') === 'find';   // the empty-queue alert's link: straight into Find Match
-  if (play) { try { history.replaceState(null, '', location.pathname); } catch (e) { /* (kept) */ } }
+  const play = !link && playLink(url);                        // the empty-queue alert's link: straight into Find Match
+  if (play) tidyLink();
   if (state.flash && !state.spot) playFlash(true);           // a result still on show at the reload: its move has played, the result finishes
   commit();                                                   // (a match that ended as the page loaded is reported like any other)
   if (resumable) checkResume();                               // (a match held for Resume that has ended meanwhile: its button goes)
@@ -117,6 +113,24 @@ function boot() {
   }
   else if (play) openFind();
   if (autoJoin) joinRoom(autoJoin, joinName.trim() || 'Friend', false);
+  onAppLink(openLink);                                        // the app: a link opened while it runs (a Universal Link to tictacchaos.com/?room=CODE)
+}
+const playLink = url => { try { return new URL(url, 'https://tictacchaos.com/').searchParams.get('play') === 'find'; } catch (e) { return false; } };
+// A join link's code: the room joined at once (the name kept from before, else "Friend"; the code is the link's), or, with
+// a match under way, the question whether to leave it first. Returns the code to join now, or null.
+function roomLink(link) {
+  if (state.online && state.online.code === link) return null;            // the same room: carry on in it
+  if (matchUnderway()) { setJoinAsk({ code: link }); return null; }        // ask first: the match would be left
+  if (state.online) { const o = state.online; connectQuiet().then(ok => { if (ok && o.code && o.me) closeSeat(o.code, o.me, o.role === 'host'); }); state.online = null; }   // a lobby (left cleanly once connected)
+  setJoinCode(link); state.screen = 'join'; state.setup.mode = 'two';
+  return link;
+}
+// A link handed to the app while it runs (the page itself is never reloaded for it): a room's code joins (or asks first),
+// the alert's Find Match link opens Find Match.
+function openLink(url) {
+  const link = linkCode(url);
+  if (link) { const code = roomLink(link); commit(); if (code) joinRoom(code, joinName.trim() || 'Friend', false); return; }
+  if (playLink(url) && !matchUnderway()) openFind();
 }
 
 SND.load();                                                // renders the sounds now, in the background

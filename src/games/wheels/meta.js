@@ -3,6 +3,7 @@ import { wheelsConfig } from './rules.js';
 
 export const info = { name: 'Risk Wheels',  hint: 'Pick a wheel and spin. First to 18' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
+export const minVersion = '1.0.0';   // the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
 export const category = 'luck';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Risk Wheels', play: 'Pick a wheel and spin.', get win() { return `Reach ${wheelsConfig().target} first.`; } };   // (the target is the admin's)

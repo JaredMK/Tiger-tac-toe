@@ -2,6 +2,7 @@
 
 export const info = { name: 'Codebreaker',   hint: 'Crack the hidden 4-colour code' };
 export const release = 'released';   // the default (the admin's dashboard can change it)
+export const minVersion = '1.0.0';   // the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
 export const category = 'brain';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Codebreaker', play: 'Guess the 4-colour code. Black marker means right colour and spot; white marker means right colour, wrong spot.', win: 'Crack the code.' };

@@ -47,7 +47,8 @@ async function player(username, opts = {}) {
   const fns = F.getFunctions(app, 'us-central1'); F.connectFunctionsEmulator(fns, '127.0.0.1', 5001);
   const cred = opts.anonymous ? await A.signInAnonymously(auth) : await A.createUserWithEmailAndPassword(auth, `${(username || 'player').toLowerCase()}${n}@example.com`, 'secret-password');
   const p = { app, auth, db, uid: cred.user.uid, name: username };
-  p.call = async (name, data) => (await F.httpsCallable(fns, name)(name === 'findMatch' ? Object.assign({ mode: 'classic' }, data) : data)).data;   // (Find Match is Super Chaos; these tests ask for the Classic queue, kept as code, unless they say otherwise)
+  const withClient = d => (opts.client ? Object.assign({}, d, { client: opts.client }) : d);   // (a phone's client, as net/connect.js call sends it: the web page's when not given)
+  p.call = async (name, data) => (await F.httpsCallable(fns, name)(withClient(name === 'findMatch' ? Object.assign({ mode: 'classic' }, data) : data))).data;   // (Find Match is Super Chaos; these tests ask for the Classic queue, kept as code, unless they say otherwise)
   p.read = async path => (await D.get(D.ref(db, path))).val();
   p.write = (path, v) => D.set(D.ref(db, path), v);
   if (username && !opts.anonymous && !opts.noName) assert.deepEqual(await p.call('claimUsername', { username }), { ok: true, username });
@@ -576,6 +577,32 @@ const path = require('node:path');
 const statsNow = async () => (await get('stats')) || {};
 const at = (o, p) => p.split('/').reduce((v, k) => (v == null ? undefined : v[k]), o) || 0;
 // How much each of these counters moved while `fn` ran (the counters are shared by every test).
+/* ===================== clients: versions and platforms (src/core/client.js) ===================== */
+test('clients: cross-play deals only the games on for both players\' platforms; below its platform\'s minimum a client is refused a new match ("Please update")', async () => {
+  await put('releases/platform/ios/c4', false);                  // Four in a Row: on for the web, off for iOS
+  try {
+    const host = await player('ClientHost'), web = await player('ClientWeb'), ios = await player('ClientIos', { client: { v: E.CLIENT_VERSION, p: 'ios' } });
+    const both = await friendRoom(host, web, { games: only('hilo', 'c4'), timer: 60, hostPick: 'X' });
+    assert.ok((await gameState(both.id)).games.includes('c4'), 'web and web: Four in a Row is dealt');
+    await host.call('resign', { game: both.id }); await recorded(both.id);
+    const code = await openRoom(host, { games: only('hilo', 'c4'), timer: 60, hostPick: 'X' });
+    assert.equal((await ios.call('joinRoom', { code, name: 'ClientIos' })).ok, true);
+    assert.equal((await get(`rooms/${code}/players/O/client`)).p, 'ios', 'the seat keeps its client');
+    const st = await host.call('startRoom', { code });
+    const g = await gameState(st.game);
+    assert.ok(!g.games.includes('c4') && g.games.includes('hilo'), 'with an iOS player: no Four in a Row, ' + g.games.join(' '));
+    assert.ok(g.squares.every(q => q.mini.type !== 'c4'));
+    await host.call('resign', { game: st.game }); await recorded(st.game);
+    const a = await player('ClientFmWeb'), b = await player('ClientFmIos', { client: { v: E.CLIENT_VERSION, p: 'ios' } });
+    const fm = await pairUp(a, b);
+    assert.ok(!(await gameState(fm.id)).games.includes('c4'), 'Find Match with an iOS player: none either');
+    await a.call('resign', { game: fm.id }); await recorded(fm.id);
+    await put('config/clients', { ios: '99.0.0' });
+    await assert.rejects(ios.call('findMatch', {}), e => /update/i.test(String(e.message)) && e.details && e.details.update === true, 'too old: refused, { update: true }');
+    await assert.rejects(ios.call('openRoom', { name: 'x', side: 'X', setup: {} }), e => e.details && e.details.update === true);
+    assert.equal((await host.call('openRoom', { name: 'h', side: 'X', setup: {} })).ok, true, 'the web\'s minimum is not the app\'s');
+  } finally { await put('releases/platform/ios/c4', null); await put('config/clients', null); }
+});
 async function delta(paths, fn) {
   const s0 = await statsNow();
   await fn();

@@ -2,6 +2,7 @@
 
 export const info = { name: 'Roads',        hint: 'Claim the edges of a honeycomb. The longest unbroken road wins' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
+export const minVersion = '1.0.0';   // the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
 export const category = 'brain';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const explainer = { name: 'Roads', play: 'Claim an edge of the honeycomb. Random edges get blocked after each move.', win: 'Have the longest unbroken road.' };
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V12h8V4h8"/><g fill="currentColor" stroke="none"><circle cx="4" cy="4" r="1.6"/><circle cx="20" cy="20" r="1.6"/><circle cx="12" cy="20" r="1.6"/><circle cx="20" cy="12" r="1.6"/></g></svg>';

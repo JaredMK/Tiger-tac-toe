@@ -146,6 +146,21 @@ function needAccount(req) {
   if (req.auth.token && req.auth.token.firebase && req.auth.token.firebase.sign_in_provider === 'anonymous') throw new HttpsError('unauthenticated', 'Log in first.');
   return uid;
 }
+// The client that sent a call (its version and platform: src/core/client.js, src/net/connect.js call), and the admin's oldest
+// version still allowed to play on each platform (config/clients { web, ios }; read afresh after 20 s). A client below its
+// platform's minimum is refused a new match (Find Match, a friend room's opening, joining or start) with { update: true }:
+// the page shows "Please update" (a match already under way plays on to its end).
+const clientOf = req => E.normClient(req && req.data && req.data.client);
+let minsAt = 0, minsNow = {};
+async function clientMins() {
+  if (now() - minsAt > 20000 || process.env.FUNCTIONS_EMULATOR === 'true') { minsNow = E.normMins((await db.ref('config/clients').get()).val()); minsAt = now(); }   // (the emulator: afresh, its tests change it between calls)
+  return minsNow;
+}
+async function needCurrent(req) {
+  const c = clientOf(req);
+  if (E.needsUpdate(c, await clientMins())) throw new HttpsError('failed-precondition', 'Please update the game to keep playing.', { update: true });
+  return c;
+}
 function gameId(v) {
   if (typeof v !== 'string' || !/^[-\w]{8,40}$/.test(v)) throw new HttpsError('invalid-argument', 'No such game.');
   return v;
@@ -272,6 +287,7 @@ exports.devlog = onCall(CALL, async req => {
     const d = cur || {};
     d.first = Math.min(d.first || t, t); d.last = Math.max(d.last || 0, t); d.n = (d.n || 0) + 1;
     if (!d.tag && c.tag) d.tag = c.tag;
+    if (c.ev.p) { d.p = c.ev.p; d.cv = c.ev.cv || null; }        // the client it last opened (web or ios, its version)
     return d;
   }, undefined, false);
   if (!isAnon(req)) await db.ref(`lastSeen/${req.auth.uid}`).set(t);
@@ -306,7 +322,7 @@ exports.claimUsername = onCall(CALL, async req => {
 // and once the player's own randomized wait is over (40 to 70 seconds by default), a free bot is paired
 // with them (when bots are on). Anyone else searching meanwhile is paired with them as usual first.
 exports.findMatch = onCall(Object.assign({ secrets: BOUND_SECRETS }, CALL), async req => {
-  const uid = needAccount(req);
+  const uid = needAccount(req), client = await needCurrent(req);
   const isAdmin = !!(req.auth.token && req.auth.token.admin === true);
   const key = R.queueKey(req.data && req.data.mode, SC_OK());   // Classic (the Super Chaos queue: kept as code, for the tests)
   const prof = (await db.ref(`users/${uid}`).get()).val();
@@ -335,7 +351,7 @@ exports.findMatch = onCall(Object.assign({ secrets: BOUND_SECRETS }, CALL), asyn
     for (const [u, e] of Object.entries(q)) if (!e || (!e.game && t - e.seen > STALE_MS)) delete q[u];
     const me = q[uid] || { since: t, botAt: t + B.waitMs(bc, Math.random) };
     if (!me.botAt) me.botAt = me.since + B.waitMs(bc, Math.random);
-    q[uid] = Object.assign(me, { name: prof.username, seen: t, rec: recordOf(prof) }, R.RATINGS_ENABLED ? { rating: prof.rating } : {});
+    q[uid] = Object.assign(me, { name: prof.username, seen: t, rec: recordOf(prof), client }, R.RATINGS_ENABLED ? { rating: prof.rating } : {});
     for (const [a, b] of R.pairQueue(q, t)) {
       const id = db.ref('games').push().key, xFirst = crypto.randomInt(2) === 0;
       q[a] = Object.assign(q[a], { game: id, side: xFirst ? 'X' : 'O', vs: b, at: t });
@@ -478,12 +494,14 @@ async function makeGame(key, id, X, O, opts) {
   const seat = p => Object.assign({ uid: p.uid, name: p.e.name, record: p.e.rec || { wins: 0, losses: 0, draws: 0 } }, R.RATINGS_ENABLED ? { rating: p.e.rating } : {});   // the record for the players' intro
   const players = { X: seat(X), O: seat(O) };
   const on = g => !friend || !friend.setup.games || friend.setup.games[g] !== false;   // (a room: the games its host left on)
-  const allowed = friend ? E.allowedTypes(rel, !!friend.admin) : null;
+  const clients = [X, O].filter(p => !(bot && p.uid === bot.uid)).map(p => p.e.client);   // (a bot plays every game)
+  const both = types => E.clientTypes(types, clients, rel);    // only games both players' clients have, on for both their platforms (core/client.js)
+  const allowed = friend ? both(E.allowedTypes(rel, !!friend.admin)) : null;
   let rec, node;
   if (Q.chaos) {                                                  // Super Chaos, run here (core/scgame.js): the released Super Chaos games (every one when both players are admins, or in the admin's room)
     if (friend && !(SC_OK() && (friend.admin || rel.superchaos === true))) return false;   // (Super Chaos not open to this room's host, or off everywhere)
     const admins = !bot && !friend && (await isAdminUser(X.uid)) && (await isAdminUser(O.uid));
-    const pool = friend ? allowed : E.findMatchTypes(admins ? E.TYPES : E.releasedTypes(rel));   // (Find Match: only games whose result the server can verify, core/games.js FIND_MATCH_HOLD)
+    const pool = friend ? allowed : both(E.findMatchTypes(admins ? E.TYPES : E.releasedTypes(rel)));   // (Find Match: only games whose result the server can verify, core/games.js FIND_MATCH_HOLD)
     const types = E.scTypes().filter(g => pool.includes(g) && on(g));
     if (!types.length) { logger.error('chaos game', id, 'no Super Chaos game released'); return false; }
     const g = E.newScGame({ names: { X: X.e.name, O: O.e.name }, games: Object.fromEntries(E.scTypes().map(x => [x, types.includes(x)])) }, rng, id, t, MATCH_GRACE_MS);
@@ -493,8 +511,8 @@ async function makeGame(key, id, X, O, opts) {
     node = { pub, sec: {}, sides: {} };
     scPack(node, g, t);
   } else {
-    const types = friend ? E.TYPES.filter(g => allowed.includes(g) && on(g)) : E.findMatchTypes(E.releasedTypes(rel));
-    if (friend && !types.length) return false;
+    const types = friend ? E.TYPES.filter(g => allowed.includes(g) && on(g)) : both(E.findMatchTypes(E.releasedTypes(rel)));
+    if (!types.length) return false;
     rec = E.newOnlineMatch({ names: { X: X.e.name, O: O.e.name }, games: Object.fromEntries(E.TYPES.map(g => [g, types.includes(g)])), timer: Q.timer }, rng, id);   // released games only, whoever is playing
     if (!rec) return false;
     E.armClock(rec.state, [], t + MATCH_GRACE_MS);
@@ -1118,20 +1136,20 @@ const roomSide = (room, uid) => (room && room.players ? ['X', 'O'].find(s => roo
 // A player with a username always plays a friend room under it (no name of their own choosing); a guest without one names themselves.
 async function usernameOf(uid) { try { return (await db.ref(`users/${uid}/username`).get()).val() || null; } catch (e) { return null; } }
 exports.openRoom = onCall(CALL, async req => {
-  const uid = needAccount(req), d = req.data || {}, t = now();   // hosting needs an account (as the page asks before Host)
+  const uid = needAccount(req), d = req.data || {}, t = now(), client = await needCurrent(req);   // hosting needs an account (as the page asks before Host)
   const admin = !!(req.auth.token && req.auth.token.admin === true);
   const side = d.side === 'O' ? 'O' : 'X', name = roomName(await usernameOf(uid) || d.name, side);
   const setup = Object.assign(roomSetupOf(d.setup, await releasesNow(), admin), { hostSide: side });
   for (let k = 0; k < 8; k++) {
     const code = newRoomCode();
-    const made = await db.ref(`rooms/${code}`).transaction(cur => (cur ? undefined : { created: t, host: uid, status: 'lobby', players: { [side]: { uid, name, joined: t } }, setup }), undefined, false);
+    const made = await db.ref(`rooms/${code}`).transaction(cur => (cur ? undefined : { created: t, host: uid, status: 'lobby', players: { [side]: { uid, name, joined: t, client } }, setup }), undefined, false);
     if (made.committed) return { ok: true, code, side };
   }
   throw new HttpsError('resource-exhausted', 'Could not open a room. Try again.');
 });
 // A friend joins with the code: the free seat (or their own seat again, back after a reload; a new name goes with it).
 exports.joinRoom = onCall(CALL, async req => {
-  const uid = needUid(req), d = req.data || {}, code = roomCodeOf(d.code);
+  const uid = needUid(req), d = req.data || {}, code = roomCodeOf(d.code), client = await needCurrent(req);
   if (!roomCodeOk(code)) return { ok: false, reason: 'code' };
   const name = roomName(await usernameOf(uid) || d.name, '');
   let out = { ok: false, reason: 'missing' };
@@ -1139,12 +1157,12 @@ exports.joinRoom = onCall(CALL, async req => {
     if (cur === null) { out = { ok: false, reason: 'missing' }; return cur; }   // (a first guess from an empty cache: retried with the real value)
     const t = now(), p = cur.players || {};
     const mine = ['X', 'O'].find(s => p[s] && p[s].uid === uid);
-    if (mine) { if (name) p[mine].name = name; cur.players = p; out = { ok: true, side: mine, status: cur.status }; return cur; }
+    if (mine) { if (name) p[mine].name = name; p[mine].client = client; cur.players = p; out = { ok: true, side: mine, status: cur.status }; return cur; }
     if (t - (cur.created || 0) > ROOM_TTL_MS) { out = { ok: false, reason: 'expired' }; return undefined; }
     const free = ['X', 'O'].find(s => !p[s] || !p[s].uid);
     if (!free) { out = { ok: false, reason: 'full' }; return undefined; }
     if (cur.status !== 'lobby') { out = { ok: false, reason: 'started' }; return undefined; }
-    p[free] = { uid, name: name || 'Friend', joined: t }; cur.players = p;
+    p[free] = { uid, name: name || 'Friend', joined: t, client }; cur.players = p;
     out = { ok: true, side: free, status: 'lobby' };
     return cur;
   }, undefined, false);
@@ -1177,6 +1195,7 @@ function drawSeats(players, host) {
 // One match at a time: a lock on the room while it is made (two phones starting the rematch at once make one).
 exports.startRoom = onCall(CALL, async req => {
   const uid = needUid(req), code = roomCodeOf((req.data || {}).code);
+  await needCurrent(req);
   if (!roomCodeOk(code)) return { ok: false, reason: 'code' };
   const room = (await db.ref(`rooms/${code}`).get()).val();
   if (!room || !room.players) return { ok: false, reason: 'missing' };
@@ -1200,7 +1219,7 @@ exports.startRoom = onCall(CALL, async req => {
     const seats = fixed ? { players: room.players, hostSide: room.players.X.uid === room.host ? 'X' : 'O', swapped: false } : drawSeats(room.players, room.host);   // X and O drawn at random for every match, the rematch too
     const admin = await isAdminUser(room.host);
     const named = await Promise.all(['X', 'O'].map(s => usernameOf(seats.players[s].uid)));
-    const at = s => ({ uid: seats.players[s].uid, account: !!named[s === 'X' ? 0 : 1], e: { name: roomName(named[s === 'X' ? 0 : 1] || seats.players[s].name, s) } });   // (a username, always, for a player with one)
+    const at = s => ({ uid: seats.players[s].uid, account: !!named[s === 'X' ? 0 : 1], e: { name: roomName(named[s === 'X' ? 0 : 1] || seats.players[s].name, s), client: seats.players[s].client } });   // (a username, always, for a player with one)
     const id = db.ref('games').push().key;
     const ok = await makeGame(null, id, at('X'), at('O'), { friend: { code, setup: room.setup || {}, admin } });
     if (!ok) { await db.ref(`rooms/${code}/starting`).remove(); return { ok: false, reason: 'games' }; }   // (no game left to deal: the setup refused)

@@ -2,6 +2,7 @@
 
 export const info = { name: 'Bullseye',     hint: 'Stop both lines on the board. Bullseye 3, board 1. First to 5' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
+export const minVersion = '1.0.0';   // the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
 export const category = 'skill';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Bullseye', play: 'Stop the sideways line, then the up-down line. The dart lands where they cross. Bullseye is {bullPts}, the board is 1.', win: 'First to {goal}.' };   // ({bullPts}, {goal}: its settings, TUNE below)

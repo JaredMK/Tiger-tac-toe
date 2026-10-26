@@ -2,6 +2,7 @@
 
 export const info = { name: 'Peg Drop',       hint: 'Drop from an open slot. Race to the target' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
+export const minVersion = '1.0.0';   // the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
 export const category = 'luck';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Peg Drop', play: 'Drop the chip from an open slot. Score points based on the bin\'s value plus the gold bonus peg.', win: 'First to the target score wins.' };

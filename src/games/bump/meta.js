@@ -2,6 +2,7 @@
 
 export const info = { name: 'Bump',         hint: 'Spin 1, 2 or 3. Land on your opponent to send them home' };
 export const release = 'released';   // the default (the admin's dashboard can change it)
+export const minVersion = '1.0.0';   // the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
 export const category = 'luck';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Bump', play: 'Spin and move 1, 2 or 3 spaces. Land on your opponent to send them back home.', win: 'Reach the finish first.' };

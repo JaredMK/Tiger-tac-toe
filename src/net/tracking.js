@@ -1,4 +1,5 @@
 // Anonymous stats and playtest activity: matches reported to the server, this device's events.
+import { dropParam, startLink } from './platform.js';
 import { playerName } from '../core/match.js';
 import { matchStats } from '../core/stats.js';
 import { other } from '../core/util.js';
@@ -67,14 +68,14 @@ export function testerTag() {
 }
 export function takeTag() {                                   // the link's ?t=: kept the first time (never replaced), then taken out of the address
   let v = null;
-  try { v = new URLSearchParams(location.search).get('t'); } catch (e) { return; }
+  try { v = new URL(startLink(), 'https://tictacchaos.com/').searchParams.get('t'); } catch (e) { return; }
   if (v == null) return;
   const tag = String(v).trim().toLowerCase();
   if (TAG_RE.test(tag)) {
     devTagNow = tag;
     try { if (!TAG_RE.test(localStorage.getItem(TAG_KEY) || '')) localStorage.setItem(TAG_KEY, tag); } catch (e) { /* no storage: for this visit only */ }
   }
-  try { const u = new URL(location.href); u.searchParams.delete('t'); history.replaceState(history.state, '', u.pathname + u.search + u.hash); } catch (e) { /* (kept) */ }
+  dropParam('t');
 }
 function devEvent(data) {
   if (!configured() || (window.TTT_FIREBASE && window.TTT_FIREBASE.uid)) return;   // (the friend-game tests run without functions)

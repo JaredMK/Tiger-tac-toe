@@ -210,7 +210,7 @@ const SECTIONS = [
   ['matches', 'Matches', () => { const r = Object.values(mlogs || {}).filter(x => x && x.reported).length; return `Match inspector${r ? ` · ${r} reported` : ''}`; }],
   ['settings', 'Mini-game Settings', () => { const k = Object.keys(ctl.tune || {}).length, sp = ctl.anim && ctl.anim.speed; return `Every game's settings${k ? ` · ${k} changed` : ''}${sp && sp !== 1 ? ` · speed ${sp}×` : ''}`; }],
   ['bots', 'Bot Settings', () => 'Find Match, bots, empty-queue alerts'],
-  ['releases', 'Releases', () => 'Released or admin only, per game'],
+  ['releases', 'Releases', () => { const m = ctl.clients || {}, off = Object.values((ctl.releases && ctl.releases.platform && ctl.releases.platform.ios) || {}).filter(v => v === false).length; return `Released or admin only, per game${off ? ` · ${off} off on iOS` : ''}${m.web || m.ios ? ` · minimum ${['web', 'ios'].filter(p => m[p]).map(p => `${p} ${m[p]}`).join(', ')}` : ''}`; }],
   ['stats', 'Stats', () => 'Matches by mode, moves to win'],
 ].concat(STAGING ? [['access', 'Staging Access', () => `${Object.keys(ctl.allow || {}).length} on the list`]] : []);   // (staging only: who may use it)
 const route = () => (location.hash || '').replace(/^#\/?/, '').split('/');
@@ -437,14 +437,55 @@ async function allowEdit(el, email, on) {
 // A game not in the database is as the code has it (TEST_TYPES in src/games/index.js, from each game's meta.js: admin only until released here).
 const TEST_TYPES = ['bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads', 'flap', 'chopper', 'patterns', 'wheels', 'sniff', 'headcount', 'flash', 'snapshot', 'skyhop', 'scoop', 'pinball', 'clash'];   // (as engine.js has them; the switches cover every game the stats know)
 const isReleased = t => (ctl.releases && typeof ctl.releases[t] === 'boolean' ? ctl.releases[t] : !TEST_TYPES.includes(t));
+// Per platform (src/core/client.js): a released game can be switched off on iOS alone (releases/platform/ios/{type} false);
+// on means as released. The web has no switch of its own: a game is off there by un-releasing it.
+const iosOff = t => !!(ctl.releases && ctl.releases.platform && ctl.releases.platform.ios && ctl.releases.platform.ios[t] === false);
 function releasesCard() {
   const sc = !!(ctl.releases && ctl.releases.superchaos === true);   // the Super Chaos mode: admin only until released here (releases/superchaos)
-  const row = (t, name, on) => `<li><span class="rn">${name}</span><label class="sw"><input type="checkbox" data-rel="${t}"${on ? ' checked' : ''}><span class="${on ? 'good' : ''}">${on ? 'Released' : 'Admin only'}</span></label></li>`;
-  return `<div class="card ctl" id="relCard"><h2>Game releases</h2>
-    <p class="note">A tap releases or un-releases at once, for new matches; matches under way are not affected.</p>
-    <ul class="rels">${row('superchaos', '<b>Super Chaos mode</b>', sc)}${Object.entries(GAMES).map(([t, name]) => row(t, esc(name), isReleased(t))).join('')}</ul>
+  const ios = t => { const on = !iosOff(t); return `<label class="sw ios"><input type="checkbox" data-relios="${t}"${on ? ' checked' : ''}><span class="${on ? 'good' : ''}">${on ? 'iOS on' : 'iOS off'}</span></label>`; };
+  const from = t => (META[t] && META[t].minVersion && META[t].minVersion !== '1.0.0' ? ` <small class="mv">from ${esc(META[t].minVersion)}</small>` : '');
+  const row = (t, name, on, game) => `<li><span class="rn">${name}${game ? from(t) : ''}</span><label class="sw"><input type="checkbox" data-rel="${t}"${on ? ' checked' : ''}><span class="${on ? 'good' : ''}">${on ? 'Released' : 'Admin only'}</span></label>${game ? ios(t) : '<span class="sw ios"></span>'}</li>`;
+  return clientsCard() + `<div class="card ctl" id="relCard"><h2>Game releases</h2>
+    <p class="note">A tap releases or un-releases at once, for new matches; matches under way are not affected. iOS off keeps a released game out of the iOS app (its local matches, and any online match with an iOS player in it) while the web still has it.</p>
+    <ul class="rels">${row('superchaos', '<b>Super Chaos mode</b>', sc, false)}${Object.entries(GAMES).map(([t, name]) => row(t, esc(name), isReleased(t), true)).join('')}</ul>
     <p class="note">Super Chaos is switched off in the code for everyone, you included (src/core/config.js SUPER_CHAOS_ENABLED): every match is Classic, Find Match too, and no Mode selector shows, whatever this switch says. Its code and settings are kept; once the code switch is back on, this switch decides again (off: Classic only; on: the Mode selector for everyone).</p>
     <p class="note">Admin only: the game exists for nobody but you (not in the Advanced checklist, How to Play, random draws, Find Match or anyone else's rooms). You play it in local matches and friend games you host; your guest plays it in that match only. Find Match deals released games only, even for you. Squares of admin-only games are counted under "Admin-only games (testing)" in the stats.</p></div>`;
+}
+async function saveRelIos(el) {
+  const t = el.dataset.relios, on = el.checked, lab = el.nextElementSibling;
+  if (lab) { lab.textContent = on ? 'iOS on' : 'iOS off'; lab.className = on ? 'good' : ''; }
+  try {
+    await fb.dbM.set(fb.dbM.ref(fb.db, `releases/platform/ios/${t}`), on ? null : false);   // (on: nothing stored, as released)
+    const pl = Object.assign({}, ctl.releases.platform), io = Object.assign({}, pl.ios);
+    if (on) delete io[t]; else io[t] = false;
+    pl.ios = io; ctl.releases = Object.assign({}, ctl.releases, { platform: pl });
+  } catch (e) { render(); said(el, false, failed(e)); return; }
+  render(); said(app.querySelector(`[data-relios="${t}"]`) || el, true, 'Saved');
+}
+// ---------- clients: the oldest version still allowed to play, per platform (config/clients { web, ios }) ----------
+// A client below its platform's minimum shows "Please update" instead of the game, and the server refuses it a new match.
+// The web page always runs the code's own version (it is served from the latest deploy), so its minimum can never be
+// above that; the app runs the version it was built with until the player updates it.
+function clientsCard() {
+  const m = ctl.clients || {}, cur = CLIENT ? CLIENT.CLIENT_VERSION : '?';
+  const f = (p, label) => `<label class="rf"><span>${label}</span><input type="text" inputmode="decimal" placeholder="none" data-clientmin="${p}" value="${esc(m[p] || '')}"></label>`;
+  return `<div class="card ctl" id="clientsCard"><h2>Clients</h2>
+    <p class="note">This code is version <b>${esc(cur)}</b> (src/core/client.js CLIENT_VERSION). Every phone reports its version and platform; online matches deal only games both players' clients have (a game's meta.js minVersion) and that are on for both their platforms (the iOS switches below).</p>
+    <p class="note">Minimum supported version: below it the game shows "Please update" instead of playing (the app sends the player to the App Store; the web reloads). Empty: no minimum. The web's can be no higher than ${esc(cur)}.</p>
+    <div class="rform">${f('web', 'Web: minimum')}${f('ios', 'iOS: minimum')}<button class="btn" data-clientsave="1">Save</button></div></div>`;
+}
+async function saveClients(btn) {
+  const out = {};
+  for (const el of app.querySelectorAll('input[data-clientmin]')) {
+    const p = el.dataset.clientmin, v = el.value.trim();
+    if (!v) continue;
+    if (!CLIENT.versionOk(v)) { said(btn, false, `${p}: a version such as 1.2.0`); return; }
+    if (p === 'web' && CLIENT.cmpVersion(v, CLIENT.CLIENT_VERSION) > 0) { said(btn, false, `Web: at most ${CLIENT.CLIENT_VERSION}, the version it runs`); return; }
+    out[p] = v;
+  }
+  btn.disabled = true;
+  try { await fb.dbM.set(fb.dbM.ref(fb.db, 'config/clients'), Object.keys(out).length ? out : null); ctl.clients = out; } catch (e) { btn.disabled = false; said(btn, false, failed(e)); return; }
+  render(); said(app.querySelector('[data-clientsave]') || btn, true, 'Saved');
 }
 async function saveRelease(el) {
   const t = el.dataset.rel, on = el.checked, lab = el.nextElementSibling;   // (no confirmation: a tap releases or un-releases at once)
@@ -735,12 +776,13 @@ function testPlay(t) {
 // show it on the same page. Test play: the game alone in a new tab with the page's values, saved or not. ----------
 const CATS = [['luck', 'Luck'], ['skill', 'Skill'], ['brain', 'Brain']];
 const TGROUPS = ['Board', 'Rules', 'Timing', 'Computer'];
-let META = {}, TUNE = null;                     // each game's meta.js; core/tune.js (tuneValue, tuneNorm)
+let META = {}, TUNE = null, CLIENT = null;      // each game's meta.js; core/tune.js (tuneValue, tuneNorm); core/client.js (versions)
 async function loadMetas() {
   if (TUNE) return;
   const reg = await import('./src/games/index.js'), ts = Object.keys(GAMES), ms = ts.map(t => (reg.GAMES[t] && reg.GAMES[t].meta) || {});   // (the registry: each game's meta, in the order the game loads them)
   META = Object.fromEntries(ts.map((t, i) => [t, ms[i]]));
   TUNE = await import('./src/core/tune.js');   // (the registry has registered every game's settings)
+  CLIENT = await import('./src/core/client.js');
 }
 const tuneList = t => (META[t] && Array.isArray(META[t].TUNE) ? META[t].TUNE : []);
 function legacyCard(t) {                       // the older tuning card, where the game has one
@@ -987,7 +1029,7 @@ async function loadCtl() {
   const [config, secretsSet, bots, botStats, alertStats, features, log, releases, runCfg, bullsCfg, wheelsCfg, plinkoCfg, oddCfg, headCfg, flashCfg, snapCfg, hopCfg, scoopCfg, pinCfg, pigCfg, roadsCfg, bowlCfg] = await Promise.all([g('admin/config'), g('admin/secretsSet'), g('bots'), g('botStats'), g('alertStats'), g('features'),
     fb.dbM.get(fb.dbM.query(fb.dbM.ref(fb.db, 'alertLog'), fb.dbM.orderByChild('at'), fb.dbM.limitToLast(8))).then(s => s.val()).catch(() => null), g('releases'), g('config/run'), g('config/bulls'), g('config/wheels'), g('config/plinko'), g('config/oddone'), g('config/headcount'), g('config/flash'), g('config/snapshot'), g('config/skyhop'), g('config/scoop'), g('config/pinball'), g('config/pig'), g('config/roads'), g('config/bowling'), loadMetas()]);
   ctl = { config: config || {}, secretsSet: secretsSet || {}, bots: bots || {}, botStats: botStats || {}, alertStats: alertStats || {}, features: features || {}, releases: releases || {}, runCfg: runCfg || {}, bullsCfg: bullsCfg || {}, wheelsCfg: wheelsCfg || {}, plinkoCfg: plinkoCfg || {}, pigCfg: pigCfg || {}, roadsCfg: roadsCfg || {}, oddCfg: oddCfg || {}, attCfg: { headcount: headCfg || {}, flash: flashCfg || {}, snapshot: snapCfg || {} }, fingCfg: { skyhop: hopCfg || {}, scoop: scoopCfg || {}, bowling: bowlCfg || {}, pinball: pinCfg || {} },
-    alertLog: Object.values(log || {}).sort((a, b) => b.at - a.at), tune: (await g('config/tune')) || {}, ai: (await g('config/ai')) || {}, anim: (await g('config/anim')) || {}, allow: STAGING ? ((await g('admin/staging/allow')) || {}) : {} };
+    alertLog: Object.values(log || {}).sort((a, b) => b.at - a.at), tune: (await g('config/tune')) || {}, ai: (await g('config/ai')) || {}, anim: (await g('config/anim')) || {}, clients: (await g('config/clients')) || {}, allow: STAGING ? ((await g('admin/staging/allow')) || {}) : {} };
 }
 async function signIn(how) {
   view.error = '';
@@ -1037,6 +1079,7 @@ app.addEventListener('click', e => {
   else if (b.dataset.wheelsave) saveWheelsCfg(b);
   else if (b.dataset.plinkosave) savePlinkoCfg(b);
   else if (b.dataset.animsave) saveAnimCfg(b, false);
+  else if (b.dataset.clientsave) saveClients(b);
   else if (b.dataset.animreset) saveAnimCfg(b, true);
   else if (b.dataset.pigsave) savePigCfg(b);
   else if (b.dataset.roadssave) saveRoadsCfg(b);
@@ -1053,6 +1096,7 @@ app.addEventListener('change', e => {
   else if (e.target.dataset && e.target.dataset.cfg) saveCfg(e.target);
   else if (e.target.dataset && e.target.dataset.feat) saveFeat(e.target);
   else if (e.target.dataset && e.target.dataset.rel) saveRelease(e.target);
+  else if (e.target.dataset && e.target.dataset.relios) saveRelIos(e.target);
 });
 boot().catch(() => { app.innerHTML = '<div class="card msg"><h1>Tic Tac Chaos Stats</h1><p>Could not load. Check the connection and reload.</p></div>'; });
 document.addEventListener('gesturestart', e => e.preventDefault(), { passive: false }); document.addEventListener('gesturechange', e => e.preventDefault(), { passive: false });   // (iPhone's pinch)

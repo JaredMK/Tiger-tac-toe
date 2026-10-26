@@ -2,6 +2,7 @@
 
 export const info = { name: 'Craps',        hint: '7 or 11 wins, 2, 3 or 12 loses. Win 3 rounds' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
+export const minVersion = '1.0.0';   // the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
 export const category = 'luck';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Craps', play: 'Tap Roll: the dice keep rolling until your round is won or lost. On the first roll, 7 or 11 wins and 2, 3 or 12 loses. Any other number is your point: rolling it again wins, rolling a 7 loses.', win: 'Win {goal} rounds.' };   // ({goal}: its setting, TUNE below)

@@ -2,3 +2,4 @@ node_modules
 *.log
 functions/deploy-stamp.txt
 _site
+_app

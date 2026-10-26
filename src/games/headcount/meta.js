@@ -2,6 +2,7 @@
 
 export const info = { name: 'Headcount',    hint: 'Count the critters as they cross. Three right wins' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
+export const minVersion = '1.0.0';   // the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
 export const category = 'brain';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Headcount', play: 'Count the critters the question asks for as they cross. Ignore the others.', win: 'Get 3 right.' };

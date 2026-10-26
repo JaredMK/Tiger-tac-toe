@@ -1,7 +1,9 @@
-// Accounts: signing in (Google, email), the username, the account kept on this phone.
+// Accounts: signing in (Google, Apple, email: net/auth.js for the providers), the username, the account kept on this phone.
+import { PROVIDERS, providerSignIn, providerSignOut } from './auth.js';
 import { NET_MS, call, configured, fb, loadFirebase } from './connect.js';
 import { enterMatched, search, startSearch, stopSearch } from './matchmaking.js';
 import { hostRoom } from './room.js';
+import { fetchReleases } from './releases.js';
 import { flushLocal, track } from './tracking.js';
 import { commit, save, state } from '../ui/app.js';
 import { KEY } from '../ui/config.js';
@@ -57,7 +59,12 @@ function gateUser(u) {
     if (r.claims.admin === true || r.claims.staging === true) { if (n === gateSeq) setGate('ok'); return; }
     const res = await call('stagingAccess', {});
     if (n !== gateSeq) return;
-    if (res && res.ok) { await u.getIdToken(true); location.reload(); return; }   // the flag is on the account now: a fresh start, every listener with it
+    if (res && res.ok) {                                                            // the flag is on the account now: a fresh token, and the account's listeners again with it (no reload)
+      await u.getIdToken(true);
+      if (n !== gateSeq) return;
+      onAuthUser(u, true); setGate('ok'); fetchReleases(); afterAccount(); commit();
+      return;
+    }
     setGate(res && res.reason === 'unverified' ? 'verify' : 'denied');
   })().catch(() => { if (n === gateSeq) setGate('offline'); });
 }
@@ -95,19 +102,20 @@ export async function connectQuiet() {
 }
 
 // The signed-in user changed (or the page started): follow their profile and their matchmaking game.
-export function onAuthUser(u) {
+// again: listen afresh even to the same account (staging's gate, once its flag is on: the listeners refused before it).
+export function onAuthUser(u, again) {
   if (!fb || !fb.auth) return;
-  if (GATED) gateUser(u);                             // staging: is this account on the allowlist?
+  if (GATED && !again) gateUser(u);                   // staging: is this account on the allowlist?
   if (!u) { fb.authM.signInAnonymously(fb.auth).catch(() => {}); return; }   // logged out: a guest again, for friend games
   fb.uid = u.uid;
   const uid = u.isAnonymous ? null : u.uid;
-  if ((acct.user ? acct.user.uid : null) === uid && (acct.ready || uid)) return;
+  if (!again && (acct.user ? acct.user.uid : null) === uid && (acct.ready || uid)) return;
   for (const off of acctUnsubs) off();
   acctUnsubs = [];
   acct = { user: uid ? { uid, email: u.email || '' } : null, profile: null, active: null, ready: !uid, admin: false };
   rememberAccount(!!uid);
   if (uid) { const me = acct; u.getIdTokenResult(true).then(r => { if (acct === me && r && r.claims && r.claims.admin === true) { me.admin = true; render(); } }).catch(() => {}); }   // the admin flag: admin-only games show
-  if (uid) track({ ev: 'login' });                     // a login (or a returning one) for the stats
+  if (uid && !again) track({ ev: 'login' });                     // a login (or a returning one) for the stats
   if (!uid && (state.screen === 'login' || state.screen === 'username')) return;   // a guest session starting: nothing on these screens changes
   if (uid) {
     acctUnsubs.push(fb.m.onValue(fb.m.ref(fb.db, 'users/' + uid), s => { acct.profile = s.val(); acct.ready = true; afterAccount(); render(); }, () => {}));
@@ -157,6 +165,8 @@ function authError(e) {
   if (/too-many-requests/.test(c)) return { text: 'Too many tries. Wait a minute, then try again.' };
   if (/network/.test(c)) return { text: 'No connection. Check your internet and try again.' };
   if (/account-exists-with-different-credential/.test(c)) return { text: 'That email already has an account with another way of logging in.' };
+  if (/operation-not-allowed|unauthorized-domain|invalid-oauth/.test(c)) return { text: "That way of logging in isn't available yet. Use another." };
+  if (/canceled|cancelled|1001/.test(c + ' ' + String((e && e.message) || ''))) return null;   // (the app's native sheet closed without signing in)
   return { text: "Couldn't log in. Try again." };
 }
 export async function loginWith(how) {
@@ -164,7 +174,7 @@ export async function loginWith(how) {
   const mailEl = document.getElementById('lemail'), passEl = document.getElementById('lpass');
   if (mailEl) loginMail = mailEl.value.trim();
   if (passEl) loginPass = passEl.value;
-  if (how !== 'google') {
+  if (!PROVIDERS.includes(how)) {
     if (!loginMail) { loginMsg = { text: 'Enter your email address.' }; render(); return; }
     if (!loginPass) { loginMsg = { text: 'Enter a password.' }; render(); return; }
   }
@@ -172,16 +182,9 @@ export async function loginWith(how) {
   try {
     if (!(await connectQuiet())) throw { code: 'auth/network-request-failed' };
     const A = fb.authM;
-    const popup = (window.TTT_FIREBASE && window.TTT_FIREBASE.popup) || A.signInWithPopup;   // (the tests: Google through the emulator, without its popup page)
-    if (how === 'google') {
-      try { await popup(fb.auth, new A.GoogleAuthProvider()); }
-      catch (e) {
-        if (!/popup-blocked|operation-not-supported|web-storage-unsupported/.test(String(e && e.code))) throw e;
-        loginPending(afterLogin || 'menu');                     // no sign-in window here: the whole page goes to Google and comes back
-        save();
-        await ((window.TTT_FIREBASE && window.TTT_FIREBASE.redirect) || A.signInWithRedirect)(fb.auth, new A.GoogleAuthProvider());   // (the tests: the emulator's sign-in, then a reload)
-        return;
-      }
+    if (PROVIDERS.includes(how)) {                              // Google or Apple: the provider's own sign-in (net/auth.js: the web's window, the app's native sheet)
+      const r = await providerSignIn(fb, how, () => { loginPending(afterLogin || 'menu'); save(); });
+      if (r === 'away') return;                                 // (the page is off to the provider; it comes back signed in)
       onAuthUser(fb.auth.currentUser);                          // signed in: on to the username or the menu, without waiting for the event
     }
     else if (how === 'create') await A.createUserWithEmailAndPassword(fb.auth, loginMail, loginPass);
@@ -217,6 +220,7 @@ export async function saveUsername() {
 export async function logout() {
   stopSearch();
   if (fb && fb.auth) await fb.authM.signOut(fb.auth).catch(() => {});
+  await providerSignOut();
   rememberAccount(false);
   loginFinishing = false; loginPending(null);
   acct = { user: null, profile: null, active: null, ready: true };

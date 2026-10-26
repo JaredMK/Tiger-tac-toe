@@ -65,6 +65,15 @@
     },
     "releases": {
       ".read": true,
+      "platform": {
+        "$p": {
+          ".validate": "$p.matches(/^(web|ios)$/)",
+          "$type": {
+            ".write": "auth != null && auth.token.admin === true",
+            ".validate": "$type.matches(/^[a-z0-9]{2,16}$/) && newData.isBoolean()"
+          }
+        }
+      },
       "$type": {
         ".write": "auth != null && auth.token.admin === true",
         ".validate": "$type.matches(/^[a-z0-9]{2,16}$/) && newData.isBoolean()"
@@ -531,6 +540,12 @@
           "$k": {
             ".validate": "$k.matches(/^[A-Za-z0-9_]{1,24}$/) && (newData.isNumber() || (newData.isString() && newData.val().length <= 24))"
           }
+        }
+      },
+      "clients": {
+        ".write": "auth != null && auth.token.admin === true",
+        "$p": {
+          ".validate": "$p.matches(/^(web|ios)$/) && newData.isString() && newData.val().matches(/^[0-9]{1,4}([.][0-9]{1,4}){0,2}$/)"
         }
       },
       "anim": {

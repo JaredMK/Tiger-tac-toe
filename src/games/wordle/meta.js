@@ -2,6 +2,7 @@
 
 export const info = { name: 'Five Letters',       hint: 'Guess the hidden 5-letter word' };
 export const release = 'released';   // the default (the admin's dashboard can change it)
+export const minVersion = '1.0.0';   // the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
 export const category = 'brain';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Five Letters', play: "Guess a 5-letter word. Green is correct letter placement, yellow is in the word but different position, grey isn't in it.", win: 'Guess the word. Use up {limit} guesses and you lose the square.' };   // ({limit}: its setting, TUNE below)

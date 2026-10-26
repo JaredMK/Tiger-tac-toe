@@ -15,6 +15,7 @@ import { repMark, repRate } from './replay.js';
 import { runPaint } from './runner.js';
 import { renderGate, renderLogin, renderUsername } from './screens/account.js';
 import { gateOn } from '../net/accounts.js';
+import { renderUpdate, updateNeeded } from './update.js';
 import { renderFind, renderIntro } from './screens/find.js';
 import { renderMenu } from './screens/menu.js';
 import { renderFriend, renderJoin, renderJoinAsk } from './screens/online.js';
@@ -108,6 +109,7 @@ function graft(oldP, newP, pairs) {
   }
 }
 function renderMain() {
+  if (updateNeeded()) return renderUpdate();                  // too old a client for its platform (config/clients): nothing but "Please update"
   if (gateOn()) return renderGate();                          // staging: only testers on the allowlist get past this
   if (state.screen === 'sandbox') return renderSandbox();     // (the admin's test play, while it checks or when it cannot run)
   if (state.screen === 'menu') return renderMenu();

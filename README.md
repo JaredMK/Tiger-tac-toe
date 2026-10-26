@@ -573,6 +573,20 @@ taken out of the room, which goes back to its lobby. The stats keep testing data
 games played while admin only are counted under "Admin-only games (testing)" in the mini-game table,
 whatever the mode, not with the released games' numbers.
 
+### Clients: the web page and the iOS app
+
+The game runs on the web and, later, as an iOS app ([docs/ios-plan.md](docs/ios-plan.md)) that shares everything with it:
+the same Firebase project, accounts, live settings and Find Match, so web and iOS players are matched with each other.
+
+- Every client reports its version (`src/core/client.js` `CLIENT_VERSION`) and platform (`web` or `ios`) with every server call.
+- Each mini-game declares the oldest client version that has it (`minVersion` in its `meta.js`). Find Match and friend rooms
+  deal only the games both players' clients have.
+- The admin's Releases page has an **iOS on/off** switch per game (`releases/platform/ios/{type}`). A game switched off for
+  iOS stays out of the app and out of any match with an iOS player in it; the web keeps it.
+- The **Clients** card there sets the minimum supported version per platform (`config/clients`). A client below it shows
+  "Please update" instead of the game, and the server refuses it a new match.
+- Sign-in is Google, Apple or email on both platforms. Apple needs its provider enabled in the Firebase console (see the plan).
+
 ### Matchmaking backfill and the empty-queue alert
 
 Both are switched on and set from the admin dashboard (they start off), and both act only when

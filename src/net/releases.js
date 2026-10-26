@@ -1,6 +1,8 @@
 // Which mini-games are released (the admin's switches), and whether this player is an admin.
 import { SUPER_CHAOS_ENABLED } from '../core/config.js';
+import { platformOff } from '../core/client.js';
 import { allowedTypes, isReleased } from '../core/games.js';
+import { PLATFORM } from './platform.js';
 import { acct } from './accounts.js';
 import { FIREBASE_CONFIG, configured } from './connect.js';
 import { state } from '../ui/app.js';
@@ -26,8 +28,10 @@ export function fetchReleases() {                                     // a plain
   try { fetch(url).then(r => (r.ok ? r.json() : undefined)).then(v => { if (v !== undefined) setReleases(v || {}); }).catch(() => {}); } catch (e) { /* offline: as last known */ }   // (an empty node, null: nothing released any more)
 }
 const isAdmin = () => !!(acct && acct.admin);
-export const visibleTypes = () => allowedTypes(releases, isAdmin());     // the games this player may see and play
-export const testBadge = t => (isReleased(t, releases) ? '' : '<i class="tst">Testing</i>');   // (only the admin ever sees one)
+// The games this player may see and play: the released ones (every one for the admin), less any the admin has switched
+// off for this platform (releases/platform/{p}/{type} false: core/client.js; the admin still sees them, to test).
+export const visibleTypes = () => allowedTypes(releases, isAdmin()).filter(t => isAdmin() || !platformOff(t, releases, PLATFORM));
+export const testBadge = t => (!isReleased(t, releases) ? '<i class="tst">Testing</i>' : platformOff(t, releases, PLATFORM) ? `<i class="tst">Off on ${PLATFORM === 'ios' ? 'iOS' : PLATFORM}</i>` : '');   // (only the admin ever sees one)
 // Super Chaos (simultaneous rounds) is off everywhere for now, admins included (core/config.js SUPER_CHAOS_ENABLED):
 // every match is Classic and no mode is offered anywhere. Its code stays: with the switch back on, it is always open
 // against the computer, and online (a friend room's host; Find Match is the server's) it has its own release switch,

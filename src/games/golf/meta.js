@@ -2,6 +2,7 @@
 
 export const info = { name: 'Mini Golf',    hint: 'Drag back to aim and set power. First ball in the cup wins' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
+export const minVersion = '1.0.0';   // the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
 export const category = 'skill';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Mini Golf', play: 'Drag to aim and set power, then let go. Balls can knock each other.', win: 'Sink your ball first.' };

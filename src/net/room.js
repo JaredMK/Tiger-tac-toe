@@ -1,6 +1,7 @@
 // Friend games: the room (host and guest: the lobby on the database, opened and joined through the server), presence,
 // the match as the server runs it (a games/{id} match like Find Match's: net/matchmaking.js reads it, the moves go to
 // the server), and the opponent's moves played back on this phone.
+import { copyText, shareText, siteUrl } from './platform.js';
 import { restrictGames } from '../core/games.js';
 import { NAME_MAX, playerName } from '../core/match.js';
 import { upgradeMini } from '../core/minis.js';
@@ -55,7 +56,7 @@ export function blocked() { return cpuTurn() || remoteTurn() || !!moveWait || (!
 export function pinned() { return echoPinned() || oddPinned() || attPinned() || fingPinned(); }   // an attempt under way that the player has started (Echo's pattern played, Odd One Out's grid revealed): they stay in the square until it goes in
 export function lockMine() { return state.lock != null && (mySide() == null || state.turn === mySide()); }
 export function setNet(status, msg) { net = { status, msg: msg || '' }; noteNet(); }
-function roomLink() { return location.origin + location.pathname + '?room=' + state.online.code; }
+function roomLink() { return siteUrl() + '?room=' + state.online.code; }   // (the site's address wherever the game runs: net/platform.js; the app's opens the app again, a Universal Link)
 export function roomRef(path) { return fb.m.ref(fb.db, 'rooms/' + state.online.code + (path ? '/' + path : '')); }
 function presRef(side) { return fb.m.ref(fb.db, isMM() ? `gpresence/${state.online.game}/${side}` : `presence/${state.online.code}/${side}`); }
 const inRoomGame = () => !!(state.online && state.online.kind === 'mm' && state.online.room);   // a friend room's match (the server runs it, as Find Match's)
@@ -480,16 +481,15 @@ export function quitMatch() {
 export function inviteText(code, url) { return `Join my Tic Tac Chaos game! Code: ${code} ${url}`; }
 export async function shareRoom() {
   const text = inviteText(state.online.code, roomLink());
-  try {
-    if (navigator.share) { await navigator.share({ text }); return; }
-  } catch (e) { if (e && e.name === 'AbortError') return; }
+  try { if (await shareText(text)) return; }                      // (the share sheet: the app's or the browser's, net/platform.js)
+  catch (e) { if (e && (e.name === 'AbortError' || /cancel/i.test(String(e.message || '')))) return; }
   await copyInvite();                                              // (no share sheet here: the invite is copied instead)
 }
 // Copy invite: the same text, on the clipboard.
 export async function copyInvite() {
   const text = inviteText(state.online.code, roomLink());
   let note = 'Invite copied';
-  try { await navigator.clipboard.writeText(text); } catch (e) { note = text; }
+  try { await copyText(text); } catch (e) { note = text; }
   showNotice(note, 1800);
 }
 // Back after a reload or a time away: the same room and seat, from localStorage.

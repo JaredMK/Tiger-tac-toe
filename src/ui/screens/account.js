@@ -32,6 +32,7 @@ export function renderLogin(gated) {
       <div class="ttl"><b>Log in</b><small>${gated ? 'Staging: for testers on the list only' : 'For Find Match, your stats and your game history'}</small></div></div>
     <div class="setup-box" data-keep-scroll="login">
       <button class="primary google" data-act="login-google"${off}>Continue with Google</button>
+      <button class="primary apple" data-act="login-apple"${off}>Continue with Apple</button>
       <div class="or"><span>or with your email</span></div>
       <label class="field"><span>Email</span><input id="lemail" type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" value="${esc(loginMail)}"></label>
       <label class="field"><span>Password</span><input id="lpass" type="password" autocomplete="current-password" value="${esc(loginPass)}"></label>

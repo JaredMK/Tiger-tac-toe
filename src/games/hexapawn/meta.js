@@ -2,6 +2,7 @@
 
 export const info = { name: 'Hexapawn',     hint: 'Step forward, capture diagonally. Reach the far row to win' };
 export const release = 'released';   // the default (the admin's dashboard can change it)
+export const minVersion = '1.0.0';   // the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
 export const category = 'brain';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const retired = true;   // no longer dealt; older matches still play it out
 export const explainer = { name: 'Hexapawn', play: 'Move a pawn forward, or capture diagonally.', win: 'Get a pawn to the far side.' };

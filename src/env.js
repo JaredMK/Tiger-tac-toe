@@ -27,16 +27,18 @@
   };
   var PRODUCTION_HOSTS = ['tictacchaos.com', 'www.tictacchaos.com', 'tic-tac-chaos.web.app', 'tic-tac-chaos.firebaseapp.com'];
   var OWN_AUTH_DOMAIN = ['tictacchaos.com', 'staging.tictacchaos.com'];
-  function pick(host) {
+  // forced: the app's build names its project (a <meta name="ttc-env"> tag: the app's address, capacitor://localhost, says nothing).
+  function pick(host, forced) {
     host = String(host || '').toLowerCase();
-    var name = PRODUCTION_HOSTS.indexOf(host) >= 0 ? 'production' : 'staging', config = {}, k;
+    var name = forced === 'production' || forced === 'staging' ? forced : PRODUCTION_HOSTS.indexOf(host) >= 0 ? 'production' : 'staging', config = {}, k;
     for (k in CONFIGS[name]) config[k] = CONFIGS[name][k];
     if (OWN_AUTH_DOMAIN.indexOf(host) >= 0) config.authDomain = host;
     var appCheckKey = config.appCheckKey || ''; delete config.appCheckKey;   // (App Check's key rides beside the web config, not in it)
     return { name: name, staging: name === 'staging', config: config, appCheckKey: appCheckKey };
   }
   if (typeof module !== 'undefined' && module.exports) { module.exports = { pick: pick, CONFIGS: CONFIGS, PRODUCTION_HOSTS: PRODUCTION_HOSTS }; return; }   // (the tests)
-  var env = pick(location.hostname);
+  var meta = document.querySelector('meta[name="ttc-env"]');
+  var env = pick(location.hostname, meta && meta.getAttribute('content'));
   window.TTC_ENV = env;
   if (env.staging) {                                // a small badge in a corner, over everything, never in the way of a tap
     var badge = function () {

@@ -2,10 +2,12 @@
 // its callable functions.
 import { onAuthUser, redirectPending } from './accounts.js';
 import { setFindOn } from './matchmaking.js';
+import { NATIVE, clientInfo } from './platform.js';
 import { setReleases } from './releases.js';
 import { presenceUp, setNet } from './room.js';
 import { commit, state } from '../ui/app.js';
 import { render } from '../ui/render.js';
+import { mustUpdate } from '../ui/update.js';
 import { noteNet } from '../ui/turnbar.js';
 
 /* ===================== Online play (Firebase Realtime Database) =====================
@@ -21,7 +23,10 @@ import { noteNet } from '../ui/turnbar.js';
 // ---------- the Firebase project: production or staging, by the page's address (src/env.js, window.TTC_ENV) ----------
 export const FIREBASE_CONFIG = (typeof window !== 'undefined' && window.TTC_ENV && window.TTC_ENV.config) || { apiKey: 'PASTE_', databaseURL: 'PASTE_' };
 const FIREBASE_VERSION = '11.10.0';
-export const FIREBASE_CDN = `https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/`;   // the SDK is fetched only when online play is chosen
+// The SDK is fetched only when online play is chosen: from Google's CDN, or (the app: scripts/build-app.js) from its own copy (<meta name="ttc-sdk">).
+const sdkMeta = typeof document !== 'undefined' && document.querySelector ? document.querySelector('meta[name="ttc-sdk"]') : null;
+export const FIREBASE_CDN = sdkMeta && typeof sdkMeta.content === 'string' && sdkMeta.content ? new URL(sdkMeta.content, document.baseURI).href : `https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/`;
+export { FIREBASE_VERSION };
 export const NET_MS = { connect: 12000, move: 8000, call: 20000 };   // (a server call can wait for a cold start)
 export let fb = null, fbLoad = null;                      // the SDK: { m: database module, db, uid }
 export let connected = false;
@@ -105,12 +110,18 @@ async function appCheck(app, base, hook) {
   const key = window.TTC_ENV && window.TTC_ENV.appCheckKey;
   if (!key || hook) return;
   try {
-    if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+    if (!NATIVE && /^(localhost|127\.0\.0\.1)$/.test(location.hostname)) self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;   // (the app's own address is localhost too: it proves itself natively, docs/ios-plan.md)
     const ac = await import(base + 'firebase-app-check.js');
     ac.initializeAppCheck(app, { provider: new ac.ReCaptchaEnterpriseProvider(key), isTokenAutoRefreshEnabled: true });
   } catch (e) { console.warn('[App Check] not started', e && e.message); }
 }
-export function call(name, data) { return fb.fnM.httpsCallable(fb.fns, name)(data || {}).then(r => r.data); }
+// Every server call says which client sent it (its version and platform: core/client.js), for what the server may deal it and whether it must update first.
+export function call(name, data) {
+  return fb.fnM.httpsCallable(fb.fns, name)(Object.assign({}, data || {}, { client: clientInfo() })).then(r => r.data, e => {
+    if (e && e.details && e.details.update === true) { mustUpdate(); render(); }   // too old for the server: "Please update" (ui/update.js)
+    throw e;
+  });
+}
 
 // Setters for the names other modules reassign (an imported name is read-only there).
 export function setCall(v) { call = v; }

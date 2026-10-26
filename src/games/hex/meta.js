@@ -2,6 +2,7 @@
 
 export const info = { name: 'Hex',          hint: 'X joins left to right, O joins top to bottom' };
 export const release = 'released';   // the default (the admin's dashboard can change it)
+export const minVersion = '1.0.0';   // the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
 export const category = 'brain';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const explainer = { name: 'Hex', play: 'Claim a hex. X connects left to right, O connects top to bottom.', win: 'Complete your path.' };
 // Its settings (the admin's Mini-game Settings; core/tune.js): read through tune(mini).

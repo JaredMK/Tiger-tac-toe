@@ -3,6 +3,7 @@
 export const info = { name: 'Bowling',      hint: 'One roll a turn. Every pin counts' };
 export const BOWL_DEFAULTS = { aimMs: 733, meterMs: 600 };   // the arrow: one side of the lane to the other in this long; the power meter: empty to full (config/bowling)
 export const release = 'admin';   // the default (the admin's dashboard can change it)
+export const minVersion = '1.0.0';   // the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
 export const category = 'skill';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Bowling', play: 'Tap to aim then tap for power.', win: '{target} pins total.' };

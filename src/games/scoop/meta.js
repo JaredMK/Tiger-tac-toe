@@ -2,6 +2,7 @@
 
 export const info = { name: 'Scoop Stack',  hint: 'Drag the cone to catch scoops. Stack to the target first' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
+export const minVersion = '1.0.0';   // the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
 export const category = 'skill';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Scoop Stack', play: 'Drag the cone to catch scoops. Dodge the bad stuff. Your stack carries over between turns.', win: 'Stack to the target first.' };

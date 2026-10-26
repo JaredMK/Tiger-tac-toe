@@ -34,6 +34,8 @@ import { fingGo } from './finger.js';
 import { startFx } from './fx.js';
 import { backspace, submitWord, typeLetter } from './keyboard.js';
 import { render } from './render.js';
+import { updateNeeded } from './update.js';
+import { openUpdate, startLink } from '../net/platform.js';
 import { scJointFrame, scPopup, scSkip } from './chaos.js';
 import { repActive, repNote, repSkip, repVal } from './replay.js';
 import { runGo } from './runner.js';
@@ -43,15 +45,18 @@ import { cpuTurn, dismissFlash, scheduleCpu } from './turns.js';
 import { closeReport, openReport } from './report.js';
 
 
+// The login screen's buttons: Google, Apple, the email's Log in and Create account (net/accounts.js loginWith).
+const LOGIN_ACTS = { 'login-google': 'google', 'login-apple': 'apple', 'login-email': 'email', 'login-create': 'create' };
 // A mini-game's own control: the view whose actions have it.
 const gameAction = act => { for (const t in GAMES) { const a = GAMES[t].view && GAMES[t].view.actions; if (a && Object.hasOwn(a, act)) return a[act]; } return null; };
 // A tap inside a scrolling list never moves it: anything the browser does on its own (bringing a box it
 // focuses fully into view) is put back before the next frame. A drag is a scroll and fires no click.
 let tapScroll = null;
-// A shared link (?room=CODE): the code read forgivingly (any case, spaces or stray characters dropped).
-export function linkCode() {
+// A shared link (?room=CODE): the code read forgivingly (any case, spaces or stray characters dropped), from any address that
+// opened the game: the page's own at the start, or a deep link handed to the app (net/platform.js).
+export function linkCode(url) {
   let v = null;
-  try { v = new URLSearchParams(location.search).get('room'); } catch (e) { return null; }
+  try { v = new URL(url || startLink(), 'https://tictacchaos.com/').searchParams.get('room'); } catch (e) { return null; }
   const c = String(v || '').toUpperCase().replace(/[^A-Z]/g, '');
   return validCode(c) ? c : null;
 }
@@ -107,9 +112,10 @@ export function init() {
     const el = e.target.closest('[data-act]');
     if (!el || el.disabled) return;
     const act = el.dataset.act;
+    if (updateNeeded()) { if (act === 'update-app') openUpdate(); return; }             // "Please update": its one button only
     if (gateOn()) {                                                                     // staging's gate: only its own buttons and the login's
       if (act.startsWith('gate-')) gateAct(act);
-      else if (act === 'login-google' || act === 'login-email' || act === 'login-create') loginWith(act === 'login-google' ? 'google' : act === 'login-email' ? 'email' : 'create');
+      else if (LOGIN_ACTS[act]) loginWith(LOGIN_ACTS[act]);
       else if (act === 'login-reset') loginReset();
       return;
     }
@@ -206,12 +212,8 @@ export function init() {
       findAgain();
     } else if (act === 'login') {
       setAfterLogin(null); setLoginMsg(null); state.screen = acct.user && acct.ready && !loggedIn() ? 'username' : 'login'; commit(); connectQuiet();
-    } else if (act === 'login-google') {
-      loginWith('google');
-    } else if (act === 'login-email') {
-      loginWith('email');
-    } else if (act === 'login-create') {
-      loginWith('create');
+    } else if (LOGIN_ACTS[act]) {
+      loginWith(LOGIN_ACTS[act]);
     } else if (act === 'login-reset') {
       loginReset();
     } else if (act === 'uname-save') {

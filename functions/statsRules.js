@@ -166,6 +166,9 @@ function checkDev(d, t) {
   if (d.ev === 'open') {
     if (!idOk(d.o)) return null;
     k = 'o' + d.o;
+    const cl = d.client && typeof d.client === 'object' ? d.client : {};          // the client it opened (src/core/client.js): its version and platform
+    if (typeof cl.v === 'string' && /^\d{1,4}(\.\d{1,4}){0,2}$/.test(cl.v)) ev.cv = cl.v;
+    if (cl.p === 'web' || cl.p === 'ios') ev.p = cl.p;
   } else if (d.ev === 'error' || d.ev === 'audio') {
     if (!idOk(d.o) || typeof d.msg !== 'string' || !d.msg.trim()) return null;
     ev.msg = d.msg.replace(/[^\x20-\x7e]/g, '?').slice(0, 160);

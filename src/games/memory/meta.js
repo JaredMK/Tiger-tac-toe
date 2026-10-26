@@ -2,6 +2,7 @@
 
 export const info = { name: 'Find the Pair',       hint: 'Flip two cards. Find the matching pair' };
 export const release = 'released';   // the default (the admin's dashboard can change it)
+export const minVersion = '1.0.0';   // the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
 export const category = 'brain';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const explainer = { name: 'Find the Pair', play: 'Flip two cards. Matching pairs in the deck: {pairs}.', win: 'Find a matching pair.' };   // ({pairs}: its setting, TUNE below)
 // Its settings (the admin's Mini-game Settings; core/tune.js): pairs dealt into the deck; mem read through tune(pm).

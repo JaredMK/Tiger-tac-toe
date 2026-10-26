@@ -1368,6 +1368,7 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .or { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 15px; }
 .or::before, .or::after { content: ''; flex: 1; height: 2.5px; background: var(--ink); opacity: .2; border-radius: 2px; }
 .primary.google { background: var(--paper); color: var(--ink); }
+.primary.apple { background: var(--ink); color: var(--paper); }   /* Sign in with Apple: black, as Apple asks of its button */
 .qdesc { margin: 0; font-size: 17px; }
 .find-kind { display: flex; gap: 8px; }
 .searching { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 28px 0 8px; text-align: center; }

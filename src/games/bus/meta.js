@@ -2,6 +2,7 @@
 
 export const info = { name: 'Ride the Bus', hint: 'Colour, higher or lower, inside or outside, then the suit' };
 export const release = 'released';   // the default (the admin's dashboard can change it)
+export const minVersion = '1.0.0';   // the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
 export const category = 'luck';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Ride the Bus', play: 'Guess red or black, then higher or lower, then inside or outside, then the suit. Miss and your turn ends, but you keep your progress.', win: 'Get through all four.' };

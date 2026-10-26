@@ -140,7 +140,7 @@ test('the invite: one text with the code and the full link, shared with no separ
   assert.equal(inviteText('ABCDE', 'https://tictacchaos.com/?room=ABCDE'), 'Join my Tic Tac Chaos game! Code: ABCDE https://tictacchaos.com/?room=ABCDE');
   const shared = [];
   const nav = globalThis.navigator, loc = globalThis.location;
-  globalThis.location = { origin: 'https://tictacchaos.com', pathname: '/' };
+  globalThis.location = { protocol: 'https:', origin: 'https://tictacchaos.com', pathname: '/' };
   globalThis.navigator = { share: async d => { shared.push(d); } };
   Object.assign(state, board(), { screen: 'setup', online: { role: 'host', code: 'ABCDE', me: 'X', joined: false } });
   await shareRoom();

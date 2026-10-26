@@ -2,6 +2,7 @@
 
 export const info = { name: 'Standoff Grid',   hint: 'Claim a cell. Same cell as your opponent: blocked. Four in a row wins' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
+export const minVersion = '1.0.0';   // the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
 export const category = 'brain';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const scOnly = true;       // made for simultaneous rounds: never dealt in a normal match

@@ -2,6 +2,7 @@
 
 export const info = { name: 'Dice Race',    hint: 'Roll and race along 15 spaces. First to the finish wins' };
 export const release = 'released';   // the default (the admin's dashboard can change it)
+export const minVersion = '1.0.0';   // the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
 export const category = 'luck';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const retired = true;   // no longer dealt; older matches still play it out
 export const explainer = { name: 'Dice Race', play: 'Roll and move that many spaces.', win: 'Reach the finish first.' };

@@ -2,6 +2,7 @@
 
 export const info = { name: 'Blackjack',    hint: 'Beat the dealer without going over 21. First to 3 wins' };
 export const release = 'released';   // the default (the admin's dashboard can change it)
+export const minVersion = '1.0.0';   // the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
 export const category = 'luck';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Blackjack', play: 'Hit to draw a card or stand. Beat the dealer without going over 21. Tie? Play another hand.', win: 'First to {goal} wins.' };   // ({goal}: its setting, TUNE below)
