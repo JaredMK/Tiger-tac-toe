@@ -124,7 +124,7 @@ function loadModel(read, oldTypes) {
     const ea = e.index, eb = lineEnd(src, ea);
     const nameL = keyLiteral(src, ea, eb, 'name'), play = keyLiteral(src, ea, eb, 'play');
     let win = keyLiteral(src, ea, eb, 'win'), winSite = win && site(file, win);
-    if (!win) {                                       // a getter returning a template with the game's live setting (Risk Wheels): the setting shows as {name}
+    if (!win) {                                       // a getter returning a template with the game's live setting (Risky Spins): the setting shows as {name}
       const gm = /get win\(\) \{ return `([^`]*)`; \}/d.exec(src.slice(ea, eb));
       if (gm) {
         const ph = {};

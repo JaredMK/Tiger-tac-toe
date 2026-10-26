@@ -1,10 +1,10 @@
 'use strict';
-// Risk Wheels: its rules and AI, test by test (npm test). The engine is the one the page and the server run.
+// Risky Spins: its rules and AI, test by test (npm test). The engine is the one the page and the server run.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const E = require('../engine.js');
 
-/* ===================================== Risk Wheels ===================================== */
+/* ===================================== Risky Spins ===================================== */
 test('wheels: each square deals three wheels of ten; each player\'s own points; one wheel spun a move; first to 18; the admin\'s values in the square', () => {
   assert.deepEqual(E.WHEEL_DEFAULTS, { target: 18, tensMin: 1, tensMax: 2, smallMax: 2, smallTop: 2, midLo: 0, midHi: 8, lowLo: 1, lowHi: 4, gap: 0.4 });
   const rng = E.makeRng('wh-rules'), m = E.newMini('wheels', rng);
@@ -49,7 +49,7 @@ test('wheels: 1,000 dealt sets keep every rule (the medium wheel with two 5s or 
     assert.ok(h < md && md < l && md - h >= 0.4 - 1e-9 && l - md >= 0.4 - 1e-9, 'the averages in order, 0.4 apart');
     tens[nt]++; avg.high += h / 1000; avg.mid += md / 1000; avg.low += l / 1000;
   }
-  console.log(`Risk Wheels: 1,000 sets, all rules kept; one 10 in ${tens[1]}, two in ${tens[2]}; average of the averages: high ${avg.high.toFixed(2)}, medium ${avg.mid.toFixed(2)}, low ${avg.low.toFixed(2)}`);
+  console.log(`Risky Spins: 1,000 sets, all rules kept; one 10 in ${tens[1]}, two in ${tens[2]}; average of the averages: high ${avg.high.toFixed(2)}, medium ${avg.mid.toFixed(2)}, low ${avg.low.toFixed(2)}`);
   const rng = E.makeRng('wh-odds'), vals = [0, 1, 2, 3, 4, 5, 6, 7, 8, 10], hit = new Array(10).fill(0), N = 30000;
   for (let k = 0; k < N; k++) { const s = E.wheelSpin(vals, rng); hit[s.seg]++; assert.equal(s.v, vals[s.seg]); }
   hit.forEach((h, k) => assert.ok(Math.abs(h / N - 0.1) < 0.008, `segment ${k}: ${(100 * h / N).toFixed(1)}%`));

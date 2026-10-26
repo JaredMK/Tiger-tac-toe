@@ -2,7 +2,11 @@
 import { randInt } from '../../core/random.js';
 import { tune } from '../../core/tune.js';
 import { wordleCandidates, wordleLeft, wordleMarks } from './rules.js';
-import { WORDS5 } from './words.js';
+import { BAD5, WORDS5 } from './words.js';
+
+// The words the computer may guess: the answer list less the refused ones (a refused guess costs nothing, but the
+// computer must never make one: Easy's slips and Hard's probes draw from here).
+const GUESS5 = WORDS5.filter(w => !BAD5.has(w.toUpperCase()));
 
 // Never scripted: the opening is drawn from strong starting words, and later guesses from the best few,
 // weighted toward the best (WVARY.weights, best first).
@@ -28,10 +32,10 @@ export function best(pm, me, rng, style, ctx) {
 }
 function bestWord(pm, me, rng, style, ctx) {
   const cand = wordleCandidates(pm);
-  if (!cand.length) return { move: WORDS5[randInt(rng, WORDS5.length)].toUpperCase(), q: 0, shared: true };
+  if (!cand.length) return { move: GUESS5[randInt(rng, GUESS5.length)].toUpperCase(), q: 0, shared: true };
   if (cand.length === 1) return { move: cand[0], q: 1, shared: true };
   const miss = tune(pm).miss;
-  if (miss && rng() * 100 < miss) { const w = WORDS5[randInt(rng, WORDS5.length)].toUpperCase(); return { move: w, q: cand.includes(w) ? 1 / cand.length : 0, shared: true }; }   // a slip: a word at random, clues ignored
+  if (miss && rng() * 100 < miss) { const w = GUESS5[randInt(rng, GUESS5.length)].toUpperCase(); return { move: w, q: cand.includes(w) ? 1 / cand.length : 0, shared: true }; }   // a slip: a word at random, clues ignored
   if (!pm.guesses.length) { const w = WVARY.open[randInt(rng, WVARY.open.length)]; return { move: w, q: cand.includes(w) ? 1 / cand.length : 0, shared: true }; }   // the opening
   if (ctx && ctx.level === 'hard') return wordleHard(pm, cand, ctx, rng);
   let scored;
@@ -118,7 +122,7 @@ function wordleHard(pm, cand, ctx, rng) {
   if (n <= WH.rootAll && depth) {                                // every other answer word, at the depth reached
     stop = false; work = 0;
     const told = !pm.guesses.length || wordleCandidates({ guesses: pm.guesses.slice(0, -1) }).length > n;
-    for (const w of WORDS5) { const W = w.toUpperCase(); if (cand.includes(W)) continue; let v = split(C, c => markCode(W, cand[c]), depth - 1, false); if (stop) break; if (v < 0) { if (!told) continue; v = 1 - top; } if (v > top + WH.margin) { top = v; move = W; } }
+    for (const w of GUESS5) { const W = w.toUpperCase(); if (cand.includes(W)) continue; let v = split(C, c => markCode(W, cand[c]), depth - 1, false); if (stop) break; if (v < 0) { if (!told) continue; v = 1 - top; } if (v > top + WH.margin) { top = v; move = W; } }
   }
   return { move, q: cand.includes(move) ? 1 / n : 0, shared: true };
 }

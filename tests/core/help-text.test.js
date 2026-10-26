@@ -17,7 +17,7 @@ test('an untouched export changes nothing', async () => {
 test('an edit changes only its own text, quotes and placeholders kept', async () => {
   const md = (await exportHelp())
     .replace(/^Rule 1: .*$/m, 'Rule 1: It\'s "new".\n  Wrapped.')
-    .replace(/^(## Risk Wheels \[wheels\]\n(?:.*\n){1}Play: .*\nWin: ).*$/m, '$1Hit {target} first.')
+    .replace(/^(## Risky Spins \[wheels\]\n(?:.*\n){1}Play: .*\nWin: ).*$/m, '$1Hit {target} first.')
     .replace(/^Badge: .*$/m, 'Badge: TEST');
   const r = await run(md);
   assert.deepEqual(r.changes.map(c => c.id + '/' + c.label), ['rules/Rule 1', 'wheels/Win', 'staging/Badge']);

@@ -29,7 +29,7 @@ test('admin page: the runners and their default tuning are the engine\'s', () =>
     assert.ok(f, `${t}: a field for ${k}`); assert.deepEqual([f[2], f[3]], [lo, hi], `${t}.${k}: the engine's range`);
   }
 });
-test('admin page: Risk Wheels\' and Peg Drop\'s default tuning are the engine\'s', () => {
+test('admin page: Risky Spins\' and Peg Drop\'s default tuning are the engine\'s', () => {
   assert.deepEqual(literal('WHEEL_DEFAULTS'), E.WHEEL_DEFAULTS);
   const fields = literal('WHEEL_FIELDS');
   assert.deepEqual(fields.map(([k]) => k).sort(), Object.keys(E.WHEEL_DEFAULTS).sort(), 'a field for each setting');

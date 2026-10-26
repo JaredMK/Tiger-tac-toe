@@ -9,7 +9,7 @@ const admin = require(path.join(__dirname, '..', 'functions', 'node_modules', 'f
 
 const PROJECT = process.env.TTC_PROJECT || 'tic-tac-chaos';
 const SETS = [
-  { id: 'rel1', set: { craps: true, wheels: true, flap: false, chopper: false } },   // Craps and Risk Wheels released; Flap and Chopper admin only
+  { id: 'rel1', set: { craps: true, wheels: true, flap: false, chopper: false } },   // Craps and Risky Spins released; Flap and Chopper admin only
   { id: 'rel2', set: { superchaos: false } },   // Super Chaos off (Classic only; core/config.js SUPER_CHAOS_ENABLED keeps it off for the admin too)
 ];
 // Game settings set by a request (config/tune/{type}/{key}, the admin's Mini-game Settings): each set once, like the releases.

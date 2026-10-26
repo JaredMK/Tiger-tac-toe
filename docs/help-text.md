@@ -214,15 +214,15 @@ Category: More luck
 Play: Guess red or black, then higher or lower, then inside or outside, then the suit. Miss and your turn ends, but you keep your progress.
 Win: Get through all four.
 
-## Risk Wheels [wheels]
-Category: More luck
-Play: Pick a wheel and spin.
-Win: Reach {target} first.
-
 ## Risky Rolls [pig]
 Category: More luck
 Play: Roll as many times as you dare, then bank your points. Roll a number you already rolled this turn and you lose them.
 Win: Bank {target} first.
+
+## Risky Spins [wheels]
+Category: More luck
+Play: Pick a wheel and spin.
+Win: Reach {target} first.
 
 ## Roads [roads]
 Category: More brain

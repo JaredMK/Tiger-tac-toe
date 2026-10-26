@@ -256,3 +256,11 @@ test('wordle: the computer\'s last guess is always a word that could be it, and 
   }
   assert.ok(E.needsOf(pm, 'X') >= 1);
 });
+test('wordle: the computer never guesses a refused word (Easy\'s slips, Hard\'s probes draw from the clean list)', () => {
+  const rng = E.makeRng('w-clean'), A = require('../../src/games/wordle/ai.js');
+  for (let k = 0; k < 400; k++) {
+    const m = E.newMini('wordle', rng); m.tune = Object.assign({}, m.tune, { miss: 100 });   // every Easy move a slip: a word at random
+    const g = A.best(E.publicMini(m), 'X', rng, {}, { level: 'easy' });
+    assert.ok(!E.BAD5.has(String(g.move).toUpperCase()), `${g.move} is refused`);
+  }
+});

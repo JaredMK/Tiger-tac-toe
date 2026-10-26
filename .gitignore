@@ -3,3 +3,4 @@ node_modules
 functions/deploy-stamp.txt
 _site
 _app
+.claude/

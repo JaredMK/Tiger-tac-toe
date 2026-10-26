@@ -1,11 +1,11 @@
-// Risk Wheels: the screen, the miniature, the move's words and sounds, and the inputs.
+// Risky Spins: the screen, the miniature, the move's words and sounds, and the inputs.
 import { WHEELS, WHEELT, setWheelsConfig } from './rules.js';
 import { FIREBASE_CONFIG, configured } from '../../net/connect.js';
 import { N, mv, state } from '../../ui/app.js';
 import { KEY } from '../../ui/config.js';
 import { arcTally, lateAt } from '../../ui/progress.js';
 
-// Risk Wheels' points, odds and target (config/wheels, the admin's dashboard): likewise.
+// Risky Spins' points, odds and target (config/wheels, the admin's dashboard): likewise.
 const WHEELS_KEY = KEY + '.wheelscfg';
 export function fetchWheelsConfig() {
   try { const v = JSON.parse(localStorage.getItem(WHEELS_KEY) || 'null'); if (v && typeof v === 'object') setWheelsConfig(v); } catch (e) { /* none kept */ }
@@ -20,7 +20,7 @@ export function fetchWheelsConfig() {
     }).catch(() => {});
   } catch (e) { /* offline: as last known */ }
 }
-// Risk Wheels: the square's three wheels side by side and nothing else (no names, no averages): ten equal
+// Risky Spins: the square's three wheels side by side and nothing else (no names, no averages): ten equal
 // segments each with its points on it, each wheel in its own colour, a segment's shade set by its points
 // (the same on every wheel: 0 palest, 10 darkest), so the risk reads at a glance. A tap on a wheel spins it:
 // a few turns, slowing, stopping with the pointer on the segment the server's spin landed in; the points

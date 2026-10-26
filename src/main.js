@@ -70,7 +70,7 @@ function loadConfigs() {
   configsAt = Date.now();
   fetchRunConfig();                                           // the runners' difficulty, for the squares to come
   fetchBullsConfig();                                         // Bullseye's board, bullseye and sweep speeds, likewise
-  fetchWheelsConfig();                                        // Risk Wheels' points, odds and target, likewise
+  fetchWheelsConfig();                                        // Risky Spins' points, odds and target, likewise
   fetchPlinkoConfig();                                        // Peg Drop's target, likewise
   fetchPigConfig();                                           // Risky Rolls' die and target, likewise
   fetchRoadsConfig();                                         // Roads' honeycomb, likewise

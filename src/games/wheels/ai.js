@@ -1,4 +1,4 @@
-// Risk Wheels: the computer's play.
+// Risky Spins: the computer's play.
 import { randInt } from '../../core/random.js';
 import { tune } from '../../core/tune.js';
 import { other } from '../../core/util.js';

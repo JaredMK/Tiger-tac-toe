@@ -60,7 +60,7 @@ test('Risky Rolls: the die shows the opponent\'s roll, not the viewer\'s', () =>
   const html = replay('pig', x.mini, o.flash);
   assert.match(html, /Eight-sided die: 8"/); assert.doesNotMatch(html, /Eight-sided die: 1"/);
 });
-test('Roulette, Risk Wheels, Craps: what they show comes from the opponent\'s recorded move', () => {
+test('Roulette, Risky Spins, Craps: what they show comes from the opponent\'s recorded move', () => {
   const at = n => () => (E.RL.wheel.indexOf(n) + 0.5) / 25;
   const r0 = E.newMini('rl', E.makeRng('rl')), rx = play(r0, 'X', 'g2', at(13)), ro = play(rx.mini, 'O', 'zero', at(5));
   const rh = replay('rl', rx.mini, ro.flash);

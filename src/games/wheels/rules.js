@@ -1,9 +1,9 @@
-// Risk Wheels: the rules (pure: no page, no clock; the server runs the same code).
+// Risky Spins: the rules (pure: no page, no clock; the server runs the same code).
 import { needRng, randInt, shuffle } from '../../core/random.js';
 import { r3 } from '../../core/util.js';
 import { WHEEL_DEFAULTS } from './meta.js';
 
-// ---------- Risk Wheels ----------
+// ---------- Risky Spins ----------
 // Each player has their own points; first to the target wins. Each square deals three wheels of 10 equal
 // segments, drawn afresh (and drawn again until every rule holds):
 //   high: one or two 10s; the rest 0s, but for at most two small values (1-2); the lowest average;

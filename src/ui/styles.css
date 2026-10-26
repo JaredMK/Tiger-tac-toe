@@ -1367,8 +1367,17 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .acct-scr .hint.center { text-align: center; padding: 24px 0; }
 .or { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 15px; }
 .or::before, .or::after { content: ''; flex: 1; height: 2.5px; background: var(--ink); opacity: .2; border-radius: 2px; }
-.primary.google { background: var(--paper); color: var(--ink); }
-.primary.apple { background: var(--ink); color: var(--paper); }   /* Sign in with Apple: black, as Apple asks of its button */
+/* The sign-in buttons, by each brand's guidelines (CLAUDE.md: the one exception to the no-logos rule): Google's white
+   button, #747775 border, Roboto Medium 14px #1F1F1F, the "G" 20px at the left; Apple's black button, white mark and text
+   in the system font, 44px tall at least, corners allowed. Neither takes the game's cartoon outline or font. */
+.sso { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 48px; padding: 0 16px; border-radius: 10px; cursor: pointer; font: 500 16px/1 Roboto, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; letter-spacing: .01em; text-shadow: none; box-shadow: none; transform: none; }
+.sso span { flex: 1; text-align: center; padding-right: 32px; }   /* (the text centred over the whole button: the logo's width given back on the right) */
+.sso .sso-logo { width: 20px; height: 20px; flex: none; }
+.sso.google { background: #fff; color: #1f1f1f; border: 1px solid #747775; }
+.sso.google:active { background: #f2f2f2; }
+.sso.apple { background: #000; color: #fff; border: 1px solid #000; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 600; }
+.sso.apple:active { background: #1a1a1a; }
+.sso:disabled { opacity: .55; cursor: default; }
 .qdesc { margin: 0; font-size: 17px; }
 .find-kind { display: flex; gap: 8px; }
 .searching { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 28px 0 8px; text-align: center; }

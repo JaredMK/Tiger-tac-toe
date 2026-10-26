@@ -1,12 +1,12 @@
-// Risk Wheels: its names, its "?" explainer, its icon and its release default, and its default settings.
+// Risky Spins: its names, its "?" explainer, its icon and its release default, and its default settings.
 import { wheelsConfig } from './rules.js';
 
-export const info = { name: 'Risk Wheels',  hint: 'Pick a wheel and spin. First to 18' };
+export const info = { name: 'Risky Spins',  hint: 'Pick a wheel and spin. First to 18' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
 export const minVersion = '1.0.0';   // the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
 export const category = 'luck';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
-export const explainer = { name: 'Risk Wheels', play: 'Pick a wheel and spin.', get win() { return `Reach ${wheelsConfig().target} first.`; } };   // (the target is the admin's)
+export const explainer = { name: 'Risky Spins', play: 'Pick a wheel and spin.', get win() { return `Reach ${wheelsConfig().target} first.`; } };   // (the target is the admin's)
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13.5" r="8.5"/><path d="M12 13.5V5M12 13.5l7.4 4.3M12 13.5l-7.4 4.3"/><path d="M12 13.5V5a8.5 8.5 0 0 1 7.4 12.8z" fill="currentColor" fill-opacity=".35"/><path d="M9.8 1.2h4.4L12 4.4z" fill="currentColor"/></svg>';
 // Its settings besides those below (the admin's Mini-game Settings; core/tune.js): the computer's mistakes.
 export const TUNE = [

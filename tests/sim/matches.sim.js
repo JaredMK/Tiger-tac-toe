@@ -400,7 +400,7 @@
 // ---- from the trio tests ----
 {
   // Run with:  node --test
-  // Patterns, Risk Wheels and Sniff in the shared engine (engine.js): the rules, the hidden parts, the
+  // Patterns, Risky Spins and Sniff in the shared engine (engine.js): the rules, the hidden parts, the
   // timeouts, the computer, and the checks on each game's numbers.
   const test = require('node:test');
   const assert = require('node:assert/strict');

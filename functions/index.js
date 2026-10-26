@@ -400,7 +400,7 @@ async function findMatchOn() { return (await db.ref('features/findMatch').get())
 // Release control (src/core/games.js: isReleased): the dashboard's switches, releases/{type}; a game not there is
 // as the code has it. testTypes: the games admin only right now (their stats are kept apart).
 async function releasesNow() { return (await db.ref('releases').get()).val() || {}; }
-// The difficulty configs (config/run for the runners, config/bulls for Bullseye, config/wheels for Risk Wheels, config/plinko for Peg Drop, config/pig for Risky Rolls, config/roads for Roads, config/oddone for Odd One Out, config/headcount, config/flash and config/snapshot for the attention games, config/skyhop, config/scoop and config/pinball for the finger games, from the admin's
+// The difficulty configs (config/run for the runners, config/bulls for Bullseye, config/wheels for Risky Spins, config/plinko for Peg Drop, config/pig for Risky Rolls, config/roads for Roads, config/oddone for Odd One Out, config/headcount, config/flash and config/snapshot for the attention games, config/skyhop, config/scoop and config/pinball for the finger games, from the admin's
 // dashboard): set in the engine before a square can be dealt (a new match, a draw's reset), so new
 // squares play by the current values; read afresh after 20 s.
 let runCfgAt = 0;

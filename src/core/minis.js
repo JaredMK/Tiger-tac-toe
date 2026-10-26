@@ -21,7 +21,7 @@ export function canMove(mini, p) { return mini.type === 'hexapawn' ? hpMoves(min
 // column on each side, so every piece keeps its place (and its support) in the middle five.
 export function upgradeMini(mini) {
   if (mini && mini.type === 'sniff' && !mini.g) sniffUpgrade(mini);   // Sniff from the 5x5 field: the same square in the middle of the 7x7 one
-  // Risk Wheels from when each wheel had two segments sized to their chances: ten equal segments, the first value on its share (to the nearest tenth).
+  // Risky Spins from when each wheel had two segments sized to their chances: ten equal segments, the first value on its share (to the nearest tenth).
   if (mini && mini.type === 'wheels' && !mini.wheels && mini.cfg) {
     const c = mini.cfg; mini.target = c.target || WHEEL_DEFAULTS.target; mini.wheels = {};
     for (const w of WHEELS) { const x = c[w] || { a: 0, pa: 50, b: 0 }, n = Math.max(1, Math.min(9, Math.round(x.pa / 10))); mini.wheels[w] = Array.from({ length: WHEEL_SEGS }, (_, k) => (k < n ? x.a : x.b)); }

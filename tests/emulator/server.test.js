@@ -1467,7 +1467,7 @@ test('physics (Mini Golf, Pool, Bowling): a shot is played out on the server and
   await recorded(g.id);
 });
 
-test('Risk Wheels tuning (config/wheels): public to read, the admin alone sets it, within bounds; the server deals and spins Risk Wheels squares by it', async () => {
+test('Risky Spins tuning (config/wheels): public to read, the admin alone sets it, within bounds; the server deals and spins Risky Spins squares by it', async () => {
   const boss = await player('WheelBoss'), a = await player('Wheel_A'), b = await player('Wheel_B');
   const script = (...args) => new Promise((resolve, reject) => execFile(process.execPath, [path.join(__dirname, '..', '..', 'scripts', 'make-admin.js'), ...args],
     { env: Object.assign({}, process.env, { TTC_PROJECT: PROJECT, GCLOUD_PROJECT: PROJECT }) }, (e, out) => (e ? reject(new Error(out || e.message)) : resolve(out))));
@@ -1484,7 +1484,7 @@ test('Risk Wheels tuning (config/wheels): public to read, the admin alone sets i
   await denied(boss.write('config/wheels', Object.assign({}, cfg, { gap: 0 })), 'no gap between the wheels\' averages');
   await denied(boss.write('config/wheels', Object.assign({}, cfg, { high: { a: 12, pa: 40, b: 0 } })), 'the old fixed wheels');
   await denied(boss.write('config/wheels/huge', 1), 'anything else');
-  // a match dealt with only Risk Wheels released: every square carries the config (read before dealing; kept 20 s)
+  // a match dealt with only Risky Spins released: every square carries the config (read before dealing; kept 20 s)
   await Promise.all(E.TYPES.map(t => boss.write(`releases/${t}`, t === 'wheels')));
   let g;
   try {
