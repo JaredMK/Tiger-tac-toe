@@ -10,7 +10,7 @@ const remote = process.env.DEPLOY_REMOTE || 'origin';
 try {
   if (!msg) throw new Error('Give a message: npm run deploy:staging -- "what changed"');
   execSync('git add -A', { stdio: 'inherit' });
-  if (out('git diff --cached --name-only')) execSync(`git commit -q -m ${JSON.stringify(msg)}`, { stdio: 'inherit' });
+  if (out('git diff --cached --name-only')) execSync('git commit -q -F -', { input: msg + '\n', stdio: ['pipe', 'inherit', 'inherit'] });   // (the message through stdin: its newlines kept as they are)
   else console.log('Nothing new to commit; pushing what is already committed.');
   try { execSync(`git fetch -q ${remote} staging`, { stdio: 'ignore' }); } catch (e) { /* no staging branch yet: this push makes it */ }
   let theirs = '';
