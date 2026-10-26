@@ -31,6 +31,23 @@ to reach TestFlight.
   - The app handles a link when it starts and while it runs (Capacitor's `appUrlOpen` event, `main.js` `openLink`).
   - Once `scripts/app-config.js` holds the Team ID and bundle ID, every site build publishes
     `/.well-known/apple-app-site-association`.
+- **Native touches, harmless on the web** (`src/net/platform.js`):
+  - **Haptics:** `haptic(kind)` buzzes through the Capacitor Haptics plugin when it is present (nothing on the web):
+    a light impact when a square is opened (`ui/input.js`), a heavy one when a square stamps in on the board
+    (`ui/fx.js` `stampFx`), a success or error notification with the match-end screen (`ui/turns.js` `toWin`). Each
+    fires once, from its event. Install `@capacitor/haptics` with the other plugins.
+  - **Connection lost:** during an online match, `.info/connected` false for 3 seconds shows a full-width band over the
+    board or the mini-game ("Connection lost — reconnecting…", `ui/turnbar.js`; the board stays visible) and bounces the
+    SDK's socket every 10 seconds until it is back (`net/connect.js` `lostWatch`, `NET_LOST`). Coming back from the
+    background (`visibilitychange`) bounces the socket at once and ticks the clock; `net/room.js` then re-reads the
+    record (`resync`). `tests/ui/netlost.test.mjs` covers it.
+  - **Safe areas:** `viewport-fit=cover`; `#app` pads by `--sat/--sab/--sal/--sar` (`styles.css` `:root`), so the top bar,
+    the screens and the bottom buttons keep clear of the notch and the home bar; the overlays laid from the page's edges
+    (explainer, side reveal, join question, report dialog, the refused note, the reaction dock, the sound chip) use the
+    same variables. Keep `"contentInset": "never"` in `capacitor.config.json` so the web view runs under the status bar.
+  - **iPad:** at 700px and wider the board and every mini-game keep to 600px (`--gw` cap) and the turn bar's rows, a
+    mini-game's title bar and the board's foot to 720px, centred (the end of `styles.css`). Nothing scrolls at 768x1024,
+    1024x768 or 1180x820. Keep `UIRequiresFullScreen` off only if the layout is checked at Split View widths too.
 - **The app's web files** (`npm run build:app`, `scripts/build-app.js`):
   - The site build goes into `_app/`.
   - `index.html` gets a `<meta name="ttc-env">` tag naming the Firebase project. Inside the app the page's address is
@@ -48,7 +65,7 @@ to reach TestFlight.
 | 4 | **Your Team ID** | developer.apple.com → Membership details. |
 | 5 | **A privacy policy page** | A public URL, e.g. `tictacchaos.com/privacy`. Doesn't exist yet. |
 | 6 | **A support URL / contact email** | Required in App Store Connect. |
-| 7 | **An App Store icon** (1024×1024, no transparency) and **screenshots** (6.9" and 6.5" iPhone) | The share-image script can draw the icon. |
+| 7 | **An App Store icon** (1024×1024, no transparency), a **launch screen** and **screenshots** (6.9" and 6.5" iPhone, 13" iPad) | `npm run app-icons` draws the icon, the launch image and the studio mark (`assets/app/`); `npm run app-shots` captures the screenshots (`_shots/`). See section 6. |
 
 ## 3. Capacitor setup steps
 
@@ -152,7 +169,33 @@ Run these on the Mac, or as the cloud build's steps.
   - [ ] Reopening after the app has been in the background
   - [ ] The "Please update" screen (set the iOS minimum above the build's version, then clear it)
 - [ ] App Store Connect: app record created (name, bundle ID, SKU, primary language); `APP_STORE_ID` set in `src/net/platform.js`
-- [ ] Age rating questionnaire answered (simulated gambling); App Privacy labels filled in; export compliance answered
-- [ ] Icon (1024×1024) and screenshots
+- [ ] Age rating questionnaire answered (simulated gambling); App Privacy labels filled in (`docs/app-privacy-labels.md`, checked against the live configuration); export compliance answered
+- [ ] Icon (1024×1024), launch screen and screenshots (section 6)
 - [ ] Production build: `npm run build:app` → `npx cap sync ios` → Xcode Archive → upload (or the cloud build's upload)
 - [ ] TestFlight: internal testers added; the build processed and installed; a full match web ↔ iOS played
+
+## 6. App icon, launch screen and screenshots
+
+All three are drawn from the game's own art (its fonts, colours and X and O characters: `scripts/make-share-images.js`;
+the studio's logo: `assets/brand/jarhad-labs-logo.svg`). No third-party art anywhere.
+
+- **`npm run app-icons`** (`scripts/make-app-icons.js`, Playwright's Chromium) writes `assets/app/`:
+  - `icon-1024.png`: the App Store icon, 1024×1024, no transparency (Apple masks the corners itself; everything sits
+    inside the middle 80%).
+  - `launch-2048.png`: the launch screen's picture, the title on the plain cream (`#f4e6c8`), 2048×2048.
+  - `jarhad-mark-512.png`: the JarHad Labs mark on a transparent background, for an About row or the launch screen's corner.
+- **The icon in Xcode** (Xcode 14 or later): open `ios/App/App/Assets.xcassets`, select **AppIcon**, set the attributes
+  inspector's iOS size to **Single Size**, and drop `icon-1024.png` on the one slot (Capacitor's template ships a
+  placeholder `AppIcon-512@2x.png` there: replace it). The same image is the App Store icon in App Store Connect.
+- **The launch screen:** Capacitor's template has `LaunchScreen.storyboard` showing the `Splash` image set with *Aspect
+  Fill*. Either replace the three `splash-2732x2732*.png` files in `Assets.xcassets/Splash.imageset` with
+  `launch-2048.png` (upscaled 2732 copies, or the one file in each slot: it is centred art on a flat colour, so any fit
+  works), or in the storyboard set the image view's **Content Mode** to *Center* (or *Aspect Fit*) and the view's
+  **Background** to the cream (`#f4e6c8`, sRGB 244/230/200), so the picture sits in the middle with the same cream
+  around it on every screen size. Set the status bar style to dark content (the launch background is light).
+- **`npm run app-shots`** (`scripts/app-screenshots.js`) serves this folder, stubs `src/env.js` (no project, no network)
+  and captures the main menu, the board mid-match, two mini-games (Higher/Lower and Five Letters by default,
+  `SHOT_MINIS=`) and the match-end screen at App Store Connect's sizes: iPhone 6.9" 1320×2868 (440×956 @3), iPhone 6.5"
+  1284×2778 (428×926 @3) and iPad 13" 2064×2752 (1032×1376 @2), into `_shots/<device>/` (gitignored). Upload them as
+  they are, or lay captions over them; App Store Connect scales the 6.9" set for the smaller iPhones if no other set is
+  given.

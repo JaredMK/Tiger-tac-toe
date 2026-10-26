@@ -3,6 +3,7 @@ import { endFlash, leaveSquare, playMove } from '../core/board.js';
 import { playerName } from '../core/match.js';
 import { SND, backSounds, matchEndSound, moveSounds } from '../audio/sound.js';
 import { mmIntro } from '../net/matchmaking.js';
+import { haptic } from '../net/platform.js';
 import { applyPending } from '../net/room.js';
 import { ANIM } from '../core/timer.js';
 import {
@@ -17,6 +18,7 @@ import { joinAsk } from './input.js';
 import { render } from './render.js';
 import { rep, repActive, repStart, repStop } from './replay.js';
 import { cpuThink } from './think.js';
+import { endKind } from './screens/win.js';
 
 /* ----- the computer's turn: a pause to think, a zoom into its square, its choice shown, then the move ----- */
 export function cpuTurn() { return !!state.cpu && state.cpu.includes(state.turn) && !state.winner && ['board', 'mini'].includes(state.screen); }   // (on any other screen the match waits)
@@ -160,6 +162,7 @@ export function toWin() {
   if (!state.winner || state.screen !== 'board' || state.sc) return;
   state.screen = 'win'; state.zoom = null;
   SND.play('swish'); SND.play(matchEndSound(), { at: 0.25 });
+  haptic({ win: 'win', loss: 'loss' }[endKind().list] || 'claim');   // (the app: one buzz with the end screen, matching its sound; a tie or two people on one phone, a plain one)
   commit();
 }
 export function dismissFlash() {

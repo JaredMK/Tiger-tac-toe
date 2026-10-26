@@ -1,6 +1,6 @@
 // The turn bar: whose turn, the clock, the network state.
 import { other } from '../core/util.js';
-import { connected } from '../net/connect.js';
+import { connected, netLost } from '../net/connect.js';
 import { REACTS, reactCooling, reactOn, rx } from '../net/reactions.js';
 import { awayNote, net, presence, room } from '../net/room.js';
 import { N, NAV_SCREENS, esc, menuOpen, state } from './app.js';
@@ -53,7 +53,7 @@ function netInfo() {
   if (!o) return null;
   if (net.status === 'error') return { cls: 'error', html: `${esc(net.msg)} <button class="btn" data-act="leave">Leave game</button>` };
   if (net.status === 'connecting') return { cls: 'connecting', html: esc(net.msg || 'Connecting…') };
-  if (!connected) return { cls: 'lost', html: 'Reconnecting…' };
+  if (!connected) return netLost ? { cls: 'lost', html: 'Connection lost — reconnecting…' } : null;   // (a blip shows nothing: net/connect.js lostWatch, after NET_LOST.afterMs)
   if (awayNote) return { cls: 'note', html: esc(awayNote) };
   if (o.me && o.joined && room && room.status === 'playing' && !state.winner && presence) {   // (presence null: not read yet)
     const them = other(o.me), p = presence[them];

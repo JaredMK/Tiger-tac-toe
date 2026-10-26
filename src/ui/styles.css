@@ -2500,3 +2500,24 @@ main.scr.mini > .wband { left: 0; right: 0; }   /* Super Chaos: waiting in the s
 @keyframes cslump { 0% { transform: none; opacity: 1; } 30% { transform: translateY(6px) rotate(-6deg) scaleY(.92); } 65% { transform: translateY(18px) rotate(8deg) scaleY(.75); opacity: .85; } 100% { transform: translateY(22px) rotate(4deg) scaleY(.7); opacity: .45; } }
 @media (prefers-reduced-motion: reduce) { .cdice.cheer, .cdice.sad, .cdice.cheer::before, .cdice.cheer::after { animation: none; } }
 .exline.wide { grid-template-columns: 116px 1fr; } .exline.wide b { font-size: 14px; }   /* the Mode "?": a mode name in each pill */
+
+/* ---------- the connection lost (net/connect.js lostWatch; ui/turnbar.js netInfo): a full-width band over the top of the board or the mini-game, never a screen that hides them ---------- */
+.netbar.lost { left: 0; right: 0; top: 0; border-radius: 0; border-left-width: 0 !important; border-right-width: 0 !important; border-top-width: 0 !important; box-shadow: 0 4px 0 var(--ink); padding: 10px 16px 8px; }
+.netbar.lost::before { content: ''; width: 12px; height: 12px; border-radius: 50%; border: 2.5px solid var(--ink); border-top-color: transparent; animation: netspin .9s linear infinite; }
+@keyframes netspin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .netbar.lost::before { animation: none; } }
+
+/* ---------- a tablet (an iPad, a wide window: 700px and up): the content keeps a phone's proportions in the middle of the screen. The board and
+   every mini-game size from --gw (and --gh: the smaller wins), so the cap holds them to 600px; the turn bar's rows, a mini-game's title bar and the
+   board's foot line keep to 720px, centred, instead of pinning Menu, the names and the "?" to the far corners. Nothing scrolls either way. ---------- */
+@media (min-width: 700px) {
+  .scr { --gw: min(calc(100vw - 2 * var(--pad) - var(--sal) - var(--sar)), 600px); }
+  .hdrrow, .hdrrow2, .mini .bar, .foot { width: 100%; max-width: 720px; margin-left: auto; margin-right: auto; }
+}
+
+/* ---------- the safe areas (an iPhone's notch and home bar, an iPad's corners; viewport-fit=cover): #app pads by --sat/--sab/--sal/--sar
+   (:root), which keeps the top bar, every screen and the bottom buttons clear of them; what is laid over the page from its own edges
+   (position: fixed) keeps clear of them here too. ---------- */
+#app > .refused { top: calc(var(--sat) + var(--hdr) + 10px); }
+.explain, .vsintro { padding: max(20px, var(--sat)) max(16px, var(--sar)) max(20px, var(--sab)) max(16px, var(--sal)); }
+#app > .ask, .flash.repdlg { padding: var(--sat) var(--sar) var(--sab) var(--sal); }

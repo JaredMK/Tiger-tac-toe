@@ -13,6 +13,7 @@ import { oddPre } from '../games/oddone/view.js';
 import { TRIVIA } from '../games/trivia/rules.js';
 import { triviaPre } from '../games/trivia/view.js';
 import { SND } from '../audio/sound.js';
+import { haptic } from '../net/platform.js';
 import { REDUCED, WAAPI, app, state } from './app.js';
 import { attPre } from './attention.js';
 import { shownSq } from './chaos.js';
@@ -125,4 +126,5 @@ export function stampFx(elapsed) {                                   // elapsed:
   startFx('stamp', state.stampId, elapsed ? performance.now() - elapsed : undefined);
   if (elapsed > 200) return;
   SND.play('stamp'); SND.play('burst', { at: BOARD_BURST[0] / 1000 }); SND.play('burst', { at: BOARD_BURST[1] / 1000 });
+  haptic('claim');                                                   // (the app: one buzz with the stamp)
 }
