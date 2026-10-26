@@ -11,8 +11,8 @@ import { GAMES, TYPES } from '../games/index.js';
 import { other } from '../core/util.js';
 import { SND } from '../audio/sound.js';
 import {
-  acct, afterLogin, connectQuiet, gateAct, gateOn, loggedIn, loginMail, loginMsg, loginPass, loginReset, loginWith, logout,
-  needAccount, saveUsername, setAfterLogin, setLoginMail, setLoginMsg, setLoginPass, setUnameDraft, unameDraft
+  acct, afterLogin, askDelete, cancelDelete, connectQuiet, deleteAccount, gateAct, gateOn, loggedIn, loginMail, loginMsg, loginPass, loginReset, loginWith, logout,
+  needAccount, saveUsername, setAfterLogin, setLoginMail, setLoginMsg, setLoginPass, setUnameDraft, unameDraft, unverified, verifyAct
 } from '../net/accounts.js';
 import { cancelSearch, closeIntro, findAgain, isMM, onIntroClosed, openFind, resignMM, resumeMatch, search, showSides, startSearch } from '../net/matchmaking.js';
 import { attemptMove, setTapEl, tapEl } from '../net/moves.js';
@@ -126,7 +126,7 @@ export function init() {
     if (act === 'ask-leave') { if (joinAsk) leaveAndJoin(joinAsk.code); return; }
     if (act === 'dismiss') { if (Date.now() >= flashReady) dismissFlash(); return; }   // not before the animation is over
     if (act === 'rep-skip') { repSkip(); return; }                                      // an opponent's replay: straight to its result
-    const free = ['pause', 'pause-report', 'pause-resume', 'pause-main', 'pause-back', 'pause-leave', 'leave', 'lobby-back', 'menu', 'find-again', 'profile', 'prof-back', 'prof-hist', 'mystats', 'hist-open', 'hist-sq', 'hist-back', 'hist-close', 'leaderboard', 'rejoin', 'host-retry', 'share', 'copy-invite', 'rematch', 'rematch-cancel', 'timer', 'review', 'review-sq', 'review-back', 'results', 'pview', 'react-open', 'react-send'];
+    const free = ['pause', 'pause-report', 'pause-resume', 'pause-main', 'pause-back', 'pause-leave', 'leave', 'lobby-back', 'menu', 'find-again', 'profile', 'prof-back', 'prof-hist', 'mystats', 'hist-open', 'hist-sq', 'hist-back', 'hist-close', 'leaderboard', 'rejoin', 'host-retry', 'share', 'copy-invite', 'rematch', 'rematch-cancel', 'timer', 'review', 'review-sq', 'review-back', 'results', 'pview', 'react-open', 'react-send', 'del-account', 'del-cancel', 'del-confirm', 'verify-retry', 'verify-resend'];
     if (act === 'sound') { SND.setMuted(!SND.muted); if (!SND.muted) SND.play('toggle'); render(); return; }   // (the press's own sound came with the press when it was still on)
     if (act === 'react-mute') { rx.mute = !rx.mute; if (rx.mute && rx.card && rx.card.side !== mySide()) { clearTimeout(rx.hide); rx.card = null; } render(); return; }   // this match only: the opponent's emoji stop showing and sounding
     if (act === 'pause') { setMenuOpen(true); setMenuStep('main'); startFx('menu', menuStep); render(); scheduleCpu(); return; }
@@ -211,7 +211,15 @@ export function init() {
     } else if (act === 'find-again') {
       findAgain();
     } else if (act === 'login') {
-      setAfterLogin(null); setLoginMsg(null); state.screen = acct.user && acct.ready && !loggedIn() ? 'username' : 'login'; commit(); connectQuiet();
+      setAfterLogin(null); setLoginMsg(null); state.screen = acct.user && acct.ready && !loggedIn() ? (unverified() ? 'verify' : 'username') : 'login'; commit(); connectQuiet();
+    } else if (act === 'verify-retry' || act === 'verify-resend') {   // "Verify your email": check again, or another link
+      verifyAct(act);
+    } else if (act === 'del-account') {           // My Stats: Delete account, its question first
+      askDelete();
+    } else if (act === 'del-cancel') {
+      cancelDelete();
+    } else if (act === 'del-confirm') {
+      deleteAccount();
     } else if (LOGIN_ACTS[act]) {
       loginWith(LOGIN_ACTS[act]);
     } else if (act === 'login-reset') {

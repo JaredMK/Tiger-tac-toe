@@ -30,6 +30,15 @@ const get = path => admin('GET', path);
 const put = (path, v) => admin('PUT', path, v);
 const patch = (path, v) => admin('PATCH', path, v);
 const sweep = () => fetch(`${FN}/testSweep`).then(r => r.json());
+// The Auth emulator as its owner: an account's email marked verified (as the link in the email would), an account looked up (null once deleted).
+const AUTH = `http://${process.env.FIREBASE_AUTH_EMULATOR_HOST}/identitytoolkit.googleapis.com/v1/projects/${PROJECT}`;
+async function authAdmin(what, body) {
+  const r = await fetch(`${AUTH}/accounts:${what}`, { method: 'POST', headers: { Authorization: 'Bearer owner', 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  if (!r.ok) throw new Error(`accounts:${what}: ${r.status} ${await r.text()}`);
+  return r.json();
+}
+const verifyEmailOf = uid => authAdmin('update', { localId: uid, emailVerified: true });
+const authUser = async uid => { const r = await authAdmin('lookup', { localId: [uid] }); return (r.users && r.users[0]) || null; };
 const wait = ms => new Promise(r => setTimeout(r, ms));
 async function until(fn, ms = 10000, what = 'condition') {
   const t0 = Date.now();
@@ -46,6 +55,7 @@ async function player(username, opts = {}) {
   const db = D.getDatabase(app); D.connectDatabaseEmulator(db, DB_HOST.split(':')[0], Number(DB_HOST.split(':')[1]));
   const fns = F.getFunctions(app, 'us-central1'); F.connectFunctionsEmulator(fns, '127.0.0.1', 5001);
   const cred = opts.anonymous ? await A.signInAnonymously(auth) : await A.createUserWithEmailAndPassword(auth, `${(username || 'player').toLowerCase()}${n}@example.com`, 'secret-password');
+  if (!opts.anonymous && !opts.unverified) { await verifyEmailOf(cred.user.uid); await cred.user.getIdToken(true); }   // the address proved (as the link in the email would): an unproved one gets nothing that needs an account
   const p = { app, auth, db, uid: cred.user.uid, name: username };
   const withClient = d => (opts.client ? Object.assign({}, d, { client: opts.client }) : d);   // (a phone's client, as net/connect.js call sends it: the web page's when not given)
   p.call = async (name, data) => (await F.httpsCallable(fns, name)(withClient(name === 'findMatch' ? Object.assign({ mode: 'classic' }, data) : data))).data;   // (Find Match is Super Chaos; these tests ask for the Classic queue, kept as code, unless they say otherwise)
@@ -135,6 +145,107 @@ test('rules: a phone cannot write ratings, records, profiles, usernames, the lea
   await denied(p.write(`users/${p.uid}/friend/wins`, 99), 'the friends record');
   await denied(p.write(`active/${p.uid}`, { game: 'x' }), 'the active game');
   await denied(p.write('games/xxxxxxxxxx', { pub: { status: 'playing' } }), 'a game');
+  await denied(p.write(`profiles/${p.uid}/wins`, 50), 'your public profile');
+});
+
+test('email verification: an email-and-password account proves its address before a username, Find Match or hosting ({ verify: true } until then); a guest still joins a room', async () => {
+  const p = await player(null, { noName: true, unverified: true });
+  const refused = (promise, what) => assert.rejects(promise, e => /failed-precondition/.test(String(e.code)) && !!(e.details && e.details.verify === true) && /Verify your email/.test(String(e.message)), `${what} should ask for the email to be verified`);
+  await refused(p.call('claimUsername', { username: 'Unproved' }), 'a username');
+  await refused(p.call('findMatch', {}), 'Find Match');
+  await refused(p.call('openRoom', { name: 'U', side: 'X', setup: { games: { ttt: true }, timer: 0, hostPick: 'X' } }), 'hosting');
+  await refused(p.call('recordLocal', { id: 'unproved01', side: 'X', final: {} }), 'a local record');
+  assert.equal(await get(`usernames/unproved`), null, 'nothing claimed');
+  const host = await player('Proved_Host');
+  const code = await openRoom(host, { games: { ttt: true }, timer: 0 });
+  assert.equal((await p.call('joinRoom', { code, name: 'Guesty' })).ok, true, 'joining a friend room needs no proved email (a guest without an account may too)');
+  await verifyEmailOf(p.uid); await p.auth.currentUser.getIdToken(true);     // the link in the email opened: a fresh token carries the flag
+  assert.deepEqual(await p.call('claimUsername', { username: 'Unproved' }), { ok: true, username: 'Unproved' });
+  assert.equal((await p.call('findMatch', {})).status, 'searching');
+  await p.call('cancelSearch', {});
+});
+
+test('public profiles: users/{uid}, history and oppStats are the owner\'s to read; profiles/{uid} is the public part, kept in step by the server after every write; a phone never writes it', async () => {
+  const a = await player('Pub_A'), b = await player('Pub_B');
+  await denied(b.read(`users/${a.uid}`), "another's account");
+  await denied(b.read(`history/${a.uid}`), "another's history");
+  await denied(b.read(`oppStats/${a.uid}`), "another's opponents");
+  assert.equal((await a.read(`users/${a.uid}`)).username, 'Pub_A', 'your own');
+  let prof = await until(() => b.read(`profiles/${a.uid}`), 10000, "the new account's profile");
+  assert.deepEqual(prof, { username: 'Pub_A', joined: prof.joined, wins: 0, losses: 0, draws: 0, games: 0, friend: { wins: 0, losses: 0, draws: 0, games: 0 } }, 'the public fields: no rating, no email');
+  assert.ok(Math.abs(prof.joined - Date.now()) < 60000);
+  await denied(b.write(`profiles/${a.uid}/wins`, 9), "another's profile");
+  await denied(a.write(`profiles/${a.uid}/wins`, 9), 'your own profile by hand');
+  const g = await pairUp(a, b);
+  assert.equal((await g.O.call('resign', { game: g.id })).ok, true);
+  await recorded(g.id);
+  const px = await until(async () => { const v = await b.read(`profiles/${g.X.uid}`); return v && v.wins === 1 ? v : null; }, 10000, "the winner's profile");
+  assert.deepEqual([px.wins, px.losses, px.games, px.sides], [1, 0, 1, { X: { wins: 1, games: 1 } }], 'the record, and the games by side');
+  const po = await until(async () => { const v = await a.read(`profiles/${g.O.uid}`); return v && v.losses === 1 ? v : null; }, 10000, "the loser's profile");
+  assert.deepEqual([po.wins, po.losses, po.games], [0, 1, 1]);
+  await put(`users/${a.uid}/wins`, 7);                                       // any other write to the account (a back-fill, a script): the trigger follows it
+  assert.equal((await until(async () => { const v = await b.read(`profiles/${a.uid}`); return v && v.wins === 7 ? v : null; }, 10000, 'the profile after a write')).wins, 7);
+  assert.equal((await b.read(`profiles/${a.uid}`)).rating, undefined, 'the rating stays off the profile');
+});
+
+test('deleting an account: refused in a match (Find Match or a friend room); then every node of it goes, the username is free, the login is gone; other players keep their own history of it', async () => {
+  const a = await player('Gone_A'), b = await player('Gone_B'), c = await player('Gone_C');
+  const inMatch = (promise, what) => assert.rejects(promise, e => /failed-precondition/.test(String(e.code)) && !!(e.details && e.details.playing === true) && /Finish or leave/.test(String(e.message)), `${what}: refused while playing`);
+  const g = await pairUp(a, b);
+  await inMatch(a.call('deleteAccount', {}), 'a Find Match game');
+  assert.equal((await a.call('resign', { game: g.id })).ok, true);
+  await recorded(g.id);
+  const fr = await friendRoom(a, c, { games: { ttt: true }, timer: 0 });
+  await inMatch(a.call('deleteAccount', {}), "a friend room's match");
+  assert.equal((await a.call('resign', { game: fr.id })).ok, true);
+  await recorded(fr.id);
+  await a.call('recordLocal', localReport('gonelocal01', 'X', 'line'));           // a local record, a profile, last activity: all theirs
+  assert.ok(await get(`localHistory/${a.uid}`)); assert.ok(await get(`history/${a.uid}/${g.id}`)); assert.ok(await get(`oppStats/${a.uid}/${b.uid}`));
+  assert.ok(await until(() => get(`profiles/${a.uid}`), 10000, 'the profile')); assert.ok(await get(`lastSeen/${a.uid}`));
+  assert.equal(await get('usernames/gone_a'), a.uid);
+  const lobby = await openRoom(a, { games: { ttt: true }, timer: 0 });              // a lobby left open: it goes with the host
+  const before = (await get(`stats/${S.PERIOD_PATH('a')}/deletedAccounts`)) || 0;
+  assert.deepEqual(await a.call('deleteAccount', {}), { ok: true });
+  for (const node of ['users', 'profiles', 'history', 'oppStats', 'localStats', 'localHistory', 'lastSeen', 'active', 'leaderboard', 'queue/match']) assert.equal(await get(`${node}/${a.uid}`), null, node);
+  assert.equal(await get('usernames/gone_a'), null, 'the username is free');
+  assert.equal(await get(`rooms/${lobby}`), null, "the host's lobby");
+  assert.equal(await authUser(a.uid), null, 'the login is gone');
+  assert.equal(await get(`stats/${S.PERIOD_PATH('a')}/deletedAccounts`), before + 1, 'counted, with nothing about whom');
+  assert.equal((await get(`history/${b.uid}/${g.id}`)).opponent.name, 'Gone_A', "the other player's history stays");
+  assert.equal((await get(`oppStats/${b.uid}/${a.uid}`)).name, 'Gone_A', 'and their tally against them');
+  assert.ok(await get(`rooms/${fr.code}`), "a room whose match is over waits for the sweep");
+  const d = await player(null, { noName: true });
+  assert.deepEqual(await d.call('claimUsername', { username: 'Gone_A' }), { ok: true, username: 'Gone_A' }, 'the name is free again');
+  const anon = await player(null, { anonymous: true });
+  await assert.rejects(anon.call('deleteAccount', {}), /Log in first/, 'a guest has no account to delete');
+  const u = await player(null, { noName: true, unverified: true });
+  assert.deepEqual(await u.call('deleteAccount', {}), { ok: true }, 'an account with an unproved email can still delete itself');
+  assert.equal(await authUser(u.uid), null);
+});
+
+test('retention: a device quiet for 90 days goes with its log, a live device loses its events older than 90 days (a bite a day), an account\'s last activity and alert log entries over 90 days go; the rest stays', async () => {
+  const D = 86400000, t = Date.now(), old = t - 95 * D;
+  await put('devices/quiethash00', { first: t - 100 * D, last: old, n: 2 });
+  await put('devlog/quiethash00', { oa: { t: t - 100 * D, ev: 'open' }, ob: { t: old, ev: 'open' } });
+  await put('devices/livehash000', { first: t - 100 * D, last: t - D, n: 3, tag: 'sam' });
+  await put('devlog/livehash000', { oa: { t: t - 100 * D, ev: 'open' }, ob: { t: t - 91 * D, ev: 'open' }, oc: { t: t - D, ev: 'open' } });
+  await put('lastSeen/olduid0000', t - 91 * D); await put('lastSeen/newuid0000', t - D);
+  await put('alertLog/oldalert00', { at: t - 91 * D, uid: 'x', channels: {} }); await put('alertLog/newalert00', { at: t - D, uid: 'y', channels: {} });
+  const r = await sweep();
+  assert.ok(r.retired >= 5, `entries deleted: ${r.retired}`);
+  assert.equal(await get('devices/quiethash00'), null, 'the quiet device'); assert.equal(await get('devlog/quiethash00'), null, 'and its log');
+  const live = await get('devices/livehash000');
+  assert.deepEqual([live.n, live.tag, live.last], [1, 'sam', t - D], 'the live device stays, its count down by the events gone');
+  assert.ok(live.pruned >= t, 'looked at today');
+  assert.deepEqual(Object.keys(await get('devlog/livehash000')), ['oc'], 'only the recent event');
+  assert.equal(await get('lastSeen/olduid0000'), null); assert.equal(await get('lastSeen/newuid0000'), t - D);
+  assert.equal(await get('alertLog/oldalert00'), null); assert.ok(await get('alertLog/newalert00'));
+  await put('devlog/livehash000/od', { t: t - 92 * D, ev: 'open' });
+  await sweep();
+  assert.ok(await get('devlog/livehash000/od'), 'a device already looked at today is not looked at again until tomorrow');
+  await put('devices/livehash000/pruned', t - 2 * D);
+  await sweep();
+  assert.equal(await get('devlog/livehash000/od'), null, 'the next day: its old events go');
 });
 
 /* ===================================== matchmaking ===================================== */
@@ -306,11 +417,12 @@ test('a Find Match game: all mini-games, one minute a turn, hidden values hidden
   assert.equal(JSON.parse(hx.final).winner, 'X');
   assert.equal(await g.X.read(`active/${g.X.uid}`), null, 'no longer in a game');
   assert.equal(await get(`leaderboard/${g.X.uid}`), null, 'no leaderboard while ratings are off');
-  // others can see a player's history and profile
+  // others see a player's public profile (their record), never their history, account or top opponents (security review F9/F11/F15)
   const peek = await player('Nosy');
-  assert.equal((await peek.read(`history/${g.X.uid}/${g.id}`)).result, 'win');
-  assert.equal((await peek.read(`users/${g.X.uid}`)).wins, 1, 'and their record');
-  assert.equal((await peek.read(`oppStats/${g.X.uid}/${g.O.uid}`)).wins, 1, 'and their top opponents');
+  assert.equal((await until(async () => { const v = await peek.read(`profiles/${g.X.uid}`); return v && v.wins === 1 ? v : null; }, 10000, 'the public profile')).wins, 1, 'their record, on the public profile');
+  await denied(peek.read(`history/${g.X.uid}/${g.id}`), "another's history");
+  await denied(peek.read(`users/${g.X.uid}`), "another's account");
+  await denied(peek.read(`oppStats/${g.X.uid}/${g.O.uid}`), "another's top opponents");
 });
 
 test('Find the Pair over the server: the first card is turned up for both, the second completes the move', async () => {

@@ -3,7 +3,7 @@ import { dropParam, startLink } from './platform.js';
 import { playerName } from '../core/match.js';
 import { matchStats } from '../core/stats.js';
 import { other } from '../core/util.js';
-import { connectQuiet, loggedIn } from './accounts.js';
+import { connectQuiet, loggedIn, unverified } from './accounts.js';
 import { call, configured, fb } from './connect.js';
 import { isMM } from './matchmaking.js';
 import { state } from '../ui/app.js';
@@ -167,7 +167,7 @@ export function reportLocal() {
   flushLocal();
 }
 export async function flushLocal() {
-  if (flushingLocal || !loggedIn() || !fb || !fb.fns) return;
+  if (flushingLocal || !loggedIn() || !fb || !fb.fns || unverified()) return;   // (an email not yet proved: the server would refuse; kept for later)
   flushingLocal = true;
   try {
     for (const r of pendingLocal()) {

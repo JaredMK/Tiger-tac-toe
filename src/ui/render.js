@@ -13,7 +13,7 @@ import { renderMini } from './mini.js';
 import { physPaint } from './physics.js';
 import { repMark, repRate } from './replay.js';
 import { runPaint } from './runner.js';
-import { renderGate, renderLogin, renderUsername } from './screens/account.js';
+import { renderGate, renderLogin, renderUsername, renderVerify } from './screens/account.js';
 import { gateOn } from '../net/accounts.js';
 import { renderUpdate, updateNeeded } from './update.js';
 import { renderFind, renderIntro } from './screens/find.js';
@@ -119,6 +119,7 @@ function renderMain() {
   if (state.screen === 'login') return renderLogin();
   if (state.screen === 'howto') return renderHowTo();
   if (state.screen === 'username') return renderUsername();
+  if (state.screen === 'verify') return renderVerify();     // an email-and-password account proving its address first
   if (state.screen === 'find') return renderFind();
   if (state.screen === 'leaderboard') return renderLeaderboard();
   if (state.screen === 'profile') return renderProfile();

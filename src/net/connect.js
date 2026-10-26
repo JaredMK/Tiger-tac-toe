@@ -1,6 +1,6 @@
 // The connection: the Firebase project's config, the SDK fetched on first use, the server's time and
 // its callable functions.
-import { onAuthUser, redirectPending } from './accounts.js';
+import { needVerify, onAuthUser, redirectPending } from './accounts.js';
 import { setFindOn } from './matchmaking.js';
 import { NATIVE, clientInfo } from './platform.js';
 import { setReleases } from './releases.js';
@@ -119,6 +119,7 @@ async function appCheck(app, base, hook) {
 export function call(name, data) {
   return fb.fnM.httpsCallable(fb.fns, name)(Object.assign({}, data || {}, { client: clientInfo() })).then(r => r.data, e => {
     if (e && e.details && e.details.update === true) { mustUpdate(); render(); }   // too old for the server: "Please update" (ui/update.js)
+    if (e && e.details && e.details.verify === true) needVerify();                 // an email not yet proved: "Verify your email" (net/accounts.js)
     throw e;
   });
 }

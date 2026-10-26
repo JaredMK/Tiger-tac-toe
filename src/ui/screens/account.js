@@ -1,7 +1,11 @@
-// The login and username screens.
-import { acct, gate, gateEmail, loginBusy, loginFinishing, loginMail, loginMsg, loginPass, unameDraft, unameMsg } from '../../net/accounts.js';
+// The login, username and "Verify your email" screens.
+import { acct, gate, gateEmail, loginBusy, loginFinishing, loginMail, loginMsg, loginPass, unameDraft, unameMsg, verifyEmail } from '../../net/accounts.js';
+import { privacyUrl } from '../../net/platform.js';
 import { esc } from '../app.js';
 import { CHEV, toon } from '../art.js';
+
+// The privacy policy, from the login screen (and the main menu and the credits): privacy.html, opened outside the game.
+const privacyLink = label => `<a href="${privacyUrl()}" target="_blank" rel="noopener noreferrer">${label}</a>`;
 
 /* ----- the screens ----- */
 // Staging's gate: nothing else of the page until the player has logged in with an account on the allowlist.
@@ -39,6 +43,22 @@ export function renderLogin(gated) {
       ${msg}
       <div class="row2"><button class="btn go" data-act="login-email"${off}>Log in</button><button class="btn" data-act="login-create"${off}>Create account</button></div>
       <button class="link wide" data-act="login-reset"${off}>Forgot password?</button>
+      <p class="agree">By continuing you agree to the ${privacyLink('Privacy policy')}.</p>
+    </div></main>`;
+}
+// An email-and-password account proves its address before Find Match, hosting or a username (the server refuses until
+// then: { verify: true }, net/accounts.js needVerify). Continue checks again, the link can be sent again, or log out.
+export function renderVerify() {
+  const off = loginBusy ? ' disabled' : '';
+  return `<main class="scr setup acct-scr verify-scr">
+    <div class="bar"><button class="back" data-act="menu" aria-label="Back to the main menu">${CHEV}Menu</button>
+      <div class="ttl"><b>Verify your email</b><small>Find Match, hosting and your username need a verified email</small></div></div>
+    <div class="setup-box" data-keep-scroll="verify">
+      <p class="hint">We sent a verification link to <b>${esc(verifyEmail())}</b>. Open it, then tap Continue.</p>
+      ${loginMsg ? `<div class="${loginMsg.ok ? 'status ok' : 'warn'}" role="status">${esc(loginMsg.text)}</div>` : ''}
+      <button class="primary" data-act="verify-retry"${off}>Continue</button>
+      <button class="btn" data-act="verify-resend"${off}>Send the link again</button>
+      <button class="link wide" data-act="logout">Log out</button>
     </div></main>`;
 }
 export function renderUsername() {

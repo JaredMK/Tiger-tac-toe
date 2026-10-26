@@ -2500,3 +2500,20 @@ main.scr.mini > .wband { left: 0; right: 0; }   /* Super Chaos: waiting in the s
 @keyframes cslump { 0% { transform: none; opacity: 1; } 30% { transform: translateY(6px) rotate(-6deg) scaleY(.92); } 65% { transform: translateY(18px) rotate(8deg) scaleY(.75); opacity: .85; } 100% { transform: translateY(22px) rotate(4deg) scaleY(.7); opacity: .45; } }
 @media (prefers-reduced-motion: reduce) { .cdice.cheer, .cdice.sad, .cdice.cheer::before, .cdice.cheer::after { animation: none; } }
 .exline.wide { grid-template-columns: 116px 1fr; } .exline.wide b { font-size: 14px; }   /* the Mode "?": a mode name in each pill */
+
+/* ---------- the privacy policy's links, "Verify your email", Delete account (App Store requirements) ---------- */
+.menu-foot { flex: none; display: flex; align-items: center; justify-content: center; gap: 4px; flex-wrap: wrap; }
+.menu-foot .credit { margin-top: 0; }
+.privacy { display: inline-flex; align-items: center; min-height: 44px; padding: 0 10px; color: var(--muted); font-size: 15px; text-decoration: underline; text-underline-offset: 3px; -webkit-tap-highlight-color: transparent; }
+.privacy:active { opacity: .7; }
+.privacy:focus-visible { outline: 3px solid var(--sky); outline-offset: 2px; border-radius: 8px; }
+.acct-scr .agree { margin: 0; text-align: center; color: var(--muted); font-size: 15px; }
+.acct-scr .agree a, .rulecard.credits .priv a { color: var(--ink); }
+.link.delacct { color: var(--x); }
+.prof-scr .ppriv { padding: 10px 0 0; }
+.delask .card { max-width: 340px; }
+.delask .card p { margin: 6px 0 2px; font-size: 17px; }
+.delask .card .warn { margin: 0; text-align: center; }
+.delask .card .row { display: flex; gap: 10px; margin-top: 8px; }
+.delask .card .row .btn { flex: 1; }
+.delask .card .btn.go { background: var(--x); color: var(--paper); }

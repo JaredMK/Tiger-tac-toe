@@ -17,6 +17,10 @@ export function siteUrl() {
   const env = typeof window !== 'undefined' && window.TTC_ENV;
   return env && env.staging ? 'https://staging.tictacchaos.com/' : 'https://tictacchaos.com/';
 }
+// The privacy policy (privacy.html beside the page; scripts/build-site.js copies it to both sites and into the app's build):
+// the page's own copy on the web (a relative link, whichever site this is), the live site's in the app (a page inside the
+// app opens in its in-app browser, initPlatform below; its own address, capacitor://localhost, is no address to send anyone to).
+export function privacyUrl() { return NATIVE ? siteUrl() + 'privacy.html' : 'privacy.html'; }
 // Share a text (the invite): the share sheet (the app's Share plugin, or the browser's), else false (the caller copies it).
 export async function shareText(text) {
   const sh = plugin('Share');

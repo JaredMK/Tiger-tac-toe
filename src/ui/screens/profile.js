@@ -3,7 +3,7 @@ import { newState } from '../../core/match.js';
 import { upgradeMini } from '../../core/minis.js';
 import { topOpponents } from '../../core/stats.js';
 import { TYPES } from '../../games/index.js';
-import { acct, connectQuiet, needAccount } from '../../net/accounts.js';
+import { acct, connectQuiet, delState, needAccount } from '../../net/accounts.js';
 import { fb } from '../../net/connect.js';
 import { NAV_SCREENS, RNG, commit, esc, state, withView } from '../app.js';
 import { CHEV } from '../art.js';
@@ -46,15 +46,22 @@ export async function openProfile(uid, back) {
   if (!uid) { if (!(await needAccount('profile'))) return; uid = acct.user.uid; }
   if (prof && prof.uid === uid && prof.user && state.screen === 'profhist') { state.screen = 'profile'; render(); return; }   // back from its game history
   const prev = state.screen === 'profile' && prof && prof.uid !== uid && prof.user ? prof : null;   // a Top opponent's, from a profile: Back returns to that one
-  prof = { uid, user: null, hist: null, local: null, opps: null, prev, view: prof && prof.uid === uid ? prof.view : 'online', back: back || (NAV_SCREENS.includes(state.screen) ? state.screen : state.screen === 'win' ? 'win' : 'menu'), error: null };
+  const own = !!(acct.user && uid === acct.user.uid);
+  prof = { uid, own, user: null, hist: null, local: null, opps: null, prev, view: prof && prof.uid === uid ? prof.view : 'online', back: back || (NAV_SCREENS.includes(state.screen) ? state.screen : state.screen === 'win' ? 'win' : 'menu'), error: null };
   state.screen = 'profile'; commit();
   if (!(await connectQuiet())) { prof.error = 'No connection. Check your internet and try again.'; render(); return; }
   try {
     const m = fb.m;
-    const own = acct.user && uid === acct.user.uid;
+    if (!own) {                                                   // someone else: their public profile alone (profiles/{uid}: the username, records, join date); their history and opponents are theirs
+      const u = await m.get(m.ref(fb.db, 'profiles/' + uid));
+      if (!prof || prof.uid !== uid) return;
+      prof.user = u.val();
+      if (!prof.user) prof.error = 'This player has no profile.';
+      render(); return;
+    }
     const last50 = node => m.get(m.query(m.ref(fb.db, `${node}/${uid}`), m.orderByChild('date'), m.limitToLast(50)));
     const [u, h, ls, lh, os] = await Promise.all([m.get(m.ref(fb.db, 'users/' + uid)), last50('history'),
-      own ? m.get(m.ref(fb.db, 'localStats/' + uid)).catch(() => null) : null, own ? last50('localHistory').catch(() => null) : null,   // local games: your own, private
+      m.get(m.ref(fb.db, 'localStats/' + uid)).catch(() => null), last50('localHistory').catch(() => null),   // local games: your own, private
       m.get(m.ref(fb.db, 'oppStats/' + uid)).catch(() => null)]);   // the record against each opponent (the server's tally)
     if (!prof || prof.uid !== uid) return;
     prof.user = u.val();
@@ -152,13 +159,25 @@ export function renderProfile() {
       : `<div class="popp${i === 0 ? ' none' : ''}"${i ? ' aria-hidden="true"' : ''}>${i === 0 ? 'No online opponents yet' : ''}</div>`);
     const oppBox = `<h3 class="hh hopp"><span>Top opponents</span><small>W-L-D</small></h3><div class="popps">${[0, 1, 2].map(i => oppRow(opps[i], i)).join('')}</div>`;
     const nh = p.hist ? p.hist.length : null;
-    body = `<button class="btn wide phist" data-act="prof-hist"${p.hist ? '' : ' disabled'}>Game history${nh != null ? ` (${nh})` : ''}</button>
-      ${card}${oppBox}`;   // the game history first, then the record and the top opponents
+    // Someone else's profile: the public record alone; their game history and opponents are theirs to see (security review F9/F11).
+    body = own ? `<button class="btn wide phist" data-act="prof-hist"${p.hist ? '' : ' disabled'}>Game history${nh != null ? ` (${nh})` : ''}</button>
+      ${card}${oppBox}`   // the game history first, then the record and the top opponents
+      : `${card}<p class="hint center ppriv">Game history and opponents are private.</p>`;
   }
   return `<main class="scr setup acct-scr prof-scr">
     <div class="bar"><button class="back" data-act="prof-back" aria-label="Back">${CHEV}${backLabel}</button>
       <div class="ttl"><b>${own ? 'My Stats' : esc(u ? u.username : 'Profile')}</b><small>${own ? esc(u ? u.username : '') : 'Player profile'}</small></div></div>
-    <div class="setup-box" data-keep-scroll="profile">${body}${own ? '<button class="link wide" data-act="logout">Log out</button>' : ''}</div></main>`;
+    <div class="setup-box" data-keep-scroll="profile">${body}${own ? '<button class="link wide" data-act="logout">Log out</button><button class="link wide delacct" data-act="del-account">Delete account</button>' : ''}</div>${own ? deleteDialog() : ''}</main>`;
+}
+// Delete account: the question first (No / Yes, delete), then the server deletes everything (net/accounts.js deleteAccount);
+// refused while the player is in an online match, which the card says.
+function deleteDialog() {
+  if (!delState) return '';
+  const busy = delState === 'busy', err = delState && delState.error;
+  return `<div class="flash pause delask" role="dialog" aria-label="Delete your account?"><div class="card"><h2>Delete your account?</h2>
+    <p>Your username, records, game history and login are deleted for good. Other players keep their own history of games against you.</p>
+    ${err ? `<div class="warn" role="status">${esc(err)}</div>` : '<div class="warn" aria-hidden="true"></div>'}
+    <div class="row"><button class="btn" data-act="del-cancel"${busy ? ' disabled' : ''}>No</button><button class="btn go" data-act="del-confirm"${busy ? ' disabled' : ''}>${busy ? 'Deleting…' : 'Yes, delete'}</button></div></div></div>`;
 }
 // A past game's final main board, small: X, O and empty squares, the profile's own squares outlined.
 const SNAP = new Map();                                    // entry id -> its squares' owners (each final parsed once)
