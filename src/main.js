@@ -44,6 +44,7 @@ import { fetchRunConfig, init as runnerInit } from './ui/runner.js';
 import { sandboxBoot, sandboxParams } from './ui/sandbox.js';
 import { acctLoading, setAcctLoading } from './ui/screens/menu.js';
 import { playFlash } from './ui/turns.js';
+import { startTutorial, tutorialDue, tutorialReset } from './ui/tutorial.js';
 
 debugInit();
 // Each game's view (its screen, miniature, words, sounds and inputs), before anything is drawn.
@@ -97,6 +98,7 @@ function boot() {
   devOpen();
   setInterval(devPulse, 60000);
   try { setJoinName(localStorage.getItem(KEY + '.name') || ''); } catch (e) { /* no storage */ }
+  tutorialReset();                                            // a tutorial match left in the saved state is no match to come back to (ui/tutorial.js)
   const url = startLink(), link = linkCode(url);
   const autoJoin = link ? roomLink(link) : null;
   if (link) tidyLink();                                       // handled once: a reload is not a second link
@@ -105,6 +107,7 @@ function boot() {
   if (play) tidyLink();
   if (state.flash && !state.spot) playFlash(true);           // a result still on show at the reload: its move has played, the result finishes
   commit();                                                   // (a match that ended as the page loaded is reported like any other)
+  if (!link && !play && !joinAsk && !resumable && state.screen === 'menu' && tutorialDue()) startTutorial();   // a first visit (no join link, nothing to resume): the tutorial instead of the main menu, once
   if (resumable) checkResume();                               // (a match held for Resume that has ended meanwhile: its button goes)
   if (state.online) resumeOnline();
   else if (hadAccount() || redirectPending()) {             // logged in before, or back from Google's sign-in page: the account, in the background
