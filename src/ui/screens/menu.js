@@ -18,6 +18,7 @@ export function renderMenu() {
     ${resumable ? `<button class="primary resume" data-act="resume"${resumeBusy ? ' disabled' : ''}>Resume match</button>` : ''}
     <button class="primary" data-act="cpu-go">Play Computer</button>
     <button class="primary alt" data-act="friend-go">Play a Friend</button>
+    <button class="link wide challenge" data-act="challenge">Challenge a friend</button>
     ${findBtn()}
     <button class="btn howto" data-act="howto">How to Play</button>
   </div><a class="credit" href="${JARHEAD_URL}" target="_blank" rel="noopener noreferrer" aria-label="by JarHead Labs, on X (opens in a new tab)">${JARHEAD_LOGO}<span>by JarHead Labs</span></a></main>`;

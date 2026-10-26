@@ -19,7 +19,7 @@ import { attemptMove, setTapEl, tapEl } from '../net/moves.js';
 import { reactCooling, rx, sendReact } from '../net/reactions.js';
 import { scMode, scPicked, setMode, visibleTypes } from '../net/releases.js';
 import {
-  dbSetup, hostRoom, isHost, joinCode, joinName, joinRoom, leaveLobby, leaveLoses,
+  challengeFriend, dbSetup, hostRoom, isHost, joinCode, joinName, joinRoom, leaveLobby, leaveLoses,
   leaveRoom, lockMine, mySide, pinned, remoteTurn, quitMatch, rematchCancel, rematchOnline, room, setJoinCode, setJoinName,
   setNet, shareRoom, copyInvite, startOnline, validCode
 } from '../net/room.js';
@@ -43,6 +43,7 @@ import { hist, openHistory, openLeaderboard, openProfile, prof, profileBack, set
 import { chaosSetup, setGames, setupTypes } from './screens/setup.js';
 import { cpuTurn, dismissFlash, scheduleCpu } from './turns.js';
 import { closeReport, openReport } from './report.js';
+import { shareResult } from './sharecard.js';
 
 
 // The login screen's buttons: Google, Apple, the email's Log in and Create account (net/accounts.js loginWith).
@@ -126,7 +127,7 @@ export function init() {
     if (act === 'ask-leave') { if (joinAsk) leaveAndJoin(joinAsk.code); return; }
     if (act === 'dismiss') { if (Date.now() >= flashReady) dismissFlash(); return; }   // not before the animation is over
     if (act === 'rep-skip') { repSkip(); return; }                                      // an opponent's replay: straight to its result
-    const free = ['pause', 'pause-report', 'pause-resume', 'pause-main', 'pause-back', 'pause-leave', 'leave', 'lobby-back', 'menu', 'find-again', 'profile', 'prof-back', 'prof-hist', 'mystats', 'hist-open', 'hist-sq', 'hist-back', 'hist-close', 'leaderboard', 'rejoin', 'host-retry', 'share', 'copy-invite', 'rematch', 'rematch-cancel', 'timer', 'review', 'review-sq', 'review-back', 'results', 'pview', 'react-open', 'react-send'];
+    const free = ['pause', 'pause-report', 'pause-resume', 'pause-main', 'pause-back', 'pause-leave', 'leave', 'lobby-back', 'menu', 'find-again', 'profile', 'prof-back', 'prof-hist', 'mystats', 'hist-open', 'hist-sq', 'hist-back', 'hist-close', 'leaderboard', 'rejoin', 'host-retry', 'share', 'copy-invite', 'rematch', 'rematch-cancel', 'share-result', 'timer', 'review', 'review-sq', 'review-back', 'results', 'pview', 'react-open', 'react-send'];
     if (act === 'sound') { SND.setMuted(!SND.muted); if (!SND.muted) SND.play('toggle'); render(); return; }   // (the press's own sound came with the press when it was still on)
     if (act === 'react-mute') { rx.mute = !rx.mute; if (rx.mute && rx.card && rx.card.side !== mySide()) { clearTimeout(rx.hide); rx.card = null; } render(); return; }   // this match only: the opponent's emoji stop showing and sounding
     if (act === 'pause') { setMenuOpen(true); setMenuStep('main'); startFx('menu', menuStep); render(); scheduleCpu(); return; }
@@ -248,6 +249,12 @@ export function init() {
       setAdvOpen(false);
       if (!loggedIn()) { needAccount('host'); return; }
       hostRoom(null, false);
+    } else if (act === 'challenge') {             // the main menu: Challenge a friend: a room hosted and its invite shared at once (an account, as hosting)
+      setAdvOpen(false);
+      if (!loggedIn()) { needAccount('challenge'); return; }
+      challengeFriend();
+    } else if (act === 'share-result') {          // the win screen: the result card, through the share sheet (ui/sharecard.js)
+      shareResult();
     } else if (act === 'host-retry') {
       hostRoom(state.online && room ? state.online.code : null, !!room);
     } else if (act === 'join-go') {
