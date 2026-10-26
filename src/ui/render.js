@@ -22,6 +22,7 @@ import { renderFriend, renderJoin, renderJoinAsk } from './screens/online.js';
 import { renderHistory, renderLeaderboard, renderProfHist, renderProfile } from './screens/profile.js';
 import { renderSandbox } from './sandbox.js';
 import { renderSetup } from './screens/setup.js';
+import { matchStale, renderStale } from './screens/stale.js';
 import { renderWin } from './screens/win.js';
 import { renderHeader, renderReactDock } from './turnbar.js';
 import { renderTutorial } from './tutorial.js';
@@ -32,7 +33,7 @@ export function render() {
   // The in-game menu belongs to the game's screens (the board and a square, live or under review after the
   // match): it closes when the screen leaves them (the results screen has no menu card to close it, so a
   // menu left open would refuse every tap there). After the match, View board's Menu opens it as ever.
-  if (menuOpen && (!['board', 'mini', 'review', 'review-mini'].includes(state.screen) || (state.winner && (state.screen === 'board' || state.screen === 'mini')))) setMenuOpen(false);
+  if (menuOpen && (matchStale() || !['board', 'mini', 'review', 'review-mini'].includes(state.screen) || (state.winner && (state.screen === 'board' || state.screen === 'mini')))) setMenuOpen(false);
   const view = state.screen + ':' + state.zoom;
   setEntering(view !== lastView); setLastView(view);
   if (entering) startFx('enter', view);                       // a new screen: the event for its own entry (the zoom into a square)
@@ -40,8 +41,9 @@ export function render() {
   const kept = entering ? [] : [...app.querySelectorAll('[data-keep-scroll]')].map(e => [e.dataset.keepScroll, e.scrollTop]);
   const focus = entering ? null : typingIn();
   const boards = entering ? [] : KEEP_BOARDS.map(sel => [sel, app.querySelector(sel)]).filter(([, e]) => e);
-  app.classList.toggle('rxon', reactOn());                       // (an online match: the reactions' strip at the bottom, kept the whole match)
-  const html = renderHeader() + renderMain() + renderReactDock() + renderExplain() + renderIntro() + renderJoinAsk() + renderTutorial() + (refusedNote && state.online ? `<div class="refused" role="status">${esc(refusedNote)}</div>` : '');
+  const stale = matchStale();                                   // (a match with a mini-game this version lacks: its screen alone, no turn bar, menu or reactions around it)
+  app.classList.toggle('rxon', reactOn() && !stale);             // (an online match: the reactions' strip at the bottom, kept the whole match)
+  const html = (stale ? '' : renderHeader()) + renderMain() + (stale ? '' : renderReactDock()) + renderExplain() + renderIntro() + renderJoinAsk() + renderTutorial() + (refusedNote && state.online ? `<div class="refused" role="status">${esc(refusedNote)}</div>` : '');
   if (!boards.length) app.innerHTML = html;
   else {
     const fresh = document.createElement('div');
@@ -109,9 +111,10 @@ function graft(oldP, newP, pairs) {
     at = oc.nextSibling;
   }
 }
-function renderMain() {
+export function renderMain() {
   if (updateNeeded()) return renderUpdate();                  // too old a client for its platform (config/clients): nothing but "Please update"
   if (gateOn()) return renderGate();                          // staging: only testers on the allowlist get past this
+  if (matchStale()) return renderStale();                     // an online match with a mini-game this version lacks (a client older than it was): never the board, only Update or Leave match
   if (state.screen === 'sandbox') return renderSandbox();     // (the admin's test play, while it checks or when it cannot run)
   if (state.screen === 'menu') return renderMenu();
   if (state.screen === 'friend') return renderFriend();

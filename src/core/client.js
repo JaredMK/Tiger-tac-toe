@@ -28,6 +28,16 @@ export function normClient(c) {
 }
 export const minVersionOf = t => (GAMES[t] && versionOk(GAMES[t].meta.minVersion) ? GAMES[t].meta.minVersion : BASE_CLIENT.v);
 export const clientHas = (client, t) => cmpVersion(normClient(client).v, minVersionOf(t)) >= 0;
+// The mini-games of a match (its squares' and its list's, which a reset deals from) this client lacks: unknown to it
+// altogether, or newer than it (meta.js minVersion). Never for a match dealt for this client (makeGame deals only what both
+// clients have), but a client can be older than it was (the app reinstalled older, an old page from a cache) and resume
+// a match dealt for the newer one: the page then shows the stale screen instead of the match (ui/screens/stale.js).
+export function lackedTypes(client, st) {
+  const types = new Set();
+  for (const q of (st && Array.isArray(st.squares) ? st.squares : [])) if (q && q.mini && typeof q.mini.type === 'string') types.add(q.mini.type);
+  for (const t of (st && Array.isArray(st.games) ? st.games : [])) if (typeof t === 'string') types.add(t);
+  return [...types].filter(t => !GAMES[t] || !clientHas(client, t));
+}
 // The admin's per-platform switch: a game the admin has turned off for a platform (only ever off: a game is on for a
 // platform while it is released at all and its switch there is not false).
 export function platformOff(t, releases, p) {

@@ -6,14 +6,17 @@ import { listenReacts } from './reactions.js';
 import {
   applyMatch, awayNote, leaveRoom, moveTimer, moveWait, net, pendingRoom, presUnsub, presence, presenceUp,
   presenting, presentingSeq, room, roomUnsub, setAwayNote, setMoveWait, setNet, setPendingRoom, setPresUnsub,
-  setPresence, setPresentingSeq, setRoom, setRoomUnsub, setTimeoutBusy, stopListening, stopLobby, tellLeft, timeoutBusy, listenLobby, closeSeat
+  setPresence, setPresentingSeq, setRoom, setRoomUnsub, setTimeoutBusy, stopListening, stopLobby, takeFields, tellLeft, timeoutBusy, listenLobby, closeSeat
 } from './room.js';
 import {
-  app, commit, flashTimer, holdTimer, menuNote, menuOpen, menuStep, setFlashTimer, setHoldTimer, setMenuNote,
+  app, commit, flashTimer, holdTimer, menuNote, menuOpen, menuStep, save, setFlashTimer, setHoldTimer, setMenuNote,
   setMenuOpen, setMenuStep, setSpotTimer, spotTimer, state
 } from '../ui/app.js';
 import { setTimeoutTry, timeoutTry } from '../ui/clock.js';
 import { KEY } from '../ui/config.js';
+import { lackedTypes } from '../core/client.js';
+import { parseMatch } from '../core/records.js';
+import { clientInfo } from './platform.js';
 import { newTimer } from '../core/timer.js';
 import { render } from '../ui/render.js';
 import { noteNet } from '../ui/turnbar.js';
@@ -136,7 +139,7 @@ export async function resumeMatch() {
   if (resumable !== r || state.screen !== 'menu') return;
   if (!ok) { setMenuNote('Online play needs an internet connection. Check it and try again.'); render(); return; }
   enterGame(r.game, r.me);
-  if (r.room) { state.online.room = r.room; listenLobby(r.room); }   // (a friend room's match: its room too, for the rematch and who left)
+  if (r.room) { state.online.room = r.room; state.online.code = r.room; listenLobby(r.room); }   // (a friend room's match: its room too, for the rematch and who left; its code, so leaving tells the room: tellLeft)
   state.screen = 'board'; commit();
 }
 export let resumeBusy = false;
@@ -162,6 +165,24 @@ export function listenGame(id) {
   setPresUnsub(fb.m.onValue(fb.m.ref(fb.db, `gpresence/${id}`), s => { setPresence(s.val()); noteNet(); if (state.online) render(); }));
   listenReacts(id);
 }
+// A match holding a mini-game this client lacks (core/client.js lackedTypes: unknown to it, or newer than it), which only a
+// client older than it was can meet (the app reinstalled older, an old page from a cache), on every way in (Find Match's
+// pairing, a room's match, the menu's Resume match, a reload) and every change after: the record is taken as it is (so the
+// clock and the result are known), but nothing of it is played back or drawn (its view could not draw that game); the page
+// shows the stale screen (ui/screens/stale.js: Update, or Leave match by the usual resignation, never by itself).
+function staleEnter(pub) {
+  const o = state.online, rec = parseMatch({ state: pub.state });
+  if (!rec || !lackedTypes(clientInfo(), rec.state).length) return false;
+  setRoom({ kind: 'mm', status: pub.status, players: pub.players, match: { state: pub.state }, setup: { timer: pub.timer, chaos: !!pub.chaos }, pub });
+  for (const s of ['X', 'O']) state.setup.names[s] = String(pub.players[s].name || s);
+  o.mode = pub.mode; o.queue = pub.queue; o.introFor = o.game; o.chaos = !!pub.chaos;
+  if (net.status !== 'connected') setNet('connected', '');
+  takeFields(rec.state); o.shownSeq = rec.state.seq; o.matchId = rec.state.id;
+  state.flash = null; state.done = null; state.spot = null; state.lock = null; state.zoom = null; state.screen = 'board'; search.found = false;
+  setMenuOpen(false); setMenuStep('main');
+  save(); render();
+  return true;
+}
 // A Super Chaos match: the public state with this side's own move (or its progress) merged in from its own
 // node (both are written together; the node still on its way: wait for it).
 let scSide = null, scPub = null;
@@ -178,6 +199,7 @@ export function onGameValue(pub) {
   const o = state.online;
   if (!o || o.kind !== 'mm' || !fb) return;
   if (!pub || !pub.players) { setMenuNote('That match is over.'); leaveRoom(true); return; }
+  if (staleEnter(pub)) return;                                    // a mini-game this version lacks: the stale screen, never the match
   let stateJson = pub.state;
   if (pub.chaos) { scPub = pub; const st = scMerged(pub, o.me); if (!st) return; stateJson = JSON.stringify(st); o.chaos = true; }
   setRoom({ kind: 'mm', status: 'playing', players: pub.players, match: { state: stateJson }, setup: { timer: pub.timer, chaos: !!pub.chaos }, pub });

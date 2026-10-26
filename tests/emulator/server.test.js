@@ -603,6 +603,25 @@ test('clients: cross-play deals only the games on for both players\' platforms; 
     assert.equal((await host.call('openRoom', { name: 'h', side: 'X', setup: {} })).ok, true, 'the web\'s minimum is not the app\'s');
   } finally { await put('releases/platform/ios/c4', null); await put('config/clients', null); }
 });
+test('clients: a seat keeps its latest report (a client older than it was): the start deals for what the client is now, and an older client can tell which games of a match it lacks', async () => {
+  const hostOpts = { client: { v: '0.9.0', p: 'web' } };         // a host running a client older than every game's minVersion (none is below 1.0.0)
+  const host = await player('StaleHost', hostOpts), friend = await player('StaleFriend');
+  const code = await openRoom(host, { games: only('hilo', 'c4'), timer: 60, hostPick: 'X' });
+  assert.equal((await friend.call('joinRoom', { code, name: 'StaleFriend' })).ok, true);
+  assert.equal((await get(`rooms/${code}/players/X/client`)).v, '0.9.0', 'the host\'s seat holds the client it opened with');
+  assert.deepEqual(await host.call('startRoom', { code }), { ok: false, reason: 'games' }, 'no game both clients have: no match (never one with a game a player lacks)');
+  hostOpts.client = { v: E.CLIENT_VERSION, p: 'web' };           // the host updated (or the older page was a cache's): the start reports the client it is now
+  const st = await host.call('startRoom', { code });
+  assert.equal(st.ok, true, 'started');
+  assert.equal((await get(`rooms/${code}/players/X/client`)).v, E.CLIENT_VERSION, 'the seat takes the latest report');
+  const g = await gameState(st.game);
+  assert.ok(g.games.length && g.games.every(t => ['hilo', 'c4'].includes(t)), g.games.join(' '));
+  assert.deepEqual(E.lackedTypes({ v: E.CLIENT_VERSION, p: 'web' }, g), [], 'this client lacks nothing of it');
+  const lacked = E.lackedTypes({ v: '0.9.0', p: 'web' }, g);     // the same player back on the older client: every game of the match (the page shows the stale screen, never the board)
+  assert.ok(g.games.every(t => lacked.includes(t)) && g.squares.every(q => lacked.includes(q.mini.type)), lacked.join(' '));
+  await host.call('resign', { game: st.game }); await recorded(st.game);
+  assert.equal((await get(`games/${st.game}/pub/status`)), 'over', 'leaving from the stale screen resigns by the usual path: the loss recorded');
+});
 async function delta(paths, fn) {
   const s0 = await statsNow();
   await fn();
