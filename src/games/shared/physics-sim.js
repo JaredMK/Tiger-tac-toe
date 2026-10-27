@@ -27,7 +27,7 @@ export function makePhysics(Matter) {
   // At that speed each step is cut in four (sub), so no ball passes through a rail or another ball.
   const POOL = { w: 100, h: 180, ballR: 3.9, vMax: 300, curve: 2, sub: 4, maxT: 12, air: 0.004, roll: 9,
     pockets: [[0, 0, 8.4], [100, 0, 8.4], [0, 90, 8.4], [100, 90, 8.4], [0, 180, 8.4], [100, 180, 8.4]],   // x, y, the reach of the pocket (and its size as drawn): about 2.2 times the ball across (balls half as big again as they were, pockets twice the size)
-    start: { cue: [50, 140], black: [50, 52], x1: [40, 66], x2: [60, 80], o1: [60, 66], o2: [40, 80] } };
+    start: { cue: [50, 140], black: [50, 50], x1: [34, 68], x2: [66, 68], x3: [50, 84], o1: [50, 68], o2: [34, 84], o3: [66, 84] } };   // (three each: two rows of three, alternating, 16 apart across and 16 down)
   const BOWL = { w: 100, h: 240, ballR: 3.5, pinR: 2.0, vMax: 150, maxT: 7, air: 0.002, roll: 4, pinAir: 0.004, pinRoll: 6, pinBounce: 0.9, still: 4, gutter: 7, knocked: 2.2, pit: 3,   // pit: past the end of the lane (y 0) the ball and the pins drop into the pit (drawn 6 deep) and are gone: nothing bounces back
     start: [50, 214], pins: [[50, 50], [45, 38], [55, 38], [40, 26], [50, 26], [60, 26], [35, 14], [45, 14], [55, 14], [65, 14]] };
   // Mini Golf's holes: walls as [cx, cy, w, h, angle], bumpers as [cx, cy, r], the tee and the cup, and a

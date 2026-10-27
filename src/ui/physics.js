@@ -73,7 +73,7 @@ export function physResult(f, long) {
     if (ph.black) return { text: long ? `${who} sank the black!` : `The black! ${them} takes it`, ok: false };
     if (ph.leftNow && ph.leftNow[by] === 0) return { text: long ? `${who} sank them all!` : 'All down!', ok: true };
     if (ph.leftNow && ph.leftNow[o] === 0) return { text: long ? `${who} sank ${them}'s last ball` : `${them}'s last ball — ${them} takes it`, ok: false };
-    if (ph.scratch) return { text: ph.back ? (long ? `${who} scratched: a ball back on the table` : 'Scratch! A ball comes back') : (long ? `${who} scratched` : 'Scratch!'), ok: false };
+    if (ph.scratch) return { text: ph.back ? (long ? `${who} scratched: ${ph.added ? 'a new ball' : 'a ball back'} on the table` : ph.added ? 'Scratch! A new ball' : 'Scratch! A ball comes back') : (long ? `${who} scratched` : 'Scratch!'), ok: false };
     if (ph.own && !ph.theirs) return { text: long ? `${who} sank a ball — and shoots again` : 'Sank one — shoot again!', ok: true };
     if (ph.own) return { text: long ? `${who} sank a ball, and ${them}'s` : `Sank one, and ${them}'s`, ok: false };
     if (ph.theirs) return { text: long ? `${who} sank ${them}'s ball` : `Sank ${them}'s ball`, ok: false };
@@ -90,7 +90,7 @@ export function physTable(mini, a, o) {
   const ph = a && a.phys ? a.phys : null, l = mini.last, mover = ph ? a.by : turn;
   const fresh = p => !!(ph && a.by === p);
   const tal = type === 'golf' ? p => arcTally(p, o, `<small>${mini.holed[p] ? 'in the cup' : `${mini.shots[p]} shot${mini.shots[p] === 1 ? '' : 's'}`}</small>`)
-    : type === 'pool' ? p => { const all = poolMine(p, mini).length; return arcTally(p, o, pips(p, all - poolLeft(p, mini), all, fresh(p) && ph.own > 0 && !ph.scratch, ph ? ph.ms : 0)); }
+    : type === 'pool' ? p => { const n = poolLeft(p, mini); return arcTally(p, o, `<b class="dbig" aria-label="${n} ball${n === 1 ? '' : 's'} left on the table"><span>${n}</span><small>left</small></b>`); }
     : p => arcTally(p, o, `<small>${fresh(p) && ph.knocked ? `<i class="pins" style="--t:${ph.rec && !REDUCED ? ph.ms : 0}ms"><b class="was">${mini.pins[p] - ph.knocked}</b><b class="now">${mini.pins[p]}</b></i>` : mini.pins[p]} / ${bowlTarget(mini)} pins</small>`);   // the total before the roll, then the new one as the pins settle
   const mine = !o.view && !ph && !o.locked;
   const bowl = type === 'bowling' ? bowlKeep(o, mine) : null;   // Bowling's two taps: 1 the arrow sweeps, 2 the meter, 3 both locked (the roll on its way)
@@ -241,10 +241,11 @@ export function physThumb(mini) {
   }
   if (mini.type === 'pool') {
     const S = L.POOL;
-    return `<svg class="tphys" viewBox="-4 -4 ${S.w + 8} ${S.h + 8}" aria-label="Pool: X has ${mini.pocketed.X} down, O has ${mini.pocketed.O} down">
+    return `<svg class="tphys" viewBox="-4 -4 ${S.w + 8} ${S.h + 36}" aria-label="Pool: X has ${poolLeft('X', mini)} balls left, O has ${poolLeft('O', mini)}">
       <rect x="-4" y="-4" width="${S.w + 8}" height="${S.h + 8}" rx="4" class="rail"/><rect x="0" y="0" width="${S.w}" height="${S.h}" class="cloth"/>
       ${S.pockets.map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" class="pocket"/>`).join('')}
-      ${poolIds(mini).map(id => (mini.down[id] ? '' : ball(mini.balls[id][0], mini.balls[id][1], S.ballR * 1.5, id === 'cue' ? 'cue' : id === 'black' ? 'black' : id[0].toUpperCase(), id === 'cue' || id === 'black' ? '' : id[0].toUpperCase()))).join('')}</svg>`;
+      ${poolIds(mini).map(id => (mini.down[id] ? '' : ball(mini.balls[id][0], mini.balls[id][1], S.ballR * 1.5, id === 'cue' ? 'cue' : id === 'black' ? 'black' : id[0].toUpperCase(), id === 'cue' || id === 'black' ? '' : id[0].toUpperCase()))).join('')}
+      <circle cx="22" cy="${S.h + 20}" r="8" class="X"/><text x="22" y="${S.h + 25}" font-size="14">${poolLeft('X', mini)}</text><circle cx="${S.w - 22}" cy="${S.h + 20}" r="8" class="O"/><text x="${S.w - 22}" y="${S.h + 25}" font-size="14">${poolLeft('O', mini)}</text></svg>`;
   }
   const S = L.BOWL, l = mini.last, goal = bowlTarget(mini);
   return `<div class="tbowl" aria-label="Bowling: X has ${mini.pins.X} pins, O has ${mini.pins.O} of ${goal}"><svg viewBox="30 6 40 52">

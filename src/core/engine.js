@@ -68,7 +68,7 @@ export { PINB, PINB_LIMITS, PINB_KIT, setPinConfig, pinConfig, pinCount, pinChec
 export { PLINKO_DEFAULTS } from '../games/plinko/meta.js';
 export { PLINKO, plinkoPath, plinkoOdds, PLINKO_LIMITS, PLINKO_CFG, plinkoNorm, setPlinkoConfig, plinkoConfig, plinkoPegs, plinkoBonus, plinkoTouches, plinkoWays, plinkoDist, plinkoExp, plinkoOpen } from '../games/plinko/rules.js';
 export { PONG, pongThrow, pongAimAt, pongDist } from '../games/pong/rules.js';
-export { POOLG, poolPow, poolMine, poolLeft, poolRank, poolIds, poolOwns, poolFree, poolSpot } from '../games/pool/rules.js';
+export { POOLG, poolPow, poolMine, poolLeft, poolRank, poolIds, poolOwns, poolFree, poolSpot, poolExtra } from '../games/pool/rules.js';
 export { RL, RLT, rlRed, rlBet, rlCovers } from '../games/rl/rules.js';
 export { ROAD, ROAD_SEGS, ROAD_LAYOUTS, ROAD_BY_COUNT, ROAD_CFG, roadGeom, roadsNorm, setRoadsConfig, roadsConfig, roadLongest, roadPick } from '../games/roads/rules.js';
 export { ROADS_DEFAULTS } from '../games/roads/meta.js';

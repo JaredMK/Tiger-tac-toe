@@ -12,8 +12,8 @@ test('physics: a shot is played out in fixed steps and recorded 30 times a secon
   const m = mini('pool', 'det');
   const a = P.run('pool', m, 'X', { aim: 0.05, power: 0.7 }), b = P.run('pool', m, 'X', { aim: 0.05, power: 0.7 });
   assert.deepEqual(a.rec, b.rec, 'identical recordings'); assert.deepEqual(a.final, b.final); assert.deepEqual(a.events, b.events);
-  assert.equal(a.rec.fps, 45, 'worked out 30 frames a second, played 1.5 times as fast'); assert.deepEqual(a.rec.ids, ['cue', 'x1', 'x2', 'o1', 'o2', 'black']);
-  assert.equal(a.rec.frames[0].length, 12, 'x and y per ball per frame');
+  assert.equal(a.rec.fps, 45, 'worked out 30 frames a second, played 1.5 times as fast'); assert.deepEqual(a.rec.ids, ['cue', 'x1', 'x2', 'x3', 'o1', 'o2', 'o3', 'black']);
+  assert.equal(a.rec.frames[0].length, 16, 'x and y per ball per frame');
   assert.ok(Math.abs(a.rec.frames.length / 45 * 1000 - a.ms) < 30, 'the time of the recording, as it plays');
   assert.ok(a.events.every(e => e.t <= a.ms / 1000 + 0.03), 'the events in the same time');
   assert.ok(a.rec.frames.length > 30 && a.ms <= P.POOL.maxT * 1000 / P.TS + 100);

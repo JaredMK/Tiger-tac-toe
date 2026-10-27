@@ -53,9 +53,9 @@ export function physScore(mini, p, r) {
   if (mini.type === 'pool') {
     const pk = r.result.pocketed, own = pk.filter(id => poolOwns(p, id)).length, theirs = pk.filter(id => poolOwns(o, id)).length, scratch = pk.includes('cue');
     if (pk.includes('black')) return -1000;
-    // (the rules: all of a side's balls down wins; a scratch puts one of the shooter's own pocketed balls back, nothing for the other side)
+    // (the rules: all of a side's balls down wins; every scratch puts a ball back for the shooter (one of their own pocketed, else a new one), nothing for the other side)
     const left = q => poolMine(q, mini).filter(id => !mini.down[id] && r.final[id] !== null).length;
-    const mineLeft = left(p) + (scratch && poolMine(p, mini).some(id => mini.down[id] || r.final[id] === null) ? 1 : 0), theirLeft = left(o);
+    const mineLeft = left(p) + (scratch ? 1 : 0), theirLeft = left(o);
     if (!mineLeft) return 1000;
     if (!theirLeft) return -1000;
     let s = (poolLeft(p, mini) - mineLeft) * 100 - (poolLeft(o, mini) - theirLeft) * 80 - (scratch ? 60 : 0) + (own && !theirs && !scratch ? 40 : 0);   // (a ball returned by a scratch counts against the shot; sinking your own and nothing else: you shoot again)

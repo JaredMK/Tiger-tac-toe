@@ -3,16 +3,21 @@ import { other } from '../../core/util.js';
 import { PHYSICS, physLast, physRandom, physRun, physShot } from '../shared/physics.js';
 export { physicsMoveFlash as moveFlash } from '../shared/physics.js';
 
-export const POOLG = { aiErr: [0.02, 0.025], hold: 300, order: ['cue', 'x1', 'x2', 'o1', 'o2', 'black'] };
+export const POOLG = { aiErr: [0.02, 0.025], hold: 300, order: ['cue', 'x1', 'x2', 'x3', 'o1', 'o2', 'o3', 'black'] };
 // Pool's power for a speed (units a second): the meter's level goes with the square root of the speed (physics.js: POOL.curve);
 // vMax: the square's full-power speed (its settings), the table's by default.
 export const poolPow = (speed, vMax) => Math.min(1, Math.pow(Math.max(0, speed) / (vMax || PHYSICS.lib.POOL.vMax), 1 / (PHYSICS.lib.POOL.curve || 1)));
 // Pool's balls by id: the cue, each side's (x1, x2 ... and o1, o2 ...), the black; in that order everywhere (the
-// recording, the drawing). A side wins by sinking all of its own (poolLeft: how many are still on the table).
+// recording, the drawing). A side wins by sinking all of its own on the table (poolLeft: how many are still there; a
+// scratch brings a ball back or adds one: poolExtra).
 export const poolRank = id => (id === 'cue' ? 0 : id === 'black' ? 3 : id[0] === 'x' ? 1 : 2);
 export const poolIds = mini => Object.keys(mini.balls).sort((a, b) => poolRank(a) - poolRank(b) || a.localeCompare(b, 'en', { numeric: true }));
 export const poolOwns = (p, id) => id[0] === (p === 'X' ? 'x' : 'o') && id !== 'cue';
-export const poolMine = (p, mini) => (mini ? poolIds(mini).filter(id => poolOwns(p, id)) : p === 'X' ? ['x1', 'x2'] : ['o1', 'o2']);
+export const poolMine = (p, mini) => (mini ? poolIds(mini).filter(id => poolOwns(p, id)) : p === 'X' ? ['x1', 'x2', 'x3'] : ['o1', 'o2', 'o3']);
+export function poolExtra(p, mini) {                    // the id of a new extra ball for p (x4, x5 ...)
+  const c = p === 'X' ? 'x' : 'o', n = Object.keys(mini.balls).filter(id => id[0] === c && id !== 'cue').map(id => Number(id.slice(1)) || 0);
+  return c + (Math.max(0, ...n) + 1);
+}
 export const poolLeft = (p, mini) => poolMine(p, mini).filter(id => !mini.down[id]).length;
 // A free spot for a new ball: the nearest point of a grid to the black's spot that is clear of every ball
 // on the table (and of the cue ball's spot), and well away from the pockets.
@@ -32,11 +37,11 @@ export function poolSpot(mini) {
   }
   return start.slice();
 }
-export function create(type, rng) {   // the fixed layout: the cue ball, two of each colour, the black
-  const L = PHYSICS.lib, st = L ? L.POOL.start : { cue: [50, 140], black: [50, 52], x1: [40, 66], x2: [60, 80], o1: [60, 66], o2: [40, 80] };
-  return { type, balls: Object.fromEntries(POOLG.order.map(id => [id, st[id].slice()])), down: {}, pocketed: { X: 0, O: 0 }, last: null };
+export function create(type, rng) {   // the fixed layout: the cue ball, three of each colour, the black
+  const L = PHYSICS.lib, st = L ? L.POOL.start : { cue: [50, 140], black: [50, 50], x1: [34, 68], x2: [66, 68], x3: [50, 84], o1: [50, 68], o2: [34, 84], o3: [66, 84] };
+  return { type, balls: Object.fromEntries(POOLG.order.filter(id => st[id]).map(id => [id, st[id].slice()])), down: {}, pocketed: { X: 0, O: 0 }, last: null };
 }
-export function apply(mini, p, m, rng, idx) {   // a shot from the cue ball: own ball down, shoot again; theirs counts for them; the black loses; a scratch returns the cue and puts one of the shooter's own pocketed balls back (nothing for the other side); all of a side's balls down wins
+export function apply(mini, p, m, rng, idx) {   // a shot from the cue ball: own ball down, shoot again; theirs counts for them; the black loses; every scratch returns the cue and puts a ball back for the shooter (one of their own pocketed, else a new extra one; nothing for the other side); all of a side's balls on the table down wins
   const shot = physShot(m);
   if (!shot) return { ok: false, reason: 'bad' };
   const r = physRun(mini, p, shot);
@@ -46,12 +51,15 @@ export function apply(mini, p, m, rng, idx) {   // a shot from the cue ball: own
   const black = pk.includes('black'), scratch = pk.includes('cue'), own = pk.filter(id => poolOwns(p, id)).length, theirs = pk.filter(id => poolOwns(o, id)).length;
   mini.pocketed[p] += own; mini.pocketed[o] += theirs;
   let back = null;
-  if (scratch) {                                          // the white back on its spot, and one of the shooter's own pocketed balls back on the table at a free spot (none down: nothing comes back)
+  let added = false;
+  if (scratch) {                                          // every scratch: the white back on its spot, and one ball more for the shooter on the table at a free spot: one of their own pocketed balls, or (none down) a new extra one
     delete mini.down.cue; mini.balls.cue = poolSpot(mini);
     back = poolMine(p, mini).find(id => mini.down[id]) || null;
-    if (back) { delete mini.down[back]; mini.balls[back] = poolFree(mini); mini.pocketed[p] = Math.max(0, mini.pocketed[p] - 1); }
+    if (back) { delete mini.down[back]; mini.pocketed[p] = Math.max(0, mini.pocketed[p] - 1); }
+    else { back = poolExtra(p, mini); added = true; }
+    mini.balls[back] = poolFree(mini);
   }
-  mini.last = physLast(p, shot, r, Object.assign({ pocketed: pk.slice(), black, scratch, own, theirs, cue: mini.balls.cue.slice() }, back ? { back, at: mini.balls[back].slice() } : {}));
+  mini.last = physLast(p, shot, r, Object.assign({ pocketed: pk.slice(), black, scratch, own, theirs, cue: mini.balls.cue.slice() }, back ? { back, at: mini.balls[back].slice(), added } : {}));
   if (black) return { ok: true, outcome: 'win', note: 'black', winner: o };
   if (!poolLeft(p, mini)) return { ok: true, outcome: 'win', note: 'cleared' };
   if (!poolLeft(o, mini)) return { ok: true, outcome: 'win', note: 'gift', winner: o };
