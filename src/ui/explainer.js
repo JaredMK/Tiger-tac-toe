@@ -75,7 +75,6 @@ export function renderHowTo() {
       <div class="ttl"><b>How to Play</b></div></div>
     <div class="setup-box" data-keep-scroll="howto">
       <div class="rulecard">${RULES_CORE.map(t => `<p>${t}</p>`).join('')}</div>
-      <button class="btn tutreplay" data-act="tut-replay">Replay the tutorial</button>
       ${SUPER_CHAOS_ENABLED ? `<div class="games-h"><span>Modes</span><small>Tap for its rules</small></div>
       <div class="games howlist"><button class="chk how" data-act="explain" data-t="superchaos" aria-label="How to play Super Chaos">${SC_ICON}<span>Super Chaos</span><i class="qbtn sm" aria-hidden="true">?</i></button></div>` : ''}
       <div class="games-h"><span>Mini-games</span><small>Tap one for its rules</small></div>

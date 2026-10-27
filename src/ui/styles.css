@@ -1414,8 +1414,8 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .hirow { display: block; flex: none; height: auto; min-height: 48px; min-width: 0; max-width: 100%; overflow: hidden; padding-left: 8px; }   /* (flex: none: in the list's column a row sized from its content never shrinks to fit; the list scrolls) */
 .hirow .hin { display: grid; grid-template-columns: 46px minmax(40px, auto) minmax(0, 1fr) auto; align-items: center; gap: 8px; min-width: 0; width: 100%; }
 .hirow .hin > * { min-width: 0; }
-.hsnap { width: 46px; height: 46px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; padding: 2px; box-sizing: border-box; background: #b9ab8c; border: 2px solid var(--ink); border-radius: 8px; }   /* the final board, small: X, O and empty; the player's own squares outlined */
-.hsnap i { display: grid; place-items: center; background: var(--paper); border-radius: 3px; font-style: normal; font-family: 'Luckiest Guy', sans-serif; font-size: 10px; line-height: 1; padding-top: 1px; color: transparent; }
+.hsnap { width: 46px; height: 46px; flex: none; aspect-ratio: 1 / 1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(3, minmax(0, 1fr)); gap: 2px; padding: 2px; box-sizing: border-box; background: #b9ab8c; border: 2px solid var(--ink); border-radius: 8px; }   /* the final board, small: X, O and empty; the player's own squares outlined */
+.hsnap i { min-width: 0; min-height: 0; overflow: hidden; display: grid; place-items: center; background: var(--paper); border-radius: 3px; font-style: normal; font-family: 'Luckiest Guy', sans-serif; font-size: 10px; line-height: 1; padding-top: 1px; color: transparent; }
 .hsnap i.X { background: var(--x-soft); color: var(--x); } .hsnap i.O { background: var(--o-soft); color: #b8860b; }
 .hsnap i.mine { box-shadow: 0 0 0 2px var(--ink); position: relative; z-index: 1; border-radius: 2px; }   /* the player's own squares: a firm ink outline */
 .hirow .hname { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -2538,35 +2538,6 @@ main.scr.mini > .wband { left: 0; right: 0; }   /* Super Chaos: waiting in the s
 #app > .refused { top: calc(var(--sat) + var(--hdr) + 10px); }
 .explain, .vsintro { padding: max(20px, var(--sat)) max(16px, var(--sar)) max(20px, var(--sab)) max(16px, var(--sal)); }
 #app > .ask, .flash.repdlg { padding: var(--sat) var(--sar) var(--sab) var(--sal); }
-
-/* The first-time tutorial (ui/tutorial.js): a caption bar in a strip reserved at the bottom of the game screens the whole tutorial
-   (#app.tut: as the reactions' strip does online, through --rxh, which the board's and the mini-games' sizes already count; the two
-   are never on together, the tutorial being local), so nothing moves when a caption changes; Skip is always there and Next keeps its
-   slot. The board glows at the first step, the open squares pulse at "tap a square", and the last card lies over everything. The
-   in-game Menu is off while it runs: Skip is the way out. */
-#app.tut { --rxh: 106px; }
-#app.tut > main.board-scr, #app.tut > main.scr.mini { padding-bottom: calc(var(--pad) + var(--rxh)); }
-#app.tut .hdr .menubtn { visibility: hidden; }
-#app > .tutbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; box-sizing: border-box; height: calc(106px + var(--sab)); padding: 8px max(12px, var(--sar)) calc(8px + var(--sab)) max(12px, var(--sal)); display: flex; flex-direction: column; gap: 6px; background: var(--paper); border-top: 4px solid var(--ink); }
-.tutbar .tutcap { flex: none; margin: 0; height: 42px; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-size: 17px; line-height: 20px; animation: tutcap .3s ease-out both; }
-.tutbar .tutrow { flex: none; display: flex; justify-content: space-between; align-items: center; gap: 10px; height: 38px; }
-.tutbar .tutskip { height: 36px; font-size: 14px; padding: 2px 14px 0; }
-.tutbar .tutnext { height: 38px; padding: 2px 22px 0; font-size: 16px; }
-.tutbar .tutnext.off { visibility: hidden; }
-@keyframes tutcap { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-#app[data-tut="intro"] .board-scr .board { border-radius: 22px; animation: tutglow 1.4s ease-in-out infinite; }
-@keyframes tutglow { 0%, 100% { box-shadow: 0 0 0 4px var(--sky); } 50% { box-shadow: 0 0 0 9px var(--sky); } }
-#app[data-tut="zoom"] .board .sq:not(:disabled) { animation: tutsq 1.2s ease-in-out infinite; }
-@keyframes tutsq { 0%, 100% { box-shadow: 0 4px 0 var(--ink); } 50% { box-shadow: 0 4px 0 var(--ink), 0 0 0 4px var(--sky); } }
-#app > .tutend { position: fixed; inset: 0; z-index: 38; display: grid; place-items: center; padding: 20px max(16px, var(--sar)) 20px max(16px, var(--sal)); background: rgba(22, 18, 16, .55); animation: fade .2s ease-out; }
-.tutcard { width: min(100%, 340px); display: flex; flex-direction: column; align-items: stretch; gap: 12px; padding: 18px 16px 16px; text-align: center; background: var(--paper); border: 4px solid var(--ink); box-shadow: 0 7px 0 var(--ink); border-radius: 26px 18px 24px 20px / 20px 26px 18px 24px; animation: pop .3s cubic-bezier(.3, 1.5, .5, 1) both; }
-.tutcard .tutpals { display: flex; justify-content: center; gap: 18px; }
-.tutcard .tutpals .pc { width: 64px; height: 64px; }
-.tutcard h2 { margin: 0; font-size: 28px; line-height: 1.1; padding-top: 3px; }
-.tutcard .primary { font-size: 19px; }
-.tutcard .btn { height: 48px; }
-.tutreplay { width: 100%; margin: 12px 0 4px; }   /* How to Play: Replay the tutorial, under the rules */
-@media (prefers-reduced-motion: reduce) { #app[data-tut] .board, #app[data-tut] .sq, .tutbar .tutcap { animation: none; } }
 
 /* ---------- the privacy policy's links, "Verify your email", Delete account (App Store requirements) ---------- */
 .menu-foot { flex: none; display: flex; align-items: center; justify-content: center; gap: 4px; flex-wrap: wrap; }

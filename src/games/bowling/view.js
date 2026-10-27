@@ -24,6 +24,10 @@ const bowlWave = (t, per) => { const k = Math.floor(t / per), f = (t % per) / pe
 export function bowlNow(dr, now) {
   const t = Math.max(0, now - dr.t0);
   if (dr.step === 1) return { aim: r3((bowlWave(t, bowlConfig().aimMs) * 2 - 1) * BOWL_AIM.max), power: null };
+  if (dr.step === 2 && dr.to) {                                  // someone else's taps replayed: the meter rises and falls at its own speed, timed to be at their power exactly when they tapped, and stays there
+    const per = bowlConfig().meterMs, lag = (((dr.to.power * per - dr.to.ms) % (2 * per)) + 2 * per) % (2 * per);
+    return { aim: dr.aim, power: t >= dr.to.ms ? dr.to.power : r3(bowlWave(t + lag, per)) };
+  }
   if (dr.step === 2) return { aim: dr.aim, power: r3(bowlWave(t, bowlConfig().meterMs)) };
   return { aim: dr.aim, power: dr.power };
 }
@@ -149,8 +153,12 @@ function replayInput(act, val, r) {
   const m = /^(aim|power)=(-?[\d.]+)$/.exec(val || '');
   if (!m) return false;
   const now = performance.now();
-  if (m[1] === 'aim') bowlDraft = { sq: r.sq, p: r.by, step: 2, t0: now, aim: r3(Number(m[2])), power: 0, shown: null, rep: true };
-  else if (bowlDraft && bowlDraft.rep && bowlDraft.sq === r.sq) { bowlDraft.power = r3(Number(m[2])); bowlDraft.step = 3; }
+  if (m[1] === 'aim') {                                          // (the power tap that follows, if the log has it: where the meter must be, and when)
+    const nx = r.list && r.list[r.k], cur = r.list && r.list[r.k - 1], pm = nx && nx[1] === 'bowl' ? /^power=(-?[\d.]+)$/.exec(nx[2] || '') : null;
+    const to = pm ? { power: Math.max(0, Math.min(1, r3(Number(pm[1])))), ms: Math.max(0, (nx[0] - (cur ? cur[0] : 0)) / (r.speed || 1)) } : null;
+    bowlDraft = { sq: r.sq, p: r.by, step: 2, t0: now, aim: r3(Number(m[2])), power: 0, shown: null, rep: true, to };
+  }
+  else if (bowlDraft && bowlDraft.rep && bowlDraft.sq === r.sq) { bowlDraft.power = r3(Number(m[2])); bowlDraft.step = 3; bowlDraft.to = null; }
   return false;
 }
 const replaySynth = m => (m && typeof m === 'object' ? [[0, 'bowl', 'aim=' + m.aim], [900, 'bowl', 'power=' + m.power]] : null);

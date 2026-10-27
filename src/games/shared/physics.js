@@ -69,6 +69,7 @@ export function physCandidates(mini, p, rng) {
   if (mini.type === 'golf') {                                 // at the next points of the hole's path, and at the cup, with powers to suit the distance
     const hole = L.HOLES[mini.hole], from = mini.balls[p], k = golfNext(hole, from);
     const targets = [hole.path[k], hole.path[Math.min(k + 1, hole.path.length - 1)], hole.cup];
+    for (let j = hole.path.length - 1, far = 0; j > k + 1 && far < 2; j--) if (golfClear(hole, from, hole.path[j])) { targets.push(hole.path[j]); far++; }   // and the farthest points of the way in sight (a path with many points: the long shots down a straight)
     const putt = d => Math.max(0.15, Math.min(1, Math.pow(d * 1.08 / (L.GOLF.reach || 174), 0.57)));   // (a putt rolls about reach x power^1.7; aimed a little long)
     for (const t of targets) {
       const a = aimTo(from, t), d = Math.hypot(t[0] - from[0], t[1] - from[1]), base = putt(d);

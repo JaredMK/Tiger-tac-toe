@@ -25,7 +25,6 @@ import { renderSetup } from './screens/setup.js';
 import { matchStale, renderStale } from './screens/stale.js';
 import { renderWin } from './screens/win.js';
 import { renderHeader, renderReactDock } from './turnbar.js';
-import { renderTutorial } from './tutorial.js';
 import { reactOn } from '../net/reactions.js';
 import { playFlash } from './turns.js';
 
@@ -43,7 +42,7 @@ export function render() {
   const boards = entering ? [] : KEEP_BOARDS.map(sel => [sel, app.querySelector(sel)]).filter(([, e]) => e);
   const stale = matchStale();                                   // (a match with a mini-game this version lacks: its screen alone, no turn bar, menu or reactions around it)
   app.classList.toggle('rxon', reactOn() && !stale);             // (an online match: the reactions' strip at the bottom, kept the whole match)
-  const html = (stale ? '' : renderHeader()) + renderMain() + (stale ? '' : renderReactDock()) + renderExplain() + renderIntro() + renderJoinAsk() + renderTutorial() + (refusedNote && state.online ? `<div class="refused" role="status">${esc(refusedNote)}</div>` : '');
+  const html = (stale ? '' : renderHeader()) + renderMain() + (stale ? '' : renderReactDock()) + renderExplain() + renderIntro() + renderJoinAsk() + (refusedNote && state.online ? `<div class="refused" role="status">${esc(refusedNote)}</div>` : '');
   if (!boards.length) app.innerHTML = html;
   else {
     const fresh = document.createElement('div');

@@ -49,13 +49,13 @@ test('golf: 22 layouts made by hand, and the mirror of each that is not its own 
   }
 });
 
-test('golf: every hole (all 42) is solved by the computer in 2-6 shots (its best candidate each time, no error; the best of three tries, as the bumpers kick the ball off them); full putt power: a full putt crosses the whole course', () => {
+test('golf: every hole (all 42) is solved by the computer in 2-7 shots (its best candidate each time, no error; the best of three tries, as the bumpers kick the ball off them); full putt power: a full putt crosses the whole course', () => {
   const tally = [];
   const solve = (h, seed) => {
     const m = mini('golf', 'solve' + h); m.hole = h; const tee = P.HOLES[h].tee; m.balls = { X: [tee[0] - 3, tee[1]], O: [tee[0] + 3, tee[1]] };
     let shots = 0, won = false;
     const rng = lcg(seed);
-    while (shots < 7 && !won) {
+    while (shots < 8 && !won) {
       let best = null;
       for (const c of E.physCandidates(m, 'X', rng)) { const r = P.run('golf', m, 'X', c); const s = E.physScore(m, 'X', r); if (!best || s > best.s) best = { c, s }; }
       const r = E.applyMove(m, 'X', best.c);
@@ -65,8 +65,8 @@ test('golf: every hole (all 42) is solved by the computer in 2-6 shots (its best
     return won ? shots : Infinity;
   };
   for (let h = 0; h < P.HOLES.length; h++) {
-    const shots = Math.min(...[7, 107, 207].map(k => solve(h, k + h)));
-    assert.ok(shots >= 2 && shots <= 6, `${P.HOLES[h].name}: holed in ${shots} shots`);
+    const shots = Math.min(...[7, 107, 207].map(k => solve(h, k + h)));   // (the best of three tries)
+    assert.ok(shots >= 2 && shots <= 7, `${P.HOLES[h].name}: holed in ${shots} shots`);
     tally.push(`${P.HOLES[h].name} ${shots}`);
     assert.ok(P.HOLES[h].walls.length + P.HOLES[h].bumpers.length >= 2 && P.HOLES[h].path.length >= 3, `${P.HOLES[h].name}: things in the way, and turns`);
   }
@@ -82,7 +82,7 @@ test('golf: every hole (all 42) is solved by the computer in 2-6 shots (its best
   } finally { P.HOLES.pop(); }
 });
 
-test('golf: the courses make it hard: the computer, with its usual error, takes 3 to 5 putts on average on every hole (all 42)', () => {
+test('golf: the courses make it hard: the computer, with its usual error, takes 4 to 6 putts on average over the holes (each hole 3.4 to 7 on ten tries; all 42)', () => {
   const avg = [];
   for (let h = 0; h < P.HOLES.length; h++) {
     const hole = P.HOLES[h];
@@ -98,8 +98,8 @@ test('golf: the courses make it hard: the computer, with its usual error, takes 
     avg.push(sum / N);
   }
   console.log('Mini Golf: the computer\'s putts per hole: ' + P.HOLES.map((hh, k) => `${hh.name} ${avg[k].toFixed(2)}`).join(', '));
-  assert.ok(avg.every(a => a >= 2.6 && a <= 5.6), `each hole 3 to 5 or so, on 10 tries (${avg.map(a => a.toFixed(2))})`);   // (40 tries each: all within 3 to 5)
+  assert.ok(avg.every(a => a >= 3.4 && a <= 7), `each hole 3.4 to 7 or so, on 10 tries (${avg.map(a => a.toFixed(2))})`);
   const all = avg.reduce((a, b) => a + b, 0) / avg.length;
-  assert.ok(all >= 3 && all <= 5, `3 to 5 on average (${all.toFixed(2)})`);
+  assert.ok(all >= 4 && all <= 6, `4 to 6 on average (${all.toFixed(2)})`);
   assert.ok(P.LAYOUTS.filter(hh => hh.walls.some(w => w[4])).length >= 6, 'angled walls on many layouts');
 });

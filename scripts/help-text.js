@@ -11,7 +11,7 @@ const { pathToFileURL } = require('url');
 
 const ROOT = path.join(__dirname, '..');
 const DOC = 'docs/help-text.md';
-const EXPLAINER = 'src/ui/explainer.js', ACCOUNT = 'src/ui/screens/account.js', ENVJS = 'src/env.js', TUTORIAL = 'src/ui/tutorial.js';
+const EXPLAINER = 'src/ui/explainer.js', ACCOUNT = 'src/ui/screens/account.js', ENVJS = 'src/env.js';
 
 /* ----- reading and writing JS string literals ----- */
 const isQuote = c => c === "'" || c === '"' || c === '`';
@@ -100,20 +100,7 @@ function loadModel(read, oldTypes) {
     fld('Mini-games heading', region(EXPLAINER, new RegExp(hl + '<small>.*?</small></div>\\n\\s+<div class="games howlist">\\$\\{visibleTypes'), 'tpl')),
     fld('Mini-games hint', region(EXPLAINER, new RegExp(hl.replace('(.*?)', '.*?') + '<small>(.*?)</small></div>\\n\\s+<div class="games howlist">\\$\\{visibleTypes'), 'tpl')),
     fld('Credits heading', region(EXPLAINER, new RegExp(hl + '</div><div class="rulecard credits">'), 'tpl')),
-    fld('Replay button', region(EXPLAINER, /data-act="tut-replay">(.*?)<\/button>/, 'tpl')),
   ]);
-  // The tutorial (src/ui/tutorial.js CAPTION: a caption per step, the last card's texts and the buttons' labels)
-  const tu = read(TUTORIAL), ta = tu.indexOf('const CAPTION = {'), tb = tu.indexOf('\n};', ta);
-  if (ta < 0 || tb < 0) throw new Error(`${TUTORIAL}: no CAPTION block`);
-  const TUT_FIELDS = [['intro', 'Board'], ['zoom', 'Tap a square'], ['play', 'In the square'], ['yours', 'Your turn'], ['cpu', 'Computer turn'],
-    ['won', 'You won a square'], ['lost', 'Computer won a square'], ['claim', 'No square won yet'], ['line', 'Three in a row'],
-    ['ready', 'Card title'], ['go', 'Card play'], ['menu', 'Card main menu'], ['skip', 'Skip label'], ['next', 'Next label'], ['gotit', 'Got it label']];
-  sec('howto', 'tutorial', 'Tutorial', TUT_FIELDS.map(([k, label]) => {
-    const l = keyLiteral(tu, ta, tb, k);
-    if (!l) throw new Error(`${TUTORIAL}: CAPTION has no ${k}`);
-    return fld(label, site(TUTORIAL, l));
-  }));
-
   // Modes
   let a = ex.indexOf('const SC_EXPLAIN = {'), b = lineEnd(ex, a);
   sec('modes', 'superchaos', 'Super Chaos', [

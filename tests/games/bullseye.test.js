@@ -110,8 +110,9 @@ test('darts: someone else\'s throw replays its aim, each line stopping exactly w
     const A = E.bullsAim({ x, y, per: 1040 });
     // a line sweeping from its edge, back and forth, for `it` passes: where it ends
     const end = it => { const k = Math.floor(it), f = it - k; return k % 2 ? 1 - f : f; };
-    assert.ok(Math.abs(end(A.vx.it) - x) < 0.002, `the sideways line stops at ${x} (${end(A.vx.it)})`);
-    assert.ok(Math.abs(end(A.vy.it) - y) < 0.002, `the up-down line stops at ${y} (${end(A.vy.it)})`);
+    assert.ok(A.vx.it <= 1 && A.vy.it <= 1, 'each line goes straight to where it stopped, never past it and back');
+    assert.ok(Math.abs(end(A.vx.it) - x) < 0.002 || x < 0.05, `the sideways line stops at ${x} (${end(A.vx.it)})`);
+    assert.ok(Math.abs(end(A.vy.it) - y) < 0.002 || y < 0.05, `the up-down line stops at ${y} (${end(A.vy.it)})`);
     assert.ok(A.t1 > 0 && A.h0 > A.t1 && A.t2 > A.h0 && A.fly > A.t2, 'in order: the first line stops, then the second starts and stops, then the dart');
     assert.equal(A.t1, Math.round(1040 * A.vx.it)); assert.equal(A.t2 - A.h0, Math.round(A.perY * A.vy.it));
   }

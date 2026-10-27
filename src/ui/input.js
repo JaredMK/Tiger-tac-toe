@@ -45,7 +45,6 @@ import { chaosSetup, setGames, setupTypes } from './screens/setup.js';
 import { cpuTurn, dismissFlash, scheduleCpu } from './turns.js';
 import { closeReport, openReport } from './report.js';
 import { shareResult } from './sharecard.js';
-import { tutAct } from './tutorial.js';
 
 
 // The login screen's buttons: Google, Apple, the email's Log in and Create account (net/accounts.js loginWith).
@@ -95,7 +94,7 @@ function revealSides() {
 }
 // Play Computer's start (its setup screen's Start, and the rematch): you against the computer, your side as picked
 // (Random drawn again each time), its level, the mini-games ticked.
-export function playComputer() {   // (exported for the tutorial's last card: ui/tutorial.js)
+export function playComputer() {
   const name = (loggedIn() ? acct.profile.username : '') || 'You';
   setMode('classic');
   restrictGames(state.setup.games, visibleTypes());           // never a game this player may not see
@@ -122,7 +121,6 @@ export function init() {
       else if (act === 'login-reset') loginReset();
       return;
     }
-    if (tutAct(act)) return;                                                            // the tutorial's own buttons (Skip, Next, its last card; How to Play's Replay): ui/tutorial.js
     if (matchStale()) {                                                                 // a match with a mini-game this version lacks (ui/screens/stale.js): its own buttons only
       if (act === 'stale-update') openUpdate();
       else if (act === 'stale-leave') { setStaleConfirm(true); render(); }

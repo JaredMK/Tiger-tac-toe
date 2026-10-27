@@ -14,9 +14,10 @@ export function allowedTypes(releases, admin) { return admin ? TYPES.slice() : r
 // round: runner.js runCheck, core/verify.js), Sky Hop and Scoop Stack (an attempt is its inputs, after Start, no
 // longer than the time since: finger.js fingCheck), Pinball (its inputs re-simulated on the server, which keeps its own
 // ball: pinball/rules.js pinReplayCheck), the attention games (the round is the server's until Start, the answer timed:
-// attention.js attentionHide, verify.js). Bullseye stays held: a throw is where two lines sweeping about once a second
-// were stopped, and the server cannot time a tap to better than a connection's slack, so it has no way to verify one.
-export const FIND_MATCH_HOLD = ['bullseye'];
+// attention.js attentionHide, verify.js). Bullseye was held (a throw is where two lines sweeping about once a second are
+// stopped, and the server cannot time a tap to better than a connection's slack, so it cannot verify one) and is allowed
+// in Find Match again, the cheating risk accepted (a phone can claim a better stop than it made). The list is empty.
+export const FIND_MATCH_HOLD = [];
 export const findMatchTypes = types => types.filter(t => !FIND_MATCH_HOLD.includes(t));
 export function restrictGames(games, allowed) {
   if (!games || typeof games !== 'object') return games;

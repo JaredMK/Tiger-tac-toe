@@ -81,11 +81,11 @@ export function flashMs(f, winLen, won) {
 }
 // Bullseye: the dart flies in and lands where the lines crossed, then the points hold a moment.
 export const BULLT = { fly: 380, hold: 400, slide: 450, gap: 280 };
-// Someone else's throw, as their screen looked: the sideways line sweeps from the left edge and stops where
-// they stopped it (straight there when that is past 40% across, else across and back), a beat, then the
-// up-down line likewise from the top, a beat, then the dart. ms from the move: t1 and t2 where each stops, fly
-// where the dart leaves.
-export function bullsLeg(per, f) { const it = f >= 0.4 ? f : 2 - f; return { it: r3(Math.max(0.05, it)), ms: Math.round(per * Math.max(0.05, it)) }; }
+// Someone else's throw, as their screen looked: the sideways line sweeps from the left edge straight to where
+// they stopped it and stays there (never past it and back: the marker stops exactly where it was tapped), a beat,
+// then the up-down line likewise from the top, a beat, then the dart. ms from the move: t1 and t2 where each
+// stops, fly where the dart leaves.
+export function bullsLeg(per, f) { const it = r3(Math.max(0.05, Math.min(1, f))); return { it, ms: Math.round(per * it) }; }
 export function bullsAim(b) {
   const per = b.per || BULL_DEFAULTS.sweep, perY = Math.round(per * BULLS.h / BULLS.w), vx = bullsLeg(per, b.x), vy = bullsLeg(perY, b.y);
   const t1 = vx.ms, h0 = t1 + BULLT.gap, t2 = h0 + vy.ms;

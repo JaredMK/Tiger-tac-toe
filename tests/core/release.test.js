@@ -12,10 +12,13 @@ test('patterns, wheels and sniff: admin only until released', () => {
   }
 });
 
-test('Find Match deals only games whose result the server can verify: the hold list (FIND_MATCH_HOLD) is cut from its games, released or not; friend rooms and local play are not cut', () => {
+test('Find Match: the hold list (FIND_MATCH_HOLD) is empty (Bullseye is allowed again, the cheating risk accepted); what it lists is cut from Find Match\'s games, released or not, never from rooms or local play', () => {
   const all = E.TYPES.slice();
-  for (const t of E.FIND_MATCH_HOLD) { assert.ok(all.includes(t), `${t} is a game`); assert.ok(!E.findMatchTypes(all).includes(t), `${t} held back from Find Match`); }
-  assert.deepEqual(E.findMatchTypes(all), all.filter(t => !E.FIND_MATCH_HOLD.includes(t)), 'everything else dealt as before');
+  assert.deepEqual(E.FIND_MATCH_HOLD, [], 'nothing held back');
+  assert.ok(E.findMatchTypes(all).includes('bullseye'), 'Bullseye is dealt (once released)');
+  assert.deepEqual(E.findMatchTypes(all), all, 'every game');
+  E.FIND_MATCH_HOLD.push('bullseye');                       // (the mechanism, kept: a held game is cut)
+  try { assert.ok(!E.findMatchTypes(all).includes('bullseye')); assert.deepEqual(E.findMatchTypes(all), all.filter(t => t !== 'bullseye')); assert.ok(E.allowedTypes({}, true).includes('bullseye'), 'a room (allowedTypes) still has it'); }
+  finally { E.FIND_MATCH_HOLD.length = 0; }
   assert.ok(E.findMatchTypes(E.releasedTypes({})).length > 0, 'something is left to deal');
-  assert.ok(E.allowedTypes({}, true).includes(E.FIND_MATCH_HOLD[0]), 'a room (allowedTypes) still has them');
 });

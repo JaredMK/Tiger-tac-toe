@@ -109,7 +109,7 @@ export function renderHistory() {
 }
 const fmtDate = t => { try { return new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }); } catch (e) { return ''; } };
 const HOW_TEXT = { line: 'three in a row', majority: 'most squares', timeout: 'timeout', resign: 'resignation', draw: 'no line left' };
-const MODE_TEXT = RATINGS_ENABLED ? { ranked: 'Ranked', casual: 'Casual', match: 'Find Match', friend: 'Unrated', local: 'Local' } : { ranked: 'Find Match', casual: 'Find Match', match: 'Find Match', friend: 'Friend', local: 'Local' };
+const MODE_TEXT = RATINGS_ENABLED ? { ranked: 'Ranked', casual: 'Casual', match: 'Find Match', friend: 'Unrated', local: 'vs Computer' } : { ranked: 'Find Match', casual: 'Find Match', match: 'Find Match', friend: 'Friend', local: 'vs Computer' };
 export function record(u) { u = u || {}; return `${u.wins || 0}-${u.losses || 0}-${u.draws || 0}`; }   // wins-losses-draws
 export function signed(d) { return (d > 0 ? '+' : d < 0 ? '−' : '±') + Math.abs(d); }
 export function renderLeaderboard() {
@@ -140,13 +140,13 @@ export function renderProfile() {
   if (p.error) body = `<div class="warn">${esc(p.error)}</div>`;
   else if (!u) body = '<p class="hint center">Loading…</p>';
   else {
-    // Your own stats: Online (Find Match and friend games together), Local, or All. Someone else's: online only.
+    // Your own stats: Online (Find Match and friend games together), vs Computer, or All. Someone else's: online only.
     // (The record by side and the squares per mini-game are the admin's: admin.html's player detail.)
     const view = own ? (p.view || 'online') : 'online';
     const rec = viewRec(u, own ? p.local : null, view);
     const games = rec.wins + rec.losses + rec.draws;
-    const tabs = own ? `<div class="ptabs" role="tablist" aria-label="Which games">${[['online', 'Online'], ['local', 'Local'], ['all', 'All']].map(([v, l]) => `<button class="seg${view === v ? ' on' : ''}" role="tab" aria-selected="${view === v}" data-act="pview" data-v="${v}">${l}</button>`).join('')}</div>` : '';
-    const label = { online: 'Online record', local: 'Local record', all: 'All games' }[view];
+    const tabs = own ? `<div class="ptabs" role="tablist" aria-label="Which games">${[['online', 'Online'], ['local', 'vs Computer'], ['all', 'All']].map(([v, l]) => `<button class="seg${view === v ? ' on' : ''}" role="tab" aria-selected="${view === v}" data-act="pview" data-v="${v}">${l}</button>`).join('')}</div>` : '';
+    const label = { online: 'Online record', local: 'vs Computer record', all: 'All games' }[view];
     const card = `${tabs}<div class="pcard rec">${RATINGS_ENABLED ? `<div class="prt"><small>Rating</small><b>${u.rating}</b></div>` : ''}
       <div class="prec"><small>${label}</small><b>${record(rec)}</b><small>wins-losses-draws · ${games} game${games === 1 ? '' : 's'}</small></div>
       <div class="ppct"><small>Win rate</small><b>${winPct(rec)}</b></div>

@@ -19,24 +19,6 @@ Modes hint: Tap for its rules
 Mini-games heading: Mini-games
 Mini-games hint: Tap one for its rules
 Credits heading: Credits
-Replay button: Replay the tutorial
-
-## Tutorial [tutorial]
-Board: Nine squares, each a mini-game. Win squares to get three in a row.
-Tap a square: Tap a square to zoom in.
-In the square: Play the mini-game.
-Your turn: Your turn: tap a square.
-Computer turn: The computer's turn: watch its move.
-You won a square: You won a square!
-Computer won a square: The computer won a square. Win one back!
-No square won yet: Win a mini-game to claim its square.
-Three in a row: Get three squares in a row to win the match.
-Card title: Ready?
-Card play: Play the computer on Easy
-Card main menu: Main menu
-Skip label: Skip
-Next label: Next
-Got it label: Got it
 
 # Modes
 
