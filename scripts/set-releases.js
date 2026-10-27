@@ -11,6 +11,7 @@ const PROJECT = process.env.TTC_PROJECT || 'tic-tac-chaos';
 const SETS = [
   { id: 'rel1', set: { craps: true, wheels: true, flap: false, chopper: false } },   // Craps and Risky Spins released; Flap and Chopper admin only
   { id: 'rel2', set: { superchaos: false } },   // Super Chaos off (Classic only; core/config.js SUPER_CHAOS_ENABLED keeps it off for the admin too)
+  { id: 'rel3', set: { shelves: false, hex: false } },   // Shelves admin only (a tie is a draw now, and its first mover wins nearly every other square); Hex admin only (5x5 with the swap rule, the first mover still over 60%)
 ];
 // Game settings set by a request (config/tune/{type}/{key}, the admin's Mini-game Settings): each set once, like the releases.
 const TUNE_SETS = [

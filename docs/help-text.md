@@ -104,8 +104,8 @@ Win: Reach the finish first.
 
 ## Districts [districts]
 Category: More brain
-Play: Place a piece. It counts in every region it touches. A grey piece lands somewhere after each move.
-Win: Lead in the most regions when the map is full.
+Play: Place a piece. It counts in every region it touches. A grey piece lands somewhere after each move. A region locks, darker, once the spots left can't change its leader.
+Win: Lock more than half the regions first, or lead the most when the map is full. Level is a draw.
 
 ## Echo [echo]
 Category: More brain
@@ -158,7 +158,7 @@ Win: Get 3 right.
 
 ## Hex [hex]
 Category: More brain
-Play: Claim a hex. X connects left to right, O connects top to bottom.
+Play: Claim a hex. X connects left to right, O connects top to bottom. Right after the first stone, the other player may Swap: take it as theirs.
 Win: Complete your path.
 
 ## Higher/Lower [hilo]

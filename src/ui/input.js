@@ -5,7 +5,7 @@ import { restrictGames } from '../core/games.js';
 import { levelOf } from '../core/aiw.js';
 import { NAME_MAX, normCpu, normLocal, normSetup, seatLocal, startCpu, startMatch } from '../core/match.js';
 import { resignLocal } from '../core/records.js';
-import { normTimer } from '../core/timer.js';
+import { normTimer, turnOpen, turnSecs } from '../core/timer.js';
 import { hpSel, setHpSel } from '../games/hexapawn/view.js';
 import { GAMES, TYPES } from '../games/index.js';
 import { other } from '../core/util.js';
@@ -15,7 +15,7 @@ import {
   needAccount, saveUsername, setAfterLogin, setLoginMail, setLoginMsg, setLoginPass, setUnameDraft, unameDraft, unverified, verifyAct
 } from '../net/accounts.js';
 import { cancelSearch, closeIntro, findAgain, isMM, onIntroClosed, openFind, resignMM, resumeMatch, search, showSides, startSearch } from '../net/matchmaking.js';
-import { attemptMove, setTapEl, tapEl } from '../net/moves.js';
+import { attemptMove, dbOpen, setTapEl, tapEl } from '../net/moves.js';
 import { reactCooling, rx, sendReact } from '../net/reactions.js';
 import { scMode, scPicked, setMode, visibleTypes } from '../net/releases.js';
 import {
@@ -164,6 +164,8 @@ export function init() {
       if (lockMine() && state.lock !== i) { SND.play('error'); return; }
       state.screen = 'mini'; state.zoom = i; state.draft = ''; state.sel = []; state.notice = null; setHpSel(null); SND.play('tap'); haptic('tap');   // (a plain tap: no whoosh into the square; the app buzzes once with it)
       if (!state.online) { state.pick = null; state.pickSq = null; }
+      const sq = state.squares[i];                // online, a game with time of its own (60 s): opening it gives the turn that time and holds it there
+      if (isMM() && !state.sc && state.turn === mySide() && !sq.owner && turnSecs(sq.mini.type) && turnOpen(state, i)) dbOpen(i);
       commit();
     } else if (act === 'back') {
       if (lockMine() || pinned()) return;

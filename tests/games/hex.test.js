@@ -23,23 +23,31 @@ const L = Object.assign({}, E, {
 const lcg = seed => () => (seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296;
 const sorted = a => a.slice().sort((x, y) => x - y);
 const mini = (type, rng) => L.newMini(type, rng || lcg(11));
+const hex4 = () => ({ type: 'hex', cells: new Array(16).fill(null), last: null });   // a square dealt before 5x5: 4x4, no swap (plays on as it was)
 
 // =================================== Hex ===================================
-const hx = (r, c) => r * L.HEX_N + c;
+const hx = (r, c) => r * 4 + c;                                    // (the 4x4 board of the tests below)
+const hx5 = (r, c) => r * 5 + c;
 
 // ================================ Computer player ================================
 const cpuRng = () => lcg(314);
 
 test('hex: neighbours follow the shifted-row layout', () => {
-  assert.deepEqual(sorted(L.hexNeighbors(hx(1, 1))), sorted([hx(1, 0), hx(1, 2), hx(0, 1), hx(2, 1), hx(0, 2), hx(2, 0)]));
-  assert.ok(!L.hexNeighbors(hx(1, 1)).includes(hx(0, 0)), 'up-left is not adjacent');
-  assert.ok(!L.hexNeighbors(hx(1, 1)).includes(hx(2, 2)), 'down-right is not adjacent');
-  assert.deepEqual(sorted(L.hexNeighbors(hx(0, 0))), sorted([hx(0, 1), hx(1, 0)]));
-  assert.deepEqual(sorted(L.hexNeighbors(hx(3, 3))), sorted([hx(3, 2), hx(2, 3)]));
+  assert.deepEqual(sorted(L.hexNeighbors(hx(1, 1), 4)), sorted([hx(1, 0), hx(1, 2), hx(0, 1), hx(2, 1), hx(0, 2), hx(2, 0)]));
+  assert.ok(!L.hexNeighbors(hx(1, 1), 4).includes(hx(0, 0)), 'up-left is not adjacent');
+  assert.ok(!L.hexNeighbors(hx(1, 1), 4).includes(hx(2, 2)), 'down-right is not adjacent');
+  assert.deepEqual(sorted(L.hexNeighbors(hx(0, 0), 4)), sorted([hx(0, 1), hx(1, 0)]));
+  assert.deepEqual(sorted(L.hexNeighbors(hx(3, 3), 4)), sorted([hx(3, 2), hx(2, 3)]));
+  assert.deepEqual(sorted(L.hexNeighbors(hx5(4, 4))), sorted([hx5(4, 3), hx5(3, 4)]), 'the 5x5 board (the default size)');
+  assert.equal(L.HEX_N, 5);
 });
 
-test('hex: X wins with a straight row, lopsided with no O cells', () => {
-  const m = mini('hex');
+test('hex: X wins with a straight row, lopsided with no O cells (a 4x4 square from before; 5x5 the same with five)', () => {
+  const f = mini('hex');
+  assert.equal(f.cells.length, 25, 'a new square: 5x5'); assert.equal(f.swap, true, 'with the swap rule');
+  for (const c of [0, 1, 2, 3]) assert.equal(L.applyMove(f, 'X', hx5(2, c)).outcome, 'continue');
+  assert.equal(L.applyMove(f, 'X', hx5(2, 4)).outcome, 'win', 'five across');
+  const m = hex4();
   for (const c of [0, 1, 2]) assert.equal(L.applyMove(m, 'X', hx(1, c)).outcome, 'continue');
   const r = L.applyMove(m, 'X', hx(1, 3));
   assert.equal(r.outcome, 'win');
@@ -47,37 +55,37 @@ test('hex: X wins with a straight row, lopsided with no O cells', () => {
 });
 
 test('hex: O wins with a straight column, and the same cells would not win for X', () => {
-  const m = mini('hex');
+  const m = hex4();
   for (const r of [0, 1, 2]) L.applyMove(m, 'O', hx(r, 2));
   assert.equal(L.applyMove(m, 'O', hx(3, 2)).outcome, 'win');
-  const x = mini('hex');
+  const x = hex4();
   for (const r of [0, 1, 2, 3]) assert.equal(L.applyMove(x, 'X', hx(r, 2)).outcome, 'continue', 'a column is not left-to-right');
-  const o = mini('hex');
+  const o = hex4();
   for (const c of [0, 1, 2, 3]) assert.equal(L.applyMove(o, 'O', hx(1, c)).outcome, 'continue', 'a row is not top-to-bottom');
 });
 
 test('hex: a diagonal is connected one way and not the other', () => {
-  const m = mini('hex');
+  const m = hex4();
   for (const [r, c] of [[3, 0], [2, 1], [1, 2]]) assert.equal(L.applyMove(m, 'X', hx(r, c)).outcome, 'continue');
   const win = L.applyMove(m, 'X', hx(0, 3));
   assert.equal(win.outcome, 'win');
   assert.deepEqual(sorted(win.cells), sorted([hx(3, 0), hx(2, 1), hx(1, 2), hx(0, 3)]));
-  const n = mini('hex');
+  const n = hex4();
   for (const [r, c] of [[0, 0], [1, 1], [2, 2], [3, 3]]) assert.equal(L.applyMove(n, 'X', hx(r, c)).outcome, 'continue');
   assert.equal(L.hexPath(n.cells, 'X'), null);
 });
 
 test('hex: a winding path is found and reported edge to edge', () => {
-  const m = mini('hex');
+  const m = hex4();
   const cells = [hx(0, 0), hx(1, 0), hx(1, 1), hx(0, 2), hx(0, 3)];
   let r;
   for (const c of cells) r = L.applyMove(m, 'X', c);
   assert.equal(r.outcome, 'win');
   const p = r.cells;
-  assert.equal(p[0] % L.HEX_N, L.HEX_N - 1, 'path starts on the right edge');
-  assert.equal(p[p.length - 1] % L.HEX_N, 0, 'path ends on the left edge');
-  for (let k = 1; k < p.length; k++) assert.ok(L.hexNeighbors(p[k - 1]).includes(p[k]), 'consecutive path cells touch');
-  const b = mini('hex');
+  assert.equal(p[0] % 4, 3, 'path starts on the right edge');
+  assert.equal(p[p.length - 1] % 4, 0, 'path ends on the left edge');
+  for (let k = 1; k < p.length; k++) assert.ok(L.hexNeighbors(p[k - 1], 4).includes(p[k]), 'consecutive path cells touch');
+  const b = hex4();
   for (const c of [hx(0, 0), hx(1, 0), hx(0, 2), hx(0, 3)]) L.applyMove(b, 'X', c);
   L.applyMove(b, 'O', hx(1, 1));
   assert.equal(L.hexPath(b.cells, 'X'), null);
@@ -106,10 +114,10 @@ test('hex: the admin\'s settings (the computer\'s mistake rate) are dealt into t
   const m = E.newMini('hex', E.makeRng('hex-tune'));
   E.setTune('hex', null);
   assert.deepEqual(m.tune, { miss: 50 });
-  m.cells[0] = m.cells[1] = m.cells[2] = 'X';               // X wins at cell 3
+  m.cells[0] = m.cells[1] = m.cells[2] = m.cells[3] = 'X';   // X wins at cell 4
   const moves = new Set();
   for (let k = 0; k < 30; k++) moves.add(E.localBest(E.publicMini(m), 'X', E.makeRng('hex-ai' + k)).move);
-  assert.ok(moves.has(3) && moves.size > 1, 'a slip now and then');
+  assert.ok(moves.has(4) && moves.size > 1, 'a slip now and then');
 });
 
 test('hex: the Hard computer searches deeper (a forced win Normal misses), legal moves, within its time', () => {
@@ -128,8 +136,10 @@ test('hex: the Hard computer searches deeper (a forced win Normal misses), legal
   const w = L.localBest({ type: 'hex', cells: row }, 'X', cpuRng(), {}, hard);
   assert.equal(w.move, 3); assert.equal(w.win, true); assert.equal(w.after.cells[3], 'X');
   assert.equal(L.localBest({ type: 'hex', cells: row }, 'O', cpuRng(), {}, hard).move, 3, 'O blocks');
-  const e = L.localBest(L.publicMini(mini('hex')), 'X', cpuRng(), {}, hard);
+  const e = L.localBest(L.publicMini(hex4()), 'X', cpuRng(), {}, hard);
   assert.ok(Number.isInteger(e.move) && e.move >= 0 && e.move < 16 && e.after.cells[e.move] === 'X' && !e.win);
+  const e5 = L.localBest(L.publicMini(mini('hex')), 'X', cpuRng(), {}, hard);
+  assert.ok(Number.isInteger(e5.move) && e5.move >= 0 && e5.move < 25 && e5.after.cells[e5.move] === 'X', '5x5 too');
   const r = lcg(5);
   for (let k = 0; k < 8; k++) {
     const b = mini('hex', lcg(k + 20)); let p = 'X', dead = false;
@@ -138,7 +148,7 @@ test('hex: the Hard computer searches deeper (a forced win Normal misses), legal
     const mv = L.localBest(L.publicMini(b), p, cpuRng(), {}, hard).move;
     assert.ok(Number.isInteger(mv) && !b.cells[mv], `a legal cell (${mv})`);
   }
-  const sq = mini('hex'); sq.tune = { miss: 50 }; sq.cells[0] = sq.cells[1] = sq.cells[2] = 'X';
+  const sq = hex4(); sq.tune = { miss: 50 }; sq.cells[0] = sq.cells[1] = sq.cells[2] = 'X';
   const slips = new Set();
   for (let i = 0; i < 20; i++) slips.add(L.localBest(L.publicMini(sq), 'X', E.makeRng('hex-hard-miss' + i), {}, hard).move);
   assert.ok(slips.has(3) && slips.size > 1, 'the mistake rate still applies');
@@ -153,4 +163,44 @@ test('hex: the Hard computer searches deeper (a forced win Normal misses), legal
   const t1 = performance.now(), until = () => Math.max(0, t1 + 12 - performance.now());
   const timed = L.localBest(L.publicMini(mini('hex')), 'X', cpuRng(), {}, { level: 'hard', until });
   assert.ok(performance.now() - t1 < 40 && Number.isInteger(timed.move) && timed.move >= 0 && timed.move < 16, 'stops at its budget with a legal move');
+});
+
+test('hex: the swap rule: right after the first stone, the other player may take it as theirs; only then, only them, and not in a 4x4 square', () => {
+  const m = mini('hex');
+  assert.equal(L.applyMove(m, 'O', 'swap').ok, false, 'nothing to take yet');
+  L.applyMove(m, 'X', hx5(1, 3));
+  assert.equal(L.hexCanSwap(m, 'O'), true); assert.equal(L.hexCanSwap(m, 'X'), false, 'never your own stone');
+  assert.equal(L.applyMove(m, 'X', 'swap').ok, false);
+  const r = L.applyMove(m, 'O', 'swap');
+  assert.deepEqual([r.ok, r.outcome, r.note], [true, 'continue', 'swap']);
+  assert.equal(m.cells[hx5(1, 3)], 'O', 'the stone is O\'s, where it stood'); assert.equal(m.cells.filter(Boolean).length, 1);
+  assert.deepEqual(m.swapped, { by: 'O', at: hx5(1, 3) }); assert.equal(m.last, hx5(1, 3));
+  assert.equal(L.applyMove(m, 'X', 'swap').ok, false, 'once: it is O\'s stone now, and X does not swap back');
+  // the opener placed a second stone first (the other player busy elsewhere): the chance is gone
+  const t = mini('hex'); L.applyMove(t, 'X', 0); L.applyMove(t, 'X', 6);
+  assert.equal(L.hexCanSwap(t, 'O'), false); assert.equal(L.applyMove(t, 'O', 'swap').ok, false);
+  const old = hex4(); L.applyMove(old, 'X', 5);
+  assert.equal(L.hexCanSwap(old, 'O'), false, 'a 4x4 square from before has no swap'); assert.equal(L.applyMove(old, 'O', 'swap').ok, false);
+  // through the match: the swap is the turn's move; the public view says the square has the rule
+  const st = L.newMatch(lcg(2), { games: ['hex'] }), p = st.turn;
+  const sq = st.squares.findIndex(s => s.mini.type === 'hex');
+  assert.equal(L.playMove(st, sq, hx5(2, 2), lcg(3)).ok, true); L.endFlash(st);
+  assert.equal(st.turn, L.other(p));
+  assert.equal(L.publicMini(st.squares[sq].mini).swap, true);
+  assert.equal(L.playMove(st, sq, 'swap', lcg(4)).ok, true);
+  assert.equal(st.flash.hexSwap, hx5(2, 2)); assert.equal(st.squares[sq].mini.cells[hx5(2, 2)], L.other(p));
+  L.endFlash(st); assert.equal(st.turn, p, 'the turn passes');
+});
+
+test('hex: the computer takes the middle stone (Normal and Hard) and opens a 5x5 square with a stone from its list, never the middle', () => {
+  for (const ctx of [{}, { level: 'hard', until: null }]) {
+    const m = mini('hex'); L.applyMove(m, 'X', hx5(2, 2));
+    assert.equal(L.localBest(L.publicMini(m), 'O', cpuRng(), {}, ctx).move, 'swap', `${ctx.level || 'normal'}: the middle is worth taking`);
+    const seen = new Set();
+    for (let k = 0; k < 40; k++) seen.add(L.localBest(L.publicMini(mini('hex')), 'X', lcg(k + 1), {}, ctx).move);
+    for (const c of seen) assert.ok(L.HEX_OPEN.includes(c), `an opening from the list (${c})`);
+    assert.ok(!seen.has(hx5(2, 2)));
+    const o = new Set(); for (let k = 0; k < 20; k++) o.add(L.localBest(L.publicMini(mini('hex')), 'O', lcg(k + 9), {}, ctx).move);
+    for (const c of o) assert.ok(L.HEX_OPEN.includes((c % 5) * 5 + Math.floor(c / 5)), `O's: the list turned round the long diagonal (${c})`);
+  }
 });

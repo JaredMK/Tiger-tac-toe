@@ -80,7 +80,7 @@ export function attStart(state, i, p, now) {
   if (state.winner || state.turn !== p) return { ok: false, reason: 'turn' };
   if (!sq || sq.owner || !(ATT_TYPES.includes(sq.mini.type) || FINGER_TYPES.includes(sq.mini.type))) return { ok: false, reason: 'bad' };
   if (state.lock != null && state.lock !== i) return { ok: false, reason: 'locked' };
-  state.lock = i;
+  state.lock = i; state.lockBy = null;                           // (an attempt begun: a timeout ends it, failed)
   if (!sq.mini.started) sq.mini.started = { X: null, O: null };
   if (sq.mini.started[p] == null) sq.mini.started[p] = now != null ? now : 0;
   return { ok: true };

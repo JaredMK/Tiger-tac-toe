@@ -4,7 +4,7 @@ import { endFlash, playMove, timeoutMove } from './board.js';
 import { SC_ONLINE, chaosResolveOnline, scTypes, startChaosOnline } from './chaos.js';
 import { defaultSetup, newState, startMatch } from './match.js';
 import { upgradeMini } from './minis.js';
-import { armClock, clockDeadline, newTimer } from './timer.js';
+import { armClock, clockDeadline, newTimer, turnOpen } from './timer.js';
 import { other } from './util.js';
 import { ATT_TYPES, attStart } from '../games/shared/attention.js';
 import { PHYS_TYPES } from '../games/shared/physics.js';
@@ -19,7 +19,7 @@ import { TYPES, rulesOf } from '../games/index.js';
  * last few moves, so a phone that was away can play back what it missed, one move at a time.
  */
 export const RECENT_MAX = 8;
-export const MATCH_FIELDS = ['id', 'seq', 'recent', 'games', 'squares', 'turn', 'lock', 'moves', 'winner', 'winLine', 'winReason', 'resigned', 'counts', 'lastSquare', 'lastBy', 'pick', 'pickSq', 'timer', 'sqlog', 'sc'];   // (sc: a Super Chaos match's round, the moves sent in, the last recap)
+export const MATCH_FIELDS = ['id', 'seq', 'recent', 'games', 'squares', 'turn', 'lock', 'lockBy', 'moves', 'winner', 'winLine', 'winReason', 'resigned', 'counts', 'lastSquare', 'lastBy', 'pick', 'pickSq', 'timer', 'sqlog', 'sc'];   // (sc: a Super Chaos match's round, the moves sent in, the last recap)
 // The hidden part of a mini-game, or null when it has none.
 export function secretOf(mini) {
   const game = rulesOf(mini.type);
@@ -50,7 +50,7 @@ export function matchRecord(full) {
 const SIDE = v => v === 'X' || v === 'O';
 const FIELD_OK = {
   id: v => typeof v === 'string' && v.length <= 60, seq: Number.isInteger, recent: Array.isArray, games: Array.isArray, squares: Array.isArray,
-  turn: SIDE, lock: v => v === null || (Number.isInteger(v) && v >= 0 && v < 9), moves: Number.isInteger,
+  turn: SIDE, lock: v => v === null || (Number.isInteger(v) && v >= 0 && v < 9), lockBy: v => v === null || v === 'open', moves: Number.isInteger,
   winner: v => v === null || SIDE(v) || v === 'draw', winLine: v => v === null || (Array.isArray(v) && v.every(Number.isInteger)),
   winReason: v => v === null || typeof v === 'string', resigned: v => v === null || SIDE(v), counts: v => v === null || (v && typeof v === 'object'),
   lastSquare: v => v === null || Number.isInteger(v), lastBy: v => v === null || SIDE(v), pick: v => v === null || Number.isInteger(v), pickSq: v => v === null || Number.isInteger(v),
@@ -146,6 +146,15 @@ export function applyOnlineStart(rec, side, i, now) {   // now: server time (the
   if (!r.ok) return r;
   const mini = full.squares[i].mini;
   return { ok: true, rec: matchRecord(full), out: ATT_TYPES.includes(mini.type) ? { round: JSON.parse(JSON.stringify(mini.round[side])) } : {} };
+}
+// The player on the move opens square i, a game with more time than the match's turn (meta.js turnSecs): the turn
+// takes that time and is held to the square (core/timer.js turnOpen). Anything else changes nothing ('same': not written).
+export function applyOnlineOpen(rec, side, i) {
+  const full = fullState(rec);
+  if (full.winner || full.turn !== side) return { ok: false, reason: 'turn' };
+  if (!full.squares[i] || full.squares[i].owner) return { ok: false, reason: 'bad' };
+  if (!turnOpen(full, i)) return { ok: false, reason: 'same' };
+  return { ok: true, rec: matchRecord(full) };
 }
 // Find the Pair: the first card chosen is turned up for both phones (or turned back when tapped again).
 export function applyOnlinePick(rec, side, i, card) {

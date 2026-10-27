@@ -113,6 +113,12 @@ export async function dbStart(i) {
     return r && typeof r === 'object' ? r : { ok: false, reason: 'network' };
   } catch (e) { return { ok: false, reason: 'network' }; }
 }
+// A game with time of its own opened on this phone's turn (meta.js turnSecs: runners, Sky Hop, Echo, Risky Rolls...):
+// the server gives the turn that time and holds it to the square (core/timer.js turnOpen; shown here at once).
+export async function dbOpen(i) {
+  if (!fb || !room || !isMM() || state.sc) return;
+  try { await call('move', { game: state.online.game, square: i, kind: 'open' }); } catch (e) { /* the turn keeps the match's time */ }
+}
 export async function dbPick(i, card) {
   if (blocked() || !fb || !room || !isMM()) return;
   setMoveWait(Date.now()); render();

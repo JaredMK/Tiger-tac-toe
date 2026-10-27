@@ -25,7 +25,7 @@ export function timeoutMove(state, rng) {
   const p = state.turn, t = state.timer;
   if (state.winner || state.flash || state.done) return { ok: false, reason: 'busy' };
   t.missN = (t.missN || 0) + 1;                                  // (each timeout once: the phones say so once)
-  const held = state.lock;
+  const held = state.lockBy === 'open' ? null : state.lock;      // (a square only opened, nothing begun there: a turn missed)
   if (held != null && state.squares[held] && !state.squares[held].owner) {
     const m = timeoutClose(state.squares[held].mini, p);
     if (m != null) {
@@ -40,7 +40,7 @@ export function timeoutMove(state, rng) {
   t.miss = { by: p, kind: 'missed', n: t.missN };
   if (t.streak[p] >= 2) {
     state.winner = other(p); state.winLine = null; state.winReason = 'timeout'; state.resigned = p; state.counts = null;   // (a forfeit: two turns in a row missed)
-    state.lock = null; state.done = null; state.flash = null; state.spot = null; t.deadline = null; t.startBy = null;
+    state.lock = null; state.lockBy = null; state.done = null; state.flash = null; state.spot = null; t.deadline = null; t.startBy = null;
     state.screen = 'win'; state.zoom = null;
     return { ok: true, lost: p };
   }
@@ -59,7 +59,7 @@ export function timeoutClose(mini, p) {
 function passTurn(state, p, rng) {
   let next = other(p);
   if (!anyMove(state, next) && anyMove(state, p)) next = p;
-  state.turn = next; state.lock = null; state.pick = null; state.pickSq = null; state.draft = ''; state.sel = [];
+  state.turn = next; state.lock = null; state.lockBy = null; state.pick = null; state.pickSq = null; state.draft = ''; state.sel = [];
   state.screen = 'board'; state.zoom = null;
   markCoins(state, next, rng);
 }
@@ -102,9 +102,10 @@ export function playMove(state, i, m, rng, opts) {
   const p = state.turn;
   const range = sq.mini.type === 'hilo' ? [sq.mini.lo, sq.mini.hi] : null;   // the range before the guess, for the UI
   const bjFrom = sq.mini.type === 'bj' && sq.mini.hand ? sq.mini.hand.cards.length : 0;   // Blackjack: the player's cards before (0: this move deals)
-  const bonus = state.lock === i && !(sq.mini.type === 'trivia' && sq.mini.fresh === p) && !ATT_TYPES.includes(sq.mini.type) && !FINGER_TYPES.includes(sq.mini.type);   // a bonus move within the same turn (Hangman, Risky Rolls); the hold of a Trivia reveal or an attention game's Start is not one
+  const bonus = state.lock === i && state.lockBy !== 'open' && !(sq.mini.type === 'trivia' && sq.mini.fresh === p) && !ATT_TYPES.includes(sq.mini.type) && !FINGER_TYPES.includes(sq.mini.type);   // a bonus move within the same turn (Hangman, Risky Rolls); the hold of a Trivia reveal or an attention game's Start is not one
   const res = applyMove(sq.mini, p, m, rng);
   if (!res.ok) return res;
+  state.lockBy = null;                                            // (a move made: the square's hold is the move's now)
   const mini = sq.mini;
   if (mini.type === 'trivia' && res.outcome === 'continue') triviaDeal(state, sq, rng);   // a new question once the last was answered right (before the square is judged stuck), from the match's unasked ones
   if (!sq.mv) sq.mv = { X: 0, O: 0 };

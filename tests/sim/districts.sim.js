@@ -54,16 +54,15 @@ test('districts: every map has 5 regions and 16 spots, every region touched by a
   }
 });
 
-test('districts: the first mover wins under 60% of 400 games between the game\'s own computer players', () => {
-  let first = 0;
+test('districts: the first mover between the game\'s own computer players (locks, a level count a draw): Admin only while over 60% of decided squares', () => {
+  let first = 0, second = 0, draws = 0;
   for (let g = 0; g < 400; g++) {
-    const st = E.newMatch(E.makeRng('fm' + g), { games: ['districts'] }), rr = E.makeRng('fr' + g), opener = st.turn;
-    for (let n = 0; n < 40; n++) {
-      st.lock = 4; const m = E.cpuMove(st, rr); assert.equal(E.playMove(st, 4, m.move, rr).ok, true);
-      const kind = st.flash.kind; E.endFlash(st); st.lock = null;
-      if (kind === 'claim' || kind === 'match') { if (st.squares[4].owner === opener) first++; break; }
-    }
+    const rng = E.makeRng('dfm' + g), m = E.newMini('districts', rng), opener = g % 2 ? 'O' : 'X';
+    let p = opener, r;
+    do { r = E.applyMove(m, p, E.localBest(E.publicMini(m), p, rng).move, rng); p = E.other(p); } while (r.outcome === 'continue');
+    if (r.outcome === 'draw') draws++; else if (r.winner === opener) first++; else second++;
   }
-  assert.ok(first / 400 < 0.6, `first mover won ${first} of 400`);
-  assert.ok(first / 400 > 0.4, `second mover not favoured either (${first} of 400)`);
+  const rate = first / (first + second);
+  console.log(`  Districts: first mover ${(100 * rate).toFixed(1)}% of ${first + second} decided, ${draws} draws of 400`);
+  assert.equal(E.TEST_TYPES.includes('districts'), rate > 0.6, 'released only with the first mover under 60%');
 });

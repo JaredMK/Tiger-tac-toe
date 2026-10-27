@@ -26,7 +26,7 @@ export function shelfSolve(pm, me, cf, until) {
     const row = cells.slice(s * per, s * per + per);
     const k = KIND(row.filter(Boolean).length, row.includes(me) ? 1 : 0, row.includes(o) ? 1 : 0); shelves.push(k); counts[k]++;
   }
-  const tie = pm.first ? (other(pm.first) === me ? 1 : -1) : cells.some(Boolean) ? 0 : -1;   // ties to the mover, to the other player (opening the square makes them mine to lose), or to nobody (a square from before)
+  const tie = 0;                                                  // a tie is a draw (the square resets): nobody's
   let bound = 1; for (let j = 1; j <= n; j++) bound = bound * (4 * per - 1 + j) / j;   // multisets of n shelves over the 4 * per kinds a shelf can be
   const memo = new Map();
   let nodes = 0, out = false;

@@ -435,7 +435,7 @@ async function allowEdit(el, email, on) {
 
 // ---------- game releases: Released or Admin only, per mini-game (releases/{type}, read by the game and the server) ----------
 // A game not in the database is as the code has it (TEST_TYPES in src/games/index.js, from each game's meta.js: admin only until released here).
-const TEST_TYPES = ['bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads', 'flap', 'chopper', 'patterns', 'wheels', 'sniff', 'headcount', 'flash', 'snapshot', 'skyhop', 'scoop', 'pinball', 'clash'];   // (as engine.js has them; the switches cover every game the stats know)
+const TEST_TYPES = ['bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads', 'flap', 'chopper', 'patterns', 'wheels', 'sniff', 'headcount', 'flash', 'snapshot', 'skyhop', 'scoop', 'pinball', 'clash', 'hex'];   // (as engine.js has them; the switches cover every game the stats know)
 const isReleased = t => (ctl.releases && typeof ctl.releases[t] === 'boolean' ? ctl.releases[t] : !TEST_TYPES.includes(t));
 // Per platform (src/core/client.js): a released game can be switched off on iOS alone (releases/platform/ios/{type} false);
 // on means as released. The web has no switch of its own: a game is off there by un-releasing it.

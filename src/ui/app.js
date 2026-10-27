@@ -24,7 +24,7 @@ const CPU_BASE = { think: 700, spot: 600, zoom: 250, pre: 300, again: 350 };
 export const CPU_MS = Object.fromEntries(Object.keys(CPU_BASE).map(k => [k, 0]));   // (read at the moment of use: the admin's Animation speed applied)
 for (const k of Object.keys(CPU_BASE)) Object.defineProperty(CPU_MS, k, { get: () => CPU_BASE[k] / ANIM.speed, enumerable: true });   // the computer: a pause to think, its square lit up on the board, a look at the square, its choice shown, the next bonus move
 export const spotMs = () => PLAY.spot / ANIM.speed;   // how long the other player's square glows on the board before the zoom (at the Animation speed)
-export const TIMER_LABEL = { 0: 'No limit', 30: '30s', 60: '1 min', 180: '3 min' };
+export const TIMER_LABEL = { 0: 'No limit', 30: '30 seconds', 60: '1 min', 180: '3 min' };
 export const SPIN_MS = PLAY.spin, HOP_MS = PLAY.hop;   // Candy race: the wheel's spin, then each hop of the token (the Dice race hops the same way)
 export const REDUCED = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 export const WAAPI = typeof Element !== 'undefined' && typeof Element.prototype.animate === 'function';

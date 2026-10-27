@@ -1,6 +1,6 @@
 // The turn clock on screen: one deadline a turn, counted the same on both phones; timeouts.
 import { applyOnlineTimeout } from '../core/records.js';
-import { armClock, clockDeadline } from '../core/timer.js';
+import { armClock, clockDeadline, turnLimit } from '../core/timer.js';
 import { SND } from '../audio/sound.js';
 import { call, connected, fb, serverNow } from '../net/connect.js';
 import { fireTimeoutMM, isMM, search } from '../net/matchmaking.js';
@@ -14,12 +14,12 @@ export function clockLeft() {
   if (state.sc) return scClockLeft();                         // Super Chaos: the round's clock (this phone's, in a friend room too)
   const t = state.timer, dl = clockDeadline(t);                 // (not started yet: the full time shows until this turn's player has seen the move before it)
   if (dl == null) return null;
-  return Math.max(0, Math.min(t.limit * 1000, dl - serverNow()));
+  return Math.max(0, Math.min(turnLimit(t) * 1000, dl - serverNow()));   // (this turn's time: the match's, or its game's once opened)
 }
 export function clockText() {
   const left = clockLeft();
   if (left == null && state.sc) return state.sc.online ? fmtClock(state.sc.limit * 1000) : '';   // (against the computer a round has no clock)
-  if (left == null) return state.timer && state.timer.limit ? fmtClock(state.timer.limit * 1000) : '';
+  if (left == null) return state.timer && state.timer.limit ? fmtClock(turnLimit(state.timer) * 1000) : '';
   return fmtClock(left);
 }
 export function fmtClock(ms) { const sec = Math.ceil(ms / 1000); return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`; }

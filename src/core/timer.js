@@ -1,11 +1,28 @@
 // The turn timer and the playback timings: one deadline a turn (armClock), how long a move's animation
 // takes on a phone (playMs).
-import { rulesOf } from '../games/index.js';
+import { metaOf, rulesOf } from '../games/index.js';
 
-export const TIMER_OPTIONS = [0, 60];   // seconds per turn in a friend game: no limit or 1 minute (Find Match is always 1 minute)
-// A time per turn from an older room or setup (30 seconds or 3 minutes) becomes 1 minute; anything else, no limit.
-export function normTimer(v) { return TIMER_OPTIONS.includes(v) ? v : [30, 180].includes(v) ? 60 : 0; }
+export const TIMER_OPTIONS = [0, 30];   // seconds per turn in a friend game: no limit or 30 seconds (Find Match is always 30 seconds)
+// A time per turn from an older room or setup (1 or 3 minutes) becomes 30 seconds; anything else, no limit.
+export function normTimer(v) { return TIMER_OPTIONS.includes(v) ? v : [60, 180].includes(v) ? 30 : 0; }
 export function newTimer(limit) { return { limit: limit || 0, deadline: null, for: null, pausedAt: null, timeouts: { X: 0, O: 0 }, streak: { X: 0, O: 0 } }; }
+// A turn's time: the match's limit, or more for a game that needs it (its meta.js turnSecs: the runners, Sky Hop,
+// Scoop Stack, Pinball, Echo, Snapshot, Risky Rolls take 60 seconds). The turn takes the game's time once the
+// player opens its square, which holds the turn there (turnOpen); secs: the time this turn has (null: the limit).
+export function turnSecs(type) { const s = metaOf(type).turnSecs; return Number.isFinite(s) && s > 0 ? s : null; }
+export function turnLimit(t) { return t ? t.secs || t.limit : 0; }
+// The player on the move opens square i: a game with time of its own gives the turn that time, counted from the
+// turn's start, and holds the turn to the square (as Start does); false if nothing changes. Once a turn.
+export function turnOpen(st, i) {
+  const t = st.timer, sq = st.squares && st.squares[i];
+  if (!t || !t.limit || st.winner || !sq || sq.owner || t.secs || t.for !== st.turn) return false;
+  if (st.lock != null) return false;                              // (already held: by a move or a Start, the turn's time stays)
+  const s = turnSecs(sq.mini.type);
+  if (!s || s <= t.limit) return false;
+  if (t.deadline != null) t.deadline += (s - t.limit) * 1000;
+  t.secs = s; st.lock = i; st.lockBy = 'open';
+  return true;
+}
 
 // ---------- playback: how long a settled move takes to play on a phone ----------
 // The turn clock allows for it, so the next player gets the full time once the move has played out.
@@ -44,8 +61,8 @@ export const CLOCK = { startSlackMs: 3000 };
 export function armClock(st, entries, now) {
   const t = st.timer;
   if (!t || !t.limit) return;
-  if (st.winner) { t.deadline = null; t.for = null; t.startBy = null; return; }
-  t.for = st.turn;
+  if (st.winner) { t.deadline = null; t.for = null; t.startBy = null; t.secs = null; return; }
+  t.for = st.turn; t.secs = null;
   if (entries && entries.length) { t.deadline = null; t.startBy = now + replayMs(entries) + CLOCK.startSlackMs; }
   else { t.deadline = now + t.limit * 1000; t.startBy = null; }
 }
@@ -54,11 +71,13 @@ export function armClock(st, entries, now) {
 export function startClock(st, side, now) {
   const t = st.timer;
   if (!t || !t.limit || st.winner || t.for !== side || t.deadline != null) return false;
-  t.deadline = Math.min(now, t.startBy != null ? t.startBy : now) + t.limit * 1000; t.startBy = null;
+  t.deadline = Math.min(now, t.startBy != null ? t.startBy : now) + turnLimit(t) * 1000; t.startBy = null;
   return true;
 }
 // The turn's deadline: the one set, or the latest it can be (its start not reported yet); null with no clock.
+// When the turn began (its deadline less its time): a run or an attempt is no longer than that (core/verify.js).
+export function turnBegan(t) { const dl = clockDeadline(t); return dl == null ? null : dl - turnLimit(t) * 1000; }
 export function clockDeadline(t) {
   if (!t || !t.limit) return null;
-  return t.deadline != null ? t.deadline : t.startBy != null ? t.startBy + t.limit * 1000 : null;
+  return t.deadline != null ? t.deadline : t.startBy != null ? t.startBy + turnLimit(t) * 1000 : null;
 }

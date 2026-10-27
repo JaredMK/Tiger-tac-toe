@@ -1,5 +1,4 @@
 // Shelves: the screen, the miniature, the move's words and sounds, and the inputs.
-import { other } from '../../core/util.js';
 import { PLACE_MS } from '../shared/placement.js';
 import { shelfCfg, shelfOn } from './rules.js';
 import { N, esc, mv, state } from '../../ui/app.js';
@@ -10,7 +9,7 @@ import { arcTally, lateAt } from '../../ui/progress.js';
 function shelfTable(mini, a, o) {
   const sh = a && a.shelf ? a.shelf : null, turn = o.turn, c = mini.cells, per = shelfCfg(mini).per, nS = c.length / per;   // (a square from before: 6 shelves)
   const on = p => shelfOn(c, p, per), tal = p => arcTally(p, o, `<small>on ${on(p)} of ${nS}</small>`);
-  const second = other(mini.first || turn), tie = a && a.note === 'tiebreak';
+  const tie = a && a.note === 'tie';
   const rows = Array.from({ length: nS }, (_, s) => {
     const ids = Array.from({ length: per }, (_, k) => s * per + k), on = p => ids.some(i => c[i] === p);
     const spots = ids.map(i => {
@@ -24,10 +23,9 @@ function shelfTable(mini, a, o) {
     const tag = ['X', 'O'].map(p => `<i class="${on(p) ? 'on ' + p : ''}${fresh(p) ? ' fillin' : ''}">${p}</i>`).join('');
     return `<div class="shrow"><div class="shspots"${per === 3 ? '' : ` style="grid-template-columns:repeat(${per},1fr)"`}>${spots}</div><div class="shon" aria-label="On shelf ${s + 1}: ${['X', 'O'].filter(on).join(' and ') || 'nobody'}">${tag}</div></div>`;
   }).join('');
-  const res = sh ? `<p ${lateAt('arcres ok', PLACE_MS.mark)} role="status">${tie ? `${on('X')} each · the tie goes to ${N(a.winner)}` : `${N(a.by)} is on ${on(a.by)} shel${on(a.by) === 1 ? 'f' : 'ves'}`}</p>`
+  const res = sh ? `<p ${lateAt('arcres ok', PLACE_MS.mark)} role="status">${tie ? `${on('X')} each · a draw` : `${N(a.by)} is on ${on(a.by)} shel${on(a.by) === 1 ? 'f' : 'ves'}`}</p>`
     : `<p class="arcnote">${o.view ? '' : o.locked ? `Waiting for <b class="${turn}">${N(turn)}</b>…` : ''}</p>`;
-  const ties = mini.first !== undefined ? `<p class="dties">Ties go to <b class="${second}">${N(second)}</b></p>` : '';   // (a square from before the tie rule: its ties reset)
-  return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="shelves">${ties}<div class="shcase">${rows}</div>${res}</div></div>`;
+  return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="shelves"><div class="shcase">${rows}</div>${res}</div></div>`;
 }
 export function miniature(mini, final) {
   const per = shelfCfg(mini).per;

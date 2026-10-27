@@ -8,13 +8,11 @@ E.setPhysics(require('../physics.js'));
 const lcg = seed => () => (seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296;
 
 /* ===================================== Shelves ===================================== */
-test('shelves: seven shelves of three; a mark, then a grey mark on a random open spot; once full, the shelves you are on (up to 7); a tie goes to the player who did not open the square', () => {
+test('shelves: seven shelves of three; a mark, then a grey mark on a random open spot; once full, the shelves you are on (up to 7); a tie is a draw, never the second mover\'s', () => {
   const m = E.newMini('shelves', lcg(1));
-  assert.equal(m.cells.length, 21); assert.equal(m.first, null);
+  assert.equal(m.cells.length, 21);
   E.applyMove(m, 'X', 4, lcg(2));
   assert.equal(m.cells[4], 'X'); assert.ok(m.last.grey != null && m.cells[m.last.grey] === 'G' && m.last.grey !== 4);
-  assert.equal(m.first, 'X', 'who opened the square');
-  E.applyMove(m, 'O', m.cells.indexOf(null), lcg(3)); assert.equal(m.first, 'X', 'and it stays');
   assert.equal(E.applyMove(m, 'O', 4).ok, false);
   const row = (...w) => w.concat(new Array(21 - w.length).fill(null));
   assert.deepEqual([E.shelfOn(row('X', null, null, 'X', 'X', null, null, null, null, 'O', 'X', 'O'), 'X'), E.shelfOn(row('X', null, null, 'X', 'X', null, null, null, null, 'O', 'X', 'O'), 'O')], [3, 1]);
@@ -24,8 +22,7 @@ test('shelves: seven shelves of three; a mark, then a grey mark on a random open
   assert.deepEqual(E.applyMove(end, 'O', 20, lcg(4)), { ok: true, outcome: 'win', note: 'full', winner: 'O', counts: { X: 3, O: 5 } }, 'the last spot: O on five shelves, X on three');
   assert.equal(end.last.grey, null, 'no grey mark once full');
   const tie = c => ['X', 'G', 'G', 'O', 'G', 'G', 'X', 'O', 'G', 'X', 'G', 'G', 'G', 'O', 'G', 'X', 'G', 'G', 'O', 'G', null];
-  assert.deepEqual(E.applyMove(full(tie(), 'X'), 'O', 20, lcg(6)), { ok: true, outcome: 'win', note: 'tiebreak', winner: 'O', counts: { X: 4, O: 4 } }, 'level: the tie goes to O (X opened the square)');
-  assert.deepEqual(E.applyMove(full(tie(), 'O'), 'O', 20, lcg(6)), { ok: true, outcome: 'win', note: 'tiebreak', winner: 'X', counts: { X: 4, O: 4 } }, 'and to X when O opened it');
+  for (const first of ['X', 'O']) assert.deepEqual(E.applyMove(full(tie(), first), 'O', 20, lcg(6)), { ok: true, outcome: 'draw', note: 'tie', counts: { X: 4, O: 4 } }, `level: a draw, whoever opened it (${first})`);
   const x = full(['X', 'G', 'G', 'X', 'G', 'G', 'X', 'O', 'G', 'X', 'G', 'G', 'O', 'O', 'G', 'X', 'G', 'G', 'G', 'G', null], 'O');
   assert.deepEqual(E.applyMove(x, 'O', 20, lcg(8)), { ok: true, outcome: 'win', note: 'full', winner: 'X', counts: { X: 5, O: 3 } });
   // a square from before: six shelves, and a tie resets it
@@ -34,17 +31,17 @@ test('shelves: seven shelves of three; a mark, then a grey mark on a random open
   assert.deepEqual([tr.outcome, tr.note], ['draw', 'tie'], `4 shelves each on an old square: a reset (${JSON.stringify(tr)})`);
 });
 
-test('shelves: the first mover no longer has the edge (the computer against itself: about 52% for whoever opens the square, under 60%)', () => {
-  const N = 6000; let first = 0, decided = 0;
+test('shelves: with ties a draw, the first mover wins nearly every square that is not one (the computer against itself), so Shelves is Admin only', () => {
+  const N = 2000; let first = 0, decided = 0, draws = 0;
   for (let g = 0; g < N; g++) {
     const rng = lcg(1000 + g), m = E.newMini('shelves', rng), opener = g % 2 ? 'O' : 'X';
     let p = opener, res = null;
     while (!res || res.outcome === 'continue') { res = E.applyMove(m, p, E.shelfPick(E.publicMini(m), p, rng).i, rng); p = E.other(p); }
-    assert.notEqual(res.outcome, 'draw', 'a tie never resets a new square');
+    if (res.outcome === 'draw') { draws++; continue; }
     decided++; if (res.winner === opener) first++;
   }
-  const rate = first / decided;
-  assert.ok(rate < 0.6 && rate > 0.44, `first mover ${(100 * rate).toFixed(1)}% of ${decided}`);
+  assert.ok(draws > 0 && first / decided > 0.9, `first mover ${(100 * first / decided).toFixed(1)}% of ${decided}, ${draws} draws: still lopsided (rebalance before release)`);
+  assert.ok(E.TEST_TYPES.includes('shelves'), 'Admin only by default');
 });
 
 test('shelves: the computer goes for shelves it is not on, more so ones the other player is missing too and that are nearly full', () => {
@@ -88,18 +85,14 @@ test('shelves: the admin\'s settings: five shelves of four and mistakes deal a s
 /* ---------- the Hard computer ---------- */
 test('shelves: Hard solves the square (every grey mark counted): it keeps the tie that Normal throws away, plays a legal spot, and takes under 60 ms', () => {
   const hard = { level: 'hard', until: null };
-  // X opened the square, so a tie is O's. O to move, spots 7, 18 and 20 open: a mark on shelf 6 (18 or 20) holds X
-  // to a tie half the time (X takes the last spot of shelf 6 only when the grey misses it); Normal's 7 lets X have
-  // shelf 6 for sure, and the square
+  // O to move, spots 7, 18 and 20 open: a mark on shelf 6 (18 or 20) holds X to a tie (a draw) half the time (X
+  // takes the last spot of shelf 6 only when the grey misses it); Normal's 7 lets X have shelf 6 for sure, and the square
   const cells = 'XGGGXOO.XGGGXGXGGO.O.'.split('').map(c => (c === '.' ? null : c));
-  const pm = { type: 'shelves', cells, first: 'X' };
+  const pm = { type: 'shelves', cells };
   assert.equal(E.shelfPick(pm, 'O', null).i, 7, 'Normal');
   const b = E.localBest(pm, 'O', lcg(1), {}, hard);
   assert.ok(b.move === 18 || b.move === 20, 'Hard: ' + b.move);
   assert.equal(b.after.cells[b.move], 'O');
-  // the public view says who opened the square (the tie)
-  const m = E.newMini('shelves', lcg(2)); E.applyMove(m, 'O', 3, lcg(3));
-  assert.equal(E.publicMini(m).first, 'O');
   // a legal move from any position, on the usual board and the admin's; the time it takes
   const times = [];
   for (let g = 0; g < 12; g++) {

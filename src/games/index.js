@@ -7,6 +7,7 @@ const NONE = Object.freeze({});
 export const rulesOf = t => (GAMES[t] ? GAMES[t].rules : NONE);
 export const aiOf = t => (GAMES[t] ? GAMES[t].ai : NONE);
 export const viewOf = t => (GAMES[t] && GAMES[t].view) || NONE;
+export const metaOf = t => (GAMES[t] ? GAMES[t].meta : NONE);
 import { registerTunes } from '../core/tune.js';
 const add = (type, rules, ai, meta) => { GAMES[type] = { type, rules, ai, meta, view: null }; };
 import * as tttR from './ttt/rules.js'; import * as tttA from './ttt/ai.js'; import * as tttM from './ttt/meta.js'; add('ttt', tttR, tttA, tttM);

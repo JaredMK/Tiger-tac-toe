@@ -78,10 +78,10 @@ function elo(rx, ro, scoreX, k = ELO_K) {
 
 // ---------- matchmaking ----------
 // Find Match is Super Chaos: one queue, the match run by the server (core/scgame.js), 'match' games (rated
-// 'ranked' ones when ratings come). The Classic queue (turns, 1 minute each; games the server plays move by
+// 'ranked' ones when ratings come). The Classic queue (turns, 30 seconds each, a game with time of its own 60; games the server plays move by
 // move) stays as code, unused: the admin alone may ask for it (the tests do), for the day it is wanted again.
 // Older games were 'ranked' or 'casual': all of them count as Find Match games.
-const FIND_MATCH_TIMER = 60;
+const FIND_MATCH_TIMER = 30;
 const QUEUES = { chaos: { key: 'chaos', mode: RATINGS_ENABLED ? 'ranked' : 'match', timer: 0, chaos: true },
   match: { key: 'match', mode: RATINGS_ENABLED ? 'ranked' : 'match', timer: FIND_MATCH_TIMER, classic: true } };
 const FIND_MATCH_MODES = ['match', 'ranked', 'casual'];

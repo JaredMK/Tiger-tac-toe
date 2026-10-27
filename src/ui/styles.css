@@ -144,6 +144,7 @@ b.X { color: var(--x); } b.O { color: var(--o); }
 .thg .hw i { width: var(--tw); height: calc(var(--tw) * 1.25); border-bottom: 2px solid var(--muted); display: grid; place-items: center; font-weight: 800; font-size: calc(var(--tw) * .75); line-height: 1; }
 .thg .hw i.on { border-color: var(--text); }
 .thex { display: flex; flex-direction: column; --tw: 12.5cqw; --th: calc(var(--tw) * 1.1547); }   /* the Hex board in small: the same tiling as the full view */
+.thex.n5 { --tw: 9.8cqw; }   /* (5x5: as wide as the 4x4 was) */
 .thex .hr { display: flex; margin-left: calc(var(--k) * (var(--tw) - 1px) / 2); }
 .thex .hr + .hr { margin-top: calc(var(--th) * -.25 - 1px); }
 .thex .hr i + i { margin-left: -1px; }                                          /* neighbours share their outline */
@@ -337,7 +338,9 @@ main.scr.mini:has(.fing), main.scr.mini:has(.fing) * { touch-action: none; -webk
 .big:active:not(:disabled) { transform: scale(.97); }
 .big:disabled { opacity: .5; }
 
-.g-hex { width: var(--g); display: flex; flex-direction: column; align-items: center; gap: 8px; --hw: calc((var(--g) * .86 - 10px) / 5.5); --hh: calc(var(--hw) * 1.1547); }
+.g-hex { width: var(--g); display: flex; flex-direction: column; align-items: center; gap: 8px; --hn: 4; --hw: calc((var(--g) * .86 - 10px) / (1.5 * var(--hn) - .5)); --hh: calc(var(--hw) * 1.1547); }   /* the board n cells a side, each row shifted half a cell: 1.5n - 0.5 cells across */
+.hexswaprow { height: 48px; display: grid; place-items: center; flex: none; }   /* always this tall: the board never moves */
+.hexswap { min-width: 120px; visibility: hidden; } .hexswap.on { visibility: visible; }
 .hexmid { display: flex; align-items: stretch; gap: 8px; }
 .hexgoal { display: grid; place-items: center; font-weight: 900; font-size: 14px; border-radius: 999px; }
 .hexgoal.O { width: calc(var(--g) * .86); height: 22px; background: var(--o-soft); color: var(--o); }
@@ -1924,11 +1927,14 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 /* Districts: the map, each region in its leader's shade; spots on borders count for both sides */
 .districts { flex: 1; display: flex; flex-direction: column; gap: 8px; justify-content: center; min-height: 0; }
 .dmap { display: block; width: min(100%, 320px, calc((100dvh - 340px) * .84)); margin: 0 auto; }   /* (340: the bars, the tallies, the ties line and the status line) */
-.ctal .dbig { display: grid; font: 400 30px/1 'Luckiest Guy', 'Arial Black', sans-serif; color: var(--ink); padding-top: 2px; } .ctal .dbig > span { grid-area: 1 / 1; text-align: right; }   /* Districts: the regions each leads, big */
+.ctal .dbig { display: grid; font: 400 30px/1 'Luckiest Guy', 'Arial Black', sans-serif; color: var(--ink); padding-top: 2px; } .ctal .dbig > span { grid-area: 1 / 1; text-align: right; }   /* Districts: the regions each has locked, big */
 .dreg { fill: var(--paper); stroke: var(--ink); stroke-width: 1.2; stroke-linejoin: round; }
 .dreg.X { fill: var(--x-soft); } .dreg.O { fill: var(--o-soft); }
 .dreg.shift { animation: dshift .45s var(--t, 0ms) both; }
+.dreg.X.lock { fill: color-mix(in srgb, var(--x) 62%, var(--x-soft)); } .dreg.O.lock { fill: color-mix(in srgb, var(--o) 70%, var(--o-soft)); }   /* Districts: a locked region, darker in its leader's colour */
 .dreg.shift.fromnone { --f0: var(--paper); } .dreg.shift.fromX { --f0: var(--x-soft); } .dreg.shift.fromO { --f0: var(--o-soft); }
+.dreg.shift.fromXL { --f0: color-mix(in srgb, var(--x) 62%, var(--x-soft)); } .dreg.shift.fromOL { --f0: color-mix(in srgb, var(--o) 70%, var(--o-soft)); }
+.ctal .dbig small { grid-area: 1 / 2; align-self: end; font-size: 15px; color: var(--muted); padding-left: 1px; }   /* Districts: of the locks needed */
 @keyframes dshift { from { fill: var(--f0); } }
 .dspot .dhit { fill: transparent; }
 .dspot .dpc { fill: var(--spot); stroke: var(--ink); stroke-width: 1.3; }

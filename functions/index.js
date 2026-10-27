@@ -27,7 +27,7 @@
  *   leaderboard/{uid}      username, rating, record; only players with 5+ ranked games
  *   history/{uid}/{game}   one finished online game, from that player's side (that player and the admin only)
  *   oppStats/{uid}/{opp}   that player's record against one opponent (people with an account, never a bot; that player and the admin only)
- *   queue/match/{uid}      searching players (Find Match is one queue, 1 minute a turn)
+ *   queue/match/{uid}      searching players (Find Match is one queue, 30 seconds a turn; 60 in a game that needs it)
  *   active/{uid}           the matchmaking game a player is in
  *   games/{id}/pub         the public game: players, mode, status, state (JSON), result, final (JSON)
  *   games/{id}/sec         the hidden values (JSON): never readable by a phone
@@ -826,7 +826,7 @@ async function planBot(id, st, sec, bg, start, again) {
   return next;
 }
 // When the turn started on the phones: the turn's clock is set to begin it (its deadline less the limit).
-const turnStart = st => (E.clockDeadline(st.timer) ? E.clockDeadline(st.timer) - st.timer.limit * 1000 : now());
+const turnStart = st => (E.clockDeadline(st.timer) ? E.turnBegan(st.timer) : now());
 // After a move in a bot game: the bot's next move, when it is on the move now.
 async function afterBotChange(id, info) {
   const [bgs, gs] = await Promise.all([db.ref(`botGames/${id}`).get(), db.ref(`games/${id}`).get()]);
@@ -972,7 +972,7 @@ exports.testAlert = onCall(Object.assign({ secrets: BOUND_SECRETS }, CALL), asyn
 // One change to a game, run as a transaction on games/{id} (public and hidden parts together).
 // `step(rec, side, pub)` returns the engine's answer; on success the new record is written, the turn
 // clock started and, if the match is over, the result recorded afterwards.
-async function changeGame(id, uid, step, what) {   // what: the kind of change, for the match's log ('move', 'pick', 'reveal', 'start', 'timeout', 'resign', 'bot')
+async function changeGame(id, uid, step, what) {   // what: the kind of change, for the match's log ('move', 'pick', 'reveal', 'start', 'open', 'timeout', 'resign', 'bot')
   let out = { ok: false, reason: 'missing' }, over = false, info = null, who = null, end = null;
   const res = await db.ref(`games/${id}`).transaction(cur => {
     if (cur === null) { out = { ok: false, reason: 'missing' }; return cur; }   // (a first guess from an empty cache: retried with the real value)
@@ -1006,7 +1006,7 @@ async function changeGame(id, uid, step, what) {   // what: the kind of change, 
     if (!es.length) ev.push({ t, k: lw, s: who || undefined, seq: out.seq, src: 'srv' });
     if (lw === 'bot') ev.forEach(e => { e.bot = true; });
     if (end) ev.push({ t, k: 'end', w: end.w, why: end.why || undefined, resigned: end.resigned || undefined, src: 'srv' });
-  } else if (!['stale', 'early', 'missing'].includes(out.reason) && await rateOk('reject', uid || id, 20)) ev.push({ t, k: 'reject', s: who || undefined, what: lw, why: out.reason, src: 'srv' });   // (stale, early: the server's own timing checks, not a refusal of anyone's move; a loop of bad moves: logged 20 times a minute at most)
+  } else if (!['stale', 'early', 'missing', 'same'].includes(out.reason) && await rateOk('reject', uid || id, 20)) ev.push({ t, k: 'reject', s: who || undefined, what: lw, why: out.reason, src: 'srv' });   // (stale, early: the server's own timing checks, not a refusal of anyone's move; a loop of bad moves: logged 20 times a minute at most)
   await Promise.all([
     ev.length ? mlogSafe(ML.mmKey(id), ev) : null,
     res.committed && over ? finishGame(id).catch(e => logger.error('finishGame', id, e)) : null,
@@ -1024,7 +1024,8 @@ exports.move = onCall(CALL, async req => {
     return changeGame(id, uid, (rec, side) => E.applyOnlinePick(rec, side, i, card), 'pick');
   }
   if (d.kind === 'reveal') return changeGame(id, uid, (rec, side) => E.applyOnlineReveal(rec, side, i), 'reveal');   // Trivia: the question turned up (the turn goes on)
-  if (d.kind === 'start') return changeGame(id, uid, (rec, side) => E.applyOnlineStart(rec, side, i, now()), 'start');   // Headcount, Flash, Snapshot, Sky Hop, Scoop Stack, Pinball: Start (held to the square, the round or attempt timed from now; an attention game's round goes back with it; a timeout answers that round)
+  if (d.kind === 'start') return changeGame(id, uid, (rec, side) => E.applyOnlineStart(rec, side, i, now()), 'start');
+  if (d.kind === 'open') return changeGame(id, uid, (rec, side) => E.applyOnlineOpen(rec, side, i), 'open');   // a game with time of its own opened (runners, Sky Hop, Echo, Risky Rolls...): the turn takes its time and is held to the square   // Headcount, Flash, Snapshot, Sky Hop, Scoop Stack, Pinball: Start (held to the square, the round or attempt timed from now; an attention game's round goes back with it; a timeout answers that round)
   if (d.move === undefined) return { ok: false, reason: 'bad' };
   await runConfigNow();
   return changeGame(id, uid, (rec, side) => {
@@ -1035,7 +1036,7 @@ exports.move = onCall(CALL, async req => {
     const full = E.fullState(rec), sq = full.squares && full.squares[i];
     if (!sq) return { ok: false, reason: 'bad' };
     if (full.lock != null && full.lock !== i) return { ok: false, reason: 'locked' };   // (held to another square: as the engine refuses it, before anything else is asked of the move)
-    const t = full.timer, chk = E.onlineCheck(sq.mini, side, d.move, now(), t && t.limit && t.deadline != null ? t.deadline - t.limit * 1000 : null);
+    const t = full.timer, chk = E.onlineCheck(sq.mini, side, d.move, now(), t && t.limit && t.deadline != null ? E.turnBegan(t) : null);
     if (chk && chk.why) return { ok: false, reason: chk.why };
     return E.applyOnlineMove(rec, side, i, chk && chk.move !== undefined ? chk.move : d.move, seedRng(), { rep: d.rep });   // (rep: the mover's inputs before the move, checked and kept by the engine for the other phone's replay)
   }, 'move');

@@ -6,9 +6,9 @@ import { tune, tuneLive } from '../../core/tune.js';
 
 // Shelves: 7 shelves of 3 spots. A move puts your mark on an open spot; then a grey mark lands on a random
 // open spot (drawn as the move is made). Once every spot is filled, each player scores the shelves they
-// are on (up to 7); higher wins, and a tie goes to the player who did not open the square (the first mover
-// otherwise wins 99.6% of the squares a tie does not reset; this way, 51.7% to 48.3% between the
-// computer players, solved exactly). A square from before (6 shelves, ties reset) plays on as it was.
+// are on (up to 7); higher wins, and a tie is a draw (the square resets: a tie never goes to either player).
+// The first mover wins nearly every square that is not a draw (99.6% between the computer players, solved
+// exactly), so Shelves stays Admin only until it is rebalanced.
 export const SHELF = { n: 7, per: 3 };
 // A square's own (the admin's settings: shelves, spots a shelf, the computer's mistakes; SHELF without a type).
 // The shelves: from its cells.
@@ -31,23 +31,21 @@ export function shelfPick(pm, me, rng) {
 }
 export function create(type, rng) {
   const c = tuneLive(type);                                  // (the admin's settings: shelves, spots a shelf)
-  return { type, cells: new Array(c.n * c.per).fill(null), first: null, last: null };   // first: who opened the square (a tie goes to the other player)
+  return { type, cells: new Array(c.n * c.per).fill(null), last: null };
 }
 export function apply(mini, p, m, rng, idx) {   // a spot; then a grey mark on a random open one; once full, most shelves
   if (!Number.isInteger(m) || m < 0 || m >= mini.cells.length || mini.cells[m]) return { ok: false, reason: 'bad' };
   mini.cells[m] = p;
-  if (mini.first === null) mini.first = p;                 // (a square from before has no first: its ties reset)
   const g = randomEmpty(mini.cells, needRng(rng));
   if (g != null) mini.cells[g] = 'G';
   mini.last = { by: p, at: m, grey: g };
   if (mini.cells.includes(null)) return { ok: true, outcome: 'continue', note: 'mark' };
   const per = shelfCfg(mini).per, x = shelfOn(mini.cells, 'X', per), y = shelfOn(mini.cells, 'O', per);
-  if (x === y && mini.first) return { ok: true, outcome: 'win', note: 'tiebreak', winner: other(mini.first), counts: { X: x, O: y } };
-  if (x === y) return { ok: true, outcome: 'draw', note: 'tie' };
+  if (x === y) return { ok: true, outcome: 'draw', note: 'tie', counts: { X: x, O: y } };
   return { ok: true, outcome: 'win', note: 'full', winner: x > y ? 'X' : 'O', counts: { X: x, O: y } };
 }
 export function publicView(mini) {
-  return { type: 'shelves', cells: mini.cells.slice(), first: mini.first || null };   // (first: who opened it, for the tie)
+  return { type: 'shelves', cells: mini.cells.slice() };
 }
 export function randomMove(mini, p, rng, from, empties) {
   return from(empties(mini.cells, c => !c));

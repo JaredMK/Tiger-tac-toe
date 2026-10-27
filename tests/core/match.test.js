@@ -568,16 +568,16 @@ test('the computer prefers finishing a square it is close to over one it is far 
 
 // ---- the online turn clock: a random legal move on a timeout, a loss on the second in a row ----
 test('newTimer and the timer options', () => {
-  assert.deepEqual(L.TIMER_OPTIONS, [0, 60], 'a friend game: no limit or 1 minute');
-  assert.deepEqual([0, 60, 30, 180, 45, null].map(L.normTimer), [0, 60, 60, 60, 0, 0], 'an older 30 s or 3 min room becomes 1 minute');
-  const t = L.newTimer(60);
-  assert.deepEqual(t, { limit: 60, deadline: null, for: null, pausedAt: null, timeouts: { X: 0, O: 0 }, streak: { X: 0, O: 0 } });
+  assert.deepEqual(L.TIMER_OPTIONS, [0, 30], 'a friend game: no limit or 30 seconds');
+  assert.deepEqual([0, 30, 60, 180, 45, null].map(L.normTimer), [0, 30, 30, 30, 0, 0], 'an older 1 or 3 minute room becomes 30 seconds');
+  const t = L.newTimer(30);
+  assert.deepEqual(t, { limit: 30, deadline: null, for: null, pausedAt: null, timeouts: { X: 0, O: 0 }, streak: { X: 0, O: 0 } });
   assert.equal(L.newTimer(0).limit, 0);
   assert.equal(L.newTimer().limit, 0);
-  const st = L.newMatch(lcg(1), { mode: 'online', timer: 60 });
-  assert.equal(st.timer.limit, 60, 'an online match keeps the chosen limit');
-  assert.equal(L.newMatch(lcg(1), { mode: 'online', timer: 30 }).timer.limit, 60);
-  const two = L.newMatch(lcg(1), { mode: 'two', timer: 60 });
+  const st = L.newMatch(lcg(1), { mode: 'online', timer: 30 });
+  assert.equal(st.timer.limit, 30, 'an online match keeps the chosen limit');
+  assert.equal(L.newMatch(lcg(1), { mode: 'online', timer: 60 }).timer.limit, 30);
+  const two = L.newMatch(lcg(1), { mode: 'two', timer: 30 });
   assert.equal(two.timer.limit, 0, 'local matches have no clock');
   const bad = L.newMatch(lcg(1), { mode: 'online', timer: 45 });
   assert.equal(bad.timer.limit, 0, 'an unknown limit means no limit');
@@ -820,7 +820,7 @@ test('a new online match comes from the lobby settings and a rematch starts over
   const rec = L.newOnlineMatch(setup, lcg(9), 'abc');
   assert.ok(rec);
   assert.equal(rec.state.id, 'abc'); assert.equal(rec.state.seq, 0); assert.deepEqual(rec.state.recent, []);
-  assert.equal(rec.state.timer.limit, 60); assert.equal(rec.state.turn, 'X'); assert.equal(rec.state.moves, 0);
+  assert.equal(rec.state.timer.limit, 30); assert.equal(rec.state.turn, 'X'); assert.equal(rec.state.moves, 0);
   assert.ok(rec.state.squares.every(sq => ['ttt', 'wordle'].includes(sq.mini.type)));
   assert.deepEqual(rec.state.games, ['ttt', 'wordle']);
   assert.ok(!rec.state.setup, 'the names live in the room, not the record');

@@ -3,6 +3,7 @@
 export const info = { name: 'Risky Rolls',  hint: "Roll and bank. A repeated number loses this turn's points. First to 51 wins" };   // ('pig': its id in saved games, records and stats, from when it was called Pig)
 export const release = 'released';   // the default (the admin's dashboard can change it)
 export const minVersion = '1.0.0';   // the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
+export const turnSecs = 60;   // an online turn's time in this game (core/timer.js turnSecs): 60 seconds, against the match's 30
 export const category = 'luck';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Risky Rolls', play: 'Roll as many times as you dare, then bank your points. Roll a number you already rolled this turn and you lose them.', win: 'Bank {target} first.' };   // ('pig': its id from when it was called Pig)

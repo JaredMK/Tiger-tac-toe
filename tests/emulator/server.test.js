@@ -70,8 +70,8 @@ const denied = async (promise, what) => {
 
 // ---------- matches ----------
 // Two players search until both are in the same game. (An older page's queue and timer are ignored:
-// Find Match is one queue with 1 minute a turn.)
-async function pairUp(a, b, queue = 'match', timer = 60) {
+// Find Match is one queue with 30 seconds a turn.)
+async function pairUp(a, b, queue = 'match', timer = 30) {
   let ra = { status: 'searching' }, rb = { status: 'searching' };
   for (let k = 0; k < 20 && (ra.status !== 'matched' || rb.status !== 'matched'); k++) {
     [ra, rb] = await Promise.all([a.call('findMatch', { queue, timer }), b.call('findMatch', { queue, timer })]);
@@ -291,8 +291,8 @@ test('matchmaking: six players at once make three games, each player in exactly 
     assert.deepEqual(two.map(x => x[1]).sort(), ['O', 'X']);
     const pub = await get(`games/${id}/pub`);
     assert.deepEqual([pub.players.X.uid, pub.players.O.uid].sort(), two.map(x => x[0]).sort());
-    assert.equal(pub.mode, 'match'); assert.equal(pub.timer, 60, 'Find Match is always 1 minute a turn');
-    assert.equal(JSON.parse(pub.state).timer.limit, 60);
+    assert.equal(pub.mode, 'match'); assert.equal(pub.timer, 30, 'Find Match is always 30 seconds a turn');
+    assert.equal(JSON.parse(pub.state).timer.limit, 30);
   }
   for (const p of ps) await p.call('resign', { game: res.get(p.uid).game }).catch(() => {});
 });
@@ -344,15 +344,15 @@ test('matchmaking: Cancel leaves the queue; one queue whatever is asked; a guest
 });
 
 /* ===================================== server-run matches ===================================== */
-test('a Find Match game: all mini-games, one minute a turn, hidden values hidden, moves checked by the server', async () => {
+test('a Find Match game: all mini-games, 30 seconds a turn, hidden values hidden, moves checked by the server', async () => {
   const a = await player('Joe'), b = await player('Kim');
   const g = await pairUp(a, b);
   const pub = await g.X.read(`games/${g.id}/pub`);
-  assert.equal(pub.mode, 'match'); assert.equal(pub.timer, 60); assert.equal(pub.status, 'playing');
+  assert.equal(pub.mode, 'match'); assert.equal(pub.timer, 30); assert.equal(pub.status, 'playing');
   const st = JSON.parse(pub.state);
   assert.deepEqual(st.games.slice().sort(), E.releasedTypes((await get('releases')) || {}).sort(), 'every released mini-game on (the admin-only ones are not dealt by Find Match)');
-  assert.equal(st.timer.limit, 60);
-  assert.ok(st.timer.deadline > Date.now() + 60000, 'the first turn has its full minute, after the players\' intro');
+  assert.equal(st.timer.limit, 30);
+  assert.ok(st.timer.deadline > Date.now() + 30000, 'the first turn has its full 30 seconds, after the players\' intro');
   // hidden values: the phones cannot read the hidden node, and the public state has none of them
   await denied(g.X.read(`games/${g.id}/sec`), 'reading the hidden values');
   await denied(g.X.read(`games/${g.id}`), 'reading the whole game');
@@ -392,7 +392,7 @@ test('a Find Match game: all mini-games, one minute a turn, hidden values hidden
   assert.deepEqual(ent.rep, [[0, 'key', 'k=C'], [310, 'key', 'k=R'], [600, 'key', 'k=A'], [2100, 'key', 'k=T'], [2300, 'key', 'k=E'], [2600, 'enter']], 'the log on the entry');
   assert.equal(ent.m, 'CRATE', 'and the move itself');
   assert.deepEqual(s3.squares[3].mini.guesses[0].marks, ['g', 'g', 'g', 'x', 'g']);
-  assert.ok(s3.timer.deadline == null && E.clockDeadline(s3.timer) > Date.now() + 55000, 'a fresh minute for the next player, starting once their phone has played the move back (at the latest after the playback)');
+  assert.ok(s3.timer.deadline == null && E.clockDeadline(s3.timer) > Date.now() + 27000, 'a fresh 30 seconds for the next player, starting once their phone has played the move back (at the latest after the playback)');
   assert.equal((await g.O.call('move', { game: g.id, square: 3, move: 'CRANE', rep: 'nonsense' })).ok, true);   // (a bad log is dropped, the move stands)
   s3 = await gameState(g.id);
   assert.ok(!('rep' in s3.recent[s3.recent.length - 1]), 'a malformed log is left off the entry');
@@ -547,9 +547,9 @@ async function friendRoom(host, guest, setup) {
 }
 test('friend rooms: opened and joined through the server; only its two players read the room; nobody seats anyone, writes a match or lists the rooms (the forgery of a record is closed)', async () => {
   const host = await player('RoomHost'), guest = await player('RoomGuest'), stranger = await player('RoomStranger'), victim = await player('RoomVictim');
-  const code = await openRoom(host, { games: only('hilo', 'c4'), timer: 60, hostPick: 'X' });
+  const code = await openRoom(host, { games: only('hilo', 'c4'), timer: 30, hostPick: 'X' });
   const room = await host.read(`rooms/${code}`);
-  assert.deepEqual([room.host, room.status, room.players.X.uid, room.players.X.name, room.setup.timer, room.setup.hostSide, room.setup.games.hilo, room.setup.games.ttt], [host.uid, 'lobby', host.uid, 'RoomHost', 60, 'X', true, false]);
+  assert.deepEqual([room.host, room.status, room.players.X.uid, room.players.X.name, room.setup.timer, room.setup.hostSide, room.setup.games.hilo, room.setup.games.ttt], [host.uid, 'lobby', host.uid, 'RoomHost', 30, 'X', true, false]);
   await denied(stranger.read(`rooms/${code}`), 'someone not in the room reading it');
   await denied(stranger.read('rooms'), 'listing the rooms');
   await denied(stranger.write(`rooms/${code}/players/O`, { uid: stranger.uid, name: 'Me', joined: Date.now() }), 'taking a seat by hand');
@@ -662,7 +662,7 @@ test('friend rooms: Super Chaos in a room is the server\'s too (a move a request
 });
 test('friend rooms: the host\'s Random draws the sides each match; with both phones gone the server misses the turns, two in a row forfeit the match and close the room (no rematch)', async () => {
   const host = await player('RndHost'), guest = await player('RndGuest');
-  const code = await openRoom(host, { games: only('hilo'), timer: 60, hostPick: 'random' });
+  const code = await openRoom(host, { games: only('hilo'), timer: 30, hostPick: 'random' });
   assert.equal((await guest.call('joinRoom', { code, name: 'RndGuest' })).ok, true);
   assert.equal((await host.call('startRoom', { code })).ok, true);
   const room = await host.read(`rooms/${code}`), pub = await get(`games/${room.game}/pub`);
@@ -670,7 +670,7 @@ test('friend rooms: the host\'s Random draws the sides each match; with both pho
   const hostSide = pub.players.X.uid === host.uid ? 'X' : 'O';
   assert.deepEqual([pub.players[hostSide].uid, pub.players[E.other(hostSide)].uid], [host.uid, guest.uid]);
   assert.deepEqual([room.players[hostSide].uid, room.setup.hostSide], [host.uid, hostSide], "the room's seats follow the draw");
-  assert.equal(JSON.parse(pub.state).timer.limit, 60, "the room's timer");
+  assert.equal(JSON.parse(pub.state).timer.limit, 30, "the room's timer");
   let st = null;
   for (let k = 0; k < 6 && !(st && st.winner); k++) {                 // both phones closed: each turn runs out on the server alone
     const was = await gameState(room.game), missed = v => v.timer.timeouts.X + v.timer.timeouts.O;
@@ -703,10 +703,10 @@ test('clients: cross-play deals only the games on for both players\' platforms; 
   await put('releases/platform/ios/c4', false);                  // Four in a Row: on for the web, off for iOS
   try {
     const host = await player('ClientHost'), web = await player('ClientWeb'), ios = await player('ClientIos', { client: { v: E.CLIENT_VERSION, p: 'ios' } });
-    const both = await friendRoom(host, web, { games: only('hilo', 'c4'), timer: 60, hostPick: 'X' });
+    const both = await friendRoom(host, web, { games: only('hilo', 'c4'), timer: 30, hostPick: 'X' });
     assert.ok((await gameState(both.id)).games.includes('c4'), 'web and web: Four in a Row is dealt');
     await host.call('resign', { game: both.id }); await recorded(both.id);
-    const code = await openRoom(host, { games: only('hilo', 'c4'), timer: 60, hostPick: 'X' });
+    const code = await openRoom(host, { games: only('hilo', 'c4'), timer: 30, hostPick: 'X' });
     assert.equal((await ios.call('joinRoom', { code, name: 'ClientIos' })).ok, true);
     assert.equal((await get(`rooms/${code}/players/O/client`)).p, 'ios', 'the seat keeps its client');
     const st = await host.call('startRoom', { code });
@@ -727,7 +727,7 @@ test('clients: cross-play deals only the games on for both players\' platforms; 
 test('clients: a seat keeps its latest report (a client older than it was): the start deals for what the client is now, and an older client can tell which games of a match it lacks', async () => {
   const hostOpts = { client: { v: '0.9.0', p: 'web' } };         // a host running a client older than every game's minVersion (none is below 1.0.0)
   const host = await player('StaleHost', hostOpts), friend = await player('StaleFriend');
-  const code = await openRoom(host, { games: only('hilo', 'c4'), timer: 60, hostPick: 'X' });
+  const code = await openRoom(host, { games: only('hilo', 'c4'), timer: 30, hostPick: 'X' });
   assert.equal((await friend.call('joinRoom', { code, name: 'StaleFriend' })).ok, true);
   assert.equal((await get(`rooms/${code}/players/X/client`)).v, '0.9.0', 'the host\'s seat holds the client it opened with');
   assert.deepEqual(await host.call('startRoom', { code }), { ok: false, reason: 'games' }, 'no game both clients have: no match (never one with a game a player lacks)');
@@ -1163,12 +1163,12 @@ test('bots: the match is an ordinary one against an ordinary-looking, online acc
   const pres = await h.read(`gpresence/${id}`);
   assert.deepEqual([pres[botSide].online, pres[botSide].away], [true, false], 'the bot shows as online, never away');
   // its turn: a tick from the player makes the plan (from when the turn starts on the phone), not the move
-  await rewrite(id, full => { tttBoard(full); full.turn = botSide; full.lock = null; full.timer.deadline = Date.now() + 60000; full.timer.for = botSide; });
+  await rewrite(id, full => { tttBoard(full); full.turn = botSide; full.lock = null; full.timer.deadline = Date.now() + 30000; full.timer.for = botSide; });
   await patch(`botGames/${id}`, { next: null });               // (a bot playing X planned its first move on the board as it was dealt: not this one)
   const seq0 = (await gameState(id)).seq;
   const tTick = Date.now();
   await h.call('tick', { game: id });
-  const plan = (await get(`botGames/${id}`)).next, start = Math.max((await gameState(id)).timer.deadline - 60000, tTick);
+  const plan = (await get(`botGames/${id}`)).next, start = Math.max((await gameState(id)).timer.deadline - 30000, tTick);
   assert.ok(plan && plan.seq === seq0 && plan.due - start >= 1000 && plan.due - start <= B.MAX_THINK_MS + 2500, `it thinks a while first (the planning reads take a moment on the emulator) (${plan && plan.due - start} ms)`);
   assert.equal((await gameState(id)).seq, seq0, 'no move yet');
   assert.deepEqual(await other.call('tick', { game: id }), { ok: true }, 'someone else\'s tick: the same answer, nothing done');
@@ -1180,7 +1180,7 @@ test('bots: the match is an ordinary one against an ordinary-looking, online acc
   assert.equal(s1.seq, seq0 + 1, 'then it moves');
   assert.equal(s1.turn, r.side, 'and the turn passes');
   // the player away: the sweep plans the bot's move and makes it once due, before the clock runs out
-  await rewrite(id, full => { full.turn = botSide; full.lock = null; full.timer.deadline = Date.now() + 60000; full.timer.for = botSide; });
+  await rewrite(id, full => { full.turn = botSide; full.lock = null; full.timer.deadline = Date.now() + 30000; full.timer.for = botSide; });
   await patch(`botGames/${id}`, { next: null });
   const before = await gameState(id);
   await sweep();
@@ -1200,7 +1200,7 @@ test('bots: the match is an ordinary one against an ordinary-looking, online acc
     const owners = [null, 'X', 'O', 'O', 'X', 'X', 'X', 'O', 'O'];
     full.squares.forEach((sq, i) => { sq.owner = owners[i]; if (i) sq.mini = E.newMini('ttt', E.makeRng('m' + i)); });
     full.squares[0].mini = E.newMini('memory', E.makeRng('mem'));
-    full.turn = botSide; full.lock = null; full.pick = null; full.pickSq = null; full.timer.deadline = Date.now() + 60000; full.timer.for = botSide;
+    full.turn = botSide; full.lock = null; full.pick = null; full.pickSq = null; full.timer.deadline = Date.now() + 30000; full.timer.for = botSide;
   });
   await patch(`botGames/${id}`, { next: null });
   const m0 = await gameState(id);
@@ -1232,7 +1232,7 @@ test('bots: after a player\'s move, the bot\'s move is planned inside its own wi
   for (const type of E.TYPES) {
     await rewrite(id, full => {
       full.squares.forEach((sq, i) => { sq.owner = null; sq.mini = E.newMini(type, E.makeRng(type + i)); });
-      full.turn = botSide; full.lock = null; full.winner = null; full.timer.deadline = Date.now() + 60000; full.timer.for = botSide;
+      full.turn = botSide; full.lock = null; full.winner = null; full.timer.deadline = Date.now() + 30000; full.timer.for = botSide;
       full.seq = (full.seq || 0) + 100;                        // a move number of its own: a bot task queued for an earlier board finds it stale
     });
     await patch(`botGames/${id}`, { next: null, live: true });
@@ -1261,7 +1261,7 @@ test('bots: the result is recorded for both; the player\'s record as the admin c
       tttBoard(full);
       full.squares[0].owner = me; full.squares[1].owner = me;
       full.squares[2].mini.cells = [me, me, null, null, null, null, null, null, null];
-      full.turn = me; full.lock = null; full.timer.deadline = Date.now() + 60000; full.timer.for = me;
+      full.turn = me; full.lock = null; full.timer.deadline = Date.now() + 30000; full.timer.for = me;
     });
     assert.equal((await h.call('move', { game: id, square: 2, move: 2 })).ok, true);
     await recorded(id);
@@ -1523,7 +1523,7 @@ test('runners (Dash, Lane Rush): the difficulty config is public, the admin alon
   const seeds = {};
   await rewrite(g.id, full => {
     full.squares.forEach((sq, i) => { sq.owner = null; sq.mini = E.newMini('dash', E.makeRng('srv' + i)); });
-    full.turn = 'X'; full.lock = null; full.winner = null; full.timer.deadline = Date.now() + 45000; full.timer.for = 'X';   // (the turn began 15 s ago: a run of up to that long fits the clock)
+    full.turn = 'X'; full.lock = null; full.winner = null; full.timer.deadline = Date.now() + 15000; full.timer.for = 'X';   // (the turn began 15 s ago: a run of up to that long fits the clock)
     seeds.mini = JSON.parse(JSON.stringify(full.squares[4].mini));
   });
   const st = await gameState(g.id);
@@ -1536,7 +1536,7 @@ test('runners (Dash, Lane Rush): the difficulty config is public, the admin alon
   assert.deepEqual(await move('auto'), { ok: false, reason: 'auto' }, 'a timed-out run is the server\'s to make, not a phone\'s to claim');
   await rewrite(g.id, full => { full.timer.deadline = Date.now() + full.timer.limit * 1000; });
   assert.deepEqual(await move(real), { ok: false, reason: 'fast' }, 'the turn just begun: a run longer than it has lasted');
-  await rewrite(g.id, full => { full.timer.deadline = Date.now() + 45000; });
+  await rewrite(g.id, full => { full.timer.deadline = Date.now() + 15000; });
   const r = await move(real);
   assert.equal(r.ok, true, `the run, played through again from its inputs, in the time the turn has lasted (${JSON.stringify(r)})`);
   const after = await gameState(g.id);
@@ -1810,6 +1810,21 @@ test('Trivia over the server: a new question is face down (the question itself o
   assert.deepEqual([st.squares[4].mini.crossed, st.squares[4].mini.shown, st.squares[4].mini.last.fresh, st.lock, st.turn], [[wrong], true, true, null, 'O'], 'crossed out, still up, the turn passed');
   assert.equal((await g.O.call('move', { game: g.id, square: 4, kind: 'reveal' })).reason, 'shown', 'up already: nothing to reveal');
   assert.equal((await g.O.call('resign', { game: g.id })).ok, true);
+});
+
+test('turn time over the server: 30 s a turn; opening a 60 s game (a runner) gives the turn 60 s from its start and holds it there; a 30 s game or the other player changes nothing; the deadline sweep goes by it', async () => {
+  const a = await player('Turn_A'), b = await player('Turn_B'), g = await pairUp(a, b);
+  assert.equal((await gameState(g.id)).timer.limit, 30);
+  const t0 = Date.now();
+  await rewrite(g.id, full => { full.squares[4].owner = null; full.squares[4].mini = E.newMini('dash', E.makeRng('srv-d')); full.squares[2].owner = null; full.squares[2].mini = E.newMini('ttt', E.makeRng('t')); full.turn = 'X'; full.lock = null; full.lockBy = null; Object.assign(full.timer, { for: 'X', secs: null, startBy: null, deadline: t0 + 30000 }); });
+  assert.equal((await g.X.call('move', { game: g.id, square: 2, kind: 'open' })).reason, 'same', 'a 30 s game: the turn keeps its 30 s');
+  assert.equal((await g.O.call('move', { game: g.id, square: 4, kind: 'open' })).reason, 'turn', 'only the player on the move');
+  assert.equal((await g.X.call('move', { game: g.id, square: 4, kind: 'open' })).ok, true);
+  const st = await gameState(g.id);
+  assert.deepEqual([st.lock, st.lockBy, st.timer.secs, st.timer.deadline], [4, 'open', 60, t0 + 60000], 'held to the runner, 60 s from the turn\'s start');
+  assert.equal(await get(`games/${g.id}/dl`), t0 + 60000, 'the deadline sweep goes by it');
+  assert.equal((await g.X.call('move', { game: g.id, square: 2, move: 4 })).reason, 'locked', 'no move elsewhere once opened');
+  assert.equal((await g.X.call('move', { game: g.id, square: 4, kind: 'open' })).reason, 'same', 'once a turn');
 });
 
 test('Bullseye tuning (config/bulls): public to read, the admin alone sets it, within bounds; the server deals new Bullseye squares by it', async () => {

@@ -6,10 +6,12 @@ import { tuneLive } from '../../core/tune.js';
 
 // Districts: a map of 5 regions with 16 spots, each inside a region or on a border (counting for every
 // region it touches); every region is touched by an odd number of spots, at least 3. A move places a piece;
-// then a grey piece lands on a random empty spot (it counts for nobody), so each player places 4. Once the
-// map is full, a region goes to whoever has more pieces touching it (level: nobody's); most regions wins, and
-// a tie goes to the player who moved second here. Drawn as a Voronoi map from 5 seeds on a field 100 by 120;
-// spots in the regions, on the borders between two and where three meet.
+// then a grey piece lands on a random empty spot (it counts for nobody), so each player places 4. A region is
+// led by whoever has more pieces touching it (level: nobody's), and locks for its leader once the empty spots
+// touching it could not change that (the leader ahead by more than them all). The first to lock more than half
+// the regions (3 of 5) takes the square at once; a full map goes to whoever leads more regions, and a level
+// count is a draw (the square resets: a tie never goes to either player). Drawn as a Voronoi map from 5 seeds on
+// a field 100 by 120; spots in the regions, on the borders between two and where three meet.
 export const DIST = { w: 100, h: 120, regions: 5, minSpots: 15, maxSpots: 17, per: 4, gap: 11, clear: 6.5 };   // per: the spot count a multiple of it (a piece and a grey each move: as many pieces each); clear: how far a spot keeps from every region it does not count for (more than its drawn size)
 export const r1d = x => Math.round(x * 10) / 10 + 0;
 export function distClip(poly, a, b) {                                   // keep the part of poly closer to a than to b
@@ -81,7 +83,6 @@ export function distMap(src, opt) {                     // opt: the admin's sett
   }
   throw new Error('no map');
 }
-// The regions' counts and leaders: { X: [...], O: [...], empty: [...], lead: ['X'|'O'|null] }.
 // How far a point is from a region (0 inside it).
 export function distTo(p, poly) {
   let inside = false, d = Infinity;
@@ -93,15 +94,36 @@ export function distTo(p, poly) {
   }
   return inside ? 0 : d;
 }
+// The regions' counts, leaders and locks: { X: [...], O: [...], empty: [...], lead: ['X'|'O'|null], lock: ['X'|'O'|null],
+// locks: { X, O }, need }. A region locks for its leader once the empty spots touching it, all to the other side,
+// could not even level it; need: the locks that take the square (more than half the regions).
 export function distTally(map, who) {
-  const R = map.regions.length, out = { X: new Array(R).fill(0), O: new Array(R).fill(0), empty: new Array(R).fill(0), lead: new Array(R).fill(null) };
+  const R = map.regions.length, out = { X: new Array(R).fill(0), O: new Array(R).fill(0), empty: new Array(R).fill(0), lead: new Array(R).fill(null), lock: new Array(R).fill(null), locks: { X: 0, O: 0 }, need: distNeed(R) };
   map.spots.forEach((s, k) => { for (const r of s.r) { if (who[k] === 'X') out.X[r]++; else if (who[k] === 'O') out.O[r]++; else if (!who[k]) out.empty[r]++; } });   // (a grey counts for nobody)
-  for (let r = 0; r < R; r++) out.lead[r] = out.X[r] > out.O[r] ? 'X' : out.O[r] > out.X[r] ? 'O' : null;
+  for (let r = 0; r < R; r++) {
+    out.lead[r] = out.X[r] > out.O[r] ? 'X' : out.O[r] > out.X[r] ? 'O' : null;
+    out.lock[r] = out.X[r] > out.O[r] + out.empty[r] ? 'X' : out.O[r] > out.X[r] + out.empty[r] ? 'O' : null;
+    if (out.lock[r]) out.locks[out.lock[r]]++;
+  }
   return out;
 }
-// The computer's view of a position: a region locked counts whole, an open one by its lead against the spots left.
+export const distNeed = R => Math.floor(R / 2) + 1;
+// The result of a position: the first to lock more than half the regions takes it; a full map, whoever leads more
+// (level: a draw, and the square resets); else null (play on).
+export function distResult(map, who) {
+  const t = distTally(map, who);
+  if (t.locks.X >= t.need || t.locks.O >= t.need) return { outcome: 'win', note: 'locked', winner: t.locks.X >= t.need ? 'X' : 'O', counts: { X: t.locks.X, O: t.locks.O } };
+  if (who.includes(null)) return null;
+  const x = t.lead.filter(w => w === 'X').length, y = t.lead.filter(w => w === 'O').length;
+  if (x === y) return { outcome: 'draw', note: 'tie', counts: { X: x, O: y } };
+  return { outcome: 'win', note: 'full', winner: x > y ? 'X' : 'O', counts: { X: x, O: y } };
+}
+// The computer's view of a position: a region locked counts whole, an open one by its lead against the spots left;
+// enough locks to take the square, everything.
 export function distEval(map, who, me) {
   const t = distTally(map, who), o = other(me);
+  if (t.locks[me] >= t.need) return 100;
+  if (t.locks[o] >= t.need) return -100;
   let v = 0;
   for (let r = 0; r < map.regions.length; r++) {
     const m = t[me][r], th = t[o][r], e = t.empty[r];
@@ -116,8 +138,9 @@ export function distSearch(pm, me, rng) {                               // two m
     const a = who.slice(); a[k] = me;
     let worst = Infinity;
     const rest = a.map((w, j) => (w ? -1 : j)).filter(j => j >= 0);
-    if (!rest.length) worst = distEval(pm.map, a, me) * 10;
-    for (const j of rest) { const b = a.slice(); b[j] = o; const v = b.includes(null) ? distEval(pm.map, b, me) : distEval(pm.map, b, me) * 10; if (v < worst) worst = v; }
+    const done = distResult(pm.map, a);
+    if (done || !rest.length) worst = done && done.outcome === 'draw' ? 0 : distEval(pm.map, a, me) * 10;   // (decided by my move: no reply)
+    else for (const j of rest) { const b = a.slice(); b[j] = o; const r = distResult(pm.map, b), v = r && r.outcome === 'draw' ? 0 : r ? distEval(pm.map, b, me) * 10 : distEval(pm.map, b, me); if (v < worst) worst = v; }
     const v = worst + (rng ? rng() * 0.001 : 0);
     if (!best || v > best.v) best = { k, v, after: a };
   }
@@ -126,26 +149,23 @@ export function distSearch(pm, me, rng) {                               // two m
 export function create(type, rng) {
   const map = distMap(needRng(rng), tuneLive(type)); return { type, map, who: new Array(map.spots.length).fill(null), grey: true, last: null };
 }
-export function apply(mini, p, m, rng, idx) {   // a spot; once the map is full, most regions led
+export function apply(mini, p, m, rng, idx) {   // a spot, then a grey; the square is taken by locks, or judged once the map is full
   if (!Number.isInteger(m) || m < 0 || m >= mini.who.length || mini.who[m]) return { ok: false, reason: 'bad' };
   mini.who[m] = p;
-  if (!mini.first) mini.first = p;                        // who opened the square: a tie goes to the other player
   const g = mini.grey ? randomEmpty(mini.who, needRng(rng)) : null;   // (a square from before the grey pieces: none)
   if (g != null) mini.who[g] = 'G';
   mini.last = { by: p, spot: m, grey: g };
-  if (mini.who.includes(null)) return { ok: true, outcome: 'continue', note: 'place' };
-  const t = distTally(mini.map, mini.who), x = t.lead.filter(w => w === 'X').length, y = t.lead.filter(w => w === 'O').length;
-  if (x === y) return { ok: true, outcome: 'win', note: 'tiebreak', winner: other(mini.first), counts: { X: x, O: y } };
-  return { ok: true, outcome: 'win', note: 'full', winner: x > y ? 'X' : 'O', counts: { X: x, O: y } };
+  const r = distResult(mini.map, mini.who);
+  return r ? Object.assign({ ok: true }, r) : { ok: true, outcome: 'continue', note: 'place' };
 }
 export function publicView(mini) {
-  return { type: 'districts', map: mini.map, who: mini.who.slice(), first: mini.first || null };   // (first: who opened it, for the tie)
+  return { type: 'districts', map: mini.map, who: mini.who.slice() };
 }
 export function randomMove(mini, p, rng, from, empties) {
   return from(empties(mini.who, c => !c));
 }
 export function moveFlash(m, p, range, bjFrom, mini, flash) {
-  const l = mini.last; flash.dist = { spot: l.spot, grey: l.grey == null ? null : l.grey, lead: distTally(mini.map, mini.who).lead }; return;
+  const l = mini.last; const t = distTally(mini.map, mini.who); flash.dist = { spot: l.spot, grey: l.grey == null ? null : l.grey, lead: t.lead, lock: t.lock }; return;
 }
 export function flashMs(f, winLen, won) {
   return PLACE_MS.mark + (f.dist && f.dist.grey != null ? PLACE_MS.drop : 0) + PLACE_MS.hold + (won ? 900 : 0);

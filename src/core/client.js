@@ -8,7 +8,7 @@ import { GAMES } from '../games/index.js';
 // This code's version. The web page is always the latest (it is served from this commit); the app carries the version
 // it was built with, so bump this (major.minor.patch) whenever a change needs a newer client: a new mini-game (its
 // meta.js minVersion is then this), or a change to a game's moves or records an older client could not play.
-export const CLIENT_VERSION = '1.0.0';
+export const CLIENT_VERSION = '1.1.0';
 export const PLATFORMS = ['web', 'ios'];
 // A client that says nothing (a page from before versions) is the web page at the first version.
 export const BASE_CLIENT = Object.freeze({ v: '1.0.0', p: 'web' });

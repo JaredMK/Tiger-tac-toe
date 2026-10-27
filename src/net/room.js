@@ -108,7 +108,7 @@ export async function hostRoom(code, resume) {
     state.stats = null;                         // an online match: never recorded as a local one
     state.online = { role: 'host', code: '', me: 'X', joined: false, shownSeq: null, matchId: null, chaos: scMode() }; state.sc = null;   // (the room's mode: this device's choice to begin with; the code comes from the server)
     state.setup.mode = 'online'; state.screen = 'setup';
-    state.setup.timer = normTimer(state.setup.timer);           // an older 30 s or 3 min choice: 1 minute
+    state.setup.timer = normTimer(state.setup.timer);           // an older 1 or 3 minute choice: 30 seconds
   }
   setNet('connecting', resume ? `Reopening room ${state.online.code}…` : 'Opening the room…');
   commit();

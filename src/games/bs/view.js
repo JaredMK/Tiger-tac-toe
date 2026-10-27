@@ -1,6 +1,7 @@
 // Sea Battle: the screen, the miniature, the move's words and sounds, and the inputs.
 import { BS, bsN } from './rules.js';
-import { N, mv } from '../../ui/app.js';
+import { esc, mv, state } from '../../ui/app.js';
+import { playerName } from '../../core/match.js';
 
 // Sea Battle: the burst on a hit, a ship's part in its cell, and the card naming the ship being hunted.
 const HITFX = (() => {
@@ -48,7 +49,7 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
         }
         const hit = hits.includes(i), by = r === 'X' || r === 'O' ? r : null;   // (who fired the shot: its centre dot in their colour)
         const cls = hit ? ' bshit' : r ? ' miss' : '';
-        return `<button class="cell sea${cls}${anim === i ? ' flipin' : ''}" data-act="move" ${mv(i)} aria-label="Row ${r0} column ${c0}${hit ? ', hit' : r ? ', miss' : ''}${by ? ` (${N(by)})` : ''}"${r || locked ? ' disabled' : ''}>${hit ? HITFX : ''}${by ? `<i class="bsby ${by}"></i>` : ''}</button>`;
+        return `<button class="cell sea${cls}${anim === i ? ' flipin' : ''}" data-act="move" ${mv(i)} aria-label="Row ${r0} column ${c0}${hit ? ', hit' : r ? ', miss' : ''}${by ? ` (${esc(playerName(state, by))})` : ''}"${r || locked ? ' disabled' : ''}>${hit ? HITFX : ''}${by ? `<i class="bsby ${by}"></i>` : ''}</button>`;
       }).join('')}</div>${bsShipCard(mini, sunk ? sq.owner : null, sinking)}</div>`;
   return g;
 }

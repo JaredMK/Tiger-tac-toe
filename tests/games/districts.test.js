@@ -39,7 +39,9 @@ test('districts: after each move a grey piece lands on a random empty spot and c
       if (r.outcome === 'continue') { assert.ok(m.last.grey != null && m.last.grey !== at && m.who[m.last.grey] === 'G', 'a grey on another spot'); }
       p = E.other(p);
     } while (r.outcome === 'continue');
-    assert.equal(moves, 8, 'every spot filled after 8 moves');
+    assert.ok(moves <= 8, 'every spot filled after 8 moves at most (locks can decide it sooner)');
+    if (r.note === 'locked') { assert.ok(m.who.filter(w => w === 'X').length <= 4 && m.who.filter(w => w === 'O').length <= 4); continue; }
+    assert.equal(moves, 8);
     assert.equal(m.who.filter(w => w === 'X').length, 4); assert.equal(m.who.filter(w => w === 'O').length, 4); assert.equal(m.who.filter(w => w === 'G').length, 8);
     const t = E.distTally(m.map, m.who);
     for (let reg = 0; reg < 5; reg++) {
@@ -49,22 +51,69 @@ test('districts: after each move a grey piece lands on a random empty spot and c
   }
 });
 
-test('districts: most regions wins; a tie goes to the player who moved second in the square (whoever moved first)', () => {
+test('districts: a full map goes to whoever leads more regions; a level count is a draw (the square resets), never the second mover\'s', () => {
   const map = { regions: [[], [], [], [], []], spots: [{ r: [0] }, { r: [1] }, { r: [2] }, { r: [3] }, { r: [4] }, { r: [0] }, { r: [1] }, { r: [2] }] };
   for (const first of ['X', 'O']) {
     const sec = E.other(first);
     // first leads regions 0 and 1, the second 2 and 3, region 4 grey: 2 each
     const m = { type: 'districts', map, who: [first, first, sec, sec, 'G', 'G', 'G', null], grey: true, first, last: null };
     const r = E.applyMove(m, sec, 7, lcg(1));
-    assert.deepEqual([r.outcome, r.note, r.winner], ['win', 'tiebreak', sec], `${first} opened: the tie goes to ${sec}`);
+    assert.deepEqual([r.outcome, r.note, r.winner, r.counts], ['draw', 'tie', undefined, { X: 2, O: 2 }], `${first} opened: a draw`);
     const m2 = { type: 'districts', map, who: [first, first, sec, sec, first, 'G', 'G', null], grey: true, first, last: null };
     const r2 = E.applyMove(m2, sec, 7, lcg(1));
-    assert.deepEqual([r2.outcome, r2.note, r2.winner, r2.counts[first]], ['win', 'full', first, 3], 'otherwise most regions');
+    assert.deepEqual([r2.outcome, r2.winner, r2.counts[first]], ['win', first, 3], 'otherwise most regions');
   }
-  const fresh = E.newMini('districts', lcg(9)); E.applyMove(fresh, 'O', 0, lcg(2));
-  assert.equal(fresh.first, 'O', 'the square remembers who opened it');
-  E.applyMove(fresh, 'X', fresh.who.indexOf(null), lcg(3));
-  assert.equal(fresh.first, 'O');
+});
+
+test('districts: the reported bug: a region level at 3 against 3 is nobody\'s, and two regions each is a draw that resets the square in the match', () => {
+  // region 0: three X and three O (three greys besides); regions 1 and 2 X's, 3 and 4 O's
+  const map = { regions: [[], [], [], [], []], spots: [{ r: [0] }, { r: [0] }, { r: [0] }, { r: [0] }, { r: [0] }, { r: [0] }, { r: [0] }, { r: [0] }, { r: [0] }, { r: [1] }, { r: [2] }, { r: [3] }, { r: [4] }, { r: [1] }, { r: [2] }, { r: [3] }] };
+  const who = ['X', 'X', 'X', 'O', 'O', 'O', 'G', 'G', 'G', 'X', 'X', 'O', 'O', 'G', 'G', null];
+  const t = E.distTally(map, who);
+  assert.equal(t.lead[0], null, '3 against 3: nobody leads it'); assert.equal(t.lock[0], null);
+  const st = E.newMatch(lcg(4), { games: ['districts'] });
+  const sq = st.squares[4]; sq.mini = { type: 'districts', map, who: who.slice(), grey: true, last: null };
+  st.turn = 'O';                                                  // O's piece in region 3 makes it two regions each
+  const p = st.turn, r = E.playMove(st, 4, 15, lcg(5));
+  assert.equal(r.ok, true);
+  assert.equal(st.flash.kind, 'draw', 'level regions: a draw');
+  assert.equal(st.flash.note, 'tie'); assert.deepEqual(st.flash.counts, { X: 2, O: 2 });
+  assert.equal(st.squares[4].owner, null, 'nobody takes the square');
+  assert.ok(st.squares[4].mini !== sq.mini || st.squares[4].mini.who.every(w => w === null) || st.squares[4].mini.type !== 'districts', 'the square resets with a new mini-game');
+  assert.equal(st.flash.by, p);
+});
+
+test('districts: a region locks for its leader once the spots left touching it cannot change its leader; more than half the regions locked takes the square at once', () => {
+  const map = { regions: [[], [], [], [], []], spots: [{ r: [0] }, { r: [0] }, { r: [0] }, { r: [1] }, { r: [1] }, { r: [1] }, { r: [2] }, { r: [2] }, { r: [2] }, { r: [3] }, { r: [3] }, { r: [3] }, { r: [4] }, { r: [4] }, { r: [4] }, { r: [0, 1] }] };
+  const w = new Array(16).fill(null);
+  w[0] = 'X'; w[1] = 'X';                                         // region 0: X 2, O 0, empty 2 (spot 2 and the border 15): not yet
+  let t = E.distTally(map, w);
+  assert.equal(t.lead[0], 'X'); assert.equal(t.lock[0], null, '2 against 0 with 2 empty: it could still be levelled');
+  w[2] = 'G';
+  t = E.distTally(map, w);
+  assert.equal(t.lock[0], 'X', '2 against 0 with 1 empty: X keeps it whatever'); assert.equal(t.locks.X, 1); assert.equal(t.need, 3);
+  w[3] = 'O'; w[4] = 'O'; w[5] = 'G'; w[15] = 'X';                // region 1: O 2, X 1 (the border), empty 0: O's
+  t = E.distTally(map, w);
+  assert.deepEqual([t.lock[0], t.lock[1]], ['X', 'O']);
+  assert.equal(E.distResult(map, w), null, 'one lock each: play on');
+  // X locks a second and a third region: the square, at once, with spots still open
+  w[6] = 'X'; w[7] = 'X'; w[8] = 'G'; w[9] = 'X';
+  const m = { type: 'districts', map, who: w.slice(), grey: false, last: null };
+  const r = E.applyMove(m, 'X', 10, lcg(2));                     // region 3: X 2, empty 1 (spot 11): locked
+  assert.deepEqual([r.outcome, r.note, r.winner, r.counts], ['win', 'locked', 'X', { X: 3, O: 1 }]);
+  assert.ok(m.who.includes(null), 'decided before the map is full');
+  // the same for O, whoever moves: a grey can complete a lock too
+  const flip = w.map(c => (c === 'X' ? 'O' : c === 'O' ? 'X' : c)), m2 = { type: 'districts', map, who: flip, grey: false, last: null };
+  assert.deepEqual(E.applyMove(m2, 'O', 10, lcg(2)).winner, 'O');
+});
+
+test('districts: the computer takes a third lock when it can, and Hard sees a lock the other side is about to make', () => {
+  const map = { regions: [[], [], [], [], []], spots: [{ r: [0] }, { r: [0] }, { r: [0] }, { r: [1] }, { r: [1] }, { r: [1] }, { r: [2] }, { r: [2] }, { r: [2] }, { r: [3] }, { r: [3] }, { r: [3] }, { r: [4] }, { r: [4] }, { r: [4] }, { r: [0, 1] }] };
+  const who = ['X', 'X', 'G', 'X', 'X', 'G', 'O', 'O', 'G', 'X', null, null, 'O', null, null, 'G'];
+  const pm = { type: 'districts', map, who, grey: true };
+  assert.equal(E.distTally(map, who).locks.X, 2);
+  const n = E.distSearch(pm, 'X', null), h = E.localBest(pm, 'X', lcg(1), {}, { level: 'hard', until: null });
+  for (const k of [n.k, h.move]) { const a = who.slice(); a[k] = 'X'; assert.equal(E.distResult(map, a) && E.distResult(map, a).winner, 'X', `the lock: spot ${k}`); }
 });
 
 test('districts: a square from before the grey pieces plays on as it was (no grey)', () => {
@@ -96,8 +145,8 @@ test('districts: the computer looks two moves ahead on the regions still in play
   const m = E.newMini('districts', lcg(4)), pm = E.publicMini(m);
   const b = E.distSearch(pm, 'X', null);
   assert.ok(Number.isInteger(b.k) && !m.who[b.k]);
-  const { n, owner } = cpuSquare('districts', 31);
-  assert.ok(owner && n === m.map.spots.length || owner, `decided (${n} moves)`);
+  const { n, kind } = cpuSquare('districts', 31);
+  assert.ok(['claim', 'match', 'draw'].includes(kind) && n <= 8, `decided (${n} moves: ${kind})`);
 });
 
 /* ---------- the admin's Mini-game Settings ---------- */
@@ -130,9 +179,8 @@ test('districts: Hard searches the greys too and solves the last moves: a forced
   const hard = { level: 'hard', until: null };
   const m = E.newMini('districts', E.makeRng('f20'));
   assert.equal(m.map.spots.length, 16);
-  m.who = '..OG.G.X.G.O..GX'.split('').map(c => (c === '.' ? null : c)); m.first = 'X';
+  m.who = '..OG.G.X.G.O..GX'.split('').map(c => (c === '.' ? null : c));
   const pm = E.publicMini(m);
-  assert.equal(pm.first, 'X', 'the public view says who opened the square (the tie)');
   assert.equal(E.distSearch(pm, 'X', null).k, 12, 'Normal');
   const b = E.localBest(pm, 'X', lcg(1), {}, hard);
   assert.equal(b.move, 0, 'Hard: the spot that wins the square whatever the greys do');

@@ -1,10 +1,10 @@
 // Districts: its names, its "?" explainer, its icon and its release default.
 
-export const info = { name: 'Districts',    hint: 'Place pieces. Lead the most regions when the map is full' };
+export const info = { name: 'Districts',    hint: 'Place pieces. Lock more than half the regions' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
-export const minVersion = '1.0.0';   // the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
+export const minVersion = '1.1.0';   // the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
 export const category = 'brain';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
-export const explainer = { name: 'Districts', play: 'Place a piece. It counts in every region it touches. A grey piece lands somewhere after each move.', win: 'Lead in the most regions when the map is full.' };
+export const explainer = { name: 'Districts', play: 'Place a piece. It counts in every region it touches. A grey piece lands somewhere after each move. A region locks, darker, once the spots left can\'t change its leader.', win: 'Lock more than half the regions first, or lead the most when the map is full. Level is a draw.' };
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round"><path d="M3 3h18v18H3z"/><path d="M3 11l7-1.5L12 3M10 9.5l3 6.5-10 2M13 16l8-3M10 9.5l11-1"/><circle cx="10" cy="9.5" r="2.2" fill="currentColor" stroke="none"/></svg>';
 // Its settings (the admin's Mini-game Settings; core/tune.js): the map's regions and spots, dealt into each square (its map).
 export const TUNE = [

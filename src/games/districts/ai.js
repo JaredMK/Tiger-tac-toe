@@ -18,13 +18,13 @@ export function best(pm, me, rng, style, ctx) {
 // Spots that touch the same regions are alike, so a position is how many of each kind are X's, O's, grey
 // and empty (the region tallies kept as the search goes). Every kind for the mover, then every kind the
 // grey could land on (weighted by its empty spots), the other player's reply, its grey, and so on, with
-// the position's eval at the leaves (distEval's reckoning) and the rule's own result once the map is full
-// (most regions; the tie to whoever did not open the square); a memo of the positions met. The last moves
-// are solved to the end, the opening two or three moves deep, deeper while the clock allows.
+// the position's eval at the leaves (distEval's reckoning) and the rule's own result once decided (more than
+// half the regions locked; a full map, most regions led, level a draw); a memo of the positions met. The last
+// moves are solved to the end, the opening two or three moves deep, deeper while the clock allows.
 const FULL = 8, MID = 12;                                        // spots empty at most for the square to be solved to the end; for three moves deep (else two)
 export function distExpecti(pm, me, until, rng) {
   const map = pm.map, who = pm.who, o = other(me), R = map.regions.length, grey = pm.grey !== false;
-  const first = pm.first || me;                                  // (who opened it: me, when I am opening it now)
+  const need = Math.floor(R / 2) + 1;                            // the locks that take the square
   const kinds = [], of = {};                                     // the kinds of spot: the regions touched
   map.spots.forEach((s, k) => { const key = s.r.join(','); if (of[key] == null) { of[key] = kinds.length; kinds.push({ r: s.r, spots: [], x: 0, o: 0, e: 0 }); } const g = kinds[of[key]]; g.spots.push(k); if (who[k] === me) g.x++; else if (who[k] === o) g.o++; else if (!who[k]) g.e++; });
   const G = kinds.length, tx = new Array(R).fill(0), to = new Array(R).fill(0), te = new Array(R).fill(0);   // the tallies: mine, theirs, empty, by region
@@ -33,11 +33,13 @@ export function distExpecti(pm, me, until, rng) {
   const put = (g, side, d) => { const k = kinds[g]; k.e -= d; if (side === 1) k.x += d; else if (side === 2) k.o += d; for (const r of k.r) { te[r] -= d; if (side === 1) tx[r] += d; else if (side === 2) to[r] += d; } };
   let nodes = 0, out = false;
   const tick = () => { if (until && (++nodes & 255) === 0 && until() <= 0) out = true; };
-  const final = () => { let x = 0, y = 0; for (let r = 0; r < R; r++) { if (tx[r] > to[r]) x++; else if (to[r] > tx[r]) y++; } return x > y ? 1 : y > x ? -1 : other(first) === me ? 1 : -1; };
+  const final = () => { let x = 0, y = 0; for (let r = 0; r < R; r++) { if (tx[r] > to[r]) x++; else if (to[r] > tx[r]) y++; } return x > y ? 1 : y > x ? -1 : 0; };   // (level: a draw)
+  const locked = () => { let x = 0, y = 0; for (let r = 0; r < R; r++) { if (tx[r] > to[r] + te[r]) x++; else if (to[r] > tx[r] + te[r]) y++; } return x >= need ? 1 : y >= need ? -1 : 0; };   // the square taken by locks: 1 mine, -1 theirs
   const leaf = () => { let v = 0; for (let r = 0; r < R; r++) { const m = tx[r], th = to[r], e = te[r]; v += m > th + e ? 1 : th > m + e ? -1 : 0.6 * (m - th) / (e + 1); } return Math.max(-0.9, Math.min(0.9, v / R)); };
   const keyOf = () => { let k = ''; for (const g of kinds) k += String.fromCharCode(40 + g.x * 100 + g.o * 10 + g.e); return k; };
   const memo = new Map();
   const node = (p, depth, e) => {                                // the value for me, p to move, e spots empty
+    const lk = locked(); if (lk) return lk;
     if (!e) return final();
     if (depth === 0) return leaf();
     const key = keyOf() + p + depth;
