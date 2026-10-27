@@ -148,7 +148,12 @@ test('rules: a phone cannot write ratings, records, profiles, usernames, the lea
   await denied(p.write(`profiles/${p.uid}/wins`, 50), 'your public profile');
 });
 
-test('email verification: an email-and-password account proves its address before a username, Find Match or hosting ({ verify: true } until then); a guest still joins a room', async () => {
+test('email verification: an email-and-password account made after the cutoff proves its address before a username, Find Match or hosting ({ verify: true } until then); one made before it is grandfathered; a guest still joins a room', async () => {
+  await put('config/verify/since', null);
+  const old = await player(null, { noName: true, unverified: true });                    // made before any cutoff (production's accounts before the release)
+  assert.deepEqual(await old.call('claimUsername', { username: 'Oldtimer' }), { ok: true, username: 'Oldtimer' }, 'no cutoff yet: every account is grandfathered');
+  const older = await player(null, { noName: true, unverified: true });
+  await wait(1100); await put('config/verify/since', Date.now()); await wait(1100);     // the cutoff (the release's deploy, scripts/set-releases.js verify1)
   const p = await player(null, { noName: true, unverified: true });
   const refused = (promise, what) => assert.rejects(promise, e => /failed-precondition/.test(String(e.code)) && !!(e.details && e.details.verify === true) && /Verify your email/.test(String(e.message)), `${what} should ask for the email to be verified`);
   await refused(p.call('claimUsername', { username: 'Unproved' }), 'a username');
@@ -163,6 +168,10 @@ test('email verification: an email-and-password account proves its address befor
   assert.deepEqual(await p.call('claimUsername', { username: 'Unproved' }), { ok: true, username: 'Unproved' });
   assert.equal((await p.call('findMatch', {})).status, 'searching');
   await p.call('cancelSearch', {});
+  assert.deepEqual(await older.call('claimUsername', { username: 'Older_One' }), { ok: true, username: 'Older_One' }, 'an unproved account from before the cutoff: grandfathered, as if verified');
+  assert.equal((await older.call('findMatch', {})).status, 'searching');
+  await older.call('cancelSearch', {});
+  await put('config/verify/since', null);
 });
 
 test('public profiles: users/{uid}, history and oppStats are the owner\'s to read; profiles/{uid} is the public part, kept in step by the server after every write; a phone never writes it', async () => {

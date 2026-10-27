@@ -16,6 +16,10 @@ const SETS = [
 const TUNE_SETS = [
   { id: 'tune1', type: 'bowling', set: { target: 35 } },   // Bowling's pins to win: 35 (the game reads it: bowlTarget)
 ];
+// Database values set by a request, each once (its mark in meta/config): the value, or a function giving it at that moment.
+const CONFIG_SETS = [
+  { id: 'verify1', path: 'config/verify/since', value: () => Date.now() },   // email verification's cutoff: accounts made before this deploy are grandfathered (production: the release that brings verification in)
+];
 (async () => {
   admin.initializeApp({ projectId: PROJECT, databaseURL: `https://${PROJECT}-default-rtdb.firebaseio.com` });
   const db = admin.database();
@@ -30,6 +34,13 @@ const TUNE_SETS = [
     if ((await db.ref(mark).get()).val()) { console.log(`Settings set ${id}: applied already.`); continue; }
     await db.ref().update(Object.assign(Object.fromEntries(Object.entries(set).map(([k, v]) => [`config/tune/${type}/${k}`, v])), { [mark]: { at: Date.now() } }));
     console.log(`Settings set ${id}: ${type} ${Object.entries(set).map(([k, v]) => `${k} ${v}`).join(', ')}.`);
+  }
+  for (const { id, path: at, value } of CONFIG_SETS) {
+    const mark = `meta/config/${id}`;
+    if ((await db.ref(mark).get()).val()) { console.log(`Config set ${id}: applied already.`); continue; }
+    const v = typeof value === 'function' ? value() : value;
+    await db.ref().update({ [at]: v, [mark]: { at: Date.now() } });
+    console.log(`Config set ${id}: ${at} = ${JSON.stringify(v)}.`);
   }
   await admin.app().delete();
 })().catch(e => { console.log('::error::' + e.message); process.exit(1); });

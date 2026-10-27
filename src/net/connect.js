@@ -1,6 +1,6 @@
 // The connection: the Firebase project's config, the SDK fetched on first use, the server's time and
 // its callable functions.
-import { needVerify, onAuthUser, redirectPending } from './accounts.js';
+import { needVerify, onAuthUser, redirectPending, setVerifySince } from './accounts.js';
 import { setFindOn } from './matchmaking.js';
 import { NATIVE, clientInfo } from './platform.js';
 import { setReleases } from './releases.js';
@@ -66,6 +66,7 @@ export function loadFirebase() {
     m.onValue(m.ref(db, '.info/serverTimeOffset'), s => { serverOffset = s.val() || 0; });
     m.onValue(m.ref(db, '.info/connected'), s => onConnected(!!s.val()));
     m.onValue(m.ref(db, 'features/findMatch'), s => setFindOn(s.val() === true), () => {});
+    m.onValue(m.ref(db, 'config/verify/since'), s => setVerifySince(s.val()), () => {});   // (email verification's cutoff: accounts made before it are grandfathered, accounts.js)
     m.onValue(m.ref(db, 'releases'), s => setReleases(s.val() || {}), () => {});
     if (!mock) { onAuthUser(f.auth.currentUser); authM.onAuthStateChanged(f.auth, u => onAuthUser(u)); }
     return fb;

@@ -19,7 +19,7 @@ import { attemptMove, setTapEl, tapEl } from '../net/moves.js';
 import { reactCooling, rx, sendReact } from '../net/reactions.js';
 import { scMode, scPicked, setMode, visibleTypes } from '../net/releases.js';
 import {
-  challengeFriend, dbSetup, hostRoom, isHost, joinCode, joinName, joinRoom, leaveLobby, leaveLoses,
+  dbSetup, hostRoom, isHost, joinCode, joinName, joinRoom, leaveLobby, leaveLoses,
   leaveRoom, lockMine, mySide, pinned, remoteTurn, quitMatch, rematchCancel, rematchOnline, room, setJoinCode, setJoinName,
   setNet, shareRoom, copyInvite, startOnline, validCode
 } from '../net/room.js';
@@ -268,10 +268,6 @@ export function init() {
       setAdvOpen(false);
       if (!loggedIn()) { needAccount('host'); return; }
       hostRoom(null, false);
-    } else if (act === 'challenge') {             // the main menu: Challenge a friend: a room hosted and its invite shared at once (an account, as hosting)
-      setAdvOpen(false);
-      if (!loggedIn()) { needAccount('challenge'); return; }
-      challengeFriend();
     } else if (act === 'share-result') {          // the win screen: the result card, through the share sheet (ui/sharecard.js)
       shareResult();
     } else if (act === 'host-retry') {

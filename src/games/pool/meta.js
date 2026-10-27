@@ -1,10 +1,10 @@
 // Pool: its names, its "?" explainer, its icon and its release default.
 
-export const info = { name: 'Pool',         hint: 'Sink two of your balls. The black ball loses' };
+export const info = { name: 'Pool',         hint: 'Sink all your balls. The black ball loses' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
 export const minVersion = '1.0.0';   // the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
 export const category = 'skill';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
-export const explainer = { name: 'Pool', play: 'Drag to aim and shoot. Sink your own ball to go again.', win: 'Sink two of your balls first. Sink the black ball and you lose.' };
+export const explainer = { name: 'Pool', play: 'Drag to aim and shoot. Sink your own ball to go again. Sink the white and one of your sunk balls comes back.', win: 'Sink all your balls first. Sink the black ball and you lose.' };
 // Its settings (the admin's Mini-game Settings; core/tune.js): dealt into each square; the shots' simulation reads them (physics.js: physOpt).
 export const TUNE = [
   { k: 'vMax', label: 'Full-power speed (units/s)', def: 300, min: 150, max: 360, step: 10, group: 'Rules' },

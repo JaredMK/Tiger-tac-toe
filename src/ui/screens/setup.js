@@ -66,7 +66,7 @@ export function renderSetup() {
     const C = normCpu(s), c1 = C.pick !== 'random' ? C.pick : null, c2 = c1 ? other(c1) : null, you = (loggedIn() && acct.profile.username) || 'You';
     const pick = v => `<button class="seg${v === 'random' ? '' : ' ' + v}${C.pick === v ? ' on' : ''}" data-act="cside" data-side="${v}" aria-pressed="${C.pick === v}">${v === 'random' ? 'Random' : v}</button>`;
     return `<div class="vscpu"><div class="vsme">${face(c1)}<b>${esc(you)}</b></div><i class="vsv" aria-hidden="true">vs</i><div class="vsme">${face(c2)}<b>${CPU_NAME}</b></div></div>
-    <div class="timerrow" role="group" aria-label="Your side"><span>Your side${C.pick === 'random' ? ' · drawn every match' : ''}</span>${pick('X')}${pick('O')}${pick('random')}</div>
+    <div class="timerrow" role="group" aria-label="You play as"><span>You play as:</span>${pick('X')}${pick('O')}${pick('random')}</div>
     <div class="timerrow" role="group" aria-label="Difficulty"><span>Difficulty</span>${LEVELS.map(v => `<button class="seg${C.level === v ? ' on' : ''}" data-act="clevel" data-v="${v}" aria-pressed="${C.level === v}">${LEVEL_NAME[v]}</button>`).join('')}</div>`;
   };
   return `<main class="scr setup">

@@ -157,11 +157,24 @@ function needLogin(req) {
 }
 // An account let into what needs one (Find Match, hosting, the username, the records): an email-and-password account
 // must have proved its address (Google's and Apple's are proved by the provider). Refused with { verify: true }: the
-// page shows "Verify your email" (src/net/accounts.js).
+// page shows "Verify your email" (src/net/accounts.js). Accounts made before the cutoff are grandfathered: treated as
+// verified (config/verify/since, ms, set once per environment by its deploy, scripts/set-releases.js: on production, the
+// release that brought verification in). No cutoff yet: every account is from before it.
 const passwordUnverified = t => !!(t && t.firebase && t.firebase.sign_in_provider === 'password' && t.email_verified !== true);
-function needAccount(req) {
+let sinceAt = 0, sinceNow = null;
+async function verifySince() {
+  if (now() - sinceAt > 20000 || process.env.FUNCTIONS_EMULATOR === 'true') { const v = (await db.ref('config/verify/since').get()).val(); sinceNow = Number.isFinite(v) ? v : null; sinceAt = now(); }   // (the emulator: afresh, its tests change it)
+  return sinceNow;
+}
+async function grandfathered(uid) {
+  const since = await verifySince();
+  if (since == null) return true;
+  try { const made = Date.parse((await admin.auth().getUser(uid)).metadata.creationTime); return Number.isFinite(made) && made < since; }
+  catch (e) { return false; }
+}
+async function needAccount(req) {
   const uid = needLogin(req);
-  if (passwordUnverified(req.auth.token)) throw new HttpsError('failed-precondition', 'Verify your email first.', { verify: true });
+  if (passwordUnverified(req.auth.token) && !(await grandfathered(uid))) throw new HttpsError('failed-precondition', 'Verify your email first.', { verify: true });
   return uid;
 }
 // The client that sent a call (its version and platform: src/core/client.js, src/net/connect.js call), and the admin's oldest
@@ -239,7 +252,7 @@ exports.stagingAccess = callable(CALL, async req => {
   if (!t || (t.firebase && t.firebase.sign_in_provider === 'anonymous')) return { ok: false, reason: 'login' };
   if (t.admin === true || t.staging === true) return { ok: true };
   if (!(await allowed(t.email))) return { ok: false, reason: 'denied' };
-  if (t.email_verified !== true) return { ok: false, reason: 'unverified' };   // (an address on the list is proved before it gets in)
+  if (t.email_verified !== true && !(await grandfathered(req.auth.uid))) return { ok: false, reason: 'unverified' };   // (an address on the list is proved before it gets in, unless its account is from before the cutoff)
   await setStagingFlag(req.auth.uid, true);
   return { ok: true, refresh: true };
 });
@@ -314,7 +327,7 @@ exports.devlog = onCall(CALL, async req => {
 
 /* ===================== accounts ===================== */
 exports.claimUsername = onCall(CALL, async req => {
-  const uid = needAccount(req);
+  const uid = await needAccount(req);
   const name = String((req.data && req.data.username) || '').trim();
   const problem = R.usernameProblem(name);
   if (problem) return { ok: false, reason: problem };
@@ -398,7 +411,7 @@ exports.deleteAccount = onCall(CALL, async req => {
 // and once the player's own randomized wait is over (40 to 70 seconds by default), a free bot is paired
 // with them (when bots are on). Anyone else searching meanwhile is paired with them as usual first.
 exports.findMatch = onCall(Object.assign({ secrets: BOUND_SECRETS }, CALL), async req => {
-  const uid = needAccount(req), client = await needCurrent(req);
+  const uid = await needAccount(req), client = await needCurrent(req);
   const isAdmin = !!(req.auth.token && req.auth.token.admin === true);
   const key = R.queueKey(req.data && req.data.mode, SC_OK());   // Classic (the Super Chaos queue: kept as code, for the tests)
   const prof = (await db.ref(`users/${uid}`).get()).val();
@@ -1139,7 +1152,7 @@ function historyRecord(mode, side, them, st, final, at, rating) {
 // to the player. localStats/{uid}: the record (and by side: sides/X, sides/O) and squares won and lost per mini-game; localHistory/{uid}:
 // the match, its final board included, as in the game history.
 exports.recordLocal = onCall(CALL, async req => {
-  const uid = needAccount(req);
+  const uid = await needAccount(req);
   const rep = R.checkLocal(req.data, E.TYPES.concat(E.OLD_TYPES), E.mainResult, E.majorityResult);
   if (!rep) throw new HttpsError('invalid-argument', 'Not a match.');
   if (!(await db.ref(`users/${uid}/username`).get()).val()) throw new HttpsError('failed-precondition', 'Pick a username first.');
@@ -1214,7 +1227,7 @@ const roomSide = (room, uid) => (room && room.players ? ['X', 'O'].find(s => roo
 // A player with a username always plays a friend room under it (no name of their own choosing); a guest without one names themselves.
 async function usernameOf(uid) { try { return (await db.ref(`users/${uid}/username`).get()).val() || null; } catch (e) { return null; } }
 exports.openRoom = onCall(CALL, async req => {
-  const uid = needAccount(req), d = req.data || {}, t = now(), client = await needCurrent(req);   // hosting needs an account (as the page asks before Host)
+  const uid = await needAccount(req), d = req.data || {}, t = now(), client = await needCurrent(req);   // hosting needs an account (as the page asks before Host)
   const admin = !!(req.auth.token && req.auth.token.admin === true);
   const side = d.side === 'O' ? 'O' : 'X', name = roomName(await usernameOf(uid) || d.name, side);
   const setup = Object.assign(roomSetupOf(d.setup, await releasesNow(), admin), { hostSide: side });

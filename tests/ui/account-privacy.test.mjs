@@ -14,7 +14,7 @@ const { renderMenu } = await import('../../src/ui/screens/menu.js');
 const { renderLogin, renderVerify } = await import('../../src/ui/screens/account.js');
 const { renderProfile, setProf } = await import('../../src/ui/screens/profile.js');
 const { renderHowTo } = await import('../../src/ui/explainer.js');
-const { acct, askDelete, cancelDelete, delState, unverified } = await import('../../src/net/accounts.js');
+const { acct, askDelete, cancelDelete, delState, grandfathered, setVerifySince, unverified } = await import('../../src/net/accounts.js');
 const A = await import('../../src/net/accounts.js');
 const { state } = await import('../../src/ui/app.js');
 
@@ -69,4 +69,17 @@ test("someone else's profile: their public record, no game history, no opponents
   assert.match(html, /<p class="hint center ppriv">Game history and opponents are private\.<\/p>/);
   for (const s of ['prof-hist', 'del-account', 'logout', 'Top opponents', 'ptabs']) assert.doesNotMatch(html, new RegExp(s), s);
   acct.user = null; acct.profile = null; setProf(null);
+});
+
+test('email verification: accounts made before the cutoff (config/verify/since) are grandfathered; with no cutoff set, every account is', () => {
+  const made = iso => ({ metadata: { creationTime: new Date(iso).toUTCString() } });
+  setVerifySince(null);
+  assert.equal(grandfathered(made('2026-10-01')), true, 'no cutoff yet');
+  setVerifySince(Date.parse('2026-11-01T00:00:00Z'));
+  assert.equal(grandfathered(made('2026-10-31T23:59:00Z')), true, 'made before: treated as verified');
+  assert.equal(grandfathered(made('2026-11-01T00:01:00Z')), false, 'made after: must verify');
+  assert.equal(grandfathered({}), false, 'no creation time: must verify');
+  setVerifySince('nonsense');
+  assert.equal(grandfathered(made('2026-11-02')), true, 'a cutoff that is not a number counts as none');
+  setVerifySince(null);
 });

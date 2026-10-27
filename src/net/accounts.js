@@ -2,7 +2,7 @@
 import { PROVIDERS, providerSignIn, providerSignOut } from './auth.js';
 import { NET_MS, call, configured, fb, loadFirebase } from './connect.js';
 import { enterMatched, holdResume, search, startSearch, stopSearch } from './matchmaking.js';
-import { challengeFriend, hostRoom } from './room.js';
+import { hostRoom } from './room.js';
 import { fetchReleases } from './releases.js';
 import { flushLocal, pendingLocal, track } from './tracking.js';
 import { commit, save, setMenuNote, state } from '../ui/app.js';
@@ -88,7 +88,7 @@ export function finishLogin() {
     if (msg && !(acct.user)) { loginMsg = msg; state.screen = 'login'; save(); return; }
   }
   if (!go || !acct.user) return;
-  afterLogin = ['find', 'profile', 'host', 'challenge'].includes(go) ? go : null;
+  afterLogin = ['find', 'profile', 'host'].includes(go) ? go : null;
   loginFinishing = true;
   if (state.screen !== 'username') state.screen = 'login';   // shows "Logging you in…" until the profile is in
   afterAccount();
@@ -135,7 +135,6 @@ export function afterAccount() {
   const go = afterLogin; afterLogin = null;
   if (go === 'profile') { openProfile(acct.user.uid, 'menu'); return; }
   if (go === 'host') { hostRoom(null, false); return; }       // logged in on the way to hosting: the room opens at once
-  if (go === 'challenge') { challengeFriend(); return; }    // on the way to Challenge a friend: the room opens and its invite is shared
   state.screen = go === 'find' ? 'find' : 'menu';
   save();
   if (go === 'find') startSearch();             // logged in on the way to Find Match: searching at once
@@ -235,10 +234,19 @@ export async function logout() {
  * functions/index.js needAccount); Google's and Apple's accounts are proved by the provider. The sign-up sends the link;
  * the "Verify your email" screen (ui/screens/account.js renderVerify) has Continue, Send the link again and Log out. */
 export let verifyAsked = false;                     // the server refused a call until the email is proved
-// This account still has to prove its address: an email-and-password account whose email is not verified.
+// This account still has to prove its address: an email-and-password account whose email is not verified, made after
+// the cutoff (config/verify/since, as the server has it: functions/index.js grandfathered). An account from before it is
+// grandfathered, treated as verified; with no cutoff set yet, every account is.
+export let verifySince = null;
+export function setVerifySince(v) { verifySince = Number.isFinite(v) ? v : null; }
+export function grandfathered(u) {
+  if (verifySince == null) return true;
+  const made = Date.parse(u && u.metadata && u.metadata.creationTime);
+  return Number.isFinite(made) && made < verifySince;
+}
 export function unverified() {
   const u = fb && fb.auth && fb.auth.currentUser;
-  return !!(u && !u.isAnonymous && !u.emailVerified && (u.providerData || []).some(p => p && p.providerId === 'password'));
+  return !!(u && !u.isAnonymous && !u.emailVerified && (u.providerData || []).some(p => p && p.providerId === 'password') && !grandfathered(u));
 }
 export function verifyEmail() { const u = fb && fb.auth && fb.auth.currentUser; return (u && u.email) || (acct.user && acct.user.email) || ''; }
 // The server refused a call until the email is proved (connect.js call): the verify screen, where the player was on

@@ -1,13 +1,13 @@
 'use strict';
 // The computer's levels against each other: Hard against Normal (and Easy against Normal) over many whole
 // matches, sides swapped every match, every game but the physics ones. Slow: npm run sim -- levels
-// (LEVELS_N=500 for the full run; LEVELS_BUDGET the ms a Hard decision may take, 100 by default; LEVELS_PHYSICS=1
+// (LEVELS_N=500 for the full run; LEVELS_BUDGET the ms a Hard decision may take, by default the game's own, core/ai.js BUDGET_MS; LEVELS_PHYSICS=1
 // deals the physics games too).
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { engine, runMany } = require('../../scripts/ai-arena.js');
 
-const N = Number(process.env.LEVELS_N || 100), BUDGET = Number(process.env.LEVELS_BUDGET || 100), PHYSICS = process.env.LEVELS_PHYSICS === '1';
+const N = Number(process.env.LEVELS_N || 100), BUDGET = Number(process.env.LEVELS_BUDGET || require('../engine.js').BUDGET_MS), PHYSICS = process.env.LEVELS_PHYSICS === '1';
 engine(PHYSICS);
 async function versus(a, b) {
   const jobs = Array.from({ length: N }, (_, k) => ({ seed: `levels:${a}:${b}:${k}`, levels: { X: k % 2 ? b : a, O: k % 2 ? a : b }, budget: BUDGET, physics: PHYSICS }));

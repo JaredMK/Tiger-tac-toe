@@ -9,7 +9,7 @@ E.setPhysics(P);
 const lcg = seed => () => (seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296;
 const mini = (t, seed) => E.newMini(t, E.makeRng(seed || t));
 
-test('pool: the fixed layout; a pocketed ball is gone; own ball down means another shot; theirs counts for them; the black loses; a scratch returns the cue ball', () => {
+test('pool: the fixed layout; a pocketed ball is gone; own ball down means another shot; theirs counts for them; the black loses; a scratch returns the cue ball and one of the shooter\'s own pocketed balls (nothing for the other side); all of a side\'s balls down wins', () => {
   const m = mini('pool', 'rules');
   assert.deepEqual(Object.keys(m.balls), ['cue', 'x1', 'x2', 'o1', 'o2', 'black']);
   assert.deepEqual(m.balls, P.POOL.start); assert.deepEqual(m.pocketed, { X: 0, O: 0 });
@@ -32,26 +32,26 @@ test('pool: the fixed layout; a pocketed ball is gone; own ball down means anoth
   const r4 = E.applyMove(scratch, 'X', { aim: -Math.PI / 2, power: 0.5 });
   assert.deepEqual([r4.outcome, r4.note], ['continue', 'scratch']); assert.deepEqual(scratch.balls.cue, P.POOL.start.cue); assert.ok(!scratch.down.cue);
   assert.ok(scratch.last.scratch);
-  // ...and the other side gets a ball more, in their colour, on a free spot
-  assert.equal(scratch.last.added, 'o3'); assert.deepEqual(E.poolIds(scratch), ['cue', 'x1', 'x2', 'o1', 'o2', 'o3', 'black']);
-  const at = scratch.balls.o3, R = P.POOL.ballR;
-  for (const id of E.poolIds(scratch)) if (id !== 'o3' && !scratch.down[id]) assert.ok(Math.hypot(scratch.balls[id][0] - at[0], scratch.balls[id][1] - at[1]) > R * 2.5, `clear of ${id}`);
+  // ...and nothing else: no ball pocketed yet, so nothing comes back; nothing credited to the other side, no ball added
+  assert.equal(scratch.last.back, undefined); assert.deepEqual(E.poolIds(scratch), ['cue', 'x1', 'x2', 'o1', 'o2', 'black']); assert.deepEqual(scratch.pocketed, { X: 0, O: 0 });
+  // a scratch with one of the shooter's balls down: that ball comes back on a free spot, off the shooter's count
+  const back = JSON.parse(JSON.stringify(m)); back.down.x2 = true; back.pocketed.X = 1; back.balls.cue = [8, 90];
+  const r4b = E.applyMove(back, 'X', { aim: -Math.PI / 2, power: 0.5 });
+  assert.deepEqual([r4b.outcome, r4b.note], ['continue', 'scratch']);
+  assert.equal(back.last.back, 'x2'); assert.ok(!back.down.x2, 'x2 back on the table'); assert.deepEqual(back.pocketed, { X: 0, O: 0 }, 'off X\'s count; nothing for O');
+  assert.deepEqual(E.poolMine('O', back), ['o1', 'o2'], 'the other side gets no ball more');
+  const at = back.balls.x2, R = P.POOL.ballR;
+  for (const id of E.poolIds(back)) if (id !== 'x2' && !back.down[id]) assert.ok(Math.hypot(back.balls[id][0] - at[0], back.balls[id][1] - at[1]) > R * 2.5, `clear of ${id}`);
   for (const [x, y, r] of P.POOL.pockets) assert.ok(Math.hypot(x - at[0], y - at[1]) > r + R * 2, 'away from the pockets');
-  assert.deepEqual(E.poolMine('O', scratch), ['o1', 'o2', 'o3']);
-  // it plays like the others: in the physics, and it counts for O when it goes down
-  const r4b = E.applyMove(scratch, 'O', { aim: 0, power: 0.2 });
-  assert.equal(r4b.ok, true); assert.ok(scratch.last.rec.ids.includes('o3'), 'the extra ball is in the shot');
-  const o3 = JSON.parse(JSON.stringify(scratch)); o3.balls.o3 = [12, 90]; o3.balls.cue = [50, 90]; o3.balls.x1 = [50, 30];
-  const r4c = E.applyMove(o3, 'X', { aim: -Math.PI / 2, power: 0.35 });
-  assert.deepEqual([r4c.note, o3.pocketed.O, o3.down.o3], ['theirs', 1, true], 'sunk by X: it counts for O');
-  // a second scratch by O: X gets x3
-  const s2 = JSON.parse(JSON.stringify(scratch)); s2.balls.cue = [8, 90];
-  E.applyMove(s2, 'O', { aim: -Math.PI / 2, power: 0.5 });
-  assert.equal(s2.last.added, 'x3'); assert.deepEqual(E.poolMine('X', s2), ['x1', 'x2', 'x3']);
+  assert.deepEqual(back.last.at, at);
   // the last own ball: the square
   const last = JSON.parse(JSON.stringify(m)); last.pocketed.X = 1; last.down.x2 = true; last.balls.x1 = [12, 90]; last.balls.cue = [50, 90];
   const r5 = E.applyMove(last, 'X', { aim: -Math.PI / 2, power: 0.35 });
   assert.deepEqual([r5.outcome, r5.note], ['win', 'cleared']);
+  // all of them, not the first two: a square from before with a third ball of X's on the table is not won at two
+  const three = JSON.parse(JSON.stringify(m)); three.balls.x3 = [80, 150]; three.pocketed.X = 1; three.down.x2 = true; three.balls.x1 = [12, 90]; three.balls.cue = [50, 90];
+  const r5b = E.applyMove(three, 'X', { aim: -Math.PI / 2, power: 0.35 });
+  assert.deepEqual([r5b.outcome, r5b.note, three.pocketed.X], ['continue', 'again', 2], 'two down, one still on the table: shoot again');
   // their last ball, pocketed for them: theirs
   const gift = JSON.parse(JSON.stringify(m)); gift.pocketed.O = 1; gift.down.o2 = true; gift.balls.o1 = [12, 90]; gift.balls.cue = [50, 90];
   const r6 = E.applyMove(gift, 'X', { aim: -Math.PI / 2, power: 0.35 });
@@ -112,4 +112,25 @@ test('pool: its settings (TUNE) are dealt into the square and played by: a slowe
   assert.ok(slow.last.ms < fast.last.ms || far(slow) < far(fast), 'the same shot runs slower');
   const ai = E.physAi(E.publicMini(m), 'X', E.makeRng('ai'));
   assert.equal(E.applyMove(JSON.parse(JSON.stringify(m)), 'X', ai.move).ok, true);
+});
+
+test('pool AI: scores shots by the rules: its last ball down wins, the black loses, a scratch costs a ball back, their last ball down loses; it plays racks to a finish', () => {
+  const m = mini('pool', 'aiscore'); m.down.x2 = true; m.pocketed.X = 1;
+  const shot = (pocketed, final) => ({ result: { pocketed }, final: Object.assign({}, final) });
+  const gone = ids => Object.fromEntries(ids.map(id => [id, null]));
+  assert.equal(E.physScore(m, 'X', shot(['x1'], gone(['x1']))), 1000, 'the last ball: the square');
+  assert.equal(E.physScore(m, 'X', shot(['black'], gone(['black']))), -1000, 'the black');
+  assert.ok(E.physScore(m, 'X', shot(['x1', 'cue'], gone(['x1', 'cue']))) < 1000, 'the last ball with a scratch: one comes back, not a win');
+  assert.ok(E.physScore(m, 'X', shot(['cue'], gone(['cue']))) < E.physScore(m, 'X', shot([], {})), 'a scratch is worse than nothing down');
+  const g = JSON.parse(JSON.stringify(m)); g.down.o2 = true; g.pocketed.O = 1;
+  assert.equal(E.physScore(g, 'X', shot(['o1'], gone(['o1']))), -1000, 'their last ball: theirs');
+  assert.equal(E.physNeeds(m, 'X'), 2, 'one ball left: about two shots');
+  const rng = lcg(5);
+  let finished = 0;
+  for (let k = 0; k < 4; k++) {
+    const r0 = mini('pool', 'rack' + k); let turn = 'X', end = null;
+    for (let n = 0; n < 60 && !end; n++) { const ai = E.physAi(r0, turn, rng), r = E.applyMove(r0, turn, ai.move, rng); if (r.outcome === 'win') end = r; else if (!r.again) turn = turn === 'X' ? 'O' : 'X'; }
+    if (end) { finished++; if (end.note === 'cleared') assert.equal(E.poolLeft(turn, r0), 0, 'cleared: none of the winner\'s balls left'); }
+  }
+  assert.ok(finished >= 3, `the computer finishes racks (${finished} of 4 in 60 shots)`);
 });

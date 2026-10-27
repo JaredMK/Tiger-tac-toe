@@ -1,4 +1,4 @@
-// The growth loop: the result card and Challenge a friend (ui/sharecard.js, net/room.js challengeFriend):
+// The growth loop: the result card (ui/sharecard.js):
 //   the card's text and share text for a win, a loss and a draw, first person where this phone played a side, with and
 //   without a rematch code (a friend room whose room is still open), the computer as "the computer";
 //   the win screen (and the draw screen) shows Share result in every mode: Play Computer, Same phone, a friend room, Find Match;
@@ -20,7 +20,6 @@ const { renderWin } = await import('../../src/ui/screens/win.js');
 const { renderMenu } = await import('../../src/ui/screens/menu.js');
 const MM = await import('../../src/net/matchmaking.js');
 const { state } = await import('../../src/ui/app.js');
-const { challengeFriend } = await import('../../src/net/room.js');
 
 const SITE = 'https://tictacchaos.com/';
 // A finished match: the owners of the nine squares (X, O or ''), the winner and how.
@@ -110,15 +109,13 @@ test('the win screen shows Share result in every mode (and the draw screen)', ()
   }
   assert.match(shareBtn(), /data-act="share-result"/);
 });
-test('the main menu: Challenge a friend under Play a Friend; Play a Friend itself stays', () => {
+test('the main menu: Play Computer, Play a Friend, Find Match, How to Play; no Challenge a friend (as production\'s)', () => {
   Object.assign(state, finished('.........', null, null, {}), { screen: 'menu', winner: null, online: null });
   MM.setFindOn(true);
   const html = renderMenu();
-  assert.match(html, /<button class="link wide challenge" data-act="challenge">Challenge a friend<\/button>/);
-  const acts = [...html.matchAll(/data-act="([^"]+)"/g)].map(m => m[1]);
-  assert.ok(acts.indexOf('friend-go') < acts.indexOf('challenge') && acts.indexOf('challenge') < acts.indexOf('find-go'), 'between Play a Friend and Find Match');
-  assert.match(html, />Play a Friend</);
-  assert.equal(typeof challengeFriend, 'function');
+  assert.doesNotMatch(html, /challenge|Challenge a friend/);
+  const acts = [...html.matchAll(/data-act="([^"]+)"/g)].map(m => m[1]).filter(a => ['cpu-go', 'friend-go', 'find-go', 'howto'].includes(a));
+  assert.deepEqual(acts, ['cpu-go', 'friend-go', 'find-go', 'howto']);
 });
 test('the characters for the canvas: self-contained SVGs in the palette (no page styles needed), as data: URLs', () => {
   const pal = { ink: '#161210', x: '#e5432a', o: '#f6c21b' };

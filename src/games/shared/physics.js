@@ -5,8 +5,8 @@ import { gaussOf, randInt } from '../../core/random.js';
 import { tune } from '../../core/tune.js';
 import { other } from '../../core/util.js';
 import { bowlTarget } from '../bowling/rules.js';
-import { golfLeft, golfNext } from '../golf/rules.js';
-import { POOLG, poolMine, poolOwns, poolPow } from '../pool/rules.js';
+import { golfClear, golfLeft, golfNext } from '../golf/rules.js';
+import { poolLeft, poolMine, poolOwns, poolPow } from '../pool/rules.js';
 
 // ---------- Mini Golf, Pool and Bowling: the physics games (Matter.js, through physics.js) ----------
 // The tables, the shots and the recordings live in physics.js (setPhysics registers it: the page once
@@ -51,11 +51,14 @@ export function physScore(mini, p, r) {
     return -golfLeft(L.HOLES[mini.hole], r.final[p] || mini.balls[p]);
   }
   if (mini.type === 'pool') {
-    const pk = r.result.pocketed, own = pk.filter(id => poolOwns(p, id)).length, theirs = pk.filter(id => poolOwns(o, id)).length;
+    const pk = r.result.pocketed, own = pk.filter(id => poolOwns(p, id)).length, theirs = pk.filter(id => poolOwns(o, id)).length, scratch = pk.includes('cue');
     if (pk.includes('black')) return -1000;
-    let s = own * 100 - theirs * 80 - (pk.includes('cue') ? 250 : 0);   // (a scratch: the white back, and a ball more for the other side)
-    if (own && mini.pocketed[p] + own >= POOLG.goal) s += 500;
-    if (theirs && mini.pocketed[o] + theirs >= POOLG.goal) s -= 500;
+    // (the rules: all of a side's balls down wins; a scratch puts one of the shooter's own pocketed balls back, nothing for the other side)
+    const left = q => poolMine(q, mini).filter(id => !mini.down[id] && r.final[id] !== null).length;
+    const mineLeft = left(p) + (scratch && poolMine(p, mini).some(id => mini.down[id] || r.final[id] === null) ? 1 : 0), theirLeft = left(o);
+    if (!mineLeft) return 1000;
+    if (!theirLeft) return -1000;
+    let s = (poolLeft(p, mini) - mineLeft) * 100 - (poolLeft(o, mini) - theirLeft) * 80 - (scratch ? 60 : 0) + (own && !theirs && !scratch ? 40 : 0);   // (a ball returned by a scratch counts against the shot; sinking your own and nothing else: you shoot again)
     for (const id of poolMine(p, mini)) if (r.final[id]) s -= Math.min(...L.POOL.pockets.map(([x, y]) => Math.hypot(r.final[id][0] - x, r.final[id][1] - y))) / 10;   // own balls left near pockets
     return s;
   }
@@ -66,11 +69,13 @@ export function physCandidates(mini, p, rng) {
   if (mini.type === 'golf') {                                 // at the next points of the hole's path, and at the cup, with powers to suit the distance
     const hole = L.HOLES[mini.hole], from = mini.balls[p], k = golfNext(hole, from);
     const targets = [hole.path[k], hole.path[Math.min(k + 1, hole.path.length - 1)], hole.cup];
+    const putt = d => Math.max(0.15, Math.min(1, Math.pow(d * 1.08 / (L.GOLF.reach || 174), 0.57)));   // (a putt rolls about reach x power^1.7; aimed a little long)
     for (const t of targets) {
-      const a = aimTo(from, t), d = Math.hypot(t[0] - from[0], t[1] - from[1]), base = Math.max(0.15, Math.min(1, Math.pow(d * 1.08 / (L.GOLF.reach || 174), 0.57)));   // (a putt rolls about reach x power^1.7; aimed a little long)
+      const a = aimTo(from, t), d = Math.hypot(t[0] - from[0], t[1] - from[1]), base = putt(d);
       for (const dp of [0, 0.12, -0.08, 0.25]) out.push({ aim: a, power: base + dp });
       out.push({ aim: a + 0.12, power: base }, { aim: a - 0.12, power: base });
     }
+    out.push(...golfBumperShots(hole, from, targets, putt));   // round the bumpers in the way, and off them
     for (let k2 = 0; k2 < 3; k2++) out.push({ aim: (rng() - 0.5) * Math.PI * 1.6, power: 0.4 + rng() * 0.55 });   // the odd bank shot
   } else if (mini.type === 'pool') {
     const cue = mini.balls.cue, R = L.POOL.ballR, vm = tune(mini).vMax, pow = sp => poolPow(sp, vm);
@@ -95,20 +100,57 @@ export function physCandidates(mini, p, rng) {
   }
   return out.map(s => ({ aim: wrapAim(s.aim), power: Math.max(0.05, Math.min(1, s.power)) }));
 }
-// The computer's shot: the best of its candidates, then a little error so it is not perfect.
+// Mini Golf's shots that reckon with the bumpers (the simulation kicks the ball straight off a bumper, faster than it
+// came: physics-sim.js): past either side of a bumper in the way to a target, and off a bumper whose kick sends the
+// ball towards the way on (the next point of the path in sight from the bumper, or the cup). The nearest few only.
+const GOLF_BANKS = 3;
+function golfBumperShots(hole, from, targets, putt) {
+  const L = PHYSICS.lib, R = L.GOLF.ballR, out = [];
+  for (const t of targets) {                                     // round a bumper in the way: aimed just past it on either side
+    if (golfClear(hole, from, t)) continue;
+    const dx = t[0] - from[0], dy = t[1] - from[1], len = Math.hypot(dx, dy) || 1;
+    for (const [cx, cy, r] of hole.bumpers) {
+      const along = ((cx - from[0]) * dx + (cy - from[1]) * dy) / len, off = Math.abs((cx - from[0]) * dy - (cy - from[1]) * dx) / len, dc = Math.hypot(cx - from[0], cy - from[1]);
+      if (along <= 0 || along >= len || off >= r + R + 0.6 || dc <= r + R + 1) continue;   // (not between here and there)
+      const a0 = aimTo(from, [cx, cy]), w = Math.asin(Math.min(1, (r + R + 1.2) / dc));
+      for (const s of [-1, 1]) out.push({ aim: a0 + s * w, power: putt(len) });
+    }
+  }
+  const banks = hole.bumpers.map(([cx, cy, r]) => {               // off a bumper: the kick is along the line from its centre to the ball where they meet
+    const at = hole.path[golfNext(hole, [cx, cy])], to = golfClear(hole, [cx, cy], hole.cup) ? hole.cup : at;
+    const n = [to[0] - cx, to[1] - cy], nl = Math.hypot(n[0], n[1]) || 1, u = [n[0] / nl, n[1] / nl];
+    const hit = [cx + u[0] * (r + R), cy + u[1] * (r + R)], d = Math.hypot(hit[0] - from[0], hit[1] - from[1]);
+    const facing = (from[0] - cx) * u[0] + (from[1] - cy) * u[1] > 0;   // the ball on the kick's side of the bumper (else it meets the far side)
+    return { hit, d, ok: facing && d > R * 2 && golfClear(hole, from, hit) };
+  }).filter(b => b.ok).sort((a, b) => a.d - b.d).slice(0, GOLF_BANKS);
+  for (const b of banks) { const a = aimTo(from, b.hit); out.push({ aim: a, power: putt(b.d) * 0.85 }, { aim: a, power: putt(b.d) * 1.1 }); }
+  return out;
+}
+// The computer's shot: the best of its candidates, then a little error so it is not perfect. In Mini Golf the best few
+// are played again with the aim off by its own error either way, and the shot that does best over all three is taken:
+// a shot that only works when it grazes a bumper just so is not worth the one that works on a near miss.
+const GOLF_ROBUST = 4;
 export function physAi(mini, p, rng) {
   const t = tune(mini), err = [t.aiAim / 1000, t.aiPow / 100];   // (the settings' aim error in thousandths of a radian, power error in %: GOLF, POOLG and BOWLG.aiErr by default)
   let best = null;
+  const tried = [];
   for (const c of physCandidates(mini, p, rng)) {
     const r = physRun(mini, p, c);
     if (!r) continue;
     const s = physScore(mini, p, r);
+    tried.push({ c, s, r });
     if (!best || s > best.s) best = { c, s, r };
   }
   if (!best) return { move: randomLegalMove(mini, p, rng), q: 0 };
+  if (mini.type === 'golf' && err[0] > 0) {
+    const off = Math.max(err[0], 0.01);
+    const sure = c => { let s = 0; for (const da of [-off, off]) { const r = physRun(mini, p, { aim: wrapAim(c.aim + da), power: c.power }); s += r ? physScore(mini, p, r) : -1e6; } return s; };
+    for (const x of tried.sort((u, v) => v.s - u.s).slice(0, GOLF_ROBUST)) x.sure = x.s * 0.5 + sure(x.c) * 0.25;
+    best = tried.slice(0, GOLF_ROBUST).reduce((u, v) => (v.sure > u.sure ? v : u));
+  }
   const g = () => gaussOf(rng);
   const move = { aim: wrapAim(best.c.aim + g() * err[0]), power: Math.max(0.05, Math.min(1, best.c.power + g() * err[1])) };
-  const q = mini.type === 'golf' ? (best.s >= 1000 ? 0.75 : 0.03) : mini.type === 'pool' ? (best.s >= 500 ? 0.55 : best.s >= 100 ? 0.35 : 0.02) : Math.min(0.9, best.s / 100);
+  const q = mini.type === 'golf' ? (best.s >= 1000 ? 0.75 : 0.03) : mini.type === 'pool' ? (best.s >= 1000 ? 0.55 : best.s >= 100 ? 0.35 : 0.02) : Math.min(0.9, best.s / 100);
   return { move: physShot(move), q };
 }
 // A random gentle shot: for a player who ran out of time.
@@ -124,9 +166,9 @@ export function physRandom(mini, p, rng) {
 // How many moves the computer reckons it needs in a physics square (for its choice of square).
 export function physNeeds(mini, p) {
   if (mini.type === 'golf') { if (mini.holed[p]) return 0; return Math.max(1, 1 + golfLeft(PHYSICS.lib.HOLES[mini.hole], mini.balls[p]) / 60); }
-  if (mini.type === 'pool') return Math.max(1, (POOLG.goal - mini.pocketed[p]) * 2);
+  if (mini.type === 'pool') return Math.max(1, poolLeft(p, mini) * 2);
   return Math.max(1, (bowlTarget(mini) - mini.pins[p]) / 7);   // (about seven pins a frame)
 }
 export function physicsMoveFlash(m, p, range, bjFrom, mini, flash) {
-  const l = mini.last; flash.phys = Object.assign(JSON.parse(JSON.stringify(l)), mini.type === 'golf' ? { balls: JSON.parse(JSON.stringify(mini.balls)), hole: mini.hole, holedNow: JSON.parse(JSON.stringify(mini.holed)) } : mini.type === 'pool' ? { pocketedNow: { X: mini.pocketed.X, O: mini.pocketed.O }, down: Object.assign({}, mini.down) } : { pins: { X: mini.pins.X, O: mini.pins.O } }); return;
+  const l = mini.last; flash.phys = Object.assign(JSON.parse(JSON.stringify(l)), mini.type === 'golf' ? { balls: JSON.parse(JSON.stringify(mini.balls)), hole: mini.hole, holedNow: JSON.parse(JSON.stringify(mini.holed)) } : mini.type === 'pool' ? { pocketedNow: { X: mini.pocketed.X, O: mini.pocketed.O }, leftNow: { X: poolLeft('X', mini), O: poolLeft('O', mini) }, down: Object.assign({}, mini.down) } : { pins: { X: mini.pins.X, O: mini.pins.O } }); return;
 }

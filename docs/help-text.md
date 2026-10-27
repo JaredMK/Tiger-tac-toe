@@ -224,8 +224,8 @@ Win: Light every target first.
 
 ## Pool [pool]
 Category: More skill
-Play: Drag to aim and shoot. Sink your own ball to go again.
-Win: Sink two of your balls first. Sink the black ball and you lose.
+Play: Drag to aim and shoot. Sink your own ball to go again. Sink the white and one of your sunk balls comes back.
+Win: Sink all your balls first. Sink the black ball and you lose.
 
 ## Ride the Bus [bus]
 Category: More luck
