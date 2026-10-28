@@ -43,16 +43,13 @@ export function cardData(st, opts = {}) {
   const site = opts.site || siteUrl();
   const link = code ? `${site}?room=${code}` : site;
   const outcome = !won ? 'draw' : me == null ? 'named' : w === me ? 'win' : 'loss';
-  let title, sub, text;
+  let title, text;
   if (!won) {
     title = "It's a draw!";
-    sub = `${names.X} and ${names.O} · ${counts.X}–${counts.O} squares`;
     text = me ? `I just drew with ${said(other(me))} at Tic Tac Chaos! Play me: ${link}` : `${said('X')} and ${said('O')} just drew at Tic Tac Chaos! Play it: ${link}`;
   } else {
     const l = other(w);
     title = `${said(w)} beat ${said(l)}`;
-    const why = st.winReason === 'line' ? ' · three in a row' : st.winReason === 'timeout' ? ' · by forfeit' : st.winReason === 'resign' ? ` · ${said(l)} left` : '';
-    sub = `${counts[w]}–${counts[l]} squares${why}`;
     text = outcome === 'win' ? `I just beat ${said(l)} at Tic Tac Chaos! Play me: ${link}`
       : outcome === 'loss' ? `${said(w)} just beat me at Tic Tac Chaos! Play me: ${link}`
       : `${said(w)} just beat ${said(l)} at Tic Tac Chaos! Play it: ${link}`;
@@ -61,7 +58,7 @@ export function cardData(st, opts = {}) {
   let host = 'tictacchaos.com';
   try { host = new URL(site).host || host; } catch (e) { /* (the default) */ }
   return {
-    outcome, winner: won ? w : null, me, names, counts, code, site, link, host, title, sub, text,
+    outcome, winner: won ? w : null, me, names, counts, code, site, link, host, title, text,
     owners: (st.squares || []).map(s => (s && (s.owner === 'X' || s.owner === 'O') ? s.owner : null)),
     winLine: Array.isArray(st.winLine) ? st.winLine.slice() : [],
   };
@@ -92,9 +89,8 @@ export function palette() {
 
 // ----- the layout (one square: every box in card pixels) -----
 export const LAYOUT = {
-  logoY: 104, logoSize: 84,
-  titleY: 214, titleSize: 66, titleW: 980,
-  subY: 268, subSize: 42,
+  logoY: 116, logoSize: 84,
+  titleY: 230, titleSize: 66, titleW: 980,
   board: { top: 300, cell: 174, gap: 14 },     // 174 * 3 + 14 * 2 = 550 wide, centred
   namesY: 898, nameSize: 44, nameW: 330, toon: 66,
   codeY: 962, codeSize: 40,
@@ -157,8 +153,6 @@ export function paintCard(ctx, d, pal, imgs) {
   const tSize = fitSize(measurer(ctx, LG), d.title, L.titleW, L.titleSize, 30);
   ctx.font = font(LG, tSize); ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = pal.ink;
   ctx.fillText(d.title, cx, L.titleY);
-  const sSize = fitSize(measurer(ctx, PH), d.sub, L.titleW, L.subSize, 24);
-  ctx.font = font(PH, sSize); ctx.fillStyle = pal.muted; ctx.fillText(d.sub, cx, L.subY);
   // the board
   const { cell, gap, top } = L.board, size = cell * 3 + gap * 2, left = (W - size) / 2;
   const R1 = [22, 15, 24, 17], R2 = [15, 24, 17, 22];
@@ -199,7 +193,7 @@ const wait = ms => new Promise(res => setTimeout(res, ms));
 function fontsReady() {
   try {
     if (!document.fonts || !document.fonts.load) return Promise.resolve();
-    return Promise.all([document.fonts.load(`${LAYOUT.logoSize}px 'Luckiest Guy'`), document.fonts.load(`${LAYOUT.subSize}px 'Patrick Hand'`)]).catch(() => {});
+    return Promise.all([document.fonts.load(`${LAYOUT.logoSize}px 'Luckiest Guy'`), document.fonts.load(`${LAYOUT.tagSize}px 'Patrick Hand'`)]).catch(() => {});
   } catch (e) { return Promise.resolve(); }
 }
 function toonImage(p, pal) {
@@ -235,7 +229,7 @@ export async function shareResult() {
   if (shareBusy || !state.winner) return;
   shareBusy = true; setNote('Making your card…'); render();
   try {
-    const d = cardData(state), key = JSON.stringify([d.owners, d.title, d.sub, d.link]);
+    const d = cardData(state), key = JSON.stringify([d.owners, d.title, d.link]);
     if (!cache || cache.key !== key) {
       const blob = await toBlob(await renderCard(d));
       if (!blob) throw new Error('canvas');

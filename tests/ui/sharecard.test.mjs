@@ -40,7 +40,7 @@ test('a win against the computer: the result, first person, no code', () => {
   const d = cardData(st, { site: SITE });
   assert.equal(d.outcome, 'win');
   assert.equal(d.title, 'Alex beat the computer');
-  assert.equal(d.sub, '3–2 squares · three in a row');
+  assert.equal(d.sub, undefined, 'no score line on the card');
   assert.equal(d.text, 'I just beat the computer at Tic Tac Chaos! Play me: https://tictacchaos.com/');
   assert.equal(d.code, null); assert.equal(d.link, SITE); assert.equal(d.host, 'tictacchaos.com');
   assert.deepEqual(d.owners, ['X', 'X', 'X', 'O', null, 'O', null, null, null]); assert.deepEqual(d.winLine, [0, 1, 2]);
@@ -54,7 +54,7 @@ test('a loss online: the other player beat me; most squares', () => {
   st.online = { kind: 'mm', game: 'g1', me: 'O' };
   const d = cardData(st, { site: SITE });
   assert.equal(d.outcome, 'loss');
-  assert.equal(d.title, 'Sam beat Alex'); assert.equal(d.sub, '5–4 squares');
+  assert.equal(d.title, 'Sam beat Alex');
   assert.equal(d.text, 'Sam just beat me at Tic Tac Chaos! Play me: https://tictacchaos.com/');
 });
 test('a draw, a forfeit and a leaver', () => {
@@ -62,12 +62,12 @@ test('a draw, a forfeit and a leaver', () => {
   st.online = { kind: 'mm', game: 'g1', me: 'X' };
   let d = cardData(st, { site: SITE });
   assert.equal(d.outcome, 'draw'); assert.equal(d.winner, null);
-  assert.equal(d.title, "It's a draw!"); assert.equal(d.sub, 'Alex and Sam · 5–4 squares');
+  assert.equal(d.title, "It's a draw!");
   assert.equal(d.text, 'I just drew with Sam at Tic Tac Chaos! Play me: https://tictacchaos.com/');
   d = cardData(Object.assign(st, { winner: 'X', winReason: 'timeout' }), { site: SITE });
-  assert.equal(d.sub, '5–4 squares · by forfeit'); assert.equal(d.text, 'I just beat Sam at Tic Tac Chaos! Play me: https://tictacchaos.com/');
+  assert.equal(d.title, 'Alex beat Sam'); assert.equal(d.text, 'I just beat Sam at Tic Tac Chaos! Play me: https://tictacchaos.com/');
   d = cardData(Object.assign(st, { winner: 'O', winReason: 'resign' }), { site: SITE });
-  assert.equal(d.title, 'Sam beat Alex'); assert.equal(d.sub, '4–5 squares · Alex left');
+  assert.equal(d.title, 'Sam beat Alex');
 });
 test('two people on one phone: nobody is "me"', () => {
   const d = cardData(finished('XXX.OO...', 'X', 'line', { X: 'Ann', O: 'Bo' }), { site: SITE });
