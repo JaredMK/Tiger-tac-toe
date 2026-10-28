@@ -227,7 +227,7 @@ Win: Reach {target} first.
 ## Roads [roads]
 Category: More brain
 Play: Claim an edge of the honeycomb. Random edges get blocked after each move.
-Win: Have the longest unbroken road.
+Win: Have the longest unbroken road. The square ends early once the other player can no longer catch up.
 
 ## Roulette [rl]
 Category: More luck

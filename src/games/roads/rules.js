@@ -9,7 +9,7 @@ import { tune } from '../../core/tune.js';
 // between them are the roads. A move claims an open edge; then a random open edge is blocked (drawn as the
 // move is made). Once none is open, each player's score is their longest road: a trail through their own
 // edges using each edge at most once (a corner may be passed more than once). Longer road wins; a tie resets
-// the square. The admin's config/roads may choose a smaller honeycomb, 4 hexagons in a diamond (16 corners,
+// the square. Once one side could not even tie the other's road with every open edge, the square ends at once. The admin's config/roads may choose a smaller honeycomb, 4 hexagons in a diamond (16 corners,
 // 19 edges). (A square from before the honeycomb: a 4x4 grid of dots, 24 lines; it plays on as it was.)
 // Every layout: the corners in a 100 x 100 field (pts), the edges between them (segs); told apart by the
 // number of edges, which a square's own segs say.
@@ -94,7 +94,14 @@ export function apply(mini, p, m, rng, idx) {   // a line; then a random open li
   if (b != null) mini.segs[b] = 'B';
   for (let k = 1; k < nb && b != null; k++) { const x = randomEmpty(mini.segs, r); if (x == null) break; mini.segs[x] = 'B'; more.push(x); }   // (the admin's settings: more than one)
   mini.last = Object.assign({ by: p, seg: m, block: b }, more.length ? { more } : {});
-  if (mini.segs.includes(null)) return { ok: true, outcome: 'continue', note: 'road' };
+  if (mini.segs.includes(null)) {                                // decided early: one side cannot reach the other's road even with every open line
+    const len = { X: roadLongest(mini.segs, 'X').len, O: roadLongest(mini.segs, 'O').len };
+    for (const w of ['X', 'O']) {
+      const l = other(w);
+      if (len[w] > len[l] && roadLongest(mini.segs.map(c => (c === null ? l : c)), l).len < len[w]) return { ok: true, outcome: 'win', note: 'decided', winner: w, counts: { X: len.X, O: len.O } };
+    }
+    return { ok: true, outcome: 'continue', note: 'road' };
+  }
   const x = roadLongest(mini.segs, 'X').len, y = roadLongest(mini.segs, 'O').len;
   if (x === y) return { ok: true, outcome: 'draw', note: 'tie' };
   return { ok: true, outcome: 'win', note: 'full', winner: x > y ? 'X' : 'O', counts: { X: x, O: y } };

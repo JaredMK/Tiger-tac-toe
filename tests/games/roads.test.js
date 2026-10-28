@@ -102,7 +102,7 @@ test('roads: the longest trail on the honeycomb, by hand and against a brute for
   for (let k = 1; k < t.segs.length; k++) { const a = HX.segs[t.segs[k - 1]], b = HX.segs[t.segs[k]]; assert.ok(a.some(v => b.includes(v))); }
 });
 
-test('roads: on the honeycomb, the computer against itself: 15 moves (7.5 each) on 7 hexagons, 10 (5 each) on 4; the longer road wins, a tie resets', () => {
+test('roads: on the honeycomb, the computer against itself: at most 15 moves (7.5 each) on 7 hexagons, 10 (5 each) on 4, fewer once decided early; the longer road wins, a tie resets', () => {
   const avg = {};
   for (const layout of ['hex7', 'hex4']) {
     E.setRoadsConfig({ layout });
@@ -112,14 +112,14 @@ test('roads: on the honeycomb, the computer against itself: 15 moves (7.5 each) 
       let p = g % 2 ? 'O' : 'X', first = p, r, n = 0;
       do { r = E.applyMove(m, p, E.localBest(E.publicMini(m), p, rng).move, rng); assert.equal(r.ok, true); n++; p = p === 'X' ? 'O' : 'X'; } while (r.outcome === 'continue');
       const x = E.roadLongest(m.segs, 'X').len, o = E.roadLongest(m.segs, 'O').len;
-      if (r.outcome === 'draw') { ties++; assert.equal(x, o); } else { decided++; assert.equal(r.winner, x > o ? 'X' : 'O'); if (r.winner === first) firstWins++; }
+      if (r.outcome === 'draw') { ties++; assert.equal(x, o); } else { decided++; assert.equal(r.winner, x > o ? 'X' : 'O'); if (r.note === 'full') assert.equal(m.segs.includes(null), false); if (r.winner === first) firstWins++; }
       moves += n; games++;
     }
     avg[layout] = { perPlayer: moves / games / 2, ties: ties / games, firstWins: firstWins / Math.max(1, decided) };
   }
   E.setRoadsConfig(null);
-  assert.equal(avg.hex7.perPlayer, 7.5);
-  assert.equal(avg.hex4.perPlayer, 5);
+  assert.ok(avg.hex7.perPlayer < 7.5 && avg.hex7.perPlayer > 4, `hex7 ${avg.hex7.perPlayer}`);
+  assert.ok(avg.hex4.perPlayer <= 5 && avg.hex4.perPlayer > 2, `hex4 ${avg.hex4.perPlayer}`);
   console.log('# roads AI vs AI:', JSON.stringify(avg));
 });
 
@@ -172,4 +172,24 @@ test('roads: Hard counts the block and the other player\'s cut: the line that wi
     assert.equal(E.applyMove(q, p, r.move, rng).ok, true);
   }
   assert.ok(Math.max(...times.slice(1)) < 60, 'ms: ' + times.map(t => t.toFixed(1)).join(' '));
+});
+
+test('roads: the square ends at once when the other player could not even tie with every open line; not while they still could', () => {
+  const E2 = E;
+  const mk = segs => ({ type: 'roads', segs, last: null });
+  const n = E.ROAD_SEGS.length;
+  // X holds a path of 6 lines; O holds nothing and 5 open lines remain: O's best is 5 < 6
+  const cells = new Array(n).fill('B');
+  const path = E.roadLongest(new Array(n).fill('X'), 'X').segs.slice(0, 6);
+  for (const k of path) cells[k] = 'X';
+  const open = []; for (let k = 0; k < n && open.length < 5; k++) if (cells[k] === 'B') { cells[k] = null; open.push(k); }
+  const m = mk(cells.slice()); const last = open.pop();                       // (one more open line for O to take: 4 left after)
+  const r = E.applyMove(m, 'O', last, E.makeRng('rd-a'));
+  assert.deepEqual([r.outcome, r.note, r.winner], ['win', 'decided', 'X']);
+  assert.ok(m.segs.includes(null), 'with lines still open');
+  // the same with enough open lines for O to catch up: play on
+  const c2 = new Array(n).fill('B'); for (const k of path) c2[k] = 'X';
+  let opened = 0; for (let k = 0; k < n && opened < 14; k++) if (c2[k] === 'B') { c2[k] = null; opened++; }
+  const m2 = mk(c2); const r2 = E.applyMove(m2, 'O', c2.indexOf(null), E.makeRng('rd-b'));
+  assert.equal(r2.outcome === 'win' && r2.note === 'decided', E.roadLongest(m2.segs.map(c => (c === null ? 'O' : c)), 'O').len < E.roadLongest(m2.segs, 'X').len);
 });
