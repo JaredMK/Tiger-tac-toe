@@ -31,7 +31,8 @@ export function needsOf(pm, p) {
   if (game.needs) return game.needs(pm, p);
   return Infinity;
 }
-// Chance that the side needing `a` more moves claims the square before the side needing `b`.
+// Chance that the side needing `a` more moves claims the square before the side needing `b` (the even split the
+// moves' gains are weighed with).
 export function winChance(a, b) {
   if (a <= 0) return 1;
   if (b <= 0) return 0;
@@ -40,17 +41,36 @@ export function winChance(a, b) {
   if (b === Infinity) return 1;
   return b / (a + b);
 }
+// The same chance as a race really goes, for judging a square hopeless (catchUp): b^k / (a^k + b^k). b / (a + b)
+// is far too even there: four turns behind in Risky Rolls it gave 27% where the exact odds (pig/ai.js pigRace)
+// are 3.6%; RACE_K 2 halves its error against them.
+export const RACE_K = 2;
+export function raceChance(a, b) {
+  if (!(a > 0) || !(b > 0) || a === Infinity || b === Infinity) return winChance(a, b);
+  const x = Math.pow(a, RACE_K), y = Math.pow(b, RACE_K);
+  return y / (x + y);
+}
 // A square the other side is well ahead in: when it leads by CATCH.lead moves or more and the computer's
-// chance of catching up (its chance of the square after its move) is under CATCH.odds, the square counts
+// chance of catching up (its chance of the square after its move, raceChance) is under CATCH.odds, the square counts
 // CATCH.factor of its worth, so the computer builds a lead elsewhere. Not when the square would win the other
 // side the match (its worth includes the block) and the computer can still stop it (a chance of CATCH.stop or more).
-export const CATCH = { lead: 2, odds: 0.25, stop: 0.12, factor: 0.2 };
+export const CATCH = { lead: 2, odds: 0.15, stop: 0.05, factor: 0.2 };
 export function catchUp(a, b, value) {
-  if (!(a - b >= CATCH.lead)) return 1;                          // (Infinity - Infinity: a dead square, not a race)
-  const chance = winChance(Math.max(0.5, a - 1), b);
+  if (!(a > b) || !(a - b >= CATCH.lead)) return 1;              // only where the other side is ahead: never a square it leads or is level in (Infinity - Infinity: a dead square, not a race)
+  const chance = raceChance(Math.max(0.5, a - 1), b);
   if (chance >= CATCH.odds) return 1;
   if (value >= AI.block && chance >= CATCH.stop) return 1;
   return CATCH.factor;
+}
+// A square it is close to winning (Hard): this move takes it more often than not (q), or it needs at most
+// CLOSE.near more moves there and the other side needs more; and it matters on the main board (a line still
+// open through it: worth CLOSE.value or more). Hard plays it ahead of anything else (mc.js mcPick), but for a
+// block of the other side's match: left alone, the other side catches up there.
+export const CLOSE = { q: 0.5, near: 1.5, value: 1.5 };
+export function closeTo(pm, me, local, value) {
+  if (!(value >= CLOSE.value)) return false;
+  const a = needsOf(pm, me), b = needsOf(pm, other(me));
+  return (local.q || 0) >= CLOSE.q || (a <= CLOSE.near && a < b);
 }
 export function localBest(pm, me, rng, style, ctx) {
   const game = aiOf(pm.type);
@@ -90,6 +110,7 @@ export function moveGain(pm, me, local) {
   const a = needsOf(pm, me), b = needsOf(pm, o), before = winChance(a, b);
   if (local.after) return (local.win ? 1 : winChance(needsOf(local.after, me), needsOf(local.after, o))) - before;
   const q = local.q || 0, qLose = local.qLose || 0;            // qLose: the chance the move hands the square to the other side
+  if (local.stay) return q * (1 - before) - qLose * before;      // stay: a move that fails leaves the square as it was (Risky Rolls going for the target: a bust)
   const after = winChance(Math.max(0.5, a - 1), local.shared ? Math.max(0.5, b - 1) : b);
   return q * (1 - before) - qLose * before + (1 - q - qLose) * (after - before);
 }
@@ -133,7 +154,7 @@ export function cpuMove(state, rng, style, opts) {
     if (value >= AI.win && (local.win || local.q >= 1)) { best = { square: i, move: local.move, score: Infinity, value, gain: 1 }; return done(); }
     const gain = moveGain(pm, me, local);
     const score = value * Math.max(gain, 0.01) * catchUp(needsOf(pm, me), needsOf(pm, other(me)), value);
-    cands.push({ square: i, pm, local, value, gain, score });
+    cands.push({ square: i, pm, local, value, gain, score, close: hard && closeTo(pm, me, local, real) });
     if (!best || score > best.score) best = { square: i, move: local.move, score, value, gain };
   }
   if (hard && cands.length > 1) best = mcPick(state, me, cands, rng, w, st, clock ? () => Math.max(0, t0 + budget - clock()) : null);

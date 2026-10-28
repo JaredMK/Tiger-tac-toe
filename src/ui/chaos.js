@@ -307,6 +307,8 @@ function recapStep() {
 // A replay that cannot play: the match log says so (once a round), and the recap goes on without it.
 const REPLAY_ERR = new Set();
 function replayError(rc, msg) { const k = `${ownKey(rc)}:${msg}`; if (REPLAY_ERR.has(k)) return; REPLAY_ERR.add(k); try { devError('replay', `round ${rc.round}: ${msg}`); } catch (e) { /* (the log is never worth an error) */ } }
+// A move of the recap starts its sounds as the recap's (SND.scope 'sc'), so a skip silences them (scSkip).
+function scPlay(fn) { const was = SND.scope; SND.scope = 'sc'; try { fn(); } finally { SND.scope = was; } }
 // A part of the recap begins, e ms into it (0 as a rule; later when the sequence is joined part way).
 function enterSeg(rc, seg, e) {
   const cpu = scCpu(), quiet = e > 200, endAbs = rc.at + seg.end;
@@ -316,7 +318,7 @@ function enterSeg(rc, seg, e) {
     state.screen = 'mini'; state.zoom = rc.replay.square; state.draft = ''; state.pick = null; state.sel = [];
     if (seg.pop && scUi.skipped) { render(); return; }            // (skipped: its end on show)
     state.flash = Object.assign({}, seg.f);
-    playFlash(false, 1, undefined, Math.max(0, endAbs - tnow() - Math.max(0, animMs(seg.f) - e)), e); render();
+    scPlay(() => playFlash(false, 1, undefined, Math.max(0, endAbs - tnow() - Math.max(0, animMs(seg.f) - e)), e)); render();
   } else if (seg.kind === 'spot') {
     scUi.stage = 'spot';
     state.screen = 'board'; state.zoom = null;
@@ -345,7 +347,7 @@ function enterSeg(rc, seg, e) {
     state.screen = 'mini'; state.zoom = seg.it.square; state.draft = ''; state.pick = null; state.sel = [];
     if (seg.pop && scUi.skipped) { render(); return; }
     state.flash = Object.assign({}, seg.f);
-    playFlash(false, 1, undefined, Math.max(0, endAbs - tnow() - Math.max(0, animMs(seg.f) - e)), e); render();
+    scPlay(() => playFlash(false, 1, undefined, Math.max(0, endAbs - tnow() - Math.max(0, animMs(seg.f) - e)), e)); render();
   } else if (seg.kind === 'result') {                             // one square's result, on the board: its X or O stamps in; both marks clash (both won it); it turns over to a new game
     scUi.stage = 'result'; scUi.k = seg.k; scUi.phase = seg.phase;
     const it = scItems(rc)[seg.k], key = `sc${rc.round}:${seg.k}`;
@@ -388,6 +390,7 @@ function recapDone(rc) {
 // move left it) stays on show, and the sequence jumps on to the results after a moment (online too: each phone
 // goes at its own pace, and the next round begins once both are through).
 export function scSkip() {
+  if (scJointFrame() || scRecapStage() === 'popup') SND.cut();    // every replay sound stops at once, the ones still to come too
   if (scJointFrame()) {                                           // both moves played together in one square: to the end of it (its result stays on show a moment)
     const rc = state.sc.recap, seg = scUi.plan.segs[scUi.seg];
     dropFlash();

@@ -277,6 +277,31 @@ function refresh(ok) {
   else if (!chip.hidden) chipOff = setTimeout(() => { chip.hidden = true; }, 450);   // (gone once the tap that brought sound back has ended: its click lands on the chip, not on what is under it)
 }
 // A sound played over and over until stopped (the chopper's rotor while the press is held): { stop() }.
+// A replay's sounds (an opponent's or the computer's move as it plays back): every sound started while a
+// replay is the scope (SND.scope, set by ui/replay.js and the Super Chaos recap) is kept with its tag, the
+// ones scheduled ahead on the audio clock too, so Skip can silence them all at once (SND.cut). Interface
+// sounds (o.ui: the taps of the controls) are never a replay's.
+SND.scope = null;
+let held = [];                                                     // { tag, g, src, end } (end: the audio clock's time it is over by)
+function keep(tag, g, src, end) {
+  const c = SND.ctx, now = c ? c.currentTime : 0;
+  held = held.filter(h => h.end > now);
+  const h = { tag, g, src, end };
+  held.push(h);
+  return h;
+}
+// Silences every sound of a replay: `tag` its scope (none: every replay's), playing or still to come.
+SND.cut = function (tag) {
+  const c = SND.ctx, now = c ? c.currentTime : 0;
+  held = held.filter(h => {
+    if (tag !== undefined ? h.tag !== tag : h.tag == null) return h.end > now;
+    try { h.g.gain.cancelScheduledValues(now); h.g.gain.setValueAtTime(h.g.gain.value, now); h.g.gain.linearRampToValueAtTime(0, now + 0.015); } catch (e) { /* gone already */ }
+    try { if (h.src) h.src.stop(now + 0.02); } catch (e) { /* not started, or stopped already */ }
+    try { setTimeout(() => { try { h.g.disconnect(); } catch (e) { /* gone */ } }, 40); } catch (e) { /* gone */ }
+    return false;
+  });
+};
+SND.heldCount = (tag) => held.filter(h => (tag !== undefined ? h.tag === tag : h.tag != null)).length;   // (the tests)
 SND.loop = function (name) {
   const b = SND.bufs[name], none = { stop() {} };
   SND.log.push(name);
@@ -286,7 +311,8 @@ SND.loop = function (name) {
     const src = c.createBufferSource(), g = c.createGain();
     src.buffer = b; src.loop = true; g.gain.value = 1;
     src.connect(g); g.connect(SND.out); src.start();
-    return { stop() { try { const t = c.currentTime; g.gain.setTargetAtTime(0, t, 0.02); src.stop(t + 0.1); } catch (e) { /* already stopped */ } } };   // a short fade, no click
+    const h = SND.scope != null ? keep(SND.scope, g, src, Infinity) : null;
+    return { stop() { if (h) h.end = 0; try { const t = c.currentTime; g.gain.setTargetAtTime(0, t, 0.02); src.stop(t + 0.1); } catch (e) { /* already stopped */ } } };   // a short fade, no click
   } catch (e) { say(`play failed (${name}): ${errText(e)}`); return none; }
 };
 // Starts a sound now (or `o.at` seconds later). Nothing plays while muted, or before audio is unlocked.
@@ -304,7 +330,9 @@ SND.play = function (name, o = {}) {
       src.buffer = b;
       src.playbackRate.value = o.rate || (s.vary ? 0.94 + Math.random() * 0.12 : 1);
       src.connect(g); src.start(at);
+      if (SND.scope != null && !o.ui) keep(SND.scope, g, src, at + b.duration / src.playbackRate.value + 0.05);
     }
+    if (s.live && SND.scope != null && !o.ui) keep(SND.scope, g, null, at + s.dur + 0.1);
   } catch (e) { say(`play failed (${name}): ${errText(e)}`); return; }
   SND.log.push(name); if (SND.log.length > 400) SND.log.splice(0, 200);   // (what has played, for the tests)
 };
@@ -377,8 +405,8 @@ export function init() {
     if (!el || el.classList.contains('chk')) return;                 // (a box: its change plays the toggle)
     const act = el.dataset.act;
     let name = act && act in TAP_SOUND ? TAP_SOUND[act] : (el.classList.contains('back') ? 'back' : 'tap');
-    if (name) SND.play(name);
+    if (name) SND.play(name, { ui: true });
   }, true);
-  document.addEventListener('pointerdown', e => { if (e.target.closest && e.target.closest('button:disabled, input:disabled')) SND.play('error'); }, true);
-  document.addEventListener('change', e => { if (e.target.type === 'checkbox') SND.play('toggle'); }, true);
+  document.addEventListener('pointerdown', e => { if (e.target.closest && e.target.closest('button:disabled, input:disabled')) SND.play('error', { ui: true }); }, true);
+  document.addEventListener('change', e => { if (e.target.type === 'checkbox') SND.play('toggle', { ui: true }); }, true);
 }

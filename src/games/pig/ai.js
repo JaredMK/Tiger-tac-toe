@@ -3,21 +3,64 @@ import { tune } from '../../core/tune.js';
 import { other } from '../../core/util.js';
 import { pigGoal, pigMaxRolls, pigSides } from './rules.js';
 
-// What a turn banks on average when banking around its best pot: about 6 points with a d6 (bank at 8 to 10),
-// about 9 with a d8 (bank at 11 or 12).
-const PER_TURN = { 6: 7, 8: 9 }, BEST_POT = { 6: 9, 8: 12 };
+// The race, from the real state: a turn rolls until its pot reaches the bank-at score (BEST_POT, or what is still
+// needed when that is less) and banks, or busts. TURN[sides][k] is what such a turn ends with when it stops at k
+// (each pot's chance; 0 a bust), from the die's sets of numbers (pigSets below); TURNS[sides][r] the turns it
+// takes on average to bank r more points, turn after turn (`needs`); REACH the chance a turn from a set of numbers
+// already rolled makes r more points before a bust (what a turn going for the square wins it with: `best`'s q).
+const BEST_POT = { 6: 9, 8: 12 };
+const TURN = {}, TURNS = {}, REACH = {};
+function pigTurnDist(sides, S, k) {                            // the pots a turn from set S ends with, banking once it has k: { pot: chance }
+  const { pot } = pigSets(sides), out = new Map();
+  const walk = (S, pr) => {
+    if (pot[S] >= k) { out.set(pot[S], (out.get(pot[S]) || 0) + pr); return; }
+    for (let f = 0; f < sides; f++) {
+      const b = 1 << f;
+      if (S & b) out.set(0, (out.get(0) || 0) + pr / sides); else walk(S | b, pr / sides);
+    }
+  };
+  walk(S, 1);
+  return out;
+}
+function pigTurns(sides, r) {                                  // turns to bank r more points (the bank-at rule; the last turn goes for what is left)
+  const t = TURNS[sides] || (TURNS[sides] = [0]), turn = TURN[sides] || (TURN[sides] = []);
+  for (let x = t.length; x <= r; x++) {
+    const k = Math.min(x, BEST_POT[sides]), d = turn[k] || (turn[k] = pigTurnDist(sides, 0, k));
+    let sum = 1, stay = 0;
+    for (const [v, pr] of d) { if (v === 0) stay = pr; else sum += pr * t[Math.max(0, x - v)]; }
+    t[x] = sum / (1 - stay);
+  }
+  return t[r];
+}
+export function pigReach(sides, S, r) {                        // the chance a turn from set S makes r more points before a bust
+  if (r <= 0) return 1;
+  const key = S * 1024 + Math.min(r, 1023), m = REACH[sides] || (REACH[sides] = new Map());
+  if (m.has(key)) return m.get(key);
+  let pr = 0;
+  for (let f = 0; f < sides; f++) if (!(S & (1 << f))) pr += pigReach(sides, S | (1 << f), r - f - 1) / sides;
+  m.set(key, pr);
+  return pr;
+}
+const rollSet = rolls => rolls.reduce((S, n) => S | (1 << (n - 1)), 0);
+// The moves (turns) a side still needs: the points still needed against what a turn banks; in its own turn under
+// way, this turn's chances from the numbers it has rolled.
 export function needs(pm, p) {
-  const pot = pm.turn && pm.turn.by === p ? pm.turn.pot : 0; return Math.max(1, (pigGoal(pm) - pm.bank[p] - pot) / PER_TURN[pigSides(pm)]);
+  const sides = pigSides(pm), t = pm.turn && pm.turn.by === p ? pm.turn : null, r = pigGoal(pm) - pm.bank[p];
+  if (r <= 0) return 0;
+  if (!t) return pigTurns(sides, r);
+  if (t.pot >= r) return 0.5;                                  // (only Bank is left: it wins with the next tap)
+  let n = 1;
+  for (const [v, pr] of pigTurnDist(sides, rollSet(t.rolls), Math.min(r, t.pot + BEST_POT[sides]))) n += pr * pigTurns(sides, Math.max(0, r - v));
+  return n;
 }
 export function best(pm, me, rng, style, ctx) {
-  const t = pm.turn && pm.turn.by === me ? pm.turn : null;
-  if (!t) return { move: 'roll', q: 0 };
-  const bank = pm.bank[me], sides = pigSides(pm), base = BEST_POT[sides];
-  if (bank + t.pot >= pigGoal(pm)) return { move: 'bank', q: 1 };
+  const t = pm.turn && pm.turn.by === me ? pm.turn : null, sides = pigSides(pm), base = BEST_POT[sides], r = pigGoal(pm) - pm.bank[me];
+  const gap = pm.bank[other(me)] - pm.bank[me];                // positive when behind
+  const target = Math.max(4, Math.min(base + 11, Math.max(base - 3, Math.min(base + 5, base + Math.round(gap / (sides === 8 ? 6 : 4)))) + ((style && style.rollRisk) || 0) + tune(pm).risk));   // riskier when behind, safer when ahead (a bolder or warier style, or the admin's setting, shifts it)
+  if (!t) return r <= target ? { move: 'roll', q: pigReach(sides, 0, r), stay: true } : { move: 'roll', q: 0 };   // within reach: the turn goes for the square (q its chance; a bust leaves it as it was)
+  if (pm.bank[me] + t.pot >= pigGoal(pm)) return { move: 'bank', q: 1 };
   if (t.rolls.length >= pigMaxRolls(pm)) return { move: 'bank', q: 0 };
   if (ctx && ctx.level === 'hard') { const h = pigHard(pm, me, t, style, ctx.until); if (h) return h; }
-  const gap = pm.bank[other(me)] - bank;                      // positive when behind
-  const target = Math.max(4, Math.min(base + 11, Math.max(base - 3, Math.min(base + 5, base + Math.round(gap / (sides === 8 ? 6 : 4)))) + ((style && style.rollRisk) || 0) + tune(pm).risk));   // riskier when behind, safer when ahead (a bolder or warier style, or the admin's setting, shifts it)
   if (t.pot >= target || t.rolls.length / sides > 0.5) return { move: 'bank', q: 0 };
   return { move: 'roll', q: 0 };
 }
@@ -58,7 +101,7 @@ export function pigRace(sides, T, until) {
   const key = sides + ':' + T;
   let e = PIG_RACE.get(key);
   if (!e) {
-    if (T > PIG_RACE_MAX || !PER_TURN[sides]) return null;
+    if (T > PIG_RACE_MAX || !BEST_POT[sides]) return null;
     if (PIG_RACE.size >= 6) PIG_RACE.delete(PIG_RACE.keys().next().value);
     e = { sides, T, P: new Float64Array(T * T), s: 2 * T - 2, a: T - 1, done: false, V: new Float64Array(1 << sides), R: new Float64Array(1 << sides) };
     PIG_RACE.set(key, e);

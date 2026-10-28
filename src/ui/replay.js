@@ -63,6 +63,7 @@ export function repStart(o) {
   repStop();
   const list = repTimed(o);
   rep = { sq: o.sq, by: o.by, type: o.type, list, k: 0, at: performance.now() - Math.max(0, o.elapsed || 0), speed: o.speed || 1, lead: o.lead || 0, stage: 'inputs', onMove: o.onMove, f: null, timer: null, pressed: null, cpu: !!o.cpu, start0: null };   // (elapsed: joined this far in: the inputs due by now press straight away)
+  SND.scope = rep;                                                // (its sounds kept apart, for Skip: audio/sound.js SND.cut)
   if (!rep.list.length) { repMove(); return; }
   render();
   repArm();
@@ -136,10 +137,12 @@ export function repSkip() {
   if (!r) return;
   if (r.stage === 'inputs') { clearTimeout(r.timer); r.timer = null; repMove(); }
   if (rep && rep.stage === 'move' && state.flash && state.flash === rep.f) skipFlash();
+  SND.cut(r);                                                     // every sound of it stops now, the ones still to come too (the move's own, made just now, among them)
 }
 export function repStop() {
   if (!rep) return;
   clearTimeout(rep.timer);
+  if (SND.scope === rep) SND.scope = null;
   rep = null;
 }
 // After every render: the control just pressed in the replay shows its press (for the press's moment; a

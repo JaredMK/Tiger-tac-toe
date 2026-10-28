@@ -99,3 +99,39 @@ test('catching up: a square the other side is well ahead in, with little chance 
   threat.squares.forEach((s, i) => { if (![1, 4, 7].includes(i)) s.mini = pig(0, 0); });
   assert.equal(E.cpuMove(threat, lcg(5), null, { level: 'normal' }).square, 4, 'the centre would win O the match: it fights for it');
 });
+test('closing out: Hard near the Risky Rolls target with the opponent behind plays Risky Rolls, not Craps', () => {
+  const rng = lcg(11), pig = Object.assign(E.newMini('pig', rng), { bank: { X: 20, O: 45 } });   // O (the computer) needs 6 of 51, X 31
+  const craps = Object.assign(E.newMini('craps', rng), { wins: { X: 1, O: 1 } });
+  for (let seed = 1; seed <= 8; seed++) {
+    const st = board(['coins', craps, 'hilo', pig, null, 'c4', 'coins', 'hilo', 'ttt'], [null, null, 'X', null, 'O'], 'O');
+    const m = E.cpuMove(st, lcg(seed), null, { level: 'hard' });
+    assert.equal(st.squares[m.square].mini.type, 'pig', `seed ${seed}: it closes out Risky Rolls (played ${st.squares[m.square].mini.type})`);
+  }
+  const pm = E.publicMini(pig);
+  assert.ok(E.needsOf(pm, 'O') < 1.2 && E.needsOf(pm, 'X') > 3.8, 'the estimate: about one turn left for O (6 points), four for X (31)');
+  assert.ok(E.winChance(E.needsOf(pm, 'O'), E.needsOf(pm, 'X')) > 0.75);
+});
+test('closing out: the estimate of Risky Rolls is the points still needed against what a turn banks', () => {
+  const pig = (x, o, turn) => Object.assign(E.newMini('pig', lcg(9)), { bank: { X: x, O: o }, turn: turn || null });
+  const n = (x, p) => E.needsOf(E.publicMini(pig(x, 0)), p);
+  assert.equal(n(51, 'X'), 0, 'banked the target: nothing left');
+  assert.ok(n(48, 'X') < n(45, 'X') && n(45, 'X') < n(30, 'X') && n(30, 'X') < n(0, 'X'), 'fewer points needed, fewer turns');
+  assert.ok(Math.abs(n(0, 'X') - 6.1) < 0.4, `51 from nothing: about six turns (${n(0, 'X').toFixed(2)})`);
+  const A = require('../../src/games/pig/ai.js');
+  const go = A.best(E.publicMini(pig(0, 45)), 'O', lcg(1), E.STYLE0, { level: 'normal' });
+  assert.ok(go.q > 0.85 && go.stay, `6 to go: the turn goes for it (${go.q.toFixed(3)} to make it)`);
+  assert.equal(A.best(E.publicMini(pig(0, 10)), 'O', lcg(1), E.STYLE0, { level: 'normal' }).q, 0, '41 to go: no square this turn');
+  assert.ok(E.needsOf(E.publicMini(pig(0, 45, { by: 'O', rolls: [8], pot: 8 })), 'O') <= 0.5, 'enough in the pot: only Bank left');
+});
+test('lost causes: only a square the other side leads; never one the computer leads or is level in', () => {
+  for (const [a, b] of [[1, 5], [1.1, 4], [0.5, 20], [3, 3], [Infinity, Infinity]]) assert.equal(E.catchUp(a, b, 5), 1, `needs ${a} against ${b}: not a lost cause`);
+  assert.equal(E.catchUp(5, 1, 5), E.CATCH.factor);
+  const pig = Object.assign(E.newMini('pig', lcg(4)), { bank: { X: 20, O: 45 } }), pm = E.publicMini(pig);
+  assert.equal(E.catchUp(E.needsOf(pm, 'O'), E.needsOf(pm, 'X'), 5), 1, 'the computer ahead in Risky Rolls: full worth');
+});
+test('closing out gives way to a block of the other side\'s match', () => {
+  const pig = Object.assign(E.newMini('pig', lcg(11)), { bank: { X: 20, O: 45 } });
+  const st = board(['coins', 'craps', 'hilo', pig, null, 'c4', 'coins', 'hilo', 'ttt'], ['X', 'X', null, null, 'O'], 'O');   // X has 0 and 1: square 2 wins X the match
+  st.squares[2].mini = E.newMini('coins', lcg(2));
+  assert.equal(E.cpuMove(st, lcg(3), null, { level: 'hard' }).square, 2, 'it blocks first');
+});

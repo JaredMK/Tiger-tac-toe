@@ -27,6 +27,9 @@ export function mcPick(state, me, cands, rng, w, st, until) {
   }
   let best = 0;
   for (let k = 1; k < cands.length; k++) if (wins[k] > wins[best] + 1e-9 || (Math.abs(wins[k] - wins[best]) < 1e-9 && cands[k].score > cands[best].score)) best = k;
+  let near = -1;                                                  // a square it is close to winning (ai.js closeTo): played ahead of the rest (the best of them by the playouts), unless the best square is a block of the other side's match
+  for (let k = 0; k < cands.length; k++) if (cands[k].close && (near < 0 || wins[k] > wins[near])) near = k;
+  if (near >= 0 && !(cands[best].value >= AI.block && cands[near].value < AI.block)) best = near;
   const c = cands[best];
   return { square: c.square, move: c.local.move, score: c.score, value: c.value, gain: c.gain, mc: { n: rounds, p: cands.map((x, k) => Number((wins[k] / Math.max(1, rounds)).toFixed(3))) } };
 }
@@ -41,6 +44,7 @@ function playout(c, after, base, need0, me, o, rng, w, st) {
   const u = rng();
   if (L.win || u < (L.q || 0)) own[i] = ME;
   else if (u < (L.q || 0) + (L.qLose || 0)) own[i] = OP;
+  else if (L.stay) { /* a move that fails leaves the square as it was */ }
   else if (after) { need[2 * i] = after.X; need[2 * i + 1] = after.O; }
   else { need[2 * i + ME - 1] = Math.max(0.5, need[2 * i + ME - 1] - 1); if (L.shared) need[2 * i + OP - 1] = Math.max(0.5, need[2 * i + OP - 1] - 1); }
   let res = own[i] ? result(own) : 0;
@@ -73,7 +77,7 @@ function choose(own, need, vals, p, rng, w) {
     if (a === Infinity && b !== Infinity) continue;               // a square it cannot win and the other side can: a wasted move
     const v = vals[i];
     if (v >= AI.win && a <= 1) return i;                          // the match, now
-    const gain = a === Infinity ? 0.01 : winChance(Math.max(0.5, a - 1), b) - winChance(a, b);
+    const gain = a === Infinity ? 0.01 : a <= 1 ? w.prog * (1 - winChance(a, b)) : winChance(Math.max(0.5, a - 1), b) - winChance(a, b);   // (one move from it: the move takes the square, as the playout plays it)
     const s = v * Math.max(gain, 0.01) * catchUp(a, b, v);
     OPTS[n] = i; SS[n] = s; sum += s;
     if (top < 0 || s > SS[top]) top = n;
