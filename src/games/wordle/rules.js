@@ -52,7 +52,7 @@ export function wordleCandidates(pm) {
 // A random legal move in a mini-game, for a player who ran out of time.
 export let VALID5_LIST = null;
 export function randomMove(mini, p, rng, from, empties) {
-  if (!VALID5_LIST) VALID5_LIST = [...VALID5]; return from(VALID5_LIST);
+  if (!VALID5_LIST) VALID5_LIST = [...VALID5].filter(w => !BAD5.has(w.toUpperCase())); return from(VALID5_LIST);   // (never a word the game refuses: the computer's careless move must be a move)
 }
 export function moveFlash(m, p, range, bjFrom, mini, flash) {
   flash.word = m.toUpperCase(); flash.left = wordleLimit(mini) ? wordleLeft(mini, p) : null; return;

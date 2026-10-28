@@ -264,3 +264,8 @@ test('wordle: the computer never guesses a refused word (Easy\'s slips, Hard\'s 
     assert.ok(!E.BAD5.has(String(g.move).toUpperCase()), `${g.move} is refused`);
   }
 });
+test('Five Letters: a random move is never a refused word', () => {
+  const R = require('../../src/games/wordle/rules.js'), W = require('../../src/games/wordle/words.js');
+  let k = 0; const from = a => { const bad = a.filter(w => W.BAD5.has(w.toUpperCase())); assert.equal(bad.length, 0, `refused words offered: ${bad.slice(0, 3)}`); return a[k++ % a.length]; };
+  R.randomMove({}, 'X', null, from);
+});
