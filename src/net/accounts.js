@@ -1,6 +1,6 @@
 // Accounts: signing in (Google, Apple, email: net/auth.js for the providers), the username, the account kept on this phone.
 import { PROVIDERS, providerSignIn, providerSignOut } from './auth.js';
-import { NET_MS, call, configured, fb, loadFirebase, setConnectWhy } from './connect.js';
+import { NET_MS, call, configured, connectStep, fb, loadFirebase, setConnectWhy } from './connect.js';
 import { enterMatched, holdResume, search, startSearch, stopSearch } from './matchmaking.js';
 import { hostRoom } from './room.js';
 import { fetchReleases } from './releases.js';
@@ -100,7 +100,7 @@ export function finishLogin() {
 export async function connectQuiet() {
   if (!configured()) return false;
   try { await Promise.race([loadFirebase(), new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), NET_MS.connect))]); setConnectWhy(''); return !!(fb && fb.auth); }
-  catch (e) { setConnectWhy(String((e && (e.code || e.name)) || 'error') + ': ' + String((e && e.message) || e).slice(0, 160)); return false; }   // (what failed, shown small under "No connection": a phone with no developer tools can say why)
+  catch (e) { setConnectWhy(String((e && (e.code || e.name)) || 'error') + ': ' + String((e && e.message) || e).slice(0, 160) + (connectStep && connectStep !== 'done' ? ' (at: ' + connectStep + ')' : '')); return false; }   // (what failed, shown small under "No connection": a phone with no developer tools can say why)
 }
 
 // The signed-in user changed (or the page started): follow their profile and their matchmaking game.

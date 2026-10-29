@@ -33,6 +33,7 @@ export let fb = null, fbLoad = null;                      // the SDK: { m: datab
 export let connected = false;
 export let connectWhy = '';                               // why the last connection attempt failed (accounts.js connectQuiet), for the screens that say "No connection"
 export function setConnectWhy(v) { connectWhy = v; }
+export let connectStep = '';                              // where loadFirebase is now (named in connectWhy when it times out)
 let serverOffset = 0;
 export function configured() { const c = window.TTT_FIREBASE && window.TTT_FIREBASE.config || FIREBASE_CONFIG; return !!(c && c.apiKey && c.databaseURL && !/PASTE_/.test(c.apiKey + c.databaseURL)); }
 export function serverNow() { return Date.now() + serverOffset; }
@@ -42,28 +43,37 @@ export function loadFirebase() {
   if (fb) return Promise.resolve(fb);
   if (fbLoad) return fbLoad;
   fbLoad = (async () => {
+    connectStep = 'start';
     const hook = window.TTT_FIREBASE || null;              // the tests: local emulators (the friend-game tests: also a fixed user id, no accounts)
     const base = (hook && hook.cdn) || FIREBASE_CDN;
     const mock = !!(hook && hook.uid);
+    connectStep = 'loading the SDK from ' + base;
     const [appM, m, authM, fnM] = await Promise.all([import(base + 'firebase-app.js'), import(base + 'firebase-database.js'),
       mock ? null : import(base + 'firebase-auth.js'), mock ? null : import(base + 'firebase-functions.js')]);
+    connectStep = 'app';
     const app = appM.initializeApp((hook && hook.config) || FIREBASE_CONFIG);
+    connectStep = 'app check';
     await appCheck(app, base, hook);                        // (App Check first: every request after it carries the token)
     const db = m.getDatabase(app);
     if (hook && hook.emulator) m.connectDatabaseEmulator(db, hook.emulator.host, hook.emulator.port, mock ? { mockUserToken: { sub: hook.uid, user_id: hook.uid } } : undefined);
     const f = { m, db, uid: mock ? hook.uid : null, authM, fnM, auth: null, fns: null };
     if (!mock) {
-      f.auth = authM.getAuth(app);
+      connectStep = 'auth';
+      const native = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());   // (the app: no popup/redirect resolver, which loads a Google page in a frame that never comes back in a web view; the native sheets sign in, auth.js)
+      f.auth = native ? authM.initializeAuth(app, { persistence: [authM.indexedDBLocalPersistence, authM.browserLocalPersistence] }) : authM.getAuth(app);
       if (hook && hook.auth) authM.connectAuthEmulator(f.auth, hook.auth, { disableWarnings: true });
       f.fns = fnM.getFunctions(app, 'us-central1');
       if (hook && hook.functions) fnM.connectFunctionsEmulator(f.fns, hook.functions.host, hook.functions.port);
+      connectStep = 'reading the saved sign-in';
       await f.auth.authStateReady();                        // the account from before, if this browser logged in
-      if (redirectPending()) {                              // back from Google's sign-in page: finish that sign-in first
+      if (!native && redirectPending()) {                              // back from Google's sign-in page: finish that sign-in first
         try { await authM.getRedirectResult(f.auth); } catch (e) { f.redirectError = e; }
       }
+      connectStep = 'signing in as a guest';
       if (!f.auth.currentUser) await authM.signInAnonymously(f.auth);   // no account: a guest, which is all a friend game needs
       f.uid = f.auth.currentUser.uid;
     }
+    connectStep = 'done';
     fb = f;
     m.onValue(m.ref(db, '.info/serverTimeOffset'), s => { serverOffset = s.val() || 0; });
     m.onValue(m.ref(db, '.info/connected'), s => onConnected(!!s.val()));
