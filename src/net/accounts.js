@@ -177,7 +177,8 @@ function authError(e) {
   if (/account-exists-with-different-credential/.test(c)) return { text: 'That email already has an account with another way of logging in.' };
   if (/operation-not-allowed|unauthorized-domain|invalid-oauth/.test(c)) return { text: "That way of logging in isn't available yet. Use another." };
   if (/canceled|cancelled|1001/.test(c + ' ' + String((e && e.message) || ''))) return null;   // (the app's native sheet closed without signing in)
-  return { text: "Couldn't log in. Try again." };
+  const why = window.TTC_ENV && window.TTC_ENV.staging ? ` (${c || (e && e.name) || 'error'}: ${String((e && e.message) || e).slice(0, 140)})` : '';   // (staging only: what failed, for a tester with no developer tools)
+  return { text: "Couldn't log in. Try again." + why };
 }
 export async function loginWith(how) {
   if (loginBusy) return;
