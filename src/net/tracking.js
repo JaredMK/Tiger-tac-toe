@@ -11,7 +11,7 @@ import { APP_VERSION, KEY } from '../ui/config.js';
 
 // ----- anonymous game stats: local matches are reported to the server's `track` function (online
 // matches are counted by the server itself). Only a random id this browser made up goes with them
-// (or the account, when logged in): never a name. Fire and forget: no answer is waited for. -----
+// (or the account, when logged in): never a name. Kept and sent again until the server has them (the outbox below). -----
 function devId() {
   try {
     let id = localStorage.getItem(KEY + '.dev');
@@ -35,9 +35,50 @@ function send(name, data) {
     if (ok && fb && fb.fns) for (const [n, d] of list) call(n, d).catch(() => {});   // (no connection: the reports are dropped; stats are never worth an error)
   }).catch(() => { connecting = false; pending.length = 0; });
 }
+// The stats reports (a local match's start and end, with every square it played) go through an outbox kept on this
+// phone until the server has them: sent at once when it can be, else kept and sent again: on the next report, a
+// return to the page, the network coming back, the next app open, and every so often while some wait. A report is
+// dropped only when the server refuses it as malformed, or after a week. The server counts each match's start and
+// end once (functions/index.js track, claimMatch), so a report sent again never counts twice.
+const OUT_KEY = KEY + '.outbox', OUT_MAX = 60, OUT_AGE = 7 * 86400000, OUT_RETRY = [5000, 15000, 30000, 60000, 300000];
+let outMem = [], outBusy = false, outTimer = null, outFails = 0;
+export function outbox(list) {
+  if (list === undefined) {
+    try { const v = JSON.parse(localStorage.getItem(OUT_KEY) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return outMem.slice(); }
+  }
+  outMem = list.slice(-OUT_MAX);
+  try { if (outMem.length) localStorage.setItem(OUT_KEY, JSON.stringify(outMem)); else localStorage.removeItem(OUT_KEY); } catch (e) { /* no storage: kept for this visit */ }
+  return outMem;
+}
+const outDrop = k => outbox(outbox().filter(r => r.k !== k));
+const outOff = () => !configured() || !!(window.TTT_FIREBASE && window.TTT_FIREBASE.uid);   // (the friend-game tests run without functions)
 export function track(data) {
+  if (outOff()) return;
   data.dev = devId();
-  try { send('track', data); } catch (e) { /* stats are never worth an error */ }
+  outbox(outbox().concat([{ k: 'r' + randHex(8), name: 'track', data, at: Date.now() }]));
+  flushOutbox();
+}
+function outLater() {
+  clearTimeout(outTimer);
+  outTimer = setTimeout(() => { outTimer = null; flushOutbox(); }, OUT_RETRY[Math.min(outFails++, OUT_RETRY.length - 1)]);
+}
+export async function flushOutbox() {
+  if (outBusy || outOff()) return;
+  const now = Date.now();
+  if (outbox().some(r => !(now - r.at < OUT_AGE))) outbox(outbox().filter(r => now - r.at < OUT_AGE));
+  if (!outbox().length) { outFails = 0; return; }
+  outBusy = true;
+  try {
+    if (!(fb && fb.fns && fb.uid) && !((await connectQuiet()) && fb && fb.fns && fb.uid)) { outLater(); return; }   // (no connection yet: later)
+    for (let r = outbox()[0]; r; r = outbox()[0]) {               // the oldest first; one put in meanwhile goes too
+      try { await call(r.name, r.data); }
+      catch (e) {
+        if (!/invalid-argument/.test(String(e && e.code))) { outLater(); return; }   // offline, refused for now (too many, not signed in yet): kept for later
+      }
+      outDrop(r.k);                                               // the server has it (or refused it for good: never sent again)
+    }
+    outFails = 0; clearTimeout(outTimer); outTimer = null;        // all sent: no retry waiting
+  } catch (e) { outLater(); } finally { outBusy = false; }
 }
 const localMode = () => (state.sc ? 'chaos' : state.cpu === 'XO' ? 'cvc' : state.cpu ? 'cpu' : 'local');   // (Super Chaos: a mode of its own)
 export function trackStart() {
@@ -182,7 +223,10 @@ export async function flushLocal() {
 export function init() {
   document.addEventListener('visibilitychange', () => {   // back after half an hour away: a new visit
     if (document.visibilityState === 'visible' && devLast && Date.now() - devLast > 30 * 60000) devOpen();
+    if (document.visibilityState === 'visible') flushOutbox();   // reports still waiting go now
   });
+  window.addEventListener('online', () => flushOutbox());
+  if (outbox().length) setTimeout(flushOutbox, 3000);          // reports left from before (the page closed, offline): sent once the page has started
 }
 
 // Setters for the names other modules reassign (an imported name is read-only there).

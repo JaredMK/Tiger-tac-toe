@@ -80,7 +80,7 @@ function miniSums(t, pick) {
 // kept under 'chaos' ('testingSc' for the admin-only games); the modes picked cover the normal ones.
 // Squares of abandoned matches (resigned, timed out, never finished) are not counted (from 21 Oct 2026).
 function miniRow(t, name, s, c) {
-  return { t, name, played: s.won, avgWin: ratio(s.winMoves, s.won), avgLose: ratio(s.loseMoves, s.won), avgAll: ratio(s.winMoves + s.loseMoves, s.won),
+  return { t, name, played: s.won, resets: s.draw, opened: s.open, avgWin: ratio(s.winMoves, s.won), avgLose: ratio(s.loseMoves, s.won), avgAll: ratio(s.winMoves + s.loseMoves, s.won),
     xRate: ratio(s.xWins, s.won), oRate: ratio(s.oWins, s.won), left: s.draw + s.open,
     scPlayed: c.won, scAvgWin: ratio(c.winMoves, c.won), scAvgAll: ratio(c.winMoves + c.loseMoves, c.won) };
 }
@@ -90,7 +90,9 @@ function miniRows() { const pick = miniPick(), sc = scPick(); return Object.keys
 function miniAll() {                   // every completed square together: the sums of the rows' own counters
   const pick = miniPick(), sc = scPick(), z = () => ({ won: 0, draw: 0, open: 0, winMoves: 0, loseMoves: 0, xWins: 0, oWins: 0 }), s = z(), c = z();
   for (const t of Object.keys(GAMES)) { const r = miniSums(t, pick), q = miniSums(t, sc); for (const k of Object.keys(s)) { s[k] += r[k]; c[k] += q[k]; } }
-  return Object.assign(miniRow('all', 'All mini-games', s, c), { draws: s.draw + c.draw, open: s.open + c.open });
+  const tst = z();                                     // (the admin-only games' squares, kept apart: counted in the reconciliation below)
+  if (miniMode !== 'testing') for (const t of Object.keys(GAMES)) { const r = miniSums(t, ['testing']); for (const k of Object.keys(tst)) tst[k] += r[k]; }
+  return Object.assign(miniRow('all', 'All mini-games', s, c), { draws: s.draw + c.draw, open: s.open + c.open, sc: c, testing: tst });
 }
 
 // ---------- charts: plain SVG ----------
@@ -122,6 +124,16 @@ function hbarChart(rows, key, label, fmt) {
     return `<text x="${L - 8}" y="${y + 15}" text-anchor="end" style="fill:var(--ink);font-size:13px">${esc(r.name)}</text><rect x="${L}" y="${y + 3}" width="${w.toFixed(1)}" height="${rowH - 8}" rx="4" fill="var(--sky)" stroke="var(--ink)" stroke-width="1.5"><title>${esc(r.name)}: ${fmt(r[key])}</title></rect><text x="${L + w + 6}" y="${y + 15}" style="fill:var(--ink);font-size:13px">${fmt(r[key])}</text>`;
   }).join('');
   return `<div class="chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(label)}">${bars}</svg></div>`;
+}
+
+// Every square played in the modes picked, accounted for: completed + resets + left open (Super Chaos and the admin-only
+// games' squares counted apart, as their own columns and view keep them).
+function recon(all) {
+  const sum = x => x.won + x.draw + x.open, line = (x, what) => `${sum(x)} square${sum(x) === 1 ? '' : 's'} ${what}: ${x.won} completed + ${x.draw} reset${x.draw === 1 ? '' : 's'} + ${x.open} left open.`;
+  const t = all.testing, sc = all.sc;
+  return `<b>${line({ won: all.played, draw: all.resets, open: all.opened }, miniMode === 'testing' ? 'of admin-only games played' : 'played in the modes picked')}</b>`
+    + (sum(sc) ? ` Super Chaos: ${line(sc, 'played')}` : '')
+    + (miniMode !== 'testing' && sum(t) ? ` Admin-only games (in every mode, under "Admin-only games (testing)"): ${line(t, 'more')}` : '');
 }
 
 // ---------- the page ----------
@@ -156,11 +168,11 @@ function draw() {
   }).join('')}</tbody></table></div><p class="note">Finished: played to a result (a line, a draw, a majority). Abandoned: resigned, lost on time, or never finished (left, or the app closed). The averages cover finished matches only, counted from 21 Oct 2026. Draws: ended once neither side could still make three in a row. Turns count a bonus move (a Risky Rolls roll, a Hangman letter) as part of its turn.</p>`;
   const rows = miniRows(), dir = sortBy.dir;
   rows.sort((a, b) => { const x = a[sortBy.k], y = b[sortBy.k]; if (x == null && y == null) return a.name.localeCompare(b.name); if (x == null) return 1; if (y == null) return -1; return (typeof x === 'string' ? x.localeCompare(y) : x - y) * dir; });
-  const cols = [['name', 'Mini-game'], ['played', 'Completed'], ['avgWin', 'Avg winner moves'], ['avgLose', 'Avg loser moves'], ['avgAll', 'Avg total moves'], ['xRate', 'X wins'], ['oRate', 'O wins'], ['scPlayed', 'SC completed'], ['scAvgWin', 'SC avg winner moves'], ['scAvgAll', 'SC avg total moves']];
+  const cols = [['name', 'Mini-game'], ['played', 'Completed'], ['resets', 'Resets'], ['opened', 'Left open'], ['avgWin', 'Avg winner moves'], ['avgLose', 'Avg loser moves'], ['avgAll', 'Avg total moves'], ['xRate', 'X wins'], ['oRate', 'O wins'], ['scPlayed', 'SC completed'], ['scAvgWin', 'SC avg winner moves'], ['scAvgAll', 'SC avg total moves']];
   const maxWin = Math.max(1, ...rows.map(r => r.avgWin || 0)), all = miniAll();
-  const miniTr = (r, cls) => `<tr${cls ? ` class="${cls}"` : ''}><td>${esc(r.name)}</td><td>${r.played}</td><td>${num(r.avgWin)}${r.avgWin != null && !cls ? `<span class="bar" style="width:${Math.round(r.avgWin / maxWin * 60)}px"></span>` : ''}</td><td>${num(r.avgLose)}</td><td>${num(r.avgAll)}</td><td>${pct(r.xRate)}</td><td>${pct(r.oRate)}</td><td class="sc">${r.scPlayed}</td><td class="sc">${num(r.scAvgWin)}</td><td class="sc">${num(r.scAvgAll)}</td></tr>`;
+  const miniTr = (r, cls) => `<tr${cls ? ` class="${cls}"` : ''}><td>${esc(r.name)}</td><td>${r.played}</td><td>${r.resets}</td><td>${r.opened}</td><td>${num(r.avgWin)}${r.avgWin != null && !cls ? `<span class="bar" style="width:${Math.round(r.avgWin / maxWin * 60)}px"></span>` : ''}</td><td>${num(r.avgLose)}</td><td>${num(r.avgAll)}</td><td>${pct(r.xRate)}</td><td>${pct(r.oRate)}</td><td class="sc">${r.scPlayed}</td><td class="sc">${num(r.scAvgWin)}</td><td class="sc">${num(r.scAvgAll)}</td></tr>`;
   const miniTable = `<div class="tbl"><table><thead><tr>${cols.map(([k, l]) => `<th${sortBy.k === k ? ` aria-sort="${dir > 0 ? 'ascending' : 'descending'}"` : ''}><button data-sort="${k}">${l}</button></th>`).join('')}</tr></thead><tbody>${miniTr(all, 'sum')}${rows.map(r => miniTr(r)).join('')}</tbody></table></div>
-    <p class="note">${miniMode === 'testing' ? 'Squares of games played while they were admin only, in every mode, kept apart from the released games\' numbers. ' : ''}Only completed squares count: those that ended claimed by X or O. Left out: ${all.open} square${all.open === 1 ? '' : 's'} still open when the match ended (won, drawn, left or resigned) and ${all.draws} board${all.draws === 1 ? '' : 's'} reset after a draw. Moves: the turns each side spent in that square (a bonus roll or letter within a turn counts once); total moves are the winner's and the loser's together. The first columns are normal matches (the modes picked); the SC columns are every Super Chaos match (vs the computer and friend rooms). Squares of abandoned matches (resigned, timed out, never finished) are left out (from 21 Oct 2026; before, Super Chaos friend rooms counted under Friend code). Tap a heading to sort; the All row stays on top.</p>`;
+    <p class="note">${miniMode === 'testing' ? 'Squares of games played while they were admin only, in every mode, kept apart from the released games\' numbers. ' : ''}${recon(all)} The averages count completed squares only: those that ended claimed by X or O. Resets: a square that ended level, its board reset with a new mini-game (counted under the game that ended level). Left open: a square with moves in it when the match ended. Moves: the turns each side spent in that square (a bonus roll or letter within a turn counts once); total moves are the winner's and the loser's together. The first columns are normal matches (the modes picked); the SC columns are every Super Chaos match (vs the computer and friend rooms). Squares of abandoned matches (resigned, timed out, never finished) are left out (from 21 Oct 2026; before, Super Chaos friend rooms counted under Friend code). Tap a heading to sort; the All row stays on top.</p>`;
   const pnode = { d: 'days', w: 'weeks', m: 'months' }[period];
   const keys = Object.keys(stats[pnode] || {}).sort().reverse().slice(0, period === 'd' ? 31 : 12);
   const ptable = `<div class="tbl"><table><thead><tr><th>${{ d: 'Day', w: 'Week', m: 'Month' }[period]}</th><th>Active players</th><th>Logins</th><th>New accounts</th>${period === 'd' ? '<th>Matches started</th><th>Finished</th>' : ''}</tr></thead><tbody>${keys.map(k => {
