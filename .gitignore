@@ -5,3 +5,11 @@ _site
 _app
 .claude/
 _shots
+
+# the iOS app's Firebase config files (copied in by scripts/ios-setup.js; kept out of the repository)
+ios-config/
+ios/App/App/GoogleService-Info.plist
+ios/App/Pods/
+ios/App/build/
+ios/DerivedData/
+xcuserdata/

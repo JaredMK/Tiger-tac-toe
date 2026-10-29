@@ -206,3 +206,16 @@ the studio's logo: `assets/brand/jarhad-labs-logo.svg`). No third-party art anyw
   1284×2778 (428×926 @3) and iPad 13" 2064×2752 (1032×1376 @2), into `_shots/<device>/` (gitignored). Upload them as
   they are, or lay captions over them; App Store Connect scales the 6.9" set for the smaller iPhones if no other set is
   given.
+
+## 7. Set up, run and ship (as built)
+
+Capacitor 8 uses Swift packages: no CocoaPods. Needs Xcode 16.3 or later (the Firebase plugin's package uses Swift tools 6.1) and Node 22.
+
+- **Once:** put the two Firebase plists in `ios-config/` as `GoogleService-Info.production.plist` and `GoogleService-Info.staging.plist` (or pass
+  `--plists DIR`; `~/Desktop/ttc-ios/` and `~/Downloads/` are searched too). Each must be for `com.jaredkrosser.tictacchaos`, with Google sign-in on.
+- **Every time:** `npm run ios:build` (production) or `npm run ios:build -- staging`: web files, `cap add ios` (first time), `scripts/ios-setup.js`, `cap sync ios`.
+  `-- --open` opens Xcode, `-- --run` runs the Simulator. Then Xcode: pick the **App** scheme and a device, Run; or Product > Archive.
+- **Signing:** automatic, team `2F7M8F9NBG`. Sign in to Xcode > Settings > Accounts with the Apple ID of that team; the first build registers the App ID's
+  capabilities (Sign in with Apple, Associated Domains) from `App.entitlements`.
+- **Deep links:** `/.well-known/apple-app-site-association` is served by every site build once `app-config.js` is filled; it is live on staging after a staging
+  deploy and on tictacchaos.com after a release.

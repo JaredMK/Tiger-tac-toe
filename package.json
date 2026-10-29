@@ -16,10 +16,21 @@
     "import:help": "node scripts/help-text.js import",
     "check:envs": "node scripts/check-envs.js",
     "build:app": "node scripts/build-app.js",
-    "check:headers": "node scripts/check-headers.js"
+    "check:headers": "node scripts/check-headers.js",
+    "ios:build": "node scripts/ios-build.js"
   },
   "devDependencies": {
-    "firebase": "11.10.0",
+    "@capacitor-firebase/authentication": "^8.5.2",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/browser": "^8.0.5",
+    "@capacitor/cli": "^8.6.0",
+    "@capacitor/clipboard": "^8.0.1",
+    "@capacitor/core": "^8.6.0",
+    "@capacitor/filesystem": "^8.1.5",
+    "@capacitor/haptics": "^8.0.2",
+    "@capacitor/ios": "^8.6.0",
+    "@capacitor/share": "^8.0.3",
+    "firebase": "^12.19.0",
     "matter-js": "^0.20.0"
   }
 }

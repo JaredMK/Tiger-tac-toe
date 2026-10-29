@@ -1,0 +1,9 @@
+{
+  "appId": "com.jaredkrosser.tictacchaos",
+  "appName": "Tic Tac Chaos",
+  "webDir": "_app",
+  "ios": { "contentInset": "never", "scheme": "Tic Tac Chaos" },
+  "plugins": {
+    "FirebaseAuthentication": { "skipNativeAuth": true, "providers": ["google.com", "apple.com"] }
+  }
+}
