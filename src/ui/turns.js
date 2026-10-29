@@ -5,7 +5,7 @@ import { SND, backSounds, matchEndSound, moveSounds } from '../audio/sound.js';
 import { mmIntro } from '../net/matchmaking.js';
 import { haptic } from '../net/platform.js';
 import { applyPending } from '../net/room.js';
-import { ANIM, REPLAY_SPEED, holdRate, moveRate } from '../core/timer.js';
+import { ANIM, holdRate, moveRate, replaySpeed, speedMode } from '../core/timer.js';
 import {
   CPU_MS, FLASH_MS, FLIP_MS, MEMORY_MS, RNG, app, commit, cpuPlan, cpuTimer, flashReady, flashTimer, holdTimer,
   menuOpen, setCpuPlan, setCpuTimer, setFlashReady, setFlashTimer, setHoldTimer, state
@@ -81,7 +81,7 @@ function cpuAct() {
   const plan = cpuPlan, mini = state.squares[plan.square].mini;
   if (!plan.stage) {                             // its screen first, as a person's would show: the choice pressed and typed in (ui/replay.js), then the move
     plan.stage = 1;
-    repStart({ cpu: true, sq: plan.square, by: state.turn, type: mini.type, mini, move: plan.move, lead: CPU_MS.pre, speed: REPLAY_SPEED, onMove: cpuPlay });
+    repStart({ cpu: true, sq: plan.square, by: state.turn, type: mini.type, mini, move: plan.move, lead: CPU_MS.pre, speed: replaySpeed(), onMove: cpuPlay });
     return;
   }
   cpuPlay();
@@ -146,8 +146,9 @@ function flashRate(f, sp) {
   requestAnimationFrame(step);
 }
 // How long the result stays up once its animation has played.
+const SPEED_HOLD = { claim: 500, match: 700 };     // Speed: a win's moment shorter still, the board's zoom-out and stamp right behind it
 export function holdOf(f) {
-  let hold = FLASH_MS[f.kind] || 800;
+  let hold = (speedMode() && SPEED_HOLD[f.kind]) || FLASH_MS[f.kind] || 800;
   if (f.type === 'memory' && f.kind === 'move') hold = MEMORY_MS;
   if (f.type === 'pig' && f.kind === 'move') hold = f.note === 'bust' ? FLASH_MS.card : FLASH_MS.move;   // a bust gets a proper card; a bank just its points moving over
   if (f.type === 'pig' && f.kind === 'again') hold = 0;                      // a roll that keeps the turn: Roll again the moment the die has landed and its points counted
@@ -179,7 +180,7 @@ export function toWin() {
   clearTimeout(winTimer); winTimer = null;
   if (!state.winner || state.screen !== 'board' || state.sc) return;
   state.screen = 'win'; state.zoom = null;
-  SND.play('swish'); SND.play(matchEndSound(), { at: 0.12 });
+  SND.play('swish'); SND.play(matchEndSound(), { at: speedMode() ? 0.12 : 0.25 });
   const k = endKind().list;
   if (k !== 'loss') setTimeout(() => { confetti(k === 'win' ? 60 : 30); if (k === 'win') shake(1.2); }, 60);   // (a win: a burst of confetti and a jolt; a tie or two people on one phone, a smaller one; a loss, none)
   haptic({ win: 'win', loss: 'loss' }[endKind().list] || 'claim');   // (the app: one buzz with the end screen, matching its sound; a tie or two people on one phone, a plain one)
@@ -196,7 +197,7 @@ export function dismissFlash() {
   const ended = f.kind === 'match' && !!state.winner && state.screen === 'win' && !state.sc && state.squares[f.square] && state.squares[f.square].owner;
   if (ended) {                                       // the square that ended the match: back to the main board first, where it stamps in; then the match's end (toWin)
     state.screen = 'board'; state.zoom = null; state.stamp = f.square; state.stampId = `${state.id || 'm'}:${state.moves}`;
-    clearTimeout(winTimer); winTimer = setTimeout(toWin, (STAMP_MS * 0.6 + WIN_AFTER) / ANIM.speed);   // (the end screen comes in as the stamp settles)
+    clearTimeout(winTimer); winTimer = setTimeout(toWin, speedMode() ? (STAMP_MS * 0.6 + WIN_AFTER) / ANIM.speed : (STAMP_MS + WIN_AFTER) / ANIM.speed);   // (Speed: the end screen comes in as the stamp settles)
   }
   if (hold && state.done) { startFx('back', state.done); if (!quiet) SND.play('flipDown'); }   // the two cards turning back over
   else if (!quiet) backSounds(from);

@@ -91,7 +91,7 @@ export function renderBoard(review) {
   const bw = st == null ? null : burstPick('board:' + state.stampId), bend = k => Math.round(stampAt + (BOARD_BURST[k] + BURST_MS) / ANIM.speed);
   const pow = st == null ? '' : `<div class="pow-b c${st % 3}" style="grid-row:${Math.floor(st / 3) + 1} / span 1;grid-column:${st % 3 + 1} / span 1"${fxAttr(stampAt)} aria-hidden="true">${el < BOARD_BURST[0] + BURST_MS ? `<span class="b1" data-bend="${bend(0)}">${burstSvg(bw.words[0], 'y', 150, 110, 34)}</span>` : ''}<span class="b2" data-bend="${bend(1)}">${burstSvg(bw.words[1], 'r', 160, 104, 28)}</span></div>`;
   const w = waitBand(spot);
-  const zout = fx.enter && fx.enter.key === 'board:null' && /^mini:/.test(fx.enter.from || '');   // back from a square: the board zooms out to meet it (its stamp lands as it settles)
+  const zout = ANIM.mode === 'speed' && fx.enter && fx.enter.key === 'board:null' && /^mini:/.test(fx.enter.from || '');   // Speed, back from a square: the board zooms out to meet it (its stamp lands as it settles)
   return `<main class="scr board-scr${w.on ? ' waiting' : ''}${zout ? ' zout' : ''}">${netBar()}<div class="board">${sqs}${pow}${w.html}</div>
     <div class="foot"><span class="hint">${hint}</span></div>${pauseMenu()}</main>`;
 }

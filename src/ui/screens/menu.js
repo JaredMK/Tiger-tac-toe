@@ -1,5 +1,6 @@
 // The main menu.
 import { soundBtn } from '../../audio/sound.js';
+import { pacePick } from '../pace.js';
 import { acct, loggedIn } from '../../net/accounts.js';
 import { activeElsewhere, findOn, resumable, resumeBusy } from '../../net/matchmaking.js';
 import { privacyUrl } from '../../net/platform.js';
@@ -21,6 +22,7 @@ export function renderMenu() {
     <button class="primary alt" data-act="friend-go">Play a Friend</button>
     ${findBtn()}
     <button class="btn howto" data-act="howto">How to Play</button>
+    ${pacePick('menu')}
   </div><div class="menu-foot"><a class="credit" href="${JARHEAD_URL}" target="_blank" rel="noopener noreferrer" aria-label="by JarHead Labs, on X (opens in a new tab)">${JARHEAD_LOGO}<span>by JarHead Labs</span></a><a class="privacy" href="${privacyUrl()}" target="_blank" rel="noopener noreferrer" aria-label="Privacy policy (opens in a new tab)">Privacy</a></div></main>`;
 }
 // Find Match: greyed while the admin has it off ("Not available at this time"); back into the match in progress if there is one.

@@ -179,3 +179,15 @@ test('account rules: users/{uid}, history/{uid} and oppStats/{uid} are the owner
   await denied(me.write(`oppStats/${me.uid}/${other.uid}/wins`, 99), 'your own tally by hand');
   await denied(me.write(`lastSeen/${me.uid}`, t), 'your last activity by hand');
 });
+test('prefs rules: a player\'s own settings (prefs/{uid}: the Animation choice) are theirs alone to read and write, Normal or Speed only', async () => {
+  const me = client('uid-pref'), other = client('uid-pref-other'), anon = client(null);
+  await me.write(`prefs/${me.uid}/anim`, 'speed');
+  assert.equal(await me.read(`prefs/${me.uid}/anim`), 'speed', 'your own setting');
+  await me.write(`prefs/${me.uid}/anim`, 'normal');
+  await denied(me.write(`prefs/${me.uid}/anim`, 'turbo'), 'a value that is neither');
+  await denied(me.write(`prefs/${me.uid}/anim`, 2), 'a number');
+  await denied(me.write(`prefs/${me.uid}/other`, 'x'), 'anything else under your prefs');
+  await denied(other.read(`prefs/${me.uid}`), "another's settings");
+  await denied(other.write(`prefs/${me.uid}/anim`, 'speed'), "another's setting");
+  await denied(anon.write(`prefs/${me.uid}/anim`, 'speed'), 'a setting without a login');
+});

@@ -5,7 +5,7 @@ import { restrictGames } from '../core/games.js';
 import { levelOf } from '../core/aiw.js';
 import { NAME_MAX, normCpu, normLocal, normSetup, seatLocal, startCpu, startMatch } from '../core/match.js';
 import { resignLocal } from '../core/records.js';
-import { normTimer, turnOpen, turnSecs } from '../core/timer.js';
+import { normTimer, speedMode, turnOpen, turnSecs } from '../core/timer.js';
 import { hpSel, setHpSel } from '../games/hexapawn/view.js';
 import { GAMES, TYPES } from '../games/index.js';
 import { other } from '../core/util.js';
@@ -32,6 +32,7 @@ import { RATINGS_ENABLED } from './config.js';
 import { closeExplain, explainT, openExplain } from './explainer.js';
 import { fingGo } from './finger.js';
 import { startFx, tapPop } from './fx.js';
+import { setPace } from './pace.js';
 import { backspace, submitWord, typeLetter } from './keyboard.js';
 import { render } from './render.js';
 import { updateNeeded } from './update.js';
@@ -111,7 +112,7 @@ export function init() {
   app.addEventListener('click', e => {
     if (rx.tray && !e.target.closest('.rtray, [data-act="react-open"]')) { rx.tray = false; render(); }   // a tap elsewhere closes the reaction tray
     if ((scPopup() || scJointFrame()) && e.target.closest('main.screplay') && !e.target.closest('[data-act="explain"]')) { e.preventDefault(); scSkip(); return; }   // Super Chaos's replay: a tap anywhere on it (or its Skip) goes to its end
-    if (state.screen === 'mini' && !menuOpen && !explainT && e.target.closest('main.mini') && !e.target.closest('[data-act="explain"], [data-act="pause"], [data-act="rep-skip"], .rxdock')) {   // a tap on a move still playing finishes it at once (yours, the computer's, an opponent's replay)
+    if (speedMode() && state.screen === 'mini' && !menuOpen && !explainT && e.target.closest('main.mini') && !e.target.closest('[data-act="explain"], [data-act="pause"], [data-act="rep-skip"], .rxdock')) {   // Speed: a tap on a move still playing finishes it at once (yours, the computer's, an opponent's replay)
       if (flashAnimating()) { e.preventDefault(); if (rep && rep.f === state.flash) repSkip(); else skipFlash(); return; }
       if (rep && rep.stage === 'inputs') { e.preventDefault(); repSkip(); return; }
     }
@@ -140,8 +141,9 @@ export function init() {
     if (act === 'ask-leave') { if (joinAsk) leaveAndJoin(joinAsk.code); return; }
     if (act === 'dismiss') { if (Date.now() >= flashReady) dismissFlash(); return; }   // not before the animation is over
     if (act === 'rep-skip') { repSkip(); return; }                                      // an opponent's replay: straight to its result
-    const free = ['pause', 'pause-report', 'pause-resume', 'pause-main', 'pause-back', 'pause-leave', 'leave', 'lobby-back', 'menu', 'find-again', 'profile', 'prof-back', 'prof-hist', 'mystats', 'hist-open', 'hist-sq', 'hist-back', 'hist-close', 'leaderboard', 'rejoin', 'host-retry', 'share', 'copy-invite', 'rematch', 'rematch-cancel', 'share-result', 'timer', 'review', 'review-sq', 'review-back', 'results', 'pview', 'react-open', 'react-send', 'del-account', 'del-cancel', 'del-confirm', 'verify-retry', 'verify-resend'];
-    if (act === 'sound') { SND.setMuted(!SND.muted); if (!SND.muted) SND.play('toggle'); render(); return; }   // (the press's own sound came with the press when it was still on)
+    const free = ['anim-set', 'pause', 'pause-report', 'pause-resume', 'pause-main', 'pause-back', 'pause-leave', 'leave', 'lobby-back', 'menu', 'find-again', 'profile', 'prof-back', 'prof-hist', 'mystats', 'hist-open', 'hist-sq', 'hist-back', 'hist-close', 'leaderboard', 'rejoin', 'host-retry', 'share', 'copy-invite', 'rematch', 'rematch-cancel', 'share-result', 'timer', 'review', 'review-sq', 'review-back', 'results', 'pview', 'react-open', 'react-send', 'del-account', 'del-cancel', 'del-confirm', 'verify-retry', 'verify-resend'];
+    if (act === 'sound') { SND.setMuted(!SND.muted); if (!SND.muted) SND.play('toggle'); render(); return; }
+    if (act === 'anim-set') { setPace(el.dataset.v); return; }                       // the player's Animation setting (ui/pace.js): this screen only, any time, the menu open or not   // (the press's own sound came with the press when it was still on)
     if (act === 'react-mute') { rx.mute = !rx.mute; if (rx.mute && rx.card && rx.card.side !== mySide()) { clearTimeout(rx.hide); rx.card = null; } render(); return; }   // this match only: the opponent's emoji stop showing and sounding
     if (act === 'pause') { setMenuOpen(true); setMenuStep('main'); startFx('menu', menuStep); render(); scheduleCpu(); return; }
     if (act === 'pause-resume') { closeReport(); setMenuOpen(false); setMenuStep('main'); render(); scheduleCpu(); return; }

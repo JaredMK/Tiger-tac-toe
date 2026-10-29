@@ -200,8 +200,7 @@ svg text { text-rendering: geometricPrecision; }   /* laid out at its true size,
   --gh: calc(var(--vh) - var(--hdr) - var(--bar) - var(--rxh) - 2 * var(--pad) - var(--sat) - var(--sab));
   --g: min(var(--gw), var(--gh));
 }
-.mini.enter { animation: zoomin .22s cubic-bezier(.2, .9, .3, 1.15); }   /* on the way in from the board (anchored to that moment: a re-render carries it on; at the game's pace, ui/fx.js anchorFx) */
-.board-scr.zout .board { animation: zoomout .24s cubic-bezier(.2, .9, .3, 1.1) both; }   /* back from a square: the board meets you as the result lands, the claim stamping in as it settles */
+.mini.enter { animation: zoomin .18s ease-out; }   /* on the way in from the board (anchored to that moment: a re-render carries it on) */
 .bar { flex: none; height: var(--bar); width: 100%; display: flex; align-items: center; gap: 12px; }
 .bar.won { border-radius: 14px; padding: 0 12px 0 6px; }
 .bar.won-X { background: var(--x-soft); }
@@ -676,7 +675,7 @@ main.scr.mini:has(.fing), main.scr.mini:has(.fing) * { touch-action: none; -webk
 }
 .primary:active { transform: scale(.97); }
 
-@keyframes pop { 0% { transform: scale(.7); opacity: 0; } 60% { transform: scale(1.08); opacity: 1; } 100% { transform: scale(1); } }   /* a quick pop, a touch past full size and back */
+@keyframes pop { from { transform: scale(.85); opacity: 0; } }
 @keyframes fade { from { opacity: 0; } }
 @keyframes markpop { 0% { transform: scale(.2); opacity: 0; } 60% { transform: scale(1.18); opacity: 1; } 100% { transform: scale(1); } }
 @keyframes winbg { from { background: var(--panel-2); box-shadow: none; } }
@@ -733,8 +732,7 @@ main.scr.mini:has(.fing), main.scr.mini:has(.fing) * { touch-action: none; -webk
 @keyframes spotglow { 0%, 100% { box-shadow: inset 0 0 0 2px var(--spot), 0 0 0 0 var(--spot); } 50% { box-shadow: inset 0 0 0 3px var(--spot), 0 0 18px 4px var(--spot); } }
 @keyframes clockpulse { 50% { transform: scale(1.08); } }
 
-@keyframes zoomin { 0% { transform: scale(.82); opacity: 0; } 70% { transform: scale(1.02); opacity: 1; } 100% { transform: scale(1); } }
-@keyframes zoomout { 0% { transform: scale(1.18); opacity: .35; } 70% { transform: scale(.99); opacity: 1; } 100% { transform: scale(1); } }
+@keyframes zoomin { from { transform: scale(.94); opacity: 0; } }
 @keyframes shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
 @keyframes coinflip { 0% { transform: translateY(0) rotateY(0); background: var(--c0); } 45% { transform: translateY(-45%) rotateY(540deg); } 84% { background: var(--c0); } 100% { transform: translateY(0) rotateY(1080deg); } }
 @keyframes dieroll { 0% { transform: rotate(0) scale(.6); } 50% { transform: rotate(200deg) scale(1.12); } 100% { transform: rotate(360deg) scale(1); } }
@@ -2564,7 +2562,39 @@ main.scr.mini > .wband { left: 0; right: 0; }   /* Super Chaos: waiting in the s
 .delask .card .row .btn { flex: 1; }
 .delask .card .btn.go { background: var(--x); color: var(--paper); }
 
-/* ----- energy (ui/fx.js): confetti on a claim and a win (the screen's shake and the presses' pops are animated from the script) ----- */
+/* ----- Speed (the player's Animation setting, html.spd: ui/pace.js): snappier easing, a pop that overshoots, the board's
+   zoom-out, confetti (the screen's shake and the presses' pops are animated from the script: ui/fx.js) ----- */
+@keyframes popx { 0% { transform: scale(.7); opacity: 0; } 60% { transform: scale(1.08); opacity: 1; } 100% { transform: scale(1); } }
+@keyframes zoominx { 0% { transform: scale(.82); opacity: 0; } 70% { transform: scale(1.02); opacity: 1; } 100% { transform: scale(1); } }
+@keyframes zoomout { 0% { transform: scale(1.18); opacity: .35; } 70% { transform: scale(.99); opacity: 1; } 100% { transform: scale(1); } }
+.spd .mini.enter { animation: zoominx .22s cubic-bezier(.2, .9, .3, 1.15); }   /* into a square (at Speed's pace, ui/fx.js anchorFx) */
+.spd .board-scr.zout .board { animation: zoomout .24s cubic-bezier(.2, .9, .3, 1.1) both; }   /* back from a square: the board meets you as the result lands, the claim stamping in as it settles */
+.spd #app > main.scr.mini.screplay,
+.spd .bsship.sunk.fresh,
+.spd .card,
+.spd .cell.flipin svg,
+.spd .dig.open > span,
+.spd .dig.open svg,
+.spd .guess.fresh,
+.spd .hexc.win.lit::after,
+.spd .menu-card,
+.spd .netbar,
+.spd .notice,
+.spd .rmbub,
+.spd .sdie.fresh,
+.spd .spot-lab,
+.spd .timeout-note,
+.spd .toast,
+.spd .track .tok.moved,
+.spd .win-card { animation-name: popx; animation-timing-function: cubic-bezier(.2, .9, .3, 1); }   /* a pop overshoots a touch */
+
 .confetti { position: fixed; inset: 0; z-index: 60; pointer-events: none; overflow: hidden; }
 .confetti i { position: absolute; width: 9px; height: 13px; border-radius: 2px; border: 1.5px solid var(--ink); }
 @media (prefers-reduced-motion: reduce) { .confetti { display: none; } }
+
+/* ----- the player's Animation setting (ui/pace.js): Normal | Speed, in the main menu and the in-game menu ----- */
+.animpick { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 2px; font-weight: 800; font-size: 14px; }
+.animpick > span { margin-right: 4px; opacity: .8; }
+.animpick .pk { min-height: 36px; padding: 4px 14px; border: 3px solid var(--ink); border-radius: 999px; background: var(--paper); color: var(--ink); font: inherit; cursor: pointer; }
+.animpick .pk.on { background: var(--ink); color: var(--paper); }
+.animpick.pause { margin-top: 10px; }

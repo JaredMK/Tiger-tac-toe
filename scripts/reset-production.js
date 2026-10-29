@@ -20,7 +20,7 @@ const START_RATING = 1200;                                              // (func
 const DELETE = ['rooms', 'games', 'gpresence', 'presence', 'reacts', 'active', 'queue', 'botGames', 'history', 'localHistory',
   'matchLogs', 'matchLogIndex', 'matchLogRoom', 'stats', 'statsSeen', 'localStats', 'oppStats', 'leaderboard', 'botStats',
   'alertLog', 'alertStats', 'alertState', 'botsLock', 'devices', 'devlog', 'lastSeen', 'reports', 'rate'];
-const KEEP = ['users', 'profiles', 'usernames', 'admin', 'config', 'releases', 'features', 'bots', 'meta', 'review', 'rate'];
+const KEEP = ['users', 'profiles', 'usernames', 'admin', 'config', 'releases', 'features', 'bots', 'meta', 'review', 'rate', 'prefs'];   // (prefs: a player's own settings, the Animation choice)
 const RECORD = { wins: 0, losses: 0, draws: 0, games: 0, rating: START_RATING, friend: null, minis: null };
 const PUBLIC_RECORD = ['wins', 'losses', 'draws', 'games', 'friend', 'minis'];   // the record's part of a public profile (profiles/{uid}: no rating), put back to 0-0-0 with it
 const PROFILE = ['username', 'joined', ...Object.keys(RECORD)];        // the fields an account is known to have

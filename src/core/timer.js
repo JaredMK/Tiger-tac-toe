@@ -26,38 +26,44 @@ export function turnOpen(st, i) {
 
 // ---------- playback: how long a settled move takes to play on a phone ----------
 // The turn clock allows for it, so the next player gets the full time once the move has played out.
-// The phones and the server use the same figures. These are the design's base timings; everything plays at
-// ANIM.speed (TEMPO times the admin's Animation speed), so at the default the figures on screen are half of these.
+// The phones and the server use the same figures (Normal: the server never knows a player's Animation choice).
 export const PLAY = {
   spot: 600,                                                              // the square glows on the board before the zoom
-  flash: { move: 600, again: 350, claim: 500, draw: 1100, match: 700, card: 900 },   // the result stays up this long once its animation is over (a win: the game's own winning moment, the board's zoom-out and stamp right behind it)
+  flash: { move: 600, again: 350, claim: 800, draw: 1100, match: 900, card: 900 },   // the result stays up this long once its animation is over (a win: the game's own winning moment; the square's stamp follows on the board)
   flip: 500,                                                              // Find the Pair's cards turn back over
   die: 600, spin: 1000, hop: 130,                                          // a die's tumble, the candy wheel's spin, each hop of a token
   spin3: 700, slide: 750, knock: 650,                                     // Bump's 1-2-3 spinner; a ladder climb or a snake slide; a piece knocked Home
 };
-// The game's pace (October 2026: "fast and chaotic"): every animation, hold and transition runs TEMPO times as
-// fast as its base figure, on the page (ui/fx.js anchorFx for every CSS animation, ui/turns.js playFlash for a
-// move's) and on the server (replayMs). The admin's Animation speed (config/anim/speed: 0.5 to 2, default 1)
-// multiplies it again; ANIM.speed is the two together. ANIM.fx is the admin's Effects intensity (config/anim/fx:
-// 0 to 2, default 1): how hard the screen shakes, how many confetti pieces, how big the pops (ui/fx.js).
-// The waits that are the game itself never change: Find the Pair's two cards up (MEMORY_MS), the attention games'
-// memorise and answer times, Echo's pattern, Bullseye's sweep, a run or a physics recording (realTime below).
-export const TEMPO = 2;
-export const ANIM = { speed: TEMPO, admin: 1, fx: 1 };
-export function setAnimSpeed(v) { const x = Number(v); ANIM.admin = Number.isFinite(x) && x >= 0.5 && x <= 2 ? x : 1; ANIM.speed = TEMPO * ANIM.admin; }
-export function setAnimFx(v) { const x = v == null || v === '' ? NaN : Number(v); ANIM.fx = Number.isFinite(x) && x >= 0 && x <= 2 ? x : 1; }
-// An opponent's or the computer's move plays back at least this fast (its inputs at their recorded timing, sped
-// up; a run, a physics recording at this speed); its animations at the game's pace when that is faster.
+// The pace. ANIM.admin: the admin's Animation speed (config/anim/speed: 0.5 to 2, default 1), for everyone: every
+// move's animation, its result's hold, the board's glow and the computer's pauses, and the server's turn clock and
+// bots. ANIM.mode: this player's own Animation setting, 'normal' (the game as designed) or 'speed' (ui/pace.js:
+// on this screen only, never the rules, the timers or what the other player sees): everything plays ANIM.fast
+// times as fast again (config/anim/fast: 1 to 4, default 2), with ANIM.fx the punch of its effects (config/anim/fx:
+// 0 to 2, default 1: the shake, the confetti, the pops). ANIM.speed is the pace on this screen. The waits that
+// are the game itself never change (Find the Pair's two cards up, the attention games' times, Echo's pattern,
+// Bullseye's sweep, a run or a physics recording: realTime below).
+export const ANIM = { speed: 1, admin: 1, fast: 2, fx: 1, mode: 'normal' };
+const pace = () => { ANIM.speed = ANIM.admin * (ANIM.mode === 'speed' ? ANIM.fast : 1); };
+const num = (v, lo, hi, d) => { const x = v == null || v === '' ? NaN : Number(v); return Number.isFinite(x) && x >= lo && x <= hi ? x : d; };
+export function setAnimSpeed(v) { ANIM.admin = num(v, 0.5, 2, 1); pace(); }
+export function setAnimFast(v) { ANIM.fast = num(v, 1, 4, 2); pace(); }
+export function setAnimFx(v) { ANIM.fx = num(v, 0, 2, 1); }
+export function setAnimMode(m) { ANIM.mode = m === 'speed' ? 'speed' : 'normal'; pace(); }
+export const speedMode = () => ANIM.mode === 'speed';
+// An opponent's or the computer's move plays back this fast: as it was made (Normal), 1.5x (Speed).
 export const REPLAY_SPEED = 1.5;
-// The rate a move's animation and result play at: the game's pace, or, for a game whose move is a recording in
-// real time (meta.js realTime: the runs, the physics shots, Sky Hop, Scoop Stack, Pinball), the replay's own
-// speed (1 for the mover's own). rs: the replay's speed (1: not a replay).
+export const replaySpeed = () => (speedMode() ? REPLAY_SPEED : 1);
+// The rate a move's animation and result play at. Normal: the replay's own speed times the admin's (as ever).
+// Speed: the faster of the replay's speed and the pace, except a game whose move is a recording in real time
+// (meta.js realTime: the runs, the physics shots, Sky Hop, Scoop Stack, Pinball, the timed rounds), which plays
+// at the replay's speed (1 for the mover's own). rs: the replay's speed (1: not a replay).
 export function moveRate(type, rs) {
-  const r = rs || 1;
+  const r = (rs || 1) * ANIM.admin;
+  if (!speedMode()) return r;
   return metaOf(type).realTime ? r : Math.max(r, ANIM.speed);
 }
-// The rate a result's hold plays at: never slower than the game's pace (a run's result reads as fast as any).
-export function holdRate(type, rs) { return Math.max(moveRate(type, rs), ANIM.speed); }
+// The rate a result's hold plays at: in Speed never slower than its pace (a run's result reads as fast as any).
+export function holdRate(type, rs) { return speedMode() ? Math.max(moveRate(type, rs), ANIM.speed) : moveRate(type, rs); }
 // The animation of one move. winLen: how many cells a Hex win lights up.
 export function playMs(f, winLen) {
   const won = f.kind === 'claim' || f.kind === 'match';
@@ -65,11 +71,12 @@ export function playMs(f, winLen) {
   if (game.flashMs) return game.flashMs(f, winLen, won);
   return 500;
 }
-// The whole playback of settled moves on the other phone: the glow, the move, its result (at the replay's speed).
+// The whole playback of settled moves on the other phone: the glow, the move, its result. The server's reckoning,
+// at the game's own pace (Normal: a phone in Speed is through sooner, and starts its clock then).
 export function replayMs(entries) {
   return (entries || []).reduce((ms, e) => {
     const win = e.after && e.after.mini && e.after.mini.winCells ? e.after.mini.winCells.length : 4;
-    return ms + PLAY.spot / ANIM.speed + playMs(e, win) / moveRate(e.type, REPLAY_SPEED) + ((PLAY.flash[e.kind] || 800) + (e.type === 'memory' && e.kind === 'move' ? PLAY.flip : 0)) / holdRate(e.type, REPLAY_SPEED);
+    return ms + (PLAY.spot + playMs(e, win) + (PLAY.flash[e.kind] || 800) + (e.type === 'memory' && e.kind === 'move' ? PLAY.flip : 0)) / ANIM.admin;
   }, 0);
 }
 // After moves are settled: the turn clock is set for whoever is on the move. With nothing to play back (the

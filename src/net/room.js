@@ -6,7 +6,7 @@ import { restrictGames } from '../core/games.js';
 import { NAME_MAX, playerName } from '../core/match.js';
 import { upgradeMini } from '../core/minis.js';
 import { MATCH_FIELDS, packMatch, parseMatch, resignLocal } from '../core/records.js';
-import { ANIM, REPLAY_SPEED, newTimer, normTimer } from '../core/timer.js';
+import { ANIM, newTimer, normTimer, replaySpeed, speedMode } from '../core/timer.js';
 import { other } from '../core/util.js';
 import { echoPinned } from '../games/echo/view.js';
 import { oddPinned } from '../games/oddone/view.js';
@@ -240,7 +240,7 @@ function enterRoomGame(id, mine) {
 const matchOver = r => !!(r && r.game && isMM() && state.online.game === r.game && state.winner);
 export function presenting() { return !!(state.flash || state.done || state.spot || presentingSeq != null || stampLeft() > 0); }   // (presentingSeq covers a replay's inputs playing before the move)
 // A square's stamp still playing on the board (ms left): the next move played back waits for it.
-function stampLeft() { const at = state.stamp != null ? fxAt('stamp', state.stampId) : null; return at == null ? 0 : Math.max(0, STAMP_MS * 0.6 / ANIM.speed - (performance.now() - at)); }   // (the next move's glow starts as the stamp settles, not after it)
+function stampLeft() { const at = state.stamp != null ? fxAt('stamp', state.stampId) : null; return at == null ? 0 : Math.max(0, (speedMode() ? STAMP_MS * 0.6 : STAMP_MS) / ANIM.speed - (performance.now() - at)); }   // (Speed: the next move's glow starts as the stamp settles, not after it)
 let pendingTimer = null;
 // The match as the record has it: moves not yet seen here are played back first, one at a time.
 export function applyMatch(r) {
@@ -329,7 +329,7 @@ export function presentEntry(st, e, rest) {
     // square as the move left it and the move's own animation.
     const mini0 = before ? clone(before) : null;
     if (mini0) state.squares[e.square] = clone(mini0);
-    const start = () => repStart({ sq: e.square, by: e.by, type: f.type, mini: mini0 ? mini0.mini : state.squares[e.square].mini, move: f.m, list: mini0 ? f.rep : null, timeout: !!f.timeout, speed: REPLAY_SPEED,
+    const start = () => repStart({ sq: e.square, by: e.by, type: f.type, mini: mini0 ? mini0.mini : state.squares[e.square].mini, move: f.m, list: mini0 ? f.rep : null, timeout: !!f.timeout, speed: replaySpeed(),
       onMove: () => { state.squares[e.square] = clone(e.after); state.flash = f; state.done = done; state.draft = ''; state.notice = null; playFlash(); save(); render(); } });
     showRemoteMove(e.square, moveLabel(e), mini0, start);
   }

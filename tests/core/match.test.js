@@ -861,8 +861,8 @@ test('engine: the turn clock starts when the player on the move has seen the mov
   const st = { turn: 'O', winner: null, timer: E.newTimer(60) };
   E.armClock(st, [], 1000);
   assert.deepEqual([st.timer.deadline, st.timer.for, E.clockDeadline(st.timer)], [61000, 'O', 61000], 'nothing to play back: at once');
-  const e = { type: 'ttt', kind: 'move', square: 0 }, play = E.replayMs([e]);   // (the glow, the move and its hold, at the game's pace: core/timer.js)
-  assert.equal(play, (E.PLAY.spot + E.playMs(e) + E.PLAY.flash.move) / E.ANIM.speed, 'a plain move plays back at the game\'s pace');
+  const e = { type: 'ttt', kind: 'move', square: 0 }, play = E.replayMs([e]);
+  assert.equal(play, E.PLAY.spot + E.playMs(e) + E.PLAY.flash.move, 'the glow, the move, its hold');
   E.armClock(st, [e], 1000);
   assert.deepEqual([st.timer.deadline, st.timer.startBy], [null, 1000 + play + E.CLOCK.startSlackMs], 'not started: its latest start');
   assert.equal(E.clockDeadline(st.timer), 1000 + play + E.CLOCK.startSlackMs + 60000);

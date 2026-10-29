@@ -103,10 +103,11 @@ export function anchorFx() {
     try { a.playbackRate = rate; a.currentTime = t; } catch (e) { /* (a finished one with no effect left) */ }
   }
 }
-// ----- energy: a screen shake, confetti, a pop under the finger (each from its own event, once; never from a
-// render). ANIM.fx (the admin's Effects intensity, 0 to 2) scales them all; 0, or reduced motion, turns them off.
+// ----- energy, in Speed (the player's Animation setting): a screen shake, confetti, a pop under the finger (each
+// from its own event, once; never from a render). ANIM.fx (the admin's Speed effects intensity, 0 to 2) scales them
+// all; 0, or reduced motion, turns them off; Normal has none.
 // Short by design: none of it holds anything up. -----
-const FX_ON = () => !REDUCED && WAAPI && ANIM.fx > 0;
+const FX_ON = () => !REDUCED && WAAPI && ANIM.mode === 'speed' && ANIM.fx > 0;   // (Speed, the player's Animation setting, only: Normal is the game as designed)
 // The whole screen jolts (a claim, a sink, a bust, a knock, a win): power 1 a claim, 1.6 the match, 0.6 a lesser hit.
 export function shake(power = 1) {
   if (!FX_ON()) return;

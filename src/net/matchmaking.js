@@ -232,7 +232,7 @@ function showIntro(pub) {
 }
 export function showSides(players, me) {
   mmIntro = { players, me: me || null };
-  clearTimeout(introTimer); introTimer = setTimeout(closeIntro, INTRO_MS / ANIM.speed);   // (1.5 s at the default pace)
+  clearTimeout(introTimer); introTimer = setTimeout(closeIntro, ANIM.mode === 'speed' ? INTRO_MS / ANIM.speed : INTRO_MS);   // (Speed: 1.5 s at its default pace)
 }
 export function closeIntro() {
   clearTimeout(introTimer); introTimer = null;

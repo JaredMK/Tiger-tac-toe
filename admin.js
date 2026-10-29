@@ -208,7 +208,7 @@ const SECTIONS = [
   ['players', 'Players & Accounts', () => (accts ? `${Object.keys(accts.users || {}).length} accounts` : 'Accounts, flagged names, players over time')],
   ['playtest', 'Playtesters & Devices', () => (play ? `${Object.keys(play.devices || {}).length} devices` : 'Devices, sessions, retention')],
   ['matches', 'Matches', () => { const r = Object.values(mlogs || {}).filter(x => x && x.reported).length; return `Match inspector${r ? ` · ${r} reported` : ''}`; }],
-  ['settings', 'Mini-game Settings', () => { const k = Object.keys(ctl.tune || {}).length, sp = ctl.anim && ctl.anim.speed; const fxv = ctl.anim && ctl.anim.fx; return `Every game's settings${k ? ` · ${k} changed` : ''}${sp && sp !== 1 ? ` · speed ${sp}×` : ''}${fxv != null && fxv !== 1 ? ` · effects ${fxv}×` : ''}`; }],
+  ['settings', 'Mini-game Settings', () => { const k = Object.keys(ctl.tune || {}).length, sp = ctl.anim && ctl.anim.speed; return `Every game's settings${k ? ` · ${k} changed` : ''}${sp && sp !== 1 ? ` · speed ${sp}×` : ''}`; }],
   ['bots', 'Bot Settings', () => 'Find Match, bots, empty-queue alerts'],
   ['releases', 'Releases', () => { const m = ctl.clients || {}, off = Object.values((ctl.releases && ctl.releases.platform && ctl.releases.platform.ios) || {}).filter(v => v === false).length; return `Released or admin only, per game${off ? ` · ${off} off on iOS` : ''}${m.web || m.ios ? ` · minimum ${['web', 'ios'].filter(p => m[p]).map(p => `${p} ${m[p]}`).join(', ')}` : ''}`; }],
   ['stats', 'Stats', () => 'Matches by mode, moves to win'],
@@ -794,21 +794,25 @@ function legacyCard(t) {                       // the older tuning card, where t
 }
 const legacyPath = t => (RUN_TYPES.includes(t) ? `config/run/${t}` : t === 'bullseye' ? 'config/bulls' : ['plinko', 'pig', 'roads', 'oddone', 'wheels', 'headcount', 'flash', 'snapshot', 'skyhop', 'scoop', 'pinball', 'bowling'].includes(t) ? `config/${t}` : null);
 const changedOf = t => Object.keys((ctl.tune && ctl.tune[t]) || {}).length;
-// ---------- Animation speed and Effects intensity (config/anim: speed, read by the game and the server; fx, the game's) ----------
+// ---------- Animation (config/anim): speed, everyone's pace (read by the game and the server); fast and fx, the players'
+// Speed setting's multiplier and effects intensity (the game's alone: a player's Animation choice) ----------
+const ANIM_FIELDS = [['speed', 'Animation speed, everyone (1.0 = as designed)', 0.5, 2], ['fast', 'Speed mode: speed multiplier (2.0 = default)', 1, 4], ['fx', 'Speed mode: effects intensity (1.0 = default)', 0, 2]];
+const ANIM_DEF = { speed: 1, fast: 2, fx: 1 };
 function animCard() {
-  const num = (k, d) => (ctl.anim && Number.isFinite(Number(ctl.anim[k])) ? Number(ctl.anim[k]) : d);
-  const v = num('speed', 1), f = num('fx', 1);
-  return `<div class="card ctl" id="animCard"><h2>Feel: speed and effects</h2>
-    <p class="note"><b>Animation speed</b> multiplies the whole game's pace on top of its built-in fast tempo: every animation, every result's hold, every transition, the board's glow before a zoom and the computer's pauses (replays never play slower than 1.5×; runs, physics shots and the games' own timed waits stay in real time). 1.0 is as designed; 1.5 faster still, 0.7 calmer (0.5 to 2.0). The server's turn clock and the bots pace by it too.</p>
-    <p class="note"><b>Effects intensity</b> scales the punch: the screen shake on claims and big moments, the confetti, the pops under a tap. 1.0 is as designed, 0 turns them off, 2 doubles them (0 to 2.0). Players' phones pick both up when the page loads (or comes back after a minute away).</p>
-    <div class="rform"><label class="rf"><span>Animation speed (1.0 = default)</span><input type="number" step="0.1" min="0.5" max="2" data-animcfg="speed" value="${v}"></label><label class="rf"><span>Effects intensity (1.0 = default)</span><input type="number" step="0.1" min="0" max="2" data-animcfg="fx" value="${f}"></label><button class="btn" data-animsave="1">Save</button><button class="btn" data-animreset="1"${v === 1 && f === 1 ? ' disabled' : ''}>Reset both to 1.0</button></div></div>`;
+  const num = k => (ctl.anim && Number.isFinite(Number(ctl.anim[k])) ? Number(ctl.anim[k]) : ANIM_DEF[k]);
+  const same = ANIM_FIELDS.every(([k]) => num(k) === ANIM_DEF[k]);
+  return `<div class="card ctl" id="animCard"><h2>Animation</h2>
+    <p class="note"><b>Animation speed, everyone</b>: one multiplier for the whole game's pace, every player's: every move's animation, its result's hold, the board's glow before a zoom and the computer's pauses (0.5 to 2.0; 1.0 as designed). The server's turn clock and the bots pace by it too.</p>
+    <p class="note"><b>Speed mode</b> is a player's own Animation setting (Normal or Speed, in the main menu and the in-game menu; on their screen only, never the rules, the timers or what the other player sees). Its <b>speed multiplier</b> runs everything that many times as fast again (1.0 to 4.0; 2.0 halves every animation, hold and transition; replays at least 1.5×; runs, physics shots and the games' own timed waits stay in real time). Its <b>effects intensity</b> scales the punch: the screen shake on claims and big moments, the confetti, the pops under a tap (0 to 2.0; 0 turns them off). Players' phones pick these up when the page loads (or comes back after a minute away).</p>
+    <div class="rform">${ANIM_FIELDS.map(([k, label, lo, hi]) => `<label class="rf"><span>${label}</span><input type="number" step="0.1" min="${lo}" max="${hi}" data-animcfg="${k}" value="${num(k)}"></label>`).join('')}<button class="btn" data-animsave="1">Save</button><button class="btn" data-animreset="1"${same ? ' disabled' : ''}>Reset to defaults</button></div></div>`;
 }
 async function saveAnimCfg(btn, reset) {
-  const get = k => { const el = app.querySelector(`input[data-animcfg="${k}"]`); return reset ? 1 : Math.round(Number(el.value) * 100) / 100; };
-  const v = get('speed'), f = get('fx');
-  if (!Number.isFinite(v) || v < 0.5 || v > 2) { said(btn, false, 'Speed: from 0.5 to 2.0'); return; }
-  if (!Number.isFinite(f) || f < 0 || f > 2) { said(btn, false, 'Effects: from 0 to 2.0'); return; }
-  const val = Object.assign({}, v === 1 ? {} : { speed: v }, f === 1 ? {} : { fx: f });
+  const val = {};
+  for (const [k, label, lo, hi] of ANIM_FIELDS) {
+    const el = app.querySelector(`input[data-animcfg="${k}"]`), v = reset ? ANIM_DEF[k] : Math.round(Number(el.value) * 100) / 100;
+    if (!Number.isFinite(v) || v < lo || v > hi) { said(btn, false, `${label.split(' (')[0]}: from ${lo} to ${hi}`); return; }
+    if (v !== ANIM_DEF[k]) val[k] = v;
+  }
   btn.disabled = true;
   try { await fb.dbM.set(fb.dbM.ref(fb.db, 'config/anim'), Object.keys(val).length ? val : null); ctl.anim = val; } catch (e) { said(btn, false, failed(e)); return; }
   render(); said(app.querySelector('[data-animsave]') || btn, true, 'Saved');

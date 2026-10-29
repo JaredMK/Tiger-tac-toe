@@ -20,9 +20,10 @@ export const RNG = makeRng(Array.from(crypto.getRandomValues(new Uint32Array(4))
 export const FLASH_MS = PLAY.flash;            // (the timings live in the engine: the turn clock counts them too)
 export const MEMORY_MS = 2000;                 // the two flipped cards stay up this long
 export const FLIP_MS = PLAY.flip;              // ...then turn back over before the board returns
-const CPU_BASE = { think: 500, spot: 400, zoom: 250, pre: 300, again: 350 };   // (base figures: at the default pace, half: a 0.25 s think, its square lit 0.2 s; core/timer.js TEMPO)
-export const CPU_MS = Object.fromEntries(Object.keys(CPU_BASE).map(k => [k, 0]));   // (read at the moment of use: the admin's Animation speed applied)
-for (const k of Object.keys(CPU_BASE)) Object.defineProperty(CPU_MS, k, { get: () => CPU_BASE[k] / ANIM.speed, enumerable: true });   // the computer: a pause to think, its square lit up on the board, a look at the square, its choice shown, the next bonus move
+const CPU_BASE = { think: 700, spot: 600, zoom: 250, pre: 300, again: 350 };
+const CPU_SPEED = { think: 500, spot: 400, zoom: 250, pre: 300, again: 350 };   // Speed (the player's Animation setting): at its pace, a 0.25 s think and its square lit 0.2 s
+export const CPU_MS = Object.fromEntries(Object.keys(CPU_BASE).map(k => [k, 0]));   // (read at the moment of use: the Animation speed and setting applied)
+for (const k of Object.keys(CPU_BASE)) Object.defineProperty(CPU_MS, k, { get: () => (ANIM.mode === 'speed' ? CPU_SPEED : CPU_BASE)[k] / ANIM.speed, enumerable: true });   // the computer: a pause to think, its square lit up on the board, a look at the square, its choice shown, the next bonus move
 export const spotMs = () => PLAY.spot / ANIM.speed;   // how long the other player's square glows on the board before the zoom (at the Animation speed)
 export const TIMER_LABEL = { 0: 'No limit', 30: '30 seconds', 60: '1 min', 180: '3 min' };
 export const SPIN_MS = PLAY.spin, HOP_MS = PLAY.hop;   // Candy race: the wheel's spin, then each hop of the token (the Dice race hops the same way)

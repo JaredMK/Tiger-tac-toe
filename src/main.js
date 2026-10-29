@@ -30,7 +30,8 @@ import { fetchAttConfig } from './ui/attention.js';
 import { setTunes } from './core/tune.js';
 import { AI_CLOCK } from './core/ai.js';
 import { setAiWeights } from './core/aiw.js';
-import { setAnimFx, setAnimSpeed } from './core/timer.js';
+import { setAnimFast, setAnimFx, setAnimSpeed } from './core/timer.js';
+import { paceInit } from './ui/pace.js';
 import { setClientMins, updateNeeded } from './ui/update.js';
 import { initPlatform, onAppLink, startLink, tidyLink } from './net/platform.js';
 import { init as chaosInit } from './ui/chaos.js';
@@ -82,11 +83,12 @@ function loadConfigs() {
   fetchAttConfig('bowling', setBowlConfig);                       // Bowling's two taps' speeds
   fetchAttConfig('tune', setTunes, true);                         // every mini-game's settings (Mini-game Settings: config/tune), likewise
   fetchAttConfig('ai', setAiWeights, true);                       // the Hard computer's weights (npm run tune-ai: config/ai), likewise
-  fetchAttConfig('anim', v => { setAnimSpeed(v && v.speed); setAnimFx(v && v.fx); }, true);   // the admin's Animation speed and Effects intensity (config/anim): the whole game's pace and punch
+  fetchAttConfig('anim', v => { setAnimSpeed(v && v.speed); setAnimFast(v && v.fast); setAnimFx(v && v.fx); }, true);   // the admin's Animation speed (everyone) and Speed mode's multiplier and effects (config/anim)
   fetchAttConfig('clients', v => { const was = updateNeeded(); setClientMins(v); if (updateNeeded() !== was) render(); }, true);   // the oldest version still allowed per platform (config/clients): below it, "Please update"
 }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && !sandboxParams() && Date.now() - configsAt > 60000) loadConfigs(); });
 function boot() {
+  paceInit();                                                 // the player's Animation setting, from this device (ui/pace.js; the account's follows a login)
   initPlatform();                                             // the app: links out of the game open in its own browser (net/platform.js)
   setClockTimer(setInterval(tick, 250));
   if (sandboxParams()) { loadTrivia(); loadPhysics(); sandboxBoot(); return; }   // the admin's test play: one mini-game with the editor's settings (no live config, nothing saved or reported)

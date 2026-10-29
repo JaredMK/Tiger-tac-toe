@@ -113,6 +113,18 @@
         ".read": "auth != null"
       }
     },
+    "prefs": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+        "anim": {
+          ".validate": "newData.isString() && (newData.val() === 'normal' || newData.val() === 'speed')"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
     "usernames": {
       ".read": "auth != null"
     },
@@ -577,6 +589,9 @@
         },
         "fx": {
           ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 2"
+        },
+        "fast": {
+          ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 4"
         },
         "$other": {
           ".validate": false
