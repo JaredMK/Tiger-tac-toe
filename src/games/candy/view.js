@@ -20,7 +20,7 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
   g = `<div class="g-candy">${trackSvg(CANDY_SPEC, { colors: mini.track, tokens: { X: mini.pos.X, O: mini.pos.O }, moved: joint ? ['X', 'O'] : a ? a.by : null, finish: 'colours' })}
         <div class="wheelwrap"><div class="pointer"></div><div class="wheel${a ? ' spin' : ''}" style="--to:${(a ? 1080 : 0) + angle}deg" aria-hidden="true"></div>
           <div class="dielab${a ? ' late' : ''}">${lab}</div></div>
-        <button class="big ${turn}" data-act="move" ${mv(1)}${locked ? ' disabled' : ''}>Spin for ${N(turn)}</button></div>`;
+        <button class="big ${turn}" data-act="move" ${mv(1)}${locked ? ' disabled' : ''}>Spin for <span class="bnm">${N(turn)}</span></button></div>`;
   return g;
 }
 export function moveText(f, who) {

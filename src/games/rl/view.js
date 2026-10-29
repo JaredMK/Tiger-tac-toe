@@ -33,7 +33,7 @@ function rlTable(mini, a, o) {
   const goal = tune(mini).goal, hits = p => {
     const h = Math.min(goal, mini.hits[p]), fresh = hitBy(p);
     const pips = Array.from({ length: goal }, (_, k) => `<i ${lateAt(k < h ? 'on' : '', fresh && k === h - 1 ? tEnd : null, 'fillin')}></i>`).join('');
-    return `<div class="ctal ${p}${!o.view && turn === p ? ' now' : ''}"><b class="${p}">${N(p)}</b><span class="pips" aria-label="${mini.hits[p]} of ${goal} hits">${pips}</span></div>`;
+    return `<div class="ctal ${p}${!o.view && turn === p ? ' now' : ''}"><b class="${p} tnm">${N(p)}</b><span class="pips" aria-label="${mini.hits[p]} of ${goal} hits">${pips}</span></div>`;
   };
   const W = p => `<b class="${p}">${N(p)}</b>`, num = k => `<span class="rlnum ${k === 0 ? 'g' : rlRed(k) ? 'r' : 'b'}">${k}</span>`;
   const one = (bet, hit) => (hit ? (bet === 'zero' ? 'green 0!' : 'hit!') : 'miss');

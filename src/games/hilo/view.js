@@ -18,9 +18,9 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
   const was = a ? a.range : null;                                                       // the range before this guess
   const seg = was ? `<i class="seg shrink" style="--l:${l};--w:${w};--pl:${pct(was[0], was[1])[0]};--pw:${pct(was[0], was[1])[1]}"></i>` : `<i class="seg" style="--l:${l};--w:${w}"></i>`;
   const lastG = mini.guesses[mini.guesses.length - 1];
-  const hist = mini.guesses.slice(-3).map(x => `<b class="${x.by}">${N(x.by)}</b> ${x.n}: ${x.res === 'hit' ? 'yes!' : esc(x.res)}`).join(' · ');
+  const hist = mini.guesses.slice(-3).map(x => `<span class="he"><b class="${x.by} hn">${N(x.by)}</b> ${x.n}: ${x.res === 'hit' ? 'yes!' : esc(x.res)}</span>`).join('');   // (each guess whole on its line; the newest always shows: styles.css .g-hilo .hist)
   const result = (a || d) && lastG                                                     // the fresh guess, with its arrow
-    ? `<div class="guess${a ? ' fresh' : ''}"><b class="${lastG.by}">${N(lastG.by)}</b> said <b class="n">${lastG.n}</b>${lastG.res === 'hit' ? '<span class="arrow yes">✓</span> Yes!'
+    ? `<div class="guess${a ? ' fresh' : ''}"><b class="${lastG.by} hn">${N(lastG.by)}</b> said <b class="n">${lastG.n}</b>${lastG.res === 'hit' ? '<span class="arrow yes">✓</span> Yes!'
           : `<span class="arrow ${lastG.res === 'higher' ? 'up' : 'dn'}">${lastG.res === 'higher' ? '▲' : '▼'}</span> ${lastG.res === 'higher' ? 'Higher' : 'Lower'}!${a && a.note === 'out' ? ' No guesses left' : ''}`}</div>`
     : `<div class="hist">${hist || 'No guesses yet'}</div>`;
   const out = n => !!(was && lastG && n !== lastG.n && n >= was[0] && n <= was[1] && (n < mini.lo || n > mini.hi));   // numbers this guess ruled out

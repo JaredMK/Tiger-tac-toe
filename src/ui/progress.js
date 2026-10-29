@@ -4,7 +4,7 @@ import { N } from './app.js';
 // A class attribute (and the moment it shows up, t ms into the move, when there is one): the result of
 // a move only appears once its cards or its spin have played out.
 export const lateAt = (cls, t, how = 'appear') => `class="${cls}${t != null ? ' ' + how : ''}"${t != null ? ` style="--t:${Math.round(t)}ms"` : ''}`;
-export const arcTally = (p, o, inner, extra) => `<div class="ctal ${p}${!o.view && o.turn === p ? ' now' : ''}"><b class="${p}">${N(p)}</b>${extra || ''}${inner}</div>`;
+export const arcTally = (p, o, inner, extra) => `<div class="ctal ${p}${!o.view && o.turn === p ? ' now' : ''}"><b class="${p} tnm">${N(p)}</b>${extra || ''}${inner}</div>`;
 export const pips = (p, n, goal, fresh, t) => `<span class="pips" aria-label="${n} of ${goal}">${Array.from({ length: goal }, (_, k) => `<i ${lateAt(k < n ? 'on' : '', fresh && k === n - 1 ? t : null, 'fillin')}></i>`).join('')}</span>`;
 // Takeover: the 5x5 board; a tap on an empty cell is the move. The cell pops in, then the cells around it
 // turn over to the mover's colour, one after the other.

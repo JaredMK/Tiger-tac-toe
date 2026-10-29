@@ -49,7 +49,7 @@ function bjTable(mini, a, o) {
   const goal = tune(mini).goal, tally = p => {
     const w = Math.min(goal, mini.wins[p]), fresh = won && won.res && won.gain && a.by === p ? won.gain : 0;
     const pips = Array.from({ length: goal }, (_, k) => `<i ${lateAt(k < w ? 'on' : '', k < w && k >= w - fresh ? wonAt : null, 'fillin')}></i>`).join('');
-    return `<div class="ctal ${p}${!o.view && turn === p ? ' now' : ''}"><b class="${p}">${N(p)}</b><span class="pips" aria-label="${mini.wins[p]} of ${goal} wins">${pips}</span></div>`;
+    return `<div class="ctal ${p}${!o.view && turn === p ? ' now' : ''}"><b class="${p} tnm">${N(p)}</b><span class="pips" aria-label="${mini.wins[p]} of ${goal} wins">${pips}</span></div>`;
   };
   const mine = !!h && h.by === turn;
   const btns = o.view ? '' : !h

@@ -23,7 +23,7 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
   g = `<div class="g-bump">${trackSvg(BUMP_SPEC, { tokens: { X: mini.pos.X - 1, O: mini.pos.O - 1 }, moved: spinning ? a.by : null, knocked: scr ? scr.knocked : a && a.bumped ? other(a.by) : null, finish: 'flag', startLabel: 'HOME' })}
         <div class="wheelwrap"><div class="pointer"></div><div class="wheel w3${spinning ? ' spin' : ''}" style="--to:${(spinning ? 720 : 0) + angle}deg" aria-hidden="true"><b style="--a:60deg">1</b><b style="--a:180deg">2</b><b style="--a:300deg">3</b></div>
           <div class="dielab${spinning ? ' late' : ''}">${lab}</div></div>
-        <button class="big ${turn}" data-act="move" ${mv('spin')}${locked ? ' disabled' : ''}>Spin for ${N(turn)}</button></div>`;
+        <button class="big ${turn}" data-act="move" ${mv('spin')}${locked ? ' disabled' : ''}>Spin for <span class="bnm">${N(turn)}</span></button></div>`;
   return g;
 }
 export function moveText(f, who) {

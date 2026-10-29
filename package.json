@@ -15,7 +15,8 @@
     "export:help": "node scripts/help-text.js export",
     "import:help": "node scripts/help-text.js import",
     "check:envs": "node scripts/check-envs.js",
-    "build:app": "node scripts/build-app.js"
+    "build:app": "node scripts/build-app.js",
+    "check:headers": "node scripts/check-headers.js"
   },
   "devDependencies": {
     "firebase": "11.10.0",

@@ -12,7 +12,7 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
   g = `<div class="g-dice">${trackSvg(DICE_SPEC, { tokens: { X: diceSlot(mini.totals.X), O: diceSlot(mini.totals.O) }, moved: a ? a.by : null, finish: 'flag' })}
         <div class="dieWrap"><div class="die${a ? ' roll' : ''}">${mini.last ? dieFace(mini.last.roll) : '<span class="q">?</span>'}</div>
           <div class="dielab${a ? ' late' : ''}">${mini.last ? `<b class="${mini.last.by}">${N(mini.last.by)}</b> rolled ${mini.last.roll}` : 'No rolls yet'}</div></div>
-        <button class="big ${turn}" data-act="move" ${mv(1)}${locked ? ' disabled' : ''}>Roll for ${N(turn)}</button></div>`;
+        <button class="big ${turn}" data-act="move" ${mv(1)}${locked ? ' disabled' : ''}>Roll for <span class="bnm">${N(turn)}</span></button></div>`;
   return g;
 }
 export function moveText(f, who) {

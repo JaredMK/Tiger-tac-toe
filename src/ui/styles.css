@@ -585,7 +585,7 @@ main.scr.mini:has(.fing), main.scr.mini:has(.fing) * { touch-action: none; -webk
 .range b { font-size: 40px; line-height: 1; font-variant-numeric: tabular-nums; }
 .range span { color: var(--muted); font-weight: 700; margin: 0 10px; }
 .rbar { position: relative; height: 10px; margin-top: 12px; border-radius: 999px; background: var(--panel-2); overflow: hidden; }
-.rbar .seg { position: absolute; top: 0; bottom: 0; left: var(--l); width: var(--w); border-radius: 999px; background: var(--text); }
+.rbar .seg { position: absolute; top: 0; bottom: 0; left: var(--l); width: var(--w); border-radius: 999px; background: var(--text); height: auto; }   /* (not the 44px of a .seg button: inside its bar only)
 .rbar .seg.shrink { animation: shrink .6s .45s ease-out both; }
 .hist { color: var(--muted); font-weight: 600; font-size: 14px; text-align: center; min-height: 18px; }
 .hist, .guess { height: 44px; flex: none; align-content: center; }   /* the history or the fresh guess: the same height, so the pad never moves */
@@ -1526,10 +1526,13 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 @keyframes appearin { from { opacity: 0; transform: scale(.6); } 60% { opacity: 1; transform: scale(1.12); } to { opacity: 1; transform: none; } }
 
 /* the two players' tallies (Blackjack wins, Roulette hits): pips, filled for each one won */
-.ctals { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; flex: none; }
-.ctals.col { grid-template-columns: 1fr; align-content: center; }
-.ctal { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--paper); border: 3px solid var(--ink); border-radius: 14px 10px 16px 9px; padding: 5px 10px 3px; min-width: 0; }
-.ctal > b { font-weight: 800; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.ctals { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; flex: none; }   /* each tally keeps to its own half (or its column): a long name gives way inside it, never pushing it over its neighbour */
+.ctals.col { grid-template-columns: minmax(0, 1fr); align-content: center; }
+.ctal { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; column-gap: 8px; row-gap: 1px; background: var(--paper); border: 3px solid var(--ink); border-radius: 14px 10px 16px 9px; padding: 5px 10px 3px; min-width: 0; }
+/* the name and the figures each keep their own room: the name gives way first ("…"), down to about three letters; past that the figures go to a line of their own under it.
+   Which happens depends on the tally's width and the figures' reserved widths alone, never on the name or the score, so a tally never changes shape during a match */
+.ctal > .tnm { flex: 1 1 3.2em; max-width: max-content; min-width: 0; font-weight: 800; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ctal > :not(.tnm) { flex: none; } .ctal > .tnm + * { margin-left: auto; }
 .ctal.now { box-shadow: 0 0 0 3px var(--o); }
 .ctal.X.now { box-shadow: 0 0 0 3px var(--x); }
 .ctal .pips { display: flex; gap: 4px; flex: none; }
@@ -1626,8 +1629,8 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .bdart.fly svg { animation: dartfly .38s var(--t, 0ms) cubic-bezier(.3, .6, .4, 1) both; transform-origin: 50% 100%; }
 @keyframes dartfly { from { transform: translateY(140px) scale(2.2); opacity: 0; } 20% { opacity: 1; } to { transform: none; opacity: 1; } }
 /* Echo: four pads, lit in turn as the pattern plays, then tapped back */
-.echo { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 10px; min-height: 0; }
-.epads { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: min(100%, 300px); margin: 0 auto; aspect-ratio: 1; }
+.echo { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 10px; min-height: 0; container-type: size; }
+.epads { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: min(100%, 300px, 100cqh - 132px); margin: 0 auto; aspect-ratio: 1; }   /* the pads take the room left by the lines above and below them (2 x 40px, the steps' 12px, 3 gaps), never more: on a short screen they shrink rather than ride up over the tallies */
 .epad { position: relative; border: 3px solid var(--ink); border-radius: 18px; box-shadow: 0 4px 0 var(--ink); font-size: 34px; color: rgba(255, 255, 255, .85); display: grid; place-items: center; opacity: .55; transition: opacity .12s, transform .08s; touch-action: manipulation; }
 .epad.k0 { background: #e5432a; } .epad.k1 { background: #4e9d3a; } .epad.k2 { background: #3b87c7; } .epad.k3 { background: #f6c21b; color: rgba(60, 40, 0, .7); }
 .epad:disabled { cursor: default; }
@@ -2044,8 +2047,8 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .wseg { stroke: var(--ink); stroke-width: .8; }
 .wp { text-anchor: middle; font-size: 8px; font-weight: 800; fill: var(--ink); opacity: .8; }
 .wp.dk { fill: #fff; opacity: .95; }
-.wtal { display: flex; align-items: center; gap: 6px; flex: 1; justify-content: flex-end; min-width: 0; }
-.wbar { position: relative; flex: 1; max-width: 70px; min-width: 24px; height: 12px; border: 2.5px solid var(--ink); border-radius: 8px; background: var(--paper); overflow: hidden; }
+.wtal { display: flex; align-items: center; gap: 6px; justify-content: flex-end; }
+.wbar { position: relative; flex: none; width: clamp(24px, 10vw, 70px); height: 12px; border: 2.5px solid var(--ink); border-radius: 8px; background: var(--paper); overflow: hidden; }
 .wbar i { position: absolute; left: 0; top: 0; bottom: 0; width: var(--w1, 0%); }
 .ctal.X .wbar i { background: var(--x); } .ctal.O .wbar i { background: var(--o); }
 .wbar i.grow { animation: wgrow .5s var(--t, 0ms) cubic-bezier(.2, .7, .3, 1) both; }
@@ -2264,6 +2267,7 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 @keyframes rldrop { 0%, 76% { transform: translateY(-21px); } 86% { transform: translateY(-3px); } 92% { transform: translateY(-9px); } 100% { transform: none; } }
 .rlres { margin: 0; display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--muted); height: 36px; flex: none; }
 .rlres b { color: var(--ink); }
+.rlres > span { min-width: 0; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-height: 16px; }   /* the spin's bets: two lines at most, inside the tallies' column (never under the wheel) */
 .rlnum { flex: none; min-width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; color: #fff; font: 400 16px 'Luckiest Guy', sans-serif; padding-top: 3px; border: 3px solid var(--ink); }
 .rlnum.r { background: #d6301e; } .rlnum.b { background: var(--ink); } .rlnum.g { background: #2f8a3c; }
 .rlboard { flex: none; display: flex; flex-direction: column; gap: 4px; }
@@ -2503,6 +2507,11 @@ main.scr.mini > .wband { left: 0; right: 0; }   /* Super Chaos: waiting in the s
 .g-hilo .range b, .g-hilo.t30 .range b { font-size: 26px; }
 .g-hilo .range small, .g-hilo.t30 .range small { font-size: 12px; margin-bottom: 0; }
 .g-hilo .hist, .g-hilo .guess { height: 32px; }
+.g-hilo .hist, .g-hilo .guess { flex: none; }
+.g-hilo .hist { line-height: 16px; overflow: hidden; display: flex; flex-wrap: wrap; justify-content: center; align-content: flex-end; column-gap: .35em; }   /* the last guesses: two lines at most, inside their own room above the pad; with long names the oldest gives way at the top, the newest always shows */
+.hist .he { white-space: nowrap; } .hist .he:not(:last-child)::after { content: ' ·'; }
+.hist .hn, .guess .hn, .big .bnm, .rlres b.X, .rlres b.O, .dielab b.X, .dielab b.O { display: inline-block; max-width: 7.5em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }   /* a name inside a line of text or a button: cut short with "…", so the line never wraps onto what is below it */
+.big .bnm { max-width: calc(100% - 5.5em); }
 .g-hilo .pad, .g-hilo.t30 .pad { flex: 1; min-height: 0; grid-template-columns: repeat(var(--cols, 5), 1fr); grid-auto-rows: 1fr; gap: 5px; }
 .g-hilo .pad button, .g-hilo.t30 .pad button { height: auto; min-height: 0; min-width: 0; padding: 0; font-size: clamp(13px, 4.2vw, 18px); }
 .g-hilo .pad button, .g-hilo.t30 .pad button { max-height: 64px; align-self: start; height: 100%; }

@@ -321,7 +321,7 @@ export function fingTable(mini, a, o) {
       const lit = own ? live.w.lit : mini.lit[p], newly = fresh && pre ? new Set((fg.hits || []).map(h => h[0])) : new Set();
       const n = lit.filter(Boolean).length, before = n - newly.size;
       const say = fresh && pre ? `<span class="sbn"><span class="tu" style="--u:${pre}ms">${before} / ${goal} lit</span><span class="tf" style="--f:${pre}ms">${n} / ${goal} lit</span></span>` : `${n} / ${goal} lit`;
-      return `<div class="ctal fprog ${p}${!o.view && turn === p ? ' now' : ''}"><b class="${p}">${N(p)}</b><span class="pips" aria-label="${n} of ${goal} targets lit">${lit.map((on, k) => `<i ${lateAt(on ? 'on' : '', newly.has(k) ? pre : null, 'fillin')} title="${esc(PHYSICS.lib ? PHYSICS.lib.PIN.targets[k].name : '')}"></i>`).join('')}</span><small>${say}</small></div>`;
+      return `<div class="ctal fprog ${p}${!o.view && turn === p ? ' now' : ''}"><b class="${p} tnm">${N(p)}</b><span class="pips" aria-label="${n} of ${goal} targets lit">${lit.map((on, k) => `<i ${lateAt(on ? 'on' : '', newly.has(k) ? pre : null, 'fillin')} title="${esc(PHYSICS.lib ? PHYSICS.lib.PIN.targets[k].name : '')}"></i>`).join('')}</span><small>${say}</small></div>`;
     }
     const here = fingLive && fingLive.sq === o.zoom && fingLive.p === p && !fresh && performance.now() - fingLive.at < 20000 ? fingLive : null;
     const at = own ? fingNow(live) : fresh ? fg.to : here && here.to > fingAt(mini, p) ? here.to : fingAt(mini, p);

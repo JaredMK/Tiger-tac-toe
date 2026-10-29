@@ -38,7 +38,7 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
   g = `<div class="g-snakes">${trackSvg(SNL_SPEC, { tokens: { X: mini.pos.X - 1, O: mini.pos.O - 1 }, moved: joint ? ['X', 'O'] : a ? a.by : null, finish: 'none', goal: true, cls: 'snl', overlay: snlArt(SNL_SPEC, mini) })}
         <div class="dieWrap"><div class="die${a ? ' roll' : ''}">${ok ? dieFace(L.roll) : '<span class="q">?</span>'}</div>
           <div class="dielab${a ? ' late' : ''}">${lab}</div></div>
-        <button class="big ${turn}" data-act="move" ${mv('roll')}${locked ? ' disabled' : ''}>Roll for ${N(turn)}</button></div>`;
+        <button class="big ${turn}" data-act="move" ${mv('roll')}${locked ? ' disabled' : ''}>Roll for <span class="bnm">${N(turn)}</span></button></div>`;
   return g;
 }
 export function moveText(f, who) {
