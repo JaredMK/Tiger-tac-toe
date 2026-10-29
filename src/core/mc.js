@@ -30,6 +30,11 @@ export function mcPick(state, me, cands, rng, w, st, until) {
   let near = -1;                                                  // a square it is close to winning (ai.js closeTo): played ahead of the rest (the best of them by the playouts), unless the best square is a block of the other side's match
   for (let k = 0; k < cands.length; k++) if (cands[k].close && (near < 0 || wins[k] > wins[near])) near = k;
   if (near >= 0 && !(cands[best].value >= AI.block && cands[near].value < AI.block)) best = near;
+  if (cands[best].safe) {                                         // tempo play (ai.js safeLead): a square it leads safely waits; the best of the rest by the playouts
+    let alt = -1;
+    for (let k = 0; k < cands.length; k++) if (!cands[k].safe && (alt < 0 || wins[k] > wins[alt] + 1e-9 || (Math.abs(wins[k] - wins[alt]) < 1e-9 && cands[k].score > cands[alt].score))) alt = k;
+    if (alt >= 0) best = alt;
+  }
   const c = cands[best];
   return { square: c.square, move: c.local.move, score: c.score, value: c.value, gain: c.gain, mc: { n: rounds, p: cands.map((x, k) => Number((wins[k] / Math.max(1, rounds)).toFixed(3))) } };
 }

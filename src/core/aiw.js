@@ -15,8 +15,9 @@ export const AI_DEFAULTS = {
   prog: 0.8,        // in a playout, the chance a move makes the progress the game's tactics reckon (else none)
   fresh: 3.5,       // in a playout, the moves each side needs in a square that has just reset
   playouts: 300,    // playouts per candidate square (fewer when the time runs out)
+  margin: 2,        // tempo play: a lead safe enough to leave a square for now (moves the other side needs beyond the computer's; the admin's Bot Settings, never tuned)
 };
-export const AI_LIMITS = { attack: [0.2, 3, 0.05], defend: [0.2, 3, 0.05], rollRisk: [-6, 8, 1], explore: [0, 0.8, 0.05], prog: [0.3, 1, 0.05], fresh: [1.5, 6, 0.25], playouts: [50, 1000, 10] };
+export const AI_LIMITS = { attack: [0.2, 3, 0.05], defend: [0.2, 3, 0.05], rollRisk: [-6, 8, 1], explore: [0, 0.8, 0.05], prog: [0.3, 1, 0.05], fresh: [1.5, 6, 0.25], playouts: [50, 1000, 10], margin: [1, 5, 0.5] };
 const kit = cfgKit(AI_DEFAULTS, AI_LIMITS, out => { for (const k of Object.keys(out)) out[k] = Number(out[k].toFixed(4)); return out; });
 export const AI_CFG = kit.box;
 export const aiNorm = kit.norm;

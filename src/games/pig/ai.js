@@ -53,6 +53,15 @@ export function needs(pm, p) {
   for (const [v, pr] of pigTurnDist(sides, rollSet(t.rolls), Math.min(r, t.pot + BEST_POT[sides]))) n += pr * pigTurns(sides, Math.max(0, r - v));
   return n;
 }
+// Tempo play (core/ai.js safeLead): the chance the other side's next turn here catches the computer up (leaves them
+// needing no more turns than it does), going for it: the points that would take, made before a bust.
+export function catchRisk(pm, me) {
+  const sides = pigSides(pm), o = other(me), r = pigGoal(pm) - pm.bank[o], mine = needs(pm, me);
+  if (r <= 0) return 1;
+  let x = 1;
+  while (x < r && pigTurns(sides, r - x) > mine) x++;
+  return pigReach(sides, 0, x);
+}
 export function best(pm, me, rng, style, ctx) {
   const t = pm.turn && pm.turn.by === me ? pm.turn : null, sides = pigSides(pm), base = BEST_POT[sides], r = pigGoal(pm) - pm.bank[me];
   const gap = pm.bank[other(me)] - pm.bank[me];                // positive when behind

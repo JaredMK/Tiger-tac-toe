@@ -3,7 +3,7 @@ import { other } from '../../core/util.js';
 import { PHYSICS, physLast, physRandom, physRun, physShot } from '../shared/physics.js';
 export { physicsMoveFlash as moveFlash } from '../shared/physics.js';
 
-export const POOLG = { aiErr: [0.02, 0.025], hold: 300, order: ['cue', 'x1', 'x2', 'x3', 'o1', 'o2', 'o3', 'black'] };
+export const POOLG = { aiErr: [0.02, 0.025], hold: 300, pop: 700, order: ['cue', 'x1', 'x2', 'x3', 'o1', 'o2', 'o3', 'black'] };
 // Pool's power for a speed (units a second): the meter's level goes with the square root of the speed (physics.js: POOL.curve);
 // vMax: the square's full-power speed (its settings), the table's by default.
 export const poolPow = (speed, vMax) => Math.min(1, Math.pow(Math.max(0, speed) / (vMax || PHYSICS.lib.POOL.vMax), 1 / (PHYSICS.lib.POOL.curve || 1)));
@@ -73,5 +73,5 @@ export function randomMove(mini, p, rng, from, empties) {
   return physRandom(mini, p, rng);   // a random gentle shot
 }
 export function flashMs(f, winLen, won) {
-  return (f.phys ? f.phys.ms : 3000) + POOLG.hold + (won ? 600 : 0);
+  return (f.phys ? f.phys.ms : 3000) + (f.phys && f.phys.back ? POOLG.pop : 0) + POOLG.hold + (won ? 600 : 0);   // (a scratch's ball popping back onto the table, after the shot: ui/physics.js poolPop)
 }

@@ -6,7 +6,7 @@ import { needRng, randInt } from './random.js';
 import { other } from './util.js';
 import { fingPlay } from '../games/shared/finger.js';
 import { ECHO, echoSeq } from '../games/echo/rules.js';
-import { aiOf } from '../games/index.js';
+import { aiOf, metaOf } from '../games/index.js';
 import { LEVELS, aiWeights, levelOf } from './aiw.js';
 import { mcPick } from './mc.js';
 
@@ -71,6 +71,27 @@ export function closeTo(pm, me, local, value) {
   if (!(value >= CLOSE.value)) return false;
   const a = needsOf(pm, me), b = needsOf(pm, other(me));
   return (local.q || 0) >= CLOSE.q || (a <= CLOSE.near && a < b);
+}
+// Tempo play (Hard): a square it leads safely can wait while it invests elsewhere; it comes back to finish it as
+// soon as the lead is no longer safe. Safe: the other side needs more than `margin` moves beyond what the computer
+// needs there (config/ai margin: the admin's Bot Settings, 2 by default); in a game of luck, little chance
+// (under SAFE.risk) that the other side's next move there catches it up (the game's ai.js catchRisk where it has
+// one, Risky Rolls exactly; else its chance of the race); the other side threatens no match win elsewhere; and the
+// square is not needed now to block a line or complete one of the computer's own.
+export const SAFE = { risk: 0.1 };
+export function safeLead(squares, i, pm, me, value, margin) {
+  if (!(value < AI.block)) return false;                         // (a block, or the computer's own line: now)
+  const o = other(me), a = needsOf(pm, me), b = needsOf(pm, o);
+  if (!(a < Infinity) || !(b - a > margin)) return false;         // (the lead is only that far; at the margin it comes back)
+  for (const line of LINES) {                                    // the other side one square from the match elsewhere: no time for tempo
+    const own = line.map(k => squares[k].owner);
+    if (own.filter(x => x === o).length === 2 && line.some(k => !squares[k].owner && k !== i)) return false;
+  }
+  if (metaOf(pm.type).category === 'luck') {
+    const g = aiOf(pm.type), risk = g.catchRisk ? g.catchRisk(pm, me) : raceChance(Math.max(0.5, b - 1), a);
+    if (!(risk < SAFE.risk)) return false;
+  }
+  return true;
 }
 export function localBest(pm, me, rng, style, ctx) {
   const game = aiOf(pm.type);
@@ -154,7 +175,8 @@ export function cpuMove(state, rng, style, opts) {
     if (value >= AI.win && (local.win || local.q >= 1)) { best = { square: i, move: local.move, score: Infinity, value, gain: 1 }; return done(); }
     const gain = moveGain(pm, me, local);
     const score = value * Math.max(gain, 0.01) * catchUp(needsOf(pm, me), needsOf(pm, other(me)), value);
-    cands.push({ square: i, pm, local, value, gain, score, close: hard && closeTo(pm, me, local, real) });
+    const safe = hard && state.lock == null && safeLead(state.squares, i, pm, me, real, w.margin);   // (tempo play: this one can wait)
+    cands.push({ square: i, pm, local, value, gain, score, close: hard && !safe && closeTo(pm, me, local, real), safe });
     if (!best || score > best.score) best = { square: i, move: local.move, score, value, gain };
   }
   if (hard && cands.length > 1) best = mcPick(state, me, cands, rng, w, st, clock ? () => Math.max(0, t0 + budget - clock()) : null);

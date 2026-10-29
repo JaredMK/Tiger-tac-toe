@@ -907,12 +907,21 @@ function botsCard() {
 // ---------- the Hard computer's weights (config/ai): what npm run tune-ai saved by self-play, read by the game and the server ----------
 const AI_W = [['attack', 'Line value (own lines)'], ['defend', 'Defence priority'], ['rollRisk', 'Risk appetite (Risky Rolls, points)'], ['explore', 'Playout exploring'], ['prog', 'Playout progress chance'], ['fresh', 'Moves needed in a reset square'], ['playouts', 'Playouts per candidate']];
 function aiCard() {
-  const w = ctl.ai || {}, set = Object.keys(w).filter(k => AI_W.some(x => x[0] === k)).length;
+  const w = ctl.ai || {}, set = Object.keys(w).filter(k => AI_W.some(x => x[0] === k) || k === 'margin').length;
   const row = ([k, label]) => `<tr><td>${label}</td><td>${w[k] != null ? `<b>${esc(w[k])}</b>` : '<span class="dim">default</span>'}</td></tr>`;
   return `<div class="card ctl" id="aiCard"><div class="row"><h2>Hard computer's weights</h2><span class="note" style="margin:0">${set ? `${set} tuned${w.tuned ? ` · ${PT.nyWhen(w.tuned)}` : ''}${w.matches ? ` · ${w.matches} matches` : ''}` : 'the code\'s defaults'}</span></div>
     <div class="tbl"><table><thead><tr><th style="text-align:left">Weight</th><th>Value</th></tr></thead><tbody>${AI_W.map(row).join('')}</tbody></table></div>
     <p class="note">Tuned by self-play with <code>npm run tune-ai</code> (thousands of computer-against-computer matches; a change is kept only when it wins more; never run on its own). Normal and Easy play the code's own numbers whatever is here. Reset puts the defaults back for the Hard computer and the bots at Hard.</p>
-    <div class="rform"><button class="btn" data-airesets="1"${set ? '' : ' disabled'}>Reset to defaults</button></div></div>`;
+    <div class="rform"><button class="btn" data-airesets="1"${set ? '' : ' disabled'}>Reset to defaults</button></div>
+    <h3>Tempo play (Hard)</h3><p class="note">A square the Hard computer leads by more than this many moves (the other side's needs beyond its own) can wait while it plays elsewhere; it comes back to finish it once the lead is down to this margin, or sooner when the other side could catch up in one lucky move, threatens the match elsewhere, or the square blocks or completes a line. 1 to 5; 2 by default. Not changed by tuning.</p>
+    <div class="rform"><label class="rf"><span>Safe lead (moves)</span><input type="number" step="0.5" min="1" max="5" data-aimargin="1" value="${w.margin != null ? esc(w.margin) : 2}"></label><button class="btn" data-aimarginsave="1">Save</button></div></div>`;
+}
+async function saveAiMargin(btn) {
+  const v = Math.round(Number(app.querySelector('input[data-aimargin]').value) * 2) / 2;
+  if (!Number.isFinite(v) || v < 1 || v > 5) { said(btn, false, 'From 1 to 5'); return; }
+  btn.disabled = true;
+  try { await fb.dbM.set(fb.dbM.ref(fb.db, 'config/ai/margin'), v === 2 ? null : v); ctl.ai = Object.assign({}, ctl.ai); if (v === 2) delete ctl.ai.margin; else ctl.ai.margin = v; } catch (e) { said(btn, false, failed(e)); return; }
+  render(); said(app.querySelector('[data-aimarginsave]') || btn, true, 'Saved');
 }
 async function resetAi(btn) {
   if (!confirm('Put the Hard computer\'s weights back to the code\'s defaults?')) return;
@@ -1088,6 +1097,7 @@ app.addEventListener('click', e => {
   else if (b.dataset.wheelsave) saveWheelsCfg(b);
   else if (b.dataset.plinkosave) savePlinkoCfg(b);
   else if (b.dataset.animsave) saveAnimCfg(b, false);
+  else if (b.dataset.aimarginsave) saveAiMargin(b);
   else if (b.dataset.clientsave) saveClients(b);
   else if (b.dataset.animreset) saveAnimCfg(b, true);
   else if (b.dataset.pigsave) savePigCfg(b);

@@ -5,7 +5,7 @@ import { PHYSICS, PHYS_TYPES, physShot, physicsReady, setPhysics } from '../game
 import { bowlTarget } from '../games/bowling/rules.js';
 import { bowlDraft, bowlKeep, drawBowl, drawBowlAim } from '../games/bowling/view.js';
 import { drawGolf } from '../games/golf/view.js';
-import { poolIds, poolLeft, poolMine } from '../games/pool/rules.js';
+import { POOLG, poolIds, poolLeft, poolMine } from '../games/pool/rules.js';
 import { POOL_RAIL, drawPool } from '../games/pool/view.js';
 import { INFO } from '../games/index.js';
 import { ownPress } from '../audio/sound.js';
@@ -158,12 +158,34 @@ function physDrawNow(cv, now) {
   const S = PHYS_S(mini.type), M = mini.type === 'pool' ? POOL_RAIL : 0, k = Math.min(W / (S.w + 2 * M), H / (S.h + 2 * M)), ox = (W - S.w * k) / 2, oy = (H - S.h * k) / 2;   // the pool table keeps a rail of one width all round
   const g = { c, W, H, k, M, X: x => ox + x * k, Y: y => oy + y * k };
   const el = ph && at != null ? (now - at) / 1000 : null, lit = el != null && mini.type === 'golf' ? new Set((ph.events || []).filter(e => e.k === 'bump' && el >= e.t && el < e.t + BUMP_LIT).map(e => e.b)) : null;   // (Mini Golf: a bumper flashes as it kicks)
-  if (mini.type === 'golf') drawGolf(g, mini, pos, lit); else if (mini.type === 'pool') drawPool(g, mini, pos); else drawBowl(g, mini, pos, !ph || !!(fr && fr.done));   // (Bowling: the roll's box fills in once the pins have settled)
+  const pop = mini.type === 'pool' && ph && ph.back && fr && fr.done ? poolPop(ph, el) : null;   // a scratch: the white back and a ball for the shooter popping onto the table once the shot is over
+  if (pop) { if (ph.cue) pos.cue = ph.cue; pos[ph.back] = pop.s > 0 ? ph.at : null; }
+  if (mini.type === 'golf') drawGolf(g, mini, pos, lit); else if (mini.type === 'pool') drawPool(g, mini, pos, pop ? { id: ph.back, s: pop.s } : null); else drawBowl(g, mini, pos, !ph || !!(fr && fr.done));   // (Bowling: the roll's box fills in once the pins have settled)
+  if (pop && pop.label > 0) poolPopLabel(g, ph, pop.label);
   if (dr) drawAim(g, mini, pos, dr);
   else if (mini.type === 'golf' && mini.aim && state.sc && !ph) for (const p of Object.keys(mini.aim)) if (pos[p]) drawLocked(g, pos[p], mini.aim[p]);   // Super Chaos: a shot locked in, waiting for the round's end
   const bd = mini.type === 'bowling' && !ph && bowlDraft && bowlDraft.sq === state.zoom ? bowlDraft : null;
   if (bd) drawBowlAim(g, pos, bd, now);
-  return !!(dr || (bd && bd.step < 3) || (fr && !fr.done));
+  return !!(dr || (bd && bd.step < 3) || (fr && !fr.done) || (pop && !pop.done));
+}
+// A scratch's ball (one of the shooter's own back, or a new one) popping onto its spot after the shot, with a short
+// "+1 ball": el, the move's seconds so far (its rate already in them: ui/turns.js playFlash). s: the ball's scale (0
+// before, a touch past 1, then 1); label: its opacity. Within POOLG.pop of the shot's end (pool/rules.js flashMs).
+const POP_IN = 0.28;
+function poolPop(ph, el) {
+  const t = Math.max(0, el - ph.ms / 1000), T = POOLG.pop / 1000;
+  if (REDUCED) return { s: 1, label: t < T ? 1 : 0, done: true };
+  const k = Math.min(1, t / POP_IN), s = k <= 0 ? 0 : k < 0.7 ? (k / 0.7) * 1.25 : 1.25 - 0.25 * ((k - 0.7) / 0.3);
+  const label = t < 0.05 ? 0 : t < T * 0.7 ? 1 : Math.max(0, 1 - (t - T * 0.7) / (T * 0.3));
+  return { s, label, done: t >= T };
+}
+function poolPopLabel(g, ph, a) {
+  const c = g.c, P = runColours(), S = PHYSICS.lib.POOL, [x, y] = ph.at, size = Math.max(12, S.ballR * g.k * 1.3);
+  const up = y < S.h * 0.18, ty = g.Y(y) + (up ? 1 : -1) * (S.ballR * g.k + size * 0.9);   // above the ball (below it at the top rail)
+  c.save(); c.globalAlpha = a; c.font = `${size.toFixed(0)}px 'Luckiest Guy', sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.lineWidth = Math.max(3, size / 5); c.strokeStyle = P.ink; c.lineJoin = 'round'; c.strokeText('+1 ball', g.X(x), ty);
+  c.fillStyle = ph.back[0] === 'x' ? P.X : P.O; c.fillText('+1 ball', g.X(x), ty);
+  c.restore();
 }
 // Super Chaos: a golf shot locked in, as a still arrow from the ball (its length the power).
 function drawLocked(g, from, shot) {
@@ -269,7 +291,7 @@ export function physicsSounds(f, add, won, mini, last) {   // the recording's ev
   const live = ph.rec && !REDUCED, end = live ? ph.ms : 0;
   if (live) for (const e of ph.events || []) { const t = e.t * 1000; if (e.k === 'balls') add('clack', t); else if (e.k === 'wall') add('cushion', t); else if (e.k === 'bump') add('bumper', t); else if (e.k === 'pin') add('pinHit', t); else if (e.k === 'hole') add('plop', t); else if (e.k === 'pocket') add(e.id === 'cue' ? 'thud' : 'plop', t); else if (e.k === 'lip') add('clink', t); else if (e.k === 'gutter') add('thud', t); else if (e.k === 'pit' || e.k === 'end') add('thud', t); }
   if (f.type === 'bowling') add(ph.strike ? 'strike' : ph.gutter ? 'thud' : 'ding', end);
-  else if (f.type === 'pool') add(ph.black ? 'buzz' : ph.scratch ? 'thud' : ph.own && !ph.theirs ? 'ding' : 'thud', end);
+  else if (f.type === 'pool') { add(ph.black ? 'buzz' : ph.scratch ? 'thud' : ph.own && !ph.theirs ? 'ding' : 'thud', end); if (ph.back) add('pop', end + 120); }   // (a scratch: the ball popping back on)
   else if (ph.both) { if (!(ph.holed && (ph.holed.X || ph.holed.O))) add(ph.lip ? 'thud' : 'ding', end); }
   else if (!ph.first) add(ph.lip ? 'thud' : 'ding', end);
   return;

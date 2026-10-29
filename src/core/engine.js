@@ -4,7 +4,7 @@
 // every random choice comes from an rng passed in (makeRng(seed) for a seeded one). The page imports the
 // same modules, so a move is checked the same way on a phone and on the server.
 
-export { cpuEcho, STYLE0, EASY, BUDGET_MS, AI_CLOCK, AI, needsOf, winChance, localBest, squareValue, moveGain, cpuMove, catchUp, CATCH, CLOSE, closeTo, raceChance, RACE_K } from './ai.js';
+export { cpuEcho, STYLE0, EASY, BUDGET_MS, AI_CLOCK, AI, needsOf, winChance, localBest, squareValue, moveGain, cpuMove, catchUp, CATCH, CLOSE, closeTo, raceChance, RACE_K, SAFE, safeLead } from './ai.js';
 export { lineOpen, majorityResult, LINES, timeoutMove, mainResult, playMove, endFlash, leaveSquare } from './board.js';
 export { SC, scTypes, isChaos, scHuman, scSquareMini, startChaos, scBegin, scCpu, chaosPlay, chaosTimeout, chaosResolve, chaosNext, scPool, scMainResult, SC_ONLINE, startChaosOnline, scMoveOf, chaosResolveOnline, scRoundStart, scRecapOrder } from './chaos.js';
 export { cfgKit, lohi, SUPER_CHAOS_ENABLED } from './config.js';

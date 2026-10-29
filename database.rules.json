@@ -600,7 +600,7 @@
       "ai": {
         ".write": "auth != null && auth.token.admin === true",
         "$k": {
-          ".validate": "$k.matches(/^(attack|defend|rollRisk|explore|prog|fresh|playouts|tuned|matches)$/) && newData.isNumber()"
+          ".validate": "$k.matches(/^(attack|defend|rollRisk|explore|prog|fresh|playouts|margin|tuned|matches)$/) && newData.isNumber()"
         }
       },
       "$other": {

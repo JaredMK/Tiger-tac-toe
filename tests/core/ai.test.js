@@ -135,3 +135,32 @@ test('closing out gives way to a block of the other side\'s match', () => {
   st.squares[2].mini = E.newMini('coins', lcg(2));
   assert.equal(E.cpuMove(st, lcg(3), null, { level: 'hard' }).square, 2, 'it blocks first');
 });
+test('tempo play: Hard leaves a safely led square for now and invests elsewhere; it comes back to finish it as the gap narrows', () => {
+  const rng = lcg(21), pigAt = (o, x) => Object.assign(E.newMini('pig', rng), { bank: { O: o, X: x } });   // O, the computer, near the target
+  const craps = Object.assign(E.newMini('craps', rng), { wins: { X: 1, O: 1 } });
+  const mk = x => board(['coins', craps, 'hilo', pigAt(45, x), null, 'c4', 'coins', 'hilo', 'ttt'], [null, null, 'X', null, 'O'], 'O');
+  const typeOf = (st, m) => st.squares[m.square].mini.type;
+  for (let seed = 1; seed <= 6; seed++) {
+    const st = mk(10), m = E.cpuMove(st, lcg(seed), null, { level: 'hard' });
+    assert.notEqual(typeOf(st, m), 'pig', `seed ${seed}: 45 to 10, a safe lead (O needs ~1.1 turns, X ~5.0): it invests elsewhere`);
+  }
+  for (const x of [20, 30, 35]) {                                         // the gap narrows: back to finish it
+    for (let seed = 1; seed <= 4; seed++) {
+      const st = mk(x), m = E.cpuMove(st, lcg(seed), null, { level: 'hard' });
+      assert.equal(typeOf(st, m), 'pig', `seed ${seed}: 45 to ${x}: it comes back to Risky Rolls`);
+    }
+  }
+  const pm = x => E.publicMini(pigAt(45, x)), sq = mk(10).squares;
+  assert.equal(E.safeLead(sq, 3, pm(10), 'O', 5, 2), true, '45 to 10: safe');
+  assert.equal(E.safeLead(sq, 3, pm(20), 'O', 5, 2), false, '45 to 20: a lead of ~2.9 turns, but one good turn of X\'s (about 1 in 9) catches up: not safe in a game of luck');
+  assert.equal(E.safeLead(sq, 3, pm(30), 'O', 5, 2), false, '45 to 30: within the margin');
+  assert.equal(E.safeLead(sq, 3, pm(10), 'O', 5, 4), false, 'the admin\'s margin of 4: not safe');
+  assert.equal(E.safeLead(sq, 3, pm(10), 'O', E.AI.block + 1, 2), false, 'a block (or its own line) is never left');
+  const threat = mk(10).squares; threat[0].owner = 'X'; threat[1].owner = 'X'; threat[2].owner = null;   // X one square (2) from the match
+  assert.equal(E.safeLead(threat, 3, pm(10), 'O', 5, 2), false, 'X threatens the match elsewhere: no time for tempo');
+  assert.equal(E.safeLead(sq, 3, pm(10), 'X', 5, 2), false, 'the side behind has no lead to rest on');
+  E.setAiWeights({ margin: 4 });
+  try { const st = mk(10); assert.equal(typeOf(st, E.cpuMove(st, lcg(1), null, { level: 'hard' })), 'pig', 'with the admin\'s margin of 4 the same lead is not safe: it finishes'); }
+  finally { E.setAiWeights(null); }
+  assert.equal(E.aiWeights().margin, 2);
+});
