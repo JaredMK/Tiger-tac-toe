@@ -31,6 +31,8 @@ export { FIREBASE_VERSION };
 export const NET_MS = { connect: 12000, move: 8000, call: 20000 };   // (a server call can wait for a cold start)
 export let fb = null, fbLoad = null;                      // the SDK: { m: database module, db, uid }
 export let connected = false;
+export let connectWhy = '';                               // why the last connection attempt failed (accounts.js connectQuiet), for the screens that say "No connection"
+export function setConnectWhy(v) { connectWhy = v; }
 let serverOffset = 0;
 export function configured() { const c = window.TTT_FIREBASE && window.TTT_FIREBASE.config || FIREBASE_CONFIG; return !!(c && c.apiKey && c.databaseURL && !/PASTE_/.test(c.apiKey + c.databaseURL)); }
 export function serverNow() { return Date.now() + serverOffset; }

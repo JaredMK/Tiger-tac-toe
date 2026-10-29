@@ -2,6 +2,7 @@
 import { acct, gate, gateEmail, loginBusy, loginFinishing, loginMail, loginMsg, loginPass, unameDraft, unameMsg, verifyEmail } from '../../net/accounts.js';
 import { privacyUrl } from '../../net/platform.js';
 import { esc } from '../app.js';
+import { connectWhy } from '../../net/connect.js';
 import { CHEV, toon } from '../art.js';
 
 // The sign-in buttons follow each brand's own guidelines, logos included (the one exception to the game's no-logos rule,
@@ -24,7 +25,7 @@ export function renderGate() {
     ${loginMsg ? `<div class="status ok" role="status">${esc(loginMsg.text)}</div>` : ''}<button class="primary" data-act="gate-retry">Continue</button><button class="btn" data-act="gate-resend">Send the link again</button>${out}`);
   if (gate === 'denied') return shell('Not on the list', `<p class="hint"><b>${esc(gateEmail || 'This account')}</b> is not on the staging list. Ask the admin to add it, then tap Check again.</p>
     <button class="primary" data-act="gate-retry">Check again</button>${out}`);
-  if (gate === 'offline') return shell('No connection', '<p class="hint">Check your internet, then try again.</p><button class="primary" data-act="gate-retry">Try again</button>');
+  if (gate === 'offline') return shell('No connection', '<p class="hint">Check your internet, then try again.</p><button class="primary" data-act="gate-retry">Try again</button>' + (connectWhy ? `<p class="hint" style="font-size:11px;opacity:.7;word-break:break-word">${esc(connectWhy)}</p>` : ''));   // (what failed, small, so a phone with no developer tools can say why)
   return shell('Staging', `<div class="searching" role="status" aria-live="polite"><div class="spinner" aria-hidden="true">${toon('X')}${toon('O')}</div><h2>Checking access…</h2></div>`);
 }
 export function renderLogin(gated) {
