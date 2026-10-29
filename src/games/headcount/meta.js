@@ -14,3 +14,4 @@ export const TUNE = [
   { k: 'ai2', label: "Computer's right counts, level 2 (%)", def: 30, min: 0, max: 100, step: 1, group: 'Computer' },
   { k: 'ai3', label: "Computer's right counts, level 3 (%)", def: 20, min: 0, max: 100, step: 1, group: 'Computer' },
 ];
+export const realTime = true;   // its move plays back in real time (a run, a recording, a timed round): never sped up past the replay's own speed (core/timer.js moveRate)

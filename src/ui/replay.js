@@ -17,7 +17,7 @@ import { RUN_TYPES } from '../games/shared/runner.js';
 import { viewOf } from '../games/index.js';
 import { SND } from '../audio/sound.js';
 import { app, state } from './app.js';
-import { animMs, fx, fxAt } from './fx.js';
+import { fx, fxAt } from './fx.js';
 import { render } from './render.js';
 import { skipFlash } from './turns.js';
 
@@ -117,20 +117,8 @@ function repMove() {
   if (rep !== r) return;                                                          // (the move ended the replay: a refused move, a reset)
   r.f = state.flash || null;
   if (!r.f) { repStop(); return; }
-  if (r.speed > 1) { repSpeedLoop(); repRate(); }               // (the move's render came before its flash was known here: its animations to the replay's rate now)
   if (app.querySelector('.rskip:not(.until)')) render();        // (Skip drawn again, now timed to go as the move's animation ends)
 }
-// The flash's clock run fast (the Super Chaos recap plays at 2x): the move's event is kept drifting back,
-// so everything timed from it (the canvas replays, the animations re-anchored at each render) sees the
-// elapsed time multiplied; the animations themselves run at that rate (repRate).
-function repSpeedLoop() {
-  const r = rep;
-  if (!r || r.stage !== 'move' || state.flash !== r.f) return;
-  const e = fx.move;
-  if (e && e.key === r.f) { if (r.start0 == null) r.start0 = e.at; e.at = r.start0 - (performance.now() - r.start0) * (r.speed - 1); }
-  requestAnimationFrame(repSpeedLoop);
-}
-export const repSpeed = () => (rep && rep.stage === 'move' && state.flash && state.flash === rep.f ? rep.speed : 1);
 // Skip: the inputs still to play are dropped and the move made; a move playing out jumps to its result.
 export function repSkip() {
   const r = rep;
@@ -160,16 +148,11 @@ export function repMark() {
   el.classList.add('rpress', by);
   pressTimer = setTimeout(() => el.classList.remove('rpress', by), left);
 }
-// The animations of a replay played fast: at the replay's rate (after anchorFx has set their time).
-export function repRate() {
-  const s = repSpeed();
-  if (s === 1 || typeof app.getAnimations !== 'function') return;
-  for (const a of app.getAnimations({ subtree: true })) if (a.playbackRate !== s) a.playbackRate = s;
-}
 export function repSkipBtn() {
   if (!rep || rep.sq !== state.zoom) return '';
   const at = rep.stage === 'move' && rep.f ? fxAt('move', rep.f) : rep.at;
-  if (rep.stage === 'move' && rep.f && at != null && performance.now() - at >= animMs(rep.f) / rep.speed) return '';   // the result is up: nothing left to skip
-  const until = rep.stage === 'move' && rep.f && at != null ? Math.max(0, Math.round(at - rep.at + animMs(rep.f) / rep.speed)) : null;   // (gone the moment the move's animation ends: the result's line is never under it)
-  return `<button class="rskip${until != null ? ' until' : ''}" data-act="rep-skip" data-fx="${rep.at}"${until != null ? ` style="--u:${until}ms"` : ''} aria-label="Skip the replay">Skip</button>`;
+  const end = rep.stage === 'move' && rep.f && at != null && fx.move && fx.move.key === rep.f ? fx.move.end : null;   // (when the move's animation is over: ui/turns.js playFlash, at the move's rate)
+  if (end != null && performance.now() >= end) return '';   // the result is up: nothing left to skip
+  const until = end != null ? Math.max(0, Math.round(end - rep.at)) : null;   // (gone the moment the move's animation ends: the result's line is never under it)
+  return `<button class="rskip${until != null ? ' until' : ''}" data-act="rep-skip" data-fx="${rep.at}" data-fxk="rt"${until != null ? ` style="--u:${until}ms"` : ''} aria-label="Skip the replay">Skip</button>`;
 }

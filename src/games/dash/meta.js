@@ -16,3 +16,4 @@ export const TUNE = [
   { k: 'aiSpread', label: 'Computer: run length spread (%)', def: 45, min: 15, max: 80, step: 5, group: 'Computer' },
 ];
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="15.5" cy="4.5" r="2"/><path d="M8.5 20.5l2.5-5.5L7.5 12l3.5-4 3 2.5 3.5-1"/><path d="M11 15l3.5 2.5 1 3"/><path d="M2.5 20.5h4"/></svg>';
+export const realTime = true;   // its move plays back in real time (a run, a recording, a timed round): never sped up past the replay's own speed (core/timer.js moveRate)

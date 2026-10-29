@@ -18,3 +18,4 @@ export const TUNE = [
   { k: 'ai3', label: 'Computer beats pattern 3 (%)', def: 70, min: 10, max: 100, step: 5, group: 'Computer' },
   { k: 'ai4', label: 'Computer beats pattern 4 (%)', def: 55, min: 10, max: 100, step: 5, group: 'Computer' },
 ];
+export const realTime = true;   // its move plays back in real time (a run, a recording, a timed round): never sped up past the replay's own speed (core/timer.js moveRate)

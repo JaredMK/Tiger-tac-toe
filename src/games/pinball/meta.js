@@ -17,3 +17,4 @@ export const TUNE = [
   { k: 'aiReact1', label: 'Computer reaction, slowest (ms)', def: 90, min: 0, max: 400, step: 5, group: 'Computer' },
   { k: 'aiJitter', label: 'Computer flip timing error (ms)', def: 50, min: 0, max: 200, step: 5, group: 'Computer' },
 ];
+export const realTime = true;   // its move plays back in real time (a run, a recording, a timed round): never sped up past the replay's own speed (core/timer.js moveRate)

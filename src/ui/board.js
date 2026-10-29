@@ -1,6 +1,7 @@
 // The main board: the nine squares and their miniatures (each game's view.js: miniature).
 import { playerName } from '../core/match.js';
 import { fullState } from '../core/records.js';
+import { ANIM } from '../core/timer.js';
 import { INFO, viewOf } from '../games/index.js';
 import { isMM } from '../net/matchmaking.js';
 import { parseMatch, remoteTurn, room } from '../net/room.js';
@@ -10,7 +11,7 @@ import { scHeld, scHint, scLastPlayed, scRecapStage, scShown, scVerdict } from '
 import { clockLeft, fmtClock } from './clock.js';
 import { scHuman } from '../core/chaos.js';
 import { other } from '../core/util.js';
-import { BURST_MS, burstPick, burstSvg, fxAt, fxAttr } from './fx.js';
+import { BURST_MS, burstPick, burstSvg, fx, fxAt, fxAttr } from './fx.js';
 import { pauseMenu } from './mini.js';
 import { reviewCtx } from './screens/profile.js';
 import { netBar } from './turnbar.js';
@@ -55,7 +56,7 @@ export function renderBoard(review) {
   // A fresh claim stamps in once, from the moment it landed on the board (stampFx). A re-render while it
   // plays carries it on from there; after that the owner's mark simply sits there. Nothing replays it.
   const stampAt = !review && state.stamp != null && state.squares[state.stamp] && state.squares[state.stamp].owner ? fxAt('stamp', state.stampId) : null;
-  const el = stampAt == null ? Infinity : performance.now() - stampAt;
+  const el = stampAt == null ? Infinity : (performance.now() - stampAt) * ANIM.speed;   // (in the stylesheet's base time: the stamp plays at the game's pace)
   const stampOn = el < STAMP_MS;
   const stamped = i => state.stamp === i || (!!state.sc && Array.isArray(state.stamps) && state.stamps.includes(i));   // (Super Chaos: both players may claim a square in the same round)
   const lastP = review ? null : scLastPlayed();                       // Super Chaos: the square each player played last, a badge in their colour on it
@@ -87,10 +88,11 @@ export function renderBoard(review) {
   const hint = state.sc && !state.winner ? scHint() : spot ? (cpuPlays(spot.by) ? CPU_ICON : '') + esc(spot.label) : cpuTurn() ? `${N(state.turn)} is thinking…` : remoteTurn() ? `Waiting for ${N(state.turn)}…`
     : state.moves ? 'Tap any open square to make a move' : `${N(state.turn)}: tap a square to start`;
   const st = el < BOARD_BURST[1] + BURST_MS ? state.stamp : null;    // a fresh claim: two bursts around it, gone after about a second
-  const bw = st == null ? null : burstPick('board:' + state.stampId), bend = k => Math.round(stampAt + BOARD_BURST[k] + BURST_MS);
+  const bw = st == null ? null : burstPick('board:' + state.stampId), bend = k => Math.round(stampAt + (BOARD_BURST[k] + BURST_MS) / ANIM.speed);
   const pow = st == null ? '' : `<div class="pow-b c${st % 3}" style="grid-row:${Math.floor(st / 3) + 1} / span 1;grid-column:${st % 3 + 1} / span 1"${fxAttr(stampAt)} aria-hidden="true">${el < BOARD_BURST[0] + BURST_MS ? `<span class="b1" data-bend="${bend(0)}">${burstSvg(bw.words[0], 'y', 150, 110, 34)}</span>` : ''}<span class="b2" data-bend="${bend(1)}">${burstSvg(bw.words[1], 'r', 160, 104, 28)}</span></div>`;
   const w = waitBand(spot);
-  return `<main class="scr board-scr${w.on ? ' waiting' : ''}">${netBar()}<div class="board">${sqs}${pow}${w.html}</div>
+  const zout = fx.enter && fx.enter.key === 'board:null' && /^mini:/.test(fx.enter.from || '');   // back from a square: the board zooms out to meet it (its stamp lands as it settles)
+  return `<main class="scr board-scr${w.on ? ' waiting' : ''}${zout ? ' zout' : ''}">${netBar()}<div class="board">${sqs}${pow}${w.html}</div>
     <div class="foot"><span class="hint">${hint}</span></div>${pauseMenu()}</main>`;
 }
 // Miniatures: public information only. Hidden words, numbers, cards and the ship never appear here,

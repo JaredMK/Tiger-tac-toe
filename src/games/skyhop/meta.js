@@ -17,3 +17,4 @@ export const TUNE = [
   { k: 'aiLapse', label: 'Computer misses a hazard (%)', def: 15, min: 0, max: 100, step: 1, group: 'Computer' },
   { k: 'aiMisjudge', label: 'Computer misjudges a moving platform (%)', def: 50, min: 0, max: 100, step: 1, group: 'Computer' },
 ];
+export const realTime = true;   // its move plays back in real time (a run, a recording, a timed round): never sped up past the replay's own speed (core/timer.js moveRate)

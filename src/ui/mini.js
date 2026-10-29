@@ -78,7 +78,7 @@ export function renderMini(sq, review, popup) {
   return `<main class="scr mini${fx.enter && performance.now() - fx.enter.at < 400 ? ' enter' : ''}${popup ? ` screplay rep-${turn}` : ''}"${popup ? ` role="dialog" aria-label="${esc(playerName(state, turn))}'s move — replay"` : ''}>${popup ? banner : netBar()}
     <div class="bar${view && sq.owner ? ' won won-' + sq.owner : ''}" role="${view ? 'status' : 'presentation'}">${back}
       <div class="ttl"><b${info.name.length > 14 ? ' class="long"' : ''}>${info.name}</b><small${view ? ' class="won"' : ''}>${sub}</small></div>${qBtn(mini.type)}</div>
-    <div class="gwrap"${fxAttr(f ? fxAt('move', f) : d && !f ? fxAt('back', d) : null)}>${g}</div>${wb.html}${f ? renderFlash(f) : ''}${repSkipBtn() || (joint ? '<button class="rskip late" data-act="rep-skip" aria-label="Skip the replay">Skip</button>' : '')}${popup ? '' : pauseMenu()}</main>`;   // the move's animations count from the move
+    <div class="gwrap"${f ? fxAttr(fxAt('move', f), 'm') : fxAttr(d ? fxAt('back', d) : null)}>${g}</div>${wb.html}${f ? renderFlash(f) : ''}${repSkipBtn() || (joint ? '<button class="rskip late" data-act="rep-skip" aria-label="Skip the replay">Skip</button>' : '')}${popup ? '' : pauseMenu()}</main>`;   // the move's animations count from the move
 }
 const REPLAY_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.6-5.9"/><path d="M4 4v5h5"/></svg>';
 // The in-game menu: a pause card with Resume and Main menu (which asks first).
@@ -105,7 +105,7 @@ function summary(f) {
 // on it dismisses the result.
 function renderFlash(f) {
   const at = fxAt('move', f);
-  const open = `<div class="flash lite late" style="--late:${animMs(f)}ms"${fxAttr(at)} data-act="dismiss">`;
+  const open = `<div class="flash lite late" style="--late:${animMs(f)}ms"${fxAttr(at, 'm')} data-act="dismiss">`;
   return `${f.type === 'memory' && f.kind === 'move' ? open.replace(' data-act="dismiss"', '') : open}</div>`;   // (Find the Pair: the two cards stay up for the full 2 seconds)
 }
 const LINE_TYPES = ['bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads', 'flap', 'chopper', 'patterns', 'wheels', 'sniff', 'clash', 'headcount', 'flash', 'snapshot', 'skyhop', 'scoop', 'pinball'];

@@ -22,7 +22,7 @@ export function renderHeader() {
     : state.timer && state.timer.limit && !state.winner ? `<span class="clock" id="clock" aria-label="Time left this turn">${clockText()}</span>` : '';
   // the reaction bubble hangs by the sender's character; the bubble is always there (hidden when empty), so the bar's shape stays the same
   const card = p => (rx.card && rx.card.side === p && !menuOpen ? rx.card : null);   // (not over the in-game menu)
-  const side = p => `<div class="tside ${p}${p === t ? ' on' : ''}"><span class="tg">${toon(p)}<span class="rbub${card(p) ? ' on' : ''}"${card(p) ? fxAttr(card(p).at) : ''} aria-live="polite">${card(p) ? card(p).e : ''}</span></span><b class="nm">${N(p)}</b></div>`;
+  const side = p => `<div class="tside ${p}${p === t ? ' on' : ''}"><span class="tg">${toon(p)}<span class="rbub${card(p) ? ' on' : ''}"${card(p) ? fxAttr(card(p).at, 'rt') : ''} aria-live="polite">${card(p) ? card(p).e : ''}</span></span><b class="nm">${N(p)}</b></div>`;
   return `<header class="hdr t-${t}${clock ? ' has-clock' : ''}">
     <div class="hdrrow"><button class="menubtn" data-act="pause" aria-label="Menu">Menu</button><div class="tbar">${side('X')}${side('O')}</div></div>
     <div class="hdrrow2"><div class="turn" aria-live="polite">${resultLine(drawn ? `<span class="who">Draw · ${state.winReason === 'both' ? 'both made a line' : 'no line left'}</span>` : won ? `<span class="g">${t}</span><span class="who">${isYou(t) ? 'You win' : `${N(t)} wins`}</span>` : sc ? scTurnText() : `<span class="g">${t}</span><span class="who">${isYou(t) ? 'Your turn' : `${N(t)}<i class="suf">'s turn</i>`}</span>`)}</div><span class="clockbox">${clock}</span></div>
@@ -44,7 +44,7 @@ function resultLine(turn) {
   const f = state.flash, line = f && state.screen === 'mini' ? flashLine(f) : '';
   if (!line) return turn;
   const ms = animMs(f);
-  return `<span class="tswap"${fxAttr(fxAt('move', f))}><span class="tu" style="--u:${ms}ms">${turn}</span><span class="tf flres" style="--f:${ms}ms" role="status">${line}</span></span>`;
+  return `<span class="tswap"${fxAttr(fxAt('move', f), 'm')}><span class="tu" style="--u:${ms}ms">${turn}</span><span class="tf flres" style="--f:${ms}ms" role="status">${line}</span></span>`;
 }
 // The connection banner during online play: nothing while all is well. It pops in when what it says
 // changes (noteNet, called where the connection, the other player's presence or a note change).
@@ -64,5 +64,5 @@ function netInfo() {
 export function noteNet() { const b = netInfo(), k = b ? b.cls + ':' + b.html : null; if (k && !(fx.net && fx.net.key === k)) startFx('net', k); }
 export function netBar() {
   const b = netInfo();
-  return b ? `<div class="netbar ${b.cls}" role="status"${fxAttr(fxAt('net', b.cls + ':' + b.html))}>${b.html}</div>` : '';
+  return b ? `<div class="netbar ${b.cls}" role="status"${fxAttr(fxAt('net', b.cls + ':' + b.html), 'rt')}>${b.html}</div>` : '';
 }

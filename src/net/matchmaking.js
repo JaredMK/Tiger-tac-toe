@@ -17,7 +17,7 @@ import { KEY } from '../ui/config.js';
 import { lackedTypes } from '../core/client.js';
 import { parseMatch } from '../core/records.js';
 import { clientInfo } from './platform.js';
-import { newTimer } from '../core/timer.js';
+import { ANIM, newTimer } from '../core/timer.js';
 import { render } from '../ui/render.js';
 import { noteNet } from '../ui/turnbar.js';
 
@@ -232,7 +232,7 @@ function showIntro(pub) {
 }
 export function showSides(players, me) {
   mmIntro = { players, me: me || null };
-  clearTimeout(introTimer); introTimer = setTimeout(closeIntro, INTRO_MS);
+  clearTimeout(introTimer); introTimer = setTimeout(closeIntro, INTRO_MS / ANIM.speed);   // (1.5 s at the default pace)
 }
 export function closeIntro() {
   clearTimeout(introTimer); introTimer = null;

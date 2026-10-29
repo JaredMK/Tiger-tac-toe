@@ -28,11 +28,22 @@ test('replay log: a move played with a log carries it on the flash, normalized; 
   const r2 = E.playMove(st, 4, 0, E.makeRng('y'), { rep: 'nonsense' });
   assert.equal(r2.ok, true); assert.ok(!('rep' in st.flash)); assert.equal(st.flash.m, 0);
 });
-test('animation speed (admin config/anim): 1 by default, 0.5–2 only, and the playback timings scale by it', () => {
-  assert.equal(E.ANIM.speed, 1);
+test('pace (config/anim): twice the base figures by default, the admin\'s speed on top (0.5–2 only), effects 0–2; real-time moves at the replay\'s speed', () => {
+  assert.equal(E.TEMPO, 2); assert.equal(E.ANIM.admin, 1); assert.equal(E.ANIM.speed, 2, 'the built-in tempo: everything at half its base figure');
   const e = [{ type: 'ttt', kind: 'move', square: 0 }], at1 = E.replayMs(e);
-  E.setAnimSpeed(2); assert.equal(E.ANIM.speed, 2); assert.equal(E.replayMs(e), at1 / 2, 'twice as fast: half the playback');
-  for (const bad of [0, 0.2, 5, 'x', null, undefined]) { E.setAnimSpeed(bad); assert.equal(E.ANIM.speed, 1, `${bad}: back to 1`); }
-  E.setAnimSpeed(0.5); assert.equal(E.replayMs(e), at1 * 2);
+  assert.equal(at1, (E.PLAY.spot + E.playMs(e[0]) + E.PLAY.flash.move) / 2);
+  E.setAnimSpeed(2); assert.equal(E.ANIM.speed, 4); assert.equal(E.replayMs(e), at1 / 2, 'twice as fast again: half the playback');
+  for (const bad of [0, 0.2, 5, 'x', null, undefined]) { E.setAnimSpeed(bad); assert.equal(E.ANIM.speed, 2, `${bad}: back to the default`); }
+  E.setAnimSpeed(0.5); assert.equal(E.ANIM.speed, 1); assert.equal(E.replayMs(e), E.PLAY.spot + (E.playMs(e[0]) + E.PLAY.flash.move) / E.REPLAY_SPEED, 'slowed to the base figures: a replay still never slower than 1.5x');
   E.setAnimSpeed(1);
+  assert.equal(E.moveRate('ttt', 1), 2, 'a plain move: at the pace'); assert.equal(E.moveRate('ttt', E.REPLAY_SPEED), 2, 'replayed: the pace is faster than 1.5');
+  for (const t of ['golf', 'pool', 'bowling', 'pinball', 'dash', 'skyhop', 'echo', 'snapshot']) {
+    assert.equal(E.moveRate(t, 1), 1, `${t}: the mover's own in real time`); assert.equal(E.moveRate(t, E.REPLAY_SPEED), 1.5, `${t}: replayed at 1.5x`);
+    assert.equal(E.holdRate(t, 1), 2, `${t}: its result's hold at the pace`);
+  }
+  const g = [{ type: 'golf', kind: 'move', square: 0, phys: { ms: 3000 } }];
+  assert.ok(Math.abs(E.replayMs(g) - (E.PLAY.spot / 2 + E.playMs(g[0]) / 1.5 + E.PLAY.flash.move / 2)) < 1e-6, 'the server allows for a recording at the replay\'s speed');
+  assert.equal(E.ANIM.fx, 1);
+  for (const [v, want] of [[0, 0], [2, 2], [1.4, 1.4], [3, 1], [-1, 1], ['x', 1], [null, 1]]) { E.setAnimFx(v); assert.equal(E.ANIM.fx, want, `effects ${v}`); }
+  E.setAnimFx(1);
 });

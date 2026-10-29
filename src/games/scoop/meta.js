@@ -18,3 +18,4 @@ export const TUNE = [
   { k: 'aiAim', label: 'Computer aim spread (% of a scoop)', def: 46, min: 0, max: 200, step: 1, group: 'Computer' },
   { k: 'aiLapse', label: 'Computer misses a hazard (%)', def: 20, min: 0, max: 100, step: 1, group: 'Computer' },
 ];
+export const realTime = true;   // its move plays back in real time (a run, a recording, a timed round): never sped up past the replay's own speed (core/timer.js moveRate)

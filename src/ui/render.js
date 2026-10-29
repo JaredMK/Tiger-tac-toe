@@ -7,11 +7,11 @@ import { renderBoard, reviewSquares } from './board.js';
 import { scJointFrame, scPopup, scShown } from './chaos.js';
 import { closeExplain, explainT, renderExplain, renderHowTo } from './explainer.js';
 import { fingPaint } from './finger.js';
-import { anchorFx, animate, fxAt, startFx, sweepBursts } from './fx.js';
+import { anchorFx, animate, fx, fxAt, startFx, sweepBursts } from './fx.js';
 import { refocus, typingIn } from './keyboard.js';
 import { renderMini } from './mini.js';
 import { physPaint } from './physics.js';
-import { repMark, repRate } from './replay.js';
+import { repMark } from './replay.js';
 import { runPaint } from './runner.js';
 import { renderGate, renderLogin, renderUsername, renderVerify } from './screens/account.js';
 import { gateOn } from '../net/accounts.js';
@@ -33,9 +33,9 @@ export function render() {
   // match): it closes when the screen leaves them (the results screen has no menu card to close it, so a
   // menu left open would refuse every tap there). After the match, View board's Menu opens it as ever.
   if (menuOpen && (matchStale() || !['board', 'mini', 'review', 'review-mini'].includes(state.screen) || (state.winner && (state.screen === 'board' || state.screen === 'mini')))) setMenuOpen(false);
-  const view = state.screen + ':' + state.zoom;
+  const view = state.screen + ':' + state.zoom, prev = lastView;
   setEntering(view !== lastView); setLastView(view);
-  if (entering) startFx('enter', view);                       // a new screen: the event for its own entry (the zoom into a square)
+  if (entering) { startFx('enter', view); fx.enter.from = prev; }   // a new screen: the event for its own entry (the zoom into a square; from which: the board's zoom-out from a square)
   if (entering && explainT) closeExplain(true);                 // another screen (Back, a menu, a move): no explainer left over it
   const kept = entering ? [] : [...app.querySelectorAll('[data-keep-scroll]')].map(e => [e.dataset.keepScroll, e.scrollTop]);
   const focus = entering ? null : typingIn();
@@ -56,7 +56,7 @@ export function render() {
   animate();
   busFly();
   anchorFx();
-  repMark(); repRate();                                       // a replay: the control just pressed, the animations at its rate
+  repMark();                                                  // a replay: the control just pressed
   runPaint();
   physPaint();
   fingPaint();

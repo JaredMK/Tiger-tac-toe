@@ -5,7 +5,7 @@ import { SND, backSounds, matchEndSound, moveSounds } from '../audio/sound.js';
 import { mmIntro } from '../net/matchmaking.js';
 import { haptic } from '../net/platform.js';
 import { applyPending } from '../net/room.js';
-import { ANIM } from '../core/timer.js';
+import { ANIM, REPLAY_SPEED, holdRate, moveRate } from '../core/timer.js';
 import {
   CPU_MS, FLASH_MS, FLIP_MS, MEMORY_MS, RNG, app, commit, cpuPlan, cpuTimer, flashReady, flashTimer, holdTimer,
   menuOpen, setCpuPlan, setCpuTimer, setFlashReady, setFlashTimer, setHoldTimer, state
@@ -13,7 +13,7 @@ import {
 import { STAMP_MS } from './board.js';
 import { chaosStep } from './chaos.js';
 import { explainT } from './explainer.js';
-import { animMs, fx, fxAt, stampFx, startFx } from './fx.js';
+import { animMs, confetti, fx, fxAt, momentPower, shake, stampFx, startFx } from './fx.js';
 import { joinAsk } from './input.js';
 import { render } from './render.js';
 import { rep, repActive, repStart, repStop } from './replay.js';
@@ -81,7 +81,7 @@ function cpuAct() {
   const plan = cpuPlan, mini = state.squares[plan.square].mini;
   if (!plan.stage) {                             // its screen first, as a person's would show: the choice pressed and typed in (ui/replay.js), then the move
     plan.stage = 1;
-    repStart({ cpu: true, sq: plan.square, by: state.turn, type: mini.type, mini, move: plan.move, lead: CPU_MS.pre, onMove: cpuPlay });
+    repStart({ cpu: true, sq: plan.square, by: state.turn, type: mini.type, mini, move: plan.move, lead: CPU_MS.pre, speed: REPLAY_SPEED, onMove: cpuPlay });
     return;
   }
   cpuPlay();
@@ -101,33 +101,46 @@ function cpuPlay() {
 // The move's animation starts: the event is the move itself (made on this phone, by the computer, or
 // played back here once the square is in view). Its result is taken away once it has played and been up
 // for a moment. `played`: a result found on show (a reload): its animation is over already.
-// `speed`: the Super Chaos recap plays a move at 2x (its sounds and its timers to match; the animations
-// run fast from the replay, ui/replay.js).
+// `speed`: a replay's own speed (an opponent's or the computer's move: REPLAY_SPEED; the Super Chaos recap 2x;
+// by default the replay under way's). The move plays at the game's pace or the replay's, whichever is faster
+// (core/timer.js moveRate: a run or a physics recording in real time, at the replay's speed), its sounds and its
+// timers to match. holdMax: the longest the result stays up after its animation (Super Chaos's replay: no dead
+// time between the steps of a move); holdAt: exactly this long (its last step: the end held); elapsed: the move
+// began this long ago (a sequence joined part way: its animation that far on, quietly).
 let flashEnds = 0;                                 // when the result on show clears (this phone's clock)
+let momentTimer = null, moment = null;             // the move's big moment (a shake, as its result lands): its timer, and what it will do
 export const flashLeft = () => (state.flash && flashTimer ? Math.max(0, flashEnds - Date.now()) : 0);   // how much longer the result on show stays up
-export function playFlash(played, speed, holdMax, holdAt, elapsed) {   // holdMax: the longest the result stays up after its animation (Super Chaos's replay: no dead time between the steps of a move); holdAt: exactly this long (its last step: the end held); elapsed: the move began this long ago (a sequence joined part way: its animation that far on, quietly)
-  const f = state.flash, sp = (speed || 1) * ANIM.speed, el = Math.max(0, elapsed || 0), anim = animMs(f) / sp;   // (ANIM.speed: the admin's Animation speed, on top of a replay's own)   // (el: real ms of the move already gone; anim: its animation on screen)
+export function playFlash(played, speed, holdMax, holdAt, elapsed) {
+  const f = state.flash;
   if (!f || state.spot || fxAt('move', f) != null) return;     // while the square glows on the board, the move has not played yet
+  const rs = speed || (rep && rep.stage === 'move' && !rep.f ? rep.speed : 1);
+  const sp = moveRate(f.type, rs), hr = holdRate(f.type, rs), el = Math.max(0, elapsed || 0), anim = animMs(f) / sp;   // (el: real ms of the move already gone; anim: its animation on screen)
   const ms = played ? 0 : Math.max(0, anim - el);
   startFx('move', f, performance.now() - (played ? animMs(f) : el));
+  fx.move.rate = sp; fx.move.end = performance.now() + ms;   // (rate: the move's own; end: when its animation is over, on this phone's clock)
   if (played || el > 0 || SND.muted || !SND.loaded || !SND.ensure(false)) fx.move.quiet = true;   // (a result already heard at a reload, played before audio was ready, or joined part way: it finishes quietly too)
-  setFlashReady(Date.now() + ms);                   // no tapping the result away while the move is still animating
-  const hold = holdAt != null ? holdAt : Math.max(0, Math.min(holdMax == null ? Infinity : holdMax, holdOf(f) / sp) - Math.max(0, el - anim));   // (holdAt: exactly this long from the animation's end; else the usual hold, less what is gone already)
+  setFlashReady(Date.now() + ms);                   // the result can be tapped away once it has landed (a tap before that finishes the animation: skipFlash)
+  const hold = holdAt != null ? holdAt : Math.max(0, Math.min(holdMax == null ? Infinity : holdMax, holdOf(f) / hr) - Math.max(0, el - anim));   // (holdAt: exactly this long from the animation's end; else the usual hold, less what is gone already)
   clearTimeout(flashTimer); setFlashTimer(setTimeout(dismissFlash, ms + hold)); flashEnds = Date.now() + ms + hold;   // (first: the result always clears, whatever its sounds do)
-  if (!played && !(el > 0)) for (const [n, at, rate] of moveSounds(f)) SND.play(n, { at: at / 1000 / sp, rate });
-  if (sp !== 1 && !played && !(rep && rep.f === f && rep.speed !== 1)) flashRate(f, sp);   // (a replay at its own speed keeps its own clock: ui/replay.js)
+  if (!played && !(el > 0)) {                        // its sounds, kept as the move's (a tap that finishes it silences them: SND.cut)
+    const was = SND.scope; if (was == null) SND.scope = f;
+    try { for (const [n, at, rate] of moveSounds(f)) SND.play(n, { at: at / 1000 / sp, rate }); } finally { SND.scope = was; }
+  }
+  if (sp !== 1 && !played) flashRate(f, sp);
+  clearTimeout(momentTimer); momentTimer = null; moment = null;
+  const pw = played || el > 0 ? null : momentPower(f);
+  if (pw) { moment = () => { moment = null; momentTimer = null; if (state.flash === f) shake(pw); }; momentTimer = setTimeout(moment, Math.max(0, ms - 40)); }   // (as the result lands)
 }
-// The Animation speed on a move's animations: the move's event drifts back (or forward), so everything timed from it
-// (the canvas replays, the animations re-anchored at each render) sees the elapsed time multiplied, and the page's
-// running animations play at that rate, until the result is gone.
+// The move's rate on its animations: the move's event drifts back, so everything timed from it (the canvas replays,
+// the counts, the animations re-anchored at each render: ui/fx.js anchorFx) sees the elapsed time multiplied,
+// until the result is gone or the move's event is set again (a tap that finishes it).
 function flashRate(f, sp) {
   const e = fx.move;
   if (!e || e.key !== f) return;
   const t0 = e.at, w0 = performance.now();
   const step = () => {
-    if (state.flash !== f || !fx.move || fx.move.key !== f) return;
-    fx.move.at = t0 - (performance.now() - w0) * (sp - 1);
-    if (typeof app.getAnimations === 'function') for (const a of app.getAnimations({ subtree: true })) if (a.playbackRate !== sp) a.playbackRate = sp;
+    if (state.flash !== f || fx.move !== e) return;
+    e.at = t0 - (performance.now() - w0) * (sp - 1);
     requestAnimationFrame(step);
   };
   requestAnimationFrame(step);
@@ -142,18 +155,23 @@ export function holdOf(f) {
   if (f.type === 'hangman' && f.kind === 'again') hold = 0;                  // Hangman, a right letter: the next guess the moment it is in
   return hold;
 }
-// Skip (an opponent's replay): the move's animation jumps to its end, quietly; the result stays up its usual
-// moment and then clears as ever.
+// A tap on a move still playing (an opponent's replay's Skip, or any tap on the square while a move animates, your
+// own too): the move's animation jumps to its end, quietly, its sounds cut; the result stays up its usual moment
+// and then clears as ever (and a tap once it has landed takes it away at once).
 export function skipFlash() {
   const f = state.flash;
   if (!f || fxAt('move', f) == null) return;
-  const sp = (rep && rep.f === f ? rep.speed : 1) * ANIM.speed;
+  const sp = (fx.move && fx.move.rate) || 1, hr = Math.max(sp, ANIM.speed);
+  SND.cut(f);
   startFx('move', f, performance.now() - animMs(f) * Math.max(1, sp));   // (past its end at any speed)
-  fx.move.quiet = true;
+  fx.move.rate = sp; fx.move.end = performance.now(); fx.move.quiet = true;
+  if (moment) moment();                                // (its big moment lands with it)
   setFlashReady(Date.now());
-  clearTimeout(flashTimer); setFlashTimer(setTimeout(dismissFlash, holdOf(f) / sp)); flashEnds = Date.now() + holdOf(f) / sp;
+  clearTimeout(flashTimer); setFlashTimer(setTimeout(dismissFlash, holdOf(f) / hr)); flashEnds = Date.now() + holdOf(f) / hr;
   render();
 }
+// The move's animation is still playing (a tap on it finishes it: ui/input.js).
+export function flashAnimating() { return !!state.flash && fxAt('move', state.flash) != null && Date.now() < flashReady; }
 // The match is over and its last square has stamped in on the board: the end screen, with its sound.
 const WIN_AFTER = 350;
 let winTimer = null;
@@ -161,7 +179,9 @@ export function toWin() {
   clearTimeout(winTimer); winTimer = null;
   if (!state.winner || state.screen !== 'board' || state.sc) return;
   state.screen = 'win'; state.zoom = null;
-  SND.play('swish'); SND.play(matchEndSound(), { at: 0.25 });
+  SND.play('swish'); SND.play(matchEndSound(), { at: 0.12 });
+  const k = endKind().list;
+  if (k !== 'loss') setTimeout(() => { confetti(k === 'win' ? 60 : 30); if (k === 'win') shake(1.2); }, 60);   // (a win: a burst of confetti and a jolt; a tie or two people on one phone, a smaller one; a loss, none)
   haptic({ win: 'win', loss: 'loss' }[endKind().list] || 'claim');   // (the app: one buzz with the end screen, matching its sound; a tie or two people on one phone, a plain one)
   commit();
 }
@@ -176,7 +196,7 @@ export function dismissFlash() {
   const ended = f.kind === 'match' && !!state.winner && state.screen === 'win' && !state.sc && state.squares[f.square] && state.squares[f.square].owner;
   if (ended) {                                       // the square that ended the match: back to the main board first, where it stamps in; then the match's end (toWin)
     state.screen = 'board'; state.zoom = null; state.stamp = f.square; state.stampId = `${state.id || 'm'}:${state.moves}`;
-    clearTimeout(winTimer); winTimer = setTimeout(toWin, STAMP_MS + WIN_AFTER);
+    clearTimeout(winTimer); winTimer = setTimeout(toWin, (STAMP_MS * 0.6 + WIN_AFTER) / ANIM.speed);   // (the end screen comes in as the stamp settles)
   }
   if (hold && state.done) { startFx('back', state.done); if (!quiet) SND.play('flipDown'); }   // the two cards turning back over
   else if (!quiet) backSounds(from);

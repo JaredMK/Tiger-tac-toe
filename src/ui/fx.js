@@ -1,5 +1,5 @@
 // Animations: each one started by the event that causes it, exactly once; bursts and count-ups.
-import { playMs } from '../core/timer.js';
+import { ANIM, playMs } from '../core/timer.js';
 import { ATT, ATT_TYPES, attMs } from '../games/shared/attention.js';
 import { FINGER_TYPES, fingMs } from '../games/shared/finger.js';
 import { bullsAim } from '../games/bullseye/rules.js';
@@ -74,26 +74,82 @@ export function sweepBursts() {
 export const fx = {};                                   // kind -> { key, at }: the latest event of each kind, at performance.now()
 export function startFx(kind, key, at) { fx[kind] = { key, at: at == null ? performance.now() : at }; }
 export function fxAt(kind, key) { const e = fx[kind]; return e && e.key === key ? e.at : null; }
-export const fxAttr = at => (at == null ? '' : ` data-fx="${at}"`);   // an element whose animations (and everything inside) belong to that event
+// kind: 'm' a move's own animations (timed in the move's time: playFlash keeps the move's event drifting at its
+// rate); 'rt' real time (a game's own timing: an attention round, Echo's pattern, a bar counting down, the
+// Skip button's moment); none: the game's pace (ANIM.speed).
+export const fxAttr = (at, kind) => (at == null ? '' : ` data-fx="${at}"${kind ? ` data-fxk="${kind}"` : ''}`);   // an element whose animations (and everything inside) belong to that event
 export function anchorFx() {
   if (!WAAPI || typeof app.getAnimations !== 'function') return;
   // the animations' own clock (the frame's time, same origin as performance.now()): measured on it, one
   // already running where it should be reads the same, however late in the frame this redraw is
   const tl = document.timeline && document.timeline.currentTime, now = typeof tl === 'number' ? tl : performance.now();
   const css = a => !(typeof CSSTransition !== 'undefined' && a instanceof CSSTransition);   // (a transition just follows its style)
+  const S = ANIM.speed, mr = (fx.move && fx.move.rate) || 1;
   // Each animation is set once, by the event of its nearest [data-fx] element (or, with none, the screen's
   // entry). (Setting everything by the entry first and then each event's own finished, and so lost, any
   // animation the entry's clock had already run past: Echo's first flashes, after the square had been open
-  // a while, never showed.)
+  // a while, never showed.) Each plays at its host's rate: the game's pace (ANIM.speed: every figure in the
+  // stylesheet is a base one), a move's own rate, or real time; a loop that never ends (a glow, a bob, Bullseye's
+  // sweep) always in real time.
   for (const a of app.getAnimations({ subtree: true })) {
     if (!css(a)) continue;
     const el = a.effect && a.effect.target, host = el && el.closest ? el.closest('[data-fx]') : null;
     const at = host ? Number(host.dataset.fx) : fx.enter ? fx.enter.at : null;
     if (at == null) continue;
-    const t = Math.max(0, now - at);
-    if (a.currentTime != null && a.currentTime > 0 && Math.abs(a.currentTime - t) < 60) continue;   // already where its event has it (one running on, untouched): left alone; one just made (at 0) is always set, or a redraw early in its event would start it over
-    try { a.currentTime = t; } catch (e) { /* (a finished one with no effect left) */ }
+    const kind = host ? host.dataset.fxk : '', timing = a.effect && a.effect.getTiming ? a.effect.getTiming() : {};
+    const rate = kind === 'rt' || timing.iterations === Infinity ? 1 : kind === 'm' ? mr : S;
+    const t = Math.max(0, now - at) * (kind === 'm' ? 1 : rate);    // (a move's host carries its drifted time already)
+    if (a.playbackRate === rate && a.currentTime != null && a.currentTime > 0 && Math.abs(a.currentTime - t) < 60) continue;   // already where its event has it (one running on, untouched): left alone; one just made (at 0) is always set, or a redraw early in its event would start it over
+    try { a.playbackRate = rate; a.currentTime = t; } catch (e) { /* (a finished one with no effect left) */ }
   }
+}
+// ----- energy: a screen shake, confetti, a pop under the finger (each from its own event, once; never from a
+// render). ANIM.fx (the admin's Effects intensity, 0 to 2) scales them all; 0, or reduced motion, turns them off.
+// Short by design: none of it holds anything up. -----
+const FX_ON = () => !REDUCED && WAAPI && ANIM.fx > 0;
+// The whole screen jolts (a claim, a sink, a bust, a knock, a win): power 1 a claim, 1.6 the match, 0.6 a lesser hit.
+export function shake(power = 1) {
+  if (!FX_ON()) return;
+  const a = Math.min(14, 6 * power * ANIM.fx), k = n => `${(a * n).toFixed(1)}px`;
+  try { app.animate([{ translate: '0 0' }, { translate: `${k(-1)} ${k(0.4)}` }, { translate: `${k(0.8)} ${k(-0.6)}` }, { translate: `${k(-0.5)} ${k(0.3)}` }, { translate: `${k(0.25)} 0` }, { translate: '0 0' }], { duration: 240, easing: 'ease-out' }); } catch (e) { /* (no individual transforms: no shake) */ }
+}
+// A quick spray of confetti from a point (an element's middle, else the screen's), in the players' colours.
+const CONF = ['var(--x)', 'var(--o)', 'var(--sky, #58a8cf)', 'var(--paper, #fff8e8)', '#4e9d3a'];
+export function confetti(n = 24, from) {
+  if (!FX_ON()) return;
+  const count = Math.round(n * ANIM.fx);
+  if (!count) return;
+  const r = from && from.getBoundingClientRect ? from.getBoundingClientRect() : null;
+  const x0 = r ? r.left + r.width / 2 : innerWidth / 2, y0 = r ? r.top + r.height / 2 : innerHeight * 0.4;
+  const box = document.createElement('div');
+  box.className = 'confetti'; box.setAttribute('aria-hidden', 'true');
+  document.body.appendChild(box);
+  let left = count;
+  for (let i = 0; i < count; i++) {
+    const p = document.createElement('i'), ang = Math.random() * Math.PI * 2, d = 60 + Math.random() * 140 * Math.min(1.5, ANIM.fx), rot = (Math.random() - 0.5) * 720;
+    p.style.left = x0 + 'px'; p.style.top = y0 + 'px'; p.style.background = CONF[i % CONF.length];
+    box.appendChild(p);
+    const dx = Math.cos(ang) * d, dy = Math.sin(ang) * d * 0.8;
+    const an = p.animate([{ transform: 'translate(-50%, -50%) scale(.4)', opacity: 1 }, { transform: `translate(calc(-50% + ${(dx * 0.85).toFixed(0)}px), calc(-50% + ${(dy * 0.85 - 30).toFixed(0)}px)) rotate(${(rot * 0.7).toFixed(0)}deg) scale(1)`, opacity: 1, offset: 0.55 }, { transform: `translate(calc(-50% + ${dx.toFixed(0)}px), calc(-50% + ${(dy + 70).toFixed(0)}px)) rotate(${rot.toFixed(0)}deg) scale(.8)`, opacity: 0 }], { duration: 650 + Math.random() * 250, easing: 'cubic-bezier(.2, .8, .4, 1)' });
+    an.onfinish = an.oncancel = () => { if (--left <= 0) box.remove(); };
+  }
+}
+// A press: the control squashes and springs back under the finger (its own `scale`, so its transforms are untouched).
+export function tapPop(el) {
+  if (!FX_ON() || !el || !el.animate) return;
+  const s = 0.08 * Math.min(1.5, ANIM.fx);
+  try { el.animate([{ scale: '1' }, { scale: `${1 - s}` }, { scale: `${1 + s * 0.5}` }, { scale: '1' }], { duration: 170, easing: 'ease-out' }); } catch (e) { /* (no individual transforms) */ }
+}
+// A move's big moment, as its result lands: how hard the screen shakes (null: none). A square won shakes on the
+// board as it stamps in (stampFx); in the square, a hit (a sink, a bust, a knock, a strike) jolts it.
+export function momentPower(f) {
+  if (!f || f.timeout) return null;
+  if (f.note === 'bust' || f.note === 'sunk') return 1;
+  if (f.kind === 'claim' || f.kind === 'match') return null;      // (its jolt comes with the stamp on the board)
+  if (f.bumped || (f.scr && f.scr.knocked && f.scr.knocked.length)) return 0.8;
+  if (f.note === 'strike') return 0.8;
+  if (f.hit || (f.craps && /lose|out/.test(String(f.craps.result)))) return 0.5;
+  return null;
 }
 // How long the move's animation takes. The result toast or card waits this long, and so does any tap.
 export function animMs(f) { return REDUCED ? 0 : playMs(f, hexLen(f)) + runPre(f) - (f.type === 'bus' ? BUST.pre - busPre(f) : 0) - (f.type === 'bullseye' && f.bull ? bullsAim(f.bull).fly - bullsPre(f) : 0) - (f.type === 'echo' && f.echo && !f.timeout ? echoAim(f.echo).end - echoPre(f) : 0) - (f.type === 'oddone' && f.odd && !f.timeout ? ODD.show + ODD.pause - oddPre(f) : 0) - (ATT_TYPES.includes(f.type) && f.att && !f.timeout ? attMs(f.type, f.att.round) + ATT.pause - attPre(f) : 0) - (FINGER_TYPES.includes(f.type) && f.fing && !f.timeout ? fingMs(f.fing) - fingPre(f) : 0) - (f.type === 'trivia' && f.trivia ? (f.trivia.fresh ? TRIVIA.flip : 0) + TRIVIA.pause - triviaPre(f) : 0); }   // (your own Ride the Bus guess skips the moment it is shown)
@@ -102,19 +158,20 @@ export function hexLen(f) { const sq = shownSq(f.square); return sq && sq.mini.w
 export function animate() {
   if (!state.flash) return;
   for (const el of app.querySelectorAll('.cnt[data-from]')) {
-    const host = el.closest('[data-fx]'), at = host ? Number(host.dataset.fx) : performance.now();   // counted from the move, wherever a redraw finds it
-    countTo(el, Number(el.dataset.from), Number('to' in el.dataset ? el.dataset.to : el.textContent), Number(el.dataset.ms) || 400, at + (Number(el.dataset.delay) || 0));
+    const host = el.closest('[data-fx]'), mv = host && host.dataset.fxk === 'm', at = host ? Number(host.dataset.fx) : performance.now();   // counted from the move, wherever a redraw finds it
+    const clock = mv ? () => performance.now() - (fx.move ? fx.move.at : at) : () => (performance.now() - at) * ANIM.speed;   // (the move's time: its drifting event; else the game's pace)
+    countTo(el, Number(el.dataset.from), Number('to' in el.dataset ? el.dataset.to : el.textContent), Number(el.dataset.ms) || 400, Number(el.dataset.delay) || 0, clock);
   }
   hopToken();
   rlMarker();
 }
-function countTo(el, from, to, ms, t0) {
-  const ease = now => { const k = Math.min(1, Math.max(0, (now - t0) / ms)); return [k, Math.round(from + (to - from) * (1 - Math.pow(1 - k, 2)))]; };
-  if (REDUCED || from === to || ease(performance.now())[0] >= 1) { el.textContent = to; return; }
-  el.textContent = ease(performance.now())[1];
-  const step = now => {
+function countTo(el, from, to, ms, delay, clock) {
+  const ease = () => { const k = Math.min(1, Math.max(0, (clock() - delay) / ms)); return [k, Math.round(from + (to - from) * (1 - Math.pow(1 - k, 2)))]; };
+  if (REDUCED || from === to || ease()[0] >= 1) { el.textContent = to; return; }
+  el.textContent = ease()[1];
+  const step = () => {
     if (!el.isConnected) return;                                   // re-rendered meanwhile: the new one carries on
-    const [k, v] = ease(now);
+    const [k, v] = ease();
     el.textContent = v;
     if (k < 1) requestAnimationFrame(step);
   };
@@ -125,6 +182,8 @@ export function stampFx(elapsed) {                                   // elapsed:
   if (state.screen !== 'board' || state.stamp == null || state.stampId == null || fxAt('stamp', state.stampId) != null) return;
   startFx('stamp', state.stampId, elapsed ? performance.now() - elapsed : undefined);
   if (elapsed > 200) return;
-  SND.play('stamp'); SND.play('burst', { at: BOARD_BURST[0] / 1000 }); SND.play('burst', { at: BOARD_BURST[1] / 1000 });
+  SND.play('stamp'); SND.play('burst', { at: BOARD_BURST[0] / 1000 / ANIM.speed }); SND.play('burst', { at: BOARD_BURST[1] / 1000 / ANIM.speed });
   haptic('claim');                                                   // (the app: one buzz with the stamp)
+  const sq = app.querySelector(`.board .sq:nth-child(${state.stamp + 1})`);
+  setTimeout(() => { shake(state.winner ? 1.3 : 1); confetti(state.winner ? 40 : 18, sq && sq.isConnected ? sq : null); }, 120 / ANIM.speed);   // (as the mark lands)
 }

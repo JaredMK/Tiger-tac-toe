@@ -72,7 +72,7 @@ function oddTable(mini, a, o) {
   const startPerf = open ? performance.now() - (Date.now() - oddDraft.at) : null;
   const res = d ? `<p ${lateAt('arcres ' + (d.correct ? 'ok' : 'no'), pre + 250)} role="status">${pre ? `${W(who)} ${d.correct ? 'found it' : d.picked < 0 ? 'ran out of time' : 'missed it'}` : d.correct ? 'Found it!' : d.picked < 0 ? 'Out of time' : 'Not that one'}</p>`
     : shown ? `<p class="arcres ${shown.correct ? 'ok' : 'no'}">${W(who)} ${shown.correct ? 'found it' : 'missed it'}</p>`
-    : open ? `<p class="arcnote onote"${fxAttr(startPerf)}><span class="obar"><i style="--d:${oddDraft.secs * 1000}ms"></i></span></p>`
+    : open ? `<p class="arcnote onote"${fxAttr(startPerf, 'rt')}><span class="obar"><i style="--d:${oddDraft.secs * 1000}ms"></i></span></p>`
     : mine ? '<p class="arcnote"></p>'
     : `<p class="arcnote">${o.view ? '' : `${W(who)}'s turn`}</p>`;
   const go = mine && !open;

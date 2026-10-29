@@ -56,7 +56,7 @@ function echoTable(mini, a, o) {
     return `<button class="${cls}"${an ? ` style="--lit:${an}"` : ''} data-act="echo-tap" data-k="${k}" aria-label="Pad ${k + 1}"${live ? '' : ' disabled'}>${ECHO_PADS[k]}</button>`;
   };
   const lock = fresh ? `<div class="elock tu" style="--u:${playEnd}ms" aria-hidden="true"></div>` : '';
-  const pads = `<div class="epads"${fxAttr(fresh ? echoDraft.at : null)}>${[0, 1, 2, 3].map(pad).join('')}${lock}</div>`;
+  const pads = `<div class="epads"${fxAttr(fresh ? echoDraft.at : null, 'rt')}>${[0, 1, 2, 3].map(pad).join('')}${lock}</div>`;
   const taps = started ? echoDraft.taps : [];
   const steps = mine ? `<div class="esteps" aria-label="${taps.length} of ${seq.length} tapped">${seq.map((_, i) => `<i class="${i < taps.length ? 'on' : ''}"></i>`).join('')}</div>`
     : pre ? `<div class="esteps">${seq.map((_, i) => `<i ${lateAt('', i < e.taps.length && (e.pass || i < e.failAt) ? A.tap(i) : null, 'tapin')}></i>`).join('')}</div>` : '<div class="esteps"></div>';

@@ -28,7 +28,7 @@ export function headView(c) {
   const way = it => (headAxis(it, r) === 'v' ? (it.dir > 0 ? 'dn' : 'up') : it.dir > 0 ? 'r' : 'l'), along = (it, u) => `translate${headAxis(it, r) === 'v' ? 'Y' : 'X'}(${+(it.dir > 0 ? -100 + u * 1009.1 : 909.1 - u * 1009.1).toFixed(1)}%)`;
   const frames = anim ? r.items.map((it, i) => (it.s ? `@keyframes hk${i} {${headKeys(it).map(([f, u]) => ` ${+(f * 100).toFixed(2)}% { transform: ${along(it, u)}; }`).join('')} }` : '')).join('') : '';
   const crit = anim ? r.items.map((it, i) => `<i class="hcr ${way(it)} k-${esc(it.k)}" style="--t:${it.t}ms;--d:${it.d}ms;--p:${10 + it.lane * 20 - 5.5}%;--hcanim:${it.s ? 'hk' + i : { r: 'hcr', l: 'hcl', dn: 'hcv', up: 'hcu' }[way(it)]}">${hcArt(it.k)}</i>`).join('') : '';
-  const field = `<div class="hcfield${r.axis === 'v' ? ' fall' : ''}"${c.started ? fxAttr(c.startPerf) : ''} aria-label="The field">${frames ? `<style>${frames}</style>` : ''}${crit}</div>`;
+  const field = `<div class="hcfield${r.axis === 'v' ? ' fall' : ''}"${c.started ? fxAttr(c.startPerf, 'rt') : ''} aria-label="The field">${frames ? `<style>${frames}</style>` : ''}${crit}</div>`;
   const entry = c.started && attDraft ? attDraft.entry : '', live = c.answering && c.live;
   const shownAns = c.shown ? (c.shown.answer == null ? '–' : String(c.shown.answer)) : entry || '';
   const disp = cls => `<div class="hcdisp${cls}" aria-label="Your answer">${c.shown ? esc(shownAns) : esc(shownAns) || '<i>?</i>'}</div>`;

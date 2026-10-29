@@ -14,7 +14,7 @@ const flSay = o => (Array.isArray(o) ? `${o[1]} ${o[0]}` : String(o));
 export function flashView(c) {
   const r = c.round, anim = c.playing || c.pre;
   const items = anim ? r.items.map(([s, col], i) => `<span class="fit" style="--t:${i * r.ms}ms;--on:${Math.round(r.ms * FLASH.on)}ms">${flArt(s, col)}</span>`).join('') : '';
-  const stage = `<div class="flbox"${c.started ? fxAttr(c.startPerf) : ''} aria-label="The flashes">${items}</div>`;
+  const stage = `<div class="flbox"${c.started ? fxAttr(c.startPerf, 'rt') : ''} aria-label="The flashes">${items}</div>`;
   const opt = (o, k, cls) => `<button class="flopt${cls || ''}" data-act="move" ${mv(k)} aria-label="${esc(flSay(o))}"${c.answering && c.live && !cls ? '' : ' disabled'}>${Array.isArray(o) ? flArt(o[0], o[1]) : `<b>${esc(o)}</b>`}</button>`;
   const plain = c.answering ? r.opts.map((o, k) => opt(o, k)).join('') : r.opts.map(() => '<button class="flopt" disabled tabindex="-1" aria-hidden="true"></button>').join('');   // (the options only once the question is asked: nothing to go on before)
   const marked = c.shown ? r.opts.map((o, k) => opt(o, k, k === r.ans ? ' right' : k === c.shown.answer ? ' wrong' : '')).join('') : '';

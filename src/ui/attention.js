@@ -76,7 +76,7 @@ export function attTable(mini, a, o) {
   // the words: one box, two lines tall, whatever it says (so nothing below it moves); a view may give them as HTML (Headcount: the creature's picture by its name)
   const vw = () => v.watchHtml || esc(v.watch), va = () => v.askHtml || esc(v.ask);
   const words = shown ? (pre ? `<span class="tu" style="--u:${len}ms">${vw()}</span><span class="tf tu2" style="--f:${len}ms;--u:${pre}ms">${va()}</span><span ${lateAt('arcres ' + (shown.correct ? 'ok' : 'no'), pre)} role="status">${result}</span>` : `<span class="arcres ${shown.correct ? 'ok' : 'no'}" role="status">${result}</span>`)
-    : playing ? `<span class="atstack"${fxAttr(c.startPerf)}><span class="tu" style="--u:${len - since}ms">${vw()}</span><span class="tf" style="--f:${len - since}ms">${va()}</span></span>`
+    : playing ? `<span class="atstack"${fxAttr(c.startPerf, 'rt')}><span class="tu" style="--u:${len - since}ms">${vw()}</span><span class="tf" style="--f:${len - since}ms">${va()}</span></span>`
     : answering ? `<span>${va()}</span>`
     : mine ? `<span>Level ${round.level + 1} of 3${v.watch ? ' · ' + vw() : ''}</span>`
     : o.view ? '' : `<span>${W(turn)}'s turn</span>`;   // (each in one span: the box is a grid, and a picture in the line stays in the line)

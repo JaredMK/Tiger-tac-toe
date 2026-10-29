@@ -575,6 +575,9 @@
         "speed": {
           ".validate": "newData.isNumber() && newData.val() >= 0.5 && newData.val() <= 2"
         },
+        "fx": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 2"
+        },
         "$other": {
           ".validate": false
         }

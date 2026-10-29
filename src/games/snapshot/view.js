@@ -25,10 +25,10 @@ export function snapView(c) {
   const msg = wait ? snapMsg(r) : '';
   if (c.shown && c.pre) stage = `<div class="snstack"><div class="tu" style="--u:${show}ms">${grid(i => (orig.has(i) ? ' on' : ''))}</div><div class="tf tu2" style="--f:${show}ms;--u:${len}ms">${grid(blank)}</div>${msg ? `<div class="snmsg tu2" style="--f:${show}ms;--u:${len}ms"><span>${msg}</span></div>` : ''}<div class="tf tu2" style="--f:${len}ms;--u:${c.pre}ms">${grid(i => (pick.has(i) ? ' sel' : ''))}</div><div class="tf" style="--f:${c.pre}ms">${grid(res)}</div></div>`;
   else if (c.shown) stage = grid(res);
-  else if (c.playing) stage = `<div class="snstack"${fxAttr(c.startPerf)}><div>${grid(blank)}</div><div class="tu" style="--u:${show}ms">${grid(i => (orig.has(i) ? ' on' : ''))}</div>${msg ? `<div class="snmsg tf" style="--f:${show}ms"><span>${msg}</span></div>` : ''}</div>`;
+  else if (c.playing) stage = `<div class="snstack"${fxAttr(c.startPerf, 'rt')}><div>${grid(blank)}</div><div class="tu" style="--u:${show}ms">${grid(i => (orig.has(i) ? ' on' : ''))}</div>${msg ? `<div class="snmsg tf" style="--f:${show}ms"><span>${msg}</span></div>` : ''}</div>`;
   else stage = grid(i => (c.answering && pick.has(i) ? ' sel' : ''), true);
   // the time left: a bar while the pattern shows; then the countdown, in seconds and a bar of its own
-  if (c.playing || (c.shown && c.pre)) count = `<div class="sncount"${c.playing ? fxAttr(c.startPerf) : ''}><span class="sndig">${Array.from({ length: secs }, (_, k) => `<b class="tf tu" style="--f:${show + k * 1000}ms;--u:${show + (k + 1) * 1000}ms">${secs - k}</b>`).join('')}</span><span class="snbars"><span class="obar tu" style="--u:${show}ms"><i style="--d:${show}ms"></i></span>${wait ? `<span class="obar tf" style="--f:${show}ms"><i style="--d:${wait}ms;animation-delay:${show}ms"></i></span>` : ''}</span></div>`;
+  if (c.playing || (c.shown && c.pre)) count = `<div class="sncount"${c.playing ? fxAttr(c.startPerf, 'rt') : ''}><span class="sndig">${Array.from({ length: secs }, (_, k) => `<b class="tf tu" style="--f:${show + k * 1000}ms;--u:${show + (k + 1) * 1000}ms">${secs - k}</b>`).join('')}</span><span class="snbars"><span class="obar tu" style="--u:${show}ms"><i style="--d:${show}ms"></i></span>${wait ? `<span class="obar tf" style="--f:${show}ms"><i style="--d:${wait}ms;animation-delay:${show}ms"></i></span>` : ''}</span></div>`;
   const input = `<div class="snin">${count}</div>`;
   return { stage, input, watch: '', ask: `Which ${r.cells.length} cells were filled?`, say: () => `${r.cells.length} cells` };
 }

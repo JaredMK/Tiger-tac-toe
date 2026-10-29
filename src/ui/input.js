@@ -31,18 +31,18 @@ import {
 import { RATINGS_ENABLED } from './config.js';
 import { closeExplain, explainT, openExplain } from './explainer.js';
 import { fingGo } from './finger.js';
-import { startFx } from './fx.js';
+import { startFx, tapPop } from './fx.js';
 import { backspace, submitWord, typeLetter } from './keyboard.js';
 import { render } from './render.js';
 import { updateNeeded } from './update.js';
 import { matchStale, setStaleConfirm } from './screens/stale.js';
 import { haptic, openUpdate, startLink } from '../net/platform.js';
 import { scJointFrame, scPopup, scSkip } from './chaos.js';
-import { repActive, repNote, repSkip, repVal } from './replay.js';
+import { rep, repActive, repNote, repSkip, repVal } from './replay.js';
 import { runGo } from './runner.js';
 import { hist, openHistory, openLeaderboard, openProfile, prof, profileBack, setHist } from './screens/profile.js';
 import { chaosSetup, setGames, setupTypes } from './screens/setup.js';
-import { cpuTurn, dismissFlash, scheduleCpu } from './turns.js';
+import { cpuTurn, dismissFlash, flashAnimating, scheduleCpu, skipFlash } from './turns.js';
 import { closeReport, openReport } from './report.js';
 import { shareResult } from './sharecard.js';
 
@@ -111,6 +111,10 @@ export function init() {
   app.addEventListener('click', e => {
     if (rx.tray && !e.target.closest('.rtray, [data-act="react-open"]')) { rx.tray = false; render(); }   // a tap elsewhere closes the reaction tray
     if ((scPopup() || scJointFrame()) && e.target.closest('main.screplay') && !e.target.closest('[data-act="explain"]')) { e.preventDefault(); scSkip(); return; }   // Super Chaos's replay: a tap anywhere on it (or its Skip) goes to its end
+    if (state.screen === 'mini' && !menuOpen && !explainT && e.target.closest('main.mini') && !e.target.closest('[data-act="explain"], [data-act="pause"], [data-act="rep-skip"], .rxdock')) {   // a tap on a move still playing finishes it at once (yours, the computer's, an opponent's replay)
+      if (flashAnimating()) { e.preventDefault(); if (rep && rep.f === state.flash) repSkip(); else skipFlash(); return; }
+      if (rep && rep.stage === 'inputs') { e.preventDefault(); repSkip(); return; }
+    }
     const el = e.target.closest('[data-act]');
     if (!el || el.disabled) return;
     const act = el.dataset.act;
@@ -323,6 +327,7 @@ export function init() {
       if (own) own(el, e, act);
     }
   });
+  app.addEventListener('pointerdown', e => { const b = e.target.closest && e.target.closest('button:not(:disabled)'); if (b) tapPop(b); }, { passive: true });   // every press pops under the finger (ui/fx.js: its own scale, the Effects intensity)
   app.addEventListener('pointerdown', e => {
     const sc = e.target.closest && e.target.closest('[data-keep-scroll]');
     const typing = e.target.closest && e.target.closest('input:not([type="checkbox"]), textarea, select');   // a text field may scroll up for the keyboard

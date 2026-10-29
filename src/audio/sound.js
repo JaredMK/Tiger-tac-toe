@@ -76,12 +76,12 @@ def('found', 0.55, (c, d, t) => [523, 659, 784, 1046].forEach((f, i) => sfxTone(
 // ---- the board
 def('spot', 0.4, (c, d, t) => { sfxTone(c, d, t, 880, .36, { vol: .25, att: .12 }); sfxTone(c, d, t, 1320, .28, { vol: .1, att: .12 }); }, { level: .4 });
 def('turn', 0.42, (c, d, t) => { sfxTone(c, d, t, 260, .24, { to: 620, vol: .5, att: .01 }); sfxTone(c, d, t + .18, 900, .2, { vol: .2, type: 'triangle' }); }, { level: .5 });
-def('stamp', 0.42, (c, d, t) => { sfxTone(c, d, t, 130, .38, { to: 55, vol: .9, att: .002 }); sfxNoise(c, d, t, .12, { f: 500, filter: 'lowpass', vol: .6, att: .002 }); }, { level: .9 });
+def('stamp', 0.32, (c, d, t) => { sfxTone(c, d, t, 150, .28, { to: 55, vol: .9, att: .002 }); sfxNoise(c, d, t, .09, { f: 650, filter: 'lowpass', vol: .7, att: .002 }); }, { level: .9 });
 def('burst', 0.1, (c, d, t) => { sfxNoise(c, d, t, .07, { f: 1600, q: .7, vol: .5 }); sfxTone(c, d, t, 900, .1, { to: 1800, vol: .35, type: 'triangle' }); }, { level: .5, vary: true });
-def('reset', 0.6, (c, d, t) => { sfxTone(c, d, t, 520, .42, { to: 240, vol: .5, type: 'triangle' }); sfxNoise(c, d, t + .1, .2, { f: 600, to: 300, filter: 'lowpass', vol: .2 }); }, { level: .5 });
-def('swish', 0.42, (c, d, t) => { sfxNoise(c, d, t, .35, { f: 600, to: 3200, q: 1.5, vol: .5 }); sfxTone(c, d, t + .1, 700, .2, { to: 1400, vol: .15, type: 'triangle' }); }, { level: .55 });
-def('won', 0.5, (c, d, t) => [659, 784, 988].forEach((f, i) => sfxTone(c, d, t + i * .08, f, .25, { vol: .35, type: 'triangle' })), { level: .6 });
-def('winFanfare', 1.3, (c, d, t) => { [523, 659, 784, 1046].forEach((f, i) => sfxTone(c, d, t + i * .12, f, .25, { vol: .4, type: 'triangle' })); [523, 659, 784].forEach(f => sfxTone(c, d, t + .5, f, .75, { vol: .22 })); }, { level: .65 });
+def('reset', 0.4, (c, d, t) => { sfxTone(c, d, t, 560, .28, { to: 240, vol: .5, type: 'triangle' }); sfxNoise(c, d, t + .06, .16, { f: 600, to: 300, filter: 'lowpass', vol: .2 }); }, { level: .5 });
+def('swish', 0.28, (c, d, t) => { sfxNoise(c, d, t, .22, { f: 700, to: 3600, q: 1.5, vol: .5 }); sfxTone(c, d, t + .06, 760, .14, { to: 1500, vol: .15, type: 'triangle' }); }, { level: .55 });
+def('won', 0.38, (c, d, t) => [659, 784, 988].forEach((f, i) => sfxTone(c, d, t + i * .055, f, .2, { vol: .35, type: 'triangle' })), { level: .6 });
+def('winFanfare', 1.0, (c, d, t) => { [523, 659, 784, 1046].forEach((f, i) => sfxTone(c, d, t + i * .08, f, .2, { vol: .4, type: 'triangle' })); [523, 659, 784].forEach(f => sfxTone(c, d, t + .34, f, .6, { vol: .22 })); }, { level: .65 });
 def('loss', 0.85, (c, d, t) => { sfxTone(c, d, t, 392, .3, { to: 294, vol: .4, type: 'triangle' }); sfxTone(c, d, t + .25, 330, .55, { to: 247, vol: .4, type: 'triangle' }); }, { level: .55 });
 def('tie', 0.9, (c, d, t) => [392, 494, 587].forEach(f => sfxTone(c, d, t, f, .8, { vol: .2, att: .02 })), { level: .5 });
 // ---- the clock

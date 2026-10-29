@@ -37,7 +37,7 @@ function bullsTable(mini, a, o) {
   const pos = shown ? shown.pos : mini.pos, dia = (2 * cfg.board / B.w) * 100;
   const prev = !shown && l && l.pos ? l.pos : null;             // the board glides in from its last spot as this throw is lined up
   const slide = prev && live && !REDUCED && fx.enter ? `;--sx:${(((prev[0] - pos[0]) / (2 * cfg.board)) * 100).toFixed(1)}%;--sy:${(((prev[1] - pos[1]) / (2 * cfg.board)) * 100).toFixed(1)}%` : '';
-  const board = `<div class="bdboard${slide ? ' slide' : ''}${b && b.pts ? ' hit' + b.pts : ''}" style="left:${(pos[0] / B.w * 100).toFixed(2)}%;top:${(pos[1] / B.h * 100).toFixed(2)}%;width:${dia.toFixed(2)}%${slide};--t:${tEnd}ms"${slide ? fxAttr(fx.enter.at) : ''}>${BOARD_SVG(cfg.bull, cfg.board)}</div>`;
+  const board = `<div class="bdboard${slide ? ' slide' : ''}${b && b.pts ? ' hit' + b.pts : ''}" style="left:${(pos[0] / B.w * 100).toFixed(2)}%;top:${(pos[1] / B.h * 100).toFixed(2)}%;width:${dia.toFixed(2)}%${slide};--t:${tEnd}ms"${slide ? fxAttr(fx.enter.at, 'rt') : ''}>${BOARD_SVG(cfg.bull, cfg.board)}</div>`;
   const per = Math.round(bullsPeriod(cfg, mini.speed[turn] || 1)), perY = Math.round(per * B.h / B.w), delay = slide ? BULLT.slide : 0;
   let lines = '';
   if (shown && A) {                                              // the aim replayed: each line sweeps from its edge and stops at its spot, then the dart
