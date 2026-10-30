@@ -6,6 +6,7 @@ import { app, entering, esc, lastView, menuOpen, setEntering, setLastView, setMe
 import { renderBoard, reviewSquares } from './board.js';
 import { scJointFrame, scPopup, scShown } from './chaos.js';
 import { closeExplain, explainT, renderExplain, renderHowTo } from './explainer.js';
+import { renderSettings } from './settings.js';
 import { fingPaint } from './finger.js';
 import { anchorFx, animate, fx, fxAt, startFx, sweepBursts } from './fx.js';
 import { refocus, typingIn } from './keyboard.js';
@@ -121,6 +122,7 @@ export function renderMain() {
   if (state.screen === 'setup') return renderSetup();
   if (state.screen === 'login') return renderLogin();
   if (state.screen === 'howto') return renderHowTo();
+  if (state.screen === 'settings') return renderSettings();
   if (state.screen === 'username') return renderUsername();
   if (state.screen === 'verify') return renderVerify();     // an email-and-password account proving its address first
   if (state.screen === 'find') return renderFind();

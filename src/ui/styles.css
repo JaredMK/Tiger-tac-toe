@@ -2607,3 +2607,32 @@ main.scr.mini > .wband { left: 0; right: 0; }   /* Super Chaos: waiting in the s
 .animpick .pk { min-height: 36px; padding: 4px 14px; border: 3px solid var(--ink); border-radius: 999px; background: var(--paper); color: var(--ink); font: inherit; cursor: pointer; }
 .animpick .pk.on { background: var(--ink); color: var(--paper); }
 .animpick.pause { margin-top: 10px; }
+
+/* Settings (ui/settings.js): the main menu's screen and the in-game menu's step. A row per setting: its name, its control. */
+.menu-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; }
+.menu-pair .btn.howto { width: 100%; min-width: 0; }
+.settings { display: flex; flex-direction: column; gap: 12px; width: 100%; margin: 6px 0 10px; }
+.setrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 44px; font-weight: 800; font-size: 15px; }
+.setname { flex: none; }
+.setctl { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.setrow .pk { min-height: 40px; min-width: 64px; padding: 4px 14px; border: 3px solid var(--ink); border-radius: 999px; background: var(--paper); color: var(--ink); font: inherit; cursor: pointer; }
+.setrow .pk.on { background: var(--ink); color: var(--paper); }
+.setrow.vol .setctl { flex: 1; justify-content: flex-end; }
+.setvol { flex: 1; max-width: 200px; min-width: 0; height: 40px; accent-color: var(--x); touch-action: pan-x; }
+.setvol:disabled { opacity: .4; }
+.volnum { width: 2.4em; text-align: right; font-variant-numeric: tabular-nums; }
+.settings-scr .setup-box .settings { max-width: 420px; margin: 8px auto; }
+.pause .settings { text-align: left; }
+.btn.setbtn { width: 100%; margin-top: 10px; }
+/* Risky Spins: the skulls, the turn's pot above the wheels and Bank under them (each row always reserved) */
+.wseg.sk { fill: var(--ink); }
+.wsk { fill: #fff; } .wske { fill: var(--ink); }
+.wpotrow { height: 30px; display: flex; justify-content: center; align-items: center; flex: none; }
+.g-wheels .wpot.X { color: var(--x); } .g-wheels .wpot.O { color: var(--o); }
+.g-wheels .risk.grow { animation-delay: var(--t, .6s); }
+.g-wheels .risk.lost { animation: lostmark 0s var(--t, .65s) both, riskout .55s calc(var(--t, .65s) + .2s) ease-in both; }
+.g-wheels .risk.bank { animation: riskin .5s .05s ease-in both; }
+.g-wheels .bpot { animation-delay: var(--t, .6s); }
+.wbank { display: flex; justify-content: center; flex: none; }
+.wbank .big { min-width: min(220px, 70%); }
+.g-wheels .arcres, .g-wheels .arcnote { min-height: 1.4em; }

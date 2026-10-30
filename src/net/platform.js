@@ -3,6 +3,7 @@
 // sharing, opening a page outside the game, links that open the game (a join link: the address it loaded with, or a
 // deep link handed to the app while it runs), and where "Please update" sends a player.
 import { CLIENT_VERSION } from '../core/client.js';
+import { KEY } from '../ui/config.js';
 
 const cap = () => (typeof window !== 'undefined' && window.Capacitor) || null;
 // The platform: 'ios' inside the app, 'web' anywhere else (a browser, the home screen, the tests).
@@ -62,18 +63,30 @@ export async function copyText(text) {
   if (cb) { await cb.write({ string: text }); return; }
   await navigator.clipboard.writeText(text);
 }
-// A buzz under the finger, in the app only (the Haptics plugin; nothing on the web, no navigator.vibrate): 'tap' a square
-// opened, 'claim' a square stamped on the board, 'win' and 'loss' the match's end. Each fires once, from its event (the
-// click handler's tap, fx.js stampFx, turns.js toWin), never from a render.
-const HAPTIC_IMPACT = { tap: 'LIGHT', claim: 'HEAVY' }, HAPTIC_NOTE = { win: 'SUCCESS', loss: 'ERROR' };
+// A buzz under the finger: the app's Haptics plugin, or a phone browser's vibration (navigator.vibrate, where it has one:
+// not Safari). 'tap' a square opened, 'claim' a square stamped on the board, 'win' and 'loss' the match's end, 'turn'
+// an online match's turn coming to this phone. Each fires once, from its event (the click handler's tap, fx.js stampFx,
+// turns.js toWin and turnBuzz), never from a render; none at all with Settings' Vibration off (vibOn).
+const HAPTIC_IMPACT = { tap: 'LIGHT', claim: 'HEAVY', turn: 'MEDIUM' }, HAPTIC_NOTE = { win: 'SUCCESS', loss: 'ERROR' };
+const WEB_VIBE = { tap: 8, claim: 30, turn: [25, 60, 25], win: [40, 50, 90], loss: 140 };   // (ms: a browser's buzz is all or nothing, so length stands for strength)
+const VIB_KEY = KEY + '.vib';
+export let vibOn = (() => { try { return localStorage.getItem(VIB_KEY) !== 'off'; } catch (e) { return true; } })();
+export function setVibOn(on) { vibOn = !!on; try { localStorage.setItem(VIB_KEY, vibOn ? 'on' : 'off'); } catch (e) { /* no storage: this visit */ } }
+const webVibe = () => !NATIVE && typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function';
+// Whether this device can buzz at all (Settings shows Vibration only then): the app, or a browser with vibration.
+export function canVibrate() { return !!plugin('Haptics') || webVibe(); }
 export function haptic(kind) {
+  if (!vibOn) return false;
   const h = plugin('Haptics');
-  if (!h) return false;
   try {
-    const p = HAPTIC_NOTE[kind] ? h.notification({ type: HAPTIC_NOTE[kind] }) : h.impact({ style: HAPTIC_IMPACT[kind] || 'MEDIUM' });
-    if (p && p.catch) p.catch(() => {});
+    if (h) {
+      const p = HAPTIC_NOTE[kind] ? h.notification({ type: HAPTIC_NOTE[kind] }) : h.impact({ style: HAPTIC_IMPACT[kind] || 'MEDIUM' });
+      if (p && p.catch) p.catch(() => {});
+      return true;
+    }
+    if (webVibe()) return navigator.vibrate(WEB_VIBE[kind] || 20) !== false;
   } catch (e) { /* (a buzz is never worth an error) */ }
-  return true;
+  return false;
 }
 // A page outside the game (credits' sources, the privacy policy, the App Store): the app's in-app browser, or a new tab.
 export function openExternal(url) {

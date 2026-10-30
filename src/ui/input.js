@@ -38,6 +38,7 @@ import { render } from './render.js';
 import { updateNeeded } from './update.js';
 import { matchStale, setStaleConfirm } from './screens/stale.js';
 import { haptic, openUpdate, startLink } from '../net/platform.js';
+import { setSound, setVibration } from './settings.js';
 import { scJointFrame, scPopup, scSkip } from './chaos.js';
 import { rep, repActive, repNote, repSkip, repVal } from './replay.js';
 import { runGo } from './runner.js';
@@ -141,8 +142,11 @@ export function init() {
     if (act === 'ask-leave') { if (joinAsk) leaveAndJoin(joinAsk.code); return; }
     if (act === 'dismiss') { if (Date.now() >= flashReady) dismissFlash(); return; }   // not before the animation is over
     if (act === 'rep-skip') { repSkip(); return; }                                      // an opponent's replay: straight to its result
-    const free = ['anim-set', 'pause', 'pause-report', 'pause-resume', 'pause-main', 'pause-back', 'pause-leave', 'leave', 'lobby-back', 'menu', 'find-again', 'profile', 'prof-back', 'prof-hist', 'mystats', 'hist-open', 'hist-sq', 'hist-back', 'hist-close', 'leaderboard', 'rejoin', 'host-retry', 'share', 'copy-invite', 'rematch', 'rematch-cancel', 'share-result', 'timer', 'review', 'review-sq', 'review-back', 'results', 'pview', 'react-open', 'react-send', 'del-account', 'del-cancel', 'del-confirm', 'verify-retry', 'verify-resend'];
+    const free = ['anim-set', 'set-sound', 'set-vib', 'pause-settings', 'pause', 'pause-report', 'pause-resume', 'pause-main', 'pause-back', 'pause-leave', 'leave', 'lobby-back', 'menu', 'find-again', 'profile', 'prof-back', 'prof-hist', 'mystats', 'hist-open', 'hist-sq', 'hist-back', 'hist-close', 'leaderboard', 'rejoin', 'host-retry', 'share', 'copy-invite', 'rematch', 'rematch-cancel', 'share-result', 'timer', 'review', 'review-sq', 'review-back', 'results', 'pview', 'react-open', 'react-send', 'del-account', 'del-cancel', 'del-confirm', 'verify-retry', 'verify-resend'];
     if (act === 'sound') { SND.setMuted(!SND.muted); if (!SND.muted) SND.play('toggle'); render(); return; }
+    if (act === 'set-sound') { setSound(el.dataset.v === 'on'); return; }            // Settings (ui/settings.js): this phone and the account, any time, the menu open or not
+    if (act === 'set-vib') { setVibration(el.dataset.v === 'on'); if (el.dataset.v === 'on') haptic('tap'); return; }
+    if (act === 'pause-settings') { setMenuStep('settings'); startFx('menu', menuStep); render(); return; }
     if (act === 'anim-set') { setPace(el.dataset.v); return; }                       // the player's Animation setting (ui/pace.js): this screen only, any time, the menu open or not   // (the press's own sound came with the press when it was still on)
     if (act === 'react-mute') { rx.mute = !rx.mute; if (rx.mute && rx.card && rx.card.side !== mySide()) { clearTimeout(rx.hide); rx.card = null; } render(); return; }   // this match only: the opponent's emoji stop showing and sounding
     if (act === 'pause') { setMenuOpen(true); setMenuStep('main'); startFx('menu', menuStep); render(); scheduleCpu(); return; }
@@ -206,6 +210,8 @@ export function init() {
       if (state.winner) { state.screen = 'win'; state.zoom = null; render(); }
     } else if (act === 'howto') {
       state.screen = 'howto'; commit();
+    } else if (act === 'settings') {
+      state.screen = 'settings'; commit();
     } else if (act === 'menu') {
       state.screen = 'menu'; state.confirm = null; setMenuNote(''); commit();
     } else if (act === 'timer') {

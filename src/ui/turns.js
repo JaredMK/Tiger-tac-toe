@@ -24,6 +24,20 @@ import { endKind } from './screens/win.js';
 export function cpuTurn() { return !!state.cpu && state.cpu.includes(state.turn) && !state.winner && ['board', 'mini'].includes(state.screen); }   // (on any other screen the match waits)
 // Runs after every render: arms the computer's next step whenever it is its turn and nothing else is going on.
 let thinking = false;                                          // its move is being worked out (the Hard computer's worker, ui/think.js): no second question meanwhile
+// An online match's turn coming to this phone: one short buzz (Settings' Vibration, net/platform.js haptic), only while
+// the game is in front, once per turn, and only on a change (the first look at a match, a reload, a bonus move: none).
+// From the event that hands the turn over: the end of the other side's replay (dismissFlash), or the record moving on
+// without one (net/room.js showLatest: a turn missed, a move made while away).
+let turnSeen = { id: null, turn: null };
+export function turnBuzz() {
+  const o = state.online;
+  if (!o || !o.me || state.flash || state.spot) return;            // (a replay still to play: the turn is not this phone's yet)
+  const id = o.matchId || o.game || o.code || null, was = turnSeen.id === id ? turnSeen.turn : undefined;
+  turnSeen = { id, turn: state.winner ? null : state.turn };
+  if (was === undefined || was === o.me || turnSeen.turn !== o.me) return;
+  if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+  haptic('turn');
+}
 export function scheduleCpu() {
   clearTimeout(cpuTimer); setCpuTimer(null);
   chaosStep();                                                   // Super Chaos: the round's own steps (ui/chaos.js)
@@ -151,7 +165,8 @@ export function holdOf(f) {
   let hold = (speedMode() && SPEED_HOLD[f.kind]) || FLASH_MS[f.kind] || 800;
   if (f.type === 'memory' && f.kind === 'move') hold = MEMORY_MS;
   if (f.type === 'pig' && f.kind === 'move') hold = f.note === 'bust' ? FLASH_MS.card : FLASH_MS.move;   // a bust gets a proper card; a bank just its points moving over
-  if (f.type === 'pig' && f.kind === 'again') hold = 0;                      // a roll that keeps the turn: Roll again the moment the die has landed and its points counted
+  if (f.type === 'pig' && f.kind === 'again') hold = 0;
+  if (f.type === 'wheels' && f.kind === 'again') hold = 0;                   // Risky Spins, a spin that keeps the turn: the wheels and Bank the moment its points have landed                      // a roll that keeps the turn: Roll again the moment the die has landed and its points counted
   if (f.type === 'bj' && f.kind === 'again') hold = 0;                       // Blackjack, a hand still on: Hit and Stand the moment its cards are down (about 0.3 s after the last lands)
   if (f.type === 'hangman' && f.kind === 'again') hold = 0;                  // Hangman, a right letter: the next guess the moment it is in
   return hold;
@@ -202,9 +217,10 @@ export function dismissFlash() {
   if (hold && state.done) { startFx('back', state.done); if (!quiet) SND.play('flipDown'); }   // the two cards turning back over
   else if (!quiet) backSounds(from);
   stampFx();
+  turnBuzz();
   commit();
   if (hold && state.done) {
     clearTimeout(holdTimer);
-    setHoldTimer(setTimeout(() => { if (state.done && !state.flash && leaveSquare(state)) { if (!quiet) backSounds(from); stampFx(); commit(); } applyPending(); }, FLIP_MS / ANIM.speed));
+    setHoldTimer(setTimeout(() => { if (state.done && !state.flash && leaveSquare(state)) { if (!quiet) backSounds(from); stampFx(); turnBuzz(); commit(); } applyPending(); }, FLIP_MS / ANIM.speed));
   } else applyPending();                        // online: the room may have moved on meanwhile
 }

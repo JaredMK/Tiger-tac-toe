@@ -7,8 +7,7 @@ import { fetchReleases } from './releases.js';
 import { flushLocal, pendingLocal, track } from './tracking.js';
 import { commit, save, setMenuNote, state } from '../ui/app.js';
 import { KEY } from '../ui/config.js';
-import { ANIM } from '../core/timer.js';
-import { setPace } from '../ui/pace.js';
+import { applyAccountPrefs } from '../ui/settings.js';
 import { render } from '../ui/render.js';
 import { openProfile, prof, setProf } from '../ui/screens/profile.js';
 
@@ -122,15 +121,16 @@ export function onAuthUser(u, again) {
   if (uid) {
     acctUnsubs.push(fb.m.onValue(fb.m.ref(fb.db, 'users/' + uid), s => { acct.profile = s.val(); acct.ready = true; afterAccount(); render(); }, () => {}));
     acctUnsubs.push(fb.m.onValue(fb.m.ref(fb.db, 'active/' + uid), s => { acct.active = s.val(); onActive(); render(); }, () => {}));
-    acctUnsubs.push(fb.m.onValue(fb.m.ref(fb.db, `prefs/${uid}/anim`), s => { const v = s.val(); if (v === 'normal' || v === 'speed') { if (v !== ANIM.mode) setPace(v, true); } else saveAnimPref(ANIM.mode); }, () => {}));   // the Animation setting: the account's, else this device's put on it (ui/pace.js)
+    acctUnsubs.push(fb.m.onValue(fb.m.ref(fb.db, `prefs/${uid}`), s => applyAccountPrefs(s.val()), () => {}));   // the Settings (sound, volume, animation, vibration): the account's, else this device's put on it (ui/settings.js)
   }
   render();
 }
-// The player's Animation setting on the account (prefs/{uid}/anim, theirs alone: database.rules.json), when logged in.
-export function saveAnimPref(mode) {
+// One of the player's Settings on the account (prefs/{uid}/{key}, theirs alone: database.rules.json), when logged in.
+export function savePref(key, value) {
   if (!acct.user || !fb || !fb.m || !fb.db) return;
-  fb.m.set(fb.m.ref(fb.db, `prefs/${acct.user.uid}/anim`), mode === 'speed' ? 'speed' : 'normal').catch(() => {});
+  fb.m.set(fb.m.ref(fb.db, `prefs/${acct.user.uid}/${key}`), value).catch(() => {});
 }
+export function saveAnimPref(mode) { savePref('anim', mode === 'speed' ? 'speed' : 'normal'); }
 // Logged in: a proved email first (an email-and-password account), a username if there is none yet, then wherever the
 // player was heading.
 export function afterAccount() {

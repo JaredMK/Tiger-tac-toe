@@ -4,25 +4,27 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const E = require('../engine.js');
+const A = require('../../src/games/wheels/ai.js');
 
-test('wheels: simulated strategies over 1,000 dealt sets (always high, medium, low, the computer\'s, random): spins to 18 alone and head to head', () => {
-  const rng = E.makeRng('wh-sim'), sets = Array.from({ length: 1000 }, (_, k) => E.wheelsDeal(E.makeRng('sim' + k), E.WHEEL_DEFAULTS)), T = 18;
-  const strat = { high: () => 'high', mid: () => 'mid', low: () => 'low', random: () => E.WHEELS[Math.floor(rng() * 3)], ai: (w, a, b) => E.wheelsTable(T, w).best[a][b] };
-  const solo = {};
-  for (const [k, f] of Object.entries(strat)) {
-    let sum = 0, n = 0;
-    for (const w of sets) for (let g = 0; g < 3; g++) { let a = 0, spins = 0; while (a < T && spins < 400) { a += E.wheelSpin(w[f(w, a, 0)], rng).v; spins++; } sum += spins; n++; }
-    solo[k] = sum / n;
+// Whole squares, the computer against itself (October 2026, defaults: 30 to win, skulls 1/3/4): the first mover
+// with Normal on both sides 56%, Hard on both 56%; Hard beats Normal about 80% of the time; a Normal winner
+// takes about 5 turns, a Hard one about 2.5.
+test('wheels: whole squares, Normal and Hard, over many dealt sets: the first mover, the turns a win takes', () => {
+  const play = (seed, lx, lo) => {
+    const rng = E.makeRng('s' + seed), m = E.newMini('wheels', rng), turns = { X: 0, O: 0 };
+    let p = 'X';
+    for (let k = 0; k < 3000; k++) {
+      if (!m.turn) turns[p]++;
+      const b = A.best(E.publicMini(m), p, rng, {}, { level: p === 'X' ? lx : lo, until: null }), r = E.applyMove(m, p, b.move, rng);
+      if (r.outcome === 'win') return { w: p, turns: turns[p] };
+      if (!r.again) p = p === 'X' ? 'O' : 'X';
+    }
+    return null;
+  };
+  for (const [lx, lo] of [['normal', 'normal'], ['hard', 'hard'], ['hard', 'normal'], ['normal', 'hard']]) {
+    let x = 0, t = 0; const n = 2000;
+    for (let s = 0; s < n; s++) { const r = play(s, lx, lo); assert.ok(r); if (r.w === 'X') x++; t += r.turns; }
+    console.log(`Risky Spins: X ${lx} vs O ${lo}: X wins ${(100 * x / n).toFixed(1)}%, the winner's turns ${(t / n).toFixed(2)}`);
+    if (lx === lo) assert.ok(x / n < 0.6, 'the first mover under 60%');
   }
-  console.log('Risky Spins: average spins to 18 alone over 1,000 sets: ' + Object.entries(solo).map(([k, v]) => `${k} ${v.toFixed(1)}`).join(', '));
-  assert.ok(solo.low < solo.mid && solo.mid < solo.high, 'alone, the steadier the sooner (the averages in order)');
-  const duel = (w, fx, fo) => { let a = 0, b = 0; for (let k = 0; k < 2000; k++) { if (k % 2 === 0) { a += E.wheelSpin(w[fx(w, Math.min(a, T - 1), Math.min(b, T - 1))], rng).v; if (a >= T) return 'X'; } else { b += E.wheelSpin(w[fo(w, Math.min(b, T - 1), Math.min(a, T - 1))], rng).v; if (b >= T) return 'O'; } } return null; };
-  const rates = {};
-  for (const k of ['high', 'mid', 'low', 'random']) {
-    let ai = 0, n = 0;
-    for (const w of sets.slice(0, 400)) for (let g = 0; g < 2; g++) { if (duel(w, strat.ai, strat[k]) === 'X') ai++; if (duel(w, strat[k], strat.ai) === 'O') ai++; n += 2; }
-    rates[k] = ai / n;
-    assert.ok(ai / n > 0.5, `the computer beats "always ${k}" (${(100 * ai / n).toFixed(1)}%)`);
-  }
-  console.log('Risky Spins: the computer\'s wins head to head: ' + Object.entries(rates).map(([k, v]) => `vs ${k} ${(100 * v).toFixed(1)}%`).join(', '));
 });

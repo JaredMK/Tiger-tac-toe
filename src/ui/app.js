@@ -43,7 +43,7 @@ export function cpuPlays(p) { return !state.online && !!state.cpu && state.cpu.i
 export const pickKey = () => (state.pick == null ? null : `${state.pickSq}:${state.pick}`);   // Find the Pair: the first card turned up, as an event key
 export let advOpen = false;                    // the setup screen's Mini-games section (the mini-game list)
 export const mv = x => `data-m='${JSON.stringify(x)}'`;
-export const NAV_SCREENS = ['login', 'username', 'find', 'leaderboard', 'profile', 'profhist', 'hreview', 'hreview-mini', 'howto'];
+export const NAV_SCREENS = ['login', 'username', 'find', 'leaderboard', 'profile', 'profhist', 'hreview', 'hreview-mini', 'howto', 'settings'];
 // Render with another state in place of the live one (a past game), and put the live one back.
 export function withView(v, fn) { const live = state; state = v; try { return fn(); } finally { state = live; } }
 export function zoomedType() {

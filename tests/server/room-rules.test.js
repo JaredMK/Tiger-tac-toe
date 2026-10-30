@@ -186,6 +186,11 @@ test('prefs rules: a player\'s own settings (prefs/{uid}: the Animation choice) 
   await me.write(`prefs/${me.uid}/anim`, 'normal');
   await denied(me.write(`prefs/${me.uid}/anim`, 'turbo'), 'a value that is neither');
   await denied(me.write(`prefs/${me.uid}/anim`, 2), 'a number');
+  await me.write(`prefs/${me.uid}/sound`, 'off'); await me.write(`prefs/${me.uid}/vol`, 40); await me.write(`prefs/${me.uid}/vib`, false);   // Settings: sound, volume, vibration
+  assert.deepEqual(await me.read(`prefs/${me.uid}`), { anim: 'normal', sound: 'off', vol: 40, vib: false });
+  await denied(me.write(`prefs/${me.uid}/sound`, 'loud'), 'sound: on or off only');
+  await denied(me.write(`prefs/${me.uid}/vol`, 101), 'volume: 0 to 100'); await denied(me.write(`prefs/${me.uid}/vol`, 2.5), 'volume: a whole number');
+  await denied(me.write(`prefs/${me.uid}/vib`, 'yes'), 'vibration: true or false');
   await denied(me.write(`prefs/${me.uid}/other`, 'x'), 'anything else under your prefs');
   await denied(other.read(`prefs/${me.uid}`), "another's settings");
   await denied(other.write(`prefs/${me.uid}/anim`, 'speed'), "another's setting");

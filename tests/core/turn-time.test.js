@@ -8,7 +8,7 @@ const E = require('../engine.js');
 E.setPhysics(require('../physics.js'));
 
 const lcg = seed => () => (seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296;
-const LONG = ['dash', 'lane', 'flap', 'chopper', 'skyhop', 'scoop', 'pinball', 'echo', 'snapshot', 'pig'];
+const LONG = ['wheels', 'dash', 'lane', 'flap', 'chopper', 'skyhop', 'scoop', 'pinball', 'echo', 'snapshot', 'pig'];
 const T0 = 1700000000000;
 function match(types, timer = 30) {                               // an online match, its squares dealt from these games
   const games = Object.fromEntries(E.TYPES.map(g => [g, types.includes(g)]));

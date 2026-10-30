@@ -5,8 +5,7 @@ import { FINGER_TYPES } from '../games/shared/finger.js';
 import { BS } from '../games/bs/rules.js';
 import { huntSize } from '../games/hunt/rules.js';
 import { INFO, viewOf } from '../games/index.js';
-import { soundBtn } from '../audio/sound.js';
-import { pacePick } from './pace.js';
+import { settingsBody } from './settings.js';
 import { isMM } from '../net/matchmaking.js';
 import { rx } from '../net/reactions.js';
 import { canReport } from '../net/tracking.js';
@@ -43,7 +42,7 @@ export function renderMini(sq, review, popup) {
   const game = viewOf(mini.type);
   if (game.screen) g = game.screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g);
   const lock = state.lock != null && mini.type !== 'trivia' && !ATT_TYPES.includes(mini.type) && !FINGER_TYPES.includes(mini.type);   // a bonus move (a Trivia reveal, an attention game's or a finger game's Start holds the player too: not a bonus)
-  let sub = lock ? (mini.type === 'pig' ? `<b class="${turn}">${N(turn)}</b>'s turn in progress`   // (turn info only: how to play is in the ? explainer)
+  let sub = lock ? (mini.type === 'pig' || mini.type === 'wheels' ? `<b class="${turn}">${N(turn)}</b>'s turn in progress`   // (turn info only: how to play is in the ? explainer)
     : mini.type === 'bj' ? `<b class="${turn}">${N(turn)}</b>'s hand`
     : mini.type === 'bus' ? (a ? '' : `<b class="${turn}">${N(turn)}</b>'s run`) : mini.type === 'bs' ? `<b class="${turn}">${N(turn)}</b> hit · goes again` : mini.type === 'pool' ? `<b class="${turn}">${N(turn)}</b> sank one · goes again` : `<b class="${turn}">${N(turn)}</b> guessed right · goes again`) : '';
   if (popup) sub = joint ? 'Both moves' : '2× speed';
@@ -91,8 +90,10 @@ export function pauseMenu() {
     return `<div class="flash pause" role="dialog" aria-label="Leave this match?"${fxAttr(fxAt('menu', menuStep))}><div class="card"><h2>Leave this match?</h2><p>${text}</p>
       <div class="row"><button class="btn" data-act="pause-back">No</button><button class="btn go" data-act="pause-leave">Yes</button></div></div></div>`;
   }
+  if (menuStep === 'settings') return `<div class="flash pause" role="dialog" aria-label="Settings"${fxAttr(fxAt('menu', menuStep))}><div class="card"><h2>Settings</h2>${settingsBody()}
+    <div class="row"><button class="btn go" data-act="pause-back">Back</button></div></div></div>`;
   return `<div class="flash pause" role="dialog" aria-label="Menu"${fxAttr(fxAt('menu', menuStep))}><div class="card"><h2>Menu</h2>${state.online && state.timer.limit ? '<p>The turn clock keeps running.</p>' : state.cpu ? '<p>The computer waits.</p>' : ''}
-    <div class="row"><button class="btn go" data-act="pause-resume">Resume</button><button class="btn" data-act="pause-main">Main menu</button></div>${pacePick('pause')}${canReport() ? '<button class="btn repbtn" data-act="pause-report">Report a problem</button>' : ''}${state.online && mySide() ? `<button class="btn react-mute" data-act="react-mute" aria-pressed="${rx.mute}">Mute opponent's reactions: ${rx.mute ? 'On' : 'Off'}</button>` : ''}${soundBtn('pause')}</div></div>`;
+    <div class="row"><button class="btn go" data-act="pause-resume">Resume</button><button class="btn" data-act="pause-main">Main menu</button></div><button class="btn setbtn" data-act="pause-settings">Settings</button>${canReport() ? '<button class="btn repbtn" data-act="pause-report">Report a problem</button>' : ''}${state.online && mySide() ? `<button class="btn react-mute" data-act="react-mute" aria-pressed="${rx.mute}">Mute opponent's reactions: ${rx.mute ? 'On' : 'Off'}</button>` : ''}</div></div>`;
 }
 // One line about a move, for the result toast and the handoff bar.
 function summary(f) {

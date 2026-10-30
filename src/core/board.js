@@ -50,7 +50,7 @@ export function timeoutMove(state, rng) {
 // A move under way when the time runs out: the move that ends it, with no choice made for the player, or
 // null where nothing more is played (a bonus move owed is simply not taken).
 export function timeoutClose(mini, p) {
-  if (mini.type === 'pig') return mini.turn && mini.turn.by === p && mini.turn.pot ? 'bank' : null;
+  if (mini.type === 'pig' || (mini.type === 'wheels' && mini.v === 2)) return mini.turn && mini.turn.by === p && mini.turn.pot ? 'bank' : null;   // (Risky Rolls, Risky Spins: the pot banked)
   if (mini.type === 'bj') return 'auto';                          // stand, on every hand in play
   if (ATT_TYPES.includes(mini.type) || FINGER_TYPES.includes(mini.type) || mini.type === 'trivia') return 'auto';   // a round, an attempt or a question begun: a failed one
   return null;

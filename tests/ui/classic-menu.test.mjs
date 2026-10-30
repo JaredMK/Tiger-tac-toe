@@ -35,7 +35,7 @@ test('the main menu: Play Computer, Play a Friend, Find Match, How to Play; no P
   MM.setFindOn(true);
   const html = renderMenu();
   const acts = [...html.matchAll(/data-act="([^"]+)"/g)].map(m => m[1]);
-  for (const a of ['cpu-go', 'friend-go', 'find-go', 'howto', 'sound', 'login']) assert.ok(acts.includes(a), a);
+  for (const a of ['cpu-go', 'friend-go', 'find-go', 'howto', 'settings', 'login']) assert.ok(acts.includes(a), a);
   assert.ok(acts.indexOf('cpu-go') < acts.indexOf('friend-go') && acts.indexOf('friend-go') < acts.indexOf('find-go'), 'in that order');
   assert.match(html, />Play Computer</); assert.match(html, />Play a Friend</); assert.match(html, />Find Match</);
   assert.doesNotMatch(html, /Play Local|Play Online|mode-go|online-go|Super Chaos/);

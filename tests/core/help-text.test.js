@@ -23,7 +23,7 @@ test('an edit changes only its own text, quotes and placeholders kept', async ()
   assert.deepEqual(r.changes.map(c => c.id + '/' + c.label), ['rules/Rule 1', 'wheels/Win', 'staging/Badge']);
   assert.deepEqual(r.warnings, []);
   assert.match(r.files['src/ui/explainer.js'], /'It\\'s "new"\. Wrapped\.'/);
-  assert.match(r.files['src/games/wheels/meta.js'], /get win\(\) \{ return `Hit \$\{wheelsConfig\(\)\.target\} first\.`; \}/);
+  assert.match(r.files['src/games/wheels/meta.js'], /win: 'Hit \{target\} first\.' \}/);
   assert.match(r.files['src/env.js'], /b\.textContent = 'TEST'/);
   assert.deepEqual(Object.keys(r.files).sort(), ['src/env.js', 'src/games/wheels/meta.js', 'src/ui/explainer.js']);
 });

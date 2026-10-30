@@ -93,6 +93,6 @@ export { TAKE, takeNear, takeCount, takeApply, takeSearch, TAKEOVER_MS } from '.
 export { TRIVIA, setTriviaBank, triviaReady, triviaDeal, triviaReveal, triviaUsed } from '../games/trivia/rules.js';
 export { tttOpen, tttMinimax } from '../games/ttt/rules.js';
 export { WHEEL_DEFAULTS } from '../games/wheels/meta.js';
-export { WHEELS, WHEEL_SEGS, WHEELS_SAFE, WHEEL_LIMITS, WHEELT, WHEEL_CFG, wheelsNorm, setWheelsConfig, wheelsConfig, wheelAvg, wheelsCheck, wheelsDeal, WHEEL_MEMO, wheelsTable, wheelSpin } from '../games/wheels/rules.js';
+export { WHEELS, WHEEL_SEGS, SKULL, WHEEL_LIMITS, WHEELT, WHEEL_CFG, wheelsNorm, setWheelsConfig, wheelsConfig, wheelAvg, wheelsCheck, wheelsDeal, wheelSpin, isSkull, skullsOf, pushYourLuck } from '../games/wheels/rules.js';
 export { wordleMarks, wordleCandidates, wordleLeft, wordleLimit, VALID5_LIST } from '../games/wordle/rules.js';
 export { WORDS5, VALID5, BAD5 } from '../games/wordle/words.js';

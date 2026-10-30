@@ -729,12 +729,12 @@ async function saveOddCfg(btn) {
 // ---------- Risky Spins' tuning (config/wheels, read by the game and the server) ----------
 // The target, and the ranges each square's three wheels are drawn from (ten equal segments each). A
 // change applies to squares dealt from then on.
-const WHEEL_DEFAULTS = { target: 18, tensMin: 1, tensMax: 2, smallMax: 2, smallTop: 2, midLo: 0, midHi: 8, lowLo: 1, lowHi: 4, gap: 0.4 };   // (as the game's meta.js has them)
-const WHEEL_FIELDS = [['target', 'Target (points to win)', 6, 60, 1], ['tensMin', 'High: fewest 10s', 1, 3, 1], ['tensMax', 'High: most 10s', 1, 3, 1], ['smallMax', 'High: most small values', 0, 4, 1], ['smallTop', 'High: largest small value', 1, 3, 1], ['midLo', 'Medium: lowest value', 0, 3, 1], ['midHi', 'Medium: highest value (no 10s)', 5, 9, 1], ['lowLo', 'Low: lowest value', 1, 3, 1], ['lowHi', 'Low: highest value', 2, 6, 1], ['gap', 'Averages at least this far apart', 0.1, 1.5, 0.1]];
+const WHEEL_DEFAULTS = { target: 30, lowSkulls: 1, midSkulls: 3, highSkulls: 4, lowLo: 1, lowHi: 4, midLo: 2, midHi: 7, highLo: 3, tensMin: 1, tensMax: 1, gap: 0.4 };   // (as the game's meta.js has them)
+const WHEEL_FIELDS = [['target', 'Target (points to win)', 10, 100, 1], ['lowSkulls', 'Low: skulls (of 10)', 0, 4, 1], ['midSkulls', 'Medium: skulls (of 10)', 1, 6, 1], ['highSkulls', 'High: skulls (of 10)', 1, 7, 1], ['lowLo', 'Low: lowest value', 1, 3, 1], ['lowHi', 'Low: highest value', 2, 6, 1], ['midLo', 'Medium: lowest value', 1, 5, 1], ['midHi', 'Medium: highest value (no 10s)', 3, 9, 1], ['highLo', 'High: lowest value', 1, 8, 1], ['tensMin', 'High: fewest 10s', 1, 3, 1], ['tensMax', 'High: most 10s', 1, 3, 1], ['gap', 'Averages at least this far apart', 0, 2, 0.1]];
 function wheelsCard() {
   const raw = ctl.wheelsCfg || {}, num = (v, d) => (v != null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : d);
   return `<div class="card ctl" id="wheelsCard"><h2>Risky Spins tuning</h2>
-    <p class="note">Risky Spins: each square deals three wheels of ten equal segments, drawn again until every rule holds. High risk: 10s (fewest to most) and 0s, with at most a few small values; the lowest average. Medium: no 10s, at least two 5s, a top value above Low's, its average between. Low: every value in its range, at least two different; the highest average. Defaults: first to 18; High one or two 10s and at most two small values of 1-2; Medium two 5s, the rest 0-8; Low 1-4; averages 0.4 apart. Applies to squares dealt from then on.</p>
+    <p class="note">Risky Spins (push your luck): each square deals three wheels of ten equal segments, drawn again until every rule holds. A spin's points go into the turn's pot; a skull loses the pot; Bank adds it to the score. Low: the fewest skulls, values in its range, at least two different. Medium: more skulls, no 10s, its top value above Low's. High: the most skulls, values from its lowest to 10, the only wheel with 10s. The values' averages rise from Low to High, at least the gap apart. Defaults: first to 30; skulls 1, 3 and 4; Low 1-4, Medium 2-7, High 3-10 with one 10; averages 0.4 apart. Applies to squares dealt from then on.</p>
     <div class="rform">${WHEEL_FIELDS.map(([k, label, lo, hi, step]) => `<label class="rf"><span>${label}</span><input type="number" step="${step}" min="${lo}" max="${hi}" data-wheelcfg="${k}" value="${num(raw[k], WHEEL_DEFAULTS[k])}"></label>`).join('')}</div>
     <div class="rform"><button class="btn" data-wheelsave="1">Save Risky Spins</button><button class="btn tplay" data-testplay="wheels" title="Opens the game alone in a new tab with these settings, saved or not (the live settings are not touched)">Test play</button></div></div>`;
 }
@@ -748,6 +748,9 @@ async function saveWheelsCfg(btn) {
   if (out.tensMax < out.tensMin) { said(btn, false, 'High: the most 10s must be at least the fewest.'); return; }
   if (out.lowHi <= out.lowLo) { said(btn, false, 'Low: the highest value must be above the lowest.'); return; }
   if (out.midHi <= out.lowHi) { said(btn, false, 'Medium\'s highest value must be above Low\'s.'); return; }
+  if (out.midLo > out.midHi) { said(btn, false, 'Medium: the lowest value must be at most the highest.'); return; }
+  if (!(out.lowSkulls < out.midSkulls && out.midSkulls < out.highSkulls)) { said(btn, false, 'Skulls: Low fewer than Medium, Medium fewer than High.'); return; }
+  if (out.highSkulls + out.tensMax > 10) { said(btn, false, 'High: its skulls and 10s must fit on 10 segments.'); return; }
   btn.disabled = true;
   try {
     await fb.dbM.set(fb.dbM.ref(fb.db, 'config/wheels'), out);

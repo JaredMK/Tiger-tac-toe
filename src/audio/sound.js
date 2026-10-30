@@ -29,7 +29,7 @@ import { endKind } from '../ui/screens/win.js';
  * never from drawing the screen, and each event starts its sounds once.
  */
 export const SFX = {};                                             // name -> { dur, level, vary, make(c, out, t) }
-export const SND = { ctx: null, out: null, bufs: {}, muted: false, loaded: false, log: [], down: false, ever: false, made: 0, events: [], report: null };
+export const SND = { ctx: null, out: null, bufs: {}, muted: false, volume: 1, loaded: false, log: [], down: false, ever: false, made: 0, events: [], report: null };
 // One tone: a sine, triangle or square, optionally gliding from f to o.to over its length.
 function sfxTone(c, d, t, f, dur, o = {}) {
   const n = c.createOscillator(), g = c.createGain(), v = o.vol == null ? 0.5 : o.vol;
@@ -226,7 +226,7 @@ function makeCtx(why, tap) {
   const old = SND.ctx;
   if (old) { old.onstatechange = null; try { old.close().catch(() => {}); } catch (e) { /* gone already */ } }
   SND.ctx = c; SND.made = nowMs(); madeTap = !!tap; ran = c.state === 'running'; probe = null;
-  SND.out = c.createGain(); SND.out.gain.value = 0.9; SND.out.connect(c.destination);
+  SND.out = c.createGain(); SND.out.gain.value = 0.9 * SND.volume; SND.out.connect(c.destination);   // (the player's volume: Settings)
   let started = false;
   c.onstatechange = () => {
     if (SND.ctx !== c) return;
@@ -349,6 +349,15 @@ SND.setMuted = function (m) {
   try { localStorage.setItem(KEY + '.sound', SND.muted ? 'off' : 'on'); } catch (e) { /* no storage: the choice lasts this visit */ }
 };
 try { SND.muted = localStorage.getItem(KEY + '.sound') === 'off'; } catch (e) { /* no storage: sound on */ }
+// The volume (Settings: 0 to 100, kept on the device as KEY + '.vol'): the one gain every sound goes through.
+SND.setVolume = function (pct) {
+  const v = Math.max(0, Math.min(100, Math.round(Number(pct))));
+  if (!Number.isFinite(v)) return;
+  SND.volume = v / 100;
+  try { if (SND.out && SND.ctx) SND.out.gain.setTargetAtTime(0.9 * SND.volume, SND.ctx.currentTime, 0.02); } catch (e) { /* (no context yet: the next one starts at it) */ }
+  try { localStorage.setItem(KEY + '.vol', String(v)); } catch (e) { /* no storage: this visit */ }
+};
+try { const v = Number(localStorage.getItem(KEY + '.vol')); if (localStorage.getItem(KEY + '.vol') != null && Number.isFinite(v)) SND.volume = Math.max(0, Math.min(100, v)) / 100; } catch (e) { /* no storage: full volume */ }
 try { if (navigator.audioSession) navigator.audioSession.type = 'ambient'; } catch (e) { /* not here: the silent switch is the phone's own */ }
 // A press a game takes itself, on pointerdown (Echo's pads, Bullseye, Bowling, the drags and the runs): the
 // click that ends it plays no tap, whatever is under the finger by then (the result coming up, say).
@@ -359,7 +368,7 @@ export function ownPress() { ownDown = true; }
 const TAP_SOUND = { explain: 'open', 'explain-close': 'close', pause: 'open', 'pause-resume': 'close', zoom: null, move: null, pick: null,
   'echo-tap': null, 'echo-play': null, bulls: null, bowl: null, 'run-go': null, 'fing-start': null, 'odd-reveal': null, 'trivia-reveal': null, 'att-start': null, 'hc-key': null, 'snap-cell': null, 'snap-submit': null, hpsel: 'select',   // a game's own inputs: each plays its own sound (from its handler or its move), never the click as well
   mmcol: 'peg', mmslot: 'peg', rlnum: 'peg', rlgrp: 'peg', rlzero: 'peg', key: 'key', bksp: 'key', enter: 'key', side: 'toggle', kind: 'toggle', 'anim-set': 'toggle', lside: 'toggle', timer: 'toggle', adv: 'toggle',
-  sound: 'toggle', 'games-all': 'select', 'games-none': 'deselect', share: 'copy', back: 'tap' };   // (back: the Board button in a square, a plain tap)
+  sound: 'toggle', 'set-sound': 'toggle', 'set-vib': 'toggle', settings: 'open', 'settings-back': 'close', 'pause-settings': 'open', 'games-all': 'select', 'games-none': 'deselect', share: 'copy', back: 'tap' };   // (back: the Board button in a square, a plain tap)
 // The sound switch: a speaker with waves when sound is on, crossed out when it is off. Its label says which.
 const soundLabel = () => (SND.muted ? 'Sound off' : 'Sound on');
 const soundIcon = () => `<svg class="snd-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 9.5h3.6L12 5.5v13l-4.9-4H3.5z" fill="currentColor"/>${SND.muted ? '<path d="M16 9.5l5 5M21 9.5l-5 5"/>' : '<path d="M15.5 9a4.2 4.2 0 0 1 0 6"/><path d="M18.3 6.4a8 8 0 0 1 0 11.2"/>'}</svg>`;

@@ -1,6 +1,4 @@
 // The main menu.
-import { soundBtn } from '../../audio/sound.js';
-import { pacePick } from '../pace.js';
 import { acct, loggedIn } from '../../net/accounts.js';
 import { activeElsewhere, findOn, resumable, resumeBusy } from '../../net/matchmaking.js';
 import { privacyUrl } from '../../net/platform.js';
@@ -21,8 +19,7 @@ export function renderMenu() {
     <button class="primary" data-act="cpu-go">Play Computer</button>
     <button class="primary alt" data-act="friend-go">Play a Friend</button>
     ${findBtn()}
-    <button class="btn howto" data-act="howto">How to Play</button>
-    ${pacePick('menu')}
+    <div class="menu-pair"><button class="btn howto" data-act="howto">How to Play</button><button class="btn howto" data-act="settings">Settings</button></div>
   </div><div class="menu-foot"><a class="credit" href="${JARHEAD_URL}" target="_blank" rel="noopener noreferrer" aria-label="by JarHead Labs, on X (opens in a new tab)">${JARHEAD_LOGO}<span>by JarHead Labs</span></a><a class="privacy" href="${privacyUrl()}" target="_blank" rel="noopener noreferrer" aria-label="Privacy policy (opens in a new tab)">Privacy</a></div></main>`;
 }
 // Find Match: greyed while the admin has it off ("Not available at this time"); back into the match in progress if there is one.
@@ -40,8 +37,7 @@ function menuTop() {
     : acct.user || acctLoading ? '<button class="btn chip" disabled aria-label="Loading your account">…</button>'
     : '<button class="btn chip" data-act="login">Log in</button>';
   const left = RATINGS_ENABLED ? '<button class="btn" data-act="leaderboard">Leaderboard</button>' : '';   // your stats: tap your username
-  const sound = soundBtn('menu');   // the sound switch, beside the top-left corner
-  return `<div class="menu-top"><div class="menu-left">${left}${sound}</div>${chip}</div>`;
+  return `<div class="menu-top"><div class="menu-left">${left}</div>${chip}</div>`;   // (sound and the rest: Settings)
 }
 
 // Setters for the names other modules reassign (an imported name is read-only there).

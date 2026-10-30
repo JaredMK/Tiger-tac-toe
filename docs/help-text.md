@@ -221,7 +221,7 @@ Win: Bank {target} first.
 
 ## Risky Spins [wheels]
 Category: More luck
-Play: Pick a wheel and spin.
+Play: Pick a wheel and spin. Keep spinning to build your points, then bank. Land on a skull and you lose them. Riskier wheels pay more but have more skulls.
 Win: Reach {target} first.
 
 ## Roads [roads]

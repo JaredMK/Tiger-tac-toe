@@ -32,6 +32,7 @@ import { AI_CLOCK } from './core/ai.js';
 import { setAiWeights } from './core/aiw.js';
 import { setAnimFast, setAnimFx, setAnimSpeed } from './core/timer.js';
 import { paceInit } from './ui/pace.js';
+import { init as settingsInit } from './ui/settings.js';
 import { setClientMins, updateNeeded } from './ui/update.js';
 import { initPlatform, onAppLink, startLink, tidyLink } from './net/platform.js';
 import { init as chaosInit } from './ui/chaos.js';
@@ -57,6 +58,7 @@ bowlingInit();
 physicsInit();
 runnerInit();
 trackingInit();
+settingsInit();
 connectInit();                                              // (back in front: the socket bounced before the room's resync below)
 roomInit();
 inputInit();

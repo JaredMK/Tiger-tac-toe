@@ -1,5 +1,6 @@
 // The "?" explainer pop-up and How to Play (each game's meta.js: explainer).
 import { pigConfig, pigGoal } from '../games/pig/rules.js';
+import { wheelsConfig } from '../games/wheels/rules.js';
 import { tune, tuneLive } from '../core/tune.js';
 import { PHYS_TYPES } from '../games/shared/physics.js';
 import { GAMES, SC_ONLY } from '../games/index.js';
@@ -32,7 +33,7 @@ export function explainOf(t) {
 }
 // A setting in the text ({k}: meta.js TUNE, or a game's own config named in its EXPLAIN_KEYS): the square's own
 // value when it is open, else the one dealt now.
-const CFG_KEYS = { pig: (mini) => ({ target: mini ? pigGoal(mini) : pigConfig().target }) };   // Risky Rolls' target: config/pig
+const CFG_KEYS = { pig: (mini) => ({ target: mini ? pigGoal(mini) : pigConfig().target }), wheels: (mini) => ({ target: mini ? mini.target : wheelsConfig().target }) };   // Risky Rolls' target (config/pig), Risky Spins' (config/wheels)
 function fillTune(t, x) {
   if (!x || !x.play || !/\{\w+\}/.test(x.play + x.win)) return x;
   const sq = state.screen === 'mini' && state.squares && state.squares[state.zoom], open = sq && sq.mini && sq.mini.type === t ? sq.mini : null;

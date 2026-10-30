@@ -120,6 +120,15 @@
         "anim": {
           ".validate": "newData.isString() && (newData.val() === 'normal' || newData.val() === 'speed')"
         },
+        "sound": {
+          ".validate": "newData.isString() && (newData.val() === 'on' || newData.val() === 'off')"
+        },
+        "vol": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100 && newData.val() % 1 === 0"
+        },
+        "vib": {
+          ".validate": "newData.isBoolean()"
+        },
         "$other": {
           ".validate": false
         }
