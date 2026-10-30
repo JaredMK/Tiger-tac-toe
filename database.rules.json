@@ -431,25 +431,16 @@
       "wheels": {
         ".write": "auth != null && auth.token.admin === true",
         "target": {
-          ".validate": "newData.isNumber() && newData.val() >= 6 && newData.val() <= 60"
+          ".validate": "newData.isNumber() && newData.val() >= 10 && newData.val() <= 100"
         },
-        "tensMin": {
-          ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 3"
-        },
-        "tensMax": {
-          ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 3"
-        },
-        "smallMax": {
+        "lowSkulls": {
           ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 4"
         },
-        "smallTop": {
-          ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 3"
+        "midSkulls": {
+          ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 6"
         },
-        "midLo": {
-          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3"
-        },
-        "midHi": {
-          ".validate": "newData.isNumber() && newData.val() >= 5 && newData.val() <= 9"
+        "highSkulls": {
+          ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 7"
         },
         "lowLo": {
           ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 3"
@@ -457,8 +448,23 @@
         "lowHi": {
           ".validate": "newData.isNumber() && newData.val() >= 2 && newData.val() <= 6"
         },
+        "midLo": {
+          ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 5"
+        },
+        "midHi": {
+          ".validate": "newData.isNumber() && newData.val() >= 3 && newData.val() <= 9"
+        },
+        "highLo": {
+          ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 8"
+        },
+        "tensMin": {
+          ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 3"
+        },
+        "tensMax": {
+          ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 3"
+        },
         "gap": {
-          ".validate": "newData.isNumber() && newData.val() >= 0.1 && newData.val() <= 1.5"
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 2"
         },
         "$other": {
           ".validate": false
