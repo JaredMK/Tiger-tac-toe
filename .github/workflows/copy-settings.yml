@@ -1,0 +1,98 @@
+# Staging's settings copied to production (scripts/copy-settings.js): the release switches, every game's settings,
+# the computer's and the animation's, the bots' and alerts' settings and the Find Match switch. Accounts, play data,
+# client minimums, the email cutoff, the alert keys and the staging allowlist are never touched.
+# Run it by hand from the Actions tab: "Copy settings to production" -> Run workflow. A dry run (the default) lists
+# every change and writes nothing; to write, untick it and type COPY-TO-PRODUCTION. Production's values before the
+# copy are kept as the run's "production-settings-before" artifact.
+name: Copy settings to production
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type COPY-TO-PRODUCTION to write (a dry run needs nothing)'
+        required: false
+        type: string
+      dry_run:
+        description: 'Dry run: list the changes only'
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-data
+  cancel-in-progress: false
+
+jobs:
+  read-staging:
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Install
+        run: npm ci --prefix functions
+      - name: Credentials
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$SA" ]; then echo "::error::The staging FIREBASE_SERVICE_ACCOUNT secret is missing."; exit 1; fi
+          printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/sa.json" >> "$GITHUB_ENV"
+          echo "TTC_PROJECT=$(node -e "console.log(JSON.parse(require('fs').readFileSync('.firebaserc','utf8')).projects.staging)")" >> "$GITHUB_ENV"
+      - name: Check the key
+        run: node scripts/check-key.js
+      - name: Read staging's settings
+        run: node scripts/copy-settings.js export "$RUNNER_TEMP/staging-settings.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: staging-settings
+          path: ${{ runner.temp }}/staging-settings.json
+          retention-days: 30
+
+  write-production:
+    needs: read-staging
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Confirm
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+          DRY: ${{ inputs.dry_run }}
+        run: |
+          if [ "$DRY" != "true" ] && [ "$CONFIRM" != "COPY-TO-PRODUCTION" ]; then echo "::error::Type COPY-TO-PRODUCTION in the confirm box (or run a dry run)."; exit 1; fi
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Install
+        run: npm ci --prefix functions
+      - name: Credentials
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$SA" ]; then echo "::error::The production FIREBASE_SERVICE_ACCOUNT secret is missing."; exit 1; fi
+          printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/sa.json" >> "$GITHUB_ENV"
+          echo "TTC_PROJECT=$(node -e "console.log(JSON.parse(require('fs').readFileSync('.firebaserc','utf8')).projects.production)")" >> "$GITHUB_ENV"
+      - name: Check the key
+        run: node scripts/check-key.js
+      - uses: actions/download-artifact@v4
+        with:
+          name: staging-settings
+          path: ${{ runner.temp }}
+      - name: Copy (or list, in a dry run)
+        env:
+          DRY: ${{ inputs.dry_run }}
+        run: node scripts/copy-settings.js apply "$RUNNER_TEMP/staging-settings.json" "$RUNNER_TEMP/production-settings-before.json" $([ "$DRY" = "true" ] && echo --dry-run)
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: production-settings-before
+          path: ${{ runner.temp }}/production-settings-before.json
+          retention-days: 90
