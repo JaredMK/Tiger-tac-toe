@@ -47,10 +47,10 @@ function build(env, sha, out) {
   for (const [f, to] of [['favicon.ico', 'favicon.ico'], ['apple-touch-icon.png', 'apple-touch-icon.png']]) fs.copyFileSync(path.join(ROOT, 'assets', 'share', f), path.join(OUT, to));
   if (env === 'staging') fs.writeFileSync(path.join(OUT, 'index.html'), previewHost(fs.readFileSync(path.join(OUT, 'index.html'), 'utf8'), env));
   if (env === 'staging' && fs.existsSync(path.join(ROOT, 'icons.html'))) {   // the app icon options' comparison page (scripts/make-icon-options.js): staging only
-    fs.copyFileSync(path.join(ROOT, 'icons.html'), path.join(OUT, 'icons.html'));
+    for (const f of ['icons.html', 'icons-patchwork.html']) if (fs.existsSync(path.join(ROOT, f))) fs.copyFileSync(path.join(ROOT, f), path.join(OUT, f));
     fs.cpSync(path.join(ROOT, 'assets', 'icon-options'), path.join(OUT, 'assets', 'icon-options'), { recursive: true });
   }
-  if (env === 'staging') for (const f of ['index.html', 'privacy.html', 'admin.html', 'styles.html', 'icons.html']) { const p = path.join(OUT, f); if (fs.existsSync(p)) fs.writeFileSync(p, noindex(fs.readFileSync(p, 'utf8'))); }
+  if (env === 'staging') for (const f of ['index.html', 'privacy.html', 'admin.html', 'styles.html', 'icons.html', 'icons-patchwork.html']) { const p = path.join(OUT, f); if (fs.existsSync(p)) fs.writeFileSync(p, noindex(fs.readFileSync(p, 'utf8'))); }
   fs.writeFileSync(path.join(OUT, 'robots.txt'), robots(env));
   const links = aasa(require('./app-config.js'));
   if (links) { fs.mkdirSync(path.join(OUT, '.well-known'), { recursive: true }); fs.writeFileSync(path.join(OUT, '.well-known', 'apple-app-site-association'), JSON.stringify(links) + '\n'); }

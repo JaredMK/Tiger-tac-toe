@@ -6,7 +6,12 @@
 //   node scripts/make-icon-options.js        (npm run icon-options)
 const fs = require('node:fs');
 const path = require('node:path');
-const { OPTIONS } = require('./icon-options.js');
+const { OPTIONS, PATCHWORK } = require('./icon-options.js');
+// The pages: round 1 (six concepts) and round 2 (Patchwork's variations), each linking to the other.
+const ROUNDS = [
+  { file: 'icons.html', set: OPTIONS, title: 'App icon options', intro: 'Six concepts for the Tic Tac Chaos icon. Each is a full-bleed 1024 px square with no transparency; iOS rounds the corners itself, as shown here. The current icon stays until one is picked.', other: ['icons-patchwork.html', 'Round 2: Patchwork variations →'] },
+  { file: 'icons-patchwork.html', set: PATCHWORK, title: 'Patchwork variations', intro: 'Round 2: Patchwork, picked from round 1, in seven takes, each changing one thing. Same rules: full-bleed 1024 px, no transparency, iOS rounds the corners.', other: ['icons.html', '← Round 1: all six concepts'] },
+];
 const ROOT = path.join(__dirname, '..'), OUT = path.join(ROOT, 'assets', 'icon-options');
 
 // Stand-in neighbours on the home screen: flat colours with a plain white shape, nobody's app.
@@ -23,7 +28,8 @@ function phone(id, dark) {
   return `<div class="phone ${dark ? 'dark' : 'light'}"><div class="notch"></div><div class="home">${cells.join('')}</div><div class="dock">${[0, 3, 6, 9].map(k => `<span class="ic">${stand(k).slice(16, -7)}</span>`).join('')}</div></div>`;
 }
 const row = (src, name, sub, rate) => `<div class="srow"><span class="ic big">${src}</span><div class="sinfo"><b>${name}</b><small>${sub}</small><i>${'★'.repeat(rate)}${'☆'.repeat(5 - rate)}</i></div><span class="get">GET</span></div>`;
-function pageHtml() {
+function pageHtml(R) {
+  const OPTIONS = R.set;
   const cards = OPTIONS.map((o, k) => `<section class="opt" id="${o.id}">
   <h2><span>${k + 1}</span> ${o.name}</h2>
   <p class="why">${o.why}</p>
@@ -37,7 +43,7 @@ function pageHtml() {
 </section>`).join('\n');
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Tic Tac Chaos: app icon options</title>
+<title>Tic Tac Chaos: ${R.title}</title>
 <link rel="stylesheet" href="src/ui/fonts.css">
 <style>
 :root { --ink: #161210; --cream: #f4e6c8; --paper: #fff8e8; }
@@ -88,10 +94,10 @@ nav a img { width: 40px; height: 40px; border-radius: 22.37%; display: block; }
 .lineup .strip.l { background: #e9e4dc; } .lineup .strip.d { background: #15171c; margin-top: 10px; }
 .lineup .ic { width: 60px; height: 60px; }
 </style></head><body>
-<header><h1>App icon options</h1>
-<p>Six concepts for the Tic Tac Chaos icon. Each is a full-bleed 1024 px square with no transparency; iOS rounds the corners itself, as shown here. The current icon stays until one is picked.</p></header>
+<header><h1>${R.title}</h1>
+<p>${R.intro}</p><p><a href="${R.other[0]}" style="color:var(--ink)">${R.other[1]}</a></p></header>
 <nav>${OPTIONS.map((o, k) => `<a href="#${o.id}"><img src="assets/icon-options/${o.id}.png" alt="">${k + 1}. ${o.name}</a>`).join('')}</nav>
-<div class="lineup"><h2 style="font-family:'Luckiest Guy',sans-serif;font-weight:400;font-size:22px;margin:18px 0 8px">All six at 60 px</h2>
+<div class="lineup"><h2 style="font-family:'Luckiest Guy',sans-serif;font-weight:400;font-size:22px;margin:18px 0 8px">All ${OPTIONS.length} at 60 px</h2>
 <div class="strip l">${OPTIONS.map(o => mine(o.id)).join('')}${stand(0)}${stand(4)}</div>
 <div class="strip d">${OPTIONS.map(o => mine(o.id)).join('')}${stand(0)}${stand(4)}</div></div>
 ${cards}
@@ -103,7 +109,7 @@ async function main() {
   fs.mkdirSync(OUT, { recursive: true });
   const { chromium } = require('playwright');
   const b = await chromium.launch();
-  for (const o of OPTIONS) {
+  for (const o of OPTIONS.concat(PATCHWORK)) {
     const svg = o.draw();
     fs.writeFileSync(path.join(OUT, o.id + '.svg'), svg);
     const p = await b.newPage({ viewport: { width: 1024, height: 1024 }, deviceScaleFactor: 1 });
@@ -112,8 +118,8 @@ async function main() {
     await p.close();
   }
   await b.close();
-  fs.writeFileSync(path.join(ROOT, 'icons.html'), pageHtml());
-  console.log('Wrote', OPTIONS.map(o => o.id).join(', '), 'and icons.html');
+  for (const R of ROUNDS) fs.writeFileSync(path.join(ROOT, R.file), pageHtml(R));
+  console.log('Wrote', OPTIONS.concat(PATCHWORK).map(o => o.id).join(', '), 'and', ROUNDS.map(R => R.file).join(', '));
 }
 if (require.main === module) main().catch(e => { console.error(e); process.exit(1); });
-module.exports = { pageHtml };
+module.exports = { pageHtml, ROUNDS };

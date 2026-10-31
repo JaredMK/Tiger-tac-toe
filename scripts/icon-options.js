@@ -77,27 +77,50 @@ function toybox() {
     + oMark(c[1], c[0], 52, OR, 30, 0));
 }
 // 4. Patchwork: the whole icon is the board, nine squares each its own colour and pattern (one game each), set
-// crooked; the X in the middle.
-function patchwork() {
-  const T = '#e5432a', M = '#f6c21b', C = '#2346d8', P = '#ff5fa2', L = '#9ee03a', CR = '#fff1d0', OR = '#ff8a1f', GR = '#2f9e55';
-  const step = 400, x0 = -88;   // three 400px tiles from -88 (the board is turned, so it runs past every edge)
-  const pat = {
-    stripes: (x, y, c) => Array.from({ length: 6 }, (_, k) => `<rect x="${x + k * 70}" y="${y - 40}" width="30" height="${step + 80}" fill="${c}" transform="rotate(25 ${x + step / 2} ${y + step / 2})"/>`).join(''),
-    dots: (x, y, c) => Array.from({ length: 16 }, (_, k) => `<circle cx="${x + 60 + (k % 4) * 92}" cy="${y + 60 + Math.floor(k / 4) * 92}" r="22" fill="${c}"/>`).join(''),
-    checks: (x, y, c) => Array.from({ length: 16 }, (_, k) => ((k + Math.floor(k / 4)) % 2 ? '' : `<rect x="${x + (k % 4) * 100}" y="${y + Math.floor(k / 4) * 100}" width="100" height="100" fill="${c}"/>`)).join(''),
-    zig: (x, y, c) => Array.from({ length: 4 }, (_, k) => `<path d="M${x} ${y + 70 + k * 100}${Array.from({ length: 8 }, (_, j) => `L${x + 50 * (j + 1)} ${y + 70 + k * 100 + (j % 2 ? 0 : -40)}`).join('')}" stroke="${c}" stroke-width="22" fill="none" stroke-linejoin="round"/>`).join(''),
-    none: () => '',
+// crooked; the X in the middle. Drawn by quilt() below, which also makes its variations (PATCHWORK).
+const PW = { T: '#e5432a', M: '#f6c21b', C: '#2346d8', P: '#ff5fa2', L: '#9ee03a', CR: '#fff1d0', OR: '#ff8a1f', GR: '#2f9e55', SKY: '#58a8cf', BG: '#4e9d3a' };
+const PAT = {                                       // a tile's pattern, in the tile's own 400-unit square
+  stripes: c => Array.from({ length: 7 }, (_, k) => `<rect x="${k * 70 - 40}" y="-60" width="30" height="520" fill="${c}" transform="rotate(25 200 200)"/>`).join(''),
+  dots: c => Array.from({ length: 16 }, (_, k) => `<circle cx="${60 + (k % 4) * 92}" cy="${60 + Math.floor(k / 4) * 92}" r="22" fill="${c}"/>`).join(''),
+  checks: c => Array.from({ length: 16 }, (_, k) => ((k + Math.floor(k / 4)) % 2 ? '' : `<rect x="${(k % 4) * 100}" y="${Math.floor(k / 4) * 100}" width="100" height="100" fill="${c}"/>`)).join(''),
+  zig: c => Array.from({ length: 4 }, (_, k) => `<path d="M0 ${70 + k * 100}${Array.from({ length: 8 }, (_, j) => `L${50 * (j + 1)} ${70 + k * 100 + (j % 2 ? 0 : -40)}`).join('')}" stroke="${c}" stroke-width="22" fill="none" stroke-linejoin="round"/>`).join(''),
+  rings: c => [60, 120, 180].map(r => `<circle cx="200" cy="200" r="${r}" fill="none" stroke="${c}" stroke-width="24"/>`).join(''),
+  none: () => '',
+};
+const TILES = [[PW.T, 'stripes', PW.CR], [PW.M, 'dots', INK], [PW.C, 'none'], [PW.P, 'checks', '#ff86b9'], [PW.CR, 'none'], [PW.L, 'zig', PW.GR], [PW.GR, 'dots', PW.L], [INK, 'none'], [PW.OR, 'stripes', PW.M]];
+const face = (cx, cy, r) => eye(cx - r * 0.24, cy - r * 0.12, r * 0.17, r * 0.22, r * 0.04, r * 0.05) + eye(cx + r * 0.24, cy - r * 0.12, r * 0.17, r * 0.22, r * 0.04, r * 0.05)
+  + `<path d="M${f(cx - r * 0.16)} ${f(cy + r * 0.2)}Q${cx} ${f(cy + r * 0.34)} ${f(cx + r * 0.16)} ${f(cy + r * 0.2)}" stroke="${INK}" stroke-width="${f(r * 0.07)}" stroke-linecap="round" fill="none"/>`;
+// o: tiles (nine [colour, pattern, pattern colour]), step (a tile's size), rot (the board's turn), gap (the gutter),
+// radius (a tile's corners: a quilt of separate tiles), marks ([tile, 'X'|'O', colour, size, face]), pop (a tile
+// knocked up off the board, drawn last), bg (what shows between tiles).
+function quilt(o) {
+  const step = o.step || 400, x0 = 512 - step * 1.5, gap = o.gap == null ? 40 : o.gap, rad = o.radius || 0, sc = step / 400;
+  const at = k => [x0 + (k % 3) * step + step / 2, x0 + Math.floor(k / 3) * step + step / 2];
+  const tile = (k, extra = '') => {
+    const [bg, p, c] = (o.tiles || TILES)[k], [cx, cy] = at(k), inset = rad ? gap / 2 / sc : 0;
+    return `<clipPath id="q${k}"><rect x="${inset}" y="${inset}" width="${400 - 2 * inset}" height="${400 - 2 * inset}" rx="${rad / sc}"/></clipPath><g transform="translate(${f(cx - step / 2)} ${f(cy - step / 2)}) scale(${f(sc * 1000) / 1000})"><g clip-path="url(#q${k})"><rect width="400" height="400" fill="${bg}"/>${PAT[p](c)}</g>${rad ? `<rect x="${inset}" y="${inset}" width="${400 - 2 * inset}" height="${400 - 2 * inset}" rx="${rad / sc}" fill="none" stroke="${INK}" stroke-width="${f(14 / sc)}"/>` : ''}${extra}</g>`;
   };
-  const tiles = [[T, 'stripes', CR], [M, 'dots', INK], [C, 'none'], [P, 'checks', '#ff86b9'], [CR, 'none'], [L, 'zig', GR], [GR, 'dots', L], [INK, 'none'], [OR, 'stripes', M]];
+  const mark = ([k, t, col, r, fc, dx = 0, dy = 0]) => {   // (dx, dy: off the tile's centre, for a tile mostly off the edge)
+    const [cx, cy] = at(k), x = cx + dx, y = cy + dy, rr = r * sc;
+    return (t === 'X' ? xMark(x, y, rr, col, rr * 0.7, rr * 0.3) : oMark(x, y, rr, col, rr * 0.64, rr * 0.36)) + (fc ? face(x, y, rr * (t === 'X' ? 1.7 : 1.6)) : '');
+  };
   let body = '';
-  tiles.forEach(([bg, p, c], k) => {
-    const x = x0 + (k % 3) * step, y = x0 + Math.floor(k / 3) * step;
-    body += `<clipPath id="t${k}"><rect x="${x}" y="${y}" width="${step}" height="${step}"/></clipPath><g clip-path="url(#t${k})"><rect x="${x}" y="${y}" width="${step}" height="${step}" fill="${bg}"/>${pat[p](x, y, c)}</g>`;
-  });
-  const gut = [x0 + step, x0 + 2 * step].flatMap(v => [line(v, -200, v, 1300, INK, 40), line(-200, v, 1300, v, INK, 40)]).join('');
-  const mid = x0 + step * 1.5;
-  return wrap(INK, g(`rotate(-6 512 512)`, body + gut + xMark(mid, mid, 110, T, 76, 34) + oMark(x0 + step * 2.5, x0 + step * 0.5, 82, CR, 52, 30) + oMark(x0 + step * 1.5, x0 + step * 2.5, 82, M, 52, 30)));
+  for (let k = 0; k < 9; k++) if (k !== o.pop) body += tile(k);
+  const gut = rad ? '' : [x0 + step, x0 + 2 * step].flatMap(v => [line(v, -400, v, 1424, INK, gap), line(-400, v, 1424, v, INK, gap)]).join('');
+  const marks = (o.marks || []).filter(m => m[0] !== o.pop).map(m => mark(m)).join('');
+  let pop = '';
+  if (o.pop != null) {
+    const [cx, cy] = at(o.pop), m = (o.marks || []).find(q => q[0] === o.pop);
+    const lifted = `<g transform="translate(${cx} ${cy}) rotate(${o.popRot || 12}) scale(1.1) translate(${-cx} ${-cy})">`;
+    pop = `<rect x="${x0 + step + gap / 2}" y="${x0 + step + gap / 2}" width="${step - gap}" height="${step - gap}" fill="${INK}"/>`   // the hole it left
+      + `<g transform="translate(26 30)">${lifted}<rect x="${cx - step / 2}" y="${cy - step / 2}" width="${step}" height="${step}" fill="${INK}"/></g></g>`
+      + lifted + tile(o.pop) + `<rect x="${cx - step / 2}" y="${cy - step / 2}" width="${step}" height="${step}" fill="none" stroke="${INK}" stroke-width="22"/>` + (m ? mark(m) : '') + '</g>';
+  }
+  return wrap(o.bg || INK, g(`rotate(${o.rot == null ? -6 : o.rot} 512 512)`, body + gut + marks + pop));
 }
+const PW_MARKS = [[4, 'X', PW.T, 110], [2, 'O', PW.CR, 82], [7, 'O', PW.M, 82]];
+const PW_MARKS2 = [[4, 'X', PW.T, 110], [5, 'O', PW.CR, 82], [7, 'O', PW.M, 82]];   // (the Os off the corners, which iOS rounds away)
+function patchwork() { return quilt({ marks: PW_MARKS }); }
 // 5. Cracked: one giant safety-orange X on cobalt, split down the middle, its two halves knocked apart, chips flying.
 function cracked() {
   const BG = '#1f3fd8', OR = '#ff7a1a';
@@ -132,4 +155,15 @@ const OPTIONS = [
   { id: 'cracked', name: 'Cracked', draw: cracked, why: 'One giant X split in two: the simplest shape and the strongest silhouette at 60 px.' },
   { id: 'knocked', name: 'Knocked loose', draw: knocked, why: 'A calm, classic grid with one square knocked out of it: the twist, quiet until you notice.' },
 ];
-module.exports = { OPTIONS, INK };
+// Patchwork's variations (round 2, October 2026): the same board, one change each.
+const HOUSE = [[PW.T, 'stripes', PW.CR], [PW.M, 'dots', INK], [PW.SKY, 'none'], [PW.CR, 'checks', '#f4dca6'], [PW.CR, 'none'], [PW.BG, 'zig', '#8cc56a'], [PW.SKY, 'rings', '#8fc6e0'], [INK, 'none'], [PW.M, 'stripes', PW.T]];
+const PATCHWORK = [
+  { id: 'pw-original', name: 'Original', draw: patchwork, why: 'Round one\'s Patchwork as it was, the reference (its top-right O sits where iOS rounds the corner; the others move it).' },
+  { id: 'pw-straight', name: 'Straight', draw: () => quilt({ rot: 0, marks: PW_MARKS2 }), why: 'The same board set square: calmer and tidier, the chaos left to the patterns.' },
+  { id: 'pw-closeup', name: 'Close-up', draw: () => quilt({ step: 520, rot: -8, gap: 46, marks: [[4, 'X', PW.T, 120], [7, 'O', PW.M, 64, false, 0, -150]] }), why: 'Zoomed in on the middle square: the X is twice the size, so it reads at 40 px, the neighbours spilling off the edges.' },
+  { id: 'pw-popout', name: 'Pop-out', draw: () => quilt({ pop: 4, popRot: 15, marks: PW_MARKS2 }), why: 'The middle square knocked up off the board, the X on it: something is always happening on this board.' },
+  { id: 'pw-faces', name: 'Faces', draw: () => quilt({ marks: [[4, 'X', PW.T, 116, true], [7, 'O', PW.M, 86, true], [5, 'O', PW.CR, 86, true]] }), why: 'The game\'s own X and O characters on the board: the most personality, and the link to the art inside the app.' },
+  { id: 'pw-house', name: 'House colours', draw: () => quilt({ tiles: HOUSE, marks: [[4, 'X', PW.T, 110], [5, 'O', PW.CR, 82], [7, 'O', PW.M, 82]] }), why: 'Only the game\'s own colours (tomato, mustard, sky, green, cream): it matches the app the moment it opens.' },
+  { id: 'pw-quilt', name: 'Quilt', draw: () => quilt({ rot: -5, gap: 34, radius: 44, bg: INK, marks: PW_MARKS2 }), why: 'Nine separate rounded tiles like a set of stickers: a softer, toy-like take that still reads as a board.' },
+];
+module.exports = { OPTIONS, PATCHWORK, INK };
