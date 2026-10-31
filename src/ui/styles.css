@@ -1351,9 +1351,6 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .credit:focus-visible { outline: 3px solid var(--sky); outline-offset: 2px; }
 .menu-top { position: absolute; top: var(--pad); left: var(--pad); right: var(--pad); display: flex; justify-content: space-between; align-items: center; gap: 10px; z-index: 3; }
 .menu-left { display: flex; gap: 8px; min-width: 0; }
-.btn.snd { flex: none; width: 44px; height: 44px; min-width: 44px; padding: 0; display: grid; place-items: center; border-radius: 12px; }   /* the speaker: the same square at every size */
-.snd-ico { width: 24px; height: 24px; display: block; }
-.pause-snd { display: flex; justify-content: center; }
 /* an online move on its way: the control pressed shows it at once, and keeps pulsing until the server answers */
 .pend { animation: pendpulse .6s ease-in-out infinite; }
 @keyframes pendpulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(.93); } }
@@ -2456,7 +2453,6 @@ main.scr.mini.screplay * { cursor: pointer; }   /* (a tap anywhere skips to the 
 html { height: 100%; overflow: hidden; overscroll-behavior: none; }
 #app { height: 100vh; height: 100dvh; max-height: 100dvh; overflow: hidden; overscroll-behavior: none; }
 .wlist, .setup-box, .online-mid, .mmlist, .excard, .hlist, [data-keep-scroll] { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
-button.btn.snd { padding: 0; display: grid; place-items: center; }   /* the speaker: centred in its square, whatever padding a screen's buttons have */
 
 /* "Report a problem" (ui/report.js): its own dialog over the in-game menu */
 .flash.repdlg { position: fixed; z-index: 30; }
@@ -2602,11 +2598,6 @@ main.scr.mini > .wband { left: 0; right: 0; }   /* Super Chaos: waiting in the s
 @media (prefers-reduced-motion: reduce) { .confetti { display: none; } }
 
 /* ----- the player's Animation setting (ui/pace.js): Normal | Speed, in the main menu and the in-game menu ----- */
-.animpick { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 2px; font-weight: 800; font-size: 14px; }
-.animpick > span { margin-right: 4px; opacity: .8; }
-.animpick .pk { min-height: 36px; padding: 4px 14px; border: 3px solid var(--ink); border-radius: 999px; background: var(--paper); color: var(--ink); font: inherit; cursor: pointer; }
-.animpick .pk.on { background: var(--ink); color: var(--paper); }
-.animpick.pause { margin-top: 10px; }
 
 /* Settings (ui/settings.js): the main menu's screen and the in-game menu's step. A row per setting: its name, its control. */
 .menu-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; }

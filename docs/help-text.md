@@ -104,8 +104,8 @@ Win: Reach the finish first.
 
 ## Districts [districts]
 Category: More brain
-Play: Place a piece. It counts in every region it touches. A grey piece lands somewhere after each move. A region locks, darker, once the spots left can't change its leader.
-Win: Lock more than half the regions first, or lead the most when the map is full. Level is a draw.
+Play: Place a piece on any open dot. It counts for every region it touches. A grey piece lands on a random dot after each move. Once nobody can catch the leader of a region, it's locked for them.
+Win: Lock 3 regions first.
 
 ## Echo [echo]
 Category: More brain

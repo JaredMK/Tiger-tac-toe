@@ -368,11 +368,8 @@ export function ownPress() { ownDown = true; }
 const TAP_SOUND = { explain: 'open', 'explain-close': 'close', pause: 'open', 'pause-resume': 'close', zoom: null, move: null, pick: null,
   'echo-tap': null, 'echo-play': null, bulls: null, bowl: null, 'run-go': null, 'fing-start': null, 'odd-reveal': null, 'trivia-reveal': null, 'att-start': null, 'hc-key': null, 'snap-cell': null, 'snap-submit': null, hpsel: 'select',   // a game's own inputs: each plays its own sound (from its handler or its move), never the click as well
   mmcol: 'peg', mmslot: 'peg', rlnum: 'peg', rlgrp: 'peg', rlzero: 'peg', key: 'key', bksp: 'key', enter: 'key', side: 'toggle', kind: 'toggle', 'anim-set': 'toggle', lside: 'toggle', timer: 'toggle', adv: 'toggle',
-  sound: 'toggle', 'set-sound': 'toggle', 'set-vib': 'toggle', settings: 'open', 'settings-back': 'close', 'pause-settings': 'open', 'games-all': 'select', 'games-none': 'deselect', share: 'copy', back: 'tap' };   // (back: the Board button in a square, a plain tap)
+  'set-sound': 'toggle', 'set-vib': 'toggle', settings: 'open', 'settings-back': 'close', 'pause-settings': 'open', 'games-all': 'select', 'games-none': 'deselect', share: 'copy', back: 'tap' };   // (back: the Board button in a square, a plain tap)
 // The sound switch: a speaker with waves when sound is on, crossed out when it is off. Its label says which.
-const soundLabel = () => (SND.muted ? 'Sound off' : 'Sound on');
-const soundIcon = () => `<svg class="snd-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 9.5h3.6L12 5.5v13l-4.9-4H3.5z" fill="currentColor"/>${SND.muted ? '<path d="M16 9.5l5 5M21 9.5l-5 5"/>' : '<path d="M15.5 9a4.2 4.2 0 0 1 0 6"/><path d="M18.3 6.4a8 8 0 0 1 0 11.2"/>'}</svg>`;
-export const soundBtn = (cls) => `<button class="btn snd ${cls}" data-act="sound" aria-label="${soundLabel()}" title="${soundLabel()}" aria-pressed="${!SND.muted}">${soundIcon()}</button>`;
 // The sounds of one move, from its result: [name, ms after the move starts, playback rate], in order.
 // Each is timed to the animation it stands for (the same timings the animation uses).
 export function moveSounds(f) {

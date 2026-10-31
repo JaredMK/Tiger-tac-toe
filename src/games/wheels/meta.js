@@ -13,6 +13,6 @@ export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" 
 export const TUNE = [
   { k: 'miss', label: 'Computer mistake rate (%)', def: 0, min: 0, max: 100, step: 5, group: 'Computer' },
 ];
-// The target, each wheel's skulls (of 10 segments) and its values (the admin's config/wheels): low 1-4 with 1 skull,
-// medium 2-7 with 3, high 3-10 with 4 and the only 10 (one of them); the averages at least 0.4 apart.
-export const WHEEL_DEFAULTS = { target: 30, lowSkulls: 1, midSkulls: 3, highSkulls: 4, lowLo: 1, lowHi: 4, midLo: 2, midHi: 7, highLo: 3, tensMin: 1, tensMax: 1, gap: 0.4 };
+// The target, each wheel's skulls (of 10 segments) and its values (the admin's config/wheels): low 1-4 with 2 skulls,
+// medium 2-7 with 4, high 3-10 with 5 and the only 10 (one of them); the averages at least 0.4 apart.
+export const WHEEL_DEFAULTS = { target: 30, lowSkulls: 2, midSkulls: 4, highSkulls: 5, lowLo: 1, lowHi: 4, midLo: 2, midHi: 7, highLo: 3, tensMin: 1, tensMax: 1, gap: 0.4 };

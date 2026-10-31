@@ -9,7 +9,7 @@ const S = E.SKULL;
 
 /* ===================================== Risky Spins ===================================== */
 test('wheels: push your luck: a spin\'s points go into the pot and the turn goes on; Bank adds the pot; a skull loses it; first to 30', () => {
-  assert.deepEqual(E.WHEEL_DEFAULTS, { target: 30, lowSkulls: 1, midSkulls: 3, highSkulls: 4, lowLo: 1, lowHi: 4, midLo: 2, midHi: 7, highLo: 3, tensMin: 1, tensMax: 1, gap: 0.4 });
+  assert.deepEqual(E.WHEEL_DEFAULTS, { target: 30, lowSkulls: 2, midSkulls: 4, highSkulls: 5, lowLo: 1, lowHi: 4, midLo: 2, midHi: 7, highLo: 3, tensMin: 1, tensMax: 1, gap: 0.4 });
   const rng = E.makeRng('wh-rules'), m = E.newMini('wheels', rng);
   assert.equal(m.target, 30); assert.equal(m.v, 2); assert.deepEqual(m.pts, { X: 0, O: 0 }); assert.equal(m.turn, null);
   for (const w of E.WHEELS) assert.equal(m.wheels[w].length, 10);
@@ -72,7 +72,7 @@ test('wheels: 1,000 dealt sets keep every rule; the spins land evenly; a timeout
   for (let k = 0; k < 1000; k++) {
     const w = E.wheelsDeal(E.makeRng('set' + k), E.WHEEL_DEFAULTS), h = E.wheelAvg(w.high), md = E.wheelAvg(w.mid), l = E.wheelAvg(w.low);
     assert.deepEqual(E.wheelsCheck(w), [], `set ${k}: ${JSON.stringify(w)}`);
-    assert.deepEqual([E.skullsOf(w.low), E.skullsOf(w.mid), E.skullsOf(w.high)], [1, 3, 4], 'the skulls: the riskier, the more');
+    assert.deepEqual([E.skullsOf(w.low), E.skullsOf(w.mid), E.skullsOf(w.high)], [2, 4, 5], 'the skulls: the riskier, the more');
     assert.equal(w.high.filter(v => v === 10).length, 1, 'high: one 10');
     assert.ok(!w.mid.includes(10) && !w.low.includes(10), 'only the high wheel has a 10');
     assert.ok(w.low.every(v => v === S || (v >= 1 && v <= 4)) && w.mid.every(v => v === S || (v >= 2 && v <= 7)) && w.high.every(v => v === S || v >= 3));
@@ -91,7 +91,7 @@ test('wheels: 1,000 dealt sets keep every rule; the spins land evenly; a timeout
 });
 
 test('wheels: the computer banks by its pot, the wheel\'s risk and the score gap; enough to win, it banks', () => {
-  const wheels = { high: [S, 7, 9, 5, S, 3, 10, S, 6, S], mid: [2, 5, S, 5, 3, S, 6, 2, S, 7], low: [4, 1, 1, 2, S, 3, 2, 1, 2, 2] };
+  const wheels = { high: [S, 7, 9, S, S, 3, 10, S, 6, S], mid: [2, 5, S, 5, 3, S, 6, S, S, 7], low: [4, 1, 1, 2, S, 3, S, 1, 2, 2] };
   assert.deepEqual(E.wheelsCheck(wheels), []);
   const rng = E.makeRng('wh-ai'), mk = (a, b, pot) => ({ type: 'wheels', v: 2, target: 30, wheels, pts: { X: a, O: b }, spins: { X: 0, O: 0 }, turn: pot ? { by: 'X', pot, n: 1 } : null });
   const pick = (a, b, pot, level) => A.best(mk(a, b, pot), 'X', rng, {}, { level: level || 'normal', until: null }).move;
@@ -104,7 +104,7 @@ test('wheels: the computer banks by its pot, the wheel\'s risk and the score gap
   const risk = w => E.skullsOf(wheels[w]);   // the more it has at risk, the safer the wheel (never a riskier one for a bigger pot)
   let last = 10;
   for (let pot = 1; pot < 30; pot++) { const w = pick(0, 20, pot); if (w === 'bank') break; assert.ok(risk(w) <= last, `pot ${pot}: ${w}`); last = risk(w); }
-  assert.equal(last, 1, 'a pot well at risk: the low-risk wheel');
+  assert.equal(last, risk('low'), 'a pot well at risk: the low-risk wheel');
   // the bank-at pot grows with the gap: behind, it keeps spinning on a pot it banks when level or ahead
   const bankAt = (a, b) => { for (let pot = 1; pot < 30; pot++) if (pick(a, b, pot) === 'bank') return pot; return 30; };
   assert.ok(bankAt(0, 20) > bankAt(10, 10) && bankAt(10, 10) >= bankAt(20, 0), `bank at: behind ${bankAt(0, 20)}, level ${bankAt(10, 10)}, ahead ${bankAt(20, 0)}`);

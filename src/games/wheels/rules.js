@@ -75,7 +75,7 @@ export function wheelsDeal(rng, g) {
     if (!wheelsCheck(w, g).length) return w;
   }
   const S = SKULL;   // (the admin's ranges allow no set: this one keeps the default rules)
-  return { high: [10, S, 6, S, 8, S, 5, 7, S, 9], mid: [4, S, 5, 3, S, 6, 4, S, 5, 3], low: [2, 3, 1, S, 2, 4, 3, 2, 1, 3] };
+  return { high: [10, S, 6, S, 8, S, 5, S, S, 9], mid: [4, S, 5, 3, S, 6, S, S, 5, 3], low: [2, 3, 1, S, 2, 4, S, 2, 1, 3] };
 }
 // The spin: a segment at random (all ten the same size), its points (or a skull), and where in it the pointer stops
 // (0-1 round the wheel from the top of segment 0, well inside the segment), so both phones show the same landing.

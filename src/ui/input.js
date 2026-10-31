@@ -143,7 +143,6 @@ export function init() {
     if (act === 'dismiss') { if (Date.now() >= flashReady) dismissFlash(); return; }   // not before the animation is over
     if (act === 'rep-skip') { repSkip(); return; }                                      // an opponent's replay: straight to its result
     const free = ['anim-set', 'set-sound', 'set-vib', 'pause-settings', 'pause', 'pause-report', 'pause-resume', 'pause-main', 'pause-back', 'pause-leave', 'leave', 'lobby-back', 'menu', 'find-again', 'profile', 'prof-back', 'prof-hist', 'mystats', 'hist-open', 'hist-sq', 'hist-back', 'hist-close', 'leaderboard', 'rejoin', 'host-retry', 'share', 'copy-invite', 'rematch', 'rematch-cancel', 'share-result', 'timer', 'review', 'review-sq', 'review-back', 'results', 'pview', 'react-open', 'react-send', 'del-account', 'del-cancel', 'del-confirm', 'verify-retry', 'verify-resend'];
-    if (act === 'sound') { SND.setMuted(!SND.muted); if (!SND.muted) SND.play('toggle'); render(); return; }
     if (act === 'set-sound') { setSound(el.dataset.v === 'on'); return; }            // Settings (ui/settings.js): this phone and the account, any time, the menu open or not
     if (act === 'set-vib') { setVibration(el.dataset.v === 'on'); if (el.dataset.v === 'on') haptic('tap'); return; }
     if (act === 'pause-settings') { setMenuStep('settings'); startFx('menu', menuStep); render(); return; }

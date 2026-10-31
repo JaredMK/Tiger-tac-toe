@@ -25,8 +25,3 @@ export function setPace(m, fromAccount) {
   if (!fromAccount) saveAnimPref(ANIM.mode);
   render();
 }
-// The control, in the main menu and the in-game menu: Animation, Normal | Speed.
-export function pacePick(cls) {
-  const b = (v, label) => `<button class="pk${ANIM.mode === v ? ' on' : ''}" data-act="anim-set" data-v="${v}" aria-pressed="${ANIM.mode === v}">${label}</button>`;
-  return `<div class="animpick ${cls || ''}" role="group" aria-label="Animation"><span>Animation</span>${b('normal', 'Normal')}${b('speed', 'Speed')}</div>`;
-}

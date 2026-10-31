@@ -1,7 +1,9 @@
 'use strict';
 // The iOS app's artwork, drawn like the share images (scripts/make-share-images.js: the game's fonts, colours and X and O
 // characters) and rendered with the Chromium that Playwright carries. Writes assets/app/*:
-//   icon-1024.png        the App Store icon: the X and O characters on the cream background (no transparency; Apple rounds the corners)
+//   icon-1024.png        the App Store icon: Patchwork (scripts/icon-options.js, picked October 2026; full-bleed, no transparency;
+//                        Apple rounds the corners), also copied into ios/'s AppIcon set (its one Single Size slot), and
+//   icons/icon-<n>.png   the same at the iPhone sizes (180, 120, 87, 80, 60, 58, 40) for checking it small
 //   launch-2048.png      the launch screen's image: the title (TIC TAC CHAOS!) centred on the cream background
 //   jarhad-mark-512.png  a small JarHad Labs mark (the studio's logo, assets/brand/jarhad-labs-logo.svg, without its background)
 // docs/ios-plan.md ("App icon and launch screen") says where each goes in Xcode.
@@ -9,6 +11,10 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { INK, CREAM, O, X, fonts, toonX, toonO, svg, burst, ol2 } = require('./make-share-images.js');
+const { OPTIONS } = require('./icon-options.js');
+const ICON_SVG = OPTIONS.find(o => o.id === 'patchwork').draw();   // the app's icon (the icon options' round 1, /icons.html)
+const IOS_ICON = path.join(__dirname, '..', 'ios', 'App', 'App', 'Assets.xcassets', 'AppIcon.appiconset', 'AppIcon-512@2x.png');
+const SIZES = [180, 120, 87, 80, 60, 58, 40];
 const OUT = path.join(__dirname, '..', 'assets', 'app');
 const LOGO = fs.readFileSync(path.join(__dirname, '..', 'assets', 'brand', 'jarhad-labs-logo.svg'), 'utf8');
 
@@ -18,13 +24,8 @@ body{background:${bg};position:relative;font-family:'Patrick Hand',cursive;color
 .rays{position:absolute;inset:0;background:repeating-conic-gradient(from 0deg at 50% 50%, rgba(246,194,27,.20) 0 7.5deg, transparent 7.5deg 15deg)}
 .vig{position:absolute;inset:0;background:radial-gradient(circle at 50% 50%, transparent 55%, rgba(22,18,16,.14))}
 ${css}</style>${body}`;
-// The icon: the two characters side by side, leaning in, on the cream with its rays (everything inside the middle 80%:
-// the corners are masked by the phone).
-const ICON = s => page(s, s, `
-.pal{position:absolute;top:${s * .27}px;width:${s * .46}px;height:${s * .46}px} .pal svg{width:100%;height:100%;overflow:visible}
-.pal.l{left:${s * .09}px;transform:rotate(-9deg)} .pal.r{right:${s * .09}px;transform:rotate(9deg)}
-.pal svg{filter:drop-shadow(0 ${s * .018}px 0 ${INK})}`,
-`<div class="rays"></div><div class="vig"></div><div class="pal l">${svg(toonX())}</div><div class="pal r">${svg(toonO())}</div>`);
+// The icon: the Patchwork drawing at any size (an SVG, so every size is drawn, not scaled down from a picture).
+const ICON = s => `<!doctype html><meta charset="utf-8"><style>html,body{margin:0;width:${s}px;height:${s}px;overflow:hidden}svg{display:block;width:${s}px;height:${s}px}</style>${ICON_SVG}`;
 // The launch screen: the title alone, centred (the same title as the share image, at the launch image's scale), with the two
 // characters either side, on the plain cream (no rays: the phone shows it centred over the same cream, docs/ios-plan.md, so
 // its edges never show).
@@ -51,6 +52,9 @@ async function main() {
     fs.writeFileSync(path.join(OUT, file), buf);
   };
   await shot(ICON(1024), 1024, 1024, 'icon-1024.png');
+  fs.mkdirSync(path.join(OUT, 'icons'), { recursive: true });
+  for (const n of SIZES) await shot(ICON(n), n, n, path.join('icons', `icon-${n}.png`));
+  if (fs.existsSync(path.dirname(IOS_ICON))) fs.copyFileSync(path.join(OUT, 'icon-1024.png'), IOS_ICON);   // (ios/ committed: in step without a full npm run ios:build)
   await shot(LAUNCH(2048), 2048, 2048, 'launch-2048.png');
   await shot(MARK(512), 512, 512, 'jarhad-mark-512.png', true);
   await b.close();
