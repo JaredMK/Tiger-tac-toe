@@ -64,7 +64,7 @@ test('Roulette, Risky Spins, Craps: what they show comes from the opponent\'s re
   const at = n => () => (E.RL.wheel.indexOf(n) + 0.5) / 25;
   const r0 = E.newMini('rl', E.makeRng('rl')), rx = play(r0, 'X', 'g2', at(13)), ro = play(rx.mini, 'O', 'zero', at(5));
   const rh = replay('rl', rx.mini, ro.flash);
-  assert.match(rh, /Olaf<\/b> bet green 0/); assert.doesNotMatch(rh, /Xena<\/b> bet/);
+  assert.match(rh, /Olaf<\/b> picked green 0/); assert.doesNotMatch(rh, /Xena<\/b> picked/);
   const w0 = E.newMini('wheels', E.makeRng('wh')), wx = play(w0, 'X', 'high', E.makeRng('a')), wo = play(wx.mini, 'O', 'low', E.makeRng('b'));
   const wh = replay('wheels', wx.mini, wo.flash);
   assert.equal(wo.flash.wheel.w, 'low');

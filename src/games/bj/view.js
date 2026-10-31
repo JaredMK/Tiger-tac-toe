@@ -7,11 +7,11 @@ import { pcard } from '../../ui/cards.js';
 import { lateAt } from '../../ui/progress.js';
 
 // Blackjack: when each card comes in is bjPlan in the engine (the turn clock and the sounds use it too).
-const BJ_RES = { bj: 'Blackjack! +1', push: 'Push', bust: 'Bust', lose: 'Dealer wins' };
-const bjResText = r => (r.res === 'win' ? 'Wins +1' : r.res === 'lose' && r.dealerBj ? 'Dealer blackjack' : BJ_RES[r.res]);
+const BJ_RES = { bj: 'Natural 21! +1', push: 'Tie', bust: 'Bust', lose: 'Dealer wins' };
+const bjResText = r => (r.res === 'win' ? 'Wins +1' : r.res === 'lose' && r.dealerBj ? 'Dealer natural 21' : BJ_RES[r.res]);
 function bjTotalText(cards) {
   const t = bjTotal(cards);
-  return t.total > 21 ? `Bust · ${t.total}` : bjNatural(cards) ? 'Blackjack' : `${t.soft && t.total < 21 ? 'Soft ' : ''}${t.total}`;
+  return t.total > 21 ? `Bust · ${t.total}` : bjNatural(cards) ? 'Natural 21' : `${t.soft && t.total < 21 ? 'Soft ' : ''}${t.total}`;
 }
 function bjTable(mini, a, o) {
   const b = a && a.bj ? a.bj : null, h = mini.hand, l = mini.last, turn = o.turn;
@@ -40,7 +40,7 @@ function bjTable(mini, a, o) {
   };
   const bannerSet = H => {
     const x = H.hand;
-    const inner = x.res ? `<div ${lateAt('bjres ' + x.res, anim ? H.end : null)} role="status">${toon(by)}<span>${H.pushed ? 'Push: a new hand' : bjResText(x)}</span></div>` : '<div class="bjres none">&nbsp;</div>';
+    const inner = x.res ? `<div ${lateAt('bjres ' + x.res, anim ? H.end : null)} role="status">${toon(by)}<span>${H.pushed ? 'Tie: a new hand' : bjResText(x)}</span></div>` : '<div class="bjres none">&nbsp;</div>';
     return layer(H, inner);
   };
   const ghost = `<div class="bjset"><span class="bjlab">&nbsp;</span><div class="bjcards">${pcard(null, { down: true, cls: 'ghost' })}</div></div>`;

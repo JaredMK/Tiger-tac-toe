@@ -39,8 +39,8 @@ function rlTable(mini, a, o) {
   const one = (bet, hit) => (hit ? (bet === 'zero' ? 'green 0!' : 'hit!') : 'miss');
   const sh = spin && spin.shared ? spin : shared ? l : null;   // the shared spin, playing or as it ended
   const res = sh ? `<p ${lateAt('rlres', spin ? tEnd : null)}>${num(sh.n)}<span>${['X', 'O'].filter(p => sh.bets[p]).map(p => `${W(p)} ${one(sh.bets[p], sh.hit[p])}`).join(' · ')}</span></p>`
-    : pend ? `<p class="rlres"><span>${W(pend.by)} bet ${rlBetText(pend.bet)} · waiting for the spin</span></p>`
-    : spin || l ? `<p ${lateAt('rlres', spin ? tEnd : null)}>${num(n)}<span>${W(spin ? a.by : l.by)} bet ${rlBetText((spin || l).bet)} · ${one((spin || l).bet, (spin || l).hit)}</span></p>` : '<p class="rlres">&nbsp;</p>';
+    : pend ? `<p class="rlres"><span>${W(pend.by)} picked ${rlBetText(pend.bet)} · waiting for the spin</span></p>`
+    : spin || l ? `<p ${lateAt('rlres', spin ? tEnd : null)}>${num(n)}<span>${W(spin ? a.by : l.by)} picked ${rlBetText((spin || l).bet)} · ${one((spin || l).bet, (spin || l).hit)}</span></p>` : '<p class="rlres">&nbsp;</p>';
   // The bet on the board: the move playing out (both players' in a shared spin, each in their colour), a bet
   // waiting for its spin, else the one being put together on this phone.
   if (!rlDraft || rlDraft.sq !== o.zoom || o.moved) rlDraft = { sq: o.zoom, nums: [], bet: null };   // a fresh bet after every spin
@@ -64,8 +64,8 @@ function rlTable(mini, a, o) {
   }).join('');
   const bet = dr.bet || (dr.nums.length === RL.pick ? dr.nums : null);
   const say = marks ? ['X', 'O'].filter(p => marks[p]).map(p => `${W(p)}: ${rlBetText(marks[p])}`).join(' · ')
-    : dr.bet === 'zero' ? 'Betting green 0'
-    : dr.bet ? `Betting the group ${rlBetText(dr.bet)}` : dr.nums.length === RL.pick ? 'Betting your 8 numbers'
+    : dr.bet === 'zero' ? 'Picked green 0'
+    : dr.bet ? `Picked the group ${rlBetText(dr.bet)}` : dr.nums.length === RL.pick ? 'Picked your 8 numbers'
     : dr.nums.length ? `${RL.pick - dr.nums.length} more number${RL.pick - dr.nums.length === 1 ? '' : 's'} to pick` : '&nbsp;';
   const board = o.view ? '' : `<div class="rlboard"><div class="rlrow top"><button class="rlz${zOn}${land(0)}"${landT(0)} data-act="rlzero" aria-pressed="${!!zOn}" aria-label="Green 0"${dis}>0${dolly(0)}</button><p class="rlsay">${say}</p></div>${grid}</div>
     <div class="cbtns one"><button class="big ${turn} rlspin" data-act="move" ${mv(bet || [])}${!bet || o.locked || marks ? ' disabled' : ''}>Spin</button></div>`;
@@ -114,7 +114,7 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
   g = rlTable(mini, a, { view, locked, turn, zoom: state.zoom, moved: !!(f || d) }); return g;
 }
 export function moveText(f, who) {
-  if (f.rl && f.rl.pending) return `${who} bet ${rlBetText(f.rl.bet)}`;
+  if (f.rl && f.rl.pending) return `${who} picked ${rlBetText(f.rl.bet)}`;
   if (f.rl && f.rl.shared) return `${f.rl.n}${f.rl.n === 0 ? ' green' : rlRed(f.rl.n) ? ' red' : ' black'} · ${['X', 'O'].filter(p => f.rl.bets[p]).map(p => `${N(p)} ${f.rl.hit[p] ? 'hit' : 'missed'}`).join(', ')}`;
   return f.rl ? `${f.rl.n}${f.rl.n === 0 ? ' green' : rlRed(f.rl.n) ? ' red' : ' black'} · ${f.rl.hit ? 'a hit' : 'a miss'}` : `${who} spun`;
 }

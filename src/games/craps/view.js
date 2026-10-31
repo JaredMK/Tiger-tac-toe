@@ -13,9 +13,9 @@ const CRAPS_POINTS = [4, 5, 6, 8, 9, 10];
 function crapsSay(r) {                                          // the line under the felt for a round
   if (!r) return '';
   if (r.kind === 'stop') return `Stopped on point ${r.point}`;   // (from before)
-  if (r.roll) { const n = r.sum; return r.result === 'win' ? (r.was == null ? `${n} on the come-out: a winner!` : `Point ${r.was} made!`) : r.result === 'lose' ? (r.was == null ? `${n}: craps!` : 'Seven out') : `Point ${r.point}`; }   // (a single roll, from before)
+  if (r.roll) { const n = r.sum; return r.result === 'win' ? (r.was == null ? `${n} on the first roll: a winner!` : `Point ${r.was} made!`) : r.result === 'lose' ? (r.was == null ? `${n}: out!` : 'Seven out') : `Point ${r.point}`; }   // (a single roll, from before)
   const rolls = r.rolls || [], first = rolls.length ? rolls[0][0] + rolls[0][1] : 0;
-  if (r.point == null) return r.result === 'win' ? `${first} on the come-out: a winner!` : `${first}: craps!`;
+  if (r.point == null) return r.result === 'win' ? `${first} on the first roll: a winner!` : `${first}: out!`;
   return r.result === 'win' ? `Point ${r.point} made!` : 'Seven out';
 }
 function crapsTable(mini, a, o) {

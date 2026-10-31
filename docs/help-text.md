@@ -41,7 +41,7 @@ Category luck: More luck
 Category skill: More skill
 Category brain: More brain
 
-## Blackjack [bj]
+## 21 [bj]
 Category: More luck
 Play: Hit to draw a card or stand. Beat the dealer without going over 21. Tie? Play another hand.
 Win: First to {goal} wins.
@@ -86,11 +86,6 @@ Super Chaos Win: Crack the code.
 Category: More luck
 Play: Flip up to {flips} coins that aren't yours.
 Win: All {n} coins show your side.
-
-## Craps [craps]
-Category: More luck
-Play: Tap Roll: the dice keep rolling until your round is won or lost. On the first roll, 7 or 11 wins and 2, 3 or 12 loses. Any other number is your point: rolling it again wins, rolling a 7 loses.
-Win: Win {goal} rounds.
 
 ## Cup Pong [pong]
 Category: More skill
@@ -168,10 +163,22 @@ Win: Guess it. Use up {limit} guesses and you lose the square.
 Super Chaos Play: Guess a number from 1 to {hi}. You'll be told higher or lower.
 Super Chaos Win: Guess it. Use up {limit} guesses and you lose the square.
 
+## Krabs [craps]
+Category: More luck
+Play: Tap Roll: the dice keep rolling until your round is won or lost. On the first roll, 7 or 11 wins and 2, 3 or 12 loses. Any other number is your point: rolling it again wins, rolling a 7 loses.
+Win: Win {goal} rounds.
+
 ## Lane Rush [lane]
 Category: More skill
 Play: Swipe to change lanes and dodge traffic.
 Win: Reach 1,000 m first.
+
+## Little Wheel [rl]
+Category: More luck
+Play: Pick 8 numbers, a group of 8, or green 0, then spin.
+Win: {goal} hits, or hit green 0 for an instant win.
+Super Chaos Play: Pick 8 numbers, a group of 8, or green 0, then spin.
+Super Chaos Win: {goal} hits, or hit green 0 for an instant win.
 
 ## Mini Golf [golf]
 Category: More skill
@@ -228,13 +235,6 @@ Win: Reach {target} first.
 Category: More brain
 Play: Claim an edge of the honeycomb. Random edges get blocked after each move.
 Win: Have the longest unbroken road. The square ends early once the other player can no longer catch up.
-
-## Roulette [rl]
-Category: More luck
-Play: Bet on 8 numbers, a group of 8, or green 0, then spin.
-Win: {goal} hits, or hit green 0 for an instant win.
-Super Chaos Play: Bet on 8 numbers, a group of 8, or green 0, then spin.
-Super Chaos Win: {goal} hits, or hit green 0 for an instant win.
 
 ## Scoop Stack [scoop]
 Category: More skill
