@@ -35,7 +35,7 @@ export function renderLogin(gated) {
       <div class="ttl"><b>Log in</b><small>Signed in</small></div></div>
     <div class="setup-box"><div class="searching" role="status" aria-live="polite"><div class="spinner" aria-hidden="true">${toon('X')}${toon('O')}</div><h2>Logging you in…</h2></div></div></main>`;
   }
-  const msg = loginMsg ? `<div class="${loginMsg.ok ? 'status ok' : 'warn'}" role="status">${esc(loginMsg.text)}</div>` : '';
+  const msg = loginMsg ? `<div class="${loginMsg.ok ? 'status ok' : 'warn'}" role="status">${esc(loginMsg.text)}${loginMsg.code ? `<small class="ecode">Error code: ${esc(loginMsg.code)}</small>` : ''}</div>` : '';
   const off = loginBusy ? ' disabled' : '';
   return `<main class="scr setup acct-scr">
     <div class="bar">${gated ? '' : `<button class="back" data-act="menu" aria-label="Back to the main menu">${CHEV}Menu</button>`}

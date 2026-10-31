@@ -5,6 +5,7 @@
 // Before asking, it checks that
 //   - main is behind staging only (production never has a commit staging lacks),
 //   - this checkout is at staging's tip and clean, and the unit tests pass here (npm test),
+//   - production's sign-in settings are right (scripts/smoke-login.js: Google and email on, the domains; Apple off warns),
 //   - the staging deploy of that commit went through (its Deploy run on GitHub: tests, deploy, live check).
 // Then it lists what goes out and asks you to type "release". Nothing else ever deploys to production.
 // DEPLOY_REMOTE=<remote> uses another remote (default: origin).
@@ -40,6 +41,8 @@ const ask = q => new Promise(res => { const rl = readline.createInterface({ inpu
   console.log('Unit tests (npm test)…');
   if (spawnSync('npm', ['test', '--silent'], { stdio: ['ignore', 'ignore', 'inherit'] }).status !== 0) fail('The tests failed: nothing released.');
   console.log('Unit tests passed.');
+  const login = spawnSync('node', [require('node:path').join(__dirname, 'smoke-login.js'), 'production'], { stdio: 'inherit' });   // production's sign-in settings (Google, Apple, email)
+  if (login.status !== 0) fail('Production\'s login check failed (above): nothing released.');
   const run = await stagingRun(staging);
   if (run.state === 'success') console.log(`Staging deploy of ${staging.slice(0, 7)} went through: ${run.url}`);
   else if (run.state === 'unknown') console.log(`(Could not check the staging deploy of ${staging.slice(0, 7)}: ${run.why}. Check it on GitHub before confirming.)`);

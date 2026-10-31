@@ -161,7 +161,7 @@ Run these on the Mac, or as the cloud build's steps.
 - [ ] Bundle ID chosen and registered (Identifiers), with Sign in with Apple and Associated Domains capabilities
 - [ ] `scripts/app-config.js` filled in (Team ID, bundle ID); deployed; `/.well-known/apple-app-site-association` answers on tictacchaos.com and staging
 - [ ] Firebase: iOS app added to production (and staging); `GoogleService-Info.plist` downloaded
-- [ ] Firebase: Apple provider enabled (Services ID and key for the web); "Continue with Apple" works on staging's web page
+- [ ] Firebase: Apple provider enabled in both projects (`docs/login-setup.md`: Services ID, key, then the provider); `node scripts/smoke-login.js production` says Apple is on
 - [ ] Privacy policy page live (written: `privacy.html`, a draft to review; linked in the game) and named in App Store Connect
 - [ ] In-app account deletion built and tested (done, server and page; Apple token revocation still to add)
 - [ ] Email verification for email-and-password accounts (done: Find Match, hosting and the username need a proved email)
@@ -180,6 +180,27 @@ Run these on the Mac, or as the cloud build's steps.
 - [ ] Icon (1024×1024), launch screen and screenshots (section 6)
 - [ ] Production build: `npm run build:app` → `npx cap sync ios` → Xcode Archive → upload (or the cloud build's upload)
 - [ ] TestFlight: internal testers added; the build processed and installed; a full match web ↔ iOS played
+
+### Login checklist (every build sent to TestFlight)
+
+Run on the simulator (staging build: `npm run ios:build -- staging --run`) and on a phone with the TestFlight build
+(production). Logging in can't be checked automatically in the app (`scripts/smoke-login.js` covers the projects'
+settings, `scripts/smoke-browser.js` the web's Google window), so do it by hand, before uploading:
+
+- [ ] `npm run ios:build` printed `GoogleService-Info.plist: … (project tic-tac-chaos)` (or `tic-tac-chaos-staging`
+      for staging), and Xcode → App → Build Phases → Copy Bundle Resources lists `GoogleService-Info.plist`
+- [ ] Info.plist's URL Types hold the plist's `REVERSED_CLIENT_ID` (`com.googleusercontent.apps.475136918613-…` for
+      production); Signing & Capabilities shows **Sign in with Apple** and **Associated Domains**
+- [ ] `node scripts/smoke-login.js production` (and `staging`): all `ok`, Apple included
+- [ ] Continue with Google: Google's sheet opens, pick an account, the app reaches the username screen or the menu
+- [ ] Continue with Apple: Apple's sheet opens (Face ID / passcode), the app reaches the username screen or the menu
+- [ ] Email: a wrong password says "Wrong email or password."; the right one logs in
+- [ ] Log out, then in again with each; close and reopen the app: still logged in
+- [ ] Cancel each sheet: no message at all
+- [ ] Any failure: the message names the way and an **Error code**; the full error is in Safari → Develop → [the
+      simulator or phone] → the app → Console (`[login]` lines) and on the admin's Playtest page (the device's `login`
+      errors). `not-enabled` = the plist was not built in; `auth/operation-not-allowed` = the provider is off in Firebase
+      (`docs/login-setup.md`); `1000` = the Apple capability is missing or the device has no Apple ID signed in.
 
 ## 6. App icon, launch screen and screenshots
 

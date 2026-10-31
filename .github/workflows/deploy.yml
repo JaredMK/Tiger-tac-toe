@@ -151,6 +151,10 @@ jobs:
           exit 1
       - name: Sign-in from the game's domains (Authentication, authorized domains)
         run: node scripts/auth-domains.js
+      - name: "Login: Google, Apple and email sign-in on, the authorized domains, an email sign-in on staging (Apple off is a warning)"
+        env:
+          STAGING_TEST_PASSWORD: ${{ secrets.STAGING_TEST_PASSWORD }}
+        run: node scripts/smoke-login.js "$TARGET"
       - name: Check the live site, functions and rules
         env:
           DEPLOYED: ${{ steps.what.outputs.only }}

@@ -4,7 +4,7 @@ import { NET_MS, call, configured, connectStep, fb, loadFirebase, setConnectWhy 
 import { enterMatched, holdResume, search, startSearch, stopSearch } from './matchmaking.js';
 import { hostRoom } from './room.js';
 import { fetchReleases } from './releases.js';
-import { flushLocal, pendingLocal, track } from './tracking.js';
+import { devError, flushLocal, pendingLocal, track } from './tracking.js';
 import { commit, save, setMenuNote, state } from '../ui/app.js';
 import { KEY } from '../ui/config.js';
 import { applyAccountPrefs } from '../ui/settings.js';
@@ -84,7 +84,9 @@ export function finishLogin() {
   const go = loginPending();
   loginPending(null);
   if (fb && fb.redirectError) {
-    const msg = authError(fb.redirectError);
+    const how = /apple/.test(JSON.stringify((fb.redirectError && fb.redirectError.customData) || {})) ? 'apple' : 'google';   // (the web's redirect: Google, or Apple)
+    logAuthError(fb.redirectError, how);
+    const msg = authError(fb.redirectError, how);
     fb.redirectError = null;
     if (msg && !(acct.user)) { loginMsg = msg; state.screen = 'login'; save(); return; }
   }
@@ -163,22 +165,44 @@ export async function needAccount(next) {
   else if (loggedIn()) { afterAccount(); return false; }
   return false;
 }
-function authError(e) {
-  const c = String((e && e.code) || '');
-  if (/popup-closed|cancelled-popup/.test(c)) return null;
+// What a failed sign-in says, by its code: the Firebase SDK's (auth/...), or the app's native sheet's (the Capacitor
+// plugin's message, Apple's AuthorizationError number). Each way of logging in names itself; nothing is ever only
+// "Try again" without the code beside it. Every failure is logged in full first (logAuthError).
+const PROVIDER_NAME = { google: 'Google', apple: 'Apple' };
+export function authError(e, how) {
+  const c = String((e && e.code) || ''), m = String((e && e.message) || (typeof e === 'string' ? e : '')), both = c + ' ' + m;
+  const who = PROVIDER_NAME[how], other = how === 'apple' ? 'Google or email' : how === 'google' ? 'Apple or email' : 'Google or Apple';
+  if (/popup-closed|cancelled-popup|user-cancel/.test(c) || (who && /canceled|cancelled|\b1001\b/i.test(both))) return null;   // (closed without signing in: nothing to say)
   if (/popup-blocked/.test(c)) return { text: 'Your browser blocked the sign-in window. Allow pop-ups for this site and try again.' };
   if (/invalid-email/.test(c)) return { text: "That email address doesn't look right." };
-  if (/user-not-found|wrong-password|invalid-credential|invalid-login/.test(c)) return { text: 'Wrong email or password.' };
+  if (!who && /user-not-found|wrong-password|invalid-credential|invalid-login/.test(c)) return { text: 'Wrong email or password.' };
   if (/email-already-in-use/.test(c)) return { text: 'There is already an account with that email: log in instead.' };
   if (/weak-password/.test(c)) return { text: 'Use a password of at least 6 characters.' };
   if (/missing-password/.test(c)) return { text: 'Enter a password.' };
   if (/too-many-requests/.test(c)) return { text: 'Too many tries. Wait a minute, then try again.' };
+  if (/user-disabled/.test(c)) return { text: 'This account has been switched off.' };
   if (/network/.test(c)) return { text: 'No connection. Check your internet and try again.' };
   if (/account-exists-with-different-credential/.test(c)) return { text: 'That email already has an account with another way of logging in.' };
-  if (/operation-not-allowed|unauthorized-domain|invalid-oauth/.test(c)) return { text: "That way of logging in isn't available yet. Use another." };
-  if (/canceled|cancelled|1001/.test(c + ' ' + String((e && e.message) || ''))) return null;   // (the app's native sheet closed without signing in)
-  const why = window.TTC_ENV && window.TTC_ENV.staging ? ` (${c || (e && e.name) || 'error'}: ${String((e && e.message) || e).slice(0, 140)})` : '';   // (staging only: what failed, for a tester with no developer tools)
-  return { text: "Couldn't log in. Try again." + why };
+  if (/web-storage-unsupported/.test(c)) return { text: "This browser won't keep the sign-in (private browsing?). Try another browser, or log in with email." };
+  // Not set up: the provider off in Firebase (operation-not-allowed), the app built without its Firebase file (the
+  // plugin's "provider is not enabled": GoogleService-Info.plist missing from the app), or the plugin missing.
+  if (who && /provider is not enabled|not configured|No Firebase App/i.test(m)) return { text: `${who} sign-in isn't set up in this version of the app yet. Use ${other} for now.`, code: c || 'not-enabled' };
+  if (who && /UNIMPLEMENTED|not implemented/i.test(both)) return { text: `This version of the app can't log in with ${who}. Update the app, or use ${other}.`, code: c || 'unimplemented' };
+  if (/operation-not-allowed|admin-restricted-operation/.test(c)) return { text: who ? `${who} sign-in isn't set up yet. Use ${other} for now.` : "Email login isn't available right now. Use Google or Apple.", code: c };
+  if (/unauthorized-domain/.test(c)) return { text: "Logging in isn't allowed from this address yet.", code: c };
+  if (/invalid-oauth|invalid-api-key|app-not-authorized|argument-error/.test(c)) return { text: `${who || 'This'} sign-in is set up wrongly. Use ${other} for now.`, code: c };
+  if (how === 'apple' && /\b1000\b|AuthorizationError/.test(both)) return { text: "Apple sign-in couldn't start. Check you're signed in with your Apple ID in Settings, or use Google or email.", code: c || '1000' };
+  if (who && /invalid-credential|invalid-idp-response|missing-or-invalid-nonce/.test(c)) return { text: `${who} didn't accept the sign-in. Try again, or use ${other}.`, code: c };
+  if (who && /internal-error/.test(c)) return { text: `Couldn't start ${who} sign-in. Check your connection (or a content blocker), then try again.`, code: c };
+  const why = window.TTC_ENV && window.TTC_ENV.staging ? `: ${m.slice(0, 140)}` : '';   // (staging: the whole message too, for a tester with no developer tools)
+  return { text: "Couldn't log in. Try again.", code: (c || (e && e.name) || 'error') + why };
+}
+// Every failed sign-in in full: the console (Safari's Web Inspector on the app), and the device's log for the admin's
+// playtest page (devError: kind "login"), with the way, the code, the name and the message.
+function logAuthError(e, how) {
+  const c = String((e && e.code) || ''), m = String((e && e.message) || e || '');
+  try { console.error('[login]', how, { code: c, name: e && e.name, message: m, customData: e && e.customData, error: e }); } catch (x) { /* (never in the way) */ }
+  try { devError('login', `${how} ${c || (e && e.name) || '-'} ${m}`); } catch (x) { /* (best effort: the log needs a connection) */ }
 }
 export async function loginWith(how) {
   if (loginBusy) return;
@@ -201,7 +225,7 @@ export async function loginWith(how) {
     else if (how === 'create') { const c = await A.createUserWithEmailAndPassword(fb.auth, loginMail, loginPass); A.sendEmailVerification(c.user).catch(() => {}); }   // (the address is proved before Find Match, hosting or a username: "Verify your email" next)
     else await A.signInWithEmailAndPassword(fb.auth, loginMail, loginPass);
     loginPass = '';
-  } catch (e) { loginMsg = authError(e); }
+  } catch (e) { logAuthError(e, how); loginMsg = authError(e, how); }
   loginBusy = false; render();
 }
 export async function loginReset() {
