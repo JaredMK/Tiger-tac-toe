@@ -34,7 +34,7 @@ import { fxAt, startFx } from '../ui/fx.js';
 import { render } from '../ui/render.js';
 import { repStart, repStop } from '../ui/replay.js';
 import { noteNet } from '../ui/turnbar.js';
-import { cpuTurn, playFlash, turnBuzz } from '../ui/turns.js';
+import { cpuTurn, playFlash, turnAlert } from '../ui/turns.js';
 
 const REPLAY_MAX = 6;                              // at most this many missed moves are played back after a time away
 export let net = { status: 'idle', msg: '' };             // 'idle' | 'connecting' | 'waiting' | 'connected' | 'error'
@@ -287,7 +287,7 @@ export function showLatest(st) {
   if (!state.winner && state.lock != null && state.turn === o.me) { state.screen = 'mini'; state.zoom = state.lock; }   // our bonus move
   if (state.screen === 'mini' && state.zoom == null) state.screen = 'board';
   sayMissed(st);
-  turnBuzz();                                                     // (the turn come round here without a replay: a missed turn, a move while away)
+  turnAlert();                                                    // (the turn come round here without a replay: a missed turn, a move while away)
   save(); render();
 }
 // A turn's time ran out (core/board.js timeoutMove): both phones say so once (the record's timer.miss).

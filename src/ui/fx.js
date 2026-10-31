@@ -13,9 +13,9 @@ import { oddPre } from '../games/oddone/view.js';
 import { TRIVIA } from '../games/trivia/rules.js';
 import { triviaPre } from '../games/trivia/view.js';
 import { SND } from '../audio/sound.js';
-import { haptic } from '../net/platform.js';
 import { REDUCED, WAAPI, app, state } from './app.js';
 import { attPre } from './attention.js';
+import { claimHaptic } from './haptics.js';
 import { shownSq } from './chaos.js';
 import { BOARD_BURST } from './board.js';
 import { fingPre } from './finger.js';
@@ -184,7 +184,8 @@ export function stampFx(elapsed) {                                   // elapsed:
   startFx('stamp', state.stampId, elapsed ? performance.now() - elapsed : undefined);
   if (elapsed > 200) return;
   SND.play('stamp'); SND.play('burst', { at: BOARD_BURST[0] / 1000 / ANIM.speed }); SND.play('burst', { at: BOARD_BURST[1] / 1000 / ANIM.speed });
-  haptic('claim');                                                   // (the app: one buzz with the stamp)
+  claimHaptic(state.squares[state.stamp] && state.squares[state.stamp].owner);   // (one buzz with the stamp: claimed, or lost to the other side: ui/haptics.js)
   const sq = app.querySelector(`.board .sq:nth-child(${state.stamp + 1})`);
   setTimeout(() => { shake(state.winner ? 1.3 : 1); confetti(state.winner ? 40 : 18, sq && sq.isConnected ? sq : null); }, 120 / ANIM.speed);   // (as the mark lands)
+  return true;                                                       // (stamped now, with its sound and buzz: turns.js turnAlert waits for it)
 }

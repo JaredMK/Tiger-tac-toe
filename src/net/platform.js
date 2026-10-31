@@ -63,12 +63,25 @@ export async function copyText(text) {
   if (cb) { await cb.write({ string: text }); return; }
   await navigator.clipboard.writeText(text);
 }
-// A buzz under the finger: the app's Haptics plugin, or a phone browser's vibration (navigator.vibrate, where it has one:
-// not Safari). 'tap' a square opened, 'claim' a square stamped on the board, 'win' and 'loss' the match's end, 'turn'
-// an online match's turn coming to this phone. Each fires once, from its event (the click handler's tap, fx.js stampFx,
-// turns.js toWin and turnBuzz), never from a render; none at all with Settings' Vibration off (vibOn).
-const HAPTIC_IMPACT = { tap: 'LIGHT', claim: 'HEAVY', turn: 'MEDIUM' }, HAPTIC_NOTE = { win: 'SUCCESS', loss: 'ERROR' };
-const WEB_VIBE = { tap: 8, claim: 30, turn: [25, 60, 25], win: [40, 50, 90], loss: 140 };   // (ms: a browser's buzz is all or nothing, so length stands for strength)
+// A buzz under the finger: the app's Haptics plugin (its distinct styles), or a phone browser's vibration
+// (navigator.vibrate, where it has one; nothing where it has not, as Safari). The kinds (the moments: ui/haptics.js):
+//   'tap'     light impact: a move made on this phone (a mark placed, a card turned, a letter guessed), a square opened
+//   'medium'  medium impact: a result landing (a die, a spin, a hit, a bump), a square claimed on the board
+//   'success' the success pattern: a mini-game won;   'win' a heavy impact then success: the match won
+//   'error'   the error pattern: a refused move, a bust or crash, a square lost;   'loss' the same: the match lost
+//   'turn'    two quick pulses: the turn coming to this player (ui/turns.js turnAlert)
+// Each fires once, from its event (the sound's and the animation's), never from a render; none at all with Settings'
+// Vibration off (vibOn). Short, and thinned in rapid play: within 70 ms of a buzz as strong or stronger, none.
+const HAPTIC = {
+  tap: [['impact', 'LIGHT']], medium: [['impact', 'MEDIUM']], claim: [['impact', 'MEDIUM']],
+  success: [['notification', 'SUCCESS']], win: [['impact', 'HEAVY'], ['notification', 'SUCCESS', 120]],
+  error: [['notification', 'ERROR']], loss: [['notification', 'ERROR']],
+  turn: [['impact', 'MEDIUM'], ['impact', 'MEDIUM', 110]],
+};
+const WEB_VIBE = { tap: 8, medium: 18, claim: 18, success: [20, 50, 30], win: [40, 50, 90], error: [45, 40, 45], loss: [70, 50, 70], turn: [22, 80, 22] };   // (ms: a browser's buzz is all or nothing, so length stands for strength)
+const HAPTIC_RANK = { tap: 1, medium: 2, claim: 2, success: 3, error: 3, win: 4, loss: 4, turn: 3 };
+export const HAPTIC_GAP_MS = 70;
+let lastBuzz = { at: -1e9, rank: 0 };
 const VIB_KEY = KEY + '.vib';
 export let vibOn = (() => { try { return localStorage.getItem(VIB_KEY) !== 'off'; } catch (e) { return true; } })();
 export function setVibOn(on) { vibOn = !!on; try { localStorage.setItem(VIB_KEY, vibOn ? 'on' : 'off'); } catch (e) { /* no storage: this visit */ } }
@@ -76,15 +89,20 @@ const webVibe = () => !NATIVE && typeof navigator !== 'undefined' && typeof navi
 // Whether this device can buzz at all (Settings shows Vibration only then): the app, or a browser with vibration.
 export function canVibrate() { return !!plugin('Haptics') || webVibe(); }
 export function haptic(kind) {
-  if (!vibOn) return false;
+  if (!vibOn || !HAPTIC[kind]) return false;
+  const now = Date.now(), rank = HAPTIC_RANK[kind];
+  if (now - lastBuzz.at < HAPTIC_GAP_MS && lastBuzz.rank >= rank) return false;   // (rapid play: one buzz, not a hum)
+  lastBuzz = { at: now, rank };
   const h = plugin('Haptics');
   try {
     if (h) {
-      const p = HAPTIC_NOTE[kind] ? h.notification({ type: HAPTIC_NOTE[kind] }) : h.impact({ style: HAPTIC_IMPACT[kind] || 'MEDIUM' });
-      if (p && p.catch) p.catch(() => {});
+      for (const [how, v, after] of HAPTIC[kind]) {
+        const go = () => { const p = how === 'notification' ? h.notification({ type: v }) : h.impact({ style: v }); if (p && p.catch) p.catch(() => {}); };
+        if (after) setTimeout(go, after); else go();
+      }
       return true;
     }
-    if (webVibe()) return navigator.vibrate(WEB_VIBE[kind] || 20) !== false;
+    if (webVibe()) return navigator.vibrate(WEB_VIBE[kind]) !== false;
   } catch (e) { /* (a buzz is never worth an error) */ }
   return false;
 }

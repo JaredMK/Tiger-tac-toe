@@ -4,6 +4,7 @@ import { playerName } from '../core/match.js';
 import { SND, backSounds, matchEndSound, moveSounds } from '../audio/sound.js';
 import { mmIntro } from '../net/matchmaking.js';
 import { haptic } from '../net/platform.js';
+import { cutHaptics, moveHaptics, mySide } from './haptics.js';
 import { applyPending } from '../net/room.js';
 import { ANIM, holdRate, moveRate, replaySpeed, speedMode } from '../core/timer.js';
 import {
@@ -24,19 +25,25 @@ import { endKind } from './screens/win.js';
 export function cpuTurn() { return !!state.cpu && state.cpu.includes(state.turn) && !state.winner && ['board', 'mini'].includes(state.screen); }   // (on any other screen the match waits)
 // Runs after every render: arms the computer's next step whenever it is its turn and nothing else is going on.
 let thinking = false;                                          // its move is being worked out (the Hard computer's worker, ui/think.js): no second question meanwhile
-// An online match's turn coming to this phone: one short buzz (Settings' Vibration, net/platform.js haptic), only while
-// the game is in front, once per turn, and only on a change (the first look at a match, a reload, a bonus move: none).
-// From the event that hands the turn over: the end of the other side's replay (dismissFlash), or the record moving on
-// without one (net/room.js showLatest: a turn missed, a move made while away).
+// The turn coming to this player: a short double pulse (Settings' Vibration) and a soft chime (`yourTurn`, Settings'
+// Sound), only while the game is in front, once per turn, and only on a change (the first look at a match, a reload,
+// a reconnect, a bonus move: none). Online, and against the computer once its move has played (never two people on one
+// phone). From the event that hands the turn over: the end of the other side's replay (dismissFlash, with the turn as
+// it was before), or the record moving on without one (net/room.js showLatest: a turn missed, a move made while away).
 let turnSeen = { id: null, turn: null };
-export function turnBuzz() {
-  const o = state.online;
-  if (!o || !o.me || state.flash || state.spot) return;            // (a replay still to play: the turn is not this phone's yet)
-  const id = o.matchId || o.game || o.code || null, was = turnSeen.id === id ? turnSeen.turn : undefined;
+export const TURN_AFTER_STAMP_MS = 450;                            // (a square stamped just now: the alert once its thump has landed, never on top of it)
+export function turnAlert(prev, stamped) {
+  const o = state.online, me = mySide();
+  if (!me || state.flash || state.spot) return;                      // (a replay still to play: the turn is not this player's yet)
+  const id = o ? o.matchId || o.game || o.code || null : 'cpu:' + (state.id || ''), was = turnSeen.id === id ? turnSeen.turn : !o && prev ? prev : undefined;
   turnSeen = { id, turn: state.winner ? null : state.turn };
-  if (was === undefined || was === o.me || turnSeen.turn !== o.me) return;
-  if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
-  haptic('turn');
+  if (was === undefined || was === me || turnSeen.turn !== me) return;
+  const go = () => {
+    if (state.winner || state.turn !== me || (typeof document !== 'undefined' && document.visibilityState === 'hidden')) return;
+    SND.play('yourTurn');
+    haptic('turn');
+  };
+  if (stamped) setTimeout(go, TURN_AFTER_STAMP_MS / ANIM.speed); else go();
 }
 export function scheduleCpu() {
   clearTimeout(cpuTimer); setCpuTimer(null);
@@ -138,7 +145,9 @@ export function playFlash(played, speed, holdMax, holdAt, elapsed) {
   clearTimeout(flashTimer); setFlashTimer(setTimeout(dismissFlash, ms + hold)); flashEnds = Date.now() + ms + hold;   // (first: the result always clears, whatever its sounds do)
   if (!played && !(el > 0)) {                        // its sounds, kept as the move's (a tap that finishes it silences them: SND.cut)
     const was = SND.scope; if (was == null) SND.scope = f;
-    try { for (const [n, at, rate] of moveSounds(f)) SND.play(n, { at: at / 1000 / sp, rate }); } finally { SND.scope = was; }
+    const sounds = moveSounds(f);
+    try { for (const [n, at, rate] of sounds) SND.play(n, { at: at / 1000 / sp, rate }); } finally { SND.scope = was; }
+    moveHaptics(f, sounds, sp);                       // (a move made here: its buzzes at its sounds' moments, Vibration or not muted alike: ui/haptics.js)
   }
   if (sp !== 1 && !played) flashRate(f, sp);
   clearTimeout(momentTimer); momentTimer = null; moment = null;
@@ -178,7 +187,7 @@ export function skipFlash() {
   const f = state.flash;
   if (!f || fxAt('move', f) == null) return;
   const sp = (fx.move && fx.move.rate) || 1, hr = Math.max(sp, ANIM.speed);
-  SND.cut(f);
+  SND.cut(f); cutHaptics();
   startFx('move', f, performance.now() - animMs(f) * Math.max(1, sp));   // (past its end at any speed)
   fx.move.rate = sp; fx.move.end = performance.now(); fx.move.quiet = true;
   if (moment) moment();                                // (its big moment lands with it)
@@ -216,11 +225,11 @@ export function dismissFlash() {
   }
   if (hold && state.done) { startFx('back', state.done); if (!quiet) SND.play('flipDown'); }   // the two cards turning back over
   else if (!quiet) backSounds(from);
-  stampFx();
-  turnBuzz();
+  const stamped = stampFx();
+  turnAlert(from.turn, stamped);
   commit();
   if (hold && state.done) {
     clearTimeout(holdTimer);
-    setHoldTimer(setTimeout(() => { if (state.done && !state.flash && leaveSquare(state)) { if (!quiet) backSounds(from); stampFx(); turnBuzz(); commit(); } applyPending(); }, FLIP_MS / ANIM.speed));
+    setHoldTimer(setTimeout(() => { if (state.done && !state.flash && leaveSquare(state)) { if (!quiet) backSounds(from); turnAlert(from.turn, stampFx()); commit(); } applyPending(); }, FLIP_MS / ANIM.speed));
   } else applyPending();                        // online: the room may have moved on meanwhile
 }

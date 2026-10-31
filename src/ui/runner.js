@@ -7,6 +7,7 @@ import { FLAP } from '../games/flap/rules.js';
 import { drawFlap } from '../games/flap/view.js';
 import { drawLane } from '../games/lane/view.js';
 import { SND, ownPress } from '../audio/sound.js';
+import { haptic } from '../net/platform.js';
 import { FIREBASE_CONFIG, configured } from '../net/connect.js';
 import { attemptMove } from '../net/moves.js';
 import { blocked } from '../net/room.js';
@@ -123,8 +124,8 @@ function runFrame(now) {
     runHud(rd.sim, rd.p, Infinity);
     if (rd.sim.t >= 1.6 && !rd.hintGone) { rd.hintGone = true; const h = app.querySelector('.rhint'); if (h) h.remove(); }
     const left = clockLeft();
-    if (rd.sim.crash) { rd.phase = 'crash'; rd.at = now; runRotor(false); SND.play('crash'); }
-    else if (rd.sim.done) { rd.phase = 'finish'; rd.at = now; SND.play('sparkle'); }
+    if (rd.sim.crash) { rd.phase = 'crash'; rd.at = now; runRotor(false); SND.play('crash'); haptic('error'); }   // (this phone's own run: its buzz with its sound)
+    else if (rd.sim.done) { rd.phase = 'finish'; rd.at = now; SND.play('sparkle'); haptic('medium'); }
     else if (left != null && left <= 0) { runEnd(true); return; }                 // the turn's time ran out mid-run: it ends here, the distance saved
   } else if (now - rd.at >= (rd.phase === 'crash' ? 700 : 500)) { runEnd(false); return; }   // the tumble, the spin-out or the flourish has played
   const cv = app.querySelector('canvas[data-run="cv"]');

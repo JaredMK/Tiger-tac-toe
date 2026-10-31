@@ -37,7 +37,8 @@ Sounds start from the events they belong to, never from drawing the screen: a re
 | Sound | When it plays | How it is made |
 |---|---|---|
 | `spot` | The opponent's or computer's square lights up before its move (Super Chaos: in the round's recap) | Two soft sines that swell in |
-| `turn` | The turn passes to the other player (Super Chaos: a new round begins) | Boing: sine glide 260→620 Hz, then a small blip |
+| `yourTurn` | The turn comes to this player (online, and against the computer once its move has played), with a double-pulse haptic | Synthesised (CC0, made in code): a soft rising fifth, sine 659 then 988 Hz with quiet octaves, about 0.3 s |
+| `turn` | The turn passes to the other player (to this player: `yourTurn` instead) (Super Chaos: a new round begins) | Boing: sine glide 260→620 Hz, then a small blip |
 | `stamp` | A square is claimed (the owner's mark stamps in; Super Chaos: in the round's recap) | Low thump: sine 130→55 Hz with lowpass noise |
 | `burst` | A comic burst pops round a square just claimed on the board. *Varied.* | Noise plus glide 900→1800 Hz |
 | `reset` | A square resets after a draw (Super Chaos: also a square both players won in the same round) | Falling tone 520→240 Hz with low noise |

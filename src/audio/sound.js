@@ -3,10 +3,12 @@
 import { ANIM, playMs } from '../core/timer.js';
 import { viewOf } from '../games/index.js';
 import { search } from '../net/matchmaking.js';
+import { haptic } from '../net/platform.js';
 import { state } from '../ui/app.js';
 import { KEY } from '../ui/config.js';
 import { shownSq } from '../ui/chaos.js';
 import { hexLen } from '../ui/fx.js';
+import { mySide } from '../ui/haptics.js';
 import { endKind } from '../ui/screens/win.js';
 
 /* ===================== sound =====================
@@ -75,6 +77,7 @@ def('join', 0.36, (c, d, t) => { sfxTone(c, d, t, 523, .15, { vol: .4, type: 'tr
 def('found', 0.55, (c, d, t) => [523, 659, 784, 1046].forEach((f, i) => sfxTone(c, d, t + i * .07, f, .22, { vol: .35, type: 'triangle' })), { level: .6 });
 // ---- the board
 def('spot', 0.4, (c, d, t) => { sfxTone(c, d, t, 880, .36, { vol: .25, att: .12 }); sfxTone(c, d, t, 1320, .28, { vol: .1, att: .12 }); }, { level: .4 });
+def('yourTurn', 0.32, (c, d, t) => { sfxTone(c, d, t, 659, .2, { vol: .3, att: .008 }); sfxTone(c, d, t, 1318, .1, { vol: .05, att: .006 }); sfxTone(c, d, t + .09, 988, .22, { vol: .28, att: .008 }); sfxTone(c, d, t + .09, 1976, .1, { vol: .04, att: .006 }); }, { level: .38 });   // your turn: a soft rising fifth, bell-like (ui/turns.js turnAlert)
 def('turn', 0.42, (c, d, t) => { sfxTone(c, d, t, 260, .24, { to: 620, vol: .5, att: .01 }); sfxTone(c, d, t + .18, 900, .2, { vol: .2, type: 'triangle' }); }, { level: .5 });
 def('stamp', 0.42, (c, d, t) => { sfxTone(c, d, t, 130, .38, { to: 55, vol: .9, att: .002 }); sfxNoise(c, d, t, .12, { f: 500, filter: 'lowpass', vol: .6, att: .002 }); }, { level: .9 });
 def('burst', 0.1, (c, d, t) => { sfxNoise(c, d, t, .07, { f: 1600, q: .7, vol: .5 }); sfxTone(c, d, t, 900, .1, { to: 1800, vol: .35, type: 'triangle' }); }, { level: .5, vary: true });
@@ -323,6 +326,7 @@ SND.loop = function (name) {
 };
 // Starts a sound now (or `o.at` seconds later). Nothing plays while muted, or before audio is unlocked.
 SND.play = function (name, o = {}) {
+  if (name === 'error') haptic('error');                           // (a refused move: the error buzz with its sound, the sound on or off)
   if (ANIM.mode === 'speed' && SFX[name + '_s']) name += '_s';     // (Speed: its snappier take)
   const s = SFX[name], b = SND.bufs[name];
   if (!s || (!b && !s.live) || SND.muted || !SND.ensure(false)) return;
@@ -389,7 +393,7 @@ export function moveSounds(f) {
 export function matchEndSound() { const k = endKind().list; return k === 'win' ? 'winFanfare' : k === 'loss' ? 'loss' : 'tie'; }
 // The board comes back after a move: the turn passed to the other player (no whoosh out of the square).
 export function backSounds(from) {
-  if (!state.winner && state.turn !== from.turn) SND.play('turn');
+  if (!state.winner && state.turn !== from.turn && !(mySide() && state.turn === mySide())) SND.play('turn');   // (the turn come to this player: their own chime instead, ui/turns.js turnAlert)
 }
 
 // Its listeners: main.js calls this once, in the page's original order of listeners.
