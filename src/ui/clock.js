@@ -1,6 +1,6 @@
 // The turn clock on screen: one deadline a turn, counted the same on both phones; timeouts.
 import { applyOnlineTimeout } from '../core/records.js';
-import { armClock, clockDeadline, turnLimit } from '../core/timer.js';
+import { armClock, clockDeadline, clockLeft as timesLeft, matchClock, turnLimit } from '../core/timer.js';
 import { SND } from '../audio/sound.js';
 import { call, connected, fb, serverNow } from '../net/connect.js';
 import { fireTimeoutMM, isMM, search } from '../net/matchmaking.js';
@@ -22,6 +22,8 @@ export function clockText() {
   if (left == null) return state.timer && state.timer.limit ? fmtClock(turnLimit(state.timer) * 1000) : '';
   return fmtClock(left);
 }
+// A match clock's two times left now (ms), both phones counting the same from the record (server time); null without one.
+export function matchLeft() { return matchClock(state.timer) ? timesLeft(state.timer, serverNow()) : null; }
 export function fmtClock(ms) { const sec = Math.ceil(ms / 1000); return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`; }
 // The clock for the turn just started: the time limit, plus what the move just made takes to play
 // back, so the countdown is seen to begin once the animation is over.
@@ -38,6 +40,15 @@ export function tick() {
     el.classList.toggle('held', !!state.online && !connected);
     if (left != null && left <= 10000 && left > 0) { const sec = Math.ceil(left / 1000); if (sec !== tickSec) { tickSec = sec; SND.play(sec <= 3 ? 'tickLoud' : 'tickSoft'); } }
     else tickSec = null;
+  }
+  const ml = matchLeft();
+  if (ml) for (const p of ['X', 'O']) {                           // a match clock: both players' times, the one on the move counting down
+    const e = document.getElementById('pclk-' + p);
+    if (!e) continue;
+    const on = p === state.turn && !state.winner;
+    e.textContent = fmtClock(ml[p]);
+    e.classList.toggle('on', on); e.classList.toggle('low', on && ml[p] <= 30000); e.classList.toggle('held', !!state.online && !connected);
+    if (on && ml[p] <= 10000 && ml[p] > 0) { const sec = Math.ceil(ml[p] / 1000); if (sec !== tickSec) { tickSec = sec; SND.play(sec <= 3 ? 'tickLoud' : 'tickSoft'); } }
   }
   const wl = document.querySelector('.wband .wleft');
   if (wl) wl.textContent = fmtClock(clockLeft() || 0);          // the waiting band's countdown (board.js)

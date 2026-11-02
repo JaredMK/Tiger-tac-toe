@@ -5,14 +5,14 @@ import { restrictGames } from '../../core/games.js';
 import { CPU_NAME, NAME_MAX, dealable, enabledGames, normCpu, normLocal } from '../../core/match.js';
 import { LEVELS, LEVEL_NAME } from '../../core/aiw.js';
 import { acct, loggedIn } from '../../net/accounts.js';
-import { TIMER_OPTIONS } from '../../core/timer.js';
+import { CLOCK_INCS, CLOCK_MINS, TURN_SECS, setupSpec, specParts, timerLabel } from '../../core/timer.js';
 import { other } from '../../core/util.js';
 import { GAMES, INFO, SC_ONLY } from '../../games/index.js';
 import { connected } from '../../net/connect.js';
 import { noticeSeq } from '../../net/moves.js';
-import { chaosBadge, chaosVisible, scPicked, testBadge, visibleTypes } from '../../net/releases.js';
+import { chaosBadge, chaosVisible, scPicked, testBadge, timerDefault, visibleTypes } from '../../net/releases.js';
 import { dbSetup, isHost, net } from '../../net/room.js';
-import { TIMER_LABEL, advOpen, app, esc, save, state } from '../app.js';
+import { advOpen, app, esc, save, state } from '../app.js';
 import { CHEV, ICONS, toonT } from '../art.js';
 import { qBtn } from '../explainer.js';
 import { fxAt, fxAttr } from '../fx.js';
@@ -26,6 +26,17 @@ export const setupTypes = () => (chaosSetup() ? visibleTypes().filter(t => scTyp
 // The Mode selector, Super Chaos | Classic (Play Local, the host's room, Find Match): only where Super Chaos is open
 // to this player; its "?" explains Super Chaos.
 export const modeRow = sc => (!isHost() || chaosVisible() ? `<div class="timerrow scmode" role="group" aria-label="Mode"><span>Mode ${qBtn('mode', 'sm')}</span><button class="seg${sc ? ' on' : ''}" data-act="gmode" data-v="chaos" aria-pressed="${sc}">Super Chaos${isHost() ? chaosBadge() : ''}</button><button class="seg${sc ? '' : ' on'}" data-act="gmode" data-v="classic" aria-pressed="${!sc}">Classic</button></div>` : '');
+// The host's timer: no limit or the admin's Timer (Find Match's clock, the default); an admin host any of them, to test:
+// a time per turn (30 or 60 s) or a match clock (3, 5 or 10 minutes each, plus 0, 2 or 5 seconds a move).
+function timerRows(cur) {
+  const seg = (spec, label, on) => `<button class="seg${on ? ' on' : ''}" data-act="clock" data-v="${spec}" aria-pressed="${on}">${label}</button>`;
+  const row = (label, body) => `<div class="timerrow" role="group" aria-label="${label}"><span>${label}</span>${body}</div>`;
+  if (!acct.admin) return row('Timer', [...new Set(['off', timerDefault])].map(v => seg(v, timerLabel(v), cur === v)).join(''));
+  const p = specParts(cur), m = p.kind === 'match' ? p : { mins: 5, inc: 0 }, t = p.kind === 'turn' ? p.secs : 30;
+  return row('Timer', seg('off', 'No limit', p.kind === 'off') + seg('t' + t, 'Per turn', p.kind === 'turn') + seg(`m${m.mins}+${m.inc}`, 'Match clock', p.kind === 'match'))
+    + (p.kind === 'turn' ? row('Per turn', TURN_SECS.map(v => seg('t' + v, `${v} s`, t === v)).join('')) : '')
+    + (p.kind === 'match' ? row('Minutes', CLOCK_MINS.map(v => seg(`m${v}+${m.inc}`, `${v} min`, m.mins === v)).join('')) + row('Per move', CLOCK_INCS.map(v => seg(`m${m.mins}+${v}`, `+${v} s`, m.inc === v)).join('')) : '');
+}
 export function renderSetup() {
   const s = state.setup;
   const VT = setupTypes(), on = enabledGames(s).filter(t => VT.includes(t)).length;   // (an admin-only game does not exist here for anyone but the admin)
@@ -37,7 +48,7 @@ export function renderSetup() {
     ? `<div class="field"><span>Player 2 · friend</span><div class="namebox">${state.online.joined ? esc(s.names[p]) : '<i>not joined yet</i>'}</div></div>`
     : `<div class="field"><span>Player 1 · you</span><div class="namebox">${esc((acct.profile && acct.profile.username) || s.names[p] || 'You')}</div></div>`);   // (hosting needs an account: always its username)
   const chk = t => `<label class="chk${s.games[t] ? '' : ' off'}${dealable(t) ? '' : ' wait'}" title="${dealable(t) ? '' : `Loading its ${t === 'trivia' ? 'questions' : 'physics'}… (needs a connection the first time)`}"><input type="checkbox" data-t="${t}"${s.games[t] ? ' checked' : ''}>${ICONS[t]}<span>${INFO[t].name}</span>${testBadge(t)}${dealable(t) ? '' : '<i class="tst wait">Loading</i>'}${qBtn(t, 'sm')}</label>`;
-  const timer = host && !sc ? `<div class="timerrow" role="group" aria-label="Time per turn"><span>Time per turn</span>${TIMER_OPTIONS.map(v => `<button class="seg${(s.timer || 0) === v ? ' on' : ''}" data-act="timer" data-v="${v}">${TIMER_LABEL[v]}</button>`).join('')}</div>` : '';
+  const timer = host && !sc ? timerRows(setupSpec(s)) : '';
   const room = host ? `<div class="room"><small>Room code</small><b class="code">${esc(state.online.code)}</b>
       <div class="row"><button class="btn" data-act="share">Share invite</button><button class="btn" data-act="copy-invite">Copy invite</button></div>
       ${state.notice ? `<div class="notice" role="status"${fxAttr(fxAt('notice', noticeSeq))}>${esc(state.notice)}</div>` : ''}

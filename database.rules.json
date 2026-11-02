@@ -32,6 +32,9 @@
           "timer": {
             ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 600"
           },
+          "clock": {
+            ".validate": "newData.isString() && newData.val().matches(/^(off|t30|t60|m(3|5|10)\\+(0|2|5))$/)"
+          },
           "hostPick": {
             ".validate": "newData.isString() && (newData.val() == 'X' || newData.val() == 'O' || newData.val() == 'random')"
           },
@@ -595,6 +598,15 @@
         ".write": "auth != null && auth.token.admin === true",
         "$p": {
           ".validate": "$p.matches(/^(web|ios)$/) && newData.isString() && newData.val().matches(/^[0-9]{1,4}([.][0-9]{1,4}){0,2}$/)"
+        }
+      },
+      "timer": {
+        ".write": "auth != null && auth.token.admin === true",
+        "spec": {
+          ".validate": "newData.isString() && newData.val().matches(/^(off|t30|t60|m(3|5|10)\\+(0|2|5))$/)"
+        },
+        "$other": {
+          ".validate": false
         }
       },
       "anim": {

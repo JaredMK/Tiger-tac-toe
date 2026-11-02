@@ -30,7 +30,7 @@ const MODES = ['local', 'cpu', 'cvc', 'friend', 'match', 'bot', 'casual', 'ranke
 const CLIENT_MODES = ['local', 'cpu', 'cvc', 'chaos'];                 // the ones a phone reports; the server records the online ones itself
 const MAX_MS = 3 * 3600 * 1000;                                        // a match "lasting" longer was left and picked up again: no time for it
 const ENDS = ['won', 'draw', 'open'];
-const REASONS = ['line', 'blocked', 'majority', 'resign', 'timeout', 'both'];   // both: a line each in the same Super Chaos round (a draw)
+const REASONS = ['line', 'blocked', 'majority', 'resign', 'timeout', 'both', 'clock'];   // clock: a match clock run out (core/board.js timeoutMove), a finish like any other   // both: a line each in the same Super Chaos round (a draw)
 const ABANDONED = ['resign', 'timeout'];                                // a match given up (or left to run out its clock): abandoned, not finished
 
 const pad = n => String(n).padStart(2, '0');
@@ -94,6 +94,25 @@ function checkRun(r) {
   return out;
 }
 // What a match starting adds.
+// The online matches by their timer (the admin's Stats: completion and length, a time per turn against a match
+// clock): timers/{code}/... where code is core/timer.js timerSpec ('t30', 'm5+2'...). Started, finished, done (not
+// abandoned), resigned, two turns missed (timeouts), a match clock run out (clockOuts), turns and lengths.
+const TIMER_CODE = /^(off|t\d{1,3}|m\d{1,2}\+\d{1,2})$/;
+function timerStartUpdates(spec) { return TIMER_CODE.test(spec) ? { [`timers/${spec}/started`]: 1 } : {}; }
+function timerEndUpdates(spec, sum, ms) {
+  if (!TIMER_CODE.test(spec)) return {};
+  const b = `timers/${spec}/`, up = {}, add = (p, n) => { if (n) up[b + p] = (up[b + p] || 0) + n; };
+  const turns = sum.squares.reduce((n, e) => n + e.X + e.O, 0), timed = Number.isFinite(ms) && ms >= 0 && ms <= MAX_MS;
+  add('finished', 1); add('turns', turns);
+  if (sum.reason === 'resign') add('resigned', 1);
+  if (sum.reason === 'timeout') add('timeouts', 1);
+  if (sum.reason === 'clock') add('clockOuts', 1);
+  if (timed) { add('ms', Math.round(ms)); add('timed', 1); }
+  if (ABANDONED.includes(sum.reason)) return up;
+  add('done', 1); add('doneTurns', turns);
+  if (timed) { add('doneMs', Math.round(ms)); add('doneTimed', 1); }
+  return up;
+}
 function startUpdates(mode, t) {
   const k = periodKeys(t);
   return withPeriods({ [`modes/${mode}/started`]: 1, [`days/${k.d}/started/${mode}`]: 1 }, k);
@@ -193,5 +212,5 @@ function checkDev(d, t) {
   return out;
 }
 
-module.exports = { MODES, CLIENT_MODES, MAX_MS, ABANDONED, TZ, localDate, periodKeys, PERIOD_NODE, PERIOD_PATH, hashId, idOk, checkEnd, checkRun, RUN_BIN, startUpdates, endUpdates, periodUpdates,
+module.exports = { MODES, CLIENT_MODES, MAX_MS, ABANDONED, TZ, localDate, periodKeys, PERIOD_NODE, PERIOD_PATH, hashId, idOk, checkEnd, checkRun, RUN_BIN, startUpdates, endUpdates, periodUpdates, timerStartUpdates, timerEndUpdates,
   DEV_EVENTS, DEV_MODES, TAG_RE, tagOk, devHash, checkDev };

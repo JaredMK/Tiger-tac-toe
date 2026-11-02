@@ -101,7 +101,7 @@ test("hosting: the host is Player 1 and the friend Player 2, X and O drawn when 
   assert.doesNotMatch(html, /data-p=|placeholder="Your name"/, 'no name field to edit');
   assert.match(html, /<span>Player 2 · friend<\/span>/);
   assert.doesNotMatch(html, /data-act="side"|You play|X player|O player|goes first/);
-  assert.match(html, /data-act="timer"/, 'the timer stays'); assert.match(html, /data-act="adv"/, 'and the mini-games');
+  assert.match(html, /data-act="clock"/, 'the timer stays'); assert.match(html, /data-act="adv"/, 'and the mini-games');
   assert.match(html, /data-act="share">Share invite<\/button><button class="btn" data-act="copy-invite">Copy invite<\/button>/, 'Share invite and Copy invite');
   // the friend's join screen, seated: Player 1 the host, Player 2 them, the sides drawn; no mode
   state.online = { role: 'guest', code: 'ABCDE', me: 'O', joined: true };

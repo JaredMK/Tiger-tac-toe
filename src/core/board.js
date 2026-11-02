@@ -24,7 +24,14 @@ export function timeoutMove(state, rng) {
   rng = needRng(rng);
   const p = state.turn, t = state.timer;
   if (state.winner || state.flash || state.done) return { ok: false, reason: 'busy' };
-  t.missN = (t.missN || 0) + 1;                                  // (each timeout once: the phones say so once)
+  t.missN = (t.missN || 0) + 1;
+  if (t.kind === 'match') {                                       // a match clock at zero: that player loses the match, at once ("ran out of time")
+    t.bank[p] = 0; t.miss = { by: p, kind: 'clock', n: t.missN };
+    state.winner = other(p); state.winLine = null; state.winReason = 'clock'; state.resigned = null; state.counts = null;
+    state.lock = null; state.lockBy = null; state.done = null; state.flash = null; state.spot = null; t.deadline = null; t.startBy = null;
+    state.screen = 'win'; state.zoom = null;
+    return { ok: true, lost: p };
+  }                                  // (each timeout once: the phones say so once)
   const held = state.lockBy === 'open' ? null : state.lock;      // (a square only opened, nothing begun there: a turn missed)
   if (held != null && state.squares[held] && !state.squares[held].owner) {
     const m = timeoutClose(state.squares[held].mini, p);

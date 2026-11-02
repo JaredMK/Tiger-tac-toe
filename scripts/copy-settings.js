@@ -12,7 +12,7 @@ const path = require('node:path');
 const admin = require(path.join(__dirname, '..', 'functions', 'node_modules', 'firebase-admin'));
 
 const PATHS = ['releases', 'features',
-  'config/tune', 'config/ai', 'config/anim', 'config/wheels', 'config/pig', 'config/run', 'config/bulls', 'config/plinko',
+  'config/tune', 'config/ai', 'config/anim', 'config/timer', 'config/wheels', 'config/pig', 'config/run', 'config/bulls', 'config/plinko',
   'config/oddone', 'config/headcount', 'config/flash', 'config/snapshot', 'config/skyhop', 'config/scoop', 'config/pinball',
   'config/roads', 'config/bowling',
   'admin/config'];

@@ -1,7 +1,7 @@
 // Setting up a match: the setup screen's choices, names and sides, the nine squares, a new match.
 import { newMini } from './minis.js';
 import { needRng, randInt } from './random.js';
-import { newTimer, normTimer } from './timer.js';
+import { newTimer, timerSpec } from './timer.js';
 import { other } from './util.js';
 import { levelOf } from './aiw.js';
 import { PHYSICS, PHYS_TYPES, physicsReady } from '../games/shared/physics.js';
@@ -165,7 +165,7 @@ export function startMatch(state, rng, only) {   // only: the games this kind of
   state.cpu = cpuSide(state.setup);
   state.cpuLevel = state.cpu ? levelOf(state.setup.level) : null;
   state.endPick = null;                                       // the match-end message is picked afresh
-  state.timer = newTimer(state.setup.mode === 'online' ? normTimer(state.setup.timer) : 0);
+  state.timer = newTimer(state.setup.mode === 'online' ? timerSpec(state.setup.timer) : 0);   // (a code, 't30' or 'm5+2'; an older room's number of seconds too)
   state.spot = null;
   state.squares = dealNine(games, rng);
   for (const sq of state.squares) if (sq.mini.type === 'trivia') triviaDeal(state, sq, rng);   // a question each, no two squares alike

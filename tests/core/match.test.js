@@ -571,7 +571,7 @@ test('newTimer and the timer options', () => {
   assert.deepEqual(L.TIMER_OPTIONS, [0, 30], 'a friend game: no limit or 30 seconds');
   assert.deepEqual([0, 30, 60, 180, 45, null].map(L.normTimer), [0, 30, 30, 30, 0, 0], 'an older 1 or 3 minute room becomes 30 seconds');
   const t = L.newTimer(30);
-  assert.deepEqual(t, { limit: 30, deadline: null, for: null, pausedAt: null, timeouts: { X: 0, O: 0 }, streak: { X: 0, O: 0 } });
+  assert.deepEqual(t, { limit: 30, deadline: null, for: null, pausedAt: null, timeouts: { X: 0, O: 0 }, streak: { X: 0, O: 0 }, spec: 't30' });
   assert.equal(L.newTimer(0).limit, 0);
   assert.equal(L.newTimer().limit, 0);
   const st = L.newMatch(lcg(1), { mode: 'online', timer: 30 });

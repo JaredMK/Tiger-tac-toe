@@ -3,7 +3,7 @@
 import { needVerify, onAuthUser, redirectPending, setVerifySince } from './accounts.js';
 import { setFindOn } from './matchmaking.js';
 import { NATIVE, clientInfo } from './platform.js';
-import { setReleases } from './releases.js';
+import { setReleases, setTimerDefault } from './releases.js';
 import { presenceUp, setNet } from './room.js';
 import { commit, state } from '../ui/app.js';
 import { render } from '../ui/render.js';
@@ -80,6 +80,7 @@ export function loadFirebase() {
     m.onValue(m.ref(db, 'features/findMatch'), s => setFindOn(s.val() === true), () => {});
     m.onValue(m.ref(db, 'config/verify/since'), s => setVerifySince(s.val()), () => {});   // (email verification's cutoff: accounts made before it are grandfathered, accounts.js)
     m.onValue(m.ref(db, 'releases'), s => setReleases(s.val() || {}), () => {});
+    m.onValue(m.ref(db, 'config/timer/spec'), s => setTimerDefault(s.val()), () => {});   // (the admin's Timer: Find Match's clock, a friend room's default)
     if (!mock) { onAuthUser(f.auth.currentUser); authM.onAuthStateChanged(f.auth, u => onAuthUser(u)); }
     return fb;
   })().catch(e => { fbLoad = null; throw e; });

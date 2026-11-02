@@ -6,7 +6,7 @@ import { awayNote, net, presence, room } from '../net/room.js';
 import { N, NAV_SCREENS, esc, menuOpen, state, isYou } from './app.js';
 import { toon } from './art.js';
 import { scTurnText } from './chaos.js';
-import { clockText } from './clock.js';
+import { clockText, matchLeft, fmtClock } from './clock.js';
 import { animMs, fx, fxAt, fxAttr, startFx } from './fx.js';
 import { flashLine } from './mini.js';
 
@@ -20,10 +20,14 @@ export function renderHeader() {
   const sc = state.sc;                                          // Super Chaos: the round and the round's clock (against the computer, or in a friend room)
   const clock = sc && sc.online ? `<span class="clock" id="clock" aria-label="Time left this round">${clockText()}</span>`   // (kept to the results screen: the bar never changes shape; against the computer a round has no clock)
     : state.timer && state.timer.limit && !state.winner ? `<span class="clock" id="clock" aria-label="Time left this turn">${clockText()}</span>` : '';
+  // A match clock (online): each player's time left under their name, the one on the move lit, red and pulsing in its
+  // last 30 seconds (ui/clock.js tick keeps them current); the turn line's own clock box stays, empty.
+  const ml = state.online && !sc ? matchLeft() : null;
+  const pclk = p => (ml ? `<b class="pclk${p === state.turn && !state.winner ? ' on' : ''}${ml[p] <= 30000 && p === state.turn && !state.winner ? ' low' : ''}" id="pclk-${p}" aria-label="${p}'s time left">${fmtClock(ml[p])}</b>` : '');
   // the reaction bubble hangs by the sender's character; the bubble is always there (hidden when empty), so the bar's shape stays the same
   const card = p => (rx.card && rx.card.side === p && !menuOpen ? rx.card : null);   // (not over the in-game menu)
-  const side = p => `<div class="tside ${p}${p === t ? ' on' : ''}"><span class="tg">${toon(p)}<span class="rbub${card(p) ? ' on' : ''}"${card(p) ? fxAttr(card(p).at, 'rt') : ''} aria-live="polite">${card(p) ? card(p).e : ''}</span></span><b class="nm">${N(p)}</b></div>`;
-  return `<header class="hdr t-${t}${clock ? ' has-clock' : ''}">
+  const side = p => `<div class="tside ${p}${p === t ? ' on' : ''}"><span class="tg">${toon(p)}<span class="rbub${card(p) ? ' on' : ''}"${card(p) ? fxAttr(card(p).at, 'rt') : ''} aria-live="polite">${card(p) ? card(p).e : ''}</span></span><b class="nm">${N(p)}</b>${pclk(p)}</div>`;
+  return `<header class="hdr t-${t}${clock || ml ? ' has-clock' : ''}${ml ? ' mclock' : ''}">
     <div class="hdrrow"><button class="menubtn" data-act="pause" aria-label="Menu">Menu</button><div class="tbar">${side('X')}${side('O')}</div></div>
     <div class="hdrrow2"><div class="turn" aria-live="polite">${resultLine(drawn ? `<span class="who">Draw · ${state.winReason === 'both' ? 'both made a line' : 'no line left'}</span>` : won ? `<span class="g">${t}</span><span class="who">${isYou(t) ? 'You win' : `${N(t)} wins`}</span>` : sc ? scTurnText() : `<span class="g">${t}</span><span class="who">${isYou(t) ? 'Your turn' : `${N(t)}<i class="suf">'s turn</i>`}</span>`)}</div><span class="clockbox">${clock}</span></div>
   </header>`;

@@ -1,13 +1,13 @@
 // The online screens: Play a Friend, Join.
 import { scTypes } from '../../core/chaos.js';
 import { NAME_MAX, playerName } from '../../core/match.js';
-import { normTimer } from '../../core/timer.js';
+import { setupSpec, timerLabel } from '../../core/timer.js';
 import { other } from '../../core/util.js';
 import { INFO, SC_ONLY, TYPES } from '../../games/index.js';
 import { acct, loggedIn } from '../../net/accounts.js';
 import { visibleTypes } from '../../net/releases.js';
 import { joinCode, joinName, leaveLoses, net, online, room } from '../../net/room.js';
-import { TIMER_LABEL, advOpen, esc, state } from '../app.js';
+import { advOpen, esc, state } from '../app.js';
 import { byName, gamesCount } from './setup.js';
 import { CHEV, ICONS } from '../art.js';
 import { joinAsk } from '../input.js';
@@ -29,7 +29,7 @@ export function renderJoin() {
   const o = online(), seated = !!(o && o.me && o.joined);
   const hostSide = o && o.me ? other(o.me) : null;
   const hostName = seated && room && room.players && room.players[hostSide] ? room.players[hostSide].name : null;
-  const timer = room && room.setup ? normTimer(room.setup.timer) : 0;
+  const timer = room && room.setup ? setupSpec(room.setup) : 'off';
   // Seated: the game as separate labelled lines, like the other setup screens.
   const sc = !!(room && room.setup && room.setup.chaos);
   const pool = TYPES.filter(t => (visibleTypes().includes(t) || (room && room.setup && room.setup.games && room.setup.games[t])) && (sc ? scTypes().includes(t) : !SC_ONLY.includes(t)));   // the games this guest knows of, and the host's (an admin host may deal games on test); Super Chaos deals only its own
@@ -39,7 +39,7 @@ export function renderJoin() {
       <div class="field"><span>Player 1 · host</span><div class="namebox">${esc(hostName || 'the host')}</div></div>
       <div class="field"><span>Player 2 · you</span><div class="namebox">${esc((room.players && room.players[o.me] && room.players[o.me].name) || joinName || 'Friend')}</div></div>
       <div class="field"><span>Sides</span><div class="namebox">X and O drawn at random each match</div></div>
-      ${sc ? '' : `<div class="field"><span>Time per turn</span><div class="namebox">${TIMER_LABEL[timer]}</div></div>`}
+      ${sc ? '' : `<div class="field"><span>Timer</span><div class="namebox">${timerLabel(timer)}</div></div>`}
       <div class="adv jgames${advOpen ? ' open' : ''}"><button class="adv-h" data-act="adv" aria-expanded="${advOpen}"><span>Mini-games</span><small>${gamesCount(games.length, pool.length)}</small><i class="chev">${CHEV}</i></button>
         ${advOpen ? `<div class="games">${list.map(t => `<div class="chk ro${on.has(t) ? '' : ' off'}"><input type="checkbox" disabled${on.has(t) ? ' checked' : ''} aria-label="${esc(INFO[t].name)}: ${on.has(t) ? 'on' : 'off'}">${ICONS[t]}<span>${INFO[t].name}</span></div>`).join('')}</div>` : ''}</div>
     </div>` : '';

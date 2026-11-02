@@ -1,6 +1,7 @@
 // Which mini-games are released (the admin's switches), and whether this player is an admin.
 import { SUPER_CHAOS_ENABLED } from '../core/config.js';
 import { platformOff } from '../core/client.js';
+import { timerSpec } from '../core/timer.js';
 import { allowedTypes, isReleased } from '../core/games.js';
 import { PLATFORM } from './platform.js';
 import { acct } from './accounts.js';
@@ -21,6 +22,10 @@ export function setReleases(v) {
   try { localStorage.setItem(REL_KEY, JSON.stringify(releases)); } catch (e) { /* no storage: read again next visit */ }
   if (['setup', 'howto', 'join'].includes(state.screen)) render();
 }
+// The admin's Timer (config/timer/spec): Find Match's clock and the default a friend room opens with ('off' never: 30 s
+// a turn). Kept live (net/connect.js).
+export let timerDefault = 't30';
+export function setTimerDefault(v) { const s = timerSpec(v || 't30'); timerDefault = s === 'off' ? 't30' : s; }
 export function fetchReleases() {                                     // a plain read of the public node, SDK or no SDK
   if (!configured()) return;
   const hook = window.TTT_FIREBASE, c = (hook && hook.config) || FIREBASE_CONFIG;

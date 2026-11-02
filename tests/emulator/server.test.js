@@ -1155,7 +1155,7 @@ test('bots: the match is an ordinary one against an ordinary-looking, online acc
   assert.match(bot.uid, /^[A-Za-z0-9]{28}$/, 'an id shaped like any account\'s');
   assert.equal(await get(`usernames/${bu.username.toLowerCase()}`), bot.uid, 'its username is taken like anyone\'s');
   assert.ok(bu.joined < Date.now() - 3600000 && bu.rating === 1200, 'a profile like any other');
-  assert.deepEqual(Object.keys(pub).sort(), ['created', 'mode', 'players', 'queue', 'state', 'status', 'timer', 'updated'], 'nothing in the game says bot');
+  assert.deepEqual(Object.keys(pub).sort(), ['clock', 'created', 'mode', 'players', 'queue', 'state', 'status', 'timer', 'updated'], 'nothing in the game says bot');
   assert.deepEqual(Object.keys(bot).sort(), ['name', 'record', 'uid']);
   assert.equal(pub.mode, 'match');
   await denied(h.read(`botGames/${id}`), 'the bot record'); await denied(h.read('bots'), 'the bot list'); await denied(h.read('botStats'), 'the bot numbers');
@@ -2055,4 +2055,92 @@ test('Super Chaos Find Match against a bot: a lone searcher gets a bot after the
   assert.deepEqual([done.done, done.live, done.winner], [true, undefined, botSide]);
   assert.equal((await get(`history/${h.uid}/${id}`)).mode, 'match');
   assert.ok((await get('botStats/finished')) >= 1, 'bot matches counted apart');
+});
+
+/* ===================================== the match clock ===================================== */
+// The admin's Timer (config/timer/spec) sets Find Match's clock and the friend-game default; a match clock (chess
+// style) is held by the server in server time: both phones read the same two clocks from the record, a reconnect
+// too; a clock at zero loses the match ('clock'), counted under stats/timers/<code> and in the match's log.
+test('match clock: the admin\'s timer for Find Match; the clocks switch on every move, the same on both phones and after a reconnect; a clock at zero loses; an admin host picks any timer, others the default', async () => {
+  const a = await player('Clk_A'), b = await player('Clk_B');
+  await denied(a.write('config/timer/spec', 'm3+2'), 'a player setting the timer');
+  await put('config/timer', { spec: 'm3+2' });
+  const before = await statsNow();
+  const g = await pairUp(a, b);
+  let st = await gameState(g.id);
+  assert.deepEqual([st.timer.kind, st.timer.spec, st.timer.inc, st.timer.bank], ['match', 'm3+2', 2, { X: 180000, O: 180000 }], 'Find Match plays the admin\'s match clock');
+  assert.deepEqual([(await get(`games/${g.id}/pub/clock`)), (await get(`games/${g.id}/pub/timer`))], ['m3+2', 0], 'the code on the match; an older app reads no time a turn');
+  await rewrite(g.id, tttBoard);
+  st = await gameState(g.id);
+  const p = st.turn, q = E.other(p);
+  // the move: their time used comes off, the increment goes on, the other clock waits for the replay
+  const t0 = Date.now();
+  assert.equal((await g[p].call('move', { game: g.id, square: 4, move: 4 })).ok, true);
+  const s1 = await gameState(g.id), used = 180000 - s1.timer.bank[p] + 2000;
+  assert.equal(s1.timer.for, q, 'the clocks switch');
+  assert.ok(used >= 0 && used < Date.now() - t0 + 30000, `their time used comes off (${used} ms, with the start's grace)`);
+  assert.equal(s1.timer.bank[q], 180000, 'the other clock untouched');
+  assert.equal(s1.timer.deadline, null, 'and it waits for the replay');
+  assert.ok(s1.timer.startBy > Date.now(), 'its start: once the move has played back');
+  // both phones, each from its own connection, read the same record: the same two clocks at any moment
+  const [ra, rb] = await Promise.all([a.read(`games/${g.id}/pub/state`), b.read(`games/${g.id}/pub/state`)]);
+  const ta = JSON.parse(ra).timer, tb = JSON.parse(rb).timer, when = s1.timer.startBy + 5000;
+  assert.deepEqual(E.clockLeft(ta, when), E.clockLeft(tb, when));
+  assert.deepEqual(E.clockLeft(ta, when), { [p]: s1.timer.bank[p], [q]: 175000 });
+  // a phone drops off; the other plays on; back, it reads the clocks as they are on the server
+  D.goOffline(g[p].db);
+  assert.equal((await g[q].call('move', { game: g.id, square: 0, move: 0 })).ok, true);
+  const s2 = await gameState(g.id);
+  assert.equal(s2.timer.for, p);
+  assert.ok(s2.timer.bank[q] <= 180000 + 2000 && s2.timer.bank[q] > 170000, `the reply's time off, 2 s back (${s2.timer.bank[q]})`);
+  D.goOnline(g[p].db);
+  const back = await until(async () => { const v = JSON.parse(await g[p].read(`games/${g.id}/pub/state`)); return v.seq === s2.seq ? v : null; }, 10000, 'the phone back in sync');
+  assert.deepEqual(back.timer.bank, s2.timer.bank, 'back: the same clocks as the server');
+  assert.deepEqual(E.clockLeft(back.timer, Date.now()), E.clockLeft(s2.timer, Date.now()));
+  // the clock on the move runs out: the sweep calls it, that player loses ("ran out of time")
+  await rewrite(g.id, f => { f.timer.bank[f.timer.for] = 1000; f.timer.startBy = null; f.timer.deadline = Date.now() - 500; });
+  assert.equal((await sweep()).timeouts, 1);
+  await recorded(g.id);
+  const pub = await get(`games/${g.id}/pub`), fin = JSON.parse(pub.state);
+  assert.deepEqual([fin.winner, fin.winReason, fin.timer.bank[p]], [q, 'clock', 0]);
+  assert.equal(pub.result.how, 'clock');
+  assert.equal((await get(`history/${g[p].uid}/${g.id}`)).how, 'clock');
+  assert.deepEqual(pub.result.records[p], { wins: 0, losses: 1, draws: 0 }, 'a loss on the record');
+  const after = await statsNow(), dS = k => at(after, `timers/m3+2/${k}`) - at(before, `timers/m3+2/${k}`);
+  assert.deepEqual([dS('started'), dS('finished'), dS('done'), dS('clockOuts'), dS('timeouts')], [1, 1, 1, 1, 0], 'counted under its timer: a finish, by the clock');
+  const evs = Object.values(await until(async () => { const v = await get(`matchLogs/m${g.id}`); return v && Object.values(v).some(e => e.k === 'end') ? v : null; }, 10000, 'the end in the log'));
+  assert.equal(evs.find(e => e.k === 'start').timer, 'm3+2', 'the log names the timer');
+  assert.equal(evs.find(e => e.k === 'end').why, 'clock');
+  // a late move past zero is the clock run out, not a move
+  const c = await player('Clk_C'), d = await player('Clk_D');
+  const h = await pairUp(c, d);
+  await rewrite(h.id, f => { tttBoard(f); f.timer.startBy = null; f.timer.deadline = Date.now() - 5000; });
+  const hs = await gameState(h.id);
+  const late = await h[hs.turn].call('move', { game: h.id, square: 4, move: 4 });
+  await recorded(h.id);
+  const hf = JSON.parse(await get(`games/${h.id}/pub/state`));
+  assert.deepEqual([hf.winner, hf.winReason], [E.other(hs.turn), 'clock'], `a move after the clock ran out loses on time (${JSON.stringify(late)})`);
+  // friend rooms: the admin's timer is the default; a player host gets no limit, 30 s or the default; an admin host any
+  const host = await player('Clk_Host'), guest = await player('Clk_Guest');
+  const r1 = await friendRoom(host, guest, { games: only('ttt'), clock: 'm10+5' });
+  assert.equal(JSON.parse((await get(`games/${r1.id}/pub`)).state).timer.spec, 'm3+2', 'not an admin: the default, not an untried timer');
+  assert.equal((await host.call('resign', { game: r1.id })).ok, true); await recorded(r1.id);
+  const r2 = await friendRoom(guest, host, { games: only('ttt'), clock: 'off' });
+  assert.equal(JSON.parse((await get(`games/${r2.id}/pub`)).state).timer.limit, 0, 'no limit stays open to everyone');
+  assert.equal((await host.call('resign', { game: r2.id })).ok, true); await recorded(r2.id);
+  await runScript('make-admin.js', 'Clk_Host', 'grant');
+  await host.auth.currentUser.getIdToken(true);
+  const code = await openRoom(host, { games: only('ttt'), clock: 't60' });
+  await denied(host.write(`rooms/${code}/setup/clock`, 'm7+1'), 'a timer that is not one of the options');
+  await host.write(`rooms/${code}/setup/clock`, 'm10+5');      // the admin's lobby selector
+  assert.equal((await guest.call('joinRoom', { code, name: 'Clk_Guest' })).ok, true);
+  const s3 = await host.call('startRoom', { code });
+  const t3 = JSON.parse((await get(`games/${s3.game}/pub`)).state).timer;
+  assert.deepEqual([t3.spec, t3.bank.X, t3.inc], ['m10+5', 600000, 5], 'an admin host plays any timer');
+  assert.equal((await host.call('resign', { game: s3.game })).ok, true); await recorded(s3.game);
+  await runScript('make-admin.js', 'Clk_Host', 'revoke');
+  await put('config/timer', null);
+  const e = await player('Clk_E'), f = await player('Clk_F'), k = await pairUp(e, f);
+  assert.equal((await gameState(k.id)).timer.limit, 30, 'no setting: 30 s a turn, as before');
+  await e.call('resign', { game: k.id });
 });

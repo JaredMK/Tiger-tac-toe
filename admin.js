@@ -166,6 +166,11 @@ function draw() {
     const r = modeRow(m), st = n(r.started), quit = n(r.resigned) + n(r.timeouts), fin = Math.max(0, n(r.finished) - quit), never = Math.max(0, st - n(r.finished)), ab = never + quit, dec = n(r.xWins) + n(r.oWins);
     return `<tr><td>${name}</td><td>${st}</td><td>${fin}</td><td>${ab} <span class="dim">${pct(ratio(ab, st))}</span></td><td>${n(r.resigned)}</td><td>${n(r.timeouts)}</td><td>${never}</td><td>${num(ratio(n(r.doneTurns), n(r.done)))}</td><td>${num(mins(n(r.doneMs), n(r.doneTimed)))}</td><td>${pct(ratio(n(r.xWins), dec))}</td><td>${pct(ratio(n(r.draws), n(r.finished)))}</td></tr>`;
   }).join('')}</tbody></table></div><p class="note">Finished: played to a result (a line, a draw, a majority). Abandoned: resigned, lost on time, or never finished (left, or the app closed). The averages cover finished matches only, counted from 21 Oct 2026. Draws: ended once neither side could still make three in a row. Turns count a bonus move (a Risky Rolls roll, a Hangman letter) as part of its turn.</p>`;
+  const tmRows = Object.keys(stats.timers || {}).sort((a, b) => (a[0] === b[0] ? parseInt(a.slice(1)) - parseInt(b.slice(1)) : a < b ? 1 : -1));
+  const timerTable = `<div class="tbl"><table><thead><tr><th>Timer</th><th>Started</th><th>Finished</th><th>Completion</th><th>Resigned</th><th>2 missed turns</th><th>Ran out of time</th><th>never finished</th><th>Avg turns (finished)</th><th>Avg minutes (finished)</th><th>Avg minutes (all ended)</th></tr></thead><tbody>${tmRows.map(k => {
+    const r = stats.timers[k] || {}, st = n(r.started), never = Math.max(0, st - n(r.finished));
+    return `<tr><td>${esc(timerName(k))}</td><td>${st}</td><td>${n(r.done)}</td><td>${pct(ratio(n(r.done), st))}</td><td>${n(r.resigned)}</td><td>${n(r.timeouts)}</td><td>${n(r.clockOuts)}</td><td>${never}</td><td>${num(ratio(n(r.doneTurns), n(r.done)))}</td><td>${num(mins(n(r.doneMs), n(r.doneTimed)))}</td><td>${num(mins(n(r.ms), n(r.timed)))}</td></tr>`;
+  }).join('') || '<tr><td colspan="11" class="dim">Nothing yet</td></tr>'}</tbody></table></div><p class="note">Online matches (Find Match, bots and friend games) by the timer they were played with, counted from 2 Nov 2026. Finished: played to a result, a match clock run out included (resigned and 2 missed turns are abandoned). Completion: finished of started. The Timer setting is in Bot Settings.</p>`;
   const rows = miniRows(), dir = sortBy.dir;
   rows.sort((a, b) => { const x = a[sortBy.k], y = b[sortBy.k]; if (x == null && y == null) return a.name.localeCompare(b.name); if (x == null) return 1; if (y == null) return -1; return (typeof x === 'string' ? x.localeCompare(y) : x - y) * dir; });
   const cols = [['name', 'Mini-game'], ['played', 'Completed'], ['resets', 'Resets'], ['opened', 'Left open'], ['avgWin', 'Avg winner moves'], ['avgLose', 'Avg loser moves'], ['avgAll', 'Avg total moves'], ['xRate', 'X wins'], ['oRate', 'O wins'], ['scPlayed', 'SC completed'], ['scAvgWin', 'SC avg winner moves'], ['scAvgAll', 'SC avg total moves']];
@@ -197,10 +202,10 @@ function draw() {
     playtest: () => playCard(),
     matches: () => matchCard(),
     settings: sub => (sub && GAMES[sub] ? gamePage(sub) : settingsIndex()),
-    bots: () => `${findCard()}${botsCard()}${aiCard()}${alertsCard()}`,
+    bots: () => `${findCard()}${timerCard()}${botsCard()}${aiCard()}${alertsCard()}`,
     releases: () => releasesCard(),
     access: () => accessCard(),
-    stats: () => `<div class="card"><h2>Matches by mode</h2>${modeTable}</div>
+    stats: () => `<div class="card"><h2>Matches by mode</h2>${modeTable}</div><div class="card"><h2>Matches by timer</h2>${timerTable}</div>
     <div class="card"><div class="row"><h2>Mini-games</h2><label>Modes <select id="mm">${[['all', 'All modes'], ['people', 'All but computer vs computer']].concat(MODES.filter(m => m[0] !== 'chaos'), [['testing', 'Admin-only games (testing)']]).map(([v, l]) => `<option value="${v}"${miniMode === v ? ' selected' : ''}>${l}</option>`).join('')}</select></label></div>
       ${miniTable}<h2 style="margin-top:14px">Average winner moves</h2>${hbarChart(rows, 'avgWin', 'Average winner moves by mini-game', v => num(v))}</div>`,
   };
@@ -221,9 +226,9 @@ const SECTIONS = [
   ['playtest', 'Playtesters & Devices', () => (play ? `${Object.keys(play.devices || {}).length} devices` : 'Devices, sessions, retention')],
   ['matches', 'Matches', () => { const r = Object.values(mlogs || {}).filter(x => x && x.reported).length; return `Match inspector${r ? ` · ${r} reported` : ''}`; }],
   ['settings', 'Mini-game Settings', () => { const k = Object.keys(ctl.tune || {}).length, sp = ctl.anim && ctl.anim.speed; return `Every game's settings${k ? ` · ${k} changed` : ''}${sp && sp !== 1 ? ` · speed ${sp}×` : ''}`; }],
-  ['bots', 'Bot Settings', () => 'Find Match, bots, empty-queue alerts'],
+  ['bots', 'Bot Settings', () => 'Find Match, timer, bots, empty-queue alerts'],
   ['releases', 'Releases', () => { const m = ctl.clients || {}, off = Object.values((ctl.releases && ctl.releases.platform && ctl.releases.platform.ios) || {}).filter(v => v === false).length; return `Released or admin only, per game${off ? ` · ${off} off on iOS` : ''}${m.web || m.ios ? ` · minimum ${['web', 'ios'].filter(p => m[p]).map(p => `${p} ${m[p]}`).join(', ')}` : ''}`; }],
-  ['stats', 'Stats', () => 'Matches by mode, moves to win'],
+  ['stats', 'Stats', () => 'Matches by mode and timer, moves to win'],
 ].concat(STAGING ? [['access', 'Staging Access', () => `${Object.keys(ctl.allow || {}).length} on the list`]] : []);   // (staging only: who may use it)
 const route = () => (location.hash || '').replace(/^#\/?/, '').split('/');
 window.addEventListener('hashchange', () => { if (view.status === 'ready') { render(); window.scrollTo(0, 0); } });
@@ -888,6 +893,36 @@ async function resetTune(t, btn) {
   } catch (e) { said(btn, false, 'Not reset: ' + ((e && e.message) || 'the database refused it')); return; }
   render(); said(btn, true, 'Back to the defaults');
 }
+// ---------- the timer (config/timer/spec, read by the server and the game): Find Match's timer and the friend-game default.
+// A code: 't30', 't60' (seconds a turn), 'm5+2' (minutes each, seconds added a move: a match clock); core/timer.js timerSpec ----------
+const TIMER_DEF = 't30';
+function timerParts(v) {
+  const m = /^m(\d+)\+(\d+)$/.exec(String(v || '')), t = /^t(\d+)$/.exec(String(v || ''));
+  return m ? { kind: 'match', mins: +m[1], inc: +m[2] } : t ? { kind: 'turn', secs: +t[1] } : { kind: 'off' };
+}
+function timerName(v) {
+  const p = timerParts(v);
+  return p.kind === 'match' ? `Match clock ${p.mins} min${p.inc ? ` + ${p.inc} s` : ''}` : p.kind === 'turn' ? `${p.secs} s a turn` : 'No limit';
+}
+function timerCard() {
+  const cur = (ctl.timer && /^(t30|t60|m(3|5|10)\+(0|2|5))$/.test(ctl.timer.spec)) ? ctl.timer.spec : TIMER_DEF, p = timerParts(cur);
+  const sel = (id, opts, v) => `<select id="${id}">${opts.map(([o, l]) => `<option value="${o}"${String(o) === String(v) ? ' selected' : ''}>${l}</option>`).join('')}</select>`;
+  return `<div class="card ctl" id="timerCard"><h2>Timer</h2>
+    <p class="note">Find Match's timer, and the one a friend game starts with (the host can still pick No limit). <b>Per turn</b>: each turn has this long (a game that needs longer gets 60 s); two missed turns in a row lose the match. <b>Match clock</b>: chess style, each player has this many minutes for the whole match; only the clock of the player on the move runs, and only once they can act (never during a replay or an animation); the increment is added after every move; a player whose clock reaches zero loses ("[name] ran out of time"). Applies to matches started from now on. As admin you can also pick any timer in your own friend room's lobby.</p>
+    <div class="fields"><label>Type ${sel('tmKind', [['turn', 'Per turn'], ['match', 'Match clock']], p.kind)}</label>
+      ${p.kind === 'match' ? `<label>Minutes each ${sel('tmMins', [[3, '3'], [5, '5'], [10, '10']], p.mins)}</label><label>Increment ${sel('tmInc', [[0, '+0 s'], [2, '+2 s'], [5, '+5 s']], p.inc)}</label>`
+        : `<label>Seconds a turn ${sel('tmSecs', [[30, '30'], [60, '60']], p.secs)}</label>`}</div>
+    <p class="note">Now: <b>${esc(timerName(cur))}</b>${cur === TIMER_DEF ? ' (the default)' : ''}.</p></div>`;
+}
+async function saveTimer() {
+  const kind = (document.getElementById('tmKind') || {}).value, val = id => Number((document.getElementById(id) || {}).value);
+  const was = timerParts((ctl.timer && ctl.timer.spec) || TIMER_DEF);
+  const spec = kind === 'match' ? `m${was.kind === 'match' && document.getElementById('tmMins') ? val('tmMins') : 5}+${was.kind === 'match' && document.getElementById('tmInc') ? val('tmInc') : 0}`
+    : `t${was.kind === 'turn' && document.getElementById('tmSecs') ? val('tmSecs') : 30}`;
+  const el = document.getElementById('tmKind');
+  try { await fb.dbM.set(fb.dbM.ref(fb.db, 'config/timer'), spec === TIMER_DEF ? null : { spec }); ctl.timer = spec === TIMER_DEF ? {} : { spec }; } catch (e) { render(); said(el, false, failed(e)); return; }
+  render(); said(document.getElementById('tmKind') || el, true, 'Saved: ' + timerName(spec));
+}
 // ---------- matchmaking controls: Find Match on or off (features/findMatch, read by the game and the server) ----------
 function findCard() {
   const on = !!(ctl.features && ctl.features.findMatch === true);
@@ -1062,7 +1097,7 @@ async function loadCtl() {
   const [config, secretsSet, bots, botStats, alertStats, features, log, releases, runCfg, bullsCfg, wheelsCfg, plinkoCfg, oddCfg, headCfg, flashCfg, snapCfg, hopCfg, scoopCfg, pinCfg, pigCfg, roadsCfg, bowlCfg] = await Promise.all([g('admin/config'), g('admin/secretsSet'), g('bots'), g('botStats'), g('alertStats'), g('features'),
     fb.dbM.get(fb.dbM.query(fb.dbM.ref(fb.db, 'alertLog'), fb.dbM.orderByChild('at'), fb.dbM.limitToLast(8))).then(s => s.val()).catch(() => null), g('releases'), g('config/run'), g('config/bulls'), g('config/wheels'), g('config/plinko'), g('config/oddone'), g('config/headcount'), g('config/flash'), g('config/snapshot'), g('config/skyhop'), g('config/scoop'), g('config/pinball'), g('config/pig'), g('config/roads'), g('config/bowling'), loadMetas()]);
   ctl = { config: config || {}, secretsSet: secretsSet || {}, bots: bots || {}, botStats: botStats || {}, alertStats: alertStats || {}, features: features || {}, releases: releases || {}, runCfg: runCfg || {}, bullsCfg: bullsCfg || {}, wheelsCfg: wheelsCfg || {}, plinkoCfg: plinkoCfg || {}, pigCfg: pigCfg || {}, roadsCfg: roadsCfg || {}, oddCfg: oddCfg || {}, attCfg: { headcount: headCfg || {}, flash: flashCfg || {}, snapshot: snapCfg || {} }, fingCfg: { skyhop: hopCfg || {}, scoop: scoopCfg || {}, bowling: bowlCfg || {}, pinball: pinCfg || {} },
-    alertLog: Object.values(log || {}).sort((a, b) => b.at - a.at), tune: (await g('config/tune')) || {}, ai: (await g('config/ai')) || {}, anim: (await g('config/anim')) || {}, clients: (await g('config/clients')) || {}, allow: STAGING ? ((await g('admin/staging/allow')) || {}) : {} };
+    alertLog: Object.values(log || {}).sort((a, b) => b.at - a.at), tune: (await g('config/tune')) || {}, ai: (await g('config/ai')) || {}, anim: (await g('config/anim')) || {}, timer: (await g('config/timer')) || {}, clients: (await g('config/clients')) || {}, allow: STAGING ? ((await g('admin/staging/allow')) || {}) : {} };
 }
 async function signIn(how) {
   view.error = '';
@@ -1126,6 +1161,7 @@ app.addEventListener('input', () => { if (note) { note = null; showNote(); } });
 app.addEventListener('change', e => {
   if (e.target.id === 'mm') { miniMode = e.target.value; render(); }
   else if (['mlWho', 'mlMode', 'mlFrom', 'mlTo'].includes(e.target.id)) { mlFilt[{ mlWho: 'who', mlMode: 'mode', mlFrom: 'from', mlTo: 'to' }[e.target.id]] = e.target.value; mlOpen = null; render(); }
+  else if (['tmKind', 'tmMins', 'tmInc', 'tmSecs'].includes(e.target.id)) saveTimer();
   else if (e.target.id === 'tagPick') { tagPick = e.target.value; devOpen = null; render(); }
   else if (e.target.dataset && e.target.dataset.cfg) saveCfg(e.target);
   else if (e.target.dataset && e.target.dataset.feat) saveFeat(e.target);

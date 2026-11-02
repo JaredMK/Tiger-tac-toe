@@ -88,13 +88,14 @@ export function renderWin() {
   if (w === 'draw') return renderDraw();
   const why = state.winReason === 'line' ? 'Three squares in a row'
     : state.winReason === 'timeout' ? `${N(other(w))} forfeited — 2 missed turns`
+    : state.winReason === 'clock' ? `${N(other(w))} ran out of time`
     : state.winReason === 'resign' ? `${N(other(w))} left the match`
     : `Most squares: ${state.counts[w]} to ${state.counts[other(w)]}`;
   const final = state.squares.map((s, i) =>
     `<i class="${s.owner || ''}${state.winLine && state.winLine.includes(i) ? ' hl' : ''}">${s.owner ? toonT(s.owner) : ''}</i>`
   ).join('');
   return `<main class="scr win-scr">${netBar()}<div class="win-card${isMM() ? ' mm' : ''}">
-    <div class="winburst">${endBurst(endMessage())}</div><div class="big-g ${w}">${toonT(w)}</div><h1>${(wins => state.winReason === 'timeout' ? wins : state.winReason === 'resign' ? `${wins} — ${why}` : `${wins} the match!`)(isYou(w) ? 'You win' : `${N(w)} wins`)}</h1><p>${state.winReason === 'timeout' ? why : state.winReason === 'resign' ? 'Leaving a match counts as a loss' : why}</p>${mmResult()}
+    <div class="winburst">${endBurst(endMessage())}</div><div class="big-g ${w}">${toonT(w)}</div><h1>${(wins => state.winReason === 'timeout' || state.winReason === 'clock' ? wins : state.winReason === 'resign' ? `${wins} — ${why}` : `${wins} the match!`)(isYou(w) ? 'You win' : `${N(w)} wins`)}</h1><p>${state.winReason === 'timeout' ? why : state.winReason === 'resign' ? 'Leaving a match counts as a loss' : why}</p>${mmResult()}
     <div class="final" aria-hidden="true">${final}</div>
     <div class="row">${againBtns()}<button class="btn" data-act="review">View board</button><button class="btn" data-act="${state.online ? 'leave' : 'menu'}">Main menu</button></div>${rematchNote()}${shareBtn()}</div></main>`;
 }

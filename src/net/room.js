@@ -6,7 +6,7 @@ import { restrictGames } from '../core/games.js';
 import { NAME_MAX, playerName } from '../core/match.js';
 import { upgradeMini } from '../core/minis.js';
 import { MATCH_FIELDS, packMatch, parseMatch, resignLocal } from '../core/records.js';
-import { ANIM, newTimer, normTimer, replaySpeed, speedMode } from '../core/timer.js';
+import { ANIM, newTimer, normTimer, replaySpeed, setupSpec, speedMode } from '../core/timer.js';
 import { other } from '../core/util.js';
 import { echoPinned } from '../games/echo/view.js';
 import { oddPinned } from '../games/oddone/view.js';
@@ -18,7 +18,7 @@ import { isMM, listenGame, onGameValue, resignMM } from './matchmaking.js';
 import { scFollow } from './chaos.js';
 import { predicted, setPredicted, showNotice } from './moves.js';
 import { listenReacts, stopReacts } from './reactions.js';
-import { scMode, visibleTypes } from './releases.js';
+import { scMode, timerDefault, visibleTypes } from './releases.js';
 import { reportLocal, trackEnd } from './tracking.js';
 import {
   NAV_SCREENS, spotMs, commit, cpuPlan, cpuTimer, flashTimer, holdTimer, menuNote, menuOpen, menuStep,
@@ -109,6 +109,7 @@ export async function hostRoom(code, resume) {
     state.online = { role: 'host', code: '', me: 'X', joined: false, shownSeq: null, matchId: null, chaos: scMode() }; state.sc = null;   // (the room's mode: this device's choice to begin with; the code comes from the server)
     state.setup.mode = 'online'; state.screen = 'setup';
     state.setup.timer = normTimer(state.setup.timer);           // an older 1 or 3 minute choice: 30 seconds
+    state.setup.clock = timerDefault;                            // the room's clock: the admin's Timer to begin with (an admin host may pick another)
   }
   setNet('connecting', resume ? `Reopening room ${state.online.code}…` : 'Opening the room…');
   commit();
@@ -118,7 +119,7 @@ export async function hostRoom(code, resume) {
     try {
       const name = String((acct.profile && acct.profile.username) || '').slice(0, NAME_MAX) || 'Player 1';   // (hosting needs an account: always its username; the server holds to it too)
       state.setup.names[o.me] = name;
-      const r = await call('openRoom', { name, side: o.me, setup: { games: restrictGames(Object.assign({}, state.setup.games), visibleTypes()), timer: state.setup.timer || 0, hostPick: 'random', chaos: !!o.chaos } });
+      const r = await call('openRoom', { name, side: o.me, setup: { games: restrictGames(Object.assign({}, state.setup.games), visibleTypes()), timer: state.setup.timer || 0, clock: setupSpec(state.setup), hostPick: 'random', chaos: !!o.chaos } });
       if (state.online !== o) { if (r && r.ok) closeSeat(r.code, r.side, true); return; }   // went back while the room was opening
       if (!r || !r.ok) throw new Error('refused');
       o.code = r.code; o.me = r.side;
@@ -202,7 +203,7 @@ function onRoomValue(r) {
   if (!inGame) for (const s of ['X', 'O']) state.setup.names[s] = r.players[s] ? String(r.players[s].name || s).slice(0, NAME_MAX) : s;   // (in the match the names are the game's)
   if (r.setup) {
     if (r.setup.games && !inGame) state.setup.games = Object.assign({}, state.setup.games, r.setup.games);
-    if (!inGame) state.setup.timer = normTimer(r.setup.timer);
+    if (!inGame) { state.setup.timer = normTimer(r.setup.timer); state.setup.clock = setupSpec(r.setup); }
     o.chaos = !!r.setup.chaos;                                    // (the room's Super Chaos switch)
   }
   const wasJoined = o.joined;
@@ -296,7 +297,7 @@ function sayMissed(st) {
   const m = st.timer && st.timer.miss, key = `${st.id}:${m ? m.n : 0}`, seen = missSeen;
   missSeen = key;
   if (!m || key === seen || !seen || seen.split(':')[0] !== String(st.id)) return;   // (the first look at a match: what is there already is not news)
-  if (m.kind === 'closed') return;                                 // (a move under way, ended: its entry plays back with the words)
+  if (m.kind === 'closed' || m.kind === 'clock') return;           // (a move under way, ended: its entry plays back with the words; a match clock at zero: the result screen says so)
   const who = state.online.me === m.by ? 'You' : playerName(state, m.by);
   sayAway(m.kind === 'missed' ? `${who} ran out of time · turn missed` : `${who} ran out of time · turn over`);   // (the match's note line, as for moves made while away)
 }

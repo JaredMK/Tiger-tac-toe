@@ -5,7 +5,7 @@ import { restrictGames } from '../core/games.js';
 import { levelOf } from '../core/aiw.js';
 import { NAME_MAX, normCpu, normLocal, normSetup, seatLocal, startCpu, startMatch } from '../core/match.js';
 import { resignLocal } from '../core/records.js';
-import { normTimer, speedMode, turnOpen, turnSecs } from '../core/timer.js';
+import { normTimer, speedMode, timerSpec, turnOpen, turnSecs } from '../core/timer.js';
 import { hpSel, setHpSel } from '../games/hexapawn/view.js';
 import { GAMES, TYPES } from '../games/index.js';
 import { other } from '../core/util.js';
@@ -215,6 +215,8 @@ export function init() {
       state.screen = 'menu'; state.confirm = null; setMenuNote(''); commit();
     } else if (act === 'timer') {
       if (isHost()) { state.setup.timer = normTimer(Number(el.dataset.v)); commit(); dbSetup({ timer: state.setup.timer }); }
+    } else if (act === 'clock') {                   // the host's timer (ui/screens/setup.js timerRows): a code, core/timer.js timerSpec
+      if (isHost()) { state.setup.clock = timerSpec(el.dataset.v); commit(); dbSetup({ clock: state.setup.clock }); }
     } else if (act === 'rematch') {               // the same settings again (a Random side drawn again)
       if (state.online) { rematchOnline(); return; }
       if (state.quick && !state.sc) { playComputer(); return; }   // (Play Computer's: another, the side drawn again)

@@ -120,7 +120,7 @@ function pairQueue(queue, now, byRating = RATINGS_ENABLED) {
 
 // ---------- results ----------
 // A match ends with a winner, X or O, or as a draw (winner 'draw': neither side could still make a line).
-const HOW = { line: 'line', majority: 'majority', timeout: 'timeout', resign: 'resign' };
+const HOW = { line: 'line', majority: 'majority', timeout: 'timeout', resign: 'resign', clock: 'clock' };
 const decided = state => state.winner === 'X' || state.winner === 'O';
 function howEnded(state) { return decided(state) ? HOW[state.winReason] || 'line' : 'draw'; }
 function resultFor(state, side) { return !decided(state) ? 'draw' : state.winner === side ? 'win' : 'loss'; }

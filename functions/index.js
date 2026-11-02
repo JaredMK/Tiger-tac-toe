@@ -493,6 +493,22 @@ async function releasesNow() { return (await db.ref('releases').get()).val() || 
 // dashboard): set in the engine before a square can be dealt (a new match, a draw's reset), so new
 // squares play by the current values; read afresh after 20 s.
 let runCfgAt = 0;
+// The admin's Timer (config/timer/spec, core/timer.js timerSpec): Find Match's clock and a friend room's default, a time
+// per turn or a match clock. Read afresh after 20 s; none set (or 'off', never for Find Match): 30 s a turn.
+let timerAt = 0, timerCur = 't30';
+async function timerNow() {
+  if (now() - timerAt > 20000 || process.env.FUNCTIONS_EMULATOR === 'true') {
+    const s = E.timerSpec(((await db.ref('config/timer').get()).val() || {}).spec || 't30');
+    timerCur = s === 'off' ? 't30' : s; timerAt = now();
+  }
+  return timerCur;
+}
+// A friend room's clock: the host's choice in the lobby (setup.clock, a code; an older room's setup.timer, seconds).
+// An admin host may pick any; anyone else no limit, the admin's default, or 30 s a turn (as before).
+function friendTimer(setup, admin, def) {
+  const s = setup || {}, want = s.clock != null ? E.timerSpec(s.clock) : E.timerSpec(Number(s.timer) || 0);
+  return admin || ['off', 't30', def].includes(want) ? want : def;
+}
 async function runConfigNow() {
   if (now() - runCfgAt < 20000) return;
   const [run, bulls, wheels, plinko, odd, head, flash, snap, hop, scoop, pin, pig, roads, tune, ai, anim] = await Promise.all(['run', 'bulls', 'wheels', 'plinko', 'oddone', 'headcount', 'flash', 'snapshot', 'skyhop', 'scoop', 'pinball', 'pig', 'roads', 'tune', 'ai', 'anim'].map(k => db.ref('config/' + k).get()));
@@ -576,7 +592,8 @@ async function createBotGame(key, uid, id, bot) {
 // credited as friend games (finishGame).
 async function makeGame(key, id, X, O, opts) {
   const bot = opts && opts.bot, friend = opts && opts.friend;
-  const Q = friend ? { mode: 'friend', chaos: !!friend.setup.chaos, timer: E.normTimer(Number(friend.setup.timer) || 0) } : R.QUEUES[key], t = now();
+  const def = await timerNow();
+  const Q = friend ? { mode: 'friend', chaos: !!friend.setup.chaos, timer: friendTimer(friend.setup, !!friend.admin, def) } : Object.assign({}, R.QUEUES[key], R.QUEUES[key] && !R.QUEUES[key].chaos ? { timer: def } : {}), t = now();   // (the clock: a code, core/timer.js timerSpec)
   const rng = seedRng();
   await runConfigNow();
   const rel = await releasesNow();
@@ -606,7 +623,7 @@ async function makeGame(key, id, X, O, opts) {
     if (!rec) return false;
     if (!rec.state.squares.every(q => types.includes(q.mini.type)) || !rec.state.games.every(g => types.includes(g))) { logger.error('makeGame', id, 'dealt outside the clients\' games', rec.state.games); return false; }   // (never expected: the deal and every reset stay within the match's list, which is these)
     E.armClock(rec.state, [], t + MATCH_GRACE_MS);
-    const pub = Object.assign({ mode: Q.mode, queue: key, timer: Q.timer, players, status: 'playing', created: t, updated: t, state: JSON.stringify(rec.state) }, friend ? { room: friend.code } : {});
+    const pub = Object.assign({ mode: Q.mode, queue: key, timer: E.turnSecsOf(Q.timer), players, status: 'playing', created: t, updated: t, state: JSON.stringify(rec.state) }, friend ? { room: friend.code } : {}, Q.chaos ? {} : { clock: E.timerSpec(Q.timer) });   // (timer: seconds a turn, 0 for none or a match clock, as older apps read it; clock: the code)
     node = { pub, sec: JSON.stringify(rec.secrets), dl: E.clockDeadline(rec.state.timer) };
   }
   const made = await db.ref(`games/${id}`).transaction(cur => (cur ? undefined : node), undefined, false);
@@ -628,7 +645,7 @@ async function makeGame(key, id, X, O, opts) {
     const lmode = bot ? 'bot' : friend ? (Q.chaos ? 'friend-sc' : 'friend') : 'match';
     await mlogSafe(ML.mmKey(id), [{ t, k: 'start', mode: lmode, queue: friend ? undefined : key, timer: Q.timer, games: rec.state.squares.map(q => q.mini.type).join(' '), bot: bot ? bot.key : undefined, src: 'srv' }],
       Object.assign({ srv: true, mode: lmode, players: { X: { name: X.e.name, uid: X.uid }, O: { name: O.e.name, uid: O.uid } } }, friend ? { room: friend.code } : {}));
-    await db.ref().update(statsUp(S.startUpdates(bot ? 'bot' : Q.mode, t))).catch(e => logger.error('stats', e));
+    await db.ref().update(statsUp(Object.assign(S.startUpdates(bot ? 'bot' : Q.mode, t), Q.chaos ? {} : S.timerStartUpdates(E.timerSpec(Q.timer))))).catch(e => logger.error('stats', e));
     await markActive([X, O].filter(p => (!bot || p.uid !== bot.uid) && (!friend || p.account)).map(p => 'u:' + p.uid), t).catch(e => logger.error('stats', e));
     if (bgNew) await (Q.chaos ? planScBot(id, rec.state.sc.round, bgNew, t + MATCH_GRACE_MS) : planBot(id, rec.state, rec.secrets, bgNew, t + MATCH_GRACE_MS, false)).catch(e => logger.error('bot plan', id, e));
   }
@@ -988,10 +1005,12 @@ async function changeGame(id, uid, step, what) {   // what: the kind of change, 
     // The turn's clock is set once, when the turn passes on: an action within the turn (a Risky Rolls roll,
     // a Sea Battle or Hangman follow-up, Find the Pair's first card) keeps the deadline the turn started with.
     if (r.entries && (r.rec.state.turn !== turn0 || r.rec.state.winner)) E.armClock(r.rec.state, r.entries, t);
+    else if (r.entries && r.entries.length) E.holdClock(r.rec.state, r.entries);   // (a match clock stands still while a move that keeps the turn plays out)
     pub.state = JSON.stringify(r.rec.state); cur.sec = JSON.stringify(r.rec.secrets || {});
     pub.updated = t;
     over = !!r.rec.state.winner;
-    end = over ? { w: r.rec.state.winner, why: r.rec.state.winReason || null, resigned: r.rec.state.resigned || null } : null;
+    const tm = r.rec.state.timer;
+    end = over ? { w: r.rec.state.winner, why: r.rec.state.winReason || null, resigned: r.rec.state.resigned || null, left: E.matchClock(tm) ? `${Math.round(tm.bank.X / 1000)}/${Math.round(tm.bank.O / 1000)}` : null } : null;   // (left: a match clock's time left each, X/O seconds, for the log)
     if (over) { pub.status = 'over'; pub.ended = t; cur.dl = 1; }      // 1: over, the result still to record
     else cur.dl = E.clockDeadline(r.rec.state.timer) || null;
     out = Object.assign({ ok: true, seq: r.rec.state.seq }, r.out || {});   // (out: what goes back to the phone with it, e.g. an attention game's round at Start)
@@ -1005,7 +1024,7 @@ async function changeGame(id, uid, step, what) {   // what: the kind of change, 
     for (const e of es) { const x = ML.entryEvent(Object.assign({}, e, lw === 'timeout' ? { timeout: true } : {}), t); if (x) ev.push(x); }
     if (!es.length) ev.push({ t, k: lw, s: who || undefined, seq: out.seq, src: 'srv' });
     if (lw === 'bot') ev.forEach(e => { e.bot = true; });
-    if (end) ev.push({ t, k: 'end', w: end.w, why: end.why || undefined, resigned: end.resigned || undefined, src: 'srv' });
+    if (end) ev.push({ t, k: 'end', w: end.w, why: end.why || undefined, resigned: end.resigned || undefined, left: end.left || undefined, src: 'srv' });
   } else if (!['stale', 'early', 'missing', 'same'].includes(out.reason) && await rateOk('reject', uid || id, 20)) ev.push({ t, k: 'reject', s: who || undefined, what: lw, why: out.reason, src: 'srv' });   // (stale, early: the server's own timing checks, not a refusal of anyone's move; a loop of bad moves: logged 20 times a minute at most)
   await Promise.all([
     ev.length ? mlogSafe(ML.mmKey(id), ev) : null,
@@ -1033,6 +1052,8 @@ exports.move = onCall(CALL, async req => {
     // timeout ('auto' is the server's to play), a run with its inputs and no longer than the turn has lasted (the
     // turn's deadline, less its limit, is when it began, after the last move's playback), an attempt after Start
     // with its inputs and no longer than the time since, an attention game's answer after Start and in time.
+    const tm = rec.state.timer, dl = E.clockDeadline(tm);
+    if (E.matchClock(tm) && dl != null && now() > dl + MATCH_CLOCK_LATE_MS) return E.applyOnlineTimeout(rec, seedRng());   // a match clock already at zero: too late, the player has lost on time
     const full = E.fullState(rec), sq = full.squares && full.squares[i];
     if (!sq) return { ok: false, reason: 'bad' };
     if (full.lock != null && full.lock !== i) return { ok: false, reason: 'locked' };   // (held to another square: as the engine refuses it, before anything else is asked of the move)
@@ -1041,6 +1062,7 @@ exports.move = onCall(CALL, async req => {
     return E.applyOnlineMove(rec, side, i, chk && chk.move !== undefined ? chk.move : d.move, seedRng(), { rep: d.rep });   // (rep: the mover's inputs before the move, checked and kept by the engine for the other phone's replay)
   }, 'move');
 });
+const MATCH_CLOCK_LATE_MS = 1500;   // a move reaching the server this long after a match clock's zero counts as too late (the connection's slack)
 // The turn's time is up: the player on the move misses the turn (a move under way ends as it stands), or
 // loses the match on a second miss in a row (core/board.js timeoutMove). Only once the deadline has really
 // passed, by the server's clock.
@@ -1119,6 +1141,7 @@ async function finishGame(id) {
   up[`games/${id}/pub/recorded`] = { at: now(), done: true };
   up[`games/${id}/dl`] = null;
   statsUp(S.endUpdates(bg ? 'bot' : pub.mode, E.matchStats(st), t - (pub.created || t), t, false, testTypesOf(await releasesNow())), up);
+  if (!pub.chaos) statsUp(S.timerEndUpdates(pub.clock || E.timerSpec(pub.timer), E.matchStats(st), t - (pub.created || t)), up);   // (by timer: a time per turn against a match clock)
   if (bg) {
     Object.assign(up, { [`botGames/${id}/live`]: null, [`botGames/${id}/next`]: null, [`botGames/${id}/done`]: true, [`botGames/${id}/winner`]: st.winner || null });
     up['botStats/finished'] = ServerValue.increment(1);
@@ -1221,7 +1244,7 @@ function newRoomCode() { let c = ''; for (let i = 0; i < 5; i++) c += ROOM_ALPHA
 function roomSetupOf(d, rel, admin) {
   const o = d && typeof d === 'object' ? d : {}, allowed = E.allowedTypes(rel, admin), games = {};
   for (const t of E.TYPES) games[t] = allowed.includes(t) && (!o.games || typeof o.games !== 'object' || o.games[t] !== false);
-  return { games, timer: E.normTimer(Number(o.timer) || 0), hostPick: TEST_SEATS() && o.hostPick === 'X' ? 'X' : 'random', chaos: !!o.chaos && SC_OK() && (admin || rel.superchaos === true) };
+  return { games, timer: E.normTimer(Number(o.timer) || 0), ...(o.clock != null ? { clock: E.timerSpec(o.clock) } : {}), hostPick: TEST_SEATS() && o.hostPick === 'X' ? 'X' : 'random', chaos: !!o.chaos && SC_OK() && (admin || rel.superchaos === true) };
 }
 const TEST_SEATS = () => process.env.FUNCTIONS_EMULATOR === 'true';   // (the tests alone may keep the host on X, hostPick 'X', so their moves know whose turn it is)
 const roomSide = (room, uid) => (room && room.players ? ['X', 'O'].find(s => room.players[s] && room.players[s].uid === uid) || null : null);
