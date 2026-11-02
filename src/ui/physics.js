@@ -65,14 +65,14 @@ export function physResult(f, long) {
   }
   if (f.type === 'golf') {
     if (ph.first === by) return { text: long ? `${who} sank it!` : 'In the cup!', ok: true };
-    if (ph.first) return { text: long ? `${who} knocked ${them}'s ball in!` : `Knocked in — ${them} takes it`, ok: false };
+    if (ph.first) return { text: long ? `${who} knocked ${them}'s ball in!` : 'Knocked in!', ok: false };
     if (ph.lip) return { text: long ? `${who} lipped out` : 'Lipped out!', ok: false };
     return { text: long ? `${who} putted` : 'Not yet', ok: false };
   }
   if (f.type === 'pool') {
-    if (ph.black) return { text: long ? `${who} sank the black!` : `The black! ${them} takes it`, ok: false };
+    if (ph.black) return { text: long ? `${who} sank the black!` : 'The black!', ok: false };
     if (ph.leftNow && ph.leftNow[by] === 0) return { text: long ? `${who} sank them all!` : 'All down!', ok: true };
-    if (ph.leftNow && ph.leftNow[o] === 0) return { text: long ? `${who} sank ${them}'s last ball` : `${them}'s last ball — ${them} takes it`, ok: false };
+    if (ph.leftNow && ph.leftNow[o] === 0) return { text: long ? `${who} sank ${them}'s last ball` : `${them}'s last ball`, ok: false };
     if (ph.scratch) return { text: ph.back ? (long ? `${who} scratched: ${ph.added ? 'a new ball' : 'a ball back'} on the table` : ph.added ? 'Scratch! A new ball' : 'Scratch! A ball comes back') : (long ? `${who} scratched` : 'Scratch!'), ok: false };
     if (ph.own && !ph.theirs) return { text: long ? `${who} sank a ball — and shoots again` : 'Sank one — shoot again!', ok: true };
     if (ph.own) return { text: long ? `${who} sank a ball, and ${them}'s` : `Sank one, and ${them}'s`, ok: false };

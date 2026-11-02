@@ -2,8 +2,6 @@
 import { playerName } from '../core/match.js';
 import { ATT_TYPES } from '../games/shared/attention.js';
 import { FINGER_TYPES } from '../games/shared/finger.js';
-import { BS } from '../games/bs/rules.js';
-import { huntSize } from '../games/hunt/rules.js';
 import { INFO, viewOf } from '../games/index.js';
 import { settingsBody } from './settings.js';
 import { isMM } from '../net/matchmaking.js';
@@ -11,7 +9,7 @@ import { rx } from '../net/reactions.js';
 import { canReport } from '../net/tracking.js';
 import { blocked, leaveLoses, lockMine, moveWait, mySide, pinned, remoteTurn } from '../net/room.js';
 import { N, esc, menuOpen, menuStep, state } from './app.js';
-import { CHEV } from './art.js';
+import { CHEV, toon } from './art.js';
 import { attPinned } from './attention.js';
 import { scJointFrame, scWaiting } from './chaos.js';
 import { waitBand } from './board.js';
@@ -51,24 +49,13 @@ export function renderMini(sq, review, popup) {
   else if (!view && !f && !d && scWaiting() && state.sc.online && state.sc.fail) sub = '<span class="scfail">Move not saved · trying again…</span>';   // Super Chaos in a friend room: the record would not take the move yet
   else if (!view && !f && !d && scWaiting()) sub = '';            // Super Chaos: the move is in, the other's not ready to play yet: the waiting band says so (below)
   else if (!view && !f && !d && moveWait) sub = 'Sending your move…';
-  let secret = '';
-  if (view) {
-    secret = mini.type === 'wordle' || mini.type === 'hangman' ? `The word was ${esc(mini.word)}`
-      : mini.type === 'hilo' ? `The number was ${mini.target}`
-      : mini.type === 'bs' ? `${sq.owner ? 'Sank' : 'It was'} the ${BS.names[mini.len] || 'ship'}`
-      : mini.type === 'memory' ? 'Every card shown'
-      : mini.type === 'coins' ? `All five show ${esc(sq.owner)}`
-      : mini.type === 'hunt' ? `The treasure was at row ${Math.floor(mini.treasure / huntSize(mini)) + 1}, column ${mini.treasure % huntSize(mini) + 1}`
-      : mini.type === 'pig' ? `${mini.bank.X} to ${mini.bank.O}`
-      : mini.type === 'bj' ? `${mini.wins.X} to ${mini.wins.O}`
-      : mini.type === 'bus' ? `X ${mini.prog.X.length} of 4 · O ${mini.prog.O.length} of 4`
-      : mini.type === 'rl' ? `${mini.hits.X} hit${mini.hits.X === 1 ? '' : 's'} to ${mini.hits.O}` : '';
-    sub = sq.owner ? `<b class="${sq.owner}">Won by ${N(sq.owner)}</b>${secret ? ' · ' + secret : ''}` : `Not won by anyone${secret ? ' · ' + secret : ''}`;
-  }
+  if (view) sub = sq.owner ? wonBy(sq.owner) : 'Not won by anyone';   // (a finished square: who won it, nothing more)
   if (d && !f) {                                    // the result held a moment longer (Find the Pair's cards turning back): the board follows by itself
-    const head = d.kind === 'draw' ? `${d.note === 'stuck' ? 'Stuck' : d.note === 'tie' ? 'Tie' : 'Draw'} · resets to ${INFO[d.newType].name}` : summary(d);
-    const next = d.pass ? `<b class="${d.pass}">${N(d.pass)}</b> has no move · <b class="${d.next}">${N(d.next)}</b> again` : `<b class="${d.next}">${N(d.next)}</b> next`;
-    sub = `${head} · ${next}${secret ? ' · ' + secret : ''}`;
+    if (d.kind === 'claim' || d.kind === 'match' || d.kind === 'draw') sub = squareEnd(d);
+    else {
+      const next = d.pass ? `<b class="${d.pass}">${N(d.pass)}</b> has no move · <b class="${d.next}">${N(d.next)}</b> again` : `<b class="${d.next}">${N(d.next)}</b> next`;
+      sub = `${summary(d)} · ${next}`;
+    }
   }
   const back = popup ? `<span class="back rtag ${turn}" aria-hidden="true">${REPLAY_ICON}</span>`
     : review ? `<button class="back" data-act="${reviewCtx.mback}" aria-label="Back to the final board">${CHEV}Board</button>`
@@ -95,6 +82,10 @@ export function pauseMenu() {
   return `<div class="flash pause" role="dialog" aria-label="Menu"${fxAttr(fxAt('menu', menuStep))}><div class="card"><h2>Menu</h2>${state.online && state.timer.limit ? '<p>The turn clock keeps running.</p>' : state.cpu ? '<p>The computer waits.</p>' : ''}
     <div class="row"><button class="btn go" data-act="pause-resume">Resume</button><button class="btn" data-act="pause-main">Main menu</button></div><button class="btn setbtn" data-act="pause-settings">Settings</button>${canReport() ? '<button class="btn repbtn" data-act="pause-report">Report a problem</button>' : ''}${state.online && mySide() ? `<button class="btn react-mute" data-act="react-mute" aria-pressed="${rx.mute}">Mute opponent's reactions: ${rx.mute ? 'On' : 'Off'}</button>` : ''}</div></div>`;
 }
+// The end of a square in words, wherever it is said (the result line live and in replays, the held result, a
+// finished square's review): "Won by" and the winner's mark, or "Draw". Nothing more (no word, no score, no reset).
+export const wonBy = p => `<span class="wonby">Won by <i class="wbm" aria-hidden="true">${toon(p)}</i><b class="sr">${p === 'X' ? 'X' : 'O'}</b></span>`;
+export const squareEnd = f => (f.kind === 'draw' ? 'Draw' : wonBy(f.winner || f.by));
 // One line about a move, for the result toast and the handoff bar.
 function summary(f) {
   const who = `<b class="${f.by}">${N(f.by)}</b>`;
@@ -111,21 +102,17 @@ function renderFlash(f) {
   return `${f.type === 'memory' && f.kind === 'move' ? open.replace(' data-act="dismiss"', '') : open}</div>`;   // (Find the Pair: the two cards stay up for the full 2 seconds)
 }
 const LINE_TYPES = ['bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads', 'flap', 'chopper', 'patterns', 'wheels', 'sniff', 'clash', 'headcount', 'flash', 'snapshot', 'skyhop', 'scoop', 'pinball'];
-// The result's words for the header line (HTML), or '' when the game's own screen says it all: a square won (its
-// winning moment), the games that show their result in their own reserved line, a Risky Rolls roll or bank.
+// The result's words for the header line (HTML): a square's end ("Won by" and the mark, or "Draw": squareEnd); else
+// '' where the game's own screen says it all (the games with their own reserved result line, a Risky Rolls roll or bank).
 export function flashLine(f) {
   if (!f) return '';
   const who = `<b class="${f.by}">${N(f.by)}</b>`;
+  if (f.kind === 'claim' || f.kind === 'match' || f.kind === 'draw') return squareEnd(f);   // the square's end: "Won by" and the mark, or "Draw"
   const note = f.timeout ? `${who} ran out of time` : '';
   let say = '';
-  if (f.kind === 'claim' || f.kind === 'match') say = '';
-  else if (f.type === 'pig' && f.note === 'bust') say = `Bust! ${who} rolled ${f.roll} again · ${f.pot} point${f.pot === 1 ? '' : 's'} lost`;
+  if (f.type === 'pig' && f.note === 'bust') say = `Bust! ${who} rolled ${f.roll} again · ${f.pot} point${f.pot === 1 ? '' : 's'} lost`;
   else if (LINE_TYPES.includes(f.type) || (f.type === 'pig' && (f.note === 'bank' || f.kind === 'again'))) say = '';
-  else if (f.kind === 'draw') {
-    const TIE = { seating: 'the same number of tables each', shelves: 'on as many shelves each', roads: 'roads the same length' };
-    const head = f.note === 'stuck' ? 'Stuck! No legal moves' : f.note === 'blocked' ? 'Draw! Nobody can win it' : f.note === 'tie' ? `Tie! ${TIE[f.type] || 'level at the end'}` : 'Draw! Full board';
-    say = `${head} · now ${INFO[f.newType].name}`;
-  } else if (f.kind === 'again') say = f.type === 'bs' ? `${who} hit! · fire again` : `${who} found ${esc(f.letter)} · guess again`;
+  else if (f.kind === 'again') say = f.type === 'bs' ? `${who} hit! · fire again` : `${who} found ${esc(f.letter)} · guess again`;
   else say = summary(f);
   return [note, say].filter(Boolean).join(' · ');
 }

@@ -27,7 +27,7 @@ function distTable(mini, a, o) {
     const label = `Spot ${k + 1}, region${s.r.length > 1 ? 's' : ''} ${s.r.map(r => r + 1).join(' and ')}${w === 'G' ? ', grey' : w ? ', ' + esc(w) : ''}`;
     return `<g class="dspot${w ? ' ' + w : ''}${s.r.length > 1 ? ' edge' : ''}${pop ? ' pop' : ''}${drop ? ' drop' : ''}${open ? ' open' : ''}" ${open ? `data-act="move" ${mv(k)} role="button" tabindex="0"` : ''} aria-label="${label}" transform="translate(${s.x} ${s.y})"><g class="pp"${drop ? ` style="--t:${PLACE_MS.mark}ms"` : ''}><circle class="dhit" r="5.5"/><circle class="dpc" r="4.3"/>${w && w !== 'G' ? `<text y="1.75">${esc(w)}</text>` : ''}</g></g>`;
   }).join('');
-  const res = ds ? `<p ${lateAt('arcres ok', PLACE_MS.mark)} role="status">${tie ? `${led('X')} each · a draw` : a.note === 'locked' ? `${N(a.winner)} locked ${t.locks[a.winner]} of ${map.regions.length}` : `${N(a.by)} leads ${led(a.by)} of ${map.regions.length}`}</p>`
+  const res = ds ? `<p ${lateAt('arcres ok', PLACE_MS.mark)} role="status">${tie ? `${led('X')} each` : a.note === 'locked' ? `${N(a.winner)} locked ${t.locks[a.winner]} of ${map.regions.length}` : `${N(a.by)} leads ${led(a.by)} of ${map.regions.length}`}</p>`
     : `<p class="arcnote">${o.view ? '' : o.locked ? `Waiting for <b class="${o.turn}">${N(o.turn)}</b>…` : ''}</p>`;
   return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="districts"><svg class="dmap" viewBox="-2 -2 104 124" role="group" aria-label="The map">${regs}${spots}</svg>${res}</div></div>`;
 }

@@ -62,8 +62,7 @@ Sounds start from the events they belong to, never from drawing the screen: a re
 | Mini-game | Sound | When it plays | How it is made |
 |---|---|---|---|
 | Tic-tac-toe | `mark` | A mark is placed. *Varied.* | Bandpass noise scribble with a low triangle |
-| Four in a Row | `whoosh` | A piece is dropped | Noise sweep down 3000→500 Hz |
-| Four in a Row | `clack` | The piece lands | Short noise click with a triangle |
+| Four in a Row | `c4drop` | The piece lands (nothing as it falls) | A soft wooden thunk: triangle 300→200 Hz with a quiet 620 Hz tap and low-passed noise, 0.16 s. *Varied.* |
 | Sea Battle | `fire` | A shot is fired | Triangle glide 900→300 Hz with noise |
 | Sea Battle | `splash` | A miss | Lowpass noise sweep with two bubbles |
 | Sea Battle | `boom` | A hit | Lowpass noise with a low glide 160→50 Hz |

@@ -23,7 +23,7 @@ function shelfTable(mini, a, o) {
     const tag = ['X', 'O'].map(p => `<i class="${on(p) ? 'on ' + p : ''}${fresh(p) ? ' fillin' : ''}">${p}</i>`).join('');
     return `<div class="shrow"><div class="shspots"${per === 3 ? '' : ` style="grid-template-columns:repeat(${per},1fr)"`}>${spots}</div><div class="shon" aria-label="On shelf ${s + 1}: ${['X', 'O'].filter(on).join(' and ') || 'nobody'}">${tag}</div></div>`;
   }).join('');
-  const res = sh ? `<p ${lateAt('arcres ok', PLACE_MS.mark)} role="status">${tie ? `${on('X')} each · a draw` : `${N(a.by)} is on ${on(a.by)} shel${on(a.by) === 1 ? 'f' : 'ves'}`}</p>`
+  const res = sh ? `<p ${lateAt('arcres ok', PLACE_MS.mark)} role="status">${tie ? `${on('X')} each` : `${N(a.by)} is on ${on(a.by)} shel${on(a.by) === 1 ? 'f' : 'ves'}`}</p>`
     : `<p class="arcnote">${o.view ? '' : o.locked ? `Waiting for <b class="${turn}">${N(turn)}</b>…` : ''}</p>`;
   return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="shelves"><div class="shcase">${rows}</div>${res}</div></div>`;
 }

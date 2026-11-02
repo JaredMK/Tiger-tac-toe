@@ -125,14 +125,19 @@ export function confetti(n = 24, from) {
   const box = document.createElement('div');
   box.className = 'confetti'; box.setAttribute('aria-hidden', 'true');
   document.body.appendChild(box);
+  // Each piece is unseen outside its own animation (opacity 0 in the stylesheet: never a square left at the spray's
+  // origin as it waits to start or once it ends) and goes as soon as its flight is over; the box goes with the last,
+  // or after its longest flight whatever happens (a hidden page holds animations back).
   let left = count;
+  const done = () => { if (box.isConnected) box.remove(); };
+  setTimeout(done, 1400);
   for (let i = 0; i < count; i++) {
     const p = document.createElement('i'), ang = Math.random() * Math.PI * 2, d = 60 + Math.random() * 140 * Math.min(1.5, ANIM.fx), rot = (Math.random() - 0.5) * 720;
     p.style.left = x0 + 'px'; p.style.top = y0 + 'px'; p.style.background = CONF[i % CONF.length];
     box.appendChild(p);
     const dx = Math.cos(ang) * d, dy = Math.sin(ang) * d * 0.8;
     const an = p.animate([{ transform: 'translate(-50%, -50%) scale(.4)', opacity: 1 }, { transform: `translate(calc(-50% + ${(dx * 0.85).toFixed(0)}px), calc(-50% + ${(dy * 0.85 - 30).toFixed(0)}px)) rotate(${(rot * 0.7).toFixed(0)}deg) scale(1)`, opacity: 1, offset: 0.55 }, { transform: `translate(calc(-50% + ${dx.toFixed(0)}px), calc(-50% + ${(dy + 70).toFixed(0)}px)) rotate(${rot.toFixed(0)}deg) scale(.8)`, opacity: 0 }], { duration: 650 + Math.random() * 250, easing: 'cubic-bezier(.2, .8, .4, 1)' });
-    an.onfinish = an.oncancel = () => { if (--left <= 0) box.remove(); };
+    an.onfinish = an.oncancel = () => { p.remove(); if (--left <= 0) done(); };
   }
 }
 // A press: the control squashes and springs back under the finger (its own `scale`, so its transforms are untouched).

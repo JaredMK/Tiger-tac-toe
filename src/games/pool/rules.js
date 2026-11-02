@@ -61,6 +61,7 @@ export function apply(mini, p, m, rng, idx) {   // a shot from the cue ball: own
   }
   mini.last = physLast(p, shot, r, Object.assign({ pocketed: pk.slice(), black, scratch, own, theirs, cue: mini.balls.cue.slice() }, back ? { back, at: mini.balls[back].slice(), added } : {}));
   if (black) return { ok: true, outcome: 'win', note: 'black', winner: o };
+  if (!poolLeft(p, mini) && !poolLeft(o, mini)) return { ok: true, outcome: 'draw', note: 'tie' };   // both sides' last balls down on the one shot: a draw, the square resets
   if (!poolLeft(p, mini)) return { ok: true, outcome: 'win', note: 'cleared' };
   if (!poolLeft(o, mini)) return { ok: true, outcome: 'win', note: 'gift', winner: o };
   const again = own > 0 && !theirs && !scratch;

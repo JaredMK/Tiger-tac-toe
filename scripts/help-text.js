@@ -11,7 +11,7 @@ const { pathToFileURL } = require('url');
 
 const ROOT = path.join(__dirname, '..');
 const DOC = 'docs/help-text.md';
-const EXPLAINER = 'src/ui/explainer.js', ACCOUNT = 'src/ui/screens/account.js', ENVJS = 'src/env.js';
+const EXPLAINER = 'src/ui/explainer.js', ACCOUNT = 'src/ui/screens/account.js', ENVJS = 'src/env.js', SHELL = 'index.html';
 
 /* ----- reading and writing JS string literals ----- */
 const isQuote = c => c === "'" || c === '"' || c === '`';
@@ -167,6 +167,10 @@ function loadModel(read, oldTypes) {
     fld('Verify title', region(ACCOUNT, /verify-scr">\n\s+<div class="bar">.*\n\s+<div class="ttl"><b>(.*?)<\/b>/, 'tpl')),
     fld('Verify banner', region(ACCOUNT, /verify-scr">\n\s+<div class="bar">.*\n\s+<div class="ttl"><b>.*?<\/b><small>(.*?)<\/small>/, 'tpl')),
     fld('Verify hint', region(ACCOUNT, /data-keep-scroll="verify">\n\s+<p class="hint">(.*?)<\/p>/, 'tpl', { email: '${esc(verifyEmail())}' })),
+  ]);
+  // A phone held on its side (the web): the page's own notice (index.html, shown by styles.css).
+  sec('other', 'rotate', 'Phone on its side', [
+    fld('Rotate', region(SHELL, /<div class="rotate" role="alert">.*?<p>(.*?)<\/p><\/div>/, 'tpl')),
   ]);
   const em = { email: '${esc(gateEmail)}' }, em2 = { email: "${esc(gateEmail || 'This account')}" };
   const shellAt = (title, q, ph) => region(ACCOUNT, new RegExp(`shell\\('${title}', ${q}<p class="hint">(.*?)</p>`), q === '`' ? 'tpl' : 'sq', ph);

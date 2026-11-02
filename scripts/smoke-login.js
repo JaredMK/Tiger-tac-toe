@@ -15,9 +15,9 @@ const path = require('node:path');
 
 const ENV_JS = fs.readFileSync(path.join(__dirname, '..', 'src', 'env.js'), 'utf8');
 function webConfig(env) {
-  const m = ENV_JS.match(new RegExp(`${env}: \\{[^}]*?apiKey: '([^']+)'[^}]*?projectId: '([^']+)'`));
+  const m = ENV_JS.match(new RegExp(`${env}: \\{[^}]*?apiKey: '([^']+)'[^}]*?projectId: '([^']+)'[^}]*?apple: (true|false)`));
   if (!m) throw new Error(`no ${env} config in src/env.js`);
-  return { apiKey: m[1], projectId: m[2] };
+  return { apiKey: m[1], projectId: m[2], apple: m[3] === 'true' };
 }
 const HOSTS = { production: 'tictacchaos.com', staging: 'staging.tictacchaos.com' };
 const IDT = 'https://identitytoolkit.googleapis.com/v1';
@@ -34,7 +34,7 @@ async function provider(key, id, host) {
 }
 
 async function check(env, requireApple) {
-  const { apiKey, projectId } = webConfig(env), host = HOSTS[env];
+  const { apiKey, projectId, apple } = webConfig(env), host = HOSTS[env];
   const fails = [], warns = [], ok = m => console.log('  ok  ' + m);
   console.log(`Login check: ${env} (${projectId}, ${host})`);
 
@@ -51,8 +51,9 @@ async function check(env, requireApple) {
   if (g.on) ok('Google sign-in is on'); else fails.push(`Google sign-in is off or broken: ${g.why}`);
 
   const a = await provider(apiKey, 'apple.com', host);
-  if (a.on) ok('Apple sign-in is on');
-  else (requireApple ? fails : warns).push(`Apple sign-in is not set up: ${a.why} (docs/login-setup.md: the Services ID, the key, then Firebase's Apple provider)`);
+  if (a.on) { ok('Apple sign-in is on'); if (!apple) warns.push('Apple sign-in is on in Firebase but Continue with Apple is hidden: set apple: true for this project in src/env.js'); }
+  else if (apple) fails.push(`Continue with Apple is shown (src/env.js apple: true) but Apple sign-in is not set up: ${a.why}`);
+  else (requireApple ? fails : warns).push(`Apple sign-in is not set up, so Continue with Apple is hidden: ${a.why} (docs/login-setup.md: the Services ID, the key, then Firebase's Apple provider; then apple: true in src/env.js)`);
 
   const e = await post(`${IDT}/accounts:signInWithPassword?key=${apiKey}`, { email: `login-check-${Date.now()}@example.com`, password: 'not-a-password-1', returnSecureToken: true });
   if (/INVALID_LOGIN_CREDENTIALS|EMAIL_NOT_FOUND|INVALID_PASSWORD/.test(e.error || '')) ok('email sign-in is on (a made-up address is refused as wrong credentials)');

@@ -159,7 +159,9 @@ jobs:
         env:
           DEPLOYED: ${{ steps.what.outputs.only }}
         run: node scripts/smoke-live.js "$TARGET"
-      - name: "Check the live site in a browser: no CSP violations, Google sign-in reaches Google, the admin page loads"
+      - name: "A friend match through the live server: opened, joined, started, then deleted (nothing reaches a record)"
+        run: node scripts/smoke-match.js "$TARGET"
+      - name: "Check the live site in a browser: no CSP violations, Google sign-in reaches Google, a match against the computer (production), the admin page loads"
         run: |
           npm i --no-save --no-audit --no-fund playwright@1.56.1
           npx playwright install --with-deps chromium

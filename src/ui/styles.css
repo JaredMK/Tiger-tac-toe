@@ -2265,8 +2265,8 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 @keyframes rldrop { 0%, 76% { transform: translateY(-21px); } 86% { transform: translateY(-3px); } 92% { transform: translateY(-9px); } 100% { transform: none; } }
 .rlres { margin: 0; display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--muted); height: 36px; flex: none; }
 .rlres b { color: var(--ink); }
-.rlres > span { min-width: 0; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-height: 16px; }   /* the spin's bets: two lines at most, inside the tallies' column (never under the wheel) */
-.rlnum { flex: none; min-width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; color: #fff; font: 400 16px 'Luckiest Guy', sans-serif; padding-top: 3px; border: 3px solid var(--ink); }
+.rlres > span:not(.rlnum) { min-width: 0; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-height: 16px; }   /* the spin's bets: two lines at most, inside the tallies' column (never under the wheel) */
+.rlnum { flex: none; width: 34px; height: 34px; aspect-ratio: 1; border-radius: 50%; display: grid; place-items: center; color: #fff; font: 400 16px 'Luckiest Guy', sans-serif; padding-top: 3px; border: 3px solid var(--ink); }
 .rlnum.r { background: #d6301e; } .rlnum.b { background: var(--ink); } .rlnum.g { background: #2f8a3c; }
 .rlboard { flex: none; display: flex; flex-direction: column; gap: 4px; }
 .rlrow { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)) 1.7fr; gap: 3px; }
@@ -2595,7 +2595,7 @@ main.scr.mini > .wband { left: 0; right: 0; }   /* Super Chaos: waiting in the s
 .spd .win-card { animation-name: popx; animation-timing-function: cubic-bezier(.2, .9, .3, 1); }   /* a pop overshoots a touch */
 
 .confetti { position: fixed; inset: 0; z-index: 60; pointer-events: none; overflow: hidden; }
-.confetti i { position: absolute; width: 9px; height: 13px; border-radius: 2px; border: 1.5px solid var(--ink); }
+.confetti i { position: absolute; width: 9px; height: 13px; border-radius: 2px; border: 1.5px solid var(--ink); opacity: 0; }   /* (seen only through its animation: fx.js confetti) */
 @media (prefers-reduced-motion: reduce) { .confetti { display: none; } }
 
 /* ----- the player's Animation setting (ui/pace.js): Normal | Speed, in the main menu and the in-game menu ----- */
@@ -2628,3 +2628,20 @@ main.scr.mini > .wband { left: 0; right: 0; }   /* Super Chaos: waiting in the s
 .wbank { display: flex; justify-content: center; flex: none; }
 .wbank .big { min-width: min(220px, 70%); }
 .g-wheels .arcres, .g-wheels .arcnote { min-height: 1.4em; }
+
+/* A phone on its side (the web: the app keeps an iPhone upright itself): the whole page asks to be turned back. Only a
+   touch phone in landscape (short and wide, no hover); never a tablet, a desktop or a phone held upright. */
+.rotate { display: none; }
+@media (orientation: landscape) and (max-height: 500px) and (hover: none) and (pointer: coarse) {
+  .rotate { display: flex; position: fixed; inset: 0; z-index: 2147483000; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: var(--paper); color: var(--ink); padding: var(--sat) var(--sar) var(--sab) var(--sal); }
+  .rotate svg { width: 72px; height: 72px; fill: none; stroke: var(--ink); stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; animation: rotphone 1.8s ease-in-out infinite; }
+  .rotate svg rect { fill: var(--o); }
+  .rotate p { margin: 0; font: 400 26px/1.1 'Luckiest Guy', sans-serif; }
+  #app { visibility: hidden; }
+}
+@keyframes rotphone { 0%, 30% { transform: rotate(-90deg); } 60%, 100% { transform: rotate(0); } }
+@media (prefers-reduced-motion: reduce) { .rotate svg { animation: none; } }
+/* "Won by" and the winner's mark, in a line of text (ui/mini.js wonBy): the character at the text's own height */
+.wonby { display: inline-flex; align-items: center; gap: .3em; white-space: nowrap; }
+.wonby .wbm { display: inline-block; width: 1.5em; height: 1.5em; flex: none; margin: -.25em 0; }
+.wonby .wbm .pc { width: 100%; height: 100%; }

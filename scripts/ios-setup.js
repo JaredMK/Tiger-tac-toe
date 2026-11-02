@@ -50,6 +50,11 @@ function infoPlist(reversed) {
   let s = rd(p);
   s = s.replace(new RegExp(`\\s*${BEGIN}[\\s\\S]*?${END}`), '');
   s = s.replace(/<string>armv7<\/string>/, '<string>arm64</string>');
+  // Orientation: portrait only on an iPhone; every orientation on an iPad (App Store: an iPad app turns with the device
+  // unless it asks to be full screen only).
+  s = s.replace(/(<key>UISupportedInterfaceOrientations<\/key>\s*<array>)[\s\S]*?(<\/array>)/, '$1\n\t\t<string>UIInterfaceOrientationPortrait</string>\n\t$2');
+  s = s.replace(/(<key>UISupportedInterfaceOrientations~ipad<\/key>\s*<array>)[\s\S]*?(<\/array>)/, '$1' + ['Portrait', 'PortraitUpsideDown', 'LandscapeLeft', 'LandscapeRight'].map(o => `\n\t\t<string>UIInterfaceOrientation${o}</string>`).join('') + '\n\t$2');
+  s = s.replace(/\s*<key>UIRequiresFullScreen<\/key>\s*<(true|false)\/>/, '');
   const block = `
 	${BEGIN}
 	<key>CFBundleURLTypes</key>
@@ -71,7 +76,7 @@ function infoPlist(reversed) {
   s = s.replace(/\n<\/dict>\s*<\/plist>\s*$/, `${block}\n</dict>\n</plist>\n`);
   if (!s.includes(reversed)) die('could not write the URL scheme into Info.plist');
   wr(p, s);
-  log(`Info.plist: URL scheme ${reversed}, arm64, no export-compliance question`);
+  log(`Info.plist: URL scheme ${reversed}, arm64, no export-compliance question, portrait on iPhone (every orientation on iPad)`);
 }
 
 // ---- Entitlements

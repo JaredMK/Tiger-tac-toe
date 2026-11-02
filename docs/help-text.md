@@ -214,7 +214,7 @@ Win: Light every target first.
 ## Pool [pool]
 Category: More skill
 Play: Drag to aim and shoot. Sink your own ball to go again. Sink the white and a ball comes back for you: one of your sunk balls, or a new one if none is sunk.
-Win: Sink all your balls on the table first. Sink the black ball and you lose.
+Win: Sink all your balls on the table first. Sink the black ball and you lose. Both last balls down on one shot: a draw.
 
 ## Ride the Bus [bus]
 Category: More luck
@@ -341,6 +341,9 @@ Agree: By continuing you agree to the {link}.
 Verify title: Verify your email
 Verify banner: Find Match, hosting and your username need a verified email
 Verify hint: We sent a verification link to <b>{email}</b>. Open it, then tap Continue.
+
+## Phone on its side [rotate]
+Rotate: Rotate your phone
 
 ## Staging notices [staging]
 Banner: Staging: for testers on the list only

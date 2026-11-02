@@ -3,6 +3,7 @@
 //   - no Content Security Policy violation on the game, the sign-in screen, Google's sign-in hand-off or the admin page;
 //   - the sign-in screen's Continue with Google opens the sign-in window, which reaches Google's own sign-in page
 //     (Firebase's auth handler on the site's domain loaded, Google's scripts with it);
+//   - production: a match against the computer plays (our move, the computer's reply, the turn back with us);
 //   - the admin page gets past "Loading…" to its sign-in.
 // Run after every deploy (the Deploy workflow) and after a release (scripts/release.js, once production is live).
 //   node scripts/smoke-browser.js production|staging      (SMOKE_URL to point it elsewhere)
@@ -12,6 +13,37 @@ const SITE = (process.env.SMOKE_URL || (TARGET === 'production' ? 'https://ticta
 let bad = 0;
 const check = (ok, what) => { console.log(`${ok ? 'ok  ' : 'FAIL'} ${what}`); if (!ok) bad++; };
 
+// A match against the computer (production: staging lets only its testers past the gate): Play Computer, Start, a move of
+// ours in an open square, then the computer's reply played out and the turn back with us, no page error.
+async function cpuMatch(ctx) {
+  const cpu = await ctx.newPage(), perr = [];
+  cpu.on('pageerror', e => perr.push(String(e.message).slice(0, 160)));
+  await cpu.goto(SITE + '/', { waitUntil: 'load', timeout: 30000 });
+  await cpu.waitForSelector('[data-act="cpu-go"]', { timeout: 20000 });
+  await cpu.click('[data-act="cpu-go"]');
+  await cpu.waitForSelector('[data-act="start"]', { timeout: 10000 });
+  await cpu.click('[data-act="start"]');
+  const r = await cpu.evaluate(async () => {
+    const sl = ms => new Promise(ok => setTimeout(ok, ms)), t0 = Date.now();
+    let at = null;
+    while (Date.now() - t0 < 60000 && !state.winner) {
+      const me = state.cpu === 'X' ? 'O' : 'X', still = state.flash || state.spot || state.done;
+      if (at != null && state.moves > at && state.turn === me && !still && state.screen === 'board') return { ok: true, moves: state.moves };
+      if (at == null && state.turn === me && !still && (state.screen === 'board' || state.screen === 'mini')) {
+        const i = state.squares.findIndex(q => q && !q.owner);
+        if (i >= 0) {
+          state.screen = 'mini'; state.zoom = i; commit(); await sl(300);
+          const m = randomLegalMove(state.squares[i].mini, me, RNG);
+          if (m != null) { at = state.moves; attemptMove(m); }
+        }
+      }
+      await sl(250);
+    }
+    return { ok: false, moves: state.moves, turn: state.turn, screen: state.screen, at };
+  }).catch(e => ({ ok: false, err: e.message }));
+  check(r.ok && !perr.length, `a match against the computer: our move, then the computer's, and the turn back with us (${JSON.stringify(r).slice(0, 120)}${perr.length ? '; page errors: ' + perr.join(' | ') : ''})`);
+  await cpu.close().catch(() => {});
+}
 async function main() {
   let chromium;
   try { ({ chromium } = require('playwright')); } catch (e) { console.log('FAIL Playwright is not installed (npm i --no-save playwright && npx playwright install --with-deps chromium)'); process.exit(1); }
@@ -60,6 +92,7 @@ async function main() {
   } catch (e) {
     check(false, `the browser check stopped: ${String(e && e.message || e).split('\n')[0]}`);
   }
+  if (TARGET === 'production') { try { await cpuMatch(ctx); } catch (e) { check(false, `the match against the computer stopped: ${String(e && e.message || e).split('\n')[0]}`); } }
   check(csp.length === 0, `no Content Security Policy violations${csp.length ? ':\n       ' + [...new Set(csp)].slice(0, 12).join('\n       ') : ''}`);
   await browser.close();
   if (bad) { console.log(`\n${bad} browser check${bad === 1 ? '' : 's'} failed on ${SITE}.`); process.exit(1); }

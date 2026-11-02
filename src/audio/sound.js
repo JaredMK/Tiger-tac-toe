@@ -101,6 +101,7 @@ def('randomMove', 0.36, (c, d, t) => [0, .1, .2].forEach(o => sfxTone(c, d, t + 
 // ---- the mini-games
 def('mark', 0.14, (c, d, t) => { sfxNoise(c, d, t, .12, { f: 2600, q: 3, vol: .55 }); sfxTone(c, d, t, 320, .1, { to: 260, vol: .2, type: 'triangle' }); }, { level: .5, vary: true });
 def('whoosh', 0.34, (c, d, t) => sfxNoise(c, d, t, .3, { f: 3000, to: 500, q: .8, vol: .4 }), { level: .45 });
+def('c4drop', 0.16, (c, d, t) => { sfxTone(c, d, t, 300, .12, { to: 200, vol: .45, type: 'triangle', att: .004 }); sfxTone(c, d, t, 620, .05, { vol: .1, att: .002 }); sfxNoise(c, d, t, .05, { f: 900, filter: 'lowpass', vol: .25, att: .002 }); }, { level: .45, vary: true });   // Four in a Row: a soft wooden thunk as the piece lands
 def('clack', 0.1, (c, d, t) => { sfxNoise(c, d, t, .05, { f: 1800, q: 5, vol: .7, att: .001 }); sfxTone(c, d, t, 800, .05, { vol: .4, type: 'triangle' }); }, { level: .6 });
 def('fire', 0.2, (c, d, t) => { sfxTone(c, d, t, 900, .16, { to: 300, vol: .4, type: 'triangle' }); sfxNoise(c, d, t, .16, { f: 2000, to: 600, vol: .25 }); }, { level: .5 });
 def('splash', 0.6, (c, d, t) => { sfxNoise(c, d, t, .4, { f: 1800, to: 400, q: .6, filter: 'lowpass', vol: .6 }); sfxTone(c, d, t + .15, 700, .06, { to: 1200, vol: .2 }); sfxTone(c, d, t + .25, 900, .05, { to: 1500, vol: .15 }); }, { level: .55 });

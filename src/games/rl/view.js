@@ -36,11 +36,11 @@ function rlTable(mini, a, o) {
     return `<div class="ctal ${p}${!o.view && turn === p ? ' now' : ''}"><b class="${p} tnm">${N(p)}</b><span class="pips" aria-label="${mini.hits[p]} of ${goal} hits">${pips}</span></div>`;
   };
   const W = p => `<b class="${p}">${N(p)}</b>`, num = k => `<span class="rlnum ${k === 0 ? 'g' : rlRed(k) ? 'r' : 'b'}">${k}</span>`;
-  const one = (bet, hit) => (hit ? (bet === 'zero' ? 'green 0!' : 'hit!') : 'miss');
+  const one = (bet, hit) => (hit ? 'Hit' : 'Miss');                 // (the result in a word: nothing about the pick)
   const sh = spin && spin.shared ? spin : shared ? l : null;   // the shared spin, playing or as it ended
   const res = sh ? `<p ${lateAt('rlres', spin ? tEnd : null)}>${num(sh.n)}<span>${['X', 'O'].filter(p => sh.bets[p]).map(p => `${W(p)} ${one(sh.bets[p], sh.hit[p])}`).join(' · ')}</span></p>`
     : pend ? `<p class="rlres"><span>${W(pend.by)} picked ${rlBetText(pend.bet)} · waiting for the spin</span></p>`
-    : spin || l ? `<p ${lateAt('rlres', spin ? tEnd : null)}>${num(n)}<span>${W(spin ? a.by : l.by)} picked ${rlBetText((spin || l).bet)} · ${one((spin || l).bet, (spin || l).hit)}</span></p>` : '<p class="rlres">&nbsp;</p>';
+    : spin || l ? `<p ${lateAt('rlres', spin ? tEnd : null)}>${num(n)}<span>${one((spin || l).bet, (spin || l).hit)}</span></p>` : '<p class="rlres">&nbsp;</p>';
   // The bet on the board: the move playing out (both players' in a shared spin, each in their colour), a bet
   // waiting for its spin, else the one being put together on this phone.
   if (!rlDraft || rlDraft.sq !== o.zoom || o.moved) rlDraft = { sq: o.zoom, nums: [], bet: null };   // a fresh bet after every spin
@@ -72,7 +72,7 @@ function rlTable(mini, a, o) {
   // Once the ball lands: HIT!, MISS or GREEN 0!, big in its own slot under the wheel (never over it), held a second before the game moves on.
   const anyHit = spin ? (spin.shared ? ['X', 'O'].some(p => spin.hit[p]) : spin.hit) : false;
   const zeroHit = spin ? (spin.shared ? ['X', 'O'].some(p => spin.hit[p] && spin.bets[p] === 'zero') : spin.hit && spin.bet === 'zero') : false;
-  const bigTxt = !spin ? '' : zeroHit ? 'Green 0!' : spin.shared && spin.hit.X && spin.hit.O ? 'Both hit!' : anyHit ? 'Hit!' : 'Miss';
+  const bigTxt = !spin ? '' : anyHit ? 'Hit' : 'Miss';
   const bigCls = !spin ? '' : zeroHit ? 'zero' : anyHit ? 'hit' + (spin.shared && !(spin.hit.X && spin.hit.O) ? ' ' + (spin.hit.X ? 'X' : 'O') : '') : 'miss';
   const big = spin ? `<b ${lateAt('rlbig ' + bigCls, tEnd)} role="status">${bigTxt}</b>` : '';
   // Under the wheel: the recent spins, as on the miniature (a hit in the spinner's colour, a miss plain). While
@@ -116,7 +116,7 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
 export function moveText(f, who) {
   if (f.rl && f.rl.pending) return `${who} picked ${rlBetText(f.rl.bet)}`;
   if (f.rl && f.rl.shared) return `${f.rl.n}${f.rl.n === 0 ? ' green' : rlRed(f.rl.n) ? ' red' : ' black'} · ${['X', 'O'].filter(p => f.rl.bets[p]).map(p => `${N(p)} ${f.rl.hit[p] ? 'hit' : 'missed'}`).join(', ')}`;
-  return f.rl ? `${f.rl.n}${f.rl.n === 0 ? ' green' : rlRed(f.rl.n) ? ' red' : ' black'} · ${f.rl.hit ? 'a hit' : 'a miss'}` : `${who} spun`;
+  return f.rl ? (f.rl.hit ? 'Hit' : 'Miss') : `${who} spun`;
 }
 export function sounds(f, add, won, mini, last) {
   if (f.rl && f.rl.pending) { add('chips', 0); return; }         // Super Chaos: the bet put down

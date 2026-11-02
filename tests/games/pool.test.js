@@ -56,6 +56,12 @@ test('pool: the fixed layout; a pocketed ball is gone; own ball down means anoth
   const last = JSON.parse(JSON.stringify(m)); last.pocketed.X = 2; last.down.x2 = last.down.x3 = last.down.o2 = true; last.balls.x1 = [12, 90]; last.balls.cue = [50, 90];
   const r5 = E.applyMove(last, 'X', { aim: -Math.PI / 2, power: 0.35 });
   assert.deepEqual([r5.outcome, r5.note], ['win', 'cleared']);
+  // both sides' last balls down on the same shot: a draw (the square resets with a new mini-game), whoever shot
+  const both = JSON.parse(JSON.stringify(m)); both.pocketed = { X: 2, O: 2 }; both.down.x2 = both.down.x3 = both.down.o2 = both.down.o3 = true;
+  both.balls.x1 = [12, 90]; both.balls.cue = [50, 90]; both.balls.o1 = P.POOL.pockets[0].slice(0, 2);   // (O's last ball on a pocket's mouth: it drops as the shot plays)
+  const rb = E.applyMove(both, 'X', { aim: -Math.PI / 2, power: 0.35 });
+  assert.deepEqual(both.last.pocketed.slice().sort(), ['o1', 'x1'], 'both last balls down on the one shot');
+  assert.deepEqual([rb.outcome, rb.note], ['draw', 'tie'], 'a draw, not a win for either side');
   // the shot that sinks the last ball and scratches: no win; one of the sunk balls comes back, and X must sink it too
   const sc = JSON.parse(JSON.stringify(m)); sc.pocketed.X = 2; sc.down.x2 = sc.down.x3 = true; sc.balls.x1 = [12, 90]; sc.balls.cue = [28, 90];
   const probe = JSON.parse(JSON.stringify(sc)); const pr = P.run('pool', probe, 'X', { aim: -Math.PI / 2, power: 0.5 });

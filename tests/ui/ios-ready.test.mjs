@@ -32,10 +32,18 @@ test('"Please update": only below this platform\'s minimum, or when the server s
   assert.match(html, /data-act="update-app"/);
   mustUpdate(); assert.equal(updateNeeded(), true, 'the server refused a match: { update: true }');
 });
-test('the login screen offers Google, Apple and email', () => {
-  const html = renderLogin(false);
-  for (const act of ['login-google', 'login-apple', 'login-email', 'login-create']) assert.match(html, new RegExp(`data-act="${act}"`), act);
-  assert.match(html, /Continue with Apple/);
+test('the login screen offers Google and email, and Apple where the project has it set up (src/env.js apple)', () => {
+  const was = globalThis.window;
+  try {
+    globalThis.window = { TTC_ENV: { apple: true } };
+    const html = renderLogin(false);
+    for (const act of ['login-google', 'login-apple', 'login-email', 'login-create']) assert.match(html, new RegExp(`data-act="${act}"`), act);
+    assert.match(html, /Continue with Apple/);
+    globalThis.window = { TTC_ENV: { apple: false } };
+    const off = renderLogin(false);
+    assert.doesNotMatch(off, /login-apple|Continue with Apple/, 'Apple not set up: no button that can only fail');
+    assert.match(off, /data-act="login-google"/);
+  } finally { globalThis.window = was; }
 });
 test('a join link from any address that opens the game: the page\'s own, or a deep link into the app', () => {
   assert.equal(linkCode('https://tictacchaos.com/?room=abcde'), 'ABCDE');

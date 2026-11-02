@@ -18,5 +18,5 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
   return g;
 }
 export function sounds(f, add, won, mini, last) {
-  add('whoosh', 0); add('clack', 330); return;
+  add('c4drop', 330); return;                                     // (a soft wooden thunk as it lands: nothing harsh on the way down)
 }
