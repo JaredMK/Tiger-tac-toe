@@ -54,8 +54,11 @@ async function call(idToken, name, data) {
     game = start && start.game;
     check(!!(start && start.ok && start.started && game), `the host starts the match (game ${game || 'none'})`);
     if (game) {
-      const g = (await db.ref(`games/${game}/pub`).get()).val() || {};
-      const squares = Array.isArray(g.squares) ? g.squares : Object.values(g.squares || {});
+      const pub = (await db.ref(`games/${game}/pub`).get()).val() || {};
+      let g = {};
+      try { g = JSON.parse(pub.state || '{}'); } catch (e) { /* (below: no squares) */ }   // (the public state rides as one JSON string: functions/index.js makeGame)
+      const squares = Array.isArray(g.squares) ? g.squares : [];
+      check(pub.status === 'playing' && pub.mode === 'friend' && pub.room === code, `the match is a friend match, playing, from its room (${pub.status}, ${pub.mode})`);
       check(squares.length === 9 && squares.every(q => q && q.mini && q.mini.type), `the match is dealt: nine squares, each with its mini-game (${squares.length})`);
       check(g.turn === 'X' || g.turn === 'O', `a player is to move (${g.turn})`);
       const room = (await db.ref(`rooms/${code}`).get()).val() || {};
