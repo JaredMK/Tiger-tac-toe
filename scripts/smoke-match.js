@@ -38,7 +38,8 @@ async function call(idToken, name, data) {
 
 (async () => {
   if (!process.env.TTC_PROJECT || process.env.TTC_PROJECT !== CFG.projectId) throw new Error(`TTC_PROJECT must be ${CFG.projectId} (this environment's key)`);
-  admin.initializeApp({ projectId: CFG.projectId, databaseURL: CFG.databaseURL });
+  const key = process.env.GOOGLE_APPLICATION_CREDENTIALS;   // (the key itself, so tokens are signed here: the deploy's account has no IAM signBlob)
+  admin.initializeApp(Object.assign({ projectId: CFG.projectId, databaseURL: CFG.databaseURL }, key ? { credential: admin.credential.cert(JSON.parse(fs.readFileSync(key, 'utf8'))) } : {}));
   const db = admin.database();
   const hostUid = 'smoke-host', guestUid = 'smoke-guest';
   let code = null, game = null;
