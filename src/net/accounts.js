@@ -171,7 +171,8 @@ export async function needAccount(next) {
 const PROVIDER_NAME = { google: 'Google', apple: 'Apple' };
 export function authError(e, how) {
   const c = String((e && e.code) || ''), m = String((e && e.message) || (typeof e === 'string' ? e : '')), both = c + ' ' + m;
-  const who = PROVIDER_NAME[how], other = how === 'apple' ? 'Google or email' : how === 'google' ? 'Apple or email' : 'Google or Apple';
+  const apple = !!(typeof window !== 'undefined' && window.TTC_ENV && window.TTC_ENV.apple);   // (Continue with Apple shown: src/env.js apple; never offered when hidden)
+  const who = PROVIDER_NAME[how], other = how === 'apple' ? 'Google or email' : how === 'google' ? (apple ? 'Apple or email' : 'email') : apple ? 'Google or Apple' : 'Google';
   if (/popup-closed|cancelled-popup|user-cancel/.test(c) || (who && /canceled|cancelled|\b1001\b/i.test(both))) return null;   // (closed without signing in: nothing to say)
   if (/popup-blocked/.test(c)) return { text: 'Your browser blocked the sign-in window. Allow pop-ups for this site and try again.' };
   if (/invalid-email/.test(c)) return { text: "That email address doesn't look right." };

@@ -108,8 +108,16 @@ function clientVersion() {
   return m[1];
 }
 function project(build) {
-  let s = rd(PBX);
-  const add = (marker, section, line) => { if (!s.includes(line.split(' ')[0].trim())) { const at = s.indexOf(marker); if (at < 0) die(`project.pbxproj: no ${marker}`); s = s.slice(0, at + marker.length) + '\n' + line + s.slice(at + marker.length); } };
+  const s = projectText(rd(PBX), build);
+  wr(PBX, s);
+  log(`project: team ${cfg.teamId}, ${cfg.bundleId}, automatic signing, version ${clientVersion()} (${build}), entitlements, GoogleService-Info.plist in the resources`);
+}
+// The project file's text with the two files, signing and versions set (pure: tests/server/ios-setup.test.js).
+function projectText(s, build) {
+  // (an entry is there once its own definition is: "<id> /* name */ = {". The id alone is not enough: the plist's build
+  // file names its file reference's id, which once made the reference look present and left it out, so Xcode had a
+  // dangling reference and built the app without GoogleService-Info.plist: native sign-in "provider is not enabled")
+  const add = (marker, section, line) => { if (!s.includes(line.slice(0, line.indexOf(' = {')).trim() + ' = {')) { const at = s.indexOf(marker); if (at < 0) die(`project.pbxproj: no ${marker}`); s = s.slice(0, at + marker.length) + '\n' + line + s.slice(at + marker.length); } };
   add('/* Begin PBXBuildFile section */', 'build', `\t\t${ID.plistBuild} /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = ${ID.plistRef} /* GoogleService-Info.plist */; };`);
   add('/* Begin PBXFileReference section */', 'ref', `\t\t${ID.plistRef} /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };`);
   add('/* Begin PBXFileReference section */', 'ref', `\t\t${ID.entRef} /* App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };`);
@@ -132,8 +140,11 @@ function project(build) {
     return a + body + z;
   });
   if (n !== 2) die(`project.pbxproj: expected the app target's 2 build configurations, found ${n}`);
-  wr(PBX, s);
-  log(`project: team ${cfg.teamId}, ${cfg.bundleId}, automatic signing, version ${settings.MARKETING_VERSION} (${build}), entitlements, GoogleService-Info.plist in the resources`);
+  // each file whole: its reference, in the App group, and the plist in the resources (else Xcode leaves it out of the app)
+  const need = [[`${ID.plistRef} /* GoogleService-Info.plist */ = {isa = PBXFileReference;`, 'the plist\'s file reference'], [`${ID.entRef} /* App.entitlements */ = {isa = PBXFileReference;`, 'the entitlements\' file reference'],
+    [`${ID.plistBuild} /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile;`, 'the plist\'s build file'], [`${ID.plistBuild} /* GoogleService-Info.plist in Resources */,`, 'the plist in the resources'], [`${ID.plistRef} /* GoogleService-Info.plist */,`, 'the plist in the App group']];
+  for (const [t, what] of need) if (!s.includes(t)) die(`project.pbxproj: ${what} is missing`);
+  return s;
 }
 
 // ---- icon and launch screen
@@ -178,4 +189,4 @@ function main() {
   infoPlist(fb.reversed); entitlements(); project(build); art(); appDelegate();
 }
 if (require.main === module) main();
-module.exports = { plistValue, findPlist };
+module.exports = { plistValue, findPlist, projectText };

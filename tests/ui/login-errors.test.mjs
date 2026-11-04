@@ -14,8 +14,11 @@ const err = (code, message) => Object.assign(new Error(message || code), code ? 
 
 test('the app built without its Firebase file: the plugin says the provider is not enabled', () => {
   const g = authError(err('', 'Google sign-in provider is not enabled. Make sure to add the provider to the providers list in the Capacitor configuration.'), 'google');
-  assert.equal(g.text, "Google sign-in isn't set up in this version of the app yet. Use Apple or email for now.");
+  assert.equal(g.text, "Google sign-in isn't set up in this version of the app yet. Use email for now.", 'Apple hidden (src/env.js apple false): never offered');
   assert.equal(g.code, 'not-enabled');
+  window.TTC_ENV.apple = true;
+  assert.match(authError(err('', 'Google sign-in provider is not enabled.'), 'google').text, /Use Apple or email for now\.$/, 'Apple shown: offered');
+  window.TTC_ENV.apple = false;
   const a = authError(err('', 'Apple sign-in provider is not enabled. Make sure to add the provider to the providers list in the Capacitor configuration.'), 'apple');
   assert.match(a.text, /^Apple sign-in isn't set up in this version of the app yet\./);
 });
