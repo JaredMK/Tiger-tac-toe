@@ -1140,6 +1140,7 @@ test('bots: off by default; on, a lone searcher gets one only after their own ra
 
 test('bots: the match is an ordinary one against an ordinary-looking, online account; it thinks before each move and never runs out of time', async () => {
   await clearQueue(); await botsOn();
+  await put('test/noBotTasks', true);                            // (each move here comes from a tick or the sweep: no queued Cloud Task racing the steps on a loaded runner)
   const h = await player('VsBot_One'), other = await player('Onlooker');
   const r = await soloUntilBot(h);
   const id = r.game, botSide = r.side === 'X' ? 'O' : 'X';
@@ -1219,6 +1220,7 @@ test('bots: the match is an ordinary one against an ordinary-looking, online acc
   assert.equal(m2.seq, m0.seq + 1, 'then the pair is played');
   assert.equal(m2.squares[0].mini.flips + 0 >= 0, true);
   await h.call('resign', { game: id }); await recorded(id);
+  await put('test/noBotTasks', null);
   await put('admin/config', null);
 });
 

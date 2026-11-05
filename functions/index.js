@@ -826,6 +826,7 @@ async function freeBots() {
 // still move the bot once it is due. Find the Pair is two steps: the first card, then the second a moment later.
 const BOT_EARLY_MS = 1000;                                   // a tick lands up to a second early
 async function queueBot(id, seq, step, due) {
+  if (process.env.FUNCTIONS_EMULATOR === 'true' && (await db.ref('test/noBotTasks').get()).val() === true) return;   // (the emulator's bot test drives every move itself: no queued task races it)
   try {
     await getFunctions().taskQueue('botMove').enqueue({ game: id, seq, step }, { scheduleTime: new Date(Math.max(due, now())), id: `${id}-${seq}-${step}` });
   } catch (e) { logger.warn('bot move not queued: the phones and the sweep move it when due', id, e.message); }
