@@ -15,7 +15,7 @@ import { scJointFrame, scWaiting } from './chaos.js';
 import { waitBand } from './board.js';
 import { qBtn } from './explainer.js';
 import { fingPinned } from './finger.js';
-import { animMs, fx, fxAt, fxAttr } from './fx.js';
+import { animMs, fxAt, fxAttr } from './fx.js';
 import { rep, repActive, repSkipBtn } from './replay.js';
 import { reviewCtx } from './screens/profile.js';
 import { netBar } from './turnbar.js';
@@ -62,7 +62,7 @@ export function renderMini(sq, review, popup) {
     : `<button class="back${!f && !d && ((mini.type === 'trivia' && lockMine()) || attPinned() || fingPinned() || (FINGER_TYPES.includes(mini.type) && lockMine())) ? ' gone' : ''}" data-act="back" aria-label="Back to the board"${f || d || lockMine() || cpuTurn() || pinned() || repActive() ? ' disabled' : ''}>${CHEV}Board</button>`;
   const wb = state.sc && !popup && !review && !view && !f && !d ? waitBand(null) : { on: false, html: '' };   // Super Chaos: waiting in the square (a shot or a spin locked in), the board's own band over the game
   const banner = popup ? `<div class="repban ${turn}" role="status">${REPLAY_ICON}<span>${joint ? 'Both moves' : `<b>${N(turn)}</b>'s move`} — replay</span></div>` : '';   // Super Chaos's replay: whose move it is, in their colour, on the pop-up's edge (the whole pop-up: a tap skips to its end)
-  return `<main class="scr mini${fx.enter && performance.now() - fx.enter.at < 400 ? ' enter' : ''}${popup ? ` screplay rep-${turn}` : ''}"${popup ? ` role="dialog" aria-label="${esc(playerName(state, turn))}'s move — replay"` : ''}>${popup ? banner : netBar()}
+  return `<main class="scr mini${popup ? ` screplay rep-${turn}` : ''}"${popup ? ` role="dialog" aria-label="${esc(playerName(state, turn))}'s move — replay"` : ''}>${popup ? banner : netBar()}
     <div class="bar${view && sq.owner ? ' won won-' + sq.owner : ''}" role="${view ? 'status' : 'presentation'}">${back}
       <div class="ttl"><b${info.name.length > 14 ? ' class="long"' : ''}>${info.name}</b><small${view ? ' class="won"' : ''}>${sub}</small></div>${qBtn(mini.type)}</div>
     <div class="gwrap"${f ? fxAttr(fxAt('move', f), 'm') : fxAttr(d ? fxAt('back', d) : null)}>${g}</div>${wb.html}${f ? renderFlash(f) : ''}${repSkipBtn() || (joint ? '<button class="rskip late" data-act="rep-skip" aria-label="Skip the replay">Skip</button>' : '')}${popup ? '' : pauseMenu()}</main>`;   // the move's animations count from the move

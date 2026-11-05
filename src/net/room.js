@@ -30,7 +30,7 @@ import { scWaiting } from '../ui/chaos.js';
 import { DRAW_MS, STAMP_MS } from '../ui/board.js';
 import { KEY } from '../ui/config.js';
 import { fingPinned } from '../ui/finger.js';
-import { fxAt, startFx } from '../ui/fx.js';
+import { fxAt, startFx, zoomBusy, zoomLeft } from '../ui/fx.js';
 import { render } from '../ui/render.js';
 import { repStart, repStop } from '../ui/replay.js';
 import { physJoin } from '../ui/physics.js';
@@ -348,7 +348,7 @@ export function applyPending() {
   clearTimeout(pendingTimer); pendingTimer = null;
   if (!state.online) return;
   if (presentingSeq != null) { state.online.shownSeq = Math.max(state.online.shownSeq || 0, presentingSeq); presentingSeq = null; save(); }   // seen: never played back again
-  const wait = stampLeft();
+  const wait = Math.max(stampLeft(), zoomLeft());                 // (the stamp's event waits for the zoom-out to land: counted in it; with none, the zoom-out itself)
   if (wait > 0) { pendingTimer = setTimeout(applyPending, wait + 30); return; }   // a square just won stamps in first, then the next move
   const r = pendingRoom || room; pendingRoom = null;
   if (r && !presenting()) { if (r.kind === 'mm') onGameValue(r.pub); else onRoomValue(r); }
@@ -368,8 +368,10 @@ function showRemoteMove(i, label, before, start) {
     const sq = state.spot.square;
     state.spot = null;
     state.screen = 'mini'; state.zoom = sq;
-    start();
-    save(); render();
+    save(); render();                                             // the zoom into the square (ui/fx.js)...
+    const z = zoomBusy();
+    if (z > 0) setSpotTimer(setTimeout(() => { setSpotTimer(null); start(); save(); render(); }, z));   // ...then the move, once it has landed
+    else { start(); save(); render(); }
   }, spotMs()));
 }
 function moveLabel(f) { return f.timeout ? `${playerName(state, f.by)} ran out of time` : `${playerName(state, f.by)} plays here`; }

@@ -13,7 +13,7 @@ import { oddPre } from '../games/oddone/view.js';
 import { TRIVIA } from '../games/trivia/rules.js';
 import { triviaPre } from '../games/trivia/view.js';
 import { SND } from '../audio/sound.js';
-import { REDUCED, WAAPI, app, state } from './app.js';
+import { REDUCED, WAAPI, app, lastView, state } from './app.js';
 import { attPre } from './attention.js';
 import { claimHaptic } from './haptics.js';
 import { shownSq } from './chaos.js';
@@ -22,6 +22,7 @@ import { fingPre } from './finger.js';
 import { runPre } from './runner.js';
 import { hopToken } from './track.js';
 import { rlMarker } from '../games/rl/view.js';
+import { render } from './render.js';
 
 // A comic-book burst with uneven points, and its word.
 export function burstSvg(word, cls, w, h, size) {
@@ -92,13 +93,13 @@ export function anchorFx() {
   // stylesheet is a base one), a move's own rate, or real time; a loop that never ends (a glow, a bob, Bullseye's
   // sweep) always in real time.
   for (const a of app.getAnimations({ subtree: true })) {
-    if (!css(a)) continue;
+    if (!css(a) || a.id === ZOOM_ID) continue;                       // (the board's zoom into and out of a square keeps its own time: zoomKeep)
     const el = a.effect && a.effect.target, host = el && el.closest ? el.closest('[data-fx]') : null;
     const at = host ? Number(host.dataset.fx) : fx.enter ? fx.enter.at : null;
     if (at == null) continue;
     const kind = host ? host.dataset.fxk : '', timing = a.effect && a.effect.getTiming ? a.effect.getTiming() : {};
     const rate = kind === 'rt' || timing.iterations === Infinity ? 1 : kind === 'm' ? mr : S;
-    const t = Math.max(0, now - at) * (kind === 'm' ? 1 : rate);    // (a move's host carries its drifted time already)
+    const dt = now - at, t = (dt < -1 ? dt : Math.max(0, dt)) * (kind === 'm' ? 1 : rate);    // (a move's host carries its drifted time already; an event still to come, a claim's stamp waiting for the zoom-out to land: held before its start)
     if (a.playbackRate === rate && a.currentTime != null && a.currentTime > 0 && Math.abs(a.currentTime - t) < 60) continue;   // already where its event has it (one running on, untouched): left alone; one just made (at 0) is always set, or a redraw early in its event would start it over
     try { a.playbackRate = rate; a.currentTime = t; } catch (e) { /* (a finished one with no effect left) */ }
   }
@@ -192,19 +193,205 @@ export let drawOld = null;                                            // { id, t
 export function drawFx(f) {
   if (state.screen !== 'board' || state.drawStamp == null || state.drawId == null || fxAt('draw', state.drawId) != null) return false;
   drawOld = f && f.square === state.drawStamp && f.type ? { id: state.drawId, type: f.type, mini: f.drawn || null } : null;
-  startFx('draw', state.drawId);
-  const s = 1000 * ANIM.speed;
-  SND.play('stamp', { vol: 0.6 });
-  SND.play('cardSlide', { at: DRAW_SHUFFLE[0] / s }); SND.play('cardSlide', { at: (DRAW_SHUFFLE[0] + 90) / s, rate: 1.12 }); SND.play('cardFlip', { at: DRAW_SHUFFLE[1] / s });
+  const z = zoomLeft();                                               // (back from the square: the stamp waits for the zoom-out to land in its square)
+  startFx('draw', state.drawId, performance.now() + z);
+  const s = 1000 * ANIM.speed, zs = z / 1000;
+  SND.play('stamp', { vol: 0.6, at: zs });
+  SND.play('cardSlide', { at: zs + DRAW_SHUFFLE[0] / s }); SND.play('cardSlide', { at: zs + (DRAW_SHUFFLE[0] + 90) / s, rate: 1.12 }); SND.play('cardFlip', { at: zs + DRAW_SHUFFLE[1] / s });
   return true;
 }
 export function stampFx(elapsed) {                                   // elapsed: the stamp began this long ago (a sequence joined part way: quietly)
   if (state.screen !== 'board' || state.stamp == null || state.stampId == null || fxAt('stamp', state.stampId) != null) return;
-  startFx('stamp', state.stampId, elapsed ? performance.now() - elapsed : undefined);
+  const z = elapsed ? 0 : zoomLeft();                                 // back from the square: the stamp starts once the zoom-out has landed in it (never under the shrinking view)
+  startFx('stamp', state.stampId, elapsed ? performance.now() - elapsed : performance.now() + z);
   if (elapsed > 200) return;
-  SND.play('stamp'); SND.play('burst', { at: BOARD_BURST[0] / 1000 / ANIM.speed }); SND.play('burst', { at: BOARD_BURST[1] / 1000 / ANIM.speed });
-  claimHaptic(state.squares[state.stamp] && state.squares[state.stamp].owner);   // (one buzz with the stamp: claimed, or lost to the other side: ui/haptics.js)
-  const sq = app.querySelector(`.board .sq:nth-child(${state.stamp + 1})`);
-  setTimeout(() => { shake(state.winner ? 1.3 : 1); confetti(state.winner ? 40 : 18, sq && sq.isConnected ? sq : null); }, 120 / ANIM.speed);   // (as the mark lands)
+  const zs = z / 1000;
+  SND.play('stamp', { at: zs }); SND.play('burst', { at: zs + BOARD_BURST[0] / 1000 / ANIM.speed }); SND.play('burst', { at: zs + BOARD_BURST[1] / 1000 / ANIM.speed });
+  const owner = state.squares[state.stamp] && state.squares[state.stamp].owner, i = state.stamp;
+  if (z > 0) setTimeout(() => claimHaptic(owner), z); else claimHaptic(owner);   // (one buzz with the stamp: claimed, or lost to the other side: ui/haptics.js)
+  setTimeout(() => { const sq = app.querySelector(`.board .sq:nth-child(${i + 1})`); shake(state.winner ? 1.3 : 1); confetti(state.winner ? 40 : 18, sq && sq.isConnected ? sq : null); }, z + 120 / ANIM.speed);   // (as the mark lands)
   return true;                                                       // (stamped now, with its sound and buzz: turns.js turnAlert waits for it)
+}
+
+/* ----- the zoom between the main board and a square (a shared-element "FLIP" transition) -----
+ * Into a square: the tapped square's tile lifts off the board and grows into the game's area while the full view,
+ * already laid out at its final size, grows out of that square to fill the screen and fades in over the tile; the
+ * board behind fades and sinks back a little. Out of a square: the reverse, the full view shrinking into its exact
+ * square on the board as the board fades back in; a claim's stamp (and a draw's) starts once it has landed (stampFx,
+ * drawFx: zoomLeft). The same for the computer's and the other phone's moves (they open and leave squares the same
+ * way). One event per screen change (render.js), started once: transforms and opacity only, on the new screen's
+ * element (its layout, its canvases, measured once at full size: a transform changes no layout) and on two visual
+ * stand-ins outside #app (pointer-events none): the screen that is going (the very element, moved, so a canvas keeps
+ * its picture and its animations carry on from where they were) and a copy of the square's tile. A re-render in the
+ * middle (the clock, a room update) puts the animation back on the redrawn element at the same point (zoomKeep):
+ * nothing restarts. Input is never held: the new screen takes taps at once (the stand-ins take none). 300 ms in
+ * Normal, 180 ms in Speed (at the admin's Animation speed 1); none with reduced motion. */
+export const ZOOM = { normal: 300, speed: 180, ease: 'cubic-bezier(.4, 0, .2, 1)', off: null };   // off: null, by the device (reduced motion, no Web Animations); true or false to force it (the tests)
+export const ZOOM_ID = 'ttc-zoom';
+// The zoom's length in ms: 0 when there is none (reduced motion, no Web Animations, the page out of sight).
+export function zoomMs() {
+  if ((ZOOM.off == null ? REDUCED || !WAAPI : ZOOM.off) || (typeof document !== 'undefined' && document.visibilityState === 'hidden')) return 0;
+  return (ANIM.mode === 'speed' ? ZOOM.speed : ZOOM.normal) / (ANIM.admin || 1);
+}
+let zoom = null;                                   // the zoom under way: { dir: 'in' | 'out', i, t0, end, D, main, sq, ghost, tile, timer }
+export const zoomNow = () => zoom;
+const PAIRS = { board: 'mini', review: 'review-mini' };   // a board and the square opened from it
+function zoomPair(prev, view) {
+  const [ps, pz] = String(prev || '').split(':'), [vs, vz] = String(view || '').split(':');
+  if (PAIRS[ps] === vs && pz === 'null' && /^\d$/.test(vz)) return { dir: 'in', i: Number(vz) };
+  if (PAIRS[vs] === ps && vz === 'null' && /^\d$/.test(pz)) return { dir: 'out', i: Number(pz) };
+  return null;
+}
+// How long until the board is back in place (ms): the zoom-out under way, or the one the next render starts (a move's
+// result over, the screen just set back to the board: lastView is still the square). 0 when there is none.
+export function zoomLeft() {
+  if (zoom && zoom.dir === 'out') return Math.max(0, zoom.end - performance.now());
+  if (state.sc || !lastView) return 0;
+  const p = zoomPair(lastView, state.screen + ':' + state.zoom);
+  return p && p.dir === 'out' ? zoomMs() : 0;
+}
+// Either way, how much of the zoom under way is left (the computer acts once its square is open: turns.js).
+export const zoomBusy = () => (zoom ? Math.max(0, zoom.end - performance.now()) : 0);
+const rectOf = e => { const r = e.getBoundingClientRect(); return { left: r.left, top: r.top, width: r.width, height: r.height }; };
+const sqSquare = g => { const s = Math.min(g.width, g.height); return { left: g.left + (g.width - s) / 2, top: g.top + (g.height - s) / 2, width: s, height: s }; };   // the game's area: its middle square, where the tile lands
+const good = r => r && r.width > 1 && r.height > 1 && Number.isFinite(r.left + r.top);
+// A transform (origin 0 0, at an element whose top left is o) that lays rect a over rect b, scaled alike both ways.
+function mapTf(a, b, o) {
+  const s = b.width / a.width, dx = b.left - o.left - s * (a.left - o.left), dy = b.top - o.top - s * (a.top - o.top);
+  return `translate(${dx.toFixed(2)}px, ${dy.toFixed(2)}px) scale(${s.toFixed(4)})`;
+}
+// The CSS animations of an element and everything in it, as they stand (to carry them on once it has moved).
+const cssAnims = root => (root.getAnimations ? root.getAnimations({ subtree: true }) : []).filter(a => a.animationName && a.effect && a.effect.target);
+const animKey = a => [a.effect.target, a.effect.pseudoElement || '', a.animationName];
+function animSnap(root) { return cssAnims(root).map(a => ({ k: animKey(a), c: a.currentTime, r: a.playbackRate, p: a.playState === 'paused' })); }
+function animCarry(root, snap) {
+  for (const a of cssAnims(root)) {
+    const k = animKey(a), m = snap.find(x => x.k[0] === k[0] && x.k[1] === k[1] && x.k[2] === k[2]);
+    try {
+      if (m && m.c != null) { a.playbackRate = m.r; a.currentTime = m.c; if (m.p) a.pause(); }
+      else if (!m && a.effect.getTiming().iterations !== Infinity) a.finish();   // (over before the move: a moved element would start it again)
+    } catch (e) { /* (an effect gone meanwhile) */ }
+  }
+}
+// The animations on the live elements (the new screen, and out of a square its square, kept hidden until the
+// stand-in lands on it): put back after a re-render replaced the element, at the same point of the zoom.
+function zoomOn(el, kf) {
+  if (!el || !el.animate) return;
+  if (el.getAnimations && el.getAnimations().some(a => a.id === ZOOM_ID)) return;
+  const a = el.animate(kf, { duration: zoom.D, easing: ZOOM.ease, fill: 'backwards' });
+  a.id = ZOOM_ID; a.startTime = zoom.t0;
+}
+function zoomEnd(z, landed) {
+  if (!z || zoom !== z) return;
+  zoom = null;
+  clearTimeout(z.timer);
+  for (const e of [z.ghost, z.tile]) if (e && e.parentNode) e.remove();
+  for (const e of [z.liveMain, z.liveSq]) if (e && e.getAnimations) for (const a of e.getAnimations()) if (a.id === ZOOM_ID) a.cancel();   // (cut short: the new screen as it is meant to be)
+  const m = app.querySelector(':scope > main.scr');
+  if (landed && z.dir === 'in' && m && m.querySelector('canvas')) render();   // (a canvas drawn while the screen was scaled: drawn once more at its exact size)
+}
+export function zoomCancel() { if (zoom) zoomEnd(zoom); }
+// Before a new screen goes in (render.js): what the zoom needs of the screen that is going. Null: no zoom.
+export function zoomPrep(prev, view) {
+  zoomCancel();                                                   // (another screen change part way through: the first one is over)
+  try {
+    const p = zoomPair(prev, view), D = p && !state.sc ? zoomMs() : 0;
+    if (!p || !D) return null;
+    const old = app.querySelector(':scope > main.scr');
+    if (!old) return null;
+    const cs = getComputedStyle(old);
+    const o = { dir: p.dir, i: p.i, D, old, oldRect: rectOf(old), pad: cs.padding, rxh: getComputedStyle(app).getPropertyValue('--rxh'), snap: animSnap(old) };
+    if (p.dir === 'in') {
+      const sq = old.querySelectorAll('.board > .sq')[p.i];
+      if (!sq) return null;
+      o.oldSq = sq; o.R = rectOf(sq);
+      if (!good(o.R)) return null;
+    } else {
+      const g = old.querySelector('.gwrap');
+      if (!g) return null;
+      o.T = sqSquare(rectOf(g));
+      if (!good(o.T)) return null;
+    }
+    return good(o.oldRect) ? o : null;
+  } catch (e) { return null; }
+}
+// The stand-in for the screen that is going: the element itself, fixed where it was, out of #app (so nothing on the
+// page finds it: no paint loop, no anchorFx), its own look kept (the reactions' room, its padding), carrying on.
+function ghostOf(o, over) {
+  const g = document.createElement('div');
+  g.className = 'zghost' + (over ? ' over' : '');
+  g.setAttribute('aria-hidden', 'true');
+  const r = o.oldRect;
+  g.style.cssText = `left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px;--rxh:${o.rxh || '0px'}`;
+  o.old.style.padding = o.pad;
+  g.appendChild(o.old);
+  document.body.appendChild(g);
+  animCarry(o.old, o.snap);
+  return g;
+}
+// A copy of a square's tile, fixed over the square (a visual only: no taps). `start`: its animations held at their
+// start (out of a square: the square as the view lands in it, a fresh stamp not yet begun); else at their end.
+function tileOf(sqEl, R, start) {
+  const t = sqEl.cloneNode(true);
+  t.classList.remove('spot', 'spot-X', 'spot-O');
+  for (const e of t.querySelectorAll('.spot-lab')) e.remove();
+  t.classList.add('ztile');
+  t.removeAttribute('data-act'); t.removeAttribute('data-fx'); t.setAttribute('aria-hidden', 'true'); t.tabIndex = -1;
+  t.style.cssText = `left:${R.left}px;top:${R.top}px;width:${R.width}px;height:${R.height}px`;
+  document.body.appendChild(t);
+  for (const a of t.getAnimations ? t.getAnimations({ subtree: true }) : []) {
+    try { if (start) { a.pause(); a.currentTime = 0; } else if (a.effect && a.effect.getTiming().iterations === Infinity) a.cancel(); else a.finish(); } catch (e) { /* (none to hold) */ }
+  }
+  return t;
+}
+// After the new screen went in (render.js): start the zoom; on any other render, keep the one under way on the
+// redrawn elements.
+export function zoomRun(o) {
+  if (!o) { zoomKeep(); return; }
+  try {
+    const main = app.querySelector(':scope > main.scr'), tl = document.timeline && document.timeline.currentTime;
+    const t0 = typeof tl === 'number' ? tl : performance.now();
+    if (!main) { o.old.remove(); return; }
+    const z = { dir: o.dir, i: o.i, D: o.D, t0, end: t0 + o.D };
+    if (o.dir === 'in') {
+      const g = main.querySelector('.gwrap'), T = g ? sqSquare(rectOf(g)) : null, M = rectOf(main);
+      if (!good(T) || !good(M)) { o.old.remove(); return; }
+      const R = o.R, from = mapTf(T, R, M);
+      zoom = z;
+      z.mainKf = [{ transformOrigin: '0 0', transform: from, opacity: 0 }, { transformOrigin: '0 0', opacity: 1, offset: 0.55 }, { transformOrigin: '0 0', transform: 'none', opacity: 1 }];
+      const tile = tileOf(o.oldSq, R, false);                        // (before the square leaves its board)
+      o.oldSq.style.visibility = 'hidden';                          // the tile has lifted off it
+      z.ghost = ghostOf(o, false);
+      const go = `${(R.left + R.width / 2 - o.oldRect.left).toFixed(1)}px ${(R.top + R.height / 2 - o.oldRect.top).toFixed(1)}px`;
+      z.ghost.animate([{ transformOrigin: go, transform: 'none', opacity: 1 }, { transformOrigin: go, transform: 'scale(.94)', opacity: 0 }], { duration: o.D, easing: ZOOM.ease, fill: 'both' }).startTime = t0;
+      z.tile = tile;
+      const ta = tile.animate([{ transformOrigin: '0 0', transform: 'none', opacity: 1 }, { transformOrigin: '0 0', opacity: 1, offset: 0.3 }, { transformOrigin: '0 0', opacity: 0, offset: 0.8 }, { transformOrigin: '0 0', transform: mapTf(R, T, R), opacity: 0 }], { duration: o.D, easing: ZOOM.ease, fill: 'both' });
+      ta.startTime = t0; ta.onfinish = () => zoomEnd(z, true);
+    } else {
+      const sqEl = main.querySelectorAll('.board > .sq')[o.i], R = sqEl ? rectOf(sqEl) : null;
+      if (!good(R)) { o.old.remove(); return; }
+      const T = o.T;
+      zoom = z;
+      const so = `${(R.left + R.width / 2 - rectOf(main).left).toFixed(1)}px ${(R.top + R.height / 2 - rectOf(main).top).toFixed(1)}px`;   // (the board grows back about the square's middle: the square stays where the view lands)
+      z.mainKf = [{ transformOrigin: so, transform: 'scale(.94)', opacity: 0 }, { transformOrigin: so, opacity: 1, offset: 0.6 }, { transformOrigin: so, transform: 'none', opacity: 1 }];
+      z.sqKf = [{ opacity: 0 }, { opacity: 0 }];                     // the square itself shows once the view has landed on it
+      z.ghost = ghostOf(o, true);
+      const tile = tileOf(sqEl, R, true);                            // (after it: over the view that shrinks into it)
+      z.ghost.animate([{ transformOrigin: '0 0', transform: 'none', opacity: 1 }, { transformOrigin: '0 0', opacity: 1, offset: 0.4 }, { transformOrigin: '0 0', opacity: 0, offset: 0.9 }, { transformOrigin: '0 0', transform: mapTf(T, R, o.oldRect), opacity: 0 }], { duration: o.D, easing: ZOOM.ease, fill: 'both' }).startTime = t0;
+      z.tile = tile;
+      const ta = tile.animate([{ transformOrigin: '0 0', transform: mapTf(R, T, R), opacity: 0 }, { transformOrigin: '0 0', opacity: 0, offset: 0.3 }, { transformOrigin: '0 0', opacity: 1, offset: 0.75 }, { transformOrigin: '0 0', transform: 'none', opacity: 1 }], { duration: o.D, easing: ZOOM.ease, fill: 'both' });
+      ta.startTime = t0; ta.onfinish = () => zoomEnd(z, true);
+    }
+    z.timer = setTimeout(() => zoomEnd(z, true), o.D + 400);               // (whatever happens: a page out of sight holds animations back)
+    zoomKeep();
+  } catch (e) { zoomCancel(); if (o.old && o.old.parentNode && !o.old.closest('#app')) o.old.remove(); }
+}
+function zoomKeep() {
+  const z = zoom;
+  if (!z || !z.mainKf) return;
+  if (performance.now() > z.end + 50) return;
+  const main = app.querySelector(':scope > main.scr');
+  if (!main || (z.dir === 'in' ? !main.classList.contains('mini') : !main.classList.contains('board-scr'))) { zoomEnd(z); return; }
+  z.liveMain = main; zoomOn(main, z.mainKf);
+  if (z.sqKf) { z.liveSq = main.querySelectorAll('.board > .sq')[z.i]; zoomOn(z.liveSq, z.sqKf); }
 }

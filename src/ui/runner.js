@@ -224,11 +224,13 @@ export function runColours() {
 }
 export function runCanvas(cv) {                                           // the canvas at its box's size, in device pixels
   const r = cv.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1);
-  const w = Math.max(1, Math.round(r.width * dpr)), h = Math.max(1, Math.round(r.height * dpr));
+  let W = r.width, H = r.height;
+  if (cv.offsetWidth > 0 && Math.abs(cv.offsetWidth - W) > 1.5) { W = cv.offsetWidth; H = cv.offsetHeight; }   // (the zoom into a square scales the screen for a moment, ui/fx.js: its layout size, never the scaled one)
+  const w = Math.max(1, Math.round(W * dpr)), h = Math.max(1, Math.round(H * dpr));
   if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
   const c = cv.getContext('2d');
   c.setTransform(dpr, 0, 0, dpr, 0, 0);
-  return { c, W: r.width, H: r.height };
+  return { c, W, H };
 }
 function runFrameDraw(cv, sim, rd, now) {
   const { c, W, H } = runCanvas(cv);

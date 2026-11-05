@@ -11,7 +11,7 @@ import { scHeld, scHint, scLastPlayed, scRecapStage, scShown, scVerdict } from '
 import { clockLeft, fmtClock } from './clock.js';
 import { scHuman } from '../core/chaos.js';
 import { other } from '../core/util.js';
-import { BURST_MS, burstPick, burstSvg, drawOld, fx, fxAt, fxAttr } from './fx.js';
+import { BURST_MS, burstPick, burstSvg, drawOld, fxAt, fxAttr } from './fx.js';
 import { pauseMenu } from './mini.js';
 import { reviewCtx } from './screens/profile.js';
 import { netBar } from './turnbar.js';
@@ -103,11 +103,10 @@ export function renderBoard(review) {
   const bw = st == null ? null : burstPick('board:' + state.stampId), bend = k => Math.round(stampAt + (BOARD_BURST[k] + BURST_MS) / ANIM.speed);
   const pow = st == null ? '' : `<div class="pow-b c${st % 3}" style="grid-row:${Math.floor(st / 3) + 1} / span 1;grid-column:${st % 3 + 1} / span 1"${fxAttr(stampAt)} aria-hidden="true">${el < BOARD_BURST[0] + BURST_MS ? `<span class="b1" data-bend="${bend(0)}">${burstSvg(bw.words[0], 'y', 150, 110, 34)}</span>` : ''}<span class="b2" data-bend="${bend(1)}">${burstSvg(bw.words[1], 'r', 160, 104, 28)}</span></div>`;
   const w = waitBand(spot);
-  const zout = ANIM.mode === 'speed' && fx.enter && fx.enter.key === 'board:null' && /^mini:/.test(fx.enter.from || '');   // Speed, back from a square: the board zooms out to meet it (its stamp lands as it settles)
   // Classic: whose move it is as a small bar under the board, in the foot's own room (the hint's place: nothing moves);
   // Super Chaos keeps its band across the board.
   const sc = !!state.sc, under = !sc && w.html;
-  return `<main class="scr board-scr${sc && w.on ? ' waiting' : ''}${zout ? ' zout' : ''}">${netBar()}<div class="board">${sqs}${pow}${sc ? w.html : ''}</div>
+  return `<main class="scr board-scr${sc && w.on ? ' waiting' : ''}">${netBar()}<div class="board">${sqs}${pow}${sc ? w.html : ''}</div>
     <div class="foot${under ? ' fwait' : ''}">${under ? w.html : `<span class="hint">${hint}</span>`}</div>${pauseMenu()}</main>`;
 }
 // A drawn square's overlay on the board: the old game's tile (its label and miniature as the draw left them), and the

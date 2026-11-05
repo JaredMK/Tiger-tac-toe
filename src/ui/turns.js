@@ -14,7 +14,7 @@ import {
 import { STAMP_MS } from './board.js';
 import { chaosStep } from './chaos.js';
 import { explainT } from './explainer.js';
-import { animMs, confetti, drawFx, fx, fxAt, momentPower, shake, stampFx, startFx } from './fx.js';
+import { animMs, confetti, drawFx, fx, fxAt, momentPower, shake, stampFx, startFx, zoomBusy, zoomLeft } from './fx.js';
 import { joinAsk } from './input.js';
 import { render } from './render.js';
 import { rep, repActive, repStart, repStop } from './replay.js';
@@ -43,7 +43,8 @@ export function turnAlert(prev, stamped) {
     SND.play('yourTurn');
     haptic('turn');
   };
-  if (stamped) setTimeout(go, TURN_AFTER_STAMP_MS / ANIM.speed); else go();
+  const z = zoomLeft();                                               // (back from a square: once the board is back, its stamp's thump after that)
+  if (stamped) setTimeout(go, z + TURN_AFTER_STAMP_MS / ANIM.speed); else if (z > 0) setTimeout(go, z); else go();
 }
 export function scheduleCpu() {
   clearTimeout(cpuTimer); setCpuTimer(null);
@@ -62,11 +63,11 @@ export function scheduleCpu() {
     think(plan => {
       setCpuPlan(plan); if (!plan) return; plan.stage = 0;        // (no move at all: the admin's test play, its square over)
       if (plan.square !== state.zoom) { state.zoom = plan.square; state.draft = ''; state.pick = null; state.sel = []; commit(); return; }   // after a reload mid-move
-      setCpuTimer(setTimeout(cpuAct, state.lock != null ? CPU_MS.again : CPU_MS.zoom));
+      setCpuTimer(setTimeout(cpuAct, state.lock != null ? CPU_MS.again : Math.max(CPU_MS.zoom, zoomBusy())));
     });
     return;
   }
-  setCpuTimer(setTimeout(cpuAct, cpuPlan.stage ? CPU_MS.pre : state.lock != null ? CPU_MS.again : CPU_MS.zoom));
+  setCpuTimer(setTimeout(cpuAct, cpuPlan.stage ? CPU_MS.pre : state.lock != null ? CPU_MS.again : Math.max(CPU_MS.zoom, zoomBusy())));   // (its look at the square starts once the zoom into it has landed)
 }
 // The computer's choice for the match as it stands (ui/think.js): the answer may come later (the Hard
 // computer's worker); by then the match must stand just the same, else it is asked again.
@@ -221,7 +222,7 @@ export function dismissFlash() {
   const ended = f.kind === 'match' && !!state.winner && state.screen === 'win' && !state.sc && state.squares[f.square] && state.squares[f.square].owner;
   if (ended) {                                       // the square that ended the match: back to the main board first, where it stamps in; then the match's end (toWin)
     state.screen = 'board'; state.zoom = null; state.stamp = f.square; state.stampId = `${state.id || 'm'}:${state.moves}`;
-    clearTimeout(winTimer); winTimer = setTimeout(toWin, speedMode() ? (STAMP_MS * 0.6 + WIN_AFTER) / ANIM.speed : (STAMP_MS + WIN_AFTER) / ANIM.speed);   // (Speed: the end screen comes in as the stamp settles)
+    clearTimeout(winTimer); winTimer = setTimeout(toWin, zoomLeft() + (speedMode() ? (STAMP_MS * 0.6 + WIN_AFTER) / ANIM.speed : (STAMP_MS + WIN_AFTER) / ANIM.speed));   // (after the zoom-out has landed and the stamp played; Speed: the end screen comes in as the stamp settles)
   }
   if (hold && state.done) { startFx('back', state.done); if (!quiet) SND.play('flipDown'); }   // the two cards turning back over
   else if (!quiet) backSounds(from);
