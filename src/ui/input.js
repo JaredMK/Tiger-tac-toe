@@ -166,7 +166,7 @@ export function init() {
     if (state.screen === 'mini' && !free.includes(act) && !['zoom', 'back', 'sound', 'key', 'bksp', 'enter'].includes(act)) repNote(act, repVal(el));   // this phone's input, for the move's replay on the other side (the keyboard logs its own)
     if (act === 'react-open') { if (!reactCooling()) { rx.tray = !rx.tray; render(); } return; }   // (before the stamp: a reaction never clears a claim's stamp)
     if (act === 'react-send') { sendReact(Number(el.dataset.i)); return; }
-    state.stamp = null;                           // a claim stamps in once
+    state.stamp = null; state.drawStamp = null;   // a claim (or a draw's stamp) stamps in once
     if (act === 'zoom') {                        // open squares to play, claimed squares to look
       const i = Number(el.dataset.i);
       if (state.winner || !state.squares[i]) { SND.play('error'); return; }

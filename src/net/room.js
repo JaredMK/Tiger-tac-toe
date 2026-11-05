@@ -27,7 +27,7 @@ import {
 } from '../ui/app.js';
 import { attPinned } from '../ui/attention.js';
 import { scWaiting } from '../ui/chaos.js';
-import { STAMP_MS } from '../ui/board.js';
+import { DRAW_MS, STAMP_MS } from '../ui/board.js';
 import { KEY } from '../ui/config.js';
 import { fingPinned } from '../ui/finger.js';
 import { fxAt, startFx } from '../ui/fx.js';
@@ -241,7 +241,12 @@ function enterRoomGame(id, mine) {
 const matchOver = r => !!(r && r.game && isMM() && state.online.game === r.game && state.winner);
 export function presenting() { return !!(state.flash || state.done || state.spot || presentingSeq != null || stampLeft() > 0); }   // (presentingSeq covers a replay's inputs playing before the move)
 // A square's stamp still playing on the board (ms left): the next move played back waits for it.
-function stampLeft() { const at = state.stamp != null ? fxAt('stamp', state.stampId) : null; return at == null ? 0 : Math.max(0, (speedMode() ? STAMP_MS * 0.6 : STAMP_MS) / ANIM.speed - (performance.now() - at)); }   // (Speed: the next move's glow starts as the stamp settles, not after it)
+function stampLeft() {
+  const at = state.stamp != null ? fxAt('stamp', state.stampId) : null, dat = state.drawStamp != null ? fxAt('draw', state.drawId) : null;   // (a drawn square's Draw stamp and shuffle too: ui/board.js DRAW_MS)
+  const s = at == null ? 0 : Math.max(0, (speedMode() ? STAMP_MS * 0.6 : STAMP_MS) / ANIM.speed - (performance.now() - at));
+  const d = dat == null ? 0 : Math.max(0, DRAW_MS / ANIM.speed - (performance.now() - dat));
+  return Math.max(s, d);
+}   // (Speed: the next move's glow starts as the stamp settles, not after it)
 let pendingTimer = null;
 // The match as the record has it: moves not yet seen here are played back first, one at a time.
 export function applyMatch(r) {
