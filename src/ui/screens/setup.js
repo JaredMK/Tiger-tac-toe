@@ -5,12 +5,12 @@ import { restrictGames } from '../../core/games.js';
 import { CPU_NAME, NAME_MAX, dealable, enabledGames, normCpu, normLocal } from '../../core/match.js';
 import { LEVELS, LEVEL_NAME } from '../../core/aiw.js';
 import { acct, loggedIn } from '../../net/accounts.js';
-import { CLOCK_INCS, CLOCK_MINS, TURN_SECS, setupSpec, specParts, timerLabel } from '../../core/timer.js';
+import { CLOCK_INCS, CLOCK_MINS, TURN_SECS, setupSpec, specParts } from '../../core/timer.js';
 import { other } from '../../core/util.js';
 import { GAMES, INFO, SC_ONLY } from '../../games/index.js';
 import { connected } from '../../net/connect.js';
 import { noticeSeq } from '../../net/moves.js';
-import { chaosBadge, chaosVisible, scPicked, testBadge, timerDefault, visibleTypes } from '../../net/releases.js';
+import { chaosBadge, chaosVisible, scPicked, testBadge, visibleTypes } from '../../net/releases.js';
 import { dbSetup, isHost, net } from '../../net/room.js';
 import { advOpen, app, esc, save, state } from '../app.js';
 import { CHEV, ICONS, toonT } from '../art.js';
@@ -30,12 +30,15 @@ export const modeRow = sc => (!isHost() || chaosVisible() ? `<div class="timerro
 // a time per turn (30 or 60 s) or a match clock (3, 5 or 10 minutes each, plus 0, 2 or 5 seconds a move).
 function timerRows(cur) {
   const seg = (spec, label, on) => `<button class="seg${on ? ' on' : ''}" data-act="clock" data-v="${spec}" aria-pressed="${on}">${label}</button>`;
-  const row = (label, body) => `<div class="timerrow" role="group" aria-label="${label}"><span>${label}</span>${body}</div>`;
-  if (!acct.admin) return row('Timer', [...new Set(['off', timerDefault])].map(v => seg(v, timerLabel(v), cur === v)).join(''));
-  const p = specParts(cur), m = p.kind === 'match' ? p : { mins: 5, inc: 0 }, t = p.kind === 'turn' ? p.secs : 30;
-  return row('Timer', seg('off', 'No limit', p.kind === 'off') + seg('t' + t, 'Per turn', p.kind === 'turn') + seg(`m${m.mins}+${m.inc}`, 'Match clock', p.kind === 'match'))
+  const row = (label, body, q) => `<div class="timerrow" role="group" aria-label="${label}"><span>${label}${q ? qBtn('timer', 'sm') : ''}</span>${body}</div>`;
+  const p = specParts(cur), m = p.kind === 'match' ? p : { mins: 5, inc: 5 };
+  // Players (November 2026): the match clock, minutes each with +5 s a move, or no limit; the "?" beside it says so.
+  if (!acct.admin) return row('Minutes', [['off', 'No limit'], ...CLOCK_MINS.map(v => [`m${v}+5`, `${v}`])].map(([v, l]) => seg(v, l, cur === v)).join(''), true);
+  // The admin (testing): a time per turn too, and the match clock's other increments.
+  const t = p.kind === 'turn' ? p.secs : 30;
+  return row('Timer', seg('off', 'No limit', p.kind === 'off') + seg(`m${m.mins}+${m.inc}`, 'Match clock', p.kind === 'match') + seg('t' + t, 'Per turn', p.kind === 'turn'))
     + (p.kind === 'turn' ? row('Per turn', TURN_SECS.map(v => seg('t' + v, `${v} s`, t === v)).join('')) : '')
-    + (p.kind === 'match' ? row('Minutes', CLOCK_MINS.map(v => seg(`m${v}+${m.inc}`, `${v} min`, m.mins === v)).join('')) + row('Per move', CLOCK_INCS.map(v => seg(`m${m.mins}+${v}`, `+${v} s`, m.inc === v)).join('')) : '');
+    + (p.kind === 'match' ? row('Minutes', CLOCK_MINS.map(v => seg(`m${v}+${m.inc}`, `${v} min`, m.mins === v)).join(''), true) + row('Per move', CLOCK_INCS.map(v => seg(`m${m.mins}+${v}`, `+${v} s`, m.inc === v)).join('')) : '');
 }
 export function renderSetup() {
   const s = state.setup;

@@ -74,9 +74,9 @@ function againBtns() {
   if (!state.online) return '<button class="primary" data-act="rematch">Rematch</button>';
   if (!lobby || lobby.status === 'over' || lobby.left) return '';   // the room closed (a forfeit), or the other player left: no rematch
   const me = state.online.me, rm = lobby.rematch || {};
-  if (rm[me]) return `<button class="primary" disabled>Waiting for ${esc(N(other(me)))}…</button><button class="btn" data-act="rematch-cancel">Cancel</button>`;
+  if (rm[me]) return `<span class="rmwrap"><button class="primary rmbtn" disabled>Waiting for ${esc(N(other(me)))}…</button></span><button class="btn" data-act="rematch-cancel">Cancel</button>`;   // (the same width as Rematch: .rmbtn)
   const bub = rm[other(me)] ? `<span class="rmbub" aria-live="polite">${esc(N(other(me)))} wants a rematch</span>` : '';   // their request, in a bubble under the button
-  return `<span class="rmwrap"><button class="primary" data-act="rematch"${!connected ? ' disabled' : ''}>Rematch</button>${bub}</span>`;
+  return `<span class="rmwrap"><button class="primary rmbtn" data-act="rematch"${!connected ? ' disabled' : ''}>Rematch</button>${bub}</span>`;
 }
 // Under the buttons, in a friend room: the line the rematch bubble hangs into (always there, so nothing moves).
 function rematchNote() {
@@ -86,16 +86,17 @@ function rematchNote() {
 export function renderWin() {
   const w = state.winner;
   if (w === 'draw') return renderDraw();
-  const why = state.winReason === 'line' ? 'Three squares in a row'
-    : state.winReason === 'timeout' ? `${N(other(w))} forfeited — 2 missed turns`
+  // The match's result, one line (November 2026): three in a row, the other ran out of time, or the other resigned
+  // (leaving through the menu, two missed turns, or 2 minutes disconnected all resign).
+  const why = state.winReason === 'line' ? 'Three in a row'
     : state.winReason === 'clock' ? `${N(other(w))} ran out of time`
-    : state.winReason === 'resign' ? `${N(other(w))} left the match`
+    : state.winReason === 'resign' || state.winReason === 'timeout' ? `${N(other(w))} resigned`
     : `Most squares: ${state.counts[w]} to ${state.counts[other(w)]}`;
   const final = state.squares.map((s, i) =>
     `<i class="${s.owner || ''}${state.winLine && state.winLine.includes(i) ? ' hl' : ''}">${s.owner ? toonT(s.owner) : ''}</i>`
   ).join('');
   return `<main class="scr win-scr">${netBar()}<div class="win-card${isMM() ? ' mm' : ''}">
-    <div class="winburst">${endBurst(endMessage())}</div><div class="big-g ${w}">${toonT(w)}</div><h1>${(wins => state.winReason === 'timeout' || state.winReason === 'clock' ? wins : state.winReason === 'resign' ? `${wins} — ${why}` : `${wins} the match!`)(isYou(w) ? 'You win' : `${N(w)} wins`)}</h1><p>${state.winReason === 'timeout' ? why : state.winReason === 'resign' ? 'Leaving a match counts as a loss' : why}</p>${mmResult()}
+    <div class="winburst">${endBurst(endMessage())}</div><div class="big-g ${w}">${toonT(w)}</div><h1>${isYou(w) ? 'You win' : `${N(w)} wins`} the match!</h1><p>${why}</p>${mmResult()}
     <div class="final" aria-hidden="true">${final}</div>
     <div class="row">${againBtns()}<button class="btn" data-act="review">View board</button><button class="btn" data-act="${state.online ? 'leave' : 'menu'}">Main menu</button></div>${rematchNote()}${shareBtn()}</div></main>`;
 }

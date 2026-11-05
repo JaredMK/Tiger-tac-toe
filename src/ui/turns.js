@@ -14,7 +14,7 @@ import {
 import { STAMP_MS } from './board.js';
 import { chaosStep } from './chaos.js';
 import { explainT } from './explainer.js';
-import { animMs, confetti, fx, fxAt, momentPower, shake, stampFx, startFx } from './fx.js';
+import { animMs, confetti, drawFx, fx, fxAt, momentPower, shake, stampFx, startFx } from './fx.js';
 import { joinAsk } from './input.js';
 import { render } from './render.js';
 import { rep, repActive, repStart, repStop } from './replay.js';
@@ -225,7 +225,7 @@ export function dismissFlash() {
   }
   if (hold && state.done) { startFx('back', state.done); if (!quiet) SND.play('flipDown'); }   // the two cards turning back over
   else if (!quiet) backSounds(from);
-  const stamped = stampFx();
+  const stamped = stampFx() || drawFx(f);            // (a square won stamps in; one drawn and reset, its Draw stamp and shuffle)
   turnAlert(from.turn, stamped);
   commit();
   if (hold && state.done) {

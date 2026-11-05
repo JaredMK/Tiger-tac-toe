@@ -24,11 +24,15 @@ export const EXPLAIN = Object.fromEntries(Object.keys(GAMES).map(t => [t, GAMES[
 const SC_EXPLAIN = { name: 'Super Chaos', play: "Both players move at the same time. Each round, pick any square and make one move. When you're both done (or time runs out), you'll see what your opponent did. If both players win the same square in the same round, it resets. Run out of time and you miss the round; miss two in a row and you lose.", win: 'Three in a row wins.' };   // (against the computer and online alike)
 // The Mode selector's "?": the two modes, one plain line each.
 const MODE_EXPLAIN = { name: 'Mode', lines: [['Super Chaos', 'X and O move at the same time.'], ['Classic', 'X goes first, then you take turns.']] };
+// The host's Timer "?" (ui/screens/setup.js timerRows): the match clock, one plain paragraph.
+const TIMER_EXPLAIN = { name: 'Timer', text: 'Minutes each player has for the whole game. +5s is added after each move. Run out of time and you lose.' };
+const CLOCK_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/></svg>';
 const SC_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linejoin="round"><path d="M13.5 2 5 13.5h6L9.5 22 19 9.5h-6z"/></svg>';
 const scNow = () => !!(state.sc && ['board', 'mini'].includes(state.screen)) || (state.screen === 'setup' && chaosSetup());
 export function explainOf(t) {
   if (t === 'superchaos') return SC_EXPLAIN;
   if (t === 'mode') return MODE_EXPLAIN;
+  if (t === 'timer') return TIMER_EXPLAIN;
   return fillTune(t, (scNow() && GAMES[t] && GAMES[t].meta.scExplainer) || EXPLAIN[t]);
 }
 // A setting in the text ({k}: meta.js TUNE, or a game's own config named in its EXPLAIN_KEYS): the square's own
@@ -49,8 +53,8 @@ export function renderExplain() {
   if (!x) return '';
   return `<div class="explain" data-act="explain-close" role="dialog" aria-modal="true" aria-label="How to play ${x.name}"${fxAttr(fxAt('explain', explainT))}><div class="excard">
     <p class="excat">${GAMES[explainT] && CAT_LABEL[GAMES[explainT].meta.category] || '&nbsp;'}</p>
-    <h2>${explainT === 'superchaos' || explainT === 'mode' ? SC_ICON : ICONS[explainT]}<span>${x.name}</span></h2>
-    ${x.lines ? x.lines.map(([k, v]) => `<p class="exline wide"><b>${k}</b><span>${v}</span></p>`).join('') : `<p class="exline play"><b>Play</b><span>${x.play}</span></p>
+    <h2>${explainT === 'timer' ? CLOCK_ICON : explainT === 'superchaos' || explainT === 'mode' ? SC_ICON : ICONS[explainT]}<span>${x.name}</span></h2>
+    ${x.text ? `<p class="exline wide"><span>${x.text}</span></p>` : x.lines ? x.lines.map(([k, v]) => `<p class="exline wide"><b>${k}</b><span>${v}</span></p>`).join('') : `<p class="exline play"><b>Play</b><span>${x.play}</span></p>
     <p class="exline win"><b>Win</b><span>${x.win}</span></p>`}
     <small>Tap anywhere to close</small></div></div>`;
 }

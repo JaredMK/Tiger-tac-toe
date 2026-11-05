@@ -38,6 +38,10 @@ export function timerLabel(v) {
 }
 // Every code there is, in order (the admin's Timer setting and an admin host's lobby offer them all).
 export const TIMER_SPECS = ['off', ...TURN_SECS.map(s => 't' + s), ...CLOCK_MINS.flatMap(m => CLOCK_INCS.map(i => `m${m}+${i}`))];
+// What players choose from (November 2026): a match clock of 3, 5 or 10 minutes each, +5 s after every move, or no
+// limit; 5 minutes by default. A time per turn and the other increments are the admin's alone (testing).
+export const PLAYER_TIMERS = ['off', 'm3+5', 'm5+5', 'm10+5'];
+export const TIMER_DEFAULT = 'm5+5';
 export function newTimer(v) {
   if (typeof v === 'number' || v == null) {                       // (a bare number: that many seconds a turn, as before codes)
     const n = Number(v) || 0, t = { limit: n, deadline: null, for: null, pausedAt: null, timeouts: { X: 0, O: 0 }, streak: { X: 0, O: 0 } };

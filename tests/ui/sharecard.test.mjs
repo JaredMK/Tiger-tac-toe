@@ -1,6 +1,6 @@
 // The growth loop: the result card (ui/sharecard.js):
-//   the card's text and share text for a win, a loss and a draw, first person where this phone played a side, with and
-//   without a rematch code (a friend room whose room is still open), the computer as "the computer";
+//   the card's text and share text for a win, a loss and a draw, first person where this phone played a side;
+//   no rematch code; the computer as "the computer";
 //   the win screen (and the draw screen) shows Share result in every mode: Play Computer, Same phone, a friend room, Find Match;
 //   the main menu shows Challenge a friend under Play a Friend;
 //   the characters as self-contained SVGs for the canvas, and the type sized to fit.
@@ -15,7 +15,7 @@ for (const k of ['document', 'window', 'localStorage', 'sessionStorage', 'naviga
 }
 const require = createRequire(import.meta.url);
 const E = require('../engine.js');
-const { CARD, cardData, fitSize, perspective, rematchCode, shareBtn, toonSvg, toonUrl, LAYOUT } = await import('../../src/ui/sharecard.js');
+const { CARD, cardData, fitSize, perspective, shareBtn, toonSvg, toonUrl, LAYOUT } = await import('../../src/ui/sharecard.js');
 const { renderWin } = await import('../../src/ui/screens/win.js');
 const { renderMenu } = await import('../../src/ui/screens/menu.js');
 const MM = await import('../../src/net/matchmaking.js');
@@ -42,7 +42,7 @@ test('a win against the computer: the result, first person, no code', () => {
   assert.equal(d.title, 'Alex beat the computer');
   assert.equal(d.sub, undefined, 'no score line on the card');
   assert.equal(d.text, 'I just beat the computer at Tic Tac Chaos! Play me: https://tictacchaos.com/');
-  assert.equal(d.code, null); assert.equal(d.link, SITE); assert.equal(d.host, 'tictacchaos.com');
+  assert.equal(d.link, SITE); assert.equal(d.host, 'tictacchaos.com');
   assert.deepEqual(d.owners, ['X', 'X', 'X', 'O', null, 'O', null, null, null]); assert.deepEqual(d.winLine, [0, 1, 2]);
   assert.deepEqual(d.names, { X: 'Alex', O: 'Computer' }, 'the names row keeps the name');
   const lost = cardData(vsCpu(finished('OOOX.X...', 'O', 'line', { X: 'Alex' }), 'O'), { site: SITE });
@@ -76,20 +76,14 @@ test('two people on one phone: nobody is "me"', () => {
   const dr = cardData(finished('XOXXOOOXX', 'draw', 'blocked', { X: 'Ann', O: 'Bo' }), { site: SITE });
   assert.equal(dr.text, 'Ann and Bo just drew at Tic Tac Chaos! Play it: https://tictacchaos.com/');
 });
-test('a friend room with a rematch still possible: the code on the card and in the link; not once the room is over or someone left', () => {
+test('no rematch code on the card or in its link, a friend room included (November 2026)', () => {
   const st = finished('XXXO.O...', 'X', 'line', { X: 'Alex', O: 'Sam' });
   st.online = { kind: 'mm', game: 'g1', room: 'ABCDE', me: 'X' };
-  assert.equal(rematchCode(st, { status: 'playing' }), 'ABCDE');
-  assert.equal(rematchCode(st, { status: 'over' }), null, 'a forfeit closed the room');
-  assert.equal(rematchCode(st, { status: 'playing', left: 'O' }), null, 'the other player left');
-  assert.equal(rematchCode(st, null), null, 'no room read');
-  assert.equal(rematchCode(Object.assign({}, st, { online: { kind: 'mm', game: 'g1', me: 'X' } }), { status: 'playing' }), null, 'Find Match: no room');
-  const d = cardData(st, { site: SITE, lobby: { status: 'playing' } });
-  assert.equal(d.code, 'ABCDE'); assert.equal(d.link, 'https://tictacchaos.com/?room=ABCDE');
-  assert.equal(d.text, 'I just beat Sam at Tic Tac Chaos! Play me: https://tictacchaos.com/?room=ABCDE');
-  assert.equal(cardData(st, { site: SITE, lobby: { status: 'over' } }).code, null);
-  assert.equal(cardData(st, { site: SITE, code: 'FGHJK' }).link, 'https://tictacchaos.com/?room=FGHJK', 'a code set outright');
-  assert.equal(cardData(st, { site: 'https://staging.tictacchaos.com/', lobby: null }).host, 'staging.tictacchaos.com', 'the tag names the site the game runs on');
+  const d = cardData(st, { site: SITE });
+  assert.equal(d.code, undefined); assert.equal(d.link, 'https://tictacchaos.com/');
+  assert.equal(d.text, 'I just beat Sam at Tic Tac Chaos! Play me: https://tictacchaos.com/');
+  assert.doesNotMatch(JSON.stringify(d), /ABCDE/);
+  assert.equal(cardData(st, { site: 'https://staging.tictacchaos.com/' }).host, 'staging.tictacchaos.com', 'the tag names the site the game runs on');
 });
 test('the win screen shows Share result in every mode (and the draw screen)', () => {
   const modes = {

@@ -6,6 +6,7 @@ import { call, connected, fb, serverNow } from '../net/connect.js';
 import { fireTimeoutMM, isMM, search } from '../net/matchmaking.js';
 import { parseMatch, room, setTimeoutBusy, timeoutBusy } from '../net/room.js';
 import { RNG, state } from './app.js';
+import { startFx } from './fx.js';
 import { scClockLeft, scTick } from './chaos.js';
 import { runDraft, runEnd } from './runner.js';
 
@@ -21,6 +22,22 @@ export function clockText() {
   if (left == null && state.sc) return state.sc.online ? fmtClock(state.sc.limit * 1000) : '';   // (against the computer a round has no clock)
   if (left == null) return state.timer && state.timer.limit ? fmtClock(turnLimit(state.timer) * 1000) : '';
   return fmtClock(left);
+}
+// A match clock's increment, seen as it lands: the clock that was on the move hands over (the record's timer.for changes
+// sides), and the mover's clock shows "+5" (turnbar.js .pinc). Once per move, from the record's change; none on a first
+// look at a match (a reload, a reconnect).
+let incSeen = null;
+export let incShow = null;                             // { key, side, n }: the "+N" on show
+function incCheck() {
+  const t = state.timer;
+  if (!state.online || !matchClock(t)) { incSeen = null; return; }
+  const was = incSeen;
+  incSeen = { id: state.id, for: t.for, moves: state.moves };
+  if (!was || was.id !== state.id || !was.for || !t.for || was.for === t.for || !t.inc || state.winner) return;
+  const key = `${state.id}:${state.moves}:${was.for}`;
+  incShow = { key, side: was.for, n: t.inc };
+  startFx('inc', key);
+  import('./render.js').then(m => m.render()).catch(() => {});
 }
 // A match clock's two times left now (ms), both phones counting the same from the record (server time); null without one.
 export function matchLeft() { return matchClock(state.timer) ? timesLeft(state.timer, serverNow()) : null; }
@@ -41,6 +58,7 @@ export function tick() {
     if (left != null && left <= 10000 && left > 0) { const sec = Math.ceil(left / 1000); if (sec !== tickSec) { tickSec = sec; SND.play(sec <= 3 ? 'tickLoud' : 'tickSoft'); } }
     else tickSec = null;
   }
+  incCheck();
   const ml = matchLeft();
   if (ml) for (const p of ['X', 'O']) {                           // a match clock: both players' times, the one on the move counting down
     const e = document.getElementById('pclk-' + p);

@@ -134,6 +134,7 @@ export function newState(rng) {
     flash: null,              // the move just made: its result, while the animation and toast play
     done: null,               // the move just made, kept on show until the player heads back to the board (that is when the turn passes)
     stamp: null,              // square whose owner's mark stamps in on the board (just claimed)
+    drawStamp: null,          // square just drawn and reset: its Draw stamp and shuffle into the new game on the board (drawId keys it)
     lock: null,               // square the current player must keep playing (Hangman bonus guess, Risky Rolls turn)
     draft: '',                // letters typed so far (Five Letters)
     pick: null,               // first card chosen (Find the Pair)
@@ -170,7 +171,7 @@ export function startMatch(state, rng, only) {   // only: the games this kind of
   state.squares = dealNine(games, rng);
   for (const sq of state.squares) if (sq.mini.type === 'trivia') triviaDeal(state, sq, rng);   // a question each, no two squares alike
   state.screen = 'board'; state.turn = 'X';
-  state.zoom = null; state.flash = null; state.done = null; state.stamp = null; state.lock = null;
+  state.zoom = null; state.flash = null; state.done = null; state.stamp = null; state.drawStamp = null; state.lock = null;
   state.draft = ''; state.pick = null; state.pickSq = null; state.sel = []; state.confirm = null; state.notice = null;
   state.winner = null; state.winLine = null; state.winReason = null; state.counts = null;
   state.lastSquare = null; state.lastBy = null; state.moves = 0; state.sqlog = [];

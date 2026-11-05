@@ -32,6 +32,9 @@ Win: Three in a row wins.
 Super Chaos: X and O move at the same time.
 Classic: X goes first, then you take turns.
 
+## Timer (the host's "?") [timer]
+Text: Minutes each player has for the whole game. +5s is added after each move. Run out of time and you lose.
+
 # Mini-games
 
 Each mini-game's "?" explainer, alphabetical: its category, then Play and Win. "Super Chaos" lines appear only where the game's rules differ there.

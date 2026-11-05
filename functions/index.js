@@ -498,16 +498,18 @@ let runCfgAt = 0;
 let timerAt = 0, timerCur = 't30';
 async function timerNow() {
   if (now() - timerAt > 20000 || process.env.FUNCTIONS_EMULATOR === 'true') {
-    const s = E.timerSpec(((await db.ref('config/timer').get()).val() || {}).spec || 't30');
-    timerCur = s === 'off' ? 't30' : s; timerAt = now();
+    const s = E.timerSpec(((await db.ref('config/timer').get()).val() || {}).spec || E.TIMER_DEFAULT);
+    timerCur = s === 'off' ? E.TIMER_DEFAULT : s; timerAt = now();
   }
   return timerCur;
 }
 // A friend room's clock: the host's choice in the lobby (setup.clock, a code; an older room's setup.timer, seconds).
-// An admin host may pick any; anyone else no limit, the admin's default, or 30 s a turn (as before).
+// An admin host may pick any; anyone else the players' choices (no limit, or a match clock of 3, 5 or 10 minutes, +5 s
+// a move: E.PLAYER_TIMERS), else the admin's default when it is one of those, else 5 minutes.
 function friendTimer(setup, admin, def) {
   const s = setup || {}, want = s.clock != null ? E.timerSpec(s.clock) : E.timerSpec(Number(s.timer) || 0);
-  return admin || ['off', 't30', def].includes(want) ? want : def;
+  if (admin || E.PLAYER_TIMERS.includes(want)) return want;
+  return E.PLAYER_TIMERS.includes(def) ? def : E.TIMER_DEFAULT;
 }
 async function runConfigNow() {
   if (now() - runCfgAt < 20000) return;
@@ -901,8 +903,23 @@ exports.tick = onCall(CALL, async req => {
   const uid = needUid(req), id = gameId((req.data || {}).game);
   const bg = (await db.ref(`botGames/${id}`).get()).val();
   if (bg && bg.live && bg.human === uid) await runBot(id).catch(e => logger.error('bot', id, e));
+  else await dropCheck(id, now()).catch(e => logger.error('drop', id, e));   // (the other player gone 2 minutes: they resign, without waiting for the sweep)
   return { ok: true };
 });
+// Disconnects (November 2026): a player whose phone has been offline for DROP_RESIGN_MS in a row (their game presence,
+// gpresence/{id}/{side}: online false since `at`, the server's time of the drop; reconnecting writes online true and
+// starts over) resigns the match: a loss, "[name] resigned". Checked by the sweep every minute and by the waiting
+// phone's tick. A Super Chaos match is left to its own rules.
+const DROP_RESIGN_MS = 2 * 60 * 1000;
+async function dropCheck(id, t, pres) {
+  const p = pres || (await db.ref(`gpresence/${id}`).get()).val() || {};
+  const gone = ['X', 'O'].find(s => p[s] && p[s].online === false && Number(p[s].at) > 0 && t - Number(p[s].at) >= DROP_RESIGN_MS);
+  if (!gone) return false;
+  if ((await db.ref(`games/${id}/pub/status`).get()).val() !== 'playing') return false;   // (a match over, its presence kept until it goes)
+  const r = await changeGame(id, null, (rec, side, pub) => (pub && pub.chaos ? { ok: false, reason: 'chaos' } : E.applyOnlineResign(rec, gone)), 'resign');
+  if (r && r.ok) logger.info('drop: resigned', id, gone);
+  return !!(r && r.ok);
+}
 
 /* ===================== the empty-queue alert ===================== */
 // Someone has been searching alone for a few seconds: a text and/or an email to the admin, with a link
@@ -1366,6 +1383,9 @@ async function sweep() {
     const r = await (g.pub.chaos ? changeSc(id, null, (gm, side, t) => scSweepStep(gm, t), 'sweep') : changeGame(id, null, timeoutStep, 'timeout')).catch(() => ({ ok: false }));
     if (r.ok) timeouts++;
   }
+  let drops = 0;
+  const pres = (await db.ref('gpresence').get().catch(() => null));
+  for (const [id, p] of Object.entries((pres && pres.val()) || {})) if (await dropCheck(id, t, p).catch(() => false)) drops++;   // (a game over: changeGame refuses it)
   const old = (await db.ref('games').orderByChild('pub/ended').startAt(1).endAt(t - GAME_KEEP_MS).limitToFirst(50).get()).val() || {};
   const up = {};
   let deleted = 0;
@@ -1378,7 +1398,7 @@ async function sweep() {
   if (Object.keys(up).length) await db.ref().update(up);
   if (logs) logger.info('match logs deleted', logs);
   if (retired) logger.info('retention: entries deleted', retired);
-  return { timeouts, finished, deleted, botMoves, rooms, retired };
+  return { timeouts, finished, deleted, botMoves, rooms, retired, drops };
 }
 // Retention (the privacy policy): device logs, a device not seen for 90 days (with its log), an account's last activity
 // and the alert log are kept 90 days. Each sweep takes a bounded bite: whole devices gone quiet (devices/{h}/last), the
@@ -1419,7 +1439,7 @@ async function pruneSeen(t, up) {
 }
 exports.sweep = onSchedule({ schedule: 'every 1 minutes', timeZone: 'Etc/UTC', retryCount: 0 }, async () => {
   const r = await sweep();
-  if (r.timeouts || r.finished || r.deleted || r.botMoves || r.rooms) logger.info('sweep', r);
+  if (r.timeouts || r.finished || r.deleted || r.botMoves || r.rooms || r.drops) logger.info('sweep', r);
 });
 // The emulator cannot fire schedules: the tests run the same sweep through this hook, which exists
 // only in the emulator.

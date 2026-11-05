@@ -17,7 +17,7 @@ import { REDUCED, WAAPI, app, state } from './app.js';
 import { attPre } from './attention.js';
 import { claimHaptic } from './haptics.js';
 import { shownSq } from './chaos.js';
-import { BOARD_BURST } from './board.js';
+import { BOARD_BURST, DRAW_SHUFFLE } from './board.js';
 import { fingPre } from './finger.js';
 import { runPre } from './runner.js';
 import { hopToken } from './track.js';
@@ -184,6 +184,20 @@ function countTo(el, from, to, ms, delay, clock) {
   requestAnimationFrame(step);
 }
 // Back on the board after a move: a square just won stamps in now, once (the event its stamp belongs to).
+// A square drawn and reset, back on the board (state.drawStamp, keyed by state.drawId: core/board.js leaveSquare): its
+// Draw stamp and the shuffle into the new game start once (ui/board.js draws them), with their sounds: a softer thump
+// as the stamp lands, two card slides as the old game flicks away and a card flip as the new one deals in. f: the move
+// that drew it (its `drawn`: the old game as it ended, for the tile that flicks away). True when it started now.
+export let drawOld = null;                                            // { id, type, mini }: the old game of the latest drawn square
+export function drawFx(f) {
+  if (state.screen !== 'board' || state.drawStamp == null || state.drawId == null || fxAt('draw', state.drawId) != null) return false;
+  drawOld = f && f.square === state.drawStamp && f.type ? { id: state.drawId, type: f.type, mini: f.drawn || null } : null;
+  startFx('draw', state.drawId);
+  const s = 1000 * ANIM.speed;
+  SND.play('stamp', { vol: 0.6 });
+  SND.play('cardSlide', { at: DRAW_SHUFFLE[0] / s }); SND.play('cardSlide', { at: (DRAW_SHUFFLE[0] + 90) / s, rate: 1.12 }); SND.play('cardFlip', { at: DRAW_SHUFFLE[1] / s });
+  return true;
+}
 export function stampFx(elapsed) {                                   // elapsed: the stamp began this long ago (a sequence joined part way: quietly)
   if (state.screen !== 'board' || state.stamp == null || state.stampId == null || fxAt('stamp', state.stampId) != null) return;
   startFx('stamp', state.stampId, elapsed ? performance.now() - elapsed : undefined);

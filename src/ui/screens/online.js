@@ -36,9 +36,7 @@ export function renderJoin() {
   const games = room && room.setup && room.setup.games ? pool.filter(t => room.setup.games[t] !== false) : pool;
   const on = new Set(games), list = byName(pool);
   const info = seated && room ? `<div class="jinfo">
-      <div class="field"><span>Player 1 · host</span><div class="namebox">${esc(hostName || 'the host')}</div></div>
-      <div class="field"><span>Player 2 · you</span><div class="namebox">${esc((room.players && room.players[o.me] && room.players[o.me].name) || joinName || 'Friend')}</div></div>
-      <div class="field"><span>Sides</span><div class="namebox">X and O drawn at random each match</div></div>
+      <div class="field"><span>Opponent</span><div class="namebox">${esc(hostName || 'the host')}</div></div>
       ${sc ? '' : `<div class="field"><span>Timer</span><div class="namebox">${timerLabel(timer)}</div></div>`}
       <div class="adv jgames${advOpen ? ' open' : ''}"><button class="adv-h" data-act="adv" aria-expanded="${advOpen}"><span>Mini-games</span><small>${gamesCount(games.length, pool.length)}</small><i class="chev">${CHEV}</i></button>
         ${advOpen ? `<div class="games">${list.map(t => `<div class="chk ro${on.has(t) ? '' : ' off'}"><input type="checkbox" disabled${on.has(t) ? ' checked' : ''} aria-label="${esc(INFO[t].name)}: ${on.has(t) ? 'on' : 'off'}">${ICONS[t]}<span>${INFO[t].name}</span></div>`).join('')}</div>` : ''}</div>

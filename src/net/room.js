@@ -6,7 +6,7 @@ import { restrictGames } from '../core/games.js';
 import { NAME_MAX, playerName } from '../core/match.js';
 import { upgradeMini } from '../core/minis.js';
 import { MATCH_FIELDS, packMatch, parseMatch, resignLocal } from '../core/records.js';
-import { ANIM, newTimer, normTimer, replaySpeed, setupSpec, speedMode } from '../core/timer.js';
+import { ANIM, newTimer, normTimer, PLAYER_TIMERS, replaySpeed, setupSpec, speedMode, TIMER_DEFAULT } from '../core/timer.js';
 import { other } from '../core/util.js';
 import { echoPinned } from '../games/echo/view.js';
 import { oddPinned } from '../games/oddone/view.js';
@@ -109,7 +109,7 @@ export async function hostRoom(code, resume) {
     state.online = { role: 'host', code: '', me: 'X', joined: false, shownSeq: null, matchId: null, chaos: scMode() }; state.sc = null;   // (the room's mode: this device's choice to begin with; the code comes from the server)
     state.setup.mode = 'online'; state.screen = 'setup';
     state.setup.timer = normTimer(state.setup.timer);           // an older 1 or 3 minute choice: 30 seconds
-    state.setup.clock = timerDefault;                            // the room's clock: the admin's Timer to begin with (an admin host may pick another)
+    state.setup.clock = acct.admin || PLAYER_TIMERS.includes(timerDefault) ? timerDefault : TIMER_DEFAULT;   // the room's clock: the admin's Timer to begin with, a player's own choices only (an admin host may pick any)
   }
   setNet('connecting', resume ? `Reopening room ${state.online.code}…` : 'Opening the room…');
   commit();

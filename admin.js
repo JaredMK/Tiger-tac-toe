@@ -895,7 +895,7 @@ async function resetTune(t, btn) {
 }
 // ---------- the timer (config/timer/spec, read by the server and the game): Find Match's timer and the friend-game default.
 // A code: 't30', 't60' (seconds a turn), 'm5+2' (minutes each, seconds added a move: a match clock); core/timer.js timerSpec ----------
-const TIMER_DEF = 't30';
+const TIMER_DEF = 'm5+5';   // (core/timer.js TIMER_DEFAULT: none set)
 function timerParts(v) {
   const m = /^m(\d+)\+(\d+)$/.exec(String(v || '')), t = /^t(\d+)$/.exec(String(v || ''));
   return m ? { kind: 'match', mins: +m[1], inc: +m[2] } : t ? { kind: 'turn', secs: +t[1] } : { kind: 'off' };
@@ -908,7 +908,7 @@ function timerCard() {
   const cur = (ctl.timer && /^(t30|t60|m(3|5|10)\+(0|2|5))$/.test(ctl.timer.spec)) ? ctl.timer.spec : TIMER_DEF, p = timerParts(cur);
   const sel = (id, opts, v) => `<select id="${id}">${opts.map(([o, l]) => `<option value="${o}"${String(o) === String(v) ? ' selected' : ''}>${l}</option>`).join('')}</select>`;
   return `<div class="card ctl" id="timerCard"><h2>Timer</h2>
-    <p class="note">Find Match's timer, and the one a friend game starts with (the host can still pick No limit). <b>Per turn</b>: each turn has this long (a game that needs longer gets 60 s); two missed turns in a row lose the match. <b>Match clock</b>: chess style, each player has this many minutes for the whole match; only the clock of the player on the move runs, and only once they can act (never during a replay or an animation); the increment is added after every move; a player whose clock reaches zero loses ("[name] ran out of time"). Applies to matches started from now on. As admin you can also pick any timer in your own friend room's lobby.</p>
+    <p class="note">Find Match's timer, and the one a friend game starts with. Players choose only a match clock of 3, 5 or 10 minutes (+5 s a move) or No limit: a friend game starts with this one when it is one of those, else 5 minutes. A time per turn and the other increments are for testing (here and in your own lobby). <b>Per turn</b>: each turn has this long (a game that needs longer gets 60 s); two missed turns in a row lose the match. <b>Match clock</b>: chess style, each player has this many minutes for the whole match; only the clock of the player on the move runs, and only once they can act (never during a replay or an animation); the increment is added after every move; a player whose clock reaches zero loses ("[name] ran out of time"). Applies to matches started from now on. As admin you can also pick any timer in your own friend room's lobby.</p>
     <div class="fields"><label>Type ${sel('tmKind', [['turn', 'Per turn'], ['match', 'Match clock']], p.kind)}</label>
       ${p.kind === 'match' ? `<label>Minutes each ${sel('tmMins', [[3, '3'], [5, '5'], [10, '10']], p.mins)}</label><label>Increment ${sel('tmInc', [[0, '+0 s'], [2, '+2 s'], [5, '+5 s']], p.inc)}</label>`
         : `<label>Seconds a turn ${sel('tmSecs', [[30, '30'], [60, '60']], p.secs)}</label>`}</div>
@@ -917,7 +917,7 @@ function timerCard() {
 async function saveTimer() {
   const kind = (document.getElementById('tmKind') || {}).value, val = id => Number((document.getElementById(id) || {}).value);
   const was = timerParts((ctl.timer && ctl.timer.spec) || TIMER_DEF);
-  const spec = kind === 'match' ? `m${was.kind === 'match' && document.getElementById('tmMins') ? val('tmMins') : 5}+${was.kind === 'match' && document.getElementById('tmInc') ? val('tmInc') : 0}`
+  const spec = kind === 'match' ? `m${was.kind === 'match' && document.getElementById('tmMins') ? val('tmMins') : 5}+${was.kind === 'match' && document.getElementById('tmInc') ? val('tmInc') : 5}`
     : `t${was.kind === 'turn' && document.getElementById('tmSecs') ? val('tmSecs') : 30}`;
   const el = document.getElementById('tmKind');
   try { await fb.dbM.set(fb.dbM.ref(fb.db, 'config/timer'), spec === TIMER_DEF ? null : { spec }); ctl.timer = spec === TIMER_DEF ? {} : { spec }; } catch (e) { render(); said(el, false, failed(e)); return; }

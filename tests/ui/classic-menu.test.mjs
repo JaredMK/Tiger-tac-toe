@@ -107,8 +107,9 @@ test("hosting: the host is Player 1 and the friend Player 2, X and O drawn when 
   state.online = { role: 'guest', code: 'ABCDE', me: 'O', joined: true };
   setRoom({ players: { X: { uid: 'h', name: 'Hosty' }, O: { uid: 'g', name: 'Gus' } }, setup: { games: { ttt: true }, timer: 60, hostPick: 'random' }, status: 'lobby' });
   const join = renderJoin();
-  assert.match(join, /Player 1 · host<\/span><div class="namebox">Hosty/); assert.match(join, /Player 2 · you<\/span><div class="namebox">Gus/);
-  assert.match(join, /X and O drawn at random each match/);
+  assert.match(join, /<span>Opponent<\/span><div class="namebox">Hosty/);
+  assert.doesNotMatch(join, /Player 1|Player 2|Sides|drawn at random/, 'the join screen: Opponent, Timer and Mini-games only (November 2026)');
+  assert.match(join, /<span>Timer<\/span>/); assert.match(join, /Mini-games/);
   assert.doesNotMatch(join, /Mode|Super Chaos|You play/);
   setRoom(null);
   // the join form: a logged-in player joins under their username (no name field); a guest types a name

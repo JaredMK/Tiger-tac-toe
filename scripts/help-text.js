@@ -109,6 +109,8 @@ function loadModel(read, oldTypes) {
   const ml = allLiterals(ex, a + ex.slice(a, b).indexOf('lines:'), b);
   if (ml.length !== 4) throw new Error('MODE_EXPLAIN: expected 4 strings');
   sec('modes', 'mode', 'Mode selector', [fld(ml[0].value, site(EXPLAINER, ml[1])), fld(ml[2].value, site(EXPLAINER, ml[3]))]);
+  a = ex.indexOf('const TIMER_EXPLAIN = {'); b = lineEnd(ex, a);
+  sec('modes', 'timer', 'Timer (the host\'s "?")', [fld('Text', site(EXPLAINER, keyLiteral(ex, a, b, 'text')))]);
 
   // Mini-games
   const lab = (name, keys, labels) => { a = ex.indexOf(`${name} = {`); b = lineEnd(ex, a); return keys.map(k => [k, keyLiteral(ex, a, b, k)]); };

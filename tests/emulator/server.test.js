@@ -100,7 +100,7 @@ async function nearWin(id, turn = 'X') {
 }
 const recorded = id => until(async () => { const r = await get(`games/${id}/pub/recorded`); return r && r.done; }, 10000, 'the result to be recorded');
 
-test.before(() => put('features/findMatch', true));            // Find Match starts off: on for the suite (its own test switches it off)
+test.before(() => Promise.all([put('features/findMatch', true), put('config/timer', { spec: 't30' })]));   // Find Match starts off: on for the suite (its own test switches it off); its timer 30 s a turn, as these tests were written (the match clock's own test sets its own)
 test.after(async () => { for (const app of apps) await deleteApp(app).catch(() => {}); });
 
 /* ===================================== accounts ===================================== */
@@ -2122,8 +2122,12 @@ test('match clock: the admin\'s timer for Find Match; the clocks switch on every
   assert.deepEqual([hf.winner, hf.winReason], [E.other(hs.turn), 'clock'], `a move after the clock ran out loses on time (${JSON.stringify(late)})`);
   // friend rooms: the admin's timer is the default; a player host gets no limit, 30 s or the default; an admin host any
   const host = await player('Clk_Host'), guest = await player('Clk_Guest');
-  const r1 = await friendRoom(host, guest, { games: only('ttt'), clock: 'm10+5' });
-  assert.equal(JSON.parse((await get(`games/${r1.id}/pub`)).state).timer.spec, 'm3+2', 'not an admin: the default, not an untried timer');
+  const r1 = await friendRoom(host, guest, { games: only('ttt'), clock: 't30' });
+  assert.equal(JSON.parse((await get(`games/${r1.id}/pub`)).state).timer.spec, 'm5+5', 'not an admin: no time per turn; the admin\'s default is not a player\'s choice, so 5 minutes');
+  assert.equal((await host.call('resign', { game: r1.id })).ok, true); await recorded(r1.id);
+  const r1b = await friendRoom(host, guest, { games: only('ttt'), clock: 'm10+5' });
+  assert.equal(JSON.parse((await get(`games/${r1b.id}/pub`)).state).timer.spec, 'm10+5', 'a player\'s own choice: 10 minutes, +5 s a move');
+  await host.call('resign', { game: r1b.id }); await recorded(r1b.id);
   assert.equal((await host.call('resign', { game: r1.id })).ok, true); await recorded(r1.id);
   const r2 = await friendRoom(guest, host, { games: only('ttt'), clock: 'off' });
   assert.equal(JSON.parse((await get(`games/${r2.id}/pub`)).state).timer.limit, 0, 'no limit stays open to everyone');
@@ -2141,6 +2145,36 @@ test('match clock: the admin\'s timer for Find Match; the clocks switch on every
   await runScript('make-admin.js', 'Clk_Host', 'revoke');
   await put('config/timer', null);
   const e = await player('Clk_E'), f = await player('Clk_F'), k = await pairUp(e, f);
-  assert.equal((await gameState(k.id)).timer.limit, 30, 'no setting: 30 s a turn, as before');
+  const kt = (await gameState(k.id)).timer;
+  assert.deepEqual([kt.kind, kt.spec, kt.inc, kt.bank.X], ['match', 'm5+5', 5, 300000], 'no setting: a 5-minute match clock, +5 s a move');
   await e.call('resign', { game: k.id });
+  await put('config/timer', { spec: 't30' });                  // (the suite's timer again)
+});
+
+// Disconnects (November 2026): a phone offline 2 minutes in a row resigns its player ("[name] resigned"), by the sweep or
+// the waiting phone's tick; a shorter drop, or one that came back, does nothing.
+test('disconnects: offline 2 minutes in a row resigns the match (sweep and tick); a shorter drop or a reconnect does not', async () => {
+  const a = await player('Drop_A'), b = await player('Drop_B');
+  const g = await pairUp(a, b), t = Date.now();
+  await put(`gpresence/${g.id}/X`, { online: true, away: false, at: t });
+  await put(`gpresence/${g.id}/O`, { online: false, at: t - 90000 });
+  assert.equal((await sweep()).drops, 0, '90 s: not yet');
+  assert.equal((await gameState(g.id)).winner, null);
+  await put(`gpresence/${g.id}/O`, { online: true, away: false, at: t });
+  assert.equal((await sweep()).drops, 0, 'back online: nothing');
+  await put(`gpresence/${g.id}/O`, { online: false, at: Date.now() - 121000 });
+  assert.equal((await sweep()).drops, 1, 'two minutes gone: resigned');
+  await recorded(g.id);
+  const st = await gameState(g.id), pub = await get(`games/${g.id}/pub`);
+  assert.deepEqual([st.winner, st.winReason, st.resigned], ['X', 'resign', 'O']);
+  assert.equal(pub.result.how, 'resign');
+  assert.deepEqual(pub.result.records.O, { wins: 0, losses: 1, draws: 0 }, 'a loss on the record');
+  // the waiting phone's tick does it too, without the sweep
+  const c = await player('Drop_C'), d = await player('Drop_D');
+  const h = await pairUp(c, d);
+  await put(`gpresence/${h.id}/O`, { online: false, at: Date.now() - 125000 });
+  await h.X.call('tick', { game: h.id });
+  const hs = await until(async () => { const v = await gameState(h.id); return v.winner ? v : null; }, 10000, 'the tick resigned the gone player');
+  assert.deepEqual([hs.winner, hs.winReason, hs.resigned], ['X', 'resign', 'O']);
+  await recorded(h.id);
 });

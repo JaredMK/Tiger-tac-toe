@@ -192,12 +192,14 @@ export function endFlash(state, hold) {
 export function leaveSquare(state) {
   if (state.flash || state.lock != null || state.winner) return false;
   const d = state.done;
-  state.stamp = null;
+  state.stamp = null; state.drawStamp = null;
   if (d && state.sc) state.done = null;                         // Super Chaos: the move is in; nothing passes until the round ends
   else if (d) {
     state.turn = d.next;
     state.stamp = d.kind === 'claim' ? d.square : null;
     state.stampId = d.kind === 'claim' ? `${state.id || 'm'}:${state.moves}` : null;  // this claim's stamp: it plays once, whatever re-renders follow
+    state.drawStamp = d.kind === 'draw' ? d.square : null;       // a square drawn and reset: its Draw stamp, then the shuffle into the new game (ui/board.js), once
+    state.drawId = d.kind === 'draw' ? `${state.id || 'm'}:${state.moves}:d` : null;
     state.done = null;
   }
   state.screen = 'board'; state.zoom = null; state.draft = ''; state.pick = null; state.sel = []; state.notice = null;

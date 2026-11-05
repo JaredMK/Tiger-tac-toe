@@ -1,13 +1,11 @@
 // The growth loop's result card: a match's result as a square picture (1080 x 1080: the board is square, and a square
 // fills a chat bubble, a feed or a story without cropping; 1200 x 630 is the link preview's shape, not a picture's) with
-// the final board, both names, the result, the site's address and, in a friend room where a rematch is still possible,
-// the room's code. The win screen's Share result makes it on a canvas and hands it to the share sheet as a PNG
+// the final board, both names, the result and the site's address (no rematch code: November 2026). The win screen's Share result makes it on a canvas and hands it to the share sheet as a PNG
 // (net/platform.js shareFile); where there is none it is saved and its text copied. The text and the layout are worked
 // out apart from the canvas (cardData, fitSize, toonSvg: tests/ui/sharecard.test.mjs); paintCard alone draws.
 import { playerName } from '../core/match.js';
 import { other } from '../core/util.js';
 import { copyText, downloadFile, shareFile, siteUrl } from '../net/platform.js';
-import { lobby } from '../net/room.js';
 import { esc, state } from './app.js';
 import { toonG } from './art.js';
 import { render } from './render.js';
@@ -23,25 +21,15 @@ export function perspective(st) {
   if (st.cpu && st.cpu.length === 1) return other(st.cpu);
   return null;
 }
-// The room's code goes on the card only while a rematch is still possible there: a friend room's match, its room
-// still open (not closed by a forfeit) and nobody gone.
-export function rematchCode(st, lob) {
-  const o = st.online;
-  if (!o || !o.room || !lob || lob.status === 'over' || lob.left) return null;
-  return o.room;
-}
 const isCpu = (st, p) => !st.online && !!st.cpu && st.cpu.includes(p);
 const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
-// Everything the card and its text need, from the finished match. opts: lobby (the room's node; the live one by default),
-// code (set outright), site (the address; siteUrl() by default).
+// Everything the card and its text need, from the finished match. opts: site (the address; siteUrl() by default).
 export function cardData(st, opts = {}) {
   const w = st.winner, me = perspective(st), won = w === 'X' || w === 'O';
   const names = { X: playerName(st, 'X'), O: playerName(st, 'O') };
   const said = p => (isCpu(st, p) ? 'the computer' : names[p]);               // in a sentence, the computer is "the computer"
   const counts = { X: (st.counts && st.counts.X) || 0, O: (st.counts && st.counts.O) || 0 };
-  const code = opts.code !== undefined ? opts.code : rematchCode(st, opts.lobby === undefined ? lobby : opts.lobby);
-  const site = opts.site || siteUrl();
-  const link = code ? `${site}?room=${code}` : site;
+  const site = opts.site || siteUrl(), link = site;   // (no rematch code on the card or in its link: November 2026)
   const outcome = !won ? 'draw' : me == null ? 'named' : w === me ? 'win' : 'loss';
   let title, text;
   if (!won) {
@@ -58,7 +46,7 @@ export function cardData(st, opts = {}) {
   let host = 'tictacchaos.com';
   try { host = new URL(site).host || host; } catch (e) { /* (the default) */ }
   return {
-    outcome, winner: won ? w : null, me, names, counts, code, site, link, host, title, text,
+    outcome, winner: won ? w : null, me, names, counts, site, link, host, title, text,
     owners: (st.squares || []).map(s => (s && (s.owner === 'X' || s.owner === 'O') ? s.owner : null)),
     winLine: Array.isArray(st.winLine) ? st.winLine.slice() : [],
   };
@@ -93,7 +81,6 @@ export const LAYOUT = {
   titleY: 230, titleSize: 66, titleW: 980,
   board: { top: 300, cell: 174, gap: 14 },     // 174 * 3 + 14 * 2 = 550 wide, centred
   namesY: 898, nameSize: 44, nameW: 330, toon: 66,
-  codeY: 962, codeSize: 40,
   tagY: 1016, tagH: 66, tagSize: 38,
 };
 
@@ -173,16 +160,6 @@ export function paintCard(ctx, d, pal, imgs) {
   };
   side('X', false); side('O', true);
   ctx.font = font(PH, 40); ctx.fillStyle = pal.muted; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('vs', cx, L.namesY);
-  // the rematch code, when there is one
-  if (d.code) {
-    ctx.textBaseline = 'alphabetic';
-    const lead = 'Rematch code: ';
-    ctx.font = font(PH, L.codeSize); const w1 = ctx.measureText(lead).width;
-    ctx.font = font(LG, L.codeSize); const w2 = ctx.measureText(d.code).width;
-    const x0 = cx - (w1 + w2) / 2;
-    ctx.textAlign = 'left'; ctx.font = font(PH, L.codeSize); ctx.fillStyle = pal.ink; ctx.fillText(lead, x0, L.codeY);
-    ctx.font = font(LG, L.codeSize); ctx.fillStyle = pal.x; ctx.lineWidth = 6; ctx.strokeStyle = pal.ink; ctx.strokeText(d.code, x0 + w1, L.codeY); ctx.fillText(d.code, x0 + w1, L.codeY);
-  }
   // the site's address, in a tag
   ctx.font = font(PH, L.tagSize); const tw = ctx.measureText(d.host).width + 72;
   box(ctx, cx - tw / 2, L.tagY - L.tagH / 2, tw, L.tagH, [24, 18, 22, 16], pal.paper, pal);

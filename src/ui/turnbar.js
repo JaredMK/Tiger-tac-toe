@@ -6,7 +6,7 @@ import { awayNote, net, presence, room } from '../net/room.js';
 import { N, NAV_SCREENS, esc, menuOpen, state, isYou } from './app.js';
 import { toon } from './art.js';
 import { scTurnText } from './chaos.js';
-import { clockText, matchLeft, fmtClock } from './clock.js';
+import { clockText, incShow, matchLeft, fmtClock } from './clock.js';
 import { animMs, fx, fxAt, fxAttr, startFx } from './fx.js';
 import { flashLine } from './mini.js';
 
@@ -23,7 +23,8 @@ export function renderHeader() {
   // A match clock (online): each player's time left under their name, the one on the move lit, red and pulsing in its
   // last 30 seconds (ui/clock.js tick keeps them current); the turn line's own clock box stays, empty.
   const ml = state.online && !sc ? matchLeft() : null;
-  const pclk = p => (ml ? `<b class="pclk${p === state.turn && !state.winner ? ' on' : ''}${ml[p] <= 30000 && p === state.turn && !state.winner ? ' low' : ''}" id="pclk-${p}" aria-label="${p}'s time left">${fmtClock(ml[p])}</b>` : '');
+  const inc = p => { const at = incShow && incShow.side === p ? fxAt('inc', incShow.key) : null; return at != null && performance.now() - at < 1400 ? `<i class="pinc"${fxAttr(at, 'rt')} aria-hidden="true">+${incShow.n}</i>` : ''; };   // the increment as it lands (clock.js incCheck): a brief "+5"
+  const pclk = p => (ml ? `<b class="pclk${p === state.turn && !state.winner ? ' on' : ''}${ml[p] <= 30000 && p === state.turn && !state.winner ? ' low' : ''}" id="pclk-${p}" aria-label="${p}'s time left">${fmtClock(ml[p])}</b>${inc(p)}` : '');
   // the reaction bubble hangs by the sender's character; the bubble is always there (hidden when empty), so the bar's shape stays the same
   const card = p => (rx.card && rx.card.side === p && !menuOpen ? rx.card : null);   // (not over the in-game menu)
   const side = p => `<div class="tside ${p}${p === t ? ' on' : ''}"><span class="tg">${toon(p)}<span class="rbub${card(p) ? ' on' : ''}"${card(p) ? fxAttr(card(p).at, 'rt') : ''} aria-live="polite">${card(p) ? card(p).e : ''}</span></span><b class="nm">${N(p)}</b>${pclk(p)}</div>`;

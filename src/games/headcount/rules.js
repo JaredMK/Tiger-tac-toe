@@ -16,8 +16,8 @@ export { attentionHide as hide, attentionSecret as secret } from '../shared/atte
 // edge, out at the other); two going the same way in the same lane never cover each other (a crossing
 // path can: that is the overlap).
 export const HEAD = { lanes: 5, size: 11, lead: 400 };                 // the field: 100 across and 100 down, 5 lanes each way; a creature is 11 across
-export const HEAD_KINDS = { beetle: ['beetle', 'beetles'], gbeetle: ['green beetle', 'green beetles'], bbeetle: ['blue beetle', 'blue beetles'], ladybird: ['ladybird', 'ladybirds'], mouse: ['mouse', 'mice'], acorn: ['acorn', 'acorns'], leaf: ['leaf', 'leaves'],
-  rladybird: ['red ladybird', 'red ladybirds'], oladybird: ['orange ladybird', 'orange ladybirds'], gmouse: ['grey mouse', 'grey mice'], bmouse: ['brown mouse', 'brown mice'], tbeetle: ['teal beetle', 'teal beetles'] };
+export const HEAD_KINDS = { beetle: ['beetle', 'beetles'], gbeetle: ['green beetle', 'green beetles'], bbeetle: ['blue beetle', 'blue beetles'], ladybird: ['ladybug', 'ladybugs'], mouse: ['mouse', 'mice'], acorn: ['acorn', 'acorns'], leaf: ['leaf', 'leaves'],
+  rladybird: ['red ladybug', 'red ladybugs'], oladybird: ['orange ladybug', 'orange ladybugs'], gmouse: ['grey mouse', 'grey mice'], bmouse: ['brown mouse', 'brown mice'], tbeetle: ['teal beetle', 'teal beetles'] };
 export const HEAD_THEMES = [                                           // what to count and the decoys, by level (1: another kind; 2: another kind; 3: a look-alike)
   { t: 'beetle', d: 'ladybird', L: [1, 2] }, { t: 'ladybird', d: 'beetle', L: [1, 2] }, { t: 'mouse', d: 'beetle', L: [1, 2] }, { t: 'beetle', d: 'mouse', L: [1, 2] },
   { t: 'gbeetle', d: 'tbeetle', L: [3] }, { t: 'rladybird', d: 'oladybird', L: [3] }, { t: 'gmouse', d: 'bmouse', L: [3] },
