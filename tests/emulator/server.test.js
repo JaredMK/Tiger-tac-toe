@@ -1193,8 +1193,9 @@ test('bots: the match is an ordinary one against an ordinary-looking, online acc
   // the player's phone calls time on the bot: it moves instead
   await rewrite(id, full => { full.turn = botSide; full.lock = null; full.timer.deadline = Date.now() - 1000; full.timer.for = botSide; });
   const b2 = await gameState(id);
-  assert.equal((await h.call('timeout', { game: id })).ok, true);
-  const a2 = await gameState(id);
+  const tr = await h.call('timeout', { game: id });               // (the bot's own queued move may land first under load: then there is nothing to call)
+  const a2 = await until(async () => { const v = await gameState(id); return v.seq > b2.seq ? v : null; }, 10000, 'the bot to move');
+  assert.ok(tr.ok || a2.seq === b2.seq + 1, `the bot moved instead of timing out (${JSON.stringify(tr)})`);
   assert.equal(a2.seq, b2.seq + 1); assert.equal(a2.timer.timeouts[botSide], 0);
   // Find the Pair: the first card, then a moment later the second
   await rewrite(id, full => {
