@@ -2,6 +2,8 @@
 // instant moves shown at once and rolled back if refused.
 import { playMove } from '../core/board.js';
 import { applyOnlineMove } from '../core/records.js';
+import { makeRng } from '../core/random.js';
+import { PHYS_TYPES, physicsReady } from '../games/shared/physics.js';
 import { setTriviaFlip, triviaFlip } from '../games/trivia/view.js';
 import { SND } from '../audio/sound.js';
 import { NET_MS, call, fb } from './connect.js';
@@ -13,6 +15,7 @@ import {
 import { RNG, commit, flashTimer, holdTimer, noticeTimer, setFlashTimer, setHoldTimer, setNoticeTimer, state } from '../ui/app.js';
 import { startFx } from '../ui/fx.js';
 import { render } from '../ui/render.js';
+import { physDrop, physLaunch } from '../ui/physics.js';
 import { repTake } from '../ui/replay.js';
 import { playFlash } from '../ui/turns.js';
 import { matchLog } from './tracking.js';
@@ -45,8 +48,27 @@ function predictMove(i, m, rep) {
   if (r.entries[0] && r.entries[0].kind === 'draw') return null;   // a draw deals the square a random new game: the server's draw is the one shown
   return { ok: true, seq: r.rec.state.seq, entry: r.entries[0], squares: JSON.stringify(r.rec.state.squares), rec: r.rec };
 }
+// ---- physics shots: played here at once, and the server still decides ----
+// Mini Golf, Pool and Bowling online: the shot is worked out here exactly as the server will work it out (the same
+// rules and simulation on the same record), and its motion plays at once (ui/physics.js physLaunch) while the move goes
+// to the server; the server's record then takes it over (physJoin), and its result is the one shown. The entry the
+// server would make, or null (not a physics square, or refused here: then it is only sent, as before).
+export function shotPredict(rec, me, i, m, rng) {
+  const sq = rec && rec.state && Array.isArray(rec.state.squares) ? rec.state.squares[i] : null;
+  if (!sq || !sq.mini || !PHYS_TYPES.includes(sq.mini.type) || !physicsReady()) return null;
+  let r = null;
+  try { r = applyOnlineMove(Object.assign({}, rec, { secrets: {} }), me, i, m, rng || makeRng('shot'), {}); } catch (e) { return null; }   // (a throwaway rng: a square reset by it is the server's to deal)
+  const e = r && r.ok && r.entries && r.entries[0];
+  return e && e.by === me && e.phys && e.phys.rec ? e : null;
+}
+function launchShot(i, m) {
+  if (!state.online || state.sc || !room) return false;
+  const e = shotPredict(parseMatch(room.match), state.online.me, i, m);
+  return !!e && physLaunch(i, e.by, e.phys);
+}
 // The server refused the move, or could not be reached: the board goes back to what the server last showed.
 function rollbackMove(reason) {
+  physDrop();                                             // (a physics shot playing here: taken back)
   const shown = !!predicted;
   predicted = null;
   moveRejected(reason);
@@ -61,10 +83,11 @@ export async function dbMove(i, m, rep) {
   const pressed = tapEl; tapEl = null;
   if (blocked() || !fb || !room || i == null) return false;
   setMoveWait(Date.now());
-  if (isMM() && pressed) pressed.classList.add('pend'); else render();   // online: the press shows on the control at once (no redraw until the server answers)
+  const shot = isMM() && launchShot(i, m);                       // a physics shot: its motion from now, the server's result to come
+  if (isMM() && pressed && !shot) pressed.classList.add('pend'); else render();   // online: the press shows on the control at once (no redraw until the server answers)
   clearTimeout(moveTimer); setMoveTimer(setTimeout(() => { if (moveWait) { setMoveWait(null); render(); } }, NET_MS.move));
   if (!isMM()) { setMoveWait(null); render(); return false; }   // (a lobby: no match to move in)
-  const pr = predictMove(i, m, rep);                             // the server checks and makes the move
+  const pr = shot ? null : predictMove(i, m, rep);               // the server checks and makes the move
   if (pr && !pr.ok) { setMoveWait(null); moveRejected(pr.reason); render(); return true; }   // refused by the rules here: nothing is sent
   if (pr) { predicted = { seq: pr.seq, entry: pr.entry, squares: pr.squares }; presentEntry(pr.rec.state, pr.entry, []); }   // shown now
   clearTimeout(moveTimer); setMoveTimer(setTimeout(() => { if (moveWait) { setMoveWait(null); render(); } }, NET_MS.call));

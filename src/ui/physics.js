@@ -8,12 +8,17 @@ import { drawGolf } from '../games/golf/view.js';
 import { POOLG, poolIds, poolLeft, poolMine } from '../games/pool/rules.js';
 import { POOL_RAIL, drawPool } from '../games/pool/view.js';
 import { INFO } from '../games/index.js';
-import { ownPress } from '../audio/sound.js';
+import { moveRate } from '../core/timer.js';
+import { SND, moveSounds, ownPress } from '../audio/sound.js';
 import { attemptMove } from '../net/moves.js';
+import { haptic } from '../net/platform.js';
 import { blocked, presentingSeq } from '../net/room.js';
+import { matchLog } from '../net/tracking.js';
 import { N, REDUCED, app, state } from './app.js';
 import { ICONS } from './art.js';
-import { fxAt } from './fx.js';
+import { animMs, fx, fxAt, momentPower, shake } from './fx.js';
+import { movePlan } from './haptics.js';
+import { playFlash } from './turns.js';
 import { scShown } from './chaos.js';
 import { arcTally, lateAt, pips } from './progress.js';
 import { render } from './render.js';
@@ -92,14 +97,15 @@ export function physTable(mini, a, o) {
   const tal = type === 'golf' ? p => arcTally(p, o, `<small>${mini.holed[p] ? 'in the cup' : `${mini.shots[p]} shot${mini.shots[p] === 1 ? '' : 's'}`}</small>`)
     : type === 'pool' ? p => { const n = poolLeft(p, mini); return arcTally(p, o, `<b class="dbig" aria-label="${n} ball${n === 1 ? '' : 's'} left on the table"><span>${n}</span><small>left</small></b>`); }
     : p => arcTally(p, o, `<small>${fresh(p) && ph.knocked ? `<i class="pins" style="--t:${ph.rec && !REDUCED ? ph.ms : 0}ms"><b class="was">${mini.pins[p] - ph.knocked}</b><b class="now">${mini.pins[p]}</b></i>` : mini.pins[p]} / ${bowlTarget(mini)} pins</small>`);   // the total before the roll, then the new one as the pins settle
-  const mine = !o.view && !ph && !o.locked;
+  const pend = !ph && physPendAt(o.zoom);                         // an online shot of this phone's, playing here while the server plays it (physLaunch)
+  const mine = !o.view && !ph && !o.locked && !pend;
   const bowl = type === 'bowling' ? bowlKeep(o, mine) : null;   // Bowling's two taps: 1 the arrow sweeps, 2 the meter, 3 both locked (the roll on its way)
   const t = ph ? (ph.rec && !REDUCED ? ph.ms : 0) : null;
   const res = ph ? (r => `<p ${lateAt('arcres ' + (r.ok ? 'ok' : 'no'), t)} role="status">${r.text}</p>`)(physResult(a))
     : o.view ? `<p class="arcnote">${l ? physResult({ type, by: l.by, phys: l }, true).text : ''}</p>`
     : bowl && bowl.step === 3 ? `<p class="arcnote">Rolling…</p>`
     : state.sc && mini.aim && mini.aim[turn] ? '<p class="arcnote">Shot locked in</p>'
-    : mine ? '<p class="arcnote"></p>'
+    : mine || pend ? '<p class="arcnote"></p>'
     : `<p class="arcnote">Waiting for <b class="${turn}">${N(turn)}</b>…</p>`;
   const strike = ph && type === 'bowling' && ph.strike ? `<div ${lateAt('pstrike', t)} aria-hidden="true">STRIKE!</div>` : '';
   const label = type === 'golf' ? `Mini golf hole: ${PHYSICS.lib.HOLES[mini.hole].name}` : type === 'pool' ? 'The pool table' : 'The bowling lane';
@@ -147,8 +153,11 @@ function physDrawNow(cv, now) {
   const sq = state.squares && (scShown(state.zoom) || state.squares[state.zoom]);   // (Super Chaos's recap: the square before its claim or reset)
   if (!sq || !PHYS_TYPES.includes(sq.mini.type) || !physicsReady()) return false;
   const mini = sq.mini, f = state.flash, d = state.done;
-  const ph = f && f.square === state.zoom && f.phys ? f.phys : null;
-  const at = ph ? fxAt('move', f) : null;
+  physJoined(f);                                                    // (an online shot's sounds and buzzes: cut with the move by a tap)
+  const fph = f && f.square === state.zoom && f.phys ? f.phys : null;
+  const pd = !fph ? physPendAt(state.zoom) : null;                // an online shot played here before the server's record of it: its motion alone
+  const ph = fph || (pd ? pd.ph : null);
+  const at = fph ? fxAt('move', f) : pd ? now - (now - pd.at) * pd.rate : null;   // (the shot here: from its moment, at the move's rate as playFlash keeps it)
   const fr = ph && at != null ? physFrame(ph, now, at) : null;
   const pos = fr ? fr.pos : physStill(mini, !!(ph || d || sq.owner || state.winner));
   if (physRep && (ph || !repOn(state.zoom))) physRep = null;   // the shot has played, or the replay is over
@@ -158,13 +167,13 @@ function physDrawNow(cv, now) {
   const S = PHYS_S(mini.type), M = mini.type === 'pool' ? POOL_RAIL : 0, k = Math.min(W / (S.w + 2 * M), H / (S.h + 2 * M)), ox = (W - S.w * k) / 2, oy = (H - S.h * k) / 2;   // the pool table keeps a rail of one width all round
   const g = { c, W, H, k, M, X: x => ox + x * k, Y: y => oy + y * k };
   const el = ph && at != null ? (now - at) / 1000 : null, lit = el != null && mini.type === 'golf' ? new Set((ph.events || []).filter(e => e.k === 'bump' && el >= e.t && el < e.t + BUMP_LIT).map(e => e.b)) : null;   // (Mini Golf: a bumper flashes as it kicks)
-  const pop = mini.type === 'pool' && ph && ph.back && fr && fr.done ? poolPop(ph, el) : null;   // a scratch: the white back and a ball for the shooter popping onto the table once the shot is over
+  const pop = mini.type === 'pool' && fph && ph.back && fr && fr.done ? poolPop(ph, el) : null;   // a scratch: the white back and a ball for the shooter popping onto the table once the shot is over
   if (pop) { if (ph.cue) pos.cue = ph.cue; pos[ph.back] = pop.s > 0 ? ph.at : null; }
-  if (mini.type === 'golf') drawGolf(g, mini, pos, lit); else if (mini.type === 'pool') drawPool(g, mini, pos, pop ? { id: ph.back, s: pop.s } : null); else drawBowl(g, mini, pos, !ph || !!(fr && fr.done));   // (Bowling: the roll's box fills in once the pins have settled)
+  if (mini.type === 'golf') drawGolf(g, mini, pos, lit); else if (mini.type === 'pool') drawPool(g, mini, pos, pop ? { id: ph.back, s: pop.s } : null); else drawBowl(g, mini, pos, !fph || !!(fr && fr.done));   // (Bowling: the roll's box fills in once the pins have settled)
   if (pop && pop.label > 0) poolPopLabel(g, ph, pop.label);
   if (dr) drawAim(g, mini, pos, dr);
   else if (mini.type === 'golf' && mini.aim && state.sc && !ph) for (const p of Object.keys(mini.aim)) if (pos[p]) drawLocked(g, pos[p], mini.aim[p]);   // Super Chaos: a shot locked in, waiting for the round's end
-  const bd = mini.type === 'bowling' && !ph && bowlDraft && bowlDraft.sq === state.zoom ? bowlDraft : null;
+  const bd = mini.type === 'bowling' && !ph && bowlDraft && bowlDraft.sq === state.zoom ? bowlDraft : null;   // (none while a roll of this phone's plays: pd)
   if (bd) drawBowlAim(g, pos, bd, now);
   return !!(dr || (bd && bd.step < 3) || (fr && !fr.done) || (pop && !pop.done));
 }
@@ -285,16 +294,135 @@ function physReplayInput(act, val, r) {
 }
 const physReplaySynth = m => (m && typeof m === 'object' && Number.isFinite(m.aim) ? [0.2, 0.5, 0.8].map((k, i) => [i * 280, 'drag', `a=${m.aim},p=${(m.power * k).toFixed(3)}`]).concat([[900, 'aim', `a=${m.aim},p=${m.power}`]]) : null);
 export const physReplay = { input: physReplayInput, synth: physReplaySynth };
+// The recording's own sounds (the balls meeting, a cushion, a bumper, a pin, a pocket...), at their moments.
+export function physEventSounds(ph, add) {
+  if (!ph || !ph.rec || REDUCED) return;
+  for (const e of ph.events || []) { const t = e.t * 1000; if (e.k === 'balls') add('clack', t); else if (e.k === 'wall') add('cushion', t); else if (e.k === 'bump') add('bumper', t); else if (e.k === 'pin') add('pinHit', t); else if (e.k === 'hole') add('plop', t); else if (e.k === 'pocket') add(e.id === 'cue' ? 'thud' : 'plop', t); else if (e.k === 'lip') add('clink', t); else if (e.k === 'gutter') add('thud', t); else if (e.k === 'pit' || e.k === 'end') add('thud', t); }
+}
 export function physicsSounds(f, add, won, mini, last) {   // the recording's events, as they come round in the replay; then the result
   const ph = f.phys; if (!ph) return;
   if (ph.locked) { add('clack', 0); return; }                              // Super Chaos: the putt locked in (it plays at the round's end)
   const live = ph.rec && !REDUCED, end = live ? ph.ms : 0;
-  if (live) for (const e of ph.events || []) { const t = e.t * 1000; if (e.k === 'balls') add('clack', t); else if (e.k === 'wall') add('cushion', t); else if (e.k === 'bump') add('bumper', t); else if (e.k === 'pin') add('pinHit', t); else if (e.k === 'hole') add('plop', t); else if (e.k === 'pocket') add(e.id === 'cue' ? 'thud' : 'plop', t); else if (e.k === 'lip') add('clink', t); else if (e.k === 'gutter') add('thud', t); else if (e.k === 'pit' || e.k === 'end') add('thud', t); }
+  physEventSounds(ph, add);
   if (f.type === 'bowling') add(ph.strike ? 'strike' : ph.gutter ? 'thud' : 'ding', end);
   else if (f.type === 'pool') { add(ph.black ? 'buzz' : ph.scratch ? 'thud' : ph.own && !ph.theirs ? 'ding' : 'thud', end); if (ph.back) add('pop', end + 120); }   // (a scratch: the ball popping back on)
   else if (ph.both) { if (!(ph.holed && (ph.holed.X || ph.holed.O))) add(ph.lip ? 'thud' : 'ding', end); }
   else if (!ph.first) add(ph.lip ? 'thud' : 'ding', end);
   return;
+}
+
+// ---- an online shot, played at once (Mini Golf, Pool, Bowling) ----
+// Online the server plays every shot (the move function): the shooter's phone used to wait for its record (the round
+// trip, and a cold start's seconds at worst) before anything moved. Now the phone also runs the shot, with the same
+// simulation on the same square as the server has it (net/moves.js shotPredict), the moment it is let go, and plays
+// its motion and its sounds (the balls, the cushions, the pins: no result) while the server works. The server's record
+// then takes the move over where the motion has got to (physJoin, from net/room.js presentEntry): its recording the
+// same (the same code on the same numbers: as it should always be), nothing changes; a different one (a device's maths
+// a hair off, a square that had moved on), the motion shown here plays to its end and then eases in PHYS_SETTLE_MS to
+// where the server left everything (physSettle). The result, the score, a claim and the turn are always the server's,
+// shown from its record alone. Refused, or no answer: the shot is taken back and the table is as it was (physDrop).
+export const PHYS_SETTLE_MS = 320;
+let physPend = null;                                            // { sq, p, type, moves, at, rate, ph, tag, sounds }: the shot playing here, the server's record still to come
+let joined = null;                                              // { f, tag, end, timers, moment }: the server's record took the shot over; its sounds and buzzes still to come
+export const physPendOn = () => physPend;
+function physPendAt(i) {                                       // the shot playing on square i, if any
+  if (physPend && physPend.moves !== state.moves) physDrop(true);  // (the record moved on without it: it is not this table's any more)
+  return physPend && physPend.sq === i ? physPend : null;
+}
+// The shot let go here (i: its square, p: the shooter, ph: the move's recording as the server will make it): its
+// motion from now, and the recording's own sounds; true when it plays.
+export function physLaunch(i, p, ph) {
+  const sq = state.squares && state.squares[i];
+  if (!sq || !PHYS_TYPES.includes(sq.mini.type) || !ph || !ph.rec || !Array.isArray(ph.rec.frames) || !ph.rec.frames.length) return false;
+  physDrop(true);
+  const rate = moveRate(sq.mini.type, 1), tag = { shot: i }, sounds = [];   // (rate: the mover's own move's, as playFlash will play it)
+  physEventSounds(ph, (n, ms) => sounds.push([n, ms]));
+  const was = SND.scope; SND.scope = tag;
+  try { for (const [n, ms] of sounds) SND.play(n, { at: ms / 1000 / rate }); } finally { SND.scope = was; }
+  haptic('tap');                                                // (the shot made: its tap now; the result's buzz comes with the server's result)
+  physPend = { sq: i, p, type: sq.mini.type, moves: state.moves, at: performance.now(), rate, ph, tag, sounds };
+  physPaint();
+  return true;
+}
+// The shot taken back (the server refused it, or could not be reached): its sounds stop and the table is as it was.
+export function physDrop(quiet) {
+  const pd = physPend;
+  if (!pd) return false;
+  physPend = null;
+  SND.cut(pd.tag);
+  if (!quiet) physPaint();
+  return true;
+}
+// The same recording on both sides (the usual case: nothing to settle).
+export function physSame(a, b) {
+  return !!(a && b && a.rec && b.rec) && a.rec.fps === b.rec.fps && JSON.stringify(a.rec.ids) === JSON.stringify(b.rec.ids) && JSON.stringify(a.rec.frames) === JSON.stringify(b.rec.frames);
+}
+// The server's move with the motion this phone has shown: local's frames (and the events its sounds came from), then,
+// where the two end apart, PHYS_SETTLE_MS of frames easing every ball (or pin) from local's last place to the server's,
+// ending exactly on the server's last frame. A ball the server has gone (pocketed, holed, in the pit) and local has not
+// goes halfway through; one local had gone and the server has not comes back there. Everything else (the result, the
+// pins counted, a scratch's ball back) is the server's. Pure: the tests call it.
+export function physSettle(local, server, ms = PHYS_SETTLE_MS) {
+  const out = JSON.parse(JSON.stringify(server)), L = local.rec, S = server.rec, fps = L.fps || S.fps;
+  const ids = S.ids.slice(); for (const id of L.ids) if (!ids.includes(id)) ids.push(id);
+  const at = (rec, fr, id) => { const k = rec.ids.indexOf(id); return k < 0 || !fr || fr[2 * k] == null ? null : [fr[2 * k], fr[2 * k + 1]]; };
+  const lf = L.frames[L.frames.length - 1], sf = S.frames[S.frames.length - 1];
+  const frames = L.frames.map(fr => ids.flatMap(id => at(L, fr, id) || [null, null]));
+  const apart = ids.some(id => JSON.stringify(at(L, lf, id)) !== JSON.stringify(at(S, sf, id)));
+  const n = apart ? Math.max(1, Math.round(ms / 1000 * fps)) : 0;
+  const ease = u => (u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2);
+  for (let j = 1; j <= n; j++) {
+    const u = j / n, e = ease(u);
+    frames.push(ids.flatMap(id => {
+      const a = at(L, lf, id), b = at(S, sf, id);
+      if (j === n) return b || [null, null];                      // (the last frame: the server's, exactly)
+      if (a && b) return [a[0] + (b[0] - a[0]) * e, a[1] + (b[1] - a[1]) * e];
+      if (b) return u >= 0.5 ? b : [null, null];
+      if (a) return u < 0.5 ? a : [null, null];
+      return [null, null];
+    }));
+  }
+  out.rec = { fps, ids, frames };
+  out.events = JSON.parse(JSON.stringify(local.events || []));
+  out.ms = Math.round(frames.length / fps * 1000);
+  if (n) out.settle = Math.round(n / fps * 1000);
+  return out;
+}
+// The server's record of this phone's shot, presented (net/room.js presentEntry, with the flash just set): the move
+// plays on from where the motion here has got to, its remaining sounds (the result's) and buzzes with it. False when
+// there is no shot of this phone's under way for it (the move then plays from its start, as ever).
+export function physJoin(f) {
+  const pd = physPend;
+  if (!pd) return false;
+  physPend = null;
+  if (!f || !f.phys || !f.phys.rec || f.square !== pd.sq || f.by !== pd.p || f.type !== pd.type) { SND.cut(pd.tag); return false; }
+  const now = performance.now(), lag = Math.round(now - pd.at), same = physSame(pd.ph, f.phys);
+  if (!same) f.phys = physSettle(pd.ph, f.phys);
+  const el = Math.max(1, Math.min((now - pd.at) * pd.rate, pd.ph.ms)), sp = pd.rate;   // the move's time gone here (once the motion is over: its end, so the settling and the result play in full)
+  const quiet = SND.muted || !SND.loaded || !SND.ensure(false);
+  playFlash(false, undefined, undefined, undefined, el);
+  if (fx.move && fx.move.key === f) fx.move.quiet = quiet;        // (joined part way, but heard: the way back to the board sounds as ever)
+  const all = moveSounds(f), left = pd.sounds.slice(), rest = [];
+  for (const s of all) {                                          // the sounds not played here already (the recording's played from the launch), still to come
+    const k = left.findIndex(x => x[0] === s[0] && Math.abs(x[1] - s[1]) < 1);
+    if (k >= 0) { left.splice(k, 1); continue; }
+    if (s[1] >= el - 60) rest.push(s);
+  }
+  if (!quiet) { const was = SND.scope; SND.scope = f; try { for (const [n, ms, rate] of rest) SND.play(n, { at: Math.max(0, ms - el) / 1000 / sp, rate }); } finally { SND.scope = was; } }
+  const timers = movePlan(f, all).filter(([, ms]) => ms > el).map(([kind, ms]) => setTimeout(() => { if (state.flash === f) haptic(kind); }, (ms - el) / sp));
+  const pw = momentPower(f), moment = pw ? () => { clearTimeout(mt); if (state.flash === f) shake(pw); } : null;
+  const mt = pw ? setTimeout(moment, Math.max(0, (animMs(f) - el) / sp - 40)) : null;   // (Speed: the big moment as the result lands)
+  joined = { f, tag: pd.tag, end: fx.move && fx.move.key === f ? fx.move.end : 0, timers, moment };
+  matchLog({ k: 'note', what: 'shot', q: f.square, lag, diff: !same });   // (the match log: how long the server took, and whether the two agreed)
+  return true;
+}
+// A tap that finished the move (ui/turns.js skipFlash: its end brought forward): the shot's sounds and buzzes from the
+// launch go with it, and its big moment lands now. Gone with the move.
+function physJoined(f) {
+  const j = joined;
+  if (!j) return;
+  if (f !== j.f || !fx.move || fx.move.key !== f) { joined = null; return; }
+  if (fx.move.end < j.end - 1) { joined = null; SND.cut(j.tag); j.timers.forEach(clearTimeout); if (j.moment) j.moment(); }
 }
 
 let swallowAt = -1e9;
@@ -303,7 +431,7 @@ export function init() {
   document.addEventListener('click', e => { if (performance.now() - swallowAt < 400) { swallowAt = -1e9; e.stopPropagation(); e.preventDefault(); } }, true);
   app.addEventListener('pointerdown', e => {
     const scene = e.target.closest && e.target.closest('[data-phys="scene"]');
-    if (!scene || !scene.dataset.live || scene.classList.contains('bowling') || physDraft || blocked() || state.flash || state.done) return;
+    if (!scene || !scene.dataset.live || scene.classList.contains('bowling') || physDraft || blocked() || state.flash || state.done || physPend) return;
     e.preventDefault(); ownPress();
     physDraft = { sq: state.zoom, p: state.turn, pointer: e.pointerId, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, scene };
     try { scene.setPointerCapture(e.pointerId); } catch (err) { /* no capture: the move and up still reach the page */ }

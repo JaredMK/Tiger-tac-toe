@@ -662,6 +662,7 @@ test('friend rooms: Super Chaos in a room is the server\'s too (a move a request
 });
 test('friend rooms: the host\'s Random draws the sides each match; with both phones gone the server misses the turns, two in a row forfeit the match and close the room (no rematch)', async () => {
   const host = await player('RndHost'), guest = await player('RndGuest');
+  await runScript('make-admin.js', 'RndHost', 'grant'); await host.auth.currentUser.getIdToken(true);   // (30 s a turn is the admin's alone now: players have the match clock)
   const code = await openRoom(host, { games: only('hilo'), timer: 30, hostPick: 'random' });
   assert.equal((await guest.call('joinRoom', { code, name: 'RndGuest' })).ok, true);
   assert.equal((await host.call('startRoom', { code })).ok, true);
@@ -2128,7 +2129,6 @@ test('match clock: the admin\'s timer for Find Match; the clocks switch on every
   const r1b = await friendRoom(host, guest, { games: only('ttt'), clock: 'm10+5' });
   assert.equal(JSON.parse((await get(`games/${r1b.id}/pub`)).state).timer.spec, 'm10+5', 'a player\'s own choice: 10 minutes, +5 s a move');
   await host.call('resign', { game: r1b.id }); await recorded(r1b.id);
-  assert.equal((await host.call('resign', { game: r1.id })).ok, true); await recorded(r1.id);
   const r2 = await friendRoom(guest, host, { games: only('ttt'), clock: 'off' });
   assert.equal(JSON.parse((await get(`games/${r2.id}/pub`)).state).timer.limit, 0, 'no limit stays open to everyone');
   assert.equal((await host.call('resign', { game: r2.id })).ok, true); await recorded(r2.id);

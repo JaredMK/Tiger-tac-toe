@@ -33,6 +33,7 @@ import { fingPinned } from '../ui/finger.js';
 import { fxAt, startFx } from '../ui/fx.js';
 import { render } from '../ui/render.js';
 import { repStart, repStop } from '../ui/replay.js';
+import { physJoin } from '../ui/physics.js';
 import { noteNet } from '../ui/turnbar.js';
 import { cpuTurn, playFlash, turnAlert } from '../ui/turns.js';
 
@@ -330,7 +331,7 @@ export function presentEntry(st, e, rest) {
   const done = !over && e.kind !== 'again' ? f : null;
   state.spot = null; state.stamp = null;
   presentingSeq = e.seq;
-  if (e.by === o.me && !e.timeout) { state.flash = f; state.done = done; state.screen = 'mini'; state.zoom = e.square; state.draft = ''; state.notice = null; playFlash(); }
+  if (e.by === o.me && !e.timeout) { state.flash = f; state.done = done; state.screen = 'mini'; state.zoom = e.square; state.draft = ''; state.notice = null; physJoin(f) || playFlash(); }   // (physJoin: a physics shot already moving here plays on from where it is)
   else {
     // The other player's move: the square as it was until their inputs have played (ui/replay.js), then the
     // square as the move left it and the move's own animation.

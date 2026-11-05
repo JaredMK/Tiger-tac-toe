@@ -6,7 +6,7 @@ import { SND, ownPress } from '../../audio/sound.js';
 import { attemptMove } from '../../net/moves.js';
 import { blocked } from '../../net/room.js';
 import { app, state } from '../../ui/app.js';
-import { physBall, physResult, physTable, physThumb } from '../../ui/physics.js';
+import { physBall, physPendOn, physResult, physTable, physThumb } from '../../ui/physics.js';
 import { render } from '../../ui/render.js';
 import { repNote } from '../../ui/replay.js';
 import { outlined, rr, runColours } from '../../ui/runner.js';
@@ -40,7 +40,7 @@ export function bowlKeep(o, mine) {
 }
 export function bowlTap() {
   const sq = state.squares && state.squares[state.zoom], dr = bowlDraft;
-  if (!sq || sq.mini.type !== 'bowling' || sq.owner || state.flash || state.done || blocked() || !physicsReady()) return false;
+  if (!sq || sq.mini.type !== 'bowling' || sq.owner || state.flash || state.done || blocked() || !physicsReady() || physPendOn()) return false;   // (physPendOn: an online roll of this phone's still rolling, the server's record to come)
   if (!dr || dr.sq !== state.zoom || dr.p !== state.turn || dr.step === 3) return false;
   const now = performance.now(), v = dr.shown && now - dr.shown.at < 120 ? dr.shown : bowlNow(dr, now);
   if (dr.step === 1) { dr.aim = v.aim; dr.step = 2; dr.t0 = now; dr.shown = null; repNote('bowl', 'aim=' + dr.aim); SND.play('mark'); render(); return true; }
