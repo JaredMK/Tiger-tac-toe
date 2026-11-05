@@ -1242,12 +1242,12 @@ test('bots: after a player\'s move, the bot\'s move is planned inside its own wi
     await patch(`botGames/${id}`, { next: null, live: true });
     const t0 = Date.now();
     await h.call('tick', { game: id });
-    const next = (await get(`botGames/${id}`)).next;
+    const t1 = Date.now(), next = (await get(`botGames/${id}`)).next;   // (the plan counts its think time from when the server finished choosing the move: between t0 and t1)
     await patch(`botGames/${id}`, { live: false });           // the planned task (queued for later) finds the game off, and does nothing
     if (!next) { planned[type] = null; continue; }
     const [lo, hi] = WORD.includes(type) ? [3, 8] : [pa, pb];
-    const d = (next.due - t0) / 1000;
-    assert.ok(d >= lo - 0.1 && d <= hi + 5, `${type}: the bot's move is due ${d.toFixed(2)} s after its turn starts (window ${lo}-${hi} s)`);   // (the slack: the plan is made from the server's own now, a few seconds on under a loaded CI runner)
+    const d = (next.due - t0) / 1000, dAfter = (next.due - t1) / 1000;
+    assert.ok(d >= lo - 0.1 && dAfter <= hi + 0.5, `${type}: the bot's move is due ${d.toFixed(2)} s after the tick began, ${dAfter.toFixed(2)} s after it returned (window ${lo}-${hi} s)`);   // (a loaded runner's slow search shows between t0 and t1, never in the think time)
     planned[type] = Math.round(d * 10) / 10;
   }
   const made = Object.values(planned).filter(x => x != null).length;
