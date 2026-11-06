@@ -14,7 +14,7 @@ import {
 import { STAMP_MS } from './board.js';
 import { chaosStep } from './chaos.js';
 import { explainT } from './explainer.js';
-import { animMs, confetti, drawFx, fx, fxAt, momentPower, shake, stampFx, startFx, zoomBusy, zoomLeft } from './fx.js';
+import { animMs, confetti, drawFx, drawLeft, fx, fxAt, momentPower, shake, stampFx, startFx, zoomBusy, zoomLeft } from './fx.js';
 import { joinAsk } from './input.js';
 import { render } from './render.js';
 import { rep, repActive, repStart, repStop } from './replay.js';
@@ -54,7 +54,7 @@ export function scheduleCpu() {
   if (state.screen === 'board') {                               // its move, worked out while it pauses to think; then its square lit up
     const t0 = performance.now();
     setCpuPlan(null);
-    think(plan => { setCpuPlan(plan); setCpuTimer(setTimeout(cpuSpot, Math.max(0, CPU_MS.think - (performance.now() - t0)))); });
+    think(plan => { setCpuPlan(plan); setCpuTimer(setTimeout(cpuSpot, Math.max(0, CPU_MS.think - (performance.now() - t0), drawLeft()))); });   // (a square just drawn: its Draw stamp and shuffle play out on the board first, never under the computer's glow or zoom)
     return;
   }
   if (state.screen !== 'mini') return;

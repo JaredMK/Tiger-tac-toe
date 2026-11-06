@@ -17,7 +17,7 @@ import { REDUCED, WAAPI, app, lastView, state } from './app.js';
 import { attPre } from './attention.js';
 import { claimHaptic } from './haptics.js';
 import { shownSq } from './chaos.js';
-import { BOARD_BURST, DRAW_SHUFFLE } from './board.js';
+import { BOARD_BURST, DRAW_MS, DRAW_SHUFFLE } from './board.js';
 import { fingPre } from './finger.js';
 import { runPre } from './runner.js';
 import { hopToken } from './track.js';
@@ -199,6 +199,13 @@ export function drawFx(f) {
   SND.play('stamp', { vol: 0.6, at: zs });
   SND.play('cardSlide', { at: zs + DRAW_SHUFFLE[0] / s }); SND.play('cardSlide', { at: zs + (DRAW_SHUFFLE[0] + 90) / s, rate: 1.12 }); SND.play('cardFlip', { at: zs + DRAW_SHUFFLE[1] / s });
   return true;
+}
+// How long until a drawn square's Draw stamp and shuffle are over on the board (ms; 0 when none is playing, or it is
+// over). The computer's next turn waits for it (ui/turns.js scheduleCpu: its square lit up would cover the stamp, its
+// zoom into a square would take the board away mid-shuffle), as an online phone's next playback does (net/room.js).
+export function drawLeft() {
+  const at = state.drawStamp != null && state.drawId != null ? fxAt('draw', state.drawId) : null;
+  return at == null ? 0 : Math.max(0, at + DRAW_MS / ANIM.speed - performance.now());
 }
 export function stampFx(elapsed) {                                   // elapsed: the stamp began this long ago (a sequence joined part way: quietly)
   if (state.screen !== 'board' || state.stamp == null || state.stampId == null || fxAt('stamp', state.stampId) != null) return;
