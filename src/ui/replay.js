@@ -84,13 +84,15 @@ export function repDuration(o) {
   if (!list.length) return 0;
   return (o.lead || 0) + (list[list.length - 1][0] + REP.press) / sp;
 }
+// When an input of the replay is due on screen (performance.now()'s clock): a view timing its own drawing to it (Bowling's arrow and meter) reads it here.
+export const repDue = (r, e) => r.at + (r.lead || 0) + e[0] / (r.speed || 1);
 function repArm() {
   const r = rep;
   if (!r || r.stage !== 'inputs') return;
   const n = r.list[r.k], last = r.list[r.list.length - 1];
-  const due = n ? r.lead + n[0] / r.speed : r.lead + (last[0] + REP.press) / r.speed;   // the next input at its time; after the last, the move once its press has shown
+  const due = n ? repDue(r, n) : r.at + r.lead + (last[0] + REP.press) / r.speed;   // the next input at its time; after the last, the move once its press has shown
   clearTimeout(r.timer);
-  r.timer = setTimeout(repTick, Math.max(0, r.at + due - performance.now()));
+  r.timer = setTimeout(repTick, Math.max(0, due - performance.now()));
 }
 function repTick() {
   const r = rep;

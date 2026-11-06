@@ -8,7 +8,7 @@ import { blocked } from '../../net/room.js';
 import { app, state } from '../../ui/app.js';
 import { physBall, physPendOn, physResult, physTable, physThumb } from '../../ui/physics.js';
 import { render } from '../../ui/render.js';
-import { repNote } from '../../ui/replay.js';
+import { rep, repDue, repNote } from '../../ui/replay.js';
 import { outlined, rr, runColours } from '../../ui/runner.js';
 export { physicsSounds as sounds } from '../../ui/physics.js';
 
@@ -19,22 +19,27 @@ export { physicsSounds as sounds } from '../../ui/physics.js';
 // takes what the last frame showed. The arrow covers the lane to the gutters (beyond about 0.1 either way
 // the ball misses the pins); the meter runs from nothing to full (below about 0.35 the ball stops short).
 const BOWL_AIM = { max: 0.2 };                                // the arrow: ±0.2 rad; its sweep and the meter's rise from config/bowling (bowlConfig: aimMs, meterMs)
-export let bowlDraft = null;                                          // { sq, p, step, t0, aim, power, shown: { aim, power, at } }
+export let bowlDraft = null;                                          // { sq, p, step, t0, aim, power, shown: { aim, power, at }, rep (the replay it shows), to (where its tap lands, and when) }
 const bowlWave = (t, per) => { const k = Math.floor(t / per), f = (t % per) / per; return k % 2 ? 1 - f : f; };
+const bowlToward = (t, per, at, ms) => bowlWave(t + ((((at * per - ms) % (2 * per)) + 2 * per) % (2 * per)), per);   // the sweep at its own speed, timed to be at `at` (0 to 1 of it) exactly `ms` in
 export function bowlNow(dr, now) {
   const t = Math.max(0, now - dr.t0);
+  if (dr.step === 1 && dr.to) {                                  // someone else's taps replayed: the arrow sweeps at its own speed, timed to be at their aim exactly when they tapped, and stays there
+    const at = Math.max(0, Math.min(1, (dr.to.aim / BOWL_AIM.max + 1) / 2));
+    return { aim: t >= dr.to.ms ? dr.to.aim : r3((bowlToward(t, bowlConfig().aimMs, at, dr.to.ms) * 2 - 1) * BOWL_AIM.max), power: null };
+  }
   if (dr.step === 1) return { aim: r3((bowlWave(t, bowlConfig().aimMs) * 2 - 1) * BOWL_AIM.max), power: null };
-  if (dr.step === 2 && dr.to) {                                  // someone else's taps replayed: the meter rises and falls at its own speed, timed to be at their power exactly when they tapped, and stays there
-    const per = bowlConfig().meterMs, lag = (((dr.to.power * per - dr.to.ms) % (2 * per)) + 2 * per) % (2 * per);
-    return { aim: dr.aim, power: t >= dr.to.ms ? dr.to.power : r3(bowlWave(t + lag, per)) };
+  if (dr.step === 2 && dr.to) {                                  // the same for the meter: at their power exactly when they tapped, and there it stays
+    return { aim: dr.aim, power: t >= dr.to.ms ? dr.to.power : r3(bowlToward(t, bowlConfig().meterMs, dr.to.power, dr.to.ms)) };
   }
   if (dr.step === 2) return { aim: dr.aim, power: r3(bowlWave(t, bowlConfig().meterMs)) };
   return { aim: dr.aim, power: dr.power };
 }
 // At each render of the lane: the draft kept, begun (the player to move, a fresh arrow), or dropped.
 export function bowlKeep(o, mine) {
-  const dr = bowlDraft, same = dr && dr.sq === o.zoom && dr.p === o.turn;
-  if (mine && !(same && dr.rep)) { if (!same || dr.step === 3) bowlDraft = { sq: o.zoom, p: o.turn, step: 1, t0: performance.now(), aim: 0, power: 0, shown: null }; }   // (a roll refused comes back to a fresh aim; a replay of someone else's taps keeps theirs)
+  const dr = bowlDraft, same = dr && dr.sq === o.zoom && dr.p === o.turn, r = rep && rep.stage === 'inputs' && rep.sq === o.zoom && rep.by === o.turn ? rep : null;
+  if (mine && r && !(same && dr.rep === r)) bowlDraft = bowlRepAim(r);   // someone else's taps about to replay: their arrow, from the replay's start (never a sweep of this phone's that jumps to theirs)
+  else if (mine && !(same && dr.rep)) { if (!same || dr.step === 3) bowlDraft = { sq: o.zoom, p: o.turn, step: 1, t0: performance.now(), aim: 0, power: 0, shown: null }; }   // (a roll refused comes back to a fresh aim; a replay of someone else's taps keeps theirs)
   else if (!(same && (dr.step === 3 || dr.rep) && !o.view)) bowlDraft = null;   // the roll on its way: both stay locked until it plays (rep: someone else's taps replayed)
   return bowlDraft;
 }
@@ -146,17 +151,24 @@ export function drawBowl(g, mini, pos, settled = true) {
 export function miniature(mini, final) {
   return physThumb(mini);
 }
-// Someone else's roll replayed (ui/replay.js): their two taps as their screen showed them (the arrow stops
-// where they stopped it and the meter rises; the meter stops at their power), then the roll.
+// Someone else's roll replayed (ui/replay.js): their two taps as their screen showed them (the arrow sweeps
+// and stops where they stopped it, the meter rises and stops at their power: each timed to be there exactly
+// at the tap's moment in the replay, and held), then the roll. bowlRepAim: the arrow from the replay's start
+// (bowlKeep), timed to the aim tap still to come.
+function bowlRepAim(r) {
+  const now = performance.now(), n = r.list[r.k], am = n && n[1] === 'bowl' ? /^aim=(-?[\d.]+)$/.exec(n[2] || '') : null;
+  const to = am ? { aim: r3(Number(am[1])), ms: Math.max(0, repDue(r, n) - now) } : null;
+  return { sq: r.sq, p: r.by, step: 1, t0: now, aim: 0, power: 0, shown: null, rep: r, to };
+}
 function replayInput(act, val, r) {
   if (act !== 'bowl') return false;
   const m = /^(aim|power)=(-?[\d.]+)$/.exec(val || '');
   if (!m) return false;
-  const now = performance.now();
   if (m[1] === 'aim') {                                          // (the power tap that follows, if the log has it: where the meter must be, and when)
     const nx = r.list && r.list[r.k], cur = r.list && r.list[r.k - 1], pm = nx && nx[1] === 'bowl' ? /^power=(-?[\d.]+)$/.exec(nx[2] || '') : null;
+    const t0 = Math.min(performance.now(), cur && r.at != null ? repDue(r, cur) : Infinity);   // (from the tap's moment in the replay, not the timer's: a timer that fires late never leaves the meter short of their power when the next tap lands)
     const to = pm ? { power: Math.max(0, Math.min(1, r3(Number(pm[1])))), ms: Math.max(0, (nx[0] - (cur ? cur[0] : 0)) / (r.speed || 1)) } : null;
-    bowlDraft = { sq: r.sq, p: r.by, step: 2, t0: now, aim: r3(Number(m[2])), power: 0, shown: null, rep: true, to };
+    bowlDraft = { sq: r.sq, p: r.by, step: 2, t0, aim: r3(Number(m[2])), power: 0, shown: null, rep: r, to };
   }
   else if (bowlDraft && bowlDraft.rep && bowlDraft.sq === r.sq) { bowlDraft.power = r3(Number(m[2])); bowlDraft.step = 3; bowlDraft.to = null; }
   return false;
