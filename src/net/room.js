@@ -487,9 +487,11 @@ export function quitMatch() {
   commit();
 }
 // The invite: one text holding everything, the room's code and the link (which carries the code too), e.g.
-// "Join my Tic Tac Chaos game! Code: ABCDE https://tictacchaos.com/?room=ABCDE". It is shared as that text alone, with no
-// separate url field (iMessage drops the text when a url comes with it). The link joins at once; the code goes in the Join screen.
-export function inviteText(code, url) { return `Join my Tic Tac Chaos game! Code: ${code} ${url}`; }
+// "Join my Tic Tac Chaos game! https://tictacchaos.com/?room=ABCDE Code: ABCDE". It is shared as that text alone, with no
+// separate url field (iMessage drops the text when a url comes with it), and the link never ends it: from the app's share
+// sheet, Messages turned a link at the end into its preview and dropped the code before it. The link joins at once; the
+// code goes in the Join screen.
+export function inviteText(code, url) { return `Join my Tic Tac Chaos game! ${url} Code: ${code}`; }
 export async function shareRoom() {
   const text = inviteText(state.online.code, roomLink());
   try { if (await shareText(text)) return; }                      // (the share sheet: the app's or the browser's, net/platform.js)

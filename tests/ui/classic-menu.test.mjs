@@ -138,7 +138,7 @@ test('the side reveal: "You are X" against the computer or online; on a shared p
   MM.onIntroClosed(null);
 });
 test('the invite: one text with the code and the full link, shared with no separate url field (iMessage drops the text when one comes)', async () => {
-  assert.equal(inviteText('ABCDE', 'https://tictacchaos.com/?room=ABCDE'), 'Join my Tic Tac Chaos game! Code: ABCDE https://tictacchaos.com/?room=ABCDE');
+  assert.equal(inviteText('ABCDE', 'https://tictacchaos.com/?room=ABCDE'), 'Join my Tic Tac Chaos game! https://tictacchaos.com/?room=ABCDE Code: ABCDE');
   const shared = [];
   const nav = globalThis.navigator, loc = globalThis.location;
   globalThis.location = { protocol: 'https:', origin: 'https://tictacchaos.com', pathname: '/' };
@@ -146,7 +146,7 @@ test('the invite: one text with the code and the full link, shared with no separ
   Object.assign(state, board(), { screen: 'setup', online: { role: 'host', code: 'ABCDE', me: 'X', joined: false } });
   await shareRoom();
   assert.equal(shared.length, 1); assert.deepEqual(Object.keys(shared[0]), ['text'], 'the text alone');
-  assert.equal(shared[0].text, 'Join my Tic Tac Chaos game! Code: ABCDE https://tictacchaos.com/?room=ABCDE');
+  assert.equal(shared[0].text, 'Join my Tic Tac Chaos game! https://tictacchaos.com/?room=ABCDE Code: ABCDE');
   const copied = [];
   globalThis.navigator = { clipboard: { writeText: async t => { copied.push(t); } } };
   await copyInvite();

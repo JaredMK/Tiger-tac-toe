@@ -215,8 +215,8 @@ the game's own (`src/games/shared/physics-sim.js`, run by the engine).
 ## Playing online
 
 Play a Friend offers "Host game" and "Join game" (and Same phone, above). The host gets a five-letter
-room code (no look-alike letters) and a **Share invite** button: "Join my Tic Tac Chaos game! Code: ABCDE
-tictacchaos.com/?room=ABCDE", the code in both the words and the link, since some apps drop one of them;
+room code (no look-alike letters) and a **Share invite** button: "Join my Tic Tac Chaos game!
+https://tictacchaos.com/?room=ABCDE Code: ABCDE", the code in both the words and the link, since some apps drop one of them;
 "Waiting for friend…" shows until the guest joins. The guest enters the code on the Join screen, or opens
 the link, which joins at once. The host is Player 1 and the guest Player 2: there is no side to pick, and
 X and O are drawn at random when each match starts, rematches included. The host picks the mini-games
