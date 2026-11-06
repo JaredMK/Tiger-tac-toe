@@ -8,6 +8,8 @@ import { tune } from '../../core/tune.js';
 // online: no roll is known before it lands). The come-out roll wins on 7 or 11 and loses on 2, 3 or 12
 // (craps); anything else is the point, and then the point wins and a 7 loses. A lost round takes nothing
 // away; every move starts a fresh round (a square from before with a point still on rolls that one out).
+// A hot streak: a round won (not yet the square) keeps the turn, and the same player rolls a new round
+// (again); a round lost ends the turn. (Super Chaos: one round a round, no streak: scApply.)
 // The page plays the rolls back one by one (the dice tumbling, the puck going on the point).
 export const CRAPS = { goal: 3, roll: 900, quick: 560, quickAfter: 4, puck: 420, hold: 400, stop: 600, land: 560, flash: 250, pip: 400, winOdds: 244 / 495 };   // a round's flash: roll each roll (quick after the first few), the puck, the result held; land: a die's tumble (stop, flash: single rolls, from before); pip: a won round's pip filling in
 export const CRAPS_MAKE = { 4: 1 / 3, 5: 0.4, 6: 5 / 11, 8: 5 / 11, 9: 0.4, 10: 1 / 3 };   // the chance a point is rolled before a 7
@@ -41,13 +43,16 @@ export function crapsTimes(rolls, point, was) {
 export function create(type, rng) {
   return { type, wins: { X: 0, O: 0 }, rounds: { X: 0, O: 0 }, point: null, live: null, rolls: [], last: null };   // point, live, rolls: a round left with its point on (from before); every move now rolls a round out
 }
-export function apply(mini, p, m, rng, idx) {   // Roll: the round, rolled out
+export function apply(mini, p, m, rng, idx) { return roll(mini, p, m, rng, true); }
+export function scApply(mini, p, m, rng) { return roll(mini, p, m, rng, false); }   // Super Chaos: a round's move is one round, won or lost
+function roll(mini, p, m, rng, streak) {   // Roll: the round, rolled out
   if (m !== 'roll' && m !== 'auto') return { ok: false, reason: 'bad' };
   const was = mini.point == null ? null : mini.point, r = crapsRound(needRng(rng), was);
   mini.rounds[p] += 1; if (r.result === 'win') mini.wins[p] += 1;
   mini.last = { by: p, kind: 'round', rolls: r.rolls.map(d => d.slice()), point: r.point, was, result: r.result };
   mini.point = null; mini.live = null; mini.rolls = [];
   if (mini.wins[p] >= tune(mini).goal) return { ok: true, outcome: 'win', note: 'won' };
+  if (r.result === 'win' && streak) return { ok: true, outcome: 'continue', note: 'won', again: true };   // a hot streak: roll again
   return { ok: true, outcome: 'continue', note: r.result === 'win' ? 'won' : 'lost' };
 }
 export function publicView(mini) {
@@ -64,5 +69,5 @@ export function flashMs(f, winLen, won) {
   if (f.craps.roll) return CRAPS.land + CRAPS.flash + (won ? 600 : 0);   // (a single roll, from before)
   return crapsTimes(f.craps.rolls, f.craps.point, f.craps.was).end + (f.craps.result === 'win' ? CRAPS.pip : 0) + (won ? 600 : 0);   // the round, roll by roll (a round won: its pip filling in); the result then stays up its usual moment
 }
-// Super Chaos: each player's round is rolled out within their own move, so nothing carries over: the
-// usual merge (each player's wins and rounds) is all there is.
+// Super Chaos: each player's round is rolled out within their own move (one round, no streak: scApply), so
+// nothing carries over: the usual merge (each player's wins and rounds) is all there is.

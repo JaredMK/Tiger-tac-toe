@@ -6,6 +6,8 @@ import { tune } from '../../core/tune.js';
 // green 0. A spin carries one bet: 8 numbers, one of the groups 1-8, 9-16 or 17-24, or green 0 on its own.
 // A number or group that comes up is a hit, and two hits take the square; green 0 coming up on a bet on 0
 // takes it at once. (0 on any other bet is a miss.) The hits to win are the admin's (TUNE in meta.js: tune(mini).goal).
+// A hot streak: a hit (not yet the square) keeps the turn, and the same player spins again (again); a miss
+// ends the turn. (Super Chaos: one spin a round, the round's own number, no streak: scApply.)
 export const RL = {
   n: 24, pick: 8, goal: 2,
   wheel: [0, 17, 4, 21, 10, 13, 6, 19, 2, 23, 8, 15, 12, 1, 20, 5, 14, 9, 22, 3, 16, 11, 24, 7, 18],   // the pockets in order round the wheel
@@ -28,9 +30,9 @@ export function create(type, rng) {
   return { type, hits: { X: 0, O: 0 }, spins: [], last: null };
 }
 export function apply(mini, p, m, rng, idx) {
-  return spinBet(mini, p, m, RL.wheel[randInt(needRng(rng), RL.wheel.length)]);
+  return spinBet(mini, p, m, RL.wheel[randInt(needRng(rng), RL.wheel.length)], true);
 }
-function spinBet(mini, p, m, n) {
+function spinBet(mini, p, m, n, streak) {   // streak: a hit keeps the turn (never in Super Chaos)
   const bet = rlBet(m);
   if (!bet) return { ok: false, reason: 'bad' };
   const hit = rlCovers(bet, n);
@@ -39,6 +41,7 @@ function spinBet(mini, p, m, n) {
   mini.spins = (mini.spins || []).concat({ n, by: p, hit }).slice(-6);   // the recent spins, hits and misses alike (the miniature shows them)
   if (hit && bet === 'zero') return { ok: true, outcome: 'win', note: 'zero' };
   if (hit && mini.hits[p] >= tune(mini).goal) return { ok: true, outcome: 'win', note: 'hit' };
+  if (hit && streak) return { ok: true, outcome: 'continue', note: 'hit', again: true };   // a hot streak: spin again
   return { ok: true, outcome: 'continue', note: hit ? 'hit' : 'miss' };
 }
 export function publicView(mini) {
@@ -65,7 +68,7 @@ export function scRound(mini, rng) {
   mini.spin = RL.wheel[randInt(needRng(rng), RL.wheel.length)];
 }
 export function scApply(mini, p, m, rng) {
-  return Number.isInteger(mini.spin) ? spinBet(mini, p, m, mini.spin) : apply(mini, p, m, rng);
+  return spinBet(mini, p, m, Number.isInteger(mini.spin) ? mini.spin : RL.wheel[randInt(needRng(rng), RL.wheel.length)], false);
 }
 export function secret(mini) {                                   // the round's spin stays off the board until a bet lands on it
   return Number.isInteger(mini.spin) ? { spin: mini.spin } : null;

@@ -2,9 +2,13 @@
 import { tune } from '../../core/tune.js';
 import { CRAPS, CRAPS_MAKE } from './rules.js';
 
+// A hot streak: a round won keeps the turn, so a turn wins rounds until one is lost. needs: the turns still
+// needed (the rounds lost before the last one won, each ending a turn, and the turn that finishes it).
 export function needs(pm, p) {
-  return Math.max(1, (tune(pm).goal - pm.wins[p]) / CRAPS.winOdds);
+  const k = Math.max(0, tune(pm).goal - pm.wins[p]), w = CRAPS.winOdds;
+  return Math.max(1, 1 + k * (1 - w) / w);
 }
 export function best(pm, me, rng, style, ctx) {
-  return { move: 'roll', q: pm.wins[me] >= tune(pm).goal - 1 ? (pm.point != null ? CRAPS_MAKE[pm.point] : CRAPS.winOdds) : 0 };   // the only move: Roll (the round rolls itself out); q: the chance it takes the square now
+  const k = Math.max(1, tune(pm).goal - pm.wins[me]), first = pm.point != null ? CRAPS_MAKE[pm.point] : CRAPS.winOdds;
+  return { move: 'roll', q: first * CRAPS.winOdds ** (k - 1) };   // the only move: Roll (the round rolls itself out); q: the chance this turn takes the square (every round still needed won in a row)
 }

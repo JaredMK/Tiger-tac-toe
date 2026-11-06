@@ -2,15 +2,22 @@
 import { tune } from '../../core/tune.js';
 import { bjStrategy, bjValue } from './rules.js';
 
+// A hot streak: a hand won keeps the turn (Deal again), so a turn wins hands until one is lost. needs: the
+// turns still needed (the hands lost before the last one won, each ending a turn, and the turn that finishes it).
+const BJ_WIN = 0.43;                                             // about 0.43 a hand won (naturals included), pushes replayed
 export function needs(pm, p) {
-  return Math.max(1, (tune(pm).goal - pm.wins[p]) / 0.43);      // about 0.43 a hand won (naturals included), pushes replayed
+  const k = Math.max(0, tune(pm).goal - pm.wins[p]);
+  return Math.max(1, 1 + k * (1 - BJ_WIN) / BJ_WIN);
 }
 export function best(pm, me, rng, style, ctx) {
   // Deal, then basic strategy (hit or stand: no doubling). Hard: hit or stand by the chance of winning the
-  // hand (bjHard), with the deck as it shows and the square's own dealer.
+  // hand (bjHard), with the deck as it shows and the square's own dealer. A hand won deals the next in the
+  // same turn (a hot streak), a loss ends it, a push deals again: the hand's chance of a win (a push worth a
+  // fresh hand's) is still what to play for.
   const h = pm.hand && pm.hand.by === me ? pm.hand : null, need = tune(pm).goal - pm.wins[me];
-  if (!h) return { move: 'deal', q: need <= 1 ? 0.43 : need === 2 ? 0.05 : 0 };
-  if (ctx && ctx.level === 'hard') { const v = bjHard(h.cards, h.up, tune(pm).stand); return { move: v.hit > v.stand ? 'hit' : 'stand', q: need <= 1 ? Math.max(v.hit, v.stand) : 0 }; }
+  // q: the chance this turn takes the square (every hand still needed won in a row: a hand won keeps the turn).
+  if (!h) return { move: 'deal', q: BJ_WIN ** Math.max(1, need) };
+  if (ctx && ctx.level === 'hard') { const v = bjHard(h.cards, h.up, tune(pm).stand); return { move: v.hit > v.stand ? 'hit' : 'stand', q: Math.max(v.hit, v.stand) * pushWorth(tune(pm).stand) ** Math.max(0, need - 1) }; }
   return { move: bjStrategy(h.cards, h.up), q: 0 };
 }
 

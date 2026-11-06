@@ -46,7 +46,7 @@ Category brain: More brain
 
 ## 21 [bj]
 Category: More luck
-Play: Hit to draw a card or stand. Beat the dealer without going over 21. Tie? Play another hand.
+Play: Hit to draw a card or stand. Beat the dealer without going over 21. Win? Go again. Tie? Play another hand.
 Win: First to {goal} wins.
 Super Chaos Play: Hit or stand. Beat the dealer without going over 21.
 Super Chaos Win: First to {goal} wins.
@@ -168,8 +168,10 @@ Super Chaos Win: Guess it. Use up {limit} guesses and you lose the square.
 
 ## Krabs [craps]
 Category: More luck
-Play: Tap Roll: the dice keep rolling until your round is won or lost. On the first roll, 7 or 11 wins and 2, 3 or 12 loses. Any other number is your point: rolling it again wins, rolling a 7 loses.
+Play: Tap Roll: the dice keep rolling until your round is won or lost. On the first roll, 7 or 11 wins and 2, 3 or 12 loses. Any other number is your point: rolling it again wins, rolling a 7 loses. Win? Go again.
 Win: Win {goal} rounds.
+Super Chaos Play: Tap Roll: the dice keep rolling until your round is won or lost. On the first roll, 7 or 11 wins and 2, 3 or 12 loses. Any other number is your point: rolling it again wins, rolling a 7 loses.
+Super Chaos Win: Win {goal} rounds.
 
 ## Lane Rush [lane]
 Category: More skill
@@ -178,7 +180,7 @@ Win: Reach 1,000 m first.
 
 ## Little Wheel [rl]
 Category: More luck
-Play: Pick 8 numbers, a group of 8, or green 0, then spin.
+Play: Pick 8 numbers, a group of 8, or green 0, then spin. Hit? Go again.
 Win: {goal} hits, or hit green 0 for an instant win.
 Super Chaos Play: Pick 8 numbers, a group of 8, or green 0, then spin.
 Super Chaos Win: {goal} hits, or hit green 0 for an instant win.

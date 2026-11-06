@@ -35,9 +35,9 @@ test('blackjack: pushes in a row stay in one turn: each one deals a new hand, un
   assert.equal(w.ok, true);
   assert.equal(sq.mini.last.res, 'win');
   assert.equal(sq.mini.pushed, null);
-  assert.equal(st.lock, null, 'the win ends the turn');
+  assert.equal(st.lock, 0, 'the win keeps the turn (a hot streak: Deal again)');
   E.endFlash(st);
-  assert.deepEqual([st.turn, sq.mini.wins.X], ['O', 1]);
+  assert.deepEqual([st.turn, sq.mini.wins.X, sq.mini.hand], ['X', 1, null]);
   // the stand a timeout makes on a hand under way ('auto'): every new hand a push brings is stood on, until one is won or lost
   let autos = 0;
   for (let seed = 1; seed < 6000 && autos < 3; seed++) {

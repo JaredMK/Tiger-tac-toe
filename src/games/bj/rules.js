@@ -46,13 +46,15 @@ export function bjStrategy(cards, up) {
 export function create(type, rng) {
   return { type, wins: { X: 0, O: 0 }, hand: null, hole: null, deck: null, last: null };   // hand: the hand being played; hole and deck: hidden
 }
-export function apply(mini, p, m, rng, idx) { return play(mini, p, m, rng, null); }
-function play(mini, p, m, rng, shoe) {   // shoe: Super Chaos's round shoe, for this player's first deal of the round (scApply)
+export function apply(mini, p, m, rng, idx) { return play(mini, p, m, rng, null, true); }
+function play(mini, p, m, rng, shoe, streak) {   // shoe: Super Chaos's round shoe, for this player's first deal of the round (scApply); streak: a hand won keeps the turn
   // A turn is played hand by hand: Deal (or Stand, which deals first), then Hit (again) or Stand.
-  // A win or a loss ends the turn. A push does not: a new hand is dealt at once, from a reshuffled
-  // deck, and the same player plays on. 'auto' (a timed-out turn) stands, dealing first if need be, and
-  // stands again on every new hand a push brings, until a hand is won or lost. Only the hand's own
-  // player can act in it until the turn is over.
+  // A loss ends the turn. A win (not yet the square) does not: a hot streak, the same player deals the
+  // next hand (again; Super Chaos: a round's move is one hand, no streak). A push does not either: a new
+  // hand is dealt at once, from a reshuffled deck, and the same player plays on. 'auto' (a timed-out
+  // turn's hand in play) stands, and stands again on every new hand a push brings, until a hand is won or
+  // lost (its win earns no next hand: core/board.js noAgain). Only the hand's own player can act in it
+  // until the turn is over.
   if (!['deal', 'hit', 'stand', 'auto'].includes(m)) return { ok: false, reason: 'bad' };
   let h = mini.hand;
   if (h && h.by !== p) return { ok: false, reason: 'busy' };
@@ -101,6 +103,7 @@ function play(mini, p, m, rng, shoe) {   // shoe: Super Chaos's round shoe, for 
     res = settle(false);
   }
   if (mini.wins[p] >= c.goal) return { ok: true, outcome: 'win', note: res };
+  if (streak && (res === 'win' || res === 'bj')) return { ok: true, outcome: 'continue', note: res, again: true };   // a hot streak: Deal again
   return { ok: true, outcome: 'continue', note: res };
 }
 export function publicView(mini) {
@@ -139,7 +142,7 @@ export function scRound(mini, rng) {
   mini.shoe = { up, hole, dealer: take(BJ_SHOE.dealer), X: take(BJ_SHOE.each), O: take(BJ_SHOE.each) };
 }
 export function scApply(mini, p, m, rng) {
-  return play(mini, p, m, rng, mini.shoe && !mini.hand ? mini.shoe : null);
+  return play(mini, p, m, rng, mini.shoe && !mini.hand ? mini.shoe : null, false);
 }
 export function flashMs(f, winLen, won) {
   return bjMs(f.bj) + (won ? 600 : 0);

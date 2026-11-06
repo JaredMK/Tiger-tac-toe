@@ -41,7 +41,8 @@ export function renderMini(sq, review, popup) {
   if (game.screen) g = game.screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g);
   const lock = state.lock != null && mini.type !== 'trivia' && !ATT_TYPES.includes(mini.type) && !FINGER_TYPES.includes(mini.type);   // a bonus move (a Trivia reveal, an attention game's or a finger game's Start holds the player too: not a bonus)
   let sub = lock ? (mini.type === 'pig' || mini.type === 'wheels' ? `<b class="${turn}">${N(turn)}</b>'s turn in progress`   // (turn info only: how to play is in the ? explainer)
-    : mini.type === 'bj' ? `<b class="${turn}">${N(turn)}</b>'s hand`
+    : mini.type === 'bj' ? (mini.hand || f ? `<b class="${turn}">${N(turn)}</b>'s hand` : `<b class="${turn}">${N(turn)}</b> won the hand · goes again`)   // (a hand won, a hot streak: said once its result has played, never ahead of it)
+    : mini.type === 'craps' || mini.type === 'rl' ? (f ? '' : `<b class="${turn}">${N(turn)}</b> ${mini.type === 'rl' ? 'hit' : 'won the round'} · goes again`)   // (Krabs, Little Wheel: a hot streak, once the result has played)
     : mini.type === 'bus' ? (a ? '' : `<b class="${turn}">${N(turn)}</b>'s run`) : mini.type === 'bs' ? `<b class="${turn}">${N(turn)}</b> hit · goes again` : mini.type === 'pool' ? `<b class="${turn}">${N(turn)}</b> sank one · goes again` : `<b class="${turn}">${N(turn)}</b> guessed right · goes again`) : '';
   if (popup) sub = joint ? 'Both moves' : '2× speed';
   else if (f && f.scr) sub = 'Both moves together';   // Super Chaos's round end: what both moves add up to here (a Bump knock, the Roulette spin)

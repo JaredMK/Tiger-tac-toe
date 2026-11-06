@@ -46,7 +46,7 @@ function crapsTable(mini, a, o) {
   const log = `<div class="crolls${all.length > 8 ? ' long' : ''}" aria-label="The round's rolls">${all.map((d, k) => `<span ${c && !REDUCED ? lateAt('', tim.at[k] + CRAPS.land - 60) : ''}>${d[0] + d[1]}</span>`).join('')}</div>`;
   const W = p => `<b class="${p}">${N(p)}</b>`;
   const res = c ? `<p ${lateAt('arcres ' + (c.result === 'win' ? 'ok' : 'no'), tEnd)} role="status">${crapsSay(c)}</p>`
-    : l && (o.done || o.view) ? `<p class="arcres ${l.result === 'win' ? 'ok' : l.result === 'lose' ? 'no' : ''}">${W(l.by)}: ${crapsSay(l)}</p>`
+    : l && (o.done || o.view || (o.held && l.by === turn)) ? `<p class="arcres ${l.result === 'win' ? 'ok' : l.result === 'lose' ? 'no' : ''}">${W(l.by)}: ${crapsSay(l)}</p>`
     : o.view ? '<p class="arcnote"></p>'
     : mini.point != null ? `<p class="arcnote">${W(turn)} · point ${mini.point} is on</p>`
     : `<p class="arcnote">${W(turn)}'s turn</p>`;
@@ -57,7 +57,7 @@ export function miniature(mini, final) {
   const d = mini.last ? mini.last.roll || (mini.last.rolls || [])[(mini.last.rolls || []).length - 1] : null; return `<div class="tpip">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${Array.from({ length: tune(mini).goal }, (_, k) => `<i class="${k < mini.wins[p] ? 'on' : ''}"></i>`).join('')}</div>`).join('')}${d ? `<div class="tcdice ${mini.last.result === 'win' ? 'w' : mini.last.result === 'lose' ? 'l' : ''}"><span>${dieFace(d[0])}</span><span>${dieFace(d[1])}</span></div>` : ''}</div>`;
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
-  g = crapsTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d }); return g;
+  g = crapsTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d, held: state.lock != null && state.lock === state.zoom }); return g;
 }
 export function moveText(f, who) {
   return !f.craps ? `${who} rolled` : f.craps.kind === 'stop' ? `${who} stopped on point ${f.craps.point}` : f.craps.result === 'win' ? `${who} won the round` : `${who} lost the round`;

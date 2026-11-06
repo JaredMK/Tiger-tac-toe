@@ -27,7 +27,7 @@ test('roulette: every bet scores right, and the 0 rules', () => {
   // through the move: the spin lands where the rng says (pocket k round the wheel)
   const at = n => () => (E.RL.wheel.indexOf(n) + 0.5) / 25;
   let m = E.newMini('rl', lcg(1));
-  assert.deepEqual(E.applyMove(m, 'X', 'g2', at(13)), { ok: true, outcome: 'continue', note: 'hit' });
+  assert.deepEqual(E.applyMove(m, 'X', 'g2', at(13)), { ok: true, outcome: 'continue', note: 'hit', again: true }, 'a hit: the same player spins again (a hot streak)');
   assert.deepEqual(E.applyMove(m, 'X', 'g2', at(0)), { ok: true, outcome: 'continue', note: 'miss' }, '0 on a group: a miss');
   assert.deepEqual(E.applyMove(m, 'O', nums, at(0)), { ok: true, outcome: 'continue', note: 'miss' }, '0 on numbers: a miss');
   assert.deepEqual(E.applyMove(m, 'O', 'zero', at(5)), { ok: true, outcome: 'continue', note: 'miss' });
@@ -88,20 +88,46 @@ test('roulette: the admin\'s settings (hits to win, the computer\'s bets on 0) a
   assert.equal(E.localBest(pm, 'X', E.makeRng('rl-ai'), null, { value: 0, behind: 2 }).move, 'zero', 'behind: always 0');
 });
 
-test('roulette: the Hard computer bets green 0 or a group by the chance of winning the square\'s race', () => {
+test('roulette: the Hard computer bets green 0 or a group by the chance of winning the square\'s race (a hit spins again: a hot streak)', () => {
   const A = require('../../src/games/rl/ai.js'), ctx = { level: 'hard', until: null, value: 2, behind: 0 };
   const pm = (x, o, goal) => ({ type: 'rl', hits: { X: x, O: o }, tune: goal ? { goal } : undefined });
   const t0 = performance.now();
   for (let i = 0; i < 20; i++) assert.ok(['g1', 'g2', 'g3'].includes(A.best(pm(0, 0), 'X', lcg(i), {}, ctx).move), 'level: a group');
   assert.ok(['g1', 'g2', 'g3'].includes(A.best(pm(0, 1), 'X', lcg(1), {}, Object.assign({}, ctx, { value: E.AI.block + 1 })).move), 'two hits to win: a group even a hit behind on a square that matters');
-  assert.equal(A.best(pm(0, 3, 4), 'X', lcg(1), {}, ctx).move, 'zero', 'four hits to win, none to three: green 0 (1 in 25 now beats four hits before their one)');
-  assert.equal(A.best(pm(1, 3, 4), 'X', lcg(1), {}, ctx).move, 'zero', 'three hits to their one: still green 0'); assert.ok(A.best(pm(2, 3, 4), 'X', lcg(1), {}, ctx).move !== 'zero', 'two to their one: a group'); assert.ok(A.best(pm(0, 1, 4), 'X', lcg(1), {}, ctx).move !== 'zero');
-  assert.equal(A.best(pm(0, 2, 3), 'X', lcg(1), {}, ctx).move, 'zero', 'three hits to win, none to two');
+  for (const [x, o, g] of [[0, 3, 4], [1, 3, 4], [2, 3, 4], [0, 1, 4], [0, 2, 3]]) assert.ok(A.best(pm(x, o, g), 'X', lcg(1), {}, ctx).move !== 'zero', `${x} to ${o} of ${g}: a group (a hit spins again, so a run of hits beats 1 in 25)`);
   assert.ok(performance.now() - t0 < 60, 'under 60 ms');
+  for (const g of [2, 3, 4]) assert.equal(A.rlRace(g).zero.some(Boolean), false, `${g} hits to win: green 0 never`);
   const r = A.rlRace(4), P = r.P;
-  assert.ok(P[0 * 4 + 3] > 0.11 && P[0 * 4 + 3] < 0.12, 'none to three, to move: ' + P[3].toFixed(3));
-  assert.ok(P[3 * 4 + 0] > 0.92 && P[3 * 4 + 0] < 0.93, 'three to none, to move: ' + P[12].toFixed(3));
-  assert.ok(Math.abs(P[0] - 0.526) < 0.002, 'the first to bet: ' + P[0].toFixed(3));
-  assert.equal(A.rlRace(2).zero.some(Boolean), false, 'two hits to win: green 0 never');
-  assert.equal(A.best(pm(0, 1), 'X', lcg(1), {}, Object.assign({}, ctx, { value: E.AI.block + 1 })).q, 0);
+  assert.ok(P[0 * 4 + 3] > 0.12 && P[0 * 4 + 3] < 0.13, 'none to three, to move: ' + P[3].toFixed(3));
+  assert.ok(P[3 * 4 + 0] > 0.91 && P[3 * 4 + 0] < 0.92, 'three to none, to move: ' + P[12].toFixed(3));
+  assert.ok(Math.abs(P[0] - 0.530) < 0.002, 'the first to bet: ' + P[0].toFixed(3));
+  // the race by hand, goal 2: a hit and then another in the same turn takes it
+  const h = 8 / 25, P2 = A.rlRace(2).P;
+  assert.ok(Math.abs(P2[1 * 2 + 1] - (h + (1 - h) * (1 - P2[1 * 2 + 1]))) < 1e-9, 'one each: a hit takes it, a miss hands over');
+  assert.ok(Math.abs(P2[0] - (h * P2[1 * 2 + 0] + (1 - h) * (1 - P2[0]))) < 1e-9, 'none each: a hit spins again from one to none');
+  const q = A.best(pm(0, 1), 'X', lcg(1), {}, Object.assign({}, ctx, { value: E.AI.block + 1 })).q;
+  assert.ok(Math.abs(q - h * h) < 1e-9, 'q: both hits in this turn');
+});
+
+test('roulette: a hot streak: a hit keeps the turn (spin again, online too), a miss passes it, the square won ends it; a timeout owed a spin spins nothing; Super Chaos spins once a round', () => {
+  const at = n => () => (E.RL.wheel.indexOf(n) + 0.5) / 25;
+  const st = E.newMatch(lcg(3), { games: ['rl'] }), p = st.turn, o = p === 'X' ? 'O' : 'X';
+  E.playMove(st, 0, 'g1', at(3));
+  assert.deepEqual([st.flash.kind, st.flash.rl.hit], ['again', true], 'a hit: the turn goes on');
+  E.endFlash(st); assert.deepEqual([st.turn, st.lock, st.screen], [p, 0, 'mini']);
+  assert.equal(E.playMove(st, 1, 'g1', at(3)).reason, 'locked');
+  E.playMove(st, 0, 'g1', at(20));
+  assert.deepEqual([st.flash.kind, st.flash.rl.hit], ['move', false], 'a miss');
+  E.endFlash(st); assert.deepEqual([st.turn, st.lock], [o, null], 'the turn passes');
+  // online: two hits in a row take the square in one turn
+  const games = Object.fromEntries(E.TYPES.map(g => [g, g === 'rl'])), rec = E.newOnlineMatch({ names: { X: 'A', O: 'B' }, games, timer: 30 }, lcg(4), 'rls'), q = rec.state.turn;
+  let r = E.applyOnlineMove(rec, q, 4, 'g2', at(10));
+  assert.deepEqual([r.entries[0].kind, r.rec.state.turn, r.rec.state.lock], ['again', q, 4]);
+  // (a timeout here: nothing spun for them, the turn passes and it is not a miss)
+  const t = E.applyOnlineTimeout(r.rec, at(10)), tf = E.fullState(t.rec);
+  assert.deepEqual([t.entries, tf.turn, tf.lock, tf.timer.miss.kind, tf.squares[4].mini.hits[q], tf.squares[4].mini.spins.length], [[], q === 'X' ? 'O' : 'X', null, 'ended', 1, 1]);
+  r = E.applyOnlineMove(r.rec, q, 4, [1, 2, 3, 4, 5, 6, 7, 8], at(7));
+  assert.deepEqual([r.entries[0].kind, r.rec.state.squares[4].owner, r.rec.state.turn], ['claim', q, q === 'X' ? 'O' : 'X'], 'the second hit: the square');
+  const m = E.newMini('rl', lcg(1)); m.spin = 5;
+  assert.deepEqual(require('../../src/games/rl/rules.js').scApply(m, 'X', 'g1', lcg(1)), { ok: true, outcome: 'continue', note: 'hit' }, 'Super Chaos: a hit on the round\'s spin is the round\'s move (no streak)');
 });

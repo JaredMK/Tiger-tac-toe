@@ -56,7 +56,7 @@ test('blackjack: Deal, Hit and Stand; a win adds 1, a push, a loss or a bust not
   // 20 against 10 + 6 + 8 (the dealer busts): a win
   m = inHand('X', ['KS', 'QH'], 'TC', '6D', ['8S']);
   m.wins.X = 1;
-  assert.deepEqual(E.applyMove(m, 'X', 'stand'), { ok: true, outcome: 'continue', note: 'win' });
+  assert.deepEqual(E.applyMove(m, 'X', 'stand'), { ok: true, outcome: 'continue', note: 'win', again: true });
   assert.equal(m.wins.X, 2);
   // a bust: the hole card turns, the dealer draws nothing, the tally stays
   m = inHand('X', ['KS', '6H'], '5C', 'TD', ['9S', 'QH']);
@@ -81,7 +81,7 @@ test('blackjack: Deal, Hit and Stand; a win adds 1, a push, a loss or a bust not
 
 test('blackjack: every win counts +1 (no doubling), a loss costs nothing', () => {
   let m = inHand('X', ['TS', '9H'], '6C', 'TD', ['8S']);           // 19 against 16 + 8: the dealer busts
-  assert.deepEqual(E.applyMove(m, 'X', 'stand'), { ok: true, outcome: 'continue', note: 'win' });
+  assert.deepEqual(E.applyMove(m, 'X', 'stand'), { ok: true, outcome: 'continue', note: 'win', again: true });
   assert.deepEqual([m.last.gain, m.wins.X], [1, 1]);
   m = inHand('X', ['5S', '6H'], 'TC', 'KD', ['2H']);              // 11 stood against 20
   assert.equal(E.applyMove(m, 'X', 'stand').note, 'lose');
@@ -107,7 +107,7 @@ test('blackjack: a natural wins 1 at once, a push against a dealer natural; a de
       assert.ok(r.again ? m.hand && m.hand.by === 'X' : r.note !== 'push', 'the turn goes on with a new hand');
       continue;
     }
-    assert.equal(r.again, undefined, 'a natural is settled on the deal');
+    assert.equal(r.again, true, 'a natural is settled on the deal, and won: the turn goes on (a hot streak)');
     assert.equal(m.hand, null);
     found++; assert.deepEqual([r.note, m.wins.X, m.last.dealer.length], ['bj', 1, 2], 'the dealer shows its two cards and draws nothing');
   }
@@ -116,8 +116,9 @@ test('blackjack: a natural wins 1 at once, a push against a dealer natural; a de
 
 test('blackjack: every hand is dealt from a fresh 52-card deck: two cards each, no card twice', () => {
   for (let seed = 1; seed < 300; seed++) {
-    const m = bj(), r = E.applyMove(m, 'O', 'deal', lcg(seed));
-    if (!r.again) continue;                                         // (a natural: settled)
+    const m = bj();
+    E.applyMove(m, 'O', 'deal', lcg(seed));
+    if (!m.hand) continue;                                          // (a natural: settled)
     const all = m.hand.cards.concat(m.hand.up, m.hole, m.deck);
     assert.equal(all.length, 52); assert.equal(new Set(all).size, 52);
     assert.ok(all.every(E.isCard));
@@ -254,4 +255,50 @@ test('bj: Super Chaos: both in the square in one round share one dealer hand (pl
   const sec = R.secret(m), h = JSON.parse(JSON.stringify(m)); R.hide(h);
   assert.ok(sec && sec.shoe); assert.equal(h.shoe, undefined); assert.equal(h.dealerDeck, undefined);
   console.log(`${shared} rounds shared a dealer hand (${pushes} pushed and dealt again)`);
+});
+
+test('blackjack: a hot streak: a hand won keeps the turn (Deal again, online too), a loss passes it, the square won ends it; a push still deals again at once', () => {
+  const st = E.newMatch(lcg(3), { games: ['bj'] }), p = st.turn, o = p === 'X' ? 'O' : 'X';
+  st.squares[0].mini = inHand(p, ['KS', 'QH'], 'TC', '6D', ['8S']); st.lock = 0;   // 20 against 16 + 8: the dealer busts
+  E.playMove(st, 0, 'stand', lcg(1));
+  assert.deepEqual([st.flash.kind, st.flash.bj.res, st.squares[0].mini.wins[p], st.squares[0].mini.hand], ['again', 'win', 1, null], 'a hand won: the turn goes on, no hand dealt yet');
+  E.endFlash(st); assert.deepEqual([st.turn, st.lock, st.screen], [p, 0, 'mini']);
+  assert.equal(E.localBest(E.publicMini(st.squares[0].mini), p, lcg(1)).move, 'deal', 'the computer deals the next hand');
+  assert.equal(E.playMove(st, 1, 'deal', lcg(2)).reason, 'locked');
+  // a hand lost: the turn passes
+  st.squares[0].mini.hand = { by: p, cards: ['TS', '7H'], up: 'TC' }; st.squares[0].mini.hole = '9D'; st.squares[0].mini.deck = ['2S'];
+  E.playMove(st, 0, 'stand', lcg(1));
+  assert.deepEqual([st.flash.kind, st.flash.bj.res], ['move', 'lose']);
+  E.endFlash(st); assert.deepEqual([st.turn, st.lock], [o, null], 'the turn passes');
+  // online: Deal again after a win, the same player's move; the third win takes the square
+  const games = only('bj');
+  for (let seed = 1; seed < 400; seed++) {
+    const rec = E.newOnlineMatch({ names: { X: 'A', O: 'B' }, games, timer: 'm5+0' }, lcg(seed), 'bjs' + seed), q = rec.state.turn;
+    let r = E.applyOnlineMove(rec, q, 4, 'deal', lcg(seed + 1));
+    for (let k = 0; k < 8 && r.ok && r.rec.state.turn === q && !r.rec.state.winner && E.fullState(r.rec).squares[4].mini.hand; k++) r = E.applyOnlineMove(r.rec, q, 4, 'stand', lcg(seed + 2 + k));
+    if (!r.ok || r.entries[0].kind !== 'again' || E.fullState(r.rec).squares[4].mini.hand) continue;   // (a loss, or not yet a hand won)
+    assert.deepEqual([r.rec.state.turn, r.rec.state.lock, E.fullState(r.rec).squares[4].mini.wins[q]], [q, 4, 1], 'a hand won online: the same player, held to the square');
+    const d = E.applyOnlineMove(r.rec, q, 4, 'deal', lcg(seed + 20));
+    assert.equal(d.ok, true, 'Deal again: their move');
+    assert.equal(d.entries[0].by, q);
+    return;
+  }
+  assert.fail('no hand won online');
+});
+
+test('blackjack: a timeout after a hand won deals nothing (the turn passes, not a miss); a hand in play stands, and its win earns no next hand; Super Chaos plays one hand a round', () => {
+  const st = E.newMatch(lcg(3), { games: ['bj'], mode: 'online', timer: 60 }), p = st.turn, o = p === 'X' ? 'O' : 'X';
+  st.squares[0].mini = inHand(p, ['KS', 'QH'], 'TC', '6D', ['8S']); st.lock = 0;
+  E.playMove(st, 0, 'stand', lcg(1)); E.endFlash(st);
+  assert.equal(st.lock, 0);
+  const r = E.timeoutMove(st, lcg(4));
+  assert.deepEqual([r.ok, r.ended, st.turn, st.lock, st.timer.miss.kind, st.timer.streak[p], st.squares[0].mini.hand], [true, true, o, null, 'ended', 0, null], 'nothing dealt for them');
+  // a hand in play at the timeout: it stands; a win there does not keep the turn
+  const st2 = E.newMatch(lcg(5), { games: ['bj'], mode: 'online', timer: 60 }), q = st2.turn;
+  st2.squares[0].mini = inHand(q, ['KS', 'QH'], 'TC', '6D', ['8S']); st2.lock = 0;
+  const r2 = E.timeoutMove(st2, lcg(6));
+  assert.deepEqual([r2.closed, st2.flash.kind, st2.flash.bj.res, st2.lock], [true, 'move', 'win', null], 'the stand wins, the turn still passes');
+  E.endFlash(st2); assert.equal(st2.turn, q === 'X' ? 'O' : 'X');
+  const R = require('../../src/games/bj/rules.js'), m = inHand('X', ['KS', 'QH'], 'TC', '6D', ['8S']);
+  assert.deepEqual(R.scApply(m, 'X', 'stand', lcg(1)), { ok: true, outcome: 'continue', note: 'win' }, 'Super Chaos: the hand won is the round\'s move (no streak)');
 });

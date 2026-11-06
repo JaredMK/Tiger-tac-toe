@@ -33,13 +33,13 @@ test('craps: about 49% of rounds win (244 in 495) rolled to the end; one tap of 
   assert.deepEqual(m.wins, { X: 0, O: 0 }); assert.equal(m.point, null);
   assert.deepEqual(E.applyMove(m, 'X', 'roll', dice([1, 1])), { ok: true, outcome: 'continue', note: 'lost' }, 'craps on the come-out');
   assert.deepEqual([m.wins.X, m.rounds.X], [0, 1], 'a loss: nothing taken away');
-  assert.equal(E.applyMove(m, 'X', 'roll', dice([3, 4])).note, 'won'); assert.equal(m.wins.X, 1);
+  assert.deepEqual(E.applyMove(m, 'X', 'roll', dice([3, 4])), { ok: true, outcome: 'continue', note: 'won', again: true }, 'a round won: the same player rolls again (a hot streak)'); assert.equal(m.wins.X, 1);
   // a point: the dice keep rolling (no choice to make) until the point or a 7
-  assert.deepEqual(E.applyMove(m, 'O', 'roll', dice([2, 2], [5, 4], [6, 6], [1, 3])), { ok: true, outcome: 'continue', note: 'won' }, 'point 4, 9 and 12 roll on, 4 made');
+  assert.deepEqual(E.applyMove(m, 'O', 'roll', dice([2, 2], [5, 4], [6, 6], [1, 3])), { ok: true, outcome: 'continue', note: 'won', again: true }, 'point 4, 9 and 12 roll on, 4 made');
   assert.deepEqual([m.last.point, m.last.rolls.length, m.point, m.live, m.wins.O], [4, 4, null, null, 1], 'the round over in the one move: nothing left on');
   assert.deepEqual(E.applyMove(m, 'X', 'roll', dice([4, 4], [3, 4])), { ok: true, outcome: 'continue', note: 'lost' }, 'point 8, seven out');
   assert.equal(E.applyMove(m, 'X', 'stop').ok, false, 'no Stop any more');
-  assert.deepEqual(E.applyMove(m, 'O', 'roll', dice([5, 6])), { ok: true, outcome: 'continue', note: 'won' }, 'the come-out again: 11 wins');
+  assert.deepEqual(E.applyMove(m, 'O', 'roll', dice([5, 6])), { ok: true, outcome: 'continue', note: 'won', again: true }, 'the come-out again: 11 wins');
   E.applyMove(m, 'X', 'roll', dice([6, 1]));
   assert.deepEqual(E.applyMove(m, 'X', 'roll', dice([6, 1])), { ok: true, outcome: 'win', note: 'won' }, 'three rounds: the square');
   for (const bad of ['stand', 'stop', 3, null]) assert.equal(E.applyMove(E.newMini('craps', lcg(2)), 'X', bad).ok, false);
@@ -47,14 +47,18 @@ test('craps: about 49% of rounds win (244 in 495) rolled to the end; one tap of 
   const old = E.newMini('craps', lcg(4)); old.point = 6; old.live = null; old.rolls = [[3, 3]];
   assert.equal(E.applyMove(old, 'O', 'roll', dice([2, 3], [3, 3])).note, 'won', 'the point on from before, made');
   assert.deepEqual([old.last.was, old.point], [6, null]);
-  // in a match: one move, the round played back roll by roll; the turn passes
+  // in a match: one move, the round played back roll by roll; a round won keeps the turn, a round lost passes it
   const st = E.newMatch(lcg(3), { games: ['craps'] }), p0 = st.turn;
   E.playMove(st, 0, 'roll', dice([3, 3], [2, 2], [4, 2]));
-  assert.deepEqual([st.flash.kind, st.flash.craps.result, st.flash.craps.point, st.flash.craps.rolls.length], ['move', 'win', 6, 3]);
+  assert.deepEqual([st.flash.kind, st.flash.craps.result, st.flash.craps.point, st.flash.craps.rolls.length], ['again', 'win', 6, 3]);
   const tim = E.crapsTimes(st.flash.craps.rolls, 6, null);
   assert.deepEqual(tim.at, [0, E.CRAPS.roll + E.CRAPS.puck, 2 * E.CRAPS.roll + E.CRAPS.puck], 'each roll in its turn, the puck after the come-out');
   assert.equal(E.playMs(st.flash), tim.end + E.CRAPS.pip, 'the round plays out (a round won: its pip filling in), then the result');
-  E.endFlash(st); assert.equal(st.lock, null); assert.notEqual(st.turn, p0, 'the turn passes');
+  E.endFlash(st); assert.deepEqual([st.lock, st.turn, st.screen, st.zoom], [0, p0, 'mini', 0], 'a round won: the same player rolls a new round');
+  assert.equal(E.playMove(st, 1, 'roll', dice([3, 4])).reason, 'locked', 'held to the square');
+  E.playMove(st, 0, 'roll', dice([1, 1]));
+  assert.deepEqual([st.flash.kind, st.flash.craps.result], ['move', 'lose']);
+  E.endFlash(st); assert.equal(st.lock, null); assert.notEqual(st.turn, p0, 'a round lost: the turn passes');
   assert.equal(E.localBest(E.publicMini(st.squares[0].mini), st.turn, lcg(1)).move, 'roll', 'the computer rolls');
   assert.equal(E.secretOf(st.squares[1].mini), null, 'nothing hidden: the dice are rolled as the move is made');
 });
@@ -90,4 +94,41 @@ test('craps: the Hard computer has no choice to make (Roll rolls the round out):
     assert.ok(performance.now() - t0 < 60);
     assert.deepEqual(h, A.best(pm, 'X', lcg(1), {}, {})); assert.equal(h.move, 'roll');
   }
+});
+
+test('craps: a hot streak: a round won keeps the turn (online too, the match clock held while it plays), a round lost passes it, the square won ends it', () => {
+  const games = Object.fromEntries(E.TYPES.map(g => [g, g === 'craps']));
+  const rec0 = E.newOnlineMatch({ names: { X: 'A', O: 'B' }, games, timer: 'm5+0' }, lcg(3), 'hs');
+  E.armClock(rec0.state, [], 1000);
+  const p = rec0.state.turn, o = p === 'X' ? 'O' : 'X', dl0 = E.clockDeadline(rec0.state.timer);
+  let r = E.applyOnlineMove(rec0, p, 4, 'roll', dice([3, 4]));
+  assert.deepEqual([r.ok, r.entries[0].kind, r.entries[0].by, r.rec.state.turn, r.rec.state.lock], [true, 'again', p, p, 4], 'a round won: the same player again, held to the square');
+  assert.equal(E.holdClock(r.rec.state, r.entries), true);
+  assert.equal(r.rec.state.timer.deadline, dl0 + E.replayMs(r.entries), 'the clock stands still while the round plays out');
+  assert.equal(E.applyOnlineMove(r.rec, o, 4, 'roll', dice([3, 4])).reason, 'turn', 'not the other player\'s turn');
+  assert.equal(E.applyOnlineMove(r.rec, p, 3, 'roll', dice([3, 4])).reason, 'locked', 'only in this square');
+  r = E.applyOnlineMove(r.rec, p, 4, 'roll', dice([2, 2], [2, 2]));
+  assert.deepEqual([r.entries[0].kind, r.rec.state.turn, E.fullState(r.rec).squares[4].mini.wins[p]], ['again', p, 2], 'point 4 made: still going');
+  r = E.applyOnlineMove(r.rec, p, 4, 'roll', dice([5, 6]));
+  assert.deepEqual([r.entries[0].kind, r.rec.state.squares[4].owner, r.rec.state.turn, r.rec.state.lock], ['claim', p, o, null], 'the third round won: the square, and the turn passes');
+  // a round lost passes the turn
+  const st = E.newMatch(lcg(4), { games: ['craps'] }), q = st.turn;
+  E.playMove(st, 0, 'roll', dice([5, 6])); assert.equal(st.flash.kind, 'again'); E.endFlash(st);
+  assert.equal(st.squares[0].mv[q], 1, 'one turn spent there, however long the streak');
+  E.playMove(st, 0, 'roll', dice([4, 4], [3, 4])); assert.deepEqual([st.flash.kind, st.flash.craps.result], ['move', 'lose']);
+  E.endFlash(st); assert.deepEqual([st.lock, st.turn, st.squares[0].mv[q]], [null, q === 'X' ? 'O' : 'X', 1]);
+});
+
+test('craps: a timed-out player owed a new round after a win rolls nothing; the turn passes, not a miss; Super Chaos rolls one round a round', () => {
+  const games = Object.fromEntries(E.TYPES.map(g => [g, g === 'craps']));
+  const rec0 = E.newOnlineMatch({ names: { X: 'A', O: 'B' }, games, timer: 30 }, lcg(5), 'hs2');
+  const p = rec0.state.turn;
+  const r = E.applyOnlineMove(rec0, p, 2, 'roll', dice([6, 1]));
+  assert.equal(r.rec.state.lock, 2);
+  const t = E.applyOnlineTimeout(r.rec, dice([3, 4]));
+  const full = E.fullState(t.rec);
+  assert.deepEqual([t.ok, t.entries, full.turn, full.lock, full.timer.miss.kind, full.timer.streak[p]], [true, [], p === 'X' ? 'O' : 'X', null, 'ended', 0], 'nothing rolled for them');
+  assert.deepEqual([full.squares[2].mini.wins[p], full.squares[2].mini.rounds[p]], [1, 1]);
+  const R = require('../../src/games/craps/rules.js'), m = E.newMini('craps', lcg(1));
+  assert.deepEqual(R.scApply(m, 'X', 'roll', dice([3, 4])), { ok: true, outcome: 'continue', note: 'won' }, 'Super Chaos: a round won is the round\'s move (no streak)');
 });

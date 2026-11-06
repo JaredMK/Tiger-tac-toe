@@ -48,6 +48,7 @@ test('online: the three play through the match record, and a timeout plays out a
       assert.equal(r.ok, true, `${t}: ${JSON.stringify(mv.move)} (${r.reason})`);
       rec = r.rec;
     }
+    if (rec.state.winner) continue;                                  // (played through to the end: a hot streak makes for short matches)
     const to = E.applyOnlineTimeout(rec, lcg(77));
     assert.equal(to.ok, true);
     if (!to.lost) assert.equal(E.fullState(to.rec).lock, null, `${t}: after a timeout the turn has passed`);
