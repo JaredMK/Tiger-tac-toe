@@ -902,7 +902,7 @@ function timerParts(v) {
 }
 function timerName(v) {
   const p = timerParts(v);
-  return p.kind === 'match' ? `Match clock ${p.mins} min${p.inc ? ` + ${p.inc} s` : ''}` : p.kind === 'turn' ? `${p.secs} s a turn` : 'No limit';
+  return p.kind === 'match' ? `Match clock ${p.mins} min${p.inc ? ` + ${p.inc}s/move` : ''}` : p.kind === 'turn' ? `${p.secs}s/turn` : 'No limit';
 }
 function timerCard() {
   const cur = (ctl.timer && /^(t30|t60|m(3|5|10)\+(0|2|5))$/.test(ctl.timer.spec)) ? ctl.timer.spec : TIMER_DEF, p = timerParts(cur);

@@ -1,5 +1,5 @@
 // The main menu.
-import { acct, loggedIn } from '../../net/accounts.js';
+import { acct, loggedIn, pendingMe } from '../../net/accounts.js';
 import { activeElsewhere, findOn, resumable, resumeBusy } from '../../net/matchmaking.js';
 import { privacyUrl } from '../../net/platform.js';
 import { esc, menuNote } from '../app.js';
@@ -33,6 +33,7 @@ function menuTop() {
   const p = acct.profile;
   const chip = loggedIn() ? (RATINGS_ENABLED ? `<button class="btn chip in" data-act="profile" aria-label="Your profile: ${esc(p.username)}, rating ${p.rating}"><span>${esc(p.username)}</span><b>${p.rating}</b></button>`
       : `<button class="btn chip in" data-act="profile" aria-label="Your profile: ${esc(p.username)}"><span>${esc(p.username)}</span></button>`)
+    : pendingMe() ? `<button class="btn chip in" data-act="profile" aria-label="Your profile: ${esc(pendingMe().username)}"><span>${esc(pendingMe().username)}</span></button>`   // (the last account on this phone, while its sign-in comes back: never "…")
     : acct.user && acct.ready ? '<button class="btn chip" data-act="login">Pick a username</button>'
     : acct.user || acctLoading ? '<button class="btn chip" disabled aria-label="Loading your account">…</button>'
     : '<button class="btn chip" data-act="login">Log in</button>';

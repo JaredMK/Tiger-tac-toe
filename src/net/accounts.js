@@ -20,6 +20,29 @@ const ACCT_KEY = KEY + '.acct';
 export function loggedIn() { return !!(acct.user && acct.profile && acct.profile.username); }
 function rememberAccount(on) { try { if (on) localStorage.setItem(ACCT_KEY, '1'); else localStorage.removeItem(ACCT_KEY); } catch (e) { /* no storage */ } }
 export function hadAccount() { try { return localStorage.getItem(ACCT_KEY) === '1'; } catch (e) { return false; } }
+// The last signed-in account on this device (its uid, username and profile, users/{uid}): shown at once on launch (the
+// menu's username, My Stats) while the saved sign-in comes back, then confirmed or refreshed by the account's own
+// profile once it is (onAuthUser); gone with a sign-out, another account or a guest session.
+const ME_KEY = KEY + '.me';
+export function cachedMe() {
+  try {
+    const v = JSON.parse(localStorage.getItem(ME_KEY) || 'null');
+    return v && typeof v.uid === 'string' && v.uid && typeof v.username === 'string' && v.username ? v : null;
+  } catch (e) { return null; }
+}
+export function cacheMe(uid, profile) {
+  try {
+    if (uid && profile && profile.username) localStorage.setItem(ME_KEY, JSON.stringify({ uid, username: String(profile.username), profile }));
+    else localStorage.removeItem(ME_KEY);
+  } catch (e) { /* no storage */ }
+}
+// The cached account while its sign-in is still coming back (none once the account is known: its own profile then).
+export function pendingMe() {
+  const c = cachedMe();
+  if (!c || loggedIn() || !hadAccount()) return null;
+  if (acct.user && (acct.user.uid !== c.uid || acct.ready)) return null;
+  return c;
+}
 // A Google sign-in that left the page (a redirect, when the browser would not open the sign-in window):
 // where the player was heading, kept until the page is back and the sign-in is finished.
 const LOGIN_KEY = KEY + '.login';
@@ -117,11 +140,12 @@ export function onAuthUser(u, again) {
   acctUnsubs = [];
   acct = { user: uid ? { uid, email: u.email || '' } : null, profile: null, active: null, ready: !uid, admin: false };
   rememberAccount(!!uid);
+  const c = cachedMe(); if (c && c.uid !== uid) cacheMe(null);    // a guest or another account now: the cached one goes
   if (uid) { const me = acct; u.getIdTokenResult(true).then(r => { if (acct === me && r && r.claims && r.claims.admin === true) { me.admin = true; render(); } }).catch(() => {}); }   // the admin flag: admin-only games show
   if (uid && !again) track({ ev: 'login' });                     // a login (or a returning one) for the stats
   if (!uid && (state.screen === 'login' || state.screen === 'username')) return;   // a guest session starting: nothing on these screens changes
   if (uid) {
-    acctUnsubs.push(fb.m.onValue(fb.m.ref(fb.db, 'users/' + uid), s => { acct.profile = s.val(); acct.ready = true; afterAccount(); render(); }, () => {}));
+    acctUnsubs.push(fb.m.onValue(fb.m.ref(fb.db, 'users/' + uid), s => { acct.profile = s.val(); acct.ready = true; cacheMe(uid, acct.profile); afterAccount(); render(); }, () => {}));
     acctUnsubs.push(fb.m.onValue(fb.m.ref(fb.db, 'active/' + uid), s => { acct.active = s.val(); onActive(); render(); }, () => {}));
     acctUnsubs.push(fb.m.onValue(fb.m.ref(fb.db, `prefs/${uid}`), s => applyAccountPrefs(s.val()), () => {}));   // the Settings (sound, volume, animation, vibration): the account's, else this device's put on it (ui/settings.js)
   }
@@ -257,7 +281,7 @@ export async function logout() {
   stopSearch();
   if (fb && fb.auth) await fb.authM.signOut(fb.auth).catch(() => {});
   await providerSignOut();
-  rememberAccount(false);
+  rememberAccount(false); cacheMe(null);
   loginFinishing = false; loginPending(null); verifyAsked = false;
   acct = { user: null, profile: null, active: null, ready: true };
   setProf(null); state.screen = 'menu'; commit();

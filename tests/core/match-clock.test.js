@@ -33,9 +33,10 @@ test('match clock: the timer codes, their parts and labels', () => {
   assert.equal(E.timerSpec(30), 't30'); assert.equal(E.timerSpec(0), 'off');
   assert.deepEqual(E.specParts('m5+2'), { kind: 'match', mins: 5, inc: 2 });
   assert.deepEqual(E.specParts('t60'), { kind: 'turn', secs: 60 });
-  assert.equal(E.timerLabel('m10+5'), '10 min each + 5 s a move');
+  assert.equal(E.timerLabel('m10+5'), '10 min each + 5s/move');
   assert.equal(E.timerLabel('m3+0'), '3 min each');
-  assert.equal(E.timerLabel('t30'), '30 s a turn');
+  assert.equal(E.timerLabel('t30'), '30s/turn');
+  assert.equal(E.timerLabel('t60'), '60s/turn');
   assert.equal(E.timerLabel('off'), 'No limit');
   assert.equal(E.setupSpec({ clock: 'm5+2', timer: 30 }), 'm5+2', 'a room\'s clock code wins over its old number');
   assert.equal(E.setupSpec({ timer: 30 }), 't30');

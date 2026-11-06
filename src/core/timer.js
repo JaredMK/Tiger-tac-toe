@@ -34,7 +34,7 @@ export const turnSecsOf = v => { const p = specParts(v); return p.kind === 'turn
 export const timerKind = v => specParts(v).kind;                // 'off' | 'turn' | 'match'
 export function timerLabel(v) {
   const p = specParts(v);
-  return p.kind === 'turn' ? `${p.secs} s a turn` : p.kind === 'match' ? `${p.mins} min each${p.inc ? ` + ${p.inc} s a move` : ''}` : 'No limit';
+  return p.kind === 'turn' ? `${p.secs}s/turn` : p.kind === 'match' ? `${p.mins} min each${p.inc ? ` + ${p.inc}s/move` : ''}` : 'No limit';   // ("30s/turn", "5 min each + 5s/move")
 }
 // Every code there is, in order (the admin's Timer setting and an admin host's lobby offer them all).
 export const TIMER_SPECS = ['off', ...TURN_SECS.map(s => 't' + s), ...CLOCK_MINS.flatMap(m => CLOCK_INCS.map(i => `m${m}+${i}`))];

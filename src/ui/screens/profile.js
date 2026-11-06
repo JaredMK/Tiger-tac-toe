@@ -3,7 +3,7 @@ import { newState } from '../../core/match.js';
 import { upgradeMini } from '../../core/minis.js';
 import { topOpponents } from '../../core/stats.js';
 import { TYPES } from '../../games/index.js';
-import { acct, connectQuiet, delState, needAccount } from '../../net/accounts.js';
+import { acct, connectQuiet, delState, needAccount, pendingMe } from '../../net/accounts.js';
 import { fb } from '../../net/connect.js';
 import { NAV_SCREENS, RNG, commit, esc, state, withView } from '../app.js';
 import { CHEV } from '../art.js';
@@ -43,11 +43,13 @@ export async function openLeaderboard() {
 
 /* ----- profiles and game history ----- */
 export async function openProfile(uid, back) {
+  const early = pendingMe();                                     // the last account on this phone, its sign-in still coming back
+  if (!uid && early) uid = early.uid;
   if (!uid) { if (!(await needAccount('profile'))) return; uid = acct.user.uid; }
   if (prof && prof.uid === uid && prof.user && state.screen === 'profhist') { state.screen = 'profile'; render(); return; }   // back from its game history
   const prev = state.screen === 'profile' && prof && prof.uid !== uid && prof.user ? prof : null;   // a Top opponent's, from a profile: Back returns to that one
-  const own = !!(acct.user && uid === acct.user.uid);
-  prof = { uid, own, user: null, hist: null, local: null, opps: null, prev, view: prof && prof.uid === uid ? prof.view : 'online', back: back || (NAV_SCREENS.includes(state.screen) ? state.screen : state.screen === 'win' ? 'win' : 'menu'), error: null };
+  const own = !!(acct.user ? uid === acct.user.uid : early && uid === early.uid);
+  prof = { uid, own, user: own && early && early.uid === uid ? early.profile : null, hist: null, local: null, opps: null, prev, view: prof && prof.uid === uid ? prof.view : 'online', back: back || (NAV_SCREENS.includes(state.screen) ? state.screen : state.screen === 'win' ? 'win' : 'menu'), error: null };
   state.screen = 'profile'; commit();
   if (!(await connectQuiet())) { prof.error = 'No connection. Check your internet and try again.'; render(); return; }
   try {
@@ -133,7 +135,7 @@ export function renderLeaderboard() {
 // and a way to the game history.
 export function renderProfile() {
   const p = prof || {};
-  const own = acct.user && p.uid === acct.user.uid;
+  const own = acct.user ? p.uid === acct.user.uid : !!p.own;     // (own before the sign-in is back: the cached account's, openProfile)
   const backLabel = p.prev ? 'Back' : p.back === 'win' ? 'Results' : p.back === 'leaderboard' && RATINGS_ENABLED ? 'Leaderboard' : 'Menu';
   const u = p.user;
   let body = '';

@@ -59,7 +59,7 @@ test('lobby: a player host sees No limit and a match clock of 3, 5 or 10 minutes
   assert.deepEqual([...html.matchAll(/data-act="clock" data-v="([^"]+)"/g)].map(m => m[1]), ['off', 'm3+5', 'm5+5', 'm10+5'], 'no per-turn option for players, whatever the admin set');
   assert.match(html, /aria-pressed="true">5</);
   assert.match(html, /<span>Minutes<button class="qbtn sm" data-act="explain" data-t="timer"/, 'the "?" beside the minutes');
-  assert.doesNotMatch(html, /Per turn|30 s/);
+  assert.doesNotMatch(html, /Per turn|30 ?s/);
   acct.admin = true; state.setup.clock = 'm10+5';
   html = renderSetup();
   const vs = [...html.matchAll(/data-act="clock" data-v="([^"]+)"/g)].map(m => m[1]);
@@ -67,6 +67,7 @@ test('lobby: a player host sees No limit and a match clock of 3, 5 or 10 minutes
   assert.deepEqual(vs.slice(3), ['m3+5', 'm5+5', 'm10+5', 'm10+0', 'm10+2', 'm10+5'], 'its minutes and increments');
   state.setup.clock = 't60';
   assert.deepEqual([...renderSetup().matchAll(/data-act="clock" data-v="([^"]+)"/g)].map(m => m[1]), ['off', 'm5+5', 't60', 't30', 't60'], 'per turn: 30 or 60 seconds');
+  assert.match(renderSetup(), />30s\/turn</, 'labelled 30s/turn'); assert.match(renderSetup(), />60s\/turn</);
   acct.admin = false; setTimerDefault('m5+5');
 });
 test('the timer "?": minutes for the whole game, +5 s a move, run out and you lose', async () => {

@@ -37,8 +37,8 @@ function timerRows(cur) {
   // The admin (testing): a time per turn too, and the match clock's other increments.
   const t = p.kind === 'turn' ? p.secs : 30;
   return row('Timer', seg('off', 'No limit', p.kind === 'off') + seg(`m${m.mins}+${m.inc}`, 'Match clock', p.kind === 'match') + seg('t' + t, 'Per turn', p.kind === 'turn'))
-    + (p.kind === 'turn' ? row('Per turn', TURN_SECS.map(v => seg('t' + v, `${v} s`, t === v)).join('')) : '')
-    + (p.kind === 'match' ? row('Minutes', CLOCK_MINS.map(v => seg(`m${v}+${m.inc}`, `${v} min`, m.mins === v)).join(''), true) + row('Per move', CLOCK_INCS.map(v => seg(`m${m.mins}+${v}`, `+${v} s`, m.inc === v)).join('')) : '');
+    + (p.kind === 'turn' ? row('Per turn', TURN_SECS.map(v => seg('t' + v, `${v}s/turn`, t === v)).join('')) : '')
+    + (p.kind === 'match' ? row('Minutes', CLOCK_MINS.map(v => seg(`m${v}+${m.inc}`, `${v} min`, m.mins === v)).join(''), true) + row('Per move', CLOCK_INCS.map(v => seg(`m${m.mins}+${v}`, `+${v}s/move`, m.inc === v)).join('')) : '');
 }
 export function renderSetup() {
   const s = state.setup;
