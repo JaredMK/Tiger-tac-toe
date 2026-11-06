@@ -20,6 +20,7 @@ const TUNE_SETS = [
 // Database values set by a request, each once (its mark in meta/config): the value, or a function giving it at that moment.
 const CONFIG_SETS = [
   { id: 'verify1', path: 'config/verify/since', value: () => Date.now() },   // email verification's cutoff: accounts made before this deploy are grandfathered (production: the release that brings verification in)
+  { id: 'wheels2', path: 'config/wheels', value: { target: 30, lowSkulls: 2, midSkulls: 4, highSkulls: 5, lowLo: 1, lowHi: 4, midLo: 4, midHi: 7, highLo: 6, tensMin: 1, tensMax: 1, gap: 0.4, evSpread: 10 } },   // Risky Spins balanced (November 2026): the whole of config/wheels set to the new defaults (meta.js WHEEL_DEFAULTS), the three wheels' turns within 10%; squares dealt before keep their wheels
 ];
 (async () => {
   admin.initializeApp({ projectId: PROJECT, databaseURL: `https://${PROJECT}-default-rtdb.firebaseio.com` });

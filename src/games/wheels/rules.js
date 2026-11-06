@@ -11,7 +11,9 @@ import { WHEEL_DEFAULTS } from './meta.js';
 //   low:  the fewest skulls; values lowLo-lowHi, at least two different; the lowest average;
 //   mid:  more skulls; values midLo-midHi (never a 10), its top above low's; its average between;
 //   high: the most skulls; values highLo-10, with one or more 10s (tensMin-tensMax: the only wheel with a 10);
-// the three averages (of the values, skulls aside) at least `gap` apart. A turn: pick any wheel and spin (the server
+// the three averages (of the values, skulls aside) at least `gap` apart; and the three worth about the same: each
+// wheel's best turn on it alone (spun until the pot reaches its bank-at score, wheelTurn) banks within `evSpread`
+// percent of the others on average (wheelsSpread), so the choice is the risk, never one better wheel. A turn: pick any wheel and spin (the server
 // spins online); its points go into the turn's pot (+N), and the same player chooses again: spin (any wheel) or
 // Bank. A skull loses the pot and ends the turn; Bank adds the pot to the score and ends it. Once the pot would
 // reach the target only Bank is left. The target, the skulls and the ranges are the admin's (config/wheels), copied
@@ -20,8 +22,8 @@ import { WHEEL_DEFAULTS } from './meta.js';
 export const WHEELS = ['high', 'mid', 'low'];
 export const WHEEL_SEGS = 10;
 export const SKULL = -1;
-export const WHEEL_LIMITS = { target: [10, 100], lowSkulls: [0, 4], midSkulls: [1, 6], highSkulls: [1, 7], lowLo: [1, 3], lowHi: [2, 6], midLo: [1, 5], midHi: [3, 9], highLo: [1, 8], tensMin: [1, 3], tensMax: [1, 3], gap: [0, 2] };
-export const WHEELT = { spin: 1900, hold: 300 };                            // the spin, then the result held
+export const WHEEL_LIMITS = { target: [10, 100], lowSkulls: [0, 4], midSkulls: [1, 6], highSkulls: [1, 7], lowLo: [1, 3], lowHi: [2, 6], midLo: [1, 5], midHi: [3, 9], highLo: [1, 8], tensMin: [1, 3], tensMax: [1, 3], gap: [0, 2], evSpread: [1, 100] };
+export const WHEELT = { spin: 1900, hold: 300, bank: 250, fill: 500, settle: 250, won: 600 };   // the spin, then the result held; a bank: the pot lands on the tally (bank), its gauge and score fill to the new total (fill), then a moment (settle); a square won: the win shows only after that (won)
 export const WHEEL_CFG = { cfg: null };
 export function wheelsNorm(raw) {
   const out = {};
@@ -44,6 +46,23 @@ const values = v => v.filter(x => x !== SKULL);
 export const wheelAvg = v => { const x = values(v); return x.length ? x.reduce((t, y) => t + y, 0) / x.length : 0; };
 export const skullsOf = v => v.filter(x => x === SKULL).length;
 export const pushYourLuck = mini => !!(mini && mini.v === 2);                // (a square dealt before the skulls: the old rule)
+// One wheel alone, a turn from no pot: spun until the pot reaches K, then banked. The best K is the first pot the
+// next spin would risk more than it adds (skull chance x pot >= the spin's average gain: K = the values' sum over
+// the skulls; no skulls, the target), never past the target (`cap`). Its expected bank E, its average gain a spin
+// (gain, a skull as 0) and its skull chance (r).
+export function wheelTurn(v, cap) {
+  const vals = values(v), n = v.length, k = n - vals.length, sum = vals.reduce((t, x) => t + x, 0);
+  cap = Math.max(1, cap || WHEEL_DEFAULTS.target);
+  const K = k ? Math.max(1, Math.min(cap, Math.ceil(sum / k - 1e-9))) : cap, g = new Float64Array(K + 11);
+  for (let P = K + 10; P >= 0; P--) {
+    if (P >= K) { g[P] = P; continue; }
+    let s = 0; for (const x of vals) s += g[Math.min(K + 10, P + x)];
+    g[P] = s / n;
+  }
+  return { K, E: g[0], gain: sum / n, r: k / n };
+}
+// The wheels' best turns against each other: the most over the least, less one (0.1: within 10%).
+export function wheelsSpread(w, cap) { const e = ['high', 'mid', 'low'].map(x => wheelTurn(w[x], cap).E), lo = Math.min(...e); return lo > 0 ? Math.max(...e) / lo - 1 : Infinity; }
 // Every rule a wheel set must keep (for the generator, and the tests): the reasons it fails, none if it holds.
 export function wheelsCheck(w, g) {
   g = g || WHEEL_DEFAULTS;
@@ -59,23 +78,31 @@ export function wheelsCheck(w, g) {
   if (Math.max(...values(mid)) <= Math.max(...values(low))) bad.push('mid: its top not above low\'s');
   const h = wheelAvg(high), m = wheelAvg(mid), l = wheelAvg(low);
   if (!(m - l >= g.gap - 1e-9 && h - m >= g.gap - 1e-9)) bad.push('the averages: low < mid < high, ' + g.gap + ' apart');
+  if (g.evSpread != null && wheelsSpread(w, g.target) > g.evSpread / 100 + 1e-9) bad.push('the turns: within ' + g.evSpread + '% of each other');
   return bad;
 }
-// A square's wheels, drawn until every rule holds (a known-good set if the admin's ranges allow none).
+// A square's wheels, drawn until every rule holds; if the admin's ranges never bring the turns within evSpread,
+// the closest set that keeps the other rules; a known-good set if they allow none at all.
 export function wheelsDeal(rng, g) {
   g = g || wheelsConfig();
   const pick = (lo, hi) => lo + randInt(rng, hi - lo + 1);
   const wheel = (skulls, vals) => { const out = new Array(WHEEL_SEGS).fill(SKULL), slots = shuffle(Array.from({ length: WHEEL_SEGS }, (_, k) => k), rng); vals.slice(0, WHEEL_SEGS - skulls).forEach((v, k) => { out[slots[k]] = v; }); return out; };
+  const loose = Object.assign({}, g, { evSpread: null });
+  let near = null, nearSp = Infinity;
   for (let tries = 0; tries < 4000; tries++) {
     const low = wheel(g.lowSkulls, Array.from({ length: WHEEL_SEGS }, () => pick(g.lowLo, g.lowHi)));
     const mid = wheel(g.midSkulls, Array.from({ length: WHEEL_SEGS }, () => pick(g.midLo, g.midHi)));
     const tens = pick(g.tensMin, g.tensMax), n = WHEEL_SEGS - g.highSkulls;
     const high = wheel(g.highSkulls, Array(Math.min(tens, n)).fill(10).concat(Array.from({ length: Math.max(0, n - tens) }, () => pick(g.highLo, 9))));
     const w = { high, mid, low };
-    if (!wheelsCheck(w, g).length) return w;
+    if (wheelsCheck(w, loose).length) continue;
+    const sp = wheelsSpread(w, g.target);
+    if (g.evSpread == null || sp <= g.evSpread / 100 + 1e-9) return w;
+    if (sp < nearSp) { near = w; nearSp = sp; }
   }
+  if (near) return near;
   const S = SKULL;   // (the admin's ranges allow no set: this one keeps the default rules)
-  return { high: [10, S, 6, S, 8, S, 5, S, S, 9], mid: [4, S, 5, 3, S, 6, S, S, 5, 3], low: [2, 3, 1, S, 2, 4, S, 2, 1, 3] };
+  return { high: [10, S, 7, S, 8, S, 9, S, S, 6], mid: [5, S, 6, 4, S, 7, S, S, 5, 6], low: [2, 3, 1, S, 2, 4, S, 2, 3, 2] };
 }
 // The spin: a segment at random (all ten the same size), its points (or a skull), and where in it the pointer stops
 // (0-1 round the wheel from the top of segment 0, well inside the segment), so both phones show the same landing.
@@ -127,9 +154,11 @@ export function moveFlash(m, p, range, bjFrom, mini, flash) {
   flash.wheel = { kind: l.kind, w: l.w, v: l.v, from: l.from || 0, pot: l.pot || 0, pts: { X: mini.pts.X, O: mini.pts.O }, target: mini.target, py: pushYourLuck(mini) };
   if (l.kind !== 'bank') Object.assign(flash.wheel, { seg: l.seg, at: l.at });   // (a bank spins nothing)
 }
+// The move's animation, all of it (the result line, "Won by" included, comes after: ui/mini.js flashLine at animMs).
+// A bank: the gauge fills to the new total, then (a square won) the win: never cut short, never before the total.
 export function flashMs(f, winLen, won) {
-  if (f.wheel && f.wheel.kind === 'bank') return 1000 + (won ? 600 : 0);
-  return WHEELT.spin + WHEELT.hold + (f.wheel && f.wheel.kind === 'bust' ? 500 : 0) + (won ? 600 : 0);
+  if (f.wheel && f.wheel.kind === 'bank') return WHEELT.bank + WHEELT.fill + WHEELT.settle + (won ? WHEELT.won : 0);
+  return WHEELT.spin + WHEELT.hold + (f.wheel && f.wheel.kind === 'bust' ? 500 : 0) + (won ? WHEELT.won : 0);   // (a square from before the skulls: a spin's points onto the tally as it stops, filled by spin + fill)
 }
 // Super Chaos: each wheel spun this round comes to rest where it stopped.
 export function scMerge(m, c) {

@@ -9,7 +9,7 @@ const S = E.SKULL;
 
 /* ===================================== Risky Spins ===================================== */
 test('wheels: push your luck: a spin\'s points go into the pot and the turn goes on; Bank adds the pot; a skull loses it; first to 30', () => {
-  assert.deepEqual(E.WHEEL_DEFAULTS, { target: 30, lowSkulls: 2, midSkulls: 4, highSkulls: 5, lowLo: 1, lowHi: 4, midLo: 2, midHi: 7, highLo: 3, tensMin: 1, tensMax: 1, gap: 0.4 });
+  assert.deepEqual(E.WHEEL_DEFAULTS, { target: 30, lowSkulls: 2, midSkulls: 4, highSkulls: 5, lowLo: 1, lowHi: 4, midLo: 4, midHi: 7, highLo: 6, tensMin: 1, tensMax: 1, gap: 0.4, evSpread: 10 });
   const rng = E.makeRng('wh-rules'), m = E.newMini('wheels', rng);
   assert.equal(m.target, 30); assert.equal(m.v, 2); assert.deepEqual(m.pts, { X: 0, O: 0 }); assert.equal(m.turn, null);
   for (const w of E.WHEELS) assert.equal(m.wheels[w].length, 10);
@@ -51,8 +51,13 @@ test('wheels: the admin\'s settings (config/wheels) are dealt into the square; a
   const m2 = E.newMini('wheels', rng);
   assert.equal(m2.target, 40); assert.ok(m2.wheels.low.every(v => v === S || v <= 3), 'the admin\'s range for the low wheel');
   assert.equal(E.skullsOf(m2.wheels.low), 2); assert.equal(E.skullsOf(m2.wheels.high), 5);
-  assert.deepEqual(E.wheelsCheck(m2.wheels, E.wheelsConfig()), []);
+  assert.deepEqual(E.wheelsCheck(m2.wheels, Object.assign(E.wheelsConfig(), { evSpread: null })), [], 'every rule but the turns\' spread (these ranges may never allow 10%: the closest set)');
   assert.equal(E.wheelsConfig().midHi, 7, 'off its range: the default');
+  assert.equal(E.wheelsConfig().evSpread, 10, 'none set: the default spread');
+  E.setWheelsConfig(Object.assign({}, E.WHEEL_DEFAULTS, { evSpread: 4 }));   // the admin's spread: dealt within it
+  for (let k = 0; k < 40; k++) { const m = E.newMini('wheels', rng); assert.ok(E.wheelsSpread(m.wheels, 30) <= 0.04 + 1e-9, `spread ${E.wheelsSpread(m.wheels, 30)}`); }
+  E.setWheelsConfig(Object.assign({}, E.WHEEL_DEFAULTS, { lowSkulls: 0, midSkulls: 1, highSkulls: 7, lowLo: 3, lowHi: 6, midLo: 1, midHi: 7, highLo: 1, evSpread: 1 }));   // ranges that never allow it: the closest set, the other rules kept
+  { const g = E.wheelsConfig(), w = E.newMini('wheels', rng).wheels; assert.deepEqual(E.wheelsCheck(w, Object.assign({}, g, { evSpread: null })), []); assert.ok(E.wheelsSpread(w, 30) > 0.01); }
   E.setWheelsConfig({ target: 18, tensMin: 1, tensMax: 2, smallMax: 2 });   // (the old game's settings)
   assert.equal(E.newMini('wheels', rng).target, 30);
   E.setWheelsConfig(null);
@@ -75,11 +80,12 @@ test('wheels: 1,000 dealt sets keep every rule; the spins land evenly; a timeout
     assert.deepEqual([E.skullsOf(w.low), E.skullsOf(w.mid), E.skullsOf(w.high)], [2, 4, 5], 'the skulls: the riskier, the more');
     assert.equal(w.high.filter(v => v === 10).length, 1, 'high: one 10');
     assert.ok(!w.mid.includes(10) && !w.low.includes(10), 'only the high wheel has a 10');
-    assert.ok(w.low.every(v => v === S || (v >= 1 && v <= 4)) && w.mid.every(v => v === S || (v >= 2 && v <= 7)) && w.high.every(v => v === S || v >= 3));
+    assert.ok(w.low.every(v => v === S || (v >= 1 && v <= 4)) && w.mid.every(v => v === S || (v >= 4 && v <= 7)) && w.high.every(v => v === S || v >= 6));
     assert.ok(l < md && md < h && md - l >= 0.4 - 1e-9 && h - md >= 0.4 - 1e-9, 'the averages rise with the risk, 0.4 apart');
     avg.high += h / 1000; avg.mid += md / 1000; avg.low += l / 1000;
   }
   console.log(`Risky Spins: 1,000 sets, all rules kept; average values: high ${avg.high.toFixed(2)}, medium ${avg.mid.toFixed(2)}, low ${avg.low.toFixed(2)}`);
+  assert.deepEqual(E.wheelsCheck({ high: [10, S, 7, S, 8, S, 9, S, S, 6], mid: [5, S, 6, 4, S, 7, S, S, 5, 6], low: [2, 3, 1, S, 2, 4, S, 2, 3, 2] }), [], 'the known-good set (when the admin\'s ranges allow none) keeps the default rules');
   const rng = E.makeRng('wh-odds'), vals = [S, 1, 2, 3, 4, 5, 6, 7, 8, 10], hit = new Array(10).fill(0), N = 30000;
   for (let k = 0; k < N; k++) { const s = E.wheelSpin(vals, rng); hit[s.seg]++; assert.equal(s.v, vals[s.seg]); }
   hit.forEach((h, k) => assert.ok(Math.abs(h / N - 0.1) < 0.008, `segment ${k}: ${(100 * h / N).toFixed(1)}%`));
@@ -91,7 +97,7 @@ test('wheels: 1,000 dealt sets keep every rule; the spins land evenly; a timeout
 });
 
 test('wheels: the computer banks by its pot, the wheel\'s risk and the score gap; enough to win, it banks', () => {
-  const wheels = { high: [S, 7, 9, S, S, 3, 10, S, 6, S], mid: [2, 5, S, 5, 3, S, 6, S, S, 7], low: [4, 1, 1, 2, S, 3, S, 1, 2, 2] };
+  const wheels = { high: [S, 9, 6, 8, 10, S, S, S, 8, S], mid: [7, S, S, 4, 6, 7, 5, 4, S, S], low: [4, 3, S, 1, 2, 2, 4, 3, S, 1] };
   assert.deepEqual(E.wheelsCheck(wheels), []);
   const rng = E.makeRng('wh-ai'), mk = (a, b, pot) => ({ type: 'wheels', v: 2, target: 30, wheels, pts: { X: a, O: b }, spins: { X: 0, O: 0 }, turn: pot ? { by: 'X', pot, n: 1 } : null });
   const pick = (a, b, pot, level) => A.best(mk(a, b, pot), 'X', rng, {}, { level: level || 'normal', until: null }).move;
@@ -144,4 +150,41 @@ test('wheels: whole squares, computer against computer: Normal and Hard both fin
   for (let s = 0; s < 300; s++) { if (play(s, 'normal', 'normal') === 'X') x++; if (play('h' + s, 'hard', 'normal') === 'X') h++; if (play('n' + s, 'normal', 'hard') === 'O') h++; }
   assert.ok(x / 300 < 0.62, `the first mover with Normal: ${(100 * x / 300).toFixed(1)}%`);
   assert.ok(h / 600 > 0.6, `Hard against Normal: ${(100 * h / 600).toFixed(1)}%`);
+});
+
+// The balance (November 2026): each wheel alone, its best turn (spun until the next spin risks more than it adds, then
+// banked) banks about the same, so the choice is the risk style, never one better wheel; the risk still rises with the values.
+test('wheels: the three wheels are worth the same a turn (within 10%) on every dealt square, the riskier with the bigger values', () => {
+  const T = 30, N = 2000, sum = { high: 0, mid: 0, low: 0 }, K = { high: 0, mid: 0, low: 0 };
+  let worst = 0;
+  for (let k = 0; k < N; k++) {
+    const w = E.wheelsDeal(E.makeRng('bal' + k), E.WHEEL_DEFAULTS), t = {};
+    for (const x of E.WHEELS) {
+      t[x] = E.wheelTurn(w[x], T);
+      // its bank-at pot is the best one: no other K banks more on average (checked by brute force on a sample)
+      if (k < 100) for (let k2 = 1; k2 <= T; k2++) assert.ok(turnAt(w[x], k2) <= t[x].E + 1e-9, `set ${k} ${x}: K ${k2} beats ${t[x].K}`);
+      sum[x] += t[x].E / N; K[x] += t[x].K / N;
+    }
+    const sp = E.wheelsSpread(w, T); worst = Math.max(worst, sp);
+    assert.ok(sp <= 0.1 + 1e-9, `set ${k}: the turns ${E.WHEELS.map(x => t[x].E.toFixed(2)).join(' / ')}`);
+    assert.ok(t.low.r < t.mid.r && t.mid.r < t.high.r, 'the riskier wheel, the more skulls');
+    assert.ok(E.wheelAvg(w.low) < E.wheelAvg(w.mid) && E.wheelAvg(w.mid) < E.wheelAvg(w.high), 'and the bigger values');
+    assert.ok(Math.max(...w.low) < Math.max(...w.mid) && Math.max(...w.mid) < 10 && w.high.includes(10), 'only the high wheel has a 10');
+  }
+  const m = Object.values(sum);
+  assert.ok(Math.max(...m) / Math.min(...m) - 1 < 0.05, `on average within 5%: ${E.WHEELS.map(x => x + ' ' + sum[x].toFixed(2)).join(', ')}`);
+  for (const x of E.WHEELS) assert.ok(sum[x] > 3.6 && sum[x] < 4.6, `${x}: about 4 points a turn (${sum[x].toFixed(2)})`);
+  console.log(`Risky Spins: ${N} sets, the best turn alone: ${E.WHEELS.map(x => `${x} ${sum[x].toFixed(2)} (bank at ${K[x].toFixed(1)})`).join(', ')}; the widest spread ${(100 * worst).toFixed(1)}%`);
+});
+function turnAt(v, K) {   // a turn on one wheel, banking once the pot reaches K: its expected bank (brute force)
+  const vals = v.filter(x => x !== S), g = new Float64Array(K + 11);
+  for (let P = K + 10; P >= 0; P--) { if (P >= K) { g[P] = P; continue; } let s = 0; for (const x of vals) s += g[Math.min(K + 10, P + x)]; g[P] = s / v.length; }
+  return g[0];
+}
+
+test('wheels: the deploy sets the live config/wheels to these defaults once (scripts/set-releases.js)', () => {
+  const src = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', '..', 'scripts', 'set-releases.js'), 'utf8');
+  const m = src.match(/\{ id: 'wheels2', path: 'config\/wheels', value: (\{[^}]*\}) \}/);
+  assert.ok(m, 'the set wheels2');
+  assert.deepEqual(new Function(`return (${m[1]});`)(), E.WHEEL_DEFAULTS);
 });

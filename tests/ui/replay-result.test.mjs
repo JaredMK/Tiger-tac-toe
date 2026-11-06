@@ -65,7 +65,7 @@ test('Roulette, Risky Spins, Craps: what they show comes from the opponent\'s re
   const r0 = E.newMini('rl', E.makeRng('rl')), rx = play(r0, 'X', 'g2', at(13)), ro = play(rx.mini, 'O', 'zero', at(5));
   const rh = replay('rl', rx.mini, ro.flash);
   assert.match(rh, /Olaf<\/b>: green 0/); assert.doesNotMatch(rh, /Xena<\/b>:/); assert.match(rh, /<span>Miss<\/span>/, 'the result in a word');
-  const w0 = E.newMini('wheels', E.makeRng('wh')), wx = play(w0, 'X', 'high', E.makeRng('a')), wo = play(wx.mini, 'O', 'low', E.makeRng('b'));
+  const w0 = E.newMini('wheels', E.makeRng('wh')), wx = play(w0, 'X', 'high', E.makeRng('a2')), wo = play(wx.mini, 'O', 'low', E.makeRng('b'));
   const wh = replay('wheels', wx.mini, wo.flash);
   assert.equal(wo.flash.wheel.w, 'low');
   assert.match(wh, /class="rwheel low spun"/, 'the wheel the opponent spun'); assert.doesNotMatch(wh, /class="rwheel high spun"/, 'not the viewer\'s');

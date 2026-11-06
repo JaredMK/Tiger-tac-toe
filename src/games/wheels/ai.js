@@ -2,7 +2,7 @@
 import { randInt } from '../../core/random.js';
 import { tune } from '../../core/tune.js';
 import { other } from '../../core/util.js';
-import { WHEELS, SKULL, pushYourLuck } from './rules.js';
+import { WHEELS, SKULL, pushYourLuck, wheelTurn } from './rules.js';
 
 // Each wheel's numbers: its skull chance (r), its average (of the values), its values' chances. Per square (its
 // wheels and target), kept a while.
@@ -17,24 +17,17 @@ function facts(pm) {
     const v = pm.wheels[w], vals = v.filter(x => x !== SKULL), r = (v.length - vals.length) / v.length;
     f.w[w] = { r, avg: vals.length ? vals.reduce((t, x) => t + x, 0) / vals.length : 0, vals, n: v.length, gain: vals.reduce((t, x) => t + x, 0) / v.length };
   }
-  // The turn that banks the most on average: one wheel, spun until the pot reaches K (its expected bank, E).
-  let best = { w: 'low', K: 1, E: 0 };
-  for (const w of WHEELS) for (let K = 1; K <= Math.min(f.T, 40); K++) {
-    const E = turnBank(f.w[w], K);
+  // The turn that banks the most on average: one wheel, spun until the pot reaches its K (its expected bank, E:
+  // rules.js wheelTurn); and the pot Normal banks at, level: the first no wheel's spin adds more to than it risks.
+  let best = { w: 'low', K: 1, E: 0 }, bankAt = 1;
+  for (const w of WHEELS) {
+    const { K, E } = wheelTurn(pm.wheels[w], f.T);
     if (E > best.E) best = { w, K, E };
+    bankAt = Math.max(bankAt, K);
   }
-  f.best = best;
+  f.best = best; f.bankAt = bankAt;
   MEMO.set(key, f);
   return f;
-}
-function turnBank(x, K) {                                     // a turn on wheel x, banking once the pot reaches K: its expected bank
-  const g = new Float64Array(K + 11);
-  for (let P = K + 10; P >= 0; P--) {
-    if (P >= K) { g[P] = P; continue; }
-    let s = 0; for (const v of x.vals) s += g[Math.min(K + 10, P + v)];
-    g[P] = s / x.n;
-  }
-  return g[0];
 }
 // The moves (turns) a side still needs: the points still needed against what a good turn banks; in its own turn
 // under way, the pot counts.
@@ -59,10 +52,10 @@ export function best(pm, me, rng, style, ctx) {
     return { move: w, q: reach(pm, w, need) };
   }
   if (ctx && ctx.level === 'hard') { const h = hard(pm, me, f, style, ctx.until); if (h) return h; }
-  // Normal: bank once the pot reaches the bank-at score (the best turn's, more when behind, less when ahead; a
+  // Normal: bank once the pot reaches the bank-at score (level, the first pot no wheel's spin is worth; more when behind, less when ahead; a
   // bolder style or the admin's setting shifts it); else the wheel whose spin adds the most to the pot on average,
   // the pot it risks counted against it (a riskier wheel is worth it only on a small pot).
-  const gap = b - a, base = f.best.K;
+  const gap = b - a, base = f.bankAt;
   const K = Math.max(2, Math.min(base + 10, base + Math.round(gap / 4) + ((style && style.rollRisk) || 0)));
   if (t && pot >= Math.min(K, need)) return { move: 'bank', q: 0 };
   let w = null, g = -Infinity;

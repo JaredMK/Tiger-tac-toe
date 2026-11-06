@@ -14,5 +14,7 @@ export const TUNE = [
   { k: 'miss', label: 'Computer mistake rate (%)', def: 0, min: 0, max: 100, step: 5, group: 'Computer' },
 ];
 // The target, each wheel's skulls (of 10 segments) and its values (the admin's config/wheels): low 1-4 with 2 skulls,
-// medium 2-7 with 4, high 3-10 with 5 and the only 10 (one of them); the averages at least 0.4 apart.
-export const WHEEL_DEFAULTS = { target: 30, lowSkulls: 2, midSkulls: 4, highSkulls: 5, lowLo: 1, lowHi: 4, midLo: 2, midHi: 7, highLo: 3, tensMin: 1, tensMax: 1, gap: 0.4 };
+// medium 4-7 with 4, high 6-10 with 5 and the only 10 (one of them); the averages at least 0.4 apart; each wheel's
+// best turn alone within 10% of the others (evSpread: about 4.1 points a turn each). (Before November 2026: medium
+// 2-7, high 3-10 and no evSpread, which made the low wheel the best, 4.2 a turn, against medium's 3.3 and high's 3.7.)
+export const WHEEL_DEFAULTS = { target: 30, lowSkulls: 2, midSkulls: 4, highSkulls: 5, lowLo: 1, lowHi: 4, midLo: 4, midHi: 7, highLo: 6, tensMin: 1, tensMax: 1, gap: 0.4, evSpread: 10 };

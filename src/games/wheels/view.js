@@ -47,9 +47,9 @@ function wheelTable(mini, a, o) {
   const s = a && a.wheel ? a.wheel : null, l = mini.last, turn = o.turn, wh = mini.wheels, T = mini.target, rest = mini.rest || {}, py = pushYourLuck(mini);
   const kind = s ? s.kind : null, by = a ? a.by : null, landed = WHEELT.spin;
   const pct = v => (100 * Math.min(1, v / T)).toFixed(1) + '%';
-  const tal = p => {                                          // the bar and the points; they grow as the points land (a spin's stop, or a bank)
-    const now = mini.pts[p], add = s && by === p ? (kind === 'bank' ? s.pot : !py && s.v > 0 ? s.v : 0) : 0, was = now - add, at = kind === 'bank' ? 250 : landed;
-    return arcTally(p, o, `<span class="wtal"><span class="wbar" aria-hidden="true"><i${add ? ' class="grow"' : ''} style="--w0:${pct(was)};--w1:${pct(now)};--t:${at}ms"></i></span><small aria-label="${now} of ${T}">${add ? `<i class="pins" style="--t:${at}ms"><b class="was">${was}</b><b class="now">${now}</b></i>` : now}/${T}</small></span>`);
+  const tal = p => {                                          // the gauge and the points; both fill to the new total together as the points land (a spin's stop, or a bank), timed from the move (a winning bank's "Won by" waits for it: rules.js flashMs)
+    const now = mini.pts[p], add = s && by === p ? (kind === 'bank' ? s.pot : !py && s.v > 0 ? s.v : 0) : 0, was = now - add, at = kind === 'bank' ? WHEELT.bank : landed;
+    return arcTally(p, o, `<span class="wtal"><span class="wbar" aria-hidden="true"><i${add ? ' class="grow"' : ''} style="--w0:${pct(was)};--w1:${pct(now)};--t:${at}ms;--d:${WHEELT.fill}ms"></i></span><small aria-label="${now} of ${T}">${add ? `<b class="cnt" data-from="${was}" data-delay="${at}" data-ms="${WHEELT.fill}">${now}</b>` : now}/${T}</small></span>`);
   };
   // The turn's pot: the spinner's +N (before this spin's points have landed, the old one; a skull strikes it out; a bank sends it over).
   const t = mini.turn, potBy = s && by ? by : t ? t.by : null;

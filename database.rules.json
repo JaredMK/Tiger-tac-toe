@@ -469,6 +469,9 @@
         "gap": {
           ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 2"
         },
+        "evSpread": {
+          ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 100"
+        },
         "$other": {
           ".validate": false
         }

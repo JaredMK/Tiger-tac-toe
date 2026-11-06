@@ -2047,7 +2047,7 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .wbar { position: relative; flex: none; width: clamp(24px, 10vw, 70px); height: 12px; border: 2.5px solid var(--ink); border-radius: 8px; background: var(--paper); overflow: hidden; }
 .wbar i { position: absolute; left: 0; top: 0; bottom: 0; width: var(--w1, 0%); }
 .ctal.X .wbar i { background: var(--x); } .ctal.O .wbar i { background: var(--o); }
-.wbar i.grow { animation: wgrow .5s var(--t, 0ms) cubic-bezier(.2, .7, .3, 1) both; }
+.wbar i.grow { animation: wgrow var(--d, .5s) var(--t, 0ms) cubic-bezier(.5, 1, .89, 1) both; }   /* Risky Spins' gauge: from the old total to the new, eased as its number counts (ui/fx.js countTo, an ease-out), together */
 @keyframes wgrow { from { width: var(--w0, 0%); } to { width: var(--w1, 0%); } }
 /* Sniff: the field and the dog; a move's step drawn as a thin line in the walker's colour while it plays (Super Chaos: each dog's whole path) */
 .sniff { flex: 1; display: flex; flex-direction: column; gap: 8px; justify-content: center; min-height: 0; }
