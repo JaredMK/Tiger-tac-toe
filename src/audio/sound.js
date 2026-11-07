@@ -174,6 +174,13 @@ def('flipper', 0.08, (c, d, t) => { sfxNoise(c, d, t, .03, { f: 2600, q: 3, vol:
 def('plunger', 0.3, (c, d, t) => { sfxNoise(c, d, t, .22, { f: 600, to: 2600, q: 1.5, vol: .4 }); sfxTone(c, d, t, 180, .2, { to: 520, vol: .35, type: 'triangle' }); }, { level: .5 });   // Pinball: the launch
 def('bumper', 0.12, (c, d, t) => { sfxTone(c, d, t, 1100, .07, { to: 700, vol: .4, type: 'square', att: .002 }); sfxTone(c, d, t, 1650, .05, { vol: .15 }); }, { level: .45, vary: true });   // Pinball: a pop bumper
 def('ballDrop', 0.3, (c, d, t) => { sfxTone(c, d, t, 1900, .05, { vol: .45, type: 'triangle' }); sfxTone(c, d, t + .1, 1650, .05, { vol: .3, type: 'triangle' }); sfxNoise(c, d, t + .18, .07, { f: 2600, q: 1.5, vol: .35 }); }, { level: .5 });
+// ---- Apple Pick
+def('appleDrop', 0.18, (c, d, t) => { sfxTone(c, d, t, 420, .14, { to: 240, vol: .45, type: 'sine', att: .004 }); sfxTone(c, d, t, 840, .05, { vol: .12, type: 'triangle', att: .002 }); sfxNoise(c, d, t, .04, { f: 700, filter: 'lowpass', vol: .2, att: .002 }); }, { level: .5, vary: true });   // an apple plops into the bucket (a round soft plop, a touch of wicker)
+def('birdSwoop', 0.55, (c, d, t) => sfxNoise(c, d, t, .5, { f: 900, to: 2600, q: .9, vol: .35, att: .08 }), { level: .4 });   // the bird swoops in: a rising whoosh of wings
+def('birdChirp', 0.4, (c, d, t) => { sfxTone(c, d, t, 1900, .09, { to: 2600, vol: .35, att: .004 }); sfxTone(c, d, t + .12, 2300, .08, { to: 1700, vol: .3, att: .004 }); sfxTone(c, d, t + .24, 2100, .12, { to: 2900, vol: .3, att: .004 }); }, { level: .45 });   // ...and chirps as it lifts the apples (three quick sine chirps)
+def('appleLift', 0.3, (c, d, t) => sfxTone(c, d, t, 300, .28, { to: 720, vol: .3, type: 'triangle', att: .01 }), { level: .4 });   // the apples lifted away, up toward the tree
+def('spill', 0.7, (c, d, t) => { sfxNoise(c, d, t, .3, { f: 600, to: 250, q: .7, filter: 'lowpass', vol: .5, att: .01 }); [0.18, 0.3, 0.42].forEach((o, i) => sfxTone(c, d, t + o, 240 - i * 30, .1, { to: 150, vol: .35, type: 'triangle', att: .003 })); }, { level: .55 });   // the bucket tips over: a wooden tumble and a few hollow knocks
+def('appleRoll', 0.14, (c, d, t) => { sfxTone(c, d, t, 520, .1, { to: 380, vol: .3, type: 'triangle', att: .003 }); sfxNoise(c, d, t, .05, { f: 1200, q: 1.5, vol: .2, att: .002 }); }, { level: .4, vary: true });   // an apple rolls out and up the tree
 
 // Renders every sound into a buffer, one after another (quick, and gentle on a phone). Runs at page load.
 SND.load = function () {
@@ -384,7 +391,7 @@ export function moveSounds(f) {
   if (f.timeout) { add('buzz', 0); add('randomMove', 380); }
   const game = viewOf(f.type);
   if (game.sounds) game.sounds(f, add, won, mini, last);
-  const CASINO = ['bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads', 'flap', 'chopper', 'patterns', 'wheels', 'sniff', 'clash', 'headcount', 'flash', 'snapshot', 'skyhop', 'scoop', 'pinball'];
+  const CASINO = ['bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads', 'flap', 'chopper', 'patterns', 'wheels', 'sniff', 'clash', 'headcount', 'flash', 'snapshot', 'skyhop', 'scoop', 'pinball', 'apple'];
   if (won && CASINO.includes(f.type)) add('won', total - 600);   // the card games and the wheel: the chime once the result shows
   else if (won && f.type !== 'ttt' && f.type !== 'wordle' && f.type !== 'hangman') add('won', Math.round(total * .5));   // the game is won: a chime (the square's stamp, and a match's end, follow on the board)
   if (f.kind === 'draw') add('reset', 420);                          // the square resets with a new mini-game

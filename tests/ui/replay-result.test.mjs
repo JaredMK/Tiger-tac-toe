@@ -14,7 +14,7 @@ const require = createRequire(import.meta.url);
 const E = require('../engine.js');
 const { GAMES } = await import('../../src/games/index.js');
 const VIEWS = {};
-for (const t of ['candy', 'bump', 'snakes', 'pig', 'rl', 'wheels', 'craps']) VIEWS[t] = await import(`../../src/games/${t}/view.js`);
+for (const t of ['candy', 'bump', 'snakes', 'pig', 'rl', 'wheels', 'craps', 'apple']) VIEWS[t] = await import(`../../src/games/${t}/view.js`);
 const { state } = await import('../../src/ui/app.js');
 state.setup = Object.assign({}, state.setup, { names: { X: 'Xena', O: 'Olaf' } });
 
@@ -76,6 +76,16 @@ test('Roulette, Risky Spins, Craps: what they show comes from the opponent\'s re
   assert.doesNotMatch(ch, /Xena<\/b>: /);
 });
 
+test('Apple Pick: the spinner, the apples and the words are the opponent\'s spin, not the viewer\'s', () => {
+  const land = (k, n = 10) => seq((k + 0.5) / n, 0.5);
+  const m0 = E.newMini('apple', E.makeRng('ap')), x = play(m0, 'X', 'spin', land(1)), o = play(x.mini, 'O', 'spin', land(2));   // X picked 3; O spun the bird
+  assert.deepEqual([x.mini.last.kind, o.flash.apple.kind, o.flash.apple.by], ['pick', 'bird', 'O']);
+  const html = replay('apple', x.mini, o.flash);
+  assert.match(html, /class="bird"/, 'the bird swoops'); assert.doesNotMatch(html, /class="apl drop"/, 'no apple drops: that was the viewer\'s');
+  assert.match(html, /Bird! Nothing to take/); assert.doesNotMatch(html, /\+3 apples/);
+  assert.ok(html.includes(`--end:${(1800 - o.flash.apple.at * 360).toFixed(1)}deg`), 'the wheel stops on the opponent\'s segment');
+  assert.match(html, /class="ascene O"/, 'the opponent\'s orchard, not the viewer\'s');
+});
 test('Risky Rolls: the Bank button keeps its points until the die has landed, then takes the new total (the move\'s own event times it); the Roll button stays as it was', () => {
   const m0 = E.newMini('pig', E.makeRng('bank')), first = play(m0, 'X', 'roll', fixed(0.2)), second = play(first.mini, 'X', 'roll', fixed(0.7));
   const r1 = first.flash.roll, r2 = second.flash.roll, pot = r1 + r2;

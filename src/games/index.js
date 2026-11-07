@@ -50,6 +50,7 @@ import * as flapR from './flap/rules.js'; import * as flapA from './flap/ai.js';
 import * as chopperR from './chopper/rules.js'; import * as chopperA from './chopper/ai.js'; import * as chopperM from './chopper/meta.js'; add('chopper', chopperR, chopperA, chopperM);
 import * as patternsR from './patterns/rules.js'; import * as patternsA from './patterns/ai.js'; import * as patternsM from './patterns/meta.js'; add('patterns', patternsR, patternsA, patternsM);
 import * as wheelsR from './wheels/rules.js'; import * as wheelsA from './wheels/ai.js'; import * as wheelsM from './wheels/meta.js'; add('wheels', wheelsR, wheelsA, wheelsM);
+import * as appleR from './apple/rules.js'; import * as appleA from './apple/ai.js'; import * as appleM from './apple/meta.js'; add('apple', appleR, appleA, appleM);
 import * as sniffR from './sniff/rules.js'; import * as sniffA from './sniff/ai.js'; import * as sniffM from './sniff/meta.js'; add('sniff', sniffR, sniffA, sniffM);
 import * as headcountR from './headcount/rules.js'; import * as headcountA from './headcount/ai.js'; import * as headcountM from './headcount/meta.js'; add('headcount', headcountR, headcountA, headcountM);
 import * as flashR from './flash/rules.js'; import * as flashA from './flash/ai.js'; import * as flashM from './flash/meta.js'; add('flash', flashR, flashA, flashM);

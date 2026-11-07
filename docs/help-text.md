@@ -51,6 +51,11 @@ Win: First to {goal} wins.
 Super Chaos Play: Hit or stand. Beat the dealer without going over 21.
 Super Chaos Win: First to {goal} wins.
 
+## Apple Pick [apple]
+Category: More luck
+Play: Spin to pick apples into your bucket. Watch out for the bird and spills, which put apples back on the tree.
+Win: Empty your tree first.
+
 ## Bowling [bowling]
 Category: More skill
 Play: Tap to aim then tap for power.

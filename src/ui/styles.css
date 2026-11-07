@@ -20,6 +20,7 @@
   --cy: #f6c21b;
   --cg: #4e9d3a;
   --cb: #58a8cf;
+  --gold: #f2b01e;                   /* a top value's highlight (Risky Spins' 10): never a dark shade */
   --hdr: 64px;
   --foot: 52px;
   --bar: 56px;
@@ -2049,6 +2050,63 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .ctal.X .wbar i { background: var(--x); } .ctal.O .wbar i { background: var(--o); }
 .wbar i.grow { animation: wgrow var(--d, .5s) var(--t, 0ms) cubic-bezier(.5, 1, .89, 1) both; }   /* Risky Spins' gauge: from the old total to the new, eased as its number counts (ui/fx.js countTo, an ease-out), together */
 @keyframes wgrow { from { width: var(--w0, 0%); } to { width: var(--w1, 0%); } }
+
+/* Apple Pick: the mover's orchard (their tree and bucket; an SVG), the spinner (Risky Spins' wheel parts) and the apples' journeys, each timed from the move (rules.js appleTimes); the miniature's tiny orchard */
+.g-apple .ascene { flex: 1 1 auto; min-height: 70px; display: flex; justify-content: center; align-items: center; }
+.g-apple .asvg { width: 100%; height: 100%; max-height: 100%; display: block; }
+.aground { fill: #9fd07a; stroke: var(--ink); stroke-width: 2; }
+.atrunk { fill: #a9733f; stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; }
+.acan { fill: #6cbb4e; stroke: var(--ink); stroke-width: 2; }
+.acan2 { fill: #8bd16a; }
+.aplb { fill: #e5432a; stroke: var(--ink); stroke-width: 1.4; }
+.apl .aplh { fill: #fff; opacity: .7; }
+.apl .aplst { fill: none; stroke: #6b4a2a; stroke-width: 1.3; stroke-linecap: round; }
+.apl .apll { fill: #4e9d3a; stroke: var(--ink); stroke-width: .8; }
+.bkin { fill: #a2763c; stroke: var(--ink); stroke-width: 1.5; }
+.bkwall { fill: #d9a95c; stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; }
+.bkweave { fill: none; stroke: #a9733f; stroke-width: 1.4; stroke-linecap: round; }
+.bkband { stroke: var(--ink); stroke-width: 1.2; } .bkband.X { fill: var(--x); } .bkband.O { fill: var(--o); }
+.bkrim { fill: #f0cb8a; stroke: var(--ink); stroke-width: 2; }
+.bkhandle { fill: none; stroke: var(--ink); stroke-width: 3.5; stroke-linecap: round; }
+.bbody .bbd { fill: var(--cb); stroke: var(--ink); stroke-width: 1.4; }
+.bbody .bwing { fill: #3f8db5; stroke: var(--ink); stroke-width: 1.2; transform-box: view-box; transform-origin: -1px -1px; animation: bflap .22s ease-in-out infinite alternate; }   /* (a loop: real time, ui/fx.js anchorFx) */
+.bbody .bbk { fill: var(--o); stroke: var(--ink); stroke-width: 1; }
+.bbody .beye { fill: var(--ink); }
+.bbody .btail { fill: #3f8db5; stroke: var(--ink); stroke-width: 1.2; }
+.aspin .bbody .bwing { animation: none; }
+@keyframes bflap { from { transform: rotate(-30deg); } to { transform: rotate(35deg); } }
+.apl.drop, .apl.roll { opacity: 0; transform: translate(var(--x1), var(--y1)); }   /* (with no animation: nowhere; the apple in its new place shows instead) */
+.apl.drop { animation: apldrop var(--d, 520ms) var(--t, 0ms) cubic-bezier(.4, 0, .75, 1) both; }
+.apl.roll { animation: aplroll var(--d, 520ms) var(--t, 0ms) ease-out both; }
+@keyframes apldrop { 0% { transform: translate(var(--x0), var(--y0)); opacity: 1; } 30% { transform: translate(calc(var(--x0) * .65 + var(--x1) * .35), calc(min(var(--y0), var(--y1)) - 12px)); opacity: 1; } 99% { transform: translate(var(--x1), var(--y1)); opacity: 1; } 100% { transform: translate(var(--x1), var(--y1)); opacity: 0; } }
+@keyframes aplroll { 0% { transform: translate(var(--x0), var(--y0)) scale(.85); opacity: 1; } 45% { transform: translate(calc(var(--x0) * .5 + var(--x1) * .5), calc(min(var(--y0), var(--y1)) - 28px)) scale(1); opacity: 1; } 99% { transform: translate(var(--x1), var(--y1)); opacity: 1; } 100% { transform: translate(var(--x1), var(--y1)); opacity: 0; } }
+.apl.aplin { animation: appearin .3s var(--t, 0ms) ease-out both; }
+.apl.aplout { animation: aplout .25s var(--t, 0ms) ease-in both; }
+@keyframes aplout { to { opacity: 0; transform: scale(.4); } }
+.bird { opacity: 0; animation: birdfly var(--d, 1380ms) var(--t, 0ms) linear both; }   /* in from the right, down over the bucket (the grab: 37.7% of its time), up to the tree (81.2%), off to the left: rules.js APPLET grab, carry, off */
+@keyframes birdfly { 0% { transform: translate(215px, 66px) scaleX(-1); opacity: 0; animation-timing-function: ease-out; } 7% { opacity: 1; } 37.7% { transform: translate(152px, 74px) scaleX(-1); animation-timing-function: ease-in-out; } 52% { transform: translate(128px, 56px) scaleX(-1); } 81.2% { transform: translate(66px, 36px) scaleX(-1); animation-timing-function: ease-in; } 93% { opacity: 1; } 100% { transform: translate(-30px, 14px) scaleX(-1); opacity: 0; } }
+.bird .held { opacity: 0; animation: aplheld var(--d, 1380ms) var(--t, 0ms) linear both; }   /* the apples it carries: in its claws from the grab to the tree */
+@keyframes aplheld { 0%, 36% { opacity: 0; } 40%, 80% { opacity: 1; } 84%, 100% { opacity: 0; } }
+.bk { transform-box: view-box; transform-origin: 128px 122px; }
+.bk.tip { animation: bktip 420ms var(--t, 0ms) cubic-bezier(.4, 0, .6, 1) forwards, bkright var(--d2, 380ms) var(--t2, 0ms) ease-out forwards; }   /* a spill: over onto its side (its apples roll out), then back up once they are on the tree */
+@keyframes bktip { to { transform: rotate(-74deg); } }
+@keyframes bkright { from { transform: rotate(-74deg); } to { transform: rotate(0deg); } }
+.bk.full { transform-origin: 150px 118px; animation: bkfull .55s var(--t, 0ms) cubic-bezier(.3, 1.6, .5, 1) both; }   /* the last apple in: the bucket bounces, stars burst: the winning moment */
+@keyframes bkfull { 0% { transform: scale(1); } 40% { transform: scale(1.14, .88); } 70% { transform: scale(.95, 1.1); } 100% { transform: scale(1); } }
+.astars .star { font-size: 14px; fill: #ffd84d; stroke: var(--ink); stroke-width: .6; opacity: 0; transform-box: fill-box; transform-origin: center; animation: twinkle .4s calc(var(--t, 0ms) + var(--k, 0) * 70ms) ease-in-out 3 alternate both; }
+.aspin { display: flex; justify-content: center; flex: none; }
+.aspin .wbox { width: min(150px, 42%); }
+.aseg { stroke: var(--ink); stroke-width: .8; } .aseg.bird { fill: #bfe3f3; } .aseg.spill { fill: #ecd3a0; }
+.g-apple .wv { font-size: 16px; }
+.g-apple .arcres, .g-apple .arcnote { min-height: 1.4em; }
+.g-apple .arcnote b { display: inline-block; max-width: 7.5em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }   /* a name in the status line: cut with "…", never wrapped onto the button */
+.tapple { width: 88cqw; height: auto; display: block; }
+.tapple .aplb { stroke-width: 1.2; } .tapple .acan, .tapple .atrunk { stroke-width: 1.6; }
+.tbk .tbbg { fill: #f3dfb3; } .tbk.X .tbf { fill: var(--x); } .tbk.O .tbf { fill: var(--o); }
+.tbk .tbw { fill: none; stroke: var(--ink); stroke-width: .9; opacity: .4; }
+.tbk .tbo { fill: none; stroke: var(--ink); stroke-width: 1.8; stroke-linejoin: round; }
+.tbk .tbr { fill: #f0cb8a; stroke: var(--ink); stroke-width: 1.6; }
+.tbk .tbl { text-anchor: middle; font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-size: 9px; fill: var(--ink); }
 /* Sniff: the field and the dog; a move's step drawn as a thin line in the walker's colour while it plays (Super Chaos: each dog's whole path) */
 .sniff { flex: 1; display: flex; flex-direction: column; gap: 8px; justify-content: center; min-height: 0; }
 .sfield { display: block; width: min(100%, 320px, calc(100dvh - 320px)); margin: 0 auto; background: #e8dcbf; border: 3px solid var(--ink); border-radius: 16px; overflow: hidden; }
@@ -2309,8 +2367,8 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .tplk .tbpts { display: flex; gap: 10cqw; justify-content: center; flex: none; }
 .tplk small { font-size: 9cqw; font-weight: 800; color: var(--muted); }
 .tpip .X i.on { background: var(--x); } .tpip .O i.on { background: var(--o); }
-.tpip .topts { display: flex; justify-content: center; gap: 4cqw; padding-top: 3cqw; border-top: 1.2cqw dashed var(--muted); } .tpip .topts i { width: 10cqw; height: 10cqw; background: var(--ink); position: relative; }
-.tpip .topts i.out { opacity: .3; background: var(--paper); } .tpip .topts i.out::after { content: ''; position: absolute; left: 50%; top: -25%; width: 1.4cqw; height: 150%; margin-left: -.7cqw; background: var(--ink); transform: rotate(45deg); }   /* Trivia: the answers left, the crossed-out ones dimmed and struck */
+.tpip .topts, .tart .topts { display: flex; justify-content: center; gap: 4cqw; padding-top: 3cqw; border-top: 1.2cqw dashed var(--muted); } .tpip .topts i, .tart .topts i { width: 10cqw; height: 10cqw; background: var(--ink); position: relative; }
+.tpip .topts i.out, .tart .topts i.out { opacity: .3; background: var(--paper); } .tpip .topts i.out::after, .tart .topts i.out::after { content: ''; position: absolute; left: 50%; top: -25%; width: 1.4cqw; height: 150%; margin-left: -.7cqw; background: var(--ink); transform: rotate(45deg); }   /* Trivia: the answers left, the crossed-out ones dimmed and struck */
 .tpip .bus i { border-radius: 3cqw; width: 12cqw; height: 16cqw; }
 .tpip .last { align-self: center; font: 400 11cqw 'Luckiest Guy', sans-serif; color: #fff; min-width: 20cqw; height: 20cqw; border-radius: 50%; display: grid; place-items: center; border: 1.6cqw solid var(--ink); padding-top: 1cqw; }
 .tpip .last.r { background: #d6301e; } .tpip .last.b { background: var(--ink); } .tpip .last.g { background: #2f8a3c; }
@@ -2329,6 +2387,87 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .tbpts { flex: 1; display: grid; gap: 3cqw; }
 .tbpts .tr { display: flex; align-items: baseline; gap: 2cqw; font-weight: 800; font-size: 10cqw; line-height: 1; }
 .tbpts .tr span { font: 400 15cqw 'Luckiest Guy', sans-serif; } .tbpts .tr small { font-size: 8cqw; color: var(--muted); }
+
+/* ----- Miniatures with a picture (ui/thumbs.js): the game drawn small on the left, each player's pips on the right.
+   Every size in cqw (the tile is the container); the pips shrink with their count (--n) so a row never spills. ----- */
+.tart { display: flex; align-items: center; gap: 3cqw; width: 92cqw; }
+.tart .tpic { flex: none; width: 34cqw; display: grid; place-items: center; }
+.tart .tpic svg { width: 100%; height: auto; display: block; overflow: visible; }
+.tart .tpip { flex: 1; min-width: 0; width: auto; gap: 4cqw; }
+.tart .tpip .tr { --pw: min(9.5cqw, calc(40cqw / var(--n, 3))); gap: 1.6cqw; }
+.tart .tpip .tr b { width: 8cqw; flex: none; font-size: 9cqw; }
+.tart .tpip i { width: var(--pw); height: var(--pw); border-width: 1.3cqw; flex: none; }
+.tart .tpip i.sq { border-radius: 25%; }
+.tart.tall .tpic { width: 30cqw; }
+.ttok circle { stroke: var(--ink); stroke-width: 1.6; } .ttok.X circle { fill: var(--x); } .ttok.O circle { fill: var(--o); }
+.ttok text { fill: #fff; font-weight: 900; text-anchor: middle; font-family: Nunito, Arial, sans-serif; } .ttok.O text { fill: var(--ink); }
+.tfin .a { fill: var(--ink); } .tfin .b { fill: var(--paper); }
+/* a tiny playing card: its rank and suit, red or black; a back in the card backs' stripes */
+.tcd { position: relative; display: inline-grid; place-items: center; width: 11cqw; height: 15cqw; border-radius: 1.8cqw; background: #fff; border: 1cqw solid var(--ink); color: var(--ink); font-style: normal; }
+.tcd.red { color: #d6301e; }
+.tcd b { font: 800 6cqw/1 Nunito, Arial, sans-serif; letter-spacing: -.02em; } .tcd svg { width: 5.5cqw; height: 5.5cqw; fill: currentColor; }
+.tcd.back { background: repeating-linear-gradient(45deg, var(--sky) 0 1.6cqw, #8cc7e3 1.6cqw 3.2cqw); }
+/* 21: the hand's cards fanned (or two backs before the deal) */
+.tbj { display: flex; justify-content: center; padding: 1cqw 0; } .tbj .tcd { margin-left: -4cqw; } .tbj .tcd:first-child { margin-left: 0; }
+.tbj .tcd:first-child { transform: rotate(-8deg) translateY(1cqw); } .tbj .tcd:last-child { transform: rotate(8deg) translateY(1cqw); }
+/* Ride the Bus: the bus, then each player's four slots (a kept card face up, an empty slot dashed) */
+.tbus { display: flex; flex-direction: column; align-items: center; gap: 2cqw; width: 90cqw; }
+.tbus .tbusi { width: 26cqw; height: 16cqw; color: var(--ink); } .tbus .tbusi svg { width: 100%; height: 100%; }
+.tbus .tr { display: flex; align-items: center; gap: 1.5cqw; font-weight: 800; font-size: 9cqw; line-height: 1; }
+.tbus .tr b { width: 8cqw; flex: none; }
+.tbus .tcd { width: 10cqw; height: 13cqw; } .tbus .tcd b { font-size: 5.2cqw; } .tbus .tcd svg { width: 4.8cqw; height: 4.8cqw; }
+.tbus .tcd.tnil { background: var(--paper); border-style: dashed; border-color: var(--muted); }
+/* Krabs: the felt with the two dice (the last roll's faces; blank before one), the rounds won as pips under it */
+.tcr { display: flex; flex-direction: column; align-items: center; gap: 3cqw; width: 88cqw; }
+.tcr .tfelt { width: 70cqw; height: 26cqw; border-radius: 6cqw; border: 1.2cqw solid var(--ink); background: radial-gradient(circle at 50% 40%, #3b9a4b, #2a7238); display: grid; place-items: center; }
+.tcr .tcdice span { width: 14cqw; height: 14cqw; } .tcr .tcdice.l span { opacity: .55; filter: grayscale(1); }
+.tcr .tpip { width: 84cqw; gap: 2.5cqw; } .tcr .tpip .tr { --pw: min(9cqw, calc(44cqw / var(--n, 3))); } .tcr .tpip i { width: var(--pw); height: var(--pw); border-width: 1.3cqw; }
+/* Echo: the four pads */
+.tepads { display: grid; grid-template-columns: 1fr 1fr; gap: 1.6cqw; width: 30cqw; aspect-ratio: 1; }
+.tepads i { border-radius: 3cqw; border: 1cqw solid var(--ink); opacity: .85; }
+.tepads i.k0 { background: #e5432a; } .tepads i.k1 { background: #4e9d3a; } .tepads i.k2 { background: #3b87c7; } .tepads i.k3 { background: #f6c21b; }
+/* Odd One Out: a grid of one shade, one tile a little lighter (a fixed corner: the square's own odd tile is never shown) */
+.todd { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.4cqw; width: 30cqw; aspect-ratio: 1; }
+.todd i { border-radius: 1.6cqw; background: #3f8fbf; } .todd i.odd { background: #62a9d3; }
+/* Pinball: the table with its targets (lit in the lighter's colour, both halves when both have) and the flippers; the targets lit as figures */
+.tpin { width: 30cqw; } .tpin .tbl { fill: #d9d2e8; stroke: var(--ink); stroke-width: 3; } .tpin .tfl { stroke: var(--ink); stroke-width: 6; stroke-linecap: round; }
+.tpin .tg0 { fill: var(--paper); stroke: var(--ink); stroke-width: 2; } .tpin .tgX { fill: var(--x); } .tpin .tgO { fill: var(--o); } .tpin .tgh { stroke: var(--ink); stroke-width: 1.2; } .tpin .tbp { fill: #b8b2c8; stroke: var(--ink); stroke-width: 2; }
+/* Peg Drop: the pegs above the bins */
+.tplk .tpegs { width: 72%; } .tplk .tpegs svg { width: 100%; height: auto; display: block; } .tplk .tpegs circle { fill: var(--ink); } .tplk .tpegs circle.bn { fill: var(--o); stroke: var(--ink); stroke-width: 1.5; }
+/* the attention games' emblems: Flash's shapes, Headcount's ladybug, Snapshot's grid */
+.tatt { width: 30cqw; display: grid; place-items: center; } .tatt svg { width: 100%; height: auto; }
+.tatt.fl { display: grid; grid-template-columns: 1fr 1fr; gap: 1cqw; } .tatt.fl svg { width: 100%; }
+.tsnap { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.4cqw; width: 28cqw; aspect-ratio: 1; }
+.tsnap i { border-radius: 1.6cqw; border: 1cqw solid var(--ink); background: #fff; } .tsnap i.on { background: #3b87c7; }
+/* the runners (Dash, Lane Rush, Flap, Chopper): a scene with each player's lane, their token at their distance, the finish at the end */
+.tscene { width: 90cqw; } .tscene svg { width: 100%; height: auto; display: block; overflow: visible; }
+.tscene .gnd { stroke: var(--ink); stroke-width: 1.8; stroke-linecap: round; } .tscene .lane { stroke: var(--ink); stroke-width: 1.2; stroke-dasharray: 4 3; }
+.tscene .road { fill: #d9d2c8; stroke: var(--ink); stroke-width: 1.5; } .tscene .rock { fill: #9a9aa6; stroke: var(--ink); stroke-width: 1.5; } .tscene .crate { fill: #c98b4b; stroke: var(--ink); stroke-width: 1.5; }
+.tscene .flyer { fill: #5a4a9a; stroke: var(--ink); stroke-width: 1.3; } .tscene .car1 { fill: #7fc8f0; stroke: var(--ink); stroke-width: 1.5; } .tscene .car2 { fill: #9ad88a; stroke: var(--ink); stroke-width: 1.5; }
+.tscene .post { fill: #d9a066; stroke: var(--ink); stroke-width: 1.5; } .tscene .hill { fill: #bfe3c4; } .tscene .cave { fill: #8a6648; stroke: var(--ink); stroke-width: 1.5; } .tscene .block { fill: #9a9aa6; stroke: var(--ink); stroke-width: 1.5; }
+.tscene .sky { fill: #e8f4fb; } .tscene .cavebg { fill: #f1e3c6; }
+/* Sky Hop: the tower (its walls, a few planks), each hopper at its height; Scoop Stack: each player's cone and the scoops stacked on it */
+.thop { width: 90cqw; } .thop svg { width: 100%; height: auto; display: block; overflow: visible; }
+.thop .wall { fill: #9aa3ad; stroke: var(--ink); stroke-width: 1.2; } .thop .plank { fill: #7cc95a; stroke: var(--ink); stroke-width: 1.2; } .thop .cloud { fill: #bfe7fb; stroke: var(--ink); stroke-width: 1.2; } .thop .goal { stroke: var(--ink); stroke-width: 1.2; stroke-dasharray: 3 2; }
+.tscoop { width: 90cqw; } .tscoop svg { width: 100%; height: auto; display: block; overflow: visible; }
+.tscoop .cone { stroke: var(--ink); stroke-width: 1.5; } .tscoop .cone.X { fill: var(--x); } .tscoop .cone.O { fill: var(--o); } .tscoop .sc { stroke: var(--ink); stroke-width: 1.3; }
+.tscoop .f0 { fill: #f59ab5; } .tscoop .f1 { fill: #8fe0b5; } .tscoop .f2 { fill: #fff1c9; } .tscoop .f3 { fill: #e8b06a; } .tscoop .f4 { fill: #b3a4f5; }
+.tscoop text { fill: var(--ink); font-weight: 800; text-anchor: middle; font-family: Nunito, Arial, sans-serif; } .tscoop .ctr { fill: #e7b56f; stroke: var(--ink); stroke-width: 1.5; }
+/* Higher/Lower: the numbers as a line, the range still open on it, each guess a tick in its guesser's colour */
+.thl { display: flex; flex-direction: column; align-items: center; gap: 2cqw; width: 88cqw; }
+.thl svg { width: 100%; height: auto; display: block; overflow: visible; } .thl .rail { fill: var(--panel-2); stroke: var(--ink); stroke-width: 1.5; } .thl .open { fill: var(--sea); stroke: var(--ink); stroke-width: 1.5; }
+.thl .tk { stroke-width: 2.2; stroke-linecap: round; } .thl .tk.X { stroke: var(--x); } .thl .tk.O { stroke: var(--o); }
+.thl b { font: 400 13cqw/1 'Luckiest Guy', 'Arial Black', sans-serif; font-variant-numeric: tabular-nums; letter-spacing: .02em; padding-top: 1cqw; }
+.thl .thpips { margin-top: 0; }
+/* Trivia: the question card */
+.tqc { width: 26cqw; aspect-ratio: .78; border-radius: 3cqw; border: 1.2cqw solid var(--ink); background: #fff; display: grid; place-items: center; color: var(--ink); } .tqc svg { width: 70%; height: 70%; }
+.tart.trv { flex-wrap: wrap; } .tart.trv .topts { width: 100%; padding-top: 2.5cqw; }
+/* Risky Spins: the three wheels small (a skull's segment dark with its skull, the 10 gold, the rest shaded by their points), the points under them */
+.twh { display: flex; flex-direction: column; align-items: center; gap: 2.5cqw; width: 90cqw; }
+.twh .twrow { display: flex; justify-content: center; gap: 2cqw; width: 100%; }
+.twh .twrow svg { width: 27cqw; height: 27cqw; overflow: visible; }
+.twh .trun { padding: 0 2cqw; gap: 2cqw; } .twh .trun .tr { grid-template-columns: 8cqw 1fr; } .twh .trun .tr b { font-size: 9cqw; } .twh .trun .tr i { height: 6cqw; border-width: 1.3cqw; }
+.twh .wseg { stroke-width: 1.4; } .twh .wrim { stroke-width: 4; } .twh .wptr { fill: var(--ink); }
 @media (max-height: 640px) { .rln, .rlg, .rlz { height: 28px; font-size: 13px; } .bjres { min-height: 28px; font-size: 15px; } }
 
 /* ---- Super Chaos: the mode's switch on the setup screen, Sea Battle's 5x5 sea, the recap's label and resets ---- */
@@ -2611,8 +2750,11 @@ main.scr.mini > .wband { left: 0; right: 0; }   /* Super Chaos: waiting in the s
 .pause .settings { text-align: left; }
 .btn.setbtn { width: 100%; margin-top: 10px; }
 /* Risky Spins: the skulls, the turn's pot above the wheels and Bank under them (each row always reserved) */
-.wseg.sk { fill: var(--ink); }
-.wsk { fill: #fff; } .wske { fill: var(--ink); }
+.wseg.sk { fill: #261f2e; }                                          /* a skull's segment: near black (no value's shade comes close: view.js wheelLight), its skull on it */
+.wseg.ten { fill: var(--gold); }                                      /* the 10: gold, never the dark end of the shading */
+.wv.ten { font-size: 14px; fill: var(--ink); paint-order: stroke; stroke: #fff; stroke-width: 2.5px; stroke-linejoin: round; }
+.wsk { fill: #fff; } .wske { fill: #261f2e; }
+.arcres.ten { color: var(--gold); text-shadow: var(--ol1); }           /* +10! in gold (a skull's line stays the red of a loss) */
 .wpotrow { height: 30px; display: flex; justify-content: center; align-items: center; flex: none; }
 .g-wheels .wpot.X { color: var(--x); } .g-wheels .wpot.O { color: var(--o); }
 .g-wheels .risk.grow { animation-delay: var(--t, .6s); }
