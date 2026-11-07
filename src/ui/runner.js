@@ -8,6 +8,7 @@ import { drawFlap } from '../games/flap/view.js';
 import { drawLane } from '../games/lane/view.js';
 import { SND, ownPress } from '../audio/sound.js';
 import { haptic } from '../net/platform.js';
+import { finishSvg, tokSvg } from './thumbs.js';
 import { FIREBASE_CONFIG, configured } from '../net/connect.js';
 import { attemptMove } from '../net/moves.js';
 import { blocked } from '../net/room.js';
@@ -239,8 +240,17 @@ function runFrameDraw(cv, sim, rd, now) {
 }
 export const rr = (c, x, y, w, h, r) => { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); };
 export const outlined = (c, fill, ink, w) => { c.fillStyle = fill; c.fill(); c.lineWidth = w || 2.5; c.strokeStyle = ink; c.stroke(); };
+// The miniature: the game's scene (each runner's view passes its own: Dash's ground and hazards, Lane Rush's road and
+// traffic, Flap's posts, Chopper's cave), a lane each for X and O with their token at their distance, the finish at the end.
+export const RUN_SCENES = {
+  dash: '<path class="gnd" d="M2 24h96M2 50h96"/><path class="rock" d="M30 24q3-9 9-7q4 2 5 7z"/><rect class="crate" x="60" y="42" width="8" height="8" rx="1"/><ellipse class="flyer" cx="74" cy="11" rx="5" ry="2.6"/><path class="gnd" d="M66 9q3-4 5 1M77 9q3-4 5 1" fill="none"/>',
+  lane: '<rect class="road" x="0" y="4" width="100" height="52" rx="2"/><path class="lane" d="M2 30h96"/><rect class="car1" x="36" y="9" width="8" height="15" rx="2.5"/><rect class="car2" x="64" y="36" width="8" height="15" rx="2.5"/>',
+  flap: '<rect class="sky" x="0" y="0" width="100" height="56"/><path class="hill" d="M0 56q15-14 30-6t30-4t40 10v2h-100z"/><rect class="post" x="33" y="0" width="7" height="11" rx="1.5"/><rect class="post" x="33" y="29" width="7" height="27" rx="1.5"/><rect class="post" x="66" y="0" width="7" height="23" rx="1.5"/><rect class="post" x="66" y="41" width="7" height="15" rx="1.5"/><path class="gnd" d="M0 56h100"/>',
+  chopper: '<rect class="cavebg" x="0" y="0" width="100" height="60"/><path class="cave" d="M0 0h100v6q-20 8-40 4t-30 2t-30-4z"/><path class="cave" d="M0 60v-6q25-8 45-2t35-4t20 4v8z"/><rect class="block" x="52" y="22" width="7" height="16" rx="1.5"/>',
+};
 export function runnerMiniature(mini, final) {
-  return `<div class="trun" aria-label="X at ${Math.round(mini.dist.X)} m, O at ${Math.round(mini.dist.O)} m of ${mini.cfg.target}">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><i style="--w:${(100 * Math.min(1, mini.dist[p] / mini.cfg.target)).toFixed(1)}%"></i></div>`).join('')}</div>`;   // both players' progress to the target
+  const at = p => (8 + 82 * Math.min(1, mini.dist[p] / mini.cfg.target)).toFixed(1);
+  return `<div class="tscene" aria-label="X at ${Math.round(mini.dist.X)} m, O at ${Math.round(mini.dist.O)} m of ${mini.cfg.target}"><svg viewBox="0 0 100 60" aria-hidden="true">${RUN_SCENES[mini.type] || ''}${finishSvg(92, 4, 56, 4)}${tokSvg('X', at('X'), 17, 6)}${tokSvg('O', at('O'), 43, 6)}</svg></div>`;   // both players' progress to the target
 }
 export function runnerMoveText(f, who) {
   return f.run ? (f.run.done ? `${who} reached ${fmtM(f.run.target)} m!` : `${who} ${RUN_TEXT[f.type].verb} ${fmtM(f.run.to - f.run.from)} m — now at ${fmtM(f.run.to)}/${fmtM(f.run.target)}`) : `${who} ${RUN_TEXT[f.type].verb}`;

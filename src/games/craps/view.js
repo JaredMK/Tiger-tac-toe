@@ -4,6 +4,7 @@ import { CRAPS, crapsTimes } from './rules.js';
 import { N, REDUCED, mv, state } from '../../ui/app.js';
 import { dieFace } from '../../ui/art.js';
 import { arcTally, lateAt, pips } from '../../ui/progress.js';
+import { pipRows } from '../../ui/thumbs.js';
 
 // Craps: one tap of Roll a move, and the dice keep rolling until the round is won or lost (rolled where the
 // move is made: the server online). The page plays the round back roll by roll: each pair tumbles in at its
@@ -53,8 +54,12 @@ function crapsTable(mini, a, o) {
   const btn = o.view ? '' : `<div class="cbtns one"><button class="big ${turn}" data-act="move" ${mv('roll')}${o.locked ? ' disabled' : ''}>Roll</button></div>`;
   return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="craps">${strip}<div class="cfelt">${dice || '<p class="arcnote"></p>'}</div>${log}${res}</div>${btn}</div>`;
 }
+// The miniature: the felt with the two dice (the last roll's faces, ringed green when it won its round and greyed
+// when it lost; blank before a roll), and each player's rounds won as pips under it.
 export function miniature(mini, final) {
-  const d = mini.last ? mini.last.roll || (mini.last.rolls || [])[(mini.last.rolls || []).length - 1] : null; return `<div class="tpip">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${Array.from({ length: tune(mini).goal }, (_, k) => `<i class="${k < mini.wins[p] ? 'on' : ''}"></i>`).join('')}</div>`).join('')}${d ? `<div class="tcdice ${mini.last.result === 'win' ? 'w' : mini.last.result === 'lose' ? 'l' : ''}"><span>${dieFace(d[0])}</span><span>${dieFace(d[1])}</span></div>` : ''}</div>`;
+  const l = mini.last, d = l ? l.roll || (l.rolls || [])[(l.rolls || []).length - 1] : null, goal = tune(mini).goal;
+  const dice = `<div class="tcdice${d && l.result === 'win' ? ' w' : d && l.result === 'lose' ? ' l' : ''}"><span>${d ? dieFace(d[0]) : ''}</span><span>${d ? dieFace(d[1]) : ''}</span></div>`;
+  return `<div class="tcr" aria-label="Krabs: X ${mini.wins.X}, O ${mini.wins.O} of ${goal} rounds"><div class="tfelt" aria-hidden="true">${dice}</div><div class="tpip">${pipRows(mini.wins, goal)}</div></div>`;
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   g = crapsTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d, held: state.lock != null && state.lock === state.zoom }); return g;

@@ -1,6 +1,7 @@
 // The attention-game framework (Headcount, Flash, Snapshot): Start locks the player in, three levels,
 // first to 3 correct; the shared table around each game's view.
 import { ATT, ATT_TYPES, attMs, attStart } from '../games/shared/attention.js';
+import { pipRows, thumbArt } from './thumbs.js';
 import { flashView } from '../games/flash/view.js';
 import { headView } from '../games/headcount/view.js';
 import { snapView } from '../games/snapshot/view.js';
@@ -84,8 +85,11 @@ export function attTable(mini, a, o) {
   const btn = o.view ? '' : `<div class="cbtns one${go || sub ? '' : ' hold'}">${go ? `<button class="big" data-act="att-start"${live && attStarting == null ? '' : ' disabled'}>Start</button>` : sub ? `<button class="big" data-act="snap-submit"${live ? '' : ' disabled'}>Submit</button>` : '<button class="big" disabled tabindex="-1" aria-hidden="true">Start</button>'}</div>`;   // the row stays (hidden) so nothing moves
   return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="att att-${type}"><div class="atstage">${v.stage}</div><p class="atwords">${words}</p>${v.input}</div>${btn}</div>`;
 }
-export function attentionMiniature(mini, final) {
-  return `<div class="tpip">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${Array.from({ length: ATT.goal }, (_, k) => `<i class="${k < mini.right[p] ? 'on' : ''}"></i>`).join('')}</div>`).join('')}</div>`;   // both players' progress: ●●○
+// The miniature: the game's emblem (each game's view passes its own: Flash's shapes, Headcount's ladybug, Snapshot's
+// grid; never a round's items), and both players' progress as pips (●●○).
+export function attentionMiniature(mini, final, art) {
+  const rows = pipRows(mini.right, ATT.goal), label = `X ${mini.right.X} and O ${mini.right.O} of ${ATT.goal}`;
+  return art ? thumbArt(art, rows, '', label) : `<div class="tpip" aria-label="${label}">${rows}</div>`;
 }
 export function attentionSounds(f, add, won, mini, last) {   // someone else's round: as it played (Start, the round's own sounds), their answer, then the result
   const pre = attPre(f), r = f.att && f.att.round;

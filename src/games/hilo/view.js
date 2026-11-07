@@ -4,9 +4,13 @@ import { N, esc, mv } from '../../ui/app.js';
 
 // Each player's guesses left, as pips (filled: left; hollow: used). A square from before the limit: none.
 const pips = (mini, p) => { const k = hiloLimit(mini), left = hiloLeft(mini, p); return `<i class="hpips ${p}" aria-label="${p}: ${left} guess${left === 1 ? '' : 'es'} left">${Array.from({ length: k }, (_, j) => `<i class="${j < left ? 'on' : ''}"></i>`).join('')}</i>`; };
+// The miniature: the numbers as a line with the range still open on it and each guess a tick in its guesser's colour
+// (the target never), the range's ends as figures, and each player's guesses left.
 export function miniature(mini, final) {
-  if (!hiloLimit(mini)) return `<div class="thilo"><b>${mini.lo}–${mini.hi}</b><small>${mini.guesses.length} guess${mini.guesses.length === 1 ? '' : 'es'}</small></div>`;
-  return `<div class="thilo"><b>${mini.lo}–${mini.hi}</b><span class="thpips">${['X', 'O'].map(p => `<span><b class="${p}">${p}</b>${pips(mini, p)}</span>`).join('')}</span></div>`;
+  const top = hiloTop(mini), span = Math.max(1, top - HILO.lo), x = n => (3 + 94 * (n - HILO.lo) / span).toFixed(1);
+  const line = `<svg viewBox="0 0 100 14" aria-hidden="true"><rect class="rail" x="2" y="4" width="96" height="6" rx="3"/><rect class="open" x="${x(mini.lo)}" y="2.5" width="${Math.max(2, Number(x(mini.hi)) - Number(x(mini.lo))).toFixed(1)}" height="9" rx="3"/>${mini.guesses.slice(-8).map(g => `<path class="tk ${g.by}" d="M${x(g.n)} 0v14"/>`).join('')}</svg>`;
+  const left = hiloLimit(mini) ? `<span class="thpips">${['X', 'O'].map(p => `<span><b class="${p}">${p}</b>${pips(mini, p)}</span>`).join('')}</span>` : `<small>${mini.guesses.length} guess${mini.guesses.length === 1 ? '' : 'es'}</small>`;
+  return `<div class="thl thilo" aria-label="Between ${mini.lo} and ${mini.hi}">${line}<b>${mini.lo}–${mini.hi}</b>${left}</div>`;
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   const by = {};

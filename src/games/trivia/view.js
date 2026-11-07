@@ -7,6 +7,7 @@ import { N, REDUCED, commit, cpuPlays, esc, mv, state } from '../../ui/app.js';
 import { KEY } from '../../ui/config.js';
 import { fxAttr } from '../../ui/fx.js';
 import { arcTally, lateAt, pips } from '../../ui/progress.js';
+import { pipRows } from '../../ui/thumbs.js';
 import { tune } from '../../core/tune.js';
 import { render } from '../../ui/render.js';
 
@@ -77,9 +78,10 @@ export function loadTrivia() {
     }).catch(() => {});
   } catch (e) { /* offline: as last kept */ }
 }
-export function miniature(mini, final) {   // both players' progress, and the question's options: those still standing, the crossed-out ones dimmed and struck
+const TRIVIA_CARD = '<div class="tqc"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 9a3.5 3.5 0 1 1 5 3.2c-1 .5-1.5 1.3-1.5 2.3" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/><circle cx="12" cy="18.5" r="1.5" fill="currentColor"/></svg></div>';   // the question card
+export function miniature(mini, final) {   // the question card, both players' progress, and the question's options: those still standing, the crossed-out ones dimmed and struck
   const t = tune(mini), n = mini.ask ? (Array.isArray(mini.ask.opts) ? mini.ask.opts.length : mini.ask.n || t.opts) : t.opts, out = new Set(mini.crossed || []);
-  return `<div class="tpip${t.goal > 4 ? ' t7' : ''}">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${Array.from({ length: t.goal }, (_, k) => `<i class="${k < mini.right[p] ? 'on' : ''}"></i>`).join('')}</div>`).join('')}<div class="topts" aria-label="${n - out.size} of ${n} answers left">${Array.from({ length: n }, (_, k) => `<i class="${out.has(k) ? 'out' : ''}"></i>`).join('')}</div></div>`;
+  return `<div class="tart trv" aria-label="Trivia: X ${mini.right.X}, O ${mini.right.O} of ${t.goal}"><div class="tpic" aria-hidden="true">${TRIVIA_CARD}</div><div class="tpip">${pipRows(mini.right, t.goal)}</div><div class="topts" aria-label="${n - out.size} of ${n} answers left">${Array.from({ length: n }, (_, k) => `<i class="${out.has(k) ? 'out' : ''}"></i>`).join('')}</div></div>`;
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   g = triviaTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d }); return g;

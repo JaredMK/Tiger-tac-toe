@@ -5,6 +5,7 @@ import { N, mv } from '../../ui/app.js';
 import { toon } from '../../ui/art.js';
 import { pcard } from '../../ui/cards.js';
 import { lateAt } from '../../ui/progress.js';
+import { pipRows, thumbArt, tinyCard } from '../../ui/thumbs.js';
 
 // Blackjack: when each card comes in is bjPlan in the engine (the turn clock and the sounds use it too).
 const BJ_RES = { bj: 'Natural 21! +1', push: 'Tie', bust: 'Bust', lose: 'Dealer wins' };
@@ -61,8 +62,12 @@ function bjTable(mini, a, o) {
     <div class="felt"><div class="bjrow dealer bjstack">${dealer}</div><div class="bjstack bjmid">${mid}</div><div class="bjrow player bjstack">${player}</div></div>
     ${btns}</div>`;
 }
+// The miniature: the hand in play's cards fanned (the player's own, face up on the table; two backs before a deal;
+// never the hole card or the deck), and each player's hands won as pips.
 export function miniature(mini, final) {
-  return `<div class="tpip">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${Array.from({ length: tune(mini).goal }, (_, k) => `<i class="${k < mini.wins[p] ? 'on' : ''}"></i>`).join('')}</div>`).join('')}</div>`;
+  const h = mini.hand, goal = tune(mini).goal;
+  const cards = h && Array.isArray(h.cards) && h.cards.length ? h.cards.slice(0, 3).map(c => tinyCard(c)).join('') : tinyCard(null) + tinyCard(null);
+  return thumbArt(`<div class="tbj">${cards}</div>`, pipRows(mini.wins, goal), '', `21: X ${mini.wins.X}, O ${mini.wins.O} of ${goal} hands`);
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   g = bjTable(mini, a, { view, locked, turn }); return g;

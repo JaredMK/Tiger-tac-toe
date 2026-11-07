@@ -7,7 +7,9 @@ import { hash01 } from '../../ui/art.js';
 import { ATT_KEY, attDraft, attSave, attStartAct, attTable } from '../../ui/attention.js';
 import { fxAttr } from '../../ui/fx.js';
 import { render } from '../../ui/render.js';
-export { attentionMiniature as miniature } from '../../ui/attention.js';
+import { attentionMiniature } from '../../ui/attention.js';
+const SNAP_ART = `<div class="tsnap">${Array.from({ length: 9 }, (_, k) => `<i class="${[1, 3, 8].includes(k) ? 'on' : ''}"></i>`).join('')}</div>`;   // the emblem: a grid with a few cells filled (a fixed pattern, never a round's)
+export const miniature = (mini, final) => attentionMiniature(mini, final, SNAP_ART);
 export { attentionSounds as sounds } from '../../ui/attention.js';
 
 // The blank grid's few words while the pattern is to be remembered: one of these, the round's own (the same

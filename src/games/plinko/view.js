@@ -93,8 +93,9 @@ function plinkoTable(mini, a, o) {
     : '<p class="arcnote"></p>';
   return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="plinko">${slots}<div class="pboard">${style}<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${pegs.join('')}${bins}</svg><div class="pvals">${vals}</div>${bonus}${chip}</div>${res}</div></div>`;
 }
+const PLINKO_PEGS = `<svg viewBox="0 0 100 24">${[[3, [14, 38, 62, 86]], [12, [26, 50, 74]], [21, [14, 38, 62, 86]]].map(([y, xs]) => xs.map(x => `<circle cx="${x}" cy="${y}" r="2.6"/>`).join('')).join('')}</svg>`;   // a few rows of pegs over the bins
 export function miniature(mini, final) {
-  const pts = mini.pts || { X: 0, O: 0 }, tg = mini.target || PLINKO_DEFAULTS.target; return `<div class="tplk" aria-label="Peg Drop: X ${pts.X}, O ${pts.O} of ${tg} points"><div class="tbins">${(mini.vals || []).map((v, b) => `<i class="v${v}${mini.last && mini.last.bin === b ? ' ' + mini.last.by : ''}">${v}</i>`).join('')}</div><div class="tbpts">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><span>${Math.min(tg, pts[p])}</span><small>/${tg}</small></div>`).join('')}</div></div>`;
+  const pts = mini.pts || { X: 0, O: 0 }, tg = mini.target || PLINKO_DEFAULTS.target; return `<div class="tplk" aria-label="Peg Drop: X ${pts.X}, O ${pts.O} of ${tg} points"><div class="tpegs" aria-hidden="true">${PLINKO_PEGS}</div><div class="tbins">${(mini.vals || []).map((v, b) => `<i class="v${v}${mini.last && mini.last.bin === b ? ' ' + mini.last.by : ''}">${v}</i>`).join('')}</div><div class="tbpts">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><span>${Math.min(tg, pts[p])}</span><small>/${tg}</small></div>`).join('')}</div></div>`;
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   g = plinkoTable(mini, a, { view, locked, turn, zoom: state.zoom }); return g;

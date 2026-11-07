@@ -1,4 +1,6 @@
 // Ride the Bus: the screen, the miniature, the move's words and sounds, and the inputs.
+import { icon } from './meta.js';
+import { tinyCard } from '../../ui/thumbs.js';
 import { CARD } from '../shared/cards.js';
 import { BUS, BUST, cardRed } from './rules.js';
 import { N, app, cpuPlays, mv, state } from '../../ui/app.js';
@@ -87,8 +89,11 @@ export function busFly() {
   el.style.setProperty('--fy', `${Math.round(z.top + z.height / 2 - (a.top + a.height / 2))}px`);
   el.style.setProperty('--fs', (z.width / a.width).toFixed(3));
 }
+// The miniature: the bus, then each player's four slots: a kept card face up (its rank and suit, public once kept), an
+// empty slot dashed.
 export function miniature(mini, final) {
-  return `<div class="tpip">${['X', 'O'].map(p => `<div class="tr bus ${p}"><b class="${p}">${p}</b>${Array.from({ length: BUS.rounds }, (_, k) => `<i class="${k < mini.prog[p].length ? 'on' : ''}"></i>`).join('')}</div>`).join('')}</div>`;
+  const row = p => `<div class="tr ${p}"><b class="${p}">${p}</b>${Array.from({ length: BUS.rounds }, (_, k) => (mini.prog[p][k] ? tinyCard(mini.prog[p][k]) : '<i class="tcd tnil"></i>')).join('')}</div>`;
+  return `<div class="tbus" aria-label="Ride the Bus: X has ${mini.prog.X.length}, O ${mini.prog.O.length} of ${BUS.rounds} rounds"><div class="tbusi" aria-hidden="true">${icon}</div>${row('X')}${row('O')}</div>`;
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   g = busTable(mini, a, { view, locked, turn }); return g;

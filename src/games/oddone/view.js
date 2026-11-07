@@ -10,6 +10,7 @@ import { CROSS } from '../../ui/art.js';
 import { KEY } from '../../ui/config.js';
 import { fxAttr } from '../../ui/fx.js';
 import { arcTally, lateAt, pips } from '../../ui/progress.js';
+import { pipRows, thumbArt } from '../../ui/thumbs.js';
 import { render } from '../../ui/render.js';
 
 // Odd One Out's shade differences (config/oddone, the admin's dashboard): likewise.
@@ -79,8 +80,10 @@ function oddTable(mini, a, o) {
   const btn = o.view ? '' : `<div class="cbtns one${go ? '' : ' hold'}"><button class="big" data-act="odd-reveal"${go ? '' : ' disabled tabindex="-1" aria-hidden="true"'}>Reveal</button></div>`;   // the row stays (hidden) so the grid never moves
   return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="odd"><div class="ogrid${!shown && !open ? ' wait' : ''}" style="grid-template-columns:repeat(${n}, 1fr)">${tiles}</div>${res}</div>${btn}</div>`;
 }
-export function miniature(mini, final) {
-  return `<div class="tpip">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${Array.from({ length: tune(mini).goal }, (_, k) => `<i class="${k < mini.finds[p] ? 'on' : ''}"></i>`).join('')}</div>`).join('')}</div>`;
+const ODD_GRID = `<div class="todd">${Array.from({ length: 9 }, (_, k) => (k === 2 ? '<i class="odd"></i>' : '<i></i>')).join('')}</div>`;   // a grid with one tile off (a fixed corner: the square's own odd tile stays hidden)
+export function miniature(mini, final) {   // the grid, and each player's finds as pips
+  const goal = tune(mini).goal;
+  return thumbArt(ODD_GRID, pipRows(mini.finds, goal), '', `Odd One Out: X ${mini.finds.X}, O ${mini.finds.O} of ${goal} finds`);
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   g = oddTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d }); return g;

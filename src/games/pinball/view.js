@@ -1,5 +1,6 @@
 // Pinball: the screen, the miniature, the move's words and sounds, and the inputs.
 import { fingAt } from '../shared/finger.js';
+import { pinTableOf } from './rules.js';
 import { PHYSICS } from '../shared/physics.js';
 import { state } from '../../ui/app.js';
 import { fingSounds, fingTable } from '../../ui/finger.js';
@@ -75,8 +76,20 @@ export function drawPin(c, W, H, v, now) {
   c.lineCap = 'butt'; c.lineJoin = 'miter';
   if (v.saved && now - v.saved < 1200) { c.font = `400 ${Math.max(16, Math.round(6 * k))}px 'Luckiest Guy', 'Arial Black', sans-serif`; c.fillStyle = P.paper; c.strokeStyle = P.ink; c.lineWidth = 3; c.strokeText('Ball saved!', X(45), Y(120)); c.fillText('Ball saved!', X(45), Y(120)); }
 }
+// The miniature: the table small (its top arch, its bumpers, the flippers) with the square's targets on it, each
+// in the colour of who has lit it (both halves when both have), and beside it each player's count of the seven.
 export function miniature(mini, final) {
-  return `<div class="tpip t7" aria-label="X has lit ${fingAt(mini, 'X')}, O ${fingAt(mini, 'O')} of ${mini.lit.X.length}">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${mini.lit[p].map(on => `<i class="${on ? 'on' : ''}"></i>`).join('')}</div>`).join('')}</div>`;   // each player's lit targets out of the seven
+  const n = mini.lit.X.length, TB = pinTableOf(mini);
+  const spots = TB && Array.isArray(TB.targets) && TB.targets.length === n ? TB.targets.map(t => [t.x, t.y]) : Array.from({ length: n }, (_, k) => { const a = Math.PI * (0.15 + 0.7 * k / Math.max(1, n - 1)); return [50 + 34 * Math.cos(a), 78 - 44 * Math.sin(a)]; });   // (without the physics: an arc)
+  const tg = spots.map(([x, y], k) => {
+    const lx = !!mini.lit.X[k], lo = !!mini.lit.O[k], r = 6.5;
+    if (lx && lo) return `<path class="tgX" d="M${x} ${y - r}A${r} ${r} 0 0 0 ${x} ${y + r}Z"/><path class="tgO" d="M${x} ${y - r}A${r} ${r} 0 0 1 ${x} ${y + r}Z"/><circle class="tgh" cx="${x}" cy="${y}" r="${r}" fill="none"/>`;
+    return `<circle class="${lx ? 'tgX tgh' : lo ? 'tgO tgh' : 'tg0'}" cx="${x}" cy="${y}" r="${r}"/>`;
+  }).join('');
+  const bumps = (TB && TB.bumpers ? TB.bumpers : [[30, 54], [60, 54], [45, 68]]).map(([x, y]) => `<circle class="tbp" cx="${x}" cy="${y}" r="5"/>`).join('');
+  const art = `<svg viewBox="-2 -2 104 184" aria-hidden="true"><path class="tbl" d="M2 50A48 48 0 0 1 98 50V178H2Z"/>${bumps}${tg}<path class="tfl" d="M21 164l18 9M79 164l-18 9"/></svg>`;
+  const pts = ['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><span>${fingAt(mini, p)}</span><small>/${n}</small></div>`).join('');
+  return `<div class="tart tall" aria-label="Pinball: X has lit ${fingAt(mini, 'X')}, O ${fingAt(mini, 'O')} of ${n}"><div class="tpic tpin">${art}</div><div class="tbpts">${pts}</div></div>`;
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   g = fingTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d }); return g;

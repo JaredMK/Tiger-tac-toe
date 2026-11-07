@@ -22,19 +22,20 @@ export function fetchWheelsConfig() {
 }
 // Risky Spins: the square's three wheels side by side (no names, no averages): ten equal segments each, each
 // wheel in its own colour, a segment's shade set by its points (the same on every wheel: 1 palest, 10 darkest),
-// a skull's segment dark with a skull on it, so the risk reads at a glance. Above them the turn's pot (+N), under
+// a skull's segment near black with a skull on it (no value's shade comes near it: the darkest value, 9, keeps
+// about half its lightness), the 10 gold (never a dark shade that could pass for a skull), so the risk reads at a glance. Above them the turn's pot (+N), under
 // them the result line and Bank (its row always reserved). A tap on a wheel spins it: a few turns, slowing,
 // stopping with the pointer on the segment the server's spin landed in; its points join the pot as it stops (a
 // skull: the pot struck out). Bank moves the pot onto the tally. Between spins each wheel rests where it stopped.
 // A square dealt before the skulls (no v) plays by its old rule: each spin's points straight onto the tally.
 const WHEEL_LOOK = { high: { say: 'purple', hue: 268, sat: 58 }, mid: { say: 'blue', hue: 212, sat: 72 }, low: { say: 'green', hue: 140, sat: 52 } };
-const wheelLight = v => 93 - 6.6 * v;                         // a segment's lightness (%) by its points: 93 for 0 down to 27 for 10
+const wheelLight = v => 90 - 4.8 * v;                         // a segment's lightness (%) by its points: 85 for 1 down to 47 for 9 (the 10 is gold: styles.css .wseg.ten)
 const wheelShade = (w, v) => `hsl(${WHEEL_LOOK[w].hue} ${WHEEL_LOOK[w].sat}% ${wheelLight(v).toFixed(1)}%)`;
 const SKULL_G = '<path class="wsk" d="M-5.2 .4a5.2 5.2 0 1 1 10.4 0v2.3h-1.7v2h-7v-2h-1.7z"/><circle class="wske" cx="-2.1" cy="-.2" r="1.45"/><circle class="wske" cx="2.1" cy="-.2" r="1.45"/><path class="wske" d="M0 1.6l-.9 1.5h1.8z"/>';
 function wheelSvg(vals, w) {
   const R = 46, n = vals.length;
   const pt = (f, r) => { const t = (f * 360 - 90) * Math.PI / 180; return [(50 + r * Math.cos(t)).toFixed(2), (50 + r * Math.sin(t)).toFixed(2)]; };
-  const seg = (k, v) => { const [x0, y0] = pt(k / n, R), [x1, y1] = pt((k + 1) / n, R); return `<path d="M50 50 L${x0} ${y0} A${R} ${R} 0 0 1 ${x1} ${y1} Z"${isSkull(v) ? ' class="wseg sk"' : ` fill="${wheelShade(w, v)}" class="wseg"`}/>`; };
+  const seg = (k, v) => { const [x0, y0] = pt(k / n, R), [x1, y1] = pt((k + 1) / n, R); return `<path d="M50 50 L${x0} ${y0} A${R} ${R} 0 0 1 ${x1} ${y1} Z"${isSkull(v) ? ' class="wseg sk"' : v === 10 ? ' class="wseg ten"' : ` fill="${wheelShade(w, v)}" class="wseg"`}/>`; };
   const lab = (k, v) => {
     const [x, y] = pt((k + 0.5) / n, 33);
     if (isSkull(v)) return `<g transform="translate(${x} ${y})">${SKULL_G}</g>`;
@@ -66,15 +67,25 @@ function wheelTable(mini, a, o) {
   const lost = n => `Skull!${n ? ` ${n} point${n === 1 ? '' : 's'} lost` : ''}`;
   const res = s ? (kind === 'bank' ? `<p class="arcres ok" role="status">Banked ${s.pot}</p>`
       : kind === 'bust' ? `<p ${lateAt('arcres no', landed)} role="status">${lost(s.pot)}</p>`
-      : `<p ${lateAt('arcres ' + (s.v > 0 ? 'ok' : 'no'), landed)} role="status">${s.v > 0 ? `+${s.v}!` : 'Nothing this time'}</p>`)
+      : `<p ${lateAt('arcres ' + (s.v === 10 ? 'ok ten' : s.v > 0 ? 'ok' : 'no'), landed)} role="status">${s.v > 0 ? `+${s.v}!` : 'Nothing this time'}</p>`)
     : (o.view || o.done) && l ? `<p class="arcres ${l.kind === 'bust' || !(l.v > 0 || l.kind === 'bank') ? 'no' : 'ok'}"><b class="${l.by}">${N(l.by)}</b> ${l.kind === 'bank' ? `banked ${l.pot}` : l.kind === 'bust' ? `hit a skull${l.pot ? ': ' + l.pot + ' lost' : ''}` : `spun the ${WHEEL_LOOK[l.w].say} wheel: ${l.v > 0 ? '+' + l.v : 'nothing'}`}</p>`
     : `<p class="arcnote">${o.view ? '' : o.locked ? `Waiting for <b class="${turn}">${N(turn)}</b>…` : ''}</p>`;
   const bankPot = kind === 'spin' ? (was ? `<b class="cnt" data-from="${was}" data-delay="${landed}" data-ms="350">${pot}</b>` : `<b class="bpot" style="--t:${landed}ms">${pot}</b>`) : t && t.pot && !s ? String(t.pot) : '';
   const bank = py ? `<div class="wbank"><button class="big bank" data-act="move" ${mv('bank')}${o.locked || o.view || !(t && t.pot && t.by === turn) || (s && kind !== 'spin') ? ' disabled' : ''}>Bank${bankPot ? ' +' + bankPot : ''}</button></div>` : '';
   return `<div class="g-arc g-wheels"><div class="ctals">${tal('X')}${tal('O')}</div><div class="wheels">${py ? `<div class="wpotrow" aria-live="polite">${potHtml}</div>` : ''}<div class="rwrow">${wheels}</div>${res}${bank}</div></div>`;
 }
+// The miniature: the square's three wheels small (each segment as on the table: shaded by its points, a skull near
+// black with its skull, the 10 gold; no numbers at this size), each player's points to the target as a bar under them.
+function wheelMini(vals, w) {
+  const R = 46, n = vals.length;
+  const pt = (f, r) => { const t = (f * 360 - 90) * Math.PI / 180; return [(50 + r * Math.cos(t)).toFixed(1), (50 + r * Math.sin(t)).toFixed(1)]; };
+  const seg = (k, v) => { const [x0, y0] = pt(k / n, R), [x1, y1] = pt((k + 1) / n, R); return `<path d="M50 50L${x0} ${y0}A${R} ${R} 0 0 1 ${x1} ${y1}Z"${isSkull(v) ? ' class="wseg sk"' : v === 10 ? ' class="wseg ten"' : ` fill="${wheelShade(w, v)}" class="wseg"`}/>`; };
+  const sk = (k, v) => { if (!isSkull(v)) return ''; const [x, y] = pt((k + 0.5) / n, 31); return `<g transform="translate(${x} ${y}) scale(2.1)">${SKULL_G}</g>`; };
+  return `<svg viewBox="-3 -9 106 112" aria-hidden="true">${vals.map((v, k) => seg(k, v)).join('')}<circle cx="50" cy="50" r="${R}" class="wrim"/>${vals.map((v, k) => sk(k, v)).join('')}<circle cx="50" cy="50" r="7" class="whub"/><path class="wptr" d="M42 -8h16l-8 13z"/></svg>`;
+}
 export function miniature(mini, final) {
-  return `<div class="trun" aria-label="X has ${mini.pts.X}, O has ${mini.pts.O} of ${mini.target}">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><i style="--w:${(100 * Math.min(1, mini.pts[p] / mini.target)).toFixed(1)}%"></i></div>`).join('')}</div>`;   // both players' points to the target
+  const wh = mini.wheels || {}, bars = ['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><i style="--w:${(100 * Math.min(1, mini.pts[p] / mini.target)).toFixed(1)}%"></i></div>`).join('');   // both players' points to the target
+  return `<div class="twh" aria-label="X has ${mini.pts.X}, O has ${mini.pts.O} of ${mini.target}"><div class="twrow">${WHEELS.map(w => (Array.isArray(wh[w]) ? wheelMini(wh[w], w) : '')).join('')}</div><div class="trun">${bars}</div></div>`;
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   g = wheelTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d }); return g;

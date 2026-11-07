@@ -10,6 +10,7 @@ import { drawScoop, scoopBall } from '../games/scoop/view.js';
 import { hopClampX, hopResult, hopStart, hopStep } from '../games/skyhop/rules.js';
 import { drawHop } from '../games/skyhop/view.js';
 import { SND, ownPress } from '../audio/sound.js';
+import { tokSvg } from './thumbs.js';
 import { attemptMove, dbStart } from '../net/moves.js';
 import { blocked, moveWait, remoteTurn } from '../net/room.js';
 import { N, REDUCED, app, cpuPlays, esc, save, state } from './app.js';
@@ -442,8 +443,22 @@ export function fingSounds(f, add) {
   }
   add(fg.auto ? 'thud' : fg.to > fg.from ? 'ding' : 'thud', pre + 250);
 }
+// The miniature. Sky Hop: the tower (its walls, a few planks, the goal line at the top) with each hopper at the height
+// climbed; Scoop Stack: each player's cone with the scoops stacked on it (up to six drawn) and their count.
+const HOP_SCENE = '<rect class="wall" x="0" y="0" width="7" height="60"/><rect class="wall" x="93" y="0" width="7" height="60"/><path class="goal" d="M9 3h82"/><rect class="plank" x="20" y="52" width="24" height="4" rx="2"/><rect class="plank" x="58" y="43" width="22" height="4" rx="2"/><rect class="cloud" x="22" y="31" width="20" height="4" rx="2"/><rect class="plank" x="56" y="20" width="24" height="4" rx="2"/><rect class="plank" x="30" y="10" width="20" height="4" rx="2"/>';
+const SCOOP_FLAV_N = 5;
 export function fingerMiniature(mini, final) {
-  return `<div class="trun" aria-label="X at ${fingAt(mini, 'X')}, O at ${fingAt(mini, 'O')} of ${mini.cfg.target}">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><i style="--w:${(100 * Math.min(1, fingAt(mini, p) / mini.cfg.target)).toFixed(1)}%"></i></div>`).join('')}</div>`;   // both players' progress: the height climbed, the scoops stacked
+  const label = `X at ${fingAt(mini, 'X')}, O at ${fingAt(mini, 'O')} of ${mini.cfg.target}`;
+  if (mini.type === 'skyhop') {
+    const y = p => (54 - 46 * Math.min(1, fingAt(mini, p) / mini.cfg.target)).toFixed(1);
+    return `<div class="thop" aria-label="${label}"><svg viewBox="0 0 100 60" aria-hidden="true">${HOP_SCENE}${tokSvg('X', 34, y('X'), 6)}${tokSvg('O', 66, y('O'), 6)}</svg></div>`;
+  }
+  const cone = (p, cx) => {
+    const n = fingAt(mini, p), k = Math.min(6, n);
+    const scoops = Array.from({ length: k }, (_, j) => `<circle class="sc f${j % SCOOP_FLAV_N}" cx="${cx}" cy="${(33 - j * 6).toFixed(1)}" r="7.5"/>`).join('');
+    return `<path class="cone ${p}" d="M${cx - 10} 36h20l-10 16z"/>${scoops}<text x="${cx + 16}" y="51" font-size="8.5">${n}</text>`;
+  };
+  return `<div class="tscoop" aria-label="${label}"><svg viewBox="0 0 100 62" aria-hidden="true"><rect class="ctr" x="0" y="52" width="100" height="8"/>${cone('X', 30)}${cone('O', 70)}</svg></div>`;
 }
 export function fingerMoveText(f, who) {
   const fg = f.fing; if (!fg || fg.auto) return `${who} ran out of time`; const g = fg.to - fg.from; return f.type === 'skyhop' ? (g > 0 ? `${who} climbed to ${fmtN(fg.to)} m` : `${who} fell · still at ${fmtN(fg.to)} m`) : f.type === 'scoop' ? (g > 0 ? `${who} stacked ${g} more · ${fg.to} scoops` : `${who} stacked none`) : g > 0 ? `${who} lit ${g} · ${fg.to} of ${fg.goal}` : `${who} lit nothing`;

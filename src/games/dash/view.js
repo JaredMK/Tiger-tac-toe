@@ -36,7 +36,7 @@ function drawHazard(c, x, gy, S, o, now, P) {
       const cy = gy - (ob.y + 0.3 + k * 0.7) * S, cx = x + w / 2, flap = Math.sin(now / 90 + k) * S * 0.18;
       c.beginPath(); c.ellipse(cx, cy, w * 0.26, S * 0.17, 0, 0, Math.PI * 2); outlined(c, '#5a4a9a', P.ink, 2);
       c.strokeStyle = P.ink; c.lineWidth = 2.5; c.beginPath(); c.moveTo(cx - w * 0.2, cy); c.quadraticCurveTo(cx - w * 0.45, cy - S * 0.3 + flap, cx - w * 0.62, cy - S * 0.05 + flap); c.moveTo(cx + w * 0.2, cy); c.quadraticCurveTo(cx + w * 0.45, cy - S * 0.3 + flap, cx + w * 0.62, cy - S * 0.05 + flap); c.stroke();
-      c.fillStyle = P.O; c.beginPath(); c.moveTo(cx + w * 0.26, cy); c.lineTo(cx + w * 0.38, cy + S * 0.04); c.lineTo(cx + w * 0.26, cy + S * 0.08); c.closePath(); c.fill();
+      c.fillStyle = '#f39a3b'; c.beginPath(); c.moveTo(cx + w * 0.26, cy);   // (the beak orange, as the Dasher's: a hazard never in a player's colour) c.lineTo(cx + w * 0.38, cy + S * 0.04); c.lineTo(cx + w * 0.26, cy + S * 0.08); c.closePath(); c.fill();
     }
   }
 }

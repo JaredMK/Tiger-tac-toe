@@ -6,6 +6,7 @@ import { attemptMove } from '../../net/moves.js';
 import { blocked } from '../../net/room.js';
 import { N, REDUCED, app, cpuPlays, state } from '../../ui/app.js';
 import { fxAttr, startFx } from '../../ui/fx.js';
+import { pipRows, thumbArt } from '../../ui/thumbs.js';
 import { arcTally, lateAt } from '../../ui/progress.js';
 import { render } from '../../ui/render.js';
 
@@ -87,8 +88,9 @@ function echoTap(el) {
   }
   const dots = app.querySelectorAll('.esteps i'); if (dots[n - 1]) dots[n - 1].classList.add('on');   // (in place: the pads keep their place and their animations)
 }
-export function miniature(mini, final) {
-  return `<div class="tpip">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${ECHO.lengths.map((_, k) => `<i class="sq${k < mini.level[p] ? ' on' : ''}"></i>`).join('')}</div>`).join('')}</div>`;
+const ECHO_MINI = '<div class="tepads"><i class="k0"></i><i class="k1"></i><i class="k2"></i><i class="k3"></i></div>';   // the four pads, small
+export function miniature(mini, final) {   // the pads, and each player's levels passed as square pips
+  return thumbArt(ECHO_MINI, pipRows(mini.level, ECHO.lengths.length, true), '', `Echo: X at level ${mini.level.X}, O at ${mini.level.O} of ${ECHO.lengths.length}`);
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   g = echoTable(mini, a, { view, locked, turn, zoom: state.zoom }); return g;

@@ -8,7 +8,7 @@ import { esc, state, zoomedType } from '../../ui/app.js';
 import { ATT_KEY, attDraft, attSave, attStartAct, attTable } from '../../ui/attention.js';
 import { fxAttr } from '../../ui/fx.js';
 import { render } from '../../ui/render.js';
-export { attentionMiniature as miniature } from '../../ui/attention.js';
+import { attentionMiniature } from '../../ui/attention.js';
 export { attentionSounds as sounds } from '../../ui/attention.js';
 
 // The creatures, drawn facing right (bold ink outlines, flat colours).
@@ -20,7 +20,9 @@ const HC_ART = {
   leaf: () => `<path d="M20 4q14 10 0 32q-14-22 0-32z" fill="#e08a2c"/><path d="M20 8v28" stroke="#161210" stroke-width="1.8"/>`,
 };
 const HC_LOOK = { gbeetle: ['beetle', '#4e9d3a'], bbeetle: ['beetle', '#3b87c7'], tbeetle: ['beetle', '#2b9fa8'], rladybird: ['ladybird', '#e5432a'], oladybird: ['ladybird', '#f39a2a'], gmouse: ['mouse', '#a3a1ad'], bmouse: ['mouse', '#a0703f'] };   // the look-alikes: one creature in two near colours
-const hcArt = k => { const [b, c] = HC_LOOK[k] || [k]; const a = HC_ART[b](c); return `<svg viewBox="0 0 40 40" aria-hidden="true"><g stroke="#161210" stroke-width="2.4" stroke-linejoin="round">${a}</g></svg>`; };
+export const hcArt = k => { const [b, c] = HC_LOOK[k] || [k]; const a = HC_ART[b](c); return `<svg viewBox="0 0 40 40" aria-hidden="true"><g stroke="#161210" stroke-width="2.4" stroke-linejoin="round">${a}</g></svg>`; };
+let hcEmblem = null;   // the emblem: a ladybug (drawn once)
+export const miniature = (mini, final) => attentionMiniature(mini, final, hcEmblem || (hcEmblem = `<div class="tatt">${hcArt('rladybird')}</div>`));
 // The play area of each game: { stage, input, watch (during the round), ask (the question), say (an answer in words) }.
 export function headView(c) {
   const r = c.round, anim = c.playing || c.pre, len = attMs('headcount', r);   // the crossing: this phone's (from Start), or someone else's (from the move)

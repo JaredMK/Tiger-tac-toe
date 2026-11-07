@@ -3,13 +3,16 @@ import { FLASH, attMs } from '../shared/attention.js';
 import { esc, mv, state } from '../../ui/app.js';
 import { attStartAct, attTable } from '../../ui/attention.js';
 import { fxAttr } from '../../ui/fx.js';
-export { attentionMiniature as miniature } from '../../ui/attention.js';
+import { attentionMiniature } from '../../ui/attention.js';
 export { attentionSounds as sounds } from '../../ui/attention.js';
 
 // Flash's items: a shape in a colour.
 const FL_COL = { blue: '#3b87c7', green: '#3f9b4f', purple: '#8d5bd8' };
 const FL_SHAPE = { star: 'M20 3l5.2 10.6 11.7 1.7-8.5 8.2 2 11.6L20 29.6 9.6 35.1l2-11.6-8.5-8.2 11.7-1.7z', heart: 'M20 35S4 25 4 14a8 8 0 0 1 16-2.5A8 8 0 0 1 36 14c0 11-16 21-16 21z', bolt: 'M23 3L8 22h10l-3 15 17-21H21z' };
 export const flArt = (s, c) => `<svg viewBox="0 0 40 40" aria-hidden="true"><path d="${FL_SHAPE[s]}" fill="${FL_COL[c]}" stroke="#161210" stroke-width="2.6" stroke-linejoin="round"/></svg>`;
+const FLASH_ART = () => `<div class="tatt fl">${flArt('star', 'blue')}${flArt('heart', 'purple')}${flArt('bolt', 'green')}${flArt('star', 'green')}</div>`;   // (the emblem: four of its shapes, never a round's)
+let flashArt = null;
+export const miniature = (mini, final) => attentionMiniature(mini, final, flashArt || (flashArt = FLASH_ART()));
 const flSay = o => (Array.isArray(o) ? `${o[1]} ${o[0]}` : String(o));
 export function flashView(c) {
   const r = c.round, anim = c.playing || c.pre;
