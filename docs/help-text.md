@@ -58,7 +58,7 @@ Win: Empty your tree first.
 
 ## Bingo [bingo]
 Category: More luck
-Play: Three numbers come up: call one. It marks every card it is on, yours and theirs.
+Play: Tap Pick numbers and {offer} balls roll out. Call one: it marks every card it is on, yours and theirs.
 Win: Complete a line on your card first.
 
 ## Bowling [bowling]
@@ -300,8 +300,8 @@ Win: Reach the top first.
 
 ## Snake [snake]
 Category: More skill
-Play: Tap Start, then swipe to turn. Eat apples to grow; the wall or your own tail ends the run. Every apple counts towards your total.
-Win: First to {target} apples.
+Play: Tap Start, then swipe to turn. Red food is X's, yellow is O's. Eat your own colour for a point; the other colour gives the other player a point. The wall or your own tail ends the run.
+Win: First to {target} points.
 
 ## Snakes and Ladders [snakes]
 Category: More luck

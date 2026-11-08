@@ -1,7 +1,7 @@
 // Seating: the screen, the miniature, the move's words and sounds, and the inputs.
 import { PLACE_MS } from '../shared/placement.js';
 import { seatCfg, seatTable, seatTables } from './rules.js';
-import { N, REDUCED, esc, mv, state } from '../../ui/app.js';
+import { N, REDUCED, esc, mv, state, waitLine } from '../../ui/app.js';
 import { arcTally, lateAt, pips } from '../../ui/progress.js';
 
 // Seating: ten tables of two seats, each seat a colour. A tap on an empty seat is the move: the mover sits
@@ -36,7 +36,7 @@ function seatingTable(mini, a, o) {
     : s && (s.z != null || s.left) ? `<span class="snext">Next customer: <span class="sgwrap"><span class="sgo" style="--t:${zAt}ms">${door(s.zColor)}</span><span ${lateAt('snew', zEnd)}>${door(mini.next)}</span></span></span>`
     : `<span class="snext">Next customer: <span>${door(mini.next)}</span></span>`;
   const res = s ? `<p ${lateAt('arcres ' + (s.table != null ? 'ok' : ''), s.table != null ? tAt : zEnd)} role="status">${s.table != null ? `Table ${s.table + 1} is ${N(a.by)}'s!` : s.z != null ? `A ${SEAT_NAMES[s.zColor]} customer sat down` : s.left ? `No ${SEAT_NAMES[s.zColor]} seat: the customer left` : 'Seated'}</p>`
-    : `<p class="arcnote">${o.view ? '' : o.locked ? `Waiting for <b class="${turn}">${N(turn)}</b>…` : ''}</p>`;
+    : `<p class="arcnote">${o.view ? '' : o.locked ? waitLine(turn) : ''}</p>`;
   const leave = s && s.left && !REDUCED ? `<span class="sleave" style="--t:${zAt}ms;--sc:${SEAT_COL[s.zColor]}"><span class="sguest">${SEAT_GUEST}</span></span>` : '';   // no seat of their colour: in at the door, across the room and out
   return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="seating"><div class="sdoor">${next}</div><div class="stbls">${tables}${leave}</div>${res}</div></div>`;
 }

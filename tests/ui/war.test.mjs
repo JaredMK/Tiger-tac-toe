@@ -99,7 +99,7 @@ test('an opponent\'s replay shows the opponent\'s cards and verdict, never the v
 test('the miniature: the last flip\'s two cards face to face (the player\'s ringed in their colour) and the pips; the same from the hidden square', () => {
   const m0 = E.newMini('war', E.makeRng('w-ui5'));
   const fresh = V.miniature(m0, false);
-  assert.equal(count(fresh, /tcd cdb/g), 2, 'two backs before any flip'); assert.match(fresh, /twvs/);
+  assert.equal(count(fresh, /tcd cdb/g), 2, 'two backs before any flip'); assert.match(fresh, /class="twar"/);
   const x = play(m0, 'X', 'QD', 'QC', ...DOWN, '9S', '5H');
   const html = V.miniature(x.mini, false);
   assert.match(html, /<i class="tcd X"><b>9<\/b>/); assert.match(html, /<i class="tcd red"><b>5<\/b>/);

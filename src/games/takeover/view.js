@@ -1,7 +1,7 @@
 // Takeover: the screen, the miniature, the move's words and sounds, and the inputs.
 import { other } from '../../core/util.js';
 import { TAKEOVER_MS, takeCount, takeNear, takeSide } from './rules.js';
-import { N, esc, mv, state } from '../../ui/app.js';
+import { N, esc, mv, state, waitLine } from '../../ui/app.js';
 import { arcTally, lateAt, sbar } from '../../ui/progress.js';
 
 const grid = n => (n === 5 ? '' : ` style="grid-template-columns:repeat(${n},1fr);grid-template-rows:repeat(${n},1fr)"`);   // (the admin's settings: a bigger board)
@@ -25,7 +25,7 @@ function takeTable(mini, a, o) {
   const l = mini.last;
   const res = tk ? `<p ${lateAt('arcres ok', TAKEOVER_MS.place)} role="status">+${tk.took.length + tk.flipped.length}${tk.flipped.length ? ` · ${tk.flipped.length} turned over` : ''}</p>`
     : o.view ? `<p class="arcnote">${l ? `${takeCount(mini.cells, 'X')} to ${takeCount(mini.cells, 'O')}` : ''}</p>`
-    : `<p class="arcnote">${o.locked ? `Waiting for <b class="${turn}">${N(turn)}</b>…` : ''}</p>`;
+    : `<p class="arcnote">${o.locked ? waitLine(turn) : ''}</p>`;
   return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="takeover"><div class="tkgrid"${grid(n)}>${cells}</div>${bar}${res}</div></div>`;
 }
 export function miniature(mini, final) {

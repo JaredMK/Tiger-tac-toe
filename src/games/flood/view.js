@@ -1,6 +1,6 @@
 // Flood: the screen, the miniature, the move's words and sounds, and the inputs.
 import { FLOOD, FLOOD_MS, floodCfg } from './rules.js';
-import { N, mv, state } from '../../ui/app.js';
+import { N, mv, state, waitLine } from '../../ui/app.js';
 import { arcTally, lateAt, sbar } from '../../ui/progress.js';
 
 // Flood: the 6x6 grid in its colours, the blob's cells and the cells each player has grabbed marked in
@@ -29,7 +29,7 @@ function floodTable(mini, a, o) {
   }).join('');
   const btns = o.view ? '' : `<div class="fbtns">${FLOOD_COL.slice(0, nc).map((col, c) => `<button class="fsw" style="background:${col}" data-act="move" ${mv(c)} aria-label="${FLOOD_NAMES[c]}"${c === blob || o.locked ? ' disabled' : ''}>${c === blob ? '<i>blob</i>' : ''}</button>`).join('')}</div>`;
   const res = fl ? `<p ${lateAt('arcres ' + (fl.gain ? 'ok' : 'no'), FLOOD_MS.base)} role="status">${fl.gain ? `+${fl.gain}` : 'Nothing grabbed'}</p>`
-    : `<p class="arcnote">${o.view ? '' : o.locked ? `Waiting for <b class="${turn}">${N(turn)}</b>…` : ''}</p>`;
+    : `<p class="arcnote">${o.view ? '' : o.locked ? waitLine(turn) : ''}</p>`;
   return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="flood"><div class="flgrid">${cells}</div><div class="fbars">${fbar('X')}${fbar('O')}</div>${res}</div>${btns}</div>`;
 }
 export function miniature(mini, final) {

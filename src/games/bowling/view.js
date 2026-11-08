@@ -148,8 +148,15 @@ export function drawBowl(g, mini, pos, settled = true) {
   }
   drawFrames(g, mini, settled);
 }
+// The miniature: the rack (the last roll's pins down faint) and a line each: the player's mark, their pins as a bar to
+// the target, and the count.
 export function miniature(mini, final) {
-  return physThumb(mini);
+  const L = PHYSICS.lib;
+  if (!L) return physThumb(mini);
+  const S = L.BOWL, l = mini.last, goal = bowlTarget(mini);
+  return `<div class="tbowl" aria-label="Bowling: X has ${mini.pins.X} pins, O has ${mini.pins.O} of ${goal}"><svg viewBox="30 6 40 52" aria-hidden="true">
+    ${S.pins.map(([x, y], k) => `<circle cx="${x}" cy="${y}" r="${S.pinR * 1.6}" class="pin${l && l.down[k] ? ' down' : ''}"/>`).join('')}</svg>
+    <div class="trun bscore">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><i style="--w:${(100 * Math.min(1, mini.pins[p] / goal)).toFixed(1)}%"></i><span>${Math.min(goal, mini.pins[p])}</span></div>`).join('')}</div></div>`;
 }
 // Someone else's roll replayed (ui/replay.js): their two taps as their screen showed them (the arrow sweeps
 // and stops where they stopped it, the meter rises and stops at their power: each timed to be there exactly

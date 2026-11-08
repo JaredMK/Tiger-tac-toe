@@ -16,9 +16,10 @@ const SHAPES = {
   diamond: '<path d="M12 2.5 21.5 12 12 21.5 2.5 12z"/>',
 };
 function shapeSvg(card) { return `<svg viewBox="0 0 24 24" fill="${CARD_COLORS[card.c]}">${SHAPES[card.s]}</svg>`; }
+// The miniature: the nine cards face down (a drawn back, no "?": too small a figure to read), the winning pair face up.
 export function miniature(mini, final) {
   const shown = final && mini.winCells ? mini.winCells : [];
-  return `<div class="tg g3 tmem">${mini.cards.map((card, i) => (shown.includes(i) ? `<i class="up">${shapeSvg(card)}</i>` : '<i>?</i>')).join('')}</div>`;
+  return `<div class="tg g3 tmem">${mini.cards.map((card, i) => (shown.includes(i) ? `<i class="up">${shapeSvg(card)}</i>` : '<i></i>')).join('')}</div>`;
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   const up = new Set();

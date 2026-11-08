@@ -13,8 +13,8 @@ import { RUNT } from '../shared/runner.js';
 import { SND, ownPress } from '../../audio/sound.js';
 import { attemptMove } from '../../net/moves.js';
 import { haptic } from '../../net/platform.js';
-import { blocked, moveWait, remoteTurn } from '../../net/room.js';
-import { N, REDUCED, app, cpuPlays, state } from '../../ui/app.js';
+import { blocked, remoteTurn } from '../../net/room.js';
+import { N, REDUCED, app, cpuPlays, state, waitLine } from '../../ui/app.js';
 import { hash01 } from '../../ui/art.js';
 import { shownSq } from '../../ui/chaos.js';
 import { clockLeft } from '../../ui/clock.js';
@@ -321,10 +321,9 @@ function swTable(mini, a, o) {
   const said = shown ? swResultText(shown, goal, W(who)) : null;
   const words = fg ? (pre ? `<span class="tu" style="--u:${pre}ms">${W(who)} is flying…</span><span ${lateAt('arcres ' + (said.ok ? 'ok' : 'no'), pre)} role="status">${said.text}</span>` : `<span class="arcres ${said.ok ? 'ok' : 'no'}" role="status">${said.text}</span>`)
     : live ? '<span></span>'
-    : kept || (mine && moveWait) ? '<span>Sending your run…</span>'
     : o.view ? (said ? `<span>${said.text}</span>` : '')
-    : mine ? '<span></span>'   // (how to play is in the ? explainer)
-    : `<span>Waiting for ${W(turn)}…</span>`;
+    : mine ? '<span></span>'   // (how to play is in the ? explainer; its run on its way to the server, kept for a resend: played here already, nothing to wait for)
+    : `<span>${waitLine(turn)}</span>`;
   const hudV = live ? swNow(live.sim) : mini.score[fg ? a.by : o.view && l ? l.by : turn];
   const scene = `<div class="swscene" data-sw="scene" aria-label="The sky: the ship at the bottom, the swarm above"><canvas data-sw="cv"></canvas><div class="rhud" data-sw="hud">${say(hudV)}</div></div>`;
   const go = mine && !live && !kept && !o.locked;
@@ -413,13 +412,15 @@ export function sounds(f, add, won, mini, last) {
   }
   if (pre || fg.auto) add(fg.auto ? 'thud' : fg.to > fg.from ? 'ding' : 'thud', pre + 250);
 }
-// The miniature: deep space with a few of the swarm at the top, each player's ship below with their total, as a bar and a number.
+// The miniature: deep space with a few of the swarm at the top, each player's ship below with their total as a bar, and
+// under the sky each total as a number (in the page, as large as the board's other text).
 export function miniature(mini, final) {
   const goal = swarmGoal(mini), label = `X at ${mini.score.X}, O at ${mini.score.O} of ${goal}`;
-  const bar = (p, x) => { const w = 36 * Math.min(1, mini.score[p] / goal); return `<rect class="tswbar" x="${x}" y="51" width="36" height="7" rx="2.5"/>${w > 2 ? `<rect class="tswfill ${p}" x="${x + 1}" y="52" width="${(w - 2).toFixed(1)}" height="5" rx="1.5"/>` : ''}<text x="${x + 18}" y="47.5">${mini.score[p]}</text>`; };
-  const ship = (p, x) => `<path class="tswship ${p}" d="M${x} 28l-6 10h12z"/>`;
-  const stars = [[8, 30], [20, 44], [40, 20], [58, 36], [72, 8], [90, 26], [94, 46], [30, 6]].map(([x, y]) => `<circle class="tswstar" cx="${x}" cy="${y}" r="0.9"/>`).join('');
-  return `<div class="tswarm" aria-label="${label}"><svg viewBox="0 0 100 60" aria-hidden="true"><rect class="tswbg" x="0" y="0" width="100" height="60" rx="4"/>${stars}<circle class="tswfoe" cx="22" cy="12" r="5"/><circle class="tswfoe" cx="50" cy="9" r="5"/><circle class="tswfoe" cx="78" cy="13" r="5"/><path class="tswfoe b" d="M36 24l-5-9h10z"/><path class="tswfoe b" d="M64 25l-5-9h10z"/>${ship('X', 28)}${ship('O', 72)}${bar('X', 10)}${bar('O', 54)}</svg></div>`;
+  const bar = (p, x) => { const w = 36 * Math.min(1, mini.score[p] / goal); return `<rect class="tswbar" x="${x}" y="36" width="36" height="7" rx="2.5"/>${w > 2 ? `<rect class="tswfill ${p}" x="${x + 1}" y="37" width="${(w - 2).toFixed(1)}" height="5" rx="1.5"/>` : ''}`; };
+  const ship = (p, x) => `<path class="tswship ${p}" d="M${x} 22l-6 10h12z"/>`;
+  const stars = [[8, 24], [16, 40], [40, 18], [58, 30], [72, 6], [90, 22], [94, 40], [30, 5]].map(([x, y]) => `<circle class="tswstar" cx="${x}" cy="${y}" r="0.9"/>`).join('');
+  return `<div class="tswarm" aria-label="${label}"><svg viewBox="0 0 100 47" aria-hidden="true"><rect class="tswbg" x="0" y="0" width="100" height="47" rx="4"/>${stars}<circle class="tswfoe" cx="20" cy="9" r="5"/><circle class="tswfoe" cx="50" cy="7" r="5"/><circle class="tswfoe" cx="80" cy="10" r="5"/><path class="tswfoe b" d="M36 19l-5-9h10z"/><path class="tswfoe b" d="M64 20l-5-9h10z"/>${ship('X', 25)}${ship('O', 75)}${bar('X', 7)}${bar('O', 57)}</svg>`
+    + `<div class="tswn" aria-hidden="true"><span class="X">${mini.score.X}</span><span class="O">${mini.score.O}</span></div></div>`;
 }
 export function moveText(f, who) {
   const fg = f.swarm;

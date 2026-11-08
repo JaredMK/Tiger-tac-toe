@@ -50,8 +50,18 @@ export function drawGolf(g, mini, pos, lit) {   // lit: the bumpers flashing now
   c.beginPath(); c.moveTo(fx + 1, fy - ph); c.lineTo(fx + 9 * g.k, fy - ph + 3.2 * g.k); c.lineTo(fx + 1, fy - ph + 6.4 * g.k); c.closePath(); outlined(c, P.X, P.ink, 2);
   for (const p of ['X', 'O']) if (pos[p]) physBall(g, pos[p][0], pos[p][1], S.ballR, p === 'X' ? P.X : P.O, p, P.ink);
 }
+// The miniature: the hole as it stands (its walls, bumpers and cup) and both balls still out, each a disc in its player's
+// colour (no letter: too small to read at this size).
 export function miniature(mini, final) {
-  return physThumb(mini);
+  const L = PHYSICS.lib;
+  if (!L) return physThumb(mini);
+  const S = L.GOLF, h = L.HOLES[mini.hole];
+  return `<svg class="tphys" viewBox="0 0 ${S.w} ${S.h}" aria-label="Mini golf: ${h.name}${['X', 'O'].map(p => (mini.holed[p] ? `, ${p} in the cup` : '')).join('')}">
+      <rect x="0" y="0" width="${S.w}" height="${S.h}" class="grass"/>
+      ${h.walls.map(([x, y, w, hh, a]) => `<rect x="${x - w / 2}" y="${y - hh / 2}" width="${w}" height="${hh}" rx="2" transform="rotate(${((a || 0) * 180 / Math.PI).toFixed(1)} ${x} ${y})" class="wall"/>`).join('')}
+      ${h.bumpers.map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" class="bump"/>`).join('')}
+      <circle cx="${h.cup[0]}" cy="${h.cup[1]}" r="${S.cupR}" class="cup"/>
+      ${['X', 'O'].map(p => (mini.holed[p] ? '' : `<circle cx="${mini.balls[p][0]}" cy="${mini.balls[p][1]}" r="${S.ballR * 2.2}" class="${p}"/>`)).join('')}</svg>`;
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   g = physTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d }); return g;

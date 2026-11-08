@@ -13,7 +13,7 @@ import { SND, ownPress } from '../audio/sound.js';
 import { tokSvg } from './thumbs.js';
 import { attemptMove, dbStart } from '../net/moves.js';
 import { blocked, moveWait, remoteTurn } from '../net/room.js';
-import { N, REDUCED, app, cpuPlays, esc, save, state } from './app.js';
+import { N, REDUCED, app, cpuPlays, esc, save, state, waitLine } from './app.js';
 import { hash01 } from './art.js';
 import { shownSq } from './chaos.js';
 import { clockLeft } from './clock.js';
@@ -334,10 +334,10 @@ export function fingTable(mini, a, o) {
   const said = shown ? fingResultText(type, shown, mini, W(who)) : '';
   const words = fg ? (pre ? `<span class="tu" style="--u:${pre}ms">${W(who)} is having a go…</span><span ${lateAt('arcres ' + (said.ok ? 'ok' : 'no'), pre)} role="status">${said.text}</span>` : `<span class="arcres ${said.ok ? 'ok' : 'no'}" role="status">${said.text}</span>`)
     : live ? '<span></span>'
-    : kept || (mine && moveWait) ? '<span>Sending your attempt…</span>'
+    : kept || (mine && moveWait) ? '<span></span>'   // (its attempt on its way to the server, or kept for a resend: played here already, nothing to wait for)
     : o.view ? (shown ? `<span>${said.text}</span>` : '')
     : mine ? '<span></span>'   // (how to play is in the ? explainer)
-    : `<span>${state.lock === o.zoom ? `${W(turn)} is having a go…` : `Waiting for ${W(turn)}…`}</span>`;
+    : `<span>${state.lock === o.zoom ? `${W(turn)} is having a go…` : waitLine(turn)}</span>`;
   const hint = '';
   const hudV = live ? fingNow(live) : fingAt(mini, fg ? a.by : o.view && mini.last ? mini.last.by : turn);
   const hud = `<div class="rhud fhud" data-fing="hud">${type === 'skyhop' ? `${fmtN(hudV)} m` : type === 'scoop' ? `${fmtN(hudV)} / ${fmtN(goal)}` : `${hudV} / ${goal}`}</div>`;

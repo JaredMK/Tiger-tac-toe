@@ -2,10 +2,12 @@
 import { esc } from '../../ui/app.js';
 import { keyboard } from '../../ui/keyboard.js';
 
+// The miniature: the word's blanks with the letters found so far, and the last five wrong letters crossed out as in the
+// full view (all of them in the label), each letter as large as the board's other text.
 export function miniature(mini, final) {
   const got = new Set(mini.letters.filter(x => x.hit).map(x => x.l));
-  const wrong = mini.letters.filter(x => !x.hit).map(x => x.l);   // the wrong letters themselves, crossed out as in the full view
-  return `<div class="thg"><div class="hw" style="--n:${mini.word.length}">${mini.word.split('').map(ch => `<i class="${got.has(ch) ? 'on' : ''}">${got.has(ch) ? esc(ch) : ''}</i>`).join('')}</div>${wrong.length ? `<div class="hmx${wrong.length > 16 ? ' many' : wrong.length > 10 ? ' mid' : ''}" aria-label="Wrong letters: ${esc(wrong.join(', '))}">${wrong.map(l => `<i>${esc(l)}</i>`).join('')}</div>` : ''}</div>`;
+  const wrong = mini.letters.filter(x => !x.hit).map(x => x.l);
+  return `<div class="thg"><div class="hw" style="--n:${mini.word.length}">${mini.word.split('').map(ch => `<i class="${got.has(ch) ? 'on' : ''}">${got.has(ch) ? esc(ch) : ''}</i>`).join('')}</div>${wrong.length ? `<div class="hmx" aria-label="Wrong letters: ${esc(wrong.join(', '))}">${wrong.slice(-5).map(l => `<i>${esc(l)}</i>`).join('')}</div>` : ''}</div>`;
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   const got = {};

@@ -7,7 +7,7 @@ import { SND, ownPress } from '../../audio/sound.js';
 import { FIREBASE_CONFIG, configured } from '../../net/connect.js';
 import { attemptMove } from '../../net/moves.js';
 import { blocked } from '../../net/room.js';
-import { N, REDUCED, app, cpuPlays, state } from '../../ui/app.js';
+import { N, REDUCED, app, cpuPlays, state, waitLine } from '../../ui/app.js';
 import { KEY } from '../../ui/config.js';
 import { fx, fxAttr } from '../../ui/fx.js';
 import { arcTally, lateAt, pips } from '../../ui/progress.js';
@@ -62,7 +62,7 @@ function bullsTable(mini, a, o) {
     : o.done && l ? `<p class="arcres ${l.pts ? 'ok' : 'no'}"><b class="${l.by}">${N(l.by)}</b>: ${say(l.pts)}</p>`
     : o.view ? `<p class="arcnote">${l ? `<b class="${l.by}">${N(l.by)}</b>'s last throw: ${say(l.pts)}` : ''}</p>`
     : live ? '<p class="arcnote"></p>'
-    : `<p class="arcnote">Waiting for <b class="${turn}">${N(turn)}</b>…</p>`;
+    : `<p class="arcnote">${waitLine(turn)}</p>`;
   const label = A ? `<span class="bswap"><span class="tu" style="--u:${A.t1}ms">Stop</span><span class="tf" style="--f:${A.t1}ms">Throw!</span></span>` : step === 2 ? 'Throw!' : 'Stop';   // someone else's throw: the button as theirs read
   const btn = o.view ? '' : `<div class="cbtns one"><button class="big ${b ? b && a.by : turn}" data-act="bulls"${o.locked || !live ? ' disabled' : ''}>${label}</button></div>`;
   return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="bulls">${field}${res}</div>${btn}</div>`;
@@ -95,11 +95,12 @@ function bullsTap() {
   attemptMove(move);
   return true;
 }
-// The miniature: both players' points and the board's spot on the field.
+// The miniature: both players' points (the goal in the label: a "/5" beside them would be too small to read) and the
+// board's spot on the field.
 function bullsThumb(mini) {
   const c = mini.cfg || BULL_DEFAULTS, pos = mini.pos || [BULLS.w / 2, BULLS.h / 2], pts = mini.pts || { X: 0, O: 0 }, goal = tune(mini).goal;
   return `<div class="tbull" aria-label="Bullseye: X ${pts.X}, O ${pts.O} of ${goal} points"><svg viewBox="0 0 ${BULLS.w} ${BULLS.h}"><rect x="1.5" y="1.5" width="${BULLS.w - 3}" height="${BULLS.h - 3}" rx="6" class="tbf"/><circle cx="${pos[0]}" cy="${pos[1]}" r="${Math.max(12, c.board)}" class="tbb"/><circle cx="${pos[0]}" cy="${pos[1]}" r="${Math.max(4, c.bull * Math.max(12, c.board) / c.board)}" class="tbu"/></svg>`
-    + `<div class="tbpts">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><span>${Math.min(goal, pts[p])}</span><small>/${goal}</small></div>`).join('')}</div></div>`;
+    + `<div class="tbpts">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><span>${Math.min(goal, pts[p])}</span></div>`).join('')}</div></div>`;
 }
 // The difficulty (config/bulls, the admin's dashboard): fetched at every start and kept for the next visit.
 const BULLS_KEY = KEY + '.bullscfg';

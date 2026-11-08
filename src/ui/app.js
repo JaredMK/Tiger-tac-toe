@@ -39,6 +39,11 @@ export const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<':
 export const N = p => (cpuPlays(p) ? CPU_ICON : '') + esc(playerName(state, p));   // a player's display name, safe for innerHTML, with the computer icon for a computer
 export const isYou = p => playerName(state, p) === 'You';                                 // the player with no name (Play Computer logged out): "Your turn", "You win", never "You's turn"
 export function cpuPlays(p) { return !state.online && !!state.cpu && state.cpu.includes(p); }
+// "Waiting for [name]…" is only ever said of the other side: online, never of this phone's own side (its own move on its
+// way to the server, played here already: Classic never waits on its own move); against the computer, of the computer
+// alone. A game screen's waiting line goes through waitLine (and ui/mini.js drops any other that names this side).
+export const waitsOn = p => (state.online ? p !== state.online.me : !state.cpu || state.cpu.includes(p));
+export const waitLine = p => (waitsOn(p) ? `Waiting for <b class="${p}">${N(p)}</b>…` : '');
 export const pickKey = () => (state.pick == null ? null : `${state.pickSq}:${state.pick}`);   // Find the Pair: the first card turned up, as an event key
 export let advOpen = false;                    // the setup screen's Mini-games section (the mini-game list)
 export const mv = x => `data-m='${JSON.stringify(x)}'`;

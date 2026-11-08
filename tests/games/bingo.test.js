@@ -21,33 +21,40 @@ const fixed = (offer, called) => {
 const call = (m, p, k, rng) => E.applyMove(m, p, k, rng || lcg(7));
 
 /* ===================================== Bingo ===================================== */
-test('bingo: the defaults: 4x4 cards of distinct numbers from 1 to 22, both public, three numbers offered from the pool, nothing called', () => {
+test('bingo: the defaults: 4x4 cards of distinct numbers from 1 to 22, both public, nothing drawn and nothing called', () => {
   const m = mini();
   assert.deepEqual([m.n, m.range, m.diag, m.called, m.callBy, m.calls, m.last], [4, 22, true, [], [], { X: 0, O: 0 }, null]);
   for (const p of ['X', 'O']) {
     assert.equal(m.cards[p].length, 16); assert.equal(new Set(m.cards[p]).size, 16, 'distinct');
     assert.ok(m.cards[p].every(v => Number.isInteger(v) && v >= 1 && v <= 22));
   }
-  assert.equal(m.offer.length, 3); assert.equal(new Set(m.offer).size, 3); assert.ok(m.offer.every(v => v >= 1 && v <= 22));
+  assert.deepEqual(m.offer, [], 'no numbers before Pick numbers');
   assert.notDeepEqual(m.cards.X, m.cards.O);
   assert.equal(R.bingoLines(4, true).length, 10); assert.equal(R.bingoLines(4, false).length, 8); assert.equal(R.bingoLines(3, true).length, 8);
   assert.deepEqual(R.bingoLines(3, true)[6], [0, 4, 8]); assert.deepEqual(R.bingoLines(3, true)[7], [2, 4, 6]);
-  for (const bad of ['spin', -1, 3, null, [0], 1.5, 'auto']) assert.equal(E.applyMove(m, 'X', bad, lcg(1)).ok, false, String(bad));
+  for (const bad of ['spin', 0, -1, 3, null, [0], 1.5, 'auto']) assert.equal(E.applyMove(m, 'X', bad, lcg(1)).ok, false, String(bad));   // (a call before the draw too)
+  assert.equal(E.randomLegalMove(m, 'X', lcg(2)), 'draw');
+  const d = E.applyMove(m, 'X', 'draw', lcg(2));
+  assert.deepEqual(d, { ok: true, outcome: 'continue', note: 'draw', again: true });
   const r = E.randomLegalMove(m, 'X', lcg(2)); assert.ok(Number.isInteger(r) && r >= 0 && r < 3);
+  m.offer = [];
   assert.equal(E.secretOf(m), null, 'no secret');
   const pv = E.publicMini(m);
   assert.deepEqual(pv, { type: 'bingo', n: 4, range: 22, diag: true, cards: m.cards, called: [], callBy: [], offer: m.offer, calls: { X: 0, O: 0 }, last: null, win: null });
   assert.ok(pv.cards !== m.cards && pv.offer !== m.offer, 'copies');
 });
 
-test('bingo: a call marks the number on both cards wherever it is, takes it out of the pool and deals the next offer by the move\'s rng; a number on one card or none still counts as a call', () => {
+test('bingo: a call marks the number on both cards wherever it is and takes it out of the pool; the offer is spent and the next turn draws its own (Pick numbers: the move\'s rng); a number on one card or none still counts as a call', () => {
   const m = fixed([3, 12, 20]);
   assert.deepEqual(call(m, 'X', 1), { ok: true, outcome: 'continue', note: 'mark' });   // 12: on both cards
   assert.deepEqual([m.called, m.callBy, m.calls], [[12], ['X'], { X: 1, O: 0 }]);
   assert.deepEqual([m.last.by, m.last.k, m.last.n, m.last.offer, m.last.hit, m.last.won], ['X', 1, 12, [3, 12, 20], { X: 11, O: 3 }, { X: null, O: null }]);
   assert.deepEqual(m.last.was, { X: 0, O: 0 }); assert.deepEqual(m.last.best, { X: 1, O: 1 });
-  assert.equal(m.offer.length, 3); assert.ok(!m.offer.includes(12), 'a called number never comes up again'); assert.ok(m.offer.every(v => v >= 1 && v <= 26));
+  assert.deepEqual(m.offer, [], 'the offer spent: the next turn draws its own');
   assert.equal(R.bingoPool(m).length, 25);
+  assert.equal(E.applyMove(m, 'O', 0, lcg(1)).ok, false, 'no call without a draw');
+  assert.ok(E.applyMove(m, 'O', 'draw', lcg(8)).ok);
+  assert.equal(m.offer.length, 3); assert.ok(!m.offer.includes(12), 'a called number never comes up again'); assert.ok(m.offer.every(v => v >= 1 && v <= 26)); assert.equal(new Set(m.offer).size, 3);
   assert.ok(R.bingoMarks(m, 'X')[11] && R.bingoMarks(m, 'O')[3]);
   m.offer = [3, 20, 22];
   assert.deepEqual(call(m, 'O', 0), { ok: true, outcome: 'continue', note: 'mark' });   // 3: X's card only
@@ -55,10 +62,14 @@ test('bingo: a call marks the number on both cards wherever it is, takes it out 
   m.offer = [25, 20, 5];
   assert.deepEqual(call(m, 'X', 0), { ok: true, outcome: 'continue', note: 'miss' });   // 25: on no card
   assert.deepEqual(m.last.hit, { X: -1, O: -1 }); assert.equal(m.calls.X, 2);
-  // the same offer plays the same under the same rng (the server's and the phone's draws agree)
-  const a = fixed([1, 2, 3]), b = fixed([1, 2, 3]);
-  call(a, 'X', 2, E.makeRng('same')); call(b, 'X', 2, E.makeRng('same'));
-  assert.deepEqual(a.offer, b.offer);
+  // the draw is the move's rng's alone: the same rng the same numbers (the record's replay agrees), another rng others
+  const a = fixed([]), b = fixed([]), c = fixed([]);
+  call(a, 'X', 'draw', E.makeRng('same')); call(b, 'X', 'draw', E.makeRng('same')); call(c, 'X', 'draw', E.makeRng('other'));
+  assert.deepEqual(a.offer, b.offer); assert.notDeepEqual(a.offer, c.offer);
+  // the draw follows the pool: only uncalled numbers, and fewer when fewer are left
+  const f = fixed([], Array.from({ length: 24 }, (_, k) => k + 1));
+  assert.ok(call(f, 'X', 'draw').ok); assert.deepEqual(f.offer.slice().sort((x, y) => x - y), [25, 26]);
+  assert.equal(call(f, 'X', 'draw').ok, false, 'one draw at a time: its call first');
 });
 
 test('bingo: the first complete line (a row, a column or a diagonal) takes the square, for whichever card completes it; both on the one call is a tie (the square resets); diagonals can be switched off', () => {
@@ -101,14 +112,14 @@ test('bingo: the settings: card size, range, offer and diagonals from the admin\
   const m = mini('bg-tune');
   E.setTune('bingo', null);
   assert.deepEqual(m.tune, { size: 3, range: 12, offer: 4, diag: 0 });
-  assert.deepEqual([m.n, m.range, m.diag, m.cards.X.length, m.offer.length], [3, 12, false, 9, 4]);
+  assert.deepEqual([m.n, m.range, m.diag, m.cards.X.length, m.offer.length], [3, 12, false, 9, 0]);
   assert.deepEqual(R.bingoSettings({ size: 5, range: 10 }), { size: 5, range: 27, offer: 3, diag: true });
   assert.deepEqual(R.bingoSettings(null), { size: 4, range: 22, offer: 3, diag: true });
   assert.deepEqual(R.bingoSettings({ size: 9, range: 99, offer: 9, diag: 1 }), { size: 5, range: 60, offer: 4, diag: true });
   assert.equal(E.publicMini(m).tune, m.tune, 'its settings ride the public view');
-  // the offer after a call follows the square's own settings
-  const r = call(m, 'X', 0, lcg(5));
-  assert.ok(r.ok); assert.equal(m.offer.length, 4);
+  // the draw follows the square's own settings
+  assert.ok(call(m, 'X', 'draw', lcg(5)).ok); assert.equal(m.offer.length, 4);
+  assert.ok(call(m, 'X', 3, lcg(5)).ok); assert.equal(m.offer.length, 0);
 });
 
 test('bingo: over thousands of random calls no number is ever called twice, every offer comes from the pool, and every square ends with a line (or a tie) before the pool runs dry', () => {
@@ -117,11 +128,15 @@ test('bingo: over thousands of random calls no number is ever called twice, ever
   for (let g = 0; g < 400; g++) {
     const m = mini('g' + g);
     let p = 'X', done = false;
-    for (let k = 0; k < 60 && !done; k++) {
+    for (let k = 0; k < 120 && !done; k++) {
       const pool = R.bingoPool(m);
       assert.ok(m.offer.every(v => pool.includes(v)), 'the offer from the pool');
-      const r = E.applyMove(m, p, E.randomLegalMove(m, p, rng), rng);
-      assert.ok(r.ok); assert.ok(!r.again, 'one call a move');
+      const mv = E.randomLegalMove(m, p, rng), was = m.called.length;
+      assert.equal(mv === 'draw', !m.offer.length, 'a draw exactly when nothing is drawn');
+      const r = E.applyMove(m, p, mv, rng);
+      assert.ok(r.ok);
+      if (mv === 'draw') { assert.deepEqual([r.again, r.note, m.called.length], [true, 'draw', was]); assert.ok(m.offer.length === 3 && m.offer.every(v => pool.includes(v))); continue; }   // (the turn goes on: its call next)
+      assert.ok(!r.again, 'one call a turn');
       assert.equal(new Set(m.called).size, m.called.length, 'never twice');
       if (r.outcome === 'win') { done = true; wins++; if (r.winner !== p) gifts++; assert.ok(R.bingoWon(m, r.winner)); assert.equal(m.win, r.winner); }
       else if (r.outcome === 'draw') { done = true; ties++; assert.equal(r.note, 'tie'); }
@@ -132,26 +147,60 @@ test('bingo: over thousands of random calls no number is ever called twice, ever
   assert.equal(wins + ties, 400); assert.ok(ties > 0 && ties < 120, `ties ${ties}`); assert.ok(gifts > 0, 'a random caller sometimes hands the square over');
 });
 
-test('bingo: a timeout plays nothing (no call for a player out of time) and the offer waits for the next player here; online too', () => {
-  const m = fixed([3, 12, 20]);
+test('bingo: a timeout plays nothing (no call for a player out of time); after a draw the turn passes (not a miss) and the drawn offer waits for the next player here, who calls from it with no draw; online and across a reload too', () => {
+  // nothing drawn: a missed turn, nothing drawn for them
+  let m = fixed([]);
   assert.equal(timeoutClose(m, 'X'), null);
-  const st = E.newMatch(E.makeRng('bg-to'), { games: ['ttt', 'bingo'] });
+  let st = E.newMatch(E.makeRng('bg-to'), { games: ['ttt', 'bingo'] });
   st.squares[0] = { owner: null, mini: m }; st.turn = 'X'; st.timer = E.newTimer(30); st.lock = 0; st.lockBy = 'open';
-  const r = E.timeoutMove(st, lcg(1));
-  assert.deepEqual([r.ok, r.missed, st.turn, m.called, m.offer], [true, 'X', 'O', [], [3, 12, 20]], 'the offer stays');
-  assert.deepEqual(call(m, 'O', 2), { ok: true, outcome: 'continue', note: 'mark' }, 'the other player may call from it');
+  let r = E.timeoutMove(st, lcg(1));
+  assert.deepEqual([r.ok, r.missed, st.turn, m.called, m.offer], [true, 'X', 'O', [], []], 'nothing drawn');
+  // drawn, then out of time: the turn ends (not a miss), nothing called, the offer stays drawn
+  m = fixed([]);
+  st = E.newMatch(E.makeRng('bg-to2'), { games: ['ttt', 'bingo'] });
+  st.squares[0] = { owner: null, mini: m }; st.turn = 'X'; st.timer = E.newTimer(30);
+  const d = E.playMove(st, 0, 'draw', E.makeRng('bg-d'));
+  assert.ok(d.ok); assert.deepEqual([st.flash.kind, st.flash.note, st.lock, st.flash.m], ['again', 'draw', 0, 'draw']);
+  assert.deepEqual(st.flash.bingo, { draw: true, by: 'X', offer: m.offer.slice(), size: 4 }, 'the flash carries the numbers drawn, in order');
+  assert.equal(R.flashMs(st.flash), R.bingoDrawTimes(st.flash.bingo).end);
+  const drawn = m.offer.slice();
+  E.endFlash(st);
+  assert.deepEqual([st.screen, st.zoom, st.lock], ['mini', 0, 0], 'held to the square for the call');
+  assert.equal(E.leaveSquare(st), false, 'no leaving before the call');
+  r = E.timeoutMove(st, lcg(1));
+  assert.deepEqual([r.ok, r.ended, r.missed, st.turn, st.lock, st.timer.streak.X, st.timer.timeouts.X], [true, true, undefined, 'O', null, 0, 0], 'the turn over, not missed');
+  assert.deepEqual([m.called, m.offer], [[], drawn], 'nothing called; the offer still drawn');
+  assert.equal(E.randomLegalMove(m, 'O', lcg(3)) === 'draw', false, 'the next player calls from it');
+  assert.equal(E.playMove(st, 0, 'draw', lcg(3)).ok, false, 'no second draw over it');
+  const c = E.playMove(st, 0, 1, lcg(3));
+  assert.ok(c.ok); assert.deepEqual([st.flash.kind, st.flash.bingo.n, st.flash.bingo.offer, m.calls], ['move', drawn[1], drawn, { X: 0, O: 1 }]);
+  assert.equal(st.squares[0].mv.O, 1, 'their turn\'s move (no bonus)');
+  // online: the draw is the server's move (its rng), an entry like a bonus move; the call follows; a reload keeps the drawn offer
   const games = Object.fromEntries(E.TYPES.map(g => [g, g === 'bingo']));
   let rec = E.newOnlineMatch({ names: { X: 'A', O: 'B' }, games, timer: 30 }, lcg(3), 'bg');
   const p = rec.state.turn;
+  assert.ok(rec.state.squares.every(s => !s.mini.offer || !s.mini.offer.length), 'no numbers anywhere in the record before a draw');
+  assert.deepEqual(rec.secrets || {}, {}, 'and none kept apart: nothing exists until the draw');
   const t = E.applyOnlineTimeout(rec, lcg(2));
   assert.deepEqual([t.ok, t.entries, t.missed], [true, [], p]);
-  assert.ok(t.rec.state.squares.every(s => s.mini.called.length === 0), 'nothing called');
   rec = t.rec;
-  const mv = E.applyOnlineMove(rec, rec.state.turn, 0, 1, lcg(4));
-  assert.ok(mv.ok, JSON.stringify(mv)); assert.ok(Number.isInteger(mv.entries[0].bingo.n), 'the move\'s entry carries the call');
+  const q = rec.state.turn;
+  assert.equal(E.applyOnlineMove(rec, q, 0, 1, lcg(4)).ok, false, 'no call before the draw');
+  const dr = E.applyOnlineMove(rec, q, 0, 'draw', E.makeRng('server'));
+  assert.ok(dr.ok, JSON.stringify(dr));
+  assert.deepEqual([dr.entries[0].kind, dr.entries[0].bingo.draw, dr.entries[0].bingo.offer.length, dr.rec.state.lock, dr.rec.state.turn], ['again', true, 3, 0, q]);
+  const back = E.parseMatch(E.packMatch(dr.rec));                         // (a reload: the record as the database holds it)
+  assert.deepEqual(back.state.squares[0].mini.offer, dr.entries[0].bingo.offer, 'the drawn offer survives the reload');
+  const to = E.applyOnlineTimeout(back, lcg(6));
+  assert.ok(to.ok); assert.equal(to.missed, null); assert.equal(to.rec.state.turn, q === 'X' ? 'O' : 'X');
+  assert.deepEqual(to.rec.state.squares[0].mini.offer, dr.entries[0].bingo.offer, 'out of time after the draw: the offer waits');
+  const mv = E.applyOnlineMove(to.rec, to.rec.state.turn, 0, 2, lcg(4));
+  assert.ok(mv.ok, JSON.stringify(mv)); assert.equal(mv.entries[0].bingo.n, dr.entries[0].bingo.offer[2], 'the next player calls from it');
   assert.equal(mv.rec.state.squares[0].mini.called.length, 1, 'a call through the record');
+  assert.deepEqual(mv.rec.state.squares[0].mini.offer || [], [], 'spent');
   assert.equal(E.applyOnlineMove(mv.rec, mv.rec.state.turn, 0, 'auto', lcg(5)).ok, false, 'no automatic move from a phone');
-  assert.equal(E.applyOnlineMove(mv.rec, mv.rec.state.turn, 0, 7, lcg(5)).ok, false, 'a pick outside the offer refused');
+  const dr2 = E.applyOnlineMove(mv.rec, mv.rec.state.turn, 0, 'draw', lcg(5));
+  assert.ok(dr2.ok); assert.equal(E.applyOnlineMove(dr2.rec, dr2.rec.state.turn, 0, 7, lcg(5)).ok, false, 'a pick outside the offer refused');
 });
 
 test('bingo: the computer: a line now is the move at every level; a number that completes only the other card is never called while another is open; Normal advances its own best line over the other\'s; needs falls as a line fills', () => {
@@ -172,12 +221,15 @@ test('bingo: the computer: a line now is the move at every level; a number that 
   assert.equal(A.needs(pm(fixed([5, 6, 7], [1, 2, 3, 4])), 'X'), 0);
   assert.equal(A.needs(pm(fixed([5, 6, 7], [1, 2, 3])), 'O'), 4, 'nothing of O\'s called');
   assert.equal(E.needsOf(pm(fixed([5, 6, 7], [1, 2])), 'X'), 2);
-  assert.ok(Number.isInteger(E.localBest(pm(mini()), 'O', rng).move));
+  const drawn = seed => { const m = mini(seed); assert.ok(E.applyMove(m, 'X', 'draw', lcg(4)).ok); return m; };   // (a square with its numbers drawn)
+  assert.equal(E.localBest(pm(mini()), 'O', rng).move, 'draw');
+  assert.ok(Number.isInteger(E.localBest(pm(drawn()), 'O', rng).move));
   // Hard keeps to its clock: a budget already spent gives a move at once
-  const t0 = Date.now(), h = A.best(pm(mini('bg-h')), 'X', rng, {}, { level: 'hard', until: () => 0 });
+  const t0 = Date.now(), h = A.best(pm(drawn('bg-h')), 'X', rng, {}, { level: 'hard', until: () => 0 });
   assert.ok(Number.isInteger(h.move) && Date.now() - t0 < 400);
-  assert.ok(Number.isInteger(A.best(pm(mini('bg-h2')), 'X', rng, {}, { level: 'hard', until: () => 50 }).move));
-  assert.deepEqual(A.best(pm(fixed([])), 'X', rng, {}, { level: 'normal' }), { move: null, q: 0 }, 'no offer: no move');
+  assert.ok(Number.isInteger(A.best(pm(drawn('bg-h2')), 'X', rng, {}, { level: 'hard', until: () => 50 }).move));
+  for (const level of ['easy', 'normal', 'hard']) assert.deepEqual(A.best(pm(fixed([])), 'X', rng, {}, { level, until: null }), { move: 'draw', q: 0 }, level + ': nothing drawn: Pick numbers first');
+  assert.deepEqual(A.best(pm(fixed([], Array.from({ length: 26 }, (_, k) => k + 1))), 'X', rng, {}, { level: 'normal' }), { move: null, q: 0 }, 'nothing left to draw: no move');
 });
 
 test('bingo: whole squares, computer against computer: every one ends, the winner takes about 4 to 6 calls, the first mover wins under 60% of the decided squares', () => {
@@ -186,9 +238,10 @@ test('bingo: whole squares, computer against computer: every one ends, the winne
   for (let g = 0; g < N; g++) {
     const rng = E.makeRng('bg-sq' + g), m = mini('sq' + g);
     let p = 'X', done = false;
-    for (let k = 0; k < 60 && !done; k++) {
+    for (let k = 0; k < 120 && !done; k++) {
       const b = A.best(E.publicMini(m), p, rng, {}, { level: g % 50 === 0 ? 'hard' : 'normal', until: null }), r = E.applyMove(m, p, b.move, rng);
       assert.ok(r.ok);
+      if (b.move === 'draw') { assert.ok(r.again); continue; }               // (the draw, then the same player's call)
       if (r.outcome === 'win') { done = true; dec++; if (r.winner === 'X') first++; wCalls += m.calls[r.winner]; }
       else if (r.outcome === 'draw') { done = true; ties++; }
       else p = p === 'X' ? 'O' : 'X';

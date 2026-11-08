@@ -1,11 +1,11 @@
 // Bingo: its names, its "?" explainer, its icon, its release default and its settings.
 
-export const info = { name: 'Bingo', hint: 'Call one of three numbers; it marks every card it is on. Complete a line first' };
+export const info = { name: 'Bingo', hint: 'Pick numbers, then call one of the three balls; it marks every card it is on. Complete a line first' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
 export const minVersion = '1.5.0';   // the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
 export const category = 'luck';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
-export const superChaos = false;   // one shared pool of numbers and one offer a turn: not a game for simultaneous rounds
-export const explainer = { name: 'Bingo', play: 'Three numbers come up: call one. It marks every card it is on, yours and theirs.', win: 'Complete a line on your card first.' };
+export const superChaos = false;   // one shared pool of numbers and one draw a turn: not a game for simultaneous rounds
+export const explainer = { name: 'Bingo', play: 'Tap Pick numbers and {offer} balls roll out. Call one: it marks every card it is on, yours and theirs.', win: 'Complete a line on your card first.' };
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/><circle cx="6" cy="6" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="18" cy="18" r="1.4" fill="currentColor" stroke="none"/></svg>';
 // Its settings (the admin's Mini-game Settings; core/tune.js): the card's size (a line is a full row, column or diagonal),
 // the numbers' range, how many numbers come up each turn, and whether diagonals count. Tuned by tests/sim/bingo.sim.js

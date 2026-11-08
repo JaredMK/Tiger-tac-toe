@@ -14,7 +14,7 @@ import { attemptMove } from '../net/moves.js';
 import { haptic } from '../net/platform.js';
 import { blocked, presentingSeq } from '../net/room.js';
 import { matchLog } from '../net/tracking.js';
-import { N, REDUCED, app, state } from './app.js';
+import { N, REDUCED, app, state, waitLine } from './app.js';
 import { ICONS } from './art.js';
 import { animMs, fx, fxAt, momentPower, shake } from './fx.js';
 import { movePlan } from './haptics.js';
@@ -105,8 +105,7 @@ export function physTable(mini, a, o) {
     : o.view ? `<p class="arcnote">${l ? physResult({ type, by: l.by, phys: l }, true).text : ''}</p>`
     : bowl && bowl.step === 3 ? `<p class="arcnote">Rolling…</p>`
     : state.sc && mini.aim && mini.aim[turn] ? '<p class="arcnote">Shot locked in</p>'
-    : mine || pend ? '<p class="arcnote"></p>'
-    : `<p class="arcnote">Waiting for <b class="${turn}">${N(turn)}</b>…</p>`;
+    : `<p class="arcnote">${mine || pend ? '' : waitLine(turn)}</p>`;   // (this phone's own shot on its way: nothing to wait for, Classic never waits on its own move)
   const strike = ph && type === 'bowling' && ph.strike ? `<div ${lateAt('pstrike', t)} aria-hidden="true">STRIKE!</div>` : '';
   const label = type === 'golf' ? `Mini golf hole: ${PHYSICS.lib.HOLES[mini.hole].name}` : type === 'pool' ? 'The pool table' : 'The bowling lane';
   const scene = `<div class="pscene ${type}" data-phys="scene"${mine ? ' data-live="1"' : ''} aria-label="${label}"><canvas data-phys="cv"></canvas>${strike}</div>`;

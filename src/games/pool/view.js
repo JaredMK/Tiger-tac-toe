@@ -1,6 +1,6 @@
 // Pool: the screen, the miniature, the move's words and sounds, and the inputs.
 import { PHYSICS } from '../shared/physics.js';
-import { poolRank } from './rules.js';
+import { poolIds, poolLeft, poolRank } from './rules.js';
 import { state } from '../../ui/app.js';
 import { physBall, physResult, physSkull, physTable, physThumb } from '../../ui/physics.js';
 export { physReplay as replay } from '../../ui/physics.js';
@@ -28,8 +28,17 @@ export function drawPool(g, mini, pos, pop) {   // pop: { id, s } a ball popping
     else physBall(g, x, y, S.ballR, id[0] === 'x' ? P.X : P.O, id[0].toUpperCase(), P.ink);
   }
 }
+// The miniature: the table as it stands (the pockets and the balls left, each in its side's colour, no numbers on them)
+// and beside it each side's balls still to sink, its mark and the count.
 export function miniature(mini, final) {
-  return physThumb(mini);
+  const L = PHYSICS.lib;
+  if (!L) return physThumb(mini);
+  const S = L.POOL, cls = id => (id === 'cue' ? 'cue' : id === 'black' ? 'black' : id[0].toUpperCase());
+  const balls = poolIds(mini).map(id => (mini.down[id] ? '' : `<circle cx="${mini.balls[id][0]}" cy="${mini.balls[id][1]}" r="${S.ballR * 1.6}" class="${cls(id)}"/>`)).join('');
+  return `<div class="tpool" aria-label="Pool: X has ${poolLeft('X', mini)} balls left, O has ${poolLeft('O', mini)}"><svg class="tphys" viewBox="-4 -4 ${S.w + 8} ${S.h + 8}" aria-hidden="true">
+      <rect x="-4" y="-4" width="${S.w + 8}" height="${S.h + 8}" rx="4" class="rail"/><rect x="0" y="0" width="${S.w}" height="${S.h}" class="cloth"/>
+      ${S.pockets.map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" class="pocket"/>`).join('')}${balls}</svg>`
+    + `<div class="tpcnt">${['X', 'O'].map(p => `<div class="${p}"><b class="${p}">${p}</b><span>${poolLeft(p, mini)}</span></div>`).join('')}</div></div>`;
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   g = physTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d }); return g;

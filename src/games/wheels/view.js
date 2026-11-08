@@ -1,7 +1,7 @@
 // Risky Spins: the screen, the miniature, the move's words and sounds, and the inputs.
 import { WHEELT, isSkull, pushYourLuck, setWheelsConfig, wheelsOf } from './rules.js';
 import { FIREBASE_CONFIG, configured } from '../../net/connect.js';
-import { N, mv, state } from '../../ui/app.js';
+import { N, mv, state, waitLine } from '../../ui/app.js';
 import { KEY } from '../../ui/config.js';
 import { arcTally, lateAt } from '../../ui/progress.js';
 
@@ -70,7 +70,7 @@ function wheelTable(mini, a, o) {
       : kind === 'bust' ? `<p ${lateAt('arcres no', landed)} role="status">${lost(s.pot)}</p>`
       : `<p ${lateAt('arcres ' + (s.v === 10 ? 'ok ten' : s.v > 0 ? 'ok' : 'no'), landed)} role="status">${s.v > 0 ? `+${s.v}!` : 'Nothing this time'}</p>`)
     : (o.view || o.done) && l ? `<p class="arcres ${l.kind === 'bust' || !(l.v > 0 || l.kind === 'bank') ? 'no' : 'ok'}"><b class="${l.by}">${N(l.by)}</b> ${l.kind === 'bank' ? `banked ${l.pot}` : l.kind === 'bust' ? `hit a skull${l.pot ? ': ' + l.pot + ' lost' : ''}` : `spun the ${WHEEL_LOOK[l.w].say} wheel: ${l.v > 0 ? '+' + l.v : 'nothing'}`}</p>`
-    : `<p class="arcnote">${o.view ? '' : o.locked ? `Waiting for <b class="${turn}">${N(turn)}</b>…` : ''}</p>`;
+    : `<p class="arcnote">${o.view ? '' : o.locked ? waitLine(turn) : ''}</p>`;
   const bankPot = kind === 'spin' ? (was ? `<b class="cnt" data-from="${was}" data-delay="${landed}" data-ms="350">${pot}</b>` : `<b class="bpot" style="--t:${landed}ms">${pot}</b>`) : t && t.pot && !s ? String(t.pot) : '';
   const bank = py ? `<div class="wbank"><button class="big bank" data-act="move" ${mv('bank')}${o.locked || o.view || !(t && t.pot && t.by === turn) || (s && kind !== 'spin') ? ' disabled' : ''}>Bank${bankPot ? ' +' + bankPot : ''}</button></div>` : '';
   return `<div class="g-arc g-wheels"><div class="ctals">${tal('X')}${tal('O')}</div><div class="wheels">${py ? `<div class="wpotrow" aria-live="polite">${potHtml}</div>` : ''}<div class="rwrow n${ws.length}">${wheels}</div>${res}${bank}</div></div>`;

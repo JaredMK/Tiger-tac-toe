@@ -3,8 +3,8 @@ import { DIRS, MUN, MUN_VIEW, munAte, munInput, munLayout, munMove, munMs, munPo
 import { SND, ownPress } from '../../audio/sound.js';
 import { attemptMove } from '../../net/moves.js';
 import { haptic } from '../../net/platform.js';
-import { blocked, moveWait, remoteTurn } from '../../net/room.js';
-import { N, REDUCED, app, cpuPlays, state } from '../../ui/app.js';
+import { blocked, remoteTurn } from '../../net/room.js';
+import { N, REDUCED, app, cpuPlays, state, waitLine } from '../../ui/app.js';
 import { shownSq } from '../../ui/chaos.js';
 import { clockLeft } from '../../ui/clock.js';
 import { fxAt } from '../../ui/fx.js';
@@ -285,10 +285,9 @@ function munTable(mini, a, o) {
   const said = shown ? munResultText(shown, goal, W(who)) : { text: '', ok: false };
   const words = g ? (pre ? `<span class="tu" style="--u:${pre}ms">${W(who)} is on a run…</span><span ${lateAt('arcres ' + (said.ok ? 'ok' : 'no'), pre)} role="status">${said.text}</span>` : `<span class="arcres ${said.ok ? 'ok' : 'no'}" role="status">${said.text}</span>`)
     : live ? '<span></span>'
-    : mine && moveWait ? '<span>Sending your run…</span>'
     : o.view ? (shown ? `<span>${said.text}</span>` : '')
-    : mine ? '<span></span>'   // (how to play is in the ? explainer)
-    : `<span>${state.lock === o.zoom && !state.online ? `${W(turn)} is on a run…` : `Waiting for ${W(turn)}…`}</span>`;
+    : mine ? '<span></span>'   // (how to play is in the ? explainer; its run on its way to the server: played here already, nothing to wait for)
+    : `<span>${state.lock === o.zoom && !state.online ? `${W(turn)} is on a run…` : waitLine(turn)}</span>`;
   const hudV = live ? live.sim.score0 + live.sim.ate.length : munScore(mini, g ? a.by : o.view && l ? l.by : turn);
   const hud = `<div class="rhud munhud" data-mun="hud">${munSay(hudV, goal)}</div>`;
   const scene = `<div class="munscene" data-mun="scene" aria-label="The maze, with the muncher at its start and the spooks in the middle"><canvas data-mun="cv"></canvas>${hud}</div>`;

@@ -58,8 +58,16 @@ function patternsTable(mini, a, o) {
     : `<p class="arcnote">${o.view ? '' : `<b class="${turn}">${N(turn)}</b>'s turn · ${left} option${left === 1 ? '' : 's'} left`}</p>`;
   return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="patterns"><div class="patcard"><small>${ask}</small><div class="pseq" style="--n:${shown.seq.length}" aria-label="The sequence: ${esc(shown.seq.map(patSay).join(', '))}">${seq}</div></div><div class="popts">${opts}</div>${res}</div></div>`;
 }
+// The miniature: each player's patterns got as pips, and the puzzle's sequence with its gap (dashed). A sequence of
+// numbers shows only the gap and the two next to it, each number as large as the board's other text; shapes and dots
+// show the whole sequence.
 export function miniature(mini, final) {
-  const pz = mini.puz || (mini.last ? { seq: mini.last.seq } : null); return `<div class="tpat">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${Array.from({ length: patCfg(mini).goal }, (_, k) => `<i class="${k < mini.right[p] ? 'on' : ''}"></i>`).join('')}</div>`).join('')}${pz ? `<div class="tseq">${pz.seq.map(it => (it ? `<span>${patSvg(it)}</span>` : '<span class="q">?</span>')).join('')}</div>` : ''}</div>`;
+  const pz = mini.puz || (mini.last ? { seq: mini.last.seq } : null);
+  let seq = pz ? pz.seq : [];
+  const nums = seq.some(it => it && 'n' in it);
+  if (nums && seq.length > 3) { const g = Math.max(0, seq.indexOf(null)), at = Math.max(0, Math.min(seq.length - 3, g === 0 ? 0 : g - 2)); seq = seq.slice(at, at + 3); }
+  const cell = it => (!it ? '<span class="q"></span>' : 'n' in it ? `<span class="n">${esc(String(it.n))}</span>` : `<span>${patSvg(it)}</span>`);
+  return `<div class="tpat">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${Array.from({ length: patCfg(mini).goal }, (_, k) => `<i class="${k < mini.right[p] ? 'on' : ''}"></i>`).join('')}</div>`).join('')}${seq.length ? `<div class="tseq${nums ? ' tnums' : ''}">${seq.map(cell).join('')}</div>` : ''}</div>`;
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   g = patternsTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d }); return g;

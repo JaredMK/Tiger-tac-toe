@@ -2916,7 +2916,7 @@ main.scr.mini > .wband { left: 0; right: 0; }   /* Super Chaos: waiting in the s
 .tdoms .tpip { width: 48cqw; gap: 4cqw; } .tpip .tr.tdr { gap: 2.5cqw; } .tpip .tr.tdr b { width: 9cqw; }
 .tpip .tr i.tdstk { display: block; height: 12cqw; width: calc(var(--n) * 8cqw - 1.5cqw); border: 0; border-radius: 1.5cqw; background: repeating-linear-gradient(90deg, var(--sea) 0 6.5cqw, var(--ink) 6.5cqw 8cqw); box-shadow: 0 0 0 1.2cqw var(--ink); } .tpip .tr i.tdstk[style="--n:0"] { display: none; }
 .tdn { font-size: 10cqw; font-weight: 800; font-variant-numeric: tabular-nums; margin-left: auto; }
-/* ---- Bingo (bingo, November 2026): the two cards side by side (sized by the room, width and height), the offered numbers as chips, a call's stamp and a line lighting up (rules.js bingoTimes); the miniature's two tiny cards ---- */
+/* ---- Bingo (bingo, November 2026): the two cards side by side (sized by the room, width and height), the tray (the cage, Pick numbers, the drawn balls rolling out), a call's stamp and a line lighting up (rules.js bingoTimes); the miniature's two tiny cards ---- */
 .g-bingo .bgwrap { flex: 1 1 auto; min-height: 60px; container-type: size; display: flex; justify-content: center; align-items: center; }
 .g-bingo .bgcards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; width: min(100cqw, calc(2 * (100cqh - 26px) + 10px)); }   /* two cards: as wide as the room allows, no taller than it */
 .bgcard { container-type: inline-size; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
@@ -2941,24 +2941,49 @@ main.scr.mini > .wband { left: 0; right: 0; }   /* Super Chaos: waiting in the s
 .bgc.bgwin:not(.set) { animation: bgwin .5s var(--t2, 0ms) cubic-bezier(.3, 1.6, .5, 1) both, bgring 1ms var(--t2, 0ms) both; }
 @keyframes bgwin { 0% { transform: none; } 45% { transform: scale(1.22) rotate(-6deg); } 100% { transform: none; } }
 @keyframes bgring { from { box-shadow: none; } to { box-shadow: 0 0 0 2.5px var(--ink), 0 0 0 5.5px var(--gold); } }
-.bgoffer { flex: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; height: 68px; }
-.bgchip { height: 68px; min-width: 0; border: 3px solid var(--ink); border-radius: 18px 14px 20px 13px; background: var(--paper); color: var(--ink); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 0; font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-size: 28px; line-height: 1; transition: transform .08s; }
-.bgchip b { font-weight: 400; padding-top: .1em; }
-.bgchip:not(:disabled):active { transform: scale(.95); }
-.bgchip:disabled { opacity: .55; }
-.bgchip.bgnone { visibility: hidden; border: 0; }
-.bgdots { display: flex; gap: 4px; height: 8px; }
-.bgdot { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--ink); } .bgdot.X { background: var(--x); } .bgdot.O { background: var(--o); }
-.bgoffer.playing .bgchip { opacity: 1; }
-.bgoffer.playing .bgchip.bgdim { animation: bgdim .3s var(--t, 0ms) ease-out both; }   /* the others fade back as the call lands */
-.bgoffer.playing .bgchip.bgpick { animation: bgpick var(--d, 480ms) 0ms cubic-bezier(.4, 0, .6, 1) both; box-shadow: 0 0 0 3px var(--ink) inset; z-index: 1; }   /* the one called lifts, then flies up to the cards and is gone as the mark lands */
-@keyframes bgpick { 0% { transform: none; opacity: 1; } 25% { transform: translateY(-8px) scale(1.12); opacity: 1; } 100% { transform: translateY(-120px) scale(.35); opacity: 0; } }
+.bgtray { flex: none; height: 78px; display: flex; gap: 8px; align-items: stretch; }   /* the cage, then the balls' three places: always this tall, whatever is in it */
+.bgcage { flex: none; width: 86px; height: 78px; }
+.bgcage svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.bgcage .bgstand { stroke: #8a5a2b; stroke-width: 6; stroke-linecap: round; fill: none; }
+.bgcage .bgbase { fill: #a86d35; stroke: var(--ink); stroke-width: 2; }
+.bgcage .bgspout { fill: #c9c2b3; stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; }
+.bgcage .bgwire { fill: rgba(255, 248, 232, .2); stroke: var(--ink); stroke-width: 2.6; stroke-linejoin: round; }
+.bgcage .bgspk { stroke: var(--ink); stroke-width: 1.2; opacity: .55; }
+.bgcage .bgcrank { stroke: var(--ink); stroke-width: 3; stroke-linecap: round; }
+.bgcage .bgknob { fill: var(--x); stroke: var(--ink); stroke-width: 2; }
+.bgcage .bghub { fill: var(--ink); }
+.bgcage .bgcb { stroke: var(--ink); stroke-width: 1.2; } .bgcb.a { fill: var(--sea); } .bgcb.b { fill: var(--green); } .bgcb.c { fill: #fff; }
+.bgcage .bgdrum { transform-box: view-box; transform-origin: 34px 30px; }
+.bgcage.spin .bgdrum { animation: bgspin var(--d, 900ms) var(--t, 0ms) cubic-bezier(.35, .1, .35, 1) both; }   /* the drum and crank turn twice over, from the move */
+.bgcage.spin .bgcb { animation: bgtumble .18s var(--t, 0ms) 5 alternate ease-in-out both; animation-delay: calc(var(--t, 0ms) + var(--j) * 30ms); }   /* the balls inside rattle as it turns */
+@keyframes bgspin { from { transform: none; } to { transform: rotate(720deg); } }
+@keyframes bgtumble { from { transform: none; } to { transform: translate(2px, -3px); } }
+.bgballs { flex: 1 1 auto; min-width: 0; position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; container-type: inline-size; }
+.bgslot { position: relative; min-width: 0; display: flex; align-items: center; justify-content: center; }
+.bgslot::before { content: ''; position: absolute; height: min(64px, 100%); aspect-ratio: 1; max-width: 100%; border-radius: 50%; border: 2px dashed rgba(22, 18, 16, .25); box-sizing: border-box; }   /* a ball's place in the tray */
+.bgball { position: relative; z-index: 1; height: min(66px, 100%); aspect-ratio: 1; max-width: 100%; padding: 0; border-radius: 50%; border: 3px solid var(--ink); display: flex; align-items: center; justify-content: center; color: var(--ink); font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-size: 24px; line-height: 1; transition: transform .08s; box-shadow: inset -4px -5px 0 rgba(0, 0, 0, .18); }
+.bgball.a { background: var(--sea); } .bgball.b { background: var(--green); } .bgball.c { background: #a86d35; }
+.bgface { width: 70%; height: 70%; border-radius: 50%; background: #fff; border: 1.5px solid var(--ink); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; }
+.bgface b { font-weight: 400; padding-top: .1em; }
+.bgball:not(:disabled):active { transform: scale(.94); }
+.bgball:disabled { opacity: 1; }
+.bgdots { display: flex; gap: 3px; height: 7px; }
+.bgdot { width: 7px; height: 7px; border-radius: 50%; border: 1.5px solid var(--ink); } .bgdot.X { background: var(--x); } .bgdot.O { background: var(--o); }
+.bgball.bgout { --fx: calc(-1 * (var(--k, 0) * ((100cqw - 16px) / 3 + 8px) + (100cqw - 16px) / 6 + 26px)); animation: bgroll .34s var(--t, 0ms) cubic-bezier(.3, .6, .4, 1) both; }   /* rolls out of the cage's spout, up and over into its place, a little bounce as it lands */
+@keyframes bgroll { 0% { transform: translate(var(--fx), 14px) scale(.3); opacity: 0; } 10% { opacity: 1; } 55% { transform: translate(calc(var(--fx) * .45), -16px) scale(.85); opacity: 1; } 85% { transform: translate(0, 3px) scale(1.06, .94); } 100% { transform: none; opacity: 1; } }
+.bgdraw { position: absolute; inset: 3px 0; z-index: 2; border: 3px solid var(--ink); border-radius: 18px 14px 20px 13px; background: var(--o); color: var(--ink); font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-size: 24px; line-height: 1; padding: .15em .4em 0; box-shadow: 0 4px 0 var(--ink); transition: transform .08s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bgdraw:not(:disabled):active { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); }
+.bgdraw:disabled { background: var(--panel-2); color: var(--muted); box-shadow: 0 4px 0 rgba(22, 18, 16, .35); border-color: rgba(22, 18, 16, .5); }
+.bgtray.playing .bgball.bgdim { animation: bgdim .3s var(--t, 0ms) ease-out both; }   /* the others fade back as the call lands */
+.bgtray.playing .bgball.bgpick { animation: bgpick var(--d, 480ms) 0ms cubic-bezier(.4, 0, .6, 1) both; z-index: 3; }   /* the one called lifts, then flies up to the cards and is gone as the mark lands */
+@keyframes bgpick { 0% { transform: none; opacity: 1; } 25% { transform: translateY(-8px) scale(1.14); opacity: 1; } 100% { transform: translateY(-120px) scale(.35); opacity: 0; } }
 @keyframes bgdim { to { opacity: .35; } }
+.g-bingo .ctal .pips { gap: 3px; } .g-bingo .ctal .pips i { width: 13px; height: 13px; border-width: 2.2px; } .g-bingo .ctal > .tnm { flex-basis: 4.2em; }   /* (a line's marks small, and a name never under its 40px of text beside its mark: where it would be, the marks go to their own line under it) */
 .g-bingo .arcres { font-size: 22px; } .g-bingo .arcres:not(.ok):not(.no) { color: var(--ink); }
 .g-bingo .arcnote b { display: inline-block; max-width: 7.5em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }   /* a name in the status line: cut with "…", never wrapped */
 .tbingo { width: 92cqw; height: auto; display: block; }
 .tbingo .tbgc { fill: #fff; stroke: var(--ink); stroke-width: .9; } .tbingo .tbgc.on.X { fill: var(--x); } .tbingo .tbgc.on.O { fill: var(--o); } .tbingo .tbgc.win { fill: var(--gold, #f2c230); stroke-width: 1.4; }
-.tbingo .tbgl { text-anchor: middle; font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-size: 10px; } .tbingo .tbgl.X { fill: var(--x); } .tbingo .tbgl.O { fill: #b88a00; }
+.tbingo .tbgl .tmk { stroke: var(--ink); } .tbingo .tbgl.X .tmk { stroke: var(--x); } .tbingo .tbgl.O .tmk { stroke: #d9a400; }   /* each card's owner: a drawn mark, no text */
 /* ---- Scratch & Match (scratch, November 2026): both players' tallies over their own cards (X's left, O's right), nine frosted panels a card, a picture under each; the move rubs the frost off strip by strip ---- */
 .g-scratch { width: var(--gw); display: flex; flex-direction: column; gap: 10px; }
 .g-scratch .ctals, .scards { width: min(100%, calc(2 * (var(--gh) - 88px) + 10px)); margin: 0 auto; }   /* two columns, each tally over its card; a short screen caps the cards by the room left */
@@ -3030,17 +3055,17 @@ main.scr.mini > .wband { left: 0; right: 0; }   /* Super Chaos: waiting in the s
 .snk-scene { position: relative; width: min(100cqw, 100cqh - 48px); aspect-ratio: 1 / 1; border: 3px solid var(--ink); border-radius: 14px; overflow: hidden; background: #e3f1cd; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .snk-scene canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .atwords.snk-words { height: 40px; min-height: 40px; max-height: 40px; font-size: 14px; flex: none; }
-.tsnk { display: flex; align-items: center; gap: 3cqw; width: 92cqw; }   /* the miniature: the garden on the left, each player's count on the right */
-.tsnk svg { flex: none; width: 46cqw; height: auto; display: block; overflow: visible; }
-.tsnk-n { display: flex; flex-direction: column; gap: 4cqw; min-width: 0; }
-.tsnk-n > div { display: flex; align-items: baseline; gap: 1.5cqw; font-weight: 800; font-size: 10cqw; line-height: 1; white-space: nowrap; }
-.tsnk-n b { width: 9cqw; flex: none; font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-weight: 400; } .tsnk-n b.X { color: var(--x); } .tsnk-n b.O { color: #b88a00; }
-.tsnk-n small { font-size: 6.5cqw; color: var(--muted); font-weight: 700; }
+.tsnk { display: flex; align-items: center; justify-content: center; gap: 3cqw; width: 94cqw; }   /* the miniature: the garden on the left (both snakes, each heading for its own colour of food), each player's total on the right, big */
+.tsnk svg { flex: none; width: 48cqw; height: auto; display: block; overflow: visible; }
+.tsnk-n { display: flex; flex-direction: column; gap: 3cqw; min-width: 0; }
+.tsnk-n > div { display: flex; align-items: center; gap: 1.5cqw; font-weight: 800; font-size: max(15.6px, 13cqw); line-height: 1; white-space: nowrap; }
+.tsnk-n b { flex: none; font-size: .85em; font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-weight: 400; } .tsnk-n b.X { color: var(--x); } .tsnk-n b.O { color: #b88a00; }
 .tsnk .tsnk-b { fill: #e3f1cd; stroke: var(--ink); stroke-width: 1.8; } .tsnk .tsnk-g { fill: #d3e8b6; }
 .tsnk .tsnk-so { fill: none; stroke: var(--ink); stroke-width: 7.2; stroke-linecap: round; stroke-linejoin: round; }
 .tsnk .tsnk-s { fill: none; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; } .tsnk .tsnk-s.X { stroke: var(--x); } .tsnk .tsnk-s.O { stroke: var(--o); }
 .tsnk .tsnk-h { stroke: var(--ink); stroke-width: 1.1; } .tsnk .tsnk-h.X { fill: var(--x); } .tsnk .tsnk-h.O { fill: var(--o); }
-.tsnk .tsnk-a { fill: #d93a2b; stroke: var(--ink); stroke-width: 1.1; } .tsnk .tsnk-l { fill: var(--green); }
+.tsnk .tsnk-f circle:not(.tmk) { stroke: var(--ink); stroke-width: 1.1; } .tsnk .tsnk-f.X circle:not(.tmk) { fill: var(--x); } .tsnk .tsnk-f.O circle:not(.tmk) { fill: var(--o); }   /* the food: X's red, O's yellow, each with its mark */
+.tsnk .tsnk-f .tmk { stroke: #fff; } .tsnk .tsnk-f.O .tmk { stroke: var(--ink); } .tsnk .tsnk-l { fill: var(--green); stroke: var(--ink); stroke-width: .6; }
 /* ---- Star Swarm (swarm): both totals, the sky (a canvas), a line of words, Start; the miniature ---- */
 .swarm { flex: 1; display: flex; flex-direction: column; min-height: 0; gap: 8px; }
 .swarm > .rprogs { flex: none; }
@@ -3125,3 +3150,78 @@ main.scr.mini:has(.brkw.run) .back { visibility: hidden; pointer-events: none; }
 .hsnap i.mine { box-shadow: none; border-radius: 50%; background: radial-gradient(closest-side, color-mix(in srgb, var(--ink) 18%, transparent) 50%, transparent 100%); }
 .final > i, .final > i.X, .final > i.O { padding: 5%; }
 .final > i .pc { width: 92%; height: 92%; }
+/* The # board, roomier (November 2026): the board reaches nearly to the screen's sides (no frame needs a margin), a
+   space's outer sides take almost no padding, and its inner sides only the half band a line can take (the stroke's
+   half plus its waver, ui/hash.js), so each miniature gets as much of its space as it can. */
+.board-scr { --bm: 4px; --s: min(calc(100vw - 2 * var(--bm) - var(--sal) - var(--sar)), calc(var(--vh) - var(--hdr) - var(--foot) - var(--rxh) - 2 * var(--pad) - var(--sat) - var(--sab))); }
+.board { --lb: calc(var(--s) * .026); --ob: calc(var(--s) * .006); }
+.board .sq { padding: var(--ob); }
+.board .sq:nth-child(3n+1) { padding-right: var(--lb); }
+.board .sq:nth-child(3n+2) { padding-left: var(--lb); padding-right: var(--lb); }
+.board .sq:nth-child(3n) { padding-left: var(--lb); }
+.board .sq:nth-child(-n+3) { padding-bottom: var(--lb); }
+.board .sq:nth-child(n+4):nth-child(-n+6) { padding-top: var(--lb); padding-bottom: var(--lb); }
+.board .sq:nth-child(n+7):nth-child(-n+9) { padding-top: var(--lb); }
+@media (min-width: 700px) { .board-scr { --s: min(600px, calc(var(--vh) - var(--hdr) - var(--foot) - var(--rxh) - 2 * var(--pad) - var(--sat) - var(--sab))); } }
+/* Miniature text, readable (November 2026): nothing in a square smaller than the board's hint ("Tap any square…", 16px
+   Patrick Hand, capitals about 11px tall). The game's name is set at that cap height or more and may take two lines;
+   an X or O letter in a miniature (a row's mark, a token) is a drawn mark in the player's colour instead of tiny type
+   (the letter stays in the page for screen readers). Each game's own numbers and words keep to the same floor
+   (npm run check:minitext, scripts/check-miniature-text.js). */
+.board .lab { font-size: max(14.5px, 11.5cqw); line-height: .95; white-space: normal; text-wrap: balance; text-align: center; gap: .25em; padding-top: 0; letter-spacing: .01em; }
+.board .lab.long { font-size: max(14.5px, 11.5cqw); letter-spacing: 0; }
+.board .lab svg { display: none; }   /* (the board's label is the name alone: the miniature below shows the game, and the name needs the width) */
+.thumb b.X, .thumb b.O { display: inline-block; flex: none; width: 1em; height: 1em; color: transparent !important; text-shadow: none; overflow: hidden; vertical-align: middle;
+  -webkit-mask: var(--mk) center / 100% 100% no-repeat; mask: var(--mk) center / 100% 100% no-repeat; }
+.thumb b.X { background: var(--x); --mk: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M4 4L16 16M16 4L4 16' stroke='%23000' stroke-width='4.6' stroke-linecap='round'/%3E%3C/svg%3E"); }
+.thumb b.O { background: var(--o); --mk: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Ccircle cx='10' cy='10' r='6.2' fill='none' stroke='%23000' stroke-width='4.2'/%3E%3C/svg%3E"); }
+.ttok circle.tmk { fill: none; stroke: #fff; } .ttok.O circle.tmk { stroke: var(--ink); } .ttok path.tmk { stroke: #fff; }
+/* Each game's miniature text at the floor (November 2026): every figure and letter a miniature keeps is at least the
+   hint's capital height (--mt in Luckiest Guy, --mtn in the cards' Nunito/Arial), sized from the space with a px floor;
+   the rest went (a goal's "/N", a ship's name, a die's number) or became drawn marks (scripts/check-miniature-text.js). */
+.thumb { --mt: max(15px, 12.5cqw); --mtn: max(16px, 13.5cqw); }
+.tpool { display: flex; align-items: center; justify-content: center; gap: 4cqw; height: 100%; max-width: 100%; }   /* Pool: the table, each side's balls left beside it */
+.tpool .tphys { height: 100%; width: auto; min-width: 0; }
+.tpcnt { display: flex; flex-direction: column; gap: 4cqw; font: 400 var(--mt)/1 'Luckiest Guy', 'Arial Black', sans-serif; color: var(--ink); }
+.tpcnt div { display: flex; align-items: center; gap: 1.5cqw; } .tpcnt b { font-size: .85em; } .tpcnt span { padding-top: .12em; font-variant-numeric: tabular-nums; }
+.tbowl { width: 88cqw; gap: 2.5cqw; } .tbowl svg { height: 38cqw; }   /* Bowling */
+.trun.bscore .tr { grid-template-columns: auto 1fr auto; gap: 2cqw; } .trun.bscore .tr b { font-size: calc(var(--mt) * .8); }
+.trun.bscore .tr span { font-size: var(--mt); min-width: 1.4em; padding-top: .12em; }
+.tbus .tbusi { width: 30cqw; height: 18cqw; } .tbus .tr b { width: 10cqw; } .tbus .tcd { width: 13cqw; height: 17cqw; } .tbus .tcd.tsuit svg { width: 9cqw; height: 9cqw; }   /* Ride the Bus: a kept card's suit alone, the slots larger */
+.tseq.tnums { justify-content: center; }   /* Patterns: the gap and the two numbers by it */
+.tseq.tnums span { flex: none; aspect-ratio: auto; min-width: 1.6em; height: 1.6em; padding: .14em .18em 0; font: 400 var(--mt)/1 'Luckiest Guy', 'Arial Black', sans-serif; color: var(--ink); }
+.tseq span.q { border-style: dashed; background: var(--panel-2); }
+.tart.twarm .tpic { width: auto; }   /* War: the two cards, ranks at the floor */
+.twar .tcd { width: calc(var(--mtn) * 1.4); height: calc(var(--mtn) * 1.95); } .twar .tcd b { font-size: var(--mtn); } .twar .tcd svg { width: calc(var(--mtn) * .8); height: calc(var(--mtn) * .8); }
+.tdice { gap: 3cqw; } .tdice .tmd8 { width: 20cqw; height: 20cqw; }   /* Risky Rolls */
+.tdice .tr { grid-template-columns: auto 1fr auto; font-size: var(--mt); } .tdice .tr b { font-size: .8em; } .tdice .tr span { min-width: 1.3em; padding-top: .12em; }
+.tpip.rlmini { gap: 4cqw; }   /* Little Wheel: the last three spins */
+.tpip .tspins i.sp { width: calc(var(--mt) * 1.75); height: calc(var(--mt) * 1.75); font-size: var(--mt); border-width: 1cqw; padding-top: .14em; }
+.tbs .tg.g4 { width: 64cqw; height: 64cqw; } .tship svg { height: 8cqw; }   /* Sea Battle: the ship drawn, no name */
+.tw { gap: 1.2cqw; } .twr { gap: 1cqw; }   /* Five Letters: the latest guess's letters at the floor, the ones before as strips */
+.twr i { width: calc(var(--mt) * 1.2); height: calc(var(--mt) * 1.2); font-size: var(--mt); padding-top: .1em; }
+.twr.tws i { height: 4.5cqw; }
+.twp b { font-size: 10cqw; } .twp .hpips { gap: 1cqw; } .twp .hpips i { width: 5cqw; height: 5cqw; border-width: .8cqw; }
+.tcoin i { --cw: min(17cqw, calc((96cqw - (var(--n, 5) - 1) * 1.5cqw) / var(--n, 5))); width: var(--cw); height: var(--cw); padding: 0; }   /* Coin Flip: each coin's mark drawn */
+.tcoin i svg { width: 78%; height: 78%; display: block; overflow: visible; }
+.tcoin i.X .tmk { stroke: #fff; } .tcoin i.O .tmk { stroke: var(--ink); } .tcoin i.m path { stroke: var(--ink); } .tcoin i.m circle { fill: var(--ink); }
+.tart.tcol { flex-direction: column; gap: 3cqw; width: auto; } .tart.tcol .tpic { width: auto; } .tart.tcol .tpip { flex: none; width: auto; }   /* 21: the hand above the pips */
+.tbj .tcd { width: calc(var(--mtn) * 1.45); height: calc(var(--mtn) * 2); margin-left: calc(var(--mtn) * -.3); padding-left: calc(var(--mtn) * .12); }
+.tbj .tcd b { font-size: var(--mtn); } .tbj .tcd svg { width: calc(var(--mtn) * .7); height: calc(var(--mtn) * .7); }
+.tplk .tbins { align-items: flex-end; height: 16cqw; } .tplk .tbins i { height: calc(5cqw + 11cqw * var(--h, 1)); padding: 0; }   /* Peg Drop: each bin as tall as it is worth */
+.tswn { display: grid; grid-template-columns: 1fr 1fr; margin-top: 1.5cqw; font: 400 var(--mt)/1 'Luckiest Guy', 'Arial Black', sans-serif; color: var(--ink); text-align: center; font-variant-numeric: tabular-nums; }   /* Star Swarm, Scoop Stack: each total under the picture */
+.tscoop { width: 80cqw; }
+.tbrk .tbrkl.X .tmk { stroke: var(--x); } .tbrk .tbrkl.O .tmk { stroke: var(--o); }   /* Brick Break: each wall's mark drawn */
+.thg .hw { --tw: min(calc(var(--mt) * 1.15), calc((96cqw - (var(--n) - 1) * 1.2cqw) / var(--n))); }   /* Hangman */
+.thg .hw i { height: calc(var(--mt) * 1.3); font-size: var(--mt); padding-top: .1em; }
+.thg .hmx { gap: 1cqw 3.5cqw; font-size: var(--mt); }
+.tg.tmem i:not(.up)::after { content: ''; width: 30%; height: 30%; border: max(1.5px, 1.2cqw) solid var(--paper); border-radius: 1px; transform: rotate(45deg); }   /* Find the Pair: a drawn card back */
+.tpong .tpm.X .tmk { stroke: var(--x); } .tpong .tpm.O .tmk { stroke: var(--o); }   /* Cup Pong: each end's mark drawn */
+.tbk .tbn { font-size: 14px; }   /* Apple Pick: the bucket's count (14 of the picture's 84 across: the floor at 360px) */
+.tmun .mr { grid-template-columns: auto minmax(0, 1fr) auto; font: 400 var(--mt)/1 'Luckiest Guy', 'Arial Black', sans-serif; } .tmun .mr b { font-size: .8em; } .tmun .mr span { min-width: 1.3em; padding-top: .12em; }   /* Muncher */
+.tmun .mpic { width: 36cqw; } .tmun .mr { gap: 1.5cqw; } .tmun .mr b { font-size: .7em; } .tmun .mr span { min-width: 1.1em; }
+.twh .trun .tr { grid-template-columns: auto 1fr auto; } .twh .trun .tr b { font-size: calc(var(--mt) * .8); } .twh .trun .tr span { font-size: var(--mt); min-width: 1.3em; padding-top: .12em; }   /* Risky Spins */
+.tdoms .tpic { width: 36cqw; } .tdoms .tpip { width: auto; flex: 1; } .tpip .tr i.tdstk { width: calc(var(--n) * 6.5cqw - 1.5cqw); background: repeating-linear-gradient(90deg, var(--sea) 0 5cqw, var(--ink) 5cqw 6.5cqw); }   /* Dominoes */
+.tdn { font: 400 var(--mt)/1 'Luckiest Guy', 'Arial Black', sans-serif; padding-top: .12em; }
+.thl b { font-size: var(--mt); }   /* Higher/Lower: the range */
+.board .sq .spot-lab:not(.scv) { left: 3%; right: 3%; padding: 3px 4px 1px; font-size: max(15px, 12.5cqw); line-height: 1.05; max-height: 2.4em; }   /* "Computer plays here" over a space: at the board's floor too, two lines at most */

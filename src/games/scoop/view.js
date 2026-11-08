@@ -3,7 +3,21 @@ import { SCOOP, SCOOP_VIEW } from './rules.js';
 import { state } from '../../ui/app.js';
 import { fingSounds, fingTable, fingThing } from '../../ui/finger.js';
 import { outlined, runColours } from '../../ui/runner.js';
-export { fingerMiniature as miniature } from '../../ui/finger.js';
+import { fingAt } from '../shared/finger.js';
+// The miniature: the counter with each player's cone (in their colour) and up to six of their scoops stacked on it, and
+// under the counter each player's count (in the page, as large as the board's other text; inside the drawing it would
+// shrink with it).
+const SCOOP_FLAVS = 5;   // (the flavours' colours: styles.css .tscoop .f0-.f4)
+export function miniature(mini, final) {
+  const label = `X at ${fingAt(mini, 'X')}, O at ${fingAt(mini, 'O')} of ${mini.cfg.target}`;
+  const cone = (p, cx) => {
+    const k = Math.min(6, fingAt(mini, p));
+    const scoops = Array.from({ length: k }, (_, j) => `<circle class="sc f${j % SCOOP_FLAVS}" cx="${cx}" cy="${(33 - j * 6).toFixed(1)}" r="7.5"/>`).join('');
+    return `<path class="cone ${p}" d="M${cx - 10} 36h20l-10 16z"/>${scoops}`;
+  };
+  return `<div class="tscoop" aria-label="${label}"><svg viewBox="0 -5 100 65" aria-hidden="true"><rect class="ctr" x="0" y="52" width="100" height="8"/>${cone('X', 25)}${cone('O', 75)}</svg>`
+    + `<div class="tswn" aria-hidden="true"><span class="X">${fingAt(mini, 'X')}</span><span class="O">${fingAt(mini, 'O')}</span></div></div>`;
+}
 export { fingerMoveText as moveText } from '../../ui/finger.js';
 
 // Scoop Stack: a parlour wall, the counter, the cone (a paper sleeve in the player's colour) with the stack

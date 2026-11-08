@@ -89,10 +89,10 @@ export function busFly() {
   el.style.setProperty('--fy', `${Math.round(z.top + z.height / 2 - (a.top + a.height / 2))}px`);
   el.style.setProperty('--fs', (z.width / a.width).toFixed(3));
 }
-// The miniature: the bus, then each player's four slots: a kept card face up (its rank and suit, public once kept), an
-// empty slot dashed.
+// The miniature: the bus, then each player's four slots: a kept card face up (its suit in its colour, public once kept;
+// no rank: too small to read at this size), an empty slot dashed.
 export function miniature(mini, final) {
-  const row = p => `<div class="tr ${p}"><b class="${p}">${p}</b>${Array.from({ length: BUS.rounds }, (_, k) => (mini.prog[p][k] ? tinyCard(mini.prog[p][k]) : '<i class="tcd tnil"></i>')).join('')}</div>`;
+  const row = p => `<div class="tr ${p}"><b class="${p}">${p}</b>${Array.from({ length: BUS.rounds }, (_, k) => (mini.prog[p][k] ? tinyCard(mini.prog[p][k], '', true) : '<i class="tcd tnil"></i>')).join('')}</div>`;
   return `<div class="tbus" aria-label="Ride the Bus: X has ${mini.prog.X.length}, O ${mini.prog.O.length} of ${BUS.rounds} rounds"><div class="tbusi" aria-hidden="true">${icon}</div>${row('X')}${row('O')}</div>`;
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {

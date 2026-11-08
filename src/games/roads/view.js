@@ -3,7 +3,7 @@ import { PLACE_MS } from '../shared/placement.js';
 import { roadGeom, roadLongest, setRoadsConfig } from './rules.js';
 import { FIREBASE_CONFIG, configured } from '../../net/connect.js';
 import { KEY } from '../../ui/config.js';
-import { N, mv, state } from '../../ui/app.js';
+import { N, mv, state, waitLine } from '../../ui/app.js';
 import { arcTally, lateAt } from '../../ui/progress.js';
 
 // The honeycomb's size for new squares (config/roads, the admin's dashboard): read at every start, kept for the next visit.
@@ -44,7 +44,7 @@ function roadTable(mini, a, o) {
   const dots = G.pts.map(([x, y]) => `<circle class="rdot" cx="${x}" cy="${y}" r="${G.cells.length ? 2.2 : 2.6}"/>`).join('');
   const comb = G.cells.map(c => `<polygon class="rcell" points="${c.map(v => G.pts[v].join(',')).join(' ')}"/>`).join('');   // the hexagons' faces, under everything
   const res = rd ? `<p ${lateAt('arcres ok', PLACE_MS.mark)} role="status">${N(a.by)}'s road: ${best[a.by].len}</p>`
-    : `<p class="arcnote">${o.view ? '' : o.locked ? `Waiting for <b class="${turn}">${N(turn)}</b>…` : ''}</p>`;
+    : `<p class="arcnote">${o.view ? '' : o.locked ? waitLine(turn) : ''}</p>`;
   return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="roads"><svg class="rmap${G.cells.length ? ' comb' : ''}" viewBox="0 0 100 100" role="group" aria-label="The roads">${comb}${glow}${lines}${dots}${hits}</svg>${res}</div></div>`;
 }
 export function miniature(mini, final) {

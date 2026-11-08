@@ -12,7 +12,7 @@ import { finishSvg, tokSvg } from './thumbs.js';
 import { FIREBASE_CONFIG, configured } from '../net/connect.js';
 import { attemptMove } from '../net/moves.js';
 import { blocked } from '../net/room.js';
-import { N, REDUCED, app, cpuPlays, state } from './app.js';
+import { N, REDUCED, app, cpuPlays, state, waitLine } from './app.js';
 import { shownSq } from './chaos.js';
 import { clockLeft } from './clock.js';
 import { KEY } from './config.js';
@@ -91,7 +91,7 @@ export function runTable(mini, a, o) {
     : o.view ? `<p class="arcnote">${l ? `<b class="${l.by}">${N(l.by)}</b> ${l.done ? 'reached the finish' : `${TX.verb} ${fmtM(l.to - l.from)} m`}` : ''}</p>`
     : live ? '<p class="arcnote"></p>'
     : mine ? '<p class="arcnote"></p>'
-    : `<p class="arcnote">Waiting for <b class="${turn}">${N(turn)}</b>…</p>`;
+    : `<p class="arcnote">${waitLine(turn)}</p>`;   // (this phone's own run on its way to the server: nothing to wait for)
   const hint = '';   // (no hint over the run: how to play is in the ? explainer)
   const count = live && live.phase === 'count' ? `<div class="rcount" aria-live="assertive">${live.count > 0 ? live.count : 'GO!'}</div>` : '';
   const hud = `<div class="rhud" data-run="hud">${fmtM(live ? live.sim.d : r ? (playing ? r.from : r.to) : mini.dist[who])} m</div>`;

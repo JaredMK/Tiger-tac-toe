@@ -10,13 +10,14 @@ import { BRK, brkBroken, brkClampX, brkLog, brkMs, brkRaw, brkRecorder, brkResul
 import { SND, ownPress } from '../../audio/sound.js';
 import { attemptMove } from '../../net/moves.js';
 import { haptic } from '../../net/platform.js';
-import { blocked, moveWait, remoteTurn } from '../../net/room.js';
+import { blocked, remoteTurn } from '../../net/room.js';
 import { N, REDUCED, app, state } from '../../ui/app.js';
 import { shownSq } from '../../ui/chaos.js';
 import { clockLeft } from '../../ui/clock.js';
 import { fxAt } from '../../ui/fx.js';
 import { lateAt } from '../../ui/progress.js';
 import { render } from '../../ui/render.js';
+import { markSvgG } from '../../ui/thumbs.js';
 import { outlined, rr, runCanvas, runColours, runInputAt } from '../../ui/runner.js';
 import { cpuTurn, skipFlash } from '../../ui/turns.js';
 
@@ -243,7 +244,6 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
   const said = shown ? brkResultText(shown, total, W(who)) : { text: '', ok: false };
   const words = b ? (pre ? `<span class="tu" style="--u:${pre}ms">${W(who)} is having a go…</span><span ${lateAt('arcres ' + (said.ok ? 'ok' : 'no'), pre)} role="status">${said.text}</span>` : `<span class="arcres ${said.ok ? 'ok' : 'no'}" role="status">${said.text}</span>`)
     : lv ? '<span></span>'
-    : mine && moveWait ? '<span>Sending your go…</span>'
     : view ? (shown ? `<span>${said.text}</span>` : '')
     : '<span></span>';   // (how to play is in the ? explainer; whose turn it is, the header says)
   const hudV = lv ? lv.sim.broke.length : b && !own && pre ? 0 : null;
@@ -303,7 +303,7 @@ export function miniature(mini, final) {
     const w = mini.wall[p], bw = MINI_W / cols, bh = MINI_H / rows;
     let up = '', down = '';
     for (let k = 0; k < total; k++) { const i = Math.floor(k / cols), j = k % cols, d = `M${(x0 + j * bw + 0.5).toFixed(1)} ${(4 + i * bh + 0.4).toFixed(1)}h${(bw - 1).toFixed(1)}v${(bh - 0.8).toFixed(1)}h-${(bw - 1).toFixed(1)}z`; if (w[k]) up += d; else down += d; }
-    return `${down ? `<path class="tbrkg" d="${down}"/>` : ''}${up ? `<path class="tbrkb" d="${up}"/>` : ''}<rect class="tbrkp ${p}" x="${(x0 + MINI_W / 2 - 7).toFixed(1)}" y="52" width="14" height="4" rx="2"/><circle class="tbrko" cx="${(x0 + MINI_W / 2).toFixed(1)}" cy="49" r="2.4"/><text class="tbrkl ${p}" x="${(x0 + 2).toFixed(1)}" y="60">${p}</text>`;
+    return `${down ? `<path class="tbrkg" d="${down}"/>` : ''}${up ? `<path class="tbrkb" d="${up}"/>` : ''}<rect class="tbrkp ${p}" x="${(x0 + MINI_W / 2 - 7).toFixed(1)}" y="52" width="14" height="4" rx="2"/><circle class="tbrko" cx="${(x0 + MINI_W / 2).toFixed(1)}" cy="49" r="2.4"/><g class="tbrkl ${p}" transform="translate(${(x0 + 4.5).toFixed(1)} 56.5)">${markSvgG(p, 2.8)}</g>`;   // (the player's mark drawn: a letter would be too small to read)
   };
   return `<div class="tbrk" aria-label="${label}"><svg viewBox="0 0 100 62" aria-hidden="true"><rect class="tbrkf" x="0" y="0" width="47" height="62" rx="3"/><rect class="tbrkf" x="53" y="0" width="47" height="62" rx="3"/>${half('X', 2.5)}${half('O', 55.5)}</svg></div>`;
 }

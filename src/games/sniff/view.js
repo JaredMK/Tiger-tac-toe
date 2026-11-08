@@ -1,6 +1,6 @@
 // Sniff: the screen, the miniature, the move's words and sounds, and the inputs.
 import { SNIFF, sniffDirs, sniffStep } from './rules.js';
-import { N, mv, state } from '../../ui/app.js';
+import { N, mv, state, waitLine } from '../../ui/app.js';
 import { arcTally, lateAt } from '../../ui/progress.js';
 import { other } from '../../core/util.js';
 
@@ -46,7 +46,7 @@ function sniffTable(mini, a, o) {
   const r = s ? resOf(s) : null, word = s ? (s.found ? 'Found it!' : r === 'hot' ? 'Hotter!' : r === 'same' ? 'Same' : 'Colder!') : null;
   const res = s ? `<p ${lateAt('arcres ' + (s.found || r === 'hot' ? 'hot' : r === 'same' ? 'same' : 'cold'), SNIFF.step)} role="status">${word}</p>`
     : o.view ? '<p class="arcnote"></p>'
-    : `<p class="arcnote">${o.locked ? `Waiting for <b class="${turn}">${N(turn)}</b>…` : ''}</p>`;
+    : `<p class="arcnote">${o.locked ? waitLine(turn) : ''}</p>`;
   return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="sniff"><svg class="sfield" viewBox="0 0 ${SNIFF.n * 20} ${SNIFF.n * 20}" role="group" aria-label="The field and the dog">${cells}${paws}${dog}${chest}${moves}</svg>${res}</div></div>`;
 }
 // Super Chaos: a dog each (a ring in its owner's colour), both from the middle, and both paths, each a line in

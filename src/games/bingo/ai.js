@@ -1,10 +1,11 @@
-// Bingo: the computer's play. A move is one of the offered numbers; what matters is what each call does to both cards
+// Bingo: the computer's play. A turn draws first (Pick numbers: the move 'draw', when no offer is waiting), then calls one
+// of the offered numbers; what matters is what each call does to both cards
 // (a called number marks every card it is on). Normal weighs each offered number by the lines it advances on its own
 // card against the lines it advances on the other's (a number that completes its own line is the move; one that
 // completes only the other's is never called while another choice exists); Hard looks ahead, within ctx.until: the
 // other side's best reply over the offers the pool could deal them (sampled by the rng), and its own reply to that.
 import { needRng, randInt } from '../../core/random.js';
-import { bingoLines, bingoPool, bingoSize, bingoDiag } from './rules.js';
+import { BINGO_DRAW, bingoLines, bingoPool, bingoSize, bingoDiag } from './rules.js';
 
 const other = p => (p === 'X' ? 'O' : 'X');
 // A card's standing: its lines' marks, each line worth more the fuller it is (a complete one is the square).
@@ -76,7 +77,7 @@ function rollout(pm, me, called, pool, offerN, lines, n, rng) {
 export function best(pm, me, rng, style, ctx) {
   rng = needRng(rng);
   const n = bingoSize(pm), lines = bingoLines(n, bingoDiag(pm)), offer = Array.isArray(pm.offer) ? pm.offer : [];
-  if (!offer.length) return { move: null, q: 0 };
+  if (!offer.length) return { move: bingoPool(pm).length ? BINGO_DRAW : null, q: 0 };       // nothing drawn yet: Pick numbers (its call is the turn's next move)
   const called = new Set(pm.called || []), pool = bingoPool(pm);
   const g = greedy(pm, me, offer, called, lines, n, rng);
   if (g.v >= 1e6) return { move: g.k, q: 1 };                                                  // a line now: the move at every level

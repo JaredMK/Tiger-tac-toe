@@ -1,6 +1,6 @@
 // Apple Pick: the screen, the miniature, the move's words and sounds, and the inputs.
 import { APPLET, appleTimes, appleTree, isBird, isSpill } from './rules.js';
-import { N, mv, state } from '../../ui/app.js';
+import { N, mv, state, waitLine } from '../../ui/app.js';
 import { arcTally, lateAt } from '../../ui/progress.js';
 
 // The screen: both players' tallies up top (name, apples of the target, a small gauge), the orchard (one tree holding both
@@ -151,9 +151,9 @@ export function miniature(mini, final) {
   for (const p of ['X', 'O']) for (let i = 0; i < per(p); i++) dots.push(`<circle class="aplb ${p}" cx="${spots[2 * i + (p === 'O' ? 1 : 0)][0]}" cy="${spots[2 * i + (p === 'O' ? 1 : 0)][1]}" r="3.1"/>`);
   const bk = (p, cx, n) => {
     const heap = Math.round(6 * Math.min(1, n / T)), pile = [[-5, 0], [0, 0], [5, 0], [-2.5, -4.6], [2.5, -4.6], [0, -9]].slice(0, heap).map(([dx, dy]) => `<circle class="aplb ${p}" cx="${cx + dx}" cy="${44 + dy}" r="2.7"/>`).join('');
-    return `<g class="tbk ${p}"><path class="tbbg" d="M${cx - 14} 46 a14 3 0 0 0 28 0 L${cx + 11} 63 h-22z"/>${pile}<path class="tbwall" d="M${cx - 14} 46 a14 3 0 0 0 28 0 L${cx + 11} 63 h-22z"/><rect class="tbband ${p}" x="${cx - 12.5}" y="52" width="25" height="9"/><text class="tbn ${p}" x="${cx}" y="59.6">${n}</text></g>`;
+    return `<g class="tbk ${p}"><path class="tbbg" d="M${cx - 15} 46 a15 3 0 0 0 30 0 L${cx + 12} 69 h-24z"/>${pile}<path class="tbwall" d="M${cx - 15} 46 a15 3 0 0 0 30 0 L${cx + 12} 69 h-24z"/><rect class="tbband ${p}" x="${cx - 14}" y="51.5" width="28" height="15"/><text class="tbn ${p}" x="${cx}" y="64.6">${n}</text></g>`;   // (the band and its count large: the count at the board's text size)
   };
-  return `<svg class="tapple" viewBox="0 0 84 66" aria-label="X has ${bX}, O has ${bO} of ${T} apples in their buckets">
+  return `<svg class="tapple" viewBox="0 0 84 71" aria-label="X has ${bX}, O has ${bO} of ${T} apples in their buckets">
     <ellipse class="aground" cx="42" cy="44" rx="40" ry="5"/><path class="atrunk" d="M39 44 q1 -9 2 -15 h4 q1 6 2 15z"/><circle class="acan" cx="20" cy="22" r="9"/><circle class="acan" cx="64" cy="22" r="9"/><circle class="acan" cx="30" cy="10" r="8"/><circle class="acan" cx="54" cy="10" r="8"/><circle class="acan" cx="42" cy="18" r="15"/>
     ${dots.join('')}
     ${bk('X', 21, bX)}${bk('O', 63, bO)}</svg>`;
@@ -169,7 +169,7 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
   const wheel = `<div class="aspin"><span class="wbox"><i class="wptr" aria-hidden="true"></i><svg viewBox="0 0 100 100" aria-label="The spinner: ${mini.segs.map(v => (isBird(v) ? 'bird' : isSpill(v) ? 'spill' : 'pick ' + v)).join(', ')}"><g class="wspin${spun ? ' go' : ''}" style="transform:rotate(${end.toFixed(1)}deg)${spun ? `;--from:${from.toFixed(1)}deg;--end:${end.toFixed(1)}deg;--d:${APPLET.spin}ms` : ''}">${wheelSvg(mini.segs)}</g></svg></span></div>`;
   const res = s ? `<p ${lateAt('arcres ' + (s.kind === 'pick' ? 'ok' : 'no'), t.landed)} role="status">${appleWords(s)}</p>`
     : (view || d) && l ? `<p class="arcres ${l.kind === 'pick' ? 'ok' : 'no'}"><b class="${l.by}">${N(l.by)}</b>: ${appleWords(Object.assign({ target: T }, l))}</p>`
-    : `<p class="arcnote">${view ? '' : locked ? `Waiting for <b class="${turn}">${N(turn)}</b>…` : `<b class="${turn}">${N(turn)}</b>: ${plural(appleTree(mini, turn))} to pick`}</p>`;
+    : `<p class="arcnote">${view ? '' : locked ? waitLine(turn) : `<b class="${turn}">${N(turn)}</b>: ${plural(appleTree(mini, turn))} to pick`}</p>`;
   g = `<div class="g-arc g-apple"><div class="ctals">${tal('X')}${tal('O')}</div>
       <div class="ascene">${orchard(mini, s)}</div>
       ${wheel}${res}

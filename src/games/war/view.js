@@ -58,8 +58,8 @@ function warTable(mini, a, o) {
 // two backs before any), and each player's rounds won as pips. (The cards turned are public; the decks never show.)
 export function miniature(mini, final) {
   const l = mini.last, b = l && Array.isArray(l.battles) && l.battles.length ? l.battles[l.battles.length - 1] : null, goal = tune(mini).goal;
-  const art = `<div class="twar">${b ? tinyCard(b.p, l.by) : tinyCard(null)}<i class="twvs">v</i>${b ? tinyCard(b.d) : tinyCard(null)}</div>`;
-  return thumbArt(art, pipRows(mini.wins, goal), '', `War: X ${mini.wins.X}, O ${mini.wins.O} of ${goal} rounds`);
+  const art = `<div class="twar">${b ? tinyCard(b.p, l.by) : tinyCard(null)}${b ? tinyCard(b.d) : tinyCard(null)}</div>`;   // (face to face, tilted apart: no "v" between, too small a word to read)
+  return thumbArt(art, pipRows(mini.wins, goal), 'twarm', `War: X ${mini.wins.X}, O ${mini.wins.O} of ${goal} rounds`);
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   g = warTable(mini, a, { view, locked, turn, done: !!d }); return g;

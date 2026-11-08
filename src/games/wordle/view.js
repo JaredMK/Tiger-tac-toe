@@ -9,13 +9,14 @@ import { wordleLeft, wordleLimit } from './rules.js';
 // Each player's guesses left, as dots (filled: left; hollow: used), as Higher/Lower's. A square from before the limit: none.
 const pips = (mini, p) => { const k = wordleLimit(mini), left = wordleLeft(mini, p); return `<i class="hpips ${p}" aria-label="${p}: ${left} guess${left === 1 ? '' : 'es'} left">${Array.from({ length: k }, (_, j) => `<i class="${j < left ? 'on' : ''}"></i>`).join('')}</i>`; };
 
+// The miniature: the latest guess in its coloured tiles, its letters as large as the board's other text, the guesses
+// before it (two, or three without the dots) as thin strips of their colours above it, and each player's guesses left.
 export function miniature(mini, final) {
-  const lim = wordleLimit(mini), last = mini.guesses.slice(lim ? -3 : -4);   // (with the dots: three rows)
-  const rows = last.length
-    ? last.map(g => `<div class="twr">${g.word.split('').map((ch, k) => `<i class="${g.marks[k]}">${esc(ch)}</i>`).join('')}</div>`).join('')
+  const lim = wordleLimit(mini), gs = mini.guesses, last = gs[gs.length - 1], before = gs.slice(lim ? -3 : -4, -1);
+  const rows = last
+    ? before.map(g => `<div class="twr tws">${g.marks.map(m => `<i class="${m}"></i>`).join('')}</div>`).join('') + `<div class="twr">${last.word.split('').map((ch, k) => `<i class="${last.marks[k]}">${esc(ch)}</i>`).join('')}</div>`
     : `<div class="twr">${'<i></i>'.repeat(5)}</div><div class="twr">${'<i></i>'.repeat(5)}</div>`;
-  const more = mini.guesses.length - last.length;
-  return `<div class="tw">${rows}${more > 0 ? `<small>+${more} earlier</small>` : ''}${lim ? `<span class="twp">${['X', 'O'].map(p => `<b class="${p}">${p}</b>${pips(mini, p)}`).join('')}</span>` : ''}</div>`;
+  return `<div class="tw">${rows}${lim ? `<span class="twp">${['X', 'O'].map(p => `<b class="${p}">${p}</b>${pips(mini, p)}`).join('')}</span>` : ''}</div>`;
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   const n = mini.guesses.length;

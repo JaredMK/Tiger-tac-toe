@@ -105,8 +105,8 @@ function rlMiniWheel() {
     return `<path d="M50 50 L${f(a0)} A46 46 0 0 1 ${f(a1)}Z" fill="${k === 0 ? '#2f8a3c' : k % 2 ? '#d6301e' : '#2b2b2b'}"/>`; }).join('');
   return `<svg class="tmwheel" viewBox="0 0 100 100" aria-hidden="true">${seg}<circle cx="50" cy="50" r="46" fill="none" stroke="var(--ink)" stroke-width="5"/><circle cx="50" cy="50" r="17" fill="var(--paper)" stroke="var(--ink)" stroke-width="4"/><circle cx="50" cy="50" r="5" fill="var(--ink)"/></svg>`;
 }
-export function miniature(mini, final) {   // the hits so far, and the recent spins: every one, a hit in the spinner's colour, a miss plain
-  const spins = (mini.spins || []).map(x => (typeof x === 'number' ? { n: x, hit: false } : x)).filter(x => x && Number.isInteger(x.n));
+export function miniature(mini, final) {   // the hits so far, and the last three spins (their numbers as large as the board's other text): a hit in the spinner's colour, a miss plain
+  const spins = (mini.spins || []).map(x => (typeof x === 'number' ? { n: x, hit: false } : x)).filter(x => x && Number.isInteger(x.n)).slice(-3);
   const chip = x => `<i class="sp ${x.n === 0 ? 'g' : rlRed(x.n) ? 'r' : 'b'}${x.hit ? ' hit ' + (x.by || '') : ''}" title="${x.n}${x.hit ? ': a hit' : ''}">${x.n}</i>`;
   return `<div class="tpip rlmini"><div class="rlrow"><div class="rlcol">${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b>${Array.from({ length: tune(mini).goal }, (_, k) => `<i class="${k < mini.hits[p] ? 'on' : ''}"></i>`).join('')}</div>`).join('')}</div>${rlMiniWheel()}</div>${spins.length ? `<div class="tspins" aria-label="Recent spins: ${spins.map(x => x.n + (x.hit ? ' (hit)' : '')).join(', ')}">${spins.map(chip).join('')}</div>` : ''}</div>`;
 }

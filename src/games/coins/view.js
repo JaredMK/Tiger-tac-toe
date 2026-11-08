@@ -2,11 +2,15 @@
 import { other } from '../../core/util.js';
 import { COINS, coinMax } from './rules.js';
 import { esc, mv, state } from '../../ui/app.js';
+import { markSvgG } from '../../ui/thumbs.js';
 
 const WORD = { 3: 'three', 5: 'five', 7: 'seven' };
+// The miniature: the row of coins, each in its side's colour with its mark drawn (no letters: too small to read), the
+// mystery coin white with a drawn question mark; sized to fill the width (styles.css .tcoin, --n).
+const COIN_Q = '<path d="M8.6 9a3.6 3.6 0 1 1 5.2 3.2c-1.2.6-1.8 1.4-1.8 2.6" stroke-width="2.8" stroke-linecap="round" fill="none"/><circle cx="12" cy="18.6" r="1.7"/>';
 export function miniature(mini, final) {
-  const sz = mini.coins.length > 5 ? ' style="width:10cqw;height:10cqw;font-size:7cqw"' : '';   // (more than five: smaller, to fit)
-  return `<div class="tcoin">${mini.coins.map(c => `<i class="${c === COINS.mystery ? 'm' : c}"${sz}>${esc(c)}</i>`).join('')}</div>`;
+  const face = c => (c === COINS.mystery ? COIN_Q : markSvgG(c, 6));
+  return `<div class="tcoin" style="--n:${mini.coins.length}" aria-label="Coins: ${mini.coins.map(c => (c === COINS.mystery ? 'mystery' : c)).join(', ')}">${mini.coins.map(c => `<i class="${c === COINS.mystery ? 'm' : esc(c)}"><svg viewBox="${c === COINS.mystery ? '0 0 24 24' : '-12 -12 24 24'}" aria-hidden="true">${face(c)}</svg></i>`).join('')}</div>`;
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   // Five coins: two each and a mystery coin (?) that belongs to nobody until it is flipped.

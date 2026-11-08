@@ -6,6 +6,7 @@
 // decided squares, and about 9-10% of squares tie (one call completes a line on both cards: the square resets). Wider
 // ranges make longer games (1 to 30: 6.9 calls, 7.5% ties); narrower ones more ties (1 to 20: 5.0 calls, 10% ties).
 // Hard (rollouts) against Normal is about even: a luck game, with little to choose between three numbers.
+// November 2026: the draw moved to the turn's start (Pick numbers, then the call): the same game, re-run to confirm.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const E = require('../engine.js');
@@ -17,9 +18,10 @@ function squares(N, levels, cfg) {
   for (let g = 0; g < N; g++) {
     const rng = E.makeRng('bingo-sim' + g), m = E.newMini('bingo', rng);
     let p = 'X';
-    for (let k = 0; k < 200; k++) {
+    for (let k = 0; k < 400; k++) {
       const b = A.best(E.publicMini(m), p, rng, {}, { level: levels[p], until: null }), r = E.applyMove(m, p, b.move, rng);
       assert.ok(r.ok);
+      if (b.move === 'draw') { assert.ok(r.again); continue; }   // (a turn: Pick numbers, then the same player's call)
       if (r.outcome === 'win') { dec++; if (r.winner === 'X') first++; if (r.winner !== p) gifts++; wCalls += m.calls[r.winner]; allCalls += m.calls.X + m.calls.O; break; }
       if (r.outcome === 'draw') { ties++; break; }
       p = p === 'X' ? 'O' : 'X';

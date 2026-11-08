@@ -32,7 +32,7 @@ export function miniature(mini, final) {
   const sunk = mini.winCells || [], hits = mini.hits || [], len = mini.len || 1;
   const parts = Array.from({ length: len }, (_, k) => `<g transform="translate(${k * 100} 0)">${SHIP_PART[shipPart(len, k)].replace('class="hull"', `class="hull${k < hits.length ? ' hit' : ''}"`)}</g>`).join('');
   return `<div class="tbs"><div class="tg g4 sea${bsN(mini) !== BS.n ? ' n' + bsN(mini) : ''}">${mini.revealed.map((r, i) => `<i class="${sunk.includes(i) ? 'ship ' + (r || '') : hits.includes(i) ? 'hit' : r ? 'miss' : ''}${(r === 'X' || r === 'O') && !sunk.includes(i) ? ' by' + r : ''}"></i>`).join('')}</div>
-        <div class="tship" aria-label="${BS.names[len]}, ${len} part${len === 1 ? '' : 's'}"><svg viewBox="0 20 ${len * 100} 60" aria-hidden="true">${parts}</svg><b>${BS.names[len]}</b></div></div>`;
+        <div class="tship" aria-label="${BS.names[len]}, ${len} part${len === 1 ? '' : 's'}"><svg viewBox="0 20 ${len * 100} 60" aria-hidden="true">${parts}</svg></div></div>`;   // (the ship drawn, its name in the label alone: too long a word for the board's floor size)
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   // One hidden ship on a 4x4 sea (Super Chaos: a Submarine on 5x5). A shot shows a hit (a burst) or a miss (a splash), never which

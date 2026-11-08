@@ -1,6 +1,6 @@
 // Dominoes: the screen, the miniature, the move's words and sounds, and the inputs.
 import { DOMT, domCount, domEnds, domFits, domHand, domPile, domTile, domTimes, isDouble } from './rules.js';
-import { N, mv, state, zoomedType } from '../../ui/app.js';
+import { N, mv, state, zoomedType, waitLine } from '../../ui/app.js';
 import { arcTally, lateAt } from '../../ui/progress.js';
 import { thumbArt } from '../../ui/thumbs.js';
 import { attemptMove } from '../../net/moves.js';
@@ -100,7 +100,7 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
   const l = mini.last;
   const res = dm ? `<p ${lateAt('domres', t.count)} role="status">${words(dm, true)}</p>`
     : (view || d) && l ? `<p class="domres"><b class="${l.by}">${N(l.by)}</b>: ${words(l, false)}</p>`
-    : `<p class="domres">${view || !locked ? '' : `Waiting for <b class="${turn}">${N(turn)}</b>…`}</p>`;
+    : `<p class="domres">${view || !locked ? '' : waitLine(turn)}</p>`;
   // the viewer's hand (both hands, once the square is done)
   const hands = view ? ['X', 'O'] : [me];
   const handHtml = hands.map(p => {

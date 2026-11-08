@@ -21,10 +21,11 @@ export function fetchPigConfig() {
   } catch (e) { /* offline: as last known */ }
 }
 // A face of the die: pips on a d6; on a d8, an eight-sided die seen face on (a triangle face and the two
-// facets beside it, in a six-sided outline) with the number on the face.
+// facets beside it, in a six-sided outline) with the number on the face (none for n null: the miniature's, too small
+// a die for its number to be read).
 export function pigFace(n, sides) {
   if (sides !== 8) return dieFace(n);
-  return `<svg class="d8" viewBox="0 0 100 100" aria-hidden="true"><path class="d8o" d="M50 4 91 28 91 72 50 96 9 72 9 28Z"/><path class="d8f" d="M50 4 91 72 9 72Z"/><path class="d8l" d="M9 72 50 96 91 72"/><text x="50" y="${n === 1 ? 61 : 62}" text-anchor="middle">${n}</text></svg>`;
+  return `<svg class="d8" viewBox="0 0 100 100" aria-hidden="true"><path class="d8o" d="M50 4 91 28 91 72 50 96 9 72 9 28Z"/><path class="d8f" d="M50 4 91 72 9 72Z"/><path class="d8l" d="M9 72 50 96 91 72"/>${n == null ? '' : `<text x="50" y="${n === 1 ? 61 : 62}" text-anchor="middle">${n}</text>`}</svg>`;
 }
 
 // The die as it rolls: it tumbles, showing other faces one after another, and lands on the number rolled
@@ -37,7 +38,7 @@ function pigTumble(n, sides) {
 
 export function miniature(mini, final) {
   const goal = pigGoal(mini);
-  return `<div class="tdice"><div class="tmd8">${pigFace(pigSides(mini), pigSides(mini))}</div>${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><div class="bar"><i style="width:${Math.min(100, mini.bank[p] / goal * 100)}%"></i></div><span>${mini.bank[p]}</span></div>`).join('')}</div>`;
+  return `<div class="tdice"><div class="tmd8">${pigFace(pigSides(mini) === 8 ? null : pigSides(mini), pigSides(mini))}</div>${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><div class="bar"><i style="width:${Math.min(100, mini.bank[p] / goal * 100)}%"></i></div><span>${mini.bank[p]}</span></div>`).join('')}</div>`;
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   // Risky Rolls. The two scores, with this turn's points at risk as a small +N by the roller's score; the

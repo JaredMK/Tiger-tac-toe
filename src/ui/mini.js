@@ -8,8 +8,8 @@ import { settingsBody } from './settings.js';
 import { isMM } from '../net/matchmaking.js';
 import { rx } from '../net/reactions.js';
 import { canReport } from '../net/tracking.js';
-import { blocked, leaveLoses, lockMine, moveWait, mySide, pinned, remoteTurn } from '../net/room.js';
-import { N, esc, menuOpen, menuStep, state } from './app.js';
+import { blocked, leaveLoses, lockMine, mySide, pinned, remoteTurn } from '../net/room.js';
+import { N, esc, menuOpen, menuStep, state, waitsOn } from './app.js';
 import { CHEV, toon } from './art.js';
 import { attPinned } from './attention.js';
 import { scJointFrame, scWaiting } from './chaos.js';
@@ -39,8 +39,8 @@ export function renderMini(sq, review, popup) {
   const turn = joint || (popup && rep ? rep.by : state.turn);   // (the pop-up: the computer's move, so its screen is the computer's)
   let g = '';
   const game = viewOf(mini.type);
-  if (game.screen) g = game.screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g);
-  const lock = state.lock != null && mini.type !== 'trivia' && !ATT_TYPES.includes(mini.type) && !FINGER_TYPES.includes(mini.type) && !TIMED_RUN_TYPES.includes(mini.type);   // a bonus move (a Trivia reveal, an attention game's or a finger game's Start holds the player too, and a timed run's square opened online: not a bonus)
+  if (game.screen) g = noOwnWait(game.screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g));
+  const lock = state.lock != null && mini.type !== 'trivia' && mini.type !== 'bingo' && mini.type !== 'dominoes' && !ATT_TYPES.includes(mini.type) && !FINGER_TYPES.includes(mini.type) && !TIMED_RUN_TYPES.includes(mini.type);   // a bonus move (a Trivia reveal, an attention game's or a finger game's Start holds the player too, and a timed run's square opened online: not a bonus; Bingo's call after its draw: its own status line says whose call it is)
   let sub = lock ? (mini.type === 'pig' || mini.type === 'wheels' ? `<b class="${turn}">${N(turn)}</b>'s turn in progress`   // (turn info only: how to play is in the ? explainer)
     : mini.type === 'bj' ? (mini.hand || f ? `<b class="${turn}">${N(turn)}</b>'s hand` : `<b class="${turn}">${N(turn)}</b> won the hand · goes again`)   // (a hand won, a hot streak: said once its result has played, never ahead of it)
     : mini.type === 'craps' || mini.type === 'rl' ? (f ? '' : `<b class="${turn}">${N(turn)}</b> ${mini.type === 'rl' ? 'hit' : 'won the round'} · goes again`)   // (Krabs, Little Wheel: a hot streak, once the result has played)
@@ -50,7 +50,6 @@ export function renderMini(sq, review, popup) {
   else if (!view && !f && !d && remoteTurn()) sub = `Waiting for <b class="${turn}">${N(turn)}</b>…`;
   else if (!view && !f && !d && scWaiting() && state.sc.online && state.sc.fail) sub = '<span class="scfail">Move not saved · trying again…</span>';   // Super Chaos in a friend room: the record would not take the move yet
   else if (!view && !f && !d && scWaiting()) sub = '';            // Super Chaos: the move is in, the other's not ready to play yet: the waiting band says so (below)
-  else if (!view && !f && !d && moveWait) sub = 'Sending your move…';
   if (view) sub = sq.owner ? wonBy(sq.owner) : 'Not won by anyone';   // (a finished square: who won it, nothing more)
   if (d && !f) {                                    // the result held a moment longer (Find the Pair's cards turning back): the board follows by itself
     if (d.kind === 'claim' || d.kind === 'match' || d.kind === 'draw') sub = squareEnd(d);
@@ -69,6 +68,12 @@ export function renderMini(sq, review, popup) {
       <div class="ttl"><b${info.name.length > 14 ? ' class="long"' : ''}>${info.name}</b><small${view ? ' class="won"' : ''}>${sub}</small></div>${qBtn(mini.type)}</div>
     <div class="gwrap"${f ? fxAttr(fxAt('move', f), 'm') : fxAttr(d ? fxAt('back', d) : null)}>${g}</div>${wb.html}${f ? renderFlash(f) : ''}${repSkipBtn() || (joint ? '<button class="rskip late" data-act="rep-skip" aria-label="Skip the replay">Skip</button>' : '')}${popup ? '' : pauseMenu()}</main>`;   // the move's animations count from the move
 }
+// Classic online never waits on this phone's own move: from the tap, through its play here (a physics shot's local
+// simulation, a run, an attempt), until the server's record of it lands, nothing says "Waiting for" this phone's own
+// side or "Sending your move" (the header neither: the pressed control shows the press, ui/input.js). The views say who
+// is awaited through waitLine (ui/app.js: the other side alone); a view that still words it itself is held to it here.
+const OWN_WAIT = /Waiting for <b class="([XO])">(?:(?!<\/b>)[\s\S])*<\/b>…|Sending your (?:move|run|go|attempt)…/g;
+export const noOwnWait = html => (html ? html.replace(OWN_WAIT, (m, p) => (p && waitsOn(p) ? m : '')) : html);
 const REPLAY_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.6-5.9"/><path d="M4 4v5h5"/></svg>';
 // The in-game menu: a pause card with Resume and Main menu (which asks first).
 export function pauseMenu() {

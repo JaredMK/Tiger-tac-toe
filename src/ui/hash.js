@@ -2,11 +2,12 @@
 // box (the lines near a third and two thirds, stopping short of the edges), and no boxes or outer frame. One drawing
 // for the main board, the result screen's final board, the history snapshot, the share card and the link-preview
 // image (scripts/make-share-images.js). Pure: no page, no imports.
-export const HASH = [   // each stroke a cubic: start, two controls, end
-  [[101, 9], [96, 92], [105, 206], [99, 291]],
-  [[200, 10], [204, 96], [195, 196], [201, 290]],
-  [[9, 100], [96, 104], [206, 95], [291, 101]],
-  [[10, 199], [101, 196], [194, 205], [290, 200]],
+export const HASH = [   // each stroke a cubic: start, two controls, end (a gentle waver: within 3 of its line, so the
+                        // spaces keep their room; ui/styles.css pads each space by half the band the stroke can take)
+  [[100.5, 8], [98, 92], [102.5, 206], [99.5, 292]],
+  [[200, 9], [202.5, 96], [197.5, 196], [200.5, 291]],
+  [[8, 100], [96, 102], [206, 97.5], [292, 100.5]],
+  [[9, 199.5], [101, 198], [194, 202.5], [291, 200]],
 ];
 const f = v => +v.toFixed(2);
 // The path's d, scaled to a box of `size` (300: the viewBox).

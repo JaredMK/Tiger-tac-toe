@@ -1,7 +1,7 @@
 // Districts: the screen, the miniature, the move's words and sounds, and the inputs.
 import { PLACE_MS } from '../shared/placement.js';
 import { distTally } from './rules.js';
-import { N, esc, mv, state } from '../../ui/app.js';
+import { N, esc, mv, state, waitLine } from '../../ui/app.js';
 import { arcTally, lateAt } from '../../ui/progress.js';
 
 // Districts: the map's five regions, each shaded in its leader's colour (darker once locked: the spots left
@@ -28,7 +28,7 @@ function distTable(mini, a, o) {
     return `<g class="dspot${w ? ' ' + w : ''}${s.r.length > 1 ? ' edge' : ''}${pop ? ' pop' : ''}${drop ? ' drop' : ''}${open ? ' open' : ''}" ${open ? `data-act="move" ${mv(k)} role="button" tabindex="0"` : ''} aria-label="${label}" transform="translate(${s.x} ${s.y})"><g class="pp"${drop ? ` style="--t:${PLACE_MS.mark}ms"` : ''}><circle class="dhit" r="5.5"/><circle class="dpc" r="4.3"/>${w && w !== 'G' ? `<text y="1.75">${esc(w)}</text>` : ''}</g></g>`;
   }).join('');
   const res = ds ? `<p ${lateAt('arcres ok', PLACE_MS.mark)} role="status">${tie ? `${led('X')} each` : a.note === 'locked' ? `${N(a.winner)} locked ${t.locks[a.winner]} of ${map.regions.length}` : `${N(a.by)} leads ${led(a.by)} of ${map.regions.length}`}</p>`
-    : `<p class="arcnote">${o.view ? '' : o.locked ? `Waiting for <b class="${o.turn}">${N(o.turn)}</b>…` : ''}</p>`;
+    : `<p class="arcnote">${o.view ? '' : o.locked ? waitLine(o.turn) : ''}</p>`;
   return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="districts"><svg class="dmap" viewBox="-2 -2 104 124" role="group" aria-label="The map">${regs}${spots}</svg>${res}</div></div>`;
 }
 export function miniature(mini, final) {

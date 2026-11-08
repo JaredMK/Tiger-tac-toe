@@ -18,7 +18,8 @@
     "build:app": "node scripts/build-app.js",
     "check:headers": "node scripts/check-headers.js",
     "ios:build": "node scripts/ios-build.js",
-    "icon-options": "node scripts/make-icon-options.js"
+    "icon-options": "node scripts/make-icon-options.js",
+    "check:minitext": "node scripts/check-miniature-text.js"
   },
   "devDependencies": {
     "@capacitor-firebase/authentication": "^8.5.2",

@@ -3,8 +3,9 @@ import { PONG, pongPlan } from './rules.js';
 import { ownPress } from '../../audio/sound.js';
 import { attemptMove } from '../../net/moves.js';
 import { blocked } from '../../net/room.js';
-import { N, REDUCED, app, state } from '../../ui/app.js';
+import { N, REDUCED, app, state, waitLine } from '../../ui/app.js';
 import { arcTally, lateAt } from '../../ui/progress.js';
+import { markSvgG } from '../../ui/thumbs.js';
 
 let pongDrag = null;                           // Echo: { id, sq, level, taps, at } the attempt (at: when Play pattern was tapped); Cup Pong: the swipe under way
 // Cup Pong: the table from above, the thrower's rack of cups at the far end (three cups touching in a tight
@@ -56,7 +57,7 @@ function pongTable(mini, a, o) {
   if (g && !still) ball = pongBall(g);
   else if (!o.view && !g) ball = `<div class="pball${mine ? ' ready' : ''}" style="left:50%;top:92%" data-pong="ball"></div>`;
   const table = `<div class="ptable" data-pong="table" aria-label="The table">${cupEls}${splash}${ball}</div>`;   // (no aim guides: the ball and the cups, nothing else)
-  const res = g ? `<p ${lateAt('arcres ' + (g.sunk ? 'ok' : 'no'), still ? null : P.res)} role="status">${pongWord(g)}</p>` : l && !mine ? `<p class="arcres ${l.sunk ? 'ok' : 'no'}">${pongWord(l)}</p>` : `<p class="arcnote">${mine || o.view ? '' : `Waiting for <b class="${turn}">${N(turn)}</b>…`}</p>`;
+  const res = g ? `<p ${lateAt('arcres ' + (g.sunk ? 'ok' : 'no'), still ? null : P.res)} role="status">${pongWord(g)}</p>` : l && !mine ? `<p class="arcres ${l.sunk ? 'ok' : 'no'}">${pongWord(l)}</p>` : `<p class="arcnote">${mine || o.view ? '' : waitLine(turn)}</p>`;
   return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="pong${mine ? ' live' : ''}" data-pong="area">${table}${res}</div></div>`;
 }
 // The throw a swipe makes: its direction from the start, its power from the finger's speed over its last
@@ -82,7 +83,7 @@ const TPONG = { X: [[25, 29], [15, 22], [15, 36]], O: [[75, 29], [85, 22], [85, 
 export function miniature(mini, final) {
   const cups = p => mini.cups[p].map((up, k) => `<circle class="c ${p}${up ? '' : ' in'}" cx="${TPONG[p][k][0]}" cy="${TPONG[p][k][1]}" r="5.6"/>`).join('');
   const n = p => mini.cups[p].filter(up => !up).length;
-  return `<div class="tpong" aria-label="Cup Pong: X has sunk ${n('X')}, O ${n('O')} of 3"><svg viewBox="0 0 100 58" aria-hidden="true"><rect class="tbl" x="3" y="11" width="94" height="36" rx="6"/><path class="mid" d="M50 13v32"/>${cups('X')}${cups('O')}<text x="15" y="56">X</text><text x="85" y="56">O</text></svg></div>`;
+  return `<div class="tpong" aria-label="Cup Pong: X has sunk ${n('X')}, O ${n('O')} of 3"><svg viewBox="0 0 100 58" aria-hidden="true"><rect class="tbl" x="3" y="11" width="94" height="36" rx="6"/><path class="mid" d="M50 13v32"/>${cups('X')}${cups('O')}<g class="tpm X" transform="translate(15 53)">${markSvgG('X', 3.4)}</g><g class="tpm O" transform="translate(85 53)">${markSvgG('O', 3.4)}</g></svg></div>`;   // (each end's mark drawn: a letter would be too small to read)
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   g = pongTable(mini, a, { view, locked, turn, zoom: state.zoom }); return g;

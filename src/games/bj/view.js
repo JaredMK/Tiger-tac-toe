@@ -67,7 +67,7 @@ function bjTable(mini, a, o) {
 export function miniature(mini, final) {
   const h = mini.hand, goal = tune(mini).goal;
   const cards = h && Array.isArray(h.cards) && h.cards.length ? h.cards.slice(0, 3).map(c => tinyCard(c)).join('') : tinyCard(null) + tinyCard(null);
-  return thumbArt(`<div class="tbj">${cards}</div>`, pipRows(mini.wins, goal), '', `21: X ${mini.wins.X}, O ${mini.wins.O} of ${goal} hands`);
+  return thumbArt(`<div class="tbj">${cards}</div>`, pipRows(mini.wins, goal), 'tcol', `21: X ${mini.wins.X}, O ${mini.wins.O} of ${goal} hands`);   // (the hand above the pips: room for cards whose ranks read at the board's text size)
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   g = bjTable(mini, a, { view, locked, turn }); return g;

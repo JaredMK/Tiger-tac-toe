@@ -56,7 +56,7 @@ export const BOARD_BURST = [320, 500];           // when the two bursts on the b
 // tile flick away to one side as the new game's label and miniature deal in from the other (DRAW_SHUFFLE), all over by
 // DRAW_MS. In base time, like the stamp: it plays at the game's pace (Speed's too). The old game is drawn from the
 // move's own record of it (drawOld: the flash's `drawn`); without it (none kept), the stamp and the deal alone.
-const HASH_SVG = hashSvg('hash', 8);   // the board's #: drawn over the spaces, never taking a tap (each space is its whole button)
+const HASH_SVG = hashSvg('hash', 7);   // the board's #: drawn over the spaces, never taking a tap (each space is its whole button)
 export const DRAW_MS = 1150;
 export const DRAW_SHUFFLE = [620, 760];          // the old game flicks away, the new one deals in (ms after the stamp starts)
 export function renderBoard(review) {

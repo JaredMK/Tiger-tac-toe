@@ -68,9 +68,11 @@ test('star swarm: after a run on this phone, the result\'s words at once; someon
 test('star swarm: the miniature is a picture (the sky, the swarm, both ships) with each total readable, from public information', () => {
   const sq = square(); sq.mini.score = { X: 27, O: 4 };
   const html = V.miniature(sq.mini, false);
-  assert.match(html, new RegExp(`^<div class="tswarm" aria-label="X at 27, O at 4 of ${G()}"><svg viewBox="0 0 100 60"`));
+  assert.match(html, new RegExp(`^<div class="tswarm" aria-label="X at 27, O at 4 of ${G()}"><svg viewBox="0 0 100 47"`));
   assert.match(html, /class="tswship X"/); assert.match(html, /class="tswship O"/);
-  assert.match(html, new RegExp(`class="tswfill X" x="11" y="52" width="${(36 * 27 / G() - 2).toFixed(1).replace(".", "\\.")}"`)); assert.match(html, /<text x="28" y="47.5">27<\/text>/); assert.match(html, /<text x="72" y="47.5">4<\/text>/);
+  assert.match(html, new RegExp(`class="tswfill X" x="8" y="37" width="${(36 * 27 / G() - 2).toFixed(1).replace(".", "\\.")}"`));
+  assert.match(html, /<div class="tswn" aria-hidden="true"><span class="X">27<\/span><span class="O">4<\/span><\/div>/, 'each total as a number under the sky, at the board\'s text size');
+  assert.doesNotMatch(html, /<text/, 'no figures inside the drawing (they would shrink with it)');
   assert.doesNotMatch(html, /class="tswfill O"/, 'a total too small for a fill draws the empty bar alone');
   for (const c of ['back', 'btn', 'big', 'seg', 'key', 'sq', 'chip', 'bird']) assert.doesNotMatch(html, new RegExp(`class="[^"]*\\b${c}\\b`), `never the interface's .${c}`);
 });
