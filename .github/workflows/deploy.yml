@@ -23,7 +23,7 @@ concurrency:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04   # (pinned: ubuntu-latest moved to 26.04, where Playwright 1.56 cannot install Chromium for the browser smoke check)
     environment: ${{ github.ref_name == 'main' && 'production' || 'staging' }}
     env:
       TARGET: ${{ github.ref_name == 'main' && 'production' || 'staging' }}
