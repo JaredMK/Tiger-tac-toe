@@ -1,10 +1,11 @@
 'use strict';
 // Simulations: Bingo. Slow, so never part of npm test:
 // npm run sim -- bingo
-// The settings (meta.js TUNE) were picked here (November 2026): 4x4 cards from 1 to 22, three numbers offered a turn,
-// diagonals on: the winner takes about 5.4 calls (both players about 10 together), the first mover wins about 52% of the
-// decided squares, and about 9-10% of squares tie (one call completes a line on both cards: the square resets). Wider
-// ranges make longer games (1 to 30: 6.9 calls, 7.5% ties); narrower ones more ties (1 to 20: 5.0 calls, 10% ties).
+// The settings (meta.js TUNE) were picked here (November 2026): 3x3 cards from 1 to 26, three numbers offered a turn,
+// diagonals on: the winner takes about 4.9 calls (both players about 9 together), the first mover wins about 55% of the
+// decided squares, and about 7% of squares tie (one call completes a line on both cards: the square resets). Wider
+// ranges make longer games (1 to 30: 5.5 calls, 6.5% ties); narrower ones shorter and more ties (1 to 20: 4.1 calls,
+// 10% ties). (Before, 4x4 cards from 1 to 22: 5.4 calls, 52%, 9% ties.)
 // Hard (rollouts) against Normal is about even: a luck game, with little to choose between three numbers.
 // November 2026: the draw moved to the turn's start (Pick numbers, then the call): the same game, re-run to confirm.
 const test = require('node:test');
@@ -41,7 +42,7 @@ test('bingo: whole squares, Normal against itself, over many dealt squares: the 
 });
 
 test('bingo: the other settings, for the record (1 to 30, 1 to 20, four numbers a turn, no diagonals)', () => {
-  for (const cfg of [{ range: 30 }, { range: 20 }, { offer: 4 }, { diag: 0 }]) say(JSON.stringify(cfg), squares(2000, { X: 'normal', O: 'normal' }, cfg));
+  for (const cfg of [{ range: 30 }, { range: 20 }, { offer: 4 }, { diag: 0 }, { size: 4, range: 22 }]) say(JSON.stringify(cfg), squares(2000, { X: 'normal', O: 'normal' }, cfg));
 });
 
 test('bingo: Hard against Normal, either seat: never worse than Normal against itself by more than a few points', () => {

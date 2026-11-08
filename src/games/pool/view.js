@@ -30,10 +30,12 @@ export function drawPool(g, mini, pos, pop) {   // pop: { id, s } a ball popping
 }
 // The miniature: the table as it stands (the pockets and the balls left, each in its side's colour, no numbers on them)
 // and beside it each side's balls still to sink, its mark and the count.
+// The table as the miniature draws it before the physics library has loaded (the board shows Pool at once, its felt,
+// rails, pockets and balls: the same sizes as physics-sim.js POOL, which takes over once it is in).
+const POOL_TABLE = { w: 100, h: 180, ballR: 3.9, pockets: [[0, 0, 8.4], [100, 0, 8.4], [0, 90, 8.4], [100, 90, 8.4], [0, 180, 8.4], [100, 180, 8.4]] };
 export function miniature(mini, final) {
   const L = PHYSICS.lib;
-  if (!L) return physThumb(mini);
-  const S = L.POOL, cls = id => (id === 'cue' ? 'cue' : id === 'black' ? 'black' : id[0].toUpperCase());
+  const S = L ? L.POOL : POOL_TABLE, cls = id => (id === 'cue' ? 'cue' : id === 'black' ? 'black' : id[0].toUpperCase());
   const balls = poolIds(mini).map(id => (mini.down[id] ? '' : `<circle cx="${mini.balls[id][0]}" cy="${mini.balls[id][1]}" r="${S.ballR * 1.6}" class="${cls(id)}"/>`)).join('');
   return `<div class="tpool" aria-label="Pool: X has ${poolLeft('X', mini)} balls left, O has ${poolLeft('O', mini)}"><svg class="tphys" viewBox="-4 -4 ${S.w + 8} ${S.h + 8}" aria-hidden="true">
       <rect x="-4" y="-4" width="${S.w + 8}" height="${S.h + 8}" rx="4" class="rail"/><rect x="0" y="0" width="${S.w}" height="${S.h}" class="cloth"/>

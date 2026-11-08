@@ -18,7 +18,7 @@ export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" 
 // 30 points; Normal against Normal the winner takes about 4.9 runs and the first mover wins about 58%).
 export const TUNE = [
   { k: 'target', label: 'Points to win', def: 30, min: 5, max: 60, step: 1, group: 'Rules' },
-  { k: 'food', label: 'Food of each colour on the grid', def: 1, min: 1, max: 3, step: 1, group: 'Rules' },
+  { k: 'food', label: 'Food of each colour on the grid', def: 3, min: 1, max: 4, step: 1, group: 'Rules' },
   { k: 'tick', label: 'Pace: ms per cell at the start of a run', def: 200, min: 80, max: 400, step: 10, group: 'Timing' },
   { k: 'speedUp', label: 'Faster per food eaten in the run (ms)', def: 5, min: 0, max: 30, step: 1, group: 'Timing' },
   { k: 'minTick', label: 'Fastest pace (ms per cell)', def: 100, min: 50, max: 300, step: 10, group: 'Timing' },
@@ -28,5 +28,5 @@ export const TUNE = [
   { k: 'aiSlip', label: 'Normal: loses track after a food (%)', def: 18, min: 0, max: 60, step: 0.5, group: 'Computer' },
   { k: 'aiErrHard', label: 'Computer misses a turn, Hard (%)', def: 1, min: 0, max: 50, step: 0.5, group: 'Computer' },
   { k: 'aiGrowHard', label: 'Hard: more per food of the run (%)', def: 0.5, min: 0, max: 30, step: 0.5, group: 'Computer' },
-  { k: 'aiSlipHard', label: 'Hard: loses track after a food (%)', def: 18, min: 0, max: 60, step: 0.5, group: 'Computer' },
+  { k: 'aiSlipHard', label: 'Hard: loses track after a food (%)', def: 15, min: 0, max: 60, step: 0.5, group: 'Computer' },
 ];

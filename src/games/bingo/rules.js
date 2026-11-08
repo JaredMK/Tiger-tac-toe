@@ -21,8 +21,8 @@ export const BINGOD = { spin: 60, turn: 900, ball: 620, gap: 300, pop: 340, rest
 export const BINGO_LIMITS = { size: [3, 5], range: [10, 60], offer: [2, 4] };
 const clampInt = (v, [lo, hi], def) => { const n = v == null || v === '' ? NaN : Math.round(Number(v)); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : def; };
 export function bingoSettings(t) {
-  const size = clampInt(t && t.size, BINGO_LIMITS.size, 4), offer = clampInt(t && t.offer, BINGO_LIMITS.offer, 3);
-  const range = Math.max(size * size + 2, clampInt(t && t.range, BINGO_LIMITS.range, 22));   // (room for two cards that differ: at least two numbers off each card)
+  const size = clampInt(t && t.size, BINGO_LIMITS.size, 3), offer = clampInt(t && t.offer, BINGO_LIMITS.offer, 3);
+  const range = Math.max(size * size + 2, clampInt(t && t.range, BINGO_LIMITS.range, 26));   // (room for two cards that differ: at least two numbers off each card)
   return { size, range, offer, diag: !(t && Number(t.diag) === 0) };
 }
 export const bingoSize = mini => (mini && Number.isInteger(mini.n) && mini.n >= BINGO_LIMITS.size[0] ? mini.n : 4);

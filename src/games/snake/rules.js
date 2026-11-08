@@ -250,7 +250,7 @@ export function snakeBestOf(mini, p, rng, hand, tries, until) {
   return best;
 }
 // The computer's runs still needed, about (the net points Normal gets in one: tests/sim/snake.sim.js).
-export const SNAKE_GAIN = 5.4;
+export const SNAKE_GAIN = 5.8;
 export const snakeNeeds = (mini, p) => Math.max(1, (snakeGoal(mini) - mini.score[p]) / SNAKE_GAIN);
 
 // ---------- the replay log (ui/replay.js): the run as the other side sees it ----------

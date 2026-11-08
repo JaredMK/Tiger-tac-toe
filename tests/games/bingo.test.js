@@ -21,12 +21,12 @@ const fixed = (offer, called) => {
 const call = (m, p, k, rng) => E.applyMove(m, p, k, rng || lcg(7));
 
 /* ===================================== Bingo ===================================== */
-test('bingo: the defaults: 4x4 cards of distinct numbers from 1 to 22, both public, nothing drawn and nothing called', () => {
+test('bingo: the defaults: 3x3 cards of distinct numbers from 1 to 26, both public, nothing drawn and nothing called', () => {
   const m = mini();
-  assert.deepEqual([m.n, m.range, m.diag, m.called, m.callBy, m.calls, m.last], [4, 22, true, [], [], { X: 0, O: 0 }, null]);
+  assert.deepEqual([m.n, m.range, m.diag, m.called, m.callBy, m.calls, m.last], [3, 26, true, [], [], { X: 0, O: 0 }, null]);
   for (const p of ['X', 'O']) {
-    assert.equal(m.cards[p].length, 16); assert.equal(new Set(m.cards[p]).size, 16, 'distinct');
-    assert.ok(m.cards[p].every(v => Number.isInteger(v) && v >= 1 && v <= 22));
+    assert.equal(m.cards[p].length, 9); assert.equal(new Set(m.cards[p]).size, 9, 'distinct');
+    assert.ok(m.cards[p].every(v => Number.isInteger(v) && v >= 1 && v <= 26));
   }
   assert.deepEqual(m.offer, [], 'no numbers before Pick numbers');
   assert.notDeepEqual(m.cards.X, m.cards.O);
@@ -40,7 +40,7 @@ test('bingo: the defaults: 4x4 cards of distinct numbers from 1 to 22, both publ
   m.offer = [];
   assert.equal(E.secretOf(m), null, 'no secret');
   const pv = E.publicMini(m);
-  assert.deepEqual(pv, { type: 'bingo', n: 4, range: 22, diag: true, cards: m.cards, called: [], callBy: [], offer: m.offer, calls: { X: 0, O: 0 }, last: null, win: null });
+  assert.deepEqual(pv, { type: 'bingo', n: 3, range: 26, diag: true, cards: m.cards, called: [], callBy: [], offer: m.offer, calls: { X: 0, O: 0 }, last: null, win: null });
   assert.ok(pv.cards !== m.cards && pv.offer !== m.offer, 'copies');
 });
 
@@ -108,13 +108,13 @@ test('bingo: the first complete line (a row, a column or a diagonal) takes the s
 });
 
 test('bingo: the settings: card size, range, offer and diagonals from the admin\'s card; a range too small for two different cards is widened', () => {
-  E.setTune('bingo', { size: 3, range: 12, offer: 4, diag: 0 });
+  E.setTune('bingo', { size: 4, range: 12, offer: 4, diag: 0 });
   const m = mini('bg-tune');
   E.setTune('bingo', null);
-  assert.deepEqual(m.tune, { size: 3, range: 12, offer: 4, diag: 0 });
-  assert.deepEqual([m.n, m.range, m.diag, m.cards.X.length, m.offer.length], [3, 12, false, 9, 0]);
+  assert.deepEqual(m.tune, { size: 4, range: 12, offer: 4, diag: 0 });
+  assert.deepEqual([m.n, m.range, m.diag, m.cards.X.length, m.offer.length], [4, 18, false, 16, 0], 'a range too small for two 4x4 cards is widened to 18');
   assert.deepEqual(R.bingoSettings({ size: 5, range: 10 }), { size: 5, range: 27, offer: 3, diag: true });
-  assert.deepEqual(R.bingoSettings(null), { size: 4, range: 22, offer: 3, diag: true });
+  assert.deepEqual(R.bingoSettings(null), { size: 3, range: 26, offer: 3, diag: true });
   assert.deepEqual(R.bingoSettings({ size: 9, range: 99, offer: 9, diag: 1 }), { size: 5, range: 60, offer: 4, diag: true });
   assert.equal(E.publicMini(m).tune, m.tune, 'its settings ride the public view');
   // the draw follows the square's own settings

@@ -87,12 +87,12 @@ test('snake: food: always red (X\'s) and yellow (O\'s) on the grid, never on the
     const mm = clone(m); mm.tries.X = i;
     const r = R.snakeAi(mm, 'X', E.makeRng('f' + i)), s = R.snakeStart(mm, 'X');
     assert.equal(foodOf(s, 'X').length, cfg().food); assert.equal(foodOf(s, 'O').length, cfg().food);
-    // played through tick by tick: the food is always there, one of each, never under the snake or on each other
+    // played through tick by tick: the food is always there, the same number of each, never under the snake or on each other
     const log = E.fingUnlog(r.move.log, 2 * r.move.ticks - 1, 3), turns = new Map(log);
     while (!s.end && s.k < r.move.ticks) {
       R.snakeFeed(s, turns); R.snakeTick(s, null);
       if (s.end) break;
-      assert.equal(foodOf(s, 'X').length, 1); assert.equal(foodOf(s, 'O').length, 1);
+      assert.equal(foodOf(s, 'X').length, cfg().food); assert.equal(foodOf(s, 'O').length, cfg().food);
       const cells = new Set(s.body.map(([x, y]) => x + ',' + y));
       for (const f of s.food) assert.ok(!cells.has(f[0] + ',' + f[1]), 'never on the snake');
       assert.notDeepEqual(s.food[0].slice(0, 2), s.food[1].slice(0, 2));
