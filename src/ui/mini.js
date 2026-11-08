@@ -2,6 +2,7 @@
 import { playerName } from '../core/match.js';
 import { ATT_TYPES } from '../games/shared/attention.js';
 import { FINGER_TYPES } from '../games/shared/finger.js';
+import { TIMED_RUN_TYPES } from '../core/verify.js';
 import { INFO, viewOf } from '../games/index.js';
 import { settingsBody } from './settings.js';
 import { isMM } from '../net/matchmaking.js';
@@ -39,7 +40,7 @@ export function renderMini(sq, review, popup) {
   let g = '';
   const game = viewOf(mini.type);
   if (game.screen) g = game.screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g);
-  const lock = state.lock != null && mini.type !== 'trivia' && !ATT_TYPES.includes(mini.type) && !FINGER_TYPES.includes(mini.type);   // a bonus move (a Trivia reveal, an attention game's or a finger game's Start holds the player too: not a bonus)
+  const lock = state.lock != null && mini.type !== 'trivia' && !ATT_TYPES.includes(mini.type) && !FINGER_TYPES.includes(mini.type) && !TIMED_RUN_TYPES.includes(mini.type);   // a bonus move (a Trivia reveal, an attention game's or a finger game's Start holds the player too, and a timed run's square opened online: not a bonus)
   let sub = lock ? (mini.type === 'pig' || mini.type === 'wheels' ? `<b class="${turn}">${N(turn)}</b>'s turn in progress`   // (turn info only: how to play is in the ? explainer)
     : mini.type === 'bj' ? (mini.hand || f ? `<b class="${turn}">${N(turn)}</b>'s hand` : `<b class="${turn}">${N(turn)}</b> won the hand · goes again`)   // (a hand won, a hot streak: said once its result has played, never ahead of it)
     : mini.type === 'craps' || mini.type === 'rl' ? (f ? '' : `<b class="${turn}">${N(turn)}</b> ${mini.type === 'rl' ? 'hit' : 'won the round'} · goes again`)   // (Krabs, Little Wheel: a hot streak, once the result has played)
@@ -102,7 +103,7 @@ function renderFlash(f) {
   const open = `<div class="flash lite late" style="--late:${animMs(f)}ms"${fxAttr(at, 'm')} data-act="dismiss">`;
   return `${f.type === 'memory' && f.kind === 'move' ? open.replace(' data-act="dismiss"', '') : open}</div>`;   // (Find the Pair: the two cards stay up for the full 2 seconds)
 }
-const LINE_TYPES = ['bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads', 'flap', 'chopper', 'patterns', 'wheels', 'sniff', 'clash', 'headcount', 'flash', 'snapshot', 'skyhop', 'scoop', 'pinball', 'apple'];
+const LINE_TYPES = ['bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads', 'flap', 'chopper', 'patterns', 'wheels', 'sniff', 'clash', 'headcount', 'flash', 'snapshot', 'skyhop', 'scoop', 'pinball', 'apple', 'muncher', 'swarm', 'bricks', 'snake'];
 // The result's words for the header line (HTML): a square's end ("Won by" and the mark, or "Draw": squareEnd); else
 // '' where the game's own screen says it all (the games with their own reserved result line, a Risky Rolls roll or bank).
 export function flashLine(f) {

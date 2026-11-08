@@ -168,3 +168,11 @@ Sounds start from the events they belong to, never from drawing the screen: a re
 - Audio that goes down (iPhone: backgrounded, locked, a notification, Bluetooth, a long session) comes back:
   the context is checked before every sound and replaced when it is not running or its clock has stopped
   (on any tap; once when the page comes back). A "Tap to restore sound" chip shows while it is down.
+
+<!-- new-games-nov-2026: each new game lists its sounds after this line -->
+- `swPew` — Star Swarm: the ship's shot, a short square-wave laser blip (synthesised, varies a little each time).
+- `swPop` — Star Swarm: an enemy bursts, a bandpass noise crack over a falling triangle tone (synthesised, varies).
+- `swBlast` — Star Swarm: the ship blown up at the end of a run, low-passed noise with a falling sawtooth (synthesised).
+| Snake | `snkCrunch` / `snkTurn` / `snkBonk` | An apple bitten (crisp crunch, *varied*); a turn (soft tick, *varied*); the nose into the wall or its own tail (a bonk). Start is `go`, a run's result `ding`/`thud`, the target reached `sparkle`. | Crunch: bandpass noise 2400→700 Hz with a triangle 520→330 Hz and a second noise tick; turn: triangle 980→760 Hz, 40 ms; bonk: sine 300→80 Hz with low-passed noise 800→250 Hz and a triangle 150→60 Hz |
+| Muncher | `go` / `munChomp` / `crash` / `sparkle` / `ding` / `thud` | Start (the runners' go; for someone else's run, as its replay begins); each dot eaten (new: a quick triangle chomp, 560→330 Hz then 330→520 Hz, *varied*), live and in a replay as it comes round; a spook catching the muncher (the runners' crash); the target reached or the maze emptied (sparkle); then the result for both phones: a ding for any dot gained, a thud for none | Chomp: two short triangle glides back to back, 0.1 s |
+| Brick Break | `go` / `pop` / `brkPaddle` / `brkBrick` / `brkWall` / `thud` / `sparkle` / `ding` / `won` | Start (the runners' go); the serve (pop); the ball off the paddle (new: a rising triangle boop 520→700 Hz with a tap of noise); a brick breaking (new: a crack of bandpass noise over a square note falling 880→440 Hz); the ball off a side or the top (new: a soft triangle tick); the go's end: a miss or the time up (thud), the wall cleared (sparkle); for someone else's go, after its replay: a ding for a gain, a thud for none; the square's chime when it is won | Synthesised |

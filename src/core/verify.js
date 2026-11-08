@@ -5,15 +5,27 @@
 // only counts against the sender). A run carries its input log (the engine plays it through again, step for
 // step: runner.js runCheck) and is no longer than the turn or round has lasted. An attempt (Sky Hop, Scoop
 // Stack: played through again from its inputs; Pinball: re-simulated from its inputs, finger.js fingCheck)
-// comes after Start, with its log, and is no longer than the time since Start. An attention game's answer
-// comes after Start (the round is the server's until then) and within the round's own time plus the answer
+// comes after Start, with its log, and is no longer than the time since Start. A timed run (Muncher, Star
+// Swarm, Brick Break, Snake: TIMED_RUN_TYPES) carries its inputs and, by its steps, is no longer than the turn
+// or round has lasted, as a run is. An attention game's answer comes after Start (the round is the server's until then) and within the round's own time plus the answer
 // window, or counts as out of time (the move becomes 'auto': a wrong answer, "ran out of time").
 import { ATT, ATT_TYPES, attMs } from '../games/shared/attention.js';
 import { FING, FINGER_TYPES } from '../games/shared/finger.js';
 import { RUN, RUN_TYPES } from '../games/shared/runner.js';
 import { PHYSICS } from '../games/shared/physics.js';
+import { munRawMs } from '../games/muncher/rules.js';
+import { swarmRaw } from '../games/swarm/rules.js';
+import { brkRaw } from '../games/bricks/rules.js';
+import { snakeRunMs } from '../games/snake/rules.js';
 
 export const AUTO_FROM_PHONE = ['oddone'];
+// The timed runs (November 2026: Muncher, Star Swarm, Brick Break, Snake): a move is one run played on the phone
+// in real time from the square's own Start (no server Start: the turn's start is its clock, as the runners'), sent
+// as its inputs (`log`) and its length in steps or ticks; the game's rules play it through again (its own check,
+// in apply) and here it is held to the time the turn has lasted, by its own step length (TIMED_RUN_MS).
+export const TIMED_RUN_TYPES = ['muncher', 'swarm', 'bricks', 'snake'];
+const TIMED_RUN_MS = { muncher: (mini, p, m) => munRawMs(m), swarm: (mini, p, m) => swarmRaw(m), bricks: (mini, p, m) => brkRaw(m), snake: snakeRunMs };
+export const timedRunMs = (mini, p, m) => (TIMED_RUN_MS[mini.type] ? TIMED_RUN_MS[mini.type](mini, p, m) : 0);
 const pinHz = () => (PHYSICS.lib && PHYSICS.lib.PIN ? PHYSICS.lib.PIN.hz : 480);
 // mini: the square's mini-game (the full one); p: the side; m: the move as sent; now: server time; since: when
 // the turn or round began (null: no clock, friend rooms without a timer). Returns null (fine), { why } (refused:
@@ -26,6 +38,12 @@ export function onlineCheck(mini, p, m, now, since) {
     if (!m || typeof m !== 'object') return { why: 'bad' };
     if (typeof m.log !== 'string') return { why: 'log' };
     if (since != null && Number(m.ms) > now - since + RUN.clockSlackMs) return { why: 'fast' };
+    return null;
+  }
+  if (TIMED_RUN_TYPES.includes(type)) {
+    if (!m || typeof m !== 'object') return { why: 'bad' };
+    if (typeof m.log !== 'string') return { why: 'log' };   // (a run without its inputs is refused: the server plays them through again)
+    if (since != null && timedRunMs(mini, p, m) > now - since + RUN.clockSlackMs) return { why: 'fast' };   // (longer than the turn or round has lasted, by its steps and the game's step length)
     return null;
   }
   if (FINGER_TYPES.includes(type)) {

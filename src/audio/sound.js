@@ -181,6 +181,17 @@ def('birdChirp', 0.4, (c, d, t) => { sfxTone(c, d, t, 1900, .09, { to: 2600, vol
 def('appleLift', 0.3, (c, d, t) => sfxTone(c, d, t, 300, .28, { to: 720, vol: .3, type: 'triangle', att: .01 }), { level: .4 });   // the apples lifted away, up toward the tree
 def('spill', 0.7, (c, d, t) => { sfxNoise(c, d, t, .3, { f: 600, to: 250, q: .7, filter: 'lowpass', vol: .5, att: .01 }); [0.18, 0.3, 0.42].forEach((o, i) => sfxTone(c, d, t + o, 240 - i * 30, .1, { to: 150, vol: .35, type: 'triangle', att: .003 })); }, { level: .55 });   // the bucket tips over: a wooden tumble and a few hollow knocks
 def('appleRoll', 0.14, (c, d, t) => { sfxTone(c, d, t, 520, .1, { to: 380, vol: .3, type: 'triangle', att: .003 }); sfxNoise(c, d, t, .05, { f: 1200, q: 1.5, vol: .2, att: .002 }); }, { level: .4, vary: true });   // an apple rolls out and up the tree
+def('swPew', 0.12, (c, d, t) => sfxTone(c, d, t, 1500, .09, { to: 480, vol: .22, type: 'square', att: .002 }), { level: .3, vary: true });   // Star Swarm: the ship's shot, a short laser blip
+def('swPop', 0.26, (c, d, t) => { sfxNoise(c, d, t, .18, { f: 2200, to: 400, q: .9, vol: .45, att: .002 }); sfxTone(c, d, t, 420, .14, { to: 90, vol: .35, type: 'triangle', att: .003 }); }, { level: .5, vary: true });   // Star Swarm: an enemy bursts
+def('swBlast', 0.6, (c, d, t) => { sfxNoise(c, d, t, .5, { f: 1400, to: 120, q: .8, filter: 'lowpass', vol: .8, att: .004 }); sfxTone(c, d, t, 200, .45, { to: 40, vol: .6, type: 'sawtooth' }); }, { level: .7 });   // Star Swarm: the ship blown up, the end of the run
+def('snkCrunch', 0.18, (c, d, t) => { sfxNoise(c, d, t, .07, { f: 2400, to: 700, q: 1.4, vol: .55, att: .002 }); sfxTone(c, d, t + .01, 520, .12, { to: 330, vol: .3, type: 'triangle', att: .004 }); sfxNoise(c, d, t + .05, .05, { f: 1400, to: 500, q: 1.2, vol: .3 }); }, { level: .5, vary: true });   // Snake: an apple bitten (a crisp crunch)
+def('snkTurn', 0.05, (c, d, t) => sfxTone(c, d, t, 980, .04, { to: 760, vol: .3, type: 'triangle', att: .002 }), { level: .25, vary: true });   // Snake: a turn (a soft tick)
+def('snkBonk', 0.38, (c, d, t) => { sfxTone(c, d, t, 300, .3, { to: 80, vol: .55, type: 'sine', att: .003 }); sfxNoise(c, d, t, .09, { f: 800, to: 250, filter: 'lowpass', q: .8, vol: .45 }); sfxTone(c, d, t + .02, 150, .18, { to: 60, vol: .25, type: 'triangle' }); }, { level: .6 });   // Snake: the nose into the wall (or its own tail): a bonk
+def('munChomp', 0.1, (c, d, t) => { sfxTone(c, d, t, 560, .05, { to: 330, vol: .4, type: 'triangle', att: .003 }); sfxTone(c, d, t + .045, 330, .05, { to: 520, vol: .3, type: 'triangle', att: .003 }); }, { level: .4, vary: true });   // Muncher: a dot eaten, a quick down-up chomp
+// ---- Brick Break
+def('brkPaddle', 0.12, (c, d, t) => { sfxTone(c, d, t, 520, .09, { to: 700, vol: .45, type: 'triangle', att: .003 }); sfxNoise(c, d, t, .03, { f: 1800, q: 2, vol: .25, att: .001 }); }, { level: .5, vary: true });   // the ball off the paddle: a short rising boop with a tap of felt
+def('brkBrick', 0.16, (c, d, t) => { sfxNoise(c, d, t, .06, { f: 2600, q: 1.4, vol: .6, att: .001 }); sfxTone(c, d, t, 880, .1, { to: 440, vol: .4, type: 'square', att: .002 }); sfxTone(c, d, t + .02, 1320, .06, { vol: .18, type: 'triangle' }); }, { level: .5, vary: true });   // a brick breaks: a crack of noise over a falling square note
+def('brkWall', 0.06, (c, d, t) => sfxTone(c, d, t, 1100, .045, { to: 900, vol: .3, type: 'triangle', att: .002 }), { level: .3, vary: true });   // the ball off a side or the top: a soft tick
 
 // Renders every sound into a buffer, one after another (quick, and gentle on a phone). Runs at page load.
 SND.load = function () {
@@ -391,7 +402,7 @@ export function moveSounds(f) {
   if (f.timeout) { add('buzz', 0); add('randomMove', 380); }
   const game = viewOf(f.type);
   if (game.sounds) game.sounds(f, add, won, mini, last);
-  const CASINO = ['bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads', 'flap', 'chopper', 'patterns', 'wheels', 'sniff', 'clash', 'headcount', 'flash', 'snapshot', 'skyhop', 'scoop', 'pinball', 'apple'];
+  const CASINO = ['bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads', 'flap', 'chopper', 'patterns', 'wheels', 'sniff', 'clash', 'headcount', 'flash', 'snapshot', 'skyhop', 'scoop', 'pinball', 'apple', 'muncher', 'swarm', 'bricks', 'snake'];
   if (won && CASINO.includes(f.type)) add('won', total - 600);   // the card games and the wheel: the chime once the result shows
   else if (won && f.type !== 'ttt' && f.type !== 'wordle' && f.type !== 'hangman') add('won', Math.round(total * .5));   // the game is won: a chime (the square's stamp, and a match's end, follow on the board)
   if (f.kind === 'draw') add('reset', 420);                          // the square resets with a new mini-game

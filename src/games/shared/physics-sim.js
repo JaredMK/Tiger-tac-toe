@@ -301,22 +301,35 @@ export function makePhysics(Matter) {
   };
   // A polyline as thick wall segments [x1, y1, x2, y2, thickness], joined end to end.
   const pinPoly = (t, ...pts) => pts.slice(1).map((p, i) => [pts[i][0], pts[i][1], p[0], p[1], t]);
-  // The outside: the left side, the arch, the right side (split where the gate meets it, so the gate joins
-  // it end to end) and the bottom (below the drain line: the ball is gone before it gets there).
-  const PIN_OUTER = [[1, 181.2], [1, 34], [7, 15], [20, 5], [50, 1.5], [80, 5], [93, 11], [99, 25], [99, 36], [99, 181.2], [1, 181.2]];
+  // The outside: the left side, the arch with its lip, the right side (split where the gate meets it, so
+  // the gate joins it end to end) and the bottom (below the drain line: the ball is gone before it gets
+  // there). The lip (November 2026): the arch's top-left is not a smooth curve down to the left wall but
+  // a face from (24,5) down to (21,13) and a shelf from there back to the left wall at (7,18): a launched
+  // ball that runs the whole arch (the stronger launches; the ball's centre runs along y 7-9 there) meets
+  // the face and is turned down into the upper playfield at about x 22-30, instead of rounding the corner
+  // and running the left wall straight into the left outlane (the loop-and-drain). The shelf's underside
+  // and the corner slope away, so nothing rests there, and the layouts' top-left spots keep clear of it.
+  const PIN_OUTER = [[1, 181.2], [1, 34], [7, 18], [21, 13], [24, 5], [50, 1.5], [80, 5], [93, 11], [99, 25], [99, 36], [99, 181.2], [1, 181.2]];
   // The lower table, on every layout: the outside, the plunger lane's wall, the inlane guides and the
   // slingshots. A guide's outer side is the outlane (7 units wide: a ball falls straight down it to the
   // drain beside the flipper), its inner side the inlane (6 wide, between the guide and the slingshot's
   // outer edge); at the bottom the guide bends in to the flipper's pivot, its end buried in the pivot's
   // disc, so the inlane's ball rolls off the guide onto the flipper and nothing can slip behind the
   // flipper or rest at its base. The slingshots are a triangle each above the inlane; the long face kicks.
-  // Nothing here makes a pocket a ball can rest in (pinLayoutCheck's pocket rule), and nothing on a
-  // layout may come within a unit of any of it (its rule on clearance), so the lower table plays the
-  // same whatever is above it.
+  // The outlane guards (November 2026): a short rail from each side wall above the outlane, sloping down
+  // towards the middle ((1,106)-(9,111) and its mirror from the lane wall), so a ball running down a side
+  // wall (the left orbit from the arch, a ball dropped off a ramp or a rail onto the wall) is sent in
+  // across the slingshot's top into the lower playfield instead of straight down the outlane; the outlane
+  // stays open from the inside (the gap between the guard's end and the inlane guide's top is wider than
+  // a ball and a half, so a ball bounced off the slingshot still finds it, and the ball can't touch both at
+  // once: no cradle). Nothing here makes a pocket a ball can rest in (pinLayoutCheck's pocket rule), and
+  // nothing on a layout may come within a unit of any of it (its rule on clearance), so the lower table
+  // plays the same whatever is above it. tests/sim/pinball-launch.sim.js measures the launches.
   const PIN_LOWER = {
     walls: [
       ...pinPoly(2.4, ...PIN_OUTER),
       [88.5, 181.2, 88.5, PIN.lane.top, 2.4],
+      [1, 106, 9, 111, 2.4], [89, 106, 81, 111, 2.4],   // the outlane guards (above)
       ...pinPoly(2.4, [10.5, 122], [10.5, 150], [20.5, 162.5]), ...pinPoly(2.4, [79.5, 122], [79.5, 150], [69.5, 162.5]),
     ],
     slings: [[[18, 124], [18, 146], [26, 154]], [[72, 124], [72, 146], [64, 154]]],
@@ -331,20 +344,20 @@ export function makePhysics(Matter) {
   // computer's hand lights every spot in the simulations (tests/sim/pinball.sim.js: pinReach), so any
   // seven can be dealt. (The side posts are 12.5 and 77 across: a ball passes between them and the walls.)
   const PIN_LAYOUTS = [
-    { name: 'Classic',                                                   // the first table: three bumpers, the left lane, a rail with a target behind it, the left loop, the spinner
-      walls: [[12, 34, 12, 44, 2.4], [21, 34, 21, 44, 2.4], [59, 72, 77, 56, 2.4], ...pinPoly(2.4, [12, 62], [12, 84], [22, 92])],
+    { name: 'Classic',                                                   // the first table: three bumpers, the left lane (lowered to y 38-48 in November 2026, its spot above it clear of the arch's lip and of the lane's tops at every size), a rail with a target behind it, the left loop, the spinner
+      walls: [[12, 38, 12, 48, 2.4], [21, 38, 21, 48, 2.4], [59, 72, 77, 56, 2.4], ...pinPoly(2.4, [12, 62], [12, 84], [22, 92])],
       bumpers: [[30, 54], [60, 54], [45, 68]],
-      spots: [{ x: 12.5, y: 100, r: 2.2, name: 'Left post' }, { x: 77, y: 100, r: 2.2, name: 'Right post' }, { x: 45, y: 32, r: 2.4, name: 'Top centre' }, { x: 20, y: 22, r: 2.2, name: 'Left lane' }, { x: 74, y: 44, r: 2.2, name: 'Behind the rail' }, { spin: [45, 108], r: 2.4, name: 'Spinner' }, { x: 24, y: 74, r: 2.2, name: 'Left loop' },
+      spots: [{ x: 12.5, y: 100, r: 2.2, name: 'Left post' }, { x: 77, y: 100, r: 2.2, name: 'Right post' }, { x: 45, y: 32, r: 2.4, name: 'Top centre' }, { x: 16.5, y: 27, r: 2.2, name: 'Left lane' }, { x: 74, y: 44, r: 2.2, name: 'Behind the rail' }, { spin: [45, 108], r: 2.4, name: 'Spinner' }, { x: 24, y: 74, r: 2.2, name: 'Left loop' },
         { x: 74, y: 22, r: 2.2, name: 'Upper right' }, { x: 45, y: 82, r: 2.4, name: 'Below the bumpers' }, { x: 60, y: 15, r: 2.2, name: 'Top right' }, { x: 34, y: 15, r: 2.2, name: 'Top left' }] },
     { name: 'Bumper nest',                                               // four bumpers in a diamond, three lanes under the arch
       walls: [[25.5, 24, 25.5, 34, 2.4], [38.5, 24, 38.5, 34, 2.4], [51.5, 24, 51.5, 34, 2.4], [64.5, 24, 64.5, 34, 2.4]],
       bumpers: [[31, 52], [59, 52], [45, 70], [45, 40]],
       spots: [{ x: 32, y: 14, r: 1.6, name: 'Left lane' }, { x: 45, y: 12.5, r: 1.6, name: 'Middle lane' }, { x: 58, y: 13, r: 1.6, name: 'Right lane' }, { x: 45, y: 52, r: 2.2, name: 'Nest centre' }, { x: 12.5, y: 50, r: 2.2, name: 'Left orbit' }, { x: 77, y: 50, r: 2.2, name: 'Right orbit' },
-        { x: 45, y: 90, r: 2.4, name: 'Below the nest' }, { x: 14, y: 30, r: 2.2, name: 'Upper left' }, { x: 76, y: 30, r: 2.2, name: 'Upper right' }, { x: 12.5, y: 100, r: 2.2, name: 'Left post' }, { x: 77, y: 100, r: 2.2, name: 'Right post' }, { x: 18, y: 72, r: 2.2, name: 'Left of the nest' }, { x: 72, y: 72, r: 2.2, name: 'Right of the nest' }] },
+        { x: 45, y: 90, r: 2.4, name: 'Below the nest' }, { x: 13, y: 38, r: 2.2, name: 'Upper left' }, { x: 76, y: 30, r: 2.2, name: 'Upper right' }, { x: 12.5, y: 100, r: 2.2, name: 'Left post' }, { x: 77, y: 100, r: 2.2, name: 'Right post' }, { x: 18, y: 72, r: 2.2, name: 'Left of the nest' }, { x: 72, y: 72, r: 2.2, name: 'Right of the nest' }] },
     { name: 'Twin ramps',                                                // two rails sloping in from the sides to a gap in the middle, a bumper at the top
-      walls: [[2, 42, 36, 66, 2.4], [87.6, 50, 54, 66, 2.4]],
+      walls: [...pinPoly(2.4, [2, 42], [36, 66], [30, 90]), ...pinPoly(2.4, [87.6, 50], [54, 66], [60, 90])],   // each ramp ends in a drop, so a ball flying off one falls through the gap rather than clear across the table (November 2026)
       bumpers: [[45, 30]],
-      spots: [{ x: 14, y: 66, r: 2.2, name: 'Under the left ramp' }, { x: 75, y: 69, r: 2.2, name: 'Under the right ramp' }, { x: 13, y: 34, r: 2.2, name: 'Left ramp top' }, { x: 76, y: 38, r: 2.2, name: 'Right ramp top' }, { x: 45, y: 80, r: 2.4, name: 'The gap' }, { x: 25, y: 16, r: 2.2, name: 'Top left' },
+      spots: [{ x: 14, y: 66, r: 2.2, name: 'Under the left ramp' }, { x: 75, y: 69, r: 2.2, name: 'Under the right ramp' }, { x: 13, y: 34, r: 2.2, name: 'Left ramp top' }, { x: 76, y: 38, r: 2.2, name: 'Right ramp top' }, { x: 45, y: 80, r: 2.4, name: 'The gap' }, { x: 32, y: 18, r: 2.2, name: 'Top left' },
         { x: 65, y: 16, r: 2.2, name: 'Top right' }, { x: 12.5, y: 100, r: 2.2, name: 'Left post' }, { x: 77, y: 100, r: 2.2, name: 'Right post' }, { x: 45, y: 102, r: 2.4, name: 'Centre line' }, { x: 12.5, y: 84, r: 2.2, name: 'Left side' }, { x: 77, y: 84, r: 2.2, name: 'Right side' }] },
     { name: 'The loop',                                                  // an arch over the upper left, open below (a bumper under it), the spinner below that
       walls: pinPoly(2.4, [14, 64], [14, 46], [20, 32], [32, 23], [46, 21], [60, 25], [70, 35]),
@@ -355,12 +368,12 @@ export function makePhysics(Matter) {
       walls: pinPoly(2.4, [20, 50], [45, 46], [70, 50]),
       bumpers: [[20, 84], [70, 84]],
       spots: [{ x: 30, y: 60, r: 2.2, name: 'Bank left' }, { x: 45, y: 58, r: 2.2, name: 'Bank middle' }, { x: 60, y: 60, r: 2.2, name: 'Bank right' }, { x: 45, y: 30, r: 2.4, name: 'Over the bank' }, { x: 12.5, y: 36, r: 2.2, name: 'Left side' }, { x: 77, y: 36, r: 2.2, name: 'Right side' },
-        { x: 45, y: 86, r: 2.4, name: 'Between the bumpers' }, { x: 12.5, y: 100, r: 2.2, name: 'Left post' }, { x: 77, y: 100, r: 2.2, name: 'Right post' }, { x: 24, y: 18, r: 2.2, name: 'Top left' }, { x: 66, y: 18, r: 2.2, name: 'Top right' }] },
+        { x: 45, y: 86, r: 2.4, name: 'Between the bumpers' }, { x: 12.5, y: 100, r: 2.2, name: 'Left post' }, { x: 77, y: 100, r: 2.2, name: 'Right post' }, { x: 31, y: 20, r: 2.2, name: 'Top left' }, { x: 66, y: 18, r: 2.2, name: 'Top right' }] },
     { name: 'The alley',                                                 // two rails making a central alley, a bumper either side, the spinner at its foot
       walls: [[33, 30, 33, 60, 2.4], [57, 30, 57, 60, 2.4]],
       bumpers: [[18, 50], [72, 50]],
       spots: [{ x: 45, y: 22, r: 2.2, name: 'Alley top' }, { x: 45, y: 45, r: 2.2, name: 'In the alley' }, { x: 13, y: 36, r: 2.2, name: 'Left orbit' }, { x: 77, y: 36, r: 2.2, name: 'Right orbit' }, { x: 12.5, y: 72, r: 2.2, name: 'Left side' }, { x: 77, y: 72, r: 2.2, name: 'Right side' },
-        { spin: [45, 92], r: 2.4, name: 'Spinner' }, { x: 12.5, y: 100, r: 2.2, name: 'Left post' }, { x: 77, y: 100, r: 2.2, name: 'Right post' }, { x: 45, y: 66, r: 2.2, name: 'Alley foot' }, { x: 24, y: 18, r: 2.2, name: 'Top left' }, { x: 66, y: 18, r: 2.2, name: 'Top right' }] },
+        { spin: [45, 92], r: 2.4, name: 'Spinner' }, { x: 12.5, y: 100, r: 2.2, name: 'Left post' }, { x: 77, y: 100, r: 2.2, name: 'Right post' }, { x: 45, y: 66, r: 2.2, name: 'Alley foot' }, { x: 23, y: 25, r: 2.2, name: 'Top left' }, { x: 66, y: 18, r: 2.2, name: 'Top right' }] },
     { name: 'Islands',                                                   // three short rails scattered about, a bumper between them and one low at each side
       walls: [[20, 38, 32, 48, 2.4], [70, 38, 58, 48, 2.4], [38, 76, 52, 72, 2.4]],
       bumpers: [[45, 52], [22, 70], [68, 70]],
@@ -436,7 +449,7 @@ export function makePhysics(Matter) {
   // A launch: power 0..1 (a tap: the default).
   function pinLaunch(w, power) {
     if (w.inPlay || w.over) return false;
-    const p = Math.round((power == null ? 0.82 : Math.max(0, Math.min(1, power))) * 100) / 100, lo = 240, hi = 400;   // (the power to a hundredth: as the log keeps it, so a replay launches just the same)
+    const p = Math.round((power == null ? 0.82 : Math.max(0, Math.min(1, power))) * 100) / 100, lo = 290, hi = 400;   // (the power to a hundredth: as the log keeps it, so a replay launches just the same; lo: the weakest launch still clears the gate at the table's gravity, 168 - 290²/600 = 28, so every launch plays: tests/sim/pinball-launch.sim.js)
     w.inPlay = true; w.launchedAt = w.t; pinSetV(w, 0, -(lo + (hi - lo) * p)); pinEv(w, 'launch', { p });
     if (w.log.length < 20000) w.log.push([w.n, 4 + Math.round(p * 100)]);
     return true;
@@ -445,8 +458,9 @@ export function makePhysics(Matter) {
   // the playfield side (the ball leaves the lane upwards through where it will be, so a ball that has left
   // the lane is above it within a few steps, and is clear of it by half a unit when it appears: nothing
   // overlaps). From then on the lane is closed: a ball falling on the gate slides off it, down its slope
-  // into the playfield. A launch too weak to leave the lane falls back with the gate still open, and
-  // the ball is served again (pinStep's lane check).
+  // into the playfield. Every launch clears the gate at the table's own gravity (pinLaunch's lo); one too
+  // weak under a heavier setting falls back with the gate still open, and the ball is served again
+  // (pinStep's lane check).
   function pinGate(w) {
     if (w.gateOn) return;
     const [x1, y1, x2, y2, t] = w.table.gate, b = w.ball.position, len = Math.hypot(x2 - x1, y2 - y1);

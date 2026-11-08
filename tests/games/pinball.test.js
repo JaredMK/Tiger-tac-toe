@@ -126,3 +126,29 @@ test('pinball: a ball is its inputs (the log: the flippers as they change, each 
   assert.deepEqual([again.hits, again.ms, again.end, again.rec], [rw.hits, rw.ms, rw.end, rw.rec], 'frames of any length: the same ball from the log');
   assert.ok(w.log.some(([, v]) => v === 4 + 71), 'the launch power kept to a hundredth (as the launch itself uses it)');
 });
+
+test('pinball: the launch — on every layout, at every power from 0.3 to full with no flipper input, the ball enters the playfield (touches a bumper, a slingshot or a target, or comes down to the flippers), never leaves the outline or sits in a wall, never passes back through the shut gate and never comes to rest; a full-power launch touches a bumper, a slingshot or a target before any drain in at least 85% of launches', () => {
+  // (tests/sim/pinball-launch.sim.js: 50 balls at every strength on every layout; November 2026, with the
+  // arch's lip and the outlane guards: every ball entered, 96-99% touched something at every strength from
+  // 0.3 up, 98% at full power (86% on Twin ramps alone, whose chute drops a ball to the flippers), none
+  // looped straight to the drain, none tunnelled; so 85% of full-power launches touching, over 14 deals
+  // across the layouts, is a floor under what the table does, and one odd deal never fails the build)
+  const { dealTable, launchTrial } = require('../pinball-launch.js');
+  let full = 0, fullTouched = 0, balls = 0;
+  for (let k = 0; k < P.PIN_LAYOUTS.length; k++) for (let s = 0; s < 2; s++) {
+    const tb = dealTable(k, E.makeRng(`launch${k}:${s}`));
+    for (let p = 3; p <= 10; p++) {
+      const r = launchTrial(tb, p / 10, 8), who = `${tb.name} (deal ${s}) at power ${(p / 10).toFixed(1)}`;   // (8 s: a ball still bouncing about the bumpers then counts as played)
+      balls++;
+      assert.equal(r.tunnel, null, `${who}: the ball stays on the table and out of the walls (${r.tunnel})`);
+      assert.ok(r.entered, `${who}: the ball enters the playfield (${r.end})`);
+      assert.notEqual(r.end, 'stuck', `${who}: the ball never comes to rest`);
+      assert.notEqual(r.end, 'fellBack', `${who}: the launch clears the gate`);
+      if (p === 10) { full++; if (r.touched) fullTouched++; }
+    }
+  }
+  assert.equal(balls, P.PIN_LAYOUTS.length * 2 * 8);
+  assert.ok(fullTouched >= full * 0.85, `a full-power launch touches a bumper, a slingshot or a target before any drain: ${fullTouched} of ${full}`);
+  // the weakest launch clears the gate too (the lip and the guards then feed it in like any other)
+  for (let k = 0; k < P.PIN_LAYOUTS.length; k++) { const r = launchTrial(dealTable(k, E.makeRng('weak' + k)), 0, 8); assert.ok(r.entered && !r.tunnel, `${P.PIN_LAYOUTS[k].name}: the weakest launch plays (${r.end})`); }
+});

@@ -1,0 +1,115 @@
+// Snake's screen (src/games/snake/view.js): the garden in a square scene with the totals above and Start below,
+// the result line in its reserved row, the words of a run, the miniature (a small garden, each player's snake and
+// count), and the replay's chunks played through to the same run. Rendered in Node with the browser's names stubbed.
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
+
+const stub = () => new Proxy(function () {}, { get: (t, k) => (k === Symbol.toPrimitive ? () => '' : k === 'length' ? 0 : stub()), apply: () => stub(), construct: () => stub(), set: () => true });
+for (const k of ['document', 'window', 'localStorage', 'sessionStorage', 'navigator', 'location', 'history', 'matchMedia', 'requestAnimationFrame', 'cancelAnimationFrame', 'Element', 'HTMLElement', 'CSS', 'AudioContext', 'Image', 'getComputedStyle']) {
+  try { Object.defineProperty(globalThis, k, { value: stub(), configurable: true, writable: true }); } catch (e) { /* (kept) */ }
+}
+const require = createRequire(import.meta.url);
+const E = require('../engine.js');
+const R = require('../../src/games/snake/rules.js');
+const { GAMES } = await import('../../src/games/index.js');
+const V = await import('../../src/games/snake/view.js');
+GAMES.snake.view = V;   // (the page registers the views in main.js; here by hand, for the header's line)
+const { flashLine } = await import('../../src/ui/mini.js');
+const { state } = await import('../../src/ui/app.js');
+state.setup = Object.assign({}, state.setup, { names: { X: 'Xena', O: 'Olaf' } });
+
+const clone = v => JSON.parse(JSON.stringify(v));
+function square(score) { const st = E.newMatch(E.makeRng('sv'), { games: ['snake'] }); Object.assign(state, st, { screen: 'mini', zoom: 0, online: null, cpu: null, sc: null, flash: null, done: null }); state.setup = Object.assign({}, state.setup, { names: { X: 'Xena', O: 'Olaf' } }); state.names = state.setup.names; const sq = state.squares[0]; sq.mini = E.newMini('snake', E.makeRng('sv-sq')); sq.mini.score = Object.assign({ X: 0, O: 0 }, score || {}); sq.owner = null; state.turn = 'X'; return sq; }
+const still = (sq, turn) => V.screen(sq, null, null, sq.mini, false, false, null, null, () => false, () => -1, false, turn || 'X', '');
+function played(sq, p, cpu) {   // a run played in the square: the square after it and the move's flash
+  const m = R.snakeAi(sq.mini, p, E.makeRng('run-' + p)).move;
+  if (cpu) m.ai = true;
+  const r = E.playMove(state, 0, m, E.makeRng('pm'));
+  assert.equal(r.ok, true, r.reason);
+  return r.flash;
+}
+
+test('the screen: both totals in their bars, a square garden scene with its count, the words row and Start, nothing else', () => {
+  const html = still(square({ X: 7, O: 3 }));
+  assert.match(html, /class="g-arc g-snake"/);
+  assert.match(html, /class="rprog snk-prog X now"[\s\S]*aria-valuenow="7"[\s\S]*<small>7 \/ 35<\/small>/);
+  assert.match(html, /class="rprog snk-prog O"[\s\S]*aria-valuenow="3"[\s\S]*<small>3 \/ 35<\/small>/);
+  assert.match(html, /<div class="snk-wrap"><div class="snk-scene" data-snk="scene"[^>]*><canvas data-snk="cv"><\/canvas><div class="rhud snk-hud" data-snk="hud">7 \/ 35<\/div>/);
+  assert.match(html, /data-snk="hud">7 \/ 35<\/div><\/div><p class="atwords snk-words"><span><\/span><\/p><\/div>/, 'the words row reserved right under the scene (outside it), empty on your own turn (how to play is in the ? explainer)');
+  assert.match(html, /<button class="big X" data-act="snk-start">Start<\/button>/);
+  assert.doesNotMatch(html, /Swipe|swipe|Tap Start/, 'no help text inside the game');
+});
+test('waiting on the other side: Start kept for its room but hidden, the words say who', () => {
+  const sq = square();
+  state.cpu = 'O'; state.turn = 'O';
+  const html = still(sq, 'O');
+  assert.match(html, /class="cbtns one hold"/);
+  assert.match(html, /Waiting for <b class="O">/);
+  state.cpu = null;
+});
+test('a run just played here: the totals take the new figure at once, the result line says how it ended, the header line names the apples', () => {
+  const sq = square({ X: 10, O: 0 }), f = played(sq, 'X');
+  const s = f.snake;
+  assert.equal(R.snakeShown(f), false);
+  const html = V.screen(sq, f, null, sq.mini, false, true, f, null, () => false, () => -1, false, 'X', '');
+  const gain = s.to - s.from;
+  assert.match(html, new RegExp(`aria-valuenow="${s.to}"`));
+  if (gain > 0) assert.match(html, /class="rprog snk-prog X[^"]*"[\s\S]*<i class="grow" style="--w0:28\.6%;--w1:[\d.]+%;--d:900ms;--t:0ms"/, 'the bar grows from the move, no run to wait for: it was seen here');
+  assert.match(html, /<span class="arcres (ok|no)" role="status"><b class="X">Xena<\/b> (hit the wall|bit its own tail|reached 35!|ran out of time)/);
+  assert.doesNotMatch(html, /Won by/);
+  const line = flashLine(f);
+  if (f.kind === 'move') assert.equal(line, '', 'the header line says nothing of a run: the result line under the scene does (ui/mini.js LINE_TYPES)'); else assert.match(line, /Won by/);
+  assert.match(V.moveText(f, '<b class="X">Xena</b>'), gain > 0 ? new RegExp(`Xena</b> ate ${gain} apples? · ${s.to} of 35`) : /ate nothing/, 'the move\'s words (history, the match log) name the apples');
+});
+test('someone else\'s run with no whole replay log (a bot\'s online): it plays in the flash first (the run\'s time), then the result', () => {
+  const sq = square({ X: 0, O: 4 }); state.turn = 'O'; state.cpu = 'O';
+  const f = played(sq, 'O'), s = f.snake;
+  assert.equal(R.snakeShown(f), false);
+  assert.equal(R.flashMs(f, 4, false), s.ms + R.SNAKE.hold);
+  const html = V.screen(sq, f, null, sq.mini, false, true, f, null, () => false, () => -1, false, 'O', '');
+  assert.match(html, new RegExp(`<span class="tu" style="--u:${s.ms}ms"><b class="O">`), 'having a go… until the run has played');
+  assert.match(html, new RegExp(`class="arcres (ok|no) appear" style="--t:${s.ms}ms"`), 'the result as it lands');
+  if (s.to > s.from) assert.match(html, new RegExp(`--t:${s.ms}ms"></i>`), 'the bar grows once the run has played');
+  // its sounds: the run's as it plays, then the result; the computer's run here (shown before the move) sounds only its result
+  const got = []; V.sounds(f, (n, ms) => got.push([n, ms]), false, sq.mini, null);
+  assert.equal(got[0][0], 'go'); assert.ok(got.some(([n]) => n === 'snkCrunch') === s.n > 0); assert.deepEqual(got[got.length - 1], [s.to > s.from ? 'ding' : 'thud', s.ms + 150]);
+  if (s.end === 'wall' || s.end === 'self') assert.ok(got.some(([n, ms]) => n === 'snkBonk' && ms === s.ms));
+  state.cpu = null;
+  const sq2 = square({ X: 0, O: 4 }); state.turn = 'O'; state.cpu = 'O';
+  const f2 = played(sq2, 'O', true);
+  assert.equal(R.snakeShown(f2), true); assert.equal(R.flashMs(f2, 4, false), R.SNAKE.hold);
+  const got2 = []; V.sounds(f2, (n, ms) => got2.push([n, ms]), false, sq2.mini, null);
+  assert.deepEqual(got2, [[f2.snake.to > f2.snake.from ? 'ding' : 'thud', 150]]);
+  state.cpu = null;
+});
+test('the replay\'s chunks (replay.synth for the computer, replay.input on the other phone): the run played through from them is the recorded run', () => {
+  const sq = square({ X: 0, O: 6 }), m = R.snakeAi(sq.mini, 'O', E.makeRng('syn')).move;
+  const list = V.replay.synth(m, clone(sq.mini), { by: 'O' });
+  assert.ok(Array.isArray(list) && list[0][2] === 'go' && /^end=/.test(list[list.length - 1][2]));
+  assert.equal(m.ai, true, 'the move is marked: its run shown here before it');
+  // fed to the other phone's hook, as the replay would at its times (the loop then steps the sim as the chunks allow)
+  const r = { sq: 0, by: 'O', speed: 1 };
+  for (const [, act, val] of list) assert.equal(V.replay.input(act, val, r), true);
+  assert.equal(V.replay.input('snk-start', null, r), false, 'the Start press shows on the button');
+  assert.equal(V.replay.input('move', 'm=1', r), false);
+});
+test('the miniature: a small garden with each player\'s snake and count, public information only, its own classes', () => {
+  const sq = square({ X: 20, O: 5 }), html = V.miniature(sq.mini, false);
+  assert.match(html, /^<div class="tsnk" aria-label="X has 20, O has 5 of 35 apples"><svg/);
+  assert.match(html, /class="tsnk-s X"/); assert.match(html, /class="tsnk-s O"/); assert.match(html, /class="tsnk-a"/);
+  assert.match(html, /<b class="X">X<\/b><span>20<\/span><small>\/35<\/small>/); assert.match(html, /<b class="O">O<\/b><span>5<\/span><small>\/35<\/small>/);
+  const xs = (html.match(/class="tsnk-s X" points="([^"]*)"/) || [])[1].split(' ').length, os = (html.match(/class="tsnk-s O" points="([^"]*)"/) || [])[1].split(' ').length;
+  assert.ok(xs > os, 'the snake ahead is the longer');
+  for (const c of ['back', 'btn', 'big', 'seg', 'key', 'sq', 'chip', 'bird']) assert.ok(!new RegExp(`class="[^"]*\\b${c}\\b`).test(html), c);
+  const hidden = clone(sq.mini); E.hideMini(hidden, 0, state);
+  assert.equal(V.miniature(hidden, false), html);
+});
+test('the words of a run: the end, the gain and the total; a timeout; the target', () => {
+  const who = '<b class="X">Xena</b>';
+  const f = (s, kind) => ({ kind: kind || 'move', by: 'X', type: 'snake', snake: Object.assign({ by: 'X', goal: 35 }, s) });
+  assert.equal(V.moveText(f({ from: 3, to: 8 }), who), `${who} ate 5 apples · 8 of 35`);
+  assert.equal(V.moveText(f({ from: 3, to: 4 }), who), `${who} ate 1 apple · 4 of 35`);
+  assert.equal(V.moveText(f({ from: 3, to: 3 }), who), `${who} ate nothing · 3 of 35`);
+  assert.equal(V.moveText(f({ auto: true, from: 3, to: 3 }), who), `${who} ran out of time`);
+});

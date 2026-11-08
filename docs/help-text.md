@@ -61,6 +61,11 @@ Category: More skill
 Play: Tap to aim then tap for power.
 Win: {target} pins total.
 
+## Brick Break [bricks]
+Category: More skill
+Play: Tap Start, then drag to move the paddle. Bounce the ball into the bricks. Bricks you break stay broken; the ball past the paddle ends your go.
+Win: Clear your wall first.
+
 ## Bullseye [bullseye]
 Category: More skill
 Play: Stop the sideways line, then the up-down line. The dart lands where they cross. Bullseye is {bullPts}, the board is 1.
@@ -197,6 +202,11 @@ Win: Sink your ball first.
 Super Chaos Play: Drag back to aim and set power, then let go to lock in your shot.
 Super Chaos Win: Sink your ball.
 
+## Muncher [muncher]
+Category: More skill
+Play: Tap Start, then swipe to steer through the maze and eat the dots. A spook catches you and the run ends, but the dots you ate stay eaten.
+Win: Eat the target number of dots first.
+
 ## Odd One Out [oddone]
 Category: More skill
 Play: Tap Reveal to show the grid, then tap the tile that's a different shade within {secs} seconds.
@@ -273,6 +283,11 @@ Category: More skill
 Play: Drag to steer as you bounce up. Fall and your turn ends, but you keep your height.
 Win: Reach the top first.
 
+## Snake [snake]
+Category: More skill
+Play: Tap Start, then swipe to turn. Eat apples to grow; the wall or your own tail ends the run. Every apple counts towards your total.
+Win: First to {target} apples.
+
 ## Snakes and Ladders [snakes]
 Category: More luck
 Play: Roll and move up that many spaces. Ladders lift you up, snakes slide you down.
@@ -294,6 +309,11 @@ Super Chaos Win: Be the first dog onto the treasure.
 Category: More brain
 Play: Claim a square. Pick the same square as your opponent in the same round and it's blocked for good.
 Win: {need} in a row.
+
+## Star Swarm [swarm]
+Category: More skill
+Play: Tap Start, then drag to fly your ship. It fires by itself. Every enemy you shoot down scores: jellies 1, darts 2, saucers 3. One hit ends your turn, but your points carry over.
+Win: Score {target} first.
 
 ## Takeover [takeover]
 Category: More brain

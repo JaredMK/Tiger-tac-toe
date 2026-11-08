@@ -2876,3 +2876,69 @@ main.scr.mini > .wband { left: 0; right: 0; }   /* Super Chaos: waiting in the s
 .zghost > .scr { flex: 1; min-height: 0; }
 .sq.ztile { position: fixed; z-index: 1; margin: 0; pointer-events: none; transition: none; }
 .zghost *, .sq.ztile * { pointer-events: none; }
+
+/* ===== New mini-games (November 2026 batch): each game appends its block after this line ===== */
+/* ---- Snake (November 2026): the garden grid in a square scene sized by the room left, the snake in the player's colour, the apple ---- */
+.g-snake .snk { flex: 1; display: flex; flex-direction: column; min-height: 0; gap: 8px; }
+.g-snake .snk > .rprogs { flex: none; }
+.snk-wrap { flex: 1; min-height: 0; container-type: size; display: flex; flex-direction: column; align-items: center; gap: 8px; }   /* the square scene sized by the room (its words right under it), the rest left before Start */
+.snk-scene { position: relative; width: min(100cqw, 100cqh - 48px); aspect-ratio: 1 / 1; border: 3px solid var(--ink); border-radius: 14px; overflow: hidden; background: #e3f1cd; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.snk-scene canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.atwords.snk-words { height: 40px; min-height: 40px; max-height: 40px; font-size: 14px; flex: none; }
+.tsnk { display: flex; align-items: center; gap: 3cqw; width: 92cqw; }   /* the miniature: the garden on the left, each player's count on the right */
+.tsnk svg { flex: none; width: 46cqw; height: auto; display: block; overflow: visible; }
+.tsnk-n { display: flex; flex-direction: column; gap: 4cqw; min-width: 0; }
+.tsnk-n > div { display: flex; align-items: baseline; gap: 1.5cqw; font-weight: 800; font-size: 10cqw; line-height: 1; white-space: nowrap; }
+.tsnk-n b { width: 9cqw; flex: none; font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-weight: 400; } .tsnk-n b.X { color: var(--x); } .tsnk-n b.O { color: #b88a00; }
+.tsnk-n small { font-size: 6.5cqw; color: var(--muted); font-weight: 700; }
+.tsnk .tsnk-b { fill: #e3f1cd; stroke: var(--ink); stroke-width: 1.8; } .tsnk .tsnk-g { fill: #d3e8b6; }
+.tsnk .tsnk-so { fill: none; stroke: var(--ink); stroke-width: 7.2; stroke-linecap: round; stroke-linejoin: round; }
+.tsnk .tsnk-s { fill: none; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; } .tsnk .tsnk-s.X { stroke: var(--x); } .tsnk .tsnk-s.O { stroke: var(--o); }
+.tsnk .tsnk-h { stroke: var(--ink); stroke-width: 1.1; } .tsnk .tsnk-h.X { fill: var(--x); } .tsnk .tsnk-h.O { fill: var(--o); }
+.tsnk .tsnk-a { fill: #d93a2b; stroke: var(--ink); stroke-width: 1.1; } .tsnk .tsnk-l { fill: var(--green); }
+/* ---- Star Swarm (swarm): both totals, the sky (a canvas), a line of words, Start; the miniature ---- */
+.swarm { flex: 1; display: flex; flex-direction: column; min-height: 0; gap: 8px; }
+.swarm > .rprogs { flex: none; }
+.swscene { position: relative; flex: 1; min-height: 160px; width: 100%; border: 3px solid var(--ink); border-radius: 14px; overflow: hidden; background: #131a33; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.swscene canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.swscene .rhud { color: var(--paper); text-shadow: 0 2px 0 var(--ink); }
+.atwords.swwords { height: 40px; min-height: 40px; max-height: 40px; font-size: 14px; flex: none; }
+.tswarm { width: 90cqw; } .tswarm svg { width: 100%; height: auto; display: block; overflow: visible; }
+.tswarm .tswbg { fill: #131a33; stroke: var(--ink); stroke-width: 1.2; } .tswarm .tswstar { fill: #fff; }
+.tswarm .tswfoe { fill: #9be36a; stroke: var(--ink); stroke-width: 1.2; } .tswarm .tswfoe.b { fill: #e35fd0; }
+.tswarm .tswship { stroke: var(--ink); stroke-width: 1.2; } .tswarm .tswship.X { fill: var(--x); } .tswarm .tswship.O { fill: var(--o); }
+.tswarm .tswbar { fill: #fff; stroke: var(--ink); stroke-width: 1.2; } .tswarm .tswfill.X { fill: var(--x); } .tswarm .tswfill.O { fill: var(--o); }
+.tswarm text { fill: #fff; font-weight: 900; font-size: 9px; font-family: Nunito, Arial, sans-serif; text-anchor: middle; }
+/* ----- Muncher (the maze chomper: ui/games/muncher/view.js) ----- */
+.mun { flex: 1; display: flex; flex-direction: column; min-height: 0; gap: 8px; }
+.mun > .rprogs { flex: none; }
+.munscene { position: relative; flex: 1; min-height: 160px; max-height: calc(min(var(--gw), 440px) * 0.84); width: 100%; border: 3px solid var(--ink); border-radius: 14px; overflow: hidden; background: #1b1540; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.munscene canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.munhud { color: var(--paper); text-shadow: 0 2px 0 var(--ink); }
+.atwords.munwords { height: 40px; min-height: 40px; max-height: 40px; font-size: 14px; flex: none; }
+.tmun { display: flex; align-items: center; gap: 3cqw; width: 92cqw; }
+.tmun .mpic { flex: none; width: 44cqw; } .tmun svg { width: 100%; height: auto; display: block; overflow: visible; }
+.tmun .bg { fill: #1b1540; } .tmun .w { fill: #5a4fb0; stroke: #3b3480; stroke-width: .8; } .tmun .dots { stroke: #ffe9a8; stroke-width: 2.4; stroke-linecap: round; fill: none; }
+.tmun .sp { fill: #b9a7ff; stroke: var(--ink); stroke-width: .9; } .tmun .mu { fill: var(--paper); stroke: var(--ink); stroke-width: .9; }
+.tmun .mrows { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5cqw; }
+.tmun .mr { display: grid; grid-template-columns: 9cqw minmax(0, 1fr) 13cqw; align-items: center; gap: 2cqw; font-weight: 800; font-size: 9cqw; line-height: 1; }
+.tmun .mr i { display: block; height: 8cqw; border: 1.3cqw solid var(--ink); border-radius: 999px; background: var(--paper); overflow: hidden; }
+.tmun .mr i s { display: block; height: 100%; width: var(--w, 0%); text-decoration: none; }
+.tmun .mr.X i s { background: var(--x); } .tmun .mr.O i s { background: var(--o); }
+.tmun .mr span { text-align: right; font-variant-numeric: tabular-nums; }
+/* Brick Break (games/bricks/view.js): the players' walls as bars, the field (a canvas), a line of words, Start */
+main.scr.mini:has(.brkw), main.scr.mini:has(.brkw) * { touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }   /* a drag anywhere slides the paddle; a long press does nothing */
+.brkw { flex: 1; display: flex; flex-direction: column; min-height: 0; gap: 8px; }
+.brkw > .rprogs { flex: none; }
+.brkscene { position: relative; flex: 1; min-height: 160px; width: 100%; border: 3px solid var(--ink); border-radius: 14px; overflow: hidden; background: #1b2236; touch-action: none; user-select: none; -webkit-user-select: none; }
+.brkscene canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.brkscene .brkhud { color: var(--paper); text-shadow: 0 2px 0 var(--ink); }
+.atwords.brkwords { height: 40px; min-height: 40px; max-height: 40px; font-size: 14px; flex: none; }
+main.scr.mini:has(.brkw.run) .back { visibility: hidden; pointer-events: none; }   /* a go under way: held to the square until it goes in */
+.tbrk { width: 90cqw; } .tbrk svg { width: 100%; height: auto; display: block; overflow: visible; }   /* the miniature: each player's wall, paddle and ball */
+.tbrk .tbrkf { fill: #243052; stroke: var(--ink); stroke-width: 1.2; }
+.tbrk .tbrkb { fill: #f09a3a; stroke: var(--ink); stroke-width: .5; }
+.tbrk .tbrkg { fill: none; stroke: #8a93b0; stroke-width: .5; stroke-dasharray: 1.2 1; }
+.tbrk .tbrkp { stroke: var(--ink); stroke-width: 1; } .tbrk .tbrkp.X { fill: var(--x); } .tbrk .tbrkp.O { fill: var(--o); }
+.tbrk .tbrko { fill: var(--paper); stroke: var(--ink); stroke-width: 1; }
+.tbrk .tbrkl { font: 800 9px Nunito, Arial, sans-serif; fill: #fff; } .tbrk .tbrkl.X { fill: var(--x); } .tbrk .tbrkl.O { fill: var(--o); }

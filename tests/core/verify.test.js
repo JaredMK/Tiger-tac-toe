@@ -31,6 +31,41 @@ test('verify: a run carries its input log and is no longer than the turn or roun
     assert.equal(E.onlineCheck(m, 'X', real, T, null), null, 'no clock (a friend room without a timer): the log alone');
   }
 });
+test('verify: a timed run (Muncher, Star Swarm, Brick Break, Snake) carries its inputs and, by its steps, is no longer than the turn or round has lasted (plus the slack); no server Start, the turn\'s start is its clock', () => {
+  assert.deepEqual(E.TIMED_RUN_TYPES, ['muncher', 'swarm', 'bricks', 'snake']);
+  for (const t of E.TIMED_RUN_TYPES) {
+    assert.ok(!E.RUN_TYPES.includes(t) && !E.FINGER_TYPES.includes(t) && !E.ATT_TYPES.includes(t), `${t}: its own kind`);
+    const m = E.newMini(t, E.makeRng('tr' + t)), rng = E.makeRng('ai' + t);
+    const real = t === 'muncher' ? E.munPilot(m, 'X', rng, E.MUN_HANDS.normal).move
+      : t === 'swarm' ? E.swarmAi(m, 'X', rng, 'normal').move
+        : t === 'bricks' ? E.brkAi(m, 'X', rng, E.brkHand(m, 'normal')).move
+          : E.snakeAi(m, 'X', rng, E.snakeHand(m, 'normal')).move;
+    assert.ok(typeof real.log === 'string', `${t}: the computer's run has a log`);
+    const ms = E.timedRunMs(m, 'X', real);
+    const want = t === 'muncher' ? Math.round(real.steps * 1000 / E.MUN.hz) : t === 'swarm' ? Math.round(real.steps * E.SW.step * 1000) : t === 'bricks' ? Math.round(real.steps * E.BRK.step * 1000) : E.snakeCheck(m, 'X', real).sim.ms;
+    assert.equal(ms, want, `${t}: the run's length from its steps and the game's step`);
+    assert.ok(ms > 500 && ms <= 60000, `${t}: a real run's length (${ms} ms)`);
+    const noLog = Object.assign({}, real); delete noLog.log;
+    assert.deepEqual(E.onlineCheck(m, 'X', noLog, T, T - ms - 1000), { why: 'log' }, `${t}: a run without its log`);
+    assert.deepEqual(E.onlineCheck(m, 'X', Object.assign({}, real, { log: 7 }), T, T - ms - 1000), { why: 'log' }, `${t}: a log that is not one`);
+    assert.deepEqual(E.onlineCheck(m, 'X', 'x', T, T - 60000), { why: 'bad' });
+    assert.deepEqual(E.onlineCheck(m, 'X', 'auto', T, T - 60000), { why: 'auto' }, `${t}: no timeout from a phone`);
+    assert.equal(E.onlineCheck(m, 'X', real, T, T - ms - 1000), null, `${t}: the run, in the time the turn has lasted`);
+    assert.equal(E.onlineCheck(m, 'X', real, T, T - ms + E.RUN.clockSlackMs - 1), null, 'within the slack');
+    assert.deepEqual(E.onlineCheck(m, 'X', real, T, T - ms + E.RUN.clockSlackMs + 1), { why: 'fast' }, `${t}: longer than the turn has lasted`);
+    assert.deepEqual(E.onlineCheck(m, 'X', real, T, T), { why: 'fast' }, 'the turn just begun');
+    assert.equal(E.onlineCheck(m, 'X', real, T, null), null, 'no clock (a friend room without a timer): the log alone');
+    assert.equal(m.started, undefined, `${t}: no server Start to wait for`);
+    const r = E.applyMove(m, 'X', real, E.makeRng('a'));
+    assert.equal(r.ok, true, `${t}: the run goes in by the rules`);
+  }
+  // Snake's ticks shrink with every apple of the run: its length is the ticks played through, not ticks times the first tick
+  const sm = E.newMini('snake', E.makeRng('tr-snake2')), sr = E.snakeAi(sm, 'X', E.makeRng('ai-snake2'), E.snakeHand(sm, 'normal')).move;
+  const sim = E.snakeCheck(sm, 'X', sr).sim;
+  assert.equal(E.timedRunMs(sm, 'X', sr), sim.ms);
+  if (sim.eaten > 0) assert.ok(sim.ms < sr.ticks * E.tune(sm).tick, 'shorter than the ticks at the first length');
+  assert.equal(E.timedRunMs(sm, 'X', { log: 'zz', ticks: 10, n: 0, end: 'wall' }), Math.round(10 * E.tune(sm).minTick), 'a run that does not play: its ticks at the shortest tick (apply refuses it)');
+});
 test('verify: an attempt comes after Start (the server\'s stamp), with its inputs, and lasts no longer than the time since Start; Pinball\'s inputs are its log too', () => {
   for (const t of E.FINGER_TYPES) {
     const m = E.newMini(t, E.makeRng('f' + t));

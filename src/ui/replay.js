@@ -21,7 +21,7 @@ import { fx, fxAt } from './fx.js';
 import { render } from './render.js';
 import { skipFlash } from './turns.js';
 
-const OWN = new Set([...RUN_TYPES, ...FINGER_TYPES, ...ATT_TYPES, 'echo', 'oddone', 'trivia', 'bullseye', 'pong']);   // their views play the mover's screen from the flash (the run, the attempt, the reveal, the taps, the throw)
+const OWN = new Set([...RUN_TYPES, ...FINGER_TYPES, ...ATT_TYPES, 'echo', 'oddone', 'trivia', 'bullseye', 'pong', 'muncher']);   // their views play the mover's screen from the flash (the run, the attempt, the reveal, the taps, the throw; Muncher's run from the move's inputs: its Start is never pressed here)
 const PRESS_SOUND = { key: 'key', bksp: 'key', enter: 'key', mmcol: 'peg', mmslot: 'peg', rlnum: 'peg', rlgrp: 'peg', rlzero: 'peg', 'hc-key': 'key', 'snap-cell': 'mark', bowl: 'mark', hpsel: 'tap' };   // a logged input's own sound as it is pressed here (a move's sounds come with the move)
 export let rep = null;     // the opponent's move playing here: { sq, by, type, list, k, at, speed, lead, stage: 'inputs' | 'move', onMove, f, timer, pressed, cpu }
 let note = null;           // this phone's inputs for the move it is making: { sq, p, moves, list }
