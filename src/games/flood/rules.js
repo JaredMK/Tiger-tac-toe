@@ -166,7 +166,7 @@ export function floodHard(pm, me, until = null, cap = FLOOD_HARD) {
 export function create(type, rng) {   // five colours at random; the start cell's neighbours never its colour (the blob starts as one cell)
   const nc = tuneLive(type).colors;                          // (the admin's settings: how many colours)
   const r = needRng(rng), N = FLOOD.n * FLOOD.n, colors = Array.from({ length: N }, () => randInt(r, nc));
-  for (const k of floodNear(0)) while (colors[k] === colors[0]) colors[k] = randInt(r, nc);
+  for (const k of floodNear(0)) if (colors[k] === colors[0]) colors[k] = (colors[0] + 1 + randInt(r, nc - 1)) % nc;   // (one of the other colours, drawn straight: a redraw loop never ends under a constant rng, tests/games/hilo.test.js)
   const owner = new Array(N).fill(null); owner[0] = '-';      // '-': the blob's start, nobody's
   return { type, colors, owner, score: { X: 0, O: 0 }, last: null };
 }

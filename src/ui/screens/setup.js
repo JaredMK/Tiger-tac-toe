@@ -7,7 +7,7 @@ import { LEVELS, LEVEL_NAME } from '../../core/aiw.js';
 import { acct, loggedIn } from '../../net/accounts.js';
 import { CLOCK_INCS, CLOCK_MINS, TURN_SECS, setupSpec, specParts } from '../../core/timer.js';
 import { other } from '../../core/util.js';
-import { GAMES, INFO, SC_ONLY } from '../../games/index.js';
+import { GAMES, INFO, NO_SAME_PHONE, SC_ONLY } from '../../games/index.js';
 import { connected } from '../../net/connect.js';
 import { noticeSeq } from '../../net/moves.js';
 import { chaosBadge, chaosVisible, scPicked, testBadge, visibleTypes } from '../../net/releases.js';
@@ -22,7 +22,8 @@ import { render } from '../render.js';
 // Super Chaos (simultaneous rounds) is on for the next match: its switch on (a friend room: the room's, set by the
 // host), and the mode visible here (admin only until released). Its checklist holds only the Super Chaos games.
 export const chaosSetup = () => (isHost() ? !!state.online.chaos && chaosVisible() : state.setup.vs === 'cpu' && scPicked());   // (Play Local: Super Chaos against the computer is always open; a host's room: only where the switch is on)
-export const setupTypes = () => (chaosSetup() ? visibleTypes().filter(t => scTypes().includes(t)) : visibleTypes().filter(t => !SC_ONLY.includes(t)));   // (a Super Chaos only game: in its checklist only)
+export const setupTypes = () => (chaosSetup() ? visibleTypes().filter(t => scTypes().includes(t)) : visibleTypes().filter(t => !SC_ONLY.includes(t) && !(samePhone() && NO_SAME_PHONE.includes(t))));   // (a Super Chaos only game: in its checklist only; Dominoes never on one phone)
+export const samePhone = () => !isHost() && state.setup.vs === 'same';   // two people on one phone (Play a Friend's Same phone)
 // The Mode selector, Super Chaos | Classic (Play Local, the host's room, Find Match): only where Super Chaos is open
 // to this player; its "?" explains Super Chaos.
 export const modeRow = sc => (!isHost() || chaosVisible() ? `<div class="timerrow scmode" role="group" aria-label="Mode"><span>Mode ${qBtn('mode', 'sm')}</span><button class="seg${sc ? ' on' : ''}" data-act="gmode" data-v="chaos" aria-pressed="${sc}">Super Chaos${isHost() ? chaosBadge() : ''}</button><button class="seg${sc ? '' : ' on'}" data-act="gmode" data-v="classic" aria-pressed="${!sc}">Classic</button></div>` : '');

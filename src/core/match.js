@@ -7,7 +7,7 @@ import { levelOf } from './aiw.js';
 import { PHYSICS, PHYS_TYPES, physicsReady } from '../games/shared/physics.js';
 import { markCoins } from '../games/coins/rules.js';
 import { triviaDeal, triviaReady } from '../games/trivia/rules.js';
-import { SC_ONLY, TYPES } from '../games/index.js';
+import { NO_SAME_PHONE, SC_ONLY, TYPES } from '../games/index.js';
 
 export const NAME_MAX = 12;
 export function pickType(games, rng) { return games[randInt(rng, games.length)]; }
@@ -154,7 +154,8 @@ export function newState(rng) {
 export const dealable = (t, sc) => (!sc && SC_ONLY.includes(t) ? false : t === 'trivia' ? triviaReady() : PHYS_TYPES.includes(t) || t === 'pinball' ? physicsReady() && !!PHYSICS.lib.PIN : true);
 export function startMatch(state, rng, only) {   // only: the games this kind of match may deal (Super Chaos's)
   rng = needRng(rng);
-  const games = enabledGames(state.setup).filter(t => dealable(t, !!only)).filter(t => !only || only.includes(t));
+  const same = state.setup.vs === 'same' && state.setup.mode !== 'online';   // two people on one phone: a game with hidden hands is never dealt (meta.js samePhone false)
+  const games = enabledGames(state.setup).filter(t => dealable(t, !!only)).filter(t => !only || only.includes(t)).filter(t => !(same && NO_SAME_PHONE.includes(t)));
   if (!games.length) return false;
   syncNames(state.setup);
   for (const p of ['X', 'O']) {

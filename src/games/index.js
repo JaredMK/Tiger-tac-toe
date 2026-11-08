@@ -51,6 +51,10 @@ import * as chopperR from './chopper/rules.js'; import * as chopperA from './cho
 import * as patternsR from './patterns/rules.js'; import * as patternsA from './patterns/ai.js'; import * as patternsM from './patterns/meta.js'; add('patterns', patternsR, patternsA, patternsM);
 import * as wheelsR from './wheels/rules.js'; import * as wheelsA from './wheels/ai.js'; import * as wheelsM from './wheels/meta.js'; add('wheels', wheelsR, wheelsA, wheelsM);
 import * as appleR from './apple/rules.js'; import * as appleA from './apple/ai.js'; import * as appleM from './apple/meta.js'; add('apple', appleR, appleA, appleM);
+import * as dominoesR from './dominoes/rules.js'; import * as dominoesA from './dominoes/ai.js'; import * as dominoesM from './dominoes/meta.js'; add('dominoes', dominoesR, dominoesA, dominoesM);
+import * as scratchR from './scratch/rules.js'; import * as scratchA from './scratch/ai.js'; import * as scratchM from './scratch/meta.js'; add('scratch', scratchR, scratchA, scratchM);
+import * as bingoR from './bingo/rules.js'; import * as bingoA from './bingo/ai.js'; import * as bingoM from './bingo/meta.js'; add('bingo', bingoR, bingoA, bingoM);
+import * as warR from './war/rules.js'; import * as warA from './war/ai.js'; import * as warM from './war/meta.js'; add('war', warR, warA, warM);
 import * as snakeR from './snake/rules.js'; import * as snakeA from './snake/ai.js'; import * as snakeM from './snake/meta.js'; add('snake', snakeR, snakeA, snakeM);
 import * as swarmR from './swarm/rules.js'; import * as swarmA from './swarm/ai.js'; import * as swarmM from './swarm/meta.js'; add('swarm', swarmR, swarmA, swarmM);
 import * as bricksR from './bricks/rules.js'; import * as bricksA from './bricks/ai.js'; import * as bricksM from './bricks/meta.js'; add('bricks', bricksR, bricksA, bricksM);
@@ -81,6 +85,7 @@ export const TEST_TYPES = TYPES.filter(t => GAMES[t].meta.release === 'admin');
 // the best play was often not to move at all).
 // Super Chaos only (meta.scOnly): a game made for simultaneous rounds (Standoff Grid's collisions), never dealt in a normal match.
 export const SC_ONLY = TYPES.filter(t => GAMES[t].meta.scOnly);
+export const NO_SAME_PHONE = TYPES.filter(t => GAMES[t].meta.samePhone === false);   // never dealt to two people on one phone (Dominoes: each hand would be on show to the other)
 export const OLD_TYPES = Object.keys(GAMES).filter(t => GAMES[t].meta.retired);
 export const INFO = Object.fromEntries(Object.keys(GAMES).map(t => [t, GAMES[t].meta.info]));
 registerTunes(Object.fromEntries(Object.keys(GAMES).map(t => [t, GAMES[t].meta.TUNE])));   // each game's settings (meta.js TUNE; core/tune.js)

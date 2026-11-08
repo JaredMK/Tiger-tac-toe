@@ -56,6 +56,11 @@ Category: More luck
 Play: Spin to pick apples into your bucket. Watch out for the bird and spills, which put apples back on the tree.
 Win: Empty your tree first.
 
+## Bingo [bingo]
+Category: More luck
+Play: Three numbers come up: call one. It marks every card it is on, yours and theirs.
+Win: Complete a line on your card first.
+
 ## Bowling [bowling]
 Category: More skill
 Play: Tap to aim then tap for power.
@@ -114,6 +119,11 @@ Win: Reach the finish first.
 Category: More brain
 Play: Place a piece on any open dot. It counts for every region it touches. A grey piece lands on a random dot after each move. Once nobody can catch the leader of a region, it's locked for them.
 Win: Lock 3 regions first.
+
+## Dominoes [dominoes]
+Category: More brain
+Play: Put down a tile that matches either end of the line. Nothing fits? Draw one from the pile, or pass when it is empty.
+Win: Empty your hand first. If the game blocks, the fewest pips in hand wins.
 
 ## Echo [echo]
 Category: More brain
@@ -261,6 +271,11 @@ Category: More skill
 Play: Drag the cone to catch scoops. Dodge the bad stuff. Your stack carries over between turns.
 Win: Stack to the target first.
 
+## Scratch & Match [scratch]
+Category: More luck
+Play: Scratch a panel on your card to show its picture. Three of the same picture always sit in a line, so two matching pictures in a line point at the third.
+Win: Show three of a kind first.
+
 ## Sea Battle [bs]
 Category: More luck
 Play: Fire at a square. Hit? Fire again.
@@ -338,6 +353,11 @@ Play: Answer the question.
 Win: Get {goal} right.
 Super Chaos Play: Answer the question.
 Super Chaos Win: Get {goal} right.
+
+## War [war]
+Category: More luck
+Play: Tap Flip: your card against the dealer's, and the higher card wins the round. A tie goes to war: three cards down each, then flip again. A war won counts {warWorth}.
+Win: Win {goal} rounds.
 
 # Retired mini-games (not shown in the app)
 

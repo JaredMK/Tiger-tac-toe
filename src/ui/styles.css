@@ -2878,6 +2878,151 @@ main.scr.mini > .wband { left: 0; right: 0; }   /* Super Chaos: waiting in the s
 .zghost *, .sq.ztile * { pointer-events: none; }
 
 /* ===== New mini-games (November 2026 batch): each game appends its block after this line ===== */
+/* ---- Dominoes (November 2026): the snake of tiles on the table (an SVG sized by the room left), the boneyard, the viewer's own hand ---- */
+.g-dom { width: var(--g); align-self: stretch; min-height: 0; display: flex; flex-direction: column; gap: 8px; }   /* fills the room the header leaves: the table takes what the tallies, the row and the hand do not */
+.g-dom .ctals { flex: none; }
+.domct { display: inline-flex; align-items: center; gap: 6px; font-weight: 800; font-size: 15px; font-variant-numeric: tabular-nums; }
+.dstk { display: inline-flex; gap: 2px; } .dstk i { display: block; width: 7px; height: 13px; border: 1.5px solid var(--ink); border-radius: 2px; background: var(--sea); }
+.dstk i.dmnew, .domtile.dmnew { animation: dmpop .35s var(--t, 0ms) cubic-bezier(.3, 1.6, .5, 1) both; }
+@keyframes dmpop { from { transform: scale(.2); opacity: 0; } to { transform: none; opacity: 1; } }
+.domtable { flex: 1; min-height: 0; container-type: size; display: flex; align-items: center; justify-content: center; }
+.dombox { position: relative; width: min(100cqw, calc(100cqh * var(--ar))); aspect-ratio: var(--ar); }
+.domsvg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; overflow: visible; }
+.dfelt { fill: var(--green); stroke: var(--ink); stroke-width: .12; }
+.dtl .dface { fill: var(--card); stroke: var(--ink); stroke-width: .07; } .dtl .ddiv { stroke: var(--ink); stroke-width: .05; stroke-linecap: round; } .dtl .dpip { fill: var(--ink); }
+.dtl .dby { stroke: var(--ink); stroke-width: .03; } .dtl .dby.X { fill: var(--x); } .dtl .dby.O { fill: var(--o); }
+.dtl .dback { fill: var(--sea); stroke: var(--ink); stroke-width: .07; } .dtl .dbackin { fill: none; stroke: var(--paper); stroke-width: .05; opacity: .8; }
+.dslot.dslide { animation: dmslide var(--d, 420ms) var(--t, 0ms) cubic-bezier(.2, .8, .2, 1) both; }   /* the tile just laid: in from its player's side of the table */
+@keyframes dmslide { from { transform: translate(0, var(--dy)); opacity: 0; } 20% { opacity: 1; } to { transform: none; opacity: 1; } }
+.dslot.dghost .dface { fill: var(--paper); fill-opacity: .6; stroke-dasharray: .16 .1; } .dslot.dghost .dpip, .dslot.dghost .ddiv { opacity: .55; }
+.dslot.dghost { animation: dmghost 1.1s ease-in-out infinite alternate; } @keyframes dmghost { from { opacity: .55; } to { opacity: 1; } }
+.domend { position: absolute; padding: 0; border: 0; border-radius: 8px; background: transparent; cursor: pointer; touch-action: manipulation; } .domend:disabled { cursor: default; }
+.domrow { flex: none; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 10px; height: 46px; }
+.dompile { height: 44px; display: inline-flex; align-items: center; gap: 7px; padding: 0 10px; border: 3px solid var(--ink); border-radius: 12px; background: var(--paper); font: inherit; font-weight: 800; font-size: 15px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.dompile:disabled { opacity: 1; } .dompile small { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: .03em; } .dompile small:empty { display: none; }
+.dompile.go { background: var(--gold); animation: dmgo 1.2s ease-in-out infinite alternate; } @keyframes dmgo { from { box-shadow: 0 0 0 0 var(--gold); } to { box-shadow: 0 0 0 4px var(--o-soft); } }
+.dpstk { display: inline-flex; } .dpstk i { display: block; width: 9px; height: 16px; margin-left: -4px; border: 1.5px solid var(--ink); border-radius: 2px; background: var(--sea); } .dpstk i:first-child { margin-left: 0; } .dpstk:empty { width: 9px; height: 16px; border: 1.5px dashed var(--muted); border-radius: 2px; }
+.domres { margin: 0; height: 44px; display: flex; align-items: center; justify-content: center; text-align: center; font-weight: 700; font-size: 14px; line-height: 1.15; overflow: hidden; min-width: 0; }   /* the result line: its room always reserved */
+.domres b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 9em; display: inline-block; vertical-align: bottom; }
+.domhand { flex: none; container-type: inline-size; display: flex; flex-wrap: wrap; justify-content: center; align-content: flex-start; gap: 6px; --tw: min(60px, calc((100cqw - (var(--cols) - 1) * 6px) / var(--cols))); height: calc(var(--tw) + 6px); overflow: hidden; }   /* two rows of the viewer's tiles, sized from the width (its own inline size) */
+.domtile { position: relative; width: var(--tw); height: calc(var(--tw) / 2); padding: 0; border: 0; background: transparent; border-radius: 8px; transition: transform .12s; -webkit-tap-highlight-color: transparent; }
+.domtile svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.domtile.dim { opacity: .4; } .domtile:disabled { cursor: default; }
+.domtile.sel { transform: translateY(-5px); } .domtile.sel .dface { fill: var(--o-soft); stroke-width: .13; }
+.domhand.two { height: auto; --tw: min(42px, calc((100cqw - (var(--cols) - 1) * 6px) / var(--cols))); } .domhand .dhn { width: 100%; text-align: center; font-size: 13px; font-weight: 800; line-height: 1; margin-bottom: -2px; } .domhand .dhn b { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
+.dhempty { display: block; width: 100%; height: calc(var(--tw) / 2); }
+.tdoms .tpic { width: 40cqw; } .tdom { width: 100%; height: auto; display: block; overflow: visible; }   /* the miniature: the last six tiles of the line snaking down three rows, each player's stack and count */
+.tdom .dempty { fill: var(--paper); stroke: var(--ink); stroke-width: .08; stroke-dasharray: .22 .16; }
+.tdoms .tpip { width: 48cqw; gap: 4cqw; } .tpip .tr.tdr { gap: 2.5cqw; } .tpip .tr.tdr b { width: 9cqw; }
+.tpip .tr i.tdstk { display: block; height: 12cqw; width: calc(var(--n) * 8cqw - 1.5cqw); border: 0; border-radius: 1.5cqw; background: repeating-linear-gradient(90deg, var(--sea) 0 6.5cqw, var(--ink) 6.5cqw 8cqw); box-shadow: 0 0 0 1.2cqw var(--ink); } .tpip .tr i.tdstk[style="--n:0"] { display: none; }
+.tdn { font-size: 10cqw; font-weight: 800; font-variant-numeric: tabular-nums; margin-left: auto; }
+/* ---- Bingo (bingo, November 2026): the two cards side by side (sized by the room, width and height), the offered numbers as chips, a call's stamp and a line lighting up (rules.js bingoTimes); the miniature's two tiny cards ---- */
+.g-bingo .bgwrap { flex: 1 1 auto; min-height: 60px; container-type: size; display: flex; justify-content: center; align-items: center; }
+.g-bingo .bgcards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; width: min(100cqw, calc(2 * (100cqh - 26px) + 10px)); }   /* two cards: as wide as the room allows, no taller than it */
+.bgcard { container-type: inline-size; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.bgcard .bghd { height: 22px; display: flex; align-items: center; justify-content: center; font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-size: 19px; line-height: 1; }
+.bgcard .bghd b.X { color: var(--x); } .bgcard .bghd b.O { color: #b88a00; }
+.bggrid { display: grid; grid-template-columns: repeat(var(--n, 4), minmax(0, 1fr)); gap: 3cqw; padding: 3cqw; background: var(--paper); border: 3px solid var(--ink); border-radius: 12px; }
+.bgcard.X .bggrid { box-shadow: 0 0 0 2px var(--x) inset; } .bgcard.O .bggrid { box-shadow: 0 0 0 2px var(--o) inset; }
+.bgc { position: relative; aspect-ratio: 1 / 1; display: flex; align-items: center; justify-content: center; border-radius: 22%; background: #fff; border: 1.5px solid var(--ink); font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-size: 11cqw; line-height: 1; color: var(--ink); overflow: hidden; }
+.bgc b { position: relative; font-weight: 400; z-index: 1; padding-top: .08em; }
+.bgc::before { content: ''; position: absolute; inset: 6%; border-radius: 50%; transform: scale(0); opacity: .95; }   /* the dauber's mark: a disc in the card owner's colour */
+.bgcard.X .bgc::before { background: var(--x); } .bgcard.O .bgc::before { background: var(--o); }
+.bgc.on::before { transform: none; }
+.bgcard.X .bgc.on b { color: #fff; } .bgcard.O .bgc.on b { color: var(--ink); }
+.bgc.bgnew::before { transform: scale(0); animation: bgstamp .26s var(--t, 0ms) cubic-bezier(.3, 1.5, .5, 1) both; }   /* the mark lands: stamps on, a little past its size, from nothing */
+.bgcard.X .bgc.bgnew b { animation: bginkx 1ms var(--t, 0ms) both; } .bgcard.O .bgc.bgnew b { animation: bginko 1ms var(--t, 0ms) both; }   /* (its number turns to the mark's ink as it lands, not before) */
+@keyframes bgstamp { 0% { transform: scale(0); } 70% { transform: scale(1.12); } 100% { transform: none; } }
+@keyframes bginkx { from { color: var(--ink); } to { color: #fff; } }
+@keyframes bginko { from { color: var(--ink); } to { color: var(--ink); } }
+.bgc.bglast { box-shadow: 0 0 0 2.5px var(--ink); }   /* the latest call, ringed */
+.bgc.bgwin { z-index: 2; }   /* a complete line: each cell in turn swells and takes a ring (ink, then gold) round its mark, the mark keeping its owner's colour */
+.bgc.bgwin.set, .bgc.bgwin:not(.set) { box-shadow: 0 0 0 2.5px var(--ink), 0 0 0 5.5px var(--gold); }
+.bgc.bgwin:not(.set) { animation: bgwin .5s var(--t2, 0ms) cubic-bezier(.3, 1.6, .5, 1) both, bgring 1ms var(--t2, 0ms) both; }
+@keyframes bgwin { 0% { transform: none; } 45% { transform: scale(1.22) rotate(-6deg); } 100% { transform: none; } }
+@keyframes bgring { from { box-shadow: none; } to { box-shadow: 0 0 0 2.5px var(--ink), 0 0 0 5.5px var(--gold); } }
+.bgoffer { flex: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; height: 68px; }
+.bgchip { height: 68px; min-width: 0; border: 3px solid var(--ink); border-radius: 18px 14px 20px 13px; background: var(--paper); color: var(--ink); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 0; font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-size: 28px; line-height: 1; transition: transform .08s; }
+.bgchip b { font-weight: 400; padding-top: .1em; }
+.bgchip:not(:disabled):active { transform: scale(.95); }
+.bgchip:disabled { opacity: .55; }
+.bgchip.bgnone { visibility: hidden; border: 0; }
+.bgdots { display: flex; gap: 4px; height: 8px; }
+.bgdot { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--ink); } .bgdot.X { background: var(--x); } .bgdot.O { background: var(--o); }
+.bgoffer.playing .bgchip { opacity: 1; }
+.bgoffer.playing .bgchip.bgdim { animation: bgdim .3s var(--t, 0ms) ease-out both; }   /* the others fade back as the call lands */
+.bgoffer.playing .bgchip.bgpick { animation: bgpick var(--d, 480ms) 0ms cubic-bezier(.4, 0, .6, 1) both; box-shadow: 0 0 0 3px var(--ink) inset; z-index: 1; }   /* the one called lifts, then flies up to the cards and is gone as the mark lands */
+@keyframes bgpick { 0% { transform: none; opacity: 1; } 25% { transform: translateY(-8px) scale(1.12); opacity: 1; } 100% { transform: translateY(-120px) scale(.35); opacity: 0; } }
+@keyframes bgdim { to { opacity: .35; } }
+.g-bingo .arcres { font-size: 22px; } .g-bingo .arcres:not(.ok):not(.no) { color: var(--ink); }
+.g-bingo .arcnote b { display: inline-block; max-width: 7.5em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }   /* a name in the status line: cut with "…", never wrapped */
+.tbingo { width: 92cqw; height: auto; display: block; }
+.tbingo .tbgc { fill: #fff; stroke: var(--ink); stroke-width: .9; } .tbingo .tbgc.on.X { fill: var(--x); } .tbingo .tbgc.on.O { fill: var(--o); } .tbingo .tbgc.win { fill: var(--gold, #f2c230); stroke-width: 1.4; }
+.tbingo .tbgl { text-anchor: middle; font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-size: 10px; } .tbingo .tbgl.X { fill: var(--x); } .tbingo .tbgl.O { fill: #b88a00; }
+/* ---- Scratch & Match (scratch, November 2026): both players' tallies over their own cards (X's left, O's right), nine frosted panels a card, a picture under each; the move rubs the frost off strip by strip ---- */
+.g-scratch { width: var(--gw); display: flex; flex-direction: column; gap: 10px; }
+.g-scratch .ctals, .scards { width: min(100%, calc(2 * (var(--gh) - 88px) + 10px)); margin: 0 auto; }   /* two columns, each tally over its card; a short screen caps the cards by the room left */
+.scards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.scard { position: relative; aspect-ratio: 1 / 1; min-width: 0; background: var(--paper); border: 3px solid var(--ink); border-radius: 16px 12px 15px 11px; padding: 6px; box-sizing: border-box; }
+.scard.on { box-shadow: 0 0 0 3px var(--o); } .scard.X.on { box-shadow: 0 0 0 3px var(--x); }
+.sgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(3, minmax(0, 1fr)); gap: 5px; width: 100%; height: 100%; }
+.sspot { position: relative; min-width: 0; min-height: 0; border: 2px solid var(--ink); border-radius: 10px; background: #fff; padding: 0; overflow: hidden; display: grid; place-items: center; touch-action: manipulation; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.sspot:not(:disabled):active { transform: scale(.94); }
+.sspot .spic { width: 74%; height: 74%; display: block; }
+.spic .pf { fill: var(--pc); stroke: var(--ink); stroke-width: 1.3; stroke-linejoin: round; }
+.spic .pk { fill: none; stroke: var(--ink); stroke-width: 1.6; stroke-linecap: round; } .spic .pg { stroke: #3f9d4a; stroke-width: 1.8; }
+.spic .pl { fill: #3f9d4a; stroke: var(--ink); stroke-width: 1; } .spic .pe { fill: var(--ink); }
+.sfrost { position: absolute; inset: 0; display: grid; grid-template-rows: repeat(4, 1fr); }
+.sfrost i { display: block; background: linear-gradient(135deg, #eef6fa 0%, #d6e7ef 55%, #c3dae6 100%); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .75); }
+.sfrost i:nth-child(2) { background-image: linear-gradient(135deg, #e7f2f7 0%, #d0e3ec 60%, #bfd6e3 100%); }
+.sfrost i:nth-child(4) { background-image: linear-gradient(135deg, #e3eff5 0%, #cfe2eb 50%, #b9d2e0 100%); }
+.sspot.open:not(.rub) .sfrost { display: none; }
+.sspot.rub .sfrost i { animation: scrub .22s ease-in both; transform-origin: right center; }   /* rubbed away strip by strip, back and forth, over SCR.rub */
+.sspot.rub .sfrost i:nth-child(2) { animation-delay: .15s; transform-origin: left center; }
+.sspot.rub .sfrost i:nth-child(3) { animation-delay: .3s; }
+.sspot.rub .sfrost i:nth-child(4) { animation-delay: .45s; transform-origin: left center; }
+.sspot.rub .spic { animation: pop .3s .65s cubic-bezier(.3, 1.6, .5, 1) both; }
+.sspot.hit { animation: scrhit .3s .9s ease-in-out 2 alternate both; }   /* a pair: both its panels ring in the player's colour */
+.scard.X .sspot.hit { --hc: var(--x); } .scard.O .sspot.hit { --hc: var(--o); }
+.sspot.wn { background: var(--o-soft); } .scard.X .sspot.wn { background: var(--x-soft); }
+.sspot.wn.glow:not(.rub) .spic { animation: sparkle .4s calc(.9s + var(--k, 0) * .15s) ease-in-out 2 alternate; }   /* three of a kind: each sparkles in turn */
+.sspot.wn.glow.rub .spic { animation: pop .3s .65s cubic-bezier(.3, 1.6, .5, 1) both, sparkle .4s calc(.9s + var(--k, 0) * .15s) ease-in-out 2 alternate; }
+@keyframes scrub { to { transform: scaleX(0); } }
+@keyframes scrhit { from { box-shadow: 0 0 0 0 var(--hc, var(--ink)); } to { box-shadow: 0 0 0 4px var(--hc, var(--ink)); } }
+.tscr { width: 92cqw; height: auto; display: block; }   /* the miniature: the two cards, each panel frosted or its picture's colour */
+.tscr .tsb { fill: var(--paper); stroke: var(--ink); stroke-width: 2; } .tscr .tsc.X .tsb { stroke: var(--x); } .tscr .tsc.O .tsb { stroke: var(--o); }
+.tscr .tsf { fill: #d3e4ed; stroke: var(--ink); stroke-width: .8; }
+.tscr .tsp { stroke: var(--ink); stroke-width: .8; } .tscr .tsp.tsw { stroke-width: 1.8; }
+/* ---- War (war): the blue felt with the dealer's cards above and the player's below, the verdict between them (a "War!" at each tie); the Flip button; the miniature ---- */
+.g-war { width: min(var(--gw), 440px); height: var(--gh); display: flex; flex-direction: column; gap: 10px; padding-top: 4px; }
+.wrfelt { flex: 1; min-height: 0; display: grid; grid-template-rows: 1fr auto 1fr; align-items: center; gap: 6px; padding: 8px 10px; background: radial-gradient(ellipse at 50% 40%, #4f67a8, #33427a); border: 3.5px solid var(--ink); border-radius: 22px 16px 24px 14px; box-shadow: 0 5px 0 var(--ink), inset 0 0 0 4px rgba(255, 248, 232, .15); --cw: clamp(36px, calc(var(--gh) / 8.5), 64px); }
+.wrrow { display: flex; flex-direction: column; align-items: center; gap: 5px; min-width: 0; }
+.wrrow .plc { --cw: inherit; }
+.wrrow.wrdealer { --sx: 120px; --sy: -22px; }
+.wrrow.wrplayer { --sx: 120px; --sy: 22px; }   /* the cards slide in from the right, never across the labels */
+.wrlab { color: var(--paper); font-weight: 800; font-size: 14px; line-height: 20px; height: 20px; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 0 rgba(0, 0, 0, .35); }
+.wrlab b.X, .wrlab b.O { background: var(--paper); border-radius: 8px; padding: 0 6px; text-shadow: none; }
+.wrcards { display: flex; align-items: center; justify-content: center; min-height: calc(var(--cw) * 1.4 + 8px); max-width: 100%; }
+.wrcards > * + * { margin-left: 6px; }
+.wrcards.wrn2 > * + * { margin-left: -2px; }
+.wrcards.wrn3 > * + * { margin-left: calc(var(--cw) * -.22); }   /* a war on a war: the cards tuck in so the row still fits */
+.wrdowns { position: relative; width: calc(var(--cw) + 8px); height: calc(var(--cw) * 1.4 + 6px); flex: none; }
+.wrdowns .plc { position: absolute; left: 0; top: 0; }
+.wrdowns .plc:nth-child(2) { left: 4px; top: 3px; } .wrdowns .plc:nth-child(3) { left: 8px; top: 6px; }
+.wrmid { display: grid; justify-items: center; min-height: 40px; } .wrmid > * { grid-area: 1 / 1; }   /* the verdicts stack in one cell: one shows at a time, the row never changes height */
+.wrres { align-self: center; display: flex; align-items: center; gap: 8px; min-height: 34px; max-width: 100%; padding: 3px 14px 1px; border: 3px solid var(--ink); border-radius: 999px; background: var(--paper); font: 400 17px 'Luckiest Guy', sans-serif; text-align: center; white-space: nowrap; overflow: hidden; }
+.wrres .pc { width: 26px; height: 26px; flex: none; }
+.wrres.none { font: 700 14px 'Patrick Hand', sans-serif; background: rgba(255, 248, 232, .85); border-color: transparent; gap: 0; }
+.wrres.none b { overflow: hidden; text-overflow: ellipsis; }
+.wrres.ok { background: var(--o); } .wrres.no { background: #f1c8bf; }
+.wrres.war { background: var(--x); color: #fff; font-size: 20px; letter-spacing: .04em; animation: appearin .3s var(--f, 0ms) ease-out both, tuntil 1ms var(--u, 0ms) both; }   /* "War!": pops in at the tie, gone as the next pair is judged */
+@media (prefers-reduced-motion: reduce) { .wrres.war { display: none; } }
+@media (max-height: 640px) { .wrres { min-height: 28px; font-size: 15px; } .wrres.war { font-size: 17px; } }
+.twar { display: flex; align-items: center; justify-content: center; gap: 1cqw; padding: 1cqw 0; }   /* the miniature: the last flip's two cards face to face */
+.twar .tcd { width: 12cqw; height: 17cqw; } .twar .tcd b { font-size: 6.2cqw; } .twar .tcd svg { width: 5.6cqw; height: 5.6cqw; }
+.twar .tcd:first-child { transform: rotate(-10deg) translateY(1cqw); } .twar .tcd:last-child { transform: rotate(10deg) translateY(1cqw); }
+.twar .tcd.X { box-shadow: 0 0 0 1cqw var(--x); } .twar .tcd.O { box-shadow: 0 0 0 1cqw var(--o); }
+.twar .twvs { font: 400 4.6cqw/1 'Luckiest Guy', sans-serif; font-style: normal; color: var(--paper); background: var(--ink); border-radius: 50%; width: 7cqw; height: 7cqw; display: grid; place-items: center; padding-top: .6cqw; flex: none; }
 /* ---- Snake (November 2026): the garden grid in a square scene sized by the room left, the snake in the player's colour, the apple ---- */
 .g-snake .snk { flex: 1; display: flex; flex-direction: column; min-height: 0; gap: 8px; }
 .g-snake .snk > .rprogs { flex: none; }
