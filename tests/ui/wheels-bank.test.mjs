@@ -77,3 +77,22 @@ test('Risky Spins: an opponent\'s (or the computer\'s) winning Bank replays the 
   const shown = JSON.parse(JSON.stringify(sq.mini)); shown.last = { by: 'O', kind: 'bust', w: 'high', v: -1, seg: 0, at: 0.05, from: 0, pot: 4 };
   assert.match(tally(V.screen({ owner: null, mini: shown }, f, null, shown, false, true, f, null, () => false, () => -1, false, 'O', ''), 'X'), /data-from="26"[^>]*>33</);
 });
+
+// The table draws the wheels the square has: two for a square dealt now (the safe one and the risky one), three for one dealt
+// before November 2026 and still in a match (view.js wheelTable, styles.css .rwrow.n2 / .n3).
+test('Risky Spins: a two-wheel square draws two wheels, an old three-wheel square draws its three', () => {
+  const count = html => (html.match(/<button class="rwheel /g) || []).length;
+  const two = E.newMini('wheels', E.makeRng('two-wheels')), sq2 = { owner: null, mini: two };
+  const h2 = V.screen(sq2, null, null, two, false, false, null, null, () => false, () => -1, false, 'X', '');
+  assert.equal(count(h2), 2); assert.match(h2, /class="rwrow n2"/);
+  assert.match(h2, /class="rwheel high"/); assert.match(h2, /class="rwheel low"/); assert.doesNotMatch(h2, /rwheel mid/);
+  assert.equal((h2.match(/data-act="move"/g) || []).length, 3, 'two wheels and Bank');
+  const three = JSON.parse(JSON.stringify(two));
+  three.wheels.mid = [5, 6, -1, 4, 7, 5, 6, 4, -1, 5]; three.rest = { high: 0, mid: 0, low: 0 };
+  const h3 = V.screen({ owner: null, mini: three }, null, null, three, false, false, null, null, () => false, () => -1, false, 'X', '');
+  assert.equal(count(h3), 3); assert.match(h3, /class="rwrow n3"/); assert.match(h3, /class="rwheel mid"/);
+  assert.match(h3, /The blue wheel/, 'the medium wheel keeps its look');
+  // the opponent's spin of either kind of square highlights the wheel it spun
+  const flash = { wheel: { kind: 'spin', w: 'low', v: 3, seg: 1, at: 0.15, from: 0, pot: 3, pts: { X: 0, O: 0 }, target: 30, py: true }, by: 'O' };
+  assert.match(V.screen({ owner: null, mini: two }, flash, null, two, false, true, flash, null, () => false, () => -1, false, 'X', ''), /class="rwheel low spun"/);
+});

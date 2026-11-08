@@ -2025,9 +2025,12 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .tseq span { flex: 1; aspect-ratio: 1; background: #fff; border: 1cqw solid var(--ink); border-radius: 2.5cqw; display: grid; place-items: center; min-width: 0; }
 .tseq span svg { width: 100%; height: 100%; }
 .tseq span.q { border-style: dashed; font-weight: 900; font-size: 9cqw; color: var(--muted); }
-/* Risk Wheels: three wheels, each segment the size of its chance; the pointer on top */
-.wheels { flex: 1; display: flex; flex-direction: column; gap: 10px; justify-content: center; min-height: 0; }
+/* Risky Spins: two wheels (a square dealt before November 2026 has three: .n3), each segment the size of its chance; the pointer on top */
+.wheels { flex: 1; display: flex; flex-direction: column; gap: 10px; justify-content: center; min-height: 0; container-type: size; }
 .rwrow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.rwrow.n2 { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; width: min(100%, max(200px, calc(200cqh - 326px))); margin: 0 auto; }   /* two wheels as big as the room allows: the row's height left by the pot, the result and Bank (a wheel is its width and a little more tall), never wider than the game */
+.rwrow.n2 .rwheel { padding: 10px 8px 8px; border-radius: 18px; }
+.rwrow.n2 .wptr { top: -8px; width: 22px; height: 18px; margin-left: -11px; }
 .rwheel { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px 6px; border: 3px solid var(--ink); border-radius: 14px; background: #fff; box-shadow: 0 3px 0 var(--ink); min-width: 0; }
 .rwheel:disabled { box-shadow: none; }
 .rwheel.spun { background: var(--paper); box-shadow: 0 0 0 3px var(--ink); }
@@ -2463,10 +2466,11 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 /* Trivia: the question card */
 .tqc { width: 26cqw; aspect-ratio: .78; border-radius: 3cqw; border: 1.2cqw solid var(--ink); background: #fff; display: grid; place-items: center; color: var(--ink); } .tqc svg { width: 70%; height: 70%; }
 .tart.trv { flex-wrap: wrap; } .tart.trv .topts { width: 100%; padding-top: 2.5cqw; }
-/* Risky Spins: the three wheels small (a skull's segment dark with its skull, the 10 gold, the rest shaded by their points), the points under them */
+/* Risky Spins: the wheels small (two; an old square's three: .n3) (a skull's segment dark with its skull, the 10 gold, the rest shaded by their points), the points under them */
 .twh { display: flex; flex-direction: column; align-items: center; gap: 2.5cqw; width: 90cqw; }
 .twh .twrow { display: flex; justify-content: center; gap: 2cqw; width: 100%; }
 .twh .twrow svg { width: 27cqw; height: 27cqw; overflow: visible; }
+.twh.n2 .twrow { gap: 5cqw; } .twh.n2 .twrow svg { width: 38cqw; height: 38cqw; }
 .twh .trun { padding: 0 2cqw; gap: 2cqw; } .twh .trun .tr { grid-template-columns: 8cqw 1fr auto; gap: 2.5cqw; } .twh .trun .tr b { font-size: 9cqw; } .twh .trun .tr i { height: 6cqw; border-width: 1.3cqw; }
 .twh .trun .tr span { font: 400 10.5cqw/1 'Luckiest Guy', 'Arial Black', sans-serif; min-width: 13cqw; text-align: right; font-variant-numeric: tabular-nums; }   /* each player's points, after their bar */
 .twh .wseg { stroke-width: 1.4; } .twh .wrim { stroke-width: 4; } .twh .wptr { fill: var(--ink); }

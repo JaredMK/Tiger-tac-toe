@@ -91,11 +91,17 @@ test('21: the cards\' backs and a hand are drawn within their picture, clear of 
   assert.match(html, /class="tcd cdb"/); assert.doesNotMatch(html, /class="[^"]*\bback\b/);
   assert.match(html, /class="tpic"[\s\S]*class="tpip"/, 'the cards in their own space, the counters in theirs');
 });
-test('Risky Spins: the three small wheels and the scores, no skulls drawn', () => {
+test('Risky Spins: the two small wheels and the scores, no skulls drawn; an old square keeps its three', () => {
   const mini = square('wheels', 0); mini.pts = { X: 12, O: 5 };
   const html = viewOf('wheels').miniature(mini, false);
-  assert.equal((html.match(/<svg/g) || []).length, 3, 'three wheels');
+  assert.equal((html.match(/<svg/g) || []).length, 2, 'two wheels');
+  assert.match(html, /class="twh n2"/);
   assert.doesNotMatch(html, /wsk|wske/, 'no skull glyphs');
   assert.match(html, /class="wseg sk"/, 'a skull\'s segment stays the dark one');
   assert.match(html, /<span>12<\/span>/); assert.match(html, /<span>5<\/span>/);
+  // a square dealt with three wheels (before November 2026) is still drawn with its three
+  const old = JSON.parse(JSON.stringify(mini)); old.wheels.mid = [5, 6, -1, 4, 7, 5, 6, 4, -1, 5];
+  const oh = viewOf('wheels').miniature(old, false);
+  assert.equal((oh.match(/<svg/g) || []).length, 3, 'three wheels'); assert.match(oh, /class="twh n3"/);
+  assert.match(oh, /<span>12<\/span>/);
 });

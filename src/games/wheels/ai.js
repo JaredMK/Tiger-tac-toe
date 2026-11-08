@@ -2,25 +2,26 @@
 import { randInt } from '../../core/random.js';
 import { tune } from '../../core/tune.js';
 import { other } from '../../core/util.js';
-import { WHEELS, SKULL, pushYourLuck, wheelTurn } from './rules.js';
+import { SKULL, pushYourLuck, wheelTurn, wheelsOf } from './rules.js';
 
 // Each wheel's numbers: its skull chance (r), its average (of the values), its values' chances. Per square (its
-// wheels and target), kept a while.
+// wheels and target), kept a while. A square has two wheels (high, low), or three if it was dealt so before November 2026
+// (high, mid, low): every function here reads the wheels the square has (wheelsOf), never a fixed list.
 const MEMO = new Map();
 function facts(pm) {
-  const key = pm.target + ':' + WHEELS.map(w => pm.wheels[w].join(',')).join('|');
+  const ws = wheelsOf(pm), key = pm.target + ':' + ws.map(w => w + '=' + pm.wheels[w].join(',')).join('|');
   let f = MEMO.get(key);
   if (f) return f;
   if (MEMO.size >= 12) MEMO.delete(MEMO.keys().next().value);
-  f = { key, T: pm.target, w: {} };
-  for (const w of WHEELS) {
+  f = { key, T: pm.target, ws, w: {} };
+  for (const w of ws) {
     const v = pm.wheels[w], vals = v.filter(x => x !== SKULL), r = (v.length - vals.length) / v.length;
     f.w[w] = { r, avg: vals.length ? vals.reduce((t, x) => t + x, 0) / vals.length : 0, vals, n: v.length, gain: vals.reduce((t, x) => t + x, 0) / v.length };
   }
   // The turn that banks the most on average: one wheel, spun until the pot reaches its K (its expected bank, E:
   // rules.js wheelTurn); and the pot Normal banks at, level: the first no wheel's spin adds more to than it risks.
   let best = { w: 'low', K: 1, E: 0 }, bankAt = 1;
-  for (const w of WHEELS) {
+  for (const w of ws) {
     const { K, E } = wheelTurn(pm.wheels[w], f.T);
     if (E > best.E) best = { w, K, E };
     bankAt = Math.max(bankAt, K);
@@ -34,7 +35,7 @@ function facts(pm) {
 export function needs(pm, p) {
   const r = pm.target - pm.pts[p];
   if (r <= 0) return 0;
-  if (!pushYourLuck(pm)) { let g = 0; for (const w of WHEELS) g = Math.max(g, facts(pm).w[w].gain); return Math.max(0.5, r / Math.max(0.5, g)); }   // (a square from before the skulls: every spin scores)
+  if (!pushYourLuck(pm)) { let g = 0; for (const w of wheelsOf(pm)) g = Math.max(g, facts(pm).w[w].gain); return Math.max(0.5, r / Math.max(0.5, g)); }   // (a square from before the skulls: every spin scores)
   const E = Math.max(0.5, facts(pm).best.E), t = pm.turn && pm.turn.by === p ? pm.turn : null;
   if (t && t.pot >= r) return 0.5;                            // (only Bank is left: it wins with the next tap)
   return Math.max(0.5, (r - (t ? t.pot : 0)) / E + (t ? 0.5 : 0));
@@ -45,10 +46,10 @@ export function best(pm, me, rng, style, ctx) {
   const T = pm.target, a = pm.pts[me], b = pm.pts[other(me)], miss = tune(pm).miss;
   const t = pushYourLuck(pm) && pm.turn && pm.turn.by === me ? pm.turn : null, pot = t ? t.pot : 0, need = T - a - pot;
   if (t && need <= 0) return { move: 'bank', q: 1 };          // enough: only Bank is left
-  if (miss && rng() * 100 < miss) { const w = WHEELS[randInt(rng, WHEELS.length)]; return { move: w, q: reach(pm, w, need) }; }   // (now and then, the admin's mistake rate: any wheel)
+  if (miss && rng() * 100 < miss) { const ws = wheelsOf(pm), w = ws[randInt(rng, ws.length)]; return { move: w, q: reach(pm, w, need) }; }   // (now and then, the admin's mistake rate: any wheel)
   const f = facts(pm);
   if (!pushYourLuck(pm)) {                                    // the old rule: the best average, the riskier wheel when it can finish
-    let w = 'low'; for (const k of WHEELS) if (reach(pm, k, need) > reach(pm, w, need) || (reach(pm, k, need) === reach(pm, w, need) && f.w[k].gain > f.w[w].gain)) w = k;
+    let w = 'low'; for (const k of f.ws) if (reach(pm, k, need) > reach(pm, w, need) || (reach(pm, k, need) === reach(pm, w, need) && f.w[k].gain > f.w[w].gain)) w = k;
     return { move: w, q: reach(pm, w, need) };
   }
   if (ctx && ctx.level === 'hard') { const h = hard(pm, me, f, style, ctx.until); if (h) return h; }
@@ -59,7 +60,7 @@ export function best(pm, me, rng, style, ctx) {
   const K = Math.max(2, Math.min(base + 10, base + Math.round(gap / 4) + ((style && style.rollRisk) || 0)));
   if (t && pot >= Math.min(K, need)) return { move: 'bank', q: 0 };
   let w = null, g = -Infinity;
-  for (const k of WHEELS) {
+  for (const k of f.ws) {
     const x = f.w[k], v = x.gain - x.r * pot * (gap > 6 ? 0.7 : 1);   // (well behind: the pot weighs a little less)
     if (v > g) { g = v; w = k; }
   }
@@ -81,7 +82,7 @@ function turnVals(e, a, b, x, V, C) {                          // V[pot]: the tu
   for (let p = T - a; p >= 0; p--) {
     if (a + p >= T) { V[p] = 1; C[p] = 'bank'; continue; }
     let bv = p ? 1 - P[b * T + a + p] : -1, bc = 'bank';
-    for (const w of WHEELS) {
+    for (const w of f.ws) {
       const y = f.w[w]; let s = y.r * y.n * x;
       for (const v of y.vals) s += a + p + v >= T ? 1 : V[p + v];
       s /= y.n;

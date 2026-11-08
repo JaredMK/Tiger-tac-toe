@@ -65,10 +65,14 @@ test('Roulette, Risky Spins, Craps: what they show comes from the opponent\'s re
   const r0 = E.newMini('rl', E.makeRng('rl')), rx = play(r0, 'X', 'g2', at(13)), ro = play(rx.mini, 'O', 'zero', at(5));
   const rh = replay('rl', rx.mini, ro.flash);
   assert.match(rh, /Olaf<\/b>: green 0/); assert.doesNotMatch(rh, /Xena<\/b>:/); assert.match(rh, /<span>Miss<\/span>/, 'the result in a word');
-  const w0 = E.newMini('wheels', E.makeRng('wh')), wx = play(w0, 'X', 'high', E.makeRng('a2')), wo = play(wx.mini, 'O', 'low', E.makeRng('b'));
+  const w0 = E.newMini('wheels', E.makeRng('wh')), wx = play(w0, 'X', 'high', E.makeRng('a4')), wo = play(wx.mini, 'O', 'low', E.makeRng('b'));   // (X's skull passes the turn to O)
   const wh = replay('wheels', wx.mini, wo.flash);
   assert.equal(wo.flash.wheel.w, 'low');
   assert.match(wh, /class="rwheel low spun"/, 'the wheel the opponent spun'); assert.doesNotMatch(wh, /class="rwheel high spun"/, 'not the viewer\'s');
+  // an old square with its three wheels: the opponent's spin of the medium one
+  const o3 = { type: 'wheels', v: 2, target: 30, wheels: { high: w0.wheels.high, mid: [5, 6, E.SKULL, 4, 7, 5, 6, 4, E.SKULL, 5], low: w0.wheels.low }, pts: { X: 0, O: 0 }, spins: { X: 0, O: 0 }, turn: null, rest: { high: 0, mid: 0, low: 0 }, last: null };
+  const m3 = play(o3, 'O', 'mid', fixed(0.05)), h3 = replay('wheels', o3, m3.flash);
+  assert.equal(m3.flash.wheel.w, 'mid'); assert.match(h3, /class="rwheel mid spun"/); assert.equal((h3.match(/class="rwheel /g) || []).length, 3);
   const die = n => (n - 1) / 6 + 0.01, dice = (...pairs) => seq(...pairs.flatMap(([a, b]) => [die(a), die(b)]));
   const c0 = E.newMini('craps', E.makeRng('cr')), cx = play(c0, 'X', 'roll', dice([1, 1])), co = play(cx.mini, 'O', 'roll', dice([3, 4]));
   assert.deepEqual([cx.mini.last.result, co.flash.craps.result], ['lose', 'win']);

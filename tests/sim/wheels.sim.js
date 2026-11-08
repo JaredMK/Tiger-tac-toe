@@ -6,9 +6,9 @@ const assert = require('node:assert/strict');
 const E = require('../engine.js');
 const A = require('../../src/games/wheels/ai.js');
 
-// Whole squares, the computer against itself (October 2026, defaults: 30 to win, skulls 1/3/4): the first mover
-// with Normal on both sides 56%, Hard on both 56%; Hard beats Normal about 80% of the time; a Normal winner
-// takes about 5 turns, a Hard one about 2.5.
+// Whole squares, the computer against itself (November 2026, two wheels, defaults: 30 to win, skulls 2 and 5; 1,000 squares
+// a pairing: the figures are the same as with three wheels): the first mover with Normal on both sides 53%, Hard on both 54%;
+// Hard against Normal 63% when it moves first, 54% second (about 58% over all); the winner's turns about 6.1 with Normal, 5.1 with Hard.
 test('wheels: whole squares, Normal and Hard, over many dealt sets: the first mover, the turns a win takes', () => {
   const play = (seed, lx, lo) => {
     const rng = E.makeRng('s' + seed), m = E.newMini('wheels', rng), turns = { X: 0, O: 0 };

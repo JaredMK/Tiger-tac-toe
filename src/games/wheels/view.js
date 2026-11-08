@@ -1,5 +1,5 @@
 // Risky Spins: the screen, the miniature, the move's words and sounds, and the inputs.
-import { WHEELS, WHEELT, isSkull, pushYourLuck, setWheelsConfig } from './rules.js';
+import { WHEELT, isSkull, pushYourLuck, setWheelsConfig, wheelsOf } from './rules.js';
 import { FIREBASE_CONFIG, configured } from '../../net/connect.js';
 import { N, mv, state } from '../../ui/app.js';
 import { KEY } from '../../ui/config.js';
@@ -20,7 +20,8 @@ export function fetchWheelsConfig() {
     }).catch(() => {});
   } catch (e) { /* offline: as last known */ }
 }
-// Risky Spins: the square's three wheels side by side (no names, no averages): ten equal segments each, each
+// Risky Spins: the square's wheels side by side, two (the safe one and the risky one; a square dealt before November 2026 has three, and
+// is drawn with its three: wheelsOf), no names, no averages: ten equal segments each, each
 // wheel in its own colour, a segment's shade set by its points (the same on every wheel: 1 palest, 10 darkest),
 // a skull's segment near black with a skull on it (no value's shade comes near it: the darkest value, 9, keeps
 // about half its lightness), the 10 gold (never a dark shade that could pass for a skull), so the risk reads at a glance. Above them the turn's pot (+N), under
@@ -58,7 +59,7 @@ function wheelTable(mini, a, o) {
   const potCls = kind === 'bust' ? ' lost' : kind === 'bank' ? ' bank' : kind === 'spin' ? (was ? ' grow' : ' grow first') : '';
   const potHtml = py && pot && potBy ? `<span class="risk wpot ${potBy}${potCls}" style="--t:${landed}ms">+${kind === 'spin' && was ? `<b class="cnt" data-from="${was}" data-delay="${landed}" data-ms="350">${pot}</b>` : pot}</span>` : '';
   const enough = !!(py && t && t.by === turn && mini.pts[turn] + t.pot >= T);   // Bank wins it: no more spinning
-  const wheels = WHEELS.map(w => {
+  const ws = wheelsOf(mini), wheels = ws.map(w => {
     const spun = s && s.w === w && kind !== 'bank', at = spun ? s.at : rest[w] || 0, end = (spun ? 1800 : 0) - at * 360, from = spun ? -(s.from || 0) * 360 : end;
     const dis = o.locked || !!s || enough;
     return `<button class="rwheel ${w}${spun ? ' spun' : ''}" data-act="move" ${mv(w)}${dis ? ' disabled' : ''} aria-label="The ${WHEEL_LOOK[w].say} wheel: ${wh[w].map(say).join(', ')}">
@@ -72,9 +73,9 @@ function wheelTable(mini, a, o) {
     : `<p class="arcnote">${o.view ? '' : o.locked ? `Waiting for <b class="${turn}">${N(turn)}</b>…` : ''}</p>`;
   const bankPot = kind === 'spin' ? (was ? `<b class="cnt" data-from="${was}" data-delay="${landed}" data-ms="350">${pot}</b>` : `<b class="bpot" style="--t:${landed}ms">${pot}</b>`) : t && t.pot && !s ? String(t.pot) : '';
   const bank = py ? `<div class="wbank"><button class="big bank" data-act="move" ${mv('bank')}${o.locked || o.view || !(t && t.pot && t.by === turn) || (s && kind !== 'spin') ? ' disabled' : ''}>Bank${bankPot ? ' +' + bankPot : ''}</button></div>` : '';
-  return `<div class="g-arc g-wheels"><div class="ctals">${tal('X')}${tal('O')}</div><div class="wheels">${py ? `<div class="wpotrow" aria-live="polite">${potHtml}</div>` : ''}<div class="rwrow">${wheels}</div>${res}${bank}</div></div>`;
+  return `<div class="g-arc g-wheels"><div class="ctals">${tal('X')}${tal('O')}</div><div class="wheels">${py ? `<div class="wpotrow" aria-live="polite">${potHtml}</div>` : ''}<div class="rwrow n${ws.length}">${wheels}</div>${res}${bank}</div></div>`;
 }
-// The miniature: the square's three wheels small (each segment as on the table: shaded by its points, a skull's segment
+// The miniature: the square's wheels small (two, or an old square's three) (each segment as on the table: shaded by its points, a skull's segment
 // near black, the 10 gold; no skulls drawn and no numbers on them at this size), each player's score under them: their mark,
 // a bar to the target and the points.
 function wheelMini(vals, w) {
@@ -85,7 +86,7 @@ function wheelMini(vals, w) {
 }
 export function miniature(mini, final) {
   const wh = mini.wheels || {}, bars = ['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><i style="--w:${(100 * Math.min(1, mini.pts[p] / mini.target)).toFixed(1)}%"></i><span>${mini.pts[p]}</span></div>`).join('');   // both players' points, and to the target
-  return `<div class="twh" aria-label="X has ${mini.pts.X}, O has ${mini.pts.O} of ${mini.target}"><div class="twrow">${WHEELS.map(w => (Array.isArray(wh[w]) ? wheelMini(wh[w], w) : '')).join('')}</div><div class="trun">${bars}</div></div>`;
+  return `<div class="twh n${wheelsOf(mini).length}" aria-label="X has ${mini.pts.X}, O has ${mini.pts.O} of ${mini.target}"><div class="twrow">${wheelsOf(mini).map(w => wheelMini(wh[w], w)).join('')}</div><div class="trun">${bars}</div></div>`;
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   g = wheelTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d }); return g;

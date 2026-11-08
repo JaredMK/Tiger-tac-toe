@@ -10,7 +10,7 @@ import { hpMoves } from '../games/hexapawn/rules.js';
 import { PLINKO_DEFAULTS } from '../games/plinko/meta.js';
 import { PLINKO } from '../games/plinko/rules.js';
 import { WHEEL_DEFAULTS } from '../games/wheels/meta.js';
-import { WHEELS, WHEEL_SEGS } from '../games/wheels/rules.js';
+import { WHEELS_ALL, WHEEL_SEGS } from '../games/wheels/rules.js';
 import { rulesOf } from '../games/index.js';
 import { tuneSnap } from './tune.js';
 
@@ -24,7 +24,7 @@ export function upgradeMini(mini) {
   // Risky Spins from when each wheel had two segments sized to their chances: ten equal segments, the first value on its share (to the nearest tenth).
   if (mini && mini.type === 'wheels' && !mini.wheels && mini.cfg) {
     const c = mini.cfg; mini.target = c.target || WHEEL_DEFAULTS.target; mini.wheels = {};
-    for (const w of WHEELS) { const x = c[w] || { a: 0, pa: 50, b: 0 }, n = Math.max(1, Math.min(9, Math.round(x.pa / 10))); mini.wheels[w] = Array.from({ length: WHEEL_SEGS }, (_, k) => (k < n ? x.a : x.b)); }
+    for (const w of WHEELS_ALL) { const x = c[w] || { a: 0, pa: 50, b: 0 }, n = Math.max(1, Math.min(9, Math.round(x.pa / 10))); mini.wheels[w] = Array.from({ length: WHEEL_SEGS }, (_, k) => (k < n ? x.a : x.b)); }
     delete mini.cfg;
   }
   // Craps from when a move was a whole round: no round under way.
