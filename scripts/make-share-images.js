@@ -5,6 +5,7 @@
 //   node scripts/make-share-images.js        (npm run share-images)
 const fs = require('node:fs');
 const path = require('node:path');
+const { hashSvg } = require('../src/ui/hash.js');   // the board's # (one drawing with the page's board)
 const OUT = path.join(__dirname, '..', 'assets', 'share');
 const fonts = fs.readFileSync(path.join(__dirname, '..', 'src', 'ui', 'fonts.css'), 'utf8');
 const INK = '#161210', CREAM = '#f4e6c8', PAPER = '#fff8e8', X = '#e5432a', O = '#f6c21b', SKY = '#58a8cf', GREEN = '#4e9d3a';
@@ -39,12 +40,13 @@ body{background:${CREAM};position:relative;font-family:'Patrick Hand',cursive;co
 .title{position:absolute;left:0;right:0;top:6px;display:flex;justify-content:center;align-items:center;gap:6px;height:130px}
 .tt{font-family:'Luckiest Guy',sans-serif;font-size:108px;line-height:1;color:${O};text-shadow:${ol2},6px 9px 0 ${INK};letter-spacing:2px;transform:rotate(-2deg)}
 .title .bw{width:290px;height:145px;margin-left:6px;transform:rotate(4deg)} .bw svg{width:100%;height:100%;overflow:visible} .bt{font-family:'Luckiest Guy',sans-serif;fill:${PAPER};stroke:${INK};stroke-width:5;paint-order:stroke fill;letter-spacing:2px}
-.board{position:absolute;left:50%;top:142px;width:384px;margin-left:-192px;display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
-.sq{background:${PAPER};border:3.5px solid ${INK};box-shadow:0 4px 0 ${INK};border-radius:18px 12px 20px 14px/14px 20px 12px 18px;aspect-ratio:1;padding:6px;position:relative}
-.sq:nth-child(2n){border-radius:12px 20px 14px 18px/20px 12px 18px 14px}
+.board{position:absolute;left:50%;top:142px;width:384px;height:384px;margin-left:-192px;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:0}
+.board>.hash{position:absolute;inset:0;width:100%;height:100%;color:${INK};overflow:visible}
+.sq{aspect-ratio:1;padding:18px;position:relative}
+.sq.own::before{content:'';position:absolute;inset:9%;border-radius:50%}
+.sq.own.X::before{background:radial-gradient(closest-side,#f9c7b6 62%,transparent)} .sq.own.O::before{background:radial-gradient(closest-side,#fbe39a 62%,transparent)}
 .sq svg{width:100%;height:100%}
-.sq.own.X{background:#f9c7b6} .sq.own.O{background:#fbe39a}
-.sq .ghost{position:absolute;inset:6px;width:calc(100% - 12px);opacity:.28} .sq .big{position:absolute;inset:3px;width:calc(100% - 6px);height:calc(100% - 6px);z-index:1}
+.sq .ghost{position:absolute;inset:18px;width:calc(100% - 36px);height:calc(100% - 36px);opacity:.28} .sq .big{position:absolute;inset:12px;width:calc(100% - 24px);height:calc(100% - 24px);z-index:1}
 .pal{position:absolute;width:200px;height:200px;top:250px}
 .pal.l{left:186px;transform:rotate(-8deg)} .pal.r{right:186px;transform:rotate(8deg)}
 .pal svg{width:100%;height:100%}
@@ -54,7 +56,7 @@ const page = body => `<!doctype html><meta charset="utf-8"><style>${CSS}</style>
 const SHARE = page(`<div class="rays"></div><div class="vig"></div>
 <div class="title"><div class="tt">TIC TAC</div><div class="bw">${burst('CHAOS!', 300, 150, 66)}</div></div>
 <div class="pal l">${svg(toonX())}</div><div class="pal r">${svg(toonO())}</div>
-<div class="board">${cells}</div>
+<div class="board">${cells}${hashSvg('hash', 9)}</div>
 <div class="tag"><span>Tic-tac-toe, but every square is a mini-game.</span></div>`);
 // The icon: the X character on a cream square (a phone rounds the corners itself, so it fills the square).
 const ICON = size => `<!doctype html><meta charset="utf-8"><style>html,body{margin:0;width:${size}px;height:${size}px;overflow:hidden}body{background:${CREAM};display:grid;place-items:center}svg{width:${Math.round(size * .86)}px;height:${Math.round(size * .86)}px;overflow:visible}</style>${svg(`<circle cx="50" cy="50" r="46" fill="${O}" stroke="${INK}" stroke-width="5"/><g transform="translate(50 50) scale(.78) translate(-50 -50)">${toonX()}</g>`)}`;

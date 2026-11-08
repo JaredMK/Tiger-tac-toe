@@ -3,6 +3,7 @@
 // the final board, both names, the result and the site's address (no rematch code: November 2026). The win screen's Share result makes it on a canvas and hands it to the share sheet as a PNG
 // (net/platform.js shareFile); where there is none it is saved and its text copied. The text and the layout are worked
 // out apart from the canvas (cardData, fitSize, toonSvg: tests/ui/sharecard.test.mjs); paintCard alone draws.
+import { hashPath } from './hash.js';
 import { playerName } from '../core/match.js';
 import { other } from '../core/util.js';
 import { copyText, downloadFile, shareFile, siteUrl } from '../net/platform.js';
@@ -125,6 +126,13 @@ function mark(ctx, p, img, x, y, s, pal) {
   };
   pass(p === 'X' ? 26 : 25, pal.ink); pass(15, col);
 }
+// A colour at no opacity (a glow fades to its own colour, never through grey): '#rgb', '#rrggbb' or 'rgb(...)'.
+export function clear(col) {
+  const c = String(col).trim();
+  if (c[0] === '#') { const h = c.length === 4 ? c.slice(1).split('').map(x => x + x).join('') : c.slice(1, 7); return `rgba(${parseInt(h.slice(0, 2), 16)},${parseInt(h.slice(2, 4), 16)},${parseInt(h.slice(4, 6), 16)},0)`; }
+  const m = c.match(/rgba?\(([^)]+)\)/); if (m) { const v = m[1].split(/[ ,/]+/).filter(Boolean).slice(0, 3); return `rgba(${v.join(',')},0)`; }
+  return 'rgba(255,255,255,0)';
+}
 // The whole card on a 2d context (CARD x CARD): d from cardData, pal from palette, imgs the two characters' Images (or null).
 export function paintCard(ctx, d, pal, imgs) {
   const L = LAYOUT, W = CARD, cx = W / 2;
@@ -141,13 +149,22 @@ export function paintCard(ctx, d, pal, imgs) {
   ctx.font = font(LG, tSize); ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = pal.ink;
   ctx.fillText(d.title, cx, L.titleY);
   // the board
-  const { cell, gap, top } = L.board, size = cell * 3 + gap * 2, left = (W - size) / 2;
-  const R1 = [22, 15, 24, 17], R2 = [15, 24, 17, 22];
+  // the board: the # (ui/hash.js, as on the page), each claim a soft glow in its space with its character over it, the
+  // winning line's spaces a stronger glow in the winner's colour
+  const { cell, gap, top } = L.board, size = cell * 3 + gap * 2, left = (W - size) / 2, sp = size / 3;
+  const glow = (cxp, cyp, r, col, a) => { const g = ctx.createRadialGradient(cxp, cyp, 0, cxp, cyp, r); g.addColorStop(0, col); g.addColorStop(0.62, col); g.addColorStop(1, clear(col)); ctx.save(); ctx.globalAlpha = a; ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cxp, cyp, r, 0, Math.PI * 2); ctx.fill(); ctx.restore(); };
   for (let i = 0; i < 9; i++) {
-    const r = Math.floor(i / 3), c = i % 3, x = left + c * (cell + gap), y = top + r * (cell + gap), own = d.owners[i];
-    box(ctx, x, y, cell, cell, i % 2 ? R2 : R1, own === 'X' ? pal.xs : own === 'O' ? pal.os : pal.paper, pal);
-    if (own) mark(ctx, own, imgs && imgs[own], x + cell * 0.1, y + cell * 0.1, cell * 0.8, pal);
-    if (own && d.winLine.includes(i)) { ctx.lineWidth = 8; ctx.strokeStyle = own === 'X' ? pal.x : pal.o; rrect(ctx, x + 9, y + 9, cell - 18, cell - 18, (i % 2 ? R2 : R1).map(v => v - 6)); ctx.stroke(); }
+    const own = d.owners[i]; if (!own) continue;
+    const r = Math.floor(i / 3), c = i % 3, mx = left + c * sp + sp / 2, my = top + r * sp + sp / 2;
+    glow(mx, my, sp * 0.44, own === 'X' ? pal.xs : pal.os, 1);
+    if (d.winLine.includes(i)) glow(mx, my, sp * 0.46, own === 'X' ? pal.x : pal.o, 0.35);
+  }
+  ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = pal.ink; ctx.lineWidth = 15;
+  hashPath(ctx, left, top, size); ctx.stroke(); ctx.restore();
+  for (let i = 0; i < 9; i++) {
+    const own = d.owners[i]; if (!own) continue;
+    const r = Math.floor(i / 3), c = i % 3, x = left + c * sp, y = top + r * sp;
+    mark(ctx, own, imgs && imgs[own], x + sp * 0.14, y + sp * 0.14, sp * 0.72, pal);
   }
   // both names, each beside their character
   const nm = measurer(ctx, LG), tn = L.toon;

@@ -1,4 +1,5 @@
 // The main board: the nine squares and their miniatures (each game's view.js: miniature).
+import { hashSvg } from './hash.js';
 import { playerName } from '../core/match.js';
 import { fullState } from '../core/records.js';
 import { ANIM } from '../core/timer.js';
@@ -55,6 +56,7 @@ export const BOARD_BURST = [320, 500];           // when the two bursts on the b
 // tile flick away to one side as the new game's label and miniature deal in from the other (DRAW_SHUFFLE), all over by
 // DRAW_MS. In base time, like the stamp: it plays at the game's pace (Speed's too). The old game is drawn from the
 // move's own record of it (drawOld: the flash's `drawn`); without it (none kept), the stamp and the deal alone.
+const HASH_SVG = hashSvg('hash', 8);   // the board's #: drawn over the spaces, never taking a tap (each space is its whole button)
 export const DRAW_MS = 1150;
 export const DRAW_SHUFFLE = [620, 760];          // the old game flicks away, the new one deals in (ms after the stamp starts)
 export function renderBoard(review) {
@@ -95,7 +97,7 @@ export function renderBoard(review) {
     return `<button class="${cls.join(' ')}" data-act="zoom" data-i="${i}" aria-label="${label}"${spot && spot.square === i ? fxAttr(fxAt('spot', spot)) : vd && vd.at != null ? fxAttr(vd.at) : ''}${cpuTurn() || rc ? ' disabled' : ''}>${body}</button>`;
   }).join('');
   if (review) return `<main class="scr board-scr review-scr"><div class="revhead"><button class="back" data-act="${reviewCtx.back}" aria-label="${reviewCtx.backAria}">${CHEV}${reviewCtx.backLabel}</button>
-      <div class="ttl"><b>${reviewCtx.title}</b><small>Tap any square to see how it ended</small></div></div><div class="board">${sqs}</div>
+      <div class="ttl"><b>${reviewCtx.title}</b><small>Tap any square to see how it ended</small></div></div><div class="board">${sqs}${HASH_SVG}</div>
     <div class="foot"><span class="hint">Every hidden word, number, card and ship is shown</span></div>${pauseMenu()}</main>`;
   const hint = state.sc && !state.winner ? scHint() : spot ? (cpuPlays(spot.by) ? CPU_ICON : '') + esc(spot.label) : cpuTurn() ? `${N(state.turn)} is thinking…` : remoteTurn() ? `Waiting for ${N(state.turn)}…`
     : state.moves ? 'Tap any open square to make a move' : `${N(state.turn)}: tap a square to start`;
@@ -106,7 +108,7 @@ export function renderBoard(review) {
   // Classic: whose move it is as a small bar under the board, in the foot's own room (the hint's place: nothing moves);
   // Super Chaos keeps its band across the board.
   const sc = !!state.sc, under = !sc && w.html;
-  return `<main class="scr board-scr${sc && w.on ? ' waiting' : ''}">${netBar()}<div class="board">${sqs}${pow}${sc ? w.html : ''}</div>
+  return `<main class="scr board-scr${sc && w.on ? ' waiting' : ''}">${netBar()}<div class="board">${sqs}${HASH_SVG}${pow}${sc ? w.html : ''}</div>
     <div class="foot${under ? ' fwait' : ''}">${under ? w.html : `<span class="hint">${hint}</span>`}</div>${pauseMenu()}</main>`;
 }
 // A drawn square's overlay on the board: the old game's tile (its label and miniature as the draw left them), and the

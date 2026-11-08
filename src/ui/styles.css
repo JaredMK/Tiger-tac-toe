@@ -3087,3 +3087,41 @@ main.scr.mini:has(.brkw.run) .back { visibility: hidden; pointer-events: none; }
 .tbrk .tbrkp { stroke: var(--ink); stroke-width: 1; } .tbrk .tbrkp.X { fill: var(--x); } .tbrk .tbrkp.O { fill: var(--o); }
 .tbrk .tbrko { fill: var(--paper); stroke: var(--ink); stroke-width: 1; }
 .tbrk .tbrkl { font: 800 9px Nunito, Arial, sans-serif; fill: #fff; } .tbrk .tbrkl.X { fill: var(--x); } .tbrk .tbrkl.O { fill: var(--o); }
+
+/* ===== The # board (November 2026): a classic tic-tac-toe grid, no boxes =====
+   The board is four bold hand-drawn strokes with round ends (ui/hash.js, one drawing for every board picture), over
+   nine open spaces with no border, box or outer frame. Each space is still its whole button (gap 0: the tap target
+   is the full space), its miniature padded clear of the lines. Highlights are soft glows in the space (::before):
+   a claim's tint under its stamp, the last-played square, the opponent's chosen square (spot), Super Chaos's wins. */
+.board { gap: 0; }
+.board > .hash { position: absolute; inset: 0; width: 100%; height: 100%; color: var(--ink); pointer-events: none; z-index: 2; overflow: visible; }
+.board .sq { background: transparent; border: 0; border-radius: 0; box-shadow: none; padding: calc(var(--s) * .05); isolation: isolate; overflow: visible; }
+.board .sq:nth-child(2n) { border-radius: 0; }
+.board .sq:active:not(:disabled) { transform: scale(.95); box-shadow: none; }
+.board .sq::before { content: ''; position: absolute; inset: 9%; z-index: -1; border-radius: 46% 40% 48% 42% / 42% 48% 40% 46%; pointer-events: none; opacity: 0; transition: opacity .2s; }
+.board .sq.own-X, .board .sq.own-O, .board .sq.last-X, .board .sq.last-O { box-shadow: none; background: transparent; }
+.board .sq.own-X::before { opacity: 1; background: radial-gradient(closest-side, var(--x-soft) 62%, transparent 100%); }
+.board .sq.own-O::before { opacity: 1; background: radial-gradient(closest-side, var(--o-soft) 62%, transparent 100%); }
+.board .sq.last-X::before { opacity: 1; background: radial-gradient(closest-side, color-mix(in srgb, var(--x) 30%, transparent) 30%, transparent 100%); }
+.board .sq.last-O::before { opacity: 1; background: radial-gradient(closest-side, color-mix(in srgb, var(--o) 38%, transparent) 30%, transparent 100%); }
+.board .sq.spot, .board .sq.scwin { animation: none; }
+.board .sq.spot::before, .board .sq.scwin::before { opacity: 1; inset: 4%; background: radial-gradient(closest-side, color-mix(in srgb, var(--spot) 55%, transparent) 25%, transparent 100%); animation: sqglow 1s ease-in-out infinite; }
+.board .sq.scwin::before { animation-iteration-count: 2; }
+@keyframes sqglow { 0%, 100% { opacity: .55; transform: scale(.9); } 50% { opacity: 1; transform: scale(1.04); } }
+@media (prefers-reduced-motion: reduce) { .board .sq.spot::before, .board .sq.scwin::before { animation: none; } }
+.board .sq .spot-lab { left: 9%; right: 9%; bottom: 7%; }
+.board .sq .lpbs { right: 9%; bottom: 9%; }
+.board .drawold { border-radius: 0; background: transparent; }
+.sq.ztile { background: var(--paper); border-radius: 18px; }   /* (the zoom's tile grows into the game area as a sheet of paper) */
+/* the result screen's final board: the same #, the X and O characters in its spaces, the winning line's glow */
+.final { position: relative; gap: 0; }
+.final > .hash { position: absolute; inset: 0; width: 100%; height: 100%; color: var(--ink); pointer-events: none; }
+.final > i, .final > i.X, .final > i.O { background: transparent; border: 0; border-radius: 0; box-shadow: none; padding: 10%; }
+.final > i.hl { box-shadow: none; background: radial-gradient(closest-side, color-mix(in srgb, var(--sky) 55%, transparent) 40%, transparent 100%); }
+/* the history snapshot: the # at 46px, X and O in its spaces; the player's own squares a soft ink glow */
+.hsnap { position: relative; gap: 0; padding: 0; background: none; border: 0; border-radius: 0; }
+.hsnap > .hash { position: absolute; inset: 0; width: 100%; height: 100%; color: var(--ink); pointer-events: none; }
+.hsnap i, .hsnap i.X, .hsnap i.O { background: transparent; border-radius: 0; box-shadow: none; }
+.hsnap i.mine { box-shadow: none; border-radius: 50%; background: radial-gradient(closest-side, color-mix(in srgb, var(--ink) 18%, transparent) 50%, transparent 100%); }
+.final > i, .final > i.X, .final > i.O { padding: 5%; }
+.final > i .pc { width: 92%; height: 92%; }

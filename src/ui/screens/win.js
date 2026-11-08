@@ -1,4 +1,5 @@
 // The end of a match: the win, loss and draw screens.
+import { hashSvg } from '../hash.js';
 import { playerName } from '../../core/match.js';
 import { other } from '../../core/util.js';
 import { connected } from '../../net/connect.js';
@@ -97,7 +98,7 @@ export function renderWin() {
   ).join('');
   return `<main class="scr win-scr">${netBar()}<div class="win-card${isMM() ? ' mm' : ''}">
     <div class="winburst">${endBurst(endMessage())}</div><div class="big-g ${w}">${toonT(w)}</div><h1>${isYou(w) ? 'You win' : `${N(w)} wins`} the match!</h1><p>${why}</p>${mmResult()}
-    <div class="final" aria-hidden="true">${final}</div>
+    <div class="final" aria-hidden="true">${final}${hashSvg('hash', 10)}</div>
     <div class="row">${againBtns()}<button class="btn" data-act="review">View board</button><button class="btn" data-act="${state.online ? 'leave' : 'menu'}">Main menu</button></div>${rematchNote()}${shareBtn()}</div></main>`;
 }
 
@@ -109,6 +110,6 @@ function renderDraw() {
   const final = state.squares.map(s => `<i class="${s.owner || ''}">${s.owner ? toonT(s.owner) : ''}</i>`).join('');
   return `<main class="scr win-scr">${netBar()}<div class="win-card${isMM() ? ' mm' : ''}">
     <div class="winburst">${endBurst(endMessage())}</div><div class="big-g both">${toonT('X')}${toonT('O')}</div><h1>It's a draw!</h1><p>${state.winReason === 'both' ? 'Both made three in a row in the same round' : state.winReason === 'timeout' ? 'Both missed two rounds in a row' : 'Nobody could get three in a row any more, so the match ended there'}</p>${mmResult()}
-    <div class="final" aria-hidden="true">${final}</div>
+    <div class="final" aria-hidden="true">${final}${hashSvg('hash', 10)}</div>
     <div class="row">${againBtns()}<button class="btn" data-act="review">View board</button><button class="btn" data-act="${state.online ? 'leave' : 'menu'}">Main menu</button></div>${rematchNote()}${shareBtn()}</div></main>`;
 }

@@ -1,4 +1,6 @@
 // Profiles, My Stats, game history and the leaderboard.
+import { hashSvg } from '../hash.js';
+const SNAP_HASH = hashSvg('hash', 16);   // the history snapshot's # (a bolder stroke: it is drawn 46px across)
 import { newState } from '../../core/match.js';
 import { upgradeMini } from '../../core/minis.js';
 import { topOpponents } from '../../core/stats.js';
@@ -191,7 +193,7 @@ function histSnap(h) {
     SNAP.set(h.id, own);
   }
   const me = h.side === 'X' || h.side === 'O' ? h.side : null;
-  return `<span class="hsnap" aria-hidden="true">${own.map(o => `<i class="${o}${o && o === me ? ' mine' : ''}">${esc(o)}</i>`).join('')}</span>`;
+  return `<span class="hsnap" aria-hidden="true">${own.map(o => `<i class="${o}${o && o === me ? ' mine' : ''}">${esc(o)}</i>`).join('')}${SNAP_HASH}</span>`;
 }
 // The game history of the profile on show: every online game, newest first, each opening its final board.
 export function renderProfHist() {
