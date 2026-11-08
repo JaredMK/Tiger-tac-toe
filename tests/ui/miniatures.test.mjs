@@ -69,3 +69,33 @@ test('the miniatures never put a game\'s secret in the markup', () => {
   const h = E.newMini('hilo', rng); assert.ok(!new RegExp(`\\b${h.target}\\b`).test(viewOf('hilo').miniature(h, false).replace(/\d+–\d+/, '')), 'Higher/Lower\'s number');
   const o = E.newMini('oddone', rng); assert.ok(!viewOf('oddone').miniature(o, false).includes(`"${o.pos.X}"`), 'Odd One Out\'s tile');
 });
+
+// A miniature's classes are its own: the stylesheet's buttons, tiles and controls have classes of their own (.back is the
+// Back button, .sq the board's tile, .btn, .big, .seg ...), and a miniature that borrows one of those names takes on its
+// look (a card back drawn as a Back button, over the win counters beside it).
+test('a miniature never uses a class the buttons and tiles of the interface use', () => {
+  const global = new Set(['back', 'btn', 'big', 'primary', 'menubtn', 'link', 'seg', 'key', 'sq', 'chip', 'bird']);   // ("bird" is Apple Pick's swooping bird)
+  const bad = [];
+  for (const t of TYPES) {
+    for (const moves of [0, 3]) {
+      let html; try { html = viewOf(t).miniature(square(t, moves), false); } catch (e) { continue; }
+      for (const m of String(html).matchAll(/class="([^"]*)"/g)) for (const c of m[1].split(/\s+/)) if (global.has(c)) bad.push(`${t}: class "${c}" (${moves} moves)`);
+    }
+  }
+  assert.deepEqual([...new Set(bad)], []);
+});
+test('21: the cards\' backs and a hand are drawn within their picture, clear of the win counters', async () => {
+  const { tinyCard } = await import('../../src/ui/thumbs.js');
+  assert.match(tinyCard(null), /class="tcd cdb"/, 'a card back is .cdb, never the Back button\'s class');
+  const html = viewOf('bj').miniature(square('bj', 0), false);
+  assert.match(html, /class="tcd cdb"/); assert.doesNotMatch(html, /class="[^"]*\bback\b/);
+  assert.match(html, /class="tpic"[\s\S]*class="tpip"/, 'the cards in their own space, the counters in theirs');
+});
+test('Risky Spins: the three small wheels and the scores, no skulls drawn', () => {
+  const mini = square('wheels', 0); mini.pts = { X: 12, O: 5 };
+  const html = viewOf('wheels').miniature(mini, false);
+  assert.equal((html.match(/<svg/g) || []).length, 3, 'three wheels');
+  assert.doesNotMatch(html, /wsk|wske/, 'no skull glyphs');
+  assert.match(html, /class="wseg sk"/, 'a skull\'s segment stays the dark one');
+  assert.match(html, /<span>12<\/span>/); assert.match(html, /<span>5<\/span>/);
+});

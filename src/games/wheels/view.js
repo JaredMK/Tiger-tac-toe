@@ -74,17 +74,17 @@ function wheelTable(mini, a, o) {
   const bank = py ? `<div class="wbank"><button class="big bank" data-act="move" ${mv('bank')}${o.locked || o.view || !(t && t.pot && t.by === turn) || (s && kind !== 'spin') ? ' disabled' : ''}>Bank${bankPot ? ' +' + bankPot : ''}</button></div>` : '';
   return `<div class="g-arc g-wheels"><div class="ctals">${tal('X')}${tal('O')}</div><div class="wheels">${py ? `<div class="wpotrow" aria-live="polite">${potHtml}</div>` : ''}<div class="rwrow">${wheels}</div>${res}${bank}</div></div>`;
 }
-// The miniature: the square's three wheels small (each segment as on the table: shaded by its points, a skull near
-// black with its skull, the 10 gold; no numbers at this size), each player's points to the target as a bar under them.
+// The miniature: the square's three wheels small (each segment as on the table: shaded by its points, a skull's segment
+// near black, the 10 gold; no skulls drawn and no numbers on them at this size), each player's score under them: their mark,
+// a bar to the target and the points.
 function wheelMini(vals, w) {
   const R = 46, n = vals.length;
   const pt = (f, r) => { const t = (f * 360 - 90) * Math.PI / 180; return [(50 + r * Math.cos(t)).toFixed(1), (50 + r * Math.sin(t)).toFixed(1)]; };
   const seg = (k, v) => { const [x0, y0] = pt(k / n, R), [x1, y1] = pt((k + 1) / n, R); return `<path d="M50 50L${x0} ${y0}A${R} ${R} 0 0 1 ${x1} ${y1}Z"${isSkull(v) ? ' class="wseg sk"' : v === 10 ? ' class="wseg ten"' : ` fill="${wheelShade(w, v)}" class="wseg"`}/>`; };
-  const sk = (k, v) => { if (!isSkull(v)) return ''; const [x, y] = pt((k + 0.5) / n, 31); return `<g transform="translate(${x} ${y}) scale(2.1)">${SKULL_G}</g>`; };
-  return `<svg viewBox="-3 -9 106 112" aria-hidden="true">${vals.map((v, k) => seg(k, v)).join('')}<circle cx="50" cy="50" r="${R}" class="wrim"/>${vals.map((v, k) => sk(k, v)).join('')}<circle cx="50" cy="50" r="7" class="whub"/><path class="wptr" d="M42 -8h16l-8 13z"/></svg>`;
+  return `<svg viewBox="-3 -9 106 112" aria-hidden="true">${vals.map((v, k) => seg(k, v)).join('')}<circle cx="50" cy="50" r="${R}" class="wrim"/><circle cx="50" cy="50" r="7" class="whub"/><path class="wptr" d="M42 -8h16l-8 13z"/></svg>`;
 }
 export function miniature(mini, final) {
-  const wh = mini.wheels || {}, bars = ['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><i style="--w:${(100 * Math.min(1, mini.pts[p] / mini.target)).toFixed(1)}%"></i></div>`).join('');   // both players' points to the target
+  const wh = mini.wheels || {}, bars = ['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><i style="--w:${(100 * Math.min(1, mini.pts[p] / mini.target)).toFixed(1)}%"></i><span>${mini.pts[p]}</span></div>`).join('');   // both players' points, and to the target
   return `<div class="twh" aria-label="X has ${mini.pts.X}, O has ${mini.pts.O} of ${mini.target}"><div class="twrow">${WHEELS.map(w => (Array.isArray(wh[w]) ? wheelMini(wh[w], w) : '')).join('')}</div><div class="trun">${bars}</div></div>`;
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {

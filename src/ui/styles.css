@@ -2059,6 +2059,7 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .acan { fill: #6cbb4e; stroke: var(--ink); stroke-width: 2; }
 .acan2 { fill: #8bd16a; }
 .aplb { fill: #e5432a; stroke: var(--ink); stroke-width: 1.4; }
+.apl.X .aplb, .aplb.X { fill: var(--x); } .apl.O .aplb, .aplb.O { fill: var(--o); }   /* X's apples red, O's yellow */
 .apl .aplh { fill: #fff; opacity: .7; }
 .apl .aplst { fill: none; stroke: #6b4a2a; stroke-width: 1.3; stroke-linecap: round; }
 .apl .apll { fill: #4e9d3a; stroke: var(--ink); stroke-width: .8; }
@@ -2066,6 +2067,7 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .bkwall { fill: #d9a95c; stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; }
 .bkweave { fill: none; stroke: #a9733f; stroke-width: 1.4; stroke-linecap: round; }
 .bkband { stroke: var(--ink); stroke-width: 1.2; } .bkband.X { fill: var(--x); } .bkband.O { fill: var(--o); }
+.bklab { text-anchor: middle; font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-size: 11.5px; letter-spacing: .02em; } .bklab.X { fill: #fff; } .bklab.O { fill: var(--ink); }
 .bkrim { fill: #f0cb8a; stroke: var(--ink); stroke-width: 2; }
 .bkhandle { fill: none; stroke: var(--ink); stroke-width: 3.5; stroke-linecap: round; }
 .bbody .bbd { fill: var(--cb); stroke: var(--ink); stroke-width: 1.4; }
@@ -2077,36 +2079,34 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 @keyframes bflap { from { transform: rotate(-30deg); } to { transform: rotate(35deg); } }
 .apl.drop, .apl.roll { opacity: 0; transform: translate(var(--x1), var(--y1)); }   /* (with no animation: nowhere; the apple in its new place shows instead) */
 .apl.drop { animation: apldrop var(--d, 520ms) var(--t, 0ms) cubic-bezier(.4, 0, .75, 1) both; }
-.apl.roll { animation: aplroll var(--d, 520ms) var(--t, 0ms) ease-out both; }
+.apl.roll { animation: aplroll var(--d, 520ms) var(--t, 0ms) ease-out forwards; }   /* (not both: before its turn an apple is nowhere, not waiting at the bucket's mouth) */
 @keyframes apldrop { 0% { transform: translate(var(--x0), var(--y0)); opacity: 1; } 30% { transform: translate(calc(var(--x0) * .65 + var(--x1) * .35), calc(min(var(--y0), var(--y1)) - 12px)); opacity: 1; } 99% { transform: translate(var(--x1), var(--y1)); opacity: 1; } 100% { transform: translate(var(--x1), var(--y1)); opacity: 0; } }
 @keyframes aplroll { 0% { transform: translate(var(--x0), var(--y0)) scale(.85); opacity: 1; } 45% { transform: translate(calc(var(--x0) * .5 + var(--x1) * .5), calc(min(var(--y0), var(--y1)) - 28px)) scale(1); opacity: 1; } 99% { transform: translate(var(--x1), var(--y1)); opacity: 1; } 100% { transform: translate(var(--x1), var(--y1)); opacity: 0; } }
 .apl.aplin { animation: appearin .3s var(--t, 0ms) ease-out both; }
 .apl.aplout { animation: aplout .25s var(--t, 0ms) ease-in both; }
 @keyframes aplout { to { opacity: 0; transform: scale(.4); } }
 .bird { opacity: 0; animation: birdfly var(--d, 1380ms) var(--t, 0ms) linear both; }   /* in from the right, down over the bucket (the grab: 37.7% of its time), up to the tree (81.2%), off to the left: rules.js APPLET grab, carry, off */
-@keyframes birdfly { 0% { transform: translate(215px, 66px) scaleX(-1); opacity: 0; animation-timing-function: ease-out; } 7% { opacity: 1; } 37.7% { transform: translate(152px, 74px) scaleX(-1); animation-timing-function: ease-in-out; } 52% { transform: translate(128px, 56px) scaleX(-1); } 81.2% { transform: translate(66px, 36px) scaleX(-1); animation-timing-function: ease-in; } 93% { opacity: 1; } 100% { transform: translate(-30px, 14px) scaleX(-1); opacity: 0; } }
+@keyframes birdfly { 0% { transform: translate(var(--sx), var(--sy)) scaleX(var(--dir)); opacity: 0; animation-timing-function: ease-out; } 7% { opacity: 1; } 37.7% { transform: translate(var(--gx), var(--gy)) scaleX(var(--dir)); animation-timing-function: ease-in-out; } 52% { transform: translate(var(--mx), var(--my)) scaleX(var(--dir)); } 81.2% { transform: translate(var(--tx), var(--ty)) scaleX(var(--dir)); animation-timing-function: ease-in; } 93% { opacity: 1; } 100% { transform: translate(var(--ex), var(--ey)) scaleX(var(--dir)); opacity: 0; } }
 .bird .held { opacity: 0; animation: aplheld var(--d, 1380ms) var(--t, 0ms) linear both; }   /* the apples it carries: in its claws from the grab to the tree */
 @keyframes aplheld { 0%, 36% { opacity: 0; } 40%, 80% { opacity: 1; } 84%, 100% { opacity: 0; } }
-.bk { transform-box: view-box; transform-origin: 128px 122px; }
-.bk.tip { animation: bktip 420ms var(--t, 0ms) cubic-bezier(.4, 0, .6, 1) forwards, bkright var(--d2, 380ms) var(--t2, 0ms) ease-out forwards; }   /* a spill: over onto its side (its apples roll out), then back up once they are on the tree */
-@keyframes bktip { to { transform: rotate(-74deg); } }
-@keyframes bkright { from { transform: rotate(-74deg); } to { transform: rotate(0deg); } }
-.bk.full { transform-origin: 150px 118px; animation: bkfull .55s var(--t, 0ms) cubic-bezier(.3, 1.6, .5, 1) both; }   /* the last apple in: the bucket bounces, stars burst: the winning moment */
+.bk { transform-box: view-box; }
+.bk.tip { transform-origin: var(--ox) var(--oy); animation: bktip 420ms var(--t, 0ms) cubic-bezier(.4, 0, .6, 1) forwards, bkright var(--d2, 380ms) var(--t2, 0ms) ease-out forwards; }   /* a spill: over onto its side towards the tree (its apples roll out), then back up once they are on the tree */
+@keyframes bktip { to { transform: rotate(var(--rot)); } }
+@keyframes bkright { from { transform: rotate(var(--rot)); } to { transform: rotate(0deg); } }
+.bk.full { transform-origin: var(--fx) var(--fy); animation: bkfull .55s var(--t, 0ms) cubic-bezier(.3, 1.6, .5, 1) both; }   /* the last apple in: the bucket bounces, stars burst: the winning moment */
 @keyframes bkfull { 0% { transform: scale(1); } 40% { transform: scale(1.14, .88); } 70% { transform: scale(.95, 1.1); } 100% { transform: scale(1); } }
 .astars .star { font-size: 14px; fill: #ffd84d; stroke: var(--ink); stroke-width: .6; opacity: 0; transform-box: fill-box; transform-origin: center; animation: twinkle .4s calc(var(--t, 0ms) + var(--k, 0) * 70ms) ease-in-out 3 alternate both; }
 .aspin { display: flex; justify-content: center; flex: none; }
-.aspin .wbox { width: min(150px, 42%); }
-.aseg { stroke: var(--ink); stroke-width: .8; } .aseg.bird { fill: #bfe3f3; } .aseg.spill { fill: #ecd3a0; }
+.aspin .wbox { width: min(124px, 37%); }
+.aseg { stroke: var(--ink); stroke-width: .8; } .aseg.abird { fill: #bfe3f3; } .aseg.aspill { fill: #ecd3a0; }   /* (not .bird: that is the swooping bird, whose flight a wedge named so flew too) */
 .g-apple .wv { font-size: 16px; }
 .g-apple .arcres, .g-apple .arcnote { min-height: 1.4em; }
 .g-apple .arcnote b { display: inline-block; max-width: 7.5em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }   /* a name in the status line: cut with "…", never wrapped onto the button */
 .tapple { width: 88cqw; height: auto; display: block; }
 .tapple .aplb { stroke-width: 1.2; } .tapple .acan, .tapple .atrunk { stroke-width: 1.6; }
-.tbk .tbbg { fill: #f3dfb3; } .tbk.X .tbf { fill: var(--x); } .tbk.O .tbf { fill: var(--o); }
-.tbk .tbw { fill: none; stroke: var(--ink); stroke-width: .9; opacity: .4; }
-.tbk .tbo { fill: none; stroke: var(--ink); stroke-width: 1.8; stroke-linejoin: round; }
-.tbk .tbr { fill: #f0cb8a; stroke: var(--ink); stroke-width: 1.6; }
-.tbk .tbl { text-anchor: middle; font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-size: 9px; fill: var(--ink); }
+.tbk .tbbg { fill: #4a2f17; stroke: var(--ink); stroke-width: 1.4; } .tbk .tbwall { fill: #d9a95c; stroke: var(--ink); stroke-width: 1.8; stroke-linejoin: round; }
+.tbk .tbband { stroke: var(--ink); stroke-width: 1.2; } .tbk .tbband.X { fill: var(--x); } .tbk .tbband.O { fill: var(--o); }
+.tbk .tbn { text-anchor: middle; font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-size: 9.5px; } .tbk .tbn.X { fill: #fff; } .tbk .tbn.O { fill: var(--ink); }
 /* Sniff: the field and the dog; a move's step drawn as a thin line in the walker's colour while it plays (Super Chaos: each dog's whole path) */
 .sniff { flex: 1; display: flex; flex-direction: column; gap: 8px; justify-content: center; min-height: 0; }
 .sfield { display: block; width: min(100%, 320px, calc(100dvh - 320px)); margin: 0 auto; background: #e8dcbf; border: 3px solid var(--ink); border-radius: 16px; overflow: hidden; }
@@ -2358,7 +2358,7 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .tpip .tr { display: flex; align-items: center; gap: 4cqw; font-weight: 800; font-size: 10cqw; line-height: 1; }
 .tpip .tr b { width: 10cqw; }
 .tpip i { width: 13cqw; height: 13cqw; border-radius: 50%; border: 1.6cqw solid var(--ink); background: var(--paper); }
-.tpip i.sq { border-radius: 3cqw; width: 11cqw; height: 11cqw; }
+.tpip i.psq { border-radius: 3cqw; width: 11cqw; height: 11cqw; }
 .tpip.t7 .tr { gap: 2cqw; } .tpip.t7 .tr b { margin-right: 2cqw; } .tpip.t7 i { width: 8.5cqw; height: 8.5cqw; border-width: 1.3cqw; }
 .tplk { display: flex; flex-direction: column; align-items: center; gap: 4cqw; width: 86cqw; }
 .tplk .tbins { display: flex; gap: 2cqw; width: 100%; }
@@ -2397,7 +2397,7 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .tart .tpip .tr { --pw: min(9.5cqw, calc(40cqw / var(--n, 3))); gap: 1.6cqw; }
 .tart .tpip .tr b { width: 8cqw; flex: none; font-size: 9cqw; }
 .tart .tpip i { width: var(--pw); height: var(--pw); border-width: 1.3cqw; flex: none; }
-.tart .tpip i.sq { border-radius: 25%; }
+.tart .tpip i.psq { border-radius: 25%; }
 .tart.tall .tpic { width: 30cqw; }
 .ttok circle { stroke: var(--ink); stroke-width: 1.6; } .ttok.X circle { fill: var(--x); } .ttok.O circle { fill: var(--o); }
 .ttok text { fill: #fff; font-weight: 900; text-anchor: middle; font-family: Nunito, Arial, sans-serif; } .ttok.O text { fill: var(--ink); }
@@ -2406,9 +2406,10 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .tcd { position: relative; display: inline-grid; place-items: center; width: 11cqw; height: 15cqw; border-radius: 1.8cqw; background: #fff; border: 1cqw solid var(--ink); color: var(--ink); font-style: normal; }
 .tcd.red { color: #d6301e; }
 .tcd b { font: 800 6cqw/1 Nunito, Arial, sans-serif; letter-spacing: -.02em; } .tcd svg { width: 5.5cqw; height: 5.5cqw; fill: currentColor; }
-.tcd.back { background: repeating-linear-gradient(45deg, var(--sky) 0 1.6cqw, #8cc7e3 1.6cqw 3.2cqw); }
+.tcd.cdb { background: repeating-linear-gradient(45deg, var(--sky) 0 1.6cqw, #8cc7e3 1.6cqw 3.2cqw); }
 /* 21: the hand's cards fanned (or two backs before the deal) */
-.tbj { display: flex; justify-content: center; padding: 1cqw 0; } .tbj .tcd { margin-left: -4cqw; } .tbj .tcd:first-child { margin-left: 0; }
+.tbj { display: flex; justify-content: center; padding: 1cqw 0; max-width: 100%; } .tbj .tcd { margin-left: -7cqw; width: 14cqw; height: 20cqw; place-items: center start; padding-left: 1.4cqw; } .tbj .tcd:first-child { margin-left: 0; }
+.tbj .tcd b { font-size: 7cqw; } .tbj .tcd svg { width: 6.2cqw; height: 6.2cqw; }   /* (the rank and suit at the left: the next card covers only the right of this one, never its suit; the hand never wider than its picture: ui/thumbs.js thumbArt) */
 .tbj .tcd:first-child { transform: rotate(-8deg) translateY(1cqw); } .tbj .tcd:last-child { transform: rotate(8deg) translateY(1cqw); }
 /* Ride the Bus: the bus, then each player's four slots (a kept card face up, an empty slot dashed) */
 .tbus { display: flex; flex-direction: column; align-items: center; gap: 2cqw; width: 90cqw; }
@@ -2466,7 +2467,8 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .twh { display: flex; flex-direction: column; align-items: center; gap: 2.5cqw; width: 90cqw; }
 .twh .twrow { display: flex; justify-content: center; gap: 2cqw; width: 100%; }
 .twh .twrow svg { width: 27cqw; height: 27cqw; overflow: visible; }
-.twh .trun { padding: 0 2cqw; gap: 2cqw; } .twh .trun .tr { grid-template-columns: 8cqw 1fr; } .twh .trun .tr b { font-size: 9cqw; } .twh .trun .tr i { height: 6cqw; border-width: 1.3cqw; }
+.twh .trun { padding: 0 2cqw; gap: 2cqw; } .twh .trun .tr { grid-template-columns: 8cqw 1fr auto; gap: 2.5cqw; } .twh .trun .tr b { font-size: 9cqw; } .twh .trun .tr i { height: 6cqw; border-width: 1.3cqw; }
+.twh .trun .tr span { font: 400 10.5cqw/1 'Luckiest Guy', 'Arial Black', sans-serif; min-width: 13cqw; text-align: right; font-variant-numeric: tabular-nums; }   /* each player's points, after their bar */
 .twh .wseg { stroke-width: 1.4; } .twh .wrim { stroke-width: 4; } .twh .wptr { fill: var(--ink); }
 @media (max-height: 640px) { .rln, .rlg, .rlz { height: 28px; font-size: 13px; } .bjres { min-height: 28px; font-size: 15px; } }
 
