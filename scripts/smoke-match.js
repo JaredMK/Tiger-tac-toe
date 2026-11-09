@@ -29,9 +29,12 @@ async function session(uid) {                            // the smoke account, s
   if (!r.idToken) throw new Error(`could not sign ${uid} in: ${JSON.stringify(r.error || r).slice(0, 160)}`);
   return r.idToken;
 }
+const timings = [];                                        // every call's round trip, for the report (the first call to a function is its cold start)
 async function call(idToken, name, data) {
+  const t0 = Date.now();
   const r = await fetch(`${FN}/${name}`, { method: 'POST', headers: Object.assign({ authorization: 'Bearer ' + idToken }, json), body: JSON.stringify({ data: Object.assign({}, data, { client: { v: VERSION, p: 'web' } }) }) });
   const j = await r.json().catch(() => ({}));
+  timings.push(`${name} ${Date.now() - t0} ms`);
   if (!r.ok) throw new Error(`${name}: HTTP ${r.status} ${JSON.stringify(j.error || j).slice(0, 200)}`);
   return j.result;
 }
@@ -53,6 +56,8 @@ async function call(idToken, name, data) {
     const start = await call(host, 'startRoom', { code });
     game = start && start.game;
     check(!!(start && start.ok && start.started && game), `the host starts the match (game ${game || 'none'})`);
+    const again = await call(host, 'startRoom', { code });     // the same request twice (a second tap, a retry): one match, no error
+    check(!!(again && again.ok && !again.started && !again.game), `a second start of the same room makes no second match (${JSON.stringify(again).slice(0, 80)})`);
     if (game) {
       const pub = (await db.ref(`games/${game}/pub`).get()).val() || {};
       let g = {};
@@ -71,6 +76,7 @@ async function call(idToken, name, data) {
     await db.ref().update(up).catch(e => console.log('::warning::smoke match: could not clean up: ' + e.message));
   }
   if (failed) { console.log('::error::The friend-match check failed.'); process.exit(1); }
+  console.log(`Call timings (the first call to each function is its cold start): ${timings.join(', ')}`);
   console.log(`A friend match on ${ENV}: opened, joined, started and cleaned up.`);
   process.exit(0);
 })().catch(e => { console.log('::error::The friend-match check could not run: ' + e.message); process.exit(1); });

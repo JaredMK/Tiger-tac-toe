@@ -20,7 +20,7 @@ import { scFollow } from './chaos.js';
 import { predicted, setPredicted, showNotice } from './moves.js';
 import { listenReacts, stopReacts } from './reactions.js';
 import { scMode, timerDefault, visibleTypes } from './releases.js';
-import { reportLocal, trackEnd } from './tracking.js';
+import { matchLog, reportLocal, trackEnd } from './tracking.js';
 import {
   NAV_SCREENS, spotMs, commit, cpuPlan, cpuTimer, flashTimer, holdTimer, menuNote, menuOpen, menuStep,
   pickKey, save, setCpuPlan, setCpuTimer, setFlashTimer, setHoldTimer, setMenuNote, setMenuOpen, setMenuStep,
@@ -57,7 +57,7 @@ export function remoteTurn() { return !!state.online && !state.winner && state.t
 export function blocked() { return cpuTurn() || remoteTurn() || !!moveWait || (!!state.online && !connected) || scWaiting(); }   // (Super Chaos: the move is in for this round)
 export function pinned() { return echoPinned() || oddPinned() || attPinned() || fingPinned(); }   // an attempt under way that the player has started (Echo's pattern played, Odd One Out's grid revealed): they stay in the square until it goes in
 export function lockMine() { return state.lock != null && (mySide() == null || state.turn === mySide()); }
-export function setNet(status, msg) { net = { status, msg: msg || '' }; noteNet(); }
+export function setNet(status, msg) { net = { status, msg: msg || '' }; noteNet(); if (status === 'error' || status === 'idle') { startBusy = false; startTap = null; startNote = null; } }   // (an error, or out of the room: Start game is a button again)
 function roomLink() { return siteUrl() + '?room=' + state.online.code; }   // (the site's address wherever the game runs: net/platform.js; the app's opens the app again, a Universal Link)
 export function roomRef(path) { return fb.m.ref(fb.db, 'rooms/' + state.online.code + (path ? '/' + path : '')); }
 function presRef(side) { return fb.m.ref(fb.db, isMM() ? `gpresence/${state.online.game}/${side}` : `presence/${state.online.code}/${side}`); }
@@ -152,17 +152,33 @@ export async function dbSetup(patch) {
   try { await fb.m.update(roomRef('setup'), patch); } catch (e) { /* the next change tries again */ }
 }
 // Start: the server makes the match (a games/{id} match, as Find Match's) and points the room at it; both phones follow it there.
-let startBusy = false;
+// The button answers the tap at once ("Starting…", a spinner, no more taps: ui/screens/setup.js reads `starting`), and stays
+// so until the match's record lands (the room's `game`, then the board) or the server says no. The request is safe to
+// send twice: the server takes a `starting` lock on the room and makes one match (functions/index.js startRoom; a second
+// call answers { started: false } and the room's listener brings that phone along). The start's lag (the tap to the
+// server's answer, then to the board) goes to the match log (`note` 'start': the admin's Match inspector).
+let startBusy = false, startTap = null, startNote = null;
+export const starting = () => startBusy;
 export async function startOnline() {
   const o = state.online;
   if (!fb || !isHost() || !lobby || !o.joined || !connected || startBusy) return;
-  startBusy = true;
+  startBusy = true; startTap = Date.now(); render();
+  let ok = false;
   try {
     const r = await call('startRoom', { code: o.code });
-    if (!r.ok && state.online === o) setNet('error', r.reason === 'games' ? 'No mini-game can be dealt with these settings. Turn some on.' : "Couldn't start the match. Try again.");
+    ok = !!(r && r.ok);
+    if (!ok && state.online === o) setNet('error', r.reason === 'games' ? 'No mini-game can be dealt with these settings. Turn some on.' : "Couldn't start the match. Try again.");
+    if (ok) startNote = { lag: Date.now() - startTap, code: o.code };
   } catch (e) { if (state.online === o) setNet('error', "Couldn't start the match. Check your connection and try again."); }
-  startBusy = false;
+  if (!ok || state.online !== o) { startBusy = false; startTap = null; }   // (started: the room's game brings the board, which lets the button go: enterRoomGame)
   if (state.online === o) commit();
+}
+// The match reached from the lobby: the Starting… state ends, the start's timings go to the match log once.
+function startLanded() {
+  const was = startBusy; startBusy = false;
+  if (startNote && startTap) { const n = startNote; startNote = null; matchLog({ k: 'note', what: 'start', lag: n.lag, board: Date.now() - startTap }); }
+  startTap = null;
+  return was;
 }
 
 // ---------- the guest: joins with the code (or the shared link) and takes the free seat ----------
@@ -237,6 +253,7 @@ function onRoomValue(r) {
 // The room's match: the same listeners and calls as a Find Match game (net/matchmaking.js), this phone's seat kept.
 function enterRoomGame(id, mine) {
   const o = state.online;
+  startLanded();                                                  // (Start game's Starting… ends here: the match is the room's now)
   clearTimeout(spotTimer); setSpotTimer(null); clearTimeout(flashTimer); setFlashTimer(null); clearTimeout(holdTimer); setHoldTimer(null);
   clearTimeout(moveTimer); moveWait = null; presentingSeq = null; awayNote = ''; repStop();
   state.stats = null;
@@ -556,5 +573,6 @@ export function setPresUnsub(v) { presUnsub = v; }
 export function setPresence(v) { presence = v; }
 export function setPresentingSeq(v) { presentingSeq = v; }
 export function setRoom(v) { room = v; }
+export function setLobby(v) { lobby = v; }   // (the tests)
 export function setRoomUnsub(v) { roomUnsub = v; }
 export function setTimeoutBusy(v) { timeoutBusy = v; }

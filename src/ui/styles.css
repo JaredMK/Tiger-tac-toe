@@ -3348,3 +3348,10 @@ main.scr.mini:has(.brkw.run) .back { visibility: hidden; pointer-events: none; }
 .tmemr .tpip .tr { gap: 2.5cqw; } .tmemr .tpip .tr b { width: 9cqw; }
 .mmcode.small { border: 3px solid transparent; background-clip: padding-box; }   /* the cracked code's border is there from the start, unseen: the rows under it never move when the code opens */
 .mmcode.small.cracked { border-color: var(--ink); background-clip: border-box; }
+
+/* Start game pressed: the button says Starting… with a small spinner at once, and takes no more taps until the match's
+   board comes (or the server says no): net/room.js startOnline, ui/screens/setup.js. */
+.primary.busy { opacity: .85; display: inline-flex; align-items: center; justify-content: center; gap: 10px; }
+.primary .spinr { width: 18px; height: 18px; border-radius: 50%; border: 3px solid rgba(255, 255, 255, .35); border-top-color: #fff; animation: spinr .8s linear infinite; flex: none; }
+@keyframes spinr { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .primary .spinr { animation: none; border-top-color: rgba(255, 255, 255, .35); } }

@@ -6,13 +6,13 @@ import { makeRng } from '../core/random.js';
 import { PHYS_TYPES, physicsReady } from '../games/shared/physics.js';
 import { setTriviaFlip, triviaFlip } from '../games/trivia/view.js';
 import { SND } from '../audio/sound.js';
-import { NET_MS, call, fb } from './connect.js';
+import { NET_MS, call, connected, fb } from './connect.js';
 import { isMM } from './matchmaking.js';
 import {
-  blocked, moveTimer, moveWait, parseMatch, presentEntry, presentingSeq, room, setMoveTimer,
+  blocked, moveTimer, moveWait, parseMatch, presentEntry, presentingSeq, remoteTurn, room, setMoveTimer,
   setMoveWait, setPresentingSeq, showLatest
 } from './room.js';
-import { RNG, commit, flashTimer, holdTimer, noticeTimer, setFlashTimer, setHoldTimer, setNoticeTimer, state } from '../ui/app.js';
+import { N, RNG, commit, flashTimer, holdTimer, noticeTimer, setFlashTimer, setHoldTimer, setNoticeTimer, state } from '../ui/app.js';
 import { startFx } from '../ui/fx.js';
 import { render } from '../ui/render.js';
 import { physDrop, physLaunch } from '../ui/physics.js';
@@ -81,7 +81,7 @@ function rollbackMove(reason) {
 export let tapEl = null;                                // the control just tapped (set by the tap, read by dbMove)
 export async function dbMove(i, m, rep) {
   const pressed = tapEl; tapEl = null;
-  if (blocked() || !fb || !room || i == null) return false;
+  if (blocked() || !fb || !room || i == null) { tapHeld(i); return false; }   // (never silently: the player hears and reads why, and the match log keeps it)
   setMoveWait(Date.now());
   const shot = isMM() && launchShot(i, m);                       // a physics shot: its motion from now, the server's result to come
   if (isMM() && pressed && !shot) pressed.classList.add('pend'); else render();   // online: the press shows on the control at once (no redraw until the server answers)
@@ -95,6 +95,15 @@ export async function dbMove(i, m, rep) {
   catch (e) { rollbackMove('network'); matchLog({ k: 'reject', q: i, why: String((e && (e.code || e.message)) || 'network').slice(0, 60) }); }
   clearTimeout(moveTimer); setMoveWait(null); render();
   return true;
+}
+// A tap the phone could not send (the move before still on its way, the other side on the move, the line down): the error
+// sound and a short note say so, and the match log keeps why (the admin's Match inspector), so a tap never just dies.
+// (The controls are disabled while the phone is blocked, so this is the odd tap that lands between a change and its redraw.)
+let heldAt = 0;
+function tapHeld(i) {
+  const why = !fb || !room ? 'no-match' : moveWait ? 'sending' : !connected ? 'offline' : remoteTurn() ? 'their-turn' : 'blocked';
+  if (Date.now() - heldAt > 400) { heldAt = Date.now(); SND.play('error'); showNotice(why === 'sending' ? 'Still sending your last move…' : why === 'offline' ? 'No connection' : why === 'their-turn' ? `Waiting for ${N(state.turn)}` : 'Not now', 1200); }
+  matchLog({ k: 'note', what: 'tap', q: i, why, turn: state.turn, scr: state.screen });
 }
 export function moveRejected(reason) {
   SND.play('error');

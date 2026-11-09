@@ -9,6 +9,12 @@ import { RNG, state } from './app.js';
 import { startFx } from './fx.js';
 import { scClockLeft, scTick } from './chaos.js';
 import { runDraft, runEnd } from './runner.js';
+import { dismissFlash, flashLeft } from './turns.js';
+import { repActive } from './replay.js';
+import { physPendOn } from './physics.js';
+import { spotTimer, flashTimer, setSpotTimer } from './app.js';
+import { devError } from '../net/tracking.js';
+import { applyPending } from '../net/room.js';
 
 /* ----- the turn clock: a deadline in server time on the record, so both phones count the same; either may call it ----- */
 export function clockLeft() {
@@ -47,6 +53,7 @@ export function fmtClock(ms) { const sec = Math.ceil(ms / 1000); return `${Math.
 // Runs four times a second: keeps the clock on screen current and, online, calls time when it is up.
 let tickSec = null;
 export function tick() {
+  stuckWatch();
   const w = search.on && document.getElementById('mmwait');
   if (w) w.textContent = fmtClock(Date.now() - search.since);
   const el = document.getElementById('clock');
@@ -101,3 +108,22 @@ export let timeoutTry = { key: null, at: 0 };       // a matchmaking game's last
 
 // Setters for the names other modules reassign (an imported name is read-only there).
 export function setTimeoutTry(v) { timeoutTry = v; }
+
+// A result (state.flash) or a square's glow (state.spot) left on show with nothing to end it: its timer gone (a timer chain
+// broken while the page was in the background, an exception in a view) would leave every tap refused for good (ui/input.js
+// waits for the result to clear). Online, after STUCK_MS past its end with no replay, shot or timer pending, it is cleared
+// as its timer would have, the match log told (devError 'stuck': the admin's Match inspector), and the record read again.
+export const STUCK_MS = 4000;
+let stuckSince = 0;
+function stuckWatch() {
+  if (!state.online || state.sc) { stuckSince = 0; return; }
+  const flashStuck = !!state.flash && !flashTimer && !repActive() && !physPendOn() && flashLeft() <= 0;
+  const spotStuck = !!state.spot && !spotTimer;
+  if (!flashStuck && !spotStuck) { stuckSince = 0; return; }
+  if (!stuckSince) { stuckSince = Date.now(); return; }
+  if (Date.now() - stuckSince < STUCK_MS) return;
+  stuckSince = 0;
+  devError('stuck', `${flashStuck ? 'flash ' + (state.flash.type || '') + ' ' + (state.flash.kind || '') : 'spot'} screen=${state.screen} turn=${state.turn}`);
+  if (spotStuck) { state.spot = null; setSpotTimer(null); }
+  if (flashStuck) dismissFlash(); else applyPending();
+}

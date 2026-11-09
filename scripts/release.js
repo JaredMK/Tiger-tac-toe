@@ -41,6 +41,13 @@ const ask = q => new Promise(res => { const rl = readline.createInterface({ inpu
   console.log('Unit tests (npm test)…');
   if (spawnSync('npm', ['test', '--silent'], { stdio: ['ignore', 'ignore', 'inherit'] }).status !== 0) fail('The tests failed: nothing released.');
   console.log('Unit tests passed.');
+  // Two real phones on the emulators (scripts/smoke-emulator.js): the released mini-games each take a real online move
+  // through the page, the functions, the database and auth running locally (Java and Playwright's Chromium needed).
+  if (process.env.SKIP_EMULATOR_SMOKE) console.log('(The emulator smoke is skipped: SKIP_EMULATOR_SMOKE is set.)');
+  else {
+    console.log('Online smoke on the emulators (npm run smoke:emulator: every released mini-game takes a move through two real phones)…');
+    if (spawnSync('npm', ['run', 'smoke:emulator', '--silent'], { stdio: 'inherit' }).status !== 0) fail('The emulator smoke failed (above): nothing released. (It needs Java and Playwright\'s Chromium: npx playwright install chromium.)');
+  }
   const login = spawnSync('node', [require('node:path').join(__dirname, 'smoke-login.js'), 'production'], { stdio: 'inherit' });   // production's sign-in settings (Google, Apple, email)
   if (login.status !== 0) fail('Production\'s login check failed (above): nothing released.');
   const run = await stagingRun(staging);

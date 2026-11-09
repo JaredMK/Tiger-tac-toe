@@ -11,7 +11,7 @@ import { GAMES, INFO, NO_SAME_PHONE, SC_ONLY } from '../../games/index.js';
 import { connected } from '../../net/connect.js';
 import { noticeSeq } from '../../net/moves.js';
 import { chaosBadge, chaosVisible, scPicked, testBadge, visibleTypes } from '../../net/releases.js';
-import { dbSetup, isHost, net } from '../../net/room.js';
+import { dbSetup, isHost, net, starting } from '../../net/room.js';
 import { advOpen, app, esc, save, state } from '../app.js';
 import { CHEV, ICONS, toonT } from '../art.js';
 import { qBtn } from '../explainer.js';
@@ -95,7 +95,7 @@ export function renderSetup() {
     <div class="adv${advOpen ? ' open' : ''}"><button class="adv-h" data-act="adv" aria-expanded="${advOpen}"><span>Mini-games</span><small>${gamesCount(on, VT.length)}</small><i class="chev">${CHEV}</i></button>
       ${advOpen ? `<div class="games-top"><button class="btn selall" data-act="games-none"${on === 0 ? ' disabled' : ''}>Deselect all</button><button class="btn selall" data-act="games-all"${on === VT.length ? ' disabled' : ''}>Select all</button></div><div class="games">${byName(VT).map(chk).join('')}</div>` : ''}</div>
   </div>
-  <div class="setup-foot"><button class="primary" data-act="start"${ready ? '' : ' disabled'}>Start match</button>${(w => `<small class="warn${w ? '' : modeNote ? ' info' : ''}" role="status">${w || modeNote}</small>`)(setupWarn(s))}</div></main>`;
+  <div class="setup-foot">${host && starting() ? '<button class="primary busy" data-act="start" disabled aria-busy="true" aria-live="polite"><i class="spinr" aria-hidden="true"></i>Starting…</button>' : `<button class="primary" data-act="start"${ready ? '' : ' disabled'}>Start match</button>`}${(w => `<small class="warn${w ? '' : modeNote ? ' info' : ''}" role="status">${w || modeNote}</small>`)(setupWarn(s))}</div></main>`;
 }
 // A brief note in the setup's foot (its reserved line): Human chosen for player 2 while Super Chaos was on
 // switched the mode to Classic.
@@ -127,7 +127,7 @@ export function setGames(change) {
   const n = app.querySelector('.adv-h small'); if (n) n.textContent = gamesCount(on, VT.length);
   const all = app.querySelector('[data-act="games-all"]'); if (all) all.disabled = on === VT.length;
   const none = app.querySelector('[data-act="games-none"]'); if (none) none.disabled = on === 0;
-  const start = app.querySelector('[data-act="start"]'); if (start) start.disabled = !setupReady(s);
+  const start = app.querySelector('[data-act="start"]'); if (start && !start.classList.contains('busy')) start.disabled = !setupReady(s);
   const warn = app.querySelector('.setup-foot .warn'); if (warn) warn.textContent = setupWarn(s);
   dbSetup({ games: restrictGames(Object.assign({}, s.games), VT) });   // (the room never holds a game its host may not deal)
 }
