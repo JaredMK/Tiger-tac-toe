@@ -1,4 +1,5 @@
 // Sniff: its names, its "?" explainer, its icon and its release default.
+import { MODE_TUNE } from '../../core/race.js';
 
 export const info = { name: 'Sniff',        hint: 'Walk the dog, any of 8 ways. Hotter, colder or the same? Find the treasure' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
@@ -6,8 +7,10 @@ export const minVersion = '1.0.0';   // the oldest client version that has this 
 export const category = 'luck';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds (its own form: a dog each)
 export const explainer = { name: 'Sniff', play: 'Move the dog one step, any of 8 ways. You\'ll see if it\'s getting hotter, colder or the same.', win: 'Be the one who finds the treasure.' };
+export const raceExplainer = { name: 'Sniff', play: 'You each have a dog on the same field, both starting on the same spot. Move yours one step, any of 8 ways, to see if it\'s getting hotter, colder or the same. The other dog is out of sight: you see only how many steps it has taken.', win: 'Be the first dog onto the treasure.' };   // Race mode (core/race.js)
 // Its settings (the admin's Mini-game Settings; core/tune.js): read from the square's own values.
 export const TUNE = [
+  MODE_TUNE,
   { k: 'minStart', label: 'Dog starts at least (cells from the treasure, straight line)', def: 3, min: 1, max: 4, step: 1, group: 'Board' },
   { k: 'hold', label: 'Hotter/colder shown for (ms)', def: 1200, min: 600, max: 4000, step: 100, group: 'Timing' },
   { k: 'memory', label: 'Computer remembers (last steps)', def: 3, min: 1, max: 8, step: 1, group: 'Computer' },

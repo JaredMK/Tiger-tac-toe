@@ -5,7 +5,7 @@
 // or a page that scrolls. Screenshots in _shots/minitext/ with "shots".
 const path = require('path'), fs = require('fs'), http = require('http');
 const ROOT = path.join(__dirname, '..'), OUT = path.join(ROOT, '_shots', 'minitext');
-const SIZES = (process.argv[2] || '360x640,430x932').split(',').map(v => v.split('x').map(Number)), ONLY = process.argv[3] && process.argv[3] !== 'shots' ? process.argv[3].split(',') : null, SHOTS = process.argv.includes('shots');
+const SIZES = (process.argv[2] || '360x640,430x932').split(',').map(v => v.split('x').map(Number)), ONLY = process.argv[3] && !['shots', 'race'].includes(process.argv[3]) ? process.argv[3].split(',') : null, SHOTS = process.argv.includes('shots'), RACE = process.argv.includes('race');   // race: deal the race games as races (their Mode setting on)
 fs.mkdirSync(OUT, { recursive: true });
 const MIME = { '.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.woff2': 'font/woff2' };
 const srv = http.createServer((req, res) => { let p = decodeURIComponent(new URL(req.url, 'http://x').pathname); if (p === '/') p = '/index.html'; let f = path.join(ROOT, p); if (p === '/matter.min.js') f = path.join(ROOT, 'node_modules/matter-js/build/matter.min.js'); if (!fs.existsSync(f) || fs.statSync(f).isDirectory()) { res.writeHead(404); return res.end(); } res.writeHead(200, { 'content-type': MIME[path.extname(f)] || 'application/octet-stream' }); fs.createReadStream(f).pipe(res); });
@@ -25,15 +25,16 @@ const srv = http.createServer((req, res) => { let p = decodeURIComponent(new URL
   const all = []; let hint = null;
   for (let k = 0; k < types.length; k += 9) {
     const batch = types.slice(k, k + 9);
-    await p.evaluate(async (batch) => {
+    await p.evaluate(async ([batch, race]) => {
       const E = await import('/src/core/engine.js');
+      if (race) for (const t of E.RACE_TYPES) E.setTune(t, { mode: 'race' });
       state.spot = null; state.flash = null; state.lock = null; state.turn = 'X'; state.winner = null; state.screen = 'board';
       state.squares.forEach((sq, i) => {
         const t = batch[i % batch.length]; const r = E.makeRng('mt-' + t); sq.owner = null; sq.mini = E.newMini(t, r);
         for (let n = 0; n < 4; n++) { try { const p = n % 2 ? 'O' : 'X'; const m = E.randomLegalMove(sq.mini, p, r); if (m == null) break; const res = E.applyMove(sq.mini, p, m, r); if (res && res.outcome && res.outcome !== 'continue' && res.outcome !== 'again') { break; } } catch (e) { break; } }
       });
       render();
-    }, batch);
+    }, [batch, RACE]);
     await p.waitForTimeout(250);
     if (SHOTS) await p.screenshot({ path: path.join(OUT, `board-${W}-${k / 9}.png`) });
     const res = await p.evaluate(() => {

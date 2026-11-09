@@ -1,6 +1,7 @@
 // Sniff: the screen, the miniature, the move's words and sounds, and the inputs.
-import { SNIFF, sniffDirs, sniffStep } from './rules.js';
-import { N, mv, state, waitLine } from '../../ui/app.js';
+import { SNIFF, raceShape, sniffDirs, sniffStep } from './rules.js';
+import { raceSide } from '../../core/race.js';
+import { N, mv, state, viewer, waitLine } from '../../ui/app.js';
 import { arcTally, lateAt } from '../../ui/progress.js';
 import { other } from '../../core/util.js';
 
@@ -31,7 +32,41 @@ function sniffPath(cells, p, fresh, off) {
   return `<g class="strail">${old}${step}${dots}${arrow}</g>`;
 }
 const SNIFF_DOG = '<g class="sdogart"><ellipse cx="-6.2" cy="-1.4" rx="2.6" ry="4.6" transform="rotate(18 -6.2 -1.4)" class="sear"/><ellipse cx="6.2" cy="-1.4" rx="2.6" ry="4.6" transform="rotate(-18 6.2 -1.4)" class="sear"/><circle r="6.6" class="shead"/><ellipse cx="0" cy="2.6" rx="3.6" ry="2.7" class="smuz"/><circle cx="-2.4" cy="-1.6" r=".95" class="seye"/><circle cx="2.4" cy="-1.6" r=".95" class="seye"/><ellipse cx="0" cy="1.6" rx="1.4" ry="1" class="snose"/></g>';
+// Race mode (core/race.js): this phone's own dog and its path on the field (its part), the other dog out of sight; each
+// player's steps in the tallies (the shapes); the other side's move arrives redacted (a.race: their steps after it) and only
+// their count changes. A finished square reviewed shows both dogs and both paths.
+const shapeOf = (mini, p) => (mini.shape && mini.shape[p]) || raceShape(mini, p) || {};
+const stepsOf = (mini, p) => { const sh = shapeOf(mini, p); return Number.isInteger(sh.n) ? sh.n : 0; };
+function sniffRaceTable(mini, a, o, me) {
+  const parts = { X: raceSide(mini, 'X'), O: raceSide(mini, 'O') };   // (in play: this side's own alone; a review: both)
+  const s = a && a.sniff ? a.sniff : null, theirs = a && a.race && a.by !== me ? a : null, turn = o.turn, by = s ? a.by : null;
+  const stepOf = p => (p === by ? s : null);
+  const cells = Array.from({ length: SNIFF.n * SNIFF.n }, (_, c) => { const [x, y] = sniffXY(c); return `<rect x="${x - 10}" y="${y - 10}" width="20" height="20" class="scell${(Math.floor(c / SNIFF.n) + c % SNIFF.n) % 2 ? ' alt' : ''}"/>`; }).join('');
+  const shown = ['X', 'O'].filter(p => parts[p]), twin = shown.length === 2;
+  const paws = shown.map(p => sniffPath(parts[p].path || [parts[p].dog], p, !!stepOf(p), twin ? (p === 'X' ? -1.2 : 1.2) : 0)).join('');   // each dog's own path in its colour; the step playing now draws in
+  const same = twin && parts.X.dog === parts.O.dog;
+  const dog = p => {
+    const st = stepOf(p), [x0, y0] = sniffXY(parts[p].dog), sh = same ? (p === 'X' ? -4 : 4) : 0, dx = x0 + sh, dy = y0, walk = !!st;
+    const [fx, fy] = walk ? sniffXY(st.f) : [x0, y0];
+    return `<g class="sdog ${p}${walk ? ' walk' : ''}" style="--dx:${((fx - dx) / SNIFF_SC).toFixed(1)}px;--dy:${((fy - dy) / SNIFF_SC).toFixed(1)}px;--d:${SNIFF.step}ms" transform="translate(${dx} ${dy}) scale(${SNIFF_SC})"><g class="sdogin"><circle r="9.2" class="sown"/>${SNIFF_DOG}</g></g>`;
+  };
+  const mine = !o.view && me && parts[me] ? parts[me] : null;
+  const moves = o.locked || s || !mine || turn !== me ? '' : sniffDirs(mine.dog).map(d => { const to = sniffStep(mine.dog, d), [x, y] = sniffXY(to), ar = SNIFF_ANG[d];
+    return `<g class="smove" data-act="move" ${mv(d)} role="button" tabindex="0" aria-label="Walk ${SNIFF_WAY[d]}"><rect x="${x - 10}" y="${y - 10}" width="20" height="20" class="shit"/><path class="sarrow" transform="translate(${x} ${y}) rotate(${ar})" d="M0 -4.5 L4 0.5 L1.4 0.5 L1.4 4.5 L-1.4 4.5 L-1.4 0.5 L-4 0.5 Z"/></g>`; }).join('');
+  const fby = s ? (s.found ? by : null) : shown.find(p => parts[p].last && parts[p].last.found) || null, found = !!fby && !!parts[fby];
+  const [cx, cy] = found ? sniffXY(parts[fby].dog) : [0, 0];
+  const chest = found ? `<g transform="translate(${cx + 4} ${cy - 4}) scale(.8)"><g ${lateAt('schest', s ? SNIFF.step : null)}><rect x="-6" y="-3" width="12" height="8" rx="1.5" class="sbox"/><path d="M-6 -3 Q0 -9 6 -3 Z" class="slid"/><rect x="-1.3" y="-1.5" width="2.6" height="3" class="slock"/></g></g>` : '';
+  const r = s ? resOf(s) : null, word = s ? (s.found ? 'Found it!' : r === 'hot' ? 'Hotter!' : r === 'same' ? 'Same' : 'Colder!') : null;
+  const res = s ? `<p ${lateAt('arcres ' + (s.found || r === 'hot' ? 'hot' : r === 'same' ? 'same' : 'cold'), SNIFF.step)} role="status">${word}</p>`
+    : theirs ? `<p class="arcnote srn" role="status"><b class="${theirs.by}">${N(theirs.by)}</b> walked their dog · step ${theirs.race.n}</p>`   // the other side's step: its count alone, never where
+    : o.view ? '<p class="arcnote"></p>'
+    : `<p class="arcnote">${o.locked ? waitLine(turn) : ''}</p>`;
+  const tal = p => arcTally(p, o, `<small class="sstp${theirs && theirs.by === p ? ' fresh' : ''}">${stepsOf(mini, p)} step${stepsOf(mini, p) === 1 ? '' : 's'}</small>`);
+  const order = by === 'X' ? ['O', 'X'] : ['X', 'O'];
+  return `<div class="g-arc srace"><div class="ctals">${tal('X')}${tal('O')}</div><div class="sniff"><svg class="sfield" viewBox="0 0 ${SNIFF.n * 20} ${SNIFF.n * 20}" role="group" aria-label="The field and your dog">${cells}${paws}${order.filter(p => parts[p]).map(dog).join('')}${chest}${moves}</svg>${res}</div></div>`;
+}
 function sniffTable(mini, a, o) {
+  if (mini.race) return sniffRaceTable(mini, a, o, viewer() || o.turn);
   if (mini.dogs) return sniffScTable(mini, a, o);
   const s = a && a.sniff ? a.sniff : null, turn = o.turn;
   const tal = p => arcTally(p, o, '');
@@ -80,6 +115,13 @@ function sniffScTable(mini, a, o) {
   return `<div class="g-arc"><div class="ctals">${arcTally('X', o, '')}${arcTally('O', o, '')}</div><div class="sniff"><svg class="sfield" viewBox="0 0 ${SNIFF.n * 20} ${SNIFF.n * 20}" role="group" aria-label="The field and both dogs">${cells}${paws}${order.map(dog).join('')}${chest}${moves}</svg>${res}</div></div>`;
 }
 export function miniature(mini, final) {
+  if (mini.race && !final) {                                       // a race: the field (no dog: where each is, is theirs alone) and each player's steps
+    const field = `<svg class="tsnf" viewBox="0 0 ${SNIFF.n * 20} ${SNIFF.n * 20}" aria-hidden="true">${Array.from({ length: SNIFF.n * SNIFF.n }, (_, c) => { const [cx, cy] = sniffXY(c); return `<rect x="${cx - 9}" y="${cy - 9}" width="18" height="18" rx="3"/>`; }).join('')}</svg>`;
+    const rows = ['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><span class="tdn">${stepsOf(mini, p)}</span></div>`).join('');
+    return `<div class="tart tsnr trace" aria-label="Race: ${['X', 'O'].map(p => `${p} ${stepsOf(mini, p)} step${stepsOf(mini, p) === 1 ? '' : 's'}`).join(', ')}"><div class="tpic" aria-hidden="true">${field}</div><div class="tpip">${rows}</div></div>`;
+  }
+  if (mini.race) { const d = p => { const part = raceSide(mini, p); if (!part) return ''; const [x, y] = sniffXY(part.dog), same = mini.side.X && mini.side.O && mini.side.X.dog === mini.side.O.dog, sh = same ? (p === 'X' ? -6 : 6) : 0; return `<circle class="tdog ${p}" cx="${x + sh}" cy="${y}" r="6.5"/>`; };   // a finished race square: both dogs where they ended
+    return `<svg class="tsniff" viewBox="0 0 ${SNIFF.n * 20} ${SNIFF.n * 20}" aria-hidden="true">${Array.from({ length: SNIFF.n * SNIFF.n }, (_, c) => { const [cx, cy] = sniffXY(c); return `<rect x="${cx - 9}" y="${cy - 9}" width="18" height="18" rx="3"/>`; }).join('')}${d('X')}${d('O')}</svg>`; }
   if (mini.dogs) {
     const line = p => `<polyline class="tpath ${p}" points="${mini.paths[p].map(c => sniffXY(c).map(v => v + (mini.paths[p].length && p === 'X' ? -2 : 2)).join(',')).join(' ')}"/>`;
     const dot = p => { const [x, y] = sniffXY(mini.dogs[p]), sh = mini.dogs.X === mini.dogs.O ? (p === 'X' ? -6 : 6) : 0; return `<circle class="tdog ${p}" cx="${x + sh}" cy="${y}" r="6.5"/>`; };
@@ -92,6 +134,7 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
 }
 export function moveText(f, who) {
   if (f.scr && f.scr.steps) return ['X', 'O'].filter(p => f.scr.steps[p]).map(p => `${N(p)}: ${f.scr.steps[p].found ? 'found it!' : resOf(f.scr.steps[p]) === 'hot' ? 'hotter' : resOf(f.scr.steps[p]) === 'same' ? 'the same' : 'colder'}`).join(' · ');
+  if (f.race && !f.sniff) return `${who} walked their dog · step ${f.race.n}`;   // the other side's step in a race: its count alone
   return f.sniff ? `${who} walked ${f.sc ? 'their' : 'the'} dog: ${f.sniff.found ? 'found it!' : resOf(f.sniff) === 'hot' ? 'hotter' : resOf(f.sniff) === 'same' ? 'the same' : 'colder'}` : `${who} walked the dog`;
 }
 export function sounds(f, add, won, mini, last) {
@@ -100,5 +143,6 @@ export function sounds(f, add, won, mini, last) {
     ['X', 'O'].filter(p => f.scr.steps[p]).forEach((p, k) => { const st = f.scr.steps[p], t = SNIFF.step + k * 140; if (st.found) { add('dig', t); add('sparkle', t + 250); } else add(resOf(st) === 'hot' ? 'higher' : resOf(st) === 'same' ? 'hiloBlip' : 'lower', t); });
     return;
   }
+  if (!f.sniff && f.race) { add('hop', 0); add('hop', Math.round(SNIFF.step * 0.5)); if (won) { add('dig', SNIFF.step); add('sparkle', SNIFF.step + 250); } return; }   // the other side's step in a race: the paws alone (hotter or colder is theirs)
   if (f.sniff) { add('hop', 0); add('hop', Math.round(SNIFF.step * 0.5)); if (f.sniff.found) { add('dig', SNIFF.step); add('sparkle', SNIFF.step + 250); } else add(resOf(f.sniff) === 'hot' ? 'higher' : resOf(f.sniff) === 'same' ? 'hiloBlip' : 'lower', SNIFF.step); } return;   // the dog trots (its paws), then hotter, colder or the same, or it digs up the chest
 }

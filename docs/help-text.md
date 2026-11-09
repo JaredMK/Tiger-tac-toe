@@ -37,7 +37,7 @@ Text: Minutes each player has for the whole game. +5s is added after each move. 
 
 # Mini-games
 
-Each mini-game's "?" explainer, alphabetical: its category, then Play and Win. "Super Chaos" lines appear only where the game's rules differ there.
+Each mini-game's "?" explainer, alphabetical: its category, then Play and Win. "Super Chaos" lines appear only where the game's rules differ there; "Race" lines where the game has a Race mode (shown while the admin has it on).
 
 ## Category labels [labels]
 Category luck: More luck
@@ -99,6 +99,8 @@ Play: Guess the 4-colour code. Black marker means right colour and spot; white m
 Win: Crack the code.
 Super Chaos Play: Guess the 4-colour code. Black marker means right colour and spot; white marker means right colour, wrong spot.
 Super Chaos Win: Crack the code.
+Race Play: Guess the 4-colour code. Black marker means right colour and spot; white marker means right colour, wrong spot. The same code for both, but your guesses are yours alone: you see only the other player's markers, never their colours.
+Race Win: Crack the code first.
 
 ## Coin Flip [coins]
 Category: More luck
@@ -134,6 +136,8 @@ Win: Beat all four patterns.
 Category: More brain
 Play: Flip two cards. Matching pairs in the deck: {pairs}.
 Win: Find a matching pair.
+Race Play: Flip two cards of your own copy of the deck. What you turn up is yours alone to remember, and the other player's flips show you nothing but their count. Matching pairs in the deck: {pairs}.
+Race Win: Find a matching pair first. The cards lie the same way for both of you.
 
 ## Five Letters [wordle]
 Category: More brain
@@ -141,6 +145,8 @@ Play: Guess a 5-letter word. Green is correct letter placement, yellow is in the
 Win: Guess the word. Use up {limit} guesses and you lose the square.
 Super Chaos Play: Guess a 5-letter word.
 Super Chaos Win: Guess the word. Use up {limit} guesses and you lose the square.
+Race Play: Guess a 5-letter word. Green is correct letter placement, yellow is in the word but different position, grey isn't in it. Your guesses and colours are yours alone: you see only the colours of the other player's rows, never their letters.
+Race Win: Guess the word first. Use up {limit} guesses and you lose the square.
 
 ## Flap [flap]
 Category: More skill
@@ -168,6 +174,8 @@ Play: Guess a letter. Got one right? Go again.
 Win: Reveal the last letter.
 Super Chaos Play: Guess a letter. Got one right? Go again.
 Super Chaos Win: Reveal the last letter.
+Race Play: Guess a letter. Got one right? Go again. Your letters are yours alone: you see only which blanks the other player has filled and how many letters they got wrong.
+Race Win: Reveal the last letter first.
 
 ## Headcount [headcount]
 Category: More brain
@@ -185,6 +193,8 @@ Play: Guess a number from 1 to {hi}. You'll be told higher or lower.
 Win: Guess it. Use up {limit} guesses and you lose the square.
 Super Chaos Play: Guess a number from 1 to {hi}. You'll be told higher or lower.
 Super Chaos Win: Guess it. Use up {limit} guesses and you lose the square.
+Race Play: Guess a number from 1 to {hi}. Higher or lower is told to you alone: your guesses are yours, theirs are theirs. You see only how many guesses the other player has used and how close they are.
+Race Win: Guess it first. Use up {limit} guesses and you lose the square.
 
 ## Krabs [craps]
 Category: More luck
@@ -228,6 +238,8 @@ Play: Pick what comes next, or what's missing. Wrong answers get crossed out.
 Win: Get {goal} right.
 Super Chaos Play: Pick what comes next, or what's missing.
 Super Chaos Win: Get {goal} right.
+Race Play: Pick what comes next, or what's missing. Your picks are yours alone: a wrong pick is crossed out on your card only, and you see only whether the other player got it.
+Race Win: Be the first to pick right.
 
 ## Peg Drop [plinko]
 Category: More luck
@@ -282,6 +294,8 @@ Play: Fire at a square. Hit? Fire again.
 Win: Sink the ship.
 Super Chaos Play: Fire at a square. Hit? Fire again.
 Super Chaos Win: Hit its last square. If you both do in the same round, the square resets.
+Race Play: Fire at a square on your own sea. Hit? Fire again. The same ship hides in both seas, but your shots are yours alone: you see only how many hits and misses the other player has.
+Race Win: Sink the ship first.
 
 ## Seating [seating]
 Category: More brain
@@ -319,6 +333,8 @@ Play: Move the dog one step, any of 8 ways. You'll see if it's getting hotter, c
 Win: Be the one who finds the treasure.
 Super Chaos Play: You each have a dog, both starting in the middle. Move yours one step, any of 8 ways, to see if it's getting hotter, colder or the same.
 Super Chaos Win: Be the first dog onto the treasure.
+Race Play: You each have a dog on the same field, both starting on the same spot. Move yours one step, any of 8 ways, to see if it's getting hotter, colder or the same. The other dog is out of sight: you see only how many steps it has taken.
+Race Win: Be the first dog onto the treasure.
 
 ## Standoff Grid [clash]
 Category: More brain
@@ -346,6 +362,8 @@ Play: Dig a square. It tells you if the treasure is hot, warm, cool or cold. Ste
 Win: Dig up the treasure.
 Super Chaos Play: Dig a square. It tells you if the treasure is hot, warm, cool or cold. Steps count up, down, left and right only, not diagonally. Both digs join the map when the round ends.
 Super Chaos Win: Dig up the treasure.
+Race Play: Dig a square on your own map. It tells you alone if the treasure is hot, warm, cool or cold. Steps count up, down, left and right only, not diagonally. You see only how many digs the other player has made and how hot their last one was.
+Race Win: Dig up the treasure first. It is buried in the same place for both of you.
 
 ## Trivia [trivia]
 Category: More brain
@@ -353,6 +371,8 @@ Play: Answer the question.
 Win: Get {goal} right.
 Super Chaos Play: Answer the question.
 Super Chaos Win: Get {goal} right.
+Race Play: Answer the question. Your picks are yours alone: a wrong answer is crossed out on your card only, and you see only whether the other player got it right.
+Race Win: Be the first to answer right.
 
 ## War [war]
 Category: More luck

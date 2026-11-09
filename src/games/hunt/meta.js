@@ -1,4 +1,5 @@
 // Treasure Hunt: its names, its "?" explainer, its icon and its release default.
+import { MODE_TUNE } from '../../core/race.js';
 
 export const info = { name: 'Treasure Hunt', hint: 'Dig a cell: hot, warm, cool or cold. Dig up the treasure to win' };
 export const release = 'released';   // the default (the admin's dashboard can change it)
@@ -6,9 +7,11 @@ export const minVersion = '1.0.0';   // the oldest client version that has this 
 export const category = 'luck';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Treasure Hunt', play: 'Dig a square. It tells you if the treasure is hot, warm, cool or cold. Steps count up, down, left and right only, not diagonally.', win: 'Dig up the treasure.' };
+export const raceExplainer = { name: 'Treasure Hunt', play: 'Dig a square on your own map. It tells you alone if the treasure is hot, warm, cool or cold. Steps count up, down, left and right only, not diagonally. You see only how many digs the other player has made and how hot their last one was.', win: 'Dig up the treasure first. It is buried in the same place for both of you.' };   // Race mode (core/race.js)
 export const scExplainer = { name: 'Treasure Hunt', play: 'Dig a square. It tells you if the treasure is hot, warm, cool or cold. Steps count up, down, left and right only, not diagonally. Both digs join the map when the round ends.', win: 'Dig up the treasure.' };   // in Super Chaos
-// Its settings (the admin's Mini-game Settings; core/tune.js): dealt into each square (the grid).
+// Its settings (the admin's Mini-game Settings; core/tune.js): dealt into each square (the grid, the mode).
 export const TUNE = [
+  MODE_TUNE,
   { k: 'n', label: 'Grid size (cells across)', def: 6, min: 4, max: 8, step: 1, group: 'Board' },
   { k: 'miss', label: 'Computer mistake rate (%)', def: 0, min: 0, max: 60, step: 5, group: 'Computer' },
 ];

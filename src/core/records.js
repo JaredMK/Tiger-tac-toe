@@ -185,6 +185,10 @@ export function applyOnlinePick(rec, side, i, card) {
   const same = full.pickSq === i && full.pick === card;
   full.pick = card == null || same ? null : card;
   full.pickSq = full.pick == null ? null : i;
+  // A race: the picked card's face is the picker's alone (their part's `faces`, in their side of the record), never the
+  // public state's (the rules' `hide` shows no pick in a race: core/race.js, the Online rule).
+  const part = full.pick != null && sq.mini.race && sq.mini.side && sq.mini.side[side], c = part && sq.mini.cards && sq.mini.cards[full.pick];
+  if (part && c) { if (!Array.isArray(part.faces)) part.faces = new Array(9).fill(null); part.faces[full.pick] = { s: c.s, c: c.c }; }
   return { ok: true, rec: matchRecord(full) };
 }
 // A fresh match for a room: the names, the mini-games and the time per turn from the lobby.

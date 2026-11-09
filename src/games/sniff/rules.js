@@ -1,5 +1,6 @@
 // Sniff: the rules (pure: no page, no clock; the server runs the same code).
 import { needRng, randInt } from '../../core/random.js';
+import { raceDealt, raceSide } from '../../core/race.js';
 import { tune, tuneLive } from '../../core/tune.js';
 
 // ---------- Sniff ----------
@@ -10,6 +11,10 @@ import { tune, tuneLive } from '../../core/tune.js';
 // show while it plays, then they are gone. The square keeps only the last 3 steps (who made each, and which it
 // was), for the computer, which remembers that much. Whoever walks the dog onto the treasure wins the square.
 // Online the server keeps the treasure.
+// Race mode (core/race.js): the same field, treasure and start for both, but a dog each (`mini.side[p]`: { dog, path (the
+// cells it has stood on, the start first), trail (its last few steps, the computer's memory), last }), the other's never
+// seen: the other side sees only how many steps they have taken (raceShape: { n }). Like Super Chaos's dogs (scCreate),
+// each player's own.
 export const SNIFF = { n: 7, minStart: 3, step: 420, hold: 1200, memory: 3 };   // (minStart, hold, memory: the defaults of its settings, TUNE in meta.js)
 const sniffMem = mini => tune(mini).memory || SNIFF.memory;           // the steps a square keeps: its own setting
 export const SNIFF_DIRS = { N: [-1, 0], NE: [-1, 1], E: [0, 1], SE: [1, 1], S: [1, 0], SW: [1, -1], W: [0, -1], NW: [-1, -1] };
@@ -50,13 +55,36 @@ export function sniffPick(pm, rng) {
   }
   return { move: best[randInt(rng, best.length)], q: 0 };
 }
-export function create(type, rng) {   // the treasure (hidden online), and the dog at least 3 steps from it, as the crow flies
+export function create(type, rng, opts) {   // the treasure (hidden online), and the dog at least 3 steps from it, as the crow flies
   const r = needRng(rng), treasure = randInt(r, SNIFF.n * SNIFF.n), cells = Array.from({ length: SNIFF.n * SNIFF.n }, (_, c) => c);
   const far = cells.filter(c => sniffDist(c, treasure) >= tuneLive(type).minStart);   // (on 7x7 every cell has some at least 4 away)
   const dog = far[randInt(r, far.length)];
+  if (raceDealt(type, opts)) return { type, g: SNIFF.n, treasure, start: dog, race: true, side: { X: { dog, path: [dog], trail: [], last: null }, O: { dog, path: [dog], trail: [], last: null } } };   // a race: a dog each, both from the start
   return { type, g: SNIFF.n, treasure, dog, start: dog, trail: [], last: null };
 }
+// Where p's dog lives: p's own side of a race square (null for a side this copy has not got), else nothing (the shared dog).
+export const sniffPart = (mini, p) => (mini && mini.race ? raceSide(mini, p) : null);
+// Race: a side's progress for anyone to see: the steps its dog has taken (never where it is).
+export function raceShape(mini, p) {
+  const part = raceSide(mini, p);
+  return part ? { n: Math.max(0, (part.path || []).length - 1) } : {};
+}
+export function raceFlash(f, mini) { return Object.assign({ by: f.by }, raceShape(mini, f.by)); }
+function raceWalk(mini, p, m) {                   // a race: p's own dog one step, hotter, colder or the same by its own distance; onto the treasure: found
+  const part = raceSide(mini, p);
+  if (!part) return { ok: false, reason: 'bad' };
+  const from = part.dog, to = typeof m === 'string' ? sniffStep(from, m) : null;
+  if (to == null) return { ok: false, reason: 'bad' };
+  if (!Number.isInteger(mini.treasure)) return { ok: false, reason: 'secret' };
+  const res = sniffRes(from, to, mini.treasure), hot = res === 'hot', found = to === mini.treasure;
+  part.dog = to; part.path = (part.path || [from]).concat(to);
+  part.trail = (part.trail || []).concat({ f: from, t: to, by: p, r: res, hot: hot ? 1 : 0 }).slice(-sniffMem(mini));
+  part.last = { by: p, f: from, t: to, hot, res, found };
+  if (found) return { ok: true, outcome: 'win', note: 'found' };
+  return { ok: true, outcome: 'continue', note: res };
+}
 export function apply(mini, p, m, rng, idx) {   // the dog one step: hotter, colder or the same; onto the treasure: found
+  if (mini.race) return raceWalk(mini, p, m);
   if (mini.dogs) return scWalk(mini, p, m);
   const to = typeof m === 'string' ? sniffStep(mini.dog, m) : null;
   if (to == null) return { ok: false, reason: 'bad' };
@@ -69,14 +97,16 @@ export function apply(mini, p, m, rng, idx) {   // the dog one step: hotter, col
 }
 export function publicView(mini) {
   const was = mini.was ? { was: mini.was } : {};                 // (a square from the 5x5 field: the computer's to know)
+  if (mini.race) return { type: 'sniff', g: mini.g, ...was, start: mini.start, race: true, side: mini.side };   // (core/minis.js publicMini keeps one side's own part alone and adds both shapes)
   if (mini.dogs) return { type: 'sniff', g: mini.g, ...was, dogs: Object.assign({}, mini.dogs), paths: { X: mini.paths.X.slice(), O: mini.paths.O.slice() }, trails: { X: mini.trails.X.map(t => Object.assign({}, t)), O: mini.trails.O.map(t => Object.assign({}, t)) } };
   return { type: 'sniff', g: mini.g, ...was, dog: mini.dog, start: mini.start, trail: (mini.trail || []).slice(-sniffMem(mini)).map(t => Object.assign({}, t)) };   // never the treasure; the last few steps
 }
 export function randomMove(mini, p, rng, from, empties) {
-  return from(sniffDirs(mini.dogs ? mini.dogs[p] : mini.dog));
+  const part = sniffPart(mini, p);
+  return from(sniffDirs(mini.race ? (part ? part.dog : mini.start) : mini.dogs ? mini.dogs[p] : mini.dog));
 }
 export function moveFlash(m, p, range, bjFrom, mini, flash) {
-  const l = mini.last, hold = tune(mini).hold; flash.sniff = { f: l.f, t: l.t, hot: l.hot, res: l.res || (l.hot ? 'hot' : 'cold'), found: l.found };
+  const l = mini.race ? (raceSide(mini, p) || {}).last : mini.last, hold = tune(mini).hold; flash.sniff = { f: l.f, t: l.t, hot: l.hot, res: l.res || (l.hot ? 'hot' : 'cold'), found: l.found };
   if (hold && hold !== SNIFF.hold) flash.hold = hold;            // (the admin's setting: how long the word shows)
   return;
 }
@@ -98,6 +128,7 @@ export function sniffUpgrade(mini) {
   const step = s => Object.assign({}, s, { f: at(s.f), t: at(s.t) });
   for (const k of ['treasure', 'dog', 'start']) if (Number.isInteger(mini[k])) mini[k] = at(mini[k]);
   if (Array.isArray(mini.trail)) mini.trail = mini.trail.map(step);
+  if (mini.side) for (const p of ['X', 'O']) { const sd = mini.side[p]; if (!sd) continue; sd.dog = at(sd.dog); sd.path = (sd.path || []).map(at); sd.trail = (sd.trail || []).map(step); if (sd.last) sd.last = Object.assign({}, sd.last, { f: at(sd.last.f), t: at(sd.last.t) }); }
   if (mini.dogs) for (const p of ['X', 'O']) { mini.dogs[p] = at(mini.dogs[p]); mini.paths[p] = (mini.paths[p] || []).map(at); mini.trails[p] = (mini.trails[p] || []).map(step); }
   if (mini.last) mini.last = Object.assign({}, mini.last, { f: at(mini.last.f), t: at(mini.last.t) });
   mini.g = SNIFF.n; mini.was = 5;   // (was: the computer knows the treasure is in the middle five, and that its start rule was another)
@@ -117,6 +148,7 @@ export function scCreate(type, rng) {
 // Both walked their dogs in the same round: the two steps play together at the round's end (resolve), in each
 // player's own view: both dogs trot from where the round began, each with its own word.
 export function scMerge(m, c) {
+  if (m.race) { for (const p of c.played) m.side[p] = c.forks[p].side[p]; return; }   // (a race square keeps each side's own)
   if (c.played.length !== 2) return undefined;
   const pre = JSON.parse(JSON.stringify(m)), steps = {};
   for (const p of c.played) {

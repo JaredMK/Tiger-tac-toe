@@ -1,24 +1,33 @@
 // Sniff: the computer's play.
 import { randInt } from '../../core/random.js';
 import { tune } from '../../core/tune.js';
-import { SNIFF, SNIFF_MID, sniffCands, sniffDirs, sniffDist, sniffPick, sniffRes, sniffStep, sniffSteps } from './rules.js';
+import { SNIFF, SNIFF_MID, sniffCands, sniffDirs, sniffDist, sniffPart, sniffPick, sniffRes, sniffStep, sniffSteps } from './rules.js';
 
 // Super Chaos: a dog each. The computer walks its own, from what both players' last few steps showed (each
 // was shown in its replay), never onto the middle or a cell either dog has stood on.
+// Race mode (core/race.js): the computer's own dog alone (its part, pm.side[me]: its dog, its path and its last few steps), the
+// start still the dealt one (at least minStart from the treasure); the other side is its shape (its steps), from which its
+// needs are guessed from the start; a step of its own tells the other side nothing (solo, as Super Chaos's dogs).
 // A square moved up from the 5x5 field (was: 5): its treasure is in the middle five rows and columns, never the outer ring.
 const RING = Array.from({ length: SNIFF.n * SNIFF.n }, (_, c) => c).filter(c => { const r = Math.floor(c / SNIFF.n), k = c % SNIFF.n; return !r || !k || r === SNIFF.n - 1 || k === SNIFF.n - 1; });
 const ring = pm => (pm.was === 5 ? RING : []);
-const own = (pm, p) => (pm.dogs ? { dog: pm.dogs[p], trail: pm.trails.X.concat(pm.trails.O), not: [SNIFF_MID].concat(pm.paths.X, pm.paths.O, ring(pm)) } : pm.was === 5 ? Object.assign({}, pm, { not: (pm.not || []).concat(RING) }) : pm);
+const own = (pm, p) => (pm.race ? (part => (part ? { dog: part.dog, trail: part.trail || [], not: (part.path || []).concat(ring(pm)), start: pm.start, was: pm.was } : null))(sniffPart(pm, p)) : pm.dogs ? { dog: pm.dogs[p], trail: pm.trails.X.concat(pm.trails.O), not: [SNIFF_MID].concat(pm.paths.X, pm.paths.O, ring(pm)) } : pm.was === 5 ? Object.assign({}, pm, { not: (pm.not || []).concat(RING) }) : pm);
 
 export function needs(pm, p) {   // the steps to the nearest cell it may be in (diagonals count one), and what is still unknown
-  pm = own(pm, p);
+  const race = !!pm.race, sh = race && pm.shape ? pm.shape[p] : null, me = own(pm, p);
+  if (race && !me) {                                             // a race square's other side: its shape alone, so from the start as a fresh dog, a little less for every step taken
+    const fresh = { dog: pm.start, trail: [], not: ring(pm) }, c0 = sniffCands(fresh), d0 = c0.length ? Math.min(...c0.map(x => sniffSteps(fresh.dog, x))) : 1;
+    return Math.max(1, d0 + Math.log2(Math.max(1, c0.length)) * 0.8 - ((sh && sh.n) || 0) * 0.25);
+  }
+  pm = me;
   const c = sniffCands(pm), d = c.length ? Math.min(...c.map(x => sniffSteps(pm.dog, x))) : 1; return Math.max(1, d + Math.log2(Math.max(1, c.length)) * 0.8);
 }
 export function best(pm, me, rng, style, ctx) {
   const miss = tune(pm).miss || 0;                               // (the admin's mistake rate: a step any way)
-  if (miss && rng() * 100 < miss) { const ds = sniffDirs(own(pm, me).dog); return { move: ds[randInt(rng, ds.length)], q: 0, shared: !pm.dogs }; }
-  if (ctx && ctx.level === 'hard') { const h = sniffHard(pm, own(pm, me), ctx); if (h) return h; }
-  const b = sniffPick(own(pm, me), rng); return { move: b.move, q: b.q, shared: !pm.dogs };   // (Super Chaos: its step walks its own dog only)
+  const solo = !!pm.dogs || !!pm.race, mine = own(pm, me) || { dog: pm.start, trail: [], not: [] };   // (a race: its own dog; Super Chaos: the same)
+  if (miss && rng() * 100 < miss) { const ds = sniffDirs(mine.dog); return { move: ds[randInt(rng, ds.length)], q: 0, shared: !solo }; }
+  if (ctx && ctx.level === 'hard') { const h = sniffHard(pm, mine, ctx); if (h) return h; }
+  const b = sniffPick(mine, rng); return { move: b.move, q: b.q, shared: !solo };   // (Super Chaos, a race: its step walks its own dog only)
 }
 
 // ---- Hard: the race for the treasure ----
@@ -48,9 +57,9 @@ function farTable(minStart) {
   return (FAR[minStart] = { most, far });
 }
 function sniffHard(pm, me, ctx) {
-  const solo = !!pm.dogs, W = new Float64Array(NN).fill(1);
+  const solo = !!pm.dogs || !!pm.race, W = new Float64Array(NN).fill(1);
   let cands = sniffCands(me);
-  if (!solo && Number.isInteger(pm.start) && pm.was !== 5) {                     // a match: the start's say
+  if (!pm.dogs && Number.isInteger(pm.start) && pm.was !== 5) {                  // a match (a race too): the start's say
     const T = farTable(Math.max(1, tune(pm).minStart || SNIFF.minStart));
     cands = cands.filter(c => c !== pm.start && sniffDist(pm.start, c) >= T.most[c] - 1e-9);
     for (let c = 0; c < NN; c++) W[c] = 1 / T.far[c];
