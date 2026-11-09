@@ -109,7 +109,7 @@ Win: All {n} coins show your side.
 
 ## Cup Pong [pong]
 Category: More skill
-Play: Swipe to throw.
+Play: Flick up to throw: aim with the angle, throw harder with a faster flick.
 Win: Sink all 3 of your cups.
 
 ## Dash [dash]
@@ -224,8 +224,8 @@ Super Chaos Win: Sink your ball.
 
 ## Muncher [muncher]
 Category: More skill
-Play: Tap Start, then swipe to steer through the maze and eat the dots. A spook catches you and the run ends, but the dots you ate stay eaten.
-Win: Eat the target number of dots first.
+Play: Tap Start, then swipe to steer through the maze and eat the dots. A turn pressed early is taken at the next opening; the side tunnels lead round to the other side. A power pellet turns the spooks blue for a moment: eat one for {ghostDots} dots. A spook catches you and the run ends, but what you ate stays eaten.
+Win: Eat {target} dots first.
 
 ## Odd One Out [oddone]
 Category: More skill
@@ -399,6 +399,12 @@ The pop-up's fixed labels, Credits and the staging notices.
 Play label: Play
 Win label: Win
 Close hint: Tap anywhere to close
+
+## Practice (How to Play) [practice]
+Practice button: Practice
+Back button: Back to How to Play
+Practice again: Practice again
+End screen back: Back to How to Play
 
 ## Credits [credits]
 Trivia: <p>Trivia questions from the <a href="https://opentdb.com" target="_blank" rel="noopener noreferrer">Open Trivia Database</a>, opentdb.com, <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a>.</p>
