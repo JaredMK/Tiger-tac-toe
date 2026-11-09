@@ -1,7 +1,7 @@
 // Rendering: everything drawn from state, kept in place (no element is replaced when it need not be).
 import { busFly } from '../games/bus/view.js';
 import { refusedNote } from '../net/moves.js';
-import { devWatch } from '../net/tracking.js';
+import { devError, devWatch } from '../net/tracking.js';
 import { app, entering, esc, lastView, menuOpen, setEntering, setLastView, setMenuOpen, state } from './app.js';
 import { renderBoard, reviewSquares } from './board.js';
 import { scJointFrame, scPopup, scShown } from './chaos.js';
@@ -12,7 +12,7 @@ import { anchorFx, animate, fx, fxAt, startFx, sweepBursts, zoomPrep, zoomRun } 
 import { refocus, typingIn } from './keyboard.js';
 import { renderMini } from './mini.js';
 import { physPaint } from './physics.js';
-import { repMark } from './replay.js';
+import { repMark, repStop } from './replay.js';
 import { runPaint } from './runner.js';
 import { renderGate, renderLogin, renderUsername, renderVerify } from './screens/account.js';
 import { gateOn } from '../net/accounts.js';
@@ -29,7 +29,30 @@ import { renderHeader, renderReactDock } from './turnbar.js';
 import { reactOn } from '../net/reactions.js';
 import { playFlash } from './turns.js';
 
+// A screen that throws while drawing must never leave the page stuck on what it showed before (a square's view, a
+// result): the error goes to the device log (`devError('render')`, the admin's Match inspector), what was on show
+// (a result, a glow, a replay, the square) is let go and the match drawn again from its board; a board that throws
+// too shows a plain card with Main menu, so there is always a way on. (November 2026: a claimed Race square's
+// miniature threw and the board never came back from the square.)
+let rendering = 0, renderFails = 0;
 export function render() {
+  if (rendering) return;                                        // (a render from inside a render: the one under way draws the state as it stands)
+  rendering = 1;
+  try { renderNow(); renderFails = 0; }
+  catch (e) {
+    renderFails++;
+    devError('render', `${state.screen}${state.zoom != null ? ' ' + state.zoom : ''}${state.flash ? ' flash ' + (state.flash.type || '') : ''}: ${e && e.message}`);
+    if (renderFails === 1 && !state.winner) {                   // what was on show, let go: the board again, the square's result or glow gone
+      state.flash = null; state.done = null; state.spot = null; state.screen = ['board', 'mini', 'review-mini'].includes(state.screen) ? 'board' : state.screen; state.zoom = null;
+      repStop();
+      try { renderNow(); renderFails = 0; } catch (e2) { renderFails++; fallback(e2); }
+    } else fallback(e);
+  } finally { rendering = 0; }
+}
+function fallback(e) {
+  app.innerHTML = `<main class="scr"><div class="card" style="margin:24px auto;max-width:360px;padding:20px;text-align:center"><b>Something went wrong drawing this screen.</b><p class="muted" style="margin:10px 0 16px">${esc(String(e && e.message || e).slice(0, 120))}</p><button class="primary" data-act="${state.online ? 'leave' : 'menu'}">Main menu</button></div></main>`;
+}
+function renderNow() {
   // The in-game menu belongs to the game's screens (the board and a square, live or under review after the
   // match): it closes when the screen leaves them (the results screen has no menu card to close it, so a
   // menu left open would refuse every tap there). After the match, View board's Menu opens it as ever.

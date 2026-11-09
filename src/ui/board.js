@@ -6,6 +6,7 @@ import { fullState } from '../core/records.js';
 import { ANIM } from '../core/timer.js';
 import { INFO, viewOf } from '../games/index.js';
 import { isMM } from '../net/matchmaking.js';
+import { devError } from '../net/tracking.js';
 import { parseMatch, remoteTurn, room } from '../net/room.js';
 import { N, cpuPlays, esc, state } from './app.js';
 import { CHEV, CPU_ICON, ICONS, toon } from './art.js';
@@ -121,8 +122,13 @@ function drawOver(at) {
 }
 // Miniatures: public information only. Hidden words, numbers, cards and the ship never appear here,
 // except that a claimed Find the Pair square shows the pair that won it.
+const thumbErrs = new Set();
 function thumb(mini, final) {
   const game = viewOf(mini.type);
-  if (game.miniature) return game.miniature(isRace(mini) && !final ? raceView(mini, null) : mini, final);   // (a race square: both shapes, nobody's guesses)
-  return '';
+  if (!game.miniature) return '';
+  try { return game.miniature(isRace(mini) && !final ? raceView(mini, null) : mini, final); }   // (a race square: both shapes, nobody's guesses)
+  catch (e) {                                                                               // a square's drawing failed: the board still stands (its name alone there), the error logged once a game
+    if (!thumbErrs.has(mini.type)) { thumbErrs.add(mini.type); devError('miniature', `${mini.type}${final ? ' final' : ''}${isRace(mini) ? ' race' : ''}: ${e && e.message}`); }
+    return '';
+  }
 }

@@ -41,6 +41,8 @@ const ask = q => new Promise(res => { const rl = readline.createInterface({ inpu
   console.log('Unit tests (npm test)…');
   if (spawnSync('npm', ['test', '--silent'], { stdio: ['ignore', 'ignore', 'inherit'] }).status !== 0) fail('The tests failed: nothing released.');
   console.log('Unit tests passed.');
+  console.log('Flow tests (npm run test:flows: every mini-game\'s win comes back to the board, in every mode)…');
+  if (spawnSync('npm', ['run', 'test:flows', '--silent'], { stdio: ['ignore', 'ignore', 'inherit'] }).status !== 0) fail('The flow tests failed: nothing released.');
   // Two real phones on the emulators (scripts/smoke-emulator.js): the released mini-games each take a real online move
   // through the page, the functions, the database and auth running locally (Java and Playwright's Chromium needed).
   if (process.env.SKIP_EMULATOR_SMOKE) console.log('(The emulator smoke is skipped: SKIP_EMULATOR_SMOKE is set.)');

@@ -84,6 +84,8 @@ jobs:
           echo "Deploying to $TARGET: ${only:-nothing}"
       - name: Unit tests
         run: npm test
+      - name: Flow tests (every mini-game's win comes back to the board, in every mode)
+        run: npm run test:flows
       - name: Server tests on the Firebase Emulator Suite
         run: npm run test:emulators
       - name: Credentials

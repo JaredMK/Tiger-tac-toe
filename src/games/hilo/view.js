@@ -16,6 +16,10 @@ export function miniature(mini, final) {
   if (mini.race && !final) {                                                              // a race: each player's guesses used and how close they are (the numbers are theirs alone)
     return `<div class="thl thilo trace" aria-label="Race: ${['X', 'O'].map(p => `${p} ${hiloLimit(mini) ? hiloLeft(mini, p) + ' guesses left' : ''} ${heatOf(mini, p) ? HEAT[heatOf(mini, p)] : 'no guess yet'}`).join(', ')}">${['X', 'O'].map(p => `<span class="trr"><b class="${p}">${p}</b>${hiloLimit(mini) ? pips(mini, p) : ''}${heatChip(mini, p)}</span>`).join('')}</div>`;
   }
+  if (mini.race) {                                                                        // a race square claimed: both players' guesses as ticks on the whole line, the hit named (its parts are the record's, or the winner's alone here)
+    const parts = ['X', 'O'].map(p => mini.side && mini.side[p]).filter(Boolean), guesses = parts.flatMap(q => q.guesses || []), hit = guesses.find(g => g.res === 'hit');
+    mini = Object.assign({}, mini, { lo: hit ? hit.n : HILO.lo, hi: hit ? hit.n : hiloTop(mini), guesses });
+  }
   const top = hiloTop(mini), span = Math.max(1, top - HILO.lo), x = n => (3 + 94 * (n - HILO.lo) / span).toFixed(1);
   const line = `<svg viewBox="0 0 100 14" aria-hidden="true"><rect class="rail" x="2" y="4" width="96" height="6" rx="3"/><rect class="open" x="${x(mini.lo)}" y="2.5" width="${Math.max(2, Number(x(mini.hi)) - Number(x(mini.lo))).toFixed(1)}" height="9" rx="3"/>${mini.guesses.slice(-8).map(g => `<path class="tk ${g.by}" d="M${x(g.n)} 0v14"/>`).join('')}</svg>`;
   const left = hiloLimit(mini) ? `<span class="thpips">${['X', 'O'].map(p => `<span><b class="${p}">${p}</b>${pips(mini, p)}</span>`).join('')}</span>` : `<small>${mini.guesses.length} guess${mini.guesses.length === 1 ? '' : 'es'}</small>`;
