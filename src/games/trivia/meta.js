@@ -7,7 +7,7 @@ export const minVersion = '1.0.0';   // the oldest client version that has this 
 export const category = 'brain';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Trivia', play: 'Answer the question.', win: 'Get {goal} right.' };   // ({goal}: its setting, TUNE below)
-export const raceExplainer = { name: 'Trivia', play: 'Answer the question. Your picks are yours alone: a wrong answer is crossed out on your card only, and you see only whether the other player got it right.', win: 'Be the first to answer right.' };   // Race mode (core/race.js)
+export const raceExplainer = { name: 'Trivia', play: 'You each answer your own questions, just as hard as each other\'s. A wrong answer is crossed out on your card; a right one brings your next.', win: 'Be the first to get {goal} right.' };   // Race mode (core/race.js)
 export const scExplainer = { name: 'Trivia', play: 'Answer the question.', win: 'Get {goal} right.' };   // in Super Chaos
 // Its settings (the admin's Mini-game Settings; core/tune.js): read through tune(mini).
 export const TUNE = [

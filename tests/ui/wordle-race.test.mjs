@@ -1,7 +1,7 @@
-// Five Letters in Race mode (core/race.js): the screen shows this side's own guesses and the other side's rows as colours
-// alone (never their letters), the other side's move arrives redacted and is said as its colours, a finished square shows
-// both parts, and the miniature from the board's view (shapes, nobody's guesses) shows both players' rows of colours.
-// Rendered in Node with the browser's names stubbed.
+// Five Letters in Race mode v2 (core/race.js, rv 2): each player their own word, both players' rows open, letters and all.
+// The square draws two boards (ui/race.js): this phone's rows, the row typed and the keyboard large; the other player's
+// rows under it, their new row turning there; the words stay out of an open square's drawing; the miniature is each
+// player's best row so far; a claimed square's review shows both words. Rendered in Node, the browser stubbed.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
@@ -14,74 +14,85 @@ const require = createRequire(import.meta.url);
 const E = require('../engine.js');
 const view = await import('../../src/games/wordle/view.js');
 const { state } = await import('../../src/ui/app.js');
-state.setup = Object.assign({}, state.setup, { names: { X: 'Xena', O: 'Olaf' } });
-state.cpu = 'O'; state.online = null; state.draft = '';   // this phone is X, against the computer
+const { renderMini } = await import('../../src/ui/mini.js');
+const { renderBoard } = await import('../../src/ui/board.js');
+const { explainOf } = await import('../../src/ui/explainer.js');
+const { GAMES } = await import('../../src/games/index.js');
+GAMES.wordle.view = view;   // (the page registers the views in main.js; here by hand)
 
-const seq = (...vals) => { let i = 0; return () => vals[i++ % vals.length]; };
-const pick = (k, n) => (k + 0.5) / n;
-const wordRng = word => seq(pick(E.WORDS5.indexOf(word), E.WORDS5.length));
-const raceOn = on => E.setTune('wordle', on ? { mode: 'race' } : null);
-const flashOf = (mini, p, word, res) => { const f = { kind: res.outcome === 'win' ? 'claim' : 'move', by: p, next: p === 'X' ? 'O' : 'X', square: 0, type: 'wordle', note: res.note || null, pass: null, timeout: false, m: word.toUpperCase(), rep: [[0, 'enter']] }; E.rulesOf('wordle').moveFlash(word, p, null, 0, mini, f); return f; };
-const screen = (mini, f, opts) => view.screen({ owner: (opts || {}).owner || null, mini }, f, null, mini, !!(opts || {}).view, !!f, f, null, false, () => -1, false, 'X', '');
+const g = E.makeRng('w');
+function raceMatch() {
+  E.setTune('wordle', { mode: 'race' });
+  Object.assign(state, E.newMatch(E.makeRng('wordle-race'), { games: ['wordle'], vs: 'cpu' }), { screen: 'mini', zoom: 0, cpu: 'O', sc: null, flash: null, done: null, spot: null, winner: null, online: null, turn: 'X', draft: '', notice: null });
+  E.setTune('wordle', null);
+  state.setup.vs = 'cpu'; state.setup.names = { X: 'Xena', O: 'Olaf' };
+  const m = state.squares[0].mini; m.tg = { X: 'CRANE', O: 'MOUNT' };
+  return m;
+}
+const between = (html, a, b) => html.slice(html.indexOf(a), b ? html.indexOf(b) : undefined);
+const row = (html, w) => new RegExp('>' + w.split('').join('</i><i class="wt[^"]*"[^>]*>') + '</i>');
 
-test('Five Letters, race: this side\'s own rows show their letters; the other side\'s rows show colours alone; their move is said as its colours', () => {
-  raceOn(true);
-  try {
-    const m = E.newMini('wordle', wordRng('crane'));
-    E.applyMove(m, 'X', 'slate', seq(0.5));
-    const rO = E.applyMove(m, 'O', 'bloom', seq(0.5)), fO = E.raceFlashHide(flashOf(m, 'O', 'bloom', rO), m);
-    const mine = E.raceView(m, 'X');
-    assert.deepEqual(Object.keys(mine.side), ['X']); assert.deepEqual(mine.shape.O.rows, ['xxxxx']);
-    const html = screen(mine, fO);
-    assert.match(html, /class="wt x">S<\/i>/, 'my own letters'); assert.doesNotMatch(html, /BLOOM|>B<\/i>|>M<\/i>/, "none of O's letters");
-    assert.doesNotMatch(html, /CRANE/, 'never the word');
-    assert.match(html, /class="wopp fresh"/, "the other side's reserved line, their move fresh"); assert.match(html, /class="wrs wnew"><i class="x" style="--k:0"><\/i>/, 'their new row turns, as colours');
-    assert.match(html, /Olaf guessed · nothing right/);
-    assert.equal((html.match(/class="wrs off"/g) || []).length, 4, 'the guesses they have left, as empty strips: the line never grows');
-    assert.match(html, /Olaf<\/b><i class="hpips O"[^>]*><i class="on"><\/i><i class="on"><\/i><i class="on"><\/i><i class="on"><\/i><i class=""><\/i>/, 'their guesses left, from their shape');
-    assert.doesNotMatch(screen(mine, null), /class="wrs wnew"/, 'nothing turns at a plain render');
-    assert.match(screen(E.raceView(E.newMini('wordle', wordRng('crane')), 'X'), null), /Your guesses are yours alone/);
-    assert.equal(view.moveText(fO, 'Olaf'), 'Olaf guessed · nothing right');
-    const rX = E.applyMove(m, 'X', 'crony', seq(0.5)), fX = flashOf(m, 'X', 'crony', rX);
-    assert.equal(view.moveText(fX, 'Xena'), 'Xena tried CRONY');
-    assert.equal(view.moveText(Object.assign({}, fO, { race: { by: 'O', row: 'ggxgx', n: 2, left: 3, rows: ['xxxxx', 'ggxgx'] } }), 'Olaf'), 'Olaf guessed · 3 green');
-    assert.equal(view.moveText(Object.assign({}, fO, { race: { by: 'O', row: 'gyxxx', n: 5, left: 0, rows: [] } }), 'Olaf'), 'Olaf guessed · 1 green, 1 yellow · out of guesses');
-    // the sounds of their move come from its colours; my own from my row
-    const snd = [], add = (n, at) => snd.push([n, at]);
-    view.sounds(fO, add, false, mine, null); assert.deepEqual(snd.map(s => s[0]), ['tileX', 'tileX', 'tileX', 'tileX', 'tileX']);
-    snd.length = 0; view.sounds(fX, add, false, E.raceView(m, 'X'), null); assert.deepEqual(snd.map(s => s[0]), ['tileG', 'tileG', 'tileX', 'tileG', 'tileX']);
-    // a finished square: both players' rows, revealed
-    const done = screen(m, null, { owner: 'X', view: true });
-    assert.match(done, /BLOOM|>B<\/i>/); assert.match(done, />S<\/i>/); assert.doesNotMatch(done, /class="wopp/);
-  } finally { raceOn(false); }
+test('Five Letters, race v2: two boards: our rows and keys large, the other player\'s rows (letters and colours) under it; neither word drawn while the square is open', () => {
+  const m = raceMatch();
+  E.applyMove(m, 'X', 'SLATE', g); E.applyMove(m, 'O', 'BLOOM', g); E.applyMove(m, 'O', 'COUNT', g);
+  const html = renderMini(state.squares[0]), mine = between(html, 'class="rmain"', 'class="ropp'), theirs = between(html, 'class="ropp');
+  assert.match(html, /class="rboards rb-wordle"/); assert.match(html, /class="ropp O"/);
+  assert.match(mine, row(mine, 'SLATE')); assert.match(mine, /class="kb"/); assert.match(mine, /aria-label="Your guess"/);
+  assert.doesNotMatch(mine, />B<\/i>[^]*>L<\/i>[^]*>O<\/i>[^]*>O<\/i>[^]*>M<\/i>/, 'their rows are not on our board');
+  assert.match(theirs, row(theirs, 'BLOOM')); assert.match(theirs, row(theirs, 'COUNT'));
+  assert.match(theirs, /<i class="wt x">C<\/i><i class="wt g">O<\/i><i class="wt g">U<\/i><i class="wt g">N<\/i><i class="wt g">T<\/i>/, "their colours, against their own word");
+  assert.match(mine, /<i class="wt x">S<\/i><i class="wt x">L<\/i><i class="wt g">A<\/i><i class="wt x">T<\/i><i class="wt g">E<\/i>/, 'ours, against ours');
+  assert.match(html, /<small class="rnote">2 guesses<\/small>/);
+  assert.doesNotMatch(html, row(html, 'CRANE'), 'our word is not drawn'); assert.doesNotMatch(html, row(html, 'MOUNT'), 'nor theirs');
+  assert.doesNotMatch(html, /wans|hpips/, 'no answer row, no guesses left');
+  // the keyboard: our own colours alone (their B, M, U never coloured)
+  assert.match(mine, /class="key x"[^>]*data-k="S"/); assert.match(mine, /class="key "[^>]*data-k="B"/);
 });
 
-test('Five Letters, race: the miniature from the board\'s view shows both players\' rows of colours, no letters; Shared is as ever', () => {
-  raceOn(true);
-  try {
-    const m = E.newMini('wordle', wordRng('crane'));
-    E.applyMove(m, 'X', 'slate', seq(0.5)); E.applyMove(m, 'O', 'crony', seq(0.5));
-    const html = view.miniature(E.raceView(m, null), false);
-    assert.match(html, /class="tw trace"/); assert.doesNotMatch(html, /[A-Z]<\/i>/, 'no letters'); assert.doesNotMatch(html, /SLATE|CRONY|CRANE/);
-    assert.match(html, /<b class="X">X<\/b><span class="twqs"><div class="twr tws"><i class="x"><\/i><i class="x"><\/i><i class="g"><\/i><i class="x"><\/i><i class="g"><\/i><\/div><\/span>/);
-    assert.match(html, /<b class="O">O<\/b><span class="twqs"><div class="twr tws"><i class="g"><\/i><i class="g"><\/i><i class="x"><\/i><i class="g"><\/i><i class="x"><\/i><\/div><\/span>/);
-    assert.equal(view.miniature(E.raceView(m, null), false), view.miniature(E.raceView(m, 'X'), false), 'the same from a side\'s view');
-    const hidden = JSON.parse(JSON.stringify(m)); E.hideMini(hidden, 0, {});
-    assert.equal(view.miniature(E.raceView(hidden, null), false), html, 'the same from the square as the other phone has it');
-    assert.match(view.miniature(m, true), />S<\/i>|>C<\/i>/, 'a finished square: the letters');
-  } finally { raceOn(false); }
-  const s = E.newMini('wordle', wordRng('crane')); E.applyMove(s, 'X', 'slate', seq(0.5));
-  assert.match(view.miniature(s, false), />S<\/i>/); assert.doesNotMatch(view.miniature(s, false), /trace/);
+test('Five Letters, race v2: the other player\'s move turns its row on their board, ours stays still; our own turns on ours', () => {
+  const m = raceMatch();
+  state.turn = 'O';
+  assert.ok(E.playMove(state, 0, 'BLOOM', g).ok);
+  let html = renderMini(state.squares[0]);
+  assert.match(between(html, 'class="ropp'), /<i class="wt x reveal" style="--k:0">B<\/i>/, 'their new row turns, on their board');
+  assert.doesNotMatch(between(html, 'class="rmain"', 'class="ropp'), /reveal/);
+  assert.equal(view.moveText(state.flash, 'Olaf'), 'Olaf tried BLOOM', 'their guess is open');
+  const snd = []; view.sounds(state.flash, (n, at) => snd.push(n), false, m, null);
+  assert.deepEqual(snd, E.wordleMarks('BLOOM', 'MOUNT').map(c => ({ g: 'tileG', y: 'tileY', x: 'tileX' })[c]), 'its colours heard (BLOOM against MOUNT)');
+  E.endFlash(state); state.done = null; state.turn = 'X';
+  assert.ok(E.playMove(state, 0, 'SLATE', g).ok);
+  html = renderMini(state.squares[0]);
+  assert.match(between(html, 'class="rmain"', 'class="ropp'), /<i class="wt x reveal" style="--k:0">S<\/i>/);
+  assert.doesNotMatch(between(html, 'class="ropp'), /reveal/);
 });
 
-test('Five Letters, race: the header\'s line for the other side\'s move is redacted even from the move as made (the turn bar reads state.flash itself)', () => {
-  raceOn(true);
-  try {
-    const m = E.newMini('wordle', wordRng('crane'));
-    const rO = E.applyMove(m, 'O', 'bloom', seq(0.5)), raw = flashOf(m, 'O', 'bloom', rO);
-    state.squares = [{ owner: null, mini: m }];
-    assert.equal(view.moveText(raw, 'Olaf'), 'Olaf guessed · nothing right');
-    const rX = E.applyMove(m, 'X', 'slate', seq(0.5));
-    assert.equal(view.moveText(flashOf(m, 'X', 'slate', rX), 'Xena'), 'Xena tried SLATE', 'my own, as made');
-  } finally { raceOn(false); state.squares = []; }
+test('Five Letters, race v2: the miniature is each player\'s best row so far as coloured tiles (most greens, then yellows), no letters; a claimed square reveals both words', () => {
+  const m = raceMatch();
+  for (const w of ['SLATE', 'CRONY', 'BLOOM']) E.applyMove(m, 'X', w, g);   // SLATE xxgxg, CRONY ggxgx (3 greens): the best
+  E.applyMove(m, 'O', 'SLATE', g);                                          // xxxyx
+  const pub = E.publicMini(m, 'X');
+  const html = view.miniature(pub, false);
+  assert.match(html, /class="trace2 tw2"/); assert.doesNotMatch(html, /[A-Z]<\/i>/, 'no letters');
+  const x = between(html, 'class="trp X"', 'class="trp O"'), o = between(html, 'class="trp O"');
+  assert.match(x, /<span class="twb"><i class="g"><\/i><i class="g"><\/i><i class="x"><\/i><i class="g"><\/i><i class="x"><\/i><\/span>/, "X's best row");
+  assert.match(o, /<span class="twb"><i class="x"><\/i><i class="x"><\/i><i class="x"><\/i><i class="y"><\/i><i class="x"><\/i><\/span>/, "O's");
+  assert.doesNotMatch(html, /CRANE|MOUNT/);
+  E.setTune('wordle', { mode: 'race' }); const fresh = E.newMini('wordle', E.makeRng('fresh')); E.setTune('wordle', null);
+  assert.match(view.miniature(E.publicMini(fresh, 'X'), false), /<span class="twb"><i><\/i><i><\/i><i><\/i><i><\/i><i><\/i><\/span>/, 'no guess yet: empty tiles');
+  // claimed: the review shows both boards and both words
+  E.applyMove(m, 'O', 'MOUNT', g); state.squares[0].owner = 'O';
+  assert.doesNotThrow(() => view.miniature(m, true));
+  state.screen = 'board'; state.zoom = null; assert.match(renderBoard(), /tw2/);
+  const review = renderMini(state.squares[0], true);
+  assert.match(review, /class="rboards rb-wordle"/);
+  assert.match(between(review, 'class="rmain"', 'class="ropp'), /aria-label="The word was CRANE"/); assert.match(between(review, 'class="ropp'), /aria-label="The word was MOUNT"/);
+  assert.doesNotMatch(review, /aria-label="Your guess"/, 'nothing to type in a finished square');
+});
+
+test('Five Letters, race v2: the explainer is the Race one; a square from before the rework still draws', () => {
+  raceMatch();
+  state.screen = 'mini'; state.zoom = 0;
+  assert.match(explainOf('wordle').play, /your own 5-letter word/); assert.match(explainOf('wordle').win, /No guess limit/);
+  const old = { type: 'wordle', race: true, limit: 5, side: { X: { guesses: [] } }, shape: { X: { n: 0, rows: [] }, O: { n: 1, rows: ['xxgxg'] } } };
+  assert.doesNotThrow(() => view.miniature(old, false)); assert.doesNotThrow(() => view.screen({ mini: old }, null, null, old, false, false, null));
 });

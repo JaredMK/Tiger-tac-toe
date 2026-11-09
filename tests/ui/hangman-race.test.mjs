@@ -1,7 +1,8 @@
-// Hangman in Race mode (core/race.js): the screen shows this side's own revealed letters and wrong letters, the other
-// side's progress as filled blanks without letters plus their wrong count, the other side's move arrives redacted (the
-// blanks it filled turn), a finished square shows both parts, and the miniature from the board's view shows both
-// players' blanks and wrong counts. Rendered in Node with the browser's names stubbed.
+// Hangman in Race mode v2 (core/race.js, rv 2): each player their own word of the same length, both players' letters open.
+// The square draws two boards (ui/race.js): this phone's own word, wrong letters and keyboard large; the other player's word
+// with the letters they have revealed and their wrong letters under it, their letter landing there; an open square never
+// draws a letter nobody has found; the miniature is each player's blanks, revealed ones filled; a claimed square's review
+// shows both words. Rendered in Node, the browser stubbed.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
@@ -14,73 +15,76 @@ const require = createRequire(import.meta.url);
 const E = require('../engine.js');
 const view = await import('../../src/games/hangman/view.js');
 const { state } = await import('../../src/ui/app.js');
-state.setup = Object.assign({}, state.setup, { names: { X: 'Xena', O: 'Olaf' } });
-state.cpu = 'O'; state.online = null;   // this phone is X, against the computer
+const { renderMini } = await import('../../src/ui/mini.js');
+const { renderBoard } = await import('../../src/ui/board.js');
+const { explainOf } = await import('../../src/ui/explainer.js');
+const { GAMES } = await import('../../src/games/index.js');
+GAMES.hangman.view = view;   // (the page registers the views in main.js; here by hand)
 
-const seq = (...vals) => { let i = 0; return () => vals[i++ % vals.length]; };
-const pick = (k, n) => (k + 0.5) / n;
-const wordRng = word => seq(pick(E.WORDS_HANG.indexOf(word), E.WORDS_HANG.length));
-const raceOn = on => E.setTune('hangman', on ? { mode: 'race' } : null);
-const flashOf = (mini, p, l, res) => { const f = { kind: res.outcome === 'win' ? 'claim' : res.again ? 'again' : 'move', by: p, next: res.again ? p : p === 'X' ? 'O' : 'X', square: 0, type: 'hangman', note: res.note || null, pass: null, timeout: false, m: l, rep: [[0, 'move', 'm=' + l]] }; E.rulesOf('hangman').moveFlash(l, p, null, 0, mini, f); return f; };
-const screen = (mini, f, opts) => view.screen({ owner: (opts || {}).owner || null, mini }, f, null, mini, !!(opts || {}).view, !!f, f, null, false, () => -1, false, 'X', '');
-const tiles = html => [...html.matchAll(/<i class="ht[^"]*"[^>]*>([A-Z]?)<\/i>/g)].map(m => m[1]);
+const g = E.makeRng('h');
+function raceMatch() {
+  E.setTune('hangman', { mode: 'race' });
+  Object.assign(state, E.newMatch(E.makeRng('hang-race'), { games: ['hangman'], vs: 'cpu' }), { screen: 'mini', zoom: 0, cpu: 'O', sc: null, flash: null, done: null, spot: null, winner: null, online: null, turn: 'X', lock: null });
+  E.setTune('hangman', null);
+  state.setup.vs = 'cpu'; state.setup.names = { X: 'Xena', O: 'Olaf' };
+  const m = state.squares[0].mini, blank = () => ({ letters: [], pattern: [null, null, null, null, null] });
+  Object.assign(m, { tg: { X: 'APPLE', O: 'MELON' }, len: 5, side: { X: blank(), O: blank() } });
+  return m;
+}
+const between = (html, a, b) => html.slice(html.indexOf(a), b ? html.indexOf(b) : undefined);
+const tilesOf = html => (between(html, 'class="hword"', 'class="hmiss"').match(/<i class="ht[^"]*"[^>]*>([A-Z]?)<\/i>/g) || []).map(t => (t.match(/>([A-Z]?)<\/i>$/) || [])[1] || '_').join('');
 
-test('Hangman, race: this side\'s own letters show; the other side\'s progress is filled blanks and a wrong count, never a letter; their move turns the blanks it filled', () => {
-  raceOn(true);
-  try {
-    const m = E.newMini('hangman', wordRng('apple'));
-    E.applyMove(m, 'X', 'P', seq(0.5)); E.applyMove(m, 'X', 'Z', seq(0.5));
-    const rO = E.applyMove(m, 'O', 'E', seq(0.5)), fO = E.raceFlashHide(flashOf(m, 'O', 'E', rO), m);
-    const mine = E.raceView(m, 'X');
-    assert.deepEqual(Object.keys(mine.side), ['X']); assert.deepEqual(mine.shape.O, { n: 1, wrong: 0, got: [false, false, false, false, true] });
-    const html = screen(mine, fO);
-    assert.deepEqual(tiles(html), ['', 'P', 'P', '', ''], 'my own pattern: my P, not their E');
-    assert.doesNotMatch(html, />E<\/i>|>Q<\/i>/, "none of O's letters"); assert.doesNotMatch(html, /APPLE/, 'never the word');
-    assert.match(html, /Wrong: <b><i>Z<\/i><\/b>/, 'my own wrong letters');
-    assert.match(html, /class="hopp fresh"/); assert.match(html, /class="hob" style="--n:5"><i class=""><\/i><i class=""><\/i><i class=""><\/i><i class=""><\/i><i class="on flipin" style="--k:0"><\/i><\/span><em class="hown">0 wrong<\/em>/, 'their blanks: the one they just filled turns, no letter in it; their wrong count');
-    assert.match(html, /aria-label="Olaf found a letter · 0 wrong"/, 'the label in plain text');
-    E.applyMove(m, 'O', 'Q', seq(0.5));
-    const plain = screen(E.raceView(m, 'X'), null);
-    assert.doesNotMatch(plain, /flipin/, 'nothing turns at a plain render'); assert.match(plain, /Olaf: 1 of 5 letters · 1 wrong/); assert.doesNotMatch(plain, />Q<\/i>/);
-    assert.match(html, /class="key hit"[^>]*>P</, 'my keyboard: my own letters'); assert.doesNotMatch(html, /class="key (hit|miss)"[^>]*>E</);
-    assert.equal(view.moveText(fO, 'Olaf'), 'Olaf found a letter');
-    assert.equal(view.moveText(Object.assign({}, fO, { race: { by: 'O', hit: false, at: [], n: 3, wrong: 2, got: [] } }), 'Olaf'), 'Olaf missed · 2 wrong');
-    assert.equal(view.moveText(flashOf(m, 'X', 'Z', { outcome: 'continue', note: 'miss' }), 'Xena'), 'No Z');
-    const fresh = screen(E.raceView(E.newMini('hangman', wordRng('apple')), 'X'), null);
-    assert.match(fresh, /Your letters are yours alone/); assert.match(fresh, /Olaf: 0 of 5 letters · 0 wrong/);
-    // a finished square: the word, and both players' wrong letters
-    for (const l of ['A', 'L']) E.applyMove(m, 'O', l, seq(0.5));
-    const r = E.applyMove(m, 'O', 'P', seq(0.5)); assert.equal(r.outcome, 'win');
-    const done = screen(m, null, { owner: 'O', view: true });
-    assert.deepEqual(tiles(done), ['A', 'P', 'P', 'L', 'E']); assert.match(done, /Xena<\/b> <b><i>Z<\/i><\/b>/); assert.match(done, /Olaf<\/b> <b><i>Q<\/i><\/b>/); assert.doesNotMatch(done, /class="hopp/);
-  } finally { raceOn(false); }
+test('Hangman, race v2: two boards: our own word and keys large, the other player\'s word with their revealed letters and their wrong letters under it; no letter nobody found', () => {
+  const m = raceMatch();
+  E.applyMove(m, 'X', 'P', g); E.applyMove(m, 'X', 'Z', g);
+  E.applyMove(m, 'O', 'E', g); E.applyMove(m, 'O', 'L', g); E.applyMove(m, 'O', 'A', g);
+  const html = renderMini(state.squares[0]), mine = between(html, 'class="rmain"', 'class="ropp'), theirs = between(html, 'class="ropp');
+  assert.match(html, /class="rboards rb-hang"/); assert.match(html, /class="ropp O"/);
+  assert.equal(tilesOf(mine), '_PP__', 'our own revealed letters');
+  assert.equal(tilesOf(theirs), '_EL__', 'theirs, open to us');
+  assert.match(mine, /Wrong: <b><i>Z<\/i><\/b>/); assert.match(theirs, /Wrong: <b><i>A<\/i><\/b>/, 'their wrong letters');
+  assert.match(mine, /class="key hit"[^>]*data-m='"P"'[^>]* disabled/); assert.match(mine, /class="key "[^>]*data-m='"E"'/, 'their letters are not ours');
+  assert.match(html, /<small class="rnote">2 of 5 · 1 wrong<\/small>/);
+  assert.doesNotMatch(html, /late/, 'nothing revealed while the square is open');
 });
 
-test('Hangman, race: the miniature from the board\'s view shows both players\' blanks (filled ones darkened, no letters) and wrong counts; Shared is as ever', () => {
-  raceOn(true);
-  try {
-    const m = E.newMini('hangman', wordRng('apple'));
-    E.applyMove(m, 'X', 'P', seq(0.5)); E.applyMove(m, 'X', 'Z', seq(0.5)); E.applyMove(m, 'O', 'E', seq(0.5));
-    const html = view.miniature(E.raceView(m, null), false);
-    assert.match(html, /class="thg trace"/); assert.doesNotMatch(html, /[A-Z]<\/i>/, 'no letters'); assert.doesNotMatch(html, /APPLE/);
-    assert.match(html, /<b class="X">X<\/b><div class="hw" style="--n:5"><i class=""><\/i><i class="on"><\/i><i class="on"><\/i><i class=""><\/i><i class=""><\/i><\/div><em class="thwr">1✗<\/em>/);
-    assert.match(html, /<b class="O">O<\/b><div class="hw" style="--n:5"><i class=""><\/i><i class=""><\/i><i class=""><\/i><i class=""><\/i><i class="on"><\/i><\/div><em class="thwr">0✗<\/em>/);
-    const hidden = JSON.parse(JSON.stringify(m)); E.hideMini(hidden, 0, {});
-    assert.equal(hidden.word, '_____'); assert.equal(view.miniature(E.raceView(hidden, null), false), html, 'the same from the square as the other phone has it');
-    assert.match(view.miniature(m, true), /<i class="on">P<\/i>/, 'a finished square: the letters');
-  } finally { raceOn(false); }
-  const s = E.newMini('hangman', wordRng('apple')); E.applyMove(s, 'X', 'P', seq(0.5));
-  assert.match(view.miniature(s, false), /<i class="on">P<\/i>/); assert.doesNotMatch(view.miniature(s, false), /trace/);
+test('Hangman, race v2: the other player\'s letter turns in on their board, ours stays still; a right letter keeps their turn', () => {
+  const m = raceMatch();
+  state.turn = 'O';
+  assert.ok(E.playMove(state, 0, 'L', g).ok);
+  assert.equal(state.flash.kind, 'again'); assert.equal(state.flash.letter, 'L');
+  let html = renderMini(state.squares[0]);
+  assert.match(between(html, 'class="ropp'), /<i class="ht on flipin" style="--k:0">L<\/i>/, 'their letter turns in, on their board');
+  assert.doesNotMatch(between(html, 'class="rmain"', 'class="ropp'), /flipin/);
+  E.endFlash(state); state.done = null;
+  assert.ok(E.playMove(state, 0, 'Q', g).ok);
+  html = renderMini(state.squares[0]);
+  assert.match(between(html, 'class="ropp'), /<i class="new">Q<\/i>/, 'their miss lands in their wrong letters');
+  assert.equal(view.moveText(state.flash, 'Olaf'), 'No Q');
 });
 
-test('Hangman, race: the header\'s line for the other side\'s miss is redacted even from the move as made (the turn bar reads state.flash itself)', () => {
-  raceOn(true);
-  try {
-    const m = E.newMini('hangman', wordRng('apple'));
-    const rO = E.applyMove(m, 'O', 'Z', seq(0.5)), raw = flashOf(m, 'O', 'Z', rO);
-    state.squares = [{ owner: null, mini: m }];
-    assert.equal(view.moveText(raw, 'Olaf'), 'Olaf missed · 1 wrong');
-    const rX = E.applyMove(m, 'X', 'Q', seq(0.5));
-    assert.equal(view.moveText(flashOf(m, 'X', 'Q', rX), 'Xena'), 'No Q', 'my own, as made');
-  } finally { raceOn(false); state.squares = []; }
+test('Hangman, race v2: the miniature is each player\'s blanks, the revealed ones filled, no letters; a claimed square\'s review shows both words, the letters never found muted', () => {
+  const m = raceMatch();
+  E.applyMove(m, 'X', 'P', g);
+  for (const l of 'MEL') E.applyMove(m, 'O', l, g);
+  const html = view.miniature(E.publicMini(m, 'X'), false);
+  assert.match(html, /class="trace2 thg2"/); assert.doesNotMatch(html, /[A-Z]<\/i>/, 'no letters');
+  const x = between(html, 'class="trp X"', 'class="trp O"'), o = between(html, 'class="trp O"');
+  assert.match(x, /<span class="hgm" style="--n:5;--c:3"><i><\/i><i class="on"><\/i><i class="on"><\/i><i><\/i><i><\/i><\/span>/);
+  assert.match(o, /<span class="hgm" style="--n:5;--c:3"><i class="on"><\/i><i class="on"><\/i><i class="on"><\/i><i><\/i><i><\/i><\/span>/);
+  for (const l of 'ON') E.applyMove(m, 'O', l, g);
+  state.squares[0].owner = 'O';
+  assert.doesNotThrow(() => view.miniature(m, true));
+  state.screen = 'board'; state.zoom = null; assert.match(renderBoard(), /thg2/);
+  const review = renderMini(state.squares[0], true);
+  assert.equal(tilesOf(between(review, 'class="rmain"', 'class="ropp')), 'APPLE', 'our word, revealed'); assert.equal(tilesOf(between(review, 'class="ropp')), 'MELON');
+  assert.equal((between(review, 'class="rmain"', 'class="ropp').match(/class="ht on late"/g) || []).length, 3, 'A, L, E never found: muted');
+});
+
+test('Hangman, race v2: the explainer is the Race one; a square from before the rework still draws', () => {
+  raceMatch();
+  state.screen = 'mini'; state.zoom = 0;
+  assert.match(explainOf('hangman').play, /your own word/); assert.match(explainOf('hangman').win, /your word first/);
+  const old = { type: 'hangman', race: true, word: '_____', side: { X: { letters: [], pattern: [null, null, null, null, null] } }, shape: { X: {}, O: {} } };
+  assert.doesNotThrow(() => view.miniature(old, false)); assert.doesNotThrow(() => view.screen({ mini: old }, null, null, old, false, false, null));
 });

@@ -73,8 +73,8 @@ function pickMove(st, p, rng, full) {
   const i = st.lock != null ? st.lock : st.squares.findIndex(q => !q.owner);
   if (i < 0) return null;
   const mini = (full || st).squares[i].mini;
-  let m = E.randomLegalMove(mini, p, rng), at = i;
-  if (m == null || m === 'auto') {                                 // a staged game (a question to turn up, a round to start): the computer's own choice for this player
+  let m = mini.race ? null : E.randomLegalMove(mini, p, rng), at = i;   // (a race square: the computer's own choice, as random guesses at a target of one's own may never find it, with no cap)
+  if (m == null || m === 'auto') {                                 // a staged game (a question to turn up, a round to start) or a race: the computer's own choice for this player
     let plan = null;
     try { plan = E.cpuMove(Object.assign({}, full || st, { turn: p }), rng, null, { level: 'normal', clock: () => performance.now() }); } catch (e) { plan = null; }
     if (plan && plan.move != null && plan.move !== 'auto' && (st.lock == null || plan.square === st.lock)) { m = plan.move; at = plan.square; }

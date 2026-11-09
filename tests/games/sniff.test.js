@@ -275,88 +275,102 @@ test('sniff: a 5x5 square upgrades into the middle of the 7x7 field, distances a
   }
 });
 
-// ================================ Race mode (core/race.js) ================================
-// The same field, treasure and start for both, but a dog each (mini.side[p]), the other's out of sight: the other side
-// sees only its steps; online the record keeps each side's part apart and a move's entry is redacted.
-const RLCG = seed => { let s = seed >>> 0 || 1; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; };
+// ================================ Race mode (core/race.js, rv 2) ================================
+// One field and one start, a dog each (mini.side[p], open to both) and a treasure each (mini.tg, the square's secret), the
+// two the same walk from the start and as far in a straight line as the start's rule asks; a step is hotter, colder or
+// the same by the walker's own treasure; no step limit.
 const sniffRace = on => E.setTune('sniff', on ? { mode: 'race' } : null);
-test('sniff, race: a dog each from the same start over the same treasure; a step moves only your own dog; Same phone stays Shared', () => {
+const R = s => E.makeRng(s);
+const toward = (m, p) => { const dog = m.side[p].dog, t = m.tg[p]; return E.sniffDirs(dog).find(k => E.sniffSteps(E.sniffStep(dog, k), t) < E.sniffSteps(dog, t)); };
+const away = (m, p) => E.sniffDirs(m.side[p].dog).find(k => E.sniffStep(m.side[p].dog, k) !== m.tg[p]);
+test('sniff, race: a treasure each, two different cells the same walk from the one start, both at least minStart from it; Same phone stays Shared', () => {
+  for (const minStart of [1, 3, 4]) {
+    E.setTune('sniff', { mode: 'race', minStart });
+    try {
+      for (let k = 0; k < 120; k++) {
+        const m = E.newMini('sniff', R(`sr${minStart}:${k}`));
+        assert.equal(m.race, true); assert.equal(m.rv, 2); assert.equal(m.g, 7); assert.equal(m.treasure, undefined); assert.equal(m.dog, undefined);
+        assert.notEqual(m.tg.X, m.tg.O, 'two treasures');
+        assert.equal(E.sniffSteps(m.start, m.tg.X), E.sniffSteps(m.start, m.tg.O), 'the same walk from the start');
+        for (const p of ['X', 'O']) { assert.ok(E.sniffDist(m.start, m.tg[p]) >= minStart - 1e-9, 'the start\'s rule holds for both'); assert.deepEqual(m.side[p], { dog: m.start, path: [m.start], trail: [], last: null }); }
+      }
+    } finally { sniffRace(false); }
+  }
   sniffRace(true);
   try {
-    const m = E.newMini('sniff', RLCG(3));
-    assert.equal(m.race, true); assert.equal(m.dog, undefined); assert.equal(m.dogs, undefined); assert.equal(m.g, 7);
-    assert.ok(E.sniffDist(m.start, m.treasure) >= 3, 'the start at least 3 from the treasure, as ever');
-    assert.deepEqual(m.side, { X: { dog: m.start, path: [m.start], trail: [], last: null }, O: { dog: m.start, path: [m.start], trail: [], last: null } });
-    const d = E.sniffDirs(m.start)[0], to = E.sniffStep(m.start, d), res = E.sniffRes(m.start, to, m.treasure);
-    const r = E.applyMove(m, 'X', d, RLCG(1));
-    assert.equal(r.ok, true); assert.equal(r.note, to === m.treasure ? 'found' : res);
-    assert.equal(m.side.X.dog, to); assert.deepEqual(m.side.X.path, [m.start, to]); assert.equal(m.side.X.trail.length, 1); assert.equal(m.side.X.last.t, to);
-    assert.equal(m.side.O.dog, m.start, "O's dog has not moved"); assert.deepEqual(m.side.O.path, [m.start]);
-    assert.equal(E.applyMove(m, 'O', d, RLCG(1)).ok, true, 'the same step is open to O');
-    assert.equal(m.side.O.dog, to);
-    const forX = E.publicMini(m, 'X');
-    assert.equal(forX.treasure, undefined); assert.deepEqual(Object.keys(forX.side), ['X']); assert.equal(forX.side.O, undefined); assert.equal(forX.start, m.start);
-    assert.deepEqual(forX.shape, { X: { n: 1 }, O: { n: 1 } });
-    assert.deepEqual(E.publicMini(m).side, {}); assert.deepEqual(E.raceView(m, null).side, {});
-    assert.equal(E.newMini('sniff', RLCG(3), { shared: true }).race, undefined);
-    assert.ok(E.newMatch(RLCG(5), { games: ['sniff'], vs: 'same' }).squares.every(q => !q.mini.race));
-    // onto the treasure: that dog's owner wins
-    const w = E.newMini('sniff', RLCG(4));
-    let p = 'O', n = 0, out;
-    do { const cand = E.sniffDirs(w.side[p].dog).find(k => E.sniffSteps(E.sniffStep(w.side[p].dog, k), w.treasure) < E.sniffSteps(w.side[p].dog, w.treasure)); out = E.applyMove(w, p, cand, RLCG(1)); n++; } while (out.outcome !== 'win' && n < 10);
-    assert.deepEqual(out, { ok: true, outcome: 'win', note: 'found' }); assert.equal(w.side.X.dog, w.start, "X's dog never moved");
+    assert.equal(E.newMini('sniff', R('s'), { shared: true }).race, undefined);
+    assert.ok(E.newMatch(R('s'), { games: ['sniff'], vs: 'same' }).squares.every(q => !q.mini.race));
   } finally { sniffRace(false); }
-  assert.equal(E.newMini('sniff', RLCG(3)).race, undefined, 'off: as ever');
+  assert.equal(E.newMini('sniff', R('s')).race, undefined, 'off: as ever');
 });
-test('sniff, race: the record keeps each side\'s dog for that side, the shapes in the public state; an online step\'s entry is redacted for the other phone', () => {
+test('sniff, race: a step moves the walker\'s own dog alone, hotter or colder by their own treasure; onto it wins; no step limit', () => {
   sniffRace(true);
   try {
-    const st = E.newMatch(RLCG(11), { games: ['sniff'] }); st.id = 'sr1'; st.seq = 0; st.recent = []; st.turn = 'X';
-    const m = st.squares[0].mini, d0 = E.sniffDirs(m.start).find(k => E.sniffStep(m.start, k) !== m.treasure);
-    E.applyMove(m, 'O', d0, RLCG(1));
-    const rec = E.matchRecord(st), ps = rec.state.squares[0].mini;
-    assert.equal(ps.side, undefined); assert.equal(ps.treasure, undefined); assert.equal(ps.dog, undefined); assert.equal(ps.trail, undefined);
-    assert.deepEqual(ps.shape, { X: { n: 0 }, O: { n: 1 } }); assert.equal(ps.start, m.start);
-    assert.equal(rec.sides.O[0].dog, m.side.O.dog); assert.deepEqual(rec.sides.X[0], { dog: m.start, path: [m.start], trail: [], last: null });
-    assert.ok(!JSON.stringify(rec.state).includes('"treasure"'));
-    const full = E.fullState(rec);
-    assert.deepEqual(full.squares[0].mini.side, m.side); assert.equal(full.squares[0].mini.treasure, m.treasure); assert.equal(full.squares[0].mini.shape, undefined);
-    assert.deepEqual(E.fullState(E.parseMatch(E.packMatch(rec))).squares[0].mini.side, m.side);
-    const oneSide = E.fullState({ state: rec.state, secrets: rec.secrets, sides: { X: rec.sides.X } });
-    assert.equal(oneSide.squares[0].mini.side.O, undefined); assert.equal(oneSide.squares[0].mini.side.X.dog, m.start);
-    const d1 = E.sniffDirs(m.start).find(k => E.sniffStep(m.start, k) !== m.treasure);
-    const r = E.applyOnlineMove(rec, 'X', 0, d1, RLCG(2), { rep: [[0, 'move', 'm=' + d1]] });
+    const m = E.newMini('sniff', R('sr-move')), d = away(m, 'X'), to = E.sniffStep(m.start, d);
+    const r = E.applyMove(m, 'X', d, R('a'));
+    assert.equal(r.ok, true); assert.equal(r.note, E.sniffRes(m.start, to, m.tg.X), "by X's own treasure");
+    assert.equal(m.side.X.dog, to); assert.deepEqual(m.side.X.path, [m.start, to]); assert.equal(m.side.X.last.res, r.note);
+    assert.deepEqual(m.side.O, { dog: m.start, path: [m.start], trail: [], last: null }, "O's dog has not moved");
+    assert.equal(E.applyMove(m, 'O', d, R('b')).note, to === m.tg.O ? 'found' : E.sniffRes(m.start, to, m.tg.O), "O's step: by O's treasure");
+    // a long walk, never a limit: X wanders 80 steps off its treasure, then walks onto it
+    const w = E.newMini('sniff', R('sr-long'));
+    for (let k = 0; k < 80; k++) assert.equal(E.applyMove(w, 'X', away(w, 'X'), R('c' + k)).outcome, 'continue');
+    let out, n = 0;
+    do { out = E.applyMove(w, 'X', toward(w, 'X'), R('d')); n++; } while (out.outcome !== 'win' && n < 10);
+    assert.deepEqual(out, { ok: true, outcome: 'win', note: 'found' }); assert.equal(w.side.X.dog, w.tg.X); assert.equal(w.side.O.path.length, 1);
+    const noT = JSON.parse(JSON.stringify(m)); delete noT.tg;
+    assert.equal(E.applyMove(noT, 'X', away(m, 'X'), R('e')).reason, 'secret');
+  } finally { sniffRace(false); }
+});
+test('sniff, race: the record and the computer\'s view never carry an open square\'s treasures; both dogs are open; a claimed square shows them', () => {
+  sniffRace(true);
+  try {
+    const st = E.newMatch(R('sr-rec'), { games: ['sniff'] }); st.id = 'sr1'; st.seq = 0; st.recent = []; st.turn = 'X';
+    const m = st.squares[0].mini;
+    E.applyMove(m, 'O', away(m, 'O'), R('a'));
+    const rec = E.matchRecord(st);
+    assert.ok(!/"tg"|"treasure"/.test(JSON.stringify(rec.state)), 'no treasure in the public state');
+    assert.deepEqual(rec.secrets[0].tg, m.tg); assert.deepEqual(rec.state.squares[0].mini.side, m.side, 'both dogs in the public state');
+    for (const p of ['X', 'O']) { const pm = E.publicMini(m, p); assert.ok(!/"tg"|"treasure"/.test(JSON.stringify(pm))); assert.deepEqual(pm.side, m.side); assert.equal(pm.start, m.start); }
+    assert.deepEqual(E.fullState(rec).squares[0].mini.tg, m.tg);
+    const d = away(m, 'X'), r = E.applyOnlineMove(rec, 'X', 0, d, R('b'), { rep: [[0, 'move', 'm=' + d]] });
     assert.ok(r.ok, r.reason);
     const e = r.entries[0];
-    assert.equal(e.m, undefined); assert.equal(e.sniff, undefined, 'no step, no hotter or colder'); assert.equal(e.note, undefined); assert.equal(e.rep, undefined);
-    assert.deepEqual(e.race, { by: 'X', n: 1 });
-    assert.equal(e.after.mini.side, undefined); assert.deepEqual(e.after.mini.shape, { X: { n: 1 }, O: { n: 1 } });
-    assert.ok(!JSON.stringify(r.rec.state).includes('"dog"'), 'no dog is in the public state');
-    assert.equal(r.rec.sides.X[0].dog, E.sniffStep(m.start, d1), "the mover's own part holds it"); assert.equal(r.rec.sides.O[0].dog, m.side.O.dog);
+    assert.equal(e.sniff.t, E.sniffStep(m.start, d), "the step and its word ride the entry: they are open"); assert.ok(!/"tg"/.test(JSON.stringify(e)));
+    assert.equal(e.after.mini.side.X.dog, E.sniffStep(m.start, d));
+    let rc = r.rec, n = 0;
+    while (!rc.state.squares[0].owner && n < 30) {
+      const fs = E.fullState(rc), side = fs.turn, mm = fs.squares[0].mini;
+      const step = side === 'X' ? toward(mm, 'X') : away(mm, 'O');
+      const nx = E.applyOnlineMove(rc, side, 0, step, R('w' + n)); assert.ok(nx.ok, nx.reason); rc = nx.rec; n++;
+    }
+    assert.equal(rc.state.squares[0].owner, 'X'); assert.deepEqual(rc.state.squares[0].mini.tg, m.tg, 'claimed: both treasures shown');
   } finally { sniffRace(false); }
 });
-test('sniff, race: the computer walks its own dog from its own part alone and finds the treasure (Normal and Hard)', () => {
+test('sniff, race: the computer walks its own dog for its own treasure and finds it at every level; Hard walks no further than Normal', () => {
   sniffRace(true);
   try {
-    for (const hard of [false, true]) {
-      let total = 0;
-      for (let g = 0; g < 30; g++) {
-        const rng = RLCG(900 + g), m = E.newMini('sniff', rng);
-        E.applyMove(m, 'X', E.sniffDirs(m.start).find(k => E.sniffStep(m.start, k) !== m.treasure), rng);   // the other side has walked: nothing of it reaches the computer
-        let n = 0, r;
-        do {
-          const pm = E.publicMini(m, 'O');
-          assert.equal(pm.side.X, undefined, "never X's part"); assert.equal(pm.shape.X.n, 1);
-          const b = E.localBest(pm, 'O', rng, {}, hard ? { level: 'hard', until: null } : {});
-          assert.ok(E.sniffDirs(m.side.O.dog).includes(b.move), 'a legal step of its own dog'); assert.equal(b.shared, false);
-          r = E.applyMove(m, 'O', b.move, rng); assert.ok(r.ok); n++;
-        } while (r.outcome !== 'win' && n < 60);
-        assert.equal(r.outcome, 'win', `${hard ? 'Hard' : 'Normal'} game ${g}`); total += n;
-        assert.equal(m.side.X.path.length, 2, "X's dog never moved for it");
+    for (const level of ['easy', 'normal', 'hard']) {
+      for (let g = 0; g < 5; g++) {
+        const st = E.newMatch(R(`sc-${level}-${g}`), { games: ['sniff'], vs: 'cpu' }); st.only = 0; st.cpuLevel = level;
+        const m = st.squares[0].mini; let n = 0;
+        while (!st.squares[0].owner && n < 150) {
+          st.turn = 'O'; st.flash = null; st.done = null; st.lock = null; st.spot = null;
+          const mv = E.cpuMove(st, R(`sm-${level}-${g}-${n}`), null, { level, clock: () => 0, budget: 1e9 });
+          assert.ok(E.sniffDirs(m.side.O.dog).includes(mv.move), 'a step of its own dog');
+          assert.ok(E.playMove(st, 0, mv.move, R('p')).ok); n++;
+        }
+        assert.equal(st.squares[0].owner, 'O', `${level}: found its own treasure`); assert.equal(m.side.O.dog, m.tg.O); assert.equal(m.side.X.path.length, 1);
       }
-      assert.ok(total / 30 < 14, `${hard ? 'Hard' : 'Normal'}: found in ${(total / 30).toFixed(1)} steps on average`);
     }
-    const m = E.newMini('sniff', RLCG(9)), pm = E.publicMini(m, 'O');
-    assert.ok(E.aiOf('sniff').needs(pm, 'X') >= 1, "the other side's needs, from the start and its steps");
+    const avg = { normal: 0, hard: 0 }, N = 40;
+    for (const level of ['normal', 'hard']) for (let g = 0; g < N; g++) {
+      const rng = R('ss' + g), m = E.newMini('sniff', rng); let n = 0, r;
+      do { const b = E.localBest(E.publicMini(m, 'X'), 'X', rng, {}, level === 'hard' ? { level: 'hard', until: null } : {}); assert.equal(b.shared, false); r = E.applyMove(m, 'X', b.move, rng); n++; } while (r.outcome !== 'win' && n < 200);
+      avg[level] += n / N;
+    }
+    assert.ok(avg.hard <= avg.normal + 0.2 && avg.hard < 9, `steps on average: Hard ${avg.hard.toFixed(2)}, Normal ${avg.normal.toFixed(2)}`);
+    const m = E.newMini('sniff', R('sn')), pm = E.publicMini(m, 'O');
+    assert.ok(E.aiOf('sniff').needs(pm, 'X') >= 1, "the other side's needs, from its own open part");
   } finally { sniffRace(false); }
 });

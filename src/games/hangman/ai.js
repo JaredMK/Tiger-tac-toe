@@ -4,15 +4,12 @@ import { tune } from '../../core/tune.js';
 import { hangLen, hangLetters, hangPart, hangmanCandidates } from './rules.js';
 import { WORDS_HANG } from './words.js';
 
-// Race mode (core/race.js): the computer reads its own letters and pattern alone; the other side's progress is its
-// shape (the blanks they have filled, their wrong letters), from which what they have left to find is estimated.
-const SHAPE_CUT = 0.45;                                          // about what each revealed blank cuts the words still possible to
-function raceEst(pm, p) {                                        // [words about still possible to p, blanks they still have to fill]
+// Race mode (core/race.js, `rv: 2`): each player their own word: the computer reads its own letters and pattern alone
+// (hangmanCandidates(pm, me): its own part), and the other side's own pattern, open to it, says how near they are (needs).
+function raceEst(pm, p) {                                        // [words still possible to p, blanks they still have to fill]
   const part = hangPart(pm, p);
   if (part && Array.isArray(part.pattern)) return [hangmanCandidates(pm, p).length, part.pattern.filter(ch => !ch).length];
-  const sh = pm.shape && pm.shape[p], got = sh && Array.isArray(sh.got) ? sh.got : new Array(hangLen(pm)).fill(false);
-  const len = got.length, all = WORDS_HANG.filter(w => w.length === len).length, found = got.filter(Boolean).length;
-  return [Math.max(1, Math.round(all * Math.pow(SHAPE_CUT, found))), len - found];
+  return [WORDS_HANG.filter(w => w.length === hangLen(pm)).length, hangLen(pm)];   // (a part this copy has not got: a fresh word)
 }
 export function needs(pm, p) {
   const [n, missing] = pm.race ? raceEst(pm, p) : [hangmanCandidates(pm).length, pm.pattern.filter(ch => !ch).length];
@@ -25,7 +22,7 @@ export function best(pm, me, rng, style, ctx) {
     const left = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').filter(l => !tried.has(l));
     if (left.length) return { move: left[randInt(rng, left.length)], q: 0, shared };
   }
-  if (ctx && ctx.level === 'hard' && cand.length > 1 && tried.size < 26) return pm.race ? hangSolo(cand, tried) : hangHard(pm, cand, tried, ctx);
+  if (ctx && ctx.level === 'hard' && cand.length > 1 && tried.size < 26) return pm.race ? hangSolo(cand, tried, ctx) : hangHard(pm, cand, tried, ctx);
   const count = {};
   for (const w of cand) for (const ch of new Set(w)) if (!tried.has(ch)) count[ch] = (count[ch] || 0) + 1;
   let best = null, top = 0;
@@ -35,28 +32,62 @@ export function best(pm, me, rng, style, ctx) {
 }
 
 // ---- Hard, Race mode: the word alone ----
-// Nothing the computer learns reaches the other side, so the letter is the one that tells most about the word: the
-// candidates grouped by where it sits (the words without it one group), the letter with the most even split (the
-// fewest words left on average, the sum of the groups' squares) taken, a hit's extra go breaking ties (the words that
-// hold it). Quick: one pass over the candidates per letter.
-function hangSolo(cand, tried) {
-  const n = cand.length;
-  let move = null, top = Infinity, topHit = -1;
-  for (const l of 'ETAOINSRHLDCUMFPGWYBVKXJQZ') {
-    if (tried.has(l)) continue;
-    const gr = new Map();
-    let hit = 0;
-    for (const w of cand) { let k = 0; for (let i = 0; i < w.length; i++) if (w[i] === l) k |= 1 << i; if (k) hit++; gr.set(k, (gr.get(k) || 0) + 1); }
-    if (!hit) continue;                                          // (in no candidate: a pass)
-    let v = 0;
-    for (const c of gr.values()) v += c * c;
-    v /= n;
-    if (v < top - 1e-9 || (v < top + 1e-9 && hit > topHit)) { top = v; topHit = hit; move = l; }
+// Nothing the computer learns reaches the other side, and a right letter is a free go, so what a race costs is its
+// misses: each one hands the turn over. The letter taken is the one with the fewest misses expected until the word is
+// known (a word alone left: its letters, all hits), over the candidates: a letter splits them by where it sits, the words
+// without it costing a miss; E(S) = min over letters of P(miss) (1 + E(misses)) + the sum of P(group) E(group). Solved
+// in a memo, deeper as the budget allows (iterative deepening; past the depth a set of m words is worth HS.leaf log2 m,
+// what the solved sets show), kept to ctx.until (a check every few sets), else to HS.work. Letters in every candidate at
+// the same places, or in none, tell nothing and are skipped.
+const HS = { leaf: 0.33, depth: 8, work: 3e5 };
+function hangSolo(cand, triedSet, ctx) {
+  const n = cand.length, until = ctx && ctx.until;
+  const pos = cand.map(w => { const a = new Uint8Array(26); for (let i = 0; i < w.length; i++) a[w.charCodeAt(i) - 65] |= 1 << i; return a; });
+  const memo = new Map();
+  let work = 0, sets = 0, stop = false;
+  const split = (S, l) => {                                      // [the words without l, the groups by where l sits] (null: l tells nothing)
+    const gr = new Map(), miss = [];
+    for (const c of S) { const p = pos[c][l]; if (!p) miss.push(c); else { let g = gr.get(p); if (!g) gr.set(p, (g = [])); g.push(c); } }
+    return miss.length === S.length || (!miss.length && gr.size === 1) ? null : [miss, gr];
+  };
+  const worth = (S, sp, d) => {                                  // a letter's expected misses from S
+    const [miss, gr] = sp, m = S.length;
+    let v = miss.length ? miss.length / m * (1 + E(miss, d)) : 0;
+    for (const g of gr.values()) v += g.length / m * E(g, d);
+    return v;
+  };
+  const E = (S, d) => {
+    const m = S.length;
+    if (m <= 1) return 0;
+    if (d <= 0 || stop) return HS.leaf * Math.log2(m);
+    const key = S.join(','), hit = memo.get(key);
+    if (hit && hit.d >= d) return hit.v;
+    if (until ? (++sets & 15) === 0 && until() <= 0 : (work += m * 26) > HS.work) { stop = true; return HS.leaf * Math.log2(m); }
+    let top = Infinity;
+    for (let l = 0; l < 26; l++) { const sp = split(S, l); if (!sp) continue; const v = worth(S, sp, d - 1); if (v < top) top = v; }
+    if (top === Infinity) top = 0;
+    if (!stop) memo.set(key, { d, v: top });
+    return top;
+  };
+  const C = cand.map((_, i) => i);
+  let move = -1;
+  for (let d = 1; d <= HS.depth && !stop; d++) {                 // deeper and deeper, the best letter of the last depth finished kept
+    let best = Infinity, pick = -1, hits = -1;
+    for (let l = 0; l < 26; l++) {
+      if (triedSet.has(String.fromCharCode(65 + l))) continue;
+      const sp = split(C, l); if (!sp) continue;
+      const v = worth(C, sp, d - 1); if (stop) break;
+      const h = n - sp[0].length;
+      if (v < best - 1e-9 || (v < best + 1e-9 && h > hits)) { best = v; pick = l; hits = h; }
+    }
+    if (stop && move >= 0) break;
+    move = pick;
   }
-  if (!move) for (const l of 'ETAOINSRHLDCUMFPGWYBVKXJQZ') if (!tried.has(l)) { move = l; break; }
+  let letter = move >= 0 ? String.fromCharCode(65 + move) : null;
+  if (!letter) for (const l of 'ETAOINSRHLDCUMFPGWYBVKXJQZ') if (!triedSet.has(l)) { letter = l; break; }
   let q = 0;                                                     // the chance this turn ends it: a letter that leaves one word
-  const one = new Map(); for (const w of cand) { let k = 0; for (let i = 0; i < w.length; i++) if (w[i] === move) k |= 1 << i; if (k) one.set(k, (one.get(k) || 0) + 1); } for (const c of one.values()) if (c === 1) q += 1 / n;
-  return { move, q, shared: false };
+  const one = new Map(); for (const w of cand) { let k = 0; for (let i = 0; i < w.length; i++) if (w[i] === letter) k |= 1 << i; if (k) one.set(k, (one.get(k) || 0) + 1); } for (const c of one.values()) if (c === 1) q += 1 / n;
+  return { move: letter, q, shared: false };
 }
 
 // ---- Hard: the race for the word ----

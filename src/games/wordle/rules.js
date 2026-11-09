@@ -1,6 +1,6 @@
 // Five Letters: the rules (pure: no page, no clock; the server runs the same code).
 import { randInt } from '../../core/random.js';
-import { raceDealt, raceSide } from '../../core/race.js';
+import { RACE_V, raceDealt, raceSide } from '../../core/race.js';
 import { tuneLive } from '../../core/tune.js';
 import { other } from '../../core/util.js';
 import { BAD5, VALID5, WORDS5 } from './words.js';
@@ -21,10 +21,12 @@ export function wordleMarks(guess, word) {
 }
 // Each player has a set number of guesses in a square (5; the admin's setting, dealt into the square): a player
 // whose last guess misses loses the square to the other. (A square from before: no limit.)
-// Race mode (core/race.js): the same word for both, but each player's guesses and their colours are their own
-// (`mini.side[p]`: { guesses: [{ by, word, marks }] }); the other side sees only their rows of colours, without
-// the letters (raceShape: rows, how many used, how many left).
-export const wordleLimit = mini => (mini && Number.isInteger(mini.limit) ? mini.limit : 0);   // 0: no limit
+// Race mode (core/race.js, `rv: 2`): each player their own word from the same answer list (`mini.tg[p]`, hidden as a
+// Shared square's word is: secret/hide), their own guesses and colours (`mini.side[p]`: { guesses: [{ by, word, marks }] },
+// open to both, letters and all), and no guess limit: the first to find their own word takes the square.
+export const wordleLimit = mini => (mini && !mini.race && Number.isInteger(mini.limit) ? mini.limit : 0);   // 0: no limit (a race never has one)
+// The word p is after: the square's (Shared), or p's own (Race; undefined where this copy has not got it: the public state).
+export const wordleTarget = (mini, p) => (mini && mini.race ? (mini.tg ? mini.tg[p] : undefined) : mini && mini.word);
 // Where p's guesses live: the square itself (Shared), or p's own side (Race; null for a side this copy has not got).
 export const wordlePart = (mini, p) => (mini && mini.race ? raceSide(mini, p) : mini);
 // p's own guesses: their rows of the shared list (Shared), or their part's (Race; none without the part).
@@ -32,42 +34,48 @@ export const wordleGuesses = (mini, p) => { const part = wordlePart(mini, p); re
 export function wordleUsed(mini, p) {
   const part = wordlePart(mini, p);
   if (part && Array.isArray(part.guesses)) return wordleGuesses(mini, p).length;
-  const sh = mini && mini.shape && mini.shape[p];              // (a race square's other side: its shape alone)
+  const sh = mini && mini.shape && mini.shape[p];              // (a v1 race square's other side: its shape alone)
   return sh && Number.isInteger(sh.n) ? sh.n : 0;
 }
 export const wordleLeft = (mini, p) => (wordleLimit(mini) ? Math.max(0, wordleLimit(mini) - wordleUsed(mini, p)) : Infinity);
 export function create(type, rng, opts) {
-  const base = { type, word: WORDS5[randInt(rng, WORDS5.length)].toUpperCase(), limit: tuneLive(type).limit };
-  if (raceDealt(type, opts)) return Object.assign(base, { race: true, side: { X: { guesses: [] }, O: { guesses: [] } } });
-  return Object.assign(base, { guesses: [] });
+  const draw = () => WORDS5[randInt(rng, WORDS5.length)].toUpperCase();
+  if (raceDealt(type, opts)) {                                    // a race: two different words from the one answer list (as hard as each other), no limit
+    const x = draw(); let o = draw();
+    for (let k = 0; o === x && k < 50; k++) o = draw();
+    if (o === x) o = WORDS5[(WORDS5.indexOf(x.toLowerCase()) + 1) % WORDS5.length].toUpperCase();
+    return { type, race: true, rv: RACE_V, side: { X: { guesses: [] }, O: { guesses: [] } }, tg: { X: x, O: o } };
+  }
+  return { type, word: draw(), limit: tuneLive(type).limit, guesses: [] };
 }
 export function apply(mini, p, m, rng, idx) {
-  const part = wordlePart(mini, p);
-  if (!part) return { ok: false, reason: 'bad' };
+  const part = wordlePart(mini, p), word = wordleTarget(mini, p);
+  if (!part || typeof word !== 'string') return { ok: false, reason: 'bad' };
   const g = typeof m === 'string' ? m.toUpperCase() : '';
   if (!/^[A-Z]{5}$/.test(g)) return { ok: false, reason: 'bad' };
   if (BAD5.has(g)) return { ok: false, reason: 'notallowed' };    // an offensive word: refused, no guess spent
   if (!VALID5.has(g)) return { ok: false, reason: 'notword' };     // a non-word costs nothing
   if (wordleLeft(mini, p) <= 0) return { ok: false, reason: 'out' };
-  part.guesses.push({ by: p, word: g, marks: wordleMarks(g, mini.word) });
-  if (g === mini.word) return { ok: true, outcome: 'win' };
+  part.guesses.push({ by: p, word: g, marks: wordleMarks(g, word) });
+  if (g === word) return { ok: true, outcome: 'win' };
   if (wordleLeft(mini, p) <= 0) return { ok: true, outcome: 'win', winner: other(p), note: 'out' };   // the last guess missed: the square goes to the other player
   return { ok: true, outcome: 'continue', note: 'guess' };
 }
 export function publicView(mini) {
   const v = { type: 'wordle', limit: wordleLimit(mini) };
-  if (mini.race) return Object.assign(v, { race: true, side: mini.side });   // (core/minis.js publicMini keeps one side's own part alone and adds both shapes)
+  if (mini.race) return Object.assign(v, { race: true, side: JSON.parse(JSON.stringify(mini.side || {})) });   // (both parts are open; the words, mini.tg, never: core/minis.js publicMini)
   return Object.assign(v, { guesses: mini.guesses.map(g => ({ by: g.by, word: g.word, marks: g.marks.slice() })) });
 }
-// Race: what anyone may see of p's progress: each row's colours (no letters), the guesses used and left.
-export function raceShape(mini, p) {
-  const part = raceSide(mini, p);
-  if (!part) return {};
-  return { n: part.guesses.length, left: wordleLimit(mini) ? Math.max(0, wordleLimit(mini) - part.guesses.length) : null, rows: part.guesses.map(g => g.marks.join('')) };
+// Race: p's progress as anyone may see it (all of it is open): guesses made, and their best row (most greens, then yellows).
+export const wordleRank = marks => { let v = 0; for (const m of marks) v += m === 'g' ? 10 : m === 'y' ? 1 : 0; return v; };
+export function wordleBest(mini, p) {
+  let best = null;
+  for (const g of wordleGuesses(mini, p)) if (!best || wordleRank(g.marks) > wordleRank(best.marks)) best = g;
+  return best;
 }
-export function raceFlash(f, mini) {
-  const sh = raceShape(mini, f.by);
-  return Object.assign({ by: f.by, row: sh.rows && sh.rows.length ? sh.rows[sh.rows.length - 1] : null }, sh);   // (row: the new row's colours)
+export function raceShape(mini, p) {
+  const part = raceSide(mini, p), b = part ? wordleBest(mini, p) : null;
+  return part ? { n: part.guesses.length, best: b ? b.marks.join('') : null } : {};
 }
 
 // ---- what is still possible, from public information ----
@@ -90,10 +98,10 @@ export function moveFlash(m, p, range, bjFrom, mini, flash) {
   flash.word = m.toUpperCase(); flash.left = wordleLimit(mini) ? wordleLeft(mini, p) : null; return;
 }
 export function secret(mini) {
-  return { word: mini.word };
+  return mini.race ? { tg: mini.tg } : { word: mini.word };   // (a race: both words, top level, so a record's fullState puts them back whole)
 }
 export function hide(m, k, st) {
-  delete m.word; return;
+  delete m.word; delete m.tg; return;
 }
 export function flashMs(f, winLen, won) {
   return 1200;

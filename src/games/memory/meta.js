@@ -6,7 +6,7 @@ export const release = 'released';   // the default (the admin's dashboard can c
 export const minVersion = '1.0.0';   // the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
 export const category = 'brain';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const explainer = { name: 'Find the Pair', play: 'Flip two cards. Matching pairs in the deck: {pairs}.', win: 'Find a matching pair.' };   // ({pairs}: its setting, TUNE below)
-export const raceExplainer = { name: 'Find the Pair', play: 'Flip two cards of your own copy of the deck. What you turn up is yours alone to remember, and the other player\'s flips show you nothing but their count. Matching pairs in the deck: {pairs}.', win: 'Find a matching pair first. The cards lie the same way for both of you.' };   // Race mode (core/race.js)
+export const raceExplainer = { name: 'Find the Pair', play: 'You each have the same cards, laid out your own way. Flip two of yours. You can watch the cards the other player turns. Matching pairs in the deck: {pairs}.', win: 'Find a matching pair first.' };   // Race mode (core/race.js, rv 2)
 // Its settings (the admin's Mini-game Settings; core/tune.js): pairs dealt into the deck; mem read through tune(pm).
 export const TUNE = [
   MODE_TUNE,

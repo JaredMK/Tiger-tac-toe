@@ -7,7 +7,7 @@ export const minVersion = '1.0.0';   // the oldest client version that has this 
 export const category = 'luck';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Sea Battle', play: "Fire at a square. Hit? Fire again.", win: 'Sink the ship.' };
-export const raceExplainer = { name: 'Sea Battle', play: 'Fire at a square on your own sea. Hit? Fire again. The same ship hides in both seas, but your shots are yours alone: you see only how many hits and misses the other player has.', win: 'Sink the ship first.' };   // Race mode (core/race.js)
+export const raceExplainer = { name: 'Sea Battle', play: "Each of you has your own ship, the same size, hidden in your own sea. Fire at a square. Hit? Fire again. The other player's shots show on their sea.", win: 'Sink your ship first.' };   // Race mode (core/race.js)
 export const scExplainer = { name: 'Sea Battle', play: 'Fire at a square. Hit? Fire again.', win: 'Hit its last square. If you both do in the same round, the square resets.' };   // in Super Chaos ({scN}, {scLen}: its settings, TUNE below)
 // Its settings (the admin's Mini-game Settings; core/tune.js): dealt into each square (n, len).
 export const TUNE = [

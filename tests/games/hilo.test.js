@@ -120,3 +120,114 @@ test('hilo: the Hard computer guesses to be the one who lands on the number (eve
   assert.ok(hardWins > 110, 'Hard won ' + hardWins + ' of 200');
   for (let k = 0; k < 5; k++) { const t1 = performance.now(); A.best(pm(1, 99 - k, { X: k, O: 1 }), 'X', seq(0.5), {}, ctx); assert.ok(performance.now() - t1 < 60); }
 });
+
+// ================================ Race mode v2 (core/race.js, rv 2) ================================
+// Each player their own number in the same range (mini.tg, the square's secret), their own guesses and range in
+// mini.side[p] (open to both), no guess limit; the first to find their own number takes the square.
+const R = require('../../src/games/hilo/rules.js');
+const raceOn = on => E.setTune('hilo', on ? { mode: 'race' } : null);
+function raceMatch(rng) { return E.newMatch(rng, { games: ['hilo', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt'], vs: 'cpu' }); }
+const hiloAt = st => st.squares.findIndex(q => q.mini.type === 'hilo');
+
+test('hilo, race v2: two different numbers from the same range, each side its own range and guesses, judged against its own number; two on one phone play Shared', () => {
+  raceOn(true);
+  try {
+    for (let k = 0; k < 200; k++) {
+      const m = L.newMini('hilo', E.makeRng('hrv2-' + k));
+      assert.equal(m.race, true); assert.equal(m.rv, 2); assert.equal(m.target, undefined); assert.equal(m.limit, undefined, 'no limit in a race');
+      assert.notEqual(m.tg.X, m.tg.O, 'two different numbers');
+      for (const p of ['X', 'O']) { assert.ok(Number.isInteger(m.tg[p]) && m.tg[p] >= 1 && m.tg[p] <= m.top, 'the same range'); assert.deepEqual(m.side[p], { lo: 1, hi: m.top, guesses: [] }); }
+    }
+    const m = L.newMini('hilo', E.makeRng('hrv2-a')), { X: tx, O: to } = m.tg;
+    const miss = (t) => (t === 1 ? 2 : 1);                        // a guess below (or above) the number: never it
+    const r = L.applyMove(m, 'X', miss(tx));
+    assert.equal(r.ok, true); assert.equal(r.outcome, 'continue'); assert.equal(m.side.X.guesses.length, 1);
+    assert.deepEqual(m.side.O, { lo: 1, hi: m.top, guesses: [] }, "O's part is untouched");
+    assert.equal(r.note, miss(tx) < tx ? 'higher' : 'lower', "judged against X's own number");
+    assert.deepEqual(L.applyMove(m, 'O', to), { ok: true, outcome: 'win' }, "O's own number wins for O");
+    assert.equal(L.applyMove(L.newMini('hilo', E.makeRng('hrv2-a')), 'X', to === tx ? 0 : to).outcome === 'win', to === tx, "the other's number is not X's");
+    assert.equal(L.newMini('hilo', E.makeRng('hrv2-b'), { shared: true }).race, undefined, 'two people on one phone: Shared');
+    assert.ok(E.newMatch(E.makeRng('h-same'), { games: ['hilo'], vs: 'same' }).squares.every(q => !q.mini.race));
+  } finally { raceOn(false); }
+  assert.equal(L.newMini('hilo', E.makeRng('hrv2-c')).race, undefined, 'off: as ever');
+});
+
+test('hilo, race v2: no guess limit (counting up from 1 always finds it, no square handed over); Shared keeps its 5', () => {
+  raceOn(true);
+  try {
+    const m = L.newMini('hilo', E.makeRng('hrv2-cap'));
+    m.tg.X = m.top; m.tg.O = 1;
+    for (let n = 1; n < m.top; n++) assert.deepEqual(L.applyMove(m, 'X', n), { ok: true, outcome: 'continue', note: 'higher' }, `guess ${n}: no limit`);
+    assert.deepEqual(L.applyMove(m, 'X', m.top), { ok: true, outcome: 'win' });
+    assert.equal(E.hiloLimit(m), 0); assert.equal(E.hiloLeft(m, 'X'), Infinity);
+    assert.equal(E.publicMini(m).limit, 0);
+    const f = {}; R.moveFlash(m.top, 'X', [1, 1], 0, m, f); assert.equal(f.left, null, 'no "left" on the flash');
+  } finally { raceOn(false); }
+  const s = L.newMini('hilo', seq(pick(29, 30)));
+  for (const n of [1, 2, 3, 4]) L.applyMove(s, 'X', n);
+  assert.deepEqual(L.applyMove(s, 'X', 5), { ok: true, outcome: 'win', winner: 'O', note: 'out' }, 'Shared: the 5th miss still hands it over');
+});
+
+test('hilo, race v2: the numbers never reach the public view or the record\'s state while the square is open; both parts do; claimed, they are public', () => {
+  raceOn(true);
+  try {
+    const st = raceMatch(E.makeRng('hrv2-rec')), k = hiloAt(st), m = st.squares[k].mini;
+    L.applyMove(m, 'X', 15 === m.tg.X ? 16 : 15); L.applyMove(m, 'O', 3 === m.tg.O ? 4 : 3);
+    for (const side of [undefined, 'X', 'O']) {
+      const pm = E.publicMini(m, side), js = JSON.stringify(pm);
+      assert.equal(pm.tg, undefined); assert.equal(pm.target, undefined); assert.doesNotMatch(js, /"tg"|"target"/, 'no number in the view');
+      assert.equal(pm.side.X.guesses.length, 1); assert.equal(pm.side.O.guesses.length, 1, 'both parts open');
+      assert.equal(pm.rv, 2);
+    }
+    st.id = 'h1'; st.seq = 0; st.recent = [];
+    const rec = E.matchRecord(st), ps = rec.state.squares[k].mini;
+    assert.equal(ps.tg, undefined); assert.doesNotMatch(JSON.stringify(rec.state), /"tg"|"target"/);
+    assert.deepEqual(rec.secrets[k], { tg: m.tg }); assert.deepEqual(ps.side, m.side, 'the parts ride the public state');
+    const full = E.fullState(E.parseMatch(E.packMatch(rec)));
+    assert.deepEqual(full.squares[k].mini.tg, m.tg); assert.deepEqual(full.squares[k].mini.side, m.side); assert.equal(full.squares[k].mini.rv, 2, 'kept, not dealt again');
+    // online: a move's entry and its after carry no number
+    const r = E.applyOnlineMove(rec, 'X', k, m.side.X.lo === m.tg.X ? m.side.X.lo + 1 : m.side.X.lo, E.makeRng('hrv2-mv'));
+    assert.ok(r.ok); assert.doesNotMatch(JSON.stringify(r.entries) + JSON.stringify(r.rec.state), /"tg"|"target"/);
+    assert.equal(r.rec.state.squares[k].mini.side.X.guesses.length, 2);
+    // claimed: the numbers are public
+    const fs = E.fullState(r.rec); fs.squares[k].mini.side.O.lo = fs.squares[k].mini.tg.O; fs.squares[k].mini.side.O.hi = fs.squares[k].mini.tg.O;
+    const r2 = E.applyOnlineMove(E.matchRecord(fs), 'O', k, fs.squares[k].mini.tg.O, E.makeRng('hrv2-mv2'));
+    assert.ok(r2.ok); assert.equal(r2.rec.state.squares[k].owner, 'O'); assert.deepEqual(r2.rec.state.squares[k].mini.tg, m.tg, 'revealed once the square ends');
+  } finally { raceOn(false); }
+});
+
+test('hilo, race v2: the computer finds its own number from the public view alone, at every level, with no limit; it halves; needs reads each side\'s own range', () => {
+  raceOn(true);
+  try {
+    for (const level of ['easy', 'normal', 'hard']) {
+      for (let g = 0; g < 40; g++) {
+        const rng = E.makeRng(`hrv2-ai-${level}-${g}`), m = L.newMini('hilo', rng);
+        let r, n = 0;
+        do {
+          const pm = E.publicMini(m, 'O');
+          assert.equal(pm.tg, undefined, 'never the number');
+          const b = E.localBest(pm, 'O', rng, E.STYLE0, { level, until: null });
+          if (level === 'easy' && rng() < 0.3) b.move = E.randomLegalMove(m, 'O', rng);   // (Easy's careless moves)
+          assert.equal(b.shared, false);
+          r = L.applyMove(m, 'O', b.move, rng); assert.equal(r.ok, true, `${level}: ${b.move}`); n++;
+        } while (r.outcome !== 'win' && n < 40);
+        assert.equal(r.outcome, 'win'); assert.equal(r.winner, undefined, `${level}: its own number found`);
+        if (level !== 'easy') assert.ok(n <= 5, `${level}: ${n} guesses (halving: 5 at most on 30)`);
+      }
+    }
+    const m = L.newMini('hilo', E.makeRng('hrv2-need')); m.side.O.lo = 10; m.side.O.hi = 12;
+    const pm = E.publicMini(m, 'X');
+    assert.ok(E.needsOf(pm, 'O') < E.needsOf(pm, 'X'), 'O, three numbers left, is nearer');
+    assert.equal(E.localBest(pm, 'O', seq(0.5), E.STYLE0, { level: 'hard', until: null }).move, 11, 'the middle of its own range');
+    // through a match against the computer: the square is claimed by whoever finds their own first
+    const st = raceMatch(E.makeRng('hrv2-match'));
+    for (let t = 0; t < 400 && !st.winner; t++) {
+      const c = E.cpuMove(st, E.makeRng('c' + t), E.STYLE0, { level: t % 2 ? 'hard' : 'normal' }); if (!c) break;
+      const r = L.playMove(st, c.square, c.move); assert.equal(r.ok, true, r.reason); L.endFlash(st); st.done = null; st.screen = 'board'; st.zoom = null;
+      if (st.squares.some(q => q.owner && q.mini.type === 'hilo')) break;
+    }
+    const won = st.squares.find(q => q.owner && q.mini.type === 'hilo');
+    assert.ok(won, 'a race square claimed'); const part = won.mini.side[won.owner];
+    assert.equal(part.guesses[part.guesses.length - 1].n, won.mini.tg[won.owner], 'by finding its own number');
+  } finally { raceOn(false); }
+});

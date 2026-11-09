@@ -1,6 +1,6 @@
 // Codebreaker: the rules (pure: no page, no clock; the server runs the same code).
 import { shuffle } from '../../core/random.js';
-import { raceDealt, raceSide } from '../../core/race.js';
+import { RACE_V, raceDealt, raceSide } from '../../core/race.js';
 import { tune, tuneLive } from '../../core/tune.js';
 
 export const MM = { pegs: 4, colors: 6 };    // Codebreaker: a code of 4 pegs from 6 colours, no colour twice      // Hexapawn: X starts on the bottom row and moves up, O starts on the top row and moves down
@@ -27,13 +27,17 @@ export function mmAll(colors = MM.colors) {
   return (MM_BY[colors] = out);
 }
 export function mmCode(rng, colors = MM.colors) { const cols = shuffle(Array.from({ length: colors }, (_, c) => c), rng); return cols.slice(0, MM.pegs); }
-// Race mode (core/race.js): the same code for both, but each player's guesses and markers are their own
-// (`mini.side[p]`: { guesses }); the other side sees only each row's markers (raceShape: [solid, hollow] a row),
-// never the pegs guessed.
+// Race mode (core/race.js, `rv: 2`): each player cracks a code of their own, dealt from the same colours by the same
+// rule (four different colours; every code as hard as any other), the two codes different (`mini.tg[p]`, the targets:
+// secret until the square ends, as a Shared square's code is); each player's guesses and markers are their own
+// (`mini.side[p]`: { guesses }), open to both. No guess limit; the first to crack their own code takes the square.
 // Where p's guesses live: the square itself (Shared), or p's own side (Race; null for a side this copy has not got).
 export const mmPart = (mini, p) => (mini && mini.race ? raceSide(mini, p) : mini);
 // p's guesses as this copy has them (a race side it lacks: none).
 export const mmGuesses = (mini, p) => { const part = mmPart(mini, p); return part && Array.isArray(part.guesses) ? part.guesses : []; };
+// p's code: Shared, the square's one; Race, p's own (a race square from before the rework: its one code). Null where
+// this copy has not got it (the public state of an open square).
+export const mmCodeOf = (mini, p) => (mini && mini.race && mini.tg ? (mini.tg[p] || null) : (mini && mini.code) || null);
 // The codes still consistent with every feedback so far (public information only; a race: p's own guesses).
 export function mmCandidates(pm, p) {
   const gs = pm.race ? mmGuesses(pm, p) : pm.guesses;
@@ -60,31 +64,41 @@ export function mmBestGuess(cand, colors = MM.colors) {
   return best.slice();
 }
 export function create(type, rng, opts) {
-  const base = { type, code: mmCode(rng, tuneLive(type).colors) };   // (the admin's settings: the colours to choose from, the mode)
-  if (raceDealt(type, opts)) return Object.assign(base, { race: true, side: { X: { guesses: [] }, O: { guesses: [] } } });
-  return Object.assign(base, { guesses: [] });
+  const colors = tuneLive(type).colors, code = mmCode(rng, colors);   // (the admin's settings: the colours to choose from, the mode)
+  if (raceDealt(type, opts)) {                                    // a race: a code each, the two different
+    let other = mmCode(rng, colors);
+    for (let k = 0; k < 40 && other.join() === code.join(); k++) other = mmCode(rng, colors);
+    return { type, race: true, rv: RACE_V, side: { X: { guesses: [] }, O: { guesses: [] } }, tg: { X: code, O: other } };
+  }
+  return { type, code, guesses: [] };
 }
 export function apply(mini, p, m, rng, idx) {
-  const part = mmPart(mini, p);
-  if (!part) return { ok: false, reason: 'bad' };
+  const part = mmPart(mini, p), code = mmCodeOf(mini, p);
+  if (!part || !code) return { ok: false, reason: 'bad' };
+  if (!Array.isArray(part.guesses)) part.guesses = [];            // (an empty list the database dropped)
   if (!mmValid(m, tune(mini).colors)) return { ok: false, reason: 'bad' };
-  const f = mmFeedback(m, mini.code);
+  const f = mmFeedback(m, code);
   part.guesses.push({ by: p, code: m.slice(), solid: f.solid, hollow: f.hollow });
   if (f.solid === MM.pegs) return { ok: true, outcome: 'win', cells: [0, 1, 2, 3] };
   return { ok: true, outcome: 'continue', note: 'guess' };
 }
-const pubGuesses = gs => gs.map(g => ({ by: g.by, code: g.code.slice(), solid: g.solid, hollow: g.hollow }));
+const pubGuesses = gs => (gs || []).map(g => ({ by: g.by, code: g.code.slice(), solid: g.solid, hollow: g.hollow }));
 export function publicView(mini) {
-  if (mini.race) return { type: 'mastermind', race: true, side: mini.side };   // (core/minis.js publicMini keeps one side's own part alone and adds both shapes)
+  if (mini.race) return { type: 'mastermind', race: true, side: { X: { guesses: pubGuesses(mmGuesses(mini, 'X')) }, O: { guesses: pubGuesses(mmGuesses(mini, 'O')) } } };   // (a race: both players' guesses, open; the codes stay out)
   return { type: 'mastermind', guesses: pubGuesses(mini.guesses) };
 }
-// Race: what anyone may see of p's progress: each row's markers ([solid, hollow]), never the pegs.
+// Race: p's progress in brief (core/race.js publicMini's shape): guesses made and their best row's markers.
 export function raceShape(mini, p) {
-  const part = raceSide(mini, p);
-  if (!part) return {};
-  return { n: part.guesses.length, rows: part.guesses.map(g => [g.solid, g.hollow]) };
+  if (!raceSide(mini, p)) return {};
+  const best = mmBestRow(mmGuesses(mini, p));
+  return { n: mmGuesses(mini, p).length, best: best ? [best.solid, best.hollow] : null };
 }
-export function raceFlash(f, mini) { return Object.assign({ by: f.by, solid: f.solid, hollow: f.hollow }, raceShape(mini, f.by)); }
+// The row nearest the code (most solid markers, then most hollow ones; the later among equals), or null with none.
+export function mmBestRow(gs) {
+  let best = null;
+  for (const g of gs || []) if (!best || g.solid > best.solid || (g.solid === best.solid && g.hollow >= best.hollow)) best = g;
+  return best;
+}
 export function randomMove(mini, p, rng, from, empties) {
   return mmCode(rng, tune(mini).colors);
 }
@@ -92,10 +106,11 @@ export function moveFlash(m, p, range, bjFrom, mini, flash) {
   const gs = mmGuesses(mini, p), g = gs[gs.length - 1]; flash.code = g.code.slice(); flash.solid = g.solid; flash.hollow = g.hollow; return;
 }
 export function secret(mini) {
-  return { code: mini.code.slice() };
+  if (mini.race && mini.tg) return { tg: JSON.parse(JSON.stringify(mini.tg)) };   // (a race: both players' codes, top-level: core/records.js fullState puts them back with Object.assign)
+  return mini.code ? { code: mini.code.slice() } : null;
 }
 export function hide(m, k, st) {
-  delete m.code; return;
+  delete m.code; delete m.tg; return;
 }
 export function flashMs(f, winLen, won) {
   return 450 + MM.pegs * 250 + (won ? 900 : 0);
@@ -103,7 +118,7 @@ export function flashMs(f, winLen, won) {
 // Super Chaos: each player gets their own feedback during their move; at the round's end both guesses join
 // the shared history.
 export function scMerge(m, c) {
-  if (m.race) { for (const p of c.played) m.side[p] = c.forks[p].side[p]; return; }   // (a race square keeps each side's own)
+  if (m.race) { for (const p of c.played) if (c.forks[p].side) m.side[p] = c.forks[p].side[p]; return; }   // (Super Chaos is off; a race square keeps each side's own)
   const n = c.base.guesses.length;
   m.guesses = c.base.guesses.concat(...c.played.map(p => c.forks[p].guesses.slice(n)));
 }

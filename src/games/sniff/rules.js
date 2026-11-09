@@ -1,6 +1,6 @@
 // Sniff: the rules (pure: no page, no clock; the server runs the same code).
 import { needRng, randInt } from '../../core/random.js';
-import { raceDealt, raceSide } from '../../core/race.js';
+import { RACE_V, raceDealt, raceSide } from '../../core/race.js';
 import { tune, tuneLive } from '../../core/tune.js';
 
 // ---------- Sniff ----------
@@ -11,10 +11,11 @@ import { tune, tuneLive } from '../../core/tune.js';
 // show while it plays, then they are gone. The square keeps only the last 3 steps (who made each, and which it
 // was), for the computer, which remembers that much. Whoever walks the dog onto the treasure wins the square.
 // Online the server keeps the treasure.
-// Race mode (core/race.js): the same field, treasure and start for both, but a dog each (`mini.side[p]`: { dog, path (the
-// cells it has stood on, the start first), trail (its last few steps, the computer's memory), last }), the other's never
-// seen: the other side sees only how many steps they have taken (raceShape: { n }). Like Super Chaos's dogs (scCreate),
-// each player's own.
+// Race mode (core/race.js, `rv: 2`): the same field and start for both, a dog each (`mini.side[p]`: { dog, path (the
+// cells it has stood on, the start first), trail (its last few steps, the computer's memory), last }, open to both) and
+// a treasure each (`mini.tg`: { X, O }, the square's secret), the two the same walk from the start (the same number of
+// steps, diagonals counting one: sniffSteps) and both at least minStart from it in a straight line: equally far to go.
+// A step is hotter, colder or the same by the walker's own treasure. No step limit: the first dog onto its own treasure wins.
 export const SNIFF = { n: 7, minStart: 3, step: 420, hold: 1200, memory: 3 };   // (minStart, hold, memory: the defaults of its settings, TUNE in meta.js)
 const sniffMem = mini => tune(mini).memory || SNIFF.memory;           // the steps a square keeps: its own setting
 export const SNIFF_DIRS = { N: [-1, 0], NE: [-1, 1], E: [0, 1], SE: [1, 1], S: [1, 0], SW: [1, -1], W: [0, -1], NW: [-1, -1] };
@@ -55,28 +56,40 @@ export function sniffPick(pm, rng) {
   }
   return { move: best[randInt(rng, best.length)], q: 0 };
 }
+// Race: the starts for a treasure at t (at least min from it in a straight line) that have a second spot for the other
+// treasure (the same walk from the start, as far in a straight line), and those spots.
+const raceAlts = (t, s, min) => SNIFF_CELLS.filter(c => c !== t && c !== s && sniffSteps(s, c) === sniffSteps(s, t) && sniffDist(c, s) >= min);
+const raceStarts = (t, min) => SNIFF_CELLS.filter(s => sniffDist(s, t) >= min && raceAlts(t, s, min).length);
+const SNIFF_CELLS = Array.from({ length: SNIFF.n * SNIFF.n }, (_, c) => c);
 export function create(type, rng, opts) {   // the treasure (hidden online), and the dog at least 3 steps from it, as the crow flies
-  const r = needRng(rng), treasure = randInt(r, SNIFF.n * SNIFF.n), cells = Array.from({ length: SNIFF.n * SNIFF.n }, (_, c) => c);
-  const far = cells.filter(c => sniffDist(c, treasure) >= tuneLive(type).minStart);   // (on 7x7 every cell has some at least 4 away)
+  const r = needRng(rng), min = tuneLive(type).minStart;
+  if (raceDealt(type, opts)) {                                     // a race: a dog each, both from one start; the second treasure the same walk from it, as far in a straight line
+    const ts = SNIFF_CELLS.filter(t => raceStarts(t, min).length);  // (every cell but the middle one with a minStart of 4)
+    const treasure = ts[randInt(r, ts.length)], starts = raceStarts(treasure, min), dog = starts[randInt(r, starts.length)], alt = raceAlts(treasure, dog, min);
+    const part = () => ({ dog, path: [dog], trail: [], last: null });
+    return { type, g: SNIFF.n, start: dog, race: true, rv: RACE_V, tg: { X: treasure, O: alt[randInt(r, alt.length)] }, side: { X: part(), O: part() } };
+  }
+  const treasure = randInt(r, SNIFF.n * SNIFF.n);
+  const far = SNIFF_CELLS.filter(c => sniffDist(c, treasure) >= min);   // (on 7x7 every cell has some at least 4 away)
   const dog = far[randInt(r, far.length)];
-  if (raceDealt(type, opts)) return { type, g: SNIFF.n, treasure, start: dog, race: true, side: { X: { dog, path: [dog], trail: [], last: null }, O: { dog, path: [dog], trail: [], last: null } } };   // a race: a dog each, both from the start
   return { type, g: SNIFF.n, treasure, dog, start: dog, trail: [], last: null };
 }
 // Where p's dog lives: p's own side of a race square (null for a side this copy has not got), else nothing (the shared dog).
 export const sniffPart = (mini, p) => (mini && mini.race ? raceSide(mini, p) : null);
-// Race: a side's progress for anyone to see: the steps its dog has taken (never where it is).
+// The treasure p's dog is after: a race square's own (null where this copy has not got it), else the square's one.
+export const sniffTreasure = (mini, p) => (mini.race ? (mini.tg && Number.isInteger(mini.tg[p]) ? mini.tg[p] : null) : mini.treasure);
+// Race: a side's progress in brief: the steps its dog has taken and its last step's word.
 export function raceShape(mini, p) {
   const part = raceSide(mini, p);
-  return part ? { n: Math.max(0, (part.path || []).length - 1) } : {};
+  return part ? { n: Math.max(0, (part.path || []).length - 1), heat: part.last ? (part.last.found ? 'found' : part.last.res || (part.last.hot ? 'hot' : 'cold')) : null } : {};
 }
-export function raceFlash(f, mini) { return Object.assign({ by: f.by }, raceShape(mini, f.by)); }
-function raceWalk(mini, p, m) {                   // a race: p's own dog one step, hotter, colder or the same by its own distance; onto the treasure: found
-  const part = raceSide(mini, p);
+function raceWalk(mini, p, m) {                   // a race: p's own dog one step, hotter, colder or the same by its own treasure; onto it: found
+  const part = raceSide(mini, p), t = sniffTreasure(mini, p);
   if (!part) return { ok: false, reason: 'bad' };
   const from = part.dog, to = typeof m === 'string' ? sniffStep(from, m) : null;
   if (to == null) return { ok: false, reason: 'bad' };
-  if (!Number.isInteger(mini.treasure)) return { ok: false, reason: 'secret' };
-  const res = sniffRes(from, to, mini.treasure), hot = res === 'hot', found = to === mini.treasure;
+  if (t == null) return { ok: false, reason: 'secret' };
+  const res = sniffRes(from, to, t), hot = res === 'hot', found = to === t;
   part.dog = to; part.path = (part.path || [from]).concat(to);
   part.trail = (part.trail || []).concat({ f: from, t: to, by: p, r: res, hot: hot ? 1 : 0 }).slice(-sniffMem(mini));
   part.last = { by: p, f: from, t: to, hot, res, found };
@@ -97,7 +110,7 @@ export function apply(mini, p, m, rng, idx) {   // the dog one step: hotter, col
 }
 export function publicView(mini) {
   const was = mini.was ? { was: mini.was } : {};                 // (a square from the 5x5 field: the computer's to know)
-  if (mini.race) return { type: 'sniff', g: mini.g, ...was, start: mini.start, race: true, side: mini.side };   // (core/minis.js publicMini keeps one side's own part alone and adds both shapes)
+  if (mini.race) return { type: 'sniff', g: mini.g, ...was, start: mini.start, race: true, side: JSON.parse(JSON.stringify(mini.side || {})) };   // both dogs, never a treasure
   if (mini.dogs) return { type: 'sniff', g: mini.g, ...was, dogs: Object.assign({}, mini.dogs), paths: { X: mini.paths.X.slice(), O: mini.paths.O.slice() }, trails: { X: mini.trails.X.map(t => Object.assign({}, t)), O: mini.trails.O.map(t => Object.assign({}, t)) } };
   return { type: 'sniff', g: mini.g, ...was, dog: mini.dog, start: mini.start, trail: (mini.trail || []).slice(-sniffMem(mini)).map(t => Object.assign({}, t)) };   // never the treasure; the last few steps
 }
@@ -111,10 +124,10 @@ export function moveFlash(m, p, range, bjFrom, mini, flash) {
   return;
 }
 export function secret(mini) {
-  return { treasure: mini.treasure };
+  return mini.race ? { tg: Object.assign({}, mini.tg) } : { treasure: mini.treasure };
 }
 export function hide(m, k, st) {
-  delete m.treasure; return;
+  delete m.treasure; delete m.tg; return;
 }
 export function flashMs(f, winLen, won) {
   return SNIFF.step + (f.hold || SNIFF.hold) + (won ? 900 : 0);

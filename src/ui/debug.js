@@ -4,6 +4,7 @@ import { endFlash, leaveSquare, mainResult, playMove } from '../core/board.js';
 import { newMatch, startMatch } from '../core/match.js';
 import { newMini, randomLegalMove } from '../core/minis.js';
 import { makeRng } from '../core/random.js';
+import { setTune, tuneLive } from '../core/tune.js';
 import { applyOnlineMove, fullState, hideMini, matchRecord, newOnlineMatch, packMatch, secretOf } from '../core/records.js';
 import { armClock, newTimer } from '../core/timer.js';
 import { other, r2, r3 } from '../core/util.js';
@@ -200,6 +201,7 @@ const names = {
   tick: () => tick,
   PHYSICS: () => PHYSICS,
   flArt: () => flArt,
+  setTune: () => setTune, tuneLive: () => tuneLive,
   cardData: () => cardData, paintCard: () => paintCard, renderCard: () => renderCard, shareResult: () => shareResult,
 };
 const setters = { scUi: setScUi, render: setRender, bullDraft: setBullDraft, connected: setConnected, fingDraw: setFingDraw, moveRejected: setMoveRejected, fingFrame: setFingFrame, call: setCall, net: assignNet, acct: setAcct, bowlDraft: setBowlDraft, cpuTimer: setCpuTimer, cpuPlan: setCpuPlan, bowlNow: setBowlNow, devLast: setDevLast, menuOpen: setMenuOpen };

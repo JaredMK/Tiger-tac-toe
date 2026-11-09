@@ -1,7 +1,7 @@
-// Race mode on the page (core/race.js), Sea Battle: the square's screen shows this phone's own sea and only the other side's
-// shape (hits and misses as counts, their ship's parts filled in); the other side's shot arrives redacted and lands on no
-// cell of this sea; the board's miniature shows both shapes and no cell; a finished square reviewed shows both players'
-// shots. Rendered in Node with the browser's names stubbed.
+// Race mode on the page (core/race.js, rv 2), Sea Battle: the square shows this phone's own sea large (its buttons) and
+// the other player's sea small under it (ui/race.js raceBoards), both open; the ships hidden until the square ends (only
+// hit cells show); the other side's shot lands on their small sea from its flash; the board's miniature draws each
+// player's ship with their hits filled in; a finished square reviewed shows both ships. Rendered in Node, browser stubbed.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
@@ -20,92 +20,93 @@ const V = await import('../../src/games/bs/view.js');
 const { GAMES } = await import('../../src/games/index.js');
 GAMES.bs.view = V;   // (the page registers the views in main.js; here by hand)
 
-function raceMatch() {
+function raceMatch(seed = 'bs-race') {
   E.setTune('bs', { mode: 'race' });
-  Object.assign(state, E.newMatch(E.makeRng('bs-race'), { games: ['bs'], vs: 'cpu' }), { screen: 'mini', zoom: 0, cpu: 'O', sc: null, flash: null, done: null, spot: null, winner: null, online: null, turn: 'X' });
+  Object.assign(state, E.newMatch(E.makeRng(seed), { games: ['bs'], vs: 'cpu' }), { screen: 'mini', zoom: 0, cpu: 'O', sc: null, flash: null, done: null, spot: null, winner: null, online: null, turn: 'X', lock: null });
   E.setTune('bs', null);
   state.setup.vs = 'cpu'; state.setup.names = { X: 'Xena', O: 'Computer' };
   return state.squares[0].mini;
 }
-const notShip = (m, k = 0) => { let c = k; while (m.ship.includes(c)) c++; return c; };
-const cells = html => html.match(/<button class="cell[\s\S]*?<\/button>/g) || [];
-const cellAt = (html, i) => cells(html).find(c => c.includes(`data-m='${i}'`));
-const rowOf = (html, p) => { const at = html.indexOf(`<div class="bsrr ${p}`); return html.slice(at, html.indexOf('</div>', at)); };
+const notIn = (cells, k = 0) => { let c = k; while (cells.includes(c)) c++; return c; };
+const part = (html, cls) => { const at = html.indexOf(cls); assert.ok(at >= 0, `no ${cls}`); return html.slice(at); };
+const mine = html => { const a = html.indexOf('<div class="rmain">'), b = html.indexOf('<div class="ropp'); return html.slice(a, b); };
+const theirs = html => part(html, '<div class="ropp');
+const cellsOf = (html, tag) => html.match(new RegExp(`<${tag} class="cell sea[^"]*"[^>]*>`, 'g')) || [];
+const cellAt = (cells, i) => cells[i];
 
-test('race: the screen draws this side\'s own sea alone; the computer\'s shots are counts in its row, never cells', () => {
-  const m = raceMatch(), rng = E.makeRng('s');
-  const oMiss = notShip(m), oMiss2 = notShip(m, oMiss + 1), xMiss = notShip(m, oMiss2 + 1);
-  E.applyMove(m, 'O', oMiss, rng); E.applyMove(m, 'O', oMiss2, rng); if (m.len > 1) E.applyMove(m, 'O', m.ship[0], rng);   // the computer's shots (its own sea)
-  E.applyMove(m, 'X', xMiss, rng);                                                                                   // ours
-  state.turn = 'X';
+test('race: two boards: our sea (16 buttons) large, the computer\'s (16 cells) small with its shots; the ships hidden while open', () => {
+  const m = raceMatch(), rng = E.makeRng('s'), all = m.tg.X.concat(m.tg.O);
+  const oMiss = notIn(all), xMiss = notIn(all, oMiss + 1), oHit = m.tg.O[0];
+  E.applyMove(m, 'O', oMiss, rng); if (m.len > 1) E.applyMove(m, 'O', oHit, rng);
+  E.applyMove(m, 'X', xMiss, rng);
   const html = renderMini(state.squares[0]);
-  assert.equal(cells(html).length, 16);
-  assert.match(cellAt(html, xMiss), /class="cell sea miss/, 'our miss on our sea'); assert.match(cellAt(html, xMiss), /bsby X/);
-  for (const i of [oMiss, oMiss2, m.ship[0]]) if (i !== xMiss) { assert.doesNotMatch(cellAt(html, i), /miss|bshit|disabled/, `the computer's cell ${i} is untouched on our sea`); }
-  assert.doesNotMatch(html, /bsby O/, 'no dot of theirs');
-  assert.equal((html.match(/class="cell sea (miss|bshit)/g) || []).length, 1, 'one shot on this sea: ours');
-  assert.match(html, /class="bsship bsrace/, 'the race card');
-  const oRow = rowOf(html, 'O');
-  assert.match(oRow, new RegExp(`<span class="bsmiss"><i></i>2</span>`), "the computer's misses as a count");
-  assert.equal((oRow.match(/class="hull hit"/g) || []).length, m.len > 1 ? 1 : 0, "the computer's hits as the ship's parts");
-  const xRow = rowOf(html, 'X');
-  assert.match(xRow, /<span class="bsmiss"><i><\/i>1<\/span>/);
-  assert.doesNotMatch(html, /Hunting/, 'no shared card');
+  assert.match(html, /class="rboards bsrb"/);
+  const my = cellsOf(mine(html), 'button'), their = cellsOf(theirs(html), 'span');
+  assert.equal(my.length, 16); assert.equal(their.length, 16);
+  assert.match(cellAt(my, xMiss), /cell sea miss/, 'our miss on our sea'); assert.doesNotMatch(cellAt(my, oMiss), /miss|bshit/, 'their shot is not on ours');
+  assert.match(cellAt(their, oMiss), /cell sea miss/, 'their miss on their sea');
+  if (m.len > 1) { assert.match(cellAt(their, oHit), /cell sea bshit/, 'their hit shows'); assert.match(theirs(html), /<span class="rnote">1\/\d hit · 1 miss<\/span>|<small class="rnote">1\/\d hit · 1 miss<\/small>/); }
+  assert.doesNotMatch(html, /cell sea ship/, 'no ship drawn while the square is open');
+  assert.equal((mine(html).match(/data-act="move"/g) || []).length, 16, 'our cells fire'); assert.doesNotMatch(theirs(html), /data-act/, 'theirs are read-only');
+  assert.match(mine(html), /Hunting · \d part/, 'our hunt\'s card');
+  assert.doesNotMatch(html, /left|limit/i, 'no shots-left count');
 });
 
-test('race: the computer\'s shot is redacted on this phone (no cell lit, no burst), shown in its row as hit or miss; the sounds say hit or miss alone', async () => {
+test('race: the computer\'s shot animates on its small sea once, from its flash; the result words and sounds as ever', async () => {
   const m = raceMatch();
   state.turn = 'O';
-  const r = E.playMove(state, 0, m.ship[0], E.makeRng('c'));
-  assert.ok(r.ok);
-  assert.ok(state.flash.hit === true && state.flash.m === m.ship[0], 'the full flash is on the state (the computer played here)');
+  const r = E.playMove(state, 0, m.tg.O[0], E.makeRng('c'));
+  assert.ok(r.ok); assert.equal(state.flash.hit, true); assert.equal(state.flash.m, m.tg.O[0]);
   const html = renderMini(state.squares[0]);
-  assert.doesNotMatch(html, /flipin/, 'no cell of ours animates for their shot');
-  assert.doesNotMatch(html, /class="cell sea bshit/, 'no burst on our sea');
-  assert.doesNotMatch(html, /bsby O/);
-  assert.match(rowOf(html, 'O'), /^<div class="bsrr O live/, "the computer's row lights"); assert.match(rowOf(html, 'O'), /<em class="bssay">(Hit|Sunk)!<\/em>/, 'and says Hit!');
-  assert.match(rowOf(html, 'X'), /<em class="bssay"><\/em>/, 'our row says nothing');
+  assert.doesNotMatch(mine(html), /flipin/, 'nothing animates on our sea');
+  const their = cellsOf(theirs(html), 'span');
+  assert.match(their[m.tg.O[0]], /flipin/, 'their cell animates');
+  if (m.len > 1) assert.match(theirs(html), /bsosil live/, 'their ship\'s parts pop');
   const { moveSounds } = await import('../../src/audio/sound.js');
   const names = moveSounds(state.flash).map(s => s[0]);
   assert.ok(names.includes('fire') && names.includes('boom'), `a hit is heard: ${names}`);
-  assert.equal(V.moveText(E.raceFlashHide(state.flash, m), 'Computer'), 'Computer hit!');
-  // a miss of theirs
-  state.flash = null; state.lock = null; state.turn = 'O';
-  const r2 = E.playMove(state, 0, notShip(m), E.makeRng('c2'));
-  assert.ok(r2.ok);
-  const html2 = renderMini(state.squares[0]);
-  assert.match(rowOf(html2, 'O'), /<em class="bssay">Miss!<\/em>/);
-  assert.doesNotMatch(html2, /class="cell sea miss/, 'no splash on our sea');
-  assert.equal(V.moveText(E.raceFlashHide(state.flash, m), 'Computer'), 'Miss!');
+  assert.equal(V.moveText(state.flash, 'Computer'), 'Computer hit!');
+  // our own shot: on our sea
+  state.flash = null; state.done = null; state.lock = null; state.turn = 'X';
+  const xc = notIn(m.tg.X);
+  assert.ok(E.playMove(state, 0, xc, E.makeRng('x')).ok);
+  const h2 = renderMini(state.squares[0]);
+  assert.match(cellsOf(mine(h2), 'button')[xc], /miss flipin/); assert.doesNotMatch(theirs(h2), /flipin/);
 });
 
-test('race: the miniature shows both players\' shapes and no cell; the explainer is the Race one while the mode is on; a finished square reviewed shows both seas', () => {
+test('race: the miniature draws both players\' ships with their hits filled in, the same from the hidden square; the Race explainer', async () => {
   const m = raceMatch(), rng = E.makeRng('mm');
-  const oMiss = notShip(m), xMiss = notShip(m, oMiss + 1);
-  E.applyMove(m, 'O', oMiss, rng); E.applyMove(m, 'X', xMiss, rng); if (m.len > 1) E.applyMove(m, 'X', m.ship[0], rng);
+  if (m.len > 1) E.applyMove(m, 'X', m.tg.X[0], rng);
+  E.applyMove(m, 'O', notIn(m.tg.O), rng);
   state.screen = 'board'; state.zoom = null;
   const board = renderBoard();
   const sq = board.slice(board.indexOf('<button class="sq'), board.indexOf('</button>'));
-  assert.match(sq, /tbs tbrace/); assert.doesNotMatch(sq, /class="tg g4 sea/, 'no sea grid: the cells are private');
-  assert.match(sq, /<div class="tr X"[^>]*><b class="X">X<\/b>(<i class="psq( on)?"><\/i>)+<span class="tbm">1<\/span>/, "X's hits as parts and misses as a count");
-  assert.match(sq, /<div class="tr O"[^>]*><b class="O">O<\/b>(<i class="psq"><\/i>)+<span class="tbm">1<\/span>/);
-  if (m.len > 1) assert.match(sq, /class="tr X"[^>]*><b class="X">X<\/b><i class="psq on">/);
-  assert.match(sq, /<svg viewBox="0 20/, 'the ship drawn');
-  // the view's own miniature from the public view: shapes only
-  const pub = E.raceView(m, null);
-  assert.equal(pub.side.X, undefined); assert.match(V.miniature(pub, false), /tbrace/);
+  assert.match(sq, /class="trace2 tbsr"/);
+  const tiles = sq.split('<div class="trp ').slice(1);
+  assert.equal(tiles.length, 2); assert.match(tiles[0], /^X/); assert.match(tiles[1], /^O/);
+  for (const t of tiles) { assert.match(t, /<svg class="bsv"/, 'a picture'); assert.equal((t.match(/class="hull/g) || []).length, m.len, 'the ship\'s parts'); }
+  assert.equal((tiles[0].match(/class="hull hit"/g) || []).length, m.len > 1 ? 1 : 0, "X's hit filled");
+  assert.equal((tiles[1].match(/class="hull hit"/g) || []).length, 0, "O's miss fills nothing");
+  const { hideMini } = await import('../../src/core/records.js');
+  const hidden = JSON.parse(JSON.stringify(m)); hideMini(hidden, 0, state);
+  assert.equal(V.miniature(hidden, false), V.miniature(m, false), 'public information only');
+  assert.doesNotMatch(V.miniature(m, false), /undefined|NaN/);
   state.screen = 'mini'; state.zoom = 0;
-  assert.match(explainOf('bs').play, /yours alone/, 'the Race explainer in an open race square');
-  // a finished square reviewed: both players' shots on the one sea, the ship shown
-  for (const c of m.ship) if (!m.side.X.hits.includes(c)) E.applyMove(m, 'X', c, rng);
+  assert.match(explainOf('bs').play, /your own ship/, 'the Race explainer in an open race square');
+});
+
+test('race: a finished square reviewed shows both seas and both ships, the winner\'s sunk; an old race square still draws', () => {
+  const m = raceMatch('bs-end'), rng = E.makeRng('e');
+  E.applyMove(m, 'O', notIn(m.tg.O), rng);
+  for (const c of m.tg.X) E.applyMove(m, 'X', c, rng);
   state.squares[0].owner = 'X'; state.flash = null; state.done = null;
   const review = renderMini(state.squares[0]);
-  assert.match(cellAt(review, oMiss), /class="cell sea miss/, "the computer's miss shows now"); assert.match(cellAt(review, oMiss), /bsby O/);
-  assert.match(cellAt(review, xMiss), /bsby X/);
-  assert.equal((review.match(/class="cell sea ship X/g) || []).length, m.len, 'the ship, in the winner\'s colour');
   assert.match(review, /Won by/);
-  assert.match(review, new RegExp(`<div class="bsrr X sunk" aria-label="Xena: ${m.len} hit${m.len === 1 ? '' : 's'}, 1 miss"`), "the review's card counts from each side's part (a full square carries no shapes)");
-  assert.match(review, /<div class="bsrr O" aria-label="Computer: 0 hits, 1 miss"/);
-  state.squares[0].mini.race = false; delete state.squares[0].mini.side; state.squares[0].owner = null;
-  assert.doesNotMatch(explainOf('bs').play, /yours alone/, 'a shared square: the usual one');
+  assert.equal((mine(review).match(/class="cell sea ship X/g) || []).length, m.len, 'our ship, sunk in our colour');
+  assert.equal((theirs(review).match(/class="cell sea ship ghost/g) || []).length, m.len, 'their ship shown now');
+  assert.match(V.miniature(m, true), /trace2/);
+  // a race square from before the rework (one ship, the other side's part kept apart): drawn without throwing
+  const old = { type: 'bs', race: true, len: 2, shape: { X: { shots: 1, hits: 0, miss: 1 }, O: {} }, side: { X: { revealed: new Array(16).fill(null), hits: [], last: null } } };
+  state.squares[0] = { owner: null, mini: old };
+  assert.doesNotThrow(() => renderMini(state.squares[0])); assert.doesNotThrow(() => V.miniature(old, false));
 });

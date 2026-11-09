@@ -1,68 +1,68 @@
 // Hangman: the screen, the miniature, the move's words and sounds, and the inputs.
-import { playerName } from '../../core/match.js';
-import { isRace, raceFlashHide, raceShape } from '../../core/race.js';
-import { N, esc, state, viewer } from '../../ui/app.js';
-import { toon } from '../../ui/art.js';
+import { esc } from '../../ui/app.js';
 import { keyboard } from '../../ui/keyboard.js';
-import { hangLen, hangLetters, hangPart } from './rules.js';
+import { raceBoards, raceMe, raceThumb } from '../../ui/race.js';
+import { hangLen, hangPart, hangTarget } from './rules.js';
 
-// Race mode (core/race.js): the square this view gets holds this phone's own part alone (its letters and its own revealed
-// pattern) and both players' shapes (the blanks each has filled, their wrong letters); the other side's move arrives
-// redacted (`a.race`: their shape after it, the blanks it filled as `at`).
-const shapeOf = (mini, p) => raceShape(mini, p) || (mini.shape && mini.shape[p]) || {};
-const gotOf = (mini, p) => { const sh = shapeOf(mini, p); return Array.isArray(sh.got) ? sh.got : new Array(hangLen(mini)).fill(false); };
-const wrongOf = (mini, p) => { const sh = shapeOf(mini, p); return Number.isInteger(sh.wrong) ? sh.wrong : 0; };
-const wrongWords = n => `${n} wrong`;
+// Race mode (core/race.js, `rv: 2`): each player their own word; both players' letters are open, so the square is two
+// boards (ui/race.js): this phone's own word, its wrong letters and the keyboard, large; the other player's word with the
+// letters they have revealed and their wrong letters, smaller under it, their letter landing there as they play it.
+const blankPart = mini => ({ letters: [], pattern: new Array(hangLen(mini)).fill(null) });
+const patOf = (mini, p) => { const part = hangPart(mini, p); return part && Array.isArray(part.pattern) ? part.pattern : blankPart(mini).pattern; };
 // The miniature: the word's blanks with the letters found so far, and the last five wrong letters crossed out as in the
-// full view (all of them in the label), each letter as large as the board's other text. A race (shapes alone): each
-// player's blanks, the ones they have filled darkened without their letters, and their wrong count.
+// full view (all of them in the label), each letter as large as the board's other text. A race: each player's word as
+// blanks, the ones they have revealed filled in their colour (letters against length), side by side.
 export function miniature(mini, final) {
-  if (mini.race && !final) {
-    return `<div class="thg trace" aria-label="Race: ${['X', 'O'].map(p => `${p} ${gotOf(mini, p).filter(Boolean).length} of ${hangLen(mini)} letters, ${wrongWords(wrongOf(mini, p))}`).join(', ')}">${['X', 'O'].map(p => `<div class="thq"><b class="${p}">${p}</b><div class="hw" style="--n:${hangLen(mini)}">${gotOf(mini, p).map(on => `<i class="${on ? 'on' : ''}"></i>`).join('')}</div><em class="thwr">${wrongOf(mini, p)}✗</em></div>`).join('')}</div>`;
+  if (mini.race) {
+    const n = hangLen(mini) || 5;
+    return raceThumb(p => `<span class="hgm" style="--n:${n};--c:${Math.ceil(n / 2)}">${patOf(mini, p).map(ch => `<i${ch ? ' class="on"' : ''}></i>`).join('')}</span>`, 'thg2',
+      `Race: ${['X', 'O'].map(p => `${p} ${patOf(mini, p).filter(Boolean).length} of ${n} letters`).join(', ')}`);
   }
-  const letters = mini.race ? [].concat(hangLetters(mini, 'X'), hangLetters(mini, 'O')) : mini.letters;   // (a finished race square: both players' letters)
+  const letters = mini.letters;
   const got = new Set(letters.filter(x => x.hit).map(x => x.l));
   const wrong = letters.filter(x => !x.hit).map(x => x.l);
   return `<div class="thg"><div class="hw" style="--n:${mini.word.length}">${mini.word.split('').map(ch => `<i class="${got.has(ch) ? 'on' : ''}">${got.has(ch) ? esc(ch) : ''}</i>`).join('')}</div>${wrong.length ? `<div class="hmx" aria-label="Wrong letters: ${esc(wrong.join(', '))}">${wrong.slice(-5).map(l => `<i>${esc(l)}</i>`).join('')}</div>` : ''}</div>`;
 }
+// A word's tiles: each letter shown where `shown(ch, i)` says (its own pattern, or the word in a finished square), the
+// letter just played turning in; `muted(i)`: a letter shown only because the square is over (never found).
+function tiles(len, shown, justL, muted) {
+  let kk = 0;
+  return Array.from({ length: len }, (_, i) => {
+    const own = shown(i), on = !!own, flip = on && own === justL && !muted(i);
+    return `<i class="ht${on ? ' on' : ''}${muted(i) ? ' late' : ''}${flip ? ' flipin' : ''}"${flip ? ` style="--k:${kk++}"` : ''}>${on ? esc(own) : ''}</i>`;
+  }).join('');
+}
+const wrongList = (letters, justL) => letters.filter(x => !x.hit).map(x => `<i${x.l === justL ? ' class="new"' : ''}>${esc(x.l)}</i>`).join(' ');
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
-  const race = !!mini.race, me = race ? (viewer() || turn) : null, them = me === 'X' ? 'O' : 'X';
-  const theirs = race && a && a.race && a.by !== me ? a : race && d && d.race && d.by !== me ? d : null;   // the other side's move, as its shape (held in `d` once its result has played)
-  const part = race ? (hangPart(mini, me) || { letters: [], pattern: new Array(hangLen(mini)).fill(null) }) : mini;   // (a race: this side's own letters and pattern)
+  if (!mini.race) {
+    const got = {};
+    for (const x of mini.letters) got[x.l] = x.hit ? 'hit' : 'miss';
+    const justL = a ? a.letter || null : null, word = mini.word.split('');
+    const wrong = wrongList(mini.letters, justL);
+    return `<div class="g-hang"><div class="hword">${tiles(word.length, i => (got[word[i]] || view ? word[i] : null), justL, () => false)}</div>
+        <div class="hmiss">${wrong ? `Wrong: <b>${wrong}</b>` : 'No wrong letters yet'}</div>
+        ${keyboard(k => (got[k] || '') + (k === justL && got[k] === 'miss' ? ' shake' : ''), k => locked || !!got[k])}</div>`;
+  }
+  const me = raceMe(), them = me === 'X' ? 'O' : 'X', len = hangLen(mini);
+  const part = hangPart(mini, me) || blankPart(mini), opp = hangPart(mini, them) || blankPart(mini);   // (both parts open; a square from before the rework: what this copy has)
+  const mineA = a && a.by === me ? a : null, theirA = a && a.by === them ? a : null;      // the move to animate, on the board of the side that made it
   const got = {};
   for (const x of part.letters) got[x.l] = x.hit ? 'hit' : 'miss';
-  const justL = a && !theirs ? (a.own || a.letter || null) : null;   // (a race: this side's own letter rides as `own`)
-  let kk = 0;
-  const word = mini.word.split(''), at = new Set(theirs && a && Array.isArray(theirs.race.at) ? theirs.race.at : []);   // (the blanks their letter filled turn once, with the move)
-  const tiles = word.map((ch, i) => {
-    const own = race ? (view ? ch : part.pattern[i]) : (got[ch] || view ? ch : null);   // the letter this side may see here (a race: its own pattern; a finished square: the word)
-    const on = !!own, flip = on && ch === justL;
-    return `<i class="ht${on ? ' on' : ''}${flip ? ' flipin' : ''}"${flip ? ` style="--k:${kk++}"` : ''}>${on ? esc(own) : ''}</i>`;
-  }).join('');
-  let opp = '';
-  if (race && !view) {                                                                       // the other player's blanks, the ones they have filled darkened (no letters), and their wrong count: a reserved row
-    const g2 = gotOf(mini, them), said = theirs ? `${esc(playerName(state, them))} ${theirs.race.hit ? 'found a letter' : 'missed'} · ${wrongWords(theirs.race.wrong || 0)}` : `${esc(playerName(state, them))}: ${g2.filter(Boolean).length} of ${g2.length} letters · ${wrongWords(wrongOf(mini, them))}`;   // (plain text: never N in an attribute)
-    opp = `<div class="hopp${theirs && a ? ' fresh' : ''}" aria-label="${said}"><span class="hoby ${them}">${toon(them)}</span><span class="hob" style="--n:${g2.length}">${g2.map((on, i) => `<i class="${on ? 'on' : ''}${at.has(i) ? ' flipin' : ''}"${at.has(i) ? ` style="--k:${[...at].indexOf(i)}"` : ''}></i>`).join('')}</span><em class="hown">${wrongWords(theirs ? theirs.race.wrong || 0 : wrongOf(mini, them))}</em></div>`;
-  }
-  const wrongs = p => hangLetters(mini, p).filter(x => !x.hit).map(x => `<i${x.l === justL ? ' class="new"' : ''}>${esc(x.l)}</i>`).join(' ');
-  const wrong = race ? wrongs(me) : mini.letters.filter(x => !x.hit).map(x => `<i${x.l === justL ? ' class="new"' : ''}>${esc(x.l)}</i>`).join(' ');
-  const miss = race && view ? ['X', 'O'].map(p => `<span class="hwl"><b class="${p}">${N(p)}</b> ${wrongs(p) ? `<b>${wrongs(p)}</b>` : 'none wrong'}</span>`).join('<br>')   // (a finished race square: both players' wrong letters)
-    : wrong ? `Wrong: <b>${wrong}</b>` : race ? 'Your letters are yours alone' : 'No wrong letters yet';
-  g = `<div class="g-hang${race ? ' race' : ''}"><div class="hword">${tiles}</div>${opp}
-        <div class="hmiss">${miss}</div>
+  const justL = mineA ? mineA.letter || null : null, theirL = theirA ? theirA.letter || null : null;
+  const myWord = view ? hangTarget(mini, me) : null, theirWord = view ? hangTarget(mini, them) : null;   // (a finished square: the words revealed, the letters never found muted)
+  const shownBy = (pat, w) => i => (pat[i] || (typeof w === 'string' ? w[i] : null));
+  const lateBy = (pat, w) => i => !pat[i] && typeof w === 'string';
+  const wrong = wrongList(part.letters, justL), wrong2 = wrongList(opp.letters, theirL);
+  const mine = `<div class="g-hang race"><div class="hword">${tiles(len, shownBy(part.pattern, myWord), justL, lateBy(part.pattern, myWord))}</div>
+        <div class="hmiss">${wrong ? `Wrong: <b>${wrong}</b>` : 'No wrong letters yet'}</div>
         ${keyboard(k => (got[k] || '') + (k === justL && got[k] === 'miss' ? ' shake' : ''), k => locked || !!got[k])}</div>`;
-  return g;
-}
-// The other side's move in a race square, as this phone may say it: the header's line gets the move as made (ui/turnbar.js
-// flashLine reads state.flash itself), so a flash not yet redacted is redacted here from the square (core/race.js).
-function seen(f) {
-  if (f.race || f.letter === undefined || f.by === viewer()) return f;
-  const sq = state.squares && state.squares[f.square];
-  return sq && isRace(sq.mini) && sq.mini.type === 'hangman' ? raceFlashHide(f, sq.mini) : f;
+  const theirs = `<div class="hgo" style="--n:${len}"><div class="hword">${tiles(len, shownBy(opp.pattern, theirWord), theirL, lateBy(opp.pattern, theirWord))}</div>`
+    + `<div class="hmiss">${wrong2 ? `Wrong: <b>${wrong2}</b>` : 'No wrong letters yet'}</div></div>`;
+  const nw = opp.letters.filter(x => !x.hit).length;
+  return raceBoards(mine, theirs, `${opp.pattern.filter(Boolean).length} of ${len} · ${nw} wrong`, { cls: 'rb-hang' });
 }
 export function moveText(f, who) {
-  f = seen(f);
-  if (f.race && f.letter === undefined) return f.race.hit ? `${who} found a letter` : `${who} missed · ${wrongWords(f.race.wrong || 0)}`;   // the other side's letter in a race: its shape alone
+  if (f.letter === undefined) return `${who} guessed`;          // (a redacted move from before the race rework: nothing to say)
   return `No ${esc(f.letter)}`;
 }
 export function sounds(f, add, won, mini, last) {

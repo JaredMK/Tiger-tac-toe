@@ -51,7 +51,7 @@ export const repOn = sq => !!rep && (sq == null || rep.sq === sq);              
 function repList(o) {
   if (o.timeout || OWN.has(o.type)) return [];
   const sq = state.squares && state.squares[o.sq];
-  if (sq && isRace(sq.mini)) return [];                            // a race square: the mover's inputs are theirs alone; the move shows as its shape change (core/race.js)
+  if (sq && isRace(sq.mini) && (sq.mini.rv !== 2 || !((viewOf(o.type) || {}).replay || {}).race)) return [];   // a race square: the move lands on the mover's own (smaller) board, from its flash; a view may opt in to its inputs there (replay.race)
   const hooks = (viewOf(o.type) || {}).replay || {};
   if (o.list && o.list.length) return o.list;
   if (o.move === undefined) return [];

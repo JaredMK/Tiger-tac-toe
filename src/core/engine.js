@@ -12,7 +12,7 @@ export { isReleased, releasedTypes, allowedTypes, restrictGames, FIND_MATCH_HOLD
 export { CLIENT_VERSION, PLATFORMS, BASE_CLIENT, versionOk, cmpVersion, normClient, minVersionOf, clientHas, platformOff, clientTypes, lackedTypes, normMins, needsUpdate } from './client.js';
 export { dealable, normLocal, seatLocal, NAME_MAX, pickType, pickReset, dealNine, newSquare, CPU_NAME, defaultSetup, cpuSide, normSetup, syncNames, enabledGames, playerName, newState, startMatch, normCpu, startCpu, newMatch } from './match.js';
 export { canMove, upgradeMini, anyMove, newMini, withTune, applyMove, publicMini, randomLegalMove } from './minis.js';
-export { RACE_TYPES, MODE_TUNE, raceDealt, isRace, raceSide, raceShape, raceSides, raceHide, raceView, raceFlashHide } from './race.js';
+export { RACE_TYPES, RACE_V, MODE_TUNE, raceDealt, isRace, raceOld, raceSide, raceShape, raceSides, raceHide, raceView, raceFlashHide } from './race.js';
 export { LEVELS, LEVEL_NAME, levelOf, AI_DEFAULTS, AI_LIMITS, AI_CFG, aiNorm, setAiWeights, aiWeights } from './aiw.js';
 export { mcPick } from './mc.js';
 export { registerTunes, tuneFields, tuneDefaults, tuneValue, tuneNorm, setTune, setTunes, tuneLive, tuneSnap, tune } from './tune.js';

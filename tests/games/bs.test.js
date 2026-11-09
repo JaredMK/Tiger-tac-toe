@@ -240,99 +240,91 @@ test('bs, Hard: the race for the ship: a shot where it still fits, the sinking s
   assert.deepEqual(L.localBest(fresh, 'X', cpuRng(), {}, { level: 'normal', until: null }), L.localBest(fresh, 'X', cpuRng()), 'Normal untouched');
 });
 
-// ============================== Race mode (core/race.js) ==============================
-// The same ship for both, each player's shots on a sea of their own (mini.side[p]); the other side sees their hits
-// and misses as counts alone. A hit fires again as in Shared; the first to hit every part takes the square.
+// ============================== Race mode (core/race.js, rv 2) ==============================
+// A ship each, the same length on the same sea, placed apart (mini.tg, secret until the square ends); each player's
+// shots on their own sea (mini.side[p], open to both). A hit fires again; no shot limit; the first to sink their own wins.
 const raceOn = on => E.setTune('bs', on ? { mode: 'race' } : null);
 const raceMini = (rng = lcg(3)) => { raceOn(true); try { return L.newMini('bs', rng); } finally { raceOn(false); } };
-const notShip = (m, k = 0) => { let c = k; while (m.ship.includes(c)) c++; return c; };
+const notIn = (ship, k = 0) => { let c = k; while (ship.includes(c)) c++; return c; };
+const sameShip = (a, b) => a.slice().sort((x, y) => x - y).join() === b.slice().sort((x, y) => x - y).join();
 
-test('bs race: dealt by the admin setting with a sea each, the same ship; two people on one phone play Shared', () => {
+test('bs race: dealt by the admin setting with a ship each, the same length, placed apart; two people on one phone play Shared', () => {
   const m = raceMini();
-  assert.equal(m.race, true); assert.equal(m.revealed, undefined); assert.equal(m.hits, undefined);
+  assert.equal(m.race, true); assert.equal(m.rv, 2); assert.equal(m.ship, undefined); assert.equal(m.revealed, undefined);
   assert.deepEqual(m.side.X, { revealed: new Array(16).fill(null), hits: [], last: null }); assert.deepEqual(m.side.O, m.side.X);
-  assert.ok(Array.isArray(m.ship) && m.ship.length === m.len);
   assert.deepEqual(m.tune, { mode: 'race' });
+  for (let s = 1; s <= 60; s++) {
+    const r = raceMini(lcg(s));
+    assert.equal(r.tg.X.length, r.len); assert.equal(r.tg.O.length, r.len, 'the same length: as hard as each other');
+    assert.ok(!sameShip(r.tg.X, r.tg.O), `seed ${s}: two different placements`);
+    for (const p of ['X', 'O']) assert.ok(L.bsPlacements(r.len).some(c => sameShip(c, r.tg[p])), 'a straight ship on the sea');
+  }
   raceOn(true);
   try {
     assert.equal(L.newMini('bs', lcg(3), { shared: true }).race, undefined, 'Same phone: Shared');
     assert.ok(E.newMatch(lcg(5), { games: ['bs'], vs: 'same' }).squares.every(q => !q.mini.race));
-    assert.ok(E.newMatch(lcg(5), { games: ['bs'], vs: 'cpu' }).squares.every(q => q.mini.race));
+    assert.ok(E.newMatch(lcg(5), { games: ['bs'], vs: 'cpu' }).squares.every(q => q.mini.race && q.mini.rv === 2));
   } finally { raceOn(false); }
   assert.equal(L.newMini('bs', lcg(3)).race, undefined, 'off: as ever');
 });
 
-test('bs race: each side fires at its own sea; a hit fires again; the same cell is open to both; the first to sink it wins alone', () => {
-  const m = raceMini(lcg(8)), hit = m.ship[0], miss = notShip(m);
-  const r1 = L.applyMove(m, 'X', hit);
-  assert.deepEqual(r1, m.len === 1 ? { ok: true, outcome: 'win', cells: m.ship.slice(), note: 'sunk' } : { ok: true, outcome: 'continue', note: 'hit', again: true });
-  assert.deepEqual(m.side.X.hits, [hit]); assert.equal(m.side.X.revealed[hit], 'X'); assert.equal(m.side.X.last, hit);
-  assert.deepEqual(m.side.O.hits, []); assert.equal(m.side.O.revealed[hit], null, "O's sea is untouched");
-  assert.equal(L.applyMove(m, 'X', hit).ok, false, 'X fired there already');
-  const r2 = L.applyMove(m, 'O', hit);
-  assert.equal(r2.ok, true, 'the same cell is open to O'); assert.deepEqual(m.side.O.hits, [hit]);
-  assert.deepEqual(L.applyMove(m, 'O', miss), { ok: true, outcome: 'continue', note: 'miss' });
-  assert.equal(m.side.X.revealed[miss], null, "O's miss is not on X's sea");
-  for (const c of m.ship.slice(1)) { const r = L.applyMove(m, 'X', c); if (c === m.ship[m.ship.length - 1]) { assert.equal(r.outcome, 'win'); assert.equal(r.winner, undefined, "the sinker's"); assert.deepEqual(r.cells, m.ship); } else assert.equal(r.again, true); }
-  assert.equal(m.side.O.hits.length, 1, 'O still has one hit');
-  assert.equal(E.aiOf('bs').needs(E.publicMini(m, 'X'), 'X'), 1);
+test('bs race: each shot lands on the mover\'s own sea, judged by their own ship; a hit fires again; no shot limit; the first to sink their own wins', () => {
+  const m = raceMini(lcg(8)), sx = m.tg.X, so = m.tg.O;
+  const oOnly = so.find(c => !sx.includes(c));
+  if (oOnly !== undefined) {
+    assert.deepEqual(L.applyMove(m, 'X', oOnly), { ok: true, outcome: 'continue', note: 'miss' }, "a cell of O's ship is a miss on X's sea");
+    assert.equal(m.side.X.revealed[oOnly], 'X'); assert.equal(m.side.O.revealed[oOnly], null, "O's sea untouched");
+    const r = L.applyMove(m, 'O', oOnly);
+    assert.equal(r.ok, true); assert.equal(r.note === 'hit' || r.note === 'sunk', true, "the same cell hits O's own ship");
+  }
+  // no limit: X fires at every cell off their ship (all misses, the square open), then sinks theirs
+  for (let c = 0; c < 16; c++) if (!sx.includes(c) && !m.side.X.revealed[c]) { const r = L.applyMove(m, 'X', c); assert.equal(r.ok, true); assert.equal(r.outcome, 'continue'); }
+  assert.equal(m.side.X.revealed.filter(Boolean).length, 16 - sx.length, 'every miss taken, still open');
+  sx.forEach((c, k) => { const r = L.applyMove(m, 'X', c); if (k === sx.length - 1) { assert.equal(r.outcome, 'win'); assert.deepEqual(r.cells, sx); } else assert.equal(r.again, true, 'a hit fires again'); });
+  assert.equal(L.applyMove(m, 'X', sx[0]).ok, false, 'fired there already');
+  // the public copy (no ships) refuses a shot rather than judging it
+  const pub = E.publicMini(raceMini(lcg(9)), 'X');
+  assert.equal(L.applyMove(pub, 'X', 0).ok, false);
 });
 
-test('bs race: the public view shows the shapes (hits and misses as counts) and one side\'s own sea alone; the record keeps each side\'s part for that side', () => {
-  const m = raceMini(lcg(13)), miss = notShip(m), miss2 = notShip(m, miss + 1);
-  L.applyMove(m, 'X', miss); L.applyMove(m, 'X', miss2); if (m.len > 1) L.applyMove(m, 'O', m.ship[0]);
-  const pub = E.publicMini(m);
-  assert.equal(pub.ship, undefined); assert.equal(pub.revealed, undefined); assert.deepEqual(pub.side, {});
-  assert.deepEqual(pub.shape.X, { shots: 2, hits: 0, miss: 2 });
-  if (m.len > 1) assert.deepEqual(pub.shape.O, { shots: 1, hits: 1, miss: 0 });
-  const forX = E.publicMini(m, 'X');
-  assert.deepEqual(Object.keys(forX.side), ['X']); assert.equal(forX.side.X.revealed[miss], 'X'); assert.equal(forX.side.O, undefined);
-  assert.ok(!JSON.stringify(forX).includes(`"last":${m.ship[0]}`) || m.ship[0] === miss, "O's cells are nowhere in X's view");
+test('bs race: the ships stay out of the public view, the computer\'s view and the record until the square ends; both seas are open', () => {
+  const m = raceMini(lcg(13)), miss = notIn(m.tg.X.concat(m.tg.O)), miss2 = notIn(m.tg.X.concat(m.tg.O), miss + 1);
+  L.applyMove(m, 'X', miss); L.applyMove(m, 'O', miss2);
+  for (const pm of [E.publicMini(m), E.publicMini(m, 'X'), E.publicMini(m, 'O')]) {
+    assert.equal(pm.tg, undefined); assert.equal(pm.ship, undefined);
+    const js = JSON.stringify(pm);
+    assert.ok(!js.includes(JSON.stringify(m.tg.X)) && !js.includes(JSON.stringify(m.tg.O)), 'no ship in it');
+    assert.equal(pm.side.X.revealed[miss], 'X'); assert.equal(pm.side.O.revealed[miss2], 'O', 'both seas open');
+    assert.equal(pm.rv, 2);
+  }
   raceOn(true);
   try {
     const st = E.newMatch(lcg(11), { games: ['bs', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt'] }); const k = st.squares.findIndex(q => q.mini.type === 'bs');
     st.squares[k].mini = m; st.id = 'r1'; st.seq = 0; st.recent = [];
-    const rec = E.matchRecord(st), ps = rec.state.squares[k].mini;
-    assert.equal(ps.side, undefined); assert.equal(ps.ship, undefined); assert.equal(ps.revealed, undefined);
-    assert.deepEqual(ps.shape.X, { shots: 2, hits: 0, miss: 2 });
-    assert.deepEqual(rec.sides.X[k], m.side.X); assert.deepEqual(rec.sides.O[k], m.side.O); assert.deepEqual(rec.secrets[k], { ship: m.ship });
-    const full = E.fullState(rec);
-    assert.deepEqual(full.squares[k].mini.side, m.side); assert.deepEqual(full.squares[k].mini.ship, m.ship); assert.equal(full.squares[k].mini.shape, undefined);
-    const back = E.parseMatch(E.packMatch(rec));
-    assert.deepEqual(E.fullState(back).squares[k].mini.side, m.side);
-    const oneSide = E.fullState({ state: rec.state, secrets: rec.secrets, sides: { O: rec.sides.O } });
-    assert.equal(oneSide.squares[k].mini.side.X, undefined); assert.deepEqual(oneSide.squares[k].mini.side.O, m.side.O);
+    const rec = E.matchRecord(st), ps = rec.state.squares[k].mini, js = JSON.stringify(rec.state);
+    assert.equal(ps.tg, undefined); assert.ok(!js.includes(JSON.stringify(m.tg.X)) && !js.includes(JSON.stringify(m.tg.O)), 'no ship in the public state');
+    assert.deepEqual(ps.side, m.side, 'both seas on the public state');
+    assert.deepEqual(rec.secrets[k], { tg: m.tg });
+    assert.deepEqual(rec.sides, { X: {}, O: {} }, 'nothing kept apart but the ships');
+    const full = E.fullState(E.parseMatch(E.packMatch(rec)));
+    assert.deepEqual(full.squares[k].mini.tg, m.tg); assert.deepEqual(full.squares[k].mini.side, m.side); assert.equal(full.squares[k].mini.rv, 2, 'not dealt again');
+    // online: a shot's entry is the shot itself (nothing private), the ships never on it until the sinking
+    const sx = rec.secrets[k].tg.X, cell = sx[0];
+    const r = E.applyOnlineMove(rec, 'X', k, cell, lcg(2), { rep: [[0, 'move', 'm=' + cell]] });
+    assert.ok(r.ok); const e = r.entries[0];
+    assert.equal(e.m, cell); assert.equal(e.hit, true); assert.ok(e.rep, 'the inputs ride for the replay');
+    let cur = r.rec;
+    if (sx.length > 1) {
+      assert.equal(e.kind, 'again'); assert.equal(e.after.mini.side.X.revealed[cell], 'X'); assert.equal(e.after.mini.tg, undefined);
+      assert.ok(!JSON.stringify(r.rec.state).includes(JSON.stringify(sx)), 'the ship still out of the public state');
+      for (const c of sx.slice(1)) { const nx = E.applyOnlineMove(cur, 'X', k, c, lcg(3)); assert.ok(nx.ok, nx.reason); cur = nx.rec; }
+    }
+    const sq = cur.state.squares[k];
+    assert.equal(sq.owner, 'X', 'X sank their own'); assert.deepEqual(sq.mini.tg, m.tg, 'the square ended: both ships open');
   } finally { raceOn(false); }
 });
 
-test('bs race: an online shot\'s entry is redacted for the other phone (no cell, no inputs), hit or miss and the counts alone; the mover\'s own sea reaches their side', () => {
-  raceOn(true);
-  try {
-    const st = E.newMatch(lcg(21), { games: ['bs', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt'] }); const k = st.squares.findIndex(q => q.mini.type === 'bs'); st.id = 'r2'; st.seq = 0; st.recent = [];
-    const rec = E.matchRecord(st), ship = rec.secrets[k].ship, miss = notShip({ ship });
-    const r = E.applyOnlineMove(rec, 'X', k, miss, lcg(2), { rep: [[0, 'move', 'm=' + miss]] });
-    assert.ok(r.ok);
-    const e = r.entries[0];
-    assert.equal(e.m, undefined, 'the cell is not on the entry'); assert.equal(e.rep, undefined); assert.equal(e.hit, undefined); assert.equal(e.len, undefined); assert.equal(e.note, undefined);
-    assert.equal(e.kind, 'move');
-    assert.deepEqual(e.race, { by: 'X', hit: false, shots: 1, hits: 0, miss: 1 });
-    assert.equal(e.after.mini.side, undefined); assert.equal(e.after.mini.shape.X.miss, 1);
-    assert.ok(!JSON.stringify(r.rec.state).includes(`"last":${miss}`), 'the cell is nowhere in the public state');
-    assert.equal(r.rec.sides.X[k].revealed[miss], 'X', "the mover's own sea holds it"); assert.deepEqual(r.rec.sides.O[k].revealed, new Array(16).fill(null));
-    const r2 = E.applyOnlineMove(r.rec, 'O', k, miss, lcg(3));
-    assert.ok(r2.ok, 'the same cell is open to O (their sea was not fired at)'); assert.equal(r2.rec.sides.O[k].revealed[miss], 'O'); assert.equal(r2.entries[0].race.hit, false);
-    const r3 = E.applyOnlineMove(r2.rec, 'X', k, ship[0], lcg(3));
-    assert.ok(r3.ok); assert.equal(r3.entries[0].kind, ship.length > 1 ? 'again' : 'claim', 'a hit fires again');
-    assert.deepEqual(r3.entries[0].race, Object.assign({ by: 'X', hit: true, shots: 2, hits: 1, miss: 1 }, ship.length === 1 ? { sunk: true } : {}));
-    assert.deepEqual(r3.rec.sides.X[k].hits, [ship[0]]); assert.deepEqual(r3.rec.sides.O[k].hits, []);
-    raceOn(false);
-    const st2 = E.newMatch(lcg(21), { games: ['bs', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt'] }); const k2 = st2.squares.findIndex(q => q.mini.type === 'bs'); st2.id = 'r3'; st2.seq = 0; st2.recent = [];
-    const e2 = E.applyOnlineMove(E.matchRecord(st2), 'X', k2, 5, lcg(2), { rep: [[0, 'move', 'm=5']] }).entries[0];
-    assert.equal(e2.m, 5); assert.ok(e2.rep); assert.equal(e2.race, undefined, 'a shared square\'s entry is as ever');
-  } finally { raceOn(false); }
-});
-
-test('bs race: the computer sinks the ship from its own sea alone at every level, in a few turns; the other side\'s needs come from its shape', () => {
+test('bs race: the computer sinks its own ship from the public view at every level; the other side\'s needs come from their own sea', () => {
   for (const level of ['easy', 'normal', 'hard']) {
     let turns = 0, squares = 0;
     for (let s = 1; s <= 12; s++) {
@@ -340,8 +332,8 @@ test('bs race: the computer sinks the ship from its own sea alone at every level
       let done = false, shots = 0;
       while (!done && shots < 16) {
         const pm = E.publicMini(m, 'O');
-        assert.equal(pm.side.X, undefined, "the computer never sees X's sea");
-        const mv = E.aiOf('bs').best(pm, 'O', rng, 'steady', { level, until: level === 'hard' && s % 2 ? (() => 20) : null }).move;
+        assert.equal(pm.tg, undefined, 'never the ships');
+        const mv = E.aiOf('bs').best(pm, 'O', rng, 'steady', { level, until: level === 'hard' && s % 2 ? (t => () => t - Date.now())(Date.now() + 20) : null }).move;
         const r = L.applyMove(m, 'O', mv, rng);
         assert.ok(r.ok, `${level}: shot ${mv} refused (${r.reason})`);
         shots++; if (!r.again) turns++;
@@ -352,17 +344,15 @@ test('bs race: the computer sinks the ship from its own sea alone at every level
     }
     assert.ok(turns / squares < 7, `${level}: about ${(turns / squares).toFixed(1)} turns a square`);
   }
-  // the other side's needs: from their shape (hits and misses), never their cells
   const m = raceMini(lcg(44)), ai = E.aiOf('bs');
   const n0 = ai.needs(E.publicMini(m, 'O'), 'X');
-  if (m.len > 1) { L.applyMove(m, 'X', m.ship[0]); const n1 = ai.needs(E.publicMini(m, 'O'), 'X'); assert.ok(n1 < n0, `a hit brings X closer (${n0} -> ${n1})`); assert.ok(n1 >= m.len - 1, 'at least the parts left'); }
-  const pmO = E.publicMini(m, 'O'); assert.deepEqual(Object.keys(pmO.side), ['O']);
-  assert.ok(ai.needs(pmO, 'O') >= m.len);
+  if (m.len > 1) { L.applyMove(m, 'X', m.tg.X[0]); const n1 = ai.needs(E.publicMini(m, 'O'), 'X'); assert.ok(n1 < n0, `a hit brings X closer (${n0} -> ${n1})`); assert.ok(n1 >= m.len - 1, 'at least the parts left'); }
+  assert.ok(ai.needs(E.publicMini(m, 'O'), 'O') >= m.len);
 });
 
-test('bs race: a Shared square from before plays on as ever (no side, the one sea)', () => {
+test('bs race: a Shared square plays on as ever (no side, the one sea, the one ship)', () => {
   const m = L.newMini('bs', lcg(3)), c = m.ship[0];
-  assert.equal(m.race, undefined);
+  assert.equal(m.race, undefined); assert.equal(m.tg, undefined);
   const r = L.applyMove(m, 'X', c); assert.ok(r.ok); assert.equal(m.revealed[c], 'X');
   assert.equal(E.publicMini(m).race, undefined); assert.equal(E.publicMini(m).shape, undefined);
 });

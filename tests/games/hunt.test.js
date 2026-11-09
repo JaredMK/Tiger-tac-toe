@@ -222,90 +222,107 @@ test('hunt, Hard: the race for the treasure: a dig that fits the clues, the last
   assert.deepEqual(L.localBest(fresh, 'X', cpuRng(), {}, { level: 'normal', until: null }), L.localBest(fresh, 'X', cpuRng()), 'Normal untouched');
 });
 
-// ================================ Race mode (core/race.js) ================================
-// The same treasure for both, but each player digs their own grid (mini.side[p]); the other side sees only their digs
-// used and the band of their last dig; online the record keeps each side's part apart and a move's entry is redacted.
-const RLCG = seed => { let s = seed >>> 0 || 1; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; };
+// ================================ Race mode (core/race.js, rv 2) ================================
+// A treasure each on the same size grid (mini.tg, the square's secret), both on the edge or both inside (equally hard),
+// never the same cell; each player digs their own grid (mini.side[p], open to both) against their own treasure; no limit.
 const huntRace = on => E.setTune('hunt', on ? { mode: 'race' } : null);
-test('hunt, race: dealt by the admin setting; each side its own digs over the same treasure, a cell dug by one still open to the other; Same phone stays Shared', () => {
+const notMine = (m, p, c) => (c === m.tg[p] ? (c + 1) % 36 : c);
+test('hunt, race: a treasure each, apart and equally hard (both on the edge or both inside), dealt by the admin setting; Same phone stays Shared', () => {
   huntRace(true);
   try {
-    const m = E.newMini('hunt', RLCG(3));
-    assert.equal(m.race, true); assert.equal(m.dug, undefined); assert.equal(m.n, 6); assert.equal(E.huntSize(m), 6);
-    assert.deepEqual(m.side, { X: { dug: [], last: null }, O: { dug: [], last: null } }); assert.deepEqual(m.tune, { mode: 'race' });
-    const t = m.treasure, c = t === 0 ? 1 : 0, band = E.huntBand(E.huntDist(t, c));
-    assert.deepEqual(E.applyMove(m, 'X', c, RLCG(1)), { ok: true, outcome: 'continue', note: 'dig' });
-    assert.deepEqual(m.side.X.dug, [{ i: c, k: band }]); assert.equal(m.side.X.last, c);
-    assert.deepEqual(m.side.O.dug, [], "O's grid is untouched");
-    assert.equal(E.applyMove(m, 'X', c, RLCG(1)).reason, 'taken');
-    assert.equal(E.applyMove(m, 'O', c, RLCG(1)).ok, true, 'the same cell is open to O');
-    assert.deepEqual(E.applyMove(m, 'O', t, RLCG(1)), { ok: true, outcome: 'win', cells: [t] }, 'the same treasure wins for O');
-    assert.equal(m.side.X.dug.length, 1);
-    const forX = E.publicMini(m, 'X');
-    assert.equal(forX.treasure, undefined); assert.deepEqual(Object.keys(forX.side), ['X'], "X's own part alone"); assert.equal(forX.side.O, undefined);
-    assert.deepEqual(forX.shape, { X: { n: 1, heat: E.HUNT.bands[band] }, O: { n: 2, heat: 'found' } });
-    assert.deepEqual(E.publicMini(m).side, {}); assert.deepEqual(E.raceView(m, null).side, {});
-    assert.equal(E.publicMini(m, 'O').side.X, undefined, "X's part is not in O's view"); assert.deepEqual(E.publicMini(m, 'O').side.O.dug.map(d => d.i), [c, t]);
-    assert.equal(E.newMini('hunt', RLCG(3), { shared: true }).race, undefined, 'two people on one phone: Shared');
-    assert.ok(E.newMatch(RLCG(5), { games: ['hunt'], vs: 'same' }).squares.every(q => !q.mini.race));
-    assert.ok(E.newMatch(RLCG(5), { games: ['hunt'], vs: 'cpu' }).squares.every(q => q.mini.race));
+    for (let k = 0; k < 200; k++) {
+      const m = E.newMini('hunt', E.makeRng('hr' + k));
+      assert.equal(m.race, true); assert.equal(m.rv, 2); assert.equal(m.n, 6); assert.equal(m.dug, undefined); assert.equal(m.treasure, undefined);
+      assert.ok(Number.isInteger(m.tg.X) && Number.isInteger(m.tg.O) && m.tg.X !== m.tg.O, 'two different treasures');
+      assert.equal(E.rulesOf('hunt').huntEdge(m.tg.X, 6), E.rulesOf('hunt').huntEdge(m.tg.O, 6), 'both on the edge or both inside');
+      assert.deepEqual(m.side, { X: { dug: [], last: null }, O: { dug: [], last: null } });
+    }
+    E.setTune('hunt', { mode: 'race', n: 4 });
+    for (let k = 0; k < 50; k++) { const m = E.newMini('hunt', E.makeRng('h4' + k)); assert.ok(m.tg.X !== m.tg.O && E.rulesOf('hunt').huntEdge(m.tg.X, 4) === E.rulesOf('hunt').huntEdge(m.tg.O, 4) && m.tg.O < 16); }
+    huntRace(true);
+    assert.equal(E.newMini('hunt', E.makeRng('s'), { shared: true }).race, undefined, 'two people on one phone: Shared');
+    assert.ok(E.newMatch(E.makeRng('s'), { games: ['hunt'], vs: 'same' }).squares.every(q => !q.mini.race));
+    assert.ok(E.newMatch(E.makeRng('s'), { games: ['hunt'], vs: 'cpu' }).squares.every(q => q.mini.race && q.mini.rv === 2));
   } finally { huntRace(false); }
-  assert.equal(E.newMini('hunt', RLCG(3)).race, undefined, 'off: as ever');
+  assert.equal(E.newMini('hunt', E.makeRng('s')).race, undefined, 'off: as ever');
 });
-test('hunt, race: the record keeps each side\'s part for that side and the shapes in the public state; an online dig\'s entry is redacted for the other phone', () => {
+test('hunt, race: a dig changes the mover\'s grid alone, banded by their own treasure; the other\'s treasure is nothing to them; no dig limit', () => {
   huntRace(true);
   try {
-    const st = E.newMatch(RLCG(11), { games: ['hunt'] }); st.id = 'hr1'; st.seq = 0; st.recent = []; st.turn = 'X';
-    const m = st.squares[0].mini, t = m.treasure, c = t === 5 ? 6 : 5;
-    E.applyMove(m, 'O', c, RLCG(1));
+    const m = E.newMini('hunt', E.makeRng('hr-move')), c = notMine(m, 'X', m.tg.O === m.tg.X ? 0 : m.tg.O);
+    assert.deepEqual(E.applyMove(m, 'X', c, anyRng()), { ok: true, outcome: 'continue', note: 'dig' }, "O's treasure is an empty cell on X's grid");
+    assert.deepEqual(m.side.X.dug, [{ i: c, k: E.huntBand(E.huntDist(m.tg.X, c)) }]); assert.equal(m.side.X.last, c);
+    assert.deepEqual(m.side.O, { dug: [], last: null }, "O's grid is untouched");
+    assert.equal(E.applyMove(m, 'X', c, anyRng()).reason, 'taken');
+    assert.equal(E.applyMove(m, 'O', c, anyRng()).ok, true, 'the same cell is open to O on its own grid');
+    assert.equal(m.side.O.dug[0].k, E.huntBand(E.huntDist(m.tg.O, c)), "O's band: by O's treasure");
+    // no limit: X digs every cell but its treasure, then finds it
+    const w = E.newMini('hunt', E.makeRng('hr-all'));
+    for (let i = 0; i < 36; i++) if (i !== w.tg.X) assert.equal(E.applyMove(w, 'X', i, anyRng()).outcome, 'continue', `dig ${i}`);
+    assert.deepEqual(E.applyMove(w, 'X', w.tg.X, anyRng()), { ok: true, outcome: 'win', cells: [w.tg.X] });
+    assert.equal(w.side.X.dug.length, 36);
+    const noT = JSON.parse(JSON.stringify(m)); delete noT.tg;
+    assert.equal(E.applyMove(noT, 'X', 20, anyRng()).reason, 'secret', 'no treasure here: no dig (online it is the server\'s)');
+  } finally { huntRace(false); }
+});
+test('hunt, race: the record and the computer\'s view never carry an open square\'s treasures; both grids are open; a claimed square shows them', () => {
+  huntRace(true);
+  try {
+    const st = E.newMatch(E.makeRng('hr-rec'), { games: ['hunt'] }); st.id = 'hr1'; st.seq = 0; st.recent = []; st.turn = 'X';
+    const m = st.squares[0].mini, cx = notMine(m, 'X', 5), co = notMine(m, 'O', 7);
+    E.applyMove(m, 'O', co, anyRng());
     const rec = E.matchRecord(st), ps = rec.state.squares[0].mini;
-    assert.equal(ps.side, undefined); assert.equal(ps.treasure, undefined); assert.equal(ps.dug, undefined); assert.equal(ps.clues, undefined);
-    assert.deepEqual(ps.shape, { X: { n: 0, heat: null }, O: { n: 1, heat: E.HUNT.bands[E.huntBand(E.huntDist(t, c))] } });
-    assert.deepEqual(rec.sides.O[0].dug, [{ i: c, k: E.huntBand(E.huntDist(t, c)) }]); assert.deepEqual(rec.sides.X[0], { dug: [], last: null });
-    assert.ok(!JSON.stringify(rec.state).includes('"treasure"'));
+    assert.ok(!/"tg"|"treasure"/.test(JSON.stringify(rec.state)), 'no treasure in the public state');
+    assert.deepEqual(rec.secrets[0].tg, m.tg, 'the treasures are the secret');
+    assert.deepEqual(ps.side, m.side, "both grids in the public state"); assert.deepEqual(rec.sides, { X: {}, O: {} }, 'nothing kept apart but the treasures');
+    for (const p of ['X', 'O']) { const pm = E.publicMini(m, p); assert.ok(!/"tg"|"treasure"/.test(JSON.stringify(pm))); assert.deepEqual(pm.side, m.side); assert.equal(pm.rv, 2); }
     const full = E.fullState(rec);
-    assert.deepEqual(full.squares[0].mini.side, m.side); assert.equal(full.squares[0].mini.treasure, t); assert.equal(full.squares[0].mini.shape, undefined);
-    const back = E.parseMatch(E.packMatch(rec));
-    assert.deepEqual(E.fullState(back).squares[0].mini.side, m.side);
-    const oneSide = E.fullState({ state: rec.state, secrets: rec.secrets, sides: { X: rec.sides.X } });
-    assert.equal(oneSide.squares[0].mini.side.O, undefined); assert.deepEqual(oneSide.squares[0].mini.side.X, { dug: [], last: null });
-    // X digs online: the entry carries no cell, no band, no inputs; its shape change alone
-    const cell = t === 7 ? 8 : 7;
-    const r = E.applyOnlineMove(rec, 'X', 0, cell, RLCG(2), { rep: [[0, 'move', 'm=' + cell]] });
+    assert.deepEqual(full.squares[0].mini.tg, m.tg); assert.deepEqual(full.squares[0].mini.side, m.side);
+    const r = E.applyOnlineMove(rec, 'X', 0, cx, E.makeRng('d'), { rep: [[0, 'move', 'm=' + cx]] });
     assert.ok(r.ok, r.reason);
     const e = r.entries[0];
-    assert.equal(e.m, undefined); assert.equal(e.band, undefined); assert.equal(e.note, undefined); assert.equal(e.rep, undefined);
-    assert.deepEqual(Object.keys(e.race).sort(), ['by', 'heat', 'n']); assert.equal(e.race.by, 'X'); assert.equal(e.race.n, 1); assert.equal(e.race.heat, E.HUNT.bands[E.huntBand(E.huntDist(t, cell))]);
-    assert.equal(e.after.mini.side, undefined); assert.equal(e.after.mini.shape.X.n, 1);
-    assert.ok(!JSON.stringify(r.rec.state).includes('"dug"'), 'no cell is in the public state');
-    assert.deepEqual(r.rec.sides.X[0].dug, [{ i: cell, k: E.huntBand(E.huntDist(t, cell)) }], "the mover's own part holds it"); assert.equal(r.rec.sides.O[0].dug.length, 1);
-    assert.ok(E.applyOnlineMove(r.rec, 'O', 0, cell, RLCG(3)).ok, 'the same cell is open to O on its own grid');
+    assert.equal(e.band, E.huntBand(E.huntDist(m.tg.X, cx)), "the dig's band rides the entry: it is open");
+    assert.ok(!/"tg"/.test(JSON.stringify(e)) && !/"tg"/.test(JSON.stringify(r.rec.state)));
+    assert.deepEqual(e.after.mini.side.X.dug, [{ i: cx, k: e.band }]);
+    const win = E.applyOnlineMove(E.applyOnlineMove(r.rec, 'O', 0, notMine(m, 'O', 9), E.makeRng('e')).rec, 'X', 0, m.tg.X, E.makeRng('f'));
+    assert.ok(win.ok); assert.equal(win.rec.state.squares[0].owner, 'X');
+    assert.deepEqual(win.rec.state.squares[0].mini.tg, m.tg, 'claimed: both treasures shown');
   } finally { huntRace(false); }
 });
-test('hunt, race: the computer digs from its own part alone, every dig fitting its own clues, and finds the treasure (Normal and Hard)', () => {
+test('hunt, race: the computer digs its own grid by its own clues alone and finds its treasure at every level; Hard takes no more digs than Normal', () => {
   huntRace(true);
   try {
-    for (const hard of [false, true]) {
-      let total = 0;
-      for (let g = 0; g < 30; g++) {
-        const rng = RLCG(700 + g), m = E.newMini('hunt', rng);
-        E.applyMove(m, 'X', m.treasure === 0 ? 1 : 0, rng);          // the other side has dug: nothing of it reaches the computer
-        let n = 0, r;
-        do {
-          const pm = E.publicMini(m, 'O');
-          assert.equal(pm.side.X, undefined, "never X's part"); assert.ok(pm.shape.X.n >= 1);
-          const b = E.localBest(pm, 'O', rng, {}, hard ? { level: 'hard', until: null } : {});
-          assert.ok(E.huntCandidates(pm, 'O').includes(b.move), 'a dig that fits its own clues'); assert.equal(b.shared, false);
-          r = E.applyMove(m, 'O', b.move, rng); assert.ok(r.ok); n++;
-        } while (r.outcome !== 'win' && n < 36);
-        assert.equal(r.outcome, 'win'); total += n;
+    for (const level of ['easy', 'normal', 'hard']) {
+      for (let g = 0; g < 6; g++) {
+        const st = E.newMatch(E.makeRng(`hc-${level}-${g}`), { games: ['hunt'], vs: 'cpu' }); st.only = 0; st.cpuLevel = level;
+        const m = st.squares[0].mini; let n = 0;
+        while (!st.squares[0].owner && n < 80) {
+          st.turn = 'O'; st.flash = null; st.done = null; st.lock = null; st.spot = null;
+          const mv = E.cpuMove(st, E.makeRng(`hm-${level}-${g}-${n}`), null, { level, clock: () => 0, budget: 1e9 });
+          assert.equal(mv.square, 0);
+          assert.ok(E.playMove(st, 0, mv.move, anyRng()).ok); n++;
+        }
+        assert.equal(st.squares[0].owner, 'O', `${level}: found its own treasure`);
+        assert.deepEqual(m.side.X, { dug: [], last: null }, "X's grid untouched");
+        assert.ok(m.side.O.dug.some(d => d.i === m.tg.O && d.k === 0));
       }
-      assert.ok(total / 30 < 8, `${hard ? 'Hard' : 'Normal'}: found in ${(total / 30).toFixed(1)} digs on average`);
     }
-    const m = E.newMini('hunt', RLCG(9)), pm = E.publicMini(m, 'O');
-    assert.ok(E.aiOf('hunt').needs(pm, 'X') > 2, 'the other side, nothing dug: a fresh estimate');
-    E.applyMove(m, 'X', m.treasure === 0 ? 1 : 0, RLCG(1));
-    const sh = E.publicMini(m, 'O').shape.X;
-    assert.ok(sh.heat); assert.ok(E.aiOf('hunt').needs(E.publicMini(m, 'O'), 'X') <= 3.3, "the other side's needs, from its heat");
+    const avg = { normal: 0, hard: 0 }, N = 40;
+    for (const level of ['normal', 'hard']) for (let g = 0; g < N; g++) {
+      const rng = E.makeRng('hs' + g), m = E.newMini('hunt', rng); let n = 0, r;
+      do {
+        const pm = E.publicMini(m, 'X'), b = E.localBest(pm, 'X', rng, {}, level === 'hard' ? { level: 'hard', until: null } : {});
+        if (level === 'hard' && E.huntCandidates(pm, 'X').includes(b.move) === false) assert.ok(!m.side.X.dug.some(d => d.i === b.move), 'an open cell');
+        assert.equal(b.shared, false); r = E.applyMove(m, 'X', b.move, rng); n++;
+      } while (r.outcome !== 'win' && n < 36);
+      avg[level] += n / N;
+    }
+    assert.ok(avg.hard <= avg.normal + 0.1 && avg.hard < 4.2, `digs on average: Hard ${avg.hard.toFixed(2)}, Normal ${avg.normal.toFixed(2)}`);
+    const m = E.newMini('hunt', E.makeRng('hn'));
+    assert.ok(E.aiOf('hunt').needs(E.publicMini(m, 'O'), 'X') > 2, 'the other side, nothing dug');
+    E.applyMove(m, 'X', notMine(m, 'X', 14), anyRng());
+    assert.ok(E.aiOf('hunt').needs(E.publicMini(m, 'O'), 'X') < E.aiOf('hunt').needs(E.publicMini(m, 'O'), 'O'), "the other side's needs, from its own open grid");
+    const t0 = performance.now(); E.localBest(E.publicMini(E.newMini('hunt', E.makeRng('ht')), 'X'), 'X', anyRng(), {}, { level: 'hard', until: () => 30 - (performance.now() - t0) });
+    assert.ok(performance.now() - t0 < 80, 'Hard keeps to its time');
   } finally { huntRace(false); }
 });

@@ -88,75 +88,92 @@ test('patterns: the admin\'s settings: two to win, dot puzzles only with the gap
   assert.equal(E.newMini('patterns', E.makeRng('pat-tune')).tune, undefined);
 });
 
-/* ===================================== Race mode (core/race.js) ===================================== */
-// The square's one puzzle is the shared target; each player's picks are their own card (mini.side[p]: crossed, last);
-// the other side sees only wrong tries made and right or not; the first right pick takes the square.
+/* ===================================== Race mode (core/race.js, rv: 2) ===================================== */
+// Each player their own puzzles (side[p]: puz, crossed, last), the i-th of each made by the same rule; the right places
+// (tg), their rules (tr) and the partner puzzles to come (pq) are the secrets; a right pick scores and deals that player
+// their next; the first to the goal takes the square. No try caps.
 const lcg = seed => () => (seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296;
 const raceOn = on => E.setTune('patterns', on ? { mode: 'race' } : null);
 const raceMini = seed => { raceOn(true); try { return E.newMini('patterns', lcg(seed)); } finally { raceOn(false); } };
+const pick = (m, p, right) => (right ? m.tg[p] : [0, 1, 2, 3].find(k => k !== m.tg[p] && !m.side[p].crossed.includes(k)));
 
-test('patterns race: dealt by the setting; one puzzle for both, each side its own card; a wrong pick crosses out on the picker\'s card alone; the first right pick wins', () => {
-  const m = raceMini(401), first = JSON.stringify(m.puz);
-  assert.equal(m.race, true); assert.deepEqual(m.side, { X: { crossed: [], last: null }, O: { crossed: [], last: null } });
-  assert.equal(m.crossed, undefined, 'no shared cross-outs'); assert.equal(m.last, undefined); assert.deepEqual(m.tune, { mode: 'race' });
-  const right = m.answer, wrong = [0, 1, 2, 3].filter(x => x !== right);
-  assert.deepEqual(E.applyMove(m, 'X', wrong[0], lcg(1)), { ok: true, outcome: 'continue', note: 'wrong' });
-  assert.deepEqual(m.side.X.crossed, [wrong[0]]); assert.deepEqual(m.side.O.crossed, [], "O's card is untouched"); assert.equal('right' in m.side.X.last, false);
-  assert.equal(E.applyMove(m, 'O', wrong[0], lcg(1)).ok, true, 'the same option is open to O');
-  assert.equal(E.applyMove(m, 'X', wrong[0], lcg(1)).reason, 'crossed');
-  assert.equal(JSON.stringify(m.puz), first, 'the same puzzle');
-  assert.deepEqual(E.applyMove(m, 'O', right, lcg(1)), { ok: true, outcome: 'win', note: 'right' }, 'the first right pick takes the square');
-  assert.equal(JSON.stringify(m.puz), first, 'the puzzle stays for the review'); assert.equal(m.side.O.last.right, right);
-  assert.deepEqual(E.raceShape(m, 'X'), { n: 1, right: false }); assert.deepEqual(E.raceShape(m, 'O'), { n: 1, right: true });
-  const m2 = raceMini(402);
-  assert.equal(E.applyMove(m2, 'X', 'auto', lcg(2)).note, 'wrong'); assert.equal(m2.side.X.crossed.length, 1); assert.equal(m2.side.X.last.auto, true);
+test('patterns race: each player their own puzzle, the i-th of each by the same rule, never the same; a move is the mover\'s alone; first to the goal wins', () => {
+  for (let seed = 401; seed < 431; seed++) {
+    const m = raceMini(seed);
+    assert.equal(m.race, true); assert.equal(m.rv, 2); assert.ok(m.puz, 'the square has puzzles (canMove)'); assert.equal(E.canMove(m, 'X'), true);
+    assert.notEqual(JSON.stringify(m.side.X.puz), JSON.stringify(m.side.O.puz), 'two different puzzles');
+    assert.equal(m.tr.X, m.tr.O, 'made by the same rule');
+    for (const p of ['X', 'O']) assert.deepEqual(E.patFitting(m.side[p].puz, m.side[p].puz.opts), [m.tg[p]], 'each with one right option');
+  }
+  const m = raceMini(440), rng = lcg(7);
+  let turn = 0;
+  while (m.right.X < 3 && m.right.O < 3 && turn < 40) {
+    const p = turn % 2 ? 'O' : 'X', o = p === 'X' ? 'O' : 'X', before = JSON.stringify(m.side[o]);
+    if (m.right.X === m.right.O) assert.equal(m.tr.X, m.tr.O, `the ${m.right.X + 1}th puzzles: the same rule`);
+    const res = E.applyMove(m, p, pick(m, p, turn % 3 !== 1), rng);
+    assert.equal(res.ok, true);
+    assert.equal(JSON.stringify(m.side[o]), before, 'the other part untouched');
+    turn++;
+  }
+  assert.ok(m.right.X === 3 || m.right.O === 3, 'someone reached the goal');
   assert.equal(E.newMini('patterns', lcg(3), { shared: true }).race, undefined, 'two people on one phone: Shared');
   assert.equal(E.newMini('patterns', lcg(3)).race, undefined, 'off: as ever');
 });
 
-test('patterns race: the public view shows the shapes and one side\'s own card alone; the record keeps each side\'s card for that side and a move\'s entry is redacted', () => {
+test('patterns race: no try cap; a wrong pick crosses out on the picker\'s card alone; the right one deals their next', () => {
+  const m = raceMini(450), rng = lcg(8), first = JSON.stringify(m.side.X.puz);
+  for (let i = 0; i < 3; i++) { const r = E.applyMove(m, 'X', pick(m, 'X', false), rng); assert.equal(r.note, 'wrong'); }
+  assert.equal(m.side.X.crossed.length, 3); assert.deepEqual(m.side.O.crossed, []);
+  assert.equal(E.applyMove(m, 'X', m.tg.X, rng).note, 'right'); assert.equal(m.right.X, 1);
+  assert.notEqual(JSON.stringify(m.side.X.puz), first, 'their next puzzle'); assert.deepEqual(m.side.X.crossed, []);
+  assert.equal(m.pq.O.length, 1, 'the partner of X\'s second kept for O'); assert.equal(m.pq.O[0].rule, m.tr.X);
+  E.applyMove(m, 'O', m.tg.O, rng);
+  assert.equal(m.tr.O, m.tr.X, 'O\'s second: the partner, the same rule'); assert.equal(m.pq.O.length, 0);
+  assert.notEqual(JSON.stringify(m.side.O.puz), JSON.stringify(m.side.X.puz));
+});
+
+test('patterns race: online, the right places stay on the server; the record and the computer\'s view carry no target; a claimed square shows them', () => {
   raceOn(true);
   try {
-    const rec = E.newOnlineMatch({ names: { X: 'A', O: 'B' }, games: only('patterns'), timer: 60 }, lcg(411), 'ptq1');
-    const pub = rec.state.squares[0].mini;
-    assert.equal(pub.race, true); assert.equal(pub.side, undefined); assert.equal(pub.answer, undefined); assert.ok(pub.puz, 'the puzzle is the shared target, in the open');
-    assert.deepEqual(pub.shape, { X: { n: 0, right: false }, O: { n: 0, right: false } });
-    assert.deepEqual(rec.sides.X[0], { crossed: [], last: null });
-    const right = rec.secrets[0].answer, wrong = (right + 1) % 4;
-    let r = E.applyOnlineMove(rec, 'X', 0, wrong, lcg(412), { rep: [[0, 'move', 'm=' + wrong]] });
-    assert.equal(r.ok, true);
-    const e = r.entries[0];
-    assert.equal(e.m, undefined); assert.equal(e.pat, undefined); assert.equal(e.rep, undefined); assert.equal(e.note, undefined);
-    assert.deepEqual(e.race, { by: 'X', correct: false, n: 1, right: false });
-    assert.equal(e.after.mini.side, undefined); assert.deepEqual(e.after.mini.shape.X, { n: 1, right: false });
-    assert.ok(!JSON.stringify(r.rec.state).includes('"picked"'));
-    assert.deepEqual(r.rec.sides.X[0].crossed, [wrong]); assert.deepEqual(r.rec.sides.O[0].crossed, []);
-    const full = E.fullState(r.rec);
-    const forX = E.publicMini(full.squares[0].mini, 'X'), forO = E.publicMini(full.squares[0].mini, 'O');
-    assert.deepEqual(Object.keys(forX.side), ['X']); assert.equal(forO.side.X, undefined); assert.equal(forO.shape.X.n, 1); assert.equal(forX.crossed, undefined);
-    assert.deepEqual(E.fullState(E.parseMatch(E.packMatch(r.rec))).squares[0].mini.side, full.squares[0].mini.side);
-    r = E.applyOnlineMove(r.rec, 'O', 0, wrong, lcg(413));
-    assert.equal(r.ok, true, "the same option is open to O (their own card)");
-    r = E.applyOnlineMove(r.rec, 'X', 0, right, lcg(414));
-    assert.equal(r.entries[0].kind, 'claim'); assert.equal(r.entries[0].winner, 'X'); assert.deepEqual(r.entries[0].race, { by: 'X', correct: true, n: 1, right: true });
-    assert.ok(r.rec.state.squares[0].mini.side.O, 'the finished square shows both cards');
+    let rec = E.newOnlineMatch({ names: { X: 'A', O: 'B' }, games: only('patterns'), timer: 60 }, lcg(461), 'ptr1');
+    const pub = rec.state.squares[0].mini, sec = rec.secrets[0];
+    assert.equal(pub.race, true); assert.ok(pub.side.X.puz && pub.side.O.puz, 'both puzzles in the open');
+    for (const k of ['tg', 'tr', 'pq', 'answer', 'rule']) assert.equal(pub[k], undefined, `no ${k} in the public state`);
+    assert.ok(Number.isInteger(sec.tg.X) && Number.isInteger(sec.tg.O) && sec.tr.X);
+    const full = E.fullState(rec), pm = E.publicMini(full.squares[0].mini, 'O');
+    assert.ok(!/"tg"|"tr"|"pq"|"rule"|"answer"/.test(JSON.stringify(pm)), 'nothing hidden in the computer\'s view');
+    let r = E.applyOnlineMove(rec, 'X', 0, (sec.tg.X + 1) % 4, lcg(462));
+    assert.equal(r.ok, true); assert.equal(r.entries[0].pat.correct, false); assert.equal(r.entries[0].pat.right, undefined);
+    assert.ok(!/"tg"|"tr"|"pq"|"answer":\d/.test(JSON.stringify(r.entries[0]) + JSON.stringify(r.rec.state)), 'no right place anywhere the phones get');
+    assert.deepEqual(r.rec.state.squares[0].mini.side.X.crossed, [(sec.tg.X + 1) % 4], 'on the picker\'s card, for both to see');
+    rec = r.rec;
+    for (let i = 0; i < 6 && !rec.state.squares[0].owner; i++) {
+      const p = rec.state.turn, m = E.fullState(rec).squares[0].mini;
+      r = E.applyOnlineMove(rec, p, 0, p === 'O' ? m.tg.O : pick(m, 'X', false) ?? m.tg.X, lcg(470 + i)); assert.equal(r.ok, true, JSON.stringify(r)); rec = r.rec;
+    }
+    assert.equal(rec.state.squares[0].owner, 'O');
+    assert.ok(Number.isInteger(rec.state.squares[0].mini.tg.X), 'a claimed square: its secrets in the open');
   } finally { raceOn(false); }
 });
 
-test('patterns race: the computer plays from its own card alone and finishes the square; Shared is untouched', () => {
-  const m = raceMini(421), rng = lcg(5);
-  let won = false;
-  for (let i = 0; i < 4 && !won; i++) {
-    const pm = E.publicMini(m, 'O');
-    assert.equal(pm.side.X, undefined); assert.equal(pm.crossed, undefined);
-    const mv = E.localBest(pm, 'O', rng).move;
-    assert.ok(!m.side.O.crossed.includes(mv), 'never one it crossed out');
-    won = E.applyMove(m, 'O', mv, rng).outcome === 'win';
+test('patterns race: the computer works its own puzzles out at every level and takes the square; needs counts its own ladder', () => {
+  for (const level of ['easy', 'normal', 'hard']) {
+    raceOn(true);
+    const st = (() => { try { return E.newMatch(lcg(480 + level.length), { games: ['patterns'], vs: 'cpu' }); } finally { raceOn(false); } })();
+    const m = st.squares[0].mini, rng = lcg(9 + level.length);
+    let n = 0;
+    while (!st.squares[0].owner && n < 60) {
+      st.turn = 'O'; st.lock = 0; st.flash = null; st.done = null;
+      const plan = E.cpuMove(st, rng, null, { level });
+      assert.ok(plan.move === 'auto' || !m.side.O.crossed.includes(plan.move), 'never one it crossed out');
+      assert.equal(E.playMove(st, 0, plan.move, rng).ok, true); E.endFlash(st); n++;
+    }
+    assert.equal(st.squares[0].owner, 'O', `${level}: the computer reached the goal`);
   }
-  assert.ok(won, 'four picks at most');
-  const m2 = raceMini(422); E.applyMove(m2, 'X', 'auto', lcg(6)); E.applyMove(m2, 'X', 'auto', lcg(7));
-  const pm = E.publicMini(m2, 'O');
-  assert.ok(E.needsOf(pm, 'X') < E.needsOf(pm, 'O'), "two wrong tries down, X's shape says they need less");
+  const m = raceMini(490), pm = E.publicMini(m, 'O');
+  assert.equal(E.localBest(pm, 'O', () => 0).move, m.tg.O, 'worked out from what is shown');
+  const a = E.needsOf(pm, 'X'); m.right.X = 2;
+  assert.ok(E.needsOf(E.publicMini(m, 'O'), 'X') < a, 'closer to the goal: needs less');
   const sh = E.newMini('patterns', lcg(423)), first = JSON.stringify(sh.puz);
-  assert.equal(E.applyMove(sh, 'X', sh.answer, lcg(8)).note, 'right'); assert.equal(sh.right.X, 1); assert.notEqual(JSON.stringify(sh.puz), first, 'a new puzzle, as ever'); assert.deepEqual(sh.crossed, []);
+  assert.equal(E.applyMove(sh, 'X', sh.answer, lcg(8)).note, 'right'); assert.equal(sh.right.X, 1); assert.notEqual(JSON.stringify(sh.puz), first, 'Shared: a new puzzle, as ever'); assert.deepEqual(sh.crossed, []);
 });

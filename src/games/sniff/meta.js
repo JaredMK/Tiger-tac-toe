@@ -7,7 +7,7 @@ export const minVersion = '1.0.0';   // the oldest client version that has this 
 export const category = 'luck';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds (its own form: a dog each)
 export const explainer = { name: 'Sniff', play: 'Move the dog one step, any of 8 ways. You\'ll see if it\'s getting hotter, colder or the same.', win: 'Be the one who finds the treasure.' };
-export const raceExplainer = { name: 'Sniff', play: 'You each have a dog on the same field, both starting on the same spot. Move yours one step, any of 8 ways, to see if it\'s getting hotter, colder or the same. The other dog is out of sight: you see only how many steps it has taken.', win: 'Be the first dog onto the treasure.' };   // Race mode (core/race.js)
+export const raceExplainer = { name: 'Sniff', play: 'You each have a dog and your own treasure, the same number of steps from where both dogs start. Move yours one step, any of 8 ways, to see if it\'s getting hotter, colder or the same. You can watch the other dog.', win: 'Be the first dog onto your treasure.' };   // Race mode (core/race.js, rv 2)
 // Its settings (the admin's Mini-game Settings; core/tune.js): read from the square's own values.
 export const TUNE = [
   MODE_TUNE,

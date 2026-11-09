@@ -2,12 +2,12 @@
 import { tune } from '../../core/tune.js';
 import { MM, mmAll, mmBestGuess, mmCandidates, mmCode, mmFeedback } from './rules.js';
 
-// Race mode (core/race.js): the computer reads its own guesses alone (pm.side[me]); the other side's progress is its
-// shape (each row's markers), so what they have left is estimated from how often those markers come up; its own
-// guesses tell them nothing, so Hard plays for the fewest guesses to the code (mmHardRace), not the race for it.
+// Race mode (core/race.js, `rv: 2`): the computer cracks its own code from its own guesses (pm.side[me]); the other
+// side's guesses are open too (their needs from their own candidates), and its guesses tell nothing of their code, so
+// Hard plays for the fewest guesses to its code (mmHardRace), not the race for a shared one. No guess limit.
 const fromRows = n => (n <= 1 ? 1 : Math.min((n + 1) / 2, 1 + Math.log(n) / Math.log(5)));
 export function needs(pm, p) {
-  if (pm.race && !(pm.side && pm.side[p])) {                       // the other side of a race: from their markers
+  if (pm.race && !(pm.side && pm.side[p])) {                       // (a race square from before the rework: the other side from their markers)
     const sh = (pm.shape && pm.shape[p]) || {}, rows = sh.rows || [], T = mmTable(tune(pm).colors);
     if (rows.some(r => r[0] === MM.pegs)) return 1;
     let n = T.n;

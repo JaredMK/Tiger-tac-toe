@@ -7,12 +7,12 @@ export const minVersion = '1.0.0';   // the oldest client version that has this 
 export const category = 'brain';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Five Letters', play: "Guess a 5-letter word. Green is correct letter placement, yellow is in the word but different position, grey isn't in it.", win: 'Guess the word. Use up {limit} guesses and you lose the square.' };   // ({limit}: its setting, TUNE below)
-export const raceExplainer = { name: 'Five Letters', play: "Guess a 5-letter word. Green is correct letter placement, yellow is in the word but different position, grey isn't in it. Your guesses and colours are yours alone: you see only the colours of the other player's rows, never their letters.", win: 'Guess the word first. Use up {limit} guesses and you lose the square.' };   // Race mode (core/race.js)
+export const raceExplainer = { name: 'Five Letters', play: "You each have your own 5-letter word. Green is correct letter placement, yellow is in the word but different position, grey isn't in it. You can see the other player's guesses.", win: 'Guess your word first. No guess limit.' };   // Race mode (core/race.js, rv 2)
 export const scExplainer = { name: 'Five Letters', play: "Guess a 5-letter word.", win: 'Guess the word. Use up {limit} guesses and you lose the square.' };   // in Super Chaos
 // Its settings (the admin's Mini-game Settings; core/tune.js): the mode and the guesses each, dealt into each square (mode, limit); the rest read through tune(mini).
 export const TUNE = [
   MODE_TUNE,
-  { k: 'limit', label: 'Guesses each', def: 5, min: 2, max: 12, step: 1, group: 'Rules' },
+  { k: 'limit', label: 'Guesses each (Shared mode)', def: 5, min: 2, max: 12, step: 1, group: 'Rules' },
   { k: 'miss', label: 'Computer ignores the clues (%)', def: 0, min: 0, max: 60, step: 1, group: 'Computer' },
 ];
 export const icon = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="7" width="6" height="6" rx="1"/><rect x="9" y="7" width="6" height="6" rx="1" opacity=".45"/><rect x="16" y="7" width="6" height="6" rx="1" opacity=".45"/><rect x="2" y="14" width="6" height="6" rx="1" opacity=".45"/><rect x="9" y="14" width="6" height="6" rx="1"/><rect x="16" y="14" width="6" height="6" rx="1" opacity=".45"/></svg>';

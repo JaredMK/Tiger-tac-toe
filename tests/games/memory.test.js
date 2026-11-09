@@ -189,97 +189,113 @@ test('memory, Hard: a known pair taken; else an unseen card beside a seen one (a
   assert.deepEqual(L.localBest(fresh, 'X', cpuRng(), {}, { level: 'normal', until: null }), L.localBest(fresh, 'X', cpuRng()), 'Normal untouched');
 });
 
-// ================================ Race mode (core/race.js) ================================
-// The same deck for both, but each player flips their own copy (mini.side[p]: the cards they have turned and their faces);
-// the other side sees only their flips; online the record keeps each side's part apart and a move's entry is redacted.
-const RLCG = seed => { let s = seed >>> 0 || 1; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; };
+// ================================ Race mode (core/race.js, rv 2) ================================
+// The same deck for both, each player their own shuffle of it (mini.tg, the square's secret, never the same layout), and
+// their own flips (mini.side[p]: the cards turned and their faces, open to both); no flip limit; the first card picked
+// rides the public state as `up` (the picker's layout's card), as Shared's pick does.
 const memRace = on => E.setTune('memory', on ? { mode: 'race' } : null);
-const pairIn = cards => { const seen = new Map(); let pair = null; cards.forEach((c, i) => { const k = c.s + '/' + c.c; if (seen.has(k)) pair = [seen.get(k), i]; else seen.set(k, i); }); return pair; };
-const twoOthers = cards => { const pr = pairIn(cards); for (let a = 0; a < 9; a++) for (let b = a + 1; b < 9; b++) if (!(pr.includes(a) && pr.includes(b))) return [a, b]; return null; };
-test('memory, race: each side flips its own copy of the same deck; what you turn is yours alone; the pair wins for whoever finds it; Same phone stays Shared', () => {
+const R = s => E.makeRng(s);
+const key = c => c.s + '/' + c.c;
+const pairIn = cards => { const seen = new Map(); let pair = null; cards.forEach((c, i) => { const k = key(c); if (seen.has(k)) pair = [seen.get(k), i]; else seen.set(k, i); }); return pair; };
+const twoOthers = cards => { const pr = pairIn(cards); for (let a = 0; a < 9; a++) for (let b = a + 1; b < 9; b++) if (key(cards[a]) !== key(cards[b]) && !(pr.includes(a) && pr.includes(b))) return [a, b]; return null; };
+test('memory, race: the same deck in two different layouts, one each; Same phone stays Shared', () => {
+  for (const pairs of [1, 2, 3]) {
+    E.setTune('memory', { mode: 'race', pairs });
+    try {
+      for (let k = 0; k < 60; k++) {
+        const m = E.newMini('memory', R(`mr${pairs}:${k}`));
+        assert.equal(m.race, true); assert.equal(m.rv, 2); assert.equal(m.cards, undefined); assert.equal(m.seen, undefined);
+        assert.deepEqual(m.tg.X.map(key).sort(), m.tg.O.map(key).sort(), 'the same deck');
+        assert.ok(m.tg.X.some((c, i) => key(c) !== key(m.tg.O[i])), 'two different layouts');
+        assert.equal(new Set(m.tg.X.map(key)).size, 9 - pairs, `${pairs} pairs`);
+        for (const p of ['X', 'O']) assert.deepEqual(m.side[p], { flips: 0, seen: [], faces: new Array(9).fill(null), last: null });
+      }
+    } finally { memRace(false); }
+  }
   memRace(true);
   try {
-    const m = E.newMini('memory', RLCG(3));
-    assert.equal(m.race, true); assert.equal(m.seen, undefined); assert.equal(m.flips, undefined); assert.equal(m.cards.length, 9);
-    assert.deepEqual(m.side.X, { flips: 0, seen: [], faces: new Array(9).fill(null), last: null }); assert.deepEqual(m.side.O, m.side.X);
-    const [a, b] = twoOthers(m.cards), pr = pairIn(m.cards);
-    assert.deepEqual(E.applyMove(m, 'X', [a, b], RLCG(1)), { ok: true, outcome: 'continue', note: 'nomatch' });
-    assert.equal(m.side.X.flips, 1); assert.deepEqual(m.side.X.seen, [a, b]); assert.deepEqual(m.side.X.faces[a], m.cards[a]); assert.deepEqual(m.side.X.faces[b], m.cards[b]);
-    assert.deepEqual(m.side.O.seen, [], "O has seen nothing of X's flip"); assert.equal(m.side.O.flips, 0);
-    assert.equal(E.applyMove(m, 'O', [a, b], RLCG(1)).ok, true, 'the same two cards are O\'s to flip too');
-    assert.deepEqual(E.applyMove(m, 'O', pr, RLCG(1)), { ok: true, outcome: 'win', cells: pr }, 'the same pair wins for O');
-    assert.equal(m.side.O.flips, 2); assert.equal(m.side.X.flips, 1);
-    const forX = E.publicMini(m, 'X');
-    assert.equal(forX.cards, undefined, 'no deck in the view'); assert.deepEqual(Object.keys(forX.side), ['X']); assert.equal(forX.side.O, undefined);
-    assert.deepEqual(forX.side.X.faces[a], m.cards[a]); assert.deepEqual(forX.shape, { X: { n: 1 }, O: { n: 2 } });
-    assert.deepEqual(E.publicMini(m).side, {}); assert.deepEqual(E.raceView(m, null).side, {});
-    assert.ok(!JSON.stringify(E.publicMini(m, 'O')).includes(JSON.stringify(m.side.X)), "X's faces are not in O's view");
-    assert.equal(E.newMini('memory', RLCG(3), { shared: true }).race, undefined);
-    assert.ok(E.newMatch(RLCG(5), { games: ['memory'], vs: 'same' }).squares.every(q => !q.mini.race));
+    assert.equal(E.newMini('memory', R('s'), { shared: true }).race, undefined);
+    assert.ok(E.newMatch(R('s'), { games: ['memory'], vs: 'same' }).squares.every(q => !q.mini.race));
   } finally { memRace(false); }
-  assert.equal(E.newMini('memory', RLCG(3)).race, undefined, 'off: as ever');
+  assert.equal(E.newMini('memory', R('s')).race, undefined, 'off: as ever');
 });
-test('memory, race: the record keeps each side\'s cards for that side, no deck and the shapes in the public state; an online flip\'s entry is redacted; the first card picked turns up for the picker alone', () => {
+test('memory, race: a flip turns the mover\'s own cards alone, from their own layout; their pair wins; no flip limit', () => {
   memRace(true);
   try {
-    const st = E.newMatch(RLCG(11), { games: ['memory'] }); st.id = 'mr1'; st.seq = 0; st.recent = []; st.turn = 'X';
-    const m = st.squares[0].mini, [a, b] = twoOthers(m.cards);
-    E.applyMove(m, 'O', [a, b], RLCG(1));
+    const m = E.newMini('memory', R('mr-move')), [a, b] = twoOthers(m.tg.X);
+    assert.deepEqual(E.applyMove(m, 'X', [a, b], R('a')), { ok: true, outcome: 'continue', note: 'nomatch' });
+    assert.equal(m.side.X.flips, 1); assert.deepEqual(m.side.X.seen, [a, b]); assert.deepEqual(m.side.X.faces[a], m.tg.X[a]); assert.deepEqual(m.side.X.faces[b], m.tg.X[b]);
+    assert.deepEqual(m.side.O, { flips: 0, seen: [], faces: new Array(9).fill(null), last: null }, "O's cards untouched");
+    const po = pairIn(m.tg.O);
+    assert.deepEqual(E.applyMove(m, 'O', po, R('b')), { ok: true, outcome: 'win', cells: po }, "O's pair in O's layout wins");
+    assert.deepEqual(m.side.O.faces[po[0]], m.tg.O[po[0]]);
+    // no limit: X flips the same two non-matching cards 30 times, then its pair
+    const w = E.newMini('memory', R('mr-long')), two = twoOthers(w.tg.X);
+    for (let k = 0; k < 30; k++) assert.equal(E.applyMove(w, 'X', two, R('c')).outcome, 'continue');
+    assert.equal(E.applyMove(w, 'X', pairIn(w.tg.X), R('d')).outcome, 'win'); assert.equal(w.side.X.flips, 31);
+    const noT = JSON.parse(JSON.stringify(m)); delete noT.tg;
+    assert.equal(E.applyMove(noT, 'X', [a, b], R('e')).reason, 'secret');
+  } finally { memRace(false); }
+});
+test('memory, race: the record and the computer\'s view never carry a layout; the cards turned are open; the first card picked shows for both as `up`; a claimed square shows both layouts', () => {
+  memRace(true);
+  try {
+    const st = E.newMatch(R('mr-rec'), { games: ['memory'] }); st.id = 'mr1'; st.seq = 0; st.recent = []; st.turn = 'X';
+    const m = st.squares[0].mini, [a, b] = twoOthers(m.tg.O);
+    E.applyMove(m, 'O', [a, b], R('a'));
     const rec = E.matchRecord(st), ps = rec.state.squares[0].mini;
-    assert.equal(ps.side, undefined); assert.ok(ps.cards.every(c => c === null), 'no card is known in the public state'); assert.equal(ps.seen, undefined);
-    assert.deepEqual(ps.shape, { X: { n: 0 }, O: { n: 1 } });
-    assert.deepEqual(rec.sides.O[0].seen, [a, b]); assert.deepEqual(rec.sides.O[0].faces[a], m.cards[a]); assert.deepEqual(rec.sides.X[0].seen, []);
-    assert.ok(!JSON.stringify(rec.state).includes('"s":'), 'no face in the public state');
-    const full = E.fullState(rec);
-    assert.deepEqual(full.squares[0].mini.side, m.side); assert.deepEqual(full.squares[0].mini.cards, m.cards); assert.equal(full.squares[0].mini.shape, undefined);
-    assert.deepEqual(E.fullState(E.parseMatch(E.packMatch(rec))).squares[0].mini.side, m.side);
-    // X picks a first card (kind pick): it turns up for X alone (its face in X's side), then X's two cards go in as one move
-    const p1 = E.applyOnlinePick(rec, 'X', 0, a);
-    assert.ok(p1.ok); assert.equal(p1.rec.state.pick, a); assert.equal(p1.rec.state.pickSq, 0);
-    assert.equal(p1.rec.state.squares[0].mini.cards[a], null, 'the picked card shows nothing in the public state (a race)');
-    assert.deepEqual(p1.rec.sides.X[0].faces[a], m.cards[a], 'its face is in the picker\'s own side'); assert.deepEqual(p1.rec.sides.O[0], rec.sides.O[0], 'the other side\'s part is untouched');
-    assert.ok(!JSON.stringify(p1.rec.state).includes('"s":'), 'no face in the public state while picked');
-    const r = E.applyOnlineMove(p1.rec, 'X', 0, [a, b], RLCG(2), { rep: [[0, 'pick', 'i=' + a], [600, 'pick', 'i=' + b]] });
+    assert.ok(!/"tg"|"cards"/.test(JSON.stringify(rec.state)), 'no layout in the public state');
+    assert.deepEqual(rec.secrets[0].tg, m.tg); assert.deepEqual(ps.side, m.side, "both players' flips and faces open");
+    const faces = JSON.stringify(rec.state).match(/"s":/g) || [];
+    assert.equal(faces.length, 2, "only O's two turned faces show");
+    for (const p of ['X', 'O']) { const pm = E.publicMini(m, p); assert.ok(!/"tg"|"cards"/.test(JSON.stringify(pm))); assert.deepEqual(pm.side, m.side); }
+    assert.deepEqual(E.fullState(rec).squares[0].mini.tg, m.tg);
+    // X picks a first card: it turns up for both, X's layout's card, nothing else of either layout
+    const [xa, xb] = twoOthers(m.tg.X);
+    const p1 = E.applyOnlinePick(rec, 'X', 0, xa);
+    assert.ok(p1.ok); assert.equal(p1.rec.state.pick, xa);
+    assert.deepEqual(p1.rec.state.squares[0].mini.up, Object.assign({ i: xa }, m.tg.X[xa]), 'the picked card: X\'s own');
+    assert.ok(!/"tg"|"cards"/.test(JSON.stringify(p1.rec.state)));
+    assert.deepEqual(p1.rec.state.squares[0].mini.side, m.side, 'no part changed by a pick');
+    const r = E.applyOnlineMove(p1.rec, 'X', 0, [xa, xb], R('b'), { rep: [[0, 'pick', 'i=' + xa], [600, 'pick', 'i=' + xb]] });
     assert.ok(r.ok, r.reason);
     const e = r.entries[0];
-    assert.equal(e.m, undefined); assert.equal(e.reveal, undefined, 'no cards on the entry'); assert.equal(e.note, undefined); assert.equal(e.rep, undefined);
-    assert.deepEqual(e.race, { by: 'X', n: 1 });
-    assert.equal(e.after.mini.side, undefined); assert.deepEqual(e.after.mini.shape, { X: { n: 1 }, O: { n: 1 } });
-    assert.equal(r.rec.state.pick, null, 'the pick is cleared by the move'); assert.ok(r.rec.state.squares[0].mini.cards.every(c => c === null), 'nothing shows once the move is in');
-    assert.deepEqual(r.rec.sides.X[0].seen, [a, b]); assert.deepEqual(r.rec.sides.X[0].faces[b], m.cards[b], "the mover's own part holds the faces");
-    assert.deepEqual(r.rec.sides.O[0].seen, [a, b], "O's part as it was");
-    // a shared square's entry is as ever
-    memRace(false);
-    const st2 = E.newMatch(RLCG(11), { games: ['memory'] }); st2.id = 'mr2'; st2.seq = 0; st2.recent = []; st2.turn = 'X';
-    const e2 = E.applyOnlineMove(E.matchRecord(st2), 'X', 0, [a, b], RLCG(2), { rep: [[0, 'pick', 'i=' + a]] }).entries[0];
-    assert.deepEqual(e2.m, [a, b]); assert.ok(e2.rep); assert.equal(e2.race, undefined); assert.deepEqual(e2.reveal, [a, b]);
+    assert.deepEqual(e.reveal, [xa, xb], 'the two cards ride the entry: they are open'); assert.ok(!/"tg"/.test(JSON.stringify(e)));
+    assert.deepEqual(e.after.mini.side.X.faces[xb], m.tg.X[xb]);
+    assert.equal(r.rec.state.pick, null); assert.equal(r.rec.state.squares[0].mini.up, undefined, 'the pick gone with the move');
+    const win = E.applyOnlineMove(E.applyOnlineMove(r.rec, 'O', 0, [a, b], R('c')).rec, 'X', 0, pairIn(m.tg.X), R('d'));
+    assert.ok(win.ok); assert.equal(win.rec.state.squares[0].owner, 'X'); assert.deepEqual(win.rec.state.squares[0].mini.tg, m.tg, 'claimed: both layouts shown');
   } finally { memRace(false); }
 });
-test('memory, race: the computer flips from its own part alone and finds the pair (Normal and Hard); its first flips are two unseen cards', () => {
+test('memory, race: the computer flips its own layout from its own cards alone and finds its pair at every level; Hard no slower than Normal', () => {
   memRace(true);
   try {
-    for (const hard of [false, true]) {
-      let total = 0;
-      for (let g = 0; g < 30; g++) {
-        const rng = RLCG(800 + g), m = E.newMini('memory', rng);
-        E.applyMove(m, 'X', twoOthers(m.cards), rng);                 // the other side has flipped: nothing of it reaches the computer
-        let n = 0, r;
-        do {
-          const pm = E.publicMini(m, 'O');
-          assert.equal(pm.side.X, undefined, "never X's part"); assert.equal(pm.shape.X.n, 1);
-          const b = E.localBest(pm, 'O', rng, {}, hard ? { level: 'hard', until: null } : {});
-          assert.equal(b.shared, false);
-          if (n === 0) assert.ok(b.move.every(k => !pm.side.O.seen.includes(k)), 'nothing seen: two unseen cards');
-          r = E.applyMove(m, 'O', b.move, rng); assert.ok(r.ok, JSON.stringify(b.move)); n++;
-        } while (r.outcome !== 'win' && n < 20);
-        assert.equal(r.outcome, 'win'); total += n;
-        assert.equal(m.side.X.flips, 1, "X's part as it was");
+    for (const level of ['easy', 'normal', 'hard']) {
+      for (let g = 0; g < 6; g++) {
+        const st = E.newMatch(R(`mc-${level}-${g}`), { games: ['memory'], vs: 'cpu' }); st.only = 0; st.cpuLevel = level;
+        const m = st.squares[0].mini; let n = 0;
+        while (!st.squares[0].owner && n < 60) {
+          st.turn = 'O'; st.flash = null; st.done = null; st.lock = null; st.spot = null;
+          const mv = E.cpuMove(st, R(`mm-${level}-${g}-${n}`), null, { level, clock: () => 0, budget: 1e9 });
+          assert.ok(E.playMove(st, 0, mv.move, R('p')).ok); n++;
+        }
+        assert.equal(st.squares[0].owner, 'O', `${level}: found its own pair`); assert.equal(m.side.X.flips, 0);
       }
-      assert.ok(total / 30 < 6.5, `${hard ? 'Hard' : 'Normal'}: the pair in ${(total / 30).toFixed(1)} flips on average`);
     }
-    const m = E.newMini('memory', RLCG(9)), pm = E.publicMini(m, 'O');
-    assert.equal(E.aiOf('memory').needs(pm, 'X'), 5.5, 'the other side, nothing flipped: a fresh estimate');
-    E.applyMove(m, 'X', twoOthers(m.cards), RLCG(1)); E.applyMove(m, 'X', twoOthers(m.cards), RLCG(1));
-    assert.equal(E.aiOf('memory').needs(E.publicMini(m, 'O'), 'X'), 3.5, "the other side's needs, from its flips");
+    const avg = { normal: 0, hard: 0 }, N = 300;
+    for (const level of ['normal', 'hard']) for (let g = 0; g < N; g++) {
+      const rng = R('ms' + g), m = E.newMini('memory', rng); let n = 0, r;
+      do {
+        const pm = E.publicMini(m, 'X'), b = E.localBest(pm, 'X', rng, {}, level === 'hard' ? { level: 'hard', until: null } : {});
+        assert.equal(b.shared, false); if (n === 0) assert.ok(b.move.every(k => !pm.side.X.seen.includes(k)), 'nothing seen: two unseen cards');
+        r = E.applyMove(m, 'X', b.move, rng); n++;
+      } while (r.outcome !== 'win' && n < 30);
+      avg[level] += n / N;
+    }
+    assert.ok(avg.hard <= avg.normal + 0.1 && avg.hard < 5, `flips on average: Hard ${avg.hard.toFixed(2)}, Normal ${avg.normal.toFixed(2)}`);
+    const m = E.newMini('memory', R('mn'));
+    assert.equal(E.aiOf('memory').needs(E.publicMini(m, 'O'), 'X'), 5.5, 'nothing flipped');
+    E.applyMove(m, 'X', twoOthers(m.tg.X), R('a'));
+    assert.equal(E.aiOf('memory').needs(E.publicMini(m, 'O'), 'X'), 4.5, "the other side's needs, from its own open flips");
   } finally { memRace(false); }
 });

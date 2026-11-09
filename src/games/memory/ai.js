@@ -3,12 +3,13 @@ import { randInt, shuffle } from '../../core/random.js';
 import { tune } from '../../core/tune.js';
 import { memoryKnown, memoryPair } from './rules.js';
 
-// Race mode (core/race.js): the computer reads the cards it has turned itself alone (its part, pm.side[me]: memoryKnown);
-// the other side's flips tell it nothing of the deck, and its own show the other side nothing (shared: false); the
-// other side's needs are guessed from its flips (its shape).
+// Race mode (core/race.js, `rv: 2`): the computer flips its own layout and reads the cards it has turned itself (its part,
+// pm.side[me]: memoryKnown); the other layout is another shuffle and tells it nothing of where its cards lie, and its own
+// flips help the other side nothing (shared: false). Hard: the fewest flips expected (memorySolo). Each side's needs come
+// from its own part (both are open), with no limit.
 export function needs(pm, p) {
   const v = memoryKnown(pm, p);
-  if (!v) { const sh = pm.shape && pm.shape[p]; return 1 + Math.max(0, 9 - 2 * ((sh && sh.n) || 0)) / 2; }   // (a race square's other side: its flips alone)
+  if (!v) return 1 + 9 / 2;                                      // (a part this copy has not got: nothing seen)
   const known = v.seen.filter(i => v.cards[i]); return memoryPair(v, known) ? 1 : 1 + (9 - v.seen.length) / 2;
 }
 export function best(pm, me, rng, style, ctx) {
@@ -21,7 +22,7 @@ export function best(pm, me, rng, style, ctx) {
   const unseen = [];
   for (let i = 0; i < 9; i++) if (!v.seen.includes(i)) unseen.push(i);
   unseen.push(...forgot);
-  if (ctx && ctx.level === 'hard' && unseen.length) return Object.assign(memoryHard(pm, known, unseen, rng), { shared });
+  if (ctx && ctx.level === 'hard' && unseen.length) return Object.assign(shared ? memoryHard(pm, known, unseen, rng) : memorySolo(pm, known, unseen, rng), { shared });
   if (unseen.length >= 2) { shuffle(unseen, rng); return { move: [unseen[0], unseen[1]], q: 2 / (unseen.length * (unseen.length - 1)), shared }; }
   if (unseen.length === 1) return { move: [unseen[0], known[randInt(rng, known.length)]], q: 1 / known.length, shared }; 
   return { move: [known[0], known[1]], q: 0, shared };
@@ -63,4 +64,26 @@ function memoryHard(pm, known, unseen, rng) {
   if (two) return { move: [unseen[0], unseen[1]], q: o.A.win, shared: true };
   if (o.B) return { move: [unseen[0], known[randInt(rng, known.length)]], q: o.B.win, shared: true };
   return { move: [unseen[0], unseen[1]], q: 0, shared: true };
+}
+
+// ---- Hard in a race: the fewest flips (its own layout) ----
+// The same odds (memoryOdds: two unseen cards, A, or an unseen card beside a seen one, B), weighed for the flips still
+// expected alone: the flip, then nothing if it is the pair, one more if it shows a twin of a card seen (the pair known),
+// else the expectation with k + 2 (A) or k + 1 (B) seen.
+function soloFlips(m, k) {
+  const key = 's' + m + ':' + k;
+  if (MH.memo[key] != null) return MH.memo[key];
+  const o = memoryOdds(m, k);
+  const way = w => (w ? 1 + (1 - w.win - w.next) + w.next * (w === o.A ? (k + 2 <= 9 ? soloFlips(m, k + 2) : 1) : soloFlips(m, k + 1)) : Infinity);
+  const v = 9 - k <= 0 ? 1 : Math.min(way(o.A), way(o.B));
+  return (MH.memo[key] = Number.isFinite(v) ? v : 1);
+}
+function memorySolo(pm, known, unseen, rng) {
+  const m = Math.max(1, Math.min(3, tune(pm).pairs || 1)), k = known.length, o = memoryOdds(m, k);
+  const cost = w => (w ? 1 + (1 - w.win - w.next) + w.next * (w === o.A ? soloFlips(m, k + 2) : soloFlips(m, k + 1)) : Infinity);
+  shuffle(unseen, rng);
+  const two = o.A && unseen.length >= 2 && (!o.B || !known.length || cost(o.A) <= cost(o.B) + 1e-9);
+  if (two) return { move: [unseen[0], unseen[1]], q: o.A.win };
+  if (o.B && known.length) return { move: [unseen[0], known[randInt(rng, known.length)]], q: o.B.win };
+  return { move: unseen.length >= 2 ? [unseen[0], unseen[1]] : [unseen[0], known[0]], q: 0 };
 }

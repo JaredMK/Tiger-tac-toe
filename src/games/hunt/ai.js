@@ -3,13 +3,12 @@ import { randInt } from '../../core/random.js';
 import { tune } from '../../core/tune.js';
 import { huntBand, huntCandidates, huntDist, huntGrid, huntSize } from './rules.js';
 
-// Race mode (core/race.js): the computer digs its own grid alone (its part, pm.side[me]); the other side's digs tell it
-// nothing, so its dig is the one that tells most (Normal's splitter), at every level; the other side's progress is
-// its shape (digs used, the band of its last dig), from which their needs are guessed.
-const HEAT_NEEDS = { found: 1, hot: 1.8, warm: 2.7, cool: 3.1, cold: 3.3 };   // digs about still needed by a side whose last dig showed that band
+// Race mode (core/race.js, `rv: 2`): the computer digs its own grid for its own treasure (its part, pm.side[me]); the
+// other grid is the other treasure's and tells it nothing. Normal: the splitter, as in Shared. Hard: the fewest digs
+// expected (huntSolo). Both grids are open, so each side's needs come from its own candidates, with no limit.
 export function needs(pm, p) {
   const g = huntGrid(pm, p);
-  if (!g) { const sh = pm.shape && pm.shape[p], n = huntSize(pm); return sh && sh.heat ? HEAT_NEEDS[sh.heat] || 3 : 1 + Math.log2(n * n) / 2.5; }   // (a race square's other side: its shape alone)
+  if (!g) { const n = huntSize(pm); return 1 + Math.log2(n * n) / 2.5; }   // (a part this copy has not got: a fresh grid)
   const n = huntCandidates(pm, p).length; return n <= 1 ? 1 : 1 + Math.log2(n) / 2.5;
 }
 export function best(pm, me, rng, style, ctx) {
@@ -18,7 +17,7 @@ export function best(pm, me, rng, style, ctx) {
   if (cand.length === 1) return { move: cand[0], q: 1, shared };
   const miss = tune(pm).miss || 0;                               // (the admin's mistake rate: a dig anywhere it could be)
   if (miss && rng() * 100 < miss) return { move: cand[randInt(rng, cand.length)], q: 1 / cand.length, shared };
-  if (ctx && ctx.level === 'hard' && shared) return huntHard(pm, cand, ctx, g);
+  if (ctx && ctx.level === 'hard') return shared ? huntHard(pm, cand, ctx, g) : huntSolo(cand, ctx, g);
   let best = cand[0], bestSplit = Infinity;        // the dig that, if it misses, leaves the fewest candidates on average (by the band it would show)
   const n = g.n;
   for (const c of cand) {
@@ -87,4 +86,53 @@ function huntHard(pm, cand, ctx, g) {
     for (let gg = 0; gg < nn; gg++) { if (g.dug[gg] || inC.has(gg)) continue; const v = dig(C, gg, depth - 1, false); if (stop) break; if (v > top + HUH.margin) { top = v; move = gg; } }
   }
   return { move, q: C.includes(move) ? 1 / m0 : 0, shared: true };
+}
+
+// ---- Hard in a race: the fewest digs (its own grid, its own treasure) ----
+// The digs still expected from the cells S the treasure may be in: 1 for the dig, then, for each band the others would
+// show, that group's own expectation by its share (none once it is dug up). Exact over sets of HSO.exact or fewer (kept in
+// a memo), deeper as the budget allows for the rest (iterative deepening), a set out of reach worth HSO.h of its size.
+// The first dig may also be a cell outside S, when it splits S clearly better (it can never be the treasure).
+const HSO = { exact: 9, work: 1.5e5, depth: 6, margin: 0.03 };
+const hEst = m => (m <= 1 ? 1 : 1 + Math.log2(m) / 1.55);         // a set's digs, roughly (measured on the 6x6 grid against the exact values)
+function huntSolo(cand, ctx, g) {
+  const n = g.n, nn = n * n, B = bandTable(n), until = ctx.until, memo = new Map();
+  const C = cand.slice().sort((a, b) => a - b);
+  let nodes = 0, work = 0, stop = false;
+  const groups = (S, gg) => { const gr = []; for (const c of S) if (c !== gg) { const k = B[gg * nn + c]; (gr[k] || (gr[k] = [])).push(c); } return gr.filter(x => x); };
+  const E = (S, d) => {                                          // the digs expected from S, d digs deep
+    const m = S.length;
+    if (m <= 1) return 1;
+    if (m === 2) return 1.5;
+    if (m > HSO.exact && d <= 0) return hEst(m);
+    if (stop) return hEst(m);
+    const key = S.join(','), hit = memo.get(key);
+    if (hit && (hit.full || hit.d >= d)) return hit.v;
+    if (until ? (++nodes & 15) === 0 && until() <= 0 : (work += m * (m + 8)) > HSO.work) { stop = true; return hEst(m); }
+    let low = Infinity;
+    for (const gg of S) { const v = dig(S, gg, d - 1, true); if (stop) return hEst(m); if (v < low) low = v; }
+    memo.set(key, { d, v: low, full: m <= HSO.exact });
+    return low;
+  };
+  const dig = (S, gg, d, inS) => {                               // a dig's expected digs (Infinity: one that tells nothing)
+    const m = S.length, gr = groups(S, gg);
+    if (!inS && gr.length === 1) return Infinity;
+    let v = 1;
+    for (const grp of gr) { v += grp.length / m * E(grp, d); if (stop) return Infinity; }
+    return v;
+  };
+  let move = C[0], low = Infinity, depth = 0;
+  for (let d = 1; d <= HSO.depth && !stop; d++) {
+    let top = Infinity, pick = -1;
+    for (const gg of C) { const v = dig(C, gg, d - 1, true); if (stop) break; if (v < top) { top = v; pick = gg; } }
+    if (stop) break;
+    move = pick; low = top; depth = d;
+    if (C.length <= HSO.exact) break;
+  }
+  if (depth) {
+    stop = false; work = 0;
+    const inC = new Set(C);
+    for (let gg = 0; gg < nn; gg++) { if (g.dug[gg] || inC.has(gg)) continue; const v = dig(C, gg, depth - 1, false); if (stop) break; if (v < low - HSO.margin) { low = v; move = gg; } }
+  }
+  return { move, q: C.includes(move) ? 1 / C.length : 0, shared: false };
 }

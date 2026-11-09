@@ -4,7 +4,10 @@ import { endFlash, playMove, timeoutMove } from './board.js';
 import { SC_ONLINE, chaosResolveOnline, scTypes, startChaosOnline } from './chaos.js';
 import { defaultSetup, newState, startMatch } from './match.js';
 import { upgradeMini } from './minis.js';
-import { isRace, raceFlashHide, raceHide, raceSides } from './race.js';
+import { isRace, raceFlashHide, raceHide, raceOld, raceSides } from './race.js';
+import { newMini } from './minis.js';
+import { makeRng } from './random.js';
+import { triviaDeal } from '../games/trivia/rules.js';
 import { armClock, clockDeadline, newTimer, turnOpen } from './timer.js';
 import { other } from './util.js';
 import { ATT_TYPES, attStart } from '../games/shared/attention.js';
@@ -102,6 +105,7 @@ export function fullState(rec) {
       if (sq.mini.side) delete sq.mini.shape;
     }
     if (sq.mini.type === 'hunt') delete sq.mini.clues;
+    if (!sq.owner && raceOld(sq.mini)) { const r = makeRng(`${st.id || 'm'}:${k}:rv2`); sq.mini = newMini(sq.mini.type, r); if (sq.mini.type === 'trivia') triviaDeal(st, sq, r); }   // a race square from before the rework (one target, private parts): dealt again as it is now (core/race.js; deterministic, so a phone's prediction and the server agree)
     upgradeMini(sq.mini);
   });
   Object.assign(st, { flash: null, done: null, screen: 'board', zoom: null, draft: '', sel: [], notice: null, stamp: null, spot: null, cpu: null, online: null, confirm: null });

@@ -11,7 +11,7 @@ import { PLINKO_DEFAULTS } from '../games/plinko/meta.js';
 import { PLINKO } from '../games/plinko/rules.js';
 import { WHEEL_DEFAULTS } from '../games/wheels/meta.js';
 import { WHEELS_ALL, WHEEL_SEGS } from '../games/wheels/rules.js';
-import { isRace, raceShape, raceSide } from './race.js';
+import { isRace, raceOld, raceShape, raceSide } from './race.js';
 import { rulesOf } from '../games/index.js';
 import { tuneSnap } from './tune.js';
 
@@ -103,12 +103,12 @@ export function applyMove(mini, p, m, rng) {
 export function publicMini(mini, forSide) {
   const game = rulesOf(mini.type);
   if (game.publicView) {
-    const v = game.publicView(mini);
+    const v = game.publicView(mini, forSide);   // (forSide: a race game may give that side its own due, e.g. Trivia's computer its own right place, never the other's)
     if (mini.tune && v && typeof v === 'object' && !v.tune) v.tune = mini.tune;   // (its settings: never secret)
     if (isRace(mini) && v && typeof v === 'object') {
       v.race = true; v.shape = { X: raceShape(mini, 'X') || {}, O: raceShape(mini, 'O') || {} };
-      const own = forSide ? raceSide(mini, forSide) : null;
-      v.side = own ? { [forSide]: JSON.parse(JSON.stringify(own)) } : {};
+      if (raceOld(mini)) { const own = forSide ? raceSide(mini, forSide) : null; v.side = own ? { [forSide]: JSON.parse(JSON.stringify(own)) } : {}; }
+      else { v.rv = mini.rv; if (!v.side && mini.side) v.side = JSON.parse(JSON.stringify(mini.side)); }   // (a reworked race: both players' parts are open; the game's publicView keeps the targets out)
     }
     return v;
   }

@@ -1,6 +1,8 @@
-// Race mode on the page for Patterns (core/race.js): the square's screen shows this phone's own card (its cross-outs) and only
-// the other side's shape (wrong tries, right or not); the other side's move arrives redacted and is shown as right or wrong,
-// never which option; the board's miniature shows both shapes with the puzzle; the explainer swaps to the Race one.
+// Race mode on the page for Patterns (core/race.js, rv: 2): the square draws two boards, this phone's own large (its own
+// puzzle, options, cross-outs, score) and the other player's small (their score as pips, their puzzle and its options small
+// with their cross-outs, never the right one while open); the other side's move plays on their board from its flash; the
+// miniature is a picture of both players' progress; a claimed square shows both boards with the right options; the
+// explainer swaps to the Race one while the mode is on.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
@@ -26,55 +28,66 @@ function raceMatch() {
   state.setup.vs = 'cpu'; state.setup.names = { X: 'Xena', O: 'Computer' };
   return state.squares[0].mini;
 }
-const wrongOf = m => [0, 1, 2, 3].filter(k => k !== m.answer);
+const wrongOf = (m, p) => [0, 1, 2, 3].filter(k => k !== m.tg[p] && !m.side[p].crossed.includes(k));
+const mainOf = html => html.slice(html.indexOf('class="rmain"'), html.indexOf('class="ropp'));
+const oppOf = html => html.slice(html.indexOf('class="ropp'));
 
-test('race: the screen draws this side\'s own cross-outs and the other side\'s tries as a shape; their picks never appear', () => {
-  const m = raceMatch(), wrong = wrongOf(m);
-  E.applyMove(m, 'O', wrong[0], E.makeRng('a')); E.applyMove(m, 'O', wrong[1], E.makeRng('b'));   // the computer's two wrong tries (its own card)
-  E.applyMove(m, 'X', wrong[2], E.makeRng('c'));                                                  // ours
-  state.turn = 'X';
+test('race: two boards; ours our own puzzle with four options to pick; theirs small with their own puzzle; no right option marked', () => {
+  const m = raceMatch();
   const html = renderMini(state.squares[0]);
-  assert.match(html, new RegExp(`<button class="popt out" data-act="move" [^>]*data-m=.${wrong[2]}.`), 'our cross-out struck');
-  for (const k of [wrong[0], wrong[1]]) assert.match(html, new RegExp(`<button class="popt" data-act="move" [^>]*data-m=.${k}.`), `the computer's option ${k} is open to us`);
-  assert.equal((html.match(/pips tqr/g) || []).length, 2, 'both tallies as race tallies');
-  assert.match(html, /aria-label="2 wrong"/); assert.match(html, /aria-label="1 wrong"/);
-  assert.match(html, /option.? left for you/);
-  assert.match(html, /class="pseq"/, 'the shared puzzle');
+  assert.match(html, /class="rboards trqb"/); assert.match(html, /class="ropp O"/);
+  assert.equal((mainOf(html).match(/class="popt"/g) || []).length, 4, 'four options to pick');
+  assert.match(mainOf(html), /Your turn · 4 options left/);
+  assert.equal((oppOf(html).match(/class="ptqo"/g) || []).length, 4, 'their four options, small');
+  assert.match(oppOf(html), /ptqit gap/, 'their gap');
+  assert.doesNotMatch(html, /popt right|ptqo right/, 'no right option marked while open');
+  assert.notEqual(JSON.stringify(m.side.X.puz), JSON.stringify(m.side.O.puz));
 });
 
-test('race: the other side\'s move is redacted on this phone (no option), shown as right or wrong', async () => {
-  const m = raceMatch(), wrong = wrongOf(m);
+test('race: the other side\'s move plays on their board from its flash; our board untouched; their cross-outs stay on their card', async () => {
+  const m = raceMatch();
   state.turn = 'O';
-  const r = E.playMove(state, 0, wrong[0], E.makeRng('d'));
-  assert.ok(r.ok); assert.ok(state.flash.pat);
-  const html = renderMini(state.squares[0]);
-  assert.doesNotMatch(html, /popt wrong out fresh/); assert.doesNotMatch(html, /Wrong: crossed out/);
-  assert.match(html, /got it wrong/); assert.match(html, /i class="no fillin"/);
-  for (const k of [0, 1, 2, 3]) assert.doesNotMatch(html, new RegExp(`<button class="popt[^"]*\\bout\\b[^"]*" data-act="move" [^>]*data-m=.${k}.`), 'nothing crossed out on our card');
+  assert.equal(E.playMove(state, 0, wrongOf(m, 'O')[0], E.makeRng('d')).ok, true);
+  let html = renderMini(state.squares[0]);
+  assert.match(oppOf(html), /class="ptqo wrong late"/, 'their pick, struck when it comes');
+  assert.match(mainOf(html), /got it wrong/, 'the result in our reserved line');
+  assert.doesNotMatch(mainOf(html), /popt (out|wrong|right)/, 'nothing on our card');
   const { moveSounds } = await import('../../src/audio/sound.js');
   assert.ok(moveSounds(state.flash).map(s => s[0]).includes('thud'));
-  state.flash = null; state.done = null; state.lock = null; state.turn = "O";
-  const r2 = E.playMove(state, 0, m.answer, E.makeRng('e'));
-  assert.ok(r2.ok, JSON.stringify(r2)); assert.equal(state.flash.kind, "claim");
-  const h2 = renderMini(state.squares[0]);
-  assert.match(h2, /got it/); assert.doesNotMatch(h2, /popt right/, 'the right option is not shown'); assert.doesNotMatch(h2, /gap filled/, 'the gap is not filled for us');
-  assert.equal(V.moveText(E.raceFlashHide(state.flash, m), 'Computer'), 'Computer got the pattern');
+  E.endFlash(state); state.turn = 'X';
+  html = renderMini(state.squares[0]);
+  assert.match(oppOf(html), /class="ptqo out"/);
+  state.turn = 'O'; state.flash = null; state.done = null;
+  assert.equal(E.playMove(state, 0, m.tg.O, E.makeRng('e')).ok, true);
+  html = renderMini(state.squares[0]);
+  assert.match(oppOf(html), /class="ptqo right late"/); assert.match(oppOf(html), /ptqit gap filled appear/, 'the right one drops into their gap');
+  assert.match(oppOf(html), /fillin/, 'their score fills in');
+  assert.equal(V.moveText(state.flash, 'Computer'), 'Computer got the pattern');
 });
 
-test('race: the miniature shows both players\' shapes with the puzzle and no pick; the explainer is the Race one while the mode is on', () => {
-  const m = raceMatch(), wrong = wrongOf(m);
-  E.applyMove(m, 'X', wrong[0], E.makeRng('f')); E.applyMove(m, 'O', wrong[1], E.makeRng('g'));
+test('race: the miniature is a picture of both players\' progress, public only; a claimed square draws its miniature and both boards with the right options', () => {
+  const m = raceMatch();
+  E.applyMove(m, 'O', wrongOf(m, 'O')[0], E.makeRng('f'));
+  E.applyMove(m, 'X', m.tg.X, E.makeRng('g'));
   state.screen = 'board'; state.zoom = null;
-  const board = renderBoard();
-  const sq = board.slice(board.indexOf('<button class="sq'), board.indexOf('</button>'));
-  assert.match(sq, /tpat tqrm/); assert.match(sq, /tseq/, 'the puzzle');
-  assert.equal((sq.match(/i class="no"/g) || []).length, 2, 'one wrong try each');
-  const pub = E.raceView(m, null);
-  assert.deepEqual(pub.side, {});
-  assert.match(V.miniature(pub, false), /tqok/);
-  assert.equal(V.miniature(pub, false), V.miniature(E.raceView(m, 'X'), false), 'the same picture for a side');
+  const board = renderBoard(), sq = board.slice(board.indexOf('<button class="sq'), board.indexOf('</button>'));
+  assert.match(sq, /trace2 trqt/); assert.equal((sq.match(/<svg class="trqm ptqm/g) || []).length, 2, 'one picture each');
+  assert.match(sq, /trqm ptqm X[^]*class="tqon"/, 'X\'s point'); assert.match(sq, /trqm ptqm O[^]*tqt tqno/, 'O\'s wrong try');
   state.screen = 'mini'; state.zoom = 0;
-  assert.match(explainOf('patterns').play, /yours alone/, 'the Race explainer in an open race square');
-  state.squares[0].mini.race = false; delete state.squares[0].mini.side; state.squares[0].mini.crossed = [];
-  assert.doesNotMatch(explainOf('patterns').play, /yours alone/, 'a shared square: the usual one');
+  for (let i = 0; i < 3; i++) { state.flash = null; state.done = null; state.lock = null; state.turn = 'O'; assert.equal(E.playMove(state, 0, m.tg.O, E.makeRng('h' + i)).ok, true); }
+  assert.equal(state.squares[0].owner, 'O');
+  E.endFlash(state); state.flash = null; state.done = null;
+  assert.doesNotThrow(() => V.miniature(state.squares[0].mini, true));
+  const rv = renderMini(state.squares[0], true);
+  assert.match(rv, /Won by/); assert.match(mainOf(rv), /popt right/, 'our right option shown'); assert.match(oppOf(rv), /ptqo right/, 'theirs too');
+  assert.match(oppOf(rv), /ptqit gap filled/, 'their last puzzle solved');
+});
+
+test('race: the explainer is the Race one while the mode is on', () => {
+  raceMatch();
+  state.screen = 'mini'; state.zoom = 0;
+  assert.match(explainOf('patterns').play, /your own puzzles/);
+  assert.match(explainOf('patterns').win, /first to get 3 right/);
+  state.squares[0].mini.race = false;
+  assert.doesNotMatch(explainOf('patterns').play, /your own puzzles/, 'a shared square: the usual one');
 });

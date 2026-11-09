@@ -19,21 +19,11 @@ export function wordleTop(sorted, rng) {
   for (let i = 0; i < k; i++) { r -= WVARY.weights[i]; if (r < 0) return sorted[i]; }
   return sorted[0];
 }
-// Race mode (core/race.js): the computer reads its own guesses alone; the other side's progress is its shape (their rows
-// of colours), from which what they have left to find is estimated (raceLeft): the two are independent.
-const SHAPE_CUT = { g: 0.12, y: 0.4 };                            // about what a green and a yellow each cut the words still possible to
-function raceLeft(pm, p) {                                       // how many words are about still open to p, from their own guesses or their shape
-  if (wordleGuesses(pm, p).length || (pm.side && pm.side[p])) return wordleCandidates(pm, p).length;
-  const sh = pm.shape && pm.shape[p], rows = sh && Array.isArray(sh.rows) ? sh.rows : [];
-  if (!rows.length) return WORDS5.length;
-  if (rows[rows.length - 1] === 'ggggg') return 1;
-  let best = WORDS5.length;
-  for (const r of rows) { let v = WORDS5.length; for (const ch of r) v *= SHAPE_CUT[ch] || 1; best = Math.min(best, v); }
-  return Math.max(2, Math.round(best * Math.pow(0.85, rows.length - 1)));   // (every row tells a little more)
-}
+// Race mode (core/race.js, `rv: 2`): each player their own word, no limit: the computer reads its own guesses alone
+// (wordleCandidates(pm, me): its own part), and the other side's own rows, open to it, say how near they are (needs).
 export function needs(pm, p) {
-  const c = pm.race ? raceLeft(pm, p) : wordleCandidates(pm).length, n = c <= 1 ? 1 : Math.min((c + 1) / 2, 1 + Math.log(c) / Math.log(6)), left = wordleLeft(pm, p);
-  return n > left + 0.001 ? Math.max(n, left + 2) : n;   // more than its guesses left: a long shot
+  const c = wordleCandidates(pm, pm.race ? p : undefined).length, n = c <= 1 ? 1 : Math.min((c + 1) / 2, 1 + Math.log(c) / Math.log(6)), left = wordleLeft(pm, p);
+  return n > left + 0.001 ? Math.max(n, left + 2) : n;   // more than its guesses left: a long shot (never in a race: no limit)
 }
 // With guesses each (the square's limit), the last one is always a candidate (a word that could be it), and a miss
 // with it hands the square over (qLose).

@@ -3,9 +3,9 @@ import { randInt } from '../../core/random.js';
 import { tune } from '../../core/tune.js';
 import { bsCandidates, bsN, bsPlacements, bsSea } from './rules.js';
 
-// Race mode (core/race.js): the computer fires at its own sea (pm.side[me]); the other side's hunt is its shape
-// alone (hits and misses as counts), so their placements left are estimated from the counts, and a miss of its own
-// narrows nothing for them: Hard plays for the fewest turns (misses) to the sinking shot (bsHardRace).
+// Race mode (core/race.js, `rv: 2`): the computer fires at its own sea (pm.side[me]) for its own ship; the other
+// side's sea is open too (their needs from their own shots), and a shot of its own tells nothing of theirs: Hard plays
+// for the fewest turns (misses) to the sinking shot (bsHardRace). No shot limit in a race.
 const raceEst = (sh, len, N) => {                                // about how many placements still fit a hunt of `hits` hits and `miss` misses
   const all = bsPlacements(len, N).length, cells = N * N, hits = sh.hits || 0, miss = sh.miss || 0;
   if (sh.sunk || hits >= len) return 1;
@@ -13,7 +13,7 @@ const raceEst = (sh, len, N) => {                                // about how ma
   return Math.max(1, through * Math.pow(1 - miss / Math.max(1, cells - hits), len - hits));
 };
 export function needs(pm, p) {
-  if (pm.race && !(pm.side && pm.side[p])) {                     // the other side of a race: from their shape
+  if (pm.race && !(pm.side && pm.side[p])) {                     // (a race square from before the rework: the other side from their shape)
     const sh = (pm.shape && pm.shape[p]) || {}, n = raceEst(sh, pm.len, bsN(pm));
     return Math.max(1, pm.len - (sh.hits || 0) + (n <= 1 ? 0 : Math.log2(n) / 2));
   }

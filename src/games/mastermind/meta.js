@@ -7,7 +7,7 @@ export const minVersion = '1.0.0';   // the oldest client version that has this 
 export const category = 'brain';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Codebreaker', play: 'Guess the 4-colour code. Black marker means right colour and spot; white marker means right colour, wrong spot.', win: 'Crack the code.' };
-export const raceExplainer = { name: 'Codebreaker', play: 'Guess the 4-colour code. Black marker means right colour and spot; white marker means right colour, wrong spot. The same code for both, but your guesses are yours alone: you see only the other player\'s markers, never their colours.', win: 'Crack the code first.' };   // Race mode (core/race.js)
+export const raceExplainer = { name: 'Codebreaker', play: "Each of you has your own hidden 4-colour code. Black marker means right colour and spot; white marker means right colour, wrong spot. The other player's guesses show under yours.", win: 'Crack your code first.' };   // Race mode (core/race.js)
 export const scExplainer = { name: 'Codebreaker', play: "Guess the 4-colour code. Black marker means right colour and spot; white marker means right colour, wrong spot.", win: 'Crack the code.' };   // in Super Chaos
 // Its settings (the admin's Mini-game Settings; core/tune.js): read through tune(mini).
 export const TUNE = [
