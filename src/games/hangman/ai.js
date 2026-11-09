@@ -1,26 +1,62 @@
 // Hangman: the computer's play.
 import { randInt } from '../../core/random.js';
 import { tune } from '../../core/tune.js';
-import { hangmanCandidates } from './rules.js';
+import { hangLen, hangLetters, hangPart, hangmanCandidates } from './rules.js';
 import { WORDS_HANG } from './words.js';
 
+// Race mode (core/race.js): the computer reads its own letters and pattern alone; the other side's progress is its
+// shape (the blanks they have filled, their wrong letters), from which what they have left to find is estimated.
+const SHAPE_CUT = 0.45;                                          // about what each revealed blank cuts the words still possible to
+function raceEst(pm, p) {                                        // [words about still possible to p, blanks they still have to fill]
+  const part = hangPart(pm, p);
+  if (part && Array.isArray(part.pattern)) return [hangmanCandidates(pm, p).length, part.pattern.filter(ch => !ch).length];
+  const sh = pm.shape && pm.shape[p], got = sh && Array.isArray(sh.got) ? sh.got : new Array(hangLen(pm)).fill(false);
+  const len = got.length, all = WORDS_HANG.filter(w => w.length === len).length, found = got.filter(Boolean).length;
+  return [Math.max(1, Math.round(all * Math.pow(SHAPE_CUT, found))), len - found];
+}
 export function needs(pm, p) {
-  const n = hangmanCandidates(pm).length; const missing = pm.pattern.filter(ch => !ch).length; return n <= 1 ? 1 : 1 + Math.min(missing, 1 + Math.log(n)) / 2;
+  const [n, missing] = pm.race ? raceEst(pm, p) : [hangmanCandidates(pm).length, pm.pattern.filter(ch => !ch).length];
+  return n <= 1 ? 1 : 1 + Math.min(missing, 1 + Math.log(n)) / 2;
 }
 export function best(pm, me, rng, style, ctx) {
-  const cand = hangmanCandidates(pm), tried = new Set(pm.letters.map(x => x.l));
+  const cand = hangmanCandidates(pm, me), tried = new Set(hangLetters(pm, me).map(x => x.l)), shared = !pm.race;   // (a race: its own letters alone, and a letter found tells the other side nothing)
   const miss = tune(pm).miss;
   if (miss && rng() * 100 < miss) {                            // a slip: any letter not tried yet
     const left = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').filter(l => !tried.has(l));
-    if (left.length) return { move: left[randInt(rng, left.length)], q: 0, shared: true };
+    if (left.length) return { move: left[randInt(rng, left.length)], q: 0, shared };
   }
-  if (ctx && ctx.level === 'hard' && cand.length > 1 && tried.size < 26) return hangHard(pm, cand, tried, ctx);
+  if (ctx && ctx.level === 'hard' && cand.length > 1 && tried.size < 26) return pm.race ? hangSolo(cand, tried) : hangHard(pm, cand, tried, ctx);
   const count = {};
   for (const w of cand) for (const ch of new Set(w)) if (!tried.has(ch)) count[ch] = (count[ch] || 0) + 1;
   let best = null, top = 0;
   for (const ch of 'ETAOINSRHLDCUMFPGWYBVKXJQZ') { const n = count[ch] || 0; if (n > top) { top = n; best = ch; } }
   if (!best) for (const ch of 'ETAOINSRHLDCUMFPGWYBVKXJQZ') if (!tried.has(ch)) { best = ch; break; }
-  return { move: best, q: cand.length === 1 ? 1 : cand.length ? 1 / cand.length : 0, shared: true };
+  return { move: best, q: cand.length === 1 ? 1 : cand.length ? 1 / cand.length : 0, shared };
+}
+
+// ---- Hard, Race mode: the word alone ----
+// Nothing the computer learns reaches the other side, so the letter is the one that tells most about the word: the
+// candidates grouped by where it sits (the words without it one group), the letter with the most even split (the
+// fewest words left on average, the sum of the groups' squares) taken, a hit's extra go breaking ties (the words that
+// hold it). Quick: one pass over the candidates per letter.
+function hangSolo(cand, tried) {
+  const n = cand.length;
+  let move = null, top = Infinity, topHit = -1;
+  for (const l of 'ETAOINSRHLDCUMFPGWYBVKXJQZ') {
+    if (tried.has(l)) continue;
+    const gr = new Map();
+    let hit = 0;
+    for (const w of cand) { let k = 0; for (let i = 0; i < w.length; i++) if (w[i] === l) k |= 1 << i; if (k) hit++; gr.set(k, (gr.get(k) || 0) + 1); }
+    if (!hit) continue;                                          // (in no candidate: a pass)
+    let v = 0;
+    for (const c of gr.values()) v += c * c;
+    v /= n;
+    if (v < top - 1e-9 || (v < top + 1e-9 && hit > topHit)) { top = v; topHit = hit; move = l; }
+  }
+  if (!move) for (const l of 'ETAOINSRHLDCUMFPGWYBVKXJQZ') if (!tried.has(l)) { move = l; break; }
+  let q = 0;                                                     // the chance this turn ends it: a letter that leaves one word
+  const one = new Map(); for (const w of cand) { let k = 0; for (let i = 0; i < w.length; i++) if (w[i] === move) k |= 1 << i; if (k) one.set(k, (one.get(k) || 0) + 1); } for (const c of one.values()) if (c === 1) q += 1 / n;
+  return { move, q, shared: false };
 }
 
 // ---- Hard: the race for the word ----

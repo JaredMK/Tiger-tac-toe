@@ -117,13 +117,14 @@ const LINE_TYPES = ['bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'tr
 // '' where the game's own screen says it all (the games with their own reserved result line, a Risky Rolls roll or bank).
 export function flashLine(f) {
   if (!f) return '';
+  f = raceSeen(f, f.square != null && state.squares ? state.squares[f.square] : null);   // (a race square: the other side's move as this phone may see it, wherever the line is drawn: the turn bar too)
   const who = `<b class="${f.by}">${N(f.by)}</b>`;
   if (f.kind === 'claim' || f.kind === 'match' || f.kind === 'draw') return squareEnd(f);   // the square's end: "Won by" and the mark, or "Draw"
   const note = f.timeout ? `${who} ran out of time` : '';
   let say = '';
   if (f.type === 'pig' && f.note === 'bust') say = `Bust! ${who} rolled ${f.roll} again · ${f.pot} point${f.pot === 1 ? '' : 's'} lost`;
   else if (LINE_TYPES.includes(f.type) || (f.type === 'pig' && (f.note === 'bank' || f.kind === 'again'))) say = '';
-  else if (f.kind === 'again') say = f.type === 'bs' ? `${who} hit! · fire again` : `${who} found ${esc(f.letter)} · guess again`;
+  else if (f.kind === 'again') say = f.type === 'bs' ? `${who} hit! · fire again` : `${who} found ${f.letter ? esc(f.letter) : 'a letter'} · guess again`;
   else say = summary(f);
   return [note, say].filter(Boolean).join(' · ');
 }

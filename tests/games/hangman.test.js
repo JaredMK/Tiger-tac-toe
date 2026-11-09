@@ -215,3 +215,122 @@ test('hangman: a right letter keeps the turn with almost no pause before the nex
   assert.ok(H.flashMs({ kind: 'again' }) <= 300, 'a right letter: the next guess almost at once');
   assert.equal(H.flashMs({ kind: 'move' }), 650, 'a miss or the solving letter: as before');
 });
+
+// ================================ Race mode (core/race.js) ================================
+// The same word for both, each player's letters and revealed pattern their own (mini.side[p]); the other side sees only
+// which blanks they have filled and their wrong count; a right letter still gives another go; online the record keeps each
+// side's part apart and a move's entry is redacted; the computer plays from its own part alone.
+const raceOn = on => E.setTune('hangman', on ? { mode: 'race' } : null);
+const hangAt = st => st.squares.findIndex(q => q.mini.type === 'hangman');
+function raceMatch(rng) { return E.newMatch(rng, { games: ['hangman', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt'] }); }
+
+test('hangman, race: dealt by the admin setting; each side its own letters and pattern, the same word; a right letter goes again; two on one phone play Shared', () => {
+  raceOn(true);
+  try {
+    const m = L.newMini('hangman', wordRng(L.WORDS_HANG, 'apple'));
+    assert.equal(m.race, true); assert.equal(m.word, 'APPLE'); assert.equal(m.letters, undefined);
+    assert.deepEqual(m.side, { X: { letters: [], pattern: [null, null, null, null, null] }, O: { letters: [], pattern: [null, null, null, null, null] } });
+    assert.deepEqual(L.applyMove(m, 'X', 'P'), { ok: true, outcome: 'continue', note: 'hit', again: true });
+    assert.deepEqual(m.side.X.pattern, [null, 'P', 'P', null, null]); assert.deepEqual(m.side.O.pattern, [null, null, null, null, null], "O's part is untouched");
+    assert.deepEqual(L.applyMove(m, 'X', 'Z'), { ok: true, outcome: 'continue', note: 'miss' });
+    assert.equal(L.applyMove(m, 'X', 'P').reason, 'taken'); assert.equal(L.applyMove(m, 'O', 'P').ok, true, 'the same letter is open to O (their letters are their own)');
+    assert.deepEqual(E.raceShape(m, 'X'), { n: 2, wrong: 1, got: [false, true, true, false, false] }); assert.deepEqual(E.raceShape(m, 'O'), { n: 1, wrong: 0, got: [false, true, true, false, false] });
+    for (const l of ['A', 'L']) assert.equal(L.applyMove(m, 'O', l).again, true);
+    assert.deepEqual(L.applyMove(m, 'O', 'E'), { ok: true, outcome: 'win' }, 'O reveals the last letter of its own');
+    assert.equal(E.hangmanCandidates(E.publicMini(m, 'X'), 'X').includes('APPLE'), true);
+    // through the match: the bonus guess keeps the turn and locks the player to the square, as in Shared
+    const st = raceMatch(E.makeRng('h-lock')); const k = hangAt(st); st.squares[k].mini = L.newMini('hangman', wordRng(L.WORDS_HANG, 'apple'));
+    const r = L.playMove(st, k, 'P'); assert.equal(r.ok, true); assert.equal(st.flash.kind, 'again'); assert.equal(st.turn, 'X'); assert.equal(st.lock, k);
+    assert.deepEqual([st.flash.own, st.flash.letter], ['P', ''], 'a right letter rides as own alone: the header\'s "found" line names no letter');
+    L.endFlash(st); assert.equal(L.playMove(st, k, 'Z').ok, true); assert.equal(st.done.next, 'O'); assert.deepEqual([st.done.own, st.done.letter], ['Z', 'Z']);
+    assert.equal(E.raceFlashHide(st.done, st.squares[k].mini).own, undefined, 'the other phone never gets it');
+    assert.equal(L.newMini('hangman', wordRng(L.WORDS_HANG, 'apple'), { shared: true }).race, undefined, 'two people on one phone: Shared');
+    assert.ok(E.newMatch(E.makeRng('h-same'), { games: ['hangman'], vs: 'same' }).squares.every(q => !q.mini.race));
+    assert.ok(E.newMatch(E.makeRng('h-cpu'), { games: ['hangman'], vs: 'cpu' }).squares.every(q => q.mini.race));
+  } finally { raceOn(false); }
+  assert.equal(L.newMini('hangman', wordRng(L.WORDS_HANG, 'apple')).race, undefined, 'off: as ever');
+});
+
+test('hangman, race: the public view holds the shapes and one side\'s own part alone; hidden, the word is blanks alone; the record keeps each side\'s part for that side', () => {
+  raceOn(true);
+  try {
+    const m = L.newMini('hangman', wordRng(L.WORDS_HANG, 'apple'));
+    L.applyMove(m, 'X', 'P'); L.applyMove(m, 'X', 'Z');
+    const pub = E.publicMini(m);
+    assert.equal(pub.word, undefined); assert.equal(pub.pattern, undefined); assert.equal(pub.len, 5); assert.deepEqual(pub.side, {});
+    assert.deepEqual(pub.shape.X, { n: 2, wrong: 1, got: [false, true, true, false, false] }); assert.deepEqual(pub.shape.O, { n: 0, wrong: 0, got: [false, false, false, false, false] });
+    const forO = E.publicMini(m, 'O');
+    assert.deepEqual(Object.keys(forO.side), ['O']); assert.ok(!JSON.stringify(forO).includes('"P"') && !JSON.stringify(forO).includes('"Z"'), "X's letters are nowhere in O's view");
+    const forX = E.publicMini(m, 'X');
+    assert.deepEqual(forX.side.X.pattern, [null, 'P', 'P', null, null]); assert.equal(forX.side.O, undefined);
+    const hidden = JSON.parse(JSON.stringify(m)); E.hideMini(hidden, 0, {});
+    assert.equal(hidden.word, '_____', 'no letter of anyone\'s in the public word'); assert.equal(hidden.side, undefined); assert.equal(hidden.shape.X.wrong, 1);
+    const st = raceMatch(E.makeRng('h-rec')); const k = hangAt(st);
+    st.squares[k].mini = m; st.id = 'h1'; st.seq = 0; st.recent = [];
+    const rec = E.matchRecord(st), ps = rec.state.squares[k].mini;
+    assert.equal(ps.side, undefined); assert.equal(ps.word, '_____'); assert.equal(ps.shape.X.n, 2);
+    assert.deepEqual(rec.sides.X[k].pattern, [null, 'P', 'P', null, null]); assert.deepEqual(rec.sides.O[k].letters, []);
+    assert.ok(!JSON.stringify(rec.state).includes('APPLE'));
+    const full = E.fullState(rec);
+    assert.deepEqual(full.squares[k].mini.side, m.side); assert.equal(full.squares[k].mini.word, 'APPLE'); assert.equal(full.squares[k].mini.shape, undefined);
+    assert.deepEqual(E.fullState(E.parseMatch(E.packMatch(rec))).squares[k].mini.side, m.side);
+    const oneSide = E.fullState({ state: rec.state, secrets: rec.secrets, sides: { O: rec.sides.O } });
+    assert.equal(oneSide.squares[k].mini.side.X, undefined); assert.deepEqual(oneSide.squares[k].mini.side.O, m.side.O);
+  } finally { raceOn(false); }
+});
+
+test('hangman, race: an online move\'s entry is redacted for the other phone (no letter, no inputs), the blanks it filled and the wrong count alone; the mover\'s part reaches their side', () => {
+  raceOn(true);
+  try {
+    const st = raceMatch(E.makeRng('h-online')); const k = hangAt(st); st.id = 'h2'; st.seq = 0; st.recent = [];
+    const rec = E.matchRecord(st), word = rec.secrets[k].word, hitL = word[0], missL = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').find(l => !word.includes(l));
+    const r = E.applyOnlineMove(rec, 'X', k, hitL, E.makeRng('h-mv'), { rep: [[0, 'move', 'm=' + hitL]] });
+    assert.ok(r.ok);
+    const e = r.entries[0];
+    assert.equal(e.kind, 'again'); assert.equal(e.m, undefined); assert.equal(e.letter, undefined); assert.equal(e.note, undefined); assert.equal(e.rep, undefined);
+    assert.deepEqual(Object.keys(e.race).sort(), ['at', 'by', 'got', 'hit', 'n', 'wrong']); assert.equal(e.race.hit, true); assert.equal(e.race.wrong, 0); assert.ok(e.race.at.includes(0)); assert.equal(e.race.got[0], true);
+    assert.equal(e.after.mini.side, undefined); assert.equal(e.after.mini.word, '_'.repeat(word.length)); assert.equal(e.after.mini.shape.X.n, 1);
+    assert.ok(!JSON.stringify(r.rec.state).includes(`"${hitL}"`), 'the letter is nowhere in the public state');
+    assert.equal(r.rec.sides.X[k].letters[0].l, hitL); assert.deepEqual(r.rec.sides.O[k].letters, []);
+    const r2 = E.applyOnlineMove(r.rec, 'X', k, missL, E.makeRng('h-mv2'));
+    assert.ok(r2.ok); assert.equal(r2.entries[0].race.hit, false); assert.equal(r2.entries[0].race.wrong, 1); assert.deepEqual(r2.entries[0].race.at, []);
+    const r3 = E.applyOnlineMove(r2.rec, 'O', k, hitL, E.makeRng('h-mv3'));
+    assert.ok(r3.ok, 'the same letter is open to O'); assert.equal(r3.rec.sides.O[k].letters.length, 1);
+    raceOn(false);
+    const st2 = raceMatch(E.makeRng('h-online')); const k2 = hangAt(st2); st2.id = 'h3'; st2.seq = 0; st2.recent = [];
+    const e2 = E.applyOnlineMove(E.matchRecord(st2), 'X', k2, hitL, E.makeRng('h-mv'), { rep: [[0, 'move', 'm=' + hitL]] }).entries[0];
+    assert.equal(e2.m, hitL); assert.ok(e2.rep); assert.equal(e2.race, undefined);
+  } finally { raceOn(false); }
+});
+
+test('hangman, race: the computer plays from its own part alone and reveals the word (Normal and Hard); the flash as the other side sees it', () => {
+  raceOn(true);
+  try {
+    for (const level of ['normal', 'hard']) {
+      for (let g = 0; g < 8; g++) {
+        const rng = E.makeRng('h-ai-' + level + g), m = L.newMini('hangman', rng);
+        L.applyMove(m, 'X', m.word[0]);                                        // X's own letter: it must not help O
+        let r, n = 0;
+        do {
+          const pm = E.publicMini(m, 'O');
+          assert.equal(pm.side.X, undefined, "the computer never sees X's part");
+          const b = E.localBest(pm, 'O', rng, E.STYLE0, level === 'hard' ? { level: 'hard', until: null } : {});
+          assert.equal(b.shared, false);
+          r = L.applyMove(m, 'O', b.move, rng); assert.equal(r.ok, true, `${level}: a legal letter (${b.move}: ${r.reason})`);
+          n++;
+        } while (r.outcome !== 'win' && n < 26);
+        assert.equal(r.outcome, 'win', `${level}: the word revealed`); assert.equal(r.winner, undefined);
+        assert.ok(n <= 20, `${level}: ${n} letters`);
+      }
+    }
+    const m = L.newMini('hangman', wordRng(L.WORDS_HANG, 'apple')); L.applyMove(m, 'O', 'P'); L.applyMove(m, 'O', 'L');
+    const pm = E.publicMini(m, 'X');
+    assert.ok(E.needsOf(pm, 'X') > E.needsOf(pm, 'O'), 'O, three blanks filled, is reckoned nearer from its shape alone');
+    const f = { kind: 'again', by: 'O', next: 'O', square: 0, type: 'hangman', note: 'hit', letter: 'L', m: 'L', rep: [[0, 'move', 'm=L']] };
+    const h = E.raceFlashHide(f, m);
+    assert.deepEqual(Object.keys(h).sort(), ['by', 'kind', 'next', 'race', 'square', 'type']); assert.deepEqual(h.race, { by: 'O', hit: true, at: [3], n: 2, wrong: 0, got: [false, true, true, true, false] });
+    const st = raceMatch(E.makeRng('h-stats')); const k = hangAt(st); st.squares[k].mini = L.newMini('hangman', wordRng(L.WORDS_HANG, 'apple'));
+    for (const l of ['A', 'P', 'L']) L.endFlash(st, L.playMove(st, k, l));
+    L.playMove(st, k, 'E'); assert.equal(st.squares[k].owner, 'X'); assert.equal(st.sqlog[0].race, 1);
+  } finally { raceOn(false); }
+});

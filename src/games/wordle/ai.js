@@ -1,7 +1,7 @@
 // Five Letters: the computer's play.
 import { randInt } from '../../core/random.js';
 import { tune } from '../../core/tune.js';
-import { wordleCandidates, wordleLeft, wordleMarks } from './rules.js';
+import { wordleCandidates, wordleGuesses, wordleLeft, wordleMarks } from './rules.js';
 import { BAD5, WORDS5 } from './words.js';
 
 // The words the computer may guess: the answer list less the refused ones (a refused guess costs nothing, but the
@@ -19,25 +19,37 @@ export function wordleTop(sorted, rng) {
   for (let i = 0; i < k; i++) { r -= WVARY.weights[i]; if (r < 0) return sorted[i]; }
   return sorted[0];
 }
+// Race mode (core/race.js): the computer reads its own guesses alone; the other side's progress is its shape (their rows
+// of colours), from which what they have left to find is estimated (raceLeft): the two are independent.
+const SHAPE_CUT = { g: 0.12, y: 0.4 };                            // about what a green and a yellow each cut the words still possible to
+function raceLeft(pm, p) {                                       // how many words are about still open to p, from their own guesses or their shape
+  if (wordleGuesses(pm, p).length || (pm.side && pm.side[p])) return wordleCandidates(pm, p).length;
+  const sh = pm.shape && pm.shape[p], rows = sh && Array.isArray(sh.rows) ? sh.rows : [];
+  if (!rows.length) return WORDS5.length;
+  if (rows[rows.length - 1] === 'ggggg') return 1;
+  let best = WORDS5.length;
+  for (const r of rows) { let v = WORDS5.length; for (const ch of r) v *= SHAPE_CUT[ch] || 1; best = Math.min(best, v); }
+  return Math.max(2, Math.round(best * Math.pow(0.85, rows.length - 1)));   // (every row tells a little more)
+}
 export function needs(pm, p) {
-  const c = wordleCandidates(pm).length, n = c <= 1 ? 1 : Math.min((c + 1) / 2, 1 + Math.log(c) / Math.log(6)), left = wordleLeft(pm, p);
+  const c = pm.race ? raceLeft(pm, p) : wordleCandidates(pm).length, n = c <= 1 ? 1 : Math.min((c + 1) / 2, 1 + Math.log(c) / Math.log(6)), left = wordleLeft(pm, p);
   return n > left + 0.001 ? Math.max(n, left + 2) : n;   // more than its guesses left: a long shot
 }
 // With guesses each (the square's limit), the last one is always a candidate (a word that could be it), and a miss
 // with it hands the square over (qLose).
 export function best(pm, me, rng, style, ctx) {
   const r = bestWord(pm, me, rng, style, ctx), left = wordleLeft(pm, me);
-  if (left === 1) { const cand = wordleCandidates(pm); if (cand.length && !cand.includes(r.move)) r.move = cand[0]; r.q = cand.length ? 1 / cand.length : 0; r.qLose = 1 - r.q; }
+  if (left === 1) { const cand = wordleCandidates(pm, me); if (cand.length && !cand.includes(r.move)) r.move = cand[0]; r.q = cand.length ? 1 / cand.length : 0; r.qLose = 1 - r.q; }
   return r;
 }
 function bestWord(pm, me, rng, style, ctx) {
-  const cand = wordleCandidates(pm);
-  if (!cand.length) return { move: GUESS5[randInt(rng, GUESS5.length)].toUpperCase(), q: 0, shared: true };
-  if (cand.length === 1) return { move: cand[0], q: 1, shared: true };
+  const cand = wordleCandidates(pm, me), shared = !pm.race;      // (a race: its own guesses alone, and a miss tells the other side nothing)
+  if (!cand.length) return { move: GUESS5[randInt(rng, GUESS5.length)].toUpperCase(), q: 0, shared };
+  if (cand.length === 1) return { move: cand[0], q: 1, shared };
   const miss = tune(pm).miss;
-  if (miss && rng() * 100 < miss) { const w = GUESS5[randInt(rng, GUESS5.length)].toUpperCase(); return { move: w, q: cand.includes(w) ? 1 / cand.length : 0, shared: true }; }   // a slip: a word at random, clues ignored
-  if (!pm.guesses.length) { const w = WVARY.open[randInt(rng, WVARY.open.length)]; return { move: w, q: cand.includes(w) ? 1 / cand.length : 0, shared: true }; }   // the opening
-  if (ctx && ctx.level === 'hard') return wordleHard(pm, cand, ctx, rng);
+  if (miss && rng() * 100 < miss) { const w = GUESS5[randInt(rng, GUESS5.length)].toUpperCase(); return { move: w, q: cand.includes(w) ? 1 / cand.length : 0, shared }; }   // a slip: a word at random, clues ignored
+  if (!(pm.race ? wordleGuesses(pm, me) : pm.guesses).length) { const w = WVARY.open[randInt(rng, WVARY.open.length)]; return { move: w, q: cand.includes(w) ? 1 / cand.length : 0, shared }; }   // the opening (Shared: nobody's guess yet; a race: none of its own)
+  if (ctx && ctx.level === 'hard') return pm.race ? wordleSolo(pm, cand, ctx, rng) : wordleHard(pm, cand, ctx, rng);
   let scored;
   if (cand.length > 24) {                                      // many left: the guesses with the most common letters
     const freq = {};
@@ -53,7 +65,35 @@ function bestWord(pm, me, rng, style, ctx) {
     });
   }
   scored.sort((a, b) => b.v - a.v);
-  return { move: wordleTop(scored, rng).w, q: 1 / cand.length, shared: true };
+  return { move: wordleTop(scored, rng).w, q: 1 / cand.length, shared };
+}
+
+// ---- Hard, Race mode: the word alone ----
+// Nothing the computer learns reaches the other side, so the guess is the one that leaves the fewest words still
+// possible on average (its groups by colouring: the sum of their squares over n), a candidate's own chance of being the
+// word counted in (a group of one it is in costs nothing). The candidates first; with few enough left (WS.probe) the
+// other answer words too, as probes, taken only when clearly better (WS.margin). Kept to ctx.until (a check every few
+// words), the best so far taken when the time is up.
+const WS = { probe: 60, margin: 0.5, near: 0.25 };
+function wordleSolo(pm, cand, ctx, rng) {
+  const n = cand.length, until = ctx.until;
+  const expect = (g, inS) => {                                   // the words still possible after g, on average
+    const gr = new Map();
+    for (const w of cand) if (w !== g) { const k = wordleMarks(g, w).join(''); gr.set(k, (gr.get(k) || 0) + 1); }
+    let v = 0;
+    for (const c of gr.values()) v += c * c;
+    return v / n + (inS ? 0 : WS.margin);                        // (a probe cannot be the word: it must do clearly better)
+  };
+  let k = 0, stop = false;
+  const tick = () => { if (until && (++k & 7) === 0 && until() <= 0) stop = true; return stop; };
+  const vals = [];
+  for (const g of cand) { vals.push({ w: g, v: expect(g, true) }); if (tick()) break; }
+  vals.sort((a, b) => a.v - b.v);
+  let top = vals[0].v, move = wordleTop(vals.filter(x => x.v <= top + WS.near), rng).w;
+  if (!stop && n <= WS.probe && n > 2) {
+    for (const w of GUESS5) { const W = w.toUpperCase(); if (cand.includes(W)) continue; const v = expect(W, false); if (v < top) { top = v; move = W; } if (tick()) break; }
+  }
+  return { move, q: cand.includes(move) ? 1 / n : 0, shared: false };
 }
 
 // ---- Hard: the race for the word ----
@@ -121,7 +161,7 @@ function wordleHard(pm, cand, ctx, rng) {
   }
   if (n <= WH.rootAll && depth) {                                // every other answer word, at the depth reached
     stop = false; work = 0;
-    const told = !pm.guesses.length || wordleCandidates({ guesses: pm.guesses.slice(0, -1) }).length > n;
+    const told = !pm.guesses.length || wordleCandidates({ guesses: pm.guesses.slice(0, -1) }).length > n;   // (Shared only: the list is the square's)
     for (const w of GUESS5) { const W = w.toUpperCase(); if (cand.includes(W)) continue; let v = split(C, c => markCode(W, cand[c]), depth - 1, false); if (stop) break; if (v < 0) { if (!told) continue; v = 1 - top; } if (v > top + WH.margin) { top = v; move = W; } }
   }
   return { move, q: cand.includes(move) ? 1 / n : 0, shared: true };

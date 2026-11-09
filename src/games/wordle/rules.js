@@ -1,5 +1,6 @@
 // Five Letters: the rules (pure: no page, no clock; the server runs the same code).
 import { randInt } from '../../core/random.js';
+import { raceDealt, raceSide } from '../../core/race.js';
 import { tuneLive } from '../../core/tune.js';
 import { other } from '../../core/util.js';
 import { BAD5, VALID5, WORDS5 } from './words.js';
@@ -20,32 +21,63 @@ export function wordleMarks(guess, word) {
 }
 // Each player has a set number of guesses in a square (5; the admin's setting, dealt into the square): a player
 // whose last guess misses loses the square to the other. (A square from before: no limit.)
+// Race mode (core/race.js): the same word for both, but each player's guesses and their colours are their own
+// (`mini.side[p]`: { guesses: [{ by, word, marks }] }); the other side sees only their rows of colours, without
+// the letters (raceShape: rows, how many used, how many left).
 export const wordleLimit = mini => (mini && Number.isInteger(mini.limit) ? mini.limit : 0);   // 0: no limit
-export const wordleLeft = (mini, p) => (wordleLimit(mini) ? Math.max(0, wordleLimit(mini) - mini.guesses.filter(g => g.by === p).length) : Infinity);
-export function create(type, rng) {
-  return { type, word: WORDS5[randInt(rng, WORDS5.length)].toUpperCase(), guesses: [], limit: tuneLive(type).limit };
+// Where p's guesses live: the square itself (Shared), or p's own side (Race; null for a side this copy has not got).
+export const wordlePart = (mini, p) => (mini && mini.race ? raceSide(mini, p) : mini);
+// p's own guesses: their rows of the shared list (Shared), or their part's (Race; none without the part).
+export const wordleGuesses = (mini, p) => { const part = wordlePart(mini, p); return part && Array.isArray(part.guesses) ? (mini.race ? part.guesses : part.guesses.filter(g => g.by === p)) : []; };
+export function wordleUsed(mini, p) {
+  const part = wordlePart(mini, p);
+  if (part && Array.isArray(part.guesses)) return wordleGuesses(mini, p).length;
+  const sh = mini && mini.shape && mini.shape[p];              // (a race square's other side: its shape alone)
+  return sh && Number.isInteger(sh.n) ? sh.n : 0;
+}
+export const wordleLeft = (mini, p) => (wordleLimit(mini) ? Math.max(0, wordleLimit(mini) - wordleUsed(mini, p)) : Infinity);
+export function create(type, rng, opts) {
+  const base = { type, word: WORDS5[randInt(rng, WORDS5.length)].toUpperCase(), limit: tuneLive(type).limit };
+  if (raceDealt(type, opts)) return Object.assign(base, { race: true, side: { X: { guesses: [] }, O: { guesses: [] } } });
+  return Object.assign(base, { guesses: [] });
 }
 export function apply(mini, p, m, rng, idx) {
+  const part = wordlePart(mini, p);
+  if (!part) return { ok: false, reason: 'bad' };
   const g = typeof m === 'string' ? m.toUpperCase() : '';
   if (!/^[A-Z]{5}$/.test(g)) return { ok: false, reason: 'bad' };
   if (BAD5.has(g)) return { ok: false, reason: 'notallowed' };    // an offensive word: refused, no guess spent
   if (!VALID5.has(g)) return { ok: false, reason: 'notword' };     // a non-word costs nothing
   if (wordleLeft(mini, p) <= 0) return { ok: false, reason: 'out' };
-  mini.guesses.push({ by: p, word: g, marks: wordleMarks(g, mini.word) });
+  part.guesses.push({ by: p, word: g, marks: wordleMarks(g, mini.word) });
   if (g === mini.word) return { ok: true, outcome: 'win' };
   if (wordleLeft(mini, p) <= 0) return { ok: true, outcome: 'win', winner: other(p), note: 'out' };   // the last guess missed: the square goes to the other player
   return { ok: true, outcome: 'continue', note: 'guess' };
 }
 export function publicView(mini) {
-  return { type: 'wordle', limit: wordleLimit(mini), guesses: mini.guesses.map(g => ({ by: g.by, word: g.word, marks: g.marks.slice() })) };
+  const v = { type: 'wordle', limit: wordleLimit(mini) };
+  if (mini.race) return Object.assign(v, { race: true, side: mini.side });   // (core/minis.js publicMini keeps one side's own part alone and adds both shapes)
+  return Object.assign(v, { guesses: mini.guesses.map(g => ({ by: g.by, word: g.word, marks: g.marks.slice() })) });
+}
+// Race: what anyone may see of p's progress: each row's colours (no letters), the guesses used and left.
+export function raceShape(mini, p) {
+  const part = raceSide(mini, p);
+  if (!part) return {};
+  return { n: part.guesses.length, left: wordleLimit(mini) ? Math.max(0, wordleLimit(mini) - part.guesses.length) : null, rows: part.guesses.map(g => g.marks.join('')) };
+}
+export function raceFlash(f, mini) {
+  const sh = raceShape(mini, f.by);
+  return Object.assign({ by: f.by, row: sh.rows && sh.rows.length ? sh.rows[sh.rows.length - 1] : null }, sh);   // (row: the new row's colours)
 }
 
 // ---- what is still possible, from public information ----
-export function wordleCandidates(pm) {
+// pm: a square's view; p: whose guesses (a race square: their own part's; Shared: the whole list, everyone's).
+export function wordleCandidates(pm, p) {
+  const gs = pm.race ? (p ? wordleGuesses(pm, p) : (pm.side ? [].concat(...Object.values(pm.side).map(s => s.guesses || [])) : [])) : pm.guesses;
   const out = [];
   for (const w of WORDS5) {
     const W = w.toUpperCase();
-    if (pm.guesses.every(g => wordleMarks(g.word, W).join('') === g.marks.join(''))) out.push(W);
+    if (gs.every(g => wordleMarks(g.word, W).join('') === g.marks.join(''))) out.push(W);
   }
   return out;
 }
@@ -67,8 +99,9 @@ export function flashMs(f, winLen, won) {
   return 1200;
 }
 // Super Chaos: both players may guess in the same round; both guesses go into the shared history. (Each player's
-// guesses count their own: a last one that misses gives the square away, as ever.)
+// guesses count their own: a last one that misses gives the square away, as ever. A race square keeps each side's own.)
 export function scMerge(m, c) {
+  if (m.race) { for (const p of c.played) m.side[p] = c.forks[p].side[p]; return; }
   const n = c.base.guesses.length;
   m.guesses = c.base.guesses.concat(...c.played.map(p => c.forks[p].guesses.slice(n)));
 }

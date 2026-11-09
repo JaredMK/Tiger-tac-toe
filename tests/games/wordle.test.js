@@ -269,3 +269,122 @@ test('Five Letters: a random move is never a refused word', () => {
   let k = 0; const from = a => { const bad = a.filter(w => W.BAD5.has(w.toUpperCase())); assert.equal(bad.length, 0, `refused words offered: ${bad.slice(0, 3)}`); return a[k++ % a.length]; };
   R.randomMove({}, 'X', null, from);
 });
+
+// ================================ Race mode (core/race.js) ================================
+// The same word for both, each player's guesses and colours their own (mini.side[p]); the other side sees only the rows
+// of colours; online the record keeps each side's part apart and a move's entry is redacted; the computer plays from its
+// own part alone.
+const raceOn = on => E.setTune('wordle', on ? { mode: 'race' } : null);
+const wordleAt = st => st.squares.findIndex(q => q.mini.type === 'wordle');
+function raceMatch(rng) { return E.newMatch(rng, { games: ['wordle', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt'] }); }
+
+test('wordle, race: dealt by the admin setting; each side its own guesses, the same word; a last guess that misses hands the square over; two on one phone play Shared', () => {
+  raceOn(true);
+  try {
+    const m = L.newMini('wordle', wordRng(L.WORDS5, 'crane'));
+    assert.equal(m.race, true); assert.equal(m.word, 'CRANE'); assert.equal(m.guesses, undefined); assert.deepEqual(m.side, { X: { guesses: [] }, O: { guesses: [] } });
+    assert.deepEqual(m.tune, { mode: 'race' });
+    assert.deepEqual(L.applyMove(m, 'X', 'slate'), { ok: true, outcome: 'continue', note: 'guess' });
+    assert.equal(m.side.X.guesses.length, 1); assert.deepEqual(m.side.X.guesses[0].marks, ['x', 'x', 'g', 'x', 'g']); assert.deepEqual(m.side.O.guesses, [], "O's part is untouched");
+    assert.equal(L.applyMove(m, 'O', 'slate').ok, true, 'the same word is open to O (their rows are their own)');
+    assert.deepEqual([E.wordleLeft(m, 'X'), E.wordleLeft(m, 'O')], [4, 4]);
+    assert.equal(L.applyMove(m, 'X', 'zzzzz').reason, 'notword'); assert.equal(m.side.X.guesses.length, 1, 'a non-word costs nothing');
+    assert.deepEqual(L.applyMove(m, 'O', 'crane'), { ok: true, outcome: 'win' }, 'the same word wins for O');
+    assert.deepEqual(E.raceShape(m, 'X'), { n: 1, left: 4, rows: ['xxgxg'] }); assert.deepEqual(E.raceShape(m, 'O'), { n: 2, left: 3, rows: ['xxgxg', 'ggggg'] });
+    // the last guess missed: the square goes to the other player, from this side's own count alone
+    const m2 = L.newMini('wordle', wordRng(L.WORDS5, 'crane'));
+    for (const w of ['slate', 'bloom', 'frown', 'pithy']) assert.equal(L.applyMove(m2, 'X', w).outcome, 'continue');
+    assert.equal(L.applyMove(m2, 'O', 'slate').outcome, 'continue', "O's own five");
+    assert.deepEqual(L.applyMove(m2, 'X', 'quirk'), { ok: true, outcome: 'win', winner: 'O', note: 'out' });
+    assert.equal(L.newMini('wordle', wordRng(L.WORDS5, 'crane'), { shared: true }).race, undefined, 'two people on one phone: Shared');
+    assert.ok(E.newMatch(E.makeRng('w-same'), { games: ['wordle'], vs: 'same' }).squares.every(q => !q.mini.race));
+    assert.ok(E.newMatch(E.makeRng('w-cpu'), { games: ['wordle'], vs: 'cpu' }).squares.every(q => q.mini.race));
+  } finally { raceOn(false); }
+  assert.equal(L.newMini('wordle', wordRng(L.WORDS5, 'crane')).race, undefined, 'off: as ever');
+});
+
+test('wordle, race: the public view holds the shapes and one side\'s own part alone; the record keeps each side\'s part for that side; hidden, the word is gone', () => {
+  raceOn(true);
+  try {
+    const m = L.newMini('wordle', wordRng(L.WORDS5, 'crane'));
+    L.applyMove(m, 'X', 'slate'); L.applyMove(m, 'X', 'crony');
+    const pub = E.publicMini(m);
+    assert.equal(pub.word, undefined); assert.deepEqual(pub.side, {}); assert.deepEqual(pub.shape.X, { n: 2, left: 3, rows: ['xxgxg', 'ggxgx'] }); assert.deepEqual(pub.shape.O, { n: 0, left: 5, rows: [] });
+    const forO = E.publicMini(m, 'O');
+    assert.deepEqual(Object.keys(forO.side), ['O'], "O's own part alone"); assert.equal(forO.side.X, undefined); assert.ok(!JSON.stringify(forO).includes('SLATE'), "X's letters are nowhere in O's view");
+    const forX = E.publicMini(m, 'X');
+    assert.equal(forX.side.X.guesses.length, 2); assert.equal(forX.side.O, undefined);
+    assert.deepEqual(E.wordleCandidates(forX, 'X'), E.wordleCandidates({ guesses: m.side.X.guesses }), 'the candidates from its own part');
+    const hidden = JSON.parse(JSON.stringify(m)); E.hideMini(hidden, 0, {});
+    assert.equal(hidden.word, undefined); assert.equal(hidden.side, undefined); assert.equal(hidden.shape.X.n, 2);
+    // the record
+    const st = raceMatch(E.makeRng('w-rec')); const k = wordleAt(st);
+    st.squares[k].mini = m; st.id = 'w1'; st.seq = 0; st.recent = [];
+    const rec = E.matchRecord(st), ps = rec.state.squares[k].mini;
+    assert.equal(ps.side, undefined); assert.equal(ps.word, undefined); assert.deepEqual(ps.shape.O, { n: 0, left: 5, rows: [] }); assert.equal(ps.shape.X.n, 2);
+    assert.equal(rec.sides.X[k].guesses.length, 2); assert.deepEqual(rec.sides.O[k], { guesses: [] });
+    assert.ok(!JSON.stringify(rec.state).includes('CRANE') && !JSON.stringify(rec.state).includes('SLATE'));
+    const full = E.fullState(rec);
+    assert.deepEqual(full.squares[k].mini.side, m.side); assert.equal(full.squares[k].mini.word, 'CRANE'); assert.equal(full.squares[k].mini.shape, undefined);
+    const back = E.parseMatch(E.packMatch(rec));
+    assert.deepEqual(E.fullState(back).squares[k].mini.side, m.side);
+    const oneSide = E.fullState({ state: rec.state, secrets: rec.secrets, sides: { O: rec.sides.O } });   // a phone: its own side alone
+    assert.equal(oneSide.squares[k].mini.side.X, undefined); assert.deepEqual(oneSide.squares[k].mini.side.O, { guesses: [] });
+  } finally { raceOn(false); }
+});
+
+test('wordle, race: an online move\'s entry is redacted for the other phone (no word, no marks, no inputs), its row of colours alone; the mover\'s part reaches their side', () => {
+  raceOn(true);
+  try {
+    const st = raceMatch(E.makeRng('w-online')); const k = wordleAt(st); st.id = 'w2'; st.seq = 0; st.recent = [];
+    const rec = E.matchRecord(st), word = rec.secrets[k].word, guess = word === 'SLATE' ? 'CRANE' : 'SLATE';
+    const r = E.applyOnlineMove(rec, 'X', k, guess, E.makeRng('w-mv'), { rep: [[0, 'key', 'k=S'], [300, 'enter']] });
+    assert.ok(r.ok);
+    const e = r.entries[0];
+    assert.equal(e.m, undefined); assert.equal(e.word, undefined); assert.equal(e.marks, undefined); assert.equal(e.note, undefined); assert.equal(e.rep, undefined); assert.equal(e.left, undefined);
+    assert.deepEqual(Object.keys(e.race).sort(), ['by', 'left', 'n', 'row', 'rows']); assert.equal(e.race.n, 1); assert.equal(e.race.left, 4); assert.equal(e.race.row, E.wordleMarks(guess, word).join('')); assert.deepEqual(e.race.rows, [e.race.row]);
+    assert.equal(e.after.mini.side, undefined); assert.equal(e.after.mini.shape.X.n, 1);
+    assert.ok(!JSON.stringify(r.rec.state).includes(guess), 'the guess is nowhere in the public state');
+    assert.equal(r.rec.sides.X[k].guesses[0].word, guess, "the mover's own part holds it"); assert.deepEqual(r.rec.sides.O[k].guesses, []);
+    const r2 = E.applyOnlineMove(r.rec, 'O', k, guess, E.makeRng('w-mv2'));
+    assert.ok(r2.ok, 'the same guess is open to O'); assert.equal(r2.rec.sides.O[k].guesses.length, 1);
+    // a shared square's entry is as ever
+    raceOn(false);
+    const st2 = raceMatch(E.makeRng('w-online')); const k2 = wordleAt(st2); st2.id = 'w3'; st2.seq = 0; st2.recent = [];
+    const e2 = E.applyOnlineMove(E.matchRecord(st2), 'X', k2, 'SLATE', E.makeRng('w-mv'), { rep: [[0, 'enter']] }).entries[0];
+    assert.equal(e2.m, 'SLATE'); assert.ok(e2.rep); assert.equal(e2.race, undefined);
+  } finally { raceOn(false); }
+});
+
+test('wordle, race: the computer plays from its own part alone and finds the word (Normal and Hard), never a refused word; the flash as the other side sees it', () => {
+  raceOn(true);
+  try {
+    for (const level of ['normal', 'hard']) {
+      let found = 0, moves = 0;
+      for (let g = 0; g < 12; g++) {
+        const rng = E.makeRng('w-ai-' + level + g), m = L.newMini('wordle', rng);
+        L.applyMove(m, 'X', m.word === 'SLATE' ? 'CRANE' : 'SLATE');            // X's own guess: it must not help or hinder O
+        let r;
+        for (let i = 0; i < 5; i++) {
+          const pm = E.publicMini(m, 'O');
+          assert.equal(pm.side.X, undefined, "the computer never sees X's part");
+          const b = E.localBest(pm, 'O', rng, E.STYLE0, level === 'hard' ? { level: 'hard', until: null } : {});
+          assert.ok(!E.BAD5.has(b.move), 'never a refused word'); assert.equal(b.shared, false, 'a race: its guesses help nobody else');
+          r = L.applyMove(m, 'O', b.move, rng); assert.equal(r.ok, true, `${level}: a legal guess (${b.move}: ${r.reason})`);
+          moves++;
+          if (r.outcome === 'win') { if (!r.winner) found++; break; }
+        }
+      }
+      assert.ok(found >= 9, `${level}: found ${found} of 12 within 5 guesses of its own`);
+    }
+    const m = L.newMini('wordle', wordRng(L.WORDS5, 'crane')); L.applyMove(m, 'O', 'slate');
+    const pm = E.publicMini(m, 'X');
+    assert.ok(E.needsOf(pm, 'X') > E.needsOf(pm, 'O'), 'O, a row in, is reckoned nearer from its shape alone');
+    const f = { kind: 'move', by: 'O', next: 'X', square: 0, type: 'wordle', note: 'guess', word: 'SLATE', left: 4, m: 'SLATE', rep: [[0, 'enter']] };
+    const h = E.raceFlashHide(f, m);
+    assert.deepEqual(Object.keys(h).sort(), ['by', 'kind', 'next', 'race', 'square', 'type']); assert.deepEqual(h.race, { by: 'O', row: 'xxgxg', n: 1, left: 4, rows: ['xxgxg'] });
+    const st = raceMatch(E.makeRng('w-stats')); const k = wordleAt(st);
+    const r = L.playMove(st, k, st.squares[k].mini.word);
+    assert.ok(r.ok); assert.equal(st.sqlog[0].race, 1);
+  } finally { raceOn(false); }
+});
