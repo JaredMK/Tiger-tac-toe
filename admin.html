@@ -140,8 +140,28 @@ tr.dev, tr.mlrow, tr.acct { cursor: pointer; } tr.mlrow:hover td, tr.mlrow.open 
 .tform .rf small { color: var(--muted); font-size: 12px; } .tform .rf.chg span { color: var(--x); font-weight: 700; }
 #tuneCard h3 { margin: 12px 0 0; font: 400 14px 'Luckiest Guy', sans-serif; letter-spacing: .03em; color: var(--muted); }
 .tbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 14px; }
-.gpage .tplay { display: none; } .gpage .tbar .tplay { display: inline-block; }   /* (one Test play on a game's page: the settings', which takes the tuning card's values too) */
 .gpage { display: flex; flex-direction: column; gap: 16px; }
+/* the Games page (November 2026): the list of every mini-game, each a row to its page; the badges; a game's Mode switch; unsaved edits */
+.glist { list-style: none; margin: 10px 0 0; padding: 0; }
+.glist li { border-bottom: 1.5px solid var(--line); }
+.grow { display: flex; align-items: center; gap: 10px; padding: 8px 2px; color: inherit; text-decoration: none; min-height: 52px; }
+.grow:active { background: var(--paper); } .grow:focus-visible { outline: 3px solid var(--sky); outline-offset: -3px; border-radius: 10px; }
+.gico { display: inline-flex; width: 28px; height: 28px; flex: none; color: var(--ink); vertical-align: middle; } .gico svg { width: 100%; height: 100%; }
+.sechead h2 .gico { width: 26px; height: 26px; margin-right: 8px; }
+.gnm { flex: 1; min-width: 0; display: flex; flex-direction: column; } .gnm b { font: 400 17px/1.1 'Luckiest Guy', sans-serif; letter-spacing: .02em; padding-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .gnm small { color: var(--muted); font-size: 14px; }
+.gbadges { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; flex: 0 1 auto; max-width: 52%; }
+.badge { display: inline-block; border: 2px solid var(--ink); border-radius: 999px; padding: 1px 8px 0; font: 400 12px/1.4 'Luckiest Guy', sans-serif; letter-spacing: .03em; background: #fff; white-space: nowrap; }
+.badge.rel { background: color-mix(in srgb, var(--green) 28%, #fff); } .badge.adm { background: var(--paper); color: var(--muted); }
+.badge.ios { background: color-mix(in srgb, var(--stone) 35%, #fff); } .badge.race { background: color-mix(in srgb, var(--plum) 30%, #fff); } .badge.shared { background: var(--paper); } .badge.chg { background: var(--o-soft); color: var(--x); }
+.modesw { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 10px; margin-top: 6px; }
+.modeopt { display: grid; grid-template-columns: 24px 1fr; gap: 2px 10px; align-items: center; border: 2.5px solid var(--line); border-radius: 14px; padding: 10px 12px; background: #fff; cursor: pointer; }
+.modeopt input { width: 22px; height: 22px; accent-color: var(--plum); grid-row: 1 / span 2; margin: 0; }
+.modeopt b { font: 400 17px/1.1 'Luckiest Guy', sans-serif; letter-spacing: .02em; padding-top: 3px; } .modeopt small { color: var(--muted); font-size: 14px; }
+.modeopt:has(input:checked) { border-color: var(--ink); background: color-mix(in srgb, var(--plum) 14%, #fff); box-shadow: 0 3px 0 var(--ink); }
+.rf.dirty > span, .rf.dirty > span + small, .modeopt.dirty b { color: var(--plum); } .rf.dirty input, .rf.dirty select { border-color: var(--plum); box-shadow: 0 0 0 2px color-mix(in srgb, var(--plum) 30%, transparent); }
+.tbar .unsaved { color: var(--plum); font-family: 'Luckiest Guy', sans-serif; font-size: 14px; letter-spacing: .03em; min-height: 1em; }
+#tuneCard .tbar { margin-top: 16px; }
+#modeCard .row h2, #relCard .row h2 { flex: 1; }
 .atttab { border-collapse: collapse; margin: 6px 0 10px; } .atttab th, .atttab td { padding: 3px 6px; text-align: left; font-size: 13px; } .atttab input { width: 68px; }
 </style>
 </head>

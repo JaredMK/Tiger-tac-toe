@@ -525,10 +525,10 @@ to queue anyone, and anyone already searching is taken out of the queue and sent
 Matches already under way carry on, and "Back to your match" still works. Play a Friend is not
 affected. Switching it on takes effect at once on every open page.
 
-### Mini-game Settings (admin)
+### Games (admin: each mini-game's page)
 
-Every mini-game has its own settings page on the dashboard (**Mini-game Settings**, grouped Luck, Skill and
-Brain): all its tunable values (sizes, targets, speeds, counts, odds, timings, the computer's rates), listed in
+Every mini-game has its own page on the dashboard (**Games**: the list of every game with its release, iOS and Race
+badges; a game's page holds its release switches, its Mode where it is a race game, its settings, Test play, Save and Reset to defaults): all its tunable values (sizes, targets, speeds, counts, odds, timings, the computer's rates), listed in
 the game's `meta.js` as `TUNE` (`{ k, label, def, min, max, step, group }`, group Board, Rules, Timing or
 Computer; `def` is the value the code had). **Save** writes the values that differ from the defaults to
 `config/tune/<game>` (anyone can read it, only the admin can write it); the game reads it at start and the
@@ -953,10 +953,10 @@ per mode; average match length in turns and minutes over finished matches only (
 
 The dashboard is https://tictacchaos.com/admin.html (staging's: https://staging.tictacchaos.com/admin.html). It opens on a menu of section tiles,
 each its own page with a back button (the address keeps the page: `#overview`, `#players`, `#playtest`,
-`#matches`, `#settings`, `#settings/<game>`, `#bots`, `#releases`, `#stats`): **Overview** (the headline
+`#matches`, `#games`, `#games/<game>`, `#bots`, `#stats`; the old `#settings`, `#settings/<game>` and `#releases` redirect): **Overview** (the headline
 numbers and the players and matches charts), **Players & Accounts** (Accounts, usernames to review, players
-over time), **Playtesters & Devices**, **Matches** (the match inspector), **Mini-game Settings** (below),
-**Bot Settings** (Find Match on/off, the bots, the empty-queue alert), **Releases** and **Stats** (Matches by
+over time), **Playtesters & Devices**, **Matches** (the match inspector), **Games** (below: every game's release switches, mode and settings in one place),
+**Bot Settings** (Find Match on/off, the bots, the empty-queue alert) and **Stats** (Matches by
 mode, the mini-game table). What is on them: the **Find Match** on/off switch
 (see "Switching Find Match on and off"), the **Bots** and **Empty-queue alerts** controls (see
 "Matchmaking backfill and the empty-queue alert"), tables and charts, with the

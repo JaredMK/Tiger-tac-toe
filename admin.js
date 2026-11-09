@@ -202,9 +202,8 @@ function draw() {
     <div class="card"><div class="row"><h2>Players over time</h2><div class="tabs">${[['d', 'Days'], ['w', 'Weeks'], ['m', 'Months']].map(([k, l]) => `<button data-period="${k}" aria-pressed="${period === k}">${l}</button>`).join('')}</div></div>${ptable}</div>`,
     playtest: () => playCard(),
     matches: () => matchCard(),
-    settings: sub => (sub && GAMES[sub] ? gamePage(sub) : settingsIndex()),
+    games: sub => (sub && GAMES[sub] ? gamePage(sub) : gamesIndex()),
     bots: () => `${findCard()}${timerCard()}${botsCard()}${aiCard()}${alertsCard()}`,
-    releases: () => releasesCard(),
     access: () => accessCard(),
     stats: () => `<div class="card"><h2>Matches by mode</h2>${modeTable}</div><div class="card"><h2>Matches by timer</h2>${timerTable}</div>
     <div class="card"><div class="row"><h2>Mini-games</h2><label>Squares <select id="mrace">${[['all', 'Shared and Race'], ['shared', 'Shared only'], ['race', 'Race only']].map(([v, l]) => `<option value="${v}"${miniRace === v ? ' selected' : ''}>${l}</option>`).join('')}</select></label><label>Modes <select id="mm">${[['all', 'All modes'], ['people', 'All but computer vs computer']].concat(MODES.filter(m => m[0] !== 'chaos'), [['testing', 'Admin-only games (testing)']]).map(([v, l]) => `<option value="${v}"${miniMode === v ? ' selected' : ''}>${l}</option>`).join('')}</select></label></div>
@@ -216,22 +215,27 @@ function draw() {
     app.innerHTML = `${top}<nav class="tiles" aria-label="Sections">${SECTIONS.map(([k, label, line]) => `<a class="tile" href="#${k}"><b>${label}</b><small>${line()}</small></a>`).join('')}</nav>`;
     return;
   }
-  const game = where === 'settings' && sub && GAMES[sub];
-  const back = game ? ['#settings', 'Mini-game Settings'] : ['#', 'Menu'];
-  app.innerHTML = `${top}<div class="sechead"><a class="btn back" href="${back[0]}" aria-label="Back to ${back[1]}">‹ ${back[1]}</a><h2>${game ? esc(GAMES[sub]) : info[1]}</h2></div>${sec[where](sub)}`;
+  const game = where === 'games' && sub && GAMES[sub];
+  const back = game ? ['#games', 'Games'] : ['#', 'Menu'];
+  app.innerHTML = `${top}<div class="sechead"><a class="btn back" href="${back[0]}" aria-label="Back to ${back[1]}">‹ ${back[1]}</a><h2>${game ? `${gameIcon(sub)}${esc(GAMES[sub])}` : info[1]}</h2></div>${sec[where](sub)}`;
 }
-// ---------- the sections: a menu of tiles (#), each its own page (#<section>, a game's settings #settings/<type>) ----------
+// ---------- the sections: a menu of tiles (#), each its own page (#<section>, a game's page #games/<type>) ----------
 const SECTIONS = [
   ['overview', 'Overview', () => `${n(((stats.days || {})[periodKeys(Date.now()).d] || {}).active)} active today`],
   ['players', 'Players & Accounts', () => (accts ? `${Object.keys(accts.users || {}).length} accounts` : 'Accounts, flagged names, players over time')],
   ['playtest', 'Playtesters & Devices', () => (play ? `${Object.keys(play.devices || {}).length} devices` : 'Devices, sessions, retention')],
   ['matches', 'Matches', () => { const r = Object.values(mlogs || {}).filter(x => x && x.reported).length; return `Match inspector${r ? ` · ${r} reported` : ''}`; }],
-  ['settings', 'Mini-game Settings', () => { const k = Object.keys(ctl.tune || {}).length, sp = ctl.anim && ctl.anim.speed; return `Every game's settings${k ? ` · ${k} changed` : ''}${sp && sp !== 1 ? ` · speed ${sp}×` : ''}`; }],
+  ['games', 'Games', () => { const ts = Object.keys(GAMES), ch = ts.filter(gameChanged).length, off = ts.filter(iosOff).length, m = ctl.clients || {}, sp = ctl.anim && ctl.anim.speed; return `${ts.length} mini-games · ${ts.filter(isReleased).length} released${ch ? ` · ${ch} changed` : ''}${off ? ` · ${off} off on iOS` : ''}${m.web || m.ios ? ` · minimum ${['web', 'ios'].filter(p => m[p]).map(p => `${p} ${m[p]}`).join(', ')}` : ''}${sp && sp !== 1 ? ` · speed ${sp}×` : ''}`; }],
   ['bots', 'Bot Settings', () => 'Find Match, timer, bots, empty-queue alerts'],
-  ['releases', 'Releases', () => { const m = ctl.clients || {}, off = Object.values((ctl.releases && ctl.releases.platform && ctl.releases.platform.ios) || {}).filter(v => v === false).length; return `Released or admin only, per game${off ? ` · ${off} off on iOS` : ''}${m.web || m.ios ? ` · minimum ${['web', 'ios'].filter(p => m[p]).map(p => `${p} ${m[p]}`).join(', ')}` : ''}`; }],
   ['stats', 'Stats', () => 'Matches by mode and timer, moves to win'],
 ].concat(STAGING ? [['access', 'Staging Access', () => `${Object.keys(ctl.allow || {}).length} on the list`]] : []);   // (staging only: who may use it)
-const route = () => (location.hash || '').replace(/^#\/?/, '').split('/');
+// The Games page took over Mini-game Settings and Releases (November 2026): their old hashes (bookmarks) open it, #settings/<type> the game's page.
+const ALIAS = { settings: 'games', releases: 'games' };
+function route() {
+  const parts = (location.hash || '').replace(/^#\/?/, '').split('/');
+  if (ALIAS[parts[0]]) { parts[0] = ALIAS[parts[0]]; const h = '#' + parts.filter(Boolean).join('/'); try { history.replaceState(null, '', h); } catch (e) { /* (drawn as the new page anyway) */ } }
+  return parts;
+}
 window.addEventListener('hashchange', () => { if (view.status === 'ready') { render(); window.scrollTo(0, 0); } });
 
 // ---------- the match inspector: every logged match (matchLogIndex), reported ones first; a match's
@@ -458,16 +462,21 @@ const isReleased = t => (ctl.releases && typeof ctl.releases[t] === 'boolean' ? 
 // Per platform (src/core/client.js): a released game can be switched off on iOS alone (releases/platform/ios/{type} false);
 // on means as released. The web has no switch of its own: a game is off there by un-releasing it.
 const iosOff = t => !!(ctl.releases && ctl.releases.platform && ctl.releases.platform.ios && ctl.releases.platform.ios[t] === false);
-function releasesCard() {
+// A game's release switches, at the top of its page (#games/<type>): the web's (Released or Admin only) and iOS's (on, or off for a released game).
+function releaseCard(t) {
+  const on = isReleased(t), ios = !iosOff(t), m = META[t] || {};
+  const from = m.minVersion && m.minVersion !== '1.0.0' ? ` · <span class="mv">from client ${esc(m.minVersion)}</span>` : '';
+  return `<div class="card ctl" id="relCard"><div class="row"><h2>Release</h2>
+      <label class="sw"><input type="checkbox" data-rel="${t}"${on ? ' checked' : ''}><span class="${on ? 'good' : ''}">${on ? 'Released' : 'Admin only'}</span></label>
+      <label class="sw ios"><input type="checkbox" data-relios="${t}"${ios ? ' checked' : ''}><span class="${ios ? 'good' : ''}">${ios ? 'iOS on' : 'iOS off'}</span></label></div>
+    <p class="note">${esc(catName(t))} · ${esc((m.info && m.info.hint) || '')}${from}</p>
+    <p class="note">A tap releases or un-releases at once, for new matches; matches under way are not affected. Admin only: the game exists for nobody but you (not in the Advanced checklist, How to Play, random draws, Find Match or anyone else's rooms); you play it in local matches and friend games you host, and your guest plays it in that match only. Find Match deals released games only, even for you; squares of admin-only games are counted under "Admin-only games (testing)" in the stats. iOS off keeps a released game out of the iOS app (its local matches, and any online match with an iOS player in it) while the web still has it: it only ever takes a released game away from iOS, never gives iOS one the web lacks.</p></div>`;
+}
+// ---------- Platforms (the top of the Games page): the clients' minimum versions and the Super Chaos switch, neither a game's own ----------
+function platformsCard() {
   const sc = !!(ctl.releases && ctl.releases.superchaos === true);   // the Super Chaos mode: admin only until released here (releases/superchaos)
-  const ios = t => { const on = !iosOff(t); return `<label class="sw ios"><input type="checkbox" data-relios="${t}"${on ? ' checked' : ''}><span class="${on ? 'good' : ''}">${on ? 'iOS on' : 'iOS off'}</span></label>`; };
-  const from = t => (META[t] && META[t].minVersion && META[t].minVersion !== '1.0.0' ? ` <small class="mv">from ${esc(META[t].minVersion)}</small>` : '');
-  const row = (t, name, on, game) => `<li><span class="rn">${name}${game ? from(t) : ''}</span><label class="sw"><input type="checkbox" data-rel="${t}"${on ? ' checked' : ''}><span class="${on ? 'good' : ''}">${on ? 'Released' : 'Admin only'}</span></label>${game ? ios(t) : '<span class="sw ios"></span>'}</li>`;
-  return clientsCard() + `<div class="card ctl" id="relCard"><h2>Game releases</h2>
-    <p class="note">A tap releases or un-releases at once, for new matches; matches under way are not affected. iOS off keeps a released game out of the iOS app (its local matches, and any online match with an iOS player in it) while the web still has it.</p>
-    <ul class="rels">${row('superchaos', '<b>Super Chaos mode</b>', sc, false)}${Object.entries(GAMES).map(([t, name]) => row(t, esc(name), isReleased(t), true)).join('')}</ul>
-    <p class="note">Super Chaos is switched off in the code for everyone, you included (src/core/config.js SUPER_CHAOS_ENABLED): every match is Classic, Find Match too, and no Mode selector shows, whatever this switch says. Its code and settings are kept; once the code switch is back on, this switch decides again (off: Classic only; on: the Mode selector for everyone).</p>
-    <p class="note">Admin only: the game exists for nobody but you (not in the Advanced checklist, How to Play, random draws, Find Match or anyone else's rooms). You play it in local matches and friend games you host; your guest plays it in that match only. Find Match deals released games only, even for you. Squares of admin-only games are counted under "Admin-only games (testing)" in the stats.</p></div>`;
+  return clientsCard() + `<div class="card ctl" id="scCard"><div class="row"><h2>Super Chaos mode</h2><label class="sw"><input type="checkbox" data-rel="superchaos"${sc ? ' checked' : ''}><span class="${sc ? 'good' : ''}">${sc ? 'Released' : 'Admin only'}</span></label></div>
+    <p class="note">Super Chaos is switched off in the code for everyone, you included (src/core/config.js SUPER_CHAOS_ENABLED): every match is Classic, Find Match too, and no Mode selector shows, whatever this switch says. Its code and settings are kept; once the code switch is back on, this switch decides again (off: Classic only; on: the Mode selector for everyone).</p></div>`;
 }
 async function saveRelIos(el) {
   const t = el.dataset.relios, on = el.checked, lab = el.nextElementSibling;
@@ -487,8 +496,8 @@ async function saveRelIos(el) {
 function clientsCard() {
   const m = ctl.clients || {}, cur = CLIENT ? CLIENT.CLIENT_VERSION : '?';
   const f = (p, label) => `<label class="rf"><span>${label}</span><input type="text" inputmode="decimal" placeholder="none" data-clientmin="${p}" value="${esc(m[p] || '')}"></label>`;
-  return `<div class="card ctl" id="clientsCard"><h2>Clients</h2>
-    <p class="note">This code is version <b>${esc(cur)}</b> (src/core/client.js CLIENT_VERSION). Every phone reports its version and platform; online matches deal only games both players' clients have (a game's meta.js minVersion) and that are on for both their platforms (the iOS switches below).</p>
+  return `<div class="card ctl" id="clientsCard"><h2>Platforms: clients</h2>
+    <p class="note">This code is version <b>${esc(cur)}</b> (src/core/client.js CLIENT_VERSION). Every phone reports its version and platform; online matches deal only games both players' clients have (a game's meta.js minVersion) and that are on for both their platforms (each game's iOS switch, on its page below).</p>
     <p class="note">Minimum supported version: below it the game shows "Please update" instead of playing (the app sends the player to the App Store; the web reloads). Empty: no minimum. The web's can be no higher than ${esc(cur)}.</p>
     <div class="rform">${f('web', 'Web: minimum')}${f('ios', 'iOS: minimum')}<button class="btn" data-clientsave="1">Save</button></div></div>`;
 }
@@ -539,40 +548,33 @@ function runSums(t) {                                        // every mode toget
   }
   return s;
 }
-function runnersCard(only) {   // only: one runner's card (its Mini-game Settings page)
+function runnerCard(t) {   // one runner's card, on its page (#games/<type>): its numbers so far and its config/run fields (saved by the page's Save)
   const kpi = (label, big, sub) => `<div class="card kpi"><small>${label}</small><b>${big}</b>${sub ? `<span>${sub}</span>` : ''}</div>`;   // (as the dashboard's own, which lives inside render)
-  const one = t => {
+  {
     const c = runCfg(t), s = runSums(t), name = GAMES[t];
     const fields = RUN_FIELDS.concat(RUN_EXTRA[t] || []).map(([k, l, lo, hi]) => `<label class="rf"><span>${l}</span><input type="number" step="any" min="${lo}" max="${hi}" data-runcfg="${t}:${k}" value="${c[k]}"></label>`).join('');
     const mix = RUN_MIX[t].map(([k, l]) => `<label class="rf"><span>${l}</span><input type="number" step="1" min="0" max="1000" data-runcfg="${t}:mix.${k}" value="${c.mix[k]}"></label>`).join('');
     const bins = []; for (let b = 0; b < c.target; b += RUN_BIN) bins.push([b, n(s.crash[b])]);
     const max = Math.max(1, ...bins.map(x => x[1])), crashes = bins.reduce((a, x) => a + x[1], 0);
     const chart = crashes ? `<div class="rbins" aria-label="Crashes per ${RUN_BIN} m">${bins.map(([b, k]) => `<div class="rbin" title="${b}-${b + RUN_BIN} m: ${k} crash${k === 1 ? '' : 'es'}"><i style="height:${Math.round(100 * k / max)}%"></i>${b % 200 === 0 ? `<small>${b}</small>` : ''}</div>`).join('')}</div>` : '<p class="dim">No crashes recorded yet.</p>';
-    return `<div class="runner"><h3>${esc(name)}</h3>
+    return `<div class="card ctl" id="runCard"><h2>${esc(name)} tuning</h2>
+      <p class="note">A race to the target distance, one run a move. Obstacle spacing is the posts' spacing in Flap and the blocks' in Chopper (the mix decides each one's gap, or the block's size, or none). Everything here goes to the game and the server at once and applies to squares dealt from then on (a square under way keeps its values). The mix numbers are weights (any scale). Aim: an average player finishes in 3-6 runs, most runs lasting 10-25 seconds; the crash chart (every ${RUN_BIN} m, every mode together) shows where the course bites.</p>
       <div class="rkpis">${kpi('Runs to finish', num(ratio(s.finishRuns, s.finishes)), `${s.finishes} square${s.finishes === 1 ? '' : 's'} finished`)}${kpi('Avg distance per run', s.runs ? Math.round(s.distSum / s.runs) + ' m' : '—', `${s.runs} run${s.runs === 1 ? '' : 's'}`)}${kpi('Crashes', crashes, 'where they cluster, below')}</div>
       ${chart}
-      <div class="rform">${fields}${mix}<button class="btn" data-runsave="${t}">Save ${esc(name)}</button><button class="btn tplay" data-testplay="${t}" title="Opens the game alone in a new tab with these settings, saved or not (the live settings are not touched)">Test play</button></div></div>`;
-  };
-  if (only) return `<div class="card ctl" id="runCard"><h2>${esc(GAMES[only])} tuning</h2><p class="note">A race to the target distance, one run a move. The mix numbers are weights (any scale). Applies to squares dealt from then on.</p>${one(only)}</div>`;
-  return `<div class="card ctl" id="runCard"><h2>Runner tuning</h2>
-    <p class="note">Dash, Lane Rush, Flap and Chopper: a race to the target distance, one run a move. Obstacle spacing is the posts' spacing in Flap and the blocks' in Chopper (the mix decides each one's gap, or the block's size, or none). Everything here goes to the game and the server at once and applies to squares dealt from then on (a square under way keeps its values). The mix numbers are weights (any scale). Aim: an average player finishes in 3-6 runs, most runs lasting 10-25 seconds; the crash chart (every ${RUN_BIN} m, every mode together) shows where the course bites.</p>
-    <div class="grid2">${one('dash')}${one('lane')}${one('flap')}${one('chopper')}</div></div>`;
+      <div class="rform">${fields}${mix}</div></div>`;
+  }
 }
-async function saveRunCfg(t, btn) {
+// The page's values for config/run/<type>: { value } to save, or { err } (every save and Test play reads the page this way).
+function readRunCfg(t) {
   const out = { mix: {} };
   for (const el of app.querySelectorAll(`input[data-runcfg^="${t}:"]`)) {
     const k = el.dataset.runcfg.split(':')[1], v = Number(el.value);
-    if (!Number.isFinite(v) || v < Number(el.min) || v > Number(el.max)) { said(btn, false, `${k}: a number from ${el.min} to ${el.max}`); return; }
+    if (!Number.isFinite(v) || v < Number(el.min) || v > Number(el.max)) return { err: `${k}: a number from ${el.min} to ${el.max}` };
     if (k.startsWith('mix.')) out.mix[k.slice(4)] = Math.round(v); else out[k] = v;
   }
-  if (out.gapMax < out.gapMin) { said(btn, false, 'The maximum spacing must be at least the minimum.'); return; }
-  if (!Object.values(out.mix).some(v => v > 0)) { said(btn, false, 'Give at least one obstacle kind a weight.'); return; }
-  btn.disabled = true;
-  try {
-    await fb.dbM.set(fb.dbM.ref(fb.db, `config/run/${t}`), out);
-    ctl.runCfg = Object.assign({}, ctl.runCfg, { [t]: out });
-  } catch (e) { said(btn, false, failed(e)); return; }
-  render(); said(btn, true, 'Saved');
+  if (out.gapMax < out.gapMin) return { err: 'The maximum spacing must be at least the minimum.' };
+  if (!Object.values(out.mix).some(v => v > 0)) return { err: 'Give at least one obstacle kind a weight.' };
+  return { value: out };
 }
 // ---------- Bullseye's tuning (config/bulls, read by the game and the server) ----------
 // The board's size and the bullseye's (in field units: the field is 100 across, 120 down), how long a line
@@ -586,22 +588,17 @@ function bullsCard() {
   const fields = BULL_FIELDS.map(([k, l, lo, hi, st]) => `<label class="rf"><span>${l}</span><input type="number" step="${st}" min="${lo}" max="${hi}" data-bullcfg="${k}" value="${c[k]}"></label>`).join('');
   return `<div class="card ctl" id="bullsCard"><h2>Bullseye tuning</h2>
     <p class="note">Bullseye: a small board moves round a field 100 units across and 120 down; a throw stops a sideways line, then an up-down line, and the dart lands where they cross. Bullseye 3 points, the board 1, first to 5. Everything here goes to the game and the server at once and applies to squares dealt from then on. Aim: about 5-6 throws to win at the start. A bigger board or bullseye, or a slower sweep, makes it easier; the speed-up makes each scoring throw harder than the last.</p>
-    <div class="rform">${fields}<button class="btn" data-bullsave="1">Save Bullseye</button><button class="btn tplay" data-testplay="bullseye" title="Opens the game alone in a new tab with these settings, saved or not (the live settings are not touched)">Test play</button></div></div>`;
+    <div class="rform">${fields}</div></div>`;
 }
-async function saveBullsCfg(btn) {
+function readBullsCfg() {
   const out = {};
   for (const el of app.querySelectorAll('input[data-bullcfg]')) {
     const k = el.dataset.bullcfg, v = Number(el.value);
-    if (!Number.isFinite(v) || v < Number(el.min) || v > Number(el.max)) { said(btn, false, `${k}: a number from ${el.min} to ${el.max}`); return; }
+    if (!Number.isFinite(v) || v < Number(el.min) || v > Number(el.max)) return { err: `${k}: a number from ${el.min} to ${el.max}` };
     out[k] = v;
   }
-  if (out.bull >= out.board) { said(btn, false, 'The bullseye must be smaller than the board.'); return; }
-  btn.disabled = true;
-  try {
-    await fb.dbM.set(fb.dbM.ref(fb.db, 'config/bulls'), out);
-    ctl.bullsCfg = out;
-  } catch (e) { said(btn, false, failed(e)); return; }
-  render(); said(btn, true, 'Saved');
+  if (out.bull >= out.board) return { err: 'The bullseye must be smaller than the board.' };
+  return { value: out };
 }
 // ---------- Peg Drop's target (config/plinko, read by the game and the server) ----------
 const PLINKO_DEFAULTS = { target: 12 };   // (as the game's meta.js has it)
@@ -609,14 +606,12 @@ function plinkoCard() {
   const raw = ctl.plinkoCfg || {}, v = raw.target != null && Number.isFinite(Number(raw.target)) ? Number(raw.target) : PLINKO_DEFAULTS.target;
   return `<div class="card ctl" id="plinkoCard"><h2>Peg Drop tuning</h2>
     <p class="note">Peg Drop: the bins are worth 5, 3, 3, 2, 2, 1 and 1 points (the order drawn per square), the bonus peg 2; each player's points add up and the first to the target wins. Default 12. Applies to squares dealt from then on.</p>
-    <div class="rform"><label class="rf"><span>Target (points to win)</span><input type="number" step="1" min="4" max="40" data-plinkocfg="target" value="${v}"></label><button class="btn" data-plinkosave="1">Save Peg Drop</button><button class="btn tplay" data-testplay="plinko" title="Opens the game alone in a new tab with these settings, saved or not (the live settings are not touched)">Test play</button></div></div>`;
+    <div class="rform"><label class="rf"><span>Target (points to win)</span><input type="number" step="1" min="4" max="40" data-plinkocfg="target" value="${v}"></label></div></div>`;
 }
-async function savePlinkoCfg(btn) {
-  const el = app.querySelector('input[data-plinkocfg="target"]'), v = Number(el.value);
-  if (!Number.isInteger(v) || v < 4 || v > 40) { said(btn, false, 'Target: a whole number from 4 to 40'); return; }
-  btn.disabled = true;
-  try { await fb.dbM.set(fb.dbM.ref(fb.db, 'config/plinko'), { target: v }); ctl.plinkoCfg = { target: v }; } catch (e) { said(btn, false, failed(e)); return; }
-  render(); said(btn, true, 'Saved');
+function readPlinkoCfg() {
+  const el = app.querySelector('input[data-plinkocfg="target"]'), v = Number(el && el.value);
+  if (!Number.isInteger(v) || v < 4 || v > 40) return { err: 'Target: a whole number from 4 to 40' };
+  return { value: { target: v } };
 }
 // ---------- Risky Rolls' die and target (config/pig, read by the game and the server) ----------
 const PIG_DEFAULTS = { sides: 8, target: 51 };   // (as the game's meta.js has them)
@@ -624,15 +619,13 @@ function pigCard() {
   const raw = ctl.pigCfg || {}, sides = raw.sides === 6 || raw.sides === 8 ? raw.sides : PIG_DEFAULTS.sides, t = raw.target != null && Number.isFinite(Number(raw.target)) ? Number(raw.target) : PIG_DEFAULTS.target;
   return `<div class="card ctl" id="pigCard"><h2>Risky Rolls tuning</h2>
     <p class="note">Risky Rolls: roll as often as you dare, then bank; a number already rolled this turn loses the turn's points. The die (6 or 8 sides) and the score to bank to win. Default: 8 sides, 51. Applies to squares dealt from then on.</p>
-    <div class="rform"><label class="rf"><span>Die</span><select data-pigcfg="sides">${[6, 8].map(n => `<option value="${n}"${n === sides ? ' selected' : ''}>${n} sides</option>`).join('')}</select></label><label class="rf"><span>Target (points to win)</span><input type="number" step="1" min="10" max="200" data-pigcfg="target" value="${t}"></label><button class="btn" data-pigsave="1">Save Risky Rolls</button><button class="btn tplay" data-testplay="pig" title="Opens the game alone in a new tab with these settings, saved or not (the live settings are not touched)">Test play</button></div></div>`;
+    <div class="rform"><label class="rf"><span>Die</span><select data-pigcfg="sides">${[6, 8].map(n => `<option value="${n}"${n === sides ? ' selected' : ''}>${n} sides</option>`).join('')}</select></label><label class="rf"><span>Target (points to win)</span><input type="number" step="1" min="10" max="200" data-pigcfg="target" value="${t}"></label></div></div>`;
 }
-async function savePigCfg(btn) {
-  const sides = Number(app.querySelector('[data-pigcfg="sides"]').value), t = Number(app.querySelector('[data-pigcfg="target"]').value);
-  if (sides !== 6 && sides !== 8) { said(btn, false, 'Die: 6 or 8 sides'); return; }
-  if (!Number.isInteger(t) || t < 10 || t > 200) { said(btn, false, 'Target: a whole number from 10 to 200'); return; }
-  btn.disabled = true;
-  try { await fb.dbM.set(fb.dbM.ref(fb.db, 'config/pig'), { sides, target: t }); ctl.pigCfg = { sides, target: t }; } catch (e) { said(btn, false, failed(e)); return; }
-  render(); said(btn, true, 'Saved');
+function readPigCfg() {
+  const q = sel => { const el = app.querySelector(sel); return Number(el && el.value); }, sides = q('[data-pigcfg="sides"]'), t = q('[data-pigcfg="target"]');
+  if (sides !== 6 && sides !== 8) return { err: 'Die: 6 or 8 sides' };
+  if (!Number.isInteger(t) || t < 10 || t > 200) return { err: 'Target: a whole number from 10 to 200' };
+  return { value: { sides, target: t } };
 }
 // ---------- Roads' honeycomb (config/roads, read by the game and the server) ----------
 const ROADS_DEFAULTS = { layout: 'hex7' };   // (as the game's meta.js has it)
@@ -640,14 +633,12 @@ function roadsCard() {
   const raw = ctl.roadsCfg || {}, lay = raw.layout === 'hex4' || raw.layout === 'hex7' ? raw.layout : ROADS_DEFAULTS.layout;
   return `<div class="card ctl" id="roadsCard"><h2>Roads tuning</h2>
     <p class="note">Roads: claim an edge, then a random edge is blocked; the longest road wins. Every move uses two edges, so the honeycomb sets the length: 7 hexagons (30 edges) is about 7 to 8 moves each; the smaller 4 (19 edges) about 5 each. Default 7. Applies to squares dealt from then on.</p>
-    <div class="rform"><label class="rf"><span>Honeycomb</span><select data-roadscfg="layout">${[['hex7', '7 hexagons (30 edges)'], ['hex4', '4 hexagons (19 edges)']].map(([v, l]) => `<option value="${v}"${v === lay ? ' selected' : ''}>${l}</option>`).join('')}</select></label><button class="btn" data-roadssave="1">Save Roads</button><button class="btn tplay" data-testplay="roads" title="Opens the game alone in a new tab with these settings, saved or not (the live settings are not touched)">Test play</button></div></div>`;
+    <div class="rform"><label class="rf"><span>Honeycomb</span><select data-roadscfg="layout">${[['hex7', '7 hexagons (30 edges)'], ['hex4', '4 hexagons (19 edges)']].map(([v, l]) => `<option value="${v}"${v === lay ? ' selected' : ''}>${l}</option>`).join('')}</select></label></div></div>`;
 }
-async function saveRoadsCfg(btn) {
-  const layout = app.querySelector('[data-roadscfg="layout"]').value;
-  if (layout !== 'hex7' && layout !== 'hex4') { said(btn, false, 'Honeycomb: 7 or 4 hexagons'); return; }
-  btn.disabled = true;
-  try { await fb.dbM.set(fb.dbM.ref(fb.db, 'config/roads'), { layout }); ctl.roadsCfg = { layout }; } catch (e) { said(btn, false, failed(e)); return; }
-  render(); said(btn, true, 'Saved');
+function readRoadsCfg() {
+  const el = app.querySelector('[data-roadscfg="layout"]'), layout = el && el.value;
+  if (layout !== 'hex7' && layout !== 'hex4') return { err: 'Honeycomb: 7 or 4 hexagons' };
+  return { value: { layout } };
 }
 // ---------- the attention games' difficulty (config/headcount, config/flash, config/snapshot, read by the game and the server) ----------
 const HEAD_DEFAULTS = { n1lo: 14, n1hi: 20, d1lo: 4, d1hi: 7, cross1: 1800, gap1: 430, n2lo: 18, n2hi: 25, d2lo: 7, d2hi: 11, cross2: 1800, gap2: 330, n3lo: 22, n3hi: 30, d3lo: 8, d3hi: 12, cross3: 2000, gap3: 300 };   // (as the game's meta.js has them)
@@ -668,18 +659,16 @@ function attCard(c) {
   return `<div class="card ctl" id="${c.id}Card"><h2>${c.title}</h2>
     <p class="note">${c.note} Aimed at a typical player getting about 85% of rounds right at level 1, 65% at level 2 and 45% at level 3 (the computer gets them right that often). Applies to rounds dealt from then on.</p>
     <div class="tbl"><table class="atttab"><tr><th></th><th>Level 1</th><th>Level 2</th><th>Level 3</th></tr>${rows}</table></div>
-    <div class="rform">${c.extra.map(([k, label, lo, hi, step]) => `<label class="rf"><span>${label}</span>${inp(k, lo, hi, step)}</label>`).join('')}<button class="btn" data-attsave="${c.id}">Save ${c.title.replace(' tuning', '')}</button><button class="btn tplay" data-testplay="${c.id}" title="Opens the game alone in a new tab with these settings, saved or not (the live settings are not touched)">Test play</button></div></div>`;
+    ${c.extra.length ? `<div class="rform">${c.extra.map(([k, label, lo, hi, step]) => `<label class="rf"><span>${label}</span>${inp(k, lo, hi, step)}</label>`).join('')}</div>` : ''}</div>`;
 }
-async function saveAttCfg(btn) {
-  const c = ATT_CARDS.find(x => x.id === btn.dataset.attsave), out = {};
+function readAttCfg(c) {
+  const out = {};
   for (const el of app.querySelectorAll(`input[data-attcfg="${c.id}"]`)) {
     const v = Number(el.value), lo = Number(el.min), hi = Number(el.max);
-    if (!Number.isFinite(v) || v < lo || v > hi) { said(btn, false, `${c.title.replace(' tuning', '')}: ${el.dataset.k} must be from ${lo} to ${hi}`); return; }
+    if (!Number.isFinite(v) || v < lo || v > hi) return { err: `${c.title.replace(' tuning', '')}: ${el.dataset.k} must be from ${lo} to ${hi}` };
     out[el.dataset.k] = v;
   }
-  btn.disabled = true;
-  try { await fb.dbM.set(fb.dbM.ref(fb.db, 'config/' + c.id), out); ctl.attCfg = Object.assign({}, ctl.attCfg, { [c.id]: out }); } catch (e) { said(btn, false, failed(e)); return; }
-  render(); said(btn, true, 'Saved');
+  return { value: out };
 }
 // ---------- the finger games' difficulty (config/skyhop, config/scoop, config/pinball, read by the game and the server) ----------
 const HOP_DEFAULTS = { target: 150, bounce: 22, gap0: 3, gap1: 4.5, wide0: 1.5, wide1: 1.1, moveAt: 10, move: 65, moveV: 2.2, breakAt: 8, brk0: 25, brk: 60, hazAt: 15, hazGap: 25, fill0: 0.4, fill1: 0.2 };   // (as the game's meta.js has them)
@@ -702,19 +691,17 @@ function fingCard(c) {
   const raw = (ctl.fingCfg || {})[c.id] || {}, num = (v, d) => (v != null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : d);
   return `<div class="card ctl" id="${c.id}Card"><h2>${c.title}</h2>
     <p class="note">${c.note} Applies to squares dealt from then on.</p>
-    <div class="rform">${c.fields.map(([k, label, lo, hi, step]) => `<label class="rf"><span>${label}</span><input type="number" step="${step}" min="${lo}" max="${hi}" data-fingcfg="${c.id}" data-k="${k}" value="${num(raw[k], c.defaults[k])}"></label>`).join('')}</div>
-    <div class="rform"><button class="btn" data-fingsave="${c.id}">Save ${c.title.replace(' tuning', '')}</button><button class="btn tplay" data-testplay="${c.id}" title="Opens the game alone in a new tab with these settings, saved or not (the live settings are not touched)">Test play</button></div></div>`;
+    <div class="rform">${c.fields.map(([k, label, lo, hi, step]) => `<label class="rf"><span>${label}</span><input type="number" step="${step}" min="${lo}" max="${hi}" data-fingcfg="${c.id}" data-k="${k}" value="${num(raw[k], c.defaults[k])}"></label>`).join('')}</div></div>`;
 }
-async function saveFingCfg(btn) {
-  const c = FING_CARDS.concat(BOWL_CARDS).find(x => x.id === btn.dataset.fingsave), out = {};
+function readFingCfg(c) {
+  const out = {};
   for (const el of app.querySelectorAll(`input[data-fingcfg="${c.id}"]`)) {
     const v = Number(el.value), f = c.fields.find(x => x[0] === el.dataset.k);
-    if (!Number.isFinite(v) || v < f[2] || v > f[3]) { said(btn, false, `${f[1]}: a number from ${f[2]} to ${f[3]}`); return; }
+    if (!f) continue;
+    if (!Number.isFinite(v) || v < f[2] || v > f[3]) return { err: `${f[1]}: a number from ${f[2]} to ${f[3]}` };
     out[el.dataset.k] = v;
   }
-  btn.disabled = true;
-  try { await fb.dbM.set(fb.dbM.ref(fb.db, 'config/' + c.id), out); ctl.fingCfg = Object.assign({}, ctl.fingCfg, { [c.id]: out }); } catch (e) { said(btn, false, failed(e)); return; }
-  render(); said(btn, true, 'Saved');
+  return { value: out };
 }
 // ---------- Odd One Out's shade differences (config/oddone, read by the game and the server) ----------
 const ODD_DEFAULTS = { d1: 4, d2: 2.8, d3: 2 };   // (as the game's meta.js has it)
@@ -723,14 +710,12 @@ function oddCard() {
   const raw = ctl.oddCfg || {}, num = (v, d) => (v != null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : d);
   return `<div class="card ctl" id="oddCard"><h2>Odd One Out tuning</h2>
     <p class="note">How different the odd tile is at each level, in perceptual units (ΔE 2000: about 1 is the smallest difference most people can see side by side; the same on every colour). Smaller is harder. Meant for a typical player to miss about 25% at level 1, 40% at level 2 and 55% at level 3 within the 5 seconds. Defaults: 4, 2.8, 2. Applies to grids dealt from then on.</p>
-    <div class="rform">${ODD_FIELDS.map(([k, label]) => `<label class="rf"><span>${label}</span><input type="number" step="0.1" min="0.5" max="25" data-oddcfg="${k}" value="${num(raw[k], ODD_DEFAULTS[k])}"></label>`).join('')}<button class="btn" data-oddsave="1">Save Odd One Out</button><button class="btn tplay" data-testplay="oddone" title="Opens the game alone in a new tab with these settings, saved or not (the live settings are not touched)">Test play</button></div></div>`;
+    <div class="rform">${ODD_FIELDS.map(([k, label]) => `<label class="rf"><span>${label}</span><input type="number" step="0.1" min="0.5" max="25" data-oddcfg="${k}" value="${num(raw[k], ODD_DEFAULTS[k])}"></label>`).join('')}</div></div>`;
 }
-async function saveOddCfg(btn) {
+function readOddCfg() {
   const out = {};
-  for (const [k, label] of ODD_FIELDS) { const v = Number(app.querySelector(`input[data-oddcfg="${k}"]`).value); if (!Number.isFinite(v) || v < 0.5 || v > 25) { said(btn, false, `${label}: a number from 0.5 to 25`); return; } out[k] = Math.round(v * 10) / 10; }
-  btn.disabled = true;
-  try { await fb.dbM.set(fb.dbM.ref(fb.db, 'config/oddone'), out); ctl.oddCfg = out; } catch (e) { said(btn, false, failed(e)); return; }
-  render(); said(btn, true, 'Saved');
+  for (const [k, label] of ODD_FIELDS) { const el = app.querySelector(`input[data-oddcfg="${k}"]`), v = Number(el && el.value); if (!Number.isFinite(v) || v < 0.5 || v > 25) return { err: `${label}: a number from 0.5 to 25` }; out[k] = Math.round(v * 10) / 10; }
+  return { value: out };
 }
 // ---------- Risky Spins' tuning (config/wheels, read by the game and the server) ----------
 // The target, and the ranges each square's two wheels are drawn from (ten equal segments each). A
@@ -743,32 +728,28 @@ function wheelsCard() {
   return `<div class="card ctl" id="wheelsCard"><h2>Risky Spins tuning</h2>
     <p class="note">Risky Spins (push your luck): each square deals two wheels of ten equal segments, drawn again until every rule holds. A spin's points go into the turn's pot; a skull loses the pot; Bank adds it to the score. Low: the safe wheel, fewer skulls, values in its range, at least two different. High: the risky wheel, more skulls, values from its lowest to 10, the only wheel with 10s; its average is at least the gap above Low's. And the two are worth about the same: each wheel's best turn on it alone (spun until the next spin would risk more than it adds, then banked) banks on average within the given percent of the other, so the choice is the risk, not a better wheel; if the ranges never allow that, the closest set is dealt. Defaults: first to 30; skulls 2 and 5; Low 1-4, High 6-10 with one 10; averages 0.4 apart; turns within 10% (about 4.1 points each). A square already dealt with three wheels plays on with them. Applies to squares dealt from then on.</p>
     <div class="rform">${WHEEL_FIELDS.map(([k, label, lo, hi, step]) => `<label class="rf"><span>${label}</span><input type="number" step="${step}" min="${lo}" max="${hi}" data-wheelcfg="${k}" value="${num(raw[k], WHEEL_DEFAULTS[k])}"></label>`).join('')}</div>
-    <div class="rform"><button class="btn" data-wheelsave="1">Save Risky Spins</button><button class="btn tplay" data-testplay="wheels" title="Opens the game alone in a new tab with these settings, saved or not (the live settings are not touched)">Test play</button></div></div>`;
+</div>`;
 }
-async function saveWheelsCfg(btn) {
+function readWheelsCfg() {
   const out = {};
   for (const el of app.querySelectorAll('input[data-wheelcfg]')) {
     const k = el.dataset.wheelcfg, v = Number(el.value), f = WHEEL_FIELDS.find(x => x[0] === k);
-    if (!Number.isFinite(v) || v < f[2] || v > f[3] || (f[4] === 1 && !Number.isInteger(v))) { said(btn, false, `${f[1]}: ${f[4] === 1 ? 'a whole number' : 'a number'} from ${f[2]} to ${f[3]}`); return; }
+    if (!f) continue;
+    if (!Number.isFinite(v) || v < f[2] || v > f[3] || (f[4] === 1 && !Number.isInteger(v))) return { err: `${f[1]}: ${f[4] === 1 ? 'a whole number' : 'a number'} from ${f[2]} to ${f[3]}` };
     out[k] = v;
   }
-  if (out.tensMax < out.tensMin) { said(btn, false, 'High: the most 10s must be at least the fewest.'); return; }
-  if (out.lowHi <= out.lowLo) { said(btn, false, 'Low: the highest value must be above the lowest.'); return; }
-  if (!(out.lowSkulls < out.highSkulls)) { said(btn, false, 'Skulls: Low fewer than High.'); return; }
-  if (out.highSkulls + out.tensMax > 10) { said(btn, false, 'High: its skulls and 10s must fit on 10 segments.'); return; }
-  btn.disabled = true;
-  try {
-    await fb.dbM.set(fb.dbM.ref(fb.db, 'config/wheels'), out);
-    ctl.wheelsCfg = out;
-  } catch (e) { said(btn, false, failed(e)); return; }
-  render(); said(btn, true, 'Saved');
+  if (out.tensMax < out.tensMin) return { err: 'High: the most 10s must be at least the fewest.' };
+  if (out.lowHi <= out.lowLo) return { err: 'Low: the highest value must be above the lowest.' };
+  if (!(out.lowSkulls < out.highSkulls)) return { err: 'Skulls: Low fewer than High.' };
+  if (out.highSkulls + out.tensMax > 10) return { err: 'High: its skulls and 10s must fit on 10 segments.' };
+  return { value: out };
 }
 // ---------- Test play: a game alone in a new tab, with its card's settings as the editor has them (saved or
 // not; checked by nothing here: the game takes what it can). The live settings are never touched: the
 // settings ride in the address (?sandbox=<game>&cfg=<base64url JSON>) and the game, which checks the
 // admin's sign-in, keeps them in that tab only (src/ui/sandbox.js). ----------
 function editorCfg(t) {
-  const tn = Object.fromEntries([...app.querySelectorAll(`[data-tune="${t}"]`)].map(el => [el.dataset.k, el.value]));
+  const tn = Object.fromEntries([...app.querySelectorAll(`[data-tune="${t}"]`)].filter(el => el.type !== 'radio' || el.checked).map(el => [el.dataset.k, el.value]));
   return Object.assign(legacyCfg(t), Object.keys(tn).length ? { tune: tn } : {});
 }
 function legacyCfg(t) {
@@ -790,30 +771,65 @@ function testPlay(t) {
   u.searchParams.set('cfg', b64url(JSON.stringify(editorCfg(t))));
   window.open(u.href, '_blank', 'noopener');
 }
-// ---------- Mini-game Settings: every mini-game's own page (#settings/<type>), its settings from its meta.js
-// (TUNE: src/core/tune.js) saved to config/tune/<type> (only the values that differ from the defaults), read by
-// the game and the server and dealt into each new square. The games with an older tuning card (config/<name>)
-// show it on the same page. Test play: the game alone in a new tab with the page's values, saved or not. ----------
+// ---------- Games (#games): every mini-game in one list, each with its own page (#games/<type>): its release switches
+// (releases/{type}, releases/platform/ios/{type}), its Mode where it is a race game (the TUNE 'mode' setting, core/race.js),
+// its settings from its meta.js (TUNE: src/core/tune.js) saved to config/tune/<type> (only the values that differ from
+// the defaults), read by the game and the server and dealt into each new square, and, where the game has one, its own
+// tuning card (config/<name>: the runners, Risky Spins, Risky Rolls, ...; the same paths and shapes as ever, which the
+// server and the copy to production read). One Save and one Reset to defaults cover the whole page; Test play opens the
+// game alone in a new tab with the page's values, saved or not. (This took over Mini-game Settings and Releases, November 2026.) ----------
 const CATS = [['luck', 'Luck'], ['skill', 'Skill'], ['brain', 'Brain']];
 const TGROUPS = ['Board', 'Rules', 'Timing', 'Computer'];
-let META = {}, TUNE = null, CLIENT = null;      // each game's meta.js; core/tune.js (tuneValue, tuneNorm); core/client.js (versions)
+let META = {}, TUNE = null, CLIENT = null, RACE = null;      // each game's meta.js; core/tune.js (tuneValue, tuneNorm); core/client.js (versions); core/race.js (RACE_TYPES)
 async function loadMetas() {
   if (TUNE) return;
   const reg = await import('./src/games/index.js'), ts = Object.keys(GAMES), ms = ts.map(t => (reg.GAMES[t] && reg.GAMES[t].meta) || {});   // (the registry: each game's meta, in the order the game loads them)
   META = Object.fromEntries(ts.map((t, i) => [t, ms[i]]));
   TUNE = await import('./src/core/tune.js');   // (the registry has registered every game's settings)
   CLIENT = await import('./src/core/client.js');
+  RACE = await import('./src/core/race.js');   // (after the registry: the metas import its MODE_TUNE)
 }
 const tuneList = t => (META[t] && Array.isArray(META[t].TUNE) ? META[t].TUNE : []);
-function legacyCard(t) {                       // the older tuning card, where the game has one
-  if (RUN_TYPES.includes(t)) return runnersCard(t);
-  const one = { bullseye: bullsCard, plinko: plinkoCard, pig: pigCard, roads: roadsCard, oddone: oddCard, wheels: wheelsCard }[t];
-  if (one) return one();
-  const c = ATT_CARDS.find(x => x.id === t) || FING_CARDS.find(x => x.id === t) || BOWL_CARDS.find(x => x.id === t);
-  return c ? (ATT_CARDS.includes(c) ? attCard(c) : fingCard(c)) : '';
+const catName = t => { const c = CATS.find(x => META[t] && x[0] === META[t].category); return c ? c[1] : ''; };
+const gameIcon = t => (META[t] && META[t].icon ? `<span class="gico" aria-hidden="true">${META[t].icon}</span>` : '');
+const isRaceGame = t => !!(RACE && RACE.RACE_TYPES.includes(t));
+const raceOn = t => isRaceGame(t) && (((ctl.tune || {})[t] || {}).mode === 'race');   // (the saved setting: a race is dealt while it says so)
+// The games with a tuning card of their own (config/<name>): its card, its values read from the page, where ctl keeps them, its defaults.
+const attOf = t => ATT_CARDS.find(x => x.id === t), fingOf = t => FING_CARDS.find(x => x.id === t) || BOWL_CARDS.find(x => x.id === t);
+const ONE_CARD = { bullseye: ['bullsCfg', () => bullsCard(), readBullsCfg, BULL_DEFAULTS], plinko: ['plinkoCfg', () => plinkoCard(), readPlinkoCfg, PLINKO_DEFAULTS], pig: ['pigCfg', () => pigCard(), readPigCfg, PIG_DEFAULTS], roads: ['roadsCfg', () => roadsCard(), readRoadsCfg, ROADS_DEFAULTS], oddone: ['oddCfg', () => oddCard(), readOddCfg, ODD_DEFAULTS], wheels: ['wheelsCfg', () => wheelsCard(), readWheelsCfg, WHEEL_DEFAULTS] };
+function legacyCard(t) {
+  if (RUN_TYPES.includes(t)) return runnerCard(t);
+  if (ONE_CARD[t]) return ONE_CARD[t][1]();
+  const a = attOf(t), f = fingOf(t);
+  return a ? attCard(a) : f ? fingCard(f) : '';
+}
+function legacyRead(t) {                       // { value } to save at legacyPath(t), or { err }; null for a game without a card
+  if (RUN_TYPES.includes(t)) return readRunCfg(t);
+  if (ONE_CARD[t]) return ONE_CARD[t][2]();
+  const a = attOf(t), f = fingOf(t);
+  return a ? readAttCfg(a) : f ? readFingCfg(f) : null;
 }
 const legacyPath = t => (RUN_TYPES.includes(t) ? `config/run/${t}` : t === 'bullseye' ? 'config/bulls' : ['plinko', 'pig', 'roads', 'oddone', 'wheels', 'headcount', 'flash', 'snapshot', 'skyhop', 'scoop', 'pinball', 'bowling'].includes(t) ? `config/${t}` : null);
+const legacyStored = t => (RUN_TYPES.includes(t) ? (ctl.runCfg || {})[t] : ONE_CARD[t] ? ctl[ONE_CARD[t][0]] : attOf(t) ? (ctl.attCfg || {})[t] : fingOf(t) ? (ctl.fingCfg || {})[t] : null) || null;
+const legacyDefaults = t => (RUN_TYPES.includes(t) ? RUN_DEFAULTS[t] : ONE_CARD[t] ? ONE_CARD[t][3] : (attOf(t) || fingOf(t) || {}).defaults || null);
+function legacyKeep(t, v) {                    // what was saved, kept here as loadCtl would read it back
+  if (RUN_TYPES.includes(t)) ctl.runCfg = Object.assign({}, ctl.runCfg, { [t]: v });
+  else if (ONE_CARD[t]) ctl[ONE_CARD[t][0]] = v;
+  else if (attOf(t)) ctl.attCfg = Object.assign({}, ctl.attCfg, { [t]: v });
+  else if (fingOf(t)) ctl.fingCfg = Object.assign({}, ctl.fingCfg, { [t]: v });
+}
+const legacyCount = t => (RUN_TYPES.includes(t) ? RUN_FIELDS.length + (RUN_EXTRA[t] || []).length + RUN_MIX[t].length : Object.keys(legacyDefaults(t) || {}).length);
+// Saved with a value other than the code's default (the list's "changed" marker, the tile's count): the TUNE settings kept
+// in config/tune/<type> are only such values; a tuning card's stored config counts where any value differs from its default.
 const changedOf = t => Object.keys((ctl.tune && ctl.tune[t]) || {}).length;
+function legacyChanged(t) {
+  const d = legacyDefaults(t), st = legacyStored(t);
+  if (!d || !st || typeof st !== 'object') return false;
+  const diff = (a, b) => Object.keys(a).some(k => (a[k] && typeof a[k] === 'object' ? diff(a[k], (b && b[k]) || {}) : String(a[k]) !== String(b ? b[k] : undefined)));
+  return diff(st, d);
+}
+const gameChanged = t => changedOf(t) > 0 || legacyChanged(t);
+const canon = v => JSON.stringify(v, (k, x) => (x && typeof x === 'object' && !Array.isArray(x) ? Object.fromEntries(Object.keys(x).sort().map(y => [y, x[y]])) : x));   // (the same values in any key order)
 // ---------- Animation (config/anim): speed, everyone's pace (read by the game and the server); fast and fx, the players'
 // Speed setting's multiplier and effects intensity (the game's alone: a player's Animation choice) ----------
 const ANIM_FIELDS = [['speed', 'Animation speed, everyone (1.0 = as designed)', 0.5, 2], ['fast', 'Speed mode: speed multiplier (2.0 = default)', 1, 4], ['fx', 'Speed mode: effects intensity (1.0 = default)', 0, 2]];
@@ -821,7 +837,7 @@ const ANIM_DEF = { speed: 1, fast: 2, fx: 1 };
 function animCard() {
   const num = k => (ctl.anim && Number.isFinite(Number(ctl.anim[k])) ? Number(ctl.anim[k]) : ANIM_DEF[k]);
   const same = ANIM_FIELDS.every(([k]) => num(k) === ANIM_DEF[k]);
-  return `<div class="card ctl" id="animCard"><h2>Animation</h2>
+  return `<div class="card ctl" id="animCard"><h2>Pace</h2>
     <p class="note"><b>Animation speed, everyone</b>: one multiplier for the whole game's pace, every player's: every move's animation, its result's hold, the board's glow before a zoom and the computer's pauses (0.5 to 2.0; 1.0 as designed). The server's turn clock and the bots pace by it too.</p>
     <p class="note"><b>Speed mode</b> is a player's own Animation setting (Normal or Speed, in the main menu and the in-game menu; on their screen only, never the rules, the timers or what the other player sees). Its <b>speed multiplier</b> runs everything that many times as fast again (1.0 to 4.0; 2.0 halves every animation, hold and transition; replays at least 1.5×; runs, physics shots and the games' own timed waits stay in real time). Its <b>effects intensity</b> scales the punch: the screen shake on claims and big moments, the confetti, the pops under a tap (0 to 2.0; 0 turns them off). Players' phones pick these up when the page loads (or comes back after a minute away).</p>
     <div class="rform">${ANIM_FIELDS.map(([k, label, lo, hi]) => `<label class="rf"><span>${label}</span><input type="number" step="0.1" min="${lo}" max="${hi}" data-animcfg="${k}" value="${num(k)}"></label>`).join('')}<button class="btn" data-animsave="1">Save</button><button class="btn" data-animreset="1"${same ? ' disabled' : ''}>Reset to defaults</button></div></div>`;
@@ -837,17 +853,30 @@ async function saveAnimCfg(btn, reset) {
   try { await fb.dbM.set(fb.dbM.ref(fb.db, 'config/anim'), Object.keys(val).length ? val : null); ctl.anim = val; } catch (e) { said(btn, false, failed(e)); return; }
   render(); said(app.querySelector('[data-animsave]') || btn, true, 'Saved');
 }
-function settingsIndex() {
-  return animCard() + CATS.map(([c, label]) => {
-    const ts = Object.keys(GAMES).filter(t => META[t] && META[t].category === c).sort((a, b) => GAMES[a].localeCompare(GAMES[b]));
-    return `<div class="card"><h2>${label}</h2><div class="gtiles">${ts.map(t => {
-      const k = changedOf(t), old = legacyPath(t) ? ' · tuning card' : '';
-      return `<a class="gtile" href="#settings/${t}"><b>${esc(GAMES[t])}</b><small>${tuneList(t).length} setting${tuneList(t).length === 1 ? '' : 's'}${old}${k ? ` · <span class="chg">${k} changed</span>` : ''}</small></a>`;
-    }).join('')}</div></div>`;
-  }).join('') + '<p class="note">Each page: the game\'s settings, Save, Reset to defaults and Test play. A change applies to squares dealt from then on (a square under way keeps the values it was dealt with).</p>';
+const badge = (cls, text) => `<span class="badge ${cls}">${text}</span>`;
+function gamesIndex() {
+  const ts = Object.keys(GAMES).sort((a, b) => GAMES[a].localeCompare(GAMES[b]));   // alphabetical by the shown name
+  const rows = ts.map(t => {
+    const k = tuneList(t).length + legacyCount(t);
+    return `<li><a class="grow" href="#games/${t}">${gameIcon(t)}<span class="gnm"><b>${esc(GAMES[t])}</b><small>${esc(catName(t))} · ${k} setting${k === 1 ? '' : 's'}</small></span><span class="gbadges">${isReleased(t) ? badge('rel', 'Released') : badge('adm', 'Admin only')}${iosOff(t) ? badge('ios', 'iOS off') : ''}${raceOn(t) ? badge('race', 'Race') : ''}${gameChanged(t) ? badge('chg', 'changed') : ''}</span></a></li>`;
+  }).join('');
+  return platformsCard() + animCard() + `<div class="card" id="gamesCard"><div class="row"><h2>Mini-games</h2><span class="note" style="margin:0">${ts.length} games · ${ts.filter(isReleased).length} released</span></div>
+    <ul class="glist">${rows}</ul>
+    <p class="note">Each game's page: its release switches (the web's Released or Admin only; iOS on or off), its Mode where it has one (Shared or Race), every setting and, where it has one, its tuning card, then Save, Reset to defaults and Test play. A change applies to squares dealt from then on (a square under way keeps the values it was dealt with). "changed": a setting saved with a value other than the code's default.</p></div>`;
+}
+// The Mode switch of a race game (core/race.js RACE_TYPES): the TUNE 'mode' setting, shown as a switch of its own at the top
+// of the page, saved with the rest by Save (a square under way keeps its mode; two people on one phone always play Shared).
+function modeCard(t) {
+  const f = tuneList(t).find(x => x.k === 'mode');
+  if (!f || !isRaceGame(t)) return '';
+  const v = raceOn(t) ? 'race' : 'shared';
+  const opt = (o, label, line) => `<label class="modeopt"><input type="radio" name="mode" value="${o}" data-tune="${t}" data-k="mode"${v === o ? ' checked' : ''}><b>${label}</b><small>${line}</small></label>`;
+  return `<div class="card ctl" id="modeCard"><div class="row"><h2>Mode</h2>${v === 'race' ? badge('race', 'Race') : badge('shared', 'Shared')}</div>
+    <div class="modesw" role="radiogroup" aria-label="Mode">${opt('shared', 'Shared', 'One board: both players see every guess and clue.')}${opt('race', 'Race', 'The same target, private guesses: each sees only a shape of the other\'s progress.')}</div>
+    <p class="note">Saved with the settings below (Save); dealt into squares from then on. Default: Shared.</p></div>`;
 }
 function gamePage(t) {
-  const fields = tuneList(t), saved = (ctl.tune && ctl.tune[t]) || {}, cat = CATS.find(c => META[t] && c[0] === META[t].category);
+  const fields = tuneList(t).filter(f => f.k !== 'mode' || !isRaceGame(t)), saved = (ctl.tune && ctl.tune[t]) || {}, own = legacyCard(t);
   const inp = f => {
     const v = saved[f.k] !== undefined ? saved[f.k] : f.def, ch = saved[f.k] !== undefined && saved[f.k] !== f.def;
     const box = f.opts ? `<select data-tune="${t}" data-k="${f.k}">${f.opts.map(o => `<option value="${esc(o)}"${String(o) === String(v) ? ' selected' : ''}>${esc(o)}</option>`).join('')}</select>`
@@ -855,16 +884,19 @@ function gamePage(t) {
     return `<label class="rf${ch ? ' chg' : ''}"><span>${esc(f.label)}</span>${box}<small>Default ${esc(f.def)}${f.opts ? '' : ` · ${f.min}–${f.max}`}</small></label>`;
   };
   const groups = TGROUPS.concat([...new Set(fields.map(f => f.group).filter(g => !TGROUPS.includes(g)))]).map(g => [g, fields.filter(f => (f.group || 'Rules') === g)]).filter(([, fs]) => fs.length);
-  const body = fields.length ? groups.map(([g, fs]) => `<h3>${esc(g)}</h3><div class="rform tform">${fs.map(inp).join('')}</div>`).join('') : '<p class="note">No settings of its own beyond the tuning card above.</p>';
-  return `<div class="gpage"><p class="note">${cat ? esc(cat[1]) : ''} · ${esc((META[t] && META[t].info && META[t].info.hint) || '')}</p>
-    ${legacyCard(t)}
+  const body = fields.length ? groups.map(([g, fs]) => `<h3>${esc(g)}</h3><div class="rform tform">${fs.map(inp).join('')}</div>`).join('') : `<p class="note">${own ? 'No settings beyond its tuning above.' : 'No settings.'}</p>`;
+  const any = fields.length || own || isRaceGame(t);
+  return `<div class="gpage" id="gamePage" data-game="${t}">${releaseCard(t)}${modeCard(t)}${own}
     <div class="card ctl" id="tuneCard"><h2>Settings</h2>${body}
-      <div class="tbar"><button class="btn go" data-tunesave="${t}"${fields.length ? '' : ' disabled'}>Save</button><button class="btn" data-tunereset="${t}">Reset to defaults</button><button class="btn tplay" data-testplay="${t}" title="Opens the game alone in a new tab with this page's values, saved or not (the live settings are not touched)">Test play</button></div>
-      <p class="note">Save: to the game and the server at once, for squares dealt from then on. Reset to defaults: every value on this page back to the code's${legacyPath(t) ? ' (the tuning card\'s too)' : ''}. Test play: the game alone in a new tab with the values as they are here, saved or not.</p></div></div>`;
+      <div class="tbar"><button class="btn go" data-gamesave="${t}"${any ? '' : ' disabled'}>Save</button><button class="btn" data-tunereset="${t}">Reset to defaults</button><button class="btn tplay" data-testplay="${t}" title="Opens the game alone in a new tab with this page's values, saved or not (the live settings are not touched)">Test play</button><span class="unsaved" role="status"></span></div>
+      <p class="note">Save: every value on this page${own ? ' (the tuning card\'s too)' : ''}${isRaceGame(t) ? ', the Mode included,' : ''} to the game and the server at once, for squares dealt from then on; only what differs from the defaults is kept. Reset to defaults: every value on this page back to the code's${own ? ' (the tuning card\'s too)' : ''}. Test play: the game alone in a new tab with the values as they are here, saved or not.</p></div></div>`;
 }
-async function saveTune(t, btn) {
+// Save: the page's TUNE values (config/tune/<type>, the values that differ from the defaults alone) and its tuning card's
+// (config/<name>, the card's own shape), each written only where it changed; the mode rides the TUNE values.
+async function saveGame(t, btn) {
   const out = {};
   for (const el of app.querySelectorAll(`[data-tune="${t}"]`)) {
+    if (el.type === 'radio' && !el.checked) continue;
     const f = tuneList(t).find(x => x.k === el.dataset.k), v = f && TUNE.tuneValue(f, el.value);
     if (!f) continue;
     if (v === null || (!f.opts && Number(el.value) !== v)) { said(btn, false, `${f.label}: ${f.opts ? 'one of ' + f.opts.join(', ') : `a number from ${f.min} to ${f.max}${f.step && f.step !== 1 ? ` in steps of ${f.step}` : ''}`}`); return; }
@@ -872,18 +904,25 @@ async function saveTune(t, btn) {
   }
   const bad = META[t] && typeof META[t].tuneCheck === 'function' && META[t].tuneCheck(Object.assign(TUNE.tuneDefaults(t), out));   // (the game's own check of its values together)
   if (bad) { said(btn, false, bad); return; }
-  const norm = TUNE.tuneNorm(t, out);
+  const norm = TUNE.tuneNorm(t, out), own = legacyRead(t);
+  if (own && own.err) { said(btn, false, own.err); return; }
+  const tuneDiff = canon(norm) !== canon((ctl.tune && ctl.tune[t]) || {}), ownDiff = !!own && canon(own.value) !== canon(legacyStored(t) || {});
+  if (!tuneDiff && !ownDiff) { said(btn, true, 'Nothing to save'); return; }
   btn.disabled = true;
   try {
-    await fb.dbM.set(fb.dbM.ref(fb.db, `config/tune/${t}`), Object.keys(norm).length ? norm : null);
-    const back = (await fb.dbM.get(fb.dbM.ref(fb.db, `config/tune/${t}`))).val() || {};   // (read back: what the game and the server will deal with)
-    if (JSON.stringify(TUNE.tuneNorm(t, back)) !== JSON.stringify(norm)) throw new Error('the database kept different values; reload and try again');
-    ctl.tune = Object.assign({}, ctl.tune, { [t]: norm });
-    if (!Object.keys(norm).length) delete ctl.tune[t];
+    if (tuneDiff) {
+      await fb.dbM.set(fb.dbM.ref(fb.db, `config/tune/${t}`), Object.keys(norm).length ? norm : null);
+      const back = (await fb.dbM.get(fb.dbM.ref(fb.db, `config/tune/${t}`))).val() || {};   // (read back: what the game and the server will deal with)
+      if (canon(TUNE.tuneNorm(t, back)) !== canon(norm)) throw new Error('the database kept different values; reload and try again');
+      ctl.tune = Object.assign({}, ctl.tune, { [t]: norm });
+      if (!Object.keys(norm).length) delete ctl.tune[t];
+    }
+    if (ownDiff) { await fb.dbM.set(fb.dbM.ref(fb.db, legacyPath(t)), own.value); legacyKeep(t, own.value); }
   } catch (e) { said(btn, false, failed(e)); return; }
-  render(); said(btn, true, 'Saved');
+  render(); said(app.querySelector(`[data-gamesave="${t}"]`) || btn, true, 'Saved');
 }
-async function resetTune(t, btn) {
+// Reset to defaults: the game's config/tune/<type> and its tuning card's node go (the code's defaults then apply), after a confirm.
+async function resetGame(t, btn) {
   if (!confirm(`Put every ${GAMES[t]} setting back to its default? Squares dealt from then on use the defaults.`)) return;
   btn.disabled = true;
   try {
@@ -891,7 +930,17 @@ async function resetTune(t, btn) {
     if (legacyPath(t)) await fb.dbM.set(fb.dbM.ref(fb.db, legacyPath(t)), null);
     await loadCtl();
   } catch (e) { said(btn, false, 'Not reset: ' + ((e && e.message) || 'the database refused it')); return; }
-  render(); said(btn, true, 'Back to the defaults');
+  render(); said(app.querySelector(`[data-tunereset="${t}"]`) || btn, true, 'Back to the defaults');
+}
+// An edit on a game's page: the field and the page are marked until Save or Reset redraws it.
+const EDIT_SEL = '[data-tune], [data-runcfg], [data-bullcfg], [data-plinkocfg], [data-pigcfg], [data-roadscfg], [data-oddcfg], [data-wheelcfg], [data-attcfg], [data-fingcfg]';
+function dirtyMark(el) {
+  if (!el || !el.closest || !el.matches || !el.matches(EDIT_SEL)) return;
+  const page = el.closest('#gamePage');
+  if (!page) return;
+  const lab = el.closest('label'); if (lab) lab.classList.add('dirty');
+  page.classList.add('dirty');
+  const u = page.querySelector('.unsaved'); if (u) u.textContent = 'Unsaved changes';
 }
 // ---------- the timer (config/timer/spec, read by the server and the game): Find Match's timer and the friend-game default.
 // A code: 't30', 't60' (seconds a turn), 'm5+2' (minutes each, seconds added a move: a match clock); core/timer.js timerSpec ----------
@@ -1139,25 +1188,16 @@ app.addEventListener('click', e => {
   else if (b.dataset.act === 'all-sessions') { allSessions = !allSessions; render(); }
   else if (b.dataset.act === 'save-keys') saveKeys();
   else if (b.dataset.testplay) testPlay(b.dataset.testplay);
-  else if (b.dataset.tunesave) saveTune(b.dataset.tunesave, b);
-  else if (b.dataset.tunereset) resetTune(b.dataset.tunereset, b);
+  else if (b.dataset.gamesave) saveGame(b.dataset.gamesave, b);
+  else if (b.dataset.tunereset) resetGame(b.dataset.tunereset, b);
   else if (b.dataset.airesets) resetAi(b);
-  else if (b.dataset.runsave) saveRunCfg(b.dataset.runsave, b);
-  else if (b.dataset.bullsave) saveBullsCfg(b);
-  else if (b.dataset.wheelsave) saveWheelsCfg(b);
-  else if (b.dataset.plinkosave) savePlinkoCfg(b);
   else if (b.dataset.animsave) saveAnimCfg(b, false);
   else if (b.dataset.aimarginsave) saveAiMargin(b);
   else if (b.dataset.clientsave) saveClients(b);
   else if (b.dataset.animreset) saveAnimCfg(b, true);
-  else if (b.dataset.pigsave) savePigCfg(b);
-  else if (b.dataset.roadssave) saveRoadsCfg(b);
-  else if (b.dataset.oddsave) saveOddCfg(b);
-  else if (b.dataset.attsave) saveAttCfg(b);
-  else if (b.dataset.fingsave) saveFingCfg(b);
   else if (b.dataset.act === 'test-alert') testAlert(b);
 });
-app.addEventListener('input', () => { if (note) { note = null; showNote(); } });   // (an edit after a save: its note goes)
+app.addEventListener('input', e => { if (note) { note = null; showNote(); } dirtyMark(e.target); });   // (an edit after a save: its note goes; on a game's page the edit is marked unsaved)
 app.addEventListener('change', e => {
   if (e.target.id === 'mm') { miniMode = e.target.value; render(); }
   if (e.target.id === 'mrace') { miniRace = e.target.value; render(); }
@@ -1168,6 +1208,9 @@ app.addEventListener('change', e => {
   else if (e.target.dataset && e.target.dataset.feat) saveFeat(e.target);
   else if (e.target.dataset && e.target.dataset.rel) saveRelease(e.target);
   else if (e.target.dataset && e.target.dataset.relios) saveRelIos(e.target);
+  else dirtyMark(e.target);   // (a select or the Mode switch on a game's page)
 });
-boot().catch(() => { app.innerHTML = '<div class="card msg"><h1>Tic Tac Chaos Stats</h1><p>Could not load. Check the connection and reload.</p></div>'; });
+if (window.TTT_FIREBASE && window.TTT_FIREBASE.offline) {   // the tests (tests/ui/admin-games.test.mjs): the page's parts without Firebase, the database stood in for
+  window.TTC_ADMIN = { get ctl() { return ctl; }, set ctl(v) { ctl = v; }, set fb(v) { fb = v; }, ready(st) { user = { email: 'test' }; stats = st || {}; view = { status: 'ready', error: '' }; }, loadMetas, loadCtl, draw, render, route, gamesIndex, gamePage, saveGame, resetGame, legacyPath, isReleased, iosOff, gameChanged, raceOn, TEST_TYPES };
+} else boot().catch(() => { app.innerHTML = '<div class="card msg"><h1>Tic Tac Chaos Stats</h1><p>Could not load. Check the connection and reload.</p></div>'; });
 document.addEventListener('gesturestart', e => e.preventDefault(), { passive: false }); document.addEventListener('gesturechange', e => e.preventDefault(), { passive: false });   // (iPhone's pinch)

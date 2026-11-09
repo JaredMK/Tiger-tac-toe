@@ -55,3 +55,22 @@ test('admin page: the finger games\' tuning cards are the engine\'s settings and
     for (const [k, , lo, hi, step] of c.fields) assert.deepEqual([lo, hi, step], LIMITS[c.id][k], `${c.id}.${k}: the engine's range`);
   }
 });
+
+// The Games page (November 2026: Mini-game Settings and Releases in one): its tuning cards write the paths the copy to
+// production carries, its race list is the engine's own (imported, not copied), and the old pages' hashes are aliased.
+test('admin page: the games\' own tuning cards are exactly the paths copy-settings carries, and the old pages\' hashes open the Games page', () => {
+  const m = admin.match(/^const legacyPath = (t => \(.*?\));$/m);
+  assert.ok(m, 'admin.js has legacyPath');
+  const legacyPath = new Function('RUN_TYPES', `return (${m[1]});`)(E.RUN_TYPES);
+  const cards = new Set(E.TYPES.map(legacyPath).filter(Boolean).map(p => p.replace(/^config\/run\/.*/, 'config/run')));
+  const copy = fs.readFileSync(path.join(__dirname, '..', '..', 'scripts', 'copy-settings.js'), 'utf8').match(/^const PATHS = (\[[\s\S]*?\]);$/m);
+  assert.ok(copy, 'copy-settings.js lists its PATHS');
+  const shared = ['releases', 'features', 'config/tune', 'config/ai', 'config/anim', 'config/timer', 'admin/config'];
+  assert.deepEqual([...cards].sort(), new Function(`return ${copy[1]};`)().filter(p => !shared.includes(p)).sort(), 'every game card the copy carries has a page here, and nothing else writes a config node');
+  assert.match(admin, /import\('\.\/src\/core\/race\.js'\)/, 'the race games come from the engine');
+  assert.doesNotMatch(admin, /^const RACE_TYPES/m, 'no copy of the race list');
+  assert.deepEqual(literal('ALIAS'), { settings: 'games', releases: 'games' });
+  assert.doesNotMatch(admin, /\['settings', |\['releases', /, 'no Mini-game Settings or Releases section');
+  assert.doesNotMatch(admin, /data-(runsave|bullsave|wheelsave|plinkosave|pigsave|roadssave|oddsave|attsave|fingsave|tunesave)=/, 'no Save of a card\'s own: the page\'s Save covers it');
+  assert.equal((admin.match(/<button class="btn go" data-gamesave=/g) || []).length, 1, 'one Save button template'); assert.equal((admin.match(/<button class="btn" data-tunereset=/g) || []).length, 1, 'one Reset');
+});
