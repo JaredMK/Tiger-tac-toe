@@ -1,6 +1,9 @@
 // The "?" explainer pop-up and How to Play (each game's meta.js: explainer).
-import { dealOpts } from '../core/match.js';
+import { dealOpts, startPractice } from '../core/match.js';
 import { isRace, raceDealt } from '../core/race.js';
+import { other } from '../core/util.js';
+import { acct, loggedIn } from '../net/accounts.js';
+import { closeIntro, showSides } from '../net/matchmaking.js';
 import { pigConfig, pigGoal } from '../games/pig/rules.js';
 import { wheelsConfig } from '../games/wheels/rules.js';
 import { tune, tuneLive } from '../core/tune.js';
@@ -9,10 +12,13 @@ import { GAMES, SC_ONLY } from '../games/index.js';
 import { SUPER_CHAOS_ENABLED } from '../core/config.js';
 import { privacyUrl } from '../net/platform.js';
 import { testBadge, visibleTypes } from '../net/releases.js';
-import { app, state } from './app.js';
+import { RNG, app, commit, cpuTimer, flashTimer, holdTimer, setCpuPlan, setCpuTimer, setFlashTimer, setHoldTimer, setMenuOpen, setMenuStep, setSpotTimer, spotTimer, state } from './app.js';
 import { CHEV, ICONS } from './art.js';
 import { fxAt, fxAttr, startFx } from './fx.js';
+import { render } from './render.js';
+import { repStop } from './replay.js';
 import { chaosSetup } from './screens/setup.js';
+import { renderWin } from './screens/win.js';
 import { scheduleCpu } from './turns.js';
 
 /* ----- explainers: the rules in short, from the "?" in a mini-game, the game list, or How to Play ----- */
@@ -60,7 +66,59 @@ export function renderExplain() {
     <h2>${explainT === 'timer' ? CLOCK_ICON : explainT === 'superchaos' || explainT === 'mode' ? SC_ICON : ICONS[explainT]}<span>${x.name}</span></h2>
     ${x.text ? `<p class="exline wide"><span>${x.text}</span></p>` : x.lines ? x.lines.map(([k, v]) => `<p class="exline wide"><b>${k}</b><span>${v}</span></p>`).join('') : `<p class="exline play"><b>Play</b><span>${x.play}</span></p>
     <p class="exline win"><b>Win</b><span>${x.win}</span></p>`}
+    ${practiceOffered(explainT) ? `<button class="btn practice" data-act="practice" data-t="${explainT}">Practice</button>` : ''}
     <small>Tap anywhere to close</small></div></div>`;
+}
+/* ----- Practice (How to Play): one mini-game alone against the computer on Easy -----
+ * Each game's explainer opened from How to Play (and the practice match's own end screen) has a Practice button: a Play
+ * Computer match of that mini-game alone, every square that game, the player's side drawn, the computer on Easy
+ * (core/match.js startPractice: state.practice = { type }), with the side reveal as every match. While it runs, a Back to
+ * How to Play stands where Menu does on the board and in the square (ui/turnbar.js, practiceBack); tapping it ends the
+ * match with nothing recorded (no loss, no stats, no history: net/tracking.js skips a practice match) and opens How to
+ * Play at that game's explainer. The match's end shows the usual result screen with Practice again and Back to How to
+ * Play alone (renderPracticeEnd, ui/render.js). A practice match is never restored (ui/app.js load, freshVisit). */
+const practiceOffered = t => !!(GAMES[t] && !SC_ONLY.includes(t) && visibleTypes().includes(t) && (state.screen === 'howto' || (state.screen === 'win' && state.practice)));
+export const practiceName = () => (loggedIn() && acct.profile.username) || 'You';
+export function practiceStart(t) {
+  if (!GAMES[t] || !visibleTypes().includes(t)) return false;
+  closeExplain(true);
+  closeIntro();
+  const human = startPractice(state, RNG, t, practiceName());
+  if (!human) return false;
+  const n = p => { const v = state.setup.names[p]; return v && v !== p ? v : p; };
+  showSides({ X: { name: n('X') }, O: { name: n('O') } }, human);   // the side reveal, as every match opens (net/matchmaking.js)
+  commit();
+  return true;
+}
+// The header's top-left in a practice match (ui/turnbar.js, in Menu's place): Back to How to Play, always there.
+export function practiceBack() {
+  if (!state.practice || !['board', 'mini'].includes(state.screen)) return '';
+  return `<button class="menubtn pback" data-act="practice-back" aria-label="Back to How to Play">${CHEV}<span>Back to How to Play</span></button>`;
+}
+// Back to How to Play: the practice match ends here, whatever its state, with nothing recorded, and How to Play opens at
+// the game's explainer (the entry brought into view).
+export function practiceEnd() {
+  const p = state.practice;
+  if (!p) { state.screen = 'howto'; commit(); return; }
+  clearTimeout(cpuTimer); setCpuTimer(null); setCpuPlan(null);
+  clearTimeout(spotTimer); setSpotTimer(null);
+  clearTimeout(flashTimer); setFlashTimer(null);
+  clearTimeout(holdTimer); setHoldTimer(null); repStop(); closeIntro();
+  setMenuOpen(false); setMenuStep('main');
+  state.flash = null; state.done = null; state.spot = null; state.lock = null; state.confirm = null; state.notice = null; state.stamp = null; state.drawStamp = null;
+  state.practice = null; state.quick = false; state.stats = null;   // (left part way: the match simply stops, no result of anyone's; nothing is sent anywhere, net/tracking.js)
+  state.screen = 'howto'; state.zoom = null;
+  commit();
+  openExplain(p.type);
+  const row = app.querySelector && app.querySelector(`.howlist [data-act="explain"][data-t="${p.type}"]`);
+  if (row && typeof row.scrollIntoView === 'function') try { row.scrollIntoView({ block: 'center' }); } catch (e) { /* (an old browser: the explainer is open anyway) */ }
+}
+// The practice match's end: the result screen as every match's (ui/screens/win.js), its buttons Practice again and Back
+// to How to Play alone (no rematch, no main menu, no share).
+export function renderPracticeEnd() {
+  const t = state.practice && state.practice.type;
+  const row = `<div class="row prow"><button class="primary" data-act="practice" data-t="${t}">Practice again</button><button class="btn" data-act="practice-back">Back to How to Play</button></div>`;
+  return renderWin().replace(/<div class="row">[\s\S]*?<\/div>/, row).replace(/<div class="sharerow">[\s\S]*?<\/div><\/div>/, '');
 }
 // Opened and closed in place: the screen underneath is not drawn again (no scroll jump, no move used).
 export function openExplain(t) {

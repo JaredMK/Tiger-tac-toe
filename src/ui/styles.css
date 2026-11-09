@@ -3356,3 +3356,49 @@ main.scr.mini:has(.brkw.run) .back { visibility: hidden; pointer-events: none; }
 .primary .spinr { width: 18px; height: 18px; border-radius: 50%; border: 3px solid rgba(255, 255, 255, .35); border-top-color: #fff; animation: spinr .8s linear infinite; flex: none; }
 @keyframes spinr { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .primary .spinr { animation: none; border-top-color: rgba(255, 255, 255, .35); } }
+
+/* ----- Templates (the setup's admin row: ui/screens/setup.js templatesRow) and Practice (How to Play: ui/explainer.js) ----- */
+.tpls { display: flex; flex-direction: column; gap: 8px; }
+.tpls .games-h small { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-left: 10px; text-align: right; }
+.tpllist { display: flex; flex-direction: column; gap: 6px; max-height: 162px; overflow-y: auto; min-height: 48px; }   /* (three rows, then it scrolls: the setup never grows past the screen) */
+.tplrow { display: flex; align-items: center; gap: 10px; height: 48px; flex: none; padding: 2px 12px 0; border: 2.5px solid var(--ink); border-radius: 13px 9px 12px 10px; background: #fff; box-shadow: 0 3px 0 var(--ink); color: var(--ink); font: inherit; text-align: left; min-width: 0; }
+.tplrow b { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-weight: 400; font-size: 15px; letter-spacing: .02em; }
+.tplrow small { flex: none; color: var(--muted); font-weight: 700; font-size: 12px; white-space: nowrap; }
+.tplrow.on { background: var(--o); }
+.tplrow.on small { color: var(--ink); }
+.tplrow:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+.tplnone { display: flex; align-items: center; height: 48px; padding: 0 4px; color: var(--muted); font-style: normal; font-weight: 700; font-size: 14px; }
+.tplbar { display: flex; flex-direction: column; gap: 8px; min-height: 104px; }                 /* two rows of 48px: the same shape whether the buttons, the name field or the question is up */
+.tplbtns { display: flex; gap: 8px; min-width: 0; }
+.tplb { flex: 1 1 0; min-width: 0; height: 48px; padding: 0 6px; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tplb.wide { flex: 1 1 100%; }
+.tplfield { display: block; min-width: 0; }
+.tplfield input { width: 100%; min-width: 0; height: 48px; padding: 0 12px; border-radius: 14px 10px 13px 9px; border: 3px solid var(--ink); background: #fff; color: var(--ink); font: 400 20px 'Patrick Hand', cursive; box-shadow: 0 3px 0 var(--ink); user-select: text; -webkit-user-select: text; }
+.tplfield input:focus { outline: none; box-shadow: 0 3px 0 var(--ink), 0 0 0 3px var(--o); }
+.tplask { margin: 0; display: flex; align-items: center; height: 48px; padding: 0 4px; font-weight: 700; font-size: 16px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.excard .btn.practice { height: 48px; width: 100%; background: var(--o); color: var(--ink); }
+.hdrrow .menubtn.pback { display: flex; align-items: center; gap: 0; padding: 0 8px 0 4px; min-width: 0; font-size: 12px; line-height: 1.05; text-align: left; }
+.hdrrow .menubtn.pback svg { width: 16px; height: 16px; flex: none; }
+.hdrrow .menubtn.pback span { display: block; width: 62px; white-space: normal; }           /* two short lines: "Back to" / "How to Play", never squeezing the names beside it */
+.win-card .row.prow { flex-wrap: wrap; justify-content: center; }
+/* ---- Dominoes layout and draws (November 2026): the line laid end to end on the felt (domLayout); a draw's tiles slide from the boneyard one by one into the hand and onto the stack (.dmin), leaving the boneyard's stack (.dmout); a count that ticks through its values as each tile lands (.dtick), all anchored to the move's event ---- */
+.dtick { display: inline-grid; font-variant-numeric: tabular-nums; } .dtick span { grid-area: 1 / 1; }
+.dtick .dtv { animation: dtickin 1ms var(--t, 0ms) step-end both; } .dtick .dtvo { animation: dtickout 1ms var(--t2, 0ms) step-end forwards; }
+.dtick .dtv.dtvo { animation: dtickin 1ms var(--t, 0ms) step-end both, dtickout 1ms var(--t2, 0ms) step-end forwards; }
+@keyframes dtickin { from { visibility: hidden; } to { visibility: visible; } } @keyframes dtickout { from { visibility: visible; } to { visibility: hidden; } }
+.domtile.dmin { animation: dmhand var(--d, 240ms) var(--t, 0ms) cubic-bezier(.2, .8, .2, 1) both; }   /* a drawn tile: down from the boneyard's row into the hand */
+@keyframes dmhand { from { transform: translate(-40%, -140%) scale(.7); opacity: 0; } 30% { opacity: 1; } to { transform: none; opacity: 1; } }
+.dstk i.dmin { animation: dmstk var(--d, 240ms) var(--t, 0ms) cubic-bezier(.2, .8, .2, 1) both; }   /* a drawn tile, face down, up from the boneyard onto the player's stack (the other phone sees the draw this way) */
+@keyframes dmstk { from { transform: translate(-6px, 260%) scale(.9); opacity: 0; } 30% { opacity: 1; } to { transform: none; opacity: 1; } }
+.dpstk i.dmout { animation: dmout .2s var(--t, 0ms) ease-in both; }   /* a tile leaving the boneyard's stack as its slide begins */
+@keyframes dmout { from { transform: none; opacity: 1; } to { transform: translate(8px, 10px) scale(.6); opacity: 0; } }
+.domtable .dombox { max-height: 100%; }
+
+/* ---- Cup Pong (November 2026): the table drawn on a canvas in perspective (games/pong/view.js); the miniature .tpg ---- */
+.pong .pgcv { flex: 1 1 0; min-height: 0; width: 100%; display: block; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; border-radius: 14px; }
+.pong.live .pgcv { cursor: grab; }
+.tpg { width: 100%; display: grid; place-items: center; } .tpg svg { width: 92%; height: auto; overflow: visible; }   /* Cup Pong's miniature: the table in perspective, a rack of cups at each side of the far end */
+.tpg .ttop { fill: #3b8a4f; stroke: var(--ink); stroke-width: 2.2; stroke-linejoin: round; } .tpg .tedge { fill: #6b4a2b; stroke: var(--ink); stroke-width: 1.6; } .tpg .tline { stroke: rgba(255,255,255,.5); stroke-width: 1.2; }
+.tpg .cb, .tpg .ct { stroke: var(--ink); stroke-width: 1.3; } .tpg .c.X .cb, .tpg .c.X .ct { fill: var(--x); } .tpg .c.O .cb, .tpg .c.O .ct { fill: var(--o); } .tpg .cw { fill: var(--sky); opacity: .85; }
+.tpg .cs { fill: none; stroke: rgba(255,255,255,.75); stroke-width: 1.4; stroke-dasharray: 2 1.5; }   /* a cup sunk: the ring where it stood */
+.tpg .tpm.X .tmk { stroke: var(--x); } .tpg .tpm.O .tmk { stroke: var(--o); }

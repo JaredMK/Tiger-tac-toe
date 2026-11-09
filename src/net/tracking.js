@@ -81,15 +81,17 @@ export async function flushOutbox() {
   } catch (e) { outLater(); } finally { outBusy = false; }
 }
 const localMode = () => (state.sc ? 'chaos' : state.cpu === 'XO' ? 'cvc' : state.cpu ? 'cpu' : 'local');   // (Super Chaos: a mode of its own)
+// A practice match (How to Play's Practice, state.practice) is never counted: no start or end report, no local record or
+// history (reportLocal), no playtest event (devMatch).
 export function trackStart() {
-  if (state.online) return;
+  if (state.online || state.practice) return;
   const id = Array.from(crypto.getRandomValues(new Uint8Array(10)), b => b.toString(16).padStart(2, '0')).join('');
   state.stats = { id, mode: localMode(), sent: false };
   track({ ev: 'start', mode: state.stats.mode, id });
 }
 export function trackEnd() {
   const s = state.stats;
-  if (!s || s.sent || !state.winner || state.online) return;
+  if (!s || s.sent || !state.winner || state.online || state.practice) return;
   s.sent = true;
   const m = matchStats(state);
   track({ ev: 'end', mode: s.mode, id: s.id, turns: m.turns, winner: m.winner, reason: m.reason, sc: m.sc, squares: m.squares });
@@ -139,7 +141,7 @@ export function devError(kind, msg) {
 // The match on show here, by a key that stays the same across reloads (the server keeps each start and
 // end once): a Find Match game, a friend match, or a local one.
 function devMatch() {
-  if (!Array.isArray(state.squares) || state.squares.length !== 9) return null;
+  if (!Array.isArray(state.squares) || state.squares.length !== 9 || state.practice) return null;
   const o = state.online;
   if (o) {
     return isMM() && o.game ? { g: 'm' + o.game, mode: o.room ? 'friend' : 'match' } : null;   // (a friend room's match: the server's game, logged under its id)
@@ -199,7 +201,7 @@ export function pendingLocal(list) {
   return [];
 }
 export function reportLocal() {
-  if (state.online || !state.winner || !loggedIn() || window.TTT_FIREBASE && window.TTT_FIREBASE.uid) return;
+  if (state.online || state.practice || !state.winner || !loggedIn() || window.TTT_FIREBASE && window.TTT_FIREBASE.uid) return;
   if (!state.stats || state.stats.rec || state.stats.mode === 'cvc' || state.stats.mode === 'chaos') return;      // local matches only (started here), once each (Super Chaos: counted in the game stats only, for now)
   state.stats.rec = true;
   const side = state.setup.human === 'O' ? 'O' : 'X', opp = other(side);

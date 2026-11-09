@@ -29,7 +29,7 @@ import {
   setCpuPlan, setCpuTimer, setMenuNote, setMenuOpen, setMenuStep, state, zoomedType
 } from './app.js';
 import { RATINGS_ENABLED } from './config.js';
-import { closeExplain, explainT, openExplain } from './explainer.js';
+import { closeExplain, explainT, openExplain, practiceEnd, practiceStart } from './explainer.js';
 import { fingGo } from './finger.js';
 import { startFx, tapPop } from './fx.js';
 import { setPace } from './pace.js';
@@ -43,7 +43,7 @@ import { scJointFrame, scPopup, scSkip } from './chaos.js';
 import { rep, repActive, repNote, repSkip, repVal } from './replay.js';
 import { runGo } from './runner.js';
 import { hist, openHistory, openLeaderboard, openProfile, prof, profileBack, setHist } from './screens/profile.js';
-import { chaosSetup, setGames, setupTypes } from './screens/setup.js';
+import { chaosSetup, setGames, setupTypes, tplAct } from './screens/setup.js';
 import { cpuTurn, dismissFlash, flashAnimating, scheduleCpu, skipFlash } from './turns.js';
 import { closeReport, openReport } from './report.js';
 import { shareResult } from './sharecard.js';
@@ -142,6 +142,7 @@ export function init() {
     if (act === 'ask-leave') { if (joinAsk) leaveAndJoin(joinAsk.code); return; }
     if (act === 'dismiss') { if (Date.now() >= flashReady) dismissFlash(); return; }   // not before the animation is over
     if (act === 'rep-skip') { repSkip(); return; }                                      // an opponent's replay: straight to its result
+    if (act === 'practice-back') { practiceEnd(); return; }                             // a practice match's Back to How to Play (ui/explainer.js): at any moment, the computer's turn or a result on show too
     const free = ['anim-set', 'set-sound', 'set-vib', 'pause-settings', 'pause', 'pause-report', 'pause-resume', 'pause-main', 'pause-back', 'pause-leave', 'leave', 'lobby-back', 'menu', 'find-again', 'profile', 'prof-back', 'prof-hist', 'mystats', 'hist-open', 'hist-sq', 'hist-back', 'hist-close', 'leaderboard', 'rejoin', 'host-retry', 'share', 'copy-invite', 'rematch', 'rematch-cancel', 'share-result', 'timer', 'review', 'review-sq', 'review-back', 'results', 'pview', 'react-open', 'react-send', 'del-account', 'del-cancel', 'del-confirm', 'verify-retry', 'verify-resend'];
     if (act === 'set-sound') { setSound(el.dataset.v === 'on'); return; }            // Settings (ui/settings.js): this phone and the account, any time, the menu open or not
     if (act === 'set-vib') { setVibration(el.dataset.v === 'on'); if (el.dataset.v === 'on') haptic('tap'); return; }
@@ -207,6 +208,10 @@ export function init() {
       if (state.winner) { state.screen = 'review'; state.zoom = null; render(); }
     } else if (act === 'results') {
       if (state.winner) { state.screen = 'win'; state.zoom = null; render(); }
+    } else if (act === 'practice') {               // How to Play's Practice: that mini-game alone against the computer on Easy (ui/explainer.js)
+      practiceStart(el.dataset.t);
+    } else if (act.startsWith('tpl-')) {           // the setup's Templates row, admin only (ui/screens/setup.js)
+      tplAct(act, el);
     } else if (act === 'howto') {
       state.screen = 'howto'; commit();
     } else if (act === 'settings') {

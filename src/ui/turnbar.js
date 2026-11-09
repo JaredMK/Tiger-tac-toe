@@ -9,6 +9,7 @@ import { scTurnText } from './chaos.js';
 import { clockText, incShow, matchLeft, fmtClock } from './clock.js';
 import { animMs, fx, fxAt, fxAttr, startFx } from './fx.js';
 import { flashLine } from './mini.js';
+import { practiceBack } from './explainer.js';
 
 // The game screen's top: a slim row with Menu and the clock in its own fixed box, then the turn bar:
 // X and O with their names on each side (the player on the move bouncing gently), and whose turn it is.
@@ -29,7 +30,7 @@ export function renderHeader() {
   const card = p => (rx.card && rx.card.side === p && !menuOpen ? rx.card : null);   // (not over the in-game menu)
   const side = p => `<div class="tside ${p}${p === t ? ' on' : ''}"><span class="tg">${toon(p)}<span class="rbub${card(p) ? ' on' : ''}"${card(p) ? fxAttr(card(p).at, 'rt') : ''} aria-live="polite">${card(p) ? card(p).e : ''}</span></span><b class="nm">${N(p)}</b>${pclk(p)}</div>`;
   return `<header class="hdr t-${t}${clock || ml ? ' has-clock' : ''}${ml ? ' mclock' : ''}">
-    <div class="hdrrow"><button class="menubtn" data-act="pause" aria-label="Menu">Menu</button><div class="tbar">${side('X')}${side('O')}</div></div>
+    <div class="hdrrow">${practiceBack() || '<button class="menubtn" data-act="pause" aria-label="Menu">Menu</button>'}<div class="tbar">${side('X')}${side('O')}</div></div>
     <div class="hdrrow2"><div class="turn" aria-live="polite">${resultLine(drawn ? `<span class="who">Draw · ${state.winReason === 'both' ? 'both made a line' : 'no line left'}</span>` : won ? `<span class="g">${t}</span><span class="who">${isYou(t) ? 'You win' : `${N(t)} wins`}</span>` : sc ? scTurnText() : `<span class="g">${t}</span><span class="who">${isYou(t) ? 'Your turn' : `${N(t)}<i class="suf">'s turn</i>`}</span>`)}</div><span class="clockbox">${clock}</span></div>
   </header>`;
 }

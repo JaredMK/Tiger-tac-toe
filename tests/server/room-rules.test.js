@@ -196,3 +196,29 @@ test('prefs rules: a player\'s own settings (prefs/{uid}: the Animation choice) 
   await denied(other.write(`prefs/${me.uid}/anim`, 'speed'), "another's setting");
   await denied(anon.write(`prefs/${me.uid}/anim`, 'speed'), 'a setting without a login');
 });
+test('templates rules: an admin\'s game templates (templates/{uid}/{id}: name, games, at) are the owner\'s alone to read and write, held to their shape: a name of 1-24 characters, games a map of true by known mini-game only, nothing else', async () => {
+  const me = client('uid-tpl'), other = client('uid-tpl2'), anon = client(null);
+  const ok = { name: 'Quick ones', games: { ttt: true, c4: true }, at: Date.now() };
+  await me.write(`templates/${me.uid}/t1abc`, ok);
+  assert.deepEqual((await me.read(`templates/${me.uid}`)).t1abc.games, { ttt: true, c4: true }, 'the owner reads them back');
+  await me.write(`templates/${me.uid}/t1abc/name`, 'Renamed');                              // a rename: the name alone
+  await me.write(`templates/${me.uid}/t1abc`, Object.assign({}, ok, { games: { hilo: true } }));   // an update: the whole template again
+  await denied(me.write(`templates/${me.uid}/t1abc/name`, ''), 'an empty name');
+  await denied(me.write(`templates/${me.uid}/t1abc/name`, 'x'.repeat(25)), 'a name over 24 characters');
+  await denied(me.write(`templates/${me.uid}/t1abc/name`, 7), 'a name that is not a string');
+  await denied(me.write(`templates/${me.uid}/t2abc`, { name: 'No games', at: 1 }), 'a template without games');
+  await denied(me.write(`templates/${me.uid}/t2abc`, { name: 'Late', games: { ttt: true } }), 'a template without its time');
+  await denied(me.write(`templates/${me.uid}/t2abc`, Object.assign({}, ok, { games: { ttt: true, nope: true } })), 'a game that is not one');
+  await denied(me.write(`templates/${me.uid}/t2abc`, Object.assign({}, ok, { games: { ttt: 1 } })), 'a game flag that is not a boolean');
+  await denied(me.write(`templates/${me.uid}/t2abc`, Object.assign({}, ok, { games: { ttt: false } })), 'a game set false (only the games on are kept)');
+  await denied(me.write(`templates/${me.uid}/t2abc`, Object.assign({}, ok, { extra: 1 })), 'a field that is not one');
+  await denied(me.write(`templates/${me.uid}/t2abc`, Object.assign({}, ok, { at: 'now' })), 'a time that is not a number');
+  await denied(me.write(`templates/${me.uid}/x`, ok), 'an id too short');
+  await denied(me.write(`templates/${me.uid}/bad id!`, ok), 'an id with other characters');
+  await denied(other.read(`templates/${me.uid}`), "another's templates");
+  await denied(other.write(`templates/${me.uid}/t3abc`, ok), "a template written into another's account");
+  await denied(anon.read(`templates/${me.uid}`), 'reading without a login');
+  await denied(anon.write(`templates/${me.uid}/t3abc`, ok), 'writing without a login');
+  await me.write(`templates/${me.uid}/t1abc`, null);                                        // deleted by its owner
+  assert.equal(await me.read(`templates/${me.uid}/t1abc`), null);
+});

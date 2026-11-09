@@ -113,6 +113,21 @@ export function startCpu(state, rng, name) {
   state.quick = ok;
   return ok ? human : null;
 }
+// Practice (How to Play's Practice button, ui/explainer.js): a Play Computer match of one mini-game alone, every square that
+// game, the player's side drawn at random and the computer on Easy. state.practice = { type } marks it: never tracked or
+// recorded (net/tracking.js), never resumed, its own end screen and a Back to How to Play in place of Menu. The setup's
+// own choices (its checklist, side and level) are left as they were for the next Play Computer. Returns the player's side,
+// or null (not a game that can be dealt now).
+export function startPractice(state, rng, type, name) {
+  if (!TYPES.includes(type) || SC_ONLY.includes(type) || !dealable(type)) return null;
+  const s = state.setup, keep = { games: s.games, vsCpu: s.vsCpu };
+  s.games = { [type]: true }; s.vsCpu = { pick: 'random', level: 'easy' }; s.vs = 'cpu'; s.mode = 'two';
+  const human = startCpu(state, rng, name);
+  Object.assign(s, keep);
+  state.practice = human ? { type } : null;
+  state.stats = null;                                           // (no stats report was begun for it: net/tracking.js trackStart is never called)
+  return human;
+}
 export function enabledGames(setup) { return TYPES.filter(t => setup && setup.games && setup.games[t]); }
 export function playerName(state, p) { return (state.setup && state.setup.names && state.setup.names[p]) || p; }
 // The whole app state. It opens on the setup screen; startMatch turns it into a match.
@@ -180,6 +195,7 @@ export function startMatch(state, rng, only) {   // only: the games this kind of
   state.lastSquare = null; state.lastBy = null; state.moves = 0; state.sqlog = [];
   state.sc = null;                                            // (a Super Chaos match: core/chaos.js, startChaos)
   state.quick = false;                                        // (Play Computer's match: startCpu marks it after)
+  state.practice = null;                                      // (a practice match: startPractice marks it after)
   markCoins(state, 'X', rng);
   return true;
 }

@@ -163,6 +163,13 @@ function loadModel(read, oldTypes) {
     fld('Win label', region(EXPLAINER, /<b>([^<>`$]*)<\/b><span>\$\{x\.win\}/, 'tpl')),
     fld('Close hint', region(EXPLAINER, /<small>(.*?)<\/small><\/div><\/div>`;/, 'tpl')),
   ]);
+  // Practice (How to Play's explainers, ui/explainer.js): the button, the match's Back to How to Play (the header's and the end screen's) and Practice again.
+  sec('other', 'practice', 'Practice (How to Play)', [
+    fld('Practice button', region(EXPLAINER, /data-act="practice" data-t="\$\{explainT\}">(.*?)<\/button>/, 'tpl')),
+    fld('Back button', region(EXPLAINER, /data-act="practice-back" aria-label="Back to How to Play">\$\{CHEV\}<span>(.*?)<\/span>/, 'tpl')),
+    fld('Practice again', region(EXPLAINER, /data-act="practice" data-t="\$\{t\}">(.*?)<\/button>/, 'tpl')),
+    fld('End screen back', region(EXPLAINER, /data-act="practice-back">(.*?)<\/button>/, 'tpl')),
+  ]);
   sec('other', 'credits', 'Credits', [
     fld('Trivia', after(EXPLAINER, /visibleTypes\(\)\.includes\('trivia'\) \? (?=')/)),
     fld('Physics games', after(EXPLAINER, /t === 'pinball'\) \? (?=')/)),

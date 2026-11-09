@@ -4,10 +4,10 @@ import { SUPER_CHAOS_ENABLED } from '../../core/config.js';
 import { restrictGames } from '../../core/games.js';
 import { CPU_NAME, NAME_MAX, dealable, enabledGames, normCpu, normLocal } from '../../core/match.js';
 import { LEVELS, LEVEL_NAME } from '../../core/aiw.js';
-import { acct, loggedIn } from '../../net/accounts.js';
+import { TPL_NAME_MAX, acct, deleteTemplate, loggedIn, renameTemplate, saveTemplate, templateList, templates } from '../../net/accounts.js';
 import { CLOCK_INCS, CLOCK_MINS, TURN_SECS, setupSpec, specParts } from '../../core/timer.js';
 import { other } from '../../core/util.js';
-import { GAMES, INFO, NO_SAME_PHONE, SC_ONLY } from '../../games/index.js';
+import { GAMES, INFO, NO_SAME_PHONE, SC_ONLY, TYPES } from '../../games/index.js';
 import { connected } from '../../net/connect.js';
 import { noticeSeq } from '../../net/moves.js';
 import { chaosBadge, chaosVisible, scPicked, testBadge, visibleTypes } from '../../net/releases.js';
@@ -92,6 +92,7 @@ export function renderSetup() {
     ${host ? `<div class="names">${field(state.online.me)}${field(guest)}</div>` : vsCpu ? cpuSlots() : `<div class="slots">${slots()}</div>`}
     ${SUPER_CHAOS_ENABLED ? modeRow(sc) : ''}
     ${timer}
+    ${templatesRow(VT)}
     <div class="adv${advOpen ? ' open' : ''}"><button class="adv-h" data-act="adv" aria-expanded="${advOpen}"><span>Mini-games</span><small>${gamesCount(on, VT.length)}</small><i class="chev">${CHEV}</i></button>
       ${advOpen ? `<div class="games-top"><button class="btn selall" data-act="games-none"${on === 0 ? ' disabled' : ''}>Deselect all</button><button class="btn selall" data-act="games-all"${on === VT.length ? ' disabled' : ''}>Select all</button></div><div class="games">${byName(VT).map(chk).join('')}</div>` : ''}</div>
   </div>
@@ -103,6 +104,61 @@ let modeNote = '', modeNoteTimer = 0;
 export function noteMode(text, ms = 3000) {
   modeNote = text; clearTimeout(modeNoteTimer);
   modeNoteTimer = setTimeout(() => { modeNote = ''; if (state.screen === 'setup') render(); }, ms);
+}
+/* ----- Templates (admin only for now): named mini-game selections saved on the account (net/accounts.js templates) -----
+ * A row above the Mini-games section on every setup screen with the checklist (Play Computer, the host's lobby, Same
+ * phone), for an admin alone (acct.admin; nobody else sees a trace of it): the account's templates as a list (name · N
+ * games), one chosen at a time, and under it a bar of fixed shape: Use (the template's selection goes onto the checklist,
+ * never a game this screen may not deal: setGames, which also writes a lobby's setup), Update (the checklist as it stands
+ * saved back to the chosen template: editing is Use, tick or untick, Update), Rename, Delete (asks first), and Save as
+ * template (a name typed in place: a field with Save and Cancel, never the browser's prompt). The field's text survives a
+ * redraw (read back from the page before the screen is drawn again) and keeps the focus (its id, ui/keyboard.js). */
+export const tpl = { sel: null, mode: null, draft: '', confirm: false, note: '' };   // sel: the chosen template's id; mode: null | 'save' | 'rename' (the name field up); confirm: Delete asked
+export const tplOn = () => !!acct.admin && !!state.setup;
+// The checklist's selection as a template's games: the games on, among those this screen may deal.
+const tplSelection = VT => Object.fromEntries(TYPES.filter(t => state.setup.games[t] && VT.includes(t)).map(t => [t, true]));
+export function templatesRow(VT) {
+  if (!tplOn()) return '';
+  const f = app.querySelector && app.querySelector('#tplname');                   // (a redraw while a name is being typed: the text as it stands comes along)
+  if (f && typeof f.value === 'string') tpl.draft = f.value;
+  const list = templateList();
+  if (tpl.sel && !(templates && templates[tpl.sel])) { tpl.sel = null; tpl.confirm = false; if (tpl.mode === 'rename') tpl.mode = null; }
+  const cur = tpl.sel ? templates[tpl.sel] : null;
+  const n = t => Object.keys(t.games).filter(k => VT.includes(k)).length;
+  const rows = list.length ? list.map(t => `<button class="tplrow${t.id === tpl.sel ? ' on' : ''}" data-act="tpl-pick" data-id="${esc(t.id)}" aria-pressed="${t.id === tpl.sel}"><b>${esc(t.name)}</b><small>${n(t)} game${n(t) === 1 ? '' : 's'}</small></button>`).join('')
+    : `<i class="tplnone">${templates ? 'No templates yet' : 'Loading your templates…'}</i>`;
+  let bar;
+  if (tpl.mode) bar = `<label class="tplfield"><input id="tplname" aria-label="Template name" maxlength="${TPL_NAME_MAX}" value="${esc(tpl.draft)}" placeholder="${tpl.mode === 'rename' ? 'New name' : 'Template name'}" autocomplete="off" autocapitalize="words" enterkeyhint="done"></label>
+      <div class="tplbtns"><button class="btn tplb go" data-act="tpl-ok">${tpl.mode === 'rename' ? 'Rename' : 'Save'}</button><button class="btn tplb" data-act="tpl-cancel">Cancel</button></div>`;
+  else if (tpl.confirm && cur) bar = `<p class="tplask" role="status">Delete “${esc(cur.name)}”?</p>
+      <div class="tplbtns"><button class="btn tplb" data-act="tpl-cancel">No</button><button class="btn tplb go" data-act="tpl-del-yes">Yes, delete</button></div>`;
+  else bar = `<div class="tplbtns"><button class="btn tplb go" data-act="tpl-use"${cur ? '' : ' disabled'}>Use</button><button class="btn tplb" data-act="tpl-update"${cur ? '' : ' disabled'}>Update</button><button class="btn tplb" data-act="tpl-rename"${cur ? '' : ' disabled'}>Rename</button><button class="btn tplb" data-act="tpl-del"${cur ? '' : ' disabled'}>Delete</button></div>
+      <div class="tplbtns"><button class="btn tplb wide" data-act="tpl-save">Save as template</button></div>`;
+  return `<div class="tpls" role="group" aria-label="Templates"><div class="games-h"><span>Templates</span><small>${tpl.note ? esc(tpl.note) : 'Mini-game selections, on your account'}</small></div>
+      <div class="tpllist">${rows}</div><div class="tplbar">${bar}</div></div>`;
+}
+// The Templates row's buttons (ui/input.js hands every tpl-* action here).
+export function tplAct(act, el) {
+  if (!tplOn() || state.screen !== 'setup') return;
+  const VT = setupTypes(), cur = tpl.sel && templates && templates[tpl.sel];
+  tpl.note = '';
+  if (act === 'tpl-pick') { tpl.sel = el && el.dataset.id in (templates || {}) ? el.dataset.id : null; tpl.confirm = false; if (tpl.mode === 'rename') tpl.mode = null; }
+  else if (act === 'tpl-use' && cur) { setGames(g => { for (const t of TYPES) g[t] = VT.includes(t) && cur.games[t] === true; }); tpl.note = `“${cur.name}” applied`; }   // (a game the template names that this screen may not deal stays off; an unknown one is ignored)
+  else if (act === 'tpl-update' && cur) { tpl.note = saveTemplate(null, tplSelection(VT), tpl.sel, TYPES) ? `“${cur.name}” updated` : 'Tick at least one mini-game'; }
+  else if (act === 'tpl-save') { tpl.mode = 'save'; tpl.draft = ''; tpl.confirm = false; }
+  else if (act === 'tpl-rename' && cur) { tpl.mode = 'rename'; tpl.draft = cur.name; tpl.confirm = false; }
+  else if (act === 'tpl-ok' && tpl.mode) {
+    const f = app.querySelector && app.querySelector('#tplname'), name = (f && typeof f.value === 'string' ? f.value : tpl.draft).replace(/\s+/g, ' ').trim();
+    if (!name) { tpl.note = 'Type a name first'; render(); return; }
+    if (tpl.mode === 'rename') { if (cur && renameTemplate(tpl.sel, name)) tpl.note = 'Renamed'; }
+    else { const id = saveTemplate(name, tplSelection(VT), null, TYPES); if (id) { tpl.sel = id; tpl.note = `“${name}” saved`; } else tpl.note = 'Tick at least one mini-game'; }
+    tpl.mode = null; tpl.draft = '';
+  }
+  else if (act === 'tpl-cancel') { tpl.mode = null; tpl.confirm = false; tpl.draft = ''; }
+  else if (act === 'tpl-del' && cur) tpl.confirm = true;
+  else if (act === 'tpl-del-yes' && cur) { deleteTemplate(tpl.sel); tpl.sel = null; tpl.confirm = false; tpl.note = 'Deleted'; }
+  render();
+  if (tpl.mode) { const f = app.querySelector && app.querySelector('#tplname'); if (f && f.focus) f.focus({ preventScroll: true }); }
 }
 // How many mini-games are on: "All", or "x/N".
 export const gamesCount = (on, n) => (on === n ? 'All' : `${on}/${n}`);

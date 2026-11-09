@@ -137,6 +137,29 @@
         }
       }
     },
+    "templates": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+        "$id": {
+          ".validate": "$id.matches(/^[A-Za-z0-9_-]{4,32}$/) && newData.hasChildren(['name', 'games', 'at'])",
+          "name": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 24"
+          },
+          "games": {
+            "$type": {
+              ".validate": "newData.isBoolean() && newData.val() === true && ($type === 'ttt' || $type === 'c4' || $type === 'bs' || $type === 'wordle' || $type === 'hangman' || $type === 'hex' || $type === 'hilo' || $type === 'snakes' || $type === 'memory' || $type === 'candy' || $type === 'bump' || $type === 'coins' || $type === 'pig' || $type === 'hunt' || $type === 'mastermind' || $type === 'bj' || $type === 'bus' || $type === 'rl' || $type === 'bullseye' || $type === 'echo' || $type === 'plinko' || $type === 'pong' || $type === 'trivia' || $type === 'oddone' || $type === 'dash' || $type === 'lane' || $type === 'golf' || $type === 'pool' || $type === 'bowling' || $type === 'craps' || $type === 'takeover' || $type === 'flood' || $type === 'seating' || $type === 'districts' || $type === 'shelves' || $type === 'roads' || $type === 'flap' || $type === 'chopper' || $type === 'patterns' || $type === 'wheels' || $type === 'apple' || $type === 'dominoes' || $type === 'scratch' || $type === 'bingo' || $type === 'war' || $type === 'snake' || $type === 'swarm' || $type === 'bricks' || $type === 'muncher' || $type === 'sniff' || $type === 'headcount' || $type === 'flash' || $type === 'snapshot' || $type === 'skyhop' || $type === 'scoop' || $type === 'pinball' || $type === 'clash')"
+            }
+          },
+          "at": {
+            ".validate": "newData.isNumber()"
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      }
+    },
     "usernames": {
       ".read": "auth != null"
     },

@@ -5,7 +5,7 @@ import { devWatch } from '../net/tracking.js';
 import { app, entering, esc, lastView, menuOpen, setEntering, setLastView, setMenuOpen, state } from './app.js';
 import { renderBoard, reviewSquares } from './board.js';
 import { scJointFrame, scPopup, scShown } from './chaos.js';
-import { closeExplain, explainT, renderExplain, renderHowTo } from './explainer.js';
+import { closeExplain, explainT, renderExplain, renderHowTo, renderPracticeEnd } from './explainer.js';
 import { renderSettings } from './settings.js';
 import { fingPaint } from './finger.js';
 import { anchorFx, animate, fx, fxAt, startFx, sweepBursts, zoomPrep, zoomRun } from './fx.js';
@@ -132,6 +132,7 @@ export function renderMain() {
   if (state.screen === 'profile') return renderProfile();
   if (state.screen === 'profhist') return renderProfHist();
   if (state.screen === 'hreview' || state.screen === 'hreview-mini') return renderHistory();
+  if (state.screen === 'win' && state.winner && state.practice) return renderPracticeEnd();   // a practice match's end (How to Play's Practice): Practice again or Back to How to Play
   if (state.screen === 'win' && state.winner) return renderWin();
   if (state.screen === 'review' && state.winner) return renderBoard(true);
   if (state.screen === 'review-mini' && state.winner && state.zoom != null) {

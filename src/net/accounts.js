@@ -141,7 +141,8 @@ export function onAuthUser(u, again) {
   acct = { user: uid ? { uid, email: u.email || '' } : null, profile: null, active: null, ready: !uid, admin: false };
   rememberAccount(!!uid);
   const c = cachedMe(); if (c && c.uid !== uid) cacheMe(null);    // a guest or another account now: the cached one goes
-  if (uid) { const me = acct; u.getIdTokenResult(true).then(r => { if (acct === me && r && r.claims && r.claims.admin === true) { me.admin = true; render(); } }).catch(() => {}); }   // the admin flag: admin-only games show
+  setTemplates(null);                                                // (another account, or a guest: the templates go with the one before)
+  if (uid) { const me = acct; u.getIdTokenResult(true).then(r => { if (acct === me && r && r.claims && r.claims.admin === true) { me.admin = true; listenTemplates(uid); render(); } }).catch(() => {}); }   // the admin flag: admin-only games show, and the admin's game templates are read
   if (uid && !again) track({ ev: 'login' });                     // a login (or a returning one) for the stats
   if (!uid && (state.screen === 'login' || state.screen === 'username')) return;   // a guest session starting: nothing on these screens changes
   if (uid) {
@@ -157,6 +158,62 @@ export function savePref(key, value) {
   fb.m.set(fb.m.ref(fb.db, `prefs/${acct.user.uid}/${key}`), value).catch(() => {});
 }
 export function saveAnimPref(mode) { savePref('anim', mode === 'speed' ? 'speed' : 'normal'); }
+
+/* ----- game templates (admin only for now): named mini-game selections kept on the account -----
+ * templates/{uid}/{id} = { name (1-24 characters), games: { type: true, ... } (known types only), at }: the owner alone reads
+ * and writes them (database.rules.json, as tight as the prefs). Read once the account is known to be the admin's
+ * (listenTemplates, from onAuthUser), kept in memory here and written through the SDK (no server call). The setup
+ * screens' Templates row (ui/screens/setup.js) saves, uses, updates, renames and deletes them. A write goes into memory
+ * first, so the row answers at once (and works with no connection for this visit). */
+export const TPL_NAME_MAX = 24, TPL_MAX = 40;
+export let templates = null;                           // { id: { name, games, at } } once read; null: none read (not the admin, or logged out)
+const tplId = () => 't' + Date.now().toString(36) + Math.floor(Math.random() * 46656).toString(36).padStart(3, '0');
+const tplName = v => String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, TPL_NAME_MAX);
+// A template as it may be: its name a string, its games a map of true by known type (anything else dropped).
+function tplClean(v, known) {
+  if (!v || typeof v !== 'object' || typeof v.name !== 'string') return null;
+  const name = tplName(v.name); if (!name) return null;
+  const games = {};
+  for (const t of Object.keys(v.games && typeof v.games === 'object' ? v.games : {})) if (v.games[t] === true && (!known || known.includes(t))) games[t] = true;
+  return { name, games, at: Number.isFinite(v.at) ? v.at : 0 };
+}
+export function setTemplates(v) {
+  if (!v || typeof v !== 'object') { templates = v === undefined ? templates : null; return; }
+  templates = {};
+  for (const id of Object.keys(v)) { const t = /^[A-Za-z0-9_-]{4,32}$/.test(id) ? tplClean(v[id]) : null; if (t) templates[id] = t; }
+}
+function listenTemplates(uid) {
+  if (!fb || !fb.m || !fb.db) return;
+  acctUnsubs.push(fb.m.onValue(fb.m.ref(fb.db, `templates/${uid}`), s => { setTemplates(s.val() || {}); render(); }, () => {}));
+}
+const tplRef = id => fb.m.ref(fb.db, `templates/${acct.user.uid}/${id}`);
+const tplWrite = (id, v) => { if (acct.user && fb && fb.m && fb.db) (v == null ? fb.m.remove(tplRef(id)) : fb.m.set(tplRef(id), v)).catch(() => {}); };
+// The templates in order of name (the row's list).
+export const templateList = () => Object.keys(templates || {}).map(id => Object.assign({ id }, templates[id])).sort((a, b) => a.name.localeCompare(b.name) || a.at - b.at);
+// Save a selection as a template (a new one, or over the one `id` names: its games, and its name when one is given).
+// Returns the template's id, or null (no name, nothing selected, or too many).
+export function saveTemplate(name, games, id, known) {
+  const cur = id && templates && templates[id];
+  const t = tplClean({ name: name != null ? name : cur ? cur.name : '', games, at: Date.now() }, known);
+  if (!t || !Object.keys(t.games).length) return null;
+  if (!cur) { if (templateList().length >= TPL_MAX) return null; id = tplId(); }
+  (templates || (templates = {}))[id] = t;
+  tplWrite(id, t);
+  return id;
+}
+export function renameTemplate(id, name) {
+  const cur = templates && templates[id], n = tplName(name);
+  if (!cur || !n) return false;
+  cur.name = n;
+  tplWrite(id, cur);
+  return true;
+}
+export function deleteTemplate(id) {
+  if (!templates || !templates[id]) return false;
+  delete templates[id];
+  tplWrite(id, null);
+  return true;
+}
 // Logged in: a proved email first (an email-and-password account), a username if there is none yet, then wherever the
 // player was heading.
 export function afterAccount() {

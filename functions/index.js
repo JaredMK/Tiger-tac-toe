@@ -397,7 +397,7 @@ exports.deleteAccount = onCall(CALL, async req => {
   const name = await usernameOf(uid);
   if (name && (await db.ref(`usernames/${name.toLowerCase()}`).get()).val() === uid) up[`usernames/${name.toLowerCase()}`] = null;
   for (const key of ALL_QUEUES()) up[`queue/${key}/${uid}`] = null;
-  for (const node of ['users', 'profiles', 'history', 'oppStats', 'localStats', 'localHistory', 'lastSeen', 'active', 'leaderboard', 'prefs']) up[`${node}/${uid}`] = null;
+  for (const node of ['users', 'profiles', 'history', 'oppStats', 'localStats', 'localHistory', 'lastSeen', 'active', 'leaderboard', 'prefs', 'templates']) up[`${node}/${uid}`] = null;   // (templates: the admin's game templates go with the account)
   up[`review/flaggedNames/names/${uid}`] = null;
   statsUp(S.periodUpdates('deletedAccounts', t), up);
   await db.ref().update(up);
