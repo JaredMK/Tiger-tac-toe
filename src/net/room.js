@@ -166,7 +166,7 @@ export async function startOnline() {
   let ok = false;
   try {
     const r = await call('startRoom', { code: o.code });
-    ok = !!(r && r.ok);
+    ok = !!(r && (r.ok || r.reason === 'playing'));              // ('playing': the match is already made, from a request before: the room's game brings the board)
     if (!ok && state.online === o) setNet('error', r.reason === 'games' ? 'No mini-game can be dealt with these settings. Turn some on.' : "Couldn't start the match. Try again.");
     if (ok) startNote = { lag: Date.now() - startTap, code: o.code };
   } catch (e) { if (state.online === o) setNet('error', "Couldn't start the match. Check your connection and try again."); }

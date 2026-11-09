@@ -4,7 +4,7 @@ import { activeElsewhere, findOn, resumable, resumeBusy } from '../../net/matchm
 import { privacyUrl } from '../../net/platform.js';
 import { esc, menuNote } from '../app.js';
 import { toon } from '../art.js';
-import { RATINGS_ENABLED } from '../config.js';
+import { APP_VERSION, RATINGS_ENABLED } from '../config.js';
 import { burstSvg } from '../fx.js';
 
 /* ----- main menu ----- */
@@ -20,7 +20,7 @@ export function renderMenu() {
     <button class="primary alt" data-act="friend-go">Play a Friend</button>
     ${findBtn()}
     <div class="menu-pair"><button class="btn howto" data-act="howto">How to Play</button><button class="btn howto" data-act="settings">Settings</button></div>
-  </div><div class="menu-foot"><a class="credit" href="${JARHEAD_URL}" target="_blank" rel="noopener noreferrer" aria-label="by JarHead Labs, on X (opens in a new tab)">${JARHEAD_LOGO}<span>by JarHead Labs</span></a><a class="privacy" href="${privacyUrl()}" target="_blank" rel="noopener noreferrer" aria-label="Privacy policy (opens in a new tab)">Privacy</a></div></main>`;
+  </div><div class="menu-foot"><a class="credit" href="${JARHEAD_URL}" target="_blank" rel="noopener noreferrer" aria-label="by JarHead Labs, on X (opens in a new tab)">${JARHEAD_LOGO}<span>by JarHead Labs</span></a><a class="privacy" href="${privacyUrl()}" target="_blank" rel="noopener noreferrer" aria-label="Privacy policy (opens in a new tab)">Privacy</a><span class="build" aria-label="Build ${esc(APP_VERSION)}">${esc(APP_VERSION)}</span></div></main>`;
 }
 // Find Match: greyed while the admin has it off ("Not available at this time"); back into the match in progress if there is one.
 function findBtn() {

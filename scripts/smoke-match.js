@@ -56,8 +56,8 @@ async function call(idToken, name, data) {
     const start = await call(host, 'startRoom', { code });
     game = start && start.game;
     check(!!(start && start.ok && start.started && game), `the host starts the match (game ${game || 'none'})`);
-    const again = await call(host, 'startRoom', { code });     // the same request twice (a second tap, a retry): one match, no error
-    check(!!(again && again.ok && !again.started && !again.game), `a second start of the same room makes no second match (${JSON.stringify(again).slice(0, 80)})`);
+    const again = await call(host, 'startRoom', { code });     // the same request twice (a second tap, a retry): one match (started: false while the first is still making it; 'playing' once it has)
+    check(!!(again && !again.game && ((again.ok && !again.started) || (!again.ok && again.reason === 'playing'))), `a second start of the same room makes no second match (${JSON.stringify(again).slice(0, 80)})`);
     if (game) {
       const pub = (await db.ref(`games/${game}/pub`).get()).val() || {};
       let g = {};
@@ -75,8 +75,8 @@ async function call(idToken, name, data) {
     if (game) for (const p of [`games/${game}`, `gpresence/${game}`, `matchLogs/m${game}`, `matchLogIndex/m${game}`, `matchLogs/${game}`, `matchLogIndex/${game}`]) up[p] = null;
     await db.ref().update(up).catch(e => console.log('::warning::smoke match: could not clean up: ' + e.message));
   }
-  if (failed) { console.log('::error::The friend-match check failed.'); process.exit(1); }
   console.log(`Call timings (the first call to each function is its cold start): ${timings.join(', ')}`);
+  if (failed) { console.log('::error::The friend-match check failed.'); process.exit(1); }
   console.log(`A friend match on ${ENV}: opened, joined, started and cleaned up.`);
   process.exit(0);
 })().catch(e => { console.log('::error::The friend-match check could not run: ' + e.message); process.exit(1); });

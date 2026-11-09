@@ -1349,6 +1349,7 @@ button.qbtn.sm:active { transform: none; } button.qbtn.sm:active i { transform: 
 .credit span { padding-top: 2px; }
 .credit:active { opacity: .7; }
 .credit:focus-visible { outline: 3px solid var(--sky); outline-offset: 2px; }
+.build { flex: none; color: var(--muted); font-size: 11px; opacity: .7; letter-spacing: .04em; font-variant-numeric: tabular-nums; }   /* the build on this phone (src/ui/config.js APP_VERSION, stamped by the site build): so a stale page is seen for what it is */
 .menu-top { position: absolute; top: var(--pad); left: var(--pad); right: var(--pad); display: flex; justify-content: space-between; align-items: center; gap: 10px; z-index: 3; }
 .menu-left { display: flex; gap: 8px; min-width: 0; }
 /* an online move on its way: the control pressed shows it at once, and keeps pulsing until the server answers */
@@ -3181,7 +3182,7 @@ main.scr.mini:has(.brkw.run) .back { visibility: hidden; pointer-events: none; }
    the rest went (a goal's "/N", a ship's name, a die's number) or became drawn marks (scripts/check-miniature-text.js). */
 .thumb { --mt: max(15px, 12.5cqw); --mtn: max(16px, 13.5cqw); }
 .tpool { display: flex; align-items: center; justify-content: center; gap: 4cqw; height: 100%; max-width: 100%; }   /* Pool: the table, each side's balls left beside it */
-.tpool .tphys { height: 100%; width: auto; min-width: 0; }
+.tpool .tphys { height: 72cqh; width: calc(72cqh * 108 / 188); flex: none; min-width: 0; }   /* sized from the square itself (its container), never a percentage of an indefinite height: Safari gave the table no height and dropped it (November 2026) */
 .tpcnt { display: flex; flex-direction: column; gap: 4cqw; font: 400 var(--mt)/1 'Luckiest Guy', 'Arial Black', sans-serif; color: var(--ink); }
 .tpcnt div { display: flex; align-items: center; gap: 1.5cqw; } .tpcnt b { font-size: .85em; } .tpcnt span { padding-top: .12em; font-variant-numeric: tabular-nums; }
 .tbowl { width: 88cqw; gap: 2.5cqw; } .tbowl svg { height: 38cqw; }   /* Bowling */
