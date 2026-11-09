@@ -1,6 +1,6 @@
 // Codebreaker: the screen, the miniature, the move's words and sounds, and the inputs.
-import { MM } from './rules.js';
-import { mv, state, zoomedType } from '../../ui/app.js';
+import { MM, mmGuesses } from './rules.js';
+import { N, mv, state, viewer, zoomedType } from '../../ui/app.js';
 import { tune } from '../../core/tune.js';
 import { toon } from '../../ui/art.js';
 import { fxAttr } from '../../ui/fx.js';
@@ -22,8 +22,26 @@ const mmMarks = (g, cls = '', fresh = false) => `<span class="mmfb${cls ? ' ' + 
   `<i class="${k < g.solid ? 'sd' : k < g.solid + g.hollow ? 'hw' : ''}${fresh ? ' rv' : ''}"${fresh ? ` style="--k:${k}"` : ''}></i>`).join('')}</span>`;
 export let mmDraft = null;                                              // Codebreaker: { sq, slots, at } the guess being put together on this phone
 let mmPop = null;
+// Race mode (core/race.js): the square this view gets holds this phone's own guesses alone (mini.side[me]) and both
+// players' shapes (each row's markers); the other side's move arrives redacted (`a.race`: its markers), shown as a new
+// marker block in their strip under the code, never their pegs. A finished square reviewed: both players' guesses.
+const shapeRows = (mini, p) => ((mini.shape && mini.shape[p] && mini.shape[p].rows) || []);
+const allGuesses = mini => (mini.race ? [...mmGuesses(mini, 'X'), ...mmGuesses(mini, 'O')] : mini.guesses || []);   // (a race square won: both players' guesses)
+const asMarks = r => ({ solid: r[0], hollow: r[1] });
+// The other side's progress: their mark, then a marker block for each guess they have made (the newest last, lit when it
+// has just landed), in a row that keeps its height (the list under it never moves).
+function mmRaceStrip(mini, o, theirs) {
+  const rows = shapeRows(mini, o), shown = rows.slice(-6), live = !!theirs;
+  const blocks = shown.map((r, k) => mmMarks(asMarks(r), 'mmob' + (live && k === shown.length - 1 ? ' fresh' : ''), live && k === shown.length - 1)).join('');
+  const said = live ? `${theirs.race.solid} solid · ${theirs.race.hollow} hollow` : rows.length ? `${rows.length} guess${rows.length === 1 ? '' : 'es'}` : 'no guesses yet';
+  return `<div class="mmrace${live ? ' live' : ''}" aria-label="${o}: ${rows.length} guess${rows.length === 1 ? '' : 'es'}"><span class="mmby ${o}">${toon(o)}</span><span class="mmoblocks">${blocks || '<span class="mmob none"></span>'}</span><em class="mmosay"><b class="${o} hn">${N(o)}</b> · ${said}</em></div>`;
+}
 export function miniature(mini, final) {
-  const last = mini.guesses.slice(-4), more = mini.guesses.length - last.length;
+  if (mini.race && !final) {                                              // a race: the hidden code, then each player's rows as their markers alone (the pegs are theirs)
+    const rows = ['X', 'O'].map(p => { const rs = shapeRows(mini, p).slice(-4); return `<div class="tmr tmo ${p}"><b class="${p}">${p}</b>${rs.length ? rs.map(r => mmMarks(asMarks(r), 'tiny')).join('') : '<span class="mmfb tiny none"><i></i><i></i><i></i><i></i></span>'}</div>`; }).join('');
+    return `<div class="tmm tmrace" aria-label="Race: ${['X', 'O'].map(p => `${p} ${shapeRows(mini, p).length} guesses`).join(', ')}"><div class="tmr">${'<i></i>'.repeat(4)}</div>${rows}</div>`;
+  }
+  const all = allGuesses(mini), last = all.slice(-4), more = all.length - last.length;
   const rows = last.length ? last.map(g => `<div class="tmr">${g.code.map(c => `<i class="c${c}"></i>`).join('')}${mmMarks(g, 'tiny')}</div>`).join('')
     : `<div class="tmr">${'<i></i>'.repeat(4)}</div><div class="tmr">${'<i></i>'.repeat(4)}</div>`;
   return `<div class="tmm">${rows}${more > 0 ? `<small>+${more} earlier</small>` : ''}</div>`;
@@ -33,12 +51,15 @@ export function screen(sq, f, d, mini, view, locked, a, anim, _won, wk, fresh, t
   // markers, then the guess being made: tap a slot, then a colour; tap a filled slot to clear it.
   const won = !!sq.owner || (a && (a.kind === 'claim' || a.kind === 'match'));
   const open = view || (fresh && a);
-  const n = mini.guesses.length;
+  const race = !!mini.race, me = race ? (viewer() || turn) : null, o = me === 'X' ? 'O' : 'X';
+  const theirs = race && a && a.race && a.by !== me ? a : null;      // the other side's guess, as its markers
+  const guesses = race ? (view ? allGuesses(mini) : mmGuesses(mini, me)) : mini.guesses;   // (a race: this side's own; a finished square reviewed: both)
+  const n = guesses.length;
   const code = Array.from({ length: MM.pegs }, (_, k) => open && mini.code
     ? `<span class="shell open${fresh ? ' flip' : ''}" style="--k:${k}">${mmPeg(mini.code[k])}</span>`
     : `<span class="shell"><i class="peg hid" aria-label="Hidden">?</i></span>`).join('');
-  const rows = mini.guesses.map((gs, r) => {
-    const last = a && r === n - 1;
+  const rows = guesses.map((gs, r) => {
+    const last = a && !theirs && r === n - 1;
     return `<div class="mmrow${last ? ' fresh' : ''}"><span class="mmby ${gs.by}">${toon(gs.by)}</span>${gs.code.map((c, k) => mmPeg(c, last ? 'in' : '', last ? ` style="--k:${k}"` : '')).join('')}${mmMarks(gs, '', last)}</div>`;
   }).join('');
   if (!mmDraft || mmDraft.sq !== state.zoom || view || f || d) mmDraft = { sq: state.zoom, slots: [null, null, null, null], at: 0 };
@@ -47,17 +68,19 @@ export function screen(sq, f, d, mini, view, locked, a, anim, _won, wk, fresh, t
   const slots = dr.map((c, k) => `<button class="mmslot${k === mmDraft.at && !locked ? ' at' : ''}" data-act="mmslot" data-k="${k}" aria-label="Slot ${k + 1}${c != null ? ', ' + MM_NAMES[c] + ' (tap to clear)' : ', empty'}"${k === pop ? fxAttr(mmPop.at) : ''}${locked ? ' disabled' : ''}>${c != null ? mmPeg(c, k === pop ? 'pop' : '') : ''}</button>`).join('');
   const nc = tune(mini).colors;                                       // (the colours this square was dealt with: TUNE)
   const pal = Array.from({ length: nc }, (_, c) => `<button class="mmcol c${c}" data-act="mmcol" data-c="${c}" aria-label="${MM_NAMES[c]}"${locked || dr.includes(c) ? ' disabled' : ''}>${mmPeg(c)}</button>`).join('');
-  g = `<div class="g-mm"><div class="mmcode small${won ? ' cracked' : ''}" aria-label="The hidden code">${code}</div>
-        <div class="mmlist" id="mmlist">${rows || `<div class="empty">${view ? 'No guesses were made.' : 'No guesses yet'}</div>`}</div>
+  g = `<div class="g-mm${race ? ' mmrmode' : ''}"><div class="mmcode small${won ? ' cracked' : ''}" aria-label="The hidden code">${code}</div>
+        ${race && !view ? mmRaceStrip(mini, o, theirs) : ''}
+        <div class="mmlist" id="mmlist">${rows || `<div class="empty">${view ? 'No guesses were made.' : race ? 'Your guesses are yours alone' : 'No guesses yet'}</div>`}</div>
         ${view ? '' : `<div class="mmcur" aria-label="Your guess">${slots}</div><div class="mmpal"${nc !== MM.colors ? ` style="grid-template-columns: repeat(${nc}, calc((100% - 20px) / 6)); justify-content: center"` : ''}>${pal}</div>
         <button class="big mmgo" data-act="move" ${mv(full ? dr : [])}${!full || locked ? ' disabled' : ''}>Submit guess</button>`}</div>`;
   return g;
 }
+const marksOf = f => (f.solid !== undefined ? f : f.race && f.race.solid !== undefined ? f.race : { solid: 0, hollow: 0 });   // (a race, the other side's guess: its markers alone)
 export function moveText(f, who) {
-  return `${who}: ${f.solid} solid · ${f.hollow} hollow`;
+  const m = marksOf(f); return `${who}: ${m.solid} solid · ${m.hollow} hollow`;
 }
 export function sounds(f, add, won, mini, last) {
-  const n = (f.solid || 0) + (f.hollow || 0); for (let k = 0; k < n; k++) add('marker', 450 + k * 250); if (won) add('reveal', 1450); return;
+  const m = marksOf(f), n = (m.solid || 0) + (m.hollow || 0); for (let k = 0; k < n; k++) add('marker', 450 + k * 250); if (won) add('reveal', 1450); return;
 }
 // Codebreaker: pick a slot; a filled one is cleared
 export function mmslotAct(el, e, act) {

@@ -2,16 +2,27 @@
 import { tune } from '../../core/tune.js';
 import { MM, mmAll, mmBestGuess, mmCandidates, mmCode, mmFeedback } from './rules.js';
 
+// Race mode (core/race.js): the computer reads its own guesses alone (pm.side[me]); the other side's progress is its
+// shape (each row's markers), so what they have left is estimated from how often those markers come up; its own
+// guesses tell them nothing, so Hard plays for the fewest guesses to the code (mmHardRace), not the race for it.
+const fromRows = n => (n <= 1 ? 1 : Math.min((n + 1) / 2, 1 + Math.log(n) / Math.log(5)));
 export function needs(pm, p) {
-  const n = mmCandidates(pm).length; return n <= 1 ? 1 : Math.min((n + 1) / 2, 1 + Math.log(n) / Math.log(5));
+  if (pm.race && !(pm.side && pm.side[p])) {                       // the other side of a race: from their markers
+    const sh = (pm.shape && pm.shape[p]) || {}, rows = sh.rows || [], T = mmTable(tune(pm).colors);
+    if (rows.some(r => r[0] === MM.pegs)) return 1;
+    let n = T.n;
+    for (const [s, h] of rows) n *= T.odds[s * 5 + h] || 1 / T.n;   // (each row's markers leave about that share of the codes)
+    return fromRows(Math.max(1, n));
+  }
+  return fromRows(mmCandidates(pm, p).length);
 }
 export function best(pm, me, rng, style, ctx) {
-  const cand = mmCandidates(pm), t = tune(pm);
-  if (!cand.length) return { move: mmCode(rng, t.colors), q: 0, shared: true };
-  if (cand.length === 1) return { move: cand[0].slice(), q: 1, shared: true };
-  if (t.miss && rng() * 100 < t.miss) { const g = mmCode(rng, t.colors), k = g.join(); return { move: g, q: cand.some(c => c.join() === k) ? 1 / cand.length : 0, shared: true }; }   // a slip: a code at random, clues ignored
-  if (ctx && ctx.level === 'hard') return mmHard(pm, cand, t.colors, ctx);
-  return { move: mmBestGuess(cand, t.colors), q: 1 / cand.length, shared: true };
+  const race = !!pm.race, cand = mmCandidates(pm, me), t = tune(pm);
+  if (!cand.length) return { move: mmCode(rng, t.colors), q: 0, shared: !race };
+  if (cand.length === 1) return { move: cand[0].slice(), q: 1, shared: !race };
+  if (t.miss && rng() * 100 < t.miss) { const g = mmCode(rng, t.colors), k = g.join(); return { move: g, q: cand.some(c => c.join() === k) ? 1 / cand.length : 0, shared: !race }; }   // a slip: a code at random, clues ignored
+  if (ctx && ctx.level === 'hard') return race ? mmHardRace(pm, cand, t.colors, ctx) : mmHard(pm, cand, t.colors, ctx);
+  return { move: mmBestGuess(cand, t.colors), q: 1 / cand.length, shared: !race };
 }
 
 // ---- Hard: the race for the code ----
@@ -30,8 +41,10 @@ const MMT = {};                                                 // per colour co
 function mmTable(colors) {
   if (MMT[colors]) return MMT[colors];
   const all = mmAll(colors), n = all.length, fb = new Uint8Array(n * n), at = new Map();
-  for (let i = 0; i < n; i++) { at.set(all[i].join(''), i); for (let j = i; j < n; j++) { const f = mmFeedback(all[i], all[j]); fb[i * n + j] = fb[j * n + i] = f.solid * 5 + f.hollow; } }
-  return (MMT[colors] = { all, n, fb, at });
+  const odds = new Float64Array(25);                           // how often each marker result comes up between two codes (a race: the other side's codes left, estimated)
+  for (let i = 0; i < n; i++) { at.set(all[i].join(''), i); for (let j = i; j < n; j++) { const f = mmFeedback(all[i], all[j]); fb[i * n + j] = fb[j * n + i] = f.solid * 5 + f.hollow; odds[f.solid * 5 + f.hollow] += i === j ? 1 : 2; } }
+  for (let k = 0; k < 25; k++) odds[k] /= n * n;
+  return (MMT[colors] = { all, n, fb, at, odds });
 }
 function mmHard(pm, cand, colors, ctx) {
   const T = mmTable(colors), N = T.n, fb = T.fb, all = T.all;
@@ -69,8 +82,57 @@ function mmHard(pm, cand, colors, ctx) {
   }
   if (n <= MMH.rootAll && depth) {                               // every other code, at the depth reached
     stop = false; work = 0;
-    const last = pm.guesses[pm.guesses.length - 1], told = !last || mmCandidates({ type: pm.type, tune: pm.tune, guesses: pm.guesses.slice(0, -1) }).length > n;
+    const last = pm.guesses[pm.guesses.length - 1], told = !last || mmCandidates({ type: pm.type, tune: pm.tune, guesses: pm.guesses.slice(0, -1) }).length > n;   // (Shared alone: pm.guesses is the one history)
     for (let g = 0; g < N; g++) { if (C.includes(g)) continue; let v = split(C, g, depth - 1, false); if (stop) break; if (v < 0) { if (!told) continue; v = 1 - top; } if (v > top + MMH.margin) { top = v; move = g; } }
   }
   return { move: all[move].slice(), q: C.includes(move) ? 1 / n : 0, shared: true };
+}
+
+// ---- Hard, Race: the fewest guesses to the code ----
+// The other side's guesses tell this one nothing and take nothing from it, so what counts is how many guesses the
+// code takes. The expected guesses still to come from a set of candidates: for each guess (a candidate, or at the
+// root with few left any code), one guess, then for each marker result the rest could give, the group it leaves
+// (none for the code itself). Solved over the candidates, every set met kept in a memo, deeper as the budget
+// allows (iterative deepening; a set of 10 or fewer to the end, a bigger one out of reach worth about its logarithm).
+function mmHardRace(pm, cand, colors, ctx) {
+  const T = mmTable(colors), N = T.n, fb = T.fb, all = T.all;
+  const C = cand.map(c => T.at.get(c.join(''))).sort((a, b) => a - b), n = C.length;
+  if (n === N) return { move: all[0].slice(), q: 1 / n, shared: false };
+  const until = ctx.until, memo = new Map();
+  let nodes = 0, work = 0, stop = false;
+  const guess = m => (m <= 1 ? 1 : fromRows(m));                   // guesses about left with m codes open
+  const V = (S, d) => {                                            // the guesses still to come from the set S, d plies deep
+    const m = S.length;
+    if (m <= 1) return 1;
+    if (m === 2) return 1.5;
+    if (m > MMH.exact && d <= 0) return guess(m);
+    if (stop) return guess(m);
+    const key = S.join(','), hit = memo.get(key);
+    if (hit && (hit.full || hit.d >= d)) return hit.v;
+    if (until ? (++nodes & 15) === 0 && until() <= 0 : (work += m * (m + 8)) > MMH.work) { stop = true; return guess(m); }
+    let low = Infinity;
+    for (const g of S) { const v = split(S, g, d - 1, true); if (stop) return guess(m); if (v < low) low = v; }
+    memo.set(key, { d, v: low, full: m <= MMH.exact });
+    return low;
+  };
+  const split = (S, g, d, inS) => {                                // a guess's expected guesses: one, then the groups each marker result leaves
+    const m = S.length, gr = [];
+    for (const c of S) if (c !== g) { const k = fb[g * N + c]; (gr[k] || (gr[k] = [])).push(c); }
+    let v = 1, parts = 0;
+    for (const grp of gr) if (grp) { parts++; v += grp.length / m * V(grp, d); if (stop) return guess(m); }
+    return !inS && parts === 1 ? Infinity : v;                     // (a guess outside the set that tells nothing: never)
+  };
+  let move = C[0], top = Infinity, depth = 0;
+  for (let d = 1; d <= MMH.depth && !stop; d++) {
+    let best = Infinity, pick = -1;
+    for (const g of C) { const v = split(C, g, d - 1, true); if (stop) break; if (v < best) { best = v; pick = g; } }
+    if (stop || pick < 0) break;
+    move = pick; top = best; depth = d;
+    if (n <= MMH.exact) break;
+  }
+  if (n <= MMH.rootAll && depth) {                                 // every other code, at the depth reached: one that splits the set better
+    stop = false; work = 0;
+    for (let g = 0; g < N; g++) { if (C.includes(g)) continue; const v = split(C, g, depth - 1, false); if (stop) break; if (v < top - MMH.margin) { top = v; move = g; } }
+  }
+  return { move: all[move].slice(), q: C.includes(move) ? 1 / n : 0, shared: false };
 }

@@ -211,3 +211,118 @@ test('mastermind, Hard: the race for the code: legal guesses, the last candidate
   const n1 = L.localBest(pm, 'O', cpuRng(), {}, { level: 'normal', until: null }), n2 = L.localBest(pm, 'O', cpuRng());
   assert.deepEqual(n1, n2); assert.deepEqual(n1.move, L.mmBestGuess(cand));
 });
+
+// ============================== Race mode (core/race.js) ==============================
+// The same code for both, each player's guesses and markers their own (mini.side[p]); the other side sees each
+// row's markers alone, never the pegs.
+const raceOn = on => E.setTune('mastermind', on ? { mode: 'race' } : null);
+const raceMini = (rng = lcg(3)) => { raceOn(true); try { return L.newMini('mastermind', rng); } finally { raceOn(false); } };
+const wrongOf = code => { const g = code.slice(); [g[0], g[1]] = [g[1], g[0]]; return g; };   // two pegs swapped: 2 solid, 2 hollow
+
+test('mm race: dealt by the admin setting with guesses each, the same code; two people on one phone play Shared', () => {
+  const m = raceMini();
+  assert.equal(m.race, true); assert.equal(m.guesses, undefined);
+  assert.deepEqual(m.side, { X: { guesses: [] }, O: { guesses: [] } }); assert.ok(E.mmValid(m.code));
+  assert.deepEqual(m.tune, { mode: 'race' });
+  raceOn(true);
+  try {
+    assert.equal(L.newMini('mastermind', lcg(3), { shared: true }).race, undefined, 'Same phone: Shared');
+    assert.ok(E.newMatch(lcg(5), { games: ['mastermind'], vs: 'same' }).squares.every(q => !q.mini.race));
+    assert.ok(E.newMatch(lcg(5), { games: ['mastermind'], vs: 'cpu' }).squares.every(q => q.mini.race));
+  } finally { raceOn(false); }
+  assert.equal(L.newMini('mastermind', lcg(3)).race, undefined, 'off: as ever');
+});
+
+test('mm race: each side\'s guesses are its own, judged against the one code; the exact code wins for its guesser alone', () => {
+  const m = raceMini(lcg(8)), w = wrongOf(m.code);
+  assert.deepEqual(L.applyMove(m, 'X', w), { ok: true, outcome: 'continue', note: 'guess' });
+  assert.deepEqual(m.side.X.guesses, [{ by: 'X', code: w, solid: 2, hollow: 2 }]); assert.deepEqual(m.side.O.guesses, [], "O's part is untouched");
+  assert.equal(L.applyMove(m, 'O', w).ok, true, 'the same guess is open to O'); assert.equal(m.side.O.guesses[0].solid, 2);
+  assert.equal(m.side.X.guesses.length, 1);
+  assert.equal(L.applyMove(m, 'X', [0, 0, 1, 2]).ok, false, 'no colour twice');
+  const r = L.applyMove(m, 'O', m.code);
+  assert.equal(r.outcome, 'win'); assert.equal(r.winner, undefined, "the cracker's"); assert.deepEqual(r.cells, [0, 1, 2, 3]);
+  assert.equal(m.side.X.guesses.length, 1);
+  assert.deepEqual(E.mmCandidates(E.publicMini(m, 'O'), 'O'), [m.code], "O's candidates from O's guesses alone");
+  assert.ok(E.mmCandidates(E.publicMini(m, 'X'), 'X').length > 1, "X's from X's");
+});
+
+test('mm race: the public view shows each row\'s markers and one side\'s own guesses alone; the record keeps each side\'s part for that side', () => {
+  const m = raceMini(lcg(13)), w = wrongOf(m.code), w2 = [m.code[1], m.code[2], m.code[3], m.code[0]];
+  L.applyMove(m, 'X', w); L.applyMove(m, 'X', w2); L.applyMove(m, 'O', w2);
+  const pub = E.publicMini(m);
+  assert.equal(pub.code, undefined); assert.equal(pub.guesses, undefined); assert.deepEqual(pub.side, {});
+  assert.deepEqual(pub.shape.X, { n: 2, rows: [[2, 2], [0, 4]] }); assert.deepEqual(pub.shape.O, { n: 1, rows: [[0, 4]] });
+  const forX = E.publicMini(m, 'X');
+  assert.deepEqual(Object.keys(forX.side), ['X']); assert.equal(forX.side.X.guesses.length, 2); assert.equal(forX.side.O, undefined);
+  assert.equal(forX.code, undefined, 'the code itself is hidden'); assert.equal(JSON.stringify(forX).includes(JSON.stringify(w2)) && JSON.stringify(forX.side.X).includes(JSON.stringify(w2)), true, 'the guessed pegs are in X\'s own part alone');
+  raceOn(true);
+  try {
+    const st = E.newMatch(lcg(11), { games: ['mastermind', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt'] }); const k = st.squares.findIndex(q => q.mini.type === 'mastermind');
+    st.squares[k].mini = m; st.id = 'r1'; st.seq = 0; st.recent = [];
+    const rec = E.matchRecord(st), ps = rec.state.squares[k].mini;
+    assert.equal(ps.side, undefined); assert.equal(ps.code, undefined); assert.equal(ps.guesses, undefined);
+    assert.deepEqual(ps.shape.X.rows, [[2, 2], [0, 4]]);
+    assert.deepEqual(rec.sides.X[k], m.side.X); assert.deepEqual(rec.sides.O[k], m.side.O); assert.deepEqual(rec.secrets[k], { code: m.code });
+    assert.equal(JSON.stringify(rec.state).includes(JSON.stringify(w)), false, 'no guessed pegs in the public state');
+    const full = E.fullState(rec);
+    assert.deepEqual(full.squares[k].mini.side, m.side); assert.deepEqual(full.squares[k].mini.code, m.code); assert.equal(full.squares[k].mini.shape, undefined);
+    const back = E.parseMatch(E.packMatch(rec));
+    assert.deepEqual(E.fullState(back).squares[k].mini.side, m.side);
+    const oneSide = E.fullState({ state: rec.state, secrets: rec.secrets, sides: { O: rec.sides.O } });
+    assert.equal(oneSide.squares[k].mini.side.X, undefined); assert.deepEqual(oneSide.squares[k].mini.side.O, m.side.O);
+  } finally { raceOn(false); }
+});
+
+test('mm race: an online guess\'s entry is redacted for the other phone (no pegs, no inputs), its markers alone; the mover\'s own part reaches their side', () => {
+  raceOn(true);
+  try {
+    const st = E.newMatch(lcg(21), { games: ['mastermind', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt'] }); const k = st.squares.findIndex(q => q.mini.type === 'mastermind'); st.id = 'r2'; st.seq = 0; st.recent = [];
+    const rec = E.matchRecord(st), code = rec.secrets[k].code, w = wrongOf(code);
+    const r = E.applyOnlineMove(rec, 'X', k, w, lcg(2), { rep: w.map((c, i) => [i * 300, 'mmcol', 'c=' + c]).concat([[1500, 'move', 'm=' + JSON.stringify(w)]]) });
+    assert.ok(r.ok);
+    const e = r.entries[0];
+    assert.equal(e.m, undefined, 'the pegs are not on the entry'); assert.equal(e.code, undefined); assert.equal(e.rep, undefined, 'the inputs are not on the entry'); assert.equal(e.solid, undefined); assert.equal(e.hollow, undefined); assert.equal(e.note, undefined);
+    assert.deepEqual(e.race, { by: 'X', solid: 2, hollow: 2, n: 1, rows: [[2, 2]] });
+    assert.equal(e.after.mini.side, undefined); assert.deepEqual(e.after.mini.shape.X.rows, [[2, 2]]);
+    assert.ok(!JSON.stringify(r.rec.state).includes(JSON.stringify(w)), 'the pegs are nowhere in the public state');
+    assert.deepEqual(r.rec.sides.X[k].guesses[0].code, w, "the mover's own part holds them"); assert.deepEqual(r.rec.sides.O[k].guesses, []);
+    const r2 = E.applyOnlineMove(r.rec, 'O', k, code, lcg(3));
+    assert.ok(r2.ok); assert.equal(r2.entries[0].kind, 'claim'); assert.equal(r2.entries[0].winner, 'O'); assert.deepEqual(r2.entries[0].race, { by: 'O', solid: 4, hollow: 0, n: 1, rows: [[4, 0]] });
+    raceOn(false);
+    const st2 = E.newMatch(lcg(21), { games: ['mastermind', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt'] }); const k2 = st2.squares.findIndex(q => q.mini.type === 'mastermind'); st2.id = 'r3'; st2.seq = 0; st2.recent = [];
+    const e2 = E.applyOnlineMove(E.matchRecord(st2), 'X', k2, [0, 1, 2, 3], lcg(2), { rep: [[0, 'move', 'm=[0,1,2,3]']] }).entries[0];
+    assert.deepEqual(e2.m, [0, 1, 2, 3]); assert.ok(e2.rep); assert.equal(e2.race, undefined, 'a shared square\'s entry is as ever');
+  } finally { raceOn(false); }
+});
+
+test('mm race: the computer cracks the code from its own guesses alone at every level, within 6 guesses; the other side\'s needs come from its markers', () => {
+  for (const level of ['easy', 'normal', 'hard']) {
+    let total = 0;
+    for (let s = 1; s <= 8; s++) {
+      const m = raceMini(lcg(200 + s)), rng = lcg(7 + s);
+      let done = false, n = 0;
+      const t0 = Date.now();
+      while (!done && n < 10) {
+        const pm = E.publicMini(m, 'O');
+        assert.equal(pm.side.X, undefined, "the computer never sees X's part");
+        const mv = E.aiOf('mastermind').best(pm, 'O', rng, 'steady', { level, until: level === 'hard' && s % 2 ? (() => 60) : null }).move;
+        const r = L.applyMove(m, 'O', mv, rng);
+        assert.ok(r.ok, `${level}: guess ${JSON.stringify(mv)} refused (${r.reason})`);
+        n++; done = r.outcome === 'win';
+      }
+      assert.ok(done && n <= 6, `${level}: cracked in ${n}`); total += n;
+      assert.ok(Date.now() - t0 < 4000, `${level}: in time`);
+      assert.deepEqual(m.side.X.guesses, [], "X's part untouched");
+    }
+    assert.ok(total / 8 <= 5, `${level}: about ${(total / 8).toFixed(1)} guesses`);
+  }
+  const m = raceMini(lcg(44)), ai = E.aiOf('mastermind');
+  const n0 = ai.needs(E.publicMini(m, 'O'), 'X');
+  L.applyMove(m, 'X', wrongOf(m.code));
+  const n1 = ai.needs(E.publicMini(m, 'O'), 'X');
+  assert.ok(n1 < n0 && n1 >= 1, `2 solid 2 hollow brings X closer (${n0.toFixed(2)} -> ${n1.toFixed(2)})`);
+  L.applyMove(m, 'O', [0, 1, 2, 3]);
+  const pmO = E.publicMini(m, 'O'); assert.deepEqual(Object.keys(pmO.side), ['O']);
+  assert.equal(ai.needs(pmO, 'O'), ai.needs({ type: 'mastermind', tune: m.tune, guesses: m.side.O.guesses }), "the computer's own needs from its own guesses, as Shared would count them");
+});

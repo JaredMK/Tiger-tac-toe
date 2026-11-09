@@ -1,11 +1,32 @@
 // Sea Battle: the rules (pure: no page, no clock; the server runs the same code).
 import { randInt } from '../../core/random.js';
+import { raceDealt, raceSide } from '../../core/race.js';
 import { tuneLive } from '../../core/tune.js';
 
 // Sea Battle: one hidden ship on a 4x4 grid, 1 to 4 cells long, lying across or down. Both players fire at it.
 export const BS = { n: 4, names: { 4: 'Carrier', 3: 'Submarine', 2: 'Destroyer', 1: 'Patrol Boat' }, sc: 5, scLen: 3 };   // sc, scLen: Super Chaos's sea and ship (a Submarine on 5x5)
 // The sea's width: 4, or a Super Chaos square's own (mini.n).
 export const bsN = mini => (mini && Number.isInteger(mini.n) ? mini.n : BS.n);
+// Race mode (core/race.js): the same ship for both, but each player fires at their own sea (`mini.side[p]`: { revealed,
+// hits, last }); the other side sees only how many hits and misses they have (raceShape), never where. A hit fires
+// again as in Shared; the first to hit every part sinks it and takes the square.
+// Where p's shots live: the square itself (Shared), or p's own side (Race; null for a side this copy has not got).
+export const bsPart = (mini, p) => (mini && mini.race ? raceSide(mini, p) : mini);
+const bsBlank = N => ({ revealed: new Array(N * N).fill(null), hits: [], last: null });
+// p's sea as the shooting rules and the computer read it: the ship's length, the sea's width, the shots and the hits
+// (in Race a side's own part; a side this copy lacks: an empty sea).
+export function bsSea(mini, p) {
+  if (!mini || !mini.race) return mini;
+  const part = raceSide(mini, p) || bsBlank(bsN(mini));
+  return Object.assign({ type: 'bs', len: mini.len, revealed: part.revealed, hits: part.hits }, mini.n ? { n: mini.n } : {}, mini.tune ? { tune: mini.tune } : {});
+}
+// Race: both sides' shots on one sea (a finished square's review and miniature): a cell shot by both says 'XO'.
+export function bsMerged(mini) {
+  if (!mini || !mini.race) return mini;
+  const N = bsN(mini), X = raceSide(mini, 'X') || bsBlank(N), O = raceSide(mini, 'O') || bsBlank(N);
+  const revealed = X.revealed.map((r, k) => (r && O.revealed[k] ? 'XO' : r || O.revealed[k] || null));
+  return Object.assign({}, mini, { revealed, hits: [...new Set([...X.hits, ...O.hits])], last: null });
+}
 
 // Sea Battle: a ship of random length (1 to 4, or lo to hi; or len) placed across or down, anywhere it fits on an N x N sea.
 export function bsShip(rng, N = BS.n, len, lo = 1, hi = 4) {
@@ -23,35 +44,50 @@ export function bsPlacements(len, N = BS.n) {
   }
   return out;
 }
-export function create(type, rng) {
-  const c = tuneLive(type), N = c.n, ship = bsShip(rng, N, 0, c.lenMin, c.lenMax);   // (the admin's settings: the sea and the ship's lengths)
-  return Object.assign({ type }, N !== BS.n ? { n: N } : {}, { len: ship.length, ship, revealed: new Array(N * N).fill(null), hits: [], last: null });
+export function create(type, rng, opts) {
+  const c = tuneLive(type), N = c.n, ship = bsShip(rng, N, 0, c.lenMin, c.lenMax);   // (the admin's settings: the sea and the ship's lengths, the mode)
+  const base = Object.assign({ type }, N !== BS.n ? { n: N } : {}, { len: ship.length, ship });
+  if (raceDealt(type, opts)) return Object.assign(base, { race: true, side: { X: bsBlank(N), O: bsBlank(N) } });
+  return Object.assign(base, bsBlank(N));
 }
 export function apply(mini, p, m, rng, idx) {
   // One shot at one cell. A hit or a miss is shown; the ship's direction never is. A hit that does not
   // sink it fires again at once (the turn goes on until a miss or the sinking shot); the shot that
-  // hits its last cell sinks it and claims the square.
+  // hits its last cell sinks it and claims the square. (Race: the shot lands on p's own sea alone.)
+  const part = bsPart(mini, p);
+  if (!part) return { ok: false, reason: 'bad' };
   if (!idx(bsN(mini) * bsN(mini))) return { ok: false, reason: 'bad' };
-  if (mini.revealed[m]) return { ok: false, reason: 'taken' };
-  mini.revealed[m] = p; mini.last = m;
+  if (part.revealed[m]) return { ok: false, reason: 'taken' };
+  part.revealed[m] = p; part.last = m;
   if (!mini.ship.includes(m)) return { ok: true, outcome: 'continue', note: 'miss' };
-  mini.hits.push(m);
-  if (mini.ship.every(k => mini.hits.includes(k))) return { ok: true, outcome: 'win', cells: mini.ship.slice(), note: 'sunk' };
+  part.hits.push(m);
+  if (mini.ship.every(k => part.hits.includes(k))) return { ok: true, outcome: 'win', cells: mini.ship.slice(), note: 'sunk' };
   return { ok: true, outcome: 'continue', note: 'hit', again: true };
 }
 export function publicView(mini) {
-  return Object.assign({ type: 'bs', len: mini.len, revealed: mini.revealed.slice(), hits: mini.hits.slice() }, mini.n ? { n: mini.n } : {});
+  const v = Object.assign({ type: 'bs', len: mini.len }, mini.n ? { n: mini.n } : {});
+  if (mini.race) return Object.assign(v, { race: true, side: mini.side });   // (core/minis.js publicMini keeps one side's own part alone and adds both shapes)
+  return Object.assign(v, { revealed: mini.revealed.slice(), hits: mini.hits.slice() });
 }
+// Race: what anyone may see of p's hunt: their shots, hits and misses as counts alone (never where), and the ship
+// sunk once they have.
+export function raceShape(mini, p) {
+  const part = raceSide(mini, p);
+  if (!part) return {};
+  const n = part.revealed.filter(Boolean).length, hits = part.hits.length;
+  return Object.assign({ shots: n, hits, miss: n - hits }, hits >= mini.len ? { sunk: true } : {});
+}
+export function raceFlash(f, mini) { return Object.assign({ by: f.by, hit: !!f.hit }, raceShape(mini, f.by)); }
 // Sea Battle: the placements of the ship that still fit every hit and every miss.
 export function bsCandidates(pm) {
   const miss = new Set(pm.revealed.map((r, k) => (r && !pm.hits.includes(k) ? k : -1)).filter(k => k >= 0));
   return bsPlacements(pm.len, bsN(pm)).filter(cells => pm.hits.every(h => cells.includes(h)) && !cells.some(k => miss.has(k)));
 }
 export function randomMove(mini, p, rng, from, empties) {
-  return from(empties(mini.revealed, c => !c));
+  return from(empties(bsSea(mini, p).revealed, c => !c));
 }
 export function moveFlash(m, p, range, bjFrom, mini, flash) {
-  flash.hit = mini.hits.includes(m); flash.len = mini.len; return;
+  flash.hit = bsSea(mini, p).hits.includes(m); flash.len = mini.len; return;
 }
 export function secret(mini) {
   return { ship: mini.ship.slice() };
