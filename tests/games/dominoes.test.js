@@ -211,7 +211,11 @@ test('dominoes: the flash and its timings: a placement slides and lands, a draw 
   assert.equal(R.flashMs({ dom: { kind: 'play' } }, 4, false), T.slide + T.land + T.hold);
   assert.equal(R.flashMs({ dom: { kind: 'play', left: 0 } }, 4, true), T.slide + T.land + T.hold + 500);
   assert.equal(R.flashMs({ dom: { kind: 'play', blocked: true } }, 4, true), T.slide + T.land + T.hold + T.count + 500);
-  assert.equal(R.flashMs({ dom: { kind: 'draw', drew: 2 } }, 4, false), T.draw + 300);
+  assert.deepEqual(R.domDrawTimes(1), [300]); assert.deepEqual(R.domDrawTimes(3), [300, 600, 900]); assert.deepEqual(R.domDrawTimes(9), [200, 400, 600, 800, 1000, 1200, 1400, 1600, 1800], 'a long draw squeezed into drawAll');
+  assert.equal(R.domDrawTimes(22)[21], 2200, 'never closer than 100 ms a tile'); assert.deepEqual(R.domDrawTimes(0), [300]);
+  assert.equal(R.flashMs({ dom: { kind: 'draw', drew: 2 } }, 4, false), 2 * T.draw + 300, 'a draw holds until its last tile has landed');
+  assert.equal(R.flashMs({ dom: { kind: 'draw', drew: 5 } }, 4, false), 5 * T.draw + 300);
+  assert.deepEqual(R.domTimes({ kind: 'draw', drew: 2 }), { lands: [300, 600], land: 600, count: 600, end: 900 });
   assert.equal(R.flashMs({ dom: { kind: 'pass' } }, 4, false), T.pass + 300);
   assert.deepEqual(R.domTimes({ kind: 'play' }), { land: T.slide + T.land, count: T.slide + T.land, pips: null, end: T.slide + T.land + T.hold });
   assert.equal(R.domTimes({ kind: 'play', blocked: true }).pips, T.slide + T.land + T.hold);

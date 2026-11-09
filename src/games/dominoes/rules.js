@@ -20,7 +20,13 @@ import { tuneLive } from '../../core/tune.js';
 // channel exists (`sideView` below is what it would send), HANDS_PUBLIC goes false and nothing else changes.
 export const HANDS_PUBLIC = true;
 export const DOM = { pips: 6, hand: 3 };   // the defaults (TUNE in meta.js: the deal reads tuneLive)
-export const DOMT = { slide: 420, land: 160, hold: 520, draw: 520, pass: 420, count: 700 };   // the view's timings (ms into the move): a tile's slide to its end and landing, the result's hold; a draw's slide; the pips counted up on a blocked end
+export const DOMT = { slide: 420, land: 160, hold: 520, draw: 300, drawSlide: 240, drawAll: 1800, pass: 420, count: 700 };   // the view's timings (ms into the move): a tile's slide to its end and landing, the result's hold; a draw's tiles one by one (`draw` apart, each sliding `drawSlide`; more than six come within `drawAll`); the pips counted up on a blocked end
+// A draw's tiles land one at a time: the k-th at lands[k] ms into the move (DOMT.draw apart; a long draw is squeezed into
+// DOMT.drawAll, never closer than 100 ms). The view's slides, the sounds and flashMs all read these.
+export function domDrawTimes(drew) {
+  const n = Math.max(1, drew | 0), T = DOMT, gap = n <= 6 ? T.draw : Math.max(100, Math.round(T.drawAll / n));
+  return Array.from({ length: n }, (_, k) => gap * (k + 1));
+}
 // The set: tile k is [a, b] with a <= b, in order (0-0, 0-1, 1-1, 0-2, 1-2, 2-2, ...).
 const SETS = {};
 export function domSet(pips) {
@@ -162,11 +168,12 @@ export function hide(m, k, st) {
   if (!HANDS_PUBLIC && m.hands) { m.n = { X: domCount(m, 'X'), O: domCount(m, 'O') }; delete m.hands; } else if (m.hands && !m.n) m.n = { X: domCount(m, 'X'), O: domCount(m, 'O') };
   return;
 }
-// How long a move's animation runs: the tile slides to its end and lands, then its result holds; a draw's tile slides
-// from the boneyard; a pass knocks; a blocked end counts both hands' pips up before the result.
+// How long a move's animation runs: the tile slides to its end and lands, then its result holds; a draw's tiles slide
+// from the boneyard one by one (domDrawTimes) and the last one's landing holds; a pass knocks; a blocked end counts both
+// hands' pips up before the result.
 export function flashMs(f, winLen, won) {
   const d = f.dom || {}, T = DOMT;
-  let ms = d.kind === 'draw' ? T.draw + 300 : d.kind === 'pass' ? T.pass + 300 : T.slide + T.land + T.hold;
+  let ms = d.kind === 'draw' ? domDrawTimes(d.drew).pop() + 300 : d.kind === 'pass' ? T.pass + 300 : T.slide + T.land + T.hold;
   if (d.blocked) ms += T.count + 500;
   if (won && !d.blocked) ms += 500;
   return ms;
@@ -174,7 +181,7 @@ export function flashMs(f, winLen, won) {
 // The moments of a move (ms into it) the view and the sounds share.
 export function domTimes(d) {
   const T = DOMT;
-  if (d.kind === 'draw') return { land: T.draw, count: T.draw, end: T.draw + 300 };
+  if (d.kind === 'draw') { const lands = domDrawTimes(d.drew), land = lands[lands.length - 1]; return { lands, land, count: land, end: land + 300 }; }   // each tile's landing; `land` the last
   if (d.kind === 'pass') return { land: 0, count: 0, end: T.pass + 300 };
   const land = T.slide + T.land;
   return { land, count: land, pips: d.blocked ? land + T.hold : null, end: land + T.hold + (d.blocked ? T.count + 500 : 0) };
