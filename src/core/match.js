@@ -11,13 +11,15 @@ import { NO_SAME_PHONE, SC_ONLY, TYPES } from '../games/index.js';
 
 export const NAME_MAX = 12;
 export function pickType(games, rng) { return games[randInt(rng, games.length)]; }
-export function newSquare(games, rng) { return { owner: null, mini: newMini(pickType(games, rng), rng) }; }
+// How a square is dealt in this match (core/minis.js newMini opts): two people on one phone never play a race (core/race.js).
+export const dealOpts = state => ({ shared: !!(state && state.setup && state.setup.vs === 'same' && !state.online) });
+export function newSquare(games, rng, opts) { return { owner: null, mini: newMini(pickType(games, rng), rng, opts) }; }
 // The nine starting squares: nine different games when the match has nine or more to deal from (fewer:
 // each square any of them, as ever).
-export function dealNine(games, rng) {
-  if (games.length < 9) return Array.from({ length: 9 }, () => newSquare(games, rng));
+export function dealNine(games, rng, opts) {
+  if (games.length < 9) return Array.from({ length: 9 }, () => newSquare(games, rng, opts));
   const bag = games.slice();
-  return Array.from({ length: 9 }, () => ({ owner: null, mini: newMini(bag.splice(randInt(rng, bag.length), 1)[0], rng) }));
+  return Array.from({ length: 9 }, () => ({ owner: null, mini: newMini(bag.splice(randInt(rng, bag.length), 1)[0], rng, opts) }));
 }
 // A reset square's new game, from the match's list (pool): first one not yet used this match (dealt at
 // the start, played, or on the board now), then one not on the board now (the open squares and the one
@@ -169,7 +171,7 @@ export function startMatch(state, rng, only) {   // only: the games this kind of
   state.endPick = null;                                       // the match-end message is picked afresh
   state.timer = newTimer(state.setup.mode === 'online' ? timerSpec(state.setup.timer) : 0);   // (a code, 't30' or 'm5+2'; an older room's number of seconds too)
   state.spot = null;
-  state.squares = dealNine(games, rng);
+  state.squares = dealNine(games, rng, dealOpts(state));
   for (const sq of state.squares) if (sq.mini.type === 'trivia') triviaDeal(state, sq, rng);   // a question each, no two squares alike
   state.screen = 'board'; state.turn = 'X';
   state.zoom = null; state.flash = null; state.done = null; state.stamp = null; state.drawStamp = null; state.lock = null;
@@ -186,6 +188,7 @@ export function newMatch(rng, setup) {
   const st = newState(rng);
   if (setup && setup.names) Object.assign(st.setup.names, setup.names);
   if (setup && setup.mode) st.setup.mode = setup.mode;
+  if (setup && setup.vs) st.setup.vs = setup.vs;                 // (how the match is played: 'cpu', 'same'; a shared phone deals no race square, core/race.js)
   if (setup && setup.human) st.setup.human = setup.human;
   if (setup && setup.players) st.setup.players = Object.assign({}, setup.players);
   else if (setup && setup.mode === 'cpu') st.setup.players = null;   // the older "vs Computer" form: normSetup reads it

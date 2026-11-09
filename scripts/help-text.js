@@ -143,6 +143,12 @@ function loadModel(read, oldTypes) {
       if (!sp || !sw) throw new Error(`${file}: scExplainer is not plain play/win strings`);
       fields.push(fld('Super Chaos Play', site(file, sp), { kind: 'text' }), fld('Super Chaos Win', site(file, sw), { kind: 'text' }));
     }
+    const rm = /^export const raceExplainer = /m.exec(src);   // Race mode (core/race.js): the game's rules as a solo race, shown while that mode is on
+    if (rm) {
+      const ra = rm.index, rb = lineEnd(src, ra), rp = keyLiteral(src, ra, rb, 'play'), rw = keyLiteral(src, ra, rb, 'win');
+      if (!rp || !rw) throw new Error(`${file}: raceExplainer is not plain play/win strings`);
+      fields.push(fld('Race Play', site(file, rp), { kind: 'text' }), fld('Race Win', site(file, rw), { kind: 'text' }));
+    }
     const ek = /^export const EXPLAIN_KEYS = \[([^\]]*)\]/m.exec(src);   // settings outside TUNE the explainer fills in (Risky Rolls' target, from config/pig)
     const allowed = new Set([...src.matchAll(/\bk: '(\w+)'/g)].map(m => m[1]).concat(ek ? [...ek[1].matchAll(/'(\w+)'/g)].map(m => m[1]) : []));
     for (const f of fields) for (const s of f.sites) for (const m of siteValue(read, s).matchAll(/\{(\w+)\}/g)) allowed.add(m[1]);
@@ -227,7 +233,7 @@ function siteSource(read, s, shown) {
 const SECTIONS = [
   ['howto', 'How to Play', 'The core rules and the How to Play screen.'],
   ['modes', 'Modes', 'The explainers for Super Chaos and Classic.'],
-  ['games', 'Mini-games', 'Each mini-game\'s "?" explainer, alphabetical: its category, then Play and Win. "Super Chaos" lines appear only where the game\'s rules differ there.'],
+  ['games', 'Mini-games', 'Each mini-game\'s "?" explainer, alphabetical: its category, then Play and Win. "Super Chaos" lines appear only where the game\'s rules differ there; "Race" lines where the game has a Race mode (shown while the admin has it on).'],
   ['retired', 'Retired mini-games (not shown in the app)', ''],
   ['other', 'Other help text', 'The pop-up\'s fixed labels, Credits and the staging notices.'],
 ];

@@ -1,22 +1,32 @@
 // Higher/Lower: the computer's play.
-import { hiloLeft } from './rules.js';
+import { hiloLeft, hiloPart, hiloTop } from './rules.js';
 
 // Halving the range finds the number within its guesses when there are enough (5 guesses cover 31
 // numbers): the middle number, every time. Its last guess is a gamble: a miss hands the square over, so
 // with one guess left a wide range is worth leaving alone (qLose), and a guess only taken when it is likely.
 // Hard: the guess with the best chance of being the one to land on the number (hiloRace): every miss narrows
 // the range for the other side too, so the middle is not always best (on 3 numbers an end guess wins 2 in 3).
+// Race mode (core/race.js): the computer reads its own range alone; the other side's progress is its shape
+// (how close: cold, warm, hot), and the two ranges are independent, so a miss narrows nothing for the other.
+const HEAT_LEFT = { hit: 1, hot: 2, warm: 5 };                   // numbers about left to a side by its heat (cold: the whole top)
+function openTo(pm, p) {                                         // how many numbers are still open to p (their own range, or their shape's heat)
+  const part = hiloPart(pm, p);
+  if (part && Number.isInteger(part.lo)) return part.hi - part.lo + 1;
+  const sh = pm.shape && pm.shape[p];
+  return sh && sh.heat ? HEAT_LEFT[sh.heat] || hiloTop(pm) : hiloTop(pm);
+}
 export function needs(pm, p) {
-  const r = pm.hi - pm.lo + 1, n = r <= 1 ? 1 : Math.log2(r + 1);
+  const r = openTo(pm, p), n = r <= 1 ? 1 : Math.log2(r + 1);
   return n > hiloLeft(pm, p) + 0.001 ? Math.max(n, hiloLeft(pm, p) + 2) : n;   // more than its guesses left: a long shot
 }
 export function best(pm, me, rng, style, ctx) {
-  const r = pm.hi - pm.lo + 1, left = hiloLeft(pm, me), q = 1 / r;
-  if (ctx && ctx.level === 'hard') {
+  const part = hiloPart(pm, me) || { lo: 1, hi: hiloTop(pm) };
+  const r = part.hi - part.lo + 1, left = hiloLeft(pm, me), q = 1 / r;
+  if (ctx && ctx.level === 'hard' && !pm.race) {
     const o = me === 'X' ? 'O' : 'X', k = hiloRace(r, Math.min(G_MAX, left), Math.min(G_MAX, hiloLeft(pm, o))).k;
-    return { move: pm.lo + k - 1, q, qLose: left === 1 ? 1 - q : 0, shared: true };
+    return { move: part.lo + k - 1, q, qLose: left === 1 ? 1 - q : 0, shared: true };
   }
-  return { move: Math.floor((pm.lo + pm.hi) / 2), q, qLose: left === 1 ? 1 - q : 0, shared: true };
+  return { move: Math.floor((part.lo + part.hi) / 2), q, qLose: left === 1 ? 1 - q : 0, shared: !pm.race };   // (a race: halving is best, the other side's guesses change nothing for this one)
 }
 
 // ---- Hard: the race ----

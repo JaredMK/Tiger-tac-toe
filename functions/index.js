@@ -198,6 +198,9 @@ function gameId(v) {
 }
 const sideOf = (pub, uid) => (pub.players.X.uid === uid ? 'X' : pub.players.O.uid === uid ? 'O' : null);
 const parse = s => (typeof s === 'string' ? JSON.parse(s) : s || {});
+// A Classic match's sides (games/{id}/sides/{side}: each side's own parts of the race squares, core/race.js), parsed; and packed for the node.
+const sidesOf = cur => ({ X: parse(cur && cur.sides && cur.sides.X), O: parse(cur && cur.sides && cur.sides.O) });
+const packSides = sides => ({ X: JSON.stringify((sides && sides.X) || {}), O: JSON.stringify((sides && sides.O) || {}) });
 
 /* ===================== stats ===================== */
 // Counts to add, as one atomic multi-path update of increments (merged into `into` when given).
@@ -626,7 +629,7 @@ async function makeGame(key, id, X, O, opts) {
     if (!rec.state.squares.every(q => types.includes(q.mini.type)) || !rec.state.games.every(g => types.includes(g))) { logger.error('makeGame', id, 'dealt outside the clients\' games', rec.state.games); return false; }   // (never expected: the deal and every reset stay within the match's list, which is these)
     E.armClock(rec.state, [], t + MATCH_GRACE_MS);
     const pub = Object.assign({ mode: Q.mode, queue: key, timer: E.turnSecsOf(Q.timer), players, status: 'playing', created: t, updated: t, state: JSON.stringify(rec.state) }, friend ? { room: friend.code } : {}, Q.chaos ? {} : { clock: E.timerSpec(Q.timer) });   // (timer: seconds a turn, 0 for none or a match clock, as older apps read it; clock: the code)
-    node = { pub, sec: JSON.stringify(rec.secrets), dl: E.clockDeadline(rec.state.timer) };
+    node = { pub, sec: JSON.stringify(rec.secrets), sides: packSides(rec.sides), dl: E.clockDeadline(rec.state.timer) };
   }
   const made = await db.ref(`games/${id}`).transaction(cur => (cur ? undefined : node), undefined, false);
   if (made.committed) {
@@ -832,12 +835,12 @@ async function queueBot(id, seq, step, due) {
   } catch (e) { logger.warn('bot move not queued: the phones and the sweep move it when due', id, e.message); }
 }
 // start: when the turn starts on the phones. again: a follow-up within the bot's own turn.
-async function planBot(id, st, sec, bg, start, again) {
+async function planBot(id, st, sec, bg, start, again, sides) {
   if (!bg || !bg.live || st.winner || st.turn !== bg.side) return null;
   if (bg.next && bg.next.seq === st.seq && bg.next.step === 'move') return bg.next;   // planned already: one think per move
   const bot = B.byKey(bg.key) || B.BOTS[0], rng = seedRng();
   await runConfigNow();
-  const plan = E.cpuMove(E.fullState({ state: st, secrets: sec }), rng, bot.style, { level: B.botConfig(await adminConfig()).level, clock: Date.now });   // (the admin's level for the bots: Hard searches and plays out the match, inside its time budget)
+  const plan = E.cpuMove(E.fullState({ state: st, secrets: sec, sides }), rng, bot.style, { level: B.botConfig(await adminConfig()).level, clock: Date.now });   // (the admin's level for the bots: Hard searches and plays out the match, inside its time budget)
   if (!plan) return null;
   const due = Math.max(start, now()) + B.thinkMs(bot, again ? 'again' : 'turn', rng, st.squares[plan.square].mini.type);
   const next = { seq: st.seq, step: 'move', due, square: plan.square, move: plan.move };
@@ -852,7 +855,7 @@ async function afterBotChange(id, info) {
   const [bgs, gs] = await Promise.all([db.ref(`botGames/${id}`).get(), db.ref(`games/${id}`).get()]);
   const bg = bgs.val(), g = gs.val();
   if (!bg || !bg.live || !g || !g.pub || g.pub.status !== 'playing') return;
-  await planBot(id, parse(g.pub.state), parse(g.sec), bg, now() + E.replayMs(info.entries), info.sameTurn);
+  await planBot(id, parse(g.pub.state), parse(g.sec), bg, now() + E.replayMs(info.entries), info.sameTurn, sidesOf(g));
 }
 // Runs the bot's planned move once it is due. when: 'task' (its Cloud Task: due by then), 'tick' (a phone
 // waiting for it: once due), 'sweep' (the same, from the sweep), 'force' (a timeout on the bot's turn: now).
@@ -867,7 +870,7 @@ async function runBot(id, opts) {
   if (st.winner || st.turn !== bg.side) return false;
   if (o.seq != null && o.seq !== st.seq) return false;       // a task for a move already made
   let next = bg.next && bg.next.seq === st.seq ? bg.next : null;
-  if (!next) { next = await planBot(id, st, parse(g.sec), bg, turnStart(st), false); if (!next || when === 'task') return false; }
+  if (!next) { next = await planBot(id, st, parse(g.sec), bg, turnStart(st), false, sidesOf(g)); if (!next || when === 'task') return false; }
   if (o.step && o.step !== next.step) return false;
   if (when !== 'task' && when !== 'force' && now() < next.due - BOT_EARLY_MS) return false;
   if (next.step === 'second') {                              // Find the Pair: the second card
@@ -1016,7 +1019,7 @@ async function changeGame(id, uid, step, what) {   // what: the kind of change, 
     const side = uid ? sideOf(pub, uid) : null;
     if (uid && !side) { out = { ok: false, reason: 'not-player' }; return undefined; }
     who = side;
-    const rec = { state: parse(pub.state), secrets: parse(cur.sec) }, turn0 = rec.state.turn;
+    const rec = { state: parse(pub.state), secrets: parse(cur.sec), sides: sidesOf(cur) }, turn0 = rec.state.turn;
     const r = step(rec, side, pub);
     if (!r.ok) { out = { ok: false, reason: r.reason }; return undefined; }
     const t = now();
@@ -1025,6 +1028,7 @@ async function changeGame(id, uid, step, what) {   // what: the kind of change, 
     if (r.entries && (r.rec.state.turn !== turn0 || r.rec.state.winner)) E.armClock(r.rec.state, r.entries, t);
     else if (r.entries && r.entries.length) E.holdClock(r.rec.state, r.entries);   // (a match clock stands still while a move that keeps the turn plays out)
     pub.state = JSON.stringify(r.rec.state); cur.sec = JSON.stringify(r.rec.secrets || {});
+    if (r.rec.sides) cur.sides = packSides(r.rec.sides);          // (each side's own parts of the race squares: that side alone reads its node)
     pub.updated = t;
     over = !!r.rec.state.winner;
     const tm = r.rec.state.timer;
@@ -1119,7 +1123,7 @@ async function finishGame(id) {
   const bg = (await db.ref(`botGames/${id}`).get()).val();      // a game against a bot: its own stats; the player's record as the admin chose
   const counted = !bg || B.botConfig(await adminConfig()).countInRecords;
   const names = { X: pub.players.X.name, O: pub.players.O.name };
-  const final = pub.chaos ? E.scFinal(scOf(g), names) : finalOf({ state: st, secrets: parse(g.sec) }, names);   // (a Super Chaos match: every square revealed from the server's record)
+  const final = pub.chaos ? E.scFinal(scOf(g), names) : finalOf({ state: st, secrets: parse(g.sec), sides: sidesOf(g) }, names);   // (a Super Chaos match: every square revealed from the server's record)
   const how = R.howEnded(st), t = pub.ended || now();
   const up = {};
   const result = { winner: st.winner === 'X' || st.winner === 'O' ? st.winner : null, how, records: {} };   // (a draw: no winner)

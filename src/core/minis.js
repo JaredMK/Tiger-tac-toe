@@ -11,6 +11,7 @@ import { PLINKO_DEFAULTS } from '../games/plinko/meta.js';
 import { PLINKO } from '../games/plinko/rules.js';
 import { WHEEL_DEFAULTS } from '../games/wheels/meta.js';
 import { WHEELS_ALL, WHEEL_SEGS } from '../games/wheels/rules.js';
+import { isRace, raceShape, raceSide } from './race.js';
 import { rulesOf } from '../games/index.js';
 import { tuneSnap } from './tune.js';
 
@@ -81,9 +82,9 @@ export function anyMove(state, p) { return state.squares.some(s => !s.owner && c
 
 // A square keeps the settings it was dealt with (core/tune.js): only those that differ from the defaults.
 export function withTune(mini) { const s = mini && tuneSnap(mini.type); if (s) mini.tune = s; return mini; }
-export function newMini(type, rng) {
+export function newMini(type, rng, opts) {   // opts.shared: two people on one phone (a race game is dealt Shared: core/race.js)
   const game = rulesOf(type);
-  if (game.create) return withTune(game.create(type, rng));
+  if (game.create) return withTune(game.create(type, rng, opts));
   throw new Error('unknown mini-game: ' + type);
 }
 
@@ -97,10 +98,20 @@ export function applyMove(mini, p, m, rng) {
   return { ok: false, reason: 'bad' };
 }
 
-// What a player can see of a mini-game. Hidden information is left out, not blanked.
-export function publicMini(mini) {
+// What a player can see of a mini-game. Hidden information is left out, not blanked. A race square (core/race.js):
+// both players' shapes, and forSide's own part alone (the other side's never; none without a side).
+export function publicMini(mini, forSide) {
   const game = rulesOf(mini.type);
-  if (game.publicView) { const v = game.publicView(mini); if (mini.tune && v && typeof v === 'object' && !v.tune) v.tune = mini.tune; return v; }   // (its settings: never secret)
+  if (game.publicView) {
+    const v = game.publicView(mini);
+    if (mini.tune && v && typeof v === 'object' && !v.tune) v.tune = mini.tune;   // (its settings: never secret)
+    if (isRace(mini) && v && typeof v === 'object') {
+      v.race = true; v.shape = { X: raceShape(mini, 'X') || {}, O: raceShape(mini, 'O') || {} };
+      const own = forSide ? raceSide(mini, forSide) : null;
+      v.side = own ? { [forSide]: JSON.parse(JSON.stringify(own)) } : {};
+    }
+    return v;
+  }
   throw new Error('unknown mini-game: ' + mini.type);
 }
 export function randomLegalMove(mini, p, rng) {

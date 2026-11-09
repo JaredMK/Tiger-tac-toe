@@ -3,6 +3,7 @@
  * can be tested on their own; functions/index.js applies the result as atomic increments.
  *
  * stats/ (readable by the admin only, written only by the server)
+ *   miniMode/{shared|race}/{mode}/{type}   the same counters by the square's own mode (Race mode, core/race.js), for the comparison
  *   mini/{mode}/{type}     played, won, draw (reset), open (match ended first), winMoves, loseMoves,
  *                          allMoves, xWins, oWins: sums, averaged on the dashboard (mode 'testing': the
  *                          squares of games that were admin only when the match ended, kept apart; every
@@ -140,14 +141,16 @@ function endUpdates(mode, sum, ms, t, withStart, testTypes) {
   const sc = !!sum.sc || mode === 'chaos';
   for (const e of sum.squares) {
     const test = testTypes && testTypes.includes(e.t);
-    const b = `mini/${test ? (sc ? 'testingSc' : 'testing') : sc ? 'chaos' : mode}/${e.t}/`;
-    add(b + 'played', 1);
-    add(b + e.end, 1);
-    add(b + 'allMoves', e.X + e.O);
-    if (e.end === 'won') {
-      add(b + 'winMoves', e[e.w]);
-      add(b + 'loseMoves', e[e.w === 'X' ? 'O' : 'X']);
-      add(b + (e.w === 'X' ? 'xWins' : 'oWins'), 1);
+    const key = `${test ? (sc ? 'testingSc' : 'testing') : sc ? 'chaos' : mode}/${e.t}/`, b = `mini/${key}`;
+    for (const base of [b, `miniMode/${e.race ? 'race' : 'shared'}/${key}`]) {   // (and the same by the square's own mode: Shared or Race)
+      add(base + 'played', 1);
+      add(base + e.end, 1);
+      add(base + 'allMoves', e.X + e.O);
+      if (e.end === 'won') {
+        add(base + 'winMoves', e[e.w]);
+        add(base + 'loseMoves', e[e.w === 'X' ? 'O' : 'X']);
+        add(base + (e.w === 'X' ? 'xWins' : 'oWins'), 1);
+      }
     }
     if (e.run) {                                                        // a runner: every run and crash counts, finished square or not
       add(b + 'runs', e.run.runs.X + e.run.runs.O);

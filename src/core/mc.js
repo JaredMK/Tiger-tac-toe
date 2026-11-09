@@ -16,7 +16,7 @@ const MAX_PLIES = 60;
 export function mcPick(state, me, cands, rng, w, st, until) {
   const o = other(me), n = state.squares.length;
   const base = Int8Array.from(state.squares, sq => (sq.owner === 'X' ? 1 : sq.owner === 'O' ? 2 : 0)), need0 = new Float64Array(18);
-  state.squares.forEach((sq, i) => { if (sq.owner) return; const c = cands.find(x => x.square === i), pm = c ? c.pm : publicMini(sq.mini); need0[2 * i] = needsOf(pm, 'X'); need0[2 * i + 1] = needsOf(pm, 'O'); });
+  state.squares.forEach((sq, i) => { if (sq.owner) return; const c = cands.find(x => x.square === i), pm = c ? c.pm : publicMini(sq.mini, me); need0[2 * i] = needsOf(pm, 'X'); need0[2 * i + 1] = needsOf(pm, 'O'); });
   const afters = cands.map(c => (c.local.after ? { X: needsOf(c.local.after, 'X'), O: needsOf(c.local.after, 'O') } : null));   // (the game's reckoning once, not per playout)
   const wins = cands.map(() => 0);
   let rounds = 0;

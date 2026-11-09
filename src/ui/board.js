@@ -1,5 +1,6 @@
 // The main board: the nine squares and their miniatures (each game's view.js: miniature).
 import { hashSvg } from './hash.js';
+import { isRace, raceView } from '../core/race.js';
 import { playerName } from '../core/match.js';
 import { fullState } from '../core/records.js';
 import { ANIM } from '../core/timer.js';
@@ -122,6 +123,6 @@ function drawOver(at) {
 // except that a claimed Find the Pair square shows the pair that won it.
 function thumb(mini, final) {
   const game = viewOf(mini.type);
-  if (game.miniature) return game.miniature(mini, final);
+  if (game.miniature) return game.miniature(isRace(mini) && !final ? raceView(mini, null) : mini, final);   // (a race square: both shapes, nobody's guesses)
   return '';
 }

@@ -7,7 +7,7 @@ import { makeRng } from '../core/random.js';
 import { ANIM, PLAY, newTimer } from '../core/timer.js';
 import { markCoins } from '../games/coins/rules.js';
 import { TYPES } from '../games/index.js';
-import { blocked, validCode } from '../net/room.js';
+import { blocked, mySide, validCode } from '../net/room.js';
 import { reportLocal, trackEnd } from '../net/tracking.js';
 import { CPU_ICON } from './art.js';
 import { KEY } from './config.js';
@@ -39,6 +39,9 @@ export const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<':
 export const N = p => (cpuPlays(p) ? CPU_ICON : '') + esc(playerName(state, p));   // a player's display name, safe for innerHTML, with the computer icon for a computer
 export const isYou = p => playerName(state, p) === 'You';                                 // the player with no name (Play Computer logged out): "Your turn", "You win", never "You's turn"
 export function cpuPlays(p) { return !state.online && !!state.cpu && state.cpu.includes(p); }
+// Whose phone this is: this side online, the person's side against the computer, none on a shared phone (a race square
+// shows only this side's own part: core/race.js raceView, ui/mini.js).
+export const viewer = () => mySide();
 // "Waiting for [name]…" is only ever said of the other side: online, never of this phone's own side (its own move on its
 // way to the server, played here already: Classic never waits on its own move); against the computer, of the computer
 // alone. A game screen's waiting line goes through waitLine (and ui/mini.js drops any other that names this side).

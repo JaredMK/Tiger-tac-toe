@@ -13,7 +13,7 @@ let ctl = { config: {}, secretsSet: {}, bots: {}, botStats: {}, alertLog: [], al
 // The defaults the server uses for anything not set (functions/bots.js).
 const DEF = { bots: { enabled: false, waitMin: 40, waitMax: 70, countInRecords: true, level: 'normal' }, alerts: { enabled: false, sms: false, email: true, phone: '', to: '', after: 5, cooldownMin: 30, gapMin: 3, dailyCap: 20 } };
 const cfgGet = (sec, k) => { const v = ((ctl.config || {})[sec] || {})[k]; return v === undefined || v === null || v === '' ? DEF[sec][k] : v; };
-let sortBy = { k: 'avgWin', dir: 1 }, miniMode = 'all', period = 'd';
+let sortBy = { k: 'avgWin', dir: 1 }, miniMode = 'all', miniRace = 'all', period = 'd';   // miniRace: the squares' own mode (all | shared | race: Race mode, core/race.js)
 let accts = null, acctSort = { k: 'joined', dir: -1 };                       // the Accounts table: newest first
 let acctOpen = null, acctView = 'all', PS = null;                             // the player detail: whose, which games; src/ui/pstats.js (the numbers as the profile adds them up)
 let play = null, devSort = { k: 'last', dir: -1 }, devOpen = null, tagPick = '', allSessions = false;   // the playtest section
@@ -73,7 +73,8 @@ function totals(modes = stats.modes || {}) {
 // the table is worked out from the claimed ones alone, past matches included.
 function miniSums(t, pick) {
   const s = { won: 0, draw: 0, open: 0, winMoves: 0, loseMoves: 0, xWins: 0, oWins: 0 };
-  for (const m of pick) { const r = (stats.mini && stats.mini[m] && stats.mini[m][t]) || {}; for (const k of Object.keys(s)) s[k] += n(r[k]); }
+  const root = miniRace === 'all' ? stats.mini : stats.miniMode && stats.miniMode[miniRace];   // (Shared or Race alone: the counters kept by the square's own mode)
+  for (const m of pick) { const r = (root && root[m] && root[m][t]) || {}; for (const k of Object.keys(s)) s[k] += n(r[k]); }
   return s;
 }
 // Normal and Super Chaos side by side: every Super Chaos square (vs the computer or in a friend room) is
@@ -206,7 +207,7 @@ function draw() {
     releases: () => releasesCard(),
     access: () => accessCard(),
     stats: () => `<div class="card"><h2>Matches by mode</h2>${modeTable}</div><div class="card"><h2>Matches by timer</h2>${timerTable}</div>
-    <div class="card"><div class="row"><h2>Mini-games</h2><label>Modes <select id="mm">${[['all', 'All modes'], ['people', 'All but computer vs computer']].concat(MODES.filter(m => m[0] !== 'chaos'), [['testing', 'Admin-only games (testing)']]).map(([v, l]) => `<option value="${v}"${miniMode === v ? ' selected' : ''}>${l}</option>`).join('')}</select></label></div>
+    <div class="card"><div class="row"><h2>Mini-games</h2><label>Squares <select id="mrace">${[['all', 'Shared and Race'], ['shared', 'Shared only'], ['race', 'Race only']].map(([v, l]) => `<option value="${v}"${miniRace === v ? ' selected' : ''}>${l}</option>`).join('')}</select></label><label>Modes <select id="mm">${[['all', 'All modes'], ['people', 'All but computer vs computer']].concat(MODES.filter(m => m[0] !== 'chaos'), [['testing', 'Admin-only games (testing)']]).map(([v, l]) => `<option value="${v}"${miniMode === v ? ' selected' : ''}>${l}</option>`).join('')}</select></label></div>
       ${miniTable}<h2 style="margin-top:14px">Average winner moves</h2>${hbarChart(rows, 'avgWin', 'Average winner moves by mini-game', v => num(v))}</div>`,
   };
   const [where, sub] = route(), info = SECTIONS.find(x => x[0] === where);
@@ -1159,6 +1160,7 @@ app.addEventListener('click', e => {
 app.addEventListener('input', () => { if (note) { note = null; showNote(); } });   // (an edit after a save: its note goes)
 app.addEventListener('change', e => {
   if (e.target.id === 'mm') { miniMode = e.target.value; render(); }
+  if (e.target.id === 'mrace') { miniRace = e.target.value; render(); }
   else if (['mlWho', 'mlMode', 'mlFrom', 'mlTo'].includes(e.target.id)) { mlFilt[{ mlWho: 'who', mlMode: 'mode', mlFrom: 'from', mlTo: 'to' }[e.target.id]] = e.target.value; mlOpen = null; render(); }
   else if (['tmKind', 'tmMins', 'tmInc', 'tmSecs'].includes(e.target.id)) saveTimer();
   else if (e.target.id === 'tagPick') { tagPick = e.target.value; devOpen = null; render(); }

@@ -5,6 +5,7 @@ import { copyText, shareText, siteUrl } from './platform.js';
 import { restrictGames } from '../core/games.js';
 import { NAME_MAX, playerName } from '../core/match.js';
 import { upgradeMini } from '../core/minis.js';
+import { isRace } from '../core/race.js';
 import { MATCH_FIELDS, packMatch, parseMatch, resignLocal } from '../core/records.js';
 import { ANIM, newTimer, normTimer, PLAYER_TIMERS, replaySpeed, setupSpec, speedMode, TIMER_DEFAULT } from '../core/timer.js';
 import { other } from '../core/util.js';
@@ -95,7 +96,17 @@ function listenRoom(code) {
   presUnsub = fb.m.onValue(fb.m.ref(fb.db, 'presence/' + code), s => { presence = s.val(); noteNet(); if (state.online) render(); });
   listenReacts(code);
 }
+// This side's own parts of the match's race squares (games/{id}/sides/{me}: that side alone reads it; core/race.js): merged into
+// the squares wherever the record is taken (takeFields, presentEntry), and again when the node arrives after the record.
+let mySides = null;
+export function setMySides(v) { mySides = v && typeof v === 'object' ? v : null; }
+export function mergeMySides() {
+  const me = state.online && state.online.me;
+  if (!me || !mySides || !Array.isArray(state.squares)) return;
+  state.squares.forEach((sq, k) => { if (sq && sq.mini && isRace(sq.mini) && !sq.owner && mySides[k] != null) sq.mini.side = Object.assign({}, sq.mini.side, { [me]: JSON.parse(JSON.stringify(mySides[k])) }); });
+}
 export function stopListening() {                                 // (the match's listeners; the room's own node stays until the room is left: stopLobby)
+  mySides = null;
   if (roomUnsub) roomUnsub();
   if (presUnsub) presUnsub();
   stopReacts();
@@ -279,6 +290,7 @@ export function takeFields(st) {
   }
   if (!Array.isArray(state.games) || !state.games.length) state.games = TYPES.slice();
   if (Array.isArray(state.squares)) state.squares.forEach(sq => upgradeMini(sq.mini));
+  mergeMySides();
   state.cpu = null; state.confirm = null; state.sel = [];
 }
 export function showLatest(st) {
@@ -321,7 +333,7 @@ export function presentEntry(st, e, rest) {
     if (was) state.squares[k] = clone(was);
   }
   const before = e.before || (view && view[e.square]) || null;
-  state.squares[e.square] = clone(e.after);
+  state.squares[e.square] = clone(e.after); mergeMySides();
   state.turn = e.by; state.lock = e.kind === 'again' ? e.square : null;
   state.moves = e.moves; state.lastSquare = e.square; state.lastBy = e.by;
   const over = e.kind === 'match';
@@ -338,7 +350,7 @@ export function presentEntry(st, e, rest) {
     const mini0 = before ? clone(before) : null;
     if (mini0) state.squares[e.square] = clone(mini0);
     const start = () => repStart({ sq: e.square, by: e.by, type: f.type, mini: mini0 ? mini0.mini : state.squares[e.square].mini, move: f.m, list: mini0 ? f.rep : null, timeout: !!f.timeout, speed: replaySpeed(),
-      onMove: () => { state.squares[e.square] = clone(e.after); state.flash = f; state.done = done; state.draft = ''; state.notice = null; playFlash(); save(); render(); } });
+      onMove: () => { state.squares[e.square] = clone(e.after); mergeMySides(); state.flash = f; state.done = done; state.draft = ''; state.notice = null; playFlash(); save(); render(); } });
     showRemoteMove(e.square, moveLabel(e), mini0, start);
   }
   save(); render();

@@ -166,7 +166,7 @@ export function cpuMove(state, rng, style, opts) {
   const cands = [];
   const owned = p => state.squares.filter(s => s.owner === p).length, behind = owned(other(me)) - owned(me);
   for (const i of open) {
-    const pm = publicMini(state.squares[i].mini);
+    const pm = publicMini(state.squares[i].mini, me);   // (a race square: the computer's own part and both shapes, never the other side's part)
     const real = squareValue(state.squares, i, me, st);
     const at = clock ? clock() : 0, until = clock ? () => Math.max(0, at + share - clock()) : null;
     const local = pre[i] || localBest(pm, me, rng, st, { value: real, behind, level, until });

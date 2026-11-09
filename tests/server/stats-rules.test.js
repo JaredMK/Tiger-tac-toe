@@ -31,9 +31,10 @@ test('stats: a finished match adds its mode\'s totals and every mini-game played
   const sum = { winner: 'O', reason: 'line', squares: [
     { t: 'ttt', end: 'won', w: 'O', X: 2, O: 3 }, { t: 'ttt', end: 'draw', w: null, X: 2, O: 2 }, { t: 'bs', end: 'open', w: null, X: 1, O: 0 }] };
   const all = S.endUpdates('cpu', sum, 90000, t, false);
-  const up = Object.fromEntries(Object.entries(all).filter(([k]) => !/^(days|weeks|months)\/[^/]+\/modes\//.test(k)));
+  const up = Object.fromEntries(Object.entries(all).filter(([k]) => !/^(days|weeks|months)\/[^/]+\/modes\//.test(k) && !k.startsWith('miniMode/')));
+  for (const [k, n] of Object.entries(all)) if (k.startsWith('mini/')) assert.equal(all['miniMode/shared/' + k.slice(5)], n, 'every square is counted by its mode too: ' + k);   // Race mode: miniMode/{shared|race}/...
   for (const [k, n] of Object.entries(all)) if (k.startsWith('modes/')) for (const p of ['days/2026-10-13', 'weeks/2026-W42', 'months/2026-10']) assert.equal(all[`${p}/${k}`], n, `${p}/${k}`);
-  assert.equal(Object.keys(all).length, Object.keys(up).length + 3 * Object.keys(up).filter(k => k.startsWith('modes/')).length, 'only the mode totals are kept per period');
+  assert.equal(Object.keys(all).length, Object.keys(up).length + 3 * Object.keys(up).filter(k => k.startsWith('modes/')).length + Object.keys(up).filter(k => k.startsWith('mini/')).length, 'only the mode totals are kept per period');
   assert.deepEqual(up, {
     'modes/cpu/finished': 1, 'days/2026-10-13/finished/cpu': 1, 'modes/cpu/turns': 10, 'modes/cpu/oWins': 1, 'modes/cpu/ms': 90000, 'modes/cpu/timed': 1,
     'modes/cpu/done': 1, 'modes/cpu/doneTurns': 10, 'modes/cpu/doneMs': 90000, 'modes/cpu/doneTimed': 1,

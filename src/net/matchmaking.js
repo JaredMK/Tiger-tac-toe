@@ -6,7 +6,7 @@ import { listenReacts } from './reactions.js';
 import {
   applyMatch, awayNote, leaveRoom, moveTimer, moveWait, net, pendingRoom, presUnsub, presence, presenceUp,
   presenting, presentingSeq, room, roomUnsub, setAwayNote, setMoveWait, setNet, setPendingRoom, setPresUnsub,
-  setPresence, setPresentingSeq, setRoom, setRoomUnsub, setTimeoutBusy, stopListening, stopLobby, takeFields, tellLeft, timeoutBusy, listenLobby, closeSeat
+  setPresence, setPresentingSeq, setRoom, setRoomUnsub, setTimeoutBusy, stopListening, stopLobby, takeFields, setMySides, mergeMySides, tellLeft, timeoutBusy, listenLobby, closeSeat
 } from './room.js';
 import {
   app, commit, flashTimer, holdTimer, menuNote, menuOpen, menuStep, save, setFlashTimer, setHoldTimer, setMenuNote,
@@ -159,9 +159,11 @@ export function listenGame(id) {
   stopListening();
   scSide = null; scPub = null;
   setRoomUnsub(fb.m.onValue(fb.m.ref(fb.db, `games/${id}/pub`), s => onGameValue(s.val()), () => { setNet('error', 'Lost access to this match.'); commit(); }));
-  const off = fb.m.onValue(fb.m.ref(fb.db, `games/${id}/sides/${state.online.me}`), s => {   // (a Super Chaos match: this side's own node, read with the game; let go once this phone has left it)
+  const off = fb.m.onValue(fb.m.ref(fb.db, `games/${id}/sides/${state.online.me}`), s => {   // this side's own node, read with the game (a Super Chaos match: its side view; Classic: this side's parts of the race squares, core/race.js); let go once this phone has left it
     if (!state.online || state.online.kind !== 'mm' || state.online.game !== id) { off(); return; }
-    scSide = s.val() ? JSON.parse(s.val()) : null; if (scPub) onGameValue(scPub);
+    let v = null; try { v = s.val() ? JSON.parse(s.val()) : null; } catch (e) { v = null; }
+    if (scPub || state.online.chaos) { scSide = v; if (scPub) onGameValue(scPub); return; }
+    setMySides(v); mergeMySides(); render();
   }, () => {});
   setPresUnsub(fb.m.onValue(fb.m.ref(fb.db, `gpresence/${id}`), s => { setPresence(s.val()); noteNet(); if (state.online) render(); }));
   listenReacts(id);

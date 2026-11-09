@@ -9,7 +9,7 @@ import { isMM } from '../net/matchmaking.js';
 import { rx } from '../net/reactions.js';
 import { canReport } from '../net/tracking.js';
 import { blocked, leaveLoses, lockMine, mySide, pinned, remoteTurn } from '../net/room.js';
-import { N, esc, menuOpen, menuStep, state, waitsOn } from './app.js';
+import { N, esc, menuOpen, menuStep, state, waitsOn , viewer } from './app.js';
 import { CHEV, toon } from './art.js';
 import { attPinned } from './attention.js';
 import { scJointFrame, scWaiting } from './chaos.js';
@@ -18,15 +18,19 @@ import { qBtn } from './explainer.js';
 import { fingPinned } from './finger.js';
 import { animMs, fxAt, fxAttr } from './fx.js';
 import { rep, repActive, repSkipBtn } from './replay.js';
+import { isRace, raceFlashHide, raceView } from '../core/race.js';
+// A move's flash as this phone may see it: another side's move in a race square is redacted (core/race.js raceFlashHide).
+function raceSeen(f, sq) { return f && sq && isRace(sq.mini) && f.by !== viewer() ? raceFlashHide(f, sq.mini) : f; }
 import { reviewCtx } from './screens/profile.js';
 import { netBar } from './turnbar.js';
 import { cpuTurn } from './turns.js';
 
 // `popup`: Super Chaos's recap replaying the computer's move, as a card over the board (ui/chaos.js).
 export function renderMini(sq, review, popup) {
-  const f = state.flash;                            // the move just made: its animation and result are playing
-  const d = state.done;                             // the move made here, on show until the player heads back to the board
-  const mini = d && d.drawn ? d.drawn : sq.mini;    // after a draw, keep showing the full board that drew
+  const f = raceSeen(state.flash, sq);                              // (a race square: the other side's move as this phone may see it, core/race.js)                            // the move just made: its animation and result are playing
+  const d = raceSeen(state.done, sq);               // the move made here, on show until the player heads back to the board
+  const view0 = (!!sq.owner || !!review) && !f;
+  const mini = d && d.drawn ? d.drawn : isRace(sq.mini) && !view0 ? raceView(sq.mini, viewer()) : sq.mini;   // after a draw, keep showing the full board that drew; a race square still open: this side's own part and both shapes, never the other side's part
   const info = INFO[mini.type];
   const view = (!!sq.owner || !!review) && !f;     // a claimed square (or any square once the match is over and being reviewed): final state, read-only, secrets revealed
   const locked = !!f || !!d || view || (blocked() && !repActive());   // no input while the result plays, once the move is made, when just looking, or while it is not this phone's move (an opponent's inputs replaying: the screen as the mover had it, its controls open; the page takes no tap meanwhile, ui/input.js)

@@ -9,6 +9,7 @@ import { KEY } from '../ui/config.js';
 import { shownSq } from '../ui/chaos.js';
 import { hexLen } from '../ui/fx.js';
 import { mySide } from '../ui/haptics.js';
+import { isRace, raceFlashHide, raceView } from '../core/race.js';
 import { endKind } from '../ui/screens/win.js';
 
 /* ===================== sound =====================
@@ -404,7 +405,9 @@ const TAP_SOUND = { explain: 'open', 'explain-close': 'close', pause: 'open', 'p
 export function moveSounds(f) {
   const out = [], add = (n, ms, rate) => out.push([n, ms, rate]);
   const won = f.kind === 'claim' || f.kind === 'match', total = playMs(f, hexLen(f));
-  const sq = shownSq(f.square), mini = sq ? sq.mini : {}, last = mini.guesses ? mini.guesses[mini.guesses.length - 1] : null;
+  const sq0 = shownSq(f.square), race = sq0 && isRace(sq0.mini) && f.by !== mySide();   // (a race square, another side's move: the sounds of its shape change alone)
+  if (race) f = raceFlashHide(f, sq0.mini);
+  const sq = sq0 ? (race ? { mini: raceView(sq0.mini, mySide()) } : sq0) : null, mini = sq ? sq.mini : {}, last = mini.guesses ? mini.guesses[mini.guesses.length - 1] : null;
   if (f.timeout) { add('buzz', 0); add('randomMove', 380); }
   const game = viewOf(f.type);
   if (game.sounds) game.sounds(f, add, won, mini, last);

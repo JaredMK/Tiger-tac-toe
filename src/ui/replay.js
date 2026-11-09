@@ -20,6 +20,7 @@ import { app, state } from './app.js';
 import { fx, fxAt } from './fx.js';
 import { render } from './render.js';
 import { skipFlash } from './turns.js';
+import { isRace } from '../core/race.js';
 
 const OWN = new Set([...RUN_TYPES, ...FINGER_TYPES, ...ATT_TYPES, 'echo', 'oddone', 'trivia', 'bullseye', 'pong', 'muncher']);   // their views play the mover's screen from the flash (the run, the attempt, the reveal, the taps, the throw; Muncher's run from the move's inputs: its Start is never pressed here)
 const PRESS_SOUND = { key: 'key', bksp: 'key', enter: 'key', mmcol: 'peg', mmslot: 'peg', rlnum: 'peg', rlgrp: 'peg', rlzero: 'peg', 'hc-key': 'key', 'snap-cell': 'mark', bowl: 'mark', hpsel: 'tap' };   // a logged input's own sound as it is pressed here (a move's sounds come with the move)
@@ -49,6 +50,8 @@ export const repOn = sq => !!rep && (sq == null || rep.sq === sq);              
 // The inputs to play before a move: the mover's log, the computer's synthetic one, or one press on the move's control.
 function repList(o) {
   if (o.timeout || OWN.has(o.type)) return [];
+  const sq = state.squares && state.squares[o.sq];
+  if (sq && isRace(sq.mini)) return [];                            // a race square: the mover's inputs are theirs alone; the move shows as its shape change (core/race.js)
   const hooks = (viewOf(o.type) || {}).replay || {};
   if (o.list && o.list.length) return o.list;
   if (o.move === undefined) return [];

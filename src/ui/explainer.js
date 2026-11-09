@@ -1,4 +1,6 @@
 // The "?" explainer pop-up and How to Play (each game's meta.js: explainer).
+import { dealOpts } from '../core/match.js';
+import { isRace, raceDealt } from '../core/race.js';
 import { pigConfig, pigGoal } from '../games/pig/rules.js';
 import { wheelsConfig } from '../games/wheels/rules.js';
 import { tune, tuneLive } from '../core/tune.js';
@@ -29,11 +31,13 @@ const TIMER_EXPLAIN = { name: 'Timer', text: 'Minutes each player has for the wh
 const CLOCK_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/></svg>';
 const SC_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linejoin="round"><path d="M13.5 2 5 13.5h6L9.5 22 19 9.5h-6z"/></svg>';
 const scNow = () => !!(state.sc && ['board', 'mini'].includes(state.screen)) || (state.screen === 'setup' && chaosSetup());
+// Race mode (core/race.js): the open square's own mode, else the mode the game would be dealt in now (never on a shared phone).
+const raceNow = t => { const sq = state.screen === 'mini' && state.squares && state.squares[state.zoom]; if (sq && sq.mini && sq.mini.type === t) return isRace(sq.mini); return raceDealt(t, dealOpts(state)); };
 export function explainOf(t) {
   if (t === 'superchaos') return SC_EXPLAIN;
   if (t === 'mode') return MODE_EXPLAIN;
   if (t === 'timer') return TIMER_EXPLAIN;
-  return fillTune(t, (scNow() && GAMES[t] && GAMES[t].meta.scExplainer) || EXPLAIN[t]);
+  return fillTune(t, (scNow() && GAMES[t] && GAMES[t].meta.scExplainer) || (GAMES[t] && GAMES[t].meta.raceExplainer && raceNow(t) && GAMES[t].meta.raceExplainer) || EXPLAIN[t]);
 }
 // A setting in the text ({k}: meta.js TUNE, or a game's own config named in its EXPLAIN_KEYS): the square's own
 // value when it is open, else the one dealt now.

@@ -1,7 +1,8 @@
 // The main board and the turn flow: a move played (playMove), the result shown and cleared (endFlash),
 // leaving a square, timeouts, and the match won or drawn (mainResult).
 import { chaosPlay } from './chaos.js';
-import { dealable, pickReset } from './match.js';
+import { dealOpts, dealable, pickReset } from './match.js';
+import { isRace } from './race.js';
 import { anyMove, applyMove, canMove, newMini } from './minis.js';
 import { needRng } from './random.js';
 import { repMove, repNorm } from './replay.js';
@@ -133,7 +134,7 @@ export function playMove(state, i, m, rng, opts) {
   if (outcome === 'win') {
     const w = res.winner || p;                   // a mini-game may hand the square to the other player
     sq.owner = w;
-    state.sqlog.push(Object.assign({ t: mini.type, end: 'won', w, X: sq.mv.X, O: sq.mv.O }, RUN_TYPES.includes(mini.type) ? runLog(mini) : {}));   // (a runner: its runs and crashes, for the tuning)
+    state.sqlog.push(Object.assign({ t: mini.type, end: 'won', w, X: sq.mv.X, O: sq.mv.O }, isRace(mini) ? { race: 1 } : {}, RUN_TYPES.includes(mini.type) ? runLog(mini) : {}));   // (race: a Race mode square, for the stats)   // (a runner: its runs and crashes, for the tuning)
     mini.winCells = res.cells || null;
     flash.winner = w; flash.counts = res.counts || null;
     const mr = mainResult(state.squares);
@@ -146,9 +147,9 @@ export function playMove(state, i, m, rng, opts) {
     flash.counts = res.counts || null;
     const dealt = (state.games || []).filter(t => TYPES.includes(t) && dealable(t));      // an older match's list may name a game no longer dealt
     const pool = dealt.length ? dealt : TYPES.filter(t => dealable(t));
-    state.sqlog.push(Object.assign({ t: mini.type, end: 'draw', w: null, X: sq.mv.X, O: sq.mv.O }, RUN_TYPES.includes(mini.type) ? runLog(mini) : {}));
+    state.sqlog.push(Object.assign({ t: mini.type, end: 'draw', w: null, X: sq.mv.X, O: sq.mv.O }, isRace(mini) ? { race: 1 } : {}, RUN_TYPES.includes(mini.type) ? runLog(mini) : {}));
     sq.mv = { X: 0, O: 0 };
-    sq.mini = newMini(pickReset(state, pool, rng, i), rng); // the square resets with a new mini-game from this match's list (one not used yet first)
+    sq.mini = newMini(pickReset(state, pool, rng, i), rng, dealOpts(state)); // the square resets with a new mini-game from this match's list (one not used yet first)
     if (sq.mini.type === 'trivia') triviaDeal(state, sq, rng);
     flash.newType = sq.mini.type;
   }

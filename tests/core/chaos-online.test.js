@@ -145,7 +145,7 @@ test('Super Chaos online: the record takes exactly one move a side a round and r
   assert.equal(E.applyChaosSubmit(r2.rec, 'X', Object.assign({}, mx, { round: 2 }), E.makeRng('r'), T0 + 3500).reason, 'recap', 'nothing taken until the next round has begun');
   // the record as the database holds it, and back: the same match
   const packed = E.packMatch(r2.rec);
-  assert.deepEqual(Object.keys(packed).sort(), ['secrets', 'state']);
+  assert.deepEqual(Object.keys(packed).sort(), ['secrets', 'sides', 'state']);
   assert.deepEqual(E.parseMatch(packed), r2.rec);
   assert.equal(E.parseMatch({ state: 'not json' }), null);
   assert.equal(E.parseMatch(null), null);

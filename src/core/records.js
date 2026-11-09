@@ -4,6 +4,7 @@ import { endFlash, playMove, timeoutMove } from './board.js';
 import { SC_ONLINE, chaosResolveOnline, scTypes, startChaosOnline } from './chaos.js';
 import { defaultSetup, newState, startMatch } from './match.js';
 import { upgradeMini } from './minis.js';
+import { isRace, raceFlashHide, raceHide, raceSides } from './race.js';
 import { armClock, clockDeadline, newTimer, turnOpen } from './timer.js';
 import { other } from './util.js';
 import { ATT_TYPES, attStart } from '../games/shared/attention.js';
@@ -32,18 +33,25 @@ export function hideMini(m, k, st) {
   if (PHYS_TYPES.includes(m.type)) { if (m.last) delete m.last.rec; return; }   // nothing hidden; the recording rides the move's entry, not the square
   const game = rulesOf(m.type);
   if (game.hide) game.hide(m, k, st);
+  if (isRace(m)) raceHide(m);                                     // a race square: each side's part goes, the shapes stay (core/race.js)
 }
 // The record of a match from a full state: the public state and the secrets, kept apart.
 export function matchRecord(full) {
-  const secrets = {};
-  full.squares.forEach((sq, i) => { const s = secretOf(sq.mini); if (s) secrets[i] = s; });
+  const secrets = {}, sides = { X: {}, O: {} };                   // sides: each side's own part of the race squares still open (games/{id}/sides/{side}: that side alone reads it)
+  full.squares.forEach((sq, i) => {
+    const s = secretOf(sq.mini); if (s) secrets[i] = s;
+    const rs = !sq.owner && raceSides(sq.mini);
+    if (rs) for (const p of ['X', 'O']) if (rs[p]) sides[p][i] = JSON.parse(JSON.stringify(rs[p]));
+  });
   const state = {};
   for (const k of MATCH_FIELDS) if (full[k] !== undefined) state[k] = JSON.parse(JSON.stringify(full[k]));
   if (!Array.isArray(state.recent)) state.recent = [];
   if (!Number.isInteger(state.seq)) state.seq = 0;
   state.squares.forEach((sq, k) => { if (!sq.owner || PHYS_TYPES.includes(sq.mini.type)) hideMini(sq.mini, k, full); });
-  return { state, secrets };
+  return { state, secrets, sides };
 }
+// A record's sides as given: each a map of square -> that side's part, as an object or as the JSON string the database holds.
+const sideMap = v => { if (!v) return {}; if (typeof v === 'string') { try { v = JSON.parse(v); } catch (e) { return {}; } } return v && typeof v === 'object' && !Array.isArray(v) ? v : {}; };
 // A match as the database holds it: { state, secrets } as JSON strings. Only the match's own fields are taken
 // (MATCH_FIELDS: anything else in the blob is dropped, never applied to the page), and each is held to its shape:
 // a record that does not hold together is no match at all (a tampered or corrupt blob is ignored).
@@ -64,10 +72,12 @@ export function parseMatch(v) {
     const st = {};
     for (const k of MATCH_FIELDS) { if (raw[k] === undefined) continue; if (!FIELD_OK[k](raw[k])) return null; st[k] = raw[k]; }
     const secrets = v.secrets ? JSON.parse(v.secrets) : {};
-    return { state: st, secrets: secrets && typeof secrets === 'object' && !Array.isArray(secrets) ? secrets : {} };
+    const out = { state: st, secrets: secrets && typeof secrets === 'object' && !Array.isArray(secrets) ? secrets : {} };
+    if (v.sides && typeof v.sides === 'object') out.sides = { X: sideMap(v.sides.X), O: sideMap(v.sides.O) };
+    return out;
   } catch (e) { return null; }
 }
-export function packMatch(rec) { return { state: JSON.stringify(rec.state), secrets: JSON.stringify(rec.secrets || {}) }; }
+export function packMatch(rec) { return Object.assign({ state: JSON.stringify(rec.state), secrets: JSON.stringify(rec.secrets || {}) }, rec.sides ? { sides: { X: JSON.stringify(rec.sides.X || {}), O: JSON.stringify(rec.sides.O || {}) } } : {}); }
 // A change to the room's match as a database transaction makes it: fn gets the record and returns the new
 // one, or nothing to leave it (then nothing is written, not even where no match is). The seats ride along.
 export function matchTxn(fn) {
@@ -81,10 +91,16 @@ export function matchTxn(fn) {
 // The full state again, from a record: the secrets back in their squares, the screen-only fields blank.
 export function fullState(rec) {
   const st = JSON.parse(JSON.stringify(rec.state));
-  const secrets = rec.secrets || {};
+  const secrets = rec.secrets || {}, sides = rec.sides ? { X: sideMap(rec.sides.X), O: sideMap(rec.sides.O) } : null;
   st.squares.forEach((sq, k) => {
     const s = secrets[k];
     if (s) Object.assign(sq.mini, JSON.parse(JSON.stringify(s)));
+    if (sides && isRace(sq.mini)) {                                // a race square: each side's part back in (those the record holds), the shapes let go
+      const side = {};
+      for (const p of ['X', 'O']) if (sides[p][k]) side[p] = JSON.parse(JSON.stringify(sides[p][k]));
+      if (Object.keys(side).length) sq.mini.side = Object.assign({}, sq.mini.side, side);
+      if (sq.mini.side) delete sq.mini.shape;
+    }
     if (sq.mini.type === 'hunt') delete sq.mini.clues;
     upgradeMini(sq.mini);
   });
@@ -104,7 +120,9 @@ export function settle(full, before) {
   const after = JSON.parse(JSON.stringify(sq));
   if (!after.owner || PHYS_TYPES.includes(after.mini.type)) hideMini(after.mini, f.square, full);
   full.seq = (full.seq || 0) + 1;
-  const entry = Object.assign(JSON.parse(JSON.stringify(f)), { seq: full.seq, moves: full.moves, after }, before ? { before: JSON.parse(JSON.stringify(before)) } : {});
+  let entry = Object.assign(JSON.parse(JSON.stringify(f)), { seq: full.seq, moves: full.moves, after }, before ? { before: JSON.parse(JSON.stringify(before)) } : {});
+  if (isRace(sq.mini) || (f.drawn && isRace(f.drawn))) entry = raceFlashHide(entry, sq.mini);   // a race square: the entry goes to both phones, so the move, its inputs and its feedback go; the shape change stays (core/race.js)
+  if (entry.drawn) hideMini(entry.drawn, f.square, full);        // (a reset's old board: as the public state would show it)
   endFlash(full, false);
   full.recent = (full.recent || []).map(e => { const o = e.phys && e.phys.rec ? Object.assign({}, e, { phys: Object.assign({}, e.phys, { rec: null }) }) : e; if (o.rep) { const c = Object.assign({}, o); delete c.rep; return c; } return o; }).concat([entry]).slice(-RECENT_MAX);   // (a physics recording and a replay log ride only the latest entry: the record stays small)
   return entry;
