@@ -1,4 +1,5 @@
 // Patterns: its names, its "?" explainer, its icon and its release default.
+import { MODE_TUNE } from '../../core/race.js';
 
 export const info = { name: 'Patterns',     hint: 'What comes next? Wrong picks get crossed out. Three right wins' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
@@ -6,10 +7,12 @@ export const minVersion = '1.0.0';   // the oldest client version that has this 
 export const category = 'brain';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Patterns', play: 'Pick what comes next, or what\'s missing. Wrong answers get crossed out.', win: 'Get {goal} right.' };   // ({goal}: its setting, TUNE below)
+export const raceExplainer = { name: 'Patterns', play: 'Pick what comes next, or what\'s missing. Your picks are yours alone: a wrong pick is crossed out on your card only, and you see only whether the other player got it.', win: 'Be the first to pick right.' };   // Race mode (core/race.js)
 export const scExplainer = { name: 'Patterns', play: 'Pick what comes next, or what\'s missing.', win: 'Get {goal} right.' };   // in Super Chaos
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="3.8" cy="14" r="1.7" fill="currentColor" stroke="none"/><circle cx="9.4" cy="14" r="2.8" fill="currentColor" stroke="none"/><rect x="14.5" y="7.5" width="8" height="12" rx="2" stroke-dasharray="2.4 1.9"/><path d="M17 11.6a1.6 1.6 0 1 1 2.3 1.4c-.6.3-.8.7-.8 1.2"/><circle cx="18.5" cy="16.7" r=".5" fill="currentColor"/></svg>';
 // Its settings (the admin's Mini-game Settings; core/tune.js). The kinds: each one's share of the puzzles dealt.
 export const TUNE = [
+  MODE_TUNE,
   { k: 'goal', label: 'Right answers to win', def: 3, min: 2, max: 5, step: 1, group: 'Rules' },
   { k: 'num', label: 'Number puzzles (share)', def: 40, min: 0, max: 100, step: 1, group: 'Rules' },
   { k: 'shape', label: 'Shape puzzles (share)', def: 38, min: 0, max: 100, step: 1, group: 'Rules' },

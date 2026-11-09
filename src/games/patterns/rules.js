@@ -1,5 +1,6 @@
 // Patterns: the rules (pure: no page, no clock; the server runs the same code).
 import { needRng, randInt, shuffle } from '../../core/random.js';
+import { raceDealt, raceSide } from '../../core/race.js';
 import { tune, tuneLive } from '../../core/tune.js';
 
 // ---------- Patterns: sequence puzzles, made by rules ----------
@@ -11,6 +12,10 @@ import { tune, tuneLive } from '../../core/tune.js';
 // gives an answer): exactly one option may be such an answer, and no two options look alike. A puzzle
 // that fails is thrown away and another made. One puzzle per square, shared, as Trivia's question: a
 // wrong pick is crossed out for both, the right one scores and a new puzzle comes; first to 3.
+// Race mode (core/race.js): the puzzle is the shared target, but each player's picks are their own
+// (`mini.side[p]`: { crossed, last }): a wrong pick is crossed out on the picker's own card alone, and
+// the first right pick takes the square (one puzzle). The other side sees only how many wrong tries a
+// player has made and whether they got it (raceShape); their move arrives as that alone (raceFlash).
 // Items: a number { n }, a shape { g, r, z, c, f } (g: 0 a circle, 1 an arrow, 3-8 a polygon of that many
 // sides; r its turn in degrees; z its size 1-5; c its colour 0-5; f 1 solid, 0 outline), dots { d, c }.
 export const PATTERNS = { goal: 3, aiRight: 0.6, options: 4, colours: 6, maxN: 999, maxDots: 16, reveal: 800,
@@ -221,14 +226,24 @@ export function patPuzzle(rng, avoid, cfg = PATTERNS) {
   }
   return null;
 }
-export function create(type, rng) {
-  const r = needRng(rng), t = tuneLive(type), cf = patCfg({ type, tune: t }); let g = null; while (!g) g = patPuzzle(r, undefined, cf); return { type, right: { X: 0, O: 0 }, puz: g.puz, answer: g.answer, rule: g.rule, crossed: [], last: null };
+// Where p's picks live: the square itself (Shared), or p's own side (Race; null for a side this copy has not got).
+export const patPart = (mini, p) => (mini && mini.race ? raceSide(mini, p) : mini);
+export const patCrossed = (mini, p) => { const part = patPart(mini, p); return part && Array.isArray(part.crossed) ? part.crossed : []; };
+// Race: what anyone may see of a side's progress: wrong tries made and whether they got it.
+export const patRaceShape = part => (part ? { n: Array.isArray(part.crossed) ? part.crossed.length : 0, right: !!(part.last && part.last.correct) } : {});
+export function create(type, rng, opts) {
+  const r = needRng(rng), t = tuneLive(type), cf = patCfg({ type, tune: t }); let g = null; while (!g) g = patPuzzle(r, undefined, cf);
+  const base = { type, right: { X: 0, O: 0 }, puz: g.puz, answer: g.answer, rule: g.rule };
+  if (raceDealt(type, opts)) return Object.assign(base, { race: true, side: { X: { crossed: [], last: null }, O: { crossed: [], last: null } } });   // a race: each player's own card (core/race.js)
+  return Object.assign(base, { crossed: [], last: null });
 }
-export function apply(mini, p, m, rng, idx) {   // the square's puzzle: a wrong pick is crossed out and it stays; the right one scores and a new one comes
+export function apply(mini, p, m, rng, idx) {   // the square's puzzle: a wrong pick is crossed out and it stays; the right one scores and a new one comes (a race: the first right pick wins)
   const puz = mini.puz, right = mini.answer;
   if (!puz) return { ok: false, reason: 'bad' };
   if (!Number.isInteger(right)) return { ok: false, reason: 'secret' };   // (a phone without the answer: the server judges)
-  const crossed = Array.isArray(mini.crossed) ? mini.crossed.slice() : [];
+  const part = patPart(mini, p);                           // the square (Shared), or p's own card (Race)
+  if (!part) return { ok: false, reason: 'bad' };
+  const crossed = Array.isArray(part.crossed) ? part.crossed.slice() : [];
   let picked, auto = false;
   if (m === 'auto') {                                     // the turn's time ran out: one wrong pick, an option still standing crossed out at random
     const wrong = puz.opts.map((_, k) => k).filter(k => k !== right && !crossed.includes(k));
@@ -236,27 +251,35 @@ export function apply(mini, p, m, rng, idx) {   // the square's puzzle: a wrong 
   } else if (Number.isInteger(m) && m >= 0 && m < puz.opts.length && !crossed.includes(m)) picked = m;
   else return { ok: false, reason: Number.isInteger(m) && crossed.includes(m) ? 'crossed' : 'bad' };
   const correct = picked === right;
-  mini.last = Object.assign({ by: p, fam: puz.fam, seq: puz.seq, opts: puz.opts, crossed, picked, correct }, correct ? { right } : {}, auto ? { auto: true } : {});   // (a wrong pick never carries the answer)
+  part.last = Object.assign({ by: p, fam: puz.fam, seq: puz.seq, opts: puz.opts, crossed, picked, correct }, correct ? { right } : {}, auto ? { auto: true } : {});   // (a wrong pick never carries the answer; a race: on the picker's own card)
   if (!correct) {
-    if (picked >= 0) mini.crossed = crossed.concat(picked);
+    if (picked >= 0) part.crossed = crossed.concat(picked);
     return { ok: true, outcome: 'continue', note: 'wrong' };
   }
   mini.right[p] += 1;
   const cf = patCfg(mini);
-  if (mini.right[p] >= cf.goal) return { ok: true, outcome: 'win', note: 'right' };
+  if (mini.race || mini.right[p] >= cf.goal) return { ok: true, outcome: 'win', note: 'right' };   // (a race: the first right pick takes the square; the puzzle stays, for the review)
   let next = null; const r = needRng(rng);
   while (!next) next = patPuzzle(r, puz.fam, cf);                 // a new puzzle (made here: the server, online), not the same kind as this one if it can be helped
   mini.puz = next.puz; mini.answer = next.answer; mini.rule = next.rule; mini.crossed = [];
   return { ok: true, outcome: 'continue', note: 'right' };
 }
 export function publicView(mini) {
-  return { type: 'patterns', right: { X: mini.right.X, O: mini.right.O }, puz: mini.puz, answer: Number.isInteger(mini.answer) ? mini.answer : null, crossed: (mini.crossed || []).slice() };   // (the computer's own: it knows the answer, and gets it about 60% of the time)
+  const v = { type: 'patterns', right: { X: mini.right.X, O: mini.right.O }, puz: mini.puz, answer: Number.isInteger(mini.answer) ? mini.answer : null };   // (the computer's own: it knows the answer, and gets it about 60% of the time)
+  if (mini.race) return Object.assign(v, { race: true, side: mini.side });   // (core/minis.js publicMini keeps one side's own card alone and adds both shapes)
+  return Object.assign(v, { crossed: (mini.crossed || []).slice() });
+}
+// Race (core/race.js): a side's progress as anyone may see it, and a move as the other side may see it.
+export function raceShape(mini, p) { return patRaceShape(raceSide(mini, p)); }
+export function raceFlash(f, mini) {
+  const t = f.pat || {};
+  return Object.assign({ by: f.by, correct: !!t.correct }, raceShape(mini, f.by), t.auto ? { auto: true } : {});
 }
 export function randomMove(mini, p, rng, from, empties) {
   return 'auto';                                     // one wrong pick: an option still standing crossed out
 }
 export function moveFlash(m, p, range, bjFrom, mini, flash) {
-  const l = mini.last; flash.pat = Object.assign({ fam: l.fam, seq: l.seq, opts: l.opts, crossed: (l.crossed || []).slice(), picked: l.picked, correct: l.correct, counts: { X: mini.right.X, O: mini.right.O } }, l.correct ? { right: l.right } : {}, l.auto ? { auto: true } : {}); return;
+  const l = patPart(mini, p).last; flash.pat = Object.assign({ fam: l.fam, seq: l.seq, opts: l.opts, crossed: (l.crossed || []).slice(), picked: l.picked, correct: l.correct, counts: { X: mini.right.X, O: mini.right.O } }, l.correct ? { right: l.right } : {}, l.auto ? { auto: true } : {}); return;
 }
 export function secret(mini) {
   return { answer: Number.isInteger(mini.answer) ? mini.answer : null, rule: mini.rule || null };   // the right option's place, and the rule it came from
@@ -274,6 +297,7 @@ export function scAfter(mini, before, p, res) {
   if (res.note === 'right') { mini.puz = before.puz; mini.answer = before.answer; mini.rule = before.rule; mini.crossed = (before.crossed || []).slice(); }
 }
 export function scMerge(m, c) {
+  if (m.race) { for (const p of c.played) m.side[p] = c.forks[p].side[p]; return; }   // (a race square keeps each side's own card)
   const b = c.base, crossed = new Set(b.crossed || []);
   m.puz = b.puz; m.answer = b.answer; m.rule = b.rule;
   let right = false;

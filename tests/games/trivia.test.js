@@ -83,3 +83,98 @@ test('trivia: the admin\'s settings (right answers to win, options, the computer
   E.triviaDeal(st, st.squares[0], rng);
   assert.equal(E.applyMove(m, 'X', m.answer, rng).outcome, 'win', 'two right wins');
 });
+
+/* ===================================== Race mode (core/race.js) ===================================== */
+// The square's one question is the shared target; each player's picks are their own card (mini.side[p]: crossed, last);
+// the other side sees only wrong tries made and right or not; the first right answer takes the square.
+const raceOn = on => E.setTune('trivia', on ? { mode: 'race' } : null);
+const raceMatch = seed => { raceOn(true); try { return E.newMatch(lcg(seed), { games: ['trivia'], vs: 'cpu' }); } finally { raceOn(false); } };
+const triviaAt = st => st.squares.findIndex(q => q.mini.type === 'trivia');
+
+test('trivia race: dealt by the setting; one question for both, each side its own card; a wrong pick crosses out on the picker\'s card alone; the first right answer wins', () => {
+  const st = raceMatch(301), k = triviaAt(st), m = st.squares[k].mini;
+  assert.equal(m.race, true); assert.deepEqual(m.side, { X: { crossed: [], last: null }, O: { crossed: [], last: null } });
+  assert.equal(m.crossed, undefined, 'no shared cross-outs'); assert.equal(m.last, undefined);
+  assert.ok(m.ask && m.ask.q && Number.isInteger(m.answer), 'the question dealt in (core/board.js triviaDeal)');
+  assert.deepEqual(m.tune, { mode: 'race' });
+  const right = m.answer, wrong = [0, 1, 2, 3].filter(x => x !== right), id = m.ask.id;
+  assert.deepEqual(E.applyMove(m, 'X', wrong[0], lcg(1)), { ok: true, outcome: 'continue', note: 'wrong' });
+  assert.deepEqual(m.side.X.crossed, [wrong[0]]); assert.deepEqual(m.side.O.crossed, [], "O's card is untouched");
+  assert.equal(m.side.X.last.picked, wrong[0]); assert.equal('right' in m.side.X.last, false); assert.equal(m.side.O.last, null);
+  assert.equal(E.applyMove(m, 'O', wrong[0], lcg(1)).ok, true, 'the same option is open to O (their own card)');
+  assert.deepEqual(m.side.O.crossed, [wrong[0]]); assert.deepEqual(m.side.X.crossed, [wrong[0]]);
+  assert.equal(E.applyMove(m, 'X', wrong[0], lcg(1)).reason, 'crossed', 'but not to X again');
+  assert.equal(m.ask.id, id, 'the question stays'); assert.equal(m.shown, true);
+  assert.deepEqual(E.applyMove(m, 'O', right, lcg(1)), { ok: true, outcome: 'win', note: 'right' }, 'the first right answer takes the square');
+  assert.equal(m.right.O, 1); assert.equal(m.ask.id, id, 'the question stays for the review'); assert.equal(m.side.O.last.right, right);
+  assert.deepEqual(E.raceShape(m, 'X'), { n: 1, right: false }); assert.deepEqual(E.raceShape(m, 'O'), { n: 1, right: true });
+  // out of time: one option crossed out on the player's own card
+  const st2 = raceMatch(302), k2 = triviaAt(st2), m2 = st2.squares[k2].mini;
+  assert.equal(E.applyMove(m2, 'X', 'auto', lcg(2)).note, 'wrong'); assert.equal(m2.side.X.crossed.length, 1); assert.equal(m2.side.X.last.auto, true); assert.deepEqual(m2.side.O.crossed, []);
+  // Shared and Same phone as ever
+  const same = (() => { raceOn(true); try { return E.newMatch(lcg(303), { games: ['trivia'], vs: 'same' }); } finally { raceOn(false); } })();
+  assert.ok(same.squares.every(q => !q.mini.race && Array.isArray(q.mini.crossed)), 'Same phone: every square Shared');
+  assert.equal(E.newMini('trivia', lcg(3)).race, undefined, 'off: as ever');
+});
+
+test('trivia race: the reveal flow holds as in Shared; the public view shows the shapes and one side\'s own card alone; the record keeps each side\'s card for that side and a move\'s entry is redacted', () => {
+  raceOn(true);
+  try {
+    const rec = E.newOnlineMatch({ names: { X: 'A', O: 'B' }, games: only('trivia'), timer: 60 }, lcg(311), 'trq1');
+    const pub = rec.state.squares[0].mini;
+    assert.equal(pub.race, true); assert.equal(pub.side, undefined, 'no card in the public state'); assert.deepEqual(pub.shape, { X: { n: 0, right: false }, O: { n: 0, right: false } });
+    assert.deepEqual([pub.shown, pub.ask], [false, { down: true, n: 4 }], 'face down, as in Shared'); assert.equal(pub.answer, undefined);
+    assert.deepEqual(rec.sides.X[0], { crossed: [], last: null }); assert.deepEqual(rec.sides.O[0], { crossed: [], last: null });
+    let r = E.applyOnlineReveal(rec, 'X', 0);
+    assert.equal(r.ok, true); assert.equal(r.rec.state.squares[0].mini.shown, true); assert.equal(r.rec.state.lock, 0, 'held to the square');
+    const right = rec.secrets[0].answer, wrong = (right + 1) % 4;
+    r = E.applyOnlineMove(r.rec, 'X', 0, wrong, lcg(312), { rep: [[0, 'move', 'm=' + wrong]] });
+    assert.equal(r.ok, true);
+    const e = r.entries[0];
+    assert.equal(e.m, undefined, 'the pick is not on the entry'); assert.equal(e.trivia, undefined, 'nor the question with it'); assert.equal(e.rep, undefined); assert.equal(e.note, undefined);
+    assert.deepEqual(e.race, { by: 'X', correct: false, n: 1, right: false, fresh: true }, 'its shape change alone (the reveal to show)');
+    assert.equal(e.after.mini.side, undefined); assert.deepEqual(e.after.mini.shape.X, { n: 1, right: false });
+    assert.ok(!JSON.stringify(r.rec.state).includes('"picked"'), 'no pick anywhere in the public state');
+    assert.deepEqual(r.rec.sides.X[0].crossed, [wrong], "the mover's own card holds it"); assert.deepEqual(r.rec.sides.O[0].crossed, []);
+    assert.equal(r.rec.state.lock, null); assert.equal(r.rec.state.turn, 'O');
+    const forX = E.publicMini(E.fullState(r.rec).squares[0].mini, 'X'), forO = E.publicMini(E.fullState(r.rec).squares[0].mini, 'O');
+    assert.deepEqual(Object.keys(forX.side), ['X']); assert.deepEqual(forX.side.X.crossed, [wrong]); assert.equal(forX.shape.O.n, 0);
+    assert.deepEqual(Object.keys(forO.side), ['O']); assert.equal(forO.side.X, undefined, "O never sees X's card"); assert.equal(forO.shape.X.n, 1);
+    // the record round trip
+    const full = E.fullState(r.rec);
+    assert.deepEqual(full.squares[0].mini.side.X.crossed, [wrong]); assert.equal(full.squares[0].mini.answer, right); assert.equal(full.squares[0].mini.shape, undefined);
+    const back = E.parseMatch(E.packMatch(r.rec));
+    assert.deepEqual(E.fullState(back).squares[0].mini.side, full.squares[0].mini.side);
+    // O's own card is clean: the same option is open; O's right answer wins and the entry says only that
+    r = E.applyOnlineMove(r.rec, 'O', 0, wrong, lcg(313));
+    assert.equal(r.ok, true); assert.deepEqual(r.rec.sides.O[0].crossed, [wrong]);
+    r = E.applyOnlineMove(r.rec, 'X', 0, right, lcg(314));
+    assert.equal(r.ok, true); assert.equal(r.entries[0].kind, 'claim'); assert.equal(r.entries[0].winner, 'X');
+    assert.deepEqual(r.entries[0].race, { by: 'X', correct: true, n: 1, right: true });
+    assert.equal(r.rec.state.squares[0].owner, 'X'); assert.equal(r.rec.sides.X[0], undefined, 'a claimed square: no card kept apart');
+    assert.ok(r.rec.state.squares[0].mini.side.O, 'the finished square shows both cards');
+  } finally { raceOn(false); }
+});
+
+test('trivia race: the computer plays from its own card alone and finishes the square; the Shared flow (a new question after a right answer) is untouched', () => {
+  const st = raceMatch(321), k = triviaAt(st), m = st.squares[k].mini, rng = lcg(5);
+  let won = false;
+  for (let i = 0; i < 4 && !won; i++) {
+    const pm = E.publicMini(m, 'O');
+    assert.equal(pm.side.X, undefined); assert.equal(pm.crossed, undefined);
+    const mv = E.localBest(pm, 'O', rng).move;
+    assert.ok(!m.side.O.crossed.includes(mv), 'never one it crossed out');
+    won = E.applyMove(m, 'O', mv, rng).outcome === 'win';
+  }
+  assert.ok(won, 'four picks at most');
+  assert.ok(E.needsOf(E.publicMini(m, 'X'), 'X') >= 1);
+  const fresh = raceMatch(322), fm = fresh.squares[triviaAt(fresh)].mini;
+  E.applyMove(fm, 'X', 'auto', lcg(6)); E.applyMove(fm, 'X', 'auto', lcg(7));
+  const pmX = E.publicMini(fm, 'O');
+  assert.ok(E.needsOf(pmX, 'X') < E.needsOf(pmX, 'O'), "two wrong tries down, X's shape says they need less");
+  // Shared: untouched
+  const sh = E.newMatch(lcg(323), { games: ['trivia'] }), i = triviaAt(sh), sm = sh.squares[i].mini, id = sm.ask.id;
+  const r = E.playMove(sh, i, sm.answer, lcg(8));
+  assert.equal(r.ok, true); assert.equal(sm.right.X, 1); assert.ok(sm.ask && sm.ask.id !== id, 'a new question'); assert.equal(sm.shown, false); assert.deepEqual(sm.crossed, []);
+  assert.equal(sh.flash.trivia.correct, true); assert.equal(sh.flash.race, undefined);
+});

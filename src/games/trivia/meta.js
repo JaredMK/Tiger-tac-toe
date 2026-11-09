@@ -1,4 +1,5 @@
 // Trivia: its names, its "?" explainer, its icon and its release default.
+import { MODE_TUNE } from '../../core/race.js';
 
 export const info = { name: 'Trivia',       hint: 'Wrong answers get crossed out. Three right wins' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
@@ -6,9 +7,11 @@ export const minVersion = '1.0.0';   // the oldest client version that has this 
 export const category = 'brain';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Trivia', play: 'Answer the question.', win: 'Get {goal} right.' };   // ({goal}: its setting, TUNE below)
+export const raceExplainer = { name: 'Trivia', play: 'Answer the question. Your picks are yours alone: a wrong answer is crossed out on your card only, and you see only whether the other player got it right.', win: 'Be the first to answer right.' };   // Race mode (core/race.js)
 export const scExplainer = { name: 'Trivia', play: 'Answer the question.', win: 'Get {goal} right.' };   // in Super Chaos
 // Its settings (the admin's Mini-game Settings; core/tune.js): read through tune(mini).
 export const TUNE = [
+  MODE_TUNE,
   { k: 'goal', label: 'Right answers to win', def: 3, min: 2, max: 5, step: 1, group: 'Rules' },
   { k: 'opts', label: 'Answers to choose from', def: 4, min: 2, max: 4, step: 1, group: 'Rules' },
   { k: 'know', label: 'Computer knows the answer (%)', def: 53, min: 0, max: 100, step: 1, group: 'Computer' },
