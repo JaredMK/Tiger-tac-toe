@@ -4,6 +4,7 @@ import { NET_MS, call, configured, connectStep, fb, loadFirebase, setConnectWhy 
 import { enterMatched, holdResume, search, startSearch, stopSearch } from './matchmaking.js';
 import { hostRoom } from './room.js';
 import { fetchReleases } from './releases.js';
+import { clearStats, refreshStats } from './statscache.js';
 import { devError, flushLocal, pendingLocal, track } from './tracking.js';
 import { commit, save, setMenuNote, state } from '../ui/app.js';
 import { KEY } from '../ui/config.js';
@@ -140,13 +141,13 @@ export function onAuthUser(u, again) {
   acctUnsubs = [];
   acct = { user: uid ? { uid, email: u.email || '' } : null, profile: null, active: null, ready: !uid, admin: false };
   rememberAccount(!!uid);
-  const c = cachedMe(); if (c && c.uid !== uid) cacheMe(null);    // a guest or another account now: the cached one goes
+  const c = cachedMe(); if (c && c.uid !== uid) { cacheMe(null); clearStats(); }    // a guest or another account now: the cached one goes
   setTemplates(null);                                                // (another account, or a guest: the templates go with the one before)
   if (uid) { const me = acct; u.getIdTokenResult(true).then(r => { if (acct === me && r && r.claims && r.claims.admin === true) { me.admin = true; listenTemplates(uid); render(); } }).catch(() => {}); }   // the admin flag: admin-only games show, and the admin's game templates are read
   if (uid && !again) track({ ev: 'login' });                     // a login (or a returning one) for the stats
   if (!uid && (state.screen === 'login' || state.screen === 'username')) return;   // a guest session starting: nothing on these screens changes
   if (uid) {
-    acctUnsubs.push(fb.m.onValue(fb.m.ref(fb.db, 'users/' + uid), s => { acct.profile = s.val(); acct.ready = true; cacheMe(uid, acct.profile); afterAccount(); render(); }, () => {}));
+    acctUnsubs.push(fb.m.onValue(fb.m.ref(fb.db, 'users/' + uid), s => { acct.profile = s.val(); acct.ready = true; cacheMe(uid, acct.profile); if (acct.profile && acct.profile.username) refreshStats(false); afterAccount(); render(); }, () => {}));
     acctUnsubs.push(fb.m.onValue(fb.m.ref(fb.db, 'active/' + uid), s => { acct.active = s.val(); onActive(); render(); }, () => {}));
     acctUnsubs.push(fb.m.onValue(fb.m.ref(fb.db, `prefs/${uid}`), s => applyAccountPrefs(s.val()), () => {}));   // the Settings (sound, volume, animation, vibration): the account's, else this device's put on it (ui/settings.js)
   }
@@ -338,7 +339,7 @@ export async function logout() {
   stopSearch();
   if (fb && fb.auth) await fb.authM.signOut(fb.auth).catch(() => {});
   await providerSignOut();
-  rememberAccount(false); cacheMe(null);
+  rememberAccount(false); cacheMe(null); clearStats();
   loginFinishing = false; loginPending(null); verifyAsked = false;
   acct = { user: null, profile: null, active: null, ready: true };
   setProf(null); state.screen = 'menu'; commit();

@@ -27,6 +27,7 @@ import { matchStale, renderStale } from './screens/stale.js';
 import { renderWin } from './screens/win.js';
 import { renderHeader, renderReactDock } from './turnbar.js';
 import { reactOn } from '../net/reactions.js';
+import { matchEnded, menuShown } from '../net/statscache.js';
 import { playFlash } from './turns.js';
 
 // A screen that throws while drawing must never leave the page stuck on what it showed before (a square's view, a
@@ -141,7 +142,7 @@ export function renderMain() {
   if (gateOn()) return renderGate();                          // staging: only testers on the allowlist get past this
   if (matchStale()) return renderStale();                     // an online match with a mini-game this version lacks (a client older than it was): never the board, only Update or Leave match
   if (state.screen === 'sandbox') return renderSandbox();     // (the admin's test play, while it checks or when it cannot run)
-  if (state.screen === 'menu') return renderMenu();
+  if (state.screen === 'menu') { menuShown(); return renderMenu(); }   // (the stats refreshed in the background, at most every few minutes)
   if (state.screen === 'friend') return renderFriend();
   if (state.screen === 'join') return renderJoin();
   if (state.screen === 'setup') return renderSetup();
@@ -156,7 +157,7 @@ export function renderMain() {
   if (state.screen === 'profhist') return renderProfHist();
   if (state.screen === 'hreview' || state.screen === 'hreview-mini') return renderHistory();
   if (state.screen === 'win' && state.winner && state.practice) return renderPracticeEnd();   // a practice match's end (How to Play's Practice): Practice again or Back to How to Play
-  if (state.screen === 'win' && state.winner) return renderWin();
+  if (state.screen === 'win' && state.winner) { matchEnded((state.id || 'm') + ':' + state.moves + ':' + state.winner); return renderWin(); }   // (the player's stats are refreshed in the background once a match is over)
   if (state.screen === 'review' && state.winner) return renderBoard(true);
   if (state.screen === 'review-mini' && state.winner && state.zoom != null) {
     const sq = reviewSquares()[state.zoom];

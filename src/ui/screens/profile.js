@@ -3,10 +3,10 @@ import { hashSvg } from '../hash.js';
 const SNAP_HASH = hashSvg('hash', 16);   // the history snapshot's # (a bolder stroke: it is drawn 46px across)
 import { newState } from '../../core/match.js';
 import { upgradeMini } from '../../core/minis.js';
-import { topOpponents } from '../../core/stats.js';
 import { TYPES } from '../../games/index.js';
 import { acct, connectQuiet, delState, needAccount, pendingMe } from '../../net/accounts.js';
 import { fb } from '../../net/connect.js';
+import { fetchOwnStats, readStats, writeStats } from '../../net/statscache.js';
 import { NAV_SCREENS, RNG, commit, esc, state, withView } from '../app.js';
 import { CHEV } from '../art.js';
 import { renderBoard } from '../board.js';
@@ -51,9 +51,11 @@ export async function openProfile(uid, back) {
   if (prof && prof.uid === uid && prof.user && state.screen === 'profhist') { state.screen = 'profile'; render(); return; }   // back from its game history
   const prev = state.screen === 'profile' && prof && prof.uid !== uid && prof.user ? prof : null;   // a Top opponent's, from a profile: Back returns to that one
   const own = !!(acct.user ? uid === acct.user.uid : early && uid === early.uid);
-  prof = { uid, own, user: own && early && early.uid === uid ? early.profile : null, hist: null, local: null, opps: null, prev, view: prof && prof.uid === uid ? prof.view : 'online', back: back || (NAV_SCREENS.includes(state.screen) ? state.screen : state.screen === 'win' ? 'win' : 'menu'), error: null };
+  prof = { uid, own, user: own && early && early.uid === uid ? early.profile : null, hist: null, local: null, opps: null, cached: false, prev, view: prof && prof.uid === uid ? prof.view : 'online', back: back || (NAV_SCREENS.includes(state.screen) ? state.screen : state.screen === 'win' ? 'win' : 'menu'), error: null };
+  const kept = own ? readStats(uid) : null;                      // the last stats kept on this device: shown at once, refreshed in place below (a "Loading…" only when there is no copy)
+  if (kept) { prof.user = kept.user; prof.hist = kept.hist; prof.local = kept.local; prof.opps = kept.opps; prof.cached = true; }
   state.screen = 'profile'; commit();
-  if (!(await connectQuiet())) { prof.error = 'No connection. Check your internet and try again.'; render(); return; }
+  if (!(await connectQuiet())) { if (!prof.cached) prof.error = 'No connection. Check your internet and try again.'; render(); return; }
   try {
     const m = fb.m;
     if (!own) {                                                   // someone else: their public profile alone (profiles/{uid}: the username, records, join date); their history and opponents are theirs
@@ -63,20 +65,11 @@ export async function openProfile(uid, back) {
       if (!prof.user) prof.error = 'This player has no profile.';
       render(); return;
     }
-    const last50 = node => m.get(m.query(m.ref(fb.db, `${node}/${uid}`), m.orderByChild('date'), m.limitToLast(50)));
-    const [u, h, ls, lh, os] = await Promise.all([m.get(m.ref(fb.db, 'users/' + uid)), last50('history'),
-      m.get(m.ref(fb.db, 'localStats/' + uid)).catch(() => null), last50('localHistory').catch(() => null),   // local games: your own, private
-      m.get(m.ref(fb.db, 'oppStats/' + uid)).catch(() => null)]);   // the record against each opponent (the server's tally)
+    const d = await fetchOwnStats(uid);
     if (!prof || prof.uid !== uid) return;
-    prof.user = u.val();
-    prof.opps = topOpponents(os ? os.val() : null, 3);
-    prof.local = ls ? ls.val() || {} : null;
-    if (!prof.user) prof.error = 'This player has no profile.';
-    const list = [];
-    h.forEach(c => { list.push(Object.assign({ id: c.key }, c.val())); });
-    if (lh) lh.forEach(c => { list.push(Object.assign({ id: c.key }, c.val())); });
-    prof.hist = list.sort((a, b) => b.date - a.date).slice(0, 80);  // newest first
-  } catch (e) { if (prof) prof.error = "Couldn't load this profile. Try again."; }
+    prof.user = d.user; prof.opps = d.opps; prof.local = d.local; prof.hist = d.hist; prof.cached = false;
+    if (!prof.user) prof.error = 'This player has no profile.'; else writeStats(uid, d);
+  } catch (e) { if (prof && !prof.cached) prof.error = "Couldn't load this profile. Try again."; }
   render();
 }
 export function profileBack() {
