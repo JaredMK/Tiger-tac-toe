@@ -16,7 +16,7 @@ const require = createRequire(import.meta.url);
 const E = require('../engine.js');
 const C = await import('../../src/net/connect.js');
 const A = await import('../../src/net/accounts.js');
-const { renderSetup, setupTypes, tpl, tplAct } = await import('../../src/ui/screens/setup.js');
+const { renderSetup, setupTypes, tpl, tplAct, tplMatch } = await import('../../src/ui/screens/setup.js');
 const { SC_ONLY, TYPES } = await import('../../src/games/index.js');
 const { state } = await import('../../src/ui/app.js');
 
@@ -35,7 +35,7 @@ test('the Templates row shows for an admin alone, on Play Computer, the host\'s 
   assert.match(html, /<div class="tpls" role="group" aria-label="Templates">/);
   assert.ok(html.indexOf('class="tpls"') < html.indexOf('data-act="adv"'), 'above the Mini-games section');
   assert.match(html, /No templates yet/); assert.match(html, /data-act="tpl-save">Save as template</);
-  assert.match(html, /data-act="tpl-use" disabled/); assert.match(html, /data-act="tpl-del" disabled/, 'nothing chosen: Use, Update, Rename and Delete wait');
+  assert.doesNotMatch(html, /tpl-use/, 'choosing a template applies it: no Use button'); assert.match(html, /data-act="tpl-del" disabled/, 'nothing chosen: Update, Rename and Delete wait');
   state.setup.vs = 'same'; assert.match(renderSetup(), /class="tpls"/, 'Same phone too');
   Object.assign(state, { online: { role: 'host', code: 'ABCDE', me: 'X', joined: false } }); state.setup.names = { X: 'adm', O: 'O' };
   assert.match(renderSetup(), /class="tpls"/, "the host's lobby too");
@@ -48,7 +48,7 @@ test('Save as template: the name typed in place (no browser prompt), the checkli
   let html = renderSetup();
   assert.match(html, /<input id="tplname" aria-label="Template name" maxlength="24"/, 'a field in the bar');
   assert.match(html, /data-act="tpl-ok">Save</); assert.match(html, /data-act="tpl-cancel">Cancel</);
-  assert.doesNotMatch(html, /data-act="tpl-use"/, 'the field takes the buttons\' place');
+  assert.doesNotMatch(html, /data-act="tpl-update"/, 'the field takes the buttons\' place');
   tpl.draft = '  Quick   ones  '; tplAct('tpl-ok');
   const list = A.templateList();
   assert.equal(list.length, 1); assert.equal(list[0].name, 'Quick ones'); assert.deepEqual(list[0].games, { c4: true, hilo: true, ttt: true });
@@ -70,16 +70,16 @@ test('Use puts the template\'s selection on the checklist, never a game this scr
   A.setTemplates({ tplA: { name: 'Words', games: { wordle: true, hangman: true, nope: true, [scOnly]: true }, at: 1 }, tplB: { name: 'Brains', games: { ttt: true }, at: 2 } });
   assert.deepEqual(A.templateList().map(t => t.name), ['Brains', 'Words'], 'in order of name');
   assert.ok(!setupTypes().includes(scOnly), 'a Super Chaos only game is not on this checklist');
-  tplAct('tpl-pick', { dataset: { id: 'tplA' } }); assert.equal(tpl.sel, 'tplA');
-  tplAct('tpl-use');
+  tplAct('tpl-pick', { dataset: { id: 'tplA' } }); assert.equal(tpl.sel, 'tplA', 'chosen: lit, and applied at once');
   assert.deepEqual(on(), ['wordle', 'hangman'].sort((a, b) => TYPES.indexOf(a) - TYPES.indexOf(b)), 'its games on, the unknown and the undealable ones ignored, the rest off');
   assert.match(renderSetup(), /“Words” applied/);
   state.setup.games.c4 = true; state.setup.games.wordle = false;                 // edited: tick and untick
+  assert.equal(tplMatch(setupTypes()), null, 'edited: no template matches, Custom'); assert.match(renderSetup(), /class="tplcus">Custom/); assert.doesNotMatch(renderSetup(), /tplrow on/);
   tplAct('tpl-update');
   assert.deepEqual(A.templates.tplA.games, { c4: true, hangman: true }, 'the checklist as it stands, saved back');
   assert.equal(A.templates.tplA.name, 'Words');
   assert.deepEqual(writes[writes.length - 1][0], 'templates/adm1/tplA'); assert.deepEqual(writes[writes.length - 1][1].games, { c4: true, hangman: true });
-  tplAct('tpl-pick', { dataset: { id: 'tplB' } }); tplAct('tpl-use');
+  tplAct('tpl-pick', { dataset: { id: 'tplB' } });
   assert.deepEqual(on(), ['ttt']);
   for (const t of TYPES) state.setup.games[t] = false;
   tplAct('tpl-update'); assert.deepEqual(A.templates.tplB.games, { ttt: true }, 'nothing ticked: the template keeps its games'); assert.match(renderSetup(), /Tick at least one mini-game/);
@@ -96,8 +96,8 @@ test('Rename and Delete (asked first): in place, written to the account; the row
   tplAct('tpl-del');
   html = renderSetup();
   assert.match(html, /Delete “Letters”\?/); assert.match(html, /data-act="tpl-cancel">No</); assert.match(html, /data-act="tpl-del-yes">Yes, delete</);
-  assert.doesNotMatch(html, /data-act="tpl-use"/);
-  tplAct('tpl-cancel'); assert.match(renderSetup(), /data-act="tpl-use"/, 'No: the buttons are back'); assert.ok(A.templates.tplA);
+  assert.doesNotMatch(html, /data-act="tpl-update"/);
+  tplAct('tpl-cancel'); assert.match(renderSetup(), /data-act="tpl-update"/, 'No: the buttons are back'); assert.ok(A.templates.tplA);
   tplAct('tpl-del'); tplAct('tpl-del-yes');
   assert.equal(A.templates.tplA, undefined); assert.equal(tpl.sel, null);
   assert.deepEqual(writes[writes.length - 1], ['templates/adm1/tplA', null], 'removed from the account');
@@ -110,4 +110,14 @@ test('the account\'s templates are read as they may be: a bad entry is dropped, 
   assert.equal(A.templates.xxxx.name.length, 24);
   A.setTemplates(null); assert.equal(A.templates, null);
   assert.equal(A.saveTemplate('New', { ttt: true }, null, TYPES) != null, true, 'saving with none read yet starts the list'); A.setTemplates(null);
+});
+test('The checklist lights the template it matches exactly, and goes Custom the moment a box changes', () => {
+  cpuSetup(); A.acct.admin = true;
+  A.setTemplates({ tplA: { name: 'Words', games: { wordle: true, hangman: true }, at: 1 }, tplB: { name: 'Twin', games: { wordle: true, hangman: true }, at: 2 } });
+  tplAct('tpl-pick', { dataset: { id: 'tplB' } }); assert.equal(tpl.sel, 'tplB');
+  state.setup.games.c4 = true; assert.equal(tplMatch(setupTypes()), null);
+  state.setup.games.c4 = false; assert.equal(tplMatch(setupTypes()), 'tplB', 'the same games again: the one chosen is lit, not its twin');
+  assert.match(renderSetup(), /class="tplrow on" data-act="tpl-pick" data-id="tplB"/);
+  tpl.base = null; assert.equal(tplMatch(setupTypes()), 'tplB', 'none chosen: the first that matches, in order of name');
+  for (const t of TYPES) state.setup.games[t] = false; assert.equal(tplMatch(setupTypes()), null, 'nothing ticked matches nothing');
 });

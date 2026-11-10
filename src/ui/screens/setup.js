@@ -113,8 +113,28 @@ export function noteMode(text, ms = 3000) {
  * saved back to the chosen template: editing is Use, tick or untick, Update), Rename, Delete (asks first), and Save as
  * template (a name typed in place: a field with Save and Cancel, never the browser's prompt). The field's text survives a
  * redraw (read back from the page before the screen is drawn again) and keeps the focus (its id, ui/keyboard.js). */
-export const tpl = { sel: null, mode: null, draft: '', confirm: false, note: '' };   // sel: the chosen template's id; mode: null | 'save' | 'rename' (the name field up); confirm: Delete asked
+export const tpl = { sel: null, base: null, mode: null, draft: '', confirm: false, note: '' };   // sel: the chosen template's id; mode: null | 'save' | 'rename' (the name field up); confirm: Delete asked
 export const tplOn = () => !!acct.admin && !!state.setup;
+// The template the checklist matches exactly (its games among those this screen may deal; the chosen one first), or null: "Custom".
+export function tplMatch(VT) {
+  if (!templates || !state.setup) return null;
+  const mine = VT.filter(t => state.setup.games[t]);
+  if (!mine.length) return null;
+  const same = t => { const g = VT.filter(k => t.games[k] === true); return g.length === mine.length && g.every(k => state.setup.games[k]); };
+  const list = templateList(), first = list.find(t => t.id === tpl.base);
+  const hit = (first && same(first) ? first : list.find(same));
+  return hit ? hit.id : null;
+}
+// The row's state after the checklist changed in place: the matching template lit, or Custom; the bar's buttons follow.
+export function tplSync() {
+  if (!tplOn() || !app.querySelectorAll) return;
+  tpl.sel = tplMatch(setupTypes());
+  const base = tpl.sel ? tpl.sel : tpl.base;
+  for (const b of app.querySelectorAll('.tplrow')) { const on = b.dataset.id === tpl.sel; b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); }
+  const c = app.querySelector('.tplcus'); if (c) c.classList.toggle('off', !!tpl.sel);
+  if (tpl.note) { tpl.note = ''; const n = app.querySelector('.tpls .games-h small'); if (n) n.textContent = 'Mini-game selections, on your account'; }   // (an "applied" note is about the last tap)
+  for (const a of ['tpl-update', 'tpl-rename', 'tpl-del']) { const b = app.querySelector(`[data-act="${a}"]`); if (b) b.disabled = !(base && templates && templates[base]); }
+}
 // The checklist's selection as a template's games: the games on, among those this screen may deal.
 const tplSelection = VT => Object.fromEntries(TYPES.filter(t => state.setup.games[t] && VT.includes(t)).map(t => [t, true]));
 export function templatesRow(VT) {
@@ -122,8 +142,9 @@ export function templatesRow(VT) {
   const f = app.querySelector && app.querySelector('#tplname');                   // (a redraw while a name is being typed: the text as it stands comes along)
   if (f && typeof f.value === 'string') tpl.draft = f.value;
   const list = templateList();
-  if (tpl.sel && !(templates && templates[tpl.sel])) { tpl.sel = null; tpl.confirm = false; if (tpl.mode === 'rename') tpl.mode = null; }
-  const cur = tpl.sel ? templates[tpl.sel] : null;
+  if (tpl.base && !(templates && templates[tpl.base])) { tpl.base = null; tpl.confirm = false; if (tpl.mode === 'rename') tpl.mode = null; }
+  tpl.sel = tplMatch(VT);                                                          // (lit by the checklist itself: a change to any box makes it Custom, the same games again light it)
+  const cur = tpl.sel ? templates[tpl.sel] : tpl.base ? templates[tpl.base] : null;   // (what Update, Rename and Delete act on: the lit one, else the last one chosen)
   const n = t => Object.keys(t.games).filter(k => VT.includes(k)).length;
   const rows = list.length ? list.map(t => `<button class="tplrow${t.id === tpl.sel ? ' on' : ''}" data-act="tpl-pick" data-id="${esc(t.id)}" aria-pressed="${t.id === tpl.sel}"><b>${esc(t.name)}</b><small>${n(t)} game${n(t) === 1 ? '' : 's'}</small></button>`).join('')
     : `<i class="tplnone">${templates ? 'No templates yet' : 'Loading your templates…'}</i>`;
@@ -132,31 +153,34 @@ export function templatesRow(VT) {
       <div class="tplbtns"><button class="btn tplb go" data-act="tpl-ok">${tpl.mode === 'rename' ? 'Rename' : 'Save'}</button><button class="btn tplb" data-act="tpl-cancel">Cancel</button></div>`;
   else if (tpl.confirm && cur) bar = `<p class="tplask" role="status">Delete “${esc(cur.name)}”?</p>
       <div class="tplbtns"><button class="btn tplb" data-act="tpl-cancel">No</button><button class="btn tplb go" data-act="tpl-del-yes">Yes, delete</button></div>`;
-  else bar = `<div class="tplbtns"><button class="btn tplb go" data-act="tpl-use"${cur ? '' : ' disabled'}>Use</button><button class="btn tplb" data-act="tpl-update"${cur ? '' : ' disabled'}>Update</button><button class="btn tplb" data-act="tpl-rename"${cur ? '' : ' disabled'}>Rename</button><button class="btn tplb" data-act="tpl-del"${cur ? '' : ' disabled'}>Delete</button></div>
+  else bar = `<div class="tplbtns"><button class="btn tplb" data-act="tpl-update"${cur ? '' : ' disabled'}>Update</button><button class="btn tplb" data-act="tpl-rename"${cur ? '' : ' disabled'}>Rename</button><button class="btn tplb" data-act="tpl-del"${cur ? '' : ' disabled'}>Delete</button></div>
       <div class="tplbtns"><button class="btn tplb wide" data-act="tpl-save">Save as template</button></div>`;
-  return `<div class="tpls" role="group" aria-label="Templates"><div class="games-h"><span>Templates</span><small>${tpl.note ? esc(tpl.note) : 'Mini-game selections, on your account'}</small></div>
+  return `<div class="tpls" role="group" aria-label="Templates"><div class="games-h"><span>Templates</span><small>${tpl.note ? esc(tpl.note) : 'Mini-game selections, on your account'}</small><em class="tplcus${tpl.sel ? ' off' : ''}">Custom</em></div>
       <div class="tpllist">${rows}</div><div class="tplbar">${bar}</div></div>`;
 }
 // The Templates row's buttons (ui/input.js hands every tpl-* action here).
 export function tplAct(act, el) {
   if (!tplOn() || state.screen !== 'setup') return;
-  const VT = setupTypes(), cur = tpl.sel && templates && templates[tpl.sel];
+  const VT = setupTypes(), cur = templates && templates[tpl.sel || tpl.base];
   tpl.note = '';
-  if (act === 'tpl-pick') { tpl.sel = el && el.dataset.id in (templates || {}) ? el.dataset.id : null; tpl.confirm = false; if (tpl.mode === 'rename') tpl.mode = null; }
-  else if (act === 'tpl-use' && cur) { setGames(g => { for (const t of TYPES) g[t] = VT.includes(t) && cur.games[t] === true; }); tpl.note = `“${cur.name}” applied`; }   // (a game the template names that this screen may not deal stays off; an unknown one is ignored)
-  else if (act === 'tpl-update' && cur) { tpl.note = saveTemplate(null, tplSelection(VT), tpl.sel, TYPES) ? `“${cur.name}” updated` : 'Tick at least one mini-game'; }
+  if (act === 'tpl-pick') {                                                        // (choosing a template checks exactly its games, at once)
+    const id = el && el.dataset.id in (templates || {}) ? el.dataset.id : null, c = id && templates[id];
+    tpl.confirm = false; if (tpl.mode === 'rename') tpl.mode = null;
+    if (c) { tpl.base = id; setGames(g => { for (const t of TYPES) g[t] = VT.includes(t) && c.games[t] === true; }); tpl.note = `“${c.name}” applied`; }
+  }
+  else if (act === 'tpl-update' && cur) { tpl.note = saveTemplate(null, tplSelection(VT), tpl.sel || tpl.base, TYPES) ? `“${cur.name}” updated` : 'Tick at least one mini-game'; }
   else if (act === 'tpl-save') { tpl.mode = 'save'; tpl.draft = ''; tpl.confirm = false; }
   else if (act === 'tpl-rename' && cur) { tpl.mode = 'rename'; tpl.draft = cur.name; tpl.confirm = false; }
   else if (act === 'tpl-ok' && tpl.mode) {
     const f = app.querySelector && app.querySelector('#tplname'), name = (f && typeof f.value === 'string' ? f.value : tpl.draft).replace(/\s+/g, ' ').trim();
     if (!name) { tpl.note = 'Type a name first'; render(); return; }
-    if (tpl.mode === 'rename') { if (cur && renameTemplate(tpl.sel, name)) tpl.note = 'Renamed'; }
-    else { const id = saveTemplate(name, tplSelection(VT), null, TYPES); if (id) { tpl.sel = id; tpl.note = `“${name}” saved`; } else tpl.note = 'Tick at least one mini-game'; }
+    if (tpl.mode === 'rename') { if (cur && renameTemplate(tpl.sel || tpl.base, name)) tpl.note = 'Renamed'; }
+    else { const id = saveTemplate(name, tplSelection(VT), null, TYPES); if (id) { tpl.base = id; tpl.note = `“${name}” saved`; } else tpl.note = 'Tick at least one mini-game'; }
     tpl.mode = null; tpl.draft = '';
   }
   else if (act === 'tpl-cancel') { tpl.mode = null; tpl.confirm = false; tpl.draft = ''; }
   else if (act === 'tpl-del' && cur) tpl.confirm = true;
-  else if (act === 'tpl-del-yes' && cur) { deleteTemplate(tpl.sel); tpl.sel = null; tpl.confirm = false; tpl.note = 'Deleted'; }
+  else if (act === 'tpl-del-yes' && cur) { deleteTemplate(tpl.sel || tpl.base); tpl.sel = null; tpl.base = null; tpl.confirm = false; tpl.note = 'Deleted'; }
   render();
   if (tpl.mode) { const f = app.querySelector && app.querySelector('#tplname'); if (f && f.focus) f.focus({ preventScroll: true }); }
 }
@@ -181,6 +205,7 @@ export function setGames(change) {
     box.closest('.chk').classList.toggle('off', !v);
   }
   const n = app.querySelector('.adv-h small'); if (n) n.textContent = gamesCount(on, VT.length);
+  tplSync();
   const all = app.querySelector('[data-act="games-all"]'); if (all) all.disabled = on === VT.length;
   const none = app.querySelector('[data-act="games-none"]'); if (none) none.disabled = on === 0;
   const start = app.querySelector('[data-act="start"]'); if (start && !start.classList.contains('busy')) start.disabled = !setupReady(s);

@@ -3365,6 +3365,9 @@ main.scr.mini:has(.brkw.run) .back { visibility: hidden; pointer-events: none; }
 .tplrow b { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-weight: 400; font-size: 15px; letter-spacing: .02em; }
 .tplrow small { flex: none; color: var(--muted); font-weight: 700; font-size: 12px; white-space: nowrap; }
 .tplrow.on { background: var(--o); }
+.tplcus { flex: none; font-style: normal; font-weight: 800; font-size: 12px; color: var(--ink); background: var(--o); border: 2px solid var(--ink); border-radius: 9px; padding: 1px 8px; }
+.tplcus.off { visibility: hidden; }
+.tpls .games-h { gap: 8px; }
 .tplrow.on small { color: var(--ink); }
 .tplrow:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
 .tplnone { display: flex; align-items: center; height: 48px; padding: 0 4px; color: var(--muted); font-style: normal; font-weight: 700; font-size: 14px; }
