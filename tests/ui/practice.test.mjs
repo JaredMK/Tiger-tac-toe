@@ -40,7 +40,7 @@ test('Practice: that game alone against the computer on Easy, with the side reve
   Object.assign(state, board(), { screen: 'howto', online: null, practice: null, stats: { id: 'old', mode: 'cpu', sent: false } });
   const pend = T.pendingLocal().length, out = T.outbox().length;
   assert.equal(X.practiceStart('hilo'), true);
-  assert.deepEqual(state.practice, { type: 'hilo' }); assert.equal(state.screen, 'board');
+  assert.deepEqual(state.practice, { type: 'hilo' }); assert.equal(state.screen, 'mini'); assert.equal(state.zoom, 4, 'it opens inside the centre square');
   assert.ok(state.squares.every(sq => sq.mini.type === 'hilo')); assert.equal(state.cpuLevel, 'easy');
   assert.ok(state.cpu === 'X' || state.cpu === 'O');
   assert.ok(MM.mmIntro, 'the side reveal is up'); assert.equal(MM.mmIntro.me, E.other(state.cpu)); MM.closeIntro();
@@ -52,7 +52,7 @@ test('Practice: that game alone against the computer on Easy, with the side reve
   Object.assign(state, { screen: 'mini', zoom: 4 });
   hdr = renderHeader();
   assert.match(hdr, /data-act="practice-back"/, 'in the square too'); assert.doesNotMatch(hdr, /data-act="pause"/);
-  assert.match(renderMain(), /class="back"[^>]*data-act="back"/, "the square's own Board button stays");
+  assert.match(renderMain(), /class="back gone"[^>]*data-act="back"/, 'the Board button is hidden (its room kept): a practice match never leaves its square');
   assert.equal(T.pendingLocal().length, pend); assert.equal(T.outbox().length, out);
   // Back part way through: the match stops, nothing recorded, How to Play open at the game's explainer
   X.practiceEnd();
@@ -85,7 +85,7 @@ test('the practice match\'s end: the result screen with Practice again and Back 
   // Practice again from the end screen starts another at once
   Object.assign(state, board(), { screen: 'win', winner: 'X', online: null, practice: { type: 'c4' } });
   assert.equal(X.practiceStart('c4'), true); MM.closeIntro();
-  assert.deepEqual(state.practice, { type: 'c4' }); assert.equal(state.screen, 'board'); assert.equal(state.winner, null);
+  assert.deepEqual(state.practice, { type: 'c4' }); assert.equal(state.screen, 'mini'); assert.equal(state.winner, null);
   acct.user = null; acct.profile = null;
 });
 test('a saved practice match is never restored (ui/app.js load clears the mark; freshVisit opens the menu); another start clears it', () => {

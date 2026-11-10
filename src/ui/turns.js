@@ -63,11 +63,11 @@ export function scheduleCpu() {
     think(plan => {
       setCpuPlan(plan); if (!plan) return; plan.stage = 0;        // (no move at all: the admin's test play, its square over)
       if (plan.square !== state.zoom) { state.zoom = plan.square; state.draft = ''; state.pick = null; state.sel = []; commit(); return; }   // after a reload mid-move
-      setCpuTimer(setTimeout(cpuAct, state.lock != null ? CPU_MS.again : Math.max(CPU_MS.zoom, zoomBusy())));
+      setCpuTimer(setTimeout(cpuAct, state.lock != null ? CPU_MS.again : Math.max(CPU_MS.zoom, zoomBusy()) + (state.practice ? CPU_MS.think : 0)));   // (practice: its turn in place, a pause to think as on the board)
     });
     return;
   }
-  setCpuTimer(setTimeout(cpuAct, cpuPlan.stage ? CPU_MS.pre : state.lock != null ? CPU_MS.again : Math.max(CPU_MS.zoom, zoomBusy())));   // (its look at the square starts once the zoom into it has landed)
+  setCpuTimer(setTimeout(cpuAct, cpuPlan.stage ? CPU_MS.pre : state.lock != null ? CPU_MS.again : Math.max(CPU_MS.zoom, zoomBusy()) + (state.practice ? CPU_MS.think : 0)));   // (its look at the square starts once the zoom into it has landed)
 }
 // The computer's choice for the match as it stands (ui/think.js): the answer may come later (the Hard
 // computer's worker); by then the match must stand just the same, else it is asked again.
@@ -203,7 +203,7 @@ const WIN_AFTER = 350;
 let winTimer = null;
 export function toWin() {
   clearTimeout(winTimer); winTimer = null;
-  if (!state.winner || state.screen !== 'board' || state.sc) return;
+  if (!state.winner || (state.screen !== 'board' && !(state.practice && state.screen === 'win')) || state.sc) return;
   state.screen = 'win'; state.zoom = null;
   SND.play('swish'); SND.play(matchEndSound(), { at: speedMode() ? 0.12 : 0.25 });
   const k = endKind().list;
@@ -220,17 +220,18 @@ export function dismissFlash() {
   const from = { turn: state.turn, mini: state.screen === 'mini' }, quiet = !!(fx.move && fx.move.key === f && fx.move.quiet);
   endFlash(state, hold);
   const ended = f.kind === 'match' && !!state.winner && state.screen === 'win' && !state.sc && state.squares[f.square] && state.squares[f.square].owner;
-  if (ended) {                                       // the square that ended the match: back to the main board first, where it stamps in; then the match's end (toWin)
+  if (ended && !state.practice) {                    // the square that ended the match: back to the main board first, where it stamps in; then the match's end (toWin)
     state.screen = 'board'; state.zoom = null; state.stamp = f.square; state.stampId = `${state.id || 'm'}:${state.moves}`;
     clearTimeout(winTimer); winTimer = setTimeout(toWin, zoomLeft() + (speedMode() ? (STAMP_MS * 0.6 + WIN_AFTER) / ANIM.speed : (STAMP_MS + WIN_AFTER) / ANIM.speed));   // (after the zoom-out has landed and the stamp played; Speed: the end screen comes in as the stamp settles)
   }
   if (hold && state.done) { startFx('back', state.done); if (!quiet) SND.play('flipDown'); }   // the two cards turning back over
-  else if (!quiet) backSounds(from);
-  const stamped = stampFx() || drawFx(f);            // (a square won stamps in; one drawn and reset, its Draw stamp and shuffle)
+  else if (!quiet && !state.practice) backSounds(from);
+  const stamped = state.practice ? false : stampFx() || drawFx(f);            // (a square won stamps in; one drawn and reset, its Draw stamp and shuffle)
   turnAlert(from.turn, stamped);
+  if (ended && state.practice) toWin();              // practice: the result has been held in the square; the end card follows at once
   commit();
   if (hold && state.done) {
     clearTimeout(holdTimer);
-    setHoldTimer(setTimeout(() => { if (state.done && !state.flash && leaveSquare(state)) { if (!quiet) backSounds(from); turnAlert(from.turn, stampFx()); commit(); } applyPending(); }, FLIP_MS / ANIM.speed));
+    setHoldTimer(setTimeout(() => { if (state.done && !state.flash && leaveSquare(state, !!state.practice)) { if (!quiet && !state.practice) backSounds(from); turnAlert(from.turn, stampFx()); commit(); } applyPending(); }, FLIP_MS / ANIM.speed));
   } else applyPending();                        // online: the room may have moved on meanwhile
 }

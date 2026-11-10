@@ -1,5 +1,5 @@
 'use strict';
-// Simulations: Hex (5x5 with the swap rule). Slow, so never part of npm test:
+// Simulations: Hex (5x5, no swap rule since November 2026: the first mover wins far over 60%). Slow, so never part of npm test:
 // npm run sim -- hex
 // The first mover's rate between the game's own computer players: in one square, moving in turn; and in whole matches
 // of Hex squares, the computer choosing squares on both sides (the any-square rule: a player may move twice in a row in
@@ -38,7 +38,7 @@ function inMatches(N) {                                            // whole matc
 
 test('hex: the first mover between the computer players (5x5, swap rule), in turn and in whole matches; Admin only while over 60%', () => {
   const n = inTurn(400, {}), h = inTurn(100, { level: 'hard', until: null }), mt = inMatches(60);
-  console.log(`  Hex 5x5 + swap: in turn, Normal ${(100 * n.rate).toFixed(1)}% (${n.swaps} swaps), Hard ${(100 * h.rate).toFixed(1)}% (${h.swaps} swaps); whole matches (Normal, the any-square rule) ${(100 * mt.rate).toFixed(1)}% of ${mt.done} squares, ${mt.twice} times a player moved twice in a row in a square`);
+  console.log(`  Hex 5x5: in turn, Normal ${(100 * n.rate).toFixed(1)}% (${n.swaps} swaps), Hard ${(100 * h.rate).toFixed(1)}% (${h.swaps} swaps); whole matches (Normal, the any-square rule) ${(100 * mt.rate).toFixed(1)}% of ${mt.done} squares, ${mt.twice} times a player moved twice in a row in a square`);
   const worst = Math.max(n.rate, h.rate, mt.rate);
   assert.equal(E.TEST_TYPES.includes('hex'), worst > 0.6, `released only with the first mover under 60% (worst ${(100 * worst).toFixed(1)}%)`);
 });

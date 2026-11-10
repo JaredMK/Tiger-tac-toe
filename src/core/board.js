@@ -183,7 +183,7 @@ export function endFlash(state, hold) {
   if (state.winner) { state.screen = 'win'; state.zoom = null; state.done = null; }
   else if (f.kind === 'again') { state.screen = 'mini'; state.zoom = state.lock; }
   else if (hold && state.done) { state.screen = 'mini'; state.zoom = f.square; }
-  else leaveSquare(state);
+  else leaveSquare(state, !!state.practice);                   // (a practice match stays in its square)
   return true;
 }
 
@@ -191,9 +191,15 @@ export function endFlash(state, hold) {
 // result is on show, and the next player takes over as the board comes back. Just looking at a
 // square passes nothing. Refused while a result is still playing out, while a bonus move is owed,
 // or once the match is over.
-export function leaveSquare(state) {
+// `stay`: a practice match (core/match.js startPractice) never leaves its square: the turn passes where it stands.
+export function leaveSquare(state, stay) {
   if (state.flash || state.lock != null || state.winner) return false;
   const d = state.done;
+  if (stay && !state.sc) {
+    if (d) { state.turn = d.next; state.done = null; }
+    state.stamp = null; state.drawStamp = null; state.draft = ''; state.pick = null; state.sel = []; state.notice = null;
+    return true;
+  }
   state.stamp = null; state.drawStamp = null;
   if (d && state.sc) state.done = null;                         // Super Chaos: the move is in; nothing passes until the round ends
   else if (d) {

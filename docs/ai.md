@@ -91,7 +91,7 @@ change is possible or none was found.
 | Trivia, Patterns | Answers to a set rate by design | No race decision | 50% |
 | Tic-Tac-Toe | The solved game; among equal moves the one an opponent is likeliest to go wrong against | Exact in turn | 50% (all draws) |
 | Four in a Row | A threat-aware search (win in 1, loss in 2, forced replies, parity) with a 323-position book | Heuristic | 75.2% [71.6, 78.5] from random openings; about level on a long clock |
-| Hex | 5x5 with the swap solved: a 190-position book into an exact search | Exact where winning | 57.4% [53.0, 61.7] from random openings |
+| Hex | 5x5 solved, no swap rule (the book written under it keeps only its non-swap answers): a 190-position book into an exact search | Exact where winning | 57.4% [53.0, 61.7] from random openings |
 | Takeover | 5x5 solved (a 51-position book, then exact) | Exact in turn | 55.6% [52.5, 58.7] from random openings |
 | Flood | Every position solved over colour regions, including the pass where grabbing first loses | Exact in turn | 61.0% [57.9, 64.0] |
 | Seating | Best play is a draw; the last 8 seats solved, 2 to 3 moves searched above | Exact at 8 seats or fewer | 103 squares won, 2 lost in 10,000 (the rest level) |

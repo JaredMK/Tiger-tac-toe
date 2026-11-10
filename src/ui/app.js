@@ -71,7 +71,7 @@ function load() {
     const s = JSON.parse(localStorage.getItem(KEY));
     if (s && s.v === 4 && Array.isArray(s.squares) && s.squares.length === 9 && (s.turn === 'X' || s.turn === 'O') && s.setup) {
       if (s.lock != null && !s.winner) { s.screen = 'mini'; s.zoom = s.lock; }
-      else if (s.done && !s.flash && !s.winner) leaveSquare(s);   // a result that was still on show: the board was next anyway
+      else if (s.done && !s.flash && !s.winner) leaveSquare(s, !!s.practice);   // a result that was still on show: the board was next anyway
       s.notice = null; s.sel = []; s.stamp = null; s.stamps = null; s.spot = null;
       s.practice = null;                                          // (a practice match, How to Play's: never restored, ui/explainer.js)
       if (s.sc && typeof s.sc === 'object' && !s.online) {        // Super Chaos: a recap cut short goes straight on to the next round; the round's clock gives at least 10 s back

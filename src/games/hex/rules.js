@@ -1,7 +1,7 @@
 // Hex: the rules (pure: no page, no clock; the server runs the same code).
 import { other } from '../../core/util.js';
 
-// Hex: a new square is 5x5 with the swap rule; a square dealt before (4x4, no swap) plays on as it was, its size from its cells.
+// Hex: a new square is 5x5, no swap rule (removed November 2026); a square dealt before (4x4) plays on as it was, its size from its cells.
 export const HEX_N = 5;
 export const hexSize = cells => Math.round(Math.sqrt(cells.length));
 // Hex: rows are shifted half a cell to the right, so (r, c) touches (r-1, c+1) and (r+1, c-1) as well as the four orthogonal cells.
@@ -26,35 +26,11 @@ export function hexPath(cells, p) {
   }
   return null;
 }
-// The swap rule (the pie rule): right after the first stone in a square, the other player's next move there may
-// be "Swap", taking that stone as their own (it stays where it is; their move). Only while that stone is the only
-// one there and it is the other player's: once the opener has placed a second (the other player having played
-// elsewhere), the chance is gone. A 4x4 square from before has no swap.
-// The computer's book for the swap rule on 5x5, from Hard against Hard (64 games from each opening, a varied search;
-// a cell and its half-turn averaged). Written for X opening and O answering; the other way round, the same cells turned
-// round the long diagonal ((r, c) as (c, r)). HEX_SWAP: the X stones O takes (swapping wins O more than playing on:
-// the stone, now O's at (r, c), is worth to O what X's at (c, r) is to X); HEX_OPEN: the openings X plays, the ones
-// worth most to X whichever O chooses (about 57-62% for X between the computer players: the edge cells of the first
-// and last rows). tests/sim/hex.sim.js measures the first mover with them.
-export const HEX_SWAP = [2, 4, 6, 7, 8, 10, 11, 12, 13, 14, 16, 17, 18, 20, 22];
-export const HEX_OPEN = [1, 2, 3, 21, 22, 23];
 export const hexT = (i, n = HEX_N) => (i % n) * n + Math.floor(i / n);   // (r, c) -> (c, r)
-export function hexCanSwap(mini, p) {
-  if (!mini.swap || !mini.cells || mini.swapped) return false;       // (once a square: a stone taken is not taken back)
-  let k = -1;
-  for (let i = 0; i < mini.cells.length; i++) if (mini.cells[i]) { if (k >= 0) return false; k = i; }
-  return k >= 0 && mini.cells[k] === other(p);
-}
 export function create(type, rng) {
-  return { type, cells: new Array(HEX_N * HEX_N).fill(null), swap: true, last: null };
+  return { type, cells: new Array(HEX_N * HEX_N).fill(null), last: null };
 }
 export function apply(mini, p, m, rng, idx) {
-  if (m === 'swap') {                                             // the first stone taken over: the other player's no more
-    if (!hexCanSwap(mini, p)) return { ok: false, reason: 'bad' };
-    const k = mini.cells.findIndex(Boolean);
-    mini.cells[k] = p; mini.last = k; mini.swapped = { by: p, at: k };
-    return { ok: true, outcome: 'continue', note: 'swap' };
-  }
   if (!idx(mini.cells.length)) return { ok: false, reason: 'bad' };
   if (mini.cells[m]) return { ok: false, reason: 'taken' };
   mini.cells[m] = p; mini.last = m;
@@ -64,10 +40,7 @@ export function apply(mini, p, m, rng, idx) {
   return { ok: true, outcome: 'continue' };
 }
 export function publicView(mini) {
-  return Object.assign({ type: mini.type, cells: mini.cells.slice() }, mini.swap ? { swap: true } : {}, mini.swapped ? { swapped: Object.assign({}, mini.swapped) } : {});
-}
-export function moveFlash(m, p, range, bjFrom, mini, flash) {
-  if (m === 'swap') flash.hexSwap = mini.last;                    // (the view turns that stone over)
+  return { type: mini.type, cells: mini.cells.slice() };
 }
 // Hex: the fewest empty cells p still needs to connect its two edges (0 = connected, Infinity = cut off).
 export function hexDist(cells, p) {

@@ -52,7 +52,7 @@ export { hangmanCandidates } from '../games/hangman/rules.js';
 export { WORDS_HANG } from '../games/hangman/words.js';
 export { HEAD_DEFAULTS } from '../games/headcount/meta.js';
 export { HEAD, HEAD_KINDS, HEAD_THEMES, HEAD_LIMITS, HEAD_KIT, setHeadConfig, headConfig, headU, headAt, headAxis, headKeys, headRound, headAsk, headWatch } from '../games/headcount/rules.js';
-export { HEX_N, HEX_OPEN, HEX_SWAP, hexT, hexSize, hexCanSwap, hexNeighbors, hexPath, hexDist, hexMoves } from '../games/hex/rules.js';
+export { HEX_N, hexT, hexSize, hexNeighbors, hexPath, hexDist, hexMoves } from '../games/hex/rules.js';
 export { HP, hpMoves, hpGoalRow, HP_MEMO, hpSolve, hpMovesValued, hpNeeds } from '../games/hexapawn/rules.js';
 export { HILO, hiloTop, hiloLimit, hiloUsed, hiloLeft } from '../games/hilo/rules.js';
 export { huntSize, huntBand, huntClue, HUNT, huntDist, huntCandidates } from '../games/hunt/rules.js';

@@ -64,7 +64,7 @@ export function renderMini(sq, review, popup) {
   }
   const back = popup ? `<span class="back rtag ${turn}" aria-hidden="true">${REPLAY_ICON}</span>`
     : review ? `<button class="back" data-act="${reviewCtx.mback}" aria-label="Back to the final board">${CHEV}Board</button>`
-    : `<button class="back${!f && !d && ((mini.type === 'trivia' && lockMine()) || attPinned() || fingPinned() || (FINGER_TYPES.includes(mini.type) && lockMine())) ? ' gone' : ''}" data-act="back" aria-label="Back to the board"${f || d || lockMine() || cpuTurn() || pinned() || repActive() ? ' disabled' : ''}>${CHEV}Board</button>`;
+    : `<button class="back${state.practice || (!f && !d && ((mini.type === 'trivia' && lockMine()) || attPinned() || fingPinned() || (FINGER_TYPES.includes(mini.type) && lockMine()))) ? ' gone' : ''}" data-act="back" aria-label="Back to the board"${f || d || lockMine() || cpuTurn() || pinned() || repActive() ? ' disabled' : ''}>${CHEV}Board</button>`;
   const wb = state.sc && !popup && !review && !view && !f && !d ? waitBand(null) : { on: false, html: '' };   // Super Chaos: waiting in the square (a shot or a spin locked in), the board's own band over the game
   const banner = popup ? `<div class="repban ${turn}" role="status">${REPLAY_ICON}<span>${joint ? 'Both moves' : `<b>${N(turn)}</b>'s move`} — replay</span></div>` : '';   // Super Chaos's replay: whose move it is, in their colour, on the pop-up's edge (the whole pop-up: a tap skips to its end)
   return `<main class="scr mini${popup ? ` screplay rep-${turn}` : ''}"${popup ? ` role="dialog" aria-label="${esc(playerName(state, turn))}'s move — replay"` : ''}>${popup ? banner : netBar()}

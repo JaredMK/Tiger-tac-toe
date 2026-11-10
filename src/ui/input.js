@@ -180,7 +180,7 @@ export function init() {
       commit();
     } else if (act === 'back') {
       if (lockMine() || pinned()) return;
-      if (state.done) return;
+      if (state.done || state.practice) return;                  // (a practice match never leaves its square)
       state.screen = 'board'; state.zoom = null; state.draft = ''; state.sel = []; state.notice = null; state.stamp = null;
       if (!state.online) { state.pick = null; state.pickSq = null; }
       commit();

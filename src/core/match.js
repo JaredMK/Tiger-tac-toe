@@ -2,7 +2,7 @@
 import { newMini } from './minis.js';
 import { needRng, randInt } from './random.js';
 import { newTimer, timerSpec } from './timer.js';
-import { other } from './util.js';
+import { other, PRACTICE_SQ } from './util.js';
 import { levelOf } from './aiw.js';
 import { PHYSICS, PHYS_TYPES, physicsReady } from '../games/shared/physics.js';
 import { markCoins } from '../games/coins/rules.js';
@@ -125,6 +125,7 @@ export function startPractice(state, rng, type, name) {
   const human = startCpu(state, rng, name);
   Object.assign(s, keep);
   state.practice = human ? { type } : null;
+  if (human) { state.screen = 'mini'; state.zoom = PRACTICE_SQ; }       // (it opens inside the square and never leaves it: the computer's moves play in place)
   state.stats = null;                                           // (no stats report was begun for it: net/tracking.js trackStart is never called)
   return human;
 }

@@ -25,7 +25,7 @@ test('startPractice: that game alone in every square, the side drawn, the comput
     assert.deepEqual(st.games, ['hangman'], 'resets deal it too');
     assert.equal(st.cpu, E.other(me)); assert.equal(st.cpuLevel, 'easy', 'Easy');
     assert.deepEqual([st.setup.names[me], st.setup.names[E.other(me)]], ['Ann', 'Computer']);
-    assert.equal(st.screen, 'board'); assert.equal(st.stats, null, 'no stats report for it');
+    assert.equal(st.screen, 'mini'); assert.equal(st.zoom, 4, 'it opens inside the centre square'); assert.equal(st.stats, null, 'no stats report for it');
     assert.deepEqual(TYPES.filter(t => st.setup.games[t]), ['c4', 'hilo'], "the setup's checklist as it was");
     assert.deepEqual(st.setup.vsCpu, { pick: 'O', level: 'hard' }, "Play Computer's side and level as they were");
   }
@@ -65,4 +65,12 @@ test('practice plays in the centre square alone: the other eight refuse a move, 
   const me = startPractice(st, rng, 'ttt', 'Ann'); st.screen = 'board'; st.turn = 'X';
   for (const [p, m] of [['X', 0], ['O', 3], ['X', 1], ['O', 4], ['X', 2]]) { st.turn = p; st.lock = null; st.flash = null; st.done = null; const r = E.playMove(st, 4, m, rng); assert.ok(r.ok, `${p} ${m}`); }
   assert.equal(st.squares[4].owner, 'X'); assert.equal(st.winner, 'X'); assert.equal(st.winReason, 'practice'); assert.ok(me);
+});
+
+test('practice stays in the square: after a move the turn passes where it stands, the screen and zoom unchanged', () => {
+  const rng = E.makeRng('stay');
+  const st = E.newMatch(E.makeRng('st'), { games: ['ttt'] });
+  const me = startPractice(st, rng, 'c4', 'Ann'); st.turn = me; st.cpu = E.other(me);
+  const r = E.playMove(st, 4, 3, rng); assert.ok(r.ok); E.endFlash(st);
+  assert.equal(st.turn, E.other(me), 'the computer is on the move'); assert.equal(st.screen, 'mini'); assert.equal(st.zoom, 4); assert.equal(st.done, null); assert.equal(st.stamp, null);
 });

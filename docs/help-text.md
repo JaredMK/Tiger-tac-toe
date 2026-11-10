@@ -184,7 +184,7 @@ Win: Get 3 right.
 
 ## Hex [hex]
 Category: More brain
-Play: Claim a hex. X connects left to right, O connects top to bottom. Right after the first stone, the other player may Swap: take it as theirs.
+Play: Claim a hex. X connects left to right, O connects top to bottom.
 Win: Complete your path.
 
 ## Higher/Lower [hilo]

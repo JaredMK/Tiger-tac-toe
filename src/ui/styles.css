@@ -339,8 +339,6 @@ main.scr.mini:has(.fing), main.scr.mini:has(.fing) * { touch-action: none; -webk
 .big:disabled { opacity: .5; }
 
 .g-hex { width: var(--g); display: flex; flex-direction: column; align-items: center; gap: 8px; --hn: 4; --hw: calc((var(--g) * .86 - 10px) / (1.5 * var(--hn) - .5)); --hh: calc(var(--hw) * 1.1547); }   /* the board n cells a side, each row shifted half a cell: 1.5n - 0.5 cells across */
-.hexswaprow { height: 48px; display: grid; place-items: center; flex: none; }   /* always this tall: the board never moves */
-.hexswap { min-width: 120px; visibility: hidden; } .hexswap.on { visibility: visible; }
 .hexmid { display: flex; align-items: stretch; gap: 8px; }
 .hexgoal { display: grid; place-items: center; font-weight: 900; font-size: 14px; border-radius: 999px; }
 .hexgoal.O { width: calc(var(--g) * .86); height: 22px; background: var(--o-soft); color: var(--o); }

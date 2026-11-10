@@ -3,7 +3,7 @@ import { randInt } from '../../core/random.js';
 import { tune } from '../../core/tune.js';
 import { other } from '../../core/util.js';
 import { pickValued, slip } from '../shared/lines.js';
-import { HEX_HARD, HEX_OPEN, HEX_SWAP, hexCanSwap, hexDist, hexHard, hexMoves, hexSize, hexT } from './rules.js';
+import { HEX_HARD, hexDist, hexHard, hexMoves, hexSize, hexT } from './rules.js';
 import { HEX_BOOK } from './table.js';
 
 // ---- Hard on the 5x5 board: the game solved ----
@@ -25,11 +25,8 @@ import { HEX_BOOK } from './table.js';
 // side can choose; from there the search finishes at the board. In a lost position Hard plays the move that leaves
 // the other side the fewest winning answers (HEX_SOLVE.trap positions more), and where the search runs out (lines
 // off the book: a player moving twice running), the deep search of before (hexHard).
-// The solved openings: with X to open and no swap, X wins from HEX_WIN and loses from the other twelve cells. The
-// swap here leaves the stone where it is and gives it to the other player, so O does well to take X's stone k only
-// when an O stone there wins (k turned round the long diagonal is in HEX_WIN): the two cells in HEX_WIN whose
-// turned cell is not (3 and 21: the second cell from the far corner of the first and last rows) win for the opener
-// whatever the answer. Every other opening loses to the right choice.
+// The solved openings: with X to open (there is no swap rule), X wins from HEX_WIN and loses from the other twelve
+// cells; Hard opens on one of those (the book's first entry).
 export const HEX_SOLVE = { cap: 20000, trap: 20000, ahead: 5000, deep: 4000 };   // (deep: the deep search's positions after a search that ran out, without a clock)
 export const HEX_WIN = [3, 4, 6, 7, 8, 11, 12, 13, 16, 17, 18, 20, 21];
 const N = 5, HN = 25, FULL = (1 << HN) - 1;
@@ -215,17 +212,14 @@ function settled(cells, winner) {   // the square is `winner`'s with the players
 // Hard's move on 5x5: { move, win: true the square is won from here, false lost, null not known }, or null (the
 // deep search then).
 function hard5(pm, me, rng) {
-  const f = hexFrame(pm.cells, me), o = other(me), stones = pm.cells.filter(Boolean).length, can = hexCanSwap(pm, me);
-  if (!stones && pm.swap) return { move: f.back(rng() < 0.5 ? 3 : 21), win: true };   // the opening that wins whatever the answer
+  const f = hexFrame(pm.cells, me), o = other(me);
   const e = book().get(f.key);
-  if (e) {                                                       // (a lone stone's entry: the swap where it is the move, then the stone to play when it cannot be taken)
-    const part = e.split(','), use = part[0].slice(1) === 's' && !can ? part[1] : part[0];
-    if (use) return use.slice(1) === 's' ? { move: 'swap', win: use[0] === 'w' } : { move: f.back(Number(use.slice(1))), win: use[0] === 'w' };
+  if (e) {                                                       // (a lone stone's entry was written with the swap rule: its second move, the stone to play when it cannot be taken)
+    const part = e.split(','), use = part[0].slice(1) === 's' ? part[1] : part[0];
+    if (use && use.slice(1) !== 's') return { move: f.back(Number(use.slice(1))), win: use[0] === 'w' };
   }
   const S = solver(), X = f.X, O = f.O;                         // (the search in the frame too, the mover as X: the book counts on the very same search)
   S.start(HEX_SOLVE.cap);
-  if (can && S.value(O, 0, 1) < 0) return { move: 'swap', win: true };   // (off the book: the stone taken if that wins)
-  if (can) S.start(HEX_SOLVE.cap);
   const r = S.move(X, O, 0);
   if (r.v > 0) {
     S.more(HEX_SOLVE.ahead);                                     // the other side to move here instead: lost for it too? Then the square can wait
@@ -247,7 +241,6 @@ export function needs(pm, p) {
   return hexDist(pm.cells, p);
 }
 function done(pm, me, m, win) {   // the move as the square choice wants it
-  if (m === 'swap') { const k = pm.cells.findIndex(Boolean), sw = pm.cells.slice(); sw[k] = me; const after = { type: 'hex', cells: sw, swap: true }; if (win != null) KNOWN.set(after, settled(sw, win ? me : other(me))); return { move: 'swap', v: 0, h: 0, after, win: false }; }
   const b = pickValued(pm, me, [{ i: m, v: win ? HEX_HARD.win : win === false ? -HEX_HARD.win : 0 }], (cells, i) => i);
   if (win != null && !b.win) KNOWN.set(b.after, settled(b.after.cells, win ? me : other(me)));
   return b;
@@ -262,17 +255,6 @@ export function best(pm, me, rng, style, ctx) {
     const moves = hexHard(pm.cells, me, until, until ? HEX_HARD : Object.assign({}, HEX_HARD, { nodes: HEX_SOLVE.deep })).moves, b = pickValued(pm, me, moves, (cells, i) => i);   // (not solved in the time: the deep search, as the time allows)
     if (h && !b.win) KNOWN.set(b.after, settled(b.after.cells, other(me)));
     return b;
-  }
-  // The swap rule, by the book (HEX_SWAP): the other side's first stone, alone in the square, taken when it is worth more
-  // to them than playing on against it is to me (the admin's mistake rate: now and then it never thinks of it).
-  if (five && hexCanSwap(pm, me) && !(slip(pm, [0, 1], rng).length === 1)) {
-    const k = pm.cells.findIndex(Boolean);
-    if (HEX_SWAP.includes(me === 'O' ? k : hexT(k))) { const sw = pm.cells.slice(); sw[k] = me; return { move: 'swap', v: 0, h: 0, after: { type: 'hex', cells: sw, swap: true }, win: false }; }
-  }
-  // The opening of a square with the swap rule: a stone from the book (HEX_OPEN), at random among them.
-  if (five && pm.swap && !pm.cells.some(Boolean)) {
-    const k = me === 'X' ? HEX_OPEN[randInt(rng, HEX_OPEN.length)] : hexT(HEX_OPEN[randInt(rng, HEX_OPEN.length)]), after = pm.cells.slice(); after[k] = me;
-    return { move: k, v: 0, h: 0, after: { type: 'hex', cells: after, swap: true }, win: false };
   }
   const moves = hard ? hexHard(pm.cells, me, until).moves : hexMoves(pm.cells, me);   // (Hard: the deep search, as the time allows)
   return pickValued(pm, me, slip(pm, moves, rng), (cells, i) => i);
