@@ -3677,3 +3677,11 @@ main.scr.mini:has(.brkw.run) .back { visibility: hidden; pointer-events: none; }
 
 /* Practice (core/match.js startPractice): the centre square is the whole match; the other eight are greyed and never tapped. */
 .sq.plock { opacity: .38; filter: grayscale(1); pointer-events: none; cursor: default; }
+
+/* Miniature rows' X and O (November 2026): a drawn mark at full player colour and weight, never the thin 1em mask that
+   read faded at 9px (Krabs, 21, Little Wheel, War...): bigger, with a bolder stroke, the floor the other miniatures keep. */
+.thumb .tpip .tr b.X, .thumb .tpip .tr b.O, .thumb .tdice .tr b.X, .thumb .tdice .tr b.O, .thumb .tpat .tr b.X, .thumb .tpat .tr b.O { width: max(16px, 12cqw); height: max(16px, 12cqw); font-size: max(16px, 12cqw); flex: none; opacity: 1; }
+.thumb .tr b.X { background: var(--x); --mk: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M3.6 3.6L16.4 16.4M16.4 3.6L3.6 16.4' stroke='%23000' stroke-width='6' stroke-linecap='round'/%3E%3C/svg%3E"); }
+.thumb .tr b.O { background: var(--o); --mk: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Ccircle cx='10' cy='10' r='6.4' fill='none' stroke='%23000' stroke-width='5.4'/%3E%3C/svg%3E"); }
+.thumb .tpip .tr { gap: 3cqw; }
+.thumb b.X, .thumb b.O { box-shadow: none; background-image: none; opacity: 1; }   /* (the names' highlighter underline, b.X/b.O elsewhere, washed the lower half of every miniature mark pale) */
