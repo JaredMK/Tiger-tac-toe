@@ -13,7 +13,7 @@ import { CHEV, CPU_ICON, ICONS, toon } from './art.js';
 import { scHeld, scHint, scLastPlayed, scRecapStage, scShown, scVerdict } from './chaos.js';
 import { clockLeft, fmtClock } from './clock.js';
 import { scHuman } from '../core/chaos.js';
-import { other } from '../core/util.js';
+import { other, PRACTICE_SQ } from '../core/util.js';
 import { BURST_MS, burstPick, burstSvg, drawOld, fxAt, fxAttr } from './fx.js';
 import { pauseMenu } from './mini.js';
 import { reviewCtx } from './screens/profile.js';
@@ -79,6 +79,8 @@ export function renderBoard(review) {
     if (!review) sq = scShown(i) || sq;                                  // Super Chaos's recap: both moves in, nothing claimed yet
     const vd = review ? null : scVerdict(i);                          // Super Chaos's results: this square's, now playing
     if (vd) cls.push(...vd.cls);
+    const plock = !review && state.practice && i !== PRACTICE_SQ;         // (a practice match: the centre square alone; the other eight greyed, never tapped)
+    if (plock) cls.push('plock');
     if (sq.owner) cls.push('own-' + sq.owner);
     else if (!lastP && i === state.lastSquare && state.lastBy && !(spot && spot.square === i)) cls.push('last-' + state.lastBy);
     if (spot && spot.square === i) cls.push('spot', 'spot-' + spot.by);
@@ -96,7 +98,7 @@ export function renderBoard(review) {
     const lastTxt = lastP ? ['X', 'O'].filter(p => lastP[p] === i).map(p => `, ${esc(playerName(state, p))} played here last`).join('') : '';
     const label = (sq.owner ? `Square ${i + 1}: ${info.name}, won by ${esc(playerName(state, sq.owner))}. Tap to view` : `Square ${i + 1}: ${info.name}${drew ? ', a draw: a new game' : ''}`) + lastTxt;
     if (review) return `<button class="${cls.join(' ')}" data-act="${reviewCtx.sq}" data-i="${i}" aria-label="${label}. Tap to see it">${body}</button>`;
-    return `<button class="${cls.join(' ')}" data-act="zoom" data-i="${i}" aria-label="${label}"${spot && spot.square === i ? fxAttr(fxAt('spot', spot)) : vd && vd.at != null ? fxAttr(vd.at) : ''}${cpuTurn() || rc ? ' disabled' : ''}>${body}</button>`;
+    return `<button class="${cls.join(' ')}" data-act="zoom" data-i="${i}" aria-label="${label}"${spot && spot.square === i ? fxAttr(fxAt('spot', spot)) : vd && vd.at != null ? fxAttr(vd.at) : ''}${cpuTurn() || rc || plock ? ' disabled' : ''}${plock ? ' aria-disabled="true"' : ''}>${body}</button>`;
   }).join('');
   if (review) return `<main class="scr board-scr review-scr"><div class="revhead"><button class="back" data-act="${reviewCtx.back}" aria-label="${reviewCtx.backAria}">${CHEV}${reviewCtx.backLabel}</button>
       <div class="ttl"><b>${reviewCtx.title}</b><small>Tap any square to see how it ended</small></div></div><div class="board">${sqs}${HASH_SVG}</div>

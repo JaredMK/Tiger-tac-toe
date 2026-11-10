@@ -2,7 +2,8 @@
 // another until something shows; what shows says a lot, because three of a kind always lie in a line (rules.js): two
 // matching pictures in a line name the third panel, a picture shown outside a line rules that line out for it, and the
 // layout (how many lines, pairs and singles a card holds) bounds what each picture can still be. Normal scratches the
-// panel that would complete three of a kind where two already show in a line, else any panel; Hard weighs every card
+// panel that would complete three of a kind where two already show in a line (none is left: a pair in a line opens its third
+// by itself, in the same move, rules.js scrAuto), else any panel; Hard weighs every card
 // still possible (scrOdds: each way the lines and the decoys could lie, given the panels shown) and scratches the panel
 // likeliest to complete a line now, between equals the one likeliest to be on a line at all.
 import { randInt } from '../../core/random.js';
@@ -77,7 +78,7 @@ function scrOddsCalc(lay, K, L, open) {
         const w = decoyWays(obs, K - L, lay, hiddenOut);
         if (!w) return;
         W += w; hSum += w * near;
-        set.forEach((ln, k) => { lines.add(LINES.indexOf(ln)); for (const i of hid[k]) line[i] += w; if (hid[k].length === 1) win[hid[k][0]] += w; });
+        set.forEach((ln, k) => { lines.add(LINES.indexOf(ln)); for (const i of hid[k]) line[i] += w; if (hid[k].length <= 2) for (const i of hid[k]) win[i] += w; });   // (two panels frosted with the third showing: either one scratched makes the pair that opens the other, three of a kind; one: the old state)
         return;
       }
       for (let s = 0; s < K; s++) { if (used.includes(s) || outside[s]) continue; if (req[j] != null && req[j] !== s) continue; used.push(s); choose(j + 1, used); used.pop(); }
@@ -121,7 +122,8 @@ export function scrLook(pm, p) {
   LOOKS.set(id, out);
   return out;
 }
-// The panel two matching pictures in a line point at (the obvious scratch), or -1.
+// The panel two matching pictures in a line point at, or -1. Since November 2026 a move that makes such a pair scratches that
+// panel at once (rules.js scrAuto), so a card is never left with one; only a square dealt before can be.
 export function scrObvious(open) {
   for (const ln of LINES) {
     const shown = ln.filter(i => open[i] != null), hid = ln.filter(i => open[i] == null);
@@ -139,7 +141,7 @@ export function needs(pm, p) {
   if (t) return t.e;                                           // (the layout has a table: the exact count, played at its best)
   const o = scrOdds(pm, p);
   if (!o.W) return Math.max(1, SCR.need - scrBest(open));
-  return o.h + 0.72 * Math.log2(Math.max(1, o.support));
+  return Math.max(1, o.h - 1) + 0.72 * Math.log2(Math.max(1, o.support));   // (a pair opens its third: a line's last panel costs no move)
 }
 export function best(pm, me, rng, style, ctx) {
   const open = scrOpen(pm, me), hidden = open.map((v, i) => (v == null ? i : -1)).filter(i => i >= 0);

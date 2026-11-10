@@ -90,6 +90,7 @@ export function renderWin() {
   // The match's result, one line (November 2026): three in a row, the other ran out of time, or the other resigned
   // (leaving through the menu, two missed turns, or 2 minutes disconnected all resign).
   const why = state.winReason === 'line' ? 'Three in a row'
+    : state.winReason === 'practice' ? 'Won the practice game'
     : state.winReason === 'clock' ? `${N(other(w))} ran out of time`
     : state.winReason === 'resign' || state.winReason === 'timeout' ? `${N(other(w))} resigned`
     : `Most squares: ${state.counts[w]} to ${state.counts[other(w)]}`;

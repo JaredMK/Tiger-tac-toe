@@ -1,11 +1,14 @@
 'use strict';
 // Simulations: Scratch & Match. Slow, so never part of npm test:
 // npm run sim -- scratch
-// The settings (meta.js TUNE) were picked here (November 2026): 6 pictures, one picture three times along a line, two
+// (Before the auto-scratch of November 2026 a pair in a line left its third frosted: the numbers below are from then.) The settings (meta.js TUNE) were picked here (November 2026): 6 pictures, one picture three times along a line, two
 // pairs and two singles among the decoys. Normal against Normal (the obvious third panel, else any): the winner takes
 // about 5.0 scratches, the first mover wins about 59%; Hard against Hard (every card still possible weighed): about 4.3
 // scratches, the first mover about 58%; a lone card takes Normal about 6.0 scratches and Hard about 5.2. Two lines a
 // card (lines: 2) is quicker (about 4.1 scratches) but the first mover edges over 60%.
+// After the auto-scratch (a pair in a line opens its third in the same move) the same layout is quicker and favours the first
+// mover more: Normal v Normal winner 3.8 scratches, first mover 59%; Hard v Hard 3.2 and 63%; a lone card Normal 4.7, Hard 3.8
+// (no layout of the settings gets the winner to 4: tried 6 to 8 pictures, 0 to 3 pairs). The bounds below are the targets.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const E = require('../engine.js');

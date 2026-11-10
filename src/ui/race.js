@@ -8,7 +8,7 @@ import { markSvgG } from './thumbs.js';
 // Whose board is the large one here: this phone's side (online, against the computer), else X's (a watcher, a test).
 export const raceMe = () => viewer() || 'X';
 export const raceThem = () => other(raceMe());
-const mark = (p, h) => `<svg class="rmk ${p}" viewBox="${-h} ${-h} ${2 * h} ${2 * h}" aria-hidden="true">${markSvgG(p, h * 0.8)}</svg>`;
+export const mark = (p, h) => `<svg class="rmk ${p}" viewBox="${-h} ${-h} ${2 * h} ${2 * h}" aria-hidden="true">${markSvgG(p, h * 0.8)}</svg>`;
 // The square's two boards. mine/theirs: each board's own markup (sized from its box: both are size containers, so a
 // view sizes with cqw/cqh); note: a short status of the other player's progress beside their name (e.g. "3 hits",
 // "2 right"), kept in its own reserved line; opts.cls: the game's own class on the wrapper. The other board's box keeps

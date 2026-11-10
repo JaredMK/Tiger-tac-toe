@@ -6,7 +6,7 @@ import { blocked } from '../../net/room.js';
 import { RNG, commit, pickKey, state } from '../../ui/app.js';
 import { raceSide } from '../../core/race.js';
 import { memoryKnownPairs, memoryLayout } from './rules.js';
-import { raceBoards, raceMe, raceThem, raceThumb } from '../../ui/race.js';
+import { mark, raceBoards, raceMe, raceThem, raceThumb } from '../../ui/race.js';
 import { fxAt, fxAttr, startFx } from '../../ui/fx.js';
 import { repTake } from '../../ui/replay.js';
 import { playFlash } from '../../ui/turns.js';
@@ -24,6 +24,8 @@ function shapeSvg(card) { return `<svg viewBox="0 0 24 24" fill="${CARD_COLORS[c
 // they have turned up face up (their faces are open, their layout is not), their newest two flipping up as they land. A
 // card's face comes from the flips (its part's `faces`), the first card picked online (`up`), or here, playing the
 // computer, the layout itself. A finished square reviewed shows both layouts.
+// A small drawn X or O in the corner of a card its player has turned up (race: both boards), so whose flip it was reads at a glance.
+const badge = p => `<span class="mbd ${p}">${mark(p, 6)}</span>`;
 const cardsOf = mini => (Array.isArray(mini.cards) && mini.cards.length === 9 ? mini.cards : new Array(9).fill(null));   // (a deck this copy has not got: backs)
 const faceIn = (mini, p, i) => { const part = raceSide(mini, p), L = memoryLayout(mini, p); return (part && part.faces && part.faces[i]) || (mini.up && mini.up.i === i && state.turn === p ? mini.up : null) || (L && L[i]) || null; };
 const picked = p => (state.pick != null && state.pickSq === state.zoom && state.turn === p ? state.pick : null);
@@ -49,7 +51,7 @@ function oppCards(mini, p, a, view, sq) {
   const winner = sq.owner === p && mini.winCells ? mini.winCells : [];
   return `<div class="mopp" role="img" aria-label="${seen.size} cards turned">${Array.from({ length: 9 }, (_, i) => {
     const face = faceIn(mini, p, i), up = (view || seen.has(i) || fresh.includes(i) || pk === i) && face;
-    return `<i class="${up ? 'up' : 'dn'}${fresh.includes(i) || pk === i ? ' fl' : ''}${winner.includes(i) ? ' win' : ''}">${up ? shapeSvg(face) : ''}</i>`;
+    return `<i class="${up ? 'up' : 'dn'}${fresh.includes(i) || pk === i ? ' fl' : ''}${winner.includes(i) ? ' win' : ''}">${up ? shapeSvg(face) + badge(p) : ''}</i>`;
   }).join('')}</div>`;
 }
 function raceScreen(sq, f, d, mini, view, locked, a, won, fresh) {
@@ -61,10 +63,10 @@ function raceScreen(sq, f, d, mini, view, locked, a, won, fresh) {
   const flipped = mine && mine.reveal ? mine.reveal : [];
   const back = !f && d && d.by === me && d.reveal && !sq.owner ? d.reveal : [];
   const win = i => sq.owner === me && won(i);
-  const grid = `<div class="g-mem">${Array.from({ length: 9 }, (_, i) => {
+  const grid = `<div class="g-mem pc-${me}">${Array.from({ length: 9 }, (_, i) => {
       const isUp = up.has(i), picking = pk === i, face = faceIn(mini, me, i);
       const cls = `mc ${isUp ? 'up' : 'down'}${picking ? ' pick' : ''}${win(i) ? ' win' : ''}${win(i) && fresh ? ' glow' : ''}${picking || flipped[1] === i ? ' flipup' : ''}${back.includes(i) ? ' flipdown' : ''}`;
-      return `<button class="${cls}" data-act="pick" data-i="${i}" aria-label="Card ${i + 1}${isUp ? ', face up' : ''}"${picking ? fxAttr(fxAt('pick', pickKey())) : ''}${locked ? ' disabled' : ''}><span class="in"><span class="bk">?</span><span class="ft">${(isUp || back.includes(i)) && face ? shapeSvg(face) : ''}</span></span></button>`;
+      return `<button class="${cls}" data-act="pick" data-i="${i}" aria-label="Card ${i + 1}${isUp ? ', face up' : ''}"${picking ? fxAttr(fxAt('pick', pickKey())) : ''}${locked ? ' disabled' : ''}><span class="in"><span class="bk">?</span><span class="ft">${(isUp || back.includes(i)) && face ? shapeSvg(face) + badge(me) : ''}</span></span></button>`;
     }).join('')}</div>`;
   const tp = raceSide(mini, them), n = (tp && tp.flips) || 0, pr = memoryKnownPairs(tp);
   return raceBoards(`<div class="g-memr2">${grid}</div>`, oppCards(mini, them, a, view, sq), `${n} flip${n === 1 ? '' : 's'}${pr ? ` · ${pr} pair${pr === 1 ? '' : 's'} seen` : ''}`, { cls: 'mrb' });

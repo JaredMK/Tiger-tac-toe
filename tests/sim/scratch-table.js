@@ -42,7 +42,19 @@ function allCards(lay) {
 function solve(lay) {
   const cards = allCards(lay), memo = new Map();
   const parts = (list, i) => { const b = new Map(); for (const c of list) { let a = b.get(c[i]); if (!a) b.set(c[i], (a = [])); a.push(c); } return b; };
-  const two = (open, s) => { let c = 0; for (let j = 0; j < 9; j++) if (open[j] === s) c++; return c >= 2; };
+  const count = (open, s) => { let c = 0; for (let j = 0; j < 9; j++) if (open[j] === s) c++; return c; };
+  // November 2026: a pair on show in a line with its third panel frosted scratches that third at once, in the same move
+  // (rules.js scrAuto): a position is only ever looked up once those are done, so every move is solved through them.
+  const third = open => { for (const ln of LINES) { const sh = ln.filter(i => open[i] >= 0), hid = ln.filter(i => open[i] < 0); if (sh.length === 2 && hid.length === 1 && open[sh[0]] === open[sh[1]]) return hid[0]; } return -1; };
+  // the scratches still to come once a panel showing s has been scratched: none at three of a kind, else the panel a pair opens (by the pictures it may hold), else the position
+  function F(open, list, s) {
+    if (count(open, s) >= SCR.need) return 0;
+    const t = third(open);
+    if (t < 0) return E(open, list);
+    let tot = 0;
+    for (const [s2, sub] of parts(list, t)) { open[t] = s2; tot += sub.length / list.length * F(open, sub, s2); open[t] = -1; }
+    return tot;
+  }
   function E(open, list) {
     const { key, sym } = canon(open), hit = memo.get(key);
     if (hit) return hit.e;
@@ -50,7 +62,7 @@ function solve(lay) {
     for (let i = 0; i < 9; i++) {
       if (open[i] >= 0) continue;
       let e = 1;
-      for (const [s, sub] of parts(list, i)) { if (two(open, s)) continue; open[i] = s; e += sub.length / list.length * E(open, sub); open[i] = -1; }
+      for (const [s, sub] of parts(list, i)) { open[i] = s; e += sub.length / list.length * F(open, sub, s); open[i] = -1; }
       if (e < be - 1e-12) { be = e; bi = i; }
     }
     memo.set(key, { e: be, panel: SYM[sym].indexOf(bi) });        // (the panel as the smallest turn of the position has it)

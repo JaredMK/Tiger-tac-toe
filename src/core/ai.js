@@ -3,7 +3,7 @@
 import { LINES } from './board.js';
 import { canMove, publicMini, randomLegalMove } from './minis.js';
 import { needRng, randInt } from './random.js';
-import { other } from './util.js';
+import { other, PRACTICE_SQ } from './util.js';
 import { fingPlay } from '../games/shared/finger.js';
 import { ECHO, echoSeq } from '../games/echo/rules.js';
 import { aiOf, metaOf } from '../games/index.js';
@@ -160,7 +160,7 @@ export function cpuMove(state, rng, style, opts) {
   const level = levelOf(opts.level || state.cpuLevel), w = aiWeights(), L = levelCfg(level, w), search = L.search > 0;
   const st = Object.assign({}, STYLE0, { attack: search ? w.attack : 1, defend: search ? w.defend : 1, rollRisk: L.risk, mistake: L.mistake }, style || {});
   const me = state.turn;
-  const open = state.lock != null ? [state.lock] : state.only != null ? [state.only].filter(i => !state.squares[i].owner && canMove(state.squares[i].mini, me))   // (the admin's test play: its one square)
+  const open = state.lock != null ? [state.lock] : (state.only != null || state.practice) ? [state.only != null ? state.only : PRACTICE_SQ].filter(i => !state.squares[i].owner && canMove(state.squares[i].mini, me))   // (the admin's test play: its one square; a practice match: the centre)
     : state.squares.map((s, i) => (s.owner || !canMove(s.mini, me) ? -1 : i)).filter(i => i >= 0);   // not a square where it is stuck
   if (!open.length) return null;
   if (st.mistake > 0 && open.length && rng() < st.mistake) {      // a careless move: anything legal, anywhere open

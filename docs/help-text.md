@@ -285,7 +285,7 @@ Win: Stack to the target first.
 
 ## Scratch & Match [scratch]
 Category: More luck
-Play: Scratch a panel on your card to show its picture. Three of the same picture always sit in a line, so two matching pictures in a line point at the third.
+Play: Scratch a panel on your card to show its picture. Three of the same picture always sit in a line. When two matching pictures show in a line, the third panel scratches itself right away, in the same move.
 Win: Show three of a kind first.
 
 ## Sea Battle [bs]

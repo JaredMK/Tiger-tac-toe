@@ -3003,16 +3003,16 @@ main.scr.mini > .wband { left: 0; right: 0; }   /* Super Chaos: waiting in the s
 .sfrost i:nth-child(2) { background-image: linear-gradient(135deg, #e7f2f7 0%, #d0e3ec 60%, #bfd6e3 100%); }
 .sfrost i:nth-child(4) { background-image: linear-gradient(135deg, #e3eff5 0%, #cfe2eb 50%, #b9d2e0 100%); }
 .sspot.open:not(.rub) .sfrost { display: none; }
-.sspot.rub .sfrost i { animation: scrub .22s ease-in both; transform-origin: right center; }   /* rubbed away strip by strip, back and forth, over SCR.rub */
-.sspot.rub .sfrost i:nth-child(2) { animation-delay: .15s; transform-origin: left center; }
-.sspot.rub .sfrost i:nth-child(3) { animation-delay: .3s; }
-.sspot.rub .sfrost i:nth-child(4) { animation-delay: .45s; transform-origin: left center; }
-.sspot.rub .spic { animation: pop .3s .65s cubic-bezier(.3, 1.6, .5, 1) both; }
-.sspot.hit { animation: scrhit .3s .9s ease-in-out 2 alternate both; }   /* a pair: both its panels ring in the player's colour */
+.sspot.rub .sfrost i { animation: scrub .22s var(--t, 0ms) ease-in both; transform-origin: right center; }   /* rubbed away strip by strip, back and forth, over SCR.rub */
+.sspot.rub .sfrost i:nth-child(2) { animation-delay: calc(var(--t, 0ms) + .15s); transform-origin: left center; }
+.sspot.rub .sfrost i:nth-child(3) { animation-delay: calc(var(--t, 0ms) + .3s); }
+.sspot.rub .sfrost i:nth-child(4) { animation-delay: calc(var(--t, 0ms) + .45s); transform-origin: left center; }
+.sspot.rub .spic { animation: pop .3s calc(var(--t, 0ms) + .65s) cubic-bezier(.3, 1.6, .5, 1) both; }
+.sspot.hit { animation: scrhit .3s calc(var(--h, 0ms) + .9s) ease-in-out 2 alternate both; }   /* a pair: both its panels ring in the player's colour */
 .scard.X .sspot.hit { --hc: var(--x); } .scard.O .sspot.hit { --hc: var(--o); }
 .sspot.wn { background: var(--o-soft); } .scard.X .sspot.wn { background: var(--x-soft); }
-.sspot.wn.glow:not(.rub) .spic { animation: sparkle .4s calc(.9s + var(--k, 0) * .15s) ease-in-out 2 alternate; }   /* three of a kind: each sparkles in turn */
-.sspot.wn.glow.rub .spic { animation: pop .3s .65s cubic-bezier(.3, 1.6, .5, 1) both, sparkle .4s calc(.9s + var(--k, 0) * .15s) ease-in-out 2 alternate; }
+.sspot.wn.glow:not(.rub) .spic { animation: sparkle .4s calc(var(--w, 0ms) + .9s + var(--k, 0) * .15s) ease-in-out 2 alternate; }   /* three of a kind: each sparkles in turn */
+.sspot.wn.glow.rub .spic { animation: pop .3s calc(var(--t, 0ms) + .65s) cubic-bezier(.3, 1.6, .5, 1) both, sparkle .4s calc(var(--w, 0ms) + .9s + var(--k, 0) * .15s) ease-in-out 2 alternate; }
 @keyframes scrub { to { transform: scaleX(0); } }
 @keyframes scrhit { from { box-shadow: 0 0 0 0 var(--hc, var(--ink)); } to { box-shadow: 0 0 0 4px var(--hc, var(--ink)); } }
 .tscr { width: 92cqw; height: auto; display: block; }   /* the miniature: the two cards, each panel frosted or its picture's colour */
@@ -3653,3 +3653,29 @@ main.scr.mini:has(.brkw.run) .back { visibility: hidden; pointer-events: none; }
 /* Race v2: hunt, sniff, memory: the two boards take the game area's full height (.gwrap centres its child, so .rboards alone would be its content's height) */
 .gwrap > .rboards.hrb, .gwrap > .rboards.srb, .gwrap > .rboards.mrb { align-self: stretch; max-height: var(--gh); max-width: var(--gw); }
 @media (min-width: 560px) and (min-aspect-ratio: 3/4) { .rboards.trqb { width: var(--gw); } }   /* Race v2: trivia, patterns: the two boards side by side on a tablet take the game's whole width */
+
+/* ===== Find the Pair, both boards (Race mode): the boards kept apart, and whose flip is whose obvious (November 2026) ===
+   A card a player has turned up carries its player's colour as a strong outline and a tinted fill and a small drawn X or O
+   in its corner; O's yellow is a deeper amber here (--mo), which reads on white where the yellow did not. */
+.mrb { --mo: #d98a0a; gap: 20px; }
+.mrb .ropp { box-shadow: inset 0 0 0 2.5px var(--line); }
+.mrb .ropp.X { box-shadow: inset 0 0 0 2.5px var(--x), 0 0 0 1px var(--paper); } .mrb .ropp.O { box-shadow: inset 0 0 0 2.5px var(--mo), 0 0 0 1px var(--paper); }
+.mrb .rmk.O .tmk { stroke: var(--mo); }
+.mbd { position: absolute; top: 5%; left: 5%; width: 30%; height: 30%; display: block; pointer-events: none; }
+.mbd .rmk { width: 100%; height: 100%; display: block; overflow: visible; }
+.mbd .rmk.X .tmk { stroke: var(--x); } .mbd .rmk.O .tmk { stroke: var(--mo); }
+.mrb .mopp i { position: relative; }
+.mrb .mopp .mbd { width: 36%; height: 36%; top: 3%; left: 3%; }
+.mrb .mopp i.up svg:not(.rmk) { width: 66%; height: 66%; }
+.mrb .ropp.X .mopp i.up { background: color-mix(in srgb, var(--x) 24%, #fff); box-shadow: inset 0 0 0 2.5px var(--x); }
+.mrb .ropp.O .mopp i.up { background: color-mix(in srgb, var(--mo) 28%, #fff); box-shadow: inset 0 0 0 2.5px var(--mo); }
+.mrb .ropp .mopp i.win { box-shadow: inset 0 0 0 3.5px var(--green); }
+.mrb .g-mem .mc .ft { position: absolute; }
+.mrb .g-mem.pc-X .mc.up .ft { background: color-mix(in srgb, var(--x) 22%, #fff); border-color: var(--x); box-shadow: inset 0 0 0 3px var(--x); }
+.mrb .g-mem.pc-O .mc.up .ft { background: color-mix(in srgb, var(--mo) 26%, #fff); border-color: var(--mo); box-shadow: inset 0 0 0 3px var(--mo); }
+.mrb .g-mem.pc-X .mc.pick .bk, .mrb .g-mem.pc-X .mc.pick .ft { box-shadow: 0 0 0 4px var(--x); }
+.mrb .g-mem.pc-O .mc.pick .bk, .mrb .g-mem.pc-O .mc.pick .ft { box-shadow: 0 0 0 4px var(--mo); }
+.mrb .g-mem .mc.win .ft { box-shadow: inset 0 0 0 4px var(--green); }
+
+/* Practice (core/match.js startPractice): the centre square is the whole match; the other eight are greyed and never tapped. */
+.sq.plock { opacity: .38; filter: grayscale(1); pointer-events: none; cursor: default; }

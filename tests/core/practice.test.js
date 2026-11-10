@@ -49,3 +49,20 @@ test('the templates rules (database.rules.json) take a games map of exactly the 
   assert.match(rules.$id.name['.validate'], /length <= 24/);
   assert.equal(rules.$id.$other['.validate'], false);
 });
+
+test('practice plays in the centre square alone: the other eight refuse a move, the computer takes only the centre, and claiming it ends the match', () => {
+  const rng = E.makeRng('pc');
+  for (let k = 0; k < 6; k++) {
+    const st = E.newMatch(E.makeRng('pc' + k), { games: ['ttt'] });
+    const me = startPractice(st, rng, 'c4', 'Ann'); st.screen = 'board'; st.turn = me;
+    for (let i = 0; i < 9; i++) if (i !== 4) assert.equal(E.playMove(st, i, 0, rng).reason, 'locked', `square ${i} is locked`);
+    st.turn = E.other(me); st.cpu = st.turn;
+    const plan = E.cpuMove(st, E.makeRng('cpu' + k), null, { level: 'easy' });
+    assert.equal(plan.square, 4, 'the computer plays the centre');
+  }
+  // a claim there is the match: c4 filled by one side
+  const st = E.newMatch(E.makeRng('pw'), { games: ['ttt'] });
+  const me = startPractice(st, rng, 'ttt', 'Ann'); st.screen = 'board'; st.turn = 'X';
+  for (const [p, m] of [['X', 0], ['O', 3], ['X', 1], ['O', 4], ['X', 2]]) { st.turn = p; st.lock = null; st.flash = null; st.done = null; const r = E.playMove(st, 4, m, rng); assert.ok(r.ok, `${p} ${m}`); }
+  assert.equal(st.squares[4].owner, 'X'); assert.equal(st.winner, 'X'); assert.equal(st.winReason, 'practice'); assert.ok(me);
+});

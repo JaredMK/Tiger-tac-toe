@@ -77,7 +77,7 @@ change is possible or none was found.
 | Little Wheel | A group or 8 numbers; green 0 by value iteration over both scores | Exact | 50% |
 | Ride the Bus | The likeliest guess from the cards seen | Optimal for expected turns (checked over all 56,186 hands) | 50% |
 | Peg Drop | Three drops ahead on the real peg, then a random-peg race table | Heuristic, 0.01% of a square per drop from the exact table (`tests/sim/plinko-table.js`) | 51.0% [48.9, 53.2] |
-| Scratch & Match | A solved table: the panel with the fewest expected scratches over every card still possible (`scratch/table.js`) | Exact for the default layout | 51.8% [49.6, 54.0] |
+| Scratch & Match | A solved table: the panel with the fewest expected scratches over every card still possible, solved with the auto-scratch (a pair in a line opens its third in the same move; `scratch/table.js`, regenerated November 2026) | Exact for the default layout | 51.8% [49.6, 54.0] |
 | Bingo | The exact race for 3x3 cards once the square's table is built, rollouts until then | Exact where built | 51.0% [47.9, 54.1] |
 | Apple Pick, Krabs, Coin Flip, War, Snakes and Ladders, Candy Race, Bump | One legal move | No decision | 50% |
 | Higher/Lower | The full race table over the range, both sides' guesses left and the fifth-miss rule | Exact | 50% (already exact) |

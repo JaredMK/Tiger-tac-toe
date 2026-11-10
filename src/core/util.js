@@ -1,5 +1,7 @@
 // Small helpers shared by the engine and the games.
 
+// Practice (core/match.js startPractice) plays in the centre square alone: the other eight are locked and greyed.
+export const PRACTICE_SQ = 4;
 export function other(p) { return p === 'X' ? 'O' : 'X'; }
 export const r3 = x => Math.round(x * 1000) / 1000 + 0;
 export const clamp01 = x => (x < 0 ? 0 : x > 1 ? 1 : x);

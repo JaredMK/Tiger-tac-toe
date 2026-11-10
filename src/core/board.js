@@ -6,7 +6,7 @@ import { isRace } from './race.js';
 import { anyMove, applyMove, canMove, newMini } from './minis.js';
 import { needRng } from './random.js';
 import { repMove, repNorm } from './replay.js';
-import { other } from './util.js';
+import { other, PRACTICE_SQ } from './util.js';
 import { ATT_TYPES } from '../games/shared/attention.js';
 import { FINGER_TYPES } from '../games/shared/finger.js';
 import { RUN_TYPES, runLog } from '../games/shared/runner.js';
@@ -104,6 +104,7 @@ export function playMove(state, i, m, rng, opts) {
   if (state.flash) return { ok: false, reason: 'busy' };
   if (state.done) return { ok: false, reason: 'done' };          // one move per visit: head back to the board first
   if (state.lock != null && state.lock !== i) return { ok: false, reason: 'locked' };
+  if (state.practice && i !== PRACTICE_SQ) return { ok: false, reason: 'locked' };   // (a practice match: the centre square alone)
   const sq = state.squares[i];
   if (!sq) return { ok: false, reason: 'bad' };
   if (sq.owner) return { ok: false, reason: 'claimed' };
@@ -137,7 +138,7 @@ export function playMove(state, i, m, rng, opts) {
     state.sqlog.push(Object.assign({ t: mini.type, end: 'won', w, X: sq.mv.X, O: sq.mv.O }, isRace(mini) ? { race: 1 } : {}, RUN_TYPES.includes(mini.type) ? runLog(mini) : {}));   // (race: a Race mode square, for the stats)   // (a runner: its runs and crashes, for the tuning)
     mini.winCells = res.cells || null;
     flash.winner = w; flash.counts = res.counts || null;
-    const mr = mainResult(state.squares);
+    const mr = state.practice ? { winner: w, line: null, reason: 'practice', counts: null } : mainResult(state.squares);   // (practice: the centre square is the whole match)
     if (mr) {
       state.winner = mr.winner; state.winLine = mr.line; state.winReason = mr.reason; state.counts = mr.counts || null;
       flash.kind = 'match';

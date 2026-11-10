@@ -8,7 +8,7 @@ import { resignLocal } from '../core/records.js';
 import { normTimer, speedMode, timerSpec, turnOpen, turnSecs } from '../core/timer.js';
 import { hpSel, setHpSel } from '../games/hexapawn/view.js';
 import { GAMES, TYPES } from '../games/index.js';
-import { other } from '../core/util.js';
+import { other, PRACTICE_SQ } from '../core/util.js';
 import { SND } from '../audio/sound.js';
 import {
   acct, afterLogin, askDelete, cancelDelete, connectQuiet, deleteAccount, gateAct, gateOn, loggedIn, loginMail, loginMsg, loginPass, loginReset, loginWith, logout,
@@ -171,6 +171,7 @@ export function init() {
     if (act === 'zoom') {                        // open squares to play, claimed squares to look
       const i = Number(el.dataset.i);
       if (state.winner || !state.squares[i]) { SND.play('error'); return; }
+      if (state.practice && i !== PRACTICE_SQ) { SND.play('error'); return; }   // (a practice match: the centre square alone)
       if (lockMine() && state.lock !== i) { SND.play('error'); return; }
       state.screen = 'mini'; state.zoom = i; state.draft = ''; state.sel = []; state.notice = null; setHpSel(null); SND.play('tap'); haptic('tap');   // (a plain tap: no whoosh into the square; the app buzzes once with it)
       if (!state.online) { state.pick = null; state.pickSq = null; }
