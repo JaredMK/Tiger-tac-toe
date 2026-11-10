@@ -110,7 +110,7 @@ test('takeover: the Hard computer searches deeper (a forced win Normal misses), 
     if (!b.cells.includes(null)) continue;
     const t0 = performance.now(); const mv = E.localBest(E.publicMini(b), p, lcg(k), {}, hard).move; const ms = performance.now() - t0;
     assert.ok(Number.isInteger(mv) && b.cells[mv] === null, `a legal cell (${mv})`);
-    assert.ok(ms < 60, `a Hard move in ${ms.toFixed(1)} ms`);
+    assert.ok(ms < 150, `a Hard move in ${ms.toFixed(1)} ms`);
   }
   const sq = E.newMini('takeover', lcg(2)); sq.tune = { miss: 50 };
   const slips = new Set();

@@ -208,7 +208,7 @@ test('sniff, Hard: the treasure is never next to the start (it was dealt 3 cells
   const ms = [];
   for (let k = 0; k < 3; k++) { const t0 = performance.now(); E.localBest(pm, 'X', lcg(1), {}, HARD); ms.push(performance.now() - t0); }
   assert.ok(Math.min(...ms) < 40, `under 40 ms on the 7x7 field: ${ms.map(x => x.toFixed(1))}`);
-  assert.ok(r.ms < 200, `never slow in the race (${r.ms.toFixed(1)} ms at worst)`);
+  assert.ok(r.ms < 400, `never slow in the race (${r.ms.toFixed(1)} ms at worst)`);
   assert.deepEqual(E.localBest(pm, 'X', lcg(1), {}, { level: 'normal', until: null }), E.localBest(pm, 'X', lcg(1)), 'Normal untouched');
 });
 

@@ -119,7 +119,15 @@ One engine; a level is four settings (`aiw.js` `levelCfg`, the admin's Bot Setti
 | Mistakes | How often it makes a careless move: any legal move, anywhere open. |
 | Risk appetite | Points added to what it banks at in the push-your-luck games. |
 
-LEVELS_TABLE
+| Level | Search | Sharpness | Mistakes | Risk | What it is |
+|---|---|---|---|---|---|
+| Hard | 1200 | 100% | 0% | 0 | The full search, always the strongest tactics. |
+| Normal | 300 | 85% | 0% | 0 | A lighter search; plays about one square in seven with the plain tactics. About the old Hard's strength. |
+| Easy | 0 | 0% | 30% | 0 | No search, the plain (Easy) tactics, a careless move three times in ten. |
+
+The values were set by tournament: Normal's sharpness is what brings it level with the old Hard (70% gave 45.8%
+[40.3, 51.5] against it on 34 games, 40% gave 35.8% [30.6, 41.4], 85% gives the figure below); Easy keeps the old
+Easy's mistake rate.
 
 Move timing is the page's, not the engine's: the computer "thinks" 0.7 s, its square glows 0.6 s, then its move
 plays as a replay at a person's pace (`ui/app.js` `CPU_BASE`; faster only in the player's own Speed setting), at
@@ -143,4 +151,53 @@ touches the levels' settings.
   most on the board, any legal move there). Shares count a drawn match as half; intervals are 95% (Wilson).
 - `--budget=300` plays with a clock, as on a phone; without it every search does a fixed amount of work.
 
-RESULTS
+## Results (November 2026)
+
+All on the 39 games, fixed work, sides swapped every other match; a drawn match counts half.
+
+| A | B | Matches | A's share | 95% interval |
+|---|---|---|---|---|
+| **new Hard** | **old Hard** | 2000 | **56.7%** | [54.5, 58.8] |
+| new Normal | old Hard | 600 | 48.3% | [44.4, 52.3] |
+| new Hard | new Normal | 400 | 55.8% | [50.9, 60.5] |
+| new Normal | new Easy | 400 | 79.8% | [75.5, 83.4] |
+| new Hard | new Easy | 300 | 81.2% | [76.4, 85.2] |
+| new Normal | old Normal | 300 | 60.7% | [55.0, 66.0] |
+| new Easy | old Easy | 300 | 49.7% | [44.0, 55.3] |
+| new Easy | old Normal | 300 | 22.8% | [18.4, 27.9] |
+| new Normal | simple bot | 300 | 94.5% | [91.3, 96.6] |
+| new Easy | simple bot | 300 | 80.3% | [75.5, 84.4] |
+| new Easy | random bot | 300 | 95.7% | [92.7, 97.5] |
+
+On a phone's clock (every decision held to 300 ms, both engines): new Hard against old Hard, 200 matches, 56.8%
+[49.8, 63.4] (won 104, drawn 19, lost 77; 74 ms a decision on average, 337 ms at most). The same size of lead as with
+fixed work, on a wider interval: 200 matches alone do not put the lower bound above 50%, and the machine was shared
+with another test for part of the run.
+
+For scale: the old Normal took 45.2% [39.6, 50.8] from the old Hard (300 matches, 34 games), so the old ladder's top
+two levels were about five points apart; the new Hard is as far above the old Hard as the old Hard was above the old
+Normal, and the new Normal sits where the old Hard was.
+
+### What mattered
+
+1. **Per-game play.** With the old per-game play, the new search alone took 52.8% [47.9, 57.6] from the old Hard
+   (400 matches): level, perhaps a little ahead. The rest of the gain is inside the squares, and it is concentrated:
+   Find the Pair (75% of squares), Seating (wins only from mistakes, 103 to 2), Flood (61%), Sniff (61%), Four in a
+   Row, Hex and Takeover from random openings (75%, 57%, 56%), Roads (56%), Hangman and Dominoes (54%). Sharpness
+   shows the same thing from the other side: taking the strong tactics away in three squares of ten costs about ten
+   points.
+2. **The luck games had no room.** Risky Rolls, Risky Spins, 21, Little Wheel, Ride the Bus and Higher/Lower were
+   already exact or within a hair of it; each was checked against an independent exact computation.
+3. **The search.** Letting go of candidates that are clearly behind, and four times the playouts for the time,
+   cut the worth lost per decision to about a third inside the model; at match level that is within the noise of
+   400 matches. The must-block rule and the tie rule (the plain score among candidates the playouts cannot
+   separate) keep the search from talking itself out of a block.
+4. **What did not work.** The drawn-length model fitted per game (above); pairing the candidates' playouts on the
+   same random draws (no gain: the playouts part ways within a move or two).
+
+### Easy, against a new player
+
+Easy is not random: it takes 96% from a bot that plays any legal move anywhere and 80% from one that picks the best
+square on the board but plays any legal move in it, and it loses about three matches in four to the old Normal. No
+people were measured; "beatable by a new player most of the time" rests on those bots and should be checked in
+playtests (the Mistakes and Sharpness settings move it either way without a deploy).

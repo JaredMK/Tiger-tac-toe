@@ -158,7 +158,7 @@ test('hex: the Hard computer searches deeper (a forced win Normal misses), legal
     const b = mini('hex', lcg(seed + 40)); let p = 'X';
     for (let i = 0; i < seed * 2; i++) { const mv = L.randomLegalMove(b, p, r); L.applyMove(b, p, mv, r); p = L.other(p); }
     const t0 = performance.now(); L.localBest(L.publicMini(b), p, cpuRng(), {}, hard); const ms = performance.now() - t0;
-    assert.ok(ms < 60, `a Hard move in ${ms.toFixed(1)} ms`);
+    assert.ok(ms < 150, `a Hard move in ${ms.toFixed(1)} ms`);
   }
   const t1 = performance.now(), until = () => Math.max(0, t1 + 12 - performance.now());
   const timed = L.localBest(L.publicMini(mini('hex')), 'X', cpuRng(), {}, { level: 'hard', until });

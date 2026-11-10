@@ -47,6 +47,7 @@ const E = await import('../../src/core/engine.js');
 const { makePhysics } = require('../../src/games/shared/physics-sim.js');
 E.setPhysics(makePhysics(require('matter-js')));
 E.setTriviaBank(bank(40));
+E.setAiWeights({ normalSearch: 0, normalSharp: 0, hardSearch: 0, hardSharp: 0 });   // the flows are what is held here, not the computer's strength: its plain choices, no match search (minutes otherwise)
 const { ZOOM } = await import('../../src/ui/fx.js');
 const { scheduleCpu } = await import('../../src/ui/turns.js');
 const M = await import('../../src/net/moves.js');

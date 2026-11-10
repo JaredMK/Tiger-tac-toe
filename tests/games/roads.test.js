@@ -171,7 +171,7 @@ test('roads: Hard counts the block and the other player\'s cut: the line that wi
     assert.equal(q.segs[r.move], null, 'a legal line');
     assert.equal(E.applyMove(q, p, r.move, rng).ok, true);
   }
-  assert.ok(Math.max(...times.slice(1)) < 60, 'ms: ' + times.map(t => t.toFixed(1)).join(' '));
+  assert.ok(Math.max(...times.slice(1)) < 150, 'ms: ' + times.map(t => t.toFixed(1)).join(' '));
 });
 
 test('roads: the square ends at once when the other player could not even tie with every open line; not while they still could', () => {

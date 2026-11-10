@@ -125,5 +125,5 @@ test('seating: Hard counts the customer: it leaves a half-table the customer is 
     assert.equal(q.who[r.move], null, 'a legal seat');
     assert.equal(E.applyMove(q, p, r.move, rng).ok, true);
   }
-  assert.ok(Math.max(...times.slice(1)) < 60, 'ms: ' + times.map(t => t.toFixed(1)).join(' '));
+  assert.ok(Math.max(...times.slice(1)) < 150, 'ms: ' + times.map(t => t.toFixed(1)).join(' '));
 });

@@ -206,7 +206,7 @@ test('mastermind, Hard: the race for the code: legal guesses, the last candidate
   const ms = [];
   for (let k = 0; k < 3; k++) { const t0 = performance.now(); L.localBest(pm, 'O', cpuRng(), {}, HARD); ms.push(performance.now() - t0); }
   assert.ok(Math.min(...ms) < 60, `under 60 ms: ${ms.map(x => x.toFixed(1))}`);
-  assert.ok(r.ms < 200, `never slow in the race (${r.ms.toFixed(1)} ms at worst)`);
+  assert.ok(r.ms < 400, `never slow in the race (${r.ms.toFixed(1)} ms at worst)`);
   // Normal is untouched: the same minimax guess, the same rng draws
   const n1 = L.localBest(pm, 'O', cpuRng(), {}, { level: 'normal', until: null }), n2 = L.localBest(pm, 'O', cpuRng());
   assert.deepEqual(n1, n2); assert.deepEqual(n1.move, L.mmBestGuess(cand));

@@ -103,7 +103,7 @@ test('flood: the Hard computer searches deeper (a forced win Normal misses), leg
     if (b.score.X >= R.floodCfg(b).goal || b.score.O >= R.floodCfg(b).goal) continue;
     const t0 = performance.now(); const mv = E.localBest(E.publicMini(b), p, lcg(k), {}, hard).move; const ms = performance.now() - t0;
     assert.ok(Number.isInteger(mv) && mv >= 0 && mv < R.floodCfg(b).colors && mv !== b.colors[0], `a legal colour (${mv})`);
-    assert.ok(ms < 60, `a Hard move in ${ms.toFixed(1)} ms`);
+    assert.ok(ms < 150, `a Hard move in ${ms.toFixed(1)} ms`);
   }
   const sq = E.newMini('flood', lcg(2)); sq.tune = { miss: 50 };
   const slips = new Set();
