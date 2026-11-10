@@ -70,8 +70,8 @@ test('Hangman, race v2: the miniature is each player\'s blanks, the revealed one
   const html = view.miniature(E.publicMini(m, 'X'), false);
   assert.match(html, /class="trace2 thg2"/); assert.doesNotMatch(html, /[A-Z]<\/i>/, 'no letters');
   const x = between(html, 'class="trp X"', 'class="trp O"'), o = between(html, 'class="trp O"');
-  assert.match(x, /<span class="hgm" style="--n:5;--c:3"><i><\/i><i class="on"><\/i><i class="on"><\/i><i><\/i><i><\/i><\/span>/);
-  assert.match(o, /<span class="hgm" style="--n:5;--c:3"><i class="on"><\/i><i class="on"><\/i><i class="on"><\/i><i><\/i><i><\/i><\/span>/);
+  assert.match(x, /<span class="hgm" style="--n:5"><i><\/i><i class="on"><\/i><i class="on"><\/i><i><\/i><i><\/i><\/span>/, "this phone's own: filled, no tick");
+  assert.match(o, /<span class="hgm" style="--n:5">(<i class="on"><svg class="hgk"[^>]*><path[^>]*\/><\/svg><\/i>){3}<i><\/i><i><\/i><\/span>/, "the other player's: filled with a tick");
   for (const l of 'ON') E.applyMove(m, 'O', l, g);
   state.squares[0].owner = 'O';
   assert.doesNotThrow(() => view.miniature(m, true));

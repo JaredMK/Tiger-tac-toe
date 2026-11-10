@@ -46,7 +46,7 @@ const mini = (type, rng) => L.newMini(type, rng || lcg(11));
 // a battleship with its ship on the given cells
 const bsAt = (...ship) => Object.assign(mini('bs'), { len: ship.length, ship, revealed: new Array(16).fill(null), hits: [] });
 // a one-cell ship (a Patrol Boat) at cell 0: either player claims it with one move
-const oneMove = () => L.newMini('bs', seq(pick(0, 4), pick(0, 2), pick(0, 4), pick(0, 4)));
+const oneMove = () => { const E1 = require('../engine.js'); E1.setTune('bs', { len: 1 }); try { const m = L.newMini('bs', seq(pick(0, 2), pick(0, 4), pick(0, 4))); delete m.tune; return m; } finally { E1.setTune('bs', null); } };   // a one-cell ship at cell 0
 // a match where the computer plays `me`, with the given squares (type names or ready-made minis)
 function cpuMatch(me, squares, owners = []) {
   const st = matchWith(squares.map(s => (typeof s === 'string' ? s : s.type)));
@@ -58,8 +58,10 @@ function cpuMatch(me, squares, owners = []) {
 }
 
 // ================================ Sea Battle ================================
-test('bs: one hidden ship of 1 to 4 cells, across or down, always inside the 4x4 grid', () => {
+test('bs: one hidden ship of 1 to 4 cells (the length setting on Random), across or down, always inside the 4x4 grid', () => {
   assert.deepEqual(oneMove().ship, [0]);
+  E.setTune('bs', { len: 'Random' });
+  try {
   assert.deepEqual(L.newMini('bs', seq(pick(3, 4), pick(1, 2), pick(0, 1), pick(2, 4))).ship, [2, 6, 10, 14], 'a Sea Battle down column 3');
   assert.deepEqual(L.newMini('bs', seq(pick(2, 4), pick(0, 2), pick(3, 4), pick(1, 2))).ship, [13, 14, 15], 'a Submarine across the bottom row');
   const lens = new Set(), dirs = new Set(), rng = lcg(31);
@@ -78,6 +80,7 @@ test('bs: one hidden ship of 1 to 4 cells, across or down, always inside the 4x4
   assert.deepEqual([...lens].sort(), [1, 2, 3, 4]); assert.equal(dirs.size, 2);
   assert.deepEqual(L.BS.names, { 4: 'Carrier', 3: 'Submarine', 2: 'Destroyer', 1: 'Patrol Boat' });
   assert.equal(L.bsPlacements(1).length, 16); assert.equal(L.bsPlacements(4).length, 8);
+  } finally { E.setTune('bs', null); }
 });
 
 test('bs: a shot is a hit or a miss; cells cannot be fired at twice; the shot on the last part sinks it', () => {
@@ -144,11 +147,10 @@ test('bs: the computer fires where the ship can still fit, around a hit once the
   for (const c of [1, 4, 6]) L.applyMove(m, 'O', c);
   assert.deepEqual(L.bsCandidates(L.publicMini(m)), [[5, 9]]);
   assert.deepEqual(L.localBest(L.publicMini(m), 'X', lcg(1)), { move: 9, q: 1, shared: true });
-  // a Destroyer (2) with nothing fired yet: the middle cells fit the most placements
-  for (let k = 0; k < 10; k++) {
-    const first = L.localBest(L.publicMini(bsAt(0, 1)), 'X', lcg(k)).move;
-    assert.ok([5, 6, 9, 10].includes(first), `the middle (${first})`);
-  }
+  // a Destroyer (2) with nothing fired yet: a search shot at random (no fixed first cell), on a cell a placement covers
+  const firsts = new Set();
+  for (let k = 0; k < 20; k++) firsts.add(L.localBest(L.publicMini(bsAt(0, 1)), 'X', lcg(k)).move);
+  assert.ok(firsts.size >= 4, `spread (${[...firsts]})`);
   // a Sea Battle (4) whose middle misses leave only the edges
   const edge = bsAt(0, 4, 8, 12);
   for (const c of [5, 6, 9, 10]) L.applyMove(edge, 'O', c);
@@ -176,11 +178,11 @@ test('bs: an old 3x3 game is moved into the top-left of the 4x4 grid as a Patrol
 });
 
 test('bs: the admin settings deal a 5x5 sea with a long ship (and a 4x4 Super Chaos sea); the computer plays them', () => {
-  E.setTune('bs', { n: 5, lenMin: 4, lenMax: 4, scN: 4, scLen: 2, miss: 50 });
+  E.setTune('bs', { n: 5, len: 4, scN: 4, scLen: 2, miss: 50 });
   try {
     const m = L.newMini('bs', lcg(3));
     assert.equal(m.n, 5); assert.equal(m.len, 4); assert.equal(m.revealed.length, 25);
-    assert.deepEqual(m.tune, { n: 5, lenMin: 4, scN: 4, scLen: 2, miss: 50 });
+    assert.deepEqual(m.tune, { n: 5, len: 4, scN: 4, scLen: 2, miss: 50 });
     for (let k = 0; k < 6; k++) {
       const pm = L.publicMini(m), mv = L.localBest(pm, 'X', lcg(k)).move;
       assert.ok(mv >= 0 && mv < 25 && !m.revealed[mv]);
@@ -191,6 +193,42 @@ test('bs: the admin settings deal a 5x5 sea with a long ship (and a 4x4 Super Ch
   } finally { E.setTune('bs', null); }
   const d = L.newMini('bs', lcg(3));
   assert.ok(!('n' in d) && !('tune' in d)); assert.equal(d.revealed.length, 16);
+  assert.ok(Array.from({ length: 20 }, (_, k) => L.newMini('bs', lcg(k)).len).every(n => n === 3), 'the ship is 3 long by default');
+});
+
+test('bs: the ship length setting: 1 to 4, or Random (1 to 4 a square); an old range setting is ignored', () => {
+  for (const len of [1, 2, 4]) {
+    E.setTune('bs', { len });
+    try { assert.ok(Array.from({ length: 10 }, (_, k) => L.newMini('bs', lcg(k)).len).every(n => n === len)); } finally { E.setTune('bs', null); }
+  }
+  E.setTune('bs', { len: 'Random' });
+  try { const r = lcg(77), seen = new Set(Array.from({ length: 80 }, () => L.newMini('bs', r).len)); assert.deepEqual([...seen].sort(), [1, 2, 3, 4]); } finally { E.setTune('bs', null); }
+  E.setTune('bs', { lenMin: 1, lenMax: 1 });
+  try { assert.equal(L.newMini('bs', lcg(2)).len, 3); } finally { E.setTune('bs', null); }
+});
+
+test('bs: the computer searches at random on a checkerboard for a ship of 2 or more, never in order, then targets round a hit', () => {
+  for (const level of ['easy', 'normal', 'hard']) {
+    const firsts = new Set();
+    for (let k = 0; k < 40; k++) {
+      const m = L.newMini('bs', lcg(k + 7)), pm = L.publicMini(m), mv = L.localBest(pm, 'X', lcg(k * 31 + 1), null, { level, until: null }).move;
+      firsts.add(mv);
+    }
+    assert.ok(firsts.size >= 6, `${level}: first shots spread (${firsts.size} cells)`);
+    // a whole search: every miss on one checkerboard colour
+    const m = L.newMini('bs', lcg(99)), N = 4, par = k => (Math.floor(k / N) + (k % N)) & 1, misses = [];
+    for (let t = 0; t < 30 && !m.hits.length; t++) {
+      const mv = L.localBest(L.publicMini(m), 'X', lcg(500 + t), null, { level, until: null }).move;
+      L.applyMove(m, 'X', mv); if (!m.hits.includes(mv)) misses.push(mv);
+    }
+    assert.ok(new Set(misses.map(par)).size <= 1, `${level}: the search keeps to one colour (${misses})`);
+    // after a hit: the next shot is beside it (when the first hit is not the whole ship)
+    if (m.hits.length && m.len > 1) {
+      const h = m.hits[0], mv = L.localBest(L.publicMini(m), 'X', lcg(9), null, { level, until: null }).move;
+      const near = [h - N, h + N].concat(h % N ? [h - 1] : [], h % N < N - 1 ? [h + 1] : []);
+      assert.ok(near.includes(mv), `${level}: shot ${mv} beside the hit ${h}`);
+    }
+  }
 });
 
 // ================================ The Hard computer ================================

@@ -48,7 +48,7 @@ const mini = (type, rng) => L.newMini(type, rng || lcg(11));
 // a battleship with its ship on the given cells
 const bsAt = (...ship) => Object.assign(mini('bs'), { len: ship.length, ship, revealed: new Array(16).fill(null), hits: [] });
 // a one-cell ship (a Patrol Boat) at cell 0: either player claims it with one move
-const oneMove = () => L.newMini('bs', seq(pick(0, 4), pick(0, 2), pick(0, 4), pick(0, 4)));
+const oneMove = () => { const E1 = require('../engine.js'); E1.setTune('bs', { len: 1 }); try { const m = L.newMini('bs', seq(pick(0, 2), pick(0, 4), pick(0, 4))); delete m.tune; return m; } finally { E1.setTune('bs', null); } };   // a one-cell ship at cell 0
 
 // O O X / X O O / O X X : full, no line, O has 5 and X has 4 (impossible with strict alternation)
 const TTT_DRAW = ['O', 'O', 'X', 'X', 'O', 'O', 'O', 'X', 'X'];

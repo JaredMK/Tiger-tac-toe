@@ -29,7 +29,8 @@ export function best(pm, me, rng, style, ctx) {
   if (!cand.length) return { move: open[randInt(rng, open.length)], q: 0, shared: !race };
   const miss = tune(pm).miss || 0;                               // (the admin's mistake rate: a shot anywhere open)
   if (miss && rng() * 100 < miss) return { move: open[randInt(rng, open.length)], q: 0, shared: !race };
-  if (ctx && ctx.level === 'hard') return race ? bsHardRace(pm, cand, open, ctx) : bsHard(pm, cand, open, ctx);
+  if (!pm.hits.length) return bsHunt(pm, cand, open, rng, race);   // no hit yet: a random search shot (every level)
+  if (ctx && ctx.level === 'hard') return race ? bsHardRace(pm, cand, open, ctx, rng) : bsHard(pm, cand, open, ctx, rng);
   const N = bsN(pm), cover = new Array(N * N).fill(0), sinks = new Array(N * N).fill(0);
   for (const cells of cand) {
     const left = cells.filter(k => !pm.hits.includes(k));
@@ -45,6 +46,31 @@ export function best(pm, me, rng, style, ctx) {
   return { move, q: sinks[move] / cand.length, shared: !race };
 }
 
+// The search before any hit (every level): a random shot among the open cells some placement still covers, weighted by
+// how many cover it, never in order; for a ship of 2 or more, on one colour of a checkerboard (every placement crosses
+// both), the colour its own misses so far keep to (a random one to start). Once there is a hit, the levels below
+// target round it: the placements through every hit are the only ones left, so the cells beside it come first and,
+// with a second hit, the line it lies along.
+const bsPar = (k, N) => (Math.floor(k / N) + (k % N)) & 1;
+export function bsHunt(pm, cand, open, rng, race) {
+  const N = bsN(pm), cover = new Array(N * N).fill(0);
+  for (const cells of cand) for (const k of cells) cover[k]++;
+  let pool = open.filter(k => cover[k] > 0);
+  if (!pool.length) pool = open;
+  if (pm.len >= 2) {
+    const misses = pm.revealed.map((r, i) => (r && !pm.hits.includes(i) ? i : -1)).filter(i => i >= 0);
+    const ones = misses.filter(k => bsPar(k, N)).length, want = ones * 2 > misses.length ? 1 : ones * 2 < misses.length ? 0 : randInt(rng, 2);
+    const on = pool.filter(k => bsPar(k, N) === want);
+    if (on.length) pool = on;
+  }
+  const total = pool.reduce((a, k) => a + Math.max(1, cover[k]), 0);
+  let r = rng() * total, move = pool[pool.length - 1];
+  for (const k of pool) { r -= Math.max(1, cover[k]); if (r < 0) { move = k; break; } }
+  return { move, q: pm.len === 1 && cand.length ? cover[move] / cand.length : 0, shared: !race };
+}
+// Among shots worth the same (to a hair), one at random: never the first in order.
+const pickTie = (vals, rng, better) => { let b = null; for (const [, v] of vals) if (b === null || better(v, b)) b = v; const ties = vals.filter(([, v]) => Math.abs(v - b) < 1e-9).map(([k]) => k); return ties.length ? ties[randInt(rng, ties.length)] : -1; };
+
 // ---- Hard, Race: the fewest turns to the sinking shot ----
 // The other side's shots tell this one nothing and take nothing from it, so what counts is how many turns the hunt
 // takes: a hit fires again, a miss ends the turn. The expected misses before the ship goes under, from the
@@ -52,7 +78,7 @@ export function best(pm, me, rng, style, ctx) {
 // goes on from the placements through it, or the last part sinks it) or a miss (one, then on from the rest).
 // Solved over the cells, every state met kept in a memo, deeper as the budget allows (iterative deepening; 8
 // placements or fewer to the end, more out of reach worth about log2 of their number, halved).
-function bsHardRace(pm, cand, open, ctx) {
+function bsHardRace(pm, cand, open, ctx, rng) {
   const N = bsN(pm), nn = N * N;
   const pc = cand.map(cells => cells.reduce((a, k) => a | (1 << k), 0));
   const H = pm.hits.reduce((a, k) => a | (1 << k), 0), C = pc.map((_, i) => i), n = C.length;
@@ -87,12 +113,13 @@ function bsHardRace(pm, cand, open, ctx) {
   };
   let move = open[0];
   for (let d = 1; d <= BSH.depth && !stop; d++) {
-    let best = Infinity, pick = -1;
+    const vals = [];
     for (const k of open) {
       if ((H >> k) & 1) continue;
       const v = shot(C, H, k, d - 1); if (stop) break;
-      if (v < best) { best = v; pick = k; }
+      if (v < Infinity) vals.push([k, v]);
     }
+    const pick = vals.length ? pickTie(vals, rng, (a, b) => a < b) : -1;
     if (stop || pick < 0) break;
     move = pick;
     if (n <= BSH.exact) break;
@@ -111,7 +138,7 @@ function bsHardRace(pm, cand, open, ctx) {
 // placements or fewer to the end, more out of reach worth 0.5). Never a shot at a cell no placement covers
 // (a pass, and it never paid).
 const BSH = { exact: 8, work: 1.2e5, depth: 16 };
-function bsHard(pm, cand, open, ctx) {
+function bsHard(pm, cand, open, ctx, rng) {
   const N = bsN(pm), nn = N * N;
   const pc = cand.map(cells => cells.reduce((a, k) => a | (1 << k), 0));   // each placement's cells as bits
   const H = pm.hits.reduce((a, k) => a | (1 << k), 0), C = pc.map((_, i) => i), n = C.length;
@@ -145,13 +172,15 @@ function bsHard(pm, cand, open, ctx) {
   };
   let move = open[0];
   for (let d = 1; d <= BSH.depth && !stop; d++) {
-    let best = -1, pick = -1;
+    const vals = [];
     for (const k of open) {
       if ((H >> k) & 1) continue;
       const v = shot(C, H, k, d - 1); if (stop) break;
-      if (v > best) { best = v; pick = k; }
+      if (v >= 0) vals.push([k, v]);
     }
     if (stop) break;
+    const pick = vals.length ? pickTie(vals, rng, (a, b) => a > b) : -1;
+    if (pick < 0) break;
     move = pick;
     if (n <= BSH.exact) break;
   }

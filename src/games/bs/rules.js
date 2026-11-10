@@ -43,7 +43,7 @@ export function bsPlacements(len, N = BS.n) {
   return out;
 }
 export function create(type, rng, opts) {
-  const c = tuneLive(type), N = c.n, ship = bsShip(rng, N, 0, c.lenMin, c.lenMax);   // (the admin's settings: the sea and the ship's lengths, the mode)
+  const c = tuneLive(type), N = c.n, ship = bsShip(rng, N, c.len === 'Random' ? 0 : Number(c.len) || 3, 1, 4);   // (the admin's settings: the sea, the ship's length or Random 1 to 4, the mode)
   const base = Object.assign({ type }, N !== BS.n ? { n: N } : {}, { len: ship.length });
   if (raceDealt(type, opts)) {                                    // a race: a ship each, the same length, placed apart (redrawn while the two lie the same)
     let other = bsShip(rng, N, ship.length);

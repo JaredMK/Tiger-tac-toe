@@ -290,11 +290,11 @@ Win: Show three of a kind first.
 
 ## Sea Battle [bs]
 Category: More luck
-Play: Fire at a square. Hit? Fire again.
+Play: The hidden ship is {shipLen} long. Fire at a square. Hit? Fire again.
 Win: Sink the ship.
 Super Chaos Play: Fire at a square. Hit? Fire again.
 Super Chaos Win: Hit its last square. If you both do in the same round, the square resets.
-Race Play: Each of you has your own ship, the same size, hidden in your own sea. Fire at a square. Hit? Fire again. The other player's shots show on their sea.
+Race Play: Each of you has your own ship, {shipLen} long, hidden in your own sea. Fire at a square. Hit? Fire again. The other player's shots show on their sea.
 Race Win: Sink your ship first.
 
 ## Seating [seating]

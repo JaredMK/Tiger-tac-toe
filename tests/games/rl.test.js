@@ -131,3 +131,17 @@ test('roulette: a hot streak: a hit keeps the turn (spin again, online too), a m
   const m = E.newMini('rl', lcg(1)); m.spin = 5;
   assert.deepEqual(require('../../src/games/rl/rules.js').scApply(m, 'X', 'g1', lcg(1)), { ok: true, outcome: 'continue', note: 'hit' }, 'Super Chaos: a hit on the round\'s spin is the round\'s move (no streak)');
 });
+
+test('rl: the computer varies its picks: the three groups and sets of 8 numbers of its own, all legal, never one pattern', () => {
+  const E2 = require('../engine.js');
+  let v = 11; const r = () => { v = (v * 1664525 + 1013904223) >>> 0; return v / 4294967296; };
+  const kinds = new Set(), sets = new Set();
+  for (let k = 0; k < 200; k++) {
+    const m = E2.newMini('rl', r), mv = E2.localBest(E2.publicMini(m), 'X', r, null, { level: 'normal', until: null }).move;
+    if (Array.isArray(mv)) { kinds.add('set'); sets.add(mv.join()); assert.equal(mv.length, 8); assert.equal(new Set(mv).size, 8); assert.ok(mv.every(n => n >= 1 && n <= 24)); }
+    else kinds.add(mv);
+    assert.ok(E2.applyMove(m, 'X', mv, r).ok, 'a legal pick');
+  }
+  for (const g of ['g1', 'g2', 'g3', 'set']) assert.ok(kinds.has(g), `picks ${g}`);
+  assert.ok(sets.size > 50, `sets of 8 vary (${sets.size})`);
+});

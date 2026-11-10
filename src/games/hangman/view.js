@@ -1,7 +1,7 @@
 // Hangman: the screen, the miniature, the move's words and sounds, and the inputs.
 import { esc } from '../../ui/app.js';
 import { keyboard } from '../../ui/keyboard.js';
-import { raceBoards, raceMe, raceThumb } from '../../ui/race.js';
+import { raceBoards, raceMe, raceThem, raceThumb } from '../../ui/race.js';
 import { hangLen, hangPart, hangTarget } from './rules.js';
 
 // Race mode (core/race.js, `rv: 2`): each player their own word; both players' letters are open, so the square is two
@@ -12,10 +12,13 @@ const patOf = (mini, p) => { const part = hangPart(mini, p); return part && Arra
 // The miniature: the word's blanks with the letters found so far, and the last five wrong letters crossed out as in the
 // full view (all of them in the label), each letter as large as the board's other text. A race: each player's word as
 // blanks, the ones they have revealed filled in their colour (letters against length), side by side.
+const TICK = '<svg class="hgk" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 5.4l2 2L8 2.8"/></svg>';
+// The race miniature: a row each, X over O, each word on one line of blanks, filled in its player's colour as revealed.
 export function miniature(mini, final) {
   if (mini.race) {
     const n = hangLen(mini) || 5;
-    return raceThumb(p => `<span class="hgm" style="--n:${n};--c:${Math.ceil(n / 2)}">${patOf(mini, p).map(ch => `<i${ch ? ' class="on"' : ''}></i>`).join('')}</span>`, 'thg2',
+    const them = raceThem();                                     // (the other player's solved blanks carry a small tick as well as the fill)
+    return raceThumb(p => `<span class="hgm" style="--n:${n}">${patOf(mini, p).map(ch => (ch ? `<i class="on">${p === them ? TICK : ''}</i>` : '<i></i>')).join('')}</span>`, 'thg2',
       `Race: ${['X', 'O'].map(p => `${p} ${patOf(mini, p).filter(Boolean).length} of ${n} letters`).join(', ')}`);
   }
   const letters = mini.letters;
