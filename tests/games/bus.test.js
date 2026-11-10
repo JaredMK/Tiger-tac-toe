@@ -121,4 +121,10 @@ test('ride the bus: the Hard computer plays as the usual one does: the likeliest
     assert.ok(E.busOdds(kept, false).find(o => o.guess === h.move).p >= top - 1e-9, 'the likeliest');
     assert.equal(h.move, A.best(pm, 'X', lcg(7), {}, {}).move, 'the same as Normal, the same rng');
   }
+  // the turns still needed, exactly (needs): a fresh hand's count is the one kept in the code, and a hand closer to the end needs fewer
+  for (const tieOk of [false, true]) { const s = A.busStart(tieOk), k = A.BUS_START[tieOk ? 't' : 'w']; assert.ok(Math.abs(s.n - k.n) < 1e-9 && Math.abs(s.q - k.q) < 1e-9, 'BUS_START is what busStart works out'); }
+  m.prog.X = []; const n0 = A.needs(E.publicMini(m), 'X');
+  assert.ok(Math.abs(n0 - 5.806) < 0.001, `a fresh hand: 5.81 turns (${n0.toFixed(3)})`);
+  m.prog.X = ['2H', 'KS', '7D']; assert.ok(Math.abs(A.needs(E.publicMini(m), 'X') - (1 + (1 - 13 / 49) / (13 / 49))) < 1e-9, 'the last round: the suit with all thirteen left');
+  m.prog.X = ['8H']; const n8 = A.needs(E.publicMini(m), 'X'); m.prog.X = ['2H']; assert.ok(A.needs(E.publicMini(m), 'X') < n8, 'a 2 kept is nearer than an 8');
 });

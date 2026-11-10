@@ -91,12 +91,13 @@ test('takeover: the Hard computer searches deeper (a forced win Normal misses), 
   const pm = { type: 'takeover', cells };
   const h = R.takeHard(cells, 'X');
   assert.ok(h.i === 4 && h.v >= R.TAKE_HARD.win, `a forced win seen (${h.i}: ${h.v} at depth ${h.depth})`);
-  assert.equal(E.localBest(pm, 'X', lcg(1), {}, hard).move, 4);
+  const hm = E.localBest(pm, 'X', lcg(1), {}, hard).move;                 // (Hard has the square solved: any of the winning cells, 4 among them)
+  assert.ok(R.takeHard(E.takeApply(cells, hm, 'X'), 'O').v <= -R.TAKE_HARD.win, `Hard's cell (${hm}) wins by force`);
   assert.equal(E.localBest(pm, 'X', lcg(1), {}, normal).move, 22, 'Normal as before');
   assert.ok(R.takeHard(E.takeApply(cells, 22, 'X'), 'O').v >= R.TAKE_HARD.win, 'after Normal\'s move O wins by force');
   // the shape the square choice needs: the position after, the last cell's win
   const w = E.localBest(pm, 'X', lcg(1), {}, hard);
-  assert.deepEqual(w.after, { type: 'takeover', cells: E.takeApply(cells, 4, 'X') }); assert.equal(w.win, false);
+  assert.deepEqual(w.after, { type: 'takeover', cells: E.takeApply(cells, w.move, 'X') }); assert.equal(w.win, false);
   const last = Array.from({ length: 25 }, (_, i) => (i < 12 ? 'X' : 'O')); last[12] = null;
   assert.deepEqual(E.localBest({ type: 'takeover', cells: last }, 'X', lcg(1), {}, hard).win, true, 'the last cell, most cells');
   // legal moves everywhere (5x5 and the admin's 7x7), the mistake rate still applied, quickly
@@ -118,4 +119,44 @@ test('takeover: the Hard computer searches deeper (a forced win Normal misses), 
   const t1 = performance.now(), until = () => Math.max(0, t1 + 12 - performance.now());
   const timed = E.localBest(E.publicMini(E.newMini('takeover', lcg(3))), 'X', lcg(1), {}, { level: 'hard', until });
   assert.ok(performance.now() - t1 < 40 && Number.isInteger(timed.move) && timed.move >= 0 && timed.move < 25, 'stops at its budget with a legal move');
+});
+
+test('takeover: Hard plays the solved 5x5 game: it wins every won position against any answers, and the book is the solver\'s', () => {
+  const A = require('../../src/games/takeover/ai.js'), T = require('../../src/games/takeover/table.js');
+  const hard = { level: 'hard', until: null }, bits = (cells, p) => A.takeBits(cells, p);
+  // the solver against a plain search of the same rules, on small endings
+  const brute = (cells, p) => {                                   // 1: p (to move) takes the square
+    const e = cells.map((c, i) => (c ? -1 : i)).filter(i => i >= 0);
+    if (!e.length) return E.takeCount(cells, p) > 12 ? 1 : -1;
+    return e.some(i => brute(E.takeApply(cells, i, p), E.other(p)) < 0) ? 1 : -1;
+  };
+  const r = lcg(9);
+  for (let k = 0; k < 30; k++) {
+    const b = E.newMini('takeover', lcg(k)); let p = 'X';
+    while (b.cells.filter(c => !c).length > 6) { E.applyMove(b, p, E.randomLegalMove(b, p, r), r); p = E.other(p); }
+    if (!b.cells.includes(null)) continue;
+    assert.equal(A.takeSolve(bits(b.cells, p), bits(b.cells, E.other(p))), brute(b.cells, p), 'the solver and a plain search agree');
+  }
+  // the empty board is the first player's: Hard, moving first, takes the square whatever the answers (random, and the deep search of before)
+  const R = require('../../src/games/takeover/rules.js');
+  for (let g = 0; g < 12; g++) {
+    const rng = E.makeRng('take-solved' + g), b = E.newMini('takeover', rng), me = g % 2 ? 'X' : 'O'; let p = me, res;
+    do {
+      const mv = p === me ? E.localBest(E.publicMini(b), p, rng, {}, hard).move : g < 8 ? E.randomLegalMove(b, p, rng) : R.takeHard(b.cells, p).i;
+      res = E.applyMove(b, p, mv, rng); p = E.other(p);
+    } while (res.outcome === 'continue');
+    assert.equal(res.winner, me, 'the first player, playing the solved game, takes the square');
+  }
+  assert.deepEqual(T.TAKE_BOOK['0:0'], { w: 1, m: A.takeBest(0, 0).moves }, 'the book\'s first move is the solver\'s');
+  assert.equal(Object.keys(T.TAKE_BOOK).length, 51, 'the empty board and every board with one move played, either side to move');
+  // needs: as before for the other levels; for Hard's own positions, the solved result
+  const pm = E.publicMini(E.newMini('takeover', lcg(1))); pm.cells = E.takeApply(E.takeApply(pm.cells, 12, 'X'), 6, 'O');
+  const before = [E.needsOf(pm, 'X'), E.needsOf(pm, 'O')], lb = E.localBest(pm, 'X', lcg(1), {}, hard);
+  const sure = A.takeSolve(bits(lb.after.cells, 'O'), bits(lb.after.cells, 'X')) < 0;
+  assert.ok(sure ? E.needsOf(lb.after, 'O') > 5 * E.needsOf(lb.after, 'X') : E.needsOf(lb.after, 'X') > 5 * E.needsOf(lb.after, 'O'), 'after Hard\'s move the square is counted for whoever has it');
+  const fresh = E.publicMini(E.newMini('takeover', lcg(1))); fresh.cells = pm.cells.slice();
+  E.localBest(fresh, 'X', lcg(1), {}, { level: 'normal', until: null });
+  const plain = { type: 'takeover', cells: pm.cells.slice() };
+  assert.deepEqual([E.needsOf(fresh, 'X'), E.needsOf(fresh, 'O')], [E.needsOf(plain, 'X'), E.needsOf(plain, 'O')], 'Normal\'s count of a square is untouched');
+  assert.ok(before.every(Number.isFinite));
 });

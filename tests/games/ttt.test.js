@@ -233,3 +233,30 @@ test('tic-tac-toe: the admin\'s settings (the computer\'s mistake rate) are deal
   delete m.tune;
   for (let k = 0; k < 10; k++) assert.equal(E.localBest(E.publicMini(m), 'X', E.makeRng('ttt-ai' + k)).move, 2, 'the default: never a slip');
 });
+
+test('ttt: Hard is perfect and sets traps: a corner first, never a loss, more wins against a player who goes wrong', () => {
+  const A = require('../../src/games/ttt/ai.js'), R = require('../../src/games/ttt/rules.js');
+  const hard = { level: 'hard', until: null };
+  const first = new Set(); for (let k = 0; k < 30; k++) first.add(L.localBest(L.publicMini(mini('ttt')), 'X', E.makeRng('ttt-open' + k), {}, hard).move);
+  assert.deepEqual(sorted([...first]), [0, 2, 6, 8], 'the empty board: a corner (seven of the eight answers lose), any of the four');
+  assert.ok(A.tttTrap(['X', null, null, null, null, null, null, null, null], 'X') > A.tttTrap([null, null, null, null, 'X', null, null, null, null], 'X'));
+  assert.equal(L.localBest(L.publicMini(mini('ttt')), 'X', cpuRng(), {}, { level: 'normal', until: null }).move, 4, 'Normal as before: the middle');
+  // always a move of the best minimax value, in any position (in turn or not); never a loss; and it wins more than the plain minimax choice
+  const score = ctx => {
+    let w = 0, l = 0;
+    for (let g = 0; g < 300; g++) {
+      const rng = E.makeRng('ttt-trap' + g), m = mini('ttt', rng), me = g % 2 ? 'X' : 'O'; let p = (g >> 1) % 2 ? 'X' : 'O', res;
+      do {
+        let mv;
+        if (p === me) { const pm = L.publicMini(m), all = R.tttMinimax(pm.cells.slice(), p); mv = L.localBest(pm, p, rng, {}, ctx).move; assert.equal(all.find(x => x.i === mv).v, Math.max(...all.map(x => x.v)), 'a perfect move'); }
+        else mv = L.randomLegalMove(m, p, rng);
+        res = L.applyMove(m, p, mv, rng); if (res.outcome === 'continue') p = L.other(p);
+      } while (res.outcome === 'continue');
+      if (res.outcome === 'win') { if (p === me) w++; else l++; }
+    }
+    return { w, l };
+  };
+  const h = score(hard), n = score({ level: 'normal', until: null });
+  assert.equal(h.l, 0); assert.equal(n.l, 0);
+  assert.ok(h.w > n.w, `more wins against random answers (${h.w} against ${n.w} of 300)`);
+});

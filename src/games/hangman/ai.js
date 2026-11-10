@@ -92,14 +92,18 @@ function hangSolo(cand, triedSet, ctx) {
 
 // ---- Hard: the race for the word ----
 // The word is shared and every letter found shows both players, so what counts is not the likeliest letter
-// (Normal) but who reveals the last one. The value of a set of candidate words for the side to move, with
-// the letters tried: for each letter, the words that hold it, grouped by where it sits (the side goes again
-// from that group; a group of one word is a win, the rest of its letters sure), and the words that do not
-// (the other side moves from those). Solved over the untried letters, every set met kept in a memo, deeper
-// as the budget allows (iterative deepening; a set of 4 or fewer to the end). A bigger set out of reach is
-// worth the side to move about 0.5 + 0.2 x its best letter's chance of a hit (what the solved sets show: a
-// hit's extra go is a real edge). Never a letter in no candidate (a pass, and it never paid).
-const HH = { exact: 4, work: 8e4, depth: 14, edge: 0.3 };
+// (Normal) but who reveals the last one. The value of a set of candidate words for the side to move: for each
+// letter, the words that hold it, grouped by where it sits (the side goes again from that group; a group of one
+// word is a win, the rest of its letters sure), and the words that do not (the other side moves from those).
+// Solved over the letters in a memo: a set of HH.exact words or fewer to the end, a bigger one as deep as the work
+// allows (iterative deepening from a plain one-letter look, the last depth finished kept), and out of reach worth
+// what the solved game says of sets like it (HH.leaf: fitted to the exact values of 43,000 sets of the word list,
+// `tests/sim/hangman-table.js`: more for a likely hit, for a second likely letter and for a short list). The first
+// letter of a fresh word is from the solved game too (HANG_OPEN: the exact best letters for each word length).
+// A letter in no candidate (a wasted go, to hand the move over) was weighed in the solved game for the 5 and 7 letter
+// lists, the count of such letters left kept: it is the better move in no position, so it is never played.
+const HH = { exact: 10, work: 3e5, depth: 14, leaf: [0.2934, 0.3016, 0.164, 0.7393] };
+const HANG_OPEN = { 5: 'L', 6: 'E', 7: 'N' };   // (the first mover's chance with it: 57.1%, 56.0%, 69.2%; the next best letters 53.6%, 52.8%, 61.5%)
 const HT = {};                                                  // per word length: its words, and where each letter sits in each (a bit per position)
 function hangTable(len) {
   if (HT[len]) return HT[len];
@@ -110,53 +114,75 @@ function hangTable(len) {
   return (HT[len] = { words, pos, at });
 }
 function hangHard(pm, cand, triedSet, ctx) {
-  const T = hangTable(pm.pattern.length), pos = T.pos, words = T.words;
+  const len = pm.pattern.length, T = hangTable(len), pos = T.pos;
   const C = cand.map(w => T.at.get(w)).filter(i => i != null).sort((a, b) => a - b), n = C.length;
   let tried = 0;
   for (const l of triedSet) tried |= 1 << (l.charCodeAt(0) - 65);
   const until = ctx.until, memo = new Map();
   let nodes = 0, work = 0, stop = false;
-  const V = (S, t, d) => {                                       // the side to move's chance from the words S with the letters t tried, d plies deep
+  const cnt = new Int32Array(26), at = new Int32Array(26);
+  const leaf = S => {                                            // out of reach: by the two likeliest letters to hit and the list's length
+    const m = S.length;
+    cnt.fill(0); at.fill(0);
+    for (const w of S) for (let l = 0; l < 26; l++) { const p = pos[w * 26 + l]; if (p) { cnt[l]++; if (!at[l]) at[l] = p; else if (at[l] !== p) at[l] = -1; } }
+    let h1 = 0, h2 = 0;
+    for (let l = 0; l < 26; l++) { const c = cnt[l]; if (!c || (c === m && at[l] !== -1)) continue; if (c > h1) { h2 = h1; h1 = c; } else if (c > h2) h2 = c; }   // (a letter every word has in the same places tells nothing)
+    const v = HH.leaf[0] + HH.leaf[1] * h1 / m + HH.leaf[2] * h2 / m + HH.leaf[3] / m;
+    return v < 0.5 ? 0.5 : v > 0.98 ? 0.98 : v;
+  };
+  const V = (S, d) => {                                          // the side to move's chance from the words S, d letters deep
     const m = S.length;
     if (m <= 1) return 1;
-    if (m > HH.exact && d <= 0) return leaf(S, t);
-    if (stop) return 0.5;
-    const key = t + ':' + S.join(','), hit = memo.get(key);
+    if (stop || (m > HH.exact && d <= 0)) return leaf(S);
+    const key = S.join(','), hit = memo.get(key);
     if (hit && (hit.full || hit.d >= d)) return hit.v;
-    if (until ? (++nodes & 15) === 0 && until() <= 0 : (work += m * 26) > HH.work) { stop = true; return 0.5; }
+    if (until ? (++nodes & 15) === 0 && until() <= 0 : (work += m * 26) > HH.work) { stop = true; return leaf(S); }
     let top = 0;
-    for (let l = 0; l < 26; l++) { if (t & (1 << l)) continue; const v = letter(S, t, l, d - 1); if (stop) return 0.5; if (v > top) top = v; }
+    for (let l = 0; l < 26; l++) { const v = letter(S, l, d - 1); if (stop) return leaf(S); if (v > top) top = v; }
     memo.set(key, { d, v: top, full: m <= HH.exact });
     return top;
   };
-  const leaf = (S, t) => {                                       // out of reach: the best letter's chance of a hit, as an edge
-    let top = 0;
-    work += S.length * 26;
-    for (let l = 0; l < 26; l++) { if (t & (1 << l)) continue; let c = 0; for (const w of S) if (pos[w * 26 + l]) c++; if (c > top) top = c; }
-    return 0.5 + HH.edge * top / S.length;
-  };
-  const letter = (S, t, l, d) => {                               // a letter's worth (-1: in no candidate)
+  const letter = (S, l, d) => {                                  // a letter's worth (-1: in no candidate, or in all of them at the same places: it tells nothing)
     const m = S.length, gr = [], miss = [];
-    for (const c of S) { const p = pos[c * 26 + l]; if (p) (gr[p] || (gr[p] = [])).push(c); else miss.push(c); }
-    if (miss.length === m) return -1;
-    const t2 = t | (1 << l);
+    let parts = 0;
+    for (const c of S) { const p = pos[c * 26 + l]; if (p) { if (gr[p]) gr[p].push(c); else { gr[p] = [c]; parts++; } } else miss.push(c); }
+    if (miss.length === m || (!miss.length && parts === 1)) return -1;
     let v = 0;
-    for (const grp of gr) if (grp) { v += grp.length / m * V(grp, t2, d); if (stop) return 0; }
-    if (miss.length) v += miss.length / m * (1 - V(miss, t2, d));
+    for (const grp of gr) if (grp) { v += grp.length / m * V(grp, d); if (stop) return 0; }
+    if (miss.length) v += miss.length / m * (1 - V(miss, d));
     return v;
   };
   let move = -1;
-  for (let d = 1; d <= HH.depth && !stop; d++) {
-    let best = -1, pick = -1;
-    for (let l = 0; l < 26; l++) {
-      if (tried & (1 << l)) continue;
-      const v = letter(C, tried, l, d - 1); if (stop) break;
-      if (v > best) { best = v; pick = l; }
+  const book = !tried ? HANG_OPEN[len] : null;
+  if (book && n === T.words.length) move = book.charCodeAt(0) - 65;     // a fresh word: the solved game's letter
+  else {
+    const look = d => {                                          // every untried letter at depth d: the best, or -1 when the work ran out
+      let best = -1, pick = -1;
+      for (let l = 0; l < 26; l++) {
+        if (tried & (1 << l)) continue;
+        const v = d < 0 ? plain(l) : letter(C, l, d); if (stop) return -1;
+        if (v > best + 1e-12) { best = v; pick = l; }
+      }
+      return pick;
+    };
+    const plain = l => {                                         // a one-letter look, every set by its leaf (always finished)
+      const m = n, gr = new Map(), miss = [];
+      for (const c of C) { const p = pos[c * 26 + l]; if (p) { let g = gr.get(p); if (!g) gr.set(p, (g = [])); g.push(c); } else miss.push(c); }
+      if (miss.length === m || (!miss.length && gr.size === 1)) return -1;
+      let v = 0;
+      for (const grp of gr.values()) v += grp.length / m * (grp.length <= 1 ? 1 : leaf(grp));
+      if (miss.length) v += miss.length / m * (1 - (miss.length <= 1 ? 1 : leaf(miss)));
+      return v;
+    };
+    move = look(-1);
+    for (let d = 0; d <= HH.depth && !stop; d++) {
+      const pick = look(d);
+      if (stop || pick < 0) break;
+      move = pick;
+      if (n <= HH.exact) break;
     }
-    if (stop) break;
-    move = pick;
-    if (n <= HH.exact) break;
   }
+  if (move < 0) { for (let l = 0; l < 26 && move < 0; l++) if (!(tried & (1 << l)) && C.some(c => pos[c * 26 + l])) move = l; }
   if (move < 0) { for (let l = 0; l < 26 && move < 0; l++) if (!(tried & (1 << l))) move = l; }
   let q = 0;                                                     // the chance this turn ends it: a letter that leaves one word
   const one = []; for (const c of C) if (pos[c * 26 + move]) (one[pos[c * 26 + move]] || (one[pos[c * 26 + move]] = [])).push(c); for (const g of one) if (g && g.length === 1) q += 1 / n;

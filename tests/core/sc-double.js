@@ -4,6 +4,7 @@
 // each on their own copy of it, as in a match) until a round where a move of each wins it together. The
 // round is rebuilt from its seeds, so a page can play the same round (tests/core/chaos-double.test.js).
 const E = require('../engine.js');
+E.setAiWeights({ normalSearch: 0, normalSharp: 0 });   // both sides the plain computer (no search, the plain tactics): the rounds are found and replayed from their seeds alone
 
 const SQ = 4;
 const clone = v => JSON.parse(JSON.stringify(v));
@@ -26,7 +27,7 @@ function humanMove(st, seed) {
   const rng = E.makeRng(seed), moves = [];
   for (let k = 0; k < 60 && !st.sc.me; k++) {
     const l = st.lock; st.lock = SQ;
-    const plan = E.cpuMove(st, rng);
+    const plan = E.cpuMove(st, rng, null, { fresh: true });   // (fresh: from its seed alone, nothing kept from the decisions before)
     st.lock = l;
     if (!plan) break;
     let r = E.playMove(st, SQ, plan.move, rng);
@@ -49,7 +50,7 @@ function playRound(st, ox, rseed) {
 // Search: a fresh square (seed), rounds played until one where a move of each wins it together. Returns
 // { type, seed, rounds: [{ o, x, r }], last: { o, x, r } } (the seeds of each round), or null.
 function findDouble(type, opts) {
-  opts = Object.assign({ seeds: 6, tries: 10, rounds: 40 }, opts || {});
+  opts = Object.assign({ seeds: 12, tries: 16, rounds: 40 }, opts || {});
   for (let s = 0; s < opts.seeds; s++) {
     const st = setUp(type, s), rounds = [];
     for (let r = 0; r < opts.rounds; r++) {

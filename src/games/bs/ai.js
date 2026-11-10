@@ -29,8 +29,10 @@ export function best(pm, me, rng, style, ctx) {
   if (!cand.length) return { move: open[randInt(rng, open.length)], q: 0, shared: !race };
   const miss = tune(pm).miss || 0;                               // (the admin's mistake rate: a shot anywhere open)
   if (miss && rng() * 100 < miss) return { move: open[randInt(rng, open.length)], q: 0, shared: !race };
+  const hard = ctx && ctx.level === 'hard';
+  if (hard && !race) { const x = bsExact(pm, cand, rng); if (x) return x; }   // Hard, a shared sea: the solved race, the search shots too
   if (!pm.hits.length) return bsHunt(pm, cand, open, rng, race);   // no hit yet: a random search shot (every level)
-  if (ctx && ctx.level === 'hard') return race ? bsHardRace(pm, cand, open, ctx, rng) : bsHard(pm, cand, open, ctx, rng);
+  if (hard) return race ? bsHardRace(pm, cand, open, ctx, rng) : bsHard(pm, cand, open, ctx, rng);
   const N = bsN(pm), cover = new Array(N * N).fill(0), sinks = new Array(N * N).fill(0);
   for (const cells of cand) {
     const left = cells.filter(k => !pm.hits.includes(k));
@@ -187,4 +189,66 @@ function bsHard(pm, cand, open, ctx, rng) {
   let q = 0;
   for (const p of C) if (pc[p] === (H | (1 << move))) q = 1 / n;
   return { move, q, shared: true };
+}
+
+// ---- Hard, the 4x4 sea: the race solved ----
+// The whole game is small enough to solve: a position is the placements still possible (a bit each) and the hits;
+// its worth for the side to move is the best shot's: the placements it sinks, those it hits (the side fires again
+// from them) and those it misses (the other side's, from the rest). Every position met is kept for the life of the
+// page (a ship of 3: about 3,200 positions, 20 ms; of 2: 23,000, 120 ms; worked out as they come up). What it shows:
+// the first shot is worth the same anywhere (a half), but not the second: after a miss, some cells leave the other
+// side 46% and others 54%, where the random search took any. A shot at a cell no placement covers (a wasted shot to
+// hand the move over) is never the best (checked over every position, with the wasted shots counted). Among shots
+// worth the same to BSX.near, one at random: the computer never fires in an order. A ship of one cell has nothing to
+// solve (every open cell the same); a bigger sea keeps the search above.
+const BSX = { n: 4, near: 1e-6, memo: {} };
+function bsExact(pm, cand, rng) {
+  const N = bsN(pm), len = pm.len;
+  if (N !== BSX.n || !(len >= 2 && len <= N) || !cand.length) return null;
+  const key = len + ':' + N, T = BSX.memo[key] || (BSX.memo[key] = { pc: bsPlacements(len, N).map(cells => cells.reduce((a, k) => a | (1 << k), 0)), memo: new Map() });
+  const pc = T.pc, np = pc.length, nn = N * N, memo = T.memo;
+  const shots = (S, h) => {                                      // every shot at a cell some placement covers: [cell, worth, the chance it sinks]
+    let m = 0, cells = 0;
+    for (let p = 0; p < np; p++) if ((S >>> p) & 1) { m++; cells |= pc[p]; }
+    const live = cells & ~h, out = [];
+    for (let k = 0; k < nn; k++) {
+      if (!((live >>> k) & 1)) continue;
+      const bit = 1 << k, h2 = h | bit;
+      let hs = 0, ms = 0, nh = 0, nm = 0, sunk = 0;
+      for (let p = 0; p < np; p++) if ((S >>> p) & 1) { if (pc[p] & bit) { if (pc[p] === h2) sunk++; else { hs |= 1 << p; nh++; } } else { ms |= 1 << p; nm++; } }
+      let v = sunk / m;
+      if (nh) v += nh / m * V(hs, h2);
+      if (nm) v += nm / m * (1 - V(ms, h));
+      out.push([k, v, sunk / m]);
+    }
+    return out;
+  };
+  const V = (S, h) => {                                          // the side to move's chance
+    if (!(S & (S - 1))) return 1;                                // (one placement left: every shot a hit)
+    const kk = S * 65536 + h, hit = memo.get(kk);
+    if (hit !== undefined) return hit;
+    let top = 0;
+    for (const x of shots(S, h)) if (x[1] > top) top = x[1];
+    memo.set(kk, top);
+    return top;
+  };
+  let S = 0;
+  const H = pm.hits.reduce((a, k) => a | (1 << k), 0);
+  for (const cells of cand) { const b = cells.reduce((a, k) => a | (1 << k), 0), p = pc.indexOf(b); if (p < 0) return null; S |= 1 << p; }
+  const vals = shots(S >>> 0, H).filter(x => !pm.revealed[x[0]]);
+  if (!vals.length) return null;
+  let top = -1;
+  for (const x of vals) if (x[1] > top) top = x[1];
+  let ties = vals.filter(x => x[1] >= top - BSX.near);
+  if (pm.hits.length) {                                          // among equals: beside a hit (the way a person targets)
+    const by = ties.filter(x => pm.hits.some(h => (Math.abs(h - x[0]) === 1 && Math.floor(h / N) === Math.floor(x[0] / N)) || Math.abs(h - x[0]) === N));
+    if (by.length) ties = by;
+  } else {                                                       // among equals: the search's checkerboard (bsHunt: the colour its misses keep to, a random one to start)
+    const misses = pm.revealed.map((r, i) => (r ? i : -1)).filter(i => i >= 0);
+    const ones = misses.filter(k => bsPar(k, N)).length, want = ones * 2 > misses.length ? 1 : ones * 2 < misses.length ? 0 : randInt(rng, 2);
+    const on = ties.filter(x => bsPar(x[0], N) === want);
+    if (on.length) ties = on;
+  }
+  const pick = ties[randInt(rng, ties.length)];
+  return { move: pick[0], q: pick[2], shared: true };
 }

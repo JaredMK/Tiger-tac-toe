@@ -37,32 +37,49 @@ export function best(pm, me, rng, style, ctx) {
 // other side one card less. The value for the side to move with k designs seen: the better of the two,
 // each its chance now, else the other side's chances from what it then sees (a twin turned up beside
 // another seen design: theirs at once).
-const MH = { memo: {} };
+// Waiting (the new Hard): turning two cards already seen is a legal move that shows nothing, and with no pair known
+// it is often the best one: a card turned up beside its twin's known place gives the other side the square at once,
+// so the side that must show a new card is usually the worse off (with one pair in nine cards and eight designs seen,
+// the last card wins 1 time in 8 and loses 7). The worth of a position for the side to move, both sides free to wait
+// (w): the better of the two ways, each weighed against the other side's w, and never under a half once two cards are
+// seen (waiting hands the same position over; two sides waiting is a stand-off, worth a half each). Hard waits when
+// showing a card is worth less than that by MH.margin (with one pair in the deck: from four designs seen; with three
+// seen it still turns one, for 48.5%), MH.wait of the time (so two computers never wait for ever), and says so to
+// the board (after: the same position: a move with no gain, taken only where it must play this square).
+const MH = { memo: {}, wait: 0.85, margin: 0.03 };
 function comb(n, k) { if (k < 0 || k > n) return 0; let r = 1; for (let i = 1; i <= k; i++) r = r * (n - k + i) / i; return r; }
 // The two ways' chances with m pairs in the deck and k designs seen: { A, B }, each { win, next, v } (win: the pair
-// now; next: the other side faces k + 2 or k + 1 seen; v: the way's worth), and the better's worth.
+// now; next: the other side faces k + 2 or k + 1 seen; the rest: a twin shown, the other side's at once; v: the way's
+// worth), the better's worth (v) and the position's (w: waiting counted).
 function memoryOdds(m, k) {
   const key = m + ':' + k;
   if (MH.memo[key]) return MH.memo[key];
-  const nd = 9 - m, u = 9 - k, out = { A: null, B: null, v: 0.5 };
+  const nd = 9 - m, u = 9 - k, out = { A: null, B: null, v: 0.5, w: 0.5 };
   if (u > 0) {
     const P = [];                                                // the odds on a: seen designs whose twin is face down
     let z = 0;
     for (let a = 0; a <= Math.min(k, m); a++) { P[a] = comb(k, a) * comb(nd - k, m - a) * 2 ** a; z += P[a]; }
+    if (!(z > 0)) return (MH.memo[key] = out);                   // (more designs seen than the deck could hold without a pair known: not a position)
     let Ea = 0, none = 0;
     for (let a = 0; a < P.length; a++) { P[a] /= z; Ea += a * P[a]; none += P[a] * comb(u - a, 2); }
-    if (k) { const B = { win: Ea / (k * u), next: 1 - Ea / u }; B.v = B.win + B.next * (1 - memoryOdds(m, k + 1).v); out.B = B; }
-    if (u >= 2) { const pairs = comb(u, 2), A = { win: (m - Ea) / pairs }; A.next = none / pairs - A.win; A.v = A.win + A.next * (1 - memoryOdds(m, k + 2).v); out.A = A; }
+    if (k) { const B = { win: Ea / (k * u), next: Math.max(0, 1 - Ea / u) }; B.v = B.win + B.next * (1 - memoryOdds(m, k + 1).w); out.B = B; }
+    if (u >= 2) { const pairs = comb(u, 2), A = { win: (m - Ea) / pairs }; A.next = Math.max(0, none / pairs - A.win); A.v = A.win + A.next * (1 - memoryOdds(m, k + 2).w); out.A = A; }
     out.v = Math.max(out.A ? out.A.v : 0, out.B ? out.B.v : 0);
+    out.w = k >= 2 ? Math.max(out.v, 0.5) : out.v;
   }
   return (MH.memo[key] = out);
 }
 function memoryHard(pm, known, unseen, rng) {
   const o = memoryOdds(Math.max(1, Math.min(3, tune(pm).pairs || 1)), known.length);
+  if (known.length >= 2 && o.v < 0.5 - MH.margin && rng() < MH.wait) {   // nothing to gain by showing a card: two seen ones again
+    const a = randInt(rng, known.length); let b = randInt(rng, known.length - 1); if (b >= a) b++;
+    return { move: [known[a], known[b]], q: 0, qLose: 0, after: pm, shared: true };
+  }
   const two = o.A && (!o.B || o.A.v > o.B.v + 1e-9);
+  const lose = w => Math.max(0, 1 - w.win - w.next);             // a twin turned up: the other side's at once
   shuffle(unseen, rng);
-  if (two) return { move: [unseen[0], unseen[1]], q: o.A.win, shared: true };
-  if (o.B) return { move: [unseen[0], known[randInt(rng, known.length)]], q: o.B.win, shared: true };
+  if (two) return { move: [unseen[0], unseen[1]], q: o.A.win, qLose: lose(o.A), shared: true };
+  if (o.B) return { move: [unseen[0], known[randInt(rng, known.length)]], q: o.B.win, qLose: lose(o.B), shared: true };
   return { move: [unseen[0], unseen[1]], q: 0, shared: true };
 }
 

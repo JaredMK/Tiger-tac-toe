@@ -17,6 +17,7 @@ export function best(pm, me, rng, style, ctx) {
 // multiset of shelf kinds: a few thousand on the usual board, every one solved exactly (expectimax over the
 // grey mark, from the mover's side, with a memo). A board too big for that (the admin's settings) is searched
 // a few moves deep with a plain eval at the leaves, deeper while the clock allows.
+const SHELF_MEMO = new Map();                                    // shelves and spots -> Map(position -> its value for the mover)
 const KIND = (f, m, t) => f * 4 + m + 2 * t;                     // f spots filled, m: the mover is on it, t: the other player is
 const POW = Array.from({ length: 20 }, (_, k) => 3 * Math.pow(8, k));   // (a kind's place in a position's number)
 export function shelfSolve(pm, me, cf, until) {
@@ -28,7 +29,8 @@ export function shelfSolve(pm, me, cf, until) {
   }
   const tie = 0;                                                  // a tie is a draw (the square resets): nobody's
   let bound = 1; for (let j = 1; j <= n; j++) bound = bound * (4 * per - 1 + j) / j;   // multisets of n shelves over the 4 * per kinds a shelf can be
-  const memo = new Map();
+  let memo = SHELF_MEMO.get(per + ':' + n); if (!memo) { memo = new Map(); SHELF_MEMO.set(per + ':' + n, memo); }   // what is solved is kept for every later move and square (the same shelves: the same positions)
+  if (memo.size > 400000) memo.clear();
   let nodes = 0, out = false;
   const tick = () => { if (until && (++nodes & 255) === 0 && until() <= 0) out = true; };
   // value for the mover: +1 a win, -1 a loss, 0 a reset

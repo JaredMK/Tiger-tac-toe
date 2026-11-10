@@ -23,7 +23,7 @@ export function best(pm, me, rng, style, ctx) {
   const miss = tune(pm).miss || 0;                               // (the admin's mistake rate: a step any way)
   const solo = !!pm.dogs || !!pm.race, mine = own(pm, me) || { dog: pm.start, trail: [], not: [] };   // (a race: its own dog; Super Chaos: the same)
   if (miss && rng() * 100 < miss) { const ds = sniffDirs(mine.dog); return { move: ds[randInt(rng, ds.length)], q: 0, shared: !solo }; }
-  if (ctx && ctx.level === 'hard') { const h = sniffHard(pm, mine, ctx); if (h) return h; }
+  if (ctx && ctx.level === 'hard') { const h = sniffHard(pm, mine, ctx, rng); if (h) return h; }
   const b = sniffPick(mine, rng); return { move: b.move, q: b.q, shared: !solo };   // (Super Chaos, a race: its step walks its own dog only)
 }
 
@@ -39,7 +39,15 @@ export function best(pm, me, rng, style, ctx) {
 // Deeper as the budget allows (iterative deepening), a set out of reach worth the side's best next step
 // plus a coin toss. Super Chaos (a dog each, the first onto it): the
 // computer's own walk alone, each further step worth less.
-const SH = { work: 4e4, depth: 10, disc: 0.75 };
+// The step it takes itself, on the shared dog, may also be one that goes no nearer (sideways, or away): two steps
+// from where the treasure must be, the step next to it gives the other side the square, and a step round it hands
+// the same choice over (and still says hotter, colder or same). Such a step is weighed like any other at the root (the
+// other side's replies still the forward ones) and taken when it is worth SH.margin more than the best forward step,
+// SH.wait of the time (so two computers do not walk round for ever); it is reported with `after` (the same position:
+// no gain on the board, so in a match the computer plays another square instead where it can). A bigger margin
+// makes for shorter squares and a smaller edge (0.05: 60% against the old Hard, twice the steps; 0.1: 58%, a
+// quarter more).
+const SH = { work: 4e4, depth: 10, disc: 0.75, margin: 0.05, wait: 0.85 };
 const NN = SNIFF.n * SNIFF.n;
 const FAR = {};                                                 // per minStart: for a treasure in each cell, the least straight-line distance its dog started away (most) and the cells that far (far)
 function farTable(minStart) {
@@ -53,7 +61,7 @@ function farTable(minStart) {
   }
   return (FAR[minStart] = { most, far });
 }
-function sniffHard(pm, me, ctx) {
+function sniffHard(pm, me, ctx, rng) {
   const solo = !!pm.dogs || !!pm.race, W = new Float64Array(NN).fill(1);
   let cands = sniffCands(me);
   if (!pm.dogs && Number.isInteger(pm.start) && pm.was !== 5) {                  // a match (a race too): the start's say
@@ -105,14 +113,23 @@ function sniffHard(pm, me, ctx) {
     }
     return v;
   };
-  const C = cands.slice().sort((a, b) => a - b), dirs = ways(C, me.dog);
-  let move = dirs[0];
+  const C = cands.slice().sort((a, b) => a - b), fwd = ways(C, me.dog), dirs = solo ? fwd : sniffDirs(me.dog);
+  let move = fwd[0], top = -1, alt = fwd[0], topF = -1;
   for (let d = 1; d <= SH.depth && !stop; d++) {
-    let best = -1, pick = null;
-    for (const dir of dirs) { const v = step(C, me.dog, sniffStep(me.dog, dir), d - 1); if (stop) break; if (v > best) { best = v; pick = dir; } }
+    let best = -1, pick = null, bestF = -1, pickF = null;
+    for (const dir of dirs) {
+      const v = step(C, me.dog, sniffStep(me.dog, dir), d - 1); if (stop) break;
+      if (v > best) { best = v; pick = dir; }
+      if (fwd.includes(dir) && v > bestF) { bestF = v; pickF = dir; }
+    }
     if (stop) break;
-    move = pick;
+    move = pick; top = best; alt = pickF; topF = bestF;
   }
+  let wait = false;
+  if (!fwd.includes(move)) {                                     // a step that goes no nearer: only when clearly better, and not every time (two computers would walk round for ever)
+    if (top > topF + SH.margin && rng() < SH.wait) wait = true; else move = alt;
+  }
+  if (wait) return { move, q: 0, after: pm, shared: !solo };
   const to = sniffStep(me.dog, move);
   return { move, q: C.includes(to) ? W[to] / sum(C) : 0, shared: !solo };
 }

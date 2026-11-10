@@ -128,7 +128,9 @@ test('scratch: the computer: Normal takes the panel two matching pictures in a l
   const f = E.publicMini(mini({}));
   const fresh = A.scrOdds(f, 'X');
   assert.ok(fresh.line[4] > fresh.line[0] && fresh.line[0] > fresh.line[1], 'before anything shows: the centre (four lines) over a corner (three) over an edge (two)');
-  assert.equal(A.best(f, 'X', lcg(2), {}, HARD).move, 4);
+  assert.ok([0, 2, 6, 8].includes(A.best(f, 'X', lcg(2), {}, HARD).move), 'Hard opens on a corner: the table (table.js), the fewest scratches on average over every card possible');
+  assert.ok(Math.abs(A.scrLook(f, 'X').e - 5.08) < 0.011, 'a fresh card: 5.075 scratches at best');
+  { const t = mini({ X: CARD_X, O: CARD_O }); E.applyMove(t, 'X', 0, lcg(1)); E.applyMove(t, 'X', 2, lcg(1)); const a = A.scrLook(E.publicMini(t), 'X'); assert.equal(a.panel, 1, 'the table turns its panel back to the card as it lies'); }
   const n0 = A.needs(f, 'X');
   assert.ok(n0 > 4 && n0 < 7, `a fresh card needs about five scratches (${n0.toFixed(2)})`);
   // left to itself, each level finishes a card; Hard in fewer scratches than Normal on average, and quickly

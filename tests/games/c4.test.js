@@ -254,3 +254,30 @@ test('connect 4: the Hard computer searches deeper (a forced win Normal misses),
   const timed = L.localBest(pm, 'X', cpuRng(), {}, { level: 'hard', until });
   assert.ok(performance.now() - t1 < 40 && Number.isInteger(timed.move) && !pm.cells[timed.move], 'stops at its budget with a legal move');
 });
+
+test('connect 4: Hard\'s search sees the tactics at once (a win in one, two threats, a forced answer), and its opening book', () => {
+  const A = require('../../src/games/c4/ai.js');
+  const put = (m, list) => { for (const [p, col] of list) assert.equal(L.applyMove(m, p, col).outcome, 'continue'); return m; };
+  // X has three along the bottom, open on both ends: O to move is lost in two, and the search says so at depth 1
+  const lost = put(mini('c4'), [['X', 2], ['O', 2], ['X', 3], ['O', 3], ['X', 4], ['O', 6]]);
+  const d = A.c4Deep(lost.cells, 'O', null, Object.assign({}, A.C4_DEEP, { nodes: 300 }));
+  assert.ok(d.moves[0].v <= -A.C4_DEEP.win + 42 && d.depth <= 2, `two threats: lost, seen at depth ${d.depth}`);
+  const w = A.c4Deep(lost.cells, 'X', null, Object.assign({}, A.C4_DEEP, { nodes: 300 }));
+  assert.ok([1, 5].includes(w.moves[0].i) && w.moves[0].v === A.C4_DEEP.win - 1, 'a win in one');
+  // a forced win found well inside a move's work, and never a move that hands over the cell above
+  const m = put(mini('c4'), [['X', 5], ['O', 3], ['X', 5], ['O', 6], ['X', 2], ['O', 0], ['X', 3], ['O', 5]]);
+  const h = A.c4Deep(m.cells, 'X');
+  assert.ok(h.moves[0].i === 5 && h.moves[0].v >= A.C4_DEEP.win - 42 && h.nodes <= A.C4_DEEP.nodes + 256, `the forced win of the test above (${h.nodes} positions)`);
+  // the book: the middle first; a position and its mirror image answer alike; every entry a legal column
+  assert.equal(A.c4Book(new Array(42).fill(null), 'X'), 3);
+  const one = mini('c4'); L.applyMove(one, 'X', 1);
+  const two = mini('c4'); L.applyMove(two, 'X', 5);
+  const a = A.c4Book(one.cells, 'O'), b = A.c4Book(two.cells, 'O');
+  assert.ok(a >= 0 && a === 6 - b, 'mirror images');
+  assert.equal(L.localBest(L.publicMini(one), 'O', cpuRng(), {}, { level: 'hard', until: null }).move, a, 'Hard plays the book');
+  assert.equal(A.c4Book(m.cells, 'X'), -1, 'past the book: the search');
+  // a forced line found: the position after carries the result for the square choice
+  const lb = L.localBest(L.publicMini(m), 'X', cpuRng(), {}, { level: 'hard', until: null });
+  assert.ok(L.needsOf(lb.after, 'O') > 5 * L.needsOf(lb.after, 'X'));
+  assert.equal(L.needsOf(L.publicMini(m), 'X'), L.lineNeeds(m.cells, 7, 6, 4, 'X', L.c4Playable(m.cells)), 'the other levels\' count of a square is untouched');
+});

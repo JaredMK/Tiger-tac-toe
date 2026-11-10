@@ -1003,27 +1003,39 @@ function botsCard() {
     ${list.length ? `<div class="tbl" style="margin-top:8px"><table><thead><tr><th>Bot account</th><th style="text-align:left">Plays like</th></tr></thead><tbody>${list.map(x => `<tr><td>${esc(x.username)}</td><td style="text-align:left;white-space:normal">${esc(x.about || '')}</td></tr>`).join('')}</tbody></table></div>`
       : '<p class="note">The five bot accounts are made the first time a bot is needed. Their styles and pace are set in functions/bots.js.</p>'}</div>`;
 }
-// ---------- the Hard computer's weights (config/ai): what npm run tune-ai saved by self-play, read by the game and the server ----------
-const AI_W = [['attack', 'Line value (own lines)'], ['defend', 'Defence priority'], ['rollRisk', 'Risk appetite (Risky Rolls, points)'], ['explore', 'Playout exploring'], ['prog', 'Playout progress chance'], ['fresh', 'Moves needed in a reset square'], ['playouts', 'Playouts per candidate']];
+// ---------- the computer's difficulty (config/ai): each level's settings and the search's, read by the game and the server (src/core/aiw.js; docs/ai.md) ----------
+// (its own copy of the defaults and limits: tests/core/admin-sync.test.js holds it to AI_DEFAULTS and AI_LIMITS)
+const AI_LEVELS = [['hard', 'Hard'], ['normal', 'Normal'], ['easy', 'Easy']];
+const AI_LV = [['Search', 'Search (playouts a square)', 0, 4000, 10], ['Sharp', 'Sharpness (%)', 0, 100, 1], ['Mistake', 'Mistakes (%)', 0, 80, 1], ['Risk', 'Risk appetite', -6, 8, 1]];
+const AI_DEF = { attack: 1, defend: 1, explore: 0.25, prog: 0.8, fresh: 3.5, drop: 2.5, margin: 2, budget: 300, hardSearch: 1200, hardSharp: 100, hardMistake: 0, hardRisk: 0, normalSearch: 300, normalSharp: 85, normalMistake: 0, normalRisk: 0, easySearch: 0, easySharp: 0, easyMistake: 30, easyRisk: 0 };
+const AI_W = [['attack', 'Line value (own lines)', 0.2, 3, 0.05], ['defend', 'Defence priority', 0.2, 3, 0.05], ['explore', 'Playout exploring', 0, 0.8, 0.05], ['prog', 'Playout progress chance', 0.3, 1, 0.05], ['fresh', 'Turns needed in a reset square', 1.5, 6, 0.25], ['drop', 'Search: let go of a square (standard errors)', 0, 6, 0.25], ['margin', 'Tempo play: safe lead (turns)', 1, 5, 0.5], ['budget', 'Time a decision (ms)', 50, 1000, 10]];
+const aiFields = () => AI_LEVELS.flatMap(([l]) => AI_LV.map(([k, , lo, hi, step]) => [l + k, lo, hi, step])).concat(AI_W.map(([k, , lo, hi, step]) => [k, lo, hi, step]));
 function aiCard() {
-  const w = ctl.ai || {}, set = Object.keys(w).filter(k => AI_W.some(x => x[0] === k) || k === 'margin').length;
-  const row = ([k, label]) => `<tr><td>${label}</td><td>${w[k] != null ? `<b>${esc(w[k])}</b>` : '<span class="dim">default</span>'}</td></tr>`;
-  return `<div class="card ctl" id="aiCard"><div class="row"><h2>Hard computer's weights</h2><span class="note" style="margin:0">${set ? `${set} tuned${w.tuned ? ` · ${PT.nyWhen(w.tuned)}` : ''}${w.matches ? ` · ${w.matches} matches` : ''}` : 'the code\'s defaults'}</span></div>
-    <div class="tbl"><table><thead><tr><th style="text-align:left">Weight</th><th>Value</th></tr></thead><tbody>${AI_W.map(row).join('')}</tbody></table></div>
-    <p class="note">Tuned by self-play with <code>npm run tune-ai</code> (thousands of computer-against-computer matches; a change is kept only when it wins more; never run on its own). Normal and Easy play the code's own numbers whatever is here. Reset puts the defaults back for the Hard computer and the bots at Hard.</p>
-    <div class="rform"><button class="btn" data-airesets="1"${set ? '' : ' disabled'}>Reset to defaults</button></div>
-    <h3>Tempo play (Hard)</h3><p class="note">A square the Hard computer leads by more than this many moves (the other side's needs beyond its own) can wait while it plays elsewhere; it comes back to finish it once the lead is down to this margin, or sooner when the other side could catch up in one lucky move, threatens the match elsewhere, or the square blocks or completes a line. 1 to 5; 2 by default. Not changed by tuning.</p>
-    <div class="rform"><label class="rf"><span>Safe lead (moves)</span><input type="number" step="0.5" min="1" max="5" data-aimargin="1" value="${w.margin != null ? esc(w.margin) : 2}"></label><button class="btn" data-aimarginsave="1">Save</button></div></div>`;
+  const w = ctl.ai || {}, set = Object.keys(w).filter(k => k in AI_DEF).length, val = k => (w[k] != null ? w[k] : AI_DEF[k]);
+  const inp = (k, lo, hi, step) => `<input type="number" data-aik="${k}" min="${lo}" max="${hi}" step="${step}" value="${esc(val(k))}" aria-label="${k}"${w[k] != null && w[k] !== AI_DEF[k] ? ' class="chg"' : ''}>`;
+  const lvRows = AI_LEVELS.map(([l, name]) => `<tr><td style="text-align:left"><b>${name}</b></td>${AI_LV.map(([k, , lo, hi, step]) => `<td>${inp(l + k, lo, hi, step)}</td>`).join('')}</tr>`).join('');
+  return `<div class="card ctl" id="aiCard"><div class="row"><h2>Computer difficulty</h2><span class="note" style="margin:0">${set ? `${set} changed${w.tuned ? ` · tuned ${PT.nyWhen(w.tuned)}` : ''}` : 'the code\'s defaults'}</span></div>
+    <p class="note">One engine plays all three levels (and the bots, at their level). <b>Search</b>: playouts of the rest of the match for each open square when it chooses where to play (0: it weighs the squares one step ahead, no search). <b>Sharpness</b>: how often it plays a square with its strongest tactics (its tables and searches) rather than the plain ones. <b>Mistakes</b>: how often it makes a careless move (any legal move, anywhere). <b>Risk appetite</b>: points added to what it banks at in the push-your-luck games (bolder above zero).</p>
+    <div class="tbl"><table><thead><tr><th style="text-align:left">Level</th>${AI_LV.map(x => `<th>${x[1]}</th>`).join('')}</tr></thead><tbody>${lvRows}</tbody></table></div>
+    <h3>The search</h3><p class="note">Shared by every level that searches. Time a decision: the most a decision may take on a phone or the server (it stops searching then). Tempo play: a square it leads by more than this many turns can wait while it plays elsewhere; it comes back once the lead is down to the margin.</p>
+    <div class="rform">${AI_W.map(([k, label, lo, hi, step]) => `<label class="rf"><span>${label}</span>${inp(k, lo, hi, step)}<small>Default ${AI_DEF[k]} · ${lo}–${hi}</small></label>`).join('')}</div>
+    <div class="rform"><button class="btn" data-aisave="1">Save</button><button class="btn" data-airesets="1"${set ? '' : ' disabled'}>Reset to defaults</button></div></div>`;
 }
-async function saveAiMargin(btn) {
-  const v = Math.round(Number(app.querySelector('input[data-aimargin]').value) * 2) / 2;
-  if (!Number.isFinite(v) || v < 1 || v > 5) { said(btn, false, 'From 1 to 5'); return; }
+async function saveAi(btn) {
+  const next = {};
+  for (const [k, lo, hi, step] of aiFields()) {
+    const el = app.querySelector(`input[data-aik="${k}"]`); if (!el) continue;
+    const v = Number((Math.round(Number(el.value) / step) * step).toFixed(4));
+    if (el.value === '' || !Number.isFinite(v) || v < lo || v > hi) { said(btn, false, `${k}: from ${lo} to ${hi}`); return; }
+    if (v !== AI_DEF[k]) next[k] = v;
+  }
+  for (const k of ['tuned', 'matches']) if (ctl.ai && ctl.ai[k] != null) next[k] = ctl.ai[k];
   btn.disabled = true;
-  try { await fb.dbM.set(fb.dbM.ref(fb.db, 'config/ai/margin'), v === 2 ? null : v); ctl.ai = Object.assign({}, ctl.ai); if (v === 2) delete ctl.ai.margin; else ctl.ai.margin = v; } catch (e) { said(btn, false, failed(e)); return; }
-  render(); said(app.querySelector('[data-aimarginsave]') || btn, true, 'Saved');
+  try { await fb.dbM.set(fb.dbM.ref(fb.db, 'config/ai'), Object.keys(next).length ? next : null); ctl.ai = next; } catch (e) { said(btn, false, failed(e)); return; }
+  render(); said(app.querySelector('[data-aisave]') || btn, true, 'Saved');
 }
 async function resetAi(btn) {
-  if (!confirm('Put the Hard computer\'s weights back to the code\'s defaults?')) return;
+  if (!confirm('Put the computer\'s difficulty settings back to the code\'s defaults?')) return;
   btn.disabled = true;
   try { await fb.dbM.set(fb.dbM.ref(fb.db, 'config/ai'), null); ctl.ai = {}; } catch (e) { said(btn, false, 'Not reset: ' + ((e && e.message) || 'the database refused it')); return; }
   render(); said(btn, true, 'Back to the defaults');
@@ -1192,7 +1204,7 @@ app.addEventListener('click', e => {
   else if (b.dataset.tunereset) resetGame(b.dataset.tunereset, b);
   else if (b.dataset.airesets) resetAi(b);
   else if (b.dataset.animsave) saveAnimCfg(b, false);
-  else if (b.dataset.aimarginsave) saveAiMargin(b);
+  else if (b.dataset.aisave) saveAi(b);
   else if (b.dataset.clientsave) saveClients(b);
   else if (b.dataset.animreset) saveAnimCfg(b, true);
   else if (b.dataset.act === 'test-alert') testAlert(b);

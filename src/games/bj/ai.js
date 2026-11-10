@@ -4,10 +4,16 @@ import { bjStrategy, bjValue } from './rules.js';
 
 // A hot streak: a hand won keeps the turn (Deal again), so a turn wins hands until one is lost. needs: the
 // turns still needed (the hands lost before the last one won, each ending a turn, and the turn that finishes it).
-const BJ_WIN = 0.43;                                             // about 0.43 a hand won (naturals included), pushes replayed
+const BJ_WIN = 0.43;                                             // (Normal's q: about 0.43 a hand won by the usual strategy's reckoning)
+// A hand played at its best is won 0.474 of the time, pushes replayed (pushWorth: the dealer's stand is the square's);
+// the hand in play, by its own chance (bjHard: its cards against the up card) and, lost, the hands after it.
 export function needs(pm, p) {
-  const k = Math.max(0, tune(pm).goal - pm.wins[p]);
-  return Math.max(1, 1 + k * (1 - BJ_WIN) / BJ_WIN);
+  const c = tune(pm), k = Math.max(0, c.goal - pm.wins[p]), w = pushWorth(c.stand);
+  if (k <= 0) return 1;
+  const h = pm.hand && pm.hand.by === p && Array.isArray(pm.hand.cards) && pm.hand.up ? pm.hand : null;
+  if (!h) return Math.max(1, 1 + k * (1 - w) / w);
+  const v = bjHard(h.cards, h.up, c.stand), now = Math.max(v.hit, v.stand);
+  return Math.max(1, 1 + (1 - now) / w + (k - 1) * (1 - w) / w);
 }
 export function best(pm, me, rng, style, ctx) {
   // Deal, then basic strategy (hit or stand: no doubling). Hard: hit or stand by the chance of winning the
@@ -16,7 +22,7 @@ export function best(pm, me, rng, style, ctx) {
   // fresh hand's) is still what to play for.
   const h = pm.hand && pm.hand.by === me ? pm.hand : null, need = tune(pm).goal - pm.wins[me];
   // q: the chance this turn takes the square (every hand still needed won in a row: a hand won keeps the turn).
-  if (!h) return { move: 'deal', q: BJ_WIN ** Math.max(1, need) };
+  if (!h) return { move: 'deal', q: (ctx && ctx.level === 'hard' ? pushWorth(tune(pm).stand) : BJ_WIN) ** Math.max(1, need) };
   if (ctx && ctx.level === 'hard') { const v = bjHard(h.cards, h.up, tune(pm).stand); return { move: v.hit > v.stand ? 'hit' : 'stand', q: Math.max(v.hit, v.stand) * pushWorth(tune(pm).stand) ** Math.max(0, need - 1) }; }
   return { move: bjStrategy(h.cards, h.up), q: 0 };
 }

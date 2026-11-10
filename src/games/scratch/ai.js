@@ -8,6 +8,7 @@
 import { randInt } from '../../core/random.js';
 import { tune } from '../../core/tune.js';
 import { LINES, LINE_SETS, SCR, scrBest, scrCounts, scrLayout, scrOpen } from './rules.js';
+import { SCR_TABLE } from './table.js';
 
 // n! / Π(rem[k]!): the ways a multiset of pictures fits a set of panels.
 const FACT = [1]; for (let k = 1; k <= 12; k++) FACT[k] = FACT[k - 1] * k;
@@ -85,6 +86,41 @@ function scrOddsCalc(lay, K, L, open) {
   }
   return { win, line, W, h: W ? hSum / W : SCR.need, support: lines.size, open };
 }
+// ---- Hard: the table ----
+// For a layout with a table (table.js, from tests/sim/scratch-table.js: every position a card can show, solved over all
+// the cards still possible), the panel that takes the fewest scratches on average to show three of a kind, and that
+// average (`needs`). A position is looked up by its smallest form under the card's eight turns and flips, its pictures
+// numbered as they first appear; the panel comes back turned the same way. Each card is its player's own, so the square
+// is a race between two such counts: against a side that plays this way, playing this way is also the best reply
+// (checked there: no reply does better in the race, first or second to move). Other layouts: scrOdds, as before.
+const SYM = [[0, 1, 2, 3, 4, 5, 6, 7, 8], [2, 5, 8, 1, 4, 7, 0, 3, 6], [8, 7, 6, 5, 4, 3, 2, 1, 0], [6, 3, 0, 7, 4, 1, 8, 5, 2], [2, 1, 0, 5, 4, 3, 8, 7, 6], [6, 7, 8, 3, 4, 5, 0, 1, 2], [0, 3, 6, 1, 4, 7, 2, 5, 8], [8, 5, 2, 7, 4, 1, 6, 3, 0]];
+const TABLES = new Map(), LOOKS = new Map();
+function scrTable(lay) {
+  const id = `${lay.kinds}|${lay.lines}|${lay.pairs}`;
+  if (TABLES.has(id)) return TABLES.get(id);
+  const raw = SCR_TABLE[id], t = raw ? new Map() : null;
+  if (raw) for (let k = 0; k + 12 <= raw.length; k += 12) t.set(raw.slice(k, k + 9), { panel: Number(raw[k + 9]), e: parseInt(raw.slice(k + 10, k + 12), 36) / 100 });
+  TABLES.set(id, t);
+  return t;
+}
+// { panel, e }: the panel to scratch on p's card and the scratches still needed on average; null without a table (or
+// a card that shows something the layout cannot hold).
+export function scrLook(pm, p) {
+  const lay = scrLayout(tune(pm)), t = scrTable(lay);
+  if (!t) return null;
+  const open = scrOpen(pm, p), id = `${lay.kinds}|${lay.lines}|${lay.pairs}|${open.map(v => (v == null ? '.' : v)).join('')}`;
+  if (LOOKS.has(id)) return LOOKS.get(id);
+  let best = null, at = 0;
+  for (let k = 0; k < SYM.length; k++) {
+    const sy = SYM[k], names = new Map(); let key = '';
+    for (let i = 0; i < SCR.n; i++) { const v = open[sy[i]]; if (v == null) key += '.'; else { if (!names.has(v)) names.set(v, names.size); key += names.get(v); } }
+    if (best === null || key < best) { best = key; at = k; }
+  }
+  const hit = t.get(best), out = hit ? { panel: SYM[at][hit.panel], e: hit.e } : null;
+  if (LOOKS.size >= 4000) LOOKS.delete(LOOKS.keys().next().value);
+  LOOKS.set(id, out);
+  return out;
+}
 // The panel two matching pictures in a line point at (the obvious scratch), or -1.
 export function scrObvious(open) {
   for (const ln of LINES) {
@@ -99,6 +135,8 @@ export function scrObvious(open) {
 export function needs(pm, p) {
   const open = scrOpen(pm, p);
   if (scrBest(open) >= SCR.need) return 0;
+  const t = scrLook(pm, p);
+  if (t) return t.e;                                           // (the layout has a table: the exact count, played at its best)
   const o = scrOdds(pm, p);
   if (!o.W) return Math.max(1, SCR.need - scrBest(open));
   return o.h + 0.72 * Math.log2(Math.max(1, o.support));
@@ -108,7 +146,8 @@ export function best(pm, me, rng, style, ctx) {
   if (!hidden.length) return { move: 0, q: 0 };
   const K = scrLayout(tune(pm)).kinds;
   if (ctx && ctx.level === 'hard') {
-    const o = scrOdds(pm, me);
+    const o = scrOdds(pm, me), t = scrLook(pm, me);
+    if (t && open[t.panel] == null) return { move: t.panel, q: o.W ? o.win[t.panel] / o.W : 0 };   // the table's panel: the fewest scratches still to come
     if (o.W) {
       let top = [];
       for (const i of hidden) {

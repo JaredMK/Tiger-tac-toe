@@ -1,6 +1,6 @@
 'use strict';
-// The computer's levels (src/core/aiw.js, ai.js, mc.js): Normal unchanged, Easy careless, Hard choosing its
-// square by playouts within its budget; the weights' limits; the levels in Play Local's setup. Plain node --test.
+// The computer's levels (src/core/aiw.js, ai.js, mc2.js; docs/ai.md): one engine, each level its settings, Hard
+// choosing its square by playouts within its budget; the weights' limits; the levels in Play Local's setup. Plain node --test.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const E = require('../engine.js');
@@ -20,9 +20,11 @@ test('levels: the three, normal for anything else; the weights checked against t
   assert.deepEqual(E.LEVELS, ['easy', 'normal', 'hard']);
   for (const v of ['hard', 'nope', null, undefined, 3]) assert.equal(E.levelOf(v), v === 'hard' ? 'hard' : 'normal');
   E.setAiWeights(null); assert.deepEqual(E.aiWeights(), E.AI_DEFAULTS);
-  E.setAiWeights({ attack: 9, defend: 'x', explore: 0.5, playouts: 123, junk: 1 });
+  E.setAiWeights({ attack: 9, defend: 'x', explore: 0.5, hardSearch: 123, easyMistake: 45, junk: 1 });
   const w = E.aiWeights();
-  assert.equal(w.attack, E.AI_DEFAULTS.attack, 'out of range: the default'); assert.equal(w.defend, E.AI_DEFAULTS.defend); assert.equal(w.explore, 0.5); assert.equal(w.playouts, 120, 'on its step'); assert.equal(w.junk, undefined);
+  assert.equal(w.attack, E.AI_DEFAULTS.attack, 'out of range: the default'); assert.equal(w.defend, E.AI_DEFAULTS.defend); assert.equal(w.explore, 0.5); assert.equal(w.hardSearch, 120, 'on its step'); assert.equal(w.junk, undefined);
+  assert.deepEqual(E.levelCfg('easy'), { search: 0, sharp: 0, mistake: 0.45, risk: 0 }, 'a level\'s own settings');
+  assert.deepEqual(E.levelCfg('hard'), { search: 120, sharp: 1, mistake: 0, risk: 0 });
   E.setAiWeights(null);
 });
 test('levels: Play Local keeps the level with the setup and the match carries it; Normal is the default', () => {
@@ -55,16 +57,22 @@ test('levels: Hard takes a match-winning square and blocks one, like Normal; els
   const mb = E.cpuMove(block, lcg(5), null, { level: 'hard' });
   assert.equal(mb.square, 5); assert.equal(mb.move, 2);
   const st = board(['ttt', 'c4', 'hilo', 'pig', 'coins', 'hunt', 'bs', 'memory', 'snakes'], [], 'X');
-  const h1 = E.cpuMove(st, lcg(11), null, { level: 'hard' }), h2 = E.cpuMove(st, lcg(11), null, { level: 'hard' });
+  E.localForget(); const h1 = E.cpuMove(st, lcg(11), null, { level: 'hard' });
+  E.localForget(); const h2 = E.cpuMove(st, lcg(11), null, { level: 'hard' });
   assert.deepEqual([h1.square, h1.move, h1.mc], [h2.square, h2.move, h2.mc], 'the same rng, the same choice');
-  assert.equal(h1.mc.n, E.AI_DEFAULTS.playouts, 'every playout without a clock');
+  assert.ok(h1.mc.n > 9 * 24 && h1.mc.n <= 9 * E.AI_DEFAULTS.hardSearch, `its playouts without a clock (${h1.mc.n})`);
+  assert.ok(Math.max(...h1.mc.each) > Math.min(...h1.mc.each), 'more for the squares still in doubt');
   assert.equal(h1.mc.p.length, 9); assert.ok(h1.mc.p.every(p => p >= 0 && p <= 1));
-  assert.ok(Math.max(...h1.mc.p) === h1.mc.p[E.cpuMove(st, lcg(11), null, { level: 'hard' }).square === h1.square ? h1.mc.p.indexOf(Math.max(...h1.mc.p)) : 0], 'the square with the best playouts');
+  const open = st.squares.map((s, i) => (s.owner ? -1 : i)).filter(i => i >= 0);
+  assert.ok(h1.mc.p[open.indexOf(h1.square)] >= Math.max(...h1.mc.p) - 0.0051, 'a square with the best playouts');
+  const h3 = E.cpuMove(st, lcg(99), null, { level: 'hard' });   // (the squares' tactics kept from the decision before: the same position)
+  assert.ok(h3 && h3.mc.n > 0);
 });
 test('levels: Hard keeps to its time budget with a clock, and still answers', () => {
   const st = board(['ttt', 'c4', 'hilo', 'pig', 'coins', 'hunt', 'bs', 'memory', 'snakes'], [], 'X');
   const m = E.cpuMove(st, lcg(2), null, { level: 'hard', clock: () => performance.now(), budget: 30 });
-  assert.ok(m && m.mc && m.mc.n < E.AI_DEFAULTS.playouts, `fewer playouts in 30 ms (${m.mc.n})`);   // (none at all when the squares' own searches used the budget: then the best-scored square, as Normal)
+  E.localForget();
+  assert.ok(m && m.mc && m.mc.n < 9 * E.AI_DEFAULTS.hardSearch, `fewer playouts in 30 ms (${m.mc.n})`);   // (none at all when the squares' own searches used the budget: then the best-scored square, as Normal)
   assert.ok(E.playMove(st, m.square, m.move, lcg(2)).ok, 'and a legal move');
   const real = Date.now();
   for (let k = 0; k < 5; k++) assert.ok(E.cpuMove(st, lcg(k), null, { level: 'hard', clock: Date.now, budget: 300 }));

@@ -1,10 +1,10 @@
-// The computer's move, worked out off the page's thread when it is the Hard computer: a worker
-// (core/ai.worker.js) runs cpuMove on a copy of the match inside its time budget (BUDGET_MS), so the page
-// never stalls; the answer comes back through cpuThink's callback. Normal and Easy decide at once, on the
-// thread, as ever (the callback runs before cpuThink returns). The physics games' and Pinball's tactics need
+// The computer's move, worked out off the page's thread when its level searches (core/aiw.js levelCfg: playouts of
+// the match, or the strongest tactics in a square): a worker (ui/ai.worker.js) runs cpuMove on a copy of the match
+// inside its time budget (config/ai budget), so the page never stalls; the answer comes back through cpuThink's
+// callback. A level that does neither decides at once, on the thread (the callback runs before cpuThink returns). The physics games' and Pinball's tactics need
 // the physics library, which the worker has not: they are worked out here first and handed over (pre).
-import { BUDGET_MS, STYLE0, cpuMove, localBest, squareValue } from '../core/ai.js';
-import { aiWeights } from '../core/aiw.js';
+import { STYLE0, cpuMove, localBest, squareValue } from '../core/ai.js';
+import { aiWeights, levelCfg, levelOf } from '../core/aiw.js';
 import { publicMini } from '../core/minis.js';
 import { tuneAll } from '../core/tune.js';
 import { other } from '../core/util.js';
@@ -36,14 +36,15 @@ function settle(w, plan) {
 }
 // The computer's move for the match as it stands: cb(plan) (plan null when it has no move).
 export function cpuThink(st, cb) {
-  if (st.cpuLevel !== 'hard' || !get()) { cb(cpuMove(st, RNG, null, { clock: () => performance.now() })); return; }
+  const lv = levelOf(st.cpuLevel), L = levelCfg(lv);
+  if (!(L.search > 0 || L.sharp > 0) || !get()) { cb(cpuMove(st, RNG, null, { clock: () => performance.now() })); return; }
   if (waiting) settle(waiting, null);                           // (a second question before the first answer: the first is decided now)
   const me = st.turn, pre = {}, s0 = STYLE0;
   const owned = p => st.squares.filter(s => s.owner === p).length, behind = owned(other(me)) - owned(me);
-  st.squares.forEach((sq, i) => { if (!sq.owner && (PHYS_TYPES.includes(sq.mini.type) || sq.mini.type === 'pinball')) pre[i] = localBest(publicMini(sq.mini, me), me, RNG, s0, { value: squareValue(st.squares, i, me, s0), behind, level: 'hard', until: null }); });
+  st.squares.forEach((sq, i) => { if (!sq.owner && (PHYS_TYPES.includes(sq.mini.type) || sq.mini.type === 'pinball')) pre[i] = localBest(publicMini(sq.mini, me), me, RNG, s0, { value: squareValue(st.squares, i, me, s0), behind, level: L.sharp >= 0.5 ? 'hard' : lv === 'easy' ? 'easy' : 'normal', until: null }); });
   const id = ++seq;
   waiting = { id, cb, state: st, timer: setTimeout(() => { if (waiting && waiting.id === id) settle(waiting, null); }, WAIT_MS) };
   try {
-    worker.postMessage({ id, state: st, seed: String(RNG()), level: 'hard', budget: BUDGET_MS, pre, ai: aiWeights(), tune: tuneAll() });
+    worker.postMessage({ id, state: st, seed: String(RNG()), level: lv, budget: aiWeights().budget, pre, ai: aiWeights(), tune: tuneAll() });
   } catch (e) { settle(waiting, null); }
 }

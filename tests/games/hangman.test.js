@@ -335,3 +335,17 @@ test('hangman, race v2: the computer reveals its own word from the public view a
     assert.equal(st.squares[k].owner, me, 'its own word revealed: its square'); assert.equal(st.sqlog[0].race, 1);
   } finally { raceOn(false); }
 });
+
+// ============================== Hard: the solved opening (November 2026) ==============================
+test('hangman, Hard: a fresh word opens with the solved game\'s letter for its length (tests/sim/hangman-table.js); never a letter in no candidate', () => {
+  const open = { 5: 'L', 6: 'E', 7: 'N' };
+  for (const len of [5, 6, 7]) {
+    const word = ALL.find(w => w.length === len), m = { type: 'hangman', word, letters: [] };
+    const b = L.localBest(L.publicMini(m), 'X', lcg(2), {}, HARD);
+    assert.equal(b.move, open[len], `${len} letters`);
+    // a few letters on: still a letter some candidate holds
+    L.applyMove(m, 'X', 'Q'); L.applyMove(m, 'O', 'Z');
+    const pm = L.publicMini(m), c = L.hangmanCandidates(pm), h = L.localBest(pm, 'X', lcg(3), {}, HARD);
+    assert.ok(c.some(w => w.includes(h.move)), `${h.move} is in a candidate`);
+  }
+});

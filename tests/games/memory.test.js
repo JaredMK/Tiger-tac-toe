@@ -299,3 +299,24 @@ test('memory, race: the computer flips its own layout from its own cards alone a
     assert.equal(E.aiOf('memory').needs(E.publicMini(m, 'O'), 'X'), 4.5, "the other side's needs, from its own open flips");
   } finally { memRace(false); }
 });
+
+// ============================== Hard: waiting (November 2026) ==============================
+test('memory, Hard: with four or more designs seen and no pair known it may wait (two seen cards again, no gain on the board); a twin shown counts as the square lost; Normal never waits', () => {
+  const HARDL = { level: 'hard', until: null };
+  // a deck with one pair, the pair's two cards last: the first six cards are six different designs
+  const deck = L.memoryDeck(lcg(5), 1), key = c => c.s + c.c, n = {};
+  for (const c of deck) n[key(c)] = (n[key(c)] || 0) + 1;
+  const singles = deck.filter(c => n[key(c)] === 1), pair = deck.filter(c => n[key(c)] === 2);
+  const m = { type: 'memory', cards: singles.concat(pair), flips: 3, seen: [0, 1, 2, 3, 4, 5], last: null };
+  const pm = L.publicMini(m);
+  let waits = 0, shows = 0;
+  for (let k = 0; k < 60; k++) {
+    const b = L.localBest(pm, 'X', E.makeRng('wait' + k), {}, HARDL), seen = b.move.filter(i => pm.seen.includes(i)).length;
+    assert.equal(L.applyMove(JSON.parse(JSON.stringify(m)), 'X', b.move).ok, true, 'a legal move');
+    if (seen === 2) { waits++; assert.equal(b.q, 0); assert.ok(b.after, 'a wait says the position stays'); }
+    else { shows++; assert.equal(seen, 1, 'else one unseen card beside a seen one'); assert.ok(b.qLose > 0.2, 'a twin shown is the square lost'); }
+    const nb = L.localBest(pm, 'X', lcg(k + 1), {}, { level: 'normal', until: null });
+    assert.equal(nb.move.filter(i => pm.seen.includes(i)).length, 0, 'Normal: two unseen, as ever');
+  }
+  assert.ok(waits > 40 && shows > 0, `mostly waits, not always (${waits} of 60)`);
+});

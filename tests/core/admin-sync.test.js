@@ -74,3 +74,15 @@ test('admin page: the games\' own tuning cards are exactly the paths copy-settin
   assert.doesNotMatch(admin, /data-(runsave|bullsave|wheelsave|plinkosave|pigsave|roadssave|oddsave|attsave|fingsave|tunesave)=/, 'no Save of a card\'s own: the page\'s Save covers it');
   assert.equal((admin.match(/<button class="btn go" data-gamesave=/g) || []).length, 1, 'one Save button template'); assert.equal((admin.match(/<button class="btn" data-tunereset=/g) || []).length, 1, 'one Reset');
 });
+
+test('admin page: the computer\'s difficulty card keeps the engine\'s defaults and ranges (config/ai)', () => {
+  assert.deepEqual(literal('AI_DEF'), E.AI_DEFAULTS);
+  const levels = literal('AI_LEVELS').map(x => x[0]), lv = literal('AI_LV'), w = literal('AI_W');
+  assert.deepEqual(levels.slice().sort(), E.LEVELS.slice().sort());
+  const fields = levels.flatMap(l => lv.map(([k, , lo, hi, step]) => [l + k, lo, hi, step])).concat(w.map(([k, , lo, hi, step]) => [k, lo, hi, step]));
+  assert.deepEqual(fields.map(f => f[0]).sort(), Object.keys(E.AI_DEFAULTS).sort(), 'a field for every setting');
+  for (const [k, lo, hi, step] of fields) assert.deepEqual([lo, hi, step], E.AI_LIMITS[k], `${k}: the engine's range`);
+  const rules = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'database.rules.json'), 'utf8')).rules.config.ai.$k['.validate'];
+  const re = new RegExp(rules.match(/\$k\.matches\(\/(.+?)\/\)/)[1]);
+  for (const k of Object.keys(E.AI_DEFAULTS)) assert.ok(re.test(k), `the rules take ${k}`);
+});

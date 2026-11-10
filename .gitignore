@@ -13,3 +13,5 @@ ios/App/Pods/
 ios/App/build/
 ios/DerivedData/
 xcuserdata/
+.ai-ref/
+.ai-mid/

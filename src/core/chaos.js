@@ -146,7 +146,7 @@ export function scCpu(state, rng, force, side) {   // force: { square, moves } t
   const steps = [];
   let start = null;
   if (force && !force.moves) sh.lock = force.square;
-  const next = k => (force && force.moves ? (k < force.moves.length ? { square: force.square, move: force.moves[k] } : null) : cpuMove(sh, rng));
+  const next = k => (force && force.moves ? (k < force.moves.length ? { square: force.square, move: force.moves[k] } : null) : cpuMove(sh, rng, null, { fresh: true }));
   let plan = next(0);
   for (let guard = 0; plan && guard < 80 && !sh.sc.me; guard++) {
     if (!start) start = clone(sh.squares[plan.square].mini);                       // the square as the computer found it (the recap's replay starts there)

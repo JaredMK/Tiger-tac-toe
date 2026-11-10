@@ -36,7 +36,8 @@ async function duel(cand, inc, round) {
   return { rate: n ? pts / n : 0.5, n };
 }
 (async () => {
-  const keys = Object.keys(AI_DEFAULTS).filter(k => k !== 'margin'), rnd = lcg(Number(SEED) || 7);
+  const keys = ['attack', 'defend', 'explore', 'prog', 'fresh'];   // (the search's own weights: never the levels' settings, the margin or the budget)
+  const rnd = lcg(Number(SEED) || 7);
   let inc = Object.assign({}, AI_DEFAULTS), played = 0, kept = 0;
   console.log(`tune-ai: ${ROUNDS} rounds of ${MATCHES} matches, ${BUDGET} ms a Hard decision${PHYSICS ? ', the physics games dealt' : ''}; starting from`, JSON.stringify(inc));
   for (let r = 1; r <= ROUNDS; r++) {

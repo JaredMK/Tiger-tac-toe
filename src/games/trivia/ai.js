@@ -48,7 +48,8 @@ export function best(pm, me, rng, style, ctx) {   // it knows it about half the 
     if (!pm.race || !left.length) return { move: 'auto', q: 0 };
     return { move: left[randInt(rng, left.length)], q: (pm.right[me] || 0) >= t.goal - 1 ? 1 / left.length : 0 };
   }
-  const rate = know + (1 - know) / Math.max(1, left.length), q = !pm.race || (pm.right[me] || 0) >= t.goal - 1 ? rate : 0;   // (q: the chance this move takes the square; a race: only the last point does)
+  const hard = ctx && ctx.level === 'hard', last = (pm.right[me] || 0) >= t.goal - 1;
+  const rate = know + (1 - know) / Math.max(1, left.length), q = (!pm.race && !hard) || last ? rate : 0;   // (q: the chance this move takes the square: only the last point does; Easy and Normal on a shared question still report every right answer, as they always have)
   if (left.length <= 1 || rng() < know) return { move: right, q };
   return { move: left[randInt(rng, left.length)], q };
 }

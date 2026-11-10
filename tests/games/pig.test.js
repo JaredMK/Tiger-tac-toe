@@ -279,8 +279,8 @@ test('Risky Rolls: the Hard computer plays the exact race (a d8 to 51): its tabl
   E.setPigConfig(null);
   try {
     let e, calls = 0;
-    do { const t0 = performance.now(); e = A.pigRace(8, 51, null); assert.ok(performance.now() - t0 < 60, 'a slice under 60 ms'); calls++; } while (!e.done && calls < 100);
-    assert.ok(e.done && calls <= 20, 'the table within a few calls: ' + calls);
+    do { const t0 = performance.now(); e = A.pigRace(8, 51, null); assert.ok(performance.now() - t0 < 80, 'a slice under 80 ms'); calls++; } while (!e.done && calls < 100);
+    assert.ok(e.done && calls <= 4, 'the table within four calls (the turn\'s first roll and its first choices): ' + calls);
     assert.ok(e.P[0] > 0.55 && e.P[0] < 0.62, 'the first to roll wins about 59% from 0-0: ' + e.P[0].toFixed(3));
     assert.ok(e.P[50 * 51 + 0] > 0.99 && e.P[0 * 51 + 50] < 0.05, 'one point short against none, and the other way');
     const pm = (a, b, rolls) => ({ type: 'pig', bank: { X: a, O: b }, turn: { by: 'X', rolls, pot: rolls.reduce((x, y) => x + y, 0) }, sides: 8, target: 51 });

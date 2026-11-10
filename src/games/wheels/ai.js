@@ -21,8 +21,10 @@ function facts(pm) {
   // The turn that banks the most on average: one wheel, spun until the pot reaches its K (its expected bank, E:
   // rules.js wheelTurn); and the pot Normal banks at, level: the first no wheel's spin adds more to than it risks.
   let best = { w: 'low', K: 1, E: 0 }, bankAt = 1;
+  f.K = {};
   for (const w of ws) {
     const { K, E } = wheelTurn(pm.wheels[w], f.T);
+    f.K[w] = K;
     if (E > best.E) best = { w, K, E };
     bankAt = Math.max(bankAt, K);
   }
@@ -30,15 +32,55 @@ function facts(pm) {
   MEMO.set(key, f);
   return f;
 }
-// The moves (turns) a side still needs: the points still needed against what a good turn banks; in its own turn
-// under way, the pot counts.
+// A turn on one wheel from a pot, spun until the pot reaches k, then banked: what it ends with, as chances by pot
+// (0: a skull, the pot lost). The turns it takes to bank x more points, turn after turn (TURNS[x]): each turn on the
+// wheel that gets there soonest, to its own bank-at score (rules.js wheelTurn's K) or to what is still needed when
+// that is less; a skull is a turn spent with nothing banked.
+function turnEnds(y, from, k) {
+  const pr = new Float64Array(k + 11), out = new Map();
+  pr[from] = 1;
+  for (let p = from; p < k + 10; p++) {
+    if (!pr[p]) continue;
+    if (p >= k) { out.set(p, (out.get(p) || 0) + pr[p]); continue; }
+    out.set(0, (out.get(0) || 0) + pr[p] * y.r);
+    for (const v of y.vals) pr[p + v] += pr[p] / y.n;
+  }
+  if (pr[k + 10]) out.set(k + 10, (out.get(k + 10) || 0) + pr[k + 10]);
+  return out;
+}
+function turnsTo(f, x) {
+  const t = f.turns || (f.turns = [0]);
+  for (let r = t.length; r <= x; r++) {
+    let top = Infinity;
+    for (const w of f.ws) {
+      const y = f.w[w]; if (!y.vals.length) continue;
+      let sum = 1, stay = 0;
+      for (const [v, pr] of turnEnds(y, 0, Math.min(r, f.K[w]))) { if (v === 0) stay = pr; else sum += pr * t[Math.max(0, r - v)]; }
+      const n = sum / (1 - stay);
+      if (n < top) top = n;
+    }
+    t[r] = top;
+  }
+  return t[x];
+}
+// The moves (turns) a side still needs: the points still needed against what its turns bank (turnsTo); in its own
+// turn under way, this turn (from its pot, on the wheel that leaves the fewest) and the turns after it.
 export function needs(pm, p) {
   const r = pm.target - pm.pts[p];
   if (r <= 0) return 0;
   if (!pushYourLuck(pm)) { let g = 0; for (const w of wheelsOf(pm)) g = Math.max(g, facts(pm).w[w].gain); return Math.max(0.5, r / Math.max(0.5, g)); }   // (a square from before the skulls: every spin scores)
-  const E = Math.max(0.5, facts(pm).best.E), t = pm.turn && pm.turn.by === p ? pm.turn : null;
-  if (t && t.pot >= r) return 0.5;                            // (only Bank is left: it wins with the next tap)
-  return Math.max(0.5, (r - (t ? t.pot : 0)) / E + (t ? 0.5 : 0));
+  const f = facts(pm), t = pm.turn && pm.turn.by === p ? pm.turn : null;
+  if (!(r <= 200)) return Math.max(0.5, r / Math.max(0.5, f.best.E));
+  if (!t || !t.pot) return turnsTo(f, r);
+  if (t.pot >= r) return 0.5;                                 // (only Bank is left: it wins with the next tap)
+  let top = Infinity;
+  for (const w of f.ws) {
+    const y = f.w[w]; if (!y.vals.length) continue;
+    let n = 1;
+    for (const [v, pr] of turnEnds(y, t.pot, Math.max(t.pot, Math.min(r, f.K[w])))) n += pr * turnsTo(f, Math.max(0, r - v));
+    if (n < top) top = n;
+  }
+  return top;
 }
 // The chance this spin of wheel w reaches the target (a + pot + its points).
 const reach = (pm, w, need) => pm.wheels[w].filter(v => v !== SKULL && v >= need).length / pm.wheels[w].length;
@@ -76,7 +118,7 @@ export function best(pm, me, rng, style, ctx) {
 // the top down (a bank only ever raises the sum). One table per square's wheels and target (RACE), built in slices
 // within the time the search may spend (a fixed slice without a clock); until it is done Hard plays Normal's rule.
 export const RACE = new Map();
-const SLICE = 120;
+const SLICE = 1e9;                                            // (without a clock: the whole table at the first call, 465 pairs to 30, some 10 to 25 ms a square)
 function turnVals(e, a, b, x, V, C) {                          // V[pot]: the turn's worth from (a, b, pot); C[pot] its best move
   const { T, P, f } = e;
   for (let p = T - a; p >= 0; p--) {

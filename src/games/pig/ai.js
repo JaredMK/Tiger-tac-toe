@@ -66,6 +66,7 @@ export function best(pm, me, rng, style, ctx) {
   const t = pm.turn && pm.turn.by === me ? pm.turn : null, sides = pigSides(pm), base = BEST_POT[sides], r = pigGoal(pm) - pm.bank[me];
   const gap = pm.bank[other(me)] - pm.bank[me];                // positive when behind
   const target = Math.max(4, Math.min(base + 11, Math.max(base - 3, Math.min(base + 5, base + Math.round(gap / (sides === 8 ? 6 : 4)))) + ((style && style.rollRisk) || 0) + tune(pm).risk));   // riskier when behind, safer when ahead (a bolder or warier style, or the admin's setting, shifts it)
+  if (!t && ctx && ctx.level === 'hard') pigRace(sides, pigGoal(pm), ctx.until);   // (Hard: the race's table is worked on from the turn's first roll, so its first choice already has it)
   if (!t) return r <= target ? { move: 'roll', q: pigReach(sides, 0, r), stay: true } : { move: 'roll', q: 0 };   // within reach: the turn goes for the square (q its chance; a bust leaves it as it was)
   if (pm.bank[me] + t.pot >= pigGoal(pm)) return { move: 'bank', q: 1 };
   if (t.rolls.length >= pigMaxRolls(pm)) return { move: 'bank', q: 0 };
@@ -80,11 +81,12 @@ export function best(pm, me, rng, style, ctx) {
 // or the square when a + pot reaches the target) or roll (a bust is worth 1 - P[b][a]; a new number, the set
 // with it). Pairs (a, b), (b, a) lean on each other only through the bust, so each is solved as a fixed point
 // (a secant on it), sums of a + b from the top down. The table is one per die and target, kept (PIG_RACE),
-// built in slices within the time the search may spend (a fixed slice without a clock); until it is done the
-// Hard computer plays the usual rule. The target's square is the table: a target past PIG_RACE_MAX keeps the rule.
+// built in slices within the time the search may spend (a fixed slice without a clock), from the first call for the
+// square, the turn's opening roll included (until November 2026 only once a pot was on the table: its first two turns
+// went by the rule); until it is done the Hard computer plays the usual rule. The target's square is the table: a target past PIG_RACE_MAX keeps the rule.
 export const PIG_RACE = new Map();
 export const PIG_RACE_MAX = 64;
-const SLICE = 150;                                             // pairs a call solves without a clock (about 6 ms for a d8 to 51)
+const SLICE = 340;                                            // pairs a call solves without a clock (about 14 ms for a d8 to 51, whose 1,326 pairs are four calls: the turn's first roll and its first three choices)
 const SETS = {};                                               // per die: each set's pot and count
 function pigSets(sides) {
   if (SETS[sides]) return SETS[sides];

@@ -156,20 +156,21 @@ test('war: online, a timed-out turn flips nothing (the turn passes, a miss); not
   assert.equal(timeoutClose(E.newMini('war', lcg(1)), 'X'), null, 'no move under way to end');
 });
 
-test('war: the computer has one move, Flip; needs counts the rounds left at a flip\'s even chance; Hard is the same and quick', () => {
+test('war: the computer has one move, Flip; needs counts the flips the rounds left take (a war won counts two); Hard is the same and quick', () => {
   const ctx = { level: 'hard', until: null };
   for (const wins of [0, 1, 2]) {
     const m = mini('ai' + wins); m.wins.X = wins;
     const pm = E.publicMini(m), t0 = performance.now(), h = A.best(pm, 'X', lcg(1), {}, ctx);
     assert.ok(performance.now() - t0 < 60);
     assert.deepEqual(h, A.best(pm, 'X', lcg(1), {}, {})); assert.equal(h.move, 'flip');
-    assert.equal(A.needs(pm, 'X'), Math.max(1, (3 - wins) / A.WAR_WIN));
+    assert.equal(A.needs(pm, 'X'), Math.max(1, A.warFlips(3 - wins, 2)));   // the flips still needed, exactly: a war won counts two
   }
   const m = mini('ai-q');
   assert.equal(A.best(E.publicMini(m), 'X', lcg(1), {}, {}).q, 0, 'three rounds off: no one flip takes it');
   m.wins.X = 1; assert.ok(A.best(E.publicMini(m), 'X', lcg(1), {}, {}).q > 0 && A.best(E.publicMini(m), 'X', lcg(1), {}, {}).q < 0.1, 'two off: only a war won takes it');
   m.wins.X = 2; assert.equal(A.best(E.publicMini(m), 'X', lcg(1), {}, {}).q, A.WAR_WIN, 'one off: a flip\'s chance');
   assert.ok(A.needs(E.publicMini(mini('n')), 'O') > A.needs(E.publicMini(m), 'X'));
+  assert.equal(A.warFlips(1, 2), 2); assert.ok(Math.abs(A.warFlips(3, 2) - 5.772) < 0.001 && Math.abs(A.warFlips(3, 1) - 6) < 1e-9, 'three rounds: 5.77 flips with a war worth two, 6 with it worth one');
 });
 
 test('war: Super Chaos: a round\'s move is one flip of the player\'s own round (their own deck), the default per-player merge keeps both', () => {

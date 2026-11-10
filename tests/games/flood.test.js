@@ -113,3 +113,53 @@ test('flood: the Hard computer searches deeper (a forced win Normal misses), leg
   const timed = E.localBest(E.publicMini(E.newMini('flood', lcg(3))), 'X', lcg(1), {}, { level: 'hard', until });
   assert.ok(performance.now() - t1 < 40 && Number.isInteger(timed.move) && timed.move !== E.newMini('flood', lcg(3)).colors[0], 'stops at its budget with a legal move');
 });
+
+test('flood: Hard solves the square: never a won square lost, a pass where every grab loses for both, the other levels untouched', () => {
+  const A = require('../../src/games/flood/ai.js'), R = require('../../src/games/flood/rules.js');
+  const hard = { level: 'hard', until: null };
+  // the solver against a plain search of the rules (no table, no regions) near the end of a square
+  const brute = (pm, p) => {                                      // the best a grab does for p, to move: 1, 0 or -1; -2 nothing to grab
+    let best = -2;
+    for (let c = 0; c < 5; c++) {
+      if (c === pm.colors[0] || !R.floodGain(pm, c)) continue;
+      const a = R.floodApply(pm, c, p), v = a.score[p] >= 18 ? 1 : -value({ type: 'flood', colors: a.colors, owner: a.owner, score: a.score }, E.other(p));
+      if (v > best) best = v;
+    }
+    return best;
+  };
+  const canPass = pm => [0, 1, 2, 3, 4].filter(c => !R.floodGain(pm, c)).length >= 2;
+  const value = (pm, p) => { const g = brute(pm, p); if (g === -2) return 0; if (g >= 0 || !canPass(pm)) return g; return brute(pm, E.other(p)) > 0 ? -1 : 0; };
+  const r = lcg(3);
+  let checked = 0, level = 0;
+  for (let k = 0; k < 40; k++) {
+    const b = E.newMini('flood', lcg(k + 100)); let p = 'X', res = { outcome: 'continue' };
+    while (res.outcome === 'continue' && b.score.X + b.score.O < 14) { res = E.applyMove(b, p, E.randomLegalMove(b, p, r), r); p = E.other(p); }
+    if (res.outcome !== 'continue') continue;
+    const pm = E.publicMini(b), s = A.floodSolve(pm, p);
+    if (!s) continue;
+    assert.equal(s.v, value(pm, p), 'the solver and a plain search agree');
+    checked++; if (s.v === 0) level++;
+  }
+  assert.ok(checked >= 20, `positions checked (${checked}, ${level} level)`);
+  // Hard, to move in a square it has won by the solver, takes it against the deep search of before and against random colours
+  let won = 0, played = 0, passes = 0;
+  for (let g = 0; g < 40; g++) {
+    const rng = E.makeRng('flood-solved' + g), b = E.newMini('flood', rng), me = g % 2 ? 'X' : 'O', s0 = A.floodSolve(E.publicMini(b), me), first = s0 ? s0.v : null;   // (null: a board in more than 31 regions, left to the deep search)
+    let p = me, res, n = 0;
+    do {
+      const pm = E.publicMini(b);
+      const mv = p === me ? E.localBest(pm, p, rng, {}, hard).move : g % 4 < 2 ? R.floodHard(pm, p).c : E.randomLegalMove(b, p, rng);
+      if (p === me && first !== null && !R.floodGain(pm, mv)) { passes++; assert.equal(A.floodSolve(pm, me).v, 0, 'a pass only where the square is level'); }
+      res = E.applyMove(b, p, mv, rng); p = E.other(p);
+    } while (res.outcome === 'continue' && ++n < 200);
+    if (first === 1) { played++; if (b.score[me] >= 18) won++; }
+  }
+  assert.ok(played >= 20 && won === played, `every won square taken (${won} of ${played}; ${passes} passes)`);
+  // the other levels' count of a square is as it was; Hard's own positions carry the solved result
+  const b = E.newMini('flood', lcg(5)), pm = E.publicMini(b), plain = [E.needsOf(pm, 'X'), E.needsOf(pm, 'O')];
+  assert.deepEqual(plain, [18 / 3.2, 18 / 3.2]);
+  E.localBest(pm, 'X', lcg(1), {}, { level: 'normal', until: null });
+  assert.deepEqual([E.needsOf(pm, 'X'), E.needsOf(pm, 'O')], plain, 'Normal leaves it so');
+  const lb = E.localBest(pm, 'X', lcg(1), {}, hard), v = (A.floodSolve(pm, 'X') || {}).v;
+  if (v === 1) assert.ok(E.needsOf(lb.after, 'O') > 5 * E.needsOf(lb.after, 'X'), 'a won square counts as won after Hard\'s move');
+});

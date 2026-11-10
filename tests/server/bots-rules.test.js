@@ -96,7 +96,8 @@ test('the alert limits: one per player per cooldown, a gap between alerts, a dai
 test('the computer\'s style knobs: the standard computer unchanged; careless moves stay legal; Risky Rolls risk', () => {
   for (let k = 0; k < 20; k++) {                              // the standard style is the computer as it plays everywhere else
     const a = E.newMatch(lcg(k)), b = JSON.parse(JSON.stringify(a));
-    assert.deepEqual(E.cpuMove(a, lcg(100 + k)), E.cpuMove(b, lcg(100 + k), E.STYLE0));
+    E.localForget(); const plain = E.cpuMove(a, lcg(100 + k));   // (the squares' tactics are kept between decisions: forgotten here, so both decide afresh)
+    E.localForget(); assert.deepEqual(plain, E.cpuMove(b, lcg(100 + k), E.STYLE0));
   }
   const st = E.newMatch(lcg(2));                              // a careless move: anything legal, in any open square
   for (let k = 0; k < 40; k++) {

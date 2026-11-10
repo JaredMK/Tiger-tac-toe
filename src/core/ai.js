@@ -7,8 +7,8 @@ import { other } from './util.js';
 import { fingPlay } from '../games/shared/finger.js';
 import { ECHO, echoSeq } from '../games/echo/rules.js';
 import { aiOf, metaOf } from '../games/index.js';
-import { LEVELS, aiWeights, levelOf } from './aiw.js';
-import { mcPick } from './mc.js';
+import { aiWeights, levelCfg, levelOf } from './aiw.js';
+import { mc2Pick } from './mc2.js';
 
 /* ===================== Computer player =====================
  * The computer plays fairly: every decision starts from publicMini(), which holds only what a
@@ -19,11 +19,12 @@ import { mcPick } from './mc.js';
  *   score = (value of the square on the main board) x (how much the move shifts the chance of claiming it)
  * and plays the highest. A move that claims a match-winning square is taken at once.
  *
- * Three levels (aiw.js): Normal is that computer; Easy is the same one, careless now and then (EASY); Hard
- * chooses its square by Monte Carlo playouts of the rest of the match (mc.js) and, inside the squares, by
- * search where a game has one (its ai.js reads ctx.level and ctx.until, the ms it may spend). A decision is
- * kept inside opts.budget ms when the caller passes a clock (opts.clock; the page runs it in a worker);
- * without one, the searches do a fixed amount of work.
+ * One engine, three levels (aiw.js levelCfg; docs/ai.md): a level is how hard it searches the rest of the match for
+ * its square (mc2.js: playouts of the match; none: the scores above decide), how often
+ * it plays a square with its strongest tactics (its ai.js reads ctx.level and ctx.until, the ms it may spend) rather
+ * than the plain ones, how often it makes a careless move, and its appetite for risk. A decision is kept inside
+ * opts.budget ms when the caller passes a clock (opts.clock; the page runs it in a worker); without one, the
+ * searches do a fixed amount of work.
  */
 export const AI = { win: 1000, block: 600 };
 export function needsOf(pm, p) {
@@ -79,6 +80,7 @@ export function closeTo(pm, me, local, value) {
 // one, Risky Rolls exactly; else its chance of the race); the other side threatens no match win elsewhere; and the
 // square is not needed now to block a line or complete one of the computer's own.
 export const SAFE = { risk: 0.1 };
+export const MUST = { needs: 1.5 };                               // a match threat: the other side needs this many turns or fewer in a square that completes their line (cpuMove)
 export function safeLead(squares, i, pm, me, value, margin) {
   if (!(value < AI.block)) return false;                         // (a block, or the computer's own line: now)
   const o = other(me), a = needsOf(pm, me), b = needsOf(pm, o);
@@ -105,8 +107,6 @@ export function localBest(pm, me, rng, style, ctx) {
 // line about to be completed; mistake is the chance of a careless move (any legal move in any open
 // square); rollRisk adds to the score it banks at in Risky Rolls (bolder above zero, warier below).
 export const STYLE0 = { attack: 1, defend: 1, mistake: 0, rollRisk: 0 };
-export const EASY = { mistake: 0.3 };                            // Easy: a careless move this often (any legal move, anywhere open)
-export const BUDGET_MS = 300;                                    // Hard: a decision's time, with a clock
 export const AI_CLOCK = { now: null };                           // the clock, set once by the page or the server (null: the tests, deterministic)
 export function squareValue(squares, i, me, style) {
   const s = style || STYLE0;
@@ -143,14 +143,22 @@ export function cpuEcho(mini, me, plan, rng) {
   let wrong = randInt(needRng(rng), ECHO.pads - 1); if (wrong >= seq[at]) wrong++;
   return seq.slice(0, at).concat(wrong);
 }
+// The tactics' answers kept between decisions (cpuMove): by the square's public position, the side, the level, the
+// style and how the square stands on the board (a match point, a block or neither; ahead or behind in squares).
+const LOCAL = new Map(), LOCAL_MAX = 96;
+export const localForget = () => LOCAL.clear();
+function localKey(state, i, me, st) {
+  const v = squareValue(state.squares, i, me, st), owned = p => state.squares.filter(s => s.owner === p).length;
+  return `${me}|${v >= AI.win ? 2 : v >= AI.block ? 1 : 0}|${Math.sign(owned(other(me)) - owned(me))}|${st.rollRisk || 0}|${JSON.stringify(publicMini(state.squares[i].mini, me))}`;
+}
 // The computer's move for the side to play: { square, move, score }. During a bonus move the square is fixed.
 // opts: level ('easy' | 'normal' | 'hard'; else the match's state.cpuLevel, else normal), clock (a function
 // giving ms, for the time budget), budget (ms), pre ({ square: local } tactics worked out by the caller, e.g.
 // the physics games' outside the worker), noFing (leave a finger game's attempt to the caller: fingPlay).
 export function cpuMove(state, rng, style, opts) {
   rng = needRng(rng); opts = opts || {};
-  const level = levelOf(opts.level || state.cpuLevel), hard = level === 'hard', w = hard ? aiWeights() : null;
-  const st = Object.assign({}, STYLE0, hard ? { attack: w.attack, defend: w.defend, rollRisk: w.rollRisk } : null, level === 'easy' ? EASY : null, style || {});
+  const level = levelOf(opts.level || state.cpuLevel), w = aiWeights(), L = levelCfg(level, w), search = L.search > 0;
+  const st = Object.assign({}, STYLE0, { attack: search ? w.attack : 1, defend: search ? w.defend : 1, rollRisk: L.risk, mistake: L.mistake }, style || {});
   const me = state.turn;
   const open = state.lock != null ? [state.lock] : state.only != null ? [state.only].filter(i => !state.squares[i].owner && canMove(state.squares[i].mini, me))   // (the admin's test play: its one square)
     : state.squares.map((s, i) => (s.owner || !canMove(s.mini, me) ? -1 : i)).filter(i => i >= 0);   // not a square where it is stuck
@@ -159,26 +167,47 @@ export function cpuMove(state, rng, style, opts) {
     const i = open[randInt(rng, open.length)], m = randomLegalMove(state.squares[i].mini, me, rng);
     if (m != null) return { square: i, move: m, score: 0, value: 0, gain: 0, careless: true };
   }
-  const clock = hard ? (typeof opts.clock === 'function' ? opts.clock : AI_CLOCK.now) : null, budget = opts.budget || BUDGET_MS, t0 = clock ? clock() : 0;
-  const share = clock ? budget * 0.6 / open.length : 0;           // each square's search gets its share; the playouts the rest
+  const timed = search || L.sharp > 0;                           // (a level that searches keeps to the clock; the plain one decides at once)
+  const clock = timed ? (typeof opts.clock === 'function' ? opts.clock : AI_CLOCK.now) : null, budget = opts.budget || w.budget, t0 = clock ? clock() : 0;
+  // Each square is played with the strongest tactics as often as the level is sharp, else the plain ones (Easy: its own).
+  const plain = level === 'easy' ? 'easy' : 'normal', how = open.map(() => (L.sharp >= 1 || (L.sharp > 0 && rng() < L.sharp) ? 'hard' : plain));
+  // What the tactics said of a square stands until the square changes (the same public position, side, tactics and
+  // standing on the board): kept from decision to decision (LOCAL), so a turn's search time goes to the squares that
+  // did change, and the playouts get the rest. (The plain tactics are quick and vary their play: asked every time.)
+  const keys = open.map((i, k) => (how[k] === 'hard' && !opts.fresh ? localKey(state, i, me, st) : null));   // (opts.fresh: nothing kept or reused: a decision that must depend on its rng alone, Super Chaos's shadow play)
+  const fresh = open.filter((i, k) => !(opts.pre || {})[i] && !(keys[k] && LOCAL.has(keys[k]))).length;
+  const share = clock ? budget * 0.6 / Math.max(1, fresh) : 0;    // each square still to search gets its share; the playouts the rest
   const pre = opts.pre || {}, done = () => (opts.noFing ? best : fingPlay(state, best, me, rng));
   let best = null;
   const cands = [];
   const owned = p => state.squares.filter(s => s.owner === p).length, behind = owned(other(me)) - owned(me);
-  for (const i of open) {
-    const pm = publicMini(state.squares[i].mini, me);   // (a race square: the computer's own part and both shapes, never the other side's part)
+  open.forEach((i, k) => {
+    if (best && best.score === Infinity) return;
     const real = squareValue(state.squares, i, me, st);
     const at = clock ? clock() : 0, until = clock ? () => Math.max(0, at + share - clock()) : null;
-    const local = pre[i] || localBest(pm, me, rng, st, { value: real, behind, level, until });
+    const key = keys[k], kept = key && !pre[i] ? LOCAL.get(key) : null;
+    const pm = kept ? kept.pm : publicMini(state.squares[i].mini, me);   // (only what a person at the screen could know; the kept view is the same position, with what its tactics worked out about it)
+    const local = pre[i] || (kept ? Object.assign({}, kept.local) : localBest(pm, me, rng, st, { value: real, behind, level: how[k], until }));
+    if (key && !pre[i] && !kept) { if (LOCAL.size >= LOCAL_MAX) LOCAL.delete(LOCAL.keys().next().value); LOCAL.set(key, { pm, local: Object.assign({}, local) }); }
     const value = state.lock != null ? 1 : real;
     if (pm.type === 'echo' && local.move && local.move.echo) local.move = cpuEcho(state.squares[i].mini, me, local.move, rng);
-    if (value >= AI.win && (local.win || local.q >= 1)) { best = { square: i, move: local.move, score: Infinity, value, gain: 1 }; return done(); }
+    if (value >= AI.win && (local.win || local.q >= 1)) { best = { square: i, move: local.move, score: Infinity, value, gain: 1 }; return; }
     const gain = moveGain(pm, me, local);
     const score = value * Math.max(gain, 0.01) * catchUp(needsOf(pm, me), needsOf(pm, other(me)), value);
-    const safe = hard && state.lock == null && safeLead(state.squares, i, pm, me, real, w.margin);   // (tempo play: this one can wait)
-    cands.push({ square: i, pm, local, value, gain, score, close: hard && !safe && closeTo(pm, me, local, real), safe });
+    const safe = search && state.lock == null && safeLead(state.squares, i, pm, me, real, w.margin);   // (tempo play: this one can wait)
+    cands.push({ square: i, pm, local, value, gain, score, close: search && !safe && closeTo(pm, me, local, real), safe });
     if (!best || score > best.score) best = { square: i, move: local.move, score, value, gain };
+  });
+  if (best && best.score === Infinity) return done();
+  // The other side one move from the match in a square (it completes their line and they need a turn or less
+  // there): only the squares that stop it, or that win the match for the computer, are considered. Never left to
+  // the playouts' judgement.
+  const o = other(me), must = state.lock == null ? cands.filter(c => c.value >= AI.block && (c.value >= AI.win || needsOf(c.pm, o) <= MUST.needs)) : [];
+  let pool = cands;
+  if (must.some(c => c.value < AI.win) && must.length < cands.length) {
+    pool = must; best = null;
+    for (const c of pool) if (!best || c.score > best.score) best = { square: c.square, move: c.local.move, score: c.score, value: c.value, gain: c.gain };
   }
-  if (hard && cands.length > 1) best = mcPick(state, me, cands, rng, w, st, clock ? () => Math.max(0, t0 + budget - clock()) : null);
+  if (search && pool.length > 1) best = mc2Pick(state, me, pool, rng, { playouts: L.search, explore: w.explore, fresh: w.fresh, prog: w.prog, drop: w.drop, close: 1, safe: 1 }, st, clock ? () => Math.max(0, t0 + budget - clock()) : null);
   return done();
 }

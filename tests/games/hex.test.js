@@ -204,3 +204,56 @@ test('hex: the computer takes the middle stone (Normal and Hard) and opens a 5x5
     for (const c of o) assert.ok(L.HEX_OPEN.includes((c % 5) * 5 + Math.floor(c / 5)), `O's: the list turned round the long diagonal (${c})`);
   }
 });
+
+test('hex: Hard plays the solved 5x5 game: its opening wins whatever the answer, and it wins every opening but the two when it moves second', () => {
+  const A = require('../../src/games/hex/ai.js'), R = require('../../src/games/hex/rules.js');
+  const hard = { level: 'hard', until: null }, T = k => (k % 5) * 5 + Math.floor(k / 5);
+  // the solved openings: the thirteen that win for the opener when the stone cannot be taken; a half turn of the board changes nothing
+  assert.equal(A.HEX_WIN.length, 13);
+  for (const k of A.HEX_WIN) assert.ok(A.HEX_WIN.includes(24 - k));
+  assert.deepEqual(A.HEX_WIN.filter(k => !A.HEX_WIN.includes(T(k))), [3, 21], 'the two openings that win even against the swap');
+  // the search on small positions against a plain search of the rules
+  const S = A.hexSolver(16), bits = (cells, p) => cells.reduce((x, c, i) => (c === p ? x | (1 << i) : x), 0);
+  const brute = (cells, p) => {                                   // 1: p, to move, wins
+    for (let i = 0; i < 25; i++) { if (cells[i]) continue; cells[i] = p; const w = !!R.hexPath(cells, p) || brute(cells, L.other(p)) < 0; cells[i] = null; if (w) return 1; }
+    return -1;
+  };
+  const r = lcg(21);
+  for (let k = 0; k < 25; k++) {
+    const b = mini('hex', lcg(k)); let p = 'X', res = { outcome: 'continue' };
+    while (res.outcome === 'continue' && b.cells.filter(c => !c).length > 9) { res = L.applyMove(b, p, L.randomLegalMove(b, p, r), r); p = L.other(p); }
+    if (res.outcome !== 'continue') continue;
+    S.start();
+    assert.equal(S.value(bits(b.cells, 'X'), bits(b.cells, 'O'), p === 'X' ? 0 : 1), brute(b.cells.slice(), p), 'the solver and a plain search agree');
+  }
+  // Hard against random stones (and a swap now and then) and against the deep search of before: no won game lost
+  let games = 0;
+  for (let g = 0; g < 80; g++) {
+    const rng = E.makeRng('hex-solved' + g), b = mini('hex', rng), me = g % 2 ? 'X' : 'O', opener = (g >> 1) % 2 ? 'X' : 'O';
+    let p = opener, res, first = null;
+    do {
+      let mv;
+      if (p === me) mv = L.localBest(L.publicMini(b), p, rng, {}, hard).move;
+      else if (g % 8 === 7) mv = R.hexHard(b.cells, p).moves[0].i;   // (the deep search of before, never the swap)
+      else mv = L.hexCanSwap(b, p) && rng() < 0.3 ? 'swap' : L.randomLegalMove(b, p, rng);
+      if (first === null) first = mv;
+      res = L.applyMove(b, p, mv, rng); assert.equal(res.ok, true);
+      if (res.outcome === 'continue') p = L.other(p);
+    } while (res.outcome === 'continue');
+    const lostOpening = opener !== me && [3, 21].includes(opener === 'X' ? first : T(first));   // (the other side opened with a winner: nothing promised)
+    if (!lostOpening) { games++; assert.equal(p, me, `game ${g}: Hard wins a game the solved play wins (${opener === me ? 'opening' : 'second, against ' + first})`); }
+  }
+  assert.ok(games >= 60);
+  // the swap, by the solved values: a stone is taken exactly when it wins as the taker's own
+  for (let k = 0; k < 25; k++) {
+    const m = mini('hex'); L.applyMove(m, 'X', k);
+    const mv = L.localBest(L.publicMini(m), 'O', lcg(1), {}, hard).move;
+    if (A.HEX_WIN.includes(T(k)) && A.HEX_WIN.includes(k)) assert.equal(mv, 'swap', `X on ${k}: O takes it`);
+    if (!A.HEX_WIN.includes(T(k))) assert.notEqual(mv, 'swap', `X on ${k}: O plays on`);
+  }
+  // the other levels' count of a square is untouched; Hard's own positions carry the solved result
+  const m = mini('hex'); L.applyMove(m, 'X', 3);
+  const pm = L.publicMini(m), lb = L.localBest(pm, 'O', lcg(1), {}, hard);
+  assert.equal(L.needsOf(pm, 'X'), 4); assert.equal(L.needsOf(pm, 'O'), 5);
+  assert.ok(L.needsOf(lb.after, 'O') > 5 * L.needsOf(lb.after, 'X'), 'after any answer to the winning opening the square is the opener\'s');
+});

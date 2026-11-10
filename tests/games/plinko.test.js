@@ -110,12 +110,13 @@ test('plinko: the admin\'s settings (the bonus peg\'s points, the computer\'s mi
   assert.ok(seen.size > 1, 'any open slot');
 });
 
-test('plinko: the Hard computer drops where the square is likeliest won: the slot that finishes, the other side\'s best reply locked away, the race from there', () => {
+test('plinko: the Hard computer drops where the square is likeliest won: the slot that finishes, the other side\'s best reply locked away, three drops looked ahead and the race from there', () => {
   const A = require('../../src/games/plinko/ai.js'), ctx = { level: 'hard', until: null };
   const sq = (seed, over) => Object.assign(E.publicMini(E.newMini('plinko', E.makeRng('pl' + seed))), over || {});
   const t0 = performance.now();
   for (let s = 0; s < 5; s++) { const pm = sq(s); const b = A.best(pm, 'X', lcg(s), {}, ctx); assert.ok(pm.used[b.move] === false, 'an open slot'); }
-  assert.ok(performance.now() - t0 < 60, 'five Hard moves under 60 ms');
+  assert.ok(performance.now() - t0 < 150, 'five Hard moves on five fresh squares (each its own table, the first call ever among them) under 150 ms');
+  { const pm = sq(0), t1 = performance.now(); for (let k = 0; k < 20; k++) A.best(pm, 'X', lcg(k), {}, ctx); assert.ok(performance.now() - t1 < 100, 'twenty more on a square met before under 100 ms'); }
   const near = sq(1, { pts: { X: 10, O: 0 } });                   // bins 1 2 1 3 2 3 5: two points to go
   assert.equal(A.best(near, 'X', lcg(1), {}, ctx).move, 5, 'the slot that lands 2 or more every time (3 or 5 either side)');
   assert.equal(A.best(near, 'X', lcg(1), {}, ctx).q, 1); assert.equal(A.best(near, 'X', lcg(1), {}, {}).move, 5);
