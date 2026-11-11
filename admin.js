@@ -236,7 +236,30 @@ function route() {
   if (ALIAS[parts[0]]) { parts[0] = ALIAS[parts[0]]; const h = '#' + parts.filter(Boolean).join('/'); try { history.replaceState(null, '', h); } catch (e) { /* (drawn as the new page anyway) */ } }
   return parts;
 }
-window.addEventListener('hashchange', () => { if (view.status === 'ready') { render(); window.scrollTo(0, 0); } });
+// The Games list keeps its place (November 2026): leaving it for a game's page remembers the scroll position and the game opened,
+// and coming back (the page's Games link or the browser's Back) puts the list back where it was and flashes that game's row.
+let gamesMemo = null;       // { y, t }: the list's scroll and the game last opened from it
+let lastHash = location.hash;
+const onGamesList = h => /^#(games|settings|releases)\/?$/.test(h);
+window.addEventListener('hashchange', e => {
+  if (view.status !== 'ready') { lastHash = location.hash; return; }
+  const from = lastHash, to = location.hash;
+  lastHash = to;
+  if (onGamesList(from)) {                                  // leaving the list: its scroll stays, with the game opened (the hash's)
+    const m = /^#(?:games|settings)\/([\w-]+)/.exec(to);
+    if (m) gamesMemo = { y: gamesMemo && gamesMemo.live != null ? gamesMemo.live : window.scrollY, t: m[1] };
+  }
+  const game = /^#(?:games|settings)\/([\w-]+)/.exec(from), back = onGamesList(to);
+  render();
+  if (back && gamesMemo) {                                  // back at the list: where it was, the edited game lit up
+    const { y, t } = gamesMemo, t2 = game ? game[1] : t;
+    window.scrollTo(0, y);
+    const row = app.querySelector(`.glist a[href="#games/${t2}"]`);
+    if (row) { row.classList.add('glit'); setTimeout(() => row.classList.remove('glit'), 2200); }
+  } else window.scrollTo(0, 0);
+});
+// The list's scroll as it is now (a tap on a row changes the hash before the page moves: this has the number from just before).
+window.addEventListener('scroll', () => { if (onGamesList(location.hash)) gamesMemo = Object.assign(gamesMemo || {}, { live: window.scrollY }); }, { passive: true });
 
 // ---------- the match inspector: every logged match (matchLogIndex), reported ones first; a match's
 // event timeline (matchLogs/{key}) and its export as JSON. (functions/matchLogRules.js: the events.) ----------
