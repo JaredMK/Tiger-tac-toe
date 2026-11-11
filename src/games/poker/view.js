@@ -1,79 +1,115 @@
-// Craps: the screen, the miniature, the move's words and sounds, and the inputs.
+// Poker Hands: the screen, the miniature, the move's words and sounds, and the inputs (November 2026).
 import { tune } from '../../core/tune.js';
-import { CRAPS, crapsTimes } from './rules.js';
-import { N, REDUCED, mv, state } from '../../ui/app.js';
-import { dieFace } from '../../ui/art.js';
-import { arcTally, lateAt, pips } from '../../ui/progress.js';
-import { pipRows } from '../../ui/thumbs.js';
+import { HAND_NAMES, POK, pokSlideAt, pokTimes } from './rules.js';
+import { N, mv, state, waitLine } from '../../ui/app.js';
+import { SUIT_PATH, pcard } from '../../ui/cards.js';
+import { arcTally, lateAt } from '../../ui/progress.js';
+import { render } from '../../ui/render.js';
+import { pipRows, thumbArt } from '../../ui/thumbs.js';
 
-// Craps: one tap of Roll a move, and the dice keep rolling until the round is won or lost (rolled where the
-// move is made: the server online). The page plays the round back roll by roll: each pair tumbles in at its
-// time, the puck goes on at the point, the rolls fill the row under the felt (a fixed height: the last
-// eight on show), and the round's result comes at the end. One button, always there, so nothing moves.
-const CRAPS_POINTS = [4, 5, 6, 8, 9, 10];
-function crapsSay(r) {                                          // the line under the felt for a round
-  if (!r) return '';
-  if (r.kind === 'stop') return `Stopped on point ${r.point}`;   // (from before)
-  if (r.roll) { const n = r.sum; return r.result === 'win' ? (r.was == null ? `${n} on the first roll: a winner!` : `Point ${r.was} made!`) : r.result === 'lose' ? (r.was == null ? `${n}: out!` : 'Seven out') : `Point ${r.point}`; }   // (a single roll, from before)
-  const rolls = r.rolls || [], first = rolls.length ? rolls[0][0] + rolls[0][1] : 0;
-  if (r.point == null) return r.result === 'win' ? `${first} on the first roll: a winner!` : `${first}: out!`;
-  return r.result === 'win' ? `Point ${r.point} made!` : 'Seven out';
+// The table: both players' totals toward the target at the top, the mover's five cards in a row, one result line and
+// one button. Deal slides five cards in; a tap on a card marks it to throw away (it drops a little, dims and is struck
+// through in the mover's colour); Draw sends the marked ones away and slides new ones in their places, then the hand's
+// name and its points show in the result line and the total counts up. Everything is played from the move's flash
+// (`a.poker`), never the square's last; the cards keep their places, so nothing moves when text comes or goes.
+let draft = null;                                                    // this phone's marks on the hand dealt: { sq, key, thrown: [0/1 x5] }
+const marksFor = (sq, cur) => {
+  const key = cur ? cur.by + cur.hand.join('') : '';
+  if (!draft || draft.sq !== sq || draft.key !== key) draft = { sq, key, thrown: [0, 0, 0, 0, 0] };
+  return draft.thrown;
+};
+// A total toward the target: pips (up to 12), else the figure; the points a move adds fill in as its hand shows.
+function total(p, mini, f, goal, tim) {
+  const n = Math.min(goal, mini.score[p]), fresh = f && f.kind === 'draw' && f.by === p, from = fresh ? Math.min(goal, f.from) : n;
+  if (goal > 12) return `<span class="pokn" aria-label="${n} of ${goal} points">${fresh && from !== n ? `<b class="cnt" data-from="${from}" data-delay="${tim.say}">${n}</b>` : `<b>${n}</b>`}<small>/${goal}</small></span>`;
+  return `<span class="pips" aria-label="${n} of ${goal} points">${Array.from({ length: goal }, (_, k) => `<i ${lateAt(k < n ? 'on' : '', fresh && k >= from && k < n ? tim.say + (k - from) * 70 : null, 'fillin')}></i>`).join('')}</span>`;
 }
-function crapsTable(mini, a, o) {
-  const c = a && a.craps && a.craps.rolls && !a.craps.roll && a.craps.kind !== 'stop' ? a.craps : null, l = mini.last, turn = o.turn;
-  const shown = c || (l && l.rolls ? l : null);
-  const tim = c ? crapsTimes(c.rolls, c.point, c.was) : null, tEnd = c && !REDUCED ? tim.end : 0;
-  const tal = p => arcTally(p, o, pips(p, Math.min(tune(mini).goal, mini.wins[p]), tune(mini).goal, !!(c && c.result === 'win' && a.by === p), tEnd));
-  // the puck: OFF to begin with; on the point once the come-out sets one (on from the start for a point from before)
-  const slot = n => (n == null ? 0 : CRAPS_POINTS.indexOf(n) + 1), pct = k => ((k + 0.5) / 7 * 100).toFixed(2);
-  const pk = shown && shown.point != null ? slot(shown.point) : 0;
-  const puckAt = c && c.point != null && c.was == null && !REDUCED ? tim.puck : null;
-  const puck = `<div class="cpuck${pk ? ' on' : ''}${puckAt != null ? ' move' : ''}" style="left:${pct(pk)}%;--from:${pct(0)}%;--to:${pct(pk)}%${puckAt != null ? `;--t:${puckAt}ms` : ''}">${pk ? 'ON' : 'OFF'}</div>`;
-  const strip = `<div class="cpts">${['', ...CRAPS_POINTS].map((n, k) => `<i class="${k === 0 ? 'off' : ''}${shown && shown.point === n ? ' pt' : ''}">${n}</i>`).join('')}${puck}</div>`;
-  // the dice: each roll's pair in its turn, the last one staying
-  let dice = '';
-  if (shown && shown.rolls && shown.rolls.length) {
-    const n = shown.rolls.length;
-    dice = shown.rolls.map((d, k) => {
-      if (!c && k < n - 1) return '';
-      const t0 = c && !REDUCED ? tim.at[k] : null, t1 = c && !REDUCED && k < n - 1 ? tim.at[k + 1] : null;
-      if (c && REDUCED && k < n - 1) return '';
-      const end = c && !REDUCED && k === n - 1 && (c.result === 'win' || c.result === 'lose') ? ` ${c.result === 'win' ? 'cheer' : 'sad'}` : '';   // the round's last pair: the point made, a dance; a crap-out, a slump (once it has landed)
-      return `<div class="cpair${t0 != null ? ' tumble' : ''}${t1 != null ? ' gone' : ''}" style="${t0 != null ? `--t:${t0}ms;` : ''}${t1 != null ? `--t2:${t1}ms;` : ''}${end ? `--d:${t0 + CRAPS.land}ms` : ''}" aria-hidden="${k < n - 1}"><div class="cdice${end}"><span class="die cdie">${dieFace(d[0])}</span><span class="die cdie b">${dieFace(d[1])}</span></div></div>`;
-    }).join('');
-  }
-  // the round's rolls in a row, each as it lands (one row, a fixed height: a long round shows its latest)
-  const all = shown && shown.rolls ? shown.rolls : [];
-  const log = `<div class="crolls${all.length > 8 ? ' long' : ''}" aria-label="The round's rolls">${all.map((d, k) => `<span ${c && !REDUCED ? lateAt('', tim.at[k] + CRAPS.land - 60) : ''}>${d[0] + d[1]}</span>`).join('')}</div>`;
+function pokTable(mini, a, o) {
+  const t = tune(mini), goal = t.target, turn = o.turn, f = a && a.poker ? a.poker : null, tim = pokTimes(f);
+  const cur = mini.cur && mini.cur.by === turn ? mini.cur : null, mover = !o.view && !o.locked;
+  const marks = mover && cur && !f ? marksFor(o.zoom, cur) : f && f.kind === 'draw' ? f.thrown : [0, 0, 0, 0, 0];
+  const hand = f && f.hand ? f.hand : cur ? cur.hand : null;
+  const canMark = mover && cur && !f;
+  const cardAt = k => {
+    const c = hand ? hand[k] : null, at = pokSlideAt(f, k), m = marks[k] && !(f && f.kind === 'draw');
+    const inner = c ? pcard(c, at != null ? { slide: at } : {}) : pcard(null, { down: true, cls: 'ghost' });
+    const cls = `pokc${m ? ' out ' + turn : ''}${f && f.kind === 'draw' && f.thrown[k] ? ' new' : ''}`;
+    const lab = c ? `${c}${m ? ', to throw away' : ''}` : 'No card yet';
+    return canMark ? `<button class="${cls}" data-act="pokmark" data-k="${k}" aria-pressed="${!!marks[k]}" aria-label="Card ${k + 1}: ${lab}">${inner}</button>`
+      : `<span class="${cls}" aria-label="Card ${k + 1}: ${lab}">${inner}</span>`;
+  };
   const W = p => `<b class="${p}">${N(p)}</b>`;
-  const res = c ? `<p ${lateAt('arcres ' + (c.result === 'win' ? 'ok' : 'no'), tEnd)} role="status">${crapsSay(c)}</p>`
-    : l && (o.done || o.view || (o.held && l.by === turn)) ? `<p class="arcres ${l.result === 'win' ? 'ok' : l.result === 'lose' ? 'no' : ''}">${W(l.by)}: ${crapsSay(l)}</p>`
+  const tal = p => arcTally(p, o, total(p, mini, f, goal, tim));
+  const res = f && f.kind === 'draw'
+    ? `<p ${lateAt('arcres ' + (f.pts > 0 ? 'ok' : 'no'), tim.say)} role="status">${HAND_NAMES[f.rank]} · ${f.pts > 0 ? `+${f.pts}` : 'no points'}</p>`
+    : f ? '<p class="arcnote"></p>'
     : o.view ? '<p class="arcnote"></p>'
-    : mini.point != null ? `<p class="arcnote">${W(turn)} · point ${mini.point} is on</p>`
-    : `<p class="arcnote">${W(turn)}'s turn</p>`;
-  const btn = o.view ? '' : `<div class="cbtns one"><button class="big ${turn}" data-act="move" ${mv('roll')}${o.locked ? ' disabled' : ''}>Roll</button></div>`;
-  return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="craps">${strip}<div class="cfelt">${dice || '<p class="arcnote"></p>'}</div>${log}${res}</div>${btn}</div>`;
-}
-// The miniature: the felt with the two dice (the last roll's faces, ringed green when it won its round and greyed
-// when it lost; blank before a roll), and each player's rounds won as pips under it.
-export function miniature(mini, final) {
-  const l = mini.last, d = l ? l.roll || (l.rolls || [])[(l.rolls || []).length - 1] : null, goal = tune(mini).goal;
-  const dice = `<div class="tcdice${d && l.result === 'win' ? ' w' : d && l.result === 'lose' ? ' l' : ''}"><span>${d ? dieFace(d[0]) : ''}</span><span>${d ? dieFace(d[1]) : ''}</span></div>`;
-  return `<div class="tcr" aria-label="Krabs: X ${mini.wins.X}, O ${mini.wins.O} of ${goal} rounds"><div class="tfelt" aria-hidden="true">${dice}</div><div class="tpip">${pipRows(mini.wins, goal)}</div></div>`;
+    : o.locked ? `<p class="arcnote">${waitLine(turn)}</p>`
+    : `<p class="arcnote">${cur ? '' : `${W(turn)} to play`}</p>`;
+  const n = marks.reduce((x, y) => x + y, 0), drawM = 'draw:' + marks.join('');
+  const btn = o.view ? '' : cur || (f && f.kind === 'deal')
+    ? `<div class="cbtns one"><button class="big ${turn}" data-act="move" ${mv(drawM)}${mover && cur && !f ? '' : ' disabled'}>${n ? `Draw ${n}` : 'Keep all'}</button></div>`
+    : `<div class="cbtns one"><button class="big ${turn}" data-act="move" ${mv('deal')}${mover && !f ? '' : ' disabled'}>Deal</button></div>`;
+  return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="pok"><div class="pokhand ${turn}">${[0, 1, 2, 3, 4].map(cardAt).join('')}</div>${res}</div>${btn}</div>`;
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
-  g = crapsTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d, held: state.lock != null && state.lock === state.zoom }); return g;
+  g = pokTable(mini, a, { view, locked: locked || (!!f && !view), turn, zoom: state.zoom, done: !!d }); return g;
+}
+// A tap on a card of the hand dealt: marked to throw away, or kept again (this phone's draft; Draw carries the marks).
+function markAct(el) {
+  const sq = state.squares && state.squares[state.zoom], m = sq && sq.mini;
+  if (!m || m.type !== 'poker' || !m.cur || m.cur.by !== state.turn) return;
+  const k = Number(el.dataset.k);
+  if (!(k >= 0 && k < 5)) return;
+  const t = marksFor(state.zoom, m.cur); t[k] = t[k] ? 0 : 1;
+  render();
+}
+export const actions = { pokmark: markAct };
+// Someone else's move replayed (ui/replay.js): their marks go on card by card, then the draw.
+function replayInput(act, val, r) {
+  if (act !== 'pokmark' || !/^k=[0-4]$/.test(val || '')) return false;
+  const sq = state.squares && state.squares[r.sq], m = sq && sq.mini;
+  if (!m || !m.cur) return false;
+  const t = marksFor(r.sq, m.cur), k = Number(val.slice(2)); t[k] = t[k] ? 0 : 1;
+  return false;
+}
+const replaySynth = m => {
+  if (typeof m !== 'string' || !/^draw:[01]{5}$/.test(m)) return null;
+  const out = []; let t = 300;
+  m.slice(5).split('').forEach((h, k) => { if (h === '1') { out.push([t, 'pokmark', 'k=' + k]); t += 320; } });
+  out.push([t + 250, 'move', 'm=' + JSON.stringify(m)]);
+  return out;
+};
+export const replay = { input: replayInput, synth: replaySynth };
+// The miniature: each player's last scored hand as five little cards (each suit drawn in its colour, no figures), X's
+// over O's, beside their totals as pips.
+export function miniature(mini, final) {
+  const goal = tune(mini).target, S = 7 / 24;
+  const row = (p, y) => Array.from({ length: 5 }, (_, k) => {
+    const c = mini.hands[p] ? mini.hands[p][k] : null, x = k * 12 + 1;
+    const suit = c ? `<path class="tpoks${'HD'.includes(c[1]) ? ' red' : ''}" transform="translate(${x + 1.5} ${y + 3.5}) scale(${S})" d="${SUIT_PATH[c[1]]}"/>` : '';
+    return `<rect class="tpokc${c ? '' : ' none'}" x="${x}" y="${y}" width="10" height="14" rx="1.6"/>${suit}`;
+  }).join('');
+  const art = `<svg class="tpok" viewBox="0 0 60 32" aria-hidden="true">${row('X', 0)}${row('O', 17)}</svg>`;
+  return thumbArt(art, pipRows({ X: Math.min(goal, mini.score.X), O: Math.min(goal, mini.score.O) }, Math.min(goal, 12)), 'tcol tpokw', `Poker Hands: X ${mini.score.X}, O ${mini.score.O} of ${goal} points`);
+}
+// The header's line while the move holds the turn (ui/mini.js heldSub): the hand dealt, or a scoring hand that goes again.
+export function heldSub(mini, turn, f, a) {
+  if (f) return '';
+  const cur = mini.cur && mini.cur.by === turn ? mini.cur : null, W = `<b class="${turn}">${N(turn)}</b>`;
+  return cur ? `${W}: hand dealt` : `${W} scored · goes again`;
 }
 export function moveText(f, who) {
-  return !f.craps ? `${who} rolled` : f.craps.kind === 'stop' ? `${who} stopped on point ${f.craps.point}` : f.craps.result === 'win' ? `${who} won the round` : `${who} lost the round`;
+  const c = f.poker;
+  if (!c || c.kind === 'deal') return `${who} dealt a hand`;
+  return c.pts > 0 ? `${who} made ${HAND_NAMES[c.rank].toLowerCase()}: +${c.pts}` : `${who} made nothing`;
 }
-export function sounds(f, add, won, mini, last) {   // each roll: the rattle and the dice landing; the puck going on; the round's result
-  const c = f.craps;
+// A deal: a card slide for each card; a draw: a slide for each new card, then a ding for points or a thud for none.
+export function sounds(f, add, won, mini, last) {
+  const c = f.poker;
   if (!c) return;
-  if (c.kind === 'stop') { add('toggle', 0); return; }
-  if (c.roll) { add('rattle', 0); add('thunk', 500); if (c.result === 'win') add('ding', 700); else if (c.result === 'lose') add('thud', 700); return; }   // (a single roll, from before)
-  const tim = crapsTimes(c.rolls, c.point, c.was);
-  c.rolls.forEach((d, k) => { add('rattle', tim.at[k]); add('thunk', tim.at[k] + 500); });
-  if (tim.puck != null) add('clack', tim.puck);
-  add(c.result === 'win' ? 'diceWin' : 'diceLose', tim.at[c.rolls.length - 1] + CRAPS.land);   // (as the dice dance or slump)
+  if (c.kind === 'deal') { for (let k = 0; k < 5; k++) add('cardSlide', k * POK.deal); return; }
+  for (let k = 0; k < 5; k++) { const at = pokSlideAt(c, k); if (at != null) add('cardSlide', at); }
+  const tim = pokTimes(c);
+  add(c.pts > 0 ? 'ding' : 'thud', tim.say);
 }

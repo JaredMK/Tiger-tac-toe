@@ -1,73 +1,120 @@
-// Craps: the rules (pure: no page, no clock; the server runs the same code).
+// Poker Hands: the rules (pure: no page, no clock; the server runs the same code).
 import { needRng, randInt } from '../../core/random.js';
 import { goAgain, tune } from '../../core/tune.js';
+import { cardDeck } from '../shared/cards.js';
 
-// ---------- Craps, Takeover and Flood ----------
-// Craps: each player has their own count of rounds won; first to 3 (the admin's, tune(mini).goal) takes the square. A move is one tap of
-// Roll: the dice keep rolling until the round is won or lost, all rolled where the move is made (the server
-// online: no roll is known before it lands). The come-out roll wins on 7 or 11 and loses on 2, 3 or 12
-// (craps); anything else is the point, and then the point wins and a 7 loses. A lost round takes nothing
-// away; every move starts a fresh round (a square from before with a point still on rolls that one out).
-// A hot streak: a round won (not yet the square) keeps the turn, and the same player rolls a new round
-// (again); a round lost ends the turn. (Super Chaos: one round a round, no streak: scApply.)
-// The page plays the rolls back one by one (the dice tumbling, the puck going on the point).
-export const CRAPS = { goal: 3, roll: 900, quick: 560, quickAfter: 4, puck: 420, hold: 400, stop: 600, land: 560, flash: 250, pip: 400, winOdds: 244 / 495 };   // a round's flash: roll each roll (quick after the first few), the puck, the result held; land: a die's tumble (stop, flash: single rolls, from before); pip: a won round's pip filling in
-export const CRAPS_MAKE = { 4: 1 / 3, 5: 0.4, 6: 5 / 11, 8: 5 / 11, 9: 0.4, 10: 1 / 3 };   // the chance a point is rolled before a 7
-// A round rolled out: from the come-out, or from a point already on (from).
-export function crapsRound(rng, from) {
-  const rolls = [];
-  let point = from == null ? null : from, result = null;
-  while (!result) {
-    const d = [1 + randInt(rng, 6), 1 + randInt(rng, 6)], s = d[0] + d[1];
-    rolls.push(d);
-    if (point == null) {
-      if (s === 7 || s === 11) result = 'win';
-      else if (s === 2 || s === 3 || s === 12) result = 'lose';
-      else point = s;
-    } else if (s === point) result = 'win';
-    else if (s === 7) result = 'lose';
+// ---------- Poker Hands (November 2026) ----------
+// Each player keeps their own total of points. A move is two actions on the turn: Deal ('deal': five cards from a
+// fresh deck, drawn by the move's rng, the server's online; the turn is held to the square, `again`, as 21's Deal and
+// Hit), then Draw once ('draw:MMMMM', a 1 for each card thrown away; all 0s keeps the hand): the thrown cards are
+// replaced from the rest of that deck (never a card of the hand dealt), and the hand scores by its rank (the admin's
+// points: a pair 1, two pair 2, three of a kind 3, a straight 4, a flush 5, a full house 6, four of a kind 8, a
+// straight flush 10; nothing else 0). A pair of any rank counts; an ace is high or low (A-2-3-4-5 is a straight; no
+// wrapping round past the ace). The first total at `target` takes the square. With "Go again on success" on
+// (AGAIN_TUNE), a hand that scores keeps the turn: a fresh deal. A timeout with a hand dealt (core/board.js
+// timeoutClose: 'auto') scores the hand as it was dealt, nothing thrown (as 21 stands on a hand in play).
+// Nothing is hidden: the hand rides the public state (it is the mover's own and is shown to both), and the cards
+// drawn are drawn only as the draw is made.
+export const POK = { deal: 90, dealMs: 260, out: 220, hold: 650 };   // the moments: a card slides in every `deal` ms, each taking dealMs; thrown cards go `out` first
+export const HANDS = ['none', 'pair', 'two', 'three', 'straight', 'flush', 'full', 'four', 'sf'];
+export const HAND_NAMES = { none: 'Nothing', pair: 'Pair', two: 'Two pair', three: 'Three of a kind', straight: 'Straight', flush: 'Flush', full: 'Full house', four: 'Four of a kind', sf: 'Straight flush' };
+export const POK_PTS = { none: 0, pair: 1, two: 2, three: 3, straight: 4, flush: 5, full: 6, four: 8, sf: 10 };   // (the defaults; the square's own from its settings: pokPoints)
+export const pokCfg = mini => tune(mini);
+export const pokPoints = mini => { const t = tune(mini); return { none: 0, pair: t.pair, two: t.two, three: t.three, straight: t.straight, flush: t.flush, full: t.full, four: t.four, sf: t.sf }; };
+const RV = { '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, T: 10, J: 11, Q: 12, K: 13, A: 14 };
+export const rankVal = c => RV[c[0]];
+// The rank of five cards (one of HANDS).
+export function handRank(cards) {
+  const cnt = {}, suits = new Set();
+  for (const c of cards) { cnt[c[0]] = (cnt[c[0]] || 0) + 1; suits.add(c[1]); }
+  const counts = Object.values(cnt).sort((a, b) => b - a), flush = suits.size === 1 && cards.length === 5;
+  let straight = false;
+  if (counts.length === 5) {
+    const v = cards.map(rankVal).sort((a, b) => a - b);
+    straight = v[4] - v[0] === 4 || (v[4] === 14 && v[0] === 2 && v[3] === 5);   // (A-2-3-4-5)
   }
-  return { rolls, point, result };
+  if (straight && flush) return 'sf';
+  if (counts[0] === 4) return 'four';
+  if (counts[0] === 3 && counts[1] === 2) return 'full';
+  if (flush) return 'flush';
+  if (straight) return 'straight';
+  if (counts[0] === 3) return 'three';
+  if (counts[0] === 2 && counts[1] === 2) return 'two';
+  if (counts[0] === 2) return 'pair';
+  return 'none';
 }
-// When each roll of a round lands (ms into the move), when the puck goes on, and when the round's result
-// shows. was: a point already on before the first roll (a square from before): the puck is on from the start.
-export function crapsTimes(rolls, point, was) {
-  const at = [];
-  let t = 0, puck = null;
-  for (let k = 0; k < rolls.length; k++) {
-    at.push(t); t += k < CRAPS.quickAfter ? CRAPS.roll : CRAPS.quick;
-    if (k === 0 && point != null && was == null) { puck = at[0] + CRAPS.land; t += CRAPS.puck; }
-  }
-  return { at, puck, end: t };
-}
+export const handPoints = (mini, cards) => pokPoints(mini)[handRank(cards)];
+// The cards a draw comes from: the deck less the five dealt (the thrown ones never come back).
+export const pokRest = hand => cardDeck().filter(c => !hand.includes(c));
 export function create(type, rng) {
-  return { type, wins: { X: 0, O: 0 }, rounds: { X: 0, O: 0 }, point: null, live: null, rolls: [], last: null };   // point, live, rolls: a round left with its point on (from before); every move now rolls a round out
+  return { type, v: 1, score: { X: 0, O: 0 }, hands: { X: null, O: null }, cur: null, last: null };   // cur: the hand dealt, waiting for the draw { by, hand }; hands: each player's last scored hand (the miniature)
 }
-export function apply(mini, p, m, rng, idx) { return roll(mini, p, m, rng, true); }
-export function scApply(mini, p, m, rng) { return roll(mini, p, m, rng, false); }   // Super Chaos: a round's move is one round, won or lost
-function roll(mini, p, m, rng, streak) {   // Roll: the round, rolled out
-  if (m !== 'roll' && m !== 'auto') return { ok: false, reason: 'bad' };
-  const was = mini.point == null ? null : mini.point, r = crapsRound(needRng(rng), was);
-  mini.rounds[p] += 1; if (r.result === 'win') mini.wins[p] += 1;
-  mini.last = { by: p, kind: 'round', rolls: r.rolls.map(d => d.slice()), point: r.point, was, result: r.result };
-  mini.point = null; mini.live = null; mini.rolls = [];
-  if (mini.wins[p] >= tune(mini).goal) return { ok: true, outcome: 'win', note: 'won' };
-  if (r.result === 'win' && streak && goAgain(mini)) return { ok: true, outcome: 'continue', note: 'won', again: true };   // a hot streak: roll again
-  return { ok: true, outcome: 'continue', note: r.result === 'win' ? 'won' : 'lost' };
+export const MASK = /^draw:[01]{5}$/;
+function pick(deck, n, r) {
+  const d = deck.slice(), out = [];
+  for (let i = 0; i < n; i++) out.push(d.splice(randInt(r, d.length), 1)[0]);
+  return out;
+}
+function settle(mini, p, hand, thrown, drawn) {
+  const kind = handRank(hand), pts = pokPoints(mini)[kind], t = tune(mini), from = mini.score[p];
+  mini.score[p] = Math.min(t.target, from + pts);
+  mini.hands[p] = hand.slice();
+  mini.cur = null;
+  mini.last = { by: p, kind: 'draw', hand: hand.slice(), thrown, drawn, rank: kind, pts, from, to: mini.score[p] };
+  if (mini.score[p] >= t.target) return { ok: true, outcome: 'win', note: kind };
+  if (pts > 0 && goAgain(mini)) return { ok: true, outcome: 'continue', note: kind, again: true };   // ("Go again on success" on: a scoring hand deals again)
+  return { ok: true, outcome: 'continue', note: kind };
+}
+export function apply(mini, p, m, rng, idx) {
+  if (mini.cur && mini.cur.by !== p) mini.cur = null;                // (a hand left by a timeout: the other side's move starts afresh)
+  if (m === 'deal') {
+    if (mini.cur) return { ok: false, reason: 'bad' };
+    const hand = pick(cardDeck(), 5, needRng(rng));
+    mini.cur = { by: p, hand };
+    mini.last = { by: p, kind: 'deal', hand: hand.slice() };
+    return { ok: true, outcome: 'continue', note: 'deal', again: true };
+  }
+  if (m === 'auto') {                                                // the time ran out with a hand dealt: it scores as it is
+    if (!mini.cur) return { ok: true, outcome: 'continue', note: 'none' };
+    return settle(mini, p, mini.cur.hand.slice(), [0, 0, 0, 0, 0], []);
+  }
+  if (typeof m === 'string' && MASK.test(m)) {
+    if (!mini.cur) return { ok: false, reason: 'bad' };
+    const thrown = m.slice(5).split('').map(Number), n = thrown.reduce((a, b) => a + b, 0);
+    const drawn = pick(pokRest(mini.cur.hand), n, needRng(rng)), hand = mini.cur.hand.slice();
+    let k = 0;
+    thrown.forEach((t, i) => { if (t) hand[i] = drawn[k++]; });
+    return settle(mini, p, hand, thrown, drawn);
+  }
+  return { ok: false, reason: 'bad' };
 }
 export function publicView(mini) {
-  return { type: 'poker', wins: { X: mini.wins.X, O: mini.wins.O }, point: mini.point == null ? null : mini.point, live: mini.live || null };
+  return { type: 'poker', v: mini.v, score: { X: mini.score.X, O: mini.score.O }, hands: { X: mini.hands.X ? mini.hands.X.slice() : null, O: mini.hands.O ? mini.hands.O.slice() : null }, cur: mini.cur ? { by: mini.cur.by, hand: mini.cur.hand.slice() } : null };
 }
+// A legal move (the tests, the sandbox): deal; then throw a random few.
 export function randomMove(mini, p, rng, from, empties) {
-  return 'roll';                                          // a timed-out turn rolls its round out
+  if (!mini.cur || mini.cur.by !== p) return 'deal';
+  return 'draw:' + Array.from({ length: 5 }, () => (rng() < 0.4 ? 1 : 0)).join('');
 }
 export function moveFlash(m, p, range, bjFrom, mini, flash) {
-  const l = mini.last; flash.craps = { kind: 'round', rolls: l.rolls.map(d => d.slice()), point: l.point, was: l.was, result: l.result, wins: { X: mini.wins.X, O: mini.wins.O } }; return;
+  flash.poker = Object.assign(JSON.parse(JSON.stringify(mini.last)), { score: { X: mini.score.X, O: mini.score.O } });
 }
-export function flashMs(f, winLen, won) {
-  if (!f.craps) return CRAPS.roll + CRAPS.hold;
-  if (f.craps.roll) return CRAPS.land + CRAPS.flash + (won ? 600 : 0);   // (a single roll, from before)
-  return crapsTimes(f.craps.rolls, f.craps.point, f.craps.was).end + (f.craps.result === 'win' ? CRAPS.pip : 0) + (won ? 600 : 0);   // the round, roll by roll (a round won: its pip filling in); the result then stays up its usual moment
+// The move's moments (ms from the move): a deal slides the five in one after another; a draw sends the thrown
+// cards away, slides the new ones in, then shows the hand's name and points (`say`), and holds.
+export function pokTimes(f) {
+  if (!f) return { say: 0, end: 300 };
+  if (f.kind === 'deal') { const land = 4 * POK.deal + POK.dealMs; return { land, say: land, end: land + 150 }; }
+  const n = (f.thrown || []).reduce((a, b) => a + b, 0), land = n ? POK.out + (n - 1) * POK.deal + POK.dealMs : 0;
+  return { land, say: land + 120, end: land + 120 + POK.hold };
 }
-// Super Chaos: each player's round is rolled out within their own move (one round, no streak: scApply), so
-// nothing carries over: the usual merge (each player's wins and rounds) is all there is.
+// When the k-th card of the hand slides in (a deal: every card; a draw: the thrown ones, in order), or null.
+export function pokSlideAt(f, k) {
+  if (!f) return null;
+  if (f.kind === 'deal') return k * POK.deal;
+  if (!f.thrown || !f.thrown[k]) return null;
+  const j = f.thrown.slice(0, k).reduce((a, b) => a + b, 0);
+  return POK.out + j * POK.deal;
+}
+export function flashMs(f, winLen, won) { return pokTimes(f.poker).end + (won ? 600 : 0); }
+// A timeout with a hand dealt (core/board.js timeoutClose): it scores as dealt ('auto').
+export function timeoutClose(mini, p) { return mini.cur && mini.cur.by === p ? 'auto' : null; }

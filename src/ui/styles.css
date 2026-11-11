@@ -3994,3 +3994,4 @@ button.pokc:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; 
 .tpok { width: 100%; height: auto; overflow: visible; }
 .tpok .tpokc { fill: #fff; stroke: var(--ink); stroke-width: .8; } .tpok .tpokc.none { fill: none; stroke-dasharray: 2 1.5; opacity: .5; }
 .tpok .tpoks { fill: var(--ink); } .tpok .tpoks.red { fill: #d6301e; }
+.t31mk.X .tmk { stroke: var(--x); } .t31mk.O .tmk { stroke: var(--o); }   /* Thirty-One: whose hand it is, in their colour */
