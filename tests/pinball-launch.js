@@ -49,4 +49,20 @@ function launchTrial(tb, power, cap) {
   if (lanes) tunnel = tunnel || 'back in the lane through the gate';
   return { end, touched, flipZone, firstTouch, tunnel, t: w.t, entered: touched || flipZone, capped, events: w.events };
 }
-module.exports = { dealTable, launchTrial };
+// A launch with nobody flipping: does the ball go down an outlane before any flip could have reached it? Every 4
+// steps once the ball is low, a copy of the table tries a flip of each flipper: the first that strikes the ball
+// means the player had their chance ('reach'). Else what became of it: 'out' (an outlane, untouched: the table
+// gives such a ball back, pinStep's save with `out`, and it is counted here all the same), 'mid' (between the
+// flippers with no flip able to touch it), 'none' (still going at 25 s).
+function launchUntouched(tb, power) {
+  const w = P.pinNew(tb, tb.cfg, tb.targets.map(() => 0)); w.cfg = Object.assign({}, w.cfg, { save: 0 });
+  P.pinLaunch(w, power);
+  for (let n = 0; !w.over && w.t < 25; n++) {
+    if (w.inPlay && w.ball.position.y > 140 && w.ball.position.x < PIN.lane.wall && n % 4 === 0) for (const side of ['L', 'R']) { const c = P.pinCopy(w); c.flip[side].on = true; for (let i = 0; i < 40; i++) { P.pinStep(c, 1 / PIN.hz); if (c.flip[side].struck) return 'reach'; } }
+    const n0 = w.events.length; P.pinStep(w, 1 / PIN.hz);
+    if (w.events.slice(n0).some(e => e.k === 'save' && e.out)) return 'out';
+  }
+  const d = w.events.find(e => e.k === 'drain');
+  return d ? (d.x < PIN.flip.L[0] - 8 || d.x > PIN.flip.R[0] + 8 ? 'out' : 'mid') : 'none';
+}
+module.exports = { dealTable, launchTrial, launchUntouched };

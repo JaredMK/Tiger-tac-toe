@@ -63,7 +63,7 @@ test('pinball: the move\'s check — a ball is its inputs: the computer\'s ball 
   // sine and cosine by arithmetic (the flippers' angles): right to 1e-10 at any angle (what matters is that it is the same arithmetic everywhere)
   for (let a = -7; a <= 7; a += 0.013) { assert.ok(Math.abs(P.dsin(a) - Math.sin(a)) < 1e-10, `sin ${a}`); assert.ok(Math.abs(P.dcos(a) - Math.cos(a)) < 1e-10, `cos ${a}`); }
 });
-test('pinball: the flippers — a ball rolling down a resting flipper leaves across the table when it is flipped out at the tip and up its own side when flipped near the base, the angle and the speed rising smoothly between (the same on both flippers, mirrored); a held flipper cradles the ball without a jitter; a ball dropped on a resting flipper bounces dead', () => {
+test('pinball: the flippers — a ball rolling down a resting flipper leaves across the table when it is flipped out at the tip, more and more nearly straight up further in, and over the lower half as a slower lob just inside of straight up (never back over its own side into the slingshot, which it clears); the angle never falls and the speed rises along the flipper (the same on both flippers, mirrored); a ball by the pivot is only carried up; a held flipper cradles the ball without a jitter; a ball dropped on a resting flipper bounces dead', () => {
   const F = PIN.flip, tb = P.pinAllSpots(0, E.pinConfig()), set = (w, x, y, vx, vy) => { w.inPlay = true; w.launchedAt = 0; w.gateOn = true; w.ball.position.x = x; w.ball.position.y = y; w.ball.velocity.x = vx; w.ball.velocity.y = vy; };
   const shot = (rho, side) => {
     const w = P.pinNew(tb, tb.cfg, tb.targets.map(() => 0)), sg = side === 'L' ? 1 : -1, ca = Math.cos(F.rest), sa = Math.sin(F.rest), rs = PIN.ballR + F.rb + (F.rt - F.rb) * rho / F.len;
@@ -73,15 +73,30 @@ test('pinball: the flippers — a ball rolling down a resting flipper leaves acr
     return null;
   };
   let last = null;
-  for (let rho = 6; rho <= 19.5; rho += 1.5) {
+  for (let rho = 4.5; rho <= 19.5; rho += 1.5) {
     const l = shot(rho, 'L'), r = shot(rho, 'R');
     assert.ok(l && r, `struck at ${rho}`);
     assert.ok(Math.abs(l.ang - r.ang) < 1e-6 && Math.abs(l.sp - r.sp) < 1e-6, 'the two flippers mirror each other');
     assert.ok(l.ms < 60, `the ball leaves within the swing (${l.ms.toFixed(0)} ms)`);
-    if (last) { assert.ok(l.ang > last.ang + 2 && l.ang < last.ang + 9, `the angle rises smoothly along the flipper (${last.ang.toFixed(1)} -> ${l.ang.toFixed(1)} at ${rho})`); assert.ok(l.sp > last.sp, 'faster towards the tip'); }
+    assert.ok(l.ang > 2.5, `never back over its own side (${l.ang.toFixed(1)} at ${rho})`);
+    if (last) { assert.ok(l.ang >= last.ang - 1e-9 && l.ang < last.ang + 9, `the angle never falls, and rises smoothly, along the flipper (${last.ang.toFixed(1)} -> ${l.ang.toFixed(1)} at ${rho})`); assert.ok(l.sp > last.sp, 'faster towards the tip'); }
     last = l;
   }
-  assert.ok(shot(6, 'L').ang < 0 && shot(19.5, 'L').ang > 35, 'near the base: up its own side; at the tip: across the table');
+  assert.ok(shot(6, 'L').ang < 4 && shot(6, 'L').sp < 320 && shot(19.5, 'L').ang > 35 && shot(19.5, 'L').sp > 400, 'the lower half: a slow lob just inside of straight up; the tip: fast, across the table');
+  for (const rho of [4.5, 6, 7.5, 9]) {                               // the lob clears the slingshot over the flipper's base: nothing pinches, nothing kicks it back
+    const w = P.pinNew(tb, tb.cfg, tb.targets.map(() => 0)), ca = Math.cos(F.rest), sa = Math.sin(F.rest), rs = PIN.ballR + F.rb + (F.rt - F.rb) * rho / F.len;
+    set(w, F.L[0] + ca * rho + sa * rs, F.L[1] + sa * rho - ca * rs, ca * 60, sa * 60); w.flip.L.on = true;
+    let top = 999; for (let k = 0; k < 150; k++) { P.pinStep(w, 1 / 480); top = Math.min(top, w.ball.position.y); }
+    assert.ok(!w.events.some(e => e.k === 'sling') && top < 110, `flipped at ${rho} from the pivot: up past the slingshot (to y ${top.toFixed(0)})`);
+  }
+  {                                                                  // by the pivot (the inlane's mouth): carried up, never struck, and back to the cradle
+    const w = P.pinNew(tb, tb.cfg, tb.targets.map(() => 0)); set(w, 14.8, 126, 0, 30); w.flip.L.on = true;
+    for (let k = 0; k < 480 * 3; k++) P.pinStep(w, 1 / 480);
+    const at = [w.ball.position.x, w.ball.position.y];
+    w.flip.L.on = false; for (let k = 0; k < 10; k++) P.pinStep(w, 1 / 480); w.flip.L.on = true;   // let go for a moment and flipped again at once
+    let struck = false; for (let k = 0; k < 480 * 3; k++) { P.pinStep(w, 1 / 480); if (w.flip.L.struck) struck = true; }
+    assert.ok(!struck && Math.hypot(w.ball.position.x - at[0], w.ball.position.y - at[1]) < 0.5 && !w.over, 'a cradled ball flipped again at once is carried, and sits where it sat');
+  }
   // the cradle
   const w = P.pinNew(tb, tb.cfg, tb.targets.map(() => 0)); set(w, 14.8, 126, 0, 30); w.flip.L.on = true;
   let moved = 0, at = null;
@@ -218,4 +233,16 @@ test('pinball: the move\'s flash carries the ball\'s inputs and no recording; re
   const easy = lit('easy'), normal = lit('normal'), hard = lit('hard');
   assert.ok(easy < normal && normal < hard, `easy ${easy} < normal ${normal} < hard ${hard} targets over 60 first balls`);
   assert.deepEqual(E.aiOf('pinball').best(E.newMini('pinball', E.makeRng('q')), 'X', E.makeRng('r'), null, { level: 'hard' }).move, { fing: true, level: 'hard' }, 'the level goes with the ball');
+});
+test('pinball: a ball that goes down an outlane before any flipper has touched it since its launch comes back to the plunger (whenever it happens); once a flipper has had it, an outlane is a drain like any other; between the flippers it is a drain either way', () => {
+  const tb = P.pinAllSpots(0, Object.assign(E.pinConfig(), { save: 0 })), drop = (x, touched) => { const w = P.pinNew(tb, tb.cfg, tb.targets.map(() => 0)); P.pinLaunch(w, 0.5); P.pinRun(w, 100, {}); w.launchedAt = w.t - 20; w.touched = touched; w.ball.position.x = x; w.ball.position.y = PIN.drain - 2; w.ball.velocity.x = 0; w.ball.velocity.y = 200; for (let k = 0; k < 4; k++) P.pinRun(w, 20, {}); return w; };
+  for (const x of [5.7, P.PIN.mid * 2 - 5.7]) {
+    const a = drop(x, false); assert.ok(!a.over && !a.inPlay && a.events.some(e => e.k === 'save' && e.out), `an outlane (x ${x}), untouched: saved`);
+    for (let k = 0; k < 60; k++) P.pinRun(a, 20, {}); assert.ok(a.inPlay && a.events.some(e => e.k === 'launch' && e.auto), 'and launched again by the table');
+    const b = drop(x, true); assert.ok(b.over && P.pinEnd(b) === 'drain', 'after a flipper has had it: a drain');
+  }
+  assert.ok(drop(P.PIN.mid, false).over, 'between the flippers: a drain, touched or not');
+  // a flipper's touch is noted by the ball's own contact with it (at rest too: the player had their chance)
+  const w = P.pinNew(tb, tb.cfg, tb.targets.map(() => 0)); P.pinLaunch(w, 0.5); P.pinRun(w, 100, {}); assert.equal(w.touched, false);
+  w.ball.position.x = PIN.flip.L[0] + 12; w.ball.position.y = PIN.flip.L[1] - 10; w.ball.velocity.x = 0; w.ball.velocity.y = 100; P.pinRun(w, 200, {}); assert.equal(w.touched, true);
 });
