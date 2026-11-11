@@ -6,7 +6,7 @@ import { restrictGames } from '../core/games.js';
 import { NAME_MAX, playerName } from '../core/match.js';
 import { upgradeMini } from '../core/minis.js';
 import { isRace } from '../core/race.js';
-import { MATCH_FIELDS, packMatch, parseMatch, resignLocal } from '../core/records.js';
+import { MATCH_FIELDS, packMatch, parseMatch, resignLocal, sideMergeOf } from '../core/records.js';
 import { ANIM, newTimer, normTimer, PLAYER_TIMERS, replaySpeed, setupSpec, speedMode, TIMER_DEFAULT } from '../core/timer.js';
 import { other } from '../core/util.js';
 import { echoPinned } from '../games/echo/view.js';
@@ -96,14 +96,19 @@ function listenRoom(code) {
   presUnsub = fb.m.onValue(fb.m.ref(fb.db, 'presence/' + code), s => { presence = s.val(); noteNet(); if (state.online) render(); });
   listenReacts(code);
 }
-// This side's own parts of the match's race squares (games/{id}/sides/{me}: that side alone reads it; core/race.js): merged into
+// This side's own parts of the match's squares (games/{id}/sides/{me}: that side alone reads it: a race square's, core/race.js;
+// a hand's or a rack's, core/records.js sidePartOf): merged into
 // the squares wherever the record is taken (takeFields, presentEntry), and again when the node arrives after the record.
 let mySides = null;
 export function setMySides(v) { mySides = v && typeof v === 'object' ? v : null; }
 export function mergeMySides() {
   const me = state.online && state.online.me;
   if (!me || !mySides || !Array.isArray(state.squares)) return;
-  state.squares.forEach((sq, k) => { if (sq && sq.mini && isRace(sq.mini) && !sq.owner && mySides[k] != null) sq.mini.side = Object.assign({}, sq.mini.side, { [me]: JSON.parse(JSON.stringify(mySides[k])) }); });
+  state.squares.forEach((sq, k) => {
+    if (!sq || !sq.mini || sq.owner || mySides[k] == null) return;
+    if (isRace(sq.mini)) sq.mini.side = Object.assign({}, sq.mini.side, { [me]: JSON.parse(JSON.stringify(mySides[k])) });
+    else sideMergeOf(sq.mini, me, mySides[k]);                     // a hand or a rack this side alone holds (rules.js sideMerge: Rummy Lite, Word Tiles)
+  });
 }
 export function stopListening() {                                 // (the match's listeners; the room's own node stays until the room is left: stopLobby)
   mySides = null;

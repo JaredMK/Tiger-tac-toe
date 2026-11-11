@@ -4126,3 +4126,5 @@ button.dukd:disabled { cursor: default; }
 .dukc.X { box-shadow: 0 0 0 2.5px var(--x); } .dukc.O { box-shadow: 0 0 0 2.5px var(--o); }   /* Hook-a-Duck's shared pond: each catch ringed in its hooker's colour */
 .trmy .trmyp { display: flex; justify-content: center; }   /* Rummy Lite's miniature (shared pile): the pile's top between the two hands of card backs */
 .trmy .trmyb.X { box-shadow: inset 0 0 0 .6cqw var(--x); } .trmy .trmyb.O { box-shadow: inset 0 0 0 .6cqw var(--o); }
+.twt .twc.on.oX { fill: #ffd9cf; } .twt .twc.on.oO { fill: #ffefb3; }   /* Word Tiles (shared board): a tile in the colour of whoever laid it, in the miniature and on the board */
+.wtt.oX { box-shadow: inset 0 -.45em 0 -.32em var(--x); } .wtt.oO { box-shadow: inset 0 -.45em 0 -.32em var(--o); }

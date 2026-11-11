@@ -3,22 +3,26 @@ import { needRng, shuffle } from '../../core/random.js';
 import { goAgain, tune, tuneLive } from '../../core/tune.js';
 import { CARD, cardDeck } from '../shared/cards.js';
 
-// ---------- Rummy Lite (November 2026) ----------
-// Each player plays alone: their own hand of `hand` (6) cards, their own deck (hidden, its order on the server alone:
-// secret/hide) and their own discard pile (open, its top card on show). A move is two steps:
+// ---------- Rummy Lite (November 2026; one deck and one pile for both from the rework, v 2) ----------
+// Both players draw from one shared deck (hidden: its order on the server alone, secret/hide) and throw onto one shared
+// discard pile (open: its cards in order, the top one on show), so a player can take the other's discard. Each holds a
+// hand of `hand` (6) cards that is theirs alone: online it rides the per-side channel (games/{id}/sides/{side}: rules.js
+// sidePart/sideMerge, core/records.js), never the public state, a move's entry or the other phone; on one phone (the
+// computer's match) the view shows the other hand as card backs, and the computer reads only its own (publicView with
+// the side). A move is two steps:
 //  - Take: the top card of the pile ('pile') or the top of the deck ('deck'); the turn is held to the square for the
 //    second step (`again`: the game's own step, as 21's Deal is, not a success). The deck run out: the pile under its top
-//    card is shuffled into a new deck (the move's rng: the server's online).
+//    card is shuffled into a new deck (the move's rng: the server's online). A card taken from the pile was on show and
+//    stays public (`held.c`); one from the deck is the taker's alone.
 //  - Discard: one card of the seven (`{ d: card }`), face up on the pile. The hand is checked then: `melds` (2) melds
 //    side by side, each a set (three of a rank) or a run (three in a row in one suit; an ace low, A-2-3, or high, Q-K-A,
 //    never round the corner), wins the square. With "Go again on success" on, a discard that leaves the hand with
-//    more melds than it had keeps the turn (a new Take).
-// A timeout between the steps puts the card just taken back on the pile (core/board.js timeoutClose: 'auto').
-// Nothing of a player's touches the other's: a player moving alone wins (individual progress). Both hands are open
-// (no per-side secret channel online; nothing in one hand matters to the other player).
-// `ranks`: the ranks in each player's deck, from the ace up (6 by default: the ace to 6, 24 cards; 13 a full deck, where
-// a square takes about 18 turns each).
-export const RUMMY = { hand: 6, melds: 2, ranks: 6 };
+//    more melds than it had keeps the turn (a new Take). How many melds each hand holds is public (`mc`), never which.
+// A timeout between the steps throws the card just taken back on the pile (core/board.js timeoutClose: 'auto').
+// Never dealt to two people on one phone (meta.js samePhone: false). A square from before the rework (v 1: a deck and
+// pile each) is dealt again as the record is read (`stale`, core/records.js fullState).
+// `ranks`: the ranks in the deck, from the ace up (8 by default: the ace to 8, 32 cards; tests/sim/rummy.sim.js).
+export const RUMMY = { hand: 6, melds: 2, ranks: 8 };
 export const rmyCfg = mini => { const t = tune(mini); return { hand: Math.round(t.hand != null ? t.hand : RUMMY.hand), melds: Math.round(t.melds != null ? t.melds : RUMMY.melds), ranks: Math.round(t.ranks != null ? t.ranks : RUMMY.ranks) }; };
 // A card's rank as a number: 2-9, T 10, J 11, Q 12, K 13, A 14 (low in a run: 1).
 export const rmyVal = c => '23456789TJQKA'.indexOf(c[0]) + 2;
@@ -61,50 +65,51 @@ export const rmyWins = (hand, need) => rmyMelds(hand).n >= need;
 const sortHand = h => h.slice().sort((a, b) => CARD.suits.indexOf(a[1]) - CARD.suits.indexOf(b[1]) || rmyVal(a) - rmyVal(b));
 export { sortHand as rmySort };
 export function create(type, rng) {
-  const r = needRng(rng), c = rmyCfg({ type, tune: tuneLive(type) }), deal = () => shuffle(rmyDeck(c.ranks), r);
-  const mini = { type, v: 1, hand: {}, deck: {}, pile: {}, left: {}, held: null, turns: { X: 0, O: 0 }, last: null };
-  for (const p of ['X', 'O']) {
-    const d = deal();
-    mini.hand[p] = sortHand(d.splice(d.length - c.hand, c.hand));
-    mini.pile[p] = [d.pop()];
-    mini.deck[p] = d; mini.left[p] = d.length;
-  }
+  const r = needRng(rng), c = rmyCfg({ type, tune: tuneLive(type) }), d = shuffle(rmyDeck(c.ranks), r);
+  const mini = { type, v: 2, hand: {}, deck: d, pile: [], left: 0, hn: { X: c.hand, O: c.hand }, mc: { X: 0, O: 0 }, held: null, turns: { X: 0, O: 0 }, last: null };
+  for (const p of ['X', 'O']) mini.hand[p] = sortHand(d.splice(d.length - c.hand, c.hand));
+  for (const p of ['X', 'O']) mini.mc[p] = rmyMelds(mini.hand[p]).n;
+  mini.pile = [d.pop()];
+  mini.left = d.length;
   return mini;
 }
-// The top of p's deck (the deck out: the pile under its top card shuffled in).
-function draw(mini, p, rng) {
-  if (!mini.deck || typeof mini.deck !== 'object') mini.deck = {};
-  if (!Array.isArray(mini.deck[p])) mini.deck[p] = [];
+export const stale = mini => (mini.v || 1) < 2;                    // (a square from before the rework: dealt again, core/records.js)
+// The top of the deck (the deck out: the pile under its top card shuffled in; nothing left at all: a fresh deck of
+// every card not in a hand or on the pile).
+function draw(mini, rng) {
+  if (!Array.isArray(mini.deck)) mini.deck = [];
   let reshuf = false;
-  if (!mini.deck[p].length) {
-    const pile = mini.pile[p], top = pile.pop();
-    mini.deck[p] = shuffle(pile.splice(0), needRng(rng));
-    mini.pile[p] = top ? [top] : [];
+  if (!mini.deck.length) {
+    const top = mini.pile.pop();
+    mini.deck = shuffle(mini.pile.splice(0), needRng(rng));
+    mini.pile = top ? [top] : [];
     reshuf = true;
-    if (!mini.deck[p].length) {                                    // (a deck and pile with nothing left: a fresh deck, all but the cards in play)
-      const inPlay = new Set([...mini.hand[p], ...mini.pile[p]]);
-      mini.deck[p] = shuffle(rmyDeck(rmyCfg(mini).ranks).filter(c => !inPlay.has(c)), needRng(rng));
+    if (!mini.deck.length) {
+      const inPlay = new Set([...mini.hand.X, ...mini.hand.O, ...mini.pile]);
+      mini.deck = shuffle(rmyDeck(rmyCfg(mini).ranks).filter(c => !inPlay.has(c)), needRng(rng));
     }
   }
-  const c = mini.deck[p].pop();
-  mini.left[p] = mini.deck[p].length;
+  const c = mini.deck.pop();
+  mini.left = mini.deck.length;
   return { c, reshuf };
 }
 export function apply(mini, p, m, rng, idx) {
   const cfg = rmyCfg(mini);
+  if (!mini.hand || !Array.isArray(mini.hand[p])) return { ok: false, reason: 'secret' };
   if (mini.held && mini.held.by !== p) mini.held = null;           // (a take left by the other player's timeout: gone; its card was put back then)
   if (m === 'pile' || m === 'deck') {
     if (mini.held) return { ok: false, reason: 'taken' };
     const before = rmyMelds(mini.hand[p]).n;
     let c, reshuf = false;
-    if (m === 'pile') { c = mini.pile[p].pop(); if (!c) return { ok: false, reason: 'empty' }; }
-    else ({ c, reshuf } = draw(mini, p, rng));
+    if (m === 'pile') { c = mini.pile.pop(); if (!c) return { ok: false, reason: 'empty' }; }
+    else ({ c, reshuf } = draw(mini, rng));
     mini.hand[p] = sortHand(mini.hand[p].concat(c));
+    mini.hn[p] = mini.hand[p].length;
     mini.held = { by: p, from: m, c, before };
-    mini.last = { by: p, kind: 'take', from: m, c, reshuf };
+    mini.last = Object.assign({ by: p, kind: 'take', from: m, reshuf, left: mini.left }, m === 'pile' ? { c } : {});   // (a deck card: the taker's alone)
     return { ok: true, outcome: 'continue', note: 'take', again: true };
   }
-  if (m === 'auto') {                                              // the time ran out between the steps: the card taken goes back on the pile
+  if (m === 'auto') {                                              // the time ran out between the steps: the card taken goes on the pile
     if (!mini.held) return { ok: false, reason: 'bad' };
     m = { d: mini.held.c };
   }
@@ -113,32 +118,51 @@ export function apply(mini, p, m, rng, idx) {
   if (i < 0) return { ok: false, reason: 'bad' };
   const before = mini.held.before;
   hand.splice(i, 1);
-  mini.pile[p].push(m.d);
+  mini.pile.push(m.d);
   mini.held = null;
   mini.turns[p] += 1;
+  mini.hn[p] = hand.length;
   const got = rmyMelds(hand);
-  mini.last = { by: p, kind: 'discard', d: m.d, melds: got.melds, n: got.n };
+  mini.mc[p] = got.n;
+  mini.last = { by: p, kind: 'discard', d: m.d, n: got.n };
   if (got.n >= cfg.melds) return { ok: true, outcome: 'win', note: 'melds' };
   if (got.n > before && goAgain(mini)) return { ok: true, outcome: 'continue', note: 'meld', again: true };   // ("Go again on success" on: a new meld, take again)
   return { ok: true, outcome: 'continue', note: got.n > before ? 'meld' : 'discard' };
 }
 export function timeoutClose(mini, p) { return mini.held && mini.held.by === p ? 'auto' : null; }
-export function publicView(mini) {
-  return { type: 'rummy', v: mini.v, hand: { X: mini.hand.X.slice(), O: mini.hand.O.slice() }, pile: { X: mini.pile.X.slice(), O: mini.pile.O.slice() }, left: { X: mini.left.X, O: mini.left.O }, held: mini.held ? Object.assign({}, mini.held) : null, turns: { X: mini.turns.X, O: mini.turns.O } };   // never the decks (only how many are left); the piles are open (every card in them was shown)
+// What the board may show (and the computer for `forSide` may know): the pile, the counts, the meld counts, the take in
+// hand (its card only when it came off the pile), and forSide's own hand alone. A claimed square: both hands (its review).
+const pubHeld = h => (h ? Object.assign({ by: h.by, from: h.from }, h.from === 'pile' ? { c: h.c } : {}) : null);
+export function publicView(mini, forSide) {
+  const v = { type: 'rummy', v: mini.v, pile: (mini.pile || []).slice(), left: mini.left, hn: Object.assign({}, mini.hn), mc: Object.assign({}, mini.mc), held: pubHeld(mini.held), turns: Object.assign({}, mini.turns), last: mini.last ? JSON.parse(JSON.stringify(mini.last)) : null, hand: {} };
+  if (forSide && mini.hand && mini.hand[forSide]) { v.hand[forSide] = mini.hand[forSide].slice(); if (mini.held && mini.held.by === forSide) v.held.c = mini.held.c; }
+  return v;
 }
-export function secret(mini) {   // the decks (the order of each)
-  return mini.deck ? { deck: { X: (mini.deck.X || []).slice(), O: (mini.deck.O || []).slice() } } : null;
+// The server's alone: the deck's order, both hands and the take in hand whole.
+export function secret(mini) {
+  if (!mini.hand || !Array.isArray(mini.deck)) return null;
+  return { deck: mini.deck.slice(), hand: { X: (mini.hand.X || []).slice(), O: (mini.hand.O || []).slice() }, held: mini.held ? Object.assign({}, mini.held) : null };
 }
-export function hide(m, k, st) { delete m.deck; }
+export function hide(m, k, st) { delete m.deck; if (m.hand) m.hand = {}; m.held = pubHeld(m.held); }
+// Each side's own part (games/{id}/sides/{side}: that side alone reads it): its hand, and the card it took from the deck.
+export function sidePart(mini, p) {
+  if (!mini.hand || !Array.isArray(mini.hand[p])) return null;
+  return Object.assign({ hand: mini.hand[p].slice() }, mini.held && mini.held.by === p ? { took: mini.held.c } : {});
+}
+export function sideMerge(mini, p, part) {
+  if (!part || !Array.isArray(part.hand)) return;
+  mini.hand = Object.assign({}, mini.hand, { [p]: part.hand.slice() });
+  if (part.took && mini.held && mini.held.by === p) mini.held = Object.assign({}, mini.held, { c: part.took });
+}
 export function canMove(mini) { return true; }
 export function randomMove(mini, p, rng, from, empties) {        // (the tests' stand-in: a take, then any card)
   const r = needRng(rng);
-  if (!mini.held || mini.held.by !== p) return r() < 0.5 && mini.pile[p].length ? 'pile' : 'deck';
+  if (!mini.held || mini.held.by !== p) return r() < 0.5 && mini.pile.length ? 'pile' : 'deck';
   const h = mini.hand[p]; return { d: h[Math.floor(r() * h.length)] };
 }
 export function moveFlash(m, p, range, bjFrom, mini, flash) {
   const l = mini.last;
-  flash.rummy = Object.assign({}, l, { hand: mini.hand[p].slice(), top: mini.pile[p].slice(-1)[0] || null, left: mini.left[p] }, l.melds ? { melds: l.melds.map(x => x.slice()) } : {});
+  flash.rummy = Object.assign({}, l, { top: mini.pile.slice(-1)[0] || null, left: mini.left, hn: Object.assign({}, mini.hn), mc: Object.assign({}, mini.mc) });   // (public alone: the entry goes to both phones; the mover's hand is in its own side)
 }
 // The move's moments (ms): a take slides the card from the pile or the deck into the hand; a discard slides it out
 // onto the pile, and a meld lights after it.

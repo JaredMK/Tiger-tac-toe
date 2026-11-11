@@ -5,18 +5,21 @@ import { pcard } from '../../ui/cards.js';
 import { cardName } from '../shared/cards.js';
 import { arcTally, lateAt } from '../../ui/progress.js';
 import { markSvgG, pipRows, thumbArt, tinyCard } from '../../ui/thumbs.js';
+import { mySide } from '../../net/room.js';
 
-// The table of the player on the move (or whose move is playing): their deck (face down, how many left) and their pile
-// (its top card face up) on the felt, Take by a tap on either; their hand below, sorted by suit and rank, every meld
-// in it ringed in their colour; a tap on a card of the seven throws it. Above, the other player's hand small, its
-// melds tinted. A take slides the card from the pile or the deck into the hand; a throw slides it onto the pile, and
-// a meld made lights after it. Every row has its room from the start: nothing moves.
+// The table (v 2: one deck and one pile for both): the shared deck (face down, how many left) and the shared pile (its
+// top card face up) on the felt, Take by a tap on either; this phone's hand below (its own side alone: online from its
+// side's node, net/room.js; against the computer the player's), sorted, every meld ringed in its colour; a tap on a card
+// of the seven throws it. Above, the other hand as card backs (its count; its melds made as pips in the tally). A take
+// slides a card into the taker's hand; a throw slides it onto the pile, and a meld made lights after it. Every row has
+// its room from the start: nothing moves.
 const W = p => `<b class="${p}">${N(p)}</b>`;
 const meldSets = hand => rmyMelds(hand).melds;
-function handRow(hand, p, o, s, can) {
+const backs = (n, cls) => Array.from({ length: Math.max(0, n) }, () => `<span class="rmyc rmyb">${pcard(null, { down: true })}</span>`).join('');
+function handRow(hand, p, o, s, can, fresh) {
   const melds = meldSets(hand), inMeld = new Map();
   melds.forEach((m, k) => m.forEach(c => inMeld.set(c, k)));
-  const fresh = s && s.kind === 'take' ? s.c : null, lit = s && s.kind === 'discard' && s.n && !REDUCED ? RMYT.slide : null;
+  const lit = s && s.kind === 'discard' && s.n && !REDUCED ? RMYT.slide : null;
   // the melds first (each its own group, ringed), then the cards left, all in the hand's order
   const order = melds.flat().concat(hand.filter(c => !inMeld.has(c)));
   const cards = order.map((c, i) => {
@@ -28,34 +31,40 @@ function handRow(hand, p, o, s, can) {
   }).join('');
   return `<div class="rmyhand ${p}${lit != null ? ' lit' : ''}" style="--n:${hand.length}">${cards}</div>`;
 }
+const handN = (mini, p) => (mini.hn && Number.isInteger(mini.hn[p]) ? mini.hn[p] : Array.isArray(mini.hand && mini.hand[p]) ? mini.hand[p].length : rmyCfg(mini).hand);
 function rummyTable(mini, a, o) {
-  const s = a && a.rummy ? a.rummy : null, turn = o.turn, by = s ? a.by : mini.held ? mini.held.by : turn, other = by === 'X' ? 'O' : 'X';
+  const s = a && a.rummy ? a.rummy : null, turn = o.turn, by = s ? a.by : mini.held ? mini.held.by : turn;
   const need = rmyCfg(mini).melds, held = mini.held && mini.held.by === by ? mini.held : null;
-  const mine = !o.view && !o.locked && by === turn;
+  const me = mySide() || by, other = me === 'X' ? 'O' : 'X', myHand = Array.isArray(mini.hand && mini.hand[me]) ? mini.hand[me] : null;
+  const mine = !o.view && !o.locked && by === turn && by === me;
+  const mc = p => Math.min(need, mini.mc && Number.isInteger(mini.mc[p]) ? mini.mc[p] : Array.isArray(mini.hand && mini.hand[p]) ? rmyMelds(mini.hand[p]).n : 0);
   const tal = p => {
-    const n = Math.min(need, rmyMelds(mini.hand[p]).n), lit = s && s.kind === 'discard' && a.by === p && s.n && !REDUCED ? rmyTimes(s).light : null;
+    const n = mc(p), lit = s && s.kind === 'discard' && a.by === p && s.n && !REDUCED ? rmyTimes(s).light : null;
     return arcTally(p, o, `<span class="pips" aria-label="${n} of ${need} melds">${Array.from({ length: need }, (_, k) => `<i ${lateAt(k < n ? 'on' : '', k < n && lit != null ? lit : null, 'fillin')}></i>`).join('')}</span>`);
   };
-  const pile = mini.pile[by] || [], top = pile[pile.length - 1] || null, left = mini.left ? mini.left[by] : 0;
-  const canTake = mine && !held, canThrow = mine && !!held;
+  const pile = Array.isArray(mini.pile) ? mini.pile : [], top = pile[pile.length - 1] || null, left = Number.isInteger(mini.left) ? mini.left : 0;
+  const canTake = mine && !held, canThrow = mine && !!held && !!myHand;
   const thrown = s && s.kind === 'discard' && !REDUCED ? { slide: 0 } : {};
-  const deckBtn = `<button class="rmydeck" data-act="move" ${mv('deck')}${canTake ? '' : ' disabled tabindex="-1"'} aria-label="Take from your deck (${left} left)">${pcard(null, { down: true })}<span class="rmyn">${left}</span></button>`;
-  const pileBtn = `<button class="rmypile" data-act="move" ${mv('pile')}${canTake && top ? '' : ' disabled tabindex="-1"'} aria-label="${top ? 'Take the top of your pile' : 'Your pile is empty'}">${top ? pcard(top, thrown) : pcard(null, { cls: 'ghost' })}</button>`;
-  const opp = `<div class="rmyopp ${other}"><svg class="rmymk" viewBox="-10 -10 20 20" aria-hidden="true">${markSvgG(other, 6)}</svg><div class="rmyoh">${(() => { const h = mini.hand[other], mm = meldSets(h), inM = new Set(mm.flat()); return mm.flat().concat(h.filter(c => !inM.has(c))).map(c => tinyCard(c, inM.has(c) ? 'rmyti ' + other : '')).join(''); })()}</div></div>`;
+  const deckBtn = `<button class="rmydeck" data-act="move" ${mv('deck')}${canTake ? '' : ' disabled tabindex="-1"'} aria-label="Take from the deck (${left} left)">${pcard(null, { down: true })}<span class="rmyn">${left}</span></button>`;
+  const pileBtn = `<button class="rmypile" data-act="move" ${mv('pile')}${canTake && top ? '' : ' disabled tabindex="-1"'} aria-label="${top ? 'Take the top of the pile' : 'The pile is empty'}">${top ? pcard(top, thrown) : pcard(null, { cls: 'ghost' })}</button>`;
+  const opp = `<div class="rmyopp ${other}"><svg class="rmymk" viewBox="-10 -10 20 20" aria-hidden="true">${markSvgG(other, 6)}</svg><div class="rmyoh">${backs(handN(mini, other))}</div></div>`;
+  const fresh = held && held.by === me ? held.c : null;
   let line;
   if (s && s.kind === 'take') line = `<p class="arcres" role="status">${W(a.by)} took ${s.from === 'pile' ? 'the pile\'s card' : 'from the deck'}${s.reshuf ? ' · deck shuffled' : ''}</p>`;
   else if (s && s.kind === 'discard') line = `<p ${lateAt('arcres' + (s.n ? ' ok' : ''), s.n && !REDUCED ? rmyTimes(s).light : null)} role="status">${s.n ? `${s.n} meld${s.n === 1 ? '' : 's'}` : 'Thrown'}</p>`;
   else if (o.view) line = '<p class="arcnote"></p>';
   else if (mine) line = `<p class="arcres">${held ? 'Throw a card' : 'Take a card'}</p>`;
   else line = `<p class="arcnote">${o.locked || by !== turn ? waitLine(by) : ''}</p>`;
-  return `<div class="g-arc rmy"><div class="ctals">${tal('X')}${tal('O')}</div>${opp}<div class="cfelt rmyfelt"><span class="rmywho">${W(by)}</span>${deckBtn}${pileBtn}</div>${handRow(mini.hand[by], by, o, s && a.by === by ? s : null, canThrow)}${line}</div>`;
+  const hand = myHand ? handRow(myHand, me, o, s && a.by === me ? s : null, canThrow, fresh) : `<div class="rmyhand ${me}" style="--n:${handN(mini, me)}">${backs(handN(mini, me))}</div>`;
+  return `<div class="g-arc rmy"><div class="ctals">${tal('X')}${tal('O')}</div>${opp}<div class="cfelt rmyfelt"><span class="rmywho">${W(by)}</span>${deckBtn}${pileBtn}</div>${hand}${line}</div>`;
 }
-// The miniature: each player's hand as tiny cards in a row, their melds first and tinted in their colour, with the
-// melds made beside as pips.
+// The miniature (public alone: the hands are each side's own): each player's hand as card backs in a row, the pile's top
+// card between, and the melds made as pips.
 export function miniature(mini, final) {
-  const need = rmyCfg(mini).melds, row = p => { const h = mini.hand[p], mm = meldSets(h), inM = new Set(mm.flat()); return `<div class="trmyh">${mm.flat().concat(rmySort(h.filter(c => !inM.has(c)))).map(c => tinyCard(c, inM.has(c) ? 'trmym ' + p : '', true)).join('')}</div>`; };
-  const n = p => Math.min(need, rmyMelds(mini.hand[p]).n);
-  return thumbArt(`<div class="trmy">${row('X')}${row('O')}</div>`, pipRows({ X: n('X'), O: n('O') }, need), 'trmyw', `Rummy Lite: X ${n('X')}, O ${n('O')} of ${need} melds`);
+  const need = rmyCfg(mini).melds, n = p => Math.min(need, mini.mc && Number.isInteger(mini.mc[p]) ? mini.mc[p] : 0);
+  const row = p => `<div class="trmyh">${Array.from({ length: Math.min(8, handN(mini, p)) }, () => tinyCard(null, 'trmyb ' + p)).join('')}</div>`;
+  const top = Array.isArray(mini.pile) && mini.pile.length ? mini.pile[mini.pile.length - 1] : null;
+  return thumbArt(`<div class="trmy">${row('X')}<div class="trmyp">${tinyCard(top, '', true)}</div>${row('O')}</div>`, pipRows({ X: n('X'), O: n('O') }, need), 'trmyw', `Rummy Lite: X ${n('X')}, O ${n('O')} of ${need} melds`);
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   g = rummyTable(mini, a, { view, locked, turn, done: !!d }); return g;

@@ -38,13 +38,28 @@ export function hideMini(m, k, st) {
   if (game.hide) game.hide(m, k, st);
   if (isRace(m)) raceHide(m);                                     // a race square: each side's part goes, the shapes stay (core/race.js)
 }
+// The per-side channel (November 2026): a game whose players hold something the other must not see (a hand, a rack)
+// gives each side's own part (rules.js sidePart(mini, side)) and takes it back (sideMerge(mini, side, part)). The record
+// keeps it under sides[side][square] (games/{id}/sides/{side}: that side alone reads it, the server alone writes it); the
+// public state, the moves' entries and the other phone never hold it (the game's hide strips it). The server keeps the
+// whole of it in the secrets too, so its own state never depends on the sides; a phone merges its own (net/room.js).
+export function sidePartOf(mini, side) {
+  const game = rulesOf(mini.type);
+  return game.sidePart ? game.sidePart(mini, side) : null;
+}
+export function sideMergeOf(mini, side, part) {
+  const game = rulesOf(mini.type);
+  if (game.sideMerge && part) { game.sideMerge(mini, side, JSON.parse(JSON.stringify(part))); return true; }
+  return false;
+}
 // The record of a match from a full state: the public state and the secrets, kept apart.
 export function matchRecord(full) {
-  const secrets = {}, sides = { X: {}, O: {} };                   // sides: each side's own part of the race squares still open (games/{id}/sides/{side}: that side alone reads it)
+  const secrets = {}, sides = { X: {}, O: {} };                   // sides: each side's own part of the squares still open (games/{id}/sides/{side}: that side alone reads it): a race square's (core/race.js) or a hand's (sidePart)
   full.squares.forEach((sq, i) => {
     const s = secretOf(sq.mini); if (s) secrets[i] = s;
     const rs = !sq.owner && raceSides(sq.mini);
     if (rs) for (const p of ['X', 'O']) if (rs[p]) sides[p][i] = JSON.parse(JSON.stringify(rs[p]));
+    if (!sq.owner) for (const p of ['X', 'O']) { const part = sidePartOf(sq.mini, p); if (part) sides[p][i] = JSON.parse(JSON.stringify(part)); }
   });
   const state = {};
   for (const k of MATCH_FIELDS) if (full[k] !== undefined) state[k] = JSON.parse(JSON.stringify(full[k]));
@@ -104,8 +119,11 @@ export function fullState(rec) {
       if (Object.keys(side).length) sq.mini.side = Object.assign({}, sq.mini.side, side);
       if (sq.mini.side) delete sq.mini.shape;
     }
+    if (sides && !s) for (const p of ['X', 'O']) if (sides[p][k] && !isRace(sq.mini)) sideMergeOf(sq.mini, p, sides[p][k]);   // (a hand's parts: the secrets hold them whole; a record without them takes the sides)
     if (sq.mini.type === 'hunt') delete sq.mini.clues;
-    if (!sq.owner && raceOld(sq.mini)) { const r = makeRng(`${st.id || 'm'}:${k}:rv2`); sq.mini = newMini(sq.mini.type, r); if (sq.mini.type === 'trivia') triviaDeal(st, sq, r); }   // a race square from before the rework (one target, private parts): dealt again as it is now (core/race.js; deterministic, so a phone's prediction and the server agree)
+    const g = rulesOf(sq.mini.type);
+    if (!sq.owner && g.stale && g.stale(sq.mini)) sq.mini = newMini(sq.mini.type, makeRng(`${st.id || 'm'}:${k}:stale`));   // a square of a game reworked since it was dealt (Rummy Lite, Word Tiles: v 1): dealt again
+    else if (!sq.owner && raceOld(sq.mini)) { const r = makeRng(`${st.id || 'm'}:${k}:rv2`); sq.mini = newMini(sq.mini.type, r); if (sq.mini.type === 'trivia') triviaDeal(st, sq, r); }   // a race square from before the rework (one target, private parts): dealt again as it is now (core/race.js; deterministic, so a phone's prediction and the server agree)
     upgradeMini(sq.mini);
   });
   Object.assign(st, { flash: null, done: null, screen: 'board', zoom: null, draft: '', sel: [], notice: null, stamp: null, spot: null, cpu: null, online: null, confirm: null });

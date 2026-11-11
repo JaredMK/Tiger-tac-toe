@@ -3,21 +3,26 @@ import { needRng, randInt, shuffle } from '../../core/random.js';
 import { goAgain, tune, tuneLive } from '../../core/tune.js';
 import { WT_WORDS } from './words.js';
 
-// ---------- Word Tiles (November 2026) ----------
-// Each player has their own 7x7 board (premium squares: double and triple letter, double and triple word; the centre a
-// double word the first word must cover) and their own bag of letter tiles, a rack of `rack` (7) drawn from it. A move
-// places one word: tiles from the rack in one row or one column, with no gap but the board's own tiles, the first
-// through the centre and every later one joined to what is there; every word it makes (the main one along the line
-// and each one across a new tile) must be in the list (words.js: ENABLE, public domain, 2 to 7 letters, the
-// offensive words left out) and each scores: its letters' values, a new tile on a double or triple letter square
-// counting two or three times, the word doubled or trebled for each new tile on a word square; all the rack's tiles
-// in one word adds `bonus`. The rack then refills from the bag; an empty bag is a fresh one (shuffled) — so a player
-// never runs out. Swap (the turn) puts the whole rack back, shuffles the bag and draws again: never stuck. No blank
-// tiles. The first total at `target` wins the square (individual progress: a player moving alone wins). The bag's
-// order is hidden (secret/hide: online it stays on the server); the boards, the racks and the scores are open (the
-// other player's rack changes nothing of your own game). A draft is the phone's own: a timeout plays nothing.
+// ---------- Word Tiles (November 2026; one board and one bag for both from the rework, v 2) ----------
+// Both players build on one shared 7x7 board (premium squares: double and triple letter, double and triple word; the
+// centre a double word the first word must cover) and draw from one shared bag of letter tiles (hidden: its order the
+// server's alone, secret/hide). Each holds a rack of `rack` (7) tiles that is theirs alone: online it rides the per-side
+// channel (games/{id}/sides/{side}: sidePart/sideMerge, core/records.js), never the public state, a move's entry or the
+// other phone; against the computer the view shows only the player's own rack, and the computer reads only its own
+// (publicView with the side). A move places one word: tiles from the rack in one row or one column, with no gap but the
+// board's own tiles, the first through the centre and every later one joined to the tiles already there (anyone's);
+// every word it makes (the main one along the line and each one across a new tile) must be in the list (words.js:
+// ENABLE, public domain, 2 to 7 letters, the offensive words left out) and each scores for the mover: its letters'
+// values, a new tile on a double or triple letter square counting two or three times, the word doubled or trebled for
+// each new tile on a word square; all seven of the rack's tiles in one word adds `bonus`. The rack then refills from the
+// bag; an empty bag is a fresh one (shuffled), so nobody runs out. Swap (the turn) puts the whole rack back, shuffles
+// the bag and draws again; `WT.stall` (4) swaps in a row (two each: the board has no room left for either) end the square
+// for the higher score, level a draw (the square resets). No blank tiles. The first total at `target` wins the square. Never dealt to two
+// people on one phone (meta.js samePhone: false). Each tile laid keeps whose it was (`own`: the board's colours). A
+// draft is the phone's own: a timeout plays nothing. A square from before the rework (v 1: a board and a bag each) is
+// dealt again as the record is read (`stale`, core/records.js fullState).
 // "Go again on success" (core/tune.js AGAIN_TUNE) on: a word played keeps the turn.
-export const WT = { n: 7, rack: 7, bonus: 15, drop: 110, dropMs: 360, count: 520, hold: 450 };
+export const WT = { n: 7, rack: 7, bonus: 15, stall: 4, drop: 110, dropMs: 360, count: 520, hold: 450 };
 // Letter values (the usual ones of word games: 1 for the commonest letters up to 10 for the rarest).
 export const WT_VAL = { A: 1, B: 3, C: 3, D: 2, E: 1, F: 4, G: 2, H: 4, I: 1, J: 8, K: 5, L: 1, M: 3, N: 1, O: 1, P: 3, Q: 10, R: 1, S: 1, T: 1, U: 1, V: 4, W: 4, X: 8, Y: 4, Z: 10 };
 // A player's bag (53 tiles: about half a usual set, no Q: no word of 7 letters or fewer takes one but a handful).
@@ -156,52 +161,69 @@ export function wtMoves(board, rack, cfg) {
 function draw(mini, p, rng) {
   const cfg = wtCfg(mini), rack = mini.rack[p];
   while (rack.length < cfg.rack) {
-    if (!mini.bag[p].length) mini.bag[p] = shuffle(WT_BAG.split(''), needRng(rng));   // an empty bag: a fresh one
-    rack.push(mini.bag[p].pop());
+    if (!mini.bag.length) mini.bag = shuffle(WT_BAG.split(''), needRng(rng));   // an empty bag: a fresh one
+    rack.push(mini.bag.pop());
   }
-  mini.bagN = { X: mini.bag.X.length, O: mini.bag.O.length };
+  mini.bagN = mini.bag.length;
 }
 export function create(type, rng) {
   const r = needRng(rng), c = wtCfg({ type, tune: tuneLive(type) });
-  const mini = { type, v: 1, board: { X: new Array(49).fill(null), O: new Array(49).fill(null) }, rack: { X: [], O: [] }, bag: { X: shuffle(WT_BAG.split(''), r), O: shuffle(WT_BAG.split(''), r) }, bagN: { X: 0, O: 0 }, score: { X: 0, O: 0 }, plays: { X: 0, O: 0 }, last: null };
-  for (const p of ['X', 'O']) while (mini.rack[p].length < c.rack) mini.rack[p].push(mini.bag[p].pop());
-  mini.bagN = { X: mini.bag.X.length, O: mini.bag.O.length };
+  const mini = { type, v: 2, board: new Array(49).fill(null), own: new Array(49).fill(null), rack: { X: [], O: [] }, bag: shuffle(WT_BAG.split(''), r), bagN: 0, score: { X: 0, O: 0 }, plays: { X: 0, O: 0 }, swaps: 0, last: null };
+  for (const p of ['X', 'O']) while (mini.rack[p].length < c.rack) mini.rack[p].push(mini.bag.pop());
+  mini.bagN = mini.bag.length;
   return mini;
 }
+export const stale = mini => (mini.v || 1) < 2;                    // (a square from before the rework: dealt again, core/records.js)
 // m: [[cell, letter], ...] (one word), or 'swap'.
 export function apply(mini, p, m, rng, idx) {
-  const cfg = wtCfg(mini), board = mini.board[p], rack = mini.rack[p], from = mini.score[p];
-  if (!mini.bag || !mini.bag[p]) return { ok: false, reason: 'secret' };
+  const cfg = wtCfg(mini), board = mini.board, from = mini.score[p];
+  if (!Array.isArray(mini.bag) || !mini.rack || !Array.isArray(mini.rack[p])) return { ok: false, reason: 'secret' };
+  const rack = mini.rack[p];
   if (m === 'swap') {
-    mini.bag[p] = shuffle(mini.bag[p].concat(rack.splice(0)), needRng(rng));
+    mini.bag = shuffle(mini.bag.concat(rack.splice(0)), needRng(rng));
     draw(mini, p, rng);
     mini.plays[p] += 1;
-    mini.last = { by: p, kind: 'swap', from, to: from };
+    mini.swaps = (mini.swaps || 0) + 1;
+    mini.last = { by: p, kind: 'swap', from, to: from, swaps: mini.swaps };
+    if (mini.swaps >= WT.stall) {                                 // the board stuck (two swaps each in a row): the higher score takes it, level a draw
+      const q = p === 'X' ? 'O' : 'X', a = mini.score[p], b = mini.score[q];
+      mini.last.stuck = true;
+      if (a === b) return { ok: true, outcome: 'draw', note: 'tie' };
+      return { ok: true, outcome: 'win', winner: a > b ? p : q, note: 'stuck' };
+    }
     return { ok: true, outcome: 'continue', note: 'swap' };
   }
   const ch = wtCheck(board, rack, m, cfg);
   if (!ch.ok) return { ok: false, reason: ch.reason === 'word' ? 'word' : 'bad' };
-  for (const [c, l] of m) { board[c] = l; rack.splice(rack.indexOf(l), 1); }
+  for (const [c, l] of m) { board[c] = l; mini.own[c] = p; rack.splice(rack.indexOf(l), 1); }
   draw(mini, p, rng);
-  mini.score[p] = from + ch.score; mini.plays[p] += 1;
+  mini.score[p] = from + ch.score; mini.plays[p] += 1; mini.swaps = 0;
   mini.last = { by: p, kind: 'word', t: m.map(([c, l]) => [c, l]), words: ch.words.map(x => ({ w: x.w, s: x.s })), all: ch.all, pts: ch.score, from, to: mini.score[p] };
   if (mini.score[p] >= cfg.target) return { ok: true, outcome: 'win', note: 'word' };
   if (goAgain(mini)) return { ok: true, outcome: 'continue', note: 'word', again: true };   // ("Go again on success" on: another word)
   return { ok: true, outcome: 'continue', note: 'word' };
 }
-export function secret(mini) { return mini.bag ? { bag: { X: mini.bag.X.slice(), O: mini.bag.O.slice() } } : null; }   // the bags' order
-export function hide(m, k, st) { delete m.bag; }
-export function publicView(mini) {
-  return { type: 'wtiles', v: mini.v, board: { X: mini.board.X.slice(), O: mini.board.O.slice() }, rack: { X: mini.rack.X.slice(), O: mini.rack.O.slice() }, bagN: Object.assign({}, mini.bagN), score: { X: mini.score.X, O: mini.score.O }, plays: { X: mini.plays.X, O: mini.plays.O } };
+// The server's alone: the bag's order and both racks.
+export function secret(mini) { return Array.isArray(mini.bag) && mini.rack ? { bag: mini.bag.slice(), rack: { X: (mini.rack.X || []).slice(), O: (mini.rack.O || []).slice() } } : null; }
+export function hide(m, k, st) { delete m.bag; if (m.rack) m.rack = {}; }
+// Each side's own part (games/{id}/sides/{side}: that side alone reads it): its rack.
+export function sidePart(mini, p) { return mini.rack && Array.isArray(mini.rack[p]) ? { rack: mini.rack[p].slice() } : null; }
+export function sideMerge(mini, p, part) { if (part && Array.isArray(part.rack)) mini.rack = Object.assign({}, mini.rack, { [p]: part.rack.slice() }); }
+// What the board may show (and the computer for `forSide` may know): the board, whose tiles, the scores, the bag's
+// count, and forSide's own rack alone.
+export function publicView(mini, forSide) {
+  const v = { type: 'wtiles', v: mini.v, board: mini.board.slice(), own: (mini.own || []).slice(), rack: {}, bagN: mini.bagN, swaps: mini.swaps || 0, score: { X: mini.score.X, O: mini.score.O }, plays: { X: mini.plays.X, O: mini.plays.O }, last: mini.last ? JSON.parse(JSON.stringify(mini.last)) : null };
+  if (forSide && mini.rack && Array.isArray(mini.rack[forSide])) v.rack[forSide] = mini.rack[forSide].slice();
+  return v;
 }
 export function canMove(mini) { return true; }
 export function randomMove(mini, p, rng, from, empties) {        // (the tests' stand-in for a player: any word, else a swap)
-  const ms = wtMoves(mini.board[p], mini.rack[p], wtCfg(mini));
+  const ms = wtMoves(mini.board, mini.rack[p], wtCfg(mini));
   return ms.length ? ms[randInt(needRng(rng), ms.length)].t : 'swap';
 }
 export function moveFlash(m, p, range, bjFrom, mini, flash) {
   const l = mini.last;
-  flash.wt = Object.assign(JSON.parse(JSON.stringify(l)), { board: mini.board[p].slice(), rack: mini.rack[p].slice() });
+  flash.wt = Object.assign(JSON.parse(JSON.stringify(l)), { board: mini.board.slice(), own: (mini.own || []).slice() });   // (public alone: the entry goes to both phones; the racks are each side's own)
 }
 // The move's moments (ms from it): the new tiles drop onto the board one after the other, then the score counts on.
 export function wtTimes(s) {

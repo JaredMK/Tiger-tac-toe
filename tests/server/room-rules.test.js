@@ -152,6 +152,20 @@ test('room rules: presence has a shape, is the seat\'s own, and is read by the t
   await denied(host.write('gpresence/g1/X', { online: true, extra: 'x' }), 'game presence with more in it');
   await denied(stranger.read('gpresence/g1'), "a stranger reading a game's presence");
 });
+test('match rules: a game\'s sides (games/{id}/sides/{side}: a hand, a rack, a race\'s own part) are each that seat\'s alone to read; nobody but the server writes any of the match', async () => {
+  const x = client('uid-sx'), o = client('uid-so'), stranger = client('uid-ss');
+  await owner('PUT', '/games/gs.json', JSON.stringify({ pub: { players: { X: { uid: x.uid, name: 'X' }, O: { uid: o.uid, name: 'O' } }, status: 'playing' }, sec: '{}', sides: { X: '{"4":{"hand":["AS"]}}', O: '{"4":{"hand":["KD"]}}' } }));
+  assert.equal(await x.read('games/gs/sides/X'), '{"4":{"hand":["AS"]}}', 'X reads its own side');
+  assert.equal(await o.read('games/gs/sides/O'), '{"4":{"hand":["KD"]}}', 'O reads its own side');
+  await denied(x.read('games/gs/sides/O'), "X reading O's hand");
+  await denied(o.read('games/gs/sides/X'), "O reading X's hand");
+  await denied(stranger.read('games/gs/sides/X'), 'a stranger reading a side');
+  await denied(x.read('games/gs/sides'), 'both sides at once');
+  await denied(x.read('games/gs/sec'), "the server's secrets");
+  await denied(x.write('games/gs/sides/X', '{}'), 'a phone writing its own side');
+  await denied(x.write('games/gs/sides/O', '{}'), "a phone writing the other's side");
+  await denied(x.write('games/gs/pub/state', '{}'), 'a phone writing the match');
+});
 test('account rules: users/{uid}, history/{uid} and oppStats/{uid} are the owner\'s (and the admin\'s) to read; profiles/{uid} is the public part, for any login; nobody writes any of them (security review F9/F11/F15)', async () => {
   const me = client('uid-me'), other = client('uid-other'), anon = client(null);
   const t = Date.now();

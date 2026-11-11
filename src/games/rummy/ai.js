@@ -2,8 +2,9 @@
 import { randInt } from '../../core/random.js';
 import { rmyCfg, rmyDeck, rmyMelds, rmyVal } from './rules.js';
 
-// What it knows: its own hand and pile (open) and so the cards still in its deck (every card of the deck but those),
-// never their order. A hand's shape (`rmyShape`): its melds, then the pairs among the cards left that one more card
+// What it knows: its own hand, the shared pile (open) and so the cards it has not seen (every card of the deck but its
+// hand and the pile: the deck's and the other hand's, never which is where nor their order; the other hand is the other
+// side's alone, never in its view: publicView with its side). A hand's shape (`rmyShape`): its melds, then the pairs among the cards left that one more card
 // would make a meld of (two of a rank; two of a suit one or two apart, an ace low or high). Normal keeps the shape:
 // it takes the pile's card when that makes the shape better and throws the card that costs it least. Hard plays by
 // the chance of finishing: for every card it could throw, the cards of its deck that would complete the hand on the
@@ -22,7 +23,7 @@ export function rmyShape(hand) {
   for (let i = 0; i < free.length; i++) for (let j = i + 1; j < free.length; j++) if (free[i] && free[j] && rmyNear(free[i], free[j])) { pairs++; free[i] = free[j] = null; break; }
   return { n: m.n, pairs, score: 10 * m.n + 3 * pairs };
 }
-export const rmyUnseen = (pm, p) => { const known = new Set([...pm.hand[p], ...(pm.pile[p] || [])]); return rmyDeck(rmyCfg(pm).ranks).filter(c => !known.has(c)); };
+export const rmyUnseen = (pm, p) => { const known = new Set([...(pm.hand[p] || []), ...(pm.pile || [])]); return rmyDeck(rmyCfg(pm).ranks).filter(c => !known.has(c)); };
 // The cards of `pool` that complete a six-card hand on a draw (the hand with it holds `need` melds).
 export const rmyOuts = (h6, pool, need) => pool.reduce((a, c) => a + (rmyMelds(h6.concat(c)).n >= need ? 1 : 0), 0);
 // A six-card hand's worth to Hard: certain win, else its outs over the cards left, then its shape.
@@ -37,14 +38,19 @@ function bestThrow(h7, val, rng) {
   return { d: rng ? best[randInt(rng, best.length)] : best[0], v: bv };
 }
 export function needs(pm, p) {
-  const need = rmyCfg(pm).melds, s = rmyShape(pm.hand[p]), miss = Math.max(0, need * 3 - (3 * Math.min(need, s.n) + 2 * Math.min(s.pairs, need - Math.min(need, s.n))));
+  const need = rmyCfg(pm).melds;
+  if (!Array.isArray(pm.hand && pm.hand[p])) {                     // the other side's hand: unseen, from its public meld count alone (a pair assumed)
+    const mc = Math.min(need, (pm.mc && pm.mc[p]) || 0), miss = Math.max(0, need * 3 - 3 * mc - (mc < need ? 2 : 0));
+    return miss ? RMY_AI.base + RMY_AI.perCard * miss : 1;
+  }
+  const s = rmyShape(pm.hand[p]), miss = Math.max(0, need * 3 - (3 * Math.min(need, s.n) + 2 * Math.min(s.pairs, need - Math.min(need, s.n))));
   return miss ? RMY_AI.base + RMY_AI.perCard * miss : 1;
 }
 // needs: the turns a player still needs alone (Normal's play, tests/sim/rummy.sim.js: about 7.5 with one card missing,
 // 10 with two); easySlip: Easy's careless moves (%).
 export const RMY_AI = { base: 5, perCard: 2.5, easySlip: 30 };
 export function best(pm, me, rng, style, ctx) {
-  const cfg = rmyCfg(pm), lvl = ctx && ctx.level, held = pm.held && pm.held.by === me ? pm.held : null, h = pm.hand[me], top = (pm.pile[me] || []).slice(-1)[0];
+  const cfg = rmyCfg(pm), lvl = ctx && ctx.level, held = pm.held && pm.held.by === me ? pm.held : null, h = pm.hand[me], top = (pm.pile || []).slice(-1)[0];
   const late = () => (ctx && typeof ctx.until === 'function' ? ctx.until() <= 0 : false);   // (no clock in the engine: without ctx.until, a fixed amount of work, all of it)
   if (lvl === 'easy' && rng() * 100 < RMY_AI.easySlip) {          // Easy: now and then a careless take or throw (any card outside its melds)
     if (!held) return { move: top && rng() < 0.5 ? 'pile' : 'deck', q: 0 };

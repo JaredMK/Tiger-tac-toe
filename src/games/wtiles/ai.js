@@ -3,7 +3,8 @@ import { randInt } from '../../core/random.js';
 import { goAgain, tune } from '../../core/tune.js';
 import { wtCfg, wtMoves } from './rules.js';
 
-// Every legal word is found (rules.js wtMoves: a small board, a full search in a few tens of ms), then:
+// Every legal word on the shared board from its own rack is found (rules.js wtMoves: a small board, a full search in a
+// few tens of ms), then:
 //  - Hard: the best-scoring word;
 //  - Normal: the best of the words a person would see (a share of them, `aiSee`, drawn at random), so it scores well
 //    but not always the most;
@@ -17,7 +18,9 @@ export function needs(pm, p) {
 }
 export function best(pm, me, rng, style, ctx) {
   const level = (ctx && ctx.level) || 'normal', c = wtCfg(pm), t = tune(pm);
-  const ms = wtMoves(pm.board[me], pm.rack[me], c);
+  const rack = pm.rack && pm.rack[me];
+  if (!Array.isArray(rack)) return { move: 'swap', q: 0 };          // (its own rack is in its view: publicView with its side; never the other's)
+  const ms = wtMoves(pm.board, rack, c);
   if (!ms.length) return { move: 'swap', q: 0 };
   ms.sort((a, b) => b.score - a.score || (a.w < b.w ? -1 : 1));
   let pick;
