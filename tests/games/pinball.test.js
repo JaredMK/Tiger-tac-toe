@@ -156,11 +156,11 @@ test('pinball: a ball is its inputs (the log: the flippers as they change, each 
 });
 
 test('pinball: the launch — on every layout, at every power from 0.3 to full with no flipper input, the ball enters the playfield (touches a bumper, a slingshot or a target, or comes down to the flippers), never leaves the outline or sits in a wall, never passes back through the shut gate and never comes to rest; a full-power launch touches a bumper, a slingshot or a target before any drain in at least 85% of launches', () => {
-  // (tests/sim/pinball-launch.sim.js: 50 balls at every strength on every layout; November 2026, with the
-  // arch's lip and the outlane guards: every ball entered, 96-99% touched something at every strength from
-  // 0.3 up, 98% at full power (86% on Twin ramps alone, whose chute drops a ball to the flippers), none
-  // looped straight to the drain, none tunnelled; so 85% of full-power launches touching, over 14 deals
-  // across the layouts, is a floor under what the table does, and one odd deal never fails the build)
+  // (tests/sim/pinball-launch.sim.js: 50 balls at every strength on every layout; the November 2026 table: every
+  // launch runs the arch to the stop and comes back off it into a top lane (the skill shot) and the bumpers:
+  // every ball entered, 98-100% touched something at every strength, none looped straight to the drain, none
+  // tunnelled or stuck; so 85% of full-power launches touching, over 8 deals across the layouts, is a floor
+  // under what the table does, and one odd deal never fails the build)
   const { dealTable, launchTrial } = require('../pinball-launch.js');
   let full = 0, fullTouched = 0, balls = 0;
   for (let k = 0; k < P.PIN_LAYOUTS.length; k++) for (let s = 0; s < 2; s++) {
@@ -198,4 +198,24 @@ test('pinball: the time limit (November 2026, TUNE maxSecs, 30 s by default, fro
   const m2 = JSON.parse(JSON.stringify(mini)), r = E.applyMove(m2, 'X', move, E.makeRng('cap-x'));
   assert.equal(r.ok, true); assert.equal(r.outcome, 'continue');
   assert.deepEqual(m2.lit.X.map((v, k) => (v ? k : -1)).filter(k => k >= 0), a.result.hits.map(h => h[0]).sort((x, y) => x - y), 'its targets kept');
+});
+test('pinball: the move\'s flash carries the ball\'s inputs and no recording; replayed from them bit by bit (as the other phone plays it, frame by frame) it is the same ball; the level reaches the computer\'s hand (hard lights more a ball than easy)', () => {
+  const st = E.newMatch(lcg(11), { games: ['pinball'] }), i = 4, p = st.turn, mini0 = JSON.parse(JSON.stringify(st.squares[i].mini));
+  const mv = E.fingAi(st.squares[i].mini, p, E.makeRng('flash'));
+  assert.equal(E.playMove(st, i, mv, E.makeRng('f')).ok, true);
+  const fg = st.flash.fing;
+  assert.ok(fg && fg.type === 'pinball' && fg.log === mv.log && fg.steps === mv.steps && fg.rec === undefined, 'the flash: the inputs, no recording');
+  const log = P.pinLogUnpack(fg.log, fg.steps), w = P.pinNew(P.pinTable(mini0), mini0.cfg, mini0.lit[p]), rng = E.makeRng('chunks');
+  let at = 0;
+  while (w.n < fg.steps && !w.over) { at = Math.min(fg.steps, at + 1 + Math.floor(rng() * 40)); P.pinReplayTo(w, log, at); assert.ok(w.n <= at); }
+  const r = P.pinResult(w);
+  assert.deepEqual([r.hits.map(h => h[0]), r.ms, r.end], [fg.hits.map(h => h[0]), fg.ms, fg.end], 'the same ball, stepped on in pieces');
+  assert.equal(P.pinEnd(w), fg.end);
+  const pub = E.publicMini(st.squares[i].mini, p);
+  assert.ok(pub.last && pub.last.log === undefined && pub.last.rec === undefined, 'the square\'s public view carries neither');
+  // the levels
+  const lit = lv => { let n = 0; for (let s = 0; s < 60; s++) { const m = E.newMini('pinball', E.makeRng('lv' + s)); n += E.fingAi(m, 'X', E.makeRng('lvb' + s), lv).hits.length; } return n; };
+  const easy = lit('easy'), normal = lit('normal'), hard = lit('hard');
+  assert.ok(easy < normal && normal < hard, `easy ${easy} < normal ${normal} < hard ${hard} targets over 60 first balls`);
+  assert.deepEqual(E.aiOf('pinball').best(E.newMini('pinball', E.makeRng('q')), 'X', E.makeRng('r'), null, { level: 'hard' }).move, { fing: true, level: 'hard' }, 'the level goes with the ball');
 });

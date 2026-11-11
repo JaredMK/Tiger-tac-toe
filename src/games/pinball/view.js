@@ -26,10 +26,11 @@ export function pinFx(fx, events, now) {
     else if (e.k === 'launch') { fx.shot = now; fx.power = e.p; }
     else if (e.k === 'save' || e.k === 'lane') fx.saved = e.k === 'save' ? now : fx.saved;
     else if (e.k === 'drain') fx.drain = now;
+    else if (e.k === 'all') fx.all = now;
   }
   return fx;
 }
-export const pinFxNew = () => ({ bump: {}, sling: {}, shot: 0, power: 0, saved: 0, drain: 0 });
+export const pinFxNew = () => ({ bump: {}, sling: {}, shot: 0, power: 0, saved: 0, drain: 0, all: 0 });
 function pinStill(c, W, H, TB, T, P) {
   const { k, X, Y, oy } = pinGeo(W, H, T), ink = Math.max(1.5, 1.1 * k), A = TB.arc, sh = 0.9 * k;
   c.fillStyle = '#1d1630'; c.fillRect(0, 0, W, H);
@@ -97,11 +98,15 @@ export function drawPin(c, W, H, v, now) {
     c.fillStyle = on ? `hsl(${125 - s * 22} 85% 58%)` : 'rgba(255,255,255,.10)';
     c.beginPath(); c.moveTo(X(ln.serve[0] - 1.9), Y(y + 1.5)); c.lineTo(X(ln.serve[0]), Y(y - 1.5)); c.lineTo(X(ln.serve[0] + 1.9), Y(y + 1.5)); c.closePath(); c.fill();
   }
+  if (fx.drain && now - fx.drain < 450) {                           // the ball lost: the apron round the drain flashes
+    c.fillStyle = `rgba(229,67,42,${0.55 * (1 - (now - fx.drain) / 450)})`; c.beginPath(); c.moveTo(X(2.2), Y(T.h)); c.lineTo(X(2.2), Y(166)); c.lineTo(X(34), Y(T.h - 2)); c.lineTo(X(58), Y(T.h - 2)); c.lineTo(X(TB.lane.wall - 1.2), Y(166)); c.lineTo(X(TB.lane.wall - 1.2), Y(T.h)); c.closePath(); c.fill();
+  }
+  const allAge = fx.all ? now - fx.all : 1e9, party = allAge < 900 ? 0.5 + 0.5 * Math.sin(allAge / 45) : 0;   // every target lit: the lights dance
   const fresh = v.flash && now - v.flash.at < 600 ? v.flash : null;
   for (const tg of TB.targets) {                                    // the targets: a rollover is a light in the playfield, a standup a round post; lit ones in the player's colour, glowing
     const [x, y] = tg.spin ? L.pinSpinAt(tg, v.t || 0, cfg) : [tg.x, tg.y], lit = !!(v.lit && v.lit[tg.id]), isNew = fresh && fresh.id === tg.id, age = isNew ? (now - fresh.at) / 600 : 1;
     const r = (tg.kind === 'roll' ? Math.min(tg.r, 3.3) : tg.r) * k;
-    if (lit) { c.fillStyle = v.p === 'O' ? 'rgba(246,194,27,.28)' : 'rgba(255,120,90,.30)'; c.beginPath(); c.arc(X(x), Y(y), r * 1.7, 0, TAU); c.fill(); }
+    if (lit) { c.fillStyle = v.p === 'O' ? `rgba(246,194,27,${0.28 + 0.4 * party})` : `rgba(255,120,90,${0.3 + 0.4 * party})`; c.beginPath(); c.arc(X(x), Y(y), r * (1.7 + 0.8 * party), 0, TAU); c.fill(); }
     if (isNew) { c.strokeStyle = `rgba(255,255,255,${(1 - age) * 0.9})`; c.lineWidth = Math.max(2, 0.9 * k); c.beginPath(); c.arc(X(x), Y(y), r * (1.2 + 2.2 * age), 0, TAU); c.stroke(); }
     if (tg.kind === 'roll') {
       c.beginPath(); c.arc(X(x), Y(y), r, 0, TAU); c.fillStyle = lit ? col : 'rgba(10,8,26,.55)'; c.fill();

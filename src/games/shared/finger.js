@@ -113,7 +113,7 @@ export function fingAi(mini, p, rng, level) {   // level: Pinball's hand alone t
 export const fingAt = (mini, p) => (mini.type === 'skyhop' ? mini.height[p] : mini.type === 'scoop' ? mini.stack[p].length : mini.lit[p].filter(Boolean).length);
 export const fingGoal = mini => (mini.type === 'pinball' ? mini.lit.X.length : mini.cfg.target);
 // The computer's attempts still needed, about (what it gets in one, from its hand: see the tuning in the tests).
-export const FING_GAIN = { skyhop: 113, scoop: 5.6, pinball: 1.1 };   // (Pinball, November 2026's table: 1.07 targets a ball for the usual hand, tests/sim/pinball.sim.js)
+export const FING_GAIN = { skyhop: 113, scoop: 5.6, pinball: 1.5 };   // (Pinball, November 2026's table: 1.6 targets a ball for the usual hand over a square, tests/sim/pinball.sim.js)
 export const fingNeeds = (mini, p) => Math.max(1, (fingGoal(mini) - fingAt(mini, p)) / FING_GAIN[mini.type]);
 // How long an attempt lasted (fingRaw), and how long it takes to play through on another phone (the
 // replay: as it was, or faster for an attempt longer than replayMax), in ms.

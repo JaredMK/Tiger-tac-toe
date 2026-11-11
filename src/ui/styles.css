@@ -1733,6 +1733,7 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .fing .ctals.col { gap: 6px; margin-top: 4px; }   /* (clear of the header's two lines, the turn's ring and all) */
 .fing .ctal.fprog { padding: 4px 10px 2px; }
 .fing .ctal.fprog .pips i { width: 14px; height: 14px; }
+@media (max-width: 340px) { .fing .ctal.fprog .pips { gap: 3px; } .fing .ctal.fprog .pips i { width: 11px; height: 11px; border-width: 2px; } }   /* (a very narrow phone: Pinball's seven lights smaller, so the name beside them keeps its 40px) */
 .fscene { position: relative; flex: 1; min-height: 160px; width: 100%; border: 3px solid var(--ink); border-radius: 14px; overflow: hidden; background: #cfe9f7; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .fscene.scoop { background: #fff4f5; } .fscene.pinball { background: #1d1630; }
 .fscene canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }

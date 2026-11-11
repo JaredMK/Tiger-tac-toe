@@ -276,7 +276,7 @@ function fingRepView(rep, T) {
     const lit = rep.mini0.lit[rep.p].slice(); let flash = null;
     for (const [id, t] of rep.hits) if (t <= T) { lit[id] = 1; if (T - t < 0.6) flash = { id, at: performance.now() - (T - t) * 1000 }; }
     const T0 = L.PIN.lane.serve, waiting = Math.hypot(a[0] - T0[0], a[1] - T0[1]) < 0.5;
-    const gate = !waiting && (a[0] < L.PIN.lane.x0 - 1 || a[1] < L.PIN.lane.top - 1);   // (the gate shuts once the ball is out on the playfield)
+    const gate = !waiting && (a[0] < L.PIN.lane.wall - 1 || a[1] < L.PIN.lane.top - 1);   // (the gate shuts once the ball is out on the playfield)
     return { type: 'pinball', p: rep.p, cfg: rep.mini0.cfg, table: rep.table, gate, lit, ball: jump ? a.slice(0, 2) : [a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u], flips: [rep.ang[i][0] + (rep.ang[j][0] - rep.ang[i][0]) * u, rep.ang[i][1] + (rep.ang[j][1] - rep.ang[i][1]) * u], t: T, pull: 0, flash, waiting };
   }
   if (!rep.sim || rep.sim.n > T / FING.step + 1) { rep.sim = rep.type === 'skyhop' ? hopStart(rep.mini0, rep.p) : scoopStart(rep.mini0, rep.p); rep.k = 0; rep.out = {}; rep.brk = {}; rep.tx = rep.sim.x; }
