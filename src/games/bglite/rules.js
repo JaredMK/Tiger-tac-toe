@@ -23,11 +23,17 @@ import { goAgain, tune, tuneLive } from '../../core/tune.js';
 // turn ahead, and this gives it back). A die that no piece can use is lost; with neither usable the roll ends the turn as it is ('stuck'). The first to
 // bear all 3 pieces off wins the square (anyone alone gets there: a piece at its start can always enter unless
 // the point is blocked, and blocks never last: every piece leaves the board).
-// The roll and every die's move are each a move of their own: Roll keeps the turn (`again`), and so does a die used
-// while the other can still be used, as 21's Deal and Hit do (the game's own steps, not a success). Go again on
-// success (AGAIN_TUNE, off by default): on, a turn that bore a piece off rolls again.
-// A turn left part way (a timeout: core/board.js passes the turn with nothing played) leaves its dice behind with
-// `by`: the next move by anyone else lets them go (the stale dice are nobody's: bglDice).
+// A turn is two moves (November 2026, the backgammon-app flow, CLIENT_VERSION 1.12.0): Roll, which keeps the turn
+// (`again`, as 21's Deal: the game's own step, not a success), then the whole turn's play as one move,
+// `{ steps: [[d, k], ...] }`: each step die d moving piece k, in the player's order (the phone drafts them, with Undo,
+// and sends them once no die is left that any piece can use: view.js). The server checks the steps one by one from
+// the position as it stands (each legal in turn, bglTurn) and the turn must be played out: after the last step no
+// unused die may still have a legal move (a die no piece can use by then is lost, as ever), unless the last piece is
+// off. A square played by an older client may still take a single step, `{ d, k }` (a move of its own, `again` while
+// a die can still be used), so a turn under way from before plays on. Go again on success (AGAIN_TUNE, off by
+// default): on, a turn that bore a piece off rolls again.
+// A turn left part way (a timeout: core/board.js passes the turn with nothing played; the phone's draft is never sent)
+// leaves its dice behind with `by`: the next move by anyone else lets them go (the stale dice are nobody's: bglDice).
 export const BGL = { len: 8, pieces: 3, home: 3 };
 export const bglV2 = mini => (mini.v || 1) >= 2;
 export const bglStart = mini => (bglV2(mini) ? 1 : 0);   // where a piece starts and goes back to when hit
@@ -40,7 +46,7 @@ export function bglCanOff(mini, p) {
   const lo = mini.n - bglHome(mini) + 1;
   return mini.pos[p].every(a => a > mini.n || a >= lo);
 }
-export const BGLT = { roll: 820, slide: 420, hit: 480, hold: 380, off: 300 };   // ms: the dice tumbling in, a piece's slide, a hit piece flying home, the result held, a piece leaving
+export const BGLT = { roll: 820, slide: 420, hit: 480, hold: 380, off: 300, gap: 180, look: 260 };   // ms: the dice tumbling in, a piece's slide, a hit piece flying home, the result held, a piece leaving, the pause between a turn's steps, the piece picked before it slides (a turn's flash)
 export const bglLen = mini => Math.max(4, Math.round(tune(mini).len || mini.n || BGL.len));
 export const bglOther = p => (p === 'X' ? 'O' : 'X');
 // The board point (1..n from the left) of p's progress a (on the track only).
@@ -114,6 +120,7 @@ export function apply(mini, p, m, rng, idx) {
     if (!any) { mini.dice = null; return { ok: true, outcome: 'continue', note: 'stuck' }; }   // no die can be used: the turn ends as it is
     return { ok: true, outcome: 'continue', note: 'roll', again: true };
   }
+  if (m && typeof m === 'object' && Array.isArray(m.steps)) return applyTurn(mini, p, m.steps);
   if (!m || typeof m !== 'object' || !Number.isInteger(m.d) || !Number.isInteger(m.k) || m.d < 0 || m.d > 3 || m.k < 0 || m.k >= BGL.pieces) return { ok: false, reason: 'bad' };
   const dc = bglDice(mini, p);
   if (!dc || m.d >= dc.v.length || dc.used[m.d] || !bglCan(mini, p, m.k, dc.v[m.d])) return { ok: false, reason: 'bad' };
@@ -129,21 +136,67 @@ export function apply(mini, p, m, rng, idx) {
   if (off > 0 && goAgain(mini)) { mini.last.again = true; return { ok: true, outcome: 'continue', note: 'off', again: true }; }   // ("Go again on success" on: a piece borne off this turn, roll again)
   return { ok: true, outcome: 'continue', note: s.hit ? 'hit' : s.to > mini.n ? 'off' : 'move' };
 }
+// The whole turn's steps played on the square, checked one by one (bglTurn), and its flash: every step with where it
+// went and what it hit, the dice as they stood before (used0) and the dice nobody could use by the end (lost).
+function applyTurn(mini, p, steps) {
+  const dc = bglDice(mini, p);
+  if (!dc) return { ok: false, reason: 'bad' };
+  const used0 = dc.used.slice(), t = bglTurn(mini, p, steps);
+  if (!t) return { ok: false, reason: 'bad' };
+  const won = mini.pos[p].every(a => a > mini.n), lost = won ? [] : dc.v.map((v, d) => d).filter(d => !dc.used[d] && dc.v[d]);
+  const hit = t.some(s => s.hit), off = t.some(s => s.off);
+  mini.last = { by: p, kind: 'turn', v: dc.v.slice(), used0, steps: t, lost, pos: { X: mini.pos.X.slice(), O: mini.pos.O.slice() } };
+  mini.dice = null;
+  if (won) return { ok: true, outcome: 'win', note: 'off' };
+  if ((dc.off || 0) > 0 && goAgain(mini)) { mini.last.again = true; return { ok: true, outcome: 'continue', note: 'off', again: true }; }   // ("Go again on success" on: a piece borne off this turn, roll again)
+  return { ok: true, outcome: 'continue', note: hit ? 'hit' : off ? 'off' : 'move' };
+}
+// A turn's steps [[d, k], ...] for p, played in order on the square if every one is legal where it stands and the turn
+// is played out (no unused die left with a legal move, or every piece off): [{ d, k, from, to, hit, off }], else null
+// with the square untouched.
+export function bglTurn(mini, p, steps) {
+  const dc = bglDice(mini, p);
+  if (!dc || !Array.isArray(steps) || steps.length < 1 || steps.length > 4) return null;
+  const keep = { X: mini.pos.X.slice(), O: mini.pos.O.slice() }, used = dc.used.slice(), off0 = dc.off || 0;
+  const undo = () => { mini.pos = keep; dc.used = used; dc.off = off0; return null; };
+  const out = [];
+  for (const s of steps) {
+    if (!Array.isArray(s) || s.length !== 2) return undo();
+    const [d, k] = s;
+    if (!Number.isInteger(d) || !Number.isInteger(k) || d < 0 || d >= dc.v.length || k < 0 || k >= BGL.pieces) return undo();
+    if (dc.used[d] || !dc.v[d] || mini.pos[p].every(a => a > mini.n) || !bglCan(mini, p, k, dc.v[d])) return undo();
+    const r = bglStep(mini, p, d, k);
+    out.push({ d, k, from: r.from, to: r.to, hit: r.hit, off: r.to > mini.n });
+  }
+  if (!mini.pos[p].every(a => a > mini.n) && bglMoves(mini, p).length) return undo();   // (a die still usable: the turn is not played out)
+  return out;
+}
 export function publicView(mini) {
   return { type: 'bglite', v: mini.v, n: mini.n, rolled: !!mini.rolled, pos: { X: mini.pos.X.slice(), O: mini.pos.O.slice() }, dice: mini.dice ? JSON.parse(JSON.stringify(mini.dice)) : null };
 }
 // A random legal step (the tests', the sandbox's; a phone's timeout plays nothing: core/board.js).
 export function randomMove(mini, p, rng, from, empties) {
-  const ms = bglMoves(mini, p);
-  return ms.length ? ms[randInt(needRng(rng), ms.length)] : 'roll';
+  if (!bglDice(mini, p)) return 'roll';
+  const r = needRng(rng), c = { type: mini.type, n: mini.n, v: mini.v, tune: mini.tune, pos: { X: mini.pos.X.slice(), O: mini.pos.O.slice() }, dice: JSON.parse(JSON.stringify(mini.dice)) }, steps = [];
+  for (let ms = bglMoves(c, p); ms.length && !c.pos[p].every(a => a > c.n); ms = bglMoves(c, p)) { const x = ms[randInt(r, ms.length)]; bglStep(c, p, x.d, x.k); steps.push([x.d, x.k]); }
+  return steps.length ? { steps } : 'roll';
 }
 export function moveFlash(m, p, range, bjFrom, mini, flash) {
   flash.bgl = JSON.parse(JSON.stringify(mini.last));
 }
 // A step's moments (ms from the move): the dice tumbling in (a roll), or the piece's slide, a hit piece flying home after
 // it lands, the result held.
+// A whole turn (kind 'turn'): its steps one after the other, each the piece picked (look), its slide (and a hit piece
+// flying home after it lands), a short gap: steps [{ at, land, hitAt }] (at: the pick), slid (the last landing), first
+// off (offAt), end.
 export function bglTimes(b) {
   if (!b) return { end: BGLT.hold };
+  if (b.kind === 'turn') {
+    let t = 0, offAt = null;
+    const steps = (b.steps || []).map(s => { const at = t, go = at + BGLT.look, land = go + BGLT.slide + (s.off ? BGLT.off : 0); if (s.off && offAt == null) offAt = land; t = land + (s.hit ? BGLT.hit : 0) + BGLT.gap; return { at, go, land, hitAt: s.hit ? land : null }; });
+    const slid = steps.length ? steps[steps.length - 1].land : 0, tail = steps.length ? t - BGLT.gap : 0;
+    return { steps, slid, offAt, deadAt: tail, end: tail + BGLT.hold + (b.lost && b.lost.length ? 300 : 0) };
+  }
   if (b.kind === 'roll') return { land: BGLT.roll, end: BGLT.roll + (b.stuck ? BGLT.hold + 300 : 120) };
   const slid = BGLT.slide + (b.off ? BGLT.off : 0);
   return { slid, hitAt: b.hit ? BGLT.slide : null, end: slid + (b.hit ? BGLT.hit : 0) + (b.end ? BGLT.hold : 80) };

@@ -128,11 +128,12 @@ test('bglite: dice left behind by a timeout are nobody\'s: the other player roll
   assert.equal(E.randomLegalMove(laid({ X: [1, 1, 1], O: [1, 1, 1] }, null), 'X', lcg(1)), 'roll');
 });
 
-test('bglite: the computer: only legal steps at every level; Normal hits a lone piece in reach; Hard within its time; needs and q', () => {
+test('bglite: the computer: only legal whole turns at every level; Normal hits a lone piece in reach; Hard within its time; needs and q', () => {
   const n = 8, m = laid({ X: [1, 1, 1], O: [n + 1 - 3, 1, 1] }, 'X', [2, 6]);
   const pm = E.publicMini(m);
   const b = E.localBest(pm, 'X', lcg(1), {}, { level: 'normal' });
-  assert.deepEqual(b.move, { d: 0, k: 0 }, 'the 2 hits the lone O on point 3');
+  assert.ok(Array.isArray(b.move.steps) && b.move.steps.length === 2, 'the whole turn as one move');
+  assert.deepEqual(b.move.steps[0], [0, 0], 'the 2 hits the lone O on point 3 first');
   for (const level of ['easy', 'normal', 'hard']) {
     for (let g = 0; g < 6; g++) {
       const rng = E.makeRng('ai' + level + g), s = mini('sq' + g); let p = 'X';
@@ -180,4 +181,67 @@ test('bglite: once every piece is home, a roll that reaches the last point bears
   m.pos.X = [2, n - 1, n];
   assert.equal(R.bglCanOff(m, 'X'), false);
   assert.equal(R.bglTo(m, 'X', n - 1, 1), n, 'not all home: it lands on the last point');
+});
+
+test('bglite: a turn is one move: its steps checked one by one from the position, the turn played out; the flash carries every step', () => {
+  const n = 8, m = laid({ X: [1, 1, 1], O: [n + 1 - 3, 1, 1] }, 'X', [2, 4]);   // an O alone on point 3
+  const r = E.applyMove(m, 'X', { steps: [[0, 2], [1, 2]] }, lcg(1));
+  assert.deepEqual([r.ok, r.outcome, r.note, r.again], [true, 'continue', 'hit', undefined]);
+  assert.deepEqual(m.pos.X, [1, 1, 7]); assert.deepEqual(m.pos.O, [1, 1, 1]); assert.equal(m.dice, null, 'the turn is over');
+  assert.equal(m.last.kind, 'turn'); assert.deepEqual(m.last.steps.map(s => [s.d, s.k, s.from, s.to]), [[0, 2, 1, 3], [1, 2, 3, 7]]);
+  assert.deepEqual(m.last.steps[0].hit, { k: 0, from: 6 }); assert.deepEqual(m.last.used0, [false, false]); assert.deepEqual(m.last.lost, []);
+  const f = {}; R.moveFlash(null, 'X', null, null, m, f); assert.equal(f.bgl.steps.length, 2);
+  assert.ok(R.flashMs(f) > 2 * R.BGLT.slide, 'the flash plays each step in turn');
+  // the other order, the 4 first: legal as well, and no hit
+  const m2 = laid({ X: [1, 1, 1], O: [n + 1 - 3, 1, 1] }, 'X', [2, 4]);
+  assert.ok(E.applyMove(m2, 'X', { steps: [[1, 0], [0, 0]] }, lcg(1)).ok); assert.deepEqual(m2.pos.X, [7, 1, 1]); assert.deepEqual(m2.pos.O, [6, 1, 1]);
+});
+
+test('bglite: a turn refused leaves the square as it was: a step not legal where it stands, a die used twice, a die left that could still move, a malformed move', () => {
+  const n = 8, base = () => laid({ X: [1, 1, 1], O: [n + 1 - 3, n + 1 - 3, 1] }, 'X', [2, 6]);   // O's two on point 3 block the 2 from point 1
+  const bad = [
+    { steps: [[0, 0], [1, 0]] },              // the 2 onto the block
+    { steps: [[1, 0], [1, 1]] },              // the 6 twice
+    { steps: [] }, { steps: [[1]] }, { steps: [[1, 3]] }, { steps: [[5, 0]] }, { steps: 'x' }, { steps: [[1, 0], [0, 0], [0, 0], [0, 0], [0, 0]] },
+  ];
+  for (const mv of bad) {
+    const m = base(), before = JSON.stringify([m.pos, m.dice]);
+    const r = E.applyMove(m, 'X', mv, lcg(1));
+    assert.equal(r.ok, false, JSON.stringify(mv)); assert.equal(JSON.stringify([m.pos, m.dice]), before, 'untouched: ' + JSON.stringify(mv));
+  }
+  const ok = base();
+  assert.ok(E.applyMove(ok, 'X', { steps: [[1, 0]] }, lcg(1)).ok, 'the 6 alone: the 2 has no move by then (blocked from point 1, and point 7 is not home yet): lost');
+  assert.deepEqual(ok.last.lost, [0]);
+  const open = laid({ X: [1, 1, 1], O: [1, 1, 1] }, 'X', [3, 4]), was = JSON.stringify([open.pos, open.dice]);
+  assert.equal(E.applyMove(open, 'X', { steps: [[0, 0]] }, lcg(1)).ok, false, 'the 4 could still move: the turn is not played out');
+  assert.equal(JSON.stringify([open.pos, open.dice]), was);
+});
+
+test('bglite: a die no piece can use by the end is lost (listed in the flash); with every piece off the turn ends at once; the opponent\'s turn cannot be sent', () => {
+  const n = 8, l = laid({ X: [1, n + 1, n + 1], O: [n + 1 - 6, n + 1 - 6, 1] }, 'X', [3, 2]);   // X's last piece: a 3 to point 4, then the 2 onto O's block on point 6
+  const r = E.applyMove(l, 'X', { steps: [[0, 0]] }, lcg(1));
+  assert.ok(r.ok, r.reason); assert.deepEqual(l.last.lost, [1]); assert.equal(l.dice, null);
+  const w = laid({ X: [n, n + 1, n + 1], O: [1, 1, 1] }, 'X', [1, 4]);
+  assert.deepEqual(E.applyMove(w, 'X', { steps: [[0, 0]] }, lcg(1)).outcome, 'win', 'the last piece off: won, the other die not needed');
+  assert.equal(E.applyMove(laid({ X: [n, n + 1, n + 1], O: [1, 1, 1] }, 'X', [1, 4]), 'X', { steps: [[0, 0], [1, 0]] }, lcg(1)).ok, false, 'no step after the last piece is off');
+  assert.equal(E.applyMove(laid({ X: [1, 1, 1], O: [1, 1, 1] }, 'X', [3, 4]), 'O', { steps: [[0, 0], [1, 0]] }, lcg(1)).ok, false, "not O's dice");
+});
+
+test('bglite: a random move is a whole legal turn; an older client\'s single step still plays on a turn under way', () => {
+  for (let g = 0; g < 40; g++) {
+    const rng = E.makeRng('rand' + g), m = mini('r' + g); let p = 'X';
+    for (let k = 0; k < 200; k++) {
+      const mv = E.randomLegalMove(m, p, rng);
+      const r = E.applyMove(m, p, mv, rng);
+      assert.ok(r.ok, JSON.stringify(mv));
+      if (mv !== 'roll') assert.ok(Array.isArray(mv.steps));
+      if (r.outcome === 'win') break;
+      if (!r.again) p = p === 'X' ? 'O' : 'X';
+    }
+  }
+  const m = laid({ X: [1, 1, 1], O: [1, 1, 1] }, 'X', [3, 4]);
+  const r = E.applyMove(m, 'X', { d: 0, k: 0 }, lcg(1));
+  assert.deepEqual([r.ok, r.again], [true, true]); assert.equal(m.last.kind, 'use');
+  assert.ok(E.applyMove(m, 'X', { steps: [[1, 1]] }, lcg(1)).ok, 'the rest of the turn as a whole turn');
+  assert.equal(m.dice, null);
 });

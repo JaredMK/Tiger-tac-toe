@@ -4,7 +4,7 @@ import { tune } from '../../core/tune.js';
 import { BGL, bglDice, bglMoves, bglOther, bglPips, bglPoint, bglRollDice, bglStep } from './rules.js';
 
 // A turn is planned whole: every order of the dice and every piece for each (bglPlans), each plan valued, and the
-// first step of the best one played (each die is a move of its own, so the next step plans again from there).
+// best one played as the turn's one move ({ steps: [[d, k], ...] }: rules.js bglTurn).
 // The value of a position for `me` (static): the race (the other side's points still to travel less mine: a hit is
 // worth all the progress it sends back), less the risk of each lone piece of mine (the chance the other side can land
 // on it next roll, from where its pieces stand, times what it would cost: the piece's progress and aiBlot), plus
@@ -13,7 +13,7 @@ import { BGL, bglDice, bglMoves, bglOther, bglPips, bglPoint, bglRollDice, bglSt
 // Normal: the plan with the best static value. Hard: by expected value: each plan played out to the end of the square
 // many times (BGL_AI.rollouts, every plan against the same dice) with both sides choosing by the static value, and the
 // plan that wins most often taken (race against hitting, safety and blocks weighed by what they lead to); within
-// ctx.until (at least minRollouts). Easy: any legal step.
+// ctx.until (at least minRollouts). Easy: any plan. A mistake (the `miss` setting): a random plan.
 export const BGL_AI = { win: 1000, rollouts: 60, minRollouts: 6 };   // Hard: the rollouts per plan (fewer when its time runs out, never under minRollouts)
 const ROLLS = (() => { const r = []; for (let a = 1; a <= 6; a++) for (let b = a; b <= 6; b++) r.push({ v: [a, b], w: (a === b ? 1 : 2) / 36 }); return r; })();
 // The chance, in 36, that a roll lets a piece travel exactly t points (a die of t, or both dice summed; blocks ignored).
@@ -102,9 +102,10 @@ export function best(pm, me, rng, style, ctx) {
   const level = ctx && ctx.level ? ctx.level : 'normal';
   if (!bglDice(pm, me)) return { move: 'roll', q: Math.min(1, rollWins(pm, me)) };
   const miss = tune(pm).miss;
-  if (miss && rng() * 100 < miss) { const ms = bglMoves(pm, me); if (ms.length) return { move: ms[randInt(rng, ms.length)], q: 0 }; }
+  const whole = pl => ({ move: { steps: pl.steps.map(s => [s.d, s.k]) }, q: pl.end.pos[me].every(a => a > pl.end.n) ? 1 : 0 });
+  if (miss && rng() * 100 < miss) { const ps = bglPlans(pm, me).filter(pl => pl.steps.length); if (ps.length) return Object.assign(whole(ps[randInt(rng, ps.length)]), { q: 0 }); }
   const pl = bglChoose(pm, me, rng, level, ctx && ctx.until);
   if (!pl) return { move: 'roll', q: 0 };
-  return { move: pl.steps[0], q: pl.end.pos[me].every(a => a > pl.end.n) ? 1 : 0 };
+  return whole(pl);
 }
 export { BGL };
