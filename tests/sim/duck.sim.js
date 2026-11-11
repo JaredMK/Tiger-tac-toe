@@ -1,6 +1,6 @@
 'use strict';
 // Simulations: Hook-a-Duck (slow, never part of npm test: `npm run sim -- duck`). Every duck looks alike, so every level
-// hooks at random: the computer against itself over many dealt squares, each player's turns, the winner's turns and the
+// hooks at random (one pond both fish in): the computer against itself over many dealt squares, each player's turns, the winner's turns and the
 // first mover's wins, at the defaults and a few other targets and mixes (src/games/duck/meta.js TUNE).
 const test = require('node:test');
 const assert = require('node:assert/strict');

@@ -1,10 +1,11 @@
 // Hook-a-Duck: the screen, the miniature, the move's words and sounds, and the inputs.
-import { DUKT, duckCfg, duckTimes } from './rules.js';
+import { DUKT, duckCfg, duckShared, duckTimes, pondOf } from './rules.js';
 import { N, REDUCED, mv } from '../../ui/app.js';
 import { arcTally, lateAt } from '../../ui/progress.js';
 import { markSvgG } from '../../ui/thumbs.js';
 
-// The pond: the ducks of the player on the move (or of the move being shown) drift and bob about it on endless loops
+// The pond: one pond both players fish in (v 2; on a square from before, the pond of the player on the move or of the
+// move being shown), its ducks drifting and bobbing about it on endless loops
 // (real time: ui/fx.js anchorFx keeps a loop running through re-renders); a tap on a duck is the move. The hook comes
 // down on its line to that duck (`reach`), lifts it out (`lift`), turns it over to show its bottom (`show`: a number
 // 1 to 5, or a boot), and the total counts on. A pond fished empty fills again: the new ducks float in. Everything of
@@ -28,7 +29,7 @@ function pondView(mini, a, o) {
   const can = !o.view && !o.locked && !f && by === o.turn;
   const duck = (i, cls, inner, st) => { const [x, y] = HOME[i] || [50, 50]; return `<span class="dukd${cls ? ' ' + cls : ''}" style="left:${x}%;top:${y}%;--y:${y};${drift(i)}${st ? ';' + st : ''}">${inner}</span>`; };
   const swim = i => `<span class="dukf"><span class="dukfront">${DUCK_SVG}</span></span>`;
-  const left = (mini.left[by] || []).map((on, i) => (on ? i : -1)).filter(i => i >= 0);
+  const shared = duckShared(mini), left = pondOf(mini, by).left.map((on, i) => (on ? i : -1)).filter(i => i >= 0);
   let ducks = '';
   if (f && anim) {
     // the hooked duck on its line: down to it, out of the water, over to show its bottom
@@ -39,15 +40,23 @@ function pondView(mini, a, o) {
   } else {
     ducks = left.map(i => (can ? `<button class="dukd" style="left:${HOME[i][0]}%;top:${HOME[i][1]}%;--y:${HOME[i][1]};${drift(i)}" data-act="move" ${mv(i)} aria-label="Duck ${i + 1}">${swim(i)}</button>` : duck(i, '', swim(i)))).join('');
   }
-  // the catch so far from this pond's owner (the latest few), the newest landing as it shows
-  const got = (mini.got[by] || []).slice(-8), newest = f && anim ? got.length - 1 : -1;
-  const chips = got.map((v, k) => `<i ${k === newest ? lateAt('dukc' + (v ? '' : ' b'), T.show) : `class="dukc${v ? '' : ' b'}"`}>${v ? v : BOOT_SVG}</i>`).join('');
+  // the catch so far (the latest few): the shared pond's hooks in their hooker's colour; on a square from before, this
+  // pond's owner's; the newest landing as it shows (a refilled pond's list starts again: the move's own value is added)
+  let got, who;
+  if (shared) {
+    const pd = pondOf(mini, by);
+    got = pd.out.slice(); who = pd.outBy.slice();
+    if (f && f.refill) { got = [f.v]; who = [a.by]; }
+    got = got.slice(-8); who = who.slice(-8);
+  } else { got = (mini.got[by] || []).slice(-8); who = got.map(() => by); }
+  const newest = f && anim ? got.length - 1 : -1;
+  const chips = got.map((v, k) => { const cls = 'dukc' + (v ? '' : ' b') + (shared ? ' ' + who[k] : ''); return `<i ${k === newest ? lateAt(cls, T.show) : `class="${cls}"`}>${v ? v : BOOT_SVG}</i>`; }).join('');
   const say = s => (s.v > 0 ? `<b class="${by}">${N(by)}</b> hooked a ${s.v}!` : 'A boot! Nothing') + (s.refill ? ' · the pond fills again' : '');
   const last = !f && mini.last && mini.last.by === by && (o.done || o.view) ? mini.last : null;
   const res = f ? `<p ${lateAt('dukres' + (f.v > 0 ? ' ok' : ''), anim ? T.show : null)} role="status">${say(f)}</p>` : `<p class="dukres">${last ? say(last) : '&nbsp;'}</p>`;
   return `<div class="g-duk"><div class="ctals">${tal('X')}${tal('O')}</div>
     <p class="duklab">Fishing: <b class="${by}">${N(by)}</b></p>
-    <div class="dukpond" aria-label="${left.length} ducks in the pond of ${N(by)}">${ducks}</div>
+    <div class="dukpond" aria-label="${left.length} ducks in the pond${shared ? '' : ` of ${N(by)}`}">${ducks}</div>
     <div class="dukcatch" aria-label="Hooked so far">${chips}</div>${res}</div>`;
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
@@ -58,10 +67,16 @@ export function heldSub(mini, turn, f, a) {
   if (f) return '';
   return `<b class="${turn}">${N(turn)}</b> hooked points · goes again`;
 }
-// The miniature: each player's pond as a little oval with the ducks still in it, their mark beside it and a bar of their
-// points toward the target beside that (a picture: no figures).
+// The miniature: the one pond as an oval with the ducks still in it, and under it each player's mark and a bar of their
+// points toward the target (a picture: no figures). A square from before: each player's own pond, their bar beside it.
 export function miniature(mini, final) {
   const goal = duckCfg(mini).target;
+  if (duckShared(mini)) {
+    const left = (mini.left || []).map((on, i) => (on ? i : -1)).filter(i => i >= 0);
+    const ducks = left.map(i => { const [hx, hy] = HOME[i]; const x = 8 + hx * 0.84, y = 16 + (hy - 52) * 0.42; return `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)})"><ellipse class="tdukb" rx="3.2" ry="2.3"/><circle class="tdukb" cx="2.2" cy="-2.3" r="1.5"/></g>`; }).join('');
+    const bar = (p, y) => { const f = Math.max(0, Math.min(1, mini.score[p] / goal)); return `<g class="tdukm ${p}" transform="translate(6 ${y + 4})">${markSvgG(p, 4)}</g><rect class="tdukt" x="14" y="${y}" width="82" height="8" rx="4"/><rect class="tdukf ${p}" x="14" y="${y}" width="${(82 * f).toFixed(1)}" height="8" rx="4"/>`; };
+    return `<div class="tduk" aria-label="Hook-a-Duck: X ${mini.score.X}, O ${mini.score.O} of ${goal} points, ${left.length} ducks in the pond"><svg viewBox="0 0 100 56" aria-hidden="true"><ellipse class="tdukp" cx="50" cy="16" rx="46" ry="14"/>${ducks}${bar('X', 34)}${bar('O', 46)}</svg></div>`;
+  }
   const row = (p, y) => {
     const left = (mini.left[p] || []).map((on, i) => (on ? i : -1)).filter(i => i >= 0), f = Math.max(0, Math.min(1, mini.score[p] / goal));
     const ducks = left.map(i => { const [hx, hy] = HOME[i]; const x = 12 + hx * 0.53, yy = y + 13 + (hy - 52) * 0.3; return `<g transform="translate(${x.toFixed(1)} ${yy.toFixed(1)})"><ellipse class="tdukb" rx="2.5" ry="1.8"/><circle class="tdukb" cx="1.7" cy="-1.8" r="1.2"/></g>`; }).join('');

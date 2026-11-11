@@ -1,13 +1,14 @@
 // Hook-a-Duck: the computer's play. Every duck looks the same from above, so there is nothing to choose: every level
-// hooks a duck at random (Easy, Normal and Hard alike). What it does know is what is left in its pond (the mix less the
-// values hooked from it, all public), which sizes `needs` and `q` for the main board's choice of square.
+// hooks a duck at random (Easy, Normal and Hard alike). What it does know is what is left in the pond (the mix less the
+// values hooked from it, all public: the shared pond's, or on a square from before its own), which sizes `needs` and `q`
+// for the main board's choice of square.
 import { randInt } from '../../core/random.js';
 import { goAgain } from '../../core/tune.js';
-import { duckCfg, duckLeft, duckMix } from './rules.js';
+import { duckCfg, duckLeft, duckMix, pondOf } from './rules.js';
 
-// The values still in p's pond (a multiset, as a list), from the mix and what has been hooked out of this pond.
+// The values still in the pond p fishes in (a multiset, as a list), from the mix and what has been hooked out of it.
 export function duckRest(pm, p) {
-  const rest = duckMix(duckCfg(pm)), out = (pm.out && pm.out[p]) || [];
+  const rest = duckMix(duckCfg(pm)), out = pondOf(pm, p).out;
   for (const v of out) { const k = rest.indexOf(v); if (k >= 0) rest.splice(k, 1); }
   return rest;
 }
@@ -16,9 +17,9 @@ const mean = a => (a.length ? a.reduce((s, v) => s + v, 0) / a.length : 0);
 export function needs(pm, p) {
   const c = duckCfg(pm), k = Math.max(0, c.target - pm.score[p]);
   if (!k) return 1;
-  const now = mean(duckRest(pm, p)) || mean(duckMix(c)), avg = Math.max(0.1, (now + mean(duckMix(c))) / 2);
+  const rest = duckRest(pm, p), now = mean(rest) || mean(duckMix(c)), avg = Math.max(0.1, (now + mean(duckMix(c))) / 2);
   const hooks = k / avg;
-  return Math.max(1, goAgain(pm) ? 1 + hooks * (duckRest(pm, p).filter(v => v === 0).length / Math.max(1, duckRest(pm, p).length)) : hooks);
+  return Math.max(1, goAgain(pm) ? 1 + hooks * (rest.filter(v => v === 0).length / Math.max(1, rest.length)) : hooks);
 }
 export function best(pm, me, rng, style, ctx) {
   const left = duckLeft(pm, me);

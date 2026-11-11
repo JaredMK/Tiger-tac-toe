@@ -2,18 +2,22 @@
 import { needRng, shuffle } from '../../core/random.js';
 import { goAgain, tune, tuneLive } from '../../core/tune.js';
 
-// ---------- Hook-a-Duck (November 2026) ----------
-// Each player fishes in a pond of their own: `ducks` ducks bobbing about, every one looking the same from above, each
-// with a hidden value painted on its bottom: 1 to 5 (`v1`..`v5` ducks of each), or a little rubber boot worth nothing
-// (`boots` of them). A move hooks one duck (its slot, 0 to `ducks` - 1, of those still swimming): it is lifted out and
-// turned over, its value added to the player's total. The values stay hidden until a duck is hooked (online they stay on
-// the server: secret/hide, the key `vals`; what is public is which ducks are still in the pond and every value hooked),
-// and since every duck looks alike the choice is pure luck (the values hooked from the pond so far, `out`, are public, so what
-// is left of its mix is known; which duck holds which is not). A pond fished empty is filled again (a fresh deal of the
-// same mix, drawn as the move is made: the server online; `refill`). First to `target` wins. Each player moves alone:
-// nothing one does touches the other's pond. "Go again on success" on: a duck worth something keeps the turn.
+// ---------- Hook-a-Duck (November 2026; one shared pond, v 2) ----------
+// Both players fish in one pond (v 2): `ducks` ducks bobbing about, every one looking the same from above, each with a
+// hidden value painted on its bottom: 1 to 5 (`v1`..`v5` ducks of each), or a little rubber boot worth nothing (`boots`
+// of them). A move hooks one duck (its slot, 0 to `ducks` - 1, of those still swimming): it is lifted out and turned over,
+// its value added to the mover's own total, and it is gone for both. The values stay hidden until a duck is hooked (online
+// they stay on the server: secret/hide, the key `vals`; public: which ducks are still in the pond, `left`, every value
+// hooked from it so far and by whom, `out`/`outBy`, so what is left of its mix is known to both; which duck holds which is
+// not), and since every duck looks alike the choice is pure luck. A pond fished empty is filled again (a fresh deal of the
+// same mix, drawn as the move is made: the server online; `refill`). First to `target` wins. "Go again on success" on: a
+// duck worth something keeps the turn.
+// A square dealt before (no `v`: a pond each, `vals`/`left`/`out` keyed by side) plays on under its old rules to its end:
+// pondOf gives each side its own pond there, the one pond here.
 export const DUCK = { slots: 12 };                                  // (the most ducks a pond can hold: TUNE `ducks` max)
-export const duckCfg = mini => Object.assign({ ducks: 12, v1: 1, v2: 1, v3: 1, v4: 1, v5: 3, boots: 5, target: 12 }, tune(mini));
+export const DUCK_DEF = { ducks: 12, v1: 1, v2: 1, v3: 1, v4: 1, v5: 3, boots: 5, target: 12 };   // (the TUNE defaults; tune(mini) holds them too)
+export const duckCfg = mini => Object.assign({}, DUCK_DEF, tune(mini));
+export const duckShared = mini => (mini.v || 1) >= 2;
 // The pond's mix as a list of values (a boot is 0), cut or padded with boots to the pond's size.
 export function duckMix(c) {
   const n = Math.max(3, Math.min(DUCK.slots, c.ducks | 0)), out = [];
@@ -24,37 +28,52 @@ export function duckMix(c) {
 }
 const deal = (c, r) => shuffle(duckMix(c), r);
 export function create(type, rng) {
-  const c = Object.assign({ ducks: 12, v1: 1, v2: 1, v3: 1, v4: 1, v5: 3, boots: 5, target: 12 }, tuneLive(type)), r = needRng(rng);
-  const vx = deal(c, r), vo = deal(c, r);
-  return { type, score: { X: 0, O: 0 }, vals: { X: vx, O: vo }, left: { X: vx.map(() => true), O: vo.map(() => true) }, got: { X: [], O: [] }, out: { X: [], O: [] }, ponds: { X: 1, O: 1 }, last: null };
+  const c = Object.assign({}, DUCK_DEF, tuneLive(type)), r = needRng(rng), vals = deal(c, r);
+  return { type, v: 2, score: { X: 0, O: 0 }, vals, left: vals.map(() => true), got: { X: [], O: [] }, out: [], outBy: [], ponds: 1, last: null };
 }
-export const duckLeft = (mini, p) => (mini.left[p] || []).map((on, i) => (on ? i : -1)).filter(i => i >= 0);
+// The pond p fishes in (the shared one; on a square from before, p's own): its left flags and its hooked values.
+export function pondOf(mini, p) {
+  if (duckShared(mini)) return { left: mini.left || [], out: mini.out || [], outBy: mini.outBy || [] };
+  return { left: (mini.left && mini.left[p]) || [], out: (mini.out && mini.out[p]) || [], outBy: [] };
+}
+export const duckLeft = (mini, p) => pondOf(mini, p).left.map((on, i) => (on ? i : -1)).filter(i => i >= 0);
 export function apply(mini, p, m, rng, idx) {
-  const left = mini.left[p];
+  const shared = duckShared(mini), left = shared ? mini.left : mini.left[p];
   if (!Number.isInteger(m) || m < 0 || !left || m >= left.length || !left[m]) return { ok: false, reason: 'bad' };
-  const vals = mini.vals && mini.vals[p];
+  const vals = mini.vals && (shared ? mini.vals : mini.vals[p]);
   if (!vals || !Number.isInteger(vals[m])) return { ok: false, reason: 'secret' };
   const c = duckCfg(mini), v = vals[m], from = mini.score[p];
   left[m] = false;
   mini.score[p] = Math.min(c.target, from + v);
   mini.got[p] = (mini.got[p] || []).concat(v).slice(-12);
-  if (!mini.out) mini.out = { X: [], O: [] };
-  mini.out[p] = (mini.out[p] || []).concat(v);                 // (the values hooked from this pond so far: what is left of its mix is public)
   let refill = false;
-  if (!left.some(Boolean)) {                                     // fished out: a fresh pond, the same mix, its values drawn now
-    const nv = deal(c, needRng(rng));
-    mini.vals[p] = nv; mini.left[p] = nv.map(() => true); mini.out[p] = []; mini.ponds[p] = (mini.ponds[p] || 1) + 1; refill = true;
+  if (shared) {
+    mini.out = (mini.out || []).concat(v); mini.outBy = (mini.outBy || []).concat(p);   // (the values hooked from the pond so far, and by whom: what is left of its mix is public)
+    if (!left.some(Boolean)) {                                   // fished out: a fresh pond, the same mix, its values drawn now
+      const nv = deal(c, needRng(rng));
+      mini.vals = nv; mini.left = nv.map(() => true); mini.out = []; mini.outBy = []; mini.ponds = (mini.ponds || 1) + 1; refill = true;
+    }
+  } else {
+    if (!mini.out) mini.out = { X: [], O: [] };
+    mini.out[p] = (mini.out[p] || []).concat(v);
+    if (!left.some(Boolean)) {
+      const nv = deal(c, needRng(rng));
+      mini.vals[p] = nv; mini.left[p] = nv.map(() => true); mini.out[p] = []; mini.ponds[p] = (mini.ponds[p] || 1) + 1; refill = true;
+    }
   }
   mini.last = { by: p, i: m, v, from, to: mini.score[p], refill, n: left.length };
   if (mini.score[p] >= c.target) return { ok: true, outcome: 'win', note: 'won' };
   if (v > 0 && goAgain(mini)) return { ok: true, outcome: 'continue', note: 'duck', again: true };
   return { ok: true, outcome: 'continue', note: v > 0 ? 'duck' : 'boot' };
 }
-export function publicView(mini) {
-  return { type: 'duck', score: { X: mini.score.X, O: mini.score.O }, left: { X: mini.left.X.slice(), O: mini.left.O.slice() }, got: { X: (mini.got.X || []).slice(), O: (mini.got.O || []).slice() }, out: { X: ((mini.out && mini.out.X) || []).slice(), O: ((mini.out && mini.out.O) || []).slice() }, ponds: { X: mini.ponds.X, O: mini.ponds.O }, last: mini.last ? Object.assign({}, mini.last) : null };   // never the values still in the water
+export function publicView(mini) {   // never the values still in the water
+  const got = { X: (mini.got.X || []).slice(), O: (mini.got.O || []).slice() }, last = mini.last ? Object.assign({}, mini.last) : null;
+  if (duckShared(mini)) return { type: 'duck', v: mini.v, score: { X: mini.score.X, O: mini.score.O }, left: (mini.left || []).slice(), got, out: (mini.out || []).slice(), outBy: (mini.outBy || []).slice(), ponds: mini.ponds || 1, last };
+  return { type: 'duck', score: { X: mini.score.X, O: mini.score.O }, left: { X: mini.left.X.slice(), O: mini.left.O.slice() }, got, out: { X: ((mini.out && mini.out.X) || []).slice(), O: ((mini.out && mini.out.O) || []).slice() }, ponds: { X: mini.ponds.X, O: mini.ponds.O }, last };
 }
 export function secret(mini) {   // the values on the ducks' bottoms
-  return mini.vals ? { vals: { X: (mini.vals.X || []).slice(), O: (mini.vals.O || []).slice() } } : null;
+  if (!mini.vals) return null;
+  return { vals: Array.isArray(mini.vals) ? mini.vals.slice() : { X: (mini.vals.X || []).slice(), O: (mini.vals.O || []).slice() } };
 }
 export function hide(m, k, st) { delete m.vals; }
 export function randomMove(mini, p, rng, from, empties) {        // (the tests' stand-in: any duck still swimming)

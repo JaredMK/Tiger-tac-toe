@@ -1,18 +1,17 @@
 // Hook-a-Duck: its names, its "?" explainer, its icon, its release default and its settings (November 2026).
 import { AGAIN_TUNE } from '../../core/tune.js';
 
-export const info = { name: 'Hook-a-Duck', hint: 'Hook a duck from your pond. Its bottom shows its value. First to the target wins' };
+export const info = { name: 'Hook-a-Duck', hint: 'Hook a duck from the pond you share. Its bottom shows its value. First to the target wins' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
 export const minVersion = '1.10.0';   // the oldest client version that has this game (core/client.js)
 export const category = 'luck';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
-export const explainer = { name: 'Hook-a-Duck', play: 'Tap a duck in your pond to hook it. Its bottom shows 1 to 5 points, or a boot worth nothing. An empty pond fills up again.{goAgain}', win: 'First to {target} points.' };
+export const explainer = { name: 'Hook-a-Duck', play: 'You both fish in the same pond. Tap a duck to hook it: it is gone for both of you. Its bottom shows 1 to 5 points, or a boot worth nothing. An empty pond fills up again.{goAgain}', win: 'First to {target} points.' };
 // {goAgain} in the explainer: the text below while "Go again on success" is on (AGAIN_TUNE), the other while off (ui/explainer.js fillTune).
 export const goAgainText = { on: ' Points? Hook again.', off: '' };
 // Its settings (the admin's Mini-game Settings; core/tune.js): read with duckCfg(mini). The pond's size and its mix of
 // values (ducks worth 1 to 5 and boots worth 0; a mix short of the pond's size is filled with boots), and the points to
-// win. Tuned by tests/sim/duck.sim.js (November 2026): a pond of 12 (one each of 1 to 4, three 5s, five boots) and 12 to
-// win: 4.8 turns each, the winner's 5.1, the first mover 57.7% (a steadier mix, two each of 1 to 3, one 4, one 5 and two
-// boots in a pond of 10, made the race too even: the first mover won 62%; the boots and 5s are what give the second a chance).
+// win. Tuned by tests/sim/duck.sim.js (November 2026, one shared pond): a pond of 12 (one each of 1 to 4, three 5s, five
+// boots) and 12 to win: 4.5 turns each, the winner's 4.8, the first mover 53.5% (11 to win: 4.2 turns, 56.6%; 10: 3.6, 56.4%).
 export const TUNE = [
   AGAIN_TUNE,
   { k: 'target', label: 'Points to win', def: 12, min: 4, max: 30, step: 1, group: 'Rules' },
