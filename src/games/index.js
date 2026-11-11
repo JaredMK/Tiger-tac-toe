@@ -63,6 +63,9 @@ import * as rpsR from './rps/rules.js'; import * as rpsA from './rps/ai.js'; imp
 import * as pokerR from './poker/rules.js'; import * as pokerA from './poker/ai.js'; import * as pokerM from './poker/meta.js'; add('poker', pokerR, pokerA, pokerM);
 import * as t31R from './t31/rules.js'; import * as t31A from './t31/ai.js'; import * as t31M from './t31/meta.js'; add('t31', t31R, t31A, t31M);
 import * as rummyR from './rummy/rules.js'; import * as rummyA from './rummy/ai.js'; import * as rummyM from './rummy/meta.js'; add('rummy', rummyR, rummyA, rummyM);
+import * as clawR from './claw/rules.js'; import * as clawA from './claw/ai.js'; import * as clawM from './claw/meta.js'; add('claw', clawR, clawA, clawM);
+import * as duckR from './duck/rules.js'; import * as duckA from './duck/ai.js'; import * as duckM from './duck/meta.js'; add('duck', duckR, duckA, duckM);
+import * as pusherR from './pusher/rules.js'; import * as pusherA from './pusher/ai.js'; import * as pusherM from './pusher/meta.js'; add('pusher', pusherR, pusherA, pusherM);
 import * as snakeR from './snake/rules.js'; import * as snakeA from './snake/ai.js'; import * as snakeM from './snake/meta.js'; add('snake', snakeR, snakeA, snakeM);
 import * as swarmR from './swarm/rules.js'; import * as swarmA from './swarm/ai.js'; import * as swarmM from './swarm/meta.js'; add('swarm', swarmR, swarmA, swarmM);
 import * as bricksR from './bricks/rules.js'; import * as bricksA from './bricks/ai.js'; import * as bricksM from './bricks/meta.js'; add('bricks', bricksR, bricksA, bricksM);
