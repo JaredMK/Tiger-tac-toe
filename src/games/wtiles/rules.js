@@ -1,73 +1,212 @@
-// Craps: the rules (pure: no page, no clock; the server runs the same code).
-import { needRng, randInt } from '../../core/random.js';
-import { goAgain, tune } from '../../core/tune.js';
+// Word Tiles: the rules (pure: no page, no clock; the server runs the same code).
+import { needRng, randInt, shuffle } from '../../core/random.js';
+import { goAgain, tune, tuneLive } from '../../core/tune.js';
+import { WT_WORDS } from './words.js';
 
-// ---------- Craps, Takeover and Flood ----------
-// Craps: each player has their own count of rounds won; first to 3 (the admin's, tune(mini).goal) takes the square. A move is one tap of
-// Roll: the dice keep rolling until the round is won or lost, all rolled where the move is made (the server
-// online: no roll is known before it lands). The come-out roll wins on 7 or 11 and loses on 2, 3 or 12
-// (craps); anything else is the point, and then the point wins and a 7 loses. A lost round takes nothing
-// away; every move starts a fresh round (a square from before with a point still on rolls that one out).
-// A hot streak: a round won (not yet the square) keeps the turn, and the same player rolls a new round
-// (again); a round lost ends the turn. (Super Chaos: one round a round, no streak: scApply.)
-// The page plays the rolls back one by one (the dice tumbling, the puck going on the point).
-export const CRAPS = { goal: 3, roll: 900, quick: 560, quickAfter: 4, puck: 420, hold: 400, stop: 600, land: 560, flash: 250, pip: 400, winOdds: 244 / 495 };   // a round's flash: roll each roll (quick after the first few), the puck, the result held; land: a die's tumble (stop, flash: single rolls, from before); pip: a won round's pip filling in
-export const CRAPS_MAKE = { 4: 1 / 3, 5: 0.4, 6: 5 / 11, 8: 5 / 11, 9: 0.4, 10: 1 / 3 };   // the chance a point is rolled before a 7
-// A round rolled out: from the come-out, or from a point already on (from).
-export function crapsRound(rng, from) {
-  const rolls = [];
-  let point = from == null ? null : from, result = null;
-  while (!result) {
-    const d = [1 + randInt(rng, 6), 1 + randInt(rng, 6)], s = d[0] + d[1];
-    rolls.push(d);
-    if (point == null) {
-      if (s === 7 || s === 11) result = 'win';
-      else if (s === 2 || s === 3 || s === 12) result = 'lose';
-      else point = s;
-    } else if (s === point) result = 'win';
-    else if (s === 7) result = 'lose';
+// ---------- Word Tiles (November 2026) ----------
+// Each player has their own 7x7 board (premium squares: double and triple letter, double and triple word; the centre a
+// double word the first word must cover) and their own bag of letter tiles, a rack of `rack` (7) drawn from it. A move
+// places one word: tiles from the rack in one row or one column, with no gap but the board's own tiles, the first
+// through the centre and every later one joined to what is there; every word it makes (the main one along the line
+// and each one across a new tile) must be in the list (words.js: ENABLE, public domain, 2 to 7 letters, the
+// offensive words left out) and each scores: its letters' values, a new tile on a double or triple letter square
+// counting two or three times, the word doubled or trebled for each new tile on a word square; all the rack's tiles
+// in one word adds `bonus`. The rack then refills from the bag; an empty bag is a fresh one (shuffled) — so a player
+// never runs out. Swap (the turn) puts the whole rack back, shuffles the bag and draws again: never stuck. No blank
+// tiles. The first total at `target` wins the square (individual progress: a player moving alone wins). The bag's
+// order is hidden (secret/hide: online it stays on the server); the boards, the racks and the scores are open (the
+// other player's rack changes nothing of your own game). A draft is the phone's own: a timeout plays nothing.
+// "Go again on success" (core/tune.js AGAIN_TUNE) on: a word played keeps the turn.
+export const WT = { n: 7, rack: 7, bonus: 15, drop: 110, dropMs: 360, count: 520, hold: 450 };
+// Letter values (the usual ones of word games: 1 for the commonest letters up to 10 for the rarest).
+export const WT_VAL = { A: 1, B: 3, C: 3, D: 2, E: 1, F: 4, G: 2, H: 4, I: 1, J: 8, K: 5, L: 1, M: 3, N: 1, O: 1, P: 3, Q: 10, R: 1, S: 1, T: 1, U: 1, V: 4, W: 4, X: 8, Y: 4, Z: 10 };
+// A player's bag (53 tiles: about half a usual set, no Q: no word of 7 letters or fewer takes one but a handful).
+export const WT_BAG = 'EEEEEEAAAAAIIIIIOOOONNNRRRTTTSSLLUUDDGGBCFHMPVWYKJXZ';
+// The premium squares, row by row: T triple word, D double word (the centre, where the first word goes), t triple
+// letter, d double letter.
+export const WT_PREM = 'T..d..T.D...D...t.t..d..D..d..t.t...D...D.T..d..T';
+export const WT_CENTRE = 24;
+export const wtCfg = mini => { const t = tune(mini); return { target: t.target, rack: Math.max(4, Math.min(7, Math.round(t.rack || WT.rack))), bonus: t.bonus != null ? t.bonus : WT.bonus }; };
+
+// ---- the word list ----
+let DICT = null;
+// Decoded on first use: every word (upper case) in a Set, and the lists by length (the computer's search).
+export function wtDict() {
+  if (DICT) return DICT;
+  const set = new Set(), byLen = [[], [], [], [], [], [], [], []];
+  let prev = '', i = 0;
+  const s = WT_WORDS;
+  while (i < s.length) {
+    const k = s.charCodeAt(i) - 48; i++;
+    let j = i; while (j < s.length && (s.charCodeAt(j) < 48 || s.charCodeAt(j) > 57)) j++;
+    const w = prev.slice(0, k) + s.slice(i, j);
+    i = j; prev = w;
+    const W = w.toUpperCase();
+    set.add(W); if (W.length <= 7) byLen[W.length].push(W);
   }
-  return { rolls, point, result };
+  DICT = { set, byLen };
+  return DICT;
 }
-// When each roll of a round lands (ms into the move), when the puck goes on, and when the round's result
-// shows. was: a point already on before the first roll (a square from before): the puck is on from the start.
-export function crapsTimes(rolls, point, was) {
-  const at = [];
-  let t = 0, puck = null;
-  for (let k = 0; k < rolls.length; k++) {
-    at.push(t); t += k < CRAPS.quickAfter ? CRAPS.roll : CRAPS.quick;
-    if (k === 0 && point != null && was == null) { puck = at[0] + CRAPS.land; t += CRAPS.puck; }
+export const wtIsWord = w => typeof w === 'string' && wtDict().set.has(w.toUpperCase());
+
+// ---- a placement checked and scored ----
+const rowOf = i => Math.floor(i / WT.n), colOf = i => i % WT.n;
+const step = (i, d, s) => { const j = i + d * s; if (j < 0 || j >= WT.n * WT.n) return -1; if (d === 1 && rowOf(j) !== rowOf(i)) return -1; return j; };
+// The word through cell i along d (1 across, 7 down) on board b: its cells, first to last.
+function wordAt(b, i, d) {
+  let a = i; for (let j = step(a, d, -1); j >= 0 && b[j]; j = step(a, d, -1)) a = j;
+  const cells = []; for (let j = a; j >= 0 && b[j]; j = step(j, d, 1)) cells.push(j);
+  return cells;
+}
+function scoreWord(b, cells, fresh) {
+  let sum = 0, mult = 1;
+  for (const c of cells) {
+    let v = WT_VAL[b[c]] || 0;
+    if (fresh.has(c)) { const p = WT_PREM[c]; if (p === 'd') v *= 2; else if (p === 't') v *= 3; else if (p === 'D') mult *= 2; else if (p === 'T') mult *= 3; }
+    sum += v;
   }
-  return { at, puck, end: t };
+  return sum * mult;
+}
+// t: [[cell, letter], ...] on `board` from `rack`. { ok, score, words: [{ w, cells, s }] } or { ok: false, reason, w }.
+export function wtCheck(board, rack, t, cfg) {
+  cfg = cfg || { bonus: WT.bonus };
+  if (!Array.isArray(t) || !t.length || t.length > rack.length) return { ok: false, reason: 'bad' };
+  const left = rack.slice(), seen = new Set();
+  for (const pl of t) {
+    if (!Array.isArray(pl) || pl.length !== 2) return { ok: false, reason: 'bad' };
+    const [c, l] = pl;
+    if (!Number.isInteger(c) || c < 0 || c >= WT.n * WT.n || board[c] || seen.has(c) || typeof l !== 'string' || !/^[A-Z]$/.test(l)) return { ok: false, reason: 'bad' };
+    const k = left.indexOf(l); if (k < 0) return { ok: false, reason: 'bad' };
+    left.splice(k, 1); seen.add(c);
+  }
+  const first = board.every(x => !x), b = board.slice();
+  for (const [c, l] of t) b[c] = l;
+  const rows = new Set(t.map(([c]) => rowOf(c))), cols = new Set(t.map(([c]) => colOf(c)));
+  let d;
+  if (t.length === 1) { const c = t[0][0]; d = (step(c, 1, -1) >= 0 && b[step(c, 1, -1)]) || (step(c, 1, 1) >= 0 && b[step(c, 1, 1)]) ? 1 : 7; }
+  else if (rows.size === 1) d = 1; else if (cols.size === 1) d = 7; else return { ok: false, reason: 'line' };
+  const main = wordAt(b, t[0][0], d);
+  if (t.some(([c]) => !main.includes(c))) return { ok: false, reason: 'gap' };
+  if (first && !seen.has(WT_CENTRE)) return { ok: false, reason: 'centre' };
+  const words = [];
+  if (main.length >= 2) words.push(main);
+  for (const [c] of t) { const x = wordAt(b, c, d === 1 ? 7 : 1); if (x.length >= 2) words.push(x); }
+  if (!words.length) return { ok: false, reason: first ? 'short' : 'connect' };
+  if (!first && !words.some(w => w.some(c => board[c]))) return { ok: false, reason: 'connect' };
+  const out = [];
+  for (const cells of words) { const w = cells.map(c => b[c]).join(''); if (!wtIsWord(w)) return { ok: false, reason: 'word', w }; out.push({ w, cells, s: scoreWord(b, cells, seen) }); }
+  const all = t.length === rack.length && rack.length >= 7 ? cfg.bonus : 0;
+  return { ok: true, score: out.reduce((a, x) => a + x.s, 0) + all, words: out, all: all > 0 };
+}
+
+// ---- every legal word (the computer's search, the tests' stand-in) ----
+// Every placement on `board` from `rack`, each { t, score, w } (w the main word). The lines of the board (7 across,
+// 7 down), every stretch of 2 to 7 cells in each that the word would fill exactly (the cells either side empty or the
+// edge), with at least one empty cell, the centre for the first word, else touching a tile; the words of that length
+// that fit the stretch's own letters and the rack, every new tile's word across checked (cached), each scored.
+export function wtMoves(board, rack, cfg) {
+  const { set, byLen } = wtDict(), n = WT.n, first = board.every(x => !x);
+  const have = new Array(26).fill(0); for (const l of rack) have[l.charCodeAt(0) - 65]++;
+  const onBoard = new Set(board.filter(Boolean));
+  const ok = l => have[l.charCodeAt(0) - 65] > 0 || onBoard.has(l);
+  const lists = byLen.map(ws => ws.filter(w => { for (let i = 0; i < w.length; i++) if (!ok(w[i])) return false; return true; }));
+  const crossMemo = new Map();
+  const crossOk = (c, l, d) => {                                  // the word across a new tile at c (perpendicular to d) is a word, or there is none
+    const key = c * 64 + (l.charCodeAt(0) - 65) * 2 + (d === 1 ? 0 : 1);
+    if (crossMemo.has(key)) return crossMemo.get(key);
+    const e = d === 1 ? 7 : 1;
+    let a = c; for (let j = step(a, e, -1); j >= 0 && board[j]; j = step(a, e, -1)) a = j;
+    let w = '', touched = false;
+    for (let j = a; j >= 0 && (board[j] || j === c); j = step(j, e, 1)) { if (j === c) w += l; else { w += board[j]; touched = true; } }
+    const r = !touched || set.has(w);
+    crossMemo.set(key, r);
+    return r;
+  };
+  const nbr = c => [step(c, 1, -1), step(c, 1, 1), step(c, 7, -1), step(c, 7, 1)].some(j => j >= 0 && board[j]);
+  const out = [];
+  for (const d of [1, 7]) for (let line = 0; line < n; line++) {
+    const cellAt = k => (d === 1 ? line * n + k : k * n + line);
+    for (let a = 0; a < n; a++) for (let z = a + 1; z < n; z++) {
+      const L = z - a + 1, cells = Array.from({ length: L }, (_, k) => cellAt(a + k));
+      if (a > 0 && board[cellAt(a - 1)]) continue;                 // (the word would run on: not this stretch)
+      if (z < n - 1 && board[cellAt(z + 1)]) continue;
+      const empties = cells.filter(c => !board[c]);
+      if (!empties.length || empties.length > rack.length) continue;
+      if (first ? !cells.includes(WT_CENTRE) : !(empties.length < L || empties.some(nbr))) continue;
+      for (const w of lists[L]) {
+        let fit = true; const need = have.slice();
+        for (let k = 0; k < L && fit; k++) {
+          const c = cells[k], f = board[c];
+          if (f) { if (f !== w[k]) fit = false; continue; }
+          const x = w.charCodeAt(k) - 65;
+          if (need[x] <= 0 || !crossOk(c, w[k], d)) fit = false; else need[x]--;
+        }
+        if (!fit) continue;
+        const t = []; for (let k = 0; k < L; k++) if (!board[cells[k]]) t.push([cells[k], w[k]]);
+        if (t.length === 1 && d === 7 && ((step(t[0][0], 1, -1) >= 0 && board[step(t[0][0], 1, -1)]) || (step(t[0][0], 1, 1) >= 0 && board[step(t[0][0], 1, 1)]))) continue;   // (one tile with a word across too: found as the across one)
+        const ch = wtCheck(board, rack, t, cfg);
+        if (ch.ok) out.push({ t, score: ch.score, w });
+      }
+    }
+  }
+  return out;
+}
+
+// ---- the square ----
+function draw(mini, p, rng) {
+  const cfg = wtCfg(mini), rack = mini.rack[p];
+  while (rack.length < cfg.rack) {
+    if (!mini.bag[p].length) mini.bag[p] = shuffle(WT_BAG.split(''), needRng(rng));   // an empty bag: a fresh one
+    rack.push(mini.bag[p].pop());
+  }
+  mini.bagN = { X: mini.bag.X.length, O: mini.bag.O.length };
 }
 export function create(type, rng) {
-  return { type, wins: { X: 0, O: 0 }, rounds: { X: 0, O: 0 }, point: null, live: null, rolls: [], last: null };   // point, live, rolls: a round left with its point on (from before); every move now rolls a round out
+  const r = needRng(rng), c = wtCfg({ type, tune: tuneLive(type) });
+  const mini = { type, v: 1, board: { X: new Array(49).fill(null), O: new Array(49).fill(null) }, rack: { X: [], O: [] }, bag: { X: shuffle(WT_BAG.split(''), r), O: shuffle(WT_BAG.split(''), r) }, bagN: { X: 0, O: 0 }, score: { X: 0, O: 0 }, plays: { X: 0, O: 0 }, last: null };
+  for (const p of ['X', 'O']) while (mini.rack[p].length < c.rack) mini.rack[p].push(mini.bag[p].pop());
+  mini.bagN = { X: mini.bag.X.length, O: mini.bag.O.length };
+  return mini;
 }
-export function apply(mini, p, m, rng, idx) { return roll(mini, p, m, rng, true); }
-export function scApply(mini, p, m, rng) { return roll(mini, p, m, rng, false); }   // Super Chaos: a round's move is one round, won or lost
-function roll(mini, p, m, rng, streak) {   // Roll: the round, rolled out
-  if (m !== 'roll' && m !== 'auto') return { ok: false, reason: 'bad' };
-  const was = mini.point == null ? null : mini.point, r = crapsRound(needRng(rng), was);
-  mini.rounds[p] += 1; if (r.result === 'win') mini.wins[p] += 1;
-  mini.last = { by: p, kind: 'round', rolls: r.rolls.map(d => d.slice()), point: r.point, was, result: r.result };
-  mini.point = null; mini.live = null; mini.rolls = [];
-  if (mini.wins[p] >= tune(mini).goal) return { ok: true, outcome: 'win', note: 'won' };
-  if (r.result === 'win' && streak && goAgain(mini)) return { ok: true, outcome: 'continue', note: 'won', again: true };   // a hot streak: roll again
-  return { ok: true, outcome: 'continue', note: r.result === 'win' ? 'won' : 'lost' };
+// m: [[cell, letter], ...] (one word), or 'swap'.
+export function apply(mini, p, m, rng, idx) {
+  const cfg = wtCfg(mini), board = mini.board[p], rack = mini.rack[p], from = mini.score[p];
+  if (!mini.bag || !mini.bag[p]) return { ok: false, reason: 'secret' };
+  if (m === 'swap') {
+    mini.bag[p] = shuffle(mini.bag[p].concat(rack.splice(0)), needRng(rng));
+    draw(mini, p, rng);
+    mini.plays[p] += 1;
+    mini.last = { by: p, kind: 'swap', from, to: from };
+    return { ok: true, outcome: 'continue', note: 'swap' };
+  }
+  const ch = wtCheck(board, rack, m, cfg);
+  if (!ch.ok) return { ok: false, reason: ch.reason === 'word' ? 'word' : 'bad' };
+  for (const [c, l] of m) { board[c] = l; rack.splice(rack.indexOf(l), 1); }
+  draw(mini, p, rng);
+  mini.score[p] = from + ch.score; mini.plays[p] += 1;
+  mini.last = { by: p, kind: 'word', t: m.map(([c, l]) => [c, l]), words: ch.words.map(x => ({ w: x.w, s: x.s })), all: ch.all, pts: ch.score, from, to: mini.score[p] };
+  if (mini.score[p] >= cfg.target) return { ok: true, outcome: 'win', note: 'word' };
+  if (goAgain(mini)) return { ok: true, outcome: 'continue', note: 'word', again: true };   // ("Go again on success" on: another word)
+  return { ok: true, outcome: 'continue', note: 'word' };
 }
+export function secret(mini) { return mini.bag ? { bag: { X: mini.bag.X.slice(), O: mini.bag.O.slice() } } : null; }   // the bags' order
+export function hide(m, k, st) { delete m.bag; }
 export function publicView(mini) {
-  return { type: 'wtiles', wins: { X: mini.wins.X, O: mini.wins.O }, point: mini.point == null ? null : mini.point, live: mini.live || null };
+  return { type: 'wtiles', v: mini.v, board: { X: mini.board.X.slice(), O: mini.board.O.slice() }, rack: { X: mini.rack.X.slice(), O: mini.rack.O.slice() }, bagN: Object.assign({}, mini.bagN), score: { X: mini.score.X, O: mini.score.O }, plays: { X: mini.plays.X, O: mini.plays.O } };
 }
-export function randomMove(mini, p, rng, from, empties) {
-  return 'roll';                                          // a timed-out turn rolls its round out
+export function canMove(mini) { return true; }
+export function randomMove(mini, p, rng, from, empties) {        // (the tests' stand-in for a player: any word, else a swap)
+  const ms = wtMoves(mini.board[p], mini.rack[p], wtCfg(mini));
+  return ms.length ? ms[randInt(needRng(rng), ms.length)].t : 'swap';
 }
 export function moveFlash(m, p, range, bjFrom, mini, flash) {
-  const l = mini.last; flash.craps = { kind: 'round', rolls: l.rolls.map(d => d.slice()), point: l.point, was: l.was, result: l.result, wins: { X: mini.wins.X, O: mini.wins.O } }; return;
+  const l = mini.last;
+  flash.wt = Object.assign(JSON.parse(JSON.stringify(l)), { board: mini.board[p].slice(), rack: mini.rack[p].slice() });
 }
-export function flashMs(f, winLen, won) {
-  if (!f.craps) return CRAPS.roll + CRAPS.hold;
-  if (f.craps.roll) return CRAPS.land + CRAPS.flash + (won ? 600 : 0);   // (a single roll, from before)
-  return crapsTimes(f.craps.rolls, f.craps.point, f.craps.was).end + (f.craps.result === 'win' ? CRAPS.pip : 0) + (won ? 600 : 0);   // the round, roll by roll (a round won: its pip filling in); the result then stays up its usual moment
+// The move's moments (ms from it): the new tiles drop onto the board one after the other, then the score counts on.
+export function wtTimes(s) {
+  if (!s || s.kind !== 'word') return { end: WT.hold + 300, count: 0 };
+  const n = s.t ? s.t.length : 0, count = (n - 1) * WT.drop + WT.dropMs;
+  return { dropAt: k => k * WT.drop, count, end: count + WT.count + WT.hold };
 }
-// Super Chaos: each player's round is rolled out within their own move (one round, no streak: scApply), so
-// nothing carries over: the usual merge (each player's wins and rounds) is all there is.
+export function flashMs(f, winLen, won) { return wtTimes(f.wt).end + (won ? 600 : 0); }

@@ -1,19 +1,21 @@
-// PLACEHOLDER (November 2026): being built; a copy of Krabs until then.
-// Craps: its names, its "?" explainer, its icon and its release default.
+// Word Tiles: its names, its "?" explainer, its icon, its release default and its settings (November 2026).
 import { AGAIN_TUNE } from '../../core/tune.js';
 
-export const info = { name: 'Word Tiles',        hint: '7 or 11 wins, 2, 3 or 12 loses. Win 3 rounds' };
+export const info = { name: 'Word Tiles', hint: 'Lay a word from your tiles on your own board. First to the target' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
-export const minVersion = '1.10.0';   // the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
-export const category = 'luck';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
-export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
-export const explainer = { name: 'Word Tiles', play: 'Tap Roll: the dice keep rolling until your round is won or lost. On the first roll, 7 or 11 wins and 2, 3 or 12 loses. Any other number is your point: rolling it again wins, rolling a 7 loses.{goAgain}', win: 'Win {goal} rounds.' };   // ({goal}: its setting, TUNE below)
-export const scExplainer = { name: 'Word Tiles', play: 'Tap Roll: the dice keep rolling until your round is won or lost. On the first roll, 7 or 11 wins and 2, 3 or 12 loses. Any other number is your point: rolling it again wins, rolling a 7 loses.', win: 'Win {goal} rounds.' };   // in Super Chaos (one round a round: no going again)
-// Its settings (the admin's Mini-game Settings; core/tune.js): read with tune(mini).
+export const minVersion = '1.10.0';   // the oldest client version that has this game (core/client.js)
+export const category = 'brain';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
+export const explainer = { name: 'Word Tiles', play: 'Make one word on your own board from your tiles, in a row or a column. The first goes through the centre; the rest join on. Tinted squares count extra. No word? Swap your tiles.{goAgain}', win: 'First to {target} points.' };   // ({target}: its setting, TUNE below)
+// The premium squares, one line each, under Play and Win in the "?" (ui/explainer.js: explainerList).
+export const explainerList = { dl: 'Double letter: that tile counts twice.', tl: 'Triple letter: that tile counts three times.', dw: 'Double word: the whole word counts twice (the centre too).', tw: 'Triple word: the whole word counts three times.', all: 'All seven tiles in one word: 15 extra.' };
 // {goAgain} in the explainer: the text below while "Go again on success" is on (AGAIN_TUNE), the other while off (ui/explainer.js fillTune).
-export const goAgainText = { on: ' Win? Go again.', off: '' };
+export const goAgainText = { on: ' Played a word? Go again.', off: '' };
+// Its settings (the admin's Mini-game Settings; core/tune.js): read with tune(mini). Tuned by tests/sim/wtiles.sim.js.
 export const TUNE = [
   AGAIN_TUNE,
-  { k: 'goal', label: 'Rounds to win', def: 3, min: 2, max: 4, step: 1, group: 'Rules' },
+  { k: 'target', label: 'Points to win', def: 50, min: 15, max: 150, step: 5, group: 'Rules' },
+  { k: 'rack', label: 'Tiles on a rack', def: 7, min: 4, max: 7, step: 1, group: 'Rules' },
+  { k: 'bonus', label: 'All seven tiles in one word: extra points', def: 15, min: 0, max: 50, step: 1, group: 'Rules' },
+  { k: 'aiSee', label: 'Computer (Normal): share of the words it sees (%)', def: 30, min: 1, max: 100, step: 1, group: 'Computer' },
 ];
-export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round"><rect x="2.5" y="8" width="10.5" height="10.5" rx="2.2" transform="rotate(-12 7.7 13.2)"/><rect x="11.5" y="4.5" width="10" height="10" rx="2.2" transform="rotate(10 16.5 9.5)"/><circle cx="5.6" cy="11.2" r="1.1" fill="currentColor" stroke="none"/><circle cx="9.6" cy="15.6" r="1.1" fill="currentColor" stroke="none"/><circle cx="16.5" cy="9.5" r="1.1" fill="currentColor" stroke="none"/></svg>';
+export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round"><rect x="2.5" y="8" width="6" height="6" rx="1.2"/><rect x="9" y="8" width="6" height="6" rx="1.2"/><rect x="15.5" y="8" width="6" height="6" rx="1.2"/><path d="M5.5 10v2.5M12 10.2h-1.2v2.3H12M18.5 10v2.5" stroke-linecap="round"/></svg>';
