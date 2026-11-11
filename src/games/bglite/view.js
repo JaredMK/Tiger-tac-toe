@@ -1,5 +1,5 @@
 // Backgammon Lite: the screen, the miniature, the move's words and sounds, and the inputs.
-import { BGL, BGLT, bglDice, bglHome, bglMoves, bglTimes, bglV2 } from './rules.js';
+import { BGL, BGLT, bglDice, bglHome, bglMoves, bglTimes, bglTo, bglV2 } from './rules.js';
 import { N, REDUCED, mv, state, waitLine, zoomedType } from '../../ui/app.js';
 import { dieFace } from '../../ui/art.js';
 import { arcTally, lateAt, pips } from '../../ui/progress.js';
@@ -33,7 +33,7 @@ export function bglCells(pos, n) {
 }
 // Where a piece would land: [col, slot] (the next free slot up from the bottom of that point or tray).
 function landing(mini, p, k, v) {
-  const n = mini.n, to = Math.min(n + 1, mini.pos[p][k] + v), col = to > n ? (p === 'X' ? n + 1 : 0) : (p === 'X' ? to : n + 1 - to);
+  const n = mini.n, to = bglTo(mini, p, mini.pos[p][k], v), col = to > n ? (p === 'X' ? n + 1 : 0) : (p === 'X' ? to : n + 1 - to);
   const there = mini.pos[p].filter((a, j) => j !== k && (to > n ? a > n : a === to)).length;
   return [col, SLOTS - 1 - there];
 }

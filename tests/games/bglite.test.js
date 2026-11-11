@@ -169,3 +169,15 @@ test('bglite: whole squares between the computers end with a winner, in about 3 
   const avg = turns / games / 2;
   assert.ok(avg >= 3 && avg <= 6, `turns a player ${avg.toFixed(2)}`);
 });
+
+test('bglite: once every piece is home, a roll that reaches the last point bears the piece off (no exact roll needed); before that it just lands there', () => {
+  const R = require('../../src/games/bglite/rules.js');
+  const m = E.newMini('bglite', E.makeRng('reach')), n = m.n;
+  m.pos.X = [n - 2, n - 1, n]; m.pos.O = [1, 1, 1];
+  assert.equal(R.bglCanOff(m, 'X'), true);
+  assert.equal(R.bglTo(m, 'X', n - 2, 2), n + 1, 'reaching the last point: off');
+  assert.equal(R.bglTo(m, 'X', n - 2, 5), n + 1, 'passing it: off');
+  m.pos.X = [2, n - 1, n];
+  assert.equal(R.bglCanOff(m, 'X'), false);
+  assert.equal(R.bglTo(m, 'X', n - 1, 1), n, 'not all home: it lands on the last point');
+});

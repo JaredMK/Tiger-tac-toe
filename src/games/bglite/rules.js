@@ -54,11 +54,18 @@ export function bglAt(mini, q, b) {
 }
 // The dice in play for p (stale ones, left by a timeout on someone else's turn, are none).
 export const bglDice = (mini, p) => (mini.dice && mini.dice.by === p ? mini.dice : null);
-// Can p's piece k move v points? Off the board past the end; never onto 2 or more enemy pieces.
+// Where p's piece at progress a lands with v (n + 1: borne off). Once every piece is home (bglCanOff), a roll that reaches the
+// last point or passes it bears the piece off: no exact roll needed (November 2026; a square from before, v 1: only past it).
+export function bglTo(mini, p, a, v) {
+  const n = mini.n, b = a + v;
+  if (b > n) return n + 1;
+  return b === n && bglV2(mini) && bglCanOff(mini, p) ? n + 1 : b;
+}
+// Can p's piece k move v points? Off the board at or past the end (once home); never onto 2 or more enemy pieces.
 export function bglCan(mini, p, k, v) {
   const n = mini.n, a = mini.pos[p][k];
   if (!(a >= 0 && a <= n)) return false;
-  const b = a + v;
+  const b = bglTo(mini, p, a, v);
   if (b > n) return bglCanOff(mini, p);
   return bglAt(mini, bglOther(p), bglPoint(p, b, n)) < 2;
 }
@@ -83,7 +90,7 @@ export function create(type, rng) {
 }
 // One step for p: the move m played on the square (no checks): what it did.
 export function bglStep(mini, p, d, k) {
-  const n = mini.n, dc = mini.dice, v = dc.v[d], from = mini.pos[p][k], to = Math.min(n + 1, from + v), q = bglOther(p);
+  const n = mini.n, dc = mini.dice, v = dc.v[d], from = mini.pos[p][k], to = bglTo(mini, p, from, v), q = bglOther(p);
   let hit = null;
   if (to <= n) {
     const b = bglPoint(p, to, n), j = mini.pos[q].findIndex(a => a >= 1 && a <= n && bglPoint(q, a, n) === b);
