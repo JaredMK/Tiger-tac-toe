@@ -59,6 +59,6 @@ export function moveFlash(m, p, range, bjFrom, mini, flash) {
   const l = mini.last; flash.bus = { round: l.round, guess: l.guess, card: l.card, right: l.right, kept: mini.prog[p].slice() }; return;
 }
 export function flashMs(f, winLen, won) {
-  return BUST.pre + BUST.draw + BUST.flip + BUST.mark + (f.bus && f.bus.right ? BUST.fly : 0) + (won ? 600 : 0);
+  return BUST.pre + BUST.draw + BUST.flip + BUST.mark + (f.bus && f.bus.right ? BUST.fly : f.bus ? BUST.back : 0) + (won ? 600 : 0);
 }
-export const BUST = { pre: 500, draw: 380, flip: 380, mark: 450, fly: 480 };
+export const BUST = { pre: 500, draw: 380, flip: 380, mark: 450, fly: 480, back: 300 };   // (back: a wrong card's return into the deck)

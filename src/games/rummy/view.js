@@ -2,6 +2,8 @@
 import { RMYT, rmyCfg, rmyMelds, rmySort, rmyTimes } from './rules.js';
 import { N, REDUCED, mv, waitLine } from '../../ui/app.js';
 import { pcard } from '../../ui/cards.js';
+import { cfAnchor } from '../../ui/cardfly.js';
+const RMYG = { gap: 60, fly: 220 };   // a reshuffle's gather (card motion): three backs from the pile into the deck, `gap` apart
 import { cardName } from '../shared/cards.js';
 import { arcTally, lateAt } from '../../ui/progress.js';
 import { markSvgG, pipRows, thumbArt, tinyCard } from '../../ui/thumbs.js';
@@ -15,7 +17,7 @@ import { mySide } from '../../net/room.js';
 // its room from the start: nothing moves.
 const W = p => `<b class="${p}">${N(p)}</b>`;
 const meldSets = hand => rmyMelds(hand).melds;
-const backs = (n, cls) => Array.from({ length: Math.max(0, n) }, () => `<span class="rmyc rmyb">${pcard(null, { down: true })}</span>`).join('');
+const backs = (n, from) => Array.from({ length: Math.max(0, n) }, (_, k) => `<span class="rmyc rmyb">${pcard(null, from && k === n - 1 ? { down: true, from, slide: 0 } : { down: true })}</span>`).join('');   // (from: the last back just taken, flying in from the deck or the pile)
 function handRow(hand, p, o, s, can, fresh) {
   const melds = meldSets(hand), inMeld = new Map();
   melds.forEach((m, k) => m.forEach(c => inMeld.set(c, k)));
@@ -25,9 +27,9 @@ function handRow(hand, p, o, s, can, fresh) {
   const cards = order.map((c, i) => {
     const k = inMeld.has(c) ? inMeld.get(c) : -1, first = k >= 0 && melds[k][0] === c, last = k >= 0 && melds[k][2] === c;
     const cls = `rmyc${k >= 0 ? ` rmym m${k}${first ? ' mf' : ''}${last ? ' ml' : ''}` : ''}${c === fresh ? ' new' : ''}`;
-    const card = pcard(c, c === fresh && !REDUCED ? { slide: 0 } : {});
-    return can ? `<button class="${cls}" data-act="move" ${mv({ d: c })} aria-label="Throw the ${cardName(c)}"${lit != null && k >= 0 ? ` style="--t:${lit}ms"` : ''}>${card}</button>`
-      : `<span class="${cls}"${lit != null && k >= 0 ? ` style="--t:${lit}ms"` : ''}>${card}</span>`;
+    const card = pcard(c, c === fresh && !REDUCED ? { slide: 0, from: s && s.kind === 'take' ? s.from : null } : s ? { from: 'card:' + c, wait: true } : {});   // (the taken card from the deck or the pile; the rest close up or make room)
+    return can ? `<button class="${cls}"${cfAnchor('card:' + c)} data-act="move" ${mv({ d: c })} aria-label="Throw the ${cardName(c)}"${lit != null && k >= 0 ? ` style="--t:${lit}ms"` : ''}>${card}</button>`
+      : `<span class="${cls}"${cfAnchor('card:' + c)}${lit != null && k >= 0 ? ` style="--t:${lit}ms"` : ''}>${card}</span>`;
   }).join('');
   return `<div class="rmyhand ${p}${lit != null ? ' lit' : ''}" style="--n:${hand.length}">${cards}</div>`;
 }
@@ -44,10 +46,11 @@ function rummyTable(mini, a, o) {
   };
   const pile = Array.isArray(mini.pile) ? mini.pile : [], top = pile[pile.length - 1] || null, left = Number.isInteger(mini.left) ? mini.left : 0;
   const canTake = mine && !held, canThrow = mine && !!held && !!myHand;
-  const thrown = s && s.kind === 'discard' && !REDUCED ? { slide: 0 } : {};
-  const deckBtn = `<button class="rmydeck" data-act="move" ${mv('deck')}${canTake ? '' : ' disabled tabindex="-1"'} aria-label="Take from the deck (${left} left)">${pcard(null, { down: true })}<span class="rmyn">${left}</span></button>`;
-  const pileBtn = `<button class="rmypile" data-act="move" ${mv('pile')}${canTake && top ? '' : ' disabled tabindex="-1"'} aria-label="${top ? 'Take the top of the pile' : 'The pile is empty'}">${top ? pcard(top, thrown) : pcard(null, { cls: 'ghost' })}</button>`;
-  const opp = `<div class="rmyopp ${other}"><svg class="rmymk" viewBox="-10 -10 20 20" aria-hidden="true">${markSvgG(other, 6)}</svg><div class="rmyoh">${backs(handN(mini, other))}</div></div>`;
+  const thrown = s && s.kind === 'discard' && !REDUCED ? { slide: 0, from: a.by === me ? 'card:' + top : 'opp' } : {};   // (thrown from this phone's hand, or from the other one's backs)
+  const gather = s && s.kind === 'take' && s.reshuf && !REDUCED ? `<span class="cfgath" aria-hidden="true">${[0, 1, 2].map(j => pcard(null, { down: true, from: 'pile', at: j * RMYG.gap, go: true, d: RMYG.fly })).join('')}</span>` : '';   // the deck run out: the pile under its top gathered in
+  const deckBtn = `<button class="rmydeck"${cfAnchor('deck')} data-act="move" ${mv('deck')}${canTake ? '' : ' disabled tabindex="-1"'} aria-label="Take from the deck (${left} left)">${pcard(null, { down: true })}${gather}<span class="rmyn">${left}</span></button>`;
+  const pileBtn = `<button class="rmypile"${cfAnchor('pile')} data-act="move" ${mv('pile')}${canTake && top ? '' : ' disabled tabindex="-1"'} aria-label="${top ? 'Take the top of the pile' : 'The pile is empty'}">${top ? pcard(top, thrown) : pcard(null, { cls: 'ghost' })}</button>`;
+  const opp = `<div class="rmyopp ${other}"><svg class="rmymk" viewBox="-10 -10 20 20" aria-hidden="true">${markSvgG(other, 6)}</svg><div class="rmyoh"${cfAnchor('opp')}>${backs(handN(mini, other), s && s.kind === 'take' && a.by === other && !REDUCED ? s.from : null)}</div></div>`;
   const fresh = held && held.by === me ? held.c : null;
   let line;
   if (s && s.kind === 'take') line = `<p class="arcres" role="status">${W(a.by)} took ${s.from === 'pile' ? 'the pile\'s card' : 'from the deck'}${s.reshuf ? ' · deck shuffled' : ''}</p>`;

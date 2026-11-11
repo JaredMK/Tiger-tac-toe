@@ -4,6 +4,7 @@ import { WAR, WART, warPlan } from './rules.js';
 import { N, REDUCED, mv } from '../../ui/app.js';
 import { toon } from '../../ui/art.js';
 import { pcard } from '../../ui/cards.js';
+import { cfAnchor } from '../../ui/cardfly.js';
 import { arcTally, lateAt } from '../../ui/progress.js';
 import { pipRows, thumbArt, tinyCard } from '../../ui/thumbs.js';
 
@@ -34,13 +35,15 @@ function warTable(mini, a, o) {
     if (!shown) return `<div class="wrcards">${pcard(null, { down: true, cls: 'ghost' })}</div>`;
     const out = shown.battles.map((b, k) => {
       const t = anim ? plan.battles[k] : null;
-      const card = pcard(b[s], anim ? { slide: s === 'p' ? t.pAt : t.dAt, flip: s === 'p' ? t.pFlip : t.dFlip } : {});
+      const card = pcard(b[s], anim ? { slide: s === 'p' ? t.pAt : t.dAt, flip: s === 'p' ? t.pFlip : t.dFlip, from: 'deck:' + s } : {});
       if (k === n - 1) return card;
-      const downs = Array.from({ length: WAR.down }, (_, i) => pcard(null, { down: true, slide: anim ? t.downAt + i * WART.down : undefined, cls: 'wrdn' })).join('');
+      const downs = Array.from({ length: WAR.down }, (_, i) => pcard(null, { down: true, slide: anim ? t.downAt + i * WART.down : undefined, cls: 'wrdn', from: anim ? 'deck:' + s : null })).join('');
       return card + `<span class="wrdowns" aria-label="Three cards face down">${downs}</span>`;
     });
     return `<div class="wrcards${n >= 3 ? ' wrn3' : n === 2 ? ' wrn2' : ''}">${out.join('')}</div>`;
   };
+  // each side's deck at the row's end (card motion: its cards fly from it)
+  const deck = s => `<span class="wrdeck"${cfAnchor('deck:' + s)} aria-hidden="true">${pcard(null, { down: true })}</span>`;
   // the verdict between the rows: "War!" at each tie (gone as the next pair turns), the result at the end
   let mid = '';
   if (w) {
@@ -51,7 +54,7 @@ function warTable(mini, a, o) {
   else mid = `<div class="wrres none"><b class="${turn}">${N(turn)}</b>'s turn</div>`;
   const btn = o.view ? '' : `<div class="cbtns one"><button class="big ${turn}" data-act="move" ${mv('flip')}${o.locked ? ' disabled' : ''}>Flip</button></div>`;
   return `<div class="g-war"><div class="ctals">${tal('X')}${tal('O')}</div>
-    <div class="wrfelt"><div class="wrrow wrdealer"><span class="wrlab">Dealer</span>${side('d')}</div><div class="wrmid">${mid}</div><div class="wrrow wrplayer"><span class="wrlab"><b class="${by}">${N(by)}</b></span>${side('p')}</div></div>
+    <div class="wrfelt"><div class="wrrow wrdealer"><span class="wrlab">Dealer</span>${side('d')}${deck('d')}</div><div class="wrmid">${mid}</div><div class="wrrow wrplayer"><span class="wrlab"><b class="${by}">${N(by)}</b></span>${side('p')}${deck('p')}</div></div>
     ${btn}</div>`;
 }
 // The miniature: the last flip's two cards face to face (the player's, ringed in their colour, against the dealer's;

@@ -2,6 +2,8 @@
 import { T31, t31Best, t31Cfg, t31Score, t31Times } from './rules.js';
 import { N, REDUCED, mv, state, waitLine } from '../../ui/app.js';
 import { pcard, cardShort, SUIT_PATH } from '../../ui/cards.js';
+import { cfAnchor } from '../../ui/cardfly.js';
+const T31G = { gap: 60, fly: 220, after: 0 };   // a reshuffle's gather (card motion): three backs, `gap` apart
 import { arcTally, lateAt } from '../../ui/progress.js';
 import { markSvgG, thumbArt } from '../../ui/thumbs.js';
 import { cardRed } from '../bus/rules.js';
@@ -24,10 +26,12 @@ function t31Table(mini, a, o) {
   };
   // the deck and the pile: the mover's own
   const pile = mini.pile[by], top = pile.length ? pile[pile.length - 1] : null, n = mini.deckN[by];
-  const deckBtn = `<button class="t31deck" data-act="move" ${mv('deck')} aria-label="Draw from the deck, ${n} cards"${canTake ? '' : ' disabled'}>${pcard(null, { down: true })}<span class="t31n">${n}</span></button>`;
+  // a deck run out: the pile but its top gathered into the deck first (a few backs flying across), then the take
+  const gather = s && s.kind === 'take' && s.from === 'deck' && s.reshuf && anim ? `<span class="cfgath" aria-hidden="true">${[0, 1, 2].map(j => pcard(null, { down: true, from: 'pile', at: j * T31G.gap, go: true, d: T31G.fly })).join('')}</span>` : '';
+  const deckBtn = `<button class="t31deck"${cfAnchor('deck')} data-act="move" ${mv('deck')} aria-label="Draw from the deck, ${n} cards"${canTake ? '' : ' disabled'}>${pcard(null, { down: true })}${gather}<span class="t31n">${n}</span></button>`;
   const dropNow = s && s.kind === 'drop' && anim;
-  const pileCard = top ? pcard(top, dropNow ? { slide: 0, cls: 't31in' } : {}) : pcard(null, { down: true, cls: 'ghost' });
-  const pileBtn = `<button class="t31pile" data-act="move" ${mv('pile')} aria-label="Take the top of the discard pile"${canTake && top ? '' : ' disabled'}>${pileCard}</button>`;
+  const pileCard = top ? pcard(top, dropNow ? { slide: 0, cls: 't31in', from: 'card:' + s.card } : {}) : pcard(null, { down: true, cls: 'ghost' });
+  const pileBtn = `<button class="t31pile"${cfAnchor('pile')} data-act="move" ${mv('pile')} aria-label="Take the top of the discard pile"${canTake && top ? '' : ' disabled'}>${pileCard}</button>`;
   // the hand: the best suit's cards lit; the card just taken sliding in
   const hand = mini.hand[by], best = t31Best(held && held.by === by ? hand.slice(0, 3) : hand).suit;
   const takeNow = s && s.kind === 'take' && anim;
@@ -35,9 +39,10 @@ function t31Table(mini, a, o) {
     const c = hand[k];
     if (!c) return '<span class="t31slot" aria-hidden="true"></span>';
     const fresh = takeNow && k === hand.length - 1;
-    const card = pcard(c, fresh ? (s.from === 'deck' ? { slide: 0, flip: T31.slide, cls: 't31dk' } : { slide: 0, cls: 't31pk' }) : {});
+    const shift = dropNow && a.by === by && k >= s.k;                // (a card after the one let go closes the gap)
+    const card = pcard(c, fresh ? (s.from === 'deck' ? { slide: 0, flip: T31.slide, cls: 't31dk', from: 'deck', at: s.reshuf ? T31G.after : 0 } : { slide: 0, cls: 't31pk', from: 'pile' }) : shift ? { from: 'card:' + c, wait: true } : {});
     const lit = c[1] === best && !(held && k === 3 && held.by === by) ? ' best' : '';
-    return `<button class="t31c${lit}" data-act="move" ${mv('d' + k)} aria-label="Let go of this card"${canDrop ? '' : ' disabled tabindex="-1"'}>${card}</button>`;
+    return `<button class="t31c${lit}"${cfAnchor('card:' + c)} data-act="move" ${mv('d' + k)} aria-label="Let go of this card"${canDrop ? '' : ' disabled tabindex="-1"'}>${card}</button>`;
   }).join('');
   let line;
   if (s && s.kind === 'take') line = `<p ${lateAt('arcres', anim ? tim.land : null)} role="status">Took ${cardShort(s.card)}</p>`;

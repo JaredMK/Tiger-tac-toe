@@ -55,12 +55,13 @@ function pick(deck, n, r) {
   for (let i = 0; i < n; i++) out.push(d.splice(randInt(r, d.length), 1)[0]);
   return out;
 }
-function settle(mini, p, hand, thrown, drawn) {
+function settle(mini, p, hand, thrown, drawn, old) {
   const kind = handRank(hand), pts = pokPoints(mini)[kind], t = tune(mini), from = mini.score[p];
   mini.score[p] = Math.min(t.target, from + pts);
   mini.hands[p] = hand.slice();
   mini.cur = null;
   mini.last = { by: p, kind: 'draw', hand: hand.slice(), thrown, drawn, rank: kind, pts, from, to: mini.score[p] };
+  if (old) mini.last.old = old.slice();                             // (the hand as dealt: public, as it was on show; the view flies the thrown ones away)
   if (mini.score[p] >= t.target) return { ok: true, outcome: 'win', note: kind };
   if (pts > 0 && goAgain(mini)) return { ok: true, outcome: 'continue', note: kind, again: true };   // ("Go again on success" on: a scoring hand deals again)
   return { ok: true, outcome: 'continue', note: kind };
@@ -84,7 +85,7 @@ export function apply(mini, p, m, rng, idx) {
     const drawn = pick(pokRest(mini.cur.hand), n, needRng(rng)), hand = mini.cur.hand.slice();
     let k = 0;
     thrown.forEach((t, i) => { if (t) hand[i] = drawn[k++]; });
-    return settle(mini, p, hand, thrown, drawn);
+    return settle(mini, p, hand, thrown, drawn, mini.cur.hand);
   }
   return { ok: false, reason: 'bad' };
 }

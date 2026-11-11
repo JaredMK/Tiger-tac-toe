@@ -1,6 +1,7 @@
 // Dominoes: the screen, the miniature, the move's words and sounds, and the inputs.
 import { DOMT, domCount, domEnds, domFits, domHand, domPile, domTile, domTimes, isDouble } from './rules.js';
-import { N, mv, state, zoomedType, waitLine } from '../../ui/app.js';
+import { N, REDUCED, mv, state, zoomedType, waitLine } from '../../ui/app.js';
+import { cfAnchor, cfFrom } from '../../ui/cardfly.js';
 import { arcTally, lateAt } from '../../ui/progress.js';
 import { thumbArt } from '../../ui/thumbs.js';
 import { attemptMove } from '../../net/moves.js';
@@ -86,6 +87,13 @@ export const tileG = (t, by, cls) => `<g class="dtl${cls ? ' ' + cls : ''}"><rec
 const BACK_G = '<g class="dtl back"><rect class="dback" x="-1" y="-.5" width="2" height="1" rx=".16"/><rect class="dbackin" x="-.82" y="-.32" width="1.64" height=".64" rx=".1"/></g>';
 const tileSvg = (t, cls, label) => `<svg class="dtsvg${cls ? ' ' + cls : ''}" viewBox="-1.06 -.56 2.12 1.12"${label ? ` aria-label="${label}"` : ' aria-hidden="true"'}>${t ? tileG(t) : BACK_G}</svg>`;
 const say = t => `${t[0]}-${t[1]}`;
+// The tile just laid, as it flies in (card motion, ui/cardfly.js): over its place on the felt (percentages of the felt),
+// turned the way it lies, from its source; gone as it lands, when the table's own tile shows.
+function flyTile(t, p, by, box, from) {
+  const across = p.rot % 180 !== 0, bw = across ? 1 : 2, bh = across ? 2 : 1, pc = (v, w) => (100 * v / w).toFixed(2);
+  const st = `left:${pc(p.x - bw / 2 - box.x, box.w)}%;top:${pc(p.y - bh / 2 - box.y, box.h)}%;width:${pc(bw, box.w)}%;height:${pc(bh, box.h)}%`;
+  return `<span class="domfly" style="${st}"${cfFrom(from, 0, { go: true, wait: from.startsWith('tile:'), d: DOMT.slide })} aria-hidden="true"><svg viewBox="${(-bw / 2).toFixed(2)} ${(-bh / 2).toFixed(2)} ${bw} ${bh}"><g transform="rotate(${p.rot})">${tileG(t, by)}</g></svg></span>`;
+}
 // A tile on the table at its place in the layout (p), turned the way it lies.
 function placed(t, p, by, cls, style) {
   return `<g class="dslot${cls ? ' ' + cls : ''}"${style ? ` style="${style}"` : ''}><g transform="translate(${p.x.toFixed(2)} ${p.y.toFixed(2)}) rotate(${p.rot})">${tileG(t, by)}</g></g>`;
@@ -121,9 +129,11 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
   if (!domDraft || domDraft.sq !== state.zoom || view || f || d) domDraft = null;
   // the table: every tile where the layout puts it, the one just placed sliding in from its player's side
   const L = domLayout(mini.line, left), box = L.box;
+  let fly = '';                                                   // the tile just laid, flying from the hand (or the other player's stack) to its place (card motion)
   const tiles = mini.line.map((tl, k) => {
     const pos = k - left, byT = tl[2] === 'X' || tl[2] === 'O' ? tl[2] : null, isNew = dm && dm.kind === 'play' && dm.pos === pos;
-    return placed(tl, L.tiles[k], isNew ? dm.by : byT, isNew ? 'dslide' : '', isNew ? `--dy:${dm.by === me ? box.h.toFixed(2) : (-box.h).toFixed(2)}px;--t:0ms;--d:${DOMT.slide}ms` : '');
+    if (isNew && !REDUCED) fly = flyTile(tl, L.tiles[k], dm.by, box, dm.by === me ? 'tile:' + dm.t : 'stk:' + dm.by);
+    return placed(tl, L.tiles[k], isNew ? dm.by : byT, isNew ? (fly ? 'dlate' : 'dslide') : '', isNew ? `--dy:${dm.by === me ? box.h.toFixed(2) : (-box.h).toFixed(2)}px;--t:${fly ? DOMT.slide : 0}ms;--d:${DOMT.slide}ms` : '');
   }).join('');
   let ghosts = '', endBtns = '';
   if (domDraft && domDraft.sq === state.zoom && !view) {
@@ -135,15 +145,15 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
     }
   }
   const vb = `${box.x.toFixed(2)} ${box.y.toFixed(2)} ${box.w.toFixed(2)} ${box.h.toFixed(2)}`;
-  const table = `<div class="domtable"><div class="dombox" style="--ar:${(box.w / box.h).toFixed(4)}"><svg class="domsvg" viewBox="${vb}" aria-label="${mini.line.length ? `The line: ${mini.line.map(say).join(', ')}` : 'An empty table'}"><rect class="dfelt" x="${box.x.toFixed(2)}" y="${box.y.toFixed(2)}" width="${box.w.toFixed(2)}" height="${box.h.toFixed(2)}" rx=".4"/>${tiles}${ghosts}</svg>${endBtns}</div></div>`;
+  const table = `<div class="domtable"><div class="dombox" style="--ar:${(box.w / box.h).toFixed(4)}"><svg class="domsvg" viewBox="${vb}" aria-label="${mini.line.length ? `The line: ${mini.line.map(say).join(', ')}` : 'An empty table'}"><rect class="dfelt" x="${box.x.toFixed(2)}" y="${box.y.toFixed(2)}" width="${box.w.toFixed(2)}" height="${box.h.toFixed(2)}" rx=".4"/>${tiles}${ghosts}</svg>${fly}${endBtns}</div></div>`;
   // each player's tally: a face-down stack and the count (a drawn tile slides onto the stack as it lands, the count ticking up with each; a placed tile's count takes its new value as the tile lands)
   const lands = dm && dm.kind === 'draw' ? t.lands : null, dsl = lands ? Math.min(DOMT.drawSlide, lands[0]) : DOMT.drawSlide;   // each drawn tile's slide (shorter when a long draw comes faster than a slide)
   const tal = p => {
     const now = domCount(mini, p), was = dm && dm.by === p ? (dm.kind === 'play' ? now + 1 - (dm.open ? 1 : 0) : dm.kind === 'draw' ? now - dm.drew : now) : now, moved = was !== now;
     const times = dm && moved ? (dm.kind === 'draw' ? lands : dm.open ? [t.land, t.land + 300] : [t.land]) : [];
-    const stk = Array.from({ length: Math.min(now, 8) }, (_, k) => `<i${moved && k >= Math.min(was, 8) ? (dm.kind === 'draw' ? ` class="dmin" style="--t:${Math.round(lands[Math.min(lands.length - 1, k - Math.min(was, 8))] - dsl)}ms;--d:${dsl}ms"` : ` class="dmnew" style="--t:${Math.round(t.land + (k - Math.min(was, 8)) * 80)}ms"`) : ''}></i>`).join('');
+    const stk = Array.from({ length: Math.min(now, 8) }, (_, k) => `<i${moved && k >= Math.min(was, 8) ? (dm.kind === 'draw' ? ` class="dmin" style="--t:${Math.round(lands[Math.min(lands.length - 1, k - Math.min(was, 8))] - dsl)}ms;--d:${dsl}ms"${cfFrom('bone', lands[Math.min(lands.length - 1, k - Math.min(was, 8))] - dsl, { d: dsl })}` : ` class="dmnew" style="--t:${Math.round(t.land + (k - Math.min(was, 8)) * 80)}ms"`) : ''}></i>`).join('');
     const vals = moved ? (dm.kind === 'draw' ? Array.from({ length: dm.drew + 1 }, (_, k) => was + k) : dm.open ? [was, was - 1, now] : [was, now]) : [now];
-    return arcTally(p, o, `<span class="domct" aria-label="${now} tile${now === 1 ? '' : 's'} in hand"><span class="dstk" aria-hidden="true">${stk}</span>${tick(vals, times)}</span>`);
+    return arcTally(p, o, `<span class="domct" aria-label="${now} tile${now === 1 ? '' : 's'} in hand"><span class="dstk"${cfAnchor('stk:' + p)} aria-hidden="true">${stk}</span>${tick(vals, times)}</span>`);
   };
   // the row under the table: the boneyard (Draw, or Pass once it is empty, when nothing in the hand fits) and the result line
   const pile = domPile(mini), canPlay = (domHand(mini, me) || []).some(k => domFits(mini, k).length > 0);
@@ -151,7 +161,7 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
   const act = mine && !canPlay ? (pile > 0 ? 'draw' : 'pass') : null;
   const pileTimes = pileWas !== pile ? (dm.kind === 'draw' ? lands.map(l => l - dsl) : [t.land + 220]) : [];   // each tile leaves the boneyard as its slide begins
   const pileStk = Array.from({ length: Math.min(pileWas, 5) }, (_, k) => `<i${k >= Math.min(pile, 5) ? ` class="dmout" style="--t:${Math.round(pileTimes[Math.min(pileTimes.length - 1, k - Math.min(pile, 5))])}ms"` : ''}></i>`).join('');
-  const pileBtn = `<button class="dompile${act ? ' go ' + act : ''}" data-act="move" ${mv(act || 'draw')} aria-label="${pile} tile${pile === 1 ? '' : 's'} in the boneyard${act ? (act === 'draw' ? ': draw' : ': pass') : ''}"${act ? '' : ' disabled'}><span class="dpstk" aria-hidden="true">${pileStk}</span>${tick(pileWas !== pile ? Array.from({ length: pileWas - pile + 1 }, (_, k) => pileWas - k) : [pile], pileTimes)}<small>${act === 'pass' ? 'Pass' : act === 'draw' ? 'Draw' : ''}</small></button>`;
+  const pileBtn = `<button class="dompile${act ? ' go ' + act : ''}"${cfAnchor('bone')} data-act="move" ${mv(act || 'draw')} aria-label="${pile} tile${pile === 1 ? '' : 's'} in the boneyard${act ? (act === 'draw' ? ': draw' : ': pass') : ''}"${act ? '' : ' disabled'}><span class="dpstk" aria-hidden="true">${pileStk}</span>${tick(pileWas !== pile ? Array.from({ length: pileWas - pile + 1 }, (_, k) => pileWas - k) : [pile], pileTimes)}<small>${act === 'pass' ? 'Pass' : act === 'draw' ? 'Draw' : ''}</small></button>`;
   const l = mini.last;
   const res = dm ? `<p ${lateAt('domres', t.count)} role="status"><span>${words(dm, true)}</span></p>`   // (one inline box in the flex row: the space after the name stays)
     : (view || d) && l ? `<p class="domres"><span><b class="${l.by}">${N(l.by)}</b>: ${words(l, false)}</span></p>`
@@ -169,7 +179,7 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
       const tl = domTile(mini, k), fits = own && mine && domFits(mini, k).length > 0, nk = fresh.indexOf(k);
       const at = nk < 0 ? 0 : dm.kind === 'draw' ? lands[Math.min(lands.length - 1, nk)] - dsl : t.land + 220;
       const cls = `domtile${domDraft && domDraft.t === k && domDraft.by === p ? ' sel' : ''}${own && mine && !fits ? ' dim' : ''}${nk >= 0 ? ' dmin' : ''}`;
-      return `<button class="${cls}" data-act="domtile" data-i="${k}"${nk >= 0 ? ` style="--t:${Math.round(at)}ms;--d:${dsl}ms"` : ''} aria-label="${say(tl)}${fits ? '' : own && mine ? ' (does not fit)' : ''}"${own && mine && fits ? '' : ' disabled'}>${tileSvg(tl)}</button>`;
+      return `<button class="${cls}"${cfAnchor('tile:' + k)} data-act="domtile" data-i="${k}"${nk >= 0 ? ` style="--t:${Math.round(at)}ms;--d:${dsl}ms"${cfFrom('bone', at, { d: dsl })}` : ''} aria-label="${say(tl)}${fits ? '' : own && mine ? ' (does not fit)' : ''}"${own && mine && fits ? '' : ' disabled'}>${tileSvg(tl)}</button>`;
     }).join('');
     return `<div class="domhand${view ? ' two' : ''}" style="--cols:${cols}" aria-label="${view ? `${p}'s tiles` : 'Your tiles'}">${view ? `<span class="dhn"><b class="${p}">${N(p)}</b></span>` : ''}${tilesH || '<span class="dhempty"></span>'}</div>`;
   }).join('');

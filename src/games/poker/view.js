@@ -3,6 +3,7 @@ import { tune } from '../../core/tune.js';
 import { HAND_NAMES, POK, pokSlideAt, pokTimes } from './rules.js';
 import { N, mv, state, waitLine } from '../../ui/app.js';
 import { SUIT_PATH, pcard } from '../../ui/cards.js';
+import { cfAnchor } from '../../ui/cardfly.js';
 import { arcTally, lateAt } from '../../ui/progress.js';
 import { render } from '../../ui/render.js';
 import { pipRows, thumbArt } from '../../ui/thumbs.js';
@@ -32,12 +33,15 @@ function pokTable(mini, a, o) {
   const canMark = mover && cur && !f;
   const cardAt = k => {
     const c = hand ? hand[k] : null, at = pokSlideAt(f, k), m = marks[k] && !(f && f.kind === 'draw');
-    const inner = c ? pcard(c, at != null ? { slide: at } : {}) : pcard(null, { down: true, cls: 'ghost' });
+    const inner = c ? pcard(c, at != null ? { slide: at, from: 'deck' } : {}) : pcard(null, { down: true, cls: 'ghost' });
     const cls = `pokc${m ? ' out ' + turn : ''}${f && f.kind === 'draw' && f.thrown[k] ? ' new' : ''}`;
     const lab = c ? `${c}${m ? ', to throw away' : ''}` : 'No card yet';
-    return canMark ? `<button class="${cls}" data-act="pokmark" data-k="${k}" aria-pressed="${!!marks[k]}" aria-label="Card ${k + 1}: ${lab}">${inner}</button>`
-      : `<span class="${cls}" aria-label="Card ${k + 1}: ${lab}">${inner}</span>`;
+    return canMark ? `<button class="${cls}"${cfAnchor('pk:' + k)} data-act="pokmark" data-k="${k}" aria-pressed="${!!marks[k]}" aria-label="Card ${k + 1}: ${lab}">${inner}</button>`
+      : `<span class="${cls}"${cfAnchor('pk:' + k)} aria-label="Card ${k + 1}: ${lab}">${inner}</span>`;
   };
+  // the deck the cards come from and the spot the thrown ones go to (card motion): a draw's thrown cards fly there face up and are gone
+  const out = f && f.kind === 'draw' && Array.isArray(f.old) ? f.old.map((c, k) => (f.thrown[k] && c ? pcard(c, { from: 'pk:' + k, at: 0, wait: true, go: true, d: POK.out }) : '')).join('') : '';
+  const piles = `<div class="pokpiles" aria-hidden="true"><span class="pokmuck"${cfAnchor('muck')}>${out}</span><span class="pokdeck"${cfAnchor('deck')}>${pcard(null, { down: true })}</span></div>`;
   const W = p => `<b class="${p}">${N(p)}</b>`;
   const tal = p => arcTally(p, o, total(p, mini, f, goal, tim));
   const res = f && f.kind === 'draw'
@@ -50,7 +54,7 @@ function pokTable(mini, a, o) {
   const btn = o.view ? '' : cur || (f && f.kind === 'deal')
     ? `<div class="cbtns one"><button class="big ${turn}" data-act="move" ${mv(drawM)}${mover && cur && !f ? '' : ' disabled'}>${n ? `Draw ${n}` : 'Keep all'}</button></div>`
     : `<div class="cbtns one"><button class="big ${turn}" data-act="move" ${mv('deal')}${mover && !f ? '' : ' disabled'}>Deal</button></div>`;
-  return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="pok"><div class="pokhand ${turn}">${[0, 1, 2, 3, 4].map(cardAt).join('')}</div>${res}</div>${btn}</div>`;
+  return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="pok">${piles}<div class="pokhand ${turn}">${[0, 1, 2, 3, 4].map(cardAt).join('')}</div>${res}</div>${btn}</div>`;
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   g = pokTable(mini, a, { view, locked: locked || (!!f && !view), turn, zoom: state.zoom, done: !!d }); return g;

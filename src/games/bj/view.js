@@ -4,6 +4,7 @@ import { BJT, bjNatural, bjPlan, bjTotal } from './rules.js';
 import { N, mv } from '../../ui/app.js';
 import { toon } from '../../ui/art.js';
 import { pcard } from '../../ui/cards.js';
+import { cfAnchor } from '../../ui/cardfly.js';
 import { lateAt } from '../../ui/progress.js';
 import { pipRows, thumbArt, tinyCard } from '../../ui/thumbs.js';
 
@@ -29,13 +30,13 @@ function bjTable(mini, a, o) {
   const layer = (H, inner, cls) => `<div class="bjset ${cls || ''}${H.until != null ? ' tu' : ''}${H.from != null ? ' tf' : ''}"${H.until != null || H.from != null ? ` style="${H.until != null ? `--u:${H.until}ms;` : ''}${H.from != null ? `--f:${H.from}ms` : ''}"` : ''}>${inner}</div>`;
   const at = (arr, k) => (arr && arr[k]) || {};
   const dealerSet = H => {
-    const x = H.hand, cards = x.dealer.map((c, k) => pcard(c, { slide: at(H.D, k).slideAt, flip: at(H.D, k).flipAt })).join('') + (x.hole ? pcard(null, { down: true, slide: at(H.D, 1).slideAt }) : '');
+    const x = H.hand, cards = x.dealer.map((c, k) => pcard(c, { slide: at(H.D, k).slideAt, flip: at(H.D, k).flipAt, from: at(H.D, k).slideAt != null ? 'deck' : null })).join('') + (x.hole ? pcard(null, { down: true, slide: at(H.D, 1).slideAt, from: at(H.D, 1).slideAt != null ? 'deck' : null }) : '');
     const txt = x.hole ? `shows ${bjTotal([x.dealer[0]]).total}` : bjTotalText(x.dealer);
     const shownAt = anim && x.hole && H.D && H.D[0] && H.D[0].flipAt != null ? H.D[0].flipAt + BJT.flip : anim && x.hole ? H.pEnd : null;   // (the up card's value as soon as it has turned)
     return layer(H, `<span class="bjlab">Dealer <b ${lateAt('bjtot', anim && !x.hole ? H.end : shownAt)}>${txt}</b></span><div class="bjcards">${cards}</div>`);
   };
   const playerSet = H => {
-    const x = H.hand, cards = x.cards.map((c, k) => pcard(c, { slide: at(H.P, k).slideAt, flip: at(H.P, k).flipAt })).join('');
+    const x = H.hand, cards = x.cards.map((c, k) => pcard(c, { slide: at(H.P, k).slideAt, flip: at(H.P, k).flipAt, from: at(H.P, k).slideAt != null ? 'deck' : null })).join('');
     const lastP = H.P && H.P.length ? H.P[H.P.length - 1] : null, totAt = anim ? (lastP && lastP.flipAt != null ? lastP.flipAt + BJT.flip : H.pEnd) : null;   // the total the moment the last card is face up
     return layer(H, `<span class="bjlab"><b class="${by}">${N(by)}</b> <b ${lateAt('bjtot', totAt)}>${bjTotalText(x.cards)}</b></span><div class="bjcards">${cards}</div>`);
   };
@@ -59,7 +60,7 @@ function bjTable(mini, a, o) {
   const dealer = hands.length ? hands.map(dealerSet).join('') : ghost, player = hands.length ? hands.map(playerSet).join('') : ghost;
   const mid = hands.length ? hands.map(bannerSet).join('') : '<div class="bjset"><div class="bjres none">&nbsp;</div></div>';
   return `<div class="g-bj"><div class="ctals">${tally('X')}${tally('O')}</div>
-    <div class="felt"><div class="bjrow dealer bjstack">${dealer}</div><div class="bjstack bjmid">${mid}</div><div class="bjrow player bjstack">${player}</div></div>
+    <div class="felt"><span class="bjshoe"${cfAnchor('deck')} aria-hidden="true">${pcard(null, { down: true })}</span><div class="bjrow dealer bjstack">${dealer}</div><div class="bjstack bjmid">${mid}</div><div class="bjrow player bjstack">${player}</div></div>
     ${btns}</div>`;
 }
 // The miniature: the hand in play's cards fanned (the player's own, face up on the table; two backs before a deal;

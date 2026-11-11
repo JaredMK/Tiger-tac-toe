@@ -1,5 +1,6 @@
 // Rendering: everything drawn from state, kept in place (no element is replaced when it need not be).
 import { busFly } from '../games/bus/view.js';
+import { cardFly } from './cardfly.js';
 import { refusedNote } from '../net/moves.js';
 import { devError, devWatch } from '../net/tracking.js';
 import { app, entering, esc, lastView, menuOpen, setEntering, setLastView, setMenuOpen, state } from './app.js';
@@ -82,6 +83,7 @@ function renderNow() {
   if (wl) wl.scrollTop = wl.scrollHeight;
   animate();
   busFly();
+  cardFly();                                                  // cards and tiles a move moves: each from where it was (ui/cardfly.js), before anchorFx sets their time
   anchorFx();
   repMark();                                                  // a replay: the control just pressed
   runPaint();

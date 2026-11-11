@@ -4129,3 +4129,55 @@ button.dukd:disabled { cursor: default; }
 .twt .twc.on.oX { fill: #ffd9cf; } .twt .twc.on.oO { fill: #ffefb3; }   /* Word Tiles (shared board): a tile in the colour of whoever laid it, in the miniature and on the board */
 .wtt.oX { box-shadow: inset 0 -.45em 0 -.32em var(--x); } .wtt.oO { box-shadow: inset 0 -.45em 0 -.32em var(--o); }
 .trmy .trmyh { gap: 0; } .trmy .trmyh .tcd + .tcd { margin-left: -2.6cqw; }   /* (the backs overlap a little: a hand of 7 keeps inside its 56cqw) */
+/* ----- Card motion (November 2026, ui/cardfly.js): the sources cards fly from. 21's shoe sits in the felt's corner, out of the rows' way. ----- */
+.g-bj .felt { position: relative; }
+.bjshoe { position: absolute; top: 8px; right: 10px; pointer-events: none; }
+.bjshoe .plc { --cw: 30px; }
+.bjshoe::after { content: ''; position: absolute; inset: 3px -3px -3px 3px; border-radius: 5px; background: rgba(0, 0, 0, .25); z-index: -1; }
+[data-cf] { z-index: 3; }
+.cfgath { position: absolute; inset: 0; pointer-events: none; display: flex; align-items: center; justify-content: center; }
+.cfgath .plc { position: absolute; }
+.pokpiles { flex: none; display: flex; justify-content: space-between; padding: 0 6cqw; }
+.pokmuck, .pokdeck { position: relative; display: block; --cw: min(11cqw, 20cqh, 56px); width: var(--cw); height: calc(var(--cw) * 1.4); }
+.pokmuck { border: 2px dashed rgba(22, 18, 16, .25); border-radius: 6px; }
+.pokmuck .plc, .pokdeck .plc { --cw: inherit; position: absolute; left: 0; top: 0; }
+.wrrow { position: relative; }
+.wrdeck { position: absolute; right: 0; bottom: 0; pointer-events: none; }
+.wrrow .wrdeck .plc { --cw: 30px; }
+.wrdeck::after { content: ''; position: absolute; inset: 3px -3px -3px 3px; border-radius: 5px; background: rgba(0, 0, 0, .25); z-index: -1; }
+.wrcards { position: relative; z-index: 1; }
+.busdrawn.wrong { animation: busback .3s var(--fl, 0ms) cubic-bezier(.4, 0, .2, 1) both; }   /* a wrong card goes back into the deck it came from */
+@keyframes busback { from { transform: none; opacity: 1; } to { transform: translate(var(--sx), var(--sy)) scale(.92); opacity: 0; } }
+.dombox { position: relative; }
+.domfly { position: absolute; pointer-events: none; display: block; z-index: 3; }
+.domfly svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.dslot.dlate { animation: dmlate 1ms var(--t, 0ms) both; }   /* the tile laid: shown on the table as its flight lands */
+@keyframes dmlate { from { opacity: 0; } to { opacity: 1; } }
+/* ---------- Backgammon Lite's move flow (November 2026, src/games/bglite/view.js): a piece picked, rings labelled with their die, steps sliding one after the other ---------- */
+.bglh { display: grid; place-items: center; width: 100%; height: 100%; }
+.bglh.slide { animation: bglslide .42s var(--t, 0ms) cubic-bezier(.4, 0, .2, 1) both; }
+.bglh.fly { animation: bglfly .48s var(--t, 0ms) cubic-bezier(.4, 0, .2, 1) both; }
+.bglh.look { animation: bgllook .26s var(--t, 0ms) ease-out both; }
+@keyframes bgllook { 0%, 100% { transform: none; } 50% { transform: scale(1.22); } }
+.bglp.mv { z-index: 3; }
+.bglp.can.pick { z-index: 4; }
+.bglp.can.pick svg { animation: none; transform: translateY(-6%) scale(1.08); filter: drop-shadow(0 0 3px #fff) drop-shadow(0 0 2px var(--ink)); }
+.bglp.can.pick svg circle:first-child { stroke-width: 2.8; }
+.bglg i { display: grid; place-items: center; width: 92%; height: 92%; border-width: 3px; }
+.bglp.can::before { content: ''; position: absolute; inset: 0; margin: auto; width: 96%; height: 96%; border-radius: 50%; box-shadow: 0 0 0 3px var(--green); pointer-events: none; }
+.bglg.off i { border-style: solid; }
+.bglld { width: 66%; height: 66%; display: grid; place-items: center; background: #fff; border: 2px solid var(--ink); border-radius: 22%; }
+.bglld svg { width: 100%; height: 100%; display: block; }
+.bglg.fl { pointer-events: none; z-index: 2; animation: bglshow var(--d, 400ms) var(--t, 0ms) linear both; }
+@keyframes bglshow { 0% { opacity: 0; } 12% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; } }
+.die.bgldie.spend { animation: bglspend .42s var(--t, 0ms) ease-out both; }
+.die.bgldie { position: relative; }
+.die.bgldie.dead { opacity: .5; }
+.die.bgldie.dead::after { content: ''; position: absolute; inset: 6%; border-radius: 10px; background: linear-gradient(to top right, transparent calc(50% - 2.5px), var(--ink) calc(50% - 2.5px), var(--ink) calc(50% + 2.5px), transparent calc(50% + 2.5px)); }
+.die.bgldie.dead.late::after { animation: bgldead .3s var(--t, 0ms) ease-out both; }
+.die.bgldie.dead.late { animation: bglspend .3s var(--t, 0ms) ease-out both; }
+@keyframes bgldead { from { opacity: 0; transform: scale(.6); } to { opacity: 1; transform: none; } }
+.die.bgldie.sel { outline: 3px solid var(--ink); outline-offset: 3px; }
+.big.bglundo { color: var(--ink); background: var(--cream, #fff8e8); border: 3px solid var(--ink); }
+.big.bglundo:disabled { opacity: .45; }
+.rmyfelt { overflow: visible; }   /* (card motion: a card thrown from the hand flies in over the felt's edge) */
