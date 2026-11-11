@@ -3995,3 +3995,90 @@ button.pokc:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; 
 .tpok .tpokc { fill: #fff; stroke: var(--ink); stroke-width: .8; } .tpok .tpokc.none { fill: none; stroke-dasharray: 2 1.5; opacity: .5; }
 .tpok .tpoks { fill: var(--ink); } .tpok .tpoks.red { fill: #d6301e; }
 .t31mk.X .tmk { stroke: var(--x); } .t31mk.O .tmk { stroke: var(--o); }   /* Thirty-One: whose hand it is, in their colour */
+/* Coin Pusher (November 2026): the machine on a canvas between the tallies and the reserved result line, Clear and Drop below */
+.psh { flex: 1; min-height: 0; display: flex; justify-content: center; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.pshcv { width: 100%; height: 100%; display: block; }
+.psh.live .pshcv { cursor: pointer; }
+.pshsc b { font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-weight: 400; } .pshsc small { opacity: .6; margin-left: 1px; }
+.pshbtns { gap: 8px; } .pshbtns .btn { flex: 0 0 auto; }
+.tart.tpshw { gap: 2cqw; } .tart.tpshw .tpic { width: 60cqw; } .tart.tpshw .tpip { width: auto; flex: 1; }
+.tpshw .tsn { font: 400 var(--mt)/1 'Luckiest Guy', sans-serif; padding-top: 2px; }
+.tpsh { width: 100%; height: auto; overflow: visible; }
+.tpshc { fill: #4a3a6b; } .tpshs { fill: #2f7f86; } .tpshb { fill: #d9d2c3; }
+.tpshk circle { fill: #f2c14e; stroke: #a8781c; stroke-width: .5; }
+.tpshm.X .tmk { stroke: var(--x); } .tpshm.O .tmk { stroke: var(--o); }
+/* ---------- Hook-a-Duck (November 2026, src/games/duck/view.js) ---------- */
+.g-duk { width: min(var(--gw), 440px); height: var(--gh); display: flex; flex-direction: column; gap: 6px; padding-top: 4px; }
+.dukt { display: inline-flex; align-items: baseline; gap: 1px; flex: none; font: 400 18px/1 'Luckiest Guy', 'Arial Black', sans-serif; }
+.dukt small { font-size: 13px; color: var(--muted); }
+.duklab { margin: 0; flex: none; height: 18px; font-size: 14px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dukpond { position: relative; flex: 1; min-height: 0; container-type: size; touch-action: none; user-select: none; -webkit-user-select: none; overflow: hidden;
+  background: radial-gradient(ellipse at 50% 40%, #8fd3ee 0%, #58a8cf 62%, #3f86ad 100%); border: 3.5px solid var(--ink); border-radius: 46% / 40%; box-shadow: inset 0 -10px 0 rgba(0,0,0,.08), inset 0 6px 0 rgba(255,255,255,.25); }
+.dukpond::before, .dukpond::after { content: ''; position: absolute; border: 2px solid rgba(255,255,255,.45); border-radius: 50%; pointer-events: none; animation: dukripple 4.6s ease-in-out infinite; }
+.dukpond::before { left: 14%; top: 18%; width: 22%; height: 8%; }
+.dukpond::after { right: 12%; bottom: 14%; width: 26%; height: 9%; animation-delay: -2.3s; }
+@keyframes dukripple { 0%, 100% { transform: scale(.85); opacity: .35; } 50% { transform: scale(1.1); opacity: .8; } }
+.dukd { --ds: min(19cqw, 24cqh); position: absolute; width: var(--ds); height: var(--ds); translate: -50% -50%; padding: 0; border: 0; background: none; -webkit-tap-highlight-color: transparent; cursor: pointer;
+  animation: dukdrift var(--dd, 6s) linear var(--dl, 0s) infinite; }
+button.dukd:disabled { cursor: default; }
+@keyframes dukdrift { 0%, 100% { transform: translate(0, 0); } 25% { transform: translate(14%, -7%); } 50% { transform: translate(2%, -12%); } 75% { transform: translate(-13%, -5%); } }
+.dukf { position: absolute; inset: 0; display: block; perspective: 300px; }
+.dukfront, .dukback { position: absolute; inset: 0; display: grid; place-items: center; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.dukart { width: 100%; height: 100%; overflow: visible; animation: dukbob var(--bd, 1.8s) ease-in-out infinite alternate; transform-origin: 50% 80%; filter: drop-shadow(0 3px 0 rgba(0,0,0,.18)); }
+@keyframes dukbob { from { transform: rotate(-6deg) translateY(0); } to { transform: rotate(6deg) translateY(4%); } }
+.dukbody { fill: #ffd23a; stroke: var(--ink); stroke-width: 2.2; stroke-linejoin: round; }
+.dukbeak { fill: #f39a3b; stroke: var(--ink); stroke-width: 1.8; stroke-linejoin: round; }
+.dukeye { fill: var(--ink); }
+.dukwing { fill: none; stroke: var(--ink); stroke-width: 2; stroke-linecap: round; }
+.dukring { fill: none; stroke: #c94a3a; stroke-width: 2.2; }
+.dukback { transform: rotateY(180deg); }
+.dukv { display: grid; place-items: center; width: 82%; height: 82%; border-radius: 50%; background: var(--paper); border: 3px solid var(--ink); font: 400 calc(var(--ds) * .5)/1 'Luckiest Guy', 'Arial Black', sans-serif; color: var(--ink); padding-top: 8%; box-sizing: border-box; }
+.dukboot { width: 82%; height: 82%; padding: 12%; box-sizing: border-box; border-radius: 50%; background: #d7e4ea; border: 3px solid var(--ink); overflow: visible; }
+.dukboot path { fill: #2f6f4e; stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; }
+.dukboot path.dukbootl { fill: none; stroke: #8ad3a8; stroke-width: 2; }
+/* the hooked duck: the line down to it, out of the water, over to show its bottom */
+.dukd.hk { z-index: 2; cursor: default; }
+.dukline { position: absolute; left: 62%; bottom: 82%; width: 3px; height: calc(var(--y) * 1cqh); margin-left: -1.5px; background: var(--ink); transform-origin: 50% 0; animation: duklinein .52s ease-out var(--t, 0ms) both, duklineup .38s ease-in .52s forwards; }
+.dukline::after { content: ''; position: absolute; left: -5px; bottom: -7px; width: 9px; height: 9px; border: 3px solid var(--ink); border-top-color: transparent; border-radius: 50%; }
+@keyframes duklinein { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@keyframes duklineup { from { transform: scaleY(1); } to { transform: translateY(calc(var(--ds) * -.62)) scaleY(1); } }
+.dukd.hk .dukf { animation: duklift .38s ease-in var(--tl, 520ms) forwards; }
+@keyframes duklift { to { transform: translateY(-62%) scale(1.18); } }
+.dukd.hk .dukfront { animation: dukflipa .36s ease-in-out var(--ts, 900ms) forwards; }
+.dukd.hk .dukback { animation: dukflipb .36s ease-in-out var(--ts, 900ms) forwards; }
+@keyframes dukflipa { to { transform: rotateY(-180deg); } }
+@keyframes dukflipb { to { transform: rotateY(0deg); } }
+.dukrip { position: absolute; left: 10%; top: 55%; width: 80%; height: 30%; border: 3px solid rgba(255,255,255,.85); border-radius: 50%; opacity: 0; pointer-events: none; animation: dukrip .6s ease-out var(--t, 520ms) both; }
+@keyframes dukrip { 0% { opacity: .9; transform: scale(.4); } 100% { opacity: 0; transform: scale(1.6); } }
+.dukd.dnew { animation: dukdrift var(--dd, 6s) linear var(--dl, 0s) infinite, dukin .45s ease-out var(--t, 0ms) both; }
+@keyframes dukin { from { opacity: 0; scale: .4; } to { opacity: 1; scale: 1; } }
+.dukcatch { flex: none; height: 30px; display: flex; justify-content: center; align-items: center; gap: 5px; overflow: hidden; }
+.dukcatch .dukc { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--paper); border: 2.5px solid var(--ink); font: 400 15px/1 'Luckiest Guy', 'Arial Black', sans-serif; font-style: normal; padding-top: 2px; box-sizing: border-box; flex: none; }
+.dukcatch .dukc.b { background: #d7e4ea; padding: 3px; }
+.dukcatch .dukc.b svg { width: 100%; height: 100%; }
+.dukcatch .dukc.b svg path { fill: #2f6f4e; stroke: var(--ink); stroke-width: 2.4; } .dukcatch .dukc.b svg path.dukbootl { fill: none; stroke: #8ad3a8; }
+.dukcatch .dukc.appear { animation: appearin .3s var(--t, 0ms) ease-out both; }
+.dukres { margin: 0; flex: none; height: 24px; line-height: 24px; text-align: center; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dukres.ok { font-weight: 700; }
+@media (prefers-reduced-motion: reduce) { .dukd, .dukart, .dukpond::before, .dukpond::after { animation: none; } }
+/* the miniature: each player's pond with its ducks, their mark, a bar of their points */
+.tduk { width: 100%; height: 100%; display: grid; place-items: center; }
+.tduk svg { width: 94%; height: auto; max-height: 100%; overflow: visible; }
+.tdukp { fill: #8fd3ee; stroke: var(--ink); stroke-width: 1.4; }
+.tdukb { fill: #ffd23a; stroke: var(--ink); stroke-width: .7; }
+.tdukm.X .tmk { stroke: var(--x); } .tdukm.O .tmk { stroke: var(--o); }
+.tdukt { fill: var(--paper); stroke: var(--ink); stroke-width: 1.2; }
+.tdukf.X { fill: var(--x); } .tdukf.O { fill: var(--o); }
+/* Claw Machine (November 2026, games/claw/view.js): the case on a canvas filling the room left, its owner's label above
+   it, the result line and Drop under it; a drag anywhere on the case moves the claw, a tap drops it. */
+.claw { flex: 1; display: flex; flex-direction: column; min-height: 0; gap: 4px; }
+.claw.live { touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; cursor: grab; }
+.clawlab { flex: none; text-align: center; font-size: 14px; color: var(--muted); line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.claw .clawcv { flex: 1 1 0; min-height: 0; width: 100%; display: block; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+/* its miniature: each player's case (X above, O below), the prizes left on its floor, beside the prizes won */
+.tclaw { width: 100%; height: auto; max-height: 100%; display: block; overflow: visible; }
+.tclawg { fill: #dff1f8; } .tclawf { fill: none; stroke: var(--ink); stroke-width: 1.8; } .tclawc { fill: #3c4250; }
+.tclawr { stroke: #8a909c; stroke-width: 1.6; fill: none; stroke-linecap: round; }
+.tclaw circle, .tclaw rect:not(.tclawg):not(.tclawf):not(.tclawc) { stroke: var(--ink); stroke-width: .9; }
+.tart.tclaww { gap: 2cqw; } .tart.tclaww .tpic { width: 46cqw; } .tart.tclaww .tpip { width: auto; flex: 1; }   /* Claw Machine: the two cases wide, the prizes won beside */
+.tclaw ellipse { stroke: var(--ink); stroke-width: .9; }

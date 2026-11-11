@@ -98,6 +98,11 @@ Category: More skill
 Play: Hold to rise, let go to drop.
 Win: Reach 1,000 m first.
 
+## Claw Machine [claw]
+Category: More skill
+Play: Drag to move the claw over a prize, then tap to drop it. The better it is centred, the better the grip. A prize can still slip on the way to the chute.{goAgain}
+Win: Win {goal} prizes.
+
 ## Codebreaker [mastermind]
 Category: More brain
 Play: Guess the 4-colour code. Black marker means right colour and spot; white marker means right colour, wrong spot.
@@ -111,6 +116,11 @@ Race Win: Crack your code first.
 Category: More luck
 Play: Flip up to {flips} coins that aren't yours.
 Win: All {n} coins show your side.
+
+## Coin Pusher [pusher]
+Category: More luck
+Play: Tap {perMove} spots along the top, then Drop. The pusher shoves the coins forward: the ones over the front edge are yours. Off the sides, they are gone. Your machine keeps its coins for your next go.{goAgain}
+Win: First to {target} coins.
 
 ## Cup Pong [pong]
 Category: More skill
@@ -211,6 +221,11 @@ Super Chaos Play: Guess a number from 1 to {hi}. You'll be told higher or lower.
 Super Chaos Win: Guess it. Use up {limit} guesses and you lose the square.
 Race Play: You each have your own number from 1 to {hi}. Guess yours: you'll be told higher or lower. You can watch the other player close in on theirs.
 Race Win: Guess your number first. No guess limit.
+
+## Hook-a-Duck [duck]
+Category: More luck
+Play: Tap a duck in your pond to hook it. Its bottom shows 1 to 5 points, or a boot worth nothing. An empty pond fills up again.{goAgain}
+Win: First to {target} points.
 
 ## Krabs [craps]
 Category: More luck
