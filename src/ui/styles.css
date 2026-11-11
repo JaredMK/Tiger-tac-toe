@@ -3685,3 +3685,15 @@ main.scr.mini:has(.brkw.run) .back { visibility: hidden; pointer-events: none; }
 .thumb .tr b.O { background: var(--o); --mk: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Ccircle cx='10' cy='10' r='6.4' fill='none' stroke='%23000' stroke-width='5.4'/%3E%3C/svg%3E"); }
 .thumb .tpip .tr { gap: 3cqw; }
 .thumb b.X, .thumb b.O { box-shadow: none; background-image: none; opacity: 1; }   /* (the names' highlighter underline, b.X/b.O elsewhere, washed the lower half of every miniature mark pale) */
+
+/* Bingo's number tracker (November 2026): every number of the range in a compact grid between the cards and the tray; a called
+   number filled in its caller's colour, the latest call ringed; its height is fixed by the range, so nothing moves as calls land. */
+.bgtk-w { flex: none; }
+.bgtks { display: grid; grid-template-columns: repeat(var(--c, 13), minmax(0, 1fr)); gap: 2px; }
+.bgtk { display: grid; place-items: center; height: 17px; border-radius: 4px; background: #fff; border: 1.5px solid color-mix(in srgb, var(--ink) 35%, #fff); color: var(--muted); font: 800 11px/1 'Nunito', Arial, sans-serif; font-style: normal; font-variant-numeric: tabular-nums; box-sizing: border-box; }
+.bgtk.on.X { background: var(--x); border-color: var(--ink); color: #fff; }
+.bgtk.on.O { background: var(--o); border-color: var(--ink); color: var(--ink); }
+.bgtk.last { box-shadow: 0 0 0 2px var(--ink); position: relative; z-index: 1; }
+.bgtk.new.X { --nb: var(--x); --nc: #fff; } .bgtk.new.O { --nb: var(--o); --nc: var(--ink); }
+.bgtk.new { animation: bgtknew2 .3s var(--t, 0ms) both; }
+@keyframes bgtknew2 { from { background: #fff; color: var(--muted); transform: scale(1); } 60% { transform: scale(1.35); } to { background: var(--nb); color: var(--nc); border-color: var(--ink); box-shadow: 0 0 0 2px var(--ink); transform: scale(1); } }

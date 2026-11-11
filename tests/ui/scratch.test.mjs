@@ -14,8 +14,7 @@ const require = createRequire(import.meta.url);
 const E = require('../engine.js');
 const { GAMES } = await import('../../src/games/index.js');
 const V = await import('../../src/games/scratch/view.js');
-const R = await import('../../src/games/scratch/rules.js');
-const { SCR } = R;
+const { SCR } = await import('../../src/games/scratch/rules.js');
 const { state } = await import('../../src/ui/app.js');
 state.setup = Object.assign({}, state.setup, { names: { X: 'Xena', O: 'Olaf' } });
 const clone = v => JSON.parse(JSON.stringify(v));
@@ -57,43 +56,39 @@ test('a scratch animates from the move\'s flash on the mover\'s card: the frost 
   assert.equal(count(html, /class="spic"/g), 2, 'the two scratched pictures, nothing else');
   assert.equal(count(co, /class="sfrost"/g), 9, 'the rubbed panel keeps its frost for the animation; the others theirs');
   assert.equal(count(cx, /class="sfrost"/g), 8);
-  // a pair outside any line (O's 1 and 5): both its panels ring; the tally's third pip stays empty, the second fills in as the picture lands
-  const p1 = play(o.mini, 'O', 1), o2 = play(p1.mini, 'O', 5);
-  assert.equal(o2.flash.scratch.c, 2); assert.deepEqual(o2.flash.scratch.same, [1]); assert.deepEqual(o2.flash.scratch.auto, []);
+  // a pair: both its panels ring; the tally's third pip stays empty, the second fills in as the picture lands
+  const o2 = play(o.mini, 'O', 7);
+  assert.equal(o2.flash.scratch.c, 2); assert.deepEqual(o2.flash.scratch.same, [8]);
   const h2 = screen({ owner: null, mini: o2.mini }, o2.flash, 'O');
   assert.equal(count(h2.split('<div class="scard O')[1], /sspot open[^"]*hit/g), 2);
   assert.match(h2, new RegExp(`class="ctal O now"[\\s\\S]*?<i class="on"></i><i class="on fillin" style="--t:${SCR.rub + SCR.pop}ms"></i><i class=""></i>`));
   assert.match(V.moveText(o2.flash, 'Olaf'), /Olaf found a pair of/);
   assert.match(V.moveText(o.flash, 'Olaf'), /Olaf found an? /);
-  // a pair in a line with its third frosted: the third is scratched for the mover at once (O's 8 and 7: panel 6 opens, SCR.autoAt later), three of a kind, the claim's glow on the three in turn
-  const o3 = play(o2.mini, 'O', 7);
+  // three of a kind: the claim's glow on the three, in turn
+  const o3 = play(o2.mini, 'O', 6);
   assert.equal(o3.res.outcome, 'win'); o3.mini.winCells = o3.res.cells;
-  assert.deepEqual(o3.flash.scratch.auto.map(a => a.spot), [6]); assert.equal(o3.flash.scratch.fin, 3);
-  assert.equal(R.flashMs(o3.flash, 0, true), SCR.autoAt + SCR.rub + SCR.pop + SCR.won, 'the auto-scratch follows the first, then the three glows');
   const h3 = screen({ owner: 'O', mini: o3.mini }, o3.flash, 'O');
   assert.equal(count(h3, /sspot open[^"]*wn glow/g), 3);
-  assert.match(h3, /sspot open rub wn glow" data-act="move" data-m='6' style="--t:1500ms;--k:0;--w:1500ms;"/, 'the opened third rubs away SCR.autoAt after the scratch');
-  assert.match(h3, /sspot open rub[^"]*" data-act="move" data-m='7' style="--t:0ms;/);
+  assert.match(h3, /sspot open rub wn glow" data-act="move" data-m='6' style="--k:0"/);
   assert.match(V.moveText(o3.flash, 'Olaf'), /Olaf found three \w+!/);
   // once settled (no flash), nothing animates and every scratched panel shows its picture
   const h4 = screen({ owner: 'O', mini: o3.mini }, null, 'X', { view: true });
-  assert.equal(count(h4, /rub|glow|hit/g), 0); assert.equal(count(h4, /class="spic"/g), 6); assert.equal(count(h4, /data-act="move"/g), 0);
+  assert.equal(count(h4, /rub|glow|hit/g), 0); assert.equal(count(h4, /class="spic"/g), 4); assert.equal(count(h4, /data-act="move"/g), 0);
 });
 
 test('the sounds come from the move: the rubs, the plop, a pair\'s ding or three\'s sparkle; the miniature shows both cards from public information alone', () => {
   const x = play(m0, 'X', 0), got = [];
   V.sounds(x.flash, (n, at) => got.push([n, at]), false, x.mini, null);
   assert.deepEqual(got.map(s => s[0]), ['scratch', 'scratch', 'scratch', 'plop']);
-  const q1 = play(m0, 'O', 1), q2 = play(q1.mini, 'O', 5), got2 = [];                       // a pair outside a line: it rings, nothing opens
-  V.sounds(q2.flash, (n, at) => got2.push(n), false, q2.mini, null);
+  const x2 = play(x.mini, 'X', 1), got2 = [];
+  V.sounds(x2.flash, (n, at) => got2.push(n), false, x2.mini, null);
   assert.ok(got2.includes('ding'));
-  const x3 = play(x.mini, 'X', 1), got3 = [];                                                // 0 and 1: the top row's third opens at once, three of a kind
-  V.sounds(x3.flash, (n, at) => got3.push([n, at]), true, x3.mini, null);
-  assert.ok(got3.some(s => s[0] === 'sparkle') && got3.filter(s => s[0] === 'plop').length === 2, 'two plops: the scratch and the one opened for X');
-  assert.ok(got3.find(s => s[0] === 'sparkle')[1] >= SCR.autoAt + SCR.rub, 'the sparkle comes after the opened panel lands');
-  const t = V.miniature(q2.mini, false);
+  const x3 = play(x2.mini, 'X', 2), got3 = [];
+  V.sounds(x3.flash, (n, at) => got3.push(n), true, x3.mini, null);
+  assert.ok(got3.includes('sparkle') && !got3.includes('ding'));
+  const t = V.miniature(x2.mini, false);
   assert.match(t, /<svg class="tscr"/); assert.equal(count(t, /class="tsp"/g), 2); assert.equal(count(t, /class="tsf"/g), 16);
-  const hidden = clone(q2.mini); delete hidden.cards;
+  const hidden = clone(x2.mini); delete hidden.cards;
   assert.equal(V.miniature(hidden, false), t, 'the same without the cards');
   x3.mini.winCells = x3.res.cells;
   assert.equal(count(V.miniature(x3.mini, true), /tsw/g), 3, 'three of a kind ringed');

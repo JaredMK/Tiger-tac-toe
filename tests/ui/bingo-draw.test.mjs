@@ -82,3 +82,18 @@ test('the miniature: the two cards and each owner\'s drawn mark, no text', () =>
   assert.doesNotMatch(svg, /<text/);
   assert.match(svg, /class="tbgl X"/); assert.match(svg, /class="tbgl O"/);
 });
+
+test('the number tracker: every number of the range in a compact grid, each called one filled in its caller\'s colour, the latest ringed; a call under replay lands in it with its mark', () => {
+  const m = E.newMini('bingo', E.makeRng('bgtk')), rng = E.makeRng('bgtk2');
+  const d = play(m, 'X', 'draw', rng);
+  const c1 = play(d.mini, 'X', 0, rng);                                // X calls the first ball
+  const html = screen(c1.mini, null, false, 'O');
+  assert.equal((html.match(/class="bgtk[ "]/g) || []).length, m.range, 'every number of the range');
+  assert.equal((html.match(/class="bgtk on X last"/g) || []).length, 1, 'the one called: X\'s colour, ringed');
+  assert.equal((html.match(/class="bgtk"/g) || []).length, m.range - 1, 'the rest uncalled');
+  const d2 = play(c1.mini, 'O', 'draw', rng), c2 = play(d2.mini, 'O', 0, rng);
+  const h2 = screen(c2.mini, null, false, 'X');
+  assert.equal((h2.match(/class="bgtk on [XO]"/g) || []).length, 1, 'the earlier call stays marked, no ring'); assert.equal((h2.match(/bgtk on O last/g) || []).length, 1, 'the latest ringed');
+  const rep = screen(c2.mini, c2.flash, true, 'X');                    // O's call played back: its number lands with the mark
+  assert.match(rep, /class="bgtk new O last" style="--t:\d+ms"/); assert.doesNotMatch(rep, /bgtk on O/, 'not filled before it lands');
+});

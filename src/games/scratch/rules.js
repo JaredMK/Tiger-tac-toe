@@ -11,7 +11,7 @@ import { tune, tuneLive } from '../../core/tune.js';
 // where the third is), and the other panels hold decoys that never reach three (`pairs` pictures twice, the rest once).
 // Where the pictures lie is the server's secret until scratched (secret/hide: `cards`); the scratched panels are
 // public (`open`). Nothing is random in a move: the card was dealt when the square was.
-export const SCR = { n: 9, need: 3, rub: 650, pop: 240, pair: 300, won: 700, autoAt: 1500 };   // the move's moments (ms): the frost rubbed away, the picture's pop, a pair's or the triple's glow; an auto-scratch starts autoAt after the scratch before it (its pair rings first)
+export const SCR = { n: 9, need: 3, rub: 650, pop: 240, pair: 300, won: 700 };   // the move's moments (ms): the frost rubbed away, the picture's pop, a pair's or the triple's glow
 export const SCR_PICS = 8;                                       // the pictures the view can draw (view.js PICS): a square deals `kinds` of them
 export const LINES = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6]];
 // The ways `lines` lines fit on a card without crossing: one is any line; two are two rows or two columns.
@@ -50,15 +50,6 @@ export function scrCounts(open) {
 }
 export function scrBest(open) { let b = 0; for (const n of Object.values(scrCounts(open))) if (n > b) b = n; return Math.min(SCR.need, b); }
 export const scrOpen = (mini, p) => (mini && mini.open && Array.isArray(mini.open[p]) ? mini.open[p] : new Array(SCR.n).fill(null));
-// The panel a pair points at (November 2026): two matching pictures on show in a line with the third panel still frosted
-// are scratched for the mover at once, as part of the same move. Returns the third panel, or -1.
-export function scrAuto(open) {
-  for (const ln of LINES) {
-    const shown = ln.filter(i => open[i] != null), hid = ln.filter(i => open[i] == null);
-    if (shown.length === 2 && hid.length === 1 && open[shown[0]] === open[shown[1]]) return hid[0];
-  }
-  return -1;
-}
 export function create(type, rng) {
   const lay = scrLayout(tuneLive(type));                        // (the admin's settings: the pictures and the layout)
   const pics = shuffle(Array.from({ length: SCR_PICS }, (_, k) => k), rng).slice(0, lay.kinds);   // which of the view's pictures this square shows (public: the same set on both cards)
@@ -73,23 +64,12 @@ export function apply(mini, p, m, rng, idx) {
   if (open[m] != null) return { ok: false, reason: 'taken' };
   if (!mini.open) mini.open = { X: new Array(SCR.n).fill(null), O: new Array(SCR.n).fill(null) };
   mini.open[p] = open;
-  // The scratch, then every pair it makes in a line with the third panel still frosted scratches that third at once (the
-  // same move, one after the other); three of a kind on show at any point takes the square, else the turn ends as usual.
-  const steps = [];
-  let at = m, cells = [];
-  for (let k = 0; k < SCR.n; k++) {
-    const sym = card[at];
-    open[at] = sym;
-    cells = open.map((v, i) => (v === sym ? i : -1)).filter(i => i >= 0);
-    steps.push({ spot: at, sym, c: cells.length, same: cells.filter(i => i !== at) });
-    if (cells.length >= SCR.need) break;
-    at = scrAuto(open);
-    if (at < 0) break;
-  }
-  const f = steps[0], z = steps[steps.length - 1];
-  mini.last = { by: p, spot: m, sym: f.sym, c: z.c, first: f.c, auto: steps.slice(1) };
-  if (z.c >= SCR.need) return { ok: true, outcome: 'win', cells, note: 'three' };
-  return { ok: true, outcome: 'continue', note: z.c === 2 || (steps.length > 1 && f.c === 2) ? 'pair' : 'one' };
+  const sym = card[m];
+  open[m] = sym;
+  const cells = open.map((v, i) => (v === sym ? i : -1)).filter(i => i >= 0), c = cells.length;
+  mini.last = { by: p, spot: m, sym, c };
+  if (c >= SCR.need) return { ok: true, outcome: 'win', cells, note: 'three' };
+  return { ok: true, outcome: 'continue', note: c === 2 ? 'pair' : 'one' };
 }
 export function publicView(mini) {
   return { type: 'scratch', pics: (mini.pics || []).slice(), open: { X: scrOpen(mini, 'X').slice(), O: scrOpen(mini, 'O').slice() }, last: mini.last ? Object.assign({}, mini.last) : null };
@@ -98,12 +78,8 @@ export function randomMove(mini, p, rng, from, empties) {
   return from(empties(scrOpen(mini, p), v => v == null));
 }
 export function moveFlash(m, p, range, bjFrom, mini, flash) {
-  const l = mini.last, open = scrOpen(mini, p), sym = l ? l.sym : open[m], pic = v => (mini.pics ? mini.pics[v] : null);
-  const auto = l && Array.isArray(l.auto) ? l.auto.map(a => ({ spot: a.spot, sym: a.sym, c: a.c, pic: pic(a.sym), same: (a.same || []).slice() })) : [];
-  // the first scratch (`c`, `same`: the pair it makes, as it stood then), the panels scratched for the mover after it
-  // (`auto`, in order) and the count the move ended on (`fin`: three is the square)
-  const same = auto.length && l.first != null ? open.map((v, i) => (v === sym && i !== m && !auto.some(a => a.spot === i) ? i : -1)).filter(i => i >= 0) : open.map((v, i) => (v === sym && i !== m ? i : -1)).filter(i => i >= 0);
-  flash.scratch = { by: p, spot: m, sym, c: l ? (l.first != null ? l.first : l.c) : 1, fin: l ? l.c : 1, pic: pic(sym), same, auto };
+  const l = mini.last, open = scrOpen(mini, p);
+  flash.scratch = { by: p, spot: m, sym: l ? l.sym : open[m], c: l ? l.c : 1, pic: mini.pics ? mini.pics[l ? l.sym : open[m]] : null, same: open.map((v, i) => (v === (l ? l.sym : open[m]) && i !== m ? i : -1)).filter(i => i >= 0) };
 }
 export function secret(mini) {
   return { cards: { X: (mini.cards.X || []).slice(), O: (mini.cards.O || []).slice() } };
@@ -114,6 +90,6 @@ export function hide(m, k, st) {
 // The move's animation: the frost rubbed away, the picture's pop, then a pair's glow where there is one; a square won
 // holds the three's glow a while longer. The hold comes after (ui/turns.js).
 export function flashMs(f, winLen, won) {
-  const s = f.scratch, n = s && s.auto ? s.auto.length : 0, fin = s ? (s.fin != null ? s.fin : s.c) : 0;
-  return n * SCR.autoAt + SCR.rub + SCR.pop + (won ? SCR.won : fin >= 2 ? SCR.pair : 0);
+  const s = f.scratch;
+  return SCR.rub + SCR.pop + (won ? SCR.won : s && s.c >= 2 ? SCR.pair : 0);
 }

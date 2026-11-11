@@ -33,6 +33,23 @@ function card(mini, p, s, t, view, win) {
   });
   return `<div class="bgcard ${p}"><div class="bghd"><b class="${p}">${p}</b></div><div class="bggrid" style="--n:${n}">${cells.join('')}</div></div>`;
 }
+// The number tracker (November 2026): every number of the range in a compact grid, a called one filled in the colour of the
+// player who called it, the latest call ringed. Kept in view between the cards and the tray; a call under replay lands
+// in it with its mark (`s`: the move playing, timed from the move), never before.
+function tracker(mini, s, t) {
+  const range = mini.range || 26, cols = Math.min(15, Math.ceil(range / 2)), by = {};
+  (mini.called || []).forEach((v, i) => { by[v] = (mini.callBy || [])[i] || ''; });
+  const last = s ? s.n : mini.last && !mini.win ? mini.last.n : mini.last ? mini.last.n : -1;
+  const cells = [];
+  for (let v = 1; v <= range; v++) {
+    const called = v in by, fresh = !!s && v === s.n, cls = ['bgtk'];
+    if (called && !fresh) cls.push('on', by[v] || 'X');
+    if (fresh) cls.push('new', s.by || 'X');
+    if (v === last && (called || fresh)) cls.push('last');
+    cells.push(`<i class="${cls.join(' ')}"${fresh ? ` style="--t:${t.land}ms"` : ''} aria-label="${v}${called ? ', called' : ''}">${v}</i>`);
+  }
+  return `<div class="bgtk-w" role="group" aria-label="Numbers called"><div class="bgtks" style="--c:${cols}">${cells.join('')}</div></div>`;
+}
 // The cage (original art, drawn here): a wire drum on a wooden stand with its crank, a few balls tumbling inside and a
 // spout at its foot where the drawn balls roll out. `spin`: the draw under way (the drum and crank turn from the move).
 const CAGE_BALLS = [[-9, -6, 'a'], [6, -10, 'b'], [10, 5, 'c'], [-4, 9, 'a'], [-12, 6, 'b'], [2, -1, 'c']];
@@ -86,6 +103,7 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
     : `<p class="arcnote">${view ? '' : locked ? waitLine(turn) : `<b class="${turn}">${N(turn)}</b>'s ${drawn ? 'call' : 'turn'} · ${left} number${left === 1 ? '' : 's'} left`}</p>`;
   g = `<div class="g-arc g-bingo"><div class="ctals">${tal('X')}${tal('O')}</div>
       ${cards}
+      ${tracker(mini, s, t)}
       <div class="bgtray${s ? ' playing' : ''}"${s ? ` style="--t:${t.land}ms"` : ''}>${cage(!!dr, td)}<div class="bgballs">${balls.join('')}${pick}</div></div>
       ${res}</div>`;
   return g;

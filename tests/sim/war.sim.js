@@ -3,7 +3,8 @@
 // npm run sim -- war
 // The settings (meta.js TUNE) were picked here (November 2026): 3 rounds to win, a war won worth 2: the winner takes about
 // 4.4 flips (both players about 8.3 together), the first mover wins about 56%, and a square sees a war about every other
-// time (a flip ties about one time in seventeen). 2 rounds was 2.9 flips and 59%; 4 rounds 6.1 flips and 55%.
+// time (a flip ties about one time in seventeen). 2 rounds was 2.9 flips and 59%; 4 rounds 6.1 flips and 55%. With the hot
+// streak (a round won goes again, November 2026): the winner 4.45 flips, the first mover 56.8%.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const E = require('../engine.js');
@@ -20,7 +21,7 @@ test('war: whole squares, the computer against itself, over many dealt squares: 
       assert.ok(r.ok);
       flips++; wars += m.last.wars; if (m.last.result === 'win') won++;
       if (r.outcome === 'win') { if (p === 'X') first++; wFlips += m.flips[p]; allFlips += m.flips.X + m.flips.O; break; }
-      p = p === 'X' ? 'O' : 'X';
+      if (!r.again) p = p === 'X' ? 'O' : 'X';   // (a round won goes again)
     }
   }
   const fm = first / N, w = wFlips / N;

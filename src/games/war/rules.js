@@ -45,15 +45,18 @@ export function warRound(mini, p, rng) {
   const gain = result === 'win' ? warWorthOf(mini, battles.length) : 0;
   return { battles, result, gain, wars: battles.length - 1 };
 }
-export function apply(mini, p, m, rng, idx) { return flip(mini, p, m, rng); }
-export function scApply(mini, p, m, rng) { return flip(mini, p, m, rng); }   // Super Chaos: a round's move is one flip, each player's own round against the dealer (their own deck)
-function flip(mini, p, m, rng) {
+export function apply(mini, p, m, rng, idx) { return flip(mini, p, m, rng, true); }
+export function scApply(mini, p, m, rng) { return flip(mini, p, m, rng, false); }   // Super Chaos: a round's move is one flip, each player's own round against the dealer (their own deck)
+// A hot streak (November 2026): a round won, the square not yet taken, keeps the turn: the same player flips again (`again`);
+// a round lost ends it. (Super Chaos: one round a round, no streak: scApply.)
+function flip(mini, p, m, rng, streak) {
   if (m !== 'flip') return { ok: false, reason: 'bad' };
   const r = warRound(mini, p, rng);
   mini.flips[p] += 1;
   mini.wins[p] = Math.min(tune(mini).goal, mini.wins[p] + r.gain);
   mini.last = { by: p, battles: r.battles.map(b => ({ p: b.p, d: b.d })), result: r.result, gain: r.gain, wars: r.wars };
   if (mini.wins[p] >= tune(mini).goal) return { ok: true, outcome: 'win', note: 'won' };
+  if (r.result === 'win' && streak) return { ok: true, outcome: 'continue', note: 'won', again: true };   // a hot streak: flip again
   return { ok: true, outcome: 'continue', note: r.result === 'win' ? 'won' : 'lost' };
 }
 export function publicView(mini) {

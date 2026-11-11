@@ -285,7 +285,7 @@ Win: Stack to the target first.
 
 ## Scratch & Match [scratch]
 Category: More luck
-Play: Scratch a panel on your card to show its picture. Three of the same picture always sit in a line. When two matching pictures show in a line, the third panel scratches itself right away, in the same move.
+Play: Scratch a panel on your card to show its picture. Three of the same picture always sit in a line, so two matching pictures in a line point at the third.
 Win: Show three of a kind first.
 
 ## Sea Battle [bs]
@@ -376,7 +376,7 @@ Race Win: Be the first to get {goal} right.
 
 ## War [war]
 Category: More luck
-Play: Tap Flip: your card against the dealer's, and the higher card wins the round. A tie goes to war: three cards down each, then flip again. A war won counts {warWorth}.
+Play: Tap Flip: your card against the dealer's, and the higher card wins the round. A tie goes to war: three cards down each, then flip again. A war won counts {warWorth}. Win? Go again.
 Win: Win {goal} rounds.
 
 # Retired mini-games (not shown in the app)

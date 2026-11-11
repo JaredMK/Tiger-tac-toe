@@ -38,25 +38,20 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
   // scratched one shows its picture. The move just made (a: its recorded flash, never the square's last) rubs the frost
   // off its panel strip by strip, the picture pops in, a pair's two panels glow together, and three of a kind glow
   // in turn (the game's own winning moment; the claim is the board's).
-  const s = a && a.scratch ? a.scratch : null, o = { view, locked, turn, zoom: state.zoom };
-  // The move's scratches in order: the player's own, then each panel scratched for them after (a pair in a line with its third still frosted), one every SCR.autoAt.
-  const steps = s ? [{ spot: s.spot, c: s.c, same: s.same || [] }].concat((s.auto || []).map(x => ({ spot: x.spot, c: x.c, same: x.same || [] }))) : [];
-  const land = (steps.length - 1) * SCR.autoAt + SCR.rub + SCR.pop, endAt = (steps.length - 1) * SCR.autoAt;
+  const s = a && a.scratch ? a.scratch : null, o = { view, locked, turn, zoom: state.zoom }, land = SCR.rub + SCR.pop;
   const tal = p => {
-    const open = scrOpen(mini, p), best = scrBest(open), moved = !!(s && s.by === p && best > scrBest(open.map((v, i) => (steps.some(t => t.spot === i) ? null : v))));
+    const open = scrOpen(mini, p), best = scrBest(open), moved = !!(s && s.by === p && s.c === best && s.c !== scrBest(open.map((v, i) => (i === s.spot ? null : v))));
     return arcTally(p, o, pips(p, best, SCR.need, moved, land));
   };
   const card = p => {
     const open = scrOpen(mini, p), mine = !view && turn === p, cells = sq.owner === p && Array.isArray(mini.winCells) ? mini.winCells : [];
     const spots = open.map((v, i) => {
-      const r = Math.floor(i / 3) + 1, c = (i % 3) + 1, k = s && s.by === p ? steps.findIndex(t => t.spot === i) : -1, rub = k >= 0, pic = v != null ? picOf(mini, v) : null;
-      const win = cells.includes(i), glowAt = s && s.by === p ? steps.findIndex(t => t.c === 2 && (t.spot === i || t.same.includes(i))) : -1;   // (the step whose pair this panel rings with)
-      const hit = glowAt >= 0 && !win;
+      const r = Math.floor(i / 3) + 1, c = (i % 3) + 1, rub = !!(s && s.by === p && s.spot === i), pic = v != null ? picOf(mini, v) : null;
+      const win = cells.includes(i), hit = !!(s && s.by === p && s.c === 2 && !win && (rub || (s.same || []).includes(i)));
       const cls = `sspot${v != null ? ' open' : ''}${rub ? ' rub' : ''}${hit ? ' hit' : ''}${win ? ' wn' : ''}${win && fresh ? ' glow' : ''}`;
-      const sty = `${rub ? `--t:${k * SCR.autoAt}ms;` : ''}${hit ? `--h:${glowAt * SCR.autoAt}ms;` : ''}${win ? `--k:${wk(i)};--w:${endAt}ms;` : ''}`;
       const label = `Row ${r} column ${c}${pic && !rub ? `, ${pic.name.replace(/^an? /, '')}` : rub ? '' : ', frosted'}`;
-      if (v == null || rub) return `<button class="${cls}"${mine ? ` data-act="move" ${mv(i)}` : ''}${sty ? ` style="${sty}"` : ''} aria-label="${label}"${locked || !mine || rub ? ' disabled' : ''}>${pic ? picSvg(pic) : ''}${FROST}</button>`;
-      return `<button class="${cls}"${sty ? ` style="${sty}"` : ''} aria-label="${label}" disabled>${picSvg(pic)}</button>`;
+      if (v == null || rub) return `<button class="${cls}"${mine ? ` data-act="move" ${mv(i)}` : ''}${win ? ` style="--k:${wk(i)}"` : ''} aria-label="${label}"${locked || !mine || rub ? ' disabled' : ''}>${pic ? picSvg(pic) : ''}${FROST}</button>`;
+      return `<button class="${cls}"${win ? ` style="--k:${wk(i)}"` : ''} aria-label="${label}" disabled>${picSvg(pic)}</button>`;
     }).join('');
     return `<div class="scard ${p}${mine ? ' on' : ''}" role="group" aria-label="${p}'s card"><div class="sgrid">${spots}</div></div>`;
   };
@@ -66,21 +61,16 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
 export function moveText(f, who) {
   const s = f.scratch;
   if (!s) return `${who} scratched`;
-  const pic = PICS[(s.pic != null ? s.pic : s.sym) % PICS.length] || PICS[0], fin = s.fin != null ? s.fin : s.c;
-  if (fin >= SCR.need) return `${who} found three ${pic.pl}!`;
-  if (s.auto && s.auto.length) { const z = s.auto[s.auto.length - 1], zp = PICS[(z.pic != null ? z.pic : z.sym) % PICS.length] || PICS[0]; return `${who} found a pair of ${pic.pl}; the third panel opened: ${zp.name}`; }
+  const pic = PICS[(s.pic != null ? s.pic : s.sym) % PICS.length] || PICS[0];
+  if (s.c >= SCR.need) return `${who} found three ${pic.pl}!`;
   if (s.c === 2) return `${who} found a pair of ${pic.pl}`;
   return `${who} found ${pic.name}`;
 }
-// The frost rasps away, the picture plops in; a pair rings once, three of a kind sparkle. A panel scratched for the
-// mover after a pair does the same, SCR.autoAt later.
+// The frost rasps away, the picture plops in; a pair rings once, three of a kind sparkle.
 export function sounds(f, add, won, mini, last) {
-  const s = f.scratch, steps = s ? [{ c: s.c }].concat(s.auto || []) : [{ c: 1 }];
-  steps.forEach((t, k) => {
-    const at = k * SCR.autoAt, end = k === steps.length - 1;
-    add('scratch', at); add('scratch', at + 220, 1.08); add('scratch', at + 440, .96);
-    add('plop', at + SCR.rub);
-    if (end && won) add('sparkle', at + SCR.rub + SCR.pop);
-    else if (t.c === 2) add('ding', at + SCR.rub + SCR.pop);
-  });
+  add('scratch', 0); add('scratch', 220, 1.08); add('scratch', 440, .96);
+  add('plop', SCR.rub);
+  const s = f.scratch;
+  if (won) add('sparkle', SCR.rub + SCR.pop);
+  else if (s && s.c === 2) add('ding', SCR.rub + SCR.pop);
 }

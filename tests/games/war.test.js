@@ -30,14 +30,14 @@ test('war: a fresh square: no rounds won, two shuffled decks of 52 (each player\
 test('war: the higher card wins the round (ace high, suits never matter), the dealer\'s higher loses it with nothing taken away; the deck goes down two a flip', () => {
   const m = mini('r1');
   rig(m, 'X', 'KH', '7S');                                               // the player's king against the dealer's seven
-  assert.deepEqual(E.applyMove(m, 'X', 'flip', lcg(1)), { ok: true, outcome: 'continue', note: 'won' });
+  assert.deepEqual(E.applyMove(m, 'X', 'flip', lcg(1)), { ok: true, outcome: 'continue', note: 'won', again: true });   // a round won goes again
   assert.deepEqual([m.wins.X, m.flips.X, m.deck.X.length], [1, 1, 12]);
   assert.deepEqual(m.last, { by: 'X', battles: [{ p: 'KH', d: '7S' }], result: 'win', gain: 1, wars: 0 });
   rig(m, 'X', '2S', 'AH');
   assert.deepEqual(E.applyMove(m, 'X', 'flip', lcg(1)), { ok: true, outcome: 'continue', note: 'lost' });
   assert.deepEqual([m.wins.X, m.flips.X, m.last.result, m.last.gain], [1, 2, 'lose', 0], 'a loss: nothing taken away');
   rig(m, 'O', 'AS', 'KD');
-  assert.deepEqual(E.applyMove(m, 'O', 'flip', lcg(1)), { ok: true, outcome: 'continue', note: 'won' });
+  assert.deepEqual(E.applyMove(m, 'O', 'flip', lcg(1)), { ok: true, outcome: 'continue', note: 'won', again: true });
   assert.deepEqual([m.wins, m.flips], [{ X: 1, O: 1 }, { X: 2, O: 1 }], 'each player\'s rounds are their own, from their own deck');
   rig(m, 'O', 'TS', 'TH', ...DOWN, '9H', 'QD');                          // a tie: war (three down each), then the dealer's queen
   assert.deepEqual(E.applyMove(m, 'O', 'flip', lcg(1)), { ok: true, outcome: 'continue', note: 'lost' });
@@ -48,10 +48,10 @@ test('war: the higher card wins the round (ace high, suits never matter), the de
 test('war: a war won counts its worth (2 by default), a war on a war goes on until a card is higher, and the first to the goal takes the square', () => {
   const m = mini('r2');
   rig(m, 'X', 'QD', 'QC', ...DOWN, '9S', '5H');
-  assert.deepEqual(E.applyMove(m, 'X', 'flip', lcg(1)), { ok: true, outcome: 'continue', note: 'won' });
+  assert.deepEqual(E.applyMove(m, 'X', 'flip', lcg(1)), { ok: true, outcome: 'continue', note: 'won', again: true });
   assert.deepEqual([m.wins.X, m.last.gain, m.last.wars, m.last.battles.length], [2, 2, 1, 2]);
   rig(m, 'O', '8D', '8C', ...DOWN, '4S', '4H', ...DOWN, 'AS', '3H');   // two wars deep
-  assert.deepEqual(E.applyMove(m, 'O', 'flip', lcg(1)), { ok: true, outcome: 'continue', note: 'won' });
+  assert.deepEqual(E.applyMove(m, 'O', 'flip', lcg(1)), { ok: true, outcome: 'continue', note: 'won', again: true });
   assert.deepEqual([m.wins.O, m.last.gain, m.last.wars, m.last.battles.map(b => b.p + b.d)], [2, 2, 2, ['8D8C', '4S4H', 'AS3H']]);
   rig(m, 'X', '6D', '2C');
   assert.deepEqual(E.applyMove(m, 'X', 'flip', lcg(1)), { ok: true, outcome: 'win', note: 'won' }, 'the third round: the square');
@@ -104,19 +104,19 @@ test('war: in a match, one tap of Flip plays the round back card by card (warPla
   const st = E.newMatch(lcg(3), { games: ['war'] }), p0 = st.turn;
   rig(st.squares[0].mini, p0, 'QD', 'QC', ...DOWN, '9S', '5H');
   E.playMove(st, 0, 'flip', lcg(1));
-  assert.deepEqual([st.flash.kind, st.flash.war.result, st.flash.war.gain, st.flash.war.wars, st.flash.war.battles.length, st.flash.war.deck], ['move', 'win', 2, 1, 2, undefined]);
+  assert.deepEqual([st.flash.kind, st.flash.war.result, st.flash.war.gain, st.flash.war.wars, st.flash.war.battles.length, st.flash.war.deck], ['again', 'win', 2, 1, 2, undefined]);   // (a round won, the square not yet: the turn goes on)
   const plan = R.warPlan(st.flash.war);
   assert.deepEqual(plan.battles[0], { pAt: 0, pFlip: WART.slide, dAt: WART.gap, dFlip: WART.gap + WART.slide, judge: WART.gap + WART.slide + WART.flip + WART.judge, downAt: WART.gap + WART.slide + WART.flip + WART.judge + WART.war }, 'the player\'s card, the dealer\'s, the tie judged, the down cards');
   const b1 = plan.battles[1], from = plan.battles[0].downAt + WAR.down * WART.down + WART.lead;
   assert.deepEqual([b1.pAt, b1.judge, b1.downAt, plan.end], [from, from + WART.gap + WART.slide + WART.flip + WART.judge, undefined, from + WART.gap + WART.slide + WART.flip + WART.judge]);
   assert.equal(E.playMs(st.flash), plan.end + WART.result + WART.pip, 'the round plays out, the result held, the pips filling in');
   E.endFlash(st);
-  assert.deepEqual([st.lock, st.turn, st.screen], [null, p0 === 'X' ? 'O' : 'X', 'board'], 'a round won passes the turn (no streak)');
+  assert.deepEqual([st.lock, st.turn, st.screen], [0, p0, 'mini'], 'a round won keeps the turn: the same player flips again, held to the square');
   rig(st.squares[0].mini, st.turn, '2D', '9C');
   E.playMove(st, 0, 'flip', lcg(1));
   assert.deepEqual([st.flash.war.result, st.flash.war.gain], ['lose', 0]);
   assert.equal(E.playMs(st.flash), R.warPlan(st.flash.war).end + WART.result, 'a round lost: no pip');
-  E.endFlash(st); assert.equal(st.turn, p0);
+  E.endFlash(st); assert.equal(st.turn, p0 === 'X' ? 'O' : 'X', 'a round lost ends the turn');
   assert.equal(E.localBest(E.publicMini(st.squares[0].mini), st.turn, lcg(1)).move, 'flip', 'the computer flips');
   assert.equal(R.flashMs({ war: null }, 0, false), WART.slide + WART.flip + WART.result);
 });
@@ -135,7 +135,7 @@ test('war: the decks are the square\'s secret: never in the public view, the rec
   const p = rec0.state.turn;
   rec0.secrets[4].deck[p] = ['2C', '3C', '4C', '5C', '6C', '7C', '8C', '9C', 'TC', 'JC', 'QC', 'KC', '3S', 'AH'];
   const r = E.applyOnlineMove(rec0, p, 4, 'flip', lcg(1));
-  assert.deepEqual([r.ok, r.entries[0].kind, r.entries[0].war.result, r.entries[0].war.battles, r.rec.state.turn], [true, 'move', 'win', [{ p: 'AH', d: '3S' }], p === 'X' ? 'O' : 'X']);
+  assert.deepEqual([r.ok, r.entries[0].kind, r.entries[0].war.result, r.entries[0].war.battles, r.rec.state.turn], [true, 'again', 'win', [{ p: 'AH', d: '3S' }], p]);
   assert.equal(JSON.stringify(r.rec.state).includes('"deck"'), false, 'no deck anywhere in the public record');
   assert.equal(JSON.stringify(r.entries).includes('"deck"'), false);
   assert.equal(r.rec.secrets[4].deck[p].length, 12, 'the deck played from, kept apart');
@@ -163,11 +163,11 @@ test('war: the computer has one move, Flip; needs counts the flips the rounds le
     const pm = E.publicMini(m), t0 = performance.now(), h = A.best(pm, 'X', lcg(1), {}, ctx);
     assert.ok(performance.now() - t0 < 60);
     assert.deepEqual(h, A.best(pm, 'X', lcg(1), {}, {})); assert.equal(h.move, 'flip');
-    assert.equal(A.needs(pm, 'X'), Math.max(1, A.warFlips(3 - wins, 2)));   // the flips still needed, exactly: a war won counts two
+    assert.equal(A.needs(pm, 'X'), Math.max(1, 1 + 0.5 * A.warFlips(3 - wins, 2)));   // the turns still needed: the last one and a turn for every flip lost on the way (a round won goes again; a war won counts two)
   }
   const m = mini('ai-q');
-  assert.equal(A.best(E.publicMini(m), 'X', lcg(1), {}, {}).q, 0, 'three rounds off: no one flip takes it');
-  m.wins.X = 1; assert.ok(A.best(E.publicMini(m), 'X', lcg(1), {}, {}).q > 0 && A.best(E.publicMini(m), 'X', lcg(1), {}, {}).q < 0.1, 'two off: only a war won takes it');
+  assert.equal(A.best(E.publicMini(m), 'X', lcg(1), {}, {}).q, A.WAR_WIN ** 3, 'three rounds off: a turn takes it with three rounds won in a row (a round won goes again)');
+  m.wins.X = 1; assert.equal(A.best(E.publicMini(m), 'X', lcg(1), {}, {}).q, A.WAR_WIN ** 2, 'two off: two in a row');
   m.wins.X = 2; assert.equal(A.best(E.publicMini(m), 'X', lcg(1), {}, {}).q, A.WAR_WIN, 'one off: a flip\'s chance');
   assert.ok(A.needs(E.publicMini(mini('n')), 'O') > A.needs(E.publicMini(m), 'X'));
   assert.equal(A.warFlips(1, 2), 2); assert.ok(Math.abs(A.warFlips(3, 2) - 5.772) < 0.001 && Math.abs(A.warFlips(3, 1) - 6) < 1e-9, 'three rounds: 5.77 flips with a war worth two, 6 with it worth one');

@@ -5,7 +5,7 @@ export const release = 'admin';   // the default (the admin's dashboard can chan
 export const minVersion = '1.5.0';   // the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
 export const category = 'luck';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds (each player's own round against the dealer, from their own deck)
-export const explainer = { name: 'War', play: 'Tap Flip: your card against the dealer\'s, and the higher card wins the round. A tie goes to war: three cards down each, then flip again. A war won counts {warWorth}.', win: 'Win {goal} rounds.' };   // ({goal}, {warWorth}: its settings, TUNE below)
+export const explainer = { name: 'War', play: 'Tap Flip: your card against the dealer\'s, and the higher card wins the round. A tie goes to war: three cards down each, then flip again. A war won counts {warWorth}. Win? Go again.', win: 'Win {goal} rounds.' };   // ({goal}, {warWorth}: its settings, TUNE below)
 // Its settings (the admin's Mini-game Settings; core/tune.js): read with tune(mini).
 export const TUNE = [
   { k: 'goal', label: 'Rounds to win', def: 3, min: 2, max: 5, step: 1, group: 'Rules' },
