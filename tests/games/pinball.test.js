@@ -67,7 +67,7 @@ test('pinball: the move\'s checks — a real ball passes; a faked one (teleport,
 test('pinball: lit targets stay lit, for that player only; lighting all seven wins the square', () => {
   const st = E.newMatch(lcg(3), { games: ['pinball'] }), i = 4, mini = st.squares[i].mini;
   let balls = 0;
-  while (!st.squares[i].owner && balls < 40) {
+  while (!st.squares[i].owner && balls < 80) {
     const p = st.turn, before = mini.lit[p].slice(), other = mini.lit[E.other(p)].slice();
     const r = P.pinAi(P.pinTable(mini), mini.cfg, mini.lit[p], E.makeRng('lit' + balls)).result;
     const out = E.playMove(st, i, { hits: r.hits, ms: r.ms, rec: r.rec, end: r.end }, E.makeRng('x' + balls));

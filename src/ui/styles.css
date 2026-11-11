@@ -4083,3 +4083,43 @@ button.dukd:disabled { cursor: default; }
 .tclaw circle, .tclaw rect:not(.tclawg):not(.tclawf):not(.tclawc) { stroke: var(--ink); stroke-width: .9; }
 .tart.tclaww { gap: 2cqw; } .tart.tclaww .tpic { width: 46cqw; } .tart.tclaww .tpip { width: auto; flex: 1; }   /* Claw Machine: the two cases wide, the prizes won beside */
 .tclaw ellipse { stroke: var(--ink); stroke-width: .9; }
+/* ---------- Word Tiles (wtiles, November 2026): the player's own 7x7 board, the rack, Clear / Swap / Play ---------- */
+.g-arc.wt { gap: 6px; }
+.wt .wtsc { display: inline-flex; align-items: baseline; gap: 1px; font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-size: 18px; white-space: nowrap; }
+.wt .wtsc small { font-size: 12px; min-width: 0; color: var(--muted); }
+.wtwho { flex: none; height: 20px; display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 700; font-size: 14px; color: var(--muted); min-width: 0; }
+.wtwho span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wtmk { width: 16px; height: 16px; flex: none; overflow: visible; } .wtmk.X .tmk { stroke: var(--x); } .wtmk.O .tmk { stroke: var(--o); }
+.wtbw { flex: 1 1 auto; min-height: 0; container-type: size; display: grid; place-items: center; }
+.wtboard { width: min(100cqw, 100cqh); height: min(100cqw, 100cqh); display: grid; grid-template: repeat(7, minmax(0, 1fr)) / repeat(7, minmax(0, 1fr)); gap: 2px; padding: 3px; background: var(--ink); border-radius: 8px; container-type: inline-size; touch-action: none; }
+.wtc { position: relative; min-width: 0; min-height: 0; padding: 0; border: 0; border-radius: 3px; background: #efe2c6; display: grid; place-items: center; font: inherit; color: var(--ink); -webkit-tap-highlight-color: transparent; }
+.wtc:disabled { opacity: 1; cursor: default; }
+.wtc.pl2 { background: #b9dcf2; } .wtc.pl3 { background: #5aa7dc; } .wtc.pw2 { background: #f4b7c4; } .wtc.pw3 { background: #e66a5a; }
+.wtc.ctr::after { content: ''; position: absolute; inset: 30%; border: 2px solid rgba(22, 18, 16, .45); border-radius: 50%; pointer-events: none; }
+.wtc.ctr:has(.wtt)::after { display: none; }
+.wtc em { font-style: normal; font-weight: 800; font-size: max(8px, 3.2cqw); letter-spacing: .02em; color: rgba(22, 18, 16, .62); }
+.wtt { position: relative; width: 92%; height: 92%; display: grid; place-items: center; background: #fff7e2; border: 1.5px solid var(--ink); border-radius: 4px; box-shadow: 0 2px 0 rgba(22, 18, 16, .35); }
+.wtt b { font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-weight: 400; font-size: 7cqw; line-height: 1; transform: translateY(6%); }
+.wtt i { position: absolute; right: 7%; bottom: 3%; font-style: normal; font-weight: 800; font-size: max(7px, 2.4cqw); line-height: 1; }
+.wtt.dr { background: #fff; outline: 3px solid var(--tc, var(--x)); outline-offset: -1px; }
+.wtboard.O .wtt.dr { --tc: var(--o); }
+.wtt.drop { animation: wtdrop .36s var(--t, 0ms) both; }
+@keyframes wtdrop { 0% { transform: translateY(-70%) scale(1.25); opacity: 0; } 65% { transform: translateY(4%) scale(.97); opacity: 1; } 100% { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .wtt.drop { animation: none; } }
+.wtrack { flex: none; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; height: min(13.5vw, 54px); container-type: inline-size; }
+.wtr { min-width: 0; padding: 0; border: 0; background: transparent; display: grid; place-items: center; -webkit-tap-highlight-color: transparent; }
+.wtr .wtt { width: 100%; height: 100%; transition: transform .12s; }
+.wtr .wtt b { font-size: 7.4cqw; } .wtr .wtt i { font-size: max(9px, 2.6cqw); }
+.wtr.sel .wtt { transform: translateY(-14%); outline: 3px solid var(--x); outline-offset: 1px; }
+.wtr.none, .wtr.used { border: 2px dashed rgba(22, 18, 16, .2); border-radius: 6px; }
+.wtr:disabled { opacity: 1; cursor: default; }
+/* the miniature: both boards as blocks, each owner's mark over it and a bar of points under it */
+.thumb svg.twt { width: 94cqw; height: auto; max-height: 76cqh; display: block; overflow: visible; }
+.twt .twc { fill: #efe2c6; } .twt .twc.pl { fill: #b9dcf2; } .twt .twc.pw { fill: #f4b7c4; }
+.twt .twc.on { fill: #fff7e2; stroke: var(--ink); stroke-width: .7; }
+.twt .twb.X .twc.on { fill: #ffd9cf; } .twt .twb.O .twc.on { fill: #ffefb3; }
+.twt .twbar { fill: none; stroke: var(--ink); stroke-width: .8; } .twt .twb.X .twfill { fill: var(--x); } .twt .twb.O .twfill { fill: var(--o); }
+.twt .twb.X .tmk { stroke: var(--x); } .twt .twb.O .tmk { stroke: #d9a400; }
+.wt .wtbw, .wt .wtrack, .wt .wtwho, .wt .cbtns { width: 100%; align-self: stretch; }   /* (size containers have no width of their own: the column's full width) */
+.twt .twbg { fill: #fffaf0; stroke: var(--ink); stroke-width: .9; } .twt .twc { fill: #e3d2ad; }   /* (each miniature board on a backing of its own: the plain squares never melt into the page) */
+.wt .wtsc { font-size: 16px; } .wt .wtsc small { font-size: 11px; }   /* (the figures kept small: the name keeps its room at 320px) */

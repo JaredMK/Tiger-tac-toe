@@ -448,6 +448,16 @@ Category: More luck
 Play: Tap Flip: your card against the dealer's, and the higher card wins the round. A tie goes to war: three cards down each, then flip again. A war won counts {warWorth}.{goAgain}
 Win: Win {goal} rounds.
 
+## Word Tiles [wtiles]
+Category: More brain
+Play: Make one word on your own board from your tiles, in a row or a column. The first goes through the centre; the rest join on. Tinted squares count extra. No word? Swap your tiles.{goAgain}
+Win: First to {target} points.
+List dl: Double letter: that tile counts twice.
+List tl: Triple letter: that tile counts three times.
+List dw: Double word: the whole word counts twice (the centre too).
+List tw: Triple word: the whole word counts three times.
+List all: All seven tiles in one word: bonus points.
+
 # Retired mini-games (not shown in the app)
 
 ## Dice Race [dice]
@@ -478,6 +488,7 @@ End screen back: Back to How to Play
 ## Credits [credits]
 Trivia: <p>Trivia questions from the <a href="https://opentdb.com" target="_blank" rel="noopener noreferrer">Open Trivia Database</a>, opentdb.com, <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a>.</p>
 Physics games: <p>Mini Golf, Pool, Bowling and Pinball run on <a href="https://brm.io/matter-js" target="_blank" rel="noopener noreferrer">Matter.js</a> (MIT licence).</p>
+Word Tiles: <p>Word Tiles checks its words against the ENABLE word list (public domain).</p>
 Privacy note: What the game keeps about you, and how to delete your account
 Privacy link: Privacy policy
 

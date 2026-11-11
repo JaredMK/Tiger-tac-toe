@@ -66,7 +66,7 @@ export function miniature(mini, final) {
   const one = (p, x) => {
     const cells = mini.board[p].map((l, i) => { const pr = WT_PREM[i], cx = x + (i % 7) * cs, cy = 12 + Math.floor(i / 7) * cs; return `<rect class="twc${l ? ' on' : pr !== '.' ? ' p' + (pr === pr.toUpperCase() ? 'w' : 'l') : ''}" x="${cx.toFixed(1)}" y="${cy.toFixed(1)}" width="${(cs - 0.8).toFixed(1)}" height="${(cs - 0.8).toFixed(1)}" rx="0.8"/>`; }).join('');
     const f = Math.max(0, Math.min(1, mini.score[p] / c.target));
-    return `<g class="twb ${p}"><g transform="translate(${x + bw / 2 - 0.4} 5)">${markSvgG(p, 4.2)}</g>${cells}<rect class="twbar" x="${x}" y="${12 + bw + 2}" width="${bw - 0.8}" height="4" rx="2"/><rect class="twfill" x="${x}" y="${12 + bw + 2}" width="${((bw - 0.8) * f).toFixed(2)}" height="4" rx="2"/></g>`;
+    return `<g class="twb ${p}"><g transform="translate(${x + bw / 2 - 0.4} 5)">${markSvgG(p, 4.2)}</g><rect class="twbg" x="${x - 0.9}" y="11.1" width="${bw + 1}" height="${bw + 1}" rx="1.6"/>${cells}<rect class="twbar" x="${x}" y="${12 + bw + 2}" width="${bw - 0.8}" height="4" rx="2"/><rect class="twfill" x="${x}" y="${12 + bw + 2}" width="${((bw - 0.8) * f).toFixed(2)}" height="4" rx="2"/></g>`;
   };
   return `<svg class="twt" viewBox="0 0 ${bw * 2 + 6} ${12 + bw + 7}" aria-label="Word Tiles: X ${mini.score.X}, O ${mini.score.O} of ${c.target} points">${one('X', 0)}${one('O', bw + 6)}</svg>`;
 }

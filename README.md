@@ -212,6 +212,10 @@ and contributors): the page loads it from cdnjs (`matter-js` 0.20.0), with the c
 page as a fallback, and the Cloud Functions use the npm package. The tables, the shots and the rules are
 the game's own (`src/games/shared/physics-sim.js`, run by the engine).
 
+Word Tiles checks its words against [ENABLE](https://github.com/dolph/dictionary) (the Enhanced North American
+Benchmark Lexicon, public domain): its words of 2 to 7 letters, the offensive ones left out, are kept in
+`src/games/wtiles/words.js`, written by `scripts/make-wtiles-words.js` from `enable1.txt`.
+
 ## Playing online
 
 Play a Friend offers "Host game" and "Join game" (and Same phone, above). The host gets a five-letter
