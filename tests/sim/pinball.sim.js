@@ -44,14 +44,15 @@ test('pinball: the lower table — the flippers low on the table, a gap of about
       assert.ok(b.x >= 0 && b.x <= PIN.w && b.y >= 0 && b.y <= PIN.h + 5, 'on the table');
       assert.ok(inPoly([b.x, b.y], tb.outer) || b.y > PIN.drain, `inside the outline at (${b.x.toFixed(1)},${b.y.toFixed(1)})`);
       for (const seg of tb.walls) worst = Math.max(worst, seg[4] / 2 + PIN.ballR - segDist(b.x, b.y, seg));
-      for (const side of ['L', 'R']) worst = Math.max(worst, PIN.ballR + PIN.flip.thick / 2 * 0.65 - segDist(b.x, b.y, P.pinFlipLine(tb, side, w.flip[side].a)) - 0.9);   // (the capsule thins to its tip)
-      if (w.gateOn && w.inPlay && b.x > PIN.lane.x0 + PIN.ballR && b.y > PIN.lane.top + 2 && b.y < PIN.lane.serve[1] - 2) lanes++;   // (never back in the lane through a shut gate)
+      if (b.y < PIN.arc.cy) worst = Math.max(worst, Math.hypot(b.x - PIN.arc.cx, b.y - PIN.arc.cy) - (PIN.arc.r - PIN.arc.t / 2 - PIN.ballR));   // (the arch)
+      for (const side of ['L', 'R']) worst = Math.max(worst, PIN.ballR + PIN.flip.rt - segDist(b.x, b.y, P.pinFlipLine(tb, side, w.flip[side].a)));   // (the flipper at its thinnest: the tip's width)
+      if (w.gateOn && w.inPlay && b.x > PIN.lane.wall + 1.2 && b.y > PIN.lane.top + 2) lanes++;   // (never back in the lane through the gate)
       if (!w.inPlay && !w.over) P.pinLaunch(w, rng());
     }
     guards += w.events.filter(e => e.k === 'guard').length;
   }
   assert.ok(steps > 10000);
-  assert.ok(worst < 0.9, `never more than a little into a wall or a flipper (deepest ${worst.toFixed(2)} units; the ball is ${PIN.ballR * 2} across)`);
+  assert.ok(worst < 0.05, `never into a wall, the arch or a flipper (deepest ${worst.toFixed(3)} units; the ball is ${PIN.ballR * 2} across)`);
   assert.equal(guards, 0, 'the table\'s last-resort guard never needed');
   assert.equal(lanes, 0, 'the gate keeps a ball from falling back into the lane');
 });
@@ -83,7 +84,7 @@ test('pinball: every touch of a target counts (and only a real touch: never thro
   for (let k = 0; k <= 10; k++) {                                  // a launch never lights anything through the lane's wall
     const tb = P.pinAllSpots(k % P.PIN_LAYOUTS.length, Object.assign(E.pinConfig(), { size: E.PINB_LIMITS.size[1] })), w = P.pinNew(tb, tb.cfg, tb.targets.map(() => 0));
     P.pinLaunch(w, k / 10);
-    while (!w.over && w.t < 3 && w.ball.position.x > 86) { P.pinRun(w, 1000 / 60, {}); if (w.ball.position.x > 88.5) assert.deepEqual(w.hits, [], 'nothing lit from the plunger lane'); }
+    while (!w.over && w.t < 3 && w.ball.position.x > PIN.lane.wall - 3) { P.pinRun(w, 1000 / 60, {}); if (w.ball.position.x > PIN.lane.wall) assert.deepEqual(w.hits, [], 'nothing lit from the plunger lane'); }
   }
 });
 test('pinball: a ball nobody flips always drains (it never rests on the flippers or anywhere); a quick drain is saved', () => {
@@ -98,21 +99,71 @@ test('pinball: a ball nobody flips always drains (it never rests on the flippers
   assert.ok(!ends.time, `no ball lasts for ever (${JSON.stringify(ends)})`);
   // a drain in the first seconds: served again (the same move goes on)
   const tb = P.pinAllSpots(0, E.pinConfig()), w = P.pinNew(tb, E.pinConfig(), tb.targets.map(() => 0));
-  const M = require('matter-js');
   P.pinLaunch(w, 0.5); P.pinRun(w, 100, {});
-  M.Body.setPosition(w.ball, { x: 45, y: PIN.drain - 1 }); M.Body.setVelocity(w.ball, { x: 0, y: 3 });
+  w.ball.position.x = PIN.mid; w.ball.position.y = PIN.drain - 1; w.ball.velocity.x = 0; w.ball.velocity.y = 180;
   for (let k = 0; k < 3; k++) P.pinRun(w, 50, {});
-  assert.ok(w.events.some(e => e.k === 'save') && !w.over, 'saved');
+  assert.ok(w.events.some(e => e.k === 'save') && !w.over && !w.inPlay, 'saved: back on the plunger');
+  for (let k = 0; k < 20; k++) P.pinRun(w, 50, {});
+  assert.ok(w.inPlay && w.events.filter(e => e.k === 'launch').length === 2 && w.events.some(e => e.k === 'launch' && e.auto), 'and the table launches it again itself');
 });
-test('pinball: played as a phone plays it (frames of uneven length, a relaunch at once after a save), the recording keeps time with the ball and passes the check', () => {
-  let drift = 0;
+test('pinball: played as a phone plays it (frames of uneven length, a relaunch at once after a save), the ball played through again from its inputs is the same ball, to the last step', () => {
   for (let s = 0; s < 40; s++) {
     const rng = E.makeRng('phone' + s), mini = E.newMini('pinball', rng), w = P.pinNew(P.pinTable(mini), mini.cfg, mini.lit.X);
     P.pinLaunch(w, rng());
-    while (!w.over) { P.pinRun(w, 8 + rng() * 40, { L: rng() < 0.2, R: rng() < 0.2 }); if (!w.inPlay && !w.over) P.pinLaunch(w, rng()); }
-    const r = P.pinResult(w), frames = r.rec.split(',').length;
-    drift = Math.max(drift, Math.abs(frames - (r.ms / 1000) * PIN.fps));
-    assert.equal(E.pinCheck(mini, 'X', { hits: r.hits, ms: r.ms, rec: r.rec, end: r.end }), null, `ball ${s} passes`);
+    while (!w.over) { P.pinRun(w, 8 + rng() * 40, { L: rng() < 0.2, R: rng() < 0.2 }); if (!w.inPlay && !w.over && rng() < 0.5) P.pinLaunch(w, rng()); }
+    const r = P.pinResult(w), move = { hits: r.hits, ms: r.ms, end: r.end, log: P.pinLogPack(w.log), steps: w.n };
+    const c = E.pinReplayCheck(mini, 'X', move);
+    assert.equal(c.why, null); assert.equal(c.diff, false, `ball ${s}: the same ball from its inputs`); assert.equal(c.sim.ms, r.ms);
   }
-  assert.ok(drift <= 1.03, `frame k at k/30 s (at most a frame out, and the move's time rounded to the millisecond: ${drift.toFixed(2)})`);
+});
+test('pinball: no tunnelling and no sticking — balls thrown about at full speed from anywhere, the flippers worked at random or held: the ball never leaves the playfield, never sits in a wall, the arch or a flipper, and never comes to rest anywhere but on a held flipper (the nudge is never needed)', () => {
+  let steps = 0, nudges = 0, guards = 0, worst = 0, rests = 0, kicks = 0;
+  for (let s = 0; s < 240; s++) {
+    const k = s % P.PIN_LAYOUTS.length, rng = E.makeRng('hard' + s), tb = P.pinAllSpots(k, Object.assign(E.pinConfig(), { size: [0.6, 1.7, 2][s % 3], maxBall: 300 })), w = P.pinNew(Object.assign(tb, { maxSecs: 0 }), tb.cfg, tb.targets.map(() => 0));
+    w.maxSecs = 0;
+    let flip = { L: false, R: false }, still = { x: 0, y: 0, t: 0 }, holdMode = s % 4 === 3;
+    P.pinLaunch(w, rng());
+    while (!w.over && w.t < 25) {
+      if (rng() < (holdMode ? 0.004 : 0.05)) flip = { L: rng() < 0.5, R: rng() < 0.5 };
+      if (w.inPlay && rng() < 0.01) { const a = rng() * Math.PI * 2, v = PIN.vmax * (0.6 + 0.4 * rng()); w.ball.velocity.x = Math.cos(a) * v; w.ball.velocity.y = Math.sin(a) * v; kicks++; }   // thrown at up to full speed, any way
+      P.pinRun(w, 1000 / 480, flip); steps++;
+      const b = w.ball.position;
+      if (!w.inPlay) { if (!w.over) P.pinLaunch(w, rng()); still.t = w.t; continue; }
+      assert.ok(inPoly([b.x, b.y], tb.outer) || b.y > PIN.drain, `${tb.name}: inside the outline at (${b.x.toFixed(1)},${b.y.toFixed(1)})`);
+      for (const seg of tb.walls) worst = Math.max(worst, seg[4] / 2 + PIN.ballR - segDist(b.x, b.y, seg));
+      if (b.y < PIN.arc.cy) worst = Math.max(worst, Math.hypot(b.x - PIN.arc.cx, b.y - PIN.arc.cy) - (PIN.arc.r - PIN.arc.t / 2 - PIN.ballR));
+      for (const [x, y, r] of tb.bumpers) worst = Math.max(worst, r + PIN.ballR - Math.hypot(b.x - x, b.y - y));
+      for (const side of ['L', 'R']) worst = Math.max(worst, PIN.ballR + PIN.flip.rt - segDist(b.x, b.y, P.pinFlipLine(tb, side, w.flip[side].a)));
+      if (b.x > PIN.lane.wall + 1.2 && b.y > PIN.lane.top + 2 && w.gateOn) assert.fail(`back in the lane through the gate at (${b.x.toFixed(1)},${b.y.toFixed(1)})`);
+      if (Math.hypot(b.x - still.x, b.y - still.y) > 1.5) still = { x: b.x, y: b.y, t: w.t };
+      else if (w.t - still.t > 2) {                                  // at rest for two seconds: only ever on a held flipper
+        const held = ['L', 'R'].some(side => w.flip[side].on && segDist(b.x, b.y, P.pinFlipLine(tb, side, w.flip[side].a)) < PIN.ballR + PIN.flip.rb + 0.2);
+        assert.ok(held, `${tb.name}: at rest at (${b.x.toFixed(1)},${b.y.toFixed(1)}) with no flipper holding it (flippers ${JSON.stringify(flip)})`);
+        rests++; still.t = w.t;
+      }
+    }
+    nudges += w.nudges; guards += w.events.filter(e => e.k === 'guard').length;
+  }
+  console.log(`  ${steps} steps, ${kicks} throws at up to full speed; deepest into anything ${worst.toFixed(4)} units; rests on a held flipper ${rests}; nudges ${nudges}; guard ${guards}`);
+  assert.ok(steps > 400000 && kicks > 1500);
+  assert.ok(worst < 0.05, `never into a wall, the arch, a bumper or a flipper (deepest ${worst.toFixed(3)})`);
+  assert.equal(nudges, 0, 'no ball ever had to be nudged'); assert.equal(guards, 0, 'the last-resort guard never needed');
+});
+test('pinball: balance — whole squares between two hands (the computer\'s): the balls the winner needs, how often the first player wins, how long a ball lasts', () => {
+  const lens = [], winBalls = [];
+  let first = 0, n = 0;
+  for (let s = 0; s < 300; s++) {
+    const st = E.newMatch(E.makeRng('bal' + s), { games: ['pinball'] }), i = 4, starter = st.turn, balls = { X: 0, O: 0 };
+    let k = 0;
+    while (!st.squares[i].owner && k < 200) { const p = st.turn, mv = E.fingAi(st.squares[i].mini, p, E.makeRng('b' + s + ':' + k)); lens.push(mv.ms / 1000); balls[p]++; const out = E.playMove(st, i, mv, E.makeRng('x' + s + ':' + k)); assert.equal(out.ok, true, out.reason); E.endFlash(st); if (st.turn === p && !st.squares[i].owner) st.turn = E.other(p); k++; }
+    const o = st.squares[i].owner; if (!o) continue;
+    n++; if (o === starter) first++; winBalls.push(balls[o]);
+  }
+  lens.sort((a, b) => a - b); winBalls.sort((a, b) => a - b);
+  const avg = winBalls.reduce((a, b) => a + b, 0) / winBalls.length;
+  console.log(`  ${n} squares: the winner's balls ${avg.toFixed(2)} on average (median ${winBalls[winBalls.length >> 1]}, least ${winBalls[0]}, most ${winBalls[winBalls.length - 1]}); the first player wins ${(100 * first / n).toFixed(1)}%; a ball lasts ${lens[lens.length >> 1].toFixed(1)} s (median), ${lens[Math.floor(lens.length * 0.95)].toFixed(1)} s (p95), ${lens[Math.floor(lens.length * 0.99)].toFixed(1)} s (p99)`);
+  assert.ok(avg >= 3.5 && avg <= 6.5, `about 4 to 6 balls for the winner (${avg.toFixed(2)})`);
+  assert.ok(first / n < 0.6, `the first player under 60% (${(100 * first / n).toFixed(1)}%)`);
+  const ones = winBalls.filter(b => b === 1).length;
+  assert.ok(ones <= n * 0.03, `hardly ever in one ball (${ones} of ${n})`);
 });

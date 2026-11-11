@@ -1783,7 +1783,7 @@ test('Sky Hop, Scoop Stack and Pinball over the server: the tuning is public, th
     assert.equal(st.lock, null, 'the hold is over');
     assert.ok(at(type, mini, 'X') > 0 || real.end !== 'top', `${type}: progress kept (${at(type, mini, 'X')})`);
     assert.equal(mini.last.by, 'X');
-    assert.ok(type === 'pinball' ? mini.last.rec === realRec && mini.last.diff === undefined : mini.last.log === real.log, 'the inputs (or the server\'s own recording of the ball) ride the move, for the other phone\'s replay');
+    assert.ok(mini.last.log === real.log && (type !== 'pinball' || (mini.last.rec === undefined && mini.last.diff === undefined)), 'the inputs ride the move, for the other phone\'s replay (Pinball: the ball the server played through again from them agreed with the phone\'s)');
     assert.equal(mini.started.X, null, 'the attempt in: the next needs its own Start');
     // O's turn, just begun: an attempt longer than the time since Start is refused
     if (st.turn === 'O' && !st.squares[4].owner) {
@@ -1839,14 +1839,16 @@ test('Bullseye tuning (config/bulls): public to read, the admin alone sets it, w
     { env: Object.assign({}, process.env, { TTC_PROJECT: PROJECT, GCLOUD_PROJECT: PROJECT }) }, (e, out) => (e ? reject(new Error(out || e.message)) : resolve(out))));
   assert.match(await script('BullBoss', 'grant'), /BullBoss is now the admin/);
   await boss.auth.currentUser.getIdToken(true);
-  const cfg = { board: 14, bull: 4, sweep: 1700, ramp: 1.05 };
+  const cfg = { board: 30, mid: 15, bull: 6 };
   await denied(a.write('config/bulls', cfg), 'a player setting the difficulty');
   await boss.write('config/bulls', cfg);
+  await boss.write('config/tune/bullseye', { spread: 0 });       // (no scatter for this test: a dart lands where it is thrown)
   assert.deepEqual(await a.read('config/bulls'), cfg, 'everyone can read it');
   assert.equal((await fetch(`http://${DB_HOST}/config/bulls/board.json?ns=${NS}`)).status, 200, 'without a login too');
   await denied(boss.write('config/bulls', Object.assign({}, cfg, { board: 50 })), 'a board off its range');
-  await denied(boss.write('config/bulls', Object.assign({}, cfg, { bull: 20 })), 'a bullseye as big as the board');
-  await denied(boss.write('config/bulls', Object.assign({}, cfg, { sweep: 'fast' })), 'a sweep that is not a number');
+  await denied(boss.write('config/bulls', Object.assign({}, cfg, { bull: 15, mid: 15 })), 'a bullseye as big as the inner ring');
+  await denied(boss.write('config/bulls', Object.assign({}, cfg, { mid: 'wide' })), 'a ring that is not a number');
+  await denied(boss.write('config/bulls', Object.assign({}, cfg, { sweep: 1040 })), 'the old sweep');
   await denied(boss.write('config/bulls/other', 1), 'anything else');
   // a new match: its Bullseye squares carry the config (the server reads it before dealing; it keeps it 20 s)
   await new Promise(r => setTimeout(r, 21000));
@@ -1854,15 +1856,16 @@ test('Bullseye tuning (config/bulls): public to read, the admin alone sets it, w
   const st = await gameState(g.id);
   const bulls = st.squares.filter(q => q.mini.type === 'bullseye');
   for (const q of bulls) assert.deepEqual(q.mini.cfg, cfg, 'dealt with the admin\'s values');
-  // a throw over the server: scored from the two stopped lines, the board moved on by the server
+  // a throw over the server: a flick, { aim, power }; where it lands and what it scores are the server's
   let i = st.squares.findIndex(q => q.mini.type === 'bullseye');
-  if (i < 0) { await rewrite(g.id, full => { full.squares[4].owner = null; full.squares[4].mini = E.newMini('bullseye', E.makeRng('srv-b')); full.turn = 'X'; full.lock = null; }); i = 4; }
+  if (i < 0) { E.setTune('bullseye', { spread: 0 }); await rewrite(g.id, full => { full.squares[4].owner = null; full.squares[4].mini = E.newMini('bullseye', E.makeRng('srv-b')); full.turn = 'X'; full.lock = null; }); E.setTune('bullseye', null); i = 4; }
   const before = (await gameState(g.id)).squares[i].mini, turn = (await gameState(g.id)).turn;
-  const mv = { x: before.pos[0] / E.BULLS.w, y: before.pos[1] / E.BULLS.h };
+  const mv = E.bullsAimAt(E.BULLS.at[0], E.BULLS.at[1]);
   assert.equal((await g[turn].call('move', { game: g.id, square: i, move: mv })).ok, true);
   const after = (await gameState(g.id)).squares[i].mini;
-  assert.equal(after.last.pts, 3, 'dead centre: the bullseye'); assert.deepEqual(after.last.pos, before.pos); assert.notDeepEqual(after.pos, before.pos);
-  assert.deepEqual(await g[turn === 'X' ? 'O' : 'X'].call('move', { game: g.id, square: i, move: 0.5 }), { ok: false, reason: 'bad' }, 'the old one-number throw is refused');
+  assert.equal(after.last.pts, 3, 'dead centre: the bullseye'); assert.equal(after.n, (before.n || 0) + 1); assert.deepEqual(after.darts[after.darts.length - 1], [turn, after.last.x, after.last.y], 'the dart stays in the board');
+  assert.deepEqual(await g[turn === 'X' ? 'O' : 'X'].call('move', { game: g.id, square: i, move: { x: 0.5, y: 0.5 } }), { ok: false, reason: 'bad' }, 'the old two-line throw is refused');
+  await boss.write('config/tune/bullseye', null);
   await boss.write('config/bulls', null);
   assert.equal((await g.O.call('resign', { game: g.id })).ok, true);
   assert.match(await script('BullBoss', 'revoke'), /no longer an admin/);

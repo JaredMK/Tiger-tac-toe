@@ -14,7 +14,7 @@ const admin = require(path.join(__dirname, '..', 'functions', 'node_modules', 'f
 const PATHS = ['releases', 'features',
   'config/tune', 'config/ai', 'config/anim', 'config/timer', 'config/wheels', 'config/pig', 'config/run', 'config/bulls', 'config/plinko',
   'config/oddone', 'config/headcount', 'config/flash', 'config/snapshot', 'config/skyhop', 'config/scoop', 'config/pinball',
-  'config/roads', 'config/bowling',
+  'config/roads',
   'admin/config'];
 
 // Every leaf that differs between two values, as "path: old → new".

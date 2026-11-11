@@ -6,140 +6,205 @@ const E = require('../engine.js');
 E.setPhysics(require('../physics.js'));   // Mini Golf, Pool and Bowling are dealt only with their physics
 
 const lcg = seed => () => (seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296;
+const gauss = rng => { const u = Math.max(1e-9, rng()), v = rng(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
 const bank = n => ({ questions: Array.from({ length: n }, (_, i) => ({ id: 'q' + i, cat: i % 2 ? 'Science' : 'History', q: `Question ${i}?`, a: 'Right ' + i, wrong: ['Wrong a' + i, 'Wrong b' + i, 'Wrong c' + i] })) });
 test.before(() => E.setTriviaBank(bank(40)));
+const B = E.BULLS, at = (dx, dy) => E.bullsAimAt(B.at[0] + dx, B.at[1] + dy);
+const exact = () => { E.setTune('bullseye', { spread: 0 }); const m = E.newMini('bullseye', lcg(1)); E.setTune('bullseye', null); return m; };   // a square with no scatter: a dart lands where it is thrown
 
 /* ===================================== Bullseye ===================================== */
-test('bullseye: a small board on a field, a bullseye in its middle; a throw is where two lines stopped; bullseye 3, board 1, off 0; first to 5; the board moves after every throw', () => {
-  const m = E.newMini('bullseye', lcg(1)), c = m.cfg, B = E.BULLS;
-  assert.deepEqual(c, E.BULL_DEFAULTS, 'dealt with the config of the day (here the defaults)');
-  assert.ok(c.bull < c.board && c.board <= 12, `a small board (${c.board} of ${B.w} across) with a smaller bullseye (${c.bull})`);
-  const inside = pos => pos[0] - c.board >= 0 && pos[0] + c.board <= B.w && pos[1] - c.board >= 0 && pos[1] + c.board <= B.h;
-  assert.ok(inside(m.pos), 'the whole board on the field');
-  const aim = (pos, dx, dy) => ({ x: (pos[0] + dx) / B.w, y: (pos[1] + dy) / B.h });
-  // a bullseye: 3, and X's lines get faster; O's untouched
-  let pos = m.pos.slice();
-  assert.deepEqual(E.applyMove(m, 'X', aim(pos, 0.5, -0.5), lcg(2)), { ok: true, outcome: 'continue', note: 'bull' });
-  assert.deepEqual([m.pts.X, m.speed.X, m.speed.O], [3, c.ramp, 1]);
-  assert.deepEqual(m.last.pos, pos, 'the throw was scored where the board was');
-  assert.ok(Math.hypot(m.pos[0] - pos[0], m.pos[1] - pos[1]) >= Math.min(B.minMove, 30) && inside(m.pos), `then the board moves on (${pos} -> ${m.pos})`);
-  // the board (outside the bullseye): 1
-  pos = m.pos.slice();
-  assert.equal(E.applyMove(m, 'O', aim(pos, c.bull + 1, 0), lcg(3)).note, 'board'); assert.deepEqual([m.pts.O, m.speed.O], [1, c.ramp]);
-  // off the board: 0, and nothing gets faster
-  pos = m.pos.slice();
-  assert.equal(E.applyMove(m, 'O', aim(pos, 0, c.board + 0.5), lcg(4)).note, 'miss'); assert.deepEqual([m.pts.O, m.speed.O], [1, c.ramp]);
-  // the edges: on the bullseye's rim is the bullseye; on the board's rim is the board
-  pos = m.pos.slice();
-  assert.equal(E.bullsScore(c, pos, (pos[0] + c.bull) / B.w, pos[1] / B.h).pts, 3);
-  assert.equal(E.bullsScore(c, pos, (pos[0] + c.board) / B.w, pos[1] / B.h).pts, 1);
-  assert.equal(E.bullsScore(c, pos, (pos[0] + c.board + 0.01) / B.w, pos[1] / B.h).pts, 0);
-  // X: 3 + 1 + 1 = 5 takes the square
-  pos = m.pos.slice(); E.applyMove(m, 'X', aim(pos, 0, c.bull + 1), lcg(5));
-  pos = m.pos.slice(); const w = E.applyMove(m, 'X', aim(pos, -(c.bull + 1), 0), lcg(6));
-  assert.deepEqual([w.outcome, m.pts.X], ['win', 5]);
-  for (const bad of [0.5, { x: -0.1, y: 0.5 }, { x: 0.5, y: 1.2 }, { x: 'a', y: 0.5 }, { x: 0.5 }, null, 'x']) assert.equal(E.applyMove(E.newMini('bullseye', lcg(9)), 'O', bad).ok, false, `refused: ${JSON.stringify(bad)}`);
-  // the lines: cfg.sweep ms across at the start, cfg.ramp times faster per scoring throw
-  assert.equal(E.bullsPeriod(c, 1), c.sweep); assert.equal(E.bullsPeriod(c, 2), c.sweep / 2);
-  assert.ok(c.sweep < 2200, 'faster than the old marker (2.2 s across)');
-  // the board's spots: always whole on the field, a fair way from the last, and spread round it
-  const r = lcg(7); let p0 = E.bullsSpot(c, null, r), sumX = 0;
-  for (let k = 0; k < 500; k++) { const p1 = E.bullsSpot(c, p0, r); assert.ok(inside(p1)); assert.ok(Math.hypot(p1[0] - p0[0], p1[1] - p0[1]) >= B.minMove - 1e-9); sumX += p1[0]; p0 = p1; }
-  assert.ok(Math.abs(sumX / 500 - B.w / 2) < 6, 'left and right alike');
+test('bullseye: a board on the wall with three rings; a throw is a flick, { aim, power }; bullseye 3, inner ring 2, outer ring 1, off 0; first to 7; every dart stays in', () => {
+  const m = exact(), c = m.cfg;
+  assert.deepEqual([m.v, c, m.pts, m.darts, m.n], [2, E.BULL_DEFAULTS, { X: 0, O: 0 }, [], 0], 'dealt with the config of the day (here the defaults)');
+  assert.ok(c.bull < c.mid && c.mid < c.board && c.board * 2 >= B.w * 0.6 && c.board * 2 <= B.w * 0.72, `a board that fills the wall, ${c.board * 2} of its ${B.w} across, its rings inside one another`);
+  assert.ok(B.at[1] + c.board * 1.08 < B.wall && B.at[1] - c.board * 1.08 > 0 && B.hand[1] > B.wall && B.hand[1] - (B.at[1] + c.board) > 15, 'the whole board on the wall, the hand well below it');
+  for (const hi of [E.BULL_LIMITS.board[1]]) assert.ok(B.at[1] - hi * 1.08 >= 0 && B.at[1] + hi * 1.08 < B.wall && B.at[0] - hi * 1.08 > 0, 'the biggest board the settings allow still fits the wall');
+  // dead centre: the bullseye, 3
+  assert.deepEqual(E.applyMove(m, 'X', at(0, 0), lcg(2)), { ok: true, outcome: 'continue', note: 'bull' });
+  assert.deepEqual([m.pts.X, m.last.zone, m.last.pts], [3, 'bull', 3]);
+  assert.ok(Math.hypot(m.last.x - B.at[0], m.last.y - B.at[1]) < 0.2, 'no scatter: it lands where it was thrown');
+  // the inner ring 2, the outer ring 1, off the board 0
+  assert.equal(E.applyMove(m, 'O', at(c.bull + 2, 0), lcg(3)).note, 'board'); assert.deepEqual([m.pts.O, m.last.zone], [2, 'mid']);
+  assert.equal(E.applyMove(m, 'O', at(0, c.mid + 3), lcg(4)).note, 'board'); assert.deepEqual([m.pts.O, m.last.zone], [3, 'board']);
+  assert.equal(E.applyMove(m, 'O', at(-(c.board + 3), 0), lcg(5)).note, 'miss'); assert.deepEqual([m.pts.O, m.last.zone], [3, 'miss']);
+  // the rings' edges: on a ring's rim is that ring
+  assert.equal(E.bullsScore(c, B.at[0] + c.bull, B.at[1]).pts, 3);
+  assert.equal(E.bullsScore(c, B.at[0] + c.bull + 0.01, B.at[1]).pts, 2);
+  assert.equal(E.bullsScore(c, B.at[0], B.at[1] - c.mid).pts, 2);
+  assert.equal(E.bullsScore(c, B.at[0], B.at[1] - c.mid - 0.01).pts, 1);
+  assert.equal(E.bullsScore(c, B.at[0] - c.board, B.at[1]).pts, 1);
+  assert.equal(E.bullsScore(c, B.at[0] - c.board - 0.01, B.at[1]).pts, 0);
+  // every dart stays where it landed, in order, its thrower's
+  assert.deepEqual(m.darts.map(d => d[0]), ['X', 'O', 'O', 'O']); assert.equal(m.n, 4);
+  assert.deepEqual(m.darts[3].slice(1), [m.last.x, m.last.y]);
+  // X: 3 + 3 + 1 = 7 takes the square
+  E.applyMove(m, 'X', at(0, 0), lcg(6));
+  const w = E.applyMove(m, 'X', at(0, c.mid + 3), lcg(7));
+  assert.deepEqual([w.outcome, m.pts.X], ['win', 7]);
+  for (const bad of [0.5, { x: 0.5, y: 0.5 }, { aim: 'a', power: 0.5 }, { aim: 0.1 }, { aim: NaN, power: 1 }, null, 'x']) assert.equal(E.applyMove(E.newMini('bullseye', lcg(9)), 'O', bad, lcg(1)).ok, false, `refused: ${JSON.stringify(bad)} (the old two-line stop too)`);
+  // a throw off its range is kept to it
+  const far = E.newMini('bullseye', lcg(3)); E.applyMove(far, 'X', { aim: 9, power: -4 }, lcg(4));
+  assert.deepEqual([far.last.aim, far.last.power], [1, 0]);
+  // only the last few darts are kept; the count goes on
+  const many = exact();
+  many.tune = Object.assign({}, many.tune, { goal: 12 });
+  for (let k = 0; k < B.keep + 5; k++) E.applyMove(many, k % 2 ? 'O' : 'X', at(-(c.board + 6), 0), lcg(k));
+  assert.deepEqual([many.darts.length, many.n], [B.keep, B.keep + 5]);
+  // what the players see: everything (nothing is hidden), but not the last throw's own record
+  const pub = E.publicMini(m);
+  assert.deepEqual([pub.v, pub.cfg, pub.pts, pub.darts.length, pub.n, pub.last], [2, c, { X: 7, O: 3 }, 6, 6, undefined]);
 });
 
-test('bullseye: the config (board, bullseye, sweep, ramp) is checked value by value and copied into each square as dealt; older squares carry on', () => {
-  E.setBullsConfig({ board: 12, bull: 3, sweep: 1000, ramp: 1.2 });
+test('bullseye: the dart lands where the flick sends it, give or take the square\'s scatter (the move\'s rng: the server\'s online)', () => {
+  const m = E.newMini('bullseye', lcg(1)), spread = E.tune(m).spread, rng = lcg(77), N = 4000;
+  assert.equal(spread, 5);
+  let sx = 0, sy = 0, vx = 0, vy = 0;
+  const a = at(6, -9), [tx, ty] = E.bullsPoint(a.aim, a.power);
+  assert.ok(Math.hypot(tx - (B.at[0] + 6), ty - (B.at[1] - 9)) < 0.25, 'the throw aimed at a wall point is thrown at it');
+  for (let k = 0; k < N; k++) { const [x, y] = E.bullsThrow(a.aim, a.power, rng, E.tune(m)); sx += x - tx; sy += y - ty; vx += (x - tx) ** 2; vy += (y - ty) ** 2; }
+  assert.ok(Math.abs(sx / N) < 0.2 && Math.abs(sy / N) < 0.2, 'centred on the aim');
+  assert.ok(Math.abs(Math.sqrt(vx / N) - spread) < 0.2 && Math.abs(Math.sqrt(vy / N) - spread) < 0.2, `scattered by ${spread} either way`);
+  // the same throw with the same rng is the same dart (the phones and the server agree)
+  assert.deepEqual(E.bullsThrow(0.1, 0.5, lcg(5), { spread: 5 }), E.bullsThrow(0.1, 0.5, lcg(5), { spread: 5 }));
+  // the distance: power 0 drops it at the thrower's feet, power 1 sends it over the wall's top; the board from about a sixth to two thirds of the way
+  assert.deepEqual(E.bullsPoint(0, 0), B.hand.slice());
+  assert.ok(E.bullsPoint(0, 1)[1] < 0, 'the hardest flick flies over the wall');
+  const lo = at(0, m.cfg.board).power, mid = at(0, 0).power, hi = at(0, -m.cfg.board).power;
+  assert.ok(lo > 0.1 && lo < 0.25 && mid > 0.33 && mid < 0.5 && hi > 0.55 && hi < 0.75 && at(0, 0).aim === 0, `the board's bottom, middle and top at ${lo}, ${mid}, ${hi} of the flick's range`);
+  // the widest throw reaches past the board's sides
+  assert.ok(E.bullsPoint(1, mid)[0] > B.at[0] + m.cfg.board && E.bullsPoint(-1, mid)[0] < B.at[0] - m.cfg.board);
+});
+
+test('bullseye: the flick maps exactly and predictably: the swipe\'s line is the throw\'s line, the finger\'s speed its height', () => {
+  const t = E.tuneDefaults('bullseye');
+  assert.equal(E.bullsFlick(0, 10, 1, t), null, 'too short: not a throw');
+  assert.equal(E.bullsFlick(100, 40, 1, t), null, 'sideways: not a throw');
+  assert.equal(E.bullsFlick(0, -80, 1, t), null, 'downwards: not a throw');
+  assert.deepEqual(E.bullsFlick(0, 120, (t.flickMin + t.flickMax) / 2, t), { aim: 0, power: 0.5 }, 'straight up at the middle speed: straight up, half way');
+  // the dart is thrown along the line the finger drew: the aimed point lies on the ray from the hand at the swipe's angle
+  for (const [dx, dy] of [[30, 120], [-45, 90], [10, 200], [-80, 160], [60, 110]]) {
+    const r = E.bullsFlick(dx, dy, 1.1, t), [x, y] = E.bullsPoint(r.aim, r.power);
+    assert.ok(Math.abs(Math.atan2(x - B.hand[0], B.hand[1] - y) - Math.atan2(dx, dy)) < 0.002, `(${dx}, ${dy}): the throw's angle is the swipe's`);
+    assert.equal(r.power, E.bullsFlick(0, 80, 1.1, t).power, 'the height is the speed\'s alone, whatever the direction or the swipe\'s length');
+  }
+  // left and right alike; never wider than the widest throw
+  assert.equal(E.bullsFlick(40, 100, 1, t).aim, -E.bullsFlick(-40, 100, 1, t).aim);
+  assert.equal(E.bullsFlick(170, 100, 1, t).aim, 1);
+  // the speed: flickMin the lowest throw, flickMax the highest, straight between, and no more beyond
+  assert.equal(E.bullsFlick(0, 100, t.flickMin, t).power, 0); assert.equal(E.bullsFlick(0, 100, 0.01, t).power, 0);
+  assert.equal(E.bullsFlick(0, 100, t.flickMax, t).power, 1); assert.equal(E.bullsFlick(0, 100, 9, t).power, 1);
+  let prev = -1;
+  for (let v = t.flickMin; v <= t.flickMax + 1e-9; v += 0.1) { const p = E.bullsFlick(0, 100, v, t).power; assert.ok(p > prev, 'faster is higher'); prev = p; }
+  // the admin's feel: a higher top speed needs a faster flick; the gain widens the angle
+  assert.ok(E.bullsFlick(0, 100, 1.2, Object.assign({}, t, { flickMax: 3 })).power < E.bullsFlick(0, 100, 1.2, t).power);
+  assert.ok(E.bullsFlick(20, 100, 1, Object.assign({}, t, { angleGain: 2 })).aim > E.bullsFlick(20, 100, 1, t).aim * 1.8);
+  // the scene on the screen: one scale, the whole of it on the canvas at any phone's size
+  for (const [W, H] of [[330, 380], [366, 590], [300, 300], [600, 500]]) {
+    const G = E.bullsGeom(W, H);
+    assert.ok(G.ox >= -1e-9 && G.oy >= -1e-9 && G.ox + B.w * G.k <= W + 1e-9 && G.oy + B.h * G.k <= H + 1e-9, `${W}x${H}: the scene fits`);
+  }
+});
+
+test('bullseye: the config (the board\'s three rings) is checked value by value and copied into each square as dealt; older squares carry on', () => {
+  E.setBullsConfig({ board: 24, mid: 12, bull: 5 });
   const m = E.newMini('bullseye', lcg(1));
-  assert.deepEqual(m.cfg, { board: 12, bull: 3, sweep: 1000, ramp: 1.2 });
-  E.setBullsConfig({ board: 99, bull: 'x', sweep: 100, ramp: 1.1 });
-  assert.deepEqual(E.bullsConfig(), Object.assign({}, E.BULL_DEFAULTS, { ramp: 1.1 }), 'anything off its range is the default');
-  E.setBullsConfig({ board: 6, bull: 8 });
-  assert.ok(E.bullsConfig().bull < E.bullsConfig().board, 'the bullseye never as big as the board');
+  assert.deepEqual(m.cfg, { board: 24, mid: 12, bull: 5 });
+  E.setBullsConfig({ board: 99, mid: 12, bull: 'x' });
+  assert.deepEqual(E.bullsConfig(), Object.assign({}, E.BULL_DEFAULTS, { mid: 12 }), 'anything off its range is the default');
+  E.setBullsConfig({ board: 10, mid: 14, bull: 9 });
+  assert.ok(E.bullsConfig().bull < E.bullsConfig().mid && E.bullsConfig().mid < E.bullsConfig().board, 'each ring inside the one round it');
+  E.setBullsConfig({ board: 9, bull: 2.5, sweep: 1040, ramp: 1.12 });
+  assert.deepEqual(E.bullsConfig(), E.BULL_DEFAULTS, 'a stored config from before the rework (no inner ring: the small moving board) is ignored');
   E.setBullsConfig(null);
-  assert.deepEqual(m.cfg, { board: 12, bull: 3, sweep: 1000, ramp: 1.2 }, 'a square keeps the values it was dealt with');
+  assert.deepEqual(m.cfg, { board: 24, mid: 12, bull: 5 }, 'a square keeps the values it was dealt with');
   assert.deepEqual(E.newMini('bullseye', lcg(2)).cfg, E.BULL_DEFAULTS);
-  // a square from before (the bar and its hits) plays on as a board in the middle, its hits as points
-  const old = { type: 'bullseye', hits: { X: 2, O: 1 }, speed: { X: 1.5, O: 1 }, last: { by: 'X', at: 0.5, hit: true } };
+  // a square from before the rework (the board that moved, the two lines): its points stay, the board on the wall from here
+  const old = { type: 'bullseye', cfg: { board: 9, bull: 2.5, sweep: 1040, ramp: 1.12 }, pts: { X: 3, O: 1 }, speed: { X: 1.12, O: 1.12 }, pos: [30, 70], last: { by: 'O', x: 0.3, y: 0.6, at: [30, 72], d: 2, pts: 1, pos: [30, 70], per: 1040 } };
   E.upgradeMini(old);
-  assert.deepEqual([old.pts, old.pos, old.hits, old.cfg], [{ X: 2, O: 1 }, [50, 60], undefined, E.BULL_DEFAULTS]);
-  assert.equal(E.applyMove(old, 'X', { x: 0.5, y: 0.5 }, lcg(3)).note, 'bull');
+  assert.deepEqual([old.v, old.pts, old.cfg, old.darts, old.n, old.last, old.pos, old.speed], [2, { X: 3, O: 1 }, E.BULL_DEFAULTS, [], 0, null, undefined, undefined]);
+  assert.equal(E.applyMove(old, 'X', at(0, 0), lcg(3)).ok, true);
+  // and one not yet upgraded is upgraded by its first throw
+  const raw = { type: 'bullseye', cfg: { board: 9, bull: 2.5, sweep: 1040, ramp: 1.12 }, pts: { X: 2, O: 0 }, speed: { X: 1, O: 1 }, pos: [50, 60], last: null };
+  assert.deepEqual(E.publicMini(raw).pts, { X: 2, O: 0 });
+  assert.equal(E.applyMove(raw, 'O', at(0, 0), lcg(3)).ok, true); assert.deepEqual([raw.v, raw.darts.length, raw.pts.X], [2, 1, 2]);
+  // a square from the very first version (the bar and its hits) plays on too, its hits as points
+  const bar = { type: 'bullseye', hits: { X: 2, O: 1 }, speed: { X: 1.5, O: 1 }, last: { by: 'X', at: 0.5, hit: true } };
+  E.upgradeMini(bar);
+  assert.deepEqual([bar.v, bar.pts, bar.hits, bar.cfg], [2, { X: 2, O: 1 }, undefined, E.BULL_DEFAULTS]);
 });
 
-test('bullseye: the computer lands a bullseye about 15%, the board 45% and misses 40% at the start, slipping as its lines speed up; a timeout throws nothing', () => {
-  const rng = lcg(5), count = speed => {
-    const c = { 3: 0, 1: 0, 0: 0 };
-    for (let k = 0; k < 4000; k++) { const m = E.newMini('bullseye', rng); m.speed.X = speed; const r = E.localBest(E.publicMini(m), 'X', rng); c[E.bullsScore(m.cfg, m.pos, r.move.x, r.move.y).pts]++; }
-    return { bull: c[3] / 4000, board: c[1] / 4000, miss: c[0] / 4000 };
-  };
-  const start = count(1);
-  assert.ok(Math.abs(start.bull - 0.15) < 0.025 && Math.abs(start.board - 0.45) < 0.03 && Math.abs(start.miss - 0.4) < 0.03, JSON.stringify(start));
-  const fast = count(2);
-  assert.ok(fast.miss > start.miss + 0.1, `worse when faster (${JSON.stringify(fast)})`);
-  // throws to 5, alone on a square: about 5-7
-  const throws = [];
-  for (let g = 0; g < 1500; g++) {
-    const r = lcg(1000 + g), m = E.newMini('bullseye', r);
-    let n = 0;
-    while (m.pts.X < 5 && n < 60) { assert.equal(E.applyMove(m, 'X', E.localBest(E.publicMini(m), 'X', r).move, r).ok, true); n++; }
-    throws.push(n);
-  }
-  const mean = throws.reduce((a, b) => a + b, 0) / throws.length;
-  assert.ok(mean > 5 && mean < 7.5, `the computer takes ${mean.toFixed(2)} throws to 5`);
-  const st = E.newMatch(lcg(8), { games: ['bullseye'], mode: 'online', timer: 30 });
-  const before = JSON.stringify(st.squares.map(q => q.mini.pts));
-  const t = E.timeoutMove(st, lcg(9));
-  assert.deepEqual([t.ok, t.missed, st.flash], [true, 'X', null], 'no throw made for the player');
-  assert.equal(JSON.stringify(st.squares.map(q => q.mini.pts)), before);
-  const mv = E.randomLegalMove(E.newMini('bullseye', lcg(1)), 'X', lcg(2));
-  assert.ok(mv.x >= 0 && mv.x <= 1 && mv.y >= 0 && mv.y <= 1, 'both lines somewhere on the field');
-});
-
-/* ===================================== Darts (Bullseye) ===================================== */
-test('darts: the lines sweep 25% faster than before (1.04 s across); each throw keeps the sweep it was made at', () => {
-  assert.equal(E.BULL_DEFAULTS.sweep, 1040);
-  const rng = E.makeRng('dart'), m = E.newMini('bullseye', rng);
-  E.applyMove(m, 'X', { x: m.pos[0] / E.BULLS.w, y: m.pos[1] / E.BULLS.h }, rng);   // dead centre: a bullseye, and X's lines speed up
-  assert.equal(m.last.per, 1040);
-  assert.ok(m.speed.X > 1);
-  E.applyMove(m, 'X', { x: 0.01, y: 0.01 }, rng);
-  assert.equal(m.last.per, Math.round(1040 / m.speed.X), 'the next throw at the faster sweep');
-});
-test('darts: someone else\'s throw replays its aim, each line stopping exactly where it was stopped, before the dart flies', () => {
-  for (const [x, y] of [[0.02, 0.98], [0.39, 0.4], [0.4, 0.41], [0.73, 0.12], [1, 0]]) {
-    const A = E.bullsAim({ x, y, per: 1040 });
-    // a line sweeping from its edge, back and forth, for `it` passes: where it ends
-    const end = it => { const k = Math.floor(it), f = it - k; return k % 2 ? 1 - f : f; };
-    assert.ok(A.vx.it <= 1 && A.vy.it <= 1, 'each line goes straight to where it stopped, never past it and back');
-    assert.ok(Math.abs(end(A.vx.it) - x) < 0.002 || x < 0.05, `the sideways line stops at ${x} (${end(A.vx.it)})`);
-    assert.ok(Math.abs(end(A.vy.it) - y) < 0.002 || y < 0.05, `the up-down line stops at ${y} (${end(A.vy.it)})`);
-    assert.ok(A.t1 > 0 && A.h0 > A.t1 && A.t2 > A.h0 && A.fly > A.t2, 'in order: the first line stops, then the second starts and stops, then the dart');
-    assert.equal(A.t1, Math.round(1040 * A.vx.it)); assert.equal(A.t2 - A.h0, Math.round(A.perY * A.vy.it));
-  }
-  // the move's time includes the aim (the turn clock waits for it to play)
+test('bullseye: the throw\'s time: someone else\'s flick first, the flight, the dart sticking; a timeout throws nothing', () => {
   const st = E.newMatch(E.makeRng('dclock'), { games: Object.fromEntries(E.TYPES.map(t => [t, t === 'bullseye'])) });
-  E.playMove(st, 4, { x: 0.3, y: 0.7 }, E.makeRng('dc'));
-  assert.equal(E.playMs(st.flash), E.bullsAim(st.flash.bull).fly + E.BULLT.fly + E.BULLT.hold + (st.flash.kind === 'claim' ? 600 : 0));
+  E.playMove(st, 4, at(0, 0), E.makeRng('dc'));
+  const f = st.flash;
+  assert.equal(E.playMs(f), E.BULLT.pre + E.BULLT.fly + E.BULLT.stick + (f.kind === 'claim' ? 600 : 0));
+  assert.ok(E.BULLT.fly >= 350 && E.BULLT.fly <= 600 && E.BULLT.stick <= 350, 'a quick flight, a short quiver: no wait that is not the throw');
+  assert.deepEqual(E.bullsPlan(280), { pre: 280, hit: 280 + E.BULLT.fly, end: 280 + E.BULLT.fly + E.BULLT.stick });
+  const g = f.bull, mini = st.squares[4].mini;
+  assert.deepEqual([g.x, g.y, g.pts, g.zone, g.k, g.total], [mini.last.x, mini.last.y, mini.last.pts, mini.last.zone, 1, mini.pts], 'the flash carries the throw, its landing and what it scored');
+  const st2 = E.newMatch(lcg(8), { games: ['bullseye'], mode: 'online', timer: 30 });
+  const before = JSON.stringify(st2.squares.map(q => [q.mini.pts, q.mini.darts]));
+  const t = E.timeoutMove(st2, lcg(9));
+  assert.deepEqual([t.ok, t.missed, st2.flash], [true, 'X', null], 'no throw made for the player');
+  assert.equal(JSON.stringify(st2.squares.map(q => [q.mini.pts, q.mini.darts])), before);
+  const mv = E.randomLegalMove(E.newMini('bullseye', lcg(1)), 'X', lcg(2));
+  assert.ok(Math.abs(mv.aim) <= 1 && mv.power >= 0 && mv.power <= 1, 'a random throw is a real one');
 });
 
-test('bullseye: the admin\'s Mini-game Settings deal a square that plays by them (points to win, bullseye points, the computer\'s rates)', () => {
-  E.setTune('bullseye', { goal: 3, bullPts: 5, aiBull: 50, aiBoard: 50 });
+test('bullseye: balance by Monte Carlo: the computer takes 4 to 6 throws, the first mover under 60%, a careful finger beats a sloppy one, and nobody wins in two', () => {
+  const rng = lcg(5);
+  const solo = (ea, ep, G) => {                                    // a hand alone on a square: its error on the aim and the power (as Cup Pong's careful flick)
+    let tot = 0, least = 99;
+    for (let g = 0; g < G; g++) { const m = E.newMini('bullseye', rng); let n = 0; while (m.pts.X < E.tune(m).goal && n < 80) { const a = at(0, 0); E.applyMove(m, 'X', { aim: a.aim + gauss(rng) * ea, power: a.power + gauss(rng) * ep }, rng); n++; } tot += n; least = Math.min(least, n); }
+    return { mean: tot / G, least };
+  };
+  const perfect = solo(0, 0, 1500), careful = solo(0.072 / B.angle, 0.1, 1500), sloppy = solo(0.15 / B.angle, 0.2, 1500);   // (the aim's error in radians: 4 and 8.5 degrees)
+  const play = (level, G) => {
+    let tot = 0, first = 0, least = 99;
+    for (let g = 0; g < G; g++) {
+      const m = E.newMini('bullseye', rng), n = { X: 0, O: 0 }; let p = 'X';
+      for (;;) { const r = E.applyMove(m, p, E.localBest(E.publicMini(m), p, rng, null, { level }).move, rng); n[p]++; if (r.outcome === 'win') break; p = p === 'X' ? 'O' : 'X'; }
+      tot += n[p]; if (p === 'X') first++; least = Math.min(least, n[p]);
+    }
+    return { mean: tot / G, first: first / G, least };
+  };
+  const normal = play('normal', 3000), hard = play('hard', 1500), easy = play('easy', 1000);
+  console.log(`Bullseye: alone to 7: perfect aim ${perfect.mean.toFixed(2)} throws, a careful flick ${careful.mean.toFixed(2)}, a sloppy one ${sloppy.mean.toFixed(2)}; the computer: Normal's winner ${normal.mean.toFixed(2)} throws, first mover ${(normal.first * 100).toFixed(1)}%; Hard ${hard.mean.toFixed(2)}, ${(hard.first * 100).toFixed(1)}%; Easy ${easy.mean.toFixed(2)}, ${(easy.first * 100).toFixed(1)}%`);
+  assert.ok(perfect.least >= 3 && careful.least >= 3 && hard.least >= 3, 'never in two throws (3 a dart at most, 7 to win)');
+  assert.ok(perfect.mean > 3 && perfect.mean < 3.6, `a perfect aim still needs the scatter's luck (${perfect.mean})`);
+  assert.ok(careful.mean > 3.6 && careful.mean < 5.2, `a careful flick (${careful.mean})`);
+  assert.ok(sloppy.mean > careful.mean + 1.5, `a sloppy one is well behind (${sloppy.mean})`);
+  assert.ok(normal.mean >= 4 && normal.mean <= 6, `Normal's winner (${normal.mean})`);
+  assert.ok(normal.first < 0.6, `the first mover (${normal.first})`);
+  assert.ok(hard.mean < normal.mean - 0.5 && easy.mean > normal.mean + 1.5, 'Hard is sharper, Easy looser');
+  assert.ok(hard.first < 0.65, `Hard against Hard, the first mover (${hard.first})`);
+});
+
+test('bullseye: the computer aims at the bullseye with its error; its sums of what a throw scores are the same every time', () => {
+  const m = E.newMini('bullseye', lcg(1)), t = E.tune(m), pub = E.publicMini(m);
+  const o = E.bullsOdds(m.cfg, t, E.bullsErr(t, 'normal'));
+  assert.equal(o, E.bullsOdds(m.cfg, t, E.bullsErr(t, 'normal')), 'kept');
+  assert.ok(Math.abs(Object.values(o.p).reduce((a, b) => a + b, 0) - 1) < 1e-9);
+  assert.ok(o.ev > 0.9 && o.ev < 1.6, `about a point and a bit a throw (${o.ev})`);
+  assert.ok(E.bullsOdds(m.cfg, t, E.bullsErr(t, 'hard')).ev > o.ev && E.bullsOdds(m.cfg, t, E.bullsErr(t, 'easy')).ev < o.ev);
+  const rng = lcg(31); let sx = 0, sy = 0; const N = 2000;
+  for (let k = 0; k < N; k++) { const r = E.localBest(pub, 'X', rng, null, { level: 'normal' }), [x, y] = E.bullsPoint(r.move.aim, r.move.power); sx += x - B.at[0]; sy += y - B.at[1]; assert.ok(r.q >= 0 && r.q <= 0.95); }
+  assert.ok(Math.abs(sx / N) < 1.6 && Math.abs(sy / N) < 1.6, 'centred on the bullseye');
+  // q: the chance this dart takes the square: none while more than a bullseye short, a real one once within reach
+  assert.equal(E.localBest(pub, 'X', rng, null, { level: 'normal' }).q, 0);
+  const near = E.newMini('bullseye', lcg(2)); near.pts.X = 6;
+  assert.ok(E.localBest(E.publicMini(near), 'X', rng, null, { level: 'normal' }).q > 0.6);
+  assert.ok(E.needsOf(E.publicMini(near), 'X') === 1 && E.needsOf(pub, 'X') >= 4 && E.needsOf(pub, 'X') <= 7, 'the throws it still needs');
+});
+
+test('bullseye: the admin\'s Mini-game Settings deal a square that plays by them (points to win, bullseye points, the scatter, the computer\'s aim)', () => {
+  E.setTune('bullseye', { goal: 3, bullPts: 5, spread: 0, aiErr: 0 });
   const m = E.newMini('bullseye', lcg(3));
-  assert.deepEqual(m.tune, { goal: 3, bullPts: 5, aiBull: 50, aiBoard: 50 });
+  assert.deepEqual(m.tune, { goal: 3, bullPts: 5, spread: 0, aiErr: 0 });
   E.setTune('bullseye', null);
-  const pos = m.pos.slice(), res = E.applyMove(m, 'X', { x: pos[0] / E.BULLS.w, y: pos[1] / E.BULLS.h }, lcg(4));
+  const res = E.applyMove(m, 'X', at(0, 0), lcg(4));
   assert.deepEqual([m.pts.X, res.outcome, res.note], [5, 'win', 'bull'], 'a bullseye scores 5, and 3 wins (the dealt values, after the settings changed back)');
-  const rng = lcg(9); let hit = 0, board = 0;
-  for (let k = 0; k < 400; k++) { const g = E.newMini('bullseye', rng); g.tune = { aiBull: 50, aiBoard: 50 }; const r = E.localBest(E.publicMini(g), 'X', rng), s = E.bullsScore(g.cfg, g.pos, r.move.x, r.move.y).pts; if (s === 3) hit++; else if (s) board++; }
-  assert.ok(hit > 150 && hit < 250 && board === 0, `the computer at its set rates (${hit} bullseyes, ${board} board)`);
-});
-
-test('bullseye: the computer\'s rates as the admin sets them: 20% bullseyes and 85% board hits (bullseyes included) save and play', () => {
-  const M = require('../../src/games/bullseye/meta.js');
-  assert.deepEqual(E.tuneNorm('bullseye', { aiBull: 20, aiBoard: 85 }), { aiBull: 20, aiBoard: 85 }, 'both in range');
-  assert.equal(M.tuneCheck({ aiBull: 20, aiBoard: 85 }), null);
-  assert.match(M.tuneCheck({ aiBull: 30, aiBoard: 20 }), /can't be more/);
-  const rng = lcg(21); let bull = 0, board = 0, miss = 0;
-  for (let k = 0; k < 2000; k++) { const g = E.newMini('bullseye', rng); g.tune = { aiBull: 20, aiBoard: 85 }; const r = E.localBest(E.publicMini(g), 'X', rng), s = E.bullsScore(g.cfg, g.pos, r.move.x, r.move.y).pts; if (s === 3) bull++; else if (s) board++; else miss++; }
-  assert.ok(Math.abs(bull / 2000 - 0.2) < 0.03 && Math.abs((bull + board) / 2000 - 0.85) < 0.03, `${bull} bullseyes, ${board} other board hits, ${miss} misses of 2000`);
+  const rng = lcg(9), g = E.newMini('bullseye', rng); g.tune = { aiErr: 0, spread: 0 };
+  for (let k = 0; k < 50; k++) { const r = E.localBest(E.publicMini(g), 'X', rng, null, { level: 'normal' }), [x, y] = E.bullsPoint(r.move.aim, r.move.power); assert.ok(Math.hypot(x - B.at[0], y - B.at[1]) < 0.3, 'no error: dead centre'); }
+  assert.deepEqual(E.tuneNorm('bullseye', { flickMin: 0.6, flickMax: 2.2, angleGain: 1.5, aiBull: 20 }), { flickMin: 0.6, flickMax: 2.2, angleGain: 1.5 }, 'the flick\'s feel is the admin\'s; the old rates are gone');
 });

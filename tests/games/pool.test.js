@@ -18,17 +18,17 @@ test('pool: the fixed layout; a pocketed ball is gone; own ball down means anoth
   for (const [a, A] of Object.entries(m.balls)) for (const [b, B] of Object.entries(m.balls)) if (a < b) assert.ok(Math.hypot(A[0] - B[0], A[1] - B[1]) > P.POOL.ballR * 2.5, `${a} and ${b} do not overlap`);
   for (const id of Object.keys(m.balls)) for (const [x, y, r] of P.POOL.pockets) assert.ok(Math.hypot(m.balls[id][0] - x, m.balls[id][1] - y) > r + P.POOL.ballR, `${id} clear of the pockets`); assert.deepEqual(m.pocketed, { X: 0, O: 0 });
   // own ball straight into a side pocket: shoot again
-  const own = JSON.parse(JSON.stringify(m)); own.balls.x1 = [12, 90]; own.balls.cue = [50, 90];
+  const own = JSON.parse(JSON.stringify(m)); own.balls.x1 = [12, 90]; own.balls.cue = [26, 90];
   const r1 = E.applyMove(own, 'X', { aim: -Math.PI / 2, power: 0.35 });
   assert.deepEqual([r1.outcome, r1.note, r1.again], ['continue', 'again', true]);
   assert.ok(own.down.x1 && own.pocketed.X === 1 && !own.down.cue, 'the ball is down, the cue ball is not');
   assert.deepEqual(own.last.pocketed, ['x1']);
   // the opponent's ball: counts for them, the turn ends
-  const theirs = JSON.parse(JSON.stringify(m)); theirs.balls.o1 = [12, 90]; theirs.balls.cue = [50, 90];
+  const theirs = JSON.parse(JSON.stringify(m)); theirs.balls.o1 = [12, 90]; theirs.balls.cue = [26, 90];
   const r2 = E.applyMove(theirs, 'X', { aim: -Math.PI / 2, power: 0.35 });
   assert.deepEqual([r2.outcome, r2.note, !!r2.again], ['continue', 'theirs', false]); assert.equal(theirs.pocketed.O, 1);
   // the black: the square is lost at once
-  const black = JSON.parse(JSON.stringify(m)); black.balls.black = [12, 90]; black.balls.cue = [50, 90];
+  const black = JSON.parse(JSON.stringify(m)); black.balls.black = [12, 90]; black.balls.cue = [26, 90];
   const r3 = E.applyMove(black, 'X', { aim: -Math.PI / 2, power: 0.35 });
   assert.deepEqual([r3.outcome, r3.note, r3.winner], ['win', 'black', 'O']);
   // a scratch: the cue ball back on its spot, the turn over
@@ -55,12 +55,12 @@ test('pool: the fixed layout; a pocketed ball is gone; own ball down means anoth
   for (const [x, y, r] of P.POOL.pockets) assert.ok(Math.hypot(x - at[0], y - at[1]) > r + R * 2, 'away from the pockets');
   assert.deepEqual(back.last.at, at);
   // the last own ball: the square
-  const last = JSON.parse(JSON.stringify(m)); last.pocketed.X = 2; last.down.x2 = last.down.x3 = last.down.o2 = true; last.balls.x1 = [12, 90]; last.balls.cue = [50, 90];
+  const last = JSON.parse(JSON.stringify(m)); last.pocketed.X = 2; last.down.x2 = last.down.x3 = last.down.o2 = true; last.balls.x1 = [12, 90]; last.balls.cue = [26, 90];
   const r5 = E.applyMove(last, 'X', { aim: -Math.PI / 2, power: 0.35 });
   assert.deepEqual([r5.outcome, r5.note], ['win', 'cleared']);
   // both sides' last balls down on the same shot: a draw (the square resets with a new mini-game), whoever shot
   const both = JSON.parse(JSON.stringify(m)); both.pocketed = { X: 2, O: 2 }; both.down.x2 = both.down.x3 = both.down.o2 = both.down.o3 = true;
-  both.balls.x1 = [12, 90]; both.balls.cue = [50, 90]; both.balls.o1 = P.POOL.pockets[0].slice(0, 2);   // (O's last ball on a pocket's mouth: it drops as the shot plays)
+  both.balls.x1 = [12, 90]; both.balls.cue = [26, 90]; both.balls.o1 = P.POOL.pockets[0].slice(0, 2);   // (O's last ball on a pocket's mouth: it drops as the shot plays)
   const rb = E.applyMove(both, 'X', { aim: -Math.PI / 2, power: 0.35 });
   assert.deepEqual(both.last.pocketed.slice().sort(), ['o1', 'x1'], 'both last balls down on the one shot');
   assert.deepEqual([rb.outcome, rb.note], ['draw', 'tie'], 'a draw, not a win for either side');
@@ -76,11 +76,11 @@ test('pool: the fixed layout; a pocketed ball is gone; own ball down means anoth
   assert.equal(E.applyMove(forced, 'X', { aim: -Math.PI / 2, power: 0.5 }).outcome, 'continue');
   assert.equal(E.poolLeft('X', forced), 2, 'x1 and the returned ball');
   // all of them, not the first two: a square from before with a third ball of X's on the table is not won at two
-  const three = JSON.parse(JSON.stringify(m)); three.balls.x4 = [80, 150]; three.pocketed.X = 2; three.down.x2 = three.down.x3 = three.down.o2 = true; three.balls.x1 = [12, 90]; three.balls.cue = [50, 90];
+  const three = JSON.parse(JSON.stringify(m)); three.balls.x4 = [80, 150]; three.pocketed.X = 2; three.down.x2 = three.down.x3 = three.down.o2 = true; three.balls.x1 = [12, 90]; three.balls.cue = [26, 90];
   const r5b = E.applyMove(three, 'X', { aim: -Math.PI / 2, power: 0.35 });
   assert.deepEqual([r5b.outcome, r5b.note, three.pocketed.X], ['continue', 'again', 3], 'three down, one (a scratch\'s extra) still on the table: shoot again');
   // their last ball, pocketed for them: theirs
-  const gift = JSON.parse(JSON.stringify(m)); gift.pocketed.O = 2; gift.down.o2 = gift.down.o3 = true; gift.balls.o1 = [12, 90]; gift.balls.cue = [50, 90];
+  const gift = JSON.parse(JSON.stringify(m)); gift.pocketed.O = 2; gift.down.o2 = gift.down.o3 = true; gift.balls.o1 = [12, 90]; gift.balls.cue = [26, 90];
   const r6 = E.applyMove(gift, 'X', { aim: -Math.PI / 2, power: 0.35 });
   assert.deepEqual([r6.outcome, r6.note, r6.winner], ['win', 'gift', 'O']);
   // the cue's spot taken: the cue ball comes back just below it
@@ -160,4 +160,57 @@ test('pool AI: scores shots by the rules: its last ball down wins, the black los
     if (end) { finished++; if (end.note === 'cleared') assert.equal(E.poolLeft(turn, r0), 0, 'cleared: none of the winner\'s balls left'); }
   }
   assert.ok(finished >= 3, `the computer finishes racks (${finished} of 4 in 60 shots)`);
+});
+
+test('pool, the balls meet as circles (November 2026): a struck ball sets off along the line through the two centres, a full hit stops the white dead, and the sight line (poolSight) says what the shot will do', () => {
+  const rng = lcg(41), R = P.POOL.ballR, ang = (u, v) => Math.abs(Math.atan2(u[0] * v[1] - u[1] * v[0], u[0] * v[0] + u[1] * v[1]));
+  let cuts = 0, worst = 0;
+  for (const power of [0.4, 0.65, 0.95]) for (let k = 0; k < 40; k++) {
+    const balls = { cue: [30 + rng() * 40, 120 + rng() * 30], x1: [30 + rng() * 40, 50 + rng() * 40] };
+    const aim = Math.atan2(balls.x1[0] - balls.cue[0], balls.cue[1] - balls.x1[1]) + (rng() - 0.5) * 0.12, s = E.poolSight(balls, aim);
+    if (s.kind !== 'ball' || s.cut < 0.3 || E.poolReach(power) < s.t + 20) continue;   // (a thin graze hardly moves the ball: its line is not measured)
+    const r = P.run('pool', { balls, down: {} }, 'X', { aim, power }), i = r.rec.ids.indexOf('x1'), F = r.rec.frames;
+    assert.equal(r.events.find(e => e.k !== 'stop').k, 'balls', 'the first thing the white meets is the ball the sight line names');
+    let f = F.findIndex(fr => Math.hypot(fr[2 * i] - balls.x1[0], fr[2 * i + 1] - balls.x1[1]) > 5);
+    if (f < 0) continue;
+    const off = ang([F[f][2 * i] - balls.x1[0], F[f][2 * i + 1] - balls.x1[1]], s.n);
+    worst = Math.max(worst, off); cuts++;
+    assert.ok(off < 0.06, `power ${power}: the struck ball leaves along the line of centres (${off.toFixed(3)} rad off, cut ${s.cut.toFixed(2)})`);
+  }
+  assert.ok(cuts > 60, `enough cut shots measured (${cuts})`);
+  console.log(`Pool: the struck ball's line against the line of centres over ${cuts} cut shots: ${worst.toFixed(3)} rad at worst`);
+  // a full hit: the struck ball goes straight on, the white stays on the line and all but stops
+  const dead = P.run('pool', { balls: { cue: [50, 140], x1: [50, 100] }, down: {} }, 'X', { aim: 0, power: 0.5 });
+  assert.ok(Math.abs(dead.final.cue[0] - 50) < 0.3 && Math.abs(dead.final.x1[0] - 50) < 0.3, `a full hit keeps both on the line (${dead.final.cue}, ${dead.final.x1})`);
+  assert.ok(dead.final.cue[1] <= 100 + 2 * R + 0.3 && dead.final.cue[1] > 100 + 2 * R - 6, `the white all but stops where it struck (${dead.final.cue[1]})`);
+  // the sight line: a rail, a pocket, a ball; and what a ball does
+  const m = mini('pool', 'sight');
+  { const far = E.poolSight({ cue: [50, 140] }, 0); assert.ok(far.kind === 'rail' && Math.abs(far.at[1] - R) < 1e-9, 'nothing in the way: the far rail, half a ball from the cloth\'s edge'); }
+  assert.equal(E.poolSight({ cue: [50, 90] }, -Math.PI / 2).kind, 'pocket', 'straight at the side pocket: the white goes down');
+  const full = E.poolSight(m.balls, 0);
+  assert.deepEqual([full.kind, full.id], ['ball', 'x3'], 'straight up the table from the spot: the middle ball of the near row');
+  assert.ok(Math.abs(full.t - (140 - 84 - 2 * R)) < 1e-9 && full.cut > 0.999 && full.share.obj > 0.9 && full.share.cue < 0.1, 'a full hit: the struck ball takes the speed');
+  const half = E.poolSight({ cue: [50 + R, 140], x1: [50, 100] }, 0);
+  assert.ok(Math.abs(half.cut - Math.sqrt(3) / 2) < 1e-6 && half.n[0] < 0 && half.off[0] > 0, 'a half-ball hit: the struck ball goes one way, the white the other');
+  // how far a soft shot rolls: read off the table\'s own rolls, and the sight line stops there
+  for (const [aim, power] of [[0.4, 0.3], [-0.9, 0.36], [1.2, 0.25]]) {
+    const r = P.run('pool', { balls: { cue: [50, 140] }, down: {} }, 'X', { aim, power });
+    assert.ok(Math.abs(Math.hypot(r.final.cue[0] - 50, r.final.cue[1] - 140) - E.poolReach(power)) < 0.5, `power ${power}: poolReach is how far the ball rolls`);
+  }
+  assert.equal(E.poolReach(0), 0); assert.equal(E.poolReach(1), Infinity, 'a full shot reaches anything on the table');
+  assert.ok(E.poolReach(0.2) < E.poolReach(0.3) && E.poolReach(0.3) < E.poolReach(0.4), 'further with more power');
+});
+
+test('pool, every touch is heard and no pocket is lost: a soft hit and a soft cushion make their events; a pocketed ball is always in the result, however many bounces came first', () => {
+  const soft = P.run('pool', { balls: { cue: [50, 140], x1: [50, 100] }, down: {} }, 'X', { aim: 0, power: 0.36 });
+  assert.ok(soft.events.some(e => e.k === 'balls' && e.v <= 4), `a gentle hit is an event (${JSON.stringify(soft.events)})`);
+  const rail = P.run('pool', { balls: { cue: [50, 30] }, down: {} }, 'X', { aim: 0, power: 0.3 });
+  assert.ok(rail.events.some(e => e.k === 'wall'), 'a gentle touch on the cushion is an event');
+  const rng = lcg(77);
+  for (let k = 0; k < 25; k++) {
+    const m = mini('pool', 'ev' + k), r = P.run('pool', m, 'X', { aim: (rng() - 0.5) * 1.4, power: 0.8 + rng() * 0.2 });
+    const gone = Object.keys(r.final).filter(id => r.final[id] === null).sort();
+    assert.deepEqual(r.result.pocketed.slice().sort(), gone, `shot ${k}: every ball that went down is in the result (${r.events.length} events)`);
+    assert.ok(r.events.filter(e => e.k === 'balls' || e.k === 'wall').length <= 60, 'the bounces noted are bounded');
+  }
 });

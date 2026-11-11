@@ -2,7 +2,7 @@
 
 export const info = { name: 'Pinball',      hint: 'Tap left or right to flip. Light every target first' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
-export const minVersion = '1.0.0';   // the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
+export const minVersion = '1.13.0';   // (1.13.0: the November 2026 rework: a new table and the ball worked out in the engine's own arithmetic, a move its inputs alone; an older client's ball would not be the server's) the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
 export const turnSecs = 60;   // an online turn's time in this game (core/timer.js turnSecs): 60 seconds, against the match's 30
 export const category = 'skill';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
@@ -13,7 +13,7 @@ export const PINB_DEFAULTS = { size: 1.7, save: 3, maxBall: 120, g: 1, bump: 1, 
 // targets dealt (rules.js: pinDeal) and the computer's hand (finger.js: fingHand).
 export const TUNE = [
   { k: 'targets', label: 'Targets to light', def: 7, min: 3, max: 7, step: 1, group: 'Rules' },
-  { k: 'maxSecs', label: 'Attempt time limit (s)', def: 30, min: 5, max: 60, step: 1, group: 'Timing' },   // (from Start; at the limit the ball ends as a drain, its targets kept: physics-sim.js pinStep. The computer's balls: p95 20 s, p99 32 s)
+  { k: 'maxSecs', label: 'Attempt time limit (s)', def: 30, min: 5, max: 60, step: 1, group: 'Timing' },   // (from Start; at the limit the ball ends as a drain, its targets kept: physics-sim.js pinStep. The computer's balls: median 8.5 s, p95 23 s, p99 30 s)
   { k: 'aiReact0', label: 'Computer reaction, fastest (ms)', def: 50, min: 0, max: 400, step: 5, group: 'Computer' },
   { k: 'aiReact1', label: 'Computer reaction, slowest (ms)', def: 90, min: 0, max: 400, step: 5, group: 'Computer' },
   { k: 'aiJitter', label: 'Computer flip timing error (ms)', def: 50, min: 0, max: 200, step: 5, group: 'Computer' },

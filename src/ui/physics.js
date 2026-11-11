@@ -3,10 +3,10 @@
 import { other } from '../core/util.js';
 import { PHYSICS, PHYS_TYPES, physShot, physicsReady, setPhysics } from '../games/shared/physics.js';
 import { bowlTarget } from '../games/bowling/rules.js';
-import { bowlDraft, bowlKeep, drawBowl, drawBowlAim } from '../games/bowling/view.js';
+import { bowlEventSounds, bowlNote, drawBowl } from '../games/bowling/view.js';
 import { drawGolf } from '../games/golf/view.js';
 import { POOLG, poolIds, poolLeft, poolMine } from '../games/pool/rules.js';
-import { POOL_RAIL, drawPool } from '../games/pool/view.js';
+import { POOL_RAIL, drawPool, drawPoolAim } from '../games/pool/view.js';
 import { INFO } from '../games/index.js';
 import { moveRate } from '../core/timer.js';
 import { SND, moveSounds, ownPress } from '../audio/sound.js';
@@ -27,9 +27,9 @@ import { outlined, rr, runCanvas, runColours } from './runner.js';
 
 // Mini Golf, Pool and Bowling: the physics games. The table is drawn on a canvas. In Golf and Pool a shot
 // is a drag back from anywhere on the table (a slingshot: pull away from where the ball should go, further
-// for more power; the aim line and the power meter show it), let go to shoot. In Bowling it is two taps,
-// as in Darts: the aim arrow sweeps across the lane (a tap locks it), then the power meter rises and
-// falls (a tap locks it and rolls). The shot plays out in physics.js
+// for more power; the aim line and the power meter show it), let go to shoot. In Bowling it is a flick up
+// the lane (bowling/view.js: its angle the aim, its speed the power; the lane drawn in perspective by
+// its own drawBowl). The shot plays out in physics.js
 // (Matter.js) wherever the move is made (this phone in a local match, the server in Find Match); the
 // recording (every ball, 30 times a second) comes with the result, and this phone replays it from the
 // move's event (fxAt), so both phones see the same shot. Matter.js comes from cdnjs as the page starts
@@ -99,18 +99,15 @@ export function physTable(mini, a, o) {
     : p => arcTally(p, o, `<small>${fresh(p) && ph.knocked ? `<i class="pins" style="--t:${ph.rec && !REDUCED ? ph.ms : 0}ms"><b class="was">${mini.pins[p] - ph.knocked}</b><b class="now">${mini.pins[p]}</b></i>` : mini.pins[p]} / ${bowlTarget(mini)} pins</small>`);   // the total before the roll, then the new one as the pins settle
   const pend = !ph && physPendAt(o.zoom);                         // an online shot of this phone's, playing here while the server plays it (physLaunch)
   const mine = !o.view && !ph && !o.locked && !pend;
-  const bowl = type === 'bowling' ? bowlKeep(o, mine) : null;   // Bowling's two taps: 1 the arrow sweeps, 2 the meter, 3 both locked (the roll on its way)
   const t = ph ? (ph.rec && !REDUCED ? ph.ms : 0) : null;
   const res = ph ? (r => `<p ${lateAt('arcres ' + (r.ok ? 'ok' : 'no'), t)} role="status">${r.text}</p>`)(physResult(a))
     : o.view ? `<p class="arcnote">${l ? physResult({ type, by: l.by, phys: l }, true).text : ''}</p>`
-    : bowl && bowl.step === 3 ? `<p class="arcnote">Rolling…</p>`
     : state.sc && mini.aim && mini.aim[turn] ? '<p class="arcnote">Shot locked in</p>'
-    : `<p class="arcnote">${mine || pend ? '' : waitLine(turn)}</p>`;   // (this phone's own shot on its way: nothing to wait for, Classic never waits on its own move)
+    : `<p class="arcnote">${mine || pend ? (mine && type === 'bowling' ? bowlNote(mini, turn) : '') : waitLine(turn)}</p>`;   // (this phone's own shot on its way: nothing to wait for, Classic never waits on its own move; Bowling: a finished game waiting on this roll says so)
   const strike = ph && type === 'bowling' && ph.strike ? `<div ${lateAt('pstrike', t)} aria-hidden="true">STRIKE!</div>` : '';
   const label = type === 'golf' ? `Mini golf hole: ${PHYSICS.lib.HOLES[mini.hole].name}` : type === 'pool' ? 'The pool table' : 'The bowling lane';
   const scene = `<div class="pscene ${type}" data-phys="scene"${mine ? ' data-live="1"' : ''} aria-label="${label}"><canvas data-phys="cv"></canvas>${strike}</div>`;
-  const btn = type !== 'bowling' || o.view ? '' : `<div class="cbtns one"><button class="big ${ph ? a.by : turn}" data-act="bowl"${mine && bowl && bowl.step < 3 ? '' : ' disabled'}>${bowl && bowl.step >= 2 ? 'Roll!' : 'Stop'}</button></div>`;
-  return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="phys">${scene}${res}</div>${btn}</div>`;
+  return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="phys${type === 'bowling' && mine ? ' bowllive' : ''}">${scene}${res}</div></div>`;   // (Bowling: the whole area under the tallies takes the flick, bowling/view.js)
 }
 // The move's recording at this moment: every body's place, and whether the recording has ended.
 function physFrame(ph, now, at) {
@@ -168,13 +165,13 @@ function physDrawNow(cv, now) {
   const el = ph && at != null ? (now - at) / 1000 : null, lit = el != null && mini.type === 'golf' ? new Set((ph.events || []).filter(e => e.k === 'bump' && el >= e.t && el < e.t + BUMP_LIT).map(e => e.b)) : null;   // (Mini Golf: a bumper flashes as it kicks)
   const pop = mini.type === 'pool' && fph && ph.back && fr && fr.done ? poolPop(ph, el) : null;   // a scratch: the white back and a ball for the shooter popping onto the table once the shot is over
   if (pop) { if (ph.cue) pos.cue = ph.cue; pos[ph.back] = pop.s > 0 ? ph.at : null; }
-  if (mini.type === 'golf') drawGolf(g, mini, pos, lit); else if (mini.type === 'pool') drawPool(g, mini, pos, pop ? { id: ph.back, s: pop.s } : null); else drawBowl(g, mini, pos, !fph || !!(fr && fr.done));   // (Bowling: the roll's box fills in once the pins have settled)
+  let poolBusy = false;                                            // (Pool: a ball still dropping into its pocket, the cue's stroke: frames wanted past the recording's last)
+  let bowlMore = false;                                            // (Bowling: its sweep after the roll, a replayed flick's streak)
+  if (mini.type === 'golf') drawGolf(g, mini, pos, lit); else if (mini.type === 'pool') poolBusy = drawPool(g, mini, pos, pop ? { id: ph.back, s: pop.s, cue: !!ph.scratch } : null, ph && el != null ? { ph, el } : null); else bowlMore = drawBowl(g, mini, pos, { ph: fr ? ph : null, el: fr ? el : null, flash: !!fph, settled: !fph || !!(fr && fr.done), by: ph ? (fph ? f.by : pd.p) : state.turn, now });   // (Bowling: its lane in perspective, the roll's box filled in once the pins have settled; true while its sweep or a replayed flick's streak still moves)
   if (pop && pop.label > 0) poolPopLabel(g, ph, pop.label);
   if (dr) drawAim(g, mini, pos, dr);
   else if (mini.type === 'golf' && mini.aim && state.sc && !ph) for (const p of Object.keys(mini.aim)) if (pos[p]) drawLocked(g, pos[p], mini.aim[p]);   // Super Chaos: a shot locked in, waiting for the round's end
-  const bd = mini.type === 'bowling' && !ph && bowlDraft && bowlDraft.sq === state.zoom ? bowlDraft : null;   // (none while a roll of this phone's plays: pd)
-  if (bd) drawBowlAim(g, pos, bd, now);
-  return !!(dr || (bd && bd.step < 3) || (fr && !fr.done) || (pop && !pop.done));
+  return !!(dr || bowlMore || (fr && !fr.done) || (pop && !pop.done) || poolBusy);
 }
 // A scratch's ball (one of the shooter's own back, or a new one) popping onto its spot after the shot, with a short
 // "+1 ball": el, the move's seconds so far (its rate already in them: ui/turns.js playFlash). s: the ball's scale (0
@@ -222,14 +219,16 @@ export function physSkull(g, x, y, r) {                                 // the b
 function drawAim(g, mini, pos, dr) {
   const c = g.c, P = runColours(), S = PHYS_S(mini.type), from = physFrom(mini, dr.p, pos);
   if (!from) return;
-  const shot = dr.shot ? Object.assign({ px: dr.shot.power * PHYS_PULL * g.H }, dr.shot) : physPull(dr);   // (a replay: the shot as the other side had it lined up)
+  const shot = dr.shot ? Object.assign({ px: dr.shot.power * PHYS_PULL * g.H }, mini.type === 'pool' ? physRepNow(dr) : dr.shot) : physPull(dr);   // (a replay: the shot as the other side had it lined up; Pool's glides from each reading to the next)
+  if (mini.type === 'pool') dr.cancel = Math.max(16, S.ballR * g.k * 1.9);   // (Pool: back at the ball is on the ball, at the size it is drawn)
   const X = g.X(from[0]), Y = g.Y(from[1]), len = (0.12 + 0.3 * shot.power) * S.h * g.k;
   if (dr.scene) { const r = c.canvas.getBoundingClientRect(); dr.ball = [r.left + X, r.top + Y]; }   // (where the ball is on the screen: a pull back to it is no shot)
   if (dr.scene && physCancel(dr, shot)) {                          // back at the ball, or hardly pulled: let go here and nothing is played (a ring says so)
     c.save(); c.setLineDash([4, 4]); c.lineWidth = 2.5; c.strokeStyle = 'rgba(255,255,255,.9)';
-    c.beginPath(); c.arc(X, Y, PHYS_CANCEL_PX, 0, Math.PI * 2); c.stroke(); c.restore();
+    c.beginPath(); c.arc(X, Y, dr.cancel || PHYS_CANCEL_PX, 0, Math.PI * 2); c.stroke(); c.restore();
     return;
   }
+  if (mini.type === 'pool') { drawPoolAim(g, mini, pos, shot, dr.p); return; }   // Pool: the cue, the sight line to the first ball or rail, the meter (games/pool/view.js)
   c.save();
   c.setLineDash([6, 6]); c.lineWidth = 3; c.strokeStyle = 'rgba(255,255,255,.9)';
   c.beginPath(); c.moveTo(X, Y); c.lineTo(X + Math.sin(shot.aim) * len, Y - Math.cos(shot.aim) * len); c.stroke();
@@ -246,7 +245,7 @@ function drawAim(g, mini, pos, dr) {
 // A pull let go back at the ball (within PHYS_CANCEL_PX of it on the screen) or hardly pulled at all: no shot.
 const PHYS_CANCEL_PX = 30, PHYS_CANCEL_POWER = 0.05;
 function physCancel(dr, shot) {
-  return shot.power < PHYS_CANCEL_POWER || (!!dr.ball && Math.hypot(dr.x - dr.ball[0], dr.y - dr.ball[1]) < PHYS_CANCEL_PX);
+  return shot.power < PHYS_CANCEL_POWER || (!!dr.ball && Math.hypot(dr.x - dr.ball[0], dr.y - dr.ball[1]) < (dr.cancel || PHYS_CANCEL_PX));
 }
 function physFrom(mini, p, pos) { return mini.type === 'golf' ? pos[p] : mini.type === 'pool' ? pos.cue : pos.ball || PHYSICS.lib.BOWL.start; }
 // The pull as a shot: the aim away from the finger (0 straight up the table), the power from the length.
@@ -287,24 +286,53 @@ export function physThumb(mini) {
 function physReplayInput(act, val, r) {
   const m = /^a=(-?[\d.]+),p=([\d.]+)$/.exec(val || '');
   if ((act !== 'drag' && act !== 'aim') || !m) return false;
-  physRep = { sq: r.sq, p: r.by, shot: { aim: Number(m[1]), power: Number(m[2]) } };
+  const was = physRep && physRep.sq === r.sq && physRep.p === r.by ? physRepNow(physRep) : null;   // (Pool: the cue glides on from where it is shown)
+  physRep = { sq: r.sq, p: r.by, shot: { aim: Number(m[1]), power: Number(m[2]) }, from: was || { aim: Number(m[1]), power: 0 }, t0: performance.now() };
   physPaint();
   return true;
+}
+// A replayed pull between two of its readings (they come every 150 ms or so): eased from the one shown to the next in
+// PHYS_REP_EASE ms, the aim the short way round, so the cue swings and draws back smoothly (Pool: drawAim).
+const PHYS_REP_EASE = 170;
+function physRepNow(dr) {
+  if (!dr.from || REDUCED) return dr.shot;
+  const u = Math.max(0, Math.min(1, (performance.now() - dr.t0) / PHYS_REP_EASE)), e = u * u * (3 - 2 * u);
+  let da = dr.shot.aim - dr.from.aim; while (da > Math.PI) da -= 2 * Math.PI; while (da < -Math.PI) da += 2 * Math.PI;
+  return { aim: dr.from.aim + da * e, power: dr.from.power + (dr.shot.power - dr.from.power) * e };
 }
 const physReplaySynth = m => (m && typeof m === 'object' && Number.isFinite(m.aim) ? [0.2, 0.5, 0.8].map((k, i) => [i * 280, 'drag', `a=${m.aim},p=${(m.power * k).toFixed(3)}`]).concat([[900, 'aim', `a=${m.aim},p=${m.power}`]]) : null);
 export const physReplay = { input: physReplayInput, synth: physReplaySynth };
 // The recording's own sounds (the balls meeting, a cushion, a bumper, a pin, a pocket...), at their moments.
-export function physEventSounds(ph, add) {
+export function physEventSounds(ph, add, type) {
   if (!ph || !ph.rec || REDUCED) return;
+  if (type === 'bowling') { bowlEventSounds(ph, add); return; }   // (Bowling's own: the rumble, the crash, the pit; bowling/view.js)
+  if (Array.isArray(ph.pocketed)) { poolEventSounds(ph, add); return; }   // Pool: its own (below)
   for (const e of ph.events || []) { const t = e.t * 1000; if (e.k === 'balls') add('clack', t); else if (e.k === 'wall') add('cushion', t); else if (e.k === 'bump') add('bumper', t); else if (e.k === 'pin') add('pinHit', t); else if (e.k === 'hole') add('plop', t); else if (e.k === 'pocket') add(e.id === 'cue' ? 'thud' : 'plop', t); else if (e.k === 'lip') add('clink', t); else if (e.k === 'gutter') add('thud', t); else if (e.k === 'pit' || e.k === 'end') add('thud', t); }
+}
+// Pool's sounds, each from its event in the recording, once: the cue on the white as the shot starts (harder with the
+// power), two balls meeting (a tick, a clack or a crack by how fast they met: e.v, an eighth of the units a second), a
+// cushion (soft or full), a ball dropping into a pocket, the white going down.
+function poolEventSounds(ph, add) {
+  add(ph.power < 0.34 ? 'poolCueSoft' : 'poolCue', 0);
+  for (const e of ph.events || []) {
+    const t = e.t * 1000;
+    if (e.k === 'balls') add(e.v <= 2 ? 'poolTick' : e.v <= 9 ? 'poolClack' : 'poolCrack', t);
+    else if (e.k === 'wall') add(e.v <= 2 ? 'poolRailSoft' : 'poolRail', t);
+    else if (e.k === 'pocket') add(e.id === 'cue' ? 'poolScratch' : 'poolDrop', t);
+  }
 }
 export function physicsSounds(f, add, won, mini, last) {   // the recording's events, as they come round in the replay; then the result
   const ph = f.phys; if (!ph) return;
   if (ph.locked) { add('clack', 0); return; }                              // Super Chaos: the putt locked in (it plays at the round's end)
   const live = ph.rec && !REDUCED, end = live ? ph.ms : 0;
-  physEventSounds(ph, add);
-  if (f.type === 'bowling') add(ph.strike ? 'strike' : ph.gutter ? 'thud' : 'ding', end);
-  else if (f.type === 'pool') { add(ph.black ? 'buzz' : ph.scratch ? 'thud' : ph.own && !ph.theirs ? 'ding' : 'thud', end); if (ph.back) add('pop', end + 120); }   // (a scratch: the ball popping back on)
+  physEventSounds(ph, add, f.type);
+  if (f.type === 'bowling') { add('bowlSweep', end + 60); if (ph.strike) add('bowlStrike', end); }   // (the sweep as the pins settle; a strike's fanfare. The buzz is the crash's, at its moment: bowlHit)
+  else if (f.type === 'pool') {                                            // the result: the black (a buzz as the shot ends), one's own ball down and nothing else (a chime just after it drops); a scratch has had its own sound, and nothing down has none
+    const mine = by => (ph.events || []).filter(e => e.k === 'pocket' && e.id !== 'cue' && e.id !== 'black' && e.id[0] === (by === 'X' ? 'x' : 'o')).pop();
+    const drop = live ? mine(ph.by) : null;
+    if (ph.black) add('buzz', end); else if (ph.own && !ph.theirs && !ph.scratch) add('ding', drop ? Math.min(end, drop.t * 1000 + 150) : end);
+    if (ph.back) add('pop', end + 120);                               // (a scratch: the ball popping back on)
+  }
   else if (ph.both) { if (!(ph.holed && (ph.holed.X || ph.holed.O))) add(ph.lip ? 'thud' : 'ding', end); }
   else if (!ph.first) add(ph.lip ? 'thud' : 'ding', end);
   return;
@@ -335,9 +363,9 @@ export function physLaunch(i, p, ph) {
   if (!sq || !PHYS_TYPES.includes(sq.mini.type) || !ph || !ph.rec || !Array.isArray(ph.rec.frames) || !ph.rec.frames.length) return false;
   physDrop(true);
   const rate = moveRate(sq.mini.type, 1), tag = { shot: i }, sounds = [];   // (rate: the mover's own move's, as playFlash will play it)
-  physEventSounds(ph, (n, ms) => sounds.push([n, ms]));
+  physEventSounds(ph, (n, ms, pitch) => sounds.push([n, ms, pitch]), sq.mini.type);
   const was = SND.scope; SND.scope = tag;
-  try { for (const [n, ms] of sounds) SND.play(n, { at: ms / 1000 / rate }); } finally { SND.scope = was; }
+  try { for (const [n, ms, pitch] of sounds) SND.play(n, { at: ms / 1000 / rate, rate: pitch }); } finally { SND.scope = was; }
   haptic('tap');                                                // (the shot made: its tap now; the result's buzz comes with the server's result)
   physPend = { sq: i, p, type: sq.mini.type, moves: state.moves, at: performance.now(), rate, ph, tag, sounds };
   physPaint();

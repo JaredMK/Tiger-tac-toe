@@ -600,17 +600,17 @@ function readRunCfg(t) {
   return { value: out };
 }
 // ---------- Bullseye's tuning (config/bulls, read by the game and the server) ----------
-// The board's size and the bullseye's (in field units: the field is 100 across, 120 down), how long a line
-// takes to sweep across at the start, and how much faster a player's lines get with each throw of theirs
-// that scores. A change applies to squares dealt from then on.
-const BULL_DEFAULTS = { board: 9, bull: 2.5, sweep: 1040, ramp: 1.12 };   // (as the game's meta.js has them)
-const BULL_FIELDS = [['board', 'Board radius (field is 100 across)', 4, 30, 'any'], ['bull', 'Bullseye radius', 0.5, 12, 'any'], ['sweep', 'Sweep across at the start (ms)', 400, 5000, '10'], ['ramp', 'Speed-up per scoring throw (x)', 1, 2, 'any']];
+// The board's three rings, their radii in wall units (the wall is 100 across): the whole board, its inner
+// ring and the bullseye. A change applies to squares dealt from then on. (The points, the throw's scatter,
+// the flick's feel and the computer's aim are the game's settings above.)
+const BULL_DEFAULTS = { board: 32, mid: 17.5, bull: 6.5 };   // (as the game's meta.js has them)
+const BULL_FIELDS = [['board', 'Board radius (wall is 100 across)', 16, 35, 'any'], ['mid', 'Inner ring radius', 5, 28, 'any'], ['bull', 'Bullseye radius', 1, 14, 'any']];
 function bullsCard() {
-  const raw = ctl.bullsCfg || {}, c = {};
+  const raw = ctl.bullsCfg && ctl.bullsCfg.mid != null ? ctl.bullsCfg : {}, c = {};   // (a stored config without the inner ring is from before the rework: the defaults, as the game reads it)
   for (const [k] of BULL_FIELDS) c[k] = Number.isFinite(Number(raw[k])) && raw[k] !== null && raw[k] !== '' ? Number(raw[k]) : BULL_DEFAULTS[k];
   const fields = BULL_FIELDS.map(([k, l, lo, hi, st]) => `<label class="rf"><span>${l}</span><input type="number" step="${st}" min="${lo}" max="${hi}" data-bullcfg="${k}" value="${c[k]}"></label>`).join('');
   return `<div class="card ctl" id="bullsCard"><h2>Bullseye tuning</h2>
-    <p class="note">Bullseye: a small board moves round a field 100 units across and 120 down; a throw stops a sideways line, then an up-down line, and the dart lands where they cross. Bullseye 3 points, the board 1, first to 5. Everything here goes to the game and the server at once and applies to squares dealt from then on. Aim: about 5-6 throws to win at the start. A bigger board or bullseye, or a slower sweep, makes it easier; the speed-up makes each scoring throw harder than the last.</p>
+    <p class="note">Bullseye: a dartboard on a wall 100 units across; a flick throws a dart at it. The bullseye scores 3, the inner ring 2, the outer ring 1; first to 7. Everything here goes to the game and the server at once and applies to squares dealt from then on. Aim: about 4-6 throws to win. Bigger rings make it easier.</p>
     <div class="rform">${fields}</div></div>`;
 }
 function readBullsCfg() {
@@ -620,7 +620,8 @@ function readBullsCfg() {
     if (!Number.isFinite(v) || v < Number(el.min) || v > Number(el.max)) return { err: `${k}: a number from ${el.min} to ${el.max}` };
     out[k] = v;
   }
-  if (out.bull >= out.board) return { err: 'The bullseye must be smaller than the board.' };
+  if (out.mid >= out.board) return { err: 'The inner ring must be smaller than the board.' };
+  if (out.bull >= out.mid) return { err: 'The bullseye must be smaller than the inner ring.' };
   return { value: out };
 }
 // ---------- Peg Drop's target (config/plinko, read by the game and the server) ----------
@@ -697,17 +698,13 @@ function readAttCfg(c) {
 const HOP_DEFAULTS = { target: 150, bounce: 22, gap0: 3, gap1: 4.5, wide0: 1.5, wide1: 1.1, moveAt: 10, move: 65, moveV: 2.2, breakAt: 8, brk0: 25, brk: 60, hazAt: 15, hazGap: 25, fill0: 0.4, fill1: 0.2 };   // (as the game's meta.js has them)
 const SCOOP_DEFAULTS = { target: 25, v0: 5, v1: 8.5, gap0: 0.9, gap1: 0.6, haz0: 18, haz1: 38, sway: 1, cone: 12 };
 const PINB_DEFAULTS = { size: 1.7, save: 3, maxBall: 120, g: 1, bump: 1, spin: 1 };
-const BOWL_DEFAULTS = { aimMs: 733, meterMs: 600 };   // (as Bowling's meta.js has them)
-const BOWL_CARDS = [
-  { id: 'bowling', title: 'Bowling tuning', defaults: BOWL_DEFAULTS, fields: [['aimMs', 'Aim arrow: one side to the other (ms)', 300, 3000, 10], ['meterMs', 'Power meter: empty to full (ms)', 300, 3000, 10]],
-    note: 'The two taps: the arrow sweeps across the lane, then the power meter rises and falls. Lower is faster (harder to time).' },
-];
+const BOWL_CARDS = [];   // (Bowling had a card of its own, the two taps' speeds, config/bowling: gone with the taps, November 2026; its flick's settings are in its TUNE)
 const FING_CARDS = [
   { id: 'skyhop', title: 'Sky Hop tuning', defaults: HOP_DEFAULTS, fields: [['target', 'Target height (m)', 50, 3000, 10], ['bounce', 'Bounce speed (m/s; 22 rises 5.5 m)', 12, 30, 0.1], ['gap0', 'Gap between platforms at the bottom (m)', 0.6, 6, 0.05], ['gap1', 'Gap at the top (m)', 0.6, 6, 0.05], ['wide0', 'Platform width at the bottom (m; the sky is 9 wide)', 0.8, 6, 0.05], ['wide1', 'Platform width at the top (m)', 0.8, 6, 0.05], ['fill0', 'Extra platforms per gap at the bottom', 0, 4, 0.05], ['fill1', 'Extra platforms per gap at the top', 0, 4, 0.05], ['moveAt', 'Moving platforms from (m)', 0, 3000, 1], ['move', 'Moving platforms by the top (%)', 0, 90, 1], ['moveV', 'Moving platform speed (m/s)', 0.2, 4, 0.05], ['breakAt', 'Breaking platforms from (m)', 0, 3000, 1], ['brk0', 'Breaking platforms at that height (%)', 0, 90, 1], ['brk', 'Breaking platforms by the top (%)', 0, 90, 1], ['hazAt', 'Burrs from (m)', 0, 3000, 1], ['hazGap', 'About one burr every (m)', 5, 500, 1]],
     note: 'The hopper bounces up off platforms; a drag steers it and the sky wraps at the sides. Falling off the bottom ends the attempt and the highest point is kept. Higher up: wider gaps, narrower platforms, more that move or break after one bounce, and burrs to avoid (never across the way up). Every gap can be made: the course always has a chain of platforms within a bounce. Default 150 m: a strong run reaches the top in about 28 s; tuned so an average player needs about 3 to 6 attempts (the computer: about 4.5).' },
   { id: 'scoop', title: 'Scoop Stack tuning', defaults: SCOOP_DEFAULTS, fields: [['target', 'Target (scoops)', 5, 200, 1], ['v0', 'Falling speed at the start (units/s; the screen is 10 wide)', 1, 15, 0.1], ['v1', 'Falling speed at the target', 1, 15, 0.1], ['gap0', 'Time between items at the start (s)', 0.3, 4, 0.05], ['gap1', 'Time between items at the target (s)', 0.3, 4, 0.05], ['haz0', 'Hazards at the start (% of items)', 0, 70, 1], ['haz1', 'Hazards at the target (%)', 0, 70, 1], ['cone', 'Cone speed (units/s)', 5, 40, 0.5], ['sway', 'Sway of the stack (1 = normal, 0 = none)', 0, 3, 0.05]],
     note: 'Scoops and hazards (pebbles, burnt scoops) fall to the top of the stack; the cone follows the finger. A hazard on the stack, or 3 missed scoops, ends the attempt; the stack is kept. Speed and hazards rise with the stack. Every attempt is checked to be catchable at 72% of the cone speed. Default 25 scoops; tuned so an average player needs about 3 to 6 attempts (the computer: about 4.5).' },
-  { id: 'pinball', title: 'Pinball tuning', defaults: PINB_DEFAULTS, fields: [['size', 'Target size (1 = the drawn size; up to 2)', 0.6, 2, 0.05], ['save', 'Ball save after launch (s)', 0, 10, 0.5], ['maxBall', 'Longest ball (s)', 20, 300, 5], ['g', 'Table slope (gravity, 1 = normal)', 0.5, 2, 0.05], ['bump', 'Bumper kick (1 = normal)', 0.5, 2, 0.05], ['spin', 'Spinner speed (1 = normal, 0 = still)', 0, 3, 0.05]],
+  { id: 'pinball', title: 'Pinball tuning', defaults: PINB_DEFAULTS, fields: [['size', 'Target size (1 = the drawn size; up to 2)', 0.6, 2, 0.05], ['save', 'Ball save after launch (s)', 0, 10, 0.5], ['maxBall', 'Longest ball (s)', 20, 300, 5], ['g', 'Table slope (gravity, 1 = normal)', 0.5, 2, 0.05], ['bump', 'Bumper kick (1 = normal)', 0.5, 2, 0.05], ['spin', 'Moving target speed (1 = normal, 0 = still)', 0, 3, 0.05]],
     note: 'One ball per turn; each player lights their own 7 targets, which stay lit. Bigger targets are easier. Default size 1.7: about 5 balls for the computer (median 4), which plays like an average player.' },
 ];
 function fingCard(c) {
@@ -832,7 +829,7 @@ function legacyRead(t) {                       // { value } to save at legacyPat
   const a = attOf(t), f = fingOf(t);
   return a ? readAttCfg(a) : f ? readFingCfg(f) : null;
 }
-const legacyPath = t => (RUN_TYPES.includes(t) ? `config/run/${t}` : t === 'bullseye' ? 'config/bulls' : ['plinko', 'pig', 'roads', 'oddone', 'wheels', 'headcount', 'flash', 'snapshot', 'skyhop', 'scoop', 'pinball', 'bowling'].includes(t) ? `config/${t}` : null);
+const legacyPath = t => (RUN_TYPES.includes(t) ? `config/run/${t}` : t === 'bullseye' ? 'config/bulls' : ['plinko', 'pig', 'roads', 'oddone', 'wheels', 'headcount', 'flash', 'snapshot', 'skyhop', 'scoop', 'pinball'].includes(t) ? `config/${t}` : null);
 const legacyStored = t => (RUN_TYPES.includes(t) ? (ctl.runCfg || {})[t] : ONE_CARD[t] ? ctl[ONE_CARD[t][0]] : attOf(t) ? (ctl.attCfg || {})[t] : fingOf(t) ? (ctl.fingCfg || {})[t] : null) || null;
 const legacyDefaults = t => (RUN_TYPES.includes(t) ? RUN_DEFAULTS[t] : ONE_CARD[t] ? ONE_CARD[t][3] : (attOf(t) || fingOf(t) || {}).defaults || null);
 function legacyKeep(t, v) {                    // what was saved, kept here as loadCtl would read it back

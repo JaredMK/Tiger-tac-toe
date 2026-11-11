@@ -91,7 +91,7 @@ export const PLAY = {
 // times as fast again (config/anim/fast: 1 to 4, default 2), with ANIM.fx the punch of its effects (config/anim/fx:
 // 0 to 2, default 1: the shake, the confetti, the pops). ANIM.speed is the pace on this screen. The waits that
 // are the game itself never change (Find the Pair's two cards up, the attention games' times, Echo's pattern,
-// Bullseye's sweep, a run or a physics recording: realTime below).
+// a run or a physics recording: realTime below).
 export const ANIM = { speed: 1, admin: 1, fast: 2, fx: 1, mode: 'normal' };
 const pace = () => { ANIM.speed = ANIM.admin * (ANIM.mode === 'speed' ? ANIM.fast : 1); };
 const num = (v, lo, hi, d) => { const x = v == null || v === '' ? NaN : Number(v); return Number.isFinite(x) && x >= lo && x <= hi ? x : d; };

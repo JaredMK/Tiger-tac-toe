@@ -148,7 +148,7 @@ test('a game that is not a race game has no Mode switch; a game with a tuning ca
   assert.doesNotMatch(html, /Lane Rush tuning|data-runcfg="lane:/, 'this runner alone');
   assert.equal((html.match(/>Save</g) || []).length, 1);
   for (const t of E.TYPES) { const h = draw(`#games/${t}`); assert.match(h, new RegExp(`data-gamesave="${t}"`), `${t}: Save`); assert.match(h, new RegExp(`data-tunereset="${t}"`)); assert.match(h, new RegExp(`data-rel="${t}"`)); assert.doesNotMatch(h, /undefined|NaN|\[object/, `${t}: nothing undrawn`); }
-  for (const t of ['dash', 'lane', 'flap', 'chopper', 'bullseye', 'plinko', 'pig', 'roads', 'oddone', 'wheels', 'headcount', 'flash', 'snapshot', 'skyhop', 'scoop', 'pinball', 'bowling']) assert.ok(A.legacyPath(t), `${t}: a tuning card path`);
+  for (const t of ['dash', 'lane', 'flap', 'chopper', 'bullseye', 'plinko', 'pig', 'roads', 'oddone', 'wheels', 'headcount', 'flash', 'snapshot', 'skyhop', 'scoop', 'pinball']) assert.ok(A.legacyPath(t), `${t}: a tuning card path`);
 });
 test('the old hashes open the new pages: #settings and #releases the list, #settings/<type> the game\'s page', () => {
   A.ctl = ctl0();

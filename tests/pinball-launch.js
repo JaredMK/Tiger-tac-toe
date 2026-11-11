@@ -38,8 +38,9 @@ function launchTrial(tb, power, cap) {
     const b = w.ball.position;
     if (w.inPlay) {
       if (!(inPoly([b.x, b.y], tb.outer) || b.y > PIN.drain)) tunnel = tunnel || `outside at (${b.x.toFixed(1)},${b.y.toFixed(1)})`;
-      for (const seg of tb.walls) if (segDist(b.x, b.y, seg) < seg[4] / 2 + PIN.ballR - 0.9) tunnel = tunnel || `in a wall at (${b.x.toFixed(1)},${b.y.toFixed(1)})`;
-      if (w.gateOn && b.x > PIN.lane.x0 + PIN.ballR && b.y > PIN.lane.top + 2 && b.y < PIN.lane.serve[1] - 2) lanes++;
+      for (const seg of tb.walls) if (segDist(b.x, b.y, seg) < seg[4] / 2 + PIN.ballR - 0.3) tunnel = tunnel || `in a wall at (${b.x.toFixed(1)},${b.y.toFixed(1)})`;
+      if (b.y < PIN.arc.cy && Math.hypot(b.x - PIN.arc.cx, b.y - PIN.arc.cy) > PIN.arc.r - PIN.arc.t / 2 - PIN.ballR + 0.3) tunnel = tunnel || `in the arch at (${b.x.toFixed(1)},${b.y.toFixed(1)})`;
+      if (w.gateOn && b.x > PIN.lane.wall + 1.2 && b.y > PIN.lane.top + 2) lanes++;
       if (b.y > F.L[1] - 14 && b.x > F.L[0] - 9 && b.x < F.R[0] + 9) flipZone = true;   // down at the flippers (the inlanes and the flippers' sweep)
     }
     if (end) break;

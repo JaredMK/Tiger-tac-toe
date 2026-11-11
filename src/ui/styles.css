@@ -1596,34 +1596,10 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .arcres.ok { color: var(--green); } .arcres.no { color: var(--x); }
 .arcnote { text-align: center; color: var(--muted); font-size: 14px; line-height: 1.3; }
 .arcres, .arcnote { margin: 0; flex: none; height: 40px; align-content: center; }   /* the status or result line under a table: always this tall (up to two lines), so swapping one for the other never moves the board */
-/* Bullseye: the bar, its middle zone, the sweeping marker (a dart) */
-.bulls { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 12px; min-height: 0; }
-.bfield { position: relative; margin: 0 auto; width: min(100%, 330px, calc((100dvh - 330px) * 100 / 120)); min-width: 200px; aspect-ratio: 100 / 120; border: 3px solid var(--ink); border-radius: 14px; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none;
-  background: radial-gradient(circle at 50% 40%, #fdf6e3 0 30%, #f1e6c9 100%); background-image: radial-gradient(circle at 50% 40%, #fdf6e3, #efe2c2), repeating-linear-gradient(0deg, transparent 0 19px, rgba(22,18,16,.05) 19px 20px); }
-.bfield[data-live] { cursor: crosshair; }
-.bdboard { position: absolute; aspect-ratio: 1; transform: translate(-50%, -50%); pointer-events: none; }
-.bdboard svg { width: 100%; height: 100%; display: block; overflow: visible; }
-.bdboard .bring { fill: #2b2420; stroke: var(--ink); stroke-width: 3; } .bdboard .bsa { fill: #e8d6a6; } .bdboard .bsb { fill: #3b8f4a; } .bdboard .bbulo { fill: #3b8f4a; stroke: var(--ink); stroke-width: 2; } .bdboard .bbul { fill: var(--x); stroke: var(--ink); stroke-width: 2; }
-.bdboard.slide { animation: bslide .45s var(--t0, 0ms) cubic-bezier(.3, .8, .3, 1) both; }
-@keyframes bslide { from { transform: translate(calc(-50% + var(--sx, 0%)), calc(-50% + var(--sy, 0%))); } to { transform: translate(-50%, -50%); } }
-.bdboard.hit1 svg { animation: boardhit .5s var(--t, 0ms) both; } .bdboard.hit3 svg { animation: bullhit .8s var(--t, 0ms) both; }
-@keyframes boardhit { 0%, 100% { filter: none; } 40% { filter: brightness(1.35); } }
-@keyframes bullhit { 0%, 100% { filter: none; transform: none; } 30% { filter: brightness(1.5) drop-shadow(0 0 6px var(--o)); transform: scale(1.12); } }
-.bvline, .bhline { position: absolute; pointer-events: none; background: var(--ink); }
-.bvline { top: 0; bottom: 0; width: 3px; margin-left: -1.5px; }
-.bhline { left: 0; right: 0; height: 3px; margin-top: -1.5px; }
-.bvline.sweep { animation: bsweepx var(--p, 1300ms) var(--dl, 0ms) linear infinite alternate both; background: var(--x); box-shadow: 0 0 0 1px var(--ink); }
-.bhline.sweep { animation: bsweepy var(--p, 1560ms) var(--dl, 0ms) linear infinite alternate both; background: var(--x); box-shadow: 0 0 0 1px var(--ink); }
-.bvline.set, .bhline.set { background: var(--ink); opacity: .55; }
-.blayer { position: absolute; inset: 0; pointer-events: none; }
-.bvline.rep { animation: bsweepx var(--p, 1040ms) var(--t, 0ms) linear var(--it, 1) alternate both; background: var(--x); box-shadow: 0 0 0 1px var(--ink); }
-.bhline.rep { animation: bsweepy var(--p, 1250ms) var(--t, 0ms) linear var(--it, 1) alternate both; background: var(--x); box-shadow: 0 0 0 1px var(--ink); }
-@keyframes bsweepx { from { left: 0%; } to { left: 100%; } }
-@keyframes bsweepy { from { top: 0%; } to { top: 100%; } }
-.bdart { position: absolute; width: 18px; height: calc(18px * 66 / 26); margin-left: -9px; margin-top: calc(18px * -62 / 26); pointer-events: none; }   /* the drawing's own shape (26 x 66), its tip (13, 62) exactly on the spot */
-.bdart svg { width: 100%; height: 100%; display: block; }
-.bdart.fly svg { animation: dartfly .38s var(--t, 0ms) cubic-bezier(.3, .6, .4, 1) both; transform-origin: 50% 100%; }
-@keyframes dartfly { from { transform: translateY(140px) scale(2.2); opacity: 0; } 20% { opacity: 1; } to { transform: none; opacity: 1; } }
+/* Bullseye (November 2026): the board on its wall, drawn on a canvas (games/bullseye/view.js); the whole game area takes the flick */
+.bulls { flex: 1; display: flex; flex-direction: column; min-height: 0; gap: 6px; }
+.bulls.live { touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; }
+.bulls .bdcv { flex: 1 1 0; min-height: 0; width: 100%; display: block; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; border-radius: 14px; }
 /* Echo: four pads, lit in turn as the pattern plays, then tapped back */
 .echo { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 10px; min-height: 0; container-type: size; }
 .epads { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: min(100%, 300px, 100cqh - 132px); margin: 0 auto; aspect-ratio: 1; }   /* the pads take the room left by the lines above and below them (2 x 40px, the steps' 12px, 3 gaps), never more: on a short screen they shrink rather than ride up over the tallies */
@@ -1758,9 +1734,10 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .fing .ctal.fprog { padding: 4px 10px 2px; }
 .fing .ctal.fprog .pips i { width: 14px; height: 14px; }
 .fscene { position: relative; flex: 1; min-height: 160px; width: 100%; border: 3px solid var(--ink); border-radius: 14px; overflow: hidden; background: #cfe9f7; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
-.fscene.scoop { background: #fff4f5; } .fscene.pinball { background: #241b38; }
+.fscene.scoop { background: #fff4f5; } .fscene.pinball { background: #1d1630; }
 .fscene canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .fscene.pinball .fhud { color: var(--paper); text-shadow: 0 2px 0 var(--ink); }
+.fscene.pinball .cbtns { position: absolute; left: 50%; top: 62%; transform: translate(-50%, -50%); width: min(52%, 210px); z-index: 2; }   /* Pinball's Start lies over the table (ui/finger.js fingTable): the table takes the room a button below it would */
 .fhint { position: absolute; left: 0; right: 0; bottom: 10px; text-align: center; color: var(--ink); font-weight: 800; font-size: 14px; pointer-events: none; text-shadow: 0 1px 0 #fff; animation: fhint 1.8s ease-out both; }
 .fscene.pinball .fhint { color: var(--paper); text-shadow: 0 2px 0 var(--ink); bottom: auto; top: 36%; }
 @keyframes fhint { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }
@@ -1775,7 +1752,8 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .phys { flex: 1; display: flex; flex-direction: column; min-height: 0; gap: 8px; }
 .phys .arcres, .phys .arcnote { margin: 0; height: 26px; line-height: 26px; flex: none; }   /* the line under the table keeps its height, so the table never jumps */
 .pscene { position: relative; flex: 1; min-height: 160px; margin: 0 auto; width: 100%; border: 3px solid var(--ink); border-radius: 14px; overflow: hidden; background: #2f7a3a; touch-action: none; user-select: none; -webkit-user-select: none; }
-.pscene.pool { background: #7a4a22; } .pscene.bowling { background: #6b6f78; }
+.pscene.pool { background: #3a2716; } .pscene.bowling { background: #262933; }
+.phys.bowllive { touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; cursor: grab; }   /* Bowling: the lane and the line under it take the flick */
 .pscene.wait { display: grid; place-items: center; background: var(--panel-2); }
 .pscene canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .pstrike { position: absolute; inset: 0; display: grid; place-items: center; font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-size: 58px; color: var(--o); -webkit-text-stroke: 3px var(--ink); text-shadow: 0 5px 0 var(--ink); pointer-events: none; animation: strikein .7s var(--t, 0ms) cubic-bezier(.3, 1.6, .5, 1) both; transform: rotate(-8deg); }
@@ -1788,7 +1766,8 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .tphys .cup { fill: #17331c; stroke: var(--ink); stroke-width: 2; } .tphys .rail { fill: #7a4a22; } .tphys .cloth { fill: #2d8a4e; } .tphys .pocket { fill: #0d0d0d; }
 .tphys circle.X { fill: var(--x); stroke: var(--ink); stroke-width: 1.5; } .tphys circle.O { fill: var(--o); stroke: var(--ink); stroke-width: 1.5; } .tphys circle.cue { fill: #fdfaf0; stroke: var(--ink); stroke-width: 1.5; } .tphys circle.black { fill: #1b1b1b; stroke: var(--ink); stroke-width: 1.5; }
 .tphys text { fill: var(--ink); font-weight: 800; text-anchor: middle; font-family: Nunito, Arial, sans-serif; }
-.tbowl { display: grid; gap: 4cqw; width: 84cqw; } .tbowl svg { display: block; width: 100%; height: 46cqw; } .tbowl .pin { fill: #fff; stroke: var(--ink); stroke-width: 1.5; } .tbowl .pin.down { fill: var(--panel-2); stroke: var(--muted); }
+.tbowl { display: grid; gap: 4cqw; width: 84cqw; } .tbowl svg { display: block; width: 100%; height: 46cqw; } .tbowl .pin { fill: #fff; stroke: var(--ink); stroke-width: 1.3; stroke-linejoin: round; } .tbowl .pin.down { fill: var(--panel-2); stroke: var(--muted); opacity: .55; }
+.tbowl .pin .ps { fill: none; stroke: var(--x); stroke-width: 1.5; } .tbowl .pin.down .ps { stroke: var(--muted); }   /* (each pin a little pin, its neck's band; the ones the last roll knocked faint) */
 .tbowl .trun { padding: 0; }
 .trun.bscore .tr { grid-template-columns: 9cqw 1fr auto; gap: 2.5cqw; }   /* Bowling: a line each, its mark, its bar and its pins */
 .trun.bscore .tr b { font: 400 9cqw/1 'Luckiest Guy', sans-serif; text-align: center; } .trun.bscore .tr i { height: 7cqw; border-width: 1.4cqw; }
@@ -2256,7 +2235,7 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 
 @keyframes obar { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 @media (prefers-reduced-motion: reduce) { .epad.play { animation: var(--lit) !important; } @keyframes padlit { 0% { opacity: .55; } 12%, 80% { opacity: 1; } 100% { opacity: .55; } } }   /* Echo's flashes are the pattern itself: kept with reduced motion (a change of brightness, without the swell) */
-@media (prefers-reduced-motion: reduce) { .bvline.sweep { animation: none; left: 50%; } .bhline.sweep { animation: none; top: 50%; } .bdboard.slide { animation: none; } .pchip.drop { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .pchip.drop { animation: none; } }
 .tu { animation: tuntil 1ms var(--u, 0ms) both; }
 .tf { animation: tfrom 1ms var(--f, 0ms) both; }
 @keyframes tuntil { to { visibility: hidden; opacity: 0; } }
@@ -2390,8 +2369,9 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .tpip .tspins i.sp.hit { color: #fff; border-color: var(--ink); box-shadow: 0 0 0 1.4cqw var(--paper), 0 0 0 2.8cqw currentColor; }
 .tpip .tspins i.sp.hit.X { background: var(--x); color: #fff; box-shadow: 0 0 2.5cqw 1cqw var(--x); } .tpip .tspins i.sp.hit.O { background: var(--o); color: var(--ink); box-shadow: 0 0 2.5cqw 1cqw var(--o); }   /* a hit: in the spinner's colour, glowing */
 .tbull { display: flex; align-items: center; gap: 4cqw; width: 88cqw; }
-.tbull svg { width: 38cqw; height: 46cqw; flex: none; }
-.tbull .tbf { fill: #f5ead0; stroke: var(--ink); stroke-width: 3; } .tbull .tbb { fill: #3b8f4a; stroke: var(--ink); stroke-width: 2.5; } .tbull .tbu { fill: var(--x); }
+.tbull svg { width: 44cqw; height: 44cqw; flex: none; }
+.tbull .tbs { fill: #231d1a; stroke: var(--ink); stroke-width: 2.5; } .tbull .tbo { fill: #f1e3b8; } .tbull .tbb { fill: #3b8f4a; stroke: var(--ink); stroke-width: 1.2; } .tbull .tbu { fill: var(--x); stroke: var(--ink); stroke-width: 1.2; }
+.tbull .tbd { stroke: var(--ink); stroke-width: 1.6; } .tbull .tbd.X { fill: var(--x); } .tbull .tbd.O { fill: var(--o); }   /* a dart in the board: a dot in its player's colour */
 .tbpts { flex: 1; display: grid; gap: 3cqw; }
 .tbpts .tr { display: flex; align-items: baseline; gap: 2cqw; font-weight: 800; font-size: 10cqw; line-height: 1; }
 .tbpts .tr span { font: 400 15cqw 'Luckiest Guy', sans-serif; } .tbpts .tr small { font-size: 8cqw; color: var(--muted); }

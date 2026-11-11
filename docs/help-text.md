@@ -68,8 +68,8 @@ Win: Complete a line on your card first.
 
 ## Bowling [bowling]
 Category: More skill
-Play: Tap to aim then tap for power.
-Win: {target} pins total.
+Play: Flick up the lane to roll: aim with the angle, roll harder with a faster flick. One roll a turn at a fresh rack.
+Win: {target} pins.{evenText}
 
 ## Brick Break [bricks]
 Category: More skill
@@ -78,7 +78,7 @@ Win: Clear your wall first.
 
 ## Bullseye [bullseye]
 Category: More skill
-Play: Stop the sideways line, then the up-down line. The dart lands where they cross. Bullseye is {bullPts}, the board is 1.
+Play: Flick up to throw a dart: aim with the angle, throw higher with a faster flick. Bullseye is {bullPts}, the inner ring 2, the outer ring 1.
 Win: First to {goal}.
 
 ## Bump [bump]

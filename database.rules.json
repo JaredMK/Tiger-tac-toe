@@ -352,16 +352,13 @@
       "bulls": {
         ".write": "auth != null && auth.token.admin === true",
         "board": {
-          ".validate": "newData.isNumber() && newData.val() >= 4 && newData.val() <= 30"
+          ".validate": "newData.isNumber() && newData.val() >= 16 && newData.val() <= 35"
+        },
+        "mid": {
+          ".validate": "newData.isNumber() && newData.val() >= 5 && newData.val() <= 28 && newData.val() < newData.parent().child('board').val()"
         },
         "bull": {
-          ".validate": "newData.isNumber() && newData.val() >= 0.5 && newData.val() <= 12 && newData.val() < newData.parent().child('board').val()"
-        },
-        "sweep": {
-          ".validate": "newData.isNumber() && newData.val() >= 400 && newData.val() <= 5000"
-        },
-        "ramp": {
-          ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 2"
+          ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 14 && newData.val() < newData.parent().child('mid').val()"
         },
         "$other": {
           ".validate": false

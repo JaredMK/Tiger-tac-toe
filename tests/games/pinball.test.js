@@ -12,7 +12,7 @@ const lcg = seed => () => (seed = (seed * 1664525 + 1013904223) % 4294967296) / 
 const PIN = P.PIN;
 
 test('pinball: every layout passes the layout check at every target size the settings allow (no two elements overlapping or within a unit, nothing outside the table, no pocket a ball can rest in, room for the ball at every spot): an overlap fails the build', () => {
-  assert.ok(P.PIN_LAYOUTS.length >= 6, `at least six layouts (${P.PIN_LAYOUTS.length})`);
+  assert.ok(P.PIN_LAYOUTS.length >= 4, `at least four layouts (${P.PIN_LAYOUTS.length})`);
   for (let k = 0; k < P.PIN_LAYOUTS.length; k++) {
     assert.ok(P.PIN_LAYOUTS[k].spots.length >= E.PINB.targets + 3, `${P.PIN_LAYOUTS[k].name}: spots to deal from (${P.PIN_LAYOUTS[k].spots.length})`);
     for (const size of [E.PINB_LIMITS.size[0], E.PINB_LIMITS.size[1]]) {   // (the smallest and the largest: clearance shrinks with size, and a pocket a target makes shows at one or the other)
@@ -46,31 +46,59 @@ test('pinball: a square deals a layout at random and seven of its spots, no two 
   assert.equal(tb.k, 0); assert.equal(tb.targets.length, 7); assert.deepEqual(tb.targets.map(t => t.name), P.PIN_CLASSIC.map(i => P.PIN_LAYOUTS[0].spots[i].name));
 });
 
-test('pinball: the move\'s checks — a real ball passes; a faked one (teleport, too fast, a hit far from its target, a hit already lit, a time that does not match) does not', () => {
-  const mini = E.newMini('pinball', E.makeRng('chk')), TB = P.pinTable(mini), r = P.pinAi(TB, mini.cfg, mini.lit.X, E.makeRng('real')).result;
-  const m = { hits: r.hits, ms: r.ms, rec: r.rec, end: r.end };
-  assert.equal(E.pinCheck(mini, 'X', m), null, 'a real ball');
-  const fr = P.pinUnpack(r.rec);
-  const tweak = f => P.pinPack(f(fr.map(x => x.slice())));
-  assert.equal(E.pinCheck(mini, 'X', Object.assign({}, m, { rec: tweak(a => { a[Math.floor(a.length / 2)][0] = 5; a[Math.floor(a.length / 2)][1] = 20; return a; }) })), 'jump', 'a teleport');
-  assert.equal(E.pinCheck(mini, 'X', Object.assign({}, m, { ms: m.ms * 2 })), 'time', 'more time than the recording');
-  if (m.hits.length) {
-    const [id, t] = m.hits[0];
-    assert.equal(E.pinCheck(mini, 'X', Object.assign({}, m, { hits: [[id, Math.max(0, t - 3)]].concat(m.hits.slice(1)) })), 'hit', 'a hit at the wrong moment');
-    const lit = JSON.parse(JSON.stringify(mini)); lit.lit.X[id] = 1;
-    assert.equal(E.pinCheck(lit, 'X', m), 'hit', 'a target already lit');
+test('pinball: a square dealt before the rework (a layout or a spot that is no longer there) still plays: its numbers come round to a layout and seven different spots of it, and the square can be won', () => {
+  for (const k of [4, 5, 6]) for (const t of [[0, 1, 2, 3, 4, 5, 6], [6, 7, 8, 9, 10, 11, 12], [12, 12, 12, 3, 9, 0, 1]]) {
+    const old = { type: 'pinball', cfg: E.pinConfig(), table: { k, t }, lit: { X: [0, 0, 0, 0, 0, 0, 0], O: [0, 0, 0, 0, 0, 0, 0] }, balls: { X: 0, O: 0 }, last: null }, tb = P.pinTable(old);
+    assert.equal(tb.k, k % P.PIN_LAYOUTS.length); assert.equal(tb.targets.length, 7); assert.equal(new Set(tb.targets.map(x => x.name)).size, 7, 'seven different spots');
+    assert.deepEqual(P.pinLayoutCheck(tb), [], `layout ${k} with spots ${t}: sound`);
   }
-  const far = TB.targets.find(t => !m.hits.some(h => h[0] === t.id));
-  if (far) assert.equal(E.pinCheck(mini, 'X', Object.assign({}, m, { hits: m.hits.concat([[far.id, 0.1]]) })), 'hit', 'a hit with the ball nowhere near');
-  assert.equal(E.pinCheck(mini, 'X', Object.assign({}, m, { rec: 'zz!' })), 'bad');
+});
+test('pinball: the move\'s check — a ball is its inputs: the computer\'s ball goes in; a ball without them (a recording, hits alone) is refused; the ball is plain arithmetic, the same every time', () => {
+  const mini = E.newMini('pinball', E.makeRng('chk')), mv = E.fingAi(mini, 'X', E.makeRng('real'));
+  assert.ok(typeof mv.log === 'string' && mv.steps > 0 && mv.rec === undefined, 'the move is the inputs, no recording');
+  assert.equal(E.applyMove(JSON.parse(JSON.stringify(mini)), 'X', mv, E.makeRng('a')).ok, true, 'a real ball');
+  for (const bad of [{ hits: mv.hits, ms: mv.ms, end: mv.end, rec: 'x' }, { hits: [[0, 1]], ms: 1000, end: 'drain' }, null, 7]) { const r = E.applyMove(JSON.parse(JSON.stringify(mini)), 'X', bad, E.makeRng('b')); assert.equal(r.ok, false); assert.ok(r.reason === 'log' || r.reason === 'bad', `refused (${r.reason})`); }
+  const again = E.fingAi(mini, 'X', E.makeRng('real'));
+  assert.deepEqual(again, mv, 'the same hand on the same table: the same ball');
+  // sine and cosine by arithmetic (the flippers' angles): right to 1e-10 at any angle (what matters is that it is the same arithmetic everywhere)
+  for (let a = -7; a <= 7; a += 0.013) { assert.ok(Math.abs(P.dsin(a) - Math.sin(a)) < 1e-10, `sin ${a}`); assert.ok(Math.abs(P.dcos(a) - Math.cos(a)) < 1e-10, `cos ${a}`); }
+});
+test('pinball: the flippers — a ball rolling down a resting flipper leaves across the table when it is flipped out at the tip and up its own side when flipped near the base, the angle and the speed rising smoothly between (the same on both flippers, mirrored); a held flipper cradles the ball without a jitter; a ball dropped on a resting flipper bounces dead', () => {
+  const F = PIN.flip, tb = P.pinAllSpots(0, E.pinConfig()), set = (w, x, y, vx, vy) => { w.inPlay = true; w.launchedAt = 0; w.gateOn = true; w.ball.position.x = x; w.ball.position.y = y; w.ball.velocity.x = vx; w.ball.velocity.y = vy; };
+  const shot = (rho, side) => {
+    const w = P.pinNew(tb, tb.cfg, tb.targets.map(() => 0)), sg = side === 'L' ? 1 : -1, ca = Math.cos(F.rest), sa = Math.sin(F.rest), rs = PIN.ballR + F.rb + (F.rt - F.rb) * rho / F.len;
+    set(w, F[side][0] + sg * (ca * rho + sa * rs), F[side][1] + sa * rho - ca * rs, sg * ca * 60, sa * 60);
+    w.flip[side].on = true;
+    for (let k = 0; k < 480; k++) { P.pinStep(w, 1 / 480); if (w.flip[side].struck) return { ang: Math.atan2(w.ball.velocity.x * sg, -w.ball.velocity.y) * 180 / Math.PI, sp: Math.hypot(w.ball.velocity.x, w.ball.velocity.y), ms: w.t * 1000 }; }
+    return null;
+  };
+  let last = null;
+  for (let rho = 6; rho <= 19.5; rho += 1.5) {
+    const l = shot(rho, 'L'), r = shot(rho, 'R');
+    assert.ok(l && r, `struck at ${rho}`);
+    assert.ok(Math.abs(l.ang - r.ang) < 1e-6 && Math.abs(l.sp - r.sp) < 1e-6, 'the two flippers mirror each other');
+    assert.ok(l.ms < 60, `the ball leaves within the swing (${l.ms.toFixed(0)} ms)`);
+    if (last) { assert.ok(l.ang > last.ang + 2 && l.ang < last.ang + 9, `the angle rises smoothly along the flipper (${last.ang.toFixed(1)} -> ${l.ang.toFixed(1)} at ${rho})`); assert.ok(l.sp > last.sp, 'faster towards the tip'); }
+    last = l;
+  }
+  assert.ok(shot(6, 'L').ang < 0 && shot(19.5, 'L').ang > 35, 'near the base: up its own side; at the tip: across the table');
+  // the cradle
+  const w = P.pinNew(tb, tb.cfg, tb.targets.map(() => 0)); set(w, 14.8, 126, 0, 30); w.flip.L.on = true;
+  let moved = 0, at = null;
+  for (let k = 0; k < 480 * 5; k++) { P.pinStep(w, 1 / 480); if (w.t > 3) { if (at) moved = Math.max(moved, Math.hypot(w.ball.position.x - at[0], w.ball.position.y - at[1])); at = [w.ball.position.x, w.ball.position.y]; } }
+  assert.ok(!w.over && moved < 1e-6 && w.nudges === 0, `the ball sits still on the held flipper (moves ${moved} a step)`);
+  assert.ok(Math.hypot(w.ball.position.x - F.L[0], w.ball.position.y - F.L[1]) < 9, 'by the pivot, against the guide');
+  // a dead bounce
+  const d = P.pinNew(tb, tb.cfg, tb.targets.map(() => 0)); set(d, F.L[0] + 12, F.L[1] - 14, 0, 180);
+  let up = 0; for (let k = 0; k < 120; k++) { P.pinStep(d, 1 / 480); up = Math.max(up, -d.ball.velocity.y); }
+  assert.ok(up < 80, `no more than a soft bounce off a resting flipper (${up.toFixed(0)} units a second up)`);
 });
 test('pinball: lit targets stay lit, for that player only; lighting all seven wins the square', () => {
   const st = E.newMatch(lcg(3), { games: ['pinball'] }), i = 4, mini = st.squares[i].mini;
   let balls = 0;
   while (!st.squares[i].owner && balls < 80) {
     const p = st.turn, before = mini.lit[p].slice(), other = mini.lit[E.other(p)].slice();
-    const r = P.pinAi(P.pinTable(mini), mini.cfg, mini.lit[p], E.makeRng('lit' + balls)).result;
-    const out = E.playMove(st, i, { hits: r.hits, ms: r.ms, rec: r.rec, end: r.end }, E.makeRng('x' + balls));
+    const out = E.playMove(st, i, E.fingAi(mini, p, E.makeRng('lit' + balls)), E.makeRng('x' + balls));
     assert.equal(out.ok, true, out.reason);
     const now = st.squares[i].mini.lit;
     before.forEach((v, k) => { if (v) assert.equal(now[p][k], 1, 'a lit target stays lit'); });
@@ -102,7 +130,7 @@ test('pinball: a ball is its inputs (the log: the flippers as they change, each 
   assert.deepEqual(P.pinLogPack(log), a.log, 'the log reads back as it was');
   const w2 = P.pinReplay(TB, mini.cfg, mini.lit.X, log, a.steps), r2 = P.pinResult(w2);
   assert.deepEqual([r2.hits, r2.ms, r2.end, w2.n], [a.result.hits, a.result.ms, a.result.end, a.steps], 'the same ball again');
-  assert.equal(r2.rec, a.result.rec, 'the same recording');
+  assert.deepEqual(r2.events, a.result.events, 'the same events at the same moments'); assert.deepEqual([w2.ball.position, w2.ball.velocity], [a.w.ball.position, a.w.ball.velocity], 'to the last bit');
   const move = { hits: a.result.hits, ms: a.result.ms, end: a.result.end, log: a.log, steps: a.steps };
   const c = E.pinReplayCheck(mini, 'X', move);
   assert.equal(c.why, null); assert.equal(c.diff, false); assert.deepEqual(c.sim.hits, a.result.hits);
@@ -112,7 +140,7 @@ test('pinball: a ball is its inputs (the log: the flippers as they change, each 
     const m2 = JSON.parse(JSON.stringify(mini)), forged = Object.assign({}, move, { hits: move.hits.concat([[far.id, 0.1]]) });
     const r = E.applyMove(m2, 'X', forged, E.makeRng('x'));
     assert.equal(r.ok, true); assert.equal(m2.lit.X[far.id], 0, 'the forged hit is not lit'); assert.equal(m2.last.diff, true, 'the claim differed from the ball');
-    assert.deepEqual(m2.last.hits.map(h => h[0]), a.result.hits.map(h => h[0])); assert.equal(m2.last.rec, a.result.rec, 'the server\'s own recording rides the move');
+    assert.deepEqual(m2.last.hits.map(h => h[0]), a.result.hits.map(h => h[0])); assert.equal(m2.last.log, a.log, 'the inputs ride the move (the other phone replays the ball from them)'); assert.equal(m2.last.rec, undefined, 'no recording');
   }
   const m3 = JSON.parse(JSON.stringify(mini));
   assert.equal(E.applyMove(m3, 'X', move, E.makeRng('y')).ok, true); assert.equal(m3.last.diff, undefined, 'an honest claim: nothing noted');
@@ -123,7 +151,7 @@ test('pinball: a ball is its inputs (the log: the flippers as they change, each 
   P.pinRun(w, 300, { L: false, R: false }); P.pinLaunch(w, 0.7137); P.pinRun(w, 16.7, { L: true, R: false }); P.pinRun(w, 33.3, { L: true, R: true }); P.pinRun(w, 9, { L: false, R: false });
   let k = 0; while (!w.over && k++ < 60 * 20) P.pinRun(w, 1000 / 60 + (k % 3) * 2.5, { L: k % 40 < 8, R: k % 50 < 9 });
   const rw = P.pinResult(w), again = P.pinResult(P.pinReplay(TB, mini.cfg, mini.lit.X, P.pinLogUnpack(P.pinLogPack(w.log), w.n), w.n));
-  assert.deepEqual([again.hits, again.ms, again.end, again.rec], [rw.hits, rw.ms, rw.end, rw.rec], 'frames of any length: the same ball from the log');
+  assert.deepEqual([again.hits, again.ms, again.end, again.events], [rw.hits, rw.ms, rw.end, rw.events], 'frames of any length: the same ball from the log');
   assert.ok(w.log.some(([, v]) => v === 4 + 71), 'the launch power kept to a hundredth (as the launch itself uses it)');
 });
 

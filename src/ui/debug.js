@@ -13,9 +13,7 @@ import { cardName } from '../games/shared/cards.js';
 import { fingMs, fingRaw } from '../games/shared/finger.js';
 import { PHYSICS, physicsReady } from '../games/shared/physics.js';
 import { runSecs, runSpeed } from '../games/shared/runner.js';
-import { bowlDraft, bowlNow, bowlTap, setBowlDraft, setBowlNow } from '../games/bowling/view.js';
 import { BULLS } from '../games/bullseye/rules.js';
-import { bullDraft, bullsLinePos, setBullDraft } from '../games/bullseye/view.js';
 import { markCoins } from '../games/coins/rules.js';
 import { diceSlot } from '../games/dice/rules.js';
 import { echoSeq } from '../games/echo/rules.js';
@@ -106,8 +104,6 @@ const names = {
   other: () => other,
   matchRecord: () => matchRecord,
   menuOpen: () => menuOpen,
-  bullsLinePos: () => bullsLinePos,
-  bullDraft: () => bullDraft,
   BULLS: () => BULLS,
   attemptMove: () => attemptMove,
   echoSeq: () => echoSeq,
@@ -171,8 +167,6 @@ const names = {
   runPre: () => runPre,
   runShow: () => runShow,
   newTimer: () => newTimer,
-  bowlDraft: () => bowlDraft,
-  bowlTap: () => bowlTap,
   BURSTS: () => BURSTS,
   loginBusy: () => loginBusy,
   newMatch: () => newMatch,
@@ -184,7 +178,6 @@ const names = {
   leaveRoom: () => leaveRoom,
   leaveSquare: () => leaveSquare,
   markCoins: () => markCoins,
-  bowlNow: () => bowlNow,
   startMatch: () => startMatch,
   trackStart: () => trackStart,
   mv: () => mv,
@@ -204,7 +197,7 @@ const names = {
   setTune: () => setTune, tuneLive: () => tuneLive,
   cardData: () => cardData, paintCard: () => paintCard, renderCard: () => renderCard, shareResult: () => shareResult,
 };
-const setters = { scUi: setScUi, render: setRender, bullDraft: setBullDraft, connected: setConnected, fingDraw: setFingDraw, moveRejected: setMoveRejected, fingFrame: setFingFrame, call: setCall, net: assignNet, acct: setAcct, bowlDraft: setBowlDraft, cpuTimer: setCpuTimer, cpuPlan: setCpuPlan, bowlNow: setBowlNow, devLast: setDevLast, menuOpen: setMenuOpen };
+const setters = { scUi: setScUi, render: setRender, connected: setConnected, fingDraw: setFingDraw, moveRejected: setMoveRejected, fingFrame: setFingFrame, call: setCall, net: assignNet, acct: setAcct, cpuTimer: setCpuTimer, cpuPlan: setCpuPlan, devLast: setDevLast, menuOpen: setMenuOpen };
 export function init() {
   for (const [name, get] of Object.entries(names)) Object.defineProperty(window, name, { get, set: setters[name], configurable: true });
 }

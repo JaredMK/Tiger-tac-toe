@@ -2,7 +2,7 @@
 // the computer's hand).
 import { tune } from '../../core/tune.js';
 import { PHYSICS } from './physics.js';
-import { PINB, pinCheck, pinReplayCheck } from '../pinball/rules.js';
+import { PINB, pinReplayCheck } from '../pinball/rules.js';
 import { SCOOP, scoopAi, scoopResult, scoopStart, scoopStep } from '../scoop/rules.js';
 import { hopAi, hopResult, hopStart, hopStep } from '../skyhop/rules.js';
 
@@ -15,7 +15,9 @@ import { hopAi, hopResult, hopStart, hopStep } from '../skyhop/rules.js';
 // step) with the result, and the server plays them through again and takes the result only when it is
 // the same, in no more time than the turn has lasted. The computer plays through the same steps with a
 // hand of its own (it reacts a little late and aims a little off), and every phone replays any attempt it
-// did not play from those inputs, at full speed. Pinball runs on Matter.js (physics.js).
+// did not play from those inputs, at full speed. Pinball's ball is worked out the same way (physics-sim.js, its
+// own fixed steps of plain arithmetic): a ball goes in as its inputs, is played through again wherever it is
+// checked, and replays from them on the other phone.
 export const FINGER_TYPES = ['skyhop', 'scoop', 'pinball'];
 // grace: seconds of safety at the start of an attempt; step: the simulation step; every: the finger is
 // read every 2 steps (60 times a second); slackMs: how much longer than the turn an attempt may be (the
@@ -89,7 +91,7 @@ export function fingHand(mini) {
 // The finger games' moves: checked (Sky Hop and Scoop Stack played through again from their inputs),
 // then the attempt's result. Returns { why } or { to, sim } (to: the progress after it).
 export function fingCheck(mini, p, m) {
-  if (mini.type === 'pinball') return m && typeof m === 'object' && m.log != null ? pinReplayCheck(mini, p, m) : { why: pinCheck(mini, p, m) };   // its inputs: the ball played through again here (online); its recording: checked (local play, the computer's own ball)
+  if (mini.type === 'pinball') return m && typeof m === 'object' && m.log != null ? pinReplayCheck(mini, p, m) : { why: 'log' };   // its inputs: the ball played through again here (online, local play and the computer's own ball alike); a ball without them is no ball
   if (!m || typeof m !== 'object') return { why: 'bad' };
   const steps = Number(m.steps), maxV = Math.ceil((mini.type === 'skyhop' ? HOP.w : SCOOP.w) * FING.q);
   if (!Number.isInteger(steps) || steps < 1 || steps > FING.maxSecs / FING.step) return { why: 'bad' };
@@ -101,17 +103,17 @@ export function fingCheck(mini, p, m) {
   return { why: null, sim };
 }
 // The computer's attempt (an average player's hand): the move, played through.
-export function fingAi(mini, p, rng) {
+export function fingAi(mini, p, rng, level) {   // level: Pinball's hand alone takes one ('easy' | 'normal' | 'hard': physics-sim.js pinAi)
   if (mini.type === 'skyhop') return hopAi(mini, p, rng).move;
   if (mini.type === 'scoop') return scoopAi(mini, p, rng).move;
-  const r = PHYSICS.lib.pinAi(PHYSICS.lib.pinTable(mini), mini.cfg, mini.lit[p], rng, fingHand(mini)).result;
-  return { hits: r.hits, ms: r.ms, rec: r.rec, end: r.end };
+  const a = PHYSICS.lib.pinAi(PHYSICS.lib.pinTable(mini), mini.cfg, mini.lit[p], rng, Object.assign({}, fingHand(mini), level ? { level } : {})), r = a.result;
+  return { hits: r.hits, ms: r.ms, end: r.end, log: a.log, steps: a.steps };
 }
 // Progress: Sky Hop's height, Scoop Stack's stack, Pinball's lit targets; and how far to go.
 export const fingAt = (mini, p) => (mini.type === 'skyhop' ? mini.height[p] : mini.type === 'scoop' ? mini.stack[p].length : mini.lit[p].filter(Boolean).length);
 export const fingGoal = mini => (mini.type === 'pinball' ? mini.lit.X.length : mini.cfg.target);
 // The computer's attempts still needed, about (what it gets in one, from its hand: see the tuning in the tests).
-export const FING_GAIN = { skyhop: 113, scoop: 5.6, pinball: 1.45 };
+export const FING_GAIN = { skyhop: 113, scoop: 5.6, pinball: 1.1 };   // (Pinball, November 2026's table: 1.07 targets a ball for the usual hand, tests/sim/pinball.sim.js)
 export const fingNeeds = (mini, p) => Math.max(1, (fingGoal(mini) - fingAt(mini, p)) / FING_GAIN[mini.type]);
 // How long an attempt lasted (fingRaw), and how long it takes to play through on another phone (the
 // replay: as it was, or faster for an attempt longer than replayMax), in ms.
@@ -126,8 +128,7 @@ export function fingerApply(mini, p, m, rng, idx) {   // one attempt: checked (p
     if (c.why) return { ok: false, reason: c.why };
     if (mini.type === 'skyhop') { to = Math.max(from, hopResult(c.sim).h); mini.height[p] = to; last = { by: p, from, to, log: m.log, steps: m.steps, end: m.end, try: mini.tries[p] }; }
     else if (mini.type === 'scoop') { mini.stack[p] = mini.stack[p].concat(c.sim.got).slice(0, mini.cfg.target); to = mini.stack[p].length; last = { by: p, from, to, log: m.log, steps: m.steps, end: m.end, try: mini.tries[p], got: c.sim.got.slice() }; }
-    else if (c.sim) { const r = c.sim; for (const [id] of r.hits) mini.lit[p][id] = 1; to = fingAt(mini, p); last = Object.assign({ by: p, from, to, hits: r.hits.map(h => [h[0], Math.round(Number(h[1]) * 1000) / 1000]), ms: r.ms, rec: r.rec, end: r.end }, c.diff ? { diff: true } : {}); }   // the ball as played through again here, whatever the phone said of it
-    else { for (const [id] of m.hits) mini.lit[p][id] = 1; to = fingAt(mini, p); last = { by: p, from, to, hits: m.hits.map(h => [h[0], Math.round(Number(h[1]) * 1000) / 1000]), ms: Math.round(Number(m.ms)), rec: m.rec, end: String(m.end || 'drain') }; }
+    else { const r = c.sim; for (const [id] of r.hits) mini.lit[p][id] = 1; to = fingAt(mini, p); last = Object.assign({ by: p, from, to, hits: r.hits.map(h => [h[0], Math.round(Number(h[1]) * 1000) / 1000]), ms: r.ms, end: r.end, log: m.log, steps: Number(m.steps) }, c.diff ? { diff: true } : {}); }   // the ball as played through again here, whatever the phone said of it; its inputs ride the move (the other phone replays the ball from them)
   }
   if (mini.type === 'pinball') mini.balls[p] += 1; else mini.tries[p] += 1;
   mini.last = last;
@@ -137,7 +138,7 @@ export function fingerApply(mini, p, m, rng, idx) {   // one attempt: checked (p
 }
 
 // The finger games: the computer's attempt is played only for the square it chose.
-export function fingPlay(state, best, me, rng) { if (best && best.move && best.move.fing) best.move = fingAi(state.squares[best.square].mini, me, rng); return best; }
+export function fingPlay(state, best, me, rng) { if (best && best.move && best.move.fing) best.move = fingAi(state.squares[best.square].mini, me, rng, best.move.level); return best; }
 export function fingerMoveFlash(m, p, range, bjFrom, mini, flash) {
   const l = mini.last; flash.fing = Object.assign({ type: mini.type, goal: fingGoal(mini), at: { X: fingAt(mini, 'X'), O: fingAt(mini, 'O') } }, JSON.parse(JSON.stringify(l))); return;
 }

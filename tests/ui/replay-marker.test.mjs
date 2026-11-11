@@ -1,6 +1,7 @@
-// A computer's (or another player's) taps replayed in Bowling and Bullseye: the marker stops exactly where it tapped and
-// stays there (Bowling's meter is timed to be at the recorded power when the tap comes; Bullseye's lines sweep straight
-// to the recorded spot, never past it and back). Rendered in Node with the browser's names stubbed (no page needed).
+// A computer's (or another player's) input replayed in Bowling and Bullseye: what the replay shows is exactly what they
+// did. Bowling, a flick now: the streak along their recorded aim, as long as their recorded power, then that very roll.
+// Bullseye, a flick now, replays the flick and lands the dart exactly where the move did. Rendered in Node with the
+// browser's names stubbed (no page needed).
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
@@ -13,111 +14,62 @@ const require = createRequire(import.meta.url);
 const E = require('../engine.js');
 const B = await import('../../src/games/bowling/view.js');
 
-test('Bowling: a replayed power tap — the meter rises and falls at its own speed, is exactly at the recorded power at the moment of the tap, and stays there', () => {
-  const per = E.bowlConfig().meterMs;
-  for (const [power, gap] of [[0.646, 900], [0.1, 900], [0.97, 900], [0.5, 350], [0.3, 2300], [1, 900], [0, 900]]) {
-    const log = [[0, 'bowl', 'aim=-0.038'], [gap, 'bowl', `power=${power}`]];
-    const r = { sq: 4, by: 'O', list: log, k: 1, speed: 1 };           // (the driver has taken the aim input: k is the next one)
-    B.replay.input('bowl', 'aim=-0.038', r);
-    const dr = B.bowlDraft;
-    assert.ok(dr && dr.rep && dr.step === 2 && dr.to, 'the meter is under way');
-    const t0 = dr.t0;
-    let prev = -1, passed = false;
-    for (let ms = 0; ms <= gap + 3000; ms += 7) {
-      const v = B.bowlNow(dr, t0 + ms).power;
-      if (ms >= gap) assert.equal(v, power, `${power}: at and after the tap (${ms} ms) the meter is at the recorded power`);
-      if (ms < gap) assert.ok(v >= 0 && v <= 1, 'within the meter');
-      if (ms >= gap) passed = true;
-      prev = v;
-    }
-    assert.ok(passed && prev === power);
-    B.replay.input('bowl', `power=${power}`, Object.assign({}, r, { k: 2 }));   // the tap itself: locked at the recorded power
-    assert.deepEqual([B.bowlDraft.step, B.bowlDraft.power], [3, power]);
-    assert.equal(B.bowlNow(B.bowlDraft, t0 + gap).power, power);
+test('Bowling: a replayed flick — the replay\'s one input is the flick itself, their aim and power exactly; nothing else is taken', () => {
+  for (const [aim, power] of [[0.055, 0.714], [-0.19, 0.7], [0, 1], [0.3, 0.85], [-0.07, 0.946]]) {
+    const r = { sq: 4, by: 'O', list: [[0, 'bowl', `aim=${aim}|power=${power}`]], k: 1, speed: 1.5 };
+    assert.equal(B.replay.input('bowl', `aim=${aim}|power=${power}`, r), true, 'taken (no press sound of the shared replay\'s)');
+    const st = B.bowlRepOn();
+    assert.deepEqual([st.sq, st.p, st.aim, st.power, st.speed], [4, 'O', aim, power, 1.5], 'the streak is their flick: its line their aim, its length their power');
+    assert.deepEqual(B.replay.synth({ aim, power }), [[0, 'bowl', `aim=${aim}|power=${power}`]], 'the computer\'s: made from its move, the same input');
   }
-  // no power in the log after the aim: the meter just runs (nothing to land on)
-  B.replay.input('bowl', 'aim=0.1', { sq: 4, by: 'O', list: [[0, 'bowl', 'aim=0.1']], k: 1, speed: 1 });
-  assert.equal(B.bowlDraft.to, null);
+  assert.equal(B.replay.input('bowl', 'aim=0.1', { sq: 4, by: 'O' }), false, 'an old client\'s tap (aim alone) is not a flick');
+  assert.equal(B.replay.input('drag', 'a=0.1,p=0.5', { sq: 4, by: 'O' }), false);
+  assert.equal(B.replay.synth('auto'), null);
 });
 
-test('Bullseye: a replayed throw sweeps each line straight to where it stopped (never past it and back), for any stop', () => {
-  for (const x of [0, 0.02, 0.2, 0.39, 0.4, 0.5, 0.93, 1]) for (const y of [0.01, 0.3, 0.41, 0.77, 1]) {
-    const A = E.bullsAim({ x, y, per: 1040 });
-    assert.ok(A.vx.it <= 1 && A.vy.it <= 1, `(${x}, ${y}) at most one pass`);
-    assert.ok(Math.abs(A.vx.it - Math.max(0.05, x)) < 0.002 && Math.abs(A.vy.it - Math.max(0.05, y)) < 0.002, 'ends where it stopped');
+// Bullseye is a flick now (November 2026), with no marker to stop: someone else's throw shows the flick as it was
+// made (a streak from the hand along the throw's own line), then the dart flies from the hand and sticks exactly
+// where the move landed it.
+test('Bullseye: a replayed throw — the flick is the move\'s own, and the dart flies from the hand to exactly where it landed', async () => {
+  const V = await import('../../src/games/bullseye/view.js');
+  const hand = E.BULLS.hand;
+  for (const [aim, power] of [[0, 0.5], [-0.62, 0.31], [0.44, 0.9], [1, 0], [-1, 1]]) {
+    assert.deepEqual(V.replay.synth({ aim, power }), [[0, 'dart', `aim=${aim}|power=${power}`]], 'the computer\'s flick, made from its move');
+    assert.equal(V.replay.input('dart', `aim=${aim}|power=${power}`, { sq: 4, by: 'O' }), true);
+    const m = E.newMini('bullseye', E.makeRng('rm')); E.applyMove(m, 'O', { aim, power }, E.makeRng('rm' + aim));
+    const g = { aim, power, x: m.last.x, y: m.last.y, zone: m.last.zone, pts: m.last.pts }, P = E.bullsPlan(E.BULLT.pre);
+    const d0 = V.dartAt(g, P, 0), d1 = V.dartAt(g, P, P.pre), mid = V.dartAt(g, P, (P.pre + P.hit) / 2), hit = V.dartAt(g, P, P.hit), end = V.dartAt(g, P, P.end + 500);
+    assert.deepEqual([d0.x, d0.y, d0.w, d1.x, d1.y, d1.w], [hand[0], hand[1], 0, hand[0], hand[1], 0], 'in the hand while the flick shows, and as the flight begins');
+    assert.ok(mid.w > 0.3 && mid.w < 0.7 && !mid.stuck, 'half way to the wall half way through');
+    assert.deepEqual([hit.x, hit.y, hit.w, hit.stuck], [g.x, g.y, 1, true], 'it sticks exactly where the move landed it');
+    assert.deepEqual([end.x, end.y, end.wob], [g.x, g.y, 0], 'and stays there, still');
+    let prev = -1;
+    for (let t = P.pre; t <= P.hit; t += 10) { const d = V.dartAt(g, P, t); assert.ok(d.w >= prev, 'always away towards the wall, never back'); prev = d.w; }
   }
+  assert.equal(V.replay.input('bowl', 'aim=0.1', { sq: 4, by: 'O' }), false, 'not its input');
+  assert.equal(V.replay.synth({ x: 0.5, y: 0.5 }), null, 'the old two-line stop has no flick');
 });
 
-// The computer's roll (and an online opponent's, from their log) replayed through ui/replay.js: from the replay's
-// start the arrow sweeps at its own speed, timed to be at the recorded aim exactly when the aim tap comes, and holds
-// there through the lock (no sweep of this phone's that jumps to theirs); then the meter lands on the recorded power at
-// the power tap and holds. Normal and Speed (the computer's lead and the replay's speed), a replay begun after the
-// zoom in has landed, a late join, a timer that fires late, and the next replay in the same square.
-test('Bowling: a replayed roll — the arrow and the meter are at the recorded aim and power at and after each tap, with no jump', async () => {
+// The computer's roll (and an online opponent's, from their log) replayed through ui/replay.js: the inputs stage holds
+// one input, the flick, pressed once its lead is over (the streak grows from the ball along the recorded line); the
+// roll follows a press later. Normal and Speed, the computer's and a logged one.
+test('Bowling: a replayed roll — one input, the flick, at its moment; then the move', async () => {
   const R = await import('../../src/ui/replay.js');
   const { GAMES } = await import('../../src/games/index.js');
   GAMES.bowling.view = B;                                        // (as main.js registers it: the replay finds Bowling's hooks)
-  const { aimMs, meterMs } = E.bowlConfig(), MAX = 0.2, step = 7;
-  let T = 0;
-  const realPerf = globalThis.performance;
-  Object.defineProperty(globalThis, 'performance', { value: { now: () => T }, configurable: true, writable: true });
-  try {
-    const cases = [];
-    for (const [aim, power] of [[0.055, 0.714], [-0.19, 0.3], [0, 1], [0.2, 0.05], [-0.07, 0.646]])
-      for (const [lead, speed, label] of [[300, 1, 'Normal'], [150, 1.5, 'Speed 1.5x'], [150, 2, 'Speed 2x']])
-        for (const late of [0, 45]) cases.push({ aim, power, lead, speed, label, late });
-    cases.push({ aim: 0.12, power: 0.8, lead: 0, speed: 1.5, label: 'online, from the log', late: 0, list: [[0, 'bowl', 'aim=0.12'], [640, 'bowl', 'power=0.8']] });
-    cases.push({ aim: -0.12, power: 0.4, lead: 300, speed: 1, label: 'joined late', late: 0, elapsed: 120 });
-    for (const c of cases) {
-      const tag = `${c.label} aim ${c.aim} power ${c.power}${c.late ? ' (timer late)' : ''}`;
-      T += 10000;
-      B.setBowlDraft(null);
-      assert.equal(B.bowlKeep({ zoom: 4, turn: 'O' }, false), null, `${tag}: no arrow while the zoom in lands (the square locked)`);
-      T += 300;                                                    // (the replay starts once the zoom in has landed)
-      R.repStart({ cpu: !c.list, sq: 4, by: 'O', type: 'bowling', mini: { type: 'bowling' }, move: { aim: c.aim, power: c.power }, list: c.list || null, lead: c.lead, speed: c.speed, elapsed: c.elapsed || 0, onMove: () => {} });
-      const r = R.rep;
-      assert.ok(r && r.stage === 'inputs', `${tag}: the replay is on`);
-      clearTimeout(r.timer);                                       // (its inputs applied here, at their moments on a fake clock)
-      const dr = B.bowlKeep({ zoom: 4, turn: 'O' }, true);
-      assert.ok(dr && dr.rep === r && dr.step === 1, `${tag}: the replay's own arrow from its start`);
-      assert.equal(B.bowlKeep({ zoom: 4, turn: 'O' }, true), dr, `${tag}: kept on every render`);
-      const aimDue = R.repDue(r, r.list[0]), powDue = R.repDue(r, r.list[1]);
-      let prev = null;
-      for (let t = T; t <= aimDue + c.late; t += step) {
-        const v = B.bowlNow(dr, t).aim;
-        assert.ok(v >= -MAX - 1e-9 && v <= MAX + 1e-9, `${tag}: on the lane`);
-        if (t >= aimDue) assert.equal(v, c.aim, `${tag}: the arrow at the recorded aim at and after the tap (${Math.round(t - aimDue)} ms)`);
-        if (prev != null) assert.ok(Math.abs(v - prev) <= 2 * MAX * step / aimMs + 0.002, `${tag}: the arrow sweeps, never jumps (${prev} -> ${v})`);
-        prev = v;
-      }
-      T = Math.max(T, aimDue + c.late);                            // the aim tap
-      r.k = 1; B.replay.input('bowl', r.list[0][2], r);
-      const d2 = B.bowlDraft;
-      assert.ok(d2.step === 2 && d2.rep === r, `${tag}: the meter under way`);
-      assert.equal(B.bowlNow(d2, T).aim, c.aim, `${tag}: locked where it stopped`);
-      assert.equal(B.bowlKeep({ zoom: 4, turn: 'O' }, true), d2, `${tag}: kept after the lock`);
-      prev = null;
-      for (let t = T; t <= powDue + 2000; t += step) {
-        const v = B.bowlNow(d2, t);
-        assert.equal(v.aim, c.aim, `${tag}: the arrow stays locked`);
-        if (t >= powDue) assert.equal(v.power, c.power, `${tag}: the meter at the recorded power at and after the tap (${Math.round(t - powDue)} ms)`);
-        if (prev != null) assert.ok(Math.abs(v.power - prev) <= step / meterMs + 0.002, `${tag}: the meter moves, never jumps (${prev} -> ${v.power})`);
-        prev = v.power;
-      }
-      T = Math.max(T, powDue + c.late);                            // the power tap
-      r.k = 2; B.replay.input('bowl', r.list[1][2], r);
-      assert.deepEqual([B.bowlDraft.step, B.bowlNow(B.bowlDraft, T).aim, B.bowlNow(B.bowlDraft, T).power], [3, c.aim, c.power], `${tag}: both locked for the roll`);
-      R.repStop();
-    }
-    // the next replay in the same square: its own arrow, never the last roll's locked one
-    T += 10000;
-    R.repStart({ cpu: true, sq: 4, by: 'O', type: 'bowling', mini: { type: 'bowling' }, move: { aim: -0.1, power: 0.5 }, lead: 300, speed: 1, onMove: () => {} });
-    clearTimeout(R.rep.timer);
-    const nx = B.bowlKeep({ zoom: 4, turn: 'O' }, true);
-    assert.ok(nx.step === 1 && nx.rep === R.rep && nx.to && nx.to.aim === -0.1, 'a fresh arrow for the new replay');
+  for (const c of [{ aim: 0.055, power: 0.714, lead: 300, speed: 1 }, { aim: -0.19, power: 1, lead: 150, speed: 1.5 }, { aim: 0.12, power: 0.8, lead: 0, speed: 1.5, list: [[0, 'bowl', 'aim=0.12|power=0.8']] }]) {
+    let moved = 0;
+    R.repStart({ cpu: !c.list, sq: 4, by: 'O', type: 'bowling', mini: { type: 'bowling' }, move: { aim: c.aim, power: c.power }, list: c.list || null, lead: c.lead, speed: c.speed, onMove: () => { moved++; } });
+    const r = R.rep;
+    assert.ok(r && r.stage === 'inputs', 'the replay is on, its inputs first');
+    assert.deepEqual(r.list, [[0, 'bowl', `aim=${c.aim}|power=${c.power}`]], 'one input: the flick');
+    assert.ok(Math.abs(R.repDue(r, r.list[0]) - (r.at + c.lead)) < 1e-6, 'due once the lead is over');
+    clearTimeout(r.timer);
+    r.k = 1; assert.equal(B.replay.input(r.list[0][1], r.list[0][2], r), true);
+    assert.deepEqual([B.bowlRepOn().aim, B.bowlRepOn().power, B.bowlRepOn().p], [c.aim, c.power, 'O']);
+    assert.equal(moved, 0, 'the roll is not made by the input: it follows');
+    R.repSkip();
+    assert.equal(moved, 1, 'Skip (or the press\'s end): the move');
     R.repStop();
-  } finally {
-    Object.defineProperty(globalThis, 'performance', { value: realPerf, configurable: true, writable: true });
-    B.setBowlDraft(null);
   }
 });
