@@ -3924,3 +3924,73 @@ button.die.bgldie { cursor: pointer; }
 .trpsh.h .rpsv { transform: rotate(180deg); }
 .trpsh.m.X { box-shadow: 0 0 0 1cqw var(--x); background: color-mix(in srgb, var(--x) 14%, transparent); }
 .trpsh.m.O { box-shadow: 0 0 0 1cqw var(--o); background: color-mix(in srgb, var(--o) 18%, transparent); }
+/* Thirty-One (November 2026, games/t31): the felt with the deck and the pile, the mover's hand of 3 (4 with a card taken). */
+.t31 .t31sc { display: inline-flex; align-items: baseline; gap: 1px; font: 400 18px/1 'Luckiest Guy', sans-serif; padding-top: 3px; }
+.t31 .t31sc small { font-size: 12px; opacity: .7; }
+.t31felt { flex: 1; min-height: 0; display: grid; grid-template-rows: 1fr auto 1fr; align-items: center; justify-items: center; gap: 6px; padding: 10px; background: radial-gradient(ellipse at 50% 40%, #4f8a5a, #2f5f3a); border: 3.5px solid var(--ink); border-radius: 18px; container-type: size; --cw: min(64px, 17cqw, 15cqh); }
+.t31felt .arcres, .t31felt .arcnote { color: var(--paper); min-height: 1.3em; margin: 0; text-align: center; }
+.t31felt .arcres .cshort.red { color: #ffb4a8; }
+.t31top { display: flex; gap: calc(var(--cw) * .5); align-items: center; }
+.t31top button, .t31c { all: unset; position: relative; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.t31top button:disabled, .t31c:disabled { cursor: default; }
+.t31top .plc, .t31row .plc { --cw: inherit; }
+.t31n { position: absolute; right: -6px; bottom: -6px; min-width: 22px; height: 22px; padding: 2px 4px 0; box-sizing: border-box; border-radius: 11px; background: var(--paper); border: 2px solid var(--ink); font: 400 13px/18px 'Luckiest Guy', sans-serif; text-align: center; }
+.t31top button:not(:disabled) .plc { filter: drop-shadow(0 0 6px rgba(255, 240, 160, .85)); }
+.t31hand { display: flex; align-items: center; gap: 8px; }
+.t31mk { width: 26px; height: 26px; flex: none; overflow: visible; }
+.t31row { display: flex; gap: calc(var(--cw) * .14); align-items: center; }
+.t31slot { display: inline-block; width: var(--cw); height: calc(var(--cw) * 1.4); }
+.t31c.best .pcf.fc { box-shadow: 0 3px 0 var(--ink), inset 0 0 0 3px var(--gold, #f2b705); }
+.t31c:not(:disabled):active .plc { transform: translateY(-4px); }
+.t31row .t31dk { --sx: 0px; --sy: -110px; } .t31row .t31pk { --sx: 60px; --sy: -110px; } .t31pile .t31in { --sx: -40px; --sy: 110px; }
+.tart.tt31w { gap: 2cqw; } .tart.tt31w .tpic { width: 54cqw; } .tart.tt31w .tpip { width: auto; flex: 1; }
+.tt31 { width: 100%; height: auto; overflow: visible; }
+.tt31 .tt31c { fill: #fff; stroke: var(--ink); stroke-width: 1.4; } .tt31 .tt31c.X { stroke: var(--x); stroke-width: 2.6; } .tt31 .tt31c.O { stroke: var(--o); stroke-width: 2.6; }
+.tt31 .tt31s { fill: var(--ink); } .tt31 .tt31s.red { fill: #d6301e; }
+.tt31w .tsn { font: 400 var(--mt)/1 'Luckiest Guy', sans-serif; padding-top: 2px; }
+/* Rummy Lite (rummy): the other player's hand small, the felt with the deck and the pile, the hand of the player on the move; melds ringed in their colour */
+.g-arc.rmy { gap: 6px; }
+.rmyopp { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 30px; container-type: inline-size; }
+.rmyopp .rmymk { width: 18px; height: 18px; flex: none; overflow: visible; }
+.rmyoh { display: flex; gap: 3px; } .rmyoh .tcd { width: 22px; height: 30px; border-width: 2px; border-radius: 4px; } .rmyoh .tcd b { font-size: 12px; } .rmyoh .tcd svg { width: 11px; height: 11px; }
+.rmyoh .tcd.rmyti.X { background: color-mix(in srgb, var(--x) 22%, #fff); box-shadow: 0 0 0 2px var(--x); } .rmyoh .tcd.rmyti.O { background: color-mix(in srgb, var(--o) 30%, #fff); box-shadow: 0 0 0 2px var(--mo, #d98a0a); }
+.rmyfelt { display: flex !important; align-items: center; justify-content: center; gap: 18px; height: clamp(110px, 24cqh, 150px); }
+.rmyfelt .rmywho { position: absolute; left: 10px; top: 6px; font: 400 15px/1 'Luckiest Guy', sans-serif; color: var(--paper); }
+.rmydeck, .rmypile { position: relative; background: none; border: 0; padding: 0; border-radius: 8px; }
+.rmydeck .plc, .rmypile .plc { --cw: clamp(48px, 15cqw, 66px); }
+.rmydeck:not(:disabled), .rmypile:not(:disabled) { cursor: pointer; filter: drop-shadow(0 0 6px rgba(255, 240, 160, .9)); }
+.rmyn { position: absolute; right: -8px; bottom: -8px; min-width: 24px; height: 24px; border-radius: 12px; background: var(--ink); color: var(--paper); font: 800 13px/24px Nunito, Arial, sans-serif; text-align: center; padding: 0 4px; }
+.rmyhand { display: flex; justify-content: center; align-items: center; gap: 1.2cqw; min-height: 0; flex: 1; container-type: inline-size; padding: 4px 0; }
+.rmyhand .plc { --cw: min(64px, calc(88cqw / var(--n))); }
+.rmyc { background: none; border: 0; padding: 0; position: relative; border-radius: 7px; }
+button.rmyc { cursor: pointer; } button.rmyc:active .plc { transform: translateY(-4px); }
+.rmyc.rmym { box-shadow: 0 0 0 3px var(--pc, var(--x)); } .rmyhand.O .rmyc.rmym { --pc: var(--mo, #d98a0a); }
+.rmyc.rmym.ml { margin-right: 2.4cqw; }
+.rmyhand.lit .rmyc.rmym { animation: rmylit .45s var(--t, 0ms) both; }
+@keyframes rmylit { from { box-shadow: 0 0 0 0 var(--pc, var(--x)); transform: translateY(0); } 60% { transform: translateY(-6px); } to { box-shadow: 0 0 0 3px var(--pc, var(--x)); transform: translateY(0); } }
+.rmyc.new .plc { outline: 3px dashed var(--ink); outline-offset: 2px; border-radius: 6px; }
+.g-arc.rmy .arcres, .g-arc.rmy .arcnote { height: 28px; }
+/* the miniature: each player's hand, melds first and tinted */
+.trmy { display: grid; gap: 2.5cqw; justify-items: center; }
+.trmyh { display: flex; gap: .5cqw; }
+.tart.trmyw { gap: 2cqw; } .tart.trmyw .tpic { width: 56cqw; } .tart.trmyw .tpip { width: auto; flex: 1; }
+.trmy .tcd { width: 8cqw; height: 11cqw; border-width: .7cqw; border-radius: 1.3cqw; } .trmy .tcd svg { width: 5cqw; height: 5cqw; }
+.trmy .tcd.trmym.X { background: color-mix(in srgb, var(--x) 30%, #fff); box-shadow: 0 0 0 .8cqw var(--x); } .trmy .tcd.trmym.O { background: color-mix(in srgb, var(--o) 40%, #fff); box-shadow: 0 0 0 .8cqw var(--mo, #d98a0a); }
+/* Poker Hands (November 2026): the five cards in a row sized from the room (container units), a marked card dropped,
+   dimmed and struck through in the mover's colour; the total as pips or a figure; the miniature's little cards. */
+.pok { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; gap: 14px; container-type: size; }
+.pokhand { flex: none; display: flex; justify-content: center; gap: 2.5cqw; padding: 4px 0 18px; }
+.pokc { --cw: min(17.5cqw, 34cqh, 96px); position: relative; display: block; padding: 0; margin: 0; border: 0; background: none; touch-action: manipulation; transition: transform .14s ease-out; }
+.pokc .plc { --cw: inherit; display: block; }
+.pokc.out { transform: translateY(14px); }
+.pokc.out .plc { opacity: .5; }
+.pokc.out::after { content: ''; position: absolute; left: 8%; right: 8%; top: 50%; height: max(4px, 1.2cqw); border-radius: 4px; background: var(--x); transform: rotate(-35deg); box-shadow: 0 0 0 2px var(--ink); }
+.pokc.out.O::after { background: var(--o); }
+button.pokc:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; border-radius: 8px; }
+.pok .arcres, .pok .arcnote { min-height: 1.4em; text-align: center; margin: 0; }
+.pokn { display: inline-flex; align-items: baseline; gap: 2px; font-family: 'Luckiest Guy', sans-serif; } .pokn small { color: var(--muted); }
+.tart.tpokw .tpic { width: 62cqw; } .tart.tpokw .tpip { gap: 3cqw; }   /* (the cards above the pips, as 21's; the pips sized by how many) */
+.tpokw .tpip .tr { gap: 1.6cqw; } .tpokw .tpip .tr b { margin-right: 1.5cqw; } .tpokw .tpip i { width: min(8.5cqw, calc(66cqw / var(--n))); height: min(8.5cqw, calc(66cqw / var(--n))); border-width: 1.2cqw; }
+.tpok { width: 100%; height: auto; overflow: visible; }
+.tpok .tpokc { fill: #fff; stroke: var(--ink); stroke-width: .8; } .tpok .tpokc.none { fill: none; stroke-dasharray: 2 1.5; opacity: .5; }
+.tpok .tpoks { fill: var(--ink); } .tpok .tpoks.red { fill: #d6301e; }

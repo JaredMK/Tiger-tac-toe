@@ -269,6 +269,19 @@ Category: More skill
 Play: Tap left or right to flip. One ball per turn.
 Win: Light every target first.
 
+## Poker Hands [poker]
+Category: More luck
+Play: Tap Deal for five cards. Tap any you want to throw away, then Draw once to replace them. Your hand scores points by what it makes.{goAgain}
+Win: First to {target} points.
+List pr: Pair (1): two cards of one rank.
+List tp: Two pair (2): two pairs of different ranks.
+List tk: Three of a kind (3): three cards of one rank.
+List st: Straight (4): five ranks in a row (an ace can be low: A-2-3-4-5).
+List fl: Flush (5): all five of one suit.
+List fh: Full house (6): three of one rank plus two of another.
+List fk: Four of a kind (8): four cards of one rank.
+List sf: Straight flush (10): five in a row, all of one suit.
+
 ## Pool [pool]
 Category: More skill
 Play: Drag to aim and shoot.{goAgain} Sink the white and a ball comes back for you: one of your sunk balls, or a new one if none is sunk.
@@ -298,6 +311,11 @@ Win: Have the longest unbroken road. The square ends early once the other player
 Category: More luck
 Play: Pick rock, paper or scissors against the house. The house throws from its own deck, and you can see what is left in it. Tie? Throw again.{goAgain}
 Win: Win {goal} throws.
+
+## Rummy Lite [rummy]
+Category: More luck
+Play: Take the top card of your pile or your deck, then throw one card onto your pile. A meld is three of a kind, or three in a row in one suit (an ace is low or high).{goAgain}
+Win: Hold {melds} melds.
 
 ## Scoop Stack [scoop]
 Category: More skill
@@ -381,6 +399,11 @@ Win: Score {target} first.
 Category: More brain
 Play: Tap an empty square to take it and the squares around it, even your opponent's.
 Win: Own the most when the board is full.
+
+## Thirty-One [t31]
+Category: More luck
+Play: You hold 3 cards. Take the top of your discard pile or draw from your deck, then let one card go. Only your best suit counts: aces 11, pictures 10, others their number.{goAgain}
+Win: Reach {target} in one suit, or exactly 31 at once.
 
 ## Tic-tac-toe [ttt]
 Category: More brain
