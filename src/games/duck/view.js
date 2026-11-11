@@ -1,79 +1,88 @@
-// Craps: the screen, the miniature, the move's words and sounds, and the inputs.
-import { tune } from '../../core/tune.js';
-import { CRAPS, crapsTimes } from './rules.js';
-import { N, REDUCED, mv, state } from '../../ui/app.js';
-import { dieFace } from '../../ui/art.js';
-import { arcTally, lateAt, pips } from '../../ui/progress.js';
-import { pipRows } from '../../ui/thumbs.js';
+// Hook-a-Duck: the screen, the miniature, the move's words and sounds, and the inputs.
+import { DUKT, duckCfg, duckTimes } from './rules.js';
+import { N, REDUCED, mv } from '../../ui/app.js';
+import { arcTally, lateAt } from '../../ui/progress.js';
+import { markSvgG } from '../../ui/thumbs.js';
 
-// Craps: one tap of Roll a move, and the dice keep rolling until the round is won or lost (rolled where the
-// move is made: the server online). The page plays the round back roll by roll: each pair tumbles in at its
-// time, the puck goes on at the point, the rolls fill the row under the felt (a fixed height: the last
-// eight on show), and the round's result comes at the end. One button, always there, so nothing moves.
-const CRAPS_POINTS = [4, 5, 6, 8, 9, 10];
-function crapsSay(r) {                                          // the line under the felt for a round
-  if (!r) return '';
-  if (r.kind === 'stop') return `Stopped on point ${r.point}`;   // (from before)
-  if (r.roll) { const n = r.sum; return r.result === 'win' ? (r.was == null ? `${n} on the first roll: a winner!` : `Point ${r.was} made!`) : r.result === 'lose' ? (r.was == null ? `${n}: out!` : 'Seven out') : `Point ${r.point}`; }   // (a single roll, from before)
-  const rolls = r.rolls || [], first = rolls.length ? rolls[0][0] + rolls[0][1] : 0;
-  if (r.point == null) return r.result === 'win' ? `${first} on the first roll: a winner!` : `${first}: out!`;
-  return r.result === 'win' ? `Point ${r.point} made!` : 'Seven out';
-}
-function crapsTable(mini, a, o) {
-  const c = a && a.craps && a.craps.rolls && !a.craps.roll && a.craps.kind !== 'stop' ? a.craps : null, l = mini.last, turn = o.turn;
-  const shown = c || (l && l.rolls ? l : null);
-  const tim = c ? crapsTimes(c.rolls, c.point, c.was) : null, tEnd = c && !REDUCED ? tim.end : 0;
-  const tal = p => arcTally(p, o, pips(p, Math.min(tune(mini).goal, mini.wins[p]), tune(mini).goal, !!(c && c.result === 'win' && a.by === p), tEnd));
-  // the puck: OFF to begin with; on the point once the come-out sets one (on from the start for a point from before)
-  const slot = n => (n == null ? 0 : CRAPS_POINTS.indexOf(n) + 1), pct = k => ((k + 0.5) / 7 * 100).toFixed(2);
-  const pk = shown && shown.point != null ? slot(shown.point) : 0;
-  const puckAt = c && c.point != null && c.was == null && !REDUCED ? tim.puck : null;
-  const puck = `<div class="cpuck${pk ? ' on' : ''}${puckAt != null ? ' move' : ''}" style="left:${pct(pk)}%;--from:${pct(0)}%;--to:${pct(pk)}%${puckAt != null ? `;--t:${puckAt}ms` : ''}">${pk ? 'ON' : 'OFF'}</div>`;
-  const strip = `<div class="cpts">${['', ...CRAPS_POINTS].map((n, k) => `<i class="${k === 0 ? 'off' : ''}${shown && shown.point === n ? ' pt' : ''}">${n}</i>`).join('')}${puck}</div>`;
-  // the dice: each roll's pair in its turn, the last one staying
-  let dice = '';
-  if (shown && shown.rolls && shown.rolls.length) {
-    const n = shown.rolls.length;
-    dice = shown.rolls.map((d, k) => {
-      if (!c && k < n - 1) return '';
-      const t0 = c && !REDUCED ? tim.at[k] : null, t1 = c && !REDUCED && k < n - 1 ? tim.at[k + 1] : null;
-      if (c && REDUCED && k < n - 1) return '';
-      const end = c && !REDUCED && k === n - 1 && (c.result === 'win' || c.result === 'lose') ? ` ${c.result === 'win' ? 'cheer' : 'sad'}` : '';   // the round's last pair: the point made, a dance; a crap-out, a slump (once it has landed)
-      return `<div class="cpair${t0 != null ? ' tumble' : ''}${t1 != null ? ' gone' : ''}" style="${t0 != null ? `--t:${t0}ms;` : ''}${t1 != null ? `--t2:${t1}ms;` : ''}${end ? `--d:${t0 + CRAPS.land}ms` : ''}" aria-hidden="${k < n - 1}"><div class="cdice${end}"><span class="die cdie">${dieFace(d[0])}</span><span class="die cdie b">${dieFace(d[1])}</span></div></div>`;
-    }).join('');
+// The pond: the ducks of the player on the move (or of the move being shown) drift and bob about it on endless loops
+// (real time: ui/fx.js anchorFx keeps a loop running through re-renders); a tap on a duck is the move. The hook comes
+// down on its line to that duck (`reach`), lifts it out (`lift`), turns it over to show its bottom (`show`: a number
+// 1 to 5, or a boot), and the total counts on. A pond fished empty fills again: the new ducks float in. Everything of
+// a move comes from its flash, never from the square's last. The values of the ducks still swimming are never in the
+// page (the server keeps them): only the hooked duck's, from its move.
+// Each slot's home in the pond (x, y in %: three staggered rows of four) and its drift (a loop of its own length).
+const HOME = Array.from({ length: 12 }, (_, i) => { const r = Math.floor(i / 4), c = i % 4; return [13 + c * 22 + (r % 2) * 11, 26 + r * 26]; });
+const drift = i => `--dd:${(5.2 + ((i * 7) % 5) * 0.55).toFixed(2)}s;--dl:-${((i * 1.37) % 5).toFixed(2)}s;--bd:${(1.6 + ((i * 3) % 4) * 0.2).toFixed(2)}s`;
+// An original rubber duck (40x40): a round body, a head with a beak and an eye, a wing, and a ring on its head for the hook.
+const DUCK_SVG = '<svg class="dukart" viewBox="0 0 40 40" aria-hidden="true"><circle class="dukring" cx="25" cy="6.6" r="3"/><path class="dukbody" d="M4 24c0-3 2.4-4.6 6-4.6h9.6c.2-4.6 3-7.8 7-7.8 4.2 0 7 3 7 7 0 1.8-.6 3.2-1.6 4.4 2.2 1 3.2 2.6 3.2 4.6 0 4.6-5.4 8-13.6 8H12.4C7.4 35.6 4 30.6 4 24z"/><path class="dukbeak" d="M33 17.4c2.4-.4 4.4.2 5.2 1.6-1 1.4-3 2-5.4 1.6z"/><circle class="dukeye" cx="29" cy="16.4" r="1.5"/><path class="dukwing" d="M11.4 25.4c2.6 3.4 7.4 4 11 1.4"/></svg>';
+// A duck's bottom: its value in a disc, or a little boot (worth nothing).
+const BOOT_SVG = '<svg class="dukboot" viewBox="0 0 40 40" aria-hidden="true"><path d="M13 6h10v15.6c0 1.6 1 2.6 2.6 3.2l6.4 2.6c2 .8 3 2.2 3 4.2V34H9.6c-1 0-1.6-.6-1.6-1.6V27c0-2.4 1-4.4 3-5.6l2-1.2z"/><path class="dukbootl" d="M13 12h10M8 30h27"/></svg>';
+const bottom = v => (v > 0 ? `<span class="dukv">${v}</span>` : BOOT_SVG);
+function pondView(mini, a, o) {
+  const f = a && a.duck ? a.duck : null, anim = !!f && !REDUCED, T = f ? duckTimes(f) : null, c = duckCfg(mini), goal = c.target;
+  const by = f ? a.by : mini.last && (o.done || o.view) ? mini.last.by : o.turn;
+  const tal = p => {
+    const n = Math.min(goal, mini.score[p]), fresh = f && a.by === p && f.from !== f.to;
+    return arcTally(p, o, `<span class="dukt" aria-label="${n} of ${goal} points">${fresh ? `<b class="cnt" data-from="${f.from}" data-delay="${anim ? T.score : 0}">${n}</b>` : `<b>${n}</b>`}<small>/${goal}</small></span>`);
+  };
+  const can = !o.view && !o.locked && !f && by === o.turn;
+  const duck = (i, cls, inner, st) => { const [x, y] = HOME[i] || [50, 50]; return `<span class="dukd${cls ? ' ' + cls : ''}" style="left:${x}%;top:${y}%;--y:${y};${drift(i)}${st ? ';' + st : ''}">${inner}</span>`; };
+  const swim = i => `<span class="dukf"><span class="dukfront">${DUCK_SVG}</span></span>`;
+  const left = (mini.left[by] || []).map((on, i) => (on ? i : -1)).filter(i => i >= 0);
+  let ducks = '';
+  if (f && anim) {
+    // the hooked duck on its line: down to it, out of the water, over to show its bottom
+    const hooked = duck(f.i, 'hk', `<span class="dukline" style="--t:0ms"></span><span class="dukf" style="--tl:${T.lift}ms;--ts:${T.show - DUKT.flip}ms"><span class="dukfront">${DUCK_SVG}</span><span class="dukback">${bottom(f.v)}</span></span><span class="dukrip" style="--t:${T.lift}ms"></span>`);
+    const others = f.refill ? left.map(i => duck(i, 'dnew', swim(i), `--t:${T.end - DUKT.refill}ms`)).join('')   // a fresh pond: its ducks float in after the reveal
+      : left.map(i => duck(i, '', swim(i))).join('');
+    ducks = others + hooked;
+  } else {
+    ducks = left.map(i => (can ? `<button class="dukd" style="left:${HOME[i][0]}%;top:${HOME[i][1]}%;--y:${HOME[i][1]};${drift(i)}" data-act="move" ${mv(i)} aria-label="Duck ${i + 1}">${swim(i)}</button>` : duck(i, '', swim(i)))).join('');
   }
-  // the round's rolls in a row, each as it lands (one row, a fixed height: a long round shows its latest)
-  const all = shown && shown.rolls ? shown.rolls : [];
-  const log = `<div class="crolls${all.length > 8 ? ' long' : ''}" aria-label="The round's rolls">${all.map((d, k) => `<span ${c && !REDUCED ? lateAt('', tim.at[k] + CRAPS.land - 60) : ''}>${d[0] + d[1]}</span>`).join('')}</div>`;
-  const W = p => `<b class="${p}">${N(p)}</b>`;
-  const res = c ? `<p ${lateAt('arcres ' + (c.result === 'win' ? 'ok' : 'no'), tEnd)} role="status">${crapsSay(c)}</p>`
-    : l && (o.done || o.view || (o.held && l.by === turn)) ? `<p class="arcres ${l.result === 'win' ? 'ok' : l.result === 'lose' ? 'no' : ''}">${W(l.by)}: ${crapsSay(l)}</p>`
-    : o.view ? '<p class="arcnote"></p>'
-    : mini.point != null ? `<p class="arcnote">${W(turn)} · point ${mini.point} is on</p>`
-    : `<p class="arcnote">${W(turn)}'s turn</p>`;
-  const btn = o.view ? '' : `<div class="cbtns one"><button class="big ${turn}" data-act="move" ${mv('roll')}${o.locked ? ' disabled' : ''}>Roll</button></div>`;
-  return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="craps">${strip}<div class="cfelt">${dice || '<p class="arcnote"></p>'}</div>${log}${res}</div>${btn}</div>`;
-}
-// The miniature: the felt with the two dice (the last roll's faces, ringed green when it won its round and greyed
-// when it lost; blank before a roll), and each player's rounds won as pips under it.
-export function miniature(mini, final) {
-  const l = mini.last, d = l ? l.roll || (l.rolls || [])[(l.rolls || []).length - 1] : null, goal = tune(mini).goal;
-  const dice = `<div class="tcdice${d && l.result === 'win' ? ' w' : d && l.result === 'lose' ? ' l' : ''}"><span>${d ? dieFace(d[0]) : ''}</span><span>${d ? dieFace(d[1]) : ''}</span></div>`;
-  return `<div class="tcr" aria-label="Krabs: X ${mini.wins.X}, O ${mini.wins.O} of ${goal} rounds"><div class="tfelt" aria-hidden="true">${dice}</div><div class="tpip">${pipRows(mini.wins, goal)}</div></div>`;
+  // the catch so far from this pond's owner (the latest few), the newest landing as it shows
+  const got = (mini.got[by] || []).slice(-8), newest = f && anim ? got.length - 1 : -1;
+  const chips = got.map((v, k) => `<i ${k === newest ? lateAt('dukc' + (v ? '' : ' b'), T.show) : `class="dukc${v ? '' : ' b'}"`}>${v ? v : BOOT_SVG}</i>`).join('');
+  const say = s => (s.v > 0 ? `<b class="${by}">${N(by)}</b> hooked a ${s.v}!` : 'A boot! Nothing') + (s.refill ? ' · the pond fills again' : '');
+  const last = !f && mini.last && mini.last.by === by && (o.done || o.view) ? mini.last : null;
+  const res = f ? `<p ${lateAt('dukres' + (f.v > 0 ? ' ok' : ''), anim ? T.show : null)} role="status">${say(f)}</p>` : `<p class="dukres">${last ? say(last) : '&nbsp;'}</p>`;
+  return `<div class="g-duk"><div class="ctals">${tal('X')}${tal('O')}</div>
+    <p class="duklab">Fishing: <b class="${by}">${N(by)}</b></p>
+    <div class="dukpond" aria-label="${left.length} ducks in the pond of ${N(by)}">${ducks}</div>
+    <div class="dukcatch" aria-label="Hooked so far">${chips}</div>${res}</div>`;
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
-  g = crapsTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d, held: state.lock != null && state.lock === state.zoom }); return g;
+  g = pondView(mini, a, { view, locked, turn, done: !!d }); return g;
+}
+// The line under the game's name while a duck with points keeps the turn ("Go again on success" on: ui/mini.js heldSub).
+export function heldSub(mini, turn, f, a) {
+  if (f) return '';
+  return `<b class="${turn}">${N(turn)}</b> hooked points · goes again`;
+}
+// The miniature: each player's pond as a little oval with the ducks still in it, their mark beside it and a bar of their
+// points toward the target beside that (a picture: no figures).
+export function miniature(mini, final) {
+  const goal = duckCfg(mini).target;
+  const row = (p, y) => {
+    const left = (mini.left[p] || []).map((on, i) => (on ? i : -1)).filter(i => i >= 0), f = Math.max(0, Math.min(1, mini.score[p] / goal));
+    const ducks = left.map(i => { const [hx, hy] = HOME[i]; const x = 12 + hx * 0.53, yy = y + 13 + (hy - 52) * 0.3; return `<g transform="translate(${x.toFixed(1)} ${yy.toFixed(1)})"><ellipse class="tdukb" rx="2.5" ry="1.8"/><circle class="tdukb" cx="1.7" cy="-1.8" r="1.2"/></g>`; }).join('');
+    return `<g class="tdukm ${p}" transform="translate(5.5 ${y + 13})">${markSvgG(p, 4)}</g><ellipse class="tdukp" cx="38" cy="${y + 13}" rx="26" ry="11"/>${ducks}`
+      + `<rect class="tdukt" x="69" y="${y + 9}" width="27" height="8" rx="4"/><rect class="tdukf ${p}" x="69" y="${y + 9}" width="${(27 * f).toFixed(1)}" height="8" rx="4"/>`;
+  };
+  return `<div class="tduk" aria-label="Hook-a-Duck: X ${mini.score.X}, O ${mini.score.O} of ${goal} points"><svg viewBox="0 0 100 56" aria-hidden="true">${row('X', 0)}${row('O', 29)}</svg></div>`;
 }
 export function moveText(f, who) {
-  return !f.craps ? `${who} rolled` : f.craps.kind === 'stop' ? `${who} stopped on point ${f.craps.point}` : f.craps.result === 'win' ? `${who} won the round` : `${who} lost the round`;
+  const s = f.duck;
+  if (!s) return `${who} hooked a duck`;
+  return s.v > 0 ? `${who} hooked a ${s.v}` : `${who} hooked a boot`;
 }
-export function sounds(f, add, won, mini, last) {   // each roll: the rattle and the dice landing; the puck going on; the round's result
-  const c = f.craps;
-  if (!c) return;
-  if (c.kind === 'stop') { add('toggle', 0); return; }
-  if (c.roll) { add('rattle', 0); add('thunk', 500); if (c.result === 'win') add('ding', 700); else if (c.result === 'lose') add('thud', 700); return; }   // (a single roll, from before)
-  const tim = crapsTimes(c.rolls, c.point, c.was);
-  c.rolls.forEach((d, k) => { add('rattle', tim.at[k]); add('thunk', tim.at[k] + 500); });
-  if (tim.puck != null) add('clack', tim.puck);
-  add(c.result === 'win' ? 'diceWin' : 'diceLose', tim.at[c.rolls.length - 1] + CRAPS.land);   // (as the dice dance or slump)
+// The line goes in with a plop, the duck comes out with a splash, then its bottom: a ding for points, a boing for a
+// boot; a refilled pond's ducks plop in.
+export function sounds(f, add, won, mini, last) {
+  const s = f.duck;
+  if (!s) return;
+  const T = duckTimes(s);
+  add('plop', T.lift - 120);
+  add('splash', T.lift + 60);
+  add(s.v > 0 ? 'ding' : 'boing', T.show);
+  if (s.refill) add('plop', T.end - DUKT.refill + 80);
 }

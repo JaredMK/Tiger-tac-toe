@@ -1,73 +1,78 @@
-// Craps: the rules (pure: no page, no clock; the server runs the same code).
-import { needRng, randInt } from '../../core/random.js';
-import { goAgain, tune } from '../../core/tune.js';
+// Hook-a-Duck: the rules (pure: no page, no clock; the server runs the same code).
+import { needRng, shuffle } from '../../core/random.js';
+import { goAgain, tune, tuneLive } from '../../core/tune.js';
 
-// ---------- Craps, Takeover and Flood ----------
-// Craps: each player has their own count of rounds won; first to 3 (the admin's, tune(mini).goal) takes the square. A move is one tap of
-// Roll: the dice keep rolling until the round is won or lost, all rolled where the move is made (the server
-// online: no roll is known before it lands). The come-out roll wins on 7 or 11 and loses on 2, 3 or 12
-// (craps); anything else is the point, and then the point wins and a 7 loses. A lost round takes nothing
-// away; every move starts a fresh round (a square from before with a point still on rolls that one out).
-// A hot streak: a round won (not yet the square) keeps the turn, and the same player rolls a new round
-// (again); a round lost ends the turn. (Super Chaos: one round a round, no streak: scApply.)
-// The page plays the rolls back one by one (the dice tumbling, the puck going on the point).
-export const CRAPS = { goal: 3, roll: 900, quick: 560, quickAfter: 4, puck: 420, hold: 400, stop: 600, land: 560, flash: 250, pip: 400, winOdds: 244 / 495 };   // a round's flash: roll each roll (quick after the first few), the puck, the result held; land: a die's tumble (stop, flash: single rolls, from before); pip: a won round's pip filling in
-export const CRAPS_MAKE = { 4: 1 / 3, 5: 0.4, 6: 5 / 11, 8: 5 / 11, 9: 0.4, 10: 1 / 3 };   // the chance a point is rolled before a 7
-// A round rolled out: from the come-out, or from a point already on (from).
-export function crapsRound(rng, from) {
-  const rolls = [];
-  let point = from == null ? null : from, result = null;
-  while (!result) {
-    const d = [1 + randInt(rng, 6), 1 + randInt(rng, 6)], s = d[0] + d[1];
-    rolls.push(d);
-    if (point == null) {
-      if (s === 7 || s === 11) result = 'win';
-      else if (s === 2 || s === 3 || s === 12) result = 'lose';
-      else point = s;
-    } else if (s === point) result = 'win';
-    else if (s === 7) result = 'lose';
-  }
-  return { rolls, point, result };
+// ---------- Hook-a-Duck (November 2026) ----------
+// Each player fishes in a pond of their own: `ducks` ducks bobbing about, every one looking the same from above, each
+// with a hidden value painted on its bottom: 1 to 5 (`v1`..`v5` ducks of each), or a little rubber boot worth nothing
+// (`boots` of them). A move hooks one duck (its slot, 0 to `ducks` - 1, of those still swimming): it is lifted out and
+// turned over, its value added to the player's total. The values stay hidden until a duck is hooked (online they stay on
+// the server: secret/hide, the key `vals`; what is public is which ducks are still in the pond and every value hooked),
+// and since every duck looks alike the choice is pure luck (the values hooked from the pond so far, `out`, are public, so what
+// is left of its mix is known; which duck holds which is not). A pond fished empty is filled again (a fresh deal of the
+// same mix, drawn as the move is made: the server online; `refill`). First to `target` wins. Each player moves alone:
+// nothing one does touches the other's pond. "Go again on success" on: a duck worth something keeps the turn.
+export const DUCK = { slots: 12 };                                  // (the most ducks a pond can hold: TUNE `ducks` max)
+export const duckCfg = mini => Object.assign({ ducks: 12, v1: 1, v2: 1, v3: 1, v4: 1, v5: 3, boots: 5, target: 12 }, tune(mini));
+// The pond's mix as a list of values (a boot is 0), cut or padded with boots to the pond's size.
+export function duckMix(c) {
+  const n = Math.max(3, Math.min(DUCK.slots, c.ducks | 0)), out = [];
+  for (let v = 5; v >= 1; v--) for (let k = 0; k < Math.max(0, c['v' + v] | 0); k++) out.push(v);
+  for (let k = 0; k < Math.max(0, c.boots | 0); k++) out.push(0);
+  while (out.length < n) out.push(0);
+  return out.slice(0, n);
 }
-// When each roll of a round lands (ms into the move), when the puck goes on, and when the round's result
-// shows. was: a point already on before the first roll (a square from before): the puck is on from the start.
-export function crapsTimes(rolls, point, was) {
-  const at = [];
-  let t = 0, puck = null;
-  for (let k = 0; k < rolls.length; k++) {
-    at.push(t); t += k < CRAPS.quickAfter ? CRAPS.roll : CRAPS.quick;
-    if (k === 0 && point != null && was == null) { puck = at[0] + CRAPS.land; t += CRAPS.puck; }
-  }
-  return { at, puck, end: t };
-}
+const deal = (c, r) => shuffle(duckMix(c), r);
 export function create(type, rng) {
-  return { type, wins: { X: 0, O: 0 }, rounds: { X: 0, O: 0 }, point: null, live: null, rolls: [], last: null };   // point, live, rolls: a round left with its point on (from before); every move now rolls a round out
+  const c = Object.assign({ ducks: 12, v1: 1, v2: 1, v3: 1, v4: 1, v5: 3, boots: 5, target: 12 }, tuneLive(type)), r = needRng(rng);
+  const vx = deal(c, r), vo = deal(c, r);
+  return { type, score: { X: 0, O: 0 }, vals: { X: vx, O: vo }, left: { X: vx.map(() => true), O: vo.map(() => true) }, got: { X: [], O: [] }, out: { X: [], O: [] }, ponds: { X: 1, O: 1 }, last: null };
 }
-export function apply(mini, p, m, rng, idx) { return roll(mini, p, m, rng, true); }
-export function scApply(mini, p, m, rng) { return roll(mini, p, m, rng, false); }   // Super Chaos: a round's move is one round, won or lost
-function roll(mini, p, m, rng, streak) {   // Roll: the round, rolled out
-  if (m !== 'roll' && m !== 'auto') return { ok: false, reason: 'bad' };
-  const was = mini.point == null ? null : mini.point, r = crapsRound(needRng(rng), was);
-  mini.rounds[p] += 1; if (r.result === 'win') mini.wins[p] += 1;
-  mini.last = { by: p, kind: 'round', rolls: r.rolls.map(d => d.slice()), point: r.point, was, result: r.result };
-  mini.point = null; mini.live = null; mini.rolls = [];
-  if (mini.wins[p] >= tune(mini).goal) return { ok: true, outcome: 'win', note: 'won' };
-  if (r.result === 'win' && streak && goAgain(mini)) return { ok: true, outcome: 'continue', note: 'won', again: true };   // a hot streak: roll again
-  return { ok: true, outcome: 'continue', note: r.result === 'win' ? 'won' : 'lost' };
+export const duckLeft = (mini, p) => (mini.left[p] || []).map((on, i) => (on ? i : -1)).filter(i => i >= 0);
+export function apply(mini, p, m, rng, idx) {
+  const left = mini.left[p];
+  if (!Number.isInteger(m) || m < 0 || !left || m >= left.length || !left[m]) return { ok: false, reason: 'bad' };
+  const vals = mini.vals && mini.vals[p];
+  if (!vals || !Number.isInteger(vals[m])) return { ok: false, reason: 'secret' };
+  const c = duckCfg(mini), v = vals[m], from = mini.score[p];
+  left[m] = false;
+  mini.score[p] = Math.min(c.target, from + v);
+  mini.got[p] = (mini.got[p] || []).concat(v).slice(-12);
+  if (!mini.out) mini.out = { X: [], O: [] };
+  mini.out[p] = (mini.out[p] || []).concat(v);                 // (the values hooked from this pond so far: what is left of its mix is public)
+  let refill = false;
+  if (!left.some(Boolean)) {                                     // fished out: a fresh pond, the same mix, its values drawn now
+    const nv = deal(c, needRng(rng));
+    mini.vals[p] = nv; mini.left[p] = nv.map(() => true); mini.out[p] = []; mini.ponds[p] = (mini.ponds[p] || 1) + 1; refill = true;
+  }
+  mini.last = { by: p, i: m, v, from, to: mini.score[p], refill, n: left.length };
+  if (mini.score[p] >= c.target) return { ok: true, outcome: 'win', note: 'won' };
+  if (v > 0 && goAgain(mini)) return { ok: true, outcome: 'continue', note: 'duck', again: true };
+  return { ok: true, outcome: 'continue', note: v > 0 ? 'duck' : 'boot' };
 }
 export function publicView(mini) {
-  return { type: 'duck', wins: { X: mini.wins.X, O: mini.wins.O }, point: mini.point == null ? null : mini.point, live: mini.live || null };
+  return { type: 'duck', score: { X: mini.score.X, O: mini.score.O }, left: { X: mini.left.X.slice(), O: mini.left.O.slice() }, got: { X: (mini.got.X || []).slice(), O: (mini.got.O || []).slice() }, out: { X: ((mini.out && mini.out.X) || []).slice(), O: ((mini.out && mini.out.O) || []).slice() }, ponds: { X: mini.ponds.X, O: mini.ponds.O }, last: mini.last ? Object.assign({}, mini.last) : null };   // never the values still in the water
 }
-export function randomMove(mini, p, rng, from, empties) {
-  return 'roll';                                          // a timed-out turn rolls its round out
+export function secret(mini) {   // the values on the ducks' bottoms
+  return mini.vals ? { vals: { X: (mini.vals.X || []).slice(), O: (mini.vals.O || []).slice() } } : null;
 }
+export function hide(m, k, st) { delete m.vals; }
+export function randomMove(mini, p, rng, from, empties) {        // (the tests' stand-in: any duck still swimming)
+  const l = duckLeft(mini, p);
+  return l.length ? l[Math.floor(needRng(rng)() * l.length)] : null;
+}
+export function canMove(mini) { return true; }
+// A timeout: nothing (a move is one hook: a turn not taken is simply missed).
+export function timeoutClose(mini, p) { return null; }
 export function moveFlash(m, p, range, bjFrom, mini, flash) {
-  const l = mini.last; flash.craps = { kind: 'round', rolls: l.rolls.map(d => d.slice()), point: l.point, was: l.was, result: l.result, wins: { X: mini.wins.X, O: mini.wins.O } }; return;
+  const l = mini.last;
+  flash.duck = { i: l.i, v: l.v, from: l.from, to: l.to, refill: l.refill, n: l.n, score: { X: mini.score.X, O: mini.score.O } };
 }
-export function flashMs(f, winLen, won) {
-  if (!f.craps) return CRAPS.roll + CRAPS.hold;
-  if (f.craps.roll) return CRAPS.land + CRAPS.flash + (won ? 600 : 0);   // (a single roll, from before)
-  return crapsTimes(f.craps.rolls, f.craps.point, f.craps.was).end + (f.craps.result === 'win' ? CRAPS.pip : 0) + (won ? 600 : 0);   // the round, roll by roll (a round won: its pip filling in); the result then stays up its usual moment
+// The move's moments (ms from the move): the hook comes down to the duck (`reach`), lifts it (`lift`), turns it over to
+// show its bottom (`show`), the total counts on (`score`), the end. A refilled pond's new ducks float in after.
+export const DUKT = { reach: 520, lift: 380, flip: 360, hold: 620, refill: 500 };
+export function duckTimes(f) {
+  const T = DUKT, lift = T.reach, show = lift + T.lift + T.flip;
+  return { reach: 0, lift, show, score: show, end: show + T.hold + (f && f.refill ? T.refill : 0) };
 }
-// Super Chaos: each player's round is rolled out within their own move (one round, no streak: scApply), so
-// nothing carries over: the usual merge (each player's wins and rounds) is all there is.
+export function flashMs(f, winLen, won) { return duckTimes(f.duck).end + (won ? 600 : 0); }
