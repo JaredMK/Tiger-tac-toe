@@ -2,7 +2,7 @@
 import { cfgKit } from '../../core/config.js';
 import { courseSeed, gaussOf, makeRng } from '../../core/random.js';
 import { clamp01, r2 } from '../../core/util.js';
-import { FING, HOP, HOP_MEMO, fingHand, fingLog, fingRecorder } from '../shared/finger.js';
+import { FING, HOP, HOP_MEMO, fingCap, fingHand, fingLog, fingRecorder } from '../shared/finger.js';
 import { HOP_DEFAULTS } from './meta.js';
 export { fingerApply as apply } from '../shared/finger.js';
 export { fingerMoveFlash as moveFlash } from '../shared/finger.js';
@@ -67,7 +67,7 @@ export function hopStart(mini, p) {
   const cfg = mini.cfg, c = hopCourse(cfg, mini.seed[p]), h0 = mini.height[p], safe = h0 + hopPeak(cfg) + 0.5;
   const plats = c.plats.filter(q => q.y > h0 - HOP.view && Math.abs(q.y - h0) > 0.25).map(q => (q.k === 'b' && q.y <= safe ? Object.assign({}, q, { k: 'n' }) : q));   // nothing breaks within the first bounce either
   const haz = c.haz.filter(q => q.y > h0 - HOP.view && q.y > safe);
-  return { type: 'skyhop', cfg, h0, plats, haz, gone: {}, x: HOP.w / 2, tx: HOP.w / 2, y: h0, vy: cfg.bounce, top: h0, t: 0, n: 0, lo: 0, end: null, bounces: 0, last: null };
+  return { type: 'skyhop', cfg, h0, plats, haz, gone: {}, x: HOP.w / 2, tx: HOP.w / 2, y: h0, vy: cfg.bounce, top: h0, t: 0, n: 0, lo: 0, end: null, bounces: 0, last: null, cap: fingCap(mini) };   // cap: the attempt's time limit (s)
 }
 export const hopCam = sim => Math.max(sim.h0 - 2, sim.top - HOP.fall);   // the screen's bottom edge, in metres: fall metres below the highest point (below it, the attempt is over)
 // One step: steer towards the finger's place, fall, bounce off a platform fallen onto, touch a hazard, fall off the bottom.
@@ -108,6 +108,7 @@ export function hopStep(sim, tx) {
   }
   if (sim.top >= cfg.target) { sim.end = 'top'; return sim; }
   if (sim.y < hopCam(sim) - HOP.below) sim.end = 'fall';
+  else if (sim.t >= (sim.cap || FING.maxSecs) - 1e-9) sim.end = 'time';   // the time limit: over as a fall is, the height reached kept
   else if (sim.t >= FING.maxSecs - 1e-9) sim.end = 'out';           // (an attempt can't last for ever: bouncing on one platform, say)
   return sim;
 }

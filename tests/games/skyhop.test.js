@@ -83,3 +83,21 @@ test('sky hop: its settings (TUNE) are dealt into the square: the computer\'s ha
   const mv = E.fingAi(mini, 'X', E.makeRng('ai')), r = E.applyMove(mini, 'X', mv);
   assert.equal(r.ok, true); assert.ok(mini.height.X > 0);
 });
+
+test('sky hop: the attempt\'s time limit (maxSecs, 25 s by default): at it the attempt ends (\'time\') as a fall would, the height reached kept, and the server\'s check agrees', () => {
+  assert.equal(E.tuneLive('skyhop').maxSecs, 25);
+  const steady = { react: [0, 0], aim: 0, lapse: 0, misjudge: 0 };
+  let timed = null;
+  for (let s = 0; s < 40 && !timed; s++) {
+    const mini = Object.assign(hopMini(300 + s, 0), { tune: { maxSecs: 5 } }), r = E.hopAi(mini, 'X', E.makeRng('cap' + s), steady);
+    if (r.move.end === 'time') timed = { mini, r };
+  }
+  assert.ok(timed, 'a steady hand lasts the 5 s');
+  const { mini, r } = timed;
+  assert.ok(Math.abs(r.sim.t - 5) < E.FING.step * 1.5, `ends at the limit (${r.sim.t})`);
+  const c = E.fingCheck(mini, 'X', r.move);
+  assert.equal(c.why, null); assert.equal(c.sim.end, 'time');
+  const res = E.applyMove(mini, 'X', r.move, E.makeRng('a'));
+  assert.ok(res.ok); assert.equal(mini.height.X, r.move.h); assert.ok(r.move.h > 0, 'progress kept');
+  assert.equal(E.fingCheck(Object.assign(hopMini(300, 0), { tune: { maxSecs: 5 } }), 'X', Object.assign({}, r.move, { end: 'out' })).why, 'replay', 'claimed as anything else: refused');
+});

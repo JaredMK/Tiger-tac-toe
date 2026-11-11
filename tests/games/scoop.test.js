@@ -66,3 +66,20 @@ test('scoop stack: its settings (TUNE) are dealt into the square: the misses all
   const sim = E.fingReplay('scoop', mini, 'X', [], 1e5);
   assert.equal(sim.miss <= 1 && (sim.end === 'miss' || sim.end === 'hazard' || sim.end === 'top'), true, `one miss ends it (${sim.end}, ${sim.miss})`);
 });
+
+test('scoop stack: the attempt\'s time limit (maxSecs, 20 s by default): at it the attempt ends (\'time\') as the last miss would, the scoops caught kept, and the server\'s check agrees', () => {
+  assert.equal(E.tuneLive('scoop').maxSecs, 20);
+  const steady = { react: [0, 0], aim: 0, lapse: 0 };
+  let timed = null;
+  for (let s = 0; s < 40 && !timed; s++) {
+    const mini = Object.assign(scoopMini(500 + s, 0, 0), { tune: { maxSecs: 6 } }), r = E.scoopAi(mini, 'X', E.makeRng('cap' + s), steady);
+    if (r.move.end === 'time') timed = { mini, r };
+  }
+  assert.ok(timed, 'a steady hand lasts the 6 s');
+  const { mini, r } = timed;
+  assert.ok(Math.abs(r.sim.t - 6) < E.FING.step * 1.5, `ends at the limit (${r.sim.t})`);
+  const c = E.fingCheck(mini, 'X', r.move);
+  assert.equal(c.why, null); assert.equal(c.sim.end, 'time');
+  const res = E.applyMove(mini, 'X', r.move, E.makeRng('a'));
+  assert.ok(res.ok); assert.equal(mini.stack.X.length, r.move.n); assert.ok(r.move.n > 0, 'the scoops caught kept');
+});

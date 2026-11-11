@@ -12,6 +12,7 @@ export const SCOOP_DEFAULTS = { target: 25, v0: 5, v1: 8.5, gap0: 0.9, gap1: 0.6
 // Its settings (the admin's Mini-game Settings; core/tune.js; the falls' stay in SCOOP_DEFAULTS): the misses
 // an attempt allows (rules.js: scoopStart) and the computer's hand (finger.js: fingHand).
 export const TUNE = [
+  { k: 'maxSecs', label: 'Attempt time limit (s)', def: 20, min: 5, max: 60, step: 1, group: 'Timing' },   // (the computer's attempts: p95–p99 about 20 s; the attempt ends at it, progress kept: shared/finger.js fingCap)
   { k: 'misses', label: 'Misses allowed', def: 3, min: 1, max: 5, step: 1, group: 'Rules' },
   { k: 'aiReact0', label: 'Computer reaction, fastest (ms)', def: 260, min: 0, max: 800, step: 10, group: 'Computer' },
   { k: 'aiReact1', label: 'Computer reaction, slowest (ms)', def: 360, min: 0, max: 800, step: 10, group: 'Computer' },

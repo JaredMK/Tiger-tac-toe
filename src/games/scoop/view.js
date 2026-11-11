@@ -2,7 +2,7 @@
 import { SCOOP, SCOOP_VIEW } from './rules.js';
 import { state } from '../../ui/app.js';
 import { fingSounds, fingTable, fingThing } from '../../ui/finger.js';
-import { outlined, runColours } from '../../ui/runner.js';
+import { drawTimeBar, outlined, runColours } from '../../ui/runner.js';
 import { fingAt } from '../shared/finger.js';
 // The miniature: the counter with each player's cone (in their colour) and up to six of their scoops stacked on it, and
 // under the counter each player's count (in the page, as large as the board's other text; inside the drawing it would
@@ -63,7 +63,7 @@ export function drawScoop(c, W, H, v, now) {
   }
   const ms = sim.misses || SCOOP.misses;
   for (let m = 0; m < ms; m++) {                                    // the misses allowed (the square's setting): a cone each, crossed out once used
-    const x = W - 14 - m * 22, y = 16, used = m >= ms - sim.miss;
+    const x = W - 14 - m * 22, y = 28, used = m >= ms - sim.miss;
     c.save(); c.globalAlpha = used ? 0.35 : 1;
     c.beginPath(); c.moveTo(x - 6, y - 2); c.lineTo(x + 6, y - 2); c.lineTo(x, y + 11); c.closePath(); outlined(c, '#e7b56f', P.ink, 1.8);
     c.beginPath(); c.arc(x, y - 4, 6, 0, Math.PI * 2); outlined(c, SCOOP_FLAV[0], P.ink, 1.8);
@@ -71,6 +71,7 @@ export function drawScoop(c, W, H, v, now) {
     if (used) { c.strokeStyle = P.X; c.lineWidth = 2.5; c.beginPath(); c.moveTo(x - 7, y - 9); c.lineTo(x + 7, y + 9); c.moveTo(x + 7, y - 9); c.lineTo(x - 7, y + 9); c.stroke(); }
   }
   if (v.end === 'top' && v.endAt) { const u = Math.min(1, (now - v.endAt) / 600); c.fillStyle = P.O; for (let r = 0; r < 12; r++) { const a = r * Math.PI / 6; c.beginPath(); c.arc(cx + s * k + Math.cos(a) * k * (0.8 + 2 * u), topY - R + Math.sin(a) * k * (0.8 + 2 * u), 3, 0, Math.PI * 2); c.fill(); } }
+  if (!v.still && sim.n > 0 && sim.cap) drawTimeBar(c, W, H, 1 - sim.t / sim.cap, P);   // the attempt's time limit: its countdown bar (live and in a replay, from the attempt's own clock)
 }
 export function scoopBall(c, x, y, R, f, P) {                            // a scoop: a round top over a wavy, drippy edge
   const col = SCOOP_FLAV[f] || SCOOP_FLAV[0];

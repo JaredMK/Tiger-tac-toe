@@ -3,7 +3,7 @@ import { cfgKit } from '../../core/config.js';
 import { courseSeed, gaussOf, makeRng, randInt } from '../../core/random.js';
 import { clamp01, r2 } from '../../core/util.js';
 import { tune } from '../../core/tune.js';
-import { FING, fingHand, fingLog, fingRecorder } from '../shared/finger.js';
+import { FING, fingCap, fingHand, fingLog, fingRecorder } from '../shared/finger.js';
 import { SCOOP_DEFAULTS } from './meta.js';
 export { fingerApply as apply } from '../shared/finger.js';
 export { fingerMoveFlash as moveFlash } from '../shared/finger.js';
@@ -55,7 +55,7 @@ export function scoopItems(cfg, seed, tries, n0) {
 }
 export function scoopStart(mini, p) {
   const cfg = mini.cfg, n0 = mini.stack[p].length;
-  return { type: 'scoop', cfg, n0, misses: tune(mini).misses, items: scoopItems(cfg, mini.seed[p], mini.tries[p], n0), i: 0, x: SCOOP.w / 2, tx: SCOOP.w / 2, vx: 0, s: 0, sv: 0, n: 0, t: 0, got: [], miss: 0, falling: [], end: null, last: null };
+  return { type: 'scoop', cfg, n0, misses: tune(mini).misses, items: scoopItems(cfg, mini.seed[p], mini.tries[p], n0), i: 0, x: SCOOP.w / 2, tx: SCOOP.w / 2, vx: 0, s: 0, sv: 0, n: 0, t: 0, got: [], miss: 0, falling: [], end: null, last: null, cap: fingCap(mini) };   // cap: the attempt's time limit (s)
 }
 // How far below the stack's top the bottom edge of the screen is (units), for a stack this size: the view
 // draws the counter and the cone under a short stack and keeps a tall one's top 4.6 units up; a missed
@@ -94,6 +94,7 @@ export function scoopStep(sim, tx) {
     sim.falling.shift(); sim.miss++; sim.last = sim.last || 'gone';
     if (sim.miss >= (sim.misses || SCOOP.misses)) { sim.end = 'miss'; return sim; }   // (misses: the square's setting)
   }
+  if (sim.t >= (sim.cap || FING.maxSecs) - 1e-9) { sim.end = 'time'; return sim; }   // the time limit: over as the third miss is, the scoops caught kept
   if ((sim.i >= sim.items.length && !sim.falling.length) || sim.t >= FING.maxSecs - 1e-9) sim.end = 'out';
   return sim;
 }

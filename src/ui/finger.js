@@ -172,7 +172,7 @@ function fingEnd(fd, end, now) {
   if (snd) SND.play(snd);
 }
 // The end's own sound (Scoop Stack's splat has already sounded as the hazard landed).
-const fingEndSound = (type, end) => (end === 'top' || end === 'all' ? 'sparkle' : end === 'hazard' ? (type === 'scoop' ? null : 'crash') : end === 'fall' || end === 'drain' ? 'whoosh' : end === 'miss' ? 'thud' : null);
+const fingEndSound = (type, end) => (end === 'time' && type !== 'pinball' ? (type === 'scoop' ? 'thud' : 'crash') : end === 'top' || end === 'all' ? 'sparkle' : end === 'hazard' ? (type === 'scoop' ? null : 'crash') : end === 'fall' || end === 'drain' ? 'whoosh' : end === 'miss' ? 'thud' : null);
 // The attempt goes in: as it ended, or as it stands (the time ran out, the screen went away).
 export function fingFinish() {
   const fd = fingDraft;
@@ -352,7 +352,7 @@ function fingResultText(type, s, mini, who) {
   if (s.auto) return { text: `${who} ran out of time`, ok: false };
   const goal = fingGoal(mini), gain = s.to - s.from, out = s.end === 'out' ? ' (out of time)' : '';
   if (s.to >= goal) return { text: type === 'skyhop' ? `${who} reached the top!` : type === 'scoop' ? `${who} stacked ${goal} scoops!` : `${who} lit every target!`, ok: true };
-  if (type === 'skyhop') return { text: gain > 0 ? `${who} climbed to ${fmtN(s.to)} m (+${fmtN(gain)})${out}` : `${who} ${s.end === 'hazard' ? 'hit a burr' : s.end === 'out' ? 'ran out of time' : 'fell'} · still at ${fmtN(s.to)} m`, ok: gain > 0 };
+  if (type === 'skyhop') return { text: gain > 0 ? `${who} climbed to ${fmtN(s.to)} m (+${fmtN(gain)})${out}` : `${who} ${s.end === 'hazard' ? 'hit a burr' : s.end === 'time' ? 'ran out of time' : s.end === 'out' ? 'ran out of time' : 'fell'} · still at ${fmtN(s.to)} m`, ok: gain > 0 };
   if (type === 'scoop') return { text: `${who} ${s.end === 'hazard' ? 'caught something nasty' : s.end === 'miss' ? 'missed 3' : 'ran out of time'} · ${gain > 0 ? `+${gain}, now ` : ''}${s.to} scoop${s.to === 1 ? '' : 's'}`, ok: gain > 0 };
   return { text: gain > 0 ? `${who} lit ${gain} target${gain === 1 ? '' : 's'}${out} · ${s.to} of ${goal}` : `${who} lit nothing this ball${out} · ${s.to} of ${goal}`, ok: gain > 0 };
 }

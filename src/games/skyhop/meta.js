@@ -11,6 +11,7 @@ export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" 
 export const HOP_DEFAULTS = { target: 150, bounce: 22, gap0: 3, gap1: 4.5, wide0: 1.5, wide1: 1.1, moveAt: 10, move: 65, moveV: 2.2, breakAt: 8, brk0: 25, brk: 60, hazAt: 15, hazGap: 25, fill0: 0.4, fill1: 0.2 };
 // Its settings (the admin's Mini-game Settings; core/tune.js; the course's stay in HOP_DEFAULTS): the computer's hand (finger.js: fingHand).
 export const TUNE = [
+  { k: 'maxSecs', label: 'Attempt time limit (s)', def: 25, min: 5, max: 60, step: 1, group: 'Timing' },   // (the computer's attempts: p95–p99 about 25 s; the attempt ends at it, progress kept: shared/finger.js fingCap)
   { k: 'aiReact0', label: 'Computer reaction, fastest (ms)', def: 220, min: 0, max: 800, step: 10, group: 'Computer' },
   { k: 'aiReact1', label: 'Computer reaction, slowest (ms)', def: 320, min: 0, max: 800, step: 10, group: 'Computer' },
   { k: 'aiAim', label: 'Computer aim spread (cm)', def: 65, min: 0, max: 300, step: 5, group: 'Computer' },

@@ -13,8 +13,8 @@ const scoopMini = (seed, n0, tries) => ({ type: 'scoop', cfg: E.scoopConfig(), s
 // at each item only some places will do (under a scoop; clear of a hazard), and from each it must be able
 // to reach the next. Played through the real steps (the sway included), it catches every scoop and is
 // never hit: every attempt is fair.
-function perfectScoop(mini) {
-  const sim = E.scoopStart(mini, 'X'), cfg = sim.cfg, v = cfg.cone * E.SCOOP.fair, lo = E.SCOOP.edge, hi = E.SCOOP.w - E.SCOOP.edge, its = sim.items;
+function perfectScoop(mini) {   // (the attempt's time limit lifted: the whole course is what is judged here)
+  const sim = Object.assign(E.scoopStart(mini, 'X'), { cap: Infinity }), cfg = sim.cfg, v = cfg.cone * E.SCOOP.fair, lo = E.SCOOP.edge, hi = E.SCOOP.w - E.SCOOP.edge, its = sim.items;
   const allowed = it => (it.k === 'scoop' ? [[it.x - 0.2, it.x + 0.2]] : [[lo, it.x - E.SCOOP.hit - E.SCOOP.pad], [it.x + E.SCOOP.hit + E.SCOOP.pad, hi]].filter(([a, b]) => b >= a));
   const cut = (A, B) => { const out = []; for (const [a, b] of A) for (const [c, d] of B) { const x = Math.max(a, c), y = Math.min(b, d); if (y >= x) out.push([x, y]); } return out; };
   const grow = (A, e) => A.map(([a, b]) => [Math.max(lo, a - e), Math.min(hi, b + e)]);

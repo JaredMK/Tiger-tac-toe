@@ -5,7 +5,7 @@ import { hopCam, hopPx } from './rules.js';
 import { state } from '../../ui/app.js';
 import { hash01 } from '../../ui/art.js';
 import { fingSounds, fingTable } from '../../ui/finger.js';
-import { outlined, rr, runColours } from '../../ui/runner.js';
+import { drawTimeBar, outlined, rr, runColours } from '../../ui/runner.js';
 export { fingerMiniature as miniature } from '../../ui/finger.js';
 export { fingerMoveText as moveText } from '../../ui/finger.js';
 
@@ -75,6 +75,7 @@ export function drawHop(c, W, H, v, now) {
     c.fillStyle = 'rgba(22,18,16,.28)';
     for (let y = H + off; y > -k; y -= k * 1.2) c.fillRect(x0, y, wall, 2);   // the stones' joints, climbing with the camera
   }
+  if (!v.still && sim.n > 0 && sim.cap) drawTimeBar(c, W, H, 1 - sim.t / sim.cap, P);   // the attempt's time limit: its countdown bar (live and in a replay, from the attempt's own clock)
 }
 function hopPlat(c, X, y, w, th, q, gone, P) {
   c.save();
@@ -106,7 +107,7 @@ function hopBurr(c, X, y, r, now, P) {                           // a burr: a sp
   c.restore();
 }
 function hopHopper(c, X, y, R, sim, v, now, P) {
-  const col = v.p === 'O' ? P.O : P.X, hit = v.end === 'hazard';
+  const col = v.p === 'O' ? P.O : P.X, hit = v.end === 'hazard' || v.end === 'time';   // (the time limit ends it as a crash would)
   const s = Math.min(0.2, (Math.abs(sim.vy) / sim.cfg.bounce) * 0.16), sy = 1 + s, sx = 1 - s * 0.6;
   const look = v.tx != null ? Math.max(-1, Math.min(1, (v.tx - sim.x) / 1.5)) : 0;
   c.save(); c.translate(X, y);

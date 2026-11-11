@@ -53,6 +53,10 @@ export const fdiff = (a, b, w) => { const d = fwrap(a - b, w); return d > w / 2 
 // reached (falling out past it ends the attempt); view: how far the course is kept in reach.
 export const HOP = { w: 9, view: 17, fall: 6, g: 44, vx: 11, foot: 0.3, below: 0.6, body: 0.36, bodyY: 0.45, haz: 0.48, gapK: 0.86, reachK: 0.8, clear: 1.9, edge: 0.42 };   // edge: the sky's sides are walls; the hopper's middle stays this far in
 export const HOP_MEMO = new Map();
+// The attempt's time limit (November 2026; Sky Hop's and Scoop Stack's `maxSecs` setting, their meta.js TUNE): once the
+// attempt's own clock reaches it, the attempt ends ('time') as a fall or the last miss would, its progress kept; never
+// past FING.maxSecs (the longest the server plays through).
+export const fingCap = mini => Math.min(FING.maxSecs, Math.max(1, Number(tune(mini).maxSecs) || FING.maxSecs));
 
 // An attempt played through from its inputs (the phone's, the computer's): the same steps the phone took.
 export function fingReplay(type, mini, p, log, steps) {
