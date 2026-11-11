@@ -77,7 +77,7 @@ export { ROAD, ROAD_SEGS, ROAD_LAYOUTS, ROAD_BY_COUNT, ROAD_CFG, roadGeom, roads
 export { ROADS_DEFAULTS } from '../games/roads/meta.js';
 export { SCOOP_DEFAULTS } from '../games/scoop/meta.js';
 export { SCOOP, SCOOP_LIMITS, SCOOP_KIT, setScoopConfig, scoopConfig, scoopItems, scoopStart, scoopTop, scoopSize, scoopStep, scoopResult, scoopY, scoopAi, scoopDrop, SCOOP_VIEW } from '../games/scoop/rules.js';
-export { SEAT, seatTable, seatMate, seatTables, seatZ, seatNext, seatPick } from '../games/seating/rules.js';
+export { SEAT, seatTable, seatMate, seatFree, seatMoves, seatWaiting, seatScore, seatNext, seatCustomer, seatEnd } from '../games/seating/rules.js';
 export { ATT_TYPES, ATT, plural, FLASH, flashRound, attOk, attRound, attTruth, attValid, attJudge, attStart, attMs, attWrong, attFrame, attentionHide, attentionSecret } from '../games/shared/attention.js';
 export { CARD, cardDeck, isCard, cardName } from '../games/shared/cards.js';
 export { fingCheck, fingAi, fingAt, fingGoal, FING_GAIN, fingNeeds, fingRaw, fingMs, fingPlay, FINGER_TYPES, FING, fingLog, fingUnlog, fwrap, fdiff, HOP, HOP_MEMO, fingReplay, fingRecorder, FHAND } from '../games/shared/finger.js';

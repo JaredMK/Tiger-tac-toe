@@ -1,127 +1,104 @@
-// Seating: the computer's play.
-import { other } from '../../core/util.js';
-import { raceNeeds } from '../shared/placement.js';
+// Seating: the computer's play (reworked November 2026 with the rules).
 import { randInt } from '../../core/random.js';
-import { seatCfg, seatMate, seatPick, seatTables } from './rules.js';
+import { other } from '../../core/util.js';
+import { seatCfg, seatCustomer, seatEnd, seatFree, seatMate, seatMoves, seatNext, seatScore, seatWaiting } from './rules.js';
 
+// What a seat is worth now: the next customer's colour is known, so for each seat the computer could take, the chance
+// that customer sits across from it (+1) less the chance they sit across from the other side's waiting seat (-1), every
+// empty seat of their colour as likely. (A waiting seat's later chances do not depend on its colour: a customer's colour
+// is drawn from the empty seats, so each empty seat is as likely as any to be the one taken, 1 in the seats left.)
+export function seatNow(pm, me, i) {
+  const o = other(me), who = pm.who, c = pm.next;
+  if (c == null) return 0;
+  let n = 0, mine = 0, theirs = 0;
+  for (let z = 0; z < who.length; z++) {
+    if (z === i || who[z] || pm.color[z] !== c) continue;
+    n++;
+    const mate = z === seatMate(i) ? me : who[seatMate(z)];
+    if (mate === me) mine++; else if (mate === o) theirs++;
+  }
+  return n ? (mine - theirs) / n : 0;
+}
+// Seats alike for the choice: the same colour and the same colour across (one of each kind is weighed for all).
+const kindOf = (pm, i) => pm.color[i] * 16 + pm.color[seatMate(i)];
+// Normal: the seat worth most now (between equals, at random).
+export function seatPick(pm, me, rng) {
+  const ms = seatMoves(pm.who);
+  let best = [], bv = -Infinity;
+  for (const i of ms) { const v = seatNow(pm, me, i); if (v > bv + 1e-9) { bv = v; best = [i]; } else if (Math.abs(v - bv) <= 1e-9) best.push(i); }
+  return { move: best[randInt(rng, best.length)], v: bv };
+}
+// Hard: two plies weighed exactly (nothing hidden is used: the colours and seats are all public, the customers' choices
+// and the next colour taken at their odds). For each kind of seat: every seat the customer could take, then every colour
+// the next customer could be, then the other side's best seat by Normal's measure (its chance of scoring now, less the
+// chance it hands the computer one); the position then valued by the score and the seats left waiting, each worth its
+// chance of a customer before the end (about the customers still to come over the empty seats, the same for every seat
+// whatever its colour).
+export const SEAT_AI = { wait: 1 };
+function waitWorth(who) {
+  const empty = who.filter(w => !w).length, free = seatFree(who).length;
+  return empty ? Math.min(1, (free / 1.35) / empty) * SEAT_AI.wait : 0;
+}
+function hard2(pm, me, i) {
+  const o = other(me), color = pm.color, who0 = pm.who.slice(); who0[i] = me;
+  const zs = pm.next == null ? [] : who0.map((w, z) => (!w && color[z] === pm.next ? z : -1)).filter(z => z >= 0);
+  const outcomes = zs.length ? zs.map(z => { const w = who0.slice(), mate = w[seatMate(z)]; w[z] = 'Z'; let d = 0; if (mate === me) d = 1; else if (mate === o) d = -1; else w[seatMate(z)] = 'Z'; return { w, d }; }) : [{ w: who0, d: 0 }];
+  let total = 0;
+  for (const { w, d } of outcomes) {
+    const sc = seatScore(pm); if (d > 0) sc[me]++; else if (d < 0) sc[o]++;
+    const end = seatEnd(w, sc);
+    if (end) { total += end.winner === me ? 4 : end.winner === 'draw' ? 0 : -4; continue; }
+    const k = waitWorth(w), base = (sc[me] - sc[o]) + k * (seatWaiting(w, me) - seatWaiting(w, o));
+    // the next colour, each empty seat as likely; the other side's reply: its best seat now
+    const empty = w.map((x, z) => (x ? -1 : z)).filter(z => z >= 0), byColor = {};
+    for (const z of empty) byColor[color[z]] = (byColor[color[z]] || 0) + 1;
+    let reply = 0;
+    for (const c in byColor) {
+      const pos = { who: w, color, next: +c }, ms = seatMoves(w);
+      let bestR = 0;
+      for (const j of ms) { const r = seatNow(pos, o, j); if (r > bestR) bestR = r; }
+      reply += byColor[c] / empty.length * (bestR + k);          // (its new seat waits too)
+    }
+    total += base - reply;
+  }
+  return total / outcomes.length;
+}
+export function seatHard(pm, me, rng) {
+  const ms = seatMoves(pm.who), kinds = new Map();
+  for (const i of ms) { const k = kindOf(pm, i); if (!kinds.has(k)) kinds.set(k, []); kinds.get(k).push(i); }
+  let top = null;
+  for (const list of kinds.values()) { const v = hard2(pm, me, list[0]); if (!top || v > top.v + 1e-9) top = { list, v }; }
+  return { move: top.list[randInt(rng, top.list.length)], v: top.v };   // (any seat of the kind: alike)
+}
+// The turns p still needs (for the main board's choice of square): about one of p's moves for every two to three
+// tables left (each round takes one, and a customer at an empty table a second), more when behind and fewer ahead,
+// counting a waiting seat as half a point.
 export function needs(pm, p) {
-  const o = other(p), e = pm.who.filter(w => !w).length, half = q => pm.who.filter((w, i) => w === q && !pm.who[seatMate(i)]).length; return e ? raceNeeds(seatTables(pm.who, p) - seatTables(pm.who, o) + 0.4 * (half(p) - half(o)), e / 4, 1) : Infinity;
+  const o = other(p), s = seatScore(pm), free = seatFree(pm.who).length;
+  const diff = s[p] + 0.5 * seatWaiting(pm.who, p) - s[o] - 0.5 * seatWaiting(pm.who, o);
+  const base = Math.max(1, free / 2.7);
+  return Math.max(1, diff >= 0 ? base / (1 + 0.35 * diff) : base * (1 + 0.5 * -diff));
 }
 export function best(pm, me, rng, style, ctx) {
-  const cf = seatCfg(pm), e = pm.who.map((w, i) => (w ? -1 : i)).filter(i => i >= 0);
-  const b = cf.miss && rng() < cf.miss / 100 ? { move: e[randInt(rng, e.length)] } : ctx && ctx.level === 'hard' ? seatHard(pm, me, cf, ctx.until) : seatPick(pm, me, rng), a = Object.assign({}, pm, { who: pm.who.slice() }); a.who[b.move] = me; return { move: b.move, after: a, win: seatTables(a.who, me) >= cf.goal };   // (the admin's settings: a mistake now and then, any empty seat)
+  const cf = seatCfg(pm), ms = seatMoves(pm.who);
+  if (!ms.length) return { move: null };
+  const lvl = ctx && ctx.level;
+  if (lvl === 'easy' || (cf.miss && rng() * 100 < cf.miss)) return { move: ms[randInt(rng, ms.length)] };   // Easy, or the admin's mistake rate: any seat
+  const b = lvl === 'hard' ? seatHard(pm, me, rng) : seatPick(pm, me, rng);
+  return { move: b.move, q: seatWinNow(pm, me, b.move) };
 }
-
-// ---- Hard: the customer counted, the last seats solved ----
-// Either side can always hold the other to no table (sit in the other seat of its half-table), so with best play by
-// both a square is level; it is won from a side that lets a table through. So the search plays two things at once:
-// the value under best play (never a line that loses to the right reply while a safe one is there), and, between
-// moves that hold as much, the one that leaves the other side the most to get wrong: the other side's reply can be
-// reckoned as its best with SEAT_AI.slip of the weight on the average of its seats (a player who slips now and then).
-// Measured against the search as it was (10,000 squares each): no slip won 103 and lost 2, a slip of 0.12 won 104 and
-// lost 14, so slip is 0 (best play alone).
-// Every seat for the mover, then every seat the customer could take and every colour the next could be, and so on:
-// with SEAT_AI.solve seats empty or fewer to the room's end, exactly (a memo of the positions met); above that a few
-// moves deep (deeper while the clock allows), the leaves valued by the tables held and the half-tables open: taken
-// in turn, the side to move first, each completes its own or sits in the other's (seatTrade), less the customer's
-// chance of spoiling each.
-export const SEAT_AI = { solve: 8, depth: 2, deep: 12, slip: 0, scale: 0.9 };   // solve: seats empty at most for the exact solve with no clock; depth: the moves searched above that (one more with `deep` seats empty or fewer); slip: the other side's share of careless replies in the reckoning (0: its best always)
-// Half-tables taken in turn: what the side to move nets with a of its own open and b of the other side's.
-const TRADE = [];
-function seatTrade(a, b) {
-  if (a > 6) a = 6; if (b > 6) b = 6;
-  const k = a * 7 + b; if (TRADE[k] !== undefined) return TRADE[k];
-  let v = a || b ? -Infinity : 0;
-  if (a) v = Math.max(v, 1 - seatTrade(b, a - 1));
-  if (b) v = Math.max(v, -seatTrade(b - 1, a));
-  return (TRADE[k] = v);
-}
-export function seatHard(pm, me, cf, until) {
-  const n = pm.who.length, color = pm.color, o = other(me), goal = cf.goal, eps = SEAT_AI.slip;
-  const who = new Int8Array(n);                                  // 0 empty, 1 mine, 2 theirs, 3 a customer
-  const cnt = []; let open = 0, empty = 0, code = 0, t1 = 0, t2 = 0;
-  const P4 = []; for (let i = 0, x = 1; i < n; i++, x *= 4) P4.push(x);
-  for (let i = 0; i < n; i++) { const w = pm.who[i]; who[i] = !w ? 0 : w === me ? 1 : w === o ? 2 : 3; code += who[i] * P4[i]; if (!w) { cnt[color[i]] = (cnt[color[i]] || 0) + 1; empty++; } }
-  for (let c = 0; c < cnt.length; c++) { if (cnt[c]) open++; else cnt[c] = 0; }
-  for (let i = 0; i < n; i += 2) if (who[i] === who[i + 1]) { if (who[i] === 1) t1++; else if (who[i] === 2) t2++; }
-  const sit = (i, w) => { who[i] = w; code += w * P4[i]; if (--cnt[color[i]] === 0) open--; if (w !== 3 && who[i ^ 1] === w) { if (w === 1) t1++; else t2++; } };
-  const rise = i => { const w = who[i]; if (w !== 3 && who[i ^ 1] === w) { if (w === 1) t1--; else t2--; } who[i] = 0; code -= w * P4[i]; if (cnt[color[i]]++ === 0) open++; };
-  const kind = i => color[i] * 8 + (who[i ^ 1] ? 4 + who[i ^ 1] : color[i ^ 1]);   // an empty seat's kind: its colour and its table's other seat (who is there, else its colour)
-  let nodes = 0, out = false;
-  const tick = () => { if (until && (++nodes & 127) === 0 && until() <= 0) out = true; };
-  const full = () => (t1 > t2 ? 1 : t2 > t1 ? -1 : 0);
-  // a position's worth for me, `side` to move, the next customer's colour not drawn yet
-  const leaf = side => {
-    let a = 0, b = 0;                                            // the half-tables open, each less the customer's chance of taking its other seat
-    for (let i = 0; i < n; i++) {
-      const w = who[i]; if (w !== 1 && w !== 2 || who[i ^ 1]) continue;
-      const keep = 1 - 1 / (open * cnt[color[i ^ 1]]);
-      if (w === 1) a += keep; else b += keep;
-    }
-    const ra = Math.round(a), rb = Math.round(b);
-    const tr = side === 1 ? seatTrade(ra, rb) : -seatTrade(rb, ra);
-    const e = t1 - t2 + 0.8 * tr + 0.1 * (a - b);
-    const x = Math.exp(2 * SEAT_AI.scale * e); return 0.9 * (x - 1) / (x + 1);
-  };
-  const memo = new Map();
-  // the value for me with `side` to move, the customer's colour `next`, e seats empty, `depth` moves still searched
-  const node = (side, next, depth, e) => {
-    const whole = depth >= e, key = ((whole ? 0 : depth) * 8 + next * 2 + side - 1) + code * 512;
-    const got = memo.get(key); if (got !== undefined) return got;
-    tick(); if (out) return 0;
-    let bestV = side === 1 ? -Infinity : Infinity, sum = 0, k = 0;
-    const cl = [], cv = [];                                      // seats of one colour whose tables stand alike are alike: one is searched for all
-    for (let m = 0; m < n; m++) {
-      if (who[m]) continue;
-      const c = kind(m), at = cl.indexOf(c), v = at >= 0 ? cv[at] : after(m, side, next, depth, e);
-      if (at < 0) { cl.push(c); cv.push(v); if (side === 1 ? v > bestV : v < bestV) bestV = v; }
-      sum += v; k++;
-    }
-    if (side === 2 && eps) bestV = (1 - eps) * bestV + eps * sum / k;   // (the other side: its best, a slip now and then)
-    if (!out) memo.set(key, bestV);
-    return bestV;
-  };
-  // the next customer's colour is drawn (each colour with a seat as likely), then `side` moves
-  const draw = (side, depth, e) => {
-    if (depth <= 0) return leaf(side);
-    let v = 0; for (let c = 0; c < cnt.length; c++) if (cnt[c]) v += node(side, c, depth, e);
-    return v / open;
-  };
-  // side sits at m: the square won, or the customer (colour `next`), then on
-  const after = (m, side, next, depth, e) => {
-    sit(m, side);
-    let v;
-    if ((side === 1 ? t1 : t2) >= goal) v = side === 1 ? 1 : -1;
-    else if (e === 1) v = full();
-    else if (!cnt[next]) v = draw(3 - side, depth - 1, e - 1);   // none of their colour: they leave
-    else {
-      v = 0; const k = cnt[next];
-      const cl = [], cv = [];
-      for (let z = 0; z < n; z++) {
-        if (who[z] || color[z] !== next) continue;
-        const c = kind(z), at = cl.indexOf(c);
-        if (at >= 0) { v += cv[at]; continue; }
-        sit(z, 3); const x = e === 2 ? full() : draw(3 - side, depth - 1, e - 2); rise(z);
-        cl.push(c); cv.push(x); v += x;
-      }
-      v /= k;
-    }
-    rise(m);
-    return v;
-  };
-  const pick = depth => {
-    let top = null;
-    for (let m = 0; m < n && !out; m++) {
-      if (who[m]) continue;
-      const v = after(m, 1, pm.next, depth, empty);
-      if (out) break;                                            // (the clock: this seat's value is not whole)
-      if (!top || v > top.v + 1e-9) top = { move: m, v };
-    }
-    return top;
-  };
-  let got = null;
-  if (!until) got = pick(empty <= SEAT_AI.solve ? empty : empty <= SEAT_AI.deep ? SEAT_AI.depth + 1 : SEAT_AI.depth);
-  else { for (let d = 1; !out && d < empty && d <= 6; d++) { const r = pick(d); if (!out || !got) got = r; } if (!out) { const ex = pick(empty); if (!out && ex) got = ex; } }
-  if (!got) return seatPick(pm, me, null);                       // (no time at all: the ordinary pick)
-  return got;
+// q: the chance this move ends the square in me's favour (each seat of the customer's colour as likely; the next draw
+// changes nothing of the end).
+export function seatWinNow(pm, me, i) {
+  const who = pm.who.slice(); who[i] = me;
+  const zs = pm.next == null ? [] : who.map((w, z) => (!w && pm.color[z] === pm.next ? z : -1)).filter(z => z >= 0);
+  const endFor = (w, sc) => { const e = seatEnd(w, sc); return e && e.winner === me ? 1 : 0; };
+  if (!zs.length) return endFor(who, seatScore(pm));
+  let won = 0;
+  for (const z of zs) {
+    const w = who.slice(), sc = seatScore(pm), mate = w[seatMate(z)];
+    w[z] = 'Z'; if (mate === 'X' || mate === 'O') sc[mate]++; else w[seatMate(z)] = 'Z';
+    won += endFor(w, sc);
+  }
+  return won / zs.length;
 }

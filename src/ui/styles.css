@@ -1890,39 +1890,45 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .fsw:disabled { box-shadow: none; opacity: .45; } .fsw i { font-style: normal; font-size: 11px; font-weight: 800; color: #fff; text-shadow: 0 1px 0 var(--ink); }
 .tg.gfl { grid-template-columns: repeat(6, 1fr); grid-template-rows: repeat(6, 1fr); width: 62cqw; height: 62cqw; gap: 1px; }
 .tg.gfl i { border-radius: 1.5px; } .tg.gfl i.own.X { box-shadow: inset 0 0 0 1.6cqw var(--x); } .tg.gfl i.own.O { box-shadow: inset 0 0 0 1.6cqw var(--o); }
-/* Seating: ten tables, two coloured seats each; the customer walks in from the door */
-.seating { flex: 1; display: flex; flex-direction: column; gap: 8px; justify-content: center; min-height: 0; }
-.sdoor { display: flex; justify-content: center; flex: none; }
-.snext { display: inline-flex; align-items: center; gap: 6px; font-weight: 800; font-size: 14px; background: var(--paper); border: 3px solid var(--ink); border-radius: 12px; padding: 4px 10px; min-width: 15em; justify-content: flex-start; }
+/* Seating (reworked November 2026): tables for two in a grid sized from the room, each seat its colour; the customer walks
+   in from the door, a second behind them at an empty table, a +1 pops over the table a player scores at. */
+.seating { flex: 1; display: flex; flex-direction: column; gap: 8px; justify-content: center; min-height: 0; container-type: inline-size; }
+.sdoor { display: flex; justify-content: center; flex: none; height: 40px; align-items: center; }
+.snext { display: inline-flex; align-items: center; gap: 6px; font-weight: 800; font-size: 14px; background: var(--paper); border: 3px solid var(--ink); border-radius: 12px; padding: 3px 10px; min-width: 14em; justify-content: flex-start; height: 34px; box-sizing: border-box; }
 .sgwrap, .snext .sgwrap { display: inline-grid; } .sgwrap > span { grid-area: 1 / 1; }
 .snext span { display: inline-flex; align-items: center; gap: 5px; }
-.sgdot { width: 16px; height: 16px; border-radius: 50%; border: 2.5px solid var(--ink); flex: none; }
+.snext .sguest { width: 24px; height: 24px; }
 .sgo { animation: sgo .25s var(--t, 0ms) ease-in forwards; }
-@keyframes sgo { to { opacity: 0; transform: translateY(8px); } }
-.stbls { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; width: min(100%, 360px); margin: 0 auto; }
-.sleave { position: absolute; left: 50%; top: 0; margin-left: -17px; z-index: 2; pointer-events: none; animation: sleave .9s var(--t, 0ms) ease-in-out both; }   /* a customer with no seat of their colour: walks through and out */
-.sleave .sguest { width: 34px; height: 34px; box-shadow: 0 0 0 3px var(--sc); }
-@keyframes sleave { 0% { opacity: 0; transform: translate(0, -40px) scale(.6); } 15% { opacity: 1; transform: translate(0, -20px) rotate(-8deg); } 40% { transform: translate(-30px, 60px) rotate(8deg); } 65% { opacity: 1; transform: translate(30px, 140px) rotate(-8deg); } 100% { opacity: 0; transform: translate(150px, 200px) scale(.7); } }
-.stbl { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; gap: 4px; }
-.sts { width: 44px; height: 44px; border: 3px solid var(--ink); border-radius: 50% 50% 38% 38%; background: var(--sc); box-shadow: 0 3px 0 var(--ink); padding: 0; display: grid; place-items: center; }
+.stbls { position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: min(10px, 2.4cqw) min(12px, 3cqw); width: min(100%, 420px); margin: 0 auto; }
+.stbl { position: relative; display: grid; grid-template-columns: 1fr .8fr 1fr; align-items: center; gap: 2px; border-radius: 12px; padding: 3px; }
+.stbl.free { background: color-mix(in srgb, var(--paper) 60%, transparent); }
+.sts { width: 100%; max-width: 44px; aspect-ratio: 1; justify-self: center; border: 2.5px solid var(--ink); border-radius: 50% 50% 38% 38%; background: var(--sc); box-shadow: 0 3px 0 var(--ink); padding: 0; display: grid; place-items: center; touch-action: manipulation; }
 .sts:disabled { box-shadow: none; }
-.sts b { width: 30px; height: 30px; border-radius: 50%; border: 2.5px solid var(--ink); display: grid; place-items: center; font: 400 17px 'Luckiest Guy', sans-serif; padding-top: 3px; }
-.sts.X b { background: var(--x); color: #fff; } .sts.O b { background: var(--o); color: var(--ink); }
-.sguest { width: 30px; height: 30px; border-radius: 50%; background: #8d8d8d; border: 2.5px solid var(--ink); display: grid; place-items: center; overflow: hidden; }
-.sguest svg { width: 80%; height: 80%; fill: #f4f4f4; margin-top: 3px; }
+.stbl:not(.free) .sts:not(.X):not(.O):not(.Z) { opacity: .45; }   /* a seat at a taken table, still waiting: not yours to take */
+.sts b { width: 78%; height: 78%; border-radius: 50%; border: 2.5px solid var(--ink); display: grid; place-items: center; background: #fff; }
+.sts.X b { background: var(--x); } .sts.O b { background: var(--o); }
+.smk { width: 70%; height: 70%; overflow: visible; } .smk .tmk { stroke: #fff; } .smk.O .tmk { stroke: var(--ink); }
+.sguest { width: 78%; height: 78%; border-radius: 50%; background: var(--gc, #8d8d8d); border: 2.5px solid var(--ink); display: grid; place-items: center; overflow: hidden; box-sizing: border-box; }
+.sguest svg { width: 80%; height: 80%; fill: #fff; margin-top: 3px; }
 .sts.pop b { animation: markpop .35s ease-out both; }
 .sts.walk .sguest { animation: swalk .9s var(--t, 0ms) cubic-bezier(.3, .7, .4, 1) both; }
-@keyframes swalk { 0% { opacity: 0; transform: translateY(-70px) scale(.6); } 15% { opacity: 1; transform: translateY(-58px) rotate(-10deg); } 35% { transform: translateY(-38px) rotate(10deg); } 55% { transform: translateY(-18px) rotate(-8deg); } 80% { transform: translateY(3px) scale(1.06); } 100% { transform: none; } }
-.stop { height: 32px; border: 3px solid var(--ink); border-radius: 10px; background: #e7cfa6; display: grid; place-items: center; font-weight: 800; font-size: 12px; color: var(--muted); min-width: 0; }
-.stbl.own.X .stop { background: var(--x); color: #fff; } .stbl.own.O .stop { background: var(--o); color: var(--ink); }
-.stop b { font: 400 18px 'Luckiest Guy', sans-serif; font-weight: 400; padding-top: 3px; }
+.stop { height: 60%; min-height: 18px; border: 2.5px solid var(--ink); border-radius: 8px; background: #e7cfa6; min-width: 0; }
+.stbl.sc.X .stop { background: var(--x); } .stbl.sc.O .stop { background: var(--o); } .stbl.pair .stop { background: #bdb6a8; }
 .stbl.got .stop { animation: stgot .6s var(--t, 0ms) both; }
+.spop { position: absolute; left: 50%; top: 0; transform: translate(-50%, 0); font: 400 20px/1 'Luckiest Guy', sans-serif; padding-top: 3px; pointer-events: none; opacity: 0; animation: spop .9s var(--t, 0ms) ease-out both; -webkit-text-stroke: 1.5px var(--ink); }
+.spop.X { color: var(--x); } .spop.O { color: var(--o); }
+@keyframes spop { 0% { opacity: 0; transform: translate(-50%, 6px) scale(.6); } 25% { opacity: 1; transform: translate(-50%, -8px) scale(1.25); } 70% { opacity: 1; transform: translate(-50%, -16px) scale(1); } 100% { opacity: 0; transform: translate(-50%, -26px); } }
+.sleave { position: absolute; left: 50%; top: 0; margin-left: -17px; width: 34px; height: 34px; z-index: 2; pointer-events: none; animation: sleave .9s var(--t, 0ms) ease-in-out both; }   /* a customer with no seat of their colour: walks through and out */
+.sleave .sguest { width: 34px; height: 34px; }
+.sscore { display: inline-grid; place-items: center; min-width: 30px; height: 26px; border-radius: 8px; background: var(--paper); border: 2.5px solid var(--ink); font: 400 18px/1 'Luckiest Guy', sans-serif; padding-top: 3px; box-sizing: border-box; margin-left: auto; }
+.tart.tseatw { gap: 2cqw; } .tart.tseatw .tpic { width: 56cqw; } .tart.tseatw .tpip { width: auto; flex: 1; }
+.tseat2 .tst { fill: #e7cfa6; stroke: var(--ink); stroke-width: .8; } .tseat2 .tst.X { fill: var(--x); } .tseat2 .tst.O { fill: var(--o); }
+.tseat2 .tsd { fill: var(--sc); opacity: .45; stroke: var(--ink); stroke-width: .6; } .tseat2 .tsd.X { fill: var(--x); opacity: 1; } .tseat2 .tsd.O { fill: var(--o); opacity: 1; } .tseat2 .tsd.Z { fill: #8d8d8d; opacity: 1; }
+.tseatw .tsn { font: 400 var(--mt)/1 'Luckiest Guy', sans-serif; padding-top: 2px; }
+@keyframes sgo { to { opacity: 0; transform: translateY(8px); } }
+@keyframes sleave { 0% { opacity: 0; transform: translate(0, -40px) scale(.6); } 15% { opacity: 1; transform: translate(0, -20px) rotate(-8deg); } 40% { transform: translate(-30px, 60px) rotate(8deg); } 65% { opacity: 1; transform: translate(30px, 140px) rotate(-8deg); } 100% { opacity: 0; transform: translate(150px, 200px) scale(.7); } }
+@keyframes swalk { 0% { opacity: 0; transform: translateY(-70px) scale(.6); } 15% { opacity: 1; transform: translateY(-58px) rotate(-10deg); } 35% { transform: translateY(-38px) rotate(10deg); } 55% { transform: translateY(-18px) rotate(-8deg); } 80% { transform: translateY(3px) scale(1.06); } 100% { transform: none; } }
 @keyframes stgot { from { background: #e7cfa6; transform: scale(.85); } 50% { transform: scale(1.14); } to { transform: none; } }
-.tseat { display: grid; grid-template-columns: 1fr 1fr; gap: 2cqw 5cqw; width: 66cqw; }
-.tseat span { display: flex; gap: 1.2cqw; padding: .8cqw; border-radius: 2cqw; border: .9cqw solid transparent; }
-.tseat span.own.X { border-color: var(--x); } .tseat span.own.O { border-color: var(--o); }
-.tseat i { flex: 1; height: 7cqw; border-radius: 2cqw; background: var(--sc); opacity: .5; }
-.tseat i.X { background: var(--x); opacity: 1; } .tseat i.O { background: var(--o); opacity: 1; } .tseat i.Z { background: #8d8d8d; opacity: 1; }
 /* Districts: the map, each region in its leader's shade; spots on borders count for both sides */
 .districts { flex: 1; display: flex; flex-direction: column; gap: 8px; justify-content: center; min-height: 0; }
 .dmap { display: block; width: min(100%, 320px, calc((100dvh - 340px) * .84)); margin: 0 auto; }   /* (340: the bars, the tallies, the ties line and the status line) */

@@ -1,129 +1,103 @@
 'use strict';
-// Seating: its rules and AI, test by test (npm test). The engine is the one the page and the server run.
+// Seating (reworked November 2026): its rules and AI, test by test (npm test). The engine is the one the page and the server run.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const E = require('../engine.js');
 E.setPhysics(require('../physics.js'));
+const A = require('../../src/games/seating/ai.js');
+const R = require('../../src/games/seating/rules.js');
 
 const lcg = seed => () => (seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296;
-
-/* ===================================== Seating ===================================== */
-test('seating: ten tables for two, seats in four colours; a seat, then the customer sits in a seat of their colour, or leaves when none is free; the next colour is always one with a free seat', () => {
+// A square laid out by hand: n tables, the seats' colours, the occupants and the next customer's colour.
+function laid(color, who, next, score) {
   const m = E.newMini('seating', lcg(1));
-  assert.equal(m.color.length, 20); assert.ok(m.color.every(c => c >= 0 && c < 4)); assert.ok(m.color.includes(m.next), 'the next customer\'s colour, shown: one with a seat');
-  let left = 0;
-  for (let k = 0; k < 400; k++) {
-    const s = E.newMini('seating', lcg(k)), want = s.next, rng = lcg(k + 1);
-    // play a few seats in, then check one move
-    for (let j = 0; j < k % 7 && s.who.includes(null); j++) E.applyMove(s, j % 2 ? 'O' : 'X', s.who.indexOf(null), rng);
-    if (!s.who.includes(null)) continue;
-    const before = s.next, seat = s.who.indexOf(null), freeOfColour = s.who.filter((w, i) => !w && i !== seat && s.color[i] === before).length;
-    E.applyMove(s, 'X', seat, rng);
-    assert.equal(s.last.zColor, before);
-    if (freeOfColour) { assert.equal(s.who[s.last.z], 'Z'); assert.equal(s.color[s.last.z], before, 'the customer takes a seat of their colour'); assert.equal(s.last.left, false); }
-    else { assert.equal(s.last.z, null); assert.equal(s.last.left, true, 'none of their colour: they leave'); left++; }
-    if (s.who.includes(null)) assert.ok(s.who.some((w, i) => !w && s.color[i] === s.next), 'the next colour has a free seat');
-    void want;
-  }
-  // the move takes the last seat of the next customer's colour: they walk out, nobody sits
-  const deny = E.newMini('seating', lcg(3)); deny.color = new Array(20).fill(0); deny.color[5] = 2; deny.next = 2;
-  const empties = deny.who.filter(w => !w).length;
-  E.applyMove(deny, 'X', 5, lcg(4));
-  assert.deepEqual([deny.last.left, deny.last.z, deny.who.filter(w => !w).length, deny.who.includes('Z')], [true, null, empties - 1, false]);
-  assert.equal(deny.next, 0, 'the next customer: a colour with a seat (only 0 is left)');
-  for (const bad of [-1, 20, 'a', 0.5]) assert.equal(E.applyMove(E.newMini('seating', lcg(5)), 'X', bad).ok, false);
-  const taken = E.newMini('seating', lcg(6)); E.applyMove(taken, 'X', 3, lcg(7));
-  assert.equal(E.applyMove(taken, 'O', 3).ok, false, 'a taken seat');
-  // the flash carries it and the move's time includes the walk
-  const st = E.newMatch(lcg(8), { games: ['seating'] }); const sm = st.squares[0].mini; sm.color = new Array(20).fill(1); sm.color[7] = 3; sm.next = 3;
-  E.playMove(st, 0, 7, lcg(9));
-  assert.equal(st.flash.seat.left, true); assert.equal(E.playMs(st.flash), E.PLACE_MS.mark + E.PLACE_MS.walk + E.PLACE_MS.hold);
-});
-
-test('seating: both seats of a table make it yours; five tables wins at once; a full room goes to most tables, and a tie resets the square', () => {
-  const m = E.newMini('seating', lcg(1));
-  m.who = ['X', null, 'X', 'X', 'X', 'X', 'X', 'X', 'Z', 'Z', 'O', 'O', null, null, null, null, null, null, null, null];
-  assert.equal(E.seatTables(m.who, 'X'), 3); assert.equal(E.seatTables(m.who, 'O'), 1);
-  const r = E.applyMove(m, 'X', 1, lcg(2));
-  assert.deepEqual([r.outcome, E.seatTables(m.who, 'X'), m.last.table], ['continue', 4, 0]);
-  m.who[12] = 'X'; m.who[13] = null; m.next = m.color[14] = 1; m.color.fill(1);
-  assert.equal(E.applyMove(m, 'X', 13, lcg(3)).outcome, 'win', 'five tables: the square');
-  const full = E.newMini('seating', lcg(4));
-  full.who = ['X', 'X', 'O', 'O', 'X', 'X', 'Z', 'O', 'Z', 'X', 'O', 'Z', 'X', 'Z', 'O', 'Z', 'X', 'Z', 'X', null];
-  const f = E.applyMove(full, 'O', 19, lcg(5));
-  assert.deepEqual([f.outcome, f.winner, f.counts.X, f.counts.O], ['win', 'X', 2, 1], 'the last seat: most tables');
-  assert.equal(full.last.z, null, 'no customer when the room is full');
-  const tie = E.newMini('seating', lcg(6));
-  tie.who = ['X', 'X', 'O', 'O', 'X', 'X', 'Z', 'O', 'Z', 'X', 'O', 'Z', 'X', 'Z', 'O', 'Z', 'X', 'Z', 'O', null];
-  assert.deepEqual(E.applyMove(tie, 'O', 19, lcg(7)), { ok: true, outcome: 'draw', note: 'tie' }, 'a tie resets the square');
-  const st = E.newMatch(lcg(8), { games: ['seating', 'ttt'] });
-  const i = st.squares.findIndex(q => q.mini.type === 'seating');
-  st.squares[i].mini = tie; tie.who[19] = null; st.turn = 'O';
-  E.playMove(st, i, 19, lcg(9));
-  assert.equal(st.flash.kind, 'draw'); assert.equal(st.flash.note, 'tie'); assert.ok(st.squares[i].mini.type, 'a new game in the square');
-});
-
-test('seating: the computer completes its own half-table, then blocks the other player\'s, then starts a table whose other seat is not the next customer\'s colour', () => {
-  const pm = { type: 'seating', color: new Array(20).fill(0), who: new Array(20).fill(null), next: 0 };
-  pm.who[4] = 'O'; pm.who[8] = 'X';
-  assert.equal(E.seatPick(pm, 'X', lcg(1)).move, 9, 'its own half-table first');
-  pm.who[8] = null;
-  assert.equal(E.seatPick(pm, 'X', lcg(1)).move, 5, 'then blocks the other player\'s');
-  pm.who[4] = null; pm.color = new Array(20).fill(0); pm.color[15] = 3; pm.next = 0;
-  assert.equal(E.seatPick(pm, 'X', lcg(1)).move, 14, 'a fresh table whose other seat the next customer will not take');
-});
-
-/* ---------- the admin's Mini-game Settings ---------- */
-function tunedPlay(t, seed, guard = 400) {                        // (the computer on both sides of square 4 until it is decided)
-  const st = E.newMatch(lcg(seed), { games: Object.fromEntries(E.TYPES.map(g => [g, g === t])) }), rr = lcg(seed + 7);
-  let n = 0, kind = null;
-  while (n < guard) {
-    st.lock = 4;
-    const m = E.cpuMove(st, rr), r = E.playMove(st, 4, m.move, rr);
-    assert.equal(r.ok, true, `${t}: ${JSON.stringify(m.move)} refused (${r.reason})`);
-    n++; kind = st.flash.kind; E.endFlash(st); st.lock = null;
-    if (kind !== 'move' && kind !== 'again') break;
-  }
-  assert.ok(n < guard, `${t}: the square is decided`);
-  return st;
+  m.color = color.slice(); m.who = who.slice(); m.next = next; m.score = Object.assign({ X: 0, O: 0 }, score || {});
+  return m;
 }
-test('seating: the admin\'s settings: six tables, two colours, three tables to win and mistakes deal a square that plays by them', () => {
-  E.setTune('seating', { tables: 6, colors: 2, goal: 3, miss: 20 });
-  try {
-    const m = E.newMini('seating', lcg(1));
-    assert.equal(m.who.length, 12); assert.ok(m.color.every(c => c < 2));
-    m.who = ['X', 'X', 'X', 'X', null, null, null, null, null, null, null, null]; m.color = m.color.map(() => 0); m.next = 0;
-    m.color[5] = 1;
-    const r = E.applyMove(m, 'X', 4, lcg(3));
-    assert.ok(r.outcome === 'win' || m.who[5] !== 'X', 'three tables would win at once');
-    tunedPlay('seating', 7);
-  } finally { E.setTune('seating', null); }
-  assert.equal(E.newMini('seating', lcg(1)).who.length, 20);
+
+test('seating: 15 tables for two in four colours by default, nobody seated, a next customer with a seat of their colour; the settings are the admin\'s', () => {
+  const m = E.newMini('seating', lcg(1));
+  assert.equal(m.color.length, 30); assert.ok(m.color.every(c => c >= 0 && c < 4)); assert.ok(m.color.includes(m.next));
+  assert.deepEqual(m.score, { X: 0, O: 0 }); assert.equal(m.v, 2); assert.ok(m.who.every(w => w === null));
+  E.setTune('seating', { tables: 9, colors: 2 });
+  try { const t = E.newMini('seating', lcg(2)); assert.equal(t.color.length, 18); assert.ok(t.color.every(c => c < 2)); } finally { E.setTune('seating', null); }
 });
 
-/* ---------- the Hard computer ---------- */
-test('seating: Hard counts the customer: it leaves a half-table the customer is sure to spoil and starts its own (Normal blocks it), completes a fifth table, plays a legal seat, under 60 ms', () => {
-  const hard = { level: 'hard', until: null };
-  // O's half at table 2 (seat 4), its other seat (5) the only one of the next customer's colour: the customer takes it
-  const pm = { type: 'seating', color: new Array(20).fill(0), who: new Array(20).fill(null), next: 3 };
-  pm.color[5] = 3; pm.who[4] = 'O';
-  assert.equal(E.seatPick(pm, 'X', lcg(1)).move, 5, 'Normal blocks');
-  const b = E.localBest(pm, 'X', lcg(1), {}, hard);
-  assert.notEqual(b.move, 5, 'Hard: ' + b.move);
-  assert.ok(!pm.who[b.move] && !pm.who[E.seatMate(b.move)], 'a fresh table');
-  // its fifth table at once
-  const win = { type: 'seating', color: new Array(20).fill(1), who: ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', null, 'O', 'O', 'Z', 'Z', null, null, null, null, null, null], next: 1 };
-  const w = E.localBest(win, 'X', lcg(1), {}, hard);
-  assert.deepEqual([w.move, w.win], [9, true]);
-  const times = [];
-  for (let g = 0; g < 10; g++) {
-    const q = E.newMini('seating', lcg(30 + g)), rng = lcg(50 + g);
-    let p = 'X';
-    for (let k = 0; k < g % 8 && q.who.includes(null); k++) { E.applyMove(q, p, q.who.indexOf(null), rng); p = E.other(p); }
-    const t0 = performance.now(), r = E.localBest(E.publicMini(q), p, rng, {}, hard);
-    times.push(performance.now() - t0);
-    assert.equal(q.who[r.move], null, 'a legal seat');
-    assert.equal(E.applyMove(q, p, r.move, rng).ok, true);
+test('seating: a seat only at a table nobody is at; the customer across from a player scores them 1, at an empty table a second customer closes it, with no seat of their colour they leave', () => {
+  // tables: 0 [X, empty(c0)], 1 [O, empty(c1)], 2 [empty c0, empty c2], 3 [empty c3, empty c3]
+  const base = () => laid([2, 0, 2, 1, 0, 2, 3, 3], ['X', null, 'O', null, null, null, null, null], 0);
+  const m = base();
+  assert.equal(E.applyMove(m, 'O', 1, lcg(1)).ok, false, 'never a seat at a table someone is at');
+  assert.equal(E.applyMove(m, 'O', 0, lcg(1)).ok, false, 'never a seat taken');
+  // O sits at table 3; the customer (colour 0) has two seats of their colour: across from X (seat 1) or table 2's (seat 4)
+  let across = 0, pair = 0;
+  for (let k = 0; k < 60; k++) {
+    const t = base(), r = E.applyMove(t, 'O', 6, E.makeRng('seat' + k));
+    assert.ok(r.ok);
+    if (t.last.scorer) { across++; assert.equal(t.last.scorer, 'X'); assert.equal(t.score.X, 1); assert.equal(t.who[1], 'Z'); assert.equal(t.last.z2, null); }
+    else { pair++; assert.deepEqual([t.who[4], t.who[5], t.last.z, t.last.z2], ['Z', 'Z', 4, 5], 'an empty table: a second customer takes the other seat'); assert.deepEqual(t.score, { X: 0, O: 0 }); }
+    assert.equal(t.who[6], 'O'); assert.equal(t.who[7], null, 'the mover\'s seat stays waiting');
   }
-  assert.ok(Math.max(...times.slice(1)) < 150, 'ms: ' + times.map(t => t.toFixed(1)).join(' '));
+  assert.ok(across > 10 && pair > 10, `both outcomes come up (${across}/${pair})`);
+  // the move takes the last seat of the customer's colour: they leave
+  const l = laid([0, 1, 1, 1, 1, 1], [null, null, null, null, null, null], 0);
+  const r = E.applyMove(l, 'X', 0, lcg(1));
+  assert.deepEqual([r.ok, l.last.left, l.last.z, l.score.X], [true, true, null, 0]);
+  assert.ok(l.color.some((c, i) => !l.who[i] && c === l.next), 'the next colour has a seat');
+});
+
+test('seating: the end: no table left to sit at, higher score wins (the seats still waiting score nothing), level resets; or at once when the side behind cannot catch up', () => {
+  // the last free table taken: X 2, O 1, nothing else to sit at
+  const m = laid([0, 1, 2, 2], ['X', 'Z', null, null], 1, { X: 2, O: 1 });
+  const r = E.applyMove(m, 'O', 2, lcg(1));
+  assert.ok(r.ok); assert.equal(r.outcome, 'win'); assert.equal(r.winner, 'X'); assert.equal(r.note, 'full');
+  const d = laid([0, 1, 2, 2], ['X', 'Z', null, null], 1, { X: 1, O: 1 });
+  assert.deepEqual([E.applyMove(d, 'X', 2, lcg(1)).outcome], ['draw'], 'level: the square resets');
+  // decided early: O 0 with nothing waiting and one table left, X 3: O could reach at most 1
+  const e = laid([0, 0, 1, 1, 2, 2], ['X', 'Z', 'Z', 'Z', null, null], 3, { X: 3, O: 0 });
+  assert.equal(R.seatEnd(e.who, e.score).winner, 'X');
+  const f = laid([0, 0, 1, 1, 2, 2, 3, 3], [null, null, null, null, null, null, null, null], 0, { X: 2, O: 0 });
+  assert.equal(R.seatEnd(f.who, f.score), null, 'four tables left: O can still catch up');
+});
+
+test('seating: the public view, the flash and the replay carry the move, the customer and the next colour; a timeout plays nothing', () => {
+  const st = E.newMatch(lcg(3), { games: ['seating'] }), p = st.turn, i = 4;
+  const mini = st.squares[i].mini, seat = R.seatMoves(mini.who)[0];
+  const r = E.playMove(st, i, seat, lcg(4));
+  assert.ok(r.ok);
+  const f = st.flash.seat;
+  assert.deepEqual(Object.keys(f).sort(), ['by', 'c', 'left', 'next', 'score', 'scorer', 'seat', 'z', 'z2'].sort());
+  assert.equal(f.seat, seat); assert.equal(f.by, p);
+  assert.ok(E.playMs(st.flash) >= R.seatTimes(f).end);
+  const pub = E.publicMini(mini);
+  assert.deepEqual(Object.keys(pub).sort(), ['color', 'next', 'score', 'type', 'v', 'who']);
+});
+
+test('seating: the computer: Normal sits where the customer at the door is likeliest to sit across from it and least to score the other side; Easy any free seat; Hard a legal seat, quickly', () => {
+  // the next customer is colour 0. Table 0: X waiting across a colour-0 seat. Free tables: 1 (seats c1 | c0), 2 (c2 | c2).
+  const m = laid([3, 0, 1, 0, 2, 2], ['X', null, null, null, null, null], 0);
+  const pm = E.publicMini(m);
+  // O at seat 2 (c1): the customer's seats are X's waiting one and seat 3, across from O: even. Seat 3 (c0): X's is the
+  // only one left, X scores. A table-2 seat: X's 1 in 2. Normal takes seat 2.
+  assert.equal(E.localBest(pm, 'O', lcg(1), {}, { level: 'normal' }).move, 2);
+  assert.ok(A.seatNow(pm, 'O', 2) > A.seatNow(pm, 'O', 4));
+  for (let k = 0; k < 20; k++) assert.ok(R.seatMoves(m.who).includes(E.localBest(pm, 'O', lcg(k), {}, { level: 'easy' }).move));
+  const big = E.newMini('seating', lcg(9)), t0 = performance.now(), h = E.localBest(E.publicMini(big), 'X', lcg(2), {}, { level: 'hard', until: null });
+  assert.ok(R.seatMoves(big.who).includes(h.move)); assert.ok(performance.now() - t0 < 400, 'Hard is quick');
+  assert.ok(A.needs(E.publicMini(big), 'X') >= 1);
+});
+
+test('seating: whole squares between the computers end with a winner (an odd count of tables: a tie only when a customer has left) in about 4 to 6 moves for the winner', () => {
+  let moves = 0, wins = 0, draws = 0;
+  for (let g = 0; g < 200; g++) {
+    const rng = E.makeRng('st' + g), m = E.newMini('seating', rng); let p = 'X'; const n = { X: 0, O: 0 };
+    for (let k = 0; k < 60; k++) {
+      const r = E.applyMove(m, p, E.localBest(E.publicMini(m), p, rng, {}, { level: 'normal' }).move, rng);
+      assert.ok(r.ok); n[p]++;
+      if (r.outcome !== 'continue') { if (r.outcome === 'draw') draws++; else { wins++; moves += n[r.winner]; } break; }
+      p = p === 'X' ? 'O' : 'X';
+    }
+  }
+  const avg = moves / wins;
+  assert.ok(avg >= 4 && avg <= 6, `the winner's moves ${avg.toFixed(2)}`); assert.ok(draws < 20, `few ties (${draws})`);
 });

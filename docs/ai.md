@@ -94,7 +94,7 @@ change is possible or none was found.
 | Hex | 5x5 solved, no swap rule (the book written under it keeps only its non-swap answers): a 190-position book into an exact search | Exact where winning | 57.4% [53.0, 61.7] from random openings |
 | Takeover | 5x5 solved (a 51-position book, then exact) | Exact in turn | 55.6% [52.5, 58.7] from random openings |
 | Flood | Every position solved over colour regions, including the pass where grabbing first loses | Exact in turn | 61.0% [57.9, 64.0] |
-| Seating | Best play is a draw; the last 8 seats solved, 2 to 3 moves searched above | Exact at 8 seats or fewer | 103 squares won, 2 lost in 10,000 (the rest level) |
+| Seating | Reworked November 2026 (customers score the player they sit across from): Hard weighs two plies exactly, the customer's seat and the next colour at their odds, then the other side's best reply | Not solved | Level with Normal (49.7% in 3,000 squares, sides swapped); Normal beats Easy 65% |
 | Roads | Every edge two moves deep, the best three a third; the last 6 edges solved | Heuristic above 6 edges | 56.1% [53.0, 59.1] |
 | Dominoes | A determinised search over the unseen tiles, the other hand constrained by what its draws and passes imply; never reads the other hand | Heuristic | 53.8% [52.2, 55.3] |
 | Districts | Exact from 10 empty spots; the first mover takes about 95% of decided squares | Exact late | 50.8% [47.7, 53.9] |
@@ -182,7 +182,7 @@ Normal, and the new Normal sits where the old Hard was.
 
 1. **Per-game play.** With the old per-game play, the new search alone took 52.8% [47.9, 57.6] from the old Hard
    (400 matches): level, perhaps a little ahead. The rest of the gain is inside the squares, and it is concentrated:
-   Find the Pair (75% of squares), Seating (wins only from mistakes, 103 to 2), Flood (61%), Sniff (61%), Four in a
+   Find the Pair (75% of squares), Flood (61%), Sniff (61%), Four in a
    Row, Hex and Takeover from random openings (75%, 57%, 56%), Roads (56%), Hangman and Dominoes (54%). Sharpness
    shows the same thing from the other side: taking the strong tactics away in three squares of ten costs about ten
    points.

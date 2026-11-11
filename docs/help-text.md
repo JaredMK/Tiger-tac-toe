@@ -299,8 +299,8 @@ Race Win: Sink your ship first.
 
 ## Seating [seating]
 Category: More brain
-Play: Seat yourself at any table. After each move a customer takes a seat of their colour (you'll see who's next). If none of their colour is free, they walk out.
-Win: Fill the most tables with your own pair. {goal} tables wins at once.
+Play: Take a seat at an empty table. You can see who's coming in next. If they sit across from you, you score.
+Win: Most customers seated across from you.
 
 ## Shelves [shelves]
 Category: More brain
