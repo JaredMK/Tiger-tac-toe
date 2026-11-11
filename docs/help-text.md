@@ -100,7 +100,7 @@ Win: Reach 1,000 m first.
 
 ## Claw Machine [claw]
 Category: More skill
-Play: Drag to move the claw over a prize, then tap to drop it. The better it is centred, the better the grip. A prize can still slip on the way to the chute.{goAgain}
+Play: One machine for you both. The claw sweeps by itself and swings as it goes. Tap Drop to grab the prize under it: the better it is centred, the better the grip. A prize can still slip on the way to the chute.{goAgain}
 Win: Win {goal} prizes.
 
 ## Codebreaker [mastermind]
@@ -329,7 +329,7 @@ Win: Win {goal} throws.
 
 ## Rummy Lite [rummy]
 Category: More luck
-Play: Take the top card of your pile or your deck, then throw one card onto your pile. A meld is three of a kind, or three in a row in one suit (an ace is low or high).{goAgain}
+Play: Take the top card of the pile (maybe the one the other player threw) or of the deck, then throw one card onto the pile. A meld is three of a kind, or three in a row in one suit (an ace is low or high). Your hand is yours alone.{goAgain}
 Win: Hold {melds} melds.
 
 ## Scoop Stack [scoop]
