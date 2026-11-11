@@ -1,73 +1,126 @@
-// Craps: the rules (pure: no page, no clock; the server runs the same code).
+// Coin Pusher: the rules (pure: no page, no clock; the server runs the same code).
 import { needRng, randInt } from '../../core/random.js';
-import { goAgain, tune } from '../../core/tune.js';
+import { goAgain, tune, tuneLive } from '../../core/tune.js';
 
-// ---------- Craps, Takeover and Flood ----------
-// Craps: each player has their own count of rounds won; first to 3 (the admin's, tune(mini).goal) takes the square. A move is one tap of
-// Roll: the dice keep rolling until the round is won or lost, all rolled where the move is made (the server
-// online: no roll is known before it lands). The come-out roll wins on 7 or 11 and loses on 2, 3 or 12
-// (craps); anything else is the point, and then the point wins and a 7 loses. A lost round takes nothing
-// away; every move starts a fresh round (a square from before with a point still on rolls that one out).
-// A hot streak: a round won (not yet the square) keeps the turn, and the same player rolls a new round
-// (again); a round lost ends the turn. (Super Chaos: one round a round, no streak: scApply.)
-// The page plays the rolls back one by one (the dice tumbling, the puck going on the point).
-export const CRAPS = { goal: 3, roll: 900, quick: 560, quickAfter: 4, puck: 420, hold: 400, stop: 600, land: 560, flash: 250, pip: 400, winOdds: 244 / 495 };   // a round's flash: roll each roll (quick after the first few), the puck, the result held; land: a die's tumble (stop, flash: single rolls, from before); pip: a won round's pip filling in
-export const CRAPS_MAKE = { 4: 1 / 3, 5: 0.4, 6: 5 / 11, 8: 5 / 11, 9: 0.4, 10: 1 / 3 };   // the chance a point is rolled before a 7
-// A round rolled out: from the come-out, or from a point already on (from).
-export function crapsRound(rng, from) {
-  const rolls = [];
-  let point = from == null ? null : from, result = null;
-  while (!result) {
-    const d = [1 + randInt(rng, 6), 1 + randInt(rng, 6)], s = d[0] + d[1];
-    rolls.push(d);
-    if (point == null) {
-      if (s === 7 || s === 11) result = 'win';
-      else if (s === 2 || s === 3 || s === 12) result = 'lose';
-      else point = s;
-    } else if (s === point) result = 'win';
-    else if (s === 7) result = 'lose';
-  }
-  return { rolls, point, result };
+// ---------- Coin Pusher (November 2026) ----------
+// Each player has a machine of their own, seen from above: a shelf of coins with a pusher bar across its back that
+// slides forward and back. A move drops `perMove` coins (3) through slots along the top (`PUSH.slots` of them, the
+// mover's choice, the same slot more than once allowed); each lands just in front of the bar, a little to either side
+// of its slot (`jitter`), and the bar starts the move somewhere in its cycle (`ph`), both drawn from the move's rng
+// (the server's online): the luck of the machine. The bar pushes for `secs` seconds; coins
+// pushed over the front edge score, coins that slide off the sides near the front (where the side walls stop) are lost.
+// What is left on the shelf stays there for that player's next move (`mini.coins[p]`). First to `target` wins.
+// The simulation is plain arithmetic (+, -, *, / and sqrt: the same on every phone and the server), a fixed step
+// (`PUSH.hz`), every coin in a fixed order; the shelf is kept between moves in whole units (`PUSH.Q` to the width), so
+// a move played again from the same coins and drops gives the same frames, coin for coin. The server plays the move and
+// keeps the result; the phones play it again from the move's flash to draw it (the coins before it and the drops: no
+// recording rides the record).
+export const PUSH = { slots: 9, Q: 10000, hz: 60, r: 0.05, back: 0.16, gut: 0.84, iters: 6, damp: 0.55, dropGap: 0.45, dropAt: 0.25, hold: 500 };
+export const pushCfg = mini => tune(mini);
+const SECS = c => Math.max(1, c.secs);
+// The bar's front edge at t seconds: from PUSH.back forward by `stroke` and back again every `period` seconds (a
+// triangle wave: no trig, the same everywhere), starting forward.
+export function pushBar(c, t, ph) {
+  const per = Math.max(0.5, c.period), u = ((t + (ph || 0) * per) % per) / per, k = u < 0.5 ? u * 2 : 2 - u * 2;
+  return PUSH.back + c.stroke * k;
 }
-// When each roll of a round lands (ms into the move), when the puck goes on, and when the round's result
-// shows. was: a point already on before the first roll (a square from before): the puck is on from the start.
-export function crapsTimes(rolls, point, was) {
-  const at = [];
-  let t = 0, puck = null;
-  for (let k = 0; k < rolls.length; k++) {
-    at.push(t); t += k < CRAPS.quickAfter ? CRAPS.roll : CRAPS.quick;
-    if (k === 0 && point != null && was == null) { puck = at[0] + CRAPS.land; t += CRAPS.puck; }
+// A fresh shelf: `start` coins in loose rows in front of the bar, each nudged a little from the square's rng (both
+// players' machines start alike).
+export function pushStart(c, rng) {
+  const r = PUSH.r, n = Math.max(0, c.start | 0), out = [], cols = 9, gap = (1 - 2 * r) / (cols - 1);
+  for (let i = 0; i < n; i++) {
+    const row = Math.floor(i / cols), col = i % cols;
+    const x = r + col * gap + (row % 2 ? gap / 2 : 0) * (col === cols - 1 ? -1 : 1), y = 1 - r * 1.2 - row * r * 1.75;
+    out.push([Math.round((x + (rng() - 0.5) * 0.02) * PUSH.Q), Math.round((y + (rng() - 0.5) * 0.02) * PUSH.Q)]);
   }
-  return { at, puck, end: t };
+  return out;
 }
 export function create(type, rng) {
-  return { type, wins: { X: 0, O: 0 }, rounds: { X: 0, O: 0 }, point: null, live: null, rolls: [], last: null };   // point, live, rolls: a round left with its point on (from before); every move now rolls a round out
+  const r = needRng(rng), c = Object.assign({}, tuneLive(type)), shelf = pushStart(c, r);
+  return { type, coins: { X: shelf.map(a => a.slice()), O: shelf.map(a => a.slice()) }, score: { X: 0, O: 0 }, moves: { X: 0, O: 0 }, last: null };
 }
-export function apply(mini, p, m, rng, idx) { return roll(mini, p, m, rng, true); }
-export function scApply(mini, p, m, rng) { return roll(mini, p, m, rng, false); }   // Super Chaos: a round's move is one round, won or lost
-function roll(mini, p, m, rng, streak) {   // Roll: the round, rolled out
-  if (m !== 'roll' && m !== 'auto') return { ok: false, reason: 'bad' };
-  const was = mini.point == null ? null : mini.point, r = crapsRound(needRng(rng), was);
-  mini.rounds[p] += 1; if (r.result === 'win') mini.wins[p] += 1;
-  mini.last = { by: p, kind: 'round', rolls: r.rolls.map(d => d.slice()), point: r.point, was, result: r.result };
-  mini.point = null; mini.live = null; mini.rolls = [];
-  if (mini.wins[p] >= tune(mini).goal) return { ok: true, outcome: 'win', note: 'won' };
-  if (r.result === 'win' && streak && goAgain(mini)) return { ok: true, outcome: 'continue', note: 'won', again: true };   // a hot streak: roll again
-  return { ok: true, outcome: 'continue', note: r.result === 'win' ? 'won' : 'lost' };
+// The drops of a move: each slot's centre, nudged by the jitter (in whole units, from the move's rng).
+export function pushDrops(c, slots, rng) {
+  const w = 1 / PUSH.slots;
+  return slots.map(s => Math.round(((s + 0.5) * w + (rng() * 2 - 1) * c.jitter) * PUSH.Q));
 }
-export function publicView(mini) {
-  return { type: 'pusher', wins: { X: mini.wins.X, O: mini.wins.O }, point: mini.point == null ? null : mini.point, live: mini.live || null };
+// The move played out: from the shelf `coins` (whole units) and the drops' x (whole units), every step's coins when
+// `frames` is asked for. Returns { coins (whole units, at rest), scored, lost, frames: [[x, y, id]...] per step,
+// events: [{ t, kind: 'drop' | 'off' | 'lost', x }] }.
+export function pushSim(c, coins, drops, frames, ph) {   // ph: where in its cycle the bar starts (0..1, from the move's rng)
+  const r = PUSH.r, d2 = 4 * r * r, dt = 1 / PUSH.hz, steps = Math.round(SECS(c) * PUSH.hz), gap = Math.max(0.1, PUSH.dropGap);
+  const fr = Math.max(0, Math.min(0.99, c.friction / 100));
+  let list = coins.map((a, i) => ({ x: a[0] / PUSH.Q, y: a[1] / PUSH.Q, vx: 0, vy: 0, id: i }));
+  let nextId = list.length, scored = 0, lost = 0;
+  const ev = [], out = frames ? [] : null, dropStep = drops.map((x, k) => Math.round((PUSH.dropAt + k * gap) * PUSH.hz));
+  for (let s = 0; s < steps; s++) {
+    const t = (s + 1) * dt, bar = pushBar(c, t, ph);
+    for (let k = 0; k < drops.length; k++) if (dropStep[k] === s) {
+      const x = Math.max(r, Math.min(1 - r, drops[k] / PUSH.Q));
+      list.push({ x, y: bar + r + 0.004, vx: 0, vy: 0, id: nextId++ });
+      ev.push({ t: Math.round(t * 1000), kind: 'drop', x: Math.round(x * 1000) / 1000 });
+    }
+    const px = list.map(o => o.x), py = list.map(o => o.y);
+    for (const o of list) { o.x += o.vx * dt; o.y += o.vy * dt; }
+    for (let it = 0; it < PUSH.iters; it++) {
+      for (const o of list) {
+        if (o.y < bar + r) o.y = bar + r;                                 // the bar: nothing gets behind it
+        if (o.y < PUSH.gut) { if (o.x < r) o.x = r; else if (o.x > 1 - r) o.x = 1 - r; }   // the side walls (they stop at the gutters)
+      }
+      for (let i = 0; i < list.length; i++) {
+        const a = list[i];
+        for (let j = i + 1; j < list.length; j++) {
+          const b = list[j], dx = b.x - a.x, dy = b.y - a.y, q = dx * dx + dy * dy;
+          if (q >= d2 || q === 0) continue;
+          const dd = Math.sqrt(q), push = (2 * r - dd) / (2 * dd);
+          let ax = dx * push, ay = dy * push;
+          // (against the bar a coin cannot give way backwards: the other takes the whole push)
+          if (a.y <= bar + r + 1e-9 && ay > 0) { b.x += ax; b.y += 2 * ay; a.x -= ax; continue; }
+          if (b.y <= bar + r + 1e-9 && ay < 0) { a.x -= ax; a.y -= 2 * ay; b.x += ax; continue; }
+          a.x -= ax; a.y -= ay; b.x += ax; b.y += ay;
+        }
+      }
+    }
+    const keep = [];
+    list.forEach((o, i) => {
+      o.vx = (o.x - px[i]) / dt * fr; o.vy = (o.y - py[i]) / dt * fr;   // (the shelf's friction: what a push leaves of a coin's speed)
+      if (o.y > 1) { scored++; ev.push({ t: Math.round(t * 1000), kind: 'off', x: Math.round(o.x * 1000) / 1000 }); }
+      else if (o.y >= PUSH.gut && (o.x < 0 || o.x > 1)) { lost++; ev.push({ t: Math.round(t * 1000), kind: 'lost', x: Math.round(o.x * 1000) / 1000 }); }
+      else keep.push(o);
+    });
+    list = keep;
+    if (out) out.push(list.map(o => [o.x, o.y, o.id]));
+  }
+  const rest = list.map(o => [Math.round(o.x * PUSH.Q), Math.round(o.y * PUSH.Q)]);
+  rest.sort((a, b) => a[1] - b[1] || a[0] - b[0]);                       // (a fixed order for the next move: back to front)
+  return { coins: rest, scored, lost, frames: out, events: ev, ms: Math.round(SECS(c) * 1000) };
 }
-export function randomMove(mini, p, rng, from, empties) {
-  return 'roll';                                          // a timed-out turn rolls its round out
+// A move: the slots, each a whole number 0..slots-1, `perMove` of them.
+export function pushMove(c, m) {
+  const s = m && typeof m === 'object' && Array.isArray(m.s) ? m.s : null, n = Math.max(1, c.perMove | 0);
+  if (!s || s.length !== n || !s.every(v => Number.isInteger(v) && v >= 0 && v < PUSH.slots)) return null;
+  return s.slice();
 }
+export function apply(mini, p, m, rng, idx) {
+  const c = pushCfg(mini), r = needRng(rng);
+  let slots = m === 'auto' ? Array.from({ length: Math.max(1, c.perMove | 0) }, () => randInt(r, PUSH.slots)) : pushMove(c, m);
+  if (!slots) return { ok: false, reason: 'bad' };
+  const from = mini.coins[p].map(a => a.slice()), drops = pushDrops(c, slots, r), ph = Math.floor(r() * 100) / 100, res = pushSim(c, from, drops, false, ph);
+  const before = mini.score[p];
+  mini.coins[p] = res.coins; mini.score[p] = Math.min(c.target, before + res.scored); mini.moves[p] += 1;
+  mini.last = { by: p, slots, drops, ph, from, scored: res.scored, lost: res.lost, before, after: mini.score[p], ms: res.ms };
+  if (mini.score[p] >= c.target) return { ok: true, outcome: 'win', note: 'target' };
+  if (res.scored > 0 && goAgain(mini)) return { ok: true, outcome: 'continue', note: 'scored', again: true };   // ("Go again on success" on: a coin over the edge keeps the turn)
+  return { ok: true, outcome: 'continue', note: res.scored > 0 ? 'scored' : 'none' };
+}
+export function publicView(mini) { return JSON.parse(JSON.stringify(mini)); }   // (nothing hidden: both machines are on show)
+export function randomMove(mini, p, rng) {
+  const c = pushCfg(mini), r = needRng(rng);
+  return { s: Array.from({ length: Math.max(1, c.perMove | 0) }, () => randInt(r, PUSH.slots)) };
+}
+export function canMove(mini) { return true; }
 export function moveFlash(m, p, range, bjFrom, mini, flash) {
-  const l = mini.last; flash.craps = { kind: 'round', rolls: l.rolls.map(d => d.slice()), point: l.point, was: l.was, result: l.result, wins: { X: mini.wins.X, O: mini.wins.O } }; return;
+  const l = mini.last;
+  flash.push = { by: p, slots: l.slots.slice(), drops: l.drops.slice(), ph: l.ph, from: l.from.map(a => a.slice()), scored: l.scored, lost: l.lost, before: l.before, after: l.after, ms: l.ms, score: { X: mini.score.X, O: mini.score.O } };
 }
-export function flashMs(f, winLen, won) {
-  if (!f.craps) return CRAPS.roll + CRAPS.hold;
-  if (f.craps.roll) return CRAPS.land + CRAPS.flash + (won ? 600 : 0);   // (a single roll, from before)
-  return crapsTimes(f.craps.rolls, f.craps.point, f.craps.was).end + (f.craps.result === 'win' ? CRAPS.pip : 0) + (won ? 600 : 0);   // the round, roll by roll (a round won: its pip filling in); the result then stays up its usual moment
-}
-// Super Chaos: each player's round is rolled out within their own move (one round, no streak: scApply), so
-// nothing carries over: the usual merge (each player's wins and rounds) is all there is.
+export function flashMs(f, winLen, won) { return (f.push ? f.push.ms : 3000) + PUSH.hold + (won ? 600 : 0); }
