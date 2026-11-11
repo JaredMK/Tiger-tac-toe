@@ -86,15 +86,16 @@ test('snake: food: always red (X\'s) and yellow (O\'s) on the grid, never on the
   for (let i = 0; i < 25; i++) {
     const mm = clone(m); mm.tries.X = i;
     const r = R.snakeAi(mm, 'X', E.makeRng('f' + i)), s = R.snakeStart(mm, 'X');
-    assert.equal(foodOf(s, 'X').length, cfg().food); assert.equal(foodOf(s, 'O').length, cfg().food);
+    assert.equal(foodOf(s, 'X').length, cfg().ownFood); assert.equal(foodOf(s, 'O').length, cfg().oppFood);
     // played through tick by tick: the food is always there, the same number of each, never under the snake or on each other
     const log = E.fingUnlog(r.move.log, 2 * r.move.ticks - 1, 3), turns = new Map(log);
     while (!s.end && s.k < r.move.ticks) {
       R.snakeFeed(s, turns); R.snakeTick(s, null);
       if (s.end) break;
-      assert.equal(foodOf(s, 'X').length, cfg().food); assert.equal(foodOf(s, 'O').length, cfg().food);
+      assert.equal(foodOf(s, 'X').length, cfg().ownFood); assert.equal(foodOf(s, 'O').length, cfg().oppFood);
       const cells = new Set(s.body.map(([x, y]) => x + ',' + y));
       for (const f of s.food) assert.ok(!cells.has(f[0] + ',' + f[1]), 'never on the snake');
+      for (const b of s.bombs) assert.ok(!cells.has(b[0] + ',' + b[1]) && !s.food.some(f => f && f[0] === b[0] && f[1] === b[1]), 'a bomb never under the snake or a food');
       assert.notDeepEqual(s.food[0].slice(0, 2), s.food[1].slice(0, 2));
     }
   }
@@ -195,7 +196,7 @@ test('snake: a win for the other player mid-run: the other colour\'s food takes 
   // the computer never eats the food that wins the square for the other player when it can help it
   let gifts = 0;
   for (let i = 0; i < 30; i++) { const mm = mini(100 + i, { X: 0, O: T - 1 }); if (R.snakeAi(mm, 'X', E.makeRng('ng' + i)).move.end === 'gift') gifts++; }
-  assert.ok(gifts <= 2, `${gifts} of 30 runs handed the square over`);
+  assert.ok(gifts <= 3, `${gifts} of 30 runs handed the square over`);   // (bombs crowd the grid: a lapse lands on the other colour a little more often)
 });
 test('snake: the whole move through the board (playMove): the flash carries the run (its log, both totals), and the win claims the square', () => {
   const T = cfg().target, st = E.newMatch(E.makeRng('pm'), { games: ['snake'] });
@@ -264,12 +265,12 @@ test('snake: the computer: steers for its own colour and round the other; Hard i
   assert.ok(A.needs(m, 'X') > 1 && A.needs(mini(71, { X: cfg().target - 1, O: 0 }), 'X') === 1);
 });
 test('snake: a square\'s settings are its own (a bigger target, a slower pace, more food), and the explainer\'s {target} is the setting', () => {
-  E.setTune('snake', { target: 12, tick: 300, food: 2 });
+  E.setTune('snake', { target: 12, tick: 300, ownFood: 2, oppFood: 1 });
   try {
     const m = E.newMini('snake', E.makeRng('tuned'));
-    assert.deepEqual(m.tune, { target: 12, tick: 300, food: 2 });
+    assert.deepEqual(m.tune, { target: 12, tick: 300, ownFood: 2, oppFood: 1 });
     const s = R.snakeStart(m, 'X');
-    assert.equal(s.goal, 12); assert.equal(R.snakeTickMs(s), 300); assert.equal(foodOf(s, 'X').length, 2); assert.equal(foodOf(s, 'O').length, 2);
+    assert.equal(s.goal, 12); assert.equal(R.snakeTickMs(s), 300); assert.equal(foodOf(s, 'X').length, 2); assert.equal(foodOf(s, 'O').length, 1);
     m.score.X = 11; const r = R.snakeAi(m, 'X', E.makeRng('t'), { err: 0, grow: 0, slip: 0, safe: true });
     assert.equal(r.move.end, 'top'); assert.equal(r.move.n, 1);
     assert.equal(E.applyMove(m, 'X', r.move, E.makeRng('t2')).outcome, 'win');
@@ -309,4 +310,34 @@ test('snake: Super Chaos: both in one square, each total takes both runs\' point
   const out = R.scMerge(m, { base, forks: { X: fx, O: fo }, played: ['X', 'O'] });
   assert.deepEqual(m.score, { X: 11, O: 9 }); assert.deepEqual(out.win, { X: false, O: false });
   assert.equal(R.scMerge(clone(base), { base, forks: { X: fx }, played: ['X'] }), null, 'one alone: its own copy');
+});
+
+test('snake: bombs (November 2026): `bombs` of them on the grid, never in the start lane, under a food or the snake; one hit ends the run as a crash, its points kept; growth per food is the setting', () => {
+  assert.equal(cfg().bombs, 2); assert.equal(cfg().grow, 1);
+  const m = mini(5);
+  for (let i = 0; i < 30; i++) {
+    const mm = clone(m); mm.tries.X = i;
+    const s = R.snakeStart(mm, 'X');
+    assert.equal(s.bombs.length, 2);
+    for (const b of s.bombs) assert.ok(!(b[1] === 5 && b[0] >= 2), 'never in the lane the snake sets off along');
+  }
+  // straight into a bomb: the run ends 'bomb', and the server's check agrees
+  const s = R.snakeStart(m, 'X'); s.food = [[0, 0, 'X'], [0, 10, 'O']]; s.bombs = [[7, 5]];
+  R.snakeTick(s, null); assert.ok(!s.end); R.snakeTick(s, null); assert.equal(s.end, 'bomb');
+  const r = R.snakeAi(m, 'X', E.makeRng('b1'), { err: 0, grow: 0, slip: 0, safe: true });
+  assert.notEqual(r.move.end, 'bomb', 'a steady hand steers round them');
+  assert.ok(E.applyMove(clone(m), 'X', r.move, E.makeRng('b2')).ok);
+  // growth: 3 cells a food
+  E.setTune('snake', { grow: 3, bombs: 0 });
+  try {
+    const g = E.newMini('snake', E.makeRng('grow')), t = R.snakeStart(g, 'X'); t.food = [[6, 5, 'X'], [0, 10, 'O']];
+    for (let k = 0; k < 5; k++) R.snakeTick(t, null);
+    assert.equal(t.body.length, 3 + 3, 'three cells longer'); assert.equal(t.bombs.length, 0);
+  } finally { E.setTune('snake', null); }
+  // a run that ends on a bomb, sent as a move: checked and taken, its points kept
+  let hit = null;
+  for (let i = 0; i < 200 && !hit; i++) { const r2 = R.snakeAi(m, 'X', E.makeRng('bb' + i), { err: 0.3, grow: 0, slip: 0.5, safe: false }); if (r2.move.end === 'bomb') hit = r2; }
+  assert.ok(hit, 'a careless hand finds one');
+  const mm = clone(m), res = E.applyMove(mm, 'X', hit.move, E.makeRng('b3'));
+  assert.ok(res.ok); assert.equal(mm.score.X, hit.move.n); assert.equal(mm.last.end, 'bomb');
 });

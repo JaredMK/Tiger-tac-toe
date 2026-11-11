@@ -1,6 +1,6 @@
 // The runner framework (Dash, Lane Rush, Flap, Chopper): the run in real time, its inputs, the canvas
 // and the result bars.
-import { RUN, RUNT, RUN_TYPES, runCourse, runJump, runLane, runRelease, runReplayTo, runReplayer, runResult, runStart, runStep, runStepOf, runUnlog, setRunConfig } from '../games/shared/runner.js';
+import { RUN, RUNT, RUN_TYPES, runCourse, runJump, runLane, runRelease, runLimit, runReplayTo, runReplayer, runResult, runStart, runStep, runStepOf, runUnlog, setRunConfig } from '../games/shared/runner.js';
 import { drawCave } from '../games/chopper/view.js';
 import { drawDash } from '../games/dash/view.js';
 import { FLAP } from '../games/flap/rules.js';
@@ -130,7 +130,7 @@ function runFrame(now) {
     else if (left != null && left <= 0) { runEnd(true); return; }                 // the turn's time ran out mid-run: it ends here, the distance saved
   } else if (now - rd.at >= (rd.phase === 'crash' ? 700 : 500)) { runEnd(false); return; }   // the tumble, the spin-out or the flourish has played
   const cv = app.querySelector('canvas[data-run="cv"]');
-  if (cv) runFrameDraw(cv, rd.sim, rd, now);
+  if (cv) runFrameDraw(cv, rd.sim, rd, now, true);
   rd.raf = requestAnimationFrame(runFrame);
 }
 // The counter and the runner's own bar follow a run as it goes (this phone's, or someone else's playing
@@ -161,7 +161,7 @@ export function runPaint() {
   if (!cv || state.screen !== 'mini') return;
   const sq = shownSq(state.zoom);
   if (!sq || !RUN_TYPES.includes(sq.mini.type)) return;
-  if (runDraft && runDraft.sq === state.zoom) { runFrameDraw(cv, runDraft.sim, runDraft, performance.now()); return; }
+  if (runDraft && runDraft.sq === state.zoom) { runFrameDraw(cv, runDraft.sim, runDraft, performance.now(), true); return; }
   const f = state.flash, r = f && f.run ? f.run : null, p = r ? f.by : sq.owner || state.turn;
   const pre = r ? runPre(f) : 0, start = pre ? fxAt('move', f) : null;
   if (pre && start != null && performance.now() - start < pre) {   // someone else's run, played back on the scene first
@@ -192,7 +192,7 @@ function runShowFrame(now) {
   const over = sim.crash || sim.done || sim.n >= rs.rep.steps;
   if (over && rs.endAt == null) rs.endAt = now;
   const cv = app.querySelector('canvas[data-run="cv"]');
-  if (cv) runFrameDraw(cv, sim, over && (sim.crash || sim.done) ? { at: rs.endAt } : null, now);
+  if (cv) runFrameDraw(cv, sim, over && (sim.crash || sim.done) ? { at: rs.endAt } : null, now, true);
   runHud(sim, f.by, f.run.to);
   rs.raf = requestAnimationFrame(runShowFrame);
 }
@@ -233,13 +233,28 @@ export function runCanvas(cv) {                                           // the
   c.setTransform(dpr, 0, 0, dpr, 0, 0);
   return { c, W, H };
 }
-function runFrameDraw(cv, sim, rd, now) {
+function runFrameDraw(cv, sim, rd, now, bar) {   // bar: a run under way or replayed here: its time limit's countdown over the scene
   const { c, W, H } = runCanvas(cv);
   if (W < 2 || H < 2) return;
   (sim.type === 'dash' ? drawDash : sim.type === 'flap' ? drawFlap : sim.type === 'chopper' ? drawCave : drawLane)(c, W, H, sim, rd, now);
+  if (bar) drawTimeBar(c, W, H, 1 - sim.t / runLimit(sim.cfg, sim.type));
 }
 export const rr = (c, x, y, w, h, r) => { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); };
 export const outlined = (c, fill, ink, w) => { c.fillStyle = fill; c.fill(); c.lineWidth = w || 2.5; c.strokeStyle = ink; c.stroke(); };
+// The attempt's time limit (November 2026: every real-time skill game's own setting, its meta.js TUNE): a slim bar across
+// the top of the play area's canvas, full as the attempt starts and empty as its time runs out (the attempt then ends as
+// a crash would, its progress kept). left: the share of the time still to go, 0 to 1 (from the attempt's own clock, so a
+// replay shows the time as it ran). Drawn on the canvas with the rest of the frame: never a render, never a layout change.
+export function drawTimeBar(c, W, H, left, P) {
+  const f = Math.max(0, Math.min(1, left)), h = Math.max(5, Math.round(Math.min(W, H) * 0.016)), m = Math.max(4, h), w = W - 2 * m;
+  if (w < 20) return;
+  P = P || runColours();
+  c.save();
+  c.fillStyle = 'rgba(22, 18, 16, .28)'; c.beginPath(); c.roundRect(m, m, w, h, h / 2); c.fill();
+  if (f > 0) { c.fillStyle = f <= 0.25 ? '#e0434f' : f <= 0.5 ? '#f0a020' : '#3aa35a'; c.beginPath(); c.roundRect(m, m, Math.max(h, w * f), h, h / 2); c.fill(); }
+  c.lineWidth = 1.5; c.strokeStyle = P.ink; c.beginPath(); c.roundRect(m, m, w, h, h / 2); c.stroke();
+  c.restore();
+}
 // The miniature: the game's scene (each runner's view passes its own: Dash's ground and hazards, Lane Rush's road and
 // traffic, Flap's posts, Chopper's cave), a lane each for X and O with their token at their distance, the finish at the end.
 export const RUN_SCENES = {

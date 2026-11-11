@@ -3,7 +3,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const E = require('../engine.js');
-E.setPhysics(require('../physics.js'));   // Mini Golf, Pool and Bowling are dealt only with their physics
+E.setPhysics(require('../physics.js'));
+E.setTune('lane', { maxSecs: 60 });   // (these tests drive whole courses in one run: the longest time limit; the limit itself is tested in dash.test.js)   // Mini Golf, Pool and Bowling are dealt only with their physics
 const mini = (t, seed) => E.newMini(t, E.makeRng(seed || t));
 // Step a run until a condition holds (or it ends), in frames of 1/60 s.
 function runUntil(sim, cond, max = 20000) { for (let k = 0; k < max && !sim.crash && !sim.done && !cond(sim); k++) E.runStep(sim, 1 / 60); return sim; }

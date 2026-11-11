@@ -19,7 +19,7 @@ export const TUNE = [
   { k: 'speed', label: 'Ball speed (units/s)', def: 8, min: 3, max: 14, step: 0.5, group: 'Rules' },
   { k: 'speedUp', label: 'Ball speeds up (% per second, to 1.6x)', def: 3, min: 0, max: 10, step: 0.5, group: 'Rules' },
   { k: 'paddle', label: 'Paddle width (units, of 10)', def: 2.2, min: 1, max: 5, step: 0.1, group: 'Rules' },
-  { k: 'runSecs', label: 'A go lasts at most (s)', def: 25, min: 10, max: 55, step: 1, group: 'Timing' },
+  { k: 'runSecs', label: 'Attempt time limit (s)', def: 25, min: 10, max: 55, step: 1, group: 'Timing' },
   { k: 'aiReact0', label: 'Computer reaction, fastest (ms)', def: 180, min: 0, max: 800, step: 10, group: 'Computer' },
   { k: 'aiReact1', label: 'Computer reaction, slowest (ms)', def: 300, min: 0, max: 800, step: 10, group: 'Computer' },
   { k: 'aiAim', label: 'Computer aim spread (cm)', def: 55, min: 0, max: 300, step: 5, group: 'Computer' },

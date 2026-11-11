@@ -14,7 +14,7 @@ import { lateAt } from '../../ui/progress.js';
 import { markSvgG } from '../../ui/thumbs.js';
 import { render } from '../../ui/render.js';
 import { rep, repNote } from '../../ui/replay.js';
-import { outlined, runCanvas, runColours, runInputAt } from '../../ui/runner.js';
+import { drawTimeBar, outlined, runCanvas, runColours, runInputAt } from '../../ui/runner.js';
 import { cpuTurn } from '../../ui/turns.js';
 
 // ---------- Snake: one run a turn ----------
@@ -23,7 +23,7 @@ import { cpuTurn } from '../../ui/turns.js';
 // cells); a swipe anywhere on the screen (or a tap: above or below it while it runs across, left or right
 // of it while it runs up or down; or the arrow keys) queues a turn for the next tick (two may wait: the
 // rules' queue, rules.js snakeQueue). Food eaten grows it: its own colour a point for the mover, the other
-// colour a point for the other player; the wall or its own tail ends the run, as
+// colour a point for the other player; the wall, a bomb or its own tail ends the run, as
 // does the run's time cap or the turn's clock (the run ends as it stands); the end shows a moment, then
 // the run goes in as its log (rules.js: the turns at their ticks), which the server plays through again.
 // While it runs, the phone notes the run in chunks for the other side's replay (ui/replay.js, the move's
@@ -72,8 +72,10 @@ function tickEvents(fd, sim, now, loud) {
 function endEvents(fd, sim, now, loud) {
   const [x, y] = sim.body[0];
   if (sim.end === 'wall' || sim.end === 'self') { fd.fx.push({ kind: 'bonk', x, y, at: now, dir: sim.dir, wall: sim.end === 'wall' }); if (loud) { SND.play('snkBonk'); haptic('error'); } }
+  else if (sim.end === 'bomb') { const [dx, dy] = DIRS[sim.dir]; fd.fx.push({ kind: 'boom', x: x + dx, y: y + dy, at: now }); if (loud) { SND.play('boom'); haptic('error'); } }   // (the bomb's cell, ahead of the head)
   else if (sim.end === 'top') { fd.fx.push({ kind: 'win', x, y, at: now, c: sim.p }); if (loud) { SND.play('sparkle'); haptic('success'); } }
-  else if (sim.end === 'gift') fd.fx.push({ kind: 'win', x, y, at: now, c: sim.p === 'X' ? 'O' : 'X' });   // (the other player's target, from food eaten here: its gulp has sounded)
+  else if (sim.end === 'gift') fd.fx.push({ kind: 'win', x, y, at: now, c: sim.p === 'X' ? 'O' : 'X' });
+  else if (sim.end === 'out' && loud) { SND.play('buzz'); haptic('medium'); }   // (the attempt's time limit: a buzzer, its points kept)   // (the other player's target, from food eaten here: its gulp has sounded)
 }
 function stepDraft(fd, now) {
   if (fd.phase === 'ready') {
@@ -254,6 +256,8 @@ export function draw(cv, v, now) {
   c.fillStyle = '#e3f1cd'; c.fillRect(0, 0, W, H);
   c.fillStyle = '#d3e8b6';
   for (let y = 0; y < n; y++) for (let x = (y % 2); x < n; x += 2) c.fillRect(ox + x * k, oy + y * k, k, k);
+  // the attempt's time limit: a bar along the top, clear of the score at the top left (ui/runner.js drawTimeBar), while the attempt runs or replays; under the food and the snake, so it never hides one
+  if (!v.still) { const x0 = Math.round(W * 0.36); c.save(); c.translate(x0, 0); drawTimeBar(c, W - x0, H, 1 - sim.ms / (sim.cfg.runCap * 1000), P); c.restore(); }
   // the food: a round berry in its player's colour with their mark on it and a leaf (a gentle bob while a run is on)
   for (const f of sim.food) {
     if (!f) continue;
@@ -265,11 +269,27 @@ export function draw(cv, v, now) {
     if (fc === 'O') { c.beginPath(); c.arc(x, y, h * 0.95, 0, Math.PI * 2); c.stroke(); }
     else { c.beginPath(); c.moveTo(x - h, y - h); c.lineTo(x + h, y + h); c.moveTo(x + h, y - h); c.lineTo(x - h, y + h); c.stroke(); }
   }
+  // the bombs: a round black bomb with a fuse and a spark (fixed for the run; the one hit bursts: fx 'boom')
+  const boomFx = (v.fx || []).find(e => e.kind === 'boom');
+  for (const b of sim.bombs || []) {
+    const hit = boomFx && boomFx.x === b[0] && boomFx.y === b[1], ago = hit ? now - boomFx.at : 0;
+    if (hit && ago > 180) continue;                                  // (gone in its burst)
+    const r = k * 0.32 * (hit ? 1 + ago / 300 : 1), x = cx(b[0]), y = cy(b[1]) + k * 0.06;
+    c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); outlined(c, '#2b2b33', P.ink, lw(0.06));
+    c.fillStyle = 'rgba(255,255,255,.35)'; c.beginPath(); c.arc(x - r * 0.35, y - r * 0.35, r * 0.22, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = '#8a6a3a'; c.lineWidth = lw(0.06); c.lineCap = 'round'; c.beginPath(); c.moveTo(x + r * 0.5, y - r * 0.75); c.quadraticCurveTo(x + r * 0.9, y - r * 1.4, x + r * 1.15, y - r * 1.2); c.stroke();
+    const sp = v.still || REDUCED ? 1 : 0.7 + 0.3 * Math.sin(now / 70 + b[0]);
+    c.fillStyle = '#ffb21e'; c.beginPath(); c.arc(x + r * 1.15, y - r * 1.2, k * 0.08 * sp, 0, Math.PI * 2); c.fill();
+  }
+  if (boomFx) {                                                     // the burst: a ring of orange and a puff
+    const ago = now - boomFx.at, t = Math.min(1, ago / 600);
+    if (t < 1) { const x = cx(boomFx.x), y = cy(boomFx.y); c.save(); c.globalAlpha = 1 - t; c.fillStyle = '#ff8a1e'; c.beginPath(); c.arc(x, y, k * (0.4 + 0.9 * t), 0, Math.PI * 2); c.fill(); c.fillStyle = '#ffe07a'; c.beginPath(); c.arc(x, y, k * (0.2 + 0.5 * t), 0, Math.PI * 2); c.fill(); c.restore(); }
+  }
   // the snake: through the centres of its cells, exactly where the last tick put it
   const body = sim.body, path = body.map(([x, y]) => [cx(x), cy(y)]), head = path[0];
   const [dx, dy] = DIRS[sim.dir];
   const endAgo = sim.end && v.endAt ? now - v.endAt : null;
-  const col = sim.p === 'O' ? P.O : P.X, w = k * 0.74, dead = sim.end === 'wall' || sim.end === 'self';
+  const col = sim.p === 'O' ? P.O : P.X, w = k * 0.74, dead = sim.end === 'wall' || sim.end === 'self' || sim.end === 'bomb';
   c.save();
   if (dead && endAgo != null) c.globalAlpha = 0.72 + 0.28 * Math.max(0, 1 - endAgo / 300);
   c.lineCap = 'round'; c.lineJoin = 'round';
@@ -366,7 +386,7 @@ function resultText(s, T, W) {
   if (s.auto) return { text: `${who} ran out of time`, ok: false };
   const gain = s.to - s.from, gave = (s.oto || 0) - (s.ofrom || 0);
   if (s.end === 'gift' || (s.oto >= T && gave > 0)) return { text: `${who} fed ${W(q)} the last point`, ok: false };
-  const how = s.end === 'wall' ? 'hit the wall' : s.end === 'self' ? 'bit its own tail' : s.end === 'top' ? `reached ${fmtN(T)}!` : 'ran out of time';
+  const how = s.end === 'wall' ? 'hit the wall' : s.end === 'self' ? 'bit its own tail' : s.end === 'bomb' ? 'hit a bomb' : s.end === 'top' ? `reached ${fmtN(T)}!` : 'ran out of time';
   if (s.to >= T) return { text: `${who} ${how}`, ok: true };
   const tail = gave > 0 ? ` · ${W(q)} +${fmtN(gave)}` : ` · ${fmtN(s.to)} of ${fmtN(T)}`;
   return { text: `${who} ${how} · ${gain > 0 ? `+${fmtN(gain)}` : '+0'}${tail}`, ok: gain > gave };
@@ -397,6 +417,8 @@ export function sounds(f, add, won, mini, last) {
       if (sim.last === 'gift') { add('snkGulp', sim.ms); n++; }
     }
     if (s.end === 'wall' || s.end === 'self') add('snkBonk', sim.ms);
+    else if (s.end === 'bomb') add('boom', sim.ms);
+    else if (s.end === 'out') add('buzz', sim.ms);
     else if (s.end === 'top') add('sparkle', sim.ms);
     pre = Number(s.ms) || sim.ms;
   }

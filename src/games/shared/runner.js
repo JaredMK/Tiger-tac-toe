@@ -41,6 +41,10 @@ export const RUN_CFG = { dash: null, lane: null, flap: null, chopper: null };
 // difficulty, only those changed from the defaults: grace (s), aiRuns, aiSpread (%), and a game's own
 // (Dash: jump, %; Lane Rush: shift, ms; Flap: gaps, %; Chopper: up and down). runVal: one, or its default.
 export const runVal = (cfg, k, d) => (cfg && cfg[k] != null ? cfg[k] : d);
+// The attempt's time limit (November 2026, TUNE maxSecs): a run that lasts this long ends there as a crash would
+// (sim.crash with ob.k 'time'), its distance kept. RUN_MAX: each game's default.
+export const RUN_MAX = { dash: 20, lane: 20, flap: 30, chopper: 30 };
+export const runLimit = (cfg, type) => runVal(cfg, 'maxSecs', RUN_MAX[type] || 30);
 // A config checked value by value: anything off, or missing, is the default.
 export function runNorm(type, raw) {
   const d = RUN_DEFAULTS[type], out = {};
@@ -358,6 +362,7 @@ export function runTick(sim) {
     if (sim.d >= sim.cfg.target) { sim.d = sim.cfg.target; sim.done = true; return sim; }
     const hit = runHit(sim);
     if (hit) sim.crash = { at: r2(sim.d), ob: hit };
+    else if (sim.t >= runLimit(sim.cfg, sim.type) - 1e-9) sim.crash = { at: r2(sim.d), ob: { k: 'time' } };   // the time limit: the step that reaches it ends the run as a crash, the distance kept
   }
   return sim;
 }

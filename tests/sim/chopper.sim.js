@@ -56,7 +56,7 @@ function runsToFinish(over, react, noise, courses) {
 }
 
 test('chopper: every course can be flown: a pilot with no lag finishes each in one run', () => {
-  const runs = runsToFinish({}, 0, 0, 20);
+  const runs = runsToFinish({ maxSecs: 60 }, 0, 0, 20);   // (the whole course in one run: past the default time limit)
   assert.ok(runs.every(n => n === 1), `runs per course: ${runs}`);
 });
 
@@ -64,6 +64,7 @@ test('chopper, harder through the config: a typical pilot (0.25 s late, a little
   const mean = a => a.reduce((x, y) => x + y, 0) / a.length;
   const now = mean(runsToFinish({}, 0.25, 0.6, 30));
   assert.ok(now >= 3 && now <= 6, `${now.toFixed(2)} runs on average`);
-  const before = mean(runsToFinish({ ramp: 0.9, gapMin: 35.2, gapMax: 64, mix: { none: 30, small: 45, big: 25 }, cave0: 7.6, cave1: 4.4 }, 0.25, 0.6, 30));
+  console.log(`Chopper: a typical pilot ${now.toFixed(2)} runs (with the default 30 s time limit)`);
+  const before = mean(runsToFinish({ ramp: 0.9, gapMin: 35.2, gapMax: 64, mix: { none: 30, small: 45, big: 25 }, cave0: 7.6, cave1: 4.4, maxSecs: 600 }, 0.25, 0.6, 30));
   assert.ok(before < 2.6, `old settings: ${before.toFixed(2)} runs`);
 });

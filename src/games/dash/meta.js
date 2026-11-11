@@ -11,6 +11,7 @@ export const explainer = { name: 'Dash', play: 'Tap to jump, hold to jump higher
 // into the square's cfg when changed (shared/runner.js).
 export const TUNE = [
   { k: 'grace', label: 'Clear start of each run (s)', def: 2, min: 1, max: 4, step: 0.25, group: 'Timing' },
+  { k: 'maxSecs', label: 'Attempt time limit (s)', def: 20, min: 5, max: 60, step: 1, group: 'Timing' },   // (shared/runner.js RUN_MAX: the same default)
   { k: 'jump', label: 'Jump strength (%)', def: 100, min: 90, max: 110, step: 5, group: 'Rules' },
   { k: 'aiRuns', label: 'Computer: runs to finish (about)', def: 4.5, min: 2, max: 10, step: 0.5, group: 'Computer' },
   { k: 'aiSpread', label: 'Computer: run length spread (%)', def: 45, min: 15, max: 80, step: 5, group: 'Computer' },

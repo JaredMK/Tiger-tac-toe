@@ -21,7 +21,7 @@ import { clockLeft } from '../../ui/clock.js';
 import { fxAt } from '../../ui/fx.js';
 import { lateAt } from '../../ui/progress.js';
 import { render } from '../../ui/render.js';
-import { outlined, rr, runCanvas, runColours, runInputAt } from '../../ui/runner.js';
+import { drawTimeBar, outlined, rr, runCanvas, runColours, runInputAt } from '../../ui/runner.js';
 import { cpuTurn, flashAnimating, skipFlash } from '../../ui/turns.js';
 
 const SW_KEY = 'ttt-swarm-run';
@@ -92,6 +92,7 @@ function swEnd(fd, end, now) {
   fd.phase = 'end'; fd.end = end; fd.endAt = now; fd.ptr = null; fd.dir = 0;
   if (end === 'hit') { SND.play('swBlast'); haptic('error'); }
   else if (end === 'top') { SND.play('sparkle'); SND.play('won', { at: 0.3 }); haptic('success'); }
+  else if (end === 'out') { SND.play('buzz'); haptic('medium'); }   // (the attempt's time limit: a buzzer, its points kept)
 }
 // The run goes in: as it ended, or as it stands (the time ran out, the screen went away).
 export function swFinish() {
@@ -226,6 +227,8 @@ export function drawSwarm(c, W, H, v, now) {
   c.fillStyle = 'rgba(0,0,0,.38)';                                 // beyond the sky's edges
   if (ox > 0.5) { c.fillRect(0, 0, ox, H); c.fillRect(ox + SW.w * k, 0, W - ox - SW.w * k, H); }
   if (oy > 0.5) { c.fillRect(0, 0, W, oy); c.fillRect(0, oy + SW.h * k, W, H - oy - SW.h * k); }
+  // the attempt's time limit: a bar along the top, clear of the score at the top left (ui/runner.js drawTimeBar), while the attempt runs or replays
+  if (!v.still) { const x0 = Math.round(W * 0.36); c.save(); c.translate(x0, 0); drawTimeBar(c, W - x0, H, 1 - sim.t / sim.cfg.maxSecs, P); c.restore(); }
 }
 function swShip(c, x, y, k, lean, col, P, t, still) {              // a stubby rocket in the player's colour: a dome, two fins, a flame
   const R = SW.shipR * k * 1.25;
@@ -408,7 +411,7 @@ export function sounds(f, add, won, mini, last) {
       if (n > 220 || !sim.last) continue;
       if (sim.last === 'kill') { add('swPop', at(sim.t)); n++; } else if (sim.last === 'pew') { add('swPew', at(sim.t)); n++; } else if (sim.last === 'zap') { add('fire', at(sim.t)); n++; }
     }
-    if (sim.end === 'hit') add('swBlast', at(sim.t)); else if (sim.end === 'top') add('sparkle', at(sim.t));
+    if (sim.end === 'hit') add('swBlast', at(sim.t)); else if (sim.end === 'top') add('sparkle', at(sim.t)); else if (sim.end === 'out') add('buzz', at(sim.t));
   }
   if (pre || fg.auto) add(fg.auto ? 'thud' : fg.to > fg.from ? 'ding' : 'thud', pre + 250);
 }

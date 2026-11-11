@@ -3,7 +3,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const E = require('../engine.js');
-E.setPhysics(require('../physics.js'));   // Mini Golf, Pool and Bowling are dealt only with their physics
+E.setPhysics(require('../physics.js'));
+E.setTune('dash', { maxSecs: 60 });   // (these tests drive whole courses in one run: the longest time limit; the limit itself is tested in dash.test.js)   // Mini Golf, Pool and Bowling are dealt only with their physics
 const mini = (t, seed) => E.newMini(t, E.makeRng(seed || t));
 // Step a run until a condition holds (or it ends), in frames of 1/60 s.
 function runUntil(sim, cond, max = 20000) { for (let k = 0; k < max && !sim.crash && !sim.done && !cond(sim); k++) E.runStep(sim, 1 / 60); return sim; }
@@ -109,4 +110,23 @@ test('dash: the Mini-game Settings: a square is dealt with them (in its cfg) and
   const rng = E.makeRng('tuned-ai');
   for (let k = 0; k < 3 && m.dist.O < m.cfg.target; k++) { const r = E.applyMove(m, 'O', E.runAi(E.publicMini(m), 'O', rng).move, rng); assert.equal(r.ok, true, r.reason); }
   assert.deepEqual(Object.keys(mini('dash', 'plain').cfg).sort(), Object.keys(E.runConfig('dash')).sort(), 'back to the defaults: nothing added');
+});
+
+test('runners: the attempt time limit (TUNE maxSecs: Dash and Lane Rush 20 s, Flap and Chopper 30 s): a run that lasts it ends there as a crash, its distance kept, and the check agrees', () => {
+  const R = require('../../src/games/shared/runner.js');
+  for (const [t, d] of [['dash', 20], ['lane', 20], ['flap', 30], ['chopper', 30]]) { assert.equal(R.RUN_MAX[t], d, t); assert.equal(E.tuneDefaults(t).maxSecs, d, t); assert.equal(R.runLimit({}, t), d, t); }
+  E.setTune('dash', { maxSecs: 5 });
+  try {
+    const m = mini('dash', 'limit');
+    assert.equal(m.cfg.maxSecs, 5);
+    const sim = E.runPilot(E.runStart(m, 'X'), null, E.makeRng('lim'));   // (a driver who would go on to the finish)
+    assert.equal(sim.crash.ob.k, 'time'); assert.ok(!sim.done);
+    assert.ok(Math.abs(sim.t - 5) < 0.02, `stopped at the limit (${sim.t})`);
+    const mv = R.runResult(sim, false), r = E.applyMove(m, 'X', mv, E.makeRng('a'));
+    assert.ok(r.ok, r.reason); assert.equal(r.note, 'crash');
+    assert.equal(m.dist.X, mv.dist); assert.ok(m.dist.X > 10, 'the distance kept');
+    // a run claiming to go on past the limit does not replay
+    const longer = Object.assign({}, mv, { steps: mv.steps + 30 });
+    assert.ok(!E.applyMove(m, 'O', longer, E.makeRng('b')).ok);
+  } finally { E.setTune('dash', null); }
 });

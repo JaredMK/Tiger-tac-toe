@@ -3,8 +3,9 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const E = require('../engine.js');
+E.setTune('flap', { maxSecs: 60 });   // (these tests drive whole courses in one run: the longest time limit; the limit itself is tested in dash.test.js)
 const mini = (t, seed) => E.newMini(t, E.makeRng(seed || t));
-const square = (type, seed, from = 0) => ({ type, cfg: E.runConfig(type), seed: { X: seed, O: seed + 1 }, dist: { X: from, O: 0 }, runs: { X: 0, O: 0 }, crashes: { X: [], O: [] } });
+const square = (type, seed, from = 0) => ({ type, cfg: Object.assign(E.runConfig(type), { maxSecs: 60 }), seed: { X: seed, O: seed + 1 }, dist: { X: from, O: 0 }, runs: { X: 0, O: 0 }, crashes: { X: [], O: [] } });
 // Flap: aim a little below the middle of the next gap; flap when, from what it saw `lag` ago, it would sink below it.
 function flyFlap(mini, lag) {
   const sim = E.runStart(mini, 'X'), dt = 1 / 60, hist = [];

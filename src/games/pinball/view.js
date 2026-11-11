@@ -4,7 +4,7 @@ import { pinTableOf } from './rules.js';
 import { PHYSICS } from '../shared/physics.js';
 import { state } from '../../ui/app.js';
 import { fingSounds, fingTable } from '../../ui/finger.js';
-import { outlined, rr, runColours } from '../../ui/runner.js';
+import { drawTimeBar, outlined, rr, runColours } from '../../ui/runner.js';
 export { fingerMoveText as moveText } from '../../ui/finger.js';
 
 // Pinball: the square's table in portrait (its outline, its rails and lanes in paper with ink outlines,
@@ -75,6 +75,7 @@ export function drawPin(c, W, H, v, now) {
   }
   c.lineCap = 'butt'; c.lineJoin = 'miter';
   if (v.saved && now - v.saved < 1200) { c.font = `400 ${Math.max(16, Math.round(6 * k))}px 'Luckiest Guy', 'Arial Black', sans-serif`; c.fillStyle = P.paper; c.strokeStyle = P.ink; c.lineWidth = 3; c.strokeText('Ball saved!', X(45), Y(120)); c.fillText('Ball saved!', X(45), Y(120)); }
+  if (!v.still && !v.end && TB.maxSecs) drawTimeBar(c, W, H, 1 - (v.t || 0) / TB.maxSecs, P);   // the ball's time limit (the attempt's own clock: live, or the replay's)
 }
 // The miniature: the table small (its top arch, its bumpers, the flippers) with the square's targets on it, each
 // in the colour of who has lit it (both halves when both have), and beside it each player's count (of the seven: the

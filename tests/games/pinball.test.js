@@ -152,3 +152,22 @@ test('pinball: the launch — on every layout, at every power from 0.3 to full w
   // the weakest launch clears the gate too (the lip and the guards then feed it in like any other)
   for (let k = 0; k < P.PIN_LAYOUTS.length; k++) { const r = launchTrial(dealTable(k, E.makeRng('weak' + k)), 0, 8); assert.ok(r.entered && !r.tunnel, `${P.PIN_LAYOUTS[k].name}: the weakest launch plays (${r.end})`); }
 });
+test('pinball: the time limit (November 2026, TUNE maxSecs, 30 s by default, from Start): at the limit the ball ends as a drain, the targets lit so far kept; played through again on the server it is the same ball, and the move goes in', () => {
+  assert.equal(E.tuneFields('pinball').find(f => f.k === 'maxSecs').def, PIN.maxSecs, 'the setting and the simulation share the default');
+  E.setTune('pinball', { maxSecs: 5 });
+  let mini;
+  try { mini = E.newMini('pinball', E.makeRng('cap')); } finally { E.setTune('pinball', null); }
+  assert.deepEqual(mini.tune, { maxSecs: 5 });
+  const TB = P.pinTable(mini);
+  assert.equal(TB.maxSecs, 5); assert.equal(P.pinTable(E.newMini('pinball', E.makeRng('cap2'))).maxSecs, 30);
+  let a = null;
+  for (let i = 0; i < 40 && !a; i++) { const r = P.pinAi(TB, mini.cfg, mini.lit.X, E.makeRng('cap-ai' + i)); if (r.w.events.some(e => e.cap)) a = r; }
+  assert.ok(a, 'a ball that lasts to the limit');
+  assert.ok(Math.abs(a.w.t - 5) < 0.01, `ended at the limit (${a.w.t.toFixed(3)} s)`); assert.equal(a.result.end, 'drain');
+  const move = { hits: a.result.hits, ms: a.result.ms, end: a.result.end, log: a.log, steps: a.steps };
+  const c = E.pinReplayCheck(mini, 'X', move);
+  assert.equal(c.why, null); assert.equal(c.diff, false, 'the server\'s ball ends at the limit too');
+  const m2 = JSON.parse(JSON.stringify(mini)), r = E.applyMove(m2, 'X', move, E.makeRng('cap-x'));
+  assert.equal(r.ok, true); assert.equal(r.outcome, 'continue');
+  assert.deepEqual(m2.lit.X.map((v, k) => (v ? k : -1)).filter(k => k >= 0), a.result.hits.map(h => h[0]).sort((x, y) => x - y), 'its targets kept');
+});

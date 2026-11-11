@@ -7,7 +7,7 @@ export { runnerMoveText as moveText } from '../../ui/runner.js';
 export { runnerSounds as sounds } from '../../ui/runner.js';
 
 export function drawDash(c, W, H, sim, rd, now) {
-  const P = runColours(), S = H / 7.5, gy = H * 0.8, rx = W * 0.18, toX = m => rx + (m - sim.d) * S;   // zoomed out: more of the course ahead in view
+  const P = runColours(), S = H / 10, gy = H * 0.82, rx = W * 0.13, toX = m => rx + (m - sim.d) * S;   // zoomed out (November 2026, again: H / 7.5 before): about 40% more of the course ahead in view
   c.fillStyle = '#cfe9f7'; c.fillRect(0, 0, W, H);
   // clouds and hills drift by at a fraction of the speed; the ground at full speed
   c.fillStyle = '#ffffff';

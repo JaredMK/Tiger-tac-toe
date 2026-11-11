@@ -13,6 +13,7 @@ export const PINB_DEFAULTS = { size: 1.7, save: 3, maxBall: 120, g: 1, bump: 1, 
 // targets dealt (rules.js: pinDeal) and the computer's hand (finger.js: fingHand).
 export const TUNE = [
   { k: 'targets', label: 'Targets to light', def: 7, min: 3, max: 7, step: 1, group: 'Rules' },
+  { k: 'maxSecs', label: 'Attempt time limit (s)', def: 30, min: 5, max: 60, step: 1, group: 'Timing' },   // (from Start; at the limit the ball ends as a drain, its targets kept: physics-sim.js pinStep. The computer's balls: p95 20 s, p99 32 s)
   { k: 'aiReact0', label: 'Computer reaction, fastest (ms)', def: 50, min: 0, max: 400, step: 5, group: 'Computer' },
   { k: 'aiReact1', label: 'Computer reaction, slowest (ms)', def: 90, min: 0, max: 400, step: 5, group: 'Computer' },
   { k: 'aiJitter', label: 'Computer flip timing error (ms)', def: 50, min: 0, max: 200, step: 5, group: 'Computer' },

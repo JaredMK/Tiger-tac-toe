@@ -30,7 +30,7 @@ export const TUNE = [
   { k: 'near', label: 'The patroller chases within (cells)', def: 5, min: 0, max: 12, step: 1, group: 'Rules' },
   { k: 'grace', label: 'The first spook waits at the start (s)', def: 0, min: 0, max: 5, step: 0.5, group: 'Timing' },
   { k: 'release', label: 'Each next spook leaves after (s)', def: 0.5, min: 0, max: 3, step: 0.25, group: 'Timing' },
-  { k: 'runSecs', label: 'A run lasts at most (s)', def: 7, min: 4, max: 40, step: 1, group: 'Timing' },
+  { k: 'runSecs', label: 'Attempt time limit (s)', def: 7, min: 4, max: 40, step: 1, group: 'Timing' },
   { k: 'aiReact', label: 'Computer decides every (ms)', def: 200, min: 50, max: 500, step: 10, group: 'Computer' },
   { k: 'aiAvoid', label: 'Computer keeps this far from a spook (cells)', def: 2, min: 0, max: 5, step: 1, group: 'Computer' },
   { k: 'aiLapse', label: 'Computer forgets the spooks (%)', def: 10, min: 0, max: 100, step: 1, group: 'Computer' },

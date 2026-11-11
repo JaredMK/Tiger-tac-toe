@@ -9,6 +9,7 @@ const mini = (t, seed) => E.newMini(t, E.makeRng(seed || t));
 
 test('lane rush, harder again: half as fast again and about a third more cars, through the config, a lane always open; a driver seeing only the screen, a quarter-second late, still gets through', () => {
   E.setRunConfig(null);
+  E.setTune('lane', { maxSecs: 60 });   // (a driver who gets through the whole course in one run: past the default time limit)
   const cfg = E.runConfig('lane');
   assert.deepEqual([cfg.v0, cfg.ramp], [27, 2.7], 'half as fast again (18 to 27 m/s, the ramp likewise)');
   const count = c => { let cars = 0; for (let k = 0; k < 300; k++) { const m = mini('lane', 'traffic' + k); m.cfg = c; for (const o of E.runCourse(m, 'X')) cars += o.cars.filter(Boolean).length; } return cars / 300; };
@@ -56,4 +57,5 @@ test('lane rush, harder again: half as fast again and about a third more cars, t
   // at the finish line's speed a row is still on screen over a reaction and a lane change before the car reaches it
   const vEnd = E.runSpeed(cfg, cfg.target);
   assert.ok(VIEW / vEnd > react + E.LANE.switchSecs, `${(VIEW / vEnd).toFixed(2)} s of warning at ${vEnd} m/s`);
+  E.setTune('lane', null);
 });

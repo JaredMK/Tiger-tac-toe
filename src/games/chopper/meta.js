@@ -11,6 +11,7 @@ export const explainer = { name: 'Chopper', play: 'Hold to rise, let go to drop.
 // into the square's cfg when changed (shared/runner.js).
 export const TUNE = [
   { k: 'grace', label: 'Clear start of each run (s)', def: 2, min: 1, max: 4, step: 0.25, group: 'Timing' },
+  { k: 'maxSecs', label: 'Attempt time limit (s)', def: 30, min: 5, max: 60, step: 1, group: 'Timing' },   // (shared/runner.js RUN_MAX: the same default)
   { k: 'up', label: 'Climb when held (m/s²)', def: 16, min: 12, max: 22, step: 1, group: 'Rules' },
   { k: 'down', label: 'Drop when let go (m/s²)', def: 15, min: 12, max: 22, step: 1, group: 'Rules' },
   { k: 'aiRuns', label: 'Computer: runs to finish (about)', def: 4.5, min: 2, max: 10, step: 0.5, group: 'Computer' },

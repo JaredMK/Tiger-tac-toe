@@ -25,15 +25,18 @@ import { fingLog, fingUnlog } from '../shared/finger.js';
 // its scores and its old target (35, or the one it was dealt with: snakeGoal).
 export const SNAKE = { n: 11, len: 3, queue: 2, hold: 700, endPause: 850, winPause: 900, oldTarget: 35 };   // n: the grid; len: a fresh snake; queue: the turns that may wait; hold: the result's time after a run; endPause: a crash shows this long before the run goes in
 export const DIRS = [[1, 0], [0, 1], [-1, 0], [0, -1]];   // the direction codes: 0 right, 1 down, 2 left, 3 up (the log's values)
-export const SNAKE_ENDS = ['wall', 'self', 'top', 'gift', 'out', 'stop'];
+export const SNAKE_ENDS = ['wall', 'self', 'bomb', 'top', 'gift', 'out', 'stop'];
 const other = p => (p === 'X' ? 'O' : 'X');
 export const snakeMaxTicks = cfg => Math.ceil((cfg.runCap * 1000) / cfg.minTick) + 2;
 export const snakeGoal = mini => (mini.v >= 2 || (mini.tune && mini.tune.target != null) ? tune(mini).target : SNAKE.oldTarget);
 const cell = (sim, x, y) => y * sim.n + x;
-// A free cell for a food of colour c (never on the snake or another food), from the attempt's seed.
+// A free cell for a food of colour c (never on the snake, another food or a bomb), from the attempt's seed. A bomb
+// (c 'B') never goes in the start lane either: the row the snake sets off along, from its tail to the far wall.
 export function snakePlace(sim, c) {
   const taken = new Set(sim.body.map(([x, y]) => cell(sim, x, y)));
   for (const f of sim.food) if (f) taken.add(cell(sim, f[0], f[1]));
+  for (const b of sim.bombs || []) taken.add(cell(sim, b[0], b[1]));
+  if (c === 'B') { const mid = Math.floor(sim.n / 2); for (let x = mid - SNAKE.len; x < sim.n; x++) if (x >= 0) taken.add(cell(sim, x, mid)); }
   const free = [];
   for (let k = 0; k < sim.n * sim.n; k++) if (!taken.has(k)) free.push(k);
   if (!free.length) return null;
@@ -44,8 +47,9 @@ export function snakePlace(sim, c) {
 export function snakeStart(mini, p) {
   const cfg = tune(mini), n = SNAKE.n, mid = Math.floor(n / 2), body = [], q = other(p);
   for (let i = 0; i < SNAKE.len; i++) body.push([mid - i, mid]);
-  const sim = { type: 'snake', p, cfg, n, body, dir: 0, q: [], food: [], rng: makeRng(`snake2:${mini.seed[p]}:${p}:${mini.tries[p]}`), k: 0, ms: 0, at: [0], got: 0, gave: 0, eaten: 0, from: mini.score[p], ofrom: mini.score[q], goal: snakeGoal(mini), rec: [], end: null, last: null, turned: false };   // q: the turns waiting; got: points for p; gave: points for the other player; eaten: food of both colours
-  for (const c of ['X', 'O']) for (let i = 0; i < Math.max(1, cfg.food | 0); i++) { const f = snakePlace(sim, c); if (f) sim.food.push(f); }
+  const sim = { type: 'snake', p, cfg, n, body, dir: 0, q: [], food: [], bombs: [], pend: 0, rng: makeRng(`snake2:${mini.seed[p]}:${p}:${mini.tries[p]}`), k: 0, ms: 0, at: [0], got: 0, gave: 0, eaten: 0, from: mini.score[p], ofrom: mini.score[q], goal: snakeGoal(mini), rec: [], end: null, last: null, turned: false };   // q: the turns waiting; got: points for p; gave: points for the other player; eaten: food of both colours
+  for (const c of ['X', 'O']) for (let i = 0; i < Math.max(c === p ? 1 : 0, (c === p ? cfg.ownFood : cfg.oppFood) | 0); i++) { const f = snakePlace(sim, c); if (f) sim.food.push(f); }   // (the mover's colour: ownFood; the other's: oppFood)
+  for (let i = 0; i < Math.max(0, cfg.bombs | 0); i++) { const b = snakePlace(sim, 'B'); if (b) sim.bombs.push([b[0], b[1]]); }   // bombs, fixed for the run
   return sim;
 }
 export const snakeTickMs = sim => Math.max(sim.cfg.minTick, sim.cfg.tick - sim.cfg.speedUp * sim.eaten);
@@ -78,10 +82,13 @@ export function snakeTick(sim, dir) {
   const [nx, ny] = snakeNext(sim), fi = snakeFoodAt(sim, nx, ny), eat = fi >= 0;
   sim.k += 1; sim.ms += ms; sim.at.push(sim.ms);
   if (nx < 0 || ny < 0 || nx >= sim.n || ny >= sim.n) { sim.end = 'wall'; return sim; }
-  const tail = sim.body.length - 1;
-  for (let i = 0; i < sim.body.length; i++) { if (i === tail && !eat) continue; if (sim.body[i][0] === nx && sim.body[i][1] === ny) { sim.end = 'self'; return sim; } }
+  if (sim.bombs.some(b => b[0] === nx && b[1] === ny)) { sim.end = 'bomb'; return sim; }   // a bomb: the run ends
+  const tail = sim.body.length - 1, grows = sim.pend + (eat ? Math.max(0, sim.cfg.grow | 0) : 0) > 0;   // (the tail moves on this tick unless the snake is growing)
+  for (let i = 0; i < sim.body.length; i++) { if (i === tail && !grows) continue; if (sim.body[i][0] === nx && sim.body[i][1] === ny) { sim.end = 'self'; return sim; } }
   sim.body.unshift([nx, ny]);
-  if (!eat) { sim.body.pop(); return sim; }
+  if (eat) sim.pend += Math.max(0, sim.cfg.grow | 0);             // a food grows it `grow` cells, a cell a tick
+  if (sim.pend > 0) sim.pend -= 1; else sim.body.pop();
+  if (!eat) return sim;
   const c = sim.food[fi][2], own = c === sim.p;
   sim.eaten += 1;
   if (own) sim.got += 1; else sim.gave += 1;
@@ -160,6 +167,7 @@ function freeAfter(sim, foe) {                                       // grid[c]:
   const g = new Int16Array(sim.n * sim.n), L = sim.body.length;
   sim.body.forEach(([x, y], i) => { g[cell(sim, x, y)] = L - i; });
   if (foe) for (const f of sim.food) if (f && f[2] !== sim.p) g[cell(sim, f[0], f[1])] = BLOCK;
+  for (const b of sim.bombs || []) g[cell(sim, b[0], b[1])] = BLOCK;   // (a bomb: never)
   return g;
 }
 function snakeBfs(sim, g, from, goals) {                             // the shortest way from `from` to the nearest of `goals` (a Set; null: the room reachable); dist by cell, -1 unreached

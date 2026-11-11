@@ -23,7 +23,7 @@ export const TUNE = [
   { k: 'v1', label: 'Enemy speed after the ramp (units/s)', def: 4.1, min: 0.5, max: 8, step: 0.1, group: 'Board' },
   { k: 'fireGap', label: 'Seconds between a saucer\'s bolts', def: 1.1, min: 0.5, max: 5, step: 0.1, group: 'Board' },
   { k: 'shotRate', label: 'Ship shots a second', def: 3, min: 1, max: 8, step: 0.5, group: 'Rules' },
-  { k: 'maxSecs', label: 'Run time cap (seconds)', def: 40, min: 10, max: 50, step: 1, group: 'Timing' },
+  { k: 'maxSecs', label: 'Attempt time limit (s)', def: 40, min: 10, max: 50, step: 1, group: 'Timing' },
   { k: 'aiReact0', label: 'Computer reaction, fastest (ms)', def: 260, min: 0, max: 800, step: 10, group: 'Computer' },
   { k: 'aiReact1', label: 'Computer reaction, slowest (ms)', def: 360, min: 0, max: 800, step: 10, group: 'Computer' },
   { k: 'aiAim', label: 'Computer aim spread (cm)', def: 60, min: 0, max: 300, step: 5, group: 'Computer' },

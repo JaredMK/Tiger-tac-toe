@@ -292,6 +292,7 @@ export function makePhysics(Matter) {
   // lights their own. A ball that drains in the first save seconds after its launch is served again.
   const PIN = {
     w: 100, h: 180, ballR: 2.6, g: 300, hz: 480, fps: 30, vmax: 420, drain: 177, wall: 0.5,
+    maxSecs: 30,                  // a ball's time limit from Start, by default (pinball/meta.js TUNE maxSecs: the same default; a square's own in mini.tune)
     flip: { len: 21, thick: 3.8, rest: 0.48, up: -0.48, speed: 26, e: 0.4, L: [21.5, 165], R: [68.5, 165] },   // the pivots low on the table: the tips at rest reach y 174.7, 9.8 apart (7.3 clear: 1.4 balls)
     lane: { x0: 89.7, x1: 98, top: 44, serve: [93.85, 168], gate: [88.5, 44, 99, 36, 2.4] },   // the plunger lane beside the playfield, and the gate across its top (from the lane wall's top up to the outside)
     bump: { r: 5, kick: 165 },
@@ -389,12 +390,14 @@ export function makePhysics(Matter) {
   // targets (the square's spots, ids 0..6, at the size the square's settings give), the lane and the
   // flippers. A square without a table (from before the layouts) plays the classic seven on layout 0. The
   // same description builds the Matter world (pinNew), the drawing, the check and the layout check.
+  // A square's time limit for a ball (November 2026: its TUNE maxSecs, kept in mini.tune when not the default).
+  const pinMaxSecs = mini => { const v = Number(mini && mini.tune && mini.tune.maxSecs); return Number.isFinite(v) && v >= 5 && v <= 60 ? v : PIN.maxSecs; };
   function pinTable(mini) {
     const cfg = (mini && mini.cfg) || {}, size = cfg.size || 1;
     const tb = mini && mini.table && PIN_LAYOUTS[mini.table.k] && Array.isArray(mini.table.t) ? mini.table : { k: 0, t: PIN_CLASSIC };
     const lay = PIN_LAYOUTS[tb.k], spots = tb.t.map(i => lay.spots[i]).filter(Boolean), walls = PIN_LOWER.walls.concat(lay.walls), joints = [], seen = new Set();
     walls.forEach((w, i) => { for (const [x, y] of [[w[0], w[1]], [w[2], w[3]]]) { const key = x + ',' + y + ',' + w[4]; if (seen.has(key)) continue; seen.add(key); joints.push([x, y, w[4] / 2, i < PIN_LOWER.walls.length]); } });   // every wall is a capsule: its rectangle exactly its length, a disc of half its thickness at each end (so a bend is round, flush with both faces, and no ball rests on a corner or a bump at it)
-    return { k: tb.k, name: lay.name, cfg, size, outer: PIN_OUTER, walls, joints, lower: PIN_LOWER.walls.length, lane: PIN.lane, gate: PIN.lane.gate, flip: PIN.flip, bumpers: lay.bumpers.map(([x, y]) => [x, y, PIN.bump.r]), slings: PIN_LOWER.slings, targets: spots.map((s, id) => pinSpot(s, id, size)) };
+    return { k: tb.k, name: lay.name, cfg, size, maxSecs: pinMaxSecs(mini), outer: PIN_OUTER, walls, joints, lower: PIN_LOWER.walls.length, lane: PIN.lane, gate: PIN.lane.gate, flip: PIN.flip, bumpers: lay.bumpers.map(([x, y]) => [x, y, PIN.bump.r]), slings: PIN_LOWER.slings, targets: spots.map((s, id) => pinSpot(s, id, size)) };
   }
   // A layout with every one of its spots as a target (for the checks and the simulations).
   const pinAllSpots = (k, cfg) => pinTable({ cfg, table: { k, t: PIN_LAYOUTS[k].spots.map((_, i) => i) } });
@@ -415,7 +418,7 @@ export function makePhysics(Matter) {
     bodies.push(ball);
     Composite.add(engine.world, bodies);
     const gate = pinSeg(table.gate[0], table.gate[1], table.gate[2], table.gate[3], table.gate[4], 'gate');   // (in the world only once the ball has left the lane: pinGate; its bodies, a capsule)
-    const w = { table, cfg, engine, ball, gate, gateOn: false, t: 0, acc: 0, inPlay: false, launchedAt: null, lit: (lit || []).slice(), hits: [], events: [], frames: [], flip: { L: { a: PIN.flip.rest, w: 0, on: false }, R: { a: PIN.flip.rest, w: 0, on: false } }, over: false, saves: 0, n: 0, frameAt: 0, still: { x: 0, y: 0, t: 0 }, nudges: 0, log: [], logBits: 0 };   // log: the inputs at their steps (the flippers' state as it changes, each launch and its power): the ball played through again from them is the same ball (pinReplay)
+    const w = { table, cfg, engine, ball, gate, gateOn: false, maxSecs: table.maxSecs || 0, t: 0, acc: 0, inPlay: false, launchedAt: null, lit: (lit || []).slice(), hits: [], events: [], frames: [], flip: { L: { a: PIN.flip.rest, w: 0, on: false }, R: { a: PIN.flip.rest, w: 0, on: false } }, over: false, saves: 0, n: 0, frameAt: 0, still: { x: 0, y: 0, t: 0 }, nudges: 0, log: [], logBits: 0 };   // log: the inputs at their steps (the flippers' state as it changes, each launch and its power): the ball played through again from them is the same ball (pinReplay)
     Events.on(engine, 'collisionStart', e => { for (const pr of e.pairs) pinTouch(w, pr.bodyA === ball ? pr.bodyB : pr.bodyB === ball ? pr.bodyA : null); });
     pinFrame(w);
     return w;
@@ -531,6 +534,7 @@ export function makePhysics(Matter) {
       else if (w.inPlay && w.t - w.still.t > 2 && b.y < T.flip.L[1] - 6) { const s = w.nudges++ % 2 ? 1 : -1; pinSetV(w, s * 90, -130); w.still.t = w.t; pinEv(w, 'nudge', { at: Math.round(b.x) + ',' + Math.round(b.y) }); }   // a ball resting off the flippers: a nudge sets it going again
       if (w.inPlay && since > ((w.cfg && w.cfg.maxBall) || 120)) { pinEv(w, 'time'); w.over = true; }   // (a ball can't last for ever)
     }
+    if (!w.over && w.maxSecs && w.t >= w.maxSecs - 1e-9) { pinEv(w, 'drain', { x: Math.round(w.ball.position.x * 10) / 10, cap: 1 }); w.over = true; }   // the time limit (from Start, waiting in the lane too): the ball ends as a drain would, the targets lit so far kept
     if (w.t >= w.frames.length / PIN.fps - 1e-9) pinFrame(w);   // (frame k at k/30 s exactly, so the recording keeps time with the ball however the steps fall)
   }
   // The recording: the ball and the flippers 30 times a second (and the events with their times).

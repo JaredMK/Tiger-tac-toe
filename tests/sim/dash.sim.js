@@ -51,16 +51,18 @@ test('dash: a clean run of the course takes 25-30 s, every course can be run cle
   const cfg = E.runConfig('dash');
   assert.deepEqual([cfg.target, cfg.v0, cfg.ramp, cfg.gapMin, cfg.gapMax], [550, 13, 3, 18, 32]);
   const times = [];
+  E.setTune('dash', { maxSecs: 60 });   // (a clean run of the whole course: past the default time limit)
   for (let c = 0; c < 60; c++) for (const f of [0, 0.35, 0.7]) {
     const mini = E.newMini('dash', E.makeRng('clean' + c)); mini.dist.X = Math.round(f * cfg.target);
     const sim = E.runPilot(E.runStart(mini, 'X'), null, E.makeRng('p' + c));
     assert.ok(sim.done, `course ${c} from ${mini.dist.X} m: run clean`);
     if (!f) times.push(sim.t);
   }
+  E.setTune('dash', null);   // (the typical player below: with the default time limit, 20 s)
   assert.ok(Math.min(...times) >= 25 && Math.max(...times) <= 30, `a clean run: ${Math.min(...times).toFixed(1)}-${Math.max(...times).toFixed(1)} s`);
   const now = mean(runsToFinish(cfg, 80));
   assert.ok(now >= 3 && now <= 6, `${now.toFixed(2)} runs on average`);
-  const before = runsToFinish(Object.assign({}, cfg, { target: 1000, v0: 8, ramp: 1.5, gapMin: 26, gapMax: 48 }), 40);
+  const before = runsToFinish(Object.assign({}, cfg, { target: 1000, v0: 8, ramp: 1.5, gapMin: 26, gapMax: 48, maxSecs: 600 }), 40);
   assert.ok(mean(before) < 2.6, `old settings: ${mean(before).toFixed(2)} runs`);
   console.log(`Dash: a clean run ${mean(times).toFixed(1)} s; a typical player ${now.toFixed(2)} runs (old settings ${mean(before).toFixed(2)})`);
 });

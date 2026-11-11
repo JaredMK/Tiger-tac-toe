@@ -10,7 +10,7 @@ import { clockLeft } from '../../ui/clock.js';
 import { fxAt } from '../../ui/fx.js';
 import { lateAt } from '../../ui/progress.js';
 import { render } from '../../ui/render.js';
-import { runCanvas, runColours, runInputAt } from '../../ui/runner.js';
+import { drawTimeBar, runCanvas, runColours, runInputAt } from '../../ui/runner.js';
 import { cpuTurn } from '../../ui/turns.js';
 
 // ---------- Muncher ----------
@@ -84,6 +84,7 @@ function munLoud(sim) {
     else if (ev === 'caught') { SND.play('munDeath'); haptic('error'); }
   }
   if (sim.end === 'win' || sim.end === 'clear') SND.play('sparkle');
+  else if (sim.end === 'time') { SND.play('buzz'); haptic('medium'); }   // (the attempt's time limit: a buzzer, its dots kept)
 }
 // The run goes in (send): as it ended, or as it stands (the time ran out, the page went away); or is dropped.
 export function munFinish(send) {
@@ -279,11 +280,7 @@ function munDraw(cv, v, now) {
   for (const g of sim.gh) { const [x, y] = at(g); twice(x, xx => munSpook(c, xx, y, k * 0.42, g, sim, now)); }
   twice(sp.x, xx => munMuncher(c, xx, sp.y, k * 0.44, v.p === 'O' ? P.O : P.X, sim, v, now, P));
   c.restore();
-  if (!v.still) {                                                    // the run's time: a bar along the bottom
-    const u = Math.max(0, 1 - sim.n / sim.cap);
-    c.fillStyle = 'rgba(255,255,255,.18)'; c.fillRect(ox, oy + mh - 5, mw, 5);
-    c.fillStyle = u < 0.25 ? P.X : MAZE.edge2; c.fillRect(ox, oy + mh - 5, mw * u, 5);
-  }
+  if (!v.still) { const x0 = Math.round(W * 0.36); c.save(); c.translate(x0, 0); drawTimeBar(c, W - x0, H, 1 - sim.n / sim.cap, P); c.restore(); }   // the attempt's time limit: a bar along the top, clear of the score at the top left (ui/runner.js drawTimeBar), while the run plays or replays
   if ((v.end === 'win' || v.end === 'clear') && v.endAt) {           // the target: rays out of the muncher
     const u = Math.min(1, (now - v.endAt) / 600); c.strokeStyle = MAZE.dot; c.lineWidth = 3;
     for (let r = 0; r < 10; r++) { const a = r * Math.PI / 5 + u; c.beginPath(); c.moveTo(sp.x + Math.cos(a) * k * (0.55 + 0.6 * u), sp.y + Math.sin(a) * k * (0.55 + 0.6 * u)); c.lineTo(sp.x + Math.cos(a) * k * (0.8 + 0.9 * u), sp.y + Math.sin(a) * k * (0.8 + 0.9 * u)); c.stroke(); }
@@ -400,6 +397,7 @@ export function sounds(f, add, won, mini, last) {
       for (const ev of sim.evs) { if (ev === 'eat' && n++ >= 150) continue; add(EV_SOUND[ev], at(sim.n / MUN.hz)); }
     }
     if (sim.end === 'win' || sim.end === 'clear') add('sparkle', at(sim.n / MUN.hz));
+    else if (sim.end === 'time') add('buzz', at(sim.n / MUN.hz));
   }
   add(g.auto ? 'thud' : g.to > g.from ? 'ding' : 'thud', pre + 250);
 }

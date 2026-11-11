@@ -18,7 +18,7 @@ import { fxAt } from '../../ui/fx.js';
 import { lateAt } from '../../ui/progress.js';
 import { render } from '../../ui/render.js';
 import { markSvgG } from '../../ui/thumbs.js';
-import { outlined, rr, runCanvas, runColours, runInputAt } from '../../ui/runner.js';
+import { drawTimeBar, outlined, rr, runCanvas, runColours, runInputAt } from '../../ui/runner.js';
 import { cpuTurn, skipFlash } from '../../ui/turns.js';
 
 const BRK_EARLY = 700;                                           // online: a go ends this long before the turn's time is up, so it goes in before the timeout
@@ -216,6 +216,8 @@ export function brkDraw(cv, v, now) {
   if (v.end === 'out' && v.endAt) { c.fillStyle = 'rgba(27,34,54,.35)'; c.fillRect(ox, oy, BRK.w * k, BRK.h * k); }   // the time up: the field dims
   const wall = Math.max(4, k * 0.16);                              // the sides: a pale edge inside either wall
   c.fillStyle = 'rgba(255,255,255,.18)'; c.fillRect(ox, oy, wall, BRK.h * k); c.fillRect(ox + BRK.w * k - wall, oy, wall, BRK.h * k); c.fillRect(ox, oy, BRK.w * k, wall);
+  // the attempt's time limit: a bar along the top, clear of the score at the top left (ui/runner.js drawTimeBar), while the attempt runs or replays
+  if (!v.still) { const x0 = Math.round(W * 0.36); c.save(); c.translate(x0, 0); drawTimeBar(c, W - x0, H, 1 - sim.t / sim.cfg.runSecs, P); c.restore(); }
 }
 function brkShards(c, cx, cy, w, h, u, fill, P) {                   // a brick just broken: four pieces flying apart and fading
   c.save(); c.globalAlpha = 1 - u;
