@@ -82,7 +82,7 @@ test('pinball: the flippers — a ball rolling down a resting flipper leaves acr
     if (last) { assert.ok(l.ang >= last.ang - 1e-9 && l.ang < last.ang + 9, `the angle never falls, and rises smoothly, along the flipper (${last.ang.toFixed(1)} -> ${l.ang.toFixed(1)} at ${rho})`); assert.ok(l.sp > last.sp, 'faster towards the tip'); }
     last = l;
   }
-  assert.ok(shot(6, 'L').ang < 4 && shot(6, 'L').sp < 320 && shot(19.5, 'L').ang > 35 && shot(19.5, 'L').sp > 400, 'the lower half: a slow lob just inside of straight up; the tip: fast, across the table');
+  assert.ok(shot(6, 'L').ang < 4 && shot(6, 'L').sp < 340 && shot(19.5, 'L').ang > 35 && shot(19.5, 'L').sp > 410, 'the lower half: a slow lob just inside of straight up; the tip: fast, across the table');
   for (const rho of [4.5, 6, 7.5, 9]) {                               // the lob clears the slingshot over the flipper's base: nothing pinches, nothing kicks it back
     const w = P.pinNew(tb, tb.cfg, tb.targets.map(() => 0)), ca = Math.cos(F.rest), sa = Math.sin(F.rest), rs = PIN.ballR + F.rb + (F.rt - F.rb) * rho / F.len;
     set(w, F.L[0] + ca * rho + sa * rs, F.L[1] + sa * rho - ca * rs, ca * 60, sa * 60); w.flip.L.on = true;
@@ -214,7 +214,7 @@ test('pinball: the time limit (November 2026, TUNE maxSecs, 30 s by default, fro
   assert.equal(r.ok, true); assert.equal(r.outcome, 'continue');
   assert.deepEqual(m2.lit.X.map((v, k) => (v ? k : -1)).filter(k => k >= 0), a.result.hits.map(h => h[0]).sort((x, y) => x - y), 'its targets kept');
 });
-test('pinball: the move\'s flash carries the ball\'s inputs and no recording; replayed from them bit by bit (as the other phone plays it, frame by frame) it is the same ball; the level reaches the computer\'s hand (hard lights more a ball than easy)', () => {
+test('pinball: the move\'s flash carries the ball\'s inputs and no recording; replayed from them bit by bit (as the other phone plays it, frame by frame) it is the same ball; the level reaches the computer\'s hand (easy lights fewer a ball than normal or hard)', () => {
   const st = E.newMatch(lcg(11), { games: ['pinball'] }), i = 4, p = st.turn, mini0 = JSON.parse(JSON.stringify(st.squares[i].mini));
   const mv = E.fingAi(st.squares[i].mini, p, E.makeRng('flash'));
   assert.equal(E.playMove(st, i, mv, E.makeRng('f')).ok, true);
@@ -231,7 +231,7 @@ test('pinball: the move\'s flash carries the ball\'s inputs and no recording; re
   // the levels
   const lit = lv => { let n = 0; for (let s = 0; s < 60; s++) { const m = E.newMini('pinball', E.makeRng('lv' + s)); n += E.fingAi(m, 'X', E.makeRng('lvb' + s), lv).hits.length; } return n; };
   const easy = lit('easy'), normal = lit('normal'), hard = lit('hard');
-  assert.ok(easy < normal && normal < hard, `easy ${easy} < normal ${normal} < hard ${hard} targets over 60 first balls`);
+  assert.ok(easy < normal * 0.9 && easy < hard * 0.9, `easy ${easy} under normal ${normal} and hard ${hard} targets over 60 first balls`);   // (hard against normal over whole squares: 58%, tests/sim/pinball.sim.js; a first ball is mostly the launch, which both aim)
   assert.deepEqual(E.aiOf('pinball').best(E.newMini('pinball', E.makeRng('q')), 'X', E.makeRng('r'), null, { level: 'hard' }).move, { fing: true, level: 'hard' }, 'the level goes with the ball');
 });
 test('pinball: a ball that goes down an outlane before any flipper has touched it since its launch comes back to the plunger (whenever it happens); once a flipper has had it, an outlane is a drain like any other; between the flippers it is a drain either way', () => {

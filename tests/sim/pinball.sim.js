@@ -72,7 +72,7 @@ test('pinball: every touch of a target counts (and only a real touch: never thro
           const b = w.ball.position;
           for (const t of tb.targets) {
             const [x, y] = t.spin ? P.pinSpinAt(t, w.t, cfg) : [t.x, t.y];
-            if (Math.hypot(b.x - x, b.y - y) < t.r + PIN.ballR - 0.05 && !w.lit[t.id]) missed++;
+            if (Math.hypot(b.x - x, b.y - y) < (t.kind === 'roll' ? t.r + PIN.roll : t.r + PIN.ballR) - 0.05 && !w.lit[t.id] && (b.x < PIN.lane.wall || t.x > PIN.lane.wall)) missed++;   // (a rollover: the ball's middle over its light; a standup: any touch; never from the plunger lane through its wall)
           }
           if (!w.inPlay && !w.over) P.pinLaunch(w, rng());
         }
@@ -163,7 +163,7 @@ test('pinball: balance — whole squares between two hands (the computer\'s): th
   const avg = winBalls.reduce((a, b) => a + b, 0) / winBalls.length;
   console.log(`  ${n} squares: the winner's balls ${avg.toFixed(2)} on average (median ${winBalls[winBalls.length >> 1]}, least ${winBalls[0]}, most ${winBalls[winBalls.length - 1]}); the first player wins ${(100 * first / n).toFixed(1)}%; a ball lasts ${lens[lens.length >> 1].toFixed(1)} s (median), ${lens[Math.floor(lens.length * 0.95)].toFixed(1)} s (p95), ${lens[Math.floor(lens.length * 0.99)].toFixed(1)} s (p99)`);
   assert.ok(avg >= 3.5 && avg <= 6.5, `about 4 to 6 balls for the winner (${avg.toFixed(2)})`);
-  assert.ok(first / n < 0.6, `the first player under 60% (${(100 * first / n).toFixed(1)}% of ${n} squares; 56.9% over 1,500)`);
+  assert.ok(first / n < 0.6, `the first player under 60% (${(100 * first / n).toFixed(1)}% of ${n} squares; 56.4% of 900 at size 1.3)`);
   const ones = winBalls.filter(b => b === 1).length;
   assert.ok(ones <= n * 0.06, `seldom in one ball (${ones} of ${n})`);
 });

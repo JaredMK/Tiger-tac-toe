@@ -360,6 +360,7 @@ export function makePhysics(Matter) {
     bump: { r: 5, kick: 175, e: 0.5 },
     sling: { kick: 150, lift: -0.1 },   // a slingshot's kick off its long face, and how much of it goes up the table as well
     stand: { e: 0.45 },
+    roll: 0.5,                    // a rollover lights when the ball's middle comes within its light's radius and this much more
     spin: { r: 9, w: 1.7 },       // a moving target: it slides this far either side of its middle, at this speed (radians a second, times the spin setting)
     targets: null,                // the classic seven (layout 0's first seven spots): a square from before the layouts plays on them; filled in below
   };
@@ -422,28 +423,27 @@ export function makePhysics(Matter) {
   const pinLanes = (...xs) => xs.map(x => [x, 17, x, 27, 2.4]);   // top lane guides (the first, at 31, is the frame's)
   const ROLL = (x, y, name) => ({ x, y, r: 2, name, kind: 'roll' });
   const STAND = (x, y, name, mount) => Object.assign({ x, y, r: 1.7, name, kind: 'stand' }, mount ? { mount: true } : {});
-  const IN_L = ROLL(14.8, 137, 'Left inlane'), IN_R = ROLL(pinMir(14.8), 137, 'Right inlane');
   const PIN_LAYOUTS = [
     { name: 'Classic',                                                   // three top lanes, three bumpers under them, an orbit lane up each side behind a rail, targets on the rails' faces
       walls: [...pinLanes(41, 51, 61), [13, 62, 13, 98, 2.4], [pinMir(13), 62, pinMir(13), 98, 2.4]],
       bumpers: [[36, 45], [56, 45], [46, 59]],
       spots: [ROLL(36, 22, 'Left lane'), ROLL(46, 22, 'Centre lane'), ROLL(56, 22, 'Right lane'), ROLL(7.6, 80, 'Left orbit'), ROLL(pinMir(7.6), 80, 'Right orbit'), Object.assign(STAND(15, 90, 'Left target', true), { r: 2.1 }), Object.assign(STAND(pinMir(15), 90, 'Right target', true), { r: 2.1 }),
-        STAND(46, 82, 'Centre target'), IN_L, IN_R, STAND(26, 98, 'Lower left target'), STAND(pinMir(26), 98, 'Lower right target')] },
+        STAND(46, 82, 'Centre target'), STAND(26, 98, 'Lower left target'), STAND(pinMir(26), 98, 'Lower right target')] },
     { name: 'Target bank',                                               // a roof across the middle with a bank of three targets under it, facing the flippers; two bumpers above
       walls: [...pinLanes(41, 51, 61), ...pinPoly(2.4, [31, 80], [46, 74], [61, 80])],
       bumpers: [[35, 47], [57, 47]],
       spots: [STAND(38, 79.3, 'Bank left', true), STAND(46, 76.2, 'Bank middle', true), STAND(54, 79.3, 'Bank right', true), ROLL(36, 22, 'Left lane'), ROLL(46, 22, 'Centre lane'), ROLL(56, 22, 'Right lane'),
-        ROLL(46, 60, 'Over the bank'), ROLL(8, 84, 'Left side'), ROLL(pinMir(8), 84, 'Right side'), IN_L, IN_R, STAND(14, 60, 'Left post'), STAND(pinMir(14), 60, 'Right post')] },
+        ROLL(46, 60, 'Over the bank'), ROLL(8, 84, 'Left side'), ROLL(pinMir(8), 84, 'Right side'), STAND(14, 60, 'Left post'), STAND(pinMir(14), 60, 'Right post')] },
     { name: 'Bumper nest',                                               // four bumpers in a diamond, a sliding target under them, a kicker rail off each side wall
       walls: [...pinLanes(41, 51, 61), [2, 66, 12, 76, 2.4], [PIN.lane.wall - 1, 66, pinMir(12), 76, 2.4]],
       bumpers: [[46, 41], [33, 53], [59, 53], [46, 65]],
       spots: [ROLL(36, 22, 'Left lane'), ROLL(46, 22, 'Centre lane'), ROLL(56, 22, 'Right lane'), { spin: [46, 88], r: 1.9, name: 'Slider', kind: 'stand' }, ROLL(46, 76, 'Under the nest'), STAND(16, 92, 'Left target'), STAND(pinMir(16), 92, 'Right target'),
-        ROLL(10, 52, 'Left orbit'), ROLL(pinMir(10), 52, 'Right orbit'), IN_L, IN_R, STAND(24, 72, 'Left of the nest'), STAND(pinMir(24), 72, 'Right of the nest')] },
+        ROLL(10, 52, 'Left orbit'), ROLL(pinMir(10), 52, 'Right orbit'), STAND(24, 72, 'Left of the nest'), STAND(pinMir(24), 72, 'Right of the nest')] },
     { name: 'Four lanes',                                                // four top lanes, two bumpers, a rail slanting in from each side with a target on its face, a centre post
       walls: [...pinLanes(41, 51, 61, 71), ...pinPoly(2.4, [12, 56], [22, 84]), ...pinPoly(2.4, [pinMir(12), 56], [pinMir(22), 84])],
       bumpers: [[38, 47], [58, 47]],
       spots: [ROLL(36, 22, 'First lane'), ROLL(46, 22, 'Second lane'), ROLL(56, 22, 'Third lane'), STAND(18.5, 69, 'Left rail', true), STAND(pinMir(18.5), 69, 'Right rail', true),
-        STAND(46, 70, 'Centre post'), ROLL(8, 92, 'Left orbit'), ROLL(pinMir(8), 92, 'Right orbit'), IN_L, IN_R, ROLL(48, 47, 'Between the bumpers'), STAND(46, 94, 'Low post')] },
+        STAND(46, 70, 'Centre post'), ROLL(8, 92, 'Left orbit'), ROLL(pinMir(8), 92, 'Right orbit'), ROLL(48, 47, 'Between the bumpers'), STAND(46, 94, 'Low post')] },
   ];
   const PIN_CLASSIC = [0, 1, 2, 3, 4, 5, 6];   // the classic seven: layout 0's first spots, for a square dealt before the layouts (no mini.table)
   // A target from a spot: its id (its place in the square's seven), its size at the admin's size setting,
@@ -686,7 +686,7 @@ export function makePhysics(Matter) {
         if (w.lit[t.id]) continue;
         let x = t.x, y = t.y;
         if (t.spin) { const at = pinSpinAt(t, w.t, w.cfg); x = at[0]; y = at[1]; }
-        const dx = b.x - x, dy = b.y - y, rs = t.r + R;
+        const dx = b.x - x, dy = b.y - y, rs = t.kind === 'roll' ? t.r + PIN.roll : t.r + R;   // a rollover: the ball's middle over the light (and a little: a ball down a lane's side still counts); a standup: any touch
         if (dx * dx + dy * dy < rs * rs && (b.x < L.wall || t.x > L.wall)) pinLight(w, t.id);   // (never from the plunger lane through its wall)
       }
       const since = w.t - w.launchedAt;
