@@ -4123,3 +4123,6 @@ button.dukd:disabled { cursor: default; }
 .wt .wtbw, .wt .wtrack, .wt .wtwho, .wt .cbtns { width: 100%; align-self: stretch; }   /* (size containers have no width of their own: the column's full width) */
 .twt .twbg { fill: #fffaf0; stroke: var(--ink); stroke-width: .9; } .twt .twc { fill: #e3d2ad; }   /* (each miniature board on a backing of its own: the plain squares never melt into the page) */
 .wt .wtsc { font-size: 16px; } .wt .wtsc small { font-size: 11px; }   /* (the figures kept small: the name keeps its room at 320px) */
+.dukc.X { box-shadow: 0 0 0 2.5px var(--x); } .dukc.O { box-shadow: 0 0 0 2.5px var(--o); }   /* Hook-a-Duck's shared pond: each catch ringed in its hooker's colour */
+.trmy .trmyp { display: flex; justify-content: center; }   /* Rummy Lite's miniature (shared pile): the pile's top between the two hands of card backs */
+.trmy .trmyb.X { box-shadow: inset 0 0 0 .6cqw var(--x); } .trmy .trmyb.O { box-shadow: inset 0 0 0 .6cqw var(--o); }
