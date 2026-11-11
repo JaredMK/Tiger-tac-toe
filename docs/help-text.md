@@ -58,8 +58,8 @@ Win: Empty your tree first.
 
 ## Backgammon Lite [bglite]
 Category: More luck
-Play: Roll two dice (the very first roll: one). Each die moves one of your pieces that many points (both on one piece is fine). Land on a lone enemy piece to send it back to its start. Two of your pieces on a point block it.{goAgain}
-Win: Move all 3 of your pieces off the far end first.
+Play: Your 3 pieces start on your first point. Roll two dice (the very first roll: one). Each die moves a piece that many points; a double moves four times. Land on a lone enemy piece to send it back to its start. Two of your pieces on a point block it. Bear off past the end once all your pieces are in your home zone, the last {home} points.{goAgain}
+Win: Move all 3 of your pieces off first.
 
 ## Bingo [bingo]
 Category: More luck
@@ -124,8 +124,14 @@ Win: Reach the finish first.
 
 ## Dice Combo [combo]
 Category: More luck
-Play: Roll five dice up to {rolls} times. Tap dice to hold them between rolls. Then claim a combo from your card: three or four of a kind, full house, small or large straight, five alike. Nothing fits? Your turn ends.{goAgain}
+Play: Roll five dice up to {rolls} times. Tap dice to hold them between rolls. Then claim a combo not yet on your card. Nothing fits? Your turn ends.{goAgain}
 Win: Claim {goal} combos.
+List k3: Three of a kind: three dice the same (like 4-4-4).
+List k4: Four of a kind: four dice the same.
+List fh: Full house: three of one number plus two of another.
+List ss: Small straight: 4 in a row (like 2-3-4-5).
+List ls: Large straight: 5 in a row (1-2-3-4-5 or 2-3-4-5-6).
+List y5: Five alike: all five dice the same. It also counts as three or four of a kind.
 
 ## Districts [districts]
 Category: More brain
@@ -287,6 +293,11 @@ Win: Reach {target} first.
 Category: More brain
 Play: Claim an edge of the honeycomb. Random edges get blocked after each move.
 Win: Have the longest unbroken road. The square ends early once the other player can no longer catch up.
+
+## Rock Paper Scissors [rps]
+Category: More luck
+Play: Pick rock, paper or scissors against the house. The house throws from its own deck, and you can see what is left in it. Tie? Throw again.{goAgain}
+Win: Win {goal} throws.
 
 ## Scoop Stack [scoop]
 Category: More skill

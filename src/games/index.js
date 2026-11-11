@@ -59,6 +59,7 @@ import * as shutR from './shut/rules.js'; import * as shutA from './shut/ai.js';
 import * as comboR from './combo/rules.js'; import * as comboA from './combo/ai.js'; import * as comboM from './combo/meta.js'; add('combo', comboR, comboA, comboM);
 import * as bgliteR from './bglite/rules.js'; import * as bgliteA from './bglite/ai.js'; import * as bgliteM from './bglite/meta.js'; add('bglite', bgliteR, bgliteA, bgliteM);
 import * as sccR from './scc/rules.js'; import * as sccA from './scc/ai.js'; import * as sccM from './scc/meta.js'; add('scc', sccR, sccA, sccM);
+import * as rpsR from './rps/rules.js'; import * as rpsA from './rps/ai.js'; import * as rpsM from './rps/meta.js'; add('rps', rpsR, rpsA, rpsM);
 import * as snakeR from './snake/rules.js'; import * as snakeA from './snake/ai.js'; import * as snakeM from './snake/meta.js'; add('snake', snakeR, snakeA, snakeM);
 import * as swarmR from './swarm/rules.js'; import * as swarmA from './swarm/ai.js'; import * as swarmM from './swarm/meta.js'; add('swarm', swarmR, swarmA, swarmM);
 import * as bricksR from './bricks/rules.js'; import * as bricksA from './bricks/ai.js'; import * as bricksM from './bricks/meta.js'; add('bricks', bricksR, bricksA, bricksM);

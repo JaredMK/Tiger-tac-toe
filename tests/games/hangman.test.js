@@ -225,7 +225,10 @@ test('hangman: a right letter keeps the turn with almost no pause before the nex
 const R = require('../../src/games/hangman/rules.js');
 const raceOn = on => E.setTune('hangman', on ? { mode: 'race' } : null);
 const hangAt = st => st.squares.findIndex(q => q.mini.type === 'hangman');
-function raceMatch(rng) { return E.newMatch(rng, { games: ['hangman', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt'], vs: 'cpu' }); }
+function raceMatch(rng) {   // (dealt again until a Hangman square comes up: the deal is random)
+  for (let i = 0; i < 30; i++) { const st = E.newMatch(rng, { games: ['hangman', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt', 'ttt'], vs: 'cpu' }); if (hangAt(st) >= 0) return st; }
+  throw new Error('no Hangman square dealt');
+}
 const ALL = [...new Set(L.WORDS_HANG.map(w => w.toUpperCase()))], uniq = w => new Set(w).size;
 const words = (m, X, O) => { m.tg = { X, O }; m.len = X.length; m.side = { X: { letters: [], pattern: new Array(X.length).fill(null) }, O: { letters: [], pattern: new Array(X.length).fill(null) } }; return m; };
 

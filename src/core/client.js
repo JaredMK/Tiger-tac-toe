@@ -8,7 +8,7 @@ import { GAMES } from '../games/index.js';
 // This code's version. The web page is always the latest (it is served from this commit); the app carries the version
 // it was built with, so bump this (major.minor.patch) whenever a change needs a newer client: a new mini-game (its
 // meta.js minVersion is then this), or a change to a game's moves or records an older client could not play.
-export const CLIENT_VERSION = '1.8.0';   // (1.8.0: Snake's bombs, growth and food counts, and every skill game's attempt time limit; 1.7.0: Seating's new rules and records; 1.3.0, November 2026: Apple Pick; 1.4.0: Risky Spins deals two wheels, which an older client's view could not draw; 1.5.0: the November 2026 batch of new games; 1.6.0: Muncher's new maze, spooks and move shape)
+export const CLIENT_VERSION = '1.9.0';   // (1.9.0: Rock Paper Scissors, Backgammon Lite's new start, home zone and doubles; 1.8.0: Snake's bombs, growth and food counts, and every skill game's attempt time limit; 1.7.0: Seating's new rules and records; 1.3.0, November 2026: Apple Pick; 1.4.0: Risky Spins deals two wheels, which an older client's view could not draw; 1.5.0: the November 2026 batch of new games; 1.6.0: Muncher's new maze, spooks and move shape)
 export const PLATFORMS = ['web', 'ios'];
 // A client that says nothing (a page from before versions) is the web page at the first version.
 export const BASE_CLIENT = Object.freeze({ v: '1.0.0', p: 'web' });

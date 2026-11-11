@@ -3873,3 +3873,54 @@ button.die.bgldie { cursor: pointer; }
 .tseq span.q svg.tpq { width: 70%; height: 70%; fill: none; stroke: var(--muted); stroke-width: 1.3; stroke-linecap: round; }   /* Patterns' miniature: the gap's question mark, drawn */
 .exlist { list-style: none; margin: .5em 0 0; padding: 0; display: grid; gap: .25em; font-size: .92em; text-align: left; }   /* a game's list in its "?" (Dice Combo's combos) */
 .exlist b { font-weight: 800; }
+/* Backgammon Lite (v 2): each side's home zone, a band in its colour along the bottom of its last points; four dice fit */
+.bglhm { position: absolute; bottom: 0; height: 7%; opacity: .85; pointer-events: none; }
+.bglhm.X { background: var(--x); } .bglhm.O { background: var(--o); }
+.bgldice:has(> :nth-child(4)) { gap: 8px; }
+.bgldice:has(> :nth-child(4)) .die.bgldie { width: 42px; height: 42px; }
+/* Rock Paper Scissors (rps): the house's deck, the two hands with the result line between, three throw buttons */
+.g-rps { width: min(var(--gw), 440px); height: var(--gh); display: flex; flex-direction: column; gap: 8px; padding-top: 4px; }
+.rpsdeck { flex: none; display: flex; align-items: center; justify-content: center; gap: 10px; min-width: 0; }
+.rpslab { font-size: 14px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 1 auto; }
+.rpschip { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px 2px 4px; background: var(--paper); border: 2.5px solid var(--ink); border-radius: 12px; flex: none; }
+.rpschip .rpsv { width: 26px; height: 26px; }
+.rpschip b { font: 400 18px/1 'Luckiest Guy', 'Arial Black', sans-serif; min-width: 1ch; text-align: center; }
+.rpschip.rpsbump { animation: rpsbump .35s var(--t, 0ms) ease-out both; }
+@keyframes rpsbump { 40% { transform: scale(1.15); } }
+.rpsarena { flex: 1; min-height: 0; container-type: size; display: grid; grid-template-rows: auto 1fr auto 1fr auto; justify-items: center; align-items: center; padding: 6px 10px; background: radial-gradient(ellipse at 50% 45%, #6fae7a, #3f7f52); border: 3.5px solid var(--ink); border-radius: 22px 16px 24px 18px; }
+.rpswho { font-size: 14px; color: #fff; text-shadow: 0 1px 0 rgba(0,0,0,.35); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.rpshand { position: relative; width: min(30cqh, 42cqw); aspect-ratio: 1; display: grid; place-items: center; }
+.rpshand > span { grid-area: 1 / 1; width: 100%; height: 100%; display: grid; place-items: center; }
+.rpshand .rpsv { width: 100%; height: 100%; filter: drop-shadow(0 3px 0 rgba(0,0,0,.25)); }
+.rpshand.house .rpsv { transform: rotate(180deg); }
+.rpshand.idle { opacity: .55; }
+.rpsfist { animation: rpsshake .72s ease-in-out both, rpsout 1ms var(--t, 720ms) forwards; }
+.rpshand.house .rpsfist { animation-name: rpsshakeh, rpsout; }
+@keyframes rpsshake { 0%, 33%, 66%, 100% { transform: translateY(0); } 16%, 50%, 83% { transform: translateY(-18%); } }
+@keyframes rpsshakeh { 0%, 33%, 66%, 100% { transform: translateY(0); } 16%, 50%, 83% { transform: translateY(18%); } }
+@keyframes rpsout { to { visibility: hidden; } }
+.rpsthrow.appear { animation: rpspop .3s var(--t, 0ms) ease-out both; }
+@keyframes rpspop { 0% { opacity: 0; transform: scale(.6); } 70% { transform: scale(1.12); } 100% { opacity: 1; transform: scale(1); } }
+.rpsres { margin: 0; min-height: 1.3em; font-size: 16px; color: #fff; text-align: center; text-shadow: 0 1px 0 rgba(0,0,0,.4); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.rpsres.win { color: #fff6c8; } .rpsres.tie { color: #e8f0ff; }
+.rpsres b.X, .rpsres b.O { color: inherit; }
+.rpsbtns { flex: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; min-height: 84px; }
+.rpsbtns.none { min-height: 0; }
+.rpsbtn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 6px 4px; background: var(--paper); border: 3px solid var(--ink); border-radius: 16px; box-shadow: 0 4px 0 var(--ink); font: 400 15px/1 'Luckiest Guy', 'Arial Black', sans-serif; color: var(--ink); min-width: 0; touch-action: manipulation; }
+.rpsbtn .rpsv { width: 46px; height: 46px; }
+.rpsbtn.X { background: color-mix(in srgb, var(--x) 18%, var(--paper)); } .rpsbtn.O { background: color-mix(in srgb, var(--o) 24%, var(--paper)); }
+.rpsbtn:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); }
+.rpsbtn:disabled { opacity: .5; }
+.rpsv .rpk { fill: #f2c79a; stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; }
+.rpsv .rpp { fill: #fff; stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; }
+.rpsv .rpl { fill: none; stroke: var(--ink); stroke-width: 1.6; stroke-linecap: round; opacity: .7; }
+.rpsv .rpb { fill: #c9d2dc; stroke: var(--ink); stroke-width: 1.8; stroke-linejoin: round; }
+.rpsv .rph { fill: none; stroke: #1fb5a8; stroke-width: 3; }
+.rpsv .rpc { fill: var(--ink); }
+/* the miniature: the last throw face to face beside the wins */
+.trps { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1cqw; height: 100%; }
+.trpsh { display: grid; place-items: center; width: 22cqw; height: 22cqw; border-radius: 4cqw; }
+.trpsh .rpsv { width: 100%; height: 100%; }
+.trpsh.h .rpsv { transform: rotate(180deg); }
+.trpsh.m.X { box-shadow: 0 0 0 1cqw var(--x); background: color-mix(in srgb, var(--x) 14%, transparent); }
+.trpsh.m.O { box-shadow: 0 0 0 1cqw var(--o); background: color-mix(in srgb, var(--o) 18%, transparent); }
