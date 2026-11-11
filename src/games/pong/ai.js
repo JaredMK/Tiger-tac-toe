@@ -1,11 +1,12 @@
 // Cup Pong: the computer's play.
 import { randInt } from '../../core/random.js';
 import { PONG, pongAimAt, pongAimXY, pongThrow } from './rules.js';
-import { tune } from '../../core/tune.js';
+import { goAgain, tune } from '../../core/tune.js';
 
 const MAKE = 0.5;                                     // about what a throw at a cup makes (needs, and q when nothing better is known)
 export function needs(pm, p) {
-  return Math.max(1, pm.cups[p].filter(Boolean).length / MAKE);
+  const k = pm.cups[p].filter(Boolean).length;
+  return Math.max(1, goAgain(pm) ? 1 + k * (1 - MAKE) / MAKE : k / MAKE);   // ("Go again on success" on: a turn ends only on a miss)
 }
 const gauss = rng => { const u = Math.max(1e-9, rng()), v = rng(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
 // The chance a throw aimed at table point (x, y) sinks a cup, by sampling: the computer's own error (eAim, ePower)

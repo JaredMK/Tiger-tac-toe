@@ -4,6 +4,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const E = require('../engine.js');
+E.setTune('bj', { again: 'on' });   // ("Go again on success" on: the hot streak this plays)
 
 const lcg = seed => () => (seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296;
 const bj = over => Object.assign(E.newMini('bj', lcg(1)), over || {});

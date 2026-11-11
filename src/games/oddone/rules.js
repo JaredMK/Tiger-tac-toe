@@ -1,7 +1,7 @@
 // Odd One Out: the rules (pure: no page, no clock; the server runs the same code).
 import { needRng, randInt } from '../../core/random.js';
 import { ODD_DEFAULTS } from './meta.js';
-import { tune, tuneLive } from '../../core/tune.js';
+import { goAgain, tune, tuneLive } from '../../core/tune.js';
 
 // Odd One Out: a grid of tiles of one colour, one of them a different shade (a little lighter or
 // darker, and a touch off in hue, so it is fair with colours hard to tell apart). A player's grid grows
@@ -84,6 +84,7 @@ export function apply(mini, p, m, rng, idx) {
   const t = tune(mini), next = oddGrid(mini.finds[p], needRng(rng), null, oddSizes(t));   // a new grid every move, at the player's level
   mini.grid[p] = next.grid; mini.pos[p] = next.pos;
   if (mini.finds[p] >= t.goal) return { ok: true, outcome: 'win', note: 'found' };
+  if (correct && m !== 'auto' && goAgain(mini)) return { ok: true, outcome: 'continue', note: 'found', again: true };   // ("Go again on success" on: a find keeps the turn)
   return { ok: true, outcome: 'continue', note: correct ? 'found' : 'wrong' };
 }
 export function publicView(mini) {

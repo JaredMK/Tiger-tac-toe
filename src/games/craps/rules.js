@@ -1,6 +1,6 @@
 // Craps: the rules (pure: no page, no clock; the server runs the same code).
 import { needRng, randInt } from '../../core/random.js';
-import { tune } from '../../core/tune.js';
+import { goAgain, tune } from '../../core/tune.js';
 
 // ---------- Craps, Takeover and Flood ----------
 // Craps: each player has their own count of rounds won; first to 3 (the admin's, tune(mini).goal) takes the square. A move is one tap of
@@ -52,7 +52,7 @@ function roll(mini, p, m, rng, streak) {   // Roll: the round, rolled out
   mini.last = { by: p, kind: 'round', rolls: r.rolls.map(d => d.slice()), point: r.point, was, result: r.result };
   mini.point = null; mini.live = null; mini.rolls = [];
   if (mini.wins[p] >= tune(mini).goal) return { ok: true, outcome: 'win', note: 'won' };
-  if (r.result === 'win' && streak) return { ok: true, outcome: 'continue', note: 'won', again: true };   // a hot streak: roll again
+  if (r.result === 'win' && streak && goAgain(mini)) return { ok: true, outcome: 'continue', note: 'won', again: true };   // a hot streak: roll again
   return { ok: true, outcome: 'continue', note: r.result === 'win' ? 'won' : 'lost' };
 }
 export function publicView(mini) {

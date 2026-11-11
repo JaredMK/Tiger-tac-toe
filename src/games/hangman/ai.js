@@ -1,6 +1,6 @@
 // Hangman: the computer's play.
 import { randInt } from '../../core/random.js';
-import { tune } from '../../core/tune.js';
+import { goAgain, tune } from '../../core/tune.js';
 import { hangLen, hangLetters, hangPart, hangmanCandidates } from './rules.js';
 import { WORDS_HANG } from './words.js';
 
@@ -13,6 +13,7 @@ function raceEst(pm, p) {                                        // [words still
 }
 export function needs(pm, p) {
   const [n, missing] = pm.race ? raceEst(pm, p) : [hangmanCandidates(pm).length, pm.pattern.filter(ch => !ch).length];
+  if (!goAgain(pm)) return Math.max(1, Math.ceil(missing * 0.75) + (n <= 1 ? 0 : Math.min(missing, 1 + Math.log(n))));   // ("Go again on success" off: a letter a turn, the word's letters to find (some come twice) and the misses on the way)
   return n <= 1 ? 1 : 1 + Math.min(missing, 1 + Math.log(n)) / 2;
 }
 export function best(pm, me, rng, style, ctx) {

@@ -1,7 +1,7 @@
 // War: the rules (pure: no page, no clock; the server runs the same code).
 import { needRng, shuffle } from '../../core/random.js';
 import { CARD, cardDeck } from '../shared/cards.js';
-import { tune } from '../../core/tune.js';
+import { goAgain, tune } from '../../core/tune.js';
 
 // War: each player flips their card against the dealer's; the higher card wins the round for the player (ace
 // high; the dealer's higher: the round is lost, nothing gained). A tie goes to war: three cards face down each,
@@ -56,7 +56,7 @@ function flip(mini, p, m, rng, streak) {
   mini.wins[p] = Math.min(tune(mini).goal, mini.wins[p] + r.gain);
   mini.last = { by: p, battles: r.battles.map(b => ({ p: b.p, d: b.d })), result: r.result, gain: r.gain, wars: r.wars };
   if (mini.wins[p] >= tune(mini).goal) return { ok: true, outcome: 'win', note: 'won' };
-  if (r.result === 'win' && streak) return { ok: true, outcome: 'continue', note: 'won', again: true };   // a hot streak: flip again
+  if (r.result === 'win' && streak && goAgain(mini)) return { ok: true, outcome: 'continue', note: 'won', again: true };   // a hot streak: flip again
   return { ok: true, outcome: 'continue', note: r.result === 'win' ? 'won' : 'lost' };
 }
 export function publicView(mini) {

@@ -1,6 +1,6 @@
 // Cup Pong: the rules (pure: no page, no clock; the server runs the same code).
 import { needRng } from '../../core/random.js';
-import { tune } from '../../core/tune.js';
+import { goAgain, tune } from '../../core/tune.js';
 
 // Cup Pong: the table is one unit long (the thrower at y 0, the far end at y 1) and one wide (x from
 // -0.5 to 0.5). Each player's rack is three cups in a triangle at the far end. A throw is an aim
@@ -40,6 +40,7 @@ export function apply(mini, p, m, rng, idx) {
   if (t.sunk) mini.cups[p][t.cup] = false;
   mini.last = { by: p, aim, power, x: Math.round(t.x * 1000) / 1000 + 0, y: Math.round(t.y * 1000) / 1000 + 0, cup: t.cup, rim: t.rim, sunk: t.sunk };   // (+ 0: never a -0, which is not plain JSON)
   if (mini.cups[p].every(c => !c)) return { ok: true, outcome: 'win', note: 'sunk' };
+  if (t.sunk && goAgain(mini)) return { ok: true, outcome: 'continue', note: 'sunk', again: true };   // ("Go again on success" on: a cup sunk, throw again)
   return { ok: true, outcome: 'continue', note: t.sunk ? 'sunk' : t.rim ? 'rim' : 'miss' };
 }
 export function publicView(mini) {

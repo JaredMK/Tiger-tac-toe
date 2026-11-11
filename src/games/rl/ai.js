@@ -1,7 +1,7 @@
 // Roulette: the computer's play.
 import { AI } from '../../core/ai.js';
 import { randInt } from '../../core/random.js';
-import { tune } from '../../core/tune.js';
+import { goAgain, tune } from '../../core/tune.js';
 import { other } from '../../core/util.js';
 import { RL } from './rules.js';
 
@@ -9,14 +9,14 @@ import { RL } from './rules.js';
 // misses before the last hit, each ending a turn, and the turn that finishes it).
 export function needs(pm, p) {
   const k = Math.max(0, tune(pm).goal - pm.hits[p]), h = RL.pick / RL.wheel.length;
-  return Math.max(1, 1 + k * (1 - h) / h);
+  return Math.max(1, goAgain(pm) ? 1 + k * (1 - h) / h : k / h);   // ("Go again on success" off: a spin a turn)
 }
 export function best(pm, me, rng, style, ctx) {
   // A group, as a rule; now and then green 0: when the other side is one hit from a square that
   // matters (it would give them the match, or block a line of its own), or when well behind.
   // Hard: green 0 or a group by the chance of winning the square's race (rlRace).
   const o = other(me), mine = pm.hits[me], theirs = pm.hits[o], c = tune(pm), goal = c.goal;
-  const group = () => ({ move: rlPick(rng), q: (RL.pick / RL.wheel.length) ** Math.max(1, goal - mine) });   // q: the chance this turn takes the square (a hit keeps the turn: every hit still needed in a row)
+  const group = () => ({ move: rlPick(rng), q: goAgain(pm) ? (RL.pick / RL.wheel.length) ** Math.max(1, goal - mine) : goal - mine <= 1 ? RL.pick / RL.wheel.length : 0 });   // q: the chance this turn takes the square (a hit keeps the turn: every hit still needed in a row)
   if (ctx && ctx.level === 'hard') { const r = rlRace(goal); return r.zero[mine * goal + theirs] ? { move: 'zero', q: 1 / RL.wheel.length } : group(); }
   const crit = !!ctx && ctx.value >= AI.block, behind = !!ctx && ctx.behind >= 2 && theirs > mine;
   const pz = (theirs >= goal - 1 && crit ? c.zeroCrit : behind ? c.zeroBehind : 0) / 100;   // (the admin's rates)

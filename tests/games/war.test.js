@@ -2,7 +2,9 @@
 // War: its rules and AI, test by test (npm test). The engine is the one the page and the server run.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const E = require('../engine.js');
+const E = Object.assign({}, require('../engine.js'));
+{ const set = E.setTune; E.setTune = (t, c) => set(t, Object.assign({ again: 'on' }, c)); }   // ("Go again on success" on: these tests play the success that keeps the turn; the default, off, has its own test)
+E.setTune('war', null);
 const R = require('../../src/games/war/rules.js');
 const A = require('../../src/games/war/ai.js');
 const { timeoutClose } = require('../../src/core/board.js');
@@ -63,7 +65,7 @@ test('war: a war won counts its worth (2 by default), a war on a war goes on unt
   E.setTune('war', { goal: 2, warWorth: 1 });
   const t = E.newMini('war', E.makeRng('war-tune'));
   E.setTune('war', null);
-  assert.deepEqual(t.tune, { goal: 2, warWorth: 1 });
+  assert.deepEqual(t.tune, { again: 'on', goal: 2, warWorth: 1 });
   rig(t, 'X', 'QD', 'QC', ...DOWN, '9S', '5H');
   assert.deepEqual([E.applyMove(t, 'X', 'flip', lcg(1)).outcome, t.wins.X, t.last.gain], ['continue', 1, 1], 'a war worth 1 here');
   rig(t, 'X', '9D', '5C');
@@ -181,7 +183,7 @@ test('war: Super Chaos: a round\'s move is one flip of the player\'s own round (
   assert.deepEqual([m.wins, m.flips], [{ X: 1, O: 0 }, { X: 1, O: 1 }]);
   const meta = require('../../src/games/war/meta.js');
   assert.deepEqual([meta.superChaos, meta.release, meta.minVersion, meta.category], [true, 'admin', '1.5.0', 'luck']);
-  assert.deepEqual(meta.TUNE.map(t => [t.k, t.def]), [['goal', 3], ['warWorth', 2]]);
+  assert.deepEqual(meta.TUNE.map(t => [t.k, t.def]), [['again', 'off'], ['goal', 3], ['warWorth', 2]]);
   assert.match(meta.explainer.win, /\{goal\}/); assert.match(meta.explainer.play, /\{warWorth\}/);
   assert.doesNotMatch(JSON.stringify(meta), /\b(bet|stake|wager|chip|payout)s?\b/i, 'no gambling words');
 });

@@ -1,6 +1,6 @@
 // Sea Battle: the computer's play.
 import { randInt } from '../../core/random.js';
-import { tune } from '../../core/tune.js';
+import { goAgain, tune } from '../../core/tune.js';
 import { bsCandidates, bsN, bsPlacements, bsSea } from './rules.js';
 
 // Race mode (core/race.js, `rv: 2`): the computer fires at its own sea (pm.side[me]) for its own ship; the other
@@ -18,7 +18,7 @@ export function needs(pm, p) {
     return Math.max(1, pm.len - (sh.hits || 0) + (n <= 1 ? 0 : Math.log2(n) / 2));
   }
   const sea = bsSea(pm, p), n = bsCandidates(sea).length;
-  return Math.max(1, sea.len - sea.hits.length + (n <= 1 ? 0 : Math.log2(n) / 2));
+  return Math.max(1, sea.len - sea.hits.length + (n <= 1 ? 0 : Math.log2(n) / (goAgain(pm) ? 2 : 1)));   // ("Go again on success" off: a shot a turn)
 }
 export function best(pm, me, rng, style, ctx) {
   // Fire where the ship most often still fits, given every hit and miss (so around a hit once there

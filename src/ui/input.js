@@ -26,7 +26,7 @@ import {
 import { reportLocal, trackEnd, trackStart } from '../net/tracking.js';
 import {
   RNG, advOpen, app, commit, cpuPlan, cpuTimer, flashReady, menuNote, menuOpen, menuStep, save, setAdvOpen,
-  setCpuPlan, setCpuTimer, setMenuNote, setMenuOpen, setMenuStep, state, zoomedType
+  sbx, setCpuPlan, setCpuTimer, setMenuNote, setMenuOpen, setMenuStep, state, zoomedType
 } from './app.js';
 import { RATINGS_ENABLED } from './config.js';
 import { closeExplain, explainT, openExplain, practiceEnd, practiceStart } from './explainer.js';
@@ -142,6 +142,8 @@ export function init() {
     if (act === 'ask-leave') { if (joinAsk) leaveAndJoin(joinAsk.code); return; }
     if (act === 'dismiss') { if (Date.now() >= flashReady) dismissFlash(); return; }   // not before the animation is over
     if (act === 'rep-skip') { repSkip(); return; }                                      // an opponent's replay: straight to its result
+    if (act === 'test-back') { if (sbx.back) sbx.back(); return; }                   // the admin's Test play (ui/sandbox.js): back to the admin page, at any moment
+    if (act === 'test-again') { if (sbx.again) sbx.again(); return; }
     if (act === 'practice-back') { practiceEnd(); return; }                             // a practice match's Back to How to Play (ui/explainer.js): at any moment, the computer's turn or a result on show too
     const free = ['anim-set', 'set-sound', 'set-vib', 'pause-settings', 'pause', 'pause-report', 'pause-resume', 'pause-main', 'pause-back', 'pause-leave', 'leave', 'lobby-back', 'menu', 'find-again', 'profile', 'prof-back', 'prof-hist', 'mystats', 'hist-open', 'hist-sq', 'hist-back', 'hist-close', 'leaderboard', 'rejoin', 'host-retry', 'share', 'copy-invite', 'rematch', 'rematch-cancel', 'share-result', 'timer', 'review', 'review-sq', 'review-back', 'results', 'pview', 'react-open', 'react-send', 'del-account', 'del-cancel', 'del-confirm', 'verify-retry', 'verify-resend'];
     if (act === 'set-sound') { setSound(el.dataset.v === 'on'); return; }            // Settings (ui/settings.js): this phone and the account, any time, the menu open or not

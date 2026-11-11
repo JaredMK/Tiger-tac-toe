@@ -1,6 +1,6 @@
 // Roulette: the rules (pure: no page, no clock; the server runs the same code).
 import { needRng, randInt } from '../../core/random.js';
-import { tune } from '../../core/tune.js';
+import { goAgain, tune } from '../../core/tune.js';
 
 // Roulette: a small wheel of 25 pockets, 1 to 24 (odd red, even black, alternating round the wheel) and a
 // green 0. A spin carries one bet: 8 numbers, one of the groups 1-8, 9-16 or 17-24, or green 0 on its own.
@@ -41,7 +41,7 @@ function spinBet(mini, p, m, n, streak) {   // streak: a hit keeps the turn (nev
   mini.spins = (mini.spins || []).concat({ n, by: p, hit }).slice(-6);   // the recent spins, hits and misses alike (the miniature shows them)
   if (hit && bet === 'zero') return { ok: true, outcome: 'win', note: 'zero' };
   if (hit && mini.hits[p] >= tune(mini).goal) return { ok: true, outcome: 'win', note: 'hit' };
-  if (hit && streak) return { ok: true, outcome: 'continue', note: 'hit', again: true };   // a hot streak: spin again
+  if (hit && streak && goAgain(mini)) return { ok: true, outcome: 'continue', note: 'hit', again: true };   // a hot streak: spin again
   return { ok: true, outcome: 'continue', note: hit ? 'hit' : 'miss' };
 }
 export function publicView(mini) {

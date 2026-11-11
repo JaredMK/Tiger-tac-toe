@@ -1,7 +1,7 @@
 // Sea Battle: the rules (pure: no page, no clock; the server runs the same code).
 import { randInt } from '../../core/random.js';
 import { RACE_V, raceDealt, raceSide } from '../../core/race.js';
-import { tuneLive } from '../../core/tune.js';
+import { goAgain, tuneLive } from '../../core/tune.js';
 
 // Sea Battle: one hidden ship on a 4x4 grid, 1 to 4 cells long, lying across or down. Both players fire at it.
 export const BS = { n: 4, names: { 4: 'Carrier', 3: 'Submarine', 2: 'Destroyer', 1: 'Patrol Boat' }, sc: 5, scLen: 3 };   // sc, scLen: Super Chaos's sea and ship (a Submarine on 5x5)
@@ -65,7 +65,7 @@ export function apply(mini, p, m, rng, idx) {
   if (!ship.includes(m)) return { ok: true, outcome: 'continue', note: 'miss' };
   part.hits.push(m);
   if (ship.every(k => part.hits.includes(k))) return { ok: true, outcome: 'win', cells: ship.slice(), note: 'sunk' };
-  return { ok: true, outcome: 'continue', note: 'hit', again: true };
+  return { ok: true, outcome: 'continue', note: 'hit', again: goAgain(mini) };   // (a hit fires again only with "Go again on success" on)
 }
 export function publicView(mini) {
   const v = Object.assign({ type: 'bs', len: mini.len }, mini.n ? { n: mini.n } : {});

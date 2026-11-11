@@ -1,7 +1,7 @@
 // Hangman: the rules (pure: no page, no clock; the server runs the same code).
 import { randInt } from '../../core/random.js';
 import { RACE_V, raceDealt, raceSide } from '../../core/race.js';
-import { tuneLive } from '../../core/tune.js';
+import { goAgain, tuneLive } from '../../core/tune.js';
 import { WORDS_HANG } from './words.js';
 
 // Race mode (core/race.js, `rv: 2`): each player their own word, of the same length and as near as the list allows in
@@ -43,7 +43,7 @@ export function apply(mini, p, m, rng, idx) {
   if (mini.race) word.split('').forEach((ch, i) => { if (ch === l) part.pattern[i] = l; });   // (a race: the letter goes into this side's own pattern alone)
   const done = word.split('').every(ch => part.letters.some(x => x.l === ch));
   if (done) return { ok: true, outcome: 'win' };
-  return { ok: true, outcome: 'continue', note: 'hit', again: true };
+  return { ok: true, outcome: 'continue', note: 'hit', again: goAgain(mini) };   // (a right letter keeps the turn only with "Go again on success" on)
 }
 export function publicView(mini) {
   if (mini.race) return { type: 'hangman', race: true, len: hangLen(mini), side: JSON.parse(JSON.stringify(mini.side || {})) };   // (both parts are open, their revealed letters too; the words, mini.tg, never: core/minis.js publicMini)

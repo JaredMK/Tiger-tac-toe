@@ -1,5 +1,6 @@
 // Pool: the rules (pure: no page, no clock; the server runs the same code).
 import { other } from '../../core/util.js';
+import { goAgain } from '../../core/tune.js';
 import { PHYSICS, physLast, physRandom, physRun, physShot } from '../shared/physics.js';
 export { physicsMoveFlash as moveFlash } from '../shared/physics.js';
 
@@ -64,7 +65,7 @@ export function apply(mini, p, m, rng, idx) {   // a shot from the cue ball: own
   if (!poolLeft(p, mini) && !poolLeft(o, mini)) return { ok: true, outcome: 'draw', note: 'tie' };   // both sides' last balls down on the one shot: a draw, the square resets
   if (!poolLeft(p, mini)) return { ok: true, outcome: 'win', note: 'cleared' };
   if (!poolLeft(o, mini)) return { ok: true, outcome: 'win', note: 'gift', winner: o };
-  const again = own > 0 && !theirs && !scratch;
+  const again = own > 0 && !theirs && !scratch && goAgain(mini);   // (own ball down: another shot only with "Go again on success" on)
   return Object.assign({ ok: true, outcome: 'continue', note: again ? 'again' : scratch ? 'scratch' : theirs ? 'theirs' : own ? 'own' : 'shot' }, again ? { again: true } : {});
 }
 export function publicView(mini) {

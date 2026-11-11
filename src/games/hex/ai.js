@@ -177,7 +177,7 @@ const solver = () => SOLVER || (SOLVER = hexSolver(16));
 // ---- the book ----
 // A position as the mover sees it, the mover as X: O's view is the board turned round the long diagonal with the
 // sides exchanged; then the smaller of the position and its half turn. key: the two masks as one number, base 36.
-const TR = Int8Array.from({ length: HN }, (_, i) => hexT(i));
+const TR = Int8Array.from({ length: HN }, (_, i) => hexT(i, 5));   // (the book is the 5x5 game's)
 const turn = x => { let r = 0; while (x) { const b = x & -x; x ^= b; r |= 1 << TR[cellOf(b)]; } return r; };
 const half = x => { let r = 0; while (x) { const b = x & -x; x ^= b; r |= 1 << (24 - cellOf(b)); } return r; };
 export function hexKey(X, O) {   // the mover X: { key, h: the half turn taken, X, O: the masks as the key has them }

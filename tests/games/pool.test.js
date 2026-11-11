@@ -2,7 +2,9 @@
 // Pool: its rules and AI, test by test (npm test). The engine is the one the page and the server run.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const E = require('../engine.js');
+const E = Object.assign({}, require('../engine.js'));
+{ const set = E.setTune; E.setTune = (t, c) => set(t, Object.assign({ again: 'on' }, c)); }   // ("Go again on success" on: these tests play the success that keeps the turn; the default, off, has its own test)
+E.setTune('pool', null);
 const P = require('../physics.js');
 E.setPhysics(P);
 
@@ -130,7 +132,7 @@ test('pool: its settings (TUNE) are dealt into the square and played by: a slowe
   E.setTune('pool', { vMax: 150, aiAim: 0 });
   const m = mini('pool', 'tune');
   E.setTune('pool', null);
-  assert.deepEqual(m.tune, { vMax: 150, aiAim: 0 });
+  assert.deepEqual(m.tune, { again: 'on', vMax: 150, aiAim: 0 });
   const far = s => { const r = s.last.rec, i = r.ids.indexOf('cue'); return Math.max(...r.frames.map(f => Math.abs(f[i * 2 + 1] - r.frames[0][i * 2 + 1]) + Math.abs(f[i * 2] - r.frames[0][i * 2]))); };
   const slow = JSON.parse(JSON.stringify(m)), fast = Object.assign(JSON.parse(JSON.stringify(m)), { tune: undefined });
   E.applyMove(slow, 'X', { aim: -Math.PI / 2, power: 0.3 }); E.applyMove(fast, 'X', { aim: -Math.PI / 2, power: 0.3 });

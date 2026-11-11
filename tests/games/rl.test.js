@@ -2,7 +2,9 @@
 // Roulette: its rules and AI, test by test (npm test). The engine is the one the page and the server run.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const E = require('../engine.js');
+const E = Object.assign({}, require('../engine.js'));
+{ const set = E.setTune; E.setTune = (t, c) => set(t, Object.assign({ again: 'on' }, c)); }   // ("Go again on success" on: these tests play the success that keeps the turn; the default, off, has its own test)
+E.setTune('rl', null);
 
 const lcg = seed => () => (seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296;
 
@@ -78,7 +80,7 @@ test('roulette: the admin\'s settings (hits to win, the computer\'s bets on 0) a
   E.setTune('rl', { goal: 3, zeroCrit: 0, zeroBehind: 100 });
   const m = E.newMini('rl', E.makeRng('rl-tune'));
   E.setTune('rl', null);
-  assert.deepEqual(m.tune, { goal: 3, zeroCrit: 0, zeroBehind: 100 });
+  assert.deepEqual(m.tune, { again: 'on', goal: 3, zeroCrit: 0, zeroBehind: 100 });
   m.hits.X = 1;
   let r;
   do r = E.applyMove(m, 'X', 'g1', E.makeRng('rl-' + m.spins.length + ':' + m.hits.X)); while (m.hits.X < 2 && m.spins.length < 6);
@@ -90,7 +92,7 @@ test('roulette: the admin\'s settings (hits to win, the computer\'s bets on 0) a
 
 test('roulette: the Hard computer bets green 0 or a group by the chance of winning the square\'s race (a hit spins again: a hot streak)', () => {
   const A = require('../../src/games/rl/ai.js'), ctx = { level: 'hard', until: null, value: 2, behind: 0 };
-  const pm = (x, o, goal) => ({ type: 'rl', hits: { X: x, O: o }, tune: goal ? { goal } : undefined });
+  const pm = (x, o, goal) => ({ type: 'rl', hits: { X: x, O: o }, tune: goal ? { goal, again: 'on' } : { again: 'on' } });
   const t0 = performance.now();
   for (let i = 0; i < 20; i++) assert.ok(['g1', 'g2', 'g3'].includes(A.best(pm(0, 0), 'X', lcg(i), {}, ctx).move), 'level: a group');
   assert.ok(['g1', 'g2', 'g3'].includes(A.best(pm(0, 1), 'X', lcg(1), {}, Object.assign({}, ctx, { value: E.AI.block + 1 })).move), 'two hits to win: a group even a hit behind on a square that matters');

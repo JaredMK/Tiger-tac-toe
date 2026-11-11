@@ -3,7 +3,9 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const E = require('../engine.js');
+const E = Object.assign({}, require('../engine.js'));
+{ const set = E.setTune; E.setTune = (t, c) => set(t, Object.assign({ again: 'on' }, c)); }   // ("Go again on success" on: these tests play the success that keeps the turn; the default, off, has its own test)
+E.setTune('hangman', null);
 E.setPhysics(require('../physics.js'));   // Mini Golf, Pool and Bowling are dealt only with their physics
 // Trivia needs its questions (the page fetches trivia.json; the server has it as a file): a small made-up bank here.
 E.setTriviaBank({ questions: Array.from({ length: 30 }, (_, i) => ({ id: 'q' + i, cat: 'Test', q: `Question ${i}?`, a: 'Right ' + i, wrong: ['Wrong a' + i, 'Wrong b' + i, 'Wrong c' + i] })) });
@@ -155,7 +157,7 @@ test('hangman: the admin\'s settings (word lengths, the computer\'s random lette
   const ms = Array.from({ length: 8 }, (_, k) => E.newMini('hangman', E.makeRng('hang-tune' + k)));
   E.setTune('hangman', null);
   for (const m of ms) assert.equal(m.word.length, 7);
-  assert.deepEqual(ms[0].tune, { minLen: 7, miss: 60 });
+  assert.deepEqual(ms[0].tune, { again: 'on', minLen: 7, miss: 60 });
   const pm = E.publicMini(ms[0]), moves = new Set();
   for (let k = 0; k < 20; k++) moves.add(E.localBest(pm, 'X', E.makeRng('hang-ai' + k)).move);
   assert.ok(moves.size > 1, 'a random letter now and then');

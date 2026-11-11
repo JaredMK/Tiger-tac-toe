@@ -1,4 +1,5 @@
 // Hangman: its names, its "?" explainer, its icon and its release default.
+import { AGAIN_TUNE } from '../../core/tune.js';
 import { MODE_TUNE } from '../../core/race.js';
 
 export const info = { name: 'Hangman',      hint: 'Right letter: go again. Last letter wins' };
@@ -6,11 +7,14 @@ export const release = 'released';   // the default (the admin's dashboard can c
 export const minVersion = '1.0.0';   // the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
 export const category = 'luck';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
-export const explainer = { name: 'Hangman', play: 'Guess a letter. Got one right? Go again.', win: 'Reveal the last letter.' };
-export const raceExplainer = { name: 'Hangman', play: "You each have your own word, the same length. Guess a letter. Got one right? Go again. You can see the other player's word fill in.", win: 'Reveal the last letter of your word first.' };   // Race mode (core/race.js, rv 2)
+export const explainer = { name: 'Hangman', play: 'Guess a letter.{goAgain}', win: 'Reveal the last letter.' };
+export const raceExplainer = { name: 'Hangman', play: "You each have your own word, the same length. Guess a letter.{goAgain} You can see the other player's word fill in.", win: 'Reveal the last letter of your word first.' };   // Race mode (core/race.js, rv 2)
 export const scExplainer = { name: 'Hangman', play: "Guess a letter. Got one right? Go again.", win: 'Reveal the last letter.' };   // in Super Chaos
 // Its settings (the admin's Mini-game Settings; core/tune.js): the mode, dealt into each square; the rest read through tune(mini).
+// {goAgain} in the explainer: the text below while "Go again on success" is on (AGAIN_TUNE), the other while off (ui/explainer.js fillTune).
+export const goAgainText = { on: ' Got one right? Go again.', off: '' };
 export const TUNE = [
+  AGAIN_TUNE,
   MODE_TUNE,
   { k: 'minLen', label: 'Shortest word (letters)', def: 5, min: 5, max: 7, step: 1, group: 'Rules' },
   { k: 'maxLen', label: 'Longest word (letters)', def: 7, min: 5, max: 7, step: 1, group: 'Rules' },

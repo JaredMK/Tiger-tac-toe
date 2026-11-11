@@ -23,7 +23,8 @@ const L = Object.assign({}, E, {
 const lcg = seed => () => (seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296;
 const sorted = a => a.slice().sort((x, y) => x - y);
 const mini = (type, rng) => L.newMini(type, rng || lcg(11));
-const hex4 = () => ({ type: 'hex', cells: new Array(16).fill(null), last: null });   // a square dealt before 5x5: 4x4, no swap (plays on as it was)
+const hex4 = () => ({ type: 'hex', cells: new Array(16).fill(null), last: null });   // a 4x4 square (the default size again since November 2026)
+const hex5 = () => ({ type: 'hex', cells: new Array(25).fill(null), last: null });   // a 5x5 square dealt before: plays on as it was, Hard by the solved book
 
 // =================================== Hex ===================================
 const hx = (r, c) => r * 4 + c;                                    // (the 4x4 board of the tests below)
@@ -38,13 +39,13 @@ test('hex: neighbours follow the shifted-row layout', () => {
   assert.ok(!L.hexNeighbors(hx(1, 1), 4).includes(hx(2, 2)), 'down-right is not adjacent');
   assert.deepEqual(sorted(L.hexNeighbors(hx(0, 0), 4)), sorted([hx(0, 1), hx(1, 0)]));
   assert.deepEqual(sorted(L.hexNeighbors(hx(3, 3), 4)), sorted([hx(3, 2), hx(2, 3)]));
-  assert.deepEqual(sorted(L.hexNeighbors(hx5(4, 4))), sorted([hx5(4, 3), hx5(3, 4)]), 'the 5x5 board (the default size)');
-  assert.equal(L.HEX_N, 5);
+  assert.deepEqual(sorted(L.hexNeighbors(hx5(4, 4), 5)), sorted([hx5(4, 3), hx5(3, 4)]), 'the 5x5 board (squares from before)');
+  assert.equal(L.HEX_N, 4);
 });
 
 test('hex: X wins with a straight row, lopsided with no O cells (a 4x4 square from before; 5x5 the same with five)', () => {
-  const f = mini('hex');
-  assert.equal(f.cells.length, 25, 'a new square: 5x5'); assert.equal(f.swap, undefined, 'no swap rule');
+  const f = hex5();
+  assert.equal(mini('hex').cells.length, 16, 'a new square: 4x4'); assert.equal(f.cells.length, 25, 'a 5x5 square from before'); assert.equal(f.swap, undefined, 'no swap rule');
   for (const c of [0, 1, 2, 3]) assert.equal(L.applyMove(f, 'X', hx5(2, c)).outcome, 'continue');
   assert.equal(L.applyMove(f, 'X', hx5(2, 4)).outcome, 'win', 'five across');
   const m = hex4();
@@ -138,7 +139,7 @@ test('hex: the Hard computer searches deeper (a forced win Normal misses), legal
   assert.equal(L.localBest({ type: 'hex', cells: row }, 'O', cpuRng(), {}, hard).move, 3, 'O blocks');
   const e = L.localBest(L.publicMini(hex4()), 'X', cpuRng(), {}, hard);
   assert.ok(Number.isInteger(e.move) && e.move >= 0 && e.move < 16 && e.after.cells[e.move] === 'X' && !e.win);
-  const e5 = L.localBest(L.publicMini(mini('hex')), 'X', cpuRng(), {}, hard);
+  const e5 = L.localBest(L.publicMini(hex5()), 'X', cpuRng(), {}, hard);
   assert.ok(Number.isInteger(e5.move) && e5.move >= 0 && e5.move < 25 && e5.after.cells[e5.move] === 'X', '5x5 too');
   const r = lcg(5);
   for (let k = 0; k < 8; k++) {
@@ -166,14 +167,14 @@ test('hex: the Hard computer searches deeper (a forced win Normal misses), legal
 });
 
 test('hex: there is no swap: it is no move, in a new square or an old one, and the public view carries no rule', () => {
-  const m = mini('hex');
+  const m = hex5();
   L.applyMove(m, 'X', hx5(1, 3));
   assert.equal(L.applyMove(m, 'O', 'swap').ok, false, 'the other player cannot take the first stone');
   assert.equal(m.cells.filter(Boolean).length, 1); assert.equal(L.publicMini(m).swap, undefined);
   const old = hex4(); L.applyMove(old, 'X', 5);
   assert.equal(L.applyMove(old, 'O', 'swap').ok, false);
   for (const ctx of [{}, { level: 'hard', until: null }]) {
-    const t = mini('hex'); L.applyMove(t, 'X', hx5(2, 2));
+    const t = hex5(); L.applyMove(t, 'X', hx5(2, 2));
     for (let k = 0; k < 8; k++) assert.notEqual(L.localBest(L.publicMini(t), 'O', lcg(k + 1), {}, ctx).move, 'swap', `${ctx.level || 'normal'}: never a swap`);
   }
 });
@@ -192,7 +193,7 @@ test('hex: Hard plays the solved 5x5 game: its opening wins, and it wins every g
   };
   const r = lcg(21);
   for (let k = 0; k < 25; k++) {
-    const b = mini('hex', lcg(k)); let p = 'X', res = { outcome: 'continue' };
+    const b = hex5(); let p = 'X', res = { outcome: 'continue' };
     while (res.outcome === 'continue' && b.cells.filter(c => !c).length > 9) { res = L.applyMove(b, p, L.randomLegalMove(b, p, r), r); p = L.other(p); }
     if (res.outcome !== 'continue') continue;
     S.start();
@@ -201,7 +202,7 @@ test('hex: Hard plays the solved 5x5 game: its opening wins, and it wins every g
   // Hard against random stones and against the deep search of before: no won game lost
   let games = 0;
   for (let g = 0; g < 80; g++) {
-    const rng = E.makeRng('hex-solved' + g), b = mini('hex', rng), me = g % 2 ? 'X' : 'O', opener = (g >> 1) % 2 ? 'X' : 'O';
+    const rng = E.makeRng('hex-solved' + g), b = hex5(), me = g % 2 ? 'X' : 'O', opener = (g >> 1) % 2 ? 'X' : 'O';
     let p = opener, res, first = null;
     do {
       let mv;
@@ -217,7 +218,7 @@ test('hex: Hard plays the solved 5x5 game: its opening wins, and it wins every g
   }
   assert.ok(games >= 60);
   // the other levels' count of a square is untouched; Hard's own positions carry the solved result
-  const m = mini('hex'); L.applyMove(m, 'X', 3);
+  const m = hex5(); L.applyMove(m, 'X', 3);
   const pm = L.publicMini(m), lb = L.localBest(pm, 'O', lcg(1), {}, hard);
   assert.equal(L.needsOf(pm, 'X'), 4); assert.equal(L.needsOf(pm, 'O'), 5);
   assert.ok(L.needsOf(lb.after, 'O') > 5 * L.needsOf(lb.after, 'X'), 'after any answer to the winning opening the square is the opener\'s');

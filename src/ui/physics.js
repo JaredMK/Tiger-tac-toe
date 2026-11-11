@@ -79,7 +79,7 @@ export function physResult(f, long) {
     if (ph.leftNow && ph.leftNow[by] === 0) return { text: long ? `${who} sank them all!` : 'All down!', ok: true };
     if (ph.leftNow && ph.leftNow[o] === 0) return { text: long ? `${who} sank ${them}'s last ball` : `${them}'s last ball`, ok: false };
     if (ph.scratch) return { text: ph.back ? (long ? `${who} scratched: ${ph.added ? 'a new ball' : 'a ball back'} on the table` : ph.added ? 'Scratch! A new ball' : 'Scratch! A ball comes back') : (long ? `${who} scratched` : 'Scratch!'), ok: false };
-    if (ph.own && !ph.theirs) return { text: long ? `${who} sank a ball — and shoots again` : 'Sank one — shoot again!', ok: true };
+    if (ph.own && !ph.theirs) return f.kind === 'again' ? { text: long ? `${who} sank a ball — and shoots again` : 'Sank one — shoot again!', ok: true } : { text: long ? `${who} sank a ball` : 'Sank one!', ok: true };   // (shoots again only with "Go again on success" on)
     if (ph.own) return { text: long ? `${who} sank a ball, and ${them}'s` : `Sank one, and ${them}'s`, ok: false };
     if (ph.theirs) return { text: long ? `${who} sank ${them}'s ball` : `Sank ${them}'s ball`, ok: false };
     return { text: long ? `${who} shot` : 'Nothing down', ok: false };

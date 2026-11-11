@@ -1,7 +1,7 @@
 // Ride the Bus: the rules (pure: no page, no clock; the server runs the same code).
 import { needRng, randInt } from '../../core/random.js';
 import { CARD, cardDeck } from '../shared/cards.js';
-import { tune } from '../../core/tune.js';
+import { goAgain, tune } from '../../core/tune.js';
 
 export function cardRank(c) { return CARD.ranks.indexOf(c[0]) + 2; }          // 2 lowest ... 14 the ace (Ride the Bus: ace high)
 export function cardRed(c) { return c[1] === 'H' || c[1] === 'D'; }
@@ -46,7 +46,7 @@ export function apply(mini, p, m, rng, idx) {
   if (!right) return { ok: true, outcome: 'continue', note: 'wrong' };   // the card is discarded; the turn ends
   kept.push(card);
   if (kept.length >= BUS.rounds) return { ok: true, outcome: 'win', note: 'right' };
-  return { ok: true, outcome: 'continue', note: 'right', again: true };
+  return { ok: true, outcome: 'continue', note: 'right', again: goAgain(mini) };   // (a right guess keeps the turn only with "Go again on success" on)
 }
 export function publicView(mini) {
   return { type: 'bus', prog: { X: mini.prog.X.slice(), O: mini.prog.O.slice() } };

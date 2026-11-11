@@ -1,7 +1,7 @@
 // Blackjack: the rules (pure: no page, no clock; the server runs the same code).
 import { needRng, shuffle } from '../../core/random.js';
 import { cardDeck } from '../shared/cards.js';
-import { tune } from '../../core/tune.js';
+import { goAgain, tune } from '../../core/tune.js';
 
 // Blackjack: each player plays their own hands against the dealer, hitting or standing; every win adds 1
 // to their tally (a natural blackjack too), and the first to 3 takes the square. Every hand is dealt from
@@ -103,7 +103,7 @@ function play(mini, p, m, rng, shoe, streak) {   // shoe: Super Chaos's round sh
     res = settle(false);
   }
   if (mini.wins[p] >= c.goal) return { ok: true, outcome: 'win', note: res };
-  if (streak && (res === 'win' || res === 'bj')) return { ok: true, outcome: 'continue', note: res, again: true };   // a hot streak: Deal again
+  if (streak && goAgain(mini) && (res === 'win' || res === 'bj')) return { ok: true, outcome: 'continue', note: res, again: true };   // a hot streak: Deal again
   return { ok: true, outcome: 'continue', note: res };
 }
 export function publicView(mini) {

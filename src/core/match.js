@@ -118,10 +118,10 @@ export function startCpu(state, rng, name) {
 // recorded (net/tracking.js), never resumed, its own end screen and a Back to How to Play in place of Menu. The setup's
 // own choices (its checklist, side and level) are left as they were for the next Play Computer. Returns the player's side,
 // or null (not a game that can be dealt now).
-export function startPractice(state, rng, type, name) {
+export function startPractice(state, rng, type, name, level) {   // (level: the computer's; Easy for How to Play's Practice, Hard for the admin's Test play, ui/sandbox.js)
   if (!TYPES.includes(type) || SC_ONLY.includes(type) || !dealable(type)) return null;
   const s = state.setup, keep = { games: s.games, vsCpu: s.vsCpu };
-  s.games = { [type]: true }; s.vsCpu = { pick: 'random', level: 'easy' }; s.vs = 'cpu'; s.mode = 'two';
+  s.games = { [type]: true }; s.vsCpu = { pick: 'random', level: level || 'easy' }; s.vs = 'cpu'; s.mode = 'two';
   const human = startCpu(state, rng, name);
   Object.assign(s, keep);
   state.practice = human ? { type } : null;

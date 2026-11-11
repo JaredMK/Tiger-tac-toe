@@ -3508,7 +3508,7 @@ main.scr.mini:has(.brkw.run) .back { visibility: hidden; pointer-events: none; }
 .mrb .mopp i.up svg { width: 72%; height: 72%; }
 .mrb .mopp i.fl { animation: pop .35s ease-out both; }
 .mrb .mopp i.win { box-shadow: inset 0 0 0 3px var(--green); }
-.trace2 .tmem2 { height: 100%; max-height: 72cqh; width: auto; overflow: visible; }
+.trace2 .tmem2 { width: 100%; height: auto; max-width: 100%; max-height: min(100%, 72cqh); aspect-ratio: 34 / 44; overflow: visible; }   /* (sized by its column's width as well as the height: the two grids never meet) */
 .tmem2 rect { fill: var(--panel-2); stroke: var(--ink); stroke-width: 1.4; }
 .tmem2.X rect.sn { fill: color-mix(in srgb, var(--x) 40%, #fff); } .tmem2.O rect.sn { fill: color-mix(in srgb, var(--o) 40%, #fff); }
 .tmem2.X rect.pr { fill: var(--x); } .tmem2.O rect.pr { fill: var(--o); }

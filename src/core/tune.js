@@ -51,3 +51,8 @@ export function tune(mini) {
   memo.set(mini, { src: mini.tune, v });
   return v;
 }
+// "Go again on success" (November 2026): the games where a success can keep the turn (War, Krabs, 21, Little Wheel,
+// Hangman, Sea Battle, Pool, Ride the Bus, Odd One Out, Cup Pong) carry this one switch in their TUNE, off by default:
+// off, every move is one action and the turn ends; on, a success keeps the turn. Read from the square (goAgain(mini)).
+export const AGAIN_TUNE = { k: 'again', label: 'Go again on success', def: 'off', opts: ['off', 'on'], group: 'Rules' };
+export const goAgain = mini => tune(mini).again === 'on';

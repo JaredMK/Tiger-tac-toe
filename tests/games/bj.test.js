@@ -2,7 +2,9 @@
 // Blackjack: its rules and AI, test by test (npm test). The engine is the one the page and the server run.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const E = require('../engine.js');
+const E = Object.assign({}, require('../engine.js'));
+{ const set = E.setTune; E.setTune = (t, c) => set(t, Object.assign({ again: 'on' }, c)); }   // ("Go again on success" on: these tests play the success that keeps the turn; the default, off, has its own test)
+E.setTune('bj', null);
 
 const lcg = seed => () => (seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296;
 const bj = over => Object.assign(E.newMini('bj', lcg(1)), over || {});
@@ -191,8 +193,8 @@ test('blackjack: the admin\'s settings (hands to win, the dealer\'s stand) are d
   E.setTune('bj', { goal: 1, stand: 15 });
   const m = E.newMini('bj', lcg(1));
   E.setTune('bj', null);
-  assert.deepEqual(m.tune, { goal: 1, stand: 15 });
-  assert.deepEqual(E.newMini('bj', lcg(1)).tune, undefined, 'back to the defaults: nothing kept');
+  assert.deepEqual(m.tune, { again: 'on', goal: 1, stand: 15 });
+  assert.deepEqual(E.newMini('bj', lcg(1)).tune, { again: 'on' }, 'back to the defaults: nothing else kept');
   // the dealer stands on 15 now; one win takes the square
   Object.assign(m, { hand: { by: 'X', cards: ['TS', '9H'], up: '9C' }, hole: '6D', deck: ['4H'] });
   assert.deepEqual(E.applyMove(m, 'X', 'stand', lcg(1)), { ok: true, outcome: 'win', note: 'win' });

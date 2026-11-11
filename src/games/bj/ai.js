@@ -1,5 +1,5 @@
 // Blackjack: the computer's play.
-import { tune } from '../../core/tune.js';
+import { goAgain, tune } from '../../core/tune.js';
 import { bjStrategy, bjValue } from './rules.js';
 
 // A hot streak: a hand won keeps the turn (Deal again), so a turn wins hands until one is lost. needs: the
@@ -11,9 +11,10 @@ export function needs(pm, p) {
   const c = tune(pm), k = Math.max(0, c.goal - pm.wins[p]), w = pushWorth(c.stand);
   if (k <= 0) return 1;
   const h = pm.hand && pm.hand.by === p && Array.isArray(pm.hand.cards) && pm.hand.up ? pm.hand : null;
-  if (!h) return Math.max(1, 1 + k * (1 - w) / w);
+  const on = goAgain(pm);   // ("Go again on success" off: a hand a turn, so every hand still needed is a turn of its own)
+  if (!h) return Math.max(1, on ? 1 + k * (1 - w) / w : k / w);
   const v = bjHard(h.cards, h.up, c.stand), now = Math.max(v.hit, v.stand);
-  return Math.max(1, 1 + (1 - now) / w + (k - 1) * (1 - w) / w);
+  return Math.max(1, on ? 1 + (1 - now) / w + (k - 1) * (1 - w) / w : 1 + (1 - now) / w + (k - 1) / w);
 }
 export function best(pm, me, rng, style, ctx) {
   // Deal, then basic strategy (hit or stand: no doubling). Hard: hit or stand by the chance of winning the
@@ -22,8 +23,9 @@ export function best(pm, me, rng, style, ctx) {
   // fresh hand's) is still what to play for.
   const h = pm.hand && pm.hand.by === me ? pm.hand : null, need = tune(pm).goal - pm.wins[me];
   // q: the chance this turn takes the square (every hand still needed won in a row: a hand won keeps the turn).
-  if (!h) return { move: 'deal', q: (ctx && ctx.level === 'hard' ? pushWorth(tune(pm).stand) : BJ_WIN) ** Math.max(1, need) };
-  if (ctx && ctx.level === 'hard') { const v = bjHard(h.cards, h.up, tune(pm).stand); return { move: v.hit > v.stand ? 'hit' : 'stand', q: Math.max(v.hit, v.stand) * pushWorth(tune(pm).stand) ** Math.max(0, need - 1) }; }
+  const on = goAgain(pm), rest = q1 => (on ? q1 ** Math.max(0, need - 1) : need <= 1 ? 1 : 0);   // (off: a hand a turn, so only the last hand needed takes it now)
+  if (!h) { const w = ctx && ctx.level === 'hard' ? pushWorth(tune(pm).stand) : BJ_WIN; return { move: 'deal', q: w * rest(w) }; }
+  if (ctx && ctx.level === 'hard') { const v = bjHard(h.cards, h.up, tune(pm).stand); return { move: v.hit > v.stand ? 'hit' : 'stand', q: Math.max(v.hit, v.stand) * rest(pushWorth(tune(pm).stand)) }; }
   return { move: bjStrategy(h.cards, h.up), q: 0 };
 }
 

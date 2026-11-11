@@ -7,7 +7,7 @@ export function miniature(mini, final) {
   const n = hexSize(mini.cells);
   return `<div class="thex n${n}">${seq(n).map(r => `<div class="hr" style="--k:${r}">${seq(n).map(c => `<i class="${mini.cells[r * n + c] || ''}"></i>`).join('')}</div>`).join('')}</div>`;
 }
-// The board (5x5; a square from before 4x4).
+// The board (4x4; a square from before 5x5).
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   const n = hexSize(mini.cells);
   const rows = seq(n).map(r => `<div class="hrow" style="--r:${r}">${seq(n).map(c => {

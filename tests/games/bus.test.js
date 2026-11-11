@@ -2,7 +2,9 @@
 // Ride the Bus: its rules and AI, test by test (npm test). The engine is the one the page and the server run.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const E = require('../engine.js');
+const E = Object.assign({}, require('../engine.js'));
+{ const set = E.setTune; E.setTune = (t, c) => set(t, Object.assign({ again: 'on' }, c)); }   // ("Go again on success" on: these tests play the success that keeps the turn; the default, off, has its own test)
+E.setTune('bus', null);
 
 const lcg = seed => () => (seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296;
 
@@ -94,7 +96,7 @@ test('ride the bus: the admin\'s settings (a tie right, the computer\'s mistakes
   E.setTune('bus', { ties: 'right', miss: 100 });
   const m = E.newMini('bus', E.makeRng('bus-tune'));
   E.setTune('bus', null);
-  assert.deepEqual(m.tune, { ties: 'right', miss: 100 });
+  assert.deepEqual(m.tune, { again: 'on', ties: 'right', miss: 100 });
   // a tie is right: higher and lower both count an equal value
   const odds = Object.fromEntries(E.busOdds(['7S'], true).map(o => [o.guess, Math.round(o.p * 51)]));
   assert.deepEqual(odds, { higher: 31, lower: 23 });

@@ -1,14 +1,18 @@
 // Craps: its names, its "?" explainer, its icon and its release default.
+import { AGAIN_TUNE } from '../../core/tune.js';
 
 export const info = { name: 'Krabs',        hint: '7 or 11 wins, 2, 3 or 12 loses. Win 3 rounds' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
 export const minVersion = '1.0.0';   // the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
 export const category = 'luck';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
-export const explainer = { name: 'Krabs', play: 'Tap Roll: the dice keep rolling until your round is won or lost. On the first roll, 7 or 11 wins and 2, 3 or 12 loses. Any other number is your point: rolling it again wins, rolling a 7 loses. Win? Go again.', win: 'Win {goal} rounds.' };   // ({goal}: its setting, TUNE below)
+export const explainer = { name: 'Krabs', play: 'Tap Roll: the dice keep rolling until your round is won or lost. On the first roll, 7 or 11 wins and 2, 3 or 12 loses. Any other number is your point: rolling it again wins, rolling a 7 loses.{goAgain}', win: 'Win {goal} rounds.' };   // ({goal}: its setting, TUNE below)
 export const scExplainer = { name: 'Krabs', play: 'Tap Roll: the dice keep rolling until your round is won or lost. On the first roll, 7 or 11 wins and 2, 3 or 12 loses. Any other number is your point: rolling it again wins, rolling a 7 loses.', win: 'Win {goal} rounds.' };   // in Super Chaos (one round a round: no going again)
 // Its settings (the admin's Mini-game Settings; core/tune.js): read with tune(mini).
+// {goAgain} in the explainer: the text below while "Go again on success" is on (AGAIN_TUNE), the other while off (ui/explainer.js fillTune).
+export const goAgainText = { on: ' Win? Go again.', off: '' };
 export const TUNE = [
+  AGAIN_TUNE,
   { k: 'goal', label: 'Rounds to win', def: 3, min: 2, max: 4, step: 1, group: 'Rules' },
 ];
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round"><rect x="2.5" y="8" width="10.5" height="10.5" rx="2.2" transform="rotate(-12 7.7 13.2)"/><rect x="11.5" y="4.5" width="10" height="10" rx="2.2" transform="rotate(10 16.5 9.5)"/><circle cx="5.6" cy="11.2" r="1.1" fill="currentColor" stroke="none"/><circle cx="9.6" cy="15.6" r="1.1" fill="currentColor" stroke="none"/><circle cx="16.5" cy="9.5" r="1.1" fill="currentColor" stroke="none"/></svg>';

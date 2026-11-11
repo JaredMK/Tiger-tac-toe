@@ -53,6 +53,8 @@ function fillTune(t, x) {
   if (!x || !x.play || !/\{\w+\}/.test(x.play + x.win)) return x;
   const sq = state.screen === 'mini' && state.squares && state.squares[state.zoom], open = sq && sq.mini && sq.mini.type === t ? sq.mini : null;
   const v = Object.assign({}, CFG_KEYS[t] ? CFG_KEYS[t](open) : {}, open ? tune(open) : tuneLive(t));
+  const ga = GAMES[t] && GAMES[t].meta.goAgainText;   // {goAgain}: the game's words for "Go again on success" on or off (core/tune.js AGAIN_TUNE)
+  if (ga) v.goAgain = v.again === 'on' ? ga.on : ga.off;
   const f = s => s.replace(/\{(\w+)\}/g, (m, k) => (v[k] != null ? String(v[k]) : m));
   return { name: x.name, play: f(x.play), win: f(x.win) };
 }
@@ -94,6 +96,7 @@ export function practiceStart(t) {
 // The header's top-left in a practice match (ui/turnbar.js, in Menu's place): Back to How to Play, always there.
 export function practiceBack() {
   if (!state.practice || !['board', 'mini'].includes(state.screen)) return '';
+  if (state.practice.test) return `<button class="menubtn pback" data-act="test-back" aria-label="Back to the admin page">${CHEV}<span>Back to admin</span></button>`;   // (the admin's Test play: ui/sandbox.js)
   return `<button class="menubtn pback" data-act="practice-back" aria-label="Back to How to Play">${CHEV}<span>Back to How to Play</span></button>`;
 }
 // Back to How to Play: the practice match ends here, whatever its state, with nothing recorded, and How to Play opens at
@@ -118,6 +121,10 @@ export function practiceEnd() {
 // to How to Play alone (no rematch, no main menu, no share).
 export function renderPracticeEnd() {
   const t = state.practice && state.practice.type;
+  if (state.practice && state.practice.test) {                   // the admin's Test play (ui/sandbox.js): the result, then back to the admin page by itself
+    const tr = `<div class="row prow"><button class="primary" data-act="test-again">Play again</button><button class="btn" data-act="test-back">Back to admin</button></div>`;
+    return renderWin().replace(/<div class="row">[\s\S]*?<\/div>/, tr).replace(/<div class="sharerow">[\s\S]*?<\/div><\/div>/, '');
+  }
   const row = `<div class="row prow"><button class="primary" data-act="practice" data-t="${t}">Practice again</button><button class="btn" data-act="practice-back">Back to How to Play</button></div>`;
   return renderWin().replace(/<div class="row">[\s\S]*?<\/div>/, row).replace(/<div class="sharerow">[\s\S]*?<\/div><\/div>/, '');
 }

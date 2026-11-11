@@ -2,7 +2,9 @@
 // Craps: its rules and AI, test by test (npm test). The engine is the one the page and the server run.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const E = require('../engine.js');
+const E = Object.assign({}, require('../engine.js'));
+{ const set = E.setTune; E.setTune = (t, c) => set(t, Object.assign({ again: 'on' }, c)); }   // ("Go again on success" on: these tests play the success that keeps the turn; the default, off, has its own test)
+E.setTune('craps', null);
 E.setPhysics(require('../physics.js'));
 
 const lcg = seed => () => (seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296;
@@ -79,7 +81,7 @@ test('craps: the admin\'s rounds to win are dealt into the square and played by'
   E.setTune('craps', { goal: 2 });
   const m = E.newMini('craps', E.makeRng('cr-tune'));
   E.setTune('craps', null);
-  assert.deepEqual(m.tune, { goal: 2 });
+  assert.deepEqual(m.tune, { again: 'on', goal: 2 });
   const rng = E.makeRng('cr-play');
   let r;
   for (let k = 0; k < 100 && m.wins.X < 2; k++) r = E.applyMove(m, 'X', 'roll', rng);

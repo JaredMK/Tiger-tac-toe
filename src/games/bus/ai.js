@@ -1,6 +1,6 @@
 // Ride the Bus: the computer's play.
 import { randInt } from '../../core/random.js';
-import { tune } from '../../core/tune.js';
+import { goAgain, tune } from '../../core/tune.js';
 import { BUS, BUS_AVG, busDeck, busOdds, busRight, busTies } from './rules.js';
 
 // The turns a side still needs, exactly: a right guess goes straight on, a wrong one ends the turn with the cards kept,
@@ -47,6 +47,7 @@ export function busStart(tieOk) {
   return { n: 1 + n, q: 0.5 * q };
 }
 export function needs(pm, p) {
+  if (!goAgain(pm)) return Math.max(1, BUS.rounds - pm.prog[p].length + busPlan(pm.prog[p], busTies(pm)).n);   // ("Go again on success" off: a guess a turn, every round and every miss)
   return 1 + busPlan(pm.prog[p], busTies(pm)).n;
 }
 export function best(pm, me, rng, style, ctx) {
@@ -55,6 +56,7 @@ export function best(pm, me, rng, style, ctx) {
   const kept = pm.prog[me], odds = busOdds(kept, busTies(pm)), miss = tune(pm).miss;
   if (miss && rng() * 100 < miss) { const o = odds[randInt(rng, odds.length)]; return { move: o.guess, q: 0 }; }
   const top = Math.max(...odds.map(o => o.p));
+  if (!goAgain(pm)) { const best = odds.filter(o => o.p >= top - 1e-9), g = best[randInt(rng, best.length)]; return { move: g.guess, q: kept.length >= BUS.rounds - 1 ? g.p : 0 }; }   // (a guess a turn: only the last round takes it now)
   const best = odds.filter(o => o.p >= top - 1e-9), g = best[randInt(rng, best.length)];
   if (ctx && ctx.level === 'hard') {                            // Hard: the same guess (it is the best one: busPlan); its chance of the square this turn, exact
     if (!kept.length) return { move: g.guess, q: busPlan(kept, busTies(pm)).q };   // (red or black: alike)

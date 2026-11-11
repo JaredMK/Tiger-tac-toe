@@ -3,7 +3,9 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const E = require('../engine.js');
+const E = Object.assign({}, require('../engine.js'));
+{ const set = E.setTune; E.setTune = (t, c) => set(t, Object.assign({ again: 'on' }, c)); }   // ("Go again on success" on: these tests play the success that keeps the turn; the default, off, has its own test)
+E.setTune('bs', null);
 E.setPhysics(require('../physics.js'));   // Mini Golf, Pool and Bowling are dealt only with their physics
 // Trivia needs its questions (the page fetches trivia.json; the server has it as a file): a small made-up bank here.
 E.setTriviaBank({ questions: Array.from({ length: 30 }, (_, i) => ({ id: 'q' + i, cat: 'Test', q: `Question ${i}?`, a: 'Right ' + i, wrong: ['Wrong a' + i, 'Wrong b' + i, 'Wrong c' + i] })) });
@@ -46,7 +48,7 @@ const mini = (type, rng) => L.newMini(type, rng || lcg(11));
 // a battleship with its ship on the given cells
 const bsAt = (...ship) => Object.assign(mini('bs'), { len: ship.length, ship, revealed: new Array(16).fill(null), hits: [] });
 // a one-cell ship (a Patrol Boat) at cell 0: either player claims it with one move
-const oneMove = () => { const E1 = require('../engine.js'); E1.setTune('bs', { len: 1 }); try { const m = L.newMini('bs', seq(pick(0, 2), pick(0, 4), pick(0, 4))); delete m.tune; return m; } finally { E1.setTune('bs', null); } };   // a one-cell ship at cell 0
+const oneMove = () => { const E1 = require('../engine.js'); E.setTune('bs', { len: 1 }); try { const m = L.newMini('bs', seq(pick(0, 2), pick(0, 4), pick(0, 4))); delete m.tune; return m; } finally { E.setTune('bs', null); } };   // a one-cell ship at cell 0
 // a match where the computer plays `me`, with the given squares (type names or ready-made minis)
 function cpuMatch(me, squares, owners = []) {
   const st = matchWith(squares.map(s => (typeof s === 'string' ? s : s.type)));
@@ -93,7 +95,7 @@ test('bs: a shot is a hit or a miss; cells cannot be fired at twice; the shot on
   assert.deepEqual(L.applyMove(m, 'X', 5), { ok: true, outcome: 'continue', note: 'hit', again: true });
   assert.deepEqual(m.hits, [6, 5]);
   const pm = L.publicMini(m);
-  assert.deepEqual(Object.keys(pm).sort(), ['hits', 'len', 'revealed', 'type'], 'the ship\'s cells stay hidden');
+  assert.deepEqual(Object.keys(pm).sort(), ['hits', 'len', 'revealed', 'tune', 'type'], 'the ship\'s cells stay hidden');
   const sink = L.applyMove(m, 'O', 7);
   assert.deepEqual(sink, { ok: true, outcome: 'win', cells: [5, 6, 7], note: 'sunk' });
 });
@@ -182,7 +184,7 @@ test('bs: the admin settings deal a 5x5 sea with a long ship (and a 4x4 Super Ch
   try {
     const m = L.newMini('bs', lcg(3));
     assert.equal(m.n, 5); assert.equal(m.len, 4); assert.equal(m.revealed.length, 25);
-    assert.deepEqual(m.tune, { n: 5, len: 4, scN: 4, scLen: 2, miss: 50 });
+    assert.deepEqual(m.tune, { again: 'on', n: 5, len: 4, scN: 4, scLen: 2, miss: 50 });
     for (let k = 0; k < 6; k++) {
       const pm = L.publicMini(m), mv = L.localBest(pm, 'X', lcg(k)).move;
       assert.ok(mv >= 0 && mv < 25 && !m.revealed[mv]);
@@ -192,7 +194,7 @@ test('bs: the admin settings deal a 5x5 sea with a long ship (and a 4x4 Super Ch
     assert.equal(sc.n, 4); assert.equal(sc.len, 2); assert.equal(sc.revealed.length, 16);
   } finally { E.setTune('bs', null); }
   const d = L.newMini('bs', lcg(3));
-  assert.ok(!('n' in d) && !('tune' in d)); assert.equal(d.revealed.length, 16);
+  assert.ok(!('n' in d) && !(d.tune && 'n' in d.tune)); assert.equal(d.revealed.length, 16);
   assert.ok(Array.from({ length: 20 }, (_, k) => L.newMini('bs', lcg(k)).len).every(n => n === 3), 'the ship is 3 long by default');
 });
 
@@ -290,7 +292,7 @@ test('bs race: dealt by the admin setting with a ship each, the same length, pla
   const m = raceMini();
   assert.equal(m.race, true); assert.equal(m.rv, 2); assert.equal(m.ship, undefined); assert.equal(m.revealed, undefined);
   assert.deepEqual(m.side.X, { revealed: new Array(16).fill(null), hits: [], last: null }); assert.deepEqual(m.side.O, m.side.X);
-  assert.deepEqual(m.tune, { mode: 'race' });
+  assert.deepEqual(m.tune, { again: 'on', mode: 'race' });
   for (let s = 1; s <= 60; s++) {
     const r = raceMini(lcg(s));
     assert.equal(r.tg.X.length, r.len); assert.equal(r.tg.O.length, r.len, 'the same length: as hard as each other');

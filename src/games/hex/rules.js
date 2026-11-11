@@ -1,8 +1,9 @@
 // Hex: the rules (pure: no page, no clock; the server runs the same code).
 import { other } from '../../core/util.js';
 
-// Hex: a new square is 5x5, no swap rule (removed November 2026); a square dealt before (4x4) plays on as it was, its size from its cells.
-export const HEX_N = 5;
+// Hex: a new square is 4x4 again (November 2026), no swap rule; a 5x5 square dealt before plays on as it was, its size
+// from its cells (and Hard plays it by the solved 5x5 book, ai.js).
+export const HEX_N = 4;
 export const hexSize = cells => Math.round(Math.sqrt(cells.length));
 // Hex: rows are shifted half a cell to the right, so (r, c) touches (r-1, c+1) and (r+1, c-1) as well as the four orthogonal cells.
 export function hexNeighbors(i, n = HEX_N) {
