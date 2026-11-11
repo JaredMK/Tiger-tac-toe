@@ -3,7 +3,7 @@ import { AGAIN_TUNE } from '../../core/tune.js';
 
 export const info = { name: 'Claw Machine', hint: 'The claw sweeps by itself. Drop it on a prize. First to 3 prizes wins' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
-export const minVersion = '1.10.0';   // the oldest client version that has this game (core/client.js)
+export const minVersion = '1.11.0';   // the oldest client version that has this game (core/client.js)
 export const category = 'skill';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const explainer = { name: 'Claw Machine', play: 'One machine for you both. The claw sweeps by itself and swings as it goes. Tap Drop to grab the prize under it: the better it is centred, the better the grip. A prize can still slip on the way to the chute.{goAgain}', win: 'Win {goal} prizes.' };
 // {goAgain} in the explainer: the text below while "Go again on success" is on (AGAIN_TUNE), the other while off (ui/explainer.js fillTune).

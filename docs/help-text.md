@@ -451,7 +451,7 @@ Win: Win {goal} rounds.
 ## Word Tiles [wtiles]
 Category: More brain
 Play: Make one word from your tiles on the shared board, in a row or a column. The first goes through the centre; every other word joins the tiles already there. Tinted squares count extra. Your tiles are yours alone. No word? Swap your tiles.{goAgain}
-Win: First to {target} points.
+Win: First to {target} points. If neither of you can play (two swaps each in a row), the higher score wins.
 List dl: Double letter: that tile counts twice.
 List tl: Triple letter: that tile counts three times.
 List dw: Double word: the whole word counts twice (the centre too).

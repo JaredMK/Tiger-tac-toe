@@ -3,7 +3,7 @@ import { AGAIN_TUNE } from '../../core/tune.js';
 
 export const info = { name: 'Hook-a-Duck', hint: 'Hook a duck from the pond you share. Its bottom shows its value. First to the target wins' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
-export const minVersion = '1.10.0';   // the oldest client version that has this game (core/client.js)
+export const minVersion = '1.11.0';   // the oldest client version that has this game (core/client.js)
 export const category = 'luck';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const explainer = { name: 'Hook-a-Duck', play: 'You both fish in the same pond. Tap a duck to hook it: it is gone for both of you. Its bottom shows 1 to 5 points, or a boot worth nothing. An empty pond fills up again.{goAgain}', win: 'First to {target} points.' };
 // {goAgain} in the explainer: the text below while "Go again on success" is on (AGAIN_TUNE), the other while off (ui/explainer.js fillTune).

@@ -34,7 +34,7 @@ test('wtiles: whole squares between the computers: 3 to 6 turns a player at Norm
   const hn = squares({ X: 'normal', O: 'hard' }, 800);
   say('Normal v Normal', n); say('Hard v Hard', h); say('Easy v Easy', e);
   console.log(`Word Tiles: Normal (X, first) against Hard wins ${(100 * hn.first).toFixed(1)}% (Normal v Normal ${(100 * n.first).toFixed(1)}%)`);
-  for (const t of [40, 50, 60, 70, 80]) say(`target ${t}, Normal v Normal`, squares({ X: 'normal', O: 'normal' }, 600, { target: t }));
+  for (const t of [70, 80, 90, 100]) say(`target ${t}, Normal v Normal`, squares({ X: 'normal', O: 'normal' }, 600, { target: t }));
   assert.ok(n.each >= 3 && n.each <= 6, `3 to 6 turns a player (${n.each.toFixed(2)})`); assert.ok(n.first < 0.6);
   assert.ok(hn.first <= n.first, 'Hard better than Normal');
 });

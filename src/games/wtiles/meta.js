@@ -14,7 +14,7 @@ export const goAgainText = { on: ' Played a word? Go again.', off: '' };
 // Its settings (the admin's Mini-game Settings; core/tune.js): read with tune(mini). Tuned by tests/sim/wtiles.sim.js.
 export const TUNE = [
   AGAIN_TUNE,
-  { k: 'target', label: 'Points to win', def: 100, min: 15, max: 150, step: 5, group: 'Rules' },
+  { k: 'target', label: 'Points to win', def: 85, min: 15, max: 150, step: 5, group: 'Rules' },
   { k: 'rack', label: 'Tiles on a rack', def: 7, min: 4, max: 7, step: 1, group: 'Rules' },
   { k: 'bonus', label: 'All seven tiles in one word: extra points', def: 15, min: 0, max: 50, step: 1, group: 'Rules' },
   { k: 'aiSee', label: 'Computer (Normal): share of the words it sees (%)', def: 3, min: 1, max: 100, step: 1, group: 'Computer' },

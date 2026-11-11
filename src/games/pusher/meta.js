@@ -3,7 +3,7 @@ import { AGAIN_TUNE } from '../../core/tune.js';
 
 export const info = { name: 'Coin Pusher', hint: 'Tap to drop 3 coins as the dropper slides. Coins pushed over the edge score' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
-export const minVersion = '1.10.0';   // the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
+export const minVersion = '1.11.0';   // the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
 export const category = 'luck';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const realTime = true;   // its move plays back in real time (the pusher's push): never sped up past the replay's own speed (core/timer.js moveRate)
 export const explainer = { name: 'Coin Pusher', play: 'Tap to drop a coin where the dropper is as it slides across the top: {perMove} coins a go. The pusher never stops: each coin over the front edge scores 1, a star coin {starWorth}. Off the sides, they are gone. Your machine keeps its coins for your next go.{goAgain}', win: 'Reach {target} first. The other player then gets one last turn: the higher total wins.' };   // ({perMove}, {target}: its settings, TUNE below)
