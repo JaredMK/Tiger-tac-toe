@@ -1,79 +1,85 @@
-// Craps: the screen, the miniature, the move's words and sounds, and the inputs.
-import { tune } from '../../core/tune.js';
-import { CRAPS, crapsTimes } from './rules.js';
-import { N, REDUCED, mv, state } from '../../ui/app.js';
-import { dieFace } from '../../ui/art.js';
-import { arcTally, lateAt, pips } from '../../ui/progress.js';
-import { pipRows } from '../../ui/thumbs.js';
+// Thirty-One: the screen, the miniature, the move's words and sounds, and the inputs (November 2026).
+import { T31, t31Best, t31Cfg, t31Score, t31Times } from './rules.js';
+import { N, REDUCED, mv, state, waitLine } from '../../ui/app.js';
+import { pcard, cardShort, SUIT_PATH } from '../../ui/cards.js';
+import { arcTally, lateAt } from '../../ui/progress.js';
+import { markSvgG, thumbArt } from '../../ui/thumbs.js';
+import { cardRed } from '../bus/rules.js';
 
-// Craps: one tap of Roll a move, and the dice keep rolling until the round is won or lost (rolled where the
-// move is made: the server online). The page plays the round back roll by roll: each pair tumbles in at its
-// time, the puck goes on at the point, the rolls fill the row under the felt (a fixed height: the last
-// eight on show), and the round's result comes at the end. One button, always there, so nothing moves.
-const CRAPS_POINTS = [4, 5, 6, 8, 9, 10];
-function crapsSay(r) {                                          // the line under the felt for a round
-  if (!r) return '';
-  if (r.kind === 'stop') return `Stopped on point ${r.point}`;   // (from before)
-  if (r.roll) { const n = r.sum; return r.result === 'win' ? (r.was == null ? `${n} on the first roll: a winner!` : `Point ${r.was} made!`) : r.result === 'lose' ? (r.was == null ? `${n}: out!` : 'Seven out') : `Point ${r.point}`; }   // (a single roll, from before)
-  const rolls = r.rolls || [], first = rolls.length ? rolls[0][0] + rolls[0][1] : 0;
-  if (r.point == null) return r.result === 'win' ? `${first} on the first roll: a winner!` : `${first}: out!`;
-  return r.result === 'win' ? `Point ${r.point} made!` : 'Seven out';
+// The table: each player's score (their best suit) against the target in the tallies; the felt with the mover's deck
+// (face down, its count on it) and their discard pile (its top card up), each a tap to take; the mover's hand under it,
+// its best suit's cards lit, each card a tap to let go once a card is taken. A take slides the card into the hand (a
+// deck card turning up as it lands); a discard slides it onto the pile and the score counts on as it lands. Every row
+// has its room from the start (a hand of 4 at most): nothing moves.
+function t31Table(mini, a, o) {
+  const s = a && a.t31 ? a.t31 : null, turn = o.turn, target = t31Cfg(mini).target;
+  const held = mini.held, by = s ? a.by : held ? held.by : turn;
+  const mine = !o.view && !o.locked && by === turn, canTake = mine && !held, canDrop = mine && held && held.by === turn;
+  const tim = t31Times(s), anim = !!s && !REDUCED;
+  const tal = p => {
+    const sc = t31Score(mini.hand[p].length > 3 && held && held.by === p ? mini.hand[p].slice(0, 3) : mini.hand[p]);
+    const was = s && s.kind === 'drop' && a.by === p ? s.before : null;
+    const num = was != null && was !== sc && anim ? `<b class="cnt" data-from="${was}" data-delay="${T31.land}">${sc}</b>` : `<b>${sc}</b>`;
+    return arcTally(p, o, `<span class="t31sc" aria-label="${sc} of ${target}">${num}<small>/${target}</small></span>`);
+  };
+  // the deck and the pile: the mover's own
+  const pile = mini.pile[by], top = pile.length ? pile[pile.length - 1] : null, n = mini.deckN[by];
+  const deckBtn = `<button class="t31deck" data-act="move" ${mv('deck')} aria-label="Draw from the deck, ${n} cards"${canTake ? '' : ' disabled'}>${pcard(null, { down: true })}<span class="t31n">${n}</span></button>`;
+  const dropNow = s && s.kind === 'drop' && anim;
+  const pileCard = top ? pcard(top, dropNow ? { slide: 0, cls: 't31in' } : {}) : pcard(null, { down: true, cls: 'ghost' });
+  const pileBtn = `<button class="t31pile" data-act="move" ${mv('pile')} aria-label="Take the top of the discard pile"${canTake && top ? '' : ' disabled'}>${pileCard}</button>`;
+  // the hand: the best suit's cards lit; the card just taken sliding in
+  const hand = mini.hand[by], best = t31Best(held && held.by === by ? hand.slice(0, 3) : hand).suit;
+  const takeNow = s && s.kind === 'take' && anim;
+  const cards = Array.from({ length: 4 }, (_, k) => {
+    const c = hand[k];
+    if (!c) return '<span class="t31slot" aria-hidden="true"></span>';
+    const fresh = takeNow && k === hand.length - 1;
+    const card = pcard(c, fresh ? (s.from === 'deck' ? { slide: 0, flip: T31.slide, cls: 't31dk' } : { slide: 0, cls: 't31pk' }) : {});
+    const lit = c[1] === best && !(held && k === 3 && held.by === by) ? ' best' : '';
+    return `<button class="t31c${lit}" data-act="move" ${mv('d' + k)} aria-label="Let go of this card"${canDrop ? '' : ' disabled tabindex="-1"'}>${card}</button>`;
+  }).join('');
+  let line;
+  if (s && s.kind === 'take') line = `<p ${lateAt('arcres', anim ? tim.land : null)} role="status">Took ${cardShort(s.card)}</p>`;
+  else if (s && s.kind === 'drop') line = `<p ${lateAt('arcres ' + (s.score > s.before ? 'ok' : ''), anim ? T31.land : null)} role="status">${s.score === 31 ? '31!' : `${s.score} in ${suitWord(s.suit)}`}</p>`;
+  else line = `<p class="arcnote">${o.view ? '' : o.locked ? waitLine(turn) : ''}</p>`;
+  return `<div class="g-arc t31"><div class="ctals">${tal('X')}${tal('O')}</div>
+    <div class="t31felt"><div class="t31top">${deckBtn}${pileBtn}</div>${line}<div class="t31hand"><svg class="t31mk ${by}" viewBox="-10 -10 20 20" aria-label="${by}'s hand">${markSvgG(by, 6.5)}</svg><div class="t31row">${cards}</div></div></div></div>`;
 }
-function crapsTable(mini, a, o) {
-  const c = a && a.craps && a.craps.rolls && !a.craps.roll && a.craps.kind !== 'stop' ? a.craps : null, l = mini.last, turn = o.turn;
-  const shown = c || (l && l.rolls ? l : null);
-  const tim = c ? crapsTimes(c.rolls, c.point, c.was) : null, tEnd = c && !REDUCED ? tim.end : 0;
-  const tal = p => arcTally(p, o, pips(p, Math.min(tune(mini).goal, mini.wins[p]), tune(mini).goal, !!(c && c.result === 'win' && a.by === p), tEnd));
-  // the puck: OFF to begin with; on the point once the come-out sets one (on from the start for a point from before)
-  const slot = n => (n == null ? 0 : CRAPS_POINTS.indexOf(n) + 1), pct = k => ((k + 0.5) / 7 * 100).toFixed(2);
-  const pk = shown && shown.point != null ? slot(shown.point) : 0;
-  const puckAt = c && c.point != null && c.was == null && !REDUCED ? tim.puck : null;
-  const puck = `<div class="cpuck${pk ? ' on' : ''}${puckAt != null ? ' move' : ''}" style="left:${pct(pk)}%;--from:${pct(0)}%;--to:${pct(pk)}%${puckAt != null ? `;--t:${puckAt}ms` : ''}">${pk ? 'ON' : 'OFF'}</div>`;
-  const strip = `<div class="cpts">${['', ...CRAPS_POINTS].map((n, k) => `<i class="${k === 0 ? 'off' : ''}${shown && shown.point === n ? ' pt' : ''}">${n}</i>`).join('')}${puck}</div>`;
-  // the dice: each roll's pair in its turn, the last one staying
-  let dice = '';
-  if (shown && shown.rolls && shown.rolls.length) {
-    const n = shown.rolls.length;
-    dice = shown.rolls.map((d, k) => {
-      if (!c && k < n - 1) return '';
-      const t0 = c && !REDUCED ? tim.at[k] : null, t1 = c && !REDUCED && k < n - 1 ? tim.at[k + 1] : null;
-      if (c && REDUCED && k < n - 1) return '';
-      const end = c && !REDUCED && k === n - 1 && (c.result === 'win' || c.result === 'lose') ? ` ${c.result === 'win' ? 'cheer' : 'sad'}` : '';   // the round's last pair: the point made, a dance; a crap-out, a slump (once it has landed)
-      return `<div class="cpair${t0 != null ? ' tumble' : ''}${t1 != null ? ' gone' : ''}" style="${t0 != null ? `--t:${t0}ms;` : ''}${t1 != null ? `--t2:${t1}ms;` : ''}${end ? `--d:${t0 + CRAPS.land}ms` : ''}" aria-hidden="${k < n - 1}"><div class="cdice${end}"><span class="die cdie">${dieFace(d[0])}</span><span class="die cdie b">${dieFace(d[1])}</span></div></div>`;
-    }).join('');
-  }
-  // the round's rolls in a row, each as it lands (one row, a fixed height: a long round shows its latest)
-  const all = shown && shown.rolls ? shown.rolls : [];
-  const log = `<div class="crolls${all.length > 8 ? ' long' : ''}" aria-label="The round's rolls">${all.map((d, k) => `<span ${c && !REDUCED ? lateAt('', tim.at[k] + CRAPS.land - 60) : ''}>${d[0] + d[1]}</span>`).join('')}</div>`;
-  const W = p => `<b class="${p}">${N(p)}</b>`;
-  const res = c ? `<p ${lateAt('arcres ' + (c.result === 'win' ? 'ok' : 'no'), tEnd)} role="status">${crapsSay(c)}</p>`
-    : l && (o.done || o.view || (o.held && l.by === turn)) ? `<p class="arcres ${l.result === 'win' ? 'ok' : l.result === 'lose' ? 'no' : ''}">${W(l.by)}: ${crapsSay(l)}</p>`
-    : o.view ? '<p class="arcnote"></p>'
-    : mini.point != null ? `<p class="arcnote">${W(turn)} · point ${mini.point} is on</p>`
-    : `<p class="arcnote">${W(turn)}'s turn</p>`;
-  const btn = o.view ? '' : `<div class="cbtns one"><button class="big ${turn}" data-act="move" ${mv('roll')}${o.locked ? ' disabled' : ''}>Roll</button></div>`;
-  return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="craps">${strip}<div class="cfelt">${dice || '<p class="arcnote"></p>'}</div>${log}${res}</div>${btn}</div>`;
-}
-// The miniature: the felt with the two dice (the last roll's faces, ringed green when it won its round and greyed
-// when it lost; blank before a roll), and each player's rounds won as pips under it.
-export function miniature(mini, final) {
-  const l = mini.last, d = l ? l.roll || (l.rolls || [])[(l.rolls || []).length - 1] : null, goal = tune(mini).goal;
-  const dice = `<div class="tcdice${d && l.result === 'win' ? ' w' : d && l.result === 'lose' ? ' l' : ''}"><span>${d ? dieFace(d[0]) : ''}</span><span>${d ? dieFace(d[1]) : ''}</span></div>`;
-  return `<div class="tcr" aria-label="Krabs: X ${mini.wins.X}, O ${mini.wins.O} of ${goal} rounds"><div class="tfelt" aria-hidden="true">${dice}</div><div class="tpip">${pipRows(mini.wins, goal)}</div></div>`;
-}
+const suitWord = s => ({ S: 'spades', H: 'hearts', D: 'diamonds', C: 'clubs' }[s] || 'one suit');
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
-  g = crapsTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d, held: state.lock != null && state.lock === state.zoom }); return g;
+  g = t31Table(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d }); return g;
+}
+// The miniature: each player's three cards as little cards (suits drawn; the best suit's ringed in the player's colour),
+// each player's score beside them.
+export function miniature(mini, final) {
+  const row = (p, y) => {
+    const h = mini.hand[p].slice(0, 3), best = t31Best(h).suit;
+    return h.map((c, k) => { const x = 2 + k * 21; return `<g transform="translate(${x} ${y})"><rect class="tt31c${c[1] === best ? ' ' + p : ''}" width="18" height="24" rx="3"/><path class="tt31s${cardRed(c) ? ' red' : ''}" transform="translate(3 6) scale(.5)" d="${SUIT_PATH[c[1]]}"/></g>`; }).join('');
+  };
+  const art = `<svg class="tt31" viewBox="0 0 66 54" aria-hidden="true">${row('X', 1)}${row('O', 29)}</svg>`;
+  const rows = ['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><span class="tsn">${t31Score(mini.hand[p].slice(0, 3))}</span></div>`).join('');
+  return thumbArt(art, rows, 'tt31w', `Thirty-One: X ${t31Score(mini.hand.X.slice(0, 3))}, O ${t31Score(mini.hand.O.slice(0, 3))} of ${t31Cfg(mini).target}`);
 }
 export function moveText(f, who) {
-  return !f.craps ? `${who} rolled` : f.craps.kind === 'stop' ? `${who} stopped on point ${f.craps.point}` : f.craps.result === 'win' ? `${who} won the round` : `${who} lost the round`;
+  const s = f.t31;
+  if (!s) return `${who} played`;
+  if (s.kind === 'take') return `${who} ${s.from === 'deck' ? 'drew' : 'took'} a card`;
+  return s.auto ? `${who} ran out of time` : `${who}: ${s.score} in one suit`;
 }
-export function sounds(f, add, won, mini, last) {   // each roll: the rattle and the dice landing; the puck going on; the round's result
-  const c = f.craps;
-  if (!c) return;
-  if (c.kind === 'stop') { add('toggle', 0); return; }
-  if (c.roll) { add('rattle', 0); add('thunk', 500); if (c.result === 'win') add('ding', 700); else if (c.result === 'lose') add('thud', 700); return; }   // (a single roll, from before)
-  const tim = crapsTimes(c.rolls, c.point, c.was);
-  c.rolls.forEach((d, k) => { add('rattle', tim.at[k]); add('thunk', tim.at[k] + 500); });
-  if (tim.puck != null) add('clack', tim.puck);
-  add(c.result === 'win' ? 'diceWin' : 'diceLose', tim.at[c.rolls.length - 1] + CRAPS.land);   // (as the dice dance or slump)
+// A take: the card sliding in (a turn as a deck card shows); a discard: the slide onto the pile, then a ding as the
+// score rises (a sparkle at 31), or a soft no-pair when it does not.
+export function sounds(f, add, won, mini, last) {
+  const s = f.t31;
+  if (!s) return;
+  if (s.kind === 'take') { add('cardSlide', 0); if (s.from === 'deck') add('cardFlip', T31.slide); return; }
+  add('cardSlide', 0);
+  if (won || s.score === 31) add('sparkle', T31.land); else if (s.score > s.before) add('ding', T31.land); else add('nopair', T31.land);
+}
+// The square's line while the turn is held to it (ui/mini.js): a card taken, one to let go; or, with "Go again on success"
+// on, a raised score taking again.
+export function heldSub(mini, turn, f) {
+  if (f) return '';
+  const who = `<b class="${turn}">${N(turn)}</b>`;
+  return mini.held && mini.held.by === turn ? `${who}: a card taken` : `${who} raised the score · goes again`;
 }

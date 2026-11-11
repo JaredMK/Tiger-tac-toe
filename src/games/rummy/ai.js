@@ -45,7 +45,7 @@ export function needs(pm, p) {
 export const RMY_AI = { base: 5, perCard: 2.5, easySlip: 30 };
 export function best(pm, me, rng, style, ctx) {
   const cfg = rmyCfg(pm), lvl = ctx && ctx.level, held = pm.held && pm.held.by === me ? pm.held : null, h = pm.hand[me], top = (pm.pile[me] || []).slice(-1)[0];
-  const t0 = Date.now(), late = () => ctx && typeof ctx.until === 'function' ? ctx.until() <= 0 : Date.now() - t0 > 400;
+  const late = () => (ctx && typeof ctx.until === 'function' ? ctx.until() <= 0 : false);   // (no clock in the engine: without ctx.until, a fixed amount of work, all of it)
   if (lvl === 'easy' && rng() * 100 < RMY_AI.easySlip) {          // Easy: now and then a careless take or throw (any card outside its melds)
     if (!held) return { move: top && rng() < 0.5 ? 'pile' : 'deck', q: 0 };
     const inMeld = new Set(rmyMelds(h).melds.flat()), loose = h.filter(c => !inMeld.has(c)), pick = loose.length ? loose : h;

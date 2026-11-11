@@ -71,7 +71,7 @@ function cpuMatch(me, squares, owners = []) {
 const tttOf = (...cells) => Object.assign(mini('ttt'), { cells: cells.map(c => c || null) });
 
 // ---- online match records: the public state and the secrets apart, moves applied to the pair ----
-const SECRET_KEYS = { wordle: 'word', hangman: 'word', hilo: 'target', bs: 'ship', hunt: 'treasure', memory: 'cards', mastermind: 'code' , trivia: 'answer', oddone: 'pos', patterns: 'answer', sniff: 'treasure', headcount: 'round', flash: 'round', snapshot: 'round', war: 'deck', dominoes: 'pile', scratch: 'cards' };   // (round: an attention game's rounds are the server's until Start; the public state shows each as its frame)
+const SECRET_KEYS = { wordle: 'word', hangman: 'word', hilo: 'target', bs: 'ship', hunt: 'treasure', memory: 'cards', mastermind: 'code' , trivia: 'answer', oddone: 'pos', patterns: 'answer', sniff: 'treasure', headcount: 'round', flash: 'round', snapshot: 'round', war: 'deck', t31: 'deck', rummy: 'deck', dominoes: 'pile', scratch: 'cards' };   // (round: an attention game's rounds are the server's until Start; the public state shows each as its frame)
 
 // ================================ Setup / match flow ================================
 test('setup: the app opens on the main menu with default names and every game ticked', () => {
