@@ -119,7 +119,7 @@ Win: All {n} coins show your side.
 
 ## Coin Pusher [pusher]
 Category: More luck
-Play: Tap {perMove} spots along the top, then Drop. The pusher shoves the coins forward: each one over the front edge scores 1, a star coin {starWorth}. Off the sides, they are gone. Your machine keeps its coins for your next go.{goAgain}
+Play: Tap to drop a coin where the dropper is as it slides across the top: {perMove} coins a go. The pusher never stops: each coin over the front edge scores 1, a star coin {starWorth}. Off the sides, they are gone. Your machine keeps its coins for your next go.{goAgain}
 Win: Reach {target} first. The other player then gets one last turn: the higher total wins.
 
 ## Cup Pong [pong]
@@ -450,7 +450,7 @@ Win: Win {goal} rounds.
 
 ## Word Tiles [wtiles]
 Category: More brain
-Play: Make one word on your own board from your tiles, in a row or a column. The first goes through the centre; the rest join on. Tinted squares count extra. No word? Swap your tiles.{goAgain}
+Play: Make one word from your tiles on the shared board, in a row or a column. The first goes through the centre; every other word joins the tiles already there. Tinted squares count extra. Your tiles are yours alone. No word? Swap your tiles.{goAgain}
 Win: First to {target} points.
 List dl: Double letter: that tile counts twice.
 List tl: Triple letter: that tile counts three times.

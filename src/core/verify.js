@@ -17,6 +17,7 @@ import { munRawMs } from '../games/muncher/rules.js';
 import { swarmRaw } from '../games/swarm/rules.js';
 import { brkRaw } from '../games/bricks/rules.js';
 import { snakeRunMs } from '../games/snake/rules.js';
+import { pushRunMs } from '../games/pusher/rules.js';
 
 export const AUTO_FROM_PHONE = ['oddone'];
 // The timed runs (November 2026: Muncher, Star Swarm, Brick Break, Snake): a move is one run played on the phone
@@ -44,6 +45,11 @@ export function onlineCheck(mini, p, m, now, since) {
     if (!m || typeof m !== 'object') return { why: 'bad' };
     if (typeof m.log !== 'string') return { why: 'log' };   // (a run without its inputs is refused: the server plays them through again)
     if (since != null && timedRunMs(mini, p, m) > now - since + RUN.clockSlackMs) return { why: 'fast' };   // (longer than the turn or round has lasted, by its steps and the game's step length)
+    return null;
+  }
+  if (type === 'pusher') {   // Coin Pusher (November 2026): a move is its taps (where the bar and the dropper were at the first, each coin's step), the push the rules' own, worked out here the same; it lasted no longer than the turn has (its last coin and the settle). Accepted: the phone states where the bar and the dropper were at its first tap, which only a well-timed tap could give anyway.
+    if (!m || typeof m !== 'object' || !Array.isArray(m.k)) return { why: 'bad' };
+    if (since != null && pushRunMs(mini, p, m) > now - since + RUN.clockSlackMs) return { why: 'fast' };
     return null;
   }
   if (FINGER_TYPES.includes(type)) {
