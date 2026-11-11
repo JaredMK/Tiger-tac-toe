@@ -113,7 +113,7 @@ function renderFlash(f) {
   const open = `<div class="flash lite late" style="--late:${animMs(f)}ms"${fxAttr(at, 'm')} data-act="dismiss">`;
   return `${f.type === 'memory' && f.kind === 'move' ? open.replace(' data-act="dismiss"', '') : open}</div>`;   // (Find the Pair: the two cards stay up for the full 2 seconds)
 }
-const LINE_TYPES = ['claw', 'duck', 'pusher', 'poker', 't31', 'rummy', 'rps', 'shut', 'combo', 'bglite', 'scc', 'bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads', 'flap', 'chopper', 'patterns', 'wheels', 'sniff', 'clash', 'headcount', 'flash', 'snapshot', 'skyhop', 'scoop', 'pinball', 'apple', 'muncher', 'swarm', 'bricks', 'snake', 'dominoes', 'war', 'bingo'];   // (Scratch & Match has no result row: its header line says what was found)
+const LINE_TYPES = ['wtiles', 'claw', 'duck', 'pusher', 'poker', 't31', 'rummy', 'rps', 'shut', 'combo', 'bglite', 'scc', 'bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads', 'flap', 'chopper', 'patterns', 'wheels', 'sniff', 'clash', 'headcount', 'flash', 'snapshot', 'skyhop', 'scoop', 'pinball', 'apple', 'muncher', 'swarm', 'bricks', 'snake', 'dominoes', 'war', 'bingo'];   // (Scratch & Match has no result row: its header line says what was found)
 // The result's words for the header line (HTML): a square's end ("Won by" and the mark, or "Draw": squareEnd); else
 // '' where the game's own screen says it all (the games with their own reserved result line, a Risky Rolls roll or bank).
 export function flashLine(f) {
