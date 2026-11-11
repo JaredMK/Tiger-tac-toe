@@ -59,7 +59,7 @@ function rummyTable(mini, a, o) {
   else if (mine) line = `<p class="arcres">${held ? 'Throw a card' : 'Take a card'}</p>`;
   else line = `<p class="arcnote">${o.locked || by !== turn ? waitLine(by) : ''}</p>`;
   const hand = myHand ? handRow(myHand, me, o, s && a.by === me ? s : null, canThrow, fresh) : `<div class="rmyhand ${me}" style="--n:${handN(mini, me)}">${backs(handN(mini, me))}</div>`;
-  return `<div class="g-arc rmy"><div class="ctals">${tal('X')}${tal('O')}</div>${opp}<div class="cfelt rmyfelt"><span class="rmywho">${W(by)}</span>${deckBtn}${pileBtn}</div>${hand}${line}</div>`;
+  return `<div class="g-arc rmy"><div class="ctals">${tal('X')}${tal('O')}</div>${opp}<div class="cfelt rmyfelt${s && s.kind === 'discard' ? ' cfup' : ''}"><span class="rmywho">${W(by)}</span>${deckBtn}${pileBtn}</div>${hand}${line}</div>`;
 }
 // The miniature (public alone: the hands are each side's own): each player's hand as card backs in a row, the pile's top
 // card between, and the melds made as pips.

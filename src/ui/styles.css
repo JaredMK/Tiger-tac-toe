@@ -4181,3 +4181,4 @@ button.dukd:disabled { cursor: default; }
 .big.bglundo { color: var(--ink); background: var(--cream, #fff8e8); border: 3px solid var(--ink); }
 .big.bglundo:disabled { opacity: .45; }
 .rmyfelt { overflow: visible; }   /* (card motion: a card thrown from the hand flies in over the felt's edge) */
+.rmyfelt.cfup { z-index: 4; }   /* (a throw: the card flying up to the pile passes over the hand) */
