@@ -1,5 +1,5 @@
 // Claw Machine: the screen, the miniature, the move's words and sounds, and the inputs.
-import { CLAW, CLAW_KINDS, clawAim, clawCfg, clawTimes } from './rules.js';
+import { CLAW, CLAW_KINDS, clawCarriage, clawCase, clawCfg, clawPath, clawTimes } from './rules.js';
 import { ownPress } from '../../audio/sound.js';
 import { attemptMove } from '../../net/moves.js';
 import { blocked } from '../../net/room.js';
@@ -11,19 +11,27 @@ import { repNote } from '../../ui/replay.js';
 import { runCanvas, runColours } from '../../ui/runner.js';
 import { pipRows, thumbArt } from '../../ui/thumbs.js';
 
-// Claw Machine (November 2026): the mover's glass case drawn on a canvas (its frame, the rail across the top, the
-// chute at the left, the prizes on the floor), the claw hanging from the rail. On this phone's turn a drag anywhere on
-// the case moves the claw across (by the finger's travel: clawAim, pure), and a tap (or Drop) drops it there: the move
-// is { x }. What the grab did is the move's (the server's draw online); the claw plays it from the move's event
-// (fxAt('move')): it slides out from over the chute (not for this phone's own grab: the claw is already there), comes
-// down, closes, rises with the prize or without, carries it to the chute and lets go; a slip drops it back into the
-// case part way. The result in the reserved line under the case.
+// Claw Machine (November 2026; one shared machine from v 2): the case both players play drawn on a canvas (its frame,
+// the rail across the top, the chute at the left, the prizes on the floor), the claw hanging on its cable from a
+// carriage on the rail. On this phone's turn the carriage sweeps by itself from the turn's start (`sweep`, the moment
+// this phone first showed the turn) and the claw swings under it as the rules' pendulum has it (clawPath: the same
+// path the server works the grab from), the cable leaning as it lags and swings; a tap on the case (or Drop) drops it:
+// the move is { k }, the steps since the sweep began. No guide line: lining it up is the skill. What the grab did is
+// the move's (the server's draw online); the claw plays it from the move's event (fxAt('move')): someone else's grab
+// first shows the sweep's last stretch arriving exactly where the tap was (clawTimes `pre`), then the claw comes down,
+// closes, rises with the prize or without, carries it to the chute and lets go; a slip drops it back part way.
 export const PRIZE_COL = ['#e5605a', '#4e9de0', '#7cc457', '#f2b33d', '#b07fe0', '#f08bb8'];
-let draft = null;              // this phone's aim: { sq, x }
-let drag = null;               // a finger on the case: { id, x0, cx0, moved, px }
+let sweep = null;              // this phone's turn's sweep: { key, t0 } (the square and the grabs made: a new turn, a new sweep)
+let press = null;              // a finger down on the case: { id, x0, y0 }
 let src = null, raf = 0;       // what the last render drew; the paint loop
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v)), lerp = (a, b, u) => a + (b - a) * u, ease = u => u * u * (3 - 2 * u);
-const aimOf = sq => (draft && draft.sq === sq ? draft.x : CLAW.rest);
+const sweepKey = (sq, mini) => `${sq}:${mini.g || 0}`;
+// The step of this phone's sweep at now (starting it on the turn's first look).
+function sweepStep(sq, mini, now) {
+  const key = sweepKey(sq, mini);
+  if (!sweep || sweep.key !== key) sweep = { key, t0: now };
+  return Math.max(0, Math.min(CLAW.kMax, Math.floor((now - sweep.t0) * CLAW.hz / 1000)));
+}
 function clawTable(mini, a, o) {
   const f = a && a.claw ? a.claw : null, by = f ? a.by : o.view && mini.last ? mini.last.by : o.turn, goal = clawCfg(mini).goal;
   const own = !!f && ownMove(a), T = f ? clawTimes(f, own) : null, anim = !!f && !REDUCED;
@@ -38,9 +46,9 @@ function clawTable(mini, a, o) {
   const res = f ? `<p ${lateAt('arcres ' + (f.res === 'win' ? 'ok' : 'no'), anim ? T.say : null)} role="status">${word(f)}</p>`
     : o.done && l ? `<p class="arcres ${l.res === 'win' ? 'ok' : 'no'}">${word(l)}</p>` : `<p class="arcnote">${mine || o.view ? '' : waitLine(o.turn)}</p>`;
   src = { mini, a: f ? a : null, f, by, own, T, mine, zoom: o.zoom, view: o.view };
-  const left = (mini.case[by] || []).length;
+  const left = clawCase(mini).length;
   return `<div class="g-arc g-claw"><div class="ctals">${tal('X')}${tal('O')}</div>
-    <div class="claw${mine ? ' live' : ''}" data-claw="area"><span class="clawlab">Machine · <b class="${by}">${N(by)}</b></span><canvas class="clawcv" data-claw="cv" aria-label="${N(by)}'s case: ${left} prizes"></canvas></div>
+    <div class="claw${mine ? ' live' : ''}" data-claw="area"><canvas class="clawcv" data-claw="cv" aria-label="The claw machine: ${left} prizes"></canvas></div>
     ${res}<div class="cbtns one${mine ? '' : ' hold'}"><button class="big ${o.turn}" data-act="claw-drop"${mine ? '' : ' disabled tabindex="-1" aria-hidden="true"'}>Drop</button></div></div>`;
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
@@ -80,10 +88,12 @@ function drawPrize(c, G, p, x, yBot, P, alpha) {
   }
   c.restore();
 }
-function drawClaw(c, G, x, y, shut, P) {
-  const cx = G.X(x), cy = G.Y(y), s = G.s, sp = lerp(4.2, 1.6, shut) * s;
+function drawClaw(c, G, x, y, shut, P, xc) {
+  const cx = G.X(x), cy = G.Y(y), s = G.s, sp = lerp(4.2, 1.6, shut) * s, kx = G.X(xc == null ? x : xc);
   c.save(); c.lineCap = 'round'; c.lineJoin = 'round';
-  c.strokeStyle = '#7d8592'; c.lineWidth = Math.max(1.5, s * 0.5); c.beginPath(); c.moveTo(cx, G.Y(G.rail)); c.lineTo(cx, cy - 2.4 * s); c.stroke();   // the cable
+  c.fillStyle = '#8a919d'; c.strokeStyle = P.ink; c.lineWidth = Math.max(1.5, s * 0.5);
+  c.beginPath(); c.roundRect(kx - 3.4 * s, G.Y(G.rail) - 1.8 * s, 6.8 * s, 3.6 * s, 1 * s); c.fill(); c.stroke();   // the carriage on the rail
+  c.strokeStyle = '#7d8592'; c.lineWidth = Math.max(1.5, s * 0.5); c.beginPath(); c.moveTo(kx, G.Y(G.rail)); c.lineTo(cx, cy - 2.4 * s); c.stroke();   // the cable, leaning as the claw swings
   c.fillStyle = '#c8ccd4'; c.strokeStyle = P.ink; c.lineWidth = Math.max(1.5, s * 0.55);
   c.beginPath(); c.roundRect(cx - 3 * s, cy - 3.2 * s, 6 * s, 3.2 * s, 1.2 * s); c.fill(); c.stroke();   // the head
   c.lineWidth = Math.max(2, s * 0.85); c.strokeStyle = P.ink;
@@ -92,7 +102,7 @@ function drawClaw(c, G, x, y, shut, P) {
   c.restore();
 }
 function frame(c, G, W, H, now) {
-  const P = runColours(), s = src, mini = s.mini, f = s.f, cs = (mini.case[s.by] || []);
+  const P = runColours(), s = src, mini = s.mini, f = s.f, cs = clawCase(mini);
   c.clearRect(0, 0, W, H);
   c.fillStyle = '#dff1f8'; c.fillRect(G.pad, G.pad, W - 2 * G.pad, H - 2 * G.pad);                         // the glass
   c.fillStyle = 'rgba(255,255,255,.35)'; c.beginPath(); c.moveTo(G.X(70), G.Y(G.rail)); c.lineTo(G.X(84), G.Y(G.rail)); c.lineTo(G.X(56), G.Y(G.floor)); c.lineTo(G.X(42), G.Y(G.floor)); c.fill();   // a gleam
@@ -104,13 +114,19 @@ function frame(c, G, W, H, now) {
   c.lineWidth = Math.max(3, G.s * 1.2); c.strokeRect(G.pad, G.pad, W - 2 * G.pad, H - 2 * G.pad);          // the frame
   let more = false;
   // the claw's place, its grip and the prize it holds, at this moment of the move (or at rest, or where this phone aims it)
-  let cx = s.mine ? aimOf(s.zoom) : CLAW.rest, cy = G.top, shut = 0, held = null, hide = null, falling = null;
+  let cx = CLAW.rest, xc = CLAW.rest, cy = G.top, shut = 0, held = null, hide = null, falling = null;
+  if (s.mine && !f) {                                               // this phone's turn: the sweep, live
+    const cfg = clawCfg(mini), k = sweepStep(s.zoom, mini, now), ph = mini.ph || 0;
+    cx = clawPath(cfg, ph, k)[k]; xc = clawCarriage(ph, cfg.speed, k / CLAW.hz); more = true;
+  }
   if (f && !REDUCED) {
-    const at = fxAt('move', s.a), t = at == null ? Infinity : now - at, T = s.T, pz = f.pz, from = s.own ? f.x : CLAW.rest;
+    const at = fxAt('move', s.a), t = at == null ? Infinity : now - at, T = s.T, pz = f.pz, cfg = clawCfg(mini), ph = f.ph || 0, kk = f.k || 0;
+    const xcAt = kk2 => clawCarriage(ph, cfg.speed, kk2 / CLAW.hz), xcDrop = f.k == null ? f.x : xcAt(kk);
     const hPz = pz ? prizeH(pz.k) : 0, yGrab = G.floor - hPz - 4.6, under = y => y + 4.6 + hPz;   // (a held prize hangs under the claw's arms)
     if (t < T.end) more = true;
-    // the claw: out over its spot, down, shut, up; then (a grip) across to the chute and open
-    if (t < T.down) cx = lerp(from, f.x, ease(clamp(t / Math.max(1, T.down), 0, 1)));
+    xc = xcDrop;
+    // the claw: the sweep's last stretch up to the tap (someone else's grab), down, shut, up; then (a grip) across to the chute and open
+    if (t < T.down) { const k2 = Math.max(0, Math.round(kk - (T.down - Math.max(0, t)) * CLAW.hz / 1000)); cx = clawPath(cfg, ph, kk)[k2]; xc = xcAt(k2); }
     else if (t < T.top) {
       cx = f.x;
       cy = t < T.closed ? lerp(G.top, yGrab, ease((t - T.down) / (T.closed - T.down))) : t < T.up ? yGrab : lerp(yGrab, G.top, ease((t - T.up) / (T.top - T.up)));
@@ -119,7 +135,7 @@ function frame(c, G, W, H, now) {
     } else if (f.res === 'miss') cx = f.x;
     else {
       const u = clamp((t - T.top) / Math.max(1, T.carry), 0, 1);
-      cx = lerp(f.x, CLAW.rest, ease(u)); shut = 1;
+      cx = lerp(f.x, CLAW.rest, ease(u)); xc = lerp(xcDrop, CLAW.rest, ease(u)); shut = 1;
       if (f.res === 'win' && t >= T.atChute) shut = 1 - clamp((t - T.atChute) / 240, 0, 1);
     }
     // the prize it went for: on the floor where it was, then in the claw, then into the chute or back down
@@ -139,10 +155,7 @@ function frame(c, G, W, H, now) {
   for (const p of cs) if (p.id !== hide) drawPrize(c, G, p, p.x, G.floor, P);
   if (falling) drawPrize(c, G, falling.p, falling.x, falling.y, P, falling.a);
   if (held) drawPrize(c, G, held, cx, cy + 4.6 + prizeH(held.k), P);
-  drawClaw(c, G, cx, cy, shut, P);
-  if (s.mine && !f) {                                               // this phone's aim: a dashed line down to the floor
-    c.save(); c.setLineDash([3, 4]); c.strokeStyle = 'rgba(22,18,16,.35)'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(G.X(cx), G.Y(cy + 7)); c.lineTo(G.X(cx), G.Y(G.floor)); c.stroke(); c.restore();
-  }
+  drawClaw(c, G, cx, cy, shut, P, xc);
   return more;
 }
 const CLAWT_FALL = 420;
@@ -155,53 +168,43 @@ function paint(now) {
   if (frame(c, geom(W, H), W, H, now == null ? performance.now() : now)) raf = requestAnimationFrame(paint);
 }
 // ---- the inputs ----
+// Drop: the moment of the tap in this turn's sweep (its step); the server works out where the claw was then.
 function drop() {
   if (zoomedType() !== 'claw' || state.screen !== 'mini' || state.flash || state.done || blocked() || !src || !src.mine) return;
-  const x = aimOf(state.zoom);
-  repNote('claw', `x=${x}`);
-  attemptMove({ x });
+  const k = sweepStep(state.zoom, src.mini, performance.now());
+  repNote('claw', `k=${k}`);
+  attemptMove({ k });
 }
 export const actions = { 'claw-drop': () => { ownPress(); drop(); } };
 let hooked = false;
-function hook() {                                                   // the case's own pointer handling (once, the first time it is drawn)
+function hook() {                                                   // a tap anywhere on the case drops the claw too (once, the first time it is drawn)
   if (hooked || typeof app.addEventListener !== 'function') return;
   hooked = true;
   app.addEventListener('pointerdown', e => {
     const area = e.target.closest && e.target.closest('.claw.live[data-claw="area"]');
-    if (!area || drag || !src || !src.mine) return;
-    const cv = area.querySelector('canvas'), w = cv ? cv.getBoundingClientRect().width : 0;
-    drag = { id: e.pointerId, x0: e.clientX, cx0: aimOf(state.zoom), moved: false, ppu: w > 0 ? (w - 12) / CLAW.W : 3 };
-    try { area.setPointerCapture(e.pointerId); } catch (err) { /* the move and up still reach the page */ }
+    if (!area || !src || !src.mine) return;
+    press = { id: e.pointerId, x0: e.clientX, y0: e.clientY };
     e.preventDefault();
   });
-  app.addEventListener('pointermove', e => {
-    if (!drag || e.pointerId !== drag.id) return;
-    const dx = e.clientX - drag.x0;
-    if (Math.abs(dx) > 6) drag.moved = true;
-    if (!drag.moved) return;
-    draft = { sq: state.zoom, x: clawAim(drag.cx0, dx, drag.ppu) };
-    schedule();
-  });
   app.addEventListener('pointerup', e => {
-    if (!drag || e.pointerId !== drag.id) return;
-    const d = drag; drag = null;
-    if (!d.moved) { ownPress(); drop(); }                            // a tap: drop the claw where it is
+    if (!press || e.pointerId !== press.id) return;
+    const d = press; press = null;
+    if (Math.hypot(e.clientX - d.x0, e.clientY - d.y0) < 24) { ownPress(); drop(); }
   });
-  app.addEventListener('pointercancel', e => { if (drag && e.pointerId === drag.id) drag = null; });
+  app.addEventListener('pointercancel', e => { if (press && e.pointerId === press.id) press = null; });
 }
-// Someone else's grab: no inputs to press (their aim is the claw's slide in the move itself).
+// Someone else's grab: no inputs to press (the sweep up to their tap is in the move itself: clawTimes `pre`).
 export const replay = { synth: () => [] };
-// ---- the miniature: each player's case, the prizes left on its floor, beside the prizes won ----
+// ---- the miniature: the shared case with the prizes left on its floor, beside each player's prizes won ----
 export function miniature(mini, final) {
-  const goal = clawCfg(mini).goal, H = 34, fl = H - 2;
+  const goal = clawCfg(mini).goal, H = 40, fl = H - 2;
   const pz = z => {                                                // a prize on the floor: a ball, a box or a plush, in its colour
-    const x = 4 + z.x * 0.92, w = z.w * 1.05, col = PRIZE_COL[z.c % PRIZE_COL.length];
+    const x = 4 + z.x * 0.92, w = z.w * 1.15, col = PRIZE_COL[z.c % PRIZE_COL.length];
     if (z.k === 'box') return `<rect x="${(x - w).toFixed(1)}" y="${(fl - w * 1.5).toFixed(1)}" width="${(2 * w).toFixed(1)}" height="${(w * 1.5).toFixed(1)}" fill="${col}"/>`;
     if (z.k === 'ball') return `<circle cx="${x.toFixed(1)}" cy="${(fl - w).toFixed(1)}" r="${w.toFixed(1)}" fill="${col}"/>`;
     return `<ellipse cx="${x.toFixed(1)}" cy="${(fl - w * 0.8).toFixed(1)}" rx="${w.toFixed(1)}" ry="${(w * 0.8).toFixed(1)}" fill="${col}"/>`;
   };
-  const box = (p, y) => `<g transform="translate(0 ${y})"><rect class="tclawg" x="1" y="1" width="98" height="${H - 1}" rx="2"/><rect class="tclawc" x="2" y="${fl - 10}" width="13" height="11"/><path class="tclawr" d="M1 5h98M${(4 + CLAW.rest * 0.92).toFixed(1)} 5v5"/>${(mini.case[p] || []).map(pz).join('')}<rect class="tclawf" x="1" y="1" width="98" height="${H - 1}" rx="2"/></g>`;
-  const art = `<svg class="tclaw" viewBox="0 0 100 ${2 * H + 6}" aria-hidden="true">${box('X', 0)}${box('O', H + 6)}</svg>`;
+  const art = `<svg class="tclaw" viewBox="0 0 100 ${H + 1}" aria-hidden="true"><rect class="tclawg" x="1" y="1" width="98" height="${H - 1}" rx="2"/><rect class="tclawc" x="2" y="${fl - 12}" width="13" height="13"/><path class="tclawr" d="M1 6h98M${(4 + CLAW.rest * 0.92).toFixed(1)} 6v6"/>${clawCase(mini).map(pz).join('')}<rect class="tclawf" x="1" y="1" width="98" height="${H - 1}" rx="2"/></svg>`;
   return thumbArt(art, pipRows(mini.won, goal), 'tclaww', `Claw Machine: X ${mini.won.X}, O ${mini.won.O} of ${goal} prizes`);
 }
 export function moveText(f, who) {
@@ -215,7 +218,7 @@ export function sounds(f, add, won, mini, last) {
   const s = f.claw;
   if (!s) return;
   const T = clawTimes(s, ownMove(f));
-  if (T.slide) add('slide', 0);
+  if (T.pre) add('slide', 0);
   add('slide', T.down); add('thunk', T.closed);
   if (s.res === 'win') { add('plop', T.atChute); add('ding', T.say); }
   else if (s.res === 'slip') add('thud', T.slipAt + 380);

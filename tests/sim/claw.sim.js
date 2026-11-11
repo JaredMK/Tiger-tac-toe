@@ -1,19 +1,21 @@
 'use strict';
 // Simulations: Claw Machine. Slow, so never part of npm test:
 // npm run sim -- claw
-// Whole squares between the computer's hands (and a careful human-like finger: an aim error of HUMAN_SD case units),
+// Whole squares between the computer's hands on the shared machine (and a careful human-like finger: a timing error of HUMAN_MS ms
+// at the first good moment for the widest prize, Normal's plan),
 // turns each player, the winner's turns and the first mover's win rate.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const E = require('../engine.js');
 const A = require('../../src/games/claw/ai.js');
-const HUMAN_SD = 3;
-// A hand: a level's play, or ('human') aiming at the widest prize's centre with HUMAN_SD of error.
+const R = require('../../src/games/claw/rules.js');
+const HUMAN_MS = 60;
+// A hand: a level's play, or ('human') Normal's plan tapped with a timing error of HUMAN_MS.
 function move(m, p, rng, level) {
   if (level !== 'human') return A.best(E.publicMini(m), p, rng, {}, { level, until: null }).move;
-  const cs = m.case[p], z = cs.reduce((a, b) => (b.w > a.w ? b : a), cs[0]);
+  const pl = A.clawPlan(E.publicMini(m), rng, 'normal');
   const u = Math.max(1e-9, rng()), v = rng(), g = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
-  return { x: Math.round((z.x + g * HUMAN_SD) * 10) / 10 };
+  return { k: Math.max(0, pl.k + Math.round(g * HUMAN_MS * R.CLAW.hz / 1000)) };
 }
 function play(lx, lo, N, tuneSet) {
   if (tuneSet) E.setTune('claw', tuneSet);
