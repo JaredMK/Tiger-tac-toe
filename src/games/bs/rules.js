@@ -52,7 +52,7 @@ export function create(type, rng, opts) {
   }
   return Object.assign(base, { ship }, bsBlank(N));
 }
-export function apply(mini, p, m, rng, idx) {
+export function apply(mini, p, m, rng, idx, sc) {   // (sc: a Super Chaos round, where a hit always fires again)
   // One shot at one cell. A hit or a miss is shown; the ship's direction never is. A hit that does not
   // sink it fires again at once (the turn goes on until a miss or the sinking shot); the shot that
   // hits its last cell sinks it and claims the square. (Race: the shot lands on p's own sea alone.)
@@ -65,7 +65,7 @@ export function apply(mini, p, m, rng, idx) {
   if (!ship.includes(m)) return { ok: true, outcome: 'continue', note: 'miss' };
   part.hits.push(m);
   if (ship.every(k => part.hits.includes(k))) return { ok: true, outcome: 'win', cells: ship.slice(), note: 'sunk' };
-  return { ok: true, outcome: 'continue', note: 'hit', again: goAgain(mini) };   // (a hit fires again only with "Go again on success" on)
+  return { ok: true, outcome: 'continue', note: 'hit', again: !!sc || goAgain(mini) };   // (a hit fires again only with "Go again on success" on; always in a Super Chaos round)
 }
 export function publicView(mini) {
   const v = Object.assign({ type: 'bs', len: mini.len }, mini.n ? { n: mini.n } : {});
@@ -109,7 +109,7 @@ export function flashMs(f, winLen, won) {
 // judged there (the other player may hit a last part this round too): the move ends, and the round's end
 // says who sank it.
 export function scApply(mini, p, m, rng, idx) {
-  const res = apply(mini, p, m, rng, idx || (n => Number.isInteger(m) && m >= 0 && m < n));
+  const res = apply(mini, p, m, rng, idx || (n => Number.isInteger(m) && m >= 0 && m < n), true);
   if (res.ok && res.outcome === 'win') return { ok: true, outcome: 'continue', note: 'hit' };
   return res;
 }

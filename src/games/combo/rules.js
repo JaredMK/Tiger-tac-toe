@@ -95,3 +95,6 @@ export function comboTimes(c) {
   return { land: COMBO.roll, end: COMBO.roll + (c.none ? COMBO.claim : COMBO.hold) };
 }
 export function flashMs(f, winLen, won) { return comboTimes(f.combo).end + (won ? 600 : 0); }
+// A timeout with a move under way (core/board.js timeoutClose): it ends as it stands, nothing claimed ('auto'), so the
+// player out of time never comes back to their leftover rolls.
+export function timeoutClose(mini, p) { return mini.cur && mini.cur.by === p ? 'auto' : null; }

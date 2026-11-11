@@ -142,7 +142,7 @@ export function miniature(mini, final) {
   let seq = pz ? pz.seq : [];
   const nums = seq.some(it => it && 'n' in it);
   if (nums && seq.length > 3) { const g = Math.max(0, seq.indexOf(null)), at = Math.max(0, Math.min(seq.length - 3, g === 0 ? 0 : g - 2)); seq = seq.slice(at, at + 3); }
-  const cell = it => (!it ? '<span class="q"></span>' : 'n' in it ? `<span class="n">${esc(String(it.n))}</span>` : `<span>${patSvg(it)}</span>`);
+  const cell = it => (!it ? '<span class="q"><svg class="tpq" viewBox="0 0 10 10" aria-hidden="true"><path d="M3.6 3.7a1.6 1.6 0 1 1 2.3 1.5c-.6.3-.9.7-.9 1.3M5 8.1v.1"/></svg></span>' : 'n' in it ? `<span class="n">${esc(String(it.n))}</span>` : `<span>${patSvg(it)}</span>`);
   const row = p => `<div class="tr ${p}"><b class="${p}">${p}</b>${Array.from({ length: patCfg(mini).goal }, (_, k) => `<i class="${k < mini.right[p] ? 'on' : ''}"></i>`).join('')}</div>`;
   return `<div class="tpat">${row('X')}${row('O')}${seq.length ? `<div class="tseq${nums ? ' tnums' : ''}">${seq.map(cell).join('')}</div>` : ''}</div>`;
 }

@@ -46,7 +46,7 @@ Category brain: More brain
 
 ## 21 [bj]
 Category: More luck
-Play: Hit to draw a card or stand. Beat the dealer without going over 21. Win? Go again. Tie? Play another hand.
+Play: Hit to draw a card or stand. Beat the dealer without going over 21.{goAgain} Tie? Play another hand.
 Win: First to {goal} wins.
 Super Chaos Play: Hit or stand. Beat the dealer without going over 21.
 Super Chaos Win: First to {goal} wins.
@@ -55,6 +55,11 @@ Super Chaos Win: First to {goal} wins.
 Category: More luck
 Play: Spin to pick apples into your bucket. Watch out for the bird and spills, which put apples back on the tree.
 Win: Empty your tree first.
+
+## Backgammon Lite [bglite]
+Category: More luck
+Play: Roll two dice (the very first roll: one). Each die moves one of your pieces that many points (both on one piece is fine). Land on a lone enemy piece to send it back to its start. Two of your pieces on a point block it.{goAgain}
+Win: Move all 3 of your pieces off the far end first.
 
 ## Bingo [bingo]
 Category: More luck
@@ -109,13 +114,18 @@ Win: All {n} coins show your side.
 
 ## Cup Pong [pong]
 Category: More skill
-Play: Flick up to throw: aim with the angle, throw harder with a faster flick.
+Play: Flick up to throw: aim with the angle, throw harder with a faster flick.{goAgain}
 Win: Sink all 3 of your cups.
 
 ## Dash [dash]
 Category: More skill
 Play: Tap to jump, hold to jump higher. Avoid obstacles.
 Win: Reach the finish first.
+
+## Dice Combo [combo]
+Category: More luck
+Play: Roll five dice up to {rolls} times. Tap dice to hold them between rolls. Then claim a combo from your card: three or four of a kind, full house, small or large straight, five alike. Nothing fits? Your turn ends.{goAgain}
+Win: Claim {goal} combos.
 
 ## Districts [districts]
 Category: More brain
@@ -170,11 +180,11 @@ Win: {k} in a row, any direction.
 
 ## Hangman [hangman]
 Category: More luck
-Play: Guess a letter. Got one right? Go again.
+Play: Guess a letter.{goAgain}
 Win: Reveal the last letter.
 Super Chaos Play: Guess a letter. Got one right? Go again.
 Super Chaos Win: Reveal the last letter.
-Race Play: You each have your own word, the same length. Guess a letter. Got one right? Go again. You can see the other player's word fill in.
+Race Play: You each have your own word, the same length. Guess a letter.{goAgain} You can see the other player's word fill in.
 Race Win: Reveal the last letter of your word first.
 
 ## Headcount [headcount]
@@ -198,7 +208,7 @@ Race Win: Guess your number first. No guess limit.
 
 ## Krabs [craps]
 Category: More luck
-Play: Tap Roll: the dice keep rolling until your round is won or lost. On the first roll, 7 or 11 wins and 2, 3 or 12 loses. Any other number is your point: rolling it again wins, rolling a 7 loses. Win? Go again.
+Play: Tap Roll: the dice keep rolling until your round is won or lost. On the first roll, 7 or 11 wins and 2, 3 or 12 loses. Any other number is your point: rolling it again wins, rolling a 7 loses.{goAgain}
 Win: Win {goal} rounds.
 Super Chaos Play: Tap Roll: the dice keep rolling until your round is won or lost. On the first roll, 7 or 11 wins and 2, 3 or 12 loses. Any other number is your point: rolling it again wins, rolling a 7 loses.
 Super Chaos Win: Win {goal} rounds.
@@ -210,7 +220,7 @@ Win: Reach 1,000 m first.
 
 ## Little Wheel [rl]
 Category: More luck
-Play: Pick 8 numbers, a group of 8, or green 0, then spin. Hit? Go again.
+Play: Pick 8 numbers, a group of 8, or green 0, then spin.{goAgain}
 Win: {goal} hits, or hit green 0 for an instant win.
 Super Chaos Play: Pick 8 numbers, a group of 8, or green 0, then spin.
 Super Chaos Win: {goal} hits, or hit green 0 for an instant win.
@@ -229,7 +239,7 @@ Win: Eat {target} dots first.
 
 ## Odd One Out [oddone]
 Category: More skill
-Play: Tap Reveal to show the grid, then tap the tile that's a different shade within {secs} seconds.
+Play: Tap Reveal to show the grid, then tap the tile that's a different shade within {secs} seconds.{goAgain}
 Win: Find {goal}.
 
 ## Patterns [patterns]
@@ -255,12 +265,12 @@ Win: Light every target first.
 
 ## Pool [pool]
 Category: More skill
-Play: Drag to aim and shoot. Sink your own ball to go again. Sink the white and a ball comes back for you: one of your sunk balls, or a new one if none is sunk.
+Play: Drag to aim and shoot.{goAgain} Sink the white and a ball comes back for you: one of your sunk balls, or a new one if none is sunk.
 Win: Sink all your balls on the table first. Sink the black ball and you lose. Both last balls down on one shot: a draw.
 
 ## Ride the Bus [bus]
 Category: More luck
-Play: Guess red or black, then higher or lower, then inside or outside, then the suit. Miss and your turn ends, but you keep your progress.
+Play: Guess red or black, then higher or lower, then inside or outside, then the suit.{goAgain}
 Win: Get through all four.
 
 ## Risky Rolls [pig]
@@ -290,11 +300,11 @@ Win: Show three of a kind first.
 
 ## Sea Battle [bs]
 Category: More luck
-Play: The hidden ship is {shipLen} long. Fire at a square. Hit? Fire again.
+Play: The hidden ship is {shipLen} long. Fire at a square.{goAgain}
 Win: Sink the ship.
 Super Chaos Play: Fire at a square. Hit? Fire again.
 Super Chaos Win: Hit its last square. If you both do in the same round, the square resets.
-Race Play: Each of you has your own ship, {shipLen} long, hidden in your own sea. Fire at a square. Hit? Fire again. The other player's shots show on their sea.
+Race Play: Each of you has your own ship, {shipLen} long, hidden in your own sea. Fire at a square.{goAgain} The other player's shots show on their sea.
 Race Win: Sink your ship first.
 
 ## Seating [seating]
@@ -307,6 +317,16 @@ Category: More brain
 Play: Put a mark on a shelf. A grey mark lands somewhere after each move.
 Win: Be on the most shelves.
 
+## Ship, Captain & Crew [scc]
+Category: More luck
+Play: Roll up to {rolls} times. Set aside a 6, then a 5, then a 4. With all three, the other two dice are your cargo: reroll them or keep.{goAgain}
+Win: First to {target} cargo.
+
+## Shut the Box [shut]
+Category: More luck
+Play: Roll, then flip down open tiles that add up to the roll. Roll one die once your tiles add up to {oneDie} or less. No way to make it? Your turn ends.{goAgain}
+Win: Shut all your tiles first.
+
 ## Sky Hop [skyhop]
 Category: More skill
 Play: Drag to steer as you bounce up. Fall and your turn ends, but you keep your height.
@@ -314,7 +334,7 @@ Win: Reach the top first.
 
 ## Snake [snake]
 Category: More skill
-Play: Tap Start, then swipe to turn. Red food is X's, yellow is O's. Eat your own colour for a point; the other colour gives the other player a point. The wall or your own tail ends the run.
+Play: Tap Start, then swipe to turn. Red food is X's, yellow is O's. Eat your own colour for a point; the other colour gives the other player a point. The wall, a bomb or your own tail ends the run.
 Win: First to {target} points.
 
 ## Snakes and Ladders [snakes]
@@ -376,7 +396,7 @@ Race Win: Be the first to get {goal} right.
 
 ## War [war]
 Category: More luck
-Play: Tap Flip: your card against the dealer's, and the higher card wins the round. A tie goes to war: three cards down each, then flip again. A war won counts {warWorth}. Win? Go again.
+Play: Tap Flip: your card against the dealer's, and the higher card wins the round. A tie goes to war: three cards down each, then flip again. A war won counts {warWorth}.{goAgain}
 Win: Win {goal} rounds.
 
 # Retired mini-games (not shown in the app)

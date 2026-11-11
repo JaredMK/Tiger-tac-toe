@@ -23,7 +23,7 @@ GAMES.hangman.view = view;   // (the page registers the views in main.js; here b
 
 const g = E.makeRng('h');
 function raceMatch() {
-  E.setTune('hangman', { mode: 'race' });
+  E.setTune('hangman', { mode: 'race', again: 'on' });   // ("Go again on success" on: a right letter keeps the turn)
   Object.assign(state, E.newMatch(E.makeRng('hang-race'), { games: ['hangman'], vs: 'cpu' }), { screen: 'mini', zoom: 0, cpu: 'O', sc: null, flash: null, done: null, spot: null, winner: null, online: null, turn: 'X', lock: null });
   E.setTune('hangman', null);
   state.setup.vs = 'cpu'; state.setup.names = { X: 'Xena', O: 'Olaf' };

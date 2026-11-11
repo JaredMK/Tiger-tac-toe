@@ -60,7 +60,7 @@ test('combo: Go again on success: a claim keeps the turn for a fresh move; a tim
   E.playMove(st, 4, 'roll', faces(1, 2, 4, 5, 6)); E.endFlash(st);
   assert.equal(st.lock, 4, 'the move holds the turn to its square');
   st.timer.deadline = 1; const t = E.timeoutMove(st, E.makeRng('t'));
-  assert.ok(t.ok); assert.notEqual(st.turn, p, 'the turn passed'); assert.deepEqual(st.squares[4].mini.claimed[p], [], 'nothing claimed');
+  assert.ok(t.ok); assert.equal(t.move, 'auto', 'the move under way ends as it stands (rules.js timeoutClose)'); if (st.flash) E.endFlash(st); assert.notEqual(st.turn, p, 'the turn passed'); assert.deepEqual(st.squares[4].mini.claimed[p], [], 'nothing claimed');
   const q = st.turn; assert.ok(E.playMove(st, 4, 'roll', faces(6, 6, 6, 1, 2)).ok, "the other side's move starts afresh");
   assert.equal(st.squares[4].mini.cur.by, q);
 });

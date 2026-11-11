@@ -31,7 +31,7 @@ export function create(type, rng, opts) {
   }
   return { type, word, letters: [] };
 }
-export function apply(mini, p, m, rng, idx) {
+export function apply(mini, p, m, rng, idx, sc) {
   const part = hangPart(mini, p), word = hangTarget(mini, p);
   if (!part || typeof word !== 'string') return { ok: false, reason: 'bad' };
   const l = typeof m === 'string' ? m.toUpperCase() : '';
@@ -43,7 +43,7 @@ export function apply(mini, p, m, rng, idx) {
   if (mini.race) word.split('').forEach((ch, i) => { if (ch === l) part.pattern[i] = l; });   // (a race: the letter goes into this side's own pattern alone)
   const done = word.split('').every(ch => part.letters.some(x => x.l === ch));
   if (done) return { ok: true, outcome: 'win' };
-  return { ok: true, outcome: 'continue', note: 'hit', again: goAgain(mini) };   // (a right letter keeps the turn only with "Go again on success" on)
+  return { ok: true, outcome: 'continue', note: 'hit', again: !!sc || goAgain(mini) };   // (a right letter keeps the turn only with "Go again on success" on; always in a Super Chaos round, scApply)
 }
 export function publicView(mini) {
   if (mini.race) return { type: 'hangman', race: true, len: hangLen(mini), side: JSON.parse(JSON.stringify(mini.side || {})) };   // (both parts are open, their revealed letters too; the words, mini.tg, never: core/minis.js publicMini)
@@ -102,3 +102,5 @@ export function scMerge(m, c) {
   const done = m.word.split('').every(ch => seen.has(ch));
   if (done && !c.wins.X && !c.wins.O) return { reset: true, note: 'merged' };
 }
+
+export function scApply(mini, p, m, rng, idx) { return apply(mini, p, m, rng, idx || (() => true), true); }   // Super Chaos: as a move, a right letter always guessing again (its rules: scExplainer)

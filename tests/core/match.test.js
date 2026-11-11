@@ -5,6 +5,7 @@ const assert = require('node:assert/strict');
 
 const E = require('../engine.js');
 E.setPhysics(require('../physics.js'));   // Mini Golf, Pool and Bowling are dealt only with their physics
+for (const t of ['hangman', 'bs', 'craps', 'bj', 'rl', 'war', 'pool', 'bus', 'oddone', 'pong']) E.setTune(t, { again: 'on' });   // ("Go again on success" on: these tests play the bonus moves)
 // Trivia needs its questions (the page fetches trivia.json; the server has it as a file): a small made-up bank here.
 E.setTriviaBank({ questions: Array.from({ length: 30 }, (_, i) => ({ id: 'q' + i, cat: 'Test', q: `Question ${i}?`, a: 'Right ' + i, wrong: ['Wrong a' + i, 'Wrong b' + i, 'Wrong c' + i] })) });
 // The engine takes all its randomness from the caller. Where a test does not care which random choice
@@ -48,7 +49,7 @@ const mini = (type, rng) => L.newMini(type, rng || lcg(11));
 // a battleship with its ship on the given cells
 const bsAt = (...ship) => Object.assign(mini('bs'), { len: ship.length, ship, revealed: new Array(16).fill(null), hits: [] });
 // a one-cell ship (a Patrol Boat) at cell 0: either player claims it with one move
-const oneMove = () => { const E1 = require('../engine.js'); E1.setTune('bs', { len: 1 }); try { const m = L.newMini('bs', seq(pick(0, 2), pick(0, 4), pick(0, 4))); delete m.tune; return m; } finally { E1.setTune('bs', null); } };   // a one-cell ship at cell 0
+const oneMove = () => { const E1 = require('../engine.js'); E1.setTune('bs', { len: 1, again: 'on' }); try { const m = L.newMini('bs', seq(pick(0, 2), pick(0, 4), pick(0, 4))); delete m.tune; return m; } finally { E1.setTune('bs', { again: 'on' }); } };   // a one-cell ship at cell 0
 
 // O O X / X O O / O X X : full, no line, O has 5 and X has 4 (impossible with strict alternation)
 const TTT_DRAW = ['O', 'O', 'X', 'X', 'O', 'O', 'O', 'X', 'X'];
@@ -79,7 +80,7 @@ test('setup: the app opens on the main menu with default names and every game ti
   assert.equal(st.screen, 'menu', 'the main menu comes first');
   assert.deepEqual(st.setup.names, { X: 'X', O: 'O' });
   assert.deepEqual(L.enabledGames(st.setup), L.TYPES);
-  assert.equal(L.TYPES.length, 57);
+  assert.equal(L.TYPES.length, 61);
   assert.ok(st.setup.games.coins && st.setup.games.pig && st.setup.games.hunt && st.setup.games.snakes && st.setup.games.bump, 'the newer games are on by default');
   assert.ok(st.setup.games.bj && st.setup.games.bus && st.setup.games.rl, 'and the card games and the wheel too');
   assert.ok(L.TEST_TYPES.every(t => st.setup.games[t] && L.TYPES.includes(t)), 'the games on test are in the pool and on by default (for the admin, who alone sees them)');
@@ -885,7 +886,7 @@ test('engine: resigning hands the match to the other side', () => {
 
 // ---- stats: turns per mini-game, how each one ended ----
 test('stats: each mini-game counts the turns each side spent in it, bonus moves within a turn counting once', () => {
-  const st = matchWith(['pig', 'ttt', 'bs', 'hangman']);
+  const st = matchWith(['pig', 'ttt', 'bs', 'hangman']); st.turn = 'X';
   st.squares[2].mini = bsAt(4, 5);
   st.squares[3].mini = L.newMini('hangman', wordRng(L.WORDS_HANG, 'apple'));
   turn(st, 0, 'roll', die(3)); turn(st, 0, 'roll', die(4)); turn(st, 0, 'bank');   // X: one turn of Risky Rolls, three moves
