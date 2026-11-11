@@ -3996,11 +3996,12 @@ button.pokc:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; 
 .tpok .tpoks { fill: var(--ink); } .tpok .tpoks.red { fill: #d6301e; }
 .t31mk.X .tmk { stroke: var(--x); } .t31mk.O .tmk { stroke: var(--o); }   /* Thirty-One: whose hand it is, in their colour */
 /* Coin Pusher (November 2026): the machine on a canvas between the tallies and the reserved result line, Clear and Drop below */
-.psh { flex: 1; min-height: 0; display: flex; justify-content: center; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
-.pshcv { width: 100%; height: 100%; display: block; }
+.psh { flex: 1; min-height: 0; display: flex; flex-direction: column; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.pshcv { flex: 1 1 0; min-height: 0; width: 100%; display: block; }
+.g-arc .psh ~ .arcres, .g-arc .psh ~ .arcnote { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .psh.live .pshcv { cursor: pointer; }
 .pshsc b { font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-weight: 400; } .pshsc small { opacity: .6; margin-left: 1px; }
-.pshbtns { gap: 8px; } .pshbtns .btn { flex: 0 0 auto; }
+.pshbtns .pshclr { background: var(--paper); }
 .tart.tpshw { gap: 2cqw; } .tart.tpshw .tpic { width: 60cqw; } .tart.tpshw .tpip { width: auto; flex: 1; }
 .tpshw .tsn { font: 400 var(--mt)/1 'Luckiest Guy', sans-serif; padding-top: 2px; }
 .tpsh { width: 100%; height: auto; overflow: visible; }

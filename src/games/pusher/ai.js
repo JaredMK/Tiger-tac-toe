@@ -21,7 +21,7 @@ export function pushNormal(coins, n) {
   return out;
 }
 // What a move did, for Hard: coins over the front, less those lost off the sides, and a little for the pressure it left.
-const worth = res => res.scored * 10 - res.lost * 6 + 0.5 * Math.max(...Array.from({ length: PUSH.slots }, (_, s) => pushPressure(res.coins, s)));
+const worth = res => res.pts * 10 - res.lost * 6 + 0.5 * Math.max(...Array.from({ length: PUSH.slots }, (_, s) => pushPressure(res.coins, s)));
 // Hard's candidates: Normal's drops, every slot three times over, and the strongest columns paired with their neighbours.
 function candidates(coins, n, tries) {
   const sc = Array.from({ length: PUSH.slots }, (_, s) => [s, pushPressure(coins, s)]).sort((a, b) => b[1] - a[1] || a[0] - b[0]), seen = new Set(), out = [];
@@ -44,9 +44,9 @@ export function best(pm, me, rng, style, ctx) {
   const until = ctx && typeof ctx.until === 'function' ? ctx.until : null;
   for (const s of candidates(coins, n, c.aiTries)) {
     if (top && until && until() <= 0) break;
-    const drops = s.map(k => Math.round(((k + 0.5) / PUSH.slots) * PUSH.Q)), res = pushSim(c, coins, drops, false, 0.25), v = worth(res);   // (the bar's start is luck: a middling one)
+    const drops = s.map(k => [Math.round(((k + 0.5) / PUSH.slots) * PUSH.Q), 0]), res = pushSim(c, coins, drops, false, 0.25), v = worth(res);   // (the bar's start is luck: a middling one)
     if (!top || v > top.v) top = { s, v, res };
   }
-  const won = top.res.scored >= left;
+  const won = top.res.pts >= left;
   return { move: { s: top.s }, q: won ? Math.max(q, 0.8) : q };
 }

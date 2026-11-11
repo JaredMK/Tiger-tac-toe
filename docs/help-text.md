@@ -119,8 +119,8 @@ Win: All {n} coins show your side.
 
 ## Coin Pusher [pusher]
 Category: More luck
-Play: Tap {perMove} spots along the top, then Drop. The pusher shoves the coins forward: the ones over the front edge are yours. Off the sides, they are gone. Your machine keeps its coins for your next go.{goAgain}
-Win: First to {target} coins.
+Play: Tap {perMove} spots along the top, then Drop. The pusher shoves the coins forward: each one over the front edge scores 1, a star coin {starWorth}. Off the sides, they are gone. Your machine keeps its coins for your next go.{goAgain}
+Win: Reach {target} first. The other player then gets one last turn: the higher total wins.
 
 ## Cup Pong [pong]
 Category: More skill

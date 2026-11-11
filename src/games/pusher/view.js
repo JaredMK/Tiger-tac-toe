@@ -27,9 +27,10 @@ function pushTable(mini, a, o) {
   const mine = !o.view && !g && !o.locked && !o.done, q = g || o.done ? [] : queued(o.zoom);   // (a replay's queued coins show too: ui/replay.js presses them here)
   const was = p => (g && a.by === p ? g.before : mini.score[p]);
   const tal = p => arcTally(p, o, `<span class="pshsc" aria-label="${mini.score[p]} of ${c.target} coins">${g && a.by === p && g.after !== g.before ? `<b class="cnt" data-from="${was(p)}" data-delay="${lastOff(g, c)}">${mini.score[p]}</b>` : `<b>${mini.score[p]}</b>`}<small>/${c.target}</small></span>`);
-  const res = g ? `<p ${lateAt('arcres ' + (g.scored ? 'ok' : 'no'), REDUCED ? null : g.ms)} role="status">${g.scored ? `+${g.scored} coin${g.scored === 1 ? '' : 's'}` : 'None over the edge'}${g.lost ? ` · ${g.lost} off the side` : ''}</p>`
+  const other = a && a.by === 'X' ? 'O' : 'X', reached = g && !o.done && mini.final && mini.final.by === a.by;
+  const res = g ? `<p ${lateAt('arcres ' + (g.scored ? 'ok' : 'no'), REDUCED ? null : g.ms)} role="status">${reached ? `${c.target}! Last turn: <b class="${other}">${N(other)}</b>` : g.scored ? `+${g.pts}${g.pts > g.scored ? ' · a star!' : ''}` : 'None over'}${g.lost && !reached ? ` · ${g.lost} lost` : ''}</p>`
     : `<p class="arcnote">${o.view ? '' : o.locked ? waitLine(turn) : ''}</p>`;
-  const btns = o.view ? '' : `<div class="cbtns pshbtns"><button class="btn" data-act="pshclr"${mine && q.length ? '' : ' disabled tabindex="-1"'}>Clear</button><button class="big ${turn}" data-act="pshdrop"${mine && q.length === n ? '' : ' disabled tabindex="-1"'}>Drop ${n}</button></div>`;
+  const btns = o.view ? '' : `<div class="cbtns two pshbtns"><button class="big pshclr" data-act="pshclr"${mine && q.length ? '' : ' disabled tabindex="-1"'}>Clear</button><button class="big ${turn}" data-act="pshdrop"${mine && q.length === n ? '' : ' disabled tabindex="-1"'}>Drop ${n}</button></div>`;
   src = { mini, a: g ? a : null, who, zoom: o.zoom, mine, q, n };
   return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="psh${mine ? ' live' : ''}"><canvas class="pshcv" aria-label="${N(who)}'s coin pusher: ${mini.coins[who].length} coins on the shelf${mine ? `; tap along the top to drop a coin (${q.length} of ${n})` : ''}"></canvas></div>${res}${btns}</div>`;
 }
@@ -41,7 +42,7 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
 }
 export function moveText(f, who) {
   const g = f.push;
-  return g ? `${who} dropped ${g.slots.length} coins · ${g.scored ? `+${g.scored}` : 'none over'}` : `${who} dropped coins`;
+  return g ? `${who} dropped ${g.slots.length} coins · ${g.scored ? `+${g.pts}` : 'none over'}` : `${who} dropped coins`;
 }
 // The move's sounds at their moments: a clink as each coin lands, a run of coins sliding into the tray, then a ding for
 // coins won or a thud for none.
@@ -122,13 +123,16 @@ function paint() {
   if (W < 2 || H < 2) return;
   if (frame(c, geom(W, H), performance.now())) schedulePaint();
 }
-const GOLD = '#f2c14e', GOLD_D = '#a8781c';
-function coin(c, X, Y, R, a) {
+const GOLD = '#f2c14e', GOLD_D = '#a8781c', STAR = '#9fd4f5', STAR_D = '#2f6f9e';
+function coin(c, X, Y, R, a, st) {
   if (a <= 0) return;
   c.globalAlpha = a;
-  c.beginPath(); c.arc(X, Y, R, 0, Math.PI * 2); c.fillStyle = GOLD; c.fill(); c.lineWidth = Math.max(1, R * 0.16); c.strokeStyle = GOLD_D; c.stroke();
+  c.beginPath(); c.arc(X, Y, R, 0, Math.PI * 2); c.fillStyle = st ? STAR : GOLD; c.fill(); c.lineWidth = Math.max(1, R * 0.16); c.strokeStyle = st ? STAR_D : GOLD_D; c.stroke();
   c.beginPath(); c.arc(X, Y, R * 0.62, 0, Math.PI * 2); c.lineWidth = Math.max(0.8, R * 0.09); c.stroke();
-  const k = R * 0.3; c.beginPath(); c.moveTo(X, Y - k); c.lineTo(X + k * 0.7, Y); c.lineTo(X, Y + k); c.lineTo(X - k * 0.7, Y); c.closePath(); c.fillStyle = GOLD_D; c.fill();   // (the emblem: a little diamond)
+  c.beginPath();
+  if (st) { for (let i = 0; i < 10; i++) { const rr = i % 2 ? R * 0.22 : R * 0.5, an = -Math.PI / 2 + i * Math.PI / 5; c.lineTo(X + Math.cos(an) * rr, Y + Math.sin(an) * rr); } }   // (a star coin: a five-point star)
+  else { const k = R * 0.3; c.moveTo(X, Y - k); c.lineTo(X + k * 0.7, Y); c.lineTo(X, Y + k); c.lineTo(X - k * 0.7, Y); }   // (a coin: a little diamond)
+  c.closePath(); c.fillStyle = st ? STAR_D : GOLD_D; c.fill();
   c.globalAlpha = 1;
 }
 // One frame: true while the move is still playing (another frame wanted).
@@ -151,22 +155,22 @@ function frame(c, G, now) {
   c.strokeStyle = P.ink; c.lineWidth = 2; c.strokeRect(X(0), Y(0), S, bar * S);
   // the coins
   if (m) {
-    for (const [x, y] of m.frames[step]) coin(c, X(x), Y(y), R, 1);
+    for (const [x, y, st] of m.frames[step]) coin(c, X(x), Y(y), R, 1, st);
     for (const e of m.events) {                                  // a coin gone: into the tray (over the front) or off a side, fading as it goes
       if (e.kind === 'drop') continue;
       const dt = t - e.t;
       if (dt < 0 || dt > 450) continue;
       const k = dt / 450;
-      if (e.kind === 'off') coin(c, X(e.x), Y(1) + R + k * (S * TRAY - R), R * (1 - 0.2 * k), 1 - k * 0.6);
-      else coin(c, X(e.x < 0.5 ? -k * 0.08 : 1 + k * 0.08), Y(PUSH.gut + 0.06), R * (1 - 0.4 * k), 1 - k);
+      if (e.kind === 'off') coin(c, X(e.x), Y(1) + R + k * (S * TRAY - R), R * (1 - 0.2 * k), 1 - k * 0.6, e.st);
+      else coin(c, X(e.x < 0.5 ? -k * 0.08 : 1 + k * 0.08), Y(PUSH.gut + 0.06), R * (1 - 0.4 * k), 1 - k, e.st);
     }
   } else {
     const rest = g ? null : mini.coins[src.who];
-    for (const [xi, yi] of rest || mini.coins[src.who]) coin(c, X(xi / PUSH.Q), Y(yi / PUSH.Q), R, 1);
+    for (const [xi, yi, st] of rest || mini.coins[src.who]) coin(c, X(xi / PUSH.Q), Y(yi / PUSH.Q), R, 1, st);
   }
   // the slots' marks along the top, the queued coins over them
   const counts = Array(PUSH.slots).fill(0);
-  for (const s of src.q) counts[s]++;
+  for (const s of src.q) counts[s]++;   // (queued coins drawn plain: whether one is a star is the drop's luck)
   for (let s = 0; s < PUSH.slots; s++) {
     const cx = X((s + 0.5) / PUSH.slots), on = counts[s] > 0;
     c.fillStyle = on ? (src.mini && state.turn === 'O' ? P.O : P.X) : 'rgba(255,255,255,.35)';
