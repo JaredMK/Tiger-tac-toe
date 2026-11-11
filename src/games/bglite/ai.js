@@ -1,7 +1,7 @@
 // Backgammon Lite: the computer's play.
 import { makeRng, randInt } from '../../core/random.js';
 import { tune } from '../../core/tune.js';
-import { BGL, bglDice, bglMoves, bglOther, bglPips, bglPoint, bglStep } from './rules.js';
+import { BGL, bglDice, bglMoves, bglOther, bglPips, bglPoint, bglRollDice, bglStep } from './rules.js';
 
 // A turn is planned whole: every order of the dice and every piece for each (bglPlans), each plan valued, and the
 // first step of the best one played (each die is a move of its own, so the next step plans again from there).
@@ -17,8 +17,8 @@ import { BGL, bglDice, bglMoves, bglOther, bglPips, bglPoint, bglStep } from './
 export const BGL_AI = { win: 1000, rollouts: 60, minRollouts: 6 };   // Hard: the rollouts per plan (fewer when its time runs out, never under minRollouts)
 const ROLLS = (() => { const r = []; for (let a = 1; a <= 6; a++) for (let b = a; b <= 6; b++) r.push({ v: [a, b], w: (a === b ? 1 : 2) / 36 }); return r; })();
 // The chance, in 36, that a roll lets a piece travel exactly t points (a die of t, or both dice summed; blocks ignored).
-const SHOT = (() => { const s = new Array(13).fill(0); for (let a = 1; a <= 6; a++) for (let b = 1; b <= 6; b++) for (let t = 1; t <= 12; t++) if (a === t || b === t || a + b === t) s[t] += 1 / 36; return s; })();
-const lite = mini => ({ n: mini.n, rolled: true, pos: { X: mini.pos.X.slice(), O: mini.pos.O.slice() }, dice: mini.dice ? { by: mini.dice.by, v: mini.dice.v.slice(), used: mini.dice.used.slice(), off: mini.dice.off || 0 } : null });
+const SHOT = (() => { const s = new Array(25).fill(0); for (let a = 1; a <= 6; a++) for (let b = 1; b <= 6; b++) for (let t = 1; t <= 24; t++) if (a === t || b === t || a + b === t || (a === b && (3 * a === t || 4 * a === t))) s[t] += 1 / 36; return s; })();   // (a double: three and four of it too)
+const lite = mini => ({ type: 'bglite', v: mini.v, tune: mini.tune, n: mini.n, rolled: true, pos: { X: mini.pos.X.slice(), O: mini.pos.O.slice() }, dice: mini.dice ? { by: mini.dice.by, v: mini.dice.v.slice(), used: mini.dice.used.slice(), off: mini.dice.off || 0 } : null });
 // Every way p could play the dice left from here: [{ steps: [{ d, k }], end, hits }], each step one die.
 export function bglPlans(mini, p) {
   const out = [];
@@ -42,9 +42,10 @@ export function bglValue(m, me, c) {
     const tO = bglPoint(o, b, n);                                   // (where an enemy piece would land, in its own count)
     if (mine === 1) {
       let miss = 1;
-      for (const a of new Set(m.pos[o])) { const d = tO - a; if (d >= 1 && d <= 12) miss *= 1 - SHOT[d]; }   // (each enemy piece behind it: its chance of a shot)
       const a = bglPoint(me, b, n);
-      v -= (1 - miss) * (a + c.aiBlot);
+      if (a === 1 && (m.v || 1) >= 2) continue;                       // (a lone piece on its own start point is never hit)
+      for (const e of new Set(m.pos[o])) { const d = tO - e; if (d >= 1 && d <= 24) miss *= 1 - SHOT[d]; }   // (each enemy piece behind it: its chance of a shot)
+      v -= (1 - miss) * (a - ((m.v || 1) >= 2 ? 1 : 0) + c.aiBlot);
     } else if (m.pos[o].some(a => a < tO)) v += c.aiBlock;
   }
   return v;
@@ -56,7 +57,8 @@ function rollout(start, me, c, r) {
   const m = lite(start);
   let p = bglOther(me);
   for (let t = 0; t < 200; t++) {
-    m.dice = { by: p, v: [1 + randInt(r, 6), 1 + randInt(r, 6)], used: [false, false], off: 0 };
+    const v = bglRollDice(m, 1 + randInt(r, 6), 1 + randInt(r, 6));
+    m.dice = { by: p, v, used: v.map(() => false), off: 0 };
     let bestP = null, bs = -Infinity;
     for (const pl of bglPlans(m, p)) { const s = staticOf(pl, p, c); if (s > bs) { bs = s; bestP = pl; } }
     if (bestP && bestP.steps.length) { m.pos = bestP.end.pos; }
@@ -93,7 +95,7 @@ export const needs = (pm, p) => Math.max(1, bglPips(pm, p) / BGL_PACE);
 // The chance a roll now ends the square for me (every piece off this turn).
 function rollWins(pm, me) {
   let q = 0;
-  for (const r of ROLLS) { const m = lite(pm); m.dice = { by: me, v: r.v.slice(), used: [false, false], off: 0 }; if (bglPlans(m, me).some(pl => pl.end.pos[me].every(a => a > m.n))) q += r.w; }
+  for (const r of ROLLS) { const m = lite(pm), v = bglRollDice(m, r.v[0], r.v[1]); m.dice = { by: me, v, used: v.map(() => false), off: 0 }; if (bglPlans(m, me).some(pl => pl.end.pos[me].every(a => a > m.n))) q += r.w; }
   return q;
 }
 export function best(pm, me, rng, style, ctx) {

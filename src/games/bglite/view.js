@@ -1,5 +1,5 @@
 // Backgammon Lite: the screen, the miniature, the move's words and sounds, and the inputs.
-import { BGL, BGLT, bglDice, bglMoves, bglTimes } from './rules.js';
+import { BGL, BGLT, bglDice, bglHome, bglMoves, bglTimes, bglV2 } from './rules.js';
 import { N, REDUCED, mv, state, waitLine, zoomedType } from '../../ui/app.js';
 import { dieFace } from '../../ui/art.js';
 import { arcTally, lateAt, pips } from '../../ui/progress.js';
@@ -41,7 +41,7 @@ const cellStyle = (col, slot, c) => `left:${(col * 100 / c).toFixed(3)}%;top:${(
 const piece = p => `<svg viewBox="-10 -10 20 20" aria-hidden="true"><circle r="8.6"/>${markSvgG(p, 3.6)}</svg>`;
 // The dice to show: those in play for the player on the move, or (in a move's flash) the move's own.
 function shownDice(mini, b, turn) {
-  if (b) return { v: b.v, used: b.kind === 'roll' ? [false, !!b.one] : b.used, by: b.by };
+  if (b) return { v: b.v, used: b.kind === 'roll' ? b.v.map((x, i) => !!b.one && i === 1) : b.used, by: b.by };
   const dc = bglDice(mini, turn);
   return dc ? { v: dc.v, used: dc.used, by: dc.by } : null;
 }
@@ -84,7 +84,8 @@ function table(mini, a, o) {
     return `<button class="bglg ${me}" style="${cellStyle(col, slot, c)}" data-act="move" ${mv(x)} aria-label="Land here"><i></i></button>`;
   }).join('') : '';
   const pts = Array.from({ length: n }, (_, i) => `<i class="bglpt${i % 2 ? ' b' : ''}" style="left:${((i + 1) * 100 / c).toFixed(3)}%;width:${(100 / c).toFixed(3)}%"></i>`).join('');
-  const zones = `<i class="bglz l" style="width:${(100 / c).toFixed(3)}%"></i><i class="bglz r" style="width:${(100 / c).toFixed(3)}%"></i>`;
+  const zones = `<i class="bglz l" style="width:${(100 / c).toFixed(3)}%"></i><i class="bglz r" style="width:${(100 / c).toFixed(3)}%"></i>`
+    + (bglV2(mini) ? ['X', 'O'].map(p => { const h = bglHome(mini), from = p === 'X' ? n - h + 1 : 1; return `<i class="bglhm ${p}" style="left:${(from * 100 / c).toFixed(3)}%;width:${(h * 100 / c).toFixed(3)}%"></i>`; }).join('') : '');   // each side's home zone: a band in its colour under its last points
   const board = `<div class="bglw"><div class="bglb" style="--c:${c}" role="img" aria-label="The track: ${n} points">${zones}${pts}${pieces}${ghosts}</div></div>`;
   const arrows = `<div class="bglar" aria-hidden="true"><svg class="X" viewBox="0 0 40 12"><path d="M2 6h33M29 1.5l6 4.5-6 4.5"/></svg><svg class="O" viewBox="0 0 40 12"><path d="M38 6H5M11 1.5L5 6l6 4.5"/></svg></div>`;
   // the dice
@@ -102,10 +103,10 @@ function table(mini, a, o) {
   const tal = p => arcTally(p, o, pips(p, offOf(p), BGL.pieces, !!(b && b.kind === 'use' && b.off && b.by === p), b ? t.slid : null));
   let say = '', ok = '';
   if (b) {
-    if (b.kind === 'roll') say = b.stuck ? 'No move: the turn passes' : b.one ? `Opening roll: ${b.v[0]}` : `${W(b.by)} rolled ${b.v[0]} and ${b.v[1]}`;
+    if (b.kind === 'roll') say = b.stuck ? 'No move: the turn passes' : b.one ? `Opening roll: ${b.v[0]}` : b.v.length === 4 ? `Double ${b.v[0]}: four moves` : `${W(b.by)} rolled ${b.v[0]} and ${b.v[1]}`;
     else if (b.hit) { say = `Hit! ${W(b.by === 'X' ? 'O' : 'X')} goes back to the start`; ok = 'ok'; }
     else if (b.off) { say = 'A piece off!'; ok = 'ok'; }
-    else if (b.lost) say = 'The other die has no move';
+    else if (b.lost) say = b.v.length === 4 ? 'No move for the rest' : 'The other die has no move';
     if (b.again && !say) say = 'Roll again';
   }
   const sayAt = b ? (b.kind === 'roll' ? t.land : b.hit ? t.hitAt : t.slid) : null;
@@ -136,7 +137,8 @@ export function miniature(mini, final) {
 export function moveText(f, who) {
   const b = f.bgl;
   if (!b) return `${who} played`;
-  if (b.kind === 'roll') return b.stuck ? `${who} rolled ${b.v.filter(Boolean).join(' and ')}: no move` : `${who} rolled ${b.v.filter(Boolean).join(' and ')}`;
+  const rolled = b.v.length === 4 ? `a double ${b.v[0]}` : b.v.filter(Boolean).join(' and ');
+  if (b.kind === 'roll') return b.stuck ? `${who} rolled ${rolled}: no move` : `${who} rolled ${rolled}`;
   return `${who} moved ${b.v[b.d]}${b.hit ? ' and hit' : b.off ? ' and bore a piece off' : ''}`;
 }
 // The roll: the rattle, the dice landing (a thud for no move); a piece: its click as it lands, a hit's thump as the
@@ -154,13 +156,13 @@ export function sounds(f, add, won, mini, last) {
 export function bgldieAct(el) {
   if (zoomedType() !== 'bglite' || state.screen !== 'mini' || state.flash || state.done) return;
   const d = Number(el.dataset.i);
-  if (d !== 0 && d !== 1) return;
+  if (!(d >= 0 && d <= 3)) return;
   bglDraft = { sq: state.zoom, d };
   render();
 }
 // Someone else's move replayed (ui/replay.js): the die they chose, then the move.
 function replayInput(act, val, r) {
-  if (act === 'bgldie' && /^i=[01]$/.test(val || '')) { bglDraft = { sq: r.sq, d: Number(val.slice(2)) }; return false; }
+  if (act === 'bgldie' && /^i=[0-3]$/.test(val || '')) { bglDraft = { sq: r.sq, d: Number(val.slice(2)) }; return false; }
   return false;
 }
 const replaySynth = (m, mini) => (m && typeof m === 'object' && Number.isInteger(m.d) ? [[0, 'bgldie', 'i=' + m.d], [450, 'move', 'm=' + JSON.stringify(m)]] : null);
@@ -171,5 +173,5 @@ export const actions = { bgldie: bgldieAct };
 export function heldSub(mini, turn, f, a) {
   if (f) return '';
   const who = `<b class="${turn}">${N(turn)}</b>`;
-  return bglDice(mini, turn) ? `${who}'s turn` : `${who} moved a piece off · goes again`;
+  return bglDice(mini, turn) ? `${who}: dice to use` : `${who} moved a piece off · goes again`;
 }

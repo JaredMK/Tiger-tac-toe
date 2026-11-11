@@ -3,18 +3,20 @@ import { AGAIN_TUNE } from '../../core/tune.js';
 
 export const info = { name: 'Backgammon Lite', hint: 'Roll and race your 3 pieces off the far end' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
-export const minVersion = '1.8.0';   // the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
+export const minVersion = '1.9.0';   // the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
 export const category = 'luck';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const superChaos = false;   // never in Super Chaos (one shared track: the pieces meet)
-export const explainer = { name: 'Backgammon Lite', play: 'Roll two dice (the very first roll: one). Each die moves one of your pieces that many points (both on one piece is fine). Land on a lone enemy piece to send it back to its start. Two of your pieces on a point block it.{goAgain}', win: 'Move all 3 of your pieces off the far end first.' };
+export const explainer = { name: 'Backgammon Lite', play: 'Your 3 pieces start on your first point. Roll two dice (the very first roll: one). Each die moves a piece that many points; a double moves four times. Land on a lone enemy piece to send it back to its start. Two of your pieces on a point block it. Bear off past the end once all your pieces are in your home zone, the last {home} points.{goAgain}', win: 'Move all 3 of your pieces off first.' };
 // {goAgain} in the explainer: the text below while "Go again on success" is on (AGAIN_TUNE), the other while off (ui/explainer.js fillTune).
 export const goAgainText = { on: ' Move a piece off? Roll again.', off: '' };
 // Its settings (the admin's Mini-game Settings; core/tune.js): read with tune(mini). The track's length is dealt into
-// the square (mini.n). Tuned by tests/sim/bglite.sim.js (November 2026: 8 points, the opener's first roll one die;
-// Normal against Normal about 4.9 turns a player, the winner 5.1, the first mover about 50%).
+// the square (mini.n). Tuned by tests/sim/bglite.sim.js (reworked November 2026: 8 points, a home zone of the last 3,
+// the opener's first roll one die; Normal against Normal about 4.5 turns a player, the winner 4.7, the first mover
+// about 49%; Hard against Hard 4.2, 49%).
 export const TUNE = [
   AGAIN_TUNE,
   { k: 'len', label: 'Track length (points)', def: 8, min: 5, max: 16, step: 1, group: 'Board' },
+  { k: 'home', label: 'Home zone (the last points of the track)', def: 3, min: 1, max: 8, step: 1, group: 'Board' },
   { k: 'openOne', label: 'The opener\'s first roll is one die', def: 'on', opts: ['on', 'off'], group: 'Rules' },
   { k: 'aiHit', label: 'Computer: worth of a hit (points of race)', def: 6, min: 0, max: 15, step: 0.5, group: 'Computer' },
   { k: 'aiBlot', label: 'Computer: risk of a lone piece (points)', def: 4, min: 0, max: 15, step: 0.5, group: 'Computer' },

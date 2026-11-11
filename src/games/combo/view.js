@@ -55,7 +55,7 @@ function comboTable(mini, a, o) {
   const res = resTxt ? `<p ${lateAt('arcres ' + (f.kind === 'claim' ? 'ok' : 'no'), f.kind === 'roll' ? tim.land : 0)} role="status">${resTxt}</p>`
     : o.view ? '<p class="arcnote"></p>'
     : o.locked ? `<p class="arcnote">${waitLine(turn)}</p>`
-    : `<p class="arcnote">${cur ? '' : `${W(turn)}'s turn`}</p>`;   // (no help text in the game: the lit combos and Roll say it; the roll count is in the header, heldSub)
+    : `<p class="arcnote">${cur ? '' : `${W(turn)} to play`}</p>`;   // (no help text in the game: the lit combos and Roll say it; the roll count is in the header, heldSub)
   const rollsLeft = cur ? R - cur.rolls : R, rollM = !cur || !cur.rolls ? 'roll' : 'roll:' + held.join('');
   const canRoll = mover && !f && rollsLeft > 0 && !(cur && held.every(Boolean));
   const btn = o.view ? '' : `<div class="cbtns one"><button class="big ${turn}" data-act="move" ${mv(rollM)}${canRoll ? '' : ' disabled'}>${cur && cur.rolls ? `Roll again (${rollsLeft} left)` : 'Roll'}</button></div>`;

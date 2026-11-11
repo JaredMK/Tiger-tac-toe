@@ -1,11 +1,12 @@
 'use strict';
 // Simulations: Backgammon Lite. Slow, so never part of npm test:
 // npm run sim -- bglite
-// The settings (meta.js TUNE) were picked here (November 2026), the computer against itself (Normal), 3000 squares each:
-//   track length 7: 4.33 turns a player (the winner 4.57); 8: 4.87 (5.12); 9: 5.49 (5.74); 10: 6.15 (6.41).
-//   Without the opener's single die the first mover won 61-65% at every length (a race's opener is half a turn ahead);
-//   with it, 47-53%. Picked: 8 points, the opening roll one die: about 4.9 turns a player, the first mover about 50%.
-//   Hard (rollouts) against Normal: about 52-53%; Normal against Easy (any legal step) about 71%.
+// The settings (meta.js TUNE) were picked here (reworked November 2026: the pieces start on their own first point, bear
+// off only from the home zone, a double is four moves), the computer against itself (Normal), 800 squares each:
+//   length 6: home 2 5.18 turns a player, home 3 4.43, home 4 4.22; length 7: 4.92 / 4.19 / 3.98; length 8: 5.35 / 4.43 /
+//   4.12; length 9: 6.60 / 5.25 / 4.67 (the opener's single die on). Without the single die the first mover won 51-60%
+//   (length 8, home 3: 55.5%); with it, 46-53%. Picked: 8 points, a home zone of 3, the opening roll one die: about
+//   4.4 turns a player, the first mover about 49%.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const E = require('../engine.js');

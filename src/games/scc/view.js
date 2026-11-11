@@ -106,7 +106,7 @@ export function miniature(mini, final) {
 // (with "Go again on success" on) a score that keeps the turn.
 export function heldSub(mini, turn, f, a) {
   const who = `<b class="${turn}">${N(turn)}</b>`;
-  return mini.turn && mini.turn.by === turn ? `${who}'s turn in progress` : f ? '' : `${who} scored · goes again`;
+  return mini.turn && mini.turn.by === turn ? `${who}: turn in progress` : f ? '' : `${who} scored · goes again`;
 }
 export function moveText(f, who) {
   const s = f.scc;
