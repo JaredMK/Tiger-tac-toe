@@ -149,6 +149,11 @@ function loadModel(read, oldTypes) {
       if (!rp || !rw) throw new Error(`${file}: raceExplainer is not plain play/win strings`);
       fields.push(fld('Race Play', site(file, rp), { kind: 'text' }), fld('Race Win', site(file, rw), { kind: 'text' }));
     }
+    const lm = /^export const explainerList = /m.exec(src);   // a list under Play and Win (Dice Combo's combos): each entry its own line
+    if (lm) {
+      const la = lm.index, lb = lineEnd(src, la);
+      for (const km of src.slice(la, lb).matchAll(/(\w+): '/g)) { const lit = keyLiteral(src, la, lb, km[1]); if (lit) fields.push(fld('List ' + km[1], site(file, lit), { kind: 'text' })); }
+    }
     const ek = /^export const EXPLAIN_KEYS = \[([^\]]*)\]/m.exec(src);   // settings outside TUNE the explainer fills in (Risky Rolls' target, from config/pig)
     const allowed = new Set([...src.matchAll(/\bk: '(\w+)'/g)].map(m => m[1]).concat(ek ? [...ek[1].matchAll(/'(\w+)'/g)].map(m => m[1]) : []));
     for (const f of fields) for (const s of f.sites) for (const m of siteValue(read, s).matchAll(/\{(\w+)\}/g)) allowed.add(m[1]);

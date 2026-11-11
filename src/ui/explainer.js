@@ -58,6 +58,8 @@ function fillTune(t, x) {
   const f = s => s.replace(/\{(\w+)\}/g, (m, k) => (v[k] != null ? String(v[k]) : m));
   return { name: x.name, play: f(x.play), win: f(x.win) };
 }
+// A game's list under Play and Win (meta.js explainerList: { key: 'Label: meaning' }, e.g. Dice Combo's combos).
+const exList = t => { const l = GAMES[t] && GAMES[t].meta.explainerList; if (!l) return ''; return `<ul class="exlist">${Object.values(l).map(v => { const i = v.indexOf(': '); return `<li>${i > 0 ? `<b>${v.slice(0, i)}</b> ${v.slice(i + 2)}` : v}</li>`; }).join('')}</ul>`; };
 export let explainT = null;                          // the mini-game whose explainer is open
 export const qBtn = (t, cls) => `<button class="qbtn${cls ? ' ' + cls : ''}" data-act="explain" data-t="${t}" aria-label="How to play ${explainOf(t).name}">${cls === 'sm' ? '<i>?</i>' : '?'}</button>`;   // the small one: a 26px sticker in a 40px tap target
 const CAT_LABEL = { luck: 'More luck', skill: 'More skill', brain: 'More brain' };   // a game's kind (meta.js category), at the top of its "?"
@@ -68,7 +70,7 @@ export function renderExplain() {
     <p class="excat">${GAMES[explainT] && CAT_LABEL[GAMES[explainT].meta.category] || '&nbsp;'}</p>
     <h2>${explainT === 'timer' ? CLOCK_ICON : explainT === 'superchaos' || explainT === 'mode' ? SC_ICON : ICONS[explainT]}<span>${x.name}</span></h2>
     ${x.text ? `<p class="exline wide"><span>${x.text}</span></p>` : x.lines ? x.lines.map(([k, v]) => `<p class="exline wide"><b>${k}</b><span>${v}</span></p>`).join('') : `<p class="exline play"><b>Play</b><span>${x.play}</span></p>
-    <p class="exline win"><b>Win</b><span>${x.win}</span></p>`}
+    <p class="exline win"><b>Win</b><span>${x.win}</span></p>${exList(explainT)}`}
     ${practiceOffered(explainT) ? `<button class="btn practice" data-act="practice" data-t="${explainT}">Practice</button>` : ''}
     <small>Tap anywhere to close</small></div></div>`;
 }

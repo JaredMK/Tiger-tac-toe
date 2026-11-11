@@ -6,7 +6,9 @@ export const release = 'admin';   // the default (the admin's dashboard can chan
 export const minVersion = '1.8.0';   // the oldest client version that has this game (core/client.js)
 export const category = 'luck';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const superChaos = false;   // (not dealt in Super Chaos)
-export const explainer = { name: 'Dice Combo', play: 'Roll five dice up to {rolls} times. Tap dice to hold them between rolls. Then claim a combo from your card: three or four of a kind, full house, small or large straight, five alike. Nothing fits? Your turn ends.{goAgain}', win: 'Claim {goal} combos.' };   // ({rolls}, {goal}: its settings, TUNE below)
+// The combos, one line each, under Play and Win in the "?" (ui/explainer.js: a game's explainerList, "Label: meaning").
+export const explainerList = { k3: 'Three of a kind: three dice the same (like 4-4-4).', k4: 'Four of a kind: four dice the same.', fh: 'Full house: three of one number plus two of another.', ss: 'Small straight: 4 in a row (like 2-3-4-5).', ls: 'Large straight: 5 in a row (1-2-3-4-5 or 2-3-4-5-6).', y5: 'Five alike: all five dice the same. It also counts as three or four of a kind.' };
+export const explainer = { name: 'Dice Combo', play: 'Roll five dice up to {rolls} times. Tap dice to hold them between rolls. Then claim a combo not yet on your card. Nothing fits? Your turn ends.{goAgain}', win: 'Claim {goal} combos.' };   // ({rolls}, {goal}: its settings, TUNE below)
 // {goAgain} in the explainer: the text below while "Go again on success" is on (AGAIN_TUNE), the other while off (ui/explainer.js fillTune).
 export const goAgainText = { on: ' Claimed one? Go again.', off: '' };
 // Its settings (the admin's Mini-game Settings; core/tune.js): read with tune(mini). Tuned by tests/sim/combo.sim.js

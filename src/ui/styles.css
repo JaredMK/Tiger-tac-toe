@@ -3871,3 +3871,5 @@ button.die.bgldie { cursor: pointer; }
 .tbglm svg.tbgl { width: 94cqw; height: auto; display: block; flex: none; }
 .tpip.tbglp { width: auto; gap: 3cqw; }
 .tseq span.q svg.tpq { width: 70%; height: 70%; fill: none; stroke: var(--muted); stroke-width: 1.3; stroke-linecap: round; }   /* Patterns' miniature: the gap's question mark, drawn */
+.exlist { list-style: none; margin: .5em 0 0; padding: 0; display: grid; gap: .25em; font-size: .92em; text-align: left; }   /* a game's list in its "?" (Dice Combo's combos) */
+.exlist b { font-weight: 800; }

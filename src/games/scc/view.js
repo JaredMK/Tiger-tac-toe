@@ -90,11 +90,13 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
 }
 // The miniature: two little ships on the water, X's on the left, O's on the right, each with its mark on the sail and
 // its hold filling with cargo toward the target.
+// The miniature: each player's ship on the water, the mast standing on the deck and the sail over the hull's right half
+// (beside the cargo hold, which fills toward the target).
 export function miniature(mini, final) {
   const T = sccCfg(mini).target;
   const ship = (p, x) => {
     const f = Math.max(0, Math.min(1, mini.score[p] / T)), hh = 13 * f;
-    return `<g class="tsccs ${p}" transform="translate(${x} 0)"><path class="tsccm" d="M22 6v30"/><path class="tsccsl" d="M22 8l14 22H22z"/><g transform="translate(27.2 24)">${markSvgG(p, 3.4)}</g>`
+    return `<g class="tsccs ${p}" transform="translate(${x} 0)"><path class="tsccm" d="M26 5v39"/><path class="tsccsl" d="M26 7l14 31H26z"/><g transform="translate(30.8 29)">${markSvgG(p, 3.4)}</g>`
       + `<rect class="tscch" x="6" y="31" width="13" height="13" rx="1.5"/><rect class="tsccf" x="6" y="${(44 - hh).toFixed(2)}" width="13" height="${hh.toFixed(2)}" rx="1.5"/>`
       + `<path class="tsccb" d="M2 44h40l-6 9H8z"/></g>`;
   };
