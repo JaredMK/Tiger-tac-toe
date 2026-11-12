@@ -77,11 +77,14 @@ export function turnOpen(st, i) {
 // ---------- playback: how long a settled move takes to play on a phone ----------
 // The turn clock allows for it, so the next player gets the full time once the move has played out.
 // The phones and the server use the same figures (Normal: the server never knows a player's Animation choice).
+// A die tumbles this much longer than it first did (December 2026: every game with dice: the roll's tumble, its landing, and
+// everything after the landing move later by it; a base figure like every timing here, so Speed shortens it as the rest).
+export const DIE_MORE = 350;
 export const PLAY = {
   spot: 600,                                                              // the square glows on the board before the zoom
   flash: { move: 600, again: 350, claim: 800, draw: 1100, match: 900, card: 900 },   // the result stays up this long once its animation is over (a win: the game's own winning moment; the square's stamp follows on the board)
   flip: 500,                                                              // Find the Pair's cards turn back over
-  die: 600, spin: 1000, hop: 130,                                          // a die's tumble, the candy wheel's spin, each hop of a token
+  die: 600 + DIE_MORE, spin: 1000, hop: 130,                                          // a die's tumble, the candy wheel's spin, each hop of a token
   spin3: 700, slide: 750, knock: 650,                                     // Bump's 1-2-3 spinner; a ladder climb or a snake slide; a piece knocked Home
 };
 // The pace. ANIM.admin: the admin's Animation speed (config/anim/speed: 0.5 to 2, default 1), for everyone: every

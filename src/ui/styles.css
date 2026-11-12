@@ -268,7 +268,7 @@ main.scr.mini:has(.fing), main.scr.mini:has(.fing) * { touch-action: none; -webk
 
 /* on-screen keyboard (Five Letters, Hangman) */
 .kb { flex: none; width: 100%; display: flex; flex-direction: column; gap: 6px; }
-.krow { display: flex; justify-content: center; gap: 4px; }
+.krow { display: flex; justify-content: center; gap: 4px; width: 100%; }
 .key {
   position: relative; flex: none; width: calc((100% - 9 * 4px) / 10); min-width: 0; height: 46px; padding: 0;
   border: 0; border-radius: 8px; background: var(--panel-2);
@@ -2202,8 +2202,8 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .krabs { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 7px; min-height: 0; width: min(100%, 400px); margin: 0 auto; }
 .krabs > * { flex: none; }
 .kstrip { display: flex; flex-direction: column; gap: 2px; }
-.krow, .krail { position: relative; }
-.krow { display: grid; grid-template-columns: minmax(0, 1fr); height: 44px; } .krail { height: 24px; }
+.kzrow, .krail { position: relative; }   /* (.krow is the on-screen keyboard's row: Five Letters, Hangman) */
+.kzrow { display: grid; grid-template-columns: minmax(0, 1fr); height: 44px; } .krail { height: 24px; }
 .kcells { grid-area: 1 / 1; display: grid; grid-template-columns: repeat(11, minmax(0, 1fr)); gap: 3px; }
 .kcells i { font: 400 17px/1 'Luckiest Guy', 'Arial Black', sans-serif; font-style: normal; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; padding-top: 4px; border: 2.5px solid var(--ink); border-radius: 9px 7px 10px 8px; background: var(--paper); color: var(--ink); min-width: 0; }
 .kcells i svg { width: 12px; height: 12px; flex: none; }

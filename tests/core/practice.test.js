@@ -1,6 +1,6 @@
 'use strict';
 // Practice (How to Play's Practice button: core/match.js startPractice): a Play Computer match of one mini-game alone,
-// every square that game, the player's side drawn at random, the computer on Easy; state.practice marks it, no stats
+// every square that game, the player always X and first, the computer on Easy; state.practice marks it, no stats
 // report is begun for it, and the setup's own choices are left as they were. Any other start clears the mark. The
 // templates rules (database.rules.json) name every mini-game the registry has, and no other.
 const test = require('node:test');
@@ -11,7 +11,7 @@ const E = require('../engine.js');
 const { startPractice } = require('../../src/core/match.js');
 const { SC_ONLY, TYPES } = require('../../src/games/index.js');
 
-test('startPractice: that game alone in every square, the side drawn, the computer on Easy, marked, no stats; the setup kept', () => {
+test('startPractice: that game alone in every square, the player always X and first, the computer on Easy, marked, no stats; the setup kept', () => {
   const rng = E.makeRng('practice'), sides = new Set();
   for (let k = 0; k < 12; k++) {
     const st = E.newMatch(E.makeRng('p' + k), { games: ['ttt'] });
@@ -19,7 +19,7 @@ test('startPractice: that game alone in every square, the side drawn, the comput
     st.setup.vsCpu = { pick: 'O', level: 'hard' };
     st.stats = { id: 'old', mode: 'cpu', sent: false };
     const me = startPractice(st, rng, 'hangman', 'Ann');
-    assert.ok(me === 'X' || me === 'O'); sides.add(me);
+    assert.equal(me, 'X', 'the player is always X'); assert.equal(st.turn, 'X', 'and moves first'); sides.add(me);
     assert.deepEqual(st.practice, { type: 'hangman' });
     assert.ok(st.squares.every(sq => sq.mini.type === 'hangman'), 'every square that game');
     assert.deepEqual(st.games, ['hangman'], 'resets deal it too');
@@ -29,7 +29,7 @@ test('startPractice: that game alone in every square, the side drawn, the comput
     assert.deepEqual(TYPES.filter(t => st.setup.games[t]), ['c4', 'hilo'], "the setup's checklist as it was");
     assert.deepEqual(st.setup.vsCpu, { pick: 'O', level: 'hard' }, "Play Computer's side and level as they were");
   }
-  assert.deepEqual([...sides].sort(), ['O', 'X'], 'either side, drawn');
+  assert.deepEqual([...sides], ['X'], 'never drawn: always X');
 });
 test('startPractice refuses a game that is not one (or a Super Chaos only game), and startMatch clears the mark', () => {
   const st = E.newMatch(E.makeRng('p'), { games: ['ttt'] });

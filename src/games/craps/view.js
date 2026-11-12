@@ -54,7 +54,7 @@ function crapsTable(mini, a, o) {
   }).join('') : '';
   const puck = pt != null ? `<b class="kpuck ${by}${setNow && play ? ' fly' : ''}" style="left:${at12(pt)}%;--to:${at12(pt)}%${setNow && play ? `;--t:${tim.puck}ms;--d:${CRAPS.puck}ms` : ''}" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2.6l2.8 6 6.5.8-4.8 4.5 1.3 6.5L12 17.2l-5.8 3.2 1.3-6.5L2.7 9.4l6.5-.8z"/></svg></b>` : '';
   const what = pt == null ? 'First roll: 7 or 11 wins; 2, 3 or 12 is out' : `${pt} wins, 7 is out`;
-  const top = `<div class="kstrip" role="img" aria-label="${what}"><div class="krow">${strip}${hits}</div><div class="krail">${puck}</div></div>`;
+  const top = `<div class="kstrip" role="img" aria-label="${what}"><div class="kzrow">${strip}${hits}</div><div class="krail">${puck}</div></div>`;
   // the dice: each roll's pair in its turn with its total, the last one staying; nothing rolled on show: the dice as they lie (the last round's, or two not rolled yet)
   const totKind = k => (k === n - 1 && shown.result === 'win' ? 'w' : k === n - 1 && shown.result === 'lose' ? 'o' : k === 0 && shown.point != null && shown.was == null ? 'p ' + by : 'x');
   let dice;
