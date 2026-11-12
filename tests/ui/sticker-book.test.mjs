@@ -31,20 +31,6 @@ test('the stylesheet is the page\'s, after the main one', () => {
   assert.ok(page.indexOf('src/ui/stickers.css') > page.indexOf('src/ui/styles.css'));
 });
 
-test('the results: the one big action first, then the board, the menu and Share as round stickers; the facts as notes', () => {
-  Object.assign(state, board(), { screen: 'win', online: null, cpu: 'O', winner: 'X', winLine: [0, 4, 8], winReason: 'line' });
-  for (const i of [0, 4, 8]) state.squares[i].owner = 'X';
-  state.squares[2].owner = 'O';
-  const html = renderWin();
-  assert.match(html, /<main class="scr win-scr sb win">/);
-  const big = html.indexOf('data-act="rematch"'), rounds = ['review', 'menu', 'share-result'].map(a => html.indexOf(`data-act="${a}"`));
-  assert.ok(big > 0 && rounds.every(i => i > big), 'Rematch before the round stickers');
-  assert.match(html, /class="stk mode m-again" data-act="rematch"[^>]*><b>Rematch<\/b>/);
-  assert.match(html, /<p class="fact why"[^>]*>Three in a row<\/p><p class="fact fsq"[^>]*>3 squares to 1<\/p>/);
-  assert.match(html, /<div class="cel win"/, 'the celebration');
-  assert.doesNotMatch(html, /class="[^"]*\bsq\b/, 'no board-tile class on the results');
-});
-
 test('Play Computer: the X and O facing off, one pen ring for each choice, Start the one big sticker', () => {
   Object.assign(state, board(), { screen: 'setup', online: null });
   state.setup.vs = 'cpu'; state.setup.vsCpu = null;

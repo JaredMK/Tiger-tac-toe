@@ -9,7 +9,7 @@ import { other } from '../core/util.js';
 import { copyText, downloadFile, shareFile, siteUrl } from '../net/platform.js';
 import { esc, state } from './app.js';
 import { toonG } from './art.js';
-import { ICON } from './stickers.js';
+import { CICON, smallPanel } from './comic.js';
 import { render } from './render.js';
 
 export const CARD = 1080;                          // the picture's side, in pixels
@@ -244,10 +244,10 @@ export async function shareResult() {
     shareBusy = false; render();
   }
 }
-// The Share result sticker (a round one, in the results screen's row of round stickers) and its note line (always
+// The Share result panel (a small one, in the results screen's row of small panels) and its note line (always
 // there, under the row, so nothing moves).
 export function shareBtn() {
-  return `<button class="stkr share" data-act="share-result"${shareBusy ? ' disabled' : ''} aria-label="Share result" style="--r:-4deg;--k:9"><span class="stk rd">${ICON.share}</span><small>share</small></button>`;
+  return smallPanel('share-result', CICON.share, 'Share', { cls: 'c', k: 9, aria: 'Share result', attrs: shareBusy ? ' disabled' : '' });
 }
 export function shareLine() { return `<div class="shline" role="status">${esc(shareNote)}</div>`; }
 export function resetShare() { cache = null; setNote(''); }

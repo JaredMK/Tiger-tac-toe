@@ -174,7 +174,7 @@ function loadModel(read, oldTypes) {
     fld('Back button', region(EXPLAINER, /data-act="practice-back" aria-label="Back to How to Play">\$\{CHEV\}<span>(.*?)<\/span>/, 'tpl')),
     fld('Practice again', region(EXPLAINER, /data-act="practice" data-t="\$\{t\}" style="--k:6"><b>(.*?)<\/b>/, 'tpl')),
     fld('Practice again note', region(EXPLAINER, /data-act="practice" data-t="\$\{t\}" style="--k:6"><b>[^<]*<\/b><small>(.*?)<\/small>/, 'tpl')),
-    fld('End screen back', region(EXPLAINER, /roundStk\('practice-back', ICON\.help, '([^']*)'/, 'sq')),
+    fld('End screen back', region(EXPLAINER, /smallPanel\('practice-back', CICON\.help, '([^']*)'/, 'sq')),
   ]);
   sec('other', 'credits', 'Credits', [
     fld('Trivia', after(EXPLAINER, /visibleTypes\(\)\.includes\('trivia'\) \? (?=')/)),

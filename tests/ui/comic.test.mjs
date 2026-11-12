@@ -17,6 +17,7 @@ const require = createRequire(import.meta.url);
 const E = require('../engine.js');
 const MM = await import('../../src/net/matchmaking.js');
 const { renderMenu } = await import('../../src/ui/screens/menu.js');
+const { renderWin } = await import('../../src/ui/screens/win.js');
 const { state } = await import('../../src/ui/app.js');
 const ROOT = new URL('../../', import.meta.url);
 const CSS = fs.readFileSync(new URL('src/ui/comic.css', ROOT), 'utf8');
@@ -57,4 +58,20 @@ test('tappable panels are 44 px or more, skewed, shadowed and press in; informat
 
 test('no display type under 16 px in the comic stylesheet', () => {
   for (const m of CSS.matchAll(/font: 400 (?:clamp\((\d+)px[^)]*\)|(\d+)px)[^;]*'Bangers'/g)) assert.ok(Number(m[1] || m[2]) >= 16, m[0]);
+});
+
+test('the results: Rematch the one big panel, then Board, Menu and Share as small panels; the facts as burst badges; the celebration', () => {
+  Object.assign(state, board(), { screen: 'win', online: null, cpu: 'O', winner: 'X', winLine: [0, 4, 8], winReason: 'line' });
+  for (const i of [0, 4, 8]) state.squares[i].owner = 'X';
+  state.squares[2].owner = 'O';
+  const html = renderWin();
+  assert.match(html, /<main class="scr win-scr cc loud win">/);
+  assert.deepEqual(panels(html).map(p => p.act), ['rematch', 'review', 'menu', 'share-result'], 'Rematch first, then the small panels');
+  assert.match(html, /class="pn y big" data-act="rematch"[^>]*><i class="ptag"[^>]*>again\?<\/i><b>Rematch!<\/b>/);
+  assert.match(html, /<span class="bbadge y why"[^>]*><span>Three in a row<\/span><\/span><span class="bbadge w fsq"[^>]*><span>3 squares to 1<\/span><\/span>/);
+  assert.match(html, /<div class="cel win"/, 'the confetti'); assert.match(html, /class="ccrays"/, 'the rays');
+  assert.doesNotMatch(html, /class="[^"]*\bsq\b/, 'no board-tile class on the results');
+  state.winReason = 'resign'; state.cpu = 'X'; state.winner = 'O';
+  assert.match(renderWin(), /resigned/, 'a computer\'s name stays markup, never escaped twice');
+  assert.doesNotMatch(renderWin(), /&lt;svg/);
 });

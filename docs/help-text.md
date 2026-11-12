@@ -484,7 +484,7 @@ Practice button: Practice
 Back button: Back to How to Play
 Practice again: Practice again
 Practice again note: another go
-End screen back: how to play
+End screen back: How to play
 
 ## Credits [credits]
 Trivia: <p>Trivia questions from the <a href="https://opentdb.com" target="_blank" rel="noopener noreferrer">Open Trivia Database</a>, opentdb.com, <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a>.</p>

@@ -22,7 +22,7 @@ import { cutHaptics } from './haptics.js';
 import { SND } from '../audio/sound.js';
 import { chaosSetup } from './screens/setup.js';
 import { renderWin } from './screens/win.js';
-import { ICON, roundStk } from './stickers.js';
+import { CICON, smallPanel } from './comic.js';
 import { cpuStop, scheduleCpu } from './turns.js';
 
 /* ----- explainers: the rules in short, from the "?" in a mini-game, the game list, or How to Play ----- */
@@ -130,10 +130,10 @@ export function practiceEnd() {
 export function renderPracticeEnd() {
   const t = state.practice && state.practice.type;
   if (state.practice && state.practice.test) {                   // the admin's Test play (ui/sandbox.js): the result, then back to the admin page by itself
-    const tr = `<div class="endgo"><button class="stk mode m-again" data-act="test-again" style="--k:6"><b>Play again</b><small>same game, same settings</small></button></div><div class="menu-rounds endrounds">${roundStk('test-back', ICON.home, 'back to admin', { r: -3, k: 7, label: 'Back to admin' })}</div>`;
+    const tr = `<div class="endgo"><button class="pn y big" data-act="test-again" style="--k:6"><b>Play again</b><small>same game, same settings</small></button></div><div class="ccsmall endsmall">${smallPanel('test-back', CICON.home, 'Back to admin', { k: 7 })}</div>`;
     return renderWin(tr);
   }
-  const row = `<div class="endgo"><button class="stk mode m-again" data-act="practice" data-t="${t}" style="--k:6"><b>Practice again</b><small>another go</small></button></div><div class="menu-rounds endrounds">${roundStk('practice-back', ICON.help, 'how to play', { r: -3, k: 7, label: 'Back to How to Play' })}</div>`;
+  const row = `<div class="endgo"><button class="pn y big" data-act="practice" data-t="${t}" style="--k:6"><b>Practice again</b><small>another go</small></button></div><div class="ccsmall endsmall">${smallPanel('practice-back', CICON.help, 'How to play', { k: 7, aria: 'Back to How to Play' })}</div>`;
   return renderWin(row);
 }
 // Opened and closed in place: the screen underneath is not drawn again (no scroll jump, no move used).
