@@ -10,10 +10,11 @@ export const explainer = { name: 'Thirty-One', play: 'One deck (7 to ace) and on
 // {goAgain} in the explainer: the text below while "Go again on success" is on (AGAIN_TUNE), the other while off (ui/explainer.js fillTune).
 export const goAgainText = { on: ' Raised your score? Go again.', off: '' };
 // Its settings (the admin's Mini-game Settings; core/tune.js): read with tune(mini). Tuned by tests/sim/t31.sim.js (November
-// 2026, the rework: one deck of 32 for both, three suits dealt, the pile empty at the start). Normal v Normal, turns
-// each (the winner's; the first mover) at a target of 27: 2.4 (2.8; 66%), 28: 2.8 (3.1; 64%), 29: 3.2 (3.5; 60%), 30: 4.0
-// (4.3; 57.6%), 31: 5.7 (6.0; 55%, one square in five past 8 turns and a few never done), so 30: an ace with a ten or
-// picture and a 9 or better, or three cards worth 10. Hard v Hard at 30: 4.4 (4.7; 55%); Easy 6.4 (6.6; 54%).
+// 2026, the rework: one deck of 32 for both, three suits dealt, the pile empty at the start; a square is never won on
+// a first turn). Normal v Normal, turns each (the winner's; the first mover) at a target of 27: 2.5 (2.8; 67%), 28: 2.8
+// (3.1; 65%), 29: 3.2 (3.5; 61%), 30: 4.0 (4.3; 58%), 31: 5.7 (6.0; 56%, one square in five past eight turns and 2.5% never
+// won: each side can sit on what the other needs), so 30: an ace with a ten or picture and a 9 or better, or three cards
+// worth 10. At 30: Hard v Hard 4.4 (4.7; 56%), Easy v Easy 5.6 (5.9; 56%); Hard beats Normal 65%.
 export const TUNE = [
   AGAIN_TUNE,
   { k: 'target', label: 'Score to win', def: 30, min: 24, max: 31, step: 1, group: 'Rules' },
