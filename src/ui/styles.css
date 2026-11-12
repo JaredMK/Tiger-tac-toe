@@ -1994,7 +1994,7 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 @keyframes eseen { from, to { background: var(--ink); } }   /* (held while the pattern plays on, gone as it ends) */
 @keyframes etap { to { background: var(--pc); } } @keyframes eslip { to { background: var(--ink); } } @keyframes enx { from { box-shadow: none; } }
 .big.eplay { display: flex; align-items: center; justify-content: center; gap: 8px; } .big.eplay svg { flex: none; width: 22px; height: 22px; margin-top: -4px; fill: currentColor; }
-.elev { display: inline-flex; gap: 3px; } .elev i { width: 13px; height: 13px; border-radius: 4px; border: 2.3px solid var(--ink); background: var(--paper); }
+.elev { display: inline-flex; gap: 3px; } .elev i { width: 12px; height: 12px; border-radius: 3px; border: 2px solid var(--ink); background: var(--paper); }   /* (no wider: at 320px the name beside it keeps its 40px, npm run check:headers) */
 .ctal.X .elev i.on { background: var(--x); } .ctal.O .elev i.on { background: var(--o); }
 .elev i.fillin { animation: pipfill .4s var(--t, 0ms) cubic-bezier(.3, 1.6, .5, 1) both; }   /* a pattern beaten: its square fills in when the result shows */
 /* Peg Drop: the board (one SVG, 100 by 115: the gates, the pegs, the bonus peg, the bins, the chip: plinko/view.js PK), the slots over its top; every move's animation timed from the move (view.js plinkoTimes) */
@@ -2176,7 +2176,7 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .tgolf .gwall { fill: #d09a58; stroke: var(--ink); stroke-width: 2.4; } .tgolf .gpost { fill: var(--sea-2); stroke: var(--ink); stroke-width: 2.2; } .tgolf .gcup { fill: #0e2413; stroke: #eaf7df; stroke-width: 2; }
 .tgolf .gpole { fill: none; stroke: var(--ink); stroke-width: 2.6; stroke-linecap: round; } .tgolf .gflag { fill: var(--sea); stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; }
 .tgolf circle.X, .tgolf circle.O { stroke-width: 2.4; }
-.ctal .dbig.gshots { font-size: 26px; padding-top: 0; } .ctal .dbig.gshots small { min-width: 2.7em; font-size: 14px; }   /* Mini Golf's strokes so far: "shot" or "shots", the same room */
+.ctal .dbig.gshots { font-size: 26px; padding-top: 0; min-width: 64px; justify-content: end; } .ctal .dbig.gshots small { min-width: 2.7em; font-size: 14px; }   /* Mini Golf's strokes so far: "shot" or "shots", the same room; a set width, so the tally keeps its shape as the count grows and, where a name would be left under 40px (320px wide), the strokes take the line under it */
 .tbowl { display: grid; gap: 4cqw; width: 84cqw; } .tbowl svg { display: block; width: 100%; height: 46cqw; } .tbowl .pin { fill: #fff; stroke: var(--ink); stroke-width: 1.3; stroke-linejoin: round; } .tbowl .pin.down { fill: var(--panel-2); stroke: var(--muted); opacity: .55; }
 .tbowl .pin .ps { fill: none; stroke: var(--x); stroke-width: 1.5; } .tbowl .pin.down .ps { stroke: var(--muted); }   /* (each pin a little pin, its neck's band; the ones the last roll knocked faint) */
 .tbowl .trun { padding: 0; }
