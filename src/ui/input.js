@@ -193,9 +193,9 @@ export function init() {
     } else if (act === 'same-go') {              // Play a Friend: Same phone, two people on this phone (its setup: names, sides, mini-games)
       state.setup.mode = 'two'; state.setup.vs = 'same'; normSetup(state.setup); normLocal(state.setup).p2 = scPicked() ? 'cpu' : 'human'; state.screen = 'setup'; setAdvOpen(false); commit();
     } else if (act === 'cside') {                // Play Computer: your side, X, O or Random (drawn at every start)
-      normCpu(state.setup).pick = ['X', 'O', 'random'].includes(el.dataset.side) ? el.dataset.side : 'random'; save(); commit();
+      normCpu(state.setup).pick = ['X', 'O', 'random'].includes(el.dataset.side) ? el.dataset.side : 'random'; startFx('pick', 'cside:' + normCpu(state.setup).pick); save(); commit();
     } else if (act === 'clevel') {               // Play Computer: the computer's level, Easy, Normal or Hard
-      normCpu(state.setup).level = levelOf(el.dataset.v); save(); commit();
+      normCpu(state.setup).level = levelOf(el.dataset.v); startFx('pick', 'clevel:' + normCpu(state.setup).level); save(); commit();
     } else if (act === 'gmode') {                // the Mode, Super Chaos or Classic: Play Local (Super Chaos against the computer), the host's room, Find Match; kept on this device
       setMode(el.dataset.v);
       if (isHost()) { state.online.chaos = scMode(); commit(); dbSetup({ chaos: state.online.chaos }); return; }   // (only the Super Chaos games among those on are dealt)

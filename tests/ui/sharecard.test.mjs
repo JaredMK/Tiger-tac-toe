@@ -97,7 +97,7 @@ test('the win screen shows Share result in every mode (and the draw screen)', ()
       Object.assign(state, set(finished(owners, winner, how, { X: 'Alex', O: 'Sam' })));
       const html = renderWin();
       assert.equal((html.match(/data-act="share-result"/g) || []).length, 1, `${mode}: one Share result (${winner})`);
-      assert.match(html, /<button class="btn share" data-act="share-result">Share result<\/button><div class="shline" role="status"><\/div>/, `${mode}: the button and its note line`);
+      assert.match(html, /<button class="stkr share" data-act="share-result" aria-label="Share result"[^>]*>.*?<small>share<\/small><\/button><\/div><div class="shline" role="status"><\/div>/s, `${mode}: the button (a round sticker, last in the row) and its note line`);
       assert.ok(html.indexOf('data-act="share-result"') > html.indexOf('Main menu'), `${mode}: under the buttons`);
     }
   }

@@ -172,8 +172,9 @@ function loadModel(read, oldTypes) {
   sec('other', 'practice', 'Practice (How to Play)', [
     fld('Practice button', region(EXPLAINER, /data-act="practice" data-t="\$\{explainT\}">(.*?)<\/button>/, 'tpl')),
     fld('Back button', region(EXPLAINER, /data-act="practice-back" aria-label="Back to How to Play">\$\{CHEV\}<span>(.*?)<\/span>/, 'tpl')),
-    fld('Practice again', region(EXPLAINER, /data-act="practice" data-t="\$\{t\}">(.*?)<\/button>/, 'tpl')),
-    fld('End screen back', region(EXPLAINER, /data-act="practice-back">(.*?)<\/button>/, 'tpl')),
+    fld('Practice again', region(EXPLAINER, /data-act="practice" data-t="\$\{t\}" style="--k:6"><b>(.*?)<\/b>/, 'tpl')),
+    fld('Practice again note', region(EXPLAINER, /data-act="practice" data-t="\$\{t\}" style="--k:6"><b>[^<]*<\/b><small>(.*?)<\/small>/, 'tpl')),
+    fld('End screen back', region(EXPLAINER, /roundStk\('practice-back', ICON\.help, '([^']*)'/, 'sq')),
   ]);
   sec('other', 'credits', 'Credits', [
     fld('Trivia', after(EXPLAINER, /visibleTypes\(\)\.includes\('trivia'\) \? (?=')/)),

@@ -65,6 +65,18 @@ const def = (name, dur, make, o = {}) => { SFX[name] = { dur, level: o.level == 
 // ---- interface
 def('tap', 0.09, (c, d, t) => { sfxTone(c, d, t, 640, .07, { to: 430, vol: .5, type: 'triangle' }); sfxNoise(c, d, t, .02, { f: 2600, vol: .25 }); }, { level: .4, vary: true });
 def('key', 0.06, (c, d, t) => sfxTone(c, d, t, 1400, .04, { to: 1100, vol: .5, type: 'triangle' }), { level: .3, vary: true });
+// The Sticker book's menu sounds (stickers.css): paper, a pencil, tape. A sticker pressed slaps the page; an option
+// picked (circled in pen) or a box ticked is a pencil's tick; going back peels a sticker off; Start (and Rematch,
+// Find Match again, Practice again) is the peel, a rising run and a slap: the stinger.
+def('paperSlap', 0.1, (c, d, t) => { sfxNoise(c, d, t, .06, { f: 1400, q: .9, vol: .55 }); sfxTone(c, d, t, 210, .07, { to: 120, vol: .35, type: 'triangle' }); sfxNoise(c, d, t + .004, .02, { f: 3600, q: 2, vol: .18 }); }, { level: .42, vary: true });
+def('pencilTick', 0.07, (c, d, t) => { sfxNoise(c, d, t, .035, { f: 5200, q: 1.6, vol: .5, filter: 'bandpass' }); sfxNoise(c, d, t + .028, .03, { f: 4300, q: 1.6, vol: .35 }); sfxTone(c, d, t, 1900, .03, { vol: .12, type: 'triangle' }); }, { level: .36, vary: true });
+def('peel', 0.24, (c, d, t) => { sfxNoise(c, d, t, .2, { f: 700, to: 3400, q: 2.2, vol: .45, att: .03 }); sfxNoise(c, d, t + .17, .04, { f: 2400, q: 1, vol: .25 }); }, { level: .4 });
+def('startSting', 0.62, (c, d, t) => {
+  sfxNoise(c, d, t, .12, { f: 900, to: 3600, q: 2, vol: .3, att: .02 });
+  [523, 659, 784].forEach((f, k) => sfxTone(c, d, t + .08 + k * .07, f, .16, { vol: .32, type: 'triangle' }));
+  sfxTone(c, d, t + .29, 1047, .3, { vol: .3, type: 'triangle' });
+  sfxNoise(c, d, t + .29, .07, { f: 1400, q: .9, vol: .5 }); sfxTone(c, d, t + .29, 200, .1, { to: 110, vol: .35, type: 'triangle' });
+}, { level: .55 });
 def('toggle', 0.16, (c, d, t) => { sfxTone(c, d, t, 660, .07, { vol: .5, type: 'triangle' }); sfxTone(c, d, t + .06, 880, .09, { vol: .5, type: 'triangle' }); }, { level: .45 });
 def('pop', 0.14, (c, d, t) => { sfxTone(c, d, t, 620, .13, { to: 980, vol: .4, att: .006 }); sfxTone(c, d, t + .03, 1240, .06, { vol: .12 }); }, { level: .4, vary: true });   // a reaction, sent or received
 def('select', 0.26, (c, d, t) => [523, 659, 784].forEach((f, i) => sfxTone(c, d, t + i * .06, f, .14, { vol: .4, type: 'triangle' })), { level: .45 });
@@ -467,6 +479,15 @@ const TAP_SOUND = { explain: 'open', 'explain-close': 'close', pause: 'open', 'p
   'echo-tap': null, 'echo-play': null, bulls: null, bowl: null, 'run-go': null, 'fing-start': null, 'odd-reveal': null, 'trivia-reveal': null, 'att-start': null, 'hc-key': null, 'snap-cell': null, 'snap-submit': null, pokmark: null, domtile: null, hpsel: 'select',   // a game's own inputs: each plays its own sound (from its handler or its move), never the click as well
   mmcol: 'peg', mmslot: 'peg', rlnum: 'peg', rlgrp: 'peg', rlzero: 'peg', key: 'key', bksp: 'key', enter: 'key', side: 'toggle', kind: 'toggle', 'anim-set': 'toggle', lside: 'toggle', timer: 'toggle', adv: 'toggle',
   'set-sound': 'toggle', 'set-vib': 'toggle', settings: 'open', 'settings-back': 'close', 'pause-settings': 'open', 'games-all': 'select', 'games-none': 'deselect', share: 'copy', back: 'tap' };   // (back: the Board button in a square, a plain tap)
+// A press on a sticker book screen (stickers.css): the stinger for the one big action, the peel going back, the
+// pencil for an option picked, the paper slap for every other sticker.
+const BOOK_GO = ['start', 'rematch', 'find-again', 'practice', 'test-again'];
+export function bookSound(el, act) {
+  if (BOOK_GO.includes(act)) return 'startSting';
+  if (el.classList.contains('back') || act === 'menu' || act === 'leave' || act === 'practice-back' || act === 'test-back' || act === 'settings-back') return 'peel';
+  if (el.classList.contains('opt') || act === 'adv' || act === 'games-all' || act === 'games-none') return 'pencilTick';
+  return 'paperSlap';
+}
 // The sound switch: a speaker with waves when sound is on, crossed out when it is off. Its label says which.
 // The sounds of one move, from its result: [name, ms after the move starts, playback rate], in order.
 // Each is timed to the animation it stands for (the same timings the animation uses).
@@ -518,8 +539,9 @@ export function init() {
     if (!el || el.classList.contains('chk')) return;                 // (a box: its change plays the toggle)
     const act = el.dataset.act;
     let name = act && act in TAP_SOUND ? TAP_SOUND[act] : (el.classList.contains('back') ? 'back' : 'tap');
+    if (el.closest('main.sb') && name !== null) name = bookSound(el, act);   // a sticker book screen: its own family
     if (name) SND.play(name, { ui: true });
   }, true);
   document.addEventListener('pointerdown', e => { if (e.target.closest && e.target.closest('button:disabled, input:disabled')) SND.play('error', { ui: true }); }, true);
-  document.addEventListener('change', e => { if (e.target.type === 'checkbox') SND.play('toggle', { ui: true }); }, true);
+  document.addEventListener('change', e => { if (e.target.type === 'checkbox') SND.play(e.target.closest('main.sb') ? 'pencilTick' : 'toggle', { ui: true }); }, true);
 }

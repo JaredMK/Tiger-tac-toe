@@ -13,7 +13,8 @@ import { noticeSeq } from '../../net/moves.js';
 import { chaosBadge, chaosVisible, scPicked, testBadge, visibleTypes } from '../../net/releases.js';
 import { dbSetup, isHost, net, starting } from '../../net/room.js';
 import { advOpen, app, esc, save, state } from '../app.js';
-import { CHEV, ICONS, toonT } from '../art.js';
+import { CHEV, ICONS, toon, toonT } from '../art.js';
+import { penPick, tape } from '../stickers.js';
 import { qBtn } from '../explainer.js';
 import { fxAt, fxAttr } from '../fx.js';
 import { render } from '../render.js';
@@ -84,6 +85,29 @@ export function renderSetup() {
     <div class="timerrow" role="group" aria-label="You play as"><span>You play as:</span>${pick('X')}${pick('O')}${pick('random')}</div>
     <div class="timerrow" role="group" aria-label="Difficulty"><span>Difficulty</span>${LEVELS.map(v => `<button class="seg${C.level === v ? ' on' : ''}" data-act="clevel" data-v="${v}" aria-pressed="${C.level === v}">${LEVEL_NAME[v]}</button>`).join('')}</div>`;
   };
+  // Play Computer in the Sticker book (stickers.css): a ruled card taped down, the real X and O facing off (the one you
+  // will be and the computer's; Random: both, taking turns), your side and the level each circled in red pen, the
+  // mini-games, and Start as the one big sticker under it all.
+  if (vsCpu) {
+    const C = normCpu(s), c1 = C.pick !== 'random' ? C.pick : null, c2 = c1 ? other(c1) : null, you = (loggedIn() && acct.profile.username) || 'You';
+    const who = (side, ph) => (side ? `<span class="vsface">${toonT(side)}</span>` : `<span class="vsface rflip${ph ? ' ph' : ''}" aria-label="X or O, drawn every match">${toon('X')}${toon('O')}</span>`);
+    const opt = (act, attr, v, label, on, k) => `<button class="opt${on ? ' on' : ''}${v === 'X' || v === 'O' ? ' ' + v : ''}" data-act="${act}" ${attr}="${v}" aria-pressed="${on}">${label}${on ? penPick(act + ':' + v) : ''}</button>`;
+    const pips = n => `<i class="lvp" aria-hidden="true">${'<b></b>'.repeat(n)}</i>`;
+    return `<main class="scr setup sb cpuset">
+    <div class="bar"><button class="back" data-act="menu" aria-label="Back to the main menu">${CHEV}Menu</button>
+      <div class="ttl"><b>Play Computer</b><small>You vs Computer</small></div></div>
+    <div class="setup-box" data-keep-scroll="setup">
+      <div class="stk rule vscard slap">${tape('r')}
+        <div class="vscpu"><div class="vsme">${who(c1, 0)}<b>${esc(you)}</b></div><i class="vsv" aria-hidden="true">vs</i><div class="vsme">${who(c2, 1)}<b>${CPU_NAME}</b></div></div>
+        <div class="pickrow" role="group" aria-label="You play as"><span class="lab">you play as</span><div class="opts">${['X', 'O', 'random'].map(v => opt('cside', 'data-side', v, v === 'random' ? 'Random' : v, C.pick === v)).join('')}</div></div>
+        <div class="pickrow" role="group" aria-label="Difficulty"><span class="lab">difficulty</span><div class="opts">${LEVELS.map((v, k) => opt('clevel', 'data-v', v, `${LEVEL_NAME[v]}${pips(k + 1)}`, C.level === v)).join('')}</div></div>
+        ${templatesRow(VT)}
+        <div class="adv${advOpen ? ' open' : ''}"><button class="adv-h" data-act="adv" aria-expanded="${advOpen}"><span>Mini-games</span><small>${gamesCount(on, VT.length)}</small><i class="chev">${CHEV}</i></button>
+          ${advOpen ? `<div class="games-top"><button class="btn selall" data-act="games-none"${on === 0 ? ' disabled' : ''}>Deselect all</button><button class="btn selall" data-act="games-all"${on === VT.length ? ' disabled' : ''}>Select all</button></div><div class="games">${byName(VT).map(chk).join('')}</div>` : ''}</div>
+      </div>
+    </div>
+    <div class="setup-foot"><button class="stk mode m-start" data-act="start"${ready ? '' : ' disabled'} style="--k:3"><b>Start!</b></button>${(w => `<small class="warn${w ? '' : ' info'}" role="status">${w || modeNote || CPU_HINT}</small>`)(setupWarn(s))}</div></main>`;
+  }
   return `<main class="scr setup">
     <div class="bar">${host ? `<button class="back" data-act="lobby-back" aria-label="Close the room and go back">${CHEV}Back</button>` : vsCpu ? `<button class="back" data-act="menu" aria-label="Back to the main menu">${CHEV}Menu</button>` : `<button class="back" data-act="friend-go" aria-label="Back to Play a Friend">${CHEV}Back</button>`}
       <div class="ttl"><b>${title}</b>${sub ? `<small>${sub}</small>` : ''}</div></div>
@@ -191,7 +215,8 @@ export const byName = types => types.slice().sort((a, b) => INFO[a].name.localeC
 // Start opens once at least one mini-game is on (online, also once the friend is in).
 const onGames = s => enabledGames(s).filter(t => setupTypes().includes(t));   // the games on, among those this player may see (Super Chaos: its own)
 function setupReady(s) { const on = onGames(s).length; return isHost() ? !!(on && state.online.joined && connected) : !!on; }
-function setupWarn(s) { return !onGames(s).length ? 'Select at least one mini-game to start' : isHost() && !setupReady(s) ? 'Start opens once your friend has joined' : ''; }
+const CPU_HINT = 'three in a row takes the match';   // Play Computer's foot with nothing to warn of
+function setupWarn(s) { return !onGames(s).length ? 'pick at least one mini-game' : isHost() && !setupReady(s) ? "Start opens when your friend's in" : ''; }
 // Ticking a mini-game (or Select all) changes the screen in place, with no re-render, so the list
 // stays exactly where it was scrolled and Mini-games stays open. The choice is saved for the next match.
 export function setGames(change) {
@@ -209,6 +234,7 @@ export function setGames(change) {
   const all = app.querySelector('[data-act="games-all"]'); if (all) all.disabled = on === VT.length;
   const none = app.querySelector('[data-act="games-none"]'); if (none) none.disabled = on === 0;
   const start = app.querySelector('[data-act="start"]'); if (start && !start.classList.contains('busy')) start.disabled = !setupReady(s);
-  const warn = app.querySelector('.setup-foot .warn'); if (warn) warn.textContent = setupWarn(s);
+  const warn = app.querySelector('.setup-foot .warn'), w = setupWarn(s);
+  if (warn) { warn.textContent = w || modeNote || (app.querySelector('main.cpuset') ? CPU_HINT : ''); warn.classList.toggle('info', !w); }
   dbSetup({ games: restrictGames(Object.assign({}, s.games), VT) });   // (the room never holds a game its host may not deal)
 }

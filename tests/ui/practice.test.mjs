@@ -74,7 +74,8 @@ test('the practice match\'s end: the result screen with Practice again and Back 
   for (const i of [0, 1, 2]) state.squares[i].owner = me;
   const html = renderMain();
   assert.match(html, /win-scr/); assert.match(html, /wins the match!|You win the match!/);
-  assert.match(html, /<button class="primary" data-act="practice" data-t="ttt">Practice again<\/button><button class="btn" data-act="practice-back">Back to How to Play<\/button>/);
+  assert.match(html, /data-act="practice" data-t="ttt"[^>]*><b>Practice again<\/b>/);
+  assert.match(html, /data-act="practice-back" aria-label="Back to How to Play"/);
   assert.doesNotMatch(html, /data-act="rematch"|data-act="menu"|data-act="review"|data-act="share-result"|data-act="leave"/, 'nothing else');
   T.trackEnd(); T.reportLocal();
   assert.equal(T.pendingLocal().length, pend, 'no local record or history'); assert.equal(state.stats, null);
