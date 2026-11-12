@@ -6,10 +6,11 @@ import { FIREBASE_CONFIG, configured } from '../../net/connect.js';
 import { attemptMove } from '../../net/moves.js';
 import { blocked } from '../../net/room.js';
 import { N, REDUCED, cpuPlays, esc, mv, state, zoomedType } from '../../ui/app.js';
-import { CROSS } from '../../ui/art.js';
 import { KEY } from '../../ui/config.js';
 import { fxAttr } from '../../ui/fx.js';
-import { arcTally, lateAt, pips } from '../../ui/progress.js';
+import { arcTally, lateAt } from '../../ui/progress.js';
+import { ownMove } from '../../ui/haptics.js';
+import { QUIZ, qMark, qPick, quizPips, quizPoint } from '../../ui/quiz.js';
 import { pipRows, thumbArt } from '../../ui/thumbs.js';
 import { render } from '../../ui/render.js';
 
@@ -50,8 +51,8 @@ function oddArm() {                                            // the countdown'
   }, Math.max(0, oddDraft.at + oddDraft.secs * 1000 - Date.now()));
 }
 function oddTable(mini, a, o) {
-  const d = a && a.odd ? a.odd : null, l = mini.last, turn = o.turn, pre = d ? oddPre(a) : 0, t = tune(mini);
-  const tal = p => arcTally(p, o, pips(p, Math.min(t.goal, mini.finds[p]), t.goal, d && d.correct && a.by === p, pre + 250));
+  const d = a && a.odd ? a.odd : null, l = mini.last, turn = o.turn, pre = d ? oddPre(a) : 0, t = tune(mini), T = pre + QUIZ.beat;   // T: the verdict's moment into the move
+  const tal = p => arcTally(p, o, quizPips(p, Math.min(t.goal, mini.finds[p]), t.goal, !!(d && d.correct && a.by === p), T, o.won));
   const shown = d || (o.done || o.view ? l : null);
   const mine = !o.view && !shown && !o.locked;                  // this phone's pick to make
   if (!mine) { if (oddDraft) clearTimeout(oddDraft.timer); oddDraft = null; }
@@ -64,21 +65,25 @@ function oddTable(mini, a, o) {
   const grid = shown ? { n: shown.n, tiles: shown.tiles } : mini.grid[turn], n = grid.n;
   const tiles = grid.tiles.map((c, k) => {
     let cls = 'otile', mark = '';
-    if (shown) { if (k === shown.pos) cls += ' odd'; else if (k === shown.picked) { cls += ' wrong'; mark = `<i class="ox">${CROSS}</i>`; } }
-    if (pre && k === shown.picked) cls += ' picked';
+    if (shown) {                                               // the pick made: the odd tile ringed (found: under a tick, where the point flies from), a wrong one under a cross
+      if (k === shown.pos) { cls += ' odd' + (shown.correct ? ' found' : ''); if (shown.correct) mark = qMark('ok', !!d); }
+      else if (k === shown.picked) { cls += ' wrong'; mark = qMark('no', !!d); }
+    }
+    if (d && k === shown.picked) cls += ' picked';             // pressed in from the tap (someone else's: when their tap comes) until the verdict
     const cover = !shown && !open ? '<i class="ocv"></i>' : pre ? `<i class="ocv tu" style="--u:${ODD.show}ms"></i>` : '';
-    return `<button class="${cls}" style="background:${esc(c)}${shown ? `;--t:${pre + 250}ms;--p:${pre}ms` : ''}" data-act="move" ${mv(k)} aria-label="Tile ${k + 1}"${open && !o.locked ? '' : ' disabled'}>${cover}${mark}</button>`;
+    return `<button class="${cls}" style="background:${esc(c)};--i:${k}${shown ? `;--t:${T}ms;--p:${pre}ms` : ''}" data-act="move" ${mv(k)} aria-label="Tile ${k + 1}"${open && !o.locked ? '' : ' disabled'}${d && shown.correct && k === shown.pos ? qPick() : ''}>${cover}${mark}</button>`;
   }).join('');
   const who = d ? a.by : shown ? l.by : turn, W = p => `<b class="${p}">${N(p)}</b>`;
   const startPerf = open ? performance.now() - (Date.now() - oddDraft.at) : null;
-  const res = d ? `<p ${lateAt('arcres ' + (d.correct ? 'ok' : 'no'), pre + 250)} role="status">${pre ? `${W(who)} ${d.correct ? 'found it' : d.picked < 0 ? 'ran out of time' : 'missed it'}` : d.correct ? 'Found it!' : d.picked < 0 ? 'Out of time' : 'Not that one'}</p>`
+  const res = d ? `<p ${lateAt('arcres ' + (d.correct ? 'ok' : 'no'), T)} role="status">${pre ? `${W(who)} ${d.correct ? 'found it' : d.picked < 0 ? 'ran out of time' : 'missed it'}` : d.correct ? 'Found it!' : d.picked < 0 ? 'Out of time' : 'Not that one'}</p>`
     : shown ? `<p class="arcres ${shown.correct ? 'ok' : 'no'}">${W(who)} ${shown.correct ? 'found it' : 'missed it'}</p>`
-    : open ? `<p class="arcnote onote"${fxAttr(startPerf, 'rt')}><span class="obar"><i style="--d:${oddDraft.secs * 1000}ms"></i></span></p>`
+    : open ? `<p class="arcnote onote"><span class="obar"><i style="--d:${oddDraft.secs * 1000}ms"></i></span></p>`
     : mine ? '<p class="arcnote"></p>'
     : `<p class="arcnote">${o.view ? '' : `${W(who)}'s turn`}</p>`;
   const go = mine && !open;
-  const btn = o.view ? '' : `<div class="cbtns one${go ? '' : ' hold'}"><button class="big" data-act="odd-reveal"${go ? '' : ' disabled tabindex="-1" aria-hidden="true"'}>Reveal</button></div>`;   // the row stays (hidden) so the grid never moves
-  return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="odd"><div class="ogrid${!shown && !open ? ' wait' : ''}" style="grid-template-columns:repeat(${n}, 1fr)">${tiles}</div>${res}</div>${btn}</div>`;
+  const btn = o.view ? '' : `<div class="cbtns one${go ? '' : ' hold'}"><button class="big${go ? ' ' + turn : ''}" data-act="odd-reveal"${go ? '' : ' disabled tabindex="-1" aria-hidden="true"'}>Reveal</button></div>`;   // the row stays (hidden) so the grid never moves
+  // (open: the shades are up and the bar runs, both from the Reveal's own moment, in real time: the tiles pop as they show, already in their colours)
+  return `<div class="g-arc g-quiz${mine ? ' q' + turn : ''}"><div class="ctals">${tal('X')}${tal('O')}</div><div class="odd"${open ? fxAttr(startPerf, 'rt') : ''}><div class="ogrid${!shown && !open ? ' wait' : open ? ' open' : ''}" style="grid-template-columns:repeat(${n}, 1fr)">${tiles}</div>${res}</div>${btn}</div>`;
 }
 const ODD_GRID = `<div class="todd">${Array.from({ length: 9 }, (_, k) => (k === 2 ? '<i class="odd"></i>' : '<i></i>')).join('')}</div>`;   // a grid with one tile off (a fixed corner: the square's own odd tile stays hidden)
 export function miniature(mini, final) {   // the grid, and each player's finds as pips
@@ -86,13 +91,18 @@ export function miniature(mini, final) {   // the grid, and each player's finds 
   return thumbArt(ODD_GRID, pipRows(mini.finds, goal), '', `Odd One Out: X ${mini.finds.X}, O ${mini.finds.O} of ${goal} finds`);
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
-  g = oddTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d }); return g;
+  g = oddTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d, won: !!fresh }); return g;
 }
 export function moveText(f, who) {
   return f.odd ? `${who} ${f.odd.correct ? 'found the odd one' : 'missed it'}` : `${who} tapped`;
 }
 export function sounds(f, add, won, mini, last) {
-  const pre = oddPre(f); if (pre) { add('reveal', ODD.show); if (f.odd.picked >= 0) add('tap', pre); } if (f.odd) add(f.odd.correct ? 'ding' : 'thud', pre + 250); return;
+  const d = f.odd; if (!d) return;
+  const pre = oddPre(f), T = pre + QUIZ.beat;
+  if (pre) add('reveal', ODD.show);                                // someone else's: their shades showing
+  if (d.picked >= 0 && (pre || ownMove(f))) add('tap', pre);       // the tile pressed (their tap, or this phone's own)
+  add(d.correct ? 'ding' : 'thud', T);                             // the verdict: the odd tile ringed, under a tick or beside a cross
+  if (d.correct && !REDUCED) add(...quizPoint(T));                 // the point lands on its pip
 }
 // Odd One Out: the shades show and the 5 seconds start; from now the player stays in the square until the pick goes in
 export function oddRevealAct(el, e, act) {

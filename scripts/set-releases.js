@@ -16,6 +16,7 @@ const SETS = [
 // Game settings set by a request (config/tune/{type}/{key}, the admin's Mini-game Settings): each set once, like the releases.
 const TUNE_SETS = [
   { id: 'tune1', type: 'bowling', set: { target: 35 } },   // Bowling's pins to win: 35 (the game reads it: bowlTarget)
+  { id: 't31v2', type: 't31', set: { target: 30 } },       // Thirty-One's rework (one deck of 32, three suits dealt): 30 to win; a target saved for the old 52-card game (26) would end a square in two turns
 ];
 // Database values set by a request, each once (its mark in meta/config): the value, or a function giving it at that moment.
 const CONFIG_SETS = [

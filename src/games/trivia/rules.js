@@ -21,7 +21,7 @@ import { tune } from '../../core/tune.js';
 // A right answer scores and deals that player their next question, face down; the first to the goal takes the
 // square. Everything but the face-down questions and the right places is open: both players' scores, questions
 // turned up and cross-outs. No try caps (none in Shared either: a question always ends answered).
-export const TRIVIA = { goal: 3, options: 4, aiRight: 0.65, aiKnow: 0.53, reveal: 700, flip: 600, pause: 600, bank: null };   // aiKnow: the computer knows it this often, else guesses among what is left (65% right with four left); bank: the questions, as the host sets them
+export const TRIVIA = { goal: 3, options: 4, aiRight: 0.65, aiKnow: 0.53, reveal: 900, flip: 600, pause: 600, bank: null };   // aiKnow: the computer knows it this often, else guesses among what is left (65% right with four left); bank: the questions, as the host sets them
 export function setTriviaBank(bank) { TRIVIA.bank = bank && Array.isArray(bank.questions) && bank.questions.length ? bank : null; }
 export function triviaReady() { return !!TRIVIA.bank; }
 export function triviaUsed(state) {

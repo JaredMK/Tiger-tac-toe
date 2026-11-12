@@ -16,9 +16,10 @@ import { N, REDUCED, app, cpuPlays, state, waitLine } from './app.js';
 import { shownSq } from './chaos.js';
 import { clockLeft } from './clock.js';
 import { KEY } from './config.js';
-import { fxAt } from './fx.js';
+import { fxAt, fxAttr } from './fx.js';
 import { lateAt } from './progress.js';
 import { render } from './render.js';
+import { banner, jolt, runEvents, runOverlay } from './runfx.js';
 
 // Dash, Lane Rush, Flap and Chopper: the run is played here, in real time, on a canvas. The engine's
 // runStep is the physics (the same the tests step: whole fixed steps, the inputs between them), this is
@@ -57,6 +58,9 @@ let runLive = null;
 // its log and where it is in it), when the run ended on screen (the tumble or the flourish plays from
 // then), and the frame loop.
 export let runShow = null;
+// How the last run seen here ended (the chopper's height, the car's lane): while its result shows, the scene at rest
+// keeps the wreck where it came down (the flash carries the distance alone).
+let runPose = null;
 // How long someone else's run takes to play back here, in ms: the run itself (its steps at the game's
 // step) and the crash's tumble or the finish's flourish; 0 when there is nothing to play (this phone's
 // own run, a timed-out player's, a move from before the log, reduced motion).
@@ -67,7 +71,7 @@ export function runPre(f) {
 }
 const RUN_TEXT = {
   dash: { note: 'Tap to jump, hold to jump higher. Stay down for the flyers.', hint: 'Tap to jump · hold for higher', scene: 'The course, from the side', go: 'Run', verb: 'ran' },
-  lane: { note: 'Swipe left or right to change lanes, or tap a side.', hint: 'Swipe to change lanes', scene: 'The road, from above', go: 'Run', verb: 'ran' },
+  lane: { note: 'Swipe left or right to change lanes, or tap a side.', hint: 'Swipe to change lanes', scene: 'The road, from behind and above', go: 'Run', verb: 'ran' },
   flap: { note: 'Tap to flap. Fly through the gaps in the posts.', hint: 'Tap to flap', scene: 'The sky, from the side', go: 'Fly', verb: 'flew' },
   chopper: { note: 'Hold to climb, let go to drop. Keep off the walls and the blocks.', hint: 'Hold to climb · let go to drop', scene: 'The cave, from the side', go: 'Fly', verb: 'flew' },
 };
@@ -87,13 +91,13 @@ export function runTable(mini, a, o) {
   };
   const who = r ? a.by : turn;
   const TX = RUN_TEXT[type];
-  const res = r ? `<p ${lateAt('arcres ' + (r.done ? 'ok' : 'no'), pre)} role="status">${r.done ? `<b class="${a.by}">${N(a.by)}</b> reached ${fmtM(T)} m!` : `<b class="${a.by}">${N(a.by)}</b> ${TX.verb} ${fmtM(r.to - r.from)} m — now at ${fmtM(r.to)}/${fmtM(T)}`}</p>`
+  const res = r ? `<p ${lateAt('arcres ' + (r.done ? 'ok' : 'no'), pre)} role="status">${r.done ? `<b class="${a.by}">${N(a.by)}</b> reached ${fmtM(T)} m!` : `<b class="${a.by}">${N(a.by)}</b> <span class="rnw">${TX.verb} ${fmtM(r.to - r.from)} m</span> <span class="rnw">— now at ${fmtM(r.to)}/${fmtM(T)}</span>`}</p>`
     : o.view ? `<p class="arcnote">${l ? `<b class="${l.by}">${N(l.by)}</b> ${l.done ? 'reached the finish' : `${TX.verb} ${fmtM(l.to - l.from)} m`}` : ''}</p>`
     : live ? '<p class="arcnote"></p>'
     : mine ? '<p class="arcnote"></p>'
     : `<p class="arcnote">${waitLine(turn)}</p>`;   // (this phone's own run on its way to the server: nothing to wait for)
   const hint = '';   // (no hint over the run: how to play is in the ? explainer)
-  const count = live && live.phase === 'count' ? `<div class="rcount" aria-live="assertive">${live.count > 0 ? live.count : 'GO!'}</div>` : '';
+  const count = live && live.phase === 'count' ? `<div class="rcount"${fxAttr(Math.round(live.at + (RUN.countdown - live.count) * 1000), 'rt')} aria-live="assertive"><b>${live.count > 0 ? live.count : 'GO!'}</b></div>` : '';   // (each digit pops in from its own second: a redraw mid-count never starts it over)
   const hud = `<div class="rhud" data-run="hud">${fmtM(live ? live.sim.d : r ? (playing ? r.from : r.to) : mini.dist[who])} m</div>`;
   const scene = `<div class="rscene ${type}" data-run="scene" aria-label="${TX.scene}"><canvas data-run="cv"></canvas>${hud}${count}${hint}</div>`;
   const btn = o.view ? '' : `<div class="cbtns one${mine && !live ? '' : ' hold'}"><button class="big ${turn}" data-act="run-go"${mine && !live ? '' : ' disabled tabindex="-1" aria-hidden="true"'}>${TX.go}${mini.dist[turn] > 0 ? ` on from ${fmtM(mini.dist[turn])} m` : ''}</button></div>`;   // always there (hidden while it can't be used), so the course never moves
@@ -104,7 +108,7 @@ export function runGo() {
   const sq = state.squares && state.squares[state.zoom];
   if (!sq || !RUN_TYPES.includes(sq.mini.type) || sq.owner || state.flash || state.done || blocked() || runDraft) return;
   const p = state.turn, sim = Object.assign(runStart(sq.mini, p), { p });
-  runDraft = { sq: state.zoom, p, sim, phase: 'count', at: performance.now(), last: performance.now(), count: RUN.countdown, swiped: false, pointer: null, x0: 0, scene: null, hintGone: false, frames: 0, raf: 0 };
+  runDraft = { sq: state.zoom, p, sim, phase: 'count', at: performance.now(), last: performance.now(), count: RUN.countdown, swiped: false, pointer: null, x0: 0, scene: null, hintGone: false, frames: 0, raf: 0, ev: {} };   // ev: what the run's events have sounded so far (runfx.js runEvents)
   SND.play('beep');
   render();
   runDraft.raf = requestAnimationFrame(runFrame);
@@ -122,6 +126,7 @@ function runFrame(now) {
     else if (n !== rd.count) { rd.count = n; SND.play('beep'); render(); }       // the next digit, with its beep
   } else if (rd.phase === 'run') {
     runStep(rd.sim, dt);
+    for (const s of runEvents(rd.sim, rd.ev)) SND.play(s);                        // a landing, an obstacle cleared: each once, as it happens
     runHud(rd.sim, rd.p, Infinity);
     if (rd.sim.t >= 1.6 && !rd.hintGone) { rd.hintGone = true; const h = app.querySelector('.rhint'); if (h) h.remove(); }
     const left = clockLeft();
@@ -152,6 +157,7 @@ export function runEnd(out) {
   runRotor(false); cancelAnimationFrame(rd.raf); runDraft = null;
   const res = runResult(rd.sim, out);
   runLive = { sq: rd.sq, p: rd.p, to: res.dist, at: performance.now() };
+  runPose = { sq: rd.sq, p: rd.p, to: res.dist, y: rd.sim.y, lane: rd.sim.lane };
   attemptMove(res);
 }
 // After every render: the canvas of a runner square shows the run under way, someone else's run playing
@@ -168,29 +174,43 @@ export function runPaint() {
     if (!runShow || runShow.f !== f) {
       const m = Object.assign({}, sq.mini, { dist: Object.assign({}, sq.mini.dist, { [p]: r.from }) }), rep = runReplayer(m, p, runUnlog(r.log, r.steps) || [], r.steps);
       rep.sim.p = p;
-      runShow = { f, rep, endAt: null, raf: 0 };
+      runShowStop();
+      runShow = { f, rep, endAt: null, raf: 0, rotor: null };
     }
     cancelAnimationFrame(runShow.raf); runShowFrame(performance.now());
     return;
   }
-  if (runShow) { cancelAnimationFrame(runShow.raf); runShow = null; }
+  runShowStop();
   const sim = Object.assign(runStart(sq.mini, p), { p, d: r ? r.to : sq.mini.dist[p] });   // at rest: the course as Start would show it (the stretch ahead clear), no crash
-  if (r && !r.done) { sim.course = runCourse(sq.mini, p); sim.crash = { at: r.to, ob: null }; sim.grace = 0; if (sim.type === 'flap') sim.y = FLAP.box.h / 2; }   // the crash just made, while its result shows: down on the ground (the course as it was)
+  if (r && !r.done) {
+    sim.course = runCourse(sq.mini, p); sim.crash = { at: r.to, ob: null }; sim.grace = 0; if (sim.type === 'flap') sim.y = FLAP.box.h / 2;
+  }   // the crash just made, while its result shows: down on the ground (the course as it was)
+  const ps = r && runPose && runPose.sq === state.zoom && runPose.p === p && Math.abs(runPose.to - r.to) < 0.02 ? runPose : null;   // the run just seen here: its runner where it ended
+  if (ps && sim.type === 'chopper') { sim.y = ps.y; sim.grace = 0; }
+  if (ps && sim.type === 'flap' && r.done) sim.y = ps.y;
+  if (ps && sim.type === 'lane') { sim.lane = ps.lane; sim.laneFrom = ps.lane; sim.laneT = 1; }
   if ((r && r.done) || sim.d >= sq.mini.cfg.target) sim.done = true;
   runFrameDraw(cv, sim, null, performance.now());
+}
+function runShowStop() { if (!runShow) return; cancelAnimationFrame(runShow.raf); showRotor(false); runShow = null; }
+function showRotor(on) {
+  const rs = runShow;
+  if (on) { if (rs && !rs.rotor && !document.hidden) rs.rotor = SND.loop('rotor'); return; }
+  if (rs && rs.rotor) { rs.rotor.stop(); rs.rotor = null; }
 }
 // One frame of someone else's run: the replay stepped to the time since the move's event (whole steps
 // at the game's step, the logged inputs going in before theirs), drawn as a live run is (the tumble or
 // the flourish from the moment it ended), the counter and their bar following; then the scene at rest.
 function runShowFrame(now) {
   const rs = runShow, f = state.flash;
-  if (!rs || rs.f !== f || state.screen !== 'mini' || state.zoom !== f.square) { if (rs) cancelAnimationFrame(rs.raf); runShow = null; return; }
+  if (!rs || rs.f !== f || state.screen !== 'mini' || state.zoom !== f.square) { runShowStop(); return; }
   const pre = runPre(f), start = fxAt('move', f);
-  if (!pre || start == null || now - start >= pre) { cancelAnimationFrame(rs.raf); runShow = null; runPaint(); return; }
+  if (!pre || start == null || now - start >= pre) { const end = runReplayTo(rs.rep, rs.rep.steps); runPose = { sq: f.square, p: f.by, to: f.run.to, y: end.y, lane: end.lane }; runShowStop(); runPaint(); return; }
   const sim = rs.rep.sim;
   runReplayTo(rs.rep, Math.floor((now - start) / 1000 / runStepOf(sim.type) + 1e-6));
   const over = sim.crash || sim.done || sim.n >= rs.rep.steps;
   if (over && rs.endAt == null) rs.endAt = now;
+  if (sim.type === 'chopper') showRotor(sim.held && !over);                       // their rotor, heard while they held (a loop cannot be scheduled ahead: it follows the replay's frames, and Skip cuts it with the rest)
   const cv = app.querySelector('canvas[data-run="cv"]');
   if (cv) runFrameDraw(cv, sim, over && (sim.crash || sim.done) ? { at: rs.endAt } : null, now, true);
   runHud(sim, f.by, f.run.to);
@@ -212,7 +232,7 @@ function runPointerUp(e) {
   if (rd.sim.type !== 'lane') { runRelease(rd.sim); runRotor(false); return; }
   if (rd.phase !== 'run' || rd.swiped || !rd.scene) return;
   const box = rd.scene.getBoundingClientRect();                 // a tap: the side of the road it is on
-  if (runLane(rd.sim, e.clientX < box.left + box.width / 2 ? -1 : 1)) SND.play('skid');
+  if (runLane(rd.sim, e.clientX < box.left + box.width / 2 ? -1 : 1)) { SND.play('skid'); haptic('tap'); }
 }
 
 // ---- the drawing: the game's own look (bold ink outlines, flat paper colours), nothing borrowed ----
@@ -236,7 +256,12 @@ export function runCanvas(cv) {                                           // the
 function runFrameDraw(cv, sim, rd, now, bar) {   // bar: a run under way or replayed here: its time limit's countdown over the scene
   const { c, W, H } = runCanvas(cv);
   if (W < 2 || H < 2) return;
+  c.save();
+  jolt(c, W, H, sim, rd, now);                                                   // (a crash kicks the scene; the words and the time bar over it stay still)
   (sim.type === 'dash' ? drawDash : sim.type === 'flap' ? drawFlap : sim.type === 'chopper' ? drawCave : drawLane)(c, W, H, sim, rd, now);
+  c.restore();
+  runOverlay(c, W, H, sim, rd, now, runColours());
+  if (rd && rd.phase === 'run' && now - rd.at < 700) banner(c, W, H, 'GO!', rd, now, runColours(), 0.42, (now - rd.at - 580) / 120);   // the count's last word, as the run starts
   if (bar) drawTimeBar(c, W, H, 1 - sim.t / runLimit(sim.cfg, sim.type));
 }
 export const rr = (c, x, y, w, h, r) => { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); };
@@ -255,17 +280,27 @@ export function drawTimeBar(c, W, H, left, P) {
   c.lineWidth = 1.5; c.strokeStyle = P.ink; c.beginPath(); c.roundRect(m, m, w, h, h / 2); c.stroke();
   c.restore();
 }
-// The miniature: the game's scene (each runner's view passes its own: Dash's ground and hazards, Lane Rush's road and
-// traffic, Flap's posts, Chopper's cave), a lane each for X and O with their token at their distance, the finish at the end.
+// The miniature (November 2026's polish): a small picture of the game (its scene with its runner in it: the Dasher over a
+// rock, the road and its cars from behind, the bird between the posts, the chopper in the cave; the runner in paper,
+// neither player's colour), and under it a bar for each player filling towards the finish in their colour, their drawn
+// mark beside it: the picture and the progress each in their own room, nothing over anything.
+const miniCar = (x, y, cls) => `<g class="${cls}" transform="translate(${x} ${y}) scale(1.25)"><rect class="rmwh" x="-7.6" y="2.2" width="2.6" height="3.4" rx=".8"/><rect class="rmwh" x="5" y="2.2" width="2.6" height="3.4" rx=".8"/><rect x="-5.2" y="-5" width="10.4" height="6.5" rx="2.2"/><rect class="rmwin" x="-3.8" y="-3.2" width="7.6" height="2.7" rx=".9"/><rect x="-7" y="-.8" width="14" height="5.4" rx="1.8"/></g>`;
 export const RUN_SCENES = {
-  dash: '<path class="gnd" d="M2 24h96M2 50h96"/><path class="rock" d="M30 24q3-9 9-7q4 2 5 7z"/><rect class="crate" x="60" y="42" width="8" height="8" rx="1"/><ellipse class="flyer" cx="74" cy="11" rx="5" ry="2.6"/><path class="gnd" d="M66 9q3-4 5 1M77 9q3-4 5 1" fill="none"/>',
-  lane: '<rect class="road" x="0" y="4" width="100" height="52" rx="2"/><path class="lane" d="M2 30h96"/><rect class="car1" x="36" y="9" width="8" height="15" rx="2.5"/><rect class="car2" x="64" y="36" width="8" height="15" rx="2.5"/>',
-  flap: '<rect class="sky" x="0" y="0" width="100" height="56"/><path class="hill" d="M0 56q15-14 30-6t30-4t40 10v2h-100z"/><rect class="post" x="33" y="0" width="7" height="11" rx="1.5"/><rect class="post" x="33" y="29" width="7" height="27" rx="1.5"/><rect class="post" x="66" y="0" width="7" height="23" rx="1.5"/><rect class="post" x="66" y="41" width="7" height="15" rx="1.5"/><path class="gnd" d="M0 56h100"/>',
-  chopper: '<rect class="cavebg" x="0" y="0" width="100" height="60"/><path class="cave" d="M0 0h100v6q-20 8-40 4t-30 2t-30-4z"/><path class="cave" d="M0 60v-6q25-8 45-2t35-4t20 4v8z"/><rect class="block" x="52" y="22" width="7" height="16" rx="1.5"/>',
+  dash: '<rect class="rmsky" x="2" y="1" width="96" height="42"/><circle class="rmsun" cx="85" cy="10" r="5.5"/><path class="rmhill" d="M2 35q14-15 30-8t28-6t38 9v5h-96z"/><rect class="rmsand" x="2" y="35" width="96" height="9"/><path class="rmgnd" d="M2 35h96"/><path class="rmrock" d="M44 35q2.5-11 10.5-9q5.5 2 6.5 9z"/><rect class="rmcrate" x="84" y="26" width="9" height="9" rx="1.2"/>'
+    + '<path class="rmwing" d="M65 11q3-4.5 5.5 0M74.5 11q3-4.5 5.5 0M65 19q3-4.5 5.5 0M74.5 19q3-4.5 5.5 0"/><ellipse class="rmflyer" cx="72.5" cy="12.2" rx="3.7" ry="2.1"/><ellipse class="rmflyer" cx="72.5" cy="20.2" rx="3.7" ry="2.1"/>'
+    + '<ellipse class="rmshd" cx="28" cy="36.8" rx="6" ry="1.4"/><path class="rmhero" d="M25 13.5q-9-2-14 3l3.5 2.5l-3 3.5q7 1.5 12.5-2z"/><circle class="rmdash" cx="29" cy="18" r="6.5"/><circle class="rmeye" cx="31" cy="16.7" r="1"/><circle class="rmeye" cx="33.6" cy="16.7" r="1"/>',
+  lane: '<rect class="rmgrass" x="2" y="1" width="96" height="42"/><rect class="rmroad" x="13" y="-1" width="74" height="46"/><path class="rmlane" d="M37.7 1v42M62.3 1v42"/>' + miniCar(25.5, 11, 'rmcar1') + miniCar(74.5, 19, 'rmcar2') + miniCar(50, 32, 'rmcar0'),
+  flap: '<rect class="rmsky" x="2" y="1" width="96" height="42"/><circle class="rmsun" cx="87" cy="9" r="5.5"/><path class="rmhill" d="M2 43q15-12 30-6t30-4t36 8v3h-96z"/><rect class="rmpost" x="45.5" y="-1" width="9" height="11"/><rect class="rmcap" x="43.5" y="9" width="13" height="4" rx="1.5"/><rect class="rmpost" x="45.5" y="30" width="9" height="15"/><rect class="rmcap" x="43.5" y="27" width="13" height="4" rx="1.5"/><rect class="rmpost" x="78.5" y="-1" width="9" height="18"/><rect class="rmcap" x="76.5" y="16" width="13" height="4" rx="1.5"/><rect class="rmpost" x="78.5" y="37" width="9" height="8"/><rect class="rmcap" x="76.5" y="34" width="13" height="4" rx="1.5"/>'
+    + '<path class="rmhero" d="M18 20l-6.5-4.5l1.2 5l-2 4z"/><ellipse class="rmhero" cx="24" cy="20" rx="7" ry="6"/><path class="rmbeak" d="M30 18.5l5.5 2l-5.5 2.2z"/><path class="rmhero" d="M19.5 20.5q2.5-8 7.5-3.5q-2 5-7.5 3.5z"/><circle class="rmeye" cx="27.3" cy="17.7" r="1.1"/>',
+  chopper: '<rect class="rmcavebg" x="2" y="1" width="96" height="42"/><path class="rmbeam" d="M32 21l30-9v19z"/><path class="rmcave" d="M0 -1h100v10q-20 9-40 5t-30 2.5t-30-5z"/><path class="rmcave" d="M0 45v-9q24-8.5 44-3t34-5t22 5v12z"/><rect class="rmblock" x="69" y="15.5" width="8" height="12.5" rx="2"/>'
+    + '<path class="rmgnd" d="M20 21l-10-1.3M16 14h17M24.5 14v2.5M20 27.3h11M22.5 25l-.6 2.3M27.5 25l.6 2.3"/><ellipse class="rmhero" cx="25" cy="21" rx="7" ry="4.8"/><ellipse class="rmwin" cx="28" cy="20.2" rx="2.8" ry="2.3"/>',
 };
 export function runnerMiniature(mini, final) {
-  const at = p => (8 + 82 * Math.min(1, mini.dist[p] / mini.cfg.target)).toFixed(1);
-  return `<div class="tscene" aria-label="X at ${Math.round(mini.dist.X)} m, O at ${Math.round(mini.dist.O)} m of ${mini.cfg.target}"><svg viewBox="0 0 100 60" aria-hidden="true">${RUN_SCENES[mini.type] || ''}${finishSvg(92, 4, 56, 4)}${tokSvg('X', at('X'), 17, 6)}${tokSvg('O', at('O'), 43, 6)}</svg></div>`;   // both players' progress to the target
+  const T = mini.cfg.target, row = (p, y) => {
+    const k = Math.max(0, Math.min(1, mini.dist[p] / T)), w = 75 * k;
+    return `${tokSvg(p, 8, y, 6)}<rect class="rmbar" x="17" y="${y - 3.5}" width="75" height="7" rx="3.5"/>${w > 0.4 ? `<rect class="rmfill ${p}" x="17" y="${y - 3.5}" width="${Math.max(7, w).toFixed(1)}" height="7" rx="3.5"/>` : ''}<rect class="rmbar o" x="17" y="${y - 3.5}" width="75" height="7" rx="3.5"/>${finishSvg(93.5, y - 5.4, y + 5.4, 3.2)}`;
+  };
+  return `<div class="tscene" aria-label="X at ${Math.round(mini.dist.X)} m, O at ${Math.round(mini.dist.O)} m of ${T}"><svg viewBox="0 0 100 77" aria-hidden="true"><clipPath id="rmclip"><rect x="2" y="1" width="96" height="42" rx="5"/></clipPath><g clip-path="url(#rmclip)">${RUN_SCENES[mini.type] || ''}</g><rect class="rmframe" x="2" y="1" width="96" height="42" rx="5"/>${row('X', 55)}${row('O', 69.5)}</svg></div>`;   // both players' progress to the target
 }
 export function runnerMoveText(f, who) {
   return f.run ? (f.run.done ? `${who} reached ${fmtM(f.run.target)} m!` : `${who} ${RUN_TEXT[f.type].verb} ${fmtM(f.run.to - f.run.from)} m — now at ${fmtM(f.run.to)}/${fmtM(f.run.target)}`) : `${who} ${RUN_TEXT[f.type].verb}`;
@@ -281,6 +316,12 @@ export function runnerSounds(f, add, won, mini, last) {
   const r = f.run, step = runStepOf(f.type), press = f.type === 'chopper' ? null : f.type === 'lane' ? 'skid' : RUN_PRESS[f.type];
   let n = 0;
   for (const [k, c] of runUnlog(r.log, r.steps) || []) { if (press && c !== 'r' && n < 300) { add(press, Math.round(k * step * 1000)); n++; } }
+  if (mini && mini.cfg && mini.seed && mini.dist) {                               // the run's own events (a landing, a post cleared, traffic passed): the log played through, each at its step
+    try {
+      const rp = runReplayer(Object.assign({}, mini, { dist: Object.assign({}, mini.dist, { [f.by]: r.from }) }), f.by, runUnlog(r.log, r.steps) || [], r.steps), st = {};
+      for (let k = 4, m = 0; m < 240; k += 4) { runReplayTo(rp, k); for (const s of runEvents(rp.sim, st)) { add(s, Math.round(rp.sim.n * step * 1000)); m++; } if (rp.sim.crash || rp.sim.done || rp.sim.n >= r.steps) break; }
+    } catch (e) { /* (a course that cannot be read: the presses and the end alone) */ }
+  }
   const drive = Math.round(r.steps * step * 1000);
   if (r.done) add('sparkle', drive); else if (!r.out) add('crash', drive);
   add('ding', pre + RUNT.bar);
@@ -294,7 +335,7 @@ export function init() {
     const scene = app.querySelector('[data-run="scene"]');
     e.preventDefault(); ownPress();
     rd.pointer = e.pointerId; rd.x0 = e.clientX; rd.swiped = false; rd.scene = scene;
-    if (rd.sim.type !== 'lane' && runJump(rd.sim)) { if (rd.sim.type === 'chopper') runRotor(true); else SND.play(RUN_PRESS[rd.sim.type]); }   // a jump, a flap; the chopper's rotor runs while held
+    if (rd.sim.type !== 'lane' && runJump(rd.sim)) { if (rd.sim.type === 'chopper') runRotor(true); else SND.play(RUN_PRESS[rd.sim.type]); haptic('tap'); }   // a jump, a flap; the chopper's rotor runs while held (each with a light buzz: this phone's own press)
     try { (e.target.closest('main.scr.mini') || scene).setPointerCapture(e.pointerId); } catch (err) { /* no capture: the move and up still reach the page */ }
   });
   // While a run is on (and its count), touches on the screen do nothing else: no selection, magnifier or callout.
@@ -303,7 +344,7 @@ export function init() {
     const rd = runDraft;
     if (!rd || rd.pointer !== e.pointerId || rd.sim.type !== 'lane' || rd.swiped || rd.phase !== 'run') return;
     const dx = e.clientX - rd.x0;
-    if (Math.abs(dx) >= 18) { rd.swiped = true; if (runLane(rd.sim, dx < 0 ? -1 : 1)) SND.play('skid'); }   // a swipe counts as soon as it is one
+    if (Math.abs(dx) >= 18) { rd.swiped = true; if (runLane(rd.sim, dx < 0 ? -1 : 1)) { SND.play('skid'); haptic('tap'); } }   // a swipe counts as soon as it is one
   });
   app.addEventListener('pointerup', runPointerUp);
   app.addEventListener('pointercancel', e => { const rd = runDraft; if (rd && rd.pointer === e.pointerId) { rd.pointer = null; if (rd.sim.type !== 'lane') { runRelease(rd.sim); runRotor(false); } } });
@@ -313,5 +354,6 @@ export function init() {
     if (rd.sim.type !== 'lane' && (e.key === ' ' || e.key === 'ArrowUp')) { e.preventDefault(); if (runJump(rd.sim)) { if (rd.sim.type === 'chopper') runRotor(true); else SND.play(RUN_PRESS[rd.sim.type]); } }
     if (rd.sim.type === 'lane' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) { e.preventDefault(); if (runLane(rd.sim, e.key === 'ArrowLeft' ? -1 : 1)) SND.play('skid'); }
   });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) { runRotor(false); showRotor(false); } });   // (the page put away: no rotor left droning)
   document.addEventListener('keyup', e => { const rd = runDraft; if (rd && rd.sim.type !== 'lane' && (e.key === ' ' || e.key === 'ArrowUp')) { runRelease(rd.sim); runRotor(false); } });
 }
