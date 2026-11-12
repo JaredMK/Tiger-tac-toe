@@ -1,5 +1,5 @@
 // Mini Golf's course as it is drawn and heard (November 2026, the polish sweep; games/golf/view.js, ui/physics.js): the
-// sight line is the putt (how far a putt rolls and the first thing in its way agree with the simulation), a holed ball
+// aim is a short arrow and the power bar alone (December 2026: no sight line), the terrain is drawn and turns, a holed ball
 // drops into the cup and its sparks play after the recording has let it go, a post pops as it kicks, the putter strokes
 // as the shot starts, and every sound comes from its event, once. Rendered in Node with the browser's names stubbed
 // (motion on) and a canvas that only counts what is drawn.
@@ -39,33 +39,54 @@ const golf = (hole, X, O) => ({ type: 'golf', hole, balls: { X, O: O || [97, 157
 const flashOf = (mini, p, shot) => { const r = E.applyMove(mini, p, shot, E.makeRng('gt')); assert.equal(r.ok, true); const f = { type: 'golf', by: p, kind: r.outcome === 'win' ? 'claim' : 'move' }; E.rulesOf('golf').moveFlash(shot, p, null, null, mini, f); return f; };
 const posAt = (rec, t) => { const k = Math.min(rec.frames.length - 1, Math.floor(t * rec.fps)), o = {}; rec.ids.forEach((id, j) => { o[id] = rec.frames[k][2 * j] == null ? null : [rec.frames[k][2 * j], rec.frames[k][2 * j + 1]]; }); return o; };
 
-test('Mini Golf: the sight line is the putt: a putt rolls as far as the simulation takes it, and meets the first wall, post or the cup where the simulation does', () => {
-  for (const p of [0.1, 0.25, 0.4, 0.6]) {                         // open ground (hole 7's left side, straight up from the bottom)
-    const r = P.run('golf', golf(7, [10, 155]), 'X', { aim: 0, power: p });
-    assert.ok(r.events.every(e => e.k === 'stop'), 'nothing in the way');
-    assert.ok(Math.abs(V.golfReach(p, P.GOLF) - (155 - r.final.X[1])) < 0.15, `power ${p}: rolls ${(155 - r.final.X[1]).toFixed(2)}, the line says ${V.golfReach(p, P.GOLF).toFixed(2)}`);
+test('Mini Golf: no sight line (December 2026): a putt lined up shows a short arrow of one length and the power bar\'s level alone, whatever the aim, power or course', () => {
+  const look = (hole, from, aim, power) => { const x = G(), calls = []; const c = x.c; x.g.c = new Proxy(c, { get: (t, k) => (typeof t[k] === 'function' ? (...a) => { calls.push([k, ...a]); return t[k](...a); } : t[k]) }); V.drawGolfAim(x.g, golf(hole, from), { X: from, O: [97, 157] }, { aim, power }, 'X'); return calls; };
+  const moves = calls => calls.filter(q => q[0] === 'moveTo' || q[0] === 'lineTo');
+  const len = calls => { const m = moves(calls).filter(q => q[0] === 'moveTo'); return m.length ? Math.hypot(m[0][1] - m[1][1], m[0][2] - m[1][2]) : 0; };
+  const shapes = [];
+  for (const [hole, from, aim, power] of [[7, [10, 155], 0, 0.1], [7, [10, 155], 0, 0.9], [2, [50, 60], 1.2, 0.5], [12, [40, 140], -2.4, 1]]) {
+    const calls = look(hole, from, aim, power);
+    assert.ok(!calls.some(q => q[0] === 'setLineDash'), 'no dotted line');
+    shapes.push(moves(calls).length);
+    assert.ok(Math.abs(len(calls) - len(look(7, [10, 155], 0, 0.9))) < 0.5, 'the arrow is always the same length');
   }
-  assert.equal(V.golfReach(0), 0); assert.ok(V.golfReach(1, P.GOLF) > 160, 'a full putt outruns the course');
-  let walls = 0, posts = 0, cups = 0, tried = 0, grazes = 0;
-  for (let hole = 0; hole < P.HOLES.length; hole += 2) for (let aim = -1.45; aim <= 1.5; aim += 0.3) {
-    const h = P.HOLES[hole], from = [h.tee[0] - 3, h.tee[1]], mini = golf(hole, from), s = V.golfSight(h, mini.balls, 'X', aim, P.GOLF);
-    assert.ok(s && s.kind !== 'none' && s.t >= 0 && s.t < 200, 'something is always in the way (the kerb at the least)');
-    const r = P.run('golf', mini, 'X', { aim, power: 0.9 }), e = r.events[0], i = r.rec.ids.indexOf('X');
-    if (e.k === 'stop' || V.golfReach(0.9, P.GOLF) < s.t) continue;
-    tried++;
-    if (s.kind === 'corner' || s.graze > V.GOLFV.graze) { grazes++; assert.equal(s.off, null, 'a wall\'s end, the merest touch of a post: no way off promised'); continue; }   // (the simulation's balls and posts are ten-sided: such a touch may slip by)
-    const at = r.rec.frames[Math.max(0, Math.round(e.t * r.rec.fps) - 1)], far = Math.hypot(at[2 * i] - from[0], at[2 * i + 1] - from[1]);
-    assert.ok(Math.abs(far - s.t) < 6, `hole ${hole}, aim ${aim.toFixed(2)}: the first ${e.k} after ${far.toFixed(1)}, the line says a ${s.kind} at ${s.t.toFixed(1)}`);
-    assert.equal({ wall: 'wall', bump: 'post', hole: 'cup', lip: 'cup', balls: 'ball' }[e.k], s.kind, `hole ${hole}, aim ${aim.toFixed(2)}: a ${e.k}, the line says ${s.kind}`);
-    if (s.kind === 'wall') { walls++; assert.ok(s.off && s.off[0] * s.n[0] + s.off[1] * s.n[1] > 0 && s.dir[0] * s.n[0] + s.dir[1] * s.n[1] < 0, 'into the wall, and off it'); }
-    if (s.kind === 'post') { posts++; assert.deepEqual(s.off, s.n, 'straight off a post'); }
-    if (s.kind === 'cup') cups++;
+  assert.ok(shapes.every(n => n === shapes[0]), `the same drawing every time: no line to a wall, no landing, no bar where it stops (${shapes})`);
+  assert.ok(Math.abs(len(look(7, [10, 155], 0, 0.5)) - V.GOLFV.arrow * K) < 0.5, 'as long as GOLFV.arrow');
+  assert.equal(V.golfSight, undefined); assert.equal(V.golfReach, undefined);
+});
+
+test('Mini Golf: the terrain (December 2026): a v 2 square with the switches on draws its hole\'s slopes, sand, water and windmills; the windmills turn as a shot plays and stand still between shots; a ball into the water splashes, comes back where it began, a stroke more, its splash sound and error buzz', () => {
+  const on = { slopes: 'on', sand: 'on', water: 'on', mills: 'on', waterPenalty: 1 }, dealt = h => { const m = E.newMini('golf', E.makeRng('tr' + h)); m.hole = h; const tee = P.HOLES[h].tee; m.balls = { X: [tee[0] - 3, tee[1]], O: [tee[0] + 3, tee[1]] }; m.tune = Object.assign({}, m.tune, on); return m; };
+  assert.equal(dealt(1).v, 2, 'a new square has the terrain');
+  const kinds = { slopes: 0, sand: 0, water: 0, mills: 0 };
+  for (const h of P.HOLES) for (const k of Object.keys(kinds)) kinds[k] += h.terrain[k].length ? 1 : 0;
+  assert.ok(Object.values(kinds).every(n => n >= 8), `every kind on several holes (${JSON.stringify(kinds)})`);
+  const mill = P.HOLES.findIndex(h => h.terrain.mills.length), m = dealt(mill), T = V.golfTerrainOf(m);
+  assert.equal(T.mills.length, 1); assert.equal(V.golfTerrainOf(Object.assign({}, m, { tune: Object.assign({}, m.tune, { mills: 'off' }) })).mills.length, 0, 'its switch off: no windmill');
+  assert.equal(V.golfTerrainOf(Object.assign({}, m, { v: undefined })), null, 'a square from before: no terrain');
+  const rot = (mini, play) => { const x = G(), out = []; x.g.c = new Proxy(x.c, { get: (t, k) => (k === 'rotate' ? a => out.push(a) : t[k]) }); V.drawGolf(x.g, mini, play ? posAt(play.ph.rec, play.el) : U.physStill(mini), play, null); return out; };
+  const idle = rot(m);
+  assert.ok(idle.length >= 4, 'a windmill: its shadow and its two bars'); assert.deepEqual(rot(m), idle, 'still between shots');
+  const f = flashOf(m, 'X', { aim: 0.4, power: 0.5 }), a0 = rot(m, { ph: f.phys, el: 0 }), a1 = rot(m, { ph: f.phys, el: 0.5 });
+  assert.ok(Math.abs(a0[0] - idle[0]) < 1e-9, 'the shot finds it as it stood'); assert.ok(Math.abs(a1[0] - a0[0]) > 0.3, 'and it turns as the shot plays');
+  const end = rot(m, { ph: f.phys, el: 99 }), after = rot(m);
+  assert.ok(Math.abs(end[0] - after[0]) < 0.005, 'the next shot finds it where the last one left it (to its clock\'s thousandths)');
+  // water: a putt found into a pond
+  let wet = null;
+  for (const h of P.HOLES.map((_, i) => i).filter(i => P.HOLES[i].terrain.water.length)) {
+    const [wx, wy] = P.HOLES[h].terrain.water[0], m2 = dealt(h); m2.balls.X = [wx, Math.min(155, wy + 14)];
+    if (m2.balls.X[1] > 150) continue;
+    const was = m2.balls.X.slice(), g = flashOf(m2, 'X', { aim: E.aimTo(m2.balls.X, [wx, wy]), power: 0.3 });
+    if (g.phys.water && g.phys.water.X) { wet = { m: m2, f: g, was }; break; }
   }
-  assert.ok(grazes < tried / 8, `mostly square on (${grazes} of ${tried})`);
-  assert.ok(walls > 10 && posts > 0, `walls ${walls}, posts ${posts}, cups ${cups}`);
-  const cup = P.HOLES[2].cup, toCup = V.golfSight(P.HOLES[2], { X: [cup[0], cup[1] + 30], O: [90, 150] }, 'X', 0, P.GOLF);
-  assert.equal(toCup.kind, 'cup'); assert.ok(Math.abs(toCup.t - (30 - P.GOLF.cupR)) < 0.01, 'the cup: where the ball\'s middle crosses its edge');
-  assert.equal(V.golfSight(P.HOLES[2], { X: [cup[0], cup[1] + 30], O: [cup[0], cup[1] + 15] }, 'X', 0, P.GOLF).kind, 'ball', 'the other ball in the way');
+  assert.ok(wet, 'a putt into the water');
+  assert.ok(Math.hypot(wet.m.balls.X[0] - wet.was[0], wet.m.balls.X[1] - wet.was[1]) < 0.05, 'back where it began'); assert.equal(wet.m.shots.X, 2, 'the shot and the stroke for the water');
+  const sp = wet.f.phys.events.find(e => e.k === 'water'), x = G();
+  assert.equal(V.drawGolf(x.g, wet.m, posAt(wet.f.phys.rec, sp.t + 0.1), { ph: wet.f.phys, el: sp.t + 0.1 }, null), true, 'the splash plays');
+  const names = []; U.physicsSounds(wet.f, n => names.push(n));
+  assert.equal(names.filter(n => n === 'golfSplash').length, 1, `the splash, once (${names})`);
+  assert.ok(HAP.movePlan(Object.assign({}, wet.f, { winner: null, kind: 'move' }), names.map((n, i) => [n, i * 100])).some(q => q[0] === 'error'), 'its error buzz');
+  for (const n of ['golfSplash', 'golfSand']) assert.ok(require('node:fs').readFileSync(new URL('../../SOUNDS.md', import.meta.url), 'utf8').includes('`' + n + '`'), `${n} is listed in SOUNDS.md`);
 });
 
 test('Mini Golf: a holed ball drops into the cup and the sparks play after the recording lets it go; the putter strokes as the shot starts; a post pops as it kicks; then nothing more is wanted', () => {

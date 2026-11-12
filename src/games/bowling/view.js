@@ -307,6 +307,7 @@ function drawMeters(c, G, M, mini, P, a) {
     c.beginPath(); c.ellipse(E.X, E.Y, rx, ry, 0, 0, Math.PI * 2); c.lineWidth = 3 * unit; c.strokeStyle = P.ink; c.stroke();
     c.lineWidth = 2 * unit; c.strokeStyle = colOf(0); c.stroke();
     if (on(0)) { c.beginPath(); c.ellipse(E.X, E.Y, rx * 0.35, ry * 0.35, 0, 0, Math.PI * 2); c.fillStyle = col; c.fill(); }
+    label(c, MLAB[0], E.X, E.Y - ry - 4 * unit, colOf(0), unit, 'center');
   }
   // the curve's meter, under the ball
   const cw = Math.min(G.W * 0.62, 260 * unit), ch = 10 * unit, cx0 = G.W / 2 - cw / 2, cy = Math.min(G.H - ch - 6 * unit, B.Y + rB + 8 * unit);
@@ -328,7 +329,6 @@ function drawMeters(c, G, M, mini, P, a) {
     needle(c, px, py + ph - 2 - h, pw, on(2) ? col : '#fff', P, unit, 'v');
   }
   label(c, MLAB[2], px + pw, py - 4 * unit, colOf(2), unit, 'right');
-  label(c, MLAB[0], 8 * unit, py - 4 * unit, colOf(0), unit, 'left');
   c.restore();
 }
 function meterBox(c, x, y, w, h, active, col, P) {

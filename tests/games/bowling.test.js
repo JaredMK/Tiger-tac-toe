@@ -25,7 +25,7 @@ test('bowling: a turn is one roll at a fresh rack; a wide roll is a gutter ball;
   assert.ok(m.pins.X > before && m.frames.X.length === 2, 'a fresh rack: the same roll knocks pins again');
   // a strike (all ten down) is noted: the best angle of the computer's comes up with one over a few racks
   let strike = false; const rng = lcg(5);
-  for (let k = 0; k < 40 && !strike; k++) { const t = mini('bowling', 'strike' + k); const ai = E.physAi(t, 'X', rng); const rr = E.applyMove(t, 'X', ai.move); if (rr.note === 'strike') { strike = true; assert.deepEqual([rr.again, t.frames.X[0].strike, t.pins.X], [undefined, true, 10]); } }
+  for (let k = 0; k < 40 && !strike; k++) { const t = mini('bowling', 'strike' + k); const ai = E.aiOf('bowling').best(t, 'X', rng, null, { level: 'hard' }); const rr = E.applyMove(t, 'X', ai.move); if (rr.note === 'strike') { strike = true; assert.deepEqual([rr.again, t.frames.X[0].strike, t.pins.X], [undefined, true, 10]); } }
   assert.ok(strike, 'a strike within forty computer rolls');
   // 35 pins take the square (the target: the admin's setting)
   const w = mini('bowling', 'w'); w.pins.X = 30;
@@ -49,18 +49,21 @@ test('bowling: no back wall — the ball and any pin that pass the end of the la
 });
 
 test('bowling: its settings (TUNE) are dealt into the square and played by: the target, a slower ball; the computer\'s error', () => {
-  E.setTune('bowling', { vMax: 90, aiPow: 0, target: 12 });
+  E.setTune('bowling', { vMax: 90, aiMs: 0, target: 12 });
   const m = mini('bowling', 'tune');
   E.setTune('bowling', null);
-  assert.deepEqual(m.tune, { vMax: 90, aiPow: 0, target: 12 });
+  assert.deepEqual(m.tune, { vMax: 90, aiMs: 0, target: 12 });
   assert.equal(E.bowlTarget(m), 12, 'the target as dealt');
   const t = JSON.parse(JSON.stringify(m)); t.pins.O = 11;
   assert.equal(E.applyMove(t, 'O', { aim: 0, power: 0.85 }).outcome, 'win', 'the dealt target takes the square');
   const slow = JSON.parse(JSON.stringify(m)), fast = Object.assign(JSON.parse(JSON.stringify(m)), { tune: undefined });
   E.applyMove(slow, 'X', { aim: 0.3, power: 1 }); E.applyMove(fast, 'X', { aim: 0.3, power: 1 });
   assert.ok(slow.last.ms > fast.last.ms, `the same roll is slower (${slow.last.ms} vs ${fast.last.ms} ms)`);
-  const ai = E.physAi(E.publicMini(m), 'X', E.makeRng('ai'));
+  const ai = E.aiOf('bowling').best(E.publicMini(m), 'X', E.makeRng('ai'));
   assert.equal(E.applyMove(JSON.parse(JSON.stringify(m)), 'X', ai.move).ok, true);
+  // the hook: a square's own (thousandths of a radian a unit rolled at full curve); none bends nothing
+  const bend = hook => { E.setTune('bowling', { hook }); const h = mini('bowling', 'hook'); E.setTune('bowling', null); E.applyMove(h, 'X', { aim: 0, curve: 1, power: 0.85 }); const f = h.last.rec.frames, i = h.last.rec.ids.indexOf('ball'); let x = 50; for (const fr of f) if (fr[2 * i] != null && fr[2 * i + 1] > 60) x = fr[2 * i]; return x; };
+  assert.ok(Math.abs(bend(0) - 50) < 0.5 && bend(20) > bend(10) + 3 && bend(10) > 60, `a stronger hook bends more (${bend(0)}, ${bend(10)}, ${bend(20)})`);
 });
 
 // Equal rolls (November 2026, the square's `even` setting, off by default): the target takes the square outright only for
@@ -105,7 +108,7 @@ test('bowling: equal rolls — the target reached with a roll in hand waits for 
   const q = E.aiOf('bowling').best(E.publicMini(m), 'O', E.makeRng('q')).q; assert.ok(q > 0 && q < 1, `the answer may win (${q})`);
 });
 
-test('bowling: the rack is a true triangle a ball cannot slip through; a pocket roll strikes more often than not, and a slow flick\'s ball still carries into the pit', () => {
+test('bowling: the rack is a true triangle a ball cannot slip through; a pocket roll strikes more often than not, and the slowest roll\'s ball still carries into the pit', () => {
   const S = P.BOWL, d = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
   for (let i = 0; i < 10; i++) { const near = S.pins.map((p, j) => (j === i ? Infinity : d(p, S.pins[i]))).sort((a, b) => a - b)[0]; assert.ok(Math.abs(near - 10) < 0.02, `pin ${i}: its neighbours 10 away (${near})`); }
   assert.ok(10 - 2 * S.pinR < 2 * S.ballR, 'the gap between two pins is narrower than the ball');
@@ -117,27 +120,56 @@ test('bowling: the rack is a true triangle a ball cannot slip through; a pocket 
   assert.deepEqual(P.run('bowling', pos, 'ball', { aim: 0.017, power: 0.9 }), P.run('bowling', pos, 'ball', { aim: 0.017, power: 0.9 }));
 });
 
-test('bowling: the flick — a swipe that points at a drawn pin rolls at that pin; the finger\'s speed is the power; a short or sideways swipe is nothing', () => {
-  for (const [W, H] of [[336, 388], [366, 590], [300, 300], [600, 520]]) {
-    const G = E.bowlGeom(W, H), ball = E.bowlProject(G, E.BLANE.start[0], E.BLANE.start[1], 0);
-    for (const [x, y] of P.BOWL.pins.concat([[30, 120], [80, 90], [50, 0]])) {
-      const t = E.bowlProject(G, x, y, 0), dx = t.X - ball.X, dy = ball.Y - t.Y, k = 60 / Math.hypot(dx, dy);   // a 60 px swipe from anywhere, along the drawn line from the ball to the spot
-      const m = E.bowlFlick(G, dx * k, dy * k, 1.2, null), want = Math.atan2(x - E.BLANE.start[0], E.BLANE.start[1] - y);
-      assert.ok(m && Math.abs(m.aim - want) < 0.0011, `${W}x${H}: the swipe at (${x}, ${y}) rolls at it (${m && m.aim} for ${want.toFixed(4)})`);
-      assert.ok(Math.abs(E.bowlAimOf(G, E.bowlScreenAngle(G, want)) - want) < 1e-9);
+test('bowling: the three sweeps — each meter sweeps back and forth and stops where it is tapped; a roll is { aim, curve, power }; the curve hooks late, the same way at any power', () => {
+  const per = E.bowlPeriods(null);
+  assert.deepEqual(per, [1700, 1500, 1300], 'the default periods (TUNE aimMs, curveMs, powerMs)');
+  for (let k = 0; k < 3; k++) {
+    assert.equal(E.bowlWave(0, per[k], k), k < 2 ? 0.5 : 0, 'the aim and the curve start in the middle, the power at the bottom');
+    let prev = E.bowlWave(0, per[k], k), turns = 0, dir = 0;
+    for (let t = 10; t <= 2 * per[k]; t += 10) { const u = E.bowlWave(t, per[k], k); assert.ok(u >= 0 && u <= 1); const d = Math.sign(u - prev); if (d && dir && d !== dir) turns++; if (d) dir = d; prev = u; }
+    assert.ok(turns >= 3 && turns <= 4, `back and forth, twice a period (${turns})`);
+    for (const u of [0, 0.13, 0.5, 0.77, 1]) assert.ok(Math.abs(E.bowlMeterU(k, E.bowlMeter(k, u)) - u) < 0.003, 'a value and its place on the meter');
+  }
+  assert.deepEqual([E.bowlMeter(0, 0), E.bowlMeter(0, 1), E.bowlMeter(1, 0), E.bowlMeter(1, 1), E.bowlMeter(2, 0), E.bowlMeter(2, 1), E.bowlMeter(1, 0.5)], [-E.BOWLG.aimSweep, E.BOWLG.aimSweep, -1, 1, E.BOWLG.powMin, 1, 0]);
+  // the move: curve -1..1, none in an older move
+  assert.deepEqual(E.bowlShot({ aim: 0.1, power: 0.8 }), { aim: 0.1, curve: 0, power: 0.8 });
+  assert.deepEqual(E.bowlShot({ aim: 0.1234, curve: -0.5557, power: 0.8 }), { aim: 0.123, curve: -0.556, power: 0.8 });
+  for (const c of [1.01, -2, 'x', NaN]) assert.equal(E.bowlShot({ aim: 0, curve: c, power: 0.8 }), null);
+  assert.equal(E.applyMove(mini('bowling', 'bad'), 'X', { aim: 0, curve: 3, power: 0.8 }).ok, false, 'the rules refuse a curve off the meter');
+  // the hook: straight for the first stretch, then bending the curve's way, by the distance rolled: the guide line is the ball's way
+  const pos = {};
+  for (const curve of [-0.7, 0.4, 1]) {
+    const path = E.bowlPath(-curve * 0.15, curve, undefined);
+    for (const power of [0.75, 1]) {
+      const r = P.run('bowling', pos, 'ball', { aim: -curve * 0.15, curve, power }), i = r.rec.ids.indexOf('ball');
+      for (const f of r.rec.frames) { const x = f[2 * i], y = f[2 * i + 1]; if (x == null || y < 60 || r.events.some(e => e.k === 'pin' && e.t * r.rec.fps < r.rec.frames.indexOf(f))) continue; const q = path.reduce((a, b) => (Math.abs(b[1] - y) < Math.abs(a[1] - y) ? b : a)); assert.ok(Math.abs(q[0] - x) < 1.2, `curve ${curve} power ${power}: the ball (${x.toFixed(1)}, ${y.toFixed(1)}) on the guide (${q[0].toFixed(1)})`); }
     }
+    assert.ok(Math.abs(path.find(p => p[1] < 214 - 45)[0] - (50 + Math.tan(-curve * 0.15) * 45)) < 0.6, 'straight for the first stretch');
+  }
+  // a hook into the pocket is the best roll: it strikes more often over a spread of aims than the best straight ball
+  const strikes = curve => { let best = 0; for (let c = 10; c <= 90; c += 2) { let n = 0; for (let x = c - 2; x <= c + 2; x += 1) for (const power of [0.8, 0.95]) if (P.run('bowling', pos, 'ball', { aim: Math.atan((x - 50) / 169), curve, power }).result.knocked === 10) n++; best = Math.max(best, n); } return best; };
+  const straight = strikes(0), hook = Math.max(strikes(0.7), strikes(-0.7));
+  assert.ok(hook > straight, `the hook's window (${hook} of 10) beats the straight ball's (${straight})`);
+  for (const f of E.tuneFields('bowling')) if (['aimMs', 'curveMs', 'powerMs', 'hook', 'even'].includes(f.k)) assert.ok(f.group === 'Rules');
+  assert.ok(!E.tuneFields('bowling').some(f => /^flick|angleGain|aiAim|aiPow/.test(f.k)), 'the flick\'s settings are gone');
+  assert.equal(E.minVersionOf('bowling'), '1.15.0');
+});
+
+test('bowling: the geometry — the lane fits the canvas; the pins small at the far end', () => {
+  for (const [W, H] of [[336, 388], [366, 590], [300, 300], [600, 520]]) {
+    const G = E.bowlGeom(W, H);
+    for (const want of [-0.2, 0, 0.13]) assert.ok(Math.abs(E.bowlAimOf(G, E.bowlScreenAngle(G, want)) - want) < 1e-9);
     assert.ok(E.bowlProject(G, 50, 30, 0).s < E.bowlProject(G, 50, 214, 0).s * 0.75, 'the pins are drawn smaller than the ball\'s end');
     assert.ok(E.bowlProject(G, 0, 240, 0).X >= -W * 0.03 && E.bowlProject(G, 100, 240, 0).X <= W * 1.03 && E.bowlProject(G, 50, 240, 0).Y <= H && E.bowlProject(G, 50, 24, 13.5).Y >= 66, `the lane fits the canvas, the back row's heads under the score board (${E.bowlProject(G, 50, 24, 13.5).Y.toFixed(0)})`);
   }
-  const G = E.bowlGeom(336, 388);
-  assert.equal(E.bowlFlick(G, 0, 60, 0.4, null).power, E.BOWLG.powMin, 'the slowest flick: the slowest roll');
-  assert.equal(E.bowlFlick(G, 0, 60, 0.1, null).power, E.BOWLG.powMin); assert.equal(E.bowlFlick(G, 0, 60, 1.7, null).power, 1); assert.equal(E.bowlFlick(G, 0, 60, 5, null).power, 1);
-  const mid = E.bowlFlick(G, 0, 60, 1.05, null).power; assert.ok(Math.abs(mid - (E.BOWLG.powMin + 1) / 2) < 0.002, `half way between: half way (${mid})`);
-  assert.equal(E.bowlFlick(G, 0, 60, 1.2, { flickMin: 1.2, flickMax: 2, angleGain: 1 }).power, E.BOWLG.powMin, 'the square\'s own flick speeds');
-  assert.ok(E.bowlFlick(G, 10, 60, 1, { angleGain: 2 }).aim > E.bowlFlick(G, 10, 60, 1, null).aim * 1.9, 'the angle\'s gain');
-  assert.equal(E.bowlFlick(G, 0, 10, 1, null), null, 'too short'); assert.equal(E.bowlFlick(G, 80, 60, 1, null), null, 'sideways'); assert.equal(E.bowlFlick(G, 0, -60, 1, null), null, 'downwards');
-  assert.ok(Math.abs(E.bowlFlick(G, 70, 60, 1, null).aim) <= E.BOWLG.aimMax);
-  assert.equal(E.bowlFlick(G, -0.0001, 60, 1, null).aim, 0, 'never a -0'); assert.ok(E.physShot(E.bowlFlick(G, 12, 70, 0.9, null)), 'a move as the rules take it');
-  for (const f of E.tuneFields('bowling')) if (['flickMin', 'flickMax', 'angleGain', 'even'].includes(f.k)) assert.ok(f.group === 'Rules');
-  assert.equal(E.minVersionOf('bowling'), '1.13.0');
+});
+
+test('bowling: the computer — each level a pick and its timing error on the three taps; Hard better than Normal, Normal than Easy', async () => {
+  const A = await import('../../src/games/bowling/ai.js');
+  const m = mini('bowling', 'ai'), avg = level => { const rng = lcg(9); let s = 0; for (let i = 0; i < 40; i++) { const mv = E.aiOf('bowling').best(E.publicMini(m), 'X', rng, null, { level }).move; assert.ok(E.bowlShot(mv) && mv.curve != null, 'a roll with its curve'); s += P.run('bowling', {}, 'ball', mv).result.knocked; } return s / 40; };
+  const e = avg('easy'), n = avg('normal'), h = avg('hard');
+  assert.ok(h > n && n > e, `pins a roll: Hard ${h}, Normal ${n}, Easy ${e}`);
+  const c = A.bowlPick(E.publicMini(m), 'X', lcg(1), 'normal').c;
+  E.setTune('bowling', { aiMs: 0 }); const z = mini('bowling', 'z'); E.setTune('bowling', null);
+  assert.deepEqual(A.bowlTimed(c, z, 0, lcg(2)), c, 'no timing error: the roll it meant');
 });

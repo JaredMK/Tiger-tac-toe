@@ -1,5 +1,5 @@
 // A computer's (or another player's) input replayed in Bowling and Bullseye: what the replay shows is exactly what they
-// did. Bowling, a flick now: the streak along their recorded aim, as long as their recorded power, then that very roll.
+// did. Bowling, three taps: each meter (aim, curve, power) sweeps and stands exactly on their value at the moment of their tap, then that very roll.
 // Bullseye, two taps again, sweeps each line straight to where it was stopped and lands the dart exactly where the move
 // did. Rendered in Node with the browser's names stubbed (no page needed).
 import test from 'node:test';
@@ -14,16 +14,21 @@ const require = createRequire(import.meta.url);
 const E = require('../engine.js');
 const B = await import('../../src/games/bowling/view.js');
 
-test('Bowling: a replayed flick — the replay\'s one input is the flick itself, their aim and power exactly; nothing else is taken', () => {
-  for (const [aim, power] of [[0.055, 0.714], [-0.19, 0.7], [0, 1], [0.3, 0.85], [-0.07, 0.946]]) {
-    const r = { sq: 4, by: 'O', list: [[0, 'bowl', `aim=${aim}|power=${power}`]], k: 1, speed: 1.5 };
-    assert.equal(B.replay.input('bowl', `aim=${aim}|power=${power}`, r), true, 'taken (no press sound of the shared replay\'s)');
+test('Bowling: replayed taps — the replay\'s inputs are the three stops, their values exactly; the computer\'s are timed to its meters\' own sweeps', () => {
+  for (const [aim, curve, power] of [[0.055, -0.4, 0.714], [-0.19, 0.8, 0.7], [0, 0, 1], [0.24, -1, 0.85]]) {
+    const r = { sq: 4, by: 'O', list: [], k: 1, speed: 1.5 };
+    for (const [k, v] of [['aim', aim], ['curve', curve], ['power', power]]) assert.equal(B.replay.input('bowl', `${k}=${v}`, r), true, 'taken (its own tick)');
     const st = B.bowlRepOn();
-    assert.deepEqual([st.sq, st.p, st.aim, st.power, st.speed], [4, 'O', aim, power, 1.5], 'the streak is their flick: its line their aim, its length their power');
-    assert.deepEqual(B.replay.synth({ aim, power }), [[0, 'bowl', `aim=${aim}|power=${power}`]], 'the computer\'s: made from its move, the same input');
+    assert.deepEqual([st.sq, st.p, st.v, st.speed], [4, 'O', [aim, curve, power], 1.5], 'their three stops');
+    const per = E.bowlPeriods(null), syn = B.replay.synth({ aim, curve, power }, { type: 'bowling' });
+    assert.deepEqual(syn.map(e => [e[1], e[2]]), [['bowl', `aim=${aim}`], ['bowl', `curve=${curve}`], ['bowl', `power=${power}`]], 'the computer\'s: made from its move');
+    for (let k = 1; k < 3; k++) { const u = E.bowlWave(syn[k][0] - syn[k - 1][0], per[k], k), want = E.bowlMeterU(k, [aim, curve, power][k]); assert.ok(Math.abs(u - want) < 0.004 && syn[k][0] > syn[k - 1][0], `meter ${k}: its sweep from the tap before stands on the value at its tap (${u} for ${want})`); }
   }
-  assert.equal(B.replay.input('bowl', 'aim=0.1', { sq: 4, by: 'O' }), false, 'an old client\'s tap (aim alone) is not a flick');
-  assert.equal(B.replay.input('drag', 'a=0.1,p=0.5', { sq: 4, by: 'O' }), false);
+  const r = { sq: 4, by: 'O', list: [], k: 1 };
+  assert.equal(B.replay.input('bowl', 'aim=0.1|power=0.8', r), true, 'an older client\'s flick: all three at once, no curve');
+  assert.deepEqual(B.bowlRepOn().v, [0.1, 0, 0.8]);
+  assert.equal(B.replay.input('bowl', 'spin=0.1', r), false);
+  assert.equal(B.replay.input('drag', 'a=0.1,p=0.5', r), false);
   assert.equal(B.replay.synth('auto'), null);
 });
 
@@ -51,23 +56,24 @@ test('Bullseye: a replayed throw — each line goes straight to where it stopped
 });
 
 // The computer's roll (and an online opponent's, from their log) replayed through ui/replay.js: the inputs stage holds
-// one input, the flick, pressed once its lead is over (the streak grows from the ball along the recorded line); the
-// roll follows a press later. Normal and Speed, the computer's and a logged one.
-test('Bowling: a replayed roll — one input, the flick, at its moment; then the move', async () => {
+// the three stops, pressed at their moments (each meter sweeping to its value as it comes due); the roll follows a press
+// later. Normal and Speed, the computer's and a logged one.
+test('Bowling: a replayed roll — three inputs, the stops, at their moments; then the move', async () => {
   const R = await import('../../src/ui/replay.js');
   const { GAMES } = await import('../../src/games/index.js');
   GAMES.bowling.view = B;                                        // (as main.js registers it: the replay finds Bowling's hooks)
-  for (const c of [{ aim: 0.055, power: 0.714, lead: 300, speed: 1 }, { aim: -0.19, power: 1, lead: 150, speed: 1.5 }, { aim: 0.12, power: 0.8, lead: 0, speed: 1.5, list: [[0, 'bowl', 'aim=0.12|power=0.8']] }]) {
+  const logged = [[0, 'bowl', 'aim=0.12'], [640, 'bowl', 'curve=-0.3'], [1180, 'bowl', 'power=0.8']];
+  for (const c of [{ aim: 0.055, curve: 0.4, power: 0.714, lead: 300, speed: 1 }, { aim: -0.19, curve: -1, power: 1, lead: 150, speed: 1.5 }, { aim: 0.12, curve: -0.3, power: 0.8, lead: 0, speed: 1.5, list: logged }]) {
     let moved = 0;
-    R.repStart({ cpu: !c.list, sq: 4, by: 'O', type: 'bowling', mini: { type: 'bowling' }, move: { aim: c.aim, power: c.power }, list: c.list || null, lead: c.lead, speed: c.speed, onMove: () => { moved++; } });
+    R.repStart({ cpu: !c.list, sq: 4, by: 'O', type: 'bowling', mini: { type: 'bowling' }, move: { aim: c.aim, curve: c.curve, power: c.power }, list: c.list || null, lead: c.lead, speed: c.speed, onMove: () => { moved++; } });
     const r = R.rep;
     assert.ok(r && r.stage === 'inputs', 'the replay is on, its inputs first');
-    assert.deepEqual(r.list, [[0, 'bowl', `aim=${c.aim}|power=${c.power}`]], 'one input: the flick');
-    assert.ok(Math.abs(R.repDue(r, r.list[0]) - (r.at + c.lead)) < 1e-6, 'due once the lead is over');
+    assert.deepEqual(r.list.map(e => e[2]), [`aim=${c.aim}`, `curve=${c.curve}`, `power=${c.power}`], 'three inputs: the stops');
+    assert.ok(Math.abs(R.repDue(r, r.list[0]) - (r.at + c.lead + r.list[0][0] / c.speed)) < 1e-6, 'each due at its moment');
     clearTimeout(r.timer);
-    r.k = 1; assert.equal(B.replay.input(r.list[0][1], r.list[0][2], r), true);
-    assert.deepEqual([B.bowlRepOn().aim, B.bowlRepOn().power, B.bowlRepOn().p], [c.aim, c.power, 'O']);
-    assert.equal(moved, 0, 'the roll is not made by the input: it follows');
+    for (let k = 0; k < 3; k++) { r.k = k + 1; assert.equal(B.replay.input(r.list[k][1], r.list[k][2], r), true); }
+    assert.deepEqual([B.bowlRepOn().v, B.bowlRepOn().p], [[c.aim, c.curve, c.power], 'O']);
+    assert.equal(moved, 0, 'the roll is not made by the inputs: it follows');
     R.repSkip();
     assert.equal(moved, 1, 'Skip (or the press\'s end): the move');
     R.repStop();

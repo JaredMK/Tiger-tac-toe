@@ -80,7 +80,7 @@ export function physCandidates(mini, p, rng) {
       out.push({ aim: a + 0.12, power: base }, { aim: a - 0.12, power: base });
     }
     out.push(...golfBumperShots(hole, from, targets, putt));   // round the bumpers in the way, and off them
-    for (let k2 = 0; k2 < 3; k2++) out.push({ aim: (rng() - 0.5) * Math.PI * 1.6, power: 0.4 + rng() * 0.55 });   // the odd bank shot
+    for (let k2 = 0; k2 < (globalThis.__NB || 3); k2++) out.push({ aim: (rng() - 0.5) * Math.PI * 1.6, power: 0.4 + rng() * 0.55 });   // the odd bank shot
   } else if (mini.type === 'pool') {
     const cue = mini.balls.cue, R = L.POOL.ballR, vm = tune(mini).vMax, pow = sp => poolPow(sp, vm);
     for (const id of poolMine(p, mini)) {
@@ -148,9 +148,10 @@ export function physAi(mini, p, rng) {
   if (!best) return { move: randomLegalMove(mini, p, rng), q: 0 };
   if (mini.type === 'golf' && err[0] > 0) {
     const off = Math.max(err[0], 0.01);
-    const sure = c => { let s = 0; for (const da of [-off, off]) { const r = physRun(mini, p, { aim: wrapAim(c.aim + da), power: c.power }); s += r ? physScore(mini, p, r) : -1e6; } return s; };
-    for (const x of tried.sort((u, v) => v.s - u.s).slice(0, GOLF_ROBUST)) x.sure = x.s * 0.5 + sure(x.c) * 0.25;
-    best = tried.slice(0, GOLF_ROBUST).reduce((u, v) => (v.sure > u.sure ? v : u));
+    const sure = c => { let s = 0; for (const da of (globalThis.__GS || [-off, off])) { const r = physRun(mini, p, { aim: wrapAim(c.aim + da), power: c.power }); s += r ? physScore(mini, p, r) : -1e6; } return s; };
+    const GR = globalThis.__GR || GOLF_ROBUST, GS = globalThis.__GS ? globalThis.__GS.length : 2;
+    for (const x of tried.sort((u, v) => v.s - u.s).slice(0, GR)) x.sure = x.s * 0.5 + sure(x.c) * 0.5 / GS;
+    best = tried.slice(0, GR).reduce((u, v) => (v.sure > u.sure ? v : u));
   }
   const g = () => gaussOf(rng);
   const move = { aim: wrapAim(best.c.aim + g() * err[0]), power: Math.max(0.05, Math.min(1, best.c.power + g() * err[1])) };

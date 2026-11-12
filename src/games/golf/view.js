@@ -100,12 +100,12 @@ function splash(c, g, x, y, u, P) {
   c.fillStyle = `rgba(200,235,255,${(0.95 * (1 - u)).toFixed(3)})`;
   for (let j = 0; j < 8; j++) { const a = j * Math.PI / 4 + 0.2, q = (1.5 + 5.5 * e) * (j % 2 ? 1 : 0.75), hop = Math.sin(Math.PI * u) * 3 * (j % 2 ? 1 : 0.6); c.beginPath(); c.arc(X + Math.cos(a) * q * k, Y + (Math.sin(a) * q - hop) * k, Math.max(1.2, 0.55 * k), 0, Math.PI * 2); c.fill(); }
 }
-// A windmill at its angle: the shadow, four blades (two bars crossed) and its post. ang: radians.
+// A windmill at its angle: the shadow, its two sails (one bar) and its post. ang: radians.
 function windmill(c, g, [x, y, L], ang, P, [sx, sy]) {
   const k = g.k, X = g.X(x), Y = g.Y(y), T = (PHYSICS.lib && PHYSICS.lib.TERR ? PHYSICS.lib.TERR.millT : 2.2) * k, H = (PHYSICS.lib && PHYSICS.lib.TERR ? PHYSICS.lib.TERR.hubR : 2) * k;
-  const bars = off => { for (const a of [ang, ang + Math.PI / 2]) { c.save(); c.translate(X + off[0], Y + off[1]); c.rotate(a); rr(c, -L * k, -T / 2, 2 * L * k, T, T / 2); c.restore(); } };
+  const bars = off => { for (const a of [ang]) { c.save(); c.translate(X + off[0], Y + off[1]); c.rotate(a); rr(c, -L * k, -T / 2, 2 * L * k, T, T / 2); c.restore(); } };
   c.fillStyle = 'rgba(0,0,0,.24)'; bars([sx, sy]); c.fill();
-  for (const a of [ang, ang + Math.PI / 2]) {
+  for (const a of [ang]) {
     c.save(); c.translate(X, Y); c.rotate(a); rr(c, -L * k, -T / 2, 2 * L * k, T, T / 2); outlined(c, COL.blade, P.ink, Math.max(1.5, 0.45 * k));
     c.fillStyle = COL.bladeLo; for (const s of [-1, 1]) c.fillRect(s > 0 ? L * k * 0.45 : -L * k * 0.9, -T / 2 + Math.max(0.6, T * 0.18), L * k * 0.45, Math.max(0.8, T * 0.25));
     c.restore();
@@ -466,7 +466,7 @@ export function miniature(mini, final) {
       ${h.walls.map(([x, y, w, hh, a]) => `<rect x="${x - w / 2}" y="${y - hh / 2}" width="${w}" height="${hh}" rx="1.5" transform="rotate(${((a || 0) * 180 / Math.PI).toFixed(1)} ${x} ${y})" class="gwall"/>`).join('')}
       ${ter ? ter.slopes.map(([x, y, r, gx, gy]) => `<circle cx="${x}" cy="${y}" r="${r}" class="gslope"/><path d="M${(x - gx * 0.5).toFixed(1)} ${(y - gy * 0.5).toFixed(1)}L${(x + gx * 0.5).toFixed(1)} ${(y + gy * 0.5).toFixed(1)}" class="gfall"/>`).join('') + ter.sand.map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" class="gsand"/>`).join('') + ter.water.map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" class="gwater"/>`).join('') : ''}
       ${h.bumpers.map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" class="gpost"/>`).join('')}
-      ${ter ? ter.mills.map(m => { const a = L.millAngle(m, 0, ter.phase), dx = Math.cos(a) * m[2], dy = Math.sin(a) * m[2]; return `<path d="M${(m[0] - dx).toFixed(1)} ${(m[1] - dy).toFixed(1)}L${(m[0] + dx).toFixed(1)} ${(m[1] + dy).toFixed(1)}M${(m[0] + dy).toFixed(1)} ${(m[1] - dx).toFixed(1)}L${(m[0] - dy).toFixed(1)} ${(m[1] + dx).toFixed(1)}" class="gmill"/>`; }).join('') : ''}
+      ${ter ? ter.mills.map(m => { const a = L.millAngle(m, 0, ter.phase), dx = Math.cos(a) * m[2], dy = Math.sin(a) * m[2]; return `<path d="M${(m[0] - dx).toFixed(1)} ${(m[1] - dy).toFixed(1)}L${(m[0] + dx).toFixed(1)} ${(m[1] + dy).toFixed(1)}" class="gmill"/>`; }).join('') : ''}
       <circle cx="${cx}" cy="${cy}" r="${S.cupR + 1.2}" class="gcup"/><path d="M${cx} ${cy}V${cy - 17}" class="gpole"/><path d="M${cx} ${cy - 17}l12 4.5l-12 4.5z" class="gflag"/>
       ${['X', 'O'].map(p => (mini.holed[p] ? '' : `<circle cx="${mini.balls[p][0]}" cy="${mini.balls[p][1]}" r="${S.ballR * 2.3}" class="${p}"/>`)).join('')}</svg>`;
 }

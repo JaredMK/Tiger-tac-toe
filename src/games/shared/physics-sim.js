@@ -151,9 +151,9 @@ export function makePhysics(Matter) {
   // played round its path; a mirrored hole has its layout's terrain mirrored. Which kinds a layout has goes by its
   // number (GOLF_TERR): a slope (a round tilted patch: a ball on it is pulled `g` units/s² across the way, never
   // more than the roll, so a ball always stops), sand (a ball in it rolls `sandRoll` times as hard), water (beside
-  // the way: a ball whose centre goes in is back where its shot began, a stroke more) and a windmill (four blades
-  // turning about a post beside the way, the way through the blades' circle; turning from the shot's start).
-  const TERR = { slopeR: 13, slopeG: 7.5, sandR: 7.5, sandRoll: 4.5, waterR: 6.5, millL: 7, millW: 1.9, millT: 2.2, hubR: 2, millCarry: 0.8 };
+  // the way: a ball whose centre goes in is back where its shot began, a stroke more) and a windmill (two sails
+  // turning about a post beside the way, the way through the sails' circle; turning as each shot plays).
+  const TERR = { slopeR: 13, slopeG: 7.5, sandR: 7.5, sandRoll: 4.5, waterR: 6.5, millL: 7, millW: 1.2, millT: 1.6, hubR: 2, millCarry: 0.8 };
   const GOLF_TERR = ['sw', 'dm', 'sd', 'wm'];   // by layout number, round and round: s slope, d sand, w water, m windmill
   function golfTerrain(h, i) {
     const R = GOLF.ballR, pts = [h.tee, ...h.path], segs = [];
@@ -228,8 +228,8 @@ export function makePhysics(Matter) {
       bodies.push(...edges(S.w, S.h, 8));
       for (const [x, y, w, h, a] of hole.walls) bodies.push(wall(x, y, w, h, a));
       hole.bumpers.forEach(([x, y, r], k) => bodies.push(Bodies.circle(x, y, r, { isStatic: true, restitution: 0.9, friction: 0, label: 'bumper:' + k })));
-      if (ter) ter.mills.forEach(([x, y, L], k) => {                  // a windmill: two bars crossed (four blades) about a post; turned every step (run)
-        const bars = [0, 1].map(() => Bodies.rectangle(x, y, 2 * L, TERR.millT, { isStatic: true, restitution: 0.6, friction: 0, label: 'mill:' + k }));
+      if (ter) ter.mills.forEach(([x, y, L], k) => {                  // a windmill: a bar (two sails) about a post; turned every step (run)
+        const bars = [0].map(() => Bodies.rectangle(x, y, 2 * L, TERR.millT, { isStatic: true, restitution: 0.6, friction: 0, label: 'mill:' + k }));
         bodies.push(...bars, Bodies.circle(x, y, TERR.hubR, { isStatic: true, restitution: 0.6, friction: 0, label: 'wall' }));
         mills.push({ k, bars, m: ter.mills[k] });
       });
@@ -301,7 +301,7 @@ export function makePhysics(Matter) {
     frame();
     let still = 0, step = 0;
     const maxSteps = Math.round(S.maxT * 1000 / STEP), sub = S.sub || 1, dt = STEP / sub;   // (sub-steps: Pool's fast balls move less than a sixth of their width each one)
-    const turn = () => { for (const ml of mills) { const a = millAngle(ml.m, t, ter.phase); Body.setAngle(ml.bars[0], a); Body.setAngle(ml.bars[1], a + Math.PI / 2); } };
+    const turn = () => { for (const ml of mills) { const a = millAngle(ml.m, t, ter.phase); Body.setAngle(ml.bars[0], a); } };
     if (mills.length) turn();
     while (step < maxSteps) {
      for (let q = 0; q < sub; q++) {

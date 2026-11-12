@@ -39,7 +39,8 @@ test('an open square: the meadow, the dog in the mover\'s colour, the steps lit 
 
 test('a step: the dog trots from its cell, its prints timed from the move, the word and its badge at the arrival; all gone after', () => {
   for (const res of ['hot', 'cold']) {
-    const m = match('sniff-polish-' + res), from = m.dog, d = stepOf(m, res);
+    let k = 0, m = match('sniff-polish-' + res); while (!stepOf(m, res)) m = match('sniff-polish-' + res + ++k);   // (a deal with such a step: in steps, not every start has one each way)
+    const from = m.dog, d = stepOf(m, res);
     assert.ok(E.playMove(state, 0, d, E.makeRng('s')).ok);
     const html = renderMini(state.squares[0]), f = field(html);
     assert.match(f, /class="sdog walk" style="--dx:[-\d.]+px;--dy:[-\d.]+px;--d:420ms;--t:420ms/, 'it walks from where it was');

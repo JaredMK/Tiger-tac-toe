@@ -71,3 +71,41 @@ test('golf: its settings (TUNE) are dealt into the square and played by: a faste
   const ai = E.physAi(E.publicMini(m), 'O', E.makeRng('ai'));
   assert.ok(ai.move && Number.isFinite(ai.move.aim));
 });
+
+test('golf: the terrain (December 2026, v 2): every layout has some, placed clear of the tee and the cup, mirrored with its hole; slopes bend a putt, sand slows it, water puts the ball back a stroke more, a windmill turns and blocks; each behind its switch; a square from before has none', () => {
+  const on = { slopes: 'on', sand: 'on', water: 'on', mills: 'on', waterPenalty: 1 };
+  const deal = (h, t) => { const m = mini('golf', 'ter' + h); m.hole = h; m.tune = Object.assign({}, m.tune, on, t || {}); const tee = P.HOLES[h].tee; m.balls = { X: [tee[0] - 3, tee[1]], O: [tee[0] + 3, tee[1]] }; return m; };
+  assert.equal(mini('golf').v, 2);
+  for (const h of P.HOLES) {
+    const t = h.terrain, n = t.slopes.length + t.sand.length + t.water.length + t.mills.length;
+    assert.ok(n >= 1, `${h.name}: some terrain`);
+    for (const [x, y, r] of [...t.sand, ...t.water, ...t.slopes]) { assert.ok(Math.hypot(x - h.tee[0], y - h.tee[1]) > r + 6 && Math.hypot(x - h.cup[0], y - h.cup[1]) > r + P.GOLF.cupR, `${h.name}: clear of the tee and the cup`); }
+    for (const [, , , gx, gy] of t.slopes) assert.ok(Math.hypot(gx, gy) < P.GOLF.roll, 'a slope pulls less than the turf holds: every ball stops');
+    if (h.of !== P.HOLES.indexOf(h)) { const b = P.HOLES[h.of].terrain; assert.deepEqual(t.water.map(w => [Math.round(100 - w[0]), w[1]]), b.water.map(w => [Math.round(w[0]), w[1]]), 'the mirror\'s water mirrored'); assert.equal(t.mills.length, b.mills.length); }
+  }
+  // water: a putt into a pond comes back to where it began, the stroke and one more counted
+  const hw = P.HOLES.findIndex(h => h.terrain.water.length), mw = deal(hw), [wx, wy] = P.HOLES[hw].terrain.water[0];
+  mw.balls.X = [wx, wy + 14];
+  const was = mw.balls.X.slice(), rw = E.applyMove(mw, 'X', { aim: E.aimTo(mw.balls.X, [wx, wy]), power: 0.3 });
+  assert.equal(rw.note, 'water'); assert.equal(mw.shots.X, 2); assert.ok(Math.hypot(mw.balls.X[0] - was[0], mw.balls.X[1] - was[1]) < 0.05);
+  const dry = deal(hw, { water: 'off' }); dry.balls.X = was.slice(); E.applyMove(dry, 'X', { aim: E.aimTo(was, [wx, wy]), power: 0.3 });
+  assert.equal(dry.shots.X, 1, 'its switch off: no water'); assert.notDeepEqual(dry.balls.X, was);
+  const free = deal(hw, { waterPenalty: 0 }); free.balls.X = was.slice(); E.applyMove(free, 'X', { aim: E.aimTo(was, [wx, wy]), power: 0.3 }); assert.equal(free.shots.X, 1, 'no penalty set: the shot alone');
+  const old = deal(hw); delete old.v; old.balls.X = was.slice(); E.applyMove(old, 'X', { aim: E.aimTo(was, [wx, wy]), power: 0.3 });
+  assert.equal(old.shots.X, 1, 'a square from before: no terrain');
+  // sand and slopes: the same putt through them goes less far, or bends
+  const through = (kind, t) => { const h = P.HOLES.findIndex(q => q.terrain[kind].length), [x, y] = P.HOLES[h].terrain[kind][0], m = deal(h, t); m.balls.X = [x, y + 12]; m.balls.O = [-40, -40]; m.holed.O = true; return E.physRun(m, 'X', { aim: 0, power: 0.32 }).final.X; };
+  const sandOn = through('sand'), sandOff = through('sand', { sand: 'off' });
+  assert.ok(sandOn[1] > sandOff[1] + 3, `sand slows a putt (${sandOn} against ${sandOff})`);
+  const across = t => { const h = P.HOLES.findIndex(q => q.terrain.slopes.length), [x, y, , gx, gy] = P.HOLES[h].terrain.slopes[0], g = Math.hypot(gx, gy), d = [-gy / g, gx / g], m = deal(h, t); m.balls.X = [x - d[0] * 10, y - d[1] * 10]; m.balls.O = [-40, -40]; m.holed.O = true; const f = E.physRun(m, 'X', { aim: Math.atan2(d[0], -d[1]), power: 0.3 }).final.X; return (f[0] - x) * gx / g + (f[1] - y) * gy / g; };
+  const slopeOn = across(), slopeOff = across({ slopes: 'off' });
+  assert.ok(slopeOn > slopeOff + 1, `a slope bends a putt down its fall (${slopeOn.toFixed(2)} against ${slopeOff.toFixed(2)})`);
+  // the windmill: the same putt at two clocks meets the blades or not; the run is the same every time
+  let both = 0;
+  for (const hm of P.HOLES.map((_, i) => i).filter(i => P.HOLES[i].terrain.mills.length)) for (const [dx, dy, aim] of [[4.5, 14, 0], [-4.5, 14, 0], [4.5, -14, Math.PI], [-4.5, -14, Math.PI], [14, 4.5, -Math.PI / 2], [14, -4.5, -Math.PI / 2], [-14, 4.5, Math.PI / 2], [-14, -4.5, Math.PI / 2]]) {   // a putt through the blades' circle beside the post, at eight clocks
+    const [mx, my] = P.HOLES[hm].terrain.mills[0], seen = new Set();
+    for (let k = 0; k < 8; k++) { const m = deal(hm); m.mt = k * 0.21; m.balls.X = [mx + dx, my + dy]; m.balls.O = [-40, -40]; m.holed.O = true; const r = E.physRun(m, 'X', { aim, power: 0.4 }); seen.add(r.events.some(e => e.k === 'mill')); if (k < 2) assert.deepEqual(r, E.physRun(m, 'X', { aim, power: 0.4 }), 'the same every time'); }
+    if (seen.size === 2) both++;
+  }
+  assert.ok(both >= 3, `the blades are in the way at some moments, not at others (${both} putts)`);
+});

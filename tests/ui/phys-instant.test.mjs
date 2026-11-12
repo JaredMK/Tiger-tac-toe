@@ -39,7 +39,8 @@ function match(type, seed) {                                                  //
 // A shot for the player on the move: the computer's best, or (every other one) anything at all.
 function shotFor(rec, rng, k) {
   const st = rec.state, i = st.lock != null ? st.lock : st.squares.findIndex(q => !q.owner), mini = st.squares[i].mini;
-  const m = k % 2 ? E.physShot({ aim: mini.type === 'bowling' ? (rng() - 0.5) * 0.3 : (rng() - 0.5) * 6.2, power: 0.25 + rng() * 0.75 }) : E.physAi(clone(mini), st.turn, rng).move;
+  const bowl = mini.type === 'bowling';   // (Bowling: its own computer, and a curve: rules.js bowlShot)
+  const m = k % 2 ? (bowl ? E.bowlShot({ aim: (rng() - 0.5) * 0.3, curve: rng() * 2 - 1, power: 0.7 + rng() * 0.3 }) : E.physShot({ aim: (rng() - 0.5) * 6.2, power: 0.25 + rng() * 0.75 })) : bowl ? E.aiOf('bowling').best(clone(mini), st.turn, rng).move : E.physAi(clone(mini), st.turn, rng).move;
   return { i, m, side: st.turn };
 }
 
