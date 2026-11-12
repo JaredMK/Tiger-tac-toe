@@ -164,12 +164,14 @@ export function moveFlash(m, p, range, bjFrom, mini, flash) {
   const l = mini.last;
   flash.rummy = Object.assign({}, l, { top: mini.pile.slice(-1)[0] || null, left: mini.left, hn: Object.assign({}, mini.hn), mc: Object.assign({}, mini.mc) });   // (public alone: the entry goes to both phones; the mover's hand is in its own side)
 }
-// The move's moments (ms): a take slides the card from the pile or the deck into the hand; a discard slides it out
-// onto the pile, and a meld lights after it.
-export const RMYT = { slide: 380, light: 420, hold: 420 };
+// The move's moments (ms): a take flies the card from the pile or the deck into the hand (`land`; a deck card of
+// one's own then turns up, `flip`; a deck run out is gathered from the pile first, three backs `gap` apart taking
+// `fly` each, and the take leaves at `deal`); a discard flies it out onto the pile, and a new meld lights as it
+// lands (`light`), held a little longer.
+export const RMYT = { slide: 300, flip: 260, light: 420, hold: 450, gap: 60, fly: 220, deal: 180 };
 export function rmyTimes(r) {
   if (!r) return { end: RMYT.hold };
-  if (r.kind === 'take') return { end: RMYT.slide + 120 };
-  return { light: RMYT.slide, end: RMYT.slide + (r.n ? RMYT.light : 0) + RMYT.hold };
+  if (r.kind === 'take') { const at = r.reshuf ? RMYT.deal : 0; return { at, land: at + RMYT.slide, end: at + RMYT.slide + (r.from === 'deck' ? RMYT.flip : 0) + 150 }; }
+  return { at: 0, land: RMYT.slide, light: RMYT.slide + 40, end: RMYT.slide + (r.n ? RMYT.light : 0) + RMYT.hold };
 }
 export function flashMs(f, winLen, won) { return rmyTimes(f.rummy).end + (won ? 600 : 0); }

@@ -121,15 +121,18 @@ export function randomMove(mini, p, rng, from, empties) { return { k: Math.floor
 export function moveFlash(m, p, range, bjFrom, mini, flash) { flash.claw = JSON.parse(JSON.stringify(mini.last)); }
 // The move's moments (ms from the move): someone else's grab first shows the sweep's last stretch up to the tap (`pre`:
 // the claw arriving exactly where it was dropped; none for this phone's own grab, already there), then the claw comes
-// down, closes, rises, carries to the chute (a slip part way) and lets go.
-export const CLAWT = { pre: 1500, down: 560, close: 260, up: 520, carryBase: 180, carryPer: 8, open: 240, fall: 420, hold: 520 };
+// down, closes, rises, carries to the chute (a slip part way) and lets go. A prize won rattles down the chute into the
+// door under it (`tray`: the result's word), then hops onto its winner's shelf (`score`: the pip fills); a slipped one
+// falls back (`land`) and bounces; a miss rides back to the chute during its hold.
+export const CLAWT = { pre: 1500, down: 560, close: 260, up: 520, carryBase: 180, carryPer: 8, open: 240, fall: 420, chute: 400, shelf: 520, hold: 520 };
 export const clawPre = (f, own) => (own || f.k == null ? 0 : Math.min(CLAWT.pre, Math.round(f.k * 1000 / CLAW.hz)));
 export function clawTimes(f, own) {
   const T = CLAWT, pre = clawPre(f, own);
   const down = pre, closed = down + T.down, up = closed + T.close, top = up + T.up;
   const carry = T.carryBase + T.carryPer * Math.abs(f.x - CLAW.rest), slipAt = top + carry * (f.t || 0.4);
-  const atChute = top + carry, end = f.res === 'win' ? atChute + T.open + T.hold : f.res === 'slip' ? slipAt + T.fall + T.hold : top + T.hold;
-  const say = f.res === 'win' ? atChute + T.open : f.res === 'slip' ? slipAt + T.fall * 0.6 : top;
-  return { pre, slide: pre, down, closed, up, top, carry, slipAt, atChute, say, end };
+  const atChute = top + carry, tray = atChute + T.open + T.chute, score = tray + T.shelf, land = slipAt + T.fall;
+  const end = f.res === 'win' ? score + T.hold : f.res === 'slip' ? land + T.hold : top + T.hold;
+  const say = f.res === 'win' ? tray : f.res === 'slip' ? slipAt + T.fall * 0.6 : top;
+  return { pre, slide: pre, down, closed, up, top, carry, slipAt, atChute, tray, score, land, say, end };
 }
 export function flashMs(f, winLen, won) { return f.claw ? clawTimes(f.claw, false).end + (won ? 600 : 0) : 600; }
