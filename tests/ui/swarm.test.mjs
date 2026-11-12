@@ -76,3 +76,35 @@ test('star swarm: the miniature is a picture (the sky, the swarm, both ships) wi
   assert.doesNotMatch(html, /class="tswfill O"/, 'a total too small for a fill draws the empty bar alone');
   for (const c of ['back', 'btn', 'big', 'seg', 'key', 'sq', 'chip', 'bird']) assert.doesNotMatch(html, new RegExp(`class="[^"]*\\b${c}\\b`), `never the interface's .${c}`);
 });
+// The polish sweep (November 2026): a run's sounds are thinned and varied, the same live and in a replay (one voice).
+test('star swarm: a run\'s voice: a burst sounds by what burst, the shots are two notes in turn, and a shot right after a burst is silent', () => {
+  const sq = square(), r = R.swarmAi(sq.mini, 'X', E.makeRng('voice'), 'hard');
+  const log = require('../../src/games/shared/finger.js').fingUnlog(r.move.log, r.move.steps, Math.ceil(R.SW.w * R.SW.q));
+  const sim = R.swarmStart(sq.mini, 'X'), voice = V.swVoice(), heard = [];
+  let k = 0, shots = 0, kills = 0, lastPop = -1;
+  while (sim.n < r.move.steps && !sim.end) {
+    let tx = null;
+    if (k < log.length && log[k][0] === sim.n) tx = log[k++][1] / R.SW.q;
+    R.swarmStep(sim, tx);
+    const s = sim.last ? voice(sim) : null;
+    if (sim.last === 'pew') { shots++; if (s) { assert.equal(s[0], 'swPew'); assert.equal(s[1], shots % 2 ? 1 : 0.84, 'two notes in turn, by the shot\'s number'); assert.ok(sim.t - lastPop >= 0.13, 'never right after a burst'); } else assert.ok(sim.t - lastPop < 0.13, 'a silent shot only right after a burst'); }
+    if (sim.last === 'kill') { kills++; lastPop = sim.t; const e = sim.ev[sim.ev.length - 1]; assert.equal(s[0], 'swPop'); assert.equal(s[1], e.k === 'swoop' ? 1.2 : e.k === 'shooter' ? 0.78 : undefined, 'a dart higher, a saucer lower, a jelly as it comes'); }
+    if (s) heard.push(s[0]);
+  }
+  assert.ok(kills > 3 && shots > 6, 'a run with bursts and shots');
+  assert.equal(heard.filter(n => n === 'swPop').length, kills, 'every burst is heard');
+  assert.ok(heard.filter(n => n === 'swPew').length < shots, 'some shots are not');
+  state.cpu = 'X';
+  const res = E.playMove(state, 0, r.move, E.makeRng('p')), got = [];
+  assert.equal(res.ok, true);
+  V.sounds(state.flash, (n, ms, rate) => got.push([n, ms, rate]), false, sq.mini, null);
+  state.cpu = null;
+  assert.deepEqual(got.slice(1, -2).map(g => g[0]).filter(n => n !== 'swBlast' && n !== 'sparkle' && n !== 'buzz'), heard.slice(0, 220), 'the replay sounds the same voice, from the move\'s inputs');
+  assert.ok(got.some(([n, , rate]) => n === 'swPew' && rate === 0.84), 'the replay carries each sound\'s rate');
+});
+test('star swarm: the miniature draws the swarm as itself (jellies with eyes, darts, a saucer) and each ship in its player\'s colour with its shot', () => {
+  const sq = square(), html = V.miniature(sq.mini, false);
+  assert.equal((html.match(/class="tsweye"/g) || []).length, 4, 'two jellies, two eyes each');
+  assert.equal((html.match(/class="tswfoe b"/g) || []).length, 2); assert.match(html, /class="tswfoe c"/); assert.match(html, /class="tswdome"/);
+  for (const p of ['X', 'O']) assert.match(html, new RegExp(`<g class="tswship ${p}"><rect class="tswshot"[^>]*/><path class="tswfl"[^>]*/><path class="tswfin"[^>]*/><path class="tswhull"`));
+});

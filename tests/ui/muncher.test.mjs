@@ -70,9 +70,41 @@ test('Muncher: the miniature is the maze with each player\'s dots as a bar and c
   sq.mini.ate = { X: [0, 2, 4], O: [60] };
   const html = V.miniature(sq.mini, false);
   assert.match(html, /^<div class="tmun" aria-label="Muncher: X has eaten 3, O 1 of 75">/);
-  assert.match(html, /<svg viewBox="0 0 130 150">/); assert.match(html, /<path class="w" d="M/); assert.match(html, /<path class="fl" d="M/); assert.match(html, /<path class="dots" d="M/); assert.match(html, /<circle class="sp"/); assert.match(html, /<circle class="mu"/);
+  assert.match(html, /<svg viewBox="7\.8 0 114\.4 142\.2">/, 'cut close to the maze as the square is (munGeom): the outer wall\'s ring left out but for the top row'); assert.match(html, /<path class="w" d="M/); assert.match(html, /<path class="fl" d="M/); assert.match(html, /<path class="dots" d="M/);
+  assert.match(html, /<path class="sp" d="M[^"]*z"\/><circle class="spe"/, 'a spook at the pen: its dome, its skirt, its eyes'); assert.match(html, /<path class="mu" d="M[^"]*A[^"]*Z"\/><circle class="mue"/, 'the muncher where X stands, its mouth open');
   assert.match(html, /<div class="mr X"><b class="X">X<\/b><i><s style="--w:4\.0%"><\/s><\/i><span>3<\/span><\/div>/);
   assert.match(html, /<div class="mr O"><b class="O">O<\/b><i><s style="--w:1\.3%"><\/s><\/i><span>1<\/span><\/div>/);
   for (const c of ['back', 'btn', 'big', 'seg', 'key', 'sq', 'chip', 'bird']) assert.ok(!new RegExp(`class="[^"]*\\b${c}\\b`).test(html), c);
   assert.equal(V.miniature(E.publicMini(sq.mini), false), html, 'the same from the public square');
+});
+
+test('Muncher (polish): the picture is cut close to the maze and keeps the top wall for the count and the time bar; the stylesheet places the count by the same figures', async () => {
+  const fs = await import('node:fs');
+  const sq = square('geo'), L = R.layoutOf(sq.mini);
+  assert.equal(L.v, 2); assert.equal(V.MUNV.crop, 0.78);
+  const wide = V.munGeom(L, 334, 284), tall = V.munGeom(L, 362, 450);
+  assert.ok(Math.abs(wide.k - 284 / 14.22) < 1e-9, 'a short phone: the height decides, 15 rows less the bottom wall\'s .78');
+  assert.ok(Math.abs(tall.k - 362 / 11.44) < 1e-9, 'a tall phone: the width decides, 13 columns less .78 of the wall each side');
+  assert.ok(wide.k > 284 / 15 * 1.05 && tall.k > 362 / 13 * 1.13, 'bigger cells than the whole slab drawn in the box');
+  assert.equal(wide.band, wide.k, 'the top wall\'s row, whole: the count and the time bar stand on it');
+  assert.ok(Math.abs(wide.oy) < 1e-9 && Math.abs(wide.ox - (334 - 13 * wide.k) / 2) < 1e-9, 'the slab centred across, its top row at the top');
+  assert.ok(Math.abs(tall.ox + 0.78 * tall.k) < 1e-9, 'the side walls\' outer .78 off the picture when the width decides');
+  const old = { v: 1, w: 9, h: 7 }, g1 = V.munGeom(old, 300, 300);
+  assert.equal(g1.band, 0); assert.ok(Math.abs(g1.k - 300 / 9) < 1e-9, 'a first maze (open to its edge) is drawn whole, as before');
+  const html = screenOf(sq, null);
+  assert.match(html, /<div class="munscene" data-mun="scene" data-v="2" /, 'the scene says which maze it holds (the count\'s place follows)');
+  const css = fs.readFileSync(new URL('../../src/ui/styles.css', import.meta.url), 'utf8');
+  assert.match(css, /\.munscene\[data-v="2"\] \{[^}]*--mk: min\(calc\(100cqw \/ 11\.44\), calc\(100cqh \/ 14\.22\)\)/, 'a cell\'s size in the stylesheet: the same 11.44 by 14.22');
+  assert.match(css, /\.munscene\[data-v="2"\] \.munhud \{[^}]*height: var\(--mk\)/);
+});
+test('Muncher (polish): the controls are as they were: Start, a swipe of 14 px, a tap on a side, the arrows or WASD, every one through the same want', async () => {
+  const fs = await import('node:fs');
+  const src = fs.readFileSync(new URL('../../src/games/muncher/view.js', import.meta.url), 'utf8');
+  assert.match(src, /const SWIPE = 14;/); assert.match(src, /const MUN_END = 700;/); assert.match(src, /const MUN_EARLY = 700;/);
+  assert.match(src, /const KEYS = \{ ArrowUp: 0, ArrowRight: 1, ArrowDown: 2, ArrowLeft: 3, w: 0, d: 1, s: 2, a: 3, W: 0, D: 1, S: 2, A: 3 \};/);
+  assert.match(src, /if \(Math\.hypot\(dx, dy\) < SWIPE\) return;\n    munWant\(fd, Math\.abs\(dx\) > Math\.abs\(dy\) \? \(dx > 0 \? 1 : 3\) : \(dy > 0 \? 2 : 0\)\);/, 'the swipe: the same reading of its way');
+  assert.match(src, /if \(Math\.abs\(dx\) < 4 && Math\.abs\(dy\) < 4\) return;\n  munWant\(fd, Math\.abs\(dx\) > Math\.abs\(dy\) \? \(dx > 0 \? 1 : 3\) : \(dy > 0 \? 2 : 0\)\);/, 'the tap: the side of the muncher it is on');
+  assert.match(src, /function munWant\(fd, d\) \{ if \(d !== fd\.want\) haptic\('tap'\); fd\.want = d; \}/, 'the want is set as before; a new one buzzes lightly');
+  assert.match(src, /if \(fd\.want >= 0\) munInput\(sim, fd\.want\); munLoud\(sim\); munNote\(sim, now\);/, 'each step: the want put in, the step, its sounds, then its notes for the picture');
+  assert.deepEqual(Object.keys(V.actions), ['mun-start']);
 });

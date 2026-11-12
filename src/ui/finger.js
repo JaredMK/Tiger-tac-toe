@@ -5,12 +5,12 @@ import { FING, FINGER_TYPES, HOP, fingAt, fingGoal, fingLog, fingMs, fingRaw, fi
 import { PHYSICS, physicsReady } from '../games/shared/physics.js';
 import { RUNT } from '../games/shared/runner.js';
 import { drawPin, pinFx, pinFxNew } from '../games/pinball/view.js';
-import { SCOOP, scoopResult, scoopSize, scoopStart, scoopStep, scoopTop } from '../games/scoop/rules.js';
+import { tune } from '../core/tune.js';
+import { SCOOP, SCOOP_VIEW, scoopDrop, scoopResult, scoopSize, scoopStart, scoopStep, scoopTop } from '../games/scoop/rules.js';
 import { drawScoop, scoopBall } from '../games/scoop/view.js';
 import { hopClampX, hopResult, hopStart, hopStep } from '../games/skyhop/rules.js';
 import { drawHop } from '../games/skyhop/view.js';
 import { SND, ownPress } from '../audio/sound.js';
-import { tokSvg } from './thumbs.js';
 import { attemptMove, dbStart } from '../net/moves.js';
 import { haptic } from '../net/platform.js';
 import { blocked, moveWait, remoteTurn } from '../net/room.js';
@@ -99,7 +99,7 @@ export async function fingGo() {
   if (!attStart(state, i, p, Date.now()).ok) return;            // held to the square here too
   if (!state.online) save();
   const sq = state.squares[i], now = performance.now(), mini = sq.mini;
-  fingDraft = { id: fingId(state.zoom, p), sq: state.zoom, p, type, mini, phase: 'play', at: now, last: now, acc: 0, raf: 0, ptr: null, keys: { L: 0, R: 0, dir: 0 }, flipOn: { L: false, R: false }, presses: new Map(), pull: null, kpx: 30, out: {}, brk: {}, keptAt: now, saved: 0, end: null, endAt: 0, hintGone: false };
+  fingDraft = { id: fingId(state.zoom, p), sq: state.zoom, p, type, mini, phase: 'play', at: now, last: now, acc: 0, raf: 0, ptr: null, keys: { L: 0, R: 0, dir: 0 }, flipOn: { L: false, R: false }, presses: new Map(), pull: null, kpx: 30, out: {}, brk: {}, ev: [], keptAt: now, saved: 0, end: null, endAt: 0, hintGone: false };
   const fd = fingDraft;
   if (type === 'pinball') { fd.w = PHYSICS.lib.pinNew(PHYSICS.lib.pinTable(mini), mini.cfg, mini.lit[p]); fd.fx = pinFxNew(); }
   else { fd.sim = type === 'skyhop' ? hopStart(mini, p) : scoopStart(mini, p); fd.rec = fingRecorder(); fd.tx = fd.sim.x; }
@@ -135,22 +135,33 @@ export function fingFrame(now) {
   fd.raf = requestAnimationFrame(fingFrame);
 }
 // One step of Sky Hop or Scoop Stack (the phone's own, or a replay's), noting what it did for the drawing and the sounds.
+// (The notes are for the scene alone, read against the attempt's clock: v.ev, the last few events (Sky Hop: each bounce,
+// where and off which platform; Scoop Stack: each miss as it counts); v.out, what came of each falling thing (a catch's
+// place in the stack, n; when a missed scoop leaves the screen, gone); v.brk, when each biscuit broke. loud: this phone's
+// own attempt, live: its sounds and its buzzes, each once, from the step that made them.)
+const fingNote = (v, e) => { const ev = v.ev || (v.ev = []); ev.push(e); if (ev.length > 16) ev.shift(); };
+export const scoopNote = got => 0.94 + 0.045 * Math.min(12, got);   // a catch's note: a little higher with each scoop caught in the attempt
 function fingStep(v, sim, tx, loud) {
   if (sim.type === 'skyhop') {
     hopStep(sim, tx);
-    if (sim.last === 'break') { v.brk[sim.on] = sim.t; if (loud) { SND.play('spring'); SND.play('crumble'); } }
-    else if (sim.last && loud) SND.play('spring');
+    if (!sim.last) return;
+    fingNote(v, { k: sim.last, t: sim.t, x: sim.x, y: sim.y, on: sim.last === 'base' ? -1 : sim.on });
+    if (sim.last === 'break') v.brk[sim.on] = sim.t;
+    if (loud) { SND.play('spring'); SND.play('runLand'); if (sim.last === 'break') SND.play('crumble'); haptic('tap'); }   // the feet on the platform under the spring
     return;
   }
   const i0 = sim.i, m0 = sim.miss;
+  let size = scoopSize(sim);
   scoopStep(sim, tx);
   for (let j = i0; j < sim.i; j++) {                               // what came of each item that reached the top in this step
     const it = sim.items[j], top = scoopTop(sim), off = Math.abs(it.x - top);
     const o = it.k === 'scoop' ? (off <= SCOOP.slide ? 'catch' : off <= SCOOP.touch ? 'slide' : 'miss') : off <= SCOOP.hit ? 'hit' : 'dodge';
     v.out[j] = { o, t: sim.t, top };
-    if (loud && o !== 'dodge' && o !== 'miss') SND.play(o === 'catch' ? 'scoop' : o === 'slide' ? 'whoosh' : 'crash');
+    if (o === 'catch') v.out[j].n = size++;
+    else if (o === 'slide' || o === 'miss') { const drop = scoopDrop(size); v.out[j].gone = it.T + (o === 'slide' ? SCOOP_VIEW.slideT * Math.sqrt(drop / SCOOP_VIEW.slide) : drop / it.v); }   // (when it leaves the screen, as the rules count it: scoopStep)
+    if (loud && o !== 'dodge' && o !== 'miss') { if (o === 'catch') { SND.play('scoop', { rate: scoopNote(sim.got.length) }); haptic('tap'); } else { SND.play(o === 'slide' ? 'whoosh' : 'crash'); if (o === 'hit') haptic('error'); } }
   }
-  if (loud && sim.miss > m0) SND.play('cushion');                  // a missed scoop gone off the bottom of the screen: the miss counts now
+  if (sim.miss > m0) { fingNote(v, { k: 'gone', t: sim.t, m: sim.miss }); if (loud) { SND.play('cushion'); haptic('medium'); } }   // a missed scoop gone off the bottom of the screen: the miss counts now
 }
 // Pinball's sounds, from the ball's own events (each once, live from the step that made it, in a replay at its moment).
 const PIN_SND = { bump: 'bumper', sling: 'pinSling', knock: 'pinKnock', wall: 'pinWall', save: 'pinSave', launch: 'plunger' };
@@ -178,6 +189,7 @@ function fingEnd(fd, end, now) {
   const snd = fingEndSound(fd.type, end);
   if (snd) SND.play(snd);
   if (fd.type === 'pinball') haptic(end === 'all' ? 'success' : 'error');   // (the ball lost, or every target lit)
+  else if (!(fd.type === 'scoop' && end === 'hazard')) haptic(end === 'top' ? 'medium' : 'error');   // (a fall, a burr, the last miss, the time; Scoop Stack's nasty catch buzzed as it landed)
 }
 // The end's own sound (Scoop Stack's splat has already sounded as the hazard landed).
 const fingEndSound = (type, end) => (end === 'time' && type !== 'pinball' ? (type === 'scoop' ? 'thud' : 'crash') : end === 'top' || end === 'all' ? 'sparkle' : end === 'hazard' ? (type === 'scoop' ? null : 'crash') : type === 'pinball' && (end === 'drain' || end === 'time') ? 'pinDrain' : end === 'fall' || end === 'drain' ? 'whoosh' : end === 'miss' ? 'thud' : null);
@@ -202,13 +214,20 @@ function fingAim(fd, tx) {
 function fingHud(fd) {
   const hud = app.querySelector('[data-fing="hud"]');
   const val = fingNow(fd), goal = fd.type === 'pinball' ? fd.w.lit.length : fd.sim.cfg.target;
-  if (hud) hud.textContent = fd.type === 'skyhop' ? `${fmtN(val)} m` : `${fmtN(val)} / ${fmtN(goal)}`;
+  if (hud) fingHudSet(hud, fd.type === 'skyhop' ? `${fmtN(val)} m` : `${fmtN(val)} / ${fmtN(goal)}`, fd.type === 'scoop');
   const row = app.querySelector(`.fprog.${fd.p}`);                 // the player's own progress fills as they go
   if (!row) return;
   if (fd.type === 'pinball') { const dots = row.querySelectorAll('.pips i'); fd.w.lit.forEach((on, k) => { if (dots[k]) dots[k].classList.toggle('on', !!on); }); }
   else { const w = (100 * Math.min(1, val / goal)).toFixed(2) + '%', bi = row.querySelector('.rbar i'); if (bi) { bi.classList.remove('grow'); bi.style.setProperty('--w0', w); bi.style.setProperty('--w1', w); } }
   const sm = row.querySelector('small');
   if (sm) sm.textContent = fingSay(fd.type, val, goal);
+}
+// The counter over the scene: its figure, and (Scoop Stack, where it goes up a scoop at a time) a pop as it changes.
+function fingHudSet(hud, text, pop) {
+  if (hud.textContent === text) return;
+  const first = hud.dataset.seen !== '1';
+  hud.textContent = text; hud.dataset.seen = '1';
+  if (pop && !first && !REDUCED && hud.animate) hud.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.22)', offset: 0.35 }, { transform: 'scale(1)' }], { duration: 240, easing: 'cubic-bezier(.4, 0, .2, 1)' });
 }
 const fingSay = (type, v, goal) => (type === 'skyhop' ? `${fmtN(v)} / ${fmtN(goal)} m` : type === 'scoop' ? `${fmtN(v)} / ${fmtN(goal)}` : `${v} / ${goal} lit`);
 
@@ -217,7 +236,7 @@ function fingDraftView(fd, now) {
   if (fd.type === 'pinball') {
     return pinView(fd.w, fd.p, fd.mini.cfg, { pull: fd.pull ? fd.pull.p : 0, flash: fd.flash, saved: fd.saved, end: fd.end, endAt: fd.endAt, fx: fd.fx });
   }
-  return { type: fd.type, p: fd.p, sim: fd.sim, out: fd.out, brk: fd.brk, stack: fd.type === 'scoop' ? fd.mini.stack[fd.p].concat(fd.sim.got) : null, end: fd.end, endAt: fd.endAt, tx: fd.tx };
+  return { type: fd.type, p: fd.p, sim: fd.sim, out: fd.out, brk: fd.brk, ev: fd.ev, rival: fingRival(fd.mini, fd.p), stack: fd.type === 'scoop' ? fd.mini.stack[fd.p].concat(fd.sim.got) : null, end: fd.end, endAt: fd.endAt, tx: fd.tx };
 }
 // Pinball's table as a ball's world stands: the ball carried on by the part of a step the frame left over (w.acc),
 // so it moves evenly however the frames fall.
@@ -225,9 +244,11 @@ function pinView(w, p, cfg, o) {
   const b = w.ball.position, vel = w.ball.velocity, lead = w.inPlay && !w.over ? Math.min(w.acc, 1 / 240) : 0;
   return Object.assign({ type: 'pinball', p, cfg, table: w.table, lit: w.lit.slice(), ball: [b.x + vel.x * lead, b.y + vel.y * lead], vel: [vel.x, vel.y], flips: [w.flip.L.a, w.flip.R.a], t: w.t, pull: 0, waiting: !w.inPlay && !w.over, gate: w.gateOn }, o || {});
 }
+// Sky Hop: the other player's height, for their pennant on the wall.
+const fingRival = (mini, p) => { const o = p === 'X' ? 'O' : 'X'; return mini.type === 'skyhop' ? { p: o, h: mini.height[o] } : null; };
 // The clean start at a player's saved progress (never the last crash).
 function fingStill(mini, p) {
-  if (mini.type === 'skyhop') return { type: 'skyhop', p, sim: hopStart(mini, p), out: {}, brk: {}, still: true };
+  if (mini.type === 'skyhop') return { type: 'skyhop', p, sim: hopStart(mini, p), out: {}, brk: {}, rival: fingRival(mini, p), still: true };
   if (mini.type === 'scoop') return { type: 'scoop', p, sim: scoopStart(mini, p), out: {}, brk: {}, stack: mini.stack[p].slice(), still: true };
   const T = PHYSICS.lib.PIN;
   return { type: 'pinball', p, cfg: mini.cfg, table: PHYSICS.lib.pinTable(mini), lit: mini.lit[p].slice(), ball: T.lane.serve.slice(), flips: [T.flip.rest, T.flip.rest], t: 0, pull: 0, waiting: true, still: true, gate: false };
@@ -255,7 +276,7 @@ function fingReplayOf(f) {
   return rep;
 }
 // A replay's view at T seconds into the attempt (Sky Hop, Scoop Stack: the sim stepped on to there).
-function fingRepView(rep, T) {
+export function fingRepView(rep, T) {
   if (rep.type === 'pinball' && rep.log) {
     const L = PHYSICS.lib, want = Math.min(rep.steps, Math.floor(T * L.PIN.hz + 1e-6)), now = performance.now();
     if (!rep.w || rep.w.n > want) { rep.w = L.pinNew(rep.table, rep.mini0.cfg, rep.mini0.lit[rep.p]); rep.fx = pinFxNew(); rep.flash = null; }
@@ -279,15 +300,15 @@ function fingRepView(rep, T) {
     const gate = !waiting && (a[0] < L.PIN.lane.wall - 1 || a[1] < L.PIN.lane.top - 1);   // (the gate shuts once the ball is out on the playfield)
     return { type: 'pinball', p: rep.p, cfg: rep.mini0.cfg, table: rep.table, gate, lit, ball: jump ? a.slice(0, 2) : [a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u], flips: [rep.ang[i][0] + (rep.ang[j][0] - rep.ang[i][0]) * u, rep.ang[i][1] + (rep.ang[j][1] - rep.ang[i][1]) * u], t: T, pull: 0, flash, waiting };
   }
-  if (!rep.sim || rep.sim.n > T / FING.step + 1) { rep.sim = rep.type === 'skyhop' ? hopStart(rep.mini0, rep.p) : scoopStart(rep.mini0, rep.p); rep.k = 0; rep.out = {}; rep.brk = {}; rep.tx = rep.sim.x; }
-  const sim = rep.sim, want = Math.min(rep.steps, Math.floor(T / FING.step + 1e-6));
+  if (!rep.sim || rep.sim.n > T / FING.step + 1) { rep.sim = rep.type === 'skyhop' ? hopStart(rep.mini0, rep.p) : scoopStart(rep.mini0, rep.p); rep.k = 0; rep.out = {}; rep.brk = {}; rep.ev = []; rep.tx = rep.sim.x; }
+  const sim = rep.sim, want = Math.min(rep.steps, Math.floor(T / FING.step + 1e-6) + (T * 1000 >= rep.raw - 0.5 ? 1 : 0));   // (the attempt's length is kept in whole ms: at its end, its last step too, the one that ended it, so the replay shows the fall, the burr or the nasty catch as the player saw it)
   while (sim.n < want && !sim.end) {
     let tx = null;
     if (rep.k < rep.log.length && rep.log[rep.k][0] === sim.n) { tx = rep.log[rep.k++][1] / FING.q; rep.tx = tx; }
     fingStep(rep, sim, tx, false);
   }
   if (sim.end && rep.endAt == null) rep.endAt = performance.now();
-  return { type: rep.type, p: rep.p, sim, out: rep.out, brk: rep.brk, stack: rep.type === 'scoop' ? rep.mini0.stack[rep.p].concat(sim.got) : null, end: sim.end && sim.end !== 'out' ? sim.end : null, endAt: rep.endAt, tx: rep.tx };
+  return { type: rep.type, p: rep.p, sim, out: rep.out, brk: rep.brk, ev: rep.ev, rival: fingRival(rep.mini0, rep.p), stack: rep.type === 'scoop' ? rep.mini0.stack[rep.p].concat(sim.got) : null, end: sim.end && sim.end !== 'out' ? sim.end : null, endAt: rep.endAt, tx: rep.tx };
 }
 // After every render: the scene of a finger-game square.
 export function fingPaint() {
@@ -318,7 +339,7 @@ function fingRepFrame(now) {
       const view = fingRepView(rep, T);
       fingDraw(cv, view, now);
       const hud = app.querySelector('[data-fing="hud"]'), v = rep.type === 'pinball' ? null : rep.sim;
-      if (hud) hud.textContent = rep.type === 'skyhop' ? `${fmtN(Math.min(v.cfg.target, v.top))} m` : rep.type === 'scoop' ? `${fmtN(scoopSize(v))} / ${fmtN(v.cfg.target)}` : `${view.lit.filter(Boolean).length} / ${rep.mini0.lit[rep.p].length}`;
+      if (hud) fingHudSet(hud, rep.type === 'skyhop' ? `${fmtN(Math.min(v.cfg.target, v.top))} m` : rep.type === 'scoop' ? `${fmtN(scoopSize(v))} / ${fmtN(v.cfg.target)}` : `${view.lit.filter(Boolean).length} / ${rep.mini0.lit[rep.p].length}`, rep.type === 'scoop');
       return e < rep.ms + 1200;
     }
   }
@@ -383,7 +404,7 @@ function fingResultText(type, s, mini, who) {
   const goal = fingGoal(mini), gain = s.to - s.from, out = s.end === 'out' ? ' (out of time)' : '';
   if (s.to >= goal) return { text: type === 'skyhop' ? `${who} reached the top!` : type === 'scoop' ? `${who} stacked ${goal} scoops!` : `${who} lit every target!`, ok: true };
   if (type === 'skyhop') return { text: gain > 0 ? `${who} climbed to ${fmtN(s.to)} m (+${fmtN(gain)})${out}` : `${who} ${s.end === 'hazard' ? 'hit a burr' : s.end === 'time' ? 'ran out of time' : s.end === 'out' ? 'ran out of time' : 'fell'} · still at ${fmtN(s.to)} m`, ok: gain > 0 };
-  if (type === 'scoop') return { text: `${who} ${s.end === 'hazard' ? 'caught something nasty' : s.end === 'miss' ? 'missed 3' : 'ran out of time'} · ${gain > 0 ? `+${gain}, now ` : ''}${s.to} scoop${s.to === 1 ? '' : 's'}`, ok: gain > 0 };
+  if (type === 'scoop') return { text: `${who} ${s.end === 'hazard' ? 'caught something nasty' : s.end === 'miss' ? `missed ${Number(tune(mini).misses) || SCOOP.misses}` : 'ran out of time'} · ${gain > 0 ? `+${gain}, now ` : ''}${s.to} scoop${s.to === 1 ? '' : 's'}`, ok: gain > 0 };
   return { text: gain > 0 ? `${who} lit ${gain} target${gain === 1 ? '' : 's'}${out} · ${s.to} of ${goal}` : `${who} lit nothing this ball${out} · ${s.to} of ${goal}`, ok: gain > 0 };
 }
 // An attempt kept from before a reload (or a send that never got there): it goes in from where it stood, once.
@@ -424,7 +445,7 @@ export function fingThing(c, x, y, R, it, P, now, landed) {             // a fal
     c.strokeStyle = '#ff8a2a'; c.lineWidth = 2; c.beginPath(); c.moveTo(x - R * 0.5, y - R * 0.1); c.lineTo(x - R * 0.15, y + R * 0.15); c.lineTo(x + R * 0.1, y - R * 0.2); c.lineTo(x + R * 0.5, y + R * 0.05); c.stroke();
     c.fillStyle = '#ffb347'; c.beginPath(); c.arc(x + R * 0.25, y + R * 0.45, R * 0.09, 0, Math.PI * 2); c.fill();
   }
-  if (landed) { c.strokeStyle = P.X; c.lineWidth = 3; for (let r = 0; r < 8; r++) { const a = r * Math.PI / 4; c.beginPath(); c.moveTo(x + Math.cos(a) * R * 1.2, y + Math.sin(a) * R * 1.2); c.lineTo(x + Math.cos(a) * R * 1.7, y + Math.sin(a) * R * 1.7); c.stroke(); } }
+  if (landed) { c.strokeStyle = '#f39a3b'; c.lineCap = 'round'; c.lineWidth = 3; for (let r = 0; r < 8; r++) { const a = r * Math.PI / 4; c.beginPath(); c.moveTo(x + Math.cos(a) * R * 1.2, y + Math.sin(a) * R * 1.2); c.lineTo(x + Math.cos(a) * R * 1.7, y + Math.sin(a) * R * 1.7); c.stroke(); } }
 }
 
 // The sounds of an attempt, for moveSounds: someone else's as it replays (from its inputs or recording, at
@@ -464,7 +485,7 @@ export function fingSounds(f, add) {
       const e = fingEndSound('pinball', fg.end);
       if (e) add(e, rep.ms);
     } else {
-      const sim = rep.type === 'skyhop' ? hopStart(rep.mini0, rep.p) : scoopStart(rep.mini0, rep.p), v = { out: {}, brk: {} };
+      const sim = rep.type === 'skyhop' ? hopStart(rep.mini0, rep.p) : scoopStart(rep.mini0, rep.p), v = { out: {}, brk: {}, ev: [] };
       let k = 0;
       while (sim.n < rep.steps && !sim.end) {
         let tx = null;
@@ -472,9 +493,9 @@ export function fingSounds(f, add) {
         const i0 = sim.i, m0 = sim.miss;
         fingStep(v, sim, tx, false);
         if (n > 200) continue;
-        if (rep.type === 'skyhop') { if (sim.last) { add('spring', at(sim.t)); n++; } if (sim.last === 'break') add('crumble', at(sim.t)); }
+        if (rep.type === 'skyhop') { if (sim.last) { add('spring', at(sim.t)); add('runLand', at(sim.t)); n++; } if (sim.last === 'break') add('crumble', at(sim.t)); }
         else {
-          for (let j = i0; j < sim.i; j++) { const o = v.out[j].o; if (o !== 'dodge' && o !== 'miss') { add(o === 'catch' ? 'scoop' : o === 'slide' ? 'whoosh' : 'crash', at(sim.t)); n++; } }
+          for (let j = i0; j < sim.i; j++) { const o = v.out[j].o; if (o !== 'dodge' && o !== 'miss') { if (o === 'catch') add('scoop', at(sim.t), scoopNote(sim.got.length)); else add(o === 'slide' ? 'whoosh' : 'crash', at(sim.t)); n++; } }
           if (sim.miss > m0) { add('cushion', at(sim.t)); n++; }                                // (a miss: as it leaves the screen)
         }
       }
@@ -483,23 +504,6 @@ export function fingSounds(f, add) {
     }
   }
   add(fg.auto ? 'thud' : fg.to > fg.from ? 'ding' : 'thud', pre + 250);
-}
-// The miniature. Sky Hop: the tower (its walls, a few planks, the goal line at the top) with each hopper at the height
-// climbed; Scoop Stack: each player's cone with the scoops stacked on it (up to six drawn) and their count.
-const HOP_SCENE = '<rect class="wall" x="0" y="0" width="7" height="60"/><rect class="wall" x="93" y="0" width="7" height="60"/><path class="goal" d="M9 3h82"/><rect class="plank" x="20" y="52" width="24" height="4" rx="2"/><rect class="plank" x="58" y="43" width="22" height="4" rx="2"/><rect class="cloud" x="22" y="31" width="20" height="4" rx="2"/><rect class="plank" x="56" y="20" width="24" height="4" rx="2"/><rect class="plank" x="30" y="10" width="20" height="4" rx="2"/>';
-const SCOOP_FLAV_N = 5;
-export function fingerMiniature(mini, final) {
-  const label = `X at ${fingAt(mini, 'X')}, O at ${fingAt(mini, 'O')} of ${mini.cfg.target}`;
-  if (mini.type === 'skyhop') {
-    const y = p => (54 - 46 * Math.min(1, fingAt(mini, p) / mini.cfg.target)).toFixed(1);
-    return `<div class="thop" aria-label="${label}"><svg viewBox="0 0 100 60" aria-hidden="true">${HOP_SCENE}${tokSvg('X', 34, y('X'), 6)}${tokSvg('O', 66, y('O'), 6)}</svg></div>`;
-  }
-  const cone = (p, cx) => {
-    const n = fingAt(mini, p), k = Math.min(6, n);
-    const scoops = Array.from({ length: k }, (_, j) => `<circle class="sc f${j % SCOOP_FLAV_N}" cx="${cx}" cy="${(33 - j * 6).toFixed(1)}" r="7.5"/>`).join('');
-    return `<path class="cone ${p}" d="M${cx - 10} 36h20l-10 16z"/>${scoops}<text x="${cx + 16}" y="51" font-size="8.5">${n}</text>`;
-  };
-  return `<div class="tscoop" aria-label="${label}"><svg viewBox="0 0 100 62" aria-hidden="true"><rect class="ctr" x="0" y="52" width="100" height="8"/>${cone('X', 30)}${cone('O', 70)}</svg></div>`;
 }
 export function fingerMoveText(f, who) {
   const fg = f.fing; if (!fg || fg.auto) return `${who} ran out of time`; const g = fg.to - fg.from; return f.type === 'skyhop' ? (g > 0 ? `${who} climbed to ${fmtN(fg.to)} m` : `${who} fell · still at ${fmtN(fg.to)} m`) : f.type === 'scoop' ? (g > 0 ? `${who} stacked ${g} more · ${fg.to} scoops` : `${who} stacked none`) : g > 0 ? `${who} lit ${g} · ${fg.to} of ${fg.goal}` : `${who} lit nothing`;

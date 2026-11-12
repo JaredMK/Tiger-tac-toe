@@ -2154,6 +2154,7 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .fscene.scoop { background: #fff4f5; } .fscene.pinball { background: #1d1630; }
 .fscene canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .fscene.pinball .fhud { color: var(--paper); text-shadow: 0 2px 0 var(--ink); }
+.fscene.skyhop .fhud, .fscene.scoop .fhud { left: 8px; top: 18px; min-width: 3.4em; padding: 3px 8px 0; border: 2.5px solid var(--ink); border-radius: 10px 8px 11px 7px; background: var(--paper); box-shadow: 0 2px 0 var(--ink); text-shadow: none; font-size: 16px; line-height: 20px; text-align: center; transform-origin: 50% 60%; }   /* Sky Hop, Scoop Stack: the counter on a paper chip, as the runners' (it reads over the sky, the tower and the awning) */
 .fscene.pinball .cbtns { position: absolute; left: 50%; top: 62%; transform: translate(-50%, -50%); width: min(52%, 210px); z-index: 2; }   /* Pinball's Start lies over the table (ui/finger.js fingTable): the table takes the room a button below it would */
 .fhint { position: absolute; left: 0; right: 0; bottom: 10px; text-align: center; color: var(--ink); font-weight: 800; font-size: 14px; pointer-events: none; text-shadow: 0 1px 0 #fff; animation: fhint 1.8s ease-out both; }
 .fscene.pinball .fhint { color: var(--paper); text-shadow: 0 2px 0 var(--ink); bottom: auto; top: 36%; }
@@ -3003,12 +3004,22 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .hcico { display: inline-block; width: 1.55em; height: 1.55em; margin: -.35em .2em -.35em .15em; vertical-align: middle; }   /* Headcount: the creature to count, by its name (its own size: the line does not grow) */
 .hcico svg { width: 100%; height: 100%; display: block; }
 .atwords .arcres { margin: 0; padding: 0; height: auto; min-height: 0; font-size: 15px; line-height: 1.25; }
+.att .atwords .arcres { font-size: clamp(15px, 4.8vw, 17px); line-height: 1.12; text-wrap: balance; }   /* the verdict's words: the line's headline (two lines at most) */
+.att .atwords .arcres .atr { display: inline-block; white-space: nowrap; max-width: 100%; }   /* (its two halves: a second line starts between them, never mid-phrase) */
+.att .atwords .arcres b.X, .att .atwords .arcres b.O { display: inline-block; max-width: 7.5em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }   /* a name in the line: cut with "…", never a third line */
+/* the phase's mark at the head of the words: an eye while the round plays, a "?" in the mover's colour for the answer (.pc-X / .pc-O on .att: whose round is on the screen) */
+.atph { display: inline-grid; place-items: center; box-sizing: border-box; width: 24px; height: 24px; margin: -4px 7px -3px 0; vertical-align: middle; border: 2.5px solid var(--ink); border-radius: 50%; background: var(--paper); color: var(--ink); font-style: normal; }
+.atph svg { width: 17px; height: 17px; display: block; }
+.atph.ask { font: 400 15px/1 'Luckiest Guy', 'Arial Black', sans-serif; padding-top: 2px; background: var(--x); color: #fff; } .pc-O .atph.ask { background: var(--o); color: var(--ink); }
 .tf.tu2, .tu.tu2, .tu2 { animation: tfrom 1ms var(--f, 0ms) both, tuntil 1ms var(--u, 0ms) both; }
 .hcbox { display: grid; width: min(100%, 320px, max(150px, calc(var(--gh) - 170px))); aspect-ratio: 1; } .hcbox > .hcl { grid-area: 1 / 1; display: grid; min-width: 0; min-height: 0; }   /* the field, then the pad in its place: the question takes no room of its own */
-.hcfield { position: relative; width: 100%; height: 100%; border: 3px solid var(--ink); border-radius: 14px; overflow: hidden;
-  background: radial-gradient(circle at 20% 30%, rgba(255,255,255,.18) 0 8%, transparent 9%), radial-gradient(circle at 75% 70%, rgba(0,0,0,.06) 0 10%, transparent 11%), #a9d47c; }
+.hcfield { position: relative; width: 100%; height: 100%; border: 3px solid var(--ink); border-radius: 14px; overflow: hidden; box-shadow: 0 4px 0 var(--ink);
+  background: radial-gradient(circle at 20% 30%, rgba(255,255,255,.18) 0 8%, transparent 9%), radial-gradient(circle at 75% 70%, rgba(0,0,0,.06) 0 10%, transparent 11%), repeating-linear-gradient(115deg, rgba(255,255,255,.07) 0 12%, transparent 12% 24%), #a9d47c; }
+/* the meadow (the scene alone, under the creatures: mown bands, tufts and pebbles in the grass's own greens, the frame's shade along the top) */
+.hcturf { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
+.hcfield::after { content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none; box-shadow: inset 0 8px 9px -7px rgba(22, 18, 16, .3), inset 0 0 0 2px rgba(255, 255, 255, .14); border-radius: 10px; }
 .hcfield.fall { background: linear-gradient(#bfe3f2, #e9f3d4); }
-.hcr { position: absolute; left: 0; top: var(--p); width: 11%; aspect-ratio: 1; animation: var(--hcanim, hcr) var(--d) linear var(--t) both; }   /* its way across: one of the four below, or its own (stopping and starting) */
+.hcr { position: absolute; left: 0; top: var(--p); width: 11%; aspect-ratio: 1; z-index: 1; animation: var(--hcanim, hcr) var(--d) linear var(--t) both; }   /* its way across: one of the four below, or its own (stopping and starting) */
 .hcr.l svg { transform: scaleX(-1); }
 .hcr.dn, .hcr.up { left: var(--p); top: 0; } .hcr.dn svg { transform: rotate(90deg); } .hcr.up svg { transform: rotate(-90deg); } .hcr.k-acorn svg, .hcr.k-leaf svg { transform: none; }
 .hcr svg { width: 100%; height: 100%; display: block; animation: hcwob .28s ease-in-out infinite alternate; }
@@ -3018,42 +3029,99 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 @keyframes hcu { from { transform: translateY(909.1%); } to { transform: translateY(-100%); } }
 @keyframes hcwob { from { translate: 0 -4%; rotate: -4deg; } to { translate: 0 4%; rotate: 4deg; } }
 .hcpad { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: 1.1fr repeat(4, 1fr); gap: 6px; width: 100%; height: 100%; min-height: 0; }
-.hcdst { grid-column: 1 / -1; display: grid; min-height: 0; } .hcdst > div { grid-area: 1 / 1; display: grid; }
 .hcpad.dim { opacity: .4; }
-.hcdisp { grid-column: 1 / -1; min-height: 0; display: grid; place-items: center; border: 3px solid var(--ink); border-radius: 10px; background: var(--paper); font: 400 24px/1 'Luckiest Guy', 'Arial Black', sans-serif; }
-.hcdisp i { font-style: normal; color: var(--muted); }
-.hcdisp.ok { background: #d7f0c9; } .hcdisp.no { background: #f9c7b6; }
-.hckey { min-height: 0; border: 3px solid var(--ink); border-radius: 10px; background: #fff; box-shadow: 0 3px 0 var(--ink); font-size: clamp(16px, 5vw, 22px); font-weight: 800; padding: 0; }
+.hcl.hcin { animation: hcin .2s cubic-bezier(.4, 0, .2, 1) backwards; } .hcl.hcin.tf { animation: tfrom 1ms var(--f, 0ms) both, hcin .2s var(--f, 0ms) cubic-bezier(.4, 0, .2, 1) backwards; }   /* the pad comes in as the field goes (its own moment: the round's end) */
+@keyframes hcin { from { opacity: 0; transform: scale(.96); } }
+/* the display: the answer typed in (each digit pops under the finger, a caret in the mover's colour after it); the verdict lands on it (.late, --t: its moment into the move): right, green under a tick; wrong, a shake under a cross, the answer struck through and the right count beside it */
+.hcdisp { grid-column: 1 / -1; min-height: 0; display: flex; align-items: center; justify-content: center; gap: 9px; border: 3px solid var(--ink); border-radius: 10px; background: var(--paper); box-shadow: inset 0 3px 0 rgba(22, 18, 16, .1); font: 400 26px/1 'Luckiest Guy', 'Arial Black', sans-serif; padding-top: 3px; }
+.hcdisp > i:not(.hccar) { font-style: normal; color: var(--muted); }
+.hcans { position: relative; display: inline-flex; } .hcans b { display: inline-block; font-weight: 400; }
+.hcans b.hcpop { animation: hcpop .22s cubic-bezier(.3, 1.6, .5, 1); }
+@keyframes hcpop { from { transform: translateY(30%) scale(.5); opacity: 0; } }
+.hccar { flex: none; width: 3px; height: 24px; margin: -3px 0 0 -5px; border-radius: 2px; background: var(--x); animation: hccar 1s steps(1) infinite; } .pc-O .hccar { background: var(--o); box-shadow: 0 0 0 1px var(--ink); }
+@keyframes hccar { 50% { opacity: 0; } }
+.hcans.no { color: var(--muted); } .hcans.no::after { content: ''; position: absolute; left: -5px; right: -5px; top: 42%; height: 3.5px; border-radius: 2px; background: var(--x); transform: rotate(-9deg); transform-origin: 0 50%; }
+.hcdisp.late .hcans.no { animation: hcgrey 1ms var(--t, 0ms) both; } .hcdisp.late .hcans.no::after { animation: hcstrike .24s calc(var(--t, 0ms) + 120ms) cubic-bezier(.4, 0, .2, 1) both; }
+@keyframes hcgrey { from { color: var(--ink); } } @keyframes hcstrike { from { transform: rotate(-9deg) scaleX(0); } }
+.hcmk { position: relative; flex: none; width: 26px; height: 26px; margin-top: -3px; } .hcmk .qmk { inset: 0; border-width: 2.5px; }
+.hctruth { flex: none; margin-top: -3px; padding: 6px 10px 2px; border: 2.5px solid var(--green); border-radius: 9px 7px 10px 6px; background: #d7f0c9; color: var(--ink); }
+.hctruth.appear { animation: appearin .3s var(--t, 0ms) cubic-bezier(.3, 1.5, .5, 1) both; }
+.hcdisp.ok { background: #d7f0c9; border-color: var(--green); } .hcdisp.no { background: #f9c7b6; }
+.hcdisp.ok.late { animation: hcok .5s var(--t, 0ms) cubic-bezier(.3, 1.3, .5, 1) both; } .hcdisp.no.late { animation: hcno .45s var(--t, 0ms) both; }
+@keyframes hcok { 0% { background: var(--paper); border-color: var(--ink); transform: none; box-shadow: 0 0 0 0 rgba(78, 157, 58, 0); } 1% { background: #d7f0c9; border-color: var(--green); } 45% { transform: scale(1.035); box-shadow: 0 0 0 7px rgba(78, 157, 58, .5); } 100% { background: #d7f0c9; border-color: var(--green); transform: none; box-shadow: 0 0 0 0 rgba(78, 157, 58, 0); } }
+@keyframes hcno { 0% { background: var(--paper); translate: 0; } 1% { background: #f9c7b6; } 20% { translate: -7px; } 40% { translate: 6px; } 60% { translate: -4px; } 80% { translate: 3px; } 100% { background: #f9c7b6; translate: 0; } }
+.hckey { min-height: 0; border: 3px solid var(--ink); border-radius: 10px; background: #fff; color: var(--ink); box-shadow: 0 3px 0 var(--ink); font: 400 clamp(18px, 5.8vw, 24px)/1 'Luckiest Guy', 'Arial Black', sans-serif; padding: 3px 0 0; }
 .hckey.ok { background: var(--green, #4e9d3a); color: #fff; }
+.hckey:not(:disabled):active { transform: translateY(3px); box-shadow: 0 0 0 var(--ink); }
 .hckey:disabled { box-shadow: none; }
+.hckey.hit { animation: hckhit .26s var(--t, 0ms) cubic-bezier(.4, 0, .2, 1), hckhit .26s var(--t2, -99s) cubic-bezier(.4, 0, .2, 1); }   /* a key going down: someone else's answer typed in (--t, --t2: a digit twice), this phone's own OK */
+@keyframes hckhit { 30%, 60% { transform: translateY(3px) scale(.96); filter: brightness(.8); } }
 .att-flash { --oh: clamp(44px, calc(var(--gh) * .09), 58px); }   /* the options' height: smaller on a short screen */
-.flbox { position: relative; width: min(100%, 260px, max(96px, calc(var(--gh) - 186px - 2 * var(--oh)))); aspect-ratio: 1; border: 3px solid var(--ink); border-radius: 16px; background: #fffaf0; display: grid; place-items: center; }
+.flbox { position: relative; width: min(100%, 260px, max(96px, calc(var(--gh) - 186px - 2 * var(--oh)))); aspect-ratio: 1; border: 3px solid var(--ink); border-radius: 16px; background: #fffaf0; display: grid; place-items: center; box-shadow: 0 4px 0 var(--ink); container-type: inline-size; }
+/* the stage is a card: its back (the table's blue, a disc with the game's bolt; for the answer, a "?" in the mover's colour) before Start and once the round has flashed; the verdict lands on its face */
+.flbox::before { content: ''; position: absolute; inset: 5px; border: 2px solid rgba(22, 18, 16, .09); border-radius: 9px; pointer-events: none; }
+.flback { position: absolute; inset: 0; z-index: 2; border-radius: 12px; display: grid; place-items: center; background: repeating-linear-gradient(45deg, var(--sea) 0 12px, var(--sea-2) 12px 24px); box-shadow: inset 0 0 0 5px var(--paper); }
+.flback span { width: 46%; aspect-ratio: 1; border-radius: 50%; display: grid; place-items: center; background: var(--paper); border: 3px solid var(--ink); box-shadow: 0 3px 0 var(--ink); font: 400 26cqw/1 'Luckiest Guy', 'Arial Black', sans-serif; color: var(--ink); }
+.flback span svg { width: 66%; height: 66%; display: block; }
+.flback.ask span { padding-top: .14em; background: var(--x); color: #fff; } .pc-O .flback.ask span { background: var(--o); color: var(--ink); }
+.ph-ans .flback { animation: flbackin .22s var(--f, 0ms) cubic-bezier(.3, 1.4, .5, 1) backwards; } .flback.tf.tu2 { animation: tfrom 1ms var(--f, 0ms) both, tuntil 1ms var(--u, 0ms) both, flbackin .22s var(--f, 0ms) cubic-bezier(.3, 1.4, .5, 1) backwards; }
+@keyframes flbackin { from { transform: scale(.9); opacity: 0; } }
+.flver { position: absolute; inset: 0; z-index: 1; display: grid; place-items: center; } .flver .qmk { position: relative; inset: auto; width: 46%; height: 46%; border-width: 3px; box-shadow: 0 3px 0 var(--ink); }
 .fit { position: absolute; inset: 14%; opacity: 0; animation: fon var(--on) linear var(--t); }
 .fit svg { width: 100%; height: 100%; display: block; }
 @keyframes fon { from, to { opacity: 1; } }
 .flopts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: min(100%, 320px); }
-.flopts.dim { opacity: .4; }
+.flopts.dim, .flopts .fldim { opacity: .4; } .flopts.dim .flopt, .flopts .fldim .flopt { border-style: dashed; background: none; }   /* (nothing to pick yet: the options' places) */
 .flopts.lay { display: grid; grid-template-columns: 1fr; } .flopts.lay > div { grid-area: 1 / 1; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.flopt { height: var(--oh, 58px); border: 3px solid var(--ink); border-radius: 12px; background: #fff; box-shadow: 0 3px 0 var(--ink); padding: 4px; display: grid; place-items: center; }
-.flopt b { font: 400 26px/1 'Luckiest Guy', 'Arial Black', sans-serif; }
+.flopts.fldeal { animation: flin .22s cubic-bezier(.4, 0, .2, 1) backwards; } .flopts.lay > .fldeal { animation: tfrom 1ms var(--f, 0ms) both, flin .22s var(--f, 0ms) cubic-bezier(.4, 0, .2, 1) backwards; }   /* the options arrive with the question */
+@keyframes flin { from { opacity: 0; translate: 0 8px; } }
+.flopt { position: relative; height: var(--oh, 58px); border: 3px solid var(--ink); border-radius: 12px; background: #fff; color: var(--ink); box-shadow: 0 3px 0 var(--ink); padding: 4px; display: grid; place-items: center; }
+.flopt b { font: 400 26px/1 'Luckiest Guy', 'Arial Black', sans-serif; padding-top: 3px; }
 .flopt svg { height: calc(var(--oh, 58px) - 16px); width: auto; aspect-ratio: 1; display: block; }
+.flopt:not(:disabled):active { transform: translateY(3px); box-shadow: 0 0 0 var(--ink); }
 .flopt:disabled { box-shadow: none; }
-.flopt.right { background: #d7f0c9; border-color: var(--green, #4e9d3a); animation: optglow .6s both; }
-.flopt.wrong { background: #f9c7b6; } .flopt.picked { background: var(--panel-2); }
+/* the verdict (.late, --t: its moment into the move; --p: when someone else's pick went down): the pick stays pressed in until it lands; right, it lifts and glows green under a tick; wrong, it shakes under a cross and the right one lights up; the others fade back */
+.flopt .qmk { inset: auto; top: -10px; right: -9px; width: 26px; height: 26px; z-index: 1; } .flopt .qmk svg { height: 72%; width: 72%; }
+.flopt.right { background: #d7f0c9; border-color: var(--green, #4e9d3a); } .flopt.wrong { background: #f9c7b6; } .flopt.off { opacity: .5; }
+.flopt.off.late { animation: floff .2s var(--t, 0ms) both; } @keyframes floff { from { opacity: 1; } }
+.flopt.right.late { animation: flright .5s var(--t, 0ms) cubic-bezier(.3, 1.3, .5, 1) both; }
+.flopt.right.late.pick { animation: flpress 1ms var(--p, 0ms) both, flrightp .5s var(--t, 0ms) cubic-bezier(.3, 1.3, .5, 1) forwards; }
+.flopt.wrong.late { animation: flpress 1ms var(--p, 0ms) both, flwrong .45s var(--t, 0ms) forwards; }
+@keyframes flpress { from { background: #fff; border-color: var(--ink); transform: none; } to { background: var(--panel-2); border-color: var(--ink); transform: translateY(3px); } }
+@keyframes flright { 0% { background: #fff; border-color: var(--ink); box-shadow: 0 0 0 0 rgba(78, 157, 58, 0); } 1% { background: #d7f0c9; border-color: var(--green); } 45% { box-shadow: 0 0 0 6px rgba(78, 157, 58, .55); } 100% { background: #d7f0c9; border-color: var(--green); box-shadow: 0 0 0 0 rgba(78, 157, 58, 0); } }
+@keyframes flrightp { 0% { background: var(--panel-2); border-color: var(--ink); transform: translateY(3px); box-shadow: 0 0 0 0 rgba(78, 157, 58, 0); } 1% { background: #d7f0c9; border-color: var(--green); } 45% { transform: translateY(-3px) scale(1.04); box-shadow: 0 0 0 7px rgba(78, 157, 58, .5); } 100% { background: #d7f0c9; border-color: var(--green); transform: none; box-shadow: 0 0 0 0 rgba(78, 157, 58, 0); } }
+@keyframes flwrong { 0% { background: var(--panel-2); border-color: var(--ink); transform: translateY(3px); translate: 0; } 1% { background: #f9c7b6; transform: none; } 20% { translate: -7px; } 40% { translate: 6px; } 60% { translate: -4px; } 80% { translate: 3px; } 100% { background: #f9c7b6; border-color: var(--ink); transform: none; translate: 0; } }
 .snstack { display: grid; width: 100%; justify-items: center; } .snstack > div { grid-area: 1 / 1; width: 100%; display: flex; justify-content: center; }
 .snstack > .snmsg { align-items: center; pointer-events: none; z-index: 1; }   /* the blank grid's words, over its middle (nothing moves) */
 .snmsg span { background: var(--panel); border: 3px solid var(--ink); border-radius: 999px; box-shadow: 0 3px 0 var(--ink); padding: 9px 16px 6px; font: 400 clamp(16px, 5vw, 21px)/1 'Luckiest Guy', 'Arial Black', sans-serif; text-align: center; max-width: 86%; }
-.sngrid { display: grid; gap: 5px; width: min(100%, 300px, max(120px, calc((var(--gh) - 222px) * var(--c) / var(--r)))); }   /* as wide as the room for its rows allows */
+/* the grid sits in a tray (drawn round it, in the room the words' and the timer's rows give up: the grid and its cells keep their size) */
+.att-snapshot { gap: 5px; } .att-snapshot .atstage { padding: 8px 0 11px; } .att-snapshot .atwords { height: 40px; min-height: 40px; max-height: 40px; }
+.sngrid { position: relative; display: grid; gap: 5px; width: min(100%, 300px, max(120px, calc((var(--gh) - 222px) * var(--c) / var(--r)))); border-radius: 9px; box-shadow: 0 0 0 5px var(--panel-2), 0 0 0 8px var(--ink), 0 3px 0 8px var(--ink); }   /* as wide as the room for its rows allows */
 .snc { aspect-ratio: 1; border: 3px solid var(--ink); border-radius: 8px; background: #fff; padding: 0; position: relative; touch-action: manipulation; }
 .snc:disabled { cursor: default; }
 .snc.on { background: #3b87c7; } .snc.sel { background: #8d5bd8; }
+.snc:not(:disabled):active { transform: scale(.92); }
+.snc.snpop { animation: snpop .24s cubic-bezier(.3, 1.6, .5, 1); } @keyframes snpop { from { transform: scale(.78); } }   /* the cell just picked, from its tap */
 .snc.hit { background: #4e9d3a; } .snc.miss { background: #fff; border-style: dashed; border-color: #3b87c7; box-shadow: inset 0 0 0 4px #9fc5e8; } .snc.extra { background: #f9c7b6; }
-.snc.extra::after { content: '×'; position: absolute; inset: 0; display: grid; place-items: center; font-weight: 900; color: var(--x); font-size: 22px; }
-.snin { height: 44px; width: 100%; display: grid; place-items: center; }
+.snc.extra::after { content: ''; position: absolute; inset: 20%; background: linear-gradient(45deg, transparent 43%, var(--x) 43% 57%, transparent 57%), linear-gradient(-45deg, transparent 43%, var(--x) 43% 57%, transparent 57%); }   /* its cross, drawn (bold at any cell size) */
+/* the verdict (.late, --t: its moment into the move; --p: when someone else picked the cell; --k: a right cell's place in the pattern): each picked cell to right (a pop, one after the other) or wrong (a shake, its cross), a missed one showing where it was; a wrong grid shakes; the tick or the cross on the tray's corner */
+.snc.hit.late { animation: snhit .42s calc(var(--t, 0ms) + var(--k, 0) * 35ms) cubic-bezier(.3, 1.4, .5, 1) both; }
+.snc.hit.late.pk { animation: snpk 1ms var(--p, 0ms) both, snhit .42s calc(var(--t, 0ms) + var(--k, 0) * 35ms) cubic-bezier(.3, 1.4, .5, 1) forwards; }
+.snc.extra.late { animation: snextra .4s var(--t, 0ms) both; } .snc.extra.late.pk { animation: snpk 1ms var(--p, 0ms) both, snextra .4s var(--t, 0ms) forwards; }
+.snc.extra.late::after { animation: appearin .3s var(--t, 0ms) ease-out both; }
+.snc.miss.late { animation: snmiss .4s calc(var(--t, 0ms) + 140ms) cubic-bezier(.4, 0, .2, 1) both; }
+@keyframes snpk { from { background: #fff; } to { background: #8d5bd8; } }
+@keyframes snhit { 0% { background: #8d5bd8; transform: none; } 1% { background: #4e9d3a; } 45% { transform: scale(1.12); } 100% { background: #4e9d3a; transform: none; } }
+@keyframes snextra { 0% { background: #8d5bd8; translate: 0; } 1% { background: #f9c7b6; } 25% { translate: -3px; } 50% { translate: 3px; } 75% { translate: -2px; } 100% { background: #f9c7b6; translate: 0; } }
+@keyframes snmiss { 0% { background: #fff; border-style: solid; border-color: var(--ink); box-shadow: inset 0 0 0 0 #9fc5e8; } 40% { border-style: dashed; border-color: #3b87c7; box-shadow: inset 0 0 0 9px #9fc5e8; } }
+.sngrid.v-no.late { animation: cardshake .45s var(--t, 0ms); }
+.snmk { position: absolute; top: -19px; right: -19px; width: 34px; height: 34px; z-index: 2; pointer-events: none; } .snmk .qmk { inset: 0; border-width: 3px; box-shadow: 0 2px 0 var(--ink); }
+.snin { height: 35px; width: 100%; display: grid; place-items: center; }
 .sncount { display: flex; align-items: center; gap: 10px; } .sncount .obar { width: 160px; } .snbars { display: grid; } .snbars > .obar { grid-area: 1 / 1; }
+.pc-O .sncount .obar i { background: var(--o); }   /* (the round's time runs in the mover's colour) */
 .sndig { display: grid; min-width: 18px; } .sndig b { grid-area: 1 / 1; font: 400 26px/1 'Luckiest Guy', 'Arial Black', sans-serif; }
 .sndig .tf.tu { animation: tfrom 1ms var(--f, 0ms) both, tuntil 1ms var(--u, 0ms) both; }
-@media (prefers-reduced-motion: reduce) { .hcr { animation: var(--hcanim, hcr) var(--d) linear var(--t) both !important; } .fit { animation: fon var(--on) linear var(--t) !important; } .tu2, .sndig .tf.tu { animation: tfrom 1ms var(--f, 0ms) both, tuntil 1ms var(--u, 0ms) both !important; } .snstack > .tu { display: flex !important; animation: tuntil 1ms var(--u, 0ms) both !important; } }   /* the rounds are the game: they play with reduced motion too (no wobble) */
+@media (prefers-reduced-motion: reduce) { .hcr { animation: var(--hcanim, hcr) var(--d) linear var(--t) both !important; } .fit { animation: fon var(--on) linear var(--t) !important; } .tu2, .sndig .tf.tu { animation: tfrom 1ms var(--f, 0ms) both, tuntil 1ms var(--u, 0ms) both !important; } .snstack > .tu { display: flex !important; animation: tuntil 1ms var(--u, 0ms) both !important; } .atstack > .tu { display: inline !important; animation: tuntil 1ms var(--u, 0ms) both !important; } .atstack > .tf, .snstack > .snmsg.tf { animation: tfrom 1ms var(--f, 0ms) both !important; } }   /* the rounds are the game: they play with reduced motion too (no wobble); the question and the blank grid's words come only once the round has played, as with motion on */
 
 @keyframes obar { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 @media (prefers-reduced-motion: reduce) { .epad.play { animation: var(--lit) !important; } @keyframes padlit { 12%, 80% { z-index: 1; background: color-mix(in srgb, var(--pd) 72%, #fff); color: #fff; box-shadow: inset 0 0 0 4px rgba(255, 255, 255, .6), 0 0 0 3px var(--pd), 0 0 24px 7px var(--pd); } } }   /* Echo's flashes are the pattern itself: kept with reduced motion (a change of brightness, without the swell) */
@@ -3345,11 +3413,12 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 /* Pinball: the table with its targets (lit in the lighter's colour, both halves when both have) and the flippers; the targets lit as figures */
 .tpin { width: 30cqw; } .tpin .tbl { fill: #d9d2e8; stroke: var(--ink); stroke-width: 3; } .tpin .tfl { stroke: var(--ink); stroke-width: 6; stroke-linecap: round; }
 .tpin .tg0 { fill: var(--paper); stroke: var(--ink); stroke-width: 2; } .tpin .tgX { fill: var(--x); } .tpin .tgO { fill: var(--o); } .tpin .tgh { stroke: var(--ink); stroke-width: 1.2; } .tpin .tbp { fill: #b8b2c8; stroke: var(--ink); stroke-width: 2; }
-/* the attention games' emblems: Flash's shapes, Headcount's ladybug, Snapshot's grid */
+/* the attention games' pictures (ui/attention.js attentionMiniature, .tattw: the picture a little wider than a plain emblem): Headcount's patch of meadow with its creatures, Flash's fanned cards, Snapshot's tray of cells */
 .tatt { width: 30cqw; display: grid; place-items: center; } .tatt svg { width: 100%; height: auto; }
-.tatt.fl { display: grid; grid-template-columns: 1fr 1fr; gap: 1cqw; } .tatt.fl svg { width: 100%; }
-.tsnap { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.4cqw; width: 28cqw; aspect-ratio: 1; }
-.tsnap i { border-radius: 1.6cqw; border: 1cqw solid var(--ink); background: #fff; } .tsnap i.on { background: #3b87c7; }
+.tart.tattw { gap: 4cqw; } .tart.tattw .tpic { width: 40cqw; } .tart.tattw .tatt { width: 100%; }
+.tatt.fl { display: block; } .tatt.fl svg { width: 100%; }
+.tsnap { box-sizing: border-box; display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.6cqw; width: 34cqw; aspect-ratio: 1; padding: 2.6cqw; border: 1.2cqw solid var(--ink); border-radius: 4.4cqw; background: var(--panel-2); box-shadow: 0 1.2cqw 0 var(--ink); }
+.tsnap i { border-radius: 1.8cqw; border: 1cqw solid var(--ink); background: #fff; } .tsnap i.on { background: #3b87c7; }
 /* the runners (Dash, Lane Rush, Flap, Chopper): a scene with each player's lane, their token at their distance, the finish at the end */
 .tscene { width: 90cqw; } .tscene svg { width: 100%; height: auto; display: block; overflow: visible; }
 /* the runners' miniature (ui/runner.js runnerMiniature): the scene's picture in a frame, a bar for each player under it (every class its own, rm*: .bar is the header's, .win the result screen's) */
@@ -3365,10 +3434,14 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .rmframe { fill: none; stroke: var(--ink); stroke-width: 2; }
 .rmbar { fill: var(--paper); } .rmbar.o { fill: none; stroke: var(--ink); stroke-width: 1.7; } .rmfill.X { fill: var(--x); } .rmfill.O { fill: var(--o); }
 /* Sky Hop: the tower (its walls, a few planks), each hopper at its height; Scoop Stack: each player's cone and the scoops stacked on it */
-.thop { width: 90cqw; } .thop svg { width: 100%; height: auto; display: block; overflow: visible; }
-.thop .wall { fill: #9aa3ad; stroke: var(--ink); stroke-width: 1.2; } .thop .plank { fill: #7cc95a; stroke: var(--ink); stroke-width: 1.2; } .thop .cloud { fill: #bfe7fb; stroke: var(--ink); stroke-width: 1.2; } .thop .goal { stroke: var(--ink); stroke-width: 1.2; stroke-dasharray: 3 2; }
+.thop { width: 90cqw; } .thop svg { width: 100%; height: auto; display: block; overflow: visible; }   /* Sky Hop's miniature (skyhop/view.js): the shaft, the bunting at the top, each hopper at its height over a column of its colour */
+.thop .hsky { fill: #bfe1f6; } .thop .hcloud { fill: #fff; } .thop .hgrass { fill: #8fcf6a; } .thop .hwall { fill: #a7afba; stroke: var(--ink); stroke-width: 1.2; } .thop .hjoint { stroke: var(--ink); stroke-width: .9; opacity: .4; }
+.thop .hframe { fill: none; stroke: var(--ink); stroke-width: 2; } .thop .hgoal { fill: none; stroke: var(--ink); stroke-width: 1.1; } .thop .hflag { stroke: var(--ink); stroke-width: .7; stroke-linejoin: round; } .thop .hflag.f0 { fill: var(--x); } .thop .hflag.f1 { fill: var(--o); }
+.thop .hcol { fill: none; stroke-width: 5; stroke-linecap: round; opacity: .5; } .thop .hcol.X { stroke: var(--x); } .thop .hcol.O { stroke: var(--o); } .thop .hplank { fill: #7cc95a; stroke: var(--ink); stroke-width: 1.2; }
+.thop .hhop .hb { stroke: var(--ink); stroke-width: 1.6; } .thop .hhop.X .hb { fill: var(--x); } .thop .hhop.O .hb { fill: var(--o); } .thop .hhop .tmk { stroke: #fff; } .thop .hhop.O .tmk { stroke: var(--ink); }
 .tscoop { width: 90cqw; } .tscoop svg { width: 100%; height: auto; display: block; overflow: visible; }
-.tscoop .cone { stroke: var(--ink); stroke-width: 1.5; } .tscoop .cone.X { fill: var(--x); } .tscoop .cone.O { fill: var(--o); } .tscoop .sc { stroke: var(--ink); stroke-width: 1.3; }
+.tscoop .cone { fill: #ecbd78; stroke: var(--ink); stroke-width: 1.5; stroke-linejoin: round; } .tscoop .slv { stroke: var(--ink); stroke-width: 1; stroke-linejoin: round; } .tscoop .slv.X { fill: var(--x); } .tscoop .slv.O { fill: var(--o); } .tscoop .sc, .tscoop .sb { stroke: none; } .tscoop .so { fill: none; stroke: var(--ink); stroke-width: 1.4; stroke-linejoin: round; } .tscoop .sgl { fill: none; stroke: #fff; stroke-width: 1.3; stroke-linecap: round; opacity: .8; }   /* Scoop Stack's miniature (scoop/view.js): each cone in its sleeve, its stack as tall as its share of the target (the dashed line) */
+.tscoop .swall { fill: #fff6f1; stroke: var(--ink); stroke-width: 2; } .tscoop .sstripe { fill: none; stroke: #fbdde1; stroke-width: 7; } .tscoop .sgoal { fill: none; stroke: var(--ink); stroke-width: 1.1; stroke-dasharray: 3 2.5; opacity: .6; }
 .tscoop .f0 { fill: #f59ab5; } .tscoop .f1 { fill: #8fe0b5; } .tscoop .f2 { fill: #fff1c9; } .tscoop .f3 { fill: #e8b06a; } .tscoop .f4 { fill: #b3a4f5; }
 .tscoop text { fill: var(--ink); font-weight: 800; text-anchor: middle; font-family: Nunito, Arial, sans-serif; } .tscoop .ctr { fill: #e7b56f; stroke: var(--ink); stroke-width: 1.5; }
 /* Higher/Lower: the numbers as a line, the range still open on it, each guess a tick in its guesser's colour */
@@ -4133,8 +4206,9 @@ main.scr.mini > .wband { left: 0; right: 0; }   /* Super Chaos: waiting in the s
 .g-snake .snk { flex: 1; display: flex; flex-direction: column; min-height: 0; gap: 8px; }
 .g-snake .snk > .rprogs { flex: none; }
 .snk-wrap { flex: 1; min-height: 0; container-type: size; display: flex; flex-direction: column; align-items: center; gap: 8px; }   /* the square scene sized by the room (its words right under it), the rest left before Start */
-.snk-scene { position: relative; width: min(100cqw, 100cqh - 48px); aspect-ratio: 1 / 1; border: 3px solid var(--ink); border-radius: 14px; overflow: hidden; background: #e3f1cd; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.snk-scene { position: relative; width: min(100cqw, (100cqh - 48px) * 11 / 11.95); aspect-ratio: 11 / 11.95; border: 3px solid var(--ink); border-radius: 14px; overflow: hidden; background: #8fbf6c; box-shadow: 0 4px 0 rgba(22, 18, 16, .18); touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }   /* the garden's 11 cells under a fence rail .95 of a cell tall (snake/view.js SNKV.band): the count and the attempt's time bar stand on the rail, never over a food or a bomb */
 .snk-scene canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.snk-scene .snk-hud { left: 9px; top: 0; height: calc(100% * .95 / 11.95); display: flex; align-items: center; padding-top: 1px; font-size: min(16px, calc(min(100cqw * 11.95 / 11, 100cqh - 48px) * .95 / 11.95 * .8)); line-height: 1; text-shadow: 0 1.5px 0 rgba(255, 255, 255, .7); transform-origin: 0 50%; }   /* on the rail */
 .atwords.snk-words { height: 40px; min-height: 40px; max-height: 40px; font-size: 14px; flex: none; }
 .tsnk { display: flex; align-items: center; justify-content: center; gap: 3cqw; width: 94cqw; }   /* the miniature: the garden on the left (both snakes, each heading for its own colour of food), each player's total on the right, big */
 .tsnk svg { flex: none; width: 48cqw; height: auto; display: block; overflow: visible; }
@@ -4145,19 +4219,22 @@ main.scr.mini > .wband { left: 0; right: 0; }   /* Super Chaos: waiting in the s
 .tsnk .tsnk-so { fill: none; stroke: var(--ink); stroke-width: 7.2; stroke-linecap: round; stroke-linejoin: round; }
 .tsnk .tsnk-s { fill: none; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; } .tsnk .tsnk-s.X { stroke: var(--x); } .tsnk .tsnk-s.O { stroke: var(--o); }
 .tsnk .tsnk-h { stroke: var(--ink); stroke-width: 1.1; } .tsnk .tsnk-h.X { fill: var(--x); } .tsnk .tsnk-h.O { fill: var(--o); }
+.tsnk .tsnk-sh { fill: none; stroke: rgba(22, 18, 16, .16); stroke-width: 7.2; stroke-linecap: round; stroke-linejoin: round; } .tsnk .tsnk-r { fill: none; stroke: var(--ink); stroke-width: 1.8; }   /* each snake's shadow on the lawn; the garden's outline again over the checks (a check's corner once covered it) */
+.tsnk .tsnk-e { fill: #fff; stroke: var(--ink); stroke-width: .45; } .tsnk .tsnk-p { fill: var(--ink); }
 .tsnk .tsnk-f circle:not(.tmk) { stroke: var(--ink); stroke-width: 1.1; } .tsnk .tsnk-f.X circle:not(.tmk) { fill: var(--x); } .tsnk .tsnk-f.O circle:not(.tmk) { fill: var(--o); }   /* the food: X's red, O's yellow, each with its mark */
 .tsnk .tsnk-f .tmk { stroke: #fff; } .tsnk .tsnk-f.O .tmk { stroke: var(--ink); } .tsnk .tsnk-l { fill: var(--green); stroke: var(--ink); stroke-width: .6; }
 /* ---- Star Swarm (swarm): both totals, the sky (a canvas), a line of words, Start; the miniature ---- */
 .swarm { flex: 1; display: flex; flex-direction: column; min-height: 0; gap: 8px; }
 .swarm > .rprogs { flex: none; }
-.swscene { position: relative; flex: 1; min-height: 160px; width: 100%; border: 3px solid var(--ink); border-radius: 14px; overflow: hidden; background: #131a33; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.swscene { position: relative; flex: 1; min-height: 160px; width: 100%; border: 3px solid var(--ink); border-radius: 14px; overflow: hidden; background: #0f1436; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .swscene canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-.swscene .rhud { color: var(--paper); text-shadow: 0 2px 0 var(--ink); }
+.swscene .rhud { color: var(--paper); text-shadow: var(--ol1), 0 3px 0 var(--ink); transform-origin: 0 50%; }   /* the run's count: paper figures with an ink outline over the sky; it pops from its left edge as it rises (swarm/view.js swCount) */
 .atwords.swwords { height: 40px; min-height: 40px; max-height: 40px; font-size: 14px; flex: none; }
 .tswarm { width: 90cqw; } .tswarm svg { width: 100%; height: auto; display: block; overflow: visible; }
-.tswarm .tswbg { fill: #131a33; stroke: var(--ink); stroke-width: 1.2; } .tswarm .tswstar { fill: #fff; }
-.tswarm .tswfoe { fill: #9be36a; stroke: var(--ink); stroke-width: 1.2; } .tswarm .tswfoe.b { fill: #e35fd0; }
-.tswarm .tswship { stroke: var(--ink); stroke-width: 1.2; } .tswarm .tswship.X { fill: var(--x); } .tswarm .tswship.O { fill: var(--o); }
+.tswarm .tswbg { fill: #141b40; stroke: var(--ink); stroke-width: 1.2; } .tswarm .tswstar { fill: #fff; opacity: .8; } .tswarm .tswneb { fill: #7a55c8; opacity: .28; }
+.tswarm .tswfoe { fill: #9be36a; stroke: var(--ink); stroke-width: 1.1; stroke-linejoin: round; } .tswarm .tswfoe.b { fill: #e35fd0; } .tswarm .tswfoe.c { fill: #45cfc0; } .tswarm .tswdome { fill: #d9f4ff; stroke: var(--ink); stroke-width: 1.1; } .tswarm .tsweye { fill: #fff; stroke: var(--ink); stroke-width: .7; }
+.tswarm .tswship { stroke: var(--ink); stroke-width: 1.1; stroke-linejoin: round; } .tswarm .tswship.X { fill: var(--x); } .tswarm .tswship.O { fill: var(--o); }   /* each ship in its player's colour: the hull and its shot; grey fins, a flame, a window */
+.tswarm .tswship .tswfin { fill: #6a7a98; } .tswarm .tswship .tswfl { fill: #ff9d3c; stroke: none; } .tswarm .tswship .tswwin { fill: #bfe7fb; stroke-width: .8; } .tswarm .tswship .tswshot { stroke: none; }
 .tswarm .tswbar { fill: #fff; stroke: var(--ink); stroke-width: 1.2; } .tswarm .tswfill.X { fill: var(--x); } .tswarm .tswfill.O { fill: var(--o); }
 .tswarm text { fill: #fff; font-weight: 900; font-size: 9px; font-family: Nunito, Arial, sans-serif; text-anchor: middle; }
 /* ----- Muncher (the maze chomper: ui/games/muncher/view.js) ----- */
@@ -4181,15 +4258,15 @@ main.scr.mini > .wband { left: 0; right: 0; }   /* Super Chaos: waiting in the s
 main.scr.mini:has(.brkw), main.scr.mini:has(.brkw) * { touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }   /* a drag anywhere slides the paddle; a long press does nothing */
 .brkw { flex: 1; display: flex; flex-direction: column; min-height: 0; gap: 8px; }
 .brkw > .rprogs { flex: none; }
-.brkscene { position: relative; flex: 1; min-height: 160px; width: 100%; border: 3px solid var(--ink); border-radius: 14px; overflow: hidden; background: #1b2236; touch-action: none; user-select: none; -webkit-user-select: none; }
+.brkscene { position: relative; flex: 1; min-height: 160px; width: 100%; border: 3px solid var(--ink); border-radius: 14px; overflow: hidden; background: #141a2e; touch-action: none; user-select: none; -webkit-user-select: none; }
 .brkscene canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-.brkscene .brkhud { color: var(--paper); text-shadow: 0 2px 0 var(--ink); }
+.brkscene .brkhud { top: 5px; line-height: 22px; color: var(--paper); text-shadow: var(--ol1), 0 3px 0 var(--ink); transform-origin: 0 50%; }   /* the go's count: paper figures with an ink outline, in the room over the wall's top row; it pops from its left edge as it rises (bricks/view.js brkCount) */
 .atwords.brkwords { height: 40px; min-height: 40px; max-height: 40px; font-size: 14px; flex: none; }
 main.scr.mini:has(.brkw.run) .back { visibility: hidden; pointer-events: none; }   /* a go under way: held to the square until it goes in */
 .tbrk { width: 90cqw; } .tbrk svg { width: 100%; height: auto; display: block; overflow: visible; }   /* the miniature: each player's wall, paddle and ball */
-.tbrk .tbrkf { fill: #243052; stroke: var(--ink); stroke-width: 1.2; }
-.tbrk .tbrkb { fill: #f09a3a; stroke: var(--ink); stroke-width: .5; }
-.tbrk .tbrkg { fill: none; stroke: #8a93b0; stroke-width: .5; stroke-dasharray: 1.2 1; }
+.tbrk .tbrkf { fill: #263360; stroke: var(--ink); stroke-width: 1.2; }
+.tbrk .tbrkb { fill: #f09a3a; stroke: var(--ink); stroke-width: .5; } .tbrk .tbrkw.X .tbrkb { fill: var(--x); } .tbrk .tbrkw.O .tbrkb { fill: var(--o); }   /* each wall in its player's colour, as on the field */
+.tbrk .tbrkg { fill: none; stroke: #8a93b0; stroke-width: .5; stroke-dasharray: 1.2 1; } .tbrk .tbrkt { fill: none; stroke: var(--paper); stroke-width: 1.6; stroke-linecap: round; opacity: .35; }
 .tbrk .tbrkp { stroke: var(--ink); stroke-width: 1; } .tbrk .tbrkp.X { fill: var(--x); } .tbrk .tbrkp.O { fill: var(--o); }
 .tbrk .tbrko { fill: var(--paper); stroke: var(--ink); stroke-width: 1; }
 .tbrk .tbrkl { font: 800 9px Nunito, Arial, sans-serif; fill: #fff; } .tbrk .tbrkl.X { fill: var(--x); } .tbrk .tbrkl.O { fill: var(--o); }
@@ -4500,11 +4577,15 @@ main.scr.mini:has(.brkw.run) .back { visibility: hidden; pointer-events: none; }
 .tpg .cs { fill: none; stroke: rgba(255,255,255,.75); stroke-width: 1.4; stroke-dasharray: 2 1.5; }   /* a cup sunk: the ring where it stood */
 .tpg .tpm.X .tmk { stroke: var(--x); } .tpg .tpm.O .tmk { stroke: var(--o); }
 /* ----- Muncher, version 2 (the 13 by 15 maze: src/games/muncher/view.js; over the first Muncher rules above) ----- */
-.munscene { max-height: calc(min(var(--gw), 440px) * 1.16); background: #14112e; border-radius: 12px; }   /* taller: 15 rows of maze; sized by its box, the canvas fits the maze inside */
+.munscene { max-height: calc(min(var(--gw), 440px) * 1.16); background: #0e0c22; border-radius: 12px; container-type: size; box-shadow: 0 4px 0 rgba(22, 18, 16, .18); }   /* taller: 15 rows of maze; sized by its box, the canvas fits the maze inside */
+.munscene[data-v="2"] { max-height: calc(min(var(--gw), 440px) * 1.245); --mk: min(calc(100cqw / 11.44), calc(100cqh / 14.22)); }   /* the picture is cut close to the maze (muncher/view.js munGeom: 13 - 2 x .78 cells across, 15 - .78 down): --mk is a cell */
+.munscene[data-v="2"] .munhud { left: 9px; top: calc((100cqh - var(--mk) * 14.22) / 2); height: var(--mk); display: flex; align-items: center; padding-top: 1px; font-size: min(18px, calc(var(--mk) * .8)); line-height: 1; text-shadow: 0 1.5px 0 var(--ink); transform-origin: 0 50%; }   /* the count on the maze's top wall (a whole cell of it is kept for the count and the time bar), never over a pellet */
 .mun { gap: 6px; }
 .tmun .bg { fill: #14112e; } .tmun .w { fill: none; stroke: #4f62f0; stroke-linecap: round; stroke-linejoin: round; } .tmun .fl { fill: none; stroke: #14112e; stroke-linecap: round; stroke-linejoin: round; }
 .tmun .dots { stroke: #ffdca6; stroke-width: 2; } .tmun .sp { fill: #ff8a7a; stroke: none; } .tmun .mu { stroke: none; }
 .tmun .mpic { width: 34cqw; }
+.tmun .mpic { width: 37cqw; border: max(1.5px, 1.3cqw) solid var(--ink); border-radius: 3.5cqw; overflow: hidden; background: #252a7a; } .tmun .bg { fill: #252a7a; } .tmun .w { stroke: #6677ff; }   /* (November 2026's polish) the slab of wall with the corridors cut in, cut close as in the square; the muncher and a spook drawn to be seen */
+.tmun .sp { fill: #ff8a7a; stroke: #0b0920; stroke-width: 1.4; stroke-linejoin: round; } .tmun .spe { fill: #fff; } .tmun .mu { fill: var(--paper); stroke: var(--ink); stroke-width: 1.6; stroke-linejoin: round; } .tmun .mue { fill: var(--ink); }
 
 /* ===== Race mode, reworked (November 2026: ui/race.js): this phone's board large, the other player's smaller under it,
    both size containers so a game's drawing sizes from its own box; the other's box keeps its height whatever it holds. */

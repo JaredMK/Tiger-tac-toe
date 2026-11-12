@@ -128,3 +128,30 @@ test('a run that feeds the other player: both bars move (the mover\'s and theirs
   const got = []; V.sounds(Object.assign({}, f, { snake: Object.assign({}, s, { ai: true }) }), (n, ms) => got.push([n, ms]), false, sq.mini, null);
   assert.deepEqual(got, [['ding', 150]]);
 });
+
+test('polish: the garden under a fence rail (the count and the time bar on it, never over a food or a bomb): the scene\'s shape in the stylesheet is the view\'s', async () => {
+  const fs = await import('node:fs');
+  assert.equal(V.SNKV.band, 0.95);
+  const css = fs.readFileSync(new URL('../../src/ui/styles.css', import.meta.url), 'utf8');
+  assert.match(css, /\.snk-scene \{[^}]*aspect-ratio: 11 \/ 11\.95;/, '11 cells and the rail\'s .95');
+  assert.match(css, /\.snk-scene \{[^}]*width: min\(100cqw, \(100cqh - 48px\) \* 11 \/ 11\.95\)/);
+  assert.match(css, /\.snk-scene \.snk-hud \{[^}]*height: calc\(100% \* \.95 \/ 11\.95\)/, 'the count stands on the rail');
+  assert.equal(R.SNAKE.n + V.SNKV.band, 11.95);
+});
+test('polish: the controls are as they were: Start, a swipe of 14 px, a tap across the snake\'s way, the arrows or WASD, every turn through the rules\' queue', async () => {
+  const fs = await import('node:fs');
+  const src = fs.readFileSync(new URL('../../src/games/snake/view.js', import.meta.url), 'utf8');
+  assert.match(src, /const READY_MS = 600;/); assert.match(src, /const EARLY_MS = 700;/); assert.match(src, /const SWIPE_PX = 14;/);
+  assert.match(src, /const KEYS = \{ ArrowRight: 0, ArrowDown: 1, ArrowLeft: 2, ArrowUp: 3, d: 0, s: 1, a: 2, w: 3, D: 0, S: 1, A: 2, W: 3 \};/);
+  assert.match(src, /if \(Math\.hypot\(dx, dy\) < SWIPE_PX\) return;\n    queueTurn\(fd, Math\.abs\(dx\) >= Math\.abs\(dy\) \? \(dx > 0 \? 0 : 2\) : \(dy > 0 \? 1 : 3\)\);/, 'the swipe: the same reading of its way');
+  assert.match(src, /if \(cur === 0 \|\| cur === 2\) return y < sy \? 3 : 1;\n  return x < sx \? 2 : 0;/, 'the tap: across the way it heads');
+  assert.match(src, /if \(snakeQueue\(fd\.sim, dir\)\) haptic\('tap'\);/, 'a turn goes into the rules\' queue as before; taken in, it buzzes lightly');
+  assert.match(src, /tickEvents\(rr, sim, now, loud, false\);/, 'someone else\'s run sounds here but never buzzes this phone');
+  assert.match(src, /tickEvents\(fd, fd\.sim, now, true, true\);/);
+  assert.deepEqual(Object.keys(V.actions), ['snk-start']);
+});
+test('polish: the miniature\'s snakes have eyes and a shadow, the garden its outline over the checks', () => {
+  const sq = square({ X: 9, O: 14 }), html = V.miniature(sq.mini, false);
+  assert.equal((html.match(/class="tsnk-e"/g) || []).length, 4); assert.equal((html.match(/class="tsnk-sh"/g) || []).length, 2);
+  assert.match(html, /<rect class="tsnk-r" /);
+});

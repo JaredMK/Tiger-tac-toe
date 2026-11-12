@@ -12,7 +12,9 @@ import { blocked, remoteTurn } from '../net/room.js';
 import { N, REDUCED, cpuPlays, esc, save, state, zoomedType } from './app.js';
 import { KEY } from './config.js';
 import { fxAttr } from './fx.js';
-import { arcTally, lateAt, pips } from './progress.js';
+import { ownMove } from './haptics.js';
+import { arcTally, lateAt } from './progress.js';
+import { QUIZ, quizPips, quizPoint } from './quiz.js';
 import { render } from './render.js';
 import { cpuTurn } from './turns.js';
 
@@ -40,6 +42,15 @@ export function fetchAttConfig(name, set, cleared) {   // cleared: nothing in th
 // moment. Someone else's round (the computer's, the other phone's) plays first at its own speed, then
 // their answer, then the result. Nothing around the play area moves as the words change: each area keeps
 // its size from Start to the result.
+// The polish pass (November 2026; the rounds themselves untouched: the same things for the same times at the same
+// sizes): Start and Submit carry the mover's colour; the words' line leads with the phase (an eye while the round
+// plays, a "?" in the mover's colour once it is the answer's turn); an answer is pressed in at once and its verdict
+// lands QUIZ.beat later (ui/quiz.js: the tick or the cross, the result's words, the ding or the thud and the buzz), a
+// right one's point flying from the answer (the view's anchor 'qpick') to the pip, which fills as it lands; someone
+// else's answer is put in as they would (ATT_T: the digits typed, the option pressed, the cells picked) before theirs.
+export const ATT_T = { type: 150, step: 230, pick: 480, cells: 120, cellStep: 60, cellSpan: 420, send: 680 };   // ms after someone else's round has played (all inside ATT.pause): the first digit and each next one; the option's press; the first cell, each next (within cellSpan in all); OK or Submit
+const ATT_EYE = '<i class="atph eye" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M2.5 12q9.5-11 19 0q-9.5 11-19 0z" fill="#fff" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.6" fill="currentColor"/></svg></i>';
+const ATT_ASK = '<i class="atph ask" aria-hidden="true">?</i>';
 export const ATT_KEY = 'ttt-att-started';
 export let attDraft = null;                                            // { id, sq, at, entry, timer }: this phone's round under way (at: Date.now() of Start); entry: the digits typed, or the cells picked
 const attId = (sq, p) => { const m = state.squares[sq].mini; return `${state.online ? state.online.matchId || state.online.code || 'on' : 'local'}:${state.moves}:${sq}:${p}:${m.type}:${m.right[p]}`; };
@@ -54,7 +65,8 @@ function attArm(type, round) {
 }
 export function attTable(mini, a, o) {
   const type = mini.type, f = a && a.att ? a.att : null, l = mini.last, turn = o.turn, pre = f ? attPre(a) : 0;
-  const tal = p => arcTally(p, o, pips(p, Math.min(ATT.goal, mini.right[p]), ATT.goal, !!(f && f.correct && a.by === p), pre + 250));
+  const T = f ? pre + QUIZ.beat : null;                         // the verdict's moment into the move
+  const tal = p => arcTally(p, o, quizPips(p, Math.min(ATT.goal, mini.right[p]), ATT.goal, !!(f && f.correct && a.by === p), T, o.won));
   const shown = f || ((o.done || o.view) && l ? l : null);
   const mine = !o.view && !shown && !cpuTurn() && !remoteTurn();   // this phone's round to play (kept through a dropped connection or an answer on its way: still held to the square)
   const live = mine && !o.locked;                               // the controls answer only while this phone can send the move
@@ -68,40 +80,54 @@ export function attTable(mini, a, o) {
   if (!round) return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><p class="arcnote">No round here.</p></div>`;
   if (started) attArm(type, round);
   const len = attMs(type, round), since = started ? Date.now() - attDraft.at : 0, playing = started && since < len, answering = started && !playing;
-  const c = { o, f, shown, pre, started, playing, answering, live, round, len, startPerf: started ? performance.now() - since : null };
+  const who = shown ? (f ? a.by : shown.by) || turn : turn;   // whose round is on the screen: its colour on the controls, the timer and the question's mark
+  const c = { o, f, shown, pre, T, fresh: !!f && !REDUCED, who, started, playing, answering, live, round, len, startPerf: started ? performance.now() - since : null };   // fresh: a move's verdict still to land (T into it)
   const v = type === 'headcount' ? headView(c) : type === 'flash' ? flashView(c) : snapView(c);
-  const who = shown ? shown.by || (f && a.by) : turn, W = p => `<b class="${p}">${N(p)}</b>`;
+  const W = p => `<b class="${p}">${N(p)}</b>`;
   const truth = shown ? esc(v.say(shown.truth)) : '';
-  const result = shown ? (shown.correct ? `${pre || o.view || o.done ? W(who) + ' got it right' : 'Right!'}${type === 'headcount' ? ': ' + truth : ''}`
-    : `${pre || o.view || o.done ? W(who) + (shown.answer == null ? ' ran out of time' : ' got it wrong') : shown.answer == null ? 'Out of time' : 'Not quite'} · it was ${truth}`) : '';
-  // the words: one box, two lines tall, whatever it says (so nothing below it moves); a view may give them as HTML (Headcount: the creature's picture by its name)
-  const vw = () => v.watchHtml || esc(v.watch), va = () => v.askHtml || esc(v.ask);
-  const words = shown ? (pre ? `<span class="tu" style="--u:${len}ms">${vw()}</span><span class="tf tu2" style="--f:${len}ms;--u:${pre}ms">${va()}</span><span ${lateAt('arcres ' + (shown.correct ? 'ok' : 'no'), pre)} role="status">${result}</span>` : `<span class="arcres ${shown.correct ? 'ok' : 'no'}" role="status">${result}</span>`)
+  const named = !f || !ownMove(a);                              // someone else's round, or one looked at later: who it was (this phone's own, as it lands: the verdict alone)
+  const two = (x, y) => `<span class="atr">${x}</span> <span class="atr">${y}</span>`;   // (the line's two halves: where it takes two lines, it breaks between them)
+  const result = shown ? (shown.correct ? (type === 'headcount' ? two(named ? W(who) + ' got it right:' : 'Right!', truth) : named ? W(who) + ' got it right' : 'Right!')
+    : two(`${named ? W(who) + (shown.answer == null ? ' ran out of time' : ' got it wrong') : shown.answer == null ? 'Out of time' : 'Not quite'} ·`, `it was ${truth}`)) : '';
+  // the words: one box, two lines tall, whatever it says (so nothing below it moves); a view may give them as HTML (Headcount: the creature's picture by its name); the phase's mark leads the line
+  const vw = () => ATT_EYE + (v.watchHtml || esc(v.watch)), va = () => ATT_ASK + (v.askHtml || esc(v.ask));
+  const res = `<span ${lateAt('arcres ' + (shown && shown.correct ? 'ok' : 'no'), c.fresh ? T : null)} role="status">${result}</span>`;
+  const words = shown ? (pre ? `<span class="tu" style="--u:${len}ms">${vw()}</span><span class="tf tu2" style="--f:${len}ms;--u:${T}ms">${va()}</span>${res}`
+      : c.fresh ? `<span class="tu" style="--u:${T}ms">${shown.answer == null ? '' : va()}</span>${res}` : res)   // (this phone's own answer: the question stays the beat the verdict takes)
     : playing ? `<span class="atstack"${fxAttr(c.startPerf, 'rt')}><span class="tu" style="--u:${len - since}ms">${vw()}</span><span class="tf" style="--f:${len - since}ms">${va()}</span></span>`
     : answering ? `<span>${va()}</span>`
-    : mine ? `<span>Level ${round.level + 1} of 3${v.watch ? ' · ' + vw() : ''}</span>`
+    : mine ? `<span>Level ${round.level + 1} of 3${v.watch ? ' · ' + (v.watchHtml || esc(v.watch)) : ''}</span>`
     : o.view ? '' : `<span>${W(turn)}'s turn</span>`;   // (each in one span: the box is a grid, and a picture in the line stays in the line)
   const go = mine && !started, sub = type === 'snapshot' && answering;
-  const btn = o.view ? '' : `<div class="cbtns one${go || sub ? '' : ' hold'}">${go ? `<button class="big" data-act="att-start"${live && attStarting == null ? '' : ' disabled'}>Start</button>` : sub ? `<button class="big" data-act="snap-submit"${live ? '' : ' disabled'}>Submit</button>` : '<button class="big" disabled tabindex="-1" aria-hidden="true">Start</button>'}</div>`;   // the row stays (hidden) so nothing moves
-  return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="att att-${type}"><div class="atstage">${v.stage}</div><p class="atwords">${words}</p>${v.input}</div>${btn}</div>`;
+  const btn = o.view ? '' : `<div class="cbtns one${go || sub ? '' : ' hold'}">${go ? `<button class="big ${turn}" data-act="att-start"${live && attStarting == null ? '' : ' disabled'}>Start</button>` : sub ? `<button class="big ${turn}" data-act="snap-submit"${live ? '' : ' disabled'}>Submit</button>` : '<button class="big" disabled tabindex="-1" aria-hidden="true">Start</button>'}</div>`;   // the row stays (hidden) so nothing moves; Start and Submit in the mover's colour
+  const phase = shown ? 'res' : playing ? 'watch' : answering ? 'ans' : mine ? 'ready' : 'idle';
+  return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="att att-${type} pc-${who} ph-${phase}"><div class="atstage">${v.stage}</div><p class="atwords">${words}</p>${v.input}</div>${btn}</div>`;
 }
 // The miniature: the game's emblem (each game's view passes its own: Flash's shapes, Headcount's ladybug, Snapshot's
 // grid; never a round's items), and both players' progress as pips (●●○).
 export function attentionMiniature(mini, final, art) {
   const rows = pipRows(mini.right, ATT.goal), label = `X ${mini.right.X} and O ${mini.right.O} of ${ATT.goal}`;
-  return art ? thumbArt(art, rows, '', label) : `<div class="tpip" aria-label="${label}">${rows}</div>`;
+  return art ? thumbArt(art, rows, 'tattw', label) : `<div class="tpip" aria-label="${label}">${rows}</div>`;
 }
-export function attentionSounds(f, add, won, mini, last) {   // someone else's round: as it played (Start, the round's own sounds), their answer, then the result
-  const pre = attPre(f), r = f.att && f.att.round;
+export function attentionSounds(f, add, won, mini, last) {   // someone else's round: as it played (Start, the round's own sounds), their answer going in, then the verdict; this phone's own: the answer pressed in, the verdict
+  const pre = attPre(f), r = f.att && f.att.round, T = pre + QUIZ.beat;
   if (pre && r) {
-    if (f.type === 'flash') { add('go', 0); r.items.forEach((_, i) => add('tickSoft', i * r.ms)); }
-    else if (f.type === 'headcount') add('go', 0);
-    else { add('reveal', 0); add('flipDown', r.show); for (let k = 1; k < Math.ceil((r.wait || 0) / 1000); k++) add('tickSoft', r.show + k * 1000); if (r.wait) add('go', r.show + r.wait); }
-    add('tap', attMs(f.type, r));
-  }
-  if (f.att) add(f.att.correct ? 'ding' : 'thud', pre + 250);
+    const len = attMs(f.type, r), ans = f.att.answer;
+    if (f.type === 'flash') { add('go', 0); r.items.forEach((_, i) => add('tickSoft', i * r.ms)); if (ans != null) add('tap', len + ATT_T.pick); }
+    else if (f.type === 'headcount') { add('go', 0); if (ans != null) { String(ans).split('').forEach((_, i) => add('key', len + ATT_T.type + i * ATT_T.step)); add('tap', len + ATT_T.send); } }
+    else {
+      add('reveal', 0); add('flipDown', r.show); for (let k = 1; k < Math.ceil((r.wait || 0) / 1000); k++) add('tickSoft', r.show + k * 1000); if (r.wait) add('go', r.show + r.wait);
+      if (ans != null) { ans.forEach((_, i) => add('mark', len + attCellAt(i, ans.length))); add('tap', len + ATT_T.send); }
+    }
+  } else if (f.att && f.att.answer != null && ownMove(f)) add('tap', 0);   // this phone's own answer, pressed in (OK, the option, Submit)
+  if (f.att) { add(f.att.correct ? 'ding' : 'thud', T); if (f.att.correct && !REDUCED) add(...quizPoint(T)); }   // the verdict: the tick or the cross; a right one's point landing on its pip
   return;
 }
+// Someone else's picked cells go in one after the other (Snapshot): the i-th of n, ms after their round has played.
+export const attCellAt = (i, n) => ATT_T.cells + Math.round(i * Math.min(ATT_T.cellStep, ATT_T.cellSpan / Math.max(1, n - 1)));
+// The square's chime (audio/sound.js moveSounds): once the winning point has landed and the pips have hopped, on the
+// mover's own phone too (which plays the answer without the round and the pause another phone sees first: fx.js animMs).
+export const attentionWonAt = (f, total) => total - 600 - (f.att && !f.timeout ? attMs(f.type, f.att.round) + ATT.pause - attPre(f) : 0);
 let attStarting = null;                                         // the square whose Start is with the server (online: the round comes back with its answer)
 // Headcount, Flash, Snapshot: the round plays, timed from now; from here the player stays in the square until the answer goes in.
 // Online the server comes first: it holds the player to the square, times the round from its own clock (an answer too

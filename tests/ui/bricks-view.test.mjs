@@ -91,3 +91,30 @@ test('the miniature: each player\'s wall (standing bricks solid, broken ones fai
   assert.equal(V.miniature(E.publicMini(r.mini), false), part, 'the same from the square as the other phone has it');
   assert.ok(!/\.back|class="sq|class="btn|class="seg"|class="chip"/.test(part), 'no interface class');
 });
+// The polish sweep (November 2026): a go's sounds come from one voice, live and in a replay; the bricks of one flight
+// crack higher and higher; the miniature's walls are each in their player's colour.
+test('a go\'s voice: every brick, bounce and the serve sound once; the bricks of one flight climb, the paddle starts the scale again', () => {
+  const m = square(), r = play(m, 'X', 'hard'), log = R.brkUnlog(r.move.log, r.move.steps), sim = R.brkStart(m, 'X'), voice = V.brkVoice(), heard = [];
+  let k = 0, run = 0, climbed = 0;
+  while (sim.n < r.move.steps && !sim.end) {
+    let tx = null;
+    if (k < log.length && log[k][0] === sim.n) tx = log[k++][1] / R.BRK.q;
+    R.brkStep(sim, tx);
+    if (!sim.last) continue;
+    const s = voice(sim);
+    assert.ok(s, `a sound for ${sim.last}`);
+    if (sim.last === 'pad') { assert.deepEqual(s, ['brkPaddle', undefined]); run = 0; }
+    else if (sim.last === 'brick') { run++; assert.equal(s[0], 'brkBrick'); if (run === 1) assert.equal(s[1], undefined, 'the first of a flight as it comes'); else { assert.equal(s[1], Math.min(1.6, 1 + 0.075 * (run - 1))); climbed++; } }
+    else assert.equal(s[0], sim.last === 'serve' ? 'pop' : 'brkWall');
+    heard.push(s[0]);
+  }
+  assert.ok(climbed > 0, 'a flight broke more than one brick');
+  const got = []; V.sounds(Object.assign({}, r.flash, { by: 'X' }), (n, at, rate) => got.push([n, at, rate]));
+  assert.deepEqual(got.slice(1, -2).map(g => g[0]), heard.slice(0, 221), 'the replay sounds the same voice, from the move\'s inputs');
+  assert.ok(got.some(([n, , rate]) => n === 'brkBrick' && rate > 1), 'and carries the climbing rate');
+});
+test('the miniature: each wall is its player\'s own group, coloured by the stylesheet', () => {
+  const html = V.miniature(square(), false);
+  assert.equal(count(html, /<g class="tbrkw X">/g), 1); assert.equal(count(html, /<g class="tbrkw O">/g), 1);
+  assert.match(html.split('<g class="tbrkw O">')[0], /class="tbrkp X"/, 'X\'s paddle in X\'s half');
+});

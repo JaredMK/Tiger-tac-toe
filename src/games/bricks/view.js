@@ -12,6 +12,7 @@ import { attemptMove } from '../../net/moves.js';
 import { haptic } from '../../net/platform.js';
 import { blocked, remoteTurn } from '../../net/room.js';
 import { N, REDUCED, app, state } from '../../ui/app.js';
+import { hash01 } from '../../ui/art.js';
 import { shownSq } from '../../ui/chaos.js';
 import { clockLeft } from '../../ui/clock.js';
 import { fxAt } from '../../ui/fx.js';
@@ -19,10 +20,10 @@ import { lateAt } from '../../ui/progress.js';
 import { render } from '../../ui/render.js';
 import { markSvgG } from '../../ui/thumbs.js';
 import { drawTimeBar, outlined, rr, runCanvas, runColours, runInputAt } from '../../ui/runner.js';
+import { banner, impact, jolt, starPath } from '../../ui/runfx.js';
 import { cpuTurn, skipFlash } from '../../ui/turns.js';
 
 const BRK_EARLY = 700;                                           // online: a go ends this long before the turn's time is up, so it goes in before the timeout
-const BRICK_ROWS = ['#e0603a', '#f09a3a', '#f6c21b', '#8ccf5c', '#58a8cf', '#9b7fe0', '#e86aa0', '#c9a06a'];   // a colour a row (the wall's top row first)
 const fmt = n => Math.floor(n + 1e-9).toLocaleString('en-US');
 export let draft = null;                                         // the go under way on this phone (brkGo)
 let live = null;                                                 // the go just made here: { sq, p, try, view, at } (its last moment stays on the field while its result shows)
@@ -49,7 +50,7 @@ function brkGo() {
   const sq0 = state.squares && state.squares[state.zoom];
   if (!sq0 || sq0.mini.type !== 'bricks' || sq0.owner || draft || state.flash || state.done || blocked()) return;
   const p = state.turn, i = state.zoom, now = performance.now(), mini = sq0.mini;
-  draft = { sq: i, p, try: trysOf(sq0, p), mini, sim: brkStart(mini, p), rec: brkRecorder(), phase: 'play', at: now, last: now, acc: 0, raf: 0, ptr: null, dir: 0, kpx: 30, tx: BRK.w / 2, broke: {}, end: null, endAt: 0 };
+  draft = { sq: i, p, try: trysOf(sq0, p), mini, sim: brkStart(mini, p), rec: brkRecorder(), phase: 'play', at: now, last: now, acc: 0, raf: 0, ptr: null, dir: 0, kpx: 30, tx: BRK.w / 2, broke: {}, fx: [], trail: [], voice: brkVoice(), end: null, endAt: 0 };
   live = null;
   SND.play('go');
   render();
@@ -67,7 +68,7 @@ function brkFrame(now) {
     if (left != null && left <= (state.online ? BRK_EARLY : 0)) { brkFinish(); return; }   // the turn's time is up: the go ends here, its bricks kept
     if (fd.dir) fd.tx = brkClampX(fd.tx + fd.dir * 12 * dt, fd.sim.half);   // (a keyboard's arrows)
     fd.acc += dt;
-    while (fd.acc >= BRK.step - 1e-9 && !fd.sim.end) { fd.acc -= BRK.step; brkTick(fd, fd.sim, fd.rec.at(fd.sim.n, fd.tx), true, now); }
+    while (fd.acc >= BRK.step - 1e-9 && !fd.sim.end) { fd.acc -= BRK.step; brkTick(fd, fd.sim, fd.rec.at(fd.sim.n, fd.tx), fd.voice); }
     if (fd.sim.end) brkEnd(fd, fd.sim.end, now);
     brkHud(fd);
   } else if (now - fd.endAt >= (BRK.end[fd.end] || 500)) { brkFinish(); return; }
@@ -75,13 +76,33 @@ function brkFrame(now) {
   if (cv) brkDraw(cv, brkDraftView(fd, now), now);
   fd.raf = requestAnimationFrame(brkFrame);
 }
-// One step (the phone's own, or a replay's), noting what it did for the drawing and, loud, its sounds and buzzes.
-function brkTick(v, sim, tx, loud, now) {
+// What a go sounds like, a step at a time (this phone's own as it is played, someone else's from its inputs: sounds):
+// a fresh voice for a go; given the sim after a step, [sound, rate] or null. The bricks of one flight (from the paddle
+// until the ball is back on it) crack higher and higher, so a run through the wall climbs like a scale.
+export function brkVoice() {
+  let run = 0;
+  return sim => {
+    const l = sim.last;
+    if (l === 'brick') return ['brkBrick', run++ ? Math.min(1.6, 1 + 0.075 * (run - 1)) : undefined];
+    if (l === 'pad') { run = 0; return ['brkPaddle', undefined]; }
+    return l === 'serve' ? ['pop', undefined] : l === 'wall' || l === 'top' ? ['brkWall', undefined] : null;
+  };
+}
+// One step (the phone's own, or a replay's), noting what it did for the drawing (the bricks just broken, the bounces,
+// the ball's last places) and, with a voice (this phone's own go), sounding it and buzzing: a tap a brick, a tap as
+// the paddle takes the ball.
+function brkTick(v, sim, tx, voice) {
   brkStep(sim, tx);
-  if (sim.last === 'brick') { v.broke[sim.hit] = sim.t; if (loud) { SND.play('brkBrick'); haptic('tap'); } }
-  else if (sim.last === 'pad') { v.padAt = sim.t; if (loud) SND.play('brkPaddle'); }
-  else if (sim.last === 'serve') { if (loud) SND.play('pop'); }
-  else if ((sim.last === 'wall' || sim.last === 'top') && loud) SND.play('brkWall');
+  const l = sim.last;
+  if (sim.flying && sim.n % 2 === 0) { const tr = v.trail || (v.trail = []); tr.push(sim.x, sim.y); if (tr.length > BRKV.trail * 2) tr.splice(0, 2); }
+  if (!l) return;
+  if (l === 'brick') v.broke[sim.hit] = sim.t; else if (l === 'pad') v.padAt = sim.t;
+  const fx = v.fx || (v.fx = []);
+  fx.push({ k: l, t: sim.t, x: l === 'wall' ? (sim.x < BRK.w / 2 ? 0 : BRK.w) : sim.x, y: l === 'top' ? BRK.h : l === 'pad' || l === 'serve' ? BRK.padY : sim.y });
+  if (fx.length > 10) fx.shift();
+  const s = voice ? voice(sim) : null;
+  if (s) SND.play(s[0], { rate: s[1] });
+  if (voice && (l === 'brick' || l === 'pad')) haptic('tap');
 }
 // The go has ended (a miss, the wall cleared, the time up): its end plays, then it goes in.
 function brkEnd(fd, end, now) {
@@ -95,16 +116,23 @@ export function brkFinish() {
   const fd = draft;
   if (!fd) return;
   cancelAnimationFrame(fd.raf); draft = null;
-  if (fd.sim.n === 0) brkTick(fd, fd.sim, fd.rec.at(0, fd.tx), false);   // (at least one step: a go of none is no go)
+  if (fd.sim.n === 0) brkTick(fd, fd.sim, fd.rec.at(0, fd.tx), null);   // (at least one step: a go of none is no go)
   const m = brkMove(fd);
   live = { sq: fd.sq, p: fd.p, try: fd.try, view: brkDraftView(fd, performance.now()), at: performance.now() };
   const sq = state.squares && state.squares[fd.sq];
   if (state.screen === 'mini' && state.zoom === fd.sq && sq && !sq.owner && state.turn === fd.p && !state.flash && !state.done && !blocked()) attemptMove(m);   // (else the turn moved on without it: nothing to send)
   render();
 }
+// The count over the field: set as the go plays (here, or a replay's), with a small pop each time it rises (from the
+// brick that raised it: the text is only ever changed by a step of the go).
+function brkCount(n) {
+  const hud = app.querySelector('[data-brk="hud"]'), txt = `+${n}`;
+  if (!hud || hud.textContent === txt) return;
+  hud.textContent = txt;
+  if (!REDUCED && typeof hud.animate === 'function') hud.animate([{ transform: 'scale(1.3)' }, { transform: 'scale(1)' }], { duration: 190, easing: 'cubic-bezier(.4,0,.2,1)' });
+}
 function brkHud(fd) {
-  const hud = app.querySelector('[data-brk="hud"]');
-  if (hud) hud.textContent = `+${fd.sim.broke.length}`;
+  brkCount(fd.sim.broke.length);
   const row = app.querySelector(`.brkp.${fd.p}`), total = brkTotal(fd.mini), at = brkBroken(fd.mini, fd.p) + fd.sim.broke.length;
   if (!row) return;
   const bi = row.querySelector('.rbar i'), w = (100 * Math.min(1, at / total)).toFixed(2) + '%';
@@ -115,7 +143,7 @@ function brkHud(fd) {
 const brkSay = (at, total) => `${fmt(at)} / ${fmt(total)}`;
 
 // ---- what the field shows: the go under way, a replay, the last moment, or the clean start ----
-const brkDraftView = (fd, now) => ({ p: fd.p, sim: fd.sim, broke: fd.broke, padAt: fd.padAt, end: fd.end, endAt: fd.endAt, tx: fd.tx });
+const brkDraftView = (fd, now) => ({ p: fd.p, sim: fd.sim, broke: fd.broke, fx: fd.fx, trail: fd.trail, padAt: fd.padAt, end: fd.end, endAt: fd.endAt, tx: fd.tx });
 const brkStill = (mini, p) => ({ p, sim: brkStart(mini, p), broke: {}, still: true });
 // Someone else's go, ready to play from its inputs (stepped as the replay goes).
 function brkReplayOf(f) {
@@ -131,16 +159,16 @@ function brkReplayOf(f) {
 }
 // A replay's view at T seconds into the go (the sim stepped on to there).
 function brkRepView(rep, T, now) {
-  if (!rep.sim || rep.sim.n > T / BRK.step + 1) { rep.sim = brkStart(rep.mini0, rep.p); rep.k = 0; rep.broke = {}; rep.tx = rep.sim.px; rep.endAt = null; }
+  if (!rep.sim || rep.sim.n > T / BRK.step + 1) { rep.sim = brkStart(rep.mini0, rep.p); rep.k = 0; rep.broke = {}; rep.fx = []; rep.trail = []; rep.padAt = null; rep.tx = rep.sim.px; rep.endAt = null; }
   const sim = rep.sim, want = Math.min(rep.steps, Math.floor(T / BRK.step + 1e-6));
   while (sim.n < want && !sim.end) {
     let tx = null;
     if (rep.k < rep.log.length && rep.log[rep.k][0] === sim.n) { tx = rep.log[rep.k++][1] / BRK.q; rep.tx = tx; }
-    brkTick(rep, sim, tx, false);
+    brkTick(rep, sim, tx, null);
   }
   if (sim.n >= rep.steps && !sim.end) sim.end = rep.end;         // (the go ran out of time: as sent)
   if (sim.end && rep.endAt == null) rep.endAt = now;
-  return { p: rep.p, sim, broke: rep.broke, padAt: rep.padAt, end: sim.end, endAt: rep.endAt, tx: rep.tx };
+  return { p: rep.p, sim, broke: rep.broke, fx: rep.fx, trail: rep.trail, padAt: rep.padAt, end: sim.end, endAt: rep.endAt, tx: rep.tx };
 }
 // After every render (view.js screen queues it): the field of a Brick Break square.
 export function brkPaint() {
@@ -167,8 +195,7 @@ function brkRepFrame(now) {
     if (rep) {
       const e = Math.max(0, now - start), T = (Math.min(e, rep.ms) * rep.speed) / 1000, v = brkRepView(rep, T, now);
       brkDraw(cv, v, now);
-      const hud = app.querySelector('[data-brk="hud"]');
-      if (hud) hud.textContent = `+${v.sim.broke.length}`;
+      brkCount(v.sim.broke.length);
       return e < pre + 1200;
     }
   }
@@ -178,54 +205,153 @@ function brkRepFrame(now) {
   return false;
 }
 
-// ---- the drawing: a deep field, the wall in a colour a row, the paddle and ball in the player's colour ----
+// ---- the drawing: the field between its rails, the player's own wall in their colour, the paddle and the ball ----
+// Everything is a plain function of the go as it stands, the view's notes of it (brkTick: the bricks just broken, the
+// bounces, the ball's last places) and the go's own clock (te: its seconds, running on through its end), so a replay
+// draws the very frames the player saw. The still parts (the stone either side, the field, its rails, the pit under the
+// paddle) are painted once into a layer (brkBackdrop); the wall, the paddle, the ball and their effects go over it.
+export const BRKV = { shard: 0.45, flash: 0.08, ring: 0.22, spark: 0.24, go: 0.7, trail: 8, padH: 0.42 };   // seconds: a broken brick's pieces, its flash, a bounce's ring, the paddle's sparks, the GO! before the serve; trail: the ball's places kept; padH: the paddle's body as drawn (its top is the rules' line)
+const cl01 = u => Math.max(0, Math.min(1, u)), ease = u => 1 - (1 - cl01(u)) ** 3;
+const rgbOf = h => {                                             // a colour's parts, from '#rgb', '#rrggbb' or 'rgb(r, g, b)'
+  const t = String(h).trim(), m = /^#?([0-9a-f]{6}|[0-9a-f]{3})$/i.exec(t), q = m ? null : /^rgba?\(\s*(\d+)[\s,]+(\d+)[\s,]+(\d+)/i.exec(t);
+  if (q) return [+q[1], +q[2], +q[3]];
+  if (!m) return null;
+  const n = parseInt(m[1].length === 3 ? m[1].replace(/./g, '$&$&') : m[1], 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+};
+const mix = (a, b, t) => { const A = rgbOf(a), B = rgbOf(b); return A && B ? `rgb(${A.map((v, i) => Math.round(v + (B[i] - v) * t)).join(',')})` : a; };
+const shades = new Map();
+// A wall's colours, a row at a time: the player's own colour, deep at the top and paler row by row ([body, lip]).
+function brkShades(col, rows, P) {
+  const key = `${col}|${rows}`;
+  if (!shades.has(key)) shades.set(key, Array.from({ length: rows }, (_, i) => { const t = rows > 1 ? i / (rows - 1) : 0, body = t < 0.25 ? mix(col, P.ink, 0.14 * (1 - t / 0.25)) : mix(col, '#ffffff', 0.4 * ((t - 0.25) / 0.75)); return [body, mix(body, P.ink, 0.22)]; }));
+  return shades.get(key);
+}
+let back = null;                                                 // the still layer: { key, cv }
+function brkBackdrop(W, H, dpr, k, ox, oy, P) {
+  const key = `${W}|${H}|${dpr}`;
+  if (back && back.key === key) return back.cv;
+  const cv = document.createElement('canvas'); cv.width = Math.max(1, Math.round(W * dpr)); cv.height = Math.max(1, Math.round(H * dpr));
+  const c = cv.getContext('2d'), fw = BRK.w * k, fh = BRK.h * k;
+  c.scale(dpr, dpr);
+  c.fillStyle = '#141a2e'; c.fillRect(0, 0, W, H);
+  const sw = Math.max(18, k * 1.3), sh = sw * 0.5;                  // the stone either side of the field (and above and below it on a tall phone): courses of blocks, half a block off, row by row
+  for (let row = 0, y = -2; y < H; row++, y += sh) for (let x = (row % 2 ? -sw / 2 : 0) - 2; x < W; x += sw) {
+    if (x + sw > ox - 1 && x < ox + fw + 1 && y + sh > oy - 1 && y < oy + fh + 1 && x >= ox && x + sw <= ox + fw && y >= oy && y + sh <= oy + fh) continue;   // (wholly under the field)
+    c.fillStyle = (row * 7 + Math.round(x / sw) * 3) % 5 === 0 ? '#232c4b' : '#1d2541'; rr(c, x + 1, y + 1, sw - 2, sh - 2, 2.5); c.fill();
+  }
+  const fld = c.createLinearGradient(0, oy, 0, oy + fh); fld.addColorStop(0, '#2d3c6e'); fld.addColorStop(1, '#1b2446');
+  c.fillStyle = fld; c.fillRect(ox, oy, fw, fh);
+  c.fillStyle = 'rgba(255,255,255,.08)';                           // a dot at every unit: the field's floor
+  for (let gx = 1; gx < BRK.w; gx++) for (let gy = 1; gy < BRK.h; gy++) { c.beginPath(); c.arc(ox + gx * k, oy + gy * k, Math.max(0.9, k * 0.045), 0, Math.PI * 2); c.fill(); }
+  c.save(); c.beginPath(); c.rect(ox, oy + fh - 0.55 * k, fw, 0.55 * k); c.clip();   // the pit under the paddle: where a ball is lost
+  c.fillStyle = 'rgba(8,10,22,.5)'; c.fillRect(ox, oy + fh - 0.55 * k, fw, 0.55 * k);
+  c.strokeStyle = 'rgba(255,255,255,.1)'; c.lineWidth = Math.max(2, k * 0.12);
+  for (let x = ox - k; x < ox + fw + k; x += k * 0.5) { c.beginPath(); c.moveTo(x, oy + fh + 2); c.lineTo(x + 0.6 * k, oy + fh - 0.6 * k); c.stroke(); }
+  c.restore();
+  for (const [x0, x1] of [[ox, ox + 0.5 * k], [ox + fw, ox + fw - 0.5 * k]]) { const g = c.createLinearGradient(x0, 0, x1, 0); g.addColorStop(0, 'rgba(6,8,20,.4)'); g.addColorStop(1, 'rgba(6,8,20,0)'); c.fillStyle = g; c.fillRect(Math.min(x0, x1), oy, 0.5 * k, fh); }   // the rails' shade on the field
+  const top = c.createLinearGradient(0, oy, 0, oy + 0.6 * k); top.addColorStop(0, 'rgba(6,8,20,.45)'); top.addColorStop(1, 'rgba(6,8,20,0)'); c.fillStyle = top; c.fillRect(ox, oy, fw, 0.6 * k);
+  const rail = Math.max(0, Math.min(7, ox - 1)), railT = Math.max(0, Math.min(7, oy - 1)), lip = Math.max(2.5, k * 0.1);   // the rails: outside the field where there is room, a pale lip just inside it
+  c.fillStyle = 'rgba(255,255,255,.2)'; c.fillRect(ox, oy, lip, fh); c.fillRect(ox + fw - lip, oy, lip, fh); c.fillRect(ox, oy, fw, lip);
+  if (rail >= 2) for (const x of [ox - rail, ox + fw]) { c.fillStyle = '#8f9bc4'; c.fillRect(x, oy - railT, rail, fh + railT); c.fillStyle = 'rgba(255,255,255,.35)'; c.fillRect(x, oy - railT, Math.max(1, rail * 0.3), fh + railT); c.strokeStyle = P.ink; c.lineWidth = 1.5; c.strokeRect(x, oy - railT - 2, rail, fh + railT + 4); }
+  if (railT >= 2) { c.fillStyle = '#8f9bc4'; c.fillRect(ox - rail, oy - railT, fw + 2 * rail, railT); c.fillStyle = 'rgba(255,255,255,.35)'; c.fillRect(ox - rail, oy - railT, fw + 2 * rail, Math.max(1, railT * 0.3)); c.strokeStyle = P.ink; c.lineWidth = 1.5; c.strokeRect(ox - rail, oy - railT, fw + 2 * rail, railT); }
+  back = { key, cv };
+  return cv;
+}
 export function brkDraw(cv, v, now) {
   const { c, W, H } = runCanvas(cv);
   if (W < 2 || H < 2) return;
   const P = runColours(), sim = v.sim, k = Math.min(W / BRK.w, H / BRK.h), ox = (W - BRK.w * k) / 2, oy = (H - BRK.h * k) / 2;
   const X = x => ox + x * k, Y = y => oy + (BRK.h - y) * k, col = v.p === 'O' ? P.O : P.X;
   if (draft && v.sim === draft.sim) draft.kpx = k;
-  c.fillStyle = '#1b2236'; c.fillRect(0, 0, W, H);
-  c.fillStyle = '#243052'; c.fillRect(ox, oy, BRK.w * k, BRK.h * k);   // the field
-  c.strokeStyle = 'rgba(255,255,255,.07)'; c.lineWidth = 1;         // a faint grid of tiles on it
-  for (let g = 1; g < BRK.w; g++) { c.beginPath(); c.moveTo(X(g), oy); c.lineTo(X(g), oy + BRK.h * k); c.stroke(); }
-  for (let g = 1; g < BRK.h; g++) { c.beginPath(); c.moveTo(ox, Y(g)); c.lineTo(ox + BRK.w * k, Y(g)); c.stroke(); }
-  const bw = sim.bw * k, bh = BRK.bh * k, gap = Math.max(1.5, k * 0.06);
-  for (let i = 0; i < sim.rows; i++) for (let j = 0; j < sim.cols; j++) {   // the wall: standing bricks solid, broken ones a faint outline where they were
-    const idx = i * sim.cols + j, x = X(j * sim.bw) + gap, y = Y(BRK.top - i * BRK.bh) + gap, w = bw - 2 * gap, h = bh - 2 * gap, at = v.broke[idx];
-    if (sim.wall[idx]) { rr(c, x, y, w, h, Math.min(5, h * 0.3)); outlined(c, BRICK_ROWS[i % BRICK_ROWS.length], P.ink, 2); c.fillStyle = 'rgba(255,255,255,.28)'; c.fillRect(x + 3, y + 2.5, Math.max(0, w - 6), Math.max(1, h * 0.18)); }
-    else if (at != null && sim.t - at < 0.4) brkShards(c, x + w / 2, y + h / 2, w, h, (sim.t - at) / 0.4, BRICK_ROWS[i % BRICK_ROWS.length], P);
-    else { c.save(); c.setLineDash([3, 3]); c.strokeStyle = 'rgba(255,255,255,.16)'; c.lineWidth = 1; rr(c, x, y, w, h, 3); c.stroke(); c.restore(); }
+  const te = sim.t + (v.endAt ? Math.max(0, now - v.endAt) / 1000 : 0), rd = v.endAt ? { at: v.endAt } : null, lw = Math.max(1.5, Math.min(2.4, k * 0.085));
+  c.save();
+  if (v.end === 'miss') jolt(c, W, H, { crash: true }, rd, now);     // the ball lost: the field kicks (ui/runfx.js); the time bar over it stays still
+  c.fillStyle = '#141a2e'; c.fillRect(-6, -6, W + 12, H + 12);       // (under the layer: the kick never shows a bare rim)
+  c.drawImage(brkBackdrop(W, H, c.canvas.width / W, k, ox, oy, P), 0, 0, W, H);
+  const bw = sim.bw * k, bh = BRK.bh * k, gap = Math.max(1.5, k * 0.06), sh = brkShades(col, sim.rows, P), w = bw - 2 * gap, h = bh - 2 * gap, rad = Math.min(5, h * 0.3), fresh = [];
+  const rbox = (x, y, ww, hh, r0) => { c.moveTo(x + r0, y); c.arcTo(x + ww, y, x + ww, y + hh, r0); c.arcTo(x + ww, y + hh, x, y + hh, r0); c.arcTo(x, y + hh, x, y, r0); c.arcTo(x, y, x + ww, y, r0); c.closePath(); };
+  const at = (i, j) => [X(j * sim.bw) + gap, Y(BRK.top - i * BRK.bh) + gap];
+  c.beginPath();                                                    // the wall, a layer at a time (a path a row: a phone draws 35 bricks in a dozen strokes): every standing brick's shadow on the field
+  for (let idx = 0; idx < sim.wall.length; idx++) if (sim.wall[idx]) { const [x, y] = at(Math.floor(idx / sim.cols), idx % sim.cols); rbox(x + k * 0.07, y + k * 0.13, w, h, rad); }
+  c.fillStyle = 'rgba(6,8,20,.38)'; c.fill();
+  c.beginPath();                                                    // the broken ones: a faint outline where each stood
+  for (let idx = 0; idx < sim.wall.length; idx++) if (!sim.wall[idx]) {
+    const i = Math.floor(idx / sim.cols), [x, y] = at(i, idx % sim.cols), t0 = v.broke[idx];
+    rbox(x, y, w, h, 3);
+    if (t0 != null && te - t0 < BRKV.shard) fresh.push([x + w / 2, y + h / 2, w, h, (te - t0) / BRKV.shard, sh[i], idx]);
   }
-  const ph = BRK.padH * k, pw = sim.half * 2 * k, px = X(sim.px), py = Y(BRK.padY), squash = v.padAt != null && sim.t - v.padAt < 0.12 ? 1 - 0.25 * (1 - (sim.t - v.padAt) / 0.12) : 1;   // the paddle, dipping a little as it takes the ball
+  c.save(); c.setLineDash([3, 3]); c.strokeStyle = 'rgba(255,255,255,.13)'; c.lineWidth = 1; c.stroke(); c.restore();
+  for (let i = 0; i < sim.rows; i++) {                              // then row by row in its shade: the bodies, their darker lips, the light along their tops, the ink round them
+    const xs = [];
+    for (let j = 0; j < sim.cols; j++) if (sim.wall[i * sim.cols + j]) xs.push(at(i, j));
+    if (!xs.length) continue;
+    c.beginPath(); for (const [x, y] of xs) rbox(x, y, w, h, rad); c.fillStyle = sh[i][0]; c.fill();
+    c.fillStyle = sh[i][1]; for (const [x, y] of xs) c.fillRect(x + lw * 0.5, y + h * 0.64, w - lw, h * 0.36 - lw * 0.5);
+    c.fillStyle = 'rgba(255,255,255,.42)'; for (const [x, y] of xs) c.fillRect(x + lw + 1.5, y + lw + 0.5, Math.max(0, w - 2 * lw - 3), Math.max(1.2, h * 0.17));
+    c.beginPath(); for (const [x, y] of xs) rbox(x, y, w, h, rad); c.lineWidth = lw; c.strokeStyle = P.ink; c.stroke();
+  }
+  for (const f of fresh) brkShards(c, f[0], f[1], f[2], f[3], f[4], f[5], f[6], P, lw);   // the bricks just broken, over the wall
+  const r = BRK.r * k;
+  for (const e of v.fx || []) {                                     // the bounces of the last moment: a ring where the ball touched, sparks off the paddle
+    const u = (te - e.t) / (e.k === 'pad' ? BRKV.spark : BRKV.ring);
+    if (u < 0 || u >= 1) continue;
+    const ex = X(e.x), ey = Y(e.y);
+    if (e.k === 'pad' && !REDUCED) {
+      for (let i = 0; i < 5; i++) { const a = -Math.PI / 2 + (i - 2) * 0.42, d0 = r * (1 + 2.6 * ease(u)), d1 = d0 + r * 1.3 * (1 - u); c.strokeStyle = i % 2 ? col : P.paper; c.globalAlpha = 1 - u; c.lineWidth = Math.max(1.5, r * 0.36); c.lineCap = 'round'; c.beginPath(); c.moveTo(ex + Math.cos(a) * d0, ey + r + Math.sin(a) * d0); c.lineTo(ex + Math.cos(a) * d1, ey + r + Math.sin(a) * d1); c.stroke(); }
+      c.globalAlpha = 1;
+    } else if (e.k !== 'pad') { c.strokeStyle = `rgba(255,255,255,${(0.7 * (1 - u)).toFixed(2)})`; c.lineWidth = Math.max(1.2, r * 0.3); c.beginPath(); c.arc(ex, ey, r * (1.1 + 2 * ease(u)), 0, Math.PI * 2); c.stroke(); }
+  }
+  const ph = BRKV.padH * k, pw = sim.half * 2 * k, px = X(sim.px), py = Y(BRK.padY), squash = v.padAt != null && te - v.padAt < 0.14 ? 1 - 0.3 * (1 - (te - v.padAt) / 0.14) : 1;   // the paddle, dipping a little as it takes the ball
+  c.fillStyle = 'rgba(6,8,20,.36)'; rr(c, px - pw / 2 + k * 0.08, py + k * 0.16, pw, ph, ph / 2); c.fill();
   c.save(); c.translate(px, py + ph * (1 - squash)); c.scale(1, squash);
-  rr(c, -pw / 2, 0, pw, ph, ph / 2); outlined(c, col, P.ink, 2.5);
-  c.fillStyle = 'rgba(255,255,255,.35)'; rr(c, -pw / 2 + 5, 2.5, Math.max(0, pw - 10), Math.max(1.5, ph * 0.22), 2); c.fill();
+  rr(c, -pw / 2, 0, pw, ph, ph / 2); c.fillStyle = col; c.fill();
+  c.save(); c.clip();
+  c.fillStyle = 'rgba(22,18,16,.24)'; c.fillRect(-pw / 2, ph * 0.62, pw, ph * 0.38);                              // its underside
+  c.fillStyle = P.paper; c.fillRect(-pw / 2 + ph * 0.75, 0, Math.max(1.5, ph * 0.3), ph); c.fillRect(pw / 2 - ph * 0.75 - Math.max(1.5, ph * 0.3), 0, Math.max(1.5, ph * 0.3), ph);   // a paper band near either end
   c.restore();
-  const r = BRK.r * k, bx = X(sim.x), by = Y(sim.y);
-  if (sim.flying && !v.still && !v.end) { c.strokeStyle = 'rgba(255,255,255,.22)'; c.lineWidth = r * 1.4; c.lineCap = 'round'; c.beginPath(); c.moveTo(bx, by); c.lineTo(bx - sim.vx * k * 0.04, by + sim.vy * k * 0.04); c.stroke(); }   // a short trail
-  if (v.end !== 'miss' || !v.endAt || now - v.endAt < 250) {
-    c.beginPath(); c.arc(bx, by, r, 0, Math.PI * 2); outlined(c, P.paper, P.ink, 2.2);
-    c.fillStyle = 'rgba(0,0,0,.12)'; c.beginPath(); c.arc(bx + r * 0.25, by + r * 0.25, r * 0.5, 0, Math.PI * 2); c.fill();
+  c.fillStyle = 'rgba(255,255,255,.45)'; rr(c, -pw / 2 + ph * 1.35, ph * 0.2, Math.max(0, pw - ph * 2.7), Math.max(1.2, ph * 0.2), 1); c.fill();
+  rr(c, -pw / 2, 0, pw, ph, ph / 2); c.lineWidth = Math.max(lw, 2); c.strokeStyle = P.ink; c.stroke();
+  c.restore();
+  const drop = v.end === 'miss' && v.endAt ? Math.max(0, now - v.endAt) / 1000 : 0, bx = X(sim.x + sim.vx * drop), by = Y(sim.y + sim.vy * drop);   // (a lost ball falls on out of the field)
+  const tr = v.trail || [];
+  if (sim.flying && !v.still && !v.end && tr.length > 2) for (let i = 0; i < tr.length - 2; i += 2) { const q = (i / 2 + 1) / (tr.length / 2); c.fillStyle = `rgba(255,248,232,${(0.05 + 0.24 * q).toFixed(2)})`; c.beginPath(); c.arc(X(tr[i]), Y(tr[i + 1]), r * (0.4 + 0.55 * q), 0, Math.PI * 2); c.fill(); }   // where it has just been: a fading tail
+  if (by - r < H + 4) {
+    c.fillStyle = 'rgba(6,8,20,.34)'; c.beginPath(); c.ellipse(bx + k * 0.1, by + k * 0.16, r, r * 0.85, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = 'rgba(255,248,232,.16)'; c.beginPath(); c.arc(bx, by, r * 1.9, 0, Math.PI * 2); c.fill();
+    c.beginPath(); c.arc(bx, by, r, 0, Math.PI * 2); outlined(c, P.paper, P.ink, Math.max(1.4, Math.min(2.2, r * 0.34)));
+    c.fillStyle = 'rgba(22,18,16,.16)'; c.beginPath(); c.arc(bx + r * 0.24, by + r * 0.26, r * 0.5, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#fff'; c.beginPath(); c.arc(bx - r * 0.3, by - r * 0.32, r * 0.24, 0, Math.PI * 2); c.fill();
   }
-  if (v.end === 'clear' && v.endAt) {                              // the wall cleared: stars burst across where it stood
-    const u = Math.min(1, (now - v.endAt) / 700), cx = X(BRK.w / 2), cy = Y(BRK.top - (sim.rows * BRK.bh) / 2);
-    c.strokeStyle = P.O; c.lineWidth = 3; c.lineCap = 'round';
-    for (let s = 0; s < 14; s++) { const a = (s / 14) * Math.PI * 2, d0 = k * (1 + 4 * u), d1 = d0 + k * (0.6 + u); c.beginPath(); c.moveTo(cx + Math.cos(a) * d0, cy + Math.sin(a) * d1 * 0.5); c.lineTo(cx + Math.cos(a) * d1, cy + Math.sin(a) * (d1 + k * 0.5) * 0.5); c.stroke(); }
+  if (v.end === 'miss' && v.endAt) impact(c, X(Math.max(0.5, Math.min(BRK.w - 0.5, sim.x))), Y(0.2), k * 0.95, rd, now, P, '#aab6de');   // the ball gone into the pit
+  if (v.end === 'clear' && v.endAt && !REDUCED) {                   // the wall cleared: stars fly out from where it stood
+    const u = Math.min(1, (now - v.endAt) / BRK.end.clear), cx = X(BRK.w / 2), cy = Y(BRK.top - (sim.rows * BRK.bh) / 2);
+    c.globalAlpha = 1 - u * u * u;
+    for (let s = 0; s < 16; s++) { const a = (s / 16) * Math.PI * 2 + 0.2, d = k * (0.8 + (3.4 + 1.6 * (s % 3)) * ease(u)); starPath(c, cx + Math.cos(a) * d, cy + Math.sin(a) * d * 0.6 + u * u * k * 1.5, k * (0.26 + 0.12 * (s % 2)), 5, a + u * 3); outlined(c, s % 2 ? P.paper : col, P.ink, 1.6); }
+    c.globalAlpha = 1;
   }
-  if (v.end === 'out' && v.endAt) { c.fillStyle = 'rgba(27,34,54,.35)'; c.fillRect(ox, oy, BRK.w * k, BRK.h * k); }   // the time up: the field dims
-  const wall = Math.max(4, k * 0.16);                              // the sides: a pale edge inside either wall
-  c.fillStyle = 'rgba(255,255,255,.18)'; c.fillRect(ox, oy, wall, BRK.h * k); c.fillRect(ox + BRK.w * k - wall, oy, wall, BRK.h * k); c.fillRect(ox, oy, BRK.w * k, wall);
+  if (v.end === 'out' && v.endAt) { c.fillStyle = 'rgba(20,26,46,.4)'; c.fillRect(ox, oy, BRK.w * k, BRK.h * k); }   // the time up: the field dims
+  c.restore();
+  if (v.still) return;
+  if (te < BRKV.go && !v.end) banner(c, W, H, 'GO!', { at: now - te * 1000 }, now, P, 0.52, (te - (BRKV.go - 0.22)) / 0.22);   // the go begins: the word pops under the wall and is gone as the ball is served
+  if (v.end === 'clear' && v.endAt) banner(c, W, H, 'CLEAR!', rd, now, P, 0.52);
+  else if (v.end === 'out' && v.endAt) banner(c, W, H, 'TIME!', rd, now, P, 0.52);
   // the attempt's time limit: a bar along the top, clear of the score at the top left (ui/runner.js drawTimeBar), while the attempt runs or replays
-  if (!v.still) { const x0 = Math.round(W * 0.36); c.save(); c.translate(x0, 0); drawTimeBar(c, W - x0, H, 1 - sim.t / sim.cfg.runSecs, P); c.restore(); }
+  const x0 = Math.round(W * 0.36); c.save(); c.translate(x0, 0); drawTimeBar(c, W - x0, H, 1 - sim.t / sim.cfg.runSecs, P); c.restore();
 }
-function brkShards(c, cx, cy, w, h, u, fill, P) {                   // a brick just broken: four pieces flying apart and fading
-  c.save(); c.globalAlpha = 1 - u;
-  for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
-    c.save(); c.translate(cx + sx * (w * 0.25 + u * w * 0.5), cy + sy * (h * 0.25 + u * h * 0.9) + u * u * h * 1.5); c.rotate(sx * sy * u * 1.2);
-    rr(c, -w * 0.22, -h * 0.22, w * 0.44, h * 0.44, 2); outlined(c, fill, P.ink, 1.5);
+function brkShards(c, cx, cy, w, h, u, sh, idx, P, lw) {            // a brick just broken: a white flash where it stood, six pieces flying apart, turning and falling, a little dust
+  if (u < BRKV.flash / BRKV.shard) { const f = u / (BRKV.flash / BRKV.shard); c.fillStyle = `rgba(255,255,255,${(1 - f * f).toFixed(2)})`; rr(c, cx - (w / 2) * (1 + 0.16 * f), cy - (h / 2) * (1 + 0.3 * f), w * (1 + 0.16 * f), h * (1 + 0.3 * f), 3); c.fill(); }
+  if (REDUCED) return;
+  const q = ease(u);
+  c.save(); c.globalAlpha = 1 - u * u;
+  for (let i = 0; i < 6; i++) {
+    const sx = (i % 3) - 1, sy = i < 3 ? -1 : 1, hx = hash01(idx * 9 + i), hy = hash01(idx * 5 + i + 20);
+    c.save(); c.translate(cx + sx * w * 0.3 + sx * q * w * (0.35 + 0.4 * hx) + (hx - 0.5) * q * w * 0.5, cy + sy * h * 0.22 + sy * q * h * (0.7 + 0.8 * hy) + u * u * h * 3.2); c.rotate((sx || (i < 3 ? 0.6 : -0.6)) * sy * u * (1.4 + 2 * hy));
+    rr(c, -w * 0.15, -h * 0.2, w * 0.3, h * 0.4, 1.5); c.fillStyle = i % 2 ? sh[0] : sh[1]; c.fill(); c.lineWidth = Math.max(1, lw * 0.7); c.strokeStyle = P.ink; c.stroke();
     c.restore();
   }
+  c.fillStyle = '#fff';
+  for (let i = 0; i < 4; i++) { const a = hash01(idx * 3 + i + 40) * Math.PI * 2, d = q * w * (0.5 + 0.5 * hash01(idx + i + 60)); c.beginPath(); c.arc(cx + Math.cos(a) * d, cy + Math.sin(a) * d * 0.7, Math.max(1, h * 0.12 * (1 - u)), 0, Math.PI * 2); c.fill(); }
   c.restore();
 }
 
@@ -280,23 +406,23 @@ export function sounds(f, add, won, mini, last) {
   if (!b || isOwn(f, f.square)) return;
   const pre = brkPre(f, f.square), rep = pre ? brkReplayOf(f) : null;
   if (rep) {
-    const at = t => Math.round((t * 1000) / rep.speed), sim = brkStart(rep.mini0, rep.p), v = { broke: {} };
+    const at = t => Math.round((t * 1000) / rep.speed), sim = brkStart(rep.mini0, rep.p), voice = brkVoice();
     let k = 0, n = 0;
     add('go', 0);
     while (sim.n < rep.steps && !sim.end) {
       let tx = null;
       if (k < rep.log.length && rep.log[k][0] === sim.n) tx = rep.log[k++][1] / BRK.q;
-      brkTick(v, sim, tx, false);
-      if (n > 220 || !sim.last) continue;
-      const s = sim.last === 'brick' ? 'brkBrick' : sim.last === 'pad' ? 'brkPaddle' : sim.last === 'serve' ? 'pop' : 'brkWall';
-      add(s, at(sim.t)); n++;
+      brkStep(sim, tx);
+      const s = sim.last ? voice(sim) : null;
+      if (!s || n > 220) continue;
+      add(s[0], at(sim.t), s[1]); n++;
     }
     add(rep.end === 'clear' ? 'sparkle' : 'thud', rep.ms);
   }
   add(b.auto ? 'thud' : b.to > b.from ? 'ding' : 'thud', pre + 250);
 }
-// The miniature: each player's wall (the bricks they still have to break solid, the broken ones faint), their paddle and
-// ball under it, in their colour, side by side.
+// The miniature: each player's wall in their own colour (the bricks they still have to break solid, the broken ones
+// faint), their paddle and ball under it, side by side, each field under its player's drawn mark.
 const MINI_W = 42, MINI_H = 26;
 export function miniature(mini, final) {
   const total = brkTotal(mini), t = tune(mini), fits = t.rows * t.cols === total, rows = fits ? t.rows : Math.max(1, Math.round(Math.sqrt(total * 5 / 7))), cols = fits ? t.cols : Math.ceil(total / rows);
@@ -305,7 +431,7 @@ export function miniature(mini, final) {
     const w = mini.wall[p], bw = MINI_W / cols, bh = MINI_H / rows;
     let up = '', down = '';
     for (let k = 0; k < total; k++) { const i = Math.floor(k / cols), j = k % cols, d = `M${(x0 + j * bw + 0.5).toFixed(1)} ${(4 + i * bh + 0.4).toFixed(1)}h${(bw - 1).toFixed(1)}v${(bh - 0.8).toFixed(1)}h-${(bw - 1).toFixed(1)}z`; if (w[k]) up += d; else down += d; }
-    return `${down ? `<path class="tbrkg" d="${down}"/>` : ''}${up ? `<path class="tbrkb" d="${up}"/>` : ''}<rect class="tbrkp ${p}" x="${(x0 + MINI_W / 2 - 7).toFixed(1)}" y="52" width="14" height="4" rx="2"/><circle class="tbrko" cx="${(x0 + MINI_W / 2).toFixed(1)}" cy="49" r="2.4"/><g class="tbrkl ${p}" transform="translate(${(x0 + 4.5).toFixed(1)} 56.5)">${markSvgG(p, 2.8)}</g>`;   // (the player's mark drawn: a letter would be too small to read)
+    return `<g class="tbrkw ${p}">${down ? `<path class="tbrkg" d="${down}"/>` : ''}${up ? `<path class="tbrkb" d="${up}"/>` : ''}<path class="tbrkt" d="M${(x0 + MINI_W / 2 + 1.2).toFixed(1)} 46.5l2.5-6"/><rect class="tbrkp ${p}" x="${(x0 + MINI_W / 2 - 8).toFixed(1)}" y="52" width="16" height="4.5" rx="2.2"/><circle class="tbrko" cx="${(x0 + MINI_W / 2).toFixed(1)}" cy="49" r="2.6"/><g class="tbrkl ${p}" transform="translate(${(x0 + 5).toFixed(1)} 55.5)">${markSvgG(p, 3.2)}</g></g>`;   // (the player's mark drawn: a letter would be too small to read)
   };
   return `<div class="tbrk" aria-label="${label}"><svg viewBox="0 0 100 62" aria-hidden="true"><rect class="tbrkf" x="0" y="0" width="47" height="62" rx="3"/><rect class="tbrkf" x="53" y="0" width="47" height="62" rx="3"/>${half('X', 2.5)}${half('O', 55.5)}</svg></div>`;
 }
@@ -316,6 +442,7 @@ export const replay = { synth: () => [[0, 'brk-start']] };   // the computer's g
 function brkUp(e) { const fd = draft; if (fd && fd.ptr && fd.ptr.id === e.pointerId) fd.ptr = null; }
 if (app && typeof app.addEventListener === 'function') {
   app.addEventListener('pointerdown', e => {
+    if (e.target && e.target.closest && e.target.closest('[data-act="brk-start"]')) ownPress();   // (Start is the game's own press: its 'go', never the interface's click, which sounds at the press's end)
     const fd = draft;
     if (!fd || fd.phase !== 'play' || !runInputAt(e.target)) return;
     e.preventDefault(); ownPress();
