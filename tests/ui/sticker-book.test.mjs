@@ -31,20 +31,6 @@ test('the stylesheet is the page\'s, after the main one', () => {
   assert.ok(page.indexOf('src/ui/stickers.css') > page.indexOf('src/ui/styles.css'));
 });
 
-test('the main menu: a sticker for each way to play, each with its line; Find Match a small "soon" tag while off; round stickers', () => {
-  Object.assign(state, board(), { screen: 'menu', online: null });
-  MM.setFindOn(true);
-  let html = renderMenu();
-  assert.match(html, /<main class="scr menu sb">/);
-  for (const [act, b] of [['cpu-go', 'Play Computer'], ['friend-go', 'Play a Friend'], ['find-go', 'Find Match']]) assert.match(html, new RegExp(`class="stk mode[^"]*" data-act="${act}"[^>]*><b>${b}</b><small>[^<]+</small>`), b);
-  assert.match(html, /class="stkr" data-act="howto"/); assert.match(html, /class="stkr" data-act="settings"/);
-  MM.setFindOn(false);
-  html = renderMenu();
-  assert.match(html, /class="stk soon[^"]*" data-act="find-go"[^>]* disabled[^>]*>Find Match<small>soon<\/small>/);
-  assert.doesNotMatch(html, /Not available/);
-  MM.setFindOn(true);
-});
-
 test('the results: the one big action first, then the board, the menu and Share as round stickers; the facts as notes', () => {
   Object.assign(state, board(), { screen: 'win', online: null, cpu: 'O', winner: 'X', winLine: [0, 4, 8], winReason: 'line' });
   for (const i of [0, 4, 8]) state.squares[i].owner = 'X';

@@ -101,3 +101,87 @@ main.scr.mini:not(.screplay) > .gwrap { background: var(--bg); box-shadow: 0 0 0
   -webkit-mask-image: radial-gradient(circle, transparent 12%, #000 26%, transparent 60%); mask-image: radial-gradient(circle, transparent 12%, #000 26%, transparent 60%); }
 
 @media (prefers-reduced-motion: reduce) { .own-ov.stamp::before, .own-ov.stamp::after, .board .sq.spot::before { animation: none; } .own-ov.stamp::after { display: none; } .zlines { display: none; } }
+
+/* ===== the menus: main.scr.cc, .loud (the main menu, the results) or .calm (the working screens) ===== */
+#app:has(> main.scr.cc.loud) { background: linear-gradient(162deg, var(--x) 0 46%, var(--o) 46%); }
+#app:has(> main.scr.cc.loud)::before { background: radial-gradient(rgba(22, 18, 16, .22) 24%, transparent 26%) 0 0 / 11px 11px; opacity: 1;
+  -webkit-mask-image: linear-gradient(162deg, #000 0, transparent 36%, transparent 64%, #000 100%); mask-image: linear-gradient(162deg, #000 0, transparent 36%, transparent 64%, #000 100%); }
+#app:has(> main.scr.cc.calm) { background: var(--bg) radial-gradient(var(--cc-dot) 22%, transparent 24%) 0 0 / 10px 10px; }
+#app:has(> main.scr.cc.calm)::before { opacity: 0; }
+main.scr.cc { overflow: clip; }
+.cc .ccrays { position: absolute; left: 50%; top: 26%; width: 960px; height: 960px; margin: -480px 0 0 -480px; border-radius: 50%; z-index: -1; pointer-events: none;
+  background: repeating-conic-gradient(rgba(255, 255, 255, .24) 0 9deg, transparent 9deg 18deg); animation: ccspin 60s linear infinite;
+  -webkit-mask-image: radial-gradient(circle, #000 18%, transparent 62%); mask-image: radial-gradient(circle, #000 18%, transparent 62%); }
+@keyframes ccspin { to { transform: rotate(360deg); } }
+.cc .ccpunch { animation: ccpunch .5s cubic-bezier(.2, 1.7, .4, 1) backwards; }
+@keyframes ccpunch { from { transform: scale(.2) rotate(-14deg); opacity: 0; } }
+
+/* TAPPABLE: the skewed panel, with its caption tag on its top edge; pressed it punches in onto its shadow */
+.cc .pn { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; width: calc(100% - 18px); margin: 0 auto; min-width: 44px; min-height: 44px; padding: 6px 12px 4px;
+  border: 3.5px solid var(--ink); border-radius: 0; background: #fff; color: var(--ink); box-shadow: 6px 6px 0 var(--ink); transform: skew(var(--cc-skew));
+  font: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform .07s, box-shadow .07s;
+  animation: ccinL .45s cubic-bezier(.2, 1.3, .4, 1) backwards; animation-delay: calc(var(--k, 0) * 80ms + 140ms); }
+.cc .pn.fr { animation-name: ccinR; }
+@keyframes ccinL { from { transform: skew(var(--cc-skew)) translateX(-120vw); } }
+@keyframes ccinR { from { transform: skew(var(--cc-skew)) translateX(120vw); } }
+.cc .pn > b, .cc .pn > small, .cc .pn > svg { transform: skew(7deg); }
+.cc .pn > b { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 400 clamp(26px, 4.6vh, 34px)/1 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .04em; padding-top: 4px; }
+.cc .pn > small { display: block; font: 700 15px/1.1 'Comic Neue', 'Patrick Hand', sans-serif; margin-top: 2px; }
+.cc .pn:active:not(:disabled) { transform: skew(var(--cc-skew)) translate(4px, 4px); box-shadow: 2px 2px 0 var(--ink); }
+.cc .pn:disabled { opacity: .5; cursor: default; }
+.cc .pn:focus-visible { outline: 3px solid #35c4e0; outline-offset: 5px; }
+.cc .pn.k { background: var(--ink); color: var(--o); } .cc .pn.k > small { color: #fff; }
+.cc .pn.r { background: var(--x); color: #fff; } .cc .pn.y { background: var(--o); } .cc .pn.c { background: #35c4e0; } .cc .pn.g { background: var(--green); color: #fff; }
+.cc .pn .ptag { position: absolute; left: 12px; top: -16px; z-index: 1; transform: skew(7deg) rotate(-3deg); font: 400 16px/1 'Bangers', 'Luckiest Guy', sans-serif; font-style: normal; letter-spacing: .05em;
+  text-transform: uppercase; background: var(--o); color: var(--ink); border: 2.5px solid var(--ink); padding: 3px 7px 1px; pointer-events: none; }
+.cc .pn.fr .ptag { left: auto; right: 12px; transform: skew(7deg) rotate(3deg); }
+.cc .pn.y .ptag { background: #fff; }
+/* SELECTED: inverted to ink and yellow, everywhere */
+.cc .pn.on, .cc .pn.on.y, .cc .pn.on.r, .cc .pn.on.c, .cc .pn.on.w { background: var(--ink); color: var(--o); }
+.cc .pn.on > small { color: #fff; }
+/* the small panels: an icon beside its label */
+.cc .pn.sm { flex-direction: row; gap: 8px; width: auto; height: 52px; padding: 2px 14px 0 10px; }
+.cc .pn.sm svg { width: 30px; height: 30px; flex: none; }
+.cc .pn.sm > b { font-size: 20px; }
+.cc .ccsmall { display: flex; justify-content: center; gap: 18px; flex-wrap: wrap; padding-right: 6px; }
+
+/* INFORMATION: flat. Speech bubbles, caption boxes, burst badges; never a shadow, never skewed */
+.cc .bub { position: relative; display: inline-block; background: #fff; color: var(--ink); border: 3px solid var(--ink); border-radius: 16px; padding: 5px 12px 2px;
+  font: 400 19px/1.05 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .05em; }
+.cc .bub.tl::after, .cc .bub.tr::after { content: ''; position: absolute; bottom: -14px; border: 7px solid transparent; border-top: 12px solid var(--ink); border-bottom: 0; }
+.cc .bub.tl::after { left: 16px; transform: skewX(24deg); } .cc .bub.tr::after { right: 16px; transform: skewX(-24deg); }
+.cc .cap { display: inline-block; background: var(--o); color: var(--ink); border: 2.5px solid var(--ink); padding: 3px 8px 1px; font: 400 16px/1 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .05em; }
+.cc .cap.w { background: #fff; } .cc .cap.k { background: var(--ink); color: var(--o); }
+.cc .bbadge { position: relative; display: inline-grid; place-items: center; min-width: 120px; min-height: 66px; padding: 14px 22px 10px; background: var(--cc-burst-w) center / 100% 100% no-repeat;
+  animation: ccpunch .45s cubic-bezier(.2, 1.7, .4, 1) backwards; animation-delay: calc(var(--k, 0) * 90ms + 300ms); }
+.cc .bbadge.y { background-image: var(--cc-burst); }
+.cc .bbadge > span { font: 400 17px/1 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .05em; text-align: center; padding-top: 2px; max-width: 120px; }
+/* a feature switched off: a small flat "soon" tag, never a big dead button */
+.cc .soon { align-self: center; display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 3px 10px 0 14px; border: 2.5px dashed var(--ink); background: rgba(255, 255, 255, .55); color: var(--ink);
+  font: 400 19px/1 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .05em; cursor: default; }
+.cc .soon small { font: 400 16px/1 'Bangers', 'Luckiest Guy', sans-serif; background: var(--ink); color: var(--o); padding: 3px 7px 1px; }
+
+/* ----- the main menu ----- */
+.scr.menu.cc { padding-top: calc(var(--pad) + 52px); }
+.cc .menu-card { max-width: 360px; gap: clamp(14px, 2.6vh, 24px); padding: 0 4px; animation: none; }
+.cc .title .ttop { font-size: clamp(40px, 7.2vh, 52px); }
+.cc .title .chaos { width: min(270px, 70vw); margin: -6px auto -6px; }
+.cc .chaos .bst.w { fill: #fff; stroke-width: 5; }
+.cc .chaos .bursttxt { fill: var(--x); stroke: var(--ink); stroke-width: 3.5px; paint-order: stroke fill; }
+.cc .ccpals { display: flex; align-items: center; justify-content: center; gap: 10px; margin: -4px 0 4px; }
+.cc .ccpals .pal { width: clamp(50px, 8.5vh, 64px); height: clamp(50px, 8.5vh, 64px); flex: none; }
+.cc .ccpals .pal .pc { width: 100%; height: 100%; animation: bob 1.8s ease-in-out infinite; transform-origin: 50% 100%; }
+.cc .ccpals .pal.O .pc { animation-delay: -.9s; }
+.cc .ccpals .bub { animation-delay: .5s; }
+.cc .menu-card > .pn { height: clamp(58px, 10vh, 78px); }
+.cc .menu-card > .notice { background: #fff; color: var(--ink); border: 2.5px solid var(--ink); border-radius: 0; font: 400 17px/1 'Bangers', sans-serif; letter-spacing: .05em; padding: 5px 12px 2px; }
+.cc .menu-top .btn { border: 3px solid var(--ink) !important; border-radius: 0 !important; background: #fff; box-shadow: var(--cc-sh) !important; transform: skew(var(--cc-skew));
+  font: 400 18px/1 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .05em; padding-top: 3px; animation: ccinR .45s cubic-bezier(.2, 1.3, .4, 1) backwards .1s; }
+.cc .menu-top .btn:active:not(:disabled) { transform: skew(var(--cc-skew)) translate(3px, 3px) !important; box-shadow: var(--cc-sh-in) !important; }
+.cc .menu-top .chip.in b { border-radius: 0; }
+.cc .menu-foot .credit, .cc .menu-foot .privacy, .cc .menu-foot .build { color: var(--ink); font-family: 'Comic Neue', 'Patrick Hand', sans-serif; font-weight: 700; }
+@media (max-height: 680px) {
+  .cc .menu-card { gap: 12px; } .cc .ccpals { margin: -8px 0 0; } .cc .menu-card > .pn > small { font-size: 14px; }
+  .cc .menu-foot .credit { margin-top: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .cc .ccrays { animation: none; } }
