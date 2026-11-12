@@ -278,7 +278,7 @@ function fingReplayOf(f) {
 // A replay's view at T seconds into the attempt (Sky Hop, Scoop Stack: the sim stepped on to there).
 export function fingRepView(rep, T) {
   if (rep.type === 'pinball' && rep.log) {
-    const L = PHYSICS.lib, want = Math.min(rep.steps, Math.floor(T * L.PIN.hz + 1e-6)), now = performance.now();
+    const L = PHYSICS.lib, want = Math.min(rep.steps, Math.floor(T * L.PIN.hz + 1e-6) + (T * 1000 >= rep.raw - 0.5 ? 1 : 0)), now = performance.now();   // (its length is kept in whole ms: at its end, its last step too, the drain)
     if (!rep.w || rep.w.n > want) { rep.w = L.pinNew(rep.table, rep.mini0.cfg, rep.mini0.lit[rep.p]); rep.fx = pinFxNew(); rep.flash = null; }
     const w = rep.w, n0 = w.events.length;
     L.pinReplayTo(w, rep.log, want);

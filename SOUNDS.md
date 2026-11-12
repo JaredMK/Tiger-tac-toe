@@ -169,7 +169,7 @@ Sounds start from the events they belong to, never from drawing the screen: a re
 | Sky Hop, Scoop Stack, Pinball | `ding` / `thud` / `won` | The result, for both phones: a ding for any gain, a thud for none; the square's chime when it is won | As above |
 | Headcount, Flash | `go` / `tickSoft` / `reveal` / `key` | Start (the runners' go); in Flash a soft tick with each item; the question (Codebreaker's reveal); the number pad's keys (Five Letters') | As above |
 | Snapshot | `reveal` / `flipDown` / `tickSoft` / `go` / `mark` / `deselect` | The pattern shows (reveal), the grid empties (Find the Pair's cards turning back), a soft tick each second of the countdown, then the taps open (go); a cell picked (Tic-tac-toe's mark) or unpicked | As above |
-| Headcount, Flash, Snapshot | `tap` / `ding` / `thud` | For someone else's round: its own sounds as it plays, then their answer (tap); right (ding) / wrong or out of time (thud) | As above |
+| Headcount, Flash, Snapshot | `tap` / `key` / `mark` / `ding` / `thud` / `pop` | This phone's own answer pressed in (tap: OK, the option, Submit). For someone else's round: its own sounds as it plays, then their answer going in as they put it in (Headcount's digits: key, then tap for OK; Flash's option: tap; Snapshot's cells: mark each, then tap for Submit). The verdict a beat later: right (ding) / wrong or out of time (thud); a right one's point landing on its pip (pop) | As above |
 
 ## Rules the game follows
 
