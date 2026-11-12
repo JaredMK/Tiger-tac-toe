@@ -8,6 +8,7 @@ import { HOPS, hopAt } from '../games/shared/hops.js';
 import { SNL } from '../games/snakes/rules.js';
 import { REDUCED, SPIN_MS, WAAPI, app, esc, state } from './app.js';
 import { toonG } from './art.js';
+import { DIE_BOUNCE } from './dice.js';
 
 const DIE_MS = PLAY.die;                // the die's tumble before the piece sets off
 /* A winding track for the Candy race and the Dice race: rows of spaces joined by curved turns, a path
@@ -271,7 +272,7 @@ function trackRoundEnd(f) {
 // The sounds of a roll (Snakes and Ladders, the Dice race): the die, a hop for each space (a little higher each
 // time), the ladder or the snake, and the piece set down on its last space.
 export function trackSounds(f, add, won, mini, last) {
-  add('rattle', 0); add('thunk', DIE_MS);
+  add('rattle', 0); if (f.type === 'snakes') add('diceTap', Math.round(DIE_MS * DIE_BOUNCE)); add('thunk', DIE_MS);   // (Snakes and Ladders' die is the shared 3-D one: its first bounce, then its landing)
   const mvs = f.type === 'snakes' && f.scr && f.scr.moves ? Object.values(f.scr.moves) : [f];   // (Super Chaos's round end: both pieces at once)
   const steps = f.type === 'snakes' ? Math.max(...mvs.map(mv => Math.max(1, mv.land - mv.from))) : Math.max(1, diceSlot(f.total) - diceSlot(f.total - f.roll));
   hopSounds(add, DIE_MS, steps);

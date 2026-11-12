@@ -1,10 +1,9 @@
 // Snakes and Ladders: the screen, the miniature, the move's words and sounds, and the inputs.
 import { SNL } from './rules.js';
 import { PLAY } from '../../core/timer.js';
-import { tune } from '../../core/tune.js';
 import { hopAt } from '../shared/hops.js';
 import { N, esc, mv } from '../../ui/app.js';
-import { dieFace } from '../../ui/art.js';
+import { die3d } from '../../ui/dice.js';
 import { SLIDE_MS, SNL_SPEC, bezierAt, snakeCurve, trackSvg, trailAt } from '../../ui/track.js';
 export { trackSounds as sounds } from '../../ui/track.js';
 
@@ -41,12 +40,9 @@ const snlMarks = mini => Object.assign({}, ...mini.ladders.map(([a]) => ({ [a - 
 export function miniature(mini, final) {
   return trackSvg(SNL_SPEC, { tokens: { X: mini.pos.X - 1, O: mini.pos.O - 1 }, finish: 'none', goal: true, mini: true, cls: 'snl', marks: snlMarks(mini), overlay: snlArt(SNL_SPEC, mini, true) });
 }
-// The die as it rolls: it tumbles through other faces and lands on the number rolled (styles.css .die.rr, as Risky
-// Rolls'). The faces on the way follow from the result, so a redraw shows the same ones.
-const FLICK = [3, 1, 4, 2, 5];
-const tumble = (n, sides) => FLICK.map((k, i) => `<span class="rface fl f${i}" aria-hidden="true">${dieFace(((n - 1 + k) % sides) + 1)}</span>`).join('') + `<span class="rface fin">${dieFace(n)}</span>`;
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
-  // The board winds up from the bottom left; the die rolls, the piece hops, then climbs or slides.
+  // The board winds up from the bottom left; the die (the shared 3-D one, ui/dice.js) is thrown in and lands on the
+  // roll, the piece hops, then climbs or slides.
   // Super Chaos's round end (a.scr): both rolled here; both pieces hop together, the die shows this player's own
   // roll and the label both.
   const joint = a && a.scr && a.scr.moves ? a.scr.moves : null, own = joint ? joint[a.by] || joint.X : null;
@@ -60,9 +56,8 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
   const T = !joint && L && L.from != null && L.land != null && (one || !view) ? L : null;                 // the last roll's spaces, traced in its colour
   const trail = T ? { by: T.by, slots: Array.from({ length: Math.max(0, T.land - T.from) }, (_, k) => T.from - 1 + k), at: one ? trailAt(PLAY.die) : null } : null;
   const top = SNL_SPEC.at(SNL.n - 1), pow = one && fresh ? { x: top[0], y: top[1], d: landAt + (one.via ? SLIDE_MS : 0), cls: 'win' } : null;
-  const sides = tune(mini).die || SNL.die;
   g = `<div class="g-snakes">${trackSvg(SNL_SPEC, { tokens: { X: mini.pos.X - 1, O: mini.pos.O - 1 }, moved: joint ? ['X', 'O'] : a ? a.by : null, finish: 'none', goal: true, cls: 'snl', marks: snlMarks(mini), trail, pow, turn: !a && !view && !sq.owner ? turn : null, overlay: snlArt(SNL_SPEC, mini, false, hot, landAt) })}
-        <div class="dieWrap"><div class="die${a ? ' roll rr' : ''}">${ok ? (a ? tumble(L.roll, sides) : dieFace(L.roll)) : '<span class="q">?</span>'}</div>
+        <div class="dieWrap"><div class="snldie">${die3d(ok ? L.roll : null, { roll: a ? PLAY.die : 0 })}</div>
           <div class="dielab${a ? ' late' : ''}">${lab}</div></div>
         <button class="big ${turn}" data-act="move" ${mv('roll')}${locked ? ' disabled' : ''}>Roll for <span class="bnm">${N(turn)}</span></button></div>`;
   return g;

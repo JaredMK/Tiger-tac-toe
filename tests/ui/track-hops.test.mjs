@@ -49,8 +49,7 @@ test('Snakes and Ladders: a move up a ladder carries its trail, its ladder lit a
   assert.equal(count(html, /class="trl X go"/g), 3, 'a dot on each space left behind, in the mover\'s colour');
   assert.match(html, new RegExp(`class="ladder hot" style="--d:${land}ms"`));
   assert.match(html, new RegExp(`class="rl2" style="--d:${land}ms">· <b class="snlv lad">Ladder!</b> Up to 13`));
-  assert.match(html, /class="die roll rr"/);
-  assert.match(html, /class="rface fin"/);
+  assert.match(html, new RegExp(`class="d3 d3cube roll v0" style="--dur:${P.die}ms"`), 'the shared 3-D die, thrown in, landing as the piece sets off');
   assert.equal(E.playMs(f), land + P.slide + 250);
   const s = sounds(f);
   assert.deepEqual(s.filter(x => x[0] === 'hop').map(x => x[1]), [0, 1, 2].map(k => P.die + hopAt(k)), 'a hop for each space');
