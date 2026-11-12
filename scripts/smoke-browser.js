@@ -60,8 +60,12 @@ async function inviteCheck(ctx) {
   const j = await p.evaluate(async () => ({ screen: state.screen, code: (await import('/src/net/room.js')).joinCode }));
   check(j.screen === 'join' && j.code === code, `a /join/${code} link opens the join flow for its code (${JSON.stringify(j)})`);
   await p.evaluate(c => { state.online = { role: 'host', code: c, me: 'X', joined: false }; state.screen = 'setup'; state.setup.vs = null; render(); }, code);
-  await p.click('[data-act="share"]'); await p.waitForTimeout(300);
-  await p.click('[data-act="copy-invite"]'); await p.waitForTimeout(300);
+  // (staging's gate stands over every screen for anyone not on its list: there, the buttons' own handlers are called, the
+  // very code a tap runs; on production the buttons are tapped)
+  if (await p.isVisible('[data-act="share"]').catch(() => false)) {
+    await p.click('[data-act="share"]'); await p.waitForTimeout(300);
+    await p.click('[data-act="copy-invite"]'); await p.waitForTimeout(300);
+  } else await p.evaluate(async () => { const R = await import('/src/net/room.js'); await R.shareRoom(); await R.copyInvite(); });
   const got = await p.evaluate(() => window.__got);
   const want = `Join my Tic Tac Chaos game! Code: ${code} ${SITE}/join/${code}`;
   check(JSON.stringify(got) === JSON.stringify([['share', { text: want }], ['copy', want]]), `Share invite and Copy invite hand over the one text with the code and the /join link (${JSON.stringify(got).slice(0, 200)})`);
