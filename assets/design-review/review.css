@@ -298,3 +298,124 @@ table.eff tr:last-child td { border-bottom: 0; }
 .dV .facts .rib { padding: 2px 14px 0; letter-spacing: .8px; }
 .dV .fb { width: 150px; height: 150px; }
 .lgc .demo :where(button) { border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+
+/* ============ Comic chaos, in-game (round 2): the match screens in direction C ============
+   TAPPABLE: a skewed outlined panel with a hard shadow (.pn); pressed, it drops onto its shadow. INFORMATION: flat; a
+   caption box (.cap), a speech bubble (.bub), the VS panel (.vs): no skew, no shadow. THE PLAY SURFACE: one straight
+   raised panel (.panel): the board, or a mini-game's cream page; what is inside it is the live game, unchanged.
+   MOMENTS: bursts, stamps and speed lines that play once from their event (looped here so they are seen). */
+.dG { --pap: #f0e2c5; --tc: rgba(229, 67, 42, .2); background: var(--pap); font-family: 'Comic Neue', 'Comic Sans MS', cursive; font-weight: 700; color: var(--ink); }
+.dG.tO { --tc: rgba(246, 194, 27, .34); }
+.dG::before { content: ''; position: absolute; inset: 0; background: radial-gradient(rgba(22, 18, 16, .16) 22%, transparent 24%) 0 0 / 10px 10px;
+  -webkit-mask-image: radial-gradient(circle at 0 0, #000 0, transparent 46%), radial-gradient(circle at 100% 100%, #000 0, transparent 46%); mask-image: radial-gradient(circle at 0 0, #000 0, transparent 46%), radial-gradient(circle at 100% 100%, #000 0, transparent 46%); }
+.dG::after { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 170px; background: linear-gradient(var(--tc), transparent); pointer-events: none; }
+.dG > *, .dG .lay > * { z-index: 1; }
+.dG .bang { font-family: 'Bangers', 'Luckiest Guy', sans-serif; font-weight: 400; letter-spacing: 1.2px; }
+.dG .pn { position: absolute; border: 3.5px solid var(--ink); background: #fff; color: var(--ink); box-shadow: 5px 5px 0 var(--ink); transform: skew(-7deg); display: grid; place-items: center; cursor: pointer; transition: transform .07s, box-shadow .07s; z-index: 3; }
+.dG .pn > span { transform: skew(7deg); display: grid; place-items: center; }
+.dG .pn.y { background: var(--o); }
+.dG .pn:active { transform: skew(-7deg) translate(4px, 4px); box-shadow: 1px 1px 0 var(--ink); }
+.dG .pn.in-l { animation: gInL .4s cubic-bezier(.2, 1.3, .4, 1) backwards .1s; } .dG .pn.in-r { animation: gInR .4s cubic-bezier(.2, 1.3, .4, 1) backwards .25s; }
+@keyframes gInL { from { transform: skew(-7deg) translateX(-150px); } } @keyframes gInR { from { transform: skew(-7deg) translateX(150px); } }
+.dG .vs { position: absolute; display: flex; border: 3.5px solid var(--ink); background: linear-gradient(104deg, #f7b7a8 0 50%, #fbe18c 50%); overflow: hidden; animation: gDrop .4s cubic-bezier(.2, 1.3, .4, 1) backwards .15s; }
+@keyframes gDrop { from { transform: translateY(-70px); } }
+.dG .vs .side { flex: 1; min-width: 0; display: flex; align-items: center; gap: 5px; padding: 0 6px; transition: opacity .2s; }
+.dG .vs .side.o { justify-content: flex-end; text-align: right; }
+.dG .vs .side svg { flex: none; }
+.dG .vs .side span { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.dG .vs .side.o span { align-items: flex-end; }
+.dG .vs b { font: 400 15px/1 'Bangers', sans-serif; letter-spacing: 1px; max-width: 74px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-top: 2px; }
+.dG .clk { display: inline-block; font: 400 14px/1 'Bangers', sans-serif; font-style: normal; letter-spacing: 1px; background: #fff; border: 2px solid var(--ink); padding: 2px 6px 0; width: max-content; }
+.dG .vs em { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) rotate(-8deg); font-size: 17px; font-style: normal; color: #fff; -webkit-text-stroke: 4px var(--ink); paint-order: stroke fill; }
+.dG .vs.tX .side.o, .dG .vs.tO .side.x { opacity: .5; filter: saturate(.5); }
+.dG .vs.tX .side.x svg, .dG .vs.tO .side.o svg { animation: bob .9s ease-in-out infinite; }
+.dG .vs.tX .side.x .clk, .dG .vs.tO .side.o .clk { background: var(--ink); color: var(--o); animation: gTick 1s steps(2) infinite; }
+@keyframes gTick { 50% { color: #fff; } }
+.dG .bub { position: absolute; background: #fff; border: 3px solid var(--ink); border-radius: 14px; padding: 4px 11px 1px; font: 400 15px/1.1 'Bangers', sans-serif; letter-spacing: 1px; white-space: nowrap; animation: gPunch .4s cubic-bezier(.2, 1.7, .4, 1) backwards .5s; z-index: 2; }
+.dG .bub.say::before { content: ''; position: absolute; top: -13px; border: 6px solid transparent; border-bottom: 9px solid var(--ink); }
+.dG .bub.tl::before { left: 12px; transform: skewX(24deg); } .dG .bub.tr::before { right: 12px; transform: skewX(-24deg); }
+.dG .bub.think { border-radius: 18px; padding: 6px 12px; }
+@keyframes gPunch { from { transform: scale(.2) rotate(-12deg); opacity: 0; } }
+.dG .dots { display: flex; gap: 5px; } .dG .dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--ink); animation: bob .9s ease-in-out infinite; } .dG .dots i:nth-child(2) { animation-delay: .15s; } .dG .dots i:nth-child(3) { animation-delay: .3s; }
+.dG .cap { position: absolute; display: inline-block; background: var(--o); border: 3px solid var(--ink); font: 400 14px/1 'Bangers', sans-serif; letter-spacing: 1px; padding: 4px 9px 1px; white-space: nowrap; z-index: 2; }
+.dG .cap.hint { background: #fff; } .dG .cap.r { background: var(--x); color: #fff; }
+.dG .cap.ttl { font-size: 22px; padding: 6px 12px 2px; max-width: 176px; overflow: hidden; text-overflow: ellipsis; }
+.dG .panel { position: absolute; border: 4px solid var(--ink); background: var(--pap); box-shadow: 6px 6px 0 var(--ink); overflow: hidden; z-index: 1; animation: gPop .35s cubic-bezier(.3, 1.4, .5, 1) backwards .3s; }
+@keyframes gPop { from { transform: scale(.92); opacity: 0; } }
+.dG .panel img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top; } .dG .panel.bd { box-sizing: border-box; }
+.dG .last { position: absolute; pointer-events: none; z-index: 2; } .dG .last .cap { left: 50%; bottom: 7px; transform: translateX(-50%); font-size: 10.5px; border-width: 2px; padding: 2px 6px 0; }
+.dG .own { position: absolute; display: grid; place-items: center; z-index: 2; background: radial-gradient(closest-side, rgba(240, 226, 197, .96) 62%, transparent); }
+.dG .waitbar { position: absolute; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; background: #fff; border: 3px solid var(--ink); border-radius: 20px; padding: 3px 10px 3px 6px; font: 400 15px/1 'Bangers', sans-serif; letter-spacing: 1px; white-space: nowrap; z-index: 2; }
+.dG .waitbar b { font-weight: 400; padding-top: 3px; } .dG .waitbar svg { animation: bob .9s ease-in-out infinite; }
+.dG .rays { position: absolute; left: -130px; top: 40px; width: 620px; height: 620px; border-radius: 50%; background: repeating-conic-gradient(rgba(255, 255, 255, .5) 0 9deg, transparent 9deg 18deg); animation: spin 40s linear infinite; -webkit-mask-image: radial-gradient(circle, #000 20%, transparent 68%); mask-image: radial-gradient(circle, #000 20%, transparent 68%); z-index: 0; }
+/* a claim: the mark slams onto its square over a burst, impact lines, a word, the board jolts */
+.dG .mo { position: absolute; display: grid; place-items: center; z-index: 3; pointer-events: none; }
+.dG .mo > * { grid-area: 1 / 1; }
+.m-claim .stb { animation: gBurst 3.6s cubic-bezier(.3, 1.4, .5, 1) infinite; }
+@keyframes gBurst { 0%, 6% { transform: scale(0) rotate(-25deg); opacity: 0; } 11% { transform: scale(1.18) rotate(4deg); opacity: 1; } 15%, 82% { transform: scale(1) rotate(0); opacity: 1; } 92%, 100% { transform: scale(1); opacity: 0; } }
+.m-claim .slam { display: grid; place-items: center; width: 100%; height: 100%; animation: gSlam 3.6s cubic-bezier(.3, 1.2, .5, 1) infinite; }
+@keyframes gSlam { 0%, 4% { transform: scale(3.2) rotate(-14deg); opacity: 0; } 9% { transform: scale(.86) rotate(2deg); opacity: 1; } 13% { transform: scale(1.06); } 17%, 82% { transform: scale(1); opacity: 1; } 92%, 100% { opacity: 0; } }
+.m-claim .lines { width: 250%; height: 250%; border-radius: 50%; background: repeating-conic-gradient(var(--ink) 0 2.2deg, transparent 2.2deg 15deg); -webkit-mask-image: radial-gradient(circle, transparent 42%, #000 44%, transparent 70%); mask-image: radial-gradient(circle, transparent 42%, #000 44%, transparent 70%); animation: gLines 3.6s ease-out infinite; }
+@keyframes gLines { 0%, 8% { transform: scale(.5); opacity: 0; } 10% { opacity: .8; } 24%, 100% { transform: scale(1.25); opacity: 0; } }
+.dG .word { position: absolute; z-index: 4; font-size: 28px; color: #fff; -webkit-text-stroke: 5px var(--ink); paint-order: stroke fill; transform: rotate(-10deg); pointer-events: none; }
+.m-claim .word { animation: gWord 3.6s cubic-bezier(.2, 1.7, .4, 1) infinite; }
+@keyframes gWord { 0%, 14% { transform: rotate(-10deg) scale(0); opacity: 0; } 20% { transform: rotate(-10deg) scale(1.25); opacity: 1; } 24%, 80% { transform: rotate(-10deg) scale(1); opacity: 1; } 90%, 100% { opacity: 0; } }
+.m-claim .panel.bd { animation: gJolt 3.6s linear infinite; }
+@keyframes gJolt { 0%, 8.5%, 16%, 100% { translate: 0 0; } 9.5% { translate: -5px 4px; } 11% { translate: 4px -3px; } 12.5% { translate: -3px 2px; } 14% { translate: 2px 0; } }
+/* a draw: DRAW! stamps on the square, flicks away with the old game, the new one is dealt in */
+.m-draw .stb, .m-draw .dword { animation: gDraw 4.6s cubic-bezier(.3, 1.4, .5, 1) infinite; }
+.m-draw .dword { font-size: 30px; color: var(--x); -webkit-text-stroke: 1.5px var(--ink); position: relative; padding-top: 4px; }
+@keyframes gDraw { 0%, 5% { transform: scale(0) rotate(-20deg); opacity: 0; } 10% { transform: scale(1.2) rotate(4deg); opacity: 1; } 14%, 38% { transform: scale(1) rotate(-4deg); opacity: 1; } 46%, 100% { transform: translate(60px, -90px) rotate(40deg) scale(.6); opacity: 0; } }
+.m-draw .cover { width: 100%; height: 100%; background: var(--pap); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; animation: gDeal 4.6s cubic-bezier(.3, 1.3, .5, 1) infinite; }
+.m-draw .cover b { font: 400 13px/1 'Luckiest Guy', sans-serif; letter-spacing: .4px; }
+@keyframes gDeal { 0%, 40% { transform: translateY(-40px) rotate(-14deg) scale(.4); opacity: 0; } 50% { transform: rotate(3deg) scale(1.05); opacity: 1; } 55%, 88% { transform: none; opacity: 1; } 96%, 100% { opacity: 0; } }
+.m-draw .word.w2 { font-size: 19px; animation: gWord2 4.6s cubic-bezier(.2, 1.7, .4, 1) infinite; }
+@keyframes gWord2 { 0%, 52% { transform: rotate(-6deg) scale(0); opacity: 0; } 58% { transform: rotate(-6deg) scale(1.2); opacity: 1; } 62%, 86% { transform: rotate(-6deg) scale(1); opacity: 1; } 94%, 100% { opacity: 0; } }
+/* the other side's square: a dotted glow in their colour, a caption pointing at it */
+.dG .spot { position: absolute; z-index: 2; pointer-events: none; border-radius: 14px; box-shadow: 0 0 0 4px var(--ink), 0 0 0 9px var(--o), 0 0 0 12px var(--ink); background: radial-gradient(rgba(246, 194, 27, .75) 30%, transparent 32%) 0 0 / 12px 12px; animation: gSpot 1s ease-in-out infinite; scale: .9; }
+@keyframes gSpot { 0%, 100% { opacity: .55; scale: .88; } 50% { opacity: 1; scale: .94; } }
+.dG .cap.ptr { z-index: 4; animation: gPunch .4s cubic-bezier(.2, 1.7, .4, 1) backwards .6s; } .dG .cap.ptr::before { content: ''; position: absolute; right: 30px; top: -14px; border: 7px solid transparent; border-bottom: 10px solid var(--ink); }
+/* the match won: the line is struck through, the burst lands, the page turns loud, then the results */
+.m-win .rays, .m-win::after { animation: gLoud 5.4s ease-out infinite; }
+.dG.m-win::after { height: auto; bottom: 0; background: linear-gradient(162deg, rgba(229, 67, 42, .82) 0 50%, rgba(246, 194, 27, .86) 50%); z-index: 0; }
+@keyframes gLoud { 0%, 26% { opacity: 0; } 34%, 90% { opacity: 1; } 98%, 100% { opacity: 0; } }
+.m-win .slashw { position: absolute; z-index: 3; overflow: visible; pointer-events: none; } .m-win .slashw path { fill: none; stroke-dasharray: 410; animation: gSlash 5.4s ease-in infinite; }
+@keyframes gSlash { 0%, 8% { stroke-dashoffset: 410; } 20%, 92% { stroke-dashoffset: 0; opacity: 1; } 98%, 100% { stroke-dashoffset: 0; opacity: 0; } }
+.m-win .own.won svg { animation: gHop 5.4s ease-in-out infinite; } @keyframes gHop { 0%, 20%, 30%, 100% { transform: none; } 25% { transform: translateY(-14px) scale(1.12); } }
+.m-win .winb { position: absolute; left: 23px; top: 262px; z-index: 5; filter: drop-shadow(5px 6px 0 rgba(22, 18, 16, .9)); animation: gWin 5.4s cubic-bezier(.2, 1.6, .4, 1) infinite; }
+@keyframes gWin { 0%, 24% { transform: scale(0) rotate(-18deg); opacity: 0; } 31% { transform: scale(1.18) rotate(4deg); opacity: 1; } 35% { transform: scale(1) rotate(-3deg); } 62% { transform: scale(1.05) rotate(3deg); } 90% { transform: scale(1) rotate(-3deg); opacity: 1; } 97%, 100% { transform: scale(1.6); opacity: 0; } }
+/* the zoom: the tapped square grows into the game's page; speed lines; the header's panels slide in after */
+.dG .lay { position: absolute; inset: 0; }
+.m-zoom .la { animation: gZa 6.6s cubic-bezier(.4, 0, .2, 1) infinite; transform-origin: 68px 236px; }
+.m-zoom .lb { animation: gZb 6.6s cubic-bezier(.4, 0, .2, 1) infinite; }
+.m-zoom .la *, .m-zoom .lb .vs, .m-zoom .lb .bub, .m-zoom .lb .panel { animation: none; }
+@keyframes gZa { 0%, 22% { transform: none; opacity: 1; } 28%, 78% { transform: scale(2.4); opacity: 0; } 84%, 100% { transform: none; opacity: 1; } }
+@keyframes gZb { 0%, 22% { transform: scale(.32); opacity: 0; } 24% { opacity: 1; } 28%, 78% { transform: none; opacity: 1; } 83% { opacity: 1; } 84%, 100% { transform: scale(.32); opacity: 0; } }
+.m-zoom .lb .pn[data-tap^="Back"] { animation: gHl 6.6s cubic-bezier(.2, 1.3, .4, 1) infinite; } .m-zoom .lb .pn[data-tap^="How"] { animation: gHr 6.6s cubic-bezier(.2, 1.3, .4, 1) infinite; }
+.m-zoom .lb .pn[data-tap="Menu"] { animation: none; }
+@keyframes gHl { 0%, 28% { transform: skew(-7deg) translateX(-150px); } 34%, 100% { transform: skew(-7deg); } } @keyframes gHr { 0%, 30% { transform: skew(-7deg) translateX(110px); } 36%, 100% { transform: skew(-7deg); } }
+.m-zoom .tapc { position: absolute; z-index: 3; border-radius: 12px; box-shadow: 0 0 0 4px var(--ink), 0 0 0 8px var(--x); animation: gTap 6.6s ease-out infinite; }
+@keyframes gTap { 0%, 12% { opacity: 0; scale: 1.1; } 15%, 22% { opacity: 1; scale: .92; } 24%, 100% { opacity: 0; } }
+.m-zoom .speed { position: absolute; width: 0; height: 0; z-index: 6; pointer-events: none; }
+.m-zoom .speed::before { content: ''; position: absolute; left: -500px; top: -500px; width: 1000px; height: 1000px; border-radius: 50%; background: repeating-conic-gradient(var(--ink) 0 1.2deg, transparent 1.2deg 9deg); -webkit-mask-image: radial-gradient(circle, transparent 14%, #000 30%, transparent 62%); mask-image: radial-gradient(circle, transparent 14%, #000 30%, transparent 62%); animation: gSpeed 6.6s ease-out infinite; }
+@keyframes gSpeed { 0%, 21% { opacity: 0; transform: scale(.4); } 24% { opacity: .55; } 30%, 76% { opacity: 0; transform: scale(1.3); } 79% { opacity: .45; } 85%, 100% { opacity: 0; transform: scale(.4); } }
+/* how loud: quiet (lettering only) and loud (the full comic page) around the recommended middle */
+.dG.lvq::before { display: none; } .dG.lvq::after { display: none; }
+.dG.lvq .vs { background: #fff8e8; } .dG.lvq .panel { border-color: transparent; box-shadow: none; background: none; } .dG.lvq .pn { transform: none; box-shadow: 0 4px 0 var(--ink); border-radius: 12px; } .dG.lvq .pn > span { transform: none; }
+.dG.lvl { background: linear-gradient(162deg, #e5432a 0 50%, #f6c21b 50%); }
+.dG.lvl::before { background-size: 11px 11px; -webkit-mask-image: linear-gradient(162deg, #000 0, transparent 40%, transparent 60%, #000 100%); mask-image: linear-gradient(162deg, #000 0, transparent 40%, transparent 60%, #000 100%); }
+.dG.lvl::after { display: none; }
+.dG.lvl .vs { transform: skew(-7deg); box-shadow: 6px 6px 0 var(--ink); background: linear-gradient(104deg, var(--x) 0 50%, var(--o) 50%); } .dG.lvl .vs .side.x b { color: #fff; }
+.dG.lvl .panel { background: #fff; box-shadow: 9px 9px 0 var(--ink); transform: rotate(-1.5deg); } .dG.lvl .panel img { mix-blend-mode: multiply; }
+.dG.lvl .cap.hint { font-size: 22px; background: var(--ink); color: var(--o); transform: translateX(-50%) rotate(-3deg) !important; padding: 7px 14px 3px; }
+.dG.lvl .bub { font-size: 20px; border-width: 4px; }
+/* the annotated copy and the legend */
+.dG.ann { counter-reset: tap; } .dG.ann *, .dG.ann *::before, .dG.ann *::after { animation: none !important; }
+.dG.ann [data-tap] { outline: 3px solid #00a2ff; outline-offset: 3px; }
+.dG.ann [data-tap]::after { counter-increment: tap; content: counter(tap); position: absolute; left: -6px; top: -8px; z-index: 9; min-width: 22px; height: 22px; border-radius: 11px; background: #00a2ff; color: #fff; font: 700 13px/22px system-ui, sans-serif; text-align: center; padding: 0 5px; transform: none; }
+.dG.ann .panel { overflow: visible; }
+.dG.ann .vs, .dG.ann .bub, .dG.ann .cap, .dG.ann .waitbar { opacity: .5; }
+.lgc .dG.demo { position: relative; display: block; height: 132px; min-height: 0; overflow: hidden; margin: 10px 12px; padding: 0; border-radius: 12px; border: 3px solid var(--ink); background: var(--pap); }
+.lgc .dG.demo .panel { animation: none; }
+.cmp.g { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: max-content; }
+.chk2 h4 + ul, .chk2 ul.fl:first-of-type { margin-top: 0; }
