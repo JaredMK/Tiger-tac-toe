@@ -55,11 +55,24 @@
  */
 const { onCall: callable, onRequest, HttpsError } = require('firebase-functions/v2/https');
 const { defineSecret } = require('firebase-functions/params');
-// Staging (functions/.env.staging, deployed with --project staging): every server call comes only from a tester on the
-// allowlist (the `staging` flag stagingAccess puts on the account) or the admin. Production is never gated.
+// Staging (functions/.env.staging, deployed with --project staging): the admin's Staging access switch (config/staging/mode,
+// 'open' or 'allowlist'; no value: 'allowlist'). Allowlist: every server call comes only from a tester on the allowlist (the
+// `staging` flag stagingAccess puts on the account) or the admin. Open: no gate, every call as on production (each call's own
+// checks still hold: a login where production asks one, the admin's powers for the admin alone). The switch is read at most
+// every STAGING_MODE_MS, so switching back to Allowlist gates new calls within seconds. Production is never gated.
 const STAGING = process.env.TTC_ENV === 'staging';
-const onStaging = req => { const t = req.auth && req.auth.token; if (STAGING && !(t && (t.admin === true || t.staging === true))) throw new HttpsError('permission-denied', 'Staging is for testers on the list'); };
-const onCall = (opts, fn) => callable(opts, req => { onStaging(req); return fn(req); });
+const STAGING_MODE_MS = 5000;
+let stagingMode = { v: 'allowlist', at: 0 };
+async function stagingOpen() {
+  if (!STAGING) return true;
+  if (Date.now() - stagingMode.at > STAGING_MODE_MS) {
+    try { const v = (await db.ref('config/staging/mode').get()).val(); stagingMode = { v: v === 'open' ? 'open' : 'allowlist', at: Date.now() }; }
+    catch (e) { stagingMode = { v: 'allowlist', at: Date.now() }; }          // (unread: the gate stays, as before the switch)
+  }
+  return stagingMode.v === 'open';
+}
+const onStaging = async req => { const t = req.auth && req.auth.token; if (STAGING && !R.stagingAllows(t, false) && !R.stagingAllows(t, await stagingOpen())) throw new HttpsError('permission-denied', 'Staging is for testers on the list'); };
+const onCall = (opts, fn) => callable(opts, async req => { await onStaging(req); return fn(req); });
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { onValueWritten } = require('firebase-functions/v2/database');
 const { onTaskDispatched } = require('firebase-functions/v2/tasks');
@@ -251,6 +264,7 @@ async function setStagingFlag(uid, on) {
 // The gate's question (src/net/accounts.js): is this account on the list? Yes: the flag goes on it (the page refreshes its token).
 exports.stagingAccess = callable(CALL, async req => {
   if (!STAGING) return { ok: true };
+  if (await stagingOpen()) return { ok: true, open: true };     // Open: anyone, logged in or not (no flag needed)
   const t = req.auth && req.auth.token;
   if (!t || (t.firebase && t.firebase.sign_in_provider === 'anonymous')) return { ok: false, reason: 'login' };
   if (t.admin === true || t.staging === true) return { ok: true };

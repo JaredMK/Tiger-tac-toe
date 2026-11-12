@@ -14,7 +14,7 @@ const SITE = (process.env.SMOKE_URL || (TARGET === 'production' ? 'https://ticta
 let bad = 0;
 const check = (ok, what) => { console.log(`${ok ? 'ok  ' : 'FAIL'} ${what}`); if (!ok) bad++; };
 
-// A match against the computer (production: staging lets only its testers past the gate): Play Computer, Start, a move of
+// A match against the computer (production, and staging while its access is Open: Allowlist lets only its testers past the gate): Play Computer, Start, a move of
 // ours in an open square, then the computer's reply played out and the turn back with us, no page error.
 async function cpuMatch(ctx) {
   const cpu = await ctx.newPage(), perr = [];
@@ -121,7 +121,11 @@ async function main() {
     check(false, `the browser check stopped: ${String(e && e.message || e).split('\n')[0]}`);
   }
   try { await inviteCheck(ctx); } catch (e) { check(false, `the invite check stopped: ${String(e && e.message || e).split('\n')[0]}`); }
-  if (TARGET === 'production') { try { await cpuMatch(ctx); } catch (e) { check(false, `the match against the computer stopped: ${String(e && e.message || e).split('\n')[0]}`); } }
+  // staging Open (the admin's Staging access, config/staging/mode): an outsider plays it as production's players do, so the
+  // same match against the computer, with no login and no gate on the way
+  const open = TARGET === 'staging' && !process.env.SMOKE_URL && await fetch(`${require('./env-config.js').CONFIGS.staging.databaseURL}/config/staging/mode.json`).then(r => r.json()).then(v => v === 'open').catch(() => false);
+  if (open) console.log("(staging's access: Open: an outsider's match against the computer)");
+  if (TARGET === 'production' || open) { try { await cpuMatch(ctx); } catch (e) { check(false, `the match against the computer stopped: ${String(e && e.message || e).split('\n')[0]}`); } }
   check(csp.length === 0, `no Content Security Policy violations${csp.length ? ':\n       ' + [...new Set(csp)].slice(0, 12).join('\n       ') : ''}`);
   await browser.close();
   if (bad) { console.log(`\n${bad} browser check${bad === 1 ? '' : 's'} failed on ${SITE}.`); process.exit(1); }

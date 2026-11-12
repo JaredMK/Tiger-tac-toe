@@ -25,12 +25,15 @@ const check = (good, what) => { console.log(`${good ? 'ok  ' : 'FAIL'} ${what}`)
   }
   if (!v) console.log(`${SITE}/version.json: ${got}`);
   check(want(v), `the ${ENV} site is live at ${v ? String(v.sha).slice(0, 7) : '(none)'}${sha ? (siteToo ? `, this commit ${sha.slice(0, 7)}` : ' (this deploy did not carry the site)') : ''}`);
+  // staging's access switch (config/staging/mode, public): Allowlist gates every call and grant to the list; Open is production's
+  const mode = STAGING ? await fetch(`${DB}/config/staging/mode.json`).then(r => r.json()).catch(() => null) : null, GATED = STAGING && mode !== 'open';
+  if (STAGING) console.log(`(staging's access: ${GATED ? 'Allowlist' : 'Open'})`);
   const robots = await fetch(`${SITE}/robots.txt`).then(r => r.text()).catch(() => '');
   check(STAGING ? /Disallow: \/\s*$/m.test(robots) : !/Disallow: \/\s*$/m.test(robots), STAGING ? 'staging keeps crawlers out (robots.txt)' : 'production lets crawlers in (robots.txt)');
   for (const f of ['claimUsername', 'findMatch', 'cancelSearch', 'move', 'timeout', 'resign', 'recordLocal', 'tick']) {
     const r = await fetch(`${FN}/${f}`, { method: 'POST', headers: json, body: '{"data":{}}' });
     const j = await r.json().catch(() => ({}));
-    if (STAGING) check(r.status === 403 && j.error && j.error.status === 'PERMISSION_DENIED', `${f} is live and refuses anyone not on the staging list (HTTP ${r.status})`);
+    if (GATED) check(r.status === 403 && j.error && j.error.status === 'PERMISSION_DENIED', `${f} is live and refuses anyone not on the staging list (HTTP ${r.status})`);
     else check(r.status === 401 && j.error && j.error.status === 'UNAUTHENTICATED', `${f} is live and asks for a login (HTTP ${r.status})`);
   }
   const ta = await fetch(`${FN}/testAlert`, { method: 'POST', headers: json, body: '{"data":{}}' });
@@ -38,18 +41,19 @@ const check = (good, what) => { console.log(`${good ? 'ok  ' : 'FAIL'} ${what}`)
   check(ta.status === 403 && tj0.error && tj0.error.status === 'PERMISSION_DENIED', `testAlert is live and for the admin only (HTTP ${ta.status})`);
   const tr = await fetch(`${FN}/track`, { method: 'POST', headers: json, body: '{"data":{}}' });
   const tj = await tr.json().catch(() => ({}));
-  if (STAGING) check(tr.status === 403, `track is live and refuses anyone not on the staging list (HTTP ${tr.status})`);
+  if (GATED) check(tr.status === 403, `track is live and refuses anyone not on the staging list (HTTP ${tr.status})`);
   else check(tr.status === 401 && tj.error && tj.error.status === 'UNAUTHENTICATED', `track is live and asks for a login (HTTP ${tr.status})`);   // (a login first since the security review: the page signs in anonymously before it sends an event)
   if (STAGING) {
     const sa = await fetch(`${FN}/stagingAccess`, { method: 'POST', headers: json, body: '{"data":{}}' });
     const sj = await sa.json().catch(() => ({}));
-    check(sa.status === 200 && sj.result && sj.result.ok === false, `stagingAccess is live and lets no one in without a login (HTTP ${sa.status})`);
+    if (GATED) check(sa.status === 200 && sj.result && sj.result.ok === false, `stagingAccess is live and lets no one in without a login (HTTP ${sa.status})`);
+    else check(sa.status === 200 && sj.result && sj.result.ok === true && sj.result.open === true, `stagingAccess is live and says staging is open (HTTP ${sa.status})`);
   }
   const s = await (await fetch(`${ID}:signUp?key=${KEY}`, { method: 'POST', headers: json, body: JSON.stringify({ returnSecureToken: true }) })).json();
   if (!s.idToken) { console.log('::warning::No guest session for the rules check:', JSON.stringify(s.error || s).slice(0, 200)); }
   else {
     const lb = await fetch(`${DB}/leaderboard.json?orderBy=%22rating%22&limitToLast=1&auth=${s.idToken}`);
-    if (STAGING) check(lb.status === 401, `a guest reads nothing on staging (HTTP ${lb.status})`);
+    if (GATED) check(lb.status === 401, `a guest reads nothing on staging (HTTP ${lb.status})`);
     else check(lb.status === 200, `the leaderboard can be read, sorted by rating (rules and index are live) (HTTP ${lb.status})`);
     const w = await fetch(`${DB}/users/${s.localId}/rating.json?auth=${s.idToken}`, { method: 'PUT', body: '3000' });
     check(w.status === 401, `a phone cannot write a rating (HTTP ${w.status})`);
@@ -72,7 +76,7 @@ const check = (good, what) => { console.log(`${good ? 'ok  ' : 'FAIL'} ${what}`)
     const lo = await fetch(`${DB}/localHistory/someone-else.json?shallow=true&auth=${s.idToken}`);
     check(lo.status === 401, `a phone cannot read someone else's local games (HTTP ${lo.status})`);
     const c = await fetch(`${FN}/claimUsername`, { method: 'POST', headers: Object.assign({ authorization: 'Bearer ' + s.idToken }, json), body: JSON.stringify({ data: { username: 'smoke_test' } }) });
-    check(c.status === (STAGING ? 403 : 401), `a guest cannot claim a username (HTTP ${c.status})`);
+    check(c.status === (GATED ? 403 : 401), `a guest cannot claim a username (HTTP ${c.status})`);
     await fetch(`${ID}:delete?key=${KEY}`, { method: 'POST', headers: json, body: JSON.stringify({ idToken: s.idToken }) }).catch(() => {});
   }
   if (failed) { console.log('::error::The live check failed.'); process.exit(1); }

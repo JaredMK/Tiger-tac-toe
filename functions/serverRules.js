@@ -220,7 +220,12 @@ function publicProfile(u) {
   return p;
 }
 
+// Staging's gate on a server call (functions/index.js onStaging): the admin's switch Open (config/staging/mode 'open')
+// lets every call through as on production (each call's own checks still apply: a login, the admin's claim for the admin's
+// calls); Allowlist only an account with the admin's or the `staging` claim (stagingAccess puts it on a listed account).
+function stagingAllows(token, open) { return !!open || !!(token && (token.admin === true || token.staging === true)); }
 module.exports = {
+  stagingAllows,
   LOCAL_REASONS, checkLocal, publicProfile, PROFILE_KEYS,
   USERNAME_RE, usernameProblem, unleet, flatten, badWordIn, BAD, BAD_TOKENS, ALLOW, RATINGS_ENABLED, ELO_K, START_RATING, LEADERBOARD_MIN_GAMES, expected, elo,
   FIND_MATCH_TIMER, FIND_MATCH_MODES, QUEUES, queueKey, ratingRange, pairQueue, howEnded, resultFor,

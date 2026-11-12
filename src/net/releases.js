@@ -32,6 +32,14 @@ export function fetchReleases() {                                     // a plain
   const url = hook && hook.emulator ? `http://${hook.emulator.host}:${hook.emulator.port}/releases.json?ns=${c.projectId}-default-rtdb` : `${c.databaseURL}/releases.json`;
   try { fetch(url).then(r => (r.ok ? r.json() : undefined)).then(v => { if (v !== undefined) setReleases(v || {}); }).catch(() => {}); } catch (e) { /* offline: as last known */ }   // (an empty node, null: nothing released any more)
 }
+// Staging's access switch (config/staging/mode, the admin's Staging access: 'open' or 'allowlist'), a plain read of the
+// public node before anyone logs in (net/accounts.js gate): 'open' only when it says so; unread or anything else: 'allowlist'.
+export function fetchStagingMode() {
+  if (!configured()) return Promise.resolve('allowlist');
+  const hook = window.TTT_FIREBASE, c = (hook && hook.config) || FIREBASE_CONFIG;
+  const url = hook && hook.emulator ? `http://${hook.emulator.host}:${hook.emulator.port}/config/staging/mode.json?ns=${c.projectId}-default-rtdb` : `${c.databaseURL}/config/staging/mode.json`;
+  try { return fetch(url, { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then(v => (v === 'open' ? 'open' : 'allowlist')).catch(() => 'allowlist'); } catch (e) { return Promise.resolve('allowlist'); }
+}
 const isAdmin = () => !!(acct && acct.admin);
 // The games this player may see and play: the released ones (every one for the admin), less any the admin has switched
 // off for this platform (releases/platform/{p}/{type} false: core/client.js; the admin still sees them, to test).

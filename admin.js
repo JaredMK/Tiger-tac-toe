@@ -228,7 +228,7 @@ const SECTIONS = [
   ['games', 'Games', () => { const ts = Object.keys(GAMES), ch = ts.filter(gameChanged).length, off = ts.filter(iosOff).length, m = ctl.clients || {}, sp = ctl.anim && ctl.anim.speed; return `${ts.length} mini-games · ${ts.filter(isReleased).length} released${ch ? ` · ${ch} changed` : ''}${off ? ` · ${off} off on iOS` : ''}${m.web || m.ios ? ` · minimum ${['web', 'ios'].filter(p => m[p]).map(p => `${p} ${m[p]}`).join(', ')}` : ''}${sp && sp !== 1 ? ` · speed ${sp}×` : ''}`; }],
   ['bots', 'Bot Settings', () => 'Find Match, timer, bots, empty-queue alerts'],
   ['stats', 'Stats', () => 'Matches by mode and timer, moves to win'],
-].concat(STAGING ? [['access', 'Staging Access', () => `${Object.keys(ctl.allow || {}).length} on the list`]] : []);   // (staging only: who may use it)
+].concat(STAGING ? [['access', 'Staging Access', () => ctl.stagingMode === 'open' ? 'Open: anyone with the link' : `Allowlist: ${Object.keys(ctl.allow || {}).length} on the list`]] : []);   // (staging only: who may use it)
 // The Games page took over Mini-game Settings and Releases (November 2026): their old hashes (bookmarks) open it, #settings/<type> the game's page.
 const ALIAS = { settings: 'games', releases: 'games' };
 function route() {
@@ -460,12 +460,26 @@ const failed = e => 'Not saved: ' + ((e && e.message) || 'the database refused i
 // An account with an email on the list gets in (functions/index.js stagingAccess, on its first visit); one taken off is
 // signed out within the hour. The admin is always in.
 const allowKey = email => String(email || '').trim().toLowerCase().replace(/[.#$[\]/]/g, ',');   // (functions/index.js allowKey)
+// Open or Allowlist (config/staging/mode, read by the page as it starts, net/accounts.js, by the server within seconds,
+// functions/index.js stagingOpen, and by staging's rules, scripts/staging-rules.js OPEN): Open lets anyone with the link play,
+// logged in or not, as on production; Allowlist is the list below. The admin page and the admin's powers stay the admin's
+// either way.
 function accessCard() {
   const rows = Object.entries(ctl.allow || {}).map(([k, v]) => [k, (v && v.email) || k]).sort((a, b) => a[1].localeCompare(b[1]));
-  return `<div class="card ctl" id="accessCard"><h2>Who can use staging</h2>
-    <p class="note">Only these accounts can open staging.tictacchaos.com (and you, the admin). A new tester logs in with Google, or creates an account with this email and verifies it.</p>
+  const open = ctl.stagingMode === 'open';
+  return `<div class="card ctl" id="modeCard"><h2>Staging access</h2>
+    <div class="tabs seg" role="group" aria-label="Staging access"><button data-stmode="open" aria-pressed="${open}">Open</button><button data-stmode="allowlist" aria-pressed="${!open}">Allowlist</button></div>
+    <p class="note">${open ? 'Open: anyone with the link can play staging, locally without logging in, and log in or sign up for online play. The list below is kept for switching back.' : 'Allowlist: only the accounts below (and you) get past the gate.'} New sessions follow a change at once; the admin page and Admin only games stay yours either way.</p></div>
+    <div class="card ctl" id="accessCard"><h2>Who can use staging</h2>
+    <p class="note">${open ? 'Used while access is Allowlist. ' : ''}Only these accounts can open staging.tictacchaos.com (and you, the admin). A new tester logs in with Google, or creates an account with this email and verifies it.</p>
     <ul class="rels">${rows.map(([k, e]) => `<li><span class="rn">${esc(e)}</span><button class="btn" data-allowdel="${esc(k)}">Remove</button></li>`).join('') || '<li><span class="rn">Nobody yet</span></li>'}</ul>
     <div class="tbar"><input id="allowAdd" type="email" placeholder="email@example.com" autocomplete="off" style="min-width:min(100%,260px)"><button class="btn" data-act="allowadd">Add</button></div></div>`;
+}
+async function setStagingMode(el, mode) {
+  if (!['open', 'allowlist'].includes(mode) || ctl.stagingMode === mode) return;
+  try { await fb.dbM.set(fb.dbM.ref(fb.db, 'config/staging/mode'), mode); ctl.stagingMode = mode; }
+  catch (e) { said(el, false, failed(e)); return; }
+  render(); const c = document.getElementById('modeCard'); if (c) said(c.querySelector('.seg') || c, true, mode === 'open' ? 'Staging is open' : 'Staging is allowlist only');
 }
 async function allowEdit(el, email, on) {
   email = String(email || '').trim().toLowerCase();
@@ -1182,7 +1196,7 @@ async function loadCtl() {
   const [config, secretsSet, bots, botStats, alertStats, features, log, releases, runCfg, bullsCfg, wheelsCfg, plinkoCfg, oddCfg, headCfg, flashCfg, snapCfg, hopCfg, scoopCfg, pinCfg, pigCfg, roadsCfg, bowlCfg] = await Promise.all([g('admin/config'), g('admin/secretsSet'), g('bots'), g('botStats'), g('alertStats'), g('features'),
     fb.dbM.get(fb.dbM.query(fb.dbM.ref(fb.db, 'alertLog'), fb.dbM.orderByChild('at'), fb.dbM.limitToLast(8))).then(s => s.val()).catch(() => null), g('releases'), g('config/run'), g('config/bulls'), g('config/wheels'), g('config/plinko'), g('config/oddone'), g('config/headcount'), g('config/flash'), g('config/snapshot'), g('config/skyhop'), g('config/scoop'), g('config/pinball'), g('config/pig'), g('config/roads'), g('config/bowling'), loadMetas()]);
   ctl = { config: config || {}, secretsSet: secretsSet || {}, bots: bots || {}, botStats: botStats || {}, alertStats: alertStats || {}, features: features || {}, releases: releases || {}, runCfg: runCfg || {}, bullsCfg: bullsCfg || {}, wheelsCfg: wheelsCfg || {}, plinkoCfg: plinkoCfg || {}, pigCfg: pigCfg || {}, roadsCfg: roadsCfg || {}, oddCfg: oddCfg || {}, attCfg: { headcount: headCfg || {}, flash: flashCfg || {}, snapshot: snapCfg || {} }, fingCfg: { skyhop: hopCfg || {}, scoop: scoopCfg || {}, bowling: bowlCfg || {}, pinball: pinCfg || {} },
-    alertLog: Object.values(log || {}).sort((a, b) => b.at - a.at), tune: (await g('config/tune')) || {}, ai: (await g('config/ai')) || {}, anim: (await g('config/anim')) || {}, timer: (await g('config/timer')) || {}, clients: (await g('config/clients')) || {}, allow: STAGING ? ((await g('admin/staging/allow')) || {}) : {} };
+    alertLog: Object.values(log || {}).sort((a, b) => b.at - a.at), tune: (await g('config/tune')) || {}, ai: (await g('config/ai')) || {}, anim: (await g('config/anim')) || {}, timer: (await g('config/timer')) || {}, clients: (await g('config/clients')) || {}, allow: STAGING ? ((await g('admin/staging/allow')) || {}) : {}, stagingMode: STAGING ? ((await g('config/staging/mode')) === 'open' ? 'open' : 'allowlist') : 'allowlist' };
 }
 async function signIn(how) {
   view.error = '';
@@ -1206,6 +1220,7 @@ app.addEventListener('click', e => {
   if (mr && fb) { const k = mr.dataset.ml; mlOpen = mlOpen === k ? null : k; render(); if (mlOpen) { mlLoad(mlOpen); const el = document.getElementById('mlTimeline'); if (el) el.scrollIntoView({ block: 'nearest' }); } return; }   // a match's row: its timeline
   if (!b || !fb) return;
   if (b.dataset.allowdel) { allowEdit(b, b.dataset.allowdel, false); return; }
+  if (b.dataset.stmode) { setStagingMode(b, b.dataset.stmode); return; }
   if (b.dataset.act === 'allowadd') { const i = document.getElementById('allowAdd'); allowEdit(b, i && i.value, true); return; }
   if (b.dataset.mlexport) { mlExport(b.dataset.mlexport); return; }
   if (b.dataset.mlclose) { mlOpen = null; render(); return; }

@@ -659,6 +659,15 @@
           ".validate": "$k.matches(/^(attack|defend|explore|prog|fresh|drop|margin|budget|(hard|normal|easy)(Search|Sharp|Mistake|Risk)|tuned|matches)$/) && newData.isNumber()"
         }
       },
+      "staging": {
+        ".write": "auth != null && auth.token.admin === true",
+        "mode": {
+          ".validate": "newData.val() === 'open' || newData.val() === 'allowlist'"
+        },
+        "$other": {
+          ".validate": false
+        }
+      },
       "$other": {
         ".validate": false
       }

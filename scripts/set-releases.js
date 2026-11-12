@@ -23,7 +23,9 @@ const CONFIG_SETS = [
   { id: 'verify1', path: 'config/verify/since', value: () => Date.now() },   // email verification's cutoff: accounts made before this deploy are grandfathered (production: the release that brings verification in)
   { id: 'wheels2', path: 'config/wheels', value: { target: 30, lowSkulls: 2, midSkulls: 4, highSkulls: 5, lowLo: 1, lowHi: 4, midLo: 4, midHi: 7, highLo: 6, tensMin: 1, tensMax: 1, gap: 0.4, evSpread: 10 } },   // Risky Spins balanced (November 2026): the whole of config/wheels set to the new defaults (meta.js WHEEL_DEFAULTS), the three wheels' turns within 10%; squares dealt before keep their wheels
   { id: 'wheels3', path: 'config/wheels', value: { target: 30, lowSkulls: 2, highSkulls: 5, lowLo: 1, lowHi: 4, highLo: 6, tensMin: 1, tensMax: 1, gap: 0.4, evSpread: 10 } },   // Risky Spins deals two wheels, low and high (November 2026): the whole of config/wheels set to the defaults (meta.js WHEEL_DEFAULTS: the same numbers as wheels2, without the medium wheel's midSkulls, midLo and midHi); squares dealt with three wheels play on with them
+  { id: 'stagingOpen1', path: 'config/staging/mode', value: 'open', env: 'staging' },   // staging open to anyone with the link (the admin's Staging access switch; Allowlist puts the gate back)
 ];
+const ENV = process.env.TARGET || (PROJECT === 'tic-tac-chaos' ? 'production' : 'staging');   // (a set with env: that environment alone)
 (async () => {
   admin.initializeApp({ projectId: PROJECT, databaseURL: `https://${PROJECT}-default-rtdb.firebaseio.com` });
   const db = admin.database();
@@ -39,7 +41,8 @@ const CONFIG_SETS = [
     await db.ref().update(Object.assign(Object.fromEntries(Object.entries(set).map(([k, v]) => [`config/tune/${type}/${k}`, v])), { [mark]: { at: Date.now() } }));
     console.log(`Settings set ${id}: ${type} ${Object.entries(set).map(([k, v]) => `${k} ${v}`).join(', ')}.`);
   }
-  for (const { id, path: at, value } of CONFIG_SETS) {
+  for (const { id, path: at, value, env } of CONFIG_SETS) {
+    if (env && env !== ENV) continue;
     const mark = `meta/config/${id}`;
     if ((await db.ref(mark).get()).val()) { console.log(`Config set ${id}: applied already.`); continue; }
     const v = typeof value === 'function' ? value() : value;

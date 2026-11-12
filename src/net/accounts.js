@@ -3,7 +3,7 @@ import { PROVIDERS, providerSignIn, providerSignOut } from './auth.js';
 import { NET_MS, call, configured, connectStep, fb, loadFirebase, setConnectWhy } from './connect.js';
 import { enterMatched, holdResume, search, startSearch, stopSearch } from './matchmaking.js';
 import { hostRoom } from './room.js';
-import { fetchReleases } from './releases.js';
+import { fetchReleases, fetchStagingMode } from './releases.js';
 import { clearStats, refreshStats } from './statscache.js';
 import { devError, flushLocal, pendingLocal, track } from './tracking.js';
 import { commit, save, setMenuNote, state } from '../ui/app.js';
@@ -67,15 +67,22 @@ export let loginFinishing = false;
  * on the allowlist (the admin page's Staging access, admin/staging/allow). The server checks the list and puts
  * a `staging` flag on the account (functions/index.js stagingAccess); staging's database rules and its server
  * calls refuse anyone without it, so the gate is not only on the page. The tests (window.TTT_FIREBASE) and a
- * page with no Firebase project set up have no gate. */
+ * page with no Firebase project set up have no gate. The admin's switch (config/staging/mode) Open takes the gate away:
+ * read once as the page starts (fetchStagingMode), so switching back to Allowlist gates every new session. */
 export const GATED = typeof window !== 'undefined' && !!(window.TTC_ENV && window.TTC_ENV.staging) && !window.TTT_FIREBASE;
 export let gate = GATED ? 'checking' : 'ok';          // 'checking' | 'login' | 'verify' | 'denied' | 'offline' | 'ok'
 export let gateEmail = '';
 export function gateOn() { return GATED && configured() && gate !== 'ok'; }
 function setGate(g) { if (gate !== g) { gate = g; render(); } }
 let gateSeq = 0;
-function gateUser(u) {
+export let stagingOpen = false;                       // the admin's switch read Open as this page started: no gate at all
+let modeP = null;                                     // the switch's read (gateStart): the gate waits for it
+export const stagingMode = () => modeP || (modeP = GATED && configured() ? fetchStagingMode().then(m => { stagingOpen = m === 'open'; if (stagingOpen) setGate('ok'); return m; }) : Promise.resolve('allowlist'));
+export function gateUser(u) {
   const n = ++gateSeq;
+  stagingMode().then(() => { if (n !== gateSeq) return; if (stagingOpen) setGate('ok'); else gateAsk(u, n); });   // (the switch first: Open needs no login, no list)
+}
+function gateAsk(u, n) {
   if (!u || u.isAnonymous) { gateEmail = ''; setGate('login'); return; }
   gateEmail = u.email || '';
   if (gate !== 'ok') setGate('checking');
@@ -103,7 +110,7 @@ export async function gateAct(act) {
   gateUser(fb.auth.currentUser);
 }
 // At the start, on staging: connect at once (the gate needs to know who this is).
-export function gateStart() { if (gateOn()) connectQuiet().then(ok => { if (!ok) setGate('offline'); }); }
+export function gateStart() { if (gateOn()) { stagingMode(); connectQuiet().then(ok => { if (!ok && !stagingOpen) setGate('offline'); }); } }
 export function finishLogin() {
   const go = loginPending();
   loginPending(null);
