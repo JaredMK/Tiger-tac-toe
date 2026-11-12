@@ -61,23 +61,23 @@ Sounds start from the events they belong to, never from drawing the screen: a re
 
 | Mini-game | Sound | When it plays | How it is made |
 |---|---|---|---|
-| Tic-tac-toe | `mark` | A mark is placed. *Varied.* | Bandpass noise scribble with a low triangle |
-| Four in a Row | `c4drop` | The piece lands (nothing as it falls) | A soft wooden thunk: triangle 300→200 Hz with a quiet 620 Hz tap and low-passed noise, 0.16 s. *Varied.* |
-| Sea Battle | `fire` | A shot is fired | Triangle glide 900→300 Hz with noise |
-| Sea Battle | `splash` | A miss | Lowpass noise sweep with two bubbles |
-| Sea Battle | `boom` | A hit | Lowpass noise with a low glide 160→50 Hz |
-| Sea Battle | `sink` | A ship sinks | Long low rumble |
+| Tic-tac-toe | `mark` | A mark is drawn: one stroke for the O's ring, two for the X (one as each stroke starts). *Varied.* A win: the `swish` as the line is drawn through the three, then the square's `won` chime as the marks hop | Bandpass noise scribble with a low triangle |
+| Four in a Row | `c4drop` | The piece lands, at the moment its fall ends (the further the fall, the later; nothing as it falls): with the result's buzz | A soft wooden thunk: triangle 300→200 Hz with a quiet 620 Hz tap and low-passed noise, 0.16 s. *Varied.* |
+| Sea Battle | `fire` | A shot is fired: the shell's whistle as it is lobbed in | Triangle glide 900→300 Hz with noise |
+| Sea Battle | `splash` | A miss, as the shell lands (`bs/rules.js` `BST.land`) | Lowpass noise sweep with two bubbles |
+| Sea Battle | `boom` | A hit, as the shell lands | Lowpass noise with a low glide 160→50 Hz |
+| Sea Battle | `sink` | A ship sinks: under the ship surfacing and going down | Long low rumble |
 | Five Letters | `tileG` | A tile turns green | Two tones, 660 and 990 Hz |
 | Five Letters | `tileY` | A tile turns yellow | Triangle 520 Hz |
 | Five Letters | `tileX` | A tile turns grey | Short falling triangle 330→280 Hz |
-| Five Letters | `solve` | The word is solved | Three-note chime |
-| Hangman | `ding` | A right letter (and Higher/Lower's right answer) | Bell: 1046 Hz with a 1568 Hz partial |
-| Hangman | `thud` | A wrong letter | Low thump with lowpass noise |
+| Five Letters | `solve` | The word is solved, as the row starts to hop (Hangman too, as the word hops) | Three-note chime |
+| Hangman | `ding` | A right letter, once for each blank it drops into as it lands (up to four, each a step higher: played at 1, 1.12, 1.26, 1.34 times its pitch) (and Higher/Lower's right answer) | Bell: 1046 Hz with a 1568 Hz partial |
+| Hangman | `mark` / `thud` | A wrong letter: the pencil as the scarecrow's next part is drawn (tic-tac-toe's mark), then the letter thumping onto the wrong row | Low thump with lowpass noise |
 | Hex | `hexPlace` | A tile is placed. *Varied.* | Wooden click: triangle 500 Hz with bandpass noise |
 | Hex | `pathNote` | Each cell of the winning path lights, one note a semitone higher each | Triangle 523 Hz, played faster or slower for each cell |
 | Higher/Lower | `hiloBlip` | A guess is made. *Varied.* | 880 Hz blip |
-| Higher/Lower | `higher` | The answer is higher | Rising glide 500→900 Hz |
-| Higher/Lower | `lower` | The answer is lower | Falling glide 900→500 Hz |
+| Higher/Lower | `higher` | The answer is higher, as the guess lands on the number line (the result's buzz) | Rising glide 500→900 Hz |
+| Higher/Lower | `lower` | The answer is lower, as the guess lands on the number line (the result's buzz) | Falling glide 900→500 Hz |
 | Snakes and Ladders, Dice Race | `rattle` | The die is rolled (also Risky Rolls) | Nine short noise ticks |
 | Snakes and Ladders, Dice Race | `thunk` | The die lands (also Risky Rolls) | Low triangle with noise |
 | Snakes and Ladders, Dice Race, Candy Race, Bump | `hop` | The piece hops one space. *Varied.* | Short glide 520→760 Hz |
@@ -90,17 +90,18 @@ Sounds start from the events they belong to, never from drawing the screen: a re
 | Candy Race | `wheelTick` | The wheel ticks, slowing as it stops. *Varied.* | 2200 Hz sine, very short |
 | Bump | `spin` | The spinner spins | Noise sweep down |
 | Bump | `boing` | A piece is knocked back home | Spring glide 200→700 Hz with a wobble |
-| Coin Flip | `coinSpin` | The coins spin | Glide 1200→2000 Hz with a shimmer |
-| Coin Flip | `clink` | Each coin lands. *Varied.* | Two high sines |
+| Coin Flip | `coinFlick` | The thumb's flick as the coins are tossed (new). *Varied.* | A short click of bandpass noise at 4200 Hz under a ring of two high sines (3100 and 4650 Hz) |
+| Coin Flip | `coinSpin` | The coins spin in the air | Glide 1200→2000 Hz with a shimmer |
+| Coin Flip | `clink` | Each coin as it lands (0.78 s after it left, one 80 ms after the other). *Varied.* | Two high sines |
 | Risky Rolls | `point` | Points at risk grow after a roll. *Varied.* | Short glide 700→1000 Hz |
 | Risky Rolls | `bank` | Points are banked | Four quick bright blips |
 | Risky Rolls | `bust` | A repeated number: the points are lost | Crash: lowpass noise with a falling sawtooth |
 | Treasure Hunt | `dig` | A square is dug | Shovel: lowpass noise sweep with a thud |
-| Treasure Hunt | `band` | The band is revealed: higher for Hot, lower for Cold | Triangle 880 Hz, played faster or slower for each band |
-| Treasure Hunt | `sparkle` | The treasure is found | Rising sparkles |
+| Treasure Hunt | `band` | The band is revealed as its colour blooms from the hole (`hunt/rules.js` `HUNTT.bloom`; the result's buzz): higher for Hot, lower for Cold | Triangle 880 Hz, played faster or slower for each band |
+| Treasure Hunt | `thunk` / `sparkle` | The treasure is found: the shovel strikes the chest (the die's thunk), then the gem comes up out of it | As above; rising sparkles |
 | Hexapawn | `pieceSlide` | A pawn moves | Lowpass noise sweep |
 | Hexapawn | `knock` | A pawn is captured | Two knocks |
-| Codebreaker | `peg` | A peg is placed. *Varied.* | Triangle click |
+| Codebreaker | `peg` | A peg is placed; a guess sent, each of its four pegs as it lands in its row. *Varied.* | Triangle click |
 | Codebreaker | `marker` | A feedback marker appears. *Varied.* | Short tick |
 | Codebreaker | `reveal` | The code is cracked | Rising tone with two chimes |
 | Blackjack, Ride the Bus | `cardSlide` | A card is dealt or drawn (the dealer's too). *Varied.* | Bandpass noise sweep down 2600→1100 Hz |

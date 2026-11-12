@@ -88,7 +88,7 @@ export function hide(m, k, st) {
   const hits = new Set(m.letters.filter(x => x.hit).map(x => x.l)); m.word = m.word.split('').map(ch => (hits.has(ch) ? ch : '_')).join(''); return;
 }
 export function flashMs(f, winLen, won) {
-  return f && f.kind === 'again' ? 300 : 650;   // (a right letter: the next guess almost at once)
+  return won ? 1300 : f && f.kind === 'again' ? 300 : 650;   // (a right letter: the next guess almost at once; the last one: the letter drops in and the word hops along its length, hangman/view.js HT)
 }
 // Super Chaos: one shared word. Each player's move is the normal one (guessing on while right), seeing only
 // the letters known before the round and their own. At the round's end every guess joins the word; a player

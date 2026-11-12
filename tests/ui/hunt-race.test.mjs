@@ -59,12 +59,13 @@ test('race: their dig lands on their board (the cell opening there), ours untouc
   let html = renderMini(state.squares[0]);
   assert.doesNotMatch(mainOf(html), /class="dig[^"]* open"/, 'nothing opens on our grid');
   assert.deepEqual(dugCells(mainOf(html)), []);
-  assert.equal(oppCells(html)[c].cls, ' open', 'their newest dig opens on their grid');
+  assert.match(oppCells(html)[c].cls, /^ open\b/, 'their newest dig opens on their grid');
   assert.match(V.moveText(state.flash, '<b class="O">Computer</b>'), /dug · (Hot|Warm|Cool|Cold)/);
   state.flash = null; state.done = null; state.turn = 'X';
   const x = notMine(m, 'X', 30); E.playMove(state, 0, x, E.makeRng('x'));
   html = renderMini(state.squares[0]);
-  assert.match(mainOf(html), new RegExp(`class="dig open" data-act="move" data-m='${x}'`), 'our dig opens on ours');
+  assert.match(mainOf(html), new RegExp(`class="dig dug open[^"]*" data-act="move" data-m='${x}'`), 'our dig opens on ours');
+  assert.match(mainOf(html), /class="hshov X"/, 'the shovel in our colour'); assert.doesNotMatch(mainOf(html), /class="hby/, 'no digger dots on a grid of our own');
   assert.doesNotMatch(oppOf(html), /hoc open/, 'theirs stays still');
 });
 

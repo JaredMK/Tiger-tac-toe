@@ -1,6 +1,7 @@
 // The on-screen keyboard (Five Letters, Hangman).
 import { attemptMove, showNotice } from '../net/moves.js';
 import { app, commit, mv, state, zoomedType } from './app.js';
+import { startFx } from './fx.js';
 import { repNote } from './replay.js';
 
 const BKSP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 5H8l-5 7 5 7h13a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1z"/><path d="m18 9-6 6M12 9l6 6"/></svg>';
@@ -31,7 +32,8 @@ export function keyboard(cls, disabled, extra) {
 export function typeLetter(k) {
   if (zoomedType() !== 'wordle' || (state.draft || '').length >= 5) return;
   repNote('key', 'k=' + k);                                     // (logged here, for the on-screen keys and a real keyboard alike)
-  state.draft = (state.draft || '') + k; commit();
+  state.draft = (state.draft || '') + k; startFx('wkey', state.draft);   // the letter pops into its box, once, from this key (wordle/view.js)
+  commit();
 }
 export function backspace() {
   if (zoomedType() !== 'wordle' || !(state.draft || '').length) return;

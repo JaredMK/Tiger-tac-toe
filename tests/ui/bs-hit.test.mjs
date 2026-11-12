@@ -1,4 +1,4 @@
-// Sea Battle: a shot's cell carries only the burst (or the splash) and the shooter's colour dot. The cell's label
+// Sea Battle: a shot's cell carries only the burst (or the splash), its smoke and the shooter's colour dot. The cell's label
 // names the shooter in plain text: the computer's name with its icon (N) once went into the aria-label, its markup
 // broke the attribute, and the rest showed on the cell as large text ("CO…"). Rendered in Node with the browser's names stubbed.
 import test from 'node:test';
@@ -21,10 +21,12 @@ test('Sea Battle: a computer hit shows the burst and the colour dot alone, no na
   for (const c of cells) {
     const label = (c.match(/aria-label="([^"]*)"/) || [])[1] || '';
     assert.doesNotMatch(label, /[<>]/, `plain label: ${label}`);
-    const inner = c.replace(/^<button[^>]*>/, '').replace(/<\/button>$/, '').replace(/<svg[\s\S]*?<\/svg>/g, '').replace(/<i class="bsby [XO]"><\/i>/g, '');
-    assert.equal(inner, '', `nothing on the cell but the burst and the dot: ${inner.slice(0, 120)}`);
+    const inner = c.replace(/^<button[^>]*>/, '').replace(/<\/button>$/, '').replace(/<svg[\s\S]*?<\/svg>/g, '').replace(/<i class="bs(by [XO]|smoke|rip|rip r2)"><\/i>/g, '');   // (the dot, a hit's smoke, a miss's ripples: empty marks, never text)
+    assert.equal(inner, '', `nothing on the cell but the burst, its smoke and the dot: ${inner.slice(0, 120)}`);
   }
   assert.match(html, /aria-label="Row 2 column 2, hit \(Computer\)"/);
   assert.match(html, /aria-label="Row 2 column 3, hit \(Jared\)"/);
+  assert.match(cells[5], /class="cell sea bshit[^"]* byO/, 'the burst in its firer\'s colour'); assert.match(cells[6], /class="cell sea bshit[^"]* byX/);
+  assert.match(html, /class="hull hit O"[\s\S]*class="hull hit X"/, 'the card\'s hit parts in their hitters\' colours, in order');
   state.cpu = null;
 });

@@ -77,7 +77,7 @@ export function hide(m, k, st) {
   delete m.target; delete m.tg; return;
 }
 export function flashMs(f, winLen, won) {
-  return 800;
+  return f && f.res === 'hit' ? 1100 : f && f.note === 'out' ? 1000 : 800;   // (the guess to the line, the sweep, the answer: hilo/view.js HILOT; the find's pop and the last guess's "No guesses left" play on a little)
 }
 // Super Chaos: each player gets their own answer during their move; at the round's end both guesses and their
 // answers join the shared history (the range narrowed by both). (A race square keeps each side's own: Super Chaos is off.)

@@ -33,15 +33,21 @@ function shipSeg(ship, i, n) {
 // The ship's parts in a row, the first `hits` of them hit (hits: a count, or who made each hit in order: each part
 // filled in its hitter's colour; never which part was hit: the parts fill from the stern).
 const hitCls = (hits, k) => (Array.isArray(hits) ? (k < hits.length ? ` hit${hits[k] === 'X' || hits[k] === 'O' ? ' ' + hits[k] : ''}` : '') : k < hits ? ' hit' : '');
-const silParts = (len, hits) => Array.from({ length: len }, (_, k) => `<g transform="translate(${k * 100} 0)">${SHIP_PART[shipPart(len, k)].replace('class="hull"', `class="hull${hitCls(hits, k)}"`)}</g>`).join('');
-const shipSil = (len, hits, cls, h) => `<svg class="${cls}" viewBox="0 20 ${len * 100} 60" style="--len:${len}${h ? `;height:${h}px` : ''}" aria-hidden="true">${silParts(len, hits)}</svg>`;
+const hitN = hits => (Array.isArray(hits) ? hits.length : hits);
+// (fresh: the newest hit is the move now playing: its part fills as the shell lands, not before)
+const silParts = (len, hits, fresh) => Array.from({ length: len }, (_, k) => `<g transform="translate(${k * 100} 0)">${SHIP_PART[shipPart(len, k)].replace('class="hull"', `class="hull${hitCls(hits, k)}${fresh && k === hitN(hits) - 1 ? ' new' : ''}"`)}</g>`).join('');
+const shipSil = (len, hits, cls, fresh) => `<svg class="${cls}" viewBox="0 20 ${len * 100} 60" style="--len:${len}" aria-hidden="true">${silParts(len, hits, fresh)}</svg>`;
 // Who made each hit on a Shared sea, in order (public: the sea's own record of who fired at each cell).
 const hitters = sea => (sea.hits || []).map(i => sea.revealed[i]);
 // Under the sea: the ship being hunted, its name and its parts (as many filled in as have been hit).
-function bsShipCard(mini, hits, sunkBy, fresh) {
-  const len = mini.len || 1, nh = Array.isArray(hits) ? hits.length : hits;
-  const what = sunkBy ? 'Sunk!' : `Hunting · ${len} part${len === 1 ? '' : 's'}${nh ? `, ${nh} hit` : ''}`;
-  return `<div class="bsship${sunkBy ? ' sunk ' + sunkBy : ''}${fresh ? ' fresh' : ''}" aria-label="${BS.names[len]}, ${len} part${len === 1 ? '' : 's'}"><div class="nm"><small>${what}</small><b>${BS.names[len]}</b></div>${shipSil(len, hits, 'sil', 0)}</div>`;
+// (fresh: the square was won just now; newHit: the move now playing hit: the card's words and the part's fill change
+// as the shell lands, the words one line at a time in their own room.)
+function bsShipCard(mini, hits, sunkBy, fresh, newHit) {
+  const len = mini.len || 1, nh = hitN(hits);
+  const say = n => `Hunting · ${len} part${len === 1 ? '' : 's'}${n ? `, ${n} hit` : ''}`;
+  const what = sunkBy ? 'Sunk!' : say(nh), was = newHit && nh > 0 ? say(nh - 1) : null;
+  const line = was && was !== what ? `<span class="tu" style="--u:${BST.land}ms">${was}</span><span class="tf" style="--f:${BST.land}ms">${what}</span>` : `<span>${what}</span>`;
+  return `<div class="bsship${sunkBy ? ' sunk ' + sunkBy : ''}${fresh ? ' fresh' : ''}" aria-label="${BS.names[len]}, ${len} part${len === 1 ? '' : 's'}"><div class="nm"><small>${line}</small><b>${BS.names[len]}</b></div>${shipSil(len, hits, 'sil', newHit)}</div>`;
 }
 // Race: one player's sea as a grid. o.live: this phone's own (its cells the buttons to fire with); else read-only
 // spans. o.anim: the cell just fired at; o.ship: the ship's cells once the square has ended (null before);
@@ -66,9 +72,10 @@ function bsRaceScreen(sq, mini, view, locked, a, fresh) {
   const me = raceMe(), them = raceThem(), len = mini.len || 1, end = !!sq.owner || !!view;
   const one = p => ({ ship: end ? bsShipOf(mini, p) : null, sunk: sq.owner === p, sinking: sq.owner === p && !!fresh, anim: a && a.by === p && Number.isInteger(a.m) ? a.m : null });
   const mine = bsSea(mini, me), theirs = bsSea(mini, them), th = Math.min(len, theirs.hits.length), tm = theirs.revealed.filter(Boolean).length - theirs.hits.length;
-  const note = `${th}/${len} hit · ${tm} miss${tm === 1 ? '' : 'es'}`;
-  const myBoard = `<div class="g-bs bsr2 ${me}">${raceSea(mini, me, Object.assign(one(me), { live: true, locked: locked || end }))}${bsShipCard(mini, mine.hits.slice(0, len).map(() => me), sq.owner === me ? me : null, sq.owner === me && fresh)}</div>`;
-  const theirBoard = `<div class="bsopp${sq.owner === them ? ' sunk' : ''}">${raceSea(mini, them, one(them))}${shipSil(len, th, 'sil bsosil' + (a && a.by === them ? ' live' : ''), 0)}</div>`;
+  const say = (h, m) => `${h}/${len} hit · ${m} miss${m === 1 ? '' : 'es'}`, shot = a && a.by === them && Number.isInteger(a.m);   // (their shot now playing: the count changes as its shell lands, in the note's own room)
+  const note = shot ? `<span class="tu" style="--u:${BST.land}ms">${a.hit ? say(Math.max(0, th - 1), tm) : say(th, Math.max(0, tm - 1))}</span><span class="tf" style="--f:${BST.land}ms">${say(th, tm)}</span>` : say(th, tm);
+  const myBoard = `<div class="g-bs bsr2 ${me}">${raceSea(mini, me, Object.assign(one(me), { live: true, locked: locked || end }))}${bsShipCard(mini, mine.hits.slice(0, len).map(() => me), sq.owner === me ? me : null, sq.owner === me && fresh, !!(a && a.by === me && a.hit))}</div>`;
+  const theirBoard = `<div class="bsopp${sq.owner === them ? ' sunk' : ''}">${raceSea(mini, them, one(them))}${shipSil(len, th, 'sil bsosil' + (a && a.by === them ? ' live' : ''), !!(a && a.by === them && a.hit))}</div>`;
   return raceBoards(myBoard, theirBoard, note, { cls: 'bsrb' });
 }
 // A race miniature's ship: upright, chunky, one part a cell (the stern rounded at the top, the bow pointed at the
@@ -108,7 +115,7 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
         const hit = hits.includes(i), by = by1 ? [r] : r === 'XO' ? ['X', 'O'] : [];   // (who fired the shot: its mark in their colour; a race reviewed, both: two dots)
         const cls = hit ? ' bshit' : r ? ' miss' : '', last = r && sea.last === i && !view ? ' last' : '';
         return `<button class="cell sea${cls}${fire ? ' flipin' : ''}${by1 ? ' by' + by1 : ''}${last}" data-act="move" ${mv(i)} aria-label="Row ${r0} column ${c0}${hit ? ', hit' : r ? ', miss' : ''}${by.length ? ` (${by.map(p => esc(playerName(state, p))).join(', ')})` : ''}"${r || locked ? ' disabled' : ''}>${hit ? HITFX + SMOKE : ''}${by.map(p => `<i class="bsby ${p}${by.length > 1 ? ' two' : ''}"></i>`).join('')}${fire && !hit ? RIPPLES : ''}</button>`;
-      }).join('')}${a && Number.isInteger(anim) && (sea.revealed[anim] === 'X' || sea.revealed[anim] === 'O') ? shot(anim, n, sea.revealed[anim], hits.includes(anim)) : ''}</div>${bsShipCard(mini, hitters(sea), sunk ? sq.owner : null, sinking)}</div>`;
+      }).join('')}${a && Number.isInteger(anim) && (sea.revealed[anim] === 'X' || sea.revealed[anim] === 'O') ? shot(anim, n, sea.revealed[anim], hits.includes(anim)) : ''}</div>${bsShipCard(mini, hitters(sea), sunk ? sq.owner : null, sinking, !!(a && a.hit))}</div>`;
   return g;
 }
 export function moveText(f, who) {

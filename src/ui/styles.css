@@ -311,20 +311,73 @@ main.scr.mini:has(.fing), main.scr.mini:has(.fing) * { touch-action: none; -webk
 .wt.g, .wt.y, .wt.x { background: var(--wbg); box-shadow: none; color: var(--wfg); }
 .wt.reveal { animation: wflip .42s ease-in-out both; animation-delay: calc(var(--k, 0) * .18s); }
 .wt.typed { box-shadow: inset 0 0 0 2px var(--muted); }
+/* Five Letters' motion (wordle/view.js WT): a typed letter pops into its box; a key takes its colour as its tile lands
+   (.kN: the tile's place in the row); the row that finds the word hops along its length once it has turned */
+.wt.tin { animation: wtin .18s cubic-bezier(.3, 1.5, .5, 1) both; }
+.wt.reveal.wwin { animation: wflip .42s ease-in-out both, wdance .45s cubic-bezier(.3, 0, .3, 1); animation-delay: calc(var(--k, 0) * .18s), calc(1.16s + var(--k, 0) * .07s); }
+.g-wordle .key.kc { animation: keycolor .25s 1.1s ease-out both, wkeyin .3s 1.1s cubic-bezier(.3, 1.5, .5, 1); }
+.g-wordle .key.kc.k0 { animation-delay: .21s; } .g-wordle .key.kc.k1 { animation-delay: .39s; } .g-wordle .key.kc.k2 { animation-delay: .57s; }
+.g-wordle .key.kc.k3 { animation-delay: .75s; } .g-wordle .key.kc.k4 { animation-delay: .93s; }
+.g-wordle .wlist { padding-top: 12px; -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 12px); mask-image: linear-gradient(to bottom, transparent 0, #000 12px); }   /* a row scrolled off the top fades out, never cut */
+.g-wordle .wcur { flex: none; position: relative; display: flex; justify-content: center; }   /* the row being typed; a refused guess's note hangs over its top edge, so no row moves as it comes and goes */
+.g-wordle .wcur .notice { position: absolute; z-index: 2; left: 0; right: 0; bottom: calc(100% + 1px); width: max-content; max-width: 100%; margin: 0 auto; white-space: nowrap; }
+.wrow.cur .wby.wnext { opacity: .45; }   /* whose guess the row being typed is */
+.g-wordle .key[data-act="enter"]:not(:disabled) { background: var(--ink); color: var(--paper); }   /* five letters in: Enter is the thing to press */
+@media (max-width: 340px) { .g-wordle .hleft { gap: 6px; } .g-wordle .hleft > span { gap: 4px; } .g-wordle .hleft .hpips { gap: 2px; } .g-wordle .hleft .hpips i { width: 10px; height: 10px; } }   /* a narrow phone: smaller dots, so each name keeps its room */
+@keyframes wtin { from { transform: scale(.7); } 60% { transform: scale(1.12); } to { transform: scale(1); } }
+@keyframes wdance { 0%, 100% { transform: translateY(0); } 35% { transform: translateY(-36%) scale(1.04); } 70% { transform: translateY(5%) scale(1.03, .95); } }
+@keyframes wkeyin { 50% { transform: scale(1.14); } }
 .empty { color: var(--muted); font-weight: 600; text-align: center; padding: 10px; }
 
-.g-hang { width: min(var(--gw), 520px); height: var(--gh); display: flex; flex-direction: column; gap: 14px; --htile: min(50px, calc((var(--gw) - 48px) / 7)); }
-.hword { flex: 1; min-height: 0; display: flex; gap: 6px; justify-content: center; align-items: center; }
+.g-hang { width: min(var(--gw), 520px); height: var(--gh); display: flex; flex-direction: column; gap: 10px; --htile: min(50px, calc((var(--gw) - 48px) / 7)); }
+/* Hangman's picture and word: the stage takes the room the wrong letters and the keys leave, the scarecrow shrinking
+   to fit it (hangman/view.js `scarecrow`: ink strokes and flat fills; the newest part draws itself along its stroke,
+   a crow flies in), the word under it */
+.hstage { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; gap: 8px; }
+.hscene { flex: 0 1 220px; min-height: 0; position: relative; }
+.hsc { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; fill: none; stroke: var(--ink); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.hsc .gs, .hsc .th { stroke-width: 2.2; }
+.hsc .wo { stroke-width: 9; } .hsc .wi { stroke: var(--stone); stroke-width: 4.2; }
+.hsc .pp, .hsc .pa { fill: var(--paper); } .hsc .pa { stroke-width: 2; }
+.hsc .hat { fill: var(--muted); } .hsc .brim { stroke-width: 4.5; }
+.hsc .sh { fill: var(--sky); } .hsc .tr { fill: var(--stone); }
+.hsc .fi { fill: var(--ink); stroke: none; }
+.hsc .cr { fill: var(--ink); stroke-width: 1.5; } .hsc .bk { fill: var(--mc1); stroke-width: 1.4; } .hsc .ey { fill: var(--paper); stroke: none; }
+.hsc .hp.new > * { stroke-dasharray: 1 2; animation: hdraw .4s .06s cubic-bezier(.4, 0, .2, 1) both; }
+.hsc .hp.fly { transform-box: fill-box; transform-origin: 50% 100%; animation: hfly .42s .06s cubic-bezier(.3, 1.2, .5, 1) both; }
+@keyframes hdraw { from { stroke-dashoffset: 1.02; fill-opacity: 0; } 55% { fill-opacity: 0; } to { stroke-dashoffset: 0; fill-opacity: 1; } }
+@keyframes hfly { from { transform: translate(24px, -34px) rotate(-18deg); opacity: 0; } 70% { transform: translate(0, 1px) scale(1.07, .9); opacity: 1; } to { transform: none; opacity: 1; } }
+.hword { flex: none; display: flex; gap: 6px; justify-content: center; align-items: center; }
 .ht {
   width: var(--htile); height: calc(var(--htile) * 1.2); display: grid; place-items: center;
   border-bottom: 3px solid var(--muted); font-weight: 800; font-size: calc(var(--htile) * .62); line-height: 1;
 }
 .ht.on { border-color: var(--text); }
-.ht.flipin { animation: tflip .45s ease-out both; animation-delay: calc(var(--k, 0) * .1s); }
-.hmiss { text-align: left; color: var(--muted); font-weight: 700; height: 2.6em; line-height: 1.3; flex: none; }   /* new wrong letters go on the end; the ones before stay where they are */
-.hmiss b { color: var(--text); letter-spacing: .25em; }
-.hmiss i { font-style: normal; text-decoration: line-through; text-decoration-color: var(--x); text-decoration-thickness: 2px; }
-.hmiss i.new { display: inline-block; animation: shake .4s, pop .3s both; }
+.ht b { display: inline-block; font-weight: inherit; }
+.ht.on.bX { border-color: var(--x); } .ht.on.bO { border-color: var(--o); }   /* a found letter's line: its finder's colour */
+.ht.late b { color: var(--muted); opacity: .45; }
+/* a right letter drops into every blank it fills, one after the other; the word completed, its letters hop along it (view.js HT) */
+.ht.flipin b { animation: hdrop .3s cubic-bezier(.3, 1.3, .5, 1) both; animation-delay: calc(var(--k, 0) * .06s); }
+.ht.hwin b { animation: wdance .45s cubic-bezier(.3, 0, .3, 1); animation-delay: calc(.48s + var(--i, 0) * .06s); }
+.ht.flipin.hwin b { animation: hdrop .3s cubic-bezier(.3, 1.3, .5, 1) both, wdance .45s cubic-bezier(.3, 0, .3, 1); animation-delay: calc(var(--k, 0) * .06s), calc(.48s + var(--i, 0) * .06s); }
+@keyframes hdrop { 0% { transform: translateY(-85%) scale(.8); opacity: 0; } 62% { transform: translateY(6%) scale(1.08, .92); opacity: 1; } 100% { transform: none; opacity: 1; } }
+/* the wrong letters: struck chips in their guessers' colours, two rows' room always kept; a new one drops onto the end */
+.hmiss { flex: none; height: 54px; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 4px; overflow: hidden; }
+.hmiss .hnone { color: var(--muted); font-weight: 700; line-height: 25px; }
+.hx { position: relative; flex: none; width: 22px; height: 25px; display: grid; place-items: center; padding-top: 3px; border: 2px solid var(--ink); border-radius: 7px 5px 8px 5px; background: #cfc3a8; color: var(--ink); font: 400 15px/1 'Luckiest Guy', 'Arial Black', sans-serif; }
+.hx.bX { background: var(--x-soft); } .hx.bO { background: var(--o-soft); }
+.hx::after { content: ''; position: absolute; left: -3px; right: -3px; top: 50%; height: 2.5px; margin-top: -1.25px; border-radius: 2px; background: var(--ink); transform: rotate(-18deg); }
+.hx.bX::after { background: var(--x); } .hx.bO::after { background: #b88a00; }
+.hx.new { animation: hxin .3s .2s cubic-bezier(.3, 1.4, .5, 1) both; }
+.hx.new::after, .g-hang .key.shake::after { animation: hxcut .18s .42s ease-out both; }
+@keyframes hxin { from { transform: translateY(-18px) scale(.6); opacity: 0; } }
+@keyframes hxcut { from { transform: rotate(-18deg) scaleX(0); } }
+/* a key once played, in its guesser's colour: a right one green with their dot, a wrong one their tint, struck */
+.g-hang .key.miss::after { left: 12%; right: 12%; transform: rotate(-18deg); background: var(--ink); }
+.g-hang .key.miss.bX { background: var(--x-soft); } .g-hang .key.miss.bO { background: var(--o-soft); }
+.g-hang .key.miss.bX::after { background: var(--x); } .g-hang .key.miss.bO::after { background: #b88a00; }
+.g-hang .key.hit.bX::before, .g-hang .key.hit.bO::before { content: ''; position: absolute; top: 3px; right: 3px; width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--ink); background: var(--x); }
+.g-hang .key.hit.bO::before { background: var(--o); }
 
 .big { height: 64px; border: 0; border-radius: 16px; font-weight: 800; font-size: 20px; background: var(--panel-2); transition: transform .08s; }
 .big.X { background: var(--x); color: var(--bg); }
@@ -469,17 +522,9 @@ main.scr.mini:has(.fing), main.scr.mini:has(.fing) * { touch-action: none; -webk
 .notice { align-self: center; flex: none; background: var(--text); color: var(--bg); font-weight: 800; font-size: 14px; padding: 6px 14px; border-radius: 999px; animation: pop .15s; }
 .wrow.cur.shake { animation: shake .4s; }
 
-.g-coins { width: var(--g); display: flex; flex-direction: column; gap: 18px; }
+.g-coins { width: var(--g); display: flex; flex-direction: column; gap: 14px; padding-top: calc(var(--g) * .3); }   /* (the room over the row: the air the coins are tossed into) */
 .coins { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
-.coin {
-  aspect-ratio: 1; border: 0; padding: 0; border-radius: 50%; display: grid; place-items: center;
-  font-weight: 900; font-size: calc(var(--g) * .085); line-height: 1; color: var(--bg);
-  box-shadow: inset 0 -4px 0 rgba(0, 0, 0, .25), 0 3px 6px rgba(0, 0, 0, .4);
-}
-.coin.X { background: var(--x); }
-.coin.O { background: var(--o); }
-.coin.flip { animation: coinflip 1s cubic-bezier(.3, .7, .3, 1) both; animation-delay: calc(var(--k, 0) * .08s); }
-.coin.flip b { animation: lateshow 1s linear both; animation-delay: calc(var(--k, 0) * .08s); }
+.coin { position: relative; aspect-ratio: 1; display: block; border-radius: 50%; }   /* a coin's place on the table: the coin itself (.cj > .ci, its two sides) is tossed above it (the themed rules below) */
 
 .g-risky { width: var(--g); display: flex; flex-direction: column; gap: 12px; }
 .rrscores { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -614,11 +659,8 @@ main.scr.mini:has(.fing), main.scr.mini:has(.fing) * { touch-action: none; -webk
 .mc .ft { background: var(--card); transform: rotateY(180deg); }
 .mc .ft svg { width: 60%; height: 60%; }
 .mc.up .in { transform: rotateY(180deg); }
-.mc.pick .bk, .mc.pick .ft { box-shadow: inset 0 0 0 3px var(--text); }
-.mc.win .ft { box-shadow: inset 0 0 0 4px var(--green); }
-.mc.win.glow .ft { animation: glow .45s .5s ease-in-out 4 alternate; }
-.mc.flipup .in { animation: flipup .45s ease-in-out both; }
-.mc.flipdown .in { animation: flipdown .45s ease-in-out both; }
+.mc.flipup .in { animation: flipup .36s cubic-bezier(.4, 0, .2, 1) both; }     /* a real turn: the card lifts off the table as it comes round (its rings, its pair and its miss: the themed rules below) */
+.mc.flipdown .in { animation: flipdown .4s cubic-bezier(.4, 0, .2, 1) both; }
 
 /* ---------- move result overlay ---------- */
 .flash {
@@ -697,10 +739,8 @@ main.scr.mini:has(.fing), main.scr.mini:has(.fing) * { touch-action: none; -webk
 @keyframes bobdn { 50% { transform: translateY(7px); } }
 @keyframes fadeout { from { opacity: 1; } to { opacity: .25; } }
 @keyframes fill { from { width: var(--pw, 0%); } }
-@keyframes glow { from { box-shadow: inset 0 0 0 4px var(--green); } to { box-shadow: inset 0 0 0 6px var(--green), 0 0 18px var(--green); } }
-@keyframes flipup { from { transform: rotateY(0); } to { transform: rotateY(180deg); } }
-@keyframes flipdown { from { transform: rotateY(180deg); } to { transform: rotateY(0); } }
-@keyframes lateshow { 0%, 84% { opacity: 0; } 85%, 100% { opacity: 1; } }
+@keyframes flipup { 0% { transform: translateY(0) rotateY(0deg) scale(1); } 50% { transform: translateY(-6%) rotateY(90deg) scale(1.09); } 100% { transform: translateY(0) rotateY(180deg) scale(1); } }
+@keyframes flipdown { 0% { transform: translateY(0) rotateY(180deg) scale(1); } 50% { transform: translateY(-6%) rotateY(90deg) scale(1.09); } 100% { transform: translateY(0) rotateY(0deg) scale(1); } }
 @keyframes facehit { from { background: var(--panel-2); color: var(--muted); box-shadow: none; } }
 @keyframes bustflash { 0%, 100% { background: var(--panel); } 20%, 60% { background: rgba(255, 107, 107, .5); } }
 @keyframes potslide { to { transform: translate(var(--sx, 0), -70px) scale(.5); opacity: 0; } }
@@ -718,7 +758,6 @@ main.scr.mini:has(.fing), main.scr.mini:has(.fing) * { touch-action: none; -webk
 @keyframes clockpulse { 50% { transform: scale(1.08); } }
 
 @keyframes shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
-@keyframes coinflip { 0% { transform: translateY(0) rotateY(0); background: var(--c0); } 45% { transform: translateY(-45%) rotateY(540deg); } 84% { background: var(--c0); } 100% { transform: translateY(0) rotateY(1080deg); } }
 @keyframes dieroll { 0% { transform: rotate(0) scale(.6); } 50% { transform: rotate(200deg) scale(1.12); } 100% { transform: rotate(360deg) scale(1); } }
 @keyframes appear { from { opacity: 0; } to { opacity: 1; } }
 @keyframes vanish { to { opacity: 0; transform: scale(.4); } }
@@ -873,9 +912,11 @@ b.O { box-shadow: inset 0 -.38em 0 var(--o-soft); }
 /* miniatures */
 .tg.g3 i { background: #fff; border: 1.5px solid var(--ink); border-radius: 4px; position: relative; }
 .tg.g3 i .pc { width: 92%; height: 92%; }
+.tg.g3 i.last.X { background: var(--x-soft); } .tg.g3 i.last.O { background: var(--o-soft); }   /* tic-tac-toe: the mark played last */
 .tg.g5 { background: var(--sky); border: 2px solid var(--ink); border-radius: 5px; padding: 2px; gap: 1.5px; }
 .tg.g5 i { background: var(--paper); box-shadow: inset 0 0 0 1px var(--ink); }
 .tg.g5 i.X { background: var(--x); } .tg.g5 i.O { background: var(--o); }
+.tg.g5 i.last { box-shadow: inset 0 0 0 1px var(--ink), inset 0 0 0 2.2px #fff; }   /* Four in a Row: the piece played last */
 .tg.sea i { background: var(--sky); box-shadow: inset 0 0 0 1px var(--ink); border-radius: 3px; }
 .tg.sea i.miss { background: var(--paper); }
 .tg.sea i.miss::after { border-color: var(--ink); position: absolute; inset: 30%; width: auto; height: auto; }   /* equal insets: dead centre at any size */
@@ -895,8 +936,9 @@ b.O { box-shadow: inset 0 -.38em 0 var(--o-soft); }
 .tdice .bar { background: var(--paper); box-shadow: inset 0 0 0 1.3px var(--ink); }
 .tcoin i { border: 1.6px solid var(--ink); color: var(--paper); padding-top: 1px; }
 .tcoin i.O { color: var(--ink); }
-.tg.tmem i { background: var(--x); border: 1.5px solid var(--ink); color: var(--paper); font-family: 'Luckiest Guy', sans-serif; font-weight: 400; }
+.tg.tmem i { background: var(--sea); border: 1.5px solid var(--ink); color: var(--paper); font-family: 'Luckiest Guy', sans-serif; font-weight: 400; }   /* (the cards' blue back: never a player's colour) */
 .tg.tmem i.up { background: #fff; }
+.tg.tmem.wX i.up { background: color-mix(in srgb, var(--x) 22%, #fff); box-shadow: 0 0 0 max(1.5px, 1cqw) var(--x); } .tg.tmem.wO i.up { background: color-mix(in srgb, var(--o) 32%, #fff); box-shadow: 0 0 0 max(1.5px, 1cqw) var(--o); }   /* (the pair found: its finder's colour) */
 .tg.g5x5 i { background: var(--paper); box-shadow: inset 0 0 0 1.2px var(--ink); color: var(--ink); }
 .track .path { stroke: var(--ink); stroke-width: 6; }
 .track .arrow { stroke: var(--paper); }
@@ -934,19 +976,20 @@ b.O { box-shadow: inset 0 -.38em 0 var(--o-soft); }
 .g-ttt.open .cell:not(:disabled)::before { content: ''; position: absolute; inset: 23%; opacity: 0; pointer-events: none; transition: opacity .1s; }
 .g-ttt.open.tX .cell:not(:disabled)::before { background: linear-gradient(45deg, transparent 42%, var(--x) 42% 58%, transparent 58%), linear-gradient(-45deg, transparent 42%, var(--x) 42% 58%, transparent 58%); }
 .g-ttt.open.tO .cell:not(:disabled)::before { border-radius: 50%; border: calc(var(--g) * .032) solid var(--o); }
-.g-ttt.open .cell:not(:disabled):active::before, .g-ttt.open .cell.rpress::before { opacity: .4; }
+.g-ttt.open .cell:not(:disabled):active::before { opacity: .4; } .g-ttt.open .cell.rpress::before { opacity: .75; }
 @media (hover: hover) { .g-ttt.open .cell:not(:disabled):hover::before { opacity: .26; } }
-.g-ttt .tdraw .s1, .g-ttt .tdraw .s2 { stroke-dasharray: 1; stroke-dashoffset: 0; animation: tttdraw .16s cubic-bezier(.4, 0, .2, 1) both; }
-.g-ttt .tdraw .s2 { animation-delay: .13s; }
-.g-ttt .pO.tdraw .s1 { animation-duration: .28s; }
-.g-ttt .tdraw .tface { transform-box: fill-box; transform-origin: center; animation: tttface .19s .25s cubic-bezier(.3, 1.6, .5, 1) both; }
-@keyframes tttdraw { 0% { stroke-dashoffset: 1; visibility: hidden; } 1% { visibility: visible; } 100% { stroke-dashoffset: 0; } }
+.g-ttt .tttmk .s1, .g-ttt .tttmk .s2 { animation: tttdraw .16s cubic-bezier(.4, 0, .2, 1) both; }
+.g-ttt .tttmk .s2 { animation-delay: .13s; }
+.g-ttt .pO.tttmk .s1 { animation-duration: .28s; }
+.g-ttt .tttmk .tttface { transform-box: fill-box; transform-origin: center; animation: tttface .19s .25s cubic-bezier(.3, 1.6, .5, 1) both; }
+@keyframes tttdraw { 0% { stroke-dasharray: 1; stroke-dashoffset: 1; visibility: hidden; } 1% { visibility: visible; } 100% { stroke-dasharray: 1; stroke-dashoffset: 0; } }   /* a stroke drawn from its start to its end (its path's pathLength 1; Four in a Row's line too) */
 @keyframes tttface { 0% { transform: scale(0); opacity: 0; } 1% { opacity: 1; } }
-.tline { position: absolute; left: 0; top: 3px; width: 100%; height: 100%; pointer-events: none; overflow: visible; z-index: 1; }
-.tline line { fill: none; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 0; }
-.tline .tlo { stroke: var(--ink); stroke-width: 7.4; }
-.tline .tlc { stroke-width: 3.4; } .tline .tlc.X { stroke: var(--x); } .tline .tlc.O { stroke: var(--o); }
-.tline.draw line { animation: tttdraw .3s .48s cubic-bezier(.4, 0, .2, 1) both; }
+.tttline { position: absolute; left: -5px; top: -2px; width: calc(100% + 10px); height: calc(100% + 10px); pointer-events: none; overflow: visible; z-index: 1; }   /* (half a gap outside the grid: a unit is a cell and its gap; 3px down with the played cells) */
+.tttline path { fill: none; stroke-linecap: round; }
+.tttline .tttlo { stroke: var(--ink); stroke-width: .22; }
+.tttline .tttlc { stroke-width: .1; } .tttline .tttlc.X { stroke: var(--x); } .tttline .tttlc.O { stroke: var(--o); }
+.tttline.draw path { animation: tttdraw .3s .48s cubic-bezier(.4, 0, .2, 1) both; }
+.g-ttt .cell.win .pO .fl { fill: #fff; }   /* (the line runs behind the marks: a winning O's face keeps a clear ground) */
 .g-ttt .cell.win.lit .mk { transform-origin: 50% 90%; animation: ttthop .3s calc(.5s + var(--k, 0) * .07s) cubic-bezier(.3, 0, .4, 1) both; }
 @keyframes ttthop { 0% { transform: none; } 35% { transform: translateY(-14%) scale(.94, 1.1); } 70% { transform: translateY(0) scale(1.1, .9); } 100% { transform: none; } }
 .cell.sea { background: var(--sky); }
@@ -1021,12 +1064,42 @@ b.O { box-shadow: inset 0 -.38em 0 var(--o-soft); }
   100% { transform: rotateY(0); background: var(--fb); }
 }
 .g-c4 { background: var(--sky); border: 4px solid var(--ink); border-radius: 22px 16px 24px 18px / 18px 24px 16px 22px; box-shadow: 0 6px 0 var(--ink); }
-.c4c { background: var(--paper); border: 3px solid var(--ink); display: grid; place-items: center; }
-.c4c.X { background: var(--x-soft); } .c4c.O { background: var(--o-soft); }
-.c4c .pc { width: 96%; height: 96%; }
-.c4p { inset: -3px; border: 3px solid var(--ink); }                   /* covers the hole's own ring exactly */
-.c4p.X { background: var(--x-soft); } .c4p.O { background: var(--o-soft); }
-.c4c.win { box-shadow: 0 0 0 3px #fff, 0 0 0 6px var(--ink); }
+/* Four in a Row (c4/view.js; its moments are C4_T's): holes lit from above, pieces solid discs in their player's colour
+   with their mark; the piece played falls from the rail on its own layer (--fall rows in --ft, as a dropped thing does),
+   squashes and settles; the one played last ringed in white; a win: rings, the line drawn through the four, each hopping. */
+.c4c { background: var(--paper); border: 3px solid var(--ink); display: grid; place-items: center; box-shadow: inset 0 3px 0 rgba(22, 18, 16, .14); }
+.c4c.X, .c4b.X { background: var(--x); } .c4c.O, .c4b.O { background: var(--o); }
+.c4c.X, .c4c.O, .c4b { box-shadow: inset 0 -3px 0 rgba(22, 18, 16, .2), inset 0 2px 0 rgba(255, 255, 255, .32); }
+.c4d { display: block; width: 100%; height: 100%; }
+.c4d .c4rim { fill: none; stroke: rgba(22, 18, 16, .2); stroke-width: 1.5; }
+.c4d .c4m { fill: none; stroke-linecap: round; stroke-width: 4.6; }
+.c4d.X .c4m { stroke: #fff; } .c4d.O .c4m { stroke: var(--ink); stroke-width: 4; }
+.c4c.last { box-shadow: inset 0 0 0 3px #fff, inset 0 -3px 0 rgba(22, 18, 16, .2); }
+.c4p { position: absolute; inset: -3px; z-index: 3; animation: c4fall var(--ft, .3s) cubic-bezier(.11, 0, .5, 0) both; }   /* (covers the hole's own ring exactly) */
+.c4b { display: grid; place-items: center; width: 100%; height: 100%; border-radius: 50%; border: 3px solid var(--ink); transform-origin: 50% 100%; animation: c4land .22s var(--ft, .3s) cubic-bezier(.3, 0, .4, 1) both; }
+@keyframes c4fall { from { transform: translateY(calc(var(--fall, 1) * (-100% - 5px) - 13px)); } }
+@keyframes c4land { 0% { transform: none; } 25% { transform: scale(1.12, .84); } 60% { transform: translateY(-13%) scale(.96, 1.05); } 100% { transform: none; } }
+.g-c4w.drop .g-c4 { animation: c4bump .18s var(--ft, .3s) cubic-bezier(.3, 0, .4, 1); }   /* the board gives a little as the piece lands */
+@keyframes c4bump { 35% { transform: translateY(2.5px); } }
+.c4c.win { z-index: 1; box-shadow: 0 0 0 3px #fff, 0 0 0 6px var(--ink), inset 0 -3px 0 rgba(22, 18, 16, .2); }
+.c4c.win.lit { animation: c4win .32s calc(var(--ft, 0s) + .24s + var(--k, 0) * .06s) cubic-bezier(.3, 0, .4, 1) both, c4ring .12s calc(var(--ft, 0s) + .2s) ease-out both; }
+@keyframes c4ring { from { box-shadow: 0 0 0 0 #fff, 0 0 0 0 var(--ink), inset 0 -3px 0 rgba(22, 18, 16, .2); } }
+.c4line { position: absolute; left: 5.5px; top: 5.5px; width: calc(100% - 11px); height: calc(100% - 11px); pointer-events: none; overflow: visible; z-index: 2; }   /* (half a gap outside the holes: a unit is a hole and its gap) */
+.c4line path { fill: none; stroke-linecap: round; }
+.c4line .c4lo { stroke: var(--ink); stroke-width: .22; } .c4line .c4lc { stroke: #fff; stroke-width: .09; }
+.c4line.draw path { animation: tttdraw .3s calc(var(--ft, 0s) + .22s) cubic-bezier(.4, 0, .2, 1) both; }
+/* a column's button: the mover's piece waiting on the rail (faint; solid under the finger, and as the other side's replay
+   presses it) and a dot in the hole it would land in; nothing while it is nobody's to play; a full column capped */
+.c4gh, .c4tg { position: absolute; left: 0; width: var(--s); height: var(--s); border-radius: 50%; opacity: 0; pointer-events: none; transition: opacity .1s, transform .12s cubic-bezier(.4, 0, .2, 1); }
+.c4gh { top: 0; border: 3px solid var(--ink); transform: scale(.72); }
+.c4tg { top: calc(var(--s) + 18px + var(--land, 0) * (var(--s) + 5px)); transform: scale(.3); }
+.g-c4w.tX .c4gh, .g-c4w.tX .c4tg { background: var(--x); } .g-c4w.tO .c4gh, .g-c4w.tO .c4tg { background: var(--o); }
+.g-c4w.open .c4col:not(:disabled) .c4gh { opacity: .34; } .g-c4w.open .c4col:not(:disabled) .c4tg { opacity: .55; }
+.g-c4w.open .c4col:not(:disabled):active .c4gh, .g-c4w.open .c4col.rpress .c4gh { opacity: 1; transform: none; }
+.g-c4w.open .c4col:not(:disabled):active .c4tg, .g-c4w.open .c4col.rpress .c4tg { opacity: .6; transform: scale(.78); }
+@media (hover: hover) { .g-c4w.open .c4col:not(:disabled):hover .c4gh { opacity: 1; transform: none; } .g-c4w.open .c4col:not(:disabled):hover .c4tg { opacity: .6; transform: scale(.78); } }
+.c4col.full::after { content: ''; position: absolute; left: 14%; right: 14%; top: calc(var(--s) - 2px); height: 6px; border-radius: 3px; background: var(--ink); opacity: .5; }
+.g-c4w .c4col.rpress, .g-c4w .c4col.rpress:disabled { transform: none !important; filter: none; box-shadow: none !important; }   /* (the press shows on the rail's piece, not on the column) */
 @keyframes c4win { 0% { transform: scale(1); } 40% { transform: scale(1.3, .8); } 70% { transform: scale(.9, 1.15); } 100% { transform: scale(1); } }
 .key { background: #fff; border: 2.5px solid var(--ink); box-shadow: 0 3px 0 var(--ink); border-radius: 9px 7px 10px 6px; color: var(--ink); padding-top: 3px; font-size: 16px; }
 .key:active:not(:disabled) { transform: translateY(2px) scale(1.06, .88); box-shadow: 0 1px 0 var(--ink); }
@@ -1059,11 +1132,58 @@ b.O { box-shadow: inset 0 -.38em 0 var(--o-soft); }
 .hexgoal { border: 3px solid var(--ink); padding-top: 3px; }
 .hexgoal.O { background: var(--o); color: var(--ink); }
 .hexgoal.X { background: var(--x); color: var(--paper); }
-.coin { border: 3.5px solid var(--ink); color: var(--paper); box-shadow: 0 4px 0 var(--ink); padding-top: 4px; }
-.coin.O { color: var(--ink); }
-.coin.m { background: #fff; color: var(--ink); background-image: repeating-conic-gradient(from 0deg, #fff 0 15deg, #ece4d2 15deg 30deg); }
-.coin.m b { font-family: 'Luckiest Guy', sans-serif; font-weight: 400; font-size: 120%; }
-.coin b { line-height: 1; height: 1em; display: grid; place-items: center; }
+/* Coin Flip (the polish pass, November 2026). A coin is a real two-sided disc on its ink edge: an X side and an O side
+   (.cf the side it shows or lands on, .cb the other, .cq the mystery coin's question mark over the back until it is
+   first edge on), each with its drawn mark inside a milled rim. A flip tosses it: .cj rises and falls on gravity's
+   curve and bounces once (coinfly: down at 78% of its second), .ci turns end over end at a steady rate to land flat
+   on the side the move drew (coinspin: --r0, a whole number of turns when it lands as it was, a half more when it
+   changes), its shadow closing in on the table under it, the flipper's ring round its place until it is down, a ring
+   in its new colour bursting off one that changed sides. Each coin 80 ms after the one before (--k); the clinks and
+   the tallies' pips are timed to the landings (coins/view.js COIN_T). */
+.coin .cj, .coin .ci { position: absolute; inset: 0; display: block; border-radius: 50%; }
+.coin .ci { transform-style: preserve-3d; }
+.coin .cf, .coin .cb { position: absolute; inset: 0; border-radius: 50%; border: 3.5px solid var(--ink); box-shadow: 0 4px 0 var(--ink); display: block; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.coin .cb { transform: rotateX(180deg); }
+.coin .cq { position: absolute; inset: 0; border-radius: 50%; display: block; }
+.coin .X { background: var(--x); } .coin .O { background: var(--o); }
+.coin .m { background: repeating-conic-gradient(from 0deg, #fff 0 15deg, #ece4d2 15deg 30deg); }
+.coin svg { width: 100%; height: 100%; display: block; }
+.coin .rim { fill: none; stroke: rgba(22, 18, 16, .3); stroke-width: 1; stroke-dasharray: .9 1.5; }
+.coin .X .tmk { stroke: var(--paper); } .coin .O .tmk { stroke: var(--ink); } .coin .q path { stroke: var(--ink); } .coin .q circle { fill: var(--ink); }
+.coin .csh { position: absolute; left: 7%; right: 7%; bottom: -10%; height: 26%; border-radius: 50%; background: rgba(22, 18, 16, .3); opacity: 0; }
+.coin.X { --c1: var(--x); } .coin.O { --c1: var(--o); } .coin.byX { --mk: var(--x); } .coin.byO { --mk: var(--o); }
+.coin.flip { z-index: 1; outline: 3px solid var(--mk); outline-offset: 1px; animation: coinspot 1s calc(var(--k, 0) * .08s) linear both; }
+.coin.flip .cj { animation: coinfly 1s calc(var(--k, 0) * .08s) both; }
+.coin.flip .ci { animation: coinspin 1s calc(var(--k, 0) * .08s) linear both; }
+.coin.flip .cq { animation: coinq 1s calc(var(--k, 0) * .08s) linear both; }
+.coin.flip .csh { animation: coinsh 1s calc(var(--k, 0) * .08s) linear both; }
+.coin.flip.chg::after { content: ''; position: absolute; inset: -2px; border-radius: 50%; border: 3.5px solid var(--c1); opacity: 0; pointer-events: none; animation: coinburst .45s calc(.78s + var(--k, 0) * .08s) cubic-bezier(.2, .7, .3, 1) both; }
+@keyframes coinfly {
+  0% { transform: translateY(0) scale(1); animation-timing-function: cubic-bezier(.33, .66, .66, 1); }
+  39% { transform: translateY(-155%) scale(1.18); animation-timing-function: cubic-bezier(.33, 0, .66, .33); }
+  78% { transform: translateY(0) scale(1); animation-timing-function: cubic-bezier(.3, 0, .5, 1); }
+  83% { transform: translateY(3%) scale(1.12, .86); animation-timing-function: cubic-bezier(.33, .66, .66, 1); }
+  91% { transform: translateY(-16%) scale(1); animation-timing-function: cubic-bezier(.33, 0, .66, .33); }
+  100% { transform: translateY(0) scale(1); }
+}
+@keyframes coinspin { 0% { transform: perspective(420px) rotateX(var(--r0, -1440deg)); } 78%, 100% { transform: perspective(420px) rotateX(0deg); } }
+@keyframes coinq { 0%, 5.5% { opacity: 1; } 5.6%, 100% { opacity: 0; } }   /* (3.5 turns in 78%: edge on, for the first time, at 5.57%) */
+@keyframes coinsh { 0% { opacity: 0; transform: scale(1); } 6% { opacity: 1; } 39% { opacity: .45; transform: scale(.55); } 78% { opacity: 1; transform: scale(1); } 86%, 100% { opacity: 0; transform: scale(1); } }
+@keyframes coinspot { 0%, 78% { outline-color: var(--mk); } 100% { outline-color: transparent; } }
+@keyframes coinburst { 0% { opacity: 0; transform: scale(.9); } 12% { opacity: .95; } 100% { opacity: 0; transform: scale(1.75); } }
+/* the flip that makes them all one side: once the last coin is down (--w) the row hops in a wave, a ring off each */
+.coins.all .coin .cj { animation: coinwave .5s calc(var(--w, 1s) + var(--i, 0) * .07s) cubic-bezier(.4, 0, .2, 1); }
+.coins.all .coin.flip .cj { animation: coinfly 1s calc(var(--k, 0) * .08s) both, coinwave .5s calc(var(--w, 1s) + var(--i, 0) * .07s) cubic-bezier(.4, 0, .2, 1); }
+.coins.all .coin::before { content: ''; position: absolute; inset: -2px; border-radius: 50%; border: 3.5px solid var(--c1); opacity: 0; pointer-events: none; animation: coinburst .5s calc(var(--w, 1s) + var(--i, 0) * .07s + .2s) cubic-bezier(.2, .7, .3, 1) both; }
+@keyframes coinwave { 0%, 100% { transform: translateY(0) scale(1); } 40% { transform: translateY(-36%) scale(1.1); } }
+@media (prefers-reduced-motion: reduce) { .coin.flip { outline: none; } }   /* (no toss: the coins just show what they landed as) */
+/* the tallies under the row: a pip a coin; one fills as the coin that won it lands (.fillin), one empties as the coin that lost it does */
+.g-coins .ctal { flex-flow: column nowrap; align-items: flex-start; row-gap: 3px; padding-bottom: 6px; }   /* (always the name over its pips: the name keeps its room at any width, the tally one shape) */
+.g-coins .ctal > .tnm { flex: none; max-width: 100%; } .g-coins .ctal > .tnm + * { margin-left: 0; }
+.g-coins .ctal .pips.many { gap: 3px; } .g-coins .ctal .pips.many i { width: 13px; height: 13px; }
+.g-coins .ctal.X .pips i.cdrain { --pc: var(--x); } .g-coins .ctal.O .pips i.cdrain { --pc: var(--o); }
+.g-coins .ctal .pips i.cdrain { animation: coindrain .3s var(--t, 0ms) cubic-bezier(.4, 0, .2, 1) both; }
+@keyframes coindrain { from { background: var(--pc); transform: none; } 45% { transform: scale(.65); } to { transform: none; } }
 .tcoin i.m { background: #fff; color: var(--ink); }
 .pscore, .rrturn, .range { background: var(--paper); border: 3.5px solid var(--ink); box-shadow: 0 4px 0 var(--ink); border-radius: 18px 12px 20px 14px / 14px 20px 12px 18px; }
 .pscore .nm { font-weight: 400; }
@@ -1119,11 +1239,40 @@ b.O { box-shadow: inset 0 -.38em 0 var(--o-soft); }
 .pad button:active:not(:disabled) { transform: translateY(2px) scale(1.06, .88); box-shadow: 0 1px 0 var(--ink); }
 .pad button.X { box-shadow: 0 3px 0 var(--ink), inset 0 0 0 3px var(--x); }
 .pad button.O { box-shadow: 0 3px 0 var(--ink), inset 0 0 0 3px var(--o); }
-.mc .bk { background: var(--x); border: 3.5px solid var(--ink); box-shadow: none; color: var(--paper); font-family: 'Luckiest Guy', sans-serif; font-weight: 400; border-radius: 16px 11px 15px 12px; }
-.mc .ft { background: #fff; border: 3.5px solid var(--ink); border-radius: 16px 11px 15px 12px; }
-.mc.pick .bk, .mc.pick .ft { box-shadow: 0 0 0 4px var(--o); }
-.mc.win .ft { box-shadow: 0 0 0 4px var(--green); }
-@keyframes glow { from { box-shadow: 0 0 0 4px var(--green); } to { box-shadow: 0 0 0 9px var(--green); } }
+/* Find the Pair (the polish pass, November 2026). Every card stands on its own ink shadow; the back is a patterned blue
+   with a paper diamond (never a player's colour); a face's shape is inked. The ring round a card on show is its
+   player's colour (.g-mem.pc-X/.pc-O: the player on the move, or the move's), between two ink lines so O's yellow reads
+   on the paper; the pair found settles in the finder's colour with their mark (.own-X/.own-O). All timed from the move
+   (the second card is round at .36s, the chime or the two falling notes at .38s: memory/view.js sounds). */
+.g-mem { gap: 12px; padding-bottom: 5px; --pc: var(--x); --own: var(--green); --ownt: #fff; --mo: #d98a0a; --ring: 0 0 0 3.5px var(--pc), 0 0 0 5px var(--ink), 0 4px 0 5px var(--ink); }
+.g-mem.pc-O { --pc: var(--o); }
+.g-mem.own-X { --own: var(--x); --ownt: color-mix(in srgb, var(--x) 20%, #fff); } .g-mem.own-O { --own: var(--o); --ownt: color-mix(in srgb, var(--o) 32%, #fff); }
+.mc .bk, .mc .ft { border: 3.5px solid var(--ink); border-radius: 16px 11px 15px 12px; box-shadow: 0 4px 0 var(--ink); }
+.mc .bk { background: repeating-linear-gradient(45deg, transparent 0 9px, rgba(255, 255, 255, .14) 9px 11px), repeating-linear-gradient(-45deg, transparent 0 9px, rgba(255, 255, 255, .14) 9px 11px), var(--sea); }
+.mc .bk::after { content: ''; position: absolute; inset: 4px; border: 2px solid color-mix(in srgb, var(--paper) 78%, transparent); border-radius: 11px 7px 10px 8px; pointer-events: none; }
+.mc .mbk { width: 52%; height: 52%; overflow: visible; }
+.mbk .d { fill: var(--paper); stroke: var(--ink); stroke-width: 1.7; stroke-linejoin: round; }
+.mbk .q { fill: none; stroke: var(--ink); stroke-width: 2.5; stroke-linecap: round; } .mbk .o { fill: var(--ink); }
+.mc .ft { background: #fff; }
+.msh { stroke: var(--ink); stroke-width: 1.5; stroke-linejoin: round; overflow: visible; }
+.mc .ft .msh { width: 62%; height: 62%; }
+.mc .ft .mbd .rmk { width: 100%; height: 100%; }
+.mc:not(:disabled):active .in { translate: 0 2px; }
+.mc.pick .bk, .mc.pick .ft, .mc.rv .ft { box-shadow: var(--ring); }
+.mc.win .ft { background: var(--ownt); box-shadow: 0 0 0 3.5px var(--own), 0 0 0 5px var(--ink), 0 4px 0 5px var(--ink); }
+.g-mem.fin .mc:not(.win) .ft { background: var(--panel-2); box-shadow: none; } .g-mem.fin .mc:not(.win) .msh { opacity: .5; }   /* a finished square: the rest of the deck lies flat, out of play */
+/* a pair: both cards lift and pulse as the chime sounds, a ring bursts off each, the finder's colour and mark take them */
+.mc.win.glow { z-index: 2; animation: mempair .62s .38s cubic-bezier(.4, 0, .2, 1) both; }
+.mc.win.glow .ft { animation: memtake .16s .38s cubic-bezier(.4, 0, .2, 1) both; }
+.mc.win.glow::after { content: ''; position: absolute; inset: -3px; border-radius: 19px 14px 18px 15px; border: 4px solid var(--own); opacity: 0; pointer-events: none; animation: memburst .55s .4s cubic-bezier(.2, .7, .3, 1) both; }
+.mc.win.glow .mbd { animation: mempop .3s .5s cubic-bezier(.3, 1.6, .5, 1) both; }
+@keyframes mempair { 0% { transform: translateY(0) scale(1) rotate(0deg); } 34% { transform: translateY(var(--pl, -9%)) scale(var(--ps, 1.14)) rotate(-2.5deg); } 62% { transform: translateY(0) scale(.97) rotate(0deg); } 82% { transform: translateY(0) scale(1.03) rotate(0deg); } 100% { transform: translateY(0) scale(1) rotate(0deg); } }
+@keyframes memtake { from { background: var(--pt, #fff); box-shadow: var(--ring); } }   /* (--pt: a race's own cards are tinted while up) */
+@keyframes memburst { 0% { opacity: 0; transform: scale(.9); } 12% { opacity: .9; } 100% { opacity: 0; transform: scale(1.5); } }
+@keyframes mempop { from { transform: scale(0); } }
+/* no match: the two cards shake their heads once (then stay up for the game's own time and turn back together) */
+.g-mem.miss .mc.rv { animation: memno .36s .38s cubic-bezier(.4, 0, .2, 1) both; }
+@keyframes memno { 0%, 100% { transform: translateX(0) rotate(0deg); } 22% { transform: translateX(-5%) rotate(-2.5deg); } 50% { transform: translateX(4%) rotate(2deg); } 76% { transform: translateX(-2%) rotate(-1deg); } }
 
 /* the main menu */
 .menu-card { gap: 12px; position: relative; }
@@ -3214,6 +3363,10 @@ main.scr.mini:has(.brkw.run) .back { visibility: hidden; pointer-events: none; }
 .thg .hw { --tw: min(calc(var(--mt) * 1.15), calc((96cqw - (var(--n) - 1) * 1.2cqw) / var(--n))); }   /* Hangman */
 .thg .hw i { height: calc(var(--mt) * 1.3); font-size: var(--mt); padding-top: .1em; }
 .thg .hmx { gap: 1cqw 3.5cqw; font-size: var(--mt); }
+.thg { gap: 2cqw; } .thg .thb { display: flex; align-items: center; justify-content: center; gap: 3cqw; }   /* the scarecrow as far as it is drawn, the last wrong letters beside it */
+.thg .hsc { position: static; flex: none; width: 34cqw; height: 37cqw; stroke-width: 5; }
+.thg .hsc .gs, .thg .hsc .th { stroke-width: 3.6; } .thg .hsc .wo { stroke-width: 12; } .thg .hsc .wi { stroke-width: 4.5; } .thg .hsc .brim { stroke-width: 7; }
+.thg .thb .hmx { max-width: 52cqw; justify-content: flex-start; }
 .tg.tmem i:not(.up)::after { content: ''; width: 30%; height: 30%; border: max(1.5px, 1.2cqw) solid var(--paper); border-radius: 1px; transform: rotate(45deg); }   /* Find the Pair: a drawn card back */
 .tpong .tpm.X .tmk { stroke: var(--x); } .tpong .tpm.O .tmk { stroke: var(--o); }   /* Cup Pong: each end's mark drawn */
 .tbk .tbn { font-size: 14px; }   /* Apple Pick: the bucket's count (14 of the picture's 84 across: the floor at 360px) */
@@ -3444,12 +3597,106 @@ main.scr.mini:has(.brkw.run) .back { visibility: hidden; pointer-events: none; }
 .bsog .cell.ship::before { border-top-width: 2px; }
 .bsopp .bsosil { height: min(22px, 22cqh); width: auto; max-width: 34cqw; flex: none; overflow: visible; }
 .ropp.X .bsosil .hull.hit { fill: var(--x); } .ropp.O .bsosil .hull.hit { fill: var(--o); }
-.bsosil.live { animation: pop .3s .45s ease-out both; }
 .tbsr .bsv { height: clamp(30cqh, calc(var(--len) * 20cqh), 62cqh); width: auto; overflow: visible; }
 .tbsr .bsv .hull { fill: #fff; stroke: var(--ink); stroke-width: 8; stroke-linejoin: round; }
 .bsrb .rmk.X .tmk, .tbsr .rmk.X .tmk { stroke: var(--x); } .bsrb .rmk.O .tmk, .tbsr .rmk.O .tmk { stroke: var(--o); }   /* (each player's drawn mark: ui/race.js draws it, unstroked) */
 .tbsr .trp.X .bsv .hull.hit { fill: var(--x); } .tbsr .trp.O .bsv .hull.hit { fill: var(--o); }
 .tbsr .bsv .port { fill: var(--paper); stroke: var(--ink); stroke-width: 6; }
+/* Sea Battle, the look and the shot (November 2026; the timings are bs/rules.js BST: the shell lands at .34s). The sea is
+   a framed panel of water, each open cell a raised tile with a drifting wave; a cell fired at sits pressed in (closed):
+   a miss pale with its ripple ring, a hit scorched with its burst in the firer's colour and smoke that stays; the last
+   shot wears a halo in its firer's colour. A shot: the shell lobbed in from the foot of the sea (.bsshot, over the
+   grid), the cell dipping as it lands, then the ripples and spray or the burst and debris. Everything that only moves
+   is unseen at rest (reduced motion: the result alone). */
+.bsgrid { --bp: 7px; --bgp: 6px; position: relative; padding: var(--bp); gap: var(--bgp); background: var(--sea); border: 4px solid var(--ink); border-radius: 26px 20px 28px 22px / 22px 28px 20px 26px; box-shadow: 0 6px 0 var(--ink); }
+.bsgrid.n5 { --bgp: 5px; gap: var(--bgp); }
+.bsgrid .cell.sea { --bsw: linear-gradient(180deg, #8ccdeb 0, var(--sky) 44%, #4797c5 100%); --bsr: 0 4px 0 var(--ink), inset 0 2px 0 rgba(255, 255, 255, .4); background: var(--bsw); border-width: 3px; border-radius: 18px 12px 17px 13px / 13px 18px 12px 17px; box-shadow: var(--bsr); }
+.bsgrid .cell.sea:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); }
+.bsgrid .cell.sea::after { content: ''; position: absolute; inset: 34% 16% auto; width: auto; height: 32%; border: 0; border-radius: 0; opacity: .7; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 30' fill='none' stroke='%23fff' stroke-width='4' stroke-linecap='round'%3E%3Cpath d='M4 10q6.5-8 13 0t13 0 13 0 13 0'/%3E%3Cpath d='M17 24q6.5-8 13 0t13 0' opacity='.6'/%3E%3C/svg%3E") center / 100% 100% no-repeat; animation: bswave 2.8s ease-in-out infinite alternate; }
+.bsgrid .cell.sea:nth-child(3n+1)::after { animation-delay: -.9s; } .bsgrid .cell.sea:nth-child(3n+2)::after { animation-delay: -1.9s; }
+@keyframes bswave { from { transform: translateX(-10%); } to { transform: translateX(10%); } }
+.bsgrid .cell.sea.miss, .bsgrid .cell.sea.bshit { --bsfs: 0 1px 0 var(--ink), inset 0 3px 0 rgba(22, 18, 16, .14); transform: translateY(3px); background: var(--bsf); box-shadow: var(--bsfs); }
+.bsgrid .cell.sea.miss { --bsf: #d3e9f3; }
+.bsgrid .cell.sea.bshit { --bsf: #ffe2b4; }
+.bsgrid .cell.sea.miss::after { inset: 23%; height: auto; opacity: 1; border-radius: 50%; border: 3px solid #fff; background: none; box-shadow: 0 0 0 2px var(--ink), inset 0 0 0 2px var(--ink); animation: none; }
+.bsgrid .cell.sea.bshit::after, .bsgrid .cell.sea.ship::after { display: none; }
+.bsgrid .cell.sea.ship { --bsf: var(--sky); --bsfs: 0 4px 0 var(--ink); background: var(--bsf); box-shadow: var(--bsfs); }
+.bsgrid .cell.sea.last.byX { --bsfs: 0 1px 0 var(--ink), inset 0 3px 0 rgba(22, 18, 16, .14), 0 0 0 4px color-mix(in srgb, var(--x) 80%, transparent); }
+.bsgrid .cell.sea.last.byO { --bsfs: 0 1px 0 var(--ink), inset 0 3px 0 rgba(22, 18, 16, .14), 0 0 0 4px var(--o); }
+.bsgrid .cell.byX .fx .f1 { fill: var(--x); } .bsgrid .cell.byO .fx .f1 { fill: var(--o); }
+.bsgrid .cell.byX .fx .f2, .bsgrid .cell.byO .fx .f2 { fill: var(--paper); stroke: var(--ink); stroke-width: 3; stroke-linejoin: round; }
+.bsgrid .cell.sea .bsby { width: 20%; height: 20%; margin: -10% 0 0 -10%; border-width: 2.5px; }
+.bssmoke { position: absolute; left: 50%; top: -4%; width: 46%; aspect-ratio: 1; margin-left: -14%; pointer-events: none; z-index: 4; opacity: .7; --d: radial-gradient(circle closest-side, #9a928b 0 60%, var(--ink) 66% 90%, transparent 97%); background: var(--d) 22% 78% / 52% 52% no-repeat, var(--d) 82% 20% / 38% 38% no-repeat; animation: bssmoke 2.4s ease-out infinite; }
+@keyframes bssmoke { 0% { transform: translate(-22%, 46%) scale(.3); opacity: 0; } 20% { opacity: .9; } 70% { opacity: .6; } 100% { transform: translate(24%, -22%) scale(1.15); opacity: 0; } }
+.bsgrid .cell.flipin .bssmoke { animation-delay: .6s; animation-fill-mode: backwards; }
+/* the shot itself */
+.bsgrid .cell.flipin { animation: bsland .62s linear both; }
+@keyframes bsland {
+  0%, 54.7% { background: var(--bsw); box-shadow: var(--bsr); transform: none; }
+  54.8% { background: var(--bsf); box-shadow: var(--bsfs); transform: translateY(8px) scale(.9); animation-timing-function: cubic-bezier(.3, 1.4, .5, 1); }
+  100% { }
+}
+.bsgrid .cell.flipin::before { content: none; animation: none; }
+.bsgrid .cell.miss.flipin::after { animation: bspop .3s .34s cubic-bezier(.3, 1.6, .5, 1) both; }
+.bsgrid .cell.flipin .bsby { animation: bspop .3s .36s cubic-bezier(.3, 1.6, .5, 1) both; }
+.bsgrid .cell.bshit.flipin .fx { animation: boom .42s .34s cubic-bezier(.3, 1.6, .5, 1) both; }
+@keyframes bspop { from { transform: scale(0); opacity: 0; } }
+.bsrip { position: absolute; inset: 20%; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 0 1.5px var(--ink), inset 0 0 0 1.5px var(--ink); opacity: 0; pointer-events: none; animation: bsrip .46s .34s cubic-bezier(.2, .6, .4, 1) both; }
+.bsrip.r2 { animation-delay: .48s; animation-duration: .32s; }
+@keyframes bsrip { 0% { transform: scale(.25); opacity: 0; } 1% { opacity: 1; } 60% { opacity: .9; } 100% { transform: scale(1.9); opacity: 0; } }
+.bsshot { position: absolute; inset: 0; pointer-events: none; z-index: 6; --px: calc(var(--bp) + (100% - 2 * var(--bp) + var(--bgp)) * var(--fx) - var(--bgp) / 2); --py: calc(var(--bp) + (100% - 2 * var(--bp) + var(--bgp)) * var(--fy) - var(--bgp) / 2); }
+.bsfly { position: absolute; inset: 0; opacity: 0; animation: bsfly .34s cubic-bezier(.3, .2, .7, .9) both; }
+@keyframes bsfly { 0% { transform: translate(calc((.5 - var(--fx)) * 100%), calc((1.12 - var(--fy)) * 100%)); opacity: 1; } 97% { opacity: 1; } 100% { transform: none; opacity: 0; } }
+.bsfly b, .bsfly s { position: absolute; left: var(--px); top: var(--py); width: 8%; aspect-ratio: 1; margin: -4% 0 0 -4%; border-radius: 50%; }
+.bsfly b { background: radial-gradient(circle at 34% 30%, #fff 0 15%, transparent 17%) var(--x); border: 2.5px solid var(--ink); animation: bsarc .34s linear both; }
+.bsshot.O .bsfly b { background-color: var(--o); }
+.bsfly s { background: var(--ink); opacity: .25; animation: bsshad .34s linear both; }
+@keyframes bsarc { 0% { transform: translateY(0) scale(1); animation-timing-function: cubic-bezier(.2, .6, .5, 1); } 50% { transform: translateY(-160%) scale(1.9); animation-timing-function: cubic-bezier(.5, 0, .8, .4); } 100% { transform: translateY(0) scale(.8); } }
+@keyframes bsshad { 0% { transform: scale(1); opacity: .34; } 50% { transform: scale(.6); opacity: .2; } 100% { transform: scale(.85); opacity: .4; } }
+.bsshot u { position: absolute; left: var(--px); top: var(--py); width: 36%; aspect-ratio: 1; margin: -18% 0 0 -18%; opacity: 0; animation: bsspray .44s .34s cubic-bezier(.15, .7, .4, 1) both;
+  --d: radial-gradient(circle closest-side, #fff 0 50%, var(--ink) 54% 90%, transparent 96%);
+  background: var(--d) 50% 2% / 10% 10% no-repeat, var(--d) 84% 16% / 8% 8% no-repeat, var(--d) 98% 52% / 11% 11% no-repeat, var(--d) 78% 88% / 8% 8% no-repeat, var(--d) 38% 97% / 10% 10% no-repeat, var(--d) 6% 72% / 8% 8% no-repeat, var(--d) 8% 26% / 11% 11% no-repeat; }
+.bsshot.hit u { --d: radial-gradient(circle closest-side, var(--ink) 0 88%, transparent 96%); --e: radial-gradient(circle closest-side, var(--paper) 0 50%, var(--ink) 54% 90%, transparent 96%);
+  background: var(--d) 50% 2% / 8% 8% no-repeat, var(--e) 86% 14% / 11% 11% no-repeat, var(--d) 98% 56% / 7% 7% no-repeat, var(--e) 76% 90% / 9% 9% no-repeat, var(--d) 36% 97% / 8% 8% no-repeat, var(--e) 4% 70% / 11% 11% no-repeat, var(--d) 10% 22% / 7% 7% no-repeat; }
+@keyframes bsspray { 0% { transform: scale(.2) rotate(-12deg); opacity: 0; } 1% { opacity: 1; } 65% { opacity: 1; } 100% { transform: scale(1) rotate(8deg); opacity: 0; } }
+/* the sinking shot: the burst, then the whole ship surfaces part by part (bow last), rides up and goes under as the water closes over it, bubbles rising */
+.bsgrid .cell.ship.flipin::before { content: ''; inset: auto -10% -6%; border-radius: 40% 40% 0 0 / 30% 30% 0 0; }
+.bsgrid .cell.ship.sink:not(.flipin) { animation: bshitbg .46s step-end both; }
+@keyframes bshitbg { from { background: #ffe2b4; } }
+.bsgrid .cell.ship.sink .bseg { animation: shipup .36s calc(.46s + var(--k, 0) * .06s) cubic-bezier(.3, 1.5, .5, 1) both, bsunder .62s .95s cubic-bezier(.45, 0, .7, .5) forwards; }
+@keyframes bsunder { 0% { transform: translateY(0); } 30% { transform: translateY(-7%); } 100% { transform: translateY(9%); } }
+.bsgrid .cell.ship.sink::before { animation: wavein .5s 1.05s cubic-bezier(.3, 1.3, .5, 1) both; }
+.bsgrid .cell.ship.sink .fx { animation: vanish .22s .46s ease-in both; }
+.bsgrid .cell.ship.sink.flipin .fx { animation: boom .4s .34s cubic-bezier(.3, 1.6, .5, 1) both, vanish .22s .8s ease-in forwards; }
+.bsbub { position: absolute; left: 14%; right: 14%; bottom: 30%; height: 40%; pointer-events: none; z-index: 4; opacity: 0; --d: radial-gradient(circle closest-side, transparent 0 46%, #fff 50% 84%, transparent 92%); background: var(--d) 12% 80% / 22% 44% no-repeat, var(--d) 56% 40% / 16% 32% no-repeat, var(--d) 92% 90% / 26% 52% no-repeat; animation: bsbub .5s calc(.98s + var(--k, 0) * .03s) ease-out both; }
+@keyframes bsbub { 0% { transform: translateY(40%) scale(.6); opacity: 0; } 30% { opacity: 1; } 100% { transform: translateY(-60%) scale(1.1); opacity: 0; } }
+/* the hunt card: each hit part in its hitter's colour, filling as the shell lands; its words swap in place; "Sunk!" bumps as the last shell lands */
+.bsship .nm small { display: grid; } .bsship .nm small > span { grid-area: 1 / 1; white-space: nowrap; }
+.bsship .sil { height: auto; width: min(calc(var(--len) * 50px), 46%); flex: 0 1 auto; min-width: 0; }
+.sil .hull.hit.O, .tship .hull.hit.O { fill: var(--o); } .sil .hull.hit.X, .tship .hull.hit.X { fill: var(--x); }
+.sil .hull.new { animation: bsfill .22s .34s ease-out both; }
+@keyframes bsfill { from { fill: #fff; } }
+.g-bs .bsship.sunk.fresh { animation: bscard .36s .34s cubic-bezier(.3, 1.6, .5, 1) both; }   /* (over Speed's pop, which would hide the card until then) */
+@keyframes bscard { 0% { background: var(--paper); transform: none; } 1% { transform: scale(.94); } }
+/* the other player's small sea (Race) */
+.bsgrid.bsog { --bp: 3px; --bgp: 3px; border-width: 2.5px; border-radius: 10px 8px 11px 9px; box-shadow: 0 3px 0 var(--ink); }
+.bsgrid.bsog .cell.sea { --bsr: 0 2px 0 var(--ink); border-width: 2px; border-radius: 7px 5px 6px 5px / 5px 7px 5px 6px; box-shadow: var(--bsr); }
+.bsgrid.bsog .cell.sea.miss, .bsgrid.bsog .cell.sea.bshit { --bsfs: 0 1px 0 var(--ink); transform: translateY(1px); }
+.bsgrid.bsog .cell.sea.last.byX { --bsfs: 0 1px 0 var(--ink), 0 0 0 2px var(--x); } .bsgrid.bsog .cell.sea.last.byO { --bsfs: 0 1px 0 var(--ink), 0 0 0 2px var(--o); }
+.bsgrid.bsog .cell.sea.miss::after { border-width: 2px; box-shadow: 0 0 0 1px var(--ink), inset 0 0 0 1px var(--ink); }
+.bsgrid.bsog .cell.sea .bsby { border-width: 1.5px; } .bsgrid.bsog .bsrip { border-width: 2px; } .bsgrid.bsog .bsfly b { border-width: 1.5px; width: 10%; margin: -5% 0 0 -5%; }
+.bsgrid.bsog .cell.sea.ship { --bsfs: 0 2px 0 var(--ink); }
+.bsosil.live { animation: bsbump .34s .34s cubic-bezier(.3, 1.6, .5, 1) both; }
+@keyframes bsbump { 0% { transform: none; } 1% { transform: scale(.9); } }
+.bsrb .rnote { display: grid; justify-items: end; } .bsrb .rnote > span { grid-area: 1 / 1; }
+/* Race: the card may be wider than the sea (its words never spill out of it) */
+.g-bs.bsr2 { width: 100cqw; }
+.g-bs.bsr2 .bsship { max-width: 100cqw; }
+/* the miniature: the same sea in small, a miss pale with its firer's ring, a hit scorched in its firer's colour */
+.tbs .tg.g4.sea { box-sizing: border-box; padding: 2cqw; gap: 1.6cqw; background: var(--sea); border-radius: 4cqw; box-shadow: 0 0 0 1.5px var(--ink); }
+.tg.sea i.miss { background: #d3e9f3; }
+.tg.sea i.hit.byX { background: var(--x); box-shadow: inset 0 0 0 1px var(--ink); } .tg.sea i.hit.byO { background: var(--o); box-shadow: inset 0 0 0 1px var(--ink); }
+.tg.sea i.hit::after { content: ''; width: 36%; height: 36%; border-radius: 50%; background: var(--ink); }
 /* Race v2: mastermind (Codebreaker: this phone's own code, rows and controls large; the other's code and latest rows small; the miniature each player's best row's markers) */
 .rboards.mmrb { align-self: stretch; }   /* (the game area is a centring row: the two boards take its whole height) */
 .mmrb .rmain { align-items: center; }
@@ -3473,6 +3720,60 @@ main.scr.mini:has(.brkw.run) .back { visibility: hidden; pointer-events: none; }
 .tmmr .mmbest circle { stroke: var(--ink); stroke-width: 2.2; }
 .tmmr .mmbest circle.sd { fill: var(--ink); } .tmmr .mmbest circle.hw { fill: #fff; stroke-width: 2.8; }
 .tmmr .mmbest circle.no { fill: none; stroke: rgba(22, 18, 16, .35); stroke-dasharray: 3 2.4; stroke-width: 1.8; }
+/* Codebreaker (November 2026 polish). The rows stand on the guess being made: the newest large in its own frame, the
+   older ones compact above it (the list still scrolls back). The list's box reaches down behind the slots (its bottom
+   padding is their room), so a guess's pegs fly from their slots up into the new row without being cut at the list's
+   edge (ui/cardfly.js; mastermind/view.js MMT); a colour flies from the palette into its slot. The cracked code opens
+   only once the markers have landed (1.45 s into the move): each "?" turns away and its peg turns up, the tray pops. */
+.g-mm .mmlist { gap: 5px; padding: 4px 2px calc(var(--pg) + 22px); margin-bottom: calc(-1 * (var(--pg) + 18px)); }
+.g-mm .mmlist { -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 12px); mask-image: linear-gradient(to bottom, transparent 0, #000 12px); }
+.g-mm .mmlist > :first-child { margin-top: auto; }
+.g-mm .mmlist > .empty { margin: auto; }
+.g-mm.mmview .mmlist { padding-bottom: 6px; margin-bottom: 0; }   /* (a finished square: no slots under it; its rows under the code) */
+.g-mm.mmview .mmlist > :first-child, .g-mm.mmview .mmrow.new:first-child { margin-top: 6px; }
+.g-mm .mmrow { flex: none; }
+.g-mm .mmrow.old { grid-template-columns: 22px repeat(4, calc(var(--pg) * .64)) auto; gap: 6px; }
+.g-mm .mmrow.old .mmby .pc { width: 22px; height: 22px; }
+.g-mm .mmrow.old .peg { border-width: 2.5px; box-shadow: 0 2px 0 var(--ink); }
+.g-mm .mmrow.old .mmfb { grid-template-columns: repeat(2, 10px); gap: 2px; margin-left: 2px; }
+.g-mm .mmrow.old .mmfb i, .g-mm .mmrow.old .mmfb i.sd, .g-mm .mmrow.old .mmfb i.hw { width: 10px; height: 10px; border-width: 1.5px; }
+.g-mm .mmrow.new { align-self: center; margin-top: 3px; padding: 5px 10px 8px 8px; border-radius: 16px 12px 18px 14px; background: var(--paper); box-shadow: 0 0 0 2.5px var(--ink), 0 3px 0 2.5px var(--ink); }
+.g-mm .mmrow.new:first-child { margin-top: auto; }
+.g-mm .mmrow.new .mmfb { grid-template-columns: repeat(2, 15px); gap: 3px; }
+.g-mm .mmrow.new .mmfb i { width: 15px; height: 15px; }
+.g-mm .mmcur .mmslot.full { border-style: solid; }
+.mmgo.X { background: var(--x); color: var(--paper); } .mmgo.O { background: var(--o); color: var(--ink); }
+.mmcode.small.cracked { transform: scale(1.22); }
+.mmcode.small.cracked.fresh { animation: mmcrack .45s 1.42s cubic-bezier(.3, 1.6, .5, 1) both; }
+@keyframes mmcrack { from { background-color: var(--ink); background-clip: padding-box; border-color: transparent; transform: none; } }
+.mmcode .shell.flip { display: grid; } .mmcode .shell.flip > * { grid-area: 1 / 1; }
+.mmcode .shell.flip .peg.was { animation: codeout .16s ease-in both; animation-delay: calc(1.45s + var(--k) * .12s); }
+.mmcode .shell.flip .peg:not(.was) { animation: codeflip .32s cubic-bezier(.3, 1.6, .5, 1) both; animation-delay: calc(1.61s + var(--k) * .12s); }
+@keyframes codeout { to { transform: rotateY(90deg) scale(.8); opacity: 0; } }
+.mmor.mmocode.cracked.fresh { animation: mmocrack .3s 1.5s ease-out both; }
+.mmor.mmocode.cracked.fresh .peg { animation: mmopen .3s cubic-bezier(.3, 1.8, .5, 1) both; animation-delay: calc(1.62s + var(--k) * .08s); }
+.mmor.mmocode.cracked.fresh .peg.was { animation: mmshut .12s ease-in both; animation-delay: calc(1.5s + var(--k) * .08s); }
+@keyframes mmocrack { from { background: var(--ink); } }
+@keyframes mmopen { from { transform: scale(0); } }
+@keyframes mmshut { to { transform: scale(0); } }
+@media (prefers-reduced-motion: reduce) { .mmcode .shell.flip .peg.was, .mmor.mmocode .peg.was { display: none; } }
+/* ...its miniature: the code's tray over the latest rows, each with its guesser's colour at its edge; a race: each player's best row, its pegs over its markers */
+.tmm { gap: 1.8cqw; }
+.tmm .tmc { display: flex; gap: 1.6cqw; padding: 1.5cqw 3.2cqw; border-radius: 99px; background: var(--ink); }
+.tmm .tmc i { width: 7.6cqw; height: 7.6cqw; border-radius: 50%; background: #5a524b; }
+.tmm .tmc.open { background: var(--green); box-shadow: inset 0 0 0 1.3px var(--ink); } .tmm .tmc.open i { box-shadow: inset 0 0 0 1.2px var(--ink); }
+:is(.tmc, .tmbp) i.c0 { background: var(--mc0); } :is(.tmc, .tmbp) i.c1 { background: var(--mc1); } :is(.tmc, .tmbp) i.c2 { background: var(--mc2); }
+:is(.tmc, .tmbp) i.c3 { background: var(--mc3); } :is(.tmc, .tmbp) i.c4 { background: var(--mc4); } :is(.tmc, .tmbp) i.c5 { background: var(--mc5); }
+.tmm .tmr { position: relative; padding-left: 4.4cqw; }
+.tmm .tmr > i { width: 11.5cqw; height: 11.5cqw; }
+.tmm .tmr::before { content: ''; position: absolute; left: 0; top: 10%; bottom: 10%; width: 2.6cqw; border-radius: 2cqw; }
+.tmm .tmr.X::before { background: var(--x); } .tmm .tmr.O::before { background: var(--o); }
+.tmm .tmr.none > i { background: transparent; box-shadow: inset 0 0 0 1.3px rgba(22, 18, 16, .35); }
+.tmmr .trart { flex-direction: column; gap: 2.5cqh; }
+.tmmr .mmbest { width: min(30cqw, 42cqh); }
+.tmbp { display: flex; gap: 1.2cqw; flex: none; }
+.tmbp i { width: 7.6cqw; height: 7.6cqw; border-radius: 50%; box-shadow: inset 0 0 0 1.2px rgba(22, 18, 16, .35); }
+.tmbp i[class] { box-shadow: inset 0 0 0 1.2px var(--ink); }
 /* Race v2: hunt (Treasure Hunt: this phone's grid sized from its box, the other's small grid of bands, the thermometers) */
 .hrb .g-hunt.hr2 { --hg: min(100cqw, calc(100cqh - 36px)); width: var(--hg); margin: 0 auto; gap: 10px; }
 .hrb .hopp { width: min(100cqw, 100cqh); height: min(100cqw, 100cqh); display: grid; grid-template-columns: repeat(var(--hn, 6), 1fr); grid-template-rows: repeat(var(--hn, 6), 1fr); gap: 2px; }
@@ -3484,6 +3785,86 @@ main.scr.mini:has(.brkw.run) .back { visibility: hidden; pointer-events: none; }
 .thth .thfill { fill: var(--x); } .thth.O .thfill { fill: var(--o); }
 .thth .thbulb { fill: var(--x); stroke: var(--ink); stroke-width: 2; } .thth.O .thbulb { fill: var(--o); }
 .thth .thgem { fill: #ffd166; stroke: var(--ink); stroke-width: 1.6; stroke-linejoin: round; }
+/* Treasure Hunt, the look and the dig (November 2026; the timings are hunt/rules.js HUNTT: the band blooms at .38s). The
+   ground is raised turf, each open cell a tile to tap; a dug cell sits pressed in, in its band's colour with its name
+   and (a Shared grid) a corner dot in its digger's colour; the newest dig wears a halo in that colour. A dig: the shovel
+   (its handle in the digger's colour) bites and levers, clods fly, the hole shows bare soil, then the band's colour
+   blooms from its middle with a ring and its name pops. The treasure: the cell swells, a chest comes up out of the hole,
+   its lid goes back and the gem rises with three glints over a burst of rays. Everything that only moves is unseen at
+   rest (reduced motion: the result alone). The key: a pill for each band in its colour, hottest first. */
+.g-hunt .dig { --turf: linear-gradient(180deg, #bce487 0, #a5d76d 55%, #8dc558 100%); --raise: 0 3px 0 var(--ink), inset 0 2px 0 rgba(255, 255, 255, .45); background: var(--turf); box-shadow: var(--raise); font-size: calc(var(--hg) / var(--hn, 6) * .225); }
+.g-hunt .dig::before { content: ''; position: absolute; inset: 26% 20% 22%; pointer-events: none; opacity: .5; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 24' fill='none' stroke='%233f7a2a' stroke-width='3' stroke-linecap='round'%3E%3Cpath d='M6 20q1-7 5-10M12 20q0-9 3-13M18 20q-1-6-4-9M29 22q0-5 3-8M34 22q0-6-2-9'/%3E%3C/svg%3E") center / contain no-repeat; }
+.g-hunt .dig:nth-child(3n+1)::before { transform: scaleX(-1) translateY(10%); } .g-hunt .dig:nth-child(4n+2)::before { transform: translate(6%, -12%) scale(.85); }
+.g-hunt .dig:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+.g-hunt .dig.dug { --sunk: 0 1px 0 var(--ink), inset 0 3px 0 rgba(22, 18, 16, .2); transform: translateY(2px); box-shadow: var(--sunk); }
+.g-hunt .dig.dug::before { content: none; }
+.g-hunt .dig.dug > span { position: relative; z-index: 2; }
+.g-hunt .dig.last.byX { --sunk: 0 1px 0 var(--ink), inset 0 3px 0 rgba(22, 18, 16, .2), 0 0 0 3px var(--x); }
+.g-hunt .dig.last.byO { --sunk: 0 1px 0 var(--ink), inset 0 3px 0 rgba(22, 18, 16, .2), 0 0 0 3px var(--o); }
+.hby { position: absolute; left: 7%; top: 7%; width: 20%; aspect-ratio: 1; border-radius: 50%; border: 2px solid var(--ink); z-index: 2; pointer-events: none; }
+.hby.X { background: var(--x); } .hby.O { background: var(--o); }
+/* the dig */
+.g-hunt .dig.open { overflow: visible; z-index: 3; animation: hdig .7s linear both; }
+@keyframes hdig {
+  0% { background: var(--turf); box-shadow: var(--raise); transform: none; animation-timing-function: cubic-bezier(.4, 0, .2, 1); }
+  14% { background: var(--turf); box-shadow: var(--raise); transform: translateY(4px) scale(1.07, .86); }
+  14.1% { background: #6f4a2c; box-shadow: var(--sunk); transform: translateY(4px) scale(1.07, .86); animation-timing-function: cubic-bezier(.3, 1.5, .5, 1); }
+  32% { background: #6f4a2c; transform: translateY(2px) scale(1); }
+  54% { background: #6f4a2c; }
+  100% { }
+}
+.hfill { position: absolute; inset: 0; border-radius: inherit; background: var(--dbg); pointer-events: none; z-index: 1; animation: hbloom .28s .38s cubic-bezier(.2, .7, .3, 1) both; }
+@keyframes hbloom { from { clip-path: circle(0% at 50% 50%); } to { clip-path: circle(75% at 50% 50%); } }
+.g-hunt .dig.open::after { content: ''; position: absolute; inset: -2px; border-radius: inherit; border: 3.5px solid var(--dbg); box-shadow: 0 0 0 1.5px var(--ink); opacity: 0; pointer-events: none; font-size: 0; z-index: 0; animation: hring .36s .38s cubic-bezier(.2, .6, .4, 1) both; }
+@keyframes hring { 0% { transform: scale(.8); opacity: 0; } 1% { opacity: 1; } 55% { opacity: .9; } 100% { transform: scale(1.8); opacity: 0; } }
+.g-hunt .dig.open > span, .g-hunt .dig.open .hby { animation: hpop .3s .44s cubic-bezier(.3, 1.6, .5, 1) both; }
+@keyframes hpop { from { transform: scale(0); opacity: 0; } }
+.hdirt { position: absolute; left: 50%; top: 50%; width: 170%; aspect-ratio: 1; margin: -85% 0 0 -85%; opacity: 0; pointer-events: none; z-index: 4; animation: hdirt .42s .1s cubic-bezier(.15, .7, .4, 1) both;
+  --d: radial-gradient(circle closest-side, #9a6a3c 0 56%, var(--ink) 60% 90%, transparent 96%);
+  background: var(--d) 44% 4% / 13% 13% no-repeat, var(--d) 80% 14% / 17% 17% no-repeat, var(--d) 97% 46% / 11% 11% no-repeat, var(--d) 13% 16% / 15% 15% no-repeat, var(--d) 2% 50% / 11% 11% no-repeat, var(--d) 66% 0% / 10% 10% no-repeat; }
+@keyframes hdirt { 0% { transform: translateY(14%) scale(.2); opacity: 0; } 1% { opacity: 1; } 60% { opacity: 1; } 100% { transform: translateY(-4%) scale(1); opacity: 0; } }
+.g-hunt .dig .hshov { position: absolute; left: 12%; top: -26%; width: 92%; height: 92%; overflow: visible; opacity: 0; pointer-events: none; z-index: 5; transform-origin: 46% 82%; }
+.g-hunt .dig.open .hshov { animation: hshov .4s cubic-bezier(.4, 0, .2, 1) both; }
+.hshov .hso { fill: none; stroke: var(--ink); stroke-width: 7; stroke-linecap: round; } .hshov .hsh { fill: none; stroke: var(--x); stroke-width: 3.6; stroke-linecap: round; } .hshov.O .hsh { stroke: var(--o); }
+.hshov .hsg { fill: none; stroke: var(--ink); stroke-width: 4.5; stroke-linecap: round; } .hshov .hsb { fill: #d5dbe1; stroke: var(--ink); stroke-width: 2.4; stroke-linejoin: round; }
+@keyframes hshov { 0% { transform: translate(34%, -50%) rotate(16deg); opacity: 0; } 10% { opacity: 1; } 26% { transform: translate(0, 12%) rotate(0deg); opacity: 1; } 55% { transform: translate(-6%, 0) rotate(-30deg); opacity: 1; } 100% { transform: translate(-34%, -44%) rotate(-44deg); opacity: 0; } }
+/* the treasure */
+.hchest { width: 90%; height: 90%; overflow: visible; position: relative; z-index: 2; }
+.hchest .hwood { fill: #c98b45; stroke: var(--ink); stroke-width: 2.4; stroke-linejoin: round; } .hchest .hlid .hwood { fill: #b27632; }
+.hchest .hgold { fill: var(--gold); stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; }
+.hchest .hin { fill: #3a2616; stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; transform-origin: 24px 25px; }
+.hchest .hlock { fill: var(--paper); stroke: var(--ink); stroke-width: 2; }
+.hchest .hgem { fill: #7fe3ff; stroke: var(--ink); stroke-width: 2.2; stroke-linejoin: round; transform-origin: 24px 19px; transform: translateY(-5px) scale(.82); }
+.hchest .hlid { transform-origin: 8px 25px; transform: translateY(-2px) rotate(-30deg); }
+.hchest .hsp { fill: #fff; stroke: var(--ink); stroke-width: 1.2; stroke-linejoin: round; opacity: 0; transform-box: fill-box; transform-origin: center; }
+.g-hunt .dig.found { overflow: visible; }
+.g-hunt .dig.found.open { z-index: 6; animation: hdig .7s linear both, hfound 1.1s .38s cubic-bezier(.3, 1.3, .5, 1) forwards; }
+@keyframes hfound { 0% { transform: translateY(2px) scale(1); } 16% { transform: scale(1.48); } 80% { transform: scale(1.42); } 100% { transform: translateY(2px) scale(1); } }
+.g-hunt .dig.found.open::before { content: ''; position: absolute; inset: -60%; border-radius: 50%; z-index: -1; opacity: 0; background: repeating-conic-gradient(var(--gold) 0 11deg, #fff 11deg 13deg, transparent 13deg 30deg); -webkit-mask: radial-gradient(circle, #000 34%, transparent 68%); mask: radial-gradient(circle, #000 34%, transparent 68%); transform: none; animation: hrays 1s .46s linear both; }
+@keyframes hrays { 0% { transform: scale(.3) rotate(0); opacity: 0; } 18% { opacity: .9; } 78% { opacity: .9; } 100% { transform: scale(1) rotate(46deg); opacity: 0; } }
+.g-hunt .dig.found.open .hchest { animation: hchest .3s .38s cubic-bezier(.3, 1.5, .5, 1) both; }
+@keyframes hchest { from { transform: translateY(46%) scale(.3); opacity: 0; } }
+.g-hunt .dig.found.open .hlid { animation: hlid .24s .62s cubic-bezier(.3, 1.5, .5, 1) both; }
+@keyframes hlid { from { transform: none; } }
+.g-hunt .dig.found.open .hin { animation: hin .24s .62s cubic-bezier(.3, 1.5, .5, 1) both; }
+@keyframes hin { from { transform: scaleY(0); } }
+.g-hunt .dig.found.open .hgem { animation: hgem .36s .78s cubic-bezier(.3, 1.6, .5, 1) both; }
+@keyframes hgem { from { transform: translateY(10px) scale(.2); opacity: 0; } }
+.g-hunt .dig.found.open .hsp { animation: hsp .46s .82s ease-in-out both; } .g-hunt .dig.found.open .hsp.s2 { animation-delay: .92s; } .g-hunt .dig.found.open .hsp.s3 { animation-delay: 1.02s; }
+@keyframes hsp { 0% { transform: scale(0) rotate(0); opacity: 0; } 45% { transform: scale(1.3) rotate(40deg); opacity: 1; } 100% { transform: scale(.5) rotate(80deg); opacity: 0; } }
+/* the key */
+.g-hunt .hkey { display: flex; gap: 5px; font-size: 13px; }
+.g-hunt .hkey span { flex: 1 1 auto; display: flex; align-items: center; justify-content: center; gap: 4px; height: 24px; padding: 1px 4px 0; border: 2px solid var(--ink); border-radius: 999px; white-space: nowrap; line-height: 1; }
+@media (max-width: 340px) { .g-hunt .hkey { gap: 3px; font-size: 12px; } .g-hunt .hkey span { gap: 3px; padding: 1px 2px 0; } .g-hunt .hkey b { font-size: 11px; } }
+.hrb .g-hunt.hr2 { width: 100cqw; align-items: center; } .hrb .g-hunt.hr2 .hkey { width: 100cqw; max-width: 420px; }   /* (Race: the key may be wider than the grid, so its words never crowd) */
+.g-hunt .hkey b { font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-weight: 400; font-size: 12px; padding-top: 2px; letter-spacing: .02em; }
+/* the other player's small grid (Race) and the miniature: the same turf, a dug cell its band */
+.hrb .hopp i { background: #a5d76d; }
+.hrb .hopp i.last { box-shadow: inset 0 0 0 1.5px var(--ink), 0 0 0 2px var(--x); position: relative; z-index: 1; } .hrb .hopp.O i.last { box-shadow: inset 0 0 0 1.5px var(--ink), 0 0 0 2px var(--o); }
+.hrb .hopp i.open { animation: hocopen .7s linear both; z-index: 2; position: relative; }
+@keyframes hocopen { 0%, 54% { background: #a5d76d; transform: none; } 54.1% { background: var(--dbg); transform: scale(1.7); animation-timing-function: cubic-bezier(.3, 1.4, .5, 1); } 100% { } }
+.tg.g5x5 i { background: #a5d76d; }
+.hrb .rnote { display: grid; justify-items: end; } .hrb .rnote > span { grid-area: 1 / 1; }
 /* Race v2: sniff (Sniff: this phone's field and its reserved word line, the other's small field, the little fields) */
 .srb .srv2 { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; }
 .srb .srv2 .sfield { width: min(100cqw, calc(100cqh - 46px)); height: auto; margin: 0; flex: none; }
@@ -3497,11 +3878,17 @@ main.scr.mini:has(.brkw.run) .back { visibility: hidden; pointer-events: none; }
 .mrb .g-memr2 { --g: min(100cqw, 100cqh); display: flex; justify-content: center; align-items: center; height: 100%; }
 .mrb .mopp { width: min(100cqw, 100cqh); height: min(100cqw, 100cqh); display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); gap: 3px; }
 .mrb .mopp i { border-radius: 5px; display: grid; place-items: center; min-width: 0; overflow: hidden; }
-.mrb .mopp i.dn { background: repeating-linear-gradient(45deg, var(--panel-2) 0 4px, color-mix(in srgb, var(--ink) 18%, var(--panel-2)) 4px 8px); box-shadow: inset 0 0 0 1.5px var(--ink); }
+.mrb .mopp i.dn { background: var(--sea); box-shadow: inset 0 0 0 1.5px var(--ink); }
+.mrb .mopp i.dn::after { content: ''; width: 30%; height: 30%; border: 1.5px solid var(--paper); border-radius: 1px; transform: rotate(45deg); }   /* (the same back as the cards above, small) */
 .mrb .mopp i.up { background: #fff; box-shadow: inset 0 0 0 1.5px var(--ink); }
 .mrb .mopp i.up svg { width: 72%; height: 72%; }
-.mrb .mopp i.fl { animation: pop .35s ease-out both; }
-.mrb .mopp i.win { box-shadow: inset 0 0 0 3px var(--green); }
+.mrb .mopp i.fl { animation: moppflip .36s calc(var(--k, 0) * .16s) cubic-bezier(.4, 0, .2, 1) both; }   /* their card turns over: the back closes edge on, the face opens (one after the other) */
+.mrb .mopp i.fl > * { animation: moppface .36s calc(var(--k, 0) * .16s) linear both; }
+.mrb .mopp i.fl::after { content: ''; position: absolute; inset: 0; margin: auto; width: 30%; height: 30%; border: 1.5px solid var(--paper); border-radius: 1px; transform: rotate(45deg); opacity: 0; animation: moppface .36s calc(var(--k, 0) * .16s) linear reverse both; }   /* (its back's diamond, until it is edge on) */
+.mrb .mopp i.win.glow { z-index: 1; animation: moppflip .36s calc(var(--k, 0) * .16s) cubic-bezier(.4, 0, .2, 1) both, mopppair .6s .56s cubic-bezier(.4, 0, .2, 1); }   /* (their pair: a pulse once both are round; no fill, or it would hold the flip still before it) */
+@keyframes moppflip { 0% { transform: scaleX(1) scaleY(1); background: var(--sea); box-shadow: inset 0 0 0 1.5px var(--ink); } 49% { transform: scaleX(.04) scaleY(1.12); background: var(--sea); box-shadow: inset 0 0 0 1.5px var(--ink); } 51% { transform: scaleX(.04) scaleY(1.12); } 100% { transform: scaleX(1) scaleY(1); } }
+@keyframes moppface { 0%, 50% { opacity: 0; } 51%, 100% { opacity: 1; } }
+@keyframes mopppair { 0%, 100% { transform: scale(1); } 35% { transform: scale(1.28) rotate(-3deg); } 65% { transform: scale(.96); } }
 .trace2 .tmem2 { width: 100%; height: auto; max-width: 100%; max-height: min(100%, 72cqh); aspect-ratio: 34 / 44; overflow: visible; }   /* (sized by its column's width as well as the height: the two grids never meet) */
 .tmem2 rect { fill: var(--panel-2); stroke: var(--ink); stroke-width: 1.4; }
 .tmem2.X rect.sn { fill: color-mix(in srgb, var(--x) 40%, #fff); } .tmem2.O rect.sn { fill: color-mix(in srgb, var(--o) 40%, #fff); }
@@ -3516,18 +3903,11 @@ main.scr.mini:has(.brkw.run) .back { visibility: hidden; pointer-events: none; }
 .rb-hilo .rmain .g-hilo .range { padding: min(6px, 1.2cqh) 12px; }
 .rb-hilo .rmain .g-hilo .range b { font-size: min(26px, 7.5cqh); }
 .rb-hilo .rmain .g-hilo .range small { font-size: 12px; margin-bottom: 0; }
-.rb-hilo .rmain .g-hilo .rbar { margin-top: min(8px, 1.6cqh); height: 10px; }
 .rb-hilo .rmain .g-hilo .hist, .rb-hilo .rmain .g-hilo .guess { height: 28px; }
 /* Higher/Lower: the other player's range on the number line, their guesses as ticks, their latest in its own line */
 .rb-hilo .hlo { width: 100%; height: 100cqh; display: flex; flex-direction: column; justify-content: center; gap: min(8px, 6cqh); padding: 0 6px; }
 .rb-hilo .hlr { text-align: center; font: 400 min(26px, 26cqh)/1 'Luckiest Guy', 'Arial Black', sans-serif; font-variant-numeric: tabular-nums; letter-spacing: .02em; }
 .rb-hilo .hlr span { color: var(--muted); margin: 0 .3em; }
-.rb-hilo .hlrail { margin-top: 0; height: 12px; overflow: visible; }
-.rb-hilo .hlrail .seg { border-radius: 999px; }
-.rb-hilo .hlt { position: absolute; left: var(--x); top: -4px; bottom: -4px; width: 3px; margin-left: -1.5px; border-radius: 2px; background: var(--x); }
-.rb-hilo .hlt.O { background: var(--o); box-shadow: 0 0 0 1px var(--ink); } .rb-hilo .hlt.X { box-shadow: 0 0 0 1px var(--ink); }
-.rb-hilo .hlt.hit { width: 5px; margin-left: -2.5px; }
-.rb-hilo .hlt.fresh { animation: pop .3s ease-out both; }
 .rb-hilo .hlsaid { flex: none; height: 24px; display: flex; align-items: center; justify-content: center; gap: 6px; color: var(--muted); font-size: 15px; white-space: nowrap; overflow: hidden; }
 .rb-hilo .hlsaid .n { color: var(--text); font: 400 19px/1 'Luckiest Guy', 'Arial Black', sans-serif; padding-top: .1em; }
 .rb-hilo .hlsaid.fresh { animation: pop .3s ease-out both; }
@@ -3536,9 +3916,91 @@ main.scr.mini:has(.brkw.run) .back { visibility: hidden; pointer-events: none; }
 .thilo2 .trart { flex-direction: column; gap: 2cqh; }
 .thilo2 .trbar.hlbar { flex: 1 1 0; min-height: 0; height: auto; width: 34%; max-height: 56cqh; }
 .thilo2 .hlmn { flex: none; font: 400 var(--mt)/1 'Luckiest Guy', 'Arial Black', sans-serif; font-variant-numeric: tabular-nums; padding-top: .12em; }
+/* Higher/Lower (November 2026 polish): the number line is the square's hero. .hline: the rail of every number (hatched
+   where ruled out), the window still open on it (.seg), each guess a pin (.hlt) in its guesser's colour, the newest
+   tagged with its number. A fresh guess flies to its pin from its pad key (ui/cardfly.js; a board with no pad: it drops
+   in), the ruled-out side sweeps shut and the pad's keys shut after it, one by one away from the guess (--d), then the
+   answer and its arrow arrive. The delays are hilo/view.js HILOT's (fly 240, sweep 220, say 260 ms), all counted from
+   the move (.gwrap's data-fx). The pad: a raised key is a number still possible; pressed flat, possible but not this
+   phone's move; hatched, ruled out; tinted, guessed (its guesser's colour, its answer in the corner). */
+.gwrap .g-hilo .range { flex: none; padding: 5px 14px 9px; }
+.gwrap .g-hilo .range b { display: inline-block; font-size: clamp(26px, calc(26px + (var(--gh) - 470px) * .08), 40px); }
+.hlhd { display: grid; height: clamp(42px, calc(42px + (var(--gh) - 470px) * .09), 60px); align-content: center; }
+.hlhd > div { grid-area: 1 / 1; text-align: center; white-space: nowrap; }
+.gwrap .g-hilo .range .hlnum { font-size: clamp(30px, calc(30px + (var(--gh) - 470px) * .08), 44px); padding: 0 .3em; }
+.hlhd.found.fresh .hlnow { animation: hlfound .5s .3s cubic-bezier(.3, 1.7, .5, 1) both; }
+.hlhd.found.fresh .hlwas { animation: hlgone .18s .3s ease-in both; }
+.gwrap .g-hilo .range b.cnt { animation: hlbump .32s .5s cubic-bezier(.4, 0, .2, 1) both; }
+@keyframes hlfound { from { opacity: 0; transform: scale(.3) rotate(-10deg); } }
+@keyframes hlgone { to { opacity: 0; transform: scale(.8); } }
+@keyframes hlbump { 40% { transform: scale(1.22); } }
+.hline { --rh: clamp(18px, calc(18px + (var(--gh) - 470px) * .05), 28px); position: relative; height: var(--rh); margin: 27px 3px 0; box-sizing: border-box; border: 3px solid var(--ink); border-radius: 10px; background: repeating-linear-gradient(-55deg, var(--panel-2) 0 4px, var(--stone) 4px 8px); }
+.hline .seg { position: absolute; top: 0; bottom: 0; left: var(--l); width: var(--w); min-width: 8px; height: auto; flex: none; padding: 0; border-radius: 6px; background: var(--sea-2); box-shadow: inset 0 -3px 0 rgba(22, 18, 16, .18), 0 0 0 2.5px var(--ink); }
+.hline.X .seg { background: var(--x); } .hline.O .seg { background: var(--o); } .hline.found .seg { background: var(--green); }
+.hline .seg.shrink { animation: shrink .4s .22s cubic-bezier(.4, 0, .2, 1) both; }
+.hline .hlt { position: absolute; left: var(--at); bottom: -6px; width: 26px; height: calc(var(--rh) + 28px); margin-left: -13px; pointer-events: none; font-style: normal; }
+.hline .hlt::after { content: ''; position: absolute; left: 50%; bottom: 0; width: 4px; height: calc(var(--rh) + 6px); margin-left: -2px; border-radius: 3px; background: var(--x); box-shadow: 0 0 0 1.5px var(--ink); }
+.hline .hlt::before { content: ''; position: absolute; left: 50%; bottom: calc(var(--rh) + 5px); width: 9px; height: 9px; margin-left: -4.5px; border-radius: 50%; background: var(--x); box-shadow: 0 0 0 1.5px var(--ink); z-index: 1; }
+.hline .hlt.O::after, .hline .hlt.O::before { background: var(--o); }
+.hline .hlt[data-tag] { z-index: 2; } .hline .hlt[data-tag]::before { display: none; }
+.gwrap .g-hilo .hline .hlt b, .hlo .hline .hlt b { position: absolute; left: 50%; top: 0; transform: translateX(-50%); min-width: 25px; height: 22px; box-sizing: border-box; padding: 3px 4px 0; border: 2.5px solid var(--ink); border-radius: 9px 7px 10px 8px; background: var(--x); color: var(--paper); font: 400 13px/14px 'Luckiest Guy', 'Arial Black', sans-serif; font-variant-numeric: tabular-nums; text-align: center; z-index: 1; }
+.gwrap .g-hilo .hline .hlt.O b, .hlo .hline .hlt.O b { background: var(--o); color: var(--ink); }
+.hline .hlt.fresh { animation: hltdrop .26s cubic-bezier(.4, 0, .2, 1) both; }
+.hline .hlt.fresh b { animation: hltland .3s .24s cubic-bezier(.3, 1.8, .5, 1) both; }
+@keyframes hltdrop { from { opacity: 0; transform: translateY(-18px) scale(1.5); } }
+@keyframes hltland { from { transform: translateX(-50%) scale(1.3, .7); } }
+.gwrap .g-hilo .hist, .gwrap .g-hilo .guess { height: 34px; }
+.gwrap .g-hilo .guess { gap: 6px; font-size: 16px; white-space: nowrap; min-width: 0; }
+.gwrap .g-hilo .guess .hn { flex: none; max-width: 6em; }
+.gwrap .g-hilo .guess .n { font-size: 22px; padding-top: .12em; }
+.g-hilo .guess .arrow, .hlo .hlsaid .arrow { display: inline-grid; place-items: center; flex: none; width: 24px; height: 24px; box-sizing: border-box; border: 2.5px solid var(--ink); border-radius: 50%; background: #fff; color: var(--ink); font-size: 11px; line-height: 1; }
+.g-hilo .guess .arrow.yes, .hlo .hlsaid .arrow.yes { background: var(--green); color: #fff; font-size: 14px; }
+.g-hilo .guess .hres { color: var(--ink); font: 400 19px/1 'Luckiest Guy', 'Arial Black', sans-serif; padding-top: .15em; }
+.g-hilo .guess .hout { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 14px; }
+.g-hilo .guess.fresh .arrow, .g-hilo .guess.fresh .hres, .g-hilo .guess.fresh .hout { animation: hlsay .28s .26s cubic-bezier(.3, 1.7, .5, 1) both; }
+.g-hilo .guess.fresh .arrow.up { animation: hlsay .28s .26s cubic-bezier(.3, 1.7, .5, 1) both, bobup .5s .56s ease-in-out 2; }
+.g-hilo .guess.fresh .arrow.dn { animation: hlsay .28s .26s cubic-bezier(.3, 1.7, .5, 1) both, bobdn .5s .56s ease-in-out 2; }
+.g-hilo .guess.fresh .hout { animation-delay: .62s; }
+@keyframes hlsay { from { opacity: 0; transform: scale(.3); } }
+.hpips i.use { animation: hpuse .42s .26s cubic-bezier(.4, 0, .2, 1) both; }
+.hpips.X i.use { --pc: var(--x); } .hpips.O i.use { --pc: var(--o); }
+@keyframes hpuse { 0% { background: var(--pc); transform: none; } 45% { background: var(--pc); transform: scale(1.55); } }
+.gwrap .g-hilo .pad button { position: relative; max-height: 72px; }
+.gwrap .g-hilo .pad button:disabled { opacity: 1; box-shadow: none; transform: translateY(3px); color: rgba(22, 18, 16, .6); border-color: rgba(22, 18, 16, .6); }
+.gwrap .g-hilo .pad button.shut { background: repeating-linear-gradient(-55deg, transparent 0 5px, rgba(22, 18, 16, .07) 5px 10px); border: 2.5px dashed rgba(22, 18, 16, .28); color: rgba(22, 18, 16, .3); }
+.gwrap .g-hilo .pad button.X, .gwrap .g-hilo .pad button.O { color: var(--ink); border: 2.5px solid var(--ink); }
+.gwrap .g-hilo .pad button.X { background: var(--x-soft); box-shadow: inset 0 0 0 2.5px var(--x); }
+.gwrap .g-hilo .pad button.O { background: var(--o-soft); box-shadow: inset 0 0 0 2.5px var(--o); }
+.gwrap .g-hilo .pad button.hit { background: var(--green); color: #fff; }
+.g-hilo .pad button.up::after, .g-hilo .pad button.dn::after, .g-hilo .pad button.hit::after { content: '▲'; position: absolute; top: 3px; right: 4px; font: 400 9px/1 sans-serif; color: var(--ink); }
+.g-hilo .pad button.dn::after { content: '▼'; } .g-hilo .pad button.hit::after { content: '✓'; color: #fff; font-size: 10px; }
+.gwrap .g-hilo .pad button.out { animation: hiloShut .2s calc(.22s + var(--d, 0) * 16ms) cubic-bezier(.4, 0, .2, 1) both; }
+@keyframes hiloShut { from { background: #fff; border-color: var(--ink); border-style: solid; color: var(--ink); box-shadow: 0 3px 0 var(--ink); transform: none; } }
+.gwrap .g-hilo .pad button.me { animation: hlkey .3s cubic-bezier(.3, 1.7, .5, 1) both; }
+.gwrap .g-hilo .pad button.hit.me { animation: hlkey .3s cubic-bezier(.3, 1.7, .5, 1) both, hlwin .5s .3s ease-in-out 2; }
+@keyframes hlkey { from { transform: translateY(3px) scale(.78); } }
+@keyframes hlwin { 50% { transform: translateY(3px) scale(1.16); } }
+.g-hilo.tX .pad button:active:not(:disabled) { background: var(--x-soft); } .g-hilo.tO .pad button:active:not(:disabled) { background: var(--o-soft); }
+@media (prefers-reduced-motion: reduce) { .hlhd .hlwas { display: none; } }
+@media (max-width: 340px) { .hleft > span { gap: 4px; } .hleft .hpips { gap: 2px; } .hleft .hpips i { width: 10px; height: 10px; } }   /* a narrow phone: smaller pips, so both names keep their room */
+/* ...in a race: this phone's board has less room (the range on one line), the other player's line smaller */
+.rb-hilo .rmain .g-hilo .range { padding: min(5px, 1cqh) 12px min(8px, 1.6cqh); }
+.rb-hilo .rmain .g-hilo .hlhd { height: min(30px, 9.5cqh); }
+.rb-hilo .rmain .g-hilo .range small { display: inline; margin-right: 8px; }
+.rb-hilo .rmain .g-hilo .hline { --rh: 18px; margin-top: 26px; }
+.rb-hilo .rmain .g-hilo .hist, .rb-hilo .rmain .g-hilo .guess { height: min(30px, 10cqh); }
+.rb-hilo .hlo { gap: min(5px, 4cqh); }
+.rb-hilo .hlr { font-size: min(22px, 22cqh); }
+.rb-hilo .hlo .hline { --rh: 15px; flex: none; margin: 22px 8px 0; }
+.rb-hilo .hlo .hline .hlt { height: 38px; bottom: -5px; }
+.rb-hilo .hlo .hline .hlt::after { height: 20px; } .rb-hilo .hlo .hline .hlt::before { bottom: 19px; width: 8px; height: 8px; margin-left: -4px; }
+.rb-hilo .hlo .hline .hlt b { min-width: 22px; height: 19px; padding: 2px 3px 0; border-width: 2px; font-size: 11.5px; line-height: 13px; }
+/* ...and its miniature's pins (the line as the square draws it) */
+.thl .tkh { stroke: var(--ink); stroke-width: 1; } .thl .tkh.X { fill: var(--x); } .thl .tkh.O { fill: var(--o); }
 /* Five Letters: this phone's rows (the newest always in view, the oldest giving way at the top), the row typed and the keys */
 .rb-wordle .rmain .g-wordle { width: 100%; height: 100cqh; gap: min(6px, 1.2cqh); --tile: min(44px, 10.5cqh, calc((100cqw - 44px) / 5.4)); }
-.rb-wordle .rmain .wlist { justify-content: flex-end; overflow: hidden; padding: 0; gap: 4px; }
+.rb-wordle .rmain .wlist { justify-content: flex-start; overflow-y: auto; padding: 10px 0 0; gap: 4px; }   /* the rows sit on the row being typed; more than fit: the newest in view, the older ones a scroll away */
+.rb-wordle .rmain .wlist > .wrow:first-child { margin-top: auto; }
 .rb-wordle .rmain .wlist .empty { margin: auto 0; color: var(--muted); }
 .rb-wordle .rmain .kb { gap: min(6px, 1.2cqh); }
 .rb-wordle .rmain .key { height: min(46px, 11cqh); }
@@ -3564,11 +4026,17 @@ main.scr.mini:has(.brkw.run) .back { visibility: hidden; pointer-events: none; }
 .rb-hang .rmain .g-hang { width: 100%; height: 100cqh; gap: min(10px, 2cqh); --htile: min(46px, calc((100cqw - 48px) / 7), 15cqh); }
 .rb-hang .rmain .kb { gap: min(6px, 1.2cqh); }
 .rb-hang .rmain .key { height: min(46px, 11.5cqh); }
-.rb-hang .ht.late { color: var(--muted); opacity: .45; }   /* (a finished square: the letters never found) */
+.rb-hang .rmain .hstage { gap: min(8px, 1.6cqh); }
+.rb-hang .rmain .hmiss { height: min(54px, 15cqh); }   /* (a short phone: one row and a half of wrong letters in view; two from 15cqh up) */
 /* Hangman: the other player's word with the letters they have revealed, and their wrong letters */
-.rb-hang .hgo { width: 100%; height: 100cqh; display: flex; flex-direction: column; justify-content: center; gap: min(8px, 5cqh); --htile: min(30px, calc((100cqw - 48px) / var(--n, 7)), 34cqh); }
-.rb-hang .hgo .hword { flex: none; }
-.rb-hang .hgo .hmiss { height: 2.6em; text-align: center; font-size: 14px; overflow: hidden; }
+.rb-hang .hgo { width: 100%; height: 100cqh; display: flex; align-items: center; gap: 8px; --hs: min(72px, 92cqh); --htile: min(30px, calc((100cqw - 20px - var(--hs)) / var(--n, 7) - 4px), 34cqh); }   /* their scarecrow beside their word and wrong letters */
+.rb-hang .hgo .hscene { flex: none; width: var(--hs); height: min(78px, 100cqh); }
+.rb-hang .hgo .hgw { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: min(8px, 5cqh); }
+.rb-hang .hgo .hword { gap: 4px; }
+.rb-hang .hgo .hmiss { height: 42px; justify-content: center; gap: 3px; }
+.rb-hang .hgo .hmiss .hnone { font-size: 14px; line-height: 20px; }
+.rb-hang .hgo .hx { width: 17px; height: 19px; border-width: 1.5px; font-size: 12px; padding-top: 2px; border-radius: 5px 4px 6px 4px; }
+.rb-hang .hgo .hx::after { height: 2px; margin-top: -1px; }
 /* Hangman's race miniature: each player's blanks, the ones revealed filled in their colour */
 .trace2.thg2 { flex-direction: column; justify-content: center; gap: 6cqh; }   /* (a row each, one over the other: each word on one line) */
 .thg2 .trp { flex: none; flex-direction: row; justify-content: center; align-items: center; gap: 3cqw; }
@@ -3659,7 +4127,7 @@ main.scr.mini:has(.brkw.run) .back { visibility: hidden; pointer-events: none; }
 .mrb .ropp { box-shadow: inset 0 0 0 2.5px var(--line); }
 .mrb .ropp.X { box-shadow: inset 0 0 0 2.5px var(--x), 0 0 0 1px var(--paper); } .mrb .ropp.O { box-shadow: inset 0 0 0 2.5px var(--mo), 0 0 0 1px var(--paper); }
 .mrb .rmk.O .tmk { stroke: var(--mo); }
-.mbd { position: absolute; top: 5%; left: 5%; width: 30%; height: 30%; display: block; pointer-events: none; }
+.mbd { position: absolute; top: 5%; left: 5%; width: 24%; height: 24%; display: block; pointer-events: none; }   /* (in the corner, clear of the card's shape) */
 .mbd .rmk { width: 100%; height: 100%; display: block; overflow: visible; }
 .mbd .rmk.X .tmk { stroke: var(--x); } .mbd .rmk.O .tmk { stroke: var(--mo); }
 .mrb .mopp i { position: relative; }
@@ -3667,13 +4135,13 @@ main.scr.mini:has(.brkw.run) .back { visibility: hidden; pointer-events: none; }
 .mrb .mopp i.up svg:not(.rmk) { width: 66%; height: 66%; }
 .mrb .ropp.X .mopp i.up { background: color-mix(in srgb, var(--x) 24%, #fff); box-shadow: inset 0 0 0 2.5px var(--x); }
 .mrb .ropp.O .mopp i.up { background: color-mix(in srgb, var(--mo) 28%, #fff); box-shadow: inset 0 0 0 2.5px var(--mo); }
-.mrb .ropp .mopp i.win { box-shadow: inset 0 0 0 3.5px var(--green); }
+.mrb .ropp.X .mopp i.win { background: color-mix(in srgb, var(--x) 45%, #fff); box-shadow: inset 0 0 0 1.5px var(--ink), inset 0 0 0 4.5px var(--x); }   /* their pair: taken in their colour */
+.mrb .ropp.O .mopp i.win { background: color-mix(in srgb, var(--o) 55%, #fff); box-shadow: inset 0 0 0 1.5px var(--ink), inset 0 0 0 4.5px var(--o); }
 .mrb .g-mem .mc .ft { position: absolute; }
-.mrb .g-mem.pc-X .mc.up .ft { background: color-mix(in srgb, var(--x) 22%, #fff); border-color: var(--x); box-shadow: inset 0 0 0 3px var(--x); }
-.mrb .g-mem.pc-O .mc.up .ft { background: color-mix(in srgb, var(--mo) 26%, #fff); border-color: var(--mo); box-shadow: inset 0 0 0 3px var(--mo); }
-.mrb .g-mem.pc-X .mc.pick .bk, .mrb .g-mem.pc-X .mc.pick .ft { box-shadow: 0 0 0 4px var(--x); }
-.mrb .g-mem.pc-O .mc.pick .bk, .mrb .g-mem.pc-O .mc.pick .ft { box-shadow: 0 0 0 4px var(--mo); }
-.mrb .g-mem .mc.win .ft { box-shadow: inset 0 0 0 4px var(--green); }
+.mrb .g-mem { --ps: 1.09; --pl: -4%; }   /* (the pair's lift: smaller here, the grid stands right under the title bar) */
+.mrb .g-mem.pc-X { --pt: color-mix(in srgb, var(--x) 22%, #fff); } .mrb .g-mem.pc-O { --pt: color-mix(in srgb, var(--mo) 26%, #fff); }
+.mrb .g-mem .mc.up:not(.win) .ft { background: var(--pt); }   /* (this phone's own cards up: their player's tint under the ring every card on show has, .mc.rv/.mc.pick; a finished square's rest: .fin) */
+.mrb .g-mem.fin .mc.up:not(.win) .ft { background: var(--panel-2); }
 
 /* Practice (core/match.js startPractice): the centre square is the whole match; the other eight are greyed and never tapped. */
 .sq.plock { opacity: .38; filter: grayscale(1); pointer-events: none; cursor: default; }

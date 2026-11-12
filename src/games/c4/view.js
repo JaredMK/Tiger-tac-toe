@@ -16,8 +16,8 @@ function c4Line(run, animate) {
   const c = k => [k % C4.cols + 0.5, Math.floor(k / C4.cols) + 0.5];
   const [x1, y1] = c(run[0]), [x2, y2] = c(run[run.length - 1]);
   const len = Math.hypot(x2 - x1, y2 - y1) || 1, ex = (x2 - x1) / len * 0.3, ey = (y2 - y1) / len * 0.3;   // a little past the end pieces
-  const at = `x1="${(x1 - ex).toFixed(2)}" y1="${(y1 - ey).toFixed(2)}" x2="${(x2 + ex).toFixed(2)}" y2="${(y2 + ey).toFixed(2)}" pathLength="1"`;
-  return `<svg class="c4line${animate ? ' draw' : ''}" viewBox="0 0 ${C4.cols} ${C4.rows}" preserveAspectRatio="none" aria-hidden="true"><line class="c4lo" ${at}/><line class="c4lc" ${at}/></svg>`;
+  const at = `d="M${(x1 - ex).toFixed(2)} ${(y1 - ey).toFixed(2)}L${(x2 + ex).toFixed(2)} ${(y2 + ey).toFixed(2)}" pathLength="1"`;
+  return `<svg class="c4line${animate ? ' draw' : ''}" viewBox="0 0 ${C4.cols} ${C4.rows}" preserveAspectRatio="none" aria-hidden="true"><path class="c4lo" ${at}/><path class="c4lc" ${at}/></svg>`;
 }
 export function miniature(mini, final) {
   const last = !final && Number.isInteger(mini.last) ? mini.last : -1;   // the piece played last, ringed
@@ -30,14 +30,14 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
     const lit = won(i) && fresh;
     const drop = anim === i && c;                         // the piece just played falls on its own layer; its hole stays drawn under it
     const inner = drop ? `<span class="c4p" style="--fall:${Math.floor(i / C4.cols) + 1}"><span class="c4b ${c}">${disc(c)}</span></span>` : c ? disc(c) : '';
-    return `<i class="c4c ${drop ? 'landing' : c || ''}${won(i) ? ' win' : ''}${lit ? ' lit' : ''}${c && i === last ? ' last' : ''}"${lit ? ` style="--k:${wk(i)}"` : ''}>${inner}</i>`;
+    return `<i class="c4c ${drop ? 'landing' : c || ''}${won(i) ? ' win' : ''}${lit ? ' lit' : ''}${c && i === last && !drop ? ' last' : ''}"${lit ? ` style="--k:${wk(i)}"` : ''}>${inner}</i>`;
   }).join('');
   // a column is one button over its rail slot and its six holes: the piece waiting on the rail, the hole it would land in
   const cols = Array.from({ length: C4.cols }, (_, col) => {
     const k = c4Drop(cells, col), full = k < 0;
     return `<button class="c4col${full ? ' full' : ''}" data-act="move" ${mv(col)} aria-label="Drop in column ${col + 1}${full ? ', full' : ''}"${full ? '' : ` style="--land:${Math.floor(k / C4.cols)}"`}${full || locked ? ' disabled' : ''}><span class="c4gh"></span><span class="c4tg"></span></button>`;
   }).join('');
-  g = `<div class="g-c4w t${t}${locked ? '' : ' open'}"${Number.isInteger(anim) ? ` style="--ft:${c4FallMs(anim)}ms"` : ''}><div class="c4rail"></div><div class="g-c4">${board}${mini.winCells ? c4Line(mini.winCells, !!fresh) : ''}</div><div class="c4cols">${cols}</div></div>`;
+  g = `<div class="g-c4w t${t}${locked ? '' : ' open'}${Number.isInteger(anim) ? ' drop' : ''}"${Number.isInteger(anim) ? ` style="--ft:${c4FallMs(anim)}ms"` : ''}><div class="c4rail"></div><div class="g-c4">${board}${mini.winCells ? c4Line(mini.winCells, !!fresh) : ''}</div><div class="c4cols">${cols}</div></div>`;
   return g;
 }
 export function sounds(f, add, won, mini, last) {

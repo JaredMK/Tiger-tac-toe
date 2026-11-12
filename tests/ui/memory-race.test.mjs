@@ -35,7 +35,7 @@ const twoOthers = (cards, not) => { const pr = pairIn(cards); for (let a = 0; a 
 const mainOf = html => html.slice(html.indexOf('class="rmain"'), html.indexOf('class="ropp'));
 const oppOf = html => html.slice(html.indexOf('class="ropp'));
 const upCards = html => [...mainOf(html).matchAll(/<button class="mc (up|down)[^"]*" data-act="pick" data-i="(\d)"/g)].filter(x => x[1] === 'up').map(x => Number(x[2]));
-const oppUp = html => [...oppOf(html).matchAll(/<i class="(up|dn)[^"]*">/g)].map((x, i) => (x[1] === 'up' ? i : -1)).filter(i => i >= 0);
+const oppUp = html => [...oppOf(html).matchAll(/<i class="(up|dn)[^"]*"[^>]*>/g)].map((x, i) => (x[1] === 'up' ? i : -1)).filter(i => i >= 0);
 const faceCount = html => (html.match(/<svg viewBox="0 0 24 24" fill="#/g) || []).length;
 
 test('race: two boards, ours face down with the controls, theirs with every card they turned face up; no layout of an open square', () => {
@@ -58,7 +58,7 @@ test('race: their flip turns up on their board; ours flips on ours; our first ca
   assert.ok(E.playMove(state, 0, [a, b], E.makeRng('o')).ok);
   let html = renderMini(state.squares[0]);
   assert.deepEqual(upCards(html), [], 'nothing turns on ours');
-  assert.equal((oppOf(html).match(/<i class="up fl">/g) || []).length, 2, 'their two cards turn up on theirs');
+  assert.equal((oppOf(html).match(/<i class="up fl"/g) || []).length, 2, 'their two cards turn up on theirs'); assert.match(oppOf(html), /<i class="up fl" style="--k:1">/, 'the second after the first');
   state.flash = null; state.done = null; state.turn = 'X';
   state.pick = 4; state.pickSq = 0;
   html = renderMini(state.squares[0]);

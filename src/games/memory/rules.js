@@ -109,6 +109,8 @@ export function hide(m, k, st) {
   m.cards = m.cards.map((c, i) => (show.has(i) ? c : null));
   return;
 }
+// The second card is round at 0.36 s and the chime or the two falling notes sound at 0.38 s; a pair's lift and burst
+// play on from there (styles.css mempair).
 export function flashMs(f, winLen, won) {
-  return 500;
+  return won ? 950 : 500;
 }

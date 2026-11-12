@@ -32,7 +32,7 @@ function raceMatch() {
   return m;
 }
 const between = (html, a, b) => html.slice(html.indexOf(a), b ? html.indexOf(b) : undefined);
-const tilesOf = html => (between(html, 'class="hword"', 'class="hmiss"').match(/<i class="ht[^"]*"[^>]*>([A-Z]?)<\/i>/g) || []).map(t => (t.match(/>([A-Z]?)<\/i>$/) || [])[1] || '_').join('');
+const tilesOf = html => (between(html, 'class="hword"', 'class="hmiss"').match(/<i class="ht[^"]*"[^>]*>(?:<b>[A-Z]<\/b>)?<\/i>/g) || []).map(t => (t.match(/<b>([A-Z])<\/b>/) || [])[1] || '_').join('');
 
 test('Hangman, race v2: two boards: our own word and keys large, the other player\'s word with their revealed letters and their wrong letters under it; no letter nobody found', () => {
   const m = raceMatch();
@@ -42,8 +42,11 @@ test('Hangman, race v2: two boards: our own word and keys large, the other playe
   assert.match(html, /class="rboards rb-hang"/); assert.match(html, /class="ropp O"/);
   assert.equal(tilesOf(mine), '_PP__', 'our own revealed letters');
   assert.equal(tilesOf(theirs), '_EL__', 'theirs, open to us');
-  assert.match(mine, /Wrong: <b><i>Z<\/i><\/b>/); assert.match(theirs, /Wrong: <b><i>A<\/i><\/b>/, 'their wrong letters');
-  assert.match(mine, /class="key hit"[^>]*data-m='"P"'[^>]* disabled/); assert.match(mine, /class="key "[^>]*data-m='"E"'/, 'their letters are not ours');
+  assert.match(mine, /class="hmiss" aria-label="Wrong letters: Z"><i class="hx bX">Z<\/i><\/div>/); assert.match(theirs, /class="hmiss" aria-label="Wrong letters: A"><i class="hx bO">A<\/i><\/div>/, 'their wrong letters, a chip each in their colour');
+  assert.match(mine, /class="key hit bX"[^>]*data-m='"P"'[^>]* disabled/); assert.match(mine, /class="key miss bX"[^>]*data-m='"Z"'[^>]* disabled/, 'a key once played: in its guesser\'s colour');
+  assert.match(mine, /<i class="ht on bX"><b>P<\/b><\/i>/, 'a found letter\'s line in its finder\'s colour');
+  // the picture: one part of the scarecrow a wrong letter, on the board of the side that guessed it
+  assert.equal((mine.match(/<g class="hp/g) || []).length, 1); assert.equal((theirs.match(/<g class="hp/g) || []).length, 1); assert.match(mine, /aria-label="1 wrong letter"/); assert.match(mine, /class="key "[^>]*data-m='"E"'/, 'their letters are not ours');
   assert.match(html, /<small class="rnote">2 of 5 · 1 wrong<\/small>/);
   assert.doesNotMatch(html, /late/, 'nothing revealed while the square is open');
 });
@@ -54,13 +57,16 @@ test('Hangman, race v2: the other player\'s letter turns in on their board, ours
   assert.ok(E.playMove(state, 0, 'L', g).ok);
   assert.equal(state.flash.kind, 'again'); assert.equal(state.flash.letter, 'L');
   let html = renderMini(state.squares[0]);
-  assert.match(between(html, 'class="ropp'), /<i class="ht on flipin" style="--k:0">L<\/i>/, 'their letter turns in, on their board');
+  assert.match(between(html, 'class="ropp'), /<i class="ht on bO flipin" style="--k:0;"><b>L<\/b><\/i>/, 'their letter drops in, on their board');
   assert.doesNotMatch(between(html, 'class="rmain"', 'class="ropp'), /flipin/);
   E.endFlash(state); state.done = null;
   assert.ok(E.playMove(state, 0, 'Q', g).ok);
   html = renderMini(state.squares[0]);
-  assert.match(between(html, 'class="ropp'), /<i class="new">Q<\/i>/, 'their miss lands in their wrong letters');
+  assert.match(between(html, 'class="ropp'), /<i class="hx bO new">Q<\/i>/, 'their miss lands in their wrong letters');
+  assert.match(between(html, 'class="ropp'), /<g class="hp new">/, 'and draws the next part of their scarecrow'); assert.doesNotMatch(between(html, 'class="rmain"', 'class="ropp'), /hp new|hx[^"]* new/, 'ours stays still');
   assert.equal(view.moveText(state.flash, 'Olaf'), 'No Q');
+  const snd = []; view.sounds(state.flash, (n, at) => snd.push([n, at]), false, m, null);
+  assert.deepEqual(snd, [['mark', view.HT.pen], ['thud', view.HT.chip]], 'a wrong letter: the pencil, then the chip');
 });
 
 test('Hangman, race v2: the miniature is each player\'s blanks, the revealed ones filled, no letters; a claimed square\'s review shows both words, the letters never found muted', () => {

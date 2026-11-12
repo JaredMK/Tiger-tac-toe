@@ -63,8 +63,12 @@ export function randomMove(mini, p, rng, from, empties) {
   return 'flip';
 }
 export function moveFlash(m, p, range, bjFrom, mini, flash) {
-  flash.n = mini.last.flipped.length; return;
+  flash.n = mini.last.flipped.length;
+  flash.flipped = mini.last.flipped.slice(); flash.was = mini.last.was.slice(); flash.results = mini.last.results.slice();   // (for the view: the coins this move tossed, what each showed and what it landed as, so a replay plays the move's own toss)
+  return;
 }
+// Each coin is in the air 1 s (down at 0.78 s, a small bounce after), one 80 ms after the other (coins/view.js COIN_T).
+// The flip that makes them all one side: longer, for the row's wave once the last coin is down.
 export function flashMs(f, winLen, won) {
-  return 1050 + (f.n - 1) * 80;
+  return won ? 1700 + (f.n - 1) * 160 : 1050 + (f.n - 1) * 80;
 }

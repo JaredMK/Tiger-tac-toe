@@ -104,7 +104,7 @@ export function hide(m, k, st) {
   delete m.word; delete m.tg; return;
 }
 export function flashMs(f, winLen, won) {
-  return 1200;
+  return won && f && f.note !== 'out' ? 1900 : 1200;   // (the word found: the row turns, then hops along its length, wordle/view.js WT)
 }
 // Super Chaos: both players may guess in the same round; both guesses go into the shared history. (Each player's
 // guesses count their own: a last one that misses gives the square away, as ever. A race square keeps each side's own.)

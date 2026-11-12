@@ -13,16 +13,17 @@ export const TTT_T = { stroke2: 130, line: 480, won: 600 };
 function drawnMark(p) {
   const g = toonG(p), face = g.slice(g.indexOf('<g class="eyes"'));
   const parts = p === 'X' ? ['M22 20 L78 80', 'M78 20 L22 80'].map((d, k) => c => `<path class="${c} s${k + 1}" pathLength="1" d="${d}"/>`)
-    : [c => `<circle class="${c} s1" pathLength="1" cx="50" cy="50" r="32" transform="rotate(-110 50 50)"/>`];
-  return `<svg class="pc p${p} tdraw" viewBox="0 0 100 100" aria-hidden="true">${parts.map(s => s('ol')).join('')}${parts.map(s => s('fl')).join('')}<g class="tface">${face}</g></svg><b class="sr">${esc(p)}</b>`;
+    : [c => `<path class="${c} s1" pathLength="1" d="M50 18a32 32 0 1 1 0 64a32 32 0 1 1 0-64"/>`];   // (the ring from its top, clockwise; paths throughout: pathLength is honoured on a path everywhere)
+  return `<svg class="pc p${p} tttmk" viewBox="0 0 100 100" aria-hidden="true">${parts.map(s => s('ol')).join('')}${parts.map(s => s('fl')).join('')}<g class="tttface">${face}</g></svg><b class="sr">${esc(p)}</b>`;
 }
 // Tic-tac-toe's winning line, drawn across the grid behind the three marks (drawn as a stroke when the win is fresh).
+// One unit a cell's pitch (the stylesheet lays the drawing half a gap outside the grid, so a cell's middle is k + 0.5).
 function tttLine(run, p, animate) {
-  const c = k => [(k % 3) * 100 / 3 + 100 / 6, Math.floor(k / 3) * 100 / 3 + 100 / 6];
+  const c = k => [k % 3 + 0.5, Math.floor(k / 3) + 0.5];
   const [x1, y1] = c(run[0]), [x2, y2] = c(run[run.length - 1]);
-  const len = Math.hypot(x2 - x1, y2 - y1), ex = (x2 - x1) / len * 11, ey = (y2 - y1) / len * 11;   // a little past the end cells
-  const at = `x1="${(x1 - ex).toFixed(1)}" y1="${(y1 - ey).toFixed(1)}" x2="${(x2 + ex).toFixed(1)}" y2="${(y2 + ey).toFixed(1)}" pathLength="1"`;
-  return `<svg class="tline${animate ? ' draw' : ''}" viewBox="0 0 100 100" aria-hidden="true"><line class="tlo" ${at}/><line class="tlc ${p}" ${at}/></svg>`;
+  const len = Math.hypot(x2 - x1, y2 - y1) || 1, ex = (x2 - x1) / len * 0.34, ey = (y2 - y1) / len * 0.34;   // a little past the end cells
+  const at = `d="M${(x1 - ex).toFixed(2)} ${(y1 - ey).toFixed(2)}L${(x2 + ex).toFixed(2)} ${(y2 + ey).toFixed(2)}" pathLength="1"`;
+  return `<svg class="tttline${animate ? ' draw' : ''}" viewBox="0 0 3 3" preserveAspectRatio="none" aria-hidden="true"><path class="tttlo" ${at}/><path class="tttlc ${p}" ${at}/></svg>`;
 }
 export function miniature(mini, final) {
   const last = !final && Number.isInteger(mini.last) ? mini.last : -1;   // the mark played last, lit in its colour

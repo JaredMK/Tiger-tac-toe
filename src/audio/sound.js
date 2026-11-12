@@ -157,6 +157,7 @@ def('nopair', 0.36, (c, d, t) => { sfxTone(c, d, t, 260, .2, { to: 200, vol: .3,
 def('wheelTick', 0.04, (c, d, t) => sfxTone(c, d, t, 2200, .025, { vol: .4 }), { level: .3, vary: true });
 def('spin', 0.8, (c, d, t) => sfxNoise(c, d, t, .7, { f: 2500, to: 1200, q: 2, vol: .25 }), { level: .45 });
 def('clink', 0.24, (c, d, t) => { sfxTone(c, d, t, 2400, .2, { vol: .4 }); sfxTone(c, d, t, 3600, .12, { vol: .2 }); }, { level: .45, vary: true });
+def('coinFlick', 0.2, (c, d, t) => { sfxNoise(c, d, t, .03, { f: 4200, q: 2, vol: .35, att: .001 }); sfxTone(c, d, t, 3100, .18, { vol: .28 }); sfxTone(c, d, t, 4650, .1, { vol: .12 }); }, { level: .4, vary: true });   // Coin Flip: the thumb's flick as the coins go up
 def('coinSpin', 1.0, (c, d, t) => { sfxTone(c, d, t, 1200, .9, { to: 2000, vol: .25 }); sfxTone(c, d, t, 2400, .8, { to: 3200, vol: .1 }); }, { level: .45 });
 def('point', 0.14, (c, d, t) => sfxTone(c, d, t, 700, .08, { to: 1000, vol: .35, type: 'triangle' }), { level: .4, vary: true });
 def('bank', 0.45, (c, d, t) => [1500, 1900, 2400, 1900].forEach((f, i) => sfxTone(c, d, t + i * .06, f, .1, { vol: .3, type: 'triangle' })), { level: .55 });

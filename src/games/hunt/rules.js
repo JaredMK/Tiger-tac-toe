@@ -101,8 +101,12 @@ export function hide(m, k, st) {
   if (m.race) { delete m.tg; delete m.treasure; return; }         // (a race: both grids stay, the treasures go)
   m.clues = m.dug.map((d, i) => (d ? huntClue(m, i) : null)); delete m.treasure; return;   // the bands only
 }
+// A dig's timings (ms, at the game's pace; the stylesheet's Treasure Hunt figures are these): the shovel is in and out
+// and the band's colour blooms from the hole at `bloom`; its name has popped by `dig`. The treasure: the chest is up
+// and its gem comes out at `gem`, all of it over by `found`.
+export const HUNTT = { bloom: 380, dig: 750, gem: 800, found: 1500 };
 export function flashMs(f, winLen, won) {
-  return (won ? 1100 : 600) + (f.scr && f.scr.digs ? 300 : 0);   // (Super Chaos's round end: both digs open together, a beat apart)
+  return (won ? HUNTT.found : HUNTT.dig) + (f.scr && f.scr.digs ? 300 : 0);   // (Super Chaos's round end: both digs open together, a beat apart)
 }
 // Super Chaos: each player sees their own clue during their move; at the round's end both digs join the grid
 // (the same cell dug by both is dug once, X's mark on it; both saw its band). (A race square keeps each side's own.)

@@ -11,14 +11,17 @@ import { fxAt, fxAttr, startFx } from '../../ui/fx.js';
 import { repTake } from '../../ui/replay.js';
 import { playFlash } from '../../ui/turns.js';
 
-const CARD_COLORS = { green: '#5be37a', yellow: '#ffd54a', purple: '#c084fc', orange: '#ff9e4a' };
+const CARD_COLORS = { green: '#57b947', yellow: '#f9cf3a', purple: '#a66cf0', orange: '#f58a2a' };
 const SHAPES = {
   circle: '<circle cx="12" cy="12" r="9"/>',
   square: '<rect x="3.5" y="3.5" width="17" height="17" rx="2.5"/>',
   triangle: '<path d="M12 3 21.5 20h-19z"/>',
   diamond: '<path d="M12 2.5 21.5 12 12 21.5 2.5 12z"/>',
 };
-function shapeSvg(card) { return `<svg viewBox="0 0 24 24" fill="${CARD_COLORS[card.c]}">${SHAPES[card.s]}</svg>`; }
+function shapeSvg(card) { return `<svg viewBox="0 0 24 24" fill="${CARD_COLORS[card.c]}" class="msh" aria-hidden="true">${SHAPES[card.s]}</svg>`; }   // (inked in the stylesheet: .msh)
+// A card's back: a paper diamond with a drawn question mark, on the patterned blue of every back (styles.css .mc .bk): never a
+// player's colour.
+const BACK = '<svg class="mbk" viewBox="0 0 24 24" aria-hidden="true"><path class="d" d="M12 1.8 22.2 12 12 22.2 1.8 12z"/><path class="q" d="M9.5 9.9a2.6 2.6 0 1 1 3.8 2.3c-.9.5-1.3 1-1.3 1.8"/><circle class="o" cx="12" cy="16.9" r="1.2"/></svg>';
 // Race mode (core/race.js, `rv: 2`): each player their own shuffle of the deck (ui/race.js raceBoards): this phone's own
 // cards large (they turn back down after a flip: it is a memory game), the other player's smaller under it with every card
 // they have turned up face up (their faces are open, their layout is not), their newest two flipping up as they land. A
@@ -43,7 +46,8 @@ function memMini(mini, p) {
 export function miniature(mini, final) {
   if (mini.race) return raceThumb(p => memMini(mini, p), 'tmemr2', `Race: ${['X', 'O'].map(p => { const part = raceSide(mini, p); return `${p} ${(part && part.seen ? part.seen.length : 0)} cards seen, ${memoryKnownPairs(part)} pair${memoryKnownPairs(part) === 1 ? '' : 's'}`; }).join(', ')}`);
   const shown = final && mini.winCells ? mini.winCells : [], cards = cardsOf(mini);
-  return `<div class="tg g3 tmem">${cards.map((card, i) => (shown.includes(i) && card ? `<i class="up">${shapeSvg(card)}</i>` : '<i></i>')).join('')}</div>`;
+  const by = final && shown.length && mini.last && (mini.last.by === 'X' || mini.last.by === 'O') ? mini.last.by : '';   // (the pair's finder: their colour round it)
+  return `<div class="tg g3 tmem${by ? ` w${by}` : ''}">${cards.map((card, i) => (shown.includes(i) && card ? `<i class="up">${shapeSvg(card)}</i>` : '<i></i>')).join('')}</div>`;
 }
 // Race: the other player's cards, small and read-only: every card they have turned up face up, the newest two flipping in.
 function oppCards(mini, p, a, view, sq) {
@@ -51,7 +55,8 @@ function oppCards(mini, p, a, view, sq) {
   const winner = sq.owner === p && mini.winCells ? mini.winCells : [];
   return `<div class="mopp" role="img" aria-label="${seen.size} cards turned">${Array.from({ length: 9 }, (_, i) => {
     const face = faceIn(mini, p, i), up = (view || seen.has(i) || fresh.includes(i) || pk === i) && face;
-    return `<i class="${up ? 'up' : 'dn'}${fresh.includes(i) || pk === i ? ' fl' : ''}${winner.includes(i) ? ' win' : ''}">${up ? shapeSvg(face) + badge(p) : ''}</i>`;
+    const k = fresh.indexOf(i);                                // (their two cards turn one after the other, as they were turned)
+    return `<i class="${up ? 'up' : 'dn'}${k >= 0 || pk === i ? ' fl' : ''}${winner.includes(i) ? ' win' : ''}${winner.includes(i) && k >= 0 ? ' glow' : ''}"${k > 0 ? ` style="--k:${k}"` : ''}>${up ? shapeSvg(face) + badge(p) : ''}</i>`;
   }).join('')}</div>`;
 }
 function raceScreen(sq, f, d, mini, view, locked, a, won, fresh) {
@@ -63,14 +68,18 @@ function raceScreen(sq, f, d, mini, view, locked, a, won, fresh) {
   const flipped = mine && mine.reveal ? mine.reveal : [];
   const back = !f && d && d.by === me && d.reveal && !sq.owner ? d.reveal : [];
   const win = i => sq.owner === me && won(i);
-  const grid = `<div class="g-mem pc-${me}">${Array.from({ length: 9 }, (_, i) => {
+  const grid = `<div class="g-mem pc-${me}${gridCls(sq, flipped, fresh && sq.owner === me, view)}">${Array.from({ length: 9 }, (_, i) => {
       const isUp = up.has(i), picking = pk === i, face = faceIn(mini, me, i);
-      const cls = `mc ${isUp ? 'up' : 'down'}${picking ? ' pick' : ''}${win(i) ? ' win' : ''}${win(i) && fresh ? ' glow' : ''}${picking || flipped[1] === i ? ' flipup' : ''}${back.includes(i) ? ' flipdown' : ''}`;
-      return `<button class="${cls}" data-act="pick" data-i="${i}" aria-label="Card ${i + 1}${isUp ? ', face up' : ''}"${picking ? fxAttr(fxAt('pick', pickKey())) : ''}${locked ? ' disabled' : ''}><span class="in"><span class="bk">?</span><span class="ft">${(isUp || back.includes(i)) && face ? shapeSvg(face) + badge(me) : ''}</span></span></button>`;
+      const cls = `mc ${isUp ? 'up' : 'down'}${picking ? ' pick' : ''}${win(i) ? ' win' : ''}${win(i) && fresh ? ' glow' : ''}${picking || flipped[1] === i ? ' flipup' : ''}${back.includes(i) ? ' flipdown' : ''}${flipped.includes(i) || back.includes(i) ? ' rv' : ''}`;
+      return `<button class="${cls}" data-act="pick" data-i="${i}" aria-label="Card ${i + 1}${isUp ? ', face up' : ''}"${picking ? fxAttr(fxAt('pick', pickKey())) : ''}${locked ? ' disabled' : ''}><span class="in"><span class="bk">${BACK}</span><span class="ft">${(isUp || back.includes(i)) && face ? shapeSvg(face) + badge(me) : ''}</span></span></button>`;
     }).join('')}</div>`;
   const tp = raceSide(mini, them), n = (tp && tp.flips) || 0, pr = memoryKnownPairs(tp);
   return raceBoards(`<div class="g-memr2">${grid}</div>`, oppCards(mini, them, a, view, sq), `${n} flip${n === 1 ? '' : 's'}${pr ? ` · ${pr} pair${pr === 1 ? '' : 's'} seen` : ''}`, { cls: 'mrb' });
 }
+// The grid's own state for the stylesheet: the square's winner (`own-X`: the pair settles in the finder's colour, with their
+// mark), a finished square on show (`fin`: the rest of the deck steps back), and the move playing (`hit`: the pair's lift
+// and burst as the chime sounds; `miss`: the two cards shake their heads, then stay up for the game's own time).
+const gridCls = (sq, flipped, fresh, view) => `${sq.owner ? ` own-${sq.owner}` : ''}${view ? ' fin' : ''}${flipped.length ? (fresh ? ' hit' : ' miss') : ''}`;
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   if (mini.race) return raceScreen(sq, f, d, mini, view, locked, a, won, fresh);
   const cards = cardsOf(mini);
@@ -80,11 +89,12 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
   if (view) cards.forEach((_, k) => up.add(k));           // the whole deck, once the square is won
   const flipped = f && f.reveal ? f.reveal : [];
   const back = !f && d && d.reveal && !sq.owner ? d.reveal : [];   // the two cards just seen, turning face down again
-  g = `<div class="g-mem">${cards.map((card, i) => {
+  const by = f && f.reveal ? f.by : back.length ? d.by : turn;     // whose cards are up: the move's player, else the player on the move (their ring's colour)
+  g = `<div class="g-mem pc-${by}${gridCls(sq, flipped, fresh, view)}">${cards.map((card, i) => {
         const isUp = up.has(i), picking = state.pick === i && state.pickSq === state.zoom && !f && !d;
-        const cls = `mc ${isUp ? 'up' : 'down'}${picking ? ' pick' : ''}${won(i) ? ' win' : ''}${won(i) && fresh ? ' glow' : ''}${picking || flipped[1] === i ? ' flipup' : ''}${back.includes(i) ? ' flipdown' : ''}`;
+        const cls = `mc ${isUp ? 'up' : 'down'}${picking ? ' pick' : ''}${won(i) ? ' win' : ''}${won(i) && fresh ? ' glow' : ''}${picking || flipped[1] === i ? ' flipup' : ''}${back.includes(i) ? ' flipdown' : ''}${flipped.includes(i) || back.includes(i) ? ' rv' : ''}`;
         // a card's face is only in the page while it is (or was just) on show
-        return `<button class="${cls}" data-act="pick" data-i="${i}" aria-label="Card ${i + 1}${isUp ? ', face up' : ''}"${picking ? fxAttr(fxAt('pick', pickKey())) : ''}${locked ? ' disabled' : ''}><span class="in"><span class="bk">?</span><span class="ft">${(isUp || back.includes(i)) && card ? shapeSvg(card) : ''}</span></span></button>`;
+        return `<button class="${cls}" data-act="pick" data-i="${i}" aria-label="Card ${i + 1}${isUp ? ', face up' : ''}"${picking ? fxAttr(fxAt('pick', pickKey())) : ''}${locked ? ' disabled' : ''}><span class="in"><span class="bk">${BACK}</span><span class="ft">${(isUp || back.includes(i)) && card ? shapeSvg(card) + (won(i) && sq.owner ? badge(sq.owner) : '') : ''}</span></span></button>`;
       }).join('')}</div>`;
   return g;
 }
