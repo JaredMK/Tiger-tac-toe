@@ -299,7 +299,7 @@ function table(mini, a, o) {
   // the dice: the roll's tumbling in; the turn's greying one by one as each is used (crossed: no move for it)
   const rollNow = b && b.kind === 'roll' && !REDUCED;
   let dd = null;
-  if (b && b.kind === 'roll') dd = b.v.map((v, d) => ({ v, cls: b.one && d === 1 ? ' used' : '', roll: rollNow }));
+  if (b && b.kind === 'roll') dd = b.v.map((v, d) => ({ v, cls: (b.one && d === 1 ? ' used' : '') + (b.stuck ? ` dead${rollNow ? ' late' : ''}` : ''), roll: rollNow, t: b.stuck && rollNow ? BGLT.roll : null }));   // (no move for it: crossed out as the words come)
   else if (tb) {
     const spendAt = {}; tb.steps.forEach((s, i) => { spendAt[s.d] = T.steps[i].land; });
     dd = tb.v.map((v, d) => {
@@ -319,7 +319,7 @@ function table(mini, a, o) {
   const offAt = anim ? T.offAt : dr && dr.off && dr.at != null && !REDUCED ? BGLT.slide - 60 : null, offBy = anim ? tb.by : dr ? dr.p : null;
   const tal = p => arcTally(p, o, pips(p, offOf(p), BGL.pieces, offAt != null && offBy === p, offAt));
   let say = '', ok = '', sayAt = null;
-  if (b && b.kind === 'roll') { say = b.stuck ? 'No move: the turn passes' : b.one ? `Opening roll: ${b.v[0]}` : b.v.length === 4 ? `Double ${b.v[0]}: four moves` : `${W(b.by)} rolled ${b.v[0]} and ${b.v[1]}`; sayAt = rollNow ? BGLT.roll : null; }
+  if (b && b.kind === 'roll') { if (b.stuck) ok = 'no'; say = b.stuck ? 'No move: the turn passes' : b.one ? `Opening roll: ${b.v[0]}` : b.v.length === 4 ? `Double ${b.v[0]}: four moves` : `${W(b.by)} rolled ${b.v[0]} and ${b.v[1]}`; sayAt = rollNow ? BGLT.roll : null; }
   else if (tb) {
     const hi = tb.steps.findIndex(s => s.hit), oi = tb.steps.findIndex(s => s.off);
     if (hi >= 0) { say = 'Hit! Back to the start'; ok = 'ok'; sayAt = T.steps[hi].hitAt; }

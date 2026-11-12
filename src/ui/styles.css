@@ -5517,7 +5517,7 @@ button.bglg i { animation: bglring 1s ease-in-out infinite alternate; } button.b
 .rpsbtn:disabled { opacity: .5; box-shadow: 0 2px 0 var(--ink); transform: translateY(2px); }
 /* the miniature: the last throw face to face beside the wins */
 .trps { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.5cqw; height: 100%; }
-.trpsh { display: grid; place-items: center; width: 29cqw; height: 35cqw; margin: -2cqw 0; }
+.trpsh { display: grid; place-items: center; width: 34cqw; height: 41cqw; margin: -3cqw 0; }
 .trpsh .rpsv { width: 100%; height: 100%; overflow: visible; }
 .trpsh.h .rpsv { transform: rotate(180deg); }
 .trpsh.m.X .rpcf { fill: var(--x); } .trpsh.m.O .rpcf { fill: var(--o); }
