@@ -47,7 +47,7 @@ export const GOLFV = {
   puff: 0.35,                   // a ball into sand: a puff of grains (s)
 };
 const TERRV = { chev: 2.2 };    // a slope's chevrons, half their width (course units)
-const COL = { ground: '#2c6e37', shrub: '#3b8d48', shrubHi: '#4fa659', wood: '#d09a58', woodLo: '#a56f38', turf: '#5fbf5a', mat: '#4ba24c', rim: '#eaf7df', hole: '#0e2413', post: '#58a8cf', postLo: '#3f8fbf', cap: '#fff8e8', hit: '#fff3b8', flag: '#3f8fbf', steel: '#dfe3e8', shaft: '#ecd29c', sand: '#efd99c', sandLo: '#c9a95e', water: '#2d74b8', waterHi: '#69b8e6', bank: '#b9b2a2', blade: '#f6efe0', bladeLo: '#d9534f' };
+const COL = { ground: '#2c6e37', shrub: '#3b8d48', shrubHi: '#4fa659', wood: '#d09a58', woodLo: '#a56f38', turf: '#5fbf5a', mat: '#4ba24c', rim: '#eaf7df', hole: '#0e2413', post: '#58a8cf', postLo: '#3f8fbf', cap: '#fff8e8', hit: '#fff3b8', flag: '#3f8fbf', steel: '#dfe3e8', shaft: '#ecd29c', sand: '#efd99c', sandLo: '#c9a95e', water: '#1f6f9a', waterHi: '#4fb3cf', bank: '#b9b2a2', bankLo: '#9a9282', bankHi: '#d8d2c4', blade: '#f6efe0', bladeLo: '#d9534f' };
 // The course's sizes before the physics library has loaded (nothing is drawn of a hole until then: its walls are the library's).
 const GOLF_SIZE = { w: 100, h: 160, ballR: 2.4, cupR: 3.6, vMax: 95, air: 0.004, roll: 12 };
 const sizes = () => (PHYSICS.lib && PHYSICS.lib.GOLF) || GOLF_SIZE;
@@ -85,7 +85,8 @@ function paintTerrain(c, g, ter, P) {                             // under the t
     for (let i = 0; i < 14; i++) { const a = i * 2.39996, q = Math.sqrt((i + 0.5) / 14) * r * 0.82; c.beginPath(); c.arc(X(x + Math.cos(a) * q), Y(y + Math.sin(a) * q), Math.max(0.8, 0.28 * k), 0, Math.PI * 2); c.fill(); }
   }
   for (const [x, y, r] of ter.water) {                             // water: a pond, its stone bank, deeper in the middle, ripples
-    c.beginPath(); c.arc(X(x), Y(y), (r + 0.9) * k, 0, Math.PI * 2); outlined(c, COL.bank, P.ink, ink);
+    c.beginPath(); c.arc(X(x), Y(y), (r + 1.7) * k, 0, Math.PI * 2); outlined(c, COL.bank, P.ink, ink);
+    for (let i = 0; i < 16; i++) { const a = i * Math.PI / 8 + (i % 2) * 0.12; c.beginPath(); c.ellipse(X(x + Math.cos(a) * (r + 0.85)), Y(y + Math.sin(a) * (r + 0.85)), 0.75 * k, 0.6 * k, a, 0, Math.PI * 2); c.fillStyle = i % 3 ? COL.bankLo : COL.bankHi; c.fill(); }   // the bank's stones
     const wg = c.createRadialGradient(X(x - r * 0.3), Y(y - r * 0.3), r * k * 0.1, X(x), Y(y), r * k);
     wg.addColorStop(0, COL.waterHi); wg.addColorStop(1, COL.water);
     c.beginPath(); c.arc(X(x), Y(y), r * k, 0, Math.PI * 2); c.fillStyle = wg; c.fill(); c.strokeStyle = P.ink; c.lineWidth = Math.max(1, 0.32 * k); c.stroke();
@@ -106,8 +107,12 @@ function windmill(c, g, [x, y, L], ang, P, [sx, sy]) {
   const bars = off => { for (const a of [ang]) { c.save(); c.translate(X + off[0], Y + off[1]); c.rotate(a); rr(c, -L * k, -T / 2, 2 * L * k, T, T / 2); c.restore(); } };
   c.fillStyle = 'rgba(0,0,0,.24)'; bars([sx, sy]); c.fill();
   for (const a of [ang]) {
-    c.save(); c.translate(X, Y); c.rotate(a); rr(c, -L * k, -T / 2, 2 * L * k, T, T / 2); outlined(c, COL.blade, P.ink, Math.max(1.5, 0.45 * k));
-    c.fillStyle = COL.bladeLo; for (const s of [-1, 1]) c.fillRect(s > 0 ? L * k * 0.45 : -L * k * 0.9, -T / 2 + Math.max(0.6, T * 0.18), L * k * 0.45, Math.max(0.8, T * 0.25));
+    c.save(); c.translate(X, Y); c.rotate(a); rr(c, -L * k, -T / 2, 2 * L * k, T, T / 2); outlined(c, COL.woodLo, P.ink, Math.max(1.5, 0.45 * k));   // the arm
+    for (const s of [-1, 1]) {                                     // a sail at each end: cream, a red stripe, a little wider than the arm
+      const x0 = s > 0 ? L * k * 0.36 : -L * k, w = L * k * 0.64, sw = T * 1.5;
+      rr(c, x0, -sw / 2, w, sw, Math.min(2, sw / 3)); outlined(c, COL.blade, P.ink, Math.max(1.2, 0.38 * k));
+      c.fillStyle = COL.bladeLo; c.fillRect(x0 + w * 0.15, -sw * 0.12, w * 0.7, sw * 0.24);
+    }
     c.restore();
   }
   c.beginPath(); c.arc(X, Y, H, 0, Math.PI * 2); outlined(c, COL.wood, P.ink, Math.max(1.5, 0.45 * k));

@@ -11,12 +11,12 @@ export const scExplainer = { name: 'Mini Golf', play: 'Drag back to aim and set 
 export const TUNE = [
   { k: 'holeSpeed', label: 'Fastest a ball drops in (units/s)', def: 32, min: 16, max: 60, step: 1, group: 'Rules' },
   { k: 'kick', label: 'Bumper kick (units/s)', def: 18, min: 0, max: 40, step: 1, group: 'Board' },
-  { k: 'slopes', label: 'Slopes', def: 'on', opts: ['off', 'on'], group: 'Terrain' },   // (the terrain: new squares only, physics-sim.js golfTerrain; each hole's own)
-  { k: 'sand', label: 'Sand', def: 'on', opts: ['off', 'on'], group: 'Terrain' },
-  { k: 'water', label: 'Water', def: 'on', opts: ['off', 'on'], group: 'Terrain' },
-  { k: 'waterPenalty', label: 'Water penalty (strokes)', def: 1, min: 0, max: 3, step: 1, group: 'Terrain' },
-  { k: 'mills', label: 'Moving obstacles (windmills)', def: 'on', opts: ['off', 'on'], group: 'Terrain' },
-  { k: 'aiAim', label: 'Computer aim error (mrad)', def: 35, min: 0, max: 200, step: 1, group: 'Computer' },
+  { k: 'slopes', label: 'Slopes', def: 'on', opts: ['off', 'on'], group: 'Board' },   // (the terrain: new squares only, physics-sim.js golfTerrain; each hole's own)
+  { k: 'sand', label: 'Sand', def: 'on', opts: ['off', 'on'], group: 'Board' },
+  { k: 'water', label: 'Water', def: 'on', opts: ['off', 'on'], group: 'Board' },
+  { k: 'waterPenalty', label: 'Water penalty (strokes)', def: 1, min: 0, max: 3, step: 1, group: 'Board' },
+  { k: 'mills', label: 'Moving obstacles (windmills)', def: 'on', opts: ['off', 'on'], group: 'Board' },
+  { k: 'aiAim', label: 'Computer aim error (mrad)', def: 20, min: 0, max: 200, step: 1, group: 'Computer' },
   { k: 'aiPow', label: 'Computer power error (%)', def: 4, min: 0, max: 20, step: 0.5, group: 'Computer' },
 ];
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v14"/><path d="M12 3l7 3-7 3"/><ellipse cx="12" cy="18.5" rx="7" ry="2.5"/><circle cx="6" cy="14" r="1.8" fill="currentColor" stroke="none"/></svg>';

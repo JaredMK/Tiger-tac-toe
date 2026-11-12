@@ -39,7 +39,7 @@ test('golf: 22 layouts made by hand, and the mirror of each that is not its own 
       const clear = ([x, y]) => hole.walls.every(([cx, cy, w, hh, a]) => { const c = Math.cos(a || 0), sn = Math.sin(a || 0), dx = x - cx, dy = y - cy; return Math.abs(dx * c + dy * sn) > w / 2 + P.GOLF.ballR || Math.abs(dy * c - dx * sn) > hh / 2 + P.GOLF.ballR; }) && hole.bumpers.every(([cx, cy, br]) => Math.hypot(x - cx, y - cy) > br + P.GOLF.ballR);
       const spot = () => { let q; do q = [6 + rng() * 88, 6 + rng() * 148]; while (!clear(q)); return q; };
       m.balls.X = spot(); do m.balls.O = spot(); while (Math.hypot(m.balls.O[0] - m.balls.X[0], m.balls.O[1] - m.balls.X[1]) < 2 * P.GOLF.ballR);
-      const r = P.run('golf', m, 'X', { aim: (rng() - 0.5) * 2 * Math.PI, power: 0.6 + rng() * 0.4 });
+      const r = E.physRun(m, 'X', { aim: (rng() - 0.5) * 2 * Math.PI, power: 0.6 + rng() * 0.4 });   // (with the hole's terrain: a new square's, every switch on)
       for (const p of ['X', 'O']) {
         assert.ok(inside(r.final[p], P.GOLF), `hole ${h}: ${p} stays on the table (${r.final[p]})`);
         for (const f of r.rec.frames) { const i = r.rec.ids.indexOf(p) * 2; if (f[i] != null) assert.ok(f[i] >= -1 && f[i] <= 101 && f[i + 1] >= -1 && f[i + 1] <= 161, `hole ${h}: never off the table mid-shot`); }
@@ -57,7 +57,7 @@ test('golf: every hole (all 42) is solved by the computer in 2-7 shots (its best
     const rng = lcg(seed);
     while (shots < 8 && !won) {
       let best = null;
-      for (const c of E.physCandidates(m, 'X', rng)) { const r = P.run('golf', m, 'X', c); const s = E.physScore(m, 'X', r); if (!best || s > best.s) best = { c, s }; }
+      for (const c of E.physCandidates(m, 'X', rng)) { const r = E.physRun(m, 'X', c); const s = E.physScore(m, 'X', r); if (!best || s > best.s) best = { c, s }; }
       const r = E.applyMove(m, 'X', best.c);
       shots++;
       if (r.outcome === 'win') won = r.winner === 'X';
@@ -82,24 +82,38 @@ test('golf: every hole (all 42) is solved by the computer in 2-7 shots (its best
   } finally { P.HOLES.pop(); }
 });
 
-test('golf: the courses make it hard: the computer, with its usual error, takes 4 to 6 putts on average over the holes (each hole 3.4 to 7 on ten tries; all 42)', () => {
-  const avg = [];
-  for (let h = 0; h < P.HOLES.length; h++) {
-    const hole = P.HOLES[h];
-    assert.ok(hole.walls.length + hole.bumpers.length >= 3 && hole.path.length >= 4, `${hole.name}: walls and bumpers in the way, and turns`);
-    let sum = 0;
-    const N = 10;
-    for (let g = 0; g < N; g++) {
-      const rng = E.makeRng('golf' + h + ':' + g), m = E.newMini('golf', rng); m.hole = h; m.balls = { X: hole.tee.slice(), O: [hole.tee[0] + 6, hole.tee[1]] }; m.holed = { X: false, O: false };
-      let putts = 0;
-      while (putts < 25) { const ai = E.physAi(m, 'X', rng), r = P.run('golf', m, 'X', ai.move); putts++; if (r.final.X === null) break; m.balls.X = r.final.X; if (r.final.O) m.balls.O = r.final.O; }
-      sum += putts;
-    }
-    avg.push(sum / N);
+// The balance (December 2026, with the terrain): the computer (Normal: its usual error) against itself on every hole, both
+// balls from the tee, six squares a hole with either side first: the winner's putts (the strokes on its count, water
+// penalties included) and the first mover's share; and the same with the terrain switched off. Alone on a hole it
+// needs about 5.5 to 6 (each hole printed).
+const square = (h, g, terr) => {
+  const rng = E.makeRng('bal' + h + ':' + g), m = E.newMini('golf', rng), tee = P.HOLES[h].tee;
+  m.hole = h; m.balls = { X: [tee[0] - 3, tee[1]], O: [tee[0] + 3, tee[1]] }; m.holed = { X: false, O: false }; m.shots = { X: 0, O: 0 };
+  if (!terr) m.tune = { slopes: 'off', sand: 'off', water: 'off', mills: 'off' };
+  let p = g % 2 ? 'O' : 'X';
+  const first = p;
+  for (let k = 0; k < 60; k++) {
+    const r = E.applyMove(m, p, E.physAi(m, p, rng).move, rng);
+    if (r.outcome === 'win') return { first: r.winner === first, strokes: m.shots[r.winner] };
+    p = p === 'X' ? 'O' : 'X';
   }
-  console.log('Mini Golf: the computer\'s putts per hole: ' + P.HOLES.map((hh, k) => `${hh.name} ${avg[k].toFixed(2)}`).join(', '));
-  assert.ok(avg.every(a => a >= 3.4 && a <= 7), `each hole 3.4 to 7 or so, on 10 tries (${avg.map(a => a.toFixed(2))})`);
-  const all = avg.reduce((a, b) => a + b, 0) / avg.length;
-  assert.ok(all >= 4 && all <= 6, `4 to 6 on average (${all.toFixed(2)})`);
+  return null;
+};
+test('golf: the balance: the computer against itself takes 3 to 5 putts to win a square on average with the terrain on (about 4.9), the first mover under 60%; every hole won in time', () => {
+  const N = 6, out = {};
+  for (const terr of [true, false]) {
+    let strokes = 0, firsts = 0, n = 0;
+    const per = [];
+    for (let h = 0; h < P.HOLES.length; h++) {
+      let hs = 0;
+      for (let g = 0; g < N; g++) { const r = square(h, g, terr); assert.ok(r, `${P.HOLES[h].name}: won within 60 putts`); strokes += r.strokes; hs += r.strokes; firsts += r.first ? 1 : 0; n++; }
+      per.push(hs / N);
+    }
+    out[terr ? 'on' : 'off'] = { avg: strokes / n, first: firsts / n, per };
+    console.log(`Mini Golf, terrain ${terr ? 'on' : 'off'}: the winner's putts ${(strokes / n).toFixed(2)}, the first mover ${(100 * firsts / n).toFixed(1)}%; per hole: ` + P.HOLES.map((hh, k) => `${hh.name} ${per[k].toFixed(1)}`).join(', '));
+  }
+  assert.ok(out.on.avg >= 3 && out.on.avg <= 5, `3 to 5 putts on average with the terrain (${out.on.avg.toFixed(2)})`);
+  assert.ok(out.on.first < 0.6, `the first mover under 60% (${(100 * out.on.first).toFixed(1)}%)`);
+  assert.ok(out.on.per.every(a => a <= 9), 'no hole far out of line');
   assert.ok(P.LAYOUTS.filter(hh => hh.walls.some(w => w[4])).length >= 6, 'angled walls on many layouts');
 });

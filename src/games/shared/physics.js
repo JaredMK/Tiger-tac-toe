@@ -72,15 +72,15 @@ export function physCandidates(mini, p, rng) {
   if (mini.type === 'golf') {                                 // at the next points of the hole's path, and at the cup, with powers to suit the distance
     const hole = L.HOLES[mini.hole], from = mini.balls[p], k = golfNext(hole, from);
     const targets = [hole.path[k], hole.path[Math.min(k + 1, hole.path.length - 1)], hole.cup];
-    for (let j = hole.path.length - 1, far = 0; j > k + 1 && far < (globalThis.__FAR || 2); j--) if (golfClear(hole, from, hole.path[j])) { targets.push(hole.path[j]); far++; }   // and the farthest points of the way in sight (a path with many points: the long shots down a straight)
+    for (let j = hole.path.length - 1, far = 0; j > k + 1 && far < 2; j--) if (golfClear(hole, from, hole.path[j])) { targets.push(hole.path[j]); far++; }   // and the farthest points of the way in sight (a path with many points: the long shots down a straight)
     const putt = d => Math.max(0.15, Math.min(1, Math.pow(d * 1.08 / (L.GOLF.reach || 174), 0.57)));   // (a putt rolls about reach x power^1.7; aimed a little long)
     for (const t of targets) {
       const a = aimTo(from, t), d = Math.hypot(t[0] - from[0], t[1] - from[1]), base = putt(d);
-      for (const dp of (globalThis.__DP || [0, 0.12, -0.08, 0.25])) out.push({ aim: a, power: base + dp });
+      for (const dp of [0, 0.12, -0.08, 0.25]) out.push({ aim: a, power: base + dp });
       out.push({ aim: a + 0.12, power: base }, { aim: a - 0.12, power: base });
     }
     out.push(...golfBumperShots(hole, from, targets, putt));   // round the bumpers in the way, and off them
-    for (let k2 = 0; k2 < (globalThis.__NB || 3); k2++) out.push({ aim: (rng() - 0.5) * Math.PI * 1.6, power: 0.4 + rng() * 0.55 });   // the odd bank shot
+    for (let k2 = 0; k2 < 3; k2++) out.push({ aim: (rng() - 0.5) * Math.PI * 1.6, power: 0.4 + rng() * 0.55 });   // the odd bank shot
   } else if (mini.type === 'pool') {
     const cue = mini.balls.cue, R = L.POOL.ballR, vm = tune(mini).vMax, pow = sp => poolPow(sp, vm);
     for (const id of poolMine(p, mini)) {
@@ -148,10 +148,9 @@ export function physAi(mini, p, rng) {
   if (!best) return { move: randomLegalMove(mini, p, rng), q: 0 };
   if (mini.type === 'golf' && err[0] > 0) {
     const off = Math.max(err[0], 0.01);
-    const sure = c => { let s = 0; for (const da of (globalThis.__GS || [-off, off])) { const r = physRun(mini, p, { aim: wrapAim(c.aim + da), power: c.power }); s += r ? physScore(mini, p, r) : -1e6; } return s; };
-    const GR = globalThis.__GR || GOLF_ROBUST, GS = globalThis.__GS ? globalThis.__GS.length : 2;
-    for (const x of tried.sort((u, v) => v.s - u.s).slice(0, GR)) x.sure = x.s * 0.5 + sure(x.c) * 0.5 / GS;
-    best = tried.slice(0, GR).reduce((u, v) => (v.sure > u.sure ? v : u));
+    const sure = c => { let s = 0; for (const da of ([-off, off])) { const r = physRun(mini, p, { aim: wrapAim(c.aim + da), power: c.power }); s += r ? physScore(mini, p, r) : -1e6; } return s; };
+    for (const x of tried.sort((u, v) => v.s - u.s).slice(0, GOLF_ROBUST)) x.sure = x.s * 0.5 + sure(x.c) * 0.25;
+    best = tried.slice(0, GOLF_ROBUST).reduce((u, v) => (v.sure > u.sure ? v : u));
   }
   const g = () => gaussOf(rng);
   const move = { aim: wrapAim(best.c.aim + g() * err[0]), power: Math.max(0.05, Math.min(1, best.c.power + g() * err[1])) };
