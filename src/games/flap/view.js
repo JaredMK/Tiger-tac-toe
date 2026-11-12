@@ -40,7 +40,6 @@ export function drawFlap(c, W, H, sim, rd, now) {
     c.fillStyle = '#8fc79a'; c.beginPath(); c.arc(x, gy, r, Math.PI, 0); c.arc(x + r * 1.1, gy, r * 0.7, Math.PI, 0); c.fill();
   }
   const by = sim.crash && rd ? sim.y + (FLAP.box.h / 2 - sim.y) * endK(rd, now, 700) ** 2 : sim.y;   // the fall after a post
-  shadow(c, bx, gy + gh * 0.3, S * (0.5 - 0.022 * by), Math.max(1.5, gh * 0.12), 0.26 - 0.016 * by);   // the bird's shadow on the ground, fainter the higher it flies
   for (const o of sim.course) { const x = toX(o.at); if (x < W + 40 && x + FLAP.post * S > -40) drawPost(c, x, o, S, toY, gy, gh, P); }
   const fxn = toX(sim.cfg.target);                                             // the finish: a chequered pole up to the sky, its flag at the top of the ground
   if (fxn < W + 40) { for (let k = 0; k < 16; k++) { c.fillStyle = k % 2 ? P.ink : P.paper; c.fillRect(fxn - 4, gy - (k + 1) * gy / 16, 8, gy / 16 + 1); } c.strokeStyle = P.ink; c.lineWidth = 1.5; c.strokeRect(fxn - 4, -2, 8, gy + 2); }
@@ -53,6 +52,8 @@ export function drawFlap(c, W, H, sim, rd, now) {
     if (m > 0 && m % 100 === 0 && m < sim.cfg.target) { c.fillStyle = P.ink; c.font = SMALL(Math.max(10, gh * 0.55)); c.fillText(String(m), x, gy + gh * 0.78); }
     else { c.fillStyle = '#c9a66b'; c.fillRect(x, gy + Math.max(6, gh * 0.36), 3, Math.max(3, gh * 0.3)); }
   }
+  for (const o of sim.course) { const x = toX(o.at); if (x < W + 40 && x + FLAP.post * S > -40) shadow(c, x + FLAP.post * S * 0.4, gy + gh * 0.34, FLAP.post * S * 0.7, Math.max(1.5, gh * 0.1), 0.2); }   // the posts' shadows on the ground, and the bird's, fainter the higher it flies
+  shadow(c, bx, gy + gh * 0.34, S * (0.5 - 0.022 * by), Math.max(1.5, gh * 0.1), 0.26 - 0.016 * by);
   if (fxn < W + 40) finishFlag(c, fxn + 4, gy - S * 0.2, S * 0.8, now, P);
   for (const p of fx.puffs) { const k = (now - p.at) / RUNFX.puff, x = toX(p.d), y = toY(p.y); for (const s of [-1, 1]) puff(c, x - S * 0.2 + s * k * S * 0.35, y + S * (0.45 + 0.5 * k), S * (0.1 + 0.13 * k), 0.75 * (1 - k)); }   // the air a flap pushed down, left behind
   drawBird(c, bx, toY(by), S, sim, rd, now, P, toY(sim.y));
@@ -60,7 +61,6 @@ export function drawFlap(c, W, H, sim, rd, now) {
 // A post: wooden, banded, lit from the right, with a teal cap on each side of the gap.
 function drawPost(c, x, o, S, toY, gy, gh, P) {
   const w = FLAP.post * S, top = toY(o.gy + o.gh / 2), bot = toY(o.gy - o.gh / 2), cap = Math.max(7, S * 0.42);
-  shadow(c, x + w * 0.35, gy + gh * 0.3, w * 0.75, Math.max(1.5, gh * 0.12), 0.2);
   for (const [y0, y1] of [[-12, top], [bot, gy + 2]]) {
     if (y1 - y0 < 1) continue;
     rr(c, x, y0, w, y1 - y0, 3); outlined(c, '#d9a066', P.ink, 2.5);

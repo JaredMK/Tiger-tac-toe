@@ -122,8 +122,15 @@ test('online: the tally from the record and this side\'s own node, move by move,
       // at rest afterwards
       assert.equal(tally(screen(m1, null, e.kind === 'again' ? p : other(p)), side).text, want);
     }
-    // a phone with no node at all (a watcher, the first moment after a reload): both tallies hidden, card backs alone
-    state.online = { me: 'X', kind: 'mm' };
+    // the other side's move replays on the square as it was before it (the public record alone): this side's hand stays drawn
+    const waiter = e.kind === 'again' ? other(p) : p;                 // (whoever does not move next: the phone that will watch the next move's replay)
+    state.online = { me: waiter, kind: 'mm', game: 'g1' };
+    screen(phone(out.rec, waiter), null, other(waiter));
+    const held0 = screen(clone(out.rec.state.squares[k].mini), null, other(waiter));
+    assert.equal(tally(held0, waiter).text, String(R.t31Score(after.mini.hand[waiter])), 'the hand last drawn here stands in while the record has none');
+    for (const c of after.mini.hand[waiter]) assert.ok(faces(held0).includes(NAME(c)));
+    // a phone with no node at all (another match, the first moment after a reload): both tallies hidden, card backs alone
+    state.online = { me: 'X', kind: 'mm', game: 'g2' };
     const bare = screen(clone(out.rec.state.squares[k].mini), null, p);
     assert.ok(tally(bare, 'X').hidden && tally(bare, 'O').hidden);
     for (const f of faces(bare)) assert.ok([...after.mini.pile.slice(-2), ...after.mini.seen.X, ...after.mini.seen.O].map(NAME).includes(f));

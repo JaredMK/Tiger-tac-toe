@@ -1,7 +1,7 @@
 // Thirty-One: the screen, the miniature, the move's words and sounds, and the inputs (November 2026; one deck, one pile
 // and private hands from the rework, v 2).
 import { T31, t31Best, t31Cfg, t31Score, t31Times } from './rules.js';
-import { N, REDUCED, mv, waitLine } from '../../ui/app.js';
+import { N, REDUCED, mv, state, waitLine } from '../../ui/app.js';
 import { pcard, cardShort } from '../../ui/cards.js';
 import { cfAnchor } from '../../ui/cardfly.js';
 import { arcTally, lateAt } from '../../ui/progress.js';
@@ -42,12 +42,18 @@ export function t31Tally(hand, s, mine) {
   const was = t31Score(before4(hand, s));
   return { now, was: was !== now ? was : null, at: T31.land };
 }
+let kept = null;                                                   // { key, hand }: this side's hand as last drawn on this square (see below)
 function t31Table(sq, mini, a, o) {
   const s = a && a.t31 ? a.t31 : null, turn = o.turn, target = t31Cfg(mini).target, anim = !!s && !REDUCED;
   const held = mini.held, by = s ? a.by : held ? held.by : turn;
   const me = mySide() || by, opp = other(me), open = o.view || !!(sq && sq.owner);   // (open: a square won, or looked back at: both hands are on the record)
   const mine = !o.view && !o.locked && by === turn && by === me, canTake = mine && !held, canDrop = mine && !!held && held.by === me;
   const hand = { [me]: t31Hand(mini, me), [opp]: open ? t31Hand(mini, opp) : null };
+  // (online, the other side's move replays on the square as it was before it, which is the public record alone: this
+  // side's hand, unchanged by their move, is the one last drawn here, so its cards never turn to backs meanwhile)
+  const key = `${state.online ? state.online.game || state.online.code || '' : ''}:${state.zoom}:${me}`;
+  if (hand[me]) kept = { key, hand: hand[me].slice() };
+  else if (state.online && kept && kept.key === key && kept.hand.length === handN(mini, me)) hand[me] = kept.hand.slice();
   const tim = t31Times(s);
   // the tallies: a hand this page holds as its score (counted on as the card lands); a hand it does not: "?"
   const tal = p => {
@@ -73,7 +79,7 @@ function t31Table(sq, mini, a, o) {
     const myTake = takeNow && a.by === me, myDrop = dropNow && a.by === me;
     const cards = Array.from({ length: T31.hand + 1 }, (_, k) => {
       const c = h[k];
-      if (!c) return k < n ? `<span class="t31c t31w">${pcard(null, { down: true })}</span>` : '<span class="t31slot" aria-hidden="true"></span>';   // (a card of its own the page does not hold yet: a back)
+      if (!c) return k < n ? `<span class="t31c t31w">${pcard(null, Object.assign({ down: true }, myTake && k === n - 1 ? { slide: takeAt, from: s.from, at: takeAt } : {}))}</span>` : '<span class="t31slot" aria-hidden="true"></span>';   // (a card of its own the page does not hold yet, its node a moment behind the record: a back, flying in as the card will)
       const fresh = myTake && k === h.length - 1 && k === T31.hand;
       const shift = myDrop && k >= s.k;                              // (a card after the one let go closes the gap)
       const card = pcard(c, fresh ? (s.from === 'deck' ? { slide: takeAt, flip: takeAt + T31.slide, cls: 't31dk', from: 'deck', at: takeAt } : { slide: 0, cls: 't31pk', from: 'pile' }) : shift ? { from: 'card:' + c, wait: true } : {});
