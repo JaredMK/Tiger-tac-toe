@@ -7,7 +7,7 @@ export const category = 'skill';   // the game's kind, shown in its "?" explaine
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Bullseye', play: 'Stop the sideways line, then the up-down line. The dart lands where they cross. Bullseye is {bullPts}, the inner ring 2, the outer ring 1.', win: 'First to {goal}.' };   // ({bullPts}, {goal}: its settings, TUNE below)
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9.2"/><circle cx="12" cy="12" r="5.2"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/><path d="M12 2.8v3M12 18.2v3" stroke-linecap="round"/></svg>';
-export const BULL_DEFAULTS = { board: 32, mid: 17.5, bull: 6.5, sweep: 800, ramp: 1.12 };   // the board's rings (config/bulls, the admin's card): the radii of the whole board, of its inner ring and of the bullseye, in wall units (the wall is 100 across); ms for a line to sweep across at the start; the speed-up of a player's lines per scoring throw
+export const BULL_DEFAULTS = { board: 32, mid: 17.5, bull: 6.5, sweep: 700, ramp: 1.15 };   // the board's rings (config/bulls, the admin's card): the radii of the whole board, of its inner ring and of the bullseye, in wall units (the wall is 100 across); ms for a line to sweep across at the start; the speed-up of a player's lines per scoring throw
 // Its settings (the admin's Mini-game Settings; core/tune.js) beyond config/bulls: the points, and the computer's rates at the start.
 export const TUNE = [
   { k: 'goal', label: 'Points to win', def: 7, min: 3, max: 12, step: 1, group: 'Rules' },

@@ -78,7 +78,7 @@ Win: Clear your wall first.
 
 ## Bullseye [bullseye]
 Category: More skill
-Play: Flick up to throw a dart: aim with the angle, throw higher with a faster flick. Bullseye is {bullPts}, the inner ring 2, the outer ring 1.
+Play: Stop the sideways line, then the up-down line. The dart lands where they cross. Bullseye is {bullPts}, the inner ring 2, the outer ring 1.
 Win: First to {goal}.
 
 ## Bump [bump]

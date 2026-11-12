@@ -360,6 +360,12 @@
         "bull": {
           ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 14 && newData.val() < newData.parent().child('mid').val()"
         },
+        "sweep": {
+          ".validate": "newData.isNumber() && newData.val() >= 400 && newData.val() <= 5000"
+        },
+        "ramp": {
+          ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 2"
+        },
         "$other": {
           ".validate": false
         }

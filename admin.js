@@ -601,16 +601,20 @@ function readRunCfg(t) {
 }
 // ---------- Bullseye's tuning (config/bulls, read by the game and the server) ----------
 // The board's three rings, their radii in wall units (the wall is 100 across): the whole board, its inner
-// ring and the bullseye. A change applies to squares dealt from then on. (The points, the throw's scatter,
-// the flick's feel and the computer's aim are the game's settings above.)
-const BULL_DEFAULTS = { board: 32, mid: 17.5, bull: 6.5 };   // (as the game's meta.js has them)
-const BULL_FIELDS = [['board', 'Board radius (wall is 100 across)', 16, 35, 'any'], ['mid', 'Inner ring radius', 5, 28, 'any'], ['bull', 'Bullseye radius', 1, 14, 'any']];
+// ring and the bullseye; how long a line takes to sweep across the wall at the start, and how much faster a
+// player's lines get with each throw of theirs that scores. A change applies to squares dealt from then on.
+// (The points and the computer's rates are the game's settings above.)
+const BULL_DEFAULTS = { board: 32, mid: 17.5, bull: 6.5, sweep: 700, ramp: 1.15 };   // (as the game's meta.js has them)
+const BULL_FIELDS = [['board', 'Board radius (wall is 100 across)', 16, 35, 'any'], ['mid', 'Inner ring radius', 5, 28, 'any'], ['bull', 'Bullseye radius', 1, 14, 'any'], ['sweep', 'Sweep across at the start (ms)', 400, 5000, '10'], ['ramp', 'Speed-up per scoring throw (x)', 1, 2, 'any']];
 function bullsCard() {
-  const raw = ctl.bullsCfg && ctl.bullsCfg.mid != null ? ctl.bullsCfg : {}, c = {};   // (a stored config without the inner ring is from before the rework: the defaults, as the game reads it)
-  for (const [k] of BULL_FIELDS) c[k] = Number.isFinite(Number(raw[k])) && raw[k] !== null && raw[k] !== '' ? Number(raw[k]) : BULL_DEFAULTS[k];
+  const stored = ctl.bullsCfg || {}, c = {};
+  for (const [k] of BULL_FIELDS) {
+    const raw = stored.mid == null && !['sweep', 'ramp'].includes(k) ? null : stored[k];   // (a stored config without the inner ring is the small moving board's: its radii are not this board's)
+    c[k] = raw != null && raw !== '' && Number.isFinite(Number(raw)) ? Number(raw) : BULL_DEFAULTS[k];
+  }
   const fields = BULL_FIELDS.map(([k, l, lo, hi, st]) => `<label class="rf"><span>${l}</span><input type="number" step="${st}" min="${lo}" max="${hi}" data-bullcfg="${k}" value="${c[k]}"></label>`).join('');
   return `<div class="card ctl" id="bullsCard"><h2>Bullseye tuning</h2>
-    <p class="note">Bullseye: a dartboard on a wall 100 units across; a flick throws a dart at it. The bullseye scores 3, the inner ring 2, the outer ring 1; first to 7. Everything here goes to the game and the server at once and applies to squares dealt from then on. Aim: about 4-6 throws to win. Bigger rings make it easier.</p>
+    <p class="note">Bullseye: a dartboard on a wall 100 units across; a throw stops a sideways line, then an up-down line, and the dart lands where they cross. The bullseye scores 3, the inner ring 2, the outer ring 1; first to 7. Everything here goes to the game and the server at once and applies to squares dealt from then on. Aim: about 4-6 throws to win. Bigger rings or a slower sweep make it easier; the speed-up makes each scoring throw harder than the last.</p>
     <div class="rform">${fields}</div></div>`;
 }
 function readBullsCfg() {

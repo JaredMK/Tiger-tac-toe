@@ -4,8 +4,8 @@ import { tune } from '../../core/tune.js';
 
 // The computer stops its two lines as a hand would: a bullseye, the inner ring, the rest of the board or a miss at
 // its rates (the admin's: aiBull, aiMid, aiBoard, each counting the ones inside it), slipping as its lines speed up
-// (a faster sweep is harder to stop where it wants). Easy a fifth worse, Hard a fifth better.
-const LEVEL = { easy: 0.8, normal: 1, hard: 1.2 };
+// (a faster sweep is harder to stop where it wants). Easy a fifth worse, Hard an eighth better.
+const LEVEL = { easy: 0.8, normal: 1, hard: 1.12 };
 export function bullsRates(speed, t, level) {   // (t: the square's settings; the rates are chances of landing in that ring and no other)
   const f = Math.pow(1 / Math.max(1, speed), BULLS.ai.worse) * (LEVEL[level] || 1);
   const bull = Math.min(0.95, t.aiBull / 100 * f), mid = Math.min(0.97, Math.max(t.aiBull, t.aiMid) / 100 * f), all = Math.min(0.99, Math.max(t.aiBull, t.aiMid, t.aiBoard) / 100 * f);
