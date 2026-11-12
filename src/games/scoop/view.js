@@ -3,7 +3,7 @@ import { SCOOP, SCOOP_VIEW } from './rules.js';
 import { REDUCED, state } from '../../ui/app.js';
 import { hash01 } from '../../ui/art.js';
 import { fingSounds, fingTable, fingThing } from '../../ui/finger.js';
-import { banner, easeOut, impact, jolt, puff, starPath } from '../../ui/runfx.js';
+import { banner, easeOut, impact, jolt, starPath } from '../../ui/runfx.js';
 import { drawTimeBar, outlined, rr, runColours } from '../../ui/runner.js';
 import { fingAt } from '../shared/finger.js';
 // The miniature: the counter with each player's cone (a sleeve in their colour) and their scoops stacked on it, the

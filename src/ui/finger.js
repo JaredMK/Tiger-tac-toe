@@ -161,7 +161,7 @@ function fingStep(v, sim, tx, loud) {
     else if (o === 'slide' || o === 'miss') { const drop = scoopDrop(size); v.out[j].gone = it.T + (o === 'slide' ? SCOOP_VIEW.slideT * Math.sqrt(drop / SCOOP_VIEW.slide) : drop / it.v); }   // (when it leaves the screen, as the rules count it: scoopStep)
     if (loud && o !== 'dodge' && o !== 'miss') { if (o === 'catch') { SND.play('scoop', { rate: scoopNote(sim.got.length) }); haptic('tap'); } else { SND.play(o === 'slide' ? 'whoosh' : 'crash'); if (o === 'hit') haptic('error'); } }
   }
-  if (sim.miss > m0) { fingNote(v, { k: 'gone', t: sim.t, m: sim.miss }); if (loud) { SND.play('cushion'); haptic('medium'); } }   // a missed scoop gone off the bottom of the screen: the miss counts now
+  if (sim.miss > m0) { fingNote(v, { k: 'gone', t: sim.t, m: sim.miss }); if (loud) { SND.play('cushion'); if (!sim.end) haptic('medium'); } }   // a missed scoop gone off the bottom of the screen: the miss counts now
 }
 // Pinball's sounds, from the ball's own events (each once, live from the step that made it, in a replay at its moment).
 const PIN_SND = { bump: 'bumper', sling: 'pinSling', knock: 'pinKnock', wall: 'pinWall', save: 'pinSave', launch: 'plunger' };
