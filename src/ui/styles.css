@@ -580,8 +580,9 @@ main.scr.mini:has(.fing), main.scr.mini:has(.fing) * { touch-action: none; -webk
 .dig.found.open::after { content: '✦'; position: absolute; top: 6%; right: 10%; color: #fff; font-size: 45%; animation: twinkle .4s .9s ease-in-out 3 alternate both; }
 .g-candy { width: var(--g); display: flex; flex-direction: column; gap: 10px; }
 .g-snakes, .g-bump { width: var(--g); display: flex; flex-direction: column; align-items: center; gap: 10px; }
-.g-snakes .track { width: min(100%, calc((100dvh - 400px) * 1.2)); }   /* the tall board shrinks on a short phone, the die and button still in view */
-.g-snakes .die { width: 76px; height: 76px; }
+.g-snakes { --die: clamp(52px, calc((100dvh - 470px) * .45), 76px); }   /* a short phone: a smaller die, so the board keeps what room there is */
+.g-snakes .track { width: min(100%, calc((100dvh - 324px - var(--die)) * 1.2)); }   /* the tall board shrinks on a short phone, the die and button still in view */
+.g-snakes .die { width: var(--die); height: var(--die); border-radius: 28% 21% 26% 24%; }
 .g-snakes .big, .g-bump .big { align-self: stretch; }
 /* the race tracks' picture (ui/track.js): raised tiles (an ink lip under each), a move's trail, a burst, the spaces that matter tinted */
 .track .lip { fill: var(--ink); }
@@ -2782,7 +2783,7 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .rlsay { margin: 0; text-align: center; font-size: 13px; font-weight: 700; color: var(--muted); flex: none; }
 /* Little Wheel, the polish pass (November 2026). --pc: the picker's colour (the mover's; a shared spin's cells carry their own,
    .mX / .mO). --rc: a cell's height, from the room (30px on the shortest phones to 38px); the wheel takes what the board leaves. */
-.g-rl { --pc: var(--x); --pct: #fff; --rlw: min(calc(min(var(--gw), 440px) * .54), 250px); --rc: clamp(30px, calc((var(--gh) - 150px - var(--rlw) * 1.04) / 4), 40px); } .g-rl.pc-O { --pc: var(--o); --pct: var(--ink); }
+.g-rl { --pc: var(--x); --pct: #fff; --rlw: min(calc(min(var(--gw), 440px) * .52), 250px); --rc: clamp(30px, calc((var(--gh) - 150px - var(--rlw) * 1.04) / 4), 40px); } .g-rl.pc-O { --pc: var(--o); --pct: var(--ink); }
 .g-rl .mX { --pc: var(--x); --pct: #fff; } .g-rl .mO { --pc: var(--o); --pct: var(--ink); }
 .g-rl .rlwrap { width: clamp(84px, min(calc((var(--gh) - 150px - 4 * var(--rc)) / 1.04), var(--rlw)), 250px); }   /* (--rlw: a little over half the width, so a name keeps its room beside it) */
 .g-rl .rlwheel .ptr { fill: var(--pc); } .g-rl .rlwheel .cap { fill: #f0e2bd; }   /* the pointer in the mover's colour; the cap plain (never a player's colour) */
