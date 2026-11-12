@@ -13,14 +13,16 @@ import { GAMES, SC_ONLY } from '../games/index.js';
 import { SUPER_CHAOS_ENABLED } from '../core/config.js';
 import { privacyUrl } from '../net/platform.js';
 import { testBadge, visibleTypes } from '../net/releases.js';
-import { RNG, app, commit, cpuTimer, flashTimer, holdTimer, setCpuPlan, setCpuTimer, setFlashTimer, setHoldTimer, setMenuOpen, setMenuStep, setSpotTimer, spotTimer, state } from './app.js';
+import { RNG, app, commit, flashTimer, holdTimer, setFlashTimer, setHoldTimer, setMenuOpen, setMenuStep, setSpotTimer, spotTimer, state } from './app.js';
 import { CHEV, ICONS } from './art.js';
 import { fxAt, fxAttr, startFx } from './fx.js';
 import { render } from './render.js';
 import { repStop } from './replay.js';
+import { cutHaptics } from './haptics.js';
+import { SND } from '../audio/sound.js';
 import { chaosSetup } from './screens/setup.js';
 import { renderWin } from './screens/win.js';
-import { scheduleCpu } from './turns.js';
+import { cpuStop, scheduleCpu } from './turns.js';
 
 /* ----- explainers: the rules in short, from the "?" in a mini-game, the game list, or How to Play ----- */
 const RULES_CORE = [
@@ -108,10 +110,11 @@ export function practiceBack() {
 export function practiceEnd() {
   const p = state.practice;
   if (!p) { state.screen = 'howto'; commit(); return; }
-  clearTimeout(cpuTimer); setCpuTimer(null); setCpuPlan(null);
-  clearTimeout(spotTimer); setSpotTimer(null);
+  cpuStop();                                                    // everything of the match stops at once: the computer (its timer and its thinking),
+  clearTimeout(spotTimer); setSpotTimer(null);                  // the glow, the move and its hold, a replay, the side reveal,
   clearTimeout(flashTimer); setFlashTimer(null);
   clearTimeout(holdTimer); setHoldTimer(null); repStop(); closeIntro();
+  SND.cut(); cutHaptics();                                      // every sound of a move or replay still playing or to come, and the buzzes
   setMenuOpen(false); setMenuStep('main');
   state.flash = null; state.done = null; state.spot = null; state.lock = null; state.confirm = null; state.notice = null; state.stamp = null; state.drawStamp = null;
   state.practice = null; state.quick = false; state.stats = null;   // (left part way: the match simply stops, no result of anyone's; nothing is sent anywhere, net/tracking.js)

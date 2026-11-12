@@ -60,6 +60,7 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
   // along their line and hop in turn (the game's own winning moment; the claim is the board's). The result line says
   // what the scratch came to (the last one stays on show).
   const s = a && a.scratch ? a.scratch : null, o = { view, locked, turn, zoom: state.zoom }, land = SCR.rub + SCR.pop, live = !!s && !REDUCED;
+  // (the large card's class is `slg`, never `big`: `.big` is the app's big button, and its :active squash once pressed the whole card in)
   const big = viewer() || (s ? s.by : view && sq.owner ? sq.owner : turn) || 'X';
   const tal = p => {
     const open = scrOpen(mini, p), best = scrBest(open), moved = !!(s && s.by === p && s.c === best && s.c !== scrBest(open.map((v, i) => (i === s.spot ? null : v))));
@@ -79,7 +80,7 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
     }).join('');
     // three of a kind: the line through them, drawn as the picture lands
     const line = cells.length >= SCR.need ? (() => { const at = i => [(i % 3) + .5, Math.floor(i / 3) + .5], [x1, y1] = at(cells[0]), [x2, y2] = at(cells[cells.length - 1]); const d = `M${x1} ${y1}L${x2} ${y2}`; return `<svg class="swline${fresh && live ? ' draw' : ''}" viewBox="0 0 3 3" aria-hidden="true"><path class="swo" d="${d}" pathLength="1"/><path class="swi" d="${d}" pathLength="1"/></svg>`; })() : '';
-    return `<div class="scard ${p}${p === big ? ' big' : ' sml'}${mine ? ' on' : ''}${cells.length ? ' won' : ''}" role="group" aria-label="${p}'s card"><span class="stab" aria-hidden="true">${toon(p)}</span><div class="sgrid">${spots}${line}</div></div>`;
+    return `<div class="scard ${p}${p === big ? ' slg' : ' sml'}${mine ? ' on' : ''}${cells.length ? ' won' : ''}" role="group" aria-label="${p}'s card"><span class="stab" aria-hidden="true">${toon(p)}</span><div class="sgrid">${spots}${line}</div></div>`;
   };
   // the result line: what the scratch came to, popping in as the picture lands; at rest, the last scratch's
   const r = s ? { by: s.by, pic: PICS[(s.pic != null ? s.pic : s.sym) % PICS.length] || PICS[0], c: s.c } : mini.last && mini.last.sym != null ? { by: mini.last.by, pic: picOf(mini, mini.last.sym), c: mini.last.c } : null;

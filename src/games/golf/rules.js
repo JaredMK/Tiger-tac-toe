@@ -1,5 +1,6 @@
 // Mini Golf: the rules (pure: no page, no clock; the server runs the same code).
 import { needRng, randInt } from '../../core/random.js';
+import { tune } from '../../core/tune.js';
 import { PHYSICS, physLast, physRandom, physRun, physRunBoth, physShot } from '../shared/physics.js';
 export { physicsMoveFlash as moveFlash } from '../shared/physics.js';
 
@@ -30,23 +31,31 @@ export function golfNext(hole, pos) {                                 // the pat
   return best;
 }
 export function golfAhead(hole, i) { let s = 0; for (let k = i; k < hole.path.length - 1; k++) s += Math.hypot(hole.path[k + 1][0] - hole.path[k][0], hole.path[k + 1][1] - hole.path[k][1]); return s; }
+// The windmills' clock (seconds of the simulation's own time they have turned, mini.mt): they turn while a shot plays
+// and stand still between shots, so the next shot finds them just as the last left them (physics-sim.js millAngle).
+export const golfPhase = mini => (Number.isFinite(mini.mt) ? mini.mt : 0);
+const golfTurned = (mini, r) => { const L = PHYSICS.lib, n = r && r.rec && r.rec.frames ? r.rec.frames.length - 1 : 0; mini.mt = Math.round(((golfPhase(mini) + n / r.rec.fps * (L.TS || 1)) % 3600) * 1000) / 1000; };
 export function golfLeft(hole, pos) { const i = golfNext(hole, pos); return Math.hypot(hole.path[i][0] - pos[0], hole.path[i][1] - pos[1]) + golfAhead(hole, i); }
 export function create(type, rng) {   // a hole (any of them, or the page's own choice: golfPick); both balls side by side on the tee
   const L = PHYSICS.lib, n = L ? L.HOLES.length : 6, r = needRng(rng), own = golfPick && L ? golfPick(r, L.HOLES) : null;
   const hole = Number.isInteger(own) && own >= 0 && own < n ? own : randInt(r, n), tee = L ? L.HOLES[hole].tee : [50, 140];
-  return { type, hole, balls: { X: [tee[0] - 3, tee[1]], O: [tee[0] + 3, tee[1]] }, holed: { X: false, O: false }, shots: { X: 0, O: 0 }, last: null };
+  return { type, hole, v: 2, balls: { X: [tee[0] - 3, tee[1]], O: [tee[0] + 3, tee[1]] }, holed: { X: false, O: false }, shots: { X: 0, O: 0 }, last: null };   // (v 2: the terrain, December 2026; a square without it plays on without)
 }
+const golfWaterCost = mini => { const n = Number(tune(mini).waterPenalty); return Number.isFinite(n) ? Math.max(0, Math.min(3, Math.round(n))) : 1; };
 export function apply(mini, p, m, rng, idx) {   // a shot: the balls play out; the first in the cup takes the square (even knocked in by the other)
   const shot = physShot(m);
   if (!shot) return { ok: false, reason: 'bad' };
   if (mini.holed[p]) return { ok: false, reason: 'done' };
   const r = physRun(mini, p, shot);
   if (!r) return { ok: false, reason: 'nophys' };
+  const wet = r.result.water || {}, mill = golfPhase(mini);
+  if (mini.v >= 2) golfTurned(mini, r);
   mini.shots[p] += 1;
+  for (const q of ['X', 'O']) if (wet[q]) mini.shots[q] += wet[q] * golfWaterCost(mini);   // (in the water: back where the shot began, and the penalty strokes on that ball's count)
   for (const q of ['X', 'O']) if (r.final[q] !== undefined) { if (r.final[q] === null) mini.holed[q] = true; else mini.balls[q] = r.final[q]; }
-  mini.last = physLast(p, shot, r, { holed: r.result.holed, first: r.result.first, lip: r.events.some(e => e.k === 'lip') });
+  mini.last = physLast(p, shot, r, Object.assign({ holed: r.result.holed, first: r.result.first, lip: r.events.some(e => e.k === 'lip') }, mini.v >= 2 ? { mill } : {}, r.result.water ? { water: wet } : {}));
   if (r.result.first) return { ok: true, outcome: 'win', note: r.result.first === p ? 'holed' : 'knockedIn', winner: r.result.first };
-  return { ok: true, outcome: 'continue', note: mini.last.lip ? 'lip' : 'shot' };
+  return { ok: true, outcome: 'continue', note: mini.last.water ? 'water' : mini.last.lip ? 'lip' : 'shot' };
 }
 export function publicView(mini) {
   const c = JSON.parse(JSON.stringify(mini)); if (c.last) delete c.last.rec; return c;
@@ -77,7 +86,9 @@ export function scMerge(m, c) {
   const r = Object.keys(shots).length ? physRunBoth(b, shots) : null;
   if (!r) { m.last = b.last; return { win: { X: false, O: false } }; }
   for (const p of Object.keys(shots)) m.shots[p] += 1;
+  const mill = golfPhase(b); if (b.v >= 2) { m.mt = mill; golfTurned(m, r); }
+  for (const q of ['X', 'O']) if (r.result.water && r.result.water[q]) m.shots[q] += r.result.water[q] * golfWaterCost(b);
   for (const q of ['X', 'O']) if (r.final[q] !== undefined) { if (r.final[q] === null) m.holed[q] = true; else m.balls[q] = r.final[q]; }
-  m.last = { by: c.cpu in shots ? c.cpu : c.me, both: shots, aim: (shots[c.me] || shots[c.cpu]).aim, power: (shots[c.me] || shots[c.cpu]).power, ms: r.ms, events: r.events, rec: r.rec, holed: r.result.holed, first: r.result.first, lip: r.events.some(e => e.k === 'lip') };
+  m.last = { by: c.cpu in shots ? c.cpu : c.me, both: shots, aim: (shots[c.me] || shots[c.cpu]).aim, power: (shots[c.me] || shots[c.cpu]).power, ms: r.ms, events: r.events, rec: r.rec, holed: r.result.holed, first: r.result.first, lip: r.events.some(e => e.k === 'lip'), mill };
   return { win: { X: !b.holed.X && m.holed.X, O: !b.holed.O && m.holed.O }, replay: true };
 }

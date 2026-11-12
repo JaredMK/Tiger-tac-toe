@@ -6,7 +6,9 @@ import { cfFrom } from './cardfly.js';
 
 /* ----- the card games and the wheel: Blackjack, Ride the Bus, Roulette ----- */
 // Playing cards: each suit drawn as a shape (the same on every phone), the rank big in the corner so it
-// reads at phone size. A card in play slides in (.slide, at --d) and turns face up (.flip, at --f), each
+// reads at phone size. A four-colour deck (November 2026): every card, chip and miniature carries `su<S|H|D|C>`
+// beside `red` (the rule's colour, Ride the Bus's), coloured by the `--suit-*` tokens (spades ink, hearts red,
+// diamonds blue, clubs green). A card in play slides in (.slide, at --d) and turns face up (.flip, at --f), each
 // from its own moment in the move (ms after it); a face-down card shows its back.
 export const SUIT_PATH = {
   S: 'M12 2.2C9.4 5.9 3.2 9 3.2 13.7c0 2.9 2.2 4.5 4.4 4.5 1.5 0 2.8-.7 3.6-1.8-.3 2.2-1.3 3.7-2.9 4.8h7.4c-1.6-1.1-2.6-2.6-2.9-4.8.8 1.1 2.1 1.8 3.6 1.8 2.2 0 4.4-1.6 4.4-4.5C20.8 9 14.6 5.9 12 2.2z',
@@ -20,10 +22,10 @@ const rankText = c => (c[0] === 'T' ? '10' : c[0]);
 const rankName = c => RANK_NAME[c[0]] || c[0];
 export function pcard(c, o = {}) {
   const down = o.down || !c;
-  const cls = `plc${down ? ' down' : ''}${c && cardRed(c) ? ' red' : ''}${o.slide != null ? ' slide' : ''}${o.flip != null ? ' flip' : ''}${o.cls ? ' ' + o.cls : ''}`;
+  const cls = `plc${down ? ' down' : ''}${c && cardRed(c) ? ' red' : ''}${o.slide != null ? ' slide' : ''}${o.flip != null ? ' flip' : ''}${o.cls ? ' ' + o.cls : ''}${c ? ' su' + c[1] : ''}`;
   const style = [o.slide != null ? `--d:${o.slide}ms` : '', o.flip != null ? `--f:${o.flip}ms` : '', o.style || ''].filter(Boolean).join(';');
   const face = c ? `<span class="pcf fc"><b class="rk">${esc(rankText(c))}</b>${suitSvg(c[1], 'sm')}${suitSvg(c[1], 'lg')}</span>` : '';
   const fly = o.from ? cfFrom(o.from, o.at != null ? o.at : o.slide || 0, o) : '';   // (card motion: ui/cardfly.js, from its source on the screen)
   return `<span class="${cls}"${style ? ` style="${style}"` : ''}${fly} role="img" aria-label="${down ? 'Face-down card' : esc(cardName(c))}"><span class="pcin">${face}<span class="pcf rev"></span></span></span>`;
 }
-export const cardShort = c => `<span class="cshort${cardRed(c) ? ' red' : ''}">${esc(rankText(c))}${suitSvg(c[1], 'inl')}</span>`;
+export const cardShort = c => `<span class="cshort${cardRed(c) ? ' red' : ''} su${c[1]}">${esc(rankText(c))}${suitSvg(c[1], 'inl')}</span>`;

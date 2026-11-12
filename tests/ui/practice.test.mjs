@@ -97,3 +97,23 @@ test('a saved practice match is never restored (ui/app.js load clears the mark; 
   assert.equal(state.practice, null, 'Play Computer after it: an ordinary match');
   assert.match(renderHeader(), /data-act="pause"/);
 });
+test('Back to How to Play mid-match stops everything at once: the computer\'s timer and plan, the move on show, every sound and buzz still to come; nothing acts on the match after', async () => {
+  const A = await import('../../src/ui/app.js');
+  const TU = await import('../../src/ui/turns.js');
+  const { SND } = await import('../../src/audio/sound.js');
+  Object.assign(state, board(), { screen: 'howto', online: null, practice: null });
+  assert.equal(X.practiceStart('ttt'), true); MM.closeIntro();
+  Object.assign(state, { turn: state.cpu, screen: 'mini', zoom: 4, flash: null, done: null });
+  TU.scheduleCpu();
+  assert.ok(A.cpuTimer || A.cpuPlan, 'the computer is on its way');
+  A.setFlashTimer(setTimeout(() => { state.flash = 'late'; }, 5)); A.setHoldTimer(setTimeout(() => { state.flash = 'late'; }, 5));
+  const moves = state.moves, cut = SND.cut; let cuts = 0;
+  SND.cut = (...a) => { cuts++; return cut.apply(SND, a); };
+  try { X.practiceEnd(); } finally { SND.cut = cut; }
+  assert.equal(cuts, 1, 'every move and replay sound cut');
+  assert.equal(A.cpuTimer, null); assert.equal(A.cpuPlan, null); assert.equal(A.flashTimer, null); assert.equal(A.holdTimer, null);
+  await new Promise(r => setTimeout(r, 1500));
+  assert.equal(state.screen, 'howto'); assert.equal(state.moves, moves, 'the computer never moved'); assert.equal(state.flash, null); assert.equal(state.practice, null);
+  TU.scheduleCpu(); assert.equal(A.cpuTimer, null, 'nothing re-arms on How to Play');
+  X.closeExplain(true);
+});

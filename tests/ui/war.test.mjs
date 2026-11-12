@@ -132,7 +132,7 @@ test('the miniature: the last flip\'s two cards face to face (the player\'s ring
   assert.equal(count(fresh, /tcd cdb/g), 2, 'two backs before any flip'); assert.match(fresh, /class="twar"/);
   const x = play(m0, 'X', 'QD', 'QC', ...DOWN, '9S', '5H');
   const html = V.miniature(x.mini, false);
-  assert.match(html, /<i class="tcd X"><b>9<\/b>/); assert.match(html, /<i class="tcd red"><b>5<\/b>/);
+  assert.match(html, /<i class="tcd X suS"><b>9<\/b>/); assert.match(html, /<i class="tcd red suH"><b>5<\/b>/);   // (su<S|H|D|C>: the four-colour deck)
   assert.doesNotMatch(html, /<b>Q<\/b>/, 'the last pair alone');
   assert.equal(count(html, /<i class=" on">/g), 2);
   const hidden = clone(x.mini); hideMini(hidden, 0, state);

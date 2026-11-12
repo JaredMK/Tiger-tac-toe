@@ -131,3 +131,12 @@ test('pusher: whole squares between the computers end with a winner or a draw in
   }
   assert.equal(ended, 12);
 });
+
+test('pusher: after the last coin the bar pushes on for 2.5 strokes (a stroke one period), the same in the sim and the run length', () => {
+  const mini = E.newMini('pusher', E.makeRng('settle')), c = R.pushCfg(mini);
+  assert.equal(c.settleStrokes, 2.5);
+  assert.equal(R.pushSettleSteps(c), Math.round(2.5 * c.period * R.PUSH.hz));
+  const sim = R.pushSim(c, mini.coins.X, [{ k: 0, x: 0.5, st: 0 }], false, 0);
+  assert.equal(sim.steps, R.pushSettleSteps(c));
+  assert.equal(R.pushSettleSteps(Object.assign({}, c, { settleStrokes: 3, period: 2 })), 360);
+});

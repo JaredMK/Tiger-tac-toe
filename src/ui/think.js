@@ -34,6 +34,8 @@ function settle(w, plan) {
   if (plan && plan.move && plan.move.fing) fingPlay(w.state, plan, w.state.turn, RNG);   // a finger game's attempt: made here, with the physics
   w.cb(plan || cpuMove(w.state, RNG, null, { budget: 60, clock: () => performance.now() }));   // (no answer: a quick decision on the thread)
 }
+// The question still being worked out is dropped: its answer, when it comes, goes nowhere (turns.js cpuStop).
+export function thinkCancel() { if (waiting) { clearTimeout(waiting.timer); waiting = null; } }
 // The computer's move for the match as it stands: cb(plan) (plan null when it has no move).
 export function cpuThink(st, cb) {
   const lv = levelOf(st.cpuLevel), L = levelCfg(lv);

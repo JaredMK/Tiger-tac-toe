@@ -60,7 +60,7 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
 export function miniature(mini, final) {
   const row = (p, y) => {
     const h = mini.hand[p].slice(0, 3), best = t31Best(h).suit;
-    return h.map((c, k) => { const x = 2 + k * 21; return `<g transform="translate(${x} ${y})"><rect class="tt31c${c[1] === best ? ' ' + p : ''}" width="18" height="24" rx="3"/><path class="tt31s${cardRed(c) ? ' red' : ''}" transform="translate(3 6) scale(.5)" d="${SUIT_PATH[c[1]]}"/></g>`; }).join('');
+    return h.map((c, k) => { const x = 2 + k * 21; return `<g transform="translate(${x} ${y})"><rect class="tt31c${c[1] === best ? ' ' + p : ''}" width="18" height="24" rx="3"/><path class="tt31s${cardRed(c) ? ' red' : ''} su${c[1]}" transform="translate(3 6) scale(.5)" d="${SUIT_PATH[c[1]]}"/></g>`; }).join('');
   };
   const art = `<svg class="tt31" viewBox="0 0 66 54" aria-hidden="true">${row('X', 1)}${row('O', 29)}</svg>`;
   const rows = ['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><span class="tsn">${t31Score(mini.hand[p].slice(0, 3))}</span></div>`).join('');

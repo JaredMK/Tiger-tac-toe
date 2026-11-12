@@ -5,7 +5,7 @@ import { gaussOf, randInt } from '../../core/random.js';
 import { tune } from '../../core/tune.js';
 import { other } from '../../core/util.js';
 import { bowlTarget } from '../bowling/rules.js';
-import { golfClear, golfLeft, golfNext } from '../golf/rules.js';
+import { golfClear, golfLeft, golfNext, golfPhase } from '../golf/rules.js';
 import { poolLeft, poolMine, poolOwns, poolPow } from '../pool/rules.js';
 
 // ---------- Mini Golf, Pool and Bowling: the physics games (Matter.js, through physics.js) ----------
@@ -36,7 +36,8 @@ export const aimTo = (from, to) => Math.atan2(to[0] - from[0], from[1] - to[1]);
 export function physOpt(mini) {
   if (!mini || !mini.tune) return undefined;
   const t = tune(mini);
-  return mini.type === 'golf' ? { holeSpeed: t.holeSpeed, kick: t.kick } : { vMax: t.vMax };
+  if (mini.type === 'golf' && mini.v >= 2) return { holeSpeed: t.holeSpeed, kick: t.kick, terrain: { slopes: t.slopes === 'on', sand: t.sand === 'on', water: t.water === 'on', mills: t.mills === 'on', phase: golfPhase(mini) } };   // (Mini Golf's terrain, December 2026: a square dealt before has none)
+  return mini.type === 'golf' ? { holeSpeed: t.holeSpeed, kick: t.kick } : mini.type === 'bowling' ? { vMax: t.vMax, hook: Number.isFinite(t.hook) ? t.hook / 1000 : undefined } : { vMax: t.vMax };   // (Bowling's hook: thousandths of a radian a unit rolled, at full curve)
 }
 export function physRun(mini, p, shot) { return PHYSICS.lib ? PHYSICS.lib.run(mini.type, mini, p, shot, physOpt(mini)) : null; }
 // Super Chaos's Mini Golf: both balls struck at once (shots: { X, O }, either may be missing).
@@ -48,7 +49,7 @@ export function physScore(mini, p, r) {
   if (mini.type === 'golf') {
     if (r.result.first === p) return 1000;
     if (r.result.first === o) return -1000;
-    return -golfLeft(L.HOLES[mini.hole], r.final[p] || mini.balls[p]);
+    return -golfLeft(L.HOLES[mini.hole], r.final[p] || mini.balls[p]) - (r.result.water && r.result.water[p] ? GOLF_WET : 0);   // (in the water: back where it began, and a stroke more: worse than a shot that goes nowhere)
   }
   if (mini.type === 'pool') {
     const pk = r.result.pocketed, own = pk.filter(id => poolOwns(p, id)).length, theirs = pk.filter(id => poolOwns(o, id)).length, scratch = pk.includes('cue');
@@ -65,6 +66,7 @@ export function physScore(mini, p, r) {
   }
   return r.result.knocked * 10 - (r.result.gutter ? 1 : 0);
 }
+const GOLF_WET = 40;
 export function physCandidates(mini, p, rng) {
   const L = PHYSICS.lib, out = [];
   if (mini.type === 'golf') {                                 // at the next points of the hole's path, and at the cup, with powers to suit the distance

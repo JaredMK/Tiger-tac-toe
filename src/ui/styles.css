@@ -1838,6 +1838,9 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .suit.inl { display: inline-block; width: .95em; height: .95em; vertical-align: -.1em; fill: currentColor; margin-left: 1px; }
 .cshort { font-weight: 800; white-space: nowrap; }
 .cshort.red { color: #d6301e; }
+/* the four-colour deck (November 2026): spades ink, hearts red, diamonds blue, clubs green, on every card, chip and miniature (`su<S|H|D|C>`, ui/cards.js) */
+:root { --suit-s: var(--ink); --suit-h: #d6301e; --suit-d: #1f63c9; --suit-c: #1f8a3c; }
+.plc.suD .pcf.fc, .cshort.suD { color: var(--suit-d); } .plc.suC .pcf.fc, .cshort.suC { color: var(--suit-c); }
 .appear { animation: appearin .3s var(--t, 0ms) ease-out both; }
 @keyframes appearin { from { opacity: 0; transform: scale(.6); } 60% { opacity: 1; transform: scale(1.12); } to { opacity: 1; transform: none; } }
 
@@ -2173,6 +2176,7 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .tphys text { fill: var(--ink); font-weight: 800; text-anchor: middle; font-family: Nunito, Arial, sans-serif; }
 /* Mini Golf's miniature (golf/view.js): the course in its kerb, the turf's bands, the tee mat, walls, posts, the cup and its flag; red and yellow are the balls' alone */
 .tgolf .gkerb { fill: #d09a58; stroke: var(--ink); stroke-width: 3; } .tgolf .gturf { fill: #5fbf5a; stroke: var(--ink); stroke-width: 1.6; } .tgolf .gmow { fill: rgba(255, 255, 255, .1); } .tgolf .gmat { fill: #4ba24c; stroke: rgba(255, 255, 255, .6); stroke-width: 1; }
+.tgolf .gslope { fill: rgba(10, 40, 10, .14); } .tgolf .gfall { stroke: rgba(255, 255, 255, .6); stroke-width: 2; stroke-linecap: round; } .tgolf .gsand { fill: #efd99c; stroke: var(--ink); stroke-width: 1.6; } .tgolf .gwater { fill: #2d74b8; stroke: var(--ink); stroke-width: 1.6; } .tgolf .gmill { stroke: #f6efe0; stroke-width: 3; stroke-linecap: round; }
 .tgolf .gwall { fill: #d09a58; stroke: var(--ink); stroke-width: 2.4; } .tgolf .gpost { fill: var(--sea-2); stroke: var(--ink); stroke-width: 2.2; } .tgolf .gcup { fill: #0e2413; stroke: #eaf7df; stroke-width: 2; }
 .tgolf .gpole { fill: none; stroke: var(--ink); stroke-width: 2.6; stroke-linecap: round; } .tgolf .gflag { fill: var(--sea); stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; }
 .tgolf circle.X, .tgolf circle.O { stroke-width: 2.4; }
@@ -2882,7 +2886,7 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .big.bus-up, .big.bus-in { background: var(--sky); color: var(--ink); }
 .big.bus-down, .big.bus-out { background: var(--o); color: var(--ink); }
 .big[class*="bus-suit"] svg { width: 30px; height: 30px; fill: var(--ink); }
-.big[class*="bus-suit"].red svg { fill: #d6301e; }
+.big[class*="bus-suit"].red svg { fill: #d6301e; } .big[class*="bus-suit"].suD svg { fill: var(--suit-d); } .big[class*="bus-suit"].suC svg { fill: var(--suit-c); }
 /* Ride the Bus (the polish sweep, November 2026): each player's row is a route: four stops (the kept card, or the round's picture) over a road, their bus
    (.busbus, --k its stop) riding to the next stop as a right card flies there (.go, from --fl) and a flag at the end; the stage a felt with the deck, the
    drawn card's spot and the result line (.busline); every answer's button carries its picture and keeps its own look when chosen (ringed in its player's colour). */
@@ -2927,6 +2931,8 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .busask .big { display: flex; align-items: center; justify-content: center; gap: 8px; }
 .busask .big svg.bi { width: 30px; height: 30px; flex: none; fill: none; }
 .busask .big .bpair { display: inline-flex; gap: 1px; flex: none; } .busask .big .bpair svg { width: 21px; height: 21px; fill: currentColor; }
+.busask .big .bpair { background: var(--paper); border-radius: 999px; padding: 2px 5px; box-shadow: inset 0 0 0 1.5px rgba(22,18,16,.25); }   /* the rule's two suits in the deck's own colours, on paper so blue and green read on the red and black buttons */
+.busask .big .bpair svg.suS { fill: var(--suit-s); } .busask .big .bpair svg.suH { fill: var(--suit-h); } .busask .big .bpair svg.suD { fill: var(--suit-d); } .busask .big .bpair svg.suC { fill: var(--suit-c); }
 .busask .big.bus-up, .busask .big.bus-in, .busask .big.chosen.bus-up, .busask .big.chosen.bus-in { background: var(--sky); color: var(--ink); }
 .busask .big.bus-down, .busask .big.bus-out, .busask .big.chosen.bus-down, .busask .big.chosen.bus-out { background: var(--sea); color: var(--paper); }
 .busask .big.chosen.bus-red { background: #d6301e; color: var(--paper); } .busask .big.chosen.bus-black { background: var(--ink); color: var(--paper); }
@@ -3102,7 +3108,7 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .tfin .a { fill: var(--ink); } .tfin .b { fill: var(--paper); }
 /* a tiny playing card: its rank and suit, red or black; a back in the card backs' stripes */
 .tcd { position: relative; display: inline-grid; place-items: center; width: 11cqw; height: 15cqw; border-radius: 1.8cqw; background: #fff; border: 1cqw solid var(--ink); color: var(--ink); font-style: normal; }
-.tcd.red { color: #d6301e; }
+.tcd.red { color: #d6301e; } .tcd.suD { color: var(--suit-d); } .tcd.suC { color: var(--suit-c); }
 .tcd b { font: 800 6cqw/1 Nunito, Arial, sans-serif; letter-spacing: -.02em; } .tcd svg { width: 5.5cqw; height: 5.5cqw; fill: currentColor; }
 .tcd.cdb { background: repeating-linear-gradient(45deg, var(--sky) 0 1.6cqw, #8cc7e3 1.6cqw 3.2cqw); }
 /* 21: the hand's cards fanned (or two backs before the deal) */
@@ -5149,15 +5155,8 @@ button.die.bgldie { cursor: pointer; }
 .bglhm.X { background: var(--x); } .bglhm.O { background: var(--o); }
 .bgldice:has(> :nth-child(4)) { gap: 8px; }
 .bgldice:has(> :nth-child(4)) .die.bgldie { width: 42px; height: 42px; }
-/* Rock Paper Scissors (rps): the house's deck, the two hands with the result line between, three throw buttons */
+/* Rock Paper Scissors (rps): the two hands with the result line between, three throw buttons (the house throws at random) */
 .g-rps { width: min(var(--gw), 440px); height: var(--gh); display: flex; flex-direction: column; gap: 8px; padding-top: 4px; }
-.rpsdeck { flex: none; display: flex; align-items: center; justify-content: center; gap: 10px; min-width: 0; }
-.rpslab { font-size: 14px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 1 auto; }
-.rpschip { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px 2px 4px; background: var(--paper); border: 2.5px solid var(--ink); border-radius: 12px; flex: none; }
-.rpschip .rpsv { width: 26px; height: 26px; }
-.rpschip b { font: 400 18px/1 'Luckiest Guy', 'Arial Black', sans-serif; min-width: 1ch; text-align: center; }
-.rpschip.rpsbump { animation: rpsbump .35s var(--t, 0ms) ease-out both; }
-@keyframes rpsbump { 40% { transform: scale(1.15); } }
 .rpsarena { flex: 1; min-height: 0; container-type: size; display: grid; grid-template-rows: auto 1fr auto 1fr auto; justify-items: center; align-items: center; padding: 6px 10px; background: radial-gradient(ellipse at 50% 45%, #6fae7a, #3f7f52); border: 3.5px solid var(--ink); border-radius: 22px 16px 24px 18px; }
 .rpswho { font-size: 14px; color: #fff; text-shadow: 0 1px 0 rgba(0,0,0,.35); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .rpshand { position: relative; width: min(30cqh, 42cqw); aspect-ratio: 1; display: grid; place-items: center; }
@@ -5200,7 +5199,7 @@ button.die.bgldie { cursor: pointer; }
 .t31 .t31sc small { font-size: 12px; opacity: .7; }
 .t31felt { flex: 1; min-height: 0; display: grid; grid-template-rows: 1fr auto 1fr; align-items: center; justify-items: center; gap: 6px; padding: 10px; background: radial-gradient(ellipse at 50% 40%, #4f8a5a, #2f5f3a); border: 3.5px solid var(--ink); border-radius: 18px; container-type: size; --cw: min(64px, 17cqw, 15cqh); }
 .t31felt .arcres, .t31felt .arcnote { color: var(--paper); min-height: 1.3em; margin: 0; text-align: center; }
-.t31felt .arcres .cshort.red { color: #ffb4a8; }
+.t31felt .arcres .cshort.red { color: #ffb4a8; } .t31felt .arcres .cshort.suD { color: #a9cbff; } .t31felt .arcres .cshort.suC { color: #a4e3ad; }
 .t31top { display: flex; gap: calc(var(--cw) * .5); align-items: center; }
 .t31top button, .t31c { all: unset; position: relative; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .t31top button:disabled, .t31c:disabled { cursor: default; }
@@ -5217,7 +5216,7 @@ button.die.bgldie { cursor: pointer; }
 .tart.tt31w { gap: 2cqw; } .tart.tt31w .tpic { width: 54cqw; } .tart.tt31w .tpip { width: auto; flex: 1; }
 .tt31 { width: 100%; height: auto; overflow: visible; }
 .tt31 .tt31c { fill: #fff; stroke: var(--ink); stroke-width: 1.4; } .tt31 .tt31c.X { stroke: var(--x); stroke-width: 2.6; } .tt31 .tt31c.O { stroke: var(--o); stroke-width: 2.6; }
-.tt31 .tt31s { fill: var(--ink); } .tt31 .tt31s.red { fill: #d6301e; }
+.tt31 .tt31s { fill: var(--ink); } .tt31 .tt31s.red { fill: #d6301e; } .tt31 .tt31s.suD { fill: var(--suit-d); } .tt31 .tt31s.suC { fill: var(--suit-c); }
 .tt31w .tsn { font: 400 var(--mt)/1 'Luckiest Guy', sans-serif; padding-top: 2px; }
 /* Rummy Lite (rummy): the other player's hand small, the felt with the deck and the pile, the hand of the player on the move; melds ringed in their colour */
 .g-arc.rmy { gap: 6px; }
@@ -5264,7 +5263,7 @@ button.pokc:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; 
 .tpokw .tpip .tr { gap: 1.6cqw; } .tpokw .tpip .tr b { margin-right: 1.5cqw; } .tpokw .tpip i { width: min(8.5cqw, calc(66cqw / var(--n))); height: min(8.5cqw, calc(66cqw / var(--n))); border-width: 1.2cqw; }
 .tpok { width: 100%; height: auto; overflow: visible; }
 .tpok .tpokc { fill: #fff; stroke: var(--ink); stroke-width: .8; } .tpok .tpokc.none { fill: none; stroke-dasharray: 2 1.5; opacity: .5; }
-.tpok .tpoks { fill: var(--ink); } .tpok .tpoks.red { fill: #d6301e; }
+.tpok .tpoks { fill: var(--ink); } .tpok .tpoks.red { fill: #d6301e; } .tpok .tpoks.suD { fill: var(--suit-d); } .tpok .tpoks.suC { fill: var(--suit-c); }
 .t31mk.X .tmk { stroke: var(--x); } .t31mk.O .tmk { stroke: var(--o); }   /* Thirty-One: whose hand it is, in their colour */
 /* Coin Pusher (November 2026): the machine on a canvas between the tallies and the reserved result line, Clear and Drop below */
 .psh { flex: 1; min-height: 0; display: flex; flex-direction: column; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }

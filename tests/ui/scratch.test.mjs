@@ -42,11 +42,11 @@ test('the move\'s controls are the nine panels of the player to move, on their c
   assert.equal(count(c.X, /data-act="move"/g), 9); assert.equal(count(c.O, /data-act="move"/g), 0);
   assert.equal(count(html, /class="spic"/g), 0, 'nothing of either card in the page');
   assert.equal(count(html, /class="sfrost"/g), 18, 'every panel under its foil');
-  assert.match(html, /<div class="smain"><div class="scard X big on"/); assert.match(html, /<div class="ssml"><div class="scard O sml"/);
+  assert.match(html, /<div class="smain"><div class="scard X slg on"/); assert.match(html, /<div class="ssml"><div class="scard O sml"/);
   assert.match(html, /class="sfound none"/, 'the result line is there, empty');
   const o = screen({ owner: null, mini: m0 }, null, 'O');
   assert.equal(count(cardsOf(o).O, /data-act="move"/g), 9, 'O to move: O\'s card');
-  assert.match(o, /<div class="smain"><div class="scard O big on"/, 'two on one phone: the mover\'s card is the large one');
+  assert.match(o, /<div class="smain"><div class="scard O slg on"/, 'two on one phone: the mover\'s card is the large one');
   assert.match(html, /tnm">Xena/); assert.match(html, /tnm">Olaf/);
   assert.equal(count(html, /class="stab"/g), 2, 'each ticket carries its player\'s face');
 });
@@ -56,7 +56,7 @@ test('against the computer or online this phone\'s own card stays the large one;
   state.cpu = 'O';
   try {
     const html = screen({ owner: null, mini: o.mini }, o.flash, 'O');
-    assert.match(html, /<div class="smain"><div class="scard X big"/); assert.match(html, /<div class="ssml"><div class="scard O sml on"/);
+    assert.match(html, /<div class="smain"><div class="scard X slg"/); assert.match(html, /<div class="ssml"><div class="scard O sml on"/);
     assert.match(cardsOf(html).O, /class="sspot open rub" data-act="move" data-m='8'/);
   } finally { state.cpu = null; }
 });
@@ -103,7 +103,7 @@ test('a scratch animates from the move\'s flash on the mover\'s card: the foil r
   // once settled (no flash), nothing animates and every scratched panel shows its picture
   const h4 = screen({ owner: 'O', mini: o3.mini }, null, 'X', { view: true });
   assert.equal(count(h4, /rub|glow|hit|appear| draw/g), 0); assert.equal(count(h4.split('<div class="sline">')[0], /class="spic"/g), 4); assert.equal(count(h4, /data-act="move"/g), 0);
-  assert.match(h4, /<div class="smain"><div class="scard O big won"/, 'the finished square: the winner\'s card is the large one');
+  assert.match(h4, /<div class="smain"><div class="scard O slg won"/, 'the finished square: the winner\'s card is the large one');
   assert.match(h4, /<svg class="swline" /);
 });
 

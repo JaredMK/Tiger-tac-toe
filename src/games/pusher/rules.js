@@ -10,8 +10,8 @@ import { goAgain, tune, tuneLive } from '../../core/tune.js';
 // where it is then; timing is the skill. The first tap starts the move: where the bar and the dropper were in their
 // cycles then (`ph`, `dp`, in thousandths) is part of the move, and every coin after it is the step it was released at
 // (`k`, steps of 1/`PUSH.hz` s from the first; `k[0]` is 0). The coins left for after the attempt's time limit
-// (`maxSecs` from the first) drop where the dropper is then. After the last coin the machine pushes on for `settle`
-// seconds; coins pushed over the front edge score, coins that slide off the sides near the front (where the side walls
+// (`maxSecs` from the first) drop where the dropper is then. After the last coin the machine pushes on for `settleStrokes`
+// strokes (2.5, each one `period`); coins pushed over the front edge score, coins that slide off the sides near the front (where the side walls
 // stop) are lost; what is left stays for that player's next move (`mini.coins[p]`). Star coins (`starPct`, worth
 // `starWorth`) come from the square's own public seed (`mini.seed`, the player and their move's number), so the move is
 // worked out from its inputs alone: the same push on the mover's phone (played live as it is made), on the server (the
@@ -57,7 +57,9 @@ export function pushStars(mini, p, c, n) {
   return Array.from({ length: n }, () => (r() * 100 < c.starPct ? 1 : 0));
 }
 export const pushMaxSteps = c => Math.round(Math.max(1, c.maxSecs) * PUSH.hz);
-export const pushSettleSteps = c => Math.round(Math.max(0.5, c.settle) * PUSH.hz);
+// After the last coin the bar keeps pushing for `settleStrokes` strokes (a stroke: forward and back, one `period`), so
+// the last coins' push plays out before the move is scored (the same here, live and in the replays).
+export const pushSettleSteps = c => Math.round(Math.max(1, c.settleStrokes == null ? 2.5 : c.settleStrokes) * Math.max(0.5, c.period) * PUSH.hz);
 // ---- the simulation, a step at a time (the phone plays it live; the server and the replays run it through) ----
 export function pushInit(c, coins, ph, frames) {
   return { c, ph: ph || 0, s: 0, list: coins.map((a, i) => ({ x: a[0] / PUSH.Q, y: a[1] / PUSH.Q, vx: 0, vy: 0, id: i, st: a[2] ? 1 : 0 })), nextId: coins.length, scored: 0, lost: 0, pts: 0, ev: [], frames: frames ? [] : null, last: null };

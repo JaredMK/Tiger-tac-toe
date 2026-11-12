@@ -5,24 +5,24 @@ const assert = require('node:assert/strict');
 const E = require('../engine.js');
 
 /* ===================================== Sniff ===================================== */
-test('sniff: a 7x7 field, the dog at least 3 cells from the treasure in a straight line; a step is hotter, colder or the same, always right; onto it wins', () => {
+test('sniff: a 7x7 field, the dog at least 3 steps from the treasure (a diagonal step counts one); a step is hotter, colder or the same, always right; onto it wins', () => {
   const rng = E.makeRng('sn-rules');
   const seen = { hot: 0, cold: 0, same: 0 }, starts = new Set();
   for (let k = 0; k < 2000; k++) {
     const m = E.newMini('sniff', rng);
     assert.equal(m.g, 7, 'a 7x7 square');
     assert.ok(m.treasure >= 0 && m.treasure < 49 && m.dog >= 0 && m.dog < 49);
-    assert.ok(E.sniffDist(m.dog, m.treasure) >= 3 - 1e-9, 'at least 3 cells off in a straight line');
+    assert.ok(E.sniffSteps(m.dog, m.treasure) >= 3, 'at least 3 steps off');
     assert.equal(m.dog, m.start);
-    starts.add(Math.round(E.sniffD2(m.dog, m.treasure)));
+    starts.add(E.sniffSteps(m.dog, m.treasure));
     let r, n = 0;
     while (!r || r.outcome !== 'win') {
       const d = E.randomLegalMove(m, n % 2 ? 'O' : 'X', rng), from = m.dog;
       assert.ok(E.sniffDirs(from).includes(d), 'a legal step');
       r = E.applyMove(m, n % 2 ? 'O' : 'X', d, rng);
       assert.equal(r.ok, true);
-      const a = Math.hypot(Math.floor(m.dog / 7) - Math.floor(m.treasure / 7), m.dog % 7 - m.treasure % 7), b = Math.hypot(Math.floor(from / 7) - Math.floor(m.treasure / 7), from % 7 - m.treasure % 7);
-      const res = Math.abs(a - b) < 1e-9 ? 'same' : a < b ? 'hot' : 'cold';
+      const a = Math.max(Math.abs(Math.floor(m.dog / 7) - Math.floor(m.treasure / 7)), Math.abs(m.dog % 7 - m.treasure % 7)), b = Math.max(Math.abs(Math.floor(from / 7) - Math.floor(m.treasure / 7)), Math.abs(from % 7 - m.treasure % 7));
+      const res = a === b ? 'same' : a < b ? 'hot' : 'cold';
       assert.equal(m.last.res, res, 'hotter, colder or the same: always right');
       assert.equal(m.trail[m.trail.length - 1].r, res);
       if (r.outcome !== 'win') { assert.equal(r.note, res); seen[res]++; }
@@ -31,7 +31,7 @@ test('sniff: a 7x7 field, the dog at least 3 cells from the treasure in a straig
     }
   }
   assert.ok(seen.hot && seen.cold && seen.same, 'all three come up: ' + JSON.stringify(seen));
-  assert.ok(starts.has(9) && starts.has(10) && starts.has(36), 'starts from exactly 3 off up to far away: ' + [...starts].sort((a, b) => a - b));
+  assert.ok(starts.has(3) && starts.has(6) && !starts.has(2), 'starts from exactly 3 steps off up to across the field: ' + [...starts].sort((a, b) => a - b));
   const m = E.newMini('sniff', rng);
   for (const bad of ['up', 3, null]) assert.equal(E.applyMove(m, 'X', bad, rng).ok, false);
   // eight ways: the diagonals too; off the edge: refused
@@ -43,12 +43,17 @@ test('sniff: a 7x7 field, the dog at least 3 cells from the treasure in a straig
   assert.deepEqual(E.sniffDirs(0).sort(), ['E', 'S', 'SE']);
   assert.deepEqual(E.sniffDirs(48).sort(), ['N', 'NW', 'W']);
   assert.equal(E.sniffStep(6, 'E'), null, 'off the right edge'); assert.equal(E.sniffStep(42, 'S'), null, 'off the bottom');
-  // the same: a step that keeps the straight-line distance (from (1,2) to (2,1), the treasure at (0,0): both √5)
+  // distance in steps, a diagonal counting one like a straight one: from (1,2) to (2,1) with the treasure at (0,0) is
+  // 2 steps both, the same; a diagonal step from (2,2) to (1,1) is one nearer, as a straight one from (2,0) to (1,0) is
   assert.equal(E.sniffRes(9, 15, 0), 'same');
+  assert.equal(E.sniffRes(16, 8, 0), 'hot'); assert.equal(E.sniffRes(14, 7, 0), 'hot');
+  assert.equal(E.sniffRes(16, 9, 0), 'same', 'a straight step from (2,2) to (1,2): still 2 steps off');
+  assert.equal(E.sniffRes(24, 17, 0), 'same', 'from (3,3) to (2,3): still 3 steps off (a straight line would say hotter)');
+  assert.equal(E.sniffSteps(0, 48), 6); assert.equal(E.sniffDist(0, 48), 6, 'the corner to corner: six diagonal steps');
   const same = Object.assign(E.newMini('sniff', rng), { dog: 9, start: 9, treasure: 0 });
   const r = E.applyMove(same, 'X', 'SW', rng);
   assert.deepEqual([same.dog, r.note, same.last.res, E.publicMini(same).trail[0].r], [15, 'same', 'same', 'same']);
-  assert.equal(E.sniffRes(9, 8, 0), 'hot'); assert.equal(E.sniffRes(9, 10, 0), 'cold');
+  assert.equal(E.sniffRes(9, 8, 0), 'hot', '(1,2) to (1,1): 2 steps off, then 1'); assert.equal(E.sniffRes(9, 10, 0), 'cold');
 });
 test('sniff: no memory on the board: the square keeps only the last 3 steps (the computer\'s memory); the word shows about 1.2 s', () => {
   const rng = E.makeRng('sn-mem'), m = Object.assign(E.newMini('sniff', rng), { dog: 0, start: 0, treasure: 48 });
@@ -141,19 +146,19 @@ test('sniff in Super Chaos: the computer walks its own dog, never back onto a ce
   assert.ok(total / 200 >= 2 && total / 200 <= 8, 'a few moves each: ' + (total / 200));
 });
 
-test('sniff: the admin settings: the dog starts 4 cells off in a straight line, the word holds longer, the computer remembers more (in Super Chaos too)', () => {
+test('sniff: the admin settings: the dog starts 4 steps off (3 from the middle, the most there is), the word holds longer, the computer remembers more (in Super Chaos too)', () => {
   E.setTune('sniff', { minStart: 4, hold: 3000, memory: 6, miss: 20 });
   try {
     const rng = E.makeRng('sn-tune');
     let kingThree = 0;
     for (let k = 0; k < 200; k++) {
       const m = E.newMini('sniff', rng);
-      assert.ok(E.sniffDist(m.dog, m.treasure) >= 4 - 1e-9, 'every 7x7 cell has cells 4 off');
-      if (E.sniffSteps(m.dog, m.treasure) === 3) kingThree++;
+      assert.ok(E.sniffSteps(m.dog, m.treasure) >= (m.treasure === 24 ? 3 : 4), 'at least 4 steps off, but from the middle (3 at most)');
+      if (E.sniffSteps(m.dog, m.treasure) === 4) kingThree++;
       for (let n = 0; n < 8 && !(m.last && m.last.found); n++) E.applyMove(m, n % 2 ? 'O' : 'X', E.localBest(E.publicMini(m), 'X', rng).move, rng);
       assert.ok(m.trail.length <= 6); assert.ok(E.publicMini(m).trail.length === m.trail.length);
     }
-    assert.ok(kingThree > 0, 'a straight line, not king steps: (3,3) off is 4.24 away, 3 king steps');
+    assert.ok(kingThree > 0, 'exactly 4 steps off comes up');
     const st = E.newState(rng); st.squares[0].mini = E.newMini('sniff', rng);
     const r = E.playMove(st, 0, E.sniffDirs(st.squares[0].mini.dog)[0], rng);
     assert.equal(r.ok, true); assert.equal(st.flash.hold, 3000);
@@ -215,7 +220,8 @@ test('sniff, Hard: the treasure is never next to the start (it was dealt 3 cells
 
 // A square from the 5x5 field (no g): into the middle of the 7x7 one, every distance and clue as it was.
 const d5 = (a, b) => (Math.floor(a / 5) - Math.floor(b / 5)) ** 2 + (a % 5 - b % 5) ** 2;
-const res5 = (f, t, c) => (d5(t, c) < d5(f, c) ? 'hot' : d5(t, c) > d5(f, c) ? 'cold' : 'same');
+const k5 = (a, b) => Math.max(Math.abs(Math.floor(a / 5) - Math.floor(b / 5)), Math.abs(a % 5 - b % 5));   // (steps, as clues are now given: the upgrade keeps every distance either way)
+const res5 = (f, t, c) => (k5(t, c) < k5(f, c) ? 'hot' : k5(t, c) > k5(f, c) ? 'cold' : 'same');
 const at5 = c => (Math.floor(c / 5) + 1) * 7 + (c % 5) + 1;
 test('sniff: a 5x5 square upgrades into the middle of the 7x7 field, distances and clues unchanged; a 7x7 square is left alone', () => {
   const rng = E.makeRng('sn-up');

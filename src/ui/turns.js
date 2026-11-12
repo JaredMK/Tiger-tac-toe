@@ -18,7 +18,7 @@ import { animMs, confetti, drawFx, drawLeft, fx, fxAt, momentPower, shake, stamp
 import { joinAsk } from './input.js';
 import { render } from './render.js';
 import { rep, repActive, repStart, repStop } from './replay.js';
-import { cpuThink } from './think.js';
+import { cpuThink, thinkCancel } from './think.js';
 import { endKind } from './screens/win.js';
 
 /* ----- the computer's turn: a pause to think, a zoom into its square, its choice shown, then the move ----- */
@@ -46,6 +46,12 @@ export function turnAlert(prev, stamped) {
   const z = zoomLeft();                                               // (back from a square: once the board is back, its stamp's thump after that)
   if (stamped) setTimeout(go, z + TURN_AFTER_STAMP_MS / ANIM.speed); else if (z > 0) setTimeout(go, z); else go();
 }
+// The computer stops dead (a practice match left part way, ui/explainer.js practiceEnd): its timer, its plan and any
+// question still being worked out, whose answer is then dropped.
+export function cpuStop() {
+  clearTimeout(cpuTimer); setCpuTimer(null); setCpuPlan(null);
+  thinkGen++; thinking = false; thinkCancel();
+}
 export function scheduleCpu() {
   clearTimeout(cpuTimer); setCpuTimer(null);
   chaosStep();                                                   // Super Chaos: the round's own steps (ui/chaos.js)
@@ -71,10 +77,12 @@ export function scheduleCpu() {
 }
 // The computer's choice for the match as it stands (ui/think.js): the answer may come later (the Hard
 // computer's worker); by then the match must stand just the same, else it is asked again.
+let thinkGen = 0;                                              // (cpuStop: a question asked before it is never answered into the match after)
 function think(cb) {
-  const mark = () => `${state.moves}:${state.turn}:${state.lock}:${state.screen}:${state.zoom}`, at = mark();
+  const mark = () => `${state.moves}:${state.turn}:${state.lock}:${state.screen}:${state.zoom}`, at = mark(), gen = thinkGen;
   thinking = true;
   cpuThink(state, plan => {
+    if (gen !== thinkGen) return;
     thinking = false;
     if (mark() !== at || !cpuTurn() || state.flash || state.done || state.confirm || menuOpen || explainT || joinAsk || repActive()) { scheduleCpu(); return; }
     cb(plan);

@@ -4,27 +4,32 @@ import { RACE_V, raceDealt, raceSide } from '../../core/race.js';
 import { tune, tuneLive } from '../../core/tune.js';
 
 // ---------- Sniff ----------
-// A 7x7 field with one buried treasure and one dog, shared. The dog starts at a random cell at least 3 steps
-// from the treasure in a straight line (its setting, minStart). A move walks it one step, any of the 8 ways (diagonals too): "Hotter" when that
-// step brought it closer to the treasure in a straight line, "Colder" when further, "Same" when the straight-
-// line distance did not change. Nothing of the past stays on the board: the step's line and its word
+// A 7x7 field with one buried treasure and one dog, shared. Distance is counted in steps, any of the 8 ways, a
+// diagonal step counting one like a straight one (max(|dr|, |dc|): sniffDist). The dog starts at a random cell at least
+// 3 steps from the treasure (its setting, minStart; the most the field allows from a cell near the middle). A move walks
+// it one step: "Hotter" when that step brought it closer to the treasure in steps, "Colder" when further, "Same" when
+// the distance did not change (December 2026: before 1.15.0 the distance was the straight line). Nothing of the past stays on the board: the step's line and its word
 // show while it plays, then they are gone. The square keeps only the last 3 steps (who made each, and which it
 // was), for the computer, which remembers that much. Whoever walks the dog onto the treasure wins the square.
 // Online the server keeps the treasure.
 // Race mode (core/race.js, `rv: 2`): the same field and start for both, a dog each (`mini.side[p]`: { dog, path (the
 // cells it has stood on, the start first), trail (its last few steps, the computer's memory), last }, open to both) and
 // a treasure each (`mini.tg`: { X, O }, the square's secret), the two the same walk from the start (the same number of
-// steps, diagonals counting one: sniffSteps) and both at least minStart from it in a straight line: equally far to go.
+// steps, diagonals counting one: sniffSteps) and both at least minStart from it: equally far to go.
 // A step is hotter, colder or the same by the walker's own treasure. No step limit: the first dog onto its own treasure wins.
 export const SNIFF = { n: 7, minStart: 3, step: 420, hold: 1200, memory: 3 };   // (minStart, hold, memory: the defaults of its settings, TUNE in meta.js)
 const sniffMem = mini => tune(mini).memory || SNIFF.memory;           // the steps a square keeps: its own setting
+const SNIFF_CELLS = Array.from({ length: SNIFF.n * SNIFF.n }, (_, c) => c);
 export const SNIFF_DIRS = { N: [-1, 0], NE: [-1, 1], E: [0, 1], SE: [1, 1], S: [1, 0], SW: [1, -1], W: [0, -1], NW: [-1, -1] };
-// The straight-line distance squared (whole numbers, so "Same" is exact), the distance, and the steps a walk needs.
-export const sniffD2 = (a, b) => { const dr = Math.floor(a / SNIFF.n) - Math.floor(b / SNIFF.n), dc = (a % SNIFF.n) - (b % SNIFF.n); return dr * dr + dc * dc; };
-export const sniffDist = (a, b) => Math.sqrt(sniffD2(a, b));
+// The steps a walk needs (diagonals counting one): the game's one distance, for the words, the deal and the computer.
+// sniffD2 is the old straight-line distance squared, kept only for the 5x5 upgrade's checks (no rule reads it).
 export const sniffSteps = (a, b) => Math.max(Math.abs(Math.floor(a / SNIFF.n) - Math.floor(b / SNIFF.n)), Math.abs((a % SNIFF.n) - (b % SNIFF.n)));
-// A step from f to t, for a treasure at c: 'hot' (closer), 'cold' (further) or 'same'.
-export const sniffRes = (f, t, c) => { const a = sniffD2(t, c), b = sniffD2(f, c); return a < b ? 'hot' : a > b ? 'cold' : 'same'; };
+export const sniffDist = sniffSteps;
+export const sniffD2 = (a, b) => { const dr = Math.floor(a / SNIFF.n) - Math.floor(b / SNIFF.n), dc = (a % SNIFF.n) - (b % SNIFF.n); return dr * dr + dc * dc; };
+// A step from f to t, for a treasure at c: 'hot' (closer in steps), 'cold' (further) or 'same'.
+export const sniffRes = (f, t, c) => { const a = sniffSteps(t, c), b = sniffSteps(f, c); return a < b ? 'hot' : a > b ? 'cold' : 'same'; };
+// How far the dog starts at least for a treasure at t: minStart, or the most the field allows from t (3 from the middle).
+export const sniffFar = (t, min) => Math.min(min, Math.max(...SNIFF_CELLS.map(c => sniffSteps(c, t))));
 const stepRes = s => s.r || (s.hot ? 'hot' : 'cold');                 // (a step remembered from before "Same": hotter or colder)
 export function sniffStep(cell, dir) {
   const d = SNIFF_DIRS[dir]; if (!d) return null;
@@ -56,21 +61,20 @@ export function sniffPick(pm, rng) {
   }
   return { move: best[randInt(rng, best.length)], q: 0 };
 }
-// Race: the starts for a treasure at t (at least min from it in a straight line) that have a second spot for the other
-// treasure (the same walk from the start, as far in a straight line), and those spots.
+// Race: the starts for a treasure at t (at least min steps from it) that have a second spot for the other treasure (the
+// same walk from the start, so as far), and those spots.
 const raceAlts = (t, s, min) => SNIFF_CELLS.filter(c => c !== t && c !== s && sniffSteps(s, c) === sniffSteps(s, t) && sniffDist(c, s) >= min);
 const raceStarts = (t, min) => SNIFF_CELLS.filter(s => sniffDist(s, t) >= min && raceAlts(t, s, min).length);
-const SNIFF_CELLS = Array.from({ length: SNIFF.n * SNIFF.n }, (_, c) => c);
-export function create(type, rng, opts) {   // the treasure (hidden online), and the dog at least 3 steps from it, as the crow flies
+export function create(type, rng, opts) {   // the treasure (hidden online), and the dog at least 3 steps from it
   const r = needRng(rng), min = tuneLive(type).minStart;
-  if (raceDealt(type, opts)) {                                     // a race: a dog each, both from one start; the second treasure the same walk from it, as far in a straight line
-    const ts = SNIFF_CELLS.filter(t => raceStarts(t, min).length);  // (every cell but the middle one with a minStart of 4)
+  if (raceDealt(type, opts)) {                                     // a race: a dog each, both from one start; the second treasure the same walk from it
+    const ts = SNIFF_CELLS.filter(t => raceStarts(t, min).length);  // (with a minStart of 4, every cell but the middle 3x3)
     const treasure = ts[randInt(r, ts.length)], starts = raceStarts(treasure, min), dog = starts[randInt(r, starts.length)], alt = raceAlts(treasure, dog, min);
     const part = () => ({ dog, path: [dog], trail: [], last: null });
     return { type, g: SNIFF.n, start: dog, race: true, rv: RACE_V, tg: { X: treasure, O: alt[randInt(r, alt.length)] }, side: { X: part(), O: part() } };
   }
   const treasure = randInt(r, SNIFF.n * SNIFF.n);
-  const far = SNIFF_CELLS.filter(c => sniffDist(c, treasure) >= min);   // (on 7x7 every cell has some at least 4 away)
+  const far = SNIFF_CELLS.filter(c => sniffDist(c, treasure) >= sniffFar(treasure, min));   // (a treasure in the middle: 3 steps at most)
   const dog = far[randInt(r, far.length)];
   return { type, g: SNIFF.n, treasure, dog, start: dog, trail: [], last: null };
 }

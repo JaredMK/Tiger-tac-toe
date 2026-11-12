@@ -1,34 +1,37 @@
 // Bowling: the screen, the miniature, the move's words and sounds, and the inputs.
 import { tune } from '../../core/tune.js';
-import { PHYSICS, physShot, physicsReady } from '../shared/physics.js';
-import { BOWLG, BLANE, bowlFlick, bowlGeom, bowlProject, bowlScreenAngle, bowlTarget } from './rules.js';
-import { ownPress } from '../../audio/sound.js';
+import { PHYSICS, physicsReady } from '../shared/physics.js';
+import { BOWLG, BLANE, BOWL_PHASES, bowlGeom, bowlMeter, bowlMeterU, bowlPath, bowlPeriods, bowlProject, bowlShot, bowlTarget, bowlWave } from './rules.js';
+import { SND, ownPress } from '../../audio/sound.js';
 import { attemptMove } from '../../net/moves.js';
+import { haptic } from '../../net/platform.js';
 import { blocked } from '../../net/room.js';
 import { N, REDUCED, app, state } from '../../ui/app.js';
 import { physPaint, physPendOn, physResult, physTable, physThumb } from '../../ui/physics.js';
-import { repNote } from '../../ui/replay.js';
+import { rep, repDue, repNote } from '../../ui/replay.js';
 import { rr, runColours } from '../../ui/runner.js';
 export { physicsSounds as sounds } from '../../ui/physics.js';
 
-// Bowling (reworked November 2026, to Cup Pong's standard): the lane drawn on the canvas in perspective (rules.js
-// bowlGeom: the camera behind the bowler, the pins small at the far end, the ball big in the hand). A flick up from
-// anywhere on the game area rolls it (bowlFlick: the swipe's angle is the line the ball takes as the lane is drawn, the
-// finger's speed over its last 80 ms the power), the ball leaving on the same frame; nothing is drawn while the swipe
-// is under way (no arrow, no meter). The roll is the physics' recording (the same on both phones and the server),
-// played from the move's event (ui/physics.js): the ball rolls away shrinking, its finger holes turning with it, a
-// shadow under it; a pin knocked off its spot topples over the way it was sent (it hops, tips, lies and slides as the
-// recording moves it), a pin only nudged rocks and stands; what passes the end of the lane drops into the pit; a ball in
-// the gutter runs on down it. Once everything has settled the sweep comes down (BOWL_SWEEP ms, inside the move's hold):
-// the pins left standing are lifted, the fallen ones swept into the pit, and the standing ones set down again: the rack
-// as the roll left it. Someone else's roll shows their flick first, as a streak from the ball (the shared replay's one
-// input: replay.input/synth), then the roll. The result's words go in the reserved line under the lane; each player's
-// rolls are score boxes on the board over the pins.
+// Bowling (reworked November 2026, to Cup Pong's standard; the three sweeps from November 2026): the lane drawn on the
+// canvas in perspective (rules.js bowlGeom: the camera behind the bowler, the pins small at the far end, the ball big in
+// the hand). A roll is three taps anywhere on the game area, each stopping a meter that sweeps back and forth (rules.js
+// bowlWave, the square's periods): the aim (a marker across the lane in front of the pins, on the line from the ball),
+// then the curve (a meter under the ball, left to right: the guide line bends with it as the hook will), then the power
+// (a meter beside the lane, filling up); each stops exactly where it was tapped, with a tick, and stays shown, and the
+// ball leaves on the frame of the third tap. The active meter is in the mover's colour. The roll is the physics'
+// recording (the same on both phones and the server), played from the move's event (ui/physics.js): the ball rolls away
+// shrinking and hooks late, its finger holes turning with it, a shadow under it; a pin knocked off its spot topples over
+// the way it was sent, a pin only nudged rocks and stands; what passes the end of the lane drops into the pit; a ball in
+// the gutter runs on down it. Once everything has settled the sweep comes down (BOWL_SWEEP ms, inside the move's hold).
+// Someone else's roll shows their three meters first, each sweeping and stopping exactly where they tapped (the shared
+// replay's inputs: replay.input/synth), then the roll. The result's words go in the reserved line under the lane; each
+// player's rolls are score boxes on the board over the pins.
 export const BOWL_SWEEP = 420;                 // the sweep after a roll, ms (within BOWLG.hold and the result's hold)
-const PIN_H = 13.5, STREAK_MS = 360;           // a pin's height in lane units; a replayed flick's streak
-let drag = null;                               // the swipe under way: { id, x0, y0, pts: [[ms, x, y]...], area }
-let bowlRep = null;                            // someone else's flick replayed by the shared system's inputs stage (ui/replay.js): { sq, p, aim, power, at }
+const PIN_H = 13.5, METER_FADE = 0.45;        // a pin's height in lane units; the meters' fade as the roll begins (s)
+let live = null;                               // this phone's three taps: { key, k (the meter sweeping: 0 aim, 1 curve, 2 power, 3 rolled), t0 (when it began), v: [values] }
+let bowlRep = null;                            // someone else's taps replayed by the shared system's inputs stage (ui/replay.js): { sq, p, v: [values], at: [when each was pressed here], speed }
 export const bowlRepOn = () => bowlRep;        // (the tests look)
+export const bowlLiveOn = () => live;
 let geom = null, layer = null;
 
 // ---- the words ----
@@ -41,39 +44,83 @@ export function bowlNote(mini, turn) {
   return `One roll to beat <b class="${f.by}">${N(f.by)}</b>'s ${mini.pins[f.by]}`;
 }
 
-// ---- the flick ----
-// The roll a swipe makes (rules.js bowlFlick): its direction from first touch to release, its speed over the last
-// 80 ms (the oldest sample kept is the last one at least 80 ms back), both in the canvas's pixels.
-function bowlRead(d, x, y, now) {
-  let b = d.pts[0];
-  for (const p of d.pts) if (now - p[0] >= 80) b = p; else break;
-  const v = Math.hypot(x - b[1], y - b[2]) / Math.max(16, now - b[0]);
-  const cv = d.area.querySelector('canvas'), mini = state.squares && state.squares[state.zoom] ? state.squares[state.zoom].mini : null;
-  return bowlFlick(bowlGeom(cv ? cv.offsetWidth || 340 : 340, cv ? cv.offsetHeight || 400 : 400), x - d.x0, d.y0 - y, v, tune(mini));
-}
-function bowlRelease(e) {
-  if (!drag || e.pointerId !== drag.id) return;
-  const d = drag; drag = null;
-  const r = bowlRead(d, e.clientX, e.clientY, performance.now());
+// ---- the three taps ----
+const liveKey = () => `${state.zoom}:${state.moves}:${state.turn}`;
+const periodsOf = mini => bowlPeriods(tune(mini));
+// A tap (the press itself, anywhere on the game area): stops the meter sweeping, and the third rolls.
+function bowlTap() {
   const sq = state.squares && state.squares[state.zoom];
-  if (!r || state.screen !== 'mini' || !sq || sq.mini.type !== 'bowling' || sq.owner || state.flash || state.done || blocked() || !physicsReady() || physPendOn()) return;   // too short, or sideways: not a roll (the ball stays in the hand)
-  repNote('bowl', `aim=${r.aim}|power=${r.power}`);
-  attemptMove(physShot({ aim: r.aim, power: r.power }));           // the ball leaves on this frame (the move's flash here; online, the roll played at once: ui/physics.js physLaunch)
-}
-
-// ---- someone else's flick through the shared replay (ui/replay.js: its inputs stage, when it presses them) ----
-// The log's one input: the flick, `aim=..|power=..`; the computer's is made from its move.
-const FLICK = /^aim=(-?[\d.]+)\|power=(-?[\d.]+)$/;
-function replayInput(act, val, r) {
-  const m = act === 'bowl' ? FLICK.exec(val || '') : null;
-  if (!m) return false;
-  bowlRep = { sq: r.sq, p: r.by, aim: Number(m[1]), power: Number(m[2]), at: performance.now(), speed: r.speed || 1 };
+  if (state.screen !== 'mini' || !sq || sq.mini.type !== 'bowling' || sq.owner || state.flash || state.done || blocked() || !physicsReady() || physPendOn() || rep) return false;
+  const now = performance.now(), key = liveKey();
+  if (!live || live.key !== key) live = { key, k: 0, t0: now, v: [] };
+  if (live.k > 2) return false;
+  const k = live.k, val = bowlMeter(k, bowlWave(now - live.t0, periodsOf(sq.mini)[k], k));
+  live.v[k] = val; live.k = k + 1; live.t0 = now;
+  SND.play('mark'); haptic('tap');
+  repNote('bowl', `${BOWL_PHASES[k]}=${val}`);
+  if (live.k === 3) attemptMove(bowlShot({ aim: live.v[0], curve: live.v[1], power: live.v[2] }));   // the ball leaves on this frame (the move's flash here; online, the roll played at once: ui/physics.js physLaunch)
   physPaint();
   return true;
 }
-const replaySynth = m => (m && typeof m === 'object' && Number.isFinite(m.aim) ? [[0, 'bowl', `aim=${m.aim}|power=${m.power}`]] : null);
-export const replay = { input: replayInput, synth: replaySynth };
 
+// ---- someone else's taps through the shared replay (ui/replay.js: its inputs stage, when it presses them) ----
+// The log's inputs: `aim=..`, `curve=..`, `power=..`, at the moments they were tapped (an older client's flick,
+// `aim=..|power=..`, is all three at once, no curve); the computer's are made from its move, each meter stopped on its
+// first pass over the value after a human pause (BOWL_SYN).
+const TAP = /^(aim|curve|power)=(-?[\d.]+)$/, FLICK = /^aim=(-?[\d.]+)\|power=(-?[\d.]+)$/;
+function replayInput(act, val, r) {
+  if (act !== 'bowl') return false;
+  const f = FLICK.exec(val || ''), m = f ? null : TAP.exec(val || '');
+  if (!f && !m) return false;
+  if (!bowlRep || bowlRep.sq !== r.sq || bowlRep.r !== r) bowlRep = { sq: r.sq, p: r.by, r, v: [], at: [], speed: r.speed || 1 };
+  const now = performance.now();
+  if (f) { bowlRep.v = [Number(f[1]), 0, Number(f[2])]; bowlRep.at = [now, now, now]; }
+  else { const k = BOWL_PHASES.indexOf(m[1]); bowlRep.v[k] = Number(m[2]); bowlRep.at[k] = now; SND.play('mark'); }
+  physPaint();
+  return true;
+}
+// When a meter's wave first stands at u, at least `after` ms into its sweep (the first pass over it on either leg).
+function waveTime(u, per, k, after) {
+  const st = [0.25, 0.25, 0][k], fs = [u / 2, 1 - u / 2];
+  let best = Infinity;
+  for (const f of fs) for (let n = 0; n < 4; n++) { const t = (((f - st) % 1 + 1) % 1 + n) * per; if (t >= after && t < best) best = t; }
+  return best;
+}
+const BOWL_SYN = [700, 380, 320];   // the computer's least pause before each tap (ms)
+function replaySynth(m, mini) {
+  const s = m && typeof m === 'object' ? bowlShot(m) : null;
+  if (!s) return null;
+  const per = periodsOf(mini), v = [s.aim, s.curve, s.power], out = [];
+  let t = 0;
+  for (let k = 0; k < 3; k++) { t += k ? Math.round(waveTime(bowlMeterU(k, v[k]), per[k], k, BOWL_SYN[k])) : BOWL_SYN[0]; out.push([t, 'bowl', `${BOWL_PHASES[k]}=${v[k]}`]); }
+  return out;
+}
+export const replay = { input: replayInput, synth: replaySynth };
+// The meters as they are this instant: { k (the one sweeping, 3 once all are stopped), u: [0..1 each], by } for this
+// phone's own taps (its turn, nothing playing), someone else's replayed ones, or null.
+function metersNow(mini, now, mine) {
+  const per = periodsOf(mini);
+  const r = rep && rep.sq === state.zoom && rep.type === 'bowling' && rep.stage === 'inputs' ? rep : null;
+  if (r) {
+    const b = bowlRep && bowlRep.r === r ? bowlRep : null, list = (r.list || []).filter(e => e[1] === 'bowl'), u = [], v = b ? b.v : [];
+    let k = 0;
+    while (k < 3 && v[k] != null) { u[k] = bowlMeterU(k, v[k]); k++; }
+    if (k < 3) {
+      if (k === 0) {                                               // the first: timed back from its tap, so it stands on their value as it comes due
+        const e = list[0], tv = e ? TAP.exec(e[2] || '') : null;
+        if (tv && tv[1] === 'aim') { const uu = bowlMeterU(0, Number(tv[2])), due = repDue(r, e), lead = waveTime(uu, per[0], 0, 0); u[0] = bowlWave((now - due) * r.speed + lead, per[0], 0); }
+        else u[0] = bowlWave((now - r.at) * r.speed, per[0], 0);
+      } else u[k] = bowlWave((now - b.at[k - 1]) * b.speed, per[k], k);   // the next: from their last tap, as it swept for them
+    }
+    return { k, u, by: r.by };
+  }
+  if (!mine) { live = null; return null; }
+  const key = liveKey();
+  if (!live || live.key !== key) live = { key, k: 0, t0: now, v: [] };
+  const u = live.v.map((x, k) => bowlMeterU(k, x));
+  if (live.k < 3) u[live.k] = bowlWave(now - live.t0, per[live.k], live.k);
+  return { k: live.k, u, by: state.turn };
+}
 // ---- the roll's recording, read once for the drawing ----
 // For each pin: when it was first moved (hit, s into the move as it plays), which way and how fast it was sent, whether
 // it ends down (the result's own word), and when it left the lane for the pit (gone). For the ball: how far it has
@@ -236,16 +283,68 @@ function drawBall(c, G, x, y, o, col, P) {
   c.lineWidth = Math.max(1.4, r * 0.13); c.strokeStyle = P.ink; c.beginPath(); c.arc(p.X, p.Y, r, 0, Math.PI * 2); c.stroke();
   c.restore();
 }
-// The streak of a flick from the ball: a finger's trail up the lane along the roll's line, as long as the roll is hard (u: 0 to 1 of it).
-function drawFlick(c, G, aim, power, u, col) {
-  const R = PHYSICS.lib.BOWL.ballR, b = bowlProject(G, BLANE.start[0], BLANE.start[1], R), a = bowlScreenAngle(G, aim);
-  const k = ease(clamp01(u)), len = (95 + 170 * clamp01((power - BOWLG.powMin) / (1 - BOWLG.powMin))) * G.Hg / 420 * k, ex = b.X + Math.sin(a) * len, ey = b.Y - Math.cos(a) * len;
-  c.save(); c.lineCap = 'round';
-  const grad = c.createLinearGradient(b.X, b.Y, ex, ey); grad.addColorStop(0, 'rgba(255,255,255,0)'); grad.addColorStop(1, col);
-  c.globalAlpha = 0.8 * (1 - Math.max(0, u - 0.75) / 0.25);
-  c.beginPath(); c.moveTo(b.X, b.Y); c.lineTo(ex, ey); c.lineWidth = 11; c.strokeStyle = grad; c.stroke();
-  c.beginPath(); c.arc(ex, ey, 10, 0, Math.PI * 2); c.fillStyle = col; c.fill(); c.lineWidth = 2; c.strokeStyle = 'rgba(255,255,255,.85)'; c.stroke();
+// The three meters (M: metersNow, or the roll's own as it begins; a: their opacity). The guide line from the ball: straight
+// along the aim while it sweeps, then bent as the curve will bend it (rules.js bowlPath), with the aim's marker where it
+// comes to the head pin's row; the curve's meter under the ball (left to right, its middle straight); the power's beside
+// the lane (filling up). The one sweeping is in the mover's colour and glows; a stopped one is white, held where it stopped.
+const MLAB = ['AIM', 'CURVE', 'POWER'];
+function drawMeters(c, G, M, mini, P, a) {
+  if (!M || a <= 0) return;
+  const col = M.by === 'O' ? P.O : P.X, R = PHYSICS.lib.BOWL.ballR, hook = Number.isFinite(tune(mini).hook) ? tune(mini).hook / 1000 : undefined;
+  const on = k => M.k === k, val = k => (M.u[k] == null ? null : bowlMeter(k, M.u[k])), colOf = k => (on(k) ? col : k < M.k ? '#ffffff' : 'rgba(255,255,255,.35)');
+  const B = bowlProject(G, BLANE.start[0], BLANE.start[1], R), rB = R * B.s, unit = Math.max(1, G.W / 360);
+  c.save(); c.globalAlpha = a; c.lineCap = 'round'; c.lineJoin = 'round';
+  // the guide line and the aim's marker
+  const aim = val(0), curve = M.k >= 1 && M.u[1] != null ? val(1) : 0;
+  if (aim != null) {
+    const pts = bowlPath(aim, curve, hook).filter(([, y]) => y >= 52), proj = pts.map(([x, y]) => bowlProject(G, x, y, 0.2));
+    c.setLineDash([]);
+    for (let i = 4; i < proj.length - 1; i += 6) {                 // dots down the way, smaller with distance
+      const q = proj[i]; c.beginPath(); c.arc(q.X, q.Y, Math.max(1.3, 0.75 * q.s), 0, Math.PI * 2);
+      c.fillStyle = M.k <= 1 ? (on(0) ? col : on(1) ? col : '#fff') : 'rgba(255,255,255,.85)'; c.fill();
+    }
+    const end = pts[pts.length - 1] || BLANE.start, E = bowlProject(G, end[0], end[1], 0), rx = Math.max(7, 3.2 * E.s), ry = rx * 0.45;
+    c.beginPath(); c.ellipse(E.X, E.Y, rx, ry, 0, 0, Math.PI * 2); c.lineWidth = 3 * unit; c.strokeStyle = P.ink; c.stroke();
+    c.lineWidth = 2 * unit; c.strokeStyle = colOf(0); c.stroke();
+    if (on(0)) { c.beginPath(); c.ellipse(E.X, E.Y, rx * 0.35, ry * 0.35, 0, 0, Math.PI * 2); c.fillStyle = col; c.fill(); }
+  }
+  // the curve's meter, under the ball
+  const cw = Math.min(G.W * 0.62, 260 * unit), ch = 10 * unit, cx0 = G.W / 2 - cw / 2, cy = Math.min(G.H - ch - 6 * unit, B.Y + rB + 8 * unit);
+  meterBox(c, cx0, cy, cw, ch, on(1), col, P);
+  c.fillStyle = 'rgba(255,255,255,.5)'; c.fillRect(G.W / 2 - 1, cy + 2, 2, ch - 4);   // (its middle: straight)
+  for (const s of [-1, 1]) {                                        // a hooking arrow at each end
+    const x = G.W / 2 + s * (cw / 2 + 11 * unit), y = cy + ch / 2;
+    c.beginPath(); c.arc(x - s * 5 * unit, y + 4 * unit, 7 * unit, s < 0 ? -Math.PI / 2 : -Math.PI / 2, s < 0 ? -Math.PI : 0, s < 0); c.lineWidth = 2 * unit; c.strokeStyle = on(1) ? col : 'rgba(255,255,255,.45)'; c.stroke();
+  }
+  if (M.u[1] != null && M.k >= 1) needle(c, cx0 + M.u[1] * cw, cy, ch, on(1) ? col : '#fff', P, unit, 'h');
+  label(c, MLAB[1], cx0, cy - 3 * unit, colOf(1), unit, 'left');
+  // the power's meter, up the right side
+  const pw = 11 * unit, ph = Math.min(G.H * 0.36, 190 * unit), px = G.W - pw - 7 * unit, py = cy - 14 * unit - ph;
+  meterBox(c, px, py, pw, ph, on(2), col, P);
+  if (M.u[2] != null && M.k >= 2) {
+    const h = (ph - 4) * M.u[2];
+    const gr = c.createLinearGradient(0, py + ph, 0, py); gr.addColorStop(0, 'rgba(255,255,255,.25)'); gr.addColorStop(1, on(2) ? col : '#fff');
+    c.fillStyle = gr; c.fillRect(px + 2, py + ph - 2 - h, pw - 4, h);
+    needle(c, px, py + ph - 2 - h, pw, on(2) ? col : '#fff', P, unit, 'v');
+  }
+  label(c, MLAB[2], px + pw, py - 4 * unit, colOf(2), unit, 'right');
+  label(c, MLAB[0], 8 * unit, py - 4 * unit, colOf(0), unit, 'left');
   c.restore();
+}
+function meterBox(c, x, y, w, h, active, col, P) {
+  rr(c, x, y, w, h, Math.min(w, h) / 2); c.fillStyle = 'rgba(8,9,14,.62)'; c.fill();
+  c.lineWidth = active ? 2.5 : 1.5; c.strokeStyle = active ? col : 'rgba(255,255,255,.3)'; c.stroke();
+  if (active) { c.save(); c.shadowColor = col; c.shadowBlur = 10; c.stroke(); c.restore(); }
+}
+function needle(c, x, y, len, fill, P, unit, dir) {             // a marker across a meter at x (h: a meter lying down, len its height; v: standing, len its width)
+  c.beginPath();
+  if (dir === 'h') { const w = 4 * unit; c.moveTo(x - w, y - 5 * unit); c.lineTo(x + w, y - 5 * unit); c.lineTo(x + w * 0.6, y + len + 3 * unit); c.lineTo(x - w * 0.6, y + len + 3 * unit); c.closePath(); }
+  else { const h = 3 * unit; c.rect(x - 4 * unit, y - h, len + 8 * unit, 2 * h); }
+  c.fillStyle = fill; c.fill(); c.lineWidth = 1.5 * unit; c.strokeStyle = P.ink; c.stroke();
+}
+function label(c, t, x, y, fill, unit, align) {
+  c.save(); c.font = `800 ${Math.round(10 * unit)}px Nunito, Arial, sans-serif`; c.textAlign = align; c.textBaseline = 'bottom';
+  c.lineWidth = 3; c.strokeStyle = 'rgba(8,9,14,.8)'; c.strokeText(t, x, y); c.fillStyle = fill; c.fillText(t, x, y); c.restore();
 }
 // Each player's rolls as score boxes on the board over the pins (X's on the left, O's on the right): their mark and
 // their pins of the target, then a box a roll, oldest first: the roll on top (X a strike, - nothing) and the running
@@ -342,9 +441,11 @@ export function drawBowl(g, mini, pos, o = {}) {
   items.sort((a, b) => a.d - b.d).forEach(i => i.draw());
   let more = ts >= 0 && ts < BOWL_SWEEP + 40;
   if (fx && fx.ball.gone != null && el < fx.ball.gone + 0.6) more = true;
-  const r = bowlRep;
-  if (r && (ph || r.sq !== state.zoom || o.now - r.at > 5000)) { if (ph) r.rolled = true; if (r.rolled || r.sq !== state.zoom || o.now - r.at > 5000) bowlRep = null; }   // their roll is playing (or the replay is gone): no streak
-  else if (r) { drawFlick(c, G, r.aim, r.power, (o.now - r.at) * r.speed / STREAK_MS, r.p === 'O' ? P.O : P.X); more = true; }   // (held at its full length until the roll)
+  if (bowlRep && (ph || !rep || rep.sq !== state.zoom)) bowlRep = null;   // their roll is playing (or the replay is gone): its meters go with it
+  const mine = !ph && !o.flash && !!(g.c.canvas && g.c.canvas.closest && g.c.canvas.closest('.phys.bowllive')) && !state.flash && !state.done;
+  let M = ph ? null : metersNow(mini, o.now, mine), ma = 1;
+  if (ph && el != null && el < METER_FADE && Number.isFinite(ph.aim) && !REDUCED) { M = { k: 3, u: [bowlMeterU(0, ph.aim), bowlMeterU(1, ph.curve || 0), bowlMeterU(2, ph.power)], by: o.by }; ma = 1 - el / METER_FADE; more = true; }   // the roll begins: its three stops, fading
+  if (M) { drawMeters(c, G, M, mini, P, ma); if (M.k < 3) more = true; }
   drawFrames(c, G, mini, o.settled !== false, P);
   return more;
 }
@@ -389,25 +490,12 @@ export function bowlEventSounds(ph, add) {
 
 // Its listeners: main.js calls this once, in the page's original order of listeners.
 export function init() {
-  // A flick up from anywhere on the game area (the lane and the line under it), not only the ball. The swipe's
-  // direction aims, its speed is the power; nothing is drawn while it is under way. Letting go rolls at once, as does
-  // the finger leaving the lane's top; a short or sideways swipe is nothing.
+  // A tap anywhere on the game area (the lane and the line under it), from the press itself: the first stops the aim,
+  // the second the curve, the third the power and rolls.
   app.addEventListener('pointerdown', e => {
     const area = e.target.closest && e.target.closest('.phys.bowllive');
-    if (!area || drag || state.screen !== 'mini' || state.flash || state.done || blocked() || !physicsReady() || physPendOn()) return;
-    ownPress();
-    drag = { id: e.pointerId, x0: e.clientX, y0: e.clientY, area, pts: [[performance.now(), e.clientX, e.clientY]] };
-    try { area.setPointerCapture(e.pointerId); } catch (err) { /* no capture: the move and up still reach the page */ }
-    e.preventDefault();
+    if (!area || state.screen !== 'mini') return;
+    e.preventDefault(); ownPress();
+    bowlTap();
   });
-  app.addEventListener('pointermove', e => {
-    if (!drag || e.pointerId !== drag.id) return;
-    const d = drag, now = performance.now();
-    d.pts.push([now, e.clientX, e.clientY]);
-    while (d.pts.length > 2 && now - d.pts[1][0] > 160) d.pts.shift();   // (the oldest sample kept is the last one at least 80 ms back: bowlRead)
-    const cv = d.area.querySelector('canvas'), r = cv && cv.getBoundingClientRect ? cv.getBoundingClientRect() : null;
-    if (r && (e.clientY < r.top || e.clientX < r.left - 8 || e.clientX > r.right + 8)) bowlRelease(e);   // the finger leaves the lane: the roll goes
-  });
-  app.addEventListener('pointerup', bowlRelease);
-  app.addEventListener('pointercancel', e => { if (drag && e.pointerId === drag.id) drag = null; });
 }

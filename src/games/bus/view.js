@@ -18,9 +18,9 @@ const BUS_ICON = [
   SVG('<circle cx="8.2" cy="12" r="5.2" fill="#d6301e"/><circle cx="15.8" cy="12" r="5.2" fill="#161210"/>', ' '),
   SVG('<path d="m6.5 9.5 5.5-5.5 5.5 5.5M6.5 14.5l5.5 5.5 5.5-5.5"/>'),
   SVG(BARS(5.5, 18.5) + DOT(12)),
-  SVG(`<path d="${SUIT_PATH.S}" transform="translate(1 1) scale(.45)"/><path d="${SUIT_PATH.H}" fill="#d6301e" transform="translate(12 1) scale(.45)"/><path d="${SUIT_PATH.D}" fill="#d6301e" transform="translate(1 12) scale(.45)"/><path d="${SUIT_PATH.C}" transform="translate(12 12) scale(.45)"/>`, ' fill="currentColor"'),
+  SVG(`<path d="${SUIT_PATH.S}" transform="translate(1 1) scale(.45)"/><path d="${SUIT_PATH.H}" fill="#d6301e" transform="translate(12 1) scale(.45)"/><path d="${SUIT_PATH.D}" fill="#1f63c9" transform="translate(1 12) scale(.45)"/><path d="${SUIT_PATH.C}" fill="#1f8a3c" transform="translate(12 12) scale(.45)"/>`, ' fill="currentColor"'),
 ];
-const pair = (a, b) => `<span class="bpair" aria-hidden="true">${suitSvg(a)}${suitSvg(b)}</span>`;
+const pair = (a, b) => `<span class="bpair" aria-hidden="true">${suitSvg(a, 'su' + a)}${suitSvg(b, 'su' + b)}</span>`;
 const BUS_BTN = {
   red: pair('H', 'D'), black: pair('S', 'C'),
   higher: SVG('<path d="M12 19.5v-14M5.5 11 12 4.5l6.5 6.5" stroke-width="3.6"/>'), lower: SVG('<path d="M12 4.5v14M5.5 13l6.5 6.5 6.5-6.5" stroke-width="3.6"/>'),
@@ -95,7 +95,7 @@ function busTable(mini, a, o) {
     const btns = r === 0 ? opt('red', txt('red'), 'red') + opt('black', txt('black'), 'black')
       : r === 1 ? opt('higher', txt('higher'), 'up') + opt('lower', txt('lower'), 'down')
       : r === 2 ? opt('inside', txt('inside'), 'in') + opt('outside', txt('outside'), 'out')
-      : CARD.suits.split('').map(s => opt(s, suitSvg(s), 'suit' + (cardRed('A' + s) ? ' red' : ''))).join('');
+      : CARD.suits.split('').map(s => opt(s, suitSvg(s), 'suit' + (cardRed('A' + s) ? ' red' : '') + ' su' + s)).join('');
     ask = `<div class="busask ${who}${b ? ' playing' : ''}"><p><b class="${who}">${N(who)}</b>: ${busQuestion(kept)}</p><div class="cbtns ${r === 3 ? 'four' : 'two'}">${btns}</div></div>`;
   }
   return `<div class="g-bus"><div class="busrows">${row('X')}${row('O')}</div>

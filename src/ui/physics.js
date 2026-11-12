@@ -71,6 +71,7 @@ export function physResult(f, long) {
   if (f.type === 'golf') {
     if (ph.first === by) return { text: long ? `${who} sank it!` : 'In the cup!', ok: true };
     if (ph.first) return { text: long ? `${who} knocked ${them}'s ball in!` : 'Knocked in!', ok: false };
+    if (ph.water && ph.water[by]) return { text: long ? `${who} found the water` : 'In the water!', ok: false };   // (Mini Golf's terrain: back where the shot began, the penalty on the count)
     if (ph.lip) return { text: long ? `${who} lipped out` : 'Lipped out!', ok: false };
     return { text: long ? `${who} putted` : 'Not yet', ok: false };
   }
@@ -229,7 +230,7 @@ function drawAim(g, mini, pos, dr) {
     return;
   }
   if (mini.type === 'pool') { drawPoolAim(g, mini, pos, shot, dr.p); return; }   // Pool: the cue, the sight line to the first ball or rail, the meter (games/pool/view.js)
-  drawGolfAim(g, mini, pos, shot, dr.p);                           // Mini Golf: the putter, the sight line to the first wall, post, ball or the cup, the meter (games/golf/view.js)
+  drawGolfAim(g, mini, pos, shot, dr.p);                           // Mini Golf: the putter, a short aim arrow, the power bar (games/golf/view.js)
 }
 // A pull let go back at the ball (within PHYS_CANCEL_PX of it on the screen) or hardly pulled at all: no shot.
 const PHYS_CANCEL_PX = 30, PHYS_CANCEL_POWER = 0.05;

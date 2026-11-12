@@ -43,6 +43,7 @@ export function makePhysics(Matter) {
   // A roll into the pocket beside the head pin strikes; dead centre leaves a pin or two.
   const BOWL = { w: 100, h: 240, ballR: 4, pinR: 2.2, vMax: 150, maxT: 7, air: 0.002, roll: 4, pinAir: 0.004, pinRoll: 6, pinBounce: 0.9, still: 6, gutter: 7, knocked: 2.2, pit: 3,   // pit: past the end of the lane (y 0) the ball and the pins drop into the pit (drawn 6 deep) and are gone: nothing bounces back
     ballDensity: 0.04, fall: 1.3, pinGrip: 40, pinSlow: 25,
+    hook: 0.01, hookFrom: 50, hookLen: 80, drive: 1,   // a roll's curve (-1..1): the ball skids straight for hookFrom, then its way turns by curve x hook radians a unit rolled, the turn growing over hookLen (a hook late in the lane); by the distance rolled, never the time, so the way is the same at any power. Into the pins it keeps hooking (drive x as hard): the spin carries it on through the pocket, so a hook into the pocket strikes more often than a straight ball
     start: [50, 214], pins: [[50, 50], [45, 41.34], [55, 41.34], [40, 32.68], [50, 32.68], [60, 32.68], [35, 24.02], [45, 24.02], [55, 24.02], [65, 24.02]] };
   // Mini Golf's holes: walls as [cx, cy, w, h, angle], bumpers as [cx, cy, r], the tee and the cup, and a
   // path (the way round, for the computer's aim). Both balls start side by side on the tee. A full putt
@@ -145,12 +146,73 @@ export function makePhysics(Matter) {
   ];
   const r2h = v => Math.round(v * 100) / 100 + 0;
   const r3h = v => Math.round(v * 1000) / 1000 + 0;   // (walls keep three decimals, so a mirrored wall meets its neighbours as exactly as the original)
-  const mirror = h => ({ name: h.name + ', mirrored', tee: [r2h(100 - h.tee[0]), h.tee[1]], cup: [r2h(100 - h.cup[0]), h.cup[1]], walls: h.walls.map(([x, y, w, hh, a]) => [r3h(100 - x), y, w, hh, r3h(-(a || 0))]), bumpers: h.bumpers.map(([x, y, r]) => [r2h(100 - x), y, r]), path: h.path.map(([x, y]) => [r2h(100 - x), y]) });
+  // Mini Golf's terrain (December 2026, `v: 2` squares, each kind behind its own switch: golf/meta.js TUNE): placed on
+  // each layout from its own way round (tee, path, cup), clear of what must stay clear, so every hole is still
+  // played round its path; a mirrored hole has its layout's terrain mirrored. Which kinds a layout has goes by its
+  // number (GOLF_TERR): a slope (a round tilted patch: a ball on it is pulled `g` units/s² across the way, never
+  // more than the roll, so a ball always stops), sand (a ball in it rolls `sandRoll` times as hard), water (beside
+  // the way: a ball whose centre goes in is back where its shot began, a stroke more) and a windmill (four blades
+  // turning about a post beside the way, the way through the blades' circle; turning from the shot's start).
+  const TERR = { slopeR: 13, slopeG: 7.5, sandR: 7.5, sandRoll: 4.5, waterR: 6.5, millL: 7, millW: 1.9, millT: 2.2, hubR: 2, millCarry: 0.8 };
+  const GOLF_TERR = ['sw', 'dm', 'sd', 'wm'];   // by layout number, round and round: s slope, d sand, w water, m windmill
+  function golfTerrain(h, i) {
+    const R = GOLF.ballR, pts = [h.tee, ...h.path], segs = [];
+    for (let k = 1; k < pts.length; k++) segs.push([pts[k - 1], pts[k]]);
+    const lens = segs.map(([a, b]) => Math.hypot(b[0] - a[0], b[1] - a[1])), total = lens.reduce((s, v) => s + v, 0);
+    const at = f => { let d = f * total; for (let k = 0; k < segs.length; k++) { if (d <= lens[k] || k === segs.length - 1) { const [a, b] = segs[k], u = lens[k] ? Math.min(1, d / lens[k]) : 0, l = lens[k] || 1; return { x: a[0] + (b[0] - a[0]) * u, y: a[1] + (b[1] - a[1]) * u, tx: (b[0] - a[0]) / l, ty: (b[1] - a[1]) / l }; } d -= lens[k]; } };
+    const segD = (x, y, a, b) => { const dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy || 1, u = Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / l2)); return Math.hypot(x - a[0] - dx * u, y - a[1] - dy * u); };
+    const pathD = (x, y) => Math.min(...segs.map(([a, b]) => segD(x, y, a, b)));
+    const wallD = (x, y) => Math.min(Infinity, ...h.walls.map(([cx, cy, w, hh, ang]) => { const c = Math.cos(ang || 0), s = Math.sin(ang || 0), dx = x - cx, dy = y - cy, lx = Math.abs(dx * c + dy * s) - w / 2, ly = Math.abs(dy * c - dx * s) - hh / 2; return Math.hypot(Math.max(0, lx), Math.max(0, ly)) + Math.min(0, Math.max(lx, ly)); }));
+    const postD = (x, y) => Math.min(Infinity, ...h.bumpers.map(([cx, cy, r]) => Math.hypot(x - cx, y - cy) - r));
+    const ends = (x, y, r, gap) => Math.hypot(x - h.tee[0], y - h.tee[1]) > r + 12 + gap && Math.hypot(x - h.cup[0], y - h.cup[1]) > r + GOLF.cupR + 6 + gap;
+    const inCourse = (x, y, r) => x - r > 1 && x + r < GOLF.w - 1 && y - r > 1 && y + r < GOLF.h - 1;
+    const out = { slopes: [], sand: [], water: [], mills: [] }, taken = [];
+    const free = (x, y, r) => taken.every(([tx, ty, tr]) => Math.hypot(x - tx, y - ty) > r + tr + 4);
+    const FR = [0.5, 0.42, 0.58, 0.34, 0.66, 0.28, 0.72, 0.46, 0.54, 0.38, 0.62, 0.3, 0.7, 0.24, 0.76, 0.8, 0.2], FR2 = [0.74, 0.3, 0.68, 0.36, 0.8, 0.24, 0.62, 0.42, 0.56, 0.84, 0.18, 0.5];
+    const place = (kind, order) => {
+      for (const f of order) {
+        const p = at(f), nx = -p.ty, ny = p.tx;
+        if (kind === 's' || kind === 'd') {
+          const r = kind === 's' ? TERR.slopeR : TERR.sandR;
+          if (!inCourse(p.x, p.y, Math.min(r, 6)) || !ends(p.x, p.y, r, 0) || !free(p.x, p.y, r) || postD(p.x, p.y) < 2 || wallD(p.x, p.y) < R + 2) continue;
+          taken.push([p.x, p.y, r]);
+          if (kind === 'd') out.sand.push([r2h(p.x), r2h(p.y), r]);
+          else { const s = (Math.round(f * 100) + i) % 2 ? 1 : -1; out.slopes.push([r2h(p.x), r2h(p.y), r, r3h(nx * s * TERR.slopeG), r3h(ny * s * TERR.slopeG)]); }
+          return;
+        }
+        for (const s of (i + Math.round(f * 50)) % 2 ? [1, -1] : [-1, 1]) {
+          if (kind === 'w') {
+            const r = TERR.waterR, x = p.x + nx * s * (r + R + 3), y = p.y + ny * s * (r + R + 3);
+            if (!inCourse(x, y, r) || pathD(x, y) < r + R + 2.5 || wallD(x, y) < r + 0.5 || postD(x, y) < r + 1 || !ends(x, y, r, 2) || !free(x, y, r)) continue;
+            taken.push([x, y, r]); out.water.push([r2h(x), r2h(y), r]); return;
+          }
+          const L = TERR.millL, x = p.x + nx * s * L * 0.8, y = p.y + ny * s * L * 0.8;   // the windmill: its post beside the way, the way through its blades
+          if (!inCourse(x, y, L + 1.2) || wallD(x, y) < L + 1.2 || postD(x, y) < L + R + 1 || !ends(x, y, L, 3) || !free(x, y, L) || pathD(x, y) < TERR.hubR + R + 1) continue;
+          taken.push([x, y, L]); out.mills.push([r2h(x), r2h(y), L, r3h(s * TERR.millW), r3h((i * 0.37) % (Math.PI / 2))]); return;
+        }
+      }
+    };
+    const kinds = GOLF_TERR[i % GOLF_TERR.length];
+    kinds.split('').forEach((k, n) => place(k, n ? FR2 : FR));
+    return out;
+  }
+  LAYOUTS.forEach((h, i) => { h.terrain = golfTerrain(h, i); });
+  // A hole's terrain as a square has it switched on (on: { slopes, sand, water, mills, phase }; null: none at all).
+  function golfTerrainOn(hole, on) {
+    const t = on && HOLES[hole] && HOLES[hole].terrain;
+    if (!t) return null;
+    return { slopes: on.slopes ? t.slopes : [], sand: on.sand ? t.sand : [], water: on.water ? t.water : [], mills: on.mills ? t.mills : [], phase: Number(on.phase) || 0 };
+  }
+  // A windmill's angle t seconds into a shot (the simulation's own seconds; a recording's are TS times as fast): from its
+  // starting angle and the square's phase (golf/rules.js: by the shots played), turning at its own rate.
+  const millAngle = (m, t, phase) => m[4] + m[3] * (t + (phase || 0));
+  const mirror = h => ({ name: h.name + ', mirrored', tee: [r2h(100 - h.tee[0]), h.tee[1]], cup: [r2h(100 - h.cup[0]), h.cup[1]], walls: h.walls.map(([x, y, w, hh, a]) => [r3h(100 - x), y, w, hh, r3h(-(a || 0))]), bumpers: h.bumpers.map(([x, y, r]) => [r2h(100 - x), y, r]), path: h.path.map(([x, y]) => [r2h(100 - x), y]), terrain: mirrorTerrain(h.terrain) });
+  const mirrorTerrain = t => t && { slopes: t.slopes.map(([x, y, r, gx, gy]) => [r2h(100 - x), y, r, r3h(-gx), gy]), sand: t.sand.map(([x, y, r]) => [r2h(100 - x), y, r]), water: t.water.map(([x, y, r]) => [r2h(100 - x), y, r]), mills: t.mills.map(([x, y, L, w, a]) => [r2h(100 - x), y, L, r3h(-w), r3h(-a)]) };
   const shape = h => JSON.stringify([h.walls.map(w => w.map(r2h).join()).sort(), h.bumpers.map(b => b.map(r2h).join()).sort(), h.cup.map(r2h)]);
   const HOLES = LAYOUTS.map((h, i) => Object.assign({}, h, { of: i }));
   LAYOUTS.forEach((h, i) => { const m = mirror(h); if (shape(m) !== shape(h)) HOLES.push(Object.assign(m, { of: i })); });
   const SIZES = { golf: GOLF, pool: POOL, bowling: BOWL };
-  const RUN_OPT = ['holeSpeed', 'kick', 'vMax'];
+  const RUN_OPT = ['holeSpeed', 'kick', 'vMax', 'hook'];
 
   const wall = (x, y, w, h, angle, label) => Bodies.rectangle(x, y, w, h, { isStatic: true, angle: angle || 0, restitution: 0.72, friction: 0, label: label || 'wall' });
   const edges = (w, h, t) => [wall(w / 2, -t / 2, w + 2 * t, t), wall(w / 2, h + t / 2, w + 2 * t, t), wall(-t / 2, h / 2, t, h + 2 * t), wall(w + t / 2, h / 2, t, h + 2 * t)];
@@ -158,14 +220,19 @@ export function makePhysics(Matter) {
   const speed = b => Math.hypot(b.velocity.x, b.velocity.y);
 
   // The world of a shot: the table's bodies, the balls (or the ball and the pins) at their current places.
-  function build(type, pos) {
+  function build(type, pos, ter) {
     const engine = Engine.create({ gravity: { x: 0, y: 0 }, positionIterations: 8, velocityIterations: 8 });
-    const S = SIZES[type], bodies = [], tracked = [];
+    const S = SIZES[type], bodies = [], tracked = [], mills = [];
     if (type === 'golf') {
       const hole = HOLES[pos.hole];
       bodies.push(...edges(S.w, S.h, 8));
       for (const [x, y, w, h, a] of hole.walls) bodies.push(wall(x, y, w, h, a));
       hole.bumpers.forEach(([x, y, r], k) => bodies.push(Bodies.circle(x, y, r, { isStatic: true, restitution: 0.9, friction: 0, label: 'bumper:' + k })));
+      if (ter) ter.mills.forEach(([x, y, L], k) => {                  // a windmill: two bars crossed (four blades) about a post; turned every step (run)
+        const bars = [0, 1].map(() => Bodies.rectangle(x, y, 2 * L, TERR.millT, { isStatic: true, restitution: 0.6, friction: 0, label: 'mill:' + k }));
+        bodies.push(...bars, Bodies.circle(x, y, TERR.hubR, { isStatic: true, restitution: 0.6, friction: 0, label: 'wall' }));
+        mills.push({ k, bars, m: ter.mills[k] });
+      });
       for (const p of ['X', 'O']) if (!pos.holed[p]) { const b = ball(pos.balls[p][0], pos.balls[p][1], S.ballR, 'ball:' + p, { frictionAir: S.air }); bodies.push(b); tracked.push([p, b]); }
     } else if (type === 'pool') {
       bodies.push(...edges(S.w, S.h, 8));
@@ -178,7 +245,7 @@ export function makePhysics(Matter) {
       S.pins.forEach(([x, y], k) => { if (pos && pos.standing && !pos.standing[k]) return; const pin = ball(x, y, S.pinR, 'pin:' + k, { frictionAir: S.pinAir, density: S.pinDensity || 0.02, restitution: S.pinBounce, friction: 0.05 }); bodies.push(pin); tracked.push(['p' + k, pin]); });   // (standing: a second roll at what the first left)
     }
     Composite.add(engine.world, bodies);
-    return { engine, tracked, S };
+    return { engine, tracked, S, mills };
   }
 
   // A shot, played out: the shooter's ball is sent off at its aim and power; everything runs until it
@@ -186,7 +253,8 @@ export function makePhysics(Matter) {
   // (Super Chaos's Mini Golf: shooter is { X: shot, O: shot } and both balls are struck at once.)
   // opt: a square's own settings over the table's (RUN_OPT: Mini Golf's holeSpeed and kick, the others' vMax).
   function run(type, pos, shooter, shot, opt) {
-    const { engine, tracked } = build(type, pos), S = opt ? Object.assign({}, SIZES[type]) : SIZES[type];
+    const ter = type === 'golf' ? golfTerrainOn(pos.hole, opt && opt.terrain) : null;   // (Mini Golf's terrain: only where the square's switches say, golf/meta.js; none for a square from before)
+    const { engine, tracked, mills } = build(type, pos, ter), S = opt ? Object.assign({}, SIZES[type]) : SIZES[type];
     if (opt) for (const k of RUN_OPT) if (Number.isFinite(opt[k])) S[k] = opt[k];
     const byId = Object.fromEntries(tracked);
     const shots = shooter && typeof shooter === 'object' ? shooter : { [type === 'golf' ? shooter : type === 'pool' ? 'cue' : 'ball']: shot };
@@ -196,7 +264,8 @@ export function makePhysics(Matter) {
       const power = Math.max(0, Math.min(1, Number(shots[id].power) || 0)), aim = Number(shots[id].aim) || 0, v0 = Math.pow(power, S.curve || 1) * S.vMax;
       Body.setVelocity(byId[id], { x: Math.sin(aim) * v0 / 60, y: -Math.cos(aim) * v0 / 60 });   // (Matter's velocity is per step at 60 Hz, whatever the step's length)
     }
-    const events = [], gone = {}, flags = {}, kicks = [], meets = [];
+    const events = [], gone = {}, flags = {}, kicks = [], meets = [], spins = [], inSand = {}, wet = {};
+    const curve = type === 'bowling' && shots.ball ? Math.max(-1, Math.min(1, Number(shots.ball.curve) || 0)) : 0;   // (Bowling: the roll's spin; none in an older move)
     let t = 0, hitPin = false;
     const ev = (k, extra) => { if (events.length < 60 || (k !== 'balls' && k !== 'wall' && k !== 'pin')) events.push(Object.assign({ t: r2(t / TS), k }, extra || {})); };   // (the time as it plays: see TS; the bounces stop being noted after 60 events, what a result is read from never does)
     Events.on(engine, 'collisionStart', e => {
@@ -207,6 +276,14 @@ export function makePhysics(Matter) {
           if (!bl.label.startsWith('ball:')) continue;
           kicks.push({ bl, bump });                                  // (the kick itself once the step is solved: set now, the collision's own response would take most of it back)
           ev('bump', { b: Number(bump.label.slice(7)), id: bl.label.slice(5) });
+          continue;
+        }
+        if (type === 'golf' && (a.startsWith('mill:') || b.startsWith('mill:'))) {   // a windmill's blade: the ball comes off it with the blade's own way added (below)
+          const bar = a.startsWith('mill:') ? pair.bodyA : pair.bodyB, bl = bar === pair.bodyA ? pair.bodyB : pair.bodyA;
+          if (!bl.label.startsWith('ball:')) continue;
+          spins.push({ bl, k: Number(bar.label.slice(5)) });
+          const last = events[events.length - 1];
+          if (!(last && last.k === 'mill' && t / TS - last.t < 0.08)) ev('mill', { id: bl.label.slice(5), m: Number(bar.label.slice(5)), v: Math.round(v) });
           continue;
         }
         if (a.startsWith('pin') || b.startsWith('pin')) hitPin = true;
@@ -224,11 +301,18 @@ export function makePhysics(Matter) {
     frame();
     let still = 0, step = 0;
     const maxSteps = Math.round(S.maxT * 1000 / STEP), sub = S.sub || 1, dt = STEP / sub;   // (sub-steps: Pool's fast balls move less than a sixth of their width each one)
+    const turn = () => { for (const ml of mills) { const a = millAngle(ml.m, t, ter.phase); Body.setAngle(ml.bars[0], a); Body.setAngle(ml.bars[1], a + Math.PI / 2); } };
+    if (mills.length) turn();
     while (step < maxSteps) {
      for (let q = 0; q < sub; q++) {
       const was = type === 'golf' ? new Map(tracked.map(([, b]) => [b, speed(b) * 60])) : null;   // (each ball's speed as it came: a kick goes by that)
       const pre = type === 'pool' ? new Map(tracked.map(([, b]) => [b, { x: b.velocity.x, y: b.velocity.y }])) : null;   // (Pool: each ball's velocity as it came into the step)
       Engine.update(engine, dt); t = (step + (q + 1) / sub) * STEP / 1000;
+      if (mills.length) turn();
+      for (const { bl, k } of spins.splice(0)) {                     // a windmill's blade carries the ball on its way: its speed there (the turn times the reach) added
+        const [mx, my, , w] = ter.mills[k], rx = bl.position.x - mx, ry = bl.position.y - my;
+        Body.setVelocity(bl, { x: bl.velocity.x - w * ry * TERR.millCarry / 60, y: bl.velocity.y + w * rx * TERR.millCarry / 60 });
+      }
       for (const [A, B] of meets.splice(0)) {                        // Pool: two balls met in this step: off each other as circles
         const va = pre.get(A), vb = pre.get(B);
         if (!va || !vb) continue;
@@ -246,6 +330,15 @@ export function makePhysics(Matter) {
       for (const { bl, bump } of kicks.splice(0)) {                  // Mini Golf's bumpers: straight off, kickKeep of the speed it came at and kick more
         const n = { x: bl.position.x - bump.position.x, y: bl.position.y - bump.position.y }, d = Math.hypot(n.x, n.y) || 1, out = Math.min(S.kickMax, (was.get(bl) || 0) * S.kickKeep + S.kick) / 60;
         Body.setVelocity(bl, { x: (n.x / d) * out, y: (n.y / d) * out });
+      }
+      if (ter) for (const [id, b] of tracked) {                    // Mini Golf's terrain: sand rolls harder (sandRoll times the roll in all); a slope pulls a moving ball across the way (never more than the roll: it always stops)
+        if (gone[id]) continue;
+        const x = b.position.x, y = b.position.y, sand = ter.sand.some(([sx, sy, sr]) => Math.hypot(x - sx, y - sy) < sr);
+        if (sand && !inSand[id] && speed(b) * 60 > 3) ev('sand', { id });
+        inSand[id] = sand;
+        if (speed(b) * 60 > 0.5) for (const [gx0, gy0, gr, gx, gy] of ter.slopes) if (Math.hypot(x - gx0, y - gy0) < gr) Body.setVelocity(b, { x: b.velocity.x + gx * dt / 1000 / 60, y: b.velocity.y + gy * dt / 1000 / 60 });
+        const v = speed(b), dv = sand ? S.roll * (TERR.sandRoll - 1) * dt / 1000 / 60 : 0;
+        if (v > 0 && dv) { const f = Math.max(0, v - dv) / v; Body.setVelocity(b, { x: b.velocity.x * f, y: b.velocity.y * f }); }
       }
       for (const [id, b] of tracked) {                            // rolling resistance: a steady slowing, so balls stop instead of trickling on
         if (gone[id]) continue;
@@ -268,6 +361,12 @@ export function makePhysics(Matter) {
               ev('lip', { id });
             }
           } else if (d > S.cupR + 2) flags[id] = false;
+          const pond = ter && ter.water.find(([wx, wy, wr]) => Math.hypot(b.position.x - wx, b.position.y - wy) < wr);
+          if (pond) {                                                // in the water: back where its shot began, at rest (a stroke more: golf/rules.js)
+            ev('water', { id, x: r1(b.position.x), y: r1(b.position.y) });
+            wet[id] = (wet[id] || 0) + 1;
+            Body.setPosition(b, { x: pos.balls[id][0], y: pos.balls[id][1] }); Body.setVelocity(b, { x: 0, y: 0 }); Body.setAngularVelocity(b, 0);
+          }
         }
       } else if (type === 'pool') {
         for (const [id, b] of tracked) {
@@ -277,6 +376,10 @@ export function makePhysics(Matter) {
       } else {
         for (const [id, b] of tracked) {
           if (gone[id]) continue;
+          if (id === 'ball' && curve && (S.drive || !hitPin)) {               // the hook: the ball's way turns by the distance it rolled this step (drive times as hard once it is into the pins: the spin carries it on through them)
+            const into = S.start[1] - b.position.y - S.hookFrom, ramp = into <= 0 ? 0 : Math.min(1, into / S.hookLen);
+            if (ramp > 0) { const vx = b.velocity.x, vy = b.velocity.y, f = curve * S.hook * (hitPin ? S.drive : 1) * ramp * speed(b) * 60 * dt / 1000, c = Math.cos(f), s = Math.sin(f); Body.setVelocity(b, { x: vx * c - vy * s, y: vx * s + vy * c }); }
+          }
           const pit = b.position.y < S.pit, off = b.position.y > S.h + 6 || b.position.x < -6 || b.position.x > S.w + 6;
           if (id === 'ball') { if (pit || off || b.position.x < S.gutter || b.position.x > S.w - S.gutter) remove(id, pit ? 'end' : 'gutter'); }
           else if (pit) remove(id, 'pit');                         // a pin past the end of the lane: into the pit, gone (down)
@@ -299,7 +402,7 @@ export function makePhysics(Matter) {
     const final = {};
     for (const [id, b] of tracked) final[id] = gone[id] ? null : [r2(b.position.x), r2(b.position.y)];
     let result;
-    if (type === 'golf') result = { holed: { X: !!gone.X, O: !!gone.O }, first: (events.find(e => e.k === 'hole') || {}).id || null };
+    if (type === 'golf') { result = { holed: { X: !!gone.X, O: !!gone.O }, first: (events.find(e => e.k === 'hole') || {}).id || null }; if (Object.keys(wet).length) result.water = wet; }
     else if (type === 'pool') result = { pocketed: events.filter(e => e.k === 'pocket').map(e => e.id) };
     else {
       const was = pos && pos.standing ? pos.standing : null;        // (pins down before this roll stay down and count for nothing)
@@ -1017,5 +1120,5 @@ export function makePhysics(Matter) {
     return out;
   }
 
-  return { GOLF, POOL, BOWL, HOLES, LAYOUTS, SIZES, FPS, TS, run, PIN, PIN_LAYOUTS, PIN_LOWER, PIN_OUTER, PIN_CLASSIC, pinTable, PIN_FRAME, pinAllSpots, pinNew, pinServe, pinLaunch, pinRun, pinStep, pinFlipLine, pinSpinAt, pinResult, pinEnd, pinAi, pinReach, pinLayoutCheck, pinV, pinSetV, pinUnpack, pinFlipAngles, pinLogPack, pinLogUnpack, pinReplay, pinReplayTo, pinCopy, dsin, dcos };
+  return { GOLF, POOL, BOWL, HOLES, LAYOUTS, SIZES, FPS, TS, run, TERR, golfTerrainOn, millAngle, PIN, PIN_LAYOUTS, PIN_LOWER, PIN_OUTER, PIN_CLASSIC, pinTable, PIN_FRAME, pinAllSpots, pinNew, pinServe, pinLaunch, pinRun, pinStep, pinFlipLine, pinSpinAt, pinResult, pinEnd, pinAi, pinReach, pinLayoutCheck, pinV, pinSetV, pinUnpack, pinFlipAngles, pinLogPack, pinLogUnpack, pinReplay, pinReplayTo, pinCopy, dsin, dcos };
 }

@@ -252,8 +252,8 @@ function drawCue(g, from, aim, gap, alpha, P) {
 }
 // A shot being lined up (this phone's pull, or someone else's in their replay): the cue behind the white, drawn back
 // with the power; the sight line from the white to the first thing in its way (rules.js poolSight: exactly where the
-// simulation will take it): a ghost of the white where it will touch, the way the struck ball sets off and the way the
-// white goes on; a rail: the way it comes off; a pocket: the white is going down. A shot too soft to get there
+// simulation will take it): a ghost of the white where it first touches a ball or a rail, and nothing after it (December
+// 2026: the struck ball's way, the white's way on and its way off a rail are not shown); a pocket: the white is going down. A shot too soft to get there
 // (poolReach) stops short, with no ghost. The power is the meter at the side.
 export function drawPoolAim(g, mini, pos, shot, p) {
   const c = g.c, P = runColours(), S = sizes(), k = g.k, R = S.ballR, from = pos.cue;
@@ -270,15 +270,9 @@ export function drawPoolAim(g, mini, pos, shot, p) {
   const lead = Math.min(t, R + 1.2);
   if (t > lead) line([from[0] + ux * lead, from[1] + uy * lead], short ? end : [from[0] + ux * Math.max(lead, t - R), from[1] + uy * Math.max(lead, t - R)], [6, 6], 2.5, 0.95);
   if (short) { const a = [end[0] - uy * 1.6, end[1] + ux * 1.6], b = [end[0] + uy * 1.6, end[1] - ux * 1.6]; line(a, b, null, 2.5, 0.95); }   // as far as it rolls: a bar across the line
-  else if (sight.kind === 'ball') {
-    const b = pos[sight.id], n = sight.n, lo = 7 + 22 * sight.share.obj, lc = 3 + 15 * sight.share.cue;
-    line([b[0] + n[0] * (R + 0.8), b[1] + n[1] * (R + 0.8)], [b[0] + n[0] * (R + lo), b[1] + n[1] * (R + lo)], null, 3, 0.95);   // the struck ball's way
-    if (sight.share.cue > 0.08) line([end[0] + sight.off[0] * (R + 0.8), end[1] + sight.off[1] * (R + 0.8)], [end[0] + sight.off[0] * (R + lc), end[1] + sight.off[1] * (R + lc)], [3, 5], 2, 0.75);   // the white's way on
-    ring(end, 0.95);
-  } else if (sight.kind === 'rail') {
-    line([end[0] + sight.off[0] * (R + 0.8), end[1] + sight.off[1] * (R + 0.8)], [end[0] + sight.off[0] * (R + 13), end[1] + sight.off[1] * (R + 13)], [3, 5], 2, 0.7);
-    ring(end, 0.9);
-  } else ring(end, 0.9, [4, 4]);                                   // into a pocket: the white goes down
+  else if (sight.kind === 'ball') ring(end, 0.95);              // only the white's path to its first touch: a ghost of it there (December 2026: no struck ball's way, no white's way on)
+  else if (sight.kind === 'rail') ring(end, 0.9);
+  else ring(end, 0.9, [4, 4]);                                   // into a pocket: the white goes down
   drawCue(g, from, shot.aim, 0.9 + shot.power * POOLV.pull, 1, P);
   // the power: a meter beside the table where there is room, else lying in the right rail between its top two pockets (never over the cloth)
   const M = g.M || POOL_RAIL, right = X(S.w + M), room = g.W - right, rail = M * k;

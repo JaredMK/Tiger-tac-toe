@@ -26,7 +26,7 @@ export { REP, repNorm, repMove, repOf } from './replay.js';
 export { clamp01, r2, r3, other } from './util.js';
 export { BJ, BJT, bjValue, bjTotal, bjNatural, bjDealerPlay, bjOutcome, bjStrategy, bjPlan, bjMs } from '../games/bj/rules.js';
 export { BOWL_DEFAULTS } from '../games/bowling/meta.js';
-export { BOWLG, BOWL_LIMITS, BOWL_KIT, BLANE, bowlAimOf, bowlFlick, bowlGeom, bowlProject, bowlScreenAngle, setBowlConfig, bowlConfig, bowlTarget } from '../games/bowling/rules.js';
+export { BOWLG, BOWL_LIMITS, BOWL_KIT, BLANE, BOWL_PHASES, bowlAimOf, bowlGeom, bowlMeter, bowlMeterU, bowlPath, bowlPeriods, bowlProject, bowlScreenAngle, bowlShot, bowlWave, setBowlConfig, bowlConfig, bowlTarget } from '../games/bowling/rules.js';
 export { BRK, brkAi, brkHand, brkRaw, brkCheck } from '../games/bricks/rules.js';
 export { BS, bsN, bsCandidates, bsPlacements, bsShip } from '../games/bs/rules.js';
 export { BULL_DEFAULTS } from '../games/bullseye/meta.js';

@@ -29,7 +29,7 @@ export function best(pm, me, rng, style, ctx) {
 
 // ---- Hard: the race for the treasure ----
 // Where the treasure may be, weighed: every cell the remembered steps allow and, in a match, the dog's start
-// (it was dealt at least minStart cells from the treasure in a straight line, fewer only where no cell is that
+// (it was dealt at least minStart steps from the treasure, diagonals counting one, fewer only where no cell is that
 // far: so never nearer the start than that; a square from the 5x5 field had another rule, so not there), each cell by the chance the dog was started where it was with the treasure
 // there (one over the cells that far from it). The value of a set of cells for the side to move, the dog
 // where it is: for each step, the chance that cell is it, else, by what the step would say of the rest
@@ -49,7 +49,7 @@ export function best(pm, me, rng, style, ctx) {
 // quarter more).
 const SH = { work: 4e4, depth: 10, disc: 0.75, margin: 0.05, wait: 0.85 };
 const NN = SNIFF.n * SNIFF.n;
-const FAR = {};                                                 // per minStart: for a treasure in each cell, the least straight-line distance its dog started away (most) and the cells that far (far)
+const FAR = {};                                                 // per minStart: for a treasure in each cell, the least distance in steps its dog started away (most) and the cells that far (far)
 function farTable(minStart) {
   if (FAR[minStart]) return FAR[minStart];
   const most = new Float64Array(NN), far = new Float64Array(NN);

@@ -91,7 +91,7 @@ export function miniature(mini, final) {
   const goal = tune(mini).target, S = 7 / 24;
   const row = (p, y) => Array.from({ length: 5 }, (_, k) => {
     const c = mini.hands[p] ? mini.hands[p][k] : null, x = k * 12 + 1;
-    const suit = c ? `<path class="tpoks${'HD'.includes(c[1]) ? ' red' : ''}" transform="translate(${x + 1.5} ${y + 3.5}) scale(${S})" d="${SUIT_PATH[c[1]]}"/>` : '';
+    const suit = c ? `<path class="tpoks${'HD'.includes(c[1]) ? ' red' : ''} su${c[1]}" transform="translate(${x + 1.5} ${y + 3.5}) scale(${S})" d="${SUIT_PATH[c[1]]}"/>` : '';
     return `<rect class="tpokc${c ? '' : ' none'}" x="${x}" y="${y}" width="10" height="14" rx="1.6"/>${suit}`;
   }).join('');
   const art = `<svg class="tpok" viewBox="0 0 60 32" aria-hidden="true">${row('X', 0)}${row('O', 17)}</svg>`;

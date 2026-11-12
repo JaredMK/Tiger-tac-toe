@@ -68,7 +68,7 @@ Win: Complete a line on your card first.
 
 ## Bowling [bowling]
 Category: More skill
-Play: Flick up the lane to roll: aim with the angle, roll harder with a faster flick. One roll a turn at a fresh rack.
+Play: Three meters sweep in turn: tap to stop the aim, then the curve, then the power. A curve hooks the ball late, into the pins. One roll a turn at a fresh rack.
 Win: {target} pins.{evenText}
 
 ## Brick Break [bricks]
@@ -248,7 +248,7 @@ Super Chaos Win: {goal} hits, or hit green 0 for an instant win.
 
 ## Mini Golf [golf]
 Category: More skill
-Play: Drag to aim and set power, then let go. Balls can knock each other.
+Play: Drag to aim and set power, then let go. Slopes bend a putt, sand slows it, water costs a stroke and puts you back, and windmills turn. Balls can knock each other.
 Win: Sink your ball first.
 Super Chaos Play: Drag back to aim and set power, then let go to lock in your shot.
 Super Chaos Win: Sink your ball.
@@ -324,7 +324,7 @@ Win: Have the longest unbroken road. The square ends early once the other player
 
 ## Rock Paper Scissors [rps]
 Category: More luck
-Play: Pick rock, paper or scissors against the house. The house throws from its own deck, and you can see what is left in it. Tie? Throw again.{goAgain}
+Play: Pick rock, paper or scissors against the house. The house throws at random. Tie? Throw again.{goAgain}
 Win: Win {goal} throws.
 
 ## Rummy Lite [rummy]
@@ -393,11 +393,11 @@ Win: Get 3 right. The grid gets bigger each time.
 
 ## Sniff [sniff]
 Category: More luck
-Play: Move the dog one step, any of 8 ways. You'll see if it's getting hotter, colder or the same.
+Play: Move the dog one step, any of 8 ways. A diagonal step counts the same as a straight one. You'll see if it's getting hotter, colder or the same.
 Win: Be the one who finds the treasure.
 Super Chaos Play: You each have a dog, both starting in the middle. Move yours one step, any of 8 ways, to see if it's getting hotter, colder or the same.
 Super Chaos Win: Be the first dog onto the treasure.
-Race Play: You each have a dog and your own treasure, the same number of steps from where both dogs start. Move yours one step, any of 8 ways, to see if it's getting hotter, colder or the same. You can watch the other dog.
+Race Play: You each have a dog and your own treasure, the same number of steps from where both dogs start. Move yours one step, any of 8 ways (a diagonal counts as one step), to see if it's getting hotter, colder or the same. You can watch the other dog.
 Race Win: Be the first dog onto your treasure.
 
 ## Standoff Grid [clash]

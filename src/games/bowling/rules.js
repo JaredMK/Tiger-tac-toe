@@ -1,21 +1,31 @@
 // Bowling: the rules (pure: no page, no clock; the server runs the same code).
 import { cfgKit } from '../../core/config.js';
 import { tune } from '../../core/tune.js';
-import { physLast, physRandom, physRun, physShot } from '../shared/physics.js';
+import { PHYSICS, physLast, physRun, physShot } from '../shared/physics.js';
 import { BOWL_DEFAULTS } from './meta.js';
 export { physicsMoveFlash as moveFlash } from '../shared/physics.js';
 
 // hold: once the pins have settled the sweep clears the deck (the view's BOWL_SWEEP, this long); strike: a strike's banner a little longer.
-// powMin: the slowest flick's power (the ball always reaches the pins with something left: the power runs powMin to 1);
-// aimMax: the widest aim a flick gives (radians off straight: past the gutter either way).
-export const BOWLG = { rack: 10, aiErr: [0.03, 0.04], hold: 420, strike: 500, powMin: 0.7, aimMax: 0.3 };
+// powMin: the slowest roll's power (the ball always reaches the pins with something left: the power runs powMin to 1);
+// aimMax: the widest aim a move may have (radians off straight); aimSweep: how far the aim meter sweeps either way;
+// aimY: the depth on the lane where the aim marker is drawn (just in front of the head pin).
+export const BOWLG = { rack: 10, aiErr: [0.03, 0.04], hold: 420, strike: 500, powMin: 0.7, aimMax: 0.3, aimSweep: 0.24, aimY: 62 };
 export const bowlTarget = mini => tune(mini).target;   // the pins that take the square (the admin's setting, dealt into the square)
-// The old two taps' speeds (config/bowling: the arrow's sweep and the power meter's rise, in ms). The flick replaced the
-// taps in November 2026 and nothing on the page reads these now; the node, its rule and these names stay so a stored
-// config still loads (and a client from before, which still has the taps, finds its speeds).
+// The old two taps' speeds (config/bowling: the arrow's sweep and the power meter's rise, in ms). Nothing on the page
+// reads these now (the three sweeps' periods are in the TUNE); the node, its rule and these names stay so a stored
+// config still loads (and a client from before finds its speeds).
 export const BOWL_LIMITS = { aimMs: [300, 3000, 10], meterMs: [300, 3000, 10] };
 export const BOWL_KIT = cfgKit(BOWL_DEFAULTS, BOWL_LIMITS);
 export const setBowlConfig = BOWL_KIT.set, bowlConfig = BOWL_KIT.get;
+// A roll: { aim (radians off straight up the lane, + to the right), curve (-1..1: the spin, + hooks to the right; none in
+// an older move), power (0..1) }, each rounded to thousandths. Anything else is no roll.
+export function bowlShot(m) {
+  const s = physShot(m);
+  if (!s) return null;
+  const c = m.curve == null ? 0 : Number(m.curve);
+  if (!Number.isFinite(c) || c < -1 || c > 1) return null;
+  return { aim: s.aim, curve: Math.round(c * 1000) / 1000 + 0, power: s.power };
+}
 export function create(type, rng) {
   return { type, pins: { X: 0, O: 0 }, rolls: { X: 0, O: 0 }, frames: { X: [], O: [] }, final: null, last: null };
 }
@@ -32,7 +42,7 @@ export function create(type, rng) {
 // rolled first 67-78% of squares (four or five rolls each, little between them: tests/sim/bowling.sim.js).
 // Off (and always in Super Chaos, where both roll every round: scApply): first to the target, as before.
 function roll(mini, p, m, even) {
-  const shot = physShot(m);
+  const shot = bowlShot(m);
   if (!shot) return { ok: false, reason: 'bad' };
   if (!mini.frames) mini.frames = { X: [], O: [] };               // (a square dealt before the score boxes)
   const r = physRun(mini, p, shot);
@@ -40,7 +50,7 @@ function roll(mini, p, m, even) {
   const n = r.result.knocked, down = r.result.down.slice(), strike = n === BOWLG.rack, o = p === 'X' ? 'O' : 'X';
   mini.pins[p] += n; mini.rolls[p] += 1;
   mini.frames[p].push({ r: [n], strike, total: n });
-  mini.last = physLast(p, shot, r, { knocked: n, down, gutter: r.result.gutter, strike });
+  mini.last = physLast(p, shot, r, { curve: shot.curve, knocked: n, down, gutter: r.result.gutter, strike });
   const goal = bowlTarget(mini), fin = even ? mini.final : null;
   if (fin && fin.by === p) { mini.final = null; return { ok: true, outcome: 'win', note: 'unanswered' }; }   // the leader, back before any answer: theirs
   if (fin) {                                                       // the answer: one roll at the leader's total
@@ -65,7 +75,7 @@ export function publicView(mini) {
   const c = JSON.parse(JSON.stringify(mini)); if (c.last) delete c.last.rec; return c;
 }
 export function randomMove(mini, p, rng, from, empties) {
-  return physRandom(mini, p, rng);   // a random gentle shot
+  return bowlShot({ aim: (rng() - 0.5) * 0.2, curve: (rng() - 0.5) * 0.6, power: 0.75 + rng() * 0.2 });   // a random gentle roll
 }
 export function flashMs(f, winLen, won) {
   return (f.phys ? f.phys.ms : 3000) + BOWLG.hold + (won ? 600 : 0) + (f.phys && f.phys.strike ? BOWLG.strike : 0);
@@ -96,17 +106,31 @@ export function bowlProject(G, x, y, z = 0) { const s = G.s(y); return { X: G.cx
 const laneK = G => (G.dC + BLANE.near - BLANE.start[1]) / G.hC;
 export const bowlScreenAngle = (G, aim) => Math.atan(Math.tan(aim) * laneK(G));
 export const bowlAimOf = (G, screen) => Math.atan(Math.tan(screen) / laneK(G));
-// The flick, exactly and predictably (the view reads the swipe, this maps it; the same on every phone):
-//   direction: the swipe's angle on the screen (dx right, dy up, in pixels, from first touch to release) is the
-//     line the ball rolls along as the lane is drawn (bowlAimOf): a swipe that points at a drawn pin rolls at
-//     that pin, perspective and all. angleGain (TUNE) scales dx first. Clamped to BOWLG.aimMax either way.
-//   speed: the finger's speed v (CSS px/ms over the last ~80 ms of the swipe, not its length) maps straight onto
-//     the power: flickMin rolls at BOWLG.powMin (a slow ball that still reaches the pins), flickMax at full power.
-// Returns { aim, power } (the move), or null for a swipe that is not a roll (too short, or sideways).
-export function bowlFlick(G, dx, dy, v, t) {
-  if (!(dy >= 14) || Math.abs(dx) > dy * 1.2) return null;
-  const gain = t && t.angleGain != null ? t.angleGain : 1, lo = t && t.flickMin != null ? t.flickMin : 0.4, hi = t && t.flickMax != null ? t.flickMax : 1.7;
-  const u = Math.max(0, Math.min(1, (v - lo) / Math.max(0.05, hi - lo)));
-  const aim = Math.max(-BOWLG.aimMax, Math.min(BOWLG.aimMax, bowlAimOf(G, Math.atan2(dx * gain, dy))));
-  return { aim: Math.round(aim * 1000) / 1000 + 0, power: Math.round((BOWLG.powMin + (1 - BOWLG.powMin) * u) * 1000) / 1000 + 0 };
+// ---- The three sweeps (pure: the view, the computer and the tests share them) ----
+// A roll is three taps, each stopping a meter that sweeps back and forth on a steady period (TUNE aimMs, curveMs,
+// powerMs: there and back): 0 the aim (a marker across the lane just in front of the pins), 1 the curve (left to right),
+// 2 the power (up from the slowest roll). u, the meter's place, 0 to 1; bowlWave the triangle wave it follows, from
+// where each meter starts (the aim and the curve in the middle, the power at the bottom); bowlMeter its value.
+export const BOWL_PHASES = ['aim', 'curve', 'power'];
+const START = [0.25, 0.25, 0];
+export function bowlWave(ms, per, k) { const f = ((ms / Math.max(1, per) + START[k || 0]) % 1 + 1) % 1; return f < 0.5 ? 2 * f : 2 - 2 * f; }
+export const bowlPeriods = t => [t && t.aimMs || 1700, t && t.curveMs || 1500, t && t.powerMs || 1300];
+const r3 = v => Math.round(v * 1000) / 1000 + 0;
+export function bowlMeter(k, u) {
+  u = Math.max(0, Math.min(1, u));
+  return r3(k === 0 ? (2 * u - 1) * BOWLG.aimSweep : k === 1 ? 2 * u - 1 : BOWLG.powMin + (1 - BOWLG.powMin) * u);
+}
+export function bowlMeterU(k, v) { return Math.max(0, Math.min(1, k === 0 ? (v / BOWLG.aimSweep + 1) / 2 : k === 1 ? (v + 1) / 2 : (v - BOWLG.powMin) / (1 - BOWLG.powMin))); }
+// The way a roll takes as far as the pins (lane points [x, y], a point a unit rolled), by the hook's own law (physics-sim.js
+// BOWL hook: the turn by the distance rolled, so the same at any power): the view's guide line, as it was aimed and curved.
+export function bowlPath(aim, curve, hook) {
+  const B = PHYSICS.lib ? PHYSICS.lib.BOWL : {}, S = { hook: hook != null ? hook : B.hook || 0.01, hookFrom: B.hookFrom || 50, hookLen: B.hookLen || 80 }, out = [];
+  let x = BLANE.start[0], y = BLANE.start[1], a = aim, d = 0;
+  out.push([x, y]);
+  while (y > 40 && x > BLANE.gutter - 2 && x < BLANE.w - BLANE.gutter + 2 && d < 300) {
+    const into = BLANE.start[1] - y - S.hookFrom, ramp = into <= 0 ? 0 : Math.min(1, into / S.hookLen);
+    a += (curve || 0) * S.hook * ramp; x += Math.sin(a); y -= Math.cos(a); d++;
+    out.push([x, y]);
+  }
+  return out;
 }

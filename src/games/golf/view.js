@@ -1,7 +1,7 @@
 // Mini Golf: the screen, the miniature, the move's words and sounds, and the inputs.
 import { randInt } from '../../core/random.js';
-import { PHYSICS } from '../shared/physics.js';
-import { setGolfPick } from './rules.js';
+import { PHYSICS, physOpt } from '../shared/physics.js';
+import { golfPhase, setGolfPick } from './rules.js';
 import { REDUCED, state } from '../../ui/app.js';
 import { physResult, physTable, physThumb } from '../../ui/physics.js';
 export { physReplay as replay } from '../../ui/physics.js';
@@ -42,65 +42,76 @@ export const GOLFV = {
   drop: 0.26, burst: 0.55,      // a holed ball's roll down into the cup, then the sparks round it (s)
   near: 17, far: 7,             // the flag lifts out of the cup as a ball comes within near of it, clear by far (course units)
   flag: [15, 9, 6.4],           // the flag: its pole's height, the pennant's length and depth (course units)
-  stub: 13,                     // the way off a wall, a post: this long at most (course units)
-  graze: 0.9,                   // a post met further off its middle than this: no way off it is drawn
-  bounce: 0.88,                 // a ball off a wall keeps this much of its speed into it (physics-sim.js ball: the sight line's way off)
+  arrow: 10,                    // the aim: a short arrow off the ball, always this long (course units): where it points, never how far it goes
+  splash: 0.55, back: 0.4,      // a ball into the water: the splash (s), then the ball back where its shot began, a ring as it reappears (s)
+  puff: 0.35,                   // a ball into sand: a puff of grains (s)
 };
-const COL = { ground: '#2c6e37', shrub: '#3b8d48', shrubHi: '#4fa659', wood: '#d09a58', woodLo: '#a56f38', turf: '#5fbf5a', mat: '#4ba24c', rim: '#eaf7df', hole: '#0e2413', post: '#58a8cf', postLo: '#3f8fbf', cap: '#fff8e8', hit: '#fff3b8', flag: '#3f8fbf', steel: '#dfe3e8', shaft: '#ecd29c' };
+const TERRV = { chev: 2.2 };    // a slope's chevrons, half their width (course units)
+const COL = { ground: '#2c6e37', shrub: '#3b8d48', shrubHi: '#4fa659', wood: '#d09a58', woodLo: '#a56f38', turf: '#5fbf5a', mat: '#4ba24c', rim: '#eaf7df', hole: '#0e2413', post: '#58a8cf', postLo: '#3f8fbf', cap: '#fff8e8', hit: '#fff3b8', flag: '#3f8fbf', steel: '#dfe3e8', shaft: '#ecd29c', sand: '#efd99c', sandLo: '#c9a95e', water: '#2d74b8', waterHi: '#69b8e6', bank: '#b9b2a2', blade: '#f6efe0', bladeLo: '#d9534f' };
 // The course's sizes before the physics library has loaded (nothing is drawn of a hole until then: its walls are the library's).
 const GOLF_SIZE = { w: 100, h: 160, ballR: 2.4, cupR: 3.6, vMax: 95, air: 0.004, roll: 12 };
 const sizes = () => (PHYSICS.lib && PHYSICS.lib.GOLF) || GOLF_SIZE;
 const clamp01 = u => Math.max(0, Math.min(1, u));
 const smooth = u => { u = clamp01(u); return u * u * (3 - 2 * u); };
 
-// ---- the sight line (pure: the tests call these) ----
-// How far a putt of this power rolls on open ground: the simulation's own slowing (physics-sim.js: the air's drag
-// and the turf's, 120 steps a second), added up along a straight line.
-export function golfReach(power, S) {
-  S = S || sizes();
-  let v = clamp01(Number(power) || 0) * S.vMax, x = 0;
-  const air = 1 - S.air / 2, dv = S.roll / 120;
-  for (let n = 0; v > 0 && n < 6000; n++) { v *= air; x += v / 120; v -= dv; }
-  return x;
+// ---- the terrain (December 2026: a square dealt with it, its switches on; physics-sim.js golfTerrain) ----
+// A hole's terrain as this square has it: { slopes, sand, water, mills, phase } (null: none).
+export function golfTerrainOf(mini) {
+  const L = PHYSICS.lib, o = mini && mini.type === 'golf' ? physOpt(mini) : null;
+  return L && L.golfTerrainOn && o && o.terrain ? L.golfTerrainOn(mini.hole, o.terrain) : null;
 }
-// The first thing in the way of player p's ball along an aim: { kind, t (how far the ball's centre travels to it), dir,
-// at (the centre there), n (the way straight off it), off (the way the ball leaves) }. kind: 'wall' (a wall's or the
-// kerb's flat side: off is the bounce), 'corner' (a wall's end: no way off promised), 'post' (off: straight off it, as
-// it kicks; none for the merest touch), 'ball' (the other ball: no way off promised, the balls are not true circles), 'cup'.
-export function golfSight(hole, balls, p, aim, S) {
-  S = S || sizes();
-  const c = balls && balls[p];
-  if (!c || !hole) return null;
-  const ux = Math.sin(aim), uy = -Math.cos(aim), R = S.ballR;
-  let best = { kind: 'none', t: Infinity }, graze = 0;                   // graze: how far off its middle a round thing is met (0 dead on, 1 the merest touch)
-  const take = (t, o) => { if (t > -0.05 && t < best.t) best = Object.assign({ t: Math.max(0, t), graze: o.n ? 0 : graze }, o); };
-  if (ux > 1e-9) take((S.w - R - c[0]) / ux, { kind: 'wall', n: [-1, 0] }); else if (ux < -1e-9) take((R - c[0]) / ux, { kind: 'wall', n: [1, 0] });
-  if (uy > 1e-9) take((S.h - R - c[1]) / uy, { kind: 'wall', n: [0, -1] }); else if (uy < -1e-9) take((R - c[1]) / uy, { kind: 'wall', n: [0, 1] });
-  const meet = (x, y, reach) => {                                 // how far along the aim the ball's centre comes within reach of a point
-    const wx = x - c[0], wy = y - c[1], along = wx * ux + wy * uy, off2 = wx * wx + wy * wy - along * along;
-    if (off2 >= reach * reach || along <= 0) return Infinity;
-    graze = Math.sqrt(Math.max(0, off2)) / reach;
-    return Math.max(0, along - Math.sqrt(reach * reach - off2));
-  };
-  for (const [wx, wy, ww, wh, a] of hole.walls) {                  // a wall, in its own frame: grown by the ball, its sides flat and its ends round
-    const ca = Math.cos(a || 0), sa = Math.sin(a || 0), dx = c[0] - wx, dy = c[1] - wy, hw = ww / 2, hh = wh / 2;
-    const lx = dx * ca + dy * sa, ly = dy * ca - dx * sa, lux = ux * ca + uy * sa, luy = uy * ca - ux * sa;
-    for (const s of [-1, 1]) {
-      if (lux * s < -1e-9) { const t = (s * (hw + R) - lx) / lux; if (Math.abs(ly + luy * t) <= hh) take(t, { kind: 'wall', n: [s * ca, s * sa] }); }
-      if (luy * s < -1e-9) { const t = (s * (hh + R) - ly) / luy; if (Math.abs(lx + lux * t) <= hw) take(t, { kind: 'wall', n: [-s * sa, s * ca] }); }
-      for (const q of [-1, 1]) take(meet(wx + s * hw * ca - q * hh * sa, wy + s * hw * sa + q * hh * ca, R), { kind: 'corner' });
+function paintTerrain(c, g, ter, P) {                             // under the tee, the walls and their shadows: the slopes, the sand, the water
+  const k = g.k, X = g.X, Y = g.Y, ink = Math.max(1.5, 0.45 * k);
+  for (const [x, y, r, gx, gy] of ter.slopes) {                    // a slope: lighter up its high side, darker down its low side, soft at its edge, chevrons down the fall
+    const n = Math.hypot(gx, gy) || 1, ux = gx / n, uy = gy / n;
+    c.save(); c.beginPath(); c.arc(X(x), Y(y), r * k, 0, Math.PI * 2); c.clip();
+    const lg = c.createLinearGradient(X(x - ux * r), Y(y - uy * r), X(x + ux * r), Y(y + uy * r));
+    lg.addColorStop(0, 'rgba(255,255,230,.26)'); lg.addColorStop(0.5, 'rgba(255,255,255,0)'); lg.addColorStop(1, 'rgba(10,40,10,.24)');
+    c.fillStyle = lg; c.fillRect(X(x - r), Y(y - r), 2 * r * k, 2 * r * k);
+    const edge = c.createRadialGradient(X(x), Y(y), r * k * 0.6, X(x), Y(y), r * k);
+    edge.addColorStop(0, 'rgba(95,191,90,0)'); edge.addColorStop(1, 'rgba(95,191,90,.85)');
+    c.fillStyle = edge; c.fillRect(X(x - r), Y(y - r), 2 * r * k, 2 * r * k);
+    c.strokeStyle = 'rgba(255,255,255,.5)'; c.lineWidth = Math.max(1.4, 0.42 * k); c.lineCap = 'round'; c.lineJoin = 'round';
+    for (const [ax, ay] of [[0, 0], [-uy * r * 0.48, ux * r * 0.48], [uy * r * 0.48, -ux * r * 0.48]]) {
+      const cx = x + ax, cy = y + ay, h = TERRV.chev;
+      c.beginPath(); c.moveTo(X(cx - ux * h - uy * h), Y(cy - uy * h + ux * h)); c.lineTo(X(cx), Y(cy)); c.lineTo(X(cx - ux * h + uy * h), Y(cy - uy * h - ux * h)); c.stroke();
     }
+    c.restore();
   }
-  for (const [x, y, r] of hole.bumpers) take(meet(x, y, r + R), { kind: 'post', post: [x, y] });
-  const o = p === 'X' ? 'O' : 'X';
-  if (balls[o]) take(meet(balls[o][0], balls[o][1], 2 * R), { kind: 'ball' });
-  take(meet(hole.cup[0], hole.cup[1], S.cupR), { kind: 'cup' });
-  const at = [c[0] + ux * best.t, c[1] + uy * best.t];
-  let n = best.n || null, off = null;
-  if (best.kind === 'post' && best.graze > GOLFV.graze) n = null;   // (the merest touch of a post: the balls and the posts are not true circles, it may slip by: no way off promised)
-  else if (best.kind === 'post') { const d = Math.hypot(at[0] - best.post[0], at[1] - best.post[1]) || 1; n = [(at[0] - best.post[0]) / d, (at[1] - best.post[1]) / d]; off = n; }
-  else if (best.kind === 'wall') { const vn = ux * n[0] + uy * n[1], ox = ux - (1 + GOLFV.bounce) * vn * n[0], oy = uy - (1 + GOLFV.bounce) * vn * n[1], d = Math.hypot(ox, oy) || 1; off = [ox / d, oy / d]; }
-  return { kind: best.kind, t: best.t, dir: [ux, uy], at, n, off, graze: best.graze || 0 };
+  for (const [x, y, r] of ter.sand) {                              // sand: a bunker, its lip, raked grains
+    c.beginPath(); c.arc(X(x), Y(y), r * k, 0, Math.PI * 2); outlined(c, COL.sand, P.ink, ink);
+    c.beginPath(); c.arc(X(x) + 0.5 * k, Y(y) + 0.7 * k, r * k * 0.8, Math.PI * 1.05, Math.PI * 1.75); c.strokeStyle = COL.sandLo; c.lineWidth = Math.max(1, 0.5 * k); c.stroke();
+    c.fillStyle = COL.sandLo;
+    for (let i = 0; i < 14; i++) { const a = i * 2.39996, q = Math.sqrt((i + 0.5) / 14) * r * 0.82; c.beginPath(); c.arc(X(x + Math.cos(a) * q), Y(y + Math.sin(a) * q), Math.max(0.8, 0.28 * k), 0, Math.PI * 2); c.fill(); }
+  }
+  for (const [x, y, r] of ter.water) {                             // water: a pond, its stone bank, deeper in the middle, ripples
+    c.beginPath(); c.arc(X(x), Y(y), (r + 0.9) * k, 0, Math.PI * 2); outlined(c, COL.bank, P.ink, ink);
+    const wg = c.createRadialGradient(X(x - r * 0.3), Y(y - r * 0.3), r * k * 0.1, X(x), Y(y), r * k);
+    wg.addColorStop(0, COL.waterHi); wg.addColorStop(1, COL.water);
+    c.beginPath(); c.arc(X(x), Y(y), r * k, 0, Math.PI * 2); c.fillStyle = wg; c.fill(); c.strokeStyle = P.ink; c.lineWidth = Math.max(1, 0.32 * k); c.stroke();
+    c.strokeStyle = 'rgba(255,255,255,.55)'; c.lineWidth = Math.max(1, 0.35 * k); c.lineCap = 'round';
+    for (const [dx, dy, w] of [[-0.25, -0.2, 0.42], [0.2, 0.25, 0.3]]) { c.beginPath(); c.arc(X(x + dx * r), Y(y + dy * r), w * r * k, Math.PI * 1.15, Math.PI * 1.75); c.stroke(); }
+  }
+}
+// A splash: rings out from where the ball went in, drops thrown up and falling back (u: 0..1 through it).
+function splash(c, g, x, y, u, P) {
+  const k = g.k, X = g.X(x), Y = g.Y(y), e = 1 - Math.pow(1 - u, 3);
+  for (const [d, w] of [[0, 1], [0.18, 0.7]]) { const v = clamp01((u - d) / (1 - d)); if (v <= 0) continue; c.beginPath(); c.arc(X, Y, (2 + 7 * (1 - Math.pow(1 - v, 2))) * k, 0, Math.PI * 2); c.strokeStyle = `rgba(255,255,255,${(0.85 * (1 - v) * w).toFixed(3)})`; c.lineWidth = Math.max(1.5, 0.7 * k) * (1 - 0.5 * v); c.stroke(); }
+  c.fillStyle = `rgba(200,235,255,${(0.95 * (1 - u)).toFixed(3)})`;
+  for (let j = 0; j < 8; j++) { const a = j * Math.PI / 4 + 0.2, q = (1.5 + 5.5 * e) * (j % 2 ? 1 : 0.75), hop = Math.sin(Math.PI * u) * 3 * (j % 2 ? 1 : 0.6); c.beginPath(); c.arc(X + Math.cos(a) * q * k, Y + (Math.sin(a) * q - hop) * k, Math.max(1.2, 0.55 * k), 0, Math.PI * 2); c.fill(); }
+}
+// A windmill at its angle: the shadow, four blades (two bars crossed) and its post. ang: radians.
+function windmill(c, g, [x, y, L], ang, P, [sx, sy]) {
+  const k = g.k, X = g.X(x), Y = g.Y(y), T = (PHYSICS.lib && PHYSICS.lib.TERR ? PHYSICS.lib.TERR.millT : 2.2) * k, H = (PHYSICS.lib && PHYSICS.lib.TERR ? PHYSICS.lib.TERR.hubR : 2) * k;
+  const bars = off => { for (const a of [ang, ang + Math.PI / 2]) { c.save(); c.translate(X + off[0], Y + off[1]); c.rotate(a); rr(c, -L * k, -T / 2, 2 * L * k, T, T / 2); c.restore(); } };
+  c.fillStyle = 'rgba(0,0,0,.24)'; bars([sx, sy]); c.fill();
+  for (const a of [ang, ang + Math.PI / 2]) {
+    c.save(); c.translate(X, Y); c.rotate(a); rr(c, -L * k, -T / 2, 2 * L * k, T, T / 2); outlined(c, COL.blade, P.ink, Math.max(1.5, 0.45 * k));
+    c.fillStyle = COL.bladeLo; for (const s of [-1, 1]) c.fillRect(s > 0 ? L * k * 0.45 : -L * k * 0.9, -T / 2 + Math.max(0.6, T * 0.18), L * k * 0.45, Math.max(0.8, T * 0.25));
+    c.restore();
+  }
+  c.beginPath(); c.arc(X, Y, H, 0, Math.PI * 2); outlined(c, COL.wood, P.ink, Math.max(1.5, 0.45 * k));
+  c.beginPath(); c.arc(X, Y, H * 0.35, 0, Math.PI * 2); c.fillStyle = P.ink; c.fill();
 }
 
 // ---- the course, painted once a hole ----
@@ -123,7 +134,7 @@ function post(c, g, [x, y, r], P, s, hit) {                       // a post: a r
   c.beginPath(); c.arc(X, Y, R * 0.2, 0, Math.PI * 2); c.fillStyle = P.ink; c.fill();
   c.beginPath(); c.arc(X - R * 0.26, Y - R * 0.28, R * 0.12, 0, Math.PI * 2); c.fillStyle = 'rgba(255,255,255,.85)'; c.fill();
 }
-function paintCourse(g, hole, seed) {
+function paintCourse(g, hole, seed, ter) {
   const c = g.c, P = runColours(), S = sizes(), k = g.k, M = GOLF_KERB, X = g.X, Y = g.Y, ink = Math.max(2, 0.7 * k), [sx, sy] = shadowOff(k);
   const outer = () => rr(c, X(-M), Y(-M), (S.w + 2 * M) * k, (S.h + 2 * M) * k, M * k * 0.7);
   c.fillStyle = COL.ground; c.fillRect(0, 0, g.W, g.H);                                  // the ground round the course: shrubs where there is room beside it, and the course's shadow on it
@@ -149,6 +160,7 @@ function paintCourse(g, hole, seed) {
   c.fillStyle = lamp; c.fillRect(X(0), Y(0), S.w * k, S.h * k);
   const shade = (x1, y1, x, y, w, h) => { const sg = c.createLinearGradient(X(0), Y(0), X(x1), Y(y1)); sg.addColorStop(0, 'rgba(0,0,0,.28)'); sg.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = sg; c.fillRect(X(x), Y(y), w * k, h * k); };
   shade(0, 3, 0, 0, S.w, 3); shade(2.4, 0, 0, 0, 2.4, S.h);                            // the top and left kerbs' shadows on the turf
+  if (ter) paintTerrain(c, g, ter, P);                                                    // the terrain, on the turf under everything else
   const [tx, ty] = hole.tee;                                                             // the tee: a mat with its two marks
   rr(c, X(tx - 10), Y(ty - 4.6), 20 * k, 9.2 * k, 1.6 * k); c.fillStyle = COL.mat; c.fill(); c.strokeStyle = 'rgba(255,255,255,.6)'; c.lineWidth = Math.max(1, 0.4 * k); c.stroke();
   c.fillStyle = 'rgba(255,255,255,.7)'; for (const d of [-7.4, 7.4]) { c.beginPath(); c.arc(X(tx + d), Y(ty), 0.8 * k, 0, Math.PI * 2); c.fill(); }
@@ -170,7 +182,7 @@ function paintCourse(g, hole, seed) {
 }
 function courseLayer(g, mini, hole) {
   const t = g.c.getTransform ? g.c.getTransform() : null, dpr = t && typeof t.a === 'number' && t.a > 0 ? t.a : 1;
-  const key = [mini.hole, g.W, g.H, typeof g.k === 'number' ? g.k.toFixed(4) : '', dpr].join('|');
+  const ter = golfTerrainOf(mini), key = [mini.hole, g.W, g.H, typeof g.k === 'number' ? g.k.toFixed(4) : '', dpr, ter ? [ter.slopes.length, ter.sand.length, ter.water.length].join() : '-'].join('|');
   if (layer && layer.key === key) return layer.cv;
   layer = null;
   try {
@@ -178,7 +190,7 @@ function courseLayer(g, mini, hole) {
     cv.width = Math.max(1, Math.round(g.W * dpr)); cv.height = Math.max(1, Math.round(g.H * dpr));
     const c = cv.getContext('2d');
     c.setTransform(dpr, 0, 0, dpr, 0, 0);
-    paintCourse(Object.assign({}, g, { c }), hole, mini.hole);
+    paintCourse(Object.assign({}, g, { c }), hole, mini.hole, ter);
     layer = { key, cv };
   } catch (e) { layer = null; }                                   // (no canvas to keep it in: painted straight on, below)
   return layer ? layer.cv : null;
@@ -311,7 +323,7 @@ export function golfSpeedAt(rec, id, t) {
 export function drawGolf(g, mini, pos, play, o) {
   const c = g.c, P = runColours(), L = PHYSICS.lib, S = sizes(), hole = L.HOLES[mini.hole], k = g.k, R = S.ballR, cup = hole.cup;
   const cv = courseLayer(g, mini, hole);
-  if (cv) { c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.drawImage(cv, 0, 0); c.restore(); } else paintCourse(g, hole, mini.hole);
+  if (cv) { c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.drawImage(cv, 0, 0); c.restore(); } else paintCourse(g, hole, mini.hole, golfTerrainOf(mini));
   const ph = play && play.ph, rec = ph && ph.rec && Array.isArray(ph.rec.frames) && ph.rec.frames.length && !REDUCED ? ph.rec : null;
   const el = rec ? Math.max(0, play.el) : 0, f = rec ? Math.min(rec.frames.length - 1, el * rec.fps) : 0, roll = rec ? rollOf(rec, R) : null, evs = rec ? ph.events || [] : [];
   const since = (e, len) => (el >= e.t && el < e.t + len ? (el - e.t) / len : -1);
@@ -324,7 +336,7 @@ export function drawGolf(g, mini, pos, play, o) {
     post(c, g, b, P, 1 + 0.36 * Math.pow(1 - u, 2) * Math.min(1, u * 8), 1 - u);
   }
   for (const e of evs) {                                           // a wall's knock: a ring off the ball that struck it
-    const u = e.k === 'wall' && e.v >= GOLFV.knockMin ? since(e, GOLFV.knock) : -1;
+    const u = (e.k === 'wall' || e.k === 'mill') && e.v >= GOLFV.knockMin ? since(e, GOLFV.knock) : -1;
     if (u < 0) continue;
     busy = true;
     const id = rec.ids.reduce((a, b) => (golfSpeedAt(rec, b, e.t) > golfSpeedAt(rec, a, e.t) ? b : a)), at = placeAt(rec, id, e.t);
@@ -345,6 +357,24 @@ export function drawGolf(g, mini, pos, play, o) {
     if (t < GOLFV.drop + GOLFV.burst) { busy = true; flagUp = Math.max(flagUp, 1 - smooth((t - GOLFV.drop) / 0.3)); if (t >= GOLFV.drop) { const u = (t - GOLFV.drop) / GOLFV.burst; spark = { u, id: e.id }; wave = Math.max(wave, Math.sin(u * Math.PI * 5) * (1 - u)); } }
   }
   if (lipU >= 0) { c.beginPath(); c.arc(g.X(cup[0]), g.Y(cup[1]), (S.cupR + 1 + 2.4 * lipU) * k, 0, Math.PI * 2); c.strokeStyle = `rgba(255,255,255,${(0.9 * (1 - lipU)).toFixed(3)})`; c.lineWidth = Math.max(2, 0.9 * k); c.stroke(); }
+  const ter = golfTerrainOf(mini);
+  if (ter) {
+    for (const e of evs) {                                         // into the water: a splash where it went in, and a ring where it is back
+      if (e.k === 'water') {
+        const u = since(e, GOLFV.splash), v = since(e, GOLFV.back), i = rec.ids.indexOf(e.id), home = i >= 0 ? [rec.frames[0][2 * i], rec.frames[0][2 * i + 1]] : null;
+        if (u >= 0) { busy = true; splash(c, g, e.x, e.y, u, P); }
+        if (v >= 0 && home && home[0] != null) { busy = true; c.beginPath(); c.arc(g.X(home[0]), g.Y(home[1]), R * k * (1.2 + 1.6 * v), 0, Math.PI * 2); c.strokeStyle = `rgba(255,255,255,${(0.9 * (1 - v)).toFixed(3)})`; c.lineWidth = Math.max(2, 0.8 * k); c.stroke(); }
+      } else if (e.k === 'sand') {
+        const u = since(e, GOLFV.puff), at = u >= 0 ? placeAt(rec, e.id, e.t) : null;
+        if (!at) continue;
+        busy = true; c.fillStyle = `rgba(214,184,110,${(0.9 * (1 - u)).toFixed(3)})`;
+        for (let j = 0; j < 7; j++) { const a = j * 0.9 + 0.4, q = R * (1 + 2.4 * smooth(u)) * (0.7 + 0.3 * (j % 3)); c.beginPath(); c.arc(g.X(at[0] + Math.cos(a) * q), g.Y(at[1] + Math.sin(a) * q), Math.max(1, 0.45 * k) * (1 - 0.5 * u), 0, Math.PI * 2); c.fill(); }
+      }
+    }
+    const L0 = PHYSICS.lib, phase = ph && Number.isFinite(ph.mill) ? ph.mill : golfPhase(mini), simT = rec ? Math.min(el, (rec.frames.length - 1) / rec.fps) * (L0.TS || 1) : 0;   // the windmills: still at where the next shot finds them, turning as a shot plays (its own clock: physics-sim.js millAngle)
+    for (const m of ter.mills) windmill(c, g, m, L0.millAngle(m, simT, phase), P, shadowOff(k));
+    if (rec && ter.mills.length && el * rec.fps < rec.frames.length + 2) busy = true;
+  }
   const ids = ['X', 'O'].filter(p => pos[p]), [lx, ly] = GOLFV.light, up = p => (hops[p] || 0);
   c.fillStyle = 'rgba(0,0,0,.26)';                                 // every shadow first: no shadow ever lies over a ball (a hopping ball's falls further off)
   for (const p of ids) { const h = up(p); c.beginPath(); c.ellipse(g.X(pos[p][0]) + R * k * (lx + 0.9 * h), g.Y(pos[p][1]) + R * k * (ly + 1.2 * h), R * k * 1.04, R * k, 0, 0, Math.PI * 2); c.fill(); }
@@ -380,45 +410,34 @@ export function drawGolf(g, mini, pos, play, o) {
   return busy;
 }
 // A putt being lined up (this phone's pull, or someone else's in their replay): the putter behind the ball, drawn back
-// with the power; the sight line, dotted, from the ball to the first thing in its way (golfSight: a straight roll, so
-// exactly where the simulation takes it): a ghost of the ball where it touches, and the way it comes off a wall or a
-// post; the cup: ringed. A putt too soft to get there (golfReach) stops short with a bar. The power is the meter at
-// the side.
+// with the power, and a short arrow off the ball the way it is aimed, always the same length (December 2026: no sight
+// line, no landing, no reach: the course and its terrain are read by eye). The power is the bar at the side: its level
+// alone, no marks along it.
 export function drawGolfAim(g, mini, pos, shot, p) {
-  const c = g.c, P = runColours(), L = PHYSICS.lib, S = sizes(), k = g.k, R = S.ballR, from = pos[p], hole = L.HOLES[mini.hole];
+  const c = g.c, P = runColours(), S = sizes(), k = g.k, R = S.ballR, from = pos[p], X = g.X, Y = g.Y;
   if (!from) return;
-  if (shot.power < 0.02) { drawPutter(g, from, shot.aim, 0.8, 1, P, p); return; }   // (a replayed pull not yet begun, or let go of: the putter at the ball, nothing to sight)
-  const sight = golfSight(hole, pos, p, shot.aim, S), reach = golfReach(shot.power, S), short = reach < sight.t, t = short ? reach : sight.t;
-  const [ux, uy] = sight.dir, X = g.X, Y = g.Y, end = [from[0] + ux * t, from[1] + uy * t];
-  const line = (a, b, dash, w, alpha) => {                         // a guide line: white over a dark edge, so it reads on the turf, a wall and a ball
-    for (const [col, lw] of [['rgba(0,0,0,.42)', w + 2.4], [`rgba(255,255,255,${alpha})`, w]]) { c.beginPath(); c.setLineDash(dash || []); c.moveTo(X(a[0]), Y(a[1])); c.lineTo(X(b[0]), Y(b[1])); c.strokeStyle = col; c.lineWidth = lw; c.stroke(); }
-    c.setLineDash([]);
-  };
-  const ring = (at, r, alpha, dash) => { c.beginPath(); c.setLineDash(dash || []); c.arc(X(at[0]), Y(at[1]), r * k, 0, Math.PI * 2); c.fillStyle = `rgba(255,255,255,${(alpha * 0.22).toFixed(2)})`; c.fill(); c.strokeStyle = 'rgba(0,0,0,.42)'; c.lineWidth = 4; c.stroke(); c.strokeStyle = `rgba(255,255,255,${alpha})`; c.lineWidth = 2; c.stroke(); c.setLineDash([]); };
-  c.save(); c.lineCap = 'round';
-  const lead = Math.min(t, R + 1.6), stop = short || sight.kind === 'cup' ? t : Math.max(lead, t - R);
-  if (stop > lead) line([from[0] + ux * lead, from[1] + uy * lead], [from[0] + ux * stop, from[1] + uy * stop], [0.1, 7.5], 3.8, 0.97);
-  if (short) { const a = [end[0] - uy * 2, end[1] + ux * 2], b = [end[0] + uy * 2, end[1] - ux * 2]; line(a, b, null, 2.6, 0.95); }   // as far as it rolls: a bar across the line
-  else if (sight.kind === 'cup') ring(hole.cup, S.cupR + 1.6, 0.95, [5, 4]);
-  else {
-    const len = Math.min(GOLFV.stub, Math.max(0, (reach - t) * 0.6));
-    if (sight.off && len > 1.5) line([end[0] + sight.off[0] * (R + 0.9), end[1] + sight.off[1] * (R + 0.9)], [end[0] + sight.off[0] * (R + 0.9 + len), end[1] + sight.off[1] * (R + 0.9 + len)], [3, 5], 2, 0.78);   // the way it comes off
-    ring(end, R, 0.92);
+  if (shot.power < 0.02) { drawPutter(g, from, shot.aim, 0.8, 1, P, p); return; }   // (a replayed pull not yet begun, or let go of: the putter at the ball, nothing to show)
+  const ux = Math.sin(shot.aim), uy = -Math.cos(shot.aim), a0 = R + 1.6, a1 = a0 + GOLFV.arrow, h = 2.6;
+  const tip = [from[0] + ux * a1, from[1] + uy * a1], base = [from[0] + ux * (a1 - h * 1.3), from[1] + uy * (a1 - h * 1.3)];
+  c.save(); c.lineCap = 'round'; c.lineJoin = 'round';
+  for (const [col, lw] of [['rgba(0,0,0,.42)', 6.2], ['rgba(255,255,255,.97)', 3.6]]) {   // the arrow: white over a dark edge, so it reads on turf, sand and water
+    c.beginPath(); c.moveTo(X(from[0] + ux * a0), Y(from[1] + uy * a0)); c.lineTo(X(base[0]), Y(base[1])); c.strokeStyle = col; c.lineWidth = lw; c.stroke();
+    c.beginPath(); c.moveTo(X(tip[0]), Y(tip[1])); c.lineTo(X(base[0] - uy * h), Y(base[1] + ux * h)); c.lineTo(X(base[0] + uy * h), Y(base[1] - ux * h)); c.closePath();
+    c.fillStyle = col; c.fill(); if (lw > 4) { c.strokeStyle = col; c.lineWidth = 2.6; c.stroke(); }
   }
   drawPutter(g, from, shot.aim, 0.8 + shot.power * GOLFV.pull, 1, P, p);
-  // the power: a meter beside the course where there is room, else over its edge on the side away from the ball
+  // the power: a bar beside the course where there is room, else over its edge on the side away from the ball; its level in the player's colour
   const M = g.M || 0, right = X(S.w + M), room = g.W - right, mw = 14, mh = Math.min(S.h * k * 0.46, 170), my = Y(S.h / 2) - mh / 2;
   const mx = room >= mw + 10 ? right + (room - mw) / 2 : from[0] > S.w / 2 ? X(0) + 5 : X(S.w) - mw - 5;
   rr(c, mx, my, mw, mh, mw / 2); outlined(c, 'rgba(255,248,232,.95)', P.ink, 2.5);
-  const fill = (mh - 6) * shot.power;
-  if (fill > 2) { rr(c, mx + 3, my + mh - 3 - fill, mw - 6, fill, Math.min(4, (mw - 6) / 2)); c.fillStyle = `hsl(${Math.round(120 - 120 * shot.power)} 78% 46%)`; c.fill(); }
-  c.strokeStyle = 'rgba(22,18,16,.55)'; c.lineWidth = 1.5;
-  for (const q of [0.25, 0.5, 0.75]) { c.beginPath(); c.moveTo(mx + 2, my + mh - 3 - (mh - 6) * q); c.lineTo(mx + mw * 0.45, my + mh - 3 - (mh - 6) * q); c.stroke(); }
+  const fill = (mh - 6) * clamp01(shot.power);
+  if (fill > 2) { rr(c, mx + 3, my + mh - 3 - fill, mw - 6, fill, Math.min(4, (mw - 6) / 2)); c.fillStyle = p === 'O' ? P.O : P.X; c.fill(); }
   c.restore();
 }
 // Mini Golf's sounds, each from its event in the recording, once: the putter on the ball as the shot starts (soft or
 // full by the power), a wall or the kerb (a knock, soft or full by the speed it was struck at: e.v), a post's boing
-// (higher the faster the ball came), two balls meeting, the lip's rattle, the ball dropping into the cup.
+// (higher the faster the ball came), two balls meeting, the lip's rattle, the ball dropping into the cup; the terrain's:
+// a splash into the water (its error buzz: haptics BAD_SOUNDS), the hiss of sand, a windmill's blade (a knock).
 export function golfEventSounds(ph, add) {
   const rec = ph.rec, pw = clamp01(Number(ph.power) || 0);
   if (ph.both) add('golfPutt', 0); else add(pw < 0.3 ? 'golfPuttSoft' : 'golfPutt', 0, 0.94 + 0.2 * pw);
@@ -428,6 +447,9 @@ export function golfEventSounds(ph, add) {
     else if (e.k === 'bump') add('golfBoing', t, 0.9 + Math.min(0.32, golfSpeedAt(rec, e.id, e.t - 0.03) / 260));
     else if (e.k === 'balls') add(e.v <= 14 ? 'poolTick' : 'poolClack', t);
     else if (e.k === 'lip') add('golfLip', t);
+    else if (e.k === 'water') add('golfSplash', t);
+    else if (e.k === 'sand') add('golfSand', t);
+    else if (e.k === 'mill') add(e.v <= 14 ? 'golfKnockSoft' : 'golfKnock', t, 0.8);
     else if (e.k === 'hole') add('golfCup', t);
   }
 }
@@ -436,13 +458,15 @@ export function golfEventSounds(ph, add) {
 export function miniature(mini, final) {
   const L = PHYSICS.lib;
   if (!L) return physThumb(mini);
-  const S = L.GOLF, h = L.HOLES[mini.hole], K = GOLF_KERB, [cx, cy] = h.cup;
+  const S = L.GOLF, h = L.HOLES[mini.hole], K = GOLF_KERB, [cx, cy] = h.cup, ter = golfTerrainOf(mini);
   return `<svg class="tphys tgolf" viewBox="${-K} ${-K} ${S.w + 2 * K} ${S.h + 2 * K}" aria-label="Mini golf: ${h.name}${['X', 'O'].map(p => (mini.holed[p] ? `, ${p} in the cup` : '')).join('')}">
       <rect x="${-K + 1.5}" y="${-K + 1.5}" width="${S.w + 2 * K - 3}" height="${S.h + 2 * K - 3}" rx="${K}" class="gkerb"/><rect x="0" y="0" width="${S.w}" height="${S.h}" class="gturf"/>
       ${[1, 3, 5, 7, 9, 11, 13, 15].map(i => `<rect x="0" y="${i * 10}" width="${S.w}" height="10" class="gmow"/>`).join('')}
       <rect x="${h.tee[0] - 10}" y="${h.tee[1] - 4.6}" width="20" height="9.2" rx="1.6" class="gmat"/>
       ${h.walls.map(([x, y, w, hh, a]) => `<rect x="${x - w / 2}" y="${y - hh / 2}" width="${w}" height="${hh}" rx="1.5" transform="rotate(${((a || 0) * 180 / Math.PI).toFixed(1)} ${x} ${y})" class="gwall"/>`).join('')}
+      ${ter ? ter.slopes.map(([x, y, r, gx, gy]) => `<circle cx="${x}" cy="${y}" r="${r}" class="gslope"/><path d="M${(x - gx * 0.5).toFixed(1)} ${(y - gy * 0.5).toFixed(1)}L${(x + gx * 0.5).toFixed(1)} ${(y + gy * 0.5).toFixed(1)}" class="gfall"/>`).join('') + ter.sand.map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" class="gsand"/>`).join('') + ter.water.map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" class="gwater"/>`).join('') : ''}
       ${h.bumpers.map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" class="gpost"/>`).join('')}
+      ${ter ? ter.mills.map(m => { const a = L.millAngle(m, 0, ter.phase), dx = Math.cos(a) * m[2], dy = Math.sin(a) * m[2]; return `<path d="M${(m[0] - dx).toFixed(1)} ${(m[1] - dy).toFixed(1)}L${(m[0] + dx).toFixed(1)} ${(m[1] + dy).toFixed(1)}M${(m[0] + dy).toFixed(1)} ${(m[1] - dx).toFixed(1)}L${(m[0] - dy).toFixed(1)} ${(m[1] + dx).toFixed(1)}" class="gmill"/>`; }).join('') : ''}
       <circle cx="${cx}" cy="${cy}" r="${S.cupR + 1.2}" class="gcup"/><path d="M${cx} ${cy}V${cy - 17}" class="gpole"/><path d="M${cx} ${cy - 17}l12 4.5l-12 4.5z" class="gflag"/>
       ${['X', 'O'].map(p => (mini.holed[p] ? '' : `<circle cx="${mini.balls[p][0]}" cy="${mini.balls[p][1]}" r="${S.ballR * 2.3}" class="${p}"/>`)).join('')}</svg>`;
 }
