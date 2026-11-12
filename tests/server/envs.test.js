@@ -83,3 +83,23 @@ test('envs: the staging seed refuses production', { skip: !fs.existsSync(path.jo
   assert.equal(r.status, 1);
   assert.match(r.stdout, /Refusing to seed "tic-tac-chaos"/);
 });
+
+test('envs: the menus\' design review page (design-review.html) is built into staging only, linked from nowhere in the game, and keeps to the site\'s CSP', () => {
+  const os = require('node:os');
+  const page = fs.readFileSync(path.join(ROOT, 'design-review.html'), 'utf8');
+  assert.match(page, /<meta name="robots" content="noindex, nofollow">/);
+  assert.doesNotMatch(page, /<script(?![^>]*\bsrc=)[^>]*>/, 'no inline script (script-src \'self\')');
+  for (const m of page.matchAll(/(?:src|href)="(assets\/design-review\/[^"]+)"/g)) assert.ok(fs.existsSync(path.join(ROOT, m[1])), `${m[1]} exists`);
+  // not linked from the game: no page module, stylesheet or shell names it
+  const walk = d => fs.readdirSync(d, { withFileTypes: true }).flatMap(f => (f.isDirectory() ? walk(path.join(d, f.name)) : [path.join(d, f.name)]));
+  const named = walk(path.join(ROOT, 'src')).concat(['index.html', 'admin.html', 'admin.js', 'privacy.html'].map(f => path.join(ROOT, f))).filter(f => /design-review/.test(fs.readFileSync(f, 'utf8')));
+  assert.deepEqual(named.map(f => path.relative(ROOT, f)), []);
+  if (typeof site.build !== 'function') return;
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ttc-site-'));
+  try {
+    site.build('staging', 'abcdef1234567', path.join(tmp, 's'));
+    assert.ok(fs.existsSync(path.join(tmp, 's', 'design-review.html')) && fs.existsSync(path.join(tmp, 's', 'assets', 'design-review', 'review.css')), 'staging has it');
+    site.build('production', 'abcdef1234567', path.join(tmp, 'p'));
+    assert.ok(!fs.existsSync(path.join(tmp, 'p', 'design-review.html')) && !fs.existsSync(path.join(tmp, 'p', 'assets', 'design-review')), 'production never has it');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+});
