@@ -35,7 +35,7 @@ test('a fresh visit: an online match in progress opens the main menu with Resume
   MM.freshVisit();
   assert.equal(state.screen, 'menu'); assert.equal(state.online, null, 'not in the match until Resume');
   assert.deepEqual(MM.resumable, { game: 'game-12345', me: 'O', room: 'ABCDE' });
-  assert.match(renderMenu(), /data-act="resume"[^>]*>Resume match<\/button>/);
+  assert.match(renderMenu(), /data-act="resume"[^>]*><b>Resume match<\/b>/);
   MM.holdResume(null);
   Object.assign(state, board(), { screen: 'win', winner: 'X', online: { kind: 'mm', game: 'game-12345', me: 'O', joined: true } });
   MM.freshVisit();

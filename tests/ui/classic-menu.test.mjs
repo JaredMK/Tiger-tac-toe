@@ -40,7 +40,7 @@ test('the main menu: Play Computer, Play a Friend, Find Match, How to Play; no P
   assert.match(html, />Play Computer</); assert.match(html, />Play a Friend</); assert.match(html, />Find Match</);
   assert.doesNotMatch(html, /Play Local|Play Online|mode-go|online-go|Super Chaos/);
   MM.setFindOn(false);
-  assert.match(renderMenu(), /data-act="find-go" disabled>Find Match<small>Not available at this time<\/small>/, 'switched off on the admin page: greyed');
+  assert.match(renderMenu(), /class="stk soon[^"]*" data-act="find-go"[^>]* disabled[^>]*>Find Match<small>soon<\/small>/, 'switched off on the admin page: a small "soon" tag');
   MM.setFindOn(true);
 });
 test('Play a Friend: Host, Join and a small Same phone; back to the main menu', () => {
