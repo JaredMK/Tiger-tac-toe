@@ -1,4 +1,5 @@
 // Risky Rolls: the rules (pure: no page, no clock; the server runs the same code).
+import { DIE_MORE } from '../../core/config.js';
 import { needRng, randInt } from '../../core/random.js';
 import { PIG_DEFAULTS } from './meta.js';
 
@@ -57,5 +58,5 @@ export function moveFlash(m, p, range, bjFrom, mini, flash) {
   flash.roll = mini.last.roll; flash.pot = mini.last.pot; flash.rolls = mini.last.rolls; flash.bank = mini.bank[p]; return;
 }
 export function flashMs(f, winLen, won) {
-  return f.note === 'bank' ? 1000 : f.note === 'bust' ? 1350 : 1050;
+  return f.note === 'bank' ? 1000 : (f.note === 'bust' ? 1350 : 1050) + DIE_MORE;   // (a roll: the die's tumble, DIE_MORE longer)
 }

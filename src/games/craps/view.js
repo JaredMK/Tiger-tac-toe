@@ -1,6 +1,6 @@
 // Craps: the screen, the miniature, the move's words and sounds, and the inputs.
 import { tune } from '../../core/tune.js';
-import { CRAPS, crapsTimes } from './rules.js';
+import { CRAPS, CRAPS_QUICK_MORE, crapsTimes } from './rules.js';
 import { N, mv, state } from '../../ui/app.js';
 import { CROSS, TICK, dieFace } from '../../ui/art.js';
 import { DIE_BOUNCE, die3d } from '../../ui/dice.js';
@@ -17,7 +17,7 @@ import { pipRows } from '../../ui/thumbs.js';
 //     the colour of what it did; the round's last pair hops (won) or dims (out) and the felt glows with it;
 //   under it the round's totals in a row (a fixed height: the latest on show) and the line for the result.
 // One button, always there, so nothing moves. KRABS_T: a quick roll's shorter tumble, the result's pip after its words.
-export const KRABS_T = { quickLand: 420, pip: 180, swap: 260 };
+export const KRABS_T = { quickLand: 420 + CRAPS_QUICK_MORE, pip: 180, swap: 260 };
 const TOTALS = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 const landOf = k => (k < CRAPS.quickAfter ? CRAPS.land : KRABS_T.quickLand);   // roll k's tumble: the die lands this long after it is thrown
 const landAt = (tim, k) => tim.at[k] + landOf(k);

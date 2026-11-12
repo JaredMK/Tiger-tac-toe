@@ -1,4 +1,5 @@
 // Ship, Captain & Crew: the rules (pure: no page, no clock; the server runs the same code).
+import { DIE_MORE } from '../../core/config.js';
 import { needRng, randInt } from '../../core/random.js';
 import { goAgain, tune } from '../../core/tune.js';
 
@@ -16,7 +17,7 @@ import { goAgain, tune } from '../../core/tune.js';
 // turn that scores keeps the turn too (a fresh turn of the same player).
 // A timeout mid-turn ends it as it stands (core/board.js timeoutClose, this file's timeoutClose: 'keep'): the
 // cargo scores if all three are in, else 0.
-export const SCC = { target: 22, rolls: 3, dice: 5, land: 650, stag: 45, gap: 380, take: 300, fly: 280, shown: 200, beat: 320, score: 550, hold: 450 };   // the move's moments (ms): land, the last die of a roll landing (each one before it `stag` sooner); gap, from there to the first die set aside reaching its place, and take, to each one after it (fly: its flight); shown, from the last of them to the cargo showing; beat, a last roll's cargo on show before it scores; score, the cargo counting into the total; hold, the result on show
+export const SCC = { target: 22, rolls: 3, dice: 5, land: 650 + DIE_MORE, stag: 45, gap: 380, take: 300, fly: 280, shown: 200, beat: 320, score: 550, hold: 450 };   // the move's moments (ms): land, the last die of a roll landing (each one before it `stag` sooner); gap, from there to the first die set aside reaching its place, and take, to each one after it (fly: its flight); shown, from the last of them to the cargo showing; beat, a last roll's cargo on show before it scores; score, the cargo counting into the total; hold, the result on show
 export const SCC_NEED = [6, 5, 4];                             // the ship, the captain, the crew: in this order
 export const sccCfg = mini => { const t = tune(mini); return { target: t.target || SCC.target, rolls: t.rolls || SCC.rolls }; };
 // One roll from a level (0: nothing in, 1: the ship, 2: and the captain, 3: and the crew: the cargo rolled):

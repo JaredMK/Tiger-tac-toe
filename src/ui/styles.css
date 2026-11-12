@@ -577,8 +577,8 @@ main.scr.mini:has(.fing), main.scr.mini:has(.fing) * { touch-action: none; -webk
 .pot span { color: var(--muted); font-weight: 700; font-size: 14px; }
 .rrbtns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .big.bank { background: var(--text); color: var(--bg); }
-.die.roll { animation: dieroll .6s ease-out both; }
-.die.roll svg { animation: appear .6s step-end both; }
+.die.roll { animation: dieroll var(--dur, .95s) ease-out both; }   /* (a flat die's tumble: 600 ms and DIE_MORE; its view sets --dur from ui/dice.js DIE_FLAT_MS) */
+.die.roll svg { animation: appear var(--dur, .95s) step-end both; }
 /* Risky Rolls: the die tumbles through other faces (one every 0.12 s) and lands on the number rolled */
 .die.rr { display: grid; place-items: center; } .die.rr .rface { grid-area: 1 / 1; width: 100%; height: 100%; display: grid; place-items: center; }
 .die.rr .rface svg { animation: none; } .die.rr .rface.fl { opacity: 0; }
@@ -836,7 +836,7 @@ main.scr.mini:has(.fing), main.scr.mini:has(.fing) * { touch-action: none; -webk
 @keyframes clockpulse { 50% { transform: scale(1.08); } }
 
 @keyframes shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
-@keyframes dieroll { 0% { transform: rotate(0) scale(.6); } 50% { transform: rotate(200deg) scale(1.12); } 100% { transform: rotate(360deg) scale(1); } }
+@keyframes dieroll { 0% { transform: rotate(0) scale(.6); } 50% { transform: rotate(380deg) scale(1.12); } 100% { transform: rotate(720deg) scale(1); } }
 @keyframes appear { from { opacity: 0; } to { opacity: 1; } }
 @keyframes vanish { to { opacity: 0; transform: scale(.4); } }
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(var(--to, 0deg)); } }
@@ -1341,10 +1341,10 @@ b.O { box-shadow: inset 0 -.38em 0 var(--o-soft); }
 /* The shared 3-D die (ui/dice.js die3d): a cube (.d3cube) or an octahedron (.d3octa) of flat faces, the face towards the
    player its number, resting tilted over a soft shadow; .roll throws it in from the side (--fx), turning through its
    faces (--sx/--sy/--sz), one bounce (46% of --dur: DIE_BOUNCE), landed at --t + --dur. Its size is --ds. */
-.d3 { --ds: 64px; --rx: 21deg; --ry: -14deg; --rz: -4deg; --fx: -150%; --sx: 720deg; --sy: -540deg; --sz: 180deg; position: relative; display: inline-block; width: var(--ds); height: var(--ds); flex: none; }
-.d3.v1 { --fx: 150%; --ry: 14deg; --rz: 5deg; --sx: 540deg; --sy: 720deg; --sz: -180deg; }
-.d3.v2 { --fx: -120%; --rz: 6deg; --sx: 900deg; --sy: 360deg; --sz: 90deg; }
-.d3.v3 { --fx: 120%; --ry: 12deg; --rz: -7deg; --sx: 720deg; --sy: -360deg; --sz: -270deg; }
+.d3 { --ds: 64px; --rx: 21deg; --ry: -14deg; --rz: -4deg; --fx: -150%; --sx: 1080deg; --sy: -900deg; --sz: 180deg; position: relative; display: inline-block; width: var(--ds); height: var(--ds); flex: none; }
+.d3.v1 { --fx: 150%; --ry: 14deg; --rz: 5deg; --sx: 900deg; --sy: 1080deg; --sz: -180deg; }
+.d3.v2 { --fx: -120%; --rz: 6deg; --sx: 1260deg; --sy: 720deg; --sz: 90deg; }
+.d3.v3 { --fx: 120%; --ry: 12deg; --rz: -7deg; --sx: 1080deg; --sy: -720deg; --sz: -270deg; }   /* (the turns in them: DIE_MORE, 350 ms, longer than before, so a die turns two more times: the same speed over the longer tumble) */
 .d3octa { --rx: 15deg; --ry: -9deg; --rz: 0deg; } .d3octa.v1 { --ry: 9deg; --rz: 0deg; }
 .d3sh { position: absolute; left: -6%; right: -16%; top: 58%; height: 60%; border-radius: 50%; background: radial-gradient(closest-side, rgba(22, 18, 16, .46), rgba(22, 18, 16, .22) 62%, rgba(22, 18, 16, 0)); }
 .d3hop { position: absolute; inset: 0; perspective: calc(var(--ds) * 5.5); }
@@ -4905,8 +4905,8 @@ button.cmbc.can { cursor: pointer; } button.cmbc.can:active { transform: transla
 .cmb .cmbd svg { width: 100%; height: 100%; }
 .cmb .cmbd.blank { background: color-mix(in srgb, var(--card) 70%, transparent); box-shadow: none; border-style: dashed; }
 .cmb .cmbd.held { transform: translateY(-8px); box-shadow: 0 0 0 4px var(--x), 0 4px 0 var(--ink); } .cmb .cmbd.held.O { box-shadow: 0 0 0 4px var(--o), 0 4px 0 var(--ink); }
-.cmb .cmbd.tum { animation: cmbtum .52s var(--t, 0ms) cubic-bezier(.25, .8, .4, 1) both; }
-@keyframes cmbtum { 0% { transform: translateY(-40%) rotate(-200deg) scale(.7); } 70% { transform: translateY(4%) rotate(12deg) scale(1.04); } 100% { transform: none; } }
+.cmb .cmbd.tum { animation: cmbtum var(--dur, .87s) var(--t, 0ms) cubic-bezier(.25, .8, .4, 1) both; }   /* (520 ms and DIE_MORE; the view sets --dur) */
+@keyframes cmbtum { 0% { transform: translateY(-40%) rotate(-560deg) scale(.7); } 70% { transform: translateY(4%) rotate(12deg) scale(1.04); } 100% { transform: none; } }
 .cmb .arcres, .cmb .arcnote { flex: none; min-height: 1.3em; margin: 0; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* the miniature: each player's card, a 3x2 grid of cells (claimed: filled in their colour), beside their mark */
 .tcmb { display: flex; flex-direction: column; gap: 5cqw; width: 84cqw; align-items: center; }

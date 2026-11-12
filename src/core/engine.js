@@ -30,8 +30,8 @@ export { BOWLG, BOWL_LIMITS, BOWL_KIT, BLANE, bowlAimOf, bowlFlick, bowlGeom, bo
 export { BRK, brkAi, brkHand, brkRaw, brkCheck } from '../games/bricks/rules.js';
 export { BS, bsN, bsCandidates, bsPlacements, bsShip } from '../games/bs/rules.js';
 export { BULL_DEFAULTS } from '../games/bullseye/meta.js';
-export { BULLS, BULLT, BULL_LIMITS, BULL_CFG, bullsNorm, setBullsConfig, bullsConfig, bullsScore, bullsThrow, bullsPoint, bullsAimAt, bullsDist, bullsPlan, bullsFlick, bullsGeom, bullUp, bullIs } from '../games/bullseye/rules.js';
-export { bullsOdds, bullsErr } from '../games/bullseye/ai.js';
+export { BULLS, BULLT, BULL_LIMITS, BULL_CFG, bullsNorm, setBullsConfig, bullsConfig, bullsScore, bullsPoint, bullsAimAt, bullsPeriod, bullsPeriodY, bullsLeg, bullsAim, bullsPlan, bullsWave, bullsGeom, bullUp, bullIs } from '../games/bullseye/rules.js';
+export { bullsRates } from '../games/bullseye/ai.js';
 export { BUMP } from '../games/bump/rules.js';
 export { BUS, BUST, BUS_AVG, cardRank, cardRed, busRight, busDeck, busOdds } from '../games/bus/rules.js';
 export { C4, c4Playable, c4Drop, c4Eval, C4_ORDER, c4Search, C4_DEPTH, c4Moves } from '../games/c4/rules.js';

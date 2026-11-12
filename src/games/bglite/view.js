@@ -2,6 +2,8 @@
 import { BGL, BGLT, bglCan, bglDice, bglHome, bglMoves, bglStep, bglTimes, bglTo, bglV2 } from './rules.js';
 import { N, REDUCED, mv, state, waitLine, zoomedType } from '../../ui/app.js';
 import { dieFace } from '../../ui/art.js';
+import { DIE_FLAT_MS } from '../../ui/dice.js';
+import { DIE_MORE } from '../../core/config.js';
 import { fxAttr } from '../../ui/fx.js';
 import { arcTally, lateAt, pips } from '../../ui/progress.js';
 import { markSvgG, pipRows, tokSvg } from '../../ui/thumbs.js';
@@ -279,7 +281,7 @@ function table(mini, a, o) {
     const dead = dr ? deadOf(view, optsOf(view, dr.p)) : [], last = dr && dr.steps.length && dr.at != null ? dr.steps[dr.steps.length - 1].d : null;
     dd = view.dice.v.map((v, d) => ({ v, cls: view.dice.used[d] ? (d === last && !REDUCED ? ' spend' : ' used') : dead.includes(d) ? ' dead' : (me && to.some(x => x.d === d) ? ' sel' : ''), t: d === last ? BGLT.slide : null }));
   }
-  const dice = dd ? dd.map(x => (x.v ? `<span class="die bgldie${x.cls}"${x.t != null ? ` style="--t:${Math.round(x.t)}ms"` : ''} aria-label="${x.v}${/used|spend/.test(x.cls) ? ', used' : /dead/.test(x.cls) ? ', no move' : ''}">${dieFace(x.v)}</span>` : '')).join('') : '';
+  const dice = dd ? dd.map(x => (x.v ? `<span class="die bgldie${x.cls}"${x.t != null || /roll/.test(x.cls) ? ` style="${x.t != null ? `--t:${Math.round(x.t)}ms;` : ''}${/roll/.test(x.cls) ? `--dur:${DIE_FLAT_MS}ms` : ''}"` : ''} aria-label="${x.v}${/used|spend/.test(x.cls) ? ', used' : /dead/.test(x.cls) ? ', no move' : ''}">${dieFace(x.v)}</span>` : '')).join('') : '';
   const W = p => `<b class="${p}">${N(p)}</b>`;
   const offOf = p => view.pos[p].filter(x => x > n).length;
   const tal = p => arcTally(p, o, pips(p, offOf(p), BGL.pieces, !!(anim && tb.by === p && T.offAt != null), anim ? T.offAt : null));
@@ -343,7 +345,7 @@ export function moveText(f, who) {
 export function sounds(f, add, won, mini, last) {
   const b = f.bgl;
   if (!b) return;
-  if (b.kind === 'roll') { add('rattle', 0); add('thunk', 500); if (b.stuck) add('thud', BGLT.roll); return; }
+  if (b.kind === 'roll') { add('rattle', 0); add('thunk', 500 + DIE_MORE); if (b.stuck) add('thud', BGLT.roll); return; }
   const tt = turnOf(b);
   if (!tt || seenOf(tt.b, state.zoom)) return;
   tt.b.steps.forEach((s, i) => {

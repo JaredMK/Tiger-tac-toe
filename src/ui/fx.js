@@ -2,7 +2,7 @@
 import { ANIM, playMs } from '../core/timer.js';
 import { ATT, ATT_TYPES, attMs } from '../games/shared/attention.js';
 import { FINGER_TYPES, fingMs } from '../games/shared/finger.js';
-import { BULLT } from '../games/bullseye/rules.js';
+import { bullsAim } from '../games/bullseye/rules.js';
 import { bullsPre } from '../games/bullseye/view.js';
 import { BUST } from '../games/bus/rules.js';
 import { busPre } from '../games/bus/view.js';
@@ -159,7 +159,7 @@ export function momentPower(f) {
   return null;
 }
 // How long the move's animation takes. The result toast or card waits this long, and so does any tap.
-export function animMs(f) { return REDUCED ? 0 : playMs(f, hexLen(f)) + runPre(f) - (f.type === 'bus' ? BUST.pre - busPre(f) : 0) - (f.type === 'bullseye' && f.bull ? BULLT.pre - bullsPre(f) : 0) - (f.type === 'echo' && f.echo && !f.timeout ? echoAim(f.echo).end - echoPre(f) : 0) - (f.type === 'oddone' && f.odd && !f.timeout ? ODD.show + ODD.pause - oddPre(f) : 0) - (ATT_TYPES.includes(f.type) && f.att && !f.timeout ? attMs(f.type, f.att.round) + ATT.pause - attPre(f) : 0) - (FINGER_TYPES.includes(f.type) && f.fing && !f.timeout ? fingMs(f.fing) - fingPre(f) : 0) - (f.type === 'trivia' && f.trivia ? (f.trivia.fresh ? TRIVIA.flip : 0) + TRIVIA.pause - triviaPre(f) : 0); }   // (your own Ride the Bus guess skips the moment it is shown)
+export function animMs(f) { return REDUCED ? 0 : playMs(f, hexLen(f)) + runPre(f) - (f.type === 'bus' ? BUST.pre - busPre(f) : 0) - (f.type === 'bullseye' && f.bull ? bullsAim(f.bull).fly - bullsPre(f) : 0) - (f.type === 'echo' && f.echo && !f.timeout ? echoAim(f.echo).end - echoPre(f) : 0) - (f.type === 'oddone' && f.odd && !f.timeout ? ODD.show + ODD.pause - oddPre(f) : 0) - (ATT_TYPES.includes(f.type) && f.att && !f.timeout ? attMs(f.type, f.att.round) + ATT.pause - attPre(f) : 0) - (FINGER_TYPES.includes(f.type) && f.fing && !f.timeout ? fingMs(f.fing) - fingPre(f) : 0) - (f.type === 'trivia' && f.trivia ? (f.trivia.fresh ? TRIVIA.flip : 0) + TRIVIA.pause - triviaPre(f) : 0); }   // (your own Ride the Bus guess skips the moment it is shown)
 export function hexLen(f) { const sq = shownSq(f.square); return sq && sq.mini.winCells ? sq.mini.winCells.length : 4; }
 // The JS-driven bits of the animations: numbers that count up or down, and the candy token's hops.
 export function animate() {

@@ -10,3 +10,7 @@ export const lohi = keys => out => { for (const [a, b] of keys) if (out[b] < out
 // match from Play Computer, a friend room or Find Match (the page and the server read this one switch). Its code and
 // settings stay, for when it comes back: set this true (and its release switch, releases/superchaos, as before).
 export const SUPER_CHAOS_ENABLED = false;
+// Every die tumbles this much longer than it first did (December 2026): the roll's tumble, its landing and everything after
+// the landing move later by it. One base figure for every game with dice (it is in this import-free module so a game's
+// rules can read it at load); a base figure like every timing, so Speed shortens it as the rest (core/timer.js re-exports it).
+export const DIE_MORE = 350;

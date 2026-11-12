@@ -55,7 +55,7 @@ export function upgradeMini(mini) {
     if (!mini.speed) mini.speed = { X: 1, O: 1 };
     delete mini.hits; mini.last = null;
   }
-  if (mini && mini.type === 'bullseye' && mini.v !== 2) bullUp(mini);   // Bullseye from the moving board and its two lines: the points stay, the board on the wall from here (rules.js bullUp)
+  if (mini && mini.type === 'bullseye' && mini.v !== 3) bullUp(mini);   // Bullseye from the moving board or the flick: the points stay, the board on the wall and the two lines from here (rules.js bullUp)
   if (mini && mini.type === 'c4' && Array.isArray(mini.cells) && mini.cells.length === 5 * C4.rows && C4.cols === 7) {
     const at = k => Math.floor(k / 5) * 7 + (k % 5) + 1;
     const cells = new Array(C4.cols * C4.rows).fill(null);

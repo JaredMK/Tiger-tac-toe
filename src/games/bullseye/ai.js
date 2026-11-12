@@ -1,33 +1,33 @@
 // Bullseye: the computer's play.
-import { BULLS, bullsAimAt, bullsScore } from './rules.js';
+import { BULLS, bullsAimAt } from './rules.js';
 import { tune } from '../../core/tune.js';
 
-const gauss = rng => { const u = Math.max(1e-9, rng()), v = rng(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
-// The computer's hand: it aims at the bullseye and lands off it by its error (aiErr: the admin's, wall units either
-// way) on top of the square's scatter. Easy is a third looser, Hard four fifths as loose (sharper still, and Hard against Hard goes to the first mover too often: tests/sim/bullseye.sim.js).
-export const bullsErr = (t, level) => t.aiErr * (level === 'easy' ? 1.35 : level === 'hard' ? 0.8 : 1);
-// What such a throw scores: the chance of each number of points, by a fixed set of sample darts (the same every
-// time: no rng, no clock), kept per board and hand.
-const ODDS = new Map();
-export function bullsOdds(cfg, t, err) {
-  const key = [cfg.board, cfg.mid, cfg.bull, t.spread, t.bullPts, err].join(), had = ODDS.get(key);
-  if (had) return had;
-  let s = 12345;
-  const rng = () => (s = (s * 1664525 + 1013904223) % 4294967296) / 4294967296, sig = Math.hypot(err, t.spread), N = 600, p = {};
-  let ev = 0;
-  for (let k = 0; k < N; k++) { const pts = bullsScore(cfg, BULLS.at[0] + gauss(rng) * sig, BULLS.at[1] + gauss(rng) * sig, t.bullPts).pts; p[pts] = (p[pts] || 0) + 1 / N; ev += pts / N; }
-  const out = { p, ev };
-  if (ODDS.size > 60) ODDS.clear();
-  ODDS.set(key, out);
-  return out;
+// The computer stops its two lines as a hand would: a bullseye, the inner ring, the rest of the board or a miss at
+// its rates (the admin's: aiBull, aiMid, aiBoard, each counting the ones inside it), slipping as its lines speed up
+// (a faster sweep is harder to stop where it wants). Easy a fifth worse, Hard a fifth better.
+const LEVEL = { easy: 0.8, normal: 1, hard: 1.2 };
+export function bullsRates(speed, t, level) {   // (t: the square's settings; the rates are chances of landing in that ring and no other)
+  const f = Math.pow(1 / Math.max(1, speed), BULLS.ai.worse) * (LEVEL[level] || 1);
+  const bull = Math.min(0.95, t.aiBull / 100 * f), mid = Math.min(0.97, Math.max(t.aiBull, t.aiMid) / 100 * f), all = Math.min(0.99, Math.max(t.aiBull, t.aiMid, t.aiBoard) / 100 * f);
+  return { bull, mid: mid - bull, board: all - mid };
 }
 export function needs(pm, p) {
-  const t = tune(pm), o = bullsOdds(pm.cfg, t, bullsErr(t, 'normal'));
-  return Math.max(1, Math.ceil((t.goal - pm.pts[p]) / Math.max(0.2, o.ev) - 0.25));
+  const t = tune(pm), cfg = pm.cfg; let n = 0, pts = pm.pts[p], s = pm.speed[p] || 1;
+  while (pts < t.goal && n < 60) { const r = bullsRates(s, t), hit = r.bull + r.mid + r.board; pts += r.bull * t.bullPts + r.mid * BULLS.midPts + r.board * BULLS.boardPts; s *= 1 + (cfg.ramp - 1) * hit; n++; }
+  return Math.max(1, n);
 }
-export function best(pm, me, rng, style, ctx) {   // at the bullseye, off by its error; q: the chance this dart takes the square
-  const t = tune(pm), level = ctx && ctx.level, err = bullsErr(t, level), o = bullsOdds(pm.cfg, t, err), need = t.goal - pm.pts[me];
-  let q = 0;
-  for (const k of Object.keys(o.p)) if (Number(k) >= need) q += o.p[k];
-  return { move: bullsAimAt(BULLS.at[0] + gauss(rng) * err, BULLS.at[1] + gauss(rng) * err), q: Math.min(0.95, q) };
+export function best(pm, me, rng, style, ctx) {   // a ring at its rates, and a spot in it to match: the lines stopped there
+  const t = tune(pm), r = bullsRates(pm.speed[me] || 1, t, ctx && ctx.level), u = rng(), cfg = pm.cfg, [cx, cy] = BULLS.at;
+  const zone = u < r.bull ? 'bull' : u < r.bull + r.mid ? 'mid' : u < r.bull + r.mid + r.board ? 'board' : 'miss';
+  let pt;
+  if (zone === 'miss') {
+    for (let k = 0; k < 60; k++) { pt = [2 + rng() * (BULLS.w - 4), 2 + rng() * (BULLS.wall - 4)]; if (Math.hypot(pt[0] - cx, pt[1] - cy) > cfg.board * 1.12 + 0.5) break; }
+  } else {
+    const lo = zone === 'bull' ? 0 : zone === 'mid' ? cfg.bull * 1.12 + 0.2 : cfg.mid * 1.06 + 0.2, hi = zone === 'bull' ? cfg.bull * 0.85 : zone === 'mid' ? cfg.mid * 0.92 : cfg.board * 0.92;
+    const rad = lo + Math.sqrt(rng()) * Math.max(0, hi - lo), th = rng() * Math.PI * 2;
+    pt = [cx + Math.cos(th) * rad, cy + Math.sin(th) * rad];
+  }
+  let q = 0; const need = t.goal - pm.pts[me];
+  if (need <= t.bullPts) q += r.bull; if (need <= BULLS.midPts) q += r.mid; if (need <= BULLS.boardPts) q += r.board;
+  return { move: bullsAimAt(pt[0], pt[1]), q: Math.min(0.95, q) };
 }

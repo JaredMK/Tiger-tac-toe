@@ -1,4 +1,5 @@
 // Shut the Box: the rules (pure: no page, no clock; the server runs the same code).
+import { DIE_MORE } from '../../core/config.js';
 import { needRng, randInt } from '../../core/random.js';
 import { goAgain, tune, tuneLive } from '../../core/tune.js';
 
@@ -12,7 +13,7 @@ import { goAgain, tune, tuneLive } from '../../core/tune.js';
 //    The turn then ends, or, with "Go again on success" on (core/tune.js AGAIN_TUNE), the same player rolls again.
 // The first to shut every tile of their own box wins the square (individual progress: a player moving alone wins).
 // A timeout with the roll waiting flips nothing ('drop', core/board.js timeoutClose). Nothing is hidden.
-export const SHUT = { tiles: 6, oneDie: 6, roll: 900, land: 560, flip: 240, flipMs: 420, hold: 450 };
+export const SHUT = { tiles: 6, oneDie: 6, roll: 900 + DIE_MORE, land: 560 + DIE_MORE, flip: 240, flipMs: 420, hold: 450 };
 export const shutCfg = mini => { const t = tune(mini); return { tiles: Math.max(3, Math.min(9, Math.round(t.tiles != null ? t.tiles : SHUT.tiles))), oneDie: Math.max(0, Math.min(12, Math.round(t.oneDie != null ? t.oneDie : SHUT.oneDie))) }; };
 export const shutN = mini => (Array.isArray(mini.up && mini.up.X) ? mini.up.X.length : shutCfg(mini).tiles);
 // The open tiles of a box (their numbers), and what they add up to.

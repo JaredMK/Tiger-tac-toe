@@ -15,9 +15,8 @@ export function allowedTypes(releases, admin) { return admin ? TYPES.slice() : r
 // longer than the time since: finger.js fingCheck), Pinball (its inputs re-simulated on the server, which keeps its own
 // ball: pinball/rules.js pinReplayCheck), the attention games (the round is the server's until Start, the answer timed:
 // attention.js attentionHide, verify.js). Bullseye was held while a throw was where two sweeping lines were stopped
-// (the server cannot time a tap to better than a connection's slack); from November 2026 a throw is a flick, { aim,
-// power }, and where the dart lands is the server's own draw (bullseye/rules.js bullsThrow), so there is nothing a
-// phone can claim: the best it can send is a perfect aim, which any steady finger can. The list is empty.
+// (the server cannot time a tap to better than a connection's slack); it is allowed again, the cheating risk accepted
+// (a phone can claim a better stop than it made: bullseye/rules.js). The list is empty.
 export const FIND_MATCH_HOLD = [];
 export const findMatchTypes = types => types.filter(t => !FIND_MATCH_HOLD.includes(t));
 export function restrictGames(games, allowed) {

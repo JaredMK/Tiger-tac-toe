@@ -1,4 +1,5 @@
 // Dice Combo: the rules (pure: no page, no clock; the server runs the same code).
+import { DIE_MORE } from '../../core/config.js';
 import { needRng, randInt } from '../../core/random.js';
 import { goAgain, tune } from '../../core/tune.js';
 
@@ -14,7 +15,7 @@ import { goAgain, tune } from '../../core/tune.js';
 // kind; four of a kind is also three), a large straight is also a small one; a full house is three of one value
 // and two of another (five alike is not a full house). A timeout mid-move claims nothing (the move simply ends:
 // the next player's move, or this player's next, starts afresh: `cur` is the mover's move under way).
-export const COMBO = { kinds: ['3k', '4k', 'fh', 'ss', 'ls', '5k'], dice: 5, roll: 700, hold: 450, claim: 900 };
+export const COMBO = { kinds: ['3k', '4k', 'fh', 'ss', 'ls', '5k'], dice: 5, roll: 700 + DIE_MORE, hold: 450, claim: 900 };
 export const COMBO_NAMES = { '3k': 'Three of a kind', '4k': 'Four of a kind', fh: 'Full house', ss: 'Small straight', ls: 'Large straight', '5k': 'Five alike' };
 export const COMBO_SHORT = { '3k': '3 alike', '4k': '4 alike', fh: 'Full house', ss: 'Sm straight', ls: 'Lg straight', '5k': '5 alike' };
 export const comboCfg = mini => tune(mini);

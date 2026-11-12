@@ -1,4 +1,5 @@
 // Craps: the rules (pure: no page, no clock; the server runs the same code).
+import { DIE_MORE } from '../../core/config.js';
 import { needRng, randInt } from '../../core/random.js';
 import { goAgain, tune } from '../../core/tune.js';
 
@@ -11,7 +12,8 @@ import { goAgain, tune } from '../../core/tune.js';
 // A hot streak: a round won (not yet the square) keeps the turn, and the same player rolls a new round
 // (again); a round lost ends the turn. (Super Chaos: one round a round, no streak: scApply.)
 // The page plays the rolls back one by one (the dice tumbling, the puck going on the point).
-export const CRAPS = { goal: 3, roll: 900, quick: 560, quickAfter: 4, puck: 420, hold: 400, stop: 600, land: 560, flash: 250, pip: 400, winOdds: 244 / 495 };   // a round's flash: roll each roll (quick after the first few), the puck, the result held; land: a die's tumble (stop, flash: single rolls, from before); pip: a won round's pip filling in
+export const CRAPS_QUICK_MORE = Math.round(DIE_MORE / 2);   // a quick roll (after the first few) tumbles half the extra longer
+export const CRAPS = { goal: 3, roll: 900 + DIE_MORE, quick: 560 + CRAPS_QUICK_MORE, quickAfter: 4, puck: 420, hold: 400, stop: 600, land: 560 + DIE_MORE, flash: 250, pip: 400, winOdds: 244 / 495 };   // a round's flash: roll each roll (quick after the first few), the puck, the result held; land: a die's tumble (stop, flash: single rolls, from before); pip: a won round's pip filling in
 export const CRAPS_MAKE = { 4: 1 / 3, 5: 0.4, 6: 5 / 11, 8: 5 / 11, 9: 0.4, 10: 1 / 3 };   // the chance a point is rolled before a 7
 // A round rolled out: from the come-out, or from a point already on (from).
 export function crapsRound(rng, from) {

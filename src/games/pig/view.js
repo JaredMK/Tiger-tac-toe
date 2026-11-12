@@ -1,4 +1,5 @@
 // Risky Rolls: the screen, the miniature, the move's words and sounds, and the inputs.
+import { DIE_MORE } from '../../core/config.js';
 import { pigGoal, pigMaxRolls, pigSides, setPigConfig } from './rules.js';
 import { FIREBASE_CONFIG, configured } from '../../net/connect.js';
 import { N, mv } from '../../ui/app.js';
@@ -32,7 +33,7 @@ export function pigFace(n, sides) {
 // A move's timings (ms from the move; the stylesheet reads them off the screen's own style, sounds() below uses the
 // same ones; all inside rules.js flashMs): a roll's die lands at `land`, its points fly to the pot and are in it at
 // `pot`, counted on over `count`; a bank's pot reaches the score at `bank`; a bust's pot breaks at `lose`.
-export const PIG_T = { land: 560, pot: 800, count: 250, bank: 350, lose: 700 };
+export const PIG_T = { land: 560 + DIE_MORE, pot: 800 + DIE_MORE, count: 250, bank: 350, lose: 700 + DIE_MORE };   // (the die's tumble, and what follows its landing, DIE_MORE longer than it was)
 
 // The miniature: the tray with the die and the pot (a token while a turn has points in it), and each player's banked
 // points as a bar to the target with its number.

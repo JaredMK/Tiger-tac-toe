@@ -6,6 +6,8 @@
 // The match clock keeps each player's time left (bank, ms). A turn's deadline is its start plus the mover's bank,
 // so everything built on the deadline (the server's sweep, a run's length, the phones' countdowns) holds for both.
 import { metaOf, rulesOf } from '../games/index.js';
+import { DIE_MORE } from './config.js';
+export { DIE_MORE };                                              // (the dice's longer tumble: core/config.js)
 
 export const TIMER_OPTIONS = [0, 30];   // seconds per turn in a friend game: no limit or 30 seconds (Find Match is always 30 seconds)
 // A time per turn from an older room or setup (1 or 3 minutes) becomes 30 seconds; anything else, no limit.
@@ -77,9 +79,6 @@ export function turnOpen(st, i) {
 // ---------- playback: how long a settled move takes to play on a phone ----------
 // The turn clock allows for it, so the next player gets the full time once the move has played out.
 // The phones and the server use the same figures (Normal: the server never knows a player's Animation choice).
-// A die tumbles this much longer than it first did (December 2026: every game with dice: the roll's tumble, its landing, and
-// everything after the landing move later by it; a base figure like every timing here, so Speed shortens it as the rest).
-export const DIE_MORE = 350;
 export const PLAY = {
   spot: 600,                                                              // the square glows on the board before the zoom
   flash: { move: 600, again: 350, claim: 800, draw: 1100, match: 900, card: 900 },   // the result stays up this long once its animation is over (a win: the game's own winning moment; the square's stamp follows on the board)

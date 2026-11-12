@@ -1,4 +1,5 @@
 // Dice Combo: the screen, the miniature, the move's words and sounds, and the inputs (November 2026).
+import { DIE_MORE } from '../../core/config.js';
 import { tune } from '../../core/tune.js';
 import { COMBO, COMBO_NAMES, COMBO_SHORT, comboOpen, comboTimes } from './rules.js';
 import { N, REDUCED, mv, state, waitLine } from '../../ui/app.js';
@@ -6,6 +7,7 @@ import { dieFace } from '../../ui/art.js';
 import { arcTally, lateAt, pips } from '../../ui/progress.js';
 import { markSvgG } from '../../ui/thumbs.js';
 import { render } from '../../ui/render.js';
+const COMBO_TUM = 520 + DIE_MORE;   // a die's tumble (styles.css .cmbd.tum, --dur): its face shows as it lands; COMBO.roll holds the result after it
 
 // The table: both players' combo cards side by side (the six combos, each claimed one filled in its player's colour
 // with their mark), the five dice under them and Roll. Between rolls a tap on a die holds it (lifted, ringed in the
@@ -43,10 +45,10 @@ function comboTable(mini, a, o) {
   const canHold = mover && cur && cur.rolls && cur.rolls < R && !f;
   const die = i => {
     const v = dice[i], h = held[i] ? ' held ' + turn : '', roll = tum && !tum[i] ? ' tum' : '';
-    const face = v ? (roll ? `<span ${lateAt('cmbf', COMBO.roll * 0.75)}>${dieFace(v)}</span>` : dieFace(v)) : '';
+    const face = v ? (roll ? `<span ${lateAt('cmbf', COMBO_TUM)}>${dieFace(v)}</span>` : dieFace(v)) : '';
     const lab = v ? `Die ${i + 1}: ${v}${held[i] ? ', held' : ''}` : `Die ${i + 1}`;
     return canHold ? `<button class="die cmbd${h}" data-act="cmbhold" data-k="${i}" aria-pressed="${!!held[i]}" aria-label="${lab}">${face}</button>`
-      : `<span class="die cmbd${h}${roll}${v ? '' : ' blank'}" style="--t:0ms" aria-label="${lab}">${face}</span>`;
+      : `<span class="die cmbd${h}${roll}${v ? '' : ' blank'}" style="--t:0ms;--dur:${COMBO_TUM}ms" aria-label="${lab}">${face}</span>`;
   };
   const W = p => `<b class="${p}">${N(p)}</b>`;
   const tal = p => arcTally(p, o, pips(p, Math.min(t.goal, mini.claimed[p].length), t.goal, !!(f && f.kind === 'claim' && f.by === p), tim.mark));

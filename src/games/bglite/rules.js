@@ -1,4 +1,5 @@
 // Backgammon Lite: the rules (pure: no page, no clock; the server runs the same code).
+import { DIE_MORE } from '../../core/config.js';
 import { needRng, randInt } from '../../core/random.js';
 import { goAgain, tune, tuneLive } from '../../core/tune.js';
 
@@ -46,7 +47,7 @@ export function bglCanOff(mini, p) {
   const lo = mini.n - bglHome(mini) + 1;
   return mini.pos[p].every(a => a > mini.n || a >= lo);
 }
-export const BGLT = { roll: 820, slide: 420, hit: 480, hold: 380, off: 300, gap: 180, look: 260 };   // ms: the dice tumbling in, a piece's slide, a hit piece flying home, the result held, a piece leaving, the pause between a turn's steps, the piece picked before it slides (a turn's flash)
+export const BGLT = { roll: 820 + DIE_MORE, slide: 420, hit: 480, hold: 380, off: 300, gap: 180, look: 260 };   // ms: the dice tumbling in, a piece's slide, a hit piece flying home, the result held, a piece leaving, the pause between a turn's steps, the piece picked before it slides (a turn's flash)
 export const bglLen = mini => Math.max(4, Math.round(tune(mini).len || mini.n || BGL.len));
 export const bglOther = p => (p === 'X' ? 'O' : 'X');
 // The board point (1..n from the left) of p's progress a (on the track only).

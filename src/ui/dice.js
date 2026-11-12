@@ -13,7 +13,9 @@
 //   o.cls  extra classes            o.label its aria-label (none: hidden from readers)
 // Its size is the --ds custom property (64px unless the game's stylesheet says otherwise).
 import { dieFace } from './art.js';
+import { DIE_MORE } from '../core/config.js';
 
+export const DIE_FLAT_MS = 600 + DIE_MORE;           // a flat die's tumble (Backgammon Lite's, the retired Dice race's: styles.css .die.roll, --dur); Dice Combo's is 520 + DIE_MORE
 export const DIE_BOUNCE = 0.46;                       // the first touch of the table, as a share of the tumble (the keyframes' 46%)
 const OTHERS8 = [5, 2, 7, 4, 3, 6, 1];               // the faces after the one on show, as steps round an eight-sided die
 function cube(n) {
