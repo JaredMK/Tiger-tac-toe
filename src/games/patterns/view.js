@@ -167,6 +167,7 @@ export function moveText(f, who) {
 }
 export function sounds(f, add, won, mini, last) {
   const t = f.pat; if (!t) return;
+  if (!t.auto && t.picked >= 0) add('tap', 0);                     // the option pressed in
   add(t.correct ? 'ding' : 'thud', QUIZ.beat);                     // the verdict: the pick glows under its tick, or shakes and is struck through
   if (t.correct && !REDUCED) add(...quizPoint(QUIZ.beat));         // its picture drops into the gap as the point lands on its pip
 }

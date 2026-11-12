@@ -1,7 +1,7 @@
 // Thirty-One: the computer's play.
 import { randInt } from '../../core/random.js';
 import { goAgain, tune } from '../../core/tune.js';
-import { t31Cfg, t31Deck, t31Score, t31Val, t31Won } from './rules.js';
+import { t31Best, t31Cfg, t31Deck, t31Score, t31Val, t31Won } from './rules.js';
 
 // What it knows (publicView with its side): its own hand, the shared pile (open, every card of it), the cards the other
 // side took off the pile and still holds (`seen`), and so the cards it has not seen (the deck's and the rest of the
@@ -14,7 +14,7 @@ import { t31Cfg, t31Deck, t31Score, t31Val, t31Won } from './rules.js';
 //    from there; the take compares the pile's top card (its best discard after) against a draw's average; the discard
 //    keeps the 3 cards worth most, less a guard (`guard`, by the card's points) on a card of a suit it has seen the
 //    other side take off the pile: thrown, it lies on top for them.
-export const T31_AI = { win: 1000, share: 0.01, easy: 40, guard: 0.12, blind: 4.2, rate: 3.2 };
+export const T31_AI = { win: 1000, share: 0.01, easy: 40, guard: 0.12, needs: { start: 4.8, pair: 3, flush: 5.5, perPoint: 0.62, least: 2.4, perTurn: 0.5 } };
 const other = p => (p === 'X' ? 'O' : 'X');
 const best3 = h => { let b = -1, k = 0; for (let i = 0; i < h.length; i++) { const s = t31Score(h.filter((_, j) => j !== i)); if (s > b) { b = s; k = i; } } return { k, score: b }; };
 // The cards `me` has not seen: the deck of 32 less its hand, the pile and what the other side took off the pile.
@@ -44,20 +44,23 @@ function hardDrop(h4, unseen, target, suits) {
   }
   return { k, v: best };
 }
-// The turns still needed, about. Its own side: the points to go at about `rate` a turn (tests/sim/t31.sim.js). The other
-// side's hand is unseen: from public information alone, the turns a square takes less those taken, sooner when it has
-// been seen to take two of a suit off the pile.
+// The turns still needed, about (tests/sim/t31.sim.js; a hand played alone by Normal, halved: two players feed one
+// pile and the first to get there ends it): a hand with one or two cards of its best suit about 4.8 turns (two worth
+// 20 or more: 3), three of a suit from 5.5 at 24 down to 2.4 at 29. The other side's hand is unseen: from public
+// information alone, the turns a square takes less those it has taken, sooner once it has been seen to take two cards
+// worth 20 of one suit off the pile.
 export function needs(pm, p) {
-  const target = t31Cfg(pm).target, rate = T31_AI.rate * (goAgain(pm) ? 1.4 : 1);
+  const target = t31Cfg(pm).target, k = goAgain(pm) ? 0.75 : 1, N = T31_AI.needs;
   const h = pm.hand && pm.hand[p];
   if (!Array.isArray(h)) {
     const known = t31Score((pm.seen && pm.seen[p]) || []), t = (pm.turns && pm.turns[p]) || 0;
-    const blind = Math.max(1.5, T31_AI.blind - 0.6 * t);
-    return known >= 15 ? Math.max(1, Math.min(blind, (target - known) / rate)) : blind;
+    const blind = Math.max(N.least, N.start - N.perTurn * t);
+    return k * (known >= 20 ? Math.min(blind, N.pair) : blind);
   }
-  const s = t31Score(h.slice(0, 3));
-  if (t31Won(s, target)) return 1;
-  return Math.max(1, (target - s) / rate);
+  const b = t31Best(h);
+  if (t31Won(b.score, target)) return 1;
+  if (b.cards.length < 3) return k * (b.score >= 20 ? N.pair : N.start);
+  return k * Math.max(N.least, Math.min(N.flush, N.flush - N.perPoint * (b.score - 24) + N.perPoint * Math.max(0, target - 30)));
 }
 export function best(pm, me, rng, style, ctx) {
   const lvl = ctx && ctx.level, target = t31Cfg(pm).target, h = pm.hand[me], held = pm.held && pm.held.by === me;

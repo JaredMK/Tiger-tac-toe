@@ -417,8 +417,8 @@ Win: Own the most when the board is full.
 
 ## Thirty-One [t31]
 Category: More luck
-Play: You hold 3 cards. Take the top of your discard pile or draw from your deck, then let one card go. Only your best suit counts: aces 11, pictures 10, others their number.{goAgain}
-Win: Reach {target} in one suit, or exactly 31 at once.
+Play: One deck (7 to ace) and one pile for both. You hold 3 cards, yours alone. Take the top card of the pile or of the deck, then let one go. Only your best suit counts: ace 11, ten and pictures 10, others their number.{goAgain}
+Win: Reach {target} in one suit.
 
 ## Tic-tac-toe [ttt]
 Category: More brain

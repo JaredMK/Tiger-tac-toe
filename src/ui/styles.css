@@ -2963,7 +2963,7 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 /* the tally's pips (.qpips): a right pick's point (.qtok) flies from the pick to its pip (ui/cardfly.js), which fills as it lands; a pick that takes the square: the pips hop in a wave (.qwon, --w: when; --k: each pip's place) */
 .qpips i { position: relative; }
 .qtok { position: absolute; inset: -2.5px; border-radius: 50%; border: 2.5px solid var(--ink); background: var(--o); opacity: 0; pointer-events: none; z-index: 3; }
-.X .qtok { background: var(--x); }
+:is(.ctal, .ropp).X .qtok { background: var(--x); }
 .qpips.qwon i { animation: qhop .38s calc(var(--w, 0ms) + var(--k, 0) * 70ms) cubic-bezier(.3, 0, .4, 1); }
 .ctal .qpips.qwon i.fillin, .ropph .qpips.qwon i.fillin { animation: pipfill .4s var(--t, 0ms) cubic-bezier(.3, 1.6, .5, 1) both, qhop .38s calc(var(--w, 0ms) + var(--k, 0) * 70ms) cubic-bezier(.3, 0, .4, 1); }
 @keyframes qhop { 40% { translate: 0 -6px; } 70% { translate: 0 1px; } }
@@ -2985,6 +2985,8 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 @keyframes tilefound { 0% { box-shadow: 0 0 0 0 var(--paper); } 40% { box-shadow: 0 0 0 5px var(--green), 0 0 0 11px rgba(78, 157, 58, .35); scale: 1.07; } 100% { box-shadow: 0 0 0 5px var(--green), 0 0 0 5px rgba(78, 157, 58, 0); scale: 1; } }
 @keyframes oddpick { from { scale: 1; } to { scale: .94; } }
 .otile .ocv { position: absolute; inset: 0; background: #b9b2a6; border-radius: 7px; }   /* the grid greyed until Reveal (or, replayed, until their reveal) */
+.otile .ocv.tu { animation: ocvout .18s calc(var(--u, 0ms) - 180ms) cubic-bezier(.4, 0, .2, 1) both; }   /* (replayed: the covers lift as their Reveal comes) */
+@keyframes ocvout { to { opacity: 0; visibility: hidden; } }
 .otile .qmk { inset: auto; left: 50%; top: 50%; width: min(46%, 44px); height: min(46%, 44px); margin: max(-23%, -22px) 0 0 max(-23%, -22px); border-width: 2.5px; }   /* the verdict's badge (ui/quiz.js), in the tile's middle */
 .onote { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
 .obar { display: block; width: min(70%, 240px); height: 10px; border: 2.5px solid var(--ink); border-radius: 999px; overflow: hidden; background: var(--paper); }
@@ -5423,7 +5425,7 @@ button.die.bgldie { cursor: pointer; }
 .t31top { display: flex; gap: calc(var(--cw) * .55); align-items: center; position: relative; }
 .t31felt.cfup .t31top { z-index: 4; }   /* (a throw: the card flying to the pile passes over the hands) */
 .t31top button, .t31c { all: unset; position: relative; cursor: pointer; -webkit-tap-highlight-color: transparent; border-radius: 8px; }
-.t31top button:disabled, .t31c:disabled { cursor: default; }
+.t31top button:disabled, .t31c:disabled, .t31c.t31w { cursor: default; } .t31c.t31w { display: inline-block; }
 .t31top .plc, .t31row .plc { --cw: inherit; }
 .t31top .plc { display: block; position: relative; }
 .t31stk { position: absolute; inset: 0; border-radius: 8px; background: #dfe9ee; border: 2px solid var(--ink); transform: translate(3px, 4px); box-shadow: 3px 4px 0 -0.5px #dfe9ee, 3px 4px 0 1.5px var(--ink); }   /* the deck's depth: two more cards' edges under the top one */

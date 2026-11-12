@@ -138,8 +138,9 @@ export function sideMerge(mini, p, part) {
 }
 export function randomMove(mini, p, rng, from, empties) {
   const r = needRng(rng);
-  if (!mini.held || mini.held.by !== p) return r() < 0.5 && mini.pile.length ? 'pile' : 'deck';
-  return 'd' + Math.floor(r() * mini.hand[p].length);
+  if (!mini.held || mini.held.by !== p) return r() < 0.5 && Array.isArray(mini.pile) && mini.pile.length ? 'pile' : 'deck';
+  const n = mini.hand && Array.isArray(mini.hand[p]) ? mini.hand[p].length : (mini.hn && mini.hn[p]) || T31.hand + 1;
+  return 'd' + Math.floor(r() * n);
 }
 export function canMove(mini) { return true; }
 // A move's flash: public alone (the entry goes to both phones; the mover's hand is in its own side). A square won: the

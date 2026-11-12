@@ -104,6 +104,9 @@ export function sounds(f, add, won, mini, last) {
   add(d.correct ? 'ding' : 'thud', T);                             // the verdict: the odd tile ringed, under a tick or beside a cross
   if (d.correct && !REDUCED) add(...quizPoint(T));                 // the point lands on its pip
 }
+// The square's chime (audio/sound.js moveSounds): as the winning point lands and the pips hop, on the mover's own phone too
+// (which plays the pick without the reveal and the pause another phone sees first: fx.js animMs).
+export const wonAt = (f, total) => total - 600 - (f.odd && !f.timeout ? ODD.show + ODD.pause - oddPre(f) : 0);
 // Odd One Out: the shades show and the 5 seconds start; from now the player stays in the square until the pick goes in
 export function oddRevealAct(el, e, act) {
   if (zoomedType() !== 'oddone' || oddDraft || state.flash || state.done || blocked()) return;

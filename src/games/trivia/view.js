@@ -194,6 +194,9 @@ export function sounds(f, add, won, mini, last) {
   add(t.correct ? 'ding' : 'thud', T);                             // its verdict: the tick, or the cross
   if (t.correct && !REDUCED) add(...quizPoint(T));                 // the point lands on its pip
 }
+// The square's chime (audio/sound.js moveSounds): as the winning point lands and the pips hop, on the mover's own phone too
+// (which plays the pick without the reveal and the pause another phone sees first: fx.js animMs).
+export const wonAt = (f, total) => total - 600 - (f.trivia ? (f.trivia.fresh ? TRIVIA.flip : 0) + TRIVIA.pause - triviaPre(f) : 0);
 // Trivia: the question turned up for both; from now the player answers it this turn
 export function triviaRevealAct(el, e, act) {
   const i = state.zoom, sq = state.squares[i];

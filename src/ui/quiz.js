@@ -21,5 +21,6 @@ export function quizPips(p, n, goal, fresh, t, won) {
     return `<i class="${k < n ? 'on' : ''}${last ? ' fillin' : ''}"${last ? ` style="--t:${land}ms;--k:${k}"` : wave ? ` style="--k:${k}"` : ''}>${last && fly ? `<b class="qtok"${cfFrom('qpick', t, { d: QUIZ.fly, go: true })}></b>` : ''}</i>`;
   }).join('')}</span>`;
 }
-// The point's sound as it lands on the pip (a view's `sounds` adds it after the verdict's own): [name, ms].
-export const quizPoint = t => ['point', t + QUIZ.fly];
+// The point's sound as it lands on the pip (a view's `sounds` adds it after the verdict's own): [name, ms]. A soft pop,
+// not one of the result sounds (ui/haptics.js RESULT_SOUNDS): the move's buzz stays with the verdict's ding.
+export const quizPoint = t => ['pop', t + QUIZ.fly];
