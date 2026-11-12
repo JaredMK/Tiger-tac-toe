@@ -33,8 +33,10 @@ export function fetchOddConfig() {
 // 5 seconds (a bar runs down): a tap is the move, and no tap in time counts as wrong. From Reveal the
 // player stays in the square (no Board button) until the pick goes in; a reload carries on the same
 // countdown. Someone else's pick (the computer's, the other phone's) plays as their screen did: the grey
-// grid, the shades, a short pause, their pick. After a pick the odd tile is ringed and a wrong one
-// crossed, and nothing on the board moves.
+// grid, the shades, a short pause, their pick. A pick is pressed in from the tap; a quarter of a second later
+// (ui/quiz.js QUIZ.beat) the odd tile is ringed (found: in green under a tick, and its point flies to the pip) and a
+// wrong one shakes under a cross; the grid keeps its place and its size throughout. The tiles are flat colour, always:
+// nothing is drawn over a tile while its shade is still to be judged.
 const ODD_KEY = 'ttt-odd-revealed';
 let oddDraft = null;                                           // { id, sq, at, secs, timer }: the reveal under way (at: Date.now(), so a reload carries on the countdown)
 const oddId = (sq, p) => `${state.online ? state.online.matchId || state.online.code || 'on' : 'local'}:${state.moves}:${sq}:${p}:${state.squares[sq].mini.finds[p]}:${state.squares[sq].mini.grid[p].base}`;

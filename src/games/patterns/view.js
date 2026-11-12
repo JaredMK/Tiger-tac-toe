@@ -8,8 +8,9 @@ import { cfAnchor, cfFrom } from '../../ui/cardfly.js';
 import { QUIZ, qMark, qPick, quizPips, quizPoint } from '../../ui/quiz.js';
 
 // Patterns: the sequence with its gap, and four options (two by two). As Trivia: a wrong pick is crossed
-// out for both players and the puzzle stays; nothing ever shows the answer after a wrong pick. The right
-// one glows and drops into the gap; the next puzzle waits for the next turn.
+// out for both players and the puzzle stays; nothing ever shows the answer after a wrong pick. A pick is
+// pressed in, then (ui/quiz.js QUIZ.beat later) ticked or crossed; the right one's picture flies into the gap, the
+// sequence hops in a wave and its point flies to the pip; the next puzzle waits for the next turn.
 const PAT_COL = ['#3d7fe0', '#4caf50', '#8d5bd8', '#f06aa8', '#21b2a6', '#f39a3b'];
 const PAT_COLN = ['blue', 'green', 'purple', 'pink', 'teal', 'orange'];
 const PAT_SIDES = { 3: 'triangle', 4: 'square', 5: 'pentagon', 6: 'hexagon', 7: 'heptagon', 8: 'octagon' };

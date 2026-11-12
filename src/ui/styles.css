@@ -2938,8 +2938,8 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .topt.out span { text-decoration: line-through; text-decoration-thickness: 3px; text-decoration-color: var(--x); }
 .topt.out b { border-color: var(--muted); }
 .topt.out.fresh { background: var(--x-soft); color: var(--ink); border-color: var(--ink); }
-@media (prefers-reduced-motion: no-preference) { .topt.out.fresh.late span { text-decoration: none; background: linear-gradient(var(--x), var(--x)) no-repeat 0 55% / 0% 3px; animation: strike .3s calc(var(--t, 0ms) + 200ms) cubic-bezier(.4, 0, .2, 1) forwards; } }
-@keyframes strike { to { background-size: 100% 3px; } }
+@media (prefers-reduced-motion: no-preference) { .topt.out.fresh.late span { text-decoration: none; background: linear-gradient(var(--x), var(--x)) no-repeat 0 55% / 0% 3px; animation: tqstrike .3s calc(var(--t, 0ms) + 200ms) cubic-bezier(.4, 0, .2, 1) forwards; } }
+@keyframes tqstrike { to { background-size: 100% 3px; } }
 @keyframes optglow { 0%, 100% { box-shadow: 0 0 0 0 rgba(78, 157, 58, 0); } 40% { box-shadow: 0 0 0 6px rgba(78, 157, 58, .6); } }
 @keyframes lateright { to { background: #d7f0c9; border-color: var(--green); } }
 @keyframes latewrong { to { background: #f9c7b6; border-color: var(--muted); } }

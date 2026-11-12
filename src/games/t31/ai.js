@@ -6,7 +6,7 @@ import { t31Best, t31Cfg, t31Deck, t31Score, t31Val, t31Won } from './rules.js';
 // What it knows (publicView with its side): its own hand, the shared pile (open, every card of it), the cards the other
 // side took off the pile and still holds (`seen`), and so the cards it has not seen (the deck's and the rest of the
 // other hand, never which is where nor their order). The other hand is the other side's alone, never in its view.
-//  - Easy: Normal's play, but 40% of its choices at random (a take from either, any card let go but a winning one).
+//  - Easy: Normal's play, but 30% of its choices at random (a take from either, any card let go but a winning one).
 //  - Normal: takes the pile's top card when it raises its score, else draws; lets go of the card that leaves the
 //    best score (between equals, at random).
 //  - Hard: by expected value over the cards it has not seen. A 3-card hand is worth `win` if it wins, else its chance
@@ -14,7 +14,7 @@ import { t31Best, t31Cfg, t31Deck, t31Score, t31Val, t31Won } from './rules.js';
 //    from there; the take compares the pile's top card (its best discard after) against a draw's average; the discard
 //    keeps the 3 cards worth most, less a guard (`guard`, by the card's points) on a card of a suit it has seen the
 //    other side take off the pile: thrown, it lies on top for them.
-export const T31_AI = { win: 1000, share: 0.01, easy: 40, guard: 0.12, needs: { start: 4.8, pair: 3, flush: 5.5, perPoint: 0.62, least: 2.4, perTurn: 0.5 } };
+export const T31_AI = { win: 1000, share: 0.01, easy: 30, guard: 0.12, needs: { start: 4.8, pair: 3, flush: 5.5, perPoint: 0.62, least: 2.4, perTurn: 0.5 } };
 const other = p => (p === 'X' ? 'O' : 'X');
 const best3 = h => { let b = -1, k = 0; for (let i = 0; i < h.length; i++) { const s = t31Score(h.filter((_, j) => j !== i)); if (s > b) { b = s; k = i; } } return { k, score: b }; };
 // The cards `me` has not seen: the deck of 32 less its hand, the pile and what the other side took off the pile.
