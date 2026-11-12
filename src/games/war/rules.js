@@ -14,7 +14,7 @@ import { goAgain, tune } from '../../core/tune.js';
 // war's face-down cards are drawn and never shown. A deck running low (under WAR.low cards) is reshuffled fresh
 // before the flip; one that runs out mid-war is refilled.
 export const WAR = { goal: 3, warWorth: 2, low: 10, down: 3, maxWars: 12 };
-export const WART = { slide: 240, flip: 280, gap: 180, judge: 380, war: 650, down: 130, lead: 120, result: 500, pip: 400 };   // the playback: a card slides in, turns; the dealer's after a gap; the verdict a moment after both are up; "War!" held, the down cards one by one, the next flip after a lead; the result held; a pip filling in
+export const WART = { slide: 280, flip: 280, gap: 120, judge: 360, war: 620, down: 140, lead: 160, result: 500, tok: 300, tokLead: 140, tokGap: 170, pip: 400 };   // the playback: a card flies in from its deck (the dealer's a gap after), the two turn together; they clash and the verdict comes a moment after both are up; "War!" held, the down cards one by one, the next pair after a lead; the result held; a won round's token leaves it (tokLead) and flies to its pip (tok; a war's second tokGap later), the pip filling in
 export const warRank = c => CARD.ranks.indexOf(c[0]);   // 2 .. A as 0 .. 12 (suits never matter)
 export const warWorthOf = (mini, battles) => (battles > 1 ? tune(mini).warWorth : 1);
 export function create(type, rng) {
@@ -76,23 +76,27 @@ export function secret(mini) {   // the decks
 export function hide(m, k, st) {
   delete m.deck; return;
 }
-// When each card of a round comes in (ms into the move): each battle's two cards (the player's slides in and
-// turns, the dealer's after a gap), its verdict a moment after both are up (`judge`: "War!" on a tie, the result on
-// the last); after a tie, the three down cards each side one by one (`downAt`, a card every WART.down), then the next
-// battle. `end`: when the result shows.
+// When each card of a round comes in (ms into the move): each battle's two cards fly in from their decks (the
+// player's, then the dealer's a gap after) and turn face up together (`pFlip` = `dFlip`); once both are up (`up`) they
+// clash, and the verdict comes at `judge` ("War!" on a tie, the result on the last); after a tie, the three down
+// cards each side one by one (`downAt`, a card every WART.down), then the next battle. `end`: when the result shows.
+// warPips: when each pip a round won fills in (its token landed), ms into the move.
 export function warPlan(w) {
   const T = WART, battles = [];
   let t = 0;
   const n = w.battles.length;
   for (let k = 0; k < n; k++) {
-    const b = { pAt: t, pFlip: t + T.slide, dAt: t + T.gap, dFlip: t + T.gap + T.slide };
-    t = b.dFlip + T.flip + T.judge; b.judge = t;
+    const b = { pAt: t, pFlip: t + T.gap + T.slide, dAt: t + T.gap, dFlip: t + T.gap + T.slide };
+    b.up = b.dFlip + T.flip;
+    t = b.up + T.judge; b.judge = t;
     if (k < n - 1) { t += T.war; b.downAt = t; t += WAR.down * T.down + T.lead; }
     battles.push(b);
   }
   return { battles, end: t };
 }
+export const warPips = (end, gain) => Array.from({ length: Math.max(0, gain || 0) }, (_, i) => end + WART.tokLead + i * WART.tokGap + WART.tok);
 export function flashMs(f, winLen, won) {
   if (!f.war) return WART.slide + WART.flip + WART.result;
-  return warPlan(f.war).end + WART.result + (f.war.gain ? WART.pip : 0) + (won ? 600 : 0);
+  const end = warPlan(f.war).end, pips = warPips(end, f.war.gain);
+  return Math.max(end + WART.result, pips.length ? pips[pips.length - 1] + WART.pip : 0) + (won ? 600 : 0);
 }

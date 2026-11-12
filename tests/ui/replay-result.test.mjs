@@ -88,7 +88,7 @@ test('Apple Pick: the spinner, the apples and the words are the opponent\'s spin
   assert.match(html, /class="bird"/, 'the bird swoops'); assert.doesNotMatch(html, /class="apl [XO] drop"/, 'no apple drops: that was the viewer\'s');
   assert.match(html, /Bird! Nothing to take/); assert.doesNotMatch(html, /\+3 apples/);
   assert.ok(html.includes(`--end:${(1800 - o.flash.apple.at * 360).toFixed(1)}deg`), 'the wheel stops on the opponent\'s segment');
-  assert.match(html, /--gx:178px;[^"]*--dir:-1/, 'the bird comes for the opponent\'s bucket (O\'s, on the right), not the viewer\'s');
+  assert.match(html, /--gx:230px;[^"]*--dir:-1/, 'the bird comes for the opponent\'s bucket (O\'s, on the right), not the viewer\'s');
 });
 test('Risky Rolls: the Bank button and the pot keep their points until the roll\'s points are in the pot, then take the new total (the move\'s own event times it); the buttons\' small lines stay as they were', () => {
   const m0 = E.newMini('pig', E.makeRng('bank')), first = play(m0, 'X', 'roll', fixed(0.2)), second = play(first.mini, 'X', 'roll', fixed(0.7));

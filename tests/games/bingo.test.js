@@ -97,7 +97,8 @@ test('bingo: the first complete line (a row, a column or a diagonal) takes the s
   assert.deepEqual(st.flash.bingo, { by: 'X', k: 0, n: 4, offer: [4, 20, 21], hit: { X: 3, O: -1 }, won: { X: [0, 1, 2, 3], O: null }, was: { X: 3, O: 0 }, best: { X: 4, O: 0 }, size: 4 });
   assert.deepEqual(st.squares[0].mini.winCells, [0, 1, 2, 3]);
   const T = R.BINGOT, t = R.bingoTimes(st.flash.bingo);
-  assert.deepEqual(t, { land: T.land, line: T.land + T.line, end: T.land + T.line + 3 * T.step + T.stamp + T.won });
+  assert.deepEqual(t, { land: T.land, daub: { X: T.land, O: null }, line: T.land + T.line, strike: T.land + T.line + 3 * T.step + T.beat, end: T.land + T.line + 3 * T.step + T.beat + T.strike + T.won });
+  assert.deepEqual(R.bingoTimes({ size: 3, hit: { X: 2, O: 5 }, won: { X: null, O: null } }), { land: T.land, daub: { X: T.land, O: T.land + T.gap }, line: T.land + T.gap + T.line, strike: T.land + T.gap + T.line + 2 * T.step + T.beat, end: T.land + T.gap + T.rest }, 'on both cards: the second card\'s mark a beat after the first, the rest after it');
   assert.equal(E.playMs(st.flash, 4), t.end);
   assert.equal(R.flashMs({ bingo: { size: 4, won: { X: null, O: null } } }, 4, false), T.land + T.rest, 'a plain call: the stamp, then a moment');
   // a tie through playMove resets the square to another game

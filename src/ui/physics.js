@@ -4,7 +4,7 @@ import { other } from '../core/util.js';
 import { PHYSICS, PHYS_TYPES, physShot, physicsReady, setPhysics } from '../games/shared/physics.js';
 import { bowlTarget } from '../games/bowling/rules.js';
 import { bowlEventSounds, bowlNote, drawBowl } from '../games/bowling/view.js';
-import { drawGolf } from '../games/golf/view.js';
+import { GOLF_KERB, drawGolf, drawGolfAim, golfEventSounds } from '../games/golf/view.js';
 import { POOLG, poolIds, poolLeft, poolMine } from '../games/pool/rules.js';
 import { POOL_RAIL, drawPool, drawPoolAim } from '../games/pool/view.js';
 import { INFO } from '../games/index.js';
@@ -23,7 +23,7 @@ import { scShown } from './chaos.js';
 import { arcTally, lateAt, pips } from './progress.js';
 import { render } from './render.js';
 import { repNote, repOn } from './replay.js';
-import { outlined, rr, runCanvas, runColours } from './runner.js';
+import { runCanvas, runColours } from './runner.js';
 
 // Mini Golf, Pool and Bowling: the physics games. The table is drawn on a canvas. In Golf and Pool a shot
 // is a drag back from anywhere on the table (a slingshot: pull away from where the ball should go, further
@@ -94,7 +94,7 @@ export function physTable(mini, a, o) {
   if (!physicsReady()) return `<div class="g-arc"><div class="phys"><div class="pscene ${type} wait"><p class="arcnote">Loading the table… (needs a connection the first time)</p></div></div></div>`;
   const ph = a && a.phys ? a.phys : null, l = mini.last, mover = ph ? a.by : turn;
   const fresh = p => !!(ph && a.by === p);
-  const tal = type === 'golf' ? p => arcTally(p, o, `<small>${mini.holed[p] ? 'in the cup' : `${mini.shots[p]} shot${mini.shots[p] === 1 ? '' : 's'}`}</small>`)
+  const tal = type === 'golf' ? p => { const n = mini.shots[p]; return arcTally(p, o, `<b class="dbig gshots" aria-label="${n} shot${n === 1 ? '' : 's'}${mini.holed[p] ? ', in the cup' : ''}"><span>${n}</span><small>${n === 1 ? 'shot' : 'shots'}</small></b>`); }   // the strokes so far, big
     : type === 'pool' ? p => { const n = poolLeft(p, mini); return arcTally(p, o, `<b class="dbig" aria-label="${n} ball${n === 1 ? '' : 's'} left on the table"><span>${n}</span><small>left</small></b>`); }
     : p => arcTally(p, o, `<small>${fresh(p) && ph.knocked ? `<i class="pins" style="--t:${ph.rec && !REDUCED ? ph.ms : 0}ms"><b class="was">${mini.pins[p] - ph.knocked}</b><b class="now">${mini.pins[p]}</b></i>` : mini.pins[p]} / ${bowlTarget(mini)} pins</small>`);   // the total before the roll, then the new one as the pins settle
   const pend = !ph && physPendAt(o.zoom);                         // an online shot of this phone's, playing here while the server plays it (physLaunch)
@@ -143,7 +143,6 @@ function physLoop(now) {
   const cv = app.querySelector('canvas[data-phys="cv"]');
   if (cv && physDrawNow(cv, now)) physRaf = requestAnimationFrame(physLoop);
 }
-const BUMP_LIT = 0.22;                                           // a Mini Golf bumper's flash, in s
 // One drawing of the zoomed square's table; true when another frame is wanted (a replay or a drag under way).
 function physDrawNow(cv, now) {
   const sq = state.squares && (scShown(state.zoom) || state.squares[state.zoom]);   // (Super Chaos's recap: the square before its claim or reset)
@@ -160,18 +159,19 @@ function physDrawNow(cv, now) {
   const dr = physDraft && physDraft.sq === state.zoom && !ph ? physDraft : physRep && physRep.sq === state.zoom && !ph ? physRep : null;
   const { c, W, H } = runCanvas(cv);
   if (W < 2 || H < 2) return false;
-  const S = PHYS_S(mini.type), M = mini.type === 'pool' ? POOL_RAIL : 0, k = Math.min(W / (S.w + 2 * M), H / (S.h + 2 * M)), ox = (W - S.w * k) / 2, oy = (H - S.h * k) / 2;   // the pool table keeps a rail of one width all round
+  const S = PHYS_S(mini.type), M = mini.type === 'pool' ? POOL_RAIL : mini.type === 'golf' ? GOLF_KERB : 0, k = Math.min(W / (S.w + 2 * M), H / (S.h + 2 * M)), ox = (W - S.w * k) / 2, oy = (H - S.h * k) / 2;   // the pool table keeps a rail of one width all round, the golf course its kerb
   const g = { c, W, H, k, M, X: x => ox + x * k, Y: y => oy + y * k };
-  const el = ph && at != null ? (now - at) / 1000 : null, lit = el != null && mini.type === 'golf' ? new Set((ph.events || []).filter(e => e.k === 'bump' && el >= e.t && el < e.t + BUMP_LIT).map(e => e.b)) : null;   // (Mini Golf: a bumper flashes as it kicks)
+  const el = ph && at != null ? (now - at) / 1000 : null;
   const pop = mini.type === 'pool' && fph && ph.back && fr && fr.done ? poolPop(ph, el) : null;   // a scratch: the white back and a ball for the shooter popping onto the table once the shot is over
   if (pop) { if (ph.cue) pos.cue = ph.cue; pos[ph.back] = pop.s > 0 ? ph.at : null; }
   let poolBusy = false;                                            // (Pool: a ball still dropping into its pocket, the cue's stroke: frames wanted past the recording's last)
   let bowlMore = false;                                            // (Bowling: its sweep after the roll, a replayed flick's streak)
-  if (mini.type === 'golf') drawGolf(g, mini, pos, lit); else if (mini.type === 'pool') poolBusy = drawPool(g, mini, pos, pop ? { id: ph.back, s: pop.s, cue: !!ph.scratch } : null, ph && el != null ? { ph, el } : null); else bowlMore = drawBowl(g, mini, pos, { ph: fr ? ph : null, el: fr ? el : null, flash: !!fph, settled: !fph || !!(fr && fr.done), by: ph ? (fph ? f.by : pd.p) : state.turn, now });   // (Bowling: its lane in perspective, the roll's box filled in once the pins have settled; true while its sweep or a replayed flick's streak still moves)
+  let golfBusy = false;                                            // (Mini Golf: a holed ball's drop and its sparks, a post's pop, the putter's stroke: frames wanted past the recording's last)
+  if (mini.type === 'golf') golfBusy = drawGolf(g, mini, pos, ph && el != null ? { ph, el } : null, { ring: !ph && !dr && !f && !d && !sq.owner && !state.winner && !(state.sc && mini.aim) ? state.turn : null }); else if (mini.type === 'pool') poolBusy = drawPool(g, mini, pos, pop ? { id: ph.back, s: pop.s, cue: !!ph.scratch } : null, ph && el != null ? { ph, el } : null); else bowlMore = drawBowl(g, mini, pos, { ph: fr ? ph : null, el: fr ? el : null, flash: !!fph, settled: !fph || !!(fr && fr.done), by: ph ? (fph ? f.by : pd.p) : state.turn, now });   // (Bowling: its lane in perspective, the roll's box filled in once the pins have settled; true while its sweep or a replayed flick's streak still moves)
   if (pop && pop.label > 0) poolPopLabel(g, ph, pop.label);
   if (dr) drawAim(g, mini, pos, dr);
   else if (mini.type === 'golf' && mini.aim && state.sc && !ph) for (const p of Object.keys(mini.aim)) if (pos[p]) drawLocked(g, pos[p], mini.aim[p]);   // Super Chaos: a shot locked in, waiting for the round's end
-  return !!(dr || bowlMore || (fr && !fr.done) || (pop && !pop.done) || poolBusy);
+  return !!(dr || bowlMore || (fr && !fr.done) || (pop && !pop.done) || poolBusy || golfBusy);
 }
 // A scratch's ball (one of the shooter's own back, or a new one) popping onto its spot after the shot, with a short
 // "+1 ball": el, the move's seconds so far (its rate already in them: ui/turns.js playFlash). s: the ball's scale (0
@@ -214,14 +214,14 @@ export function physSkull(g, x, y, r) {                                 // the b
   c.fillRect(X - R * 0.26, Y + R * 0.1, R * 0.52, R * 0.3);
   c.fillStyle = '#111'; c.beginPath(); c.arc(X - R * 0.16, Y - R * 0.16, R * 0.11, 0, Math.PI * 2); c.arc(X + R * 0.16, Y - R * 0.16, R * 0.11, 0, Math.PI * 2); c.fill();
 }
-// The shot being lined up: the pull (a band from the ball to the finger), the aim line the other way,
-// longer with the power, and the power meter up the side.
+// The shot being lined up (Pool's cue or Mini Golf's putter drawn back with the pull, the sight line the other way,
+// the power meter at the side: each game's own drawing), or the ring that says letting go here plays nothing.
 function drawAim(g, mini, pos, dr) {
-  const c = g.c, P = runColours(), S = PHYS_S(mini.type), from = physFrom(mini, dr.p, pos);
+  const c = g.c, S = PHYS_S(mini.type), from = physFrom(mini, dr.p, pos);
   if (!from) return;
-  const shot = dr.shot ? Object.assign({ px: dr.shot.power * PHYS_PULL * g.H }, mini.type === 'pool' ? physRepNow(dr) : dr.shot) : physPull(dr);   // (a replay: the shot as the other side had it lined up; Pool's glides from each reading to the next)
+  const shot = dr.shot ? Object.assign({ px: dr.shot.power * PHYS_PULL * g.H }, mini.type === 'pool' || mini.type === 'golf' ? physRepNow(dr) : dr.shot) : physPull(dr);   // (a replay: the shot as the other side had it lined up; Pool's and Mini Golf's glides from each reading to the next)
   if (mini.type === 'pool') dr.cancel = Math.max(16, S.ballR * g.k * 1.9);   // (Pool: back at the ball is on the ball, at the size it is drawn)
-  const X = g.X(from[0]), Y = g.Y(from[1]), len = (0.12 + 0.3 * shot.power) * S.h * g.k;
+  const X = g.X(from[0]), Y = g.Y(from[1]);
   if (dr.scene) { const r = c.canvas.getBoundingClientRect(); dr.ball = [r.left + X, r.top + Y]; }   // (where the ball is on the screen: a pull back to it is no shot)
   if (dr.scene && physCancel(dr, shot)) {                          // back at the ball, or hardly pulled: let go here and nothing is played (a ring says so)
     c.save(); c.setLineDash([4, 4]); c.lineWidth = 2.5; c.strokeStyle = 'rgba(255,255,255,.9)';
@@ -229,18 +229,7 @@ function drawAim(g, mini, pos, dr) {
     return;
   }
   if (mini.type === 'pool') { drawPoolAim(g, mini, pos, shot, dr.p); return; }   // Pool: the cue, the sight line to the first ball or rail, the meter (games/pool/view.js)
-  c.save();
-  c.setLineDash([6, 6]); c.lineWidth = 3; c.strokeStyle = 'rgba(255,255,255,.9)';
-  c.beginPath(); c.moveTo(X, Y); c.lineTo(X + Math.sin(shot.aim) * len, Y - Math.cos(shot.aim) * len); c.stroke();
-  c.setLineDash([]);
-  c.beginPath(); c.moveTo(X, Y); c.lineTo(X - Math.sin(shot.aim) * shot.px, Y + Math.cos(shot.aim) * shot.px); c.lineWidth = 2; c.strokeStyle = 'rgba(0,0,0,.35)'; c.stroke();   // the band
-  const hx = X + Math.sin(shot.aim) * len, hy = Y - Math.cos(shot.aim) * len;             // the arrow head
-  c.beginPath(); c.moveTo(hx, hy); c.lineTo(hx + Math.sin(shot.aim + 2.6) * 10, hy - Math.cos(shot.aim + 2.6) * 10); c.lineTo(hx + Math.sin(shot.aim - 2.6) * 10, hy - Math.cos(shot.aim - 2.6) * 10); c.closePath(); c.fillStyle = '#fff'; c.fill();
-  const mw = 12, mh = Math.min(g.H * 0.5, 160), mx = g.W - mw - 10, my = (g.H - mh) / 2;   // the meter
-  rr(c, mx, my, mw, mh, 6); outlined(c, 'rgba(255,255,255,.5)', P.ink, 2);
-  const fill = mh * shot.power, hue = 120 - 120 * shot.power;
-  if (fill > 2) { rr(c, mx + 2, my + mh - fill + 1, mw - 4, fill - 2, 4); c.fillStyle = `hsl(${hue} 80% 48%)`; c.fill(); }
-  c.restore();
+  drawGolfAim(g, mini, pos, shot, dr.p);                           // Mini Golf: the putter, the sight line to the first wall, post, ball or the cup, the meter (games/golf/view.js)
 }
 // A pull let go back at the ball (within PHYS_CANCEL_PX of it on the screen) or hardly pulled at all: no shot.
 const PHYS_CANCEL_PX = 30, PHYS_CANCEL_POWER = 0.05;
@@ -306,6 +295,7 @@ export const physReplay = { input: physReplayInput, synth: physReplaySynth };
 export function physEventSounds(ph, add, type) {
   if (!ph || !ph.rec || REDUCED) return;
   if (type === 'bowling') { bowlEventSounds(ph, add); return; }   // (Bowling's own: the rumble, the crash, the pit; bowling/view.js)
+  if (type === 'golf') { golfEventSounds(ph, add); return; }      // (Mini Golf's own: the putter, the knocks, the posts, the cup; golf/view.js)
   if (Array.isArray(ph.pocketed)) { poolEventSounds(ph, add); return; }   // Pool: its own (below)
   for (const e of ph.events || []) { const t = e.t * 1000; if (e.k === 'balls') add('clack', t); else if (e.k === 'wall') add('cushion', t); else if (e.k === 'bump') add('bumper', t); else if (e.k === 'pin') add('pinHit', t); else if (e.k === 'hole') add('plop', t); else if (e.k === 'pocket') add(e.id === 'cue' ? 'thud' : 'plop', t); else if (e.k === 'lip') add('clink', t); else if (e.k === 'gutter') add('thud', t); else if (e.k === 'pit' || e.k === 'end') add('thud', t); }
 }
@@ -334,7 +324,7 @@ export function physicsSounds(f, add, won, mini, last) {   // the recording's ev
     if (ph.back) add('pop', end + 120);                               // (a scratch: the ball popping back on)
   }
   else if (ph.both) { if (!(ph.holed && (ph.holed.X || ph.holed.O))) add(ph.lip ? 'thud' : 'ding', end); }
-  else if (!ph.first) add(ph.lip ? 'thud' : 'ding', end);
+  else if (!ph.first && !live) add(ph.lip ? 'thud' : 'ding', end);   // (Mini Golf: the cup's rattle, the lip's and the knocks are the recording's own, golfEventSounds; a putt that rolls to a stop has no sound of its own. Reduced motion, nothing played: the result's alone)
   return;
 }
 

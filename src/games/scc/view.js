@@ -1,95 +1,112 @@
 // Ship, Captain & Crew: the screen, the miniature, the move's words and sounds, and the inputs.
 import { SCC, sccCfg, sccSum, sccTimes } from './rules.js';
-import { N, REDUCED, mv, state } from '../../ui/app.js';
+import { N, mv, state } from '../../ui/app.js';
 import { dieFace } from '../../ui/art.js';
+import { cfAnchor, cfFrom } from '../../ui/cardfly.js';
+import { DIE_BOUNCE, die3d } from '../../ui/dice.js';
 import { arcTally, lateAt } from '../../ui/progress.js';
 import { markSvgG } from '../../ui/thumbs.js';
 
-// The table: each player's cargo toward the target (a tally with a bar); the deck's three places, the ship (6), the
-// captain (5) and the crew (4), each filling in its turn; the tray of dice on the table (five places, the dice rolled
-// in the middle ones); a line with the rolls left and the cargo; the result line; Roll and Keep. A roll tumbles the
-// dice in the tray, then each die set aside flies up out of the tray and lands in its place on the deck, one after
-// another; once all three are in, the two dice left glow as the cargo. Keep (or the last roll) counts the cargo into
-// the total. Everything is timed from the move (rules.js sccTimes) and drawn from the move's own flash.
-const ROLE = ['ship', 'captain', 'crew'];
+// The table: each player's cargo toward the target (a bar across their tally); the deck's three places, the ship (6),
+// the captain (5) and the crew (4), each with its picture, its name and the die it waits for, the next one wanted
+// marked; the tray where the dice are thrown (the shared 3-D die); a row with the rolls left (a pip each) and the
+// cargo's crate; the result line; Roll and Keep. A roll throws the dice into the tray, landing one after the other;
+// each die set aside is ringed as it lands, then flies to its place on the deck (ui/cardfly.js: from its own die in
+// the tray), one after another in order, a bell each, each higher than the last; the dice left close up; once all
+// three are in, the two dice left are ringed in gold as the cargo and their total pops in the crate. Keep (or the last
+// roll) sends the cargo from the crate to the player's tally, which counts on as its bar fills; a turn that ends
+// without all three greys the dice, marks the places still empty and puts a struck 0 in the crate.
+// Everything is timed from the move (rules.js sccTimes) and drawn from the move's own flash (or, once it has played,
+// from the move still on show); nothing moves when a line or a die comes or goes.
+const ROLE = ['ship', 'captain', 'crew'], NAME = ['Ship', 'Captain', 'Crew'];
 const FIG = {
   ship: '<path d="M6 30h36l-6 9H12z"/><path d="M24 6v24" class="mast"/><path d="M24 8l12 17H24z" class="sail"/>',
   captain: '<path d="M7 27c4-12 30-12 34 0z"/><path d="M5 27h38v4H5z"/><circle cx="24" cy="19" r="3.2" class="badge"/>',
   crew: '<circle cx="24" cy="14" r="7"/><path d="M11 40c1-11 25-11 26 0z"/><path d="M15 11h18l-2-5H17z" class="cap"/>',
 };
-const FLICK = [3, 1, 4, 2, 5];
-const tumble = n => FLICK.map((k, j) => `<span class="rface fl f${j}" aria-hidden="true">${dieFace(((n - 1 + k) % 6) + 1)}</span>`).join('') + `<span class="rface fin">${dieFace(n)}</span>`;
+export const SCC_BELL = [0.84, 1, 1.19];                          // the bell's pitch for the ship, the captain, the crew (shipBell's playback rate)
 const W = p => `<b class="${p}">${N(p)}</b>`;
+// When die k of n thrown together lands (ms into the move): the last at SCC.land, each one before it a little sooner.
+export const sccLand = (k, n) => SCC.land - (n - 1 - k) * SCC.stag;
 function sccTable(mini, a, o) {
-  const s = a && a.scc ? a.scc : null, cf = sccCfg(mini), T = cf.target, turn = o.turn, tm = s && !REDUCED ? sccTimes(s) : null;
-  const t = mini.turn;
-  // the tallies: the cargo so far, the move's points counting in as they land
+  const s = a && a.scc ? a.scc : null, held = !s && o.done && o.done.type === 'scc' && o.done.scc ? o.done.scc : null;   // the move playing; else the move made here, still on show
+  const m = s || held, cf = sccCfg(mini), T = cf.target, turn = o.turn, tm = s ? sccTimes(s) : null;   // (tm: a move is playing; reduced motion: the stylesheet plays none of it and hides what only a flight takes away)
+  const t = mini.turn, ends = !!(m && (m.kind === 'keep' || m.end)), roll = !!(m && m.kind === 'roll');
+  // the tallies: the cargo so far on a bar; a move's points fly in from the crate and count on as they land
   const tal = p => {
-    const now = mini.score[p], gain = s && s.by === p && (s.kind === 'keep' || s.end) && s.pts > 0, was = gain ? s.from : now;
-    const at = tm && tm.score != null ? tm.score : 0;
+    const now = mini.score[p], gain = !!(s && s.by === p && ends && s.pts > 0), was = gain ? s.from : now;
+    const at = tm && tm.count != null ? tm.count : 0;
     const bar = `<i class="sccbar ${p}"><b class="${gain && tm ? 'grow' : ''}" style="width:${(now / T * 100).toFixed(1)}%;--w0:${(was / T * 100).toFixed(1)}%;--t:${at}ms"></b></i>`;
-    const num = gain && tm ? `<b class="cnt" data-from="${was}" data-delay="${at}" data-ms="450">${now}</b>` : `<b>${now}</b>`;
-    return arcTally(p, o, `<span class="sccs">${bar}<small>${num} / ${T}</small></span>`);
+    const num = gain && tm ? `<b class="cnt" data-from="${was}" data-delay="${at}" data-ms="${SCC.score - 100}">${now}</b>` : `<b>${now}</b>`;
+    const chip = gain && tm ? `<b class="sccplus"${cfFrom('scccrate', tm.score, { go: true, d: SCC.fly })} aria-hidden="true">+${s.pts}</b>` : '';
+    return arcTally(p, o, `<span class="sccs">${bar}<small>${num} / ${T}</small>${chip}</span>`);
   };
-  // what the table shows: the move being played (its flash), else the turn under way, else nothing yet
-  let lv0 = 0, lv = 0, dice = [], took = [], cargo = null, roll = false, by = null;
-  if (s) {
-    by = s.by; lv0 = s.kind === 'roll' ? s.lv0 : s.lv; lv = s.lv; cargo = s.cargo;
-    if (s.kind === 'roll') { roll = true; dice = s.rolled.slice(); took = s.took.slice(); }
-    else dice = s.cargo ? s.cargo.slice() : [];
+  // what the table shows: the move on show (its flash), else the turn under way, else nothing yet
+  let lv0 = 0, lv = 0, dice = null, took = [], cargo = null, by = null;
+  if (m) {
+    by = m.by; lv0 = roll ? m.lv0 : m.lv; lv = m.lv; cargo = m.cargo;
+    if (roll) { dice = m.rolled.slice(); took = m.took.slice(); } else dice = m.cargo ? m.cargo.slice() : [];
   } else if (t) { by = t.by; lv0 = lv = t.lv; dice = t.dice.slice(); cargo = t.cargo; }
-  const nAside = took.length;
-  const asideAt = k => (tm ? tm.aside + k * SCC.take : null);       // the k-th die set aside this roll lands on the deck
+  const pc = by || turn, isCargo = lv >= 3, sunk = ends && !isCargo;
+  const asideAt = k => (tm ? tm.aside + k * SCC.take : null);       // the k-th die set aside this roll reaches its place
+  // the deck: a place fills as its die lands in it; the next one wanted is marked; a turn ended short marks the empty ones
   const slot = (k, role) => {
-    const filled = k < lv, fresh = filled && k >= lv0, at = fresh ? asideAt(k - lv0) : null;
-    const die = filled ? `<span ${lateAt('sccsd', at)}>${dieFace(6 - k)}</span>` : `<span class="sccsd e">${dieFace(6 - k)}</span>`;
-    return `<div class="sccslot ${role}${filled ? ' on' : ''}${fresh ? ' fresh' : ''}"${fresh && at != null ? ` style="--t:${at}ms"` : ''} aria-label="The ${role} (${6 - k})${filled ? ': in' : ''}"><svg viewBox="0 0 48 44" aria-hidden="true">${FIG[role]}</svg>${die}</div>`;
+    const filled = k < lv, fresh = filled && roll && k >= lv0, at = fresh ? asideAt(k - lv0) : null;
+    const die = filled ? `<span class="sccsd"${at != null ? cfFrom('sccd:' + took[k - lv0], at - SCC.fly, { d: SCC.fly }) : ''}>${dieFace(6 - k)}</span>` : `<span class="sccsd e">${dieFace(6 - k)}</span>`;
+    const miss = sunk && !filled, st = `--k:${k}` + (at != null ? `;--t:${at}ms` : miss && tm ? `;--t:${tm.score}ms` : '');
+    return `<div class="sccslot ${role}${filled ? ' on' : ''}${at != null ? ' fresh' : ''}${!filled && k === lv && !ends && !o.view && !(tm && lv > lv0) ? ' next' : ''}${miss ? ` miss${tm ? ' late' : ''}` : ''}" style="${st}" role="img" aria-label="The ${role} (a ${6 - k})${filled ? ': aboard' : ''}"><svg viewBox="0 0 48 44" aria-hidden="true">${FIG[role]}</svg><b class="sccnm" aria-hidden="true">${NAME[k]}</b>${die}</div>`;
   };
-  const deck = `<div class="sccdeck">${ROLE.map((r, k) => slot(k, r)).join('')}</div>`;
-  // the tray: five places, the dice in the middle ones
-  const off = Math.floor((SCC.dice - dice.length) / 2), cargoAt = tm ? tm.cargo : null, isCargo = lv >= 3;
-  const cells = Array.from({ length: SCC.dice }, (_, c) => {
-    const j = c - off, v = j >= 0 && j < dice.length ? dice[j] : null;
-    if (v == null) return '<span class="sccd none"></span>';
-    const ti = took.indexOf(j), goes = ti >= 0;
-    const crg = isCargo && !goes;
-    const st = [];
-    if (goes && tm) st.push(`--t2:${asideAt(ti) - 120}ms`);
-    if (crg && tm) st.push(`--t3:${cargoAt}ms`);
-    const cls = `sccd${roll && tm ? ' die roll rr' : ''}${goes ? ' go' : ''}${goes && !tm ? ' gone' : ''}${crg ? (tm ? ' crg late' : ' crg') : ''}${!isCargo && s && s.end ? ' dull' : ''}`;
-    return `<span class="${cls}"${st.length ? ` style="${st.join(';')}"` : ''} aria-label="${v}">${roll && tm ? tumble(v) : dieFace(v)}</span>`;
+  const cheer = o.won && tm && tm.count != null;                   // (the square won: the three hop as the last points are in)
+  const deck = `<div class="sccdeck${cheer ? ' cheer' : ''}"${cheer ? ` style="--tw:${tm.count + SCC.score - 150}ms"` : ''}>${ROLE.map((r, k) => slot(k, r)).join('')}</div>`;
+  // the tray: the dice in a row about its middle; a roll's dice are thrown in, the ones set aside leave for the deck and the rest close up
+  const n = dice ? dice.length : SCC.dice, left = n - took.length;
+  let rest = 0;
+  const cells = Array.from({ length: n }, (_, j) => {
+    const v = dice ? dice[j] : null, ti = took.indexOf(j), goes = ti >= 0, r = goes ? -1 : rest++;
+    if (goes && !tm) return '';                                     // (not playing: it is on the deck already)
+    const crg = isCargo && !goes, st = [], cls = ['sccd'];
+    if (roll && tm) st.push(`--tl:${sccLand(j, n)}ms`);
+    if (goes) { cls.push('go'); st.push(`--tg:${asideAt(ti) - SCC.fly}ms`); }
+    else if (roll && tm && took.length) { cls.push('gather'); st.push(`--dx:${((r - (left - 1) / 2) - (j - (n - 1) / 2)).toFixed(2)}`, `--ta:${tm.cargo - SCC.shown}ms`); }
+    if (crg) { cls.push('crg'); if (roll && tm && lv0 < 3) { cls.push('late'); st.push(`--tc:${tm.cargo}ms`); } }
+    if (sunk) { cls.push('dull'); if (tm) { cls.push('late'); st.push(`--tz:${tm.score}ms`); } }
+    return `<span class="${cls.join(' ')}"${st.length ? ` style="${st.join(';')}"` : ''}${goes ? cfAnchor('sccd:' + j) : ''} role="img" aria-label="${v == null ? 'A die' : v}">${die3d(v, { roll: roll && tm ? sccLand(j, n) : 0, v: j })}</span>`;
   }).join('');
-  const tray = `<div class="scctray${!s && !t ? ' idle' : ''}" aria-label="The dice">${dice.length ? cells : Array.from({ length: SCC.dice }, () => '<span class="sccd blank"></span>').join('')}</div>`;
-  // the line under the tray: the rolls left (dots) and the cargo once there is one
-  const used = s ? s.n : t ? t.n : 0, rollsLeft = Math.max(0, cf.rolls - used);
-  const dots = `<span class="sccrl" aria-label="${rollsLeft} roll${rollsLeft === 1 ? '' : 's'} left">${Array.from({ length: cf.rolls }, (_, k) => `<i class="${k < used ? 'used' : ''}"></i>`).join('')}</span>`;
-  const cv = isCargo && cargo ? sccSum(cargo) : null;
-  const cline = `<span class="scccg">${cv != null ? `<span ${lateAt('', cargoAt)}>Cargo <b>${cv}</b></span>` : ''}</span>`;
-  const info = `<div class="sccinfo">${dots}${cline}</div>`;
+  const tray = `<div class="scctray${dice ? '' : ' idle'}" aria-label="The dice"><div class="sccrow">${cells}</div></div>`;
+  // the row under the tray: the rolls left (a pip each, spent as the roll is made) and the cargo's crate
+  const used = m ? m.n : t ? t.n : 0, rollsLeft = ends ? 0 : Math.max(0, cf.rolls - used);
+  const dots = `<span class="sccrl" role="img" aria-label="${rollsLeft} roll${rollsLeft === 1 ? '' : 's'} left"><small aria-hidden="true">Rolls</small>${Array.from({ length: cf.rolls }, (_, k) => `<i class="${k < rollsLeft ? 'on' : ''}"></i>`).join('')}</span>`;
+  const cv = isCargo && cargo ? sccSum(cargo) : null, scored = ends && isCargo;
+  // (the crate's number: a first cargo pops in as the dice close up; a reroll's shows as its dice land; a turn ended short: a struck 0)
+  const cAt = !tm || !roll ? null : sunk ? tm.score : lv0 < 3 ? tm.cargo : tm.land;
+  const cnum = sunk ? '0' : cv != null ? String(cv) : '';
+  const comes = cAt != null && (sunk || lv0 < 3);                   // (the crate itself turns with its first number)
+  const cst = [comes ? `--tc:${cAt}ms` : '', scored && tm ? `--ts:${tm.score}ms` : ''].filter(Boolean).join(';');
+  const crate = `<span class="scccrate${cv != null ? ' full' : ''}${sunk ? ' zero' : ''}${comes ? ' in' : ''}${scored ? ` spent${tm ? ' late' : ''}` : ''}"${cst ? ` style="${cst}"` : ''}${cfAnchor('scccrate')} role="img" aria-label="Cargo: ${cnum || 'none yet'}"><b ${lateAt('', cAt, 'pop')}>${cnum}</b></span>`;
+  const info = `<div class="sccinfo">${dots}<span class="scccg"><small aria-hidden="true">Cargo</small>${crate}</span></div>`;
   // the result line
   let res;
-  if (s) {
-    const at = tm ? (s.kind === 'keep' || s.end ? tm.score : tm.cargo) : null;
-    const say = s.kind === 'keep' || s.end
-      ? (s.pts > 0 ? `${W(s.by)} scored ${s.pts}!` : s.lv >= 3 ? 'No cargo' : `No ${ROLE[s.lv]}: nothing scored`)
+  if (m) {
+    const at = tm ? (ends ? (m.pts > 0 ? tm.count : tm.score) : took.length ? tm.cargo : tm.land) : null;
+    const say = ends
+      ? (m.pts > 0 ? `${W(m.by)} scored ${m.pts}!` : m.lv >= 3 ? 'No cargo' : `No ${ROLE[m.lv]}: nothing scored`)
       : lv > lv0 ? (lv >= 3 ? (lv0 === 0 ? 'Ship, captain and crew!' : 'Crew aboard!') : lv === 1 ? 'Ship!' : lv0 === 0 ? 'Ship and captain!' : 'Captain!')
-      : lv0 >= 3 ? `New cargo: ${sccSum(s.cargo)}` : `No ${ROLE[lv0]} yet`;
-    const ok = s.kind === 'keep' || s.end ? s.pts > 0 : lv > lv0 || lv0 >= 3;
+      : lv0 >= 3 ? `New cargo: ${sccSum(m.cargo)}` : `No ${ROLE[lv0]} yet`;
+    const ok = ends ? m.pts > 0 : lv > lv0 || lv0 >= 3;
     res = `<p ${lateAt('arcres ' + (ok ? 'ok' : 'no'), at)} role="status">${say}</p>`;
   } else res = `<p class="arcnote">${o.view ? '' : t && t.by === turn ? `${W(turn)}: ${t.lv >= 3 ? `cargo ${sccSum(t.cargo)}` : ['no ship yet', 'the ship is in', 'ship and captain in'][t.lv]}` : `${W(turn)}'s turn`}</p>`;
-  // the buttons: Roll (again, or the cargo) and Keep; while a move plays, as they were before it
-  const mine = t && t.by === turn ? t : null, busy = !!s;
-  const pre = busy ? (s.kind === 'roll' && s.n > 1 ? { lv: s.lv0 } : null) : mine;
+  // the buttons: Roll (again, or the cargo) and Keep (what it scores); while a move plays, as they were before it
+  const mine = t && t.by === turn ? t : null, busy = !!m;
+  const pre = busy ? (roll && m.n > 1 ? { lv: m.lv0 } : !roll ? { lv: 3, cargo: m.cargo } : null) : mine;
   const rollLabel = pre && pre.lv >= 3 ? 'Reroll' : pre ? 'Roll again' : 'Roll';
+  const keepN = pre && pre.lv >= 3 && pre.cargo ? ` <b>${sccSum(pre.cargo)}</b>` : '';
   const canRoll = !o.locked && !busy && (!mine || mine.n < cf.rolls), canKeep = !o.locked && !busy && !!(mine && mine.lv >= 3);
-  const btn = o.view ? '' : `<div class="cbtns two"><button class="big ${turn}" data-act="move" ${mv('roll')}${canRoll ? '' : ' disabled'}>${rollLabel}</button><button class="big bank" data-act="move" ${mv('keep')}${canKeep ? '' : ' disabled'}>Keep</button></div>`;
-  return `<div class="g-arc g-scc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="scc${nAside ? ' moving' : ''}">${deck}${tray}${info}${res}</div>${btn}</div>`;
+  const btn = o.view ? '' : `<div class="cbtns two"><button class="big ${turn}" data-act="move" ${mv('roll')}${canRoll ? '' : ' disabled'}>${rollLabel}</button><button class="big bank" data-act="move" ${mv('keep')}${canKeep ? '' : ' disabled'}>Keep${keepN}</button></div>`;
+  return `<div class="g-arc g-scc pc-${pc}" style="--land:${SCC.land}ms"><div class="ctals">${tal('X')}${tal('O')}</div><div class="scc">${deck}${tray}${info}${res}</div>${btn}</div>`;
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
-  g = sccTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d }); return g;
+  g = sccTable(mini, a, { view, locked, turn, zoom: state.zoom, done: a ? null : d, won: !!fresh }); return g;
 }
-// The miniature: two little ships on the water, X's on the left, O's on the right, each with its mark on the sail and
-// its hold filling with cargo toward the target.
 // The miniature: each player's ship on the water, the mast standing on the deck and the sail over the hull's right half
 // (beside the cargo hold, which fills toward the target).
 export function miniature(mini, final) {
@@ -114,12 +131,18 @@ export function moveText(f, who) {
   if (s.kind === 'keep' || s.end) return s.pts > 0 ? `${who} scored ${s.pts} cargo` : `${who} scored nothing`;
   return s.lv > s.lv0 ? `${who} set aside the ${ROLE[s.lv - 1]}` : `${who} rolled`;
 }
-// A roll: the rattle and the dice landing; a clack as each die set aside lands on the deck; the cargo's chime once all
-// three are in; a turn's end: a ding as the cargo counts in, a thud for nothing.
+// A roll: the rattle, a light click as the first dice touch down and the thunk of the last; the ship's bell as each die
+// set aside reaches its place, higher for the captain and higher again for the crew; the cargo's chime as it shows; a
+// turn's end: a ding as the cargo counts in, a thud for nothing.
 export function sounds(f, add, won, mini, last) {
   const s = f.scc;
   if (!s) return;
   const tm = sccTimes(s);
-  if (s.kind === 'roll') { add('rattle', 0); add('thunk', SCC.land - 150); s.took.forEach((_, k) => add('clack', tm.aside + k * SCC.take)); if (s.lv >= 3 && !s.end) add('point', tm.cargo); }
-  if (s.kind === 'keep' || s.end) add(s.pts > 0 ? 'ding' : 'thud', tm.score);
+  if (s.kind === 'roll') {
+    const n = s.rolled.length;
+    add('rattle', 0); add('diceTap', Math.round(sccLand(0, n) * DIE_BOUNCE)); if (n > 2) add('diceTap', sccLand(Math.floor(n / 2) - 1, n)); add('thunk', SCC.land);
+    s.took.forEach((_, k) => add('shipBell', tm.aside + k * SCC.take, SCC_BELL[Math.min(2, s.lv0 + k)]));
+    if (s.lv >= 3 && !s.end) add('point', s.lv0 < 3 ? tm.cargo : tm.land + 80);
+  }
+  if (s.kind === 'keep' || s.end) add(s.pts > 0 ? 'ding' : 'thud', tm.count);
 }

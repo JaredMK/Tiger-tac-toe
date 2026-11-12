@@ -49,7 +49,7 @@ export function moveFlash(m, p, range, bjFrom, mini, flash) {
 export function flashMs(f, winLen, won) {
   return (f.echo && !f.timeout ? echoAim(f.echo).end : 0) + ECHO.result + (won ? 600 : 0);   // (the phone that tapped skips the replay: it has just played it)
 }
-ECHO.result = 400;
+ECHO.result = 800;   // the result's own animation: a pattern beaten lights the pads in a rising run, a slip shakes the wrong pad and shows the right one (view.js ECHO_FX)
 // Echo: someone else's attempt, as their screen showed it: the pattern step by step, a beat, then their taps
 // one by one (up to the slip); then the result. ms from the move: tap(k) when tap k lands, end when the result shows.
 export function echoAim(e) {

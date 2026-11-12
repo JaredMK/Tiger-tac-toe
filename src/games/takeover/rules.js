@@ -154,8 +154,10 @@ export function moveFlash(m, p, range, bjFrom, mini, flash) {
   const l = mini.last; flash.take = { at: l.at, took: l.took.slice(), flipped: l.flipped.slice(), counts: { X: takeCount(mini.cells, 'X'), O: takeCount(mini.cells, 'O') } }; return;
 }
 export function flashMs(f, winLen, won) {
-  return TAKEOVER_MS.place + TAKEOVER_MS.flip + (won ? 900 : 0);
+  return TAKEOVER_MS.place + 3 * TAKEOVER_MS.step + TAKEOVER_MS.flip + (won ? TAKEOVER_MS.won : 0);
 }
-// Takeover: the cell pops in, then its neighbours turn over; Flood: the blob changes colour, then the cells
-// it grabs fill in wave by wave out from it.
-export const TAKEOVER_MS = { place: 280, flip: 520 };
+// Takeover's moments (ms from the move): the piece lands on its cell (place), then the cells round it turn over to the
+// mover's colour one after the other, clockwise from the top (a `step` apart, each turn `flip` long, its colour
+// changing half way); the board full: the winner's cells then ripple out from the last piece (won).
+// (Flood: the blob changes colour, then the cells it grabs fill in wave by wave out from it.)
+export const TAKEOVER_MS = { place: 180, step: 85, flip: 300, won: 1000 };

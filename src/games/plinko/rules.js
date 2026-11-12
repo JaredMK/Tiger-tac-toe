@@ -11,7 +11,7 @@ import { PLINKO_DEFAULTS } from './meta.js';
 // another peg is drawn, there from the next turn until it is hit in turn. The chip's position runs in
 // half-slots (0 to 12, a slot at an even one); at every peg it goes left or right, 50/50, except against
 // a wall, where it can only go inward.
-export const PLINKO = { slots: 7, rows: 6, step: 230, land: 420, pop: 1020, vals: [5, 3, 3, 2, 2, 1, 1], bonus: 2 };   // pop: the points popping up out of the bin, from the last peg (the move lasts until they have)
+export const PLINKO = { slots: 7, rows: 6, step: 230, land: 420, pop: 620, vals: [5, 3, 3, 2, 2, 1, 1], bonus: 2 };   // step: a row of pegs; land: off the last peg into the bin, its hop and rest; pop: the bin lighting and its points popping, the total counting up, from the last peg (the move lasts until they have)
 export const PLINKO_LIMITS = { target: [4, 40] };
 export const PLINKO_CFG = { cfg: null };
 export function plinkoNorm(raw) { const x = raw && raw.target != null ? Number(raw.target) : NaN; return { target: Number.isFinite(x) && x >= PLINKO_LIMITS.target[0] && x <= PLINKO_LIMITS.target[1] ? Math.round(x) : PLINKO_DEFAULTS.target }; }

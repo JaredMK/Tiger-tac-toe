@@ -13,7 +13,7 @@ import { r3 } from '../../core/util.js';
 // (`at`: where in its segment the pointer stops, 0-1 round the wheel). A square keeps its tree count (`bucket`
 // is each player's apples in the bucket; the tree holds the rest: appleTree).
 export const BIRD = -1, SPILL = -2;
-export const APPLET = { spin: 1600, hold: 250, gap: 240, fall: 520, grab: 520, carry: 600, off: 260, tip: 420, roll: 520, right: 380, won: 600 };   // the spin, then a moment; a pick: each apple's drop (gap apart, fall long); the bird: in to the bucket (grab), up to the tree (carry), away (off); a spill: the bucket tips (tip), the apples roll up to the tree (roll each, gap apart), it rights itself (right); a square won: the burst after the last apple lands
+export const APPLET = { spin: 1800, hold: 150, gap: 220, fall: 480, grab: 520, carry: 600, off: 260, tip: 420, roll: 520, right: 380, won: 700 };   // the spin (its wind-up, run and settle: ui/spin.js), then a moment; a pick: each apple's drop (gap apart, fall long); the bird: in to the bucket (grab), up to the tree (carry), away (off); a spill: the bucket tips (tip), the apples roll up to the tree (roll each, gap apart), it rights itself (right); a square won: the burst after the last apple lands
 export const APPLE_LIMITS = { target: [4, 30] };
 // The spinner's segments from the settings: one list of each kind, dealt round the wheel in turn (1, 3, bird, 2, 4,
 // spill, 1, 3, 2, 4 ... with the defaults), so like segments never sit together. Never empty: without a pick at all,

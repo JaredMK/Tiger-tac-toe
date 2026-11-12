@@ -9,7 +9,7 @@ import { state } from './app.js';
 
 // The sounds that stand for a result landing, and for one going wrong (the games' view.js sounds, ui/physics.js,
 // ui/runner.js ...). The rest (the rolling, the ticks, the bounces on the way) are the move's motion: no buzz.
-export const RESULT_SOUNDS = new Set(['thunk', 'thud', 'ballDrop', 'clink', 'knock', 'boom', 'sink', 'dartHit', 'dartBull', 'strike', 'ding', 'higher', 'lower', 'point', 'bank', 'boing', 'solve', 'pair', 'sparkle', 'band', 'diceWin', 'plop', 'splash', 'appleDrop', 'snkCrunch', 'swPop', 'domClick', 'bgBall', 'poolDrop', 'bowlHit', 'c4drop']);
+export const RESULT_SOUNDS = new Set(['thunk', 'thud', 'ballDrop', 'clink', 'knock', 'boom', 'sink', 'dartHit', 'dartBull', 'strike', 'ding', 'higher', 'lower', 'point', 'bank', 'boing', 'solve', 'pair', 'sparkle', 'band', 'diceWin', 'plop', 'splash', 'appleDrop', 'snkCrunch', 'swPop', 'domClick', 'bgBall', 'poolDrop', 'golfCup', 'golfLip', 'golfBoing', 'bowlHit', 'c4drop', 'tkFlip']);
 export const BAD_SOUNDS = new Set(['bust', 'crash', 'diceLose', 'buzz', 'dartMiss', 'birdChirp', 'spill', 'snkBonk', 'swBlast', 'snkGulp', 'poolScratch', 'bowlGutter']);
 const WON_GAP_MS = 250;                                              // (a result this close to the win: the win's buzz alone)
 

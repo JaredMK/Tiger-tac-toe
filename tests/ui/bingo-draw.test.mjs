@@ -56,9 +56,10 @@ test('a draw plays from its flash: the cage turns and the flash\'s balls roll ou
   assert.deepEqual(balls(screen(other, d.flash, true, 'O')), d.flash.bingo.offer);
   // its sounds: the cage, a ball each
   const snd = []; V.sounds(d.flash, (n, ms) => snd.push([n, ms]));
-  assert.deepEqual(snd, [['bgCage', T.spin], ...T.balls.map(ms => ['bgBall', ms])]);
+  assert.deepEqual(snd, [['bgCage', T.spin], ...T.balls.flatMap((ms, k) => [['bgBall', ms], ['diceTap', T.lands[k]]])], 'the cage, then each ball\'s clack out of the spout and its click into place');
+  T.lands.forEach((ms, k) => { assert.ok(ms > T.balls[k] && ms <= T.end, 'in its place before the draw ends'); assert.ok(html.includes(`--t:${T.balls[k]}ms;--d:${ms - T.balls[k]}ms`), 'its roll lasts until it lands'); });
   const src = fs.readFileSync(new URL('../../src/audio/sound.js', import.meta.url), 'utf8');
-  for (const n of ['bgCage', 'bgBall']) assert.match(src, new RegExp(`^def\\('${n}',`, 'm'), n + ' is a sound');
+  for (const n of ['bgCage', 'bgBall', 'diceTap']) assert.match(src, new RegExp(`^def\\('${n}',`, 'm'), n + ' is a sound');
   // drawn, the result gone: the balls, each its index as the move, open to the mover only
   const open = screen(d.mini, null, false, 'O');
   assert.deepEqual(balls(open), d.mini.offer);
@@ -96,4 +97,70 @@ test('the number tracker: every number of the range in a compact grid, each call
   assert.equal((h2.match(/class="bgtk on [XO]"/g) || []).length, 1, 'the earlier call stays marked, no ring'); assert.equal((h2.match(/bgtk on O last/g) || []).length, 1, 'the latest ringed');
   const rep = screen(c2.mini, c2.flash, true, 'X');                    // O's call played back: its number lands with the mark
   assert.match(rep, /class="bgtk new O last" style="--t:\d+ms"/); assert.doesNotMatch(rep, /bgtk on O/, 'not filled before it lands');
+});
+
+// ----- the polish pass (November 2026): the call flies to the tracker, each card's mark lands with it (the second card a
+// beat after the first), the squares a call would mark and the squares one call from a line are shown, and a line is
+// struck through on its owner's card, whoever called it -----
+const fixed = (x, o, called, by, offer) => ({ type: 'bingo', n: 3, range: 26, diag: true, cards: { X: x, O: o }, called, callBy: by, offer, calls: { X: 0, O: 0 }, last: null });
+const X9 = [1, 2, 3, 4, 5, 6, 7, 8, 9], O9 = [3, 11, 12, 13, 14, 15, 16, 17, 18];
+const cardOf = (html, p) => html.split(`<div class="bgcard ${p}`)[1].split('<div class="bgcard ')[0];
+const cell = (html, p, v) => (cardOf(html, p).match(new RegExp(`<span class="(bgc[^"]*)"[^>]*aria-label="${v}[",]`)) || [])[1] || '';
+
+test('before the call: the drawn balls can be tapped (ringed: go) only by the mover, the squares a ball would mark are ringed and the squares one call from a line dashed, on both cards', () => {
+  const m = fixed(X9, O9, [1, 2, 11], ['X', 'O', 'X'], [3, 20, 12]);
+  const html = screen(m, null, false, 'X');
+  assert.equal((html.match(/class="bgball [abc] go"/g) || []).length, 3); assert.match(html, /g-bingo pc-X/);
+  assert.equal((screen(m, null, true, 'X').match(/class="bgball [abc] go"/g) || []).length, 0, 'not the mover\'s phone: no ring');
+  assert.match(cell(html, 'X', 3), /bgoff/); assert.match(cell(html, 'O', 3), /bgoff/); assert.match(cell(html, 'O', 12), /bgoff/);
+  assert.match(cell(html, 'X', 3), /bgneed/, 'X has 1 and 2: 3 would make the row');
+  assert.doesNotMatch(cell(html, 'O', 12), /bgneed/); assert.doesNotMatch(cell(html, 'X', 4), /bgoff|bgneed/);
+  assert.match(screen(m, null, false, 'O'), /g-bingo pc-O/, 'the mover\'s colour on Pick numbers, the knob and the rings');
+});
+
+test('a call on both cards: the ball flies from its place to its number on the tracker, X\'s mark lands with it and O\'s a beat after, each ringed in the caller\'s colour, a plop each; the words name the cards', () => {
+  const m0 = fixed(X9, O9, [1, 11], ['X', 'O'], [20, 3, 12]), c = play(m0, 'O', 1, E.makeRng('x'));
+  const T = R.bingoTimes(c.flash.bingo), B = R.BINGOT, html = screen(c.mini, c.flash, true, 'X');
+  assert.deepEqual(T.daub, { X: B.land, O: B.land + B.gap });
+  assert.match(html, new RegExp(`class="bgfly [abc]"[^>]*data-cf="bgball:1" data-cfat="${B.press}" data-cfgo="" data-cfd="${B.fly}"`), 'the flyer: from the ball called, gone as it lands');
+  assert.match(html, /class="bgball [abc] bgpick"[^>]*data-anchor="bgball:1"/);
+  assert.match(cardOf(html, 'X'), new RegExp(`class="bgc on bgnew byO[^"]*" style="--t:${T.daub.X}ms"`));
+  assert.match(cardOf(html, 'O'), new RegExp(`class="bgc on bgnew byO[^"]*" style="--t:${T.daub.O}ms"`));
+  assert.match(html, />3: both cards</);
+  const snd = []; V.sounds(c.flash, (n, ms) => snd.push([n, ms]));
+  assert.deepEqual(snd, [['pop', 0], ['plop', T.daub.X], ['plop', T.daub.O]]);
+  const one = play(fixed(X9, O9, [], [], [5, 20, 21]), 'X', 0, E.makeRng('x'));
+  assert.match(screen(one.mini, one.flash, false, 'O'), />5: <b class="X">X<\/b>'s card</);
+  const none = play(fixed(X9, O9, [], [], [20, 21, 22]), 'X', 0, E.makeRng('x')), ns = []; V.sounds(none.flash, (n, ms) => ns.push([n, ms]));
+  assert.deepEqual(ns, [['pop', 0], ['thud', B.land]]); assert.match(screen(none.mini, none.flash, false, 'O'), />20: no card</);
+});
+
+test('a line is its card owner\'s, whoever called it: struck through on that card, which takes the gold frame while the other steps back, and the words name the card', () => {
+  const m0 = fixed(X9, O9, [1, 2, 11], ['X', 'O', 'X'], [3, 20, 21]);
+  for (const caller of ['X', 'O']) {                                   // X's own line, and O handing it to X
+    const c = play(m0, caller, 0, E.makeRng('x')), T = R.bingoTimes(c.flash.bingo), html = screen(c.mini, c.flash, true, 'X');
+    assert.deepEqual(c.flash.bingo.won, { X: [0, 1, 2], O: null });
+    assert.match(html, new RegExp(`<div class="bgcard X bgwon" style="--t3:${T.strike}ms"`)); assert.match(html, new RegExp(`<div class="bgcard O bglost" style="--t3:${T.strike}ms"`));
+    assert.match(cardOf(html, 'X'), new RegExp(`<svg class="bgstrike" viewBox="0 0 3 3"[^>]*style="--t3:${T.strike}ms"><path class="bgsl o" pathLength="1" d="M0.5 0.5L2.5 0.5"/>`), 'the top row, struck from its first square to its last');
+    assert.doesNotMatch(cardOf(html, 'O'), /bgstrike/); assert.equal((html.match(/class="bgstar"/g) || []).length, 6);
+    assert.match(html, new RegExp(`class="arcres line appear" style="--t:${T.line}ms" role="status">Line on <b class="X">X</b>'s card!<`));
+    assert.ok(T.strike > T.line && T.end > T.strike + R.BINGOT.strike);
+    const snd = []; V.sounds(c.flash, (n, ms, r) => snd.push([n, ms, r]));
+    assert.deepEqual(snd.filter(s => s[0] === 'point').map(s => s[1]), [0, 1, 2].map(k => T.line + k * R.BINGOT.step)); assert.ok(snd[snd.length - 2][2] < snd[snd.length - 1][2] || snd[snd.length - 1][0] === 'sparkle');
+    assert.deepEqual(snd[snd.length - 1].slice(0, 2), ['sparkle', T.strike]);
+    // the finished square: the line stays struck, the cards as they ended
+    const fin = Object.assign(clone(c.mini), { win: 'X', winCells: [0, 1, 2] }), rev = V.screen({ owner: 'X', mini: fin }, null, null, fin, true, true, null, null, false, () => -1, false, 'O', '');
+    assert.match(rev, /<div class="bgcard X bgwon set">/); assert.match(rev, /<div class="bgcard O bglost set">/); assert.match(rev, /<svg class="bgstrike set"/);
+    assert.match(V.miniature(fin), /class="tbgk X won"/); assert.match(V.miniature(fin), /class="tbgs o"/); assert.match(V.miniature(fin), /class="tbgk O lost"/);
+  }
+  // both lines on the one call: both struck, neither card framed or dimmed
+  const tie = play(fixed(X9, [20, 21, 22, 23, 24, 25, 3, 16, 17], [1, 2, 16, 17], ['X', 'O', 'X', 'O'], [3, 8, 9]), 'X', 0, E.makeRng('x')), th = screen(tie.mini, tie.flash, false, 'O');
+  assert.equal((th.match(/<svg class="bgstrike"/g) || []).length, 2); assert.doesNotMatch(th, /bgwon|bglost|bgstar/); assert.match(th, />Both lines!</);
+});
+
+test('the tracker is three rows of nine for 1 to 26 (wider grids for longer ranges), and the stylesheet carries the move\'s classes', () => {
+  const m = E.newMini('bingo', E.makeRng('bgtk3'));
+  assert.match(screen(m, null, false), /class="bgtks" style="--c:9"/);
+  const css = fs.readFileSync(new URL('../../src/ui/styles.css', import.meta.url), 'utf8');
+  for (const c of ['.bgfly', '.bgc.bgneed', '.bgc.bgoff', '.bgstrike', '.bgcard.bgwon', '.bgcard.bglost', '.bgball.go', '@keyframes bgroll', '@keyframes bgstamp', '@keyframes bgburst', '.tbingo .tbgd']) assert.ok(css.includes(c), c);
 });

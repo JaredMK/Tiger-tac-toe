@@ -13,11 +13,11 @@ import { tune, tuneLive } from '../../core/tune.js';
 // a tie, the square resets (`note: 'tie'`). Nobody is ever obliged to call: a timeout plays nothing (after a draw too:
 // the turn passes, not a miss), and an offer drawn and not called stays drawn for the next player here (either side:
 // the offer is the square's, not a player's), who picks from it with no draw of their own.
-export const BINGOT = { press: 120, fly: 360, land: 480, stamp: 220, line: 520, step: 90, won: 420, rest: 260 };   // a call: the chip lifts, flies to the cards, lands (the mark stamps on at land); a line: its cells light one after another (step apart) from `line` after the land; a square won: the flourish's end; a plain call rests a moment
+export const BINGOT = { press: 120, fly: 380, land: 500, gap: 120, stamp: 260, line: 380, step: 110, beat: 160, strike: 340, won: 460, rest: 320 };   // a call: the ball pops as it is pressed (press), flies to its number on the tracker (fly) and lands (land: the tracker's number fills in the caller's colour, and the mark stamps onto each card the number is on, the second card `gap` after the first); a line: its cells light one after another (step apart) from `line` after the last stamp, then, a `beat` after the last lights, it is struck through (strike) and the card's owner has their moment (won); a plain call rests a moment
 // A draw (the move 'draw'): the press, the cage turning (from `spin` for `turn` ms), the balls rolling out one by one
-// (the farthest place first, so none rolls over one already in: ball k of n at `ball` + (n - 1 - k) x `gap`, each `pop` ms
-// from the cage's mouth to its place in the tray), a moment's rest.
-export const BINGOD = { spin: 60, turn: 900, ball: 620, gap: 300, pop: 340, rest: 120 };
+// (the farthest place first, so none rolls over one already in: ball k of n leaves the spout at `ball` + (n - 1 - k) x `gap`
+// and rolls down the rail to its place in `pop` + k x `far` ms, the farther the longer), a moment's rest.
+export const BINGOD = { spin: 40, turn: 900, ball: 460, gap: 260, pop: 280, far: 70, rest: 60 };
 export const BINGO_LIMITS = { size: [3, 5], range: [10, 60], offer: [2, 4] };
 const clampInt = (v, [lo, hi], def) => { const n = v == null || v === '' ? NaN : Math.round(Number(v)); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : def; };
 export function bingoSettings(t) {
@@ -103,18 +103,21 @@ export function moveFlash(m, p, range, bjFrom, mini, flash) {
   const l = mini.last;
   flash.bingo = { by: p, k: l.k, n: l.n, offer: l.offer.slice(), hit: Object.assign({}, l.hit), won: { X: l.won.X ? l.won.X.slice() : null, O: l.won.O ? l.won.O.slice() : null }, was: Object.assign({}, l.was), best: Object.assign({}, l.best), size: bingoSize(mini) };
 }
-// The moments of a call (ms from the move): the chip lifts (press), the number lands on the cards (land: the marks
-// stamp on), a complete line lights cell by cell from `line` (step apart), the move's animation ends (end).
+// The moments of a call (ms from the move): the ball lands on the tracker (land); the mark stamps onto each card the
+// number is on (daub[p]: X's at the landing, O's a beat after it when both are hit; null where it is on neither); a
+// complete line lights cell by cell from `line` (step apart) and is struck through at `strike`; the move's animation
+// ends (end).
 export function bingoTimes(a) {
-  const land = BINGOT.land, size = a && a.size ? a.size : 4, lined = a && (a.won.X || a.won.O);
-  const line = land + BINGOT.line, lineEnd = line + (size - 1) * BINGOT.step + BINGOT.stamp;
-  return { land, line, end: lined ? lineEnd + BINGOT.won : land + BINGOT.rest };
+  const land = BINGOT.land, size = a && a.size ? a.size : 4, hit = (a && a.hit) || {}, lined = a && a.won && (a.won.X || a.won.O);
+  const x = hit.X >= 0, o = hit.O >= 0, daub = { X: x ? land : null, O: o ? land + (x ? BINGOT.gap : 0) : null }, last = Math.max(land, daub.X || 0, daub.O || 0);
+  const line = last + BINGOT.line, strike = line + (size - 1) * BINGOT.step + BINGOT.beat;
+  return { land, daub, line, strike, end: lined ? strike + BINGOT.strike + BINGOT.won : last + BINGOT.rest };
 }
 // The moments of a draw (ms from the move): the cage turns from `spin`; ball k (its place in the tray) leaves the cage at balls[k] and is in
-// its place `pop` later; the draw's animation ends a rest after the last is in (end).
+// its place at lands[k]; the draw's animation ends a rest after the last is in (end).
 export function bingoDrawTimes(a) {
   const D = BINGOD, n = a && Array.isArray(a.offer) ? a.offer.length : 3, balls = Array.from({ length: n }, (_, k) => D.ball + (n - 1 - k) * D.gap);
-  const last = n ? D.ball + (n - 1) * D.gap + D.pop : D.spin + D.turn;
-  return { spin: D.spin, stop: D.spin + D.turn, balls, end: Math.max(last, D.spin + D.turn) + D.rest };
+  const lands = balls.map((ms, k) => ms + D.pop + k * D.far);
+  return { spin: D.spin, stop: D.spin + D.turn, balls, lands, end: Math.max(D.spin + D.turn, ...lands) + D.rest };
 }
 export function flashMs(f, winLen, won) { return f.bingo && f.bingo.draw ? bingoDrawTimes(f.bingo).end : bingoTimes(f.bingo).end; }

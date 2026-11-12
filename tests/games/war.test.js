@@ -108,10 +108,11 @@ test('war: in a match, one tap of Flip plays the round back card by card (warPla
   E.playMove(st, 0, 'flip', lcg(1));
   assert.deepEqual([st.flash.kind, st.flash.war.result, st.flash.war.gain, st.flash.war.wars, st.flash.war.battles.length, st.flash.war.deck], ['again', 'win', 2, 1, 2, undefined]);   // (a round won, the square not yet: the turn goes on)
   const plan = R.warPlan(st.flash.war);
-  assert.deepEqual(plan.battles[0], { pAt: 0, pFlip: WART.slide, dAt: WART.gap, dFlip: WART.gap + WART.slide, judge: WART.gap + WART.slide + WART.flip + WART.judge, downAt: WART.gap + WART.slide + WART.flip + WART.judge + WART.war }, 'the player\'s card, the dealer\'s, the tie judged, the down cards');
+  assert.deepEqual(plan.battles[0], { pAt: 0, pFlip: WART.gap + WART.slide, dAt: WART.gap, dFlip: WART.gap + WART.slide, up: WART.gap + WART.slide + WART.flip, judge: WART.gap + WART.slide + WART.flip + WART.judge, downAt: WART.gap + WART.slide + WART.flip + WART.judge + WART.war }, 'the player\'s card, the dealer\'s a gap after, the two turned together, the tie judged, the down cards');
   const b1 = plan.battles[1], from = plan.battles[0].downAt + WAR.down * WART.down + WART.lead;
   assert.deepEqual([b1.pAt, b1.judge, b1.downAt, plan.end], [from, from + WART.gap + WART.slide + WART.flip + WART.judge, undefined, from + WART.gap + WART.slide + WART.flip + WART.judge]);
-  assert.equal(E.playMs(st.flash), plan.end + WART.result + WART.pip, 'the round plays out, the result held, the pips filling in');
+  assert.deepEqual(R.warPips(plan.end, 2), [plan.end + WART.tokLead + WART.tok, plan.end + WART.tokLead + WART.tokGap + WART.tok], 'a war won: its two tokens land one after the other');
+  assert.equal(E.playMs(st.flash), R.warPips(plan.end, 2)[1] + WART.pip, 'the round plays out, the result held, the pips filling in as their tokens land');
   E.endFlash(st);
   assert.deepEqual([st.lock, st.turn, st.screen], [0, p0, 'mini'], 'a round won keeps the turn: the same player flips again, held to the square');
   rig(st.squares[0].mini, st.turn, '2D', '9C');

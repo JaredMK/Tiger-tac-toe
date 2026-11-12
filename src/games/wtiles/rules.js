@@ -22,7 +22,10 @@ import { WT_WORDS } from './words.js';
 // draft is the phone's own: a timeout plays nothing. A square from before the rework (v 1: a board and a bag each) is
 // dealt again as the record is read (`stale`, core/records.js fullState).
 // "Go again on success" (core/tune.js AGAIN_TUNE) on: a word played keeps the turn.
-export const WT = { n: 7, rack: 7, bonus: 15, stall: 4, drop: 110, dropMs: 360, count: 520, hold: 450 };
+export const WT = { n: 7, rack: 7, bonus: 15, stall: 4, drop: 110, dropMs: 360, count: 520, hold: 450, per: 420, fill: 120, gap: 45, fly: 280, back: 600 };
+// (the move's timings, ms: a word's tiles land `drop` apart, each `dropMs` after it leaves; then each word it made is
+// counted, `per` apart (`count` at least); the rack's new tiles leave the bag `fill` after the count, `gap` apart, each
+// flying `fly`; a swap: the tiles to the bag `gap` apart, the new ones from `back`; `hold`: the end held)
 // Letter values (the usual ones of word games: 1 for the commonest letters up to 10 for the rarest).
 export const WT_VAL = { A: 1, B: 3, C: 3, D: 2, E: 1, F: 4, G: 2, H: 4, I: 1, J: 8, K: 5, L: 1, M: 3, N: 1, O: 1, P: 3, Q: 10, R: 1, S: 1, T: 1, U: 1, V: 4, W: 4, X: 8, Y: 4, Z: 10 };
 // A player's bag (53 tiles: about half a usual set, no Q: no word of 7 letters or fewer takes one but a handful).
@@ -226,9 +229,12 @@ export function moveFlash(m, p, range, bjFrom, mini, flash) {
   flash.wt = Object.assign(JSON.parse(JSON.stringify(l)), { board: mini.board.slice(), own: (mini.own || []).slice() });   // (public alone: the entry goes to both phones; the racks are each side's own)
 }
 // The move's moments (ms from it): the new tiles drop onto the board one after the other, then the score counts on.
+// A word: the tiles land (dropAt, landAt), each word it made is counted in turn (wordAt; `words` of them, the bonus for
+// all seven one more), the rack's new tiles fly in from the bag (fillAt). A swap: the rack's tiles fly to the bag one
+// after the other (outAt), then the new ones back (inAt).
 export function wtTimes(s) {
-  if (!s || s.kind !== 'word') return { end: WT.hold + 300, count: 0 };
-  const n = s.t ? s.t.length : 0, count = (n - 1) * WT.drop + WT.dropMs;
-  return { dropAt: k => k * WT.drop, count, end: count + WT.count + WT.hold };
+  if (!s || s.kind !== 'word') { const out = (WT.rack - 1) * WT.gap + WT.fly; return { count: 0, outAt: k => k * WT.gap, inAt: k => WT.back + k * WT.gap, out, end: WT.back + out + WT.hold }; }
+  const n = s.t ? s.t.length : 0, words = (s.words ? s.words.length : 1) + (s.all ? 1 : 0), count = (n - 1) * WT.drop + WT.dropMs;
+  return { dropAt: k => k * WT.drop, landAt: k => k * WT.drop + WT.dropMs - 80, count, words, wordAt: k => count + k * WT.per, fillAt: k => count + WT.fill + k * WT.gap, end: count + Math.max(WT.count, words * WT.per) + WT.hold };
 }
 export function flashMs(f, winLen, won) { return wtTimes(f.wt).end + (won ? 600 : 0); }

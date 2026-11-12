@@ -179,6 +179,7 @@ export function holdOf(f) {
   if (f.type === 'wheels' && f.kind === 'again') hold = 0;                   // Risky Spins, a spin that keeps the turn: the wheels and Bank the moment its points have landed                      // a roll that keeps the turn: Roll again the moment the die has landed and its points counted
   if (f.type === 'bj' && f.kind === 'again' && !(f.bj && f.bj.res && !f.bj.next)) hold = 0;   // Blackjack, a hand still on: Hit and Stand the moment its cards are down (about 0.3 s after the last lands); a hand won (a hot streak) holds its result the usual moment before Deal
   if (f.type === 'hangman' && f.kind === 'again') hold = 0;                  // Hangman, a right letter: the next guess the moment it is in
+  if (f.type === 'bingo' && f.kind === 'again') hold = 0;                    // Bingo, the draw: the balls can be called the moment the last is in its place
   return hold;
 }
 // A tap on a move still playing (an opponent's replay's Skip, or any tap on the square while a move animates, your
