@@ -81,8 +81,9 @@ export function renderBoard(review) {
     if (vd) cls.push(...vd.cls);
     const plock = !review && state.practice && i !== PRACTICE_SQ;         // (a practice match: the centre square alone; the other eight greyed, never tapped)
     if (plock) cls.push('plock');
+    let lastCap = '';
     if (sq.owner) cls.push('own-' + sq.owner);
-    else if (!lastP && i === state.lastSquare && state.lastBy && !(spot && spot.square === i)) cls.push('last-' + state.lastBy);
+    else if (!lastP && i === state.lastSquare && state.lastBy && !(spot && spot.square === i)) { cls.push('last-' + state.lastBy); if (!review) lastCap = `<span class="lastcap ${state.lastBy}" aria-hidden="true">${toon(state.lastBy)}</span>`; }   // (Comic Chaos: their character in a disc on the square's corner; no text, so nothing it can overlap)
     if (spot && spot.square === i) cls.push('spot', 'spot-' + spot.by);
     const info = INFO[sq.mini.type];
     const drew = i === drawI && !sq.owner && !vd && !(spot && spot.square === i);   // just drawn and reset: its Draw stamp and shuffle (not under a glow: the next move's square)
@@ -94,6 +95,7 @@ export function renderBoard(review) {
       + (sq.owner ? `<div class="own-ov${stampOn && stamped(i) ? ' stamp' : ''}"${stampOn && stamped(i) ? fxAttr(stampAt) : ''} aria-hidden="true">${toon(sq.owner)}<b class="sr">${esc(sq.owner)}</b></div>` : '')   // a fresh claim stamps in
       + (lastP && (lastP.X === i || lastP.O === i) ? `<div class="lpbs" aria-hidden="true">${['X', 'O'].filter(p => lastP[p] === i).map(p => `<i class="lpb ${p}">${p}</i>`).join('')}</div>` : '')   // (both players' badges at once, in a fixed corner: nothing moves)
       + (vd ? vd.html : '')
+      + lastCap
       + (spot && spot.square === i ? `<div class="spot-lab ${spot.by}${spot.html ? ' sc' : ''}" role="status">${spot.html ? spot.html : `${cpuPlays(spot.by) ? CPU_ICON : ''}${esc(spot.label)}`}</div>` : '');
     const lastTxt = lastP ? ['X', 'O'].filter(p => lastP[p] === i).map(p => `, ${esc(playerName(state, p))} played here last`).join('') : '';
     const label = (sq.owner ? `Square ${i + 1}: ${info.name}, won by ${esc(playerName(state, sq.owner))}. Tap to view` : `Square ${i + 1}: ${info.name}${drew ? ', a draw: a new game' : ''}`) + lastTxt;

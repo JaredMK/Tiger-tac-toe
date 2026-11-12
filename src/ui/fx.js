@@ -372,6 +372,7 @@ export function zoomRun(o) {
       const go = `${(R.left + R.width / 2 - o.oldRect.left).toFixed(1)}px ${(R.top + R.height / 2 - o.oldRect.top).toFixed(1)}px`;
       z.ghost.animate([{ transformOrigin: go, transform: 'none', opacity: 1 }, { transformOrigin: go, transform: 'scale(.94)', opacity: 0 }], { duration: o.D, easing: ZOOM.ease, fill: 'both' }).startTime = t0;
       z.tile = tile;
+      zoomLines(R, o.D, t0);                                            // (Comic Chaos: speed lines out from the square)
       const ta = tile.animate([{ transformOrigin: '0 0', transform: 'none', opacity: 1 }, { transformOrigin: '0 0', opacity: 1, offset: 0.3 }, { transformOrigin: '0 0', opacity: 0, offset: 0.8 }, { transformOrigin: '0 0', transform: mapTf(R, T, R), opacity: 0 }], { duration: o.D, easing: ZOOM.ease, fill: 'both' });
       ta.startTime = t0; ta.onfinish = () => zoomEnd(z, true);
     } else {
@@ -392,6 +393,20 @@ export function zoomRun(o) {
     z.timer = setTimeout(() => zoomEnd(z, true), o.D + 400);               // (whatever happens: a page out of sight holds animations back)
     zoomKeep();
   } catch (e) { zoomCancel(); if (o.old && o.old.parentNode && !o.old.closest('#app')) o.old.remove(); }
+}
+// Speed lines out from the square being opened, over the zoom in (comic.css .zlines): outside #app, no taps, gone at its end.
+function zoomLines(R, D, t0) {
+  if (REDUCED || !R) return;
+  try {
+    const el = document.createElement('i');
+    el.className = 'zlines'; el.setAttribute('aria-hidden', 'true');
+    el.style.left = `${(R.left + R.width / 2).toFixed(1)}px`; el.style.top = `${(R.top + R.height / 2).toFixed(1)}px`;
+    document.body.appendChild(el);
+    const gone = () => { if (el.parentNode) el.remove(); };
+    const a = el.animate([{ opacity: 0, transform: 'translate(-50%, -50%) scale(.35)' }, { opacity: .5, offset: .25 }, { opacity: 0, transform: 'translate(-50%, -50%) scale(1.25)' }], { duration: D, easing: 'ease-out', fill: 'both' });
+    a.startTime = t0; a.onfinish = a.oncancel = gone;
+    setTimeout(gone, D + 500);
+  } catch (e) { /* (no lines: the zoom goes on) */ }
 }
 function zoomKeep() {
   const z = zoom;

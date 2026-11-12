@@ -37,11 +37,13 @@ export function renderHeader() {
 // The reactions' button, at the bottom of the game screen in a strip kept for it (#app.rxon: the board and the
 // mini-game are that much shorter, the whole match long), over everything but a dialog, never dimmed; its tray
 // opens above it.
+// The reactions' button's drawing (Comic Chaos: a speech bubble with three dots, in ink).
+const CHAT_ICON = '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M7 9h34v22H22l-9 8v-8H7z" fill="#fff" stroke="#161210" stroke-width="3.5" stroke-linejoin="round"/><circle cx="17" cy="20" r="2.6" fill="#161210"/><circle cx="24" cy="20" r="2.6" fill="#161210"/><circle cx="31" cy="20" r="2.6" fill="#161210"/></svg>';
 export function renderReactDock() {
   if (!reactOn()) return '';
   const cool = reactCooling();
   const tray = rx.tray && !menuOpen ? `<div class="rtray" role="group" aria-label="Send a reaction">${REACTS.map(([em, nm], i) => `<button data-act="react-send" data-i="${i}" aria-label="${nm}"${cool ? ' disabled' : ''}>${em}</button>`).join('')}</div>` : '';
-  return `<div class="rxdock"><button class="rbtn${cool ? ' cool' : ''}" data-act="react-open" aria-label="Send a reaction" aria-expanded="${rx.tray}"${cool ? ' aria-disabled="true"' : ''}>💬</button>${tray}</div>`;
+  return `<div class="rxdock"><button class="rbtn${cool ? ' cool' : ''}" data-act="react-open" aria-label="Send a reaction" aria-expanded="${rx.tray}"${cool ? ' aria-disabled="true"' : ''}>${CHAT_ICON}</button>${tray}</div>`;
 }
 
 // A move's result in words, in the turn line (the reserved place on every game screen: nothing laid over the

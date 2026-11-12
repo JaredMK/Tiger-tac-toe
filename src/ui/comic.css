@@ -1,0 +1,103 @@
+/* ===== Comic Chaos (December 2026): the game's look, direction C of the menu design review. =====
+   TAPPABLE: a skewed panel or button, thick ink outline, hard drop shadow (and on the menus a caption tag); pressed it
+   punches in, dropping onto its shadow, with a sound. INFORMATION: flat: speech bubbles, captions, plain text; never a
+   shadow, never skewed. SELECTED: inverted to ink and yellow, the same everywhere. Rays, halftone and bursts are
+   decoration and never take a tap. Targets 44 px or more. Bangers is the display face (never under about 16 px), Comic
+   Neue the text face. Intensity: full comic on the main menu, the results and big moments; calm on working screens
+   (light halftone in the corners, white space); the # board, the miniatures and the mini-games themselves untouched. */
+:root {
+  --cc-dot: rgba(22, 18, 16, .13);
+  --cc-sh: 4px 4px 0 var(--ink);
+  --cc-sh-in: 1px 1px 0 var(--ink);
+  --cc-skew: -7deg;
+  --cc-burst: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 150' preserveAspectRatio='none'%3E%3Cpolygon points='150,12 176,27 217,19 222,40 276,39 243,63 295,75 249,88 264,107 217,108 218,133 175,121 150,146 124,123 77,137 82,108 35,108 54,88 15,75 57,63 24,39 79,40 83,18 126,31' fill='%23f6c21b' stroke='%23161210' stroke-width='7' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --cc-burst-w: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 150' preserveAspectRatio='none'%3E%3Cpolygon points='150,12 176,27 217,19 222,40 276,39 243,63 295,75 249,88 264,107 217,108 218,133 175,121 150,146 124,123 77,137 82,108 35,108 54,88 15,75 57,63 24,39 79,40 83,18 126,31' fill='%23ffffff' stroke='%23161210' stroke-width='7' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+.bang { font-family: 'Bangers', 'Luckiest Guy', sans-serif; font-weight: 400; letter-spacing: .04em; }
+
+/* ----- in-game (calm): the page behind the board and a mini-game: halftone in the two lower corners alone ----- */
+main.board-scr::before, main.scr.mini::before { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: radial-gradient(var(--cc-dot) 22%, transparent 24%) 0 0 / 10px 10px;
+  -webkit-mask-image: radial-gradient(circle at 0 100%, #000 0, transparent 36%), radial-gradient(circle at 100% 100%, #000 0, transparent 30%);
+  mask-image: radial-gradient(circle at 0 100%, #000 0, transparent 36%), radial-gradient(circle at 100% 100%, #000 0, transparent 30%); }
+
+/* the top bar: Menu (a skewed panel), the VS panel (both characters, names, clocks: information), the turn bubble */
+.hdr { isolation: isolate; }
+.hdr::before { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: radial-gradient(var(--cc-dot) 22%, transparent 24%) 0 0 / 9px 9px;
+  -webkit-mask-image: linear-gradient(90deg, #000, transparent 26%, transparent 74%, #000); mask-image: linear-gradient(90deg, #000, transparent 26%, transparent 74%, #000); }
+.hdrrow .menubtn, .hdrrow .menubtn.pback { margin-right: 4px; border: 3px solid var(--ink) !important; border-radius: 2px !important; background: #fff; box-shadow: var(--cc-sh) !important;
+  transform: skew(var(--cc-skew)); font: 400 19px/1 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .05em; padding-top: 3px; transition: transform .07s, box-shadow .07s; }
+.hdrrow .menubtn:active, .hdrrow .menubtn.pback:active { transform: skew(var(--cc-skew)) translate(3px, 3px) !important; box-shadow: var(--cc-sh-in) !important; }
+.hdrrow .menubtn.pback { font: 700 12px/1.05 'Comic Neue', 'Patrick Hand', sans-serif; padding-top: 0; }
+.hdr .tbar { position: relative; height: 40px; padding: 0 6px; gap: 26px; border: 3px solid var(--ink); background: linear-gradient(104deg, var(--x-soft) 0 50%, var(--o-soft) 50%); }
+.hdr .tbar::after { content: 'VS'; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) rotate(-8deg); pointer-events: none;
+  font: 400 17px/1 'Bangers', sans-serif; letter-spacing: .06em; color: #fff; -webkit-text-stroke: 4px var(--ink); paint-order: stroke fill; padding-top: 2px; }
+.hdr .tside .nm { font: 400 17px/1 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .04em; padding-top: 2px; }
+.hdr .tside .pclk { font: 400 16px/1 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .05em; border-radius: 0; padding: 3px 5px 1px; background: #fff; }
+.hdr .tside .pclk.on { background: var(--ink); color: var(--o); }
+.hdr .tside .pclk.low { background: var(--x); color: #fff; }
+.hdr .hdrrow2 { margin-top: 2px; }
+.hdr .turn { position: relative; height: 26px; display: flex; align-items: center; justify-content: center; padding: 0 12px; background: #fff; border: 2.5px solid var(--ink); border-radius: 13px; }
+.hdr .turn::before { content: ''; position: absolute; top: -10px; left: 26px; border: 5px solid transparent; border-bottom: 8px solid var(--ink); border-top: 0; transform: skewX(24deg); }
+.hdr.t-O .turn::before { left: auto; right: 26px; transform: skewX(-24deg); }
+.hdr .turn .who, .hdr .turn .tswap > .flres { font: 400 17px/1 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .05em; padding-top: 2px; }
+.hdr .turn .who .cpui { width: .9em; height: .9em; }
+.hdr .turn .tswap { height: auto; }
+
+/* under the board: the hint as plain text, whose move it is as a flat bar (their character, their clock) */
+.board-scr .foot .hint { font: 700 16px/1.2 'Comic Neue', 'Patrick Hand', sans-serif; color: var(--ink); }
+.foot .wband, .foot .wband.X, .foot .wband.O { background: #fff; border: 2.5px solid var(--ink); box-shadow: none; border-radius: 20px; }
+.foot .wband.X { box-shadow: inset 6px 0 0 var(--x); } .foot .wband.O { box-shadow: inset 6px 0 0 var(--o); }
+.foot .wband .wtxt { font: 400 17px/1 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .05em; padding-top: 3px; }
+.foot .wband .wleft { font: 400 16px/1 'Bangers', 'Luckiest Guy', sans-serif; background: var(--ink); color: var(--o); padding: 3px 6px 1px; min-width: 0; letter-spacing: .05em; }
+
+/* the board's marks: the last-played square: its player's character in a disc on the square's corner (flat, no text) */
+.board .lastcap { position: absolute; left: -2px; top: -4px; z-index: 3; width: 30px; height: 30px; border-radius: 50%; border: 2.5px solid var(--ink); display: grid; place-items: center; pointer-events: none; }
+.board .lastcap .pc { width: 24px; height: 24px; }
+.board .lastcap.X { background: var(--x-soft); } .board .lastcap.O { background: var(--o-soft); }
+/* the other side's square, about to be played: a ringed, dotted square in their colour and a flat caption */
+.board .sq.spot::before { inset: 5%; border-radius: 14px; opacity: 1;
+  background: radial-gradient(color-mix(in srgb, var(--spot) 60%, transparent) 30%, transparent 32%) 0 0 / 11px 11px;
+  box-shadow: 0 0 0 3px var(--ink), 0 0 0 7px var(--spot), 0 0 0 10px var(--ink); animation: ccspot 1s ease-in-out infinite; }
+@keyframes ccspot { 0%, 100% { opacity: .6; scale: .94; } 50% { opacity: 1; scale: 1; } }
+.spot-lab { border: 2.5px solid var(--ink); border-radius: 0; box-shadow: none; padding: 3px 5px 2px; font: 700 clamp(13px, 12cqw, 15px)/1.05 'Comic Neue', 'Patrick Hand', sans-serif; }
+.spot-lab.X { background: var(--x); color: #fff; } .spot-lab.O { background: var(--o); color: var(--ink); }
+/* a claim: the mark slams onto its square over a burst, with impact lines; once, from the stamp's event */
+.own-ov.stamp::before, .own-ov.stamp::after { content: ''; position: absolute; pointer-events: none; z-index: -1; }
+.own-ov.stamp::before { inset: -16% -24%; background: var(--cc-burst) center / 100% 100% no-repeat; animation: ccburst .95s cubic-bezier(.3, 1.4, .5, 1) both; }
+.own-O .own-ov.stamp::before { background-image: var(--cc-burst-w); }
+.own-ov.stamp::after { left: 50%; top: 50%; width: 260%; height: 260%; margin: -130% 0 0 -130%; border-radius: 50%;
+  background: repeating-conic-gradient(var(--ink) 0 2.2deg, transparent 2.2deg 15deg);
+  -webkit-mask-image: radial-gradient(circle, transparent 40%, #000 42%, transparent 68%); mask-image: radial-gradient(circle, transparent 40%, #000 42%, transparent 68%);
+  animation: cclines .6s ease-out both; }
+@keyframes ccburst { 0% { transform: scale(0) rotate(-25deg); opacity: 0; } 18% { transform: scale(1.15) rotate(4deg); opacity: 1; } 30%, 72% { transform: scale(1) rotate(0); opacity: 1; } 100% { transform: scale(1.05); opacity: 0; } }
+@keyframes cclines { 0% { transform: scale(.5); opacity: 0; } 15% { opacity: .75; } 100% { transform: scale(1.25); opacity: 0; } }
+/* a draw: DRAW! stamped in a white burst (the same moments as before: in, hold, flicked away with the old game) */
+.drawst b { font: 400 clamp(18px, 26cqw, 42px)/1 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .05em; color: var(--x); -webkit-text-stroke: 1.5px var(--ink);
+  background: var(--cc-burst-w) center / 100% 100% no-repeat; border: 0; border-radius: 0; box-shadow: none; padding: .62em .78em .5em; }
+.drawst b::after { content: '!'; }
+
+/* the reactions' button: a skewed panel with a drawn speech bubble */
+.rxdock .rbtn { width: 52px; height: 46px; border: 3px solid var(--ink); border-radius: 2px; background: #fff; box-shadow: var(--cc-sh); transform: skew(var(--cc-skew)); display: grid; place-items: center; transition: transform .07s, box-shadow .07s; }
+.rxdock .rbtn svg { width: 28px; height: 28px; transform: skew(7deg); }
+.rxdock .rbtn:active, .rxdock .rbtn.cool { transform: skew(var(--cc-skew)) translate(3px, 3px); box-shadow: var(--cc-sh-in); }
+
+/* the mini-game frame: Board and "?" are skewed panels, the name a flat caption, the game on a raised cream page */
+main.scr.mini > .bar .back { border: 3px solid var(--ink) !important; border-radius: 2px !important; background: #fff; box-shadow: var(--cc-sh) !important; transform: skew(var(--cc-skew));
+  font: 400 19px/1 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .05em; padding-top: 3px; margin-right: 4px; transition: transform .07s, box-shadow .07s; }
+main.scr.mini > .bar .back:active:not(:disabled) { transform: skew(var(--cc-skew)) translate(3px, 3px) !important; box-shadow: var(--cc-sh-in) !important; }
+main.scr.mini > .bar .back:disabled { opacity: .45; }
+main.scr.mini > .bar .ttl > b { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: top;
+  font: 400 21px/1 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .05em; background: var(--o); border: 2.5px solid var(--ink); padding: 4px 9px 1px; }
+main.scr.mini > .bar .ttl small { font: 700 13px/1.2 'Comic Neue', 'Patrick Hand', sans-serif; color: var(--ink); margin-top: 2px; }
+main.scr.mini > .bar .qbtn { width: 46px; height: 46px; border: 3px solid var(--ink); border-radius: 2px; background: var(--o); box-shadow: var(--cc-sh); transform: skew(var(--cc-skew));
+  font: 400 24px/1 'Bangers', 'Luckiest Guy', sans-serif; padding-top: 3px; margin-right: 4px; transition: transform .07s, box-shadow .07s; }
+main.scr.mini > .bar .qbtn:active { transform: skew(var(--cc-skew)) translate(3px, 3px); box-shadow: var(--cc-sh-in); }
+main.scr.mini:not(.screplay) > .gwrap { background: var(--bg); box-shadow: 0 0 0 3px var(--ink), 5px 5px 0 3px var(--ink); border-radius: 2px; }
+
+/* the zoom into a square: speed lines out from the square as it grows into the game's page (ui/fx.js zoomLines) */
+.zlines { position: fixed; z-index: 30; width: 900px; height: 900px; border-radius: 50%; pointer-events: none; transform: translate(-50%, -50%);
+  background: repeating-conic-gradient(var(--ink) 0 1.2deg, transparent 1.2deg 9deg);
+  -webkit-mask-image: radial-gradient(circle, transparent 12%, #000 26%, transparent 60%); mask-image: radial-gradient(circle, transparent 12%, #000 26%, transparent 60%); }
+
+@media (prefers-reduced-motion: reduce) { .own-ov.stamp::before, .own-ov.stamp::after, .board .sq.spot::before { animation: none; } .own-ov.stamp::after { display: none; } .zlines { display: none; } }
