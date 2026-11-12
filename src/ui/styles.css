@@ -4081,7 +4081,7 @@ main.scr.mini:has(.brkw.run) .back { visibility: hidden; pointer-events: none; }
 .thg .thb .hmx { max-width: 52cqw; justify-content: flex-start; }
 .tg.tmem i:not(.up)::after { content: ''; width: 30%; height: 30%; border: max(1.5px, 1.2cqw) solid var(--paper); border-radius: 1px; transform: rotate(45deg); }   /* Find the Pair: a drawn card back */
 .tpong .tpm.X .tmk { stroke: var(--x); } .tpong .tpm.O .tmk { stroke: var(--o); }   /* Cup Pong: each end's mark drawn */
-.tbk .tbn { font-size: 14px; }   /* Apple Pick: the bucket's count (14 of the picture's 84 across: the floor at 360px) */
+.tbk .tbn { font-size: 15.6px; }   /* Apple Pick: the bucket's count (15.6 of the picture's 84 across: the floor at 360px) */
 .tmun .mr { grid-template-columns: auto minmax(0, 1fr) auto; font: 400 var(--mt)/1 'Luckiest Guy', 'Arial Black', sans-serif; } .tmun .mr b { font-size: .8em; } .tmun .mr span { min-width: 1.3em; padding-top: .12em; }   /* Muncher */
 .tmun .mpic { width: 36cqw; } .tmun .mr { gap: 1.5cqw; } .tmun .mr b { font-size: .7em; } .tmun .mr span { min-width: 1.1em; }
 .twh .trun .tr { grid-template-columns: auto 1fr auto; } .twh .trun .tr b { font-size: calc(var(--mt) * .8); } .twh .trun .tr span { font-size: var(--mt); min-width: 1.3em; padding-top: .12em; }   /* Risky Spins */

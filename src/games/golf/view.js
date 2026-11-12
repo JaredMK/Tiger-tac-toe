@@ -12,7 +12,7 @@ export { physicsSounds as sounds } from '../../ui/physics.js';
 // most of them have come up; then it starts again (bar the last few). Online the server deals any hole.
 const GOLF_SEEN = 'ttt-golf-seen';
 setGolfPick((rng, holes) => {
-  if (state && state.online) return null;
+  try { if (state && state.online) return null; } catch (e) { return null; }   // (the page's own first deal, while ui/app.js is still loading and its state is not there yet: any hole)
   const bases = [...new Set(holes.map(h => h.of))];
   let seen = [];
   try { seen = JSON.parse(localStorage.getItem(GOLF_SEEN) || '[]').filter(b => bases.includes(b)); } catch (e) { /* none kept */ }
